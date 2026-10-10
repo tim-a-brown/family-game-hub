@@ -37,8 +37,8 @@ const CAROUSEL = [243, 470], CAR_R = 44, CAR_LEGS = [[243, 527], [194, 441], [29
 const RING = [243, 604];
 const MONKEY = [186, 972];
 const CANNON = [26, 205];
-const POPS = [[262, 866], [342, 870], [302, 938]];
-const LANES = [262, 302, 342];
+const POPS = [[266, 898], [344, 896], [305, 848]];   // offset from the lane mouths so no lane feeds a bumper dead-centre
+const LANES = [252, 292, 332];
 const PRIZES = ['DUCK', 'BEAR', 'FISH', 'ELEPHANT', 'LION'];
 const PRIZE_MODES = ['ducks', 'bumpers', 'ring', 'dunk', 'coaster'];
 const PRIZE_X = [171, 207, 243, 279, 315], PRIZE_Y = 395;
@@ -168,7 +168,7 @@ function build(T) {
   // ── Upper right: pop bumpers (bumper cars) and the W-I-N top lanes ──
   POPS.forEach(([x, y], i) => T.popBumper({ id: 'pop' + (i + 1), x, y, r: 23, color: ['#e8463c', '#ffcc3a', '#2a8c8c'][i], skirt: ['#c8302c', '#e0a63a', '#1f6f6f'][i], body: '#f4ecd8', capArt: (g, w, h) => bumperCarCap(g, w, h, i) }));
   LANES.forEach((x, i) => T.rolloverLane({ id: 'lane' + 'WIN'[i], x, y: 992, r: 11, color: '#ffcc3a', lampDy: -30, shape: 'circle', lampR: 8, text: 'WIN'[i], textSize: 9 }));
-  [242, 282, 322, 362].forEach(x => { T.wall([[x, 972], [x, 1018]], { style: 'metal', h: 22 }); T.post(x, 972, { style: 'metal', r: 3 }); });
+  [232, 272, 312, 352].forEach(x => { T.wall([[x, 972], [x, 1018]], { style: 'metal', h: 22 }); T.post(x, 972, { style: 'metal', r: 3 }); });
 
   // ── Inserts ──
   const ins = (id, x, y, o) => T.insert(id, x, y, o);
@@ -625,7 +625,7 @@ function paintPlayfield(P) {
   P.text('TEST YOUR', 404, 602, { size: 5, color: '#2a1a14', font: BUNGEE, weight: '400', rot: -20 }); P.text('STRENGTH', 398, 594, { size: 5, color: '#2a1a14', font: BUNGEE, weight: '400', rot: -20 });
   P.text('RING TOSS', RING[0], RING[1] - 32, { size: 6, color: '#2a1a14', font: BUNGEE, weight: '400' });
   P.text('GRAND PRIZE', 243, 530, { size: 5.5, color: '#8a1a14', font: BUNGEE, weight: '400' });
-  P.text('BUMPER CARS', 302, 830, { size: 7, color: 'rgba(255,230,170,.85)', font: BUNGEE, weight: '400' });
+  P.text('BUMPER CARS', 305, 822, { size: 7, color: 'rgba(255,230,170,.85)', font: BUNGEE, weight: '400' });
   // title on the boardwalk
   P.text('MIDWAY MAYHEM', 243, 352, { size: 17, color: '#c8302c', font: BUNGEE, weight: '400', stroke: '#f8f1dc', strokeW: 3.5, spacing: 1 });
   P.text('BOARDWALK CARNIVAL  ·  EST. 1958', 243, 334, { size: 5, color: '#4a2a14', font: SERIF });

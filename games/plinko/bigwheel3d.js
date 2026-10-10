@@ -396,19 +396,15 @@ export function BigWheel3D(host, hooks, api) {
     [-1, 1].forEach(sd => {
       const xc = sd * (PX + PW / 2);
       bodies.push(place(new THREE.ExtrudeGeometry(shape, { depth: PZ1 - PZ0, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 3, curveSegments: 24 }), xc, 0, PZ0));
-      // raised red tiles in a checker (none under the bulb rail)
-      const cs = PW / 5, tw = cs * 0.9, inset = 0.07, xi = -sd * PW / 2 + sd * inset, ra = PW / 2 - inset;
-      const nearRail = (x, y) => {
-        const dLine = y <= PYA ? Math.abs(x - xi) : Math.hypot(x - xi, y - PYA);
-        const dArc = y >= PYA ? Math.abs(Math.hypot(x, y - PYA) - ra) : Math.min(Math.hypot(x - ra, y - PYA), Math.hypot(x + ra, y - PYA));
-        return Math.min(dLine, dArc) < tw / 2 + 0.035;
-      };
-      for (let row = 0; row < 16; row++) for (let col = 0; col < 5; col++) {
+      // raised red tiles in a checker: four columns between the outer edge and the bulb rail
+      const inset = 0.07, xi = -sd * PW / 2 + sd * inset, ra = PW / 2 - inset;
+      const cc = (PW - 0.15) / 4, tw = cc * 0.86, xo = sd * PW / 2;   // xo: the outer edge
+      const nearArc = (x, y) => y > PYA - tw && Math.abs(Math.hypot(x, y - PYA) - ra) < tw / 2 + 0.03 && Math.hypot(x, y - PYA) > ra - tw;
+      for (let row = 0; row < 16; row++) for (let col = 0; col < 4; col++) {
         if ((row + col) % 2) continue;
-        const x = -PW / 2 + (col + 0.5) * cs, y = PY0 + (row + 0.5) * cs;
-        // inside the arch shape with margin?
-        const top = y + tw / 2, inArch = top <= PYA || Math.hypot(Math.abs(x) + tw / 2, Math.max(0, top - PYA)) <= PW / 2 - 0.01;
-        if (!inArch || nearRail(x, y)) continue;
+        const x = xo - sd * (0.03 + (col + 0.5) * cc), y = PY0 + (row + 0.5) * cc;
+        const top = y + tw / 2, inArch = top <= PYA || Math.hypot(Math.abs(x) + tw / 2, Math.max(0, top - PYA)) <= PW / 2 - 0.012;
+        if (!inArch || nearArc(x, y)) continue;
         tiles.push(place(new RoundedBoxGeometry(tw, tw, 0.024, 2, 0.007), xc + x, y, PZ1 + 0.012));
       }
       // the cream bulb rail: up the side next to the drum, then over the arch

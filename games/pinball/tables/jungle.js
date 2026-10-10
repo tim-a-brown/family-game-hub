@@ -261,7 +261,7 @@ function makeRules() {
       relic: G => { G.b.keys = Math.max(1, G.b.keys); G.b.relicLit = G.b.relics.indexOf(0); R.startHunt(G, Math.max(0, G.b.relicLit)); },
       city: G => R.startCity(G),
       climb: G => { const b = G.liveBalls()[0]; if (b) G.world.place(b, 186, 1000, 'maze', -100, -100); },
-      temple: G => { const t = G.comp('temple'); for (let i = 0; i < 9; i++) t.onContact(null, null, 1500); },
+      temple: G => { const t = G.comp('temple'); for (let i = 0; i < 9; i++) { t.last = -9; t.onContact(null, null, 1500); } },
       altar: G => R.raiseAltar(G)
     },
     init(G) {

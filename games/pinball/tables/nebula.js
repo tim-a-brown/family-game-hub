@@ -21,7 +21,7 @@ const fmt = n => Math.round(n).toLocaleString('en-US');
 // ── Layout constants ───────────────────────────────────────────────────────
 const WELL_Z = 62, WELL_BOX = [58, 852, 194, 1008];          // the Gravity Well (vertical powerfield), top left
 const LOOP_C = [348, 852], LOOP_R = 92, LOOP_Z = 66;         // the Warp Loop: a raised wire circle over the pops
-const SAUCER = [330, 1006];                                  // the flying saucer, top centre
+const SAUCER = [300, 980];                                  // the flying saucer, top centre
 const SHIP = [300, 733];                                     // the mothership drop-target bank
 const TPIN = [222, 596], TPOUT = [455, 556];                 // teleporter pads
 const SCOOP = [344, 516];                                    // Mission Control scoop
@@ -79,13 +79,13 @@ function buildLeft(T) {
   T.wall([[62, 620], [46, 600]], { style: 'metal', h: 26 });                         // funnel to the hole
   T.wall([[62, 620], [62, by0], [bx0, by0]], { style: 'metal', h: 26 });            // lane's inner guide
   T.post(46, 598, { style: 'rubber', r: 5 });
-  T.cannon({ id: 'cannonL', x: 24, y: 548, load: [CANL[0], CANL[1], 14], rest: 32, min: 10, max: 50, power: 2900, barrel: 44, autoFire: 7, barrelMat: 'brass' });
+  T.cannon({ id: 'cannonL', x: 24, y: 520, load: [CANL[0], CANL[1], 14], rest: 36, min: 14, max: 62, power: 2900, barrel: 44, autoFire: 7, barrelMat: 'brass' });
   T.kickback({ id: 'kickback', x: 28, y: 205, power: 2300, label: 'THRUSTER', color: PAL.cyan });
   // ── The Gravity Well block: a housing on the main floor; the vertical field sits on top ──
   // the housing's top follows the arch so no pocket is left above it
-  const foot = [[bx0, by0], [bx1, by0], [bx1, 1010], [bx0, 940]];
+  const foot = [[bx0, by0], [bx1, by0], [bx1, 992], [bx0, 890]];
   T.wall(foot, { style: 'wood', r: 4, h: 44, color: '#141a30', closed: true });
-  T.wall([[464, 832], [479, 808]], { style: 'metal', h: 24 });                      // deflects balls off the gate's end
+  T.wall([[479, 794], [466, 772]], { style: 'metal', h: 24 });                      // a ball coming back down off the gate slides into the orbit lane
   T.powerfield({ id: 'well', lvlId: 'well', z: WELL_Z, box: WELL_BOX, magnets: [[102, 892, 'L'], [168, 930, 'R']], win: { comp: 'wellTop' }, lose: { x: 166, y: 812, vy: -220 }, floor: '#060a1a', color: PAL.cyan });
   // top gate: a hidden pocket that either locks the ball (lock lit) or drops it into the warp lane
   T.subway({ id: 'wellTop', hole: false, delay: 0.55, to: b => { const G = T.G, lk = G.comps.warpLock; return (G.b.lockLit && lk.count() < 3) ? { comp: 'warpLock' } : { x: 218, y: 980, vx: 12, vy: -320, lvl: 'main' }; } });
@@ -93,9 +93,9 @@ function buildLeft(T) {
   // ── Gravity ramp: a chrome wireform from the left-centre up into the well ──
   T.ramp({ id: 'gravity', style: 'wire', w: 40, exitLvl: 'main', entryMin: 160, to: 'well', supportEvery: 120,
     pts: [[118, 600, 0], [122, 640, 4], [130, 700, 22], [138, 760, 42], [142, 800, 54], [142, 822, WELL_Z - 1], [140, 836, WELL_Z]] });
-  T.post(92, 606, { style: 'rubber', r: 5 }); T.post(146, 604, { style: 'rubber', r: 5 });
+  T.post(97, 598, { style: 'rubber', r: 4.5 }); T.post(146, 604, { style: 'rubber', r: 5 });
   // lock targets: two flank the ramp mouth, one on the well's corner
-  T.standupTarget({ id: 'lk0', x: 80, y: 632, angle: 270, w: 20, label: 'W', color: PAL.violet });
+  T.standupTarget({ id: 'lk0', x: 84, y: 816, angle: 270, w: 20, label: 'W', color: PAL.violet });
   T.standupTarget({ id: 'lk1', x: 160, y: 632, angle: 275, w: 20, label: 'E', color: PAL.violet });
   T.standupTarget({ id: 'lk2', x: 196, y: 820, angle: 300, w: 22, label: 'LL', color: PAL.violet });
   T.wall([[62, 640], [66, 640]], { style: 'invisible', mat: 'metal' });
@@ -118,8 +118,6 @@ function buildRight(T) {
   canR.sens = T.world.sensor({ kind: 'circle', x: 455, y: 930, r: 13, on: false, id: 'cannonR', owner: canR });
   // ── Mission Control scoop (right of centre), hooded, kicks out towards the left flipper ──
   T.scoop({ id: 'mission', x: SCOOP[0], y: SCOOP[1], r: 12, eject: { angle: 238, speed: 1500 }, hold: 1.0 });
-  T.wall([[366, 520], [392, 556]], { style: 'metal', h: 24 });
-  T.post(392, 558, { style: 'rubber', r: 5 });
   // ── The Warp Loop ──
   makeWarpLoop(T);
   T.post(378, 636, { style: 'rubber', r: 5 }); T.post(424, 630, { style: 'rubber', r: 5 });
@@ -194,8 +192,8 @@ function buildCentre(T) {
   T.shakingToy({ id: 'saucer', x: SAUCER[0], y: SAUCER[1], r: 30, model: saucerModel });
   T.ao({ kind: 'dot', x: SAUCER[0], y: SAUCER[1], r: 38, a: 0.6, blur: 12 });
   // ── Centre standups: two 'ANTIMATTER' targets under the mothership's wings ──
-  T.standupTarget({ id: 'am0', x: 262, y: 700, angle: 250, w: 20, label: '', color: PAL.white, art: amArt });
-  T.standupTarget({ id: 'am1', x: 374, y: 690, angle: 290, w: 20, label: '', color: PAL.white, art: amArt });
+  T.standupTarget({ id: 'am0', x: 296, y: 544, angle: 245, w: 20, label: '', color: PAL.white, art: amArt });
+  T.standupTarget({ id: 'am1', x: 314, y: 574, angle: 245, w: 20, label: '', color: PAL.white, art: amArt });
   T.flasher('flShip', 318, 790, { color: PAL.cyan, r: 9, z0: 0 });
   T.flasher('flL', 110, 1000, { color: PAL.violet, r: 10, z0: 44 });
   T.flasher('flR', 470, 700, { color: PAL.magenta, r: 9, z0: 0 });
