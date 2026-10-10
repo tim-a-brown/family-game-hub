@@ -377,13 +377,107 @@ function twinkle(RC, t) {
 // RULES
 // ═══════════════════════════════════════════════════════════════════════════
 function makeRules() {
-  const R = {
-    init(G) { G.b = { pops: 0 }; },
-    event(G, type, id, b, d) { if (type === 'pop') G.b.pops++; },
-    lamps(G) { return {}; },
-    status(G) { return 'HIT THE POP BUMPERS'; },
-    bonus(G) { return [['POPS', G.pbn('pop'), 200], ['SLINGS', G.pbn('sl'), 100]]; }
+  const LINES = {
+    start: ['All systems nominal.', 'Welcome aboard, captain.', 'Course laid in.'],
+    lock: ['Ball contained.', 'Containment field holding.'],
+    well: ['Gravity well engaged.', 'Entering the well.'],
+    warp: ['Warp speed.', 'Warp drive engaged.', 'Hold on.'],
+    warp9: ['Warp factor nine.'],
+    cannon: ['Cannon loaded. Awaiting orders.', 'Turret armed.'],
+    hit: ['Direct hit.', 'Target destroyed.'],
+    tp: ['Transport complete.', 'Energising.'],
+    planet: ['Approaching orbit.', 'Entering orbit.'],
+    saucer: ['Unidentified craft.', 'It is shooting back.'],
+    mb: ['Warp multiball.', 'All balls released.'],
+    drain: ['Ball lost. Recovering.', 'Systems recalibrating.', 'Try again, captain.'],
+    eh: ['Event horizon reached. Hold on.'],
+    am: ['Antimatter ball loaded. Magnets offline.'],
+    extra: ['Spare ball authorised.'],
+    jackpot: ['Jackpot.', 'Jackpot confirmed.']
   };
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const R = {
+    modes: {
+      warpmb: G => R.startWarpMB(G), saucer: G => R.startSaucer(G), eh: G => R.startEH(G), antimatter: G => R.startAM(G),
+      cinder: G => R.startPlanet(G, 0), veil: G => R.startPlanet(G, 1), halo: G => R.startPlanet(G, 2), frost: G => R.startPlanet(G, 3),
+      well: G => { const b = G.liveBalls()[0]; if (b) G.comp('well').receive(b); }, cannon: G => { R.lightCannon(G, 'L'); R.lightCannon(G, 'R'); }
+    },
+    init(G) {
+      G.b = { lk: [0, 0, 0], lockLit: false, locks: 0, warpMB: false, jpLit: {}, jp: 0, superLit: false,
+        warps: 0, warpOn: 0, warpSpeed: 0, bestSpeed: 0, laps: 0, visited: [0, 0, 0, 0], planetLit: -1, planetOn: null, planetIdx: -1, planetShots: 0,
+        saucerHits: 0, saucerMode: false, saucerJp: 40000, saucerDone: false, cannonLit: { L: false, R: false }, cannonBall: null, fireT: -9, loadT: -9, flipT: { L: -9, R: -9 },
+        am: [0, 0], amLit: false, amOn: false, tps: 0, orbits: 0, ehLit: false, eh: false, ehDone: 0, saidT: -9, chatT: 12, wellBalls: 0 };
+      G.say(pick(LINES.start));
+    },
+    say(G, k, force) { if (G.time - G.b.saidT < 3.5 && !force) return; if (G.say(pick(LINES[k]), { force })) G.b.saidT = G.time; },
+    ballStart(G) { const B = G.b; B.warpOn = 0; B.warpSpeed = 0; B.laps = 0; B.cannonBall = null; G.comp('kickback').arm(); R.syncCannons(G); },
+    ballEnd(G) {
+      const B = G.b; B.warpMB = false; B.jpLit = {}; B.superLit = false; B.saucerMode = false; B.planetOn = null; B.amOn = false; B.eh = false; B.warpOn = 0;
+      G.comp('ship').hold = false; if (!G.tilted) R.say(G, 'drain');
+    },
+    serve(G) {},
+    skill(G, type, id) { if (type === 'lane') return id === 'laneSkill'; if (type === 'pop' || type === 'orbit' || type === 'ramp' || type === 'toy' || type === 'target' || type === 'drop' || type === 'sling') return false; },
+    flip(G, side, on) {
+      const B = G.b;
+      if (on) { B.flipT[side] = G.time; return; }
+      // a loaded cannon fires when the steering button is let go (if it was pressed after the load)
+      const c = G.cannon; if (c && c.ball && G.time - B.loadT > 0.35 && B.flipT[side] > B.loadT) c.fire();
+    },
+    spinValue() { return 100; },
+    event(G, type, id, b, d) {
+      const B = G.b;
+      switch (type) {
+        case 'pop': G.cnt('ast'); if (B.planetOn === 'CINDER') R.planetShot(G, 5000, 'ASTEROID'); if (B.eh) G.add(2500); break;
+        case 'sling': break;
+        case 'lane':
+          if (id === 'laneWarp') { G.add(3000); if (B.eh) G.add(10000); }
+          if (id === 'laneSkill') { G.add(2000); }
+          break;
+        case 'target':
+          if (/^lk\d$/.test(id)) { const i = +id[2]; if (!B.lk[i]) { B.lk[i] = 1; G.pulse('lkl' + i, 0.4); G.sfx('beep', { vol: 0.35, rate: 1 + i * 0.12 }); } if (B.lk.every(Boolean) && !B.lockLit) { B.lk = [0, 0, 0]; B.lockLit = true; G.msg('W-E-LL', 'LOCK IS LIT AT THE WELL', { anim: 'well' }); G.sfx('award'); } else if (!B.lockLit) G.msg('W-E-LL', B.lk.filter(Boolean).length + ' OF 3', { dur: 1 }); }
+          else if (/^am\d$/.test(id)) { const i = +id[2]; B.am[i] = 1; G.pulse('aml' + i, 0.4); if (B.am.every(Boolean) && !B.amLit && !B.amOn) { B.am = [0, 0]; B.amLit = true; G.msg('ANTIMATTER', 'LIT AT MISSION CONTROL', {}); G.sfx('award'); } }
+          break;
+        case 'drop': G.pulse('arrShip', 0.3); R.cannonCheck(G, b, 'MOTHERSHIP'); if (B.warpMB) R.jp(G, 'ship'); break;
+        case 'bank':
+          G.cnt('ship');
+          if (B.planetOn === 'CINDER') R.planetShot(G, 50000, 'MOTHERSHIP DOWN');
+          else if (B.eh) { G.jackpot(75000, 'HORIZON JACKPOT', { color: PAL.violet }); }
+          else if (B.planetLit < 0 && !B.planetOn) { const i = B.visited.indexOf(0); if (i >= 0) { B.planetLit = i; G.msg(PLANETS[i][0] + ' IN RANGE', 'SHOOT MISSION CONTROL', { anim: 'planet', color: PLANETS[i][1] }); G.sfx('beep', { vol: 0.5 }); } else G.add(25000); }
+          else { G.add(25000); G.msg('MOTHERSHIP', '25,000 + 15,000', {}); }
+          break;
+        case 'ramp':
+          if (id === 'gravity') { G.combo('gravity'); G.cnt('well'); if (B.planetOn === 'VEIL') R.planetShot(G, 25000, 'INTO THE WELL'); else if (!R.jp(G, 'gravity')) G.msg('GRAVITY WELL', 'TAP THE FLIPPERS TO CLIMB', { anim: 'well', dur: 1.4 }); R.say(G, 'well'); }
+          if (id === 'tube') { G.combo('tube'); G.cnt('tube'); G.add(5000); if (B.planetOn === 'FROST') R.planetShot(G, 30000, 'ICE TUBE'); else if (!R.jp(G, 'tube')) G.msg('THE TUBE', fmt(10000 * G.mult), {}); }
+          break;
+        case 'rampEnter': if (id === 'warp') { B.warpOn = 1; B.laps = 0; G.sfx('coil', { vol: 0.4, rate: 0.8 }); } break;
+        case 'rampFail': if (id === 'warp') { B.warpOn = 0; G.msg('NOT ENOUGH SPEED', '', { dur: 0.9 }); } break;
+        case 'superLap': B.laps = d.lap; B.warpSpeed = d.speed; G.add(5000 * d.lap); G.msg('WARP ' + R.wf(d.speed), 'LAP ' + d.lap, { anim: 'warp', dur: 0.9, now: true }); G.sfx('coil', { vol: 0.5, rate: 1 + d.lap * 0.2 }); if (d.lap === 1) R.say(G, 'warp'); break;
+        case 'supercharger': R.warpDone(G, b, d); break;
+        case 'orbit': G.combo('orbit'); B.orbits++; G.cnt('orb2'); if (B.planetOn === 'HALO') R.planetShot(G, 20000, 'ORBIT'); else if (!R.jp(G, 'orbit')) G.msg('ORBIT', fmt(G.add(5000)), {}); if (B.orbits % 2 === 0 && !B.cannonLit.R) R.lightCannon(G, 'R'); break;
+        case 'subway':
+          if (id === 'tpIn') { G.cnt('tp'); B.tps++; G.combo('teleport'); G.add(7500); G.msg('TELEPORT', 'ENERGISING', { anim: 'teleport', dur: 1.1, now: true }); G.sfx('teleport', { vol: 0.8 }); R.say(G, 'tp');
+            if (G.ebLit) G.collectExtra(); if (B.planetOn === 'FROST') R.planetShot(G, 30000, 'TELEPORT'); else R.jp(G, 'teleport'); if (B.tps % 3 === 0 && !B.cannonLit.L) R.lightCannon(G, 'L'); }
+          if (id === 'wellTop') { G.cnt('escape'); if (B.lockLit && G.comp('warpLock').count() < 3) { /* lock follows */ } else { G.add(25000); G.msg('WELL ESCAPE', fmt(25000 * G.mult), {}); if (B.planetOn === 'VEIL') R.planetShot(G, 75000, 'WELL ESCAPE'); else R.jp(G, 'well'); } }
+          break;
+        case 'subwayOut': if (id === 'tpIn') { G.sfx('teleport', { vol: 0.6, rate: 1.3 }); G.flash(PAL.cyan, 0.25); } break;
+        case 'powerfieldIn': B.wellBalls++; G.sfx('magnet', { vol: 0.4, x: 136 }); break;
+        case 'powerfield': G.sfx('vuk', { vol: 0.5, x: 136 }); break;
+        case 'powerfieldLose': G.add(2000); G.msg('PULLED BACK', '', { dur: 0.8 }); G.sfx('land', { vol: 0.5, x: 160 }); break;
+        case 'lock': {
+          B.locks = d.n; B.lockLit = false; G.cnt('lock'); G.msg('BALL ' + d.n + ' CONTAINED', d.n === 3 ? 'WARP MULTIBALL' : (3 - d.n) + ' MORE FOR WARP MULTIBALL', { anim: 'well' }); G.sfx('lock'); R.say(G, 'lock');
+          if (d.n >= 3) G.later(1.0, () => R.startWarpMB(G));
+          break;
+        }
+        case 'scoop': if (id === 'mission') R.mission(G, b); break;
+        case 'cannonLoad': B.loadT = G.time; G.cnt('cannon'); G.msg('CANNON LOADED', 'STEER WITH THE FLIPPERS, LET GO TO FIRE', { anim: 'cannon', dur: 2.5 }); R.say(G, 'cannon'); B.cannonLit[id === 'cannonL' ? 'L' : 'R'] = false; R.syncCannons(G); break;
+        case 'cannonFire': B.cannonBall = b; B.fireT = G.time; G.add(5000); G.flash(PAL.amber, 0.3); break;
+        case 'toy': if (id === 'saucer') R.saucerHit(G, b); break;
+        case 'kickback': G.msg('THRUSTER', 'BALL RECOVERED', { style: 'flash', dur: 1 }); G.sfx('vuk', { vol: 0.5 }); break;
+      }
+    },
+    wf(speed) { return (speed / 500).toFixed(1); }
+  };
+  rulesPart2(R, LINES, pick);
   return R;
 }
 

@@ -161,7 +161,7 @@ function build(T) {
   T.wall([[395, 638], [419, 638], [419, 684], [395, 670]], { style: 'invisible', mat: 'toy', r: 3, closed: true });   // the back slopes so balls roll off into the alley
   // a ball coming down off the arch slides along the lane gate and can settle on the lane wall's end: this one-way rail above the
   // gate carries it past the wall end into the right lane (plunged balls pass through it going up)
-  T.wall([[493, 805], [468, 790]], { style: 'metal', h: 24, one: [0, 1] });
+  T.wall([[495, 800], [473, 795]], { style: 'metal', h: 24, one: [0, 1] });
   T.ao({ kind: 'poly', pts: [[392, 634], [422, 634], [422, 688], [392, 688]], a: 0.6, blur: 10 });
   T.scoop({ id: 'booth', x: BOOTH[0], y: BOOTH[1], r: 12, eject: { angle: 252, speed: 1450 }, hold: 1.0 });
 
@@ -285,7 +285,7 @@ function makeRules() {
       const B = G.b; B.winLit = (B.winLit + (side === 'R' ? 1 : 2)) % 3;
       const r = B.win; B.win = side === 'R' ? [r[2], r[0], r[1]] : [r[1], r[2], r[0]];
     },
-    spinValue(G) { return G.b.wheelMB ? 1500 : 600; },
+    spinValue(G) { return G.b.wheelMB ? 2000 : 800; },
     event(G, type, id, b, d) {
       const B = G.b;
       switch (type) {
@@ -293,15 +293,15 @@ function makeRules() {
           if (!B.lockLit && !B.wheelMB) { B.spins++; if (B.spins >= B.spinsNeed) { B.spins = 0; B.lockLit = true; G.msg('MIDWAY SPINNER', 'LOCK IS LIT', { anim: 'gumball' }); G.sfx('award'); } }
           break;
         case 'pop':
-          B.lastMajor = 'pops';
-          if (B.mode === 'bumpers') { G.add(8000); B.have++; R.progress(G, 'BUMPER CARS'); }
+          B.lastMajor = 'pops'; G.add(1000);
+          if (B.mode === 'bumpers') { G.add(9000); B.have++; R.progress(G, 'BUMPER CARS'); }
           if (B.grand) G.add(8000);
           break;
-        case 'drop': G.pulse('d' + d.i, 0.3); if (B.mode === 'ducks') G.add(30000); else G.add(6000); break;
+        case 'drop': G.pulse('d' + d.i, 0.3); if (B.mode === 'ducks') G.add(30000); else G.add(8000); break;
         case 'bank':
           B.lastMajor = 'ducks'; B.ducksBanks++; G.cnt('duckBank'); B.monkeyT = G.time;
           if (B.mode === 'ducks') { G.add(150000); B.have++; R.progress(G, 'DUCK SHOOT'); }
-          else { G.add(25000); G.msg('DUCKS DOWN', fmt(40000 * G.mult), { anim: 'ducks' }); }
+          else { G.add(35000); G.msg('DUCKS DOWN', fmt(50000 * G.mult), { anim: 'ducks' }); }
           R.barkerShot(G, 'ducks');
           break;
         case 'target':
@@ -310,23 +310,23 @@ function makeRules() {
           break;
         case 'lane':
           if (/^lane[WIN]$/.test(id)) {
-            const i = 'WIN'.indexOf(id[4]); B.win[i] = 1;
+            const i = 'WIN'.indexOf(id[4]); B.win[i] = 1; G.cnt('wl');
             if (B.win.every(Boolean)) { B.win = [0, 0, 0]; B.tickets++; G.cnt('tickets'); G.bxUp(); if (!B.boothLit && !B.mode) { B.boothLit = true; G.msg('W-I-N', 'STEP RIGHT UP IS LIT', { anim: 'marquee' }); } else G.add(10000); G.sfx('chimeHi', { vol: 0.5 }); }
           }
           break;
         case 'orbit':
-          B.lastMajor = id; G.combo(id); G.add(9000);
-          if (B.grand) R.grandShot(G, id); else if (!R.barkerShot(G, id)) G.msg('MIDWAY', fmt(12000 * G.mult), {});
+          B.lastMajor = id; G.combo(id); G.add(12000);
+          if (B.grand) R.grandShot(G, id); else if (!R.barkerShot(G, id)) G.msg('MIDWAY', fmt(15000 * G.mult), {});
           break;
         case 'wheelIn': {
           // riding again straight off the coaster's inlane feed pays little: the midway wants you to play the other games
           const again = B.lastMajor === 'wheel'; B.lastMajor = 'wheel'; B.rideAgain = again;
-          G.cnt('ride'); B.rides++; B.rideN++; G.add(again ? 5000 : 15000);
+          G.cnt('ride'); B.rides++; B.rideN++; G.add(again ? 5000 : 20000);
           if (B.grand) { G.add(300000, { x: WHEEL.x, y: WHEEL.y, color: '#ffcc3a' }); G.msg('GRAND PRIZE RIDE', '300,000', { anim: 'wheel' }); }
           else if (B.wheelMB) G.msg('WHEEL RIDE', 'COASTER IS A JACKPOT', { anim: 'wheel', dur: 1.2 });
           else if (B.lockLit && B.locks < 2) G.msg('LOCK IS LIT', 'HOLD ON TIGHT', { anim: 'wheel', dur: 1.4 });
           else if (again) G.msg('SAME RIDE AGAIN', 'TRY ANOTHER GAME', { anim: 'wheel', dur: 1.2 });
-          else { G.msg('WHEEL RIDE', fmt(15000 * G.mult), { anim: 'wheel' }); R.say(G, 'wheel'); }
+          else { G.msg('WHEEL RIDE', fmt(20000 * G.mult), { anim: 'wheel' }); R.say(G, 'wheel'); }
           if (B.mode === 'coaster') { B.have++; G.add(75000); R.progress(G, 'COASTER'); }
           R.barkerShot(G, 'wheel');
           break;
@@ -344,20 +344,20 @@ function makeRules() {
           if (B.grand) G.add(100000);
           else if (B.wheelMB && B.jp.coaster) { R.jackpot(G, 'coaster'); }
           else if (B.rideAgain) { G.add(10000); }
-          else { G.combo('coaster'); G.add(40000); G.msg('ROLLER COASTER', fmt(40000 * G.mult), { anim: 'wheel' }); R.say(G, 'coaster'); }
+          else { G.combo('coaster'); G.add(50000); G.msg('ROLLER COASTER', fmt(50000 * G.mult), { anim: 'wheel' }); R.say(G, 'coaster'); }
           break;
         case 'scoop': if (id === 'booth') { B.lastMajor = 'booth'; R.booth(G); } break;
         case 'mouthHit':
-          B.lastMajor = 'barker'; B.barkerHits++; G.add(4000);
+          B.lastMajor = 'barker'; B.barkerHits++; G.add(5000);
           if (!B.mouthOpen && !B.barker && B.barkerHits >= 3) R.openMouth(G);
           else if (!B.mouthOpen) { G.msg('THE BARKER', (3 - B.barkerHits) + ' MORE TO OPEN HIS MOUTH', { anim: 'barker', dur: 1.2 }); if (G.time - B.tauntT > 6) { B.tauntT = G.time; R.say(G, 'face'); } }
           break;
         case 'mouth':
           G.cnt('barker'); B.mouthOpen = false; G.sfx('gulp', { vol: 0.8 }); R.say(G, 'eat', true); B.monkeyT = G.time;
-          if (B.superLit) { B.superLit = false; G.jackpot(400000, 'SUPER JACKPOT', { color: '#ff7aa8' }); B.jp = { coaster: 1, booth: 1 }; }
+          if (B.superLit) { B.superLit = false; G.jackpot(500000, 'SUPER JACKPOT', { color: '#ff7aa8' }); B.jp = { coaster: 1, booth: 1 }; }
           else if (B.grand) G.add(100000);
-          else if (!B.barker) { G.add(40000); G.later(1.4, () => R.startBarker(G)); }
-          else G.add(40000);
+          else if (!B.barker) { G.add(50000); G.later(1.4, () => R.startBarker(G)); }
+          else G.add(50000);
           break;
         case 'mouthOut': G.comp('barker').close(); if (B.wheelMB && !B.superLit) G.comp('barker').close(); break;
         case 'kickback': G.msg('HUMAN CANNONBALL', '', { style: 'flash', dur: 1.2 }); G.sfx('cannon', { vol: 0.9, x: 26 }); G.cnt('cannon'); break;
@@ -365,14 +365,14 @@ function makeRules() {
           B.lastMajor = 'ring'; G.cnt('ring'); B.monkeyT = G.time; G.sfx('chimeHi', { vol: 0.6 });
           if (B.mode === 'ring') { G.add(90000); B.have++; R.progress(G, 'RING TOSS'); }
           else if (B.grand) G.add(100000);
-          else { G.add(40000); G.msg('RINGED!', fmt(40000 * G.mult), {}); }
+          else { G.add(50000); G.msg('RINGED!', fmt(50000 * G.mult), {}); }
           break;
         case 'ringCatchRelease': if (B.mode !== 'ring' && !B.grand) G.comp('ring').active = false; break;
       }
     },
     // ── the ticket booth ──
     booth(G) {
-      const B = G.b, sc = G.comp('booth'); sc.holdT = 1.3; G.add(15000); G.combo('booth');
+      const B = G.b, sc = G.comp('booth'); sc.holdT = 1.3; G.add(20000); G.combo('booth');
       if (B.grandLit && !B.grand && !G.mb) { B.grandLit = false; sc.holdT = 3.5; R.startGrand(G); return; }
       if (G.ebLit) { G.collectExtra(); R.say(G, 'extra', true); sc.holdT = 2; return; }
       if (B.grand) { G.add(100000); G.msg('GRAND PRIZE', '100,000', { anim: 'marquee' }); return; }
@@ -405,7 +405,7 @@ function makeRules() {
       B.prizes[i] = 1; G.cnt('prize'); const n = B.prizes.filter(Boolean).length;
       G.endMode(B.mode); B.mode = null; B.monkeyT = G.time;
       G.comp('motor').score(50000);
-      G.jackpot(150000, 'YOU WIN A ' + PRIZES[i], { color: '#ffcc3a', sound: 'fanfare' }); R.say(G, 'prize', true);
+      G.jackpot(200000, 'YOU WIN A ' + PRIZES[i], { color: '#ffcc3a', sound: 'fanfare' }); R.say(G, 'prize', true);
       if (n === 2) G.lightExtra();
       if (n >= 5) { B.grandLit = true; G.later(2.6, () => G.msg('ALL FIVE PRIZES', 'GRAND PRIZE AT THE BOOTH', { anim: 'marquee', dur: 2.5 })); }
       else B.boothLit = true;
@@ -429,7 +429,7 @@ function makeRules() {
       const B = G.b, st = G.comp('striker'), imp = st.lastImp || 600;
       const k = clamp(imp / 1500, 0.15, 1.0);
       if (B.strong && B.hurry > 0) { const p = G.add(B.hurry); B.hurry = 0; B.strong = false; G.endMode('strongman'); B.strongDone++; G.cnt('strong'); G.jackpot(0, 'STRONGMAN', { color: '#ff9a40', sound: 'fanfare' }); G.msg('STRONGMAN', fmt(p), { anim: 'bell' }); B.monkeyT = G.time; G.comp('motor').score(20000); return; }
-      B.puck = Math.min(1, B.puck + k * 0.75); B.puckT = G.time; G.add(8000);
+      B.puck = Math.min(1, B.puck + k * 0.75); B.puckT = G.time; G.add(10000);
       if (B.grand) G.add(100000);
       if (B.puck >= 0.99) {
         B.puck = 1; B.bell++; B.bellAt = G.time; G.cnt('bell'); G.sfx('bigBell', { vol: 0.9, x: 407 }); G.shake(0.5); B.monkeyT = G.time;
@@ -449,7 +449,7 @@ function makeRules() {
       const B = G.b; B.dunks++; B.dunkAt = G.time; G.cnt('dunk'); G.sfx('splash', { vol: 0.8, x: 84 }); G.shake(0.3);
       if (B.mode === 'dunk') { G.add(45000); B.have++; R.progress(G, 'DUNK TANK'); }
       else if (B.grand) G.add(100000);
-      else { G.add(12500); G.msg('DUNKED!', fmt(12500 * G.mult), { anim: 'clown' }); }
+      else { G.add(15000); G.msg('DUNKED!', fmt(15000 * G.mult), { anim: 'clown' }); }
       if (B.dunks % 3 === 0) { G.comp('cannon').arm(); G.add(30000); if (B.dunks === 9) G.lightExtra(); else G.msg('THREE DUNKS', 'CANNONBALL ARMED', { anim: 'clown' }); }
       if (G.time - B.tauntT > 6) { B.tauntT = G.time; R.say(G, 'dunk'); }
       R.barkerShot(G, 'dunk');
@@ -459,7 +459,7 @@ function makeRules() {
       const B = G.b; B.wheelMB = true; B.lockLit = false; B.locks = 0; B.spinsNeed += 5; G.cnt('wheelmb');
       const gb = G.comp('gumball');
       G.multiball(3, { label: 'WHEEL MULTIBALL', color: '#e8463c', save: 15, from: i => gb.dispense() });
-      B.jp = { coaster: 1, booth: 1 }; B.jpV = 150000; B.superLit = false; R.say(G, 'mb', true); G.sfx('calliope', { vol: 0.6 });
+      B.jp = { coaster: 1, booth: 1 }; B.jpV = 200000; B.superLit = false; R.say(G, 'mb', true); G.sfx('calliope', { vol: 0.6 });
     },
     jackpot(G, id) {
       const B = G.b; delete B.jp[id];
@@ -546,7 +546,7 @@ function makeRules() {
       opts.push('PRIZES WON: ' + B.prizes.filter(Boolean).length + ' OF 5', 'RING THE BELL FOR STRONGMAN');
       return opts[Math.floor(G.time / 4) % opts.length];
     },
-    bonus(G) { return [['TICKETS', G.pbn('tickets'), 5000], ['RIDES', G.pbn('ride'), 10000], ['DUCKS', G.pbn('dt'), 2000], ['DUNKS', G.pbn('dunk'), 5000], ['BUMPERS', G.pbn('pop'), 300], ['PRIZES', G.pbn('prize'), 25000]]; }
+    bonus(G) { return [['LANES', G.pbn('wl'), 2000], ['RIDES', G.pbn('ride'), 15000], ['DUCKS', G.pbn('dt'), 3000], ['DUNKS', G.pbn('dunk'), 7500], ['BUMPERS', G.pbn('pop'), 500], ['PRIZES', G.pbn('prize'), 40000]]; }
   };
   return R;
 }

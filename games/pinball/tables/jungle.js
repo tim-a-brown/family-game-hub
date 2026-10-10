@@ -111,8 +111,8 @@ function build(T) {
   T.level('maze', { z: MAZE_Z, bounds: MAZE_BOX });
   const shelves = [
     MAZE_POLY,                                   // outer wall, open at the bottom
-    [[196, 948], [118, 942]],                    // shelf 1: slopes down to the gap on the left
-    [[37, 892], [150, 886]]                      // shelf 2: slopes down to the gap on the right
+    [[196, 962], [118, 948]],                    // shelf 1: slopes down to the gap on the left
+    [[37, 908], [150, 888]]                      // shelf 2: slopes down to the gap on the right
   ];
   const maze = T.tiltingMiniField({ id: 'maze', lvl: 'maze', box: MAZE_BOX, walls: shelves, max: 1050 });
   T.world.L_('maze').gy = -G_ROLL * 0.42;
