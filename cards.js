@@ -271,6 +271,36 @@ var Cards = (function () {
     '.spad tbody tr.open:active,.spad tbody tr.mods:active{background:rgba(255,220,60,.1);}',
     '.spad tbody tr.open th.rn{color:#b8860b;}',
     '.spad tr.open td{height:auto;padding:4px 2px 2px;vertical-align:top;}',
+    // Open-round pieces (Scorepad.step / .tog / .eq): a sub row of taps under the open row
+    '.spad tr.sub td{height:auto;padding:3px 2px 7px;vertical-align:top;border-top:0;}',
+    '.spad tr.sub th.rn{vertical-align:top;padding-top:8px;font-size:.56rem;color:#8a8796;letter-spacing:.08em;line-height:1.1;white-space:normal;}',
+    '.spad tr.open th.rn small{display:block;font-size:.56rem;color:#8a8796;letter-spacing:.06em;margin-top:2px;}',
+    '.sp-step{display:flex;flex-direction:column;align-items:stretch;}',
+    '.sp-step > button{height:28px;padding:0;border:1px solid rgba(60,80,160,.28);background:rgba(255,255,255,.55);color:#2a2a3a;font-family:var(--font);font-weight:900;font-size:1rem;line-height:1;transition:transform .12s var(--spring),background .12s;}',
+    '.sp-step > button:first-child{border-radius:8px 8px 0 0;border-bottom:0;}',
+    '.sp-step > button:last-child{border-radius:0 0 8px 8px;border-top:0;}',
+    '.sp-step > button:active{background:rgba(255,220,60,.45);}',
+    '.sp-step > button:disabled{opacity:.3;}',
+    '.spad td .sp-step input.cell{height:38px;border-left:1px solid rgba(60,80,160,.28);border-right:1px solid rgba(60,80,160,.28);background:rgba(255,255,255,.3);}',
+    '.sp-col{display:flex;flex-direction:column;gap:3px;}',
+    '.sp-tg{display:flex;align-items:center;justify-content:center;gap:3px;width:100%;min-height:30px;padding:2px 1px;border:1px solid rgba(60,80,160,.3);border-radius:7px;background:rgba(255,255,255,.55);color:#2a2a3a;font-family:var(--font);font-weight:900;font-size:.72rem;line-height:1.05;overflow:hidden;transition:transform .12s var(--spring),background .12s;}',
+    '.sp-tg:active{transform:scale(.94);}',
+    '.sp-tg:disabled{opacity:.3;}',
+    '.sp-tg.on{background:#2a2a3a;border-color:#2a2a3a;color:#fff;}',
+    '.sp-tg.good.on{background:#1f8a4c;border-color:#17703c;color:#fff;}',
+    '.sp-tg.bad.on{background:#c8102e;border-color:#a50d26;color:#fff;}',
+    '.sp-tg.gold.on{background:#ffc42e;border-color:#e0a800;color:#2b1a00;}',
+    '.sp-tg.blue.on{background:#5ac8fa;border-color:#1a88c4;color:#06283d;}',
+    '.sp-tg .ico{width:13px;height:13px;flex:none;}',
+    '.spad td .eq{display:block;font-family:var(--hand);font-size:.86rem;line-height:1;color:#7a7a90;margin:3px 0 1px;min-height:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    '.spad td .eq.bad{color:#c8102e;}',
+    '.spad td .eq.good{color:#17703c;}',
+    '.spad td .sum{display:block;height:40px;line-height:40px;font-size:1.4rem;color:var(--ink);border-bottom:2px dashed rgba(60,80,160,.4);}',
+    '.spad td .sum.neg{color:#c8102e;}',
+    // Five or more columns: names wrap instead of cutting off
+    '.spad.many thead th{white-space:normal;line-height:1;height:auto;padding:7px 1px 6px;font-size:1rem;overflow-wrap:anywhere;}',
+    '.spad.many td .eq{font-size:.78rem;}',
+    '.spad.many .sp-tg{font-size:.64rem;}',
     '.spad td input.cell{display:block;width:100%;height:40px;margin:0;padding:0 2px;border:0;border-bottom:2px dashed rgba(60,80,160,.4);border-radius:0;background:transparent;font:inherit;font-size:1.35rem;color:var(--ink);text-align:center;outline:0;-webkit-appearance:none;}',
     '.spad td input.cell:focus{border-bottom-color:#c8102e;background:rgba(255,255,255,.55);}',
     '.spad td input.cell:disabled{opacity:.3;}',
@@ -289,7 +319,10 @@ var Cards = (function () {
     '.spad tbody tr.fixing,.spad tbody tr.fixing:active{background:rgba(255,200,40,.22);}',
     '.spad tbody tr.fixing th.rn{color:#b8860b;}',
     '.spad-acts.fixing{position:sticky;bottom:0;z-index:4;margin:14px -16px 0;padding:10px 16px calc(var(--safe-b) + 10px);background:linear-gradient(rgba(0,0,0,0),var(--bg) 16px);}',
-    '.spad-acts.fixing .spad-del,.spad-acts.fixing .spad-cancel{flex:0 0 auto;padding:0 14px;}',
+    // Phones: Save across the top, Delete and Cancel side by side under it; wider screens: one row
+    '.spad-acts.fixing .btn-primary{flex:1 1 100%;}',
+    '.spad-acts.fixing .spad-del,.spad-acts.fixing .spad-cancel{flex:1 1 0;min-height:48px;font-size:1rem;}',
+    '@media (min-width:560px){.spad-acts.fixing .btn-primary{flex:1 1 0;}.spad-acts.fixing .spad-del,.spad-acts.fixing .spad-cancel{flex:0 0 auto;min-height:60px;padding:0 18px;font-size:1.1rem;}}',
     '.spad-acts .spad-del.armed{--b:var(--red);--b-ink:#fff;--b-lip:#a8202e;color:#fff;}',
     // Short landscape screens: keep Add round reachable without scrolling for every entry
     '@media (orientation:landscape) and (max-height:820px){.spad-acts{position:sticky;bottom:0;z-index:4;margin:14px -16px 0;padding:10px 16px calc(var(--safe-b) + 10px);background:linear-gradient(rgba(0,0,0,0),var(--bg) 16px);}}',
@@ -392,7 +425,7 @@ function Scorepad(host, o) {
     host.innerHTML = '';
     if (!o.entryRows || editIdx >= S.rounds.length) editIdx = -1;
     var editing = editIdx >= 0, t = totals(), lead = S.rounds.length ? (o.winner ? o.winner(t, S.rounds) : leader(t)) : -1;
-    var pad = el('div', { class: 'spad' + (editing ? ' fixing' : '') });
+    var pad = el('div', { class: 'spad' + (editing ? ' fixing' : '') + (S.sides.length >= 5 ? ' many' : '') });
     pad.appendChild(el('div', { class: 'spad-h' }, [el('h2', { text: o.title || (Kit.game() ? Kit.game().name : 'Score') }), el('small', { text: editing ? 'fixing ' + roundWord(editIdx) : S.rounds.length ? 'tap a round to fix it' : '' })]));
     var tbl = el('table'), hr = el('tr', null, [el('th', { class: 'rn' })]);
     S.sides.forEach(function (s, i) { hr.appendChild(el('th', { text: s.name, style: { color: Kit.color(i) } })); });
@@ -593,3 +626,50 @@ function Scorepad(host, o) {
   render(); save();
   return { state: function () { return S; }, render: render, addRound: addRound, add: pushRound, undo: undo, reset: reset, totals: totals, clear: clear, edit: editRound, editing: function () { return editIdx; } };
 }
+
+// ── Pieces for a game's entryRows (paper look, sized for narrow columns) ────
+// Scorepad.step({value, min, max, step, label, neg, onChange(v)}) -> stepper:
+//   + on top, the number (typeable), − underneath. Blank is null; + from blank
+//   gives min + step, − gives min. el.get(), el.set(v), el.input, el.disable(b)
+Scorepad.step = function (o) {
+  var el = Kit.el, v = o.value == null || o.value === '' ? null : Number(o.value), step = o.step || 1, min = o.min != null ? o.min : (o.neg ? null : 0);
+  var inp = el('input', { class: 'cell', type: 'text', inputmode: o.neg ? 'text' : 'numeric', placeholder: o.placeholder || '–', 'aria-label': o.label || 'Points', enterkeyhint: 'next', autocomplete: 'off' });
+  function clamp(x) { if (min != null) x = Math.max(min, x); if (o.max != null) x = Math.min(o.max, x); return x; }
+  function paint() { inp.value = v == null ? '' : String(v); }
+  function bump(d) {
+    v = v == null ? (d > 0 ? (min || 0) + step : (min || 0)) : clamp(v + d);
+    paint(); Kit.sfx('tick'); Kit.haptic('light'); if (o.onChange) o.onChange(v);
+  }
+  var up = el('button', { type: 'button', text: '+', 'aria-label': (o.label || 'Points') + ' up', onclick: function () { bump(step); } });
+  var dn = el('button', { type: 'button', text: '−', 'aria-label': (o.label || 'Points') + ' down', onclick: function () { bump(-step); } });
+  inp.addEventListener('focus', function () { inp.select(); });
+  inp.addEventListener('input', function () {
+    var t = String(inp.value).replace(o.neg ? /[^0-9-]/g : /[^0-9]/g, '');
+    v = t === '' || t === '-' ? null : parseInt(t, 10);
+    if (isNaN(v)) v = null;
+    if (o.onChange) o.onChange(v);
+  });
+  inp.addEventListener('blur', function () { if (v != null && clamp(v) !== v) { v = clamp(v); paint(); if (o.onChange) o.onChange(v); } });
+  inp.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    var all = Array.prototype.slice.call(document.querySelectorAll('.spad input.cell:not(:disabled)')), k = all.indexOf(inp);
+    if (all[k + 1]) all[k + 1].focus(); else inp.blur();
+  });
+  paint();
+  var w = el('div', { class: 'sp-step' }, [up, inp, dn]);
+  w.input = inp;
+  w.get = function () { return v; };
+  w.set = function (x) { v = x == null ? null : x; paint(); };
+  w.disable = function (b) { up.disabled = dn.disabled = inp.disabled = !!b; };
+  return w;
+};
+// Scorepad.tog(label, {cls, aria, on, onClick, html}) -> a paper toggle button (class "on" when set)
+Scorepad.tog = function (label, o) {
+  o = o || {};
+  var b = Kit.el('button', { type: 'button', class: 'sp-tg' + (o.cls ? ' ' + o.cls : '') + (o.on ? ' on' : ''), 'aria-label': o.aria || label, html: o.html || null, text: o.html ? null : label,
+    onclick: function () { Kit.sfx('tap'); Kit.haptic('light'); if (o.onClick) o.onClick(); } });
+  b.set = function (on) { b.classList.toggle('on', !!on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+  b.set(!!o.on);
+  return b;
+};

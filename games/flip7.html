@@ -48,23 +48,6 @@
 .spad.ext{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .spad.ext table{table-layout:fixed;}
 .spad.ext th.rn{position:sticky;left:0;z-index:1;background:#f9f1dd;}
-/* The sheet's "fix a round" form keeps the card helpers */
-.f7p{display:flex;flex-direction:column;gap:4px;padding:8px 10px 10px;border-radius:var(--r);background:var(--w05);}
-.f7p .rrow{padding:0;background:none;}
-.f7p .rrow .num{width:72px;}
-.f7p .sub{font-size:.7rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:2px 0 0 38px;}
-.f7p .helpers{display:flex;flex-wrap:wrap;gap:5px;margin-left:38px;}
-.f7p .helpers button{min-width:40px;min-height:40px;padding:0 10px;border:0;border-radius:12px;background:var(--surface-3);color:var(--text-2);font-weight:900;font-size:.88rem;font-variant-numeric:tabular-nums;transition:transform .15s var(--spring), background .15s;}
-.f7p .helpers button:active{transform:scale(.92);}
-.f7p .helpers button.on{background:#ff8a00;color:#2b1a00;}
-.f7p .helpers button.x2.on{background:#9b7bff;color:#fff;}
-.f7p .helpers button.f7.on{background:var(--yellow);color:#2b1a00;}
-.f7p .helpers button.bust.on{background:var(--red);color:#fff;}
-.f7p .helpers button:disabled{opacity:.3;}
-.f7p .res{display:flex;justify-content:space-between;align-items:baseline;margin-left:38px;font-weight:800;color:var(--text-2);font-size:.85rem;}
-.f7p .res b{font-size:1.25rem;color:var(--text);font-variant-numeric:tabular-nums;}
-.f7p.busted .rrow{opacity:.4;}
-.f7p.busted .res b{color:var(--red);}
 </style>
 </head>
 <body>
@@ -74,7 +57,7 @@
   'use strict';
   var el = Kit.el, app = document.getElementById('app'), pad = null;
   var SETUP = 'flip7_pad_setup', ENTRY = 'flip7_entry', EXT = 'flip7_ext', MODS = [2, 4, 6, 8, 10], BONUS = 15, NUMS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-  var cfg = null, st = null;
+  var cfg = null, st = null, mode = null; // st: the open round; mode: whether the rows on the sheet count every card
   function ext() { return localStorage.getItem(EXT) === '1'; }
 
   Kit.init({
@@ -91,7 +74,7 @@
       '<h3>After each round</h3><ul><li>The open row on the sheet is this round. Type each player\'s <b>round total</b> in their box: number cards, doubled by <b>&times;2</b> if they have it, plus any <b>+2 to +10</b> cards.</li>' +
       '<li>Under the box, tap <b>Bust</b> for anyone who flipped a duplicate number (they score 0, cards included), <b>Freeze</b> if they were frozen, and <b>F7</b> for the player who got 7 different numbers (<b>15 bonus points</b>, and the round ends).</li>' +
       '<li>Tap <b>Lock round</b>. The round is written in, and a fresh row opens below it.</li>' +
-      '<li>Made a mistake? Tap a locked round to fix it.</li></ul>' +
+      '<li>Made a mistake? Tap a locked round. It opens again right on the sheet: change it and tap <b>Save</b>, or <b>Delete</b> it.</li></ul>' +
       '<h3>Count every card</h3><p>Turn it on in the menu. Each column lists the cards: <b>0 to 12</b> with a &minus; and + each, the <b>+2 to +10</b> and <b>&times;2</b> cards, and <b>Freeze</b>, <b>Flip Three</b> and <b>Second Chance</b>. The round total is added up for you, and seven different numbers light up <b>F7</b> on their own. The deck has one of each action card, so the sheet won\'t let two players claim the same one.</p>' +
       '<h3>Quick rules</h3><ul><li>On your turn, flip a card or stay.</li><li>A duplicate number busts you, unless you have a Second Chance.</li>' +
       '<li><b>Freeze</b> makes a player stop and keep their points. <b>Flip Three</b> makes a player flip 3 cards.</li>' +
@@ -122,14 +105,6 @@
     return { max: m, who: who };
   }
   function blank() { return { bust: false, frz: false, f3: false, sc: false, x2: false, f7: false, mods: [], nums: '', cards: [] }; }
-  // Rebuild the helpers from a saved round: detail looks like "×2 +4+10 F7" or "bust"
-  function parse(score, detail) {
-    var d = String(detail || ''), o = { bust: /bust/i.test(d), x2: /×2/.test(d), f7: /F7/.test(d), mods: [] };
-    var m, re = /\+(\d+)/g; while ((m = re.exec(d))) o.mods.push(+m[1]);
-    var rest = (Number(score) || 0) - o.mods.reduce(function (a, b) { return a + b; }, 0) - (o.f7 ? BONUS : 0);
-    o.nums = o.bust ? 0 : Math.max(0, Math.round(o.x2 ? rest / 2 : rest));
-    return o;
-  }
   // Number-card points: counted cards when counting, else the typed total (which already includes ×2 and +cards)
   function numsOf(s) { return s.cards && s.cards.length ? s.cards.reduce(function (a, b) { return a + b; }, 0) : parseInt(String(s.nums).replace(/[^0-9]/g, ''), 10) || 0; }
   function isF7(s) { return s.cards && s.cards.length ? s.cards.length >= 7 : !!s.f7; }
@@ -185,15 +160,36 @@
     return cfg.names.map(blank);
   }
   function saveEntry() { try { localStorage.setItem(ENTRY, JSON.stringify(st)); } catch (e) {} }
+  // A locked round back into entry state, for fixing it on the sheet. Counted rounds keep their cards in data.cards.
+  function hasCards(r) { return !!(r && r.data && Array.isArray(r.data.cards) && r.data.cards.length === cfg.names.length); }
+  function fromRound(r, counted) {
+    return cfg.names.map(function (nm, i) {
+      var s = blank(), d = String(r.detail && r.detail[i] || ''), sc = Number(r.scores[i]) || 0, tok = ' ' + d + ' ';
+      s.bust = /bust/i.test(d); s.f7 = /F7/.test(d);
+      s.frz = / Frz /.test(tok); s.f3 = / F3 /.test(tok); s.sc = / SC /.test(tok);
+      if (s.bust) return s;
+      if (counted) {
+        var c = String(r.data.cards[i] || '');
+        s.cards = c === 'bust' ? [] : c.split(' ').filter(Boolean).map(Number);
+        s.x2 = /×2/.test(d);
+        var m, re = /\+(\d+)/g; while ((m = re.exec(d))) if (MODS.indexOf(+m[1]) >= 0) s.mods.push(+m[1]);
+      } else s.nums = String(Math.max(0, sc - (s.f7 ? BONUS : 0)));
+      return s;
+    });
+  }
 
   // ── The open round on the sheet: a box per player, then their cards straight down the column ──
   function entryRows(ctx) {
-    var names = cfg.names, N = names.length, counted = ext(), cells = [];
+    // Fixing a round: counted rows only when that round was counted card by card
+    var counted = ctx.editing ? ext() && hasCards(ctx.prev) : ext();
+    var list = ctx.editing ? fromRound(ctx.prev, counted) : st;
+    var names = cfg.names, N = names.length, cells = [];
+    mode = { counted: counted, list: list };
     var rowA = el('tr', { class: 'open' }, [el('th', { class: 'rn', text: String(ctx.round) })]);
     var rowB = el('tr', { class: 'cards' }, [el('th', { class: 'rn', text: 'CARDS' })]);
     function refresh() {
-      st.forEach(function (s, i) {
-        var c = cells[i], p = ptsOf(s, counted), n = numsOf(s);
+      list.forEach(function (s, i) {
+        var c = cells[i], p = ptsOf(s, counted);
         c.td.classList.toggle('busted', s.bust);
         if (c.inp) c.inp.disabled = s.bust;
         if (c.sum) c.sum.textContent = s.bust ? '0' : (s.cards.length || s.mods.length || s.x2 ? String(p) : '–');
@@ -205,11 +201,16 @@
         });
         Object.keys(c.num).forEach(function (k) { c.num[k].classList.toggle('on', s.cards.indexOf(+k) >= 0); c.num[k].querySelectorAll('button').forEach(function (b) { b.disabled = s.bust; }); });
       });
-      ctx.pending(st.map(function (s) { return s.bust || String(s.nums).trim() !== '' || s.f7 || s.x2 || s.mods.length || s.cards.length ? ptsOf(s, counted) : 0; }));
-      saveEntry();
+      ctx.pending(list.map(function (s) { return s.bust || String(s.nums).trim() !== '' || s.f7 || s.x2 || s.mods.length || s.cards.length ? ptsOf(s, counted) : 0; }));
+      // What's wrong (red), what's missing (grey), or ready
+      var bad = problems(list, names, false, counted), miss = bad.length ? [] : problems(list, names, true, counted);
+      if (bad.length) ctx.status(bad[0], false);
+      else if (miss.length) ctx.status(miss[0], 'wait');
+      else ctx.status(ctx.editing ? 'Looks right. Tap Save to write it in.' : 'Looks right. Lock it in when the round is over.', true);
+      if (!ctx.editing) saveEntry();
     }
     names.forEach(function (nm, i) {
-      var s = st[i], c = { btn: {}, num: {} };
+      var s = list[i], c = { btn: {}, num: {} };
       if (!counted) {
         c.inp = el('input', { class: 'cell', type: 'text', inputmode: 'numeric', placeholder: '–', value: s.nums === '' ? '' : String(s.nums), 'aria-label': nm + ' round total, round ' + ctx.round, enterkeyhint: i < N - 1 ? 'next' : 'done' });
         c.inp.addEventListener('input', function () { s.nums = c.inp.value.replace(/[^0-9]/g, ''); refresh(); });
@@ -253,14 +254,15 @@
     refresh();
     return [rowA, rowB];
   }
-  function lockRound() {
-    var names = cfg.names, r = pad.state().rounds.length + 1, counted = ext();
-    var p = problems(st, names, true, counted);
+  function lockRound(ctx) {
+    var names = cfg.names, r = ctx.round, counted = mode.counted, list = mode.list;
+    var p = problems(list, names, true, counted);
     if (p.length) { Kit.toast(p[0]); Kit.haptic('error'); return; }
-    var scores = st.map(function (s) { return ptsOf(s, counted); }), extra = extraOf(st, scores, names, r, counted);
+    var scores = list.map(function (s) { return ptsOf(s, counted); }), extra = extraOf(list, scores, names, r, counted);
+    if (ctx.editing) { delete extra.callout; ctx.done(scores, extra); return; }
     if (extra.callout) Kit.confetti({ count: 70 });
     st = names.map(blank); saveEntry();
-    pad.add(scores, extra);
+    ctx.done(scores, extra);
   }
 
   function startPad() {
@@ -274,77 +276,12 @@
       winner: function (t) { var tp = top(t); return tp.who.length === 1 ? tp.who[0] : -1; },
       entryRows: entryRows, onLock: lockRound, lockLabel: 'Lock round',
       afterRender: function () {
-        var p = app.querySelector('.spad'), tbl = p && p.querySelector('table'), N = cfg.names.length, counted = ext();
+        var p = app.querySelector('.spad'), tbl = p && p.querySelector('table'), N = cfg.names.length, counted = mode && mode.counted;
         if (!p) return;
         p.classList.toggle('many', N >= 5); p.classList.toggle('ext', counted);
         if (tbl) tbl.style.minWidth = counted ? (44 + N * 96) + 'px' : '';
       },
-      onEnd: function () { localStorage.removeItem(ENTRY); st = cfg.names.map(blank); },
-      // Fixing a locked round: the card helpers, in a sheet
-      form: function (ctx) {
-        var list = ctx.sides.map(function (s, i) {
-          return ctx.prev ? parse(ctx.prev.scores[i], ctx.prev.detail && ctx.prev.detail[i]) : { bust: false, x2: false, f7: false, mods: [], nums: 0 };
-        });
-        function pts(s) { if (s.bust) return 0; var n = Math.max(0, Number(s.nums) || 0); return (s.x2 ? n * 2 : n) + s.mods.reduce(function (a, b) { return a + b; }, 0) + (s.f7 ? BONUS : 0); }
-        var blocks = ctx.sides.map(function (s, i) {
-          var box = el('div', { class: 'f7p' });
-          var row = ctx.number(i, { min: 0, max: 78, neg: false, value: list[i].nums });
-          row.input.addEventListener('input', function () { list[i].nums = row.value(); refresh(); });
-          box.appendChild(row);
-          if (i === 0) box.appendChild(el('div', { class: 'sub', text: 'Number cards total, then tap extras' }));
-          var hb = el('div', { class: 'helpers' }), btns = {};
-          function tog(key, label, cls, fn) {
-            var b = el('button', { type: 'button', class: cls || '', text: label, onclick: function () { fn(); Kit.sfx('tap'); Kit.haptic('light'); refresh(); } });
-            btns[key] = b; hb.appendChild(b);
-          }
-          tog('x2', '×2', 'x2', function () { list[i].x2 = !list[i].x2; });
-          MODS.forEach(function (v) {
-            tog('m' + v, '+' + v, '', function () { var k = list[i].mods.indexOf(v); if (k >= 0) list[i].mods.splice(k, 1); else list[i].mods.push(v); });
-          });
-          tog('f7', 'Flip 7', 'f7', function () { list[i].f7 = !list[i].f7; if (list[i].f7) list[i].bust = false; });
-          tog('bust', 'Bust', 'bust', function () { list[i].bust = !list[i].bust; if (list[i].bust) list[i].f7 = false; });
-          box.appendChild(hb);
-          var res = el('div', { class: 'res' }, [el('span', { class: 'tl' }), el('b')]);
-          box.appendChild(res);
-          ctx.node.appendChild(box);
-          return { box: box, row: row, btns: btns, res: res };
-        });
-        var note = el('div', { class: 'rnote' }); ctx.node.appendChild(note);
-        var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this round' });
-        ctx.node.appendChild(btn);
-        function refresh() {
-          var out = [];
-          list.forEach(function (s, i) {
-            var b = blocks[i]; s.nums = b.row.value();
-            b.box.classList.toggle('busted', s.bust);
-            b.btns.x2.classList.toggle('on', s.x2);
-            MODS.forEach(function (v) { b.btns['m' + v].classList.toggle('on', s.mods.indexOf(v) >= 0); });
-            b.btns.f7.classList.toggle('on', s.f7);
-            b.btns.bust.classList.toggle('on', s.bust);
-            Object.keys(b.btns).forEach(function (k) { if (k !== 'bust') b.btns[k].disabled = s.bust; });
-            b.row.input.disabled = s.bust;
-            var v = pts(s);
-            b.res.firstChild.textContent = s.bust ? 'Bust: 0 this round' : 'Total after: ' + (ctx.totals[i] - (ctx.prev ? Number(ctx.prev.scores[i]) || 0 : 0) + v);
-            b.res.lastChild.textContent = s.bust ? '0' : '+' + v;
-            if (!s.bust && s.nums > 63) out.push(ctx.sides[i].name + ': 7 numbers add up to 63 at most.');
-            else if (!s.bust && s.f7 && s.nums < 21) out.push(ctx.sides[i].name + ': a Flip 7 is at least 21 (0 to 6).');
-          });
-          if (list.filter(function (s) { return s.f7; }).length > 1) out.push('Only one player can Flip 7 (the round ends right away).');
-          if (list.filter(function (s) { return s.x2 && !s.bust; }).length > 1) out.push('There is only one ×2 card.');
-          MODS.forEach(function (v) { if (list.filter(function (s) { return !s.bust && s.mods.indexOf(v) >= 0; }).length > 1) out.push('There is only one +' + v + ' card.'); });
-          note.className = 'rnote' + (out.length ? ' bad' : '');
-          note.textContent = out.length ? out[0] : 'Looks right';
-          btn.disabled = !!out.length;
-          return !out.length;
-        }
-        btn.addEventListener('click', function () {
-          if (!refresh()) return;
-          var scores = list.map(pts), names = ctx.sides.map(function (s) { return s.name; });
-          var extra = { detail: list.map(function (s) { return s.bust ? 'bust' : ((s.x2 ? '×2 ' : '') + s.mods.slice().sort(function (a, b) { return a - b; }).map(function (v) { return '+' + v; }).join('') + (s.f7 ? ' F7' : '')).trim(); }), highlights: [] };
-          ctx.done(scores, extra);
-        });
-        refresh();
-      }
+      onEnd: function () { localStorage.removeItem(ENTRY); st = cfg.names.map(blank); }
     });
   }
 
