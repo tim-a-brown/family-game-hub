@@ -24,7 +24,7 @@
 //   Kit.resume.set(label, {keys}) / .clear()           "Continue" rail on home
 //   Kit.rules()                                open the rules sheet
 //   Kit.theme.pick() / .get() / .set(id)       app colour theme (localStorage fgh_theme)
-//   Kit.init({orient:'landscape'|'portrait'})  phones only: lock or show a turn-your-phone cover; 'kit:orient' event
+//   Kit.init({orient:'landscape'|'portrait'})  phones only (orientTablets:true adds iPads): lock or show a turn-your-device cover; 'kit:orient' event
 // window.GN is kept as an alias for haptic/toast/confirm/sheet.
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
@@ -755,8 +755,12 @@
   function isPhone() {
     try { return matchMedia('(hover:none) and (pointer:coarse)').matches && Math.min(screen.width, screen.height) < 600; } catch (e) { return false; }
   }
-  function orientGate(want) {
-    if (!isPhone()) return;
+  function isTouchTablet() {
+    try { return matchMedia('(hover:none) and (pointer:coarse)').matches; } catch (e) { return false; }
+  }
+  // tablets: true also gates touch tablets (iPad) for games whose table only works one way (pinball)
+  function orientGate(want, tablets) {
+    if (!(isPhone() || (tablets && isTouchTablet()))) return;
     var cover = null;
     function lock() { try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock(want).catch(function () {}); } catch (e) {} }
     function check() {
@@ -764,7 +768,7 @@
       if (!ok && !cover) {
         cover = el('div', { class: 'k-rotate k-rotate-' + want, role: 'alertdialog', 'aria-live': 'polite' }, [
           el('div', { class: 'k-rot-ph', 'aria-hidden': 'true' }, [el('i')]),
-          el('b', { text: want === 'landscape' ? 'Turn your phone sideways' : 'Turn your phone upright' }),
+          el('b', { text: 'Turn your ' + (isPhone() ? 'phone' : 'iPad') + (want === 'landscape' ? ' sideways' : ' upright') }),
           el('span', { text: (game ? game.name : 'This game') + (want === 'landscape' ? ' plays in landscape.' : ' plays in portrait.') })
         ]);
         doc.body.appendChild(cover);
@@ -791,7 +795,7 @@
     opts = o || {};
     startFitLock();
     game = findGameSafe(opts.id || pageKey());
-    if (opts.orient) orientGate(opts.orient);
+    if (opts.orient) orientGate(opts.orient, opts.orientTablets);
     var accent = opts.color || (game && game.color) || '#ffc83d';
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-ink', inkFor(accent));
