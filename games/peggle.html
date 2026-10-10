@@ -116,6 +116,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var BUCKET_Y = 604, FEVER_VALUES = [10000, 50000, 100000, 50000, 10000];
   var LONG_SHOT = 280;
   var MAX_ANG = 88 * PI / 180;
+  var DRAG_DEG = 0.32;   // degrees the launcher turns per board unit a finger drags sideways (the board is 360 wide)
   var POWERS = {
     guide: { name: 'Super Guide', icon: 'eye', desc: 'Long aiming line for 3 shots' },
     multi: { name: 'Multiball', icon: 'infinity', desc: 'A second ball pops out' },
@@ -623,7 +624,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     ],
     rules:
       '<p class="goal">Clear all 25 <b>orange pegs</b> using your 10 balls.</p>' +
-      '<h3>Shooting</h3><ul><li>Drag anywhere on the board to aim the launcher, then lift your finger or tap <b>Fire</b>. The arrow buttons fine-tune your aim.</li>' +
+      '<h3>Shooting</h3><ul><li>Drag left or right anywhere on the board to turn the launcher from where it is pointing, then lift your finger or tap <b>Fire</b>. A long drag reaches the steepest shots. The arrow buttons fine-tune your aim.</li>' +
       '<li>On a computer: point and click, or use the arrow keys (hold Shift for fine aim) and Space.</li>' +
       '<li>The dotted line shows where the ball goes first.</li>' +
       '<li>Pegs light up when the ball hits them and vanish when the ball falls out the bottom. If the ball gets stuck, the lit pegs around it are cleared early.</li></ul>' +
@@ -651,7 +652,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       intro: 'Aim, bounce and clear the orange pegs',
       options: [
         { id: 'master', label: 'Green peg power', help: 'Hitting a green peg turns on this special power.', choices: [['guide', 'Guide', 'Super Guide: a long aiming line shows where your ball will go for 3 shots.'], ['multi', 'Multiball', 'A second ball pops out, so two balls bounce at once.'], ['spooky', 'Spooky', 'Spooky Ball: when the ball falls out the bottom, it comes back once from the top.'], ['random', 'Random', 'Each green peg sets off a surprise power.'], ['off', 'Off', 'No powers. Green pegs are worth 10 points like blue ones.']], value: 'guide' },
-        { id: 'fire', label: 'On a touch screen, shoot by', choices: [['lift', 'Lifting finger', 'Drag to aim, then lift your finger on the board to shoot.'], ['button', 'Fire button only', 'Lifting your finger only aims. Tap FIRE to shoot, so you never shoot by accident.']], value: 'lift' }
+        { id: 'fire', label: 'On a touch screen, shoot by', choices: [['lift', 'Lifting finger', 'Drag left or right to aim, then lift your finger to shoot.'], ['button', 'Fire button only', 'Lifting your finger only aims. Tap FIRE to shoot, so you never shoot by accident.']], value: 'lift' }
       ],
       players: { min: 1, max: 1, count: 1, label: 'Player' },
       start: 'Play',
@@ -779,13 +780,19 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     canvas.addEventListener('pointerdown', function (e) {
       if (view !== 'game' || paused || state !== 'aim') return;
       e.preventDefault(); ac();
-      pdown = { id: e.pointerId, type: e.pointerType };
+      var p = toField(e);
+      pdown = { id: e.pointerId, type: e.pointerType, lastX: p[0], moved: 0 };
       try { canvas.setPointerCapture(e.pointerId); } catch (er) {}
-      var p = toField(e); aimAt(p[0], p[1]);
+      // A mouse points the launcher at the cursor. A finger turns it from where it already is, so a new
+      // swipe never snaps the aim back toward the middle and steep shots are one long drag away.
+      if (e.pointerType === 'mouse') aimAt(p[0], p[1]);
     });
     canvas.addEventListener('pointermove', function (e) {
       if (state !== 'aim' || paused) return;
-      if ((pdown && e.pointerId === pdown.id) || (!pdown && e.pointerType === 'mouse')) { var p = toField(e); aimAt(p[0], p[1]); }
+      if (pdown && e.pointerId === pdown.id && pdown.type !== 'mouse') {
+        var q = toField(e), dx = q[0] - pdown.lastX; pdown.lastX = q[0]; pdown.moved += Math.abs(dx);
+        ang = clamp(ang + dx * DRAG_DEG * PI / 180, -MAX_ANG, MAX_ANG);
+      } else if ((pdown && e.pointerId === pdown.id) || (!pdown && e.pointerType === 'mouse')) { var p = toField(e); aimAt(p[0], p[1]); }
     });
     canvas.addEventListener('pointerup', function (e) {
       if (!pdown || e.pointerId !== pdown.id) return;
@@ -1827,6 +1834,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   window.__peg = {
     get: function () { return L && { flight: shot ? (shot.flight != null ? shot.flight : wt - shot.t0) : 0, shotAge: shot ? wt - shot.t0 : 0, state: state, n: L.n, balls: L.ballsLeft, score: L.score, oranges: orangeLeft(), orangeHit: L.orangeHit, fever: L.fever, mult: mult(), guide: L.guide, shots: L.shots.slice(), stats: L.stats, inFlight: balls.length, wt: wt, zoom: zoom.on, paused: paused, pegs: objs.filter(function (o) { return !o.gone; }).length }; },
     aim: function (deg) { ang = clamp(deg * PI / 180, -MAX_ANG, MAX_ANG); },
+    angle: function () { return Math.round(ang * 180 / PI * 10) / 10; },
     fire: fire, speed: function (k) { speedMul = k; },
     start: function (n, master) { startLevel(n, { who: 'Tester', master: master || 'guide', fireMode: 'lift' }); },
     empty: function () { objs.forEach(function (o) { o.gone = true; o.goneT = -9; }); },   // tests: a shot that can't touch a peg
