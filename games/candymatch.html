@@ -489,7 +489,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     function spawnFor(g, c) {
       if (g.ingTotal && g.ingSpawned < g.ingTotal && g.exit[c] >= 0) {
         var on = ingsOnBoard(g);
-        if (on < g.ingMax && (on === 0 || g.rng.next() < 0.06)) { g.ingSpawned++; return mk(g, -2, 'i', (g.ingSpawned - 1) % 2); }
+        if (on < g.ingMax && (on === 0 || g.rng.next() < 0.1)) { g.ingSpawned++; return mk(g, -2, 'i', (g.ingSpawned - 1) % 2); }
       }
       return newCandy(g);
     }
@@ -637,7 +637,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var step = cascade(g, ev, 1);
       if (step > g.stats.maxStep) g.stats.maxStep = step;
       if (g.score - score0 > g.stats.bestMove) g.stats.bestMove = g.score - score0;
-      if (!goalMet(g) && g.moves > 0 && !hasMove(g)) ev.push(shuffle(g));
+      if (g.moves > 0 && !hasMove(g)) ev.push(shuffle(g));
       return { ok: true, ev: ev, step: step, kind: kind, gained: g.score - score0 };
     }
 
@@ -711,48 +711,48 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   var FULL = '.........';
   function rep(s, n) { var a = []; for (var i = 0; i < n; i++) a.push(s); return a; }
   var LEVELS = [
-    { name: 'First Bite', goal: 'score', moves: 18, colors: 5, target: 3000, stars: [3000, 6000, 9500], rows: rep(FULL, 9) },
-    { name: 'Lemon Lane', goal: 'score', moves: 18, colors: 5, target: 4500, stars: [4500, 8000, 12000],
+    { name: 'First Bite', goal: 'score', moves: 18, colors: 5, target: 5000, stars: [5000, 12000, 25000], rows: rep(FULL, 9) },
+    { name: 'Lemon Lane', goal: 'score', moves: 18, colors: 5, target: 5000, stars: [5000, 12000, 25000],
       rows: ['__.....__', '_......._', FULL, FULL, FULL, FULL, FULL, '_......._', '__.....__'] },
-    { name: 'Jelly Jar', goal: 'jelly', moves: 22, colors: 5, stars: [0, 32000, 42000],
+    { name: 'Jelly Jar', goal: 'jelly', moves: 22, colors: 5, stars: [0, 42000, 56000],
       rows: [FULL, FULL, '..jjjjj..', '..jjjjj..', '..jjjjj..', '..jjjjj..', '..jjjjj..', FULL, FULL] },
-    { name: 'Sticky Floor', goal: 'jelly', moves: 22, colors: 5, stars: [0, 34000, 45000],
+    { name: 'Sticky Floor', goal: 'jelly', moves: 22, colors: 5, stars: [0, 55000, 75000],
       rows: [FULL, FULL, FULL, FULL, FULL, FULL, FULL, 'jjjjjjjjj', 'jjjjjjjjj'] },
-    { name: 'Cherry Drop', goal: 'ingred', moves: 26, colors: 5, ings: 2, stars: [0, 30000, 40000], rows: rep(FULL, 9) },
-    { name: 'Gumdrop Cross', goal: 'score', moves: 18, colors: 5, target: 6000, stars: [6000, 10000, 14000],
+    { name: 'Cherry Drop', goal: 'ingred', moves: 26, colors: 5, ings: 2, stars: [0, 48000, 64000], rows: rep(FULL, 9) },
+    { name: 'Gumdrop Cross', goal: 'score', moves: 18, colors: 5, target: 4000, stars: [4000, 9000, 15000],
       rows: ['___...___', '___...___', '___...___', FULL, FULL, FULL, '___...___', '___...___', '___...___'] },
-    { name: 'Double Dip', goal: 'jelly', moves: 26, colors: 5, stars: [0, 60000, 75000],
+    { name: 'Double Dip', goal: 'jelly', moves: 26, colors: 5, stars: [0, 80000, 100000],
       rows: [FULL, '..jjjjj..', '.jjJJJjj.', '.jJJ.JJj.', '.jJ...Jj.', '.jJJ.JJj.', '.jjJJJjj.', '..jjjjj..', FULL] },
-    { name: 'Six Flavours', goal: 'score', moves: 20, colors: 6, target: 5000, stars: [5000, 8500, 12000], rows: rep(FULL, 9) },
-    { name: 'Hourglass', goal: 'jelly', moves: 24, colors: 5, stars: [0, 42000, 54000],
+    { name: 'Six Flavours', goal: 'score', moves: 20, colors: 6, target: 4500, stars: [4500, 9000, 16000], rows: rep(FULL, 9) },
+    { name: 'Hourglass', goal: 'jelly', moves: 24, colors: 5, stars: [0, 46000, 58000],
       rows: [FULL, '.jjjjjjj.', '_.jjjjj._', '__.jjj.__', '___.j.___', '__.jjj.__', '_.jjjjj._', '.jjjjjjj.', FULL] },
-    { name: 'Nutty Delight', goal: 'ingred', moves: 30, colors: 6, ings: 3, ingMax: 2, stars: [0, 40000, 52000], rows: rep(FULL, 9) },
-    { name: 'Frosted Window', goal: 'score', moves: 20, colors: 6, target: 6000, stars: [6000, 10000, 14000],
+    { name: 'Nutty Delight', goal: 'ingred', moves: 32, colors: 6, ings: 3, ingMax: 2, stars: [0, 46000, 60000], rows: rep(FULL, 9) },
+    { name: 'Frosted Window', goal: 'score', moves: 20, colors: 6, target: 5000, stars: [5000, 10000, 18000],
       rows: [FULL, FULL, '..f...f..', FULL, '...f.f...', FULL, '..f...f..', FULL, FULL] },
-    { name: 'Icing Wall', goal: 'jelly', moves: 26, colors: 6, stars: [0, 38000, 50000],
+    { name: 'Icing Wall', goal: 'jelly', moves: 32, colors: 6, stars: [0, 36000, 46000],
       rows: [FULL, FULL, FULL, 'f.ff.ff.f', FULL, FULL, FULL, 'jjjjjjjjj', 'jjjjjjjjj'] },
-    { name: 'Sugar Heart', goal: 'jelly', moves: 30, colors: 5, stars: [0, 60000, 76000],
+    { name: 'Sugar Heart', goal: 'jelly', moves: 30, colors: 5, stars: [0, 56000, 68000],
       rows: ['_jj___jj_', '.jjj_jjj.', 'jjjjjjjjj', 'jjjjjjjjj', '.jjjjjjj.', '__jjjjj__', '___jjj___', '____j____'] },
-    { name: 'Caramel Corners', goal: 'ingred', moves: 32, colors: 6, ings: 3, ingMax: 2, stars: [0, 42000, 55000],
+    { name: 'Caramel Corners', goal: 'ingred', moves: 34, colors: 6, ings: 3, ingMax: 2, stars: [0, 46000, 60000],
       rows: [FULL, FULL, FULL, '.f.....f.', FULL, '...f.f...', FULL, FULL, FULL] },
-    { name: 'Twin Towers', goal: 'score', moves: 20, colors: 6, target: 7000, stars: [7000, 11000, 15000],
+    { name: 'Twin Towers', goal: 'score', moves: 20, colors: 6, target: 4000, stars: [4000, 8000, 12000],
       rows: ['...._....', '...._....', '...._....', '...._....', '...._....', '...._....', FULL, FULL, FULL] },
-    { name: 'Toffee Blocks', goal: 'jelly', moves: 30, colors: 6, stars: [0, 46000, 60000],
+    { name: 'Toffee Blocks', goal: 'jelly', moves: 34, colors: 6, stars: [0, 52000, 66000],
       rows: ['jjjjjjjjj', 'jj.....jj', 'j..F.F..j', 'j.......j', 'j..F.F..j', 'j.......j', 'j..F.F..j', 'jj.....jj', 'jjjjjjjjj'] },
-    { name: 'Cherry Chute', goal: 'ingred', moves: 30, colors: 6, ings: 3, ingMax: 2, stars: [0, 38000, 50000],
+    { name: 'Cherry Chute', goal: 'ingred', moves: 36, colors: 6, ings: 2, ingMax: 2, stars: [0, 24000, 34000],
       rows: [FULL, FULL, '_......._', '__.....__', '___...___', '___...___', '___...___', '___...___', '___...___'] },
-    { name: 'Sprinkle Storm', goal: 'score', moves: 16, colors: 6, target: 7000, stars: [7000, 10500, 14000], rows: rep(FULL, 9) },
-    { name: 'Jelly Ring', goal: 'jelly', moves: 28, colors: 6, stars: [0, 52000, 66000],
+    { name: 'Sprinkle Storm', goal: 'score', moves: 16, colors: 6, target: 5000, stars: [5000, 10000, 17000], rows: rep(FULL, 9) },
+    { name: 'Jelly Ring', goal: 'jelly', moves: 30, colors: 6, stars: [0, 62000, 78000],
       rows: [FULL, '.JJJJJJJ.', '.J.....J.', '.J.f.f.J.', '.J..f..J.', '.J.f.f.J.', '.J.....J.', '.JJJJJJJ.', FULL] },
-    { name: 'Nut Cracker', goal: 'ingred', moves: 34, colors: 6, ings: 4, ingMax: 2, stars: [0, 55000, 70000],
+    { name: 'Nut Cracker', goal: 'ingred', moves: 34, colors: 6, ings: 3, ingMax: 2, stars: [0, 46000, 60000],
       rows: [FULL, FULL, '.F.....F.', FULL, '..F.F.F..', FULL, '.F.....F.', FULL, FULL] },
-    { name: 'Peppermint Maze', goal: 'jelly', moves: 28, colors: 6, stars: [0, 55000, 70000],
+    { name: 'Peppermint Maze', goal: 'jelly', moves: 28, colors: 6, stars: [0, 60000, 76000],
       rows: ['jjjjjjjjj', 'j.f.j.f.j', 'jjjjjjjjj', 'f.j.f.j.f', 'jjjjjjjjj', 'j.f.j.f.j', 'jjjjjjjjj', '.........', '.........'] },
-    { name: 'Candy Castle', goal: 'jelly', moves: 28, colors: 6, stars: [0, 60000, 76000],
+    { name: 'Candy Castle', goal: 'jelly', moves: 28, colors: 6, stars: [0, 54000, 68000],
       rows: ['._._._._.', FULL, '.jjjjjjj.', '.jJJJJJj.', '.jJJ_JJj.', '.jJJ_JJj.', '.jjjjjjj.', FULL, FULL] },
-    { name: 'Frosting Fortress', goal: 'ingred', moves: 34, colors: 6, ings: 3, ingMax: 2, stars: [0, 56000, 72000],
+    { name: 'Frosting Fortress', goal: 'ingred', moves: 36, colors: 6, ings: 3, ingMax: 2, stars: [0, 52000, 66000],
       rows: [FULL, FULL, '.FF.F.FF.', FULL, '.ff.f.ff.', FULL, 'F.F.F.F.F', FULL, FULL] },
-    { name: 'Grand Finale', goal: 'jelly', moves: 32, colors: 6, stars: [0, 80000, 100000],
+    { name: 'Grand Finale', goal: 'jelly', moves: 38, colors: 6, stars: [0, 68000, 86000],
       rows: ['JjjjjjjjJ', 'jj.....jj', 'j..F.F..j', 'j.......j', 'jJ.F.F.Jj', 'j.......j', 'j..F.F..j', 'jj.....jj', 'JjjjjjjjJ'] }
   ];
 
@@ -792,17 +792,18 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
         }
       }
       var rows = shape.map(function (a) { return a.join(''); });
-      var def = { name: NAME_A[(n * 7) % NAME_A.length] + ' ' + NAME_B[(n * 11 + 3) % NAME_B.length], goal: goal, colors: 6, rows: rows, gen: true };
+      var def = { name: NAME_A[(n * 7) % NAME_A.length] + ' ' + NAME_B[(n * 11 + 3 + Math.floor(n / 16)) % NAME_B.length], goal: goal, colors: 6, rows: rows, gen: true };
       if (!fillOK(def)) continue;
-      var cells = 0, layers = 0;
-      rows.forEach(function (row) { for (var k = 0; k < row.length; k++) { var ch = row.charAt(k); if (ch !== '_') cells++; if (ch === 'j') layers++; if (ch === 'J') layers += 2; } });
-      var tight = 1 - hard * 0.18;
-      if (goal === 'score') { def.moves = 20; def.target = Math.round((5500 + hard * 3000) * cells / 81 / 500) * 500; def.stars = [def.target, Math.round(def.target * 1.6 / 500) * 500, Math.round(def.target * 2.2 / 500) * 500]; }
-      else if (goal === 'jelly') { def.moves = Math.max(18, Math.round((10 + layers * 0.42) * tight)); def.stars = [0, layers * 1000 + def.moves * 900, layers * 1000 + def.moves * 1400]; }
-      else { def.ings = 3 + Math.round(hard * 2); def.moves = Math.round((8 + def.ings * 6) * tight); def.stars = [0, def.ings * 10000 + def.moves * 900, def.ings * 10000 + def.moves * 1400]; }
+      var cells = 0, layers = 0, frost = 0;
+      rows.forEach(function (row) { for (var k = 0; k < row.length; k++) { var ch = row.charAt(k); if (ch !== '_') cells++; if (ch === 'j') layers++; if (ch === 'J') layers += 2; if (ch === 'f') frost++; if (ch === 'F') frost += 2; } });
+      var tight = 1 - hard * 0.1;
+      function r500(v) { return Math.round(v / 500) * 500; }
+      if (goal === 'score') { def.moves = 20; def.target = r500((5000 + hard * 2500) * cells / 81); def.stars = [def.target, r500(def.target * 1.9), r500(def.target * 3)]; }
+      else if (goal === 'jelly') { def.moves = Math.round((14 + layers * 0.5 + frost * 0.5) * tight); def.stars = [0, r500(layers * 1000 + def.moves * 900), r500(layers * 1000 + def.moves * 1400)]; }
+      else { def.ings = 3 + Math.round(hard); def.ingMax = 2; def.moves = Math.round((12 + def.ings * 7.5 + frost * 0.4) * tight); def.stars = [0, r500(def.ings * 10000 + def.moves * 900), r500(def.ings * 10000 + def.moves * 1400)]; }
       return def;
     }
-    return { name: 'Sweet Spot ' + n, goal: 'score', moves: 20, colors: 6, target: 6000, stars: [6000, 9500, 13000], rows: rep(FULL, 9), gen: true };
+    return { name: 'Bonbon Bay ' + n, goal: 'score', moves: 20, colors: 6, target: 6000, stars: [6000, 9500, 13000], rows: rep(FULL, 9), gen: true };
   }
   // Every empty cell must be able to fill again (straight down or sliding in diagonally)
   function fillOK(def) {
