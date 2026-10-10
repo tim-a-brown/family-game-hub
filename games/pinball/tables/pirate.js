@@ -419,7 +419,7 @@ function makeRules() {
         case 'lock': {
           B.locks = d.n; G.cnt('lock'); G.sfx('coins', { vol: 0.7, x: CHEST.x }); G.pulse('mbL', 0.5);
           if (B.locks >= 3) G.later(0.9, () => R.startKraken(G));
-          else { G.msg('BALL ' + B.locks + ' IN THE CHEST', B.locks === 2 ? 'ONE MORE FOR MULTIBALL' : 'SPELL S-E-A AGAIN', { anim: 'chest' }); R.say(G, 'lock'); }
+          else { G.msg('BALL ' + B.locks + ' LOCKED', B.locks === 2 ? 'ONE MORE FOR MULTIBALL' : 'IN THE CHEST, SPELL S-E-A AGAIN', { anim: 'chest' }); R.say(G, 'lock'); }
           break;
         }
         case 'whirl':

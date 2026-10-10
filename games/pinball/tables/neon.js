@@ -613,7 +613,9 @@ function paintPlayfield(P) {
   for (let k = 0; k < 16; k++) { const f = k / 16, y = hz - (hz) * f * f * 1.0; neonLine(g, [[0, y], [W, y]], k % 2 ? C.cyan : C.pink, 0.9, 7); }
   g.restore();
   // soften the grid under the gameplay (so inserts and lanes read), leave it strong near the horizon
-  g.fillStyle = P.lin(0, 0, 0, 962, [[0, 'rgba(7,5,14,.72)'], [0.6, 'rgba(7,5,14,.62)'], [1, 'rgba(7,5,14,.1)']]); g.fillRect(0, 0, W, 962);
+  g.fillStyle = P.lin(0, 0, 0, 962, [[0, 'rgba(7,5,14,.58)'], [0.6, 'rgba(7,5,14,.5)'], [1, 'rgba(7,5,14,.08)']]); g.fillRect(0, 0, W, 962);
+  // a glowing horizon band
+  g.fillStyle = P.lin(0, 930, 0, 990, [[0, 'rgba(255,63,164,0)'], [0.5, 'rgba(255,63,164,.35)'], [1, 'rgba(255,63,164,0)']]); g.fillRect(0, 930, W, 60);
   // city silhouette along the horizon (behind the rooftop and wheel house)
   g.fillStyle = '#05030a'; let bx = 0; while (bx < W) { const bw = 14 + r() * 26, bh = 20 + r() * 80; g.fillRect(bx, 955, bw, bh); if (r() < 0.3) g.fillRect(bx + bw * 0.4, 955 + bh, 3, 14); bx += bw + 2; }
   g.fillStyle = C.gold; for (let i = 0; i < 90; i++) { const x = r() * W, y = 962 + r() * 70; if (y < 1040) g.fillRect(x, y, 1.6, 2.4); }

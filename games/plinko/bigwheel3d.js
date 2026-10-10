@@ -19,14 +19,14 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 // ── The prop, in world units (drum radius = 1) ──────────────────────────────
 const R = 1, DW = 0.8;                 // drum radius and width (along x)
 const PLATE = 0.014, BEV = 0.014;      // raised number plate: height and bevel width
-const BOX = { x: 0.15, y: 0.11, w: 0.70, h: 0.78, r: 0.14 };   // the plate on its panel (fractions of w / h)
-const PW = 0.44, PX = 0.6, PZ0 = 0.14, PZ1 = 0.56;             // pillars: width, inner x, back and front z
-const PY0 = -1.12, PYA = 0.18;         // pillar bottom (base top) and where the arch starts
+const BOX = { x: 0.1, y: 0.08, w: 0.8, h: 0.84, r: 0.14 };   // the plate on its panel (fractions of w / h)
+const PW = 0.5, PX = 0.48, PZ0 = 0.1, PZ1 = 0.5;             // pillars: width, inner x, back and front z
+const PY0 = -1.12, PYA = 0.3;         // pillar bottom (base top) and where the arch starts
 const ARCH = PW / 2;                   // arch radius
-const BASE = { w: 2.24, h: 0.12, d: 1.5, z: 0.32 };
+const BASE = { w: 2.06, h: 0.12, d: 1.3, z: 0.25 };
 const FLOOR_Y = PY0 - BASE.h;
-const POINTER = { x: 0.73, z: 1.03, len: 0.32, hh: 0.08 };
-const READ = { x: PX + PW / 2, y: PYA - 0.03, w: 0.35, h: 0.18, d: 0.075 };
+const POINTER = { x: 0.72, z: 1.03, len: 0.4, hh: 0.1 };
+const READ = { x: PX + PW / 2, y: 0.15, w: 0.36, h: 0.22, d: 0.08 };
 const FOV = 26;
 
 let shared = null;        // renderer, canvas, environment, textures (built once per page)
@@ -88,7 +88,7 @@ function paintPanel(c, v, x, y, w, h) {
   rr(c, bx + bev * 1.6, by + bev * 1.6, bw - 3.2 * bev, bh - 3.2 * bev, Math.max(1, r - bev * 1.6));
   c.lineWidth = Math.max(1, h * 0.008); c.strokeStyle = kind === 'green' ? 'rgba(255,255,255,.35)' : kind === 'star' ? 'rgba(255,220,140,.55)' : 'rgba(224,184,78,.4)'; c.stroke();
   // number + CHIPS
-  const fs = h * 0.5, tx = x + w / 2, ty = by + bh * 0.43;
+  const fs = h * 0.58, tx = x + w / 2, ty = by + bh * 0.42;
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.font = fs + 'px "Lilita One", system-ui, sans-serif';
   const ink = kind === 'green' ? '#14501d' : kind === 'star' ? '#fff4cc' : '#f6f3ea';
@@ -100,15 +100,15 @@ function paintPanel(c, v, x, y, w, h) {
   else if (kind === 'star') { dg.addColorStop(0, '#fffbe8'); dg.addColorStop(0.5, '#ffe07a'); dg.addColorStop(1, '#e8a51a'); }
   else { dg.addColorStop(0, '#1d6a28'); dg.addColorStop(1, ink); }
   c.fillStyle = dg; c.fillText(String(v), tx, ty);
-  c.font = '900 ' + (h * 0.12) + 'px system-ui, -apple-system, "Segoe UI", sans-serif';
+  c.font = '900 ' + (h * 0.14) + 'px system-ui, -apple-system, "Segoe UI", sans-serif';
   if (c.letterSpacing !== undefined) c.letterSpacing = (h * 0.025) + 'px';
   c.fillStyle = kind === 'green' ? '#1a5d24' : kind === 'star' ? '#ffe7a0' : '#e0b84e';
-  c.fillText(v === 1 ? 'CHIP' : 'CHIPS', tx + (c.letterSpacing !== undefined ? h * 0.0125 : 0), by + bh * 0.84);
+  c.fillText(v === 1 ? 'CHIP' : 'CHIPS', tx + (c.letterSpacing !== undefined ? h * 0.0125 : 0), by + bh * 0.86);
   if (c.letterSpacing !== undefined) c.letterSpacing = '0px';
   if (kind === 'star') {
     const gs = c.createLinearGradient(0, ty - h * 0.1, 0, ty + h * 0.1); gs.addColorStop(0, '#fff3b8'); gs.addColorStop(1, '#d99a1a');
     c.fillStyle = gs; c.strokeStyle = '#7a4a05'; c.lineWidth = Math.max(1, h * 0.012);
-    [-1, 1].forEach(sd => { star(c, tx + sd * bw * 0.34, ty, h * 0.1); c.fill(); c.stroke(); });
+    [-1, 1].forEach(sd => { star(c, tx + sd * bw * 0.33, ty, h * 0.11); c.fill(); c.stroke(); });
   }
 }
 // 20 panels in a 4 x 5 atlas (one texture, <= 2048 px)
@@ -187,7 +187,7 @@ function poolTex() {
 function dollarMaps() {
   const W = 384, H = 480, [cn, c] = cv2d(W, H), fs = H * 0.84;
   c.clearRect(0, 0, W, H); c.font = fs + 'px "Lilita One", system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.save(); c.translate(W / 2, H / 2 + fs * 0.03); c.scale(1.05, 1); c.fillStyle = '#fff'; c.fillText('$', 0, 0); c.restore();
+  c.save(); c.translate(W / 2, H / 2 + fs * 0.03); c.scale(0.86, 1); c.fillStyle = '#fff'; c.fillText('$', 0, 0); c.restore();
   const a = c.getImageData(0, 0, W, H).data, alpha = new Float32Array(W * H);
   for (let i = 0; i < W * H; i++) alpha[i] = a[i * 4 + 3] / 255;
   // distance inward from the edge (a cheap erosion by repeated 3x3 min), 1 px per round
@@ -308,13 +308,14 @@ export function BigWheel3D(host, hooks, api) {
   // scene
   const scene = new THREE.Scene(); scene.environment = sh.env;
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.5, 40);
-  const E = 0.3;
+  const E = 0.18;
   const M = {
-    vinyl: new THREE.MeshPhysicalMaterial({ map: null, roughness: 0.34, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.18, normalMap: sh.grain, normalScale: new THREE.Vector2(0.07, 0.07), envMapIntensity: 0.3 }),
+    vinyl: new THREE.MeshPhysicalMaterial({ map: null, roughness: 0.34, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.18, normalMap: sh.grain, normalScale: new THREE.Vector2(0.07, 0.07), envMapIntensity: 0.2 }),
     chrome: new THREE.MeshPhysicalMaterial({ color: 0xcfd3d8, metalness: 1, roughness: 0.2, roughnessMap: sh.brushed, envMapIntensity: 0.45 }),
     steel: new THREE.MeshStandardMaterial({ color: 0x24262b, metalness: 0.85, roughness: 0.42, envMapIntensity: 0.5 }),
     black: new THREE.MeshStandardMaterial({ color: 0x0e0e10, metalness: 0.45, roughness: 0.5, envMapIntensity: 0.3 }),
     inner: new THREE.MeshStandardMaterial({ color: 0x060608, roughness: 0.95, side: THREE.BackSide }),
+    matte: new THREE.MeshStandardMaterial({ color: 0x08080a, roughness: 0.97, metalness: 0, envMapIntensity: 0.05 }),
     lacquer: new THREE.MeshPhysicalMaterial({ color: 0x07070a, roughness: 0.16, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.1, envMapIntensity: 0.25 }),
     orange: new THREE.MeshPhysicalMaterial({ color: 0xf2912a, roughness: 0.5, metalness: 0, clearcoat: 0.45, clearcoatRoughness: 0.35, bumpMap: sh.ply, bumpScale: 0.008, envMapIntensity: E }),
     red: new THREE.MeshPhysicalMaterial({ color: 0xc62f18, roughness: 0.4, clearcoat: 0.55, clearcoatRoughness: 0.3, envMapIntensity: E }),
@@ -323,7 +324,7 @@ export function BigWheel3D(host, hooks, api) {
     glass: new THREE.MeshPhysicalMaterial({ color: 0xb8a890, metalness: 0, roughness: 0.08, transparent: true, opacity: 0.22, clearcoat: 1, clearcoatRoughness: 0.05, envMapIntensity: 0.25, depthWrite: false }),
     silver: null, pointer: new THREE.MeshPhysicalMaterial({ color: 0xc81e16, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.15, envMapIntensity: 0.3 }),
     velvet: new THREE.MeshStandardMaterial({ map: sh.velvet, roughness: 0.96, metalness: 0, envMapIntensity: 0.08 }),
-    floor: new THREE.MeshPhysicalMaterial({ map: sh.floor, emissiveMap: sh.pool, emissive: 0xffffff, emissiveIntensity: 0.22, roughness: 0.3, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.18, envMapIntensity: 0.18 }),
+    floor: new THREE.MeshPhysicalMaterial({ map: sh.floor, emissiveMap: sh.pool, emissive: 0xffffff, emissiveIntensity: 0.08, roughness: 0.3, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.18, envMapIntensity: 0.18 }),
     display: new THREE.MeshBasicMaterial({ map: null, toneMapped: false, color: new THREE.Color(2.4, 2.4, 2.4) }),
     glassFlat: new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: 0.03, transparent: true, opacity: 0.12, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 0.1, depthWrite: false }),
     core: new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }),
@@ -369,18 +370,16 @@ export function BigWheel3D(host, hooks, api) {
   }
   function buildStands() {
     // black steel: the back arch, bearing blocks on both sides of the drum, the base plinth on top of the floor
-    const blk = [];
-    const arch = new THREE.Shape(); arch.absarc(0, 0, R + 0.25, 0, Math.PI, false); arch.absarc(0, 0, R + 0.09, Math.PI, 0, true);
-    blk.push(place(new THREE.ExtrudeGeometry(arch, { depth: 0.12, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.01, bevelSegments: 2 }), 0, 0, -0.62));
+    const blk = [], ux = DW / 2 + 0.07;
     [-1, 1].forEach(sd => {
-      blk.push(place(new THREE.BoxGeometry(0.16, -PY0, 0.12), sd * (R + 0.17), PY0 / 2, -0.56));                 // arch legs
-      blk.push(place(new RoundedBoxGeometry(0.26, 0.05, 0.36, 2, 0.01), sd * (R + 0.17), PY0 + 0.025, -0.5));    // arch feet
-      blk.push(place(new THREE.BoxGeometry(0.1, -PY0 - 0.02, 0.16), sd * (DW / 2 + 0.17), PY0 + (-PY0 - 0.02) / 2, 0));   // bearing uprights
-      blk.push(place(new THREE.CylinderGeometry(0.1, 0.1, 0.1, 24), sd * (DW / 2 + 0.17), 0, 0, [0, 0, Math.PI / 2]));
+      blk.push(place(new RoundedBoxGeometry(0.06, -PY0, 0.1, 2, 0.008), sd * ux, PY0 / 2, -0.09));                  // uprights behind the peg tips
+      blk.push(place(new THREE.CylinderGeometry(0.11, 0.11, 0.05, 28), sd * ux, 0, -0.03, [0, 0, Math.PI / 2]));   // hub at the axle
+      blk.push(place(new RoundedBoxGeometry(0.14, 0.05, 0.3, 2, 0.01), sd * ux, PY0 + 0.025, -0.09));              // foot
     });
     addMesh(merge(blk), M.black, world, true, true);
+    addMesh(new RoundedBoxGeometry(1.5, 2.5, 0.5, 2, 0.02), M.matte, world, true, true).position.set(0, -0.05, -1.15);   // the dark housing behind the drum
     const bolts = [];
-    [-1, 1].forEach(sd => { for (let b = 0; b < 4; b++) { const a = b * Math.PI / 2 + Math.PI / 4; bolts.push(place(new THREE.CylinderGeometry(0.011, 0.011, 0.014, 6), sd * (DW / 2 + 0.17 + 0.057), 0.062 * Math.sin(a), 0.062 * Math.cos(a), [0, 0, Math.PI / 2])); } });
+    [-1, 1].forEach(sd => { for (let b = 0; b < 5; b++) { const a = b * Math.PI * 2 / 5 + 0.3; bolts.push(place(new THREE.CylinderGeometry(0.011, 0.011, 0.016, 6), sd * (ux + 0.03), 0.075 * Math.sin(a), -0.03 + 0.075 * Math.cos(a), [0, 0, Math.PI / 2])); } });
     addMesh(merge(bolts), M.chrome, world, false, true);
     addMesh(new RoundedBoxGeometry(BASE.w, BASE.h, BASE.d, 3, 0.022), M.lacquer, world, true, true).position.set(0, PY0 - BASE.h / 2, BASE.z);
     // stage: a glossy floor and the velvet curtain
@@ -398,19 +397,19 @@ export function BigWheel3D(host, hooks, api) {
       const xc = sd * (PX + PW / 2);
       bodies.push(place(new THREE.ExtrudeGeometry(shape, { depth: PZ1 - PZ0, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 3, curveSegments: 24 }), xc, 0, PZ0));
       // raised red tiles in a checker (none under the bulb rail)
-      const cs = PW / 5, tw = cs * 0.78, inset = 0.062, xi = -sd * PW / 2 + sd * inset, ra = PW / 2 - inset;
+      const cs = PW / 5, tw = cs * 0.9, inset = 0.07, xi = -sd * PW / 2 + sd * inset, ra = PW / 2 - inset;
       const nearRail = (x, y) => {
         const dLine = y <= PYA ? Math.abs(x - xi) : Math.hypot(x - xi, y - PYA);
         const dArc = y >= PYA ? Math.abs(Math.hypot(x, y - PYA) - ra) : Math.min(Math.hypot(x - ra, y - PYA), Math.hypot(x + ra, y - PYA));
-        return Math.min(dLine, dArc) < tw / 2 + 0.03;
+        return Math.min(dLine, dArc) < tw / 2 + 0.035;
       };
-      for (let row = 0; row < 14; row++) for (let col = 0; col < 5; col++) {
+      for (let row = 0; row < 16; row++) for (let col = 0; col < 5; col++) {
         if ((row + col) % 2) continue;
         const x = -PW / 2 + (col + 0.5) * cs, y = PY0 + (row + 0.5) * cs;
         // inside the arch shape with margin?
         const top = y + tw / 2, inArch = top <= PYA || Math.hypot(Math.abs(x) + tw / 2, Math.max(0, top - PYA)) <= PW / 2 - 0.01;
         if (!inArch || nearRail(x, y)) continue;
-        tiles.push(place(new RoundedBoxGeometry(tw, tw, 0.022, 2, 0.006), xc + x, y, PZ1 + 0.011));
+        tiles.push(place(new RoundedBoxGeometry(tw, tw, 0.024, 2, 0.007), xc + x, y, PZ1 + 0.012));
       }
       // the cream bulb rail: up the side next to the drum, then over the arch
       const pts = [], zr = PZ1 + 0.014;
@@ -418,17 +417,18 @@ export function BigWheel3D(host, hooks, api) {
       const n = 30;
       for (let i = 0; i <= n; i++) { const t = i / n, a = sd < 0 ? t * Math.PI : Math.PI - t * Math.PI; pts.push(new THREE.Vector3(xc + Math.cos(a) * ra, PYA + Math.sin(a) * ra, zr)); }
       const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.5);
-      rails.push(new THREE.TubeGeometry(curve, 110, 0.02, 10, false));
-      // bulbs along the rail, every 0.052
-      const len = curve.getLength(), nb = Math.round(len / 0.052), chain = [];
+      rails.push(new THREE.TubeGeometry(curve, 110, 0.024, 10, false));
+      // bulbs along the rail, every 0.075
+      const len = curve.getLength(), nb = Math.round(len / 0.075), chain = [];
       for (let i = 0; i <= nb; i++) {
         const p = curve.getPointAt(i / nb); chain.push(p);
-        sockets.push(place(new THREE.CylinderGeometry(0.014, 0.017, 0.016, 10), p.x, p.y, zr + 0.016, [Math.PI / 2, 0, 0]));
-        glassG.push(place(new THREE.SphereGeometry(0.022, 12, 8), p.x, p.y, zr + 0.038));
-        bulbs.push({ x: p.x, y: p.y, z: zr + 0.038, i: i, on: 0, k: 0 });
+        sockets.push(place(new THREE.CylinderGeometry(0.019, 0.023, 0.022, 10), p.x, p.y, zr + 0.02, [Math.PI / 2, 0, 0]));
+        glassG.push(place(new THREE.SphereGeometry(0.03, 14, 10), p.x, p.y, zr + 0.052));
+        bulbs.push({ x: p.x, y: p.y, z: zr + 0.052, i: i, on: 0, k: 0 });
       }
       // one warm point light per pillar, in front of the arch, for the glow the bulbs throw on the paint
-      const pl = new THREE.PointLight(0xffb45a, 0, 1.6, 2); pl.position.set(xc, PYA + 0.05, PZ1 + 0.3); world.add(pl); bulbLights.push(pl);
+      const pl = new THREE.PointLight(0xffb45a, 0, 1.8, 2); pl.position.set(xc, PYA, PZ1 + 0.28); world.add(pl); bulbLights.push(pl);
+      const pl2 = new THREE.PointLight(0xffb45a, 0, 1.4, 2); pl2.position.set(xc + xi * 0.6, PY0 + 0.6, PZ1 + 0.22); world.add(pl2); bulbLights.push(pl2);
     });
     addMesh(merge(bodies), M.orange, world, true, true);
     addMesh(merge(tiles), M.red, world, true, true);
@@ -437,20 +437,20 @@ export function BigWheel3D(host, hooks, api) {
     const gl = addMesh(merge(glassG), M.glass, world, false, false); gl.renderOrder = 4;
     // filament cores and the light pools on the paint, instanced so a chase costs one draw call each
     const n = bulbs.length;
-    cores = new THREE.InstancedMesh(new THREE.SphereGeometry(0.0145, 10, 7), M.core, n);
-    pools = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.26, 0.26), M.pool, n); pools.renderOrder = 3;
+    cores = new THREE.InstancedMesh(new THREE.SphereGeometry(0.02, 10, 7), M.core, n);
+    pools = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.34, 0.34), M.pool, n); pools.renderOrder = 3;
     const m4 = scratch.m, col = scratch.c;
     bulbs.forEach((b, i) => {
       m4.identity(); m4.setPosition(b.x, b.y, b.z); cores.setMatrixAt(i, m4);
-      m4.setPosition(b.x, b.y, PZ1 + 0.026); pools.setMatrixAt(i, m4);
+      m4.setPosition(b.x, b.y, PZ1 + 0.03); pools.setMatrixAt(i, m4);
       cores.setColorAt(i, col.setRGB(0.3, 0.22, 0.14)); pools.setColorAt(i, col.setRGB(0, 0, 0));
     });
     world.add(cores); world.add(pools); dyn.push(cores, pools);
   }
   function buildDollars() {
     dmesh.forEach(m => { world.remove(m); m.geometry.dispose(); }); dmesh = [];
-    const size = 0.66, g = dollarGeometry(dollar, size);
-    [[-1, PY0 + (PYA - PY0) * 0.52 + 0.05], [1, PY0 + (PYA - PY0) * 0.42 - 0.02]].forEach(([sd, y]) => {
+    const size = 0.74, g = dollarGeometry(dollar, size);
+    [[-1, -0.34], [1, -0.56]].forEach(([sd, y]) => {
       const m = new THREE.Mesh(g, M.silver); m.position.set(sd * (PX + PW / 2), y, PZ1 + 0.026); m.castShadow = true; m.receiveShadow = true; world.add(m); dmesh.push(m);
     });
   }
@@ -468,20 +468,20 @@ export function BigWheel3D(host, hooks, api) {
     // the brass bracket back to the pillar
     const rod = merge([
       place(new THREE.CylinderGeometry(0.014, 0.014, POINTER.z - PZ1, 12), POINTER.x, 0, (POINTER.z + PZ1) / 2, [Math.PI / 2, 0, 0]),
-      place(new THREE.CylinderGeometry(0.05, 0.05, 0.02, 20), POINTER.x, 0, PZ1 + 0.01, [Math.PI / 2, 0, 0])
+      place(new THREE.CylinderGeometry(0.075, 0.08, 0.024, 28), POINTER.x, 0, PZ1 + 0.012, [Math.PI / 2, 0, 0])
     ]);
     addMesh(rod, M.brass, world, true, true);
-    ptrShadow = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.09), new THREE.MeshBasicMaterial({ map: sh.glow, color: 0x000000, transparent: true, opacity: 0.5, depthWrite: false }));
+    ptrShadow = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.13), new THREE.MeshBasicMaterial({ map: sh.glow, color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false }));
     ptrShadow.renderOrder = 2; world.add(ptrShadow); dyn.push(ptrShadow);
   }
   function buildReadout() {
     const box = new THREE.Group(); box.position.set(READ.x, READ.y, PZ1 + 0.012); world.add(box);
     addMesh(new RoundedBoxGeometry(READ.w, READ.h, READ.d, 2, 0.012), M.lacquer, box, true, true).position.set(0, 0, READ.d / 2);
     const bez = new THREE.Shape(); bez.moveTo(-READ.w / 2, -READ.h / 2); bez.lineTo(READ.w / 2, -READ.h / 2); bez.lineTo(READ.w / 2, READ.h / 2); bez.lineTo(-READ.w / 2, READ.h / 2); bez.closePath();
-    const hole = new THREE.Path(); const iw = READ.w - 0.05, ih = READ.h - 0.05;
+    const hole = new THREE.Path(); const iw = READ.w - 0.06, ih = READ.h - 0.06;
     hole.moveTo(-iw / 2, -ih / 2); hole.lineTo(-iw / 2, ih / 2); hole.lineTo(iw / 2, ih / 2); hole.lineTo(iw / 2, -ih / 2); hole.closePath(); bez.holes.push(hole);
     addMesh(place(new THREE.ExtrudeGeometry(bez, { depth: 0.022, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 2 }), 0, 0, READ.d), M.black, box, true, true);
-    readCanvas = document.createElement('canvas'); readCanvas.width = 320; readCanvas.height = 160; readCtx = readCanvas.getContext('2d');
+    readCanvas = document.createElement('canvas'); readCanvas.width = 340; readCanvas.height = 180; readCtx = readCanvas.getContext('2d');
     readTex = tex(readCanvas); M.display.map = readTex; M.display.needsUpdate = true;
     // the digits are drawn in an overlay pass after the motion trail, so they stay crisp while the drum blurs
     const disp = addMesh(new THREE.PlaneGeometry(iw, ih), M.display, ovl, false, false); disp.position.set(READ.x, READ.y, PZ1 + 0.012 + READ.d + 0.001);
@@ -501,7 +501,7 @@ export function BigWheel3D(host, hooks, api) {
       sh2.vertexShader = sh2.vertexShader.replace('#include <common>', '#include <common>\nuniform mat4 reflMatrix; varying vec4 vReflUv; varying vec3 vReflW;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvReflUv = reflMatrix * vec4(position, 1.0); vReflW = (modelMatrix * vec4(position, 1.0)).xyz;');
       sh2.fragmentShader = sh2.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tRefl; uniform float reflK; varying vec4 vReflUv; varying vec3 vReflW;')
-        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n{ vec2 ruv = vReflUv.xy / vReflUv.w; vec3 rc = texture2D(tRefl, ruv).rgb + texture2D(tRefl, ruv + vec2(0.005, 0.0)).rgb + texture2D(tRefl, ruv - vec2(0.005, 0.0)).rgb + texture2D(tRefl, ruv + vec2(0.0, 0.008)).rgb;\n  float fr = pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 2.0); float fade = 1.0 - smoothstep(1.0, 2.3, vReflW.z); totalEmissiveRadiance += rc * 0.25 * reflK * (0.06 + 0.2 * fr) * fade; }');
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n{ vec2 ruv = vReflUv.xy / vReflUv.w; vec3 rc = texture2D(tRefl, ruv).rgb + texture2D(tRefl, ruv + vec2(0.005, 0.0)).rgb + texture2D(tRefl, ruv - vec2(0.005, 0.0)).rgb + texture2D(tRefl, ruv + vec2(0.0, 0.008)).rgb;\n  float fr = pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 2.0); float fade = 1.0 - smoothstep(0.9, 1.8, vReflW.z); totalEmissiveRadiance += rc * 0.25 * reflK * (0.04 + 0.16 * fr) * fade; }');
     };
   }
   function renderReflection() {
@@ -530,14 +530,14 @@ export function BigWheel3D(host, hooks, api) {
     if (M.floor.userData.u) M.floor.userData.u.reflK.value = 1;
   }
   function buildLights() {
-    key = new THREE.SpotLight(0xffdcb4, 60, 0, 0.62, 0.55, 2); key.position.set(-2.6, 3.0, 5.6); key.target.position.set(0.1, -0.3, 0.3); world.add(key); world.add(key.target);
+    key = new THREE.SpotLight(0xffd9ae, 110, 0, 0.5, 0.6, 2); key.position.set(-3.6, 4.0, 5.2); key.target.position.set(0.1, -0.25, 0.4); world.add(key); world.add(key.target);
     key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.camera.near = 2; key.shadow.camera.far = 12; key.shadow.bias = -0.00015; key.shadow.normalBias = 0.005;
-    keyFill = new THREE.DirectionalLight(0x9fb8ff, 0.4); keyFill.position.set(3.5, 1.2, 3); world.add(keyFill);
-    rimL = new THREE.DirectionalLight(0xffe6c8, 0.9); rimL.position.set(1.5, 3.5, -3); world.add(rimL);
-    const amb = new THREE.HemisphereLight(0x6a5a8a, 0x1a0a14, 0.2); world.add(amb);
+    keyFill = new THREE.DirectionalLight(0x9fb8ff, 0.32); keyFill.position.set(3.5, 0.8, 3); world.add(keyFill);
+    rimL = new THREE.DirectionalLight(0xffe6c8, 1.1); rimL.position.set(1.8, 3.2, -2.5); world.add(rimL);
+    const amb = new THREE.HemisphereLight(0x6a5a8a, 0x1a0a14, 0.1); world.add(amb);
     // the pool of the key light on the floor and a little bounce from below
     const under = new THREE.PointLight(0xffc890, 0.5, 3, 2); under.position.set(0, FLOOR_Y + 0.5, 1.6); world.add(under);
-    const back = new THREE.PointLight(0xffb090, 2.2, 5, 2); back.position.set(0.4, 2.3, -0.5); world.add(back);
+    const back = new THREE.PointLight(0xffb090, 1.6, 5, 2); back.position.set(0.4, 2.3, -0.3); world.add(back);
   }
 
   function build() {
@@ -563,9 +563,9 @@ export function BigWheel3D(host, hooks, api) {
     refl.rt.setSize(Math.max(2, Math.round(W * dpr / 3)), Math.max(2, Math.round(H * dpr / 3)));
     camera.aspect = W / H;
     // fit the prop: wide enough for both pillars, tall enough for the drum, the floor and some curtain
-    const t = Math.tan(FOV / 2 * Math.PI / 180), dW = 1.04 / (t * camera.aspect), dH = 1.36 / t;
+    const t = Math.tan(FOV / 2 * Math.PI / 180), dW = 1.0 / (t * camera.aspect), dH = 1.3 / t;
     const d = Math.max(dW, dH);
-    camera.position.set(0, 0.3, d + 0.9); camera.lookAt(0, -0.06, 0.3);
+    camera.position.set(0, -0.18, d + 0.9); camera.lookAt(0, -0.03, 0.3);
     camera.near = Math.max(0.5, d * 0.3); camera.far = d + 12; camera.updateProjectionMatrix();
     camBase.copy(camera.position);
     needDraw = true; draw(performance.now());
@@ -586,7 +586,7 @@ export function BigWheel3D(host, hooks, api) {
         const lit = m.indexOf(id) >= 0, dx = x1 - x0, dy = y1 - y0, ln = Math.hypot(dx, dy), ux = dx / ln, uy = dy / ln, nx = -uy * t / 2, ny = ux * t / 2, e = t * 0.55;
         c.beginPath(); c.moveTo(x0 + ux * e * 0.1, y0 + uy * e * 0.1); c.lineTo(x0 + ux * e + nx, y0 + uy * e + ny); c.lineTo(x1 - ux * e + nx, y1 - uy * e + ny);
         c.lineTo(x1 - ux * e * 0.1, y1 - uy * e * 0.1); c.lineTo(x1 - ux * e - nx, y1 - uy * e - ny); c.lineTo(x0 + ux * e - nx, y0 + uy * e - ny); c.closePath();
-        if (lit && on) { c.shadowColor = 'rgba(255,170,40,.9)'; c.shadowBlur = 10; c.fillStyle = '#ffb52e'; } else { c.shadowBlur = 0; c.fillStyle = 'rgba(255,160,40,.07)'; }
+        if (lit && on) { c.shadowColor = 'rgba(255,170,40,.9)'; c.shadowBlur = 12; c.fillStyle = '#ffb82e'; } else { c.shadowBlur = 0; c.fillStyle = 'rgba(255,150,40,.13)'; }
         c.fill();
       }
       const P = (px, py2) => [x + px * dw + (1 - py2) * sk, y + py2 * dh];
@@ -596,8 +596,8 @@ export function BigWheel3D(host, hooks, api) {
       bar('f', A0[0], A0[1], M0[0], M0[1]); bar('b', A1[0], A1[1], M1[0], M1[1]); bar('e', M0[0], M0[1], B0[0], B0[1]); bar('c', M1[0], M1[1], B1[0], B1[1]);
       c.restore();
     }
-    const dw = w * 0.3, dh = h * 0.7;
-    seg7(w * 0.12, h * 0.15, dw, dh, txt[0], blink); seg7(w * 0.12 + dw * 1.38, h * 0.15, dw, dh, txt[1], blink);
+    const dw = w * 0.32, dh = h * 0.76;
+    seg7(w * 0.1, h * 0.12, dw, dh, txt[0], blink); seg7(w * 0.1 + dw * 1.42, h * 0.12, dw, dh, txt[1], blink);
     readTex.needsUpdate = true;
   }
   function stepBulbs(now, dt, snap) {
@@ -613,11 +613,11 @@ export function BigWheel3D(host, hooks, api) {
       lit += b.k;
       const k = b.k;
       cores.setColorAt(i, col.setRGB(0.2 + 3.4 * k, 0.14 + 2.4 * k, 0.08 + 1.0 * k));
-      pools.setColorAt(i, col.setRGB(0.55 * k, 0.34 * k, 0.12 * k));
+      pools.setColorAt(i, col.setRGB(0.5 * k, 0.31 * k, 0.11 * k));
     }
     if (changed) { cores.instanceColor.needsUpdate = true; pools.instanceColor.needsUpdate = true; }
     const share = lit / bulbs.length;
-    bulbLights.forEach(l => { l.intensity = 0.08 + 0.6 * share; });
+    bulbLights.forEach(l => { l.intensity = 0.04 + 0.4 * share; });
     return changed;
   }
   function stepGlow(now) {
@@ -635,12 +635,12 @@ export function BigWheel3D(host, hooks, api) {
     if (window.PlinkoWheel.noRender) return;   // test hook: run the loop without presenting frames
     drum.rotation.x = st.th;
     pointer.rotation.z = st.b * 0.6;
-    { const a = st.b * 0.6, tx = POINTER.x - POINTER.len * Math.cos(a) + 0.045, ty = -POINTER.len * Math.sin(a) - 0.03;
+    { const a = st.b * 0.6, tx = POINTER.x - POINTER.len * Math.cos(a) + 0.06, ty = -POINTER.len * Math.sin(a) - 0.04;
       ptrShadow.position.set(tx, ty, R + PLATE + 0.004); ptrShadow.rotation.set(0, 0, a); ptrShadow.visible = tx < DW / 2 + 0.06; }
     paintReadout(now);
     stepGlow(now);
     // subtle parallax
-    camera.position.set(camBase.x + par.x * 0.12, camBase.y + par.y * 0.08, camBase.z); camera.lookAt(par.x * 0.03, -0.06 + par.y * 0.02, 0.3);
+    camera.position.set(camBase.x + par.x * 0.12, camBase.y + par.y * 0.08, camBase.z); camera.lookAt(par.x * 0.03, -0.03 + par.y * 0.02, 0.3);
     const fast = Math.abs(st.om) > 1.5 && level < 1;
     if (fast !== trail.enabled) { trail.enabled = fast; if (fast) { renderer.setRenderTarget(trail.textureOld); renderer.clear(); renderer.setRenderTarget(null); } }
     trail.uniforms.damp.value = Math.min(0.8, 0.35 + Math.abs(st.om) * 0.06);

@@ -941,10 +941,13 @@ function ringAnimate(g, dt, comp) {
 
 // the barker: a straw-hatted carnival caller with a handlebar moustache; eyes follow the ball, the jaw swings open
 function barkerModel(RC, toy) {
-  const M = RC.mats, B = RC.batch, g = new THREE.Group();
+  const M = RC.mats, B = RC.batch, outer = new THREE.Group(), g = new THREE.Group();
+  // the head leans back so the face looks up at the player; the component rotates the outer group to face the shot
+  const LEAN = 0.5, LIFT = 12;
+  g.rotation.x = LEAN; g.position.set(0, LIFT, 0); outer.add(g);
   const ox = toy.o.x, oy = toy.o.y, rz = Math.atan2(toy.f[1], toy.f[0]) - PI / 2, c = Math.cos(-rz), s = Math.sin(-rz);
-  // the model group is rotated by rz; static batched parts need the same transform baked in
-  const bake = geo => { geo.rotateZ(rz); geo.translate(ox, oy, 0); return geo; };
+  // static batched parts need the same lean and the component's rotation baked in
+  const bake = geo => { geo.rotateX(LEAN); geo.translate(0, LIFT, 0); geo.rotateZ(rz); geo.translate(ox, oy, 0); return geo; };
   const skinC = canvas(256, 128), sg = skinC.getContext('2d');
   { const gr = sg.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, '#f1c9a4'); gr.addColorStop(0.55, '#e8b690'); gr.addColorStop(1, '#c98f6a'); sg.fillStyle = gr; sg.fillRect(0, 0, 256, 128);
     for (const x of [92, 164]) { const b = sg.createRadialGradient(x, 82, 2, x, 82, 22); b.addColorStop(0, 'rgba(230,90,90,.45)'); b.addColorStop(1, 'rgba(230,90,90,0)'); sg.fillStyle = b; sg.fillRect(x - 24, 58, 48, 48); }
@@ -972,9 +975,9 @@ function barkerModel(RC, toy) {
   const ut = new THREE.BoxGeometry(26, 7, 3.5); ut.translate(0, 24, 22); B.add(M.plastic('#fbf8f0', { roughness: 0.15, clearcoat: 1 }), bake(ut));
   // straw boater (pushed back on his head), collar and bow tie: static
   const straw = M.plastic('#e9d79a', { roughness: 0.75 });
-  const brim = new THREE.CylinderGeometry(34, 34, 1.6, 36); brim.rotateX(PI / 2); brim.rotateX(0.18); brim.translate(0, -16, 68); B.add(straw, bake(brim));
-  const crown = new THREE.CylinderGeometry(23, 24, 11, 32); crown.rotateX(PI / 2); crown.rotateX(0.18); crown.translate(0, -16, 74); B.add(straw, bake(crown));
-  const band = new THREE.CylinderGeometry(24.3, 24.3, 4.5, 32); band.rotateX(PI / 2); band.rotateX(0.18); band.translate(0, -16, 71); B.add(M.plastic('#c8302c', { roughness: 0.5 }), bake(band));
+  const brim = new THREE.CylinderGeometry(34, 34, 1.6, 36); brim.rotateX(PI / 2); brim.translate(0, -14, 66); B.add(straw, bake(brim));
+  const crown = new THREE.CylinderGeometry(23, 24, 11, 32); crown.rotateX(PI / 2); crown.translate(0, -14, 72); B.add(straw, bake(crown));
+  const band = new THREE.CylinderGeometry(24.3, 24.3, 4.5, 32); band.rotateX(PI / 2); band.translate(0, -14, 69); B.add(M.plastic('#c8302c', { roughness: 0.5 }), bake(band));
   const collar = new THREE.CylinderGeometry(26, 30, 6, 24); collar.rotateX(PI / 2); collar.translate(0, -10, 3); B.add(M.plastic('#f4ecd8'), bake(collar));
   const blue = M.plastic('#1d4e9a', { roughness: 0.4 });
   [-1, 1].forEach(sd => { const bt = new THREE.ConeGeometry(5, 10, 3); bt.rotateZ(sd * PI / 2); bt.translate(sd * 6, 18, 6); B.add(blue, bake(bt)); });
@@ -985,7 +988,8 @@ function barkerModel(RC, toy) {
     eyes.forEach((ir, i) => { ir.position.x = (i ? 12 : -12) + lx * 3.2; ir.position.z = 50 + (ly > 0 ? -1.6 : 0.6); });
     head.rotation.z = Math.sin(t * 0.7) * 0.03 + k * Math.sin(t * 9) * 0.02;
   };
-  return g;
+  outer.userData.pose = g.userData.pose;
+  return outer;
 }
 
 // the high striker: a graduated tower behind the pad, a puck that climbs on a hard hit, a brass bell on top
@@ -1201,11 +1205,11 @@ function tentModel(RC) {
 function prizeCounterModel(RC) {
   const M = RC.mats, B = RC.batch, G = RC.G, P = PRIZE_CASE;
   const cream = M.plastic('#f4ecd8', { roughness: 0.3 }), red = M.plastic('#c8302c', { roughness: 0.35 });
-  B.add(cream, slabGeo(P, 0, 6, { bevel: 1 })); B.add(red, slabGeo(P, 30, 2.5, { bevel: 0.6 }));
-  B.add(cream, boxGeo(464, 500, 36, 30, 110, 12)); B.add(cream, boxGeo(464, 500, 58, 30, 112, 4));
-  const glass = new THREE.Mesh(boxGeo(451, 498, 46, 1.2, 100, 20), M.clear('#dff2ff', 0.2, { depthWrite: false, roughness: 0.03 })); glass.renderOrder = 3; RC.root.add(glass);
+  B.add(cream, slabGeo(P, 0, 6, { bevel: 1 })); B.add(cream, boxGeo(464, 500, 23, 28, 110, 34)); B.add(red, boxGeo(464, 500, 40.6, 29, 111, 1.2));
+  B.add(red, boxGeo(451, 498, 65, 2.5, 104, 3)); B.add(red, boxGeo(451, 446, 52, 2.5, 2.5, 26)); B.add(red, boxGeo(451, 550, 52, 2.5, 2.5, 26));
+  const glass = new THREE.Mesh(boxGeo(451, 498, 52, 1, 102, 24), M.clear('#dff2ff', 0.18, { depthWrite: false, roughness: 0.03 })); glass.renderOrder = 3; RC.root.add(glass);
   const sc = canvas(256, 48), g = sc.getContext('2d'); g.fillStyle = '#c8302c'; g.fillRect(0, 0, 256, 48); g.fillStyle = '#ffcc3a'; g.font = '400 30px ' + BUNGEE; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('PRIZES', 128, 26);
-  const sign = new THREE.PlaneGeometry(26, 7); sign.rotateX(PI / 2); sign.rotateZ(-0.1); sign.translate(450.2, 498, 62); B.add(new THREE.MeshStandardMaterial({ map: RC.tex(sc), roughness: 0.4 }), sign);
+  const sign = new THREE.PlaneGeometry(26, 7); sign.rotateX(PI / 2); sign.rotateZ(-0.1); sign.translate(449.6, 498, 68); B.add(new THREE.MeshStandardMaterial({ map: RC.tex(sc), roughness: 0.4 }), sign);
   const cols = ['#ffd23a', '#c8824a', '#ff9a40', '#8ab0e0', '#e8a030'], figs = [];
   for (let i = 0; i < 5; i++) {
     const y = 460 + i * 20, z = 42, x = 466, parts = [], c = cols[i];
