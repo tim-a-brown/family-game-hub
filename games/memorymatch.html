@@ -473,16 +473,17 @@ body{overflow:hidden;}
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden' && S && !S.done) save(); });
 
   // ── Table ─────────────────────────────────────────────────────────────────
-  var cardEls = [], pileEls = [], scoreEls = [], gridEl, feltEl, statMoves, statPairs, statTime, turnEl;
+  var cardEls = [], pileEls = [], scoreEls = [], gridEl, feltEl, statMoves, statPairs, statTime, statBest, turnEl;
   function build(fresh) {
     app.className = 'mm'; app.innerHTML = '';
-    pileEls = []; scoreEls = []; statPairs = statMoves = statTime = null;
+    pileEls = []; scoreEls = []; statPairs = statMoves = statTime = statBest = null;
     if (solo()) {
-      statMoves = el('b'); statPairs = el('b'); statTime = el('b');
+      statMoves = el('b'); statPairs = el('b'); statTime = el('b'); statBest = el('b', { text: String(boardBest(S.size) || '–') });
       app.appendChild(el('div', { class: 'stats' }, [
         el('div', { class: 'st' }, [statMoves, el('small', { text: 'Moves' })]),
         el('div', { class: 'st' }, [statPairs, el('small', { text: 'Pairs' })]),
-        el('div', { class: 'st' }, [statTime, el('small', { text: 'Time' })])]));
+        el('div', { class: 'st' }, [statTime, el('small', { text: 'Time' })]),
+        el('div', { class: 'st' }, [statBest, el('small', { text: 'Best' })])]));
     } else {
       var sc = el('div', { class: 'scores' });
       S.players.forEach(function (p, i) {
@@ -561,6 +562,9 @@ body{overflow:hidden;}
   var rzT = 0;
   window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { if (S && gridEl && gridEl.isConnected) fit(); }, 80); });
   document.addEventListener('keydown', function (e) { if (e.key === ' ' && S && S.up.length === 2) { e.preventDefault(); hurry(); } });
+
+  // Test hook
+  window.__mm = { get: function () { return S; }, tap: function (i) { tap(i); } };
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}

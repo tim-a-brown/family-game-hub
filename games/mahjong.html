@@ -11,6 +11,7 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
 <style>
 :root{--tb:#1e7a5b;--tb2:#2a9a74;--cjk:"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Noto Serif CJK SC","Source Han Sans SC","WenQuanYi Zen Hei","Microsoft YaHei",serif;}
 body{overflow:hidden;}
@@ -296,6 +297,13 @@ body{overflow:hidden;}
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function left() { var n = 0; for (var i = 0; i < S.gone.length; i++) if (!S.gone[i]) n++; return n; }
   function snapshot() { U.push({ k: S.k.slice(), gone: S.gone.slice(), pairs: S.pairs.length }); }
+  // High score board per layout: clear time, lower is better (linked players included)
+  function hiKey(l) { return 'mahjong_' + l; }
+  function boardBest(l) {
+    var t = ArcadeHi.top(hiKey(l)) || 0, b = 0;
+    try { GameHistory.load(KEY).forEach(function (e) { if (e && e.won && e.layout === l && e.time > 0 && (!b || e.time < b)) b = e.time; }); } catch (e) {}
+    return t && (!b || t < b) ? t : b;
+  }
 
   function showSetup() {
     stopTick(); busy = false; app.className = 'stage';
@@ -481,11 +489,14 @@ body{overflow:hidden;}
     clearSave(); updBar();
     var layout = S.layout, nm = S.name;
     setTimeout(function () {
-      Kit.win({
-        lose: !won, title: won ? 'Table cleared!' : 'Out of moves',
-        sub: won ? lay + ' in ' + fmt(S.time) + (best.length && S.time < bestT ? ' · new best!' : '') : cleared + ' of ' + POS.length + ' tiles cleared',
-        again: function () { newGame(layout, nm); }, againLabel: 'Deal again',
-        extra: [{ label: 'Change layout', onClick: showSetup }]
+      ArcadeHi.check(won ? hiKey(layout) : '', won ? S.time : 0, function () {
+        if (bar.best) bar.best.textContent = boardBest(layout) ? fmt(boardBest(layout)) : '–';
+        Kit.win({
+          lose: !won, title: won ? 'Table cleared!' : 'Out of moves',
+          sub: won ? lay + ' in ' + fmt(S.time) + (best.length && S.time < bestT ? ' · new best!' : '') : cleared + ' of ' + POS.length + ' tiles cleared',
+          again: function () { newGame(layout, nm); }, againLabel: 'Deal again',
+          extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(layout)); showSetup(); } }, { label: 'Change layout', onClick: showSetup }]
+        });
       });
     }, won ? 500 : 200);
   }
@@ -509,9 +520,10 @@ body{overflow:hidden;}
     bar.hint = el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Hint', html: Kit.icon('lightbulb'), onclick: hint });
     bar.shuf = el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Shuffle', html: Kit.icon('shuffle'), onclick: shuffleAsk });
     bar.left = el('b'); bar.moves = el('b'); bar.time = el('b');
+    var bb = boardBest(S.layout); bar.best = el('b', { text: bb ? fmt(bb) : '–' });
     bar.mv = el('div', { class: 'st' }, [bar.moves, el('small', { text: 'Matches' })]);
     app.appendChild(el('div', { class: 'sbar' }, [bar.undo,
-      el('div', { class: 'stats' }, [el('div', { class: 'st' }, [bar.left, el('small', { text: 'Tiles' })]), bar.mv, el('div', { class: 'st' }, [bar.time, el('small', { text: 'Time' })])]),
+      el('div', { class: 'stats' }, [el('div', { class: 'st' }, [bar.left, el('small', { text: 'Tiles' })]), bar.mv, el('div', { class: 'st' }, [bar.time, el('small', { text: 'Time' })]), el('div', { class: 'st' }, [bar.best, el('small', { text: 'Best' })])]),
       bar.hint, bar.shuf]));
     tiles = POS.map(function (p, i) {
       var t = el('button', { type: 'button', class: 't', 'data-i': i, html: faceSVG(S.k[i]), 'aria-label': kname(S.k[i]) });
@@ -664,10 +676,14 @@ body{overflow:hidden;}
       { icon: 'shuffle', label: 'Shuffle the tiles', onClick: function () { shuffleAsk(); } },
       { icon: 'sync', label: 'Restart this deal', onClick: function () { restart(); } },
       { icon: 'eye', label: function () { return 'Dim blocked tiles: ' + (dimOn() ? 'on' : 'off'); }, onClick: function () { setDim(!dimOn()); } },
+      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(S ? S.layout : 'turtle')); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Mahjong Tiles: past games' }); } }
     ],
     rules: RULES
   });
+
+  // Test hook: clear the table (as if every pair was taken) or read the state
+  window.__mj = { get: function () { return S; }, clear: function () { if (!S || S.done) return; S.gone = S.gone.map(function () { return true; }); paint(true); finish(true); } };
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}

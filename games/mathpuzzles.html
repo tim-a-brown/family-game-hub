@@ -11,6 +11,7 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
 <style>
 body{overflow:hidden;}
 .mp{display:flex;flex-direction:column;height:calc(100dvh - var(--safe-t) - 58px);max-width:560px;margin:0 auto;padding:0 10px calc(var(--safe-b) + 8px + var(--corner-y));gap:8px;}
@@ -343,6 +344,7 @@ var GENERATORS={
     onNew: function () { showSetup(); },
     menu: [
       { icon: 'check', label: 'Finish and save this round', onClick: function () { if (S && !S.done) finish(); } },
+      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(S ? S.level : 'g34', S && S.mode === 'timed' ? S.secs : 60)); } },
       { icon: 'history', label: 'Past rounds', onClick: function () { Kit.history(KEY, { title: 'Math Puzzles: past rounds' }); } }
     ],
     rules:
@@ -365,6 +367,17 @@ var GENERATORS={
     Kit.resume.set(lvName(S.level) + ' · ' + MODES[S.mode] + (S.mode === 'timed' ? ' · ' + S.left + 's left' : ' · ' + S.score + ' pts'));
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  // High score boards: Beat the clock, per level and clock length, points (higher is better, linked players included)
+  function hiKey(level, secs) { return 'mathpuzzles_' + level + '_' + (secs || 60); }
+  var hiBest = null;
+  function boardBest() {
+    if (hiBest == null) {
+      var b = ArcadeHi.top(hiKey(S.level, S.secs)) || 0;
+      try { GameHistory.load(KEY).forEach(function (e) { if (e && e.level === S.level && e.modeId === 'timed' && e.secs === S.secs && e.score > b) b = e.score; }); } catch (e) {}
+      hiBest = b;
+    }
+    return hiBest;
+  }
 
   function showSetup() {
     stopTick(); clearTimeout(nextT); busy = false; app.className = 'stage';
@@ -403,6 +416,7 @@ var GENERATORS={
     if (!GENERATORS[level]) level = 'g34';
     S = { mode: mode, level: level, secs: secs, left: secs, name: name, score: 0, streak: 0, best: 0, solved: 0, hints: 0, skips: 0,
       cur: null, tries: 0, hint: false, log: [], started: Date.now(), done: false, fast: 0, qStart: 0, types: {} };
+    hiBest = null;
     Kit.gameStart();
     nextPuzzle(true);
     Kit.sfx('pop');
@@ -553,17 +567,21 @@ var GENERATORS={
       detail: { log: S.log.slice(-40).map(function (l) { return { t: l.t, r: l.r, q: l.q, a: l.a, w: l.w, s: l.s, h: l.h }; }), more: Math.max(0, S.log.length - 40), fast: S.fast || 0 }
     });
     clearSave(); paintStrip();
-    var acc = n ? Math.round(100 * right / n) : 0;
-    var w = Kit.win({
-      icon: acc >= 80 ? 'trophy' : 'star',
-      title: acc === 100 && n >= 5 ? 'Perfect!' : acc >= 80 ? 'Great work!' : acc >= 50 ? 'Nice going!' : 'Good practice!',
-      sub: nm + ' · ' + lvName(S.level) + ' · ' + MODES[S.mode] + (prevBest >= 0 && S.score > prevBest ? ' · new best!' : ''),
-      again: function () { newGame(S.mode, S.level, S.secs, S.name); }, againLabel: 'Go again',
-      extra: [{ label: 'Change level or mode', onClick: showSetup }]
-    });
-    void w;
-    var card = document.querySelector('.k-win .card .sub');
-    if (card) card.after(el('div', { class: 'res', html: '<div><b>' + S.score + '</b><span>Points</span></div><div><b>' + right + '/' + n + '</b><span>Right</span></div><div><b>' + S.best + '</b><span>Streak</span></div>' }));
+    var acc = n ? Math.round(100 * right / n) : 0, timed = S.mode === 'timed', key = hiKey(S.level, S.secs);
+    function showWin() {
+      var w = Kit.win({
+        icon: acc >= 80 ? 'trophy' : 'star',
+        title: acc === 100 && n >= 5 ? 'Perfect!' : acc >= 80 ? 'Great work!' : acc >= 50 ? 'Nice going!' : 'Good practice!',
+        sub: nm + ' · ' + lvName(S.level) + ' · ' + MODES[S.mode] + (prevBest >= 0 && S.score > prevBest ? ' · new best!' : ''),
+        again: function () { newGame(S.mode, S.level, S.secs, S.name); }, againLabel: 'Go again',
+        extra: (timed ? [{ label: 'High scores', onClick: function () { ArcadeHi.show(key); showSetup(); } }] : []).concat([{ label: 'Change level or mode', onClick: showSetup }])
+      });
+      void w;
+      var card = document.querySelector('.k-win .card .sub');
+      if (card) card.after(el('div', { class: 'res', html: '<div><b>' + S.score + '</b><span>Points</span></div><div><b>' + right + '/' + n + '</b><span>Right</span></div><div><b>' + S.best + '</b><span>Streak</span></div>' }));
+    }
+    // Beat the clock rounds go on the level's high score board
+    ArcadeHi.check(timed ? key : '', timed ? S.score : 0, function () { hiBest = null; paintStrip(); showWin(); });
     void tried;
   }
 
@@ -641,6 +659,7 @@ var GENERATORS={
     if (S.mode === 'timed') stripEl.appendChild(el('span', { class: 'pill clock' + (S.left <= 10 ? ' low' : ''), text: Math.floor(Math.max(0, S.left) / 60) + ':' + ('0' + Math.max(0, S.left) % 60).slice(-2) }));
     stripEl.appendChild(el('span', { class: 'pill streak' + (S.streak >= 3 ? ' hot' : ''), 'aria-label': 'Streak', html: Kit.icon('flame') + '<span>' + S.streak + '</span>' }));
     stripEl.appendChild(el('span', { class: 'pill pts', 'aria-label': 'Score', html: Kit.icon('star') + '<span>' + S.score + '</span>' }));
+    if (S.mode === 'timed') stripEl.appendChild(el('span', { class: 'pill best', 'aria-label': 'Best score', html: Kit.icon('trophy') + '<span>' + Math.max(boardBest(), S.score) + '</span>' }));
     if (S.mode === 'ten') stripEl.appendChild(el('span', { class: 'pill', 'aria-label': 'Progress', html: Kit.icon('check') + '<span>' + (S.mode === 'ten' ? Math.min(10, S.log.length + (S.reveal ? 0 : 1)) + '/10' : S.solved) + '</span>' }));
     if (S.mode === 'free') stripEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm finish', text: 'Finish', onclick: function () { finish(); } }));
     if (tbar) { tbar.style.width = Math.max(0, 100 * S.left / S.secs) + '%'; tbar.classList.toggle('low', S.left <= 10); }
@@ -655,6 +674,9 @@ var GENERATORS={
     trayEl.appendChild(skipBtn);
     hintBtn.disabled = !!S.reveal;
   }
+
+  // Test hook
+  window.__mp = { get: function () { return S; }, start: function (mode, level, secs) { newGame(mode, level, secs || 60, 'You'); }, finish: function () { finish(); } };
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}

@@ -72,8 +72,17 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
 .lc-p:not(.turn){filter:saturate(.8) brightness(.82);}
 /* kit.css has a generic .turn banner class (margins, flex); undo it so the active panel keeps its full size */
 .lc-p.turn{margin:0;display:block;min-height:0;}
-.lc-p.turn{box-shadow:0 0 0 2px rgba(255,236,170,.9), 0 0 26px rgba(232,193,106,.75), 0 10px 28px rgba(0,0,0,.5);animation:glowp 2.4s ease-in-out infinite;}
-@keyframes glowp{50%{box-shadow:0 0 0 2px rgba(255,236,170,.6), 0 0 12px rgba(232,193,106,.4), 0 10px 28px rgba(0,0,0,.5);}}
+/* Whose turn: the gold ring dims and the glow tightens, then back. Built from layers
+   that only change opacity (no repaint per frame): the ring at its dim strength stays
+   on the panel; the extra ring strength (.75 over .6 = .9) and wide glow fade out while
+   the tight glow fades in. */
+.lc-p.turn{box-shadow:0 0 0 2px rgba(255,236,170,.6), 0 10px 28px rgba(0,0,0,.5);transition:filter .3s, transform .3s var(--spring);}
+.lc-p.turn::before,.lc-p.turn::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;}
+.lc-p.turn::before{box-shadow:0 0 0 2px rgba(255,236,170,.75), 0 0 26px rgba(232,193,106,.75);animation:glowp 2.4s ease-in-out infinite;}
+.lc-p.turn::after{box-shadow:0 0 12px rgba(232,193,106,.4);opacity:0;animation:glowp-in 2.4s ease-in-out infinite;}
+@keyframes glowp{50%{opacity:0;}}
+@keyframes glowp-in{50%{opacity:1;}}
+@media (prefers-reduced-motion:reduce){.lc-p.turn::before,.lc-p.turn::after{animation-duration:.01ms!important;}}
 
 .lc-in{position:absolute;inset:4px;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;padding:10px 10px 8px;}
 .lc-p.rot .lc-in{transform:rotate(180deg);}
