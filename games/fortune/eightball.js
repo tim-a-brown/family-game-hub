@@ -78,7 +78,7 @@ function toView(v) { return [v[0], v[1] * CE - v[2] * SE, v[1] * SE + v[2] * CE]
 function create2D(host) {
   const cv = document.createElement('canvas'), g = cv.getContext('2d');
   host.insertBefore(cv, host.firstChild);
-  let W = 300, H = 400, top = 0, bottom = 0, dpr = 1, R = 100, frames = 0;
+  let W = 300, H = 400, top = 0, bottom = 0, dpr = 1, R = 100, RZ = 120, frames = 0;
   const off = document.createElement('canvas'); off.width = off.height = 256;   // the 8 decal
   (function () {
     const c = off.getContext('2d'); c.fillStyle = '#f0efea'; c.beginPath(); c.arc(128, 128, 126, 0, 7); c.fill();
@@ -87,7 +87,8 @@ function create2D(host) {
   function layout(w, h, t, b) {
     W = Math.max(2, w); H = Math.max(2, h); top = t || 0; bottom = b || 0; dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-    R = Math.max(40, Math.min(W * 0.31, (H - top - bottom) * 0.3, 200));
+    R = Math.max(40, Math.min(W * 0.31, (H - top - bottom) * 0.32, 200));
+    RZ = Math.max(R, Math.min(W * 0.38, (H - 16) * 0.45, 260));
   }
   // an ellipse-mapped cap on the ball: pole p, up u (view coords), half-angle a; fn draws in a unit disc
   function cap(cx, cy, r, p, u, a, fn) {
@@ -104,7 +105,7 @@ function create2D(host) {
     frames++;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     const fe = S.flip * S.flip * (3 - 2 * S.flip), roll = Math.sin(Math.PI * clamp(S.flip, 0, 1));
-    const r = R * (1 + 0.2 * fe) * (1 + (S.pz + 0.12 * roll) * 0.08);
+    const r = (R + (RZ - R) * fe) * (1 + (S.pz + 0.12 * roll) * 0.08);
     const cx0 = W / 2, cy0 = top + (H - top - bottom) / 2;
     const cx = cx0 + S.px * r, cy = cy0 - (S.lift + 0.04 * roll) * r * CE + (S.pz + 0.12 * roll) * r * SE;
     const fy = cy0 + r * CE;   // where the ball would touch the surface
@@ -502,7 +503,15 @@ function mount(stage, api) {
     R: () => R,
     redraw: () => { if (R) R.draw(S); }
   };
-  return { unmount };
+  return { unmount, get dead() { return dead; } };
+}
+// Leaving the page releases the GPU (pagehide); coming back from the back/forward cache builds it again.
+// The hub keeps one handle either way.
+function mountTeller(stage, api) {
+  let cur = mount(stage, api), gone = false;
+  function onShow(e) { if (e.persisted && !gone && cur.dead) cur = mount(stage, api); }
+  window.addEventListener('pageshow', onShow);
+  return { unmount() { if (gone) return; gone = true; window.removeEventListener('pageshow', onShow); cur.unmount(); } };
 }
 
 export default {
@@ -517,5 +526,5 @@ export default {
     '<li>When you stop, the ball rolls over and the answer floats up in its window.</li>' +
     '<li>Shake again for a new answer.</li></ul>' +
     '<p>There are 20 answers: ten say yes, five say maybe and five say no. Every shake is a fresh pick.</p>',
-  mount
+  mount: mountTeller
 };

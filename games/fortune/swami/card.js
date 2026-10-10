@@ -22,13 +22,17 @@ function wrap(g, text, maxW) {
   return lines;
 }
 
+// corner ornament: an L bracket ending in curls, with a diamond in the corner
 function flourish(g, x, y, s, rot) {
   g.save(); g.translate(x, y); g.rotate(rot);
   g.lineCap = 'round';
-  g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(s * 0.9, 0, s * 1.1, s * 0.5, s * 0.75, s * 0.7); g.bezierCurveTo(s * 0.5, s * 0.82, s * 0.36, s * 0.55, s * 0.55, s * 0.45); g.stroke();
-  g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(0, s * 0.9, s * 0.5, s * 1.1, s * 0.7, s * 0.75); g.bezierCurveTo(s * 0.82, s * 0.5, s * 0.55, s * 0.36, s * 0.45, s * 0.55); g.stroke();
-  g.beginPath(); g.moveTo(s * 0.12, s * 0.12); g.lineTo(s * 0.32, s * 0.2); g.lineTo(s * 0.12, s * 0.12); g.lineTo(s * 0.2, s * 0.32); g.stroke();
-  g.beginPath(); g.arc(s * 0.2, s * 0.2, s * 0.07, 0, TAU); g.fill();
+  g.beginPath(); g.moveTo(s * 0.18, s * 0.06); g.lineTo(s * 0.78, s * 0.06);
+  g.bezierCurveTo(s * 0.98, s * 0.06, s * 1.02, s * 0.3, s * 0.86, s * 0.32); g.bezierCurveTo(s * 0.76, s * 0.33, s * 0.74, s * 0.2, s * 0.84, s * 0.18); g.stroke();
+  g.beginPath(); g.moveTo(s * 0.06, s * 0.18); g.lineTo(s * 0.06, s * 0.78);
+  g.bezierCurveTo(s * 0.06, s * 0.98, s * 0.3, s * 1.02, s * 0.32, s * 0.86); g.bezierCurveTo(s * 0.33, s * 0.76, s * 0.2, s * 0.74, s * 0.18, s * 0.84); g.stroke();
+  g.beginPath(); g.moveTo(s * 0.2, s * 0.2); g.bezierCurveTo(s * 0.45, s * 0.2, s * 0.5, s * 0.42, s * 0.36, s * 0.44); g.bezierCurveTo(s * 0.28, s * 0.45, s * 0.27, s * 0.34, s * 0.34, s * 0.33); g.stroke();
+  g.beginPath(); g.moveTo(s * 0.2, s * 0.2); g.bezierCurveTo(s * 0.2, s * 0.45, s * 0.42, s * 0.5, s * 0.44, s * 0.36); g.stroke();
+  g.beginPath(); g.moveTo(s * 0.13, s * 0.04); g.lineTo(s * 0.22, s * 0.13); g.lineTo(s * 0.13, s * 0.22); g.lineTo(s * 0.04, s * 0.13); g.closePath(); g.fill();
   g.restore();
 }
 function diamondRule(g, cx, y, half) {
@@ -60,7 +64,7 @@ export function paintCard(c, px, f, F) {
   gr.addColorStop(0, 'rgba(160,110,40,0)'); gr.addColorStop(1, 'rgba(150,95,30,.32)');
   g.fillStyle = gr; g.fillRect(0, 0, W, H);
   const sx = 80 + R() * 340, sy = 120 + R() * 460;
-  gr = g.createRadialGradient(sx, sy, 10, sx, sy, 60); gr.addColorStop(0, 'rgba(170,120,50,0)'); gr.addColorStop(0.85, 'rgba(170,120,50,.07)'); gr.addColorStop(1, 'rgba(170,120,50,0)');
+  gr = g.createRadialGradient(sx, sy, 10, sx, sy, 60); gr.addColorStop(0, 'rgba(170,120,50,0)'); gr.addColorStop(0.85, 'rgba(170,120,50,.045)'); gr.addColorStop(1, 'rgba(170,120,50,0)');
   g.fillStyle = gr; g.fillRect(0, 0, W, H);
   g.restore();
 
@@ -73,7 +77,7 @@ export function paintCard(c, px, f, F) {
   rg.lineWidth = 1.6; rrect(rg, 33, 33, W - 66, H - 66, 6); rg.stroke();
   ng.lineWidth = 1.2; rrect(ng, 40, 40, W - 80, H - 80, 4); ng.stroke();
   ng.lineWidth = 2.4;
-  flourish(ng, 46, 46, 44, 0); flourish(ng, W - 46, 46, 44, Math.PI / 2); flourish(ng, W - 46, H - 46, 44, Math.PI); flourish(ng, 46, H - 46, 44, -Math.PI / 2);
+  flourish(ng, 46, 46, 50, 0); flourish(ng, W - 46, 46, 50, Math.PI / 2); flourish(ng, W - 46, H - 46, 50, Math.PI); flourish(ng, 46, H - 46, 50, -Math.PI / 2);
   // little dotted chain along the sides
   for (let y = 110; y < H - 110; y += 14) { ng.beginPath(); ng.arc(28, y, 1.6, 0, TAU); ng.arc(W - 28, y, 1.6, 0, TAU); ng.fill(); }
 
@@ -119,13 +123,14 @@ export function paintCard(c, px, f, F) {
   rg.lineWidth = 1.4; diamondRule(rg, W / 2, 576, 150);
   // lucky number and day
   ng.font = '700 13px ' + F.cinzel; if ('letterSpacing' in ng) ng.letterSpacing = '3px';
-  ng.fillText('LUCKY NUMBER', 160, 604); ng.fillText('LUCKY DAY', 340, 604);
+  ng.fillText('LUCKY NUMBER', 172, 597); ng.fillText('LUCKY DAY', 330, 597);
   if ('letterSpacing' in ng) ng.letterSpacing = '0px';
-  rg.font = '40px ' + F.bungee; rg.fillText(String(f.num), 160, 646);
-  rg.font = 'italic 30px ' + F.pagella; rg.fillText(f.day, 340, 642);
-  rg.fillRect(249, 590, 2, 58);
-  ng.font = '700 10px ' + F.cinzel; ng.textAlign = 'right'; ng.fillText('No. ' + String(f.no).padStart(4, '0'), W - 54, H - 50);
-  ng.textAlign = 'left'; ng.fillText('ONE TOKEN · ONE FORTUNE', 54, H - 50);
+  rg.font = '40px ' + F.bungee; rg.fillText(String(f.num), 172, 636);
+  rg.font = 'italic 30px ' + F.pagella; rg.fillText(f.day, 330, 632);
+  rg.fillRect(249, 584, 2, 44);
+  ng.font = '700 11px ' + F.cinzel; if ('letterSpacing' in ng) ng.letterSpacing = '2px';
+  ng.fillText('No. ' + String(f.no).padStart(4, '0'), W / 2, H - 49);
+  if ('letterSpacing' in ng) ng.letterSpacing = '0px';
 
   // wear: the ink skips in specks and thins in patches
   [rg, ng].forEach((x, li) => {

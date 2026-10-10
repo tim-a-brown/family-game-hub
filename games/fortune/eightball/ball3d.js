@@ -264,7 +264,7 @@ export function create(host, ANSWERS, post) {
     } catch (e) { composer = null; bloom = null; }
   }
 
-  let W = 300, H = 400, top = 0, bottom = 0, dpr = 1, maxDpr = 2, dist = 8, level = 0, slowT = 0, frames = 0, lastMs = 0, dead = false;
+  let zoomK = 0.17, W = 300, H = 400, top = 0, bottom = 0, dpr = 1, maxDpr = 2, dist = 8, level = 0, slowT = 0, frames = 0, lastMs = 0, dead = false;
   function layout(w, h, t, b) {
     W = Math.max(2, w); H = Math.max(2, h); top = t || 0; bottom = b || 0;
     dpr = Math.min(maxDpr, window.devicePixelRatio || 1);
@@ -272,7 +272,9 @@ export function create(host, ANSWERS, post) {
     if (composer) { composer.setPixelRatio(dpr); composer.setSize(W, H); }
     camera.aspect = W / H;
     // a believable size: about 60% of the width on a phone, less of the height on wide screens
-    const avail = H - top - bottom, rPx = Math.max(40, Math.min(W * 0.31, avail * 0.3, 200));
+    const avail = H - top - bottom, rPx = Math.max(40, Math.min(W * 0.31, avail * 0.32, 200));
+    // at the reveal the camera pushes in until the window reads: a little on a phone held upright, more on a short landscape screen
+    zoomK = 1 - rPx / Math.max(rPx, Math.min(W * 0.38, (H - 16) * 0.45, 260));
     dist = (H / 2) / (rPx * Math.tan(FOV / 2 * Math.PI / 180));
     // put the ball in the middle of the free area (between the top and bottom insets)
     const shift = (top + avail / 2) - H / 2;
@@ -288,7 +290,7 @@ export function create(host, ANSWERS, post) {
     const t0 = performance.now();
     const f = S.flip, fe = f * f * (3 - 2 * f), roll = Math.sin(Math.PI * Math.min(1, Math.max(0, f)));
     // camera: pushes in a little while the window is round, so the answer reads
-    const d = dist * (1 - 0.17 * Math.min(1, Math.max(0, fe)));
+    const d = dist * (1 - zoomK * Math.min(1, Math.max(0, fe)));
     camera.position.set(0, d * Math.sin(ELEV), d * Math.cos(ELEV)); camera.lookAt(0, 0, 0);
     // ball: rolls with its travel across the surface, plus the half-turn and a little tilt
     ball.position.set(S.px, S.lift + 0.04 * roll, S.pz + 0.12 * roll);

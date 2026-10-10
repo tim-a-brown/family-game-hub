@@ -593,7 +593,7 @@ export function createScene() {
   let S = null;
 
   function build(w, h, dpr) {
-    const s = Math.min(w / 190, h / 208);
+    const s = Math.min(w / 165, h / 208);
     const ox = (w - 200 * s) / 2, oy = h - 200 * s;
     const k = s * dpr;
     const B = [-ox / s, -oy / s, (w - ox) / s, (h - oy) / s];

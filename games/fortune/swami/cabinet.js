@@ -26,7 +26,7 @@ export function layout(w, h) {
     const CR = 0.34, FR = 0.07, SH = 0.04, LOW = 0.42, BASE = 0.07, F = CR + FR + SH + LOW + BASE;
     let W = Math.min(w - 2 * m, 680);
     let caseH = (h - 2 * m) - W * F;
-    const minH = 0.82 * 0.76 * W, maxH = 1.22 * 0.76 * W;
+    const minH = 0.82 * 0.76 * W, maxH = 1.0 * 0.76 * W;
     if (caseH < minH) { W = (h - 2 * m) / (F + 0.82 * 0.76); caseH = 0.82 * 0.76 * W; }
     caseH = Math.min(caseH, maxH);
     const H = W * F + caseH, x0 = (w - W) / 2, y0 = Math.max(m, (h - H) / 2);
@@ -38,8 +38,8 @@ export function layout(w, h) {
     L.low = { x: x0, y: L.shelf.y + L.shelf.h, w: W, h: LOW * W };
     L.base = { x: x0 - 0.025 * W, y: L.low.y + L.low.h, w: W * 1.05, h: BASE * W };
     L.coin = { cx: x0 + 0.27 * W, cy: L.low.y + 0.17 * W, w: 0.16 * W, h: 0.24 * W };
-    L.slot = { cx: x0 + 0.70 * W, y: L.low.y + 0.075 * W, w: 0.30 * W, h: 0.022 * W };
-    L.card = { w: 0.255 * W, hang: L.low.y + L.low.h - (L.low.y + 0.075 * W) - 0.035 * W };
+    L.slot = { cx: x0 + 0.70 * W, y: L.low.y + 0.115 * W, w: 0.30 * W, h: 0.02 * W, bh: 0.11 * W };
+    L.card = { w: 0.255 * W, hang: Math.min(L.low.h - 0.115 * W - 0.03 * W, 0.255 * W * 1.4 * 0.88) };
     L.token = { cx: x0 + 0.27 * W, cy: L.low.y + 0.345 * W, r: 0.042 * W };
     L.u = W / 100;
     // marquee bulbs: around the arch, then down both pillars
@@ -57,10 +57,10 @@ export function layout(w, h) {
       L.bulbs.push({ x: x0 + 0.94 * W, y, side: 1 });
     }
   } else {
-    let H = h - 2 * m, W = Math.min(w - 2 * m, H * 1.95, 1300);
+    let H = h - 2 * m, W = Math.min(w - 2 * Math.max(m, 54), H * 1.95, 1300);
     if (W < H * 1.5) H = W / 1.5;
     const x0 = (w - W) / 2, y0 = (h - H) / 2;
-    const CR = 0.21, BASE = 0.07, FR = 0.06;
+    const CR = 0.25, BASE = 0.06, FR = 0.06;
     L.W = W; L.H = H; L.x0 = x0; L.y0 = y0;
     L.crest = { x: x0, y: y0, w: W, h: CR * H };
     const bodyY = y0 + CR * H, bodyH = H - CR * H - BASE * H;
@@ -71,10 +71,11 @@ export function layout(w, h) {
     const pw = (W - ow) / 2 - FR * H * 0.6;          // pillar (side panel) width
     L.pillL = { x: x0, y: bodyY, w: pw, h: bodyH };
     L.pillR = { x: x0 + W - pw, y: bodyY, w: pw, h: bodyH };
-    const cw = Math.min(pw * 0.62, H * 0.3);
+    const cw = Math.min(pw * 0.5, H * 0.28);
     L.coin = { cx: x0 + pw * 0.5, cy: bodyY + bodyH * 0.36, w: Math.min(pw * 0.42, H * 0.17), h: Math.min(pw * 0.62, H * 0.25) };
-    L.slot = { cx: L.pillR.x + pw * 0.5, y: bodyY + bodyH * 0.14, w: cw * 1.12, h: H * 0.02 };
-    L.card = { w: cw, hang: bodyY + bodyH - (bodyY + bodyH * 0.14) - H * 0.04 };
+    const sy = bodyY + bodyH * 0.06 + H * 0.085;
+    L.slot = { cx: L.pillR.x + pw * 0.5, y: sy, w: cw * 1.12, h: H * 0.018, bh: H * 0.13 };
+    L.card = { w: cw, hang: Math.min(bodyY + bodyH - sy - H * 0.04, cw * 1.4 * 0.88) };
     L.token = { cx: x0 + pw * 0.5, cy: bodyY + bodyH * 0.8, r: Math.min(H * 0.055, pw * 0.16) };
     L.u = H / 60;
     const bs = Math.min(0.045 * H, 0.03 * W);
@@ -103,9 +104,10 @@ function crestPath(g, L, inset) {
     const sh = c.y + c.h * 0.32 + i * 0.6, top = c.y + i;
     g.moveTo(c.x + i, c.y + c.h);
     g.lineTo(c.x + i, sh);
-    g.lineTo(c.x + c.w * 0.26, sh);
-    g.bezierCurveTo(c.x + c.w * 0.34, sh, c.x + c.w * 0.36, top, c.x + c.w * 0.5, top);
-    g.bezierCurveTo(c.x + c.w * 0.64, top, c.x + c.w * 0.66, sh, c.x + c.w * 0.74, sh);
+    g.lineTo(c.x + c.w * 0.22, sh);
+    g.bezierCurveTo(c.x + c.w * 0.3, sh, c.x + c.w * 0.31, top, c.x + c.w * 0.4, top);
+    g.lineTo(c.x + c.w * 0.6, top);
+    g.bezierCurveTo(c.x + c.w * 0.69, top, c.x + c.w * 0.7, sh, c.x + c.w * 0.78, sh);
     g.lineTo(c.x + c.w - i, sh);
     g.lineTo(c.x + c.w - i, c.y + c.h);
   }
@@ -127,10 +129,11 @@ function archPts(L, inset) {
   } else {
     const sh = c0.y + c0.h * 0.32 + i * 0.6, top = c0.y + i;
     seg.push([[c0.x + i, c0.y + c0.h * 0.85], [c0.x + i, sh]]);
-    seg.push([[c0.x + i, sh], [c0.x + c0.w * 0.26, sh]]);
-    seg.push([[c0.x + c0.w * 0.26, sh], [c0.x + c0.w * 0.34, sh], [c0.x + c0.w * 0.36, top], [c0.x + c0.w * 0.5, top]]);
-    seg.push([[c0.x + c0.w * 0.5, top], [c0.x + c0.w * 0.64, top], [c0.x + c0.w * 0.66, sh], [c0.x + c0.w * 0.74, sh]]);
-    seg.push([[c0.x + c0.w * 0.74, sh], [c0.x + c0.w - i, sh]]);
+    seg.push([[c0.x + i, sh], [c0.x + c0.w * 0.22, sh]]);
+    seg.push([[c0.x + c0.w * 0.22, sh], [c0.x + c0.w * 0.3, sh], [c0.x + c0.w * 0.31, top], [c0.x + c0.w * 0.4, top]]);
+    seg.push([[c0.x + c0.w * 0.4, top], [c0.x + c0.w * 0.6, top]]);
+    seg.push([[c0.x + c0.w * 0.6, top], [c0.x + c0.w * 0.69, top], [c0.x + c0.w * 0.7, sh], [c0.x + c0.w * 0.78, sh]]);
+    seg.push([[c0.x + c0.w * 0.78, sh], [c0.x + c0.w - i, sh]]);
     seg.push([[c0.x + c0.w - i, sh], [c0.x + c0.w - i, c0.y + c0.h * 0.85]]);
   }
   void c;
@@ -228,20 +231,18 @@ function giltText(g, text, x, y, size, font, opt) {
   g.save();
   g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle';
   if (opt.spacing && 'letterSpacing' in g) g.letterSpacing = opt.spacing + 'px';
+  if (opt.maxW) { const m = g.measureText(text).width; if (m > opt.maxW) { g.translate(x, y); g.scale(opt.maxW / m, opt.maxW / m); g.translate(-x, -y); } }
   const depth = opt.depth == null ? size * 0.07 : opt.depth;
   for (let d = depth; d > 0; d -= Math.max(0.5, depth / 6)) { g.fillStyle = opt.drop || '#3a0408'; g.fillText(text, x + d * 0.5, y + d); }
   g.lineJoin = 'round'; g.strokeStyle = '#1a0a00'; g.lineWidth = size * 0.09; g.strokeText(text, x, y);
   g.fillStyle = lin(g, 0, y - size * 0.5, 0, y + size * 0.5, opt.fill || [[0, '#fff6c8'], [0.35, '#f3cd63'], [0.55, '#b9821f'], [0.7, '#e9bb4c'], [1, '#7a5110']]);
   g.fillText(text, x, y);
-  if (opt.shine !== false) {
-    g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(x - size * 10, y - size * 0.5, size * 20, size * 0.22);
-  }
   g.restore();
 }
-function engraved(g, text, x, y, size, font, color) {
+function engraved(g, text, x, y, size, font, color, maxW) {
   g.save(); g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle';
   if ('letterSpacing' in g) g.letterSpacing = (size * 0.12) + 'px';
+  if (maxW) { const m = g.measureText(text).width; if (m > maxW) { g.translate(x, y); g.scale(maxW / m, maxW / m); g.translate(-x, -y); } }
   g.fillStyle = 'rgba(255,255,255,.55)'; g.fillText(text, x, y + size * 0.06);
   g.fillStyle = color || 'rgba(30,22,10,.85)'; g.fillText(text, x, y);
   g.restore();
@@ -333,7 +334,7 @@ function tall(g, L, F) {
   // lettering
   const cx = x0 + W / 2, cy = crest.y;
   giltText(g, 'THE GREAT', cx, cy + 0.125 * W, 0.048 * W, '700 ' + (0.048 * W) + 'px ' + F.cinzel, { spacing: 0.012 * W, depth: 0.004 * W });
-  giltText(g, 'ZANDOR', cx, cy + 0.205 * W, 0.105 * W, (0.105 * W) + 'px ' + F.bungee, { spacing: 0.006 * W, depth: 0.009 * W });
+  giltText(g, 'ZANDOR', cx, cy + 0.205 * W, 0.105 * W, (0.105 * W) + 'px ' + F.bungee, { spacing: 0.006 * W, depth: 0.009 * W, maxW: 0.62 * W });
   // ribbon banner
   ribbon(g, cx, cy + 0.292 * W, 0.56 * W, 0.05 * W);
   giltText(g, 'HE SEES ALL', cx, cy + 0.293 * W, 0.034 * W, '700 ' + (0.034 * W) + 'px ' + F.cinzel, { spacing: 0.01 * W, depth: 0.002 * W, fill: [[0, '#fff8de'], [1, '#e8c77a']], shine: false });
@@ -389,16 +390,16 @@ function wideCab(g, L, F) {
   g.restore();
   crestPath(g, L, H * 0.008); g.strokeStyle = gold(g, 0, crest.y, 0, crest.y + crest.h); g.lineWidth = H * 0.012; g.stroke();
   // sign panel
-  const sp = { x: x0 + W * 0.22, y: crest.y + crest.h * 0.17, w: W * 0.56, h: crest.h * 0.76 };
+  const sp = { x: x0 + W * 0.3, y: crest.y + crest.h * 0.3, w: W * 0.4, h: crest.h * 0.62 };
   g.fillStyle = lin(g, 0, sp.y, 0, sp.y + sp.h, [[0, '#24161a'], [0.5, '#0b0507'], [1, '#160b0d']]);
   rr(g, sp.x, sp.y, sp.w, sp.h, sp.h * 0.2); g.fill();
   g.strokeStyle = gold(g, 0, sp.y, 0, sp.y + sp.h); g.lineWidth = H * 0.008; g.stroke();
   const cx = x0 + W / 2;
-  const fs = Math.min(crest.h * 0.42, sp.w / 9.5);
-  giltText(g, 'THE GREAT ZANDOR', cx, sp.y + sp.h * 0.4, fs, fs + 'px ' + F.bungee, { spacing: fs * 0.04, depth: fs * 0.08 });
+  const fs = Math.min(sp.h * 0.5, sp.w / 9);
+  giltText(g, 'THE GREAT ZANDOR', cx, sp.y + sp.h * 0.42, fs, fs + 'px ' + F.bungee, { spacing: fs * 0.04, depth: fs * 0.08, maxW: sp.w * 0.88 });
   giltText(g, '·  HE SEES ALL  ·', cx, sp.y + sp.h * 0.8, fs * 0.36, '700 ' + (fs * 0.36) + 'px ' + F.cinzel, { spacing: fs * 0.08, depth: 0, fill: [[0, '#fff8de'], [1, '#e8c77a']], shine: false });
-  scroll(g, sp.x - H * 0.02, crest.y + crest.h * 0.62, H * 0.028, -1, -0.2);
-  scroll(g, sp.x + sp.w + H * 0.02, crest.y + crest.h * 0.62, H * 0.028, 1, -0.2);
+  scroll(g, sp.x - H * 0.03, crest.y + crest.h * 0.7, H * 0.026, -1, -0.2);
+  scroll(g, sp.x + sp.w + H * 0.03, crest.y + crest.h * 0.7, H * 0.026, 1, -0.2);
   goldFrame(g, open, H * 0.026, true);
   coinPlate(g, L, F);
   cardSlot(g, L, F);
@@ -461,7 +462,7 @@ function coinPlate(g, L, F) {
   const fx = x + c.w * 0.16, fy = y + c.h * 0.08, fw = c.w * 0.68, fh = c.h * 0.84;
   rr(g, fx, fy, fw, fh, c.w * 0.06);
   g.fillStyle = lin(g, 0, fy, 0, fy + fh, [[0, '#a3162a'], [1, '#5a0712']]); g.fill();
-  engraved(g, 'INSERT', c.cx, fy + fh * 0.13, c.w * 0.13, '700 ' + (c.w * 0.13) + 'px ' + F.cinzel, '#f6d98a');
+  engraved(g, 'INSERT', c.cx, fy + fh * 0.13, c.w * 0.13, '700 ' + (c.w * 0.13) + 'px ' + F.cinzel, '#f6d98a', fw * 0.86);
   // slot (vertical, coin-edge shaped), recessed
   const sw = c.w * 0.1, sh = fh * 0.4, sx = c.cx - sw / 2, sy = fy + fh * 0.24;
   rr(g, sx - c.w * 0.05, sy - c.w * 0.05, sw + c.w * 0.1, sh + c.w * 0.1, c.w * 0.06);
@@ -472,32 +473,31 @@ function coinPlate(g, L, F) {
   const py = fy + fh * 0.82, ph = fh * 0.2;
   rr(g, fx + fw * 0.08, py - ph / 2, fw * 0.84, ph, ph * 0.2);
   g.fillStyle = lin(g, 0, py - ph / 2, 0, py + ph / 2, [[0, '#f3d888'], [1, '#a77a22']]); g.fill();
-  engraved(g, '1 TOKEN', c.cx, py + ph * 0.04, ph * 0.5, '700 ' + (ph * 0.5) + 'px ' + F.cinzel, '#3a1a04');
+  engraved(g, '1 TOKEN', c.cx, py + ph * 0.04, ph * 0.5, (ph * 0.5) + 'px ' + F.bungee, '#3a1a04', fw * 0.74);
   // screws
   const sr = c.w * 0.045;
   [[x + c.w * 0.09, y + c.w * 0.09], [x + c.w * 0.91, y + c.w * 0.09], [x + c.w * 0.09, y + c.h - c.w * 0.09], [x + c.w * 0.91, y + c.h - c.w * 0.09]].forEach(p => screw(g, p[0], p[1], sr));
 }
 function cardSlot(g, L, F) {
-  const s = L.slot, bw = s.w * 1.16, bh = Math.max(s.h * 4.4, s.w * 0.24), bx = s.cx - bw / 2, by = s.y - bh * 0.62;
-  // label above
-  const fs = Math.max(8, s.w * 0.085);
-  giltText(g, 'YOUR FORTUNE', s.cx, by - fs * 0.85, fs, '700 ' + fs + 'px ' + F.cinzel, { spacing: fs * 0.12, depth: fs * 0.05, shine: false });
-  // arrow pointing at the slot
+  const s = L.slot, bw = s.w * 1.18, bh = s.bh, bx = s.cx - bw / 2, by = s.y - bh * 0.66;
   // brass bezel
   g.save();
   g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = bh * 0.25; g.shadowOffsetY = bh * 0.08;
-  rr(g, bx, by, bw, bh, bh * 0.28);
-  g.fillStyle = lin(g, 0, by, 0, by + bh, [[0, '#fff1b8'], [0.3, '#d7a940'], [0.6, '#8a6118'], [1, '#e2b85a']]); g.fill();
+  rr(g, bx, by, bw, bh, bh * 0.22);
+  g.fillStyle = lin(g, 0, by, 0, by + bh, [[0, '#fff1b8'], [0.25, '#d7a940'], [0.55, '#a87a24'], [0.8, '#7a5414'], [1, '#e2b85a']]); g.fill();
   g.restore();
-  rr(g, bx, by, bw, bh, bh * 0.28); g.strokeStyle = 'rgba(50,30,5,.8)'; g.lineWidth = Math.max(0.6, bh * 0.04); g.stroke();
+  rr(g, bx, by, bw, bh, bh * 0.22); g.strokeStyle = 'rgba(50,30,5,.8)'; g.lineWidth = Math.max(0.6, bh * 0.03); g.stroke();
+  rr(g, bx + bh * 0.08, by + bh * 0.08, bw - bh * 0.16, bh * 0.84, bh * 0.16); g.strokeStyle = 'rgba(255,240,190,.45)'; g.lineWidth = Math.max(0.5, bh * 0.02); g.stroke();
+  const fs = bh * 0.2;
+  engraved(g, 'YOUR FORTUNE', s.cx, by + bh * 0.3, fs, '700 ' + fs + 'px ' + F.cinzel, '#3a1a04', bw * 0.62);
   // the slot mouth
   rr(g, s.cx - s.w / 2, s.y - s.h / 2, s.w, s.h, s.h / 2);
   g.fillStyle = '#050202'; g.fill();
   g.strokeStyle = 'rgba(255,240,200,.6)'; g.lineWidth = Math.max(0.5, s.h * 0.15);
   g.beginPath(); g.moveTo(s.cx - s.w / 2 + s.h / 2, s.y + s.h / 2 + g.lineWidth); g.lineTo(s.cx + s.w / 2 - s.h / 2, s.y + s.h / 2 + g.lineWidth); g.stroke();
   // rivets
-  const rr2 = bh * 0.08;
-  [[bx + bh * 0.25, by + bh * 0.3], [bx + bw - bh * 0.25, by + bh * 0.3]].forEach(p => screw(g, p[0], p[1], rr2));
+  const r2 = bh * 0.06;
+  [[bx + bh * 0.2, by + bh * 0.3], [bx + bw - bh * 0.2, by + bh * 0.3]].forEach(p => screw(g, p[0], p[1], r2));
 }
 function tokenDish(g, L) {
   const t = L.token, r = t.r * 1.5;

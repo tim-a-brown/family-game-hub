@@ -104,14 +104,14 @@ function cookieCanvas(seed) {
     const p = x / S * 2 - 1, q = y / S * 2 - 1, r = Math.min(1, Math.hypot(p, q));
     const m = fbm(n, x / 34, y / 34, 4), fine = fbm(n2, x / 6, y / 6, 2);
     // how baked: rim and tips most, a little along the fold
-    let bake = Math.pow(Math.max(0, (r - 0.55) / 0.45), 1.6) * 0.85 + Math.pow(Math.abs(p), 6) * 0.35 + (1 - Math.min(1, Math.abs(q) / 0.12)) * 0.08;
+    let bake = Math.pow(Math.max(0, (r - 0.6) / 0.4), 1.8) * 0.72 + Math.pow(Math.abs(p), 6) * 0.2 + (1 - Math.min(1, Math.abs(q) / 0.12)) * 0.08;
     bake += (m - 0.5) * 0.35;
     bake = Math.max(0, Math.min(1, bake));
     // pale gold -> amber -> toasted brown
     const t1 = Math.min(1, bake * 1.6), t2 = Math.max(0, bake * 1.6 - 0.6);
-    let R = 246 + (222 - 246) * t1 + (168 - 222) * t2;
-    let G = 205 + (160 - 205) * t1 + (98 - 160) * t2;
-    let Bc = 128 + (72 - 128) * t1 + (36 - 72) * t2;
+    let R = 240 + (214 - 240) * t1 + (150 - 214) * t2;
+    let G = 190 + (138 - 190) * t1 + (80 - 138) * t2;
+    let Bc = 104 + (56 - 104) * t1 + (28 - 56) * t2;
     const k = 0.94 + (fine - 0.5) * 0.12 + (m - 0.5) * 0.08;
     const i = (y * S + x) * 4;
     D[i] = Math.min(255, R * k); D[i + 1] = Math.min(255, G * k); D[i + 2] = Math.min(255, Bc * k); D[i + 3] = 255;
@@ -121,9 +121,9 @@ function cookieCanvas(seed) {
   g.putImageData(img, 0, 0); gb.putImageData(bi, 0, 0);
   const R = rng(seed * 7 + 3);
   // caramel speckles and pin-prick bubbles
-  for (let k = 0; k < 520; k++) {
-    const x = R() * S, y = R() * S, rad = 0.6 + R() * 1.6;
-    g.fillStyle = R() < 0.65 ? `rgba(150,82,24,${0.12 + R() * 0.22})` : `rgba(255,240,200,${0.25 + R() * 0.3})`;
+  for (let k = 0; k < 420; k++) {
+    const x = R() * S, y = R() * S, rad = 0.5 + R() * 1.3;
+    g.fillStyle = R() < 0.8 ? `rgba(150,82,24,${0.1 + R() * 0.2})` : `rgba(255,236,190,${0.12 + R() * 0.18})`;
     g.beginPath(); g.arc(x, y, rad, 0, 6.283); g.fill();
     gb.fillStyle = `rgba(${R() < 0.5 ? 60 : 220},${R() < 0.5 ? 60 : 220},${R() < 0.5 ? 60 : 220},.5)`;
     gb.beginPath(); gb.arc(x, y, rad, 0, 6.283); gb.fill();
@@ -355,7 +355,7 @@ function mount(stage, api) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 0.95;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const canvas = renderer.domElement;
@@ -374,18 +374,18 @@ function mount(stage, api) {
   const ELEV = 56 * Math.PI / 180;
 
   // Warm pendant light above the table, plus a soft fill
-  const hemi = new THREE.HemisphereLight('#ffeedd', '#2a120a', 0.55); scene.add(hemi);
+  const hemi = new THREE.HemisphereLight('#ffeedd', '#2a120a', 0.35); scene.add(hemi);
   const key = new THREE.SpotLight('#ffe6c4', 260, 0, 0.62, 0.85, 1.6);
   key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02; key.shadow.radius = 5;
   key.shadow.camera.near = 4; key.shadow.camera.far = 40;
   scene.add(key); scene.add(key.target);
-  const fill = new THREE.DirectionalLight('#ffd9b0', 0.45); fill.position.set(6, 5, 8); scene.add(fill);
+  const fill = new THREE.DirectionalLight('#ffd9b0', 0.25); fill.position.set(6, 5, 8); scene.add(fill);
 
   // The table
   const woodTex = keep(new THREE.CanvasTexture(woodCanvas()));
   woodTex.colorSpace = THREE.SRGBColorSpace; woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping;
   woodTex.repeat.set(5, 5); woodTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const tableMat = keep(new THREE.MeshPhysicalMaterial({ map: woodTex, roughness: 0.38, clearcoat: 0.7, clearcoatRoughness: 0.18, envMapIntensity: 0.6 }));
+  const tableMat = keep(new THREE.MeshPhysicalMaterial({ map: woodTex, roughness: 0.5, clearcoat: 0.3, clearcoatRoughness: 0.3, envMapIntensity: 0.06 }));
   const table = new THREE.Mesh(keep(new THREE.PlaneGeometry(60, 60)), tableMat);
   table.rotation.x = -Math.PI / 2; table.receiveShadow = true; scene.add(table);
 
@@ -410,16 +410,16 @@ function mount(stage, api) {
 
   function makeCookie(x, z, scale) {
     const R = rng(seedN++ * 2654435761);
-    const P = { B: 1.32 + R() * 0.28, A: 0.19 + R() * 0.07, lp: 0.66 + R() * 0.1, lq: 0.8, cf: 0.05 + R() * 0.05, bf: 0.13 + R() * 0.09, wf: 0.3 + R() * 0.1, H: 0.78 + R() * 0.12, T: 0.034 };
+    const P = { B: 1.2 + R() * 0.25, A: 0.25 + R() * 0.08, lp: 0.66 + R() * 0.1, lq: 0.8, cf: 0.05 + R() * 0.05, bf: 0.3 + R() * 0.12, wf: 0.3 + R() * 0.1, H: 0.86 + R() * 0.14, T: 0.036 };
     const F = cookieShape(P);
     const j1 = R() * 10, j2 = R() * 10;
     const jag = (w) => 0.045 * Math.sin(w * 7.3 + j1) + 0.022 * Math.sin(w * 19.7 + j2) + 0.01 * Math.sin(w * 41 + j1 * 2);
     const skin = skins[Math.floor(R() * skins.length)];
     // bake colour: some paler, some more golden
-    const base = new THREE.Color().setHSL(0.105 + (R() - 0.5) * 0.02, 0.55 + R() * 0.25, 0.86 + R() * 0.1);
+    const base = new THREE.Color().setHSL(0.1 + (R() - 0.5) * 0.025, 0.5 + R() * 0.3, 0.84 + R() * 0.12);
     const mat = new THREE.MeshPhysicalMaterial({ map: skin.map, bumpMap: skin.bump, bumpScale: 1.2, color: base.clone(),
-      roughness: 0.5, clearcoat: 0.22, clearcoatRoughness: 0.45, sheen: 0.4, sheenColor: new THREE.Color('#ffcf8a'), sheenRoughness: 0.6,
-      side: THREE.DoubleSide, envMapIntensity: 0.7 });
+      roughness: 0.52, clearcoat: 0.2, clearcoatRoughness: 0.45, sheen: 0.3, sheenColor: new THREE.Color('#e8a250'), sheenRoughness: 0.6,
+      side: THREE.DoubleSide, envMapIntensity: 0.32 });
     const body = new THREE.Group();
     const halves = [];
     for (const side of [-1, 1]) {
@@ -439,8 +439,9 @@ function mount(stage, api) {
     const th = sideS * 0.86 * P.B;
     slip.position.set((a.x + b.x) / 2 + Math.cos(th) * sideS * 0.12, (a.y + b.y) / 2 + Math.sin(th) * sideS * 0.12, 0.24 * P.H);
     slip.rotation.set(Math.PI / 2, 0, th + (R() - 0.5) * 0.2);
-    slip.scale.set(0.62, 0.62, 1);
+    slip.scale.set(0.42, 0.42, 1);
     slip.castShadow = true;
+    slip.visible = R() < 0.6;
     body.add(slip);
     // stand the cookie up (its fold height becomes "up") and centre it
     body.rotation.x = -Math.PI / 2;
@@ -451,7 +452,7 @@ function mount(stage, api) {
     body.position.sub(ctr);
     // resting pose: mostly showing the creased front to the room, some leaning back, a few face down
     const r = R();
-    const tilt = r < 0.55 ? 0.15 + R() * 0.75 : r < 0.85 ? -0.1 + R() * 0.3 : -0.9 + R() * 0.5;
+    const tilt = r < 0.6 ? 0.95 + R() * 0.45 : r < 0.85 ? 0.3 + R() * 0.5 : -0.1 + R() * 0.3;
     const yaw = Math.PI + (R() - 0.5) * 2.6 + (R() < 0.2 ? Math.PI : 0);
     pose.rotation.set(tilt, yaw, (R() - 0.5) * 0.35, 'YXZ');
     pose.updateMatrixWorld(true);
@@ -467,7 +468,7 @@ function mount(stage, api) {
     blob.renderOrder = 1;
     scene.add(blob); scene.add(rootG);
     const c = { root: rootG, pose, body, halves, slip, mat, blob, base, x, z, scale, restY: rootG.position.y,
-      restQ: pose.quaternion.clone(), blobS: blob.scale.clone(), wob: null, hop: null, drop: null, dim: 1, alive: true, P };
+      restQ: pose.quaternion.clone(), w: (bb.max.x - bb.min.x) * scale, blobS: blob.scale.clone(), wob: null, hop: null, drop: null, dim: 1, alive: true, P };
     halves.forEach((h) => { h.mesh.userData.cookie = c; pickables.push(h.mesh); });
     return c;
   }
@@ -485,14 +486,14 @@ function mount(stage, api) {
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   const tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   function fitCamera() {
-    const a = W / H, M = 5.5;
+    const a = W / H, M = 7.4;
     const d = M / (2 * tanV() * Math.min(a, 1.25));
     camera.aspect = a;
     camera.position.set(0, d * Math.sin(ELEV), d * Math.cos(ELEV));
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix(); camera.updateMatrixWorld();
     key.position.set(-0.22 * d, 1.25 * d, -0.1 * d); key.target.position.set(0, 0, -0.04 * d);
-    key.angle = 0.7; key.distance = 0; key.decay = 0; key.intensity = 3.1;
+    key.angle = 0.62; key.distance = 0; key.decay = 0; key.intensity = 2.7;
     key.shadow.camera.far = d * 3; key.shadow.camera.updateProjectionMatrix();
   }
   function onTable(x, y, out) {
@@ -524,9 +525,9 @@ function mount(stage, api) {
   }
 
   // ── Render loop: only while something moves ──────────────────────────
-  let raf = 0, last = 0, T = 0;
+  let raf = 0, last = 0, T = 0, hold = false;
   function kick() {
-    if (raf || dead || document.hidden) return;
+    if (raf || dead || document.hidden || hold) return;
     last = performance.now() - 16;
     raf = requestAnimationFrame(frame);
   }
@@ -580,11 +581,14 @@ function mount(stage, api) {
 
   // ── Dimming the rest of the table while a cookie is open ─────────────
   let dimNow = 1, dimTo = 1;
-  const tableBase = new THREE.Color('#ffffff');
+  // a dark veil hovering just above the table: everything under it dims, the lifted cookie rises above it
+  const veilMat = keep(new THREE.MeshBasicMaterial({ color: '#0c0402', transparent: true, opacity: 0, depthWrite: false }));
+  const veil = new THREE.Mesh(keep(new THREE.PlaneGeometry(200, 200)), veilMat);
+  veil.rotation.x = -Math.PI / 2; veil.position.y = 1.6; veil.renderOrder = 5; veil.visible = false;
+  scene.add(veil);
   function applyDim() {
-    for (const c of cookies) if (c !== openC) { c.mat.color.copy(c.base).multiplyScalar(dimNow); c.blob.material.opacity = Math.min(c.blob.material.opacity, 0.85); }
-    tableMat.color.copy(tableBase).multiplyScalar(0.35 + 0.65 * dimNow);
-    hemi.intensity = 0.55 * (0.5 + 0.5 * dimNow);
+    veilMat.opacity = (1 - dimNow) * 0.95;
+    veil.visible = veilMat.opacity > 0.004;
   }
 
   // ── Crumbs ───────────────────────────────────────────────────────────
@@ -593,7 +597,7 @@ function mount(stage, api) {
     const n = 14 + Math.floor(Math.random() * 6);
     for (let i = 0; i < n; i++) {
       const m = new THREE.Mesh(crumbGeo, c.mat);
-      const s = (0.022 + Math.random() * 0.045) * c.scale;
+      const s = (0.016 + Math.random() * 0.032) * c.scale;
       m.scale.set(s * (0.7 + Math.random() * 0.8), s * (0.5 + Math.random() * 0.6), s * (0.7 + Math.random() * 0.8));
       m.position.copy(origin).addScaledVector(right, (Math.random() - 0.5) * 0.25).add(new THREE.Vector3(0, (Math.random() - 0.3) * 0.5 * c.scale, 0));
       const side = Math.random() < 0.5 ? -1 : 1;
@@ -633,9 +637,9 @@ function mount(stage, api) {
   let state = 'idle', openC = null, O = null, slipBox = null, needLayout = false;
   const LIFT = 0.6, CRACK = 0.92, HANDOFF = 1.5, DONE = 2.35;
   function presentTarget(c) {
-    const a = W / H, tv = tanV(), cw = 1.55 * c.scale;
+    const a = W / H, tv = tanV(), cw = c.w;
     const portrait = a < 1;
-    const D = cw / Math.min((portrait ? 0.6 : 0.44) * 2 * tv * a, (portrait ? 0.36 : 0.4) * 2 * tv);
+    const D = cw / Math.min((portrait ? 0.56 : 0.4) * 2 * tv * a, (portrait ? 0.3 : 0.42) * 2 * tv);
     ndc.set(0, portrait ? 0.34 : 0.3); ray.setFromCamera(ndc, camera);
     const pos = ray.ray.origin.clone().addScaledVector(ray.ray.direction, D);
     // creased front toward you, tipped back a little so you see over the top
@@ -690,7 +694,7 @@ function mount(stage, api) {
       const u = clamp01((t - CRACK) / 0.55), eb = ease.outBack(u), drift = ease.outCubic(clamp01((t - CRACK - 0.3) / 1.2));
       c.halves.forEach((h, i) => {
         const side = i === 0 ? -1 : 1;
-        h.hinge.position.x = side * (0.16 * eb + 0.5 * drift);
+        h.hinge.position.x = side * (0.14 * eb + 0.22 * drift);
         h.hinge.position.z = -0.12 * drift;
         h.hinge.rotation.set(0, side * (0.3 * eb + 0.12 * drift), side * -0.55 * eb);
       });
@@ -923,6 +927,8 @@ function mount(stage, api) {
       wobble: (i) => wobble(cookies[i || 0], 0.11),
       fortune: () => (O ? O.fortune : null),
       busy: () => !!raf,
+      hold: (on) => { hold = !!on; if (hold && raf) { cancelAnimationFrame(raf); raf = 0; } else kick(); },
+      step: (sec) => { const n = Math.round(sec / 0.016); for (let i = 0; i < n; i++) { T += 0.016; update(0.016); } renderer.render(scene, camera); return state; },
       screen: (i) => { const c = cookies[i || 0]; const p = c.root.position.clone().project(camera); return { x: (p.x + 1) / 2 * W, y: (1 - p.y) / 2 * H }; }
     }
   };
