@@ -24,15 +24,8 @@
 .fc-pips i{display:grid;place-items:center;min-width:21px;height:21px;padding:0 2px;border-radius:6px;font-style:normal;font-size:.68rem;font-weight:900;background:rgba(0,0,0,.25);color:rgba(255,255,255,.6);}
 .fc-pips i.done{background:rgba(255,255,255,.15);color:rgba(255,255,255,.4);text-decoration:line-through;}
 .fc-pips i.cur{background:#ffd75e;color:#3a2600;box-shadow:0 0 0 2px #fff3;}
-.fc-form-h{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--r);background:rgba(255,200,61,.12);color:#ffe08a;font-weight:800;font-size:.92rem;}
-.fc-form-h .ico{width:20px;height:20px;flex:none;}
-.rrow .outb{flex:none;min-width:58px;height:40px;padding:0 8px;border:0;border-radius:12px;background:var(--surface-3);color:var(--text-2);font-weight:900;font-size:.82rem;}
-.rrow .outb.on{background:var(--green);color:#03290f;box-shadow:0 0 0 2px #fff3;}
-.rrow.isout .num{opacity:.45;}
-.rrow .num{width:64px;}
-.rrow .pm button{width:36px;}
-.rrow{gap:6px;padding:8px;}
-.rrow .nm{font-size:.95rem;}
+/* The open round: points left in each column, Out tapped for whoever went out */
+.spad tr.open td.isout .sp-step{opacity:.35;}
 </style>
 </head>
 <body>
@@ -61,8 +54,8 @@
       '<li>On your turn, take the top card of the stock or the discard pile, then discard one.</li>' +
       '<li><b>Books</b> are 3+ of the same number. <b>Runs</b> are 3+ in a row in the same suit.</li>' +
       '<li>When someone has every card in a book or run, they <b>go out</b>. Everyone else gets one more turn, then lays down what they can.</li></ul>' +
-      '<h3>Scoring a round</h3><p>Add up the cards each player has left over: <b>3 to 10</b> = their number, <b>J 11, Q 12, K 13</b>, <b>wild card 20</b>, <b>Joker 50</b>. Tap <b>Out</b> for the player who went out (they score 0). Anyone else who laid down everything also scores 0.</p>' +
-      '<p>Tap a round on the score sheet to fix it.</p>'
+      '<h3>Scoring a round</h3><p>Add up the cards each player has left over: <b>3 to 10</b> = their number, <b>J 11, Q 12, K 13</b>, <b>wild card 20</b>, <b>Joker 50</b>. The open row on the sheet is this round: set each player\'s points left (tap + and −, or type) and tap <b>Out</b> under the player who went out (they score 0). Anyone else who laid down everything also scores 0. Tap <b>Lock round</b> to write it in.</p>' +
+      '<p>Made a mistake? Tap a round on the sheet to change or delete it right there.</p>'
   });
 
   function showSetup() {
@@ -107,7 +100,8 @@
       key: KEY, title: 'Five Crowns', mode: 'Scorekeeper', lowWins: true, rounds: 11,
       sides: cfg.names.map(function (n) { return { name: n }; }),
       goal: 'Lowest total after 11 rounds wins',
-      form: form
+      entryRows: entryRows, onLock: lockRound,
+      lockLabel: function (ctx) { return 'Lock the ' + LABELS[ctx.round - 1] + ' round'; }
     });
     if (observer) observer.disconnect();
     observer = new MutationObserver(paintBanner);
@@ -115,61 +109,60 @@
     paintBanner();
   }
 
-  function form(ctx) {
-    var n = ctx.sides.length, k = ctx.round - 1, cards = k + 3;
-    var out = -1;
-    if (ctx.prev && ctx.prev.detail) ctx.prev.detail.forEach(function (d, i) { if (d === 'out') out = i; });
-    ctx.node.appendChild(el('div', { class: 'fc-form-h', html: Kit.icon('star') + '<span>' + Kit.esc(PLURAL[k]) + ' round · ' + cards + ' cards · ' + Kit.esc(PLURAL[k].toLowerCase()) + ' and Jokers wild</span>' }));
-    ctx.node.appendChild(el('div', { class: 'label', style: { margin: '6px 0 0' }, text: 'Points left in hand' }));
-    var rows = ctx.sides.map(function (s, i) {
-      var r = ctx.number(i, { min: 0, max: maxPts(cards), neg: false, value: ctx.prev ? ctx.prev.scores[i] : '' });
-      r.input.addEventListener('input', function () { if (out === i && r.value() !== 0) setOut(-1); check(); });
-      var b = el('button', { type: 'button', class: 'outb', text: 'Out', 'aria-pressed': 'false', 'aria-label': s.name + ' went out (0 points)',
-        onclick: function () { setOut(out === i ? -1 : i); Kit.sfx('tap'); Kit.haptic('light'); } });
-      r.appendChild(b); r.outBtn = b;
-      ctx.node.appendChild(r);
-      return r;
+  // ── The open round on the sheet: points left per player, Out under whoever went out ──
+  function entryRows(ctx) {
+    var n = ctx.sides.length, k = ctx.round - 1, cards = k + 3, st;
+    if (ctx.editing) {
+      st = { v: ctx.prev.scores.slice(), out: -1 };
+      if (ctx.prev.detail) ctx.prev.detail.forEach(function (d, i) { if (d === 'out') st.out = i; });
+    } else st = ctx.draft() || { v: ctx.sides.map(function () { return null; }), out: -1 };
+    var rowA = el('tr', { class: 'open' }, [el('th', { class: 'rn' }, [LABELS[k], el('small', { text: 'LEFT' })])]);
+    var rowB = el('tr', { class: 'sub' }, [el('th', { class: 'rn', text: 'OUT' })]);
+    var steps = [], tds = [], outs = [];
+    ctx.sides.forEach(function (s, i) {
+      steps[i] = Scorepad.step({ value: st.v[i], min: 0, max: maxPts(cards), label: s.name + ' points left', onChange: function (v) {
+        st.v[i] = v; if (st.out === i && v !== 0) st.out = -1; refresh();
+      } });
+      tds[i] = el('td', null, [steps[i]]);
+      rowA.appendChild(tds[i]);
+      outs[i] = Scorepad.tog('Out', { cls: 'good', aria: s.name + ' went out (0 points)', onClick: function () { setOut(st.out === i ? -1 : i); } });
+      rowB.appendChild(el('td', null, [outs[i]]));
     });
     function setOut(i) {
-      out = i;
-      rows.forEach(function (r, j) {
-        var on = j === out;
-        r.outBtn.classList.toggle('on', on); r.outBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-        r.classList.toggle('isout', on);
-        if (on) r.input.value = '0';
-      });
-      check();
+      st.out = i;
+      if (i >= 0) { st.v[i] = 0; steps[i].set(0); }
+      refresh();
     }
-    var note = el('div', { class: 'rnote' }); ctx.node.appendChild(note);
-    var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score the ' + LABELS[k] + ' round' });
-    ctx.node.appendChild(btn);
-    function vals() { return rows.map(function (r) { return Math.max(0, r.value()); }); }
-    function check() {
-      var v = vals(), msg = '', blank = rows.some(function (r, i) { return i !== out && String(r.input.value).trim() === ''; });
+    function vals() { return st.v.map(function (x) { return Math.max(0, Number(x) || 0); }); }
+    function refresh() {
+      var v = vals(), out = st.out, msg = '', bad = false, blank = st.v.some(function (x, i) { return i !== out && x == null; });
       var odd = v.map(function (x, i) { return x === 1 || x === 2 ? i : -1; }).filter(function (i) { return i >= 0; });
       var big = v.map(function (x, i) { return x > maxPts(cards) ? i : -1; }).filter(function (i) { return i >= 0; });
-      if (out < 0) msg = 'Tap Out next to the player who went out';
-      else if (blank) msg = 'Enter points for everyone (0 if they laid it all down)';
-      else if (odd.length) msg = ctx.sides[odd[0]].name + ': the lowest card is a 3, so 1 or 2 points is not possible';
-      else if (big.length) msg = ctx.sides[big[0]].name + ': that is more than ' + cards + ' cards can be worth';
-      note.className = 'rnote' + (msg ? ' bad' : '');
-      note.textContent = msg || ctx.sides[out].name + ' went out. Looks right!';
-      btn.disabled = !!msg;
-      return !msg;
+      outs.forEach(function (b, i) { b.set(i === out); tds[i].classList.toggle('isout', i === out); });
+      if (odd.length) { msg = ctx.sides[odd[0]].name + ': the lowest card is a 3, so 1 or 2 points is not possible.'; bad = true; }
+      else if (big.length) { msg = ctx.sides[big[0]].name + ': that is more than ' + cards + ' cards can be worth.'; bad = true; }
+      else if (out < 0) msg = 'Tap Out under the player who went out.';
+      else if (blank) msg = 'Enter points for everyone (0 if they laid it all down).';
+      var pv = v.slice(); if (out >= 0) pv[out] = 0;
+      ctx.pending(pv);
+      ctx.status(msg || ctx.sides[out].name + ' went out. Looks right!', msg ? (bad ? false : 'wait') : true);
+      if (!ctx.editing) ctx.draft(st);
     }
-    btn.addEventListener('click', function () {
-      if (!check()) return;
-      var v = vals(), hl = [], extra = { label: LABELS[k], detail: v.map(function (x, i) { return i === out ? 'out' : ''; }), highlights: hl };
-      v[out] = 0;
-      if (k === 10) hl.push(ctx.sides[out].name + ' went out first in the Kings round');
-      var mx = Math.max.apply(null, v), who = v.indexOf(mx);
-      if (mx >= 75) hl.push(ctx.sides[who].name + ' got caught holding ' + mx + ' points in ' + roundName(k + 1));
-      if (!ctx.prev && k === 10) summary(v, out).forEach(function (h) { hl.push(h); });
-      if (!ctx.prev) extra.callout = out >= 0 && n ? ctx.sides[out].name.length <= 8 ? ctx.sides[out].name + ' out!' : 'Out!' : '';
-      ctx.done(v, extra);
-    });
-    if (!ctx.prev) setTimeout(function () { try { rows[0].input.focus(); } catch (e) {} }, 350);
-    if (out >= 0) setOut(out); else check();
+    refresh();
+    ctx.entry = { st: st, vals: vals };
+    return [rowA, rowB];
+  }
+  function lockRound(ctx) {
+    var n = ctx.sides.length, k = ctx.round - 1, out = ctx.entry.st.out;
+    if (out < 0) return;
+    var v = ctx.entry.vals(), hl = [], extra = { label: LABELS[k], detail: v.map(function (x, i) { return i === out ? 'out' : ''; }), highlights: hl };
+    v[out] = 0;
+    if (k === 10) hl.push(ctx.sides[out].name + ' went out first in the Kings round');
+    var mx = Math.max.apply(null, v), who = v.indexOf(mx);
+    if (mx >= 75) hl.push(ctx.sides[who].name + ' got caught holding ' + mx + ' points in ' + roundName(k + 1));
+    if (!ctx.editing && k === 10) summary(v, out).forEach(function (h) { hl.push(h); });
+    if (!ctx.editing) extra.callout = out >= 0 && n ? ctx.sides[out].name.length <= 8 ? ctx.sides[out].name + ' out!' : 'Out!' : '';
+    ctx.done(v, extra);
   }
 
   // Extra highlights once the Kings round is entered

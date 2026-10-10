@@ -379,41 +379,64 @@ function halfGeometry(F, side, P, jag) {
 // one shared tile of creases (normal map) plus a frost map that makes the creases a little
 // milkier, rougher and more rainbow-tinted (it drives roughness, opacity and film thickness).
 
-// A tile of crumpled film. Each crease is a short ridge or valley with a sharp spine that
-// fades out along its length; long soft folds plus many small sharp ones. Returns the
-// normal map and the frost map (G channel: 0.25 = clear film, 1 = a hard crease).
+// A tile of crumpled film: the sheet breaks into small flat facets, each tipped a little its
+// own way, so light glints off them in patches with sharp crease lines between (two sizes of
+// jittered-grid Voronoi cells, a big and a small), plus a few long straight folds. Returns the
+// normal map and the frost map (G channel: about 0.22 for clear film, up to 1 on a hard crease).
 function crinkleCanvases(seed) {
-  const S = 512, R = rng(seed), Hf = new Float32Array(S * S), Fr = new Float32Array(S * S);
-  function crease(cx, cy, ang, half, w, k) {
-    const tx = Math.cos(ang), ty = Math.sin(ang), nx = -ty, ny = tx;
-    const ex = (Math.abs(tx) * half + Math.abs(nx) * w) * S, ey = (Math.abs(ty) * half + Math.abs(ny) * w) * S;
-    const x0 = Math.floor(cx * S - ex), x1 = Math.ceil(cx * S + ex), y0 = Math.floor(cy * S - ey), y1 = Math.ceil(cy * S + ey);
-    for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
-      const dx = px / S - cx, dy = py / S - cy;
-      const dt = dx * tx + dy * ty, dn = dx * nx + dy * ny;
-      const an = Math.abs(dn) / w, at = Math.abs(dt) / half;
-      if (an >= 1 || at >= 1) continue;
-      const win = at < 0.55 ? 1 : 1 - (at - 0.55) / 0.45 * ((at - 0.55) / 0.45) * (3 - 2 * (at - 0.55) / 0.45);
-      const i = (((py % S) + S) % S) * S + (((px % S) + S) % S);
-      Hf[i] += k * w * (1 - an) * (1 - an) * win;
-      Fr[i] += Math.abs(k) * Math.exp(-an * an * 60) * win;
+  const S = 512, R = rng(seed);
+  // a layer of facets: one jittered point per grid cell, each with a random tilt (slope)
+  function layer(G, tilt) {
+    const pts = [];
+    for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) {
+      const a = R() * 6.283, m = tilt * (0.25 + R() * 0.75);
+      pts.push({ x: (i + 0.1 + R() * 0.8) / G, y: (j + 0.1 + R() * 0.8) / G, sx: Math.cos(a) * m, sy: Math.sin(a) * m });
     }
+    return { G, pts };
   }
-  for (let i = 0; i < 26; i++) crease(R(), R(), R() * Math.PI, 0.18 + R() * 0.3, 0.05 + R() * 0.07, (R() < 0.5 ? -1 : 1) * (0.25 + R() * 0.35));
-  for (let i = 0; i < 150; i++) crease(R(), R(), R() * Math.PI, 0.03 + R() * 0.11, 0.008 + R() * 0.03, (R() < 0.5 ? -1 : 1) * (0.35 + R() * 0.75));
+  const L1 = layer(6, 0.3), L2 = layer(14, 0.16);
+  const out = { sx: 0, sy: 0, edge: 0 };
+  function facet(Lr, u, v, edgeW) {
+    const G = Lr.G, gi = Math.floor(u * G), gj = Math.floor(v * G);
+    let d1 = 9, d2 = 9, p1 = null, p2 = null;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      const ii = gi + di, jj = gj + dj, p = Lr.pts[((jj + G) % G) * G + ((ii + G) % G)];
+      const px = p.x + Math.floor(ii / G), py = p.y + Math.floor(jj / G);
+      const d = (u - px) * (u - px) + (v - py) * (v - py);
+      if (d < d1) { d2 = d1; p2 = p1; d1 = d; p1 = p; } else if (d < d2) { d2 = d; p2 = p; }
+    }
+    // distance to the crease between the two nearest facets, in tile units
+    const e = (Math.sqrt(d2) - Math.sqrt(d1)) / 2;
+    const w = Math.min(1, e / edgeW), k = 0.5 + 0.5 * w * w * (3 - 2 * w);
+    out.sx = p1.sx * k + p2.sx * (1 - k); out.sy = p1.sy * k + p2.sy * (1 - k);
+    out.edge = Math.exp(-e * e / (edgeW * edgeW * 0.5));
+    return out;
+  }
+  // long straight folds (tent-shaped, sharp spine), tiled
+  const folds = [];
+  for (let i = 0; i < 9; i++) { const a = R() * Math.PI; folds.push({ x: R(), y: R(), tx: Math.cos(a), ty: Math.sin(a), half: 0.25 + R() * 0.3, w: 0.03 + R() * 0.05, k: (R() < 0.5 ? -1 : 1) * (0.15 + R() * 0.2) }); }
   const n = noise2(seed + 5);
   const nc = document.createElement('canvas'); nc.width = nc.height = S;
   const fc = document.createElement('canvas'); fc.width = fc.height = S;
   const ni = nc.getContext('2d').createImageData(S, S), fi = fc.getContext('2d').createImageData(S, S);
-  const at = (x, y) => Hf[(((y % S) + S) % S) * S + (((x % S) + S) % S)];
-  const K = S * 1.6;   // slope strength
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-    const i = y * S + x, o = i * 4;
-    let gx = (at(x + 1, y) - at(x - 1, y)) * K / 2, gy = (at(x, y + 1) - at(x, y - 1)) * K / 2;
-    const l = Math.hypot(gx, gy, 1);
-    ni.data[o] = 128 + (-gx / l) * 127; ni.data[o + 1] = 128 + (gy / l) * 127; ni.data[o + 2] = 128 + (1 / l) * 127; ni.data[o + 3] = 255;
-    const haze = (fbm(n, x / 40, y / 40, 3) - 0.5) * 0.12;
-    const f = Math.max(0, Math.min(1, 0.24 + haze + Math.min(0.76, Fr[i] * 0.55)));
+    const u = (x + 0.5) / S, v = (y + 0.5) / S;
+    facet(L1, u, v, 2.2 / S); let sx = out.sx, sy = out.sy, fr = out.edge * 0.22;
+    facet(L2, u, v, 1.6 / S); sx += out.sx; sy += out.sy; fr += out.edge * 0.08;
+    for (const f of folds) {
+      let dx = u - f.x, dy = v - f.y; dx -= Math.round(dx); dy -= Math.round(dy);
+      const dt = dx * f.tx + dy * f.ty, dn = -dx * f.ty + dy * f.tx;
+      const an = Math.abs(dn) / f.w, at = Math.abs(dt) / f.half;
+      if (an >= 1 || at >= 1) continue;
+      const win = at < 0.6 ? 1 : 1 - (at - 0.6) / 0.4;
+      const sl = f.k * 2 * (1 - an) * Math.sign(dn) * win;   // d/dn of k*w*(1-|n|/w)^2 / w
+      sx += -f.ty * sl; sy += f.tx * sl;
+      fr += Math.abs(f.k) * 1.6 * Math.exp(-an * an * 40) * win;
+    }
+    const l = Math.hypot(sx, sy, 1), o = (y * S + x) * 4;
+    ni.data[o] = 128 + (-sx / l) * 127; ni.data[o + 1] = 128 + (sy / l) * 127; ni.data[o + 2] = 128 + (1 / l) * 127; ni.data[o + 3] = 255;
+    const haze = (fbm(n, x / 40, y / 40, 3) - 0.5) * 0.1;
+    const f = Math.max(0, Math.min(1, 0.22 + haze + Math.min(0.78, fr)));
     fi.data[o] = fi.data[o + 1] = fi.data[o + 2] = f * 255; fi.data[o + 3] = 255;
   }
   nc.getContext('2d').putImageData(ni, 0, 0); fc.getContext('2d').putImageData(fi, 0, 0);
@@ -429,15 +452,15 @@ const WR = { M: 64, ROWS: 46, TOOTH: 0.05, NT: 2.5, NB: 5 };
 function wrapperShape(R) {
   const V = {
     Lb: 0.42 + R() * 0.1,        // where the pillow starts to taper toward the seal
-    Wf: 1.1 + R() * 0.08,        // half-width of the flattened seal (wider than the pack)
+    Wf: 1.05 + R() * 0.07,        // half-width of the flattened seal (wider than the pack)
     hs: 0.36 + R() * 0.08,       // seal height
-    Lf: 0.22 + R() * 0.06,       // crimped fin length
+    Lf: 0.15 + R() * 0.04,       // crimped fin length
     droop: 0.04 + R() * 0.1, flop: (R() - 0.5) * 0.12,
     pl: [], cr: [], tear: []
   };
   // pleats where the film gathers into the seal, and soft crinkles everywhere (periodic around the tube)
   for (let i = 0; i < 4; i++) V.pl.push({ k: [7, 11, 16, 23][i] + Math.floor(R() * 3), a: [0.5, 0.32, 0.22, 0.12][i], ph: R() * 6.283, w: 2 + R() * 3, wp: R() * 6.283 });
-  for (let i = 0; i < 7; i++) V.cr.push({ fx: 2 + R() * 7, k: 1 + Math.floor(R() * 6), a: 0.004 + R() * 0.008, ph: R() * 6.283 });
+  for (let i = 0; i < 5; i++) V.cr.push({ fx: 1 + R() * 3, k: 1 + Math.floor(R() * 3), a: 0.002 + R() * 0.004, ph: R() * 6.283 });
   for (let j = 0; j < WR.M * 2; j++) V.tear.push((R() - 0.5) * 0.07 + 0.025 * Math.sin(j * 0.7 + V.Lb * 40));
   return V;
 }
@@ -547,10 +570,10 @@ function wrapTop(V, x, z) {
 function filmMaterial(normalTex, frostTex) {
   const m = new THREE.MeshPhysicalMaterial({
     color: 0xffffff, metalness: 0, roughness: 0.42, roughnessMap: frostTex,
-    normalMap: normalTex, normalScale: new THREE.Vector2(0.3, 0.3),
-    alphaMap: frostTex, opacity: 0.34, transparent: true, depthWrite: false, side: THREE.DoubleSide, premultipliedAlpha: true,
+    normalMap: normalTex, normalScale: new THREE.Vector2(1, 1),
+    alphaMap: frostTex, opacity: 0.2, transparent: true, depthWrite: false, side: THREE.DoubleSide, premultipliedAlpha: true,
     ior: 1.45, specularIntensity: 1, envMapIntensity: 0.4,
-    iridescence: 0.8, iridescenceIOR: 1.33, iridescenceThicknessRange: [220, 560], iridescenceThicknessMap: frostTex
+    iridescence: 0.55, iridescenceIOR: 1.33, iridescenceThicknessRange: [260, 700], iridescenceThicknessMap: frostTex
   });
   m.onBeforeCompile = (sh) => {
     sh.vertexShader = 'attribute vec2 film;\nvarying vec2 vFilm;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvFilm = film;');
@@ -559,7 +582,7 @@ function filmMaterial(normalTex, frostTex) {
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n\troughnessFactor = mix(roughnessFactor, 0.3, vFilm.x);')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 	{ // crimp ribs on the seals, as a bump
-		float rh = vFilm.x * 0.0035 * sin(vFilm.y);
+		float rh = vFilm.x * 0.0035 * sin(vFilm.y) * clamp(1.6 - fwidth(vFilm.y) * 0.5, 0.0, 1.0);
 		vec3 sp = - vViewPosition, sx = dFdx(sp), sy = dFdy(sp);
 		vec3 r1 = cross(sy, normal), r2 = cross(normal, sx);
 		float det = dot(sx, r1) * faceDirection;
@@ -852,6 +875,11 @@ function mount(stage, api) {
     pose.rotation.set(tilt, yaw, (R() - 0.5) * 0.35, 'YXZ');
     pose.updateMatrixWorld(true);
     const wrap = wrapCookie(R, pose, halves, slip);
+    // turn the cookie (in its pack) so the pack overlaps its neighbours' packs as little as possible
+    const turn = bestTurn(wrap.pk, x, z, scale);
+    pose.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), turn));
+    pose.updateMatrixWorld(true);
+    const pack = packAt(wrap.pk, x, z, scale, turn);
     rootG.scale.setScalar(scale);
     rootG.updateMatrixWorld(true);
     const bb2 = new THREE.Box3().setFromObject(pose, true);
@@ -864,7 +892,7 @@ function mount(stage, api) {
     blob.renderOrder = 1;
     scene.add(blob); scene.add(rootG);
     const c = { root: rootG, pose, body, halves, slip, mat, blob, base, x, z, scale, restY: rootG.position.y,
-      restQ: pose.quaternion.clone(), w: (bb.max.x - bb.min.x) * scale, blobS: blob.scale.clone(), wob: null, hop: null, drop: null, dim: 1, alive: true, P, wrap };
+      restQ: pose.quaternion.clone(), w: (bb.max.x - bb.min.x) * scale, blobS: blob.scale.clone(), wob: null, hop: null, drop: null, dim: 1, alive: true, P, wrap, pack };
     halves.forEach((h) => { h.mesh.userData.cookie = c; pickables.push(h.mesh); });
     wrap.meshes.forEach((m) => { m.userData.cookie = c; pickables.push(m); });
     return c;
@@ -891,7 +919,7 @@ function mount(stage, api) {
     }
     const W = WRAPS[Math.floor(R() * WRAPS.length)], V = W.V;
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-    const Sx = (x1 - x0) / 2 / 0.9 * (1 + R() * 0.05), Sz = (z1 - z0) / 2 / 0.84 * (1.03 + R() * 0.08);
+    const Sx = (x1 - x0) / 2 / 0.9 * (1 + R() * 0.05), Sz = (z1 - z0) / 2 / 0.9 * (1 + R() * 0.06);
     let Sy = (y1 - y0) * 1.05;
     for (let k = 0; k < pts.length; k += 3) {
       const top = Math.max(0.2, wrapTop(V, (pts[k] - cx) / Sx, (pts[k + 2] - cz) / Sz));
@@ -904,7 +932,45 @@ function mount(stage, api) {
     g.quaternion.copy(inv).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), phi));
     const meshes = W.g.map((geo) => { const m = new THREE.Mesh(geo, filmMat); m.scale.set(Sx, Sy, Sz); m.renderOrder = 2; g.add(m); return m; });
     pose.add(g);
-    return { g, meshes, S: new THREE.Vector3(Sx, Sy, Sz), on: true };
+    // footprint on the table (before the cookie's scale and place): centre, long-axis angle, half sizes
+    const pk = { cx: cx * cs + cz * sn, cz: -cx * sn + cz * cs, ang: phi, hl: Sx * (1 + V.Lf), hw: Sz * V.Wf };
+    return { g, meshes, S: new THREE.Vector3(Sx, Sy, Sz), pk, on: true };
+  }
+  function packAt(pk, x, z, scale, turn) {
+    const c = Math.cos(turn), s = Math.sin(turn);
+    return { x: x + (pk.cx * c + pk.cz * s) * scale, z: z + (-pk.cx * s + pk.cz * c) * scale, ang: pk.ang + turn, hl: pk.hl * scale, hw: pk.hw * scale };
+  }
+  // packs as capsules (a segment along the long axis, the half-width as radius)
+  function capsule(p) {
+    const dx = Math.cos(p.ang), dz = -Math.sin(p.ang), h = Math.max(0, p.hl - p.hw * 0.7);
+    return [p.x - dx * h, p.z - dz * h, p.x + dx * h, p.z + dz * h, p.hw];
+  }
+  function ptSeg(px, pz, ax, az, bx, bz) {
+    const vx = bx - ax, vz = bz - az, l2 = vx * vx + vz * vz;
+    const t = l2 ? Math.max(0, Math.min(1, ((px - ax) * vx + (pz - az) * vz) / l2)) : 0;
+    return Math.hypot(px - ax - vx * t, pz - az - vz * t);
+  }
+  function segSeg(a, b) {
+    const cr = (ax, az, bx, bz, cx, cz) => (bx - ax) * (cz - az) - (bz - az) * (cx - ax);
+    const d1 = cr(a[0], a[1], a[2], a[3], b[0], b[1]), d2 = cr(a[0], a[1], a[2], a[3], b[2], b[3]);
+    const d3 = cr(b[0], b[1], b[2], b[3], a[0], a[1]), d4 = cr(b[0], b[1], b[2], b[3], a[2], a[3]);
+    if (d1 * d2 < 0 && d3 * d4 < 0) return 0;
+    return Math.min(ptSeg(a[0], a[1], b[0], b[1], b[2], b[3]), ptSeg(a[2], a[3], b[0], b[1], b[2], b[3]),
+      ptSeg(b[0], b[1], a[0], a[1], a[2], a[3]), ptSeg(b[2], b[3], a[0], a[1], a[2], a[3]));
+  }
+  function overlap(p, q) { const a = capsule(p), b = capsule(q); return Math.max(0, a[4] + b[4] - segSeg(a, b)); }
+  function bestTurn(pk, x, z, scale) {
+    const near = cookies.filter((k) => k.alive && k.pack && Math.hypot(k.pack.x - x, k.pack.z - z) < (pk.hl * scale + k.pack.hl) * 1.1);
+    if (!near.length) return 0;
+    let best = 0, bp = 1e9;
+    for (let i = 0; i <= 20; i++) {
+      const t = (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.1;   // 0, -0.1, 0.1, -0.2 ... within +-1 rad
+      const p = packAt(pk, x, z, scale, t);
+      let pen = Math.abs(t) * 0.02;
+      for (const k of near) pen += overlap(p, k.pack);
+      if (pen < bp - 1e-6) { bp = pen; best = t; }
+    }
+    return best;
   }
   function freeCookie(c) {
     c.alive = false;
@@ -986,7 +1052,7 @@ function mount(stage, api) {
     const n = total(), sc = 1, pts = [];
     for (let k = 0; k < n; k++) { const p = freeSpot(pts, camTo, 40); if (p) pts.push(p); }
     pts.sort((a, b) => a.z - b.z);   // far ones first, so near ones draw over them
-    pts.forEach((p) => cookies.push(makeCookie(p.x, p.z, sc * (0.92 + Math.random() * 0.14))));
+    pts.forEach((p) => cookies.push(makeCookie(p.x, p.z, sc * (0.82 + Math.random() * 0.12))));
   }
   // "More cookies": one more drops onto the table each time (up to MAX); the camera eases back to make room.
   function addCookie() {
@@ -995,7 +1061,7 @@ function mount(stage, api) {
     camTo = distFor(total());
     const p = freeSpot(cookies.map((c) => ({ x: c.x, z: c.z })), camTo, 160);
     if (!p) return false;
-    const nc = makeCookie(p.x, p.z, 0.92 + Math.random() * 0.14);
+    const nc = makeCookie(p.x, p.z, 0.82 + Math.random() * 0.12);
     nc.drop = { t0: T };
     cookies.push(nc);
     for (const k of cookies) if (k !== nc) { const d = Math.hypot(k.x - p.x, k.z - p.z); if (d < 6) k.hop = { t0: T + 0.42 + d * 0.06 }; }
@@ -1451,6 +1517,7 @@ function mount(stage, api) {
       step: (sec) => { const n = Math.round(sec / 0.016); for (let i = 0; i < n; i++) { T += 0.016; update(0.016); } renderer.render(scene, camera); return state; },
       // average ms to draw one frame (GPU included), over n draws
       perf: (n) => { const gl = renderer.getContext(), px = new Uint8Array(4), sync = () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); n = n || 10; renderer.render(scene, camera); sync(); const a = performance.now(); for (let i = 0; i < n; i++) { renderer.render(scene, camera); sync(); } return +((performance.now() - a) / n).toFixed(2); },
+      crinkle: () => crk,
       calls: () => { renderer.render(scene, camera); return renderer.info.render.calls; },
       screen: (i) => { const c = cookies[i || 0]; const p = c.root.position.clone().project(camera); return { x: (p.x + 1) / 2 * W, y: (1 - p.y) / 2 * H }; }
     }

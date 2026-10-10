@@ -14,20 +14,12 @@
 <script src="../players.js"></script>
 <style>
 .spad th.rn{width:54px;letter-spacing:.02em;}
-.rform [hidden]{display:none !important;}
-.rform .seg{flex-wrap:wrap;}
-.rform .seg > button{min-height:44px;}
-.rform .label{margin:6px 0 -2px;}
-.rrow.off{opacity:.45;}
-.rrow .sub{display:block;font-size:.72rem;font-weight:700;color:var(--text-3);}
-.res{padding:12px;border-radius:var(--r);background:var(--w06);text-align:center;}
-.res .big{font-size:1.45rem;color:var(--yellow);line-height:1.15;}
-.res small{display:block;margin-top:2px;color:var(--text-2);font-weight:700;}
-.res.bad .big{color:var(--red);font-size:1.05rem;font-family:var(--font);font-weight:800;}
-.bon{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
-.bon th,.bon td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--w08);}
-.bon th:first-child,.bon td:first-child{text-align:left;}
-.bon td.big{font-weight:900;font-size:1.15rem;color:var(--yellow);}
+/* The open hand: who went out (Knock or Gin) in their column, then deadwood */
+.gr-out{display:grid;grid-template-columns:1fr 1fr;gap:3px;}
+.spad td.gr-span{text-align:center;padding:4px 6px 6px;}
+.gr-span .sp-tg{width:auto;display:inline-flex;padding:2px 14px;}
+.gr-bon{display:flex;flex-direction:column;gap:1px;font-family:var(--hand);font-size:.95rem;line-height:1.15;color:#6a6a80;padding:4px 0 2px;}
+.gr-bon b{font-weight:400;font-size:1.5rem;color:var(--ink);}
 </style>
 </head>
 <body>
@@ -55,7 +47,7 @@
       '<li><b>Undercut:</b> if the other player has the same or less deadwood, they score the difference <b>+ 25</b>.</li>' +
       '<li><b>Gin:</b> knock with no deadwood at all. You score their deadwood <b>+ 25</b> and they can\'t lay off.</li>' +
       '<li>If the stock is down to 2 cards and nobody has knocked, the hand is a draw.</li></ul>' +
-      '<h3>Using this scorepad</h3><p>After each hand, tap <b>Add round</b>, say how it ended and who went out, and enter each player\'s deadwood (the other player\'s count is <b>after</b> laying off). The points are worked out for you.</p>' +
+      '<h3>Using this scorepad</h3><p>The open rows on the sheet are this hand. In the column of whoever went out, tap <b>Knock</b> or <b>Gin</b>, then set each player\'s deadwood (the other player\'s count is <b>after</b> laying off). Undercuts are spotted for you. If the stock ran out, tap <b>No winner</b>. Tap <b>Lock hand</b> to write it in; tap a hand on the sheet to change or delete it right there.</p>' +
       '<h3>End of the game</h3><p>When someone reaches the target, each player gets a <b>25 line bonus</b> for every hand they won, and the winner gets a <b>100 game bonus</b>.</p>'
   });
 
@@ -71,7 +63,7 @@
     });
   }
 
-  function handRounds() { return pad ? pad.state().rounds.filter(function (r) { return r.label !== 'Bonus'; }) : []; }
+  function handRounds(rs) { rs = rs || (pad ? pad.state().rounds : []); return rs.filter(function (r) { return r.label !== 'Bonus'; }); }
   function handTotals(rounds) {
     var t = [0, 0];
     rounds.forEach(function (r) { if (r.label !== 'Bonus') r.scores.forEach(function (v, i) { t[i] += Number(v) || 0; }); });
@@ -86,132 +78,137 @@
   function startPad() {
     var cfg = JSON.parse(localStorage.getItem(SETUP));
     var target = cfg.target;
-    function reached() { var t = handTotals(handRounds()); return t[0] >= target || t[1] >= target; }
+    function reached(rs) { var t = handTotals(handRounds(rs)); return t[0] >= target || t[1] >= target; }
     pad = Scorepad(app, {
       key: KEY, title: 'Gin Rummy', mode: 'Scorekeeper', target: target,
       sides: cfg.names.map(function (n) { return { name: n }; }),
       goal: 'First to ' + target + ' · 25 per hand won · 100 game bonus',
       isOver: function (t, rounds) { return rounds.length > 0 && rounds[rounds.length - 1].label === 'Bonus'; },
       winner: function (t, rounds) { var h = handTotals(rounds); return h[0] === h[1] ? -1 : h[0] > h[1] ? 0 : 1; },
-      form: function (ctx) {
-        if ((ctx.prev && ctx.prev.label === 'Bonus') || (!ctx.prev && reached())) bonusForm(ctx);
-        else handForm(ctx);
-      }
+      entryRows: function (ctx) {
+        if ((ctx.editing && ctx.prev.label === 'Bonus') || (!ctx.editing && reached(ctx.rounds))) return bonusRows(ctx);
+        return handRows(ctx);
+      },
+      onLock: function (ctx) { ctx.entry.lock(); },
+      lockLabel: function (ctx) { return ctx.entry && ctx.entry.bonus ? 'Add bonuses and finish' : 'Lock hand ' + ctx.round; }
     });
 
-    // ── One hand: how it ended, who went out, deadwood counts ──
-    function handForm(ctx) {
-      var names = ctx.sides.map(function (s) { return s.name; });
-      var how = 'knock', out = -1, pre = null;
-      if (ctx.prev) {
-        var d = ctx.prev.detail || [], sc = ctx.prev.scores;
+    // ── One hand on the sheet: who went out and how, then deadwood ──
+    // st = {how: 'knock'|'gin'|'draw', out: -1|0|1, dw: [n|null, n|null]}
+    function handRows(ctx) {
+      var names = ctx.sides.map(function (s) { return s.name; }), st = null;
+      if (ctx.editing) {
+        var d = ctx.prev.detail || [], sc = ctx.prev.scores, how = 'knock', out = -1, pre = [null, null];
         var wi = sc[0] > 0 ? 0 : sc[1] > 0 ? 1 : -1;
         if (d[0] === 'draw' || wi < 0) how = 'draw';
         else if (d[wi] === 'gin') { how = 'gin'; out = wi; pre = [0, 0]; pre[1 - wi] = sc[wi] - 25; }
         else if (d[wi] === 'undercut') { how = 'knock'; out = 1 - wi; pre = [0, 0]; pre[out] = sc[wi] - 25; }
         else { how = 'knock'; out = wi; pre = [0, 0]; pre[1 - wi] = sc[wi]; }
-      }
-      ctx.node.appendChild(el('div', { class: 'label', text: 'How did the hand end?' }));
-      var segHow = el('div', { class: 'seg' });
-      [['knock', 'Knock'], ['gin', 'Gin'], ['draw', 'No winner']].forEach(function (c) {
-        segHow.appendChild(el('button', { type: 'button', text: c[1], class: how === c[0] ? 'on' : '', onclick: function () {
-          how = c[0]; Array.prototype.forEach.call(segHow.children, function (b) { b.classList.toggle('on', b.textContent === c[1]); }); Kit.sfx('tap'); update();
-        } }));
+        st = { how: how, out: out, dw: pre };
+      } else st = ctx.draft() || { how: 'knock', out: -1, dw: [null, null] };
+      var rowOut = el('tr', { class: 'open' }, [el('th', { class: 'rn' }, [String(ctx.round), el('small', { text: 'WENT OUT' })])]);
+      var rowDraw = el('tr', { class: 'sub' }, [el('th', { class: 'rn', text: '' })]);
+      var rowDw = el('tr', { class: 'open' }, [el('th', { class: 'rn' }, [el('small', { text: 'DEAD' + '­WOOD' })])]);
+      var kB = [], gB = [], steps = [], eqs = [];
+      names.forEach(function (nm, i) {
+        kB[i] = Scorepad.tog('Knock', { cls: 'gold', aria: nm + ' knocked', onClick: function () { if (st.how === 'knock' && st.out === i) st.out = -1; else { st.how = 'knock'; st.out = i; } refresh(); } });
+        gB[i] = Scorepad.tog('Gin', { cls: 'good', aria: nm + ' went gin', onClick: function () { if (st.how === 'gin' && st.out === i) st.out = -1; else { st.how = 'gin'; st.out = i; } refresh(); } });
+        rowOut.appendChild(el('td', null, [el('div', { class: 'gr-out' }, [kB[i], gB[i]])]));
+        steps[i] = Scorepad.step({ value: st.dw[i], min: 0, max: 100, label: nm + ' deadwood', onChange: function (v) { st.dw[i] = v; refresh(); } });
+        eqs[i] = el('small', { class: 'eq' });
+        rowDw.appendChild(el('td', null, [steps[i], eqs[i]]));
       });
-      ctx.node.appendChild(segHow);
-      var outLbl = el('div', { class: 'label', text: 'Who went out?' });
-      var segOut = el('div', { class: 'seg' });
-      names.forEach(function (n, i) {
-        segOut.appendChild(el('button', { type: 'button', text: n, class: i === out ? 'on' : '', onclick: function () {
-          out = i; Array.prototype.forEach.call(segOut.children, function (b, j) { b.classList.toggle('on', j === i); }); Kit.sfx('tap'); update();
-        } }));
-      });
-      ctx.node.appendChild(outLbl); ctx.node.appendChild(segOut);
-      var dwLbl = el('div', { class: 'label', text: 'Deadwood' });
-      ctx.node.appendChild(dwLbl);
-      var rows = names.map(function (n, i) {
-        var r = ctx.number(i, { min: 0, max: 100, neg: false, value: pre ? pre[i] : '' });
-        r.input.addEventListener('input', update);
-        r.querySelectorAll('.pm button').forEach(function (b) { b.addEventListener('click', function () { setTimeout(update, 0); }); });
-        ctx.node.appendChild(r); return r;
-      });
-      var res = el('div', { class: 'res' }); ctx.node.appendChild(res);
-      var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this hand' });
-      ctx.node.appendChild(btn);
-
+      var drawB = Scorepad.tog('No winner (stock ran out)', { aria: 'No winner: the stock ran out', onClick: function () { st.how = st.how === 'draw' ? 'knock' : 'draw'; refresh(); } });
+      rowDraw.appendChild(el('td', { class: 'gr-span', colspan: '2' }, [drawB]));
+      function val(i) { return Number(st.dw[i]) || 0; }
+      // Same scoring as always: knock = difference, undercut = difference + 25, gin = their deadwood + 25
       function calc() {
-        if (how === 'draw') return { ok: true, scores: [0, 0], detail: ['draw', 'draw'], big: 'No score', small: 'The stock ran out. Same dealer deals again.' };
-        if (out < 0) return { ok: false, msg: 'Pick who went out' };
-        var df = 1 - out, k = rows[out].value(), dv = rows[df].value();
+        var how = st.how, out = st.out;
+        if (how === 'draw') return { ok: true, scores: [0, 0], detail: ['draw', 'draw'], msg: 'No score. The same dealer deals again.' };
+        if (out < 0) return { ok: 'wait', msg: 'Tap Knock or Gin for whoever went out.' };
+        var df = 1 - out, k = val(out), dv = val(df);
         if (how === 'gin') k = 0;
-        if (k < 0 || dv < 0) return { ok: false, msg: 'Deadwood can\'t be negative' };
+        if ((how !== 'gin' && st.dw[out] == null) || st.dw[df] == null) return { ok: 'wait', msg: 'Set both players\' deadwood' + (how === 'gin' ? '.' : ' (' + names[df] + '\'s after laying off).') };
+        if (k < 0 || dv < 0) return { ok: false, msg: 'Deadwood can\'t be negative.' };
         if (how === 'knock' && k > 10) return { ok: false, msg: 'A knock needs 10 or less deadwood. ' + names[out] + ' has ' + k + '.' };
-        if (how === 'knock' && k === 0) return { ok: false, msg: 'No deadwood is gin. Pick Gin above.' };
-        if (dv > 98) return { ok: false, msg: 'That deadwood count is too high' };
+        if (how === 'knock' && k === 0) return { ok: false, msg: 'No deadwood is gin. Tap Gin instead.' };
+        if (dv > 98) return { ok: false, msg: 'That deadwood count is too high.' };
         var s = [0, 0], det = ['', ''], hl = [];
         if (how === 'gin') {
           s[out] = dv + 25; det[out] = 'gin';
           hl.push(names[out] + ' went gin in hand ' + ctx.round + (dv >= 30 ? ', catching ' + names[df] + ' with ' + dv + ' deadwood' : ''));
-          return { ok: true, scores: s, detail: det, hl: hl, gin: true, big: names[out] + ' scores ' + s[out], small: dv + ' deadwood + 25 gin bonus' };
+          return { ok: true, scores: s, detail: det, hl: hl, gin: true, msg: 'Gin! ' + names[out] + ' scores ' + s[out] + ' (' + dv + ' + 25).' };
         }
         if (dv <= k) {
           s[df] = k - dv + 25; det[df] = 'undercut';
           hl.push('Undercut! ' + names[df] + ' caught ' + names[out] + ' knocking with ' + k + ' in hand ' + ctx.round);
-          return { ok: true, scores: s, detail: det, hl: hl, under: true, big: 'Undercut! ' + names[df] + ' scores ' + s[df], small: k + ' − ' + dv + ' + 25 undercut bonus' };
+          return { ok: true, scores: s, detail: det, hl: hl, under: true, msg: 'Undercut! ' + names[df] + ' scores ' + s[df] + ' (' + k + ' − ' + dv + ' + 25).' };
         }
         s[out] = dv - k; det[out] = 'knock';
         if (k <= 2) hl.push(names[out] + ' knocked with just ' + k + ' deadwood in hand ' + ctx.round);
-        return { ok: true, scores: s, detail: det, hl: hl, big: names[out] + ' scores ' + s[out], small: dv + ' − ' + k + ' deadwood' };
+        return { ok: true, scores: s, detail: det, hl: hl, msg: names[out] + ' scores ' + s[out] + ' (' + dv + ' − ' + k + ').' };
       }
-      function update() {
-        var draw = how === 'draw';
-        outLbl.hidden = draw; segOut.hidden = draw; dwLbl.hidden = draw;
-        rows.forEach(function (r, i) {
-          r.hidden = draw;
-          var ginK = how === 'gin' && i === out;
-          r.classList.toggle('off', ginK); r.input.disabled = ginK;
-          if (ginK) r.input.value = '0';
-          var nmEl = r.querySelector('.nm');
-          nmEl.innerHTML = Kit.esc(names[i]) + (out < 0 ? '' : '<span class="sub">' + (i === out ? (how === 'gin' ? 'went gin' : 'knocked') : how === 'gin' ? 'all cards count' : 'after laying off') + '</span>');
+      function refresh() {
+        var draw = st.how === 'draw';
+        names.forEach(function (nm, i) {
+          kB[i].set(!draw && st.how === 'knock' && st.out === i); gB[i].set(!draw && st.how === 'gin' && st.out === i);
+          kB[i].disabled = gB[i].disabled = draw;
+          var ginK = !draw && st.how === 'gin' && st.out === i;
+          if (ginK) { st.dw[i] = 0; steps[i].set(0); }
+          steps[i].disable(draw || ginK);
         });
+        drawB.set(draw);
         var c = calc();
-        res.className = 'res' + (c.ok ? '' : ' bad');
-        res.innerHTML = c.ok ? '<div class="big display">' + Kit.esc(c.big) + '</div><small>' + Kit.esc(c.small) + '</small>' : '<div class="big">' + Kit.esc(c.msg) + '</div>';
-        btn.disabled = !c.ok;
+        eqs.forEach(function (e, i) {
+          e.className = 'eq';
+          if (draw) { e.textContent = ''; return; }
+          if (st.out >= 0) e.textContent = i === st.out ? (st.how === 'gin' ? 'went gin' : 'knocked') : st.how === 'gin' ? 'all count' : 'after lay-off';
+          if (c.ok === true && c.scores[i] > 0) { e.textContent = '+' + c.scores[i] + (c.under ? ' undercut' : c.gin ? ' gin' : ''); e.classList.add('good'); }
+        });
+        ctx.pending(c.ok === true ? c.scores : null);
+        ctx.status(c.msg, c.ok);
+        if (!ctx.editing) ctx.draft(st);
         return c;
       }
-      btn.addEventListener('click', function () {
-        var c = update(); if (!c.ok) return;
-        var extra = { detail: c.detail, highlights: ctx.prev ? [] : (c.hl || []) };
-        if (c.gin) { extra.callout = 'Gin!'; Kit.confetti({ count: 80 }); }
+      refresh();
+      ctx.entry = { lock: function () {
+        var c = refresh(); if (c.ok !== true) return;
+        var extra = { detail: c.detail, highlights: ctx.editing ? [] : (c.hl || []) };
+        if (c.gin) { extra.callout = 'Gin!'; if (!ctx.editing) Kit.confetti({ count: 80 }); }
         else if (c.under) extra.callout = 'Undercut!';
+        var rs = ctx.rounds.slice(); rs.push({ scores: c.scores, label: '' });
         ctx.done(c.scores, extra);
-        if (!ctx.prev && reached()) setTimeout(function () { Kit.callout('Game!'); setTimeout(function () { pad.addRound(); }, 900); }, 500);
-      });
-      update();
+        // Someone reached the target: the bonus row opens on the sheet
+        if (!ctx.editing && reached(rs)) setTimeout(function () { Kit.callout('Game!'); }, extra.callout ? 1100 : 300);
+      } };
+      return [rowOut, rowDraw, rowDw];
     }
 
-    // ── End of game: line bonuses and game bonus ──
-    function bonusForm(ctx) {
-      var rounds = handRounds(), t = handTotals(rounds), w = wins(rounds), names = ctx.sides.map(function (s) { return s.name; });
+    // ── End of game: line bonuses and game bonus, written in as the last row ──
+    function bonusRows(ctx) {
+      var rounds = handRounds(ctx.rounds), t = handTotals(rounds), w = wins(rounds), names = ctx.sides.map(function (s) { return s.name; });
       var win = t[0] === t[1] ? -1 : t[0] > t[1] ? 0 : 1;
       var bonus = [0, 1].map(function (i) { return w[i] * 25 + (i === win ? 100 : 0); });
-      ctx.node.appendChild(el('p', { class: 'muted', text: win >= 0 ? names[win] + ' reached ' + target + '. Time for the bonuses.' : 'Hand points are tied.' }));
-      var tb = el('table', { class: 'bon' });
-      tb.appendChild(el('tr', null, [el('th', { text: '' }), el('th', { text: 'Hands' }), el('th', { text: 'Line' }), el('th', { text: 'Game' }), el('th', { text: 'Final' })]));
+      var row = el('tr', { class: 'open' }, [el('th', { class: 'rn', text: 'BONUS' })]);
       names.forEach(function (n, i) {
-        tb.appendChild(el('tr', null, [el('td', { text: n }), el('td', { text: String(t[i]) }), el('td', { text: w[i] + ' × 25' }), el('td', { text: i === win ? '100' : '0' }), el('td', { class: 'big', text: String(t[i] + bonus[i]) })]));
+        row.appendChild(el('td', null, [el('div', { class: 'gr-bon' }, [
+          el('b', { text: '+' + bonus[i] }),
+          el('span', { text: w[i] + ' × 25 line' }),
+          el('span', { text: i === win ? '+ 100 game' : '' })
+        ])]));
       });
-      ctx.node.appendChild(tb);
-      ctx.node.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', html: Kit.icon('trophy') + '<span>Add bonuses and finish</span>', onclick: function () {
+      ctx.pending(bonus);
+      ctx.status(win >= 0 ? names[win] + ' reached ' + target + '. Add the bonuses to finish.' : 'Hand points are tied.', true);
+      ctx.entry = { bonus: true, lock: function () {
         var hl = [];
         if (win >= 0 && !w[1 - win]) hl.push(names[win] + ' won every hand: a shutout');
         var streak = 0, sp = -1, bestS = 0, bestP = -1;
         rounds.forEach(function (r) { var p = r.scores[0] > 0 ? 0 : r.scores[1] > 0 ? 1 : -1; if (p < 0) return; if (p === sp) streak++; else { sp = p; streak = 1; } if (streak > bestS) { bestS = streak; bestP = p; } });
         if (bestS >= 3) hl.push('Longest winning streak: ' + names[bestP] + ', ' + bestS + ' hands');
         if (win >= 0) hl.push(names[win] + ' won ' + w[win] + ' hands to ' + w[1 - win]);
-        ctx.done(bonus, { label: 'Bonus', detail: [w[0] + ' won', w[1] + ' won'], highlights: ctx.prev ? [] : hl });
-      } }));
+        ctx.done(bonus, { label: 'Bonus', detail: [w[0] + ' won', w[1] + ' won'], highlights: ctx.editing ? [] : hl });
+      } };
+      return [row];
     }
   }
 
