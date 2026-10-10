@@ -532,7 +532,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     }
   });
   document.addEventListener('keyup', function (e) { if (down[e.key]) { down[e.key] = false; keyDir(); } });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } else wake(); });
   window.addEventListener('blur', function () { pauseGame(); });
   window.addEventListener('pagehide', function () { save(); });
 
@@ -557,6 +557,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     paused = false; ovEl.classList.remove('show'); lastT = 0; acc = 0;
     if (AC && AC.state === 'suspended') try { AC.resume(); } catch (e) {}
     Kit.sfx('tap');
+    wake();
   }
 
   // ═══ Game flow ═══════════════════════════════════════════════════════════
@@ -632,7 +633,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // ═══ Loop ════════════════════════════════════════════════════════════════
   var raf = 0, lastT = 0, acc = 0, rt = 0;
   function loop(t) {
-    raf = requestAnimationFrame(loop);
+    raf = 0;
     var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0; lastT = t;
     if (view !== 'game' || !G) return;
     if (!paused) {
@@ -642,7 +643,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     }
     if (hudDirty) updateHud();
     draw();
+    // Battery: no frames while paused, once the match is over or with the page hidden (wake() restarts)
+    if (!paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
   }
+  function wake() { if (!raf && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
   function update(dt) {
     fx.parts = fx.parts.filter(function (p) { p.life -= dt; p.l += p.vl * dt; p.c += p.vc * dt; p.vl *= 0.985; p.vc *= 0.985; return p.life > 0; });
     fx.pops = fx.pops.filter(function (p) { p.life -= dt; return p.life > 0; });
@@ -827,7 +831,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     serve: doServe,
     score: function (a, b) { G.score = [a, b]; hudDirty = true; },
     orb: function (kind, l, c) { orb = { kind: kind, l: l, c: c, life: 10, t: 0 }; },
-    autopilot: function (on) { window.__pAuto = on; },
+    autopilot: function (on) { window.__pAuto = on; if (on && !autoT) autoT = setInterval(autoTick, 16); else if (!on && autoT) { clearInterval(autoT); autoT = 0; } },
     reset: function () { if (G) G.ended = true; clearSave(); showSetup(); },
     // Simulated human: looks every 0.2 s, guesses with some error, moves at a capped speed
     sim: function (sec, jit, hspeed) {
@@ -851,8 +855,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     toCourt: function (x, y) { return toCourt(x, y); },
     shotAt: function (l, c, vl, vc) { var b = balls[0]; if (!b) return; b.held = null; b.l = l; b.c = c; b.vl = vl; b.vc = vc; b.speed = Math.hypot(vl, vc); G.phase = 'play'; }
   };
-  // Test autopilot: human paddle(s) track the ball
-  setInterval(function () {
+  // Test autopilot: human paddle(s) track the ball (the timer only runs while it is on)
+  var autoT = 0;
+  function autoTick() {
     if (!window.__pAuto || !G || paused) return;
     [0, 1].forEach(function (p) {
       if (!human(p)) return;
@@ -860,7 +865,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (best) pads[p].tc = best.c + (Math.random() - 0.5) * 30;
     });
     if (G.phase === 'serve' && human(server()) && G.serveT > 0.4) doServe();
-  }, 16);
+  }
 
   // ═══ Boot ════════════════════════════════════════════════════════════════
   var saved = loadSave();

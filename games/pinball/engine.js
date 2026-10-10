@@ -22,6 +22,9 @@ const PI = Math.PI, TAU = PI * 2;
 export const fmt = n => Math.round(n).toLocaleString('en-US');
 let sharedAudio = null;
 export function audio() { return sharedAudio || (sharedAudio = new Audio()); }
+// Session caches: painted playfield canvases per table and the reflection environment per colour set, so a
+// table opened a second time (or two tables with the same lighting) skips the expensive parts.
+const PAINT_CACHE = new Map(), ENV_CACHE = new Map();
 
 // ── Lamp states ─────────────────────────────────────────────────────────────
 // A rules lamps() hook returns { id: state } every frame. state: 0/false off,
@@ -42,7 +45,7 @@ function lampValue(s, t, ph) {
 
 // ═══════════════════════════════════════════════════════════════════════════
 export function createGame(def, opts = {}) {
-  const headless = !!opts.headless, thumb = !!opts.thumb;
+  const headless = !!opts.headless, thumb = !!opts.thumb, hq = !!opts.hq;
   const marks = {}; let markT = performance.now();
   const mark = name => { const n = performance.now(); marks[name] = +(marks[name] || 0) + +(n - markT).toFixed(1); markT = n; };
   const W = def.W || 520, L = def.L || 1060;
@@ -64,7 +67,7 @@ export function createGame(def, opts = {}) {
     flashA: 0, flashC: '#fff', shakeA: 0, bonus: null, overT: 0, started: Date.now(), finished: false, pending: 0,
     stats: { stuck: 0, esc: 0, maxStill: 0, at: [], drains: 0, saves: 0 }, comps: {}, compList: [], lamps: {}, lampList: [], show: null,
     dark: 0, darkT: 0, lightning: 0, giLevel: 1, rules: def.rules || {}, input: { L: false, R: false, magna: false, fire: false },
-    plunger: null, trough: 0, paused: false, frameMs: [], quality: 2
+    plunger: null, trough: 0, paused: false, frameMs: [], quality: 2, scroller: { text: null, w: 0, off: 0, hold: 0, turn: 0, last: 0 }
   };
   const RL = G.rules;
   function R(name, ...a) { const f = RL[name]; return f ? f.call(RL, G, ...a) : undefined; }
@@ -156,7 +159,7 @@ export function createGame(def, opts = {}) {
 
   // ── Rendering ───────────────────────────────────────────────────────────
   let RC = null;
-  if (!headless) RC = buildScene(G, T, opts, mark);
+  if (!headless) RC = buildScene(G, T, Object.assign({ hq }, opts), mark);
   T.R = RC;
   mark('scene');
   G.marks = marks; G.mark = mark;
@@ -204,7 +207,10 @@ export function createGame(def, opts = {}) {
   G.later = function (t, fn) { G.laters.push({ t, fn }); };
   G.msg = function (text, sub, o = {}) {
     const m = { text, sub: sub || '', t: 0, dur: o.dur || 1.7, style: o.style || def.msgStyle || 'zoom', anim: o.anim || null };
-    if (o.now) { G.dq = [m]; G.dm = null; } else { G.dq.push(m); if (G.dq.length > 4) G.dq.splice(0, G.dq.length - 4); }
+    const same = x => x && x.text === m.text && x.sub === m.sub;
+    if (same(G.dm)) { G.dm.dur = Math.max(G.dm.dur, G.dm.t + m.dur); return; }   // showing already: keep it up, no restart
+    if (o.now) { G.dq = [m]; G.dm = null; }
+    else { if (G.dq.some(same)) return; G.dq.push(m); if (G.dq.length > 4) G.dq.splice(0, G.dq.length - 4); }
   };
   G.flash = function (col, a = 0.5) { G.flashC = col || '#fff'; G.flashA = Math.max(G.flashA, a); };
   G.shake = function (a = 0.6) { G.shakeA = Math.max(G.shakeA, a); };
@@ -574,7 +580,7 @@ export function createGame(def, opts = {}) {
     G.time = 0; R('init');
     for (const c of G.compList) if (c.reset) c.reset();
     if (RC) { markT = performance.now(); RC.renderer.compile(RC.scene, RC.camera); mark('compile'); RC.render(1 / 60); mark('firstFrame'); }
-    if (AU) { markT = performance.now(); AU.ctx(); mark('audioCtx'); }
+    if (AU) { markT = performance.now(); AU.ctx(); mark('audioCtx'); setTimeout(() => { if (!G.destroyed) AU.ensureBank(); }, 350); }
     G.sfx('start', { vol: 0.7 });
     G.msg(def.name.toUpperCase(), def.intro || 'BALL 1 OF ' + G.balls0, { style: 'zoom', dur: 2.4 });
     startBall();
@@ -663,12 +669,23 @@ export function createGame(def, opts = {}) {
     const right = G.mult > 1 ? 'SCORE x' + G.mult : G.bx > 1 ? 'BONUS ' + G.bx + 'x' : (def.short || '').toUpperCase();
     small(right, Wd - 1, 0, 'right');
     big(fmt(G.shownScore || 0), 15.5, 17);
-    let st = G.waitPlunge ? (Math.floor(t / 2.2) % 2 ? (R('status') || '') : (touchUI ? 'PULL DOWN ON THE RIGHT TO LAUNCH' : 'HOLD SPACE TO LAUNCH')) : (R('status') || '');
-    if (G.tiltM >= 1.9 && !G.tilted) st = 'CAREFUL: TILT WARNING';
-    st = String(st).toUpperCase();
-    const w = smallW(st);
-    if (w <= Wd - 2) small(st, cx, 25, 'center');
-    else { const off = (t * 32) % (w + 60); small(st, Wd - off, 25); small(st, Wd - off + w + 60, 25); }
+    // the status line: short texts hold, long ones scroll right-to-left all the way through, and the text only
+    // changes at the end of a pass (so a rotating status or the launch hint never jumps mid-scroll)
+    const S = G.scroller, hint = touchUI ? 'PULL DOWN ON THE RIGHT TO LAUNCH' : 'HOLD SPACE TO LAUNCH';
+    let want = String((G.tiltM >= 1.9 && !G.tilted) ? 'CAREFUL: TILT WARNING' : (G.waitPlunge && S.turn % 2 === 0) ? hint : (R('status') || '')).toUpperCase();
+    const dt = S.last ? Math.min(0.1, t - S.last) : 0; S.last = t;
+    if (S.text == null) { S.text = want; S.w = smallW(want); S.off = 0; S.hold = 0; }
+    const scrolling = S.w > Wd - 2;
+    if (scrolling) S.off += dt * 46; else S.hold += dt;
+    const done = scrolling ? S.off >= S.w + Wd + 24 : S.hold >= 2.6;
+    const urgent = /TILT/.test(want) && !/TILT/.test(S.text);
+    if ((done || urgent) && (want !== S.text || scrolling)) {
+      if (done && G.waitPlunge) S.turn++;
+      want = String((G.tiltM >= 1.9 && !G.tilted) ? 'CAREFUL: TILT WARNING' : (G.waitPlunge && S.turn % 2 === 0) ? hint : (R('status') || '')).toUpperCase();
+      S.text = want; S.w = smallW(want); S.off = 0; S.hold = 0;
+    } else if (done && !scrolling) S.hold = 0;
+    if (S.w <= Wd - 2) small(S.text, cx, 25, 'center');
+    else small(S.text, Math.round(Wd - S.off), 25);
   }
   G.dmdScene = dmdScene;
   return G;
@@ -703,10 +720,13 @@ function buildScene(G, T, opts, mark = () => {}) {
   const RC = { THREE, scene, root, mats, batch: new Batch(), theme, W, L, G, T, renderer, disposables: [], lights: {}, anim: [] };
   const tex = (c, o) => { const t = canvasTex(c, o); RC.disposables.push(t); return t; };
   RC.tex = tex;
-  const thumb = !!opts.thumb, quality = opts.quality != null ? opts.quality : 2;
+  const thumb = !!opts.thumb, hq = !!opts.hq, quality = opts.quality != null ? opts.quality : 2;
   RC.quality = quality;
 
   // ── Environment for reflections: a dark arcade with a few warm and coloured light panels ──
+  const envKey = [theme.env.join(), theme.room || ''].join('|');
+  let envRT = ENV_CACHE.get(envKey);
+  if (!envRT) {
   const pmrem = new THREE.PMREMGenerator(renderer);
   const envScene = new THREE.Scene();
   envScene.background = new THREE.Color('#050407');
@@ -716,35 +736,41 @@ function buildScene(G, T, opts, mark = () => {}) {
   panel(theme.env[0], 0.22, 3, 3, -5, 1.5, 0, PI / 2);
   panel(theme.env[1], 0.2, 3, 3, 5, 1.5, -1, -PI / 2);
   panel(theme.env[2] || theme.env[0], 0.18, 4, 1.2, 0, 1.2, -6);
-  const envRT = pmrem.fromScene(envScene, 0.04);
-  scene.environment = envRT.texture; RC.disposables.push(envRT);
+  envRT = pmrem.fromScene(envScene, 0.04);
   envScene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
   pmrem.dispose();
+  ENV_CACHE.set(envKey, envRT);
+  }
+  scene.environment = envRT.texture;
   mark('pmrem');
 
   // ── Playfield textures: art, insert glow colours, lamp ids ──
   const big = quality >= 2 && !thumb;
-  const k = thumb ? 1 : big ? 2.6 : 2;   // px per mm
+  const k = (thumb && !hq) ? 1 : big || hq ? 2.2 : 1.8;   // px per mm (2.2 is already above any phone's screen resolution)
   const cw = Math.round(W * k), ch = Math.round(L * k);
-  const artC = canvas(cw, ch), glowC = canvas(cw, ch), idC = canvas(Math.round(W * k / 2), Math.round(L * k / 2));
+  const paintKey = def.id + '@' + k;
+  const cached = PAINT_CACHE.get(paintKey);
+  const artC = cached ? cached.artC : canvas(cw, ch), glowC = cached ? cached.glowC : canvas(cw, ch), idC = cached ? cached.idC : canvas(Math.round(W * k / 2), Math.round(L * k / 2));
   const setup = (c, kk) => { const g = c.getContext('2d'); g.setTransform(kk, 0, 0, -kk, 0, L * kk); return g; };
   const ag = setup(artC, k), gg = setup(glowC, k), ig = setup(idC, k / 2);
   const P = painter(ag, W, L, k);
   P.theme = theme; P.T = T; P.G = G;
+  if (!cached) {
   // base
   ag.fillStyle = theme.playfield || '#2a2230'; ag.fillRect(0, 0, W, L);
   if (def.art && def.art.playfield) def.art.playfield(P);
   T.arts.filter(a => a.layer === 'under').forEach(a => a.fn(P));
-  // contact shadows (baked AO) under walls, posts and toys
-  ag.save(); ag.globalCompositeOperation = 'multiply';
-  for (const s of T.aos) {
-    ag.shadowColor = 'rgba(0,0,0,' + (s.a || 0.5) + ')'; ag.shadowBlur = (s.blur || 7) * k; ag.shadowOffsetX = 2 * k; ag.shadowOffsetY = 3 * k;
-    ag.fillStyle = 'rgba(0,0,0,' + ((s.a || 0.5) * 0.6) + ')'; ag.strokeStyle = ag.fillStyle;
-    if (s.kind === 'line') { ag.lineWidth = s.w; ag.lineCap = 'round'; ag.lineJoin = 'round'; P.line(s.pts).stroke(); }
-    else if (s.kind === 'dot') { P.circle(s.x, s.y, s.r).fill(); }
-    else if (s.kind === 'poly') { P.poly(s.pts).fill(); }
-  }
-  ag.restore();
+  // contact shadows (baked AO) under walls, posts and toys: painted on a quarter-resolution layer (the blur
+  // is what costs; it looks the same soft) and multiplied over the art
+  { const ka = k / 4, aoC = canvas(Math.ceil(W * ka), Math.ceil(L * ka)), ao = setup(aoC, ka), PA = painter(ao, W, L, ka);
+    for (const s of T.aos) {
+      ao.shadowColor = 'rgba(0,0,0,' + (s.a || 0.5) + ')'; ao.shadowBlur = (s.blur || 7) * ka; ao.shadowOffsetX = 2 * ka; ao.shadowOffsetY = 3 * ka;
+      ao.fillStyle = 'rgba(0,0,0,' + ((s.a || 0.5) * 0.6) + ')'; ao.strokeStyle = ao.fillStyle;
+      if (s.kind === 'line') { ao.lineWidth = s.w; ao.lineCap = 'round'; ao.lineJoin = 'round'; PA.line(s.pts).stroke(); }
+      else if (s.kind === 'dot') { PA.circle(s.x, s.y, s.r).fill(); }
+      else if (s.kind === 'poly') { PA.poly(s.pts).fill(); }
+    }
+    ag.save(); ag.setTransform(1, 0, 0, 1, 0, 0); ag.globalCompositeOperation = 'multiply'; ag.drawImage(aoC, 0, 0, cw, ch); ag.restore(); }
   // inserts: unlit look in the art, lit colour in the glow map, lamp index in the id map
   for (const lp of T.inserts) drawInsert(lp, ag, gg, ig, P);
   T.arts.filter(a => a.layer === 'over').forEach(a => a.fn(P));
@@ -760,6 +786,8 @@ function buildScene(G, T, opts, mark = () => {}) {
   { const g = idC.getContext('2d'), im = g.getImageData(0, 0, idC.width, idC.height), d = im.data;
     for (let i = 0; i < d.length; i += 4) { if (d[i + 3] >= 200) { d[i] = Math.round(d[i]); d[i + 3] = 255; } else { d[i] = d[i + 1] = d[i + 2] = d[i + 3] = 0; } }
     g.putImageData(im, 0, 0); }
+  PAINT_CACHE.set(paintKey, { artC, glowC, idC });
+  }   // end of the painting (skipped when this table was painted earlier in the session)
   mark('paint');
   const artT = tex(artC, { aniso: 8 }), glowT = tex(glowC), idT = tex(idC, { linear: true, nearest: true });
   const lampData = new Uint8Array(256 * 4), lampTex = new THREE.DataTexture(lampData, 256, 1, THREE.RGBAFormat);
@@ -817,7 +845,7 @@ function buildScene(G, T, opts, mark = () => {}) {
   // reflect the dark room towards the camera instead of the lamp itself
   key.position.copy(toWorld(W * 0.3, L * 0.1, 1500)); key.target.position.copy(toWorld(W / 2, L * 0.55, 0));
   scene.add(key); scene.add(key.target);
-  if (!thumb) {
+  if (!thumb || hq) {
     key.castShadow = true; key.shadow.mapSize.set(quality >= 2 ? 2048 : 1024, quality >= 2 ? 2048 : 1024);
     const sc = key.shadow.camera; sc.left = -0.5; sc.right = 0.5; sc.top = 0.85; sc.bottom = -0.85; sc.near = 0.2; sc.far = 3.2;
     key.shadow.bias = -0.0004; key.shadow.normalBias = 0.0015; key.shadow.radius = 3;
@@ -875,7 +903,7 @@ function buildScene(G, T, opts, mark = () => {}) {
   }
 
   // ── Glass ──
-  if (theme.glass !== false && !thumb) {
+  if (theme.glass !== false && (!thumb || hq)) {
     const gc = canvas(256, 512), g = gc.getContext('2d');
     const gr = g.createLinearGradient(0, 0, 256, 512);
     gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.32, 'rgba(255,255,255,0)'); gr.addColorStop(0.36, 'rgba(255,255,255,.5)'); gr.addColorStop(0.42, 'rgba(255,255,255,.1)'); gr.addColorStop(0.62, 'rgba(255,255,255,0)'); gr.addColorStop(0.7, 'rgba(255,255,255,.25)'); gr.addColorStop(0.73, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
@@ -963,7 +991,7 @@ function buildScene(G, T, opts, mark = () => {}) {
   let composer = null, bloom = null, size = new THREE.Vector2();
   function makeComposer(w, h) {
     if (composer) { composer.dispose(); composer = null; }
-    if (thumb || quality < 1) return;
+    if ((thumb && !hq) || quality < 1) return;
     const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: quality >= 2 ? 4 : 0 });
     composer = new EffectComposer(renderer, rt);
     composer.addPass(new RenderPass(scene, camera));
@@ -982,7 +1010,7 @@ function buildScene(G, T, opts, mark = () => {}) {
   };
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = theme.exposure;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = !thumb; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = !thumb || hq; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   RC.resize();
 
   // ── Adaptive quality: drop bloom, then shadows, then resolution when frames run long ──
@@ -1232,14 +1260,16 @@ function bandGeoLocal(circles, th, z0, h) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Thumbnail: render a table once into a 2D canvas (setup screen cards)
 // ═══════════════════════════════════════════════════════════════════════════
-export function renderThumb(def, renderer, out) {
+export function renderThumb(def, renderer, out, o = {}) {
   const w = out.width, h = out.height;
   renderer.setPixelRatio(1); renderer.setSize(w, h, false);
-  const G = createGame(def, { thumb: true, renderer, quality: 1 });
+  const G = createGame(def, { thumb: true, hq: !!o.hq, renderer, quality: o.hq ? 2 : 1, fixedQuality: true });
   const RC = G.T.R;
   RC.fitCamera(w / h);
+  if (o.hq) { RC.resize(); RC.fitCamera(w / h); }
   G.time = 0.5;
-  RC.render(1 / 60);
+  for (const lp of G.lampList) lp.level = lp.on ? 1 : 0;
+  RC.render(1 / 60); if (o.hq) RC.render(1 / 60);
   out.getContext('2d').drawImage(renderer.domElement, 0, 0, w, h);
   G.destroy();
 }

@@ -157,17 +157,24 @@ export class Audio {
         for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); let lp = 0; for (let i = 0; i < len; i++) { const t = i / a.sampleRate, n = Math.random() * 2 - 1; lp += (n - lp) * (0.35 - 0.25 * t); d[i] = lp * Math.exp(-t * 5.5) * (i < a.sampleRate * 0.004 ? 0 : 1) * (1 + (i % 997 === 0 ? 4 : 0)); } }
         this.verb = a.createConvolver(); this.verb.buffer = ir; this.verbIn = a.createGain(); this.verbIn.gain.value = 0.16; this.verbIn.connect(this.verb); this.verb.connect(this.master);
       } catch (e) { this.verbIn = null; }
-      this.render();
     }
     if (this.ac.state === 'suspended' && !paused) try { this.ac.resume(); } catch (e) {}
     return this.ac;
+  }
+  // pre-render the bank in the background (the first few sounds first), yielding to the page between sounds
+  ensureBank() {
+    if (this.banking) return this.banking;
+    const first = ['start', 'flipUp', 'flipDn', 'pull', 'launch', 'trough', 'metal', 'metal2', 'rail', 'rubber', 'wood', 'plastic', 'pop', 'sling', 'rollover', 'drain', 'save', 'gate'];
+    this.banking = this.render(first).then(() => this.render());
+    return this.banking;
   }
   // pre-render the bank (async; plays as soon as each one is ready)
   async render(names) {
     const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OAC) return;
     const list = names || Object.keys(RECIPES), t0 = performance.now();
     for (const n of list) {
-      if (this.bufs[n]) continue;
+      if (this.bufs[n] || !RECIPES[n]) continue;
+      await new Promise(r => setTimeout(r, 0));   // let the page breathe between sounds
       const [dur, fn] = RECIPES[n];
       try {
         const oc = new OAC(1, Math.ceil(SR * dur), SR);
@@ -175,10 +182,10 @@ export class Audio {
         this.bufs[n] = await new Promise((res, rej) => { const p = oc.startRendering(); if (p && p.then) p.then(res, rej); else oc.oncomplete = e => res(e.renderedBuffer); });
       } catch (e) { /* skip that sound */ }
     }
-    this.ready = true; this.renderMs = Math.round(performance.now() - t0);
+    this.ready = true; this.renderMs = (this.renderMs || 0) + Math.round(performance.now() - t0);
   }
   // custom recipe from a table: name, duration, fn(S)
-  define(name, dur, fn) { RECIPES[name] = [dur, fn]; if (this.ac) this.render([name]); }
+  define(name, dur, fn) { RECIPES[name] = [dur, fn]; if (this.banking) this.banking = this.banking.then(() => this.render([name])); }
   // play: o = {vol, rate (pitch), pan (-1..1), gap (min seconds between), verb (reverb send 0..1), when}
   play(name, o = {}) {
     const a = this.ctx(); if (!a) return;

@@ -1338,11 +1338,13 @@ class Plunger extends Comp {
 // ── Helpers that build the standard lower playfield and the top arch ────────────────────
 // Standard lower third: flippers, slingshots, inlanes, outlanes, their switches.
 export function lower(T, o = {}) {
-  const cx = o.cx || 243, fy = o.flipY || 165, dx = o.flipDx || 91, side = o.side || 'both';
+  // flipper tips at rest sit a little over one ball width apart (31 mm): wider and a ball that rolls off a
+  // slingshot goes straight down the middle; this was 44 mm and every third plunge drained unaided
+  const cx = o.cx || 243, fy = o.flipY || 165, dx = o.flipDx || 86.5, side = o.side || 'both';
   const out = { flippers: {}, slings: {}, lanes: {} };
   const mir = (p, s) => s === 'L' ? p : [2 * cx - p[0], p[1]];
   for (const s of ['L', 'R']) {
-    out.flippers[s] = T.flipper({ x: cx + (s === 'L' ? -dx : dx), y: fy, side: s, len: o.flipLen || 80, color: o.flipColor, rubber: o.flipRubber, id: 'flip' + s });
+    out.flippers[s] = T.flipper({ x: cx + (s === 'L' ? -dx : dx), y: fy, side: s, len: o.flipLen || 82, color: o.flipColor, rubber: o.flipRubber, id: 'flip' + s });
     const top = o.slingTop || 316, bot = o.slingBot || 250, inner = o.slingInner || [140, 232], lx = o.slingX || 88;
     out.slings[s] = T.slingshot({ side: s, id: 'sling' + s, posts: [mir([lx, top], s), mir([lx, bot], s), mir(inner, s)], color: o.slingColor, art: o.slingArt, plastic: o.slingPlastic });
     const sep = o.sepX || 44, gTop = o.sepTop || 330, gEnd = o.guideEnd || [144, 183];

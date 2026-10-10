@@ -737,6 +737,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     ro = new ResizeObserver(fit); ro.observe(app);
     fit();
     view = 'game';
+    kick();
   }
   function leaveGame() {
     view = 'none'; state = 'none'; paused = false; stopDrum();
@@ -803,7 +804,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     else if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') { if (paused) resumeGame(); else pauseGame(); }
   });
   document.addEventListener('keyup', function (e) { keys[e.key] = false; keys.shift = e.shiftKey; });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) pauseGame(); });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) pauseGame(); else kick(); });
   window.addEventListener('blur', function () { pauseGame(); });
 
   function pauseGame() {
@@ -820,7 +821,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function resumeGame() {
     if (!paused) return;
-    paused = false; pauseEl.classList.remove('show'); lastFrame = 0;
+    paused = false; pauseEl.classList.remove('show'); lastFrame = 0; kick();
     if (AC && AC.state === 'suspended') try { AC.resume(); } catch (e) {}
     Kit.sfx('tap');
   }
@@ -1190,9 +1191,9 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
 
   // ═══ Main loop ═══════════════════════════════════════════════════════════
-  var lastFrame = 0;
+  var lastFrame = 0, raf = 0;
   function frame(now) {
-    requestAnimationFrame(frame);
+    raf = 0;
     if (view !== 'game' || !L) { lastFrame = 0; return; }
     var rdt = lastFrame ? Math.min(0.05, (now - lastFrame) / 1000) : 0; lastFrame = now;
     var blocked = paused || !!document.querySelector('.k-scrim');
@@ -1217,8 +1218,10 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     }
     render();
     syncHud();
+    // Battery: no frames while paused, once the level's result card is up (nothing left to run) or with the page hidden (kick() restarts)
+    if (!paused && !(L.done && !fx.later.length) && !document.hidden) raf = requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  function kick() { if (!raf && view === 'game' && L && !paused && !document.hidden) { lastFrame = 0; raf = requestAnimationFrame(frame); } }
 
   function updateFx(dt) {
     for (var i = fx.later.length - 1; i >= 0; i--) { var l = fx.later[i]; l.t -= dt; if (l.t <= 0) { fx.later.splice(i, 1); l.fn(); } }

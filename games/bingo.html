@@ -218,6 +218,7 @@
   // ── Setup ──────────────────────────────────────────────────────────────
   function showSetup() {
     app.innerHTML = '';
+    if (cage) cage.off();
     cage = null;
     Kit.setup(app, {
       intro: 'You call the balls. Everyone marks their own cards.',
@@ -287,6 +288,7 @@
     app.appendChild(R.foot);
     app = app0;
 
+    if (cage) cage.off();   // a new game builds a new cage: drop the old one's resize listener (and its balls)
     cage = makeCage(canvas);
     cage.fill(S.pool);
     paint();
@@ -684,7 +686,9 @@
       add: function (n) { addBall(n, false); var b = balls[balls.length - 1]; b.x = cx; b.y = cy + Rr - r * 3; b.vy = -5; wake(); },
       exit: function () { var rc = cv.getBoundingClientRect(); return { x: rc.left + cx, y: rc.top + cy + Rr }; }
     };
-    window.addEventListener('resize', function () { if (!cv.isConnected) return; var ow = W; size(); api.r = r; if (Math.abs(ow - W) > 1) api.fill(balls.map(function (b) { return b.n; })); });
+    function onResize() { if (!cv.isConnected) return; var ow = W; size(); api.r = r; if (Math.abs(ow - W) > 1) api.fill(balls.map(function (b) { return b.n; })); }
+    window.addEventListener('resize', onResize);
+    api.off = function () { window.removeEventListener('resize', onResize); };
     return api;
   }
 

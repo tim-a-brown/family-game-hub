@@ -28,7 +28,7 @@
 .pb-card{position:relative;display:flex;flex-direction:column;border:0;padding:0;border-radius:16px;overflow:hidden;background:#0b0a16;color:#fff;text-align:left;
   box-shadow:0 0 0 2px rgba(255,255,255,.08),0 8px 18px rgba(0,0,0,.38);transition:transform .15s var(--spring),box-shadow .15s;}
 .pb-card:active{transform:scale(.97);}
-.pb-card .th{display:block;width:100%;height:auto;aspect-ratio:280/300;background:radial-gradient(70% 60% at 50% 40%,var(--c,#333) 0%,#05040a 80%);}
+.pb-card .th{display:block;width:100%;height:auto;aspect-ratio:280/300;background:radial-gradient(70% 60% at 50% 40%,var(--c,#333) 0%,#05040a 80%);object-fit:cover;}
 .pb-card .inf{padding:8px 10px 10px;display:flex;flex-direction:column;gap:3px;flex:1;}
 .pb-card .nm{font-family:var(--display);font-weight:400;font-size:1.18rem;line-height:1.05;}
 .pb-card .ds{font-size:.74rem;line-height:1.25;color:rgba(255,255,255,.72);font-weight:700;flex:1;}
@@ -101,6 +101,7 @@ function selTable() { const h = (location.hash || '').slice(1); if (TABLES[h]) r
 
 // ═══ Renderer (one WebGL context for thumbnails and play) ═══════════════════
 let renderer = null, glCanvas = null;
+const NOTHUMBS = /[?&]nothumbs=1/.test(location.search);
 function getRenderer() {
   if (renderer) return renderer;
   glCanvas = document.createElement('canvas'); glCanvas.className = 'pb-gl';
@@ -179,7 +180,11 @@ function showSetup() {
   const grid = el('div', { class: 'pb-tables' }), cards = [], jobs = [];
   const label = () => { if (startBtn) startBtn.textContent = 'Play ' + TABLES[sel].name; };
   IDS.forEach(id => {
-    const bd = TABLES[id], cv = el('canvas', { class: 'th', width: 280, height: 300 }), best = ArcadeHi.best('pinball_' + id);
+    const bd = TABLES[id], best = ArcadeHi.best('pinball_' + id);
+    // a pre-rendered picture of the table (games/pinball/tools/thumbs.js makes them); the live offscreen render
+    // is only the fallback when the image is missing
+    const cv = el('img', { class: 'th', width: 280, height: 300, alt: '', decoding: 'async', src: 'pinball/thumbs/' + id + '.webp' });
+    cv.addEventListener('error', () => { const c = el('canvas', { class: 'th', width: 280, height: 300 }); cv.replaceWith(c); if (thumbs[id]) c.getContext('2d').drawImage(thumbs[id], 0, 0); else if (!NOTHUMBS) queueThumbs(thumbQ.concat([[id, c]])); }, { once: true });
     const dots = el('span', { class: 'df', 'aria-label': 'Difficulty ' + (bd.diff || 2) + ' of 4' }, [el('span', { text: 'Level' })]);
     for (let i = 1; i <= 4; i++) dots.appendChild(el('i', { class: i <= (bd.diff || 2) ? 'on' : '' }));
     const card = el('button', { type: 'button', class: 'pb-card' + (id === sel ? ' on' : ''), style: { '--c': bd.color || '#ffc83d' }, 'aria-label': bd.name + '. ' + (bd.desc || '') }, [
@@ -189,14 +194,11 @@ function showSetup() {
     ]);
     card.addEventListener('click', () => { sel = id; cards.forEach((c, j) => c.classList.toggle('on', IDS[j] === id)); Kit.sfx('tap'); Kit.haptic('light'); label(); });
     cards.push(card); grid.appendChild(card);
-    if (thumbs[id]) cv.getContext('2d').drawImage(thumbs[id], 0, 0); else jobs.push([id, cv]);
   });
   const hero = s.el.querySelector('.setup-hero');
   const box = el('div', null, [el('div', { class: 'pb-head' }, [el('div', { class: 'label', text: 'Choose a table' }), el('small', { text: IDS.length + ' tables' })]), grid]);
   hero.parentNode.insertBefore(box, hero.nextSibling);
   label();
-  const go = () => queueThumbs(jobs);
-  if (document.fonts && document.fonts.load) Promise.all([document.fonts.load('20px Bungee'), document.fonts.load('700 20px Cinzel')]).then(go, go); else go();
   window.scrollTo(0, 0);
 }
 
@@ -418,6 +420,7 @@ window.__pin = {
   trigger(id, ...a) { const c = G && G.comps[id]; if (c && c.trigger) { c.trigger(...a); return true; } return false; },
   mode(name) { const m = G && G.def.rules && G.def.rules.modes && G.def.rules.modes[name]; if (m) { m(G); return true; } return false; },
   render() { if (G) G.renderOnce(); },
+  renderer() { return getRenderer(); },
   // deterministic frames for screenshots: stop the live loop, step the game, draw once
   freeze() { if (G) G.pause(); },
   step(sec) { if (!G) return null; G.run(sec); G.renderOnce(); return G.snapshot(); },

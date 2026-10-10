@@ -279,6 +279,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     bird = { x: W * BIRD_X, y: H * .42, vy: 0, ang: 0, wing: 0, wingT: 0 };
     pipes = []; score = 0; state = 'ready'; paused = false; countdown = 0; t = 0;
     buildLayers(); hud(); overlay();
+    kick();
   }
   function start() {
     Snd.unlock();
@@ -522,7 +523,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     $('h-last').textContent = lastFlight ? lastFlight.score : '–';
   }
   function pause() { if (state !== 'play' || paused) return; paused = true; countdown = 0; overlay(); }
-  function resume() { if (!paused) return; paused = false; countdown = 1.8; shownCount = 3; overlay(); }
+  function resume() { if (!paused) return; paused = false; countdown = 1.8; shownCount = 3; overlay(); kick(); }
 
   // ═══ Input ══════════════════════════════════════════════════════════════
   function press() {
@@ -548,19 +549,22 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     } else if (e.code === 'KeyP' || e.code === 'Escape') { if (paused) resume(); else pause(); }
   });
   $('btn-pause').addEventListener('click', function (e) { e.stopPropagation(); Kit.sfx('tap'); if (paused) resume(); else pause(); });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) pause(); });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) pause(); else kick(); });
   window.addEventListener('blur', pause);
 
   // ═══ Loop ═══════════════════════════════════════════════════════════════
-  var last = 0, acc = 0;
+  var last = 0, acc = 0, raf = 0;
   function loop(ts) {
+    raf = 0;
     if (!last) last = ts;
     acc += Math.min(.1, (ts - last) / 1000); last = ts;
-    if (!live || !bird) { acc = 0; requestAnimationFrame(loop); return; }
+    if (!live || !bird) { acc = 0; return; }
     while (acc >= DT) { acc -= DT; if (!paused) update(); }
     render();
-    requestAnimationFrame(loop);
+    // Battery: no frames on the setup screen, while paused, on the game-over card or with the page hidden (kick() restarts)
+    if (state !== 'over' && !paused && !document.hidden) raf = requestAnimationFrame(loop);
   }
+  function kick() { if (!raf && live && bird && state !== 'over' && !paused && !document.hidden) { last = 0; raf = requestAnimationFrame(loop); } }
 
   // ═══ Kit shell ══════════════════════════════════════════════════════════
   Kit.init({
@@ -611,7 +615,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 
   new ResizeObserver(function () { if (live) fit(); }).observe(cab);
   showSetup();
-  requestAnimationFrame(loop);
 })();
 </script>
 </body>

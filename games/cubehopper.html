@@ -746,7 +746,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (!e.repeat) input(d);
   });
   document.addEventListener('keyup', function (e) { delete keys[e.code || e.key]; });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } else wake(); });
   window.addEventListener('blur', function () { pauseGame(); });
   window.addEventListener('pagehide', function () { save(); });
 
@@ -771,6 +771,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     paused = false; ovEl.classList.remove('show'); lastT = 0; acc = 0;
     if (AC && AC.state === 'suspended') try { AC.resume(); } catch (e) {}
     Kit.sfx('tap');
+    wake();
   }
 
   // ═══ Game flow ═══════════════════════════════════════════════════════════
@@ -849,7 +850,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // ═══ Loop ════════════════════════════════════════════════════════════════
   var raf = 0, lastT = 0, acc = 0, rt = 0;
   function loop(t) {
-    raf = requestAnimationFrame(loop);
+    raf = 0;
     var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0; lastT = t;
     if (view !== 'game' || !G) return;
     if (!paused) {
@@ -859,7 +860,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     }
     if (hudDirty) updateHud();
     draw();
+    // Battery: no frames while paused, once the game is over or with the page hidden (wake() restarts)
+    if (!paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
   }
+  function wake() { if (!raf && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
   function update(dt) {
     fx.parts = fx.parts.filter(function (p) { p.life -= dt; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; return p.life > 0; });
     fx.pops = fx.pops.filter(function (p) { p.life -= dt; p.y -= 26 * dt; return p.life > 0; });

@@ -660,6 +660,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     try { if (G.score > (+localStorage.getItem('pmHi') || 0)) localStorage.setItem('pmHi', String(G.score)); } catch (e) {}
     var r = lastResult, cfg = { who: G.who, lives: G.startLives, pad: G.pad };
     setTimeout(function () {
+      overDone = true;   // the loop stops behind the results card
       ArcadeHi.check(HI, r.score, function () {
         hud();
         Kit.win({
@@ -939,18 +940,19 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     fit();
   }
   function startGame(cfg, saved) {
-    paused = false; welcome = false;
+    paused = false; welcome = false; overDone = false;
     newGame(cfg, saved);
     buildView();
     Snd.unlock();
     if (saved) { welcome = true; paused = true; }
     else { Snd.start(); G.pt = 150; }
     hud(); drawStrip(); syncOverlay();
+    kick();
   }
   function setPaused(v) {
     if (!G || phase === 'over' || phase === 'idle') return;
     if (paused === v) return;
-    paused = v; if (v) { Snd.loop(null); save(); } else { welcome = false; Snd.unlock(); last = 0; acc = 0; }
+    paused = v; if (v) { Snd.loop(null); save(); } else { welcome = false; Snd.unlock(); last = 0; acc = 0; kick(); }
     syncOverlay();
   }
 
@@ -1010,13 +1012,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     for (var i = 0; i < 4; i++) { padIs[i].classList.toggle('on', map[i] === d); padIs[i].classList.toggle('want', w === map[i]); }
   }
   $('btn-pause').addEventListener('click', function () { Kit.sfx('tap'); setPaused(!paused); });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) { setPaused(true); save(); } });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { setPaused(true); save(); } else kick(); });
   window.addEventListener('blur', function () { setPaused(true); });
   window.addEventListener('pagehide', save);
 
   // ═══ Main loop (fixed 60 Hz) ════════════════════════════════════════════
-  var last = 0, acc = 0, DT = 1000 / 60;
+  var last = 0, acc = 0, DT = 1000 / 60, raf = 0, overDone = false;
   function loop(t) {
+    raf = 0;
     if (!last) last = t;
     acc += Math.min(100, t - last); last = t;
     Snd.poll();
@@ -1029,8 +1032,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     }
     if (G && !paused) padShow();
     if (G) render();
-    requestAnimationFrame(loop);
+    // Battery: no frames on the setup screen, while paused, once the results card is up or with the page hidden (kick() restarts)
+    if (G && phase !== 'idle' && !paused && !overDone && !document.hidden) raf = requestAnimationFrame(loop);
   }
+  function kick() { if (!raf && G && phase !== 'idle' && !paused && !overDone && !document.hidden) { last = 0; acc = 0; raf = requestAnimationFrame(loop); } }
 
   // ═══ Kit shell ══════════════════════════════════════════════════════════
   Kit.init({
@@ -1069,7 +1074,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var saved0 = loadSave();
   if (saved0) startGame({ who: saved0.who, lives: saved0.startLives || 3, pad: saved0.pad !== false }, saved0);
   else showSetup();
-  requestAnimationFrame(loop);
 })();
 </script>
 </body>
