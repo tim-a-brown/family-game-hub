@@ -331,6 +331,7 @@ export function BigWheel3D(host, hooks, api) {
     glowQ: new THREE.MeshBasicMaterial({ map: sh.soft, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, opacity: 0 })
   };
   const world = new THREE.Group(); scene.add(world);
+  const ovl = new THREE.Scene();
   const drum = new THREE.Group(); world.add(drum);
   let atlas = null, dollar = null, dmesh = [], readCanvas = null, readCtx = null, readTex = null;
   const bulbs = [];   // {x,y,z, i (chain index), on, k}
@@ -482,7 +483,8 @@ export function BigWheel3D(host, hooks, api) {
     addMesh(place(new THREE.ExtrudeGeometry(bez, { depth: 0.022, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 2 }), 0, 0, READ.d), M.black, box, true, true);
     readCanvas = document.createElement('canvas'); readCanvas.width = 320; readCanvas.height = 160; readCtx = readCanvas.getContext('2d');
     readTex = tex(readCanvas); M.display.map = readTex; M.display.needsUpdate = true;
-    const disp = addMesh(new THREE.PlaneGeometry(iw, ih), M.display, box, false, false); disp.position.set(0, 0, READ.d + 0.001);
+    // the digits are drawn in an overlay pass after the motion trail, so they stay crisp while the drum blurs
+    const disp = addMesh(new THREE.PlaneGeometry(iw, ih), M.display, ovl, false, false); disp.position.set(READ.x, READ.y, PZ1 + 0.012 + READ.d + 0.001);
     const gls = addMesh(new THREE.PlaneGeometry(iw, ih), M.glassFlat, box, false, false); gls.position.set(0, 0, READ.d + 0.024); gls.renderOrder = 6;
   }
 
@@ -550,6 +552,7 @@ export function BigWheel3D(host, hooks, api) {
   const composer = new EffectComposer(renderer, rt);
   const renderPass = new RenderPass(scene, camera); composer.addPass(renderPass);
   const trail = new AfterimagePass(0.6); trail.enabled = false; composer.addPass(trail);
+  const ovlPass = new RenderPass(ovl, camera); ovlPass.clear = false; ovlPass.clearDepth = true; composer.addPass(ovlPass);
   const bloom = new UnrealBloomPass(new THREE.Vector2(2, 2), 0.4, 0.3, 1.45); composer.addPass(bloom);
   composer.addPass(new OutputPass());
 
