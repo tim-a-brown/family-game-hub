@@ -490,8 +490,8 @@ function wrapperGeometries(V) {
     const e = 1e-3;
     wrapBase(V, x + e, sg, Pa); wrapBase(V, x - e, sg, Pb); wrapBase(V, x, (sg + e) % 1, Pc); wrapBase(V, x, (sg - e + 1) % 1, Pd);
     const ux = Pa.x - Pb.x, uy = Pa.y - Pb.y, uz = Pa.z - Pb.z, vx = Pc.x - Pd.x, vy = Pc.y - Pd.y, vz = Pc.z - Pd.z;
-    // sg runs over the top from +z to -z, so (d/dsg) x (d/dx) points out of the pack
-    let nx = vy * uz - vz * uy, ny = vz * ux - vx * uz, nz = vx * uy - vy * ux;
+    // sg runs over the top from +z to -z, so (d/dx) x (d/dsg) points out of the pack
+    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
     const l = Math.hypot(nx, ny, nz) || 1; out.x = nx / l; out.y = ny / l; out.z = nz / l;
     return out;
   }
@@ -530,7 +530,7 @@ function wrapperGeometries(V) {
         const e = 1.5e-3;
         surf(x + e, sg, Pa); surf(x - e, sg, Pb); surf(x, (sg + e) % 1, Pc); surf(x, (sg - e + 1) % 1, Pd);
         const ux = Pa.x - Pb.x, uy = Pa.y - Pb.y, uz = Pa.z - Pb.z, vx = Pc.x - Pd.x, vy = Pc.y - Pd.y, vz = Pc.z - Pd.z;
-        let nx = vy * uz - vz * uy, ny = vz * ux - vx * uz, nz = vx * uy - vy * ux;
+        let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
         const l = Math.hypot(nx, ny, nz) || 1;
         pos.push(P0.x, P0.y, P0.z); nrm.push(nx / l, ny / l, nz / l);
         uv.push(P0.x * 0.55, sg * 2.4);

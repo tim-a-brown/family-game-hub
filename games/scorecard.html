@@ -77,33 +77,33 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
 .sheet-f{padding:8px 12px 12px;font-family:var(--hand);font-size:1.02rem;color:#8a8796;text-align:center;}
 .sheet.over .sheet-h::after{content:"FINAL";position:absolute;right:12px;top:14px;padding:2px 8px;border:2px solid #c8102e;border-radius:6px;color:#c8102e;font-family:var(--display);font-size:.9rem;letter-spacing:.08em;transform:rotate(8deg);opacity:.8;}
 
-/* Sticky action bar */
-.sc-bar{position:sticky;bottom:0;z-index:5;display:flex;gap:10px;padding:14px 0 calc(var(--safe-b) + 10px);background:linear-gradient(rgba(20,16,41,0),var(--bg) 40%);}
-.sc-bar .btn-lg{flex:1;min-width:0;white-space:nowrap;}
-.sc-bar .btn-end{flex:none;min-height:60px;padding:0 18px;border-radius:var(--r-lg);}
-
-/* ── Round entry sheet ────────────────────────────────────────────────── */
-.ent{display:flex;flex-direction:column;gap:8px;}
-.qk{display:flex;gap:6px;position:sticky;top:-10px;z-index:2;padding:4px 0 8px;background:var(--bg-2);}
-.qk button{flex:1;min-width:0;min-height:46px;border:0;border-radius:12px;background:var(--surface-3);color:var(--text);font-weight:900;font-size:1rem;
+/* Sticky action bar: quick add, a note, then the buttons */
+.sc-bar{position:sticky;bottom:0;z-index:5;display:flex;flex-direction:column;gap:6px;padding:12px 0 calc(var(--safe-b) + 10px);background:linear-gradient(rgba(20,16,41,0),var(--bg) 22px);}
+.sc-btns{display:flex;gap:10px;}
+.sc-btns .btn-lg{flex:1;min-width:0;white-space:nowrap;}
+.sc-btns .btn-end{flex:none;min-height:60px;padding:0 18px;border-radius:var(--r-lg);}
+.sc-btns .sc-del.armed{--b:var(--red);--b-ink:#fff;--b-lip:#a8202e;color:#fff;}
+@media (max-width:559px){.sc-btns.fixing{flex-wrap:wrap;}.sc-btns.fixing .btn-lg{flex:1 1 100%;}.sc-btns.fixing .btn-end{flex:1 1 0;min-height:48px;}}
+.qk{display:flex;gap:5px;}
+.qk button{flex:1;min-width:0;min-height:44px;padding:0;border:0;border-radius:12px;background:var(--surface-3);color:var(--text);font-weight:900;font-size:.95rem;
   box-shadow:0 3px 0 rgba(0,0,0,.3);transition:transform .12s var(--spring);}
 .qk button:active{transform:translateY(2px) scale(.95);box-shadow:0 1px 0 rgba(0,0,0,.3);}
-.qk button.alt{background:var(--w08);}
-.qk-hint{font-size:.8rem;font-weight:800;color:var(--text-3);text-align:center;margin:-4px 0 2px;}
-.erow{display:flex;align-items:center;gap:8px;padding:8px;border-radius:16px;background:var(--w05);border:2px solid transparent;transition:border-color .15s, background .15s;}
-.erow.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);}
-.erow .who{flex:1;min-width:0;}
-.erow .who b{display:block;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.erow .who small{display:block;font-size:.82rem;font-weight:700;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.erow .who small em{font-style:normal;color:var(--text);}
-.erow .pm{flex:none;width:40px;height:46px;border:0;border-radius:12px;background:var(--surface-3);color:var(--text);font-size:1.35rem;font-weight:900;line-height:1;transition:transform .12s var(--spring);}
-.erow .pm:active{transform:scale(.88);}
-.erow input{flex:none;width:74px;min-height:48px;padding:0 4px;text-align:center;font-size:1.35rem;font-weight:900;border-radius:14px;}
-.erow input.neg{color:var(--red);}
-.erow input.bump{animation:bump .3s var(--spring);}
+.qk-hint{font-size:.78rem;font-weight:800;color:var(--text-3);text-align:center;}
+.qk-note{font-size:.84rem;font-weight:800;color:var(--text-2);text-align:center;min-height:0;}
+.qk-note:empty{display:none;}
+/* The round being written: a box per player on the sheet */
+.sct tr.next td::after{pointer-events:none;}
+.sct tr.next td{padding:0 2px;}
+.sct tr.next td.on::after{border-color:rgba(200,16,46,.55);background:rgba(255,220,60,.18);}
+.sct input.cell{position:relative;z-index:1;display:block;width:100%;height:42px;margin:0;padding:0 2px;border:0;border-radius:0;background:transparent;font:inherit;color:var(--ink);text-align:center;outline:0;-webkit-appearance:none;}
+.sct input.cell.neg{color:#c8102e;}
+.sct input.cell.bump{animation:bump .3s var(--spring);}
 @keyframes bump{40%{transform:scale(1.15);}}
-.ent .save{margin-top:6px;}
-.ent .note{font-size:.84rem;font-weight:700;color:var(--text-3);text-align:center;}
+.sct thead th.on{background:rgba(255,220,60,.25);}
+.sct tbody tr.fixing{background:rgba(255,200,40,.22);}
+.sct tbody tr.dim{cursor:default;}
+.sct tbody tr.dim > *{opacity:.38;}
+.sct tfoot td.pend span{color:#8a8796;}
 .addp .quick{margin-top:10px;}
 
 /* ── Wide landscape (iPad, laptop): a tighter header and rows so more rounds and the totals fit on screen ── */
@@ -125,7 +125,7 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
   'use strict';
   var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
   var KEY = 'sc', OLD_KEYS = ['cs_sc'];            // history keys (gh_sc, plus the older gh_cs_sc)
-  var SAVE = 'scorecard_state', UNDO = 'scorecard_undo', PREF = 'scorecard_setup', PRESETS = 'scorecard_presets';
+  var SAVE = 'scorecard_state', UNDO = 'scorecard_undo', PREF = 'scorecard_setup', PRESETS = 'scorecard_presets', DRAFT = 'scorecard_draft';
   var S = null, undoStack = [];
 
   // Starter ideas with their standard end rules (only shown until you've used them)
@@ -163,10 +163,10 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
       '<li><b>Who wins?</b> Most games: highest score. Some, like Golf or Hearts: lowest score.</li>' +
       '<li><b>Game ends:</b> when someone reaches a score (like 500 in Uno), after a set number of rounds (like 9 holes of Golf), or whenever you decide to stop.</li></ul>' +
       '<h3>Scoring</h3><ul>' +
-      '<li>Tap <b>Add round</b> after each round (or each turn) and enter everyone\'s points.</li>' +
-      '<li>Type a number, use <b>−</b> and <b>+</b>, or tap the quick buttons (<b>+5</b>, <b>+10</b>...) to add to the highlighted player. <b>±</b> makes a score negative.</li>' +
+      '<li>After each round (or each turn), type everyone\'s points in the dashed row on the sheet, then tap <b>Save round</b>. A fresh row opens below.</li>' +
+      '<li>Or tap a player\'s box and use the quick buttons under the sheet (<b>−1</b>, <b>+1</b>, <b>+5</b>, <b>+10</b>...) to add to it. <b>±</b> makes a score negative.</li>' +
       '<li>Blank counts as 0.</li>' +
-      '<li>Made a mistake? Tap any round on the sheet to fix or delete it, or use Undo in the menu.</li></ul>' +
+      '<li>Made a mistake? Tap any round on the sheet. It opens right there to fix, or tap <b>Delete</b>. Undo in the menu works too.</li></ul>' +
       '<h3>Ending</h3><p>The sheet ends the game for you when someone reaches the target or the last round is done. With "When we stop", tap <b>End game</b>. If there is a tie for first you can play a tiebreak round or share the win.</p>' +
       '<p>Someone joining late? Use <b>Add a player</b> in the menu.</p>'
   });
@@ -340,9 +340,9 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
   function persist() {
     if (!S || S.over) return;
     lsSet(SAVE, S); lsSet(UNDO, undoStack.slice(-30));
-    Kit.resume.set(title() + ' · ' + (S.rows.length ? 'Round ' + (S.rows.length + 1) : 'Ready'));
+    Kit.resume.set(title() + ' · ' + (S.rows.length ? 'Round ' + (S.rows.length + 1) : 'Ready'), { keys: [SAVE, UNDO, DRAFT] });
   }
-  function endState() { lsDel(SAVE); lsDel(UNDO); Kit.resume.clear(); S = null; undoStack = []; }
+  function endState() { lsDel(SAVE); lsDel(UNDO); lsDel(DRAFT); Kit.resume.clear(); S = null; undoStack = []; entry = null; }
   function snap() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 40) undoStack.shift(); }
   function totalsOf(rows, n) {
     var t = []; for (var i = 0; i < n; i++) t.push(0);
@@ -389,23 +389,79 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
   }
 
   // ── Score sheet ────────────────────────────────────────────────────────
-  var lastTotals = null;
+  // The round being written sits right on the sheet: the dashed row under the last round
+  // (or a past round tapped to fix it). entry = {ri: null for a new round | index, vals: [text per player], active}
+  var lastTotals = null, entry = null, delArm = 0;
+  function parseVal(t) {
+    var s = String(t == null ? '' : t).replace(/[^0-9\-]/g, '');
+    var neg = s.charAt(0) === '-'; s = s.replace(/-/g, '');
+    var v = s === '' ? 0 : parseInt(s, 10) || 0;
+    return neg ? -v : v;
+  }
+  function freshEntry() {
+    var n = S.sides.length, d = lsGet(DRAFT);
+    if (d && d.n === S.rows.length && Array.isArray(d.vals) && d.vals.length === n) return { ri: null, vals: d.vals.map(String), active: 0 };
+    return { ri: null, vals: S.sides.map(function () { return ''; }), active: 0 };
+  }
+  function saveDraft() { if (entry && entry.ri == null) lsSet(DRAFT, { n: S.rows.length, vals: entry.vals }); }
   function render(justAdded) {
     app.innerHTML = '';
-    var n = S.sides.length, t = totals(), L = S.over ? S.winner : (S.rows.length ? leaderOf(t) : -1);
+    var n = S.sides.length;
+    if (S.over) entry = null;
+    else if (!entry || (entry.ri == null && entry.vals.length !== n) || (entry.ri != null && entry.ri >= S.rows.length)) entry = freshEntry();
+    var editing = !!entry && entry.ri != null;
+    var t = totals(), L = S.over ? S.winner : (S.rows.length ? leaderOf(t) : -1);
+    var base = editing ? totalsOf(S.rows.filter(function (r, i) { return i !== entry.ri; }), n) : t;
     var board = el('div', { class: 'clip wood' }, [el('div', { class: 'clamp', 'aria-hidden': 'true' })]);
     var sheet = el('div', { class: 'sheet' + (S.over ? ' over' : '') });
     sheet.appendChild(el('div', { class: 'sheet-h' }, [el('h2', { text: title() }), el('div', { class: 'rule', text: ruleLine() })]));
-    var st = statusText(t);
+    var st = editing ? { ic: 'pencil', tx: 'Fixing round ' + rowLabel(entry.ri) } : statusText(t);
     sheet.appendChild(el('div', { class: 'status' + (justAdded ? ' pop' : ''), html: Kit.icon(st.ic) + '<span>' + esc(st.tx) + '</span>' }));
 
     var tbl = el('table', { class: 'sct' + (n >= 6 ? ' n' + n : '') });
-    var hr = el('tr', null, [el('th', { class: 'rn', text: 'RND' })]);
-    S.sides.forEach(function (s, i) { hr.appendChild(el('th', { text: s.name, title: s.name, style: { '--c': Kit.color(i) } })); });
+    var hr = el('tr', null, [el('th', { class: 'rn', text: 'RND' })]), heads = [];
+    S.sides.forEach(function (s, i) { heads[i] = el('th', { text: s.name, title: s.name, style: { '--c': Kit.color(i) } }); hr.appendChild(heads[i]); });
     tbl.appendChild(el('thead', null, [hr]));
-    var tb = el('tbody');
+    var tb = el('tbody'), cells = [], inputs = [], foot = [], togo = [];
+
+    function pick(i) {
+      if (!entry) return;
+      entry.active = i;
+      cells.forEach(function (c, j) { c.classList.toggle('on', j === i); });
+      heads.forEach(function (h, j) { h.classList.toggle('on', j === i); });
+      if (qhint) qhint.textContent = 'Quick add goes to ' + S.sides[i].name + ' · blank counts as 0';
+    }
+    function paintFoot() {
+      var tt = base.map(function (v, i) { return v + (entry ? parseVal(entry.vals[i]) : 0); });
+      var typed = entry && entry.vals.some(function (v) { return String(v).trim() !== ''; });
+      var ld = typed ? leaderOf(tt) : L;
+      foot.forEach(function (td, i) {
+        td.firstChild.textContent = fmt(tt[i]);
+        td.className = (i === ld && (S.rows.length || typed) ? 'lead' : '') + (tt[i] < 0 ? ' neg' : '') + (typed && tt[i] !== base[i] ? ' pend' : '');
+      });
+      togo.forEach(function (td, i) { td.textContent = fmt(Math.max(0, S.target - tt[i])); });
+      inputs.forEach(function (x, i) { x.classList.toggle('neg', parseVal(entry.vals[i]) < 0); });
+      if (saveBtn) saveBtn.disabled = !typed;
+      if (note) note.textContent = typed ? '' : 'Type each player\'s points, or use the quick buttons.';
+    }
+    function entryRow(label) {
+      var tr = el('tr', { class: 'next' + (editing ? ' fixing' : '') + (!editing && S.end === 'rounds' && S.rows.length >= S.rounds ? ' tb' : '') }, [el('th', { class: 'rn', text: label })]);
+      S.sides.forEach(function (s, i) {
+        var inp = el('input', { class: 'cell', type: 'text', inputmode: 'numeric', enterkeyhint: i === n - 1 ? 'done' : 'next', autocomplete: 'off', value: entry.vals[i], placeholder: '', 'aria-label': s.name + ' points, round ' + label });
+        inp.addEventListener('focus', function () { pick(i); inp.select(); });
+        inp.addEventListener('input', function () { entry.vals[i] = inp.value; saveDraft(); paintFoot(); });
+        inp.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); if (i < n - 1) inputs[i + 1].focus(); else submit(); }
+        });
+        var td = el('td', null, [inp]);
+        td.addEventListener('pointerdown', function () { pick(i); });
+        inputs.push(inp); cells.push(td); tr.appendChild(td);
+      });
+      return tr;
+    }
     S.rows.forEach(function (r, ri) {
-      var tr = el('tr', { class: 'done' + (justAdded && ri === S.rows.length - 1 ? ' just' : '') + (rowLabel(ri) === 'TB' ? ' tb' : '') }, [el('th', { class: 'rn', text: rowLabel(ri) })]);
+      if (editing && ri === entry.ri) { tb.appendChild(entryRow(rowLabel(ri))); return; }
+      var tr = el('tr', { class: 'done' + (justAdded && ri === S.rows.length - 1 ? ' just' : '') + (rowLabel(ri) === 'TB' ? ' tb' : '') + (editing ? ' dim' : '') }, [el('th', { class: 'rn', text: rowLabel(ri) })]);
       for (var i = 0; i < n; i++) {
         var v = r[i];
         tr.appendChild(el('td', { class: v == null ? 'miss' : (Number(v) < 0 ? 'neg' : ''), text: v == null ? '–' : fmt(v) }));
@@ -413,146 +469,125 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
       tr.addEventListener('click', function () { editRound(ri); });
       tb.appendChild(tr);
     });
-    if (!S.over) {
-      var nx = el('tr', { class: 'next' + (S.end === 'rounds' && S.rows.length >= S.rounds ? ' tb' : ''), 'aria-label': 'Add round ' + (S.rows.length + 1) }, [el('th', { class: 'rn', text: rowLabel(S.rows.length) })]);
-      for (var j = 0; j < n; j++) nx.appendChild(el('td'));
-      nx.addEventListener('click', function () { openEntry(null); });
-      tb.appendChild(nx);
+    if (!S.over && !editing) {
+      tb.appendChild(entryRow(rowLabel(S.rows.length)));
       if (S.end === 'rounds') {
         for (var k = S.rows.length + 1; k < Math.min(S.rounds, 30); k++) {
-          var bl = el('tr', { class: 'blank' }, [el('th', { class: 'rn', text: String(k + 1) })]);
+          var bl = el('tr', { class: 'blank' + (editing ? ' dim' : '') }, [el('th', { class: 'rn', text: String(k + 1) })]);
           for (var q = 0; q < n; q++) bl.appendChild(el('td'));
           tb.appendChild(bl);
         }
       }
     }
     tbl.appendChild(tb);
-    var foot = el('tfoot');
+    var tf = el('tfoot');
     var fr = el('tr', null, [el('th', { class: 'rn', text: 'TOTAL' })]);
-    t.forEach(function (v, i) {
-      fr.appendChild(el('td', { class: (i === L && S.rows.length ? 'lead' : '') + (v < 0 ? ' neg' : '') }, [el('span', { class: 'tot', 'data-i': i, text: fmt(v) })]));
+    base.forEach(function (v, i) {
+      var td = el('td', { class: (i === L && S.rows.length ? 'lead' : '') + (v < 0 ? ' neg' : '') }, [el('span', { class: 'tot', 'data-i': i, text: fmt(v) })]);
+      foot.push(td); fr.appendChild(td);
     });
-    foot.appendChild(fr);
+    tf.appendChild(fr);
     if (S.end === 'target' && !S.over) {
       var tg = el('tr', { class: 'togo' }, [el('th', { class: 'rn', text: 'TO GO' })]);
-      t.forEach(function (v) { tg.appendChild(el('td', { text: fmt(Math.max(0, S.target - v)) })); });
-      foot.appendChild(tg);
+      base.forEach(function (v) { var td = el('td', { text: fmt(Math.max(0, S.target - v)) }); togo.push(td); tg.appendChild(td); });
+      tf.appendChild(tg);
     }
-    tbl.appendChild(foot);
+    tbl.appendChild(tf);
     sheet.appendChild(tbl);
-    sheet.appendChild(el('div', { class: 'sheet-f', text: S.over ? 'Final scores · tap a round to look back' : (S.rows.length ? 'Tap a round to fix it' : 'Tap the dashed row or Add round') }));
+    sheet.appendChild(el('div', { class: 'sheet-f', text: S.over ? 'Final scores · tap a round to look back' : editing ? 'Change the numbers, then Save' : (S.rows.length ? 'Tap a round to fix it' : 'Type the scores in the dashed row') }));
     board.appendChild(sheet);
     app.appendChild(board);
 
-    var bar = el('div', { class: 'sc-bar' });
+    var bar = el('div', { class: 'sc-bar' }), qhint = null, note = null, saveBtn = null;
     if (!S.over) {
-      var last = S.end === 'rounds' && S.rows.length === S.rounds - 1;
-      var showEnd = S.rows.length && (S.end === 'open' || S.sides.length === 1);
-      bar.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('plus') + '<span>' + (last ? 'Final round' : 'Add round' + (showEnd ? '' : ' ' + (S.rows.length + 1))) + '</span>', onclick: function () { openEntry(null); } }));
-      if (showEnd) bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-end', html: Kit.icon('check') + '<span>End game</span>', onclick: function () { endGame(); } }));
+      // Quick add: taps go to the highlighted player (the column you last touched)
+      var qk = el('div', { class: 'qk' });
+      function quick(label, aria, fn) {
+        var b = el('button', { type: 'button', text: label, 'aria-label': aria, onclick: function () { fn(entry.active); } });
+        b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+        qk.appendChild(b);
+      }
+      function add(i, d) { setVal(i, parseVal(entry.vals[i]) + d); Kit.sfx('tick'); Kit.haptic('tick'); }
+      function setVal(i, v) { entry.vals[i] = v === 0 && String(entry.vals[i]).trim() === '' ? '' : String(v); inputs[i].value = entry.vals[i]; bumpIt(i); saveDraft(); paintFoot(); }
+      function bumpIt(i) { var x = inputs[i]; x.classList.remove('bump'); void x.offsetWidth; x.classList.add('bump'); }
+      quick('−1', 'Minus one', function (i) { add(i, -1); });
+      quick('+1', 'Plus one', function (i) { add(i, 1); });
+      incs().forEach(function (v) { quick('+' + fmt(v), 'Plus ' + v, function (i) { add(i, v); }); });
+      quick('±', 'Make negative', function (i) { setVal(i, -parseVal(entry.vals[i])); Kit.sfx('tick'); });
+      bar.appendChild(qk);
+      qhint = el('div', { class: 'qk-hint' });
+      bar.appendChild(qhint);
+      note = el('div', { class: 'qk-note', role: 'status' });
+      bar.appendChild(note);
+      var row = el('div', { class: 'sc-btns' + (editing ? ' fixing' : '') });
+      if (editing) {
+        saveBtn = el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('check') + '<span>Save round ' + esc(rowLabel(entry.ri)) + '</span>', onclick: submit });
+        row.appendChild(saveBtn);
+        var del = el('button', { type: 'button', class: 'btn btn-soft btn-end sc-del', html: Kit.icon('trash') + '<span>Delete</span>', 'aria-label': 'Delete round ' + rowLabel(entry.ri), onclick: function () {
+          if (Date.now() - delArm > 3000) { delArm = Date.now(); del.classList.add('armed'); del.lastChild.textContent = 'Tap again'; Kit.haptic('light'); setTimeout(function () { if (del.isConnected) { del.classList.remove('armed'); del.lastChild.textContent = 'Delete'; } }, 3000); return; }
+          delArm = 0; var ri = entry.ri; snap(); S.rows.splice(ri, 1); entry = null; Kit.sfx('whoosh'); Kit.toast('Round deleted'); persist(); render();
+        } });
+        row.appendChild(del);
+        row.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-end', text: 'Cancel', onclick: function () { entry = null; Kit.sfx('tap'); render(); } }));
+      } else {
+        var last = S.end === 'rounds' && S.rows.length === S.rounds - 1, tbk = S.end === 'rounds' && S.rows.length >= S.rounds;
+        var showEnd = S.rows.length && (S.end === 'open' || S.sides.length === 1);
+        saveBtn = el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('check') + '<span>' + (tbk ? 'Save tiebreak' : last ? 'Save final round' : 'Save round ' + (S.rows.length + 1)) + '</span>', onclick: submit });
+        row.appendChild(saveBtn);
+        if (showEnd) row.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-end', html: Kit.icon('check') + '<span>End game</span>', onclick: function () { endGame(); } }));
+      }
+      bar.appendChild(row);
     } else {
-      bar.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('sparkle') + '<span>Play again</span>', onclick: playAgain }));
-      bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-end', text: 'New game', onclick: function () { endState(); showSetup(); window.scrollTo(0, 0); } }));
+      var orow = el('div', { class: 'sc-btns' });
+      orow.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('sparkle') + '<span>Play again</span>', onclick: playAgain }));
+      orow.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-end', text: 'New game', onclick: function () { endState(); showSetup(); window.scrollTo(0, 0); } }));
+      bar.appendChild(orow);
     }
     app.appendChild(bar);
+    if (entry) { pick(Math.min(entry.active || 0, n - 1)); paintFoot(); }
 
     // Totals count up to their new values
     if (justAdded && lastTotals && lastTotals.length === t.length) {
-      var from = lastTotals.slice(), t0 = performance.now(), cells = app.querySelectorAll('.tot');
+      var from = lastTotals.slice(), t0 = performance.now(), tots = app.querySelectorAll('.tot');
       (function tick(now) {
         var k = Math.min(1, (now - t0) / 500), e = 1 - Math.pow(1 - k, 3);
-        cells.forEach(function (c, i) { c.textContent = fmt(Math.round(from[i] + (t[i] - from[i]) * e)); });
+        tots.forEach(function (c, i) { c.textContent = fmt(Math.round(from[i] + (t[i] - from[i]) * e)); });
         if (k < 1) requestAnimationFrame(tick);
       })(t0);
     }
     lastTotals = t.slice();
   }
 
-  // ── Round entry ────────────────────────────────────────────────────────
-  function openEntry(ri) {
+  // ── Writing the round in ───────────────────────────────────────────────
+  function submit() {
+    if (!S || S.over || !entry) return;
+    if (!entry.vals.some(function (v) { return String(v).trim() !== ''; })) return;
+    var editing = entry.ri != null, ri = entry.ri;
+    var scores = entry.vals.map(parseVal);
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    var beforeL = S.rows.length ? leaderOf(totals()) : null;
+    snap();
+    if (editing) S.rows[ri] = scores; else { S.rows.push(scores); lsDel(DRAFT); }
+    entry = null;
+    afterChange(!editing, beforeL);
+  }
+  // Start a fresh round (the tiebreak button); the dashed row is already there
+  function openEntry() {
     if (!S || S.over) return;
-    var editing = ri != null, n = S.sides.length, prev = editing ? S.rows[ri] : null;
-    var base = totalsOf(S.rows.filter(function (r, i) { return i !== ri; }), n);
-    var active = 0, rows = [], sh;
-    var node = el('div', { class: 'ent' });
-
-    var qk = el('div', { class: 'qk' });
-    incs().forEach(function (v) { qk.appendChild(el('button', { type: 'button', text: '+' + fmt(v), onclick: function () { add(active, v); } })); });
-    qk.appendChild(el('button', { type: 'button', class: 'alt', text: '±', 'aria-label': 'Make negative', onclick: function () { setVal(active, -val(active)); bumpIt(active); Kit.sfx('tick'); } }));
-    node.appendChild(qk);
-    var hint = el('div', { class: 'qk-hint' });
-    node.appendChild(hint);
-
-    S.sides.forEach(function (s, i) {
-      var start = prev && prev[i] != null ? String(prev[i]) : '';
-      var inp = el('input', { class: 'input', type: 'text', inputmode: 'numeric', pattern: '[0-9]*', enterkeyhint: i === n - 1 ? 'done' : 'next', autocomplete: 'off', value: start, placeholder: '0', 'aria-label': s.name + ' points' });
-      var info = el('small');
-      var row = el('div', { class: 'erow' }, [
-        el('span', { class: 'avatar sm', style: { '--c': Kit.color(i) }, text: (s.name || '?').charAt(0).toUpperCase() }),
-        el('span', { class: 'who' }, [el('b', { text: s.name }), info]),
-        el('button', { type: 'button', class: 'pm', 'aria-label': 'Minus one', text: '−', onclick: function () { add(i, -1); } }),
-        inp,
-        el('button', { type: 'button', class: 'pm', 'aria-label': 'Plus one', text: '+', onclick: function () { add(i, 1); } })
-      ]);
-      row.addEventListener('pointerdown', function () { pick(i); });
-      inp.addEventListener('focus', function () { pick(i); inp.select(); });
-      inp.addEventListener('input', function () { paint(i); });
-      inp.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); if (i < n - 1) rows[i + 1].inp.focus(); else submit(); }
-      });
-      rows.push({ row: row, inp: inp, info: info });
-      node.appendChild(row);
-    });
-
-    var saveBtn = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block save', text: editing ? 'Save changes' : 'Save round ' + (S.rows.length + 1), onclick: submit });
-    node.appendChild(saveBtn);
-    node.appendChild(el('div', { class: 'note', text: 'Blank counts as 0' }));
-
-    function val(i) {
-      var s = String(rows[i].inp.value).replace(/[^0-9\-]/g, '');
-      var neg = s.charAt(0) === '-'; s = s.replace(/-/g, '');
-      var v = s === '' ? 0 : parseInt(s, 10) || 0;
-      return neg ? -v : v;
-    }
-    function setVal(i, v) { rows[i].inp.value = v === 0 && rows[i].inp.value === '' ? '' : String(v); paint(i); }
-    function add(i, d) { pick(i); setVal(i, val(i) + d); bumpIt(i); Kit.sfx('tick'); Kit.haptic('tick'); }
-    function bumpIt(i) { var x = rows[i].inp; x.classList.remove('bump'); void x.offsetWidth; x.classList.add('bump'); }
-    function pick(i) {
-      active = i;
-      rows.forEach(function (r, j) { r.row.classList.toggle('on', j === i); });
-      hint.textContent = 'Quick add goes to ' + S.sides[i].name;
-    }
-    function paint(i) {
-      var v = val(i), nt = base[i] + v;
-      rows[i].inp.classList.toggle('neg', v < 0);
-      rows[i].info.innerHTML = 'Total ' + esc(fmt(base[i])) + (rows[i].inp.value.trim() !== '' ? ' → <em>' + esc(fmt(nt)) + '</em>' : '');
-    }
-    function submit() {
-      var scores = rows.map(function (r, i) { return val(i); });
-      sh.close();
-      var beforeT = totals(), beforeL = S.rows.length ? leaderOf(beforeT) : null;
-      snap();
-      if (editing) S.rows[ri] = scores; else S.rows.push(scores);
-      afterChange(!editing, beforeL);
-    }
-    rows.forEach(function (r, i) { paint(i); });
-    pick(0);
-    sh = Kit.sheet({ title: editing ? 'Fix round ' + rowLabel(ri) : (S.end === 'rounds' && S.rows.length >= S.rounds ? 'Tiebreak round' : 'Round ' + (S.rows.length + 1) + (S.end === 'rounds' ? ' of ' + S.rounds : '')), node: node });
-    if (window.matchMedia && matchMedia('(pointer:fine)').matches) setTimeout(function () { rows[0].inp.focus(); }, 60);
+    entry = null; render();
+    var x = app.querySelector('tr.next input'); if (x) setTimeout(function () { x.focus(); }, 60);
   }
 
   function editRound(ri) {
     var r = S.rows[ri];
     var summary = S.sides.map(function (s, i) { return '<b>' + esc(s.name) + '</b> ' + (r[i] == null ? '–' : esc(fmt(r[i]))); }).join(' · ');
     if (S.over) { Kit.sheet({ title: 'Round ' + rowLabel(ri), html: '<p class="muted">' + summary + '</p>', actions: [{ label: 'Close', cls: 'btn-soft' }] }); return; }
-    Kit.sheet({
-      title: 'Round ' + rowLabel(ri), html: '<p class="muted">' + summary + '</p>',
-      actions: [
-        { label: 'Fix this round', primary: true, onClick: function () { openEntry(ri); } },
-        { label: 'Delete this round', danger: true, onClick: function () { snap(); S.rows.splice(ri, 1); Kit.sfx('whoosh'); persist(); render(); } },
-        { label: 'Cancel', cls: 'btn-ghost' }
-      ]
-    });
+    if (entry && entry.ri != null) { Kit.toast('Save or cancel round ' + rowLabel(entry.ri) + ' first'); return; }
+    // The round opens again right where it is written
+    entry = { ri: ri, vals: r.map(function (v) { return v == null ? '' : String(v); }), active: 0 };
+    delArm = 0; Kit.sfx('tap'); Kit.haptic('light'); render();
+    var row = app.querySelector('tr.fixing');
+    if (row && row.scrollIntoView) try { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
   }
 
   function afterChange(added, beforeL) {
@@ -611,7 +646,7 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
       meta: { gameName: S.name, end: S.end, target: S.target, nrounds: S.rounds }
     });
     var done = S;
-    lsDel(SAVE); lsDel(UNDO); Kit.resume.clear(); undoStack = [];
+    lsDel(SAVE); lsDel(UNDO); lsDel(DRAFT); Kit.resume.clear(); undoStack = [];
     render();
     var order = done.sides.map(function (s, i) { return { name: s.name, score: t[i], color: Kit.color(i) }; })
       .sort(function (a, b) { return done.low ? a.score - b.score : b.score - a.score; });
@@ -678,14 +713,14 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
     var old = S;
     S = { v: 1, name: old.name, low: old.low, end: old.end, target: old.target, rounds: old.rounds,
       sides: old.sides.map(function (s) { return { name: s.name }; }), rows: [], started: Date.now(), over: false };
-    undoStack = []; lastTotals = null; Kit.gameStart(); persist(); render(); window.scrollTo(0, 0);
+    undoStack = []; lastTotals = null; entry = null; lsDel(DRAFT); Kit.gameStart(); persist(); render(); window.scrollTo(0, 0);
   }
 
   function undo() {
     if (!S || S.over) return Kit.toast('Nothing to undo');
     if (!undoStack.length) return Kit.toast('Nothing to undo');
     S = JSON.parse(undoStack.pop());
-    lastTotals = null; Kit.sfx('whoosh'); Kit.toast('Undone'); persist(); render();
+    lastTotals = null; entry = null; Kit.sfx('whoosh'); Kit.toast('Undone'); persist(); render();
   }
 
   function addPlayer() {
@@ -707,7 +742,7 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
       sh.close(); snap();
       S.sides.push({ name: v });
       S.rows.forEach(function (r) { r.push(null); });
-      lastTotals = null; Kit.sfx('pop'); persist(); render();
+      lastTotals = null; entry = null; Kit.sfx('pop'); persist(); render();
     }
   }
 
