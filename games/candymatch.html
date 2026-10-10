@@ -777,14 +777,14 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       function cellOk(r, c) { return r >= 0 && r < R && c >= 0 && c < C && shape[r][c] !== '_'; }
       function put(r, c, ch) { if (cellOk(r, c)) { shape[r][c] = ch; if (cellOk(r, C - 1 - c)) shape[r][C - 1 - c] = ch; } }
       // frosting in pairs (never more than two wide, never in the top or bottom row)
-      var nF = Math.round((goal === 'score' ? 2 : 3) + hard * 6 + rng.next() * 3);
+      var nF = Math.round((goal === 'score' ? 2 : 2) + hard * 4 + rng.next() * 3);
       for (var f = 0; f < nF; f++) {
         r = 2 + rng.int(R - 4); c = rng.int(5);
         if (c === 4 && cellOk(r, 3) && shape[r][3] === 'f') continue;
         put(r, c, rng.next() < 0.25 + hard * 0.4 ? 'F' : 'f');
       }
       if (goal === 'jelly') {
-        var style = rng.int(4), dbl = 0.15 + hard * 0.45;
+        var style = rng.int(4), dbl = 0.1 + hard * 0.3;
         for (r = 0; r < R; r++) for (c = 0; c < 5; c++) {
           if (!cellOk(r, c) || shape[r][c] !== '.') continue;
           var on = style === 0 ? (r >= 2 && r <= R - 3 && c >= 1) : style === 1 ? r >= R - 4 : style === 2 ? (r + c) % 2 === 0 : (c <= 1 || r <= 1 || r >= R - 2);
@@ -799,8 +799,8 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var tight = 1 - hard * 0.1;
       function r500(v) { return Math.round(v / 500) * 500; }
       if (goal === 'score') { def.moves = 20; def.target = r500((5000 + hard * 2500) * cells / 81); def.stars = [def.target, r500(def.target * 1.9), r500(def.target * 3)]; }
-      else if (goal === 'jelly') { def.moves = Math.round((14 + layers * 0.5 + frost * 0.5) * tight); def.stars = [0, r500(layers * 1000 + def.moves * 900), r500(layers * 1000 + def.moves * 1400)]; }
-      else { def.ings = 3 + Math.round(hard); def.ingMax = 2; def.moves = Math.round((12 + def.ings * 7.5 + frost * 0.4) * tight); def.stars = [0, r500(def.ings * 10000 + def.moves * 900), r500(def.ings * 10000 + def.moves * 1400)]; }
+      else if (goal === 'jelly') { def.moves = Math.round((16 + layers * 0.6 + frost * 0.7) * tight); def.stars = [0, r500(def.moves * 1000), r500(def.moves * 1400)]; }
+      else { def.ings = 3; def.ingMax = 2; def.moves = Math.round((16 + def.ings * 9 + frost * 0.5) * tight); def.stars = [0, r500(def.moves * 1000), r500(def.moves * 1300)]; }
       return def;
     }
     return { name: 'Bonbon Bay ' + n, goal: 'score', moves: 20, colors: 6, target: 6000, stars: [6000, 9500, 13000], rows: rep(FULL, 9), gen: true };
