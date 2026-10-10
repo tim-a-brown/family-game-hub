@@ -260,7 +260,7 @@
     var W = Math.max(240, JW - sb - 10), WH = tall ? JW : W;
     var s = S(), n = Math.max(5, s && s.phase === 'play' ? Math.max(s.hand.length, s.hs || 8) : 8);
     var cwH = (H - 106) / 4.2;
-    var cwW = (WH - 10) / (1.1 + 1 + 0.5 * (n - 1));
+    var cwW = (WH - 10) / (1.3 + 1 + 0.5 * (n - 1));
     var cw = Math.max(38, Math.min(118, cwH, cwW));
     var slots = (s ? E.jslots() + E.cslots() : 7);
     var jw = Math.max(34, Math.min(104, cw * 1.0, (W - 46) / (slots + 0.6)));
@@ -690,7 +690,7 @@
     void R.played.offsetWidth;
     res.played.forEach(function (id, k) { var cd = pEls[id]; cd.style.transition = 'transform ' + (0.3 / speed) + 's cubic-bezier(.22,1,.36,1) ' + (k * 0.04 / speed) + 's'; cd.style.transform = ''; });
     Kit.sfx('deal'); hap('light');
-    placeHand(null, held); countSel();
+    placeHand(null, held); if (R.hcount) R.hcount.innerHTML = '&nbsp;';
     await D(300); if (tok !== token) return;
     res.played.forEach(function (id) { pEls[id].style.transition = ''; pEls[id].classList.add(res.scoring.indexOf(id) >= 0 ? 'up' : 'no'); });
     // 2. the hand and its base chips x mult
