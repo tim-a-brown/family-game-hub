@@ -87,7 +87,7 @@ function create2D(host) {
   function layout(w, h, t, b) {
     W = Math.max(2, w); H = Math.max(2, h); top = t || 0; bottom = b || 0; dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-    R = Math.max(40, Math.min(W * 0.31, (H - top - bottom) * 0.3, 230));
+    R = Math.max(40, Math.min(W * 0.31, (H - top - bottom) * 0.3, 200));
   }
   // an ellipse-mapped cap on the ball: pole p, up u (view coords), half-angle a; fn draws in a unit disc
   function cap(cx, cy, r, p, u, a, fn) {

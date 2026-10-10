@@ -147,10 +147,10 @@ function flourishAt(c, x, y, s, fx, fy) {
 function bead(c, x, y, w, h, r) {
   const rad = Math.min(w, h) / 2;
   c.fillStyle = 'rgba(0,0,0,.6)'; rr(c, x + 1.5, y + 3, w, h, rad); c.fill();
-  const wearAmt = 0.65 + r() * 0.35;
+  const wearAmt = 0.45 + r() * 0.4;
   const g = c.createRadialGradient(x + w * 0.34, y + h * 0.3, 0.5, x + w * 0.5, y + h * 0.55, Math.max(w, h) * 0.72);
   g.addColorStop(0, 'rgba(250,228,160,' + wearAmt + ')');
-  g.addColorStop(0.22, '#c79d4f'); g.addColorStop(0.55, '#7b5c25'); g.addColorStop(0.85, '#3a2a12'); g.addColorStop(1, '#1e160b');
+  g.addColorStop(0.24, '#b48b45'); g.addColorStop(0.55, '#6a4f22'); g.addColorStop(0.82, '#30230f'); g.addColorStop(1, '#17110a');
   c.fillStyle = g; rr(c, x, y, w, h, rad); c.fill();
   // black paint left in the low spots
   c.save(); rr(c, x, y, w, h, rad); c.clip();
@@ -162,14 +162,14 @@ function railV(c, x, y, w, h, r) {
   const g = c.createLinearGradient(x, 0, x + w, 0);
   g.addColorStop(0, '#2a2117'); g.addColorStop(0.08, '#6b5530'); g.addColorStop(0.12, '#18130d'); g.addColorStop(0.88, '#120e09'); g.addColorStop(0.93, '#4c3c22'); g.addColorStop(1, '#16110b');
   c.fillStyle = g; c.fillRect(x, y, w, h);
-  const bw = w * 0.74, bh = 36, pitch = 45, n = Math.floor((h - 8) / pitch), off = (h - n * pitch) / 2;
+  const bw = w * 0.76, bh = 40, pitch = 45, n = Math.floor((h - 8) / pitch), off = (h - n * pitch) / 2;
   for (let i = 0; i < n; i++) bead(c, x + (w - bw) / 2, y + off + i * pitch + (pitch - bh) / 2, bw, bh, r);
 }
 function railH(c, x, y, w, h, r) {
   const g = c.createLinearGradient(0, y, 0, y + h);
   g.addColorStop(0, '#2a2117'); g.addColorStop(0.08, '#6b5530'); g.addColorStop(0.12, '#18130d'); g.addColorStop(0.88, '#120e09'); g.addColorStop(0.93, '#4c3c22'); g.addColorStop(1, '#16110b');
   c.fillStyle = g; c.fillRect(x, y, w, h);
-  const bh = h * 0.74, bw = 36, pitch = 45, n = Math.floor((w - 8) / pitch), off = (w - n * pitch) / 2;
+  const bh = h * 0.76, bw = 40, pitch = 45, n = Math.floor((w - 8) / pitch), off = (w - n * pitch) / 2;
   for (let i = 0; i < n; i++) bead(c, x + off + i * pitch + (pitch - bw) / 2, y + (h - bh) / 2, bw, bh, r);
 }
 function screw(c, x, y, rad, a) {
@@ -605,20 +605,20 @@ function coastDist(w0, t) { return (w0 + AB) * (1 - Math.exp(-FB * t)) / FB - AB
 
 const CSS = `
 .orc{position:absolute;inset:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-.orc-cv{position:absolute;display:block;opacity:0;transition:opacity .35s ease}
+.orc-cv{position:absolute;display:block;max-width:none;max-height:none;opacity:0;transition:opacity .35s ease}
 .orc-cv.on{opacity:1}
 .orc-clip{position:absolute;overflow:hidden;pointer-events:none}
 .orc-card{position:absolute;inset:0 6px 10px 6px;transform:translateY(-104%);transition:transform .75s cubic-bezier(.2,.85,.25,1);pointer-events:auto;cursor:pointer;
   color:#2a180c;background-color:#efe2c0;border-radius:2px 2px 5px 5px;
   box-shadow:0 8px 16px rgba(0,0,0,.4),inset 0 0 22px rgba(130,85,30,.32),inset 0 -2px 0 rgba(120,80,30,.25)}
 .orc.l .orc-card{inset:6px 10px 6px 0;transform:translateX(-104%);border-radius:2px 5px 5px 2px}
-.orc-card.out{transform:none}
+.orc-card.out,.orc.l .orc-card.out{transform:none}
 .orc-card-in{position:absolute;inset:7px;border:1.5px solid rgba(70,40,15,.6);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;padding:6px 12px;box-sizing:border-box}
 .orc-card-in:before{content:"";position:absolute;inset:3px;border:1px solid rgba(70,40,15,.35);pointer-events:none}
 .orc-head,.orc-foot{font-family:"Oracle Rye",Georgia,serif;color:#7a461a;letter-spacing:.14em;font-size:11px;line-height:1.1;white-space:nowrap}
 .orc-text{font-family:"Oracle Pagella","Palatino Linotype",Palatino,Georgia,serif;font-size:24px;line-height:1.12;letter-spacing:.03em;color:#22130a;text-wrap:balance}
 .orc-rule{width:46%;height:1px;background:linear-gradient(90deg,transparent,rgba(110,60,20,.6),transparent)}
-.orc-coin{position:absolute;left:0;top:0;cursor:grab;touch-action:none;filter:drop-shadow(0 4px 5px rgba(0,0,0,.45));outline:none;border-radius:50%}
+.orc-coin{position:absolute;left:0;top:0;max-width:none;cursor:grab;touch-action:none;filter:drop-shadow(0 4px 5px rgba(0,0,0,.45));outline:none;border-radius:50%}
 .orc-coin:focus-visible{box-shadow:0 0 0 3px var(--accent,#ffc83d)}
 .orc-cap{position:absolute;font:600 .78rem/1.2 var(--font,system-ui);color:var(--text-2,#bbb);text-align:center;white-space:nowrap;pointer-events:none;transform:translateX(-50%);transition:opacity .3s}
 .orc-new{position:absolute}
@@ -656,7 +656,7 @@ function mount(stage, api) {
   // ── State ──
   let L = null;                       // layout
   let bg = null, fg = null, paper = null, ink = null, dialTex = null, nextTex = null;
-  let theta = 0, kick = 0, spin = null, drag = null, flip = null, result = null, coinBusy = false;
+  let theta = 0, omega = 0, kick = 0, spin = null, drag = null, flip = null, result = null, coinBusy = false;
   let dialSet = [], revealed = new Set(), prevSet = new Set();
   let simT = 0, raf = 0, lastTick = 0, lastDraw = 0, needFull = true;
   let lastB = 0, lastSnd = 0, lastHap = 0;
@@ -697,9 +697,11 @@ function mount(stage, api) {
     if (mode === 'p') {
       const sy = y0 + TSLOT_P.y * k, cwid = Math.min(TSLOT_P.w * k * 0.98, 400);
       const chgt = clamp(h - sy - 74 - pad, 96, 240);
-      Object.assign(clip.style, { left: (x0 + cw / 2 - cwid / 2 - 6) + 'px', top: sy + 'px', width: (cwid + 12) + 'px', height: (chgt + 10) + 'px' });
+      L.clipH = chgt + 10;
+      Object.assign(clip.style, { left: (x0 + cw / 2 - cwid / 2 - 6) + 'px', top: sy + 'px', width: (cwid + 12) + 'px', height: L.clipH + 'px' });
     } else {
       const sx = x0 + TSLOT_L.x * k, ht = Math.min(TSLOT_L.h * k * 0.98, 300) + 12, wd = Math.min(w - pad - sx, 380);
+      L.clipH = ht;
       Object.assign(clip.style, { left: sx + 'px', top: (y0 + TSLOT_L.y * k - ht / 2) + 'px', width: wd + 'px', height: ht + 'px' });
     }
     // coin, caption, button
@@ -786,8 +788,13 @@ function mount(stage, api) {
     c.save(); c.translate(DIAL.x, DIAL.y);
     let sx = 1;
     if (flip) sx = Math.max(0.02, Math.abs(Math.cos(Math.PI * flip.u)));
-    c.scale(sx, 1); c.rotate(theta);
-    c.drawImage(dialTex, -R, -R, 2 * R, 2 * R);
+    c.scale(sx, 1);
+    // motion blur while it whirs: a few faint copies spread over one frame's turn
+    const span = spin ? Math.abs(omega) / 60 : 0, n = span > 0.012 ? Math.min(6, Math.ceil(span / 0.012)) : 1;
+    for (let j = 0; j < n; j++) {
+      c.save(); c.globalAlpha = 1 / (j + 1); c.rotate(theta - Math.sign(omega) * span * j / n);
+      c.drawImage(dialTex, -R, -R, 2 * R, 2 * R); c.restore();
+    }
     c.restore();
     if (flip) {
       c.save(); c.translate(DIAL.x, DIAL.y); c.scale(sx, 1);
@@ -850,6 +857,11 @@ function mount(stage, api) {
     spin = { phase: 'notch', t0: simT, th0: th, c, d, v: vv, T, dir, counts };
   }
   function step(dt) {
+    const th0 = theta;
+    stepInner(dt);
+    if (dt > 0) omega = drag ? 0 : (theta - th0) / dt;
+  }
+  function stepInner(dt) {
     simT += dt;
     kick *= Math.exp(-dt * 16);
     if (Math.abs(kick) <= 0.002) kick = 0;
@@ -868,7 +880,7 @@ function mount(stage, api) {
       else {
         const th = s.th0 + s.dir * (s.wmax * s.Tr / 2 + s.wmax * s.Th);
         spin = null; enterCoast(th, s.wmax, s.dir, s.counts); spin.t0 = s.t0 + s.Tr + s.Th;
-        return step(0);
+        return stepInner(0);
       }
       ratchet(s.dir, speed);
     } else if (s.phase === 'coast') {
@@ -879,7 +891,7 @@ function mount(stage, api) {
         const th = s.th0 + s.dir * coastDist(s.w0, s.ts);
         const t0 = s.t0 + s.ts;
         enterNotch(th, WS, s.dir, s.counts); spin.t0 = t0;
-        return step(0);
+        return stepInner(0);
       }
     } else if (s.phase === 'notch') {
       const u = s.T > 0 ? Math.min(1, t / s.T) : 1;
@@ -930,10 +942,16 @@ function mount(stage, api) {
   }
   function fitCard() {
     const box = card.querySelector('.orc-card-in');
+    if (L) clip.style.height = L.clipH + 'px';
     let fs = L && L.mode === 'l' ? 30 : 32;
     cardText.style.fontSize = fs + 'px';
     for (let n = 0; n < 30 && fs > 13 && (box.scrollHeight > box.clientHeight + 1 || cardText.scrollWidth > cardText.clientWidth + 1); n++) {
       fs -= 1; cardText.style.fontSize = fs + 'px';
+    }
+    // then shrink the ticket to its print (portrait: it hangs from the slot)
+    if (L && L.mode === 'p') {
+      box.style.bottom = 'auto'; const need = box.offsetHeight + 30; box.style.bottom = '';
+      clip.style.height = Math.min(L.clipH, Math.max(need, 110)) + 'px';
     }
   }
   function showCard() {

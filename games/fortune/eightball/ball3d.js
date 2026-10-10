@@ -149,8 +149,8 @@ export function create(host, ANSWERS, post) {
   // ── Materials ──
   const sheen = { sheen: 0.35, sheenColor: new THREE.Color(0x2a3550), sheenRoughness: 0.45 };
   const M = {
-    ball: keep(new THREE.MeshPhysicalMaterial(Object.assign({ color: 0x0a0a0c, roughness: 0.2, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.0 }, sheen))),
-    decal: keep(new THREE.MeshPhysicalMaterial(Object.assign({ map: decalTex(), roughness: 0.22, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }, sheen))),
+    ball: keep(new THREE.MeshPhysicalMaterial(Object.assign({ color: 0x0a0a0c, roughness: 0.24, specularIntensity: 0.55, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.0 }, sheen))),
+    decal: keep(new THREE.MeshPhysicalMaterial(Object.assign({ map: decalTex(), roughness: 0.3, specularIntensity: 0.4, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }, sheen))),
     lip: keep(new THREE.MeshPhysicalMaterial({ color: 0x08080a, roughness: 0.32, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.12, envMapIntensity: 0.7, side: THREE.DoubleSide })),
     glass: keep(new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: 0.03, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 0.9, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })),
     die: null,
@@ -173,17 +173,17 @@ export function create(host, ANSWERS, post) {
 
   // The die: lit like the rest, then mixed into the liquid by its distance behind the glass; anything
   // outside the ball's shell is dropped (the die is bigger than a real one could be, for a readable face)
-  const dieU = { uLocal: { value: new THREE.Matrix4() }, uYG: { value: YG }, uK: { value: 16.0 }, uLiq: { value: LIQ.clone() } };
+  const dieU = { uLocal: { value: new THREE.Matrix4() }, uYG: { value: YG }, uK: { value: 26.0 }, uLiq: { value: LIQ.clone() } };
   M.die = keep(new THREE.MeshPhysicalMaterial({ roughness: 0.34, metalness: 0, clearcoat: 0.45, clearcoatRoughness: 0.25, envMapIntensity: 0.55, emissive: 0xffffff, emissiveIntensity: 0.1 }));
   M.die.map = dieTex(); M.die.emissiveMap = M.die.map; M.die.fog = false;
   M.die.customProgramCacheKey = () => 'eb-die';
   M.die.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, dieU);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform mat4 uLocal; varying vec3 vBall;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBall = (uLocal * vec4(transformed, 1.0)).xyz;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uYG; uniform float uK; uniform vec3 uLiq; varying vec3 vBall;')
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform mat4 uLocal; varying vec3 vBall; varying float vFace;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBall = (uLocal * vec4(transformed, 1.0)).xyz; vFace = normalize(mat3(uLocal) * objectNormal).y;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uYG; uniform float uK; uniform vec3 uLiq; varying vec3 vBall; varying float vFace;')
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (length(vBall) > 0.965) discard;')
-      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n{ float d = max(0.0, uYG - vBall.y - 0.012); float f = 1.0 - exp(-d * uK); gl_FragColor.rgb = mix(gl_FragColor.rgb, uLiq * exp(-d * 2.0), f); }');
+      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n{ float d = max(0.0, uYG - vBall.y - 0.012); float f = max(1.0 - exp(-d * uK), 0.9 * (1.0 - smoothstep(0.86, 0.985, vFace))); gl_FragColor.rgb = mix(gl_FragColor.rgb, uLiq * exp(-d * 2.0), f); }');
   };
 
   // ── Geometry ──
@@ -272,7 +272,7 @@ export function create(host, ANSWERS, post) {
     if (composer) { composer.setPixelRatio(dpr); composer.setSize(W, H); }
     camera.aspect = W / H;
     // a believable size: about 60% of the width on a phone, less of the height on wide screens
-    const avail = H - top - bottom, rPx = Math.max(40, Math.min(W * 0.31, avail * 0.3, 230));
+    const avail = H - top - bottom, rPx = Math.max(40, Math.min(W * 0.31, avail * 0.3, 200));
     dist = (H / 2) / (rPx * Math.tan(FOV / 2 * Math.PI / 180));
     // put the ball in the middle of the free area (between the top and bottom insets)
     const shift = (top + avail / 2) - H / 2;
