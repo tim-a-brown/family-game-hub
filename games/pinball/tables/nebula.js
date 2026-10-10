@@ -24,7 +24,7 @@ const WELL_Z = 62, WELL_BOX = [58, 852, 194, 1008];          // the Gravity Well
 const LOOP_C = [348, 852], LOOP_R = 92, LOOP_Z = 66;         // the Warp Loop: a raised wire circle over the pops
 const SAUCER = [300, 980];                                  // the flying saucer, top centre
 const SHIP = [300, 733];                                     // the mothership drop-target bank
-const TPIN = [222, 596], TPOUT = [455, 556];                 // teleporter pads
+const TPIN = [222, 596], TPOUT = [456, 668];                 // teleporter pads
 const SCOOP = [344, 516];                                    // Mission Control scoop
 const CANL = [30, 618], CANR = [470, 1000];                   // the two cannons
 const PLANETS = [['CINDER', PAL.red], ['VEIL', PAL.violet], ['HALO', PAL.amber], ['FROST', PAL.ice]];
@@ -119,7 +119,13 @@ function buildLeft(T) {
   const foot = [[bx0, by0], [bx1, by0], [bx1, 992], [bx0, 890]];
   T.wall(foot, { style: 'wood', r: 4, h: 44, color: '#141a30', closed: true });
   T.wall([[479, 794], [466, 772]], { style: 'metal', h: 24 });                      // a ball coming back down off the gate slides into the orbit lane
-  T.powerfield({ id: 'well', lvlId: 'well', z: WELL_Z, box: WELL_BOX, magnets: [[102, 892, 'L'], [168, 930, 'R']], win: { comp: 'wellTop' }, lose: { x: 166, y: 812, vy: -220 }, floor: '#060a1a', color: PAL.cyan });
+  const well = T.powerfield({ id: 'well', lvlId: 'well', z: WELL_Z, box: WELL_BOX, magnets: [[102, 892, 'L'], [168, 930, 'R']], win: { comp: 'wellTop' }, lose: { x: 166, y: 812, vy: -220 }, floor: '#060a1a', color: PAL.cyan });
+  // gentler magnets than the engine's: two or three well-timed taps to reach the gate, not one
+  well.onFlip = function (side, on) {
+    if (!on) return;
+    for (const m of this.mags) if (m.side === side) { m.glow = 1; this.sfx('magClick');
+      for (const b of this.world.balls) if (b.lvl === this.lvl && b.mode === 'free' && !b.power) { const dx = m.x - b.x, dy = m.y - b.y, d = Math.hypot(dx, dy); if (d < 80) { b.vx += dx / d * 380; b.vy = Math.max(b.vy, 0) * 0.5 + 520 + Math.random() * 160; T.G.sfx('coil', { vol: 0.5, x: m.x, rate: 1.2 }); if (T.R) T.R.burst(b.x, b.y, WELL_Z + 10, 8, 250, PAL.cyan); } } }
+  };
   // top gate: a hidden pocket that either locks the ball (lock lit) or drops it into the warp lane
   T.subway({ id: 'wellTop', hole: false, delay: 0.55, to: b => { const G = T.G, lk = G.comps.warpLock; return (G.b.lockLit && lk.count() < 3) ? { comp: 'warpLock' } : { x: 218, y: 980, vx: 12, vy: -320, lvl: 'main' }; } });
   T.ballLock({ id: 'warpLock', slots: [[106, 1032, 72], [136, 1032, 72], [166, 1032, 72]], hidden: false, exit: { x: 220, y: 972, vx: 8, vy: -300 } });
@@ -139,8 +145,10 @@ function buildLeft(T) {
 }
 function buildRight(T) {
   // ── Right orbit lane: up the starboard side, round the top past the saucer, down the warp lane ──
-  T.wall([[432, 620], [432, 818]], { style: 'metal', h: 26 });
-  T.post(432, 617, { style: 'rubber', r: 5 });
+  T.wall([[432, 640], [432, 818]], { style: 'metal', h: 26 });
+  T.post(432, 637, { style: 'rubber', r: 5 });
+  T.wall([[478, 646], [474, 614], [462, 596], [446, 586], [428, 580]], { style: 'wood', r: 4, h: 34 });   // the lane's foot curves inward
+  T.post(426, 580, { style: 'rubber', r: 5 });
   T.orbit({ id: 'orbit', a: [434, 700, 478, 700], dirA: [0, 1], b: [192, 905, 246, 905], dirB: [0, -1], within: 4 });
   T.rolloverLane({ id: 'laneSkill', x: 455, y: 866, r: 11, color: PAL.amber, lampDy: 0, lampR: 0.1, insert: false });
   T.insert('laneSkill', 455, 836, { shape: 'oval', w: 26, h: 13, color: PAL.amber, text: 'PAD', size: 6 });
@@ -166,15 +174,15 @@ function makeWarpLoop(T) {
   const ctrl = climb.concat(circ, spur), pts = spline(ctrl, 6);
   const near = p => { let bi = 0, bd = 1e9; pts.forEach((q, i) => { const d = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]); if (d < bd) { bd = d; bi = i; } }); return bi; };
   const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1], pts[i][2] - pts[i - 1][2]));
-  const sA = cum[near(climb[6])], sB = cum[near(circ[11])], LAPS = 3, BOOST = 520;
+  const sA = cum[near(climb[6])], sB = cum[near(circ[11])], LAPS = 3, BOOST = 380;
   const comp = { id: 'warp', T, G: T.G, x: 400, y: 628, laps: LAPS, lapsDone: 0, speed: 0, best: 0, mags: [0.25, 0.58, 0.9].map((f, i) => ({ i, s: sA + (sB - sA) * f, glow: 0 })), glowAll: 0, active: 0 };
   const path = T.world.path({
     pts, style: 'wire', fric: 35, exitLvl: 'main', lvl: 'main',
     accel(P, w) {
       const b = P.ball || {};
-      for (const m of comp.mags) { const k = 'm' + m.i + '_' + (P.lap || 0); if (P.s >= m.s - 6 && P.s < m.s + 40 && !P[k]) { P[k] = 1; if (!b.power) { P.u = Math.min(4600, P.u + BOOST * ((P.lap || 0) + 1)); m.glow = 1; comp.G.sfx('magClick', { x: 420, vol: 0.5 }); comp.G.sfx('coil', { x: 420, vol: 0.55, rate: 0.9 + (P.lap || 0) * 0.25 }); } else comp.G.sfx('metal', { x: 420, vol: 0.3 }); } }
+      for (const m of comp.mags) { const k = 'm' + m.i + '_' + (P.lap || 0); if (P.s >= m.s - 6 && P.s < m.s + 40 && !P[k]) { P[k] = 1; if (!b.power) { const want = 1700 + 450 * (P.lap || 0); P.u = Math.max(P.u, Math.min(want, P.u + BOOST)); m.glow = 1; comp.G.sfx('magClick', { x: 420, vol: 0.5 }); comp.G.sfx('coil', { x: 420, vol: 0.55, rate: 0.9 + (P.lap || 0) * 0.25 }); } else comp.G.sfx('metal', { x: 420, vol: 0.3 }); } }
       if (P.s >= sB && (P.lap || 0) < LAPS - 1) { P.lap = (P.lap || 0) + 1; P.s -= (sB - sA); comp.speed = P.u; comp.G.emit('superLap', 'warp', b, { lap: P.lap, speed: P.u }); }
-      return 0;
+      return P.u > 2700 ? -(P.u - 2700) * 3 : 0;   // the wires sing but the ball cannot go faster than warp nine
     },
     onExit(b, u, e, w) { comp.active = 0; comp.speed = u; w.place(b, e[0], e[1] - 2, 'main', e[3] * u * 0.55, e[4] * u * 0.55); b.noPath = 0.5; comp.G.sfx('wireEnd', { x: 212, vol: 0.8 }); comp.G.emit('supercharger', 'warp', b, { speed: u, laps: (b.path && b.path.lap) || LAPS }); },
     onFail(b, u, e, w) { comp.active = 0; w.place(b, e[0] - e[3] * 3, e[1] - e[4] * 3, 'main', -e[3] * u, -e[4] * u); b.noPath = 0.4; comp.G.emit('rampFail', 'warp', b); }
@@ -215,7 +223,7 @@ function buildCentre(T) {
   // ── The mothership: three drop targets facing the flippers; the hull is a model behind them ──
   T.dropTargetBank({ id: 'ship', x: SHIP[0], y: SHIP[1], angle: 270, n: 3, w: 24, gap: 4, labels: ['', '', ''], color: '#dfe8f4', art: shipTargetArt, resetDelay: 2.2 });
   // ── Teleporter: in-pad left of centre, out-pad in the right orbit ──
-  T.subway({ id: 'tpIn', x: TPIN[0], y: TPIN[1], r: 12, style: 'teleport', color: PAL.cyan, delay: 0.9, maxV: 1600, to: { x: TPOUT[0], y: TPOUT[1], vx: 0, vy: 950, lvl: 'main' } });
+  T.subway({ id: 'tpIn', x: TPIN[0], y: TPIN[1], r: 12, style: 'teleport', color: PAL.cyan, delay: 0.9, maxV: 1600, to: { x: TPOUT[0], y: TPOUT[1], vx: 0, vy: 1100, lvl: 'main' } });
   T.hole(TPOUT[0], TPOUT[1], 0.1);
   // ── Clear tube ramp: up the centre, over the mothership, across to the right and down to the right inlane ──
   T.ramp({ id: 'tube', style: 'tube', w: 40, tubeR: 17.5, color: '#dff6ff', opacity: 0.2, exitLvl: 'main', entryMin: 170, minExit: 320, supports: false,
@@ -506,7 +514,7 @@ function makeRules() {
         case 'kickback': G.msg('THRUSTER', 'BALL RECOVERED', { style: 'flash', dur: 1 }); G.sfx('vuk', { vol: 0.5 }); break;
       }
     },
-    wf(speed) { return (speed / 500).toFixed(1); }
+    wf(speed) { return Math.min(9.9, speed / 300).toFixed(1); }
   };
   rulesPart2(R, LINES, pick);
   return R;
@@ -529,8 +537,8 @@ function rulesPart2(R, LINES, pick) {
       if (B.eh) { G.jackpot(200000, 'HORIZON SUPER', { color: PAL.violet }); return; }
       if (B.planetOn === 'HALO') { R.planetShot(G, 60000, 'WARP ' + w); return; }
       if (R.jp(G, 'warp')) return;
-      const pts = G.add(20000 + Math.round(Math.min(1, sp / 4600) * 4000) * 10);
-      G.msg('WARP ' + w, fmt(pts), { anim: 'warp', style: 'jackpot', dur: 1.8 }); if (sp > 4200) R.say(G, 'warp9');
+      const pts = G.add(20000 + Math.round(Math.max(0, Math.min(1, (sp - 1500) / 1200)) * 4000) * 10);
+      G.msg('WARP ' + w, fmt(pts), { anim: 'warp', style: 'jackpot', dur: 1.8 }); if (sp > 2650) R.say(G, 'warp9');
       if (B.warps % 6 === 0 && !B.amOn) { B.amLit = true; G.msg('ANTIMATTER', 'LIT AT MISSION CONTROL', {}); }
       if (B.warps === 3 || B.warps === 9) G.lightExtra();
     },
@@ -621,7 +629,7 @@ function rulesPart2(R, LINES, pick) {
       const n = G.comp('warpLock').count(); for (let i = 0; i < 3; i++) { L['lock' + i] = i < n ? 1 : B.lockLit && i === n ? 'blink' : 0; L['ct' + i] = i < n ? 'pulse' : 0; }
       B.lk.forEach((v, i) => L['lkl' + i] = v ? 1 : B.lockLit ? 0 : 'slow');
       B.am.forEach((v, i) => L['aml' + i] = v ? 1 : 0.2); L.amL = B.amOn ? 'fast' : B.amLit ? 'blink' : 0;
-      const sp = B.warpOn ? B.warpSpeed : B.bestSpeed * 0.5; for (let i = 0; i < 5; i++) L['ws' + i] = sp > (i + 1) * 900 ? (B.warpOn ? 1 : 0.5) : 0;
+      const sp = B.warpOn ? B.warpSpeed : B.bestSpeed * 0.6; for (let i = 0; i < 5; i++) L['ws' + i] = sp > 1200 + i * 320 ? (B.warpOn ? 1 : 0.5) : 0;
       PLANETS.forEach((p, i) => L['pl' + i] = B.visited[i] ? 1 : B.planetLit === i ? 'blink' : B.planetIdx === i && B.planetOn ? 'fast' : 0);
       L.missionL = B.ehLit || B.planetLit >= 0 || B.amLit || G.ebLit ? 'blink' : 0; L.saucerL = B.saucerMode ? 'fast' : B.saucerHits / 6;
       L.ebL = G.ebLit ? 'blink' : 0; L.ehL = B.eh ? 'fast' : B.ehLit ? 'blink' : (B.visited.filter(Boolean).length + (B.warpMBDone ? 1 : 0) + (B.saucerDone ? 1 : 0)) / 6;

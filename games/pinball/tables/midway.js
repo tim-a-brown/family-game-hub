@@ -37,7 +37,7 @@ const CAROUSEL = [243, 470], CAR_R = 44, CAR_LEGS = [[243, 527], [194, 441], [29
 const RING = [243, 604];
 const MONKEY = [186, 972];
 const CANNON = [26, 205];
-const POPS = [[268, 920], [348, 918], [302, 866]];   // close under the lanes to feed them, offset so no lane hits a bumper dead-centre
+const POPS = [[266, 924], [352, 920], [307, 858]];   // under the lanes to feed them, offset so no lane hits a bumper dead-centre, gaps wider than a ball
 const LANES = [252, 292, 332];
 const PRIZES = ['DUCK', 'BEAR', 'FISH', 'ELEPHANT', 'LION'];
 const PRIZE_MODES = ['ducks', 'bumpers', 'ring', 'dunk', 'coaster'];
