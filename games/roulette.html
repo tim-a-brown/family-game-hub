@@ -90,12 +90,6 @@
 .tring{position:absolute;z-index:6;width:var(--cs);height:var(--cs);transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;
   border:2px dashed #ffd54a;background:rgba(255,213,74,.22);box-shadow:0 0 12px rgba(255,213,74,.85);animation:pop .25s var(--spring);}
 .stk.lifted{opacity:.28;}
-.ghost{position:fixed;left:0;top:0;z-index:400;width:0;height:0;pointer-events:none;will-change:transform;}
-.ghost .gin{position:absolute;left:0;top:0;transform:scale(1);transform-origin:0 0;transition:transform .18s var(--spring), filter .18s, opacity .18s;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4));}
-.ghost.up .gin{transform:scale(1.16);filter:drop-shadow(0 14px 10px rgba(0,0,0,.5));}
-.ghost.off .gin{opacity:.5;}
-.ghost.gone .gin{transform:scale(.5);opacity:0;}
-.ghost .stk{transition:none;}
 @keyframes hitn{50%{box-shadow:inset 0 0 0 3px #fff, 0 0 18px #ffd54a;filter:brightness(1.4);}}
 .dolly{position:absolute;z-index:8;width:17px;height:24px;transform:translate(-50%,-78%);pointer-events:none;animation:dolly .5s var(--spring);
   background:radial-gradient(circle at 40% 30%,#fff,#d8d2c4 60%,#9d968a);border-radius:50% 50% 40% 40% / 60% 60% 40% 40%;box-shadow:0 6px 8px rgba(0,0,0,.5);}
@@ -105,12 +99,7 @@
 /* ── Rail: chip tray and buttons (fixed to the bottom) ───────────────── */
 .rail{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:8px calc(12px + var(--corner-x)) calc(var(--safe-b) + 10px + var(--corner-y));border-radius:22px 22px 0 0;}
 .rail-in{max-width:560px;margin:0 auto;}
-.tray{display:flex;justify-content:center;gap:clamp(6px,2.6vw,14px);padding:4px 0 10px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
-.tray button{border:0;padding:0;background:none;border-radius:50%;transition:transform .2s var(--spring), filter .2s;touch-action:none;cursor:grab;}
-.tray .c3{--cs:52px;font-size:.98rem;}
-.tray button.on{transform:translateY(-7px);}
-.tray button.on .c3{box-shadow:0 0 0 3px #ffd54a, 0 8px 14px rgba(0,0,0,.5);}
-.tray button:disabled{filter:grayscale(.8) brightness(.6);cursor:default;}
+.rail .cz-rack{margin:2px 0 8px;}
 .acts{display:flex;gap:8px;align-items:center;}
 .acts .icon-btn{width:52px;height:52px;background:rgba(0,0,0,.28);}
 .acts .btn{min-height:52px;}
@@ -148,7 +137,7 @@
 .cmp .tbl{padding:5px;border-radius:18px;}
 .cmp .tbl .felt-in{padding:6px;border-radius:13px;}
 @media (max-height:760px){
-  .tray{padding:2px 0 6px;} .tray .c3{--cs:44px;font-size:.88rem;}
+  .rail .cz-rack{--cs:40px;margin:0 0 6px;padding:5px 8px 6px;}
   .rail{padding-top:6px;} .acts .icon-btn{width:46px;height:46px;} .acts .btn{min-height:46px;}
 }
 
@@ -423,26 +412,19 @@
     layout(); paintStacks();
     drawMini();
     R.lay.addEventListener('click', onTableTap);
-    R.lay.addEventListener('pointerdown', layDown);
+    if (R.rack) R.rack.refresh();
     if (S.spin) finishSpin(true);
     else hintMsg();
   }
   function hintMsg() {
     if (!R.msg) return;
     var t = total(S.bets);
-    R.msg.innerHTML = t ? 'Total bet <b>' + money(t) + '</b> · tap Spin when ready' : (S.recent.length ? 'Place your bets for the next spin' : 'Pick a chip, then tap the table to bet');
+    R.msg.innerHTML = t ? 'Total bet <b>' + money(t) + '</b> · tap Spin when ready' : (S.recent.length ? 'Place your bets for the next spin' : 'Drag a chip from the rack onto a bet');
   }
   function rail(on) {
     var old = document.querySelector('.rail'); if (old) old.remove();
     if (!on) return;
-    R.tray = el('div', { class: 'tray' });
-    [1, 5, 25, 100, 500].forEach(function (v) {
-      R.tray.appendChild(el('button', { type: 'button', class: v === chipV ? 'on' : '', 'aria-label': '$' + v + ' chip', 'data-v': v, onclick: function () {
-        if (justDragged()) return;
-        selectChip(v); Kit.sfx('chip'); Kit.haptic('light');
-      } }, [chipEl(v)]));
-    });
-    R.tray.addEventListener('pointerdown', trayDown);
+    R.rack = chipRack(); R.tray = R.rack.el;
     R.undo = el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Undo last chip', html: Kit.icon('undo'), onclick: undoChip });
     R.rep = el('button', { type: 'button', class: 'btn btn-soft rep', onclick: clearOrRepeat });
     R.spin = el('button', { type: 'button', class: 'btn btn-primary spin', html: Kit.icon('play') + '<span>Spin</span>', onclick: spin });
@@ -541,7 +523,7 @@
     R.net.textContent = S.sess.spins ? signed(S.sess.net) : '$0';
     R.net.className = S.sess.net > 0 ? 'pos' : S.sess.net < 0 ? 'neg' : '';
     var b = Casino.balance();
-    R.tray.querySelectorAll('button').forEach(function (x) { x.disabled = busy || +x.dataset.v > b; });
+    R.rack.refresh();
     R.undo.disabled = busy || !S.undo.length;
     R.spin.disabled = busy || !t;
     R.spin.querySelector('span').textContent = t ? 'Spin · ' + money(t) : 'Spin';
@@ -567,10 +549,10 @@
   // ── Betting ──────────────────────────────────────────────────────────────
   function selectChip(v) {
     chipV = v;
-    R.tray.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', +b.dataset.v === v); });
+    if (R.rack) R.rack.value(v);
   }
   function onTableTap(e) {
-    if (busy || !G || justDragged()) return;
+    if (busy || !G || (R.rack && R.rack.justDragged())) return;
     var r = R.lay.getBoundingClientRect();
     var id = hit((e.clientX - r.left) * G.W / r.width, (e.clientY - r.top) * G.H / r.height);
     if (!id || !BETS[id]) return;
@@ -611,59 +593,79 @@
   }
   function takeOff(id, v) { S.bets[id] -= v; if (!(S.bets[id] > 0)) delete S.bets[id]; }
 
-  // ── Drag and drop ────────────────────────────────────────────────────────
-  // Press a chip in the rack (or a bet on the table) and drag. The chip lifts
-  // and follows the finger (held a little above it on touch so you can see
-  // where it goes); the bet it would make lights up. A quick tap without
-  // moving still uses the tap-to-bet flow.
-  var drag = null, dragEndAt = 0;
-  function justDragged() { return Date.now() - dragEndAt < 400; }
+  // ── Drag and drop (shared chip rack in casino.js) ────────────────────────
+  // Drag a chip from the rack onto the table; the bet it would make lights up.
+  // Bets on the table can be dragged to another spot, or off the table to take
+  // them back. A quick tap on a rack chip selects it for tap-to-bet.
   function layPt(cx, cy) { var r = R.lay.getBoundingClientRect(); return { x: (cx - r.left) * G.W / r.width, y: (cy - r.top) * G.H / r.height }; }
-  function trayDown(e) {
-    var b = e.target.closest && e.target.closest('button');
-    if (!b || b.disabled || busy || !S || !G || drag || e.button > 0) return;
-    drag = { kind: 'new', v: +b.dataset.v, pid: e.pointerId, x0: e.clientX, y0: e.clientY, touch: e.pointerType !== 'mouse', on: false };
-  }
-  function layDown(e) {
-    if (busy || !S || !G || drag || e.button > 0) return;
-    var p = layPt(e.clientX, e.clientY), best = null, bd = 1e9;
-    Object.keys(S.bets).forEach(function (id) {
-      var s = spot(id); if (!s) return;
-      var d = Math.max(Math.abs(s.x - p.x), Math.abs(s.y + G.cs * 0.12 - p.y));   // stacks rise a little above their spot
-      if (d < bd) { bd = d; best = id; }
+  function chipRack() {
+    return Casino.rack({
+      value: chipV,
+      table: function () { return R.lay && R.lay.parentElement; },
+      enabled: function () { return !busy && !!S && !!G; },
+      can: function (v) { return v <= Casino.balance(); },
+      ghost: function () { return Math.round(Math.max(34, G.cs * 1.35)); },
+      tap: function (v) { selectChip(v); Kit.sfx('chip'); Kit.haptic('light'); },
+      hit: function (x, y) {
+        if (!G || !R.lay) return null;
+        var p = layPt(x, y), id = hit(p.x, p.y);
+        return id && BETS[id] ? id : null;
+      },
+      mark: function (id) { showTarget(id); },
+      start: function (kind) { if (kind === 'new') { chipV = R.rack.value(); clearResult(); } },
+      over: function (id, v, kind, off) {
+        if (kind === 'end') return;
+        if (id) {
+          var b = BETS[id];
+          R.msg.innerHTML = '<b>' + b.name + '</b> · pays ' + payText(b) + (kind === 'move' && id !== dragFrom ? ' · move ' + money(v) + ' here' : '');
+        } else if (kind === 'move') R.msg.innerHTML = off ? 'Let go to take <b>' + money(v) + '</b> back' : 'Drag to a new spot, or off the table to take it back';
+        else R.msg.innerHTML = 'Drop the <b>' + money(v) + '</b> chip on a bet';
+      },
+      done: function (placed) { dragFrom = null; if (!placed) hintMsg(); },
+      drop: function (id, v) { return placeChip(id, v); },
+      // Pick a bet up off the table
+      pick: function (cx, cy, type) {
+        if (!G || !R.lay) return null;
+        var p = layPt(cx, cy), best = null, bd = 1e9;
+        Object.keys(S.bets).forEach(function (id) {
+          var s = spot(id); if (!s) return;
+          var d = Math.max(Math.abs(s.x - p.x), Math.abs(s.y + G.cs * 0.12 - p.y));   // stacks rise a little above their spot
+          if (d < bd) { bd = d; best = id; }
+        });
+        if (!best || bd > G.cs * (type !== 'mouse' ? 0.75 : 0.6)) return null;
+        dragFrom = best;
+        var st = R.stacks[best];
+        return { id: best, v: S.bets[best], rect: st ? st.getBoundingClientRect() : null };
+      },
+      lift: function (id, on) { if (R.stacks[id]) R.stacks[id].classList.toggle('lifted', on); },
+      move: function (from, tgt) {
+        var amt = S.bets[from] || 0;
+        if (!amt || busy) return false;
+        clearResult();
+        delete S.bets[from]; S.bets[tgt] = (S.bets[tgt] || 0) + amt;
+        S.undo.push({ mv: from, to: tgt, v: amt });
+        Kit.sfx('chip'); Kit.haptic('light');
+        flash(tgt); paintStacks(tgt); paintBank(); save();
+        var b = BETS[tgt];
+        R.msg.innerHTML = 'Moved to <b>' + b.name + '</b> · pays ' + payText(b) + ' · ' + money(S.bets[tgt]) + ' on it';
+        return true;
+      },
+      remove: function (from) {
+        var amt = S.bets[from] || 0;
+        if (!amt || busy) return false;
+        clearResult();
+        delete S.bets[from]; Casino.win(amt);
+        S.undo.push({ rm: from, v: amt });
+        Kit.sfx('whoosh'); Kit.haptic('light');
+        paintStacks(); paintBank(); save();
+        R.msg.innerHTML = 'Took <b>' + money(amt) + '</b> back off ' + BETS[from].name;
+        return true;
+      }
     });
-    var touch = e.pointerType !== 'mouse';
-    if (best && bd <= G.cs * (touch ? 0.75 : 0.6)) drag = { kind: 'move', id: best, v: S.bets[best], pid: e.pointerId, x0: e.clientX, y0: e.clientY, touch: touch, on: false };
   }
-  function liftDrag() {
-    drag.on = true;
-    if (drag.kind === 'new') { selectChip(drag.v); clearResult(); }
-    else if (R.stacks[drag.id]) R.stacks[drag.id].classList.add('lifted');
-    var size = Math.round(Math.max(30, G.cs * 1.3));
-    drag.oy = drag.touch ? -Math.round(size * 0.55 + 24) : 0;
-    var st = stackEl(drag.v, size);
-    drag.ghost = el('div', { class: 'ghost' }, [el('div', { class: 'gin' }, [st])]);
-    document.body.appendChild(drag.ghost);
-    requestAnimationFrame(function () { if (drag && drag.ghost) drag.ghost.classList.add('up'); });
-    Kit.haptic('light');
-  }
-  function moveDrag(cx, cy) {
-    var gx = cx, gy = cy + drag.oy;
-    drag.gx = gx; drag.gy = gy;
-    drag.ghost.style.transform = 'translate3d(' + gx + 'px,' + gy + 'px,0)';
-    var p = layPt(gx, gy), id = hit(p.x, p.y);
-    if (id && !BETS[id]) id = null;
-    var fr = R.lay.parentElement.getBoundingClientRect();
-    drag.off = gx < fr.left || gx > fr.right || gy < fr.top || gy > fr.bottom;
-    drag.ghost.classList.toggle('off', drag.kind === 'move' && drag.off);
-    if (id !== drag.tgt) { drag.tgt = id; showTarget(id); }
-    if (id) {
-      var b = BETS[id];
-      R.msg.innerHTML = '<b>' + b.name + '</b> · pays ' + payText(b) + (drag.kind === 'move' && id !== drag.id ? ' · move ' + money(drag.v) + ' here' : '');
-    } else if (drag.kind === 'move') R.msg.innerHTML = drag.off ? 'Let go to take <b>' + money(drag.v) + '</b> back' : 'Drag to a new spot, or off the table to take it back';
-    else R.msg.innerHTML = 'Drop the <b>' + money(drag.v) + '</b> chip on a bet';
-  }
+  var dragFrom = null;
   function showTarget(id) {
+    if (!R.lay) return;
     R.lay.querySelectorAll('.cell.tgt').forEach(function (c) { c.classList.remove('tgt'); });
     if (R.ring) { R.ring.remove(); R.ring = null; }
     if (!id) return;
@@ -674,53 +676,6 @@
       R.lay.appendChild(R.ring);
     }
   }
-  function endDrag(cancelled) {
-    var d = drag; drag = null;
-    if (!d || !d.on) return;
-    dragEndAt = Date.now();
-    showTarget(null);
-    var g = d.ghost, tgt = cancelled ? null : d.tgt;
-    var placed = false;
-    if (d.kind === 'new') {
-      if (tgt) placed = placeChip(tgt, d.v);
-      if (!placed && !tgt) hintMsg();
-    } else {
-      var from = d.id, amt = S.bets[from] || 0;
-      if (R.stacks[from]) R.stacks[from].classList.remove('lifted');
-      if (!amt || busy) { /* nothing to do */ }
-      else if (tgt && tgt !== from) {
-        clearResult();
-        delete S.bets[from]; S.bets[tgt] = (S.bets[tgt] || 0) + amt;
-        S.undo.push({ mv: from, to: tgt, v: amt });
-        Kit.sfx('chip'); Kit.haptic('light');
-        flash(tgt); paintStacks(tgt); paintBank(); save(); placed = true;
-        var b = BETS[tgt];
-        R.msg.innerHTML = 'Moved to <b>' + b.name + '</b> · pays ' + payText(b) + ' · ' + money(S.bets[tgt]) + ' on it';
-      } else if (!tgt && d.off && !cancelled) {
-        clearResult();
-        delete S.bets[from]; Casino.win(amt);
-        S.undo.push({ rm: from, v: amt });
-        Kit.sfx('whoosh'); Kit.haptic('light');
-        paintStacks(); paintBank(); save(); placed = true;
-        R.msg.innerHTML = 'Took <b>' + money(amt) + '</b> back off ' + BETS[from].name;
-      } else hintMsg();
-    }
-    if (placed) g.remove();
-    else { g.classList.remove('up'); g.classList.add('gone'); setTimeout(function () { g.remove(); }, 220); }
-  }
-  window.addEventListener('pointermove', function (e) {
-    if (!drag || e.pointerId !== drag.pid) return;
-    if (!drag.on) {
-      if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < (drag.touch ? 8 : 5)) return;
-      if (busy) { drag = null; return; }
-      liftDrag();
-    }
-    e.preventDefault();
-    moveDrag(e.clientX, e.clientY);
-  }, { passive: false });
-  window.addEventListener('pointerup', function (e) { if (drag && e.pointerId === drag.pid) endDrag(false); });
-  window.addEventListener('pointercancel', function (e) { if (drag && e.pointerId === drag.pid) endDrag(true); });
-  window.addEventListener('blur', function () { if (drag) endDrag(true); });
   function clearOrRepeat() {
     if (busy) return;
     if (R.rep.dataset.m === 'rep') {
@@ -1066,7 +1021,7 @@
   var rz = null;
   function refit() {
     clearTimeout(rz); rz = setTimeout(function () {
-      if (!S || !R.lay || !document.body.contains(R.lay) || busy || drag) return;
+      if (!S || !R.lay || !document.body.contains(R.lay) || busy || (R.rack && R.rack.dragging())) return;
       arrange(); layout(); R.stacks = {}; paintStacks(); drawMini();
     }, 120);
   }

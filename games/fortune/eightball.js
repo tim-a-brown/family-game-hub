@@ -446,8 +446,8 @@ function mount(stage, api) {
     const m = Math.hypot(x, y, z), now = performance.now();
     // the push: opposite to the phone's acceleration across the screen, with a small dead zone for sensor noise
     const sc = toScreen(x, y, e._angle != null ? e._angle * Math.PI / 180 : screenAngle()), sm = Math.hypot(sc[0], sc[1]);
-    if (sm > 0.6) {
-      const k = (sm - 0.6) / sm * PUSH;
+    if (sm > 0.8) {
+      const k = (sm - 0.8) / sm * PUSH;
       fx = -sc[0] * k; fy = -sc[1] * k; fT = now; kick();
     } else if (fx || fy) { fx = 0; fy = 0; }
     if (m > 13 && now - (spikes[spikes.length - 1] || 0) > 90) {
