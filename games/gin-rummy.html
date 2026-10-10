@@ -105,6 +105,9 @@
         else if (d[wi] === 'undercut') { how = 'knock'; out = 1 - wi; pre = [0, 0]; pre[out] = sc[wi] - 25; }
         else { how = 'knock'; out = wi; pre = [0, 0]; pre[1 - wi] = sc[wi]; }
         st = { how: how, out: out, dw: pre };
+        // Hands entered on the sheet also keep the real deadwood counts (only the difference is in the score)
+        var dd = ctx.prev.data;
+        if (dd && dd.how && Array.isArray(dd.dw)) st = { how: dd.how, out: dd.out, dw: dd.dw.slice() };
       } else st = ctx.draft() || { how: 'knock', out: -1, dw: [null, null] };
       var rowOut = el('tr', { class: 'open' }, [el('th', { class: 'rn' }, [String(ctx.round), el('small', { text: 'WENT OUT' })])]);
       var rowDraw = el('tr', { class: 'sub' }, [el('th', { class: 'rn', text: '' })]);
@@ -173,7 +176,7 @@
       refresh();
       ctx.entry = { lock: function () {
         var c = refresh(); if (c.ok !== true) return;
-        var extra = { detail: c.detail, highlights: ctx.editing ? [] : (c.hl || []) };
+        var extra = { detail: c.detail, highlights: ctx.editing ? [] : (c.hl || []), data: { how: st.how, out: st.out, dw: st.how === 'draw' ? [null, null] : st.dw.slice() } };
         if (c.gin) { extra.callout = 'Gin!'; if (!ctx.editing) Kit.confetti({ count: 80 }); }
         else if (c.under) extra.callout = 'Undercut!';
         var rs = ctx.rounds.slice(); rs.push({ scores: c.scores, label: '' });

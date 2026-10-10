@@ -88,18 +88,20 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-fire .pb-arc{--cap:#f1c531;--cap-hi:#fff2a8;--cap-lo:#a07c0c;--bez:#c9a324;--bez-lo:#7c6208;}
 .pb-fire.show{display:flex;}
 .pb-view.no-flipbtns .pb-magna{left:14px;}.pb-view.no-flipbtns .pb-fire{right:14px;}
-/* The plunger: the part of the shooter outside the cabinet (chrome housing on the cabinet front, rod, knob),
-   drawn on a canvas lined up under the 3D shooter lane. The canvas reaches down over the button row so the
-   knob can travel when pulled, but only the grab handle (housing, rod and knob at rest) takes touches. */
-.pb-plunger{position:absolute;left:0;top:0;z-index:4;pointer-events:none;display:none;will-change:transform;}
-.pb-plunger.show{display:block;}
-.pb-plunger.glide{transition:transform .6s cubic-bezier(.45,0,.25,1);}
-.pb-plunger canvas{position:absolute;left:0;top:0;display:block;}
-.pb-plunger .grab{position:absolute;pointer-events:auto;touch-action:none;border:0;padding:0;margin:0;background:transparent;border-radius:22px;-webkit-tap-highlight-color:transparent;cursor:grab;}
+/* The plunger close-up: while a ball waits in the shooter lane, a magnified inset of the lane's foot and the
+   plunger slides in along the right side (above the button row): ball on the tip, spring, bracket, then the
+   cabinet front with the chrome housing, rod and knob. Drag down anywhere on it to pull; let go to launch. It
+   slides away once the ball is shot. Drawn on a canvas; the whole inset takes its own touches (never flips). */
+.pb-plunger{position:absolute;right:8px;top:0;z-index:4;border-radius:18px;pointer-events:none;visibility:hidden;opacity:0;
+  transform:translateX(calc(100% + 24px));transition:transform .36s cubic-bezier(.4,0,.2,1),opacity .3s,visibility 0s linear .36s;
+  box-shadow:0 10px 26px rgba(0,0,0,.65),0 2px 6px rgba(0,0,0,.6);}
+.pb-plunger.show{visibility:visible;opacity:1;transform:none;pointer-events:auto;transition:transform .42s cubic-bezier(.2,.9,.25,1.05),opacity .25s,visibility 0s;}
+.pb-plunger canvas{position:absolute;left:0;top:0;display:block;border-radius:18px;}
+.pb-plunger .grab{position:absolute;inset:0;width:100%;height:100%;touch-action:none;border:0;padding:0;margin:0;background:transparent;border-radius:18px;-webkit-tap-highlight-color:transparent;cursor:grab;}
 .pb-plunger.held .grab{cursor:grabbing;}
 /* a ball waits: a slow warm breath of light round the knob (no label) */
-.pb-plunger .cue{position:absolute;pointer-events:none;border-radius:50%;opacity:0;background:radial-gradient(closest-side,rgba(255,214,140,.38),rgba(255,190,90,.12) 60%,rgba(255,190,90,0));transition:opacity .3s;}
-.pb-plunger.wait .cue{animation:pbCue 2.2s ease-in-out infinite;}
+.pb-plunger .cue{position:absolute;pointer-events:none;border-radius:50%;opacity:0;background:radial-gradient(closest-side,rgba(255,214,140,.34),rgba(255,190,90,.1) 60%,rgba(255,190,90,0));}
+.pb-plunger.show.wait .cue{animation:pbCue 2.2s ease-in-out infinite;}
 .pb-plunger.held .cue{animation:none;opacity:0;}
 @keyframes pbCue{0%,100%{opacity:.15;}50%{opacity:.85;}}
 .pb-pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:6;background:rgba(6,4,14,.6);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);}
@@ -163,13 +165,13 @@ Kit.init({ orient: 'portrait', orientTablets: true,
     { icon: 'trophy', label: 'High scores', onClick: showHigh },
     { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Pinball: past games' }) },
     { icon: 'eye', label: 'Top-down view', sub: 'Straight down on the playfield. Off: first person, angled like standing at the machine.', toggle: () => viewMode() === 'top', onClick: () => setViewMode(viewMode() === 'top' ? 'first' : 'top') },
-    { icon: 'gamepad', label: 'On-screen buttons', sub: 'Big flipper buttons in the corners. Off: tap the left or right half of the table instead.', toggle: () => btnsOn(), onClick: () => { lsSet('pinball_btns', btnsOn() ? '0' : '1'); if (viewEl) viewEl.classList.toggle('no-flipbtns', !btnsOn()); if (G) { G.resize(); layoutPlunger(false); } } }
+    { icon: 'gamepad', label: 'On-screen buttons', sub: 'Big flipper buttons in the corners. Off: tap the left or right half of the table instead.', toggle: () => btnsOn(), onClick: () => { lsSet('pinball_btns', btnsOn() ? '0' : '1'); if (viewEl) viewEl.classList.toggle('no-flipbtns', !btnsOn()); if (G) { G.resize(); layoutPlunger(); } } }
   ],
   rules:
     '<p class="goal">Keep the ball in play as long as you can and score as many points as you can. A game is 3 or 5 balls.</p>' +
     '<h3>Controls</h3><ul>' +
     '<li><b>Flippers:</b> hold the big buttons in the bottom corners (left and right), or touch the left or right half of the table. Use both thumbs. Hold a flipper up to catch the ball and aim. The game menu can hide the buttons.</li>' +
-    '<li><b>Launch:</b> the plunger knob sits at the bottom right of the cabinet, under the shooter lane. Grab it and pull it down; let go and it snaps forward. The further you pull, the harder the shot (pull a little for a soft skill shot, all the way for a full one). A quick tap on the knob is a medium launch; easing it all the way back up before you let go cancels.</li>' +
+    '<li><b>Launch:</b> while a ball waits in the shooter lane, a close-up of the plunger slides in on the right. Drag the knob down and let go: it snaps forward and shoots the ball. The further you pull, the harder the shot (pull a little for a soft skill shot, all the way for a full one). A quick tap on the knob is a medium launch; easing it all the way back up before you let go cancels. The close-up slides away once the ball is shot.</li>' +
     '<li><b>Nudge:</b> tap NUDGE at the bottom to bump the table. Bump too often and you get a warning, then TILT: the flippers go dead and you lose that ball and its bonus.</li>' +
     '<li><b>Magnet:</b> tables with a Magna-Save have a MAGNET button. Hold it as the ball heads for that outlane: the magnet catches it, and letting go throws it back.</li>' +
     '<li><b>Keyboard:</b> Left/Right arrows or Z and / for the flippers, Space or Down to pull and launch (and to fire a cannon), Up or N to nudge, A for the magnet, P to pause.</li></ul>' +
@@ -253,7 +255,7 @@ let dmdEl = null, pauseEl = null, viewEl = null, fireBtn = null, magBtn = null, 
 const flipBtn = { L: null, R: null }, btnHeld = { L: false, R: false };
 function btnsOn() { return lsGet('pinball_btns', '1') !== '0'; }
 function viewMode() { return lsGet('pinball_view', 'first') === 'top' ? 'top' : 'first'; }
-function setViewMode(m) { lsSet('pinball_view', m); if (G) { G.setView(m, true); layoutPlunger(true); } }
+function setViewMode(m) { lsSet('pinball_view', m); if (G) G.setView(m, true); }
 function startGame(id, balls, who) {
   leaveGame();
   const r = getRenderer();
@@ -276,10 +278,10 @@ function startGame(id, balls, who) {
   flipBtn.R = el('button', { type: 'button', class: 'pb-arc pb-flip pb-flipR', 'aria-label': 'Right flipper' });
   viewEl.style.setProperty('--c', def.color || '#d93a2b');
   viewEl.classList.toggle('no-flipbtns', !btnsOn());
-  // the plunger knob under the shooter lane (placed once the camera is fitted: layoutPlunger)
+  // the plunger close-up (slides in on the right while a ball waits in the shooter lane)
   plunger.el = el('div', { class: 'pb-plunger' }, [plunger.cv = el('canvas', { 'aria-hidden': 'true' }), plunger.cue = el('div', { class: 'cue' }),
     plunger.grab = el('button', { type: 'button', class: 'grab', 'aria-label': 'Plunger: pull down and let go to launch the ball' })]);
-  plunger.knobCol = def.theme && def.theme.knob || '#e8dcc0';
+  plunger.th = Object.assign({}, def.theme || {}); plunger.knobCol = plunger.th.knob || '#e8dcc0'; plunger.layers = null; plunger.shown = false; plunger.ball = false;
   viewEl.append(nudgeCtl, magCtl, fireCtl, flipBtn.L, flipBtn.R, plunger.el);
   bindPlunger();
   const btnDown = (e, fn) => { e.preventDefault(); e.stopPropagation(); fn(); };
@@ -314,10 +316,10 @@ function startGame(id, balls, who) {
     loading.remove();
     magCtl.style.display = G.hasMagna ? '' : 'none';
     if (ro) ro.disconnect();
-    ro = new ResizeObserver(() => { sizeDmd(); if (G) { G.resize(); layoutPlunger(false); } }); ro.observe(viewEl); ro.observe(dmdEl);
+    ro = new ResizeObserver(() => { sizeDmd(); if (G) { G.resize(); layoutPlunger(); } }); ro.observe(viewEl); ro.observe(dmdEl);
     Kit.gameStart();
     G.start();
-    layoutPlunger(false);
+    layoutPlunger();
     tickUI();
   }, 30));
 }
@@ -363,97 +365,117 @@ function drawBest(v) {
   bestEl.setAttribute('aria-label', 'Best score ' + fmt(v));
 }
 
-// ═══ The plunger ═══════════════════════════════════════════════════════════════
-// The outside of the shooter, lined up under the 3D shooter lane: a chrome housing where the lane meets the
-// cabinet front, the rod, and the knob. Grab the knob and pull down: knob and rod follow the finger 1:1 (the tip
-// and spring inside the lane go with them, and the spring compresses); let go and it snaps forward and launches
-// with the strength of the pull. A quick tap is a medium launch. Engraved rings on the rod come out of the
-// housing as it is drawn (a quarter, half, three quarters, full): the only strength marks. The canvas reaches
-// down over the button row so the knob has room to travel; only the parts at rest take touches.
-const plunger = { el: null, cv: null, cue: null, grab: null, knobCol: '#e8dcc0', s: 1, W: 0, H: 0, hTop: 0, rod0: 6, travel: 80, limit: 0, x: 0,
-  drag: null, d: 0, snap: null, raf: 0 };
-const PL = { housW: 46, housH: 14, rodW: 7, knobW: 40, knobH: 34, ferH: 6, pad: 8, shadow: 14 };   // CSS px at scale 1
-function layoutPlunger(glide) {
+// ═══ The plunger close-up ═══════════════════════════════════════════════════════
+// While a ball waits in the shooter lane, a magnified inset of the plunger slides in along the right side, above
+// the button row: the foot of the lane (the ball resting on the rubber tip, the main spring, the bracket it sits
+// on), then the cabinet front with the chrome housing, the rod and the knob in the table's colour. Drag down
+// (anywhere on it) and the knob, rod, tip and ball follow the finger 1:1 while the spring compresses; the 3D lane's
+// plunger mirrors the pull. Let go and it snaps forward and shoots the ball out of the top of the inset with the
+// strength of the pull; then the inset slides away until the next ball waits. A quick tap on the knob is a medium
+// launch. The inset never flips a flipper. Static parts are painted once per layout; frames are drawn only while it
+// moves (a drag, a held key, the snap).
+const plunger = { el: null, cv: null, cue: null, grab: null, knobCol: '#e8dcc0', th: {}, G0: null, W: 0, H: 0, top: 0, travel: 120, d: 0,
+  drag: null, snap: null, raf: 0, shown: false, ball: false, fly: 0, layers: null };
+function layoutPlunger() {
   const P = plunger; if (!P.el) return;
-  if (!G || !G.plunger || view !== 'game' || !G.project) { P.el.classList.remove('show'); return; }
-  // anchored on the chrome bracket at the foot of the 3D lane (table y 32..38), so housing and bracket read as one part
-  const vr = viewEl.getBoundingClientRect(), lane = G.project(G.plunger.x, 35, 12, G.view());
-  if (!lane || !vr.width) return;
-  const s = P.s = Math.max(1, Math.min(1.25, vr.width / 440));
-  const housH = PL.housH * s, knobH = (PL.knobH + PL.ferH) * s, half = (PL.knobW / 2 + 8) * s;
-  // the knob rests above the first control below it in its column (on a phone that is the right flipper button)
-  let limit = vr.height - 4;
+  if (!G || !G.plunger || view !== 'game') { hidePlunger(true); return; }
+  const vr = viewEl.getBoundingClientRect(); if (!vr.width || !vr.height) return;
+  const W = Math.round(Math.max(84, Math.min(140, vr.width * 0.21))), right = vr.width > 600 ? 12 : 8, x0 = vr.width - right - W;
+  // never over a control below it (on a phone that is the right flipper button; with the buttons off, nothing)
+  let limit = vr.height - 12;
   for (const c of [flipBtn.R, flipBtn.L, fireCtl, magCtl, nudgeCtl]) {
     if (!c || !c.getClientRects().length || getComputedStyle(c).display === 'none') continue;
     const r = c.getBoundingClientRect();
-    if (r.right - vr.left > lane.x - half && r.left - vr.left < lane.x + half && r.top - vr.top > lane.y) limit = Math.min(limit, r.top - vr.top);
+    if (r.right - vr.left > x0 - 6 && r.left - vr.left < x0 + W + 6) limit = Math.min(limit, r.top - vr.top - 12);
   }
-  let hTop = lane.y - housH * 0.5;
-  let rod0 = Math.min(16 * s, limit - 6 - (hTop + housH + knobH));
-  if (rod0 < 3 * s) { hTop -= 3 * s - rod0; rod0 = 3 * s; }
-  const restBottom = hTop + housH + rod0 + knobH;
-  P.rod0 = rod0; P.hTop = hTop; P.limit = limit; P.x = lane.x;
-  P.travel = Math.round(Math.max(44, Math.min(Math.max(72, vr.height * 0.11) * Math.min(s, 1.1), vr.height - 4 - restBottom)));
-  P.W = Math.round((PL.housW + 26) * s); P.H = Math.ceil(PL.pad * s + housH + rod0 + P.travel + knobH + PL.shadow * s);
+  const top = Math.max(10, Math.round(vr.height * 0.14)), H = Math.max(240, Math.round(limit - top));
+  // the parts, in CSS px, scaled from the ball (a 27 mm ball is 40% of the inset's width)
+  const b = 5, bd = W * 0.4, cx = W / 2, g = { b, bd, cx, laneW: bd * 1.5, tipW: bd * 1.02, tipH: bd * 0.34, cupH: bd * 0.09, rodW: bd * 0.2,
+    brH: bd * 0.34, flH: bd * 0.42, flW: bd * 1.5, r0: bd * 0.3, fH: bd * 0.2, kW: bd * 1.2, kH: bd * 1.05 };
+  g.tip0 = b + 12 + bd;                                     // the tip's face at rest (the ball sits on it)
+  const topFixed = g.tip0 + g.tipH + g.cupH, below = g.brH + bd * 0.22 + g.flH + g.r0 + g.fH + g.kH;
+  g.T = Math.round(Math.max(60, Math.min(260, (H - b - 10 - topFixed - below - bd * 0.35) / 2.25)));   // the knob's travel
+  g.S0 = Math.round(g.T * 1.25 + bd * 0.35);                 // the spring at rest: still a coil stack at a full pull
+  g.yBr = topFixed + g.S0;                                   // the bracket at the foot of the lane
+  g.yEdge = g.yBr + g.brH;                                   // where the lane ends and the cabinet front begins
+  g.yFl = g.yEdge + bd * 0.22;                               // the housing flange on the cabinet front
+  g.k0 = g.yFl + g.flH + g.r0;                               // the knob's ferrule at rest
+  P.geo = g; P.W = W; P.H = H; P.top = top; P.travel = g.T;
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  P.cv.width = Math.round(P.W * dpr); P.cv.height = Math.round(P.H * dpr); P.cv.style.width = P.W + 'px'; P.cv.style.height = P.H + 'px';
-  P.el.style.width = P.W + 'px'; P.el.style.height = P.H + 'px';
-  // the grab handle: housing, rod and knob at rest (generous, but never over the button under it)
-  const gw = Math.round(Math.max(60, (PL.knobW + 22) * s)), gTop = Math.round(PL.pad * s - 8 * s), gBot = Math.round(Math.min(PL.pad * s + housH + rod0 + knobH + 8 * s, limit - 2 - (hTop - PL.pad * s)));
-  Object.assign(P.grab.style, { left: Math.round((P.W - gw) / 2) + 'px', top: gTop + 'px', width: gw + 'px', height: Math.max(36, gBot - gTop) + 'px' });
-  const cueR = PL.knobW * 1.25 * s, cy = PL.pad * s + housH + rod0 + PL.ferH * s + PL.knobH * s * 0.55;
-  Object.assign(P.cue.style, { left: (P.W / 2 - cueR) + 'px', top: (cy - cueR) + 'px', width: cueR * 2 + 'px', height: cueR * 2 + 'px' });
-  P.el.classList.toggle('glide', !!glide && P.el.classList.contains('show'));
-  P.el.style.transform = 'translate(' + Math.round(lane.x - P.W / 2) + 'px,' + Math.round(hTop - PL.pad * s) + 'px)';
-  P.el.classList.add('show');
+  for (const c of [P.cv]) { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); c.style.width = W + 'px'; c.style.height = H + 'px'; }
+  Object.assign(P.el.style, { width: W + 'px', height: H + 'px', top: top + 'px', right: right + 'px' });
+  const cueR = g.kW * 1.1, cy = g.k0 + g.fH + g.kH * 0.55;
+  Object.assign(P.cue.style, { left: (cx - cueR) + 'px', top: (cy - cueR) + 'px', width: cueR * 2 + 'px', height: cueR * 2 + 'px' });
+  P.layers = paintPlungerLayers(W, H, dpr);
   drawPlunger(); plungerState();
 }
-// waiting cue and the flipper button the knob passes over
-function plungerState() {
-  const P = plunger; if (!P.el || !G) return;
-  P.el.classList.toggle('wait', !!G.waitPlunge && !G.pulling && !P.drag && !G.paused && (G.state === 'serve' || G.state === 'play'));
-}
-// colour helpers for the knob's plastic
-function mixHex(a, b, t) { const p = h => { h = h.replace('#', ''); if (h.length === 3) h = h.replace(/./g, c => c + c); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }; const x = p(a), y = p(b); return 'rgb(' + x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(',') + ')'; }
+// colour helpers
+function hexRgb(h) { h = String(h || '#000').replace('#', ''); if (h.length === 3) h = h.replace(/./g, c => c + c); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) || 0); }
+function mixHex(a, b, t) { const x = hexRgb(a), y = hexRgb(b); return 'rgb(' + x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(',') + ')'; }
 function rrect(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 function chromeX(g, x0, x1) { const c = g.createLinearGradient(x0, 0, x1, 0); c.addColorStop(0, '#2b2e34'); c.addColorStop(0.16, '#8d949e'); c.addColorStop(0.33, '#f6f8fb'); c.addColorStop(0.47, '#c8cdd5'); c.addColorStop(0.7, '#626872'); c.addColorStop(0.88, '#9aa0aa'); c.addColorStop(1, '#30333a'); return c; }
-function drawPlunger() {
-  const P = plunger, cv = P.cv; if (!cv || !P.W) return;
-  const g = cv.getContext('2d'), dpr = cv.width / P.W, s = P.s;
-  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, P.W, P.H);
-  const cx = P.W / 2, hy = PL.pad * s, housW = PL.housW * s, housH = PL.housH * s, rodW = PL.rodW * s, kW = PL.knobW * s, kH = PL.knobH * s, fH = PL.ferH * s;
-  const d = P.d, kTop = hy + housH + P.rod0 + d, kBot = kTop + fH + kH, col = P.knobCol;
-  // the knob's shadow on the cabinet front
-  g.save(); g.translate(cx + 2 * s, kBot + 3 * s); g.scale(1, 0.32);
-  const sh = g.createRadialGradient(0, 0, 0, 0, 0, kW * 0.62); sh.addColorStop(0, 'rgba(0,0,0,.55)'); sh.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = sh; g.beginPath(); g.arc(0, 0, kW * 0.62, 0, Math.PI * 2); g.fill(); g.restore();
-  // the rod, with engraved rings that come out of the housing as it is drawn
-  const rodTop = hy + housH * 0.5;
-  g.fillStyle = chromeX(g, cx - rodW / 2, cx + rodW / 2); g.fillRect(cx - rodW / 2, rodTop, rodW, kTop - rodTop + 1);
-  for (const k of [0.25, 0.5, 0.75, 1]) {
-    const y = kTop - P.rod0 - k * P.travel;
-    if (y < hy + housH + 1 || y > kTop - 2) continue;
-    g.fillStyle = 'rgba(10,12,16,.75)'; g.fillRect(cx - rodW / 2, y, rodW, Math.max(1, 1.1 * s));
-    g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(cx - rodW / 2, y + Math.max(1, 1.1 * s), rodW, Math.max(0.6, 0.6 * s));
+function chromeY(g, y0, y1) { const c = g.createLinearGradient(0, y0, 0, y1); c.addColorStop(0, '#fbfcfe'); c.addColorStop(0.35, '#b9bfc8'); c.addColorStop(0.62, '#7b818b'); c.addColorStop(1, '#3a3e45'); return c; }
+function screw(g, x, y, r) {
+  const sg = g.createRadialGradient(x - r * 0.4, y - r * 0.4, 0, x, y, r); sg.addColorStop(0, '#ffffff'); sg.addColorStop(1, '#6d737c');
+  g.fillStyle = sg; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(20,22,26,.8)'; g.lineWidth = Math.max(0.8, r * 0.35); g.beginPath(); g.moveTo(x - r * 0.7, y + r * 0.3); g.lineTo(x + r * 0.7, y - r * 0.3); g.stroke();
+}
+// The parts that never move, painted once per layout: under (lane floor, side rails, cabinet front), over (the
+// bracket and the housing flange, which the rod passes behind) and the frame (bezel and a faint glass sheen).
+function paintPlungerLayers(W, H, dpr) {
+  const P = plunger, g0 = P.geo, th = P.th, mk = () => { const c = document.createElement('canvas'); c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); return [c, g]; };
+  const { b, bd, cx, laneW } = g0, R = 18;
+  const [under, u] = mk(), [over, o] = mk(), [frame, f] = mk();
+  // ── under: the lane floor between two wooden walls with chrome caps, then the cabinet front
+  u.save(); rrect(u, 0, 0, W, H, R); u.clip();
+  const pf = th.playfield || '#1a1622', wood = th.wood || '#5a3a22', cab = th.cabinet || '#1b1320';
+  const fl = u.createLinearGradient(cx - laneW / 2, 0, cx + laneW / 2, 0); fl.addColorStop(0, mixHex(pf, '#000000', 0.55)); fl.addColorStop(0.5, mixHex(pf, '#ffffff', 0.1)); fl.addColorStop(1, mixHex(pf, '#000000', 0.55));
+  u.fillStyle = fl; u.fillRect(0, 0, W, g0.yEdge);
+  // a warm pool of GI light up the lane, fading towards its foot
+  const gi = u.createRadialGradient(cx, g0.tip0 - bd * 0.2, 0, cx, g0.tip0, H * 0.45); gi.addColorStop(0, 'rgba(255,214,160,.16)'); gi.addColorStop(1, 'rgba(255,214,160,0)'); u.fillStyle = gi; u.fillRect(0, 0, W, g0.yEdge);
+  for (const sd of [-1, 1]) {
+    const x0 = sd < 0 ? 0 : cx + laneW / 2, x1 = sd < 0 ? cx - laneW / 2 : W, w = x1 - x0;
+    const wg = u.createLinearGradient(x0, 0, x1, 0); wg.addColorStop(0, mixHex(wood, '#000000', sd < 0 ? 0.55 : 0.15)); wg.addColorStop(1, mixHex(wood, '#000000', sd < 0 ? 0.15 : 0.55));
+    u.fillStyle = wg; u.fillRect(x0, 0, w, g0.yEdge);
+    u.strokeStyle = 'rgba(0,0,0,.18)'; u.lineWidth = 0.7;
+    for (let i = 1; i < 5; i++) { const gx = x0 + w * i / 5 + Math.sin(i * 7.3) * 1.5; u.beginPath(); u.moveTo(gx, 0); u.bezierCurveTo(gx + 2, H * 0.3, gx - 2, H * 0.6, gx + 1, g0.yEdge); u.stroke(); }
+    // the chrome cap along the wall's inner edge, and the wall's shadow on the floor
+    const ex = sd < 0 ? x1 : x0, capW = Math.max(3, bd * 0.12);
+    u.fillStyle = chromeX(u, ex - capW / 2, ex + capW / 2); u.fillRect(ex - capW / 2, 0, capW, g0.yEdge);
+    const shg = u.createLinearGradient(ex, 0, ex - sd * bd * 0.35, 0); shg.addColorStop(0, 'rgba(0,0,0,.45)'); shg.addColorStop(1, 'rgba(0,0,0,0)');
+    u.fillStyle = shg; u.fillRect(Math.min(ex, ex - sd * bd * 0.35), 0, bd * 0.35, g0.yEdge);
   }
-  // the housing: a chrome flange on the cabinet front, two screws, the rod's bore
-  g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 5 * s; g.shadowOffsetY = 2 * s;
-  rrect(g, cx - housW / 2, hy, housW, housH, housH * 0.45);
-  const hg = g.createLinearGradient(0, hy, 0, hy + housH); hg.addColorStop(0, '#fbfcfe'); hg.addColorStop(0.35, '#b9bfc8'); hg.addColorStop(0.62, '#7b818b'); hg.addColorStop(1, '#3a3e45');
-  g.fillStyle = hg; g.fill(); g.restore();
-  g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 1; rrect(g, cx - housW / 2 + 0.5, hy + 0.5, housW - 1, housH - 1, housH * 0.45); g.stroke();
-  g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(cx - housW / 2 + housH * 0.45, hy + 1.3); g.lineTo(cx + housW / 2 - housH * 0.45, hy + 1.3); g.stroke();
-  // bore: a dark ring round the rod
-  g.fillStyle = '#121418'; g.beginPath(); g.ellipse(cx, hy + housH * 0.55, rodW * 0.95, housH * 0.3, 0, 0, Math.PI * 2); g.fill();
-  g.fillStyle = chromeX(g, cx - rodW / 2, cx + rodW / 2); g.fillRect(cx - rodW / 2, hy + housH * 0.55, rodW, housH * 0.45 + 0.5);
-  for (const sx of [-1, 1]) {
-    const x = cx + sx * (housW / 2 - 7 * s), y = hy + housH / 2, r = 2.4 * s;
-    const sg = g.createRadialGradient(x - r * 0.4, y - r * 0.4, 0, x, y, r); sg.addColorStop(0, '#ffffff'); sg.addColorStop(1, '#6d737c');
-    g.fillStyle = sg; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = 'rgba(20,22,26,.8)'; g.lineWidth = 0.9 * s; g.beginPath(); g.moveTo(x - r * 0.7, y + r * 0.3); g.lineTo(x + r * 0.7, y - r * 0.3); g.stroke();
-  }
-  // the knob: a chrome ferrule, then a turned plastic knob in the table's colour, flared at the end
-  g.fillStyle = chromeX(g, cx - 8 * s, cx + 8 * s); rrect(g, cx - 8 * s, kTop - 1, 16 * s, fH + 2, 2 * s); g.fill();
-  g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(cx - 8 * s, kTop + fH - 1, 16 * s, 1);
+  // the cabinet front: painted, in the shadow of the lockdown bar's edge
+  const cg = u.createLinearGradient(0, g0.yEdge, 0, H); cg.addColorStop(0, mixHex(cab, '#000000', 0.55)); cg.addColorStop(0.12, mixHex(cab, '#ffffff', 0.06)); cg.addColorStop(1, mixHex(cab, '#000000', 0.35));
+  u.fillStyle = cg; u.fillRect(0, g0.yEdge, W, H - g0.yEdge);
+  const lb = Math.max(4, bd * 0.16); u.fillStyle = chromeY(u, g0.yEdge - lb * 0.2, g0.yEdge + lb); u.fillRect(0, g0.yEdge - lb * 0.2, W, lb);
+  u.restore();
+  // ── over: the bracket across the lane's foot, and the housing flange on the cabinet front
+  { const y = g0.yBr, w = laneW + bd * 0.3;
+    o.save(); o.shadowColor = 'rgba(0,0,0,.55)'; o.shadowBlur = 5; o.shadowOffsetY = 2; rrect(o, cx - w / 2, y, w, g0.brH, 3); o.fillStyle = chromeY(o, y, y + g0.brH); o.fill(); o.restore();
+    o.strokeStyle = 'rgba(0,0,0,.5)'; o.lineWidth = 1; rrect(o, cx - w / 2 + 0.5, y + 0.5, w - 1, g0.brH - 1, 3); o.stroke();
+    o.fillStyle = '#16181c'; o.beginPath(); o.ellipse(cx, y + g0.brH * 0.5, g0.rodW * 0.9, g0.brH * 0.28, 0, 0, Math.PI * 2); o.fill();
+    for (const sd of [-1, 1]) screw(o, cx + sd * (w / 2 - bd * 0.16), y + g0.brH / 2, bd * 0.075); }
+  { const y = g0.yFl, w = g0.flW, h = g0.flH;
+    o.save(); o.shadowColor = 'rgba(0,0,0,.6)'; o.shadowBlur = 6; o.shadowOffsetY = 2; rrect(o, cx - w / 2, y, w, h, h * 0.45); o.fillStyle = chromeY(o, y, y + h); o.fill(); o.restore();
+    o.strokeStyle = 'rgba(0,0,0,.55)'; o.lineWidth = 1; rrect(o, cx - w / 2 + 0.5, y + 0.5, w - 1, h - 1, h * 0.45); o.stroke();
+    o.strokeStyle = 'rgba(255,255,255,.7)'; o.lineWidth = 0.8; o.beginPath(); o.moveTo(cx - w / 2 + h * 0.45, y + 1.4); o.lineTo(cx + w / 2 - h * 0.45, y + 1.4); o.stroke();
+    o.fillStyle = '#121418'; o.beginPath(); o.ellipse(cx, y + h * 0.56, g0.rodW * 0.95, h * 0.28, 0, 0, Math.PI * 2); o.fill();
+    for (const sd of [-1, 1]) screw(o, cx + sd * (w / 2 - bd * 0.2), y + h / 2, bd * 0.075); }
+  // ── frame: a dark bezel with a chrome lip, so it reads as a close-up set into the screen; a faint glass sheen
+  f.save(); rrect(f, 0, 0, W, H, R); f.clip();
+  f.lineWidth = b * 2; f.strokeStyle = '#0c0b10'; rrect(f, 0, 0, W, H, R); f.stroke();
+  const lip = f.createLinearGradient(0, 0, W, H); lip.addColorStop(0, '#e9edf3'); lip.addColorStop(0.3, '#8b929c'); lip.addColorStop(0.6, '#cfd4db'); lip.addColorStop(1, '#4a4f58');
+  f.lineWidth = 1.6; f.strokeStyle = lip; rrect(f, b - 0.8, b - 0.8, W - 2 * b + 1.6, H - 2 * b + 1.6, R - b + 1); f.stroke();
+  f.shadowColor = 'rgba(0,0,0,.8)'; f.shadowBlur = 9; f.lineWidth = 6; f.strokeStyle = 'rgba(0,0,0,.6)'; rrect(f, b - 3.5, b - 3.5, W - 2 * b + 7, H - 2 * b + 7, R - b + 3); f.stroke();
+  f.shadowBlur = 0;
+  const sh = f.createLinearGradient(0, 0, W, H * 0.35); sh.addColorStop(0, 'rgba(255,255,255,.09)'); sh.addColorStop(0.45, 'rgba(255,255,255,.02)'); sh.addColorStop(0.5, 'rgba(255,255,255,0)'); f.fillStyle = sh; f.fillRect(0, 0, W, H * 0.35);
+  f.restore();
+  return { under, over, frame };
+}
+function drawKnob(g, cx, kTop, s, kW, kH, fH, col) {
+  g.fillStyle = chromeX(g, cx - kW * 0.22, cx + kW * 0.22); rrect(g, cx - kW * 0.22, kTop - 1, kW * 0.44, fH + 2, 2 * s); g.fill();
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(cx - kW * 0.22, kTop + fH - 1, kW * 0.44, 1);
   // turned knob: a short neck, a straight barrel that widens a touch, a domed end
   const kt = kTop + fH, wTop = kW * 0.8, r = kW * 0.42, knob = new Path2D();
   knob.moveTo(cx - wTop / 2 + 3 * s, kt);
@@ -464,6 +486,9 @@ function drawPlunger() {
   knob.lineTo(cx + wTop / 2, kt + 3 * s);
   knob.quadraticCurveTo(cx + wTop / 2, kt, cx + wTop / 2 - 3 * s, kt);
   knob.closePath();
+  // its shadow on the cabinet front
+  g.save(); g.translate(cx + 3 * s, kt + kH + 2 * s); g.scale(1, 0.3);
+  const sh = g.createRadialGradient(0, 0, 0, 0, 0, kW * 0.62); sh.addColorStop(0, 'rgba(0,0,0,.55)'); sh.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = sh; g.beginPath(); g.arc(0, 0, kW * 0.62, 0, Math.PI * 2); g.fill(); g.restore();
   const kg = g.createLinearGradient(cx - kW / 2, 0, cx + kW / 2, 0);
   kg.addColorStop(0, mixHex(col, '#000000', 0.62)); kg.addColorStop(0.2, mixHex(col, '#000000', 0.18)); kg.addColorStop(0.36, mixHex(col, '#ffffff', 0.45));
   kg.addColorStop(0.5, col); kg.addColorStop(0.78, mixHex(col, '#000000', 0.38)); kg.addColorStop(1, mixHex(col, '#000000', 0.7));
@@ -471,27 +496,97 @@ function drawPlunger() {
   g.save(); g.clip(knob);
   const vg = g.createLinearGradient(0, kt, 0, kt + kH); vg.addColorStop(0, 'rgba(0,0,0,.35)'); vg.addColorStop(0.3, 'rgba(0,0,0,0)'); vg.addColorStop(0.8, 'rgba(255,255,255,.06)'); vg.addColorStop(1, 'rgba(0,0,0,.3)');
   g.fillStyle = vg; g.fillRect(cx - kW / 2, kt, kW, kH);
-  // a grip groove round the barrel, the room light on its shoulder, and the dome's rim
-  const gy = kt + kH * 0.3;
+  const gy = kt + kH * 0.3;   // a grip groove, the room light on the shoulder, the dome turning away
   g.fillStyle = 'rgba(0,0,0,.38)'; g.fillRect(cx - kW / 2, gy, kW, 1.6 * s);
   g.fillStyle = 'rgba(255,255,255,.22)'; g.fillRect(cx - kW / 2, gy + 1.6 * s, kW, 0.9 * s);
-  g.fillStyle = 'rgba(255,255,255,.6)'; g.filter = 'blur(' + (1.1 * s) + 'px)'; g.beginPath(); g.roundRect ? g.roundRect(cx - kW * 0.22, kt + kH * 0.12, kW * 0.1, kH * 0.62, kW * 0.05) : g.rect(cx - kW * 0.22, kt + kH * 0.12, kW * 0.1, kH * 0.62); g.fill(); g.filter = 'none';
-  // the dome turning away at the end
+  g.fillStyle = 'rgba(255,255,255,.6)'; g.filter = 'blur(' + (1.3 * s) + 'px)'; g.beginPath(); g.rect(cx - kW * 0.22, kt + kH * 0.12, kW * 0.1, kH * 0.62); g.fill(); g.filter = 'none';
   const dg = g.createLinearGradient(0, kt + kH - r, 0, kt + kH); dg.addColorStop(0, 'rgba(0,0,0,0)'); dg.addColorStop(1, 'rgba(0,0,0,.4)');
   g.fillStyle = dg; g.fillRect(cx - kW / 2, kt + kH - r, kW, r);
   g.restore();
   g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 1; g.stroke(knob);
 }
+function drawBall(g, x, y, r) {
+  g.save(); g.translate(x + r * 0.18, y + r * 0.3); g.scale(1, 0.55);   // contact shadow on the lane floor
+  const s = g.createRadialGradient(0, 0, 0, 0, 0, r * 1.15); s.addColorStop(0, 'rgba(0,0,0,.55)'); s.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = s; g.beginPath(); g.arc(0, 0, r * 1.15, 0, Math.PI * 2); g.fill(); g.restore();
+  const bg = g.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.05, x, y, r);
+  bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.18, '#e6e9ee'); bg.addColorStop(0.5, '#8a9099'); bg.addColorStop(0.8, '#3c4047'); bg.addColorStop(1, '#1b1d21');
+  g.fillStyle = bg; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  // the room reflected in the steel: a horizon band and a warm rim from the lane's GI
+  g.save(); g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.clip();
+  g.fillStyle = 'rgba(20,22,28,.35)'; g.fillRect(x - r, y + r * 0.05, r * 2, r * 0.22);
+  const rim = g.createRadialGradient(x + r * 0.3, y + r * 0.75, 0, x + r * 0.3, y + r * 0.75, r * 0.7); rim.addColorStop(0, 'rgba(255,200,140,.45)'); rim.addColorStop(1, 'rgba(255,200,140,0)'); g.fillStyle = rim; g.fillRect(x - r, y - r, r * 2, r * 2);
+  g.restore();
+}
+function drawPlunger() {
+  const P = plunger, cv = P.cv, L = P.layers, gm = P.geo; if (!cv || !P.W || !L) return;
+  const g = cv.getContext('2d'), dpr = cv.width / P.W, W = P.W, H = P.H, s = gm.bd / 34;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); g.drawImage(L.under, 0, 0);
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const { cx, bd, rodW } = gm, d = P.d, tipTop = gm.tip0 + d, cupBot = tipTop + gm.tipH + gm.cupH, kTop = gm.k0 + d;
+  g.save(); rrect(g, 0, 0, W, H, 18); g.clip();
+  // the rod: from the tip's cup down through the bracket and the housing to the knob, with engraved rings that
+  // come out of the housing as it is drawn (a quarter, half, three quarters, full)
+  g.fillStyle = chromeX(g, cx - rodW / 2, cx + rodW / 2); g.fillRect(cx - rodW / 2, cupBot - 1, rodW, kTop - cupBot + 2);
+  for (const k of [0.25, 0.5, 0.75, 1]) {
+    const y = kTop - gm.r0 - k * gm.T; if (y < gm.yFl + gm.flH + 1 || y > kTop - 2) continue;
+    g.fillStyle = 'rgba(10,12,16,.75)'; g.fillRect(cx - rodW / 2, y, rodW, 1.3 * s);
+    g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(cx - rodW / 2, y + 1.3 * s, rodW, 0.8 * s);
+  }
+  // the main spring between the cup and the bracket: 13 turns of steel wire, back halves darker
+  const n = 13, sy0 = cupBot, sy1 = gm.yBr + 1, len = Math.max(2, sy1 - sy0), pitch = len / n, rx = gm.tipW * 0.36, wire = Math.max(1.4, bd * 0.065), ry = Math.min(pitch * 0.5, bd * 0.09);
+  g.lineCap = 'round';
+  g.strokeStyle = '#4d525a'; g.lineWidth = wire * 0.9;
+  for (let i = 0; i < n; i++) { const y = sy0 + (i + 0.5) * pitch; g.beginPath(); g.ellipse(cx, y, rx, ry, 0, Math.PI, Math.PI * 2); g.stroke(); }
+  for (let i = 0; i < n; i++) {
+    const y = sy0 + (i + 0.5) * pitch, sg = g.createLinearGradient(cx - rx, 0, cx + rx, 0);
+    sg.addColorStop(0, '#5b616a'); sg.addColorStop(0.3, '#f2f4f8'); sg.addColorStop(0.55, '#aab0b9'); sg.addColorStop(1, '#3d4148');
+    g.strokeStyle = sg; g.lineWidth = wire; g.beginPath(); g.ellipse(cx, y, rx, ry, 0, 0, Math.PI); g.stroke();
+  }
+  // the steel cup and the black rubber tip the ball sits on
+  g.fillStyle = chromeX(g, cx - gm.tipW * 0.55, cx + gm.tipW * 0.55); rrect(g, cx - gm.tipW * 0.55, tipTop + gm.tipH - 0.5, gm.tipW * 1.1, gm.cupH + 1, 1.5); g.fill();
+  const tg = g.createLinearGradient(cx - gm.tipW / 2, 0, cx + gm.tipW / 2, 0); tg.addColorStop(0, '#0d0d0f'); tg.addColorStop(0.35, '#3a3a40'); tg.addColorStop(0.6, '#1e1e22'); tg.addColorStop(1, '#09090b');
+  g.fillStyle = tg; rrect(g, cx - gm.tipW / 2, tipTop, gm.tipW, gm.tipH, gm.tipH * 0.3); g.fill();
+  if (P.ball) drawBall(g, cx, tipTop - bd / 2 - P.fly, bd / 2);
+  g.restore();
+  g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(L.over, 0, 0); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawKnob(g, cx, kTop, s, gm.kW, gm.kH, gm.fH, P.knobCol);
+  g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(L.frame, 0, 0);
+}
+// show while a ball waits in the lane (and while it is being pulled or snapping); slide away once it is shot
+function showPlunger() {
+  const P = plunger; if (!P.el || P.shown) return;
+  P.shown = true; P.ball = true; P.fly = 0; P.d = 0; P.snap = null;
+  if (!P.layers) layoutPlunger(); else drawPlunger();
+  P.el.classList.add('show');
+}
+function hidePlunger(now) {
+  const P = plunger; if (!P.el) return;
+  P.shown = false; P.el.classList.remove('show', 'held');
+}
+function plungerState() {
+  const P = plunger; if (!P.el || !G) return;
+  const want = !!G.waitPlunge && !G.paused && (G.state === 'serve' || G.state === 'play');
+  if (want) showPlunger();
+  else if (P.shown && !P.drag && !P.snap && !G.pulling) hidePlunger();
+  P.el.classList.toggle('wait', want && !G.pulling && !P.drag);
+}
 function plungerStep(now) {
   const P = plunger; if (!P.el || !G || view !== 'game') return false;
   if (P.drag) { /* P.d follows the finger (pointermove) */ }
-  else if (G.pulling) { P.snap = null; P.d = Math.min(1, G.pull) * P.travel; }   // a held key
+  else if (G.pulling) { P.snap = null; P.fly = 0; P.d = Math.min(1, G.pull) * P.travel; }   // a held key
   else if (P.snap) {
-    // released: the spring drives it home in ~35 ms (it is what throws the ball), a small bounce into the
-    // housing, then rest. A tap first dips the knob a little.
-    const t = now - P.snap.t0, f = P.snap.from, os = Math.min(5 * P.s, 2 + f * 0.06);
-    if (P.snap.dip && t < 45) P.d = f * Math.sin(t / 45 * Math.PI / 2);
-    else { const u = t - (P.snap.dip ? 45 : 0); P.d = u < 35 ? f * (1 - (u / 35) * (u / 35)) : u < 150 ? -os * Math.sin((u - 35) / 115 * Math.PI) * (1 - (u - 35) / 200) : 0; if (u >= 150) P.snap = null; }
+    // released: the spring drives it home in ~35 ms (it is what throws the ball), a small bounce, then rest; the ball
+    // leaves the tip at the end of the stroke and flies out of the top. A tap first dips the knob a little.
+    const t = now - P.snap.t0, f = P.snap.from, os = Math.min(P.geo.bd * 0.12, 2 + f * 0.04);
+    let u = t;
+    if (P.snap.dip && t < 45) { P.d = f * Math.sin(t / 45 * Math.PI / 2); u = -1; }
+    else if (P.snap.dip) u = t - 45;
+    if (u >= 0) {
+      P.d = u < 35 ? f * (1 - (u / 35) * (u / 35)) : u < 150 ? -os * Math.sin((u - 35) / 115 * Math.PI) * (1 - (u - 35) / 200) : 0;
+      if (P.snap.launch && u >= 35) P.fly = (u - 35) * P.snap.v;
+      const gone = !P.snap.launch || P.fly > P.geo.tip0 + P.geo.bd;
+      if (u >= 150 && gone) { P.snap = null; P.d = 0; if (P.fly) { P.ball = false; P.fly = 0; } }
+    }
   }
   else P.d = 0;
   drawPlunger();
@@ -506,22 +601,25 @@ function plungerAnim() {
 // let go (knob or key): launch at the pulled strength (the engine lets an eased-back pull go without one)
 function releasePull(o) {
   const P = plunger; if (!G) return;
-  const from = P.d > 0 ? P.d : 0;
+  const from = P.d > 0 ? P.d : 0, pull = P.travel ? from / P.travel : 0;
   G.pullEnd(o);
-  if (o.tap) P.snap = { t0: performance.now(), from: P.travel * 0.3, dip: true };
-  else if (from > 0.5) P.snap = { t0: performance.now(), from };
-  if (P.snap && !o.cancel) G.haptic(o.tap ? 'light' : from / P.travel > 0.6 ? 'heavy' : 'medium');
+  const launched = !o.cancel && !G.waitPlunge;
+  const v = (0.5 + 2.6 * (o.tap ? 0.6 : pull)) * P.geo.bd / 34;   // px per ms: how fast the ball leaves the close-up
+  if (o.tap) P.snap = { t0: performance.now(), from: P.travel * 0.22, dip: true, launch: launched, v };
+  else if (from > 0.5 || launched) P.snap = { t0: performance.now(), from, launch: launched, v };
+  if (launched) G.haptic(o.tap ? 'light' : pull > 0.6 ? 'heavy' : 'medium');
   plungerAnim();
 }
 function bindPlunger() {
   const P = plunger, b = P.grab;
   b.addEventListener('pointerdown', e => {
     e.preventDefault(); e.stopPropagation();
-    if (!G || G.paused || P.drag || view !== 'game') return;
+    if (!G || G.paused || P.drag || view !== 'game' || !P.shown) return;
     audio().ctx(); try { b.setPointerCapture(e.pointerId); } catch (er) {}
-    const live = G.pullStart('drag');
-    P.drag = { id: e.pointerId, y0: e.clientY - Math.max(0, P.d), t0: performance.now(), max: 0, live, full: false };
-    P.snap = null; P.el.classList.add('held'); G.haptic('light');
+    const live = G.pullStart('drag'), ly = e.clientY - P.el.getBoundingClientRect().top;
+    // a quick tap launches only on the knob and housing; a drag pulls from anywhere on the close-up
+    P.drag = { id: e.pointerId, y0: e.clientY - Math.max(0, P.d), t0: performance.now(), max: 0, live, full: false, onKnob: ly >= P.geo.yFl - 8 };
+    P.snap = null; P.fly = 0; P.el.classList.add('held'); G.haptic('light');
     plungerAnim();
   });
   b.addEventListener('pointermove', e => {
@@ -535,7 +633,7 @@ function bindPlunger() {
     const dr = P.drag; if (!dr || e.pointerId !== dr.id) return;
     P.drag = null; P.el.classList.remove('held');
     const tap = performance.now() - dr.t0 < 260 && dr.max < 7;
-    if (G && dr.live && G.pulling) releasePull(tap ? { tap: true } : {});
+    if (G && dr.live && G.pulling) releasePull(tap ? (dr.onKnob ? { tap: true } : { cancel: true }) : {});
     else { if (P.d > 0.5) P.snap = { t0: performance.now(), from: P.d }; plungerAnim(); }   // not live (bonus count, tilt): just springs back
   };
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, end));
@@ -545,7 +643,7 @@ function leaveGame() {
   Kit.titleSwitch(null);
   if (uiRaf) { clearTimeout(uiRaf); uiRaf = 0; }
   if (plunger.raf) { cancelAnimationFrame(plunger.raf); plunger.raf = 0; }
-  plunger.el = null; plunger.drag = null; plunger.snap = null; plunger.d = 0;
+  plunger.el = null; plunger.drag = null; plunger.snap = null; plunger.d = 0; plunger.layers = null; plunger.shown = false; plunger.fly = 0;
   btnHeld.L = btnHeld.R = false;
   if (G) { G.destroy(); G = null; }
   if (viewEl) viewEl.querySelectorAll('.pb-load').forEach(e => e.remove());
@@ -560,7 +658,7 @@ const keys = { L: false, R: false };
 function resetInput() {
   for (const k in ptr) delete ptr[k]; keys.L = keys.R = false; btnHeld.L = btnHeld.R = false;
   if (viewEl) viewEl.querySelectorAll('.pb-arc.on').forEach(b => b.classList.remove('on'));
-  const P = plunger; if (P.drag || P.d) { P.drag = null; P.snap = null; P.d = 0; if (P.el) { P.el.classList.remove('held'); drawPlunger(); } }
+  const P = plunger; if (P.drag || P.d || P.snap) { P.drag = null; P.snap = null; P.d = 0; P.fly = 0; if (P.el) { P.el.classList.remove('held'); drawPlunger(); } }
 }
 function syncFlips() {
   if (!G) return;
@@ -703,7 +801,7 @@ window.__pin = {
   render() { if (G) G.renderOnce(); },
   renderer() { return getRenderer(); },
   ui(ms) { const P = plunger; plungerStep(ms != null && P.snap ? P.snap.t0 + ms : performance.now()); },   // draw the plunger now (ms: that far into a snap)
-  plunger() { const P = plunger; return P.el ? { x: P.x, hTop: P.hTop, rod0: P.rod0, travel: P.travel, limit: P.limit, d: P.d, W: P.W, H: P.H, s: P.s, grab: P.grab.getBoundingClientRect().toJSON(), show: P.el.classList.contains('show') } : null; },
+  plunger() { const P = plunger; if (!P.el) return null; const r = P.el.getBoundingClientRect(), gm = P.geo || {}; return { rect: [r.left, r.top, r.width, r.height].map(Math.round), travel: P.travel, d: P.d, show: P.shown, cls: P.el.className, ball: P.ball, fly: P.fly, knobY: r.top + (gm.k0 || 0) + (gm.fH || 0) + (gm.kH || 0) / 2, laneY: r.top + (gm.tip0 || 0) * 0.6, flY: r.top + (gm.yFl || 0) }; },
   view(m, animate) { if (m) setViewMode(m); return G ? G.view() : viewMode(); },
   // deterministic frames for screenshots: stop the live loop, step the game, draw once
   freeze() { if (G) G.pause(); },

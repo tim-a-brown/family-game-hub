@@ -1,8 +1,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Fortune Cookie teller: a lacquered restaurant table scattered with real-looking
-// fortune cookies (three.js). Tap one: it lifts toward you, snaps in two along the
-// crease, crumbs fly, and the paper slip slides out and unrolls with your fortune,
-// lucky numbers and a word of Chinese. Tap the table to put it away; the table restocks.
+// fortune cookies (three.js), each in a clear cellophane wrapper. Tap one: it lifts toward
+// you and the wrapper tears across the middle, its halves pulled off to the sides. Tap the
+// cookie again: it snaps in two along the crease, crumbs fly, and the paper slip slides out
+// and unrolls with your fortune, lucky numbers and a word of Chinese. Tap the table to put
+// it away; the table restocks.
 //
 // Shared teller interface (see games/fortune.html):
 //   export default { id, name, blurb, rules, mount(stage, api) -> { unmount() } }
@@ -501,8 +503,8 @@ function wrapperGeometries(V) {
     const ax = Math.abs(x);
     if (ax >= 1) return o;
     baseN(x, sg, N0);
-    let tt = Math.max(0, Math.min(1, (ax - V.Lb * 0.75) / (1 - V.Lb * 0.75)));
-    const amp = 0.055 * Math.pow(Math.sin(Math.PI * Math.pow(tt, 0.85)), 1.1);
+    let tt = Math.max(0, Math.min(1, (ax - V.Lb) / (1 - V.Lb)));
+    const amp = 0.03 * Math.pow(Math.sin(Math.PI * Math.pow(tt, 0.7)), 1.3);
     let d = 0;
     if (amp > 0) {
       let p = 0;
@@ -571,16 +573,16 @@ function filmMaterial(normalTex, frostTex) {
   const m = new THREE.MeshPhysicalMaterial({
     color: 0xffffff, metalness: 0, roughness: 0.42, roughnessMap: frostTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(1, 1),
-    alphaMap: frostTex, opacity: 0.2, transparent: true, depthWrite: false, side: THREE.DoubleSide, premultipliedAlpha: true,
-    ior: 1.45, specularIntensity: 1, envMapIntensity: 0.4,
+    alphaMap: frostTex, opacity: 0.1, transparent: true, depthWrite: false, side: THREE.DoubleSide, premultipliedAlpha: true,
+    ior: 1.45, specularIntensity: 0.6, envMapIntensity: 0.2,
     iridescence: 0.55, iridescenceIOR: 1.33, iridescenceThicknessRange: [260, 700], iridescenceThicknessMap: frostTex
   });
-  const U = m.userData.u = { uFres: { value: 0.5 }, uGeoFres: { value: 1 }, uDbg: { value: 0 } };
+  const U = m.userData.u = { uFres: { value: 0.35 }, uGeoFres: { value: 1 }, uDbg: { value: 0 } };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     sh.vertexShader = 'attribute vec2 film;\nvarying vec2 vFilm;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvFilm = film;');
     sh.fragmentShader = 'varying vec2 vFilm;\nuniform float uFres, uGeoFres, uDbg;\n' + sh.fragmentShader
-      .replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n\tdiffuseColor.a = mix(diffuseColor.a, 0.4, vFilm.x);')
+      .replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n\tdiffuseColor.a = mix(diffuseColor.a, 0.2, vFilm.x);')
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n\troughnessFactor = mix(roughnessFactor, 0.3, vFilm.x);')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 	{ // crimp ribs on the seals, as a bump
@@ -673,6 +675,40 @@ function edgeMask(R) {
   return 'url("data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="' + d + '"/></svg>') + '")';
 }
 
+// ── The crinkle of cellophane (Kit has no sound for it): a burst of tiny, sharp, high
+// crackles in little clusters, made fresh each time so no two tears sound the same.
+let cctx = null;
+function crinkleCtx() {
+  try {
+    if (localStorage.getItem('gn_sound') === '0') return null;
+    if (!cctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; cctx = new AC(); }
+    if (cctx.state === 'suspended') cctx.resume().catch(() => {});
+    return cctx;
+  } catch (e) { return null; }
+}
+function crinkle(dur, vol) {
+  const a = crinkleCtx(); if (!a) return;
+  try {
+    const sr = a.sampleRate, n = Math.floor(sr * dur), buf = a.createBuffer(1, n, sr), d = buf.getChannelData(0);
+    const groups = Math.max(3, Math.round(dur * 22));
+    for (let gi = 0; gi < groups; gi++) {
+      const gt = Math.pow(Math.random(), 1.3), gs = Math.floor(gt * n), clicks = 3 + Math.floor(Math.random() * 9);
+      const ga = (0.25 + Math.random() * 0.75) * (1 - 0.55 * gt);
+      for (let i = 0; i < clicks; i++) {
+        const s0 = gs + Math.floor(Math.random() * sr * 0.03), len = Math.floor(sr * (0.0005 + Math.random() * 0.0035));
+        const amp = ga * (0.15 + Math.pow(Math.random(), 2.5) * 0.85), tau = len * (0.15 + Math.random() * 0.3);
+        for (let j = 0; j < len && s0 + j < n; j++) d[s0 + j] += amp * (Math.random() * 2 - 1) * Math.exp(-j / tau);
+      }
+    }
+    const src = a.createBufferSource(); src.buffer = buf;
+    const hp = a.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1700;
+    const pk = a.createBiquadFilter(); pk.type = 'peaking'; pk.frequency.value = 4600; pk.Q.value = 0.9; pk.gain.value = 5;
+    const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 10500;
+    const g = a.createGain(); g.gain.value = 0.3 * (vol == null ? 1 : vol);
+    src.connect(hp); hp.connect(pk); pk.connect(lp); lp.connect(g); g.connect(a.destination); src.start();
+  } catch (e) {}
+}
+
 const ease = {
   outCubic: (t) => 1 - Math.pow(1 - t, 3),
   inOut: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
@@ -684,9 +720,9 @@ const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 export default {
   id: 'cookie',
   name: 'Fortune Cookie',
-  blurb: 'Pick a cookie, crack it open',
+  blurb: 'Pick a cookie, unwrap it, crack it open',
   rules: '<h3>Fortune Cookie</h3>' +
-    '<p>A table full of fresh fortune cookies. <b>Tap one</b> to pick it up. It snaps in two and the paper slip unrolls with your fortune.</p>' +
+    '<p>A table full of fresh fortune cookies, each in its own cellophane wrapper. <b>Tap one</b> to pick it up: the wrapper tears open and comes off. <b>Tap the cookie again</b> to crack it. It snaps in two and the paper slip unrolls with your fortune.</p>' +
     '<ul><li>Every slip has a fortune, six <b>lucky numbers</b> and a <b>Learn Chinese</b> word with how to say it.</li>' +
     '<li>Tap the table or <b>Another cookie</b> to put the slip away. The table restocks itself.</li>' +
     '<li><b>Add a cookie</b> drops another cookie on the table. Hold it to keep pouring, up to 40. The arrow button sets the table back to a dozen.</li>' +
@@ -734,7 +770,7 @@ function mount(stage, api) {
   const canvas = renderer.domElement;
   canvas.setAttribute('tabindex', '0');
   canvas.setAttribute('role', 'application');
-  canvas.setAttribute('aria-label', 'A table of fortune cookies. Tap one, or press Enter, to open it.');
+  canvas.setAttribute('aria-label', 'A table of fortune cookies, each in a cellophane wrapper. Tap one, or press Enter, to unwrap it; tap again to crack it open.');
   root.appendChild(canvas); root.appendChild(hint); root.appendChild(more); root.appendChild(acts); root.appendChild(live);
 
   const scene = new THREE.Scene();
@@ -1193,9 +1229,13 @@ function mount(stage, api) {
   }
   function clearCrumbs() { crumbs.forEach((k) => { if (k.fade == null) k.fade = 1; }); }
 
-  // ── Opening a cookie ─────────────────────────────────────────────────
+  // ── Opening a cookie: two taps ───────────────────────────────────────
+  // Tap 1 (unwrapCookie): it lifts toward you, the cellophane splits across the middle and the
+  // two halves are pulled off to the sides and fall away; the bare cookie hovers ('ready').
+  // Tap 2 (crackCookie): it snaps in two and the slip slides out ('opening', then 'open').
   let state = 'idle', openC = null, O = null, slipBox = null, needLayout = false;
-  const LIFT = 0.6, CRACK = 0.92, HANDOFF = 1.5, DONE = 2.35;
+  const LIFT = 0.6, SPLIT = 0.64, TEAR = 0.84, PULL = 0.42, READY = 1.3;   // unwrap, from tap 1
+  const CRACK = 0.32, HANDOFF = 0.9, DONE = 1.75;                         // crack, from tap 2
   function presentTarget(c) {
     const a = W / H, tv = tanV(), cw = c.w;
     const portrait = a < 1;
@@ -1207,24 +1247,39 @@ function mount(stage, api) {
     const pos = ray.ray.origin.clone().addScaledVector(ray.ray.direction, D);
     // creased front toward you, tipped back a little so you see over the top
     const q = camera.quaternion.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.42, Math.PI + 0.18, 0.05, 'XYZ')));
-    return { pos, q };
+    return { pos, q, D };
   }
-  function openCookie(c) {
+  // auto: crack it as soon as it's unwrapped (automation only)
+  function unwrapCookie(c, auto) {
     if (state !== 'idle' || !c || !c.alive || c.drop) return;
-    state = 'opening'; openC = c; c.wob = null; c.hop = null;
+    state = 'unwrapping'; openC = c; c.wob = null; c.hop = null;
     const tgt = presentTarget(c);
-    O = { c, t0: T, p0: c.root.position.clone(), q0: c.pose.quaternion.clone(), tgt, cracked: false, handed: false, done: false,
+    O = { c, t0: T, p0: c.root.position.clone(), q0: c.pose.quaternion.clone(), tgt, auto: !!auto, t1: null,
+      split: false, torn: false, fl: null, nudge: -9, cracked: false, handed: false, done: false,
       fortune: nextFortune(), nums: luckyNumbers(), word: WORDS[Math.floor(Math.random() * WORDS.length)],
       slip0: { p: c.slip.position.clone(), q: c.slip.quaternion.clone(), s: c.slip.scale.x } };
+    c.wrap.meshes.forEach((m) => { m.renderOrder = 6; });   // drawn after the veil, which it rises above
     dimTo = 0.4;
     hint.classList.add('off'); more.classList.add('off');
+    crinkleCtx();   // wake the audio inside the tap, so the tear can be heard on iPhone
     sfx('whoosh', 0.6); haptic('light');
+    kick();
+  }
+  function crackCookie() {
+    if (state !== 'ready' || !O) return;
+    state = 'opening'; O.t1 = T;
+    hint.classList.add('off');
+    sfx('tick', 0.6); haptic('light');
     buildSlip();
     kick();
   }
+  // a tap beside the hovering cookie: it gives a little jiggle, as if to say "me!"
+  function nudge() { if (state === 'ready' && O) { O.nudge = T; sfx('tick', 0.5); kick(); } }
   const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), q1 = new THREE.Quaternion();
-  function updateOpen() {
+  const camRight = new THREE.Vector3();
+  function updateOpen(dt) {
     const c = O.c, t = T - O.t0;
+    let busy = t < READY + 0.1;
     // lift toward you
     const e = ease.outCubic(clamp01(t / LIFT));
     c.root.position.lerpVectors(O.p0, O.tgt.pos, e);
@@ -1233,14 +1288,31 @@ function mount(stage, api) {
     const hgt = c.root.position.y;
     c.blob.material.opacity = 0.85 * Math.max(0, 1 - hgt / 5);
     c.blob.scale.copy(c.blobS).multiplyScalar(1 + Math.min(1.6, hgt * 0.35));
+    busy = updateWrap(t, dt) || busy;
+    // the cookie jolts a little as the film lets go of it, and jiggles when nudged
+    for (const [t0, a] of [[O.torn ? O.tornAt : -9, 1], [O.nudge, 0.7]]) {
+      const k = T - t0;
+      if (k >= 0 && k < 0.7) {
+        const d = Math.exp(-k * 6) * a;
+        q1.setFromEuler(te.set(Math.sin(k * 31) * 0.06 * d, Math.sin(k * 19) * 0.04 * d, Math.sin(k * 25) * 0.08 * d));
+        c.pose.quaternion.multiply(q1); busy = true;
+      }
+    }
+    if (state === 'unwrapping' && t >= READY) {
+      state = 'ready';
+      hint.textContent = 'Tap the cookie to crack it open'; hint.classList.remove('off');
+      live.textContent = 'Unwrapped. Tap the cookie, or press Enter, to crack it open.';
+      if (O.auto) crackCookie();
+    }
+    if (O.t1 == null) return busy;
+    const k = T - O.t1;
     // a moment of tension: thumbs on the crease
-    if (t > LIFT && t < CRACK) {
-      const u = (t - LIFT) / (CRACK - LIFT);
-      q1.setFromEuler(te.set(0, 0, Math.sin(t * 70) * 0.025 * u));
+    if (k < CRACK) {
+      q1.setFromEuler(te.set(0, 0, Math.sin(k * 70) * 0.025 * (k / CRACK)));
       c.pose.quaternion.multiply(q1);
     }
     // snap!
-    if (!O.cracked && t >= CRACK) {
+    if (!O.cracked && k >= CRACK) {
       O.cracked = true;
       sfx('flip'); sfx('chip', 0.7); haptic('medium');
       c.body.updateMatrixWorld(true);
@@ -1254,21 +1326,80 @@ function mount(stage, api) {
         .addScaledVector(camera.position.clone().sub(origin).normalize(), 0.5 * c.scale));
     }
     if (O.cracked) {
-      const u = clamp01((t - CRACK) / 0.55), eb = ease.outBack(u), drift = ease.outCubic(clamp01((t - CRACK - 0.3) / 1.2));
+      const u = clamp01((k - CRACK) / 0.55), eb = ease.outBack(u), drift = ease.outCubic(clamp01((k - CRACK - 0.3) / 1.2));
       c.halves.forEach((h, i) => {
         const side = i === 0 ? -1 : 1;
         h.hinge.position.x = side * (0.14 * eb + (W > H ? 1.9 : 0.22) * drift);
         h.hinge.position.z = -0.12 * drift;
         h.hinge.rotation.set(0, side * (0.3 * eb + 0.12 * drift), side * -0.55 * eb);
       });
-      const us = ease.inOut(clamp01((t - CRACK - 0.06) / (HANDOFF - CRACK - 0.06)));
+      const us = ease.inOut(clamp01((k - CRACK - 0.06) / (HANDOFF - CRACK - 0.06)));
       c.slip.position.lerpVectors(O.slip0.p, O.slipP1, us);
       c.slip.quaternion.slerpQuaternions(O.slip0.q, O.slipQ1, us);
       c.slip.scale.setScalar(O.slip0.s + (1.25 - O.slip0.s) * us);
     }
-    if (!O.handed && t >= HANDOFF) { O.handed = true; handOff(); }
-    if (!O.done && t >= DONE) { O.done = true; state = 'open'; acts.classList.remove('off'); hint.textContent = 'Tap the table to put it away'; hint.classList.remove('off'); }
-    return !O.done || t < DONE + 0.1;
+    if (!O.handed && k >= HANDOFF) { O.handed = true; handOff(); }
+    if (!O.done && k >= DONE) { O.done = true; state = 'open'; acts.classList.remove('off'); hint.textContent = 'Tap the table to put it away'; hint.classList.remove('off'); }
+    return busy || !O.done || k < DONE + 0.1;
+  }
+  // The cellophane coming off: a tug (the film trembles), it tears across the middle, the two
+  // halves slide off the ends of the cookie, crumpling as they go, then fly off to either side.
+  function updateWrap(t, dt) {
+    const c = O.c, Wp = c.wrap;
+    if (!Wp.on || t < SPLIT) return false;
+    const S = Wp.S;
+    if (!O.split) { O.split = true; crinkle(0.3, 0.45); haptic('tick'); }
+    if (t < TEAR) {
+      const u = (t - SPLIT) / (TEAR - SPLIT), j = 0.012 * u * Math.sin(t * 95);
+      Wp.meshes.forEach((m, i) => {
+        const side = i ? 1 : -1;
+        m.position.x = side * (0.025 * u + j) * S.x;
+        m.scale.set(S.x * (1 + 0.02 * u), S.y * (1 - 0.03 * u), S.z * (1 - 0.03 * u));
+      });
+      return true;
+    }
+    if (!O.torn) {
+      O.torn = true; O.tornAt = T;
+      crinkle(0.6, 1); sfx('flip', 0.5); haptic('medium');
+      Wp.meshes.forEach((m) => { const i = pickables.indexOf(m); if (i >= 0) pickables.splice(i, 1); });
+    }
+    const k = t - TEAR;
+    if (k < PULL) {
+      const u = k / PULL, d = ease.inOut(u);
+      Wp.meshes.forEach((m, i) => {
+        const side = i ? 1 : -1;
+        m.position.x = side * (0.025 + 1.15 * d) * S.x;
+        m.position.y = -0.08 * d * S.y;
+        m.rotation.set(0, side * 0.2 * d, side * -0.3 * d);
+        m.scale.set(S.x * (1.02 - 0.12 * d), S.y * (0.97 - 0.4 * d), S.z * (0.97 - 0.22 * d));
+      });
+      return true;
+    }
+    if (!O.fl) {
+      // let go: off they fly to either side of the screen and drop away
+      camRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
+      const ctr = c.root.getWorldPosition(v1), span = 2 * tanV() * camera.aspect * O.tgt.D;
+      O.fl = Wp.meshes.map((m, i) => {
+        scene.attach(m);
+        const side = m.position.clone().sub(ctr).dot(camRight) >= 0 ? 1 : -1;
+        const v = camRight.clone().multiplyScalar(side * span * (1.1 + Math.random() * 0.3)).add(v2.set(0, span * (0.25 + Math.random() * 0.2), 0));
+        return { m, v, w: new THREE.Vector3((Math.random() - 0.5) * 6, side * (2 + Math.random() * 3), side * -(3 + Math.random() * 4)), g: span * 2.6, s: m.scale.clone() };
+      });
+      sfx('whoosh', 0.5);
+    }
+    let alive = false;
+    const age = k - PULL;
+    for (const f of O.fl) {
+      if (!f.m.visible) continue;
+      f.v.y -= f.g * dt;
+      f.m.position.addScaledVector(f.v, dt);
+      f.m.rotation.x += f.w.x * dt; f.m.rotation.y += f.w.y * dt; f.m.rotation.z += f.w.z * dt;
+      const sq = Math.max(0.45, 1 - age * 0.6);
+      f.m.scale.set(f.s.x * (0.6 + 0.4 * sq), f.s.y * sq, f.s.z * sq);
+      if (age > 1.6) f.m.visible = false; else alive = true;
+    }
+    if (!alive) Wp.on = false;
+    return alive;
   }
 
   // ── The paper slip (DOM, so the print is crisp) ─────────────────────
@@ -1387,11 +1518,11 @@ function mount(stage, api) {
     applyDim();
     if (Math.abs(camD - camTo) > 0.002) {
       setCam(Math.abs(camD - camTo) < 0.01 ? camTo : camD + (camTo - camD) * Math.min(1, dt * 2.6));
-      if (O && state === 'opening') O.tgt = presentTarget(O.c);
+      if (O && state !== 'open' && state !== 'closing') O.tgt = presentTarget(O.c);
       busy = true;
     }
     for (const c of cookies) if (c !== openC) busy = idleMotion(c) || busy;
-    if (O && state !== 'closing') busy = updateOpen() || busy;
+    if (O && state !== 'closing') busy = updateOpen(dt) || busy;
     if (C) { const b = updateClose(); if (!b) C = null; busy = b || busy; }
     busy = updateCrumbs(dt) || busy;
     return busy;
@@ -1410,6 +1541,7 @@ function mount(stage, api) {
     if (e.button > 0) return;
     try { canvas.focus({ preventScroll: true }); } catch (x) {}
     if (state === 'open') { press = { table: true, x: e.clientX, y: e.clientY }; return; }
+    if (state === 'ready') { press = { ready: true, x: e.clientX, y: e.clientY }; return; }
     if (state !== 'idle') return;
     const c = pick(e);
     press = { c, x: e.clientX, y: e.clientY };
@@ -1420,11 +1552,25 @@ function mount(stage, api) {
     if (!p) return;
     const moved = Math.hypot(e.clientX - p.x, e.clientY - p.y) > 14;
     if (p.table) { if (!moved) closeCookie(); return; }
+    if (p.ready) { if (!moved && state === 'ready') { if (nearOpen(e)) crackCookie(); else nudge(); } return; }
     if (!p.c || moved || state !== 'idle') return;
-    if (pick(e) === p.c) openCookie(p.c);
+    if (pick(e) === p.c) unwrapCookie(p.c);
+  }
+  // on the hovering cookie, or close enough to it (it's the only thing to tap)
+  function nearOpen(e) {
+    if (!openC) return false;
+    if (pick(e) === openC) return true;
+    const r = canvas.getBoundingClientRect();
+    const p = openC.root.getWorldPosition(v1).project(camera);
+    const q = v2.copy(openC.root.position).addScaledVector(camRight.set(1, 0, 0).applyQuaternion(camera.quaternion), openC.w / 2).project(camera);
+    const half = Math.abs(q.x - p.x) / 2 * r.width;
+    const dx = e.clientX - r.left - (p.x + 1) / 2 * r.width, dy = e.clientY - r.top - (1 - p.y) / 2 * r.height;
+    return Math.hypot(dx, dy) < Math.max(80, half * 1.5);
   }
   function onMove(e) {
-    if (e.pointerType !== 'mouse' || state !== 'idle') return;
+    if (e.pointerType !== 'mouse') return;
+    if (state === 'ready') { canvas.classList.toggle('hot', nearOpen(e)); return; }
+    if (state !== 'idle') return;
     const c = pick(e);
     canvas.classList.toggle('hot', !!c);
     if (c !== hover) { hover = c; if (c) wobble(c, 0.05); }
@@ -1432,7 +1578,8 @@ function mount(stage, api) {
   function onKey(e) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      if (state === 'idle') { const live = cookies.filter((c) => !c.drop); openCookie(live[Math.floor(Math.random() * live.length)]); }
+      if (state === 'idle') { const live = cookies.filter((c) => !c.drop); unwrapCookie(live[Math.floor(Math.random() * live.length)]); }
+      else if (state === 'ready') crackCookie();
       else if (state === 'open') closeCookie();
     } else if (e.key === 'Escape' && state === 'open') closeCookie();
   }
@@ -1475,7 +1622,7 @@ function mount(stage, api) {
       layoutKey = lk;
       if (state === 'idle' && !C) placeAll(); else needLayout = true;
     }
-    if (O) { O.tgt = presentTarget(O.c); if (state === 'open') { O.c.root.position.copy(O.tgt.pos); O.c.pose.quaternion.copy(O.tgt.q); } layoutSlip(); }
+    if (O) { O.tgt = presentTarget(O.c); if (state === 'open' || state === 'ready') { O.c.root.position.copy(O.tgt.pos); O.c.pose.quaternion.copy(O.tgt.q); } layoutSlip(); }
     renderer.render(scene, camera);
     kick();
   }
@@ -1510,12 +1657,19 @@ function mount(stage, api) {
       count: () => cookies.length,
       more: (n) => { let k = 0; for (let i = 0; i < (n || 1); i++) if (addCookie()) k++; return k; },
       reset: () => resetTable(),
-      open: (i) => { const list = cookies.filter((c) => !c.drop); openCookie(list[i == null ? Math.floor(Math.random() * list.length) : Math.min(i, list.length - 1)]); return state; },
+      // open: both steps (unwrap, then crack as soon as it's unwrapped). unwrap: step 1 only; crack: step 2.
+      open: (i) => { const list = cookies.filter((c) => !c.drop); unwrapCookie(list[i == null ? Math.floor(Math.random() * list.length) : Math.min(i, list.length - 1)], true); return state; },
+      unwrap: (i) => { const list = cookies.filter((c) => !c.drop); unwrapCookie(list[i == null ? Math.floor(Math.random() * list.length) : Math.min(i, list.length - 1)], false); return state; },
+      crack: () => { crackCookie(); return state; },
+      wrapped: () => cookies.filter((c) => c.wrap.on).length,
+      // a tap at (x, y) in canvas pixels (as screen() and openScreen() report them)
+      tap: (x, y) => { const r = canvas.getBoundingClientRect(), ev = { clientX: r.left + x, clientY: r.top + y, button: 0, pointerType: 'touch' }; onDown(ev); onUp(ev); return state; },
       close: () => { closeCookie(); return state; },
       wobble: (i) => wobble(cookies[i || 0], 0.11),
       fortune: () => (O ? O.fortune : null),
       busy: () => !!raf,
       time: () => T,
+      openScreen: () => { if (!openC) return null; const p = openC.root.getWorldPosition(new THREE.Vector3()).project(camera); return { x: (p.x + 1) / 2 * W, y: (1 - p.y) / 2 * H }; },
       hero: () => { if (!O) return null; const p = O.c.root.position.clone().project(camera); return { ndc: [p.x, p.y, p.z], pos: O.c.root.position.toArray(), cam: camera.position.toArray() }; },
       hold: (on) => { hold = !!on; if (hold && raf) { cancelAnimationFrame(raf); raf = 0; } else kick(); },
       step: (sec) => { const n = Math.round(sec / 0.016); for (let i = 0; i < n; i++) { T += 0.016; update(0.016); } renderer.render(scene, camera); return state; },

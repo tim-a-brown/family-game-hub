@@ -210,7 +210,8 @@ const Casino = (function(){
     '.cz-stk .cz-chip{position:absolute;left:0;}' +
     '.cz-stk .cz-chip:not(:last-child){font-size:0;}' +
     // The rack: a dark wooden tray with felt-lined wells, a short stack of chips in each
-    '.cz-rack{--cs:clamp(42px,12.6vw,54px);display:flex;justify-content:center;align-items:flex-end;gap:clamp(4px,1.8vw,10px);padding:7px 8px 8px;border-radius:16px;' +
+    '.cz-rack{--cs:clamp(42px,12.6vw,54px);display:flex;justify-content:center;align-items:flex-end;gap:clamp(4px,1.8vw,10px);padding:7px 8px 8px;border-radius:16px;box-sizing:border-box;' +
+      'max-width:calc(5 * var(--cs) + 160px);margin-left:auto;margin-right:auto;' +
       'touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;' +
       'background:repeating-linear-gradient(92deg,rgba(255,255,255,.035) 0 2px,transparent 2px 9px),linear-gradient(180deg,#3a2112,#24130a);' +
       'box-shadow:inset 0 3px 8px rgba(0,0,0,.65),inset 0 -1px 0 rgba(255,255,255,.07),0 1px 0 rgba(255,255,255,.14);}' +
@@ -239,7 +240,9 @@ const Casino = (function(){
     // Spot under the chip
     '.cz-tgt{box-shadow:0 0 0 3px #ffd54a,0 0 22px rgba(255,213,74,.7),inset 0 0 22px rgba(255,213,74,.35)!important;background-color:rgba(255,213,74,.12)!important;}' +
     '.cz-no{box-shadow:0 0 0 3px rgba(255,92,98,.85),inset 0 0 16px rgba(255,92,98,.3)!important;}' +
-    'html.cz-dragging,html.cz-dragging *{cursor:grabbing!important;}';
+    'html.cz-dragging,html.cz-dragging *{cursor:grabbing!important;}' +
+    // Short screens (phones on their side): a slimmer rack so more of the table shows
+    '@media (max-height:520px){.cz-rack.cz-rack{--cs:36px;padding:4px 6px 5px;}.cz-slot{height:calc(var(--cs) + 14px);}.cz-slot .cz-stk{bottom:3px;}}';
   function css(){
     if(document.getElementById('cz-chip-css')) return;
     var st = document.createElement('style'); st.id = 'cz-chip-css'; st.textContent = CHIP_CSS;
