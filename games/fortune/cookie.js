@@ -158,6 +158,118 @@ function woodCanvas() {
   return cv;
 }
 
+// ── Tablecloth: red silk damask with a gold Chinese key-fret (回纹) border ──
+// The field is one small tile repeated: tone-on-tone medallions (a ring with a
+// four-petal lattice) on a fine silk weave. Returns colour + bump canvases.
+function damaskCanvas() {
+  const S = 512, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const g = cv.getContext('2d');
+  const bump = document.createElement('canvas'); bump.width = bump.height = S;
+  const gb = bump.getContext('2d');
+  g.fillStyle = '#8f1419'; g.fillRect(0, 0, S, S);
+  gb.fillStyle = '#808080'; gb.fillRect(0, 0, S, S);
+  // fine weave: alternating faint warp and weft lines
+  const R = rng(808);
+  for (let i = 0; i < S; i += 2) {
+    g.fillStyle = `rgba(255,${120 + R() * 40},${110 + R() * 30},${0.025 + R() * 0.03})`; g.fillRect(0, i, S, 1);
+    g.fillStyle = `rgba(40,0,0,${0.03 + R() * 0.03})`; g.fillRect(i, 0, 1, S);
+    gb.fillStyle = `rgba(255,255,255,${0.05 + R() * 0.05})`; gb.fillRect(0, i, S, 1);
+  }
+  // medallions on a half-drop grid (centre + corners), drawn in a slightly lighter, glossier red
+  function medallion(cx, cy, r) {
+    for (const [ctx, col, w] of [[g, 'rgba(196,52,48,.55)', 1], [gb, 'rgba(255,255,255,.55)', 1]]) {
+      ctx.save(); ctx.translate(cx, cy); ctx.strokeStyle = col; ctx.lineCap = 'round';
+      ctx.lineWidth = 5 * w; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.283); ctx.stroke();
+      ctx.lineWidth = 2.2 * w; ctx.beginPath(); ctx.arc(0, 0, r * 0.82, 0, 6.283); ctx.stroke();
+      // four petals meeting in the middle
+      for (let k = 0; k < 4; k++) {
+        ctx.rotate(Math.PI / 2);
+        ctx.beginPath(); ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(r * 0.42, -r * 0.18, r * 0.68, 0); ctx.quadraticCurveTo(r * 0.42, r * 0.18, 0, 0);
+        ctx.stroke();
+      }
+      ctx.lineWidth = 2 * w; ctx.beginPath(); ctx.arc(0, 0, r * 0.14, 0, 6.283); ctx.stroke();
+      ctx.restore();
+    }
+  }
+  // a small four-petal blossom between medallions
+  function bud(cx, cy) {
+    for (const [ctx, col] of [[g, 'rgba(190,48,44,.45)'], [gb, 'rgba(255,255,255,.4)']]) {
+      ctx.fillStyle = col;
+      for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4; ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * 8, cy + Math.sin(a) * 8, 7, 4, a, 0, 6.283); ctx.fill(); }
+      ctx.beginPath(); ctx.arc(cx, cy, 3, 0, 6.283); ctx.fill();
+    }
+  }
+  medallion(S / 2, S / 2, 92);
+  for (const [x, y] of [[0, 0], [S, 0], [0, S], [S, S]]) medallion(x, y, 92);
+  for (const [x, y] of [[S / 2, 0], [0, S / 2], [S, S / 2], [S / 2, S]]) bud(x, y);
+  return { map: cv, bump };
+}
+// Border band tile (repeats along its length): gold rules either side of a running
+// key fret. Outer edge at the top of the canvas. Also a metal/roughness map so only
+// the gold catches the light like metal thread.
+const BAND_W = 512, BAND_H = 128;
+function bandCanvases() {
+  const cv = document.createElement('canvas'); cv.width = BAND_W; cv.height = BAND_H;
+  const mr = document.createElement('canvas'); mr.width = BAND_W; mr.height = BAND_H;
+  const g = cv.getContext('2d'), gm = mr.getContext('2d');
+  g.fillStyle = '#6e0c10'; g.fillRect(0, 0, BAND_W, BAND_H);
+  gm.fillStyle = 'rgb(0,170,0)'; gm.fillRect(0, 0, BAND_W, BAND_H);   // G = roughness, B = metalness
+  const gold = (ctx, metal) => { ctx.strokeStyle = ctx.fillStyle = metal ? 'rgb(0,80,255)' : '#e2b54c'; };
+  for (const [ctx, metal] of [[g, false], [gm, true]]) {
+    gold(ctx, metal);
+    ctx.fillRect(0, 6, BAND_W, 5); ctx.fillRect(0, 15, BAND_W, 2);
+    ctx.fillRect(0, BAND_H - 17, BAND_W, 2); ctx.fillRect(0, BAND_H - 11, BAND_W, 5);
+    // running key: each 64 px unit is a squared spiral rising off a baseline
+    ctx.lineWidth = 6; ctx.lineJoin = 'miter'; ctx.lineCap = 'butt';
+    const T = 28, B = BAND_H - 28, u = 64;
+    for (let x0 = 0; x0 < BAND_W; x0 += u) {
+      ctx.beginPath();
+      ctx.moveTo(x0 - 1, B); ctx.lineTo(x0 + u + 1, B);
+      ctx.moveTo(x0 + 8, B); ctx.lineTo(x0 + 8, T); ctx.lineTo(x0 + 56, T); ctx.lineTo(x0 + 56, B - 18);
+      ctx.lineTo(x0 + 24, B - 18); ctx.lineTo(x0 + 24, T + 18); ctx.lineTo(x0 + 40, T + 18); ctx.lineTo(x0 + 40, B - 34);
+      ctx.stroke();
+    }
+  }
+  // a little shading so the gold looks embroidered rather than printed
+  const sh = g.createLinearGradient(0, 0, 0, BAND_H);
+  sh.addColorStop(0, 'rgba(0,0,0,.18)'); sh.addColorStop(0.5, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.12)');
+  g.fillStyle = sh; g.fillRect(0, 0, BAND_W, BAND_H);
+  return { map: cv, mr };
+}
+// The square where the two border bands meet: a double gold frame around a 回 spiral.
+function cornerCanvases() {
+  const S = BAND_H, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const mr = document.createElement('canvas'); mr.width = mr.height = S;
+  const g = cv.getContext('2d'), gm = mr.getContext('2d');
+  g.fillStyle = '#6e0c10'; g.fillRect(0, 0, S, S);
+  gm.fillStyle = 'rgb(0,170,0)'; gm.fillRect(0, 0, S, S);
+  for (const [ctx, metal] of [[g, false], [gm, true]]) {
+    ctx.strokeStyle = ctx.fillStyle = metal ? 'rgb(0,80,255)' : '#e2b54c';
+    // outer rules continue round the corner (outer edges are top and left)
+    ctx.fillRect(6, 6, S - 6, 5); ctx.fillRect(6, 6, 5, S - 6);
+    ctx.fillRect(15, 15, S - 15, 2); ctx.fillRect(15, 15, 2, S - 15);
+    ctx.fillRect(S - 17, S - 17, 17, 2); ctx.fillRect(S - 17, S - 17, 2, 17);
+    ctx.fillRect(S - 11, S - 11, 11, 5); ctx.fillRect(S - 11, S - 11, 5, 11);
+    // square spiral
+    ctx.lineWidth = 6; ctx.lineJoin = 'miter';
+    const a = 30, b = S - 30;
+    ctx.beginPath();
+    ctx.moveTo(a, b); ctx.lineTo(a, a); ctx.lineTo(b, a); ctx.lineTo(b, b); ctx.lineTo(a + 16, b);
+    ctx.lineTo(a + 16, a + 16); ctx.lineTo(b - 16, a + 16); ctx.lineTo(b - 16, b - 16); ctx.lineTo(a + 32, b - 16); ctx.lineTo(a + 32, a + 32); ctx.lineTo(b - 32, a + 32);
+    ctx.stroke();
+  }
+  return { map: cv, mr };
+}
+// Soft contact shadow along a cloth edge (dark at the edge, fading outward = canvas top).
+function edgeShadowCanvas() {
+  const cv = document.createElement('canvas'); cv.width = 4; cv.height = 64;
+  const g = cv.getContext('2d'), gr = g.createLinearGradient(0, 64, 0, 0);
+  gr.addColorStop(0, 'rgba(0,0,0,.55)'); gr.addColorStop(0.35, 'rgba(0,0,0,.2)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 4, 64);
+  return cv;
+}
+
 // Soft round shadow for under each cookie (grows as a cookie lifts).
 function blobCanvas() {
   const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S;
@@ -275,6 +387,19 @@ const CSS = `
 .ck-acts.on{opacity:1;transform:none;}
 .ck-acts.on .btn{pointer-events:auto;}
 .ck-acts .btn{min-width:210px;}
+.ck-more{position:absolute;left:0;right:0;bottom:calc(var(--safe-b,0px) + 14px);z-index:4;display:flex;justify-content:center;gap:8px;padding:0 16px;
+  pointer-events:none;transition:opacity .3s,transform .35s var(--spring,ease);}
+.ck-more.off{opacity:0;transform:translateY(14px);}
+.ck-more button{pointer-events:auto;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border:0;border-radius:999px;
+  background:rgba(22,9,4,.62);color:#fbe7c8;font:inherit;font-weight:800;font-size:.95rem;letter-spacing:.01em;cursor:pointer;
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 0 0 1px rgba(255,220,170,.16),0 6px 16px rgba(0,0,0,.3);
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:transform .12s,background .2s;}
+.ck-more button:active{transform:scale(.96);background:rgba(60,22,10,.75);}
+.ck-more button:disabled{opacity:.5;}
+.ck-more svg{width:18px;height:18px;flex:none;}
+.ck-more .n{min-width:3.6em;padding:2px 8px;border-radius:999px;background:rgba(226,181,76,.2);color:#f3d58b;font-size:.82rem;font-variant-numeric:tabular-nums;text-align:center;}
+.ck-more .rs{width:44px;padding:0;justify-content:center;}
+.ck-more .rs[hidden]{display:none;}
 .ck-slipbox{position:absolute;left:0;top:0;z-index:3;pointer-events:none;transform-origin:50% 50%;will-change:transform;
   filter:drop-shadow(0 12px 14px rgba(0,0,0,.42)) drop-shadow(0 2px 2px rgba(0,0,0,.35));}
 .ck-curl{transform:perspective(700px) rotateX(9deg);transform-origin:50% 50%;}
@@ -326,6 +451,7 @@ export default {
     '<p>A table full of fresh fortune cookies. <b>Tap one</b> to pick it up. It snaps in two and the paper slip unrolls with your fortune.</p>' +
     '<ul><li>Every slip has a fortune, six <b>lucky numbers</b> and a <b>Learn Chinese</b> word with how to say it.</li>' +
     '<li>Tap the table or <b>New cookie</b> to put the slip away. The table restocks itself.</li>' +
+    '<li><b>More cookies</b> drops another cookie on the table. Hold it to keep pouring, up to 40. The arrow button sets the table back to a dozen.</li>' +
     '<li>You won’t see the same fortune twice until you’ve read most of them.</li></ul>',
   mount
 };
@@ -346,6 +472,12 @@ function mount(stage, api) {
   const newBtn = document.createElement('button'); newBtn.type = 'button'; newBtn.className = 'btn btn-primary';
   newBtn.innerHTML = (Kit ? Kit.icon('sync') : '') + '<span>New cookie</span>';
   acts.appendChild(newBtn);
+  const more = document.createElement('div'); more.className = 'ck-more';
+  const moreBtn = document.createElement('button'); moreBtn.type = 'button';
+  const resetBtn = document.createElement('button'); resetBtn.type = 'button'; resetBtn.className = 'rs';
+  resetBtn.setAttribute('aria-label', 'Back to a dozen cookies'); resetBtn.title = 'Back to a dozen cookies';
+  resetBtn.innerHTML = Kit ? Kit.icon('undo') : '';
+  more.appendChild(moreBtn); more.appendChild(resetBtn);
   const live = document.createElement('div'); live.className = 'sr-only'; live.setAttribute('aria-live', 'polite');
   stage.appendChild(root);
 
@@ -363,7 +495,7 @@ function mount(stage, api) {
   canvas.setAttribute('tabindex', '0');
   canvas.setAttribute('role', 'application');
   canvas.setAttribute('aria-label', 'A table of fortune cookies. Tap one, or press Enter, to open it.');
-  root.appendChild(canvas); root.appendChild(hint); root.appendChild(acts); root.appendChild(live);
+  root.appendChild(canvas); root.appendChild(hint); root.appendChild(more); root.appendChild(acts); root.appendChild(live);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#1a0905');
@@ -389,6 +521,48 @@ function mount(stage, api) {
   const tableMat = keep(new THREE.MeshPhysicalMaterial({ map: woodTex, roughness: 0.56, clearcoat: 0.18, clearcoatRoughness: 0.35, envMapIntensity: 0.06 }));
   const table = new THREE.Mesh(keep(new THREE.PlaneGeometry(60, 60)), tableMat);
   table.rotation.x = -Math.PI / 2; table.receiveShadow = true; scene.add(table);
+
+  // The tablecloth: laid a little askew so one corner of the wood shows (top left of the view).
+  // Built in its own frame: the cloth's corner at the origin, the cloth running off along +x and +z.
+  const CLOTH = 60, BW = 0.95, aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const dm = damaskCanvas();
+  const silkTex = keep(new THREE.CanvasTexture(dm.map)), silkBump = keep(new THREE.CanvasTexture(dm.bump));
+  silkTex.colorSpace = THREE.SRGBColorSpace;
+  for (const t of [silkTex, silkBump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(CLOTH / 3.2, CLOTH / 3.2); t.anisotropy = aniso; }
+  const silkMat = keep(new THREE.MeshPhysicalMaterial({ map: silkTex, bumpMap: silkBump, bumpScale: 0.6, roughness: 0.62,
+    sheen: 0.8, sheenColor: new THREE.Color('#ff9c86'), sheenRoughness: 0.42, envMapIntensity: 0.12 }));
+  const cloth = new THREE.Group();
+  const field = new THREE.Mesh(keep(new THREE.PlaneGeometry(CLOTH, CLOTH)), silkMat);
+  field.rotation.x = -Math.PI / 2; field.position.set(CLOTH / 2, 0.006, CLOTH / 2); field.receiveShadow = true;
+  cloth.add(field);
+  const bd = bandCanvases(), cn = cornerCanvases();
+  function trimMat(c, len) {
+    const map = keep(new THREE.CanvasTexture(c.map)), mr = keep(new THREE.CanvasTexture(c.mr));
+    map.colorSpace = THREE.SRGBColorSpace;
+    for (const t of [map, mr]) { t.anisotropy = aniso; if (len) { t.wrapS = THREE.RepeatWrapping; t.repeat.set(len, 1); } }
+    return keep(new THREE.MeshPhysicalMaterial({ map, roughnessMap: mr, metalnessMap: mr, roughness: 1, metalness: 1,
+      sheen: 0.5, sheenColor: new THREE.Color('#ff9c86'), sheenRoughness: 0.5, envMapIntensity: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  }
+  const L = CLOTH - BW, reps = L / (BW * BAND_W / BAND_H);
+  const bandGeo = keep(new THREE.PlaneGeometry(L, BW));
+  const topBand = new THREE.Mesh(bandGeo, trimMat(bd, reps));
+  topBand.rotation.x = -Math.PI / 2; topBand.position.set(BW + L / 2, 0.009, BW / 2); topBand.receiveShadow = true;
+  const leftBand = new THREE.Mesh(bandGeo, topBand.material);
+  leftBand.rotation.set(-Math.PI / 2, Math.PI / 2, 0, 'YXZ'); leftBand.position.set(BW / 2, 0.009, BW + L / 2); leftBand.receiveShadow = true;
+  const corner = new THREE.Mesh(keep(new THREE.PlaneGeometry(BW, BW)), trimMat(cn, 0));
+  corner.rotation.x = -Math.PI / 2; corner.position.set(BW / 2, 0.009, BW / 2); corner.receiveShadow = true;
+  cloth.add(topBand, leftBand, corner);
+  // a soft shadow on the wood where the cloth's edge lies, so it sits on the table
+  const edgeTex = keep(new THREE.CanvasTexture(edgeShadowCanvas()));
+  const edgeMat = keep(new THREE.MeshBasicMaterial({ map: edgeTex, transparent: true, depthWrite: false, opacity: 0.6 }));
+  const SW = 0.32, edgeGeo = keep(new THREE.PlaneGeometry(CLOTH, SW));
+  const topShadow = new THREE.Mesh(edgeGeo, edgeMat);
+  topShadow.rotation.x = -Math.PI / 2; topShadow.position.set(CLOTH / 2, 0.003, -SW / 2);
+  const leftShadow = new THREE.Mesh(edgeGeo, edgeMat);
+  leftShadow.rotation.set(-Math.PI / 2, Math.PI / 2, 0, 'YXZ'); leftShadow.position.set(-SW / 2, 0.003, CLOTH / 2);
+  cloth.add(topShadow, leftShadow);
+  cloth.rotation.y = -0.16;
+  scene.add(cloth);
 
   const blobTex = keep(new THREE.CanvasTexture(blobCanvas()));
   const blobGeo = keep(new THREE.PlaneGeometry(1, 1));
@@ -487,11 +661,27 @@ function mount(stage, api) {
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   const tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   // The camera backs off until the visible table holds about a dozen cookies, whatever the screen shape.
-  const COUNT = 11, PER = 4.4;
+  // "More cookies" adds up to MAX; the camera eases back a little to make room for each one.
+  const COUNT = 11, PER = 4.4, PER_MORE = 3.6, MAX = 40, MORE_KEY = 'fortune_cookie_more';
+  let baseD = 10, baseN = COUNT, camD = 0, camTo = 0;
+  let extra = Math.max(0, Math.min(MAX, parseInt(lsGet(MORE_KEY), 10) || 0));
+  const total = () => Math.min(MAX, baseN + extra);
+  const distFor = (n) => baseD * Math.sqrt((baseN * PER + Math.max(0, n - baseN) * PER_MORE) / (baseN * PER));
   function placeCamera(d) {
     camera.position.set(0, d * Math.sin(ELEV), d * Math.cos(ELEV));
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+  }
+  function setCam(d) {
+    camD = d; placeCamera(d);
+    key.position.set(-0.22 * d, 1.25 * d, -0.1 * d); key.target.position.set(0, 0, -0.04 * d);
+    key.shadow.camera.far = d * 3; key.shadow.camera.updateProjectionMatrix();
+  }
+  // A point on the table under the screen point (x, y) as seen from camera distance d. The camera
+  // always looks at the origin from the same angle, so the visible table simply scales with d.
+  function onTableAt(x, y, d) {
+    const p = onTable(x, y); if (!p) return null;
+    return p.multiplyScalar(d / camD);
   }
   function tableArea() {
     const c = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map((q) => onTable(q[0] * 0.9, q[1] < 0 ? -0.84 : 0.74));
@@ -501,37 +691,67 @@ function mount(stage, api) {
   }
   function fitCamera() {
     camera.aspect = W / H;
-    placeCamera(10);
+    placeCamera(10); camD = 10;
     // enough table for the cookies, and at least ~4 cookies across the middle of the screen
     const a = onTable(-1, 0), b = onTable(1, 0);
     const across = a && b ? a.distanceTo(b) : 10;
-    const d = Math.max(10 * Math.sqrt(COUNT * PER / tableArea()), 10 * 6.6 / across);
-    placeCamera(d);
-    key.position.set(-0.22 * d, 1.25 * d, -0.1 * d); key.target.position.set(0, 0, -0.04 * d);
+    baseD = Math.max(10 * Math.sqrt(COUNT * PER / tableArea()), 10 * 6.6 / across);
+    setCam(baseD);
+    baseN = Math.max(9, Math.min(12, Math.round(tableArea() / PER)));
     key.angle = 0.62; key.distance = 0; key.decay = 0; key.intensity = 2.7;
-    key.shadow.camera.far = d * 3; key.shadow.camera.updateProjectionMatrix();
+    // the cloth's corner sits toward the top left of the starting view
+    const cc = onTable(-0.6, 0.56);
+    if (cc) cloth.position.set(cc.x, 0, cc.z);
+    camTo = distFor(total());
+    setCam(camTo);
   }
   function onTable(x, y, out) {
     ndc.set(x, y); ray.setFromCamera(ndc, camera);
     return ray.ray.intersectPlane(tablePlane, out || new THREE.Vector3());
   }
+  // The most open spot on the visible table (as seen from camera distance d), away from `pts`.
+  function freeSpot(pts, d, tries) {
+    let best = null, bestD = -1;
+    for (let t = 0; t < tries; t++) {
+      const p = onTableAt(-0.86 + Math.random() * 1.72, -0.8 + Math.random() * 1.5, d);
+      if (!p) continue;
+      let dmin = 1e9;
+      for (const q of pts) dmin = Math.min(dmin, Math.hypot(p.x - q.x, p.z - q.z));
+      if (dmin > bestD) { bestD = dmin; best = { x: p.x, z: p.z }; }
+    }
+    return best;
+  }
   function placeAll() {
     cookies.slice().forEach(freeCookie);
-    const n = Math.max(9, Math.min(12, Math.round(tableArea() / PER))), sc = 1;
-    const pts = [], v = new THREE.Vector3();
-    for (let k = 0; k < n; k++) {
-      let best = null, bestD = -1;
-      for (let t = 0; t < 40; t++) {
-        const p = onTable(-0.86 + Math.random() * 1.72, -0.8 + Math.random() * 1.5, v);
-        if (!p) continue;
-        let dmin = 1e9;
-        for (const q of pts) dmin = Math.min(dmin, Math.hypot(p.x - q.x, p.z - q.z));
-        if (dmin > bestD) { bestD = dmin; best = { x: p.x, z: p.z }; }
-      }
-      if (best) pts.push(best);
-    }
+    const n = total(), sc = 1, pts = [];
+    for (let k = 0; k < n; k++) { const p = freeSpot(pts, camTo, 40); if (p) pts.push(p); }
     pts.sort((a, b) => a.z - b.z);   // far ones first, so near ones draw over them
     pts.forEach((p) => cookies.push(makeCookie(p.x, p.z, sc * (0.92 + Math.random() * 0.14))));
+  }
+  // "More cookies": one more drops onto the table each time (up to MAX); the camera eases back to make room.
+  function addCookie() {
+    if (state !== 'idle' || C || total() >= MAX) return false;
+    extra = Math.min(MAX - baseN, extra + 1); lsSet(MORE_KEY, String(extra));
+    camTo = distFor(total());
+    const p = freeSpot(cookies.map((c) => ({ x: c.x, z: c.z })), camTo, 160);
+    if (!p) return false;
+    const nc = makeCookie(p.x, p.z, 0.92 + Math.random() * 0.14);
+    nc.drop = { t0: T };
+    cookies.push(nc);
+    for (const k of cookies) if (k !== nc) { const d = Math.hypot(k.x - p.x, k.z - p.z); if (d < 6) k.hop = { t0: T + 0.42 + d * 0.06 }; }
+    sfx('whoosh', 0.35);
+    moreLabel(); kick();
+    return true;
+  }
+  // Back to the usual dozen: the extras are cleared and the table is set again.
+  function resetTable() {
+    if (state !== 'idle' || C) return;
+    extra = 0; lsSet(MORE_KEY, '0');
+    camTo = distFor(total());
+    clearCrumbs();
+    placeAll(); cookies.forEach((k, i) => { k.drop = { t0: T + 0.25 + i * 0.05 }; });
+    sfx('whoosh'); haptic('medium');
+    moreLabel(); kick();
   }
 
   // ── Render loop: only while something moves ──────────────────────────
@@ -667,7 +887,7 @@ function mount(stage, api) {
       fortune: nextFortune(), nums: luckyNumbers(), word: WORDS[Math.floor(Math.random() * WORDS.length)],
       slip0: { p: c.slip.position.clone(), q: c.slip.quaternion.clone(), s: c.slip.scale.x } };
     dimTo = 0.4;
-    hint.classList.add('off');
+    hint.classList.add('off'); more.classList.add('off');
     sfx('whoosh', 0.6); haptic('light');
     buildSlip();
     kick();
@@ -825,7 +1045,7 @@ function mount(stage, api) {
         for (const k of cookies) if (k !== nc) { const d = Math.hypot(k.x - c.x, k.z - c.z); k.hop = { t0: T + 0.42 + d * 0.06 }; }
       }
       state = 'idle'; O = null;
-      hint.textContent = 'Pick a cookie'; hint.classList.remove('off');
+      hint.textContent = 'Pick a cookie'; hint.classList.remove('off'); more.classList.remove('off');
     }
     return !C.stocked || !C.freed;
   }
@@ -835,6 +1055,11 @@ function mount(stage, api) {
     let busy = false;
     if (Math.abs(dimNow - dimTo) > 0.002) { dimNow += (dimTo - dimNow) * Math.min(1, dt * 7); busy = true; } else dimNow = dimTo;
     applyDim();
+    if (Math.abs(camD - camTo) > 0.002) {
+      setCam(Math.abs(camD - camTo) < 0.01 ? camTo : camD + (camTo - camD) * Math.min(1, dt * 2.6));
+      if (O && state === 'opening') O.tgt = presentTarget(O.c);
+      busy = true;
+    }
     for (const c of cookies) if (c !== openC) busy = idleMotion(c) || busy;
     if (O && state !== 'closing') busy = updateOpen() || busy;
     if (C) { const b = updateClose(); if (!b) C = null; busy = b || busy; }
@@ -888,6 +1113,22 @@ function mount(stage, api) {
   canvas.addEventListener('pointerleave', () => { hover = null; canvas.classList.remove('hot'); });
   canvas.addEventListener('keydown', onKey);
   newBtn.addEventListener('click', () => { sfx('tap'); closeCookie(); });
+  // More cookies: a tap adds one; keep holding to keep pouring them on
+  let pour = 0;
+  function stopPour() { if (pour) { clearTimeout(pour); pour = 0; } }
+  function pourStep(delay) { pour = setTimeout(() => { pour = 0; if (addCookie()) { haptic('tick'); pourStep(150); } }, delay); }
+  moreBtn.addEventListener('pointerdown', (e) => { if (e.button > 0) return; stopPour(); if (addCookie()) { haptic('light'); pourStep(420); } });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => moreBtn.addEventListener(ev, stopPour));
+  moreBtn.addEventListener('click', (e) => { if (e.detail === 0) addCookie(); });   // keyboard
+  moreBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+  resetBtn.addEventListener('click', () => { stopPour(); resetTable(); });
+  function moreLabel() {
+    const n = total(), full = n >= MAX;
+    moreBtn.innerHTML = (Kit ? Kit.icon('plus') : '') + '<span>' + (full ? 'Table is full' : 'More cookies') + '</span><span class="n">' + n + ' / ' + MAX + '</span>';
+    moreBtn.disabled = full;
+    moreBtn.setAttribute('aria-label', full ? 'The table is full: ' + n + ' cookies' : 'Add a cookie. ' + n + ' of ' + MAX + ' on the table');
+    resetBtn.hidden = extra <= 0;
+  }
   const onVis = () => { if (!document.hidden) kick(); else if (raf) { cancelAnimationFrame(raf); raf = 0; } };
   document.addEventListener('visibilitychange', onVis);
 
@@ -898,6 +1139,7 @@ function mount(stage, api) {
     W = w; H = h;
     renderer.setSize(W, H, false);
     fitCamera();
+    moreLabel();
     const lk = (W > H ? 'L' : 'P') + Math.round(W / H * 5);
     if (lk !== layoutKey) {
       layoutKey = lk;
@@ -916,6 +1158,7 @@ function mount(stage, api) {
     if (dead) return;
     dead = true;
     if (raf) cancelAnimationFrame(raf); raf = 0;
+    stopPour();
     ro.disconnect();
     document.removeEventListener('visibilitychange', onVis);
     cookies.slice().forEach(freeCookie);
@@ -935,6 +1178,8 @@ function mount(stage, api) {
     test: {
       state: () => state,
       count: () => cookies.length,
+      more: (n) => { let k = 0; for (let i = 0; i < (n || 1); i++) if (addCookie()) k++; return k; },
+      reset: () => resetTable(),
       open: (i) => { const list = cookies.filter((c) => !c.drop); openCookie(list[i == null ? Math.floor(Math.random() * list.length) : Math.min(i, list.length - 1)]); return state; },
       close: () => { closeCookie(); return state; },
       wobble: (i) => wobble(cookies[i || 0], 0.11),
