@@ -6566,6 +6566,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     st.el.insertBefore(libLine(), start);
     var hero = $('.setup-hero', st.el);
     netPeek(st.el, hero ? hero.nextSibling : st.el.firstChild);   // a linked person's open table, if any
+    st.el.insertBefore(mineBox('Your online games'), hero ? hero.nextSibling : st.el.firstChild);   // signed in: your games going online
     setTimeout(maybeNewPack, 900);
   }
   function lastChoices(cfg) {
@@ -11837,6 +11838,88 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       });
     });
   }
+  // ── Your games: every table this account has open or going, from any device signed in with the PIN ──
+  // One small read, no listening: the account's tables at either seat, plus any this device remembers (older tables
+  // have no account tag). Each comes back with its seat, the other player, and whose move it is.
+  function netMine() {
+    return Promise.all([netDb(), acctTag()]).then(function (r) {
+      var db = r[0], tag = r[1], col = roomCol(db);
+      function q(seat, st) {
+        return col.where(seat + '.acct', '==', tag).where('status', 'in', st).limit(20).get()
+          .catch(function () { return col.where(seat + '.acct', '==', tag).limit(40).get(); })   // in case the two-field query is refused
+          .then(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); return l; });
+      }
+      var local = (lsGet(NETL, []) || []).concat([lsGet(NETK, null)]).filter(function (x) { return x && x.code; });
+      return (tag ? Promise.all([q('host', ['waiting', 'joined', 'playing']), q('guest', ['joined', 'playing'])]).then(function (x) { return x[0].concat(x[1]); }) : Promise.resolve([]))
+        .catch(function (e) { console.warn('[lorcana] your games', e); return []; })
+        .then(function (list) {
+          var have = {}, more = [];
+          list.forEach(function (x) { have[x.code] = 1; });
+          local.forEach(function (x) { if (!have[x.code]) { have[x.code] = 1; more.push(x.code); } });
+          return Promise.all(more.slice(0, 8).map(function (c) {
+            return col.doc(c).get().then(function (sn) { var d = sn.exists ? sn.data() : null; if (!d || d.status === 'over' || d.status === 'closed') { netForget(c); return null; } return { code: c, d: d }; }, function () { return null; });
+          })).then(function (x) { return list.concat(x.filter(Boolean)); });
+        }).then(function (list) {
+          var out = [];
+          list.forEach(function (r) {
+            var d = r.d;
+            if (!d || !d.host || ['waiting', 'joined', 'playing'].indexOf(d.status) < 0) return;
+            var hs = seatIs(d.host, tag), gs = seatIs(d.guest, tag);
+            if (!hs && !gs) return;
+            r.seat = hs > gs ? 0 : gs > hs ? 1 : null;   // null: both seats are this PIN (asked when opened)
+            r.wait = d.status === 'waiting'; r.when = d.at || 0;
+            if (!r.wait) {
+              var me = r.seat == null ? 0 : r.seat, st = null;
+              r.opp = me === 0 ? d.guest : d.host;
+              if (d.status === 'joined') { r.deal = true; r.mine = me === 0; }
+              else {
+                try { st = d.st ? JSON.parse(d.st) : null; } catch (e) {}
+                var open = !!(d.pr && !(d.an && d.an.id === d.pr.id));
+                if (st && st.phase === 'mull') { r.mull = true; r.mine = !(st.mull || {})[me] || (open && d.pr.seat === me); }
+                else r.mine = open ? d.pr.seat === me : d.owner === me;
+                if (st && st.P && st.phase === 'play') { r.turn = st.turn; r.lore = [st.P[me].lore, st.P[1 - me].lore]; }
+              }
+              if (r.seat == null) r.mine = true;
+            }
+            out.push(r);
+          });
+          out.sort(function (a, b) { return (b.mine ? 2 : b.wait ? 0 : 1) - (a.mine ? 2 : a.wait ? 0 : 1) || b.when - a.when; });
+          return netWhose(out.filter(function (r) { return r.opp; }), function (r) { return r.opp; }).then(function () { return out; });
+        });
+    });
+  }
+  // One of your games as a row: who it's against, whose turn, when the last move was. Tap to open it.
+  function mineRow(r) {
+    var go = function () {
+      Kit.sfx('pop'); Kit.toast('Opening your game…', 1500);
+      netOpen(r.code, r.seat).then(function (ok) { if (!ok) { Kit.toast('That game has ended'); if (ui.screen === 'lobby') showLobby(); } }).catch(netErr);
+    };
+    var chev = el('span', { class: 'net-chev', html: Kit.icon('right') });
+    if (r.wait) {
+      return el('button', { type: 'button', class: 'net-room net-mine', onclick: go }, [el('span', { class: 'net-ic', html: Kit.icon('globe') }),
+        el('div', { class: 'grow' }, [el('b', { text: 'Your table · code ' + r.code }), el('small', { text: 'Waiting for someone to join · opened ' + agoText(r.when) })]), chev]);
+    }
+    var nm = r.who ? r.who.name : (r.opp && r.opp.name) || 'Someone', bits = [];
+    if (r.deal) bits.push(r.mine ? nm + ' joined: tap to deal' : 'Waiting for ' + nm + ' to deal');
+    else if (r.mull) bits.push('Opening hands');
+    else if (r.turn) bits.push('Turn ' + r.turn + ' · you ' + r.lore[0] + ', ' + nm + ' ' + r.lore[1]);
+    bits.push(agoText(r.when));
+    var head = r.deal && !r.mine ? '' : r.mine ? '<span class="net-yours">Your move</span> · ' : esc('Waiting for ' + nm) + ' · ';
+    return el('button', { type: 'button', class: 'net-room net-mine' + (r.mine ? ' net-turn' : ''), onclick: go }, [
+      Kit.avatar.el(nm, null, Kit.color(1)),
+      el('div', { class: 'grow' }, [el('b', { text: 'vs ' + nm }), el('small', { html: head + esc(bits.join(' · ')) })]), chev]);
+  }
+  // A box of your games (empty, so hidden, when there are none or you're not signed in)
+  function mineBox(title) {
+    var box = el('div', { class: 'stack net-mines' });
+    if (!window.FGHSync || !FGHSync.isPin || !FGHSync.isPin()) return box;
+    netMine().then(function (list) {
+      if (!box.isConnected || !list.length) return;
+      box.appendChild(el('h2', { class: 'net-h', text: title }));
+      list.forEach(function (r) { box.appendChild(mineRow(r)); });
+    }).catch(function (e) { console.warn('[lorcana] your games', e); });
+    return box;
+  }
   function netWaitScreen(code, host) {
     tok++; ui.screen = 'netwait'; closeOverlays(); Kit.handoff.close();
     document.documentElement.classList.remove('lp-on'); app.className = 'stage full'; app.innerHTML = '';
@@ -11868,14 +11951,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Go to the home screen', onclick: function () { Kit.home(); } }));
       return;
     }
-    var mine = lsGet(NETK, null);
-    if (mine && mine.code) {
-      var back = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>Back to your game</span>', onclick: function () {
-        netRejoin(mine).then(function (ok) { if (!ok) { Kit.toast('That game has ended'); showLobby(); } }).catch(netErr);
-      } });
-      wrap.appendChild(back);
-    }
-    wrap.appendChild(el('p', { class: 'net-note', text: 'Each of you plays on your own device with your own deck, like sitting across the table. One of you opens a table; the other joins it.' }));
+    wrap.appendChild(mineBox('Your games'));
+    wrap.appendChild(el('p', { class: 'net-note', text: 'Each of you plays on your own device with your own deck, like sitting across the table. One of you opens a table; the other joins it. You don’t both need to be here at once: games stay open, so take your turn when you can and come back any time, on any device signed in with your PIN.' }));
     wrap.appendChild(libLine());
     var me = netMe(), seats = el('div', { class: 'stack' });
     function keep() { lsSet(NETME, me); }
@@ -11988,8 +12065,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var q = new URLSearchParams(location.search), saved = lsGet(SAVE, null);
     if (q.get('mode')) ui.launchMode = q.get('mode') === 'pass' ? 'pass' : 'cpu';
     if (q.get('online')) {
-      var mine = lsGet(NETK, null);
-      if (mine && mine.code && window.FGHSync && FGHSync.isPin && FGHSync.isPin()) netRejoin(mine).then(function (ok) { if (!ok) showLobby(); }).catch(function () { showLobby(); });
+      var mine = lsGet(NETK, null), room = String(q.get('room') || '').toUpperCase(), pin = window.FGHSync && FGHSync.isPin && FGHSync.isPin();
+      // a link to one of your games (the home screen's "your move"), else this device's last game
+      if (pin && /^[A-Z]{4}$/.test(room)) netOpen(room, mine && mine.code === room ? mine.seat : null).then(function (ok) { if (!ok) { Kit.toast('That game has ended'); showLobby(); } }).catch(function () { showLobby(); });
+      else if (mine && mine.code && pin) netRejoin(mine).then(function (ok) { if (!ok) showLobby(); }).catch(function () { showLobby(); });
       else showLobby();
       return;
     }
@@ -12013,7 +12092,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     load: function (st) { tok++; resetQ(); closeOverlays(); Kit.handoff.close(); S = st; DEF = {}; S.hist = S.hist || []; resumeFlow(); },
     run: function (a) { runAction(a); }, getDrops: function (pi, n) { act(function () { getDrops(pi, n); }); }, end: humanEnd, cpuChoose: cpuChoose, defenders: defenders, AB: AB, stx: stx, cant: cant, useAb: useAb, abUseWhy: abUseWhy, quiet: quiet, Q: function () { return Q; }, playCost: playCost, canPlay: canPlay, canQuest: canQuest,
     canShift: canShift, canSing: canSing, shiftTargets: shiftTargets, singersFor: singersFor, recklessPending: recklessPending, canChallenger: canChallenger,
-    net: NET, lobby: function () { showLobby(); },
+    net: NET, lobby: function () { showLobby(); }, mine: function () { return netMine(); }, open: function (c, s) { return netOpen(c, s); }, acctTag: function () { return acctTag(); },
     allCpu: function () { S.P.forEach(function (p) { p.cpu = true; }); S.viewer = -1; tok++; closeOverlays(); resumeFlow(); },
     STR: STR, WP: WP, LORE: LORE, act: act, render: render, toolbox: openToolbox, speed: function (x) { SPD = x; }, ui: ui, zoom: openZoom, dropDeck: dropDeck, canonStory: canonStory, storyOf: storyOf, deEnt: deEnt, showLog: showLog,
     // tests: apply one ability effect to a card, as if from src

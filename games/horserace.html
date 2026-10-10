@@ -48,13 +48,14 @@
 .pstrip .sc.mine::after{content:"";position:absolute;left:3px;right:3px;bottom:-4px;height:3px;border-radius:2px;background:#ffd54a;}
 .pstrip .sc i{font-style:normal;}
 .pstrip .sc span{display:none;}
-.pstrip:not(.nm) .sc i{background:none!important;color:inherit!important;}
+.pstrip .sc:not(.nmd) i{background:none!important;color:inherit!important;}
 /* Wide strip: a tote board with each runner's number and name, leader on the left */
-.pstrip.nm .sc{background:#2a2533!important;color:#f3ead6!important;display:flex;align-items:center;justify-content:flex-start;gap:7px;overflow:hidden;padding-right:8px;font:800 .8rem/1 var(--font);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
-.pstrip.nm .sc i{flex:none;align-self:stretch;width:26px;display:grid;place-items:center;font:400 1rem/1 var(--display);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);}
-.pstrip.nm .sc span{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.pstrip.nm .sc.mine{box-shadow:inset 0 0 0 2px #ffd54a;}
-.pstrip.nm .sc.mine::after{display:none;}
+.pstrip .sc{transition:left .45s var(--ease), width .45s var(--ease);}
+.pstrip .sc.nmd{background:#2a2533!important;color:#f3ead6!important;display:flex;align-items:center;justify-content:flex-start;gap:7px;overflow:hidden;padding-right:8px;font:800 .82rem/1 var(--font);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
+.pstrip .sc.nmd i{flex:none;align-self:stretch;width:28px;display:grid;place-items:center;font:400 1rem/1 var(--display);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);}
+.pstrip .sc.nmd span{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pstrip .sc.nmd.mine{box-shadow:inset 0 0 0 2px #ffd54a;}
+.pstrip .sc.nmd.mine::after{display:none;}
 /* Upright phone, during the race: a hint that sideways shows the whole field (fades away) */
 .rot-tip{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:none;align-items:center;gap:6px;padding:5px 11px 5px 8px;border-radius:999px;background:rgba(12,10,20,.8);color:#fff;font-weight:800;font-size:.74rem;white-space:nowrap;pointer-events:none;opacity:0;animation:rtip 7s ease .8s forwards;}
 .rot-tip .ico{width:16px;height:16px;transform:rotate(90deg);color:#ffd54a;}
@@ -774,13 +775,13 @@
       sh.addColorStop(0, 'rgba(0,0,0,.18)'); sh.addColorStop(0.3, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.12)');
       g.fillStyle = sh; g.fillRect(0, top, W, Hh - top);
       // Hoof prints / divots, anchored to the track so they slide by
-      var step = 1.6;
+      var step = 1.6, keep = 0.55 * Math.min(1, 22 / cam.w);   // fewer of them when the camera is pulled back
       for (var row = 0; row < 6; row++) {
         var d = 0.08 + row * 0.15, y = dy(d), scl = ds(d);
         var xa = Math.floor((cam.x - cam.w / scl) / step), xb = Math.ceil((cam.x + cam.w / scl) / step);
         for (var c = xa; c <= xb; c++) {
           var hv = hash(c, row);
-          if (hv > 0.55) continue;
+          if (hv > keep) continue;
           var X = sx(c * step + hv * step, d), Y = y + (hash(c, row + 9) - 0.5) * (gBot() - gTop()) * 0.12;
           g.fillStyle = surf === 'Dirt' ? 'rgba(60,32,12,.32)' : 'rgba(25,70,20,.35)';
           g.beginPath(); g.ellipse(X, Y, 2.6 * scl, 1.1 * scl, 0, 0, 6.29); g.fill();
@@ -1739,13 +1740,21 @@
   function paintStrip(rank) {
     if (!R.sc) return;
     R.lastRank = rank;
-    // Running order, leader on the left. A wide strip is a tote board: each runner's number and name.
-    var w = R.strip.clientWidth || 340, n = rank.length, tw = 30, step, nm = false;
-    if (w >= 480) { tw = Math.floor(Math.min(150, (w - 16 - (n - 1) * 4) / n)); nm = tw >= 64; if (!nm) tw = 30; }
-    step = nm ? tw + 4 : Math.min(40, (w - 16 - 30) / Math.max(1, n - 1));
-    if (R.strip.classList.contains('nm') !== nm) R.strip.classList.toggle('nm', nm);
-    var wd = tw + 'px';
-    rank.forEach(function (hi, r) { var c = R.sc[hi]; if (c) { var l = Math.round(8 + r * step) + 'px'; if (c.style.left !== l) c.style.left = l; if (c.style.width !== wd) c.style.width = wd; } });
+    // Running order, leader on the left. A wide strip is a tote board: the leaders get their names
+    // (as many as fit, all of them on a big screen), the rest of the field just their numbers.
+    var w = R.strip.clientWidth || 340, n = rank.length, k = 0, NW = 30, x = 8;
+    if (w >= 480) for (k = n; k > 0; k--) { NW = (w - 16 - (n - 1) * 4 - (n - k) * 30) / k; if (NW >= 118) break; }
+    NW = Math.floor(Math.min(170, NW));
+    if (R.strip.classList.contains('nm') !== k > 0) R.strip.classList.toggle('nm', k > 0);
+    var step = k ? 0 : Math.min(40, (w - 16 - 30) / Math.max(1, n - 1));
+    rank.forEach(function (hi, r) {
+      var c = R.sc[hi]; if (!c) return;
+      var cw = r < k ? NW : 30, l = Math.round(k ? x : 8 + r * step) + 'px', wd = cw + 'px';
+      if (c.style.left !== l) c.style.left = l;
+      if (c.style.width !== wd) c.style.width = wd;
+      c.classList.toggle('nmd', r < k);
+      x += cw + 4;
+    });
   }
   function finalLine() {
     var w = S.field.horses[S.race.order[0]];
