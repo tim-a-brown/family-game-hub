@@ -547,9 +547,9 @@ function wrapTop(V, x, z) {
 function filmMaterial(normalTex, frostTex) {
   const m = new THREE.MeshPhysicalMaterial({
     color: 0xffffff, metalness: 0, roughness: 0.42, roughnessMap: frostTex,
-    normalMap: normalTex, normalScale: new THREE.Vector2(0.55, 0.55),
+    normalMap: normalTex, normalScale: new THREE.Vector2(0.3, 0.3),
     alphaMap: frostTex, opacity: 0.34, transparent: true, depthWrite: false, side: THREE.DoubleSide, premultipliedAlpha: true,
-    ior: 1.45, specularIntensity: 1, envMapIntensity: 1.5,
+    ior: 1.45, specularIntensity: 1, envMapIntensity: 0.4,
     iridescence: 0.8, iridescenceIOR: 1.33, iridescenceThicknessRange: [220, 560], iridescenceThicknessMap: frostTex
   });
   m.onBeforeCompile = (sh) => {
@@ -570,7 +570,7 @@ function filmMaterial(normalTex, frostTex) {
 	float fA = diffuseColor.a;
 	float fNV = saturate(dot(normal, geometryViewDir));
 	float fFr = 0.04 + 0.96 * pow(1.0 - fNV, 5.0);
-	gl_FragColor = vec4(totalDiffuse * fA + totalSpecular, clamp(fA + (1.0 - fA) * fFr * 0.85, 0.0, 1.0));`)
+	gl_FragColor = vec4(totalDiffuse * fA + totalSpecular, clamp(fA + (1.0 - fA) * fFr * 0.5, 0.0, 1.0));`)
       .replace('#include <premultiplied_alpha_fragment>', '');
   };
   m.customProgramCacheKey = () => 'ck-film-1';
@@ -891,7 +891,7 @@ function mount(stage, api) {
     }
     const W = WRAPS[Math.floor(R() * WRAPS.length)], V = W.V;
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-    const Sx = (x1 - x0) / 2 / 0.8 * (1 + R() * 0.06), Sz = (z1 - z0) / 2 / 0.84 * (1.03 + R() * 0.08);
+    const Sx = (x1 - x0) / 2 / 0.9 * (1 + R() * 0.05), Sz = (z1 - z0) / 2 / 0.84 * (1.03 + R() * 0.08);
     let Sy = (y1 - y0) * 1.05;
     for (let k = 0; k < pts.length; k += 3) {
       const top = Math.max(0.2, wrapTop(V, (pts[k] - cx) / Sx, (pts[k + 2] - cz) / Sz));
