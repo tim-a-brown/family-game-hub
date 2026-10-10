@@ -239,6 +239,14 @@ var GameIcon = (function () {
     pacman: function () { return path('M12 12 20 7.5A9 9 0 1 0 20 16.5z', Y, ' transform="translate(-4 0)"') + circ(18, 12, 1.4, W) + circ(22.5, 12, 1.4, W); },
     breakout: function () { return rect(1, 2, 7, 3, .8, R) + rect(8.5, 2, 7, 3, .8, O) + rect(16, 2, 7, 3, .8, Y) + rect(1, 6, 7, 3, .8, O) + rect(16, 6, 7, 3, .8, '#3ddc84') + circ(13, 14, 1.8, W) + rect(7, 20, 10, 2.4, 1.2, '#7aa8ff'); },
     flappybird: function () { return rect(17, 0, 5, 7, 1, '#3ddc84') + rect(17, 15, 5, 9, 1, '#3ddc84') + circ(9, 12, 5.5, Y) + circ(11, 10.4, 1.6, W) + circ(11.5, 10.4, .8, K) + path('M13.5 12.5h4l-2 2z', O) + '<ellipse cx="7" cy="13.5" rx="3" ry="1.8" fill="#ffe08a"/>'; },
+    willycrash: function () {   // the stunt cannon firing Willy in an arc onto a rooftop bullseye
+      return rect(16.5, 12.5, 6.5, 10.5, .8, '#7aa8ff') + rect(18, 15, 1.6, 1.8, .3, Y) + rect(20.2, 15, 1.6, 1.8, .3, K) + rect(18, 18.4, 1.6, 1.8, .3, K) + rect(20.2, 18.4, 1.6, 1.8, .3, Y) +
+        '<ellipse cx="19.75" cy="12.3" rx="3.6" ry="1.1" fill="' + R + '"/><ellipse cx="19.75" cy="12.3" rx="1.3" ry=".45" fill="' + W + '"/>' +
+        path('M8.6 12.6C10.2 5.2 15.6 3.4 19 9.4', 'none', ' stroke="' + W + '" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="1.4 1.9" opacity=".8"') +
+        '<g transform="rotate(-40 6.5 18.5)">' + rect(1.5, 15.6, 11.5, 5.8, 2.2, R) + rect(5.6, 15.6, 1.8, 5.8, 0, Y) + rect(11.4, 15, 2.2, 7, .8, Y) + '</g>' +
+        circ(6.5, 19.6, 2.7, Y) + circ(6.5, 19.6, 1, K) +
+        circ(13.2, 4.4, 2.3, '#ffcf9f') + path('M10.9 4.4a2.3 2.3 0 0 1 4.6 0z', W) + rect(10.9, 3.8, 4.6, .9, .3, R);
+    },
     crossyroad: function () {   // a voxel chicken on the verge, a car coming down the road
       return rect(0, 1.5, 24, 8, 1, '#62c45e') + rect(0, 9.5, 24, 10, 1, '#5a606c') + rect(1, 14, 4, 1, .5, W) + rect(9.5, 14, 4, 1, .5, W) +
         rect(13.5, 15.2, 9, 3.6, .9, R) + rect(15.5, 13.4, 4.6, 2, .5, '#2f4157') + rect(15, 18.4, 2, 1.4, .4, K) + rect(19.5, 18.4, 2, 1.4, .4, K) +
