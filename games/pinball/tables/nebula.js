@@ -25,7 +25,7 @@ const SAUCER = [300, 980];                                  // the flying saucer
 const SHIP = [300, 733];                                     // the mothership drop-target bank
 const TPIN = [222, 596], TPOUT = [455, 556];                 // teleporter pads
 const SCOOP = [344, 516];                                    // Mission Control scoop
-const CANL = [30, 596], CANR = [458, 992];                   // the two cannons
+const CANL = [30, 618], CANR = [470, 1000];                   // the two cannons
 const PLANETS = [['CINDER', PAL.red], ['VEIL', PAL.violet], ['HALO', PAL.amber], ['FROST', PAL.ice]];
 
 export default {
@@ -76,10 +76,12 @@ function build(T) {
 function buildLeft(T) {
   const [bx0, by0, bx1, by1] = WELL_BOX;
   // ── Far-left lane (the port side): comes round the top, funnels into the left cannon's hole ──
-  T.wall([[62, 620], [46, 600]], { style: 'metal', h: 26 });                         // funnel to the hole
-  T.wall([[62, 620], [62, by0], [bx0, by0]], { style: 'metal', h: 26 });            // lane's inner guide
-  T.post(46, 598, { style: 'rubber', r: 5 });
-  T.cannon({ id: 'cannonL', x: 24, y: 520, load: [CANL[0], CANL[1], 14], rest: 36, min: 14, max: 62, power: 2900, barrel: 44, autoFire: 7, barrelMat: 'brass' });
+  T.wall([[2, 640], [4, 612], [14, 594], [30, 582], [50, 576]], { style: 'wood', r: 4, h: 34 });   // the lane's foot curves inward
+  T.post(52, 576, { style: 'rubber', r: 5 });
+  T.wall([[62, 700], [62, by0], [bx0, by0]], { style: 'metal', h: 26 });            // lane's inner guide
+  T.post(62, 697, { style: 'rubber', r: 5 });
+  const canL = T.cannon({ id: 'cannonL', x: 26, y: 604, load: [CANL[0], CANL[1], 14], rest: 30, min: 14, max: 58, power: 2900, barrel: 44, autoFire: 7, barrelMat: 'brass' });
+  canL.z0 = 44; canL.sens.on = false;                                              // the hole is live only when lit; the turret sits on a pedestal over it
   T.kickback({ id: 'kickback', x: 28, y: 205, power: 2300, label: 'THRUSTER', color: PAL.cyan });
   // ── The Gravity Well block: a housing on the main floor; the vertical field sits on top ──
   // the housing's top follows the arch so no pocket is left above it
