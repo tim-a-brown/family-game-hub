@@ -904,6 +904,9 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
   // reflect the dark room towards the camera instead of the lamp itself
   key.position.copy(toWorld(W * 0.3, L * 0.1, 1500)); key.target.position.copy(toWorld(W / 2, L * 0.55, 0));
   scene.add(key); scene.add(key.target);
+  // top-down view: an overhead camera sits where flat chrome (rails, lockbar) mirrors that lamp, so the lamp
+  // moves over the player's left shoulder for that view (the camera tween slides it across)
+  RC.keyPos = { first: key.position.clone(), top: toWorld(W * 0.3 - 700, L * 0.1 - 600, 1500) }; // fitCamera applies the current one
   if (!thumb || hq) {
     key.castShadow = true; key.shadow.mapSize.set(quality >= 2 ? 2048 : 1024, quality >= 2 ? 2048 : 1024);
     const sc = key.shadow.camera; sc.left = -0.5; sc.right = 0.5; sc.top = 0.85; sc.bottom = -0.85; sc.near = 0.2; sc.far = 3.2;
@@ -1010,18 +1013,30 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
   // canvas to keep clear (the page's button row sits on the cabinet front).
   RC.view = opts.view === 'top' ? 'top' : 'first'; RC.cams = {}; RC.tween = null;
   const tmp = new THREE.Vector3();
-  function fitAt(phi, pts, look, yMin, fov) {
+  // centre: slide the camera sideways so the points sit in the middle of the free area (above the button
+  // row) instead of around the look point, then fit again; the table then fills the view
+  function fitAt(phi, pts, look, yMin, fov, centre) {
+    look = look.clone();
     camera.fov = fov; camera.updateProjectionMatrix();
     const pr = phi * PI / 180, dir = new THREE.Vector3(0, Math.sin(pr), Math.cos(pr));
-    let lo = 0.3, hi = 8;
-    for (let it = 0; it < 28; it++) {
-      const d = (lo + hi) / 2; camera.position.copy(look).addScaledVector(dir, d); camera.lookAt(look); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
-      let ok = true; for (const p of pts) { tmp.copy(p).project(camera); if (Math.abs(tmp.x) > 0.985 || tmp.y > 0.985 || tmp.y < yMin || tmp.z > 1) { ok = false; break; } }
-      if (ok) hi = d; else lo = d;
+    let hi = 8, x0, x1, y0, y1;
+    const passes = centre ? 4 : 1;
+    for (let pass = 0; pass < passes; pass++) {
+      let lo = 0.3; hi = 8;
+      for (let it = 0; it < 28; it++) {
+        const d = (lo + hi) / 2; camera.position.copy(look).addScaledVector(dir, d); camera.lookAt(look); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
+        let ok = true; for (const p of pts) { tmp.copy(p).project(camera); if (Math.abs(tmp.x) > 0.985 || tmp.y > 0.985 || tmp.y < yMin || tmp.z > 1) { ok = false; break; } }
+        if (ok) hi = d; else lo = d;
+      }
+      camera.position.copy(look).addScaledVector(dir, hi); camera.lookAt(look); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
+      x0 = 9; x1 = -9; y0 = 9; y1 = -9;
+      for (const p of pts) { tmp.copy(p).project(camera); x0 = Math.min(x0, tmp.x); x1 = Math.max(x1, tmp.x); y0 = Math.min(y0, tmp.y); y1 = Math.max(y1, tmp.y); }
+      if (pass < passes - 1) {
+        const dx = (x0 + x1) / 2, dy = (y0 + y1) / 2 - (yMin + 0.985) / 2, th = Math.tan(fov * PI / 360) * hi;
+        const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0), up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+        look.addScaledVector(right, dx * th * camera.aspect).addScaledVector(up, dy * th);
+      }
     }
-    camera.position.copy(look).addScaledVector(dir, hi); camera.lookAt(look); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
-    let x0 = 9, x1 = -9, y0 = 9, y1 = -9;
-    for (const p of pts) { tmp.copy(p).project(camera); x0 = Math.min(x0, tmp.x); x1 = Math.max(x1, tmp.x); y0 = Math.min(y0, tmp.y); y1 = Math.max(y1, tmp.y); }
     return { pos: camera.position.clone(), look: look.clone(), fov, phi, area: (x1 - x0) * (y1 - y0) };
   }
   function fitCamera(aspect, padBottom) {
@@ -1044,11 +1059,12 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     // top-down: the whole table with a thin cabinet frame, nearly straight down (a little tilt keeps the ball round)
     const tp = []; add(tp, -26, -70, 0); add(tp, W + 26, -70, 0); add(tp, -26, L + 14, 0); add(tp, W + 26, L + 14, 0); add(tp, W / 2, L + 14, 60);
     const lookT = new THREE.Vector3(W / 2, (L - 56) / 2, 0).applyMatrix4(root.matrixWorld);
-    RC.cams.top = fitAt(fit.topPhi || 82, tp, lookT, yMin, portrait ? 30 : 26);
+    RC.cams.top = fitAt(fit.topPhi || 82, tp, lookT, yMin, portrait ? 30 : 26, true);
     const c = RC.cams[RC.view];
     camera.fov = c.fov; camera.updateProjectionMatrix();
     camera.position.copy(c.pos); camera.lookAt(c.look);
     camBase.pos.copy(c.pos); camBase.look.copy(c.look); RC.phi = c.phi; RC.tween = null;
+    if (RC.keyPos) RC.lights.key.position.copy(RC.keyPos[RC.view]);
   }
   // switch views; animate over 0.6 s unless told not to (physics and input are untouched: only the camera moves)
   RC.setView = function (mode, animate = true) {
@@ -1056,8 +1072,10 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     if (mode === RC.view && !RC.tween) return;
     RC.view = mode;
     const c = RC.cams[mode]; if (!c) return;
-    if (!animate) { camBase.pos.copy(c.pos); camBase.look.copy(c.look); camera.fov = c.fov; camera.updateProjectionMatrix(); RC.tween = null; return; }
-    RC.tween = { t0: performance.now(), p0: camBase.pos.clone(), l0: camBase.look.clone(), f0: camera.fov, p1: c.pos, l1: c.look, f1: c.fov, ms: 600 };
+    RC.phi = c.phi;
+    const key = RC.lights && RC.keyPos ? RC.lights.key : null;
+    if (!animate) { camBase.pos.copy(c.pos); camBase.look.copy(c.look); camera.fov = c.fov; camera.updateProjectionMatrix(); if (key) key.position.copy(RC.keyPos[mode]); RC.tween = null; return; }
+    RC.tween = { t0: performance.now(), p0: camBase.pos.clone(), l0: camBase.look.clone(), f0: camera.fov, p1: c.pos, l1: c.look, f1: c.fov, ms: 600, k0: key ? key.position.clone() : null, k1: key ? RC.keyPos[mode] : null };
   };
   RC.fitCamera = fitCamera;
 
@@ -1153,6 +1171,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
       const tw = RC.tween, u = Math.min(1, (performance.now() - tw.t0) / tw.ms), k = u * u * (3 - 2 * u);
       camBase.pos.lerpVectors(tw.p0, tw.p1, k); camBase.look.lerpVectors(tw.l0, tw.l1, k);
       camera.fov = tw.f0 + (tw.f1 - tw.f0) * k; camera.updateProjectionMatrix();
+      if (tw.k0) RC.lights.key.position.lerpVectors(tw.k0, tw.k1, k);
       if (u >= 1) RC.tween = null;
     }
     // camera shake
