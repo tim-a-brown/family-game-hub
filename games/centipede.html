@@ -468,7 +468,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
 
   // ═══ Simulation (solo, or the host's copy) ══════════════════════════════
-  var STEP = 1 / 60;
+  var STEP = 1 / 60, BSPD = 1000;
   function sim(dt) {
     G.t += dt; G.phaseT += dt;
     if (G.phase === 'over' || G.phase === 'won') { if (G.phaseT > 2.2 && !G.ended) endGame(G.phase === 'won'); return; }
@@ -547,8 +547,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (d < 0.01) return;
     var n = Math.min(10, Math.ceil(d / 2.5)), stuck = blockedAt(P.x, P.y);
     for (var i = 0; i < n; i++) {
-      var nx = P.x + dx / n; if (stuck || !blockedAt(nx, P.y)) P.x = nx;
-      var ny = P.y + dy / n; if (stuck || !blockedAt(P.x, ny)) P.y = ny;
+      var nx = P.x + dx / n; if (stuck || !blockedAt(nx, P.y)) P.x = nx; else if (Math.abs(dx) > Math.abs(dy)) slide(P, nx, P.y, 0, dy);
+      var ny = P.y + dy / n; if (stuck || !blockedAt(P.x, ny)) P.y = ny; else if (Math.abs(dy) > Math.abs(dx)) slide(P, P.x, ny, 1, dx);
+    }
+  }
+  // Clipping a mushroom's corner: ease around it instead of stopping dead
+  function slide(P, x, y, axis, pref) {
+    var sg = pref > 0 ? [1, -1] : [-1, 1];
+    for (var k = 1; k <= 4; k++) for (var j = 0; j < 2; j++) {
+      var o = sg[j] * k;
+      if (axis === 0) { var yy = clamp(P.y + o, PZY + 5, H - 5); if (!blockedAt(x, yy) && !blockedAt(P.x, P.y + sg[j] * 1.2)) { P.y = clamp(P.y + sg[j] * 1.2, PZY + 5, H - 5); return; } }
+      else { var xx = clamp(P.x + o, 5, W - 5); if (!blockedAt(xx, y) && !blockedAt(P.x + sg[j] * 1.2, P.y)) { P.x = clamp(P.x + sg[j] * 1.2, 5, W - 5); return; } }
     }
   }
   function playerStep(P, dt) {
@@ -572,7 +581,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     else if (!mine && P.cool <= 0) { shoot(P, 0, false); P.cool = 0.03; if (P.local) snd('shot'); }
   }
   function shoot(P, a, big) {
-    var v = 760;
+    var v = BSPD;
     G.bullets.push({ id: newId(), o: P.id, x: P.x, y: P.y - 7, vx: Math.sin(a) * v, vy: -Math.cos(a) * v, big: big, sh: P.power === 'shock', P: P });
   }
 
@@ -1651,8 +1660,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         V.segs.forEach(function (s) { if (Math.abs(s.x - P.x) < 5 && s.y < P.y && s.y + 4 > top) top = s.y + 4; });
         V.beam = { o: V.me, x: P.x, y0: P.y - 7, y1: top };
       } else if (f && !V.lb.length && P.cool <= 0) {
-        if (V.power === 'scatter') { [-0.2, 0, 0.2].forEach(function (an) { V.lb.push({ x: P.x, y: P.y - 7, vx: Math.sin(an) * 760, vy: -Math.cos(an) * 760 }); }); P.cool = 0.1; snd('shot'); }
-        else { V.lb.push({ x: P.x, y: P.y - 7, vx: 0, vy: -760, big: V.power === 'blaster' }); P.cool = V.power === 'blaster' ? 0.09 : 0.03; snd(V.power === 'blaster' ? 'big' : 'shot'); }
+        if (V.power === 'scatter') { [-0.2, 0, 0.2].forEach(function (an) { V.lb.push({ x: P.x, y: P.y - 7, vx: Math.sin(an) * BSPD, vy: -Math.cos(an) * BSPD }); }); P.cool = 0.1; snd('shot'); }
+        else { V.lb.push({ x: P.x, y: P.y - 7, vx: 0, vy: -BSPD, big: V.power === 'blaster' }); P.cool = V.power === 'blaster' ? 0.09 : 0.03; snd(V.power === 'blaster' ? 'big' : 'shot'); }
       }
     } else { V.beam = null; if (net.peer && !V.ended) { V.sendT -= dt; if (V.sendT <= 0) { V.sendT = 0.2; net.peer.send({ t: 'i', x: q4(P.x), y: q4(P.y), f: 0 }, false); } } }
     for (var i = V.lb.length - 1; i >= 0; i--) {

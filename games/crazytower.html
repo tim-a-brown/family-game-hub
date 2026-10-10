@@ -153,9 +153,9 @@ const KEY = 'crazytower', HI = 'crazytower';
 // the pedestal is block 0 and its top is y = 0.
 const BASE = 3, BH = 0.82, HOVER = 1.15, RANGE = 4.3, FLOOR = -3.6, PLINTH = BASE + 1.6;
 const JACKPOT = 40, MARKS = [10, 20, 30], JACKPOT_BONUS = 100;
-const PERF = 0.14;                 // a drop this close to the block below counts as perfect (snaps on)
+function perfAt(n) { return .12 + .01 * speedAt(n); }   // a drop this close to the block below counts as perfect (snaps on)
 const GROW_AT = 3, GROW = 0.3;     // from the 3rd perfect in a row, each perfect widens the block a little
-function speedAt(n) { return Math.min(5.4, 2.35 + (n - 1) * 0.078); }   // slide speed for block n (units/s)
+function speedAt(n) { return Math.min(5.8, 3.1 + (n - 1) * 0.07); }   // slide speed for block n (units/s)
 function hueAt(n) { return (192 + n * 8.6) % 360; }                       // colour climbs the spectrum
 function landY(n) { return (n - 1) * BH + BH / 2; }                         // centre of block n once placed
 function hsl(h, s, l) { return 'hsl(' + Math.round(h) + ',' + s + '%,' + l + '%)'; }
@@ -495,7 +495,7 @@ function newRun(i) {
   camTY = camY = 1.6; camX = camZ = 0; zoom = zoomT = 1; shake = 0;
   bgHueT = hueAt(0);
   setButton(p.color);
-  if (glOk) setLeader(multi ? leaderOf(pi) : null);
+  if (glOk) { setLeader(multi ? leaderOf(pi) : null); showLabels(false); }
   setGlow(hueAt(1));
   hud(); overlay(); kick();
 }
@@ -507,6 +507,7 @@ function leaderOf(upto) {
 function startRun() {
   Snd.unlock(); Snd.start();
   state = 'play'; run.started = Date.now(); Kit.gameStart(); Kit.resume.clear();
+  showLabels(true);
   spawn(); overlay(); hud();
 }
 function spawn() {
@@ -529,7 +530,7 @@ function drop() {
 function land() {
   const top = topBlock(), a = cur.axis, sk = a === 'x' ? 'w' : 'd';
   const delta = cur[a] - top[a], cs = cur[sk], ps = top[sk];
-  const perfect = Math.abs(delta) <= PERF;
+  const perfect = Math.abs(delta) <= perfAt(cur.n);
   let cut = 0, sgn = Math.sign(delta) || 1;
   if (perfect) cur[a] = top[a];
   else {
@@ -604,6 +605,8 @@ function jackpot() {
   pop('JACKPOT!', top, 'jp', '#ffb21a', 0);
   overlay();
 }
+// marker numbers stay hidden behind the title on the start screen
+function showLabels(on) { marks.forEach(m => { m.lb.visible = on; }); if (leader) leader.lb.visible = on; }
 function hitMark(n) { const m = marks.find(q => q.n === n); if (m) { m.lit = 1; m.hitT = T; } }
 
 // Falling pieces: a little rigid-body tumble, a bounce on the floor
@@ -773,7 +776,7 @@ function updateGuide() {
   const z0 = Math.max(cur.z - cur.d / 2, top.z - top.d / 2), z1 = Math.min(cur.z + cur.d / 2, top.z + top.d / 2);
   if (x1 - x0 <= .01 || z1 - z0 <= .01) { guide.visible = false; return; }
   guide.visible = true; guide.position.set((x0 + x1) / 2, height() * BH + .012, (z0 + z1) / 2); guide.scale.set(x1 - x0, z1 - z0, 1);
-  const a = cur.axis, close = Math.abs(cur[a] - top[a]) <= PERF;
+  const a = cur.axis, close = Math.abs(cur[a] - top[a]) <= perfAt(cur.n);
   guide.material.color.copy(close ? WHITE : cur.c).multiplyScalar(close ? 2.2 : 1.2);
   guide.material.opacity = close ? .4 : .2;
 }
