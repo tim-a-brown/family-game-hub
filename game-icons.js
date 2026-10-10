@@ -71,9 +71,9 @@ var GameIcon = (function () {
       var h = ''; for (var i = 0; i < 5; i++) h += circ(5 + i * 3.5, 14, .9, K, ' opacity=".35"');
       return rect(2, 10.5, 20, 7, 3.5, c) + h + rect(7.2, 5, 2.4, 9.5, 1.2, R) + rect(14.2, 6.5, 2.4, 8, 1.2, B);
     },
-    'gin-rummy': function (c) {   // two melds: a pair of three-card fans
-      function fan(cx, cols) { var s = ''; [-15, 0, 15].forEach(function (a, i) { s += rect(cx - 3.1, 4.5, 6.2, 11.4, 1.3, cols[i], ' stroke="' + W + '" stroke-width=".8" transform="rotate(' + a + ' ' + cx + ' 20.5)"'); }); return s; }
-      return fan(5.6, [K, K, K]) + fan(18.4, [R, R, R]);
+    'gin-rummy': function (c) {   // two melds: a fan of three black cards above a fan of three red
+      function fan(cy, col) { var s = ''; [-26, 0, 26].forEach(function (a) { s += rect(8.4, cy - 11.5, 7.2, 10.6, 1.2, col, ' stroke="' + W + '" stroke-width=".9" transform="rotate(' + a + ' 12 ' + cy + ')"'); }); return s; }
+      return fan(11.4, K) + fan(24.6, R);
     },
     wizard: function () { return path('M12 2 6.5 17h11z', P) + rect(3, 16.5, 18, 3.6, 1.8, P) + path('M12.5 8.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z', Y); },
     flip7: function (c) { return txt('7', 24, c, 12.5); },
