@@ -1530,7 +1530,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // The lucky coin: tossed up from the middle of the board, tumbling end over end, lands heads (a ball) or tails (rings)
   function drawCoin(g) {
     var c = fx.coin; if (!c) return;
-    var p = clamp(c.t / COIN_TOSS, 0, 1), R = 30, landed = p >= 1;
+    var p = clamp(c.t / COIN_TOSS, 0, 1), R = 36, landed = p >= 1;
     var end = c.spin * PI + (c.heads ? 0 : PI);           // even half-turns land heads, odd land tails
     var ang = end * (1 - Math.pow(1 - p, 2.2));
     var lift = Math.sin(p * PI) * 150 * (1 - p * 0.15);
@@ -1545,25 +1545,38 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     g.translate(FW / 2, cy);
     // edge thickness shows while the coin is turned
     var edge = 5 * Math.sqrt(1 - k * k) * (front ? 1 : -1);
-    g.fillStyle = '#8a5a10';
+    // The two faces read apart at a glance, even mid-tumble: heads is bright gold with a big silver ball,
+    // tails is dark copper with engraved rings.
+    var M = front ? { hi: '#fff4c2', mid: '#f4c440', lo: '#a8700e', edge: '#7a5008', line: 'rgba(255,244,200,.75)' }
+                  : { hi: '#e9a77a', mid: '#a4552a', lo: '#4e220b', edge: '#3a1806', line: 'rgba(255,200,160,.45)' };
+    g.fillStyle = M.edge;
     g.beginPath(); g.ellipse(0, edge, R, R * k, 0, 0, TAU); g.fill();
     g.scale(1, k);
     var gr = g.createRadialGradient(-R * 0.35, -R * 0.4, 2, 0, 0, R);
-    gr.addColorStop(0, '#fff2b8'); gr.addColorStop(0.45, '#f2c24a'); gr.addColorStop(1, '#b07a14');
+    gr.addColorStop(0, M.hi); gr.addColorStop(0.45, M.mid); gr.addColorStop(1, M.lo);
     g.fillStyle = gr; g.beginPath(); g.arc(0, 0, R, 0, TAU); g.fill();
-    g.lineWidth = 2.5; g.strokeStyle = '#8a5a10'; g.stroke();
-    g.lineWidth = 1.5; g.strokeStyle = 'rgba(255,240,190,.7)'; g.beginPath(); g.arc(0, 0, R - 5, 0, TAU); g.stroke();
+    g.lineWidth = 2.5; g.strokeStyle = M.edge; g.stroke();
+    // milled rim
+    g.lineWidth = 1.2; g.strokeStyle = M.line;
+    for (var mi = 0; mi < 36; mi++) { var ma = mi / 36 * TAU; g.beginPath(); g.moveTo(Math.cos(ma) * (R - 1.5), Math.sin(ma) * (R - 1.5)); g.lineTo(Math.cos(ma) * (R - 4.5), Math.sin(ma) * (R - 4.5)); g.stroke(); }
+    g.lineWidth = 1.5; g.beginPath(); g.arc(0, 0, R - 7, 0, TAU); g.stroke();
     if (front) {
-      // heads: a silver ball
-      var bg = g.createRadialGradient(-4, -5, 1, 0, 0, 12);
-      bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.6, '#c9ccd6'); bg.addColorStop(1, '#7c8090');
-      g.fillStyle = bg; g.beginPath(); g.arc(0, 1, 12, 0, TAU); g.fill();
-      g.lineWidth = 1.5; g.strokeStyle = 'rgba(120,80,10,.55)'; g.stroke();
+      // heads: a big silver ball
+      var bg = g.createRadialGradient(-6, -7, 1, 0, 0, 17);
+      bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.55, '#d3d6e0'); bg.addColorStop(1, '#6f7484');
+      g.fillStyle = 'rgba(90,55,5,.35)'; g.beginPath(); g.arc(1.5, 3, 17, 0, TAU); g.fill();
+      g.fillStyle = bg; g.beginPath(); g.arc(0, 1, 17, 0, TAU); g.fill();
+      g.lineWidth = 1.5; g.strokeStyle = 'rgba(90,60,10,.5)'; g.stroke();
+      g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.ellipse(-6, -6, 5, 3.2, -0.6, 0, TAU); g.fill();
     } else {
-      // tails: plain struck rings
-      g.lineWidth = 2; g.strokeStyle = 'rgba(138,90,16,.75)';
-      g.beginPath(); g.arc(0, 0, 15, 0, TAU); g.stroke();
-      g.beginPath(); g.arc(0, 0, 8, 0, TAU); g.stroke();
+      // tails: engraved rings around a small boss
+      g.lineWidth = 2.5; g.strokeStyle = 'rgba(30,10,2,.55)';
+      g.beginPath(); g.arc(0, 0, 18, 0, TAU); g.stroke();
+      g.beginPath(); g.arc(0, 0, 11, 0, TAU); g.stroke();
+      g.lineWidth = 1; g.strokeStyle = 'rgba(255,190,150,.35)';
+      g.beginPath(); g.arc(0.8, 0.8, 18, 0, TAU); g.stroke();
+      g.beginPath(); g.arc(0.8, 0.8, 11, 0, TAU); g.stroke();
+      g.fillStyle = 'rgba(30,10,2,.45)'; g.beginPath(); g.arc(0, 0, 4, 0, TAU); g.fill();
     }
     g.restore();
     if (landed) {
