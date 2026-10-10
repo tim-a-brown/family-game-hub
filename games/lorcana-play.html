@@ -693,6 +693,11 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .lz-fc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;}
 .lz-fc .face{--cu:inherit;}
 .lz-fc::after{content:'';position:absolute;inset:0;background:rgba(6,5,18,.42);opacity:var(--dim,1);pointer-events:none;}
+/* Opening hand: a card marked to put back is dimmed, with a small tag */
+.lz-fc.mout::after{background:rgba(6,5,18,.68);opacity:1;transition:background .2s;}
+.lz-fc .mtag{display:none;position:absolute;z-index:3;left:50%;bottom:9%;transform:translateX(-50%);padding:.35em .9em;border-radius:999px;white-space:nowrap;pointer-events:none;
+  background:rgba(20,16,40,.85);color:#fff;font-weight:900;font-size:calc(var(--cu) * .034);letter-spacing:.06em;text-transform:uppercase;box-shadow:0 0 0 1px rgba(255,255,255,.25);}
+.lz-fc.mout .mtag{display:block;}
 .lz-head{display:flex;align-items:flex-start;gap:12px;}
 .lz-head.inkglow{position:relative;isolation:isolate;padding-bottom:10px;}
 .lz-head.inkglow::before{content:'';position:absolute;z-index:-1;pointer-events:none;left:-34px;right:-34px;bottom:-22px;height:calc(100% + 34px);
@@ -7731,8 +7736,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function mullZoom(u, dir) {
     if (!S || S.phase !== 'mull') return;
     var hand = S.P[mullPi()].hand, i = hand.indexOf(u), out = !!ui.mullSel[u];
-    zoomDef(DD(u), [{ label: out ? 'Keep this card' : 'Put this card back', primary: !out, full: true, go: function () { ui.mullSel[u] = !ui.mullSel[u]; Kit.sfx('tap'); render(); mullZoom(u); } }],
-      { i: i, n: hand.length, list: hand.slice(), ctx: 'mull', dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < hand.length) mullZoom(hand[j], step); }, peek: function (k) { var x = hand[i + k]; return x ? DD(x) : null; } });
+    // the button stays open (stay): the card view is redrawn in place, so the table doesn't flash between taps
+    zoomDef(DD(u), [{ label: out ? 'Keep this card' : 'Put this card back', primary: !out, full: true, stay: true, go: function () { ui.mullSel[u] = !ui.mullSel[u]; Kit.sfx('tap'); render(); ui.lzQuiet = true; mullZoom(u); } }],
+      { i: i, n: hand.length, list: hand.slice(), ctx: 'mull', dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < hand.length) mullZoom(hand[j], step); }, peek: function (k) { var x = hand[i + k]; return x ? DD(x) : null; },
+        out: function (j) { return !!ui.mullSel[hand[j]]; } });
   }
   window.addEventListener('kit-avatar', function () { if (S && ui.screen === 'game') render(); });   // someone changed their avatar
   function render() {
@@ -9050,6 +9057,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var b = el('button', { type: 'button', class: 'lz-fc' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : '') + (prSpecial(artOf(d)) ? ' foil' : ''), 'data-r': rarKey(artOf(d)), 'aria-label': d.full, onclick: function (e) { e.stopPropagation(); if (Date.now() - F.dragAt < 350 || Date.now() - (b._held || 0) < 600) return; if (j === F.focus) return; F.settle(j); } });
       holdRoll(b, function () { return F.ov; }, function () { return j === F.focus; });
       b.appendChild(artEl(d, true));
+      if (nav0.ctx === 'mull') b.appendChild(el('span', { class: 'mtag', text: 'Putting back' }));
       F.el.appendChild(b);
       return (F.items[j] = b);
     }
@@ -9062,6 +9070,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var q = pose(j - F.pos);
         b.style.transform = q.t; b.style.zIndex = q.z; b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2));
         b.classList.toggle('front', Math.abs(j - F.pos) < 0.5);
+        if (F.cur.out) b.classList.toggle('mout', !!F.cur.out(j));   // opening hand: marked to put back
         // the card in focus keeps its tilt and sheen while it's dragged, until another card settles
         b.classList.toggle('focus', j === F.focus);
         b._swing = Math.max(-1, Math.min(1, j - F.pos));   // how far it has swung sideways (the sheen follows)
