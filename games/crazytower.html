@@ -264,6 +264,10 @@ function resizeBox(mesh, w, h, d) {
   mesh.geometry.dispose(); mesh.geometry = new THREE.BoxGeometry(w, h, d);
   mesh.material.userData.u.uHalf.value.set(w / 2, h / 2, d / 2);
 }
+function freeObj(o) {
+  if (!o) return; scene.remove(o);
+  o.traverse(c => { if (c.geometry && !c.isSprite) c.geometry.dispose(); if (c.material) { if (c.material.map) c.material.map.dispose(); c.material.dispose(); } });
+}
 function dropMesh(m) { if (!m) return; scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
 
 function canvasTex(w, h, draw) {
@@ -383,7 +387,7 @@ function initGL() {
   return true;
 }
 function buildMarks() {
-  marks.forEach(m => { scene.remove(m.g); if (m.lb) scene.remove(m.lb); if (m.bulbs) scene.remove(m.bulbs); });
+  marks.forEach(m => { freeObj(m.g); freeObj(m.lb); freeObj(m.bulbs); });
   marks = [];
   const S = BASE + 1.3, dirL = new THREE.Vector3(-1, 0, 1).normalize();
   MARKS.concat([JACKPOT]).forEach(n => {
@@ -411,7 +415,7 @@ function buildMarks() {
   });
 }
 function setLeader(p) {
-  if (leader) { scene.remove(leader.g); scene.remove(leader.lb); leader = null; }
+  if (leader) { freeObj(leader.g); freeObj(leader.lb); leader = null; }
   if (!p || !p.height) return;
   const c = new THREE.Color(p.color).multiplyScalar(2.2), S = BASE + .8, y = p.height * BH;
   const g = frame(S, .05, c); g.position.y = y; scene.add(g);

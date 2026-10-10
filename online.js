@@ -38,7 +38,8 @@
   var LS = (function () { try { return window.localStorage; } catch (e) { return null; } })();
   function lsGet(k, d) { try { var v = LS.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
   function lsSet(k, v) { try { LS.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  var config = { iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }], connectMs: 20000, gatherMs: 2500 };
+  function log() { if (config.debug) try { console.log.apply(console, ['[online ' + (performance.now() / 1000).toFixed(2) + ']'].concat([].slice.call(arguments))); } catch (e) {} }
+  var config = { debug: false, iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }], connectMs: 20000, gatherMs: 2500 };
 
   // ── This device ─────────────────────────────────────────────────────────
   var devId = null;
@@ -182,7 +183,7 @@
     p.r.onclose = function () { p.close('closed'); };
     var dt = 0;
     pc.addEventListener('connectionstatechange', function () {
-      var s = pc.connectionState;
+      var s = pc.connectionState; log('connection', id, s);
       if (s === 'failed' || s === 'closed') p.close(s);
       else if (s === 'disconnected') { clearTimeout(dt); dt = setTimeout(function () { if (pc.connectionState === 'disconnected') p.close('lost'); }, 6000); }
     });
@@ -243,6 +244,7 @@
       if (table.code) t.remove(table.code).catch(function () {});
     };
     function answer(m) {
+      log('host got', m.k, 'from', m.from);
       t.ack(table.code, m.id).catch(function () {});
       if (m.k !== 'offer' || table.closed) return;
       var o; try { o = JSON.parse(m.d); } catch (e) { return; }
@@ -255,6 +257,7 @@
       pending[from] = pc;
       var to = setTimeout(function () { if (!peer.open) { delete pending[from]; peer.close('timeout'); } }, config.connectMs + 5000);
       peer.on('open', function () {
+        log('host: channel open with', from);
         clearTimeout(to); delete pending[from];
         if (table.closed) { peer.close('host'); return; }
         table.peers[from] = peer;
@@ -266,7 +269,7 @@
         .then(function () { return pc.createAnswer(); })
         .then(function (a) { return pc.setLocalDescription(a); })
         .then(function () { return gathered(pc); })
-        .then(function () { return t.send(table.code, { id: rid(), to: from, from: me, k: 'answer', d: JSON.stringify({ sdp: pc.localDescription.sdp }), at: Date.now() }); })
+        .then(function () { log('host: answer ready'); return t.send(table.code, { id: rid(), to: from, from: me, k: 'answer', d: JSON.stringify({ sdp: pc.localDescription.sdp }), at: Date.now() }); })
         .catch(function (e) { console.warn('[online] answer failed', e); peer.close('failed'); });
     }
     return myTag().then(function (lk) {
@@ -310,6 +313,7 @@
           }
           var to = setTimeout(function () { var e = new Error(NAT_MSG); e.nat = true; finish(e); }, config.connectMs);
           peer.on('open', function () {
+            log('guest: channel open');
             finish(null);
             // the host closing the table (or the page) ends the game here too
             var off = t.watch(code, function (r) { if (!r && !peer.closed) peer.close('host'); }, function () {});
@@ -317,6 +321,7 @@
           });
           offs.push(t.inbox(code, me, function (m) {
             t.ack(code, m.id).catch(function () {});
+            log('guest got', m.k);
             if (m.from !== room.host.dev) return;
             if (m.k === 'no') finish(new Error(m.d || 'The table didn’t let you in'));
             else if (m.k === 'answer') { var a; try { a = JSON.parse(m.d); } catch (e) { return; } pc.setRemoteDescription({ type: 'answer', sdp: a.sdp }).catch(function (e) { finish(e); }); }
@@ -325,6 +330,7 @@
             .then(function (o) { return pc.setLocalDescription(o); })
             .then(function () { return gathered(pc); })
             .then(function () {
+              log('guest: offer ready', pc.iceGatheringState);
               var d = { sdp: pc.localDescription.sdp, name: String(opts.name || 'Player').slice(0, 20), v: V };
               if (lk) d.lk = lk;
               if (opts.extra) d.x = opts.extra;

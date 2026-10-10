@@ -1019,10 +1019,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
 
   // ═══ Loop ═══════════════════════════════════════════════════════════════
-  var raf = 0, lastT = 0, acc = 0, hold = false;
-  function loop(t) {
+  var raf = 0, lastT = 0, acc = 0, hold = false, frameAt = 0;
+  function loop() {
     raf = 0;
-    var dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 0; lastT = t;
+    frame(true);
+    if (!paused && !document.hidden && screen === 'game' && !(G && G.ended && !GV)) raf = requestAnimationFrame(loop);
+  }
+  // A host keeps the game going for everyone even when this browser holds back animation frames
+  // (a covered window, a busy phone): a timer steps it instead, without drawing.
+  setInterval(function () { if (net.mode === 'host' && screen === 'game' && G && !G.ended && performance.now() - frameAt > 90) frame(false); }, 30);
+  function frame(drawIt) {
+    var t = performance.now();
+    var dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 0; lastT = t; frameAt = t;
     if (screen !== 'game') return;
     if (GV) guestFrame(dt);
     else if (G && !paused && !hold) {
@@ -1034,9 +1042,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     fxStep(dt);
     var R = view();
     if (R && !paused && R.phase !== 'over' && R.phase !== 'won' && R.phase !== 'dead' && !(G && G.ended)) Mus.tick(); else Mus.stop();
+    if (!drawIt) return;
     if (hudDirty) updateHud();
     draw();
-    if (!paused && !document.hidden && screen === 'game' && !(G && G.ended && !GV)) raf = requestAnimationFrame(loop);
   }
   function wake() { if (!raf && screen === 'game' && !paused && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
   function fxStep(dt) {
