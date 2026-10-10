@@ -315,7 +315,7 @@ export function createGame(seed, saved) {
     // camera: follows the chicken forward and creeps on by itself once play starts
     const C = G.cam;
     if (G.state === 'play') {
-      C.focus += (0.36 + 0.42 * difficulty(G.maxRow)) * dt;
+      C.focus += (0.5 + 0.4 * difficulty(G.maxRow)) * dt;
       if (P.vrow > C.focus) C.focus += (P.vrow - C.focus) * Math.min(1, dt * 3.2);
       if (P.vrow < C.focus - BACK) die('eagle', { x: P.vx, row: P.vrow });
     }

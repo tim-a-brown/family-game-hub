@@ -7,7 +7,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HALF, WRAP, entX, trainAt } from './world.js';
 
 const PI = Math.PI;
-const YAW = 0.30, PITCH = 0.92;                   // camera: a little to the right, looking down ~53°
+const YAW = 0.25, PITCH = 0.92;                   // camera: a little to the right, looking down ~53°
 const TOP = { grass: 0, road: -0.05, rail: -0.03, river: -0.34 };
 const LOG_TOP = -0.12, PAD_TOP = -0.29;
 
@@ -31,7 +31,7 @@ function edgeShade(mat) {
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vCrX;')
       .replace('#include <project_vertex>', '#include <project_vertex>\n vec4 crW = vec4(transformed, 1.0);\n#ifdef USE_INSTANCING\n crW = instanceMatrix * crW;\n#endif\n crW = modelMatrix * crW; vCrX = crW.x;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vCrX;')
-      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n gl_FragColor.rgb *= mix(1.0, 0.66, smoothstep(' + (HALF + 0.47).toFixed(2) + ', ' + (HALF + 0.53).toFixed(2) + ', abs(vCrX)));');
+      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n gl_FragColor.rgb *= mix(1.0, 0.36, smoothstep(' + (HALF + 0.47).toFixed(2) + ', ' + (HALF + 0.53).toFixed(2) + ', abs(vCrX)));');
   };
   return mat;
 }
@@ -279,7 +279,8 @@ export function createScene(renderer) {
     // camera framing: the chicken's row sits about a quarter of the way up the screen
     const ahead = (0.5 * hh) / (-UP.z);
     const sx = shake ? (Math.random() - 0.5) * shake * 0.5 : 0, sz = shake ? (Math.random() - 0.5) * shake * 0.5 : 0;
-    const T = new THREE.Vector3(G.cam.x + sx, 0, -(G.cam.focus + ahead) + sz);
+    // the look point is ahead of the chicken; shift it so the chicken's column stays centred on screen
+    const T = new THREE.Vector3(G.cam.x + ahead * RIGHT.z / RIGHT.x + sx, 0, -(G.cam.focus + ahead) + sz);
     cam.position.copy(T).addScaledVector(OFF, 60); cam.lookAt(T); cam.updateMatrixWorld();
     // light follows, snapped to the shadow map's texel grid so shadows don't shimmer
     const snap = 42 / 2048, lx = Math.round(T.x / snap) * snap, lz = Math.round(T.z / snap) * snap;

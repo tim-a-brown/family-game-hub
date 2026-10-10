@@ -423,9 +423,10 @@ window.__crossy = {
   state: () => G && { state: G.state, score: G.score, coins: G.coins, row: G.p.row, x: G.p.x, vrow: G.p.vrow, hop: !!G.p.hop, log: G.p.log, focus: G.cam.focus, t: G.t, death: G.death && { cause: G.death.cause, t: G.death.t }, paused, ended, queue: G.queue.slice(), raf: !!raf },
   manual(on) { manual = !!on; if (manual) stopLoop(); else kick(); },
   hop, newGame(seed) { clearSave(); startGame(null, seed); },
-  step(sec, n) { n = n || 1; for (let i = 0; i < n; i++) { advance(sec); scene.render(G, sec); if (G.state === 'dead') { finish(); break; } } return this.state(); },
+  step(sec, n, draw) { n = n || 1; for (let i = 0; i < n; i++) { advance(sec); if (draw !== false) scene.render(G, sec); if (G.state === 'dead') { finish(); break; } } return this.state(); },
+  run(sec, n) { for (let i = 0; i < n; i++) { advance(sec); if (G.state === 'dead') { finish(); break; } } scene.render(G, sec); return this.state(); },
   render() { scene.render(G, 0); }, pause: pauseGame, resume: resumeGame, save, finish, info: () => scene.info(),
-  countdown: () => countdown, skipCount() { countdown = 0; showCount(); }
+  countdown: () => countdown, skipCount() { countdown = 0; showCount(); }, renderer: () => renderer
 };
 
 // ═══ Boot ════════════════════════════════════════════════════════════════════════

@@ -84,7 +84,8 @@
 .promo button:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
 .promo button svg{width:80%;height:80%;filter:drop-shadow(0 2px 1px rgba(0,0,0,.45));}
 .promo .lb{font-size:.75rem;font-weight:800;color:var(--text-2);text-align:center;margin-top:4px;}
-.acts .btn-sm{padding-left:10px;padding-right:10px;}
+.acts .btn-sm{padding-left:10px;padding-right:10px;white-space:nowrap;}
+@media (max-width:460px){ .acts.three .btn-sm .ico{display:none;} }
 .pbar .nm .ico.net{color:var(--text-3);}
 .pbar.away .sub{color:var(--orange,#f59e0b);}
 
@@ -533,19 +534,25 @@
   });
 
   function showSetup() {
-    S = null; sel = -1;
+    S = null; sel = -1; NET.screen = 'setup'; Kit.onBack = null;
     app.classList.remove('ipl');
-    Kit.setup(app, {
+    var su = Kit.setup(app, {
       modes: [
         { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'Easy, Normal or Hard' },
-        { id: '2p', icon: 'users', title: 'Pass & play', desc: 'Two players, one device' }
+        { id: '2p', icon: 'users', title: 'Pass & play', desc: 'Two players, one device' },
+        { id: 'online', icon: 'globe', title: 'Play online', desc: 'Two devices, each signed in with a PIN' }
       ],
       options: [
         { id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Only looks one move ahead and often blunders.'], ['normal', 'Normal', 'Looks a few moves ahead. A good challenge.'], ['hard', 'Hard', 'Thinks deeper and longer. Very tough to beat.']], when: function (m) { return m === 'cpu'; } },
         { id: 'side', label: 'You play', value: 'w', choices: [['w', 'White', 'White moves first, so you start.'], ['b', 'Black', 'The computer plays White and moves first.'], ['r', 'Random', 'A coin toss picks your color.']], when: function (m) { return m === 'cpu'; } }
       ],
-      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      players: { min: 2, max: 2, range: function (m) { return m === 'online' ? [1, 1] : null; }, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
+        if (cfg.mode === 'online') {
+          var nm = cfg.players[0] && cfg.players[0].name, me = netMe();
+          if (nm && !/^Player \d$/.test(nm)) { me.name = nm; netKeepMe(me); }
+          showLobby(); return;
+        }
         var cpu = cfg.mode === 'cpu', side = cfg.options.side || 'w';
         if (side === 'r') side = Math.random() < 0.5 ? 'w' : 'b';
         var hs = cpu ? (side === 'w' ? 1 : -1) : 1;
@@ -556,6 +563,9 @@
         newGame();
       }
     });
+    // the start button says where online goes
+    var startLabel = function () { var b = su.el.querySelector('.k-start'); if (b) b.textContent = su.state.mode === 'online' ? 'Find a table' : "Let's play!"; };
+    su.el.addEventListener('click', startLabel); startLabel();
   }
   function newGame(swap) {
     cancelThink();
@@ -568,28 +578,34 @@
 
   // ── Moves ────────────────────────────────────────────────────────────────
   function sameMove(a, b) { return a.f === b.f && a.t === b.t && (a.promo || 0) === (b.promo || 0); }
-  function commit(m, byCpu) {
-    if (!S || S.over) return;
+  // how: undefined = played here, 'remote' = the other player's move from an online table, 'quiet' = replaying a table
+  function commit(m, byCpu, how) {
+    if (!S || S.over) return false;
+    if (online() && !how && (S.pos.turn !== mySide() || NET.sending)) return false;
     var pos = S.pos, side = pos.turn, list = E.legal(pos);
     var mv = list.filter(function (x) { return sameMove(x, m); })[0];
-    if (!mv) return;
+    if (!mv) return false;
     S.hist.push({ pos: pos, caps: { '1': S.caps['1'].slice(), '-1': S.caps['-1'].slice() }, last: S.last, n: S.moves.length, ev: S.events.length, cpu: !!byCpu });
     var note = san(pos, mv, list), mover = Math.abs(pos.b[mv.f]);
     var np = E.make(pos, mv), victim = mv.ep ? 1 : Math.abs(mv.cap || 0);
     if (victim) S.caps[side].push(victim);
     S.pos = np; S.last = { f: mv.f, t: mv.t }; S.moves.push(note); S.keys.push(E.key(np));
+    if (S.uci) S.uci.push(uciOf(mv));
     sel = -1; selMoves = [];
-    noteEvents(pos, mv, np, mover, victim);
+    noteEvents(pos, mv, np, mover, victim, how === 'quiet');
+    if (how === 'quiet') return true;
     var chk = E.inCheck(np, np.turn);
     var end = checkEnd();
+    if (online() && !how) netSend(end);
     render({ m: mv, side: side, victim: victim, mover: mover });
     Kit.sfx(victim ? 'chip' : 'tap'); Kit.haptic(victim ? 'medium' : 'light');
     if (end) { finish(end); return; }
     if (chk) { Kit.callout('Check!'); Kit.haptic('heavy'); }
     save();
     setTimeout(maybeCpu, 260);
+    return true;
   }
-  function noteEvents(pos, mv, np, mover, victim) {
+  function noteEvents(pos, mv, np, mover, victim, quiet) {
     var who = pl(pos.turn).name, n = pos.full;
     function add(type, text) { S.events.push({ type: type, side: pos.turn, text: text }); }
     if (victim === 5 && !S.events.some(function (e) { return e.type === 'queen' && e.side === pos.turn; })) add('queen', who + ' captured the queen on move ' + n);
@@ -603,7 +619,7 @@
         var names = hit.map(function (a) { return PNAME[a]; });
         var txt = names.length === 2 ? names[0] + ' and ' + names[1] : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
         add('fork', who + ' forked the ' + txt + ' with a knight on move ' + n);
-        setTimeout(function () { Kit.callout('Fork!'); }, 300);
+        if (!quiet) setTimeout(function () { Kit.callout('Fork!'); }, 300);
       }
     }
   }
@@ -617,9 +633,16 @@
     return null;
   }
   var DRAW_TEXT = { stalemate: 'Stalemate', repetition: 'Draw by threefold repetition', fifty: 'Draw by the 50-move rule', material: 'Draw: not enough pieces to checkmate', agreed: 'Draw agreed' };
-  function finish(res) {
+  function finish(res, o) {
+    o = o || {};
+    var net = online();
+    res = { type: res.type, winner: res.winner || 0 };
     S.over = true; S.result = res; sel = -1;
-    save(); clearSave(); render();
+    if (net) { if (promoOpen && promoSheet) { promoOpen = false; promoSheet.close(); } netCloseOffer(); }
+    else { save(); clearSave(); }
+    render();
+    // online: each device records the game once (a reload or a second copy of the table shows the board only)
+    if (net && netDone(true)) return;
     var moves = S.pos.full - (S.pos.turn === 1 ? 1 : 0);
     var winner = res.winner ? pl(res.winner) : null, loser = res.winner ? pl(-res.winner) : null;
     var hl = [];
@@ -628,14 +651,16 @@
       var forkMate = S.events.some(function (e) { return e.type === 'fork' && e.side === res.winner; });
       hl.push(winner.name + ' checkmated ' + loser.name + ' in ' + moves + (moves === 1 ? ' move' : ' moves') + ' with a ' + PNAME[lastPiece] + (forkMate && lastPiece === 2 ? ' after a knight fork' : ''));
     } else if (res.type === 'resign') hl.push(loser.name + ' resigned after ' + moves + ' moves');
+    else if (res.type === 'abandon') hl.push(loser.name + ' left the game after ' + moves + ' moves, so ' + winner.name + ' won');
     else hl.push(DRAW_TEXT[res.type] + ' after ' + moves + ' moves');
     var evs = S.events.filter(function (e) { return e.type !== 'castle'; });
     evs.slice(-4).forEach(function (e) { hl.push(e.text); });
     var mat = [1, -1].map(function (s) { return S.caps[s].reduce(function (a, v) { return a + [0, 1, 3, 3, 5, 9][v]; }, 0); });
     if (S.caps['1'].length + S.caps['-1'].length) hl.push('Pieces captured: ' + pl(1).name + ' ' + S.caps['1'].length + ' (worth ' + mat[0] + '), ' + pl(-1).name + ' ' + S.caps['-1'].length + ' (worth ' + mat[1] + ')');
     if (vsCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
+    if (net) hl.push('Played online, each on their own device');
     Kit.record(KEY, {
-      started: S.started, mode: vsCpu() ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass & play',
+      started: S.started, mode: net ? 'online' : vsCpu() ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass & play',
       players: S.players.map(function (p) { return { name: p.name + ' (' + sideName(p.side) + ')', score: winner ? (p === winner ? 1 : 0) : 0.5, cpu: p.cpu }; }),
       winner: winner ? winner.name + ' (' + sideName(winner.side) + ')' : null,
       summary: winner ? winner.name + ' won in ' + moves + (moves === 1 ? ' move' : ' moves') : DRAW_TEXT[res.type] || 'Draw',
@@ -643,6 +668,23 @@
       detail: chessDetail(res, winner)
     });
     if (res.type === 'mate') { Kit.callout('Checkmate!'); }
+    if (net) {
+      var g = S.online.game;
+      setTimeout(function () {
+        if (!online() || S.online.game !== g || !S.over) return;
+        var lose = !!winner && !winner.me;
+        NET.win = Kit.win({
+          icon: !winner ? 'users' : 'trophy', lose: lose,
+          title: !winner ? (res.type === 'stalemate' ? "Stalemate: it's a draw" : "It's a draw") : winner.me ? 'You win!' : winner.name + ' wins',
+          sub: res.type === 'mate' ? 'Checkmate in ' + moves + (moves === 1 ? ' move' : ' moves') : res.type === 'resign' ? loser.name + ' resigned' : res.type === 'abandon' ? loser.name + ' left the game' : DRAW_TEXT[res.type],
+          againLabel: 'Rematch', again: function () { NET.win = null; netRematch(); },
+          extra: [{ label: 'View the board', onClick: function () { NET.win = null; } }],
+          closeLabel: 'Leave the table', onClose: function () { NET.win = null; netLeave(false); showLobby(); }
+        });
+        keepResume();
+      }, res.type === 'mate' ? 1300 : 700);
+      return;
+    }
     setTimeout(function () {
       var lose = winner && winner.cpu;
       Kit.win({
@@ -675,6 +717,7 @@
   }
   function resign() {
     if (!S || !S.pos || S.over) return Kit.toast('No game in progress');
+    if (online()) return netResign();
     var side = vsCpu() ? human().side : S.pos.turn;
     Kit.confirm(pl(side).name + ' resigns?', { ok: 'Resign', danger: true, body: pl(-side).name + ' will win this game.' }).then(function (ok) {
       if (!ok) return; cancelThink(); S.busy = false; finish({ type: 'resign', winner: -side });
@@ -682,6 +725,7 @@
   }
   function undo() {
     if (!S || !S.pos) return;
+    if (online()) return Kit.toast('Moves can’t be taken back in an online game');
     if (S.over) return Kit.toast('The game is over');
     var cpu = vsCpu();
     if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
@@ -711,10 +755,11 @@
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
-  var bdEl, layerEl, topBar, botBar, turnEl, movesEl;
+  var bdEl, layerEl, topBar, botBar, turnEl, movesEl, actsEl;
   function disp(s) { return bottomSide() === 1 ? s : 63 - s; }
   function render(anim) {
     if (!S || !S.pos) return;
+    NET.screen = 'game'; Kit.onBack = null;
     app.innerHTML = ''; app.classList.add('ipl');
     var col = el('div', { class: 'cb-col' });
     topBar = el('div', { class: 'pbar' }); botBar = el('div', { class: 'pbar' });
@@ -736,15 +781,33 @@
     col.appendChild(topBar); col.appendChild(frame); col.appendChild(botBar);
     turnEl = el('div', { class: 'turn' }); col.appendChild(turnEl);
     movesEl = el('div', { class: 'moves' }); col.appendChild(movesEl);
-    var acts = el('div', { class: 'acts' }, [
-      S.over ? null : el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Undo</span>', onclick: undo }),
-      el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('swap') + '<span>Flip</span>', onclick: function () { S.flip = !S.flip; Kit.sfx('tap'); save(); render(); } })
-    ]);
-    if (S.over) acts.insertBefore(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: function () { newGame(true); } }), acts.firstChild);
-    col.appendChild(acts);
+    actsEl = el('div', { class: 'acts' });
+    col.appendChild(actsEl);
     app.appendChild(col);
-    paintBoard(anim); paintBars(); paintStatus(); paintMoves();
+    paintBoard(anim); paintBars(); paintStatus(); paintMoves(); paintActs();
     bindInput();
+  }
+  function paintActs() {
+    if (!actsEl) return;
+    var b = function (cls, ic, label, fn) { return el('button', { type: 'button', class: 'btn btn-sm ' + cls, html: (ic ? Kit.icon(ic) : '') + '<span>' + label + '</span>', onclick: fn }); };
+    var flip = b('btn-soft', 'swap', 'Flip', function () { S.flip = !S.flip; Kit.sfx('tap'); save(); render(); });
+    var kids;
+    if (online()) {
+      if (!S.over) kids = [netCanClaim() ? b('btn-primary', 'trophy', 'Claim the win', netClaim) : b('btn-soft', 'hand', 'Offer draw', netOfferDraw), b('btn-soft', 'flag', 'Resign', resign), flip];
+      else {
+        var ag = (NET.d && NET.d.again) || {}, gone = !NET.code;
+        var lab = gone ? 'Find a table' : ag[NET.seat] ? 'Asked…' : ag[otherSeat()] ? 'Accept rematch' : 'Rematch';
+        var rb = b('btn-primary', gone ? 'globe' : 'swap', lab, gone ? function () { showLobby(); } : netRematch);
+        if (!gone && ag[NET.seat]) rb.disabled = true;
+        kids = [rb, gone ? null : b('btn-soft', 'logout', 'Leave', function () { netLeave(false); showLobby(); }), flip];
+      }
+    } else {
+      kids = [S.over ? b('btn-primary', '', 'Play again', function () { newGame(true); }) : b('btn-soft', 'undo', 'Undo', undo), flip];
+    }
+    actsEl.innerHTML = '';
+    kids = kids.filter(Boolean);
+    actsEl.classList.toggle('three', kids.length > 2);
+    kids.forEach(function (k) { actsEl.appendChild(k); });
   }
   function sqEl(s) { return bdEl.children[disp(s)]; }
   function place(node, s) { var d = disp(s); node.style.left = (d & 7) * 12.5 + '%'; node.style.top = (d >> 3) * 12.5 + '%'; }
@@ -794,10 +857,12 @@
     var tray = el('div', { class: 'tray' }), prev = 0;
     caps.forEach(function (v) { if (prev && v !== prev) tray.appendChild(el('span', { class: 'gap' })); prev = v; tray.insertAdjacentHTML('beforeend', pieceSvg(v * -side)); });
     if (adv > 0) tray.appendChild(el('span', { class: 'adv', text: '+' + adv }));
-    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : sideName(side) + (on ? (E.inCheck(S.pos, side) ? ' · in check!' : ' · to move') : '');
+    var away = online() && !p.me && !S.over && netAway();
+    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : sideName(side) + (away ? ' · away' : on ? (E.inCheck(S.pos, side) ? ' · in check!' : ' · to move') : '');
+    if (away) node.className += ' away';
     node.innerHTML = '';
     node.appendChild(el('span', { class: 'tok', html: pieceSvg(6 * side) }));
-    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
+    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : p.remote ? Kit.icon('globe', 'net') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
     node.appendChild(tray);
   }
   function paintBars() { var bs = bottomSide(); bar(topBar, -bs); bar(botBar, bs); }
@@ -809,10 +874,15 @@
     turnEl.style.setProperty('--c', pos.turn === 1 ? '#f3e6c8' : '#d9a878');
     if (S.over) {
       var r = S.result, w = r.winner ? pl(r.winner) : null;
-      turnEl.appendChild(el('span', { text: r.type === 'mate' ? 'Checkmate! ' + w.name + ' wins' : r.type === 'resign' ? w.name + ' wins by resignation' : DRAW_TEXT[r.type] }));
+      turnEl.appendChild(el('span', { text: r.type === 'mate' ? 'Checkmate! ' + w.name + ' wins' : r.type === 'resign' ? w.name + ' wins by resignation' : r.type === 'abandon' ? w.name + ' wins: ' + pl(-r.winner).name + ' left' : DRAW_TEXT[r.type] }));
       return;
     }
     turnEl.appendChild(el('span', { class: 'dot' }));
+    if (online()) {
+      var mine = pos.turn === mySide(), aw = netAway();
+      turnEl.appendChild(el('span', { html: (chk ? 'Check! ' : '') + (mine ? 'Your move' : aw ? Kit.esc(p.name) + ' seems to be away' : '<span class="think">' + Kit.esc(Kit.poss(p.name)) + ' move <i></i><i></i><i></i></span>') }));
+      return;
+    }
     turnEl.appendChild(el('span', { text: (chk ? 'Check! ' : '') + (p.cpu ? p.name + ' is thinking…' : Kit.poss(p.name) + ' move') }));
   }
   function paintMoves() {
@@ -828,7 +898,7 @@
 
   // ── Input: tap a piece then a square, or drag ────────────────────────────
   var drag = null;
-  function canAct() { return S && !S.over && !S.busy && !pl(S.pos.turn).cpu && !promoOpen; }
+  function canAct() { return S && !S.over && !S.busy && !pl(S.pos.turn).cpu && !promoOpen && (!online() || (S.pos.turn === mySide() && !NET.sending)); }
   function sqAt(x, y) {
     var rc = bdEl.getBoundingClientRect();
     var c = Math.floor((x - rc.left) / rc.width * 8), r = Math.floor((y - rc.top) / rc.height * 8);
@@ -848,7 +918,7 @@
     commit(m);
     return true;
   }
-  var promoOpen = false;
+  var promoOpen = false, promoSheet = null;
   function askPromo(m) {
     promoOpen = true;
     var side = S.pos.turn, box = el('div', { class: 'promo' }), sh;
@@ -858,7 +928,7 @@
         el('div', { class: 'lb', text: PNAME[pp].charAt(0).toUpperCase() + PNAME[pp].slice(1) })
       ]));
     });
-    sh = Kit.sheet({ title: 'Promote your pawn', node: box, actions: [{ label: 'Cancel', cls: 'btn-ghost' }], onClose: function () { if (promoOpen) { promoOpen = false; select(-1); } } });
+    sh = promoSheet = Kit.sheet({ title: 'Promote your pawn', node: box, actions: [{ label: 'Cancel', cls: 'btn-ghost' }], onClose: function () { promoSheet = null; if (promoOpen) { promoOpen = false; if (S && S.pos) select(-1); } } });
   }
   function bindInput() {
     bdEl.addEventListener('pointerdown', function (e) {
@@ -904,8 +974,530 @@
     bdEl.addEventListener('pointercancel', function (e) { end(e, true); });
   }
 
+  // ═════════════════════════════════════════════════════════════════════════
+  // Online: two devices, one table (Firestore chessRooms/{code})
+  // ═════════════════════════════════════════════════════════════════════════
+  // A table is one small doc. Both devices run the same engine on the same list of moves (UCI: "e2e4",
+  // "e7e8q"), so each checks every move itself. A move is a transaction that adds one to the list, only on
+  // that player's turn and only if the list is as long as they expect.
+  //   host {name, dev, pick w|b|r, lk}  guest {name, dev, lk}  status waiting|playing|over|closed
+  //   hw (host has White in game 1; rematches swap)  game (1, 2…)  t0 (game start)  moves []
+  //   result {type, winner 1|-1|0, by}  offer {side, n, id, no} (draw offer)  again {h, g} (rematch asks)
+  //   hb {h, g} (each device's last heartbeat)  at  by
+  // The room store is pluggable: tests set window.__chessRooms to an in-memory one with the same calls.
+  var NETK = 'chess_online', NETME = 'chess_net_me', NETDONE = 'chess_net_done';
+  var AWAY_MS = 75000, CLAIM_MS = 180000, HB_MS = 25000, UCI_RE = /^[a-h][1-8][a-h][1-8][nbrq]?$/;
+  var NET = { code: null, seat: null, d: null, off: null, lobbyOff: null, lobbyGen: 0, sending: false, hbT: 0, tickT: 0, seenAt: 0, seenHb: null,
+    win: null, offerSheet: null, offerSeen: '', noSeen: '', againSeen: '', screen: '', awayWas: false, claimWas: false, errAt: 0 };
+  function lsJ(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
+  function lsP(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  NET.dev = lsJ('chess_dev', '') || (function () { var d = Math.random().toString(36).slice(2, 10); lsP('chess_dev', d); return d; })();
+  function netErr(e) { try { console.warn(e); } catch (x) {} if (Date.now() - NET.errAt > 8000) { NET.errAt = Date.now(); Kit.toast('Connection problem: ' + (e && e.message || e)); } }
+  function toastErr(e) { Kit.toast(e && e.message || String(e)); }
+
+  function fireRooms() {
+    function db() { return window.FGHSync && FGHSync.db ? FGHSync.db() : Promise.reject(new Error('Sync isn’t loaded')); }
+    function col(d) { return d.collection('chessRooms'); }
+    function ref(code) { return db().then(function (d) { return col(d).doc(code); }); }
+    return {
+      ready: function () { return !!(window.FGHSync && FGHSync.isPin && FGHSync.isPin()); },
+      get: function (code) { return ref(code).then(function (r) { return r.get(); }).then(function (sn) { return sn.exists ? sn.data() : null; }); },
+      set: function (code, data) { return ref(code).then(function (r) { return r.set(data); }); },
+      update: function (code, patch) { return ref(code).then(function (r) { return r.update(patch); }); },
+      del: function (code) { return ref(code).then(function (r) { return r.delete(); }); },
+      // fn(data) returns the fields to change (dotted paths allowed), or null to change nothing; it may throw to stop
+      tx: function (code, fn) {
+        return db().then(function (d) {
+          var r = col(d).doc(code);
+          return d.runTransaction(function (t) { return t.get(r).then(function (sn) { var p = fn(sn.exists ? sn.data() : null); if (p) t.update(r, p); return p; }); });
+        });
+      },
+      watch: function (code, cb, err) {
+        var off = null, dead = false;
+        ref(code).then(function (r) { if (!dead) off = r.onSnapshot(function (sn) { cb(sn.exists ? sn.data() : null); }, err); }).catch(err);
+        return function () { dead = true; if (off) off(); };
+      },
+      // the lobby: open tables (a small query)
+      open: function (cb, err) {
+        var off = null, dead = false;
+        db().then(function (d) {
+          if (dead) return;
+          off = col(d).where('status', '==', 'waiting').limit(40).onSnapshot(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); cb(l); }, err);
+        }).catch(err);
+        return function () { dead = true; if (off) off(); };
+      }
+    };
+  }
+  var ROOMS = null;
+  function rooms() { return ROOMS || (ROOMS = window.__chessRooms || fireRooms()); }
+  function netReady() { try { return !!rooms().ready(); } catch (e) { return false; } }
+
+  function otherSeat() { return NET.seat === 'h' ? 'g' : 'h'; }
+  function hostWhite(d) { return (d.game || 1) % 2 === 1 ? !!d.hw : !d.hw; }
+  function mySide() { return S && S.online ? S.online.side : 1; }
+  function netLast(d) { var h = d.hb || {}; return Math.max(d.at || 0, h.h || 0, h.g || 0); }
+  function uciOf(m) { return sqName(m.f) + sqName(m.t) + (m.promo ? 'nbrq'.charAt(m.promo - 2) : ''); }
+  function parseUci(u) { var sq = function (s) { return (8 - +s.charAt(1)) * 8 + FILES.indexOf(s.charAt(0)); }; return { f: sq(u.slice(0, 2)), t: sq(u.slice(2, 4)), promo: u.charAt(4) ? 'nbrq'.indexOf(u.charAt(4)) + 2 : 0 }; }
+  function netCode() { var A = 'ABCDEFGHJKLMNPQRSTUVWXYZ', c = ''; for (var i = 0; i < 4; i++) c += A.charAt(Math.floor(Math.random() * A.length)); return c; }
+  function netMe() {
+    var m = lsJ(NETME, null) || {};
+    if (!m.name) { try { m.name = (localStorage.getItem('my_name') || '').trim(); } catch (e) {} }
+    if (!m.name && Kit.knownNames) m.name = Kit.knownNames()[0] || '';
+    if (m.pick !== 'b' && m.pick !== 'r') m.pick = 'w';
+    return m;
+  }
+  function netKeepMe(m) { lsP(NETME, m); }
+  // Each device records a finished online game once (mark: remember this one)
+  function netDone(mark) {
+    if (!S || !S.online) return false;
+    var k = S.online.code + ':' + S.online.t0 + ':' + S.online.game, l = lsJ(NETDONE, []);
+    if (!Array.isArray(l)) l = [];
+    if (l.indexOf(k) >= 0) return true;
+    if (mark) lsP(NETDONE, l.concat([k]).slice(-30));
+    return false;
+  }
+  // Leaving the local game for online play keeps it saved; put its "Continue" back after a win screen clears it
+  function keepResume() { var sv = lsJ(SAVE, null); if (sv && sv.pos && !sv.over && sv.mode !== 'online') Kit.resume.set(sv.moves && sv.moves.length ? 'Move ' + sv.pos.full : 'Ready'); }
+
+  // ── Tables opened by the people you've linked (sync.js player links) ──
+  // Same tag as Lorcana's tables: a table carries its host's profile code only as a slow one-way hash (host.lk).
+  // Anyone signed in can list open tables, and a profile code is a key to that profile, so the code itself never
+  // goes on the table. The people linked to the host know the code, make the same tag, and so recognise the table.
+  var LKT = {};
+  function linkTag(code) {
+    code = String(code || '');
+    var c = window.crypto && window.crypto.subtle;
+    if (!code || !c || typeof TextEncoder === 'undefined') return Promise.resolve(null);
+    if (LKT[code]) return LKT[code];
+    var saved = lsJ('lorc_lktag', {}) || {};   // shared with Lorcana: same codes, same tags
+    if (saved[code]) return (LKT[code] = Promise.resolve(saved[code]));
+    var enc = new TextEncoder();
+    return (LKT[code] = c.importKey('raw', enc.encode(code), 'PBKDF2', false, ['deriveBits']).then(function (k) {
+      return c.deriveBits({ name: 'PBKDF2', salt: enc.encode('fgh-lorcana-table'), iterations: 100000, hash: 'SHA-256' }, k, 64);
+    }).then(function (b) {
+      var t = Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+      var m = lsJ('lorc_lktag', {}) || {}; m[code] = t; lsP('lorc_lktag', m);
+      return t;
+    }).catch(function () { return null; }));
+  }
+  function myTag() { var own = window.FGHSync && FGHSync.links ? FGHSync.links().own : null; return linkTag(own && own.code); }
+  // The people you've linked: [{name (as you know them), code, them (their own profile name)}]
+  function netPeople() {
+    var L = window.FGHSync && FGHSync.links ? FGHSync.links() : null, out = [];
+    if (!L || !L.others) return out;
+    Object.keys(L.others).forEach(function (k) { var r = L.others[k]; if (r && !r.off && r.code && r.name) out.push(r); });
+    return out;
+  }
+  // Mark each table opened by someone you've linked (r.who): by its tag, or by name for a table without one
+  function netWhose(list) {
+    var ppl = netPeople();
+    list.forEach(function (r) { r.who = null; });
+    if (!ppl.length || !list.length) return Promise.resolve(list);
+    var nk = function (n) { return String(n || '').trim().toLowerCase(); };
+    return Promise.all(ppl.map(function (p) { return linkTag(p.code); })).then(function (tags) {
+      var canTag = tags.some(function (t) { return !!t; });
+      list.forEach(function (r) {
+        var h = r.d.host || {}, i = -1;
+        if (h.lk && canTag) i = tags.indexOf(h.lk);
+        else if (h.name) { var n = nk(h.name); for (var j = 0; j < ppl.length && i < 0; j++) if (nk(ppl[j].name) === n || (ppl[j].them && nk(ppl[j].them) === n)) i = j; }
+        r.who = i >= 0 ? ppl[i] : null;
+      });
+      return list;
+    });
+  }
+
+  // ── Opening, joining, leaving ──
+  function netHost(me) {
+    if (!me.name) { Kit.toast('Pick your name first'); return; }
+    var R = rooms(), pick = me.pick === 'b' || me.pick === 'r' ? me.pick : 'w';
+    myTag().then(function (tag) {
+      var host = { name: me.name, dev: NET.dev, pick: pick };
+      if (tag) host.lk = tag;   // so the people linked to you see it's your table
+      var tries = 0;
+      return (function attempt() {
+        var code = netCode();
+        return R.get(code).then(function (d) {
+          if (d && Date.now() - netLast(d) < 12 * 3600e3 && ++tries < 6) return attempt();
+          var now = Date.now();
+          return R.set(code, { host: host, guest: null, status: 'waiting', hw: pick === 'r' ? Math.random() < 0.5 : pick === 'w', game: 1, t0: now, moves: [], result: null, offer: null, again: null, hb: { h: now }, at: now, by: NET.dev })
+            .then(function () { netListen(code, 'h'); showWait(); Kit.sfx('pop'); });
+        });
+      })();
+    }).catch(netErr);
+  }
+  function netJoin(code, me) {
+    if (!me.name) { Kit.toast('Pick your name first'); return; }
+    code = String(code || '').trim().toUpperCase();
+    if (!/^[A-Z]{4}$/.test(code)) { Kit.toast('Table codes are 4 letters'); return; }
+    myTag().then(function (tag) {
+      return rooms().tx(code, function (d) {
+        if (!d) throw new Error('No open table with code ' + code);
+        if (d.host && d.host.dev === NET.dev) throw new Error('That’s your own table. Join it from the other device.');
+        if (d.status !== 'waiting' || d.guest) throw new Error('That table already has two players');
+        var g = { name: String(me.name).toLowerCase() === String(d.host.name || '').toLowerCase() ? me.name + ' 2' : me.name, dev: NET.dev };
+        if (tag) g.lk = tag;
+        var now = Date.now();
+        return { guest: g, status: 'playing', t0: now, at: now, by: NET.dev, 'hb.g': now };
+      });
+    }).then(function () { netListen(code, 'g'); showMsg('Joining the table…'); }).catch(toastErr);
+  }
+  function netRejoin(mine) {
+    return rooms().get(mine.code).then(function (d) {
+      var stale = d && Date.now() - netLast(d) > (d.status === 'over' ? 30 * 60e3 : 7 * 24 * 3600e3);
+      var seatOk = d && (mine.seat === 'h' ? d.host && d.host.dev === NET.dev : d.guest && d.guest.dev === NET.dev);
+      if (!d || d.status === 'closed' || stale || !seatOk) { lsP(NETK, null); return false; }
+      netListen(mine.code, mine.seat);
+      if (d.status === 'waiting') { NET.d = d; showWait(); }
+      return true;
+    });
+  }
+  function netListen(code, seat) {
+    lobbyOff(); if (NET.off) NET.off();
+    NET.code = code; NET.seat = seat; NET.d = null; NET.sending = false; NET.seenAt = Date.now(); NET.seenHb = null;
+    lsP(NETK, { code: code, seat: seat, at: Date.now() });
+    NET.off = rooms().watch(code, netOnDoc, netErr);
+    clearInterval(NET.hbT); NET.hbT = setInterval(netBeat, HB_MS);
+    clearInterval(NET.tickT); NET.tickT = setInterval(netTick, 5000);
+  }
+  function netStop(forget) {
+    if (NET.off) { NET.off(); NET.off = null; }
+    clearInterval(NET.hbT); clearInterval(NET.tickT);
+    NET.code = null; NET.seat = null; NET.sending = false; netCloseOffer();
+    if (forget) lsP(NETK, null);
+  }
+  function lobbyOff() { if (NET.lobbyOff) { NET.lobbyOff(); NET.lobbyOff = null; } }
+  // Leave the table. In the middle of a game (after the first move) that counts as resigning.
+  function netLeave() {
+    var code = NET.code, d = NET.d, R = rooms();
+    if (!code) return;
+    if (d && d.status === 'waiting' && NET.seat === 'h') { netStop(true); R.del(code).catch(function () {}); return; }
+    if (online() && !S.over && d && d.status === 'playing' && (d.moves || []).length) {
+      var res = { type: 'resign', winner: -mySide() };
+      netEnd(res, { status: 'closed' }).catch(function () {});
+      finish(res);   // recorded here as a loss; no win screen (we're leaving)
+    } else R.update(code, { status: 'closed', at: Date.now(), by: NET.dev }).catch(function () {});
+    netStop(true);
+  }
+  function netLeaveAsk() {
+    if (!online()) return;
+    var d = NET.d, inGame = NET.code && !S.over && d && d.status === 'playing' && (d.moves || []).length;
+    (inGame ? Kit.confirm('Leave this game?', { ok: 'Leave and resign', danger: true, body: 'Leaving now counts as resigning, so ' + Kit.esc(pl(-mySide()).name) + ' wins.' }) : Promise.resolve(true))
+      .then(function (ok) { if (ok) { netLeave(); showLobby(); } });
+  }
+  function netBeat() {
+    if (!NET.code || document.visibilityState !== 'visible') return;
+    var p = {}; p['hb.' + NET.seat] = Date.now();
+    rooms().update(NET.code, p).catch(function () {});
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && NET.code) { NET.seenAt = Date.now(); netBeat(); netTick(); } });
+  // The other player is away: no heartbeat or move seen here for a while (timed on this device's clock)
+  function netAway() { return !!(NET.code && NET.d && NET.d.status === 'playing' && Date.now() - NET.seenAt > AWAY_MS); }
+  function netCanClaim() { return !!(online() && !S.over && NET.code && NET.d && NET.d.status === 'playing' && S.pos.turn !== mySide() && Date.now() - NET.seenAt > CLAIM_MS); }
+  function netTick() {
+    if (!online() || NET.screen !== 'game') return;
+    var a = netAway(), c = netCanClaim();
+    if (a !== NET.awayWas || c !== NET.claimWas) { NET.awayWas = a; NET.claimWas = c; paintStatus(); paintActs(); }
+  }
+
+  // ── The table changed ──
+  function netOnDoc(d) {
+    if (!NET.code) return;
+    if (!d) {
+      netStop(true); Kit.toast('The table was closed');
+      if (online() && S.over) paintActs(); else showLobby();
+      return;
+    }
+    var prev = NET.d; NET.d = d;
+    var hb = d.hb && d.hb[otherSeat()];
+    if (hb !== NET.seenHb || !prev || (prev.moves || []).length !== (d.moves || []).length) { NET.seenHb = hb; NET.seenAt = Date.now(); }
+    if (d.status === 'waiting') {
+      if (NET.seat === 'h') { if (NET.screen !== 'wait' || !prev) showWait(); }
+      else { netStop(true); Kit.toast('That table isn’t open any more'); showLobby(); }
+      return;
+    }
+    if (!d.guest) return;
+    if (!online() || S.online.code !== NET.code || S.online.game !== (d.game || 1)) netBuild(d);
+    else netSync(d);
+    if (!online()) return;
+    if (d.result && !S.over) finish(d.result);
+    if (d.status === 'closed' && d.by !== NET.dev) {
+      var nm = pl(-mySide()).name;
+      netStop(true);
+      Kit.toast(nm + ' left the table');
+      if (!S.over) { showLobby(); return; }   // left before the first move
+      paintActs(); return;
+    }
+    netOffer(d); netAgain(d);
+    if (NET.screen === 'game') { NET.awayWas = netAway(); NET.claimWas = netCanClaim(); paintStatus(); paintActs(); }
+  }
+  // A fresh copy of the game from the table: replay every move (a new game, a rematch, a reload, or out of step)
+  function netBuild(d) {
+    if (NET.win) { NET.win.close(); NET.win = null; }
+    netCloseOffer(); if (promoSheet) { promoOpen = false; promoSheet.close(); }
+    cancelThink();
+    var hs = hostWhite(d) ? 1 : -1, host = NET.seat === 'h';
+    var same = online() && S.online.code === NET.code, flip = same && S.flip;
+    S = {
+      mode: 'online', online: { code: NET.code, seat: NET.seat, game: d.game || 1, t0: d.t0 || Date.now(), side: host ? hs : -hs },
+      players: [{ name: d.host.name, side: hs, me: host, remote: !host }, { name: d.guest.name, side: -hs, me: !host, remote: host }]
+    };
+    S.pos = startPos(); S.caps = { '1': [], '-1': [] }; S.last = null; S.moves = []; S.uci = []; S.keys = [E.key(S.pos)];
+    S.hist = []; S.events = []; S.over = false; S.result = null; S.started = S.online.t0; S.flip = flip; S.busy = false;
+    sel = -1; selMoves = [];
+    var list = d.moves || [], ok = true;
+    for (var i = 0; i < list.length && ok; i++) ok = UCI_RE.test(list[i]) && commit(parseUci(list[i]), false, 'quiet');
+    Kit.gameStart();
+    render();
+    if (!ok) Kit.toast('This game got out of step. It shows up to the last good move.');
+    if (!list.length && !d.result) {
+      var opp = pl(-mySide()).name;
+      Kit.toast((same ? 'Rematch! ' : '') + 'You play ' + sideName(mySide()) + (mySide() === 1 ? '. You move first.' : '. ' + opp + ' moves first.'), 3000);
+      Kit.sfx('pop'); Kit.haptic('medium');
+    }
+    var end = checkEnd();
+    if (end) finish(end);
+    else if (d.result) finish(d.result);
+  }
+  // New moves from the table: the other player's move slides in like any other
+  function netSync(d) {
+    var rm = d.moves || [], lm = S.uci;
+    if (rm.length === lm.length) return;
+    if (rm.length < lm.length) { if (!NET.sending) netBuild(d); return; }
+    for (var i = 0; i < lm.length; i++) if (rm[i] !== lm[i]) { netBuild(d); return; }
+    if (S.over) return;
+    var extra = rm.slice(lm.length);
+    for (var k = 0; k < extra.length; k++) {
+      if (!UCI_RE.test(extra[k]) || !commit(parseUci(extra[k]), false, k === extra.length - 1 ? 'remote' : 'quiet')) { netBuild(d); return; }
+    }
+  }
+  // My move goes to the table
+  function netSend(end) {
+    var code = NET.code, n = S.uci.length, u = S.uci[n - 1], side = -S.pos.turn, game = S.online.game;
+    if (!code) { Kit.toast('Not connected to the table'); return; }
+    NET.sending = true;
+    rooms().tx(code, function (d) {
+      if (!d || d.status !== 'playing' || (d.game || 1) !== game) throw new Error('The game has ended');
+      var mv = d.moves || [];
+      if (mv.length !== n - 1 || (mv.length % 2 === 0 ? 1 : -1) !== side) throw new Error('Out of step');
+      var p = { moves: mv.concat([u]), at: Date.now(), by: NET.dev };
+      if (d.offer && d.offer.side !== side) p.offer = null;   // moving turns down their draw offer
+      if (end) { p.status = 'over'; p.result = { type: end.type, winner: end.winner || 0, by: NET.dev }; }
+      return p;
+    }).then(function () { NET.sending = false; }).catch(function (e) {
+      NET.sending = false;
+      if (NET.code !== code) return;
+      Kit.toast(e && e.message === 'Out of step' ? 'That move didn’t go through. Here’s the game as it stands.' : 'Your move didn’t go through: ' + (e && e.message || e));
+      if (NET.d) netBuild(NET.d);
+    });
+  }
+  // End the game at the table (resign, draw agreed, claim the win); finish here once it's written
+  function netEnd(res, extra) {
+    var code = NET.code, game = S.online.game;
+    if (!code) return Promise.reject(new Error('Not connected to the table'));
+    return rooms().tx(code, function (d) {
+      if (!d || (d.game || 1) !== game) throw new Error('The game has ended');
+      if (d.status !== 'playing') return null;
+      var p = { status: 'over', result: { type: res.type, winner: res.winner || 0, by: NET.dev }, offer: null, at: Date.now(), by: NET.dev };
+      if (extra) for (var k in extra) p[k] = extra[k];
+      return p;
+    }).then(function (p) { if (p && online() && S.online.game === game && !S.over) finish(res); return p; });
+  }
+  function netResign() {
+    if (!online() || S.over) return;
+    var my = mySide();
+    Kit.confirm('Resign this game?', { ok: 'Resign', danger: true, body: Kit.esc(pl(-my).name) + ' will win this game.' }).then(function (ok) {
+      if (ok) netEnd({ type: 'resign', winner: -my }).catch(toastErr);
+    });
+  }
+  function netClaim() {
+    if (!netCanClaim()) return;
+    var opp = pl(-mySide()).name;
+    Kit.confirm('Claim the win?', { ok: 'Claim the win', body: Kit.esc(opp) + ' hasn’t been back for a few minutes. Claiming ends the game as a win for you.' }).then(function (ok) {
+      if (ok && netCanClaim()) netEnd({ type: 'abandon', winner: mySide() }).catch(toastErr);
+    });
+  }
+  function netOfferDraw() {
+    if (!online() || S.over || !NET.code) return;
+    var my = mySide(), f = NET.d && NET.d.offer, opp = pl(-my).name;
+    if (f && !f.no && f.side === my) return Kit.toast('Draw offered. Waiting for ' + opp);
+    if (f && !f.no && f.side !== my) { NET.offerSeen = ''; netOffer(NET.d); return; }
+    Kit.confirm('Offer a draw?', { ok: 'Offer a draw', body: Kit.esc(opp) + ' can accept, or keep playing.' }).then(function (ok) {
+      if (!ok || !online() || S.over) return;
+      var game = S.online.game;
+      rooms().tx(NET.code, function (d) {
+        if (!d || d.status !== 'playing' || (d.game || 1) !== game) throw new Error('The game has ended');
+        return { offer: { side: my, n: (d.moves || []).length, id: Date.now().toString(36) }, at: Date.now(), by: NET.dev };
+      }).then(function () { Kit.toast('Draw offered'); }).catch(toastErr);
+    });
+  }
+  function netAnswerDraw(yes) {
+    if (!online() || S.over) return;
+    var my = mySide(), game = S.online.game;
+    rooms().tx(NET.code, function (d) {
+      if (!d || d.status !== 'playing' || (d.game || 1) !== game || !d.offer || d.offer.no || d.offer.side === my) throw new Error('The draw offer isn’t open any more');
+      if (yes) return { status: 'over', result: { type: 'agreed', winner: 0, by: NET.dev }, offer: null, at: Date.now(), by: NET.dev };
+      var o = { side: d.offer.side, n: d.offer.n, id: d.offer.id, no: true };
+      return { offer: o, at: Date.now(), by: NET.dev };
+    }).then(function () { if (yes && online() && S.online.game === game && !S.over) finish({ type: 'agreed' }); }).catch(toastErr);
+  }
+  function netCloseOffer() { if (NET.offerSheet) { var s = NET.offerSheet; NET.offerSheet = null; s.close(); } }
+  function netOffer(d) {
+    var f = d.offer, my = mySide();
+    if (S.over || !f) { netCloseOffer(); return; }
+    if (!f.no && f.side !== my) {
+      if (NET.offerSeen === f.id) return;
+      NET.offerSeen = f.id;
+      var nm = pl(-my).name;
+      Kit.sfx('pop'); Kit.haptic('medium');
+      NET.offerSheet = Kit.sheet({
+        title: nm + ' offers a draw', html: '<p class="muted">If you accept, the game ends in a draw. Making a move turns it down.</p>',
+        actions: [
+          { label: 'Accept the draw', primary: true, onClick: function () { NET.offerSheet = null; netAnswerDraw(true); } },
+          { label: 'Keep playing', cls: 'btn-ghost', onClick: function () { NET.offerSheet = null; netAnswerDraw(false); } }
+        ],
+        onCancel: function () { NET.offerSheet = null; netAnswerDraw(false); }
+      });
+      return;
+    }
+    netCloseOffer();
+    if (f.no && f.side === my && NET.noSeen !== f.id) { NET.noSeen = f.id; Kit.toast(pl(-my).name + ' wants to keep playing'); }
+  }
+  // Rematch: both say yes; the second yes starts the next game (colours swap)
+  function netRematch() {
+    if (!online()) return;
+    if (!NET.code) { Kit.toast(pl(-mySide()).name + ' has left the table'); showLobby(); return; }
+    var seat = NET.seat, o = otherSeat(), game = S.online.game;
+    rooms().tx(NET.code, function (d) {
+      if (!d || d.status === 'closed') throw new Error('The other player has left the table');
+      if ((d.game || 1) !== game) return null;
+      if (d.status !== 'over') throw new Error('The game isn’t over yet');
+      var ag = { h: !!(d.again && d.again.h), g: !!(d.again && d.again.g) }, now = Date.now();
+      ag[seat] = true;
+      if (ag[o]) return { game: game + 1, moves: [], result: null, offer: null, again: null, status: 'playing', t0: now, at: now, by: NET.dev };
+      return { again: ag, at: now, by: NET.dev };
+    }).then(function (p) { if (p && p.again && online()) { Kit.toast('Rematch asked. Waiting for ' + pl(-mySide()).name); paintActs(); } }).catch(toastErr);
+  }
+  function netAgain(d) {
+    if (!S.over || !d.again) return;
+    var o = otherSeat();
+    if (d.again[o] && !d.again[NET.seat]) {
+      var k = S.online.game + ':' + o;
+      if (NET.againSeen === k) return;
+      NET.againSeen = k;
+      Kit.toast(pl(-mySide()).name + ' wants a rematch', 3000); Kit.sfx('pop');
+    }
+  }
+
+  // ── Screens ──
+  function openOnline() { cancelThink(); if (S && S.busy) S.busy = false; showLobby(); }
+  function showLocal() {
+    var saved = lsJ(SAVE, null);
+    if (saved && saved.pos && saved.players && !saved.over && saved.mode !== 'online') { S = saved; S.busy = false; render(); maybeCpu(); }
+    else showSetup();
+  }
+  function cnScreen() {
+    if (NET.win) { NET.win.close(); NET.win = null; }
+    cancelThink(); S = null; sel = -1; actsEl = null;
+    app.classList.remove('ipl'); app.innerHTML = '';
+    var wrap = el('div', { class: 'cn' });
+    app.appendChild(wrap); window.scrollTo(0, 0);
+    return wrap;
+  }
+  function spinRow(title, sub) {
+    return el('div', { class: 'cn-room' }, [el('i', { class: 'cn-spin' }), el('div', { class: 'grow' }, [el('b', { text: title }), sub ? el('small', { text: sub }) : null])]);
+  }
+  function showMsg(text) { NET.screen = 'msg'; Kit.onBack = null; var w = cnScreen(); w.appendChild(el('h1', { text: 'Play Online' })); w.appendChild(spinRow(text)); }
+  function showWait() {
+    NET.screen = 'wait'; Kit.onBack = null;
+    var wrap = cnScreen(), host = NET.seat === 'h', d = NET.d;
+    wrap.appendChild(el('h1', { text: host ? 'Your Table Is Open' : 'Joining the Table' }));
+    if (host) {
+      wrap.appendChild(el('p', { class: 'cn-h', style: { 'text-align': 'center' }, text: 'Table code' }));
+      wrap.appendChild(el('div', { class: 'cn-code', text: NET.code }));
+      if (d && d.host) wrap.appendChild(el('p', { class: 'cn-note', style: { 'text-align': 'center' }, text: (d.host.pick === 'r' ? 'Coin toss: you play ' : 'You play ') + (d.hw ? 'White, so you move first.' : 'Black. They move first.') }));
+    }
+    wrap.appendChild(spinRow(host ? 'Waiting for the other player' : 'Waiting for the game to start',
+      host ? 'On their device: Chess, then Play online. Your table shows up there, or they can type the code.' : 'The game starts in a moment.'));
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: host ? 'Close the table' : 'Leave', onclick: function () { netLeave(); showLobby(); } }));
+  }
+  function colourLine(h, nm) {
+    return h.pick === 'r' ? 'Coin toss for colours' : nm + ' plays ' + (h.pick === 'b' ? 'Black, you play White' : 'White, you play Black');
+  }
+  function showLobby() {
+    lobbyOff(); NET.screen = 'lobby';
+    var wrap = cnScreen();
+    Kit.onBack = function () { lobbyOff(); showLocal(); return true; };
+    wrap.appendChild(el('h1', { text: 'Play Online' }));
+    if (!netReady()) {
+      wrap.appendChild(el('p', { class: 'cn-note', text: 'Online play finds the other player through your PINs. Sign in with your PIN on the home screen, then come back here. The other player signs in with theirs on their own device.' }));
+      wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Go to the home screen', onclick: function () { Kit.home(); } }));
+      wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Play on this device instead', onclick: function () { showLocal(); } }));
+      return;
+    }
+    var mine = lsJ(NETK, null);
+    if (mine && mine.code) {
+      wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>Back to your game</span>', onclick: function () {
+        netRejoin(mine).then(function (ok) { if (!ok) { Kit.toast('That game has ended'); showLobby(); } }).catch(netErr);
+      } }));
+    }
+    wrap.appendChild(el('p', { class: 'cn-note', text: 'Each of you plays on your own device, like sitting across the board. One of you opens a table; the other joins it.' }));
+    var me = netMe(), seat = el('div');
+    function paintMe() {
+      seat.innerHTML = '';
+      seat.appendChild(el('div', { class: 'cn-room' }, [
+        Kit.avatar.el(me.name || '?', null, Kit.color(0)),
+        el('div', { class: 'grow' }, [el('b', { text: me.name || 'Who’s playing?' }), el('small', { text: 'Your name at the table' })]),
+        el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: me.name ? 'Change' : 'Pick', onclick: function () { Kit.pickName(function (n) { me.name = n; netKeepMe(me); paintMe(); }); } })]));
+    }
+    paintMe(); wrap.appendChild(seat);
+    var seg = el('div', { class: 'seg' });
+    function paintSeg() {
+      seg.innerHTML = '';
+      [['w', 'White'], ['b', 'Black'], ['r', 'Coin toss']].forEach(function (c) {
+        seg.appendChild(el('button', { type: 'button', class: me.pick === c[0] ? 'on' : '', text: c[1], onclick: function () { me.pick = c[0]; netKeepMe(me); Kit.sfx('tap'); paintSeg(); } }));
+      });
+    }
+    paintSeg();
+    wrap.appendChild(el('div', { class: 'cn-opt' }, [el('div', { class: 'label', text: 'Your colour at a table you open' }), seg]));
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Open a table', onclick: function () { netHost(me); } }));
+    wrap.appendChild(el('h2', { class: 'cn-h', text: 'Tables waiting for a player' }));
+    var box = el('div', { class: 'stack' }, [el('p', { class: 'cn-note', text: 'Looking for open tables…' })]);
+    wrap.appendChild(box);
+    var code = el('input', { class: 'input', type: 'text', maxlength: '4', placeholder: 'Code', 'aria-label': 'Table code', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false' });
+    wrap.appendChild(el('div', { class: 'cn-join' }, [code, el('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: function () { netJoin(code.value, me); } })]));
+    function fail(e) { box.innerHTML = ''; box.appendChild(el('p', { class: 'cn-note', text: 'Couldn’t reach the tables: ' + (e && e.message || e) })); }
+    NET.lobbyOff = rooms().open(function (list) {
+      if (!box.isConnected) { lobbyOff(); return; }
+      list = list.filter(function (r) { return r.d && r.d.host && r.d.status === 'waiting' && r.d.host.dev !== NET.dev && Date.now() - netLast(r.d) < 6 * 3600e3; })
+        .sort(function (a, b) { return (b.d.at || 0) - (a.d.at || 0); });
+      var gen = ++NET.lobbyGen;
+      netWhose(list).then(function (list) {
+        if (gen !== NET.lobbyGen || !box.isConnected) return;
+        box.innerHTML = '';
+        if (!list.length) { box.appendChild(el('p', { class: 'cn-note', text: 'No open tables yet. When the other player opens one, it shows up here.' })); return; }
+        // tables opened by people you've linked come first, with their avatar and a big Join button
+        list.filter(function (r) { return r.who; }).concat(list.filter(function (r) { return !r.who; })).forEach(function (r) {
+          var h = r.d.host, go = function () { netJoin(r.code, me); };
+          if (r.who) {
+            var nm = r.who.name;
+            box.appendChild(el('div', { class: 'cn-room cn-pal' }, [
+              Kit.avatar.el(nm, null, Kit.color(1)),
+              el('div', { class: 'grow' }, [el('b', { text: Kit.poss(nm) + ' table' }), el('small', { text: colourLine(h, nm) + ' · code ' + r.code })]),
+              el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block cn-go', html: Kit.icon('play') + '<span>' + Kit.esc('Join ' + Kit.poss(nm) + ' table') + '</span>', onclick: go })]));
+          } else {
+            box.appendChild(el('div', { class: 'cn-room' }, [
+              Kit.avatar.el(h.name || '?', null, Kit.color(1)),
+              el('div', { class: 'grow' }, [el('b', { text: Kit.poss(h.name || 'Someone') + ' table' }), el('small', { text: colourLine(h, h.name || 'They') + ' · code ' + r.code })]),
+              el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: go })]));
+          }
+        });
+      });
+    }, fail);
+  }
+
   // ── Test hook (used by automated checks; harmless otherwise) ─────────────
   window.__chess = {
+    net: { NET: NET, lobby: function () { showLobby(); }, away: function (ms) { NET.seenAt -= ms; netTick(); }, linkTag: linkTag },
     E: E, state: function () { return S; },
     fen: function (fen) { if (!S) return; cancelThink(); S.busy = false; S.pos = fromFen(fen); S.keys = [E.key(S.pos)]; S.hist = []; S.moves = []; S.events = []; S.last = null; S.over = false; S.result = null; S.caps = { '1': [], '-1': [] }; sel = -1; selMoves = []; save(); render(); maybeCpu(); },
     move: function (from, to, promo) { var f = (8 - +from[1]) * 8 + FILES.indexOf(from[0]), t = (8 - +to[1]) * 8 + FILES.indexOf(to[0]); commit({ f: f, t: t, promo: promo || 0 }); },
@@ -914,9 +1506,15 @@
   };
 
   // ── Boot ─────────────────────────────────────────────────────────────────
-  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-  if (saved && saved.pos && saved.players && !saved.over) { S = saved; S.busy = false; render(); maybeCpu(); }
-  else showSetup();
+  // An online table this device is at comes first (a reload mid-game picks it back up), then a saved local game
+  (function () {
+    var q = new URLSearchParams(location.search), mine = lsJ(NETK, null);
+    if (mine && mine.code && netReady()) {
+      showMsg('Reconnecting to your online game…');
+      netRejoin(mine).then(function (ok) { if (!ok) { if (q.get('online')) showLobby(); else showLocal(); } }).catch(function (e) { netErr(e); showLocal(); });
+    } else if (q.get('online')) showLobby();
+    else showLocal();
+  })();
 })();
 </script>
 </body>

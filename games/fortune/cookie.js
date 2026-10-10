@@ -573,7 +573,7 @@ function filmMaterial(normalTex, frostTex) {
   const m = new THREE.MeshPhysicalMaterial({
     color: 0xffffff, metalness: 0, roughness: 0.42, roughnessMap: frostTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(1, 1),
-    alphaMap: frostTex, opacity: 0.1, transparent: true, depthWrite: false, side: THREE.DoubleSide, premultipliedAlpha: true,
+    alphaMap: frostTex, opacity: 0.1, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, premultipliedAlpha: true,
     ior: 1.45, specularIntensity: 0.6, envMapIntensity: 0.2,
     iridescence: 0.55, iridescenceIOR: 1.33, iridescenceThicknessRange: [260, 700], iridescenceThicknessMap: frostTex
   });

@@ -60,6 +60,22 @@ service cloud.firestore {
         ]);
     }
 
+    // Chess online tables: one doc per table, a 4-letter code. Both devices
+    // replay the same move list (UCI strings) and each appends its own moves.
+    // Same model as lorcanaRooms: knowing the code is access.
+    match /chessRooms/{code} {
+      allow get: if code.matches('^[A-Z]{4}$');
+      // the lobby lists open tables (small queries only)
+      allow list: if request.query.limit <= 50;
+      allow delete: if code.matches('^[A-Z]{4}$');
+      allow create, update: if code.matches('^[A-Z]{4}$')
+        && request.resource.data.keys().hasOnly([
+          'host', 'guest', 'status', 'hw', 'game', 't0', 'moves',
+          'result', 'offer', 'again', 'hb', 'at', 'by'
+        ])
+        && request.resource.data.get('moves', []).size() <= 1000;
+    }
+
     // Player profiles for linking: one doc per 6-character share code (name, avatar, ask, rejected game ids,
     // arcade initials and best arcade scores),
     // with an inbox of games other people recorded with this player in them. Knowing the code is access, like a
