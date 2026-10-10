@@ -71,7 +71,10 @@ var GameIcon = (function () {
       var h = ''; for (var i = 0; i < 5; i++) h += circ(5 + i * 3.5, 14, .9, K, ' opacity=".35"');
       return rect(2, 10.5, 20, 7, 3.5, c) + h + rect(7.2, 5, 2.4, 9.5, 1.2, R) + rect(14.2, 6.5, 2.4, 8, 1.2, B);
     },
-    'gin-rummy': function (c) { return rect(3, 6, 9, 13, 1.8, c, ' transform="rotate(-14 7 12)"') + rect(8, 5, 9, 13, 1.8, K) + rect(13, 6, 9, 13, 1.8, R, ' transform="rotate(14 17 12)"'); },
+    'gin-rummy': function (c) {   // two melds: a pair of three-card fans
+      function fan(cx, cols) { var s = ''; [-15, 0, 15].forEach(function (a, i) { s += rect(cx - 3.1, 4.5, 6.2, 11.4, 1.3, cols[i], ' stroke="' + W + '" stroke-width=".8" transform="rotate(' + a + ' ' + cx + ' 20.5)"'); }); return s; }
+      return fan(5.6, [c, K, R]) + fan(18.4, [R, K, c]);
+    },
     wizard: function () { return path('M12 2 6.5 17h11z', P) + rect(3, 16.5, 18, 3.6, 1.8, P) + path('M12.5 8.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z', Y); },
     flip7: function (c) { return txt('7', 24, c, 12.5); },
     'five-crowns': function () { return path('M3 18 2 7l5.5 4.5L12 4l4.5 7.5L22 7l-1 11z', Y, ' stroke="' + K + '" stroke-width="1.2" stroke-linejoin="round"') + rect(3, 18, 18, 3, 1, Y, ' stroke="' + K + '" stroke-width="1.2"'); },
@@ -198,7 +201,14 @@ var GameIcon = (function () {
       return rect(3.6, .8, 16.8, 22.4, 2.6, R, ' stroke="' + K + '" stroke-width="1.2"') +
         '<text x="12" y="16.9" text-anchor="middle" font-family="Georgia,\'Times New Roman\',serif" font-weight="700" font-size="12.5" letter-spacing="-.6" fill="' + W + '">21</text>';
     },
-    poker: function () { return path(SPADE, K); },
+    poker: function () {   // pocket aces: the ace of spades and the ace of hearts
+      function ace(x, y, rot, suit, col) {
+        return '<g transform="rotate(' + rot + ' ' + (x + 5.8) + ' ' + (y + 8.3) + ')">' + rect(x, y, 11.6, 16.6, 1.8, W, ' stroke="' + K + '" stroke-width="1"') +
+          '<text x="' + (x + 5.8) + '" y="' + (y + 9) + '" text-anchor="middle" font-family="Georgia,\'Times New Roman\',serif" font-weight="700" font-size="8.6" fill="' + col + '">A</text>' +
+          path(suit, col, ' transform="translate(' + (x + 2.9) + ' ' + (y + 9.6) + ') scale(.245)"') + '</g>';
+      }
+      return ace(0.8, 4.6, -15, SPADE, K) + ace(11.4, 3.2, 12, HEART, R);
+    },
     roulette: function () { var s = ''; for (var i = 0; i < 10; i++) { var a1 = i * Math.PI / 5, a2 = (i + 1) * Math.PI / 5; s += path('M12 12L' + (12 + 10 * Math.cos(a1)).toFixed(2) + ' ' + (12 + 10 * Math.sin(a1)).toFixed(2) + 'A10 10 0 0 1 ' + (12 + 10 * Math.cos(a2)).toFixed(2) + ' ' + (12 + 10 * Math.sin(a2)).toFixed(2) + 'z', i % 2 ? K : R); } return s + circ(12, 12, 4, '#1d7a4a') + circ(12, 12, 1.5, Y); },
     slots: function () {   // a pair of cherries, the classic slot symbol
       return line('M7 13C8.4 8.6 11.4 5.4 15.6 3', '#2f8a3a', 2.2) + line('M16.8 13.4C16.6 9.6 16.6 6.4 15.6 3', '#2f8a3a', 2.2) +
@@ -206,7 +216,7 @@ var GameIcon = (function () {
         circ(7, 17.6, 5.4, R) + circ(17, 18.2, 5.4, R) +
         circ(5.2, 15.8, 1.5, W, ' opacity=".8"') + circ(15.2, 16.4, 1.5, W, ' opacity=".8"');
     },
-    craps: function () { return rect(1.5, 6, 11, 11, 2.5, R, ' transform="rotate(-12 7 11.5)"') + circ(4.6, 9.4, 1.1, W) + circ(7, 11.6, 1.1, W) + circ(9.4, 13.8, 1.1, W) + rect(11.5, 7, 11, 11, 2.5, K, ' transform="rotate(10 17 12.5)"') + circ(15, 10.4, 1.1, W) + circ(19.2, 14.6, 1.1, W); },
+    craps: function () { return '<g transform="rotate(-12 7 11.5)">' + rect(1.5, 6, 11, 11, 2.5, R) + circ(4.3, 8.8, 1.05, W) + circ(9.7, 8.8, 1.05, W) + circ(7, 11.5, 1.05, W) + circ(4.3, 14.2, 1.05, W) + circ(9.7, 14.2, 1.05, W) + '</g>' + rect(11.5, 7, 11, 11, 2.5, K, ' transform="rotate(10 17 12.5)"') + circ(15, 10.4, 1.1, W) + circ(19.2, 14.6, 1.1, W); },
     baccarat: function () {   // a natural nine: an elegant gold 9 on a dark card with diamond pips
       return rect(3.6, .8, 16.8, 22.4, 2.6, K, ' stroke="' + Y + '" stroke-width="1.2"') +
         '<text x="12" y="18.4" text-anchor="middle" font-family="Georgia,\'Times New Roman\',serif" font-style="italic" font-weight="700" font-size="18.5" fill="' + Y + '">9</text>';
