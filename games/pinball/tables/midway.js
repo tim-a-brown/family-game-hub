@@ -73,7 +73,7 @@ export default {
     playfield: '#efe2c4', cabinet: '#a8221f', wood: '#6b3a1e', rails: 'chrome', rubber: '#1c1a1a', postColor: '#f4ecd8', postRubber: '#c8302c', wallColor: '#f0e0bc',
     flipper: '#f6efe0', flipperRubber: '#c8302c', flipperStripe: '#1d4e9a', popBody: '#f4ecd8', apron: '#b0241f', slingPlastic: '#f4e6c0',
     gi: ['#ffe2b0', '#ffe2b0', '#ffd9a0', '#ffe2b0', '#ffd080'], giPos: [[34, 250, 150], [440, 250, 150], [40, 620, 160], [440, 700, 160], [243, 900, 150, 0.8]], giLevel: 1.1,
-    env: ['#ffe2b0', '#ff6a4a', '#ffd84a'], sky: '#ffd9b0', keyColor: '#fff4e0', key: 1.0, ambient: 0.34, exposure: 1.05, bloom: 0.5,
+    env: ['#ffe2b0', '#ff6a4a', '#ffd84a'], sky: '#ffd9b0', keyColor: '#fff4e0', key: 0.95, ambient: 0.3, exposure: 0.98, bloom: 0.5,
     spark: '#ffe08a', room: '#0a0608', darkLight: '#fff0d0', lampGain: 3.4, button: '#ffd84a', knob: '#c8302c'
   },
   art: { playfield: paintPlayfield, overlay: paintOverlay, backglass: paintBackglass, apron: paintApron, sides: paintSides, backboard: paintBackboard, sling: paintSling },
@@ -800,47 +800,46 @@ class Wheel extends Comp {
   trigger() { const b = this.world.addBall(this.o.x, this.o.y - 30, { vy: 400 }); this.onSensor(b); }
   mesh(RC) {
     const { x, y } = this.o, r = this.r, z0 = this.z0, M = RC.mats, B = RC.batch;
-    const red = M.plastic('#c8302c', { roughness: 0.35, clearcoat: 0.8 }), cream = M.plastic('#f4ecd8', { roughness: 0.3 }), steel = M.steel(), chrome = M.chrome(), brass = M.brass();
+    const red = M.plastic('#c8302c', { roughness: 0.35, clearcoat: 0.8 }), cream = M.plastic('#f4ecd8', { roughness: 0.3 }), steel = M.steel(), chrome = M.chrome();
     const g = new THREE.Group(); g.position.set(x, y, z0 + this.hub); RC.root.add(g);
     const wheel = new THREE.Group(); g.add(wheel); this.wheel = wheel;
-    // two red rims with chrome spokes and cross braces, all merged into two meshes
+    // two red rims with chrome spokes and cross braces: one red mesh, one chrome mesh
     const redG = [], steelG = [];
     for (const dy of [-10, 10]) {
       const rim = new THREE.TorusGeometry(r, 2.4, 10, 48); rim.rotateX(PI / 2); rim.translate(0, dy, 0); redG.push(rim);
       for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; const sp = new THREE.CylinderGeometry(1.1, 1.1, r - 6, 6); sp.translate(0, (r - 6) / 2 + 5, 0); sp.rotateX(PI / 2); sp.rotateY(a); sp.translate(0, dy, 0); steelG.push(sp); }
     }
     for (let i = 0; i < this.n; i++) { const a = i / this.n * TAU; const br = new THREE.CylinderGeometry(1.4, 1.4, 20, 6); br.translate(Math.cos(a) * r, 0, Math.sin(a) * r); steelG.push(br); }
-    const hubG = new THREE.CylinderGeometry(9, 9, 26, 20); steelG.push(hubG);
+    steelG.push(new THREE.CylinderGeometry(9, 9, 26, 20));
     const faceG = new THREE.CylinderGeometry(14, 14, 3, 24); faceG.translate(0, -13.5, 0); redG.push(faceG);
-    const rimM = new THREE.Mesh(mergeGeo(redG), red), spM = new THREE.Mesh(mergeGeo(steelG), chrome); rimM.castShadow = spM.castShadow = true; wheel.add(rimM, spM);
+    const rimM = mesh(mergeGeo(redG), red), spM = mesh(mergeGeo(steelG), chrome); wheel.add(rimM, spM);
     // bulbs round the rim: one instanced mesh, colours chase in render()
     const nb = 24; const bulbs = new THREE.InstancedMesh(new THREE.SphereGeometry(2, 10, 8), new THREE.MeshBasicMaterial({ toneMapped: false }), nb);
     const mm = new THREE.Matrix4();
     for (let i = 0; i < nb; i++) { const a = i / nb * TAU; mm.makeTranslation(Math.cos(a) * (r + 3.5), 0, Math.sin(a) * (r + 3.5)); bulbs.setMatrixAt(i, mm); bulbs.setColorAt(i, new THREE.Color('#332211')); }
     wheel.add(bulbs); this.bulbs = bulbs; this.bulbC = new THREE.Color();
-    // gondolas: hang from the rim pivots, stay upright
+    // gondolas: hang from the rim pivots, stay upright; each one a single vertex-coloured mesh
     this.gond = [];
     const cols = ['#c8302c', '#f4ecd8', '#ffcc3a'];
     for (let i = 0; i < this.n; i++) {
       const a = i / this.n * TAU, piv = new THREE.Group(); piv.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); wheel.add(piv);
       const car = new THREE.Group(); piv.add(car);
-      const cup = new THREE.Mesh(latheGeo(0, 0, [[0, -HANG - BR - 2], [13, -HANG - BR - 1.5], [16.5, -HANG - 6], [17, -HANG + 2], [15.5, -HANG + 2], [15, -HANG - 5], [12, -HANG - BR + 1], [0, -HANG - BR + 1]], 20), M.plastic(cols[i % 3], { roughness: 0.3, clearcoat: 0.8 }));
-      cup.castShadow = true; car.add(cup);
-      const band = new THREE.Mesh(latheGeo(0, 0, [[17.2, -HANG - 1], [17.2, -HANG + 1.5]], 20), M.plastic(cols[(i + 1) % 3])); car.add(band);
-      for (const dy of [-11, 11]) { const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, HANG + 4, 6), chrome); arm.rotation.x = PI / 2; arm.position.set(0, dy, -(HANG + 4) / 2 + 1); car.add(arm); }
-      this.gond.push(car);
+      const parts = [[latheGeo(0, 0, [[0, -HANG - BR - 2], [13, -HANG - BR - 1.5], [16.5, -HANG - 6], [17, -HANG + 2], [15.5, -HANG + 2], [15, -HANG - 5], [12, -HANG - BR + 1], [0, -HANG - BR + 1]], 20), cols[i % 3]],
+        [latheGeo(0, 0, [[17.2, -HANG - 1], [17.2, -HANG + 1.5]], 20), cols[(i + 1) % 3]]];
+      for (const dy of [-11, 11]) { const arm = new THREE.CylinderGeometry(0.9, 0.9, HANG + 4, 6); arm.rotateX(PI / 2); arm.translate(0, dy, -(HANG + 4) / 2 + 1); parts.push([arm, '#c8ccd4']); }
+      car.add(vcMesh(parts, VC.plastic)); this.gond.push(car);
     }
     // the diverter flap at the top: points to the coaster or the gumball chute
-    const flap = new THREE.Mesh(new THREE.BoxGeometry(22, 14, 1.2), chrome); flap.position.set(0, 0, r + HANG + 4); wheel.parent.add(flap); flap.castShadow = true; this.flapM = flap;
+    const flap = mesh(new THREE.BoxGeometry(22, 14, 1.2), chrome); flap.position.set(0, 0, r + HANG + 4); g.add(flap); this.flapM = flap;
     // A-frame legs either side, feet on the wheel's plinths, plus the motor house behind the hub
     for (const sy of [-1, 1]) for (const sx of [-1, 1]) B.add(steel, tubeGeo([[x + sx * 48, y + sy * 17, z0], [x + sx * 10, y + sy * 15, z0 + this.hub]], 2.2, 2, 8));
     for (const sy of [-1, 1]) B.add(steel, tubeGeo([[x - 48, y + sy * 17, z0 + 36], [x + 48, y + sy * 17, z0 + 36]], 1.6, 2, 8));
     B.add(cream, boxGeo(x, y + 26, z0 + this.hub, 26, 16, 22)); B.add(red, boxGeo(x, y + 26, z0 + this.hub, 27, 17, 5));
     B.add(cream, boxGeo(x - 40, y, z0 + 4, 32, 36, 8)); B.add(cream, boxGeo(x + 40, y, z0 + 4, 32, 36, 8));
     B.add(red, boxGeo(x - 40, y, z0 + 8.5, 32, 36, 1.4)); B.add(red, boxGeo(x + 40, y, z0 + 8.5, 32, 36, 1.4));
-    // the sign over the hub face
-    const sc = canvas(128, 64), sg = sc.getContext('2d'); sg.fillStyle = '#f4ecd8'; sg.beginPath(); sg.arc(64, 32, 30, 0, TAU); sg.fill(); sg.fillStyle = '#c8302c'; sg.beginPath(); for (let i = 0; i < 10; i++) { const a2 = -PI / 2 + i * PI / 5, rr = i % 2 ? 11 : 26; i ? sg.lineTo(64 + Math.cos(a2) * rr, 32 + Math.sin(a2) * rr) : sg.moveTo(64 + Math.cos(a2) * rr, 32 + Math.sin(a2) * rr); } sg.closePath(); sg.fill();
-    const sign = new THREE.Mesh(new THREE.CircleGeometry(13, 24), new THREE.MeshStandardMaterial({ map: RC.tex(sc), roughness: 0.35 })); sign.rotation.x = PI / 2; sign.position.set(0, -15.2, 0); g.add(sign);
+    // the star sign on the hub face (static, batched with its own texture)
+    const sc = canvas(128, 128), sg = sc.getContext('2d'); sg.fillStyle = '#f4ecd8'; sg.beginPath(); sg.arc(64, 64, 60, 0, TAU); sg.fill(); sg.fillStyle = '#c8302c'; sg.beginPath(); for (let i = 0; i < 10; i++) { const a2 = -PI / 2 + i * PI / 5, rr = i % 2 ? 22 : 52; i ? sg.lineTo(64 + Math.cos(a2) * rr, 64 + Math.sin(a2) * rr) : sg.moveTo(64 + Math.cos(a2) * rr, 64 + Math.sin(a2) * rr); } sg.closePath(); sg.fill();
+    const signG = new THREE.CircleGeometry(13, 24); signG.rotateX(PI / 2); signG.translate(x, y - 15.2, z0 + this.hub); B.add(new THREE.MeshStandardMaterial({ map: RC.tex(sc), roughness: 0.35 }), signG);
   }
   render(dt) {
     if (!this.wheel) return;
@@ -858,45 +857,64 @@ function coasterSupports(RC, pts) {
   const B = RC.batch, steel = RC.mats.steel();
   const at = y => { let best = pts[0]; for (const p of pts) if (Math.abs(p[1] - y) < Math.abs(best[1] - y)) best = p; return best; };
   for (const y of [752, 690, 620]) { const p = at(y); B.add(steel, tubeGeo([[432, p[1], 26], [432, p[1], p[2] - 10], [p[0] - 8, p[1], p[2] - 3]], 1.6, 6, 8)); B.add(steel, tubeGeo([[479, p[1], 34], [479, p[1], p[2] - 8], [p[0] + 8, p[1], p[2] - 3]], 1.6, 6, 8)); }
-  for (const [lx, ly] of [[322, 808], [460, 462], [466, 542], [178, 752], [212, 762]]) { const p = at(ly); const px = lx, py = ly; B.add(steel, tubeGeo([[px, py, 0], [px, py, p[2] - 6], [p[0], p[1], p[2] - 3]], 1.8, 4, 8)); B.add(steel, cylGeo(px, py, 4.5, 0, 1.6, 10)); }
-  // the kiosk roof carries one leg
-  const p = at(823); B.add(steel, tubeGeo([[398, 834, 50], [p[0], p[1], p[2] - 3]], 1.8, 2, 8));
+  for (const [lx, ly] of [[322, 808], [178, 752], [212, 762]]) { const p = at(ly); B.add(steel, tubeGeo([[lx, ly, 0], [lx, ly, p[2] - 6], [p[0], p[1], p[2] - 3]], 1.8, 4, 8)); B.add(steel, cylGeo(lx, ly, 4.5, 0, 1.6, 10)); }
+  // the prize counter and the kiosk roof carry the low legs
+  for (const [lx, ly, lz] of [[466, 548, 32], [466, 470, 32], [398, 834, 50]]) { const p = at(ly); B.add(steel, tubeGeo([[lx, ly, lz], [lx, ly, p[2] - 6], [p[0], p[1], p[2] - 3]], 1.8, 4, 8)); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TOYS AND SCENERY (3D)
+// TOYS AND SCENERY (3D). Everything that never moves goes through RC.batch;
+// moving parts are merged into one vertex-coloured mesh per moving piece.
 // ═══════════════════════════════════════════════════════════════════════════
 function mesh(geo, mat, cast = true) { const m = new THREE.Mesh(geo, mat); m.castShadow = cast; m.receiveShadow = true; return m; }
 function stripeTex(RC, n, c1, c2, w = 256, h = 64) { const c = canvas(w, h), g = c.getContext('2d'); for (let i = 0; i < n; i++) { g.fillStyle = i % 2 ? c1 : c2; g.fillRect(i * w / n, 0, w / n + 1, h); } return RC.tex(c); }
+// vertex-coloured materials (one draw call for a multi-coloured toy)
+const VC = {
+  get plastic() { return this._p || (this._p = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.4, clearcoat: 0.5, clearcoatRoughness: 0.2 })); },
+  get matte() { return this._m || (this._m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 })); },
+  get metal() { return this._x || (this._x = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.9 })); }
+};
+function colourGeo(geo, col) {
+  const g = geo.index ? geo.toNonIndexed() : geo, n = g.attributes.position.count, c = new THREE.Color(col), arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  g.setAttribute('color', new THREE.BufferAttribute(arr, 3)); return g;
+}
+function vcGeo(parts) {
+  const gs = parts.map(([geo, col]) => colourGeo(geo, col)); let n = 0; for (const g of gs) n += g.attributes.position.count;
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3); let o = 0;
+  for (const g of gs) { pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3); col.set(g.attributes.color.array, o * 3); o += g.attributes.position.count; }
+  const m = new THREE.BufferGeometry(); m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); m.setAttribute('color', new THREE.BufferAttribute(col, 3)); return m;
+}
+function vcMesh(parts, mat, cast = true) { return mesh(vcGeo(parts), mat, cast); }
 
 // the gumball machine: cast-iron base, coin plate and knob, glass globe full of coloured gumballs, chrome lid with the chute's hopper
 function gumballModel(RC, comp) {
-  const M = RC.mats, g = new THREE.Group(); g.position.set(comp.o.x, comp.o.y, comp.z0); RC.root.add(g);
+  const M = RC.mats, B = RC.batch, x = comp.o.x, y = comp.o.y, z0 = comp.z0;
   const red = M.plastic('#b8241f', { roughness: 0.3, clearcoat: 0.9 });
-  g.add(mesh(latheGeo(0, 0, [[0, 0], [22, 0], [24, 3], [20, 8], [19, 22], [22, 26], [23, 30], [19, 34], [0, 34]], 28), red));
-  g.add(mesh(latheGeo(0, 0, [[0, 34], [20, 34], [20, 37], [0, 37]], 28), M.chrome()));
-  const plate = mesh(new THREE.BoxGeometry(18, 2, 12), M.chrome()); plate.position.set(0, -20, 18); g.add(plate);
-  const knob = mesh(new THREE.CylinderGeometry(5, 5, 4, 16), M.chrome()); knob.rotation.x = PI / 2; knob.position.set(0, -22.5, 18); g.add(knob); comp.knob = knob;
-  const slot = mesh(new THREE.BoxGeometry(8, 1, 2), M.plastic('#111')); slot.position.set(0, -21.2, 24); g.add(slot);
-  const globe = new THREE.Mesh(new THREE.SphereGeometry(32, 32, 24), M.clear('#eef6ff', 0.16, { depthWrite: false, roughness: 0.02 })); globe.position.z = 62; globe.renderOrder = 4; g.add(globe);
-  // coloured gumballs piled inside
-  const r = rng(77), gum = [], gumCols = ['#e8463c', '#ffcc3a', '#2a8c8c', '#1d4e9a', '#ff7aa8', '#f4ecd8', '#7ac043'];
-  const gumGeos = gumCols.map(() => []);
-  for (let i = 0; i < 46; i++) { const a = r() * TAU, rr = r() * 24, z = 36 + r() * 22; const x = Math.cos(a) * rr, y = Math.sin(a) * rr; if (Math.hypot(x, y, z - 62) > 27) continue; const s = new THREE.SphereGeometry(4.6, 10, 8); s.translate(x, y, z); gumGeos[i % gumCols.length].push(s); }
-  gumGeos.forEach((gs, i) => { if (gs.length) g.add(mesh(mergeGeo(gs), M.plastic(gumCols[i], { roughness: 0.2, clearcoat: 1 }), false)); });
-  // the steel balls (the lock), shown by the component's render()
-  comp.inner = []; for (let i = 0; i < 6; i++) { const m = mesh(new THREE.SphereGeometry(BR, 16, 12), M.ball()); g.add(m); comp.inner.push(m); }
-  // lid and hopper
-  g.add(mesh(latheGeo(0, 0, [[0, 94], [12, 94], [16, 96], [16, 100], [8, 103], [0, 104]], 24), M.chrome()));
-  g.add(mesh(latheGeo(0, 0, [[9, 96], [12, 102], [14, 108]], 20), M.steel()));
-  // the exit chute down to the left lane (wire trough)
+  const base = latheGeo(0, 0, [[0, 0], [22, 0], [24, 3], [20, 8], [19, 22], [22, 26], [23, 30], [19, 34], [0, 34]], 28); base.translate(x, y, z0); B.add(red, base);
+  const ring = latheGeo(0, 0, [[0, 34], [20, 34], [20, 37], [0, 37]], 28); ring.translate(x, y, z0); B.add(M.chrome(), ring);
+  B.add(M.chrome(), boxGeo(x, y - 20, z0 + 18, 18, 2, 12)); B.add(M.plastic('#111'), boxGeo(x, y - 21.2, z0 + 24, 8, 1, 2));
+  const knob = mesh(new THREE.CylinderGeometry(5, 5, 4, 16), M.chrome(), false); knob.rotation.x = PI / 2; knob.position.set(x, y - 22.5, z0 + 18); RC.root.add(knob); comp.knob = knob;
+  const globe = new THREE.Mesh(new THREE.SphereGeometry(32, 32, 24), M.clear('#eef6ff', 0.16, { depthWrite: false, roughness: 0.02 })); globe.position.set(x, y, z0 + 62); globe.renderOrder = 4; RC.root.add(globe);
+  // coloured gumballs piled inside: one vertex-coloured mesh
+  const r = rng(77), gumCols = ['#e8463c', '#ffcc3a', '#2a8c8c', '#1d4e9a', '#ff7aa8', '#f4ecd8', '#7ac043'], parts = [];
+  for (let i = 0; i < 46; i++) { const a = r() * TAU, rr = r() * 24, z = 36 + r() * 22; const px = Math.cos(a) * rr, py = Math.sin(a) * rr; if (Math.hypot(px, py, z - 62) > 27) continue; const s = new THREE.SphereGeometry(4.6, 10, 8); s.translate(x + px, y + py, z0 + z); parts.push([s, gumCols[i % gumCols.length]]); }
+  RC.root.add(vcMesh(parts, VC.plastic, false));
+  // the locked steel balls: one instanced mesh, shown by our render()
+  const inst = new THREE.InstancedMesh(new THREE.SphereGeometry(BR, 16, 12), M.ball(), 6); inst.count = 0; inst.castShadow = true; RC.root.add(inst);
+  const im = new THREE.Matrix4();
+  comp.render = function () {
+    const n = Math.min(6, this.balls.length); inst.count = n;
+    for (let i = 0; i < n; i++) { const a = i * 2.1 + Math.sin(this.G.time * 3 + i) * 0.05 * (1 + this.turn * 6); im.makeTranslation(x + Math.cos(a) * 14 * (i % 3) / 2, y + Math.sin(a) * 14 * (i % 3) / 2, z0 + 44 + Math.floor(i / 3) * 24); inst.setMatrixAt(i, im); }
+    inst.instanceMatrix.needsUpdate = true; knob.rotation.y += this.turn * 0.3;
+  };
+  // lid, hopper and the exit chute down to the left lane (wire trough)
+  const lid = latheGeo(0, 0, [[0, 94], [12, 94], [16, 96], [16, 100], [8, 103], [0, 104]], 24); lid.translate(x, y, z0); B.add(M.chrome(), lid);
+  const hop = latheGeo(0, 0, [[9, 96], [12, 102], [14, 108]], 20); hop.translate(x, y, z0); B.add(M.steel(), hop);
   const chute = [[-10, -6, 24], [-30, -18, 34], [-44, -28, 30], [-58, -36, 14], [-70, -39, 3]];
-  for (const lat of [-6, 6]) RC.batch.add(M.chrome(), tubeGeo(chute.map(p => [comp.o.x + p[0], comp.o.y + p[1] + lat, comp.z0 + p[2] + 2]), 1.1, 16, 6));
-  RC.batch.add(M.chrome(), tubeGeo(chute.map(p => [comp.o.x + p[0], comp.o.y + p[1], comp.z0 + p[2]]), 1.1, 16, 6));
-  // a "1 CENT" style plate on the base
+  for (const lat of [-6, 0, 6]) B.add(M.chrome(), tubeGeo(chute.map(p => [x + p[0], y + p[1] + lat, z0 + p[2] + (lat ? 2 : 0)]), 1.1, 16, 6));
   const pc = canvas(128, 64), pg = pc.getContext('2d'); pg.fillStyle = '#f4ecd8'; pg.fillRect(0, 0, 128, 64); pg.fillStyle = '#b8241f'; pg.font = '400 30px ' + BUNGEE; pg.textAlign = 'center'; pg.textBaseline = 'middle'; pg.fillText('GUMBALL', 64, 32);
-  const pl = new THREE.Mesh(new THREE.PlaneGeometry(24, 10), new THREE.MeshStandardMaterial({ map: RC.tex(pc), roughness: 0.4 })); pl.rotation.x = PI / 2; pl.position.set(0, -23.6, 8); g.add(pl);
-  g.traverse(o => { if (o.isMesh && o !== globe) o.castShadow = true; });
+  const pl = new THREE.PlaneGeometry(24, 10); pl.rotateX(PI / 2); pl.translate(x, y - 23.6, z0 + 8); B.add(new THREE.MeshStandardMaterial({ map: RC.tex(pc), roughness: 0.4 }), pl);
 }
 
 // the ring toss: a red-and-white ring hanging from a chrome gooseneck over the magnet; it drops round a caught ball
@@ -906,10 +924,9 @@ function ringModel(RC, comp) {
   const hang = new THREE.Group(); hang.position.z = 78; g.add(hang);
   const wire = mesh(new THREE.CylinderGeometry(0.5, 0.5, 28, 5), M.steel(), false); wire.rotation.x = PI / 2; wire.position.z = -14; hang.add(wire);
   const ringG = new THREE.Group(); ringG.position.z = -28; hang.add(ringG);
-  const tor = new THREE.TorusGeometry(16, 2.6, 10, 36);
-  const red = mesh(tor, M.plastic('#c8302c', { roughness: 0.3, clearcoat: 0.9 })); ringG.add(red);
-  const stripes = []; for (let i = 0; i < 6; i++) { const s = new THREE.TorusGeometry(16, 2.9, 8, 6, PI / 6); s.rotateZ(i * PI / 3); stripes.push(s); }
-  ringG.add(mesh(mergeGeo(stripes), M.plastic('#f4ecd8', { roughness: 0.3 })));
+  const parts = [[new THREE.TorusGeometry(16, 2.6, 10, 36), '#c8302c']];
+  for (let i = 0; i < 6; i++) { const s = new THREE.TorusGeometry(16, 2.9, 8, 6, PI / 6); s.rotateZ(i * PI / 3); parts.push([s, '#f4ecd8']); }
+  ringG.add(vcMesh(parts, VC.plastic));
   g.userData = { hang, ringG, wire };
   return g;
 }
@@ -924,52 +941,48 @@ function ringAnimate(g, dt, comp) {
 
 // the barker: a straw-hatted carnival caller with a handlebar moustache; eyes follow the ball, the jaw swings open
 function barkerModel(RC, toy) {
-  const M = RC.mats, g = new THREE.Group();
+  const M = RC.mats, B = RC.batch, g = new THREE.Group();
+  const ox = toy.o.x, oy = toy.o.y, rz = Math.atan2(toy.f[1], toy.f[0]) - PI / 2, c = Math.cos(-rz), s = Math.sin(-rz);
+  // the model group is rotated by rz; static batched parts need the same transform baked in
+  const bake = geo => { geo.rotateZ(rz); geo.translate(ox, oy, 0); return geo; };
   const skinC = canvas(256, 128), sg = skinC.getContext('2d');
   { const gr = sg.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, '#f1c9a4'); gr.addColorStop(0.55, '#e8b690'); gr.addColorStop(1, '#c98f6a'); sg.fillStyle = gr; sg.fillRect(0, 0, 256, 128);
     for (const x of [92, 164]) { const b = sg.createRadialGradient(x, 82, 2, x, 82, 22); b.addColorStop(0, 'rgba(230,90,90,.45)'); b.addColorStop(1, 'rgba(230,90,90,0)'); sg.fillStyle = b; sg.fillRect(x - 24, 58, 48, 48); }
     const r = rng(9); sg.fillStyle = 'rgba(150,90,60,.35)'; for (let i = 0; i < 40; i++) sg.fillRect(60 + r() * 136, 60 + r() * 40, 1.5, 1.5); }
   const skin = new THREE.MeshPhysicalMaterial({ map: RC.tex(skinC), roughness: 0.55, clearcoat: 0.25, clearcoatRoughness: 0.4 });
-  const head = mesh(new THREE.SphereGeometry(34, 32, 24), skin); head.rotation.x = PI / 2; head.position.set(0, -4, 40); g.add(head);
-  // ears
-  [-1, 1].forEach(s => { const e = mesh(new THREE.SphereGeometry(7, 12, 10), skin); e.scale.set(0.5, 1, 1.2); e.position.set(s * 33, -6, 40); g.add(e); });
-  // nose: a big round one
-  const nose = mesh(new THREE.SphereGeometry(7.5, 14, 12), M.plastic('#e08a78', { roughness: 0.4, clearcoat: 0.6 })); nose.position.set(0, 30, 38); g.add(nose);
-  // eyes, brows
-  const eyes = [], whites = [];
-  [-12, 12].forEach(x => {
-    const w = mesh(new THREE.SphereGeometry(6.5, 16, 12), M.plastic('#fbf8f0', { roughness: 0.15, clearcoat: 1 })); w.position.set(x, 26, 50); g.add(w); whites.push(w);
-    const iris = mesh(new THREE.SphereGeometry(3.2, 12, 10), M.plastic('#2a4a8a', { roughness: 0.2 })); iris.position.set(0, 5.2, 0); w.add(iris);
-    const pupil = mesh(new THREE.SphereGeometry(1.6, 10, 8), M.plastic('#0a0a0a')); pupil.position.set(0, 2.4, 0); iris.add(pupil);
-    eyes.push(iris);
-    const brow = mesh(new THREE.BoxGeometry(12, 3, 2.6), M.plastic('#3a2416', { roughness: 0.7 })); brow.position.set(x, 29, 59); brow.rotation.y = x < 0 ? 0.35 : -0.35; g.add(brow);
-  });
-  // moustache: two curling tubes
-  const mo = M.plastic('#3a2416', { roughness: 0.7 });
-  [-1, 1].forEach(s => { const m = mesh(tubeGeo([[0, 32, 30], [s * 8, 33, 28], [s * 16, 31, 29], [s * 22, 28, 34]], 2.6, 12, 8), mo); g.add(m); });
-  // jaw (hinged at the back), with a dark mouth cavity behind it
+  // head and ears in one mesh (the head tilts a little as he talks)
+  const headG = new THREE.SphereGeometry(34, 32, 24); headG.rotateX(PI / 2); headG.translate(0, -2, 40);
+  const earGs = [-1, 1].map(sd => { const e = new THREE.SphereGeometry(7, 12, 10); e.scale(0.5, 1, 1.2); e.translate(sd * 33, -4, 40); return e; });
+  const head = mesh(mergeGeo([headG].concat(earGs)), skin); g.add(head);
+  // nose, brows and moustache are static (batched)
+  const nose = new THREE.SphereGeometry(7.5, 14, 12); nose.translate(0, 31, 38); B.add(M.plastic('#e08a78', { roughness: 0.4, clearcoat: 0.6 }), bake(nose));
+  const dark = M.plastic('#3a2416', { roughness: 0.7 });
+  [-12, 12].forEach(x => { const brow = new THREE.BoxGeometry(12, 3, 2.6); brow.rotateY(x < 0 ? 0.35 : -0.35); brow.translate(x, 30, 59); B.add(dark, bake(brow)); });
+  [-1, 1].forEach(sd => B.add(dark, bake(tubeGeo([[0, 33, 30], [sd * 8, 34, 28], [sd * 16, 32, 29], [sd * 22, 29, 34]], 2.6, 12, 8))));
+  // eyes: whites merged (static), irises move with the ball
+  const whiteG = mergeGeo([-12, 12].map(x => { const w = new THREE.SphereGeometry(6.5, 16, 12); w.translate(x, 27, 50); return w; }));
+  B.add(M.plastic('#fbf8f0', { roughness: 0.15, clearcoat: 1 }), bake(whiteG));
+  const eyes = [-12, 12].map(x => { const pg = new THREE.SphereGeometry(1.7, 10, 8); pg.translate(0, 2.4, 0); const ir = vcMesh([[new THREE.SphereGeometry(3.2, 12, 10), '#2a4a8a'], [pg, '#0a0a0a']], VC.plastic, false); ir.position.set(x, 32.4, 50); g.add(ir); return ir; });
+  // jaw (hinged at the back) with its teeth, a dark mouth cavity behind it
   const jp = new THREE.Group(); jp.position.set(0, -6, 22); g.add(jp);
-  const jaw = mesh(new THREE.SphereGeometry(24, 24, 12, 0, TAU, PI / 2, PI / 2), skin); jaw.rotation.x = -PI / 2; jaw.scale.set(1.05, 1.2, 0.75); jaw.position.set(0, 14, 2); jp.add(jaw);
-  const teeth = mesh(new THREE.BoxGeometry(24, 6, 3), M.plastic('#fbf8f0')); teeth.position.set(0, 28, 3); jp.add(teeth);
-  const cav = mesh(new THREE.SphereGeometry(21, 16, 12), M.paint('#1a0608', { roughness: 1 }), false); cav.scale.set(1, 1, 0.6); cav.position.set(0, 6, 22); g.add(cav);
-  const upperTeeth = mesh(new THREE.BoxGeometry(26, 7, 3.5), M.plastic('#fbf8f0')); upperTeeth.position.set(0, 24, 22); g.add(upperTeeth);
-  // straw boater with a red band
+  const jawG = new THREE.SphereGeometry(24, 24, 12, 0, TAU, PI / 2, PI / 2); jawG.rotateX(-PI / 2); jawG.scale(1.05, 1.2, 0.75); jawG.translate(0, 14, 2);
+  const teethG = new THREE.BoxGeometry(24, 6, 3); teethG.translate(0, 28, 3);
+  jp.add(vcMesh([[jawG, '#e8b690'], [teethG, '#fbf8f0']], VC.plastic));
+  const cav = new THREE.SphereGeometry(21, 16, 12); cav.scale(1, 1, 0.6); cav.translate(0, 6, 22); B.add(M.paint('#1a0608', { roughness: 1 }), bake(cav));
+  const ut = new THREE.BoxGeometry(26, 7, 3.5); ut.translate(0, 24, 22); B.add(M.plastic('#fbf8f0', { roughness: 0.15, clearcoat: 1 }), bake(ut));
+  // straw boater (pushed back on his head), collar and bow tie: static
   const straw = M.plastic('#e9d79a', { roughness: 0.75 });
-  const brim = mesh(new THREE.CylinderGeometry(42, 42, 1.6, 36), straw); brim.rotation.x = PI / 2; brim.position.set(0, -6, 69); g.add(brim);
-  const crown = mesh(new THREE.CylinderGeometry(27, 28, 12, 32), straw); crown.rotation.x = PI / 2; crown.position.set(0, -6, 76); g.add(crown);
-  const band = mesh(new THREE.CylinderGeometry(28.3, 28.3, 5, 32), M.plastic('#c8302c', { roughness: 0.5 })); band.rotation.x = PI / 2; band.position.set(0, -6, 73); g.add(band);
-  // bow tie and collar at the base
-  const collar = mesh(new THREE.CylinderGeometry(26, 30, 6, 24), M.plastic('#f4ecd8')); collar.rotation.x = PI / 2; collar.position.set(0, -10, 3); g.add(collar);
-  [-1, 1].forEach(s => { const bt = mesh(new THREE.ConeGeometry(5, 10, 3), M.plastic('#1d4e9a', { roughness: 0.4 })); bt.rotation.z = s * PI / 2; bt.position.set(s * 6, 18, 6); g.add(bt); });
-  const knot = mesh(new THREE.SphereGeometry(2.6, 10, 8), M.plastic('#1d4e9a')); knot.position.set(0, 19, 6); g.add(knot);
-  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  const rz = Math.atan2(toy.f[1], toy.f[0]) - PI / 2, c = Math.cos(-rz), s = Math.sin(-rz);
-  let blinkT = 2;
+  const brim = new THREE.CylinderGeometry(34, 34, 1.6, 36); brim.rotateX(PI / 2); brim.rotateX(0.18); brim.translate(0, -16, 68); B.add(straw, bake(brim));
+  const crown = new THREE.CylinderGeometry(23, 24, 11, 32); crown.rotateX(PI / 2); crown.rotateX(0.18); crown.translate(0, -16, 74); B.add(straw, bake(crown));
+  const band = new THREE.CylinderGeometry(24.3, 24.3, 4.5, 32); band.rotateX(PI / 2); band.rotateX(0.18); band.translate(0, -16, 71); B.add(M.plastic('#c8302c', { roughness: 0.5 }), bake(band));
+  const collar = new THREE.CylinderGeometry(26, 30, 6, 24); collar.rotateX(PI / 2); collar.translate(0, -10, 3); B.add(M.plastic('#f4ecd8'), bake(collar));
+  const blue = M.plastic('#1d4e9a', { roughness: 0.4 });
+  [-1, 1].forEach(sd => { const bt = new THREE.ConeGeometry(5, 10, 3); bt.rotateZ(sd * PI / 2); bt.translate(sd * 6, 18, 6); B.add(blue, bake(bt)); });
+  const knot = new THREE.SphereGeometry(2.6, 10, 8); knot.translate(0, 19, 6); B.add(blue, bake(knot));
   g.userData.pose = (k, look, t) => {
     jp.rotation.x = -k * 0.95; jp.position.z = 22 - k * 3;
     const lx = look[0] * c - look[1] * s, ly = look[0] * s + look[1] * c;   // world -> local
-    eyes.forEach(ir => { ir.position.x = lx * 3.2; ir.position.z = ly > 0 ? -1.6 : 0.6; });
-    const bl = ((t + 1.3) % 4.7) < 0.14; whites.forEach(w => { w.scale.z = bl ? 0.15 : 1; });
+    eyes.forEach((ir, i) => { ir.position.x = (i ? 12 : -12) + lx * 3.2; ir.position.z = 50 + (ly > 0 ? -1.6 : 0.6); });
     head.rotation.z = Math.sin(t * 0.7) * 0.03 + k * Math.sin(t * 9) * 0.02;
   };
   return g;
@@ -988,54 +1001,50 @@ function strikerModel(RC) {
   board.position.set(x, y + 8, 81); board.castShadow = true; RC.root.add(board);
   B.add(red, boxGeo(x, y + 8, 157, 26, 6, 3));
   for (const sx of [-1, 1]) B.add(M.steel(), tubeGeo([[x + sx * 12, y + 16, 0], [x + sx * 12, y + 16, 150]], 1.6, 2, 8));
-  // puck
-  const puck = mesh(new THREE.CylinderGeometry(7.5, 7.5, 4, 20), M.plastic('#e8463c', { roughness: 0.25, clearcoat: 1 })); puck.rotation.x = PI / 2; puck.position.set(x, y + 3.5, 14); RC.root.add(puck);
-  const puckRing = mesh(new THREE.TorusGeometry(7.5, 1, 8, 20), M.chrome()); puckRing.rotation.x = PI / 2; puck.add(puckRing); puckRing.rotation.x = 0; puckRing.position.y = 0;
-  // the bell on a yoke
+  // the puck (one vertex-coloured mesh: red disc with a chrome rim)
+  const pc = new THREE.CylinderGeometry(7.5, 7.5, 4, 20); pc.rotateX(PI / 2); const pt = new THREE.TorusGeometry(7.5, 1, 8, 20); pt.rotateX(PI / 2);
+  const puck = vcMesh([[pc, '#e8463c'], [pt, '#d8dce4']], VC.plastic); puck.position.set(x, y + 3.5, 14); RC.root.add(puck);
+  // the bell in a brass yoke
   const yoke = new THREE.Group(); yoke.position.set(x, y + 8, 160); RC.root.add(yoke);
-  const bell = mesh(latheGeo(0, 0, [[0, 0], [11, 0], [11.5, 1.5], [9, 5], [7, 10], [5, 14], [2.5, 17], [0, 18]], 24), M.brass()); bell.position.z = 2; yoke.add(bell);
-  const clap = mesh(new THREE.SphereGeometry(2.4, 10, 8), M.iron()); clap.position.set(0, 0, 3); yoke.add(clap);
+  const bellG = latheGeo(0, 0, [[0, 0], [11, 0], [11.5, 1.5], [9, 5], [7, 10], [5, 14], [2.5, 17], [0, 18]], 24); bellG.translate(0, 0, 2);
+  const clapG = new THREE.SphereGeometry(2.4, 10, 8); clapG.translate(0, 0, 3);
+  yoke.add(vcMesh([[bellG, '#d8b26a'], [clapG, '#3a3438']], VC.metal));
   B.add(M.brass(), tubeGeo([[x - 12, y + 8, 158], [x - 12, y + 8, 182], [x + 12, y + 8, 182], [x + 12, y + 8, 158]], 1.4, 8, 8));
   B.add(M.brass(), sphereGeo(x, y + 8, 184, 3, 10));
-  let bellK = 0;
   RC.anim.push((dt, t) => {
     const Bb = G.b || {}, p = Bb.puck || 0;
     puck.position.z += ((14 + p * 140) - puck.position.z) * Math.min(1, dt * (p > 0.05 && t - (Bb.puckT || -9) < 1 ? 14 : 3));
-    const since = t - (Bb.bellAt || -9); bellK = since < 1.6 ? Math.sin(since * 26) * Math.exp(-since * 2.2) : 0;
-    yoke.rotation.y = bellK * 0.35; clap.position.x = -bellK * 6;
+    const since = t - (Bb.bellAt || -9), bk = since < 1.6 ? Math.sin(since * 26) * Math.exp(-since * 2.2) : 0;
+    yoke.rotation.y = bk * 0.35;
   });
   return null;
 }
 
 // the dunk tank: a glass tank of water, a seat on a frame, a clown who drops in with a splash
 function dunkModel(RC) {
-  const M = RC.mats, B = RC.batch, [x, y] = DUNK, G = RC.G;
+  const M = RC.mats, B = RC.batch, [x, y] = DUNK, G = RC.G, steel = M.steel();
   const g = new THREE.Group(); g.position.set(x, y, 0); RC.root.add(g);
-  const steel = M.steel();
   B.add(M.plastic('#f4ecd8'), boxGeo(x, y, 1.5, 36, 36, 3));
   const tank = new THREE.Mesh(new THREE.BoxGeometry(30, 28, 32), M.clear('#dff2ff', 0.22, { depthWrite: false, roughness: 0.03 })); tank.position.z = 17; tank.renderOrder = 3; g.add(tank);
   const water = new THREE.Mesh(new THREE.BoxGeometry(28.5, 26.5, 20), M.clear('#2a9ac8', 0.55, { depthWrite: false, roughness: 0.1 })); water.position.z = 12; water.renderOrder = 2; g.add(water);
   for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) B.add(steel, cylGeo(x + sx * 14, y + sy * 13, 1.6, 0, 70, 8));
-  B.add(steel, tubeGeo([[x - 14, y + 13, 70], [x + 14, y + 13, 70]], 1.6, 2, 8)); B.add(steel, tubeGeo([[x - 14, y - 13, 70], [x + 14, y - 13, 70]], 1.6, 2, 8));
-  B.add(steel, tubeGeo([[x - 14, y - 13, 70], [x - 14, y + 13, 70]], 1.6, 2, 8)); B.add(steel, tubeGeo([[x + 14, y - 13, 70], [x + 14, y + 13, 70]], 1.6, 2, 8));
-  // seat hinged at the back, the clown on it
+  B.add(steel, tubeGeo([[x - 14, y + 13, 70], [x + 14, y + 13, 70], [x + 14, y - 13, 70], [x - 14, y - 13, 70], [x - 14, y + 13, 70]], 1.6, 8, 8));
+  // seat hinged at the back; the clown is one vertex-coloured mesh
   const hinge = new THREE.Group(); hinge.position.set(0, 12, 56); g.add(hinge);
   const seat = mesh(new THREE.BoxGeometry(20, 14, 2), M.wood('#9a6a3a', 'seat')); seat.position.set(0, -8, 0); hinge.add(seat);
   const clown = new THREE.Group(); g.add(clown); clown.position.set(0, 2, 57);
-  const body = mesh(new THREE.CylinderGeometry(5, 6.5, 13, 14), M.plastic('#ffcc3a', { roughness: 0.4 })); body.rotation.x = PI / 2; body.position.z = 7; clown.add(body);
-  const dots = []; for (let i = 0; i < 8; i++) { const d = new THREE.SphereGeometry(1.3, 6, 5); const a = i * 0.8; d.translate(Math.cos(a) * 6, Math.sin(a) * 6, 4 + (i % 3) * 3); dots.push(d); } clown.add(mesh(mergeGeo(dots), M.plastic('#1d4e9a'), false));
-  const headC = mesh(new THREE.SphereGeometry(6.5, 16, 12), M.plastic('#fbf3ea', { roughness: 0.35 })); headC.position.z = 19; clown.add(headC);
-  const noseC = mesh(new THREE.SphereGeometry(2.2, 10, 8), M.plastic('#e8463c', { clearcoat: 1 })); noseC.position.set(0, -6, 19); clown.add(noseC);
-  const hat = mesh(new THREE.ConeGeometry(4.5, 11, 14), M.plastic('#c8302c')); hat.rotation.x = PI / 2; hat.position.z = 29; clown.add(hat);
-  const pom = mesh(new THREE.SphereGeometry(2, 8, 6), M.plastic('#f4ecd8')); pom.position.z = 35; clown.add(pom);
-  const hair = []; [-1, 1].forEach(s => { const h = new THREE.SphereGeometry(3.4, 8, 6); h.translate(s * 6.5, 1, 20); hair.push(h); }); clown.add(mesh(mergeGeo(hair), M.plastic('#ff8a2a', { roughness: 0.8 })));
-  const arms = []; [-1, 1].forEach(s => { const a = new THREE.CylinderGeometry(1.6, 1.6, 12, 8); a.rotateZ(s * 0.9); a.translate(s * 9, 0, 10); arms.push(a); }); clown.add(mesh(mergeGeo(arms), M.plastic('#ffcc3a')));
-  const legs = []; [-1, 1].forEach(s => { const l = new THREE.CylinderGeometry(1.8, 1.8, 14, 8); l.rotateX(PI / 2); l.translate(s * 3, -8, -5); legs.push(l); const sh = new THREE.SphereGeometry(2.8, 8, 6); sh.translate(s * 3, -12, -12); legs.push(sh); }); clown.add(mesh(mergeGeo(legs), M.plastic('#c8302c')));
-  // splash ring
+  const P = [];
+  const body = new THREE.CylinderGeometry(5, 6.5, 13, 14); body.rotateX(PI / 2); body.translate(0, 0, 7); P.push([body, '#ffcc3a']);
+  for (let i = 0; i < 8; i++) { const d = new THREE.SphereGeometry(1.3, 6, 5); const a = i * 0.8; d.translate(Math.cos(a) * 6, Math.sin(a) * 6, 4 + (i % 3) * 3); P.push([d, '#1d4e9a']); }
+  const hd = new THREE.SphereGeometry(6.5, 16, 12); hd.translate(0, 0, 19); P.push([hd, '#fbf3ea']);
+  const ns = new THREE.SphereGeometry(2.2, 10, 8); ns.translate(0, -6, 19); P.push([ns, '#e8463c']);
+  const hat = new THREE.ConeGeometry(4.5, 11, 14); hat.rotateX(PI / 2); hat.translate(0, 0, 29); P.push([hat, '#c8302c']);
+  const pom = new THREE.SphereGeometry(2, 8, 6); pom.translate(0, 0, 35); P.push([pom, '#f4ecd8']);
+  [-1, 1].forEach(sd => { const h = new THREE.SphereGeometry(3.4, 8, 6); h.translate(sd * 6.5, 1, 20); P.push([h, '#ff8a2a']); const a = new THREE.CylinderGeometry(1.6, 1.6, 12, 8); a.rotateZ(sd * 0.9); a.translate(sd * 9, 0, 10); P.push([a, '#ffcc3a']); const l = new THREE.CylinderGeometry(1.8, 1.8, 14, 8); l.rotateX(PI / 2); l.translate(sd * 3, -8, -5); P.push([l, '#c8302c']); const sh = new THREE.SphereGeometry(2.8, 8, 6); sh.translate(sd * 3, -12, -12); P.push([sh, '#c8302c']); });
+  clown.add(vcMesh(P, VC.plastic));
   const splash = new THREE.Mesh(new THREE.TorusGeometry(8, 1.2, 6, 24), M.clear('#ffffff', 0.7)); splash.position.z = 23; splash.visible = false; g.add(splash);
   const sign = canvas(192, 64), sgx = sign.getContext('2d'); sgx.fillStyle = '#ffcc3a'; sgx.fillRect(0, 0, 192, 64); sgx.fillStyle = '#c8302c'; sgx.fillRect(0, 0, 192, 8); sgx.fillRect(0, 56, 192, 8); sgx.fillStyle = '#2a1a14'; sgx.font = '400 28px ' + BUNGEE; sgx.textAlign = 'center'; sgx.textBaseline = 'middle'; sgx.fillText('DUNK TANK', 96, 32);
-  const sm = new THREE.Mesh(new THREE.PlaneGeometry(36, 12), new THREE.MeshStandardMaterial({ map: RC.tex(sign), roughness: 0.4, side: THREE.DoubleSide })); sm.rotation.x = PI / 2; sm.position.set(0, -14, 78); g.add(sm);
-  g.traverse(o => { if (o.isMesh && o !== tank && o !== water && o !== splash) o.castShadow = true; });
+  const sm = new THREE.PlaneGeometry(36, 12); sm.rotateX(PI / 2); sm.translate(x, y - 14, 78); B.add(new THREE.MeshStandardMaterial({ map: RC.tex(sign), roughness: 0.4, side: THREE.DoubleSide }), sm);
   let splashed = false;
   RC.anim.push((dt, t) => {
     const since = t - ((G.b && G.b.dunkAt) || -9);
@@ -1057,28 +1066,26 @@ function carouselModel(RC) {
   for (const [px, py] of CAR_LEGS) { const a = Math.atan2(py - y, px - x); B.add(M.chrome(), tubeGeo([[px, py, 40], [x + Math.cos(a) * 48, y + Math.sin(a) * 48, 71]], 1.8, 2, 8)); }
   const g = new THREE.Group(); g.position.set(x, y, 74); RC.root.add(g);
   const tex = stripeTex(RC, 16, '#c8302c', '#f4ecd8'); tex.wrapS = THREE.RepeatWrapping;
-  const canopy = mesh(latheGeo(0, 0, [[46, 0], [44, 1], [34, 5], [20, 10], [8, 15], [0, 18]], 32), new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.5, clearcoat: 0.3, side: THREE.DoubleSide })); g.add(canopy);
-  const scal = []; for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; const s = new THREE.SphereGeometry(4.2, 8, 6); s.scale(1, 1, 0.5); s.translate(Math.cos(a) * 44, Math.sin(a) * 44, 0); scal.push(s); }
-  g.add(mesh(mergeGeo(scal), M.plastic('#ffcc3a', { roughness: 0.3 })));
-  const fin = mesh(latheGeo(0, 0, [[0, 17], [4, 18], [3, 22], [1.5, 26], [0, 30]], 12), M.brass()); g.add(fin);
-  const brassG = [], creamG = [], redG = [];
+  g.add(mesh(latheGeo(0, 0, [[46, 0], [44, 1], [34, 5], [20, 10], [8, 15], [0, 18]], 32), new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.5, clearcoat: 0.3, side: THREE.DoubleSide })));
+  const P = [];
+  for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; const s = new THREE.SphereGeometry(4.2, 8, 6); s.scale(1, 1, 0.5); s.translate(Math.cos(a) * 44, Math.sin(a) * 44, 0); P.push([s, '#ffcc3a']); }
+  P.push([latheGeo(0, 0, [[0, 17], [4, 18], [3, 22], [1.5, 26], [0, 30]], 12), '#d8b26a']);
   for (let i = 0; i < 6; i++) {
     const a = i / 6 * TAU, px = Math.cos(a) * 30, py = Math.sin(a) * 30;
-    const pole = new THREE.CylinderGeometry(0.9, 0.9, 36, 6); pole.rotateX(PI / 2); pole.translate(px, py, -18 + 2); brassG.push(pole);
-    // a little horse: body, neck, head, legs, saddle
-    const hz = -24 + (i % 2) * 3, ca = Math.cos(a + PI / 2), sa = Math.sin(a + PI / 2);
-    const body = new THREE.BoxGeometry(8, 3.2, 3.6); body.rotateZ(a + PI / 2); body.translate(px, py, hz); creamG.push(body);
-    const neck = new THREE.BoxGeometry(2.6, 2.4, 4); neck.rotateZ(a + PI / 2); neck.translate(px + ca * 4.2, py + sa * 4.2, hz + 2.6); creamG.push(neck);
-    const headH = new THREE.BoxGeometry(4, 2.2, 2.4); headH.rotateZ(a + PI / 2); headH.translate(px + ca * 6, py + sa * 6, hz + 4.4); creamG.push(headH);
-    for (const k of [-2.8, 2.8]) for (const s of [-1.2, 1.2]) { const leg = new THREE.BoxGeometry(1, 1, 4); leg.translate(px + ca * k - sa * s, py + sa * k + ca * s, hz - 3.5); creamG.push(leg); }
-    const saddle = new THREE.BoxGeometry(3, 3.6, 1.2); saddle.rotateZ(a + PI / 2); saddle.translate(px, py, hz + 2.2); redG.push(saddle);
+    const pole = new THREE.CylinderGeometry(0.9, 0.9, 36, 6); pole.rotateX(PI / 2); pole.translate(px, py, -16); P.push([pole, '#d8b26a']);
+    const hz = -24 + (i % 2) * 3, ca = Math.cos(a + PI / 2), sa = Math.sin(a + PI / 2), horse = ['#f6efe0', '#e8c8a0', '#8a6a4a'][i % 3];
+    const body = new THREE.BoxGeometry(8, 3.2, 3.6); body.rotateZ(a + PI / 2); body.translate(px, py, hz); P.push([body, horse]);
+    const neck = new THREE.BoxGeometry(2.6, 2.4, 4); neck.rotateZ(a + PI / 2); neck.translate(px + ca * 4.2, py + sa * 4.2, hz + 2.6); P.push([neck, horse]);
+    const headH = new THREE.BoxGeometry(4, 2.2, 2.4); headH.rotateZ(a + PI / 2); headH.translate(px + ca * 6, py + sa * 6, hz + 4.4); P.push([headH, horse]);
+    for (const k of [-2.8, 2.8]) for (const sd of [-1.2, 1.2]) { const leg = new THREE.BoxGeometry(1, 1, 4); leg.translate(px + ca * k - sa * sd, py + sa * k + ca * sd, hz - 3.5); P.push([leg, horse]); }
+    const saddle = new THREE.BoxGeometry(3, 3.6, 1.2); saddle.rotateZ(a + PI / 2); saddle.translate(px, py, hz + 2.2); P.push([saddle, i % 2 ? '#c8302c' : '#1d4e9a']);
   }
-  g.add(mesh(mergeGeo(brassG), M.brass())); g.add(mesh(mergeGeo(creamG), M.plastic('#f6efe0', { roughness: 0.35 }))); g.add(mesh(mergeGeo(redG), M.plastic('#c8302c')));
-  RC.anim.push((dt, t) => { const c = G.comps.carousel; if (c) g.rotation.z = c.a; });
+  g.add(vcMesh(P, VC.plastic));
+  RC.anim.push(() => { const c = G.comps.carousel; if (c) g.rotation.z = c.a; });
   return null;
 }
 
-// the marquee sign on the backboard (its bulbs are lamps 'mq0..25' driven by the rules)
+// the marquee sign on the backboard (its bulbs are lamps 'mq0..25' driven by the rules) and the bulb strings across the table
 function marqueeModel(RC) {
   const M = RC.mats, B = RC.batch, L = RC.L;
   const c = canvas(1024, 288), g = c.getContext('2d');
@@ -1088,10 +1095,9 @@ function marqueeModel(RC) {
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
   g.font = '400 118px ' + BUNGEE; g.lineWidth = 16; g.strokeStyle = '#2a1a14'; g.strokeText('MIDWAY MAYHEM', 516, 150); g.lineWidth = 8; g.strokeStyle = '#ffcc3a'; g.strokeText('MIDWAY MAYHEM', 512, 144); g.fillStyle = '#e8463c'; g.fillText('MIDWAY MAYHEM', 512, 144);
   g.font = '700 30px ' + SERIF; g.fillStyle = '#2a1a14'; g.fillText('STEP RIGHT UP  ·  RIDES  ·  GAMES  ·  PRIZES', 512, 226);
-  const sign = new THREE.Mesh(new THREE.BoxGeometry(300, 6, 84), [M.plastic('#c8302c'), M.plastic('#c8302c'), M.plastic('#c8302c'), new THREE.MeshStandardMaterial({ map: RC.tex(c), roughness: 0.4 }), M.plastic('#c8302c'), M.plastic('#c8302c')]);
-  sign.position.set(260, L - 4, 94); sign.castShadow = true; RC.root.add(sign);
+  B.add(M.plastic('#c8302c'), boxGeo(260, L - 4, 94, 300, 6, 84));
+  const face = new THREE.PlaneGeometry(300, 84); face.rotateX(PI / 2); face.translate(260, L - 7.2, 94); B.add(new THREE.MeshStandardMaterial({ map: RC.tex(c), roughness: 0.4 }), face);
   B.add(M.steel(), tubeGeo([[140, L - 1, 52], [140, L - 7, 52]], 1.5, 2, 6)); B.add(M.steel(), tubeGeo([[380, L - 1, 52], [380, L - 7, 52]], 1.5, 2, 6));
-  // bulb strings from the wheel to the tower, and the tower to the sign
   const bulbG = []; const strings = [[[WHEEL.x, WHEEL.y, 158], [TOWER[0], TOWER[1] + 8, 186]], [[TOWER[0], TOWER[1] + 8, 186], [330, L - 6, 140]]];
   for (const [a, b] of strings) { const pts = []; for (let i = 0; i <= 14; i++) { const k = i / 14; pts.push([a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k - 26 * Math.sin(k * PI)]); } B.add(M.iron(), tubeGeo(pts, 0.7, 20, 5)); for (let i = 1; i < 14; i++) { const s = new THREE.SphereGeometry(2.2, 8, 6); s.translate(pts[i][0], pts[i][1], pts[i][2] - 2.5); bulbG.push(s); } }
   const bulbs = new THREE.Mesh(mergeGeo(bulbG), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffe29a').multiplyScalar(2.2), toneMapped: false })); RC.root.add(bulbs);
@@ -1101,34 +1107,36 @@ function marqueeModel(RC) {
 
 // the backbox monkey: sits on a drum behind the top-left arch and bangs his bell when something big happens
 function monkeyModel(RC) {
-  const M = RC.mats, B = RC.batch, [x, y] = MONKEY, G = RC.G;
-  const fur = M.plastic('#6a4428', { roughness: 0.85 }), face = M.plastic('#e8c8a8', { roughness: 0.6 });
+  const M = RC.mats, B = RC.batch, [x, y] = MONKEY, G = RC.G, fur = '#6a4428', face = '#e8c8a8';
   B.add(M.plastic('#c8302c', { roughness: 0.35 }), cylGeo(x, y, 13, 0, 16, 20)); B.add(M.plastic('#f4ecd8'), cylGeo(x, y, 13.4, 6, 10, 20)); B.add(M.brass(), cylGeo(x, y, 13.6, 15, 17, 20));
   const g = new THREE.Group(); g.position.set(x, y, 16); RC.root.add(g);
-  const body = mesh(new THREE.CylinderGeometry(6, 7.5, 16, 14), fur); body.rotation.x = PI / 2; body.position.z = 8; g.add(body);
-  const belly = mesh(new THREE.SphereGeometry(5, 12, 10), face); belly.scale.set(1, 0.6, 1.2); belly.position.set(0, -5, 8); g.add(belly);
-  const head = mesh(new THREE.SphereGeometry(7, 16, 12), fur); head.position.z = 22; g.add(head);
-  const muzzle = mesh(new THREE.SphereGeometry(4.2, 12, 10), face); muzzle.scale.set(1.1, 0.8, 0.8); muzzle.position.set(0, -5.5, 20.5); g.add(muzzle);
-  [-1, 1].forEach(s => { const e = mesh(new THREE.SphereGeometry(2.6, 10, 8), fur); e.position.set(s * 7, 0, 23); g.add(e); const ey = mesh(new THREE.SphereGeometry(1, 8, 6), M.plastic('#0a0a0a')); ey.position.set(s * 2.4, -5.8, 24); g.add(ey); });
-  const fez = mesh(new THREE.CylinderGeometry(3.6, 4.4, 5, 14), M.plastic('#c8302c', { roughness: 0.5 })); fez.rotation.x = PI / 2; fez.position.z = 30; g.add(fez);
-  const tassel = mesh(new THREE.SphereGeometry(1, 6, 5), M.plastic('#ffcc3a')); tassel.position.set(3, 0, 31); g.add(tassel);
+  const P = [];
+  const body = new THREE.CylinderGeometry(6, 7.5, 16, 14); body.rotateX(PI / 2); body.translate(0, 0, 8); P.push([body, fur]);
+  const belly = new THREE.SphereGeometry(5, 12, 10); belly.scale(1, 0.6, 1.2); belly.translate(0, -5, 8); P.push([belly, face]);
+  const head = new THREE.SphereGeometry(7, 16, 12); head.translate(0, 0, 22); P.push([head, fur]);
+  const muzzle = new THREE.SphereGeometry(4.2, 12, 10); muzzle.scale(1.1, 0.8, 0.8); muzzle.translate(0, -5.5, 20.5); P.push([muzzle, face]);
+  [-1, 1].forEach(sd => { const e = new THREE.SphereGeometry(2.6, 10, 8); e.translate(sd * 7, 0, 23); P.push([e, fur]); const ey = new THREE.SphereGeometry(1, 8, 6); ey.translate(sd * 2.4, -5.8, 24); P.push([ey, '#0a0a0a']); });
+  const fez = new THREE.CylinderGeometry(3.6, 4.4, 5, 14); fez.rotateX(PI / 2); fez.translate(0, 0, 30); P.push([fez, '#c8302c']);
+  const tas = new THREE.SphereGeometry(1, 6, 5); tas.translate(3, 0, 31); P.push([tas, '#ffcc3a']);
+  const armL = new THREE.CylinderGeometry(1.8, 1.8, 12, 8); armL.rotateZ(0.5); armL.translate(-8, -1, 11); P.push([armL, fur]);
+  P.push([tubeGeo([[0, 6, 2], [4, 12, 1], [8, 14, 4], [9, 12, 8]], 1, 10, 6), fur]);
+  g.add(vcMesh(P, VC.matte));
+  // the right arm holds the mallet
   const armR = new THREE.Group(); armR.position.set(7, -1, 16); g.add(armR);
-  const ua = mesh(new THREE.CylinderGeometry(1.8, 1.8, 12, 8), fur); ua.rotation.z = -0.6; ua.position.set(4.5, 0, -3); armR.add(ua);
-  const mallet = mesh(new THREE.CylinderGeometry(0.8, 0.8, 16, 6), M.wood('#9a6a3a', 'mallet')); mallet.rotation.x = PI / 2; mallet.position.set(9, 0, 4); armR.add(mallet);
-  const mhead = mesh(new THREE.CylinderGeometry(2.6, 2.6, 5, 10), M.plastic('#f4ecd8')); mhead.rotation.z = PI / 2; mhead.position.set(9, 0, 12); armR.add(mhead);
-  const armL = mesh(new THREE.CylinderGeometry(1.8, 1.8, 12, 8), fur); armL.rotation.z = 0.5; armL.position.set(-8, -1, 11); g.add(armL);
-  const tail = mesh(tubeGeo([[0, 6, 2], [4, 12, 1], [8, 14, 4], [9, 12, 8]], 1, 10, 6), fur); g.add(tail);
+  const ua = new THREE.CylinderGeometry(1.8, 1.8, 12, 8); ua.rotateZ(-0.6); ua.translate(4.5, 0, -3);
+  const mallet = new THREE.CylinderGeometry(0.8, 0.8, 16, 6); mallet.rotateX(PI / 2); mallet.translate(9, 0, 4);
+  const mh = new THREE.CylinderGeometry(2.6, 2.6, 5, 10); mh.rotateZ(PI / 2); mh.translate(9, 0, 12);
+  armR.add(vcMesh([[ua, fur], [mallet, '#9a6a3a'], [mh, '#f4ecd8']], VC.matte));
   // the bell on a stand beside him
   const bx = x + 24, by = y - 2;
   B.add(M.steel(), cylGeo(bx, by, 1.5, 0, 40, 8)); B.add(M.steel(), cylGeo(bx, by, 6, 0, 2, 12));
   const bellG = new THREE.Group(); bellG.position.set(bx, by, 40); RC.root.add(bellG);
-  const bell = mesh(latheGeo(0, 0, [[0, 0], [9, 0], [9.5, 1.2], [7.5, 4], [5.5, 8], [3.5, 11], [1.5, 13.5], [0, 14.5]], 20), M.brass()); bellG.add(bell);
-  g.traverse(o => { if (o.isMesh) o.castShadow = true; }); bell.castShadow = true;
+  bellG.add(mesh(latheGeo(0, 0, [[0, 0], [9, 0], [9.5, 1.2], [7.5, 4], [5.5, 8], [3.5, 11], [1.5, 13.5], [0, 14.5]], 20), M.brass()));
   RC.anim.push((dt, t) => {
     const since = t - ((G.b && G.b.monkeyT) || -9);
     let swing = 0.9, bk = 0;
     if (since >= 0 && since < 2.2) { const k = since; swing = k < 0.35 ? 0.9 - k / 0.35 * 1.6 : k < 0.5 ? -0.7 + (k - 0.35) / 0.15 * 0.8 : 0.1 + Math.min(0.8, (k - 0.5) * 1.2); if (k > 0.35 && k < 1.9) bk = Math.sin((k - 0.35) * 28) * Math.exp(-(k - 0.35) * 2.5); }
-    armR.rotation.y = -swing; g.position.z = 16 + Math.sin(t * 3) * 0.4 + (since < 2.2 && since > 0 ? Math.abs(Math.sin(since * 12)) * 2 : 0); head.rotation.z = Math.sin(t * 1.1) * 0.15;
+    armR.rotation.y = -swing; g.position.z = 16 + Math.sin(t * 3) * 0.4 + (since < 2.2 && since > 0 ? Math.abs(Math.sin(since * 12)) * 2 : 0); g.rotation.z = Math.sin(t * 1.1) * 0.06;
     bellG.rotation.x = bk * 0.3; bellG.rotation.y = bk * 0.2;
   });
   return null;
@@ -1138,12 +1146,10 @@ function monkeyModel(RC) {
 function tiltBobModel(RC) {
   const M = RC.mats, B = RC.batch, G = RC.G, x = 36, y = 66;
   B.add(M.chrome(), cylGeo(x, y + 14, 1.8, 35, 92, 8)); B.add(M.chrome(), tubeGeo([[x, y + 14, 90], [x, y, 90]], 1.4, 2, 8));
-  B.add(M.chrome(), cylGeo(x, y + 14, 5, 35, 37, 12));
-  const ring = mesh(torusGeo(x, y, 58, 7, 0.9, 24), M.chrome()); RC.root.add(ring);
-  B.add(M.chrome(), tubeGeo([[x, y + 14, 58], [x, y + 7, 58]], 1, 2, 6));
+  B.add(M.chrome(), cylGeo(x, y + 14, 5, 35, 37, 12)); B.add(M.chrome(), torusGeo(x, y, 58, 7, 0.9, 24)); B.add(M.chrome(), tubeGeo([[x, y + 14, 58], [x, y + 7, 58]], 1, 2, 6));
   const piv = new THREE.Group(); piv.position.set(x, y, 89); RC.root.add(piv);
-  const wire = mesh(new THREE.CylinderGeometry(0.35, 0.35, 32, 5), M.steel(), false); wire.rotation.x = PI / 2; wire.position.z = -16; piv.add(wire);
-  const bob = mesh(latheGeo(0, 0, [[0, -46], [3.2, -40], [3.6, -33], [2.4, -30], [2.4, -28], [0, -28]], 14), M.brass()); piv.add(bob);
+  const wire = new THREE.CylinderGeometry(0.35, 0.35, 32, 5); wire.rotateX(PI / 2); wire.translate(0, 0, -16);
+  piv.add(vcMesh([[wire, '#d5d8de'], [latheGeo(0, 0, [[0, -46], [3.2, -40], [3.6, -33], [2.4, -30], [2.4, -28], [0, -28]], 14), '#d8b26a']], VC.metal));
   RC.anim.push((dt, t) => {
     const since = t - (G.nudgeT || -9), A = Math.min(0.6, (G.tiltM || 0) * 0.26);
     const k = since < 5 ? A * Math.exp(-since * 0.9) : 0;
@@ -1156,12 +1162,12 @@ function tiltBobModel(RC) {
 function cannonModel(RC) {
   const M = RC.mats, B = RC.batch, G = RC.G, [x, y] = CANNON;
   B.add(M.plastic('#c8302c', { roughness: 0.4 }), boxGeo(x, y - 24, 6, 18, 20, 12));
-  for (const sx of [-1, 1]) { B.add(M.plastic('#ffcc3a'), cylGeo(x + sx * 10, y - 24, 6, 5, 7, 14, 6)); }
+  for (const sx of [-1, 1]) B.add(M.plastic('#ffcc3a'), cylGeo(x + sx * 10, y - 24, 6, 5, 7, 14, 6));
   const g = new THREE.Group(); g.position.set(x, y - 26, 12); RC.root.add(g);
-  const barrel = mesh(new THREE.CylinderGeometry(5.5, 7, 34, 18), M.iron()); barrel.rotation.x = -0.9; barrel.position.set(0, 10, 10); g.add(barrel);
-  const band = mesh(new THREE.CylinderGeometry(7.4, 7.4, 4, 18), M.plastic('#ffcc3a')); band.rotation.x = -0.9; band.position.set(0, 4, 5); g.add(band);
-  const muz = mesh(new THREE.TorusGeometry(6, 1.4, 8, 18), M.brass()); muz.rotation.x = -0.9 + PI / 2; muz.position.set(0, 23.5, 20.6); g.add(muz);
-  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const barrel = new THREE.CylinderGeometry(5.5, 7, 34, 18); barrel.rotateX(-0.9); barrel.translate(0, 10, 10);
+  const band = new THREE.CylinderGeometry(7.4, 7.4, 4, 18); band.rotateX(-0.9); band.translate(0, 4, 5);
+  const muz = new THREE.TorusGeometry(6, 1.4, 8, 18); muz.rotateX(-0.9 + PI / 2); muz.translate(0, 23.5, 20.6);
+  g.add(vcMesh([[barrel, '#3a3438'], [band, '#ffcc3a'], [muz, '#d8b26a']], VC.metal));
   let fired = false;
   RC.anim.push((dt, t) => {
     const c = G.comps.cannon, f = c && c.fireT > 0;
@@ -1172,25 +1178,45 @@ function cannonModel(RC) {
   return null;
 }
 
-// scenery: the ticket booth kiosk at the top of the alley and striped awnings on the block walls
+// scenery: the ticket booth kiosk at the top of the alley and a striped awning over the shooting gallery (all static)
 function tentModel(RC) {
   const M = RC.mats, B = RC.batch;
   const cream = M.plastic('#f4ecd8', { roughness: 0.3 }), red = M.plastic('#c8302c', { roughness: 0.35 });
-  // kiosk
   const kx = 390, ky = 835;
   B.add(cream, boxGeo(kx, ky, 20, 54, 24, 40)); B.add(red, boxGeo(kx, ky, 2, 56, 26, 4));
-  const tex = stripeTex(RC, 10, '#c8302c', '#f4ecd8');
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(62, 34, 3), [red, red, red, red, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 }), red]); roof.position.set(kx, ky - 2, 43); roof.castShadow = true; RC.root.add(roof);
+  const stripeM = new THREE.MeshStandardMaterial({ map: stripeTex(RC, 10, '#c8302c', '#f4ecd8'), roughness: 0.5 });
+  B.add(stripeM, boxGeo(kx, ky - 2, 43, 62, 34, 3));
   const scal = []; for (let i = 0; i < 8; i++) { const s = new THREE.SphereGeometry(3.6, 8, 6); s.scale(1, 0.6, 1); s.translate(kx - 28 + i * 8, ky - 19, 41.5); scal.push(s); } B.add(red, mergeGeo(scal));
   B.add(M.paint('#1a0e0c', { roughness: 0.9 }), boxGeo(kx, ky - 12.2, 24, 30, 0.6, 18));
   for (let i = -2; i <= 2; i++) B.add(M.brass(), boxGeo(kx + i * 6, ky - 12.6, 24, 0.8, 0.6, 18));
   B.add(cream, boxGeo(kx, ky - 12.6, 14, 34, 1.4, 2));
   const sc = canvas(256, 64), g = sc.getContext('2d'); g.fillStyle = '#ffcc3a'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#2a1a14'; g.font = '400 40px ' + BUNGEE; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('TICKETS', 128, 34);
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(44, 11), new THREE.MeshStandardMaterial({ map: RC.tex(sc), roughness: 0.4 })); sign.rotation.x = PI / 2; sign.position.set(kx, ky - 19.5, 50); RC.root.add(sign);
+  const sign = new THREE.PlaneGeometry(44, 11); sign.rotateX(PI / 2); sign.translate(kx, ky - 19.5, 50); B.add(new THREE.MeshStandardMaterial({ map: RC.tex(sc), roughness: 0.4 }), sign);
   B.add(M.brass(), cylGeo(kx + 24, ky - 10, 1.2, 40, 58, 6)); B.add(M.brass(), cylGeo(kx - 24, ky - 10, 1.2, 40, 58, 6));
-  // awning over the shooting gallery ducks (on the wall behind them)
-  const aw = new THREE.Mesh(new THREE.BoxGeometry(14, 100, 2), [red, red, red, red, new THREE.MeshStandardMaterial({ map: stripeTex(RC, 12, '#c8302c', '#f4ecd8'), roughness: 0.5 }), red]);
-  aw.rotation.y = 0.5; aw.position.set(58, 476, 40); aw.castShadow = true; RC.root.add(aw);
+  const aw = new THREE.BoxGeometry(14, 100, 2); aw.rotateY(0.5); aw.translate(58, 476, 40); B.add(stripeM, aw);
+  return null;
+}
+
+// the prize counter: a cream cabinet with a glass front on the right; the five plush prizes sit on its shelf and wiggle when won
+function prizeCounterModel(RC) {
+  const M = RC.mats, B = RC.batch, G = RC.G, P = PRIZE_CASE;
+  const cream = M.plastic('#f4ecd8', { roughness: 0.3 }), red = M.plastic('#c8302c', { roughness: 0.35 });
+  B.add(cream, slabGeo(P, 0, 6, { bevel: 1 })); B.add(red, slabGeo(P, 30, 2.5, { bevel: 0.6 }));
+  B.add(cream, boxGeo(464, 500, 36, 30, 110, 12)); B.add(cream, boxGeo(464, 500, 58, 30, 112, 4));
+  const glass = new THREE.Mesh(boxGeo(451, 498, 46, 1.2, 100, 20), M.clear('#dff2ff', 0.2, { depthWrite: false, roughness: 0.03 })); glass.renderOrder = 3; RC.root.add(glass);
+  const sc = canvas(256, 48), g = sc.getContext('2d'); g.fillStyle = '#c8302c'; g.fillRect(0, 0, 256, 48); g.fillStyle = '#ffcc3a'; g.font = '400 30px ' + BUNGEE; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('PRIZES', 128, 26);
+  const sign = new THREE.PlaneGeometry(26, 7); sign.rotateX(PI / 2); sign.rotateZ(-0.1); sign.translate(450.2, 498, 62); B.add(new THREE.MeshStandardMaterial({ map: RC.tex(sc), roughness: 0.4 }), sign);
+  const cols = ['#ffd23a', '#c8824a', '#ff9a40', '#8ab0e0', '#e8a030'], figs = [];
+  for (let i = 0; i < 5; i++) {
+    const y = 460 + i * 20, z = 42, x = 466, parts = [], c = cols[i];
+    if (i === 0) { const b = new THREE.SphereGeometry(5, 10, 8); b.scale(1, 1.3, 0.9); b.translate(0, 0, 4); parts.push([b, c]); const h = new THREE.SphereGeometry(3, 8, 6); h.translate(-2, -4, 9); parts.push([h, c]); const bk = new THREE.ConeGeometry(1.4, 3, 6); bk.rotateX(PI / 2); bk.translate(-4.5, -5, 9); parts.push([bk, '#ff8a2a']); }
+    else if (i === 1) { const b = new THREE.SphereGeometry(5, 10, 8); b.translate(0, 0, 5); parts.push([b, c]); const h = new THREE.SphereGeometry(3.6, 8, 6); h.translate(0, 0, 12); parts.push([h, c]); for (const sd of [-1, 1]) { const e = new THREE.SphereGeometry(1.4, 6, 5); e.translate(0, sd * 3.2, 15); parts.push([e, c]); } const mz = new THREE.SphereGeometry(1.6, 6, 5); mz.translate(-3, 0, 11.5); parts.push([mz, '#f4ecd8']); }
+    else if (i === 2) { const b = new THREE.SphereGeometry(5, 10, 8); b.scale(1.5, 0.8, 1); b.translate(0, 0, 5); parts.push([b, c]); const t = new THREE.ConeGeometry(3, 5, 4); t.rotateZ(PI / 2); t.translate(7, 0, 5); parts.push([t, c]); const ey = new THREE.SphereGeometry(0.9, 6, 5); ey.translate(-5, -3, 6.5); parts.push([ey, '#0a0a0a']); }
+    else if (i === 3) { const b = new THREE.SphereGeometry(5.5, 10, 8); b.scale(1, 1.2, 0.9); b.translate(0, 0, 5); parts.push([b, c]); const h = new THREE.SphereGeometry(3.5, 8, 6); h.translate(-4, 0, 10); parts.push([h, c]); const tr = new THREE.CylinderGeometry(0.9, 1.2, 8, 6); tr.rotateX(PI / 2); tr.translate(-7, 0, 6); parts.push([tr, c]); for (const sd of [-1, 1]) { const e = new THREE.SphereGeometry(2.2, 6, 5); e.scale(0.4, 1, 1); e.translate(-3, sd * 4, 10); parts.push([e, '#ff9ab0']); } }
+    else { const b = new THREE.SphereGeometry(5, 10, 8); b.translate(0, 0, 5); parts.push([b, c]); const h = new THREE.SphereGeometry(4.5, 8, 6); h.translate(-1, 0, 12); parts.push([h, '#f6d8a0']); const mane = new THREE.TorusGeometry(4.5, 1.6, 6, 12); mane.rotateY(PI / 2); mane.translate(-1, 0, 12); parts.push([mane, '#b86a20']); }
+    const m = vcMesh(parts, VC.matte, false); m.position.set(x, y, z); RC.root.add(m); figs.push(m);
+  }
+  RC.anim.push((dt, t) => { const Bb = G.b; figs.forEach((m, i) => { const won = Bb && Bb.prizes && Bb.prizes[i]; m.rotation.z = won ? Math.sin(t * 3 + i) * 0.25 : 0; m.position.z = 42 + (won ? Math.abs(Math.sin(t * 4 + i)) * 2 : 0); }); });
   return null;
 }
 
@@ -1210,33 +1236,4 @@ function defineSounds() {
   A.define('horn', 0.7, S => { S.osc('sawtooth', 330, 0, 0.5, 0.08, { bp: 900, q: 1.4, att: 0.03, to: 300 }); S.osc('sawtooth', 334, 0, 0.5, 0.08, { bp: 950, q: 1.4, att: 0.03, to: 303 }); S.osc('sine', 165, 0, 0.45, 0.08, { att: 0.03, to: 150 }); S.noise(0, 0.5, 0.03, { bp: 1200, q: 2, att: 0.05 }); });
   A.define('gulp', 0.6, S => { S.osc('sine', 320, 0, 0.32, 0.3, { to: 70 }); S.noise(0, 0.15, 0.25, { lp: 700 }); S.noise(0.22, 0.1, 0.2, { bp: 500, q: 2 }); S.osc('sine', 140, 0.3, 0.12, 0.3, { to: 60 }); });
   A.define('cannon', 1.3, S => { S.osc('sine', 95, 0, 0.5, 0.9, { to: 28 }); S.noise(0, 0.25, 0.7, { lp: 600 }); S.noise(0.02, 0.7, 0.3, { lp: 200 }); S.ring(2400, 0.01, 0.2, 0.06); });
-}
-
-// the prize counter: a cream cabinet with a glass front on the right; the five plush prizes sit on its shelf and light up when won
-function prizeCounterModel(RC) {
-  const M = RC.mats, B = RC.batch, G = RC.G, P = PRIZE_CASE;
-  const cream = M.plastic('#f4ecd8', { roughness: 0.3 }), red = M.plastic('#c8302c', { roughness: 0.35 });
-  B.add(cream, slabGeo(P, 0, 6, { bevel: 1 }));
-  B.add(red, slabGeo(P, 30, 2.5, { bevel: 0.6 }));
-  // shelf and back wall, a glass front
-  const cx = 464, back = [[476, 452], [476, 556]];
-  B.add(cream, boxGeo(464, 500, 36, 30, 110, 12));
-  B.add(cream, boxGeo(464, 500, 58, 30, 112, 4));
-  const glass = new THREE.Mesh(boxGeo(451, 498, 46, 1.2, 100, 20), M.clear('#dff2ff', 0.2, { depthWrite: false, roughness: 0.03 })); glass.renderOrder = 3; RC.root.add(glass);
-  const sc = canvas(256, 48), g = sc.getContext('2d'); g.fillStyle = '#c8302c'; g.fillRect(0, 0, 256, 48); g.fillStyle = '#ffcc3a'; g.font = '400 30px ' + BUNGEE; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('PRIZES', 128, 26);
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(26, 7), new THREE.MeshStandardMaterial({ map: RC.tex(sc), roughness: 0.4 })); sign.rotation.x = PI / 2; sign.rotation.y = -0.1; sign.position.set(450.2, 498, 62); RC.root.add(sign);
-  // the five plush prizes: duck, bear, fish, elephant, lion (small, chunky, in their insert colours)
-  const cols = ['#ffd23a', '#c8824a', '#ff9a40', '#8ab0e0', '#e8a030'], mats = cols.map(c => M.plastic(c, { roughness: 0.75 }));
-  const figs = [];
-  for (let i = 0; i < 5; i++) {
-    const y = 460 + i * 20, z = 42, x = 466, geos = [];
-    if (i === 0) { const b = new THREE.SphereGeometry(5, 10, 8); b.scale(1, 1.3, 0.9); b.translate(x, y, z + 4); geos.push(b); const h = new THREE.SphereGeometry(3, 8, 6); h.translate(x - 2, y - 4, z + 9); geos.push(h); }
-    else if (i === 1) { const b = new THREE.SphereGeometry(5, 10, 8); b.translate(x, y, z + 5); geos.push(b); const h = new THREE.SphereGeometry(3.6, 8, 6); h.translate(x, y, z + 12); geos.push(h); for (const s of [-1, 1]) { const e = new THREE.SphereGeometry(1.4, 6, 5); e.translate(x, y + s * 3.2, z + 15); geos.push(e); } }
-    else if (i === 2) { const b = new THREE.SphereGeometry(5, 10, 8); b.scale(1.5, 0.8, 1); b.translate(x, y, z + 5); geos.push(b); const t = new THREE.ConeGeometry(3, 5, 4); t.rotateZ(PI / 2); t.translate(x + 7, y, z + 5); geos.push(t); }
-    else if (i === 3) { const b = new THREE.SphereGeometry(5.5, 10, 8); b.scale(1, 1.2, 0.9); b.translate(x, y, z + 5); geos.push(b); const h = new THREE.SphereGeometry(3.5, 8, 6); h.translate(x - 4, y, z + 10); geos.push(h); const tr = new THREE.CylinderGeometry(0.9, 1.2, 8, 6); tr.rotateX(PI / 2); tr.translate(x - 7, y, z + 6); geos.push(tr); for (const s of [-1, 1]) { const e = new THREE.SphereGeometry(2.2, 6, 5); e.scale(0.4, 1, 1); e.translate(x - 3, y + s * 4, z + 10); geos.push(e); } }
-    else { const b = new THREE.SphereGeometry(5, 10, 8); b.translate(x, y, z + 5); geos.push(b); const h = new THREE.SphereGeometry(4.5, 8, 6); h.translate(x - 1, y, z + 12); geos.push(h); const mane = new THREE.TorusGeometry(4.5, 1.6, 6, 12); mane.rotateY(PI / 2); mane.translate(x - 1, y, z + 12); geos.push(mane); }
-    const m = mesh(mergeGeo(geos), mats[i]); RC.root.add(m); figs.push(m);
-  }
-  RC.anim.push((dt, t) => { const Bb = G.b; figs.forEach((m, i) => { const won = Bb && Bb.prizes && Bb.prizes[i]; m.rotation.z = won ? Math.sin(t * 3 + i) * 0.25 : 0; m.position.z = won ? Math.abs(Math.sin(t * 4 + i)) * 2 : 0; }); });
-  return null;
 }

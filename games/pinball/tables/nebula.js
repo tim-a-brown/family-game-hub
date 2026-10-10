@@ -73,7 +73,35 @@ function build(T) {
   buildInserts(T);
   buildModels(T);
 }
-function buildLeft(T) {}
+function buildLeft(T) {
+  const [bx0, by0, bx1, by1] = WELL_BOX;
+  // ── Far-left lane (the port side): comes round the top, funnels into the left cannon's hole ──
+  T.wall([[62, 620], [46, 600]], { style: 'metal', h: 26 });                         // funnel to the hole
+  T.wall([[62, 620], [62, by0], [bx0, by0]], { style: 'metal', h: 26 });            // lane's inner guide
+  T.post(46, 598, { style: 'rubber', r: 5 });
+  T.cannon({ id: 'cannonL', x: 24, y: 548, load: [CANL[0], CANL[1], 14], rest: 32, min: 10, max: 50, power: 2900, barrel: 44, autoFire: 7, barrelMat: 'brass' });
+  T.kickback({ id: 'kickback', x: 28, y: 205, power: 2300, label: 'THRUSTER', color: PAL.cyan });
+  // ── The Gravity Well block: a housing on the main floor; the vertical field sits on top ──
+  const foot = [[bx0, by0], [bx1, by0], [bx1, by1], [110, by1], [bx0, by1 - 18]];
+  T.wall(foot, { style: 'wood', r: 4, h: 44, color: '#141a30', closed: true });
+  T.powerfield({ id: 'well', lvlId: 'well', z: WELL_Z, box: WELL_BOX, magnets: [[102, 892, 'L'], [168, 930, 'R']], win: { comp: 'wellTop' }, lose: { x: 166, y: 812, vy: -220 }, floor: '#060a1a', color: PAL.cyan });
+  // top gate: a hidden pocket that either locks the ball (lock lit) or drops it into the warp lane
+  T.subway({ id: 'wellTop', hole: false, delay: 0.55, to: b => { const G = T.G, lk = G.comps.warpLock; return (G.b.lockLit && lk.count() < 3) ? { comp: 'warpLock' } : { x: 218, y: 980, vx: 12, vy: -320, lvl: 'main' }; } });
+  T.ballLock({ id: 'warpLock', slots: [[106, 1032, 72], [136, 1032, 72], [166, 1032, 72]], hidden: false, exit: { x: 220, y: 972, vx: 8, vy: -300 } });
+  // ── Gravity ramp: a chrome wireform from the left-centre up into the well ──
+  T.ramp({ id: 'gravity', style: 'wire', w: 40, exitLvl: 'main', entryMin: 160, to: 'well', supportEvery: 120,
+    pts: [[118, 600, 0], [122, 640, 4], [130, 700, 22], [138, 760, 42], [142, 800, 54], [142, 822, WELL_Z - 1], [140, 836, WELL_Z]] });
+  T.post(92, 606, { style: 'rubber', r: 5 }); T.post(146, 604, { style: 'rubber', r: 5 });
+  // lock targets: two flank the ramp mouth, one on the well's corner
+  T.standupTarget({ id: 'lk0', x: 80, y: 632, angle: 270, w: 20, label: 'W', color: PAL.violet });
+  T.standupTarget({ id: 'lk1', x: 160, y: 632, angle: 275, w: 20, label: 'E', color: PAL.violet });
+  T.standupTarget({ id: 'lk2', x: 196, y: 820, angle: 300, w: 22, label: 'LL', color: PAL.violet });
+  T.wall([[62, 640], [66, 640]], { style: 'invisible', mat: 'metal' });
+  // ── Warp lane: between the well and the pops; the loop's exit and the orbit both drop into it ──
+  T.wall([[246, 1000], [246, 866]], { style: 'metal', h: 26 });
+  T.post(246, 863, { style: 'rubber', r: 5 });
+  T.rolloverLane({ id: 'laneWarp', x: 218, y: 900, r: 11, color: PAL.cyan, lampDy: -30, shape: 'circle', lampR: 8, text: 'W', textSize: 9 });
+}
 function buildRight(T) {}
 function buildCentre(T) {
   [['pop1', 312, 826], ['pop2', 388, 828], ['pop3', 350, 896]].forEach(([id, x, y]) => T.popBumper({ id, x, y, r: 22, color: '#5fe9ff', skirt: '#22d3ee', body: '#161c34', kick: 1250 }));
