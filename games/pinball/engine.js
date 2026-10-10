@@ -652,7 +652,7 @@ export function createGame(def, opts = {}) {
   // ── DMD scenes ─────────────────────────────────────────────────────────
   const touchUI = typeof window !== 'undefined' && (('ontouchstart' in window) || navigator.maxTouchPoints > 0);
   function dmdScene(g, Wd, Hd) {
-    const cx = Wd / 2, lcd = disp && disp.type === 'lcd', t = performance.now() / 1000;
+    const cx = Wd / 2, lcd = disp && disp.type === 'lcd', t = G.now();
     const big = (s, y, size, x = cx) => bigText(g, s, x, y, size * Hd / 32, 'center', Wd - 4, def.display && def.display.font);
     const small = (s, x, y, a) => smallText(g, s, x, y * Hd / 32, a);
     const ink = lcd ? (def.display.ink || '#fff') : '#fff', ink2 = lcd ? (def.display.ink2 || '#9cf') : '#888';
@@ -700,7 +700,7 @@ export function createGame(def, opts = {}) {
     // changes at the end of a pass (so a rotating status or the launch hint never jumps mid-scroll)
     const S = G.scroller, hint = touchUI ? 'PULL DOWN ON THE RIGHT TO LAUNCH' : 'HOLD SPACE TO LAUNCH';
     let want = String((G.tiltM >= 1.9 && !G.tilted) ? 'CAREFUL: TILT WARNING' : (G.waitPlunge && S.turn % 2 === 0) ? hint : (R('status') || '')).toUpperCase();
-    const dt = S.last ? Math.min(0.1, t - S.last) : 0; S.last = t;
+    const dt = S.last ? Math.min(0.05, t - S.last) : 0; S.last = t;   // wall clock; a hitch moves the text at most 2 dots
     if (S.text == null) { S.text = want; S.w = smallW(want); S.off = 0; S.hold = 0; }
     const scrolling = S.w > Wd - 2;
     if (scrolling) S.off += dt * 46; else S.hold += dt;
@@ -716,6 +716,7 @@ export function createGame(def, opts = {}) {
     else small(S.text, Math.round(Wd - S.off), 25);
   }
   G.dmdScene = dmdScene;
+  G.now = () => performance.now() / 1000;   // the display's clock (tests replace it to drive the scroller)
   return G;
 }
 
