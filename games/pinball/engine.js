@@ -537,14 +537,22 @@ export function createGame(def, opts = {}) {
   let acc = 0, raf = 0, last = 0, speedMul = 1, idleTimer = 0;
   G.stats.frames = 0; G.stats.rafReq = 0; G.stats.idleFrames = 0;
   // Something to animate at full rate? Otherwise the loop idles at ~12 fps (lamps, the display scroller).
-  function busy() {
-    if (G.dm || G.show || G.bonus || G.laters.length || G.shakeA > 0.01 || G.flashA > 0.01 || G.lightning > 0.01 || G.pulling || G.input.L || G.input.R || G.input.magna) return true;
-    if (G.state !== 'play' && G.state !== 'serve') return false;
-    for (const f of world.flips) if (f.w !== 0) return true;
-    for (const b of world.balls) { if (b.mode === 'air' || b.mode === 'path') return true; if (b.mode === 'free' && (Math.abs(b.vx) > 6 || Math.abs(b.vy) > 6)) return true; if (b.mode === 'held' && !b.locked) return true; }
-    for (const c of G.compList) if (c.busy && c.busy()) return true;
-    return false;
+  function busyWhy() {
+    if (G.dm) return 'message'; if (G.show) return 'lightshow'; if (G.bonus) return 'bonus';
+    if (G.shakeA > 0.01 || G.flashA > 0.01 || G.lightning > 0.01) return 'fx';
+    if (G.pulling || G.input.L || G.input.R || G.input.magna) return 'input';
+    if (G.state !== 'play' && G.state !== 'serve') return '';
+    for (const f of world.flips) if (f.w !== 0) return 'flipper';
+    for (const b of world.balls) {
+      if (b.mode === 'air' || b.mode === 'path') return 'ball:' + b.mode;
+      if (b.mode === 'free' && (Math.abs(b.vx) > 12 || Math.abs(b.vy) > 12)) return 'ball:' + Math.round(b.vx) + ',' + Math.round(b.vy);
+      if (b.mode === 'held' && !b.locked && !(G.plunger && G.plunger.holds(b))) return 'ball:held';
+    }
+    for (const c of G.compList) if (c.busy && c.busy()) return 'comp:' + c.id;
+    return '';
   }
+  function busy() { return !!busyWhy(); }
+  G.busyWhy = busyWhy;
   function physics(dt) {
     acc += dt; let n = 0; const maxN = Math.ceil(0.06 / DT) * Math.max(1, speedMul);
     while (acc >= DT && n < maxN) { autopilot(DT); world.step(DT); acc -= DT; n++; }
