@@ -1325,20 +1325,41 @@ class Plunger extends Comp {
   }
   step(dt) {
     // the plunger tip follows the pull (springs back fast)
-    const y = this.y - BR - 2 - this.shown * 30;
+    const y = this.y - BR - 2 - this.shown * PLUNGE_TRAVEL;
     this.world.moveSeg(this.tip, this.x - 13, y, this.x + 13, y, 0);
   }
+  // The parts inside the shooter lane (the knob outside the cabinet is drawn by the page, lined up with the
+  // lane): rubber tip on a steel cup, the rod, and the main spring between the cup and a fixed chrome bracket
+  // at the bottom of the lane. Pulling slides tip, cup and rod down and the spring visibly compresses.
   mesh(RC) {
-    const g = grp(this.x, 0, this.z0 + BR);
-    const rod = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 140, 12), RC.mats.chrome()); rod.position.y = this.y - BR - 2 - 70; g.add(rod);
-    const tipM = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 8, 16), RC.mats.rubber('#222')); tipM.position.y = this.y - BR - 6; g.add(tipM);
-    const spring = []; for (let i = 0; i <= 60; i++) { const a = i * 0.9; spring.push([Math.cos(a) * 7, this.y - BR - 12 - i * 0.9, Math.sin(a) * 7]); }
-    this.spr = new THREE.Mesh(tubeGeo(spring, 0.8, 120, 5), RC.mats.steel()); g.add(this.spr);
-    const knob = new THREE.Mesh(new THREE.SphereGeometry(10, 16, 12), RC.mats.plastic(RC.theme.knob || '#d8d0c0')); knob.position.y = -60; g.add(knob); this.knob = knob;
-    RC.root.add(g); this.g = g; this.g.children.forEach(m => m.castShadow = true);
+    const z = this.z0 + BR, x = this.x, face = this.y - BR - 2, cupY = face - 10;
+    const g = grp(x, 0, z), chrome = RC.mats.chrome();
+    const tipM = new THREE.Mesh(new THREE.CylinderGeometry(8, 8.6, 8, 20), RC.mats.rubber('#1d1d1f')); tipM.position.y = face - 4; g.add(tipM);
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(9.5, 9.5, 2, 20), RC.mats.steel()); cup.position.y = cupY + 1; g.add(cup);
+    const rodLen = cupY - (PLUNGE_BRACKET - 6);
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, rodLen, 12), chrome); rod.position.y = cupY - rodLen / 2; g.add(rod);
+    g.children.forEach(m => { m.castShadow = true; m.receiveShadow = true; });
+    RC.root.add(g); this.g = g;
+    // the main spring: a unit helix scaled along the lane to the gap between the cup and the bracket
+    this.springTop = cupY; this.springLen0 = cupY - PLUNGE_BRACKET;
+    const pts = [], turns = 11, n = turns * 14;
+    for (let i = 0; i <= n; i++) { const a = i / n * turns * TAU; pts.push([Math.cos(a) * 7.6, -i / n * this.springLen0, Math.sin(a) * 7.6]); }
+    const spr = new THREE.Mesh(tubeGeo(pts, 1.15, n, 6), RC.mats.steel()); spr.position.set(x, cupY, z); spr.castShadow = true; RC.root.add(spr); this.spr = spr;
+    // the bracket the spring sits on: a chrome plate across the lane with the rod through it
+    RC.batch.add(chrome, boxGeo(x, PLUNGE_BRACKET - 3, this.z0 + 13, 34, 6, 26));
+    { const boss = new THREE.CylinderGeometry(5.5, 6.5, 4, 16); boss.translate(x, PLUNGE_BRACKET + 2, z); RC.batch.add(RC.mats.steel(), boss); }
+    this.render();
   }
-  render() { if (!this.g) return; const k = this.shown * 30 - (this.fireT > 0 ? -6 : 0); this.g.position.y = -k; this.spr.scale.y = 1; }
+  render() {
+    if (!this.g) return;
+    // a launch snaps the rod forward a little past rest for the fire window
+    const k = this.shown * PLUNGE_TRAVEL - (this.fireT > 0 ? 5 * this.fireT / 0.12 : 0);
+    this.g.position.y = -k;
+    this.spr.position.y = this.springTop - k;
+    this.spr.scale.y = Math.max(0.12, (this.springLen0 - k) / this.springLen0);
+  }
 }
+const PLUNGE_TRAVEL = 36, PLUNGE_BRACKET = 38;   // mm: how far the tip draws back at a full pull; the bracket's face
 
 // ── Helpers that build the standard lower playfield and the top arch ────────────────────
 // Standard lower third: flippers, slingshots, inlanes, outlanes, their switches.

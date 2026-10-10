@@ -50,9 +50,9 @@ html.pb-on body{display:flex;flex-direction:column;background:#05040a;}
 html.pb-on{--text:#fbf8ff;--text-2:#c9c1e6;--text-3:#8f86b3;--yellow:#ffc83d;--surface:#231c45;--surface-2:#2d2556;--surface-3:#3a3169;--bg:#141029;--bg-2:#1c1638;--line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.14);--seg:rgba(0,0,0,.25);--inset:rgba(0,0,0,.28);--inset-2:rgba(0,0,0,.38);--glass:rgba(20,16,41,.82);--shade:rgba(8,5,22,.55);--w03:rgba(255,255,255,.03);--w09:rgba(255,255,255,.09);--w15:rgba(255,255,255,.15);--w16:rgba(255,255,255,.16);--w04:rgba(255,255,255,.04);--w05:rgba(255,255,255,.05);--w06:rgba(255,255,255,.06);--w07:rgba(255,255,255,.07);--w08:rgba(255,255,255,.08);--w1:rgba(255,255,255,.1);--w12:rgba(255,255,255,.12);--w14:rgba(255,255,255,.14);--w18:rgba(255,255,255,.18);--w2:rgba(255,255,255,.2);--gold:#ffc83d;--text-dim:#c9c1e6;--shadow:0 10px 30px rgba(5,2,20,.45);--shadow-sm:0 4px 12px rgba(5,2,20,.35);}
 html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0;display:flex;flex-direction:column;
   position:relative;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
-.pb-best{position:absolute;right:12px;bottom:-2px;display:flex;align-items:baseline;gap:5px;padding:2px 8px;border-radius:6px 6px 0 0;background:#0a090d;color:#ffb347;font:800 .6rem/1.2 var(--font);letter-spacing:.12em;}
-.pb-best b{font-size:.74rem;font-variant-numeric:tabular-nums;letter-spacing:.04em;}
-.pb-band{position:relative;flex:none;display:flex;justify-content:center;padding:4px 8px 6px;background:linear-gradient(#17141d,#0a090d);box-shadow:0 2px 0 rgba(255,255,255,.04),0 6px 16px rgba(0,0,0,.6);z-index:2;}
+/* the table's best score, lit in dots on the scoreboard's top bezel, centred over the display */
+.pb-best{display:block;height:12px;margin:0 auto 4px;image-rendering:auto;}
+.pb-band{position:relative;flex:none;display:flex;flex-direction:column;align-items:center;padding:4px 8px 6px;background:linear-gradient(#17141d,#0a090d);box-shadow:0 2px 0 rgba(255,255,255,.04),0 6px 16px rgba(0,0,0,.6);z-index:2;}
 .pb-dmd{display:block;width:min(100%,560px);aspect-ratio:5/1;border-radius:6px;background:#050302;box-shadow:inset 0 0 0 2px #2a2630,0 0 0 3px #0b0a0e;}
 .pb-dmd.lcd{aspect-ratio:4/1;}
 .pb-view{flex:1;min-height:0;position:relative;}
@@ -88,26 +88,21 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-fire .pb-arc{--cap:#f1c531;--cap-hi:#fff2a8;--cap-lo:#a07c0c;--bez:#c9a324;--bez-lo:#7c6208;}
 .pb-fire.show{display:flex;}
 .pb-view.no-flipbtns .pb-magna{left:14px;}.pb-view.no-flipbtns .pb-fire{right:14px;}
-/* Launch gauge: a slim chrome rail hugging the cabinet's right edge beside the shooter lane. Four etched ticks
-   with tiny labels; the pulled portion glows amber from the bottom and the reached ticks brighten. */
-.pb-launch{position:absolute;right:6px;bottom:calc(var(--safe-b) + 182px);z-index:3;width:12px;height:min(36%,300px);pointer-events:none;opacity:0;transition:opacity .25s;display:none;--pull:0;}
-.pb-launch.show{display:block;opacity:.8;}
-.pb-launch.pulling{opacity:1;transition:opacity .1s;}
-.pb-launch .rail{position:absolute;inset:0;border-radius:6px;background:linear-gradient(90deg,#5c616b,#eef1f6 32%,#a7adb9 58%,#464b55);
-  box-shadow:0 1px 3px rgba(0,0,0,.7),inset 0 0 0 1px rgba(0,0,0,.35);}
-.pb-launch .fill{position:absolute;left:3px;right:3px;bottom:3px;height:calc((100% - 6px) * var(--pull));border-radius:3px;
-  background:linear-gradient(to top,#ff9a2e,#ffcc4a);box-shadow:0 0 6px 1px rgba(255,170,60,.75),0 0 14px rgba(255,140,30,.45);}
-.pb-launch.snap .fill{transition:height .12s;}
-.pb-launch .tick{position:absolute;left:-3px;right:-3px;height:2px;background:linear-gradient(#1a1a1f,#1a1a1f 50%,rgba(255,255,255,.55) 51%);opacity:.75;bottom:calc(var(--at) * 100% - 1px);}
-.pb-launch .tick.lit{background:#ffd37a;box-shadow:0 0 6px rgba(255,200,90,.9);opacity:1;}
-.pb-launch .tick span{position:absolute;right:16px;top:-5px;font:800 6.5px/1 var(--font,system-ui);letter-spacing:.12em;color:rgba(255,255,255,.5);text-shadow:0 1px 0 rgba(0,0,0,.8);white-space:nowrap;}
-.pb-launch .tick.lit span{color:#ffd9a0;}
-.pb-launch .hint{position:absolute;right:0;top:calc(100% + 10px);font:700 8.5px/1.2 var(--font,system-ui);letter-spacing:.06em;color:rgba(255,255,255,.45);white-space:nowrap;text-shadow:0 1px 0 #000;}
-.pb-launch.pulling .hint,.pb-launch.nohint .hint{display:none;}
-/* amber readout that floats just left of the finger while dragging */
-.pb-tag{position:absolute;z-index:4;pointer-events:none;display:none;padding:3px 7px;border-radius:5px;background:linear-gradient(#ffd56a,#f29a1d);color:#3a1d00;font:900 13px/1 var(--font,system-ui);letter-spacing:.02em;
-  box-shadow:0 2px 6px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.5);transform:translate(-100%,-50%);}
-.pb-tag.show{display:block;}
+/* The plunger: the part of the shooter outside the cabinet (chrome housing on the cabinet front, rod, knob),
+   drawn on a canvas lined up under the 3D shooter lane. The canvas reaches down over the button row so the
+   knob can travel when pulled, but only the grab handle (housing, rod and knob at rest) takes touches. */
+.pb-plunger{position:absolute;left:0;top:0;z-index:4;pointer-events:none;display:none;will-change:transform;}
+.pb-plunger.show{display:block;}
+.pb-plunger.glide{transition:transform .6s cubic-bezier(.45,0,.25,1);}
+.pb-plunger canvas{position:absolute;left:0;top:0;display:block;}
+.pb-plunger .grab{position:absolute;pointer-events:auto;touch-action:none;border:0;padding:0;margin:0;background:transparent;border-radius:22px;-webkit-tap-highlight-color:transparent;cursor:grab;}
+.pb-plunger.held .grab{cursor:grabbing;}
+/* a ball waits: a slow warm breath of light round the knob (no label) */
+.pb-plunger .cue{position:absolute;pointer-events:none;border-radius:50%;opacity:0;background:radial-gradient(closest-side,rgba(255,214,140,.38),rgba(255,190,90,.12) 60%,rgba(255,190,90,0));transition:opacity .3s;}
+.pb-plunger.wait .cue{animation:pbCue 2.2s ease-in-out infinite;}
+.pb-plunger.held .cue{animation:none;opacity:0;}
+@keyframes pbCue{0%,100%{opacity:.15;}50%{opacity:.85;}}
+.pb-flip.under{opacity:.35;transition:opacity .12s;}
 .pb-pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:6;background:rgba(6,4,14,.6);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);}
 .pb-pause.show{display:flex;}
 .pb-pause .card{width:min(270px,82%);text-align:center;padding:22px 18px 16px;border-radius:var(--r-lg);background:var(--bg-2);box-shadow:var(--shadow);}
@@ -125,6 +120,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 <script type="module">
 import * as THREE from 'three';
 import { createGame, renderThumb, fmt, audio } from './pinball/engine.js';
+import { smallText, smallW } from './pinball/display.js';
 import { stubTable } from './pinball/tables/stub.js';
 
 const el = Kit.el, app = document.getElementById('app'), root = document.documentElement;
@@ -168,13 +164,13 @@ Kit.init({ orient: 'portrait', orientTablets: true,
     { icon: 'trophy', label: 'High scores', onClick: showHigh },
     { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Pinball: past games' }) },
     { icon: 'eye', label: 'Top-down view', sub: 'Straight down on the playfield. Off: first person, angled like standing at the machine.', toggle: () => viewMode() === 'top', onClick: () => setViewMode(viewMode() === 'top' ? 'first' : 'top') },
-    { icon: 'gamepad', label: 'On-screen buttons', sub: 'Big flipper buttons in the corners. Off: tap the left or right half of the table instead.', toggle: () => btnsOn(), onClick: () => { lsSet('pinball_btns', btnsOn() ? '0' : '1'); if (viewEl) viewEl.classList.toggle('no-flipbtns', !btnsOn()); if (G) G.resize(); } }
+    { icon: 'gamepad', label: 'On-screen buttons', sub: 'Big flipper buttons in the corners. Off: tap the left or right half of the table instead.', toggle: () => btnsOn(), onClick: () => { lsSet('pinball_btns', btnsOn() ? '0' : '1'); if (viewEl) viewEl.classList.toggle('no-flipbtns', !btnsOn()); if (G) { G.resize(); layoutPlunger(false); } } }
   ],
   rules:
     '<p class="goal">Keep the ball in play as long as you can and score as many points as you can. A game is 3 or 5 balls.</p>' +
     '<h3>Controls</h3><ul>' +
     '<li><b>Flippers:</b> hold the big buttons in the bottom corners (left and right), or touch the left or right half of the table. Use both thumbs. Hold a flipper up to catch the ball and aim. The game menu can hide the buttons.</li>' +
-    '<li><b>Launch:</b> while the ball waits in the lane, put a finger anywhere on the table and drag down: the plunger follows your finger and the gauge shows the strength (soft, skill shot, medium, full). Let go and it snaps forward like a rubber band. A quick tap is a soft launch; dragging back up before you let go cancels.</li>' +
+    '<li><b>Launch:</b> the plunger knob sits at the bottom right of the cabinet, under the shooter lane. Grab it and pull it down; let go and it snaps forward. The further you pull, the harder the shot (pull a little for a soft skill shot, all the way for a full one). A quick tap on the knob is a medium launch; easing it all the way back up before you let go cancels.</li>' +
     '<li><b>Nudge:</b> tap NUDGE at the bottom to bump the table. Bump too often and you get a warning, then TILT: the flippers go dead and you lose that ball and its bonus.</li>' +
     '<li><b>Magnet:</b> tables with a Magna-Save have a MAGNET button. Hold it as the ball heads for that outlane: the magnet catches it, and letting go throws it back.</li>' +
     '<li><b>Keyboard:</b> Left/Right arrows or Z and / for the flippers, Space or Down to pull and launch (and to fire a cannon), Up or N to nudge, A for the magnet, P to pause.</li></ul>' +
@@ -254,12 +250,11 @@ function showSetup() {
 }
 
 // ═══ Play view ═══════════════════════════════════════════════════════════════
-let dmdEl = null, pauseEl = null, viewEl = null, fireBtn = null, magBtn = null, fireCtl = null, magCtl = null, ro = null, launchEl = null, tagEl = null;
-const flipBtn = { L: null, R: null }, btnHeld = { L: false, R: false }, finger = { x: 0, y: 0 };
+let dmdEl = null, pauseEl = null, viewEl = null, fireBtn = null, magBtn = null, fireCtl = null, magCtl = null, nudgeCtl = null, ro = null;
+const flipBtn = { L: null, R: null }, btnHeld = { L: false, R: false };
 function btnsOn() { return lsGet('pinball_btns', '1') !== '0'; }
-function launchesSoFar() { return +lsGet('pinball_launches', '0') || 0; }
 function viewMode() { return lsGet('pinball_view', 'first') === 'top' ? 'top' : 'first'; }
-function setViewMode(m) { lsSet('pinball_view', m); if (G) G.setView(m, true); }
+function setViewMode(m) { lsSet('pinball_view', m); if (G) { G.setView(m, true); layoutPlunger(true); } }
 function startGame(id, balls, who) {
   leaveGame();
   const r = getRenderer();
@@ -273,7 +268,7 @@ function startGame(id, balls, who) {
   pauseEl = el('div', { class: 'pb-pause' });
   // small arcade buttons with engraved legends under them
   const ctl = (cls, legend, label) => { const b = el('button', { type: 'button', class: 'pb-arc', 'aria-label': label }); const w = el('div', { class: 'pb-ctl ' + cls }, [b, el('span', { class: 'pb-leg', text: legend })]); return [w, b]; };
-  const [nudgeCtl, nudgeBtn] = ctl('pb-nudge', 'NUDGE', 'Nudge');
+  let nudgeBtn; [nudgeCtl, nudgeBtn] = ctl('pb-nudge', 'NUDGE', 'Nudge');
   [magCtl, magBtn] = ctl('pb-magna', 'MAGNET', 'Magnet');
   [fireCtl, fireBtn] = ctl('pb-fire', 'FIRE', 'Fire');
   // the big red arcade flipper buttons (hold = up); the table's accent tints their bezels
@@ -281,14 +276,12 @@ function startGame(id, balls, who) {
   flipBtn.R = el('button', { type: 'button', class: 'pb-arc pb-flip pb-flipR', 'aria-label': 'Right flipper' });
   viewEl.style.setProperty('--c', def.color || '#d93a2b');
   viewEl.classList.toggle('no-flipbtns', !btnsOn());
-  // launch gauge beside the shooter lane and the finger readout
-  const ticks = [[0.22, 'SOFT'], [0.4, 'SKILL'], [0.6, 'MEDIUM'], [1, 'FULL']];
-  launchEl = el('div', { class: 'pb-launch' + (launchesSoFar() >= 3 ? ' nohint' : ''), 'aria-hidden': 'true' }, [
-    el('div', { class: 'rail' }), el('div', { class: 'fill' }),
-    ...ticks.map(([at, t]) => el('div', { class: 'tick', style: { '--at': at }, 'data-at': at }, [el('span', { text: t })])),
-    el('span', { class: 'hint', text: 'DRAG DOWN TO PULL' })]);
-  tagEl = el('div', { class: 'pb-tag', text: '0%' });
-  viewEl.append(nudgeCtl, magCtl, fireCtl, flipBtn.L, flipBtn.R, launchEl, tagEl);
+  // the plunger knob under the shooter lane (placed once the camera is fitted: layoutPlunger)
+  plunger.el = el('div', { class: 'pb-plunger' }, [plunger.cv = el('canvas', { 'aria-hidden': 'true' }), plunger.cue = el('div', { class: 'cue' }),
+    plunger.grab = el('button', { type: 'button', class: 'grab', 'aria-label': 'Plunger: pull down and let go to launch the ball' })]);
+  plunger.knobCol = def.theme && def.theme.knob || '#e8dcc0';
+  viewEl.append(nudgeCtl, magCtl, fireCtl, flipBtn.L, flipBtn.R, plunger.el);
+  bindPlunger();
   const btnDown = (e, fn) => { e.preventDefault(); e.stopPropagation(); fn(); };
   const press = (btn, down, upFn) => {
     btn.addEventListener('pointerdown', e => { btnDown(e, () => { if (!G || G.paused) return; audio().ctx(); try { btn.setPointerCapture(e.pointerId); } catch (er) {} btn.classList.add('on'); down(); }); });
@@ -298,10 +291,12 @@ function startGame(id, balls, who) {
   press(magBtn, () => { if (G) G.setMagna(true); }, () => { if (G && G.input.magna) G.setMagna(false); });
   press(fireBtn, () => G && G.fire());
   for (const side of ['L', 'R']) press(flipBtn[side], () => { btnHeld[side] = true; syncFlips(); }, () => { btnHeld[side] = false; syncFlips(); });
-  // the table's best score under the display, overtaken live by this game
-  bestEl = el('div', { class: 'pb-best' }, [el('small', { text: 'BEST' }), el('b', { text: fmt(ArcadeHi.best('pinball_' + id)) })]);
+  // the table's best score on the scoreboard's top bezel, overtaken live by this game
+  bestEl = el('canvas', { class: 'pb-best', role: 'img' });
   bestBase = ArcadeHi.best('pinball_' + id); shownBest = -1;
-  app.append(el('div', { class: 'pb-band' }, [dmdEl, bestEl]), viewEl, pauseEl);
+  bestEl.dataset.ink = def.display && def.display.type === 'lcd' ? (def.display.ink || '#ffffff') : (def.display && def.display.color) || '#ff8a1e';
+  app.append(el('div', { class: 'pb-band' }, [bestEl, dmdEl]), viewEl, pauseEl);
+  drawBest(bestBase);
   const loadTxt = el('span', { text: 'Building the table…' }), loadBar = el('b'), loading = el('div', { class: 'pb-load' }, [loadTxt, el('i', null, [loadBar])]); viewEl.appendChild(loading);
   view = 'game';
   // build after the loading text paints
@@ -319,9 +314,10 @@ function startGame(id, balls, who) {
     loading.remove();
     magCtl.style.display = G.hasMagna ? '' : 'none';
     if (ro) ro.disconnect();
-    ro = new ResizeObserver(() => { sizeDmd(); if (G) G.resize(); }); ro.observe(viewEl); ro.observe(dmdEl);
+    ro = new ResizeObserver(() => { sizeDmd(); if (G) { G.resize(); layoutPlunger(false); } }); ro.observe(viewEl); ro.observe(dmdEl);
     Kit.gameStart();
     G.start();
+    layoutPlunger(false);
     tickUI();
   }, 30));
 }
@@ -332,61 +328,215 @@ function sizeDmd() {
   if (w && h && (dmdEl.width !== w || dmdEl.height !== h)) { dmdEl.width = w; dmdEl.height = h; if (G && G.dmdReset) G.dmdReset(); }
 }
 // The page's own slow tick (5/s) while a game is live: the FIRE button for a loaded cannon, the kit's menu sheet
-// pausing the game, and the BEST tag under the display following this game once it passes the table's record.
-// It stops while paused, hidden or finished (resumeGame and the visibility handler start it again).
+// pausing the game, the plunger's waiting cue, and the BEST readout following this game once it passes the
+// table's record. It stops while paused, hidden or finished (resumeGame and the visibility handler start it again).
 let uiRaf = 0;
 function tickUI() {
   if (uiRaf) { clearTimeout(uiRaf); uiRaf = 0; }
   if (!G || view !== 'game' || G.paused || G.finished || document.hidden) return;
   if (fireCtl) fireCtl.classList.toggle('show', !!G.cannon);
-  launchUI();
+  plungerState();
   if (G.state !== 'over' && document.querySelector('.k-scrim')) { pauseGame(); return; }
   const bv = Math.max(bestBase, G.score || 0);
-  if (bestEl && bv !== shownBest) { shownBest = bv; bestEl.lastChild.textContent = fmt(bv); }
+  if (bestEl && bv !== shownBest) { shownBest = bv; drawBest(bv); }
   uiRaf = setTimeout(tickUI, 200);
 }
-// The launch overlay shows while a ball waits in the shooter lane and follows the pull (hold time or drag) at
-// animation rate only while pulling; it fades when the ball leaves the lane.
-let launchRaf = 0, snapUntil = 0;
-// the plunger snaps forward like a rubber band when let go: the overlay stays for the snap, then fades
-function releasePull(o) {
-  if (!G) return; const was = G.pulling; G.pullEnd(o);
-  if (was && !o.cancel) { snapUntil = performance.now() + 380; const n = launchesSoFar() + 1; lsSet('pinball_launches', String(n)); if (n >= 3 && launchEl) launchEl.classList.add('nohint'); }
-  launchUI();
-}
-// finger pull: 1:1 with the drag, a little spring resistance that eases near full pull
-const PULL_FULL = 0.24;   // a full pull is this fraction of the view height (~190 px on a phone)
-function dragToPull(dy, h) {
-  const d = Math.max(0, dy) / (h * PULL_FULL);
-  return d <= 0.85 ? d : Math.min(1, 0.85 + (1 - Math.exp(-(d - 0.85) * 2.2)) * 0.15);
-}
-function launchUI() {
-  if (launchRaf) { cancelAnimationFrame(launchRaf); launchRaf = 0; }
-  if (!launchEl || !G || view !== 'game') return;
-  const now = performance.now(), snapping = now < snapUntil;
-  const wait = (G.waitPlunge || snapping) && !G.paused && G.state !== 'over';
-  launchEl.classList.toggle('show', wait);
-  launchEl.classList.toggle('pulling', wait && (G.pulling || snapping));
-  launchEl.classList.toggle('snap', snapping);
-  const pull = wait && G.pulling ? G.pull : 0;
-  launchEl.style.setProperty('--pull', pull.toFixed(3));
-  launchEl.querySelectorAll('.tick').forEach(t => t.classList.toggle('lit', pull > 0.02 && pull >= +t.dataset.at - 0.01));
-  // the readout floats just left of the finger (or beside the rail for a keyboard pull)
-  const showTag = wait && G.pulling;
-  tagEl.classList.toggle('show', showTag);
-  if (showTag) {
-    tagEl.textContent = Math.round(pull * 100) + '%';
-    const r = viewEl.getBoundingClientRect(), lr = launchEl.getBoundingClientRect();
-    const fx = G.pullMode === 'drag' && finger.x ? finger.x - r.left - 18 : lr.left - r.left - 8;
-    const fy = G.pullMode === 'drag' && finger.x ? finger.y - r.top : lr.bottom - r.top - (lr.height - 6) * pull - 3;
-    tagEl.style.left = Math.max(60, fx) + 'px'; tagEl.style.top = Math.max(12, Math.min(r.height - 12, fy)) + 'px';
+// The best score in dots, in the display's own colour and 5x7 font: "BEST" dim, the number lit
+const bestDots = document.createElement('canvas');
+function drawBest(v) {
+  if (!bestEl) return;
+  const txt = 'BEST ' + fmt(v), cols = smallW(txt), lab = smallW('BEST');
+  const pitch = 1.75, dpr = Math.min(window.devicePixelRatio || 1, 3), w = Math.ceil(cols * pitch) + 2, h = Math.ceil(7 * pitch) + 2;
+  bestDots.width = cols; bestDots.height = 7;
+  const o = bestDots.getContext('2d', { willReadFrequently: true }); o.clearRect(0, 0, cols, 7); o.fillStyle = '#fff'; smallText(o, txt, 0, 0);
+  const px = o.getImageData(0, 0, cols, 7).data;
+  bestEl.style.width = w + 'px'; bestEl.style.height = h + 'px'; bestEl.width = Math.round(w * dpr); bestEl.height = Math.round(h * dpr);
+  const g = bestEl.getContext('2d'), ink = bestEl.dataset.ink || '#ff8a1e';
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  g.fillStyle = ink; g.shadowColor = ink; g.shadowBlur = 2.5 * dpr;
+  for (let y = 0; y < 7; y++) for (let x = 0; x < cols; x++) {
+    if (px[(y * cols + x) * 4 + 3] < 128) continue;
+    g.globalAlpha = x < lab ? 0.55 : 1;
+    g.beginPath(); g.arc(1 + (x + 0.5) * pitch, 1 + (y + 0.5) * pitch, pitch * 0.42, 0, Math.PI * 2); g.fill();
   }
-  if (wait && (G.pulling || snapping)) launchRaf = requestAnimationFrame(launchUI);
+  g.globalAlpha = 1;
+  bestEl.setAttribute('aria-label', 'Best score ' + fmt(v));
+}
+
+// ═══ The plunger ═══════════════════════════════════════════════════════════════
+// The outside of the shooter, lined up under the 3D shooter lane: a chrome housing where the lane meets the
+// cabinet front, the rod, and the knob. Grab the knob and pull down: knob and rod follow the finger 1:1 (the tip
+// and spring inside the lane go with them, and the spring compresses); let go and it snaps forward and launches
+// with the strength of the pull. A quick tap is a medium launch. Engraved rings on the rod come out of the
+// housing as it is drawn (a quarter, half, three quarters, full): the only strength marks. The canvas reaches
+// down over the button row so the knob has room to travel; only the parts at rest take touches.
+const plunger = { el: null, cv: null, cue: null, grab: null, knobCol: '#e8dcc0', s: 1, W: 0, H: 0, hTop: 0, rod0: 6, travel: 80, limit: 0, x: 0,
+  drag: null, d: 0, snap: null, raf: 0 };
+const PL = { housW: 46, housH: 14, rodW: 7, knobW: 40, knobH: 30, ferH: 6, pad: 8, shadow: 14 };   // CSS px at scale 1
+function layoutPlunger(glide) {
+  const P = plunger; if (!P.el) return;
+  if (!G || !G.plunger || view !== 'game' || !G.project) { P.el.classList.remove('show'); return; }
+  const vr = viewEl.getBoundingClientRect(), lane = G.project(G.plunger.x, 30, 0, G.view());
+  if (!lane || !vr.width) return;
+  const s = P.s = Math.max(1, Math.min(1.25, vr.width / 440));
+  const housH = PL.housH * s, knobH = (PL.knobH + PL.ferH) * s, half = (PL.knobW / 2 + 8) * s;
+  // the knob rests above the first control below it in its column (on a phone that is the right flipper button)
+  let limit = vr.height - 4;
+  for (const c of [flipBtn.R, flipBtn.L, fireCtl, magCtl, nudgeCtl]) {
+    if (!c || !c.getClientRects().length || getComputedStyle(c).display === 'none') continue;
+    const r = c.getBoundingClientRect();
+    if (r.right - vr.left > lane.x - half && r.left - vr.left < lane.x + half && r.top - vr.top > lane.y) limit = Math.min(limit, r.top - vr.top);
+  }
+  let hTop = lane.y - housH * 0.4;   // the housing overlaps the lane's end: it is mounted on the cabinet front
+  let rod0 = Math.min(10 * s, limit - 6 - (hTop + housH + knobH));
+  if (rod0 < 3 * s) { hTop -= 3 * s - rod0; rod0 = 3 * s; }
+  const restBottom = hTop + housH + rod0 + knobH;
+  P.rod0 = rod0; P.hTop = hTop; P.limit = limit; P.x = lane.x;
+  P.travel = Math.round(Math.max(44, Math.min(Math.max(72, vr.height * 0.11) * Math.min(s, 1.1), vr.height - 4 - restBottom)));
+  P.W = Math.round((PL.housW + 26) * s); P.H = Math.ceil(PL.pad * s + housH + rod0 + P.travel + knobH + PL.shadow * s);
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  P.cv.width = Math.round(P.W * dpr); P.cv.height = Math.round(P.H * dpr); P.cv.style.width = P.W + 'px'; P.cv.style.height = P.H + 'px';
+  P.el.style.width = P.W + 'px'; P.el.style.height = P.H + 'px';
+  // the grab handle: housing, rod and knob at rest (generous, but never over the button under it)
+  const gw = Math.round(Math.max(60, (PL.knobW + 22) * s)), gTop = Math.round(PL.pad * s - 8 * s), gBot = Math.round(Math.min(PL.pad * s + housH + rod0 + knobH + 8 * s, limit - 2 - (hTop - PL.pad * s)));
+  Object.assign(P.grab.style, { left: Math.round((P.W - gw) / 2) + 'px', top: gTop + 'px', width: gw + 'px', height: Math.max(36, gBot - gTop) + 'px' });
+  const cueR = PL.knobW * 1.25 * s, cy = PL.pad * s + housH + rod0 + PL.ferH * s + PL.knobH * s * 0.55;
+  Object.assign(P.cue.style, { left: (P.W / 2 - cueR) + 'px', top: (cy - cueR) + 'px', width: cueR * 2 + 'px', height: cueR * 2 + 'px' });
+  P.el.classList.toggle('glide', !!glide && P.el.classList.contains('show'));
+  P.el.style.transform = 'translate(' + Math.round(lane.x - P.W / 2) + 'px,' + Math.round(hTop - PL.pad * s) + 'px)';
+  P.el.classList.add('show');
+  drawPlunger(); plungerState();
+}
+// waiting cue and the flipper button the knob passes over
+function plungerState() {
+  const P = plunger; if (!P.el || !G) return;
+  P.el.classList.toggle('wait', !!G.waitPlunge && !G.pulling && !P.drag && !G.paused && (G.state === 'serve' || G.state === 'play'));
+}
+// colour helpers for the knob's plastic
+function mixHex(a, b, t) { const p = h => { h = h.replace('#', ''); if (h.length === 3) h = h.replace(/./g, c => c + c); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }; const x = p(a), y = p(b); return 'rgb(' + x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(',') + ')'; }
+function rrect(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function chromeX(g, x0, x1) { const c = g.createLinearGradient(x0, 0, x1, 0); c.addColorStop(0, '#2b2e34'); c.addColorStop(0.16, '#8d949e'); c.addColorStop(0.33, '#f6f8fb'); c.addColorStop(0.47, '#c8cdd5'); c.addColorStop(0.7, '#626872'); c.addColorStop(0.88, '#9aa0aa'); c.addColorStop(1, '#30333a'); return c; }
+function drawPlunger() {
+  const P = plunger, cv = P.cv; if (!cv || !P.W) return;
+  const g = cv.getContext('2d'), dpr = cv.width / P.W, s = P.s;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, P.W, P.H);
+  const cx = P.W / 2, hy = PL.pad * s, housW = PL.housW * s, housH = PL.housH * s, rodW = PL.rodW * s, kW = PL.knobW * s, kH = PL.knobH * s, fH = PL.ferH * s;
+  const d = P.d, kTop = hy + housH + P.rod0 + d, kBot = kTop + fH + kH, col = P.knobCol;
+  // the knob's shadow on the cabinet front
+  g.save(); g.translate(cx + 2 * s, kBot + 3 * s); g.scale(1, 0.32);
+  const sh = g.createRadialGradient(0, 0, 0, 0, 0, kW * 0.62); sh.addColorStop(0, 'rgba(0,0,0,.55)'); sh.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = sh; g.beginPath(); g.arc(0, 0, kW * 0.62, 0, Math.PI * 2); g.fill(); g.restore();
+  // the rod, with engraved rings that come out of the housing as it is drawn
+  const rodTop = hy + housH * 0.5;
+  g.fillStyle = chromeX(g, cx - rodW / 2, cx + rodW / 2); g.fillRect(cx - rodW / 2, rodTop, rodW, kTop - rodTop + 1);
+  for (const k of [0.25, 0.5, 0.75, 1]) {
+    const y = kTop - P.rod0 - k * P.travel;
+    if (y < hy + housH + 1 || y > kTop - 2) continue;
+    g.fillStyle = 'rgba(10,12,16,.75)'; g.fillRect(cx - rodW / 2, y, rodW, Math.max(1, 1.1 * s));
+    g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(cx - rodW / 2, y + Math.max(1, 1.1 * s), rodW, Math.max(0.6, 0.6 * s));
+  }
+  // the housing: a chrome flange on the cabinet front, two screws, the rod's bore
+  g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 5 * s; g.shadowOffsetY = 2 * s;
+  rrect(g, cx - housW / 2, hy, housW, housH, housH * 0.45);
+  const hg = g.createLinearGradient(0, hy, 0, hy + housH); hg.addColorStop(0, '#fbfcfe'); hg.addColorStop(0.35, '#b9bfc8'); hg.addColorStop(0.62, '#7b818b'); hg.addColorStop(1, '#3a3e45');
+  g.fillStyle = hg; g.fill(); g.restore();
+  g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 1; rrect(g, cx - housW / 2 + 0.5, hy + 0.5, housW - 1, housH - 1, housH * 0.45); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(cx - housW / 2 + housH * 0.45, hy + 1.3); g.lineTo(cx + housW / 2 - housH * 0.45, hy + 1.3); g.stroke();
+  // bore: a dark ring round the rod
+  g.fillStyle = '#121418'; g.beginPath(); g.ellipse(cx, hy + housH * 0.55, rodW * 0.95, housH * 0.3, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = chromeX(g, cx - rodW / 2, cx + rodW / 2); g.fillRect(cx - rodW / 2, hy + housH * 0.55, rodW, housH * 0.45 + 0.5);
+  for (const sx of [-1, 1]) {
+    const x = cx + sx * (housW / 2 - 7 * s), y = hy + housH / 2, r = 2.4 * s;
+    const sg = g.createRadialGradient(x - r * 0.4, y - r * 0.4, 0, x, y, r); sg.addColorStop(0, '#ffffff'); sg.addColorStop(1, '#6d737c');
+    g.fillStyle = sg; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(20,22,26,.8)'; g.lineWidth = 0.9 * s; g.beginPath(); g.moveTo(x - r * 0.7, y + r * 0.3); g.lineTo(x + r * 0.7, y - r * 0.3); g.stroke();
+  }
+  // the knob: a chrome ferrule, then a turned plastic knob in the table's colour, flared at the end
+  g.fillStyle = chromeX(g, cx - 8 * s, cx + 8 * s); rrect(g, cx - 8 * s, kTop - 1, 16 * s, fH + 2, 2 * s); g.fill();
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(cx - 8 * s, kTop + fH - 1, 16 * s, 1);
+  const kt = kTop + fH, wTop = kW * 0.66;
+  g.beginPath();
+  g.moveTo(cx - wTop / 2, kt);
+  g.bezierCurveTo(cx - wTop / 2 - 2 * s, kt + kH * 0.35, cx - kW / 2, kt + kH * 0.45, cx - kW / 2, kt + kH * 0.68);
+  g.bezierCurveTo(cx - kW / 2, kt + kH * 0.95, cx - kW * 0.32, kt + kH, cx, kt + kH);
+  g.bezierCurveTo(cx + kW * 0.32, kt + kH, cx + kW / 2, kt + kH * 0.95, cx + kW / 2, kt + kH * 0.68);
+  g.bezierCurveTo(cx + kW / 2, kt + kH * 0.45, cx + wTop / 2 + 2 * s, kt + kH * 0.35, cx + wTop / 2, kt);
+  g.closePath();
+  const kg = g.createLinearGradient(cx - kW / 2, 0, cx + kW / 2, 0);
+  kg.addColorStop(0, mixHex(col, '#000000', 0.62)); kg.addColorStop(0.2, mixHex(col, '#000000', 0.18)); kg.addColorStop(0.36, mixHex(col, '#ffffff', 0.45));
+  kg.addColorStop(0.5, col); kg.addColorStop(0.78, mixHex(col, '#000000', 0.38)); kg.addColorStop(1, mixHex(col, '#000000', 0.7));
+  g.fillStyle = kg; g.fill();
+  g.save(); g.clip();
+  const vg = g.createLinearGradient(0, kt, 0, kt + kH); vg.addColorStop(0, 'rgba(0,0,0,.35)'); vg.addColorStop(0.3, 'rgba(0,0,0,0)'); vg.addColorStop(0.8, 'rgba(255,255,255,.06)'); vg.addColorStop(1, 'rgba(0,0,0,.3)');
+  g.fillStyle = vg; g.fillRect(cx - kW / 2, kt, kW, kH);
+  // specular: the room light on the knob's shoulder, and a soft rim on the flare
+  g.fillStyle = 'rgba(255,255,255,.55)'; g.filter = 'blur(' + (1.2 * s) + 'px)'; g.beginPath(); g.ellipse(cx - kW * 0.17, kt + kH * 0.6, kW * 0.07, kH * 0.2, 0, 0, Math.PI * 2); g.fill(); g.filter = 'none';
+  g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 1.2 * s; g.beginPath(); g.ellipse(cx, kt + kH * 0.86, kW * 0.4, kH * 0.1, 0, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke();
+  g.restore();
+  g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 1; g.stroke();
+}
+function plungerAnim() {
+  const P = plunger; if (P.raf || !P.el) return;
+  const step = () => {
+    P.raf = 0; if (!P.el || !G || view !== 'game') return;
+    const now = performance.now();
+    if (P.drag) { /* P.d follows the finger (pointermove) */ }
+    else if (P.snap) {
+      // released: the spring drives it home in ~60 ms, a small overshoot into the housing, then rest
+      const t = now - P.snap.t0, f = P.snap.from, os = Math.min(5 * P.s, 2 + f * 0.06);
+      if (P.snap.dip && t < 55) P.d = f * Math.sin(t / 55 * Math.PI / 2);
+      else { const u = t - (P.snap.dip ? 55 : 0); P.d = u < 60 ? f * (1 - (u / 60) * (u / 60)) : u < 170 ? -os * Math.sin((u - 60) / 110 * Math.PI) * (1 - (u - 60) / 220) : 0; if (u >= 170) P.snap = null; }
+    }
+    else if (G.pulling) P.d = Math.min(1, G.pull) * P.travel;   // a held key
+    else P.d = 0;
+    drawPlunger();
+    if (flipBtn.R) flipBtn.R.classList.toggle('under', P.d > 0 && P.hTop + P.d + (P.H - PL.shadow * P.s - P.travel - PL.pad * P.s) > P.limit - 2);
+    plungerState();
+    if (P.drag || P.snap || G.pulling) P.raf = requestAnimationFrame(step);
+  };
+  P.raf = requestAnimationFrame(step);
+}
+// let go (knob or key): launch at the pulled strength (the engine lets an eased-back pull go without one)
+function releasePull(o) {
+  const P = plunger; if (!G) return;
+  const from = P.d > 0 ? P.d : 0;
+  G.pullEnd(o);
+  if (o.tap) P.snap = { t0: performance.now(), from: P.travel * 0.3, dip: true };
+  else if (from > 0.5) P.snap = { t0: performance.now(), from };
+  if (P.snap && !o.cancel) G.haptic(o.tap ? 'light' : from / P.travel > 0.6 ? 'heavy' : 'medium');
+  plungerAnim();
+}
+function bindPlunger() {
+  const P = plunger, b = P.grab;
+  b.addEventListener('pointerdown', e => {
+    e.preventDefault(); e.stopPropagation();
+    if (!G || G.paused || P.drag || view !== 'game') return;
+    audio().ctx(); try { b.setPointerCapture(e.pointerId); } catch (er) {}
+    const live = G.pullStart('drag');
+    P.drag = { id: e.pointerId, y0: e.clientY - Math.max(0, P.d), t0: performance.now(), max: 0, live, full: false };
+    P.snap = null; P.el.classList.add('held'); G.haptic('light');
+    plungerAnim();
+  });
+  b.addEventListener('pointermove', e => {
+    const dr = P.drag; if (!dr || e.pointerId !== dr.id) return;
+    const dy = e.clientY - dr.y0; dr.max = Math.max(dr.max, Math.abs(dy));
+    P.d = Math.max(0, Math.min(P.travel, dy));
+    const pull = P.d / P.travel; if (G && dr.live) G.pullDrag = pull;
+    if (pull > 0.995 && !dr.full) { dr.full = true; if (G) G.haptic('medium'); } else if (pull < 0.9) dr.full = false;
+  });
+  const end = e => {
+    const dr = P.drag; if (!dr || e.pointerId !== dr.id) return;
+    P.drag = null; P.el.classList.remove('held');
+    const tap = performance.now() - dr.t0 < 260 && dr.max < 7;
+    if (G && dr.live && G.pulling) releasePull(tap ? { tap: true } : {});
+    else { if (P.d > 0.5) P.snap = { t0: performance.now(), from: P.d }; plungerAnim(); }   // not live (bonus count, tilt): just springs back
+  };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, end));
 }
 function leaveGame() {
   view = 'none';
   if (uiRaf) { clearTimeout(uiRaf); uiRaf = 0; }
-  if (launchRaf) { cancelAnimationFrame(launchRaf); launchRaf = 0; }
+  if (plunger.raf) { cancelAnimationFrame(plunger.raf); plunger.raf = 0; }
+  plunger.el = null; plunger.drag = null; plunger.snap = null; plunger.d = 0;
   btnHeld.L = btnHeld.R = false;
   if (G) { G.destroy(); G = null; }
   if (viewEl) viewEl.querySelectorAll('.pb-load').forEach(e => e.remove());
@@ -398,42 +548,31 @@ function leaveGame() {
 // ═══ Input ═══════════════════════════════════════════════════════════════════
 const ptr = {};
 const keys = { L: false, R: false };
-function resetInput() { for (const k in ptr) delete ptr[k]; keys.L = keys.R = false; btnHeld.L = btnHeld.R = false; finger.x = 0; if (viewEl) viewEl.querySelectorAll('.pb-arc.on').forEach(b => b.classList.remove('on')); }
+function resetInput() {
+  for (const k in ptr) delete ptr[k]; keys.L = keys.R = false; btnHeld.L = btnHeld.R = false;
+  if (viewEl) viewEl.querySelectorAll('.pb-arc.on, .pb-flip.under').forEach(b => b.classList.remove('on', 'under'));
+  const P = plunger; if (P.drag || P.d) { P.drag = null; P.snap = null; P.d = 0; if (P.el) { P.el.classList.remove('held'); drawPlunger(); } }
+}
 function syncFlips() {
   if (!G) return;
   let L = keys.L || btnHeld.L, R = keys.R || btnHeld.R;
   for (const id in ptr) { if (ptr[id].role === 'L') L = true; if (ptr[id].role === 'R') R = true; }
   G.setFlip('L', L); G.setFlip('R', R);
 }
-// Touching the table: while a ball waits in the lane the WHOLE cabinet is the plunger (hold to pull, strength
-// builds with time or a pull-down drag, release to launch; a tap is a soft skill-shot launch). Otherwise the
-// left/right halves are the flippers. The buttons handle their own pointers and never reach here.
+// Touching the table: the left/right halves are the flippers. The buttons and the plunger knob handle their own
+// pointers and never reach here.
 app.addEventListener('pointerdown', e => {
   if (view !== 'game' || !G || G.paused) return;
-  if (e.target.closest && e.target.closest('.pb-pause, .pb-ctl, .pb-arc')) return;
+  if (e.target.closest && e.target.closest('.pb-pause, .pb-ctl, .pb-arc, .pb-plunger')) return;
   e.preventDefault();
   audio().ctx();
-  let role = e.clientX < window.innerWidth / 2 ? 'L' : 'R';
-  if (G.waitPlunge && !G.pulling) { role = 'P'; finger.x = e.clientX; finger.y = e.clientY; G.pullStart('drag'); launchUI(); }
-  const r = viewEl.getBoundingClientRect();
-  ptr[e.pointerId] = { role, y0: e.clientY, h: r.height, t0: G.time, maxDy: 0 };
+  ptr[e.pointerId] = { role: e.clientX < window.innerWidth / 2 ? 'L' : 'R' };
   try { app.setPointerCapture(e.pointerId); } catch (er) {}
   syncFlips();
-});
-app.addEventListener('pointermove', e => {
-  const p = ptr[e.pointerId]; if (!p || p.role !== 'P' || !G) return;
-  const dy = e.clientY - p.y0; p.maxDy = Math.max(p.maxDy, Math.abs(dy)); p.dy = dy; finger.x = e.clientX; finger.y = e.clientY;
-  G.pullDrag = dragToPull(dy, p.h);
 });
 function up(e) {
   const p = ptr[e.pointerId]; if (!p) return;
   delete ptr[e.pointerId];
-  if (p.role === 'P' && G) {
-    const dy = p.dy || 0, quick = G.time - p.t0 < 0.28;   // game time: pause-safe
-    if (p.maxDy < 8 && quick) releasePull({ tap: true });               // a plain quick tap: soft launch
-    else if (dy < 8) releasePull({ cancel: true });                      // let go near the start, or dragged up: no launch
-    else releasePull({});                                                 // rubber band: launch at the pulled strength
-  }
   syncFlips();
 }
 app.addEventListener('pointerup', up);
@@ -449,7 +588,7 @@ document.addEventListener('keydown', e => {
   audio().ctx();
   if (k === 'ArrowLeft' || k === 'z' || k === 'Z' || e.code === 'ShiftLeft') { e.preventDefault(); keys.L = true; }
   else if (k === 'ArrowRight' || k === '/' || e.code === 'ShiftRight') { e.preventDefault(); keys.R = true; }
-  else if (k === ' ' || k === 'ArrowDown' || k === 'Enter') { e.preventDefault(); if (!e.repeat) { if (G.pullStart('time')) launchUI(); else G.fire(); } }
+  else if (k === ' ' || k === 'ArrowDown' || k === 'Enter') { e.preventDefault(); if (!e.repeat) { if (G.pullStart('time')) plungerAnim(); else G.fire(); } }
   else if (k === 'ArrowUp' || k === 'n' || k === 'N') { e.preventDefault(); if (!e.repeat) G.nudge(); }
   else if (k === 'a' || k === 'A' || e.code === 'ControlLeft') { e.preventDefault(); if (!e.repeat) G.setMagna(true); }
   else return;
@@ -554,7 +693,8 @@ window.__pin = {
   mode(name) { const m = G && G.def.rules && G.def.rules.modes && G.def.rules.modes[name]; if (m) { m(G); return true; } return false; },
   render() { if (G) G.renderOnce(); },
   renderer() { return getRenderer(); },
-  ui() { launchUI(); },
+  ui() { plungerAnim(); plungerState(); },
+  plunger() { const P = plunger; return P.el ? { x: P.x, hTop: P.hTop, rod0: P.rod0, travel: P.travel, limit: P.limit, d: P.d, W: P.W, H: P.H, s: P.s, grab: P.grab.getBoundingClientRect().toJSON(), show: P.el.classList.contains('show') } : null; },
   view(m, animate) { if (m) setViewMode(m); return G ? G.view() : viewMode(); },
   // deterministic frames for screenshots: stop the live loop, step the game, draw once
   freeze() { if (G) G.pause(); },
