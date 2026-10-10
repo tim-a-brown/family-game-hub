@@ -146,8 +146,11 @@ function create2D(host) {
         g.restore();
       }
       (S.bubbles || []).forEach(b => {
-        if (b.a <= 0) return; g.globalAlpha = b.a * Math.exp(-b.y * 4) * 0.7;
-        g.strokeStyle = '#cfe0ff'; g.lineWidth = 0.012; g.beginPath(); g.arc(b.x * 0.9, -b.z * 0.9, 0.02 + b.r * 0.03, 0, 7); g.stroke();
+        if (b.a <= 0) return;
+        const va = Math.min(1, b.a) * Math.exp(-b.y * 12), br = 0.014 + b.r * 0.026, bx = b.x * 0.9, by = -b.z * 0.9;
+        if (va < 0.02) return;
+        g.globalAlpha = va * 0.5; g.strokeStyle = '#bcd2ff'; g.lineWidth = br * 0.28; g.beginPath(); g.arc(bx, by, br * 0.82, 0, 7); g.stroke();
+        g.globalAlpha = va * 0.9; g.fillStyle = '#ffffff'; g.beginPath(); g.arc(bx - br * 0.36, by - br * 0.36, br * 0.2, 0, 7); g.fill();
       });
       g.globalAlpha = 1;
       // glass sheen
