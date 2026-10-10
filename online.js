@@ -130,25 +130,26 @@
       ack: function (code, id) { return db().then(function (d) { return ref(d, code).collection('sig').doc(id).delete(); }); }
     };
   }
-  // Two tabs of one browser (tests): the same store in localStorage, changes announced on a BroadcastChannel
+  // Two tabs of one browser (tests): each table and each message under its own localStorage key, changes
+  // announced on a BroadcastChannel
   function localTransport(name) {
-    var KEY = 'online_local_' + (name || 'db'), subs = [], bc = null;
-    try { bc = new BroadcastChannel(KEY); bc.onmessage = fire; } catch (e) {}
-    function read() { var d = lsGet(KEY, null); return d && d.rooms ? d : { rooms: {}, sig: {} }; }
-    function write(d) { lsSet(KEY, d); if (bc) bc.postMessage(1); setTimeout(fire, 0); }
-    function fire() { var d = read(); subs.slice().forEach(function (s) { try { s(d); } catch (e) { console.error(e); } }); }
-    function sub(fn) { subs.push(fn); setTimeout(function () { if (subs.indexOf(fn) >= 0) fn(read()); }, 0); return function () { var i = subs.indexOf(fn); if (i >= 0) subs.splice(i, 1); }; }
+    var P = 'online_local_' + (name || 'db') + ':', subs = [], bc = null;
+    try { bc = new BroadcastChannel(P); bc.onmessage = fire; } catch (e) {}
+    function all(pre) { var out = {}; try { for (var i = 0; i < LS.length; i++) { var k = LS.key(i); if (k && k.indexOf(P + pre) === 0) { var v = lsGet(k, null); if (v) out[k.slice((P + pre).length)] = v; } } } catch (e) {} return out; }
+    function put(k, v) { if (v == null) { try { LS.removeItem(P + k); } catch (e) {} } else lsSet(P + k, v); if (bc) bc.postMessage(1); setTimeout(fire, 0); }
+    function fire() { subs.slice().forEach(function (s) { try { s(); } catch (e) { console.error(e); } }); }
+    function sub(fn) { subs.push(fn); setTimeout(function () { if (subs.indexOf(fn) >= 0) fn(); }, 0); return function () { var i = subs.indexOf(fn); if (i >= 0) subs.splice(i, 1); }; }
     return {
       kind: 'local',
-      rooms: function (game, cb) { return sub(function (d) { cb(Object.keys(d.rooms).map(function (c) { return Object.assign({ code: c }, d.rooms[c]); }).filter(function (r) { return r.game === game; })); }); },
-      create: function (code, data) { var d = read(); if (d.rooms[code]) return Promise.reject(new Error(TAKEN)); d.rooms[code] = data; write(d); return Promise.resolve(); },
-      get: function (code) { return Promise.resolve(read().rooms[code] || null); },
-      update: function (code, patch) { var d = read(); if (!d.rooms[code]) return Promise.reject(new Error('No such table')); Object.assign(d.rooms[code], patch); write(d); return Promise.resolve(); },
-      remove: function (code) { var d = read(); delete d.rooms[code]; delete d.sig[code]; write(d); return Promise.resolve(); },
-      watch: function (code, cb) { var last = '?'; return sub(function (d) { var r = d.rooms[code] || null, j = JSON.stringify(r); if (j !== last) { last = j; cb(r); } }); },
-      send: function (code, m) { var d = read(); (d.sig[code] = d.sig[code] || {})[m.id] = m; write(d); return Promise.resolve(); },
-      inbox: function (code, me, cb) { var seen = {}; return sub(function (d) { var s = d.sig[code] || {}; Object.keys(s).forEach(function (id) { if (s[id].to === me && !seen[id]) { seen[id] = 1; cb(Object.assign({}, s[id], { id: id })); } }); }); },
-      ack: function (code, id) { var d = read(); if (d.sig[code]) delete d.sig[code][id]; write(d); return Promise.resolve(); }
+      rooms: function (game, cb) { return sub(function () { var r = all('room:'); cb(Object.keys(r).map(function (c) { return Object.assign({ code: c }, r[c]); }).filter(function (x) { return x.game === game; })); }); },
+      create: function (code, data) { if (lsGet(P + 'room:' + code, null)) return Promise.reject(new Error(TAKEN)); put('room:' + code, data); return Promise.resolve(); },
+      get: function (code) { return Promise.resolve(lsGet(P + 'room:' + code, null)); },
+      update: function (code, patch) { var r = lsGet(P + 'room:' + code, null); if (!r) return Promise.reject(new Error('No such table')); put('room:' + code, Object.assign(r, patch)); return Promise.resolve(); },
+      remove: function (code) { put('room:' + code, null); return Promise.resolve(); },
+      watch: function (code, cb) { var last = '?'; return sub(function () { var r = lsGet(P + 'room:' + code, null), j = JSON.stringify(r); if (j !== last) { last = j; cb(r); } }); },
+      send: function (code, m) { put('sig:' + code + ':' + m.id, m); return Promise.resolve(); },
+      inbox: function (code, me, cb) { var seen = {}; return sub(function () { var s = all('sig:' + code + ':'); Object.keys(s).forEach(function (id) { if (s[id].to === me && !seen[id]) { seen[id] = 1; cb(Object.assign({}, s[id], { id: id })); } }); }); },
+      ack: function (code, id) { put('sig:' + code + ':' + id, null); return Promise.resolve(); }
     };
   }
   var transport = null;
@@ -248,8 +249,9 @@
       t.ack(table.code, m.id).catch(function () {});
       if (m.k !== 'offer' || table.closed) return;
       var o; try { o = JSON.parse(m.d); } catch (e) { return; }
+      if (Date.now() - (m.at || 0) > 60000) return;   // left over from an earlier try
       var from = m.from, ok = table.peers[from] ? true : table.count() + 1 >= max ? 'That table is full' : opts.accept ? opts.accept(o) : true;
-      if (ok !== true) { t.send(table.code, { id: rid(), to: from, from: me, k: 'no', d: String(ok), at: Date.now() }).catch(function () {}); return; }
+      if (ok !== true) { t.send(table.code, { id: rid(), to: from, from: me, k: 'no', d: JSON.stringify({ why: String(ok), sid: o.sid || '' }), at: Date.now() }).catch(function () {}); return; }
       if (table.peers[from]) table.peers[from].close('rejoin');
       if (pending[from]) try { pending[from].close(); } catch (e) {}
       var pc = newPc(), peer = new Peer(pc, from, String(o.name || 'Player').slice(0, 20));
@@ -269,7 +271,7 @@
         .then(function () { return pc.createAnswer(); })
         .then(function (a) { return pc.setLocalDescription(a); })
         .then(function () { return gathered(pc); })
-        .then(function () { log('host: answer ready'); return t.send(table.code, { id: rid(), to: from, from: me, k: 'answer', d: JSON.stringify({ sdp: pc.localDescription.sdp }), at: Date.now() }); })
+        .then(function () { log('host: answer ready'); return t.send(table.code, { id: rid(), to: from, from: me, k: 'answer', d: JSON.stringify({ sdp: pc.localDescription.sdp, sid: o.sid || '' }), at: Date.now() }); })
         .catch(function (e) { console.warn('[online] answer failed', e); peer.close('failed'); });
     }
     return myTag().then(function (lk) {
@@ -304,7 +306,7 @@
       if ((room.n || 1) >= (room.max || 2)) throw new Error('That table is full');
       return myTag().then(function (lk) {
         return new Promise(function (resolve, reject) {
-          var pc = newPc(), peer = new Peer(pc, room.host.dev, room.host.name), offs = [], done = false;
+          var pc = newPc(), peer = new Peer(pc, room.host.dev, room.host.name), offs = [], done = false, answered = false, sid = Math.random().toString(36).slice(2, 10);
           peer.room = room; peer.code = code;
           function finish(err) {
             if (done) return; done = true; clearTimeout(to);
@@ -323,15 +325,17 @@
             t.ack(code, m.id).catch(function () {});
             log('guest got', m.k);
             if (m.from !== room.host.dev) return;
-            if (m.k === 'no') finish(new Error(m.d || 'The table didn’t let you in'));
-            else if (m.k === 'answer') { var a; try { a = JSON.parse(m.d); } catch (e) { return; } pc.setRemoteDescription({ type: 'answer', sdp: a.sdp }).catch(function (e) { finish(e); }); }
+            var a; try { a = JSON.parse(m.d); } catch (e) { return; }
+            if (!a || a.sid !== sid) return;   // an answer to an earlier try
+            if (m.k === 'no') finish(new Error(a.why || 'The table didn’t let you in'));
+            else if (m.k === 'answer' && !answered) { answered = true; pc.setRemoteDescription({ type: 'answer', sdp: a.sdp }).catch(function (e) { finish(e); }); }
           }, function (e) { finish(e); }));
           pc.createOffer()
             .then(function (o) { return pc.setLocalDescription(o); })
             .then(function () { return gathered(pc); })
             .then(function () {
               log('guest: offer ready', pc.iceGatheringState);
-              var d = { sdp: pc.localDescription.sdp, name: String(opts.name || 'Player').slice(0, 20), v: V };
+              var d = { sdp: pc.localDescription.sdp, name: String(opts.name || 'Player').slice(0, 20), v: V, sid: sid };
               if (lk) d.lk = lk;
               if (opts.extra) d.x = opts.extra;
               return t.send(code, { id: rid(), to: room.host.dev, from: me, k: 'offer', d: JSON.stringify(d), at: Date.now() });
