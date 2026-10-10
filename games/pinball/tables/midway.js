@@ -142,13 +142,15 @@ function build(T) {
   [[243, 516], [205, 448], [281, 448]].forEach(p => T.post(p[0], p[1], { style: 'metal', r: 3, h: 40 }));
   T.ringCatch({ id: 'ring', x: RING[0], y: RING[1], r: 30, strength: 7000, hold: 1.6, active: false, toy: ringModel, animate: ringAnimate, releaseAngle: 268, releaseSpeed: 650 });
   T.mouthToy({ id: 'barker', x: BARKER[0], y: BARKER[1], facing: 268, w: 44, hold: 1.5, model: barkerModel });
-  T.wall([[266, 704], [266, 750], [314, 750], [314, 704]], { style: 'invisible', mat: 'toy', r: 2 });
+  T.wall([[266, 704], [266, 744], [290, 760], [314, 744], [314, 704]], { style: 'invisible', mat: 'toy', r: 2 });   // the back of his head is a ridge: nothing rests on it
   T.ao({ kind: 'poly', pts: [[262, 696], [318, 696], [318, 752], [262, 752]], a: 0.6, blur: 12 });
 
   // ── Right side: right orbit lane, the high striker, the alley and the ticket booth ──
   T.wall([[478, 612], [474, 588], [464, 572], [448, 562], [432, 558]], { style: 'wood', r: 4, h: 34 });
   T.wall([[432, 620], [432, 800]], { style: 'metal', h: 26 });
   T.post(432, 617, { style: 'rubber', r: 5 }); T.post(432, 556, { style: 'rubber', r: 5 });
+  // outlane deflector: a ball dropping down the far right is pushed back towards the inlane and the flipper
+  T.wall([[446, 486], [478, 514]], { style: 'wood', r: 4, h: 30 }); T.post(444, 484, { style: 'rubber', r: 5 });
   const striker = T.standupTarget({ id: 'striker', x: STRIKER[0], y: STRIKER[1], angle: 250, w: 24, label: '', color: '#e8463c', art: strikerPadArt });
   { const orig = striker.onContact.bind(striker); striker.onContact = (b, c, imp, nx, ny, w) => { striker.lastImp = imp; orig(b, c, imp, nx, ny, w); }; }
   T.wall([[395, 638], [419, 638], [419, 684], [395, 670]], { style: 'invisible', mat: 'toy', r: 3, closed: true });   // the back slopes so balls roll off into the alley

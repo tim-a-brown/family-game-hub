@@ -628,6 +628,7 @@ export function BigWheel3D(host, hooks, api) {
   function draw(now) {
     if (dead) return;
     lastDraw = now; needDraw = false;
+    if (window.PlinkoWheel.noRender) return;   // test hook: run the loop without presenting frames
     drum.rotation.x = st.th;
     pointer.rotation.z = st.b * 0.6;
     { const a = st.b * 0.6, tx = POINTER.x - POINTER.len * Math.cos(a) + 0.045, ty = -POINTER.len * Math.sin(a) - 0.03;

@@ -25,8 +25,8 @@ const DECK_Z = 46;
 const HULL = [[330, 662], [330, 700], [332, 790], [342, 840], [360, 868], [392, 878], [418, 862], [426, 840], [426, 662]];
 const DECK_POLY = [[337, 670], [337, 700], [339, 788], [348, 834], [364, 860], [392, 870], [414, 856], [420, 836], [420, 670]];
 const CANNON = [376, 768];
-const FORT = { x: 150, y: 918, face: 290 };          // centre and the way it faces
-const KRAKEN = { mx: 290, my: 585, rx: 290, ry: 628 }; // magnet and the rock
+const FORT = { x: 158, y: 912, face: 290 };          // centre and the way it faces
+const KRAKEN = { mx: 292, my: 588, rx: 314, ry: 606 }; // magnet and the head (the rock the ball bounces off)
 const CHEST = { x: 138, y: 760, w: 60, d: 44 };
 const WHIRL = [262, 880];
 const HARBOUR = [58, 452];
@@ -117,7 +117,7 @@ function build(T) {
 
   // ── Centre: the lagoon (Kraken), the whirlpool under the top lanes ──
   const rock = { onContact(b, c, imp) { if (imp > 150) { G.sfx('splash', { vol: 0.35 + 0.4 * Math.min(1, imp / 1500), x: b.x }); G.emit('rockHit', 'rock', b, { imp }); } } };
-  T.world.circ(KRAKEN.rx, KRAKEN.ry, 16, { mat: 'toy', owner: rock, id: 'rock' });
+  T.world.circ(KRAKEN.rx, KRAKEN.ry, 15, { mat: 'toy', owner: rock, id: 'rock' });
   T.ao({ kind: 'dot', x: KRAKEN.rx, y: KRAKEN.ry, r: 22, a: 0.6, blur: 10 });
   T.magnet({ id: 'kraken', x: KRAKEN.mx, y: KRAKEN.my, r: 42, strength: 7500, active: false, manual: true, event: 'kraken' });
   ['S', 'E', 'A'].forEach((ch, i) => T.standupTarget({ id: 'sea' + i, x: 258 + i * 30, y: 672 + (i === 1 ? 8 : 0), angle: 270, w: 20, label: ch, color: '#2fc0c8' }));
@@ -175,7 +175,7 @@ function build(T) {
   ins('davyL', 243, 426, { shape: 'star', w: 18, h: 18, color: '#ff6a6a' });
   T.flasher('flFort', fortPt(-40, 30)[0], fortPt(-40, 30)[1], { color: '#ff8a40', r: 9, z0: 6 });
   T.flasher('flShip', 400, 690, { color: '#ffd090', r: 9, z0: DECK_Z });
-  T.flasher('flKrak', 236, 556, { color: '#5fe8d0', r: 9, z0: 0 });
+  T.flasher('flKrak', 232, 548, { color: '#5fe8d0', r: 9, z0: 0 });
   T.flasher('flTop', 110, 1030, { color: '#9fd8ff', r: 10, z0: 40 });
   // lanterns (GI bulbs) on posts round the cove
   [[14, 360], [14, 520], [470, 360], [470, 530], [18, 860], [120, 1040], [300, 1042], [470, 1000], [300, 560]].forEach((p, i) => T.bulb('lant' + i, p[0], p[1], 30, { color: '#ffc070', r: 3, k: 3.2, on: 1 }));
@@ -493,8 +493,8 @@ function makeRules() {
     },
     grabbed(G, b) {
       const B = G.b, mag = G.comp('kraken'); G.cnt('grab');
-      if (B.davy || (B.krakenMB && B.superLit)) { B.grab = { b, t: 0, mode: 'super' }; B.superLit = false; G.jackpot(B.davy ? 300000 : 200000, 'KRAKEN SUPER JACKPOT', { color: '#5fe8d0' }); if (B.krakenMB) B.jpLit = { orbitL: 1, orbitR: 1, rigging: 1, plank: 1 }; }
-      else { B.grab = { b, t: 0, mode: 'lock' }; B.krakenLit = false; B.sea = [0, 0, 0]; G.msg('THE KRAKEN', 'HAS YOUR BALL', { anim: 'kraken', now: true }); R.say(G, 'grab', true); }
+      if (B.davy || (B.krakenMB && B.superLit)) { B.grab = { id: b.id, t: 0, mode: 'super' }; B.superLit = false; G.jackpot(B.davy ? 300000 : 200000, 'KRAKEN SUPER JACKPOT', { color: '#5fe8d0' }); if (B.krakenMB) B.jpLit = { orbitL: 1, orbitR: 1, rigging: 1, plank: 1 }; }
+      else { B.grab = { id: b.id, t: 0, mode: 'lock' }; B.krakenLit = false; B.sea = [0, 0, 0]; G.msg('THE KRAKEN', 'HAS YOUR BALL', { anim: 'kraken', now: true }); R.say(G, 'grab', true); }
       G.sfx('krakenRoar', { vol: 0.8, x: KRAKEN.mx }); G.sfx('splash', { vol: 0.8, x: KRAKEN.mx }); G.pulse('flKrak', 0.6); G.shake(0.6);
       if (G.T.R) G.T.R.burst(KRAKEN.rx, KRAKEN.ry, 10, 20, 400, '#8fe8f0');
     },
@@ -549,10 +549,10 @@ function makeRules() {
       // the Kraken's magnet is live when it is lit (or during its super jackpot / Davy Jones), never mid-grab
       mag.active = !B.grab && !G.tilted && (B.krakenLit || (B.krakenMB && B.superLit) || B.davy) && G.state === 'play';
       if (B.grab) {
-        const g = B.grab; g.t += dt;
-        if (g.b.removed || (mag.held !== g.b && g.t < 0.2)) { B.grab = null; }
-        else if (g.mode === 'lock' && g.t > 1.6 && mag.held === g.b) { mag.held = null; G.comp('deep').take(g.b, 1.1); G.sfx('splash', { vol: 0.9, x: KRAKEN.mx }); if (G.T.R) G.T.R.burst(KRAKEN.rx, KRAKEN.ry, 6, 24, 450, '#8fe8f0'); }
-        else if (g.mode === 'super' && g.t > 1.0 && mag.held === g.b) { mag.fling(80 + Math.random() * 20, 1100); }
+        const g = B.grab, gb = mag.held && mag.held.id === g.id ? mag.held : null; g.t += dt;
+        if (!gb && g.t < 0.2) { B.grab = null; }
+        else if (g.mode === 'lock' && g.t > 1.6 && gb) { mag.held = null; G.comp('deep').take(gb, 1.1); G.sfx('splash', { vol: 0.9, x: KRAKEN.mx }); if (G.T.R) G.T.R.burst(KRAKEN.rx, KRAKEN.ry, 6, 24, 450, '#8fe8f0'); }
+        else if (g.mode === 'super' && g.t > 1.0 && gb) { mag.fling(80 + Math.random() * 20, 1100); }
         if (g.t > 2.6) B.grab = null;
       }
       // storm: lightning, rain, dim GI

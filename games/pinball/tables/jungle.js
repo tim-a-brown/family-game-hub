@@ -513,3 +513,200 @@ function makeRules() {
   };
   return R;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SOUNDS (table-specific recipes; see audio.js for the synth helpers)
+// ═══════════════════════════════════════════════════════════════════════════
+let soundsDefined = false;
+function defineSounds() {
+  if (soundsDefined) return; soundsDefined = true;
+  const A = audio();
+  A.define('hiss', 0.7, S => { S.noise(0, 0.6, 0.22, { bp: 3600, bpTo: 2000, q: 2.2, att: 0.04 }); S.noise(0.02, 0.3, 0.08, { hp: 6000, att: 0.02 }); });
+  A.define('rumble', 1.0, S => { S.noise(0, 0.9, 0.3, { lp: 140, att: 0.08 }); S.osc('sine', 42, 0, 0.8, 0.3, { to: 30, att: 0.05 }); for (let i = 0; i < 5; i++) S.noise(i * 0.17, 0.05, 0.12, { bp: 420 + i * 60, q: 2 }); });
+  A.define('grind', 1.1, S => { for (let i = 0; i < 9; i++) S.noise(i * 0.11, 0.06, 0.16, { bp: 520 + (i % 3) * 140, q: 3 }); S.osc('sawtooth', 52, 0, 1.0, 0.035, { lp: 260, att: 0.05 }); S.osc('sine', 70, 0.95, 0.12, 0.3, { to: 40 }); });
+  A.define('crumble', 0.9, S => { S.noise(0, 0.12, 0.45, { lp: 900 }); S.osc('sine', 95, 0, 0.18, 0.5, { to: 45 }); for (let i = 0; i < 7; i++) S.ring(700 + (i * 311) % 900, 0.05 + i * 0.08, 0.1, 0.06, [1, 1.7, 2.9]); S.noise(0.1, 0.6, 0.12, { lp: 400 }); });
+  A.define('gong', 3.6, S => { S.bell(164.8, 0, 3.4, 0.2); S.bell(82.4, 0, 3.4, 0.1); S.bell(329.6, 0.02, 2.2, 0.06); S.noise(0, 0.05, 0.25, { bp: 900, q: 1 }); S.osc('sine', 110, 0, 0.1, 0.3, { to: 60 }); });
+  A.define('bird', 0.6, S => { S.osc('sine', 1900, 0, 0.12, 0.05, { to: 2700, att: 0.01 }); S.osc('sine', 2100, 0.2, 0.14, 0.05, { to: 2900, att: 0.01 }); S.osc('sine', 1700, 0.42, 0.1, 0.04, { to: 2400, att: 0.01 }); });
+  A.define('monkey', 0.9, S => { for (let i = 0; i < 3; i++) S.osc('sine', 480 + i * 40, i * 0.26, 0.18, 0.05, { to: 720, lp: 1500, att: 0.03 }); });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LCD background (colour display): torchlit stone
+// ═══════════════════════════════════════════════════════════════════════════
+function lcdBg(g, W, H, t) {
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#15201a'); gr.addColorStop(1, '#0a110c'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1;
+  for (let y = 8; y < H; y += 12) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); for (let x = ((y / 12) % 2) * 14; x < W; x += 28) { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 12); g.stroke(); } }
+  for (const x of [0, W]) { const k = 0.7 + 0.3 * Math.sin(t * 15 + x) * Math.sin(t * 6.1); const rg = g.createRadialGradient(x, H / 2, 0, x, H / 2, 46 * k); rg.addColorStop(0, 'rgba(255,170,70,.45)'); rg.addColorStop(1, 'rgba(255,170,70,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, H); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ART (canvas painters; table space, y up)
+// ═══════════════════════════════════════════════════════════════════════════
+function stoneFloor(g, r, x0, y0, x1, y1, size, tint, a) {
+  // flagstones: offset rows of rounded blocks with mortar, each a slightly different stone
+  for (let y = y0; y < y1; y += size) {
+    const off = ((y - y0) / size % 2) * size * 0.5;
+    for (let x = x0 - size + off; x < x1; x += size) {
+      const w = size * (0.82 + r() * 0.16), h = size * (0.78 + r() * 0.18), k = 0.75 + r() * 0.5;
+      g.fillStyle = 'rgba(' + Math.round(tint[0] * k) + ',' + Math.round(tint[1] * k) + ',' + Math.round(tint[2] * k) + ',' + a + ')';
+      g.beginPath(); g.roundRect ? g.roundRect(x + 1.5, y + 1.5, w - 3, h - 3, 2.5) : g.rect(x + 1.5, y + 1.5, w - 3, h - 3); g.fill();
+      g.fillStyle = 'rgba(255,255,255,' + (0.05 * a) + ')'; g.fillRect(x + 2.5, y + h - 4, w - 5, 1.2);
+    }
+  }
+}
+function glyphRow(g, x0, y, x1, size, color, r) {
+  g.save(); g.strokeStyle = color; g.fillStyle = color; g.lineWidth = Math.max(0.8, size * 0.12);
+  for (let x = x0; x < x1 - size; x += size * 1.5) {
+    const k = Math.floor(r() * 5);
+    g.beginPath();
+    if (k === 0) { g.rect(x, y - size / 2, size, size); g.stroke(); g.beginPath(); g.arc(x + size / 2, y, size * 0.22, 0, TAU); g.fill(); }
+    else if (k === 1) { g.moveTo(x, y + size / 2); g.lineTo(x + size / 2, y - size / 2); g.lineTo(x + size, y + size / 2); g.closePath(); g.stroke(); }
+    else if (k === 2) { for (let i = 0; i < 3; i++) { g.rect(x + i * size * 0.36, y - size / 2, size * 0.25, size); } g.fill(); }
+    else if (k === 3) { g.arc(x + size / 2, y, size / 2, 0, TAU); g.stroke(); g.beginPath(); g.moveTo(x, y); g.lineTo(x + size, y); g.stroke(); }
+    else { g.moveTo(x, y - size / 2); g.lineTo(x + size, y - size / 2); g.lineTo(x, y + size / 2); g.lineTo(x + size, y + size / 2); g.stroke(); }
+  }
+  g.restore();
+}
+function leaves(g, x, y, s, dir, n, seed) {
+  const r = rng(seed || 3);
+  for (let i = 0; i < n; i++) {
+    const a = (r() - 0.5) * 1.6 + (dir > 0 ? 0 : PI), len = s * (0.6 + r() * 0.6), w = len * 0.34;
+    g.save(); g.translate(x + (r() - 0.5) * s * 0.6, y + (r() - 0.5) * s * 0.8); g.rotate(a);
+    const gr = g.createLinearGradient(0, 0, len, 0); gr.addColorStop(0, 'rgba(40,110,50,.85)'); gr.addColorStop(1, 'rgba(110,200,90,.8)');
+    g.fillStyle = gr; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(len * 0.5, -w, len, 0); g.quadraticCurveTo(len * 0.5, w, 0, 0); g.fill();
+    g.strokeStyle = 'rgba(20,60,30,.6)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(0, 0); g.lineTo(len * 0.95, 0); g.stroke();
+    for (let k = 1; k < 5; k++) { g.beginPath(); g.moveTo(len * k / 5, 0); g.lineTo(len * (k / 5 + 0.1), -w * 0.5); g.moveTo(len * k / 5, 0); g.lineTo(len * (k / 5 + 0.1), w * 0.5); g.stroke(); }
+    g.restore();
+  }
+}
+function vine(g, pts, w, r) {
+  g.save(); g.strokeStyle = '#3b6a2e'; g.lineWidth = w; g.lineCap = 'round'; g.lineJoin = 'round';
+  g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke();
+  g.strokeStyle = 'rgba(120,200,100,.45)'; g.lineWidth = w * 0.35; g.stroke();
+  for (let i = 1; i < pts.length; i += 2) leaves(g, pts[i][0], pts[i][1], w * 5, i % 4 < 2 ? 1 : -1, 2, i * 7);
+  g.restore();
+}
+function paintPlayfield(P) {
+  const g = P.ctx, W = P.W, L = P.L, r = rng(17);
+  // jungle floor: deep green-black, lighter mossy stone up the middle
+  g.fillStyle = P.lin(0, 0, 0, L, [[0, '#0b130d'], [0.3, '#16241a'], [0.7, '#182a1a'], [1, '#0a120c']]); g.fillRect(0, 0, W, L);
+  // the paved temple way: flagstones from the apron to the altar, mossy at the edges
+  stoneFloor(g, rng(3), 40, 100, 480, 1060, 44, [120, 114, 96], 0.55);
+  // moss and damp patches
+  for (let i = 0; i < 26; i++) { P.glow(r() * W, 120 + r() * 900, 30 + r() * 70, '#2f7a3a', 0.1 + r() * 0.12); }
+  for (let i = 0; i < 18; i++) { P.glow(r() * W, 120 + r() * 900, 20 + r() * 40, '#8fd070', 0.05 + r() * 0.06); }
+  // the gorge: both orbit lanes are a deep chasm with mist, and the boulder's track across the middle
+  const chasm = (x0, x1) => { g.fillStyle = P.lin(x0, 0, x1, 0, [[0, 'rgba(6,10,14,.95)'], [0.5, 'rgba(14,22,30,.9)'], [1, 'rgba(6,10,14,.95)']]); g.fillRect(x0, 560, x1 - x0, 440); g.fillStyle = P.lin(0, 560, 0, 1000, [[0, 'rgba(160,200,210,0)'], [0.3, 'rgba(160,200,210,.12)'], [0.7, 'rgba(160,200,210,.1)'], [1, 'rgba(160,200,210,0)']]); g.fillRect(x0, 560, x1 - x0, 440); };
+  chasm(4, 64); chasm(428, 478);
+  for (let i = 0; i < 12; i++) { const y = 580 + i * 36; g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(8, y); g.lineTo(60, y + 8 + r() * 6); g.moveTo(432, y); g.lineTo(476, y + 8 + r() * 6); g.stroke(); }
+  // the boulder track: a worn groove with stone edging and the cave mouth on the left
+  g.fillStyle = 'rgba(8,8,6,.55)'; g.fillRect(0, BOULDER_Y - 31, 430, 62);
+  g.fillStyle = P.lin(0, BOULDER_Y - 31, 0, BOULDER_Y + 31, [[0, 'rgba(0,0,0,.4)'], [0.5, 'rgba(90,84,70,.25)'], [1, 'rgba(0,0,0,.4)']]); g.fillRect(0, BOULDER_Y - 31, 430, 62);
+  g.strokeStyle = 'rgba(190,180,150,.45)'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(0, BOULDER_Y - 31); g.lineTo(430, BOULDER_Y - 31); g.moveTo(0, BOULDER_Y + 31); g.lineTo(430, BOULDER_Y + 31); g.stroke();
+  for (let i = 0; i < 40; i++) { g.strokeStyle = 'rgba(0,0,0,' + (0.1 + r() * 0.2) + ')'; g.lineWidth = 1 + r() * 2; g.beginPath(); const x = r() * 420; g.moveTo(x, BOULDER_Y - 20 + r() * 40); g.lineTo(x + 10 + r() * 30, BOULDER_Y - 20 + r() * 40); g.stroke(); }
+  glyphRow(g, 44, BOULDER_Y - 37, 420, 5, 'rgba(242,193,78,.35)', rng(9));
+  P.text('THE GORGE', 36, 760, { size: 7, color: 'rgba(160,220,200,.55)', rot: 90, spacing: 2 });
+  P.text('THE GORGE', 452, 760, { size: 7, color: 'rgba(160,220,200,.55)', rot: -90, spacing: 2 });
+  // the sun stone: a carved gold ring under the spinning disc, with rays
+  for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; g.strokeStyle = 'rgba(242,193,78,.3)'; g.lineWidth = 3; g.beginPath(); g.moveTo(DISC[0] + Math.cos(a) * 46, DISC[1] + Math.sin(a) * 46); g.lineTo(DISC[0] + Math.cos(a) * 66, DISC[1] + Math.sin(a) * 66); g.stroke(); }
+  g.strokeStyle = 'rgba(242,193,78,.5)'; g.lineWidth = 2; P.circle(DISC[0], DISC[1], 47).stroke(); P.circle(DISC[0], DISC[1], 70).stroke();
+  P.arcText('SACRIFICIAL STONE', DISC[0], DISC[1], 78, 270, { size: 6, color: 'rgba(242,193,78,.7)', inside: true });
+  // relic names round the arc
+  RELICS.forEach((n, i) => { const a = deg(200 + i * 35); P.text(n, DISC[0] + Math.cos(a) * 86, DISC[1] + Math.sin(a) * 86, { size: 4.4, color: 'rgba(243,230,200,.8)', rot: 0 }); });
+  // the climb lane and the temple yard: carved steps up to the altar
+  for (let i = 0; i < 7; i++) { g.fillStyle = 'rgba(0,0,0,' + (0.18 + i * 0.03) + ')'; g.fillRect(70, 640 + i * 14, 60, 3); }
+  P.text('THE CLIMB', 100, 690, { size: 6, color: 'rgba(242,193,78,.7)', rot: 90 });
+  P.text('K-E-Y', 243, 392, { size: 7, color: 'rgba(255,210,122,.8)' });
+  P.text('KEYS TO THE TEMPLE', 243, 356, { size: 5, color: 'rgba(243,230,200,.6)' });
+  P.text('LOST CITY', 243, 440, { size: 6, color: 'rgba(242,193,78,.75)' });
+  P.text('WALLS', 420, 476, { size: 5.5, color: 'rgba(255,180,90,.8)' });
+  P.text('BOULDER RUN', 140, 512, { size: 5, color: 'rgba(255,180,90,.7)' });
+  P.text('SERPENT LOCKS', 362, 648, { size: 4.6, color: 'rgba(160,230,140,.8)', rot: -22 });
+  P.text('TEMPLE OF THE IDOL', 236, 948, { size: 6, color: 'rgba(242,193,78,.75)' });
+  // carved glyph borders along the way
+  glyphRow(g, 150, 212, 340, 7, 'rgba(242,193,78,.4)', rng(5));
+  glyphRow(g, 150, 196, 340, 7, 'rgba(242,193,78,.25)', rng(6));
+  P.text('JUNGLE TEMPLE', 243, 204, { size: 12, color: 'rgba(242,193,78,.6)', spacing: 3 });
+  // vines over the stone, hanging from the corners and along the gorge
+  vine(g, [[0, 1040], [30, 1010], [26, 960], [40, 900], [34, 840]], 3.5, r);
+  vine(g, [[520, 1040], [490, 1020], [496, 960], [486, 900], [492, 850], [484, 790]], 3.5, r);
+  vine(g, [[180, 130], [150, 150], [120, 140], [96, 160], [70, 150]], 2.5, r);
+  vine(g, [[400, 120], [420, 150], [445, 140], [470, 165]], 2.5, r);
+  leaves(g, 60, 1020, 60, 1, 5, 11); leaves(g, 470, 1030, 60, -1, 5, 12); leaves(g, 24, 160, 40, 1, 4, 13); leaves(g, 470, 160, 40, -1, 4, 14);
+  // the temple yard: packed earth and roots
+  g.fillStyle = 'rgba(60,44,28,.35)'; g.fillRect(200, 780, 230, 180);
+  for (let i = 0; i < 8; i++) { g.strokeStyle = 'rgba(40,28,16,.5)'; g.lineWidth = 2 + r() * 2; g.beginPath(); const x = 200 + r() * 230, y = 790 + r() * 150; g.moveTo(x, y); g.quadraticCurveTo(x + 20 - r() * 40, y + 20, x + 40 - r() * 80, y + 10 - r() * 20); g.stroke(); }
+}
+function paintBackglass(g, w, h) {
+  // sunset over the canopy, a stepped temple, and the gold idol's face
+  const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#2a1240'); sky.addColorStop(0.35, '#b0402a'); sky.addColorStop(0.55, '#f2a040'); sky.addColorStop(0.7, '#2a3a20'); sky.addColorStop(1, '#06100a'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
+  const sun = g.createRadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, 120); sun.addColorStop(0, 'rgba(255,240,200,1)'); sun.addColorStop(0.3, 'rgba(255,200,120,.9)'); sun.addColorStop(1, 'rgba(255,160,80,0)'); g.fillStyle = sun; g.fillRect(0, 0, w, h);
+  // canopy layers
+  const r = rng(23);
+  for (let L = 0; L < 3; L++) { g.fillStyle = ['#1e3a22', '#132a18', '#0a1a0e'][L]; g.beginPath(); g.moveTo(0, h); for (let x = 0; x <= w; x += 18) g.lineTo(x, h * (0.56 + L * 0.1) + Math.sin(x * 0.05 + L) * 14 + r() * 10); g.lineTo(w, h); g.fill(); }
+  // the temple: stepped pyramid with a glowing doorway
+  g.fillStyle = '#2a2a24'; const cx = w / 2, b = h * 0.78;
+  for (let i = 0; i < 5; i++) { const ww = 300 - i * 52, hh = 26; g.fillStyle = i % 2 ? '#3a3a30' : '#2c2c24'; g.fillRect(cx - ww / 2, b - (i + 1) * hh, ww, hh); g.fillStyle = 'rgba(255,200,120,.12)'; g.fillRect(cx - ww / 2, b - (i + 1) * hh, ww, 3); }
+  g.fillStyle = '#6a5a3a'; for (let i = 0; i < 9; i++) g.fillRect(cx - 22, b - i * 14 - 14, 44, 3);
+  const dg = g.createRadialGradient(cx, b - 150, 0, cx, b - 150, 40); dg.addColorStop(0, 'rgba(255,220,140,1)'); dg.addColorStop(1, 'rgba(255,160,60,0)'); g.fillStyle = dg; g.fillRect(cx - 40, b - 190, 80, 80);
+  // the idol's face in gold, big, over the sun
+  g.save(); g.translate(cx, h * 0.3); g.shadowColor = '#ffd27a'; g.shadowBlur = 30;
+  const gold = g.createLinearGradient(-80, -90, 80, 90); gold.addColorStop(0, '#fff0b0'); gold.addColorStop(0.5, '#f2c14e'); gold.addColorStop(1, '#9a6a1a'); g.fillStyle = gold;
+  g.beginPath(); g.moveTo(-70, 80); g.lineTo(-60, -40); g.lineTo(-30, -90); g.lineTo(30, -90); g.lineTo(60, -40); g.lineTo(70, 80); g.closePath(); g.fill();
+  g.shadowBlur = 0; g.fillStyle = '#3a2a10'; g.beginPath(); g.ellipse(-26, -10, 16, 9, 0, 0, TAU); g.ellipse(26, -10, 16, 9, 0, 0, TAU); g.fill();
+  g.fillStyle = '#ff4040'; g.beginPath(); g.arc(-26, -10, 6, 0, TAU); g.arc(26, -10, 6, 0, TAU); g.fill();
+  g.fillStyle = '#3a2a10'; g.fillRect(-34, 40, 68, 8); for (let i = 0; i < 6; i++) g.fillRect(-30 + i * 11, 40, 4, 16); g.fillRect(-6, 10, 12, 20);
+  for (let i = 0; i < 7; i++) { g.fillStyle = '#5fe0a0'; g.beginPath(); g.arc(-54 + i * 18, -70, 4, 0, TAU); g.fill(); }
+  g.restore();
+  // vines and leaves in the corners
+  g.save(); g.scale(1, 1); leaves(g, 30, 40, 90, 1, 7, 31); leaves(g, w - 30, 50, 90, -1, 7, 32); leaves(g, 20, h - 60, 70, 1, 5, 33); leaves(g, w - 20, h - 60, 70, -1, 5, 34); g.restore();
+  // title
+  g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 60px Cinzel, Georgia, serif';
+  g.shadowColor = '#ffb45a'; g.shadowBlur = 22; g.fillStyle = '#ffe6a8'; g.fillText('JUNGLE', w / 2, h * 0.86); g.font = '700 44px Cinzel, Georgia, serif'; g.fillText('TEMPLE', w / 2, h * 0.95); g.restore();
+}
+function paintApron(g, w, h) {
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#5a5648'); gr.addColorStop(0.5, '#3e3a30'); gr.addColorStop(1, '#22201a'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  const r = rng(8); for (let i = 0; i < 400; i++) { g.fillStyle = 'rgba(' + (r() < 0.5 ? '0,0,0' : '255,255,255') + ',' + (0.03 + r() * 0.06) + ')'; g.beginPath(); g.arc(r() * w, r() * h, 1 + r() * 6, 0, TAU); g.fill(); }
+  g.strokeStyle = 'rgba(242,193,78,.7)'; g.lineWidth = 4; g.strokeRect(12, 12, w - 24, h - 24);
+  glyphRow(g, 30, 36, w - 30, 14, 'rgba(242,193,78,.55)', rng(4));
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '700 50px Cinzel, Georgia'; g.fillStyle = '#ffe6a8'; g.shadowColor = '#ffb45a'; g.shadowBlur = 14; g.fillText('JUNGLE TEMPLE', w / 2, h * 0.5); g.shadowBlur = 0;
+  g.font = '700 17px Georgia'; g.fillStyle = 'rgba(243,230,200,.85)';
+  g.fillText('K-E-Y LIGHTS A RELIC  ·  THE SEALS RAISE THE ALTAR  ·  FEED THE SERPENT  ·  TILT THE IDOL CHAMBER', w / 2, h * 0.8);
+  leaves(g, 40, h * 0.5, 60, 1, 4, 41); leaves(g, w - 40, h * 0.5, 60, -1, 4, 42);
+}
+function paintSides(g, w, h) {
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#2a3a24'); gr.addColorStop(1, '#0c140e'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  const r = rng(12);
+  vine(g, [[0, 20], [120, 60], [260, 30], [400, 70], [560, 40], [720, 80], [880, 40], [1024, 70]], 5, r);
+  for (let i = 0; i < 10; i++) leaves(g, 40 + i * 100, 90, 44, i % 2 ? 1 : -1, 3, 50 + i);
+  g.fillStyle = 'rgba(242,193,78,.7)'; g.fillRect(0, 8, w, 2); g.fillStyle = '#3b6a2e'; g.fillRect(0, h - 8, w, 3);
+}
+function paintBackboard(g, w, h) {
+  // the canopy: layered leaves with shafts of light, a stone frieze along the bottom
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#0a1a10'); gr.addColorStop(1, '#1a3020'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  const r = rng(27);
+  for (let i = 0; i < 90; i++) { const x = r() * w, y = r() * h * 0.7, s = 20 + r() * 40; g.fillStyle = 'rgba(' + (40 + r() * 60 | 0) + ',' + (110 + r() * 90 | 0) + ',' + (50 + r() * 40 | 0) + ',' + (0.25 + r() * 0.3) + ')'; g.beginPath(); g.ellipse(x, y, s, s * 0.5, r() * PI, 0, TAU); g.fill(); }
+  for (let i = 0; i < 5; i++) { const x = 100 + i * 210; const sg = g.createLinearGradient(x, 0, x + 60, h); sg.addColorStop(0, 'rgba(255,230,160,.22)'); sg.addColorStop(1, 'rgba(255,230,160,0)'); g.fillStyle = sg; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 40, 0); g.lineTo(x + 140, h); g.lineTo(x + 60, h); g.fill(); }
+  for (let i = 0; i < 12; i++) leaves(g, 40 + i * 90, 30 + (i % 3) * 40, 70, i % 2 ? 1 : -1, 4, 60 + i);
+  g.fillStyle = '#3e3a30'; g.fillRect(0, h - 70, w, 70); g.fillStyle = 'rgba(0,0,0,.3)'; for (let x = 0; x < w; x += 64) g.fillRect(x, h - 70, 2, 70);
+  glyphRow(g, 20, h - 36, w - 20, 22, 'rgba(242,193,78,.6)', rng(14));
+  g.fillStyle = 'rgba(242,193,78,.6)'; g.fillRect(0, h - 72, w, 3);
+}
+function sealArt(g, w, h) { g.fillStyle = '#b89a54'; g.fillRect(0, 0, w, h); g.strokeStyle = '#4a3a14'; g.lineWidth = 6; g.beginPath(); g.arc(w / 2, h / 2, w * 0.3, 0, TAU); g.stroke(); g.fillStyle = '#4a3a14'; g.beginPath(); g.arc(w / 2, h / 2, w * 0.12, 0, TAU); g.fill(); for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; g.beginPath(); g.moveTo(w / 2 + Math.cos(a) * w * 0.34, h / 2 + Math.sin(a) * w * 0.34); g.lineTo(w / 2 + Math.cos(a) * w * 0.44, h / 2 + Math.sin(a) * w * 0.44); g.stroke(); } }
+function wallArt(g, w, h, i) { g.fillStyle = ['#8a8070', '#7a7260', '#8f8674'][i]; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, h * 0.3, w, 5); g.fillRect(0, h * 0.65, w, 5); g.fillRect(w * 0.45, 0, 5, h * 0.3); g.fillRect(w * 0.2, h * 0.3, 5, h * 0.35); g.fillRect(w * 0.7, h * 0.65, 5, h * 0.35); g.fillStyle = 'rgba(80,140,70,.5)'; g.beginPath(); g.ellipse(w * 0.3, h * 0.85, 18, 10, 0, 0, TAU); g.fill(); }
+function discArt(g, w, h) {
+  const c = w / 2; g.fillStyle = '#8a7a58'; g.beginPath(); g.arc(c, c, c, 0, TAU); g.fill();
+  const r = rng(19); for (let i = 0; i < 300; i++) { g.fillStyle = 'rgba(0,0,0,' + (0.05 + r() * 0.15) + ')'; g.beginPath(); g.arc(r() * w, r() * h, 1 + r() * 4, 0, TAU); g.fill(); }
+  g.strokeStyle = '#3a2a10'; g.lineWidth = 5; g.beginPath(); g.arc(c, c, c * 0.82, 0, TAU); g.stroke(); g.beginPath(); g.arc(c, c, c * 0.25, 0, TAU); g.stroke();
+  for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; g.beginPath(); g.moveTo(c + Math.cos(a) * c * 0.25, c + Math.sin(a) * c * 0.25); g.lineTo(c + Math.cos(a) * c * 0.82, c + Math.sin(a) * c * 0.82); g.stroke(); }
+  g.fillStyle = '#f2c14e'; g.beginPath(); g.arc(c, c, c * 0.14, 0, TAU); g.fill();
+  g.fillStyle = 'rgba(120,20,10,.6)'; g.beginPath(); g.arc(c + c * 0.5, c - c * 0.3, c * 0.09, 0, TAU); g.fill();
+}
+function totemCap(g, w, h) {
+  const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, '#ffe6a0'); gr.addColorStop(0.6, '#e0a040'); gr.addColorStop(1, '#6a3a14'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(60,30,10,.9)'; g.beginPath(); g.ellipse(w * 0.36, h * 0.4, 16, 12, 0, 0, TAU); g.ellipse(w * 0.64, h * 0.4, 16, 12, 0, 0, TAU); g.fill();
+  g.beginPath(); g.moveTo(w * 0.3, h * 0.66); g.lineTo(w * 0.7, h * 0.66); g.lineTo(w * 0.5, h * 0.84); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(60,30,10,.7)'; g.lineWidth = 6; g.beginPath(); g.arc(w / 2, h / 2, w * 0.44, 0, TAU); g.stroke();
+}

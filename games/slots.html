@@ -32,6 +32,22 @@ html:has(body.in-scene){overflow:hidden;}
 body.in-scene .bankrow .who,body.in-scene .bankrow .btn-soft{background:rgba(16,12,30,.6);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 0 0 1px rgba(255,255,255,.12),0 4px 12px rgba(0,0,0,.35);}
 body.in-scene .bankrow .net{text-shadow:0 1px 3px #000,0 0 10px rgba(0,0,0,.8);color:#fff;}
 .nogl{margin:30px 0;text-align:center;color:var(--text-2);}
+/* on-screen controls under the machine (the rendered deck buttons are decoration) */
+.ctrls{position:fixed;left:0;right:0;bottom:0;z-index:2;max-width:520px;margin:0 auto;padding:6px 16px calc(var(--safe-b) + 10px);display:flex;flex-direction:column;gap:8px;}
+.ctrls .row{display:flex;gap:8px;align-items:stretch;justify-content:center;}
+.ctrls .stepper{flex:1;min-width:0;justify-content:space-between;padding:3px;}
+.ctrls .stepper button{width:44px;height:44px;flex:none;}
+.ctrls .stepper .mid{flex:1;min-width:0;text-align:center;line-height:1.05;}
+.ctrls .stepper .mid small{display:block;font-size:.56rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ctrls .stepper .mid output{display:block;min-width:0;font-size:1.15rem;font-weight:900;font-variant-numeric:tabular-nums;}
+.ctrls .btn-max{flex:0 0 auto;min-height:50px;padding:0 14px;font-size:.95rem;white-space:nowrap;}
+.ctrls .btn-spin{min-height:58px;font-family:var(--display);font-size:1.5rem;letter-spacing:.04em;text-transform:uppercase;}
+.ctrls .btn-spin small{font-family:var(--font);font-size:.85rem;font-weight:800;letter-spacing:0;text-transform:none;opacity:.8;margin-left:8px;}
+.ctrls .btn-spin.stop{--b:var(--red);--b-ink:#fff;--b-lip:#a8202e;}
+body.in-scene .ctrls .stepper,body.in-scene .ctrls .btn-max{background:rgba(16,12,30,.62);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 0 0 1px rgba(255,255,255,.12),0 4px 12px rgba(0,0,0,.35);}
+body.in-scene .ctrls .stepper button{background:rgba(255,255,255,.14);}
+body.in-scene .ctrls .btn-max{box-shadow:0 5px 0 rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.12);}
+@media (min-width:700px){ .ctrls{max-width:640px;} }
 
 /* ── The rendered machine and its overlay ───────────────────────────────── */
 .cab3d{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block;}
@@ -1536,7 +1552,26 @@ window.dispatchEvent(new Event('cab3d-ready'));
     Cab3D.getRenderer(canvas);
     canvas.style.visibility = 'hidden'; ov.style.display = 'none';
   }
-  function hideCab() { if (cab) { cab.dispose(); cab = null; } if (canvas) { canvas.style.visibility = 'hidden'; ov.innerHTML = ''; ov.style.display = 'none'; } }
+  function hideCab() { if (cab) { cab.dispose(); cab = null; } if (canvas) { canvas.style.visibility = 'hidden'; ov.innerHTML = ''; ov.style.display = 'none'; } if (dom.ctl) { dom.ctl.el.remove(); dom.ctl = null; } }
+  // The on-screen controls: kit steppers, Max bet and a big Spin. The deck buttons only echo them.
+  function buildControls() {
+    var c = {};
+    function stepper(key, label, onMinus, onPlus) {
+      var mi = el('button', { type: 'button', 'aria-label': 'Less: ' + label, text: '−', onclick: function () { onMinus(); if (cab) cab.press(key + 'm'); } });
+      var pl = el('button', { type: 'button', 'aria-label': 'More: ' + label, text: '+', onclick: function () { onPlus(); if (cab) cab.press(key + 'p'); } });
+      var out = el('output');
+      return { node: el('div', { class: 'stepper' }, [mi, el('div', { class: 'mid' }, [el('small', { text: label }), out]), pl]), mi: mi, pl: pl, out: out };
+    }
+    var row = [];
+    if (M.lineOpts.length > 1) { c.lines = stepper('l', 'Lines', function () { changeLines(-1); }, function () { changeLines(1); }); row.push(c.lines.node); }
+    c.bet = stepper('b', M.unitIs === 'line' ? 'Per line' : M.id === 'buffalo' ? 'Credits a spin' : 'Bet a spin', function () { changeBet(-1); }, function () { changeBet(1); });
+    row.push(c.bet.node);
+    c.max = el('button', { type: 'button', class: 'btn btn-soft btn-max', text: 'Max bet', onclick: function () { if (cab) cab.press('max'); maxBet(); } }); row.push(c.max);
+    c.spin = el('button', { type: 'button', class: 'btn btn-primary btn-block btn-spin', onclick: function () { if (cab) cab.press('spin'); onSpin(); } });
+    c.el = el('div', { class: 'ctrls' }, [el('div', { class: 'row' }, row), el('div', { class: 'row' }, [c.spin])]);
+    document.body.appendChild(c.el);
+    return c;
+  }
 
   function render() {
     gen++; stopCycle(); drawn = null; showing = false; payHit = null; jpFlash = null;
@@ -1551,6 +1586,8 @@ window.dispatchEvent(new Event('cab3d-ready'));
       el('span', { class: 'net' }),
       el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('coins') + '<span>Cash out</span>', onclick: function () { cashOut(); } })]);
     app.appendChild(dom.bank);
+    document.querySelectorAll('.ctrls').forEach(function (e) { e.remove(); });
+    dom.ctl = buildControls();
     R = M.reels.map(function (strip, i) { return { i: i, p: 0, L: strip.length }; });
     Scene.show(M.id); Scene.dim(!!S.feat);
     var g = gen;
@@ -1601,9 +1638,6 @@ window.dispatchEvent(new Event('cab3d-ready'));
       var b = el('button', { type: 'button', class: 'hit', 'aria-label': label, text: label, onpointerdown: function () { if (!b.disabled && cab) cab.press(key); }, onclick: fn });
       dom.hit[key] = b; ov.appendChild(b); return b;
     }
-    if (M.lineOpts.length > 1) { hit('lm', 'Fewer lines', function () { changeLines(-1); }); hit('lp', 'More lines', function () { changeLines(1); }); }
-    hit('bm', 'Lower bet', function () { changeBet(-1); }); hit('bp', 'Raise bet', function () { changeBet(1); });
-    hit('max', 'Max bet', maxBet); hit('spin', 'Spin', function () { onSpin(); });
     if (M.id !== 'classic') hit('hud', 'Pay table', showPays); else hit('glass', 'Pay table', showPays);
     if (M.id === 'classic') { dom.handle = buildHandle(); ov.appendChild(dom.handle.el); dom.tray = el('div', { class: 'tray', 'aria-hidden': 'true' }); ov.appendChild(dom.tray); }
   }
@@ -1638,7 +1672,8 @@ window.dispatchEvent(new Event('cab3d-ready'));
     if (!cab || !canvas) return;
     var W = innerWidth, H = innerHeight, top = dom.bank ? dom.bank.getBoundingClientRect().bottom + 4 : 64;
     var sb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')) || 0;
-    cab.resize(W, H, top, H - sb - 8);
+    var bottom = dom.ctl ? dom.ctl.el.getBoundingClientRect().top - 4 : H - sb - 8;
+    cab.resize(W, H, top, bottom);
   }
   window.addEventListener('resize', function () { if (S && cab) fitCab(); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (S && cab) fitCab(); });
@@ -1700,11 +1735,14 @@ window.dispatchEvent(new Event('cab3d-ready'));
       cab.setCaps(capsStateFor(M, b, lock, stop, S.feat));
       cab.setHud(hudState());
     }
-    if (dom.hit) {
-      if (dom.hit.lm) { dom.hit.lm.disabled = lock || S.li === 0; dom.hit.lp.disabled = lock || S.li === M.lineOpts.length - 1; }
-      dom.hit.bm.disabled = lock || S.bi === 0; dom.hit.bp.disabled = lock || S.bi === M.bets.length - 1;
-      dom.hit.max.disabled = lock;
-      dom.hit.spin.setAttribute('aria-label', stop ? 'Stop the reels' : S.feat ? (S.feat.kind === 'hs' ? 'Hold and spin' : 'Free games') : 'Spin, ' + money(T) + ' a spin');
+    var c = dom.ctl;
+    if (c) {
+      if (c.lines) { c.lines.out.textContent = String(b.lines); c.lines.mi.disabled = lock || S.li === 0; c.lines.pl.disabled = lock || S.li === M.lineOpts.length - 1; }
+      c.bet.out.textContent = M.id === 'buffalo' ? String(b.bet) : money(b.bet);
+      c.bet.mi.disabled = lock || S.bi === 0; c.bet.pl.disabled = lock || S.bi === M.bets.length - 1;
+      c.max.disabled = lock;
+      c.spin.classList.toggle('stop', stop);
+      c.spin.innerHTML = stop ? 'Stop' : S.feat ? (S.feat.kind === 'hs' ? 'Hold &amp; Spin' : 'Free games') : 'Spin<small>' + money(T) + ' a spin</small>';
     }
     dom.tabs.forEach(function (t, i) { t.classList.toggle('on', i < b.lines); });
     if (dom.handle) dom.handle.el.classList.toggle('off', lock);
@@ -2543,9 +2581,9 @@ window.dispatchEvent(new Event('cab3d-ready'));
 
   // Keyboard: space or enter spins
   document.addEventListener('keydown', function (e) {
-    if (!S || !dom.hit || document.querySelector('.k-scrim,.k-win,.k-sheet')) return;
+    if (!S || !dom.ctl || document.querySelector('.k-scrim,.k-win,.k-sheet')) return;
     if (e.code === 'Space' || e.key === 'Enter') {
-      if (e.target && /INPUT|TEXTAREA|BUTTON/.test(e.target.tagName) && e.target !== dom.hit.spin) return;
+      if (e.target && /INPUT|TEXTAREA|BUTTON/.test(e.target.tagName) && e.target !== dom.ctl.spin) return;
       e.preventDefault(); if (counting) { skipNow = true; return; } onSpin();
     }
   });

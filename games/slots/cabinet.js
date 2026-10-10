@@ -472,7 +472,7 @@ export class Cabinet {
     this.W = W; this.H = H; this.frameTop = top; this.frameBottom = bottom;
     const r = getRenderer(canvasEl); r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); r.setSize(W, H, false);
     this.camera.aspect = W / H;
-    const L = this.L, span = bottom - top, cabTop = L.height + 0.05, floorY = -0.2;
+    const L = this.L, span = bottom - top, cabTop = L.height + 0.05, floorY = -0.14;
     let k = (span - 14) / (cabTop - floorY);                        // px per metre, height-bound
     const kw = (W - 24) / (L.width + 0.1); if (kw < k) k = kw;        // or width-bound
     this.kpm = k;
