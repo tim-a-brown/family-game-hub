@@ -25,7 +25,7 @@ const DECK_Z = 46;
 const HULL = [[330, 662], [330, 700], [332, 790], [342, 840], [360, 868], [392, 878], [418, 862], [426, 840], [426, 662]];
 const DECK_POLY = [[337, 670], [337, 700], [339, 788], [348, 834], [364, 860], [392, 870], [414, 856], [420, 836], [420, 670]];
 const CANNON = [376, 768];
-const FORT = { x: 150, y: 918, face: 300 };          // centre and the way it faces
+const FORT = { x: 150, y: 918, face: 290 };          // centre and the way it faces
 const KRAKEN = { mx: 290, my: 585, rx: 290, ry: 628 }; // magnet and the rock
 const CHEST = { x: 125, y: 760, w: 60, d: 44 };
 const WHIRL = [262, 880];
@@ -112,7 +112,7 @@ function build(T) {
   T.post(368, 634, { style: 'rubber', r: 5 }); T.post(416, 626, { style: 'rubber', r: 5 });
   T.wall([[416, 626], [426, 619]], { style: 'metal', h: 24 });
   T.wall([[426, 619], [426, 662]], { style: 'metal', h: 26 });
-  T.comp(new ShipCannon(T, { id: 'cannon', x: CANNON[0], y: CANNON[1], lvl: 'deck', rest: 156, min: 128, max: 178, power: 700, lob: 500, barrel: 42 }));
+  T.comp(new ShipCannon(T, { id: 'cannon', x: CANNON[0], y: CANNON[1], lvl: 'deck', rest: 150, min: 126, max: 176, power: 900, range: 180, flight: 0.5, barrel: 42 }));
 
   // ── Centre: the lagoon (Kraken), the whirlpool under the top lanes ──
   const rock = { onContact(b, c, imp) { if (imp > 150) { G.sfx('splash', { vol: 0.35 + 0.4 * Math.min(1, imp / 1500), x: b.x }); G.emit('rockHit', 'rock', b, { imp }); } } };
@@ -120,7 +120,7 @@ function build(T) {
   T.ao({ kind: 'dot', x: KRAKEN.rx, y: KRAKEN.ry, r: 22, a: 0.6, blur: 10 });
   T.magnet({ id: 'kraken', x: KRAKEN.mx, y: KRAKEN.my, r: 42, strength: 7500, active: false, manual: true, event: 'kraken' });
   ['S', 'E', 'A'].forEach((ch, i) => T.standupTarget({ id: 'sea' + i, x: 258 + i * 30, y: 672 + (i === 1 ? 8 : 0), angle: 270, w: 20, label: ch, color: '#2fc0c8' }));
-  T.wall([[232, 692], [294, 706], [330, 698]], { style: 'wood', r: 4, h: 26, color: '#3a5a58' });   // the reef behind the targets, sealed to the hull (nothing rests on their backs)
+  T.wall([[244, 690], [290, 704], [330, 716]], { style: 'wood', r: 4, h: 26, color: '#3a5a58' });   // the reef behind the targets, sealed to the hull (nothing rests on their backs)
   [0, 1, 2].forEach(i => T.insert('seal' + i, 258 + i * 30, 648 + (i === 1 ? 8 : 0), { shape: 'circle', r: 6.5, color: '#7fe8f0', text: 'SEA'[i], size: 7 }));
   T.spinningDisc({ id: 'whirl', x: WHIRL[0], y: WHIRL[1], r: 46, speed: 9, grip: 4.5, on: false, art: whirlArt, color: '#1a6a74' });
   T.world.sensor({ kind: 'circle', x: WHIRL[0], y: WHIRL[1], r: 28, owner: { onSensor(b) { G.emit('whirl', 'whirl', b); } }, id: 'whirl' });
@@ -202,11 +202,20 @@ class ShipCannon {
     this.ball = null; this.loadT = 0; this.rot = 0; this.recoil = 0; this.heldSide = null; this.smoke = 0; this.lit = 0;
   }
   receive(b) {
-    if (this.ball) { this.world.airborne(b, 326, 700, this.z0, -500, -300, 0, 'main'); b.noPath = 0.4; return; }
+    if (this.ball || this.flight) { this.world.airborne(b, 326, 700, this.z0, -500, -300, 0, 'main'); b.noPath = 0.4; return; }
     this.ball = b; this.world.hold(b, this, {}); b.hidden = false; this.loadT = 0; this.a = deg(this.o.rest);
     this.G.sfx('clank', { vol: 0.7, x: this.x }); this.G.sfx('creak', { vol: 0.35, x: this.x }); this.G.cannon = this; this.G.emit('cannonLoad', this.id, b);
   }
-  stepHeld(b) { const L = this.o.barrel - 14; b.x = this.x + Math.cos(this.a) * L * 0.4; b.y = this.y + Math.sin(this.a) * L * 0.4; b.z = this.z0 + 8; }
+  stepHeld(b, dt, h) {
+    const F = this.flight;
+    if (F && F.b === b) {
+      F.t += dt; const k = Math.min(1, F.t / F.T);
+      b.x = F.x0 + (F.x1 - F.x0) * k; b.y = F.y0 + (F.y1 - F.y0) * k; b.z = F.z0 * (1 - k) + F.apex * 4 * k * (1 - k);
+      if (k >= 1) { this.flight = null; this.world.release(b, F.x1, F.y1, Math.cos(F.a) * F.sp, Math.sin(F.a) * F.sp, 'main'); b.noPath = 0.3; b.noCap.plank = this.world.time + 1; this.G.sfx('land', { vol: 0.8, x: F.x1 }); this.G.sfx('splash', { vol: 0.5, x: F.x1 }); if (this.T.R) this.T.R.burst(F.x1, F.y1, 4, 12, 300, '#bfe8f0'); this.G.emit('cannonLand', this.id, b); }
+      return;
+    }
+    const L = this.o.barrel - 14; b.x = this.x + Math.cos(this.a) * L * 0.4; b.y = this.y + Math.sin(this.a) * L * 0.4; b.z = this.z0 + 8;
+  }
   onFlip(side, on) {
     if (!this.ball) return;
     if (on) { this.heldSide = side; this.rot = side === 'L' ? 1 : -1; }
@@ -225,9 +234,11 @@ class ShipCannon {
   fire() {
     const b = this.ball; if (!b) return; this.ball = null; this.rot = 0; this.heldSide = null; if (this.G.cannon === this) this.G.cannon = null;
     const sp = this.o.power, mx = this.x + Math.cos(this.a) * this.o.barrel, my = this.y + Math.sin(this.a) * this.o.barrel;
-    let vz = this.o.lob || 0;
-    for (const tryVz of [vz, vz * 0.5, 0, -500, -900]) { vz = tryVz; const p = this.landing(sp, vz); if (!NO_LAND.some(poly => inPoly(p[0], p[1], poly))) break; }
-    this.world.airborne(b, mx, my, this.z0 + 20, Math.cos(this.a) * sp, Math.sin(this.a) * sp, vz, 'main'); b.hidden = false; b.noPath = 0.5; b.noCap.plank = this.world.time + 1;
+    // the landing point: `range` along the aim, pulled back until it is clear of every solid block and the walls
+    let D = this.o.range, x1, y1;
+    for (let i = 0; i < 8; i++) { x1 = mx + Math.cos(this.a) * D; y1 = my + Math.sin(this.a) * D; if (D < 70 || !NO_LAND.some(poly => inPoly(x1, y1, poly)) && Math.hypot(x1 - 260, y1 - 802) < 236 && x1 > 24 && x1 < 410) break; D -= 18; }
+    this.flight = { b, t: 0, T: this.o.flight || 0.5, x0: mx, y0: my, z0: this.z0 + 20, x1, y1, apex: 40, a: this.a, sp };
+    this.world.hold(b, this, {}); b.hidden = false;
     this.recoil = 1; this.smoke = 1;
     this.G.sfx('cannon', { vol: 1, x: this.x }); this.G.shake(1.6); this.G.haptic('heavy'); this.G.flash('#ffd090', 0.35);
     if (this.T.R) { this.T.R.burst(mx, my, this.z0 + 24, 30, 600, '#ffd090'); this.T.R.flashLight(mx, my, this.z0 + 40, '#ffb060', 2.2); }
@@ -235,7 +246,9 @@ class ShipCannon {
   }
   trigger() { const b = this.world.addBall(this.x, this.y, { lvl: this.lvl }); this.receive(b); }
   onTilt() { if (this.ball) this.fire(); }
+  get busy() { return !!(this.ball || this.flight); }
   update(dt) {
+    if (this.flight && this.flight.b.removed) this.flight = null;
     if (this.ball) {
       if (this.ball.removed) { this.ball = null; if (this.G.cannon === this) this.G.cannon = null; }
       else { this.loadT += dt; this.a = Math.max(this.aMin, Math.min(this.aMax, this.a + this.rot * 1.5 * dt)); if (this.loadT > 5.5) this.fire(); }

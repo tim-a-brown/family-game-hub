@@ -64,12 +64,12 @@ function makeMats(T) {
     const b = tex(Art.brushedCanvas(256, '#9a9a9a', 11), false); b.wrapS = b.wrapT = THREE.RepeatWrapping; b.repeat.set(3, 3); woodCache.brushed = b;
   }
   const m = {
-    chrome: new THREE.MeshPhysicalMaterial({ color: 0xd9dde2, metalness: 1, roughness: 0.3, roughnessMap: woodCache.brushed, envMap: env, envMapIntensity: 1.0 }),
+    chrome: new THREE.MeshPhysicalMaterial({ color: 0xc9cdd3, metalness: 1, roughness: 0.32, roughnessMap: woodCache.brushed, envMap: env, envMapIntensity: 0.85 }),
     gold: new THREE.MeshPhysicalMaterial({ color: T.trim === 'brass' ? 0xc89a4a : 0xe0b24e, metalness: 1, roughness: 0.3, roughnessMap: woodCache.brushed, envMap: env, envMapIntensity: 1.1 }),
     walnut: new THREE.MeshPhysicalMaterial({ map: woodCache.walnut, roughness: 0.42, metalness: 0, clearcoat: 0.55, clearcoatRoughness: 0.32, envMap: env, envMapIntensity: 0.5 }),
     lacquer: new THREE.MeshPhysicalMaterial({ color: T.body || 0x222222, roughness: 0.26, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.1, envMap: env, envMapIntensity: 0.9 }),
     black: new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.62, metalness: 0.1, envMap: env, envMapIntensity: 0.4 }),
-    gloss: new THREE.MeshPhysicalMaterial({ color: 0x08080b, roughness: 0.14, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.06, envMap: env, envMapIntensity: 1 }),
+    gloss: new THREE.MeshPhysicalMaterial({ color: 0x050507, roughness: 0.18, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.08, envMap: env, envMapIntensity: 0.45 }),
     inner: new THREE.MeshStandardMaterial({ color: 0x07060a, roughness: 0.95, metalness: 0 }),
     glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: 0.03, transparent: true, opacity: 0.2, envMap: env, envMapIntensity: 2.0, clearcoat: 1, clearcoatRoughness: 0.02, depthWrite: false, side: THREE.FrontSide }),
     red: new THREE.MeshPhysicalMaterial({ color: 0xa50f1d, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.12, envMap: env, envMapIntensity: 0.8 }),
@@ -452,11 +452,11 @@ export class Cabinet {
   // ── Lights, floor, camera ──
   buildLights() {
     const a = this.o.amb || { l: '#ffb35a', r: '#ff6a3a', t: '#ffd9a0', floor: '#2a0c0c' };
-    this.scene.add(new THREE.HemisphereLight(new THREE.Color(a.t), new THREE.Color(a.floor), 0.28));
-    const key = new THREE.DirectionalLight(0xfff1dc, 3.4); key.position.set(-2.4, 3.4, 1.3); key.target.position.set(0, 0.8, 0); this.scene.add(key); this.scene.add(key.target);
+    this.scene.add(new THREE.HemisphereLight(new THREE.Color(a.t), new THREE.Color(a.floor), 0.22));
+    const key = new THREE.DirectionalLight(0xfff1dc, 4.2); key.position.set(-2.6, 3.4, 1.4); key.target.position.set(0, 0.8, 0); this.scene.add(key); this.scene.add(key.target);
     key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.camera.near = 1; key.shadow.camera.far = 8;
     key.shadow.camera.left = -1.1; key.shadow.camera.right = 1.1; key.shadow.camera.top = 1.6; key.shadow.camera.bottom = -0.6; key.shadow.bias = -0.0003; key.shadow.normalBias = 0.012; key.shadow.radius = 5;
-    const fill = new THREE.DirectionalLight(0xe8ecff, 0.45); fill.position.set(1.6, 1.2, 2.6); this.scene.add(fill);
+    const fill = new THREE.DirectionalLight(0xe8ecff, 0.35); fill.position.set(1.6, 1.2, 2.6); this.scene.add(fill);
     const rimL = new THREE.PointLight(new THREE.Color(a.l), 4, 5, 2); rimL.position.set(-1.4, 1.5, -0.6); this.scene.add(rimL);
     const rimR = new THREE.PointLight(new THREE.Color(a.r), 16, 5, 2); rimR.position.set(1.1, 1.4, -0.7); this.scene.add(rimR);
     this.flashL = new THREE.PointLight(0xffe9b0, 0, 4, 2); this.flashL.position.set(0, 1.1, 1.3); this.scene.add(this.flashL);

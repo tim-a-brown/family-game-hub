@@ -152,8 +152,9 @@ function build(T) {
   const striker = T.standupTarget({ id: 'striker', x: STRIKER[0], y: STRIKER[1], angle: 250, w: 24, label: '', color: '#e8463c', art: strikerPadArt });
   { const orig = striker.onContact.bind(striker); striker.onContact = (b, c, imp, nx, ny, w) => { striker.lastImp = imp; orig(b, c, imp, nx, ny, w); }; }
   T.wall([[395, 638], [419, 638], [419, 684], [395, 670]], { style: 'invisible', mat: 'toy', r: 3, closed: true });   // the back slopes so balls roll off into the alley
-  // a ball coming down off the arch slides along the lane gate: this wedge drops it into the right lane instead of onto the lane wall's end
-  T.wall([[483, 789], [474, 806]], { style: 'metal', h: 24 });
+  // a ball coming down off the arch slides along the lane gate and can settle on the lane wall's end: this one-way rail above the
+  // gate carries it past the wall end into the right lane (plunged balls pass through it going up)
+  T.wall([[493, 805], [468, 790]], { style: 'metal', h: 24, one: [0, 1] });
   T.ao({ kind: 'poly', pts: [[392, 634], [422, 634], [422, 688], [392, 688]], a: 0.6, blur: 10 });
   T.scoop({ id: 'booth', x: BOOTH[0], y: BOOTH[1], r: 12, eject: { angle: 252, speed: 1450 }, hold: 1.0 });
 

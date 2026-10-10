@@ -25,7 +25,7 @@ const fmt = n => Math.round(n).toLocaleString('en-US');
 // ── Layout constants ───────────────────────────────────────────────────────
 const WHEEL = { x: 134, y: 912, r: 44 };
 const ORB = [243, 600];
-const SCOOP = [330, 720];
+const SCOOP = [314, 714];
 const ROOF = { z: 56, box: [220, 920, 400, 1010] };
 const DISCS = [[175, 470, 1], [311, 470, -1]];
 const FAN = [458, 500];
@@ -46,7 +46,7 @@ export default {
     '<li><b>The Super-Loop:</b> the pink ramp on the right climbs into a full loop-the-loop and lands on the <b>Rooftop</b>. A soft shot rolls back out: hit it hard. On the rooftop the ball drops into the <b>moving launcher</b>: slide it with the flippers, then fire (FIRE button or Space) at the V-I-P targets. Knock all three down for the Rooftop jackpot; the first time lights <b>extra ball</b>. The ball rides a wireform back to your left flipper.</li>' +
     '<li><b>The Orb:</b> hit N-E-O (the three targets on the left) to light the lock. The chrome orb then catches the ball dead centre and beams it away. Three balls start <b>Orb Multiball</b>: the loop, the wheel and the orbits are jackpots, then the Orb itself is the super jackpot. When the lock is not lit, a lit Orb gives a mystery award instead.</li>' +
     '<li><b>Club nights:</b> the Backstage scoop (right of the Orb) starts a track: Neon Rain (hit the pops), Midnight Run (orbits and the spinner), Laser Show (the lit targets), Bass Drop (the wheel and the loop). Play two tracks to light extra ball at the scoop.</li>' +
-    '<li><b>Wind:</b> the DRIVE spinner on the left charges the wind: 25 spins light it at the scoop. The fan blows across the dance floor and the two discs under it spin for 30 seconds: everything scores double while the ball drifts.</li>' +
+    '<li><b>Wind:</b> the DRIVE spinner on the left charges the wind: 45 spins light it at the scoop. The fan blows across the dance floor and the two discs under it spin for 30 seconds: everything scores double while the ball drifts.</li>' +
     '<li><b>Second Wind:</b> a kickback on the left outlane, re-armed by the Rooftop and by Orb catches.</li>' +
     '<li><b>Midnight Drive:</b> play Wind, Skyline, Orb Multiball and two tracks, then shoot the scoop: four balls, 60 seconds, every shot a jackpot and the Orb the super.</li></ul>',
   theme: {
@@ -110,8 +110,9 @@ function build(T) {
   T.lower({ flipColor: '#17121f', flipRubber: C.cyan, bxColor: C.gold, saveColor: C.pink, extraColor: C.sun, bxY: 302, inColor: C.cyan, outColor: C.pink });
 
   // ── Left: THE STRIP orbit lane with the DRIVE spinner, Second Wind kickback ──
-  T.wall([[2, 612], [6, 588], [16, 570], [32, 558], [52, 552]], { style: 'wood', r: 4, h: 34, color: '#1c1428' });
-  T.post(54, 552, { style: 'rubber', r: 5 });
+  // the lane's bottom curve ends steeply so nothing can balance on its tip
+  T.wall([[2, 612], [6, 588], [16, 570], [30, 558], [44, 548], [54, 534]], { style: 'wood', r: 4, h: 34, color: '#1c1428' });
+  T.post(54, 534, { style: 'rubber', r: 5 });
   T.wall([[64, 610], [64, 830]], { style: 'metal', h: 26 });
   T.post(64, 607, { style: 'rubber', r: 5 });
   T.spinner({ id: 'spinner', x: 33, y: 700, w: 46, angle: 90, label: 'DRIVE', color: '#f2f2f8', art: spinArt });
@@ -138,14 +139,14 @@ function build(T) {
   for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; T.bulb('wb' + i, WHEEL.x + Math.cos(a) * (WHEEL.r + 5), WHEEL.y - 10, WHEEL.r + 18 + Math.sin(a) * (WHEEL.r + 5), { color: i % 2 ? C.gold : C.hot, r: 2.2, k: 5 }); }
 
   // ── Right: orbit lane, SUPER-LOOP ramp up into the corkscrew and onto the Rooftop ──
-  T.wall([[478, 612], [474, 588], [464, 572], [448, 562], [432, 558]], { style: 'wood', r: 4, h: 34, color: '#1c1428' });
+  T.wall([[478, 612], [474, 588], [464, 572], [450, 558], [436, 548], [426, 534]], { style: 'wood', r: 4, h: 34, color: '#1c1428' });
   T.wall([[426, 620], [426, 764]], { style: 'metal', h: 26 });
-  T.post(426, 617, { style: 'rubber', r: 5 }); T.post(432, 556, { style: 'rubber', r: 5 });
+  T.post(426, 617, { style: 'rubber', r: 5 }); T.post(426, 534, { style: 'rubber', r: 5 });
   T.wall([[444, 490], [478, 518]], { style: 'metal', h: 24 });
   T.post(370, 654, { style: 'rubber', r: 5 }); T.post(416, 646, { style: 'rubber', r: 5 });
   T.wall([[416, 646], [426, 619]], { style: 'metal', h: 24 });
-  const loopPts = [[392, 650, 0], [394, 690, 4], [397, 735, 20], [398, 800, 36]];
-  for (let k = 1; k <= 8; k++) { const a = k / 8 * TAU; loopPts.push([398 + 32 * k / 8, 800 + 40 * Math.sin(a), 76 - 40 * Math.cos(a)]); }
+  const loopPts = [[392, 650, 0], [394, 690, 4], [397, 735, 18], [398, 800, 32]];
+  for (let k = 1; k <= 8; k++) { const a = k / 8 * TAU; loopPts.push([398 + 32 * k / 8, 800 + 36 * Math.sin(a), 68 - 36 * Math.cos(a)]); }
   loopPts.push([432, 842, 44], [432, 882, 52], [420, 920, 56], [408, 946, 57], [398, 952, 57]);
   T.ramp({ id: 'loop', style: 'plastic', w: 36, color: '#ff4fb0', opacity: 0.3, edge: '#ff9ad6', wallH: 22, exitLvl: 'roof', entryMin: 160, minExit: 260, supports: false, pts: loopPts });
 
@@ -162,7 +163,7 @@ function build(T) {
 
   // ── Centre: THE ORB (ring-catch under a hanging chrome orb) and its lock ──
   T.post(243, 700, { style: 'metal', r: 6, h: 48 });
-  T.ringCatch({ id: 'orb', x: ORB[0], y: ORB[1], r: 38, strength: 7600, hold: 2.2, active: false, toy: orbModel, animate: orbAnimate, releaseAngle: 262, releaseSpeed: 700 });
+  T.ringCatch({ id: 'orb', x: ORB[0], y: ORB[1], r: 38, strength: 7600, hold: 2.2, active: false, toy: orbModel, animate: orbAnimate, releaseAngle: 232, releaseSpeed: 650 });
   T.ballLock({ id: 'orbLock', slots: [[243, 640, -40], [243, 660, -40], [243, 680, -40]], hidden: true, exit: { x: ORB[0], y: ORB[1] - 2, vx: 0, vy: -520 } });
   T.insert('orbL', ORB[0], ORB[1], { shape: 'ring', r: 21, ring: 4, color: C.violet });
   [0, 1, 2].forEach(i => T.insert('lock' + i, 219 + i * 24, 548, { shape: 'diamond', w: 13, h: 13, color: C.pink }));
@@ -378,8 +379,8 @@ function makeRules() {
         case 'spinStart': if (B.track === 1) R.trackHit(G, 4000); break;
         case 'spin':
           B.spins++;
-          if (!B.windLit && !B.wind && B.spins % 25 === 0) { B.windLit = true; G.msg('WIND IS LIT', 'AT THE BACKSTAGE SCOOP', { anim: 'wind' }); G.sfx('riser', { vol: 0.5 }); }
-          else if (B.spins % 25 === 0) G.add(10000);
+          if (!B.windLit && !B.wind && B.spins % 45 === 0) { B.windLit = true; G.msg('WIND IS LIT', 'AT THE BACKSTAGE SCOOP', { anim: 'wind' }); G.sfx('riser', { vol: 0.5 }); }
+          else if (B.spins % 45 === 0) G.add(10000);
           break;
         case 'target':
           if (/^neo\d$/.test(id)) {
@@ -552,7 +553,7 @@ function makeRules() {
       for (let i = 0; i < 3; i++) L['lock' + i] = B.mb ? 'fast' : i < B.locks ? 1 : (i === B.locks && B.lockLit) ? 'blink' : 0;
       L.scoopL = B.wizLit || G.ebLit || B.windLit || (trk < 0 && B.tracks.some(x => !x) && !G.mb) ? 'blink' : 0;
       for (let i = 0; i < 4; i++) L['track' + i] = B.tracks[i] ? 1 : trk === i ? 'fast' : (trk < 0 && i === B.nextTrack && !G.mb) ? 'pulse' : 0;
-      L.windL = B.wind ? 'fast' : B.windLit ? 'blink' : (B.spins % 25) / 25 * 0.8;
+      L.windL = B.wind ? 'fast' : B.windLit ? 'blink' : (B.spins % 45) / 45 * 0.8;
       L.skyL = B.sky ? 'fast' : B.skyLit ? 'blink' : B.playedSky ? 1 : 0;
       for (let i = 0; i < 3; i++) L['ride' + i] = B.sky || B.skyLit ? 'pulse' : i < (B.rides % 3) ? 1 : 0;
       L.wizL = B.wiz ? 'fast' : B.wizLit ? 'blink' : B.wizDone ? 1 : 0;
@@ -576,7 +577,7 @@ function makeRules() {
       if (B.wind) return 'WIND: EVERYTHING SCORES DOUBLE';
       if (B.lockLit) return 'SHOOT THE ORB TO LOCK A BALL';
       if (G.comp('launcher').ball) return 'SLIDE THE LAUNCHER AND FIRE AT V-I-P';
-      const opts = ['HIT N-E-O TO LIGHT THE ORB', 'SHOOT THE SUPER LOOP TO THE ROOFTOP', 'RIDE THE SKYLINE WHEEL', 'SPINS TO WIND: ' + (25 - B.spins % 25)];
+      const opts = ['HIT N-E-O TO LIGHT THE ORB', 'SHOOT THE SUPER LOOP TO THE ROOFTOP', 'RIDE THE SKYLINE WHEEL', 'SPINS TO WIND: ' + (45 - B.spins % 45)];
       if (B.windLit) opts.unshift('WIND IS LIT AT BACKSTAGE'); if (B.skyLit) opts.unshift('SKYLINE IS LIT: RIDE THE WHEEL'); if (B.track < 0 && B.tracks.some(x => !x)) opts.unshift('BACKSTAGE STARTS THE NEXT TRACK');
       return opts[Math.floor(G.time / 4) % opts.length];
     },
