@@ -1522,6 +1522,23 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .net-pal .net-pal-go{flex-basis:100%;}
 .net-pal .net-pal-go .ico{width:18px;height:18px;}
 .setup .net-peek{margin:0 0 4px;}
+/* Your games: one row per online game you have going (any device with your PIN) */
+.net-mines:empty{display:none;}
+.net-mines{gap:8px;}
+.setup .net-mines{margin:0 0 6px;}
+.net-mine{width:100%;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer;}
+.net-mine:active{transform:scale(.99);}
+.net-mine>.avatar{flex:none;}
+.net-mine .net-ic{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--w08);color:var(--text-2);}
+.net-mine .net-ic .ico{width:20px;height:20px;}
+.net-mine .net-chev{color:var(--text-3);flex:none;display:grid;}
+.net-mine .net-chev .ico{width:20px;height:20px;}
+.net-turn{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--gilt) 70%,transparent),var(--shadow-sm);background:color-mix(in srgb,var(--gilt) 12%,var(--surface));}
+.net-yours{color:var(--gilt);font-weight:900;}
+/* this game is being played on another of your devices */
+.net-else{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--safe-t,0px) + 64px);z-index:60;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);
+  padding:8px 8px 8px 14px;border-radius:999px;background:var(--surface);box-shadow:var(--shadow-md,0 8px 24px rgba(0,0,0,.4));font-weight:800;font-size:.85rem;}
+.net-else span{min-width:0;}
 .dk-opt small{display:block;color:var(--text-3);font-weight:700;font-size:.75rem;}
 .dk-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
 .dkm .dk-opt{padding:12px 6px 12px 14px;}
@@ -11251,8 +11268,19 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // end of a turn (and for opening hands) the doc names who runs the game next. When the other player
   // has to choose something mid-turn (their own ability, a discard), the question goes into the doc
   // and the answer comes back the same way.
-  var NETK = 'lorc_online', NETME = 'lorc_net_me';
-  var NET = { seat: null, owner: false, ref: null, unsub: null, lobbyOff: null, seq: 0, synced: false, pend: null, pn: 0, answered: {}, showing: null, feedSeen: 0, feedMax: 0, defs: null, next: null, pt: 0, dealt: false, errAt: 0 };
+  //
+  // Games are correspondence-style: nothing times out, and nobody has to keep a device open. The whole game (st, defs)
+  // lives in the doc, so whichever device of the player whose turn it is opens the game takes it over ("owner") and
+  // runs it from there. Every state write is a transaction that only goes through if seq is still what this device
+  // last saw, so two devices can never both run the game: the one that falls behind stops and shows the table.
+  // A question to the other player carries a checkpoint (the game as it stood before the move that raised it, what
+  // that move was, and the answers so far); if the asking device is gone by the time the answer comes, the next
+  // device to take over goes back to the checkpoint and plays the move again, feeding in the same answers.
+  //   host / guest {name, dev, deck, mat, goal, casual, lk, acct}  status waiting|joined|playing|over|closed
+  //   seq  owner (seat running the game)  st  defs  pr {id, seat, k, d, f, cp, go, ans}  an {id, v}  w  at  by (dev.seat)
+  var NETK = 'lorc_online', NETL = 'lorc_net_mine', NETME = 'lorc_net_me', WAIT_MS = 30 * 864e5;
+  var NET = { seat: null, owner: false, ref: null, unsub: null, lobbyOff: null, seq: 0, synced: false, pend: null, pn: 0, answered: {}, showing: null, feedSeen: 0, feedMax: 0, defs: null, next: null, pt: 0, dealt: false, errAt: 0,
+    cp: null, ans: [], rp: [], px: null, pgo: null, wq: null, wbusy: false, rt: 0, taking: false, retake: false, doc: null };
   NET.dev = lsGet('lorc_dev', '') || (function () { var d = Math.random().toString(36).slice(2, 10); lsSet('lorc_dev', d); return d; })();
   function netErr(e) { console.warn(e); if (Date.now() - NET.errAt > 8000) { NET.errAt = Date.now(); Kit.toast('Connection problem: ' + (e && e.message || e)); } }
   // Is this choice someone else's (and so a question for their device)? Returns their seat, or null.
@@ -11262,17 +11290,130 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return w === NET.seat ? null : w;
   }
   function abMin(ab) { return ab ? { name: ab.name || '', text: ab.text || '' } : null; }
+  function myBy() { return NET.dev + '.' + NET.seat; }
+  function byDev(d) { return String(d && d.by || '').split('.')[0]; }
+  function bySeat(d) { var p = String(d && d.by || '').split('.'); return p.length > 1 && p[1] !== '' ? +p[1] : null; }
+  function sameRef(a, b) { return !!a && !!b && a.path === b.path; }
+  // Write the game to the table (extra: other fields to set with it, kept until the next write if this one waits)
   function netPush(now, extra) {
     if (!NET.ref || (!NET.owner && !extra)) return;
     clearTimeout(NET.pt);
+    if (extra) NET.px = Object.assign(NET.px || {}, extra);
     var ref = NET.ref, go = function () {
-      if (!S || NET.ref !== ref) return;
-      var d = { st: snapshot(), seq: ++NET.seq, owner: NET.owner ? NET.seat : NET.next, at: Date.now(), by: NET.dev };
-      if (extra) for (var k in extra) d[k] = extra[k];
-      ref.update(d).catch(netErr);
+      NET.pgo = null;
+      if (!S || !sameRef(NET.ref, ref)) return;
+      var d = { st: snapshot(), owner: NET.owner ? NET.seat : NET.next, at: Date.now(), by: myBy() }, x = NET.px;
+      NET.px = null;
+      if (x) for (var k in x) d[k] = x[k];
+      netWrite(ref, d);
     };
-    if (now) go(); else NET.pt = setTimeout(go, 280);
+    if (now) go(); else { NET.pgo = go; NET.pt = setTimeout(go, 280); }
   }
+  // One write at a time, in order; writes waiting behind one in flight merge into one. Each is a transaction that
+  // only goes through while seq is what this device last saw (so a second device running the game can't overwrite it).
+  function netWrite(ref, d) {
+    if (NET.wq && sameRef(NET.wq.ref, ref)) Object.assign(NET.wq.d, d); else NET.wq = { ref: ref, d: d };
+    if (!NET.wbusy) netDrain();
+  }
+  function netDrain() {
+    var job = NET.wq; if (!job) return;
+    NET.wq = null; NET.wbusy = true;
+    var ref = job.ref, base = NET.seq;
+    ref.firestore.runTransaction(function (t) {
+      return t.get(ref).then(function (sn) {
+        var x = sn.exists ? sn.data() : null;
+        if (!x || (x.seq || 0) !== base) return { lost: x };   // the game moved on without this device
+        job.d.seq = base + 1; t.update(ref, job.d); return null;
+      });
+    }).then(function (r) {
+      NET.wbusy = false;
+      if (!r) { if (sameRef(NET.ref, ref) || !NET.ref) NET.seq = Math.max(NET.seq, base + 1); netDrain(); return; }
+      if (NET.wq && sameRef(NET.wq.ref, ref)) NET.wq = null;
+      if (sameRef(NET.ref, ref) && r.lost) netLost(r.lost);
+      else netDrain();
+    }, function (e) {
+      NET.wbusy = false; netErr(e);
+      // offline or refused: keep it (anything newer goes on top) and try again shortly
+      if (!NET.wq) NET.wq = job; else if (sameRef(NET.wq.ref, ref)) NET.wq.d = Object.assign(job.d, NET.wq.d);
+      clearTimeout(NET.rt); NET.rt = setTimeout(function () { if (!NET.wbusy) netDrain(); }, 4000);
+    });
+  }
+  // Another of your devices took this game over (or wrote first): stop running it here and show the table as it is
+  function netLost(x) {
+    tok++; resetQ(); closeOverlays(); Kit.handoff.close();
+    NET.owner = false; NET.pend = null; NET.px = null; NET.synced = false; NET.seq = x.seq || 0;
+    if (x.st) netApply(x, 'lost');
+  }
+  // Take over running the game on this device (its turn, a fresh open, or "Play here"): a transaction claims it
+  function netTake(d) {
+    if (NET.taking || !NET.ref || !d) return;
+    NET.taking = true; NET.retake = false;
+    var ref = NET.ref, base = d.seq || 0;
+    ref.firestore.runTransaction(function (t) {
+      return t.get(ref).then(function (sn) {
+        var x = sn.exists ? sn.data() : null;
+        if (!x || (x.seq || 0) !== base || x.owner !== NET.seat || x.status === 'over' || x.status === 'closed' || !x.st) return null;
+        t.update(ref, { seq: base + 1, by: myBy(), at: Date.now() });
+        return x;
+      });
+    }).then(function (x) {
+      NET.taking = false;
+      if (!x || !sameRef(NET.ref, ref) || NET.owner) return;   // it moved on: the newest copy is on its way here
+      NET.seq = base + 1; NET.owner = true; netPill(false);
+      netResume(x);
+    }, function (e) { NET.taking = false; NET.retake = true; netErr(e); });
+  }
+  // A fresh start at running the game: pick up where it stands. A question this seat asked before (on a device that's
+  // gone now) is dealt with: opening hands take the answer straight in; anything else goes back to the checkpoint.
+  function netResume(x) {
+    var pr = x.pr, answered = !!(pr && x.an && x.an.id === pr.id);
+    tok++; resetQ(); closeOverlays(); Kit.handoff.close();
+    handing = false; finishing = false;
+    NET.pend = null; NET.rp = []; NET.ans = []; NET.cp = { st: x.st, go: { k: 'flow' } };
+    if (!pr) { resumeFlow(); return; }
+    netPush(true, { pr: null, an: null });   // the old question goes (it's asked again if it still matters)
+    if (pr.k === 'mull' || !pr.cp) {
+      if (pr.k === 'mull' && answered && S && S.phase === 'mull' && !S.mull[pr.seat]) {
+        var o = pr.seat, v = {}; try { v = JSON.parse(x.an.v) || {}; } catch (e) {}
+        var hand = S.P[o].hand, back = (v.back || []).filter(function (u) { return hand.indexOf(u) >= 0; });
+        act(function () { doMull(o, back); });
+      }
+      resumeFlow(); return;
+    }
+    NET.rp = (pr.ans || []).concat(answered ? [{ f: pr.f, v: x.an.v }] : []);
+    netRewind({ st: pr.cp, go: pr.go || { k: 'flow' } });
+  }
+  // Back to a checkpoint, then play the same move again (the answers already given are used again, in order)
+  function netRewind(cp) {
+    var s = JSON.parse(cp.st), before = captureRects();
+    s.defs = NET.defs || (S && S.defs) || {}; s.hist = []; s.viewer = NET.seat;
+    S = s; uidN = Math.max(uidN, S.uidN || 0); DEF = {};
+    NET.cp = cp; NET.ans = [];
+    ui.screen = 'game'; ui.pick = null; ui.hint = null;
+    render(); animateFrom(before); netPush(true);
+    var g = cp.go || {}, main = S.phase === 'play' && S.step === 'main' && S.cur === NET.seat;
+    if (main && g.k === 'run' && g.a) runAction(g.a);
+    else if (main && g.k === 'ab' && S.cards[g.u] && actAbs(g.u)[g.i]) useAb(g.u, actAbs(g.u)[g.i]);
+    else if (main && g.k === 'end') endTurn();
+    else resumeFlow();
+  }
+  // Where the game last stood still, waiting for this player (and what they did next): the checkpoint for a question
+  function netCheck(go) {
+    if (!S || S.mode !== 'online' || !NET.owner || NET.rp.length) return;
+    NET.cp = { st: snapshot(), go: JSON.parse(JSON.stringify(go)) }; NET.ans = [];
+  }
+  function strHash(t) { var h = 5381; for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+  // "Playing on your other device": shown while another of your devices runs this game
+  function netPill(on) {
+    var p = document.getElementById('net-else');
+    if (!on) { if (p) p.remove(); return; }
+    if (p) return;
+    document.body.appendChild(el('div', { id: 'net-else', class: 'net-else' }, [el('span', { text: 'Playing on your other device' }),
+      el('button', { type: 'button', class: 'btn btn-sm btn-primary', text: 'Play here', onclick: function () { Kit.sfx('tap'); netTake(NET.doc); } })]));
+  }
+  function netRetake() { if (NET.ref && !NET.owner && NET.doc && NET.doc.owner === NET.seat && NET.doc.st && (NET.retake || document.getElementById('net-else'))) netTake(NET.doc); }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') netRetake(); });
+  window.addEventListener('online', function () { netRetake(); if (NET.wq && !NET.wbusy) netDrain(); });
   // Hand the game to the other device (their opening hand, or their turn)
   function netHand(seat) {
     tok++; resetQ(); NET.owner = false; NET.next = seat; NET.pend = null;
@@ -11302,10 +11443,17 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // Ask the other device; cb(answer) runs here when it comes back
   function netAsk(k, d, cb) {
-    var id = NET.dev + '.' + Date.now().toString(36) + '.' + (++NET.pn);
-    NET.pend = { id: id, cb: cb };
+    var dj = JSON.stringify(d), f = k + ':' + dj.length + ':' + strHash(dj);
+    // playing a move again after a takeover: the same question gets the answer it got before
+    if (NET.rp.length) {
+      var r = NET.rp.shift();
+      if (r.f === f) { NET.ans.push(r); later(function () { noUndo(); render(); cb(JSON.parse(r.v)); }, 60); return; }
+      NET.rp = [];   // the move went differently this time: ask for real
+    }
+    var id = NET.dev + '.' + Date.now().toString(36) + '.' + (++NET.pn), cp = NET.cp || {};
+    NET.pend = { id: id, cb: cb, f: f };
     render();
-    netPush(true, { pr: { id: id, seat: opp(NET.seat), k: k, d: JSON.stringify(d) }, an: null });
+    netPush(true, { pr: { id: id, seat: opp(NET.seat), k: k, d: dj, f: f, cp: cp.st || null, go: cp.go || null, ans: NET.ans.slice() }, an: null });
   }
   function netAskPick(o) {
     var all = Object.keys(S.cards), okL = all.filter(function (x) { try { return !!o.ok(x); } catch (e) { return false; } }), bad = {};
@@ -11359,9 +11507,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     render(); animateFrom(before); save();
   }
   // A new copy of the game from the other device
-  function netApply(d) {
+  // how: 'lost' when this device just stopped running the game (it doesn't try to take it straight back)
+  function netApply(d, how) {
     if (d.defs && !NET.defs) NET.defs = JSON.parse(d.defs);
-    var s = JSON.parse(d.st), first = !S || S.mode !== 'online' || ui.screen !== 'game';
+    var s = JSON.parse(d.st), first = !S || S.mode !== 'online' || ui.screen !== 'game', fresh = !NET.synced;
     NET.seq = d.seq; NET.synced = true;
     s.defs = NET.defs || {}; s.hist = []; s.viewer = NET.seat;
     if (S && S.skipTurn != null && S.skipTurn === s.turn) s.skipTurn = S.skipTurn;
@@ -11374,31 +11523,33 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (first) NET.feedSeen = S.feedN || 0;
     else (S.feed || []).forEach(function (f) { if (f.n > NET.feedSeen) netShowFeed(f); });
     NET.feedSeen = Math.max(NET.feedSeen, S.feedN || 0); NET.feedMax = Math.max(NET.feedMax, NET.feedSeen);
-    if (over && d.w) { finish(d.w); return; }
+    if (over && d.w) { netPill(false); finish(d.w); return; }
     if (d.owner === NET.seat && !NET.owner) {
-      NET.owner = true;
-      if (d.pr) NET.ref.update({ pr: null }).catch(netErr);   // a question left over from before a reload
-      resumeFlow();
-    }
+      // this seat runs the game now: take it here, unless another of your devices is already running it
+      var ws = bySeat(d), other = byDev(d) !== NET.dev && ws === NET.seat;
+      if (how !== 'lost' && (fresh || !other)) netTake(d); else netPill(true);
+    } else netPill(false);
   }
   function netOnDoc(sn) {
     if (!NET.ref || sn.ref.id !== NET.ref.id) return;
     if (!sn.exists) { var playing = ui.screen === 'game'; netStop(true); Kit.toast(playing ? 'The table was closed' : 'The other player closed the table'); S = null; showLobby(); return; }
     var d = sn.data();
     NET.pr = d.pr || null; NET.doc = d;
+    if (d.status === 'over' || d.status === 'closed') netForget(sn.ref.id);
     // each player's own mat, straight from the table (so a change shows up on the other device right away)
     var nm = [d.host && d.host.mat || null, d.guest && d.guest.mat || null];
     if (!NET.mats || NET.mats[0] !== nm[0] || NET.mats[1] !== nm[1]) { NET.mats = nm; if (S && ui.screen === 'game') render(); }
-    if (d.status === 'closed' && d.by !== NET.dev) { var who = S && S.P ? S.P[opp(NET.seat)].name : 'The other player'; netStop(true); S = null; Kit.toast(who + ' left the game'); showLobby(); return; }
+    if (d.status === 'closed' && byDev(d) !== NET.dev) { var who = S && S.P ? S.P[opp(NET.seat)].name : 'The other player'; netStop(true); S = null; Kit.toast(who + ' left the game'); showLobby(); return; }
     if (ui.screen === 'netwait' && !d.st) { if (NET.seat === 0 && d.status === 'joined' && d.guest) netDeal(d); return; }
     // the answer to my question
     if (NET.owner && NET.pend && d.an && d.an.id === NET.pend.id) {
       var p = NET.pend; NET.pend = null; noUndo();
-      NET.ref.update({ pr: null, an: null }).catch(netErr);
+      NET.ans.push({ f: p.f, v: d.an.v });
+      netPush(false, { pr: null, an: null });   // goes with the next write of the game
       render(); p.cb(JSON.parse(d.an.v));
     }
     // the game, from the other device (or this one's last copy, after a reload)
-    if (d.st && d.seq > NET.seq && (d.by !== NET.dev || !NET.synced)) netApply(d);
+    if (d.st && d.seq > NET.seq && (byDev(d) !== NET.dev || !NET.synced)) netApply(d);
     else if (d.st && !NET.synced) netApply(d);
     if (!S || S.mode !== 'online') return;
     // a question for me
@@ -11409,13 +11560,27 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     lobbyOff();
     if (NET.unsub) NET.unsub();
     NET.ref = ref; NET.seat = seat; NET.owner = false; NET.seq = 0; NET.synced = false; NET.pend = null; NET.showing = null; NET.dealt = false; NET.defs = null; NET.answered = {};
-    lsSet(NETK, { code: ref.id, seat: seat, at: Date.now() });
+    NET.cp = null; NET.ans = []; NET.rp = []; NET.px = null; NET.taking = false; NET.retake = false; NET.doc = null;
+    lsSet(NETK, { code: ref.id, seat: seat, at: Date.now() }); netRemember(ref.id, seat);
     NET.unsub = ref.onSnapshot(netOnDoc, netErr);
   }
   function netStop(forget) {
+    var code = NET.ref && NET.ref.id;
     if (NET.unsub) { NET.unsub(); NET.unsub = null; }
-    clearTimeout(NET.pt); NET.ref = null; NET.owner = false; NET.pend = null; NET.showing = null;
-    if (forget) try { localStorage.removeItem(NETK); } catch (e) {}
+    if (NET.pgo) { clearTimeout(NET.pt); var g = NET.pgo; NET.pgo = null; g(); }   // a write still waiting goes now
+    clearTimeout(NET.pt); NET.ref = null; NET.owner = false; NET.pend = null; NET.showing = null; NET.rp = []; NET.px = null;
+    netPill(false);
+    if (forget) { try { localStorage.removeItem(NETK); } catch (e) {} if (code) netForget(code); }
+  }
+  // Tables this device has sat at (a back-up for "Your games": older tables have no account tag)
+  function netRemember(code, seat) {
+    var l = lsGet(NETL, []); if (!Array.isArray(l)) l = [];
+    l = l.filter(function (x) { return x && x.code !== code; }); l.unshift({ code: code, seat: seat, at: Date.now() });
+    lsSet(NETL, l.slice(0, 12));
+  }
+  function netForget(code) {
+    var l = lsGet(NETL, []); if (Array.isArray(l)) lsSet(NETL, l.filter(function (x) { return x && x.code !== code; }));
+    var m = lsGet(NETK, null); if (m && m.code === code) try { localStorage.removeItem(NETK); } catch (e) {}
   }
   function netOver(w) { if (NET.owner) netPush(true, { w: w, status: 'over' }); netStop(true); }
   function netLeave() { var r = NET.ref; if (r) r.update({ status: 'closed', at: Date.now(), by: NET.dev }).catch(function () {}); netStop(true); }
@@ -11438,14 +11603,20 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (me.casual === 'no' && deckInks(dk.cards).length > 2) { Kit.toast('Your deck is a casual deck, and this table doesn’t allow them. Pick another deck or allow casual decks.'); Kit.sfx('bad'); return; }
     var own = window.FGHSync && FGHSync.links ? FGHSync.links().own : null;
     netDb().then(function (db) {
-      return linkTag(own && own.code).then(function (tag) {
-        var host = { name: me.name, dev: NET.dev, deck: JSON.stringify(dk), mat: myMat(), goal: me.goal === 50 ? 50 : 20, casual: me.casual === 'no' ? 'no' : 'yes' };
+      return Promise.all([linkTag(own && own.code), acctTag()]).then(function (tags) {
+        var tag = tags[0], host = { name: me.name, dev: NET.dev, deck: JSON.stringify(dk), mat: myMat(), goal: me.goal === 50 ? 50 : 20, casual: me.casual === 'no' ? 'no' : 'yes' };
         if (tag) host.lk = tag;   // so the people linked to you see it's your table
+        if (tags[1]) host.acct = tags[1];   // so your other devices find it
         var tries = 0;
         (function attempt() {
           var ref = roomCol(db).doc(netCode());
           ref.get().then(function (sn) {
-            if (sn.exists && Date.now() - (sn.data().at || 0) < 12 * 3600e3 && ++tries < 6) return attempt();
+            // never reuse the code of a table that's open or being played, however old (games can run for weeks)
+            var x = sn.exists ? sn.data() : null;
+            if (x && (x.status === 'waiting' || x.status === 'joined' || x.status === 'playing' || Date.now() - (x.at || 0) < 24 * 3600e3)) {
+              if (++tries < 8) return attempt();
+              throw new Error('Couldn’t find a free table code. Try again.');
+            }
             return ref.set({ host: host, guest: null, status: 'waiting', at: Date.now(), seq: 0, owner: 0, st: null, defs: null, pr: null, an: null, w: null, by: NET.dev })
               .then(function () { netListen(ref, 0); netWaitScreen(ref.id, true); });
           }).catch(netErr);
@@ -11484,7 +11655,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Open tables from a lobby query, newest first (not your own, not stale)
   function netRooms(qs) {
     var list = [];
-    qs.forEach(function (doc) { var d = doc.data(); if (d.host && d.host.dev !== NET.dev && Date.now() - (d.at || 0) < 6 * 3600e3) list.push({ code: doc.id, d: d }); });
+    qs.forEach(function (doc) { var d = doc.data(); if (d.host && d.host.dev !== NET.dev && Date.now() - (d.at || 0) < WAIT_MS) list.push({ code: doc.id, d: d }); });
     return list.sort(function (a, b) { return (b.d.at || 0) - (a.d.at || 0); });
   }
   // Mark each table opened by someone you've linked (r.who): by its tag, or by name for a table without one
@@ -11562,8 +11733,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var dk = netDeck(me); if (!dk) return;
     code = String(code || '').trim().toUpperCase();
     if (!/^[A-Z]{4}$/.test(code)) { Kit.toast('Table codes are 4 letters'); return; }
-    netDb().then(function (db) {
-      var ref = roomCol(db).doc(code);
+    var own = window.FGHSync && FGHSync.links ? FGHSync.links().own : null;
+    Promise.all([netDb(), linkTag(own && own.code), acctTag()]).then(function (r) {
+      var db = r[0], ref = roomCol(db).doc(code);
       return db.runTransaction(function (tx) {
         return tx.get(ref).then(function (sn) {
           if (!sn.exists) throw new Error('No open table with code ' + code);
@@ -11571,30 +11743,58 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           if (d.host && d.host.dev === NET.dev) throw new Error('That’s your own table. Join it from the other device.');
           if (d.status !== 'waiting') throw new Error('That table already has two players');
           if (d.host.casual === 'no' && deckInks(dk.cards).length > 2) throw new Error(d.host.name + '’s table doesn’t allow casual decks. Pick a deck with one or two inks to join.');
-          tx.update(ref, { guest: { name: me.name === d.host.name ? me.name + ' 2' : me.name, dev: NET.dev, deck: JSON.stringify(dk), mat: myMat() }, status: 'joined', at: Date.now(), by: NET.dev });
+          var g = { name: me.name === d.host.name ? me.name + ' 2' : me.name, dev: NET.dev, deck: JSON.stringify(dk), mat: myMat() };
+          if (r[1]) g.lk = r[1];
+          if (r[2]) g.acct = r[2];
+          tx.update(ref, { guest: g, status: 'joined', at: Date.now(), by: NET.dev });
         });
       }).then(function () { netListen(ref, 1); netWaitScreen(code, false); });
     }).catch(function (e) { Kit.toast(e.message || String(e)); });
   }
   // Both players are in: the host deals (shuffles both decks) and the game starts
   function netDeal(d) {
-    if (NET.dealt) return; NET.dealt = true;
+    if (NET.dealt) return;
+    if (DB.status !== 'ready') {   // the card library is still loading: deal once it's in
+      var w = function () { if (DB.status !== 'ready') return; DB.subs.splice(DB.subs.indexOf(w), 1); NET.dealWait = false; if (NET.ref && ui.screen === 'netwait' && NET.doc && !NET.doc.st && NET.doc.status === 'joined') netDeal(NET.doc); };
+      if (!NET.dealWait) { NET.dealWait = true; DB.subs.push(w); }
+      return;
+    }
+    NET.dealt = true;
     var hd = JSON.parse(d.host.deck), gd = JSON.parse(d.guest.deck);
     var cfg = { mode: 'online', players: [{ name: d.host.name, color: Kit.color(0) }, { name: d.guest.name, color: Kit.color(1) }], options: { first: 'random', goal: String(d.host.goal || 20), decks: d.host.casual === 'no' ? 'no' : 'yes' } };
     NET.owner = true; NET.synced = true; NET.seq = d.seq || 0;
     newGame(cfg, [{ kind: 'inline', name: hd.name, cards: hd.cards }, { kind: 'inline', name: gd.name, cards: gd.cards }]);
     NET.defs = S.defs;
+    NET.cp = { st: snapshot(), go: { k: 'flow' } }; NET.ans = [];
     netPush(true, { defs: JSON.stringify(S.defs), status: 'playing' });
   }
-  function netRejoin(mine) {
-    return netDb().then(function (db) {
-      var ref = roomCol(db).doc(mine.code);
+  // Sit back down at a table: this device's last game, one from "Your games", or a link (any device with your PIN).
+  // seat: the seat it had here (0 host, 1 guest), or null to work it out. Nothing expires a game in progress.
+  function netRejoin(mine) { return netOpen(mine.code, mine.seat); }
+  function netOpen(code, seat) {
+    return Promise.all([netDb(), acctTag()]).then(function (r) {
+      var db = r[0], tag = r[1], ref = roomCol(db).doc(code);
       return ref.get().then(function (sn) {
         var d = sn.exists ? sn.data() : null;
-        if (!d || d.status === 'over' || d.status === 'closed' || (mine.seat === 1 && !d.guest)) { try { localStorage.removeItem(NETK); } catch (e) {} return false; }
-        netListen(ref, mine.seat);
-        if (!d.st) netWaitScreen(ref.id, mine.seat === 0);
-        return true;
+        if (!d || d.status === 'over' || d.status === 'closed') { netForget(code); return false; }
+        var hs = seatIs(d.host, tag), gs = seatIs(d.guest, tag);
+        if (seat === 0 && !hs || seat === 1 && !gs) seat = null;
+        if (seat == null) seat = hs > gs ? 0 : gs > hs ? 1 : hs ? 'ask' : null;
+        if (seat == null) { netForget(code); return false; }
+        var pick = seat === 'ask' ? new Promise(function (res) {
+          Kit.sheet({ title: 'Who’s playing here?', html: '<p class="muted">Both players at this table use your PIN.</p>', actions: [
+            { label: 'Play as ' + d.host.name, primary: true, onClick: function () { res(0); } },
+            { label: 'Play as ' + d.guest.name, onClick: function () { res(1); } }], onCancel: function () { res(null); } });
+        }) : Promise.resolve(seat);
+        return pick.then(function (s) {
+          if (s == null) return false;
+          // tables from before account tags: tag this seat now so your other devices find it
+          var st = s === 0 ? d.host : d.guest;
+          if (tag && st && !st.acct) { var p = {}; p[(s === 0 ? 'host' : 'guest') + '.acct'] = tag; ref.update(p).catch(function () {}); }
+          netListen(ref, s);
+          if (!d.st) { NET.doc = d; netWaitScreen(ref.id, s === 0); }
+          return true;
+        });
       });
     });
   }
@@ -11604,9 +11804,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var wrap = el('div', { class: 'dk' });
     wrap.appendChild(el('h1', { text: host ? 'Your Table Is Open' : 'Joining the Table' }));
     if (host) { wrap.appendChild(el('p', { class: 'net-note', style: { 'text-align': 'center' }, text: 'Table code' })); wrap.appendChild(el('div', { class: 'net-code', text: code })); }
+    var hn = NET.doc && NET.doc.host && NET.doc.host.name || 'Their';
     wrap.appendChild(el('div', { class: 'net-room' }, [el('i', { class: 'spin' }), el('div', { class: 'grow' }, [
       el('b', { text: host ? 'Waiting for the other player' : 'Waiting for the cards to be dealt' }),
-      el('small', { text: host ? 'On their device: Lorcana, then Play online. Your table shows up there, or they can type the code.' : 'The game starts in a moment.' })])]));
+      el('small', { text: host ? 'On their device: Lorcana, then Play online. Your table shows up there, or they can type the code.' : Kit.poss(hn) + ' device deals the cards as soon as it opens Lorcana.' })])]));
+    wrap.appendChild(el('p', { class: 'net-note', style: { 'text-align': 'center' }, text: host ? 'No need to wait here. Your table stays open for 30 days, and the game waits for you in Your games once they join.' : 'No need to wait here. The game waits for you in Your games.' }));
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', text: 'Back to Your games', onclick: function () { netStop(false); try { localStorage.removeItem(NETK); } catch (e) {} showLobby(); } }));
     wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: host ? 'Close the table' : 'Leave', onclick: function () {
       var r = NET.ref; netStop(true);
       if (r) (host ? r.delete() : r.update({ guest: null, status: 'waiting', at: Date.now(), by: NET.dev })).catch(function () {});

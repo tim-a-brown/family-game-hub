@@ -579,6 +579,8 @@
       if (hCss) cv.style.height = hCss + 'px';
       W = cv.clientWidth || 360; Hh = cv.clientHeight || hCss || 200;
       cv.width = Math.round(W * dpr); cv.height = Math.round(Hh * dpr);
+      // A new shape (the phone turned) can change the camera: frame the picture again right away
+      if (F) { updateCam(posAll(t), 0, true); if (skipped && race && race.photo) { cam.w = photoW(); cam.x = D - cam.w * 0.165; cam.ref = null; } }
       draw();
     }
     function setField(f, rc) { F = f; race = rc || null; plan = race ? buildPlan(F, race) : null; t = -preT; said = {}; photoDone = false; doneFired = false; skipped = false; parts = []; cam = { x: -1.6, w: 15, ref: null }; draw(); }
@@ -933,7 +935,7 @@
     }
     function drawMap(xs) {
       if (Hh < 150) return;
-      var mw = Math.min(110, W * 0.28), R = OV.R, L = OV.L, k = mw / (L + 2 * R), mh = 2 * R * k, ox = 10, oy = 10;
+      var mw = wideCam() ? Math.min(170, W * 0.19) : Math.min(110, W * 0.28), R = OV.R, L = OV.L, k = mw / (L + 2 * R), mh = 2 * R * k, ox = 10, oy = 10;
       g.fillStyle = 'rgba(12,10,20,.62)'; rr(ox - 6, oy - 6, mw + 12, mh + 12, 8); g.fill();
       g.save(); g.translate(ox, oy); g.scale(k, k);
       g.lineJoin = 'round';
@@ -963,9 +965,28 @@
     }
 
     // ── Camera, dust, calls ───────────────────────────────────────────
+    // A wide screen (a phone on its side, an iPad in landscape) gets the whole-field camera: it pulls back
+    // to frame every runner, from the leader's nose to the last horse's tail, instead of following the leaders.
+    function wideCam() { return W / Hh >= 2; }
+    // Horses as tall, against the height of the picture, as they are in the upright view
+    function wideBase() { return W / (Hh * 0.115); }
+    function photoW() { return wideCam() ? wideBase() * 0.62 : 8.5; }
     function updateCam(xs, dt, snap) {
       var tx, tw, ref = 0;
-      if (t <= 0.15 || !plan || !xs.length) { tx = -1.6; tw = 15; }
+      if (wideCam()) {
+        var bw = wideBase();
+        if (t <= 0.15 || !plan || !xs.length) { tx = -1.5 + bw * 0.16; tw = bw; }
+        else {
+          var lead = Math.max.apply(null, xs), last = Math.min.apply(null, xs);
+          tw = clamp((lead - last + HL) * 1.08 + 4, bw, bw * 2.1);
+          var half = tw / 2 / 1.07;   // the nearest lanes are drawn a little wider than the middle
+          ref = (lead + last - HL) / 2;
+          tx = ref + tw * 0.06;
+          tx = Math.min(tx, last - HL - 0.6 + half);   // the last horse stays in the picture...
+          tx = Math.max(tx, lead + 1.6 - half);        // ...unless the leader would drop out of it
+          if (t > race.Tw - 0.2 && t < race.Tw + 0.7) tx = Math.max(tx, D + 2.5 - half);
+        }
+      } else if (t <= 0.15 || !plan || !xs.length) { tx = -1.6; tw = 15; }
       else {
         var ord2 = xs.map(function (x, i) { return i; }).sort(function (a, b) { return xs[b] - xs[a]; });
         var lead = xs[ord2[0]], third = xs[ord2[Math.min(2, ord2.length - 1)]];
@@ -974,7 +995,7 @@
         tx = lead + 2.4 - tw / 2;
         if (t > race.Tw - 0.2 && t < race.Tw + 0.7) tx = Math.max(tx, D - tw / 2 + 2.5);
       }
-      if (frozen > 0) { cam.x = D - 1.4; cam.w = 8.5; cam.ref = null; return; }
+      if (frozen > 0) { cam.w = photoW(); cam.x = D - cam.w * 0.165; cam.ref = null; return; }
       // Track an offset from the pack (not an absolute spot) so a fast field never outruns the camera
       if (cam.ref == null || snap) cam.ref = ref;
       var off = cam.x - cam.ref, toff = tx - ref;
@@ -1076,7 +1097,7 @@
       skipped = true; photoDone = true; frozen = 0; flash = 0;
       t = race.Tw + (race.photo ? 0 : 0.45);
       if (race.photo) t = race.Tw;
-      var xs = posAll(t); updateCam(xs, 0, true); if (race.photo) { cam.x = D - 1.4; cam.w = 8.5; cam.ref = null; }
+      var xs = posAll(t); updateCam(xs, 0, true); if (race.photo) { cam.w = photoW(); cam.x = D - cam.w * 0.165; cam.ref = null; }
       parts = [];
       finishCall();
       draw(xs); if (onTick) onTick(xs, t);
@@ -1097,7 +1118,9 @@
   // ═════════════════════════════════════════════════════════════════════════
   // Game
   // ═════════════════════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait',   // phones: the table and chip rack only fit upright
+  // Phones play either way up: upright for a roomy program, sideways for the whole-field race view
+  // (the betting screen has its own sideways layout, so nothing is ever cut off).
+  Kit.init({
     id: 'horserace', confirmNew: false,
     theme: { felt: ['#2f7d3a', '#1f5c29', '#16451e'], wood: ['#7a5232', '#4e321c'] },
     onNew: function () { VO.stop(); newGame(); },
@@ -1130,7 +1153,7 @@
       '<li><b>Exacta and Quinella</b> come from the chance of that pair finishing 1-2, less 12%. <b>Trifecta</b> from the chance of that exact 1-2-3, less 15%.</li>' +
       '<li>Prices are rounded down a little and capped at 5,000 to 1. Payouts are rounded to the nearest dollar.</li></ul>' +
       '<p>The results board shows <b>$2 payouts</b>, like the board at a real track: "Win $9.00" means a $2 Win ticket brings back $9.</p>' +
-      '<h3>The race</h3><p>The gate bell rings and they\'re off. Follow the leaders on the big screen, the whole field on the strip below it, and the little map of the oval. If it\'s too close to call, it goes to a <b>photo finish</b>. Tap <b>Skip</b> to jump to the result.</p><p>The announcer calls the race out loud (turn it off in setup, or tap the call box during a race). It stays quiet when the game sound is off. Choose its voice from <b>Announcer voice</b> in the menu; on iPhone, downloading an Enhanced or Premium voice makes it sound much better.</p>' +
+      '<h3>The race</h3><p>The gate bell rings and they\'re off. Follow the leaders on the big screen, the running order on the strip below it, and the little map of the oval. On a phone, turn it sideways to watch the whole field at once. If it\'s too close to call, it goes to a <b>photo finish</b>. Tap <b>Skip</b> to jump to the result.</p><p>The announcer calls the race out loud (turn it off in setup, or tap the call box during a race). It stays quiet when the game sound is off. Choose its voice from <b>Announcer voice</b> in the menu; on iPhone, downloading an Enhanced or Premium voice makes it sound much better.</p>' +
       '<h3>Solo or pass and play</h3><p><b>Solo</b> bets come from the casino bankroll you share with the other casino games. <b>Cash out</b> in the menu saves your session to Past races.</p>' +
       '<p><b>Pass and play</b>: everyone gets their own stake of play money (your casino bankroll is not touched). Players bet one at a time, pass the phone, then everyone watches the race together. Whoever has the most money after the last race wins.</p>'
   });
@@ -1215,13 +1238,18 @@
     R = {};
     if (!RV) RV = RaceView();
     R.hud = el('div', { class: 'hud bet-only' });
-    R.strip = el('div', { class: 'pstrip race-only keep' });
-    var twIn = el('div', { class: 'tw-in' }, [RV.el, R.hud]);
+    R.strip = el('div', { class: 'pstrip' });
+    // Phone on its side: Skip sits beside the running order, so the race gets the whole screen
+    R.skipOv = el('button', { type: 'button', class: 'btn btn-soft skip-ov', html: Kit.icon('right') + '<span>Skip</span>', 'aria-label': 'Skip to the finish', onclick: skipRace });
+    // Phone upright: a reminder that sideways shows the whole field
+    var tip = el('div', { class: 'rot-tip race-only', html: Kit.icon('phone') + '<span>Turn sideways to see the whole field</span>' });
+    R.twIn = el('div', { class: 'tw-in' }, [RV.el, R.hud, tip]);
     // Two columns on wide landscape screens (display:contents everywhere else)
     var app0 = app, colA = el('div', { class: 'hcol a' }), colB = el('div', { class: 'hcol b' });
     app0.appendChild(colA); app0.appendChild(colB);
     app = colA;
-    app.appendChild(el('div', { class: 'tw wood' }, [twIn, R.strip]));
+    R.tw = el('div', { class: 'tw wood' }, [R.twIn, el('div', { class: 'srow race-only keep' }, [R.strip, R.skipOv])]);
+    app.appendChild(R.tw);
     R.callP = el('p', { text: '' });
     R.callIco = el('span', { class: 'ico-wrap', html: Kit.icon(S.opt.voice === 'off' ? 'mute' : 'sound') });
     R.call = el('button', { type: 'button', class: 'call race-only keep', 'aria-label': 'Announcer on or off' }, [R.callIco, R.callP]);
@@ -1242,7 +1270,9 @@
     R.info = el('div', { class: 'pinfo bet-only' });
     R.prog = el('div', { class: 'prog bet-only' });
     R.slip = el('div', { class: 'slip bet-only' });
-    app.appendChild(R.types); app.appendChild(R.info); colB.appendChild(R.prog); colB.appendChild(R.slip);
+    // The pick line lives in the chip rail upright; sideways it sits above the tickets instead
+    R.pkS = el('div', { class: 'pk pk-side bet-only' });
+    app.appendChild(R.types); app.appendChild(R.info); colB.appendChild(R.prog); colB.appendChild(R.pkS); colB.appendChild(R.slip);
     // Results panels
     R.tote = el('div', { class: 'tote wood res-only' });
     R.mytk = el('div', { class: 'mytk res-only' });
@@ -1250,15 +1280,41 @@
     app = app0;
 
     RV.setField(S.field, S.race);
-    var h = S.phase === 'bet' ? 200 : S.phase === 'result' ? 230 : raceHeight();
-    RV.size(h);
     paintHud(); paintBank(); buildStrip();
-    if (S.phase === 'bet') { paintTypes(); paintProgram(); paintInfo(); paintSlip(); rail('bet'); RV.idle(); }
+    if (S.phase === 'bet') { paintTypes(); paintProgram(); paintInfo(); paintSlip(); rail('bet'); }
     else if (S.phase === 'race') { rail('race'); runRace(); }
-    else { var xs = RV.showFinal(); paintStrip(RV.ranksAt(xs)); setCall(finalLine()); paintResults(false); rail('result'); }
+    else { rail('result'); var xs = RV.showFinal(); paintStrip(RV.ranksAt(xs)); setCall(finalLine()); paintResults(false); }
+    layout();
   }
   // Phones top out at 380px; an iPad in portrait gets a taller track
   function raceHeight() { return Math.round(clamp(window.innerHeight * 0.44, 220, Math.max(380, Math.min(window.innerWidth * 0.72, window.innerHeight * 0.5)))); }
+
+  // ── Screen shapes ───────────────────────────────────────────────────────
+  // 'c': a phone on its side (short and wide): the page is exactly one screen tall, the program and the
+  //      bet slip side by side, the race fills the screen. 'w': iPad / laptop landscape: two columns, and a
+  //      race view as wide as the screen. 'p': upright, one column.
+  var MQ_C = matchMedia('(orientation:landscape) and (max-height:540px)');
+  var MQ_W = matchMedia('(orientation:landscape) and (min-width:900px) and (min-height:560px)');
+  function lmode() { return MQ_C.matches ? 'c' : MQ_W.matches ? 'w' : 'p'; }
+  function layout() {
+    if (!S || !RV || !R.tw || !document.body.contains(RV.el)) return;
+    var m = lmode(), ph = S.phase, h;
+    app.style.setProperty('--hr-h', Math.max(220, window.innerHeight - app.offsetTop) + 'px');
+    if (R.setRailH) R.setRailH();
+    if (m === 'c') h = ph === 'bet' ? 0 : R.twIn.clientHeight;   // the CSS sizes the track box; the canvas fills it
+    else if (ph === 'bet') h = 200;
+    else if (ph === 'result') h = 230;
+    else if (m === 'w') {
+      // As tall as the screen allows under the bar, with the call box, bankroll and Skip below it
+      var used = app.offsetTop + app.offsetHeight - RV.el.offsetHeight;
+      h = Math.round(clamp(window.innerHeight - used, 240, Math.max(240, R.twIn.clientWidth * 0.5)));
+    } else h = raceHeight();
+    if (h > 0) RV.size(h);
+    // Betting on a phone on its side hides the track: no need to keep drawing it
+    if (ph === 'bet') { if (h > 0 && !document.hidden) { if (RV.mode() !== 'idle') RV.idle(); } else if (RV.mode() === 'idle') RV.stop(); }
+    if (R.lastRank) paintStrip(R.lastRank);
+  }
+  function skipRace() { VO.stop(); if (RV) RV.skip(); }
   function paintHud() {
     var F = S.field;
     R.hud.innerHTML = '';
@@ -1311,12 +1367,13 @@
   }
   function paintInfo() {
     var f = S.focus != null ? S.field.horses[S.focus] : null;
-    R.info.innerHTML = BT_HELP[S.pick.type] + (f ? '<br>' + clothSpan(f.post) + ' <b>' + esc(f.name) + '</b>: ' + esc(f.tip) : '');
+    R.info.innerHTML = '<span class="bth">' + BT_HELP[S.pick.type] + '</span>' + (f ? '<br><span class="htip">' + clothSpan(f.post) + ' <b>' + esc(f.name) + '</b>: ' + esc(f.tip) + '</span>' : '');
   }
   function paintProgram() {
     var F = S.field;
     R.prog.innerHTML = '';
-    R.prog.appendChild(el('div', { class: 'ph' }, [el('h3', { text: 'Race ' + S.raceNo + ' program' }), el('span', { text: 'Tap a horse to pick it' })]));
+    R.prog.appendChild(el('div', { class: 'ph' }, [el('h3', { text: 'Race ' + S.raceNo + ' program' }), el('span', { class: 'tap', text: 'Tap a horse to pick it' }),
+      el('span', { class: 'cond', text: '6 furlongs · ' + F.surface + ', ' + F.cond.toLowerCase() })]));
     var mine = {};
     S.tickets.forEach(function (k) { if (k.p === S.turn) k.sel.forEach(function (i) { mine[i] = 1; }); });
     F.horses.forEach(function (h, i) {
@@ -1350,20 +1407,24 @@
   }
   function ticketOdds(type, sel) { return type === 'W' ? mlText(S.field.horses[sel[0]].ml) : fmtOdds(price(S.field, type, sel)); }
   function paintPick() {
-    if (!R.pk) return;
+    [R.pk, R.pkS].forEach(function (box) { if (box) paintPickIn(box); });
+  }
+  function paintPickIn(box) {
     var p = S.pick, need = NEED[p.type];
-    R.pk.innerHTML = '';
-    if (!solo()) { var pl = S.players[S.turn]; R.pk.appendChild(el('span', { class: 'av', style: { '--c': pl.color }, text: pl.name.charAt(0).toUpperCase() })); }
+    box.innerHTML = '';
+    if (!solo()) { var pl = S.players[S.turn]; box.appendChild(el('span', { class: 'av', style: { '--c': pl.color }, text: pl.name.charAt(0).toUpperCase() })); }
     if (p.sel.length < need) {
       var left = need - p.sel.length;
-      R.pk.appendChild(el('span', { class: 'grow muted', html: '<b style="color:#fff">' + BT[p.type] + '</b> · ' + (p.sel.length ? selText(p.type, p.sel) + ' · ' : '') +
+      box.appendChild(el('span', { class: 'grow muted', html: '<b style="color:#fff">' + BT[p.type] + '</b> · ' + (p.sel.length ? selText(p.type, p.sel) + ' · ' : '') +
         (need === 1 ? 'pick a horse in the program' : 'pick ' + (p.sel.length ? left + ' more' : need + ' horses') + (p.type === 'QU' ? '' : ' in order')) }));
     } else {
       var k = keyOf(S.turn, p.type, p.sel), tk = findTk(k);
-      R.pk.appendChild(el('span', { class: 'grow', html: '<b>' + BT[p.type] + '</b> ' + selText(p.type, p.sel) }));
-      R.pk.appendChild(el('span', { class: 'pay', text: tk ? money(tk.amt) + ' → ' + money(payout(tk.amt, tk.m)) : ticketOdds(p.type, p.sel) }));
+      box.appendChild(el('span', { class: 'grow', html: '<b>' + BT[p.type] + '</b> ' + selText(p.type, p.sel) }));
+      box.appendChild(el('span', { class: 'pay', text: tk ? money(tk.amt) + ' → ' + money(payout(tk.amt, tk.m)) : ticketOdds(p.type, p.sel) }));
     }
   }
+  // Whichever pick line is on screen (rail upright, side panel sideways)
+  function pkBox() { return R.pkS && R.pkS.offsetParent ? R.pkS : R.pk; }
   function paintSlip() {
     R.slip.innerHTML = '';
     var mine = S.tickets.filter(function (k) { return k.p === S.turn; });
@@ -1424,7 +1485,9 @@
     if (!btn) return;
     var row = R.prog.querySelector('.hz[data-i="' + hi + '"] .ml');
     var from = btn.getBoundingClientRect(), to = row ? row.getBoundingClientRect() : null;
-    if (!to || to.bottom < 60 || to.top > (R.railEl ? R.railEl.getBoundingClientRect().top : innerHeight)) to = R.pk.getBoundingClientRect();
+    // Fly to the horse's odds if that row is in view (the program scrolls in its own panel sideways), else to the pick line
+    var pr = R.prog.getBoundingClientRect(), rt = R.railEl ? R.railEl.getBoundingClientRect() : null;
+    if (!to || to.bottom < Math.max(60, pr.top) || to.top > pr.bottom || (rt && to.top > rt.top && to.right > rt.left)) { var pb = pkBox(); if (!pb) return; to = pb.getBoundingClientRect(); }
     var c = chipEl(v); c.classList.add('flychip'); c.style.setProperty('--cs', '40px');
     c.style.left = (from.left + from.width / 2 - 20) + 'px'; c.style.top = (from.top + from.height / 2 - 20) + 'px';
     document.body.appendChild(c);
@@ -1467,8 +1530,8 @@
   // ── Rail ─────────────────────────────────────────────────────────────────
   function rail(kind) {
     var old = document.querySelector('.rail'); if (old) old.remove();
-    R.railKind = kind; R.pk = null;
-    if (!kind) return;
+    R.railKind = kind; R.pk = null; R.setRailH = null;
+    if (!kind) { document.documentElement.style.setProperty('--rail', '0px'); return; }
     var inner = el('div', { class: 'rail-in' });
     if (kind === 'bet') {
       R.pk = el('div', { class: 'pk' });
@@ -1482,17 +1545,17 @@
       R.goB = el('button', { type: 'button', class: 'btn btn-primary go', onclick: doneBetting });
       inner.appendChild(R.pk); inner.appendChild(R.tray); inner.appendChild(el('div', { class: 'acts' }, [R.undoB, R.clrB, R.goB]));
     } else if (kind === 'race') {
-      R.goB = el('button', { type: 'button', class: 'btn btn-soft go', html: Kit.icon('right') + '<span>Skip to the finish</span>', onclick: function () { VO.stop(); if (RV) RV.skip(); } });
+      R.goB = el('button', { type: 'button', class: 'btn btn-soft go', html: Kit.icon('right') + '<span>Skip to the finish</span>', onclick: skipRace });
       inner.appendChild(el('div', { class: 'acts' }, [R.goB]));
     } else {
       var last = !solo() && (S.raceNo >= S.opt.races || allBroke());
       R.goB = el('button', { type: 'button', class: 'btn btn-primary go', html: Kit.icon(last ? 'trophy' : 'play') + '<span>' + (last ? 'Final standings' : 'Next race') + '</span>', onclick: function () { if (last) endPass(); else { if (solo() && Casino.balance() < 1) { brokeSheet(); return; } nextRace(); } } });
       inner.appendChild(el('div', { class: 'acts' }, [R.goB]));
     }
-    var r = el('div', { class: 'rail wood' }, [inner]);
+    var r = el('div', { class: 'rail wood rk-' + kind }, [inner]);
     document.body.appendChild(r); R.railEl = r;
     var setH = function () { document.documentElement.style.setProperty('--rail', r.offsetHeight + 'px'); };
-    setH(); if (window.ResizeObserver) new ResizeObserver(setH).observe(r);
+    R.setRailH = setH; setH(); if (window.ResizeObserver) new ResizeObserver(setH).observe(r);
     if (kind === 'bet') { paintPick(); paintRail(); }
   }
   function nextBettor() { return solo() ? -1 : liveBettor(S.turn + 1); }
@@ -1519,7 +1582,7 @@
         S.turn = nx; S.pick = { type: 'W', sel: [] }; S.focus = null;
         Kit.sfx('pop'); Kit.haptic('medium');
         save(); paintBank(); paintTypes(); paintProgram(); paintInfo(); paintSlip(); paintPick(); paintRail();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' }); R.prog.scrollTop = 0;
         turnCallout();
         return;
       }
@@ -1549,9 +1612,9 @@
     app.className = 'stage hr ph-race';
     paintBank();
     RV.setField(S.field, S.race);
-    RV.size(raceHeight());
     window.scrollTo({ top: 0, behavior: 'smooth' });
     rail('race');
+    layout();
     runRace();
   }
   function runRace() {
@@ -1570,15 +1633,23 @@
     var mine = {};
     S.tickets.forEach(function (k) { k.sel.forEach(function (i) { mine[i] = 1; }); });
     S.field.horses.forEach(function (h, i) {
-      var c = el('div', { class: 'sc' + (mine[i] ? ' mine' : ''), style: { background: CLOTH[i % 8][0], color: CLOTH[i % 8][1], left: (8 + i * 36) + 'px' }, text: String(h.post), title: h.name });
+      var cs = { background: CLOTH[i % 8][0], color: CLOTH[i % 8][1] };
+      var c = el('div', { class: 'sc' + (mine[i] ? ' mine' : ''), style: { background: cs.background, color: cs.color, left: (8 + i * 36) + 'px' }, title: h.name }, [
+        el('i', { style: cs, text: String(h.post) }), el('span', { text: h.name })]);
       R.strip.appendChild(c); R.sc.push(c);
     });
     paintStrip(S.field.horses.map(function (h, i) { return i; }));
   }
   function paintStrip(rank) {
     if (!R.sc) return;
-    var w = R.strip.clientWidth || 340, n = rank.length, step = Math.min(40, (w - 16 - 30) / Math.max(1, n - 1));
-    rank.forEach(function (hi, r) { var c = R.sc[hi]; if (c) { var l = Math.round(8 + r * step) + 'px'; if (c.style.left !== l) c.style.left = l; } });
+    R.lastRank = rank;
+    // Running order, leader on the left. A wide strip is a tote board: each runner's number and name.
+    var w = R.strip.clientWidth || 340, n = rank.length, tw = 30, step, nm = false;
+    if (w >= 480) { tw = Math.floor(Math.min(150, (w - 16 - (n - 1) * 4) / n)); nm = tw >= 64; if (!nm) tw = 30; }
+    step = nm ? tw + 4 : Math.min(40, (w - 16 - 30) / Math.max(1, n - 1));
+    if (R.strip.classList.contains('nm') !== nm) R.strip.classList.toggle('nm', nm);
+    var wd = tw + 'px';
+    rank.forEach(function (hi, r) { var c = R.sc[hi]; if (c) { var l = Math.round(8 + r * step) + 'px'; if (c.style.left !== l) c.style.left = l; if (c.style.width !== wd) c.style.width = wd; } });
   }
   function finalLine() {
     var w = S.field.horses[S.race.order[0]];
@@ -1588,9 +1659,9 @@
     settle();
     S.phase = 'result'; save();
     app.className = 'stage hr ph-result';
-    RV.size(230);
     paintResults(true);
     rail('result');
+    layout();
   }
 
   // ── Settlement ──────────────────────────────────────────────────────────
@@ -1876,10 +1947,11 @@
 
   var rz = null;
   window.addEventListener('resize', function () {
-    clearTimeout(rz); rz = setTimeout(function () { if (S && RV && document.body.contains(RV.el)) { RV.size(S.phase === 'bet' ? 200 : S.phase === 'result' ? 230 : raceHeight()); if (R.sc) buildStripKeep(); } }, 150);
+    clearTimeout(rz); rz = setTimeout(layout, 150);
   });
-  function buildStripKeep() { if (S && S.phase !== 'bet') paintStrip(RV.ranksAt(S.field.horses.map(function () { return 0; }))); }
-  document.addEventListener('visibilitychange', function () { if (document.hidden && RV && RV.mode() === 'idle') RV.stop(); else if (!document.hidden && S && S.phase === 'bet' && RV) RV.idle(); });
+  // Turning the phone: lay out again as soon as the new shape is known (and once more when it settles)
+  [MQ_C, MQ_W].forEach(function (q) { var f = function () { layout(); }; if (q.addEventListener) q.addEventListener('change', f); else if (q.addListener) q.addListener(f); });
+  document.addEventListener('visibilitychange', function () { if (document.hidden && RV && RV.mode() === 'idle') RV.stop(); else if (!document.hidden && S && S.phase === 'bet' && RV) layout(); });
   window.addEventListener('pageshow', function () { if (S && R.bank && S.phase === 'bet') paintBank(); });
 })();
 </script>

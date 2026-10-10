@@ -569,11 +569,13 @@ function wrapTop(V, x, z) {
 // (very low) opacity the way three.js's standard alpha blending would. The shader is patched
 // to write premultiplied colour: the faint milky body * alpha, plus the reflections at full
 // strength; and grazing angles block more of what's behind (Fresnel), like real film.
-function filmMaterial(normalTex, frostTex) {
+// side: the packs on the table only need their outer face (the hidden bottom and inner walls
+// add little but cost a lot of fill with 40 on the table); the one being unwrapped is double-sided.
+function filmMaterial(normalTex, frostTex, side) {
   const m = new THREE.MeshPhysicalMaterial({
     color: 0xffffff, metalness: 0, roughness: 0.42, roughnessMap: frostTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(1, 1),
-    alphaMap: frostTex, opacity: 0.1, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, premultipliedAlpha: true,
+    alphaMap: frostTex, opacity: 0.1, transparent: true, depthWrite: false, side, forceSinglePass: true, premultipliedAlpha: true,
     ior: 1.45, specularIntensity: 0.6, envMapIntensity: 0.2,
     iridescence: 0.55, iridescenceIOR: 1.33, iridescenceThicknessRange: [260, 700], iridescenceThicknessMap: frostTex
   });
@@ -601,7 +603,7 @@ function filmMaterial(normalTex, frostTex) {
 `)
       .replace('#include <premultiplied_alpha_fragment>', '');
   };
-  m.customProgramCacheKey = () => 'ck-film-1';
+  m.customProgramCacheKey = () => 'ck-film-' + side;
   return m;
 }
 
@@ -857,7 +859,7 @@ function mount(stage, api) {
   const crk = crinkleCanvases(4242);
   const filmN = keep(new THREE.CanvasTexture(crk.normal)), filmF = keep(new THREE.CanvasTexture(crk.frost));
   for (const t of [filmN, filmF]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; }
-  const filmMat = keep(filmMaterial(filmN, filmF));
+  const filmMat = keep(filmMaterial(filmN, filmF, THREE.FrontSide)), filmMat2 = keep(filmMaterial(filmN, filmF, THREE.DoubleSide));
   const WRAPS = [101, 202, 303, 404].map((sd) => { const V = wrapperShape(rng(sd)); const g = wrapperGeometries(V); g.forEach(keep); return { V, g }; });
 
   // ── Cookies ──────────────────────────────────────────────────────────
@@ -1263,7 +1265,7 @@ function mount(stage, api) {
       split: false, torn: false, fl: null, nudge: -9, cracked: false, handed: false, done: false,
       fortune: nextFortune(), nums: luckyNumbers(), word: WORDS[Math.floor(Math.random() * WORDS.length)],
       slip0: { p: c.slip.position.clone(), q: c.slip.quaternion.clone(), s: c.slip.scale.x } };
-    c.wrap.meshes.forEach((m) => { m.renderOrder = 6; });   // drawn after the veil, which it rises above
+    c.wrap.meshes.forEach((m) => { m.renderOrder = 6; m.material = filmMat2; });   // drawn after the veil, which it rises above; both faces show as it comes apart
     dimTo = 0.4;
     hint.classList.add('off'); more.classList.add('off');
     crinkleCtx();   // wake the audio inside the tap, so the tear can be heard on iPhone
@@ -1634,6 +1636,8 @@ function mount(stage, api) {
   const ro = new ResizeObserver(() => resize());
   ro.observe(root);
   resize();
+  // build the unwrapping film's shader now, so the first tap doesn't hitch
+  { const pre = new THREE.Mesh(WRAPS[0].g[0], filmMat2); pre.position.y = -50; scene.add(pre); try { renderer.compile(scene, camera); } catch (e) {} scene.remove(pre); }
 
   // ── Clean up ─────────────────────────────────────────────────────────
   function unmount() {
@@ -1680,8 +1684,6 @@ function mount(stage, api) {
       step: (sec) => { const n = Math.round(sec / 0.016); for (let i = 0; i < n; i++) { T += 0.016; update(0.016); } renderer.render(scene, camera); return state; },
       // average ms to draw one frame (GPU included), over n draws
       perf: (n) => { const gl = renderer.getContext(), px = new Uint8Array(4), sync = () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); n = n || 10; renderer.render(scene, camera); sync(); const a = performance.now(); for (let i = 0; i < n; i++) { renderer.render(scene, camera); sync(); } return +((performance.now() - a) / n).toFixed(2); },
-      crinkle: () => crk,
-      film: (o) => { for (const k in o) { if (k in filmMat.userData.u) filmMat.userData.u[k].value = o[k]; else if (k === 'normalScale') filmMat.normalScale.setScalar(o[k]); else if (k === 'thick') filmMat.iridescenceThicknessRange = o[k]; else filmMat[k] = o[k]; } filmMat.needsUpdate = true; },
       calls: () => { renderer.render(scene, camera); return renderer.info.render.calls; },
       screen: (i) => { const c = cookies[i || 0]; const p = c.root.position.clone().project(camera); return { x: (p.x + 1) / 2 * W, y: (1 - p.y) / 2 * H }; }
     }
