@@ -253,6 +253,61 @@
     try { if (navigator.vibrate) navigator.vibrate(HAPTIC[kind] || HAPTIC.light); } catch (e) {}
   }
 
+  // ── Audio power: any Web Audio context on the page (the kit's own and each game's) ──
+  // A running AudioContext keeps the phone's audio hardware awake even when silent. Count the
+  // sounds that are playing; 5 s after the last one ends, suspend the context. Suspend while the
+  // app is hidden too. The next sound started on it resumes it first. Contexts a game suspended
+  // itself (pause screens) are left alone. Looping music never "ends", so it is never cut off.
+  (function () {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!AC) return;
+    var SLEEP_MS = 5000, all = [];
+    function noop() {}
+    function rec(c) {
+      if (!c || !(c instanceof AC) || (OAC && c instanceof OAC) || typeof c.suspend !== 'function') return null;
+      if (!c.__kpow) { c.__kpow = { live: 0, t: 0, ours: false, hid: false }; all.push(c); }
+      return c.__kpow;
+    }
+    function sleepSoon(c, k) {
+      clearTimeout(k.t);
+      k.t = setTimeout(function () {
+        if (!k.live && c.state === 'running') { k.ours = true; try { c.suspend().catch(noop); } catch (e) {} }
+      }, SLEEP_MS);
+    }
+    function patch(proto) {
+      // each source type may define its own start (buffer sources do), so patch every one that has it
+      if (!proto || !Object.prototype.hasOwnProperty.call(proto, 'start') || Object.prototype.hasOwnProperty.call(proto, '__kpow')) return;
+      proto.__kpow = true;
+      var start = proto.start;
+      proto.start = function () {
+        var c = this.context, k = rec(c);
+        if (k) {
+          clearTimeout(k.t);
+          if ((k.ours || k.hid) && c.state === 'suspended' && !doc.hidden) { k.ours = k.hid = false; try { c.resume().catch(noop); } catch (e) {} }
+          k.live++;
+          var done = false;
+          this.addEventListener('ended', function () { if (done) return; done = true; k.live = Math.max(0, k.live - 1); if (!k.live) sleepSoon(c, k); });
+        }
+        return start.apply(this, arguments);
+      };
+    }
+    ['AudioScheduledSourceNode', 'AudioBufferSourceNode', 'OscillatorNode', 'ConstantSourceNode'].forEach(function (n) { if (window[n]) patch(window[n].prototype); });
+    doc.addEventListener('visibilitychange', function () {
+      all = all.filter(function (c) { return c.state !== 'closed'; });
+      all.forEach(function (c) {
+        var k = c.__kpow;
+        if (doc.hidden) {
+          if (c.state === 'running') { k.hid = true; clearTimeout(k.t); try { c.suspend().catch(noop); } catch (e) {} }
+        } else if (k.hid) {
+          // back in view: music that was playing picks up again; a silent context waits for its next sound
+          if (k.live) { k.hid = false; try { c.resume().catch(noop); } catch (e) {} }
+          else { k.hid = false; k.ours = true; }
+        }
+      });
+    });
+  })();
+
   // ── Sound: tiny synthesized effects, no files to download ─────────────────
   var actx = null;
   function soundOn() { return lsGet('gn_sound', '1') === '1'; }

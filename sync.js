@@ -432,7 +432,7 @@
         return;
       }
       setStatus('syncing');
-      pushNow()
+      ensureFirebase().then(function(){ return pushNow(); })
         .then(function(){ setStatus('synced'); })
         .catch(function(err){
           console.warn('[sync] push failed', err);
@@ -454,8 +454,33 @@
       console.warn('[sync] cloud copy near its size limit: left out the detail of ' + i + ' older games');
     }catch(e){}
   }
-  function pushNow(){
+  // ── Fewer round trips (battery and data) ─────────────────────────────
+  // A full sync downloads the whole account and uploads it back. Pages opened within a minute of the last
+  // full sync in this app session skip it unless something was saved since (fgh_sync_w > fgh_sync_p).
+  // Uploads are skipped when they would be identical to this device's last upload for this PIN.
+  var RECENT_MS = 60000, SIG_KEY = 'fgh_sync_sig', W_KEY = 'fgh_sync_w', P_KEY = 'fgh_sync_p', PULL_KEY = 'fgh_sync_pull_at';
+  var SS = (function(){ try{ return window.sessionStorage; }catch(e){ return null; } })();
+  function ssGet(k){ try{ return SS ? SS.getItem(k) : null; }catch(e){ return null; } }
+  function ssSet(k, v){ try{ if(SS) SS.setItem(k, v); }catch(e){} }
+  function markWrite(){ try{ LS.setItem(W_KEY, String(Date.now())); }catch(e){} }
+  function dirtySinceLastPush(){ return (Number(LS.getItem(W_KEY)) || 0) > (Number(LS.getItem(P_KEY)) || 0); }
+  function pulledRecently(){ return Date.now() - (Number(ssGet(PULL_KEY)) || 0) < RECENT_MS; }
+  function stableStr(v){
+    if(v === null || typeof v !== 'object') return JSON.stringify(v === undefined ? null : v);
+    if(Array.isArray(v)) return '[' + v.map(stableStr).join(',') + ']';
+    return '{' + Object.keys(v).sort().filter(function(k){ return v[k] !== undefined; }).map(function(k){ return JSON.stringify(k) + ':' + stableStr(v[k]); }).join(',') + '}';
+  }
+  function docSig(doc){
+    var c = {}; Object.keys(doc).forEach(function(k){ if(k !== 'updatedAt') c[k] = doc[k]; });
+    var str = pin() + '|' + stableStr(c), h1 = 0x811c9dc5, h2 = 0x2b2b2b2b;
+    for(var i = 0; i < str.length; i++){ var ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 16777619); h2 = Math.imul(h2 ^ ch, 2246822519); }
+    return (h1 >>> 0).toString(36) + '.' + (h2 >>> 0).toString(36) + '.' + str.length;
+  }
+
+  function pushNow(opts){
+    opts = opts || {};
     var ref = cloudRef(); if(!ref) return Promise.resolve();
+    var pushAt = Date.now();
     var snap = scanLocal();
     var doc = {
       hi: sanitizeForFirestore(hiToFirestore(snap.hi || {})),
@@ -489,6 +514,13 @@
       gh_keys: Object.keys(snap.gh||{}).length
     });
     fitDoc(doc);
+    var sig = docSig(doc);
+    if(!opts.force && sig === LS.getItem(SIG_KEY)){
+      console.log('[sync] push skipped: nothing changed since this device last saved');
+      try{ LS.setItem(P_KEY, String(pushAt)); }catch(e){}
+      return Promise.resolve('same');
+    }
+    function saved(r){ try{ LS.setItem(SIG_KEY, sig); LS.setItem(P_KEY, String(pushAt)); }catch(e){} return r; }
     // merge:true means fields not in `doc` are preserved on the cloud side.
     // This prevents the race where device A has empty local for some field
     // and pushes before device B's newly-saved data lands — merge:false
@@ -510,7 +542,7 @@
         return ref.set(doc, { merge: true });
       }
       throw err;
-    }).catch(function(err){
+    }).then(saved).catch(function(err){
       // Log detailed error for diagnostics
       console.error('[sync] ref.set failed', err && err.code, err && err.message, err);
       throw err;
@@ -523,7 +555,7 @@
     if(trimmed) LS.setItem(LABEL_KEY, trimmed);
     else LS.removeItem(LABEL_KEY);
     LS.setItem('fgh_label_at', String(Date.now()));   // the newest name wins on every device
-    if(isPin()) schedulePush();
+    if(isPin()){ markWrite(); schedulePush(); }
   }
 
   // A PIN is one person's account: its label is that person's name, the same as "my name" on each device they use.
@@ -561,7 +593,7 @@
         var local   = scanLocal();
         var merged  = mergeSnapshots(local, remote);
         writeSnapshotToLocal(merged); reconcileName();
-        return pushNow().then(function(){ return {isNew: remote.isNew}; });
+        return pushNow({ force: true }).then(function(){ ssSet(PULL_KEY, String(Date.now())); return {isNew: remote.isNew}; });
       })
       .then(function(result){ notifyReady(); return result; });
   }
@@ -603,7 +635,7 @@
         var local  = scanLocal();
         var merged = mergeSnapshots(local, remote);
         writeSnapshotToLocal(merged); reconcileName();
-        return pushNow();
+        return pushNow({ force: true }).then(function(r){ ssSet(PULL_KEY, String(Date.now())); return r; });
       })
       .then(function(){
         setStatus('synced');
@@ -621,7 +653,7 @@
   function noteWrite(key){
     if(!key) return;
     if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'fgh_gh_del' && key !== 'fgh_links' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
-    if(isPin()) schedulePush();
+    if(isPin()){ markWrite(); schedulePush(); }
   }
 
   // ── Diagnostic APIs ───────────────────────────────────────────────────
@@ -707,6 +739,13 @@
         notifyReady();
         return;
       }
+      if(pulledRecently() && !dirtySinceLastPush()){
+        // Synced moments ago on another page of this session and nothing saved since: no round trip needed
+        console.log('[sync] boot: synced under a minute ago, nothing new; skipping the round trip');
+        setStatus('synced');
+        notifyReady();
+        return;
+      }
       setStatus('syncing');
       ensureFirebase()
         .then(pullCloud)
@@ -719,6 +758,7 @@
           return pushNow();
         })
         .then(function(){
+          ssSet(PULL_KEY, String(Date.now()));   // only once the round trip finished; a failed one is retried on the next page
           setStatus('synced');
           try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
           notifyReady();

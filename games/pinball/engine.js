@@ -577,9 +577,13 @@ export function createGame(def, opts = {}) {
     while (acc >= DT && n < maxN) { autopilot(DT); world.step(DT); acc -= DT; n++; }
     if (n >= maxN) acc = 0;
   }
+  // Draw at most about 60 times a second. On 120 Hz screens (ProMotion iPhones and iPads) every other
+  // display frame is skipped: half the GPU work, same physics (it steps on the real elapsed time).
+  const MIN_FRAME_MS = 12;
   function frame(now) {
     raf = 0;
     if (G.paused || G.destroyed) return;
+    if (last && now - last < MIN_FRAME_MS && !window.__pinNoCap) { G.stats.skipped = (G.stats.skipped || 0) + 1; raf = requestAnimationFrame(frame); return; }
     const t0 = performance.now();
     const rdt = last ? Math.min(0.05, (now - last) / 1000) : 1 / 60; last = now;
     const dt = rdt * speedMul;

@@ -674,6 +674,8 @@ export function BigWheel3D(host, hooks, api) {
   // ── Loop: physics while spinning, the flapper settling, and the bulbs (same loop as the 2D renderer) ──
   function loop(now) {
     raf = 0; if (dead) return;
+    // at most ~60 draws a second: 120 Hz screens skip every other display frame (the sim steps on real elapsed time)
+    if (last && now - last < 12) { raf = requestAnimationFrame(loop); return; }
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); if (spinning && last) adapt(now - last); last = now;
     let k, j, active = false;
     if (spinning) {
