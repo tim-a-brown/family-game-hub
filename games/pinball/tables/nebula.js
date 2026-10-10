@@ -22,7 +22,7 @@ const fmt = n => Math.round(n).toLocaleString('en-US');
 // ── Layout constants ───────────────────────────────────────────────────────
 const WELL_Z = 62, WELL_BOX = [58, 852, 194, 1008];          // the Gravity Well (vertical powerfield), top left
 const LOOP_C = [348, 852], LOOP_R = 92, LOOP_Z = 66;         // the Warp Loop: a raised wire circle over the pops
-const SAUCER = [300, 980];                                  // the flying saucer, top centre
+const SAUCER = [300, 992];                                  // the flying saucer, top centre
 const SHIP = [300, 733];                                     // the mothership drop-target bank
 const TPIN = [222, 596], TPOUT = [456, 668];                 // teleporter pads
 const SCOOP = [344, 516];                                    // Mission Control scoop
@@ -206,8 +206,7 @@ function makeWarpLoop(T) {
     const copper = new THREE.MeshStandardMaterial({ color: '#c8794a', metalness: 1, roughness: 0.32 });
     comp.coils = comp.mags.map(m => {
       const p = T.world.pathAt(path, m.s), g = new THREE.Group(); g.position.set(p[0], p[1], p[2] - 11);
-      const coil = new THREE.Mesh(new THREE.CylinderGeometry(9.5, 9.5, 14, 18), copper); coil.rotation.x = PI / 2; g.add(coil);
-      const core = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 16, 12), RC.mats.iron()); core.rotation.x = PI / 2; g.add(core);
+      const coil = new THREE.Mesh(mergeGeos([cylGeo(0, 0, 9.5, -7, 7, 18), cylGeo(0, 0, 6, -8, 8, 12)]), copper); g.add(coil);
       const ring = new THREE.Mesh(new THREE.TorusGeometry(11, 1.4, 8, 24), RC.mats.emissive(PAL.cyan, 0.2)); ring.position.z = 8; g.add(ring);
       g.traverse(o => { if (o.isMesh) o.castShadow = true; }); RC.root.add(g); return { g, ring };
     });
@@ -318,8 +317,9 @@ function saucerModel(RC, toy) {
   const dome = new THREE.Mesh(new THREE.SphereGeometry(12, 24, 14, 0, TAU, 0, PI / 2), RC.mats.clear('#bff6ff', 0.35, { depthWrite: false })); dome.position.z = 25; dome.renderOrder = 4; g.add(dome);
   const pilot = mesh(new THREE.SphereGeometry(4.5, 12, 8), RC.mats.plastic('#5dffb0', { roughness: 0.5 })); pilot.position.z = 28; g.add(pilot);
   const eyes = mesh(new THREE.SphereGeometry(1.4, 8, 6), RC.mats.plastic('#111')); eyes.position.set(-1.6, -3.6, 29.5); g.add(eyes); const eye2 = eyes.clone(); eye2.position.x = 1.6; g.add(eye2);
-  const lightMat = new THREE.MeshStandardMaterial({ color: '#223', emissive: PAL.cyan, emissiveIntensity: 1 }), lights = [];
-  for (let i = 0; i < 10; i++) { const a = i / 10 * TAU, l = new THREE.Mesh(new THREE.SphereGeometry(2, 10, 8), lightMat.clone()); l.position.set(Math.cos(a) * 31, Math.sin(a) * 31, 17); g.add(l); lights.push(l); }
+  const lightMat = new THREE.MeshStandardMaterial({ color: '#223', emissive: PAL.cyan, emissiveIntensity: 1 }), lg = [];
+  for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; lg.push(sphereGeo(Math.cos(a) * 31, Math.sin(a) * 31, 17, 2, 10)); }
+  const lights = new THREE.Mesh(mergeGeos(lg), lightMat); g.add(lights);
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(70, 70), RC.mats.glow('#8ad8ff')); glow.position.z = 2; glow.renderOrder = 3; g.add(glow);
   const legs = []; for (let i = 0; i < 3; i++) { const a = i / 3 * TAU + 0.5; legs.push(cylGeo(Math.cos(a) * 24, Math.sin(a) * 24, 1.2, 0, 8, 8)); legs.push(cylGeo(Math.cos(a) * 24, Math.sin(a) * 24, 4, 0, 1.2, 10)); }
   g.add(mesh(mergeGeos(legs), RC.mats.steel()));
@@ -329,7 +329,7 @@ function saucerModel(RC, toy) {
     const u = g.userData, B = RC.G.b || {}, wob = toy.wob, angry = B.saucerMode ? 1 : 0;
     g.position.z = toy.z0 + Math.sin(t * 1.3) * 1.5 + wob * 14 + angry * 4;
     g.rotation.z = t * 0.6 + wob * Math.sin(t * 30) * 0.3;
-    u.lights.forEach((l, i) => { const ph = ((t * (2 + angry * 6 + wob * 10) + i / 10) % 1); l.material.emissiveIntensity = 0.3 + (ph < 0.25 ? 3.5 : 0) + wob * 2; l.material.emissive.set(angry ? PAL.magenta : PAL.cyan); });
+    const ph = (t * (2 + angry * 6 + wob * 10)) % 1; u.lights.material.emissiveIntensity = 0.6 + (ph < 0.3 ? 3 : 0) + wob * 2; u.lights.material.emissive.set(angry ? PAL.magenta : PAL.cyan); u.lights.rotation.z = -t * 0.6 + Math.floor(t * 5) * (TAU / 10);
     u.glow.material.opacity = 0.35 + wob * 0.6 + angry * 0.25 + 0.1 * Math.sin(t * 7);
   });
   return g;
@@ -351,7 +351,7 @@ function mothershipModel(RC) {
   const bridge = new THREE.Mesh(new THREE.SphereGeometry(7, 16, 12), RC.mats.clear('#9ad8ff', 0.5, { depthWrite: false })); bridge.position.set(0, -14, 66); bridge.renderOrder = 4; g.add(bridge);
   const beam = new THREE.Mesh(new THREE.PlaneGeometry(26, 60), RC.mats.glow(PAL.red)); beam.position.set(0, -34, 20); beam.rotation.x = PI / 2 - 0.3; beam.renderOrder = 6; g.add(beam);
   const lampsM = new THREE.MeshStandardMaterial({ color: '#222', emissive: PAL.red, emissiveIntensity: 1 });
-  const lamps = [-84, -40, 40, 84].map(x => { const l = new THREE.Mesh(new THREE.SphereGeometry(1.8, 8, 6), lampsM); l.position.set(x, 28, 50); g.add(l); return l; });
+  g.add(new THREE.Mesh(mergeGeos([-84, -40, 40, 84].map(x => sphereGeo(x, 28, 50, 1.8, 8))), lampsM));
   g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   RC.anim.push((dt, t) => {
     const G = RC.G, B = G.b || {}, bank = G.comps.ship, down = bank ? bank.targets.filter(x => !x.up).length : 0;
