@@ -239,3 +239,102 @@
   J('rabble', 'Rabble', 1, 6, ['crowd', '#7a5a2b', '#2e200a', '#ffcf7a'], 'When a blind starts, makes {a|2} Common Jokers (if you have room)', { sel: function () { var m = 0; for (var i = 0; i < 2; i++) if (jokerRoom()) { addJoker(jokerKey(1)); m++; } return m ? { msg: '+' + m + ' Joker' + (m > 1 ? 's' : '') } : null; } });
   J('ticket', 'Gilded Ticket', 1, 5, ['ticket', '#8a6a1a', '#3a2a08', '#fff1a8'], 'Played {a|Gold} cards earn {o|$4} when scored', { card: function (v, c) { return c.e === 'gold' ? { money: 4 } : null; } });
   J('pawn', 'Pawn Shop', 1, 4, ['scale', '#5a5a2b', '#24240e', '#ffd84a'], 'Adds the sell value of your other Jokers to Mult', { main: function (v, x) { var t = 0; S.jokers.forEach(function (j) { if (j.u !== x.self) t += sellValue(j); }); return t ? { mult: t } : null; } });
+  JK.fist.main = function (v, x) {
+    var lo = null; x.held.forEach(function (c) { if (!isStone(c) && !x.deb(c) && (!lo || RV[c.r] < RV[lo.r])) lo = c; });
+    return lo ? { mult: 2 * chipsOf(lo) } : null;
+  };
+
+  // Uncommon
+  J('worm', 'Glow Worm', 2, 6, ['worm', '#1a3a2a', '#07160f', '#b6ff5c'], 'Gains {c|+3} Chips for every card you discard', { val: function (v) { return '+' + (v.c || 0); },
+    disc: function (v, cards) { v.c = (v.c || 0) + 3 * cards.length; return { msg: 'Upgrade' }; }, main: function (v) { return v.c ? { chips: v.c } : null; } });
+  J('wallet', 'Fat Wallet', 2, 6, ['wallet', '#6b4a2b', '#2e1d0e', '#ffcf4a'], '{c|+2} Chips for every {o|$1} you have', { main: function (v, x) { return x.money > 0 ? { chips: 2 * x.money } : null; } });
+  J('shoestring', 'Shoestring', 2, 5, ['boot', '#6b3a1f', '#2a1508', '#ffd27a'], '{m|+2} Mult for every {o|$5} you have', { main: function (v, x) { var n = Math.floor(Math.max(0, x.money) / 5); return n ? { mult: 2 * n } : null; } });
+  J('recycler', 'Recycler', 2, 5, ['recycle', '#2b6b4a', '#0e2e1e', '#9cff8a'], 'Gains {m|+2} Mult every time you discard', { val: function (v) { return '+' + (v.m || 0); },
+    disc: function (v) { v.m = (v.m || 0) + 2; return { msg: 'Upgrade' }; }, main: function (v) { return v.m ? { mult: v.m } : null; } });
+  J('backbeat', 'Backbeat', 2, 6, ['note', '#2b4a7a', '#0e1a33', '#ff6bb0'], 'Every scored {a|2, 3, 4 and 5} triggers {a|1} more time', { retrig: function (v, c) { var r = rankOf(c); return r >= 2 && r <= 5 ? 1 : 0; } });
+  J('encore', 'Encore', 2, 6, ['mask', '#7a1f4a', '#30081c', '#ffcf4a'], 'Every scored {a|face card} triggers {a|1} more time', { retrig: function (v, c, x) { return isFace(c, x.opt) ? 1 : 0; } });
+  J('lastcall', 'Last Call', 2, 5, ['clock', '#2b5a6b', '#0e252e', '#ff8a3d'], 'On the {a|final hand} of the round, every scored card triggers {a|1} more time', { retrig: function (v, c, x) { return x.last ? 1 : 0; } });
+  J('mime', 'Pantomime', 2, 5, ['mime', '#e0e0f0', '#5a5a7a', '#1a1a2a'], 'Cards held in hand trigger their effects {a|1} more time', { retrigHeld: function () { return 1; } });
+  J('finale', 'Grand Finale', 2, 6, ['curtain', '#5a0f2e', '#22040f', '#d81e4a'], '{x|x3} Mult on the {a|final hand} of the round', { main: function (v, x) { return x.last ? { x: 3 } : null; } });
+  J('shark', 'Card Shark', 2, 6, ['fin', '#1f4a7a', '#081c33', '#5fe0ff'], '{x|x3} Mult if this poker hand was already played this round', { main: function (v, x) { return x.playedRound ? { x: 3 } : null; } });
+  J('stargazer', 'Stargazer', 2, 6, ['scope', '#24206b', '#0a0826', '#ffd84a'], 'Gains {x|x0.1} Mult for every Planet card you use', { init: function () { return { x: 1 }; }, val: function (v) { return 'x' + fx(v.x); },
+    on: { planet: function (v) { v.x += 0.1; return 'x' + fx(v.x); } }, main: function (v) { return v.x > 1 ? { x: v.x } : null; } });
+  J('cat', 'Black Cat', 2, 6, ['cat', '#7a5aa8', '#3a2560', '#ffd84a'], '{x|x3} Mult. {p|1 in 6} chance it wanders off at the end of the round', { main: function () { return { x: 3 }; },
+    endRound: function (v, x) { if (x.chance(1, 6)) return { gone: 'The Black Cat wandered off' }; } });
+  J('wolf', 'Lone Wolf', 2, 5, ['wolf', '#3a4a7a', '#141a33', '#ffcf4a'], '{x|x3} Mult if you play exactly {a|1} card', { main: function (v, x) { return x.n === 1 ? { x: 3 } : null; } });
+  J('bouquet', 'Flower Pot', 2, 6, ['bouquet', '#2f6b3a', '#123018', '#ff7ac0'], '{x|x3} Mult if the scoring cards include a {s|d} {s|c} {s|h} and {s|s}', { main: function (v, x) {
+    var need = ['d', 'c', 'h', 's'], used = [], wild = 0;
+    x.scoring.forEach(function (c) { if (isStone(c) || x.deb(c)) return; if (c.e === 'wild') { wild++; return; } for (var i = 0; i < need.length; i++) if (used.indexOf(need[i]) < 0 && suitIs(c, need[i], x.opt)) { used.push(need[i]); break; } });
+    return used.length + wild >= 4 ? { x: 3 } : null; } });
+  J('midas', 'Midas', 2, 7, ['hand', '#7a5a1a', '#33240a', '#ffd84a'], 'Played face cards turn into {o|Gold} cards when scored', { before: function (v, x) {
+    var n = 0; x.scoring.forEach(function (c) { if (isFace(c, x.opt) && !x.deb(c) && c.e !== 'gold') { if (x.live) S.cards[c.id].e = 'gold'; c.e = 'gold'; n++; } }); return n ? { msg: 'Gold!' } : null; } });
+  J('corner', 'Corner Cutter', 2, 7, ['corner', '#2b6b6b', '#0e2e2e', '#ff8a5c'], 'Flushes and Straights need only {a|4} cards', { four: true });
+  J('hopskip', 'Hop Skip', 2, 7, ['hop', '#8a2b6b', '#33102a', '#7ae0ff'], 'Straights may skip {a|1} rank (like 3 5 7 9 10)', { shortcut: true });
+  J('masque', 'Masquerade', 2, 5, ['masque', '#3a1f6b', '#14082e', '#ff9de0'], 'Every card counts as a {a|face card}', { allFace: true });
+  J('inkblot', 'Ink Blot', 2, 7, ['ink', '#2b2b4a', '#0e0e1f', '#ff5c7a'], '{s|h} and {s|d} count as the same suit, so do {s|s} and {s|c}', { smeared: true });
+  J('chalk', 'Chalkboard', 2, 6, ['chalk', '#1f3a2b', '#0a1a12', '#e8f0e0'], '{x|x3} Mult if every card held in hand is a {s|s} or {s|c}', { main: function (v, x) {
+    return x.held.every(function (c) { return suitIs(c, 's', x.opt) || suitIs(c, 'c', x.opt); }) ? { x: 3 } : null; } });
+  J('ironwill', 'Iron Will', 2, 7, ['iron', '#56616e', '#1e2228', '#e0e8f0'], '{x|x0.2} Mult for every {a|Steel} card in your full deck', { main: function () { var n = S.deck.filter(function (id) { return C(id).e === 'steel'; }).length; return n ? { x: 1 + 0.2 * n } : null; },
+    cur: function () { return 'Now x' + fx(1 + 0.2 * S.deck.filter(function (id) { return C(id).e === 'steel'; }).length) + ' Mult'; } });
+  J('shards', 'Shard Collector', 2, 6, ['glass', '#4a6b8a', '#1a2a3a', '#bfe8ff'], 'Gains {x|x0.75} Mult every time a {a|Glass} card breaks', { init: function () { return { x: 1 }; }, val: function (v) { return 'x' + fx(v.x); },
+    on: { shard: function (v) { v.x += 0.75; return 'x' + fx(v.x); } }, main: function (v) { return v.x > 1 ? { x: v.x } : null; } });
+  J('flipbook', 'Flip Book', 2, 5, ['flipbook', '#8a3a1f', '#3a1508', '#ffe08a'], 'Gains {m|+2} Mult every time you reroll the shop', { val: function (v) { return '+' + (v.m || 0); },
+    on: { reroll: function (v) { v.m = (v.m || 0) + 2; return '+' + v.m; } }, main: function (v) { return v.m ? { mult: v.m } : null; } });
+  J('photocopy', 'Photocopy', 2, 7, ['copy2', '#3a5a7a', '#14243a', '#ffffff'], 'Gains {x|x0.25} Mult every time a playing card is added to your deck', { init: function () { return { x: 1 }; }, val: function (v) { return 'x' + fx(v.x); },
+    on: { addCard: function (v) { v.x += 0.25; return 'x' + fx(v.x); } }, main: function (v) { return v.x > 1 ? { x: v.x } : null; } });
+  J('teller', 'Fortune Teller', 2, 6, ['crystal', '#4a2b7a', '#1a0a33', '#c8a8ff'], 'When a blind starts, makes a {a|Tarot} card (if you have room)', { sel: function () { if (consRoom()) { addCons(consKey('tarot')); return { msg: '+1 Tarot' }; } } });
+  J('ruby', 'Ruby Heart', 2, 7, ['ruby', '#8a1f2a', '#3a0810', '#ff9daa'], 'Played {s|h} cards have a {p|1 in 2} chance to give {x|x1.5} Mult when scored', { card: function (v, c, x) { return suitIs(c, 'h', x.opt) && x.chance(1, 2) ? { x: 1.5 } : null; } });
+  J('spear', 'Spearhead', 2, 7, ['spear', '#2b3a5a', '#0e1424', '#bfd4ff'], 'Played {s|s} cards give {c|+50} Chips when scored', { card: suitCard('s', { chips: 50 }) });
+  J('pearl', 'Black Pearl', 2, 7, ['pearl', '#1f1f2b', '#08080e', '#e0e8ff'], 'Played {s|c} cards give {m|+7} Mult when scored', { card: suitCard('c', { mult: 7 }) });
+  J('topaz', 'Raw Topaz', 2, 7, ['topaz', '#8a5a1a', '#3a2208', '#ffd27a'], 'Played {s|d} cards earn {o|$1} when scored', { card: suitCard('d', { money: 1 }) });
+  J('hiker', "Hiker's Boots", 2, 5, ['mountain', '#4a5a3a', '#1a2414', '#e8f0d0'], 'Every scored card gains {c|+5} Chips for good', { card: function (v, c, x) { if (x.live && S.cards[c.id]) S.cards[c.id].bc = (S.cards[c.id].bc || 0) + 5; return { note: 'Upgrade', perm: 5 }; } });
+  J('leech', 'Leech', 2, 7, ['fang', '#5a0f1f', '#22040a', '#ff9daa'], 'Gains {x|x0.1} Mult for every enhanced card scored, and removes the enhancement', { init: function () { return { x: 1 }; }, val: function (v) { return 'x' + fx(v.x); },
+    before: function (v, x) { var n = 0; x.scoring.forEach(function (c) { if (c.e && c.e !== 'stone' && !x.deb(c)) { n++; if (x.live && S.cards[c.id]) S.cards[c.id].e = null; c.e = null; } }); if (n) { v.x += 0.1 * n; return { msg: 'x' + fx(v.x) }; } },
+    main: function (v) { return v.x > 1 ? { x: v.x } : null; } });
+  J('pickpocket', 'Pickpocket', 2, 6, ['glove', '#3a3a4a', '#121218', '#ffcf4a'], 'When a blind starts, gain {a|+3} hands and lose all discards', { sel: function () { S.hands += 3; S.discards = 0; return { msg: '+3 Hands' }; } });
+  J('bones', 'Lucky Bones', 2, 5, ['skull', '#d8d0c0', '#5a5040', '#2a2014'], 'Saves the run if you scored at least {a|25%} of the target, then breaks');
+  J('satellite', 'Satellite Dish', 2, 5, ['dish', '#2b3a6b', '#0a1028', '#c8d8ff'], '{p|1 in 4} chance to level up the poker hand you play', { before: function (v, x) { if (x.chance(1, 4)) { if (x.live) levelUp(x.hand, 1); return { msg: 'Level up!', lvl: 1 }; } } });
+  J('punch', 'Punch Card', 2, 5, ['punch', '#d8c8a0', '#6b5a3a', '#3a2a14'], '{x|x4} Mult every {a|6} hands played', { val: function (v) { var n = 5 - ((v.n || 0) % 6); return n ? n + ' left' : 'Ready'; },
+    main: function (v) { return ((v.n || 0) % 6) === 5 ? { x: 4 } : null; }, after: function (v) { v.n = (v.n || 0) + 1; } });
+  J('noodles', 'Noodle Bowl', 2, 6, ['bowl', '#c28a3a', '#5a3a14', '#fff1c8'], '{x|x2} Mult, loses {x|x0.01} for every card discarded', { init: function () { return { x: 2 }; }, val: function (v) { return 'x' + fx(v.x); },
+    disc: function (v, cards) { v.x = Math.round((v.x - 0.01 * cards.length) * 100) / 100; if (v.x <= 1) return { gone: 'Noodle Bowl is empty' }; }, main: function (v) { return { x: v.x }; } });
+  J('horseshoe', 'Horseshoe', 2, 6, ['horseshoe', '#5a3a1f', '#22140a', '#e0e8f0'], 'Gains {x|x0.25} Mult every time a {a|Lucky} card pays out', { init: function () { return { x: 1 }; }, val: function (v) { return 'x' + fx(v.x); },
+    on: { lucky: function (v) { v.x += 0.25; return 'x' + fx(v.x); } }, main: function (v) { return v.x > 1 ? { x: v.x } : null; } });
+  J('dice', 'Loaded Dice', 2, 7, ['dice2', '#e0e0f0', '#6b6b8a', '#c81e36'], 'Doubles every listed chance (1 in 4 becomes 2 in 4)', { dice: true });
+  J('double', 'Double Vision', 2, 6, ['eyes', '#2b5a3a', '#0e2414', '#e0ffe8'], '{x|x2} Mult if the scoring cards have a {s|c} and a card of another suit', { main: function (v, x) {
+    var cl = false, other = false; x.scoring.forEach(function (c) { if (isStone(c) || x.deb(c)) return; if (suitIs(c, 'c', x.opt) && !cl) cl = true; else if (!suitIs(c, 'c', x.opt) || c.e === 'wild') other = true; });
+    return cl && other ? { x: 2 } : null; } });
+  J('frame', 'Empty Frame', 2, 8, ['frame2', '#6b5a3a', '#2a2214', '#ffe8a8'], '{x|x1} Mult for each empty Joker slot (this one counts as empty)', { main: function (v, x) { var e = x.jslots - x.nJ + 1; return e > 1 ? { x: e } : null; } });
+  J('spiral', 'Spiral Shell', 2, 8, ['shell', '#c27a5a', '#5a2a1a', '#fff1e0'], 'Played {a|A, 2, 3, 5 and 8} give {m|+8} Mult when scored', { card: function (v, c) { return /^(A|2|3|5|8)$/.test(c.r) && !isStone(c) ? { mult: 8 } : null; } });
+  J('moonshot', 'Moon Shot', 2, 5, ['moon', '#232a5c', '#0a0d26', '#9aa7d8'], 'Earn an extra {o|$1} of interest for every {o|$5} you have', { moon: 1 });
+  J('sandstone', 'Sandstone', 2, 6, ['sand', '#c2a05a', '#5a4214', '#fff1c8'], '{m|+4} Mult for each card your deck has below 52', { main: function () { var n = 52 - S.deck.length; return n > 0 ? { mult: 4 * n } : null; } });
+  J('mirrorball', 'Mirror Ball', 2, 6, ['disco', '#2a1a4a', '#0a0618', '#ff9de0'], 'Every scored card triggers {a|1} more time, for the next {a|10} hands', { init: function () { return { n: 10 }; }, val: function (v) { return v.n + ' left'; },
+    retrig: function () { return 1; }, after: function (v) { v.n--; if (v.n <= 0) return { gone: 'Mirror Ball went dark' }; } });
+  J('rocket', 'Rocket', 2, 6, ['rocket', '#2b3a7a', '#0e1433', '#ff7a3d'], 'Earn {o|$1} at the end of each round. Pays {o|$2} more after every Boss Blind', { init: function () { return { p: 1 }; }, val: function (v) { return '$' + v.p; },
+    end: function (v) { return v.p; }, boss: function (v) { v.p += 2; } });
+
+  // Rare
+  J('date', 'Double Date', 3, 8, ['hearts2', '#a8325a', '#4a0f26', '#ff9dc0'], '{x|x2} Mult if the hand contains a {a|Pair}', { main: cont('pair', { x: 2 }) });
+  J('trident', 'Trident', 3, 8, ['trident', '#1f5a7a', '#081e2e', '#ffd84a'], '{x|x3} Mult if the hand contains {a|Three of a Kind}', { main: cont('three', { x: 3 }) });
+  J('table', 'Family Table', 3, 8, ['table', '#7a4a1f', '#2e1a08', '#ffcf7a'], '{x|x4} Mult if the hand contains {a|Four of a Kind}', { main: cont('four', { x: 4 }) });
+  J('zigzag', 'Zigzag', 3, 8, ['bolt', '#2b2b5a', '#0e0e26', '#ffd84a'], '{x|x3} Mult if the hand contains a {a|Straight}', { main: cont('straight', { x: 3 }) });
+  J('prism', 'Prism', 3, 8, ['prism', '#1f1f3a', '#08081a', '#ffffff'], '{x|x2} Mult if the hand contains a {a|Flush}', { main: cont('flush', { x: 2 }) });
+  J('throne', 'Throne Room', 3, 8, ['throne', '#7a1f2a', '#2e0810', '#ffd56a'], 'Each {a|King} held in hand gives {x|x1.5} Mult', { held: function (v, c) { return !isStone(c) && c.r === 'K' ? { x: 1.5 } : null; } });
+  J('copy', 'Copycat', 3, 10, ['copy', '#4a4a5a', '#1a1a24', '#ffcf4a'], 'Copies what the Joker to its {a|right} does', { copy: 'right' });
+  J('mirror', 'Mirror Image', 3, 10, ['mirror', '#3a4a6b', '#141a2a', '#bfe0ff'], 'Copies what your {a|leftmost} Joker does', { copy: 'left' });
+  J('wish', 'Wishing Well', 3, 8, ['wish', '#1f3a6b', '#08142e', '#ffd84a'], 'Gains {x|x0.5} Mult every time you beat a Boss Blind', { init: function () { return { x: 1 }; }, val: function (v) { return 'x' + fx(v.x); },
+    main: function (v) { return v.x > 1 ? { x: v.x } : null; }, boss: function (v) { v.x += 0.5; } });
+  J('clone', 'Clone Kit', 3, 8, ['dna', '#2b6b5a', '#0e2a24', '#9cffd8'], 'If the first hand of a round is a {a|single card}, adds a copy of it to your deck and hand', { before: function (v, x) {
+    if (x.first && x.n === 1) { if (x.live) { var o = x.played[0], c = newCard(o.r, o.s, { e: o.e, ed: o.ed, sl: o.sl }); addToDeck(c); S.hand.push(c.id); S.fresh = (S.fresh || []).concat([c.id]); } return { msg: 'Copied!' }; } } });
+  J('drifter', 'Drifter', 3, 8, ['bindle', '#6b4a2b', '#2a1a0a', '#ffd27a'], 'Makes a {a|Tarot} card if you play a hand with {o|$4} or less', { main: function (v, x) { return x.money <= 4 ? { make: 'tarot' } : null; } });
+
+  // Legendary (only from the Heartstone spectral card)
+  J('king', 'The Jester King', 4, 20, ['crown', '#5a1f7a', '#1e0830', '#ffd84a'], 'Played {a|Kings} and {a|Queens} each give {x|x2} Mult when scored', { card: function (v, c) { return !isStone(c) && (c.r === 'K' || c.r === 'Q') ? { x: 2 } : null; } });
+  J('silencer', 'The Silencer', 4, 20, ['hush', '#3a3a4a', '#0e0e18', '#ff5c7a'], 'Turns off every Boss Blind', { silence: true });
+  J('duplicator', 'The Duplicator', 4, 20, ['twins', '#1f5a6b', '#081e26', '#ffffff'], 'When you leave the shop, makes a {a|Negative} copy of 1 random consumable you hold', {});
+  J('archivist', 'The Archivist', 4, 20, ['book', '#6b2b1f', '#2a0e08', '#ffd27a'], 'Gains {x|x1} Mult every time a face card is destroyed', { init: function () { return { x: 1 }; }, val: function (v) { return 'x' + fx(v.x); },
+    on: { faceGone: function (v) { v.x += 1; return 'x' + fx(v.x); } }, main: function (v) { return v.x > 1 ? { x: v.x } : null; } });
+  J('glutton', 'The Glutton', 4, 20, ['maw', '#3a5a1f', '#142208', '#e0ff9c'], 'Gains {x|x1} Mult for every {a|23} cards discarded', { init: function () { return { x: 1, n: 0 }; }, val: function (v) { return 'x' + fx(v.x); },
+    disc: function (v, cards) { v.n += cards.length; var x = 1 + Math.floor(v.n / 23); if (x !== v.x) { v.x = x; return { msg: 'x' + v.x }; } }, main: function (v) { return v.x > 1 ? { x: v.x } : null; } });
+  var RARITY = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'];
+  function fx(x) { return String(Math.round(x * 100) / 100); }

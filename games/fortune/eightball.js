@@ -106,7 +106,7 @@ function create2D(host) {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     const fe = S.flip * S.flip * (3 - 2 * S.flip), roll = Math.sin(Math.PI * clamp(S.flip, 0, 1));
     const r = (R + (RZ - R) * fe) * (1 + (S.pz + 0.12 * roll) * 0.08);
-    const cx0 = W / 2, cy0 = top + (H - top - bottom) / 2;
+    const cx0 = W / 2, cy1 = top + (H - top - bottom) / 2, cy0 = cy1 + (H / 2 - cy1) * 0.75 * fe;
     const cx = cx0 + S.px * r, cy = cy0 - (S.lift + 0.04 * roll) * r * CE + (S.pz + 0.12 * roll) * r * SE;
     const fy = cy0 + r * CE;   // where the ball would touch the surface
     // surface and spotlight

@@ -183,7 +183,7 @@ export function create(host, ANSWERS, post) {
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBall = (uLocal * vec4(transformed, 1.0)).xyz; vFace = normalize(mat3(uLocal) * objectNormal).y;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uYG; uniform float uK; uniform vec3 uLiq; varying vec3 vBall; varying float vFace;')
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (length(vBall) > 0.965) discard;')
-      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n{ float d = max(0.0, uYG - vBall.y - 0.012); float f = max(1.0 - exp(-d * uK), 0.9 * (1.0 - smoothstep(0.86, 0.985, vFace))); gl_FragColor.rgb = mix(gl_FragColor.rgb, uLiq * exp(-d * 2.0), f); }');
+      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n{ float d = max(0.0, uYG - vBall.y - 0.012); float f = max(1.0 - exp(-d * uK), 0.95 * (1.0 - smoothstep(0.86, 0.985, vFace))); gl_FragColor.rgb = mix(gl_FragColor.rgb, uLiq * exp(-d * 2.0), f); }');
   };
 
   // ── Geometry ──
@@ -264,7 +264,7 @@ export function create(host, ANSWERS, post) {
     } catch (e) { composer = null; bloom = null; }
   }
 
-  let zoomK = 0.17, W = 300, H = 400, top = 0, bottom = 0, dpr = 1, maxDpr = 2, dist = 8, level = 0, slowT = 0, frames = 0, lastMs = 0, dead = false;
+  let shift = 0, zoomK = 0.17, W = 300, H = 400, top = 0, bottom = 0, dpr = 1, maxDpr = 2, dist = 8, level = 0, slowT = 0, frames = 0, lastMs = 0, dead = false;
   function layout(w, h, t, b) {
     W = Math.max(2, w); H = Math.max(2, h); top = t || 0; bottom = b || 0;
     dpr = Math.min(maxDpr, window.devicePixelRatio || 1);
@@ -277,7 +277,7 @@ export function create(host, ANSWERS, post) {
     zoomK = 1 - rPx / Math.max(rPx, Math.min(W * 0.38, (H - 16) * 0.45, 260));
     dist = (H / 2) / (rPx * Math.tan(FOV / 2 * Math.PI / 180));
     // put the ball in the middle of the free area (between the top and bottom insets)
-    const shift = (top + avail / 2) - H / 2;
+    shift = (top + avail / 2) - H / 2;
     camera.setViewOffset(W, H, 0, -shift, W, H);
     camera.near = Math.max(0.3, dist * 0.3); camera.far = dist + 40;
     scene.fog.near = dist - 0.5; scene.fog.far = dist + 7.5;
@@ -292,6 +292,9 @@ export function create(host, ANSWERS, post) {
     // camera: pushes in a little while the window is round, so the answer reads
     const d = dist * (1 - zoomK * Math.min(1, Math.max(0, fe)));
     camera.position.set(0, d * Math.sin(ELEV), d * Math.cos(ELEV)); camera.lookAt(0, 0, 0);
+    // while the window is round the ball eases toward the middle of the stage (the hint is gone by then)
+    const sh = shift * (1 - 0.75 * Math.min(1, Math.max(0, fe)));
+    if (camera.view && Math.abs(camera.view.offsetY + sh) > 0.01) { camera.view.offsetY = -sh; camera.updateProjectionMatrix(); }
     // ball: rolls with its travel across the surface, plus the half-turn and a little tilt
     ball.position.set(S.px, S.lift + 0.04 * roll, S.pz + 0.12 * roll);
     q1.setFromAxisAngle(X, Math.PI * f);

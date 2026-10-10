@@ -485,13 +485,24 @@ function mount(stage, api) {
   const tanV = () => Math.tan(camera.fov / 2 * Math.PI / 180);
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   const tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-  function fitCamera() {
-    const a = W / H, M = 7.4;
-    const d = M / (2 * tanV() * Math.min(a, 1.25));
-    camera.aspect = a;
+  // The camera backs off until the visible table holds about a dozen cookies, whatever the screen shape.
+  const COUNT = 11, PER = 4.0;
+  function placeCamera(d) {
     camera.position.set(0, d * Math.sin(ELEV), d * Math.cos(ELEV));
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+  }
+  function tableArea() {
+    const c = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map((q) => onTable(q[0] * 0.9, q[1] < 0 ? -0.84 : 0.74));
+    let a = 0;
+    for (let i = 0; i < 4; i++) { const p = c[i], q = c[(i + 1) % 4]; a += p.x * q.z - q.x * p.z; }
+    return Math.abs(a) / 2;
+  }
+  function fitCamera() {
+    camera.aspect = W / H;
+    placeCamera(10);
+    const d = 10 * Math.sqrt(COUNT * PER / tableArea());
+    placeCamera(d);
     key.position.set(-0.22 * d, 1.25 * d, -0.1 * d); key.target.position.set(0, 0, -0.04 * d);
     key.angle = 0.62; key.distance = 0; key.decay = 0; key.intensity = 2.7;
     key.shadow.camera.far = d * 3; key.shadow.camera.updateProjectionMatrix();
@@ -502,12 +513,7 @@ function mount(stage, api) {
   }
   function placeAll() {
     cookies.slice().forEach(freeCookie);
-    const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map((c) => onTable(c[0] * 0.9, c[1] < 0 ? -0.84 : 0.74));
-    let area = 0;
-    for (let i = 0; i < 4; i++) { const p = corners[i], q = corners[(i + 1) % 4]; area += p.x * q.z - q.x * p.z; }
-    area = Math.abs(area) / 2;
-    const n = Math.max(9, Math.min(12, Math.round(area / 2.6)));
-    const sc = Math.max(0.95, Math.min(1.3, Math.sqrt(area / n / 2.7)));
+    const n = COUNT, sc = 1;
     const pts = [], v = new THREE.Vector3();
     for (let k = 0; k < n; k++) {
       let best = null, bestD = -1;
@@ -927,6 +933,7 @@ function mount(stage, api) {
       wobble: (i) => wobble(cookies[i || 0], 0.11),
       fortune: () => (O ? O.fortune : null),
       busy: () => !!raf,
+      hero: () => { if (!O) return null; const p = O.c.root.position.clone().project(camera); return { ndc: [p.x, p.y, p.z], pos: O.c.root.position.toArray(), cam: camera.position.toArray() }; },
       hold: (on) => { hold = !!on; if (hold && raf) { cancelAnimationFrame(raf); raf = 0; } else kick(); },
       step: (sec) => { const n = Math.round(sec / 0.016); for (let i = 0; i < n; i++) { T += 0.016; update(0.016); } renderer.render(scene, camera); return state; },
       screen: (i) => { const c = cookies[i || 0]; const p = c.root.position.clone().project(camera); return { x: (p.x + 1) / 2 * W, y: (1 - p.y) / 2 * H }; }
