@@ -866,6 +866,7 @@
         var data = d.data() || {};
         l.others[lk(name)] = { name: String(name).trim(), code: code, them: data.name || '', at: Date.now() };
         linksSet(l); applyAvatar(name, code, data);
+        data._sent = linkBackfill(name, code);
         return data;
       });
     });
@@ -910,6 +911,30 @@
     list.forEach(function(code){ ob.push({ code: code, id: e._id, key: key, entry: JSON.stringify(e), from: label() || myName() || 'Someone', by: myName() || '', at: Date.now() }); });
     try{ LS.setItem(OUTBOX, JSON.stringify(ob.slice(-200))); }catch(err){}
     flushOutbox();
+  }
+  // Linking someone after games with them are already in your history: those games go to them too.
+  // Marks the player in each stored game (so it isn't sent twice) and queues a copy for their inbox.
+  function linkBackfill(name, code){
+    var k = lk(name), n = 0, ob = outbox(), seen = {}, keys = [];
+    ob.forEach(function(it){ seen[it.code + '|' + it.id] = 1; });
+    try{ for(var i = 0; i < LS.length; i++){ var kk = LS.key(i); if(kk && kk.indexOf('gh_') === 0 && kk !== 'gh_dedup_v1') keys.push(kk); } }catch(e){}
+    keys.forEach(function(kk){
+      var list; try{ list = JSON.parse(LS.getItem(kk)); }catch(e){ return; }
+      if(!Array.isArray(list)) return;
+      var changed = false;
+      list.forEach(function(e){
+        if(!e || typeof e !== 'object' || e._from || !e._id || !Array.isArray(e.players)) return;
+        var hit = false;
+        e.players.forEach(function(p){ if(p && typeof p === 'object' && !p.cpu && lk(p.name) === k && p.link !== code){ p.link = code; hit = true; } });
+        if(!hit) return;
+        changed = true;
+        if(seen[code + '|' + e._id]) return;
+        ob.push({ code: code, id: e._id, key: kk.slice(3), entry: JSON.stringify(e), from: label() || myName() || 'Someone', by: myName() || '', at: Date.now() }); n++;
+      });
+      if(changed){ try{ LS.setItem(kk, JSON.stringify(list)); noteWrite(kk); }catch(e){} }
+    });
+    if(n){ try{ LS.setItem(OUTBOX, JSON.stringify(ob.slice(-400))); }catch(e){} flushOutbox(); }
+    return n;
   }
   function flushOutbox(){
     var ob = outbox(); if(!ob.length || !isPin() || (typeof navigator !== 'undefined' && navigator.onLine === false)) return Promise.resolve();
@@ -1039,7 +1064,7 @@
     linkShare: linkShare, linkNewCode: linkNewCode, linkSetAsk: linkSetAsk, linkPublish: linkPublishSoon,
     linkAdd: linkAdd, linkRemove: linkRemove, linkOf: linkOf, links: linksGet,
     initials: myInitials, setInitials: setInitials, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
-    linkMark: linkMark, linkSend: linkSend, linkPoll: linkPoll,
+    linkMark: linkMark, linkSend: linkSend, linkBackfill: linkBackfill, linkPoll: linkPoll,
     linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,
     _scanLocal: scanLocal
   };

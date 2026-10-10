@@ -1575,14 +1575,14 @@
         { label: 'Unlink ' + name, cls: 'btn-ghost', onClick: function () { setTimeout(function () { unlinkAsk(name, onDone); }, 320); } }] });
       return;
     }
-    node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code. On their phone: tap their avatar at the top of the home screen, then Share my profile.' }));
+    node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code. On their phone: tap their avatar at the top of the home screen, then Share my profile. The games you’ve already played with ' + name + ' go to their history too.' }));
     var inp = el('input', { class: 'input lk-code', maxlength: 7, placeholder: 'ABC123', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
     node.appendChild(inp);
     var msg = el('p', { class: 'lk-msg' }); node.appendChild(msg);
     function go() {
       msg.textContent = 'Checking…';
       FGHSync.linkAdd(name, inp.value).then(function (d) {
-        s.close(); sfx('good'); toast('Linked to ' + (d.name || name)); avRefresh(); if (onDone) onDone();
+        s.close(); sfx('good'); toast('Linked to ' + (d.name || name) + (d._sent ? ' · ' + d._sent + ' past ' + (d._sent === 1 ? 'game' : 'games') + ' sent to them' : '')); avRefresh(); if (onDone) onDone();
       }).catch(function (e) { msg.textContent = linkErr(e); sfx('bad'); });
     }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
