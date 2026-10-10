@@ -305,7 +305,7 @@ const Casino = (function(){
     var o = d.o, size = ghostSize(o, d.v);
     d.oy = d.touch ? -Math.round(size * 0.55 + 26) : 0;
     var inner = document.createElement('div'); inner.className = 'cz-gin';
-    inner.appendChild(d.kind === 'new' ? stack(d.v, size) : stack(d.v, size));
+    inner.appendChild(stack(d.v, size));
     d.ghost = document.createElement('div'); d.ghost.className = 'cz-ghost'; d.ghost.appendChild(inner);
     document.body.appendChild(d.ghost);
     document.documentElement.classList.add('cz-dragging');
@@ -360,12 +360,11 @@ const Casino = (function(){
     document.documentElement.classList.remove('cz-dragging');
     var o = d.o, tgt = cancelled ? null : d.tgt, placed = false;
     mark(o, null, d.v, false);
-    if(d.kind === 'move' && o.lift) o.lift(d.id, false);
     if(d.kind === 'new'){ if(tgt != null) placed = !!o.drop(tgt, d.v); }
     else if(tgt != null && tgt !== d.id){ placed = !!(o.move && o.move(d.id, tgt, d.v)); }
     else if(tgt == null && d.off && !cancelled){ placed = !!(o.remove && o.remove(d.id, d.v)); }
     var g = d.ghost;
-    if(placed){ g.classList.add('land'); setTimeout(function(){ g.remove(); }, 130); }
+    if(placed){ g.classList.add('land'); setTimeout(function(){ g.remove(); }, 130); if(d.kind === 'move' && o.lift) o.lift(d.id, false); }
     else {
       // Back where it came from: the rack slot, or the spot it was picked up from
       var home = d.kind === 'new' && d.slot && d.slot.isConnected ? d.slot.getBoundingClientRect() : d.rect;
@@ -374,7 +373,6 @@ const Casino = (function(){
       g.style.transform = 'translate3d(' + hx + 'px,' + hy + 'px,0)';
       if(d.slot) d.slot.classList.add('out');
       setTimeout(function(){ g.remove(); if(d.slot) d.slot.classList.remove('out'); if(d.kind === 'move' && o.lift) o.lift(d.id, false); }, 270);
-      if(d.kind === 'move' && o.lift) o.lift(d.id, true);
     }
     if(o.done) o.done(placed, d.kind, tgt);
     else if(o.over) o.over(null, d.v, 'end');
@@ -403,7 +401,7 @@ const Casino = (function(){
   }
   function rack(o){
     css();
-    var r = { o: o, v: o.value != null ? o.value : 5 };
+    var r = { o: o, v: 'value' in o ? o.value : 5 };
     var denoms = o.denoms || [1, 5, 25, 100, 500];
     r.el = document.createElement('div'); r.el.className = 'cz-rack'; r.el.setAttribute('role', 'group'); r.el.setAttribute('aria-label', 'Chip rack');
     denoms.forEach(function(v){

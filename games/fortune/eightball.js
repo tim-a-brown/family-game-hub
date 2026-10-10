@@ -9,7 +9,9 @@
 // version below takes over with the same contract and the same motion.
 // Battery: frames are drawn only while something moves, at most ~60 a second; nothing runs while the page
 // is hidden (the devicemotion listener comes off too), and unmount disposes the GPU resources.
-// Test hook while mounted: window.__eight (state, shake(), info()).
+// Phone motion also pushes the ball the opposite way to the phone's acceleration (it lags like a heavy object),
+// springing back to the middle. Test hook while mounted: window.__eight, also handle().test (state, shake(),
+// info(), pose() to draw a chosen moment, motion() to feed a sensor reading).
 // ═══════════════════════════════════════════════════════════════════════════
 
 // The 20 standard answers (10 yes, 5 maybe, 5 no), with the classic line breaks for the triangle

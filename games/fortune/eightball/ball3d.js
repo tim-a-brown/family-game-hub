@@ -5,7 +5,8 @@
 // Imported on demand by ../eightball.js (the Fortune Teller's 8 ball), which keeps all the motion, shake
 // detection and timing. create(host, ANSWERS, post) returns null without WebGL; otherwise an object with the
 // same contract as the 2D fallback there: cv, layout(w, h, top, bottom), draw(S), ballPx(), adapt(), info(),
-// destroy(). S = { px, lift, pz, tiltX, tiltZ, flip, depth, face, spinAxis, spin, wobX, wobY, wobZ, bubbles }.
+// destroy(). S = { px, lift, pz, tiltX, tiltZ, flip, depth, face, spinAxis, spin, wobX, wobY, wobZ, bubbles, swirl }
+// (swirl: how far the liquid's clouds have drifted).
 // post = { EffectComposer, RenderPass, UnrealBloomPass, OutputPass } when the page's importmap lets the
 // three.js add-ons load (for a touch of bloom), or null to render straight to the screen.
 // three.js core is imported by path, so no importmap is needed; with one, it is the same module instance.
