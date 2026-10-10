@@ -272,7 +272,8 @@ const CSS = `
 .ck-hint.off{opacity:0;transform:translate(-50%,-8px);}
 .ck-acts{position:absolute;left:0;right:0;bottom:calc(var(--safe-b,0px) + 14px);z-index:4;display:flex;justify-content:center;padding:0 16px;
   pointer-events:none;opacity:0;transform:translateY(14px);transition:opacity .3s,transform .35s var(--spring,ease);}
-.ck-acts.on{opacity:1;transform:none;pointer-events:auto;}
+.ck-acts.on{opacity:1;transform:none;}
+.ck-acts.on .btn{pointer-events:auto;}
 .ck-acts .btn{min-width:210px;}
 .ck-slipbox{position:absolute;left:0;top:0;z-index:3;pointer-events:none;transform-origin:50% 50%;will-change:transform;
   filter:drop-shadow(0 12px 14px rgba(0,0,0,.42)) drop-shadow(0 2px 2px rgba(0,0,0,.35));}
@@ -648,8 +649,8 @@ function mount(stage, api) {
   function presentTarget(c) {
     const a = W / H, tv = tanV(), cw = c.w;
     const portrait = a < 1;
-    let D = cw / Math.min((portrait ? 0.56 : 0.4) * 2 * tv * a, (portrait ? 0.3 : 0.42) * 2 * tv);
-    ndc.set(0, portrait ? 0.34 : 0.16); ray.setFromCamera(ndc, camera);
+    let D = cw / Math.min((portrait ? 0.56 : 0.34) * 2 * tv * a, (portrait ? 0.3 : 0.3) * 2 * tv);
+    ndc.set(0, portrait ? 0.34 : 0.44); ray.setFromCamera(ndc, camera);
     // never further than halfway to the table, so it always clearly rises off it
     const toTable = ray.ray.distanceToPlane(tablePlane);
     if (toTable) D = Math.min(D, 0.52 * toTable);
@@ -706,7 +707,7 @@ function mount(stage, api) {
       const u = clamp01((t - CRACK) / 0.55), eb = ease.outBack(u), drift = ease.outCubic(clamp01((t - CRACK - 0.3) / 1.2));
       c.halves.forEach((h, i) => {
         const side = i === 0 ? -1 : 1;
-        h.hinge.position.x = side * (0.14 * eb + 0.22 * drift);
+        h.hinge.position.x = side * (0.14 * eb + (W > H ? 1.9 : 0.22) * drift);
         h.hinge.position.z = -0.12 * drift;
         h.hinge.rotation.set(0, side * (0.3 * eb + 0.12 * drift), side * -0.55 * eb);
       });
@@ -716,7 +717,7 @@ function mount(stage, api) {
       c.slip.scale.setScalar(O.slip0.s + (1.25 - O.slip0.s) * us);
     }
     if (!O.handed && t >= HANDOFF) { O.handed = true; handOff(); }
-    if (!O.done && t >= DONE) { O.done = true; state = 'open'; acts.classList.add('on'); hint.textContent = 'Tap the table for a new cookie'; }
+    if (!O.done && t >= DONE) { O.done = true; state = 'open'; acts.classList.add('on'); hint.textContent = 'Tap the table for a new cookie'; hint.classList.remove('off'); }
     return !O.done || t < DONE + 0.1;
   }
 
@@ -789,7 +790,7 @@ function mount(stage, api) {
     state = 'closing';
     const c = O.c;
     C = { c, t0: T, freed: false, stocked: false, p0: c.root.position.clone() };
-    acts.classList.remove('on');
+    acts.classList.remove('on'); hint.classList.add('off');
     if (slipBox) {
       const sb = slipBox; slipBox = null;
       sb.getAnimations().forEach((a) => a.finish && a.commitStyles && (a.commitStyles(), a.cancel()));
@@ -939,6 +940,7 @@ function mount(stage, api) {
       wobble: (i) => wobble(cookies[i || 0], 0.11),
       fortune: () => (O ? O.fortune : null),
       busy: () => !!raf,
+      time: () => T,
       hero: () => { if (!O) return null; const p = O.c.root.position.clone().project(camera); return { ndc: [p.x, p.y, p.z], pos: O.c.root.position.toArray(), cam: camera.position.toArray() }; },
       hold: (on) => { hold = !!on; if (hold && raf) { cancelAnimationFrame(raf); raf = 0; } else kick(); },
       step: (sec) => { const n = Math.round(sec / 0.016); for (let i = 0; i < n; i++) { T += 0.016; update(0.016); } renderer.render(scene, camera); return state; },

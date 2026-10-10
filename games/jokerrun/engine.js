@@ -683,7 +683,7 @@
     if (Bon && Bon.amber) { shuffle(S.jokers); S.jFlip = true; }
     if (Bon && Bon.crimson && S.jokers.length) S.jOff = pick(S.jokers).u;
     // "When a blind starts" jokers (copies too)
-    S.jokers.forEach(function (j, i) { var d = jdef(i); if (d && d.sel) { var r = d.sel(j.v); if (r && r.msg) notes.push({ u: j.u, txt: r.msg }); } });
+    S.jokers.slice().forEach(function (j, i) { var h = hookOf(S.jokers, i, 'sel'); if (h) { var r = h.f(h.v); if (r && r.msg) notes.push({ u: j.u, txt: r.msg }); } });
     S.draw = shuffle(S.deck.slice());
     S.hand = [];
     drawUp();
@@ -710,3 +710,579 @@
     if (t.k === 'topup') { var n = 0; for (var i = 0; i < 2; i++) if (jokerRoom()) { addJoker(jokerKey(1)); n++; } return n ? n + ' new Joker' + (n > 1 ? 's' : '') : 'No room for Jokers'; }
     return null;
   }
+
+  // ═══ Scoring ══════════════════════════════════════════════════════════════
+  // Copycat / Mirror Image borrow another joker's hook. A turned-off joker does nothing.
+  function hookOf(J, i, hook, depth) {
+    var j = J[i]; if (!j || j.u === S.jOff) return null;
+    var d = JK[j.k];
+    if (d.copy) { depth = depth || 0; if (depth > 5) return null; var t = d.copy === 'right' ? i + 1 : 0; if (t === i) return null; return hookOf(J, t, hook, depth + 1); }
+    return d[hook] ? { f: d[hook], v: j.v } : null;
+  }
+  function anyEffect(r) { return r && (r.chips || r.mult || r.x || r.money); }
+  // The whole calculation as an ordered list of events, so the table can replay it:
+  //   1. before: scaling jokers update   2. each scored card, left to right: chips, enhancement,
+  //   edition, seal, then each joker's "when scored" effect; retriggers repeat the card
+  //   3. cards held in hand (Steel, held jokers)   4. jokers left to right (edition, effect, Polychrome)
+  function score(ids, live) {
+    var opt = optNow(), B = activeBoss();
+    var played = ids.map(function (id) { return clone(C(id)); });
+    var held = S.hand.filter(function (id) { return ids.indexOf(id) < 0; }).map(function (id) { return clone(C(id)); });
+    var ev = evalHand(played, opt), J = clone(S.jokers);
+    var scoring = opt.splash ? played.slice() : ev.scoring;
+    var notAllowed = null;
+    if (B && B.five && played.length < 5) notAllowed = 'Must play 5 cards';
+    if (B && B.gaze && S.playsRound[ev.hand]) notAllowed = 'Already played this round';
+    if (B && B.muzzle) { var pk = Object.keys(S.playsRound); if (pk.length && pk[0] !== ev.hand) notAllowed = 'Only ' + HMAP[pk[0]].n + ' allowed'; }
+    var x = { hand: ev.hand, has: ev.has, played: played, scoring: scoring, held: held, n: played.length, money: S.money, disc: S.discards,
+      first: S.handsPlayedRound === 0, last: S.hands === 1, deckLeft: S.draw.length, nJ: J.length, jslots: jslots(),
+      playsRun: (S.plays[ev.hand] || 0) + 1, playedRound: !!S.playsRound[ev.hand], opt: opt, live: !!live,
+      rnd: live ? rnd : function () { return 0.5; }, chance: function (n, d) { return !!live && rnd() < n * probMul() / d; },
+      deb: function (c) { return debOf(c, B, opt); } };
+    var events = [], makes = [], gone = [], lucky = 0, levelGain = 0;
+    // 1. scaling jokers
+    J.forEach(function (j, ji) {
+      if (j.u === S.jOff) return;
+      var d = JK[j.k]; if (!d.before) return;
+      var r = d.before(j.v, x); if (!r) return;
+      if (r.lvl) levelGain += r.lvl;
+      events.push({ k: 'up', j: ji, txt: r.msg });
+    });
+    var lvl = S.levels[ev.hand] || 1;
+    if (!live) lvl += levelGain;
+    if (B && B.drain) lvl = Math.max(1, lvl - 1);
+    var bc = hChips(ev.hand, lvl), bm = hMult(ev.hand, lvl);
+    if (B && B.half) { bc = Math.max(0, Math.floor(bc / 2 + 0.5)); bm = Math.max(1, Math.floor(bm / 2 + 0.5)); }
+    var chips = bc, mult = bm;
+    function push(e) { if (e.chips) chips += e.chips; if (e.mult) mult += e.mult; if (e.x) mult *= e.x; e.c = chips; e.m = mult; events.push(e); }
+    function info(e) { e.c = chips; e.m = mult; events.push(e); }
+    // 2. scored cards
+    if (!notAllowed) scoring.forEach(function (c, ci) {
+      if (x.deb(c)) { info({ k: 'debuff', id: c.id }); return; }
+      var srcs = [];
+      if (c.sl === 'red') srcs.push({ seal: 1 });
+      J.forEach(function (j, ji) { var h = hookOf(J, ji, 'retrig'); if (!h) return; var n = h.f(h.v, c, x, ci) || 0; for (var q = 0; q < n; q++) srcs.push({ j: ji }); });
+      for (var t = 0; t <= srcs.length; t++) {
+        if (t > 0) info({ k: 'again', id: c.id, j: srcs[t - 1].j, seal: srcs[t - 1].seal });
+        push({ k: 'card', id: c.id, chips: chipsOf(c) + (c.bc || 0), base: 1 });
+        if (c.e === 'bonus') push({ k: 'card', id: c.id, chips: 30 });
+        else if (c.e === 'mult') push({ k: 'card', id: c.id, mult: 4 });
+        else if (c.e === 'glass') push({ k: 'card', id: c.id, x: 2 });
+        else if (c.e === 'lucky') {
+          var hit = false;
+          if (x.chance(1, 5)) { push({ k: 'card', id: c.id, mult: 20 }); hit = true; }
+          if (x.chance(1, 15)) { push({ k: 'card', id: c.id, money: 20 }); hit = true; }
+          if (hit) lucky++;
+        }
+        if (c.ed === 'foil') push({ k: 'card', id: c.id, chips: 50 });
+        else if (c.ed === 'holo') push({ k: 'card', id: c.id, mult: 10 });
+        else if (c.ed === 'poly') push({ k: 'card', id: c.id, x: 1.5 });
+        if (c.sl === 'gold') push({ k: 'card', id: c.id, money: 3 });
+        J.forEach(function (j, ji) {
+          var h = hookOf(J, ji, 'card'); if (!h) return;
+          var r = h.f(h.v, c, x); if (!r) return;
+          if (r.make) { makes.push(r.make); info({ k: 'make', id: c.id, j: ji, txt: '+1 Tarot' }); return; }
+          if (r.note) { info({ k: 'note', id: c.id, j: ji, txt: r.note }); return; }
+          if (anyEffect(r)) push(Object.assign({ k: 'card', id: c.id, j: ji }, r));
+        });
+      }
+    });
+    // 3. cards held in hand
+    if (!notAllowed) held.forEach(function (c) {
+      if (x.deb(c)) return;
+      var srcs = [];
+      if (c.sl === 'red') srcs.push({ seal: 1 });
+      J.forEach(function (j, ji) { var h = hookOf(J, ji, 'retrigHeld'); if (!h) return; var n = h.f(h.v, c, x) || 0; for (var q = 0; q < n; q++) srcs.push({ j: ji }); });
+      for (var t = 0; t <= srcs.length; t++) {
+        var list = [];
+        if (c.e === 'steel') list.push({ k: 'held', id: c.id, x: 1.5 });
+        J.forEach(function (j, ji) { var h = hookOf(J, ji, 'held'); if (!h) return; var r = h.f(h.v, c, x); if (anyEffect(r)) list.push(Object.assign({ k: 'held', id: c.id, j: ji }, r)); });
+        if (!list.length) break;
+        if (t > 0) info({ k: 'again', id: c.id, j: srcs[t - 1].j, seal: srcs[t - 1].seal, held: 1 });
+        list.forEach(push);
+      }
+    });
+    // Planetarium: held Planet cards boost their own hand
+    if (!notAllowed && hasV('planetarium')) S.cons.forEach(function (cc, ci) { if (CONS[cc.k].hand === ev.hand) push({ k: 'cons', ci: ci, x: 1.5 }); });
+    // 4. jokers, left to right
+    if (!notAllowed) J.forEach(function (j, ji) {
+      if (j.u === S.jOff) { info({ k: 'off', j: ji }); return; }
+      if (j.ed === 'foil') push({ k: 'joker', j: ji, chips: 50 });
+      else if (j.ed === 'holo') push({ k: 'joker', j: ji, mult: 10 });
+      var h = hookOf(J, ji, 'main');
+      if (h) {
+        x.self = j.u;
+        var r = h.f(h.v, x);
+        if (r && r.make) { makes.push(r.make); info({ k: 'make', j: ji, txt: '+1 Tarot' }); }
+        else if (anyEffect(r)) push(Object.assign({ k: 'joker', j: ji }, r));
+      }
+      if (j.ed === 'poly') push({ k: 'joker', j: ji, x: 1.5 });
+    });
+    var total = notAllowed ? 0 : Math.floor(chips * mult);
+    var money = 0; events.forEach(function (e) { if (e.money) money += e.money; });
+    var broken = [];
+    if (live) {
+      if (!notAllowed) scoring.forEach(function (c) { if (c.e === 'glass' && !x.deb(c) && rnd() < probMul() / 4) broken.push(c.id); });
+      J.forEach(function (j, ji) { if (j.u === S.jOff) return; var d = JK[j.k]; if (d.after) { var r = d.after(j.v, x); if (r && r.gone) gone.push({ u: j.u, txt: r.gone }); } });
+    }
+    return { hand: ev.hand, level: lvl, bc: bc, bm: bm, events: events, chips: chips, mult: mult, total: total, money: money, notAllowed: notAllowed,
+      broken: broken, J: J, gone: gone, makes: makes, lucky: lucky, played: played.map(function (c) { return c.id; }), scoring: scoring.map(function (c) { return c.id; }), ids: ids.slice() };
+  }
+
+  // ═══ Taking turns ════════════════════════════════════════════════════════
+  function canPlay(ids) { return S.phase === 'play' && ids.length >= 1 && ids.length <= 5 && (!S.forced || ids.indexOf(S.forced) >= 0); }
+  function play(ids) {
+    var B = activeBoss();
+    var before = mostPlayed(), hadPlays = Object.keys(S.plays).length;
+    S.fresh = [];
+    var res = score(ids, true);
+    // jokers after the hand (scaling, used up) and joker notes
+    S.jokers = res.J.filter(function (j) { return !res.gone.some(function (g) { return g.u === j.u; }); });
+    for (var l = 0; l < res.lucky; l++) jokerEvent('lucky');
+    S.hands--; S.handsPlayedRound++; S.stats.hands++;
+    S.plays[res.hand] = (S.plays[res.hand] || 0) + 1;
+    S.playsRound[res.hand] = (S.playsRound[res.hand] || 0) + 1;
+    S.lastHand = res.hand;
+    S.score += res.total;
+    S.money += res.money;
+    res.made = [];
+    res.makes.forEach(function (t) { if (consRoom()) { var c = addCons(consKey(t)); res.made.push(c.k); } });
+    if (B && B.yoke && hadPlays && res.hand === before) { res.yoke = S.money; S.money = Math.min(S.money, 0); }
+    if (B && B.tooth) { res.tax = ids.length; S.money -= ids.length; }
+    var st = S.stats;
+    if (res.total > st.best) {
+      st.best = res.total; st.bestHand = res.hand;
+      st.bh = { h: res.hand, l: res.level, c: res.played.map(function (id) { var c = C(id); return isStone(c) ? 'S' : c.r + c.s; }),
+        e: res.played.map(function (id) { return ({ bonus: 'b', mult: 'm', glass: 'g', steel: 's', gold: 'o', wild: 'w', stone: 't', lucky: 'l' })[C(id).e] || '.'; }).join(''),
+        s: res.played.map(function (id) { return res.scoring.indexOf(id) >= 0 ? '1' : '0'; }).join(''), ch: Math.round(res.chips), m: Math.round(res.mult * 100) / 100, t: res.total,
+        a: S.ante, b: blindInfo(S.bi).name, j: S.jokers.map(function (j) { return j.k; }) };
+    }
+    st.ante[S.ante] = (st.ante[S.ante] || 0) + res.total;
+    res.events.forEach(function (e) { if (e.j != null && res.J[e.j]) { var k = res.J[e.j].k; st.jt[k] = (st.jt[k] || 0) + 1; } });
+    ids.forEach(function (id) { var c = C(id); if (c) c.pa = S.ante; delete S.fd[id]; });
+    S.hand = S.hand.filter(function (id) { return ids.indexOf(id) < 0; });
+    if (S.forced && ids.indexOf(S.forced) >= 0) S.forced = null;
+    if (res.broken.length) { st.broken += res.broken.length; res.broken.forEach(destroyCard); }
+    if (B && B.crimson && S.jokers.length) S.jOff = pick(S.jokers).u;
+    // outcome
+    if (S.score >= S.target) { res.outcome = 'win'; endRound(); }
+    else if (S.hands <= 0) {
+      var bi = S.jokers.findIndex(function (j) { return j.k === 'bones'; });
+      if (bi >= 0 && S.score >= S.target * 0.25) { S.jokers.splice(bi, 1); res.saved = true; res.outcome = 'win'; endRound(true); }
+      else { res.outcome = 'lose'; loseRun(); }
+    } else {
+      if (B && B.claw) { var h = S.hand.slice(); shuffle(h); res.clawed = h.slice(0, 2); S.hand = S.hand.filter(function (id) { return res.clawed.indexOf(id) < 0; }); }
+      drawUp(B && B.coil ? 3 : null, true);
+      if (!S.hand.length) { res.outcome = 'lose'; loseRun(); } else res.outcome = 'go';
+    }
+    return res;
+  }
+  function canDiscard(ids) { return S.phase === 'play' && S.discards > 0 && ids.length >= 1 && ids.length <= 5 && (!S.forced || ids.indexOf(S.forced) < 0 || true); }
+  function discard(ids) {
+    if (!canDiscard(ids)) return null;
+    var B = activeBoss(), out = { notes: [], made: [] };
+    S.fresh = [];
+    S.discards--; S.discUsed = true;
+    var cards = ids.map(C);
+    cards.forEach(function (c) { if (c.sl === 'purple' && consRoom()) { var cc = addCons(consKey('tarot')); out.made.push(cc.k); out.notes.push({ id: c.id, txt: '+1 Tarot' }); } });
+    var keep = [];
+    S.jokers.forEach(function (j) {
+      if (j.u === S.jOff) { keep.push(j); return; }
+      var d = JK[j.k], r = d.disc ? d.disc(j.v, cards) : null;
+      if (r && r.gone) { out.notes.push({ u: j.u, txt: r.gone }); return; }
+      if (r && r.msg) out.notes.push({ u: j.u, txt: r.msg });
+      keep.push(j);
+    });
+    S.jokers = keep;
+    S.hand = S.hand.filter(function (id) { return ids.indexOf(id) < 0; });
+    ids.forEach(function (id) { delete S.fd[id]; });
+    if (S.forced && ids.indexOf(S.forced) >= 0) S.forced = null;
+    drawUp(B && B.coil ? 3 : null);
+    if (!S.hand.length) { out.lose = true; loseRun(); }
+    return out;
+  }
+  function loseRun() {
+    var info = blindInfo(S.bi);
+    S.stats.lostTo = { name: info.name, target: S.target, score: S.score, ante: S.ante };
+    S.phase = 'over';
+  }
+  function endRound(saved) {
+    var info = blindInfo(S.bi), lines = [], notes = [];
+    lines.push({ k: 'blind', label: info.name, sub: 'Score at least ' + fmt(S.target), amt: info.reward, dollars: true });
+    if (saved) notes.push('Lucky Bones saved the run, then broke');
+    if (S.deckId === 'green') {
+      if (S.hands > 0) lines.push({ k: 'hands', label: 'Hands left', sub: S.hands + ' x $2', amt: 2 * S.hands });
+      if (S.discards > 0) lines.push({ k: 'discs', label: 'Discards left', sub: S.discards + ' x $1', amt: S.discards });
+    } else if (S.hands > 0) lines.push({ k: 'hands', label: 'Hands left', sub: S.hands + ' x $1', amt: S.hands });
+    var gold = S.hand.filter(function (id) { return C(id).e === 'gold' && !isDebuffed(id); }).length;
+    if (gold) lines.push({ k: 'gold', label: 'Gold cards held', sub: gold + ' x $3', amt: 3 * gold });
+    S.jokers.forEach(function (j, i) { var h = hookOf(S.jokers, i, 'end'); if (h) { var m = h.f(h.v) || 0; if (m > 0) lines.push({ k: 'joker', u: j.u, label: JK[j.k].n, amt: m }); } });
+    if (S.deckId !== 'green') {
+      var per = 1 + jsum('moon'), cap = interestCap() * per;
+      var interest = Math.min(cap, Math.floor(Math.max(0, S.money) / 5) * per);
+      if (interest) lines.push({ k: 'interest', label: 'Interest', sub: '$' + per + ' for every $5 (max $' + cap + ')', amt: interest });
+    }
+    if (S.bi === 2) {
+      var inv = S.pend.filter(function (t) { return t.k === 'invest'; });
+      if (inv.length) { lines.push({ k: 'tag', label: 'Investment Tag', amt: 25 * inv.length }); S.pend = S.pend.filter(function (t) { return t.k !== 'invest'; }); }
+    }
+    // Blue seals: planet for the last hand played
+    S.hand.forEach(function (id) { var c = C(id); if (c.sl === 'blue' && S.lastHand && consRoom()) { addCons('p_' + S.lastHand); notes.push('Blue Seal: ' + PLANETS[S.lastHand]); } });
+    // End-of-round jokers (spoil, grow)
+    var keep = [];
+    S.jokers.forEach(function (j) {
+      var d = JK[j.k];
+      if (d.endRound) { var r = d.endRound(j.v, { chance: function (n, dd) { return rnd() < n * probMul() / dd; } }); if (r && r.gone) { notes.push(r.gone); return; } }
+      keep.push(j);
+    });
+    S.jokers = keep;
+    S.stats.discUnused += S.discards;
+    if (S.bi === 2) {
+      S.stats.bosses.push(info.name);
+      S.jokers.forEach(function (j, i) { var d = jdef(i); if (d && d.boss && !JK[j.k].copy) d.boss(j.v); });
+    }
+    S.juggle = 0; S.jFlip = false; S.jOff = null; S.forced = null; S.bossOff = false;
+    var total = lines.reduce(function (a, l) { return a + l.amt; }, 0);
+    S.cash = { lines: lines, notes: notes, total: total };
+    S.phase = 'cashout'; S.fd = {}; S.hand = []; S.draw = [];
+    if (S.bi === 2 && S.ante >= 8 && !S.endless && !S.won) { S.won = true; S.winPending = true; }
+  }
+  function collect() {
+    if (S.phase !== 'cashout') return;
+    S.money += S.cash.total; S.stats.earned += S.cash.total; S.cash = null;
+    genShop(); S.phase = 'shop';
+  }
+  function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+
+  // ═══ Shop ═════════════════════════════════════════════════════════════════
+  var PACKS = { standard: { n: 'Standard Pack', what: 'playing cards', col: '#3a6ad8' }, arcana: { n: 'Arcana Pack', what: 'Tarot cards', col: '#8a4fd0' },
+    celestial: { n: 'Celestial Pack', what: 'Planet cards', col: '#2a4ab0' }, buffoon: { n: 'Buffoon Pack', what: 'Jokers', col: '#d0303f' }, spectral: { n: 'Spectral Pack', what: 'Spectral cards', col: '#1f9a96' } };
+  var PSIZE = { normal: { show: 3, pick: 1, price: 4, n: '' }, jumbo: { show: 5, pick: 1, price: 6, n: 'Jumbo ' }, mega: { show: 5, pick: 2, price: 8, n: 'Mega ' } };
+  function packShow(kind, size) { return PSIZE[size].show - (kind === 'buffoon' || kind === 'spectral' ? 1 : 0); }
+  function canAfford(p) { return S.money - p >= -debtLimit(); }
+  function rerollCost() { var sh = S.shop; if (!sh) return 0; if (sh.free > 0) return 0; return Math.max(0, (sh.d6 ? 0 : 5 - (hasV('rrdeal') ? 2 : 0) - (hasV('rrbargain') ? 2 : 0)) + sh.rrn); }
+  function randomPlayingCard(fancy) {
+    var o = { r: pick(RANKS), s: pick(SUITS), e: null, ed: null, sl: null };
+    if (fancy) {
+      if (rnd() < 0.4) o.e = pick(['bonus', 'mult', 'wild', 'glass', 'steel', 'stone', 'gold', 'lucky']);
+      var r = rnd(); o.ed = r < 0.012 ? 'poly' : r < 0.04 ? 'holo' : r < 0.08 ? 'foil' : null;
+      if (rnd() < 0.2) o.sl = pick(['gold', 'red', 'blue', 'purple']);
+    }
+    return o;
+  }
+  function jokerItem(rar, ed, avoid) {
+    var k = jokerKey(rar, avoid || shopJokerKeys());
+    var e = ed !== undefined ? ed : rollEdition();
+    var base = JK[k].c + (e ? EDN[e].price : 0);
+    return { t: 'joker', k: k, ed: e, base: base, price: priceOf(base) };
+  }
+  function shopJokerKeys() { var o = []; if (S.shop) S.shop.items.forEach(function (it) { if (it && it.t === 'joker' && !it.sold) o.push(it.k); }); return o; }
+  function shopItem() {
+    var tm = hasV('arcana2') ? 4 : hasV('arcana1') ? 2 : 1, pm = hasV('star2') ? 4 : hasV('star1') ? 2 : 1;
+    var t = wpick([['joker', 20], ['tarot', 4 * tm], ['planet', 4 * pm], ['card', hasV('cards1') ? 4 : 0]]);
+    if (t === 'joker') return jokerItem();
+    if (t === 'card') { var c = randomPlayingCard(hasV('cards2')); var b = 1 + (c.ed ? EDN[c.ed].price : 0) + (c.e ? 1 : 0); return { t: 'card', card: c, base: b, price: priceOf(b) }; }
+    var used = S.shop ? S.shop.items.filter(function (i) { return i && i.t === 'cons'; }).map(function (i) { return i.k; }) : [];
+    return { t: 'cons', k: consKey(t, used), base: 3, price: priceOf(3) };
+  }
+  function packItem(kind, size) { return { t: 'pack', kind: kind, size: size, base: PSIZE[size].price, price: priceOf(PSIZE[size].price) }; }
+  function randomPack() {
+    var w = [];
+    [['standard', 4], ['arcana', 4], ['celestial', 4], ['buffoon', 1.2], ['spectral', 0.6]].forEach(function (k) {
+      w.push([[k[0], 'normal'], k[1]]); w.push([[k[0], 'jumbo'], k[1] / 2]); w.push([[k[0], 'mega'], k[1] / 8]);
+    });
+    var r = wpick(w); return packItem(r[0], r[1]);
+  }
+  function genShop() {
+    var n = 2 + (hasV('shelf') ? 1 : 0) + (hasV('aisle') ? 1 : 0);
+    var sh = S.shop = { items: [], packs: [], vouchers: [], rrn: 0, free: jsum('freeRR'), d6: false };
+    for (var i = 0; i < n; i++) sh.items.push(shopItem());
+    var slot = 0, extraV = 0;
+    var pend = S.pend.filter(function (t) { return TAGS[t.k].shop; });
+    S.pend = S.pend.filter(function (t) { return !TAGS[t.k].shop; });
+    pend.forEach(function (t) {
+      var it = null;
+      if (t.k === 'uncommon' || t.k === 'rare') it = jokerItem(t.k === 'rare' ? 3 : 2);
+      if (t.k === 'negative' || t.k === 'foil' || t.k === 'holo' || t.k === 'poly') it = jokerItem(null, t.k === 'negative' ? 'neg' : t.k);
+      if (it) { it.price = 0; it.tag = t.k; if (slot < sh.items.length) sh.items[slot] = it; else sh.items.push(it); slot++; }
+      if (t.k === 'coupon') sh.coupon = true;
+      if (t.k === 'd6') sh.d6 = true;
+      if (t.k === 'voucher') extraV++;
+    });
+    sh.packs = [S.firstShop ? packItem('buffoon', 'normal') : randomPack(), randomPack()];
+    S.firstShop = false;
+    if (sh.coupon) sh.items.concat(sh.packs).forEach(function (it) { it.price = 0; });
+    if (S.voucher && !S.voucherSold) sh.vouchers.push({ t: 'voucher', k: S.voucher, base: 10, price: priceOf(10), ante: 1 });
+    for (var v = 0; v < extraV; v++) { var vk = voucherKey(sh.vouchers.map(function (x) { return x.k; })); if (vk) sh.vouchers.push({ t: 'voucher', k: vk, base: 10, price: priceOf(10) }); }
+  }
+  function reroll() {
+    var sh = S.shop, cost = rerollCost();
+    if (!canAfford(cost)) return false;
+    S.money -= cost;
+    if (sh.free > 0) sh.free--; else sh.rrn++;
+    sh.items = sh.items.map(function () { return null; });
+    for (var i = 0; i < sh.items.length; i++) sh.items[i] = shopItem();
+    S.stats.rerolls = (S.stats.rerolls || 0) + 1;
+    jokerEvent('reroll');
+    return true;
+  }
+  // Buy shop[where][i]. useNow: use a consumable straight away. Returns '' or the reason it can't.
+  function buy(where, i, useNow) {
+    var it = S.shop && S.shop[where] && S.shop[where][i];
+    if (!it || it.sold) return 'Sold out';
+    if (!canAfford(it.price)) return 'Not enough money';
+    if (it.t === 'joker' && !jokerRoom() && it.ed !== 'neg') return 'No room. Sell a Joker first';
+    if (it.t === 'cons' && !useNow && !consRoom()) return 'No room. Use or sell a card first';
+    if (it.t === 'cons' && useNow) { var why = consCheck(it.k, [], false); if (why) return why; }
+    S.money -= it.price; it.sold = true;
+    if (it.t === 'joker') addJoker(it.k, it.ed, { cost: it.base });
+    else if (it.t === 'cons') { if (useNow) it.msg = useKey(it.k, []); else addCons(it.k); }
+    else if (it.t === 'card') addToDeck(newCard(it.card.r, it.card.s, it.card));
+    else if (it.t === 'pack') openPack(it.kind, it.size, 'shop');
+    else if (it.t === 'voucher') { applyVoucher(it.k); if (it.k === S.voucher) S.voucherSold = true; }
+    return '';
+  }
+  function applyVoucher(k) {
+    S.vouchers.push(k);
+    if (k === 'rewind' || k === 'timeslip') S.ante = Math.max(1, S.ante - 1);
+  }
+  function refreshHs() { if (S.phase === 'play') { var B = activeBoss(); S.hs = handSizeNow() + (B && B.hs || 0); } }
+  function sellJoker(i) {
+    var j = S.jokers[i]; if (!j) return 0;
+    var v = sellValue(j); S.money += v; S.jokers.splice(i, 1);
+    var B = activeBoss(); if (B && B.jade) S.bossOff = true;
+    if (S.jOff === j.u) S.jOff = null;
+    refreshHs();
+    jokerEvent('sell');
+    return v;
+  }
+  function sellCons(i) { var c = S.cons[i]; if (!c) return 0; var v = consSell(c); S.money += v; S.cons.splice(i, 1); return v; }
+  function moveJoker(from, to) { if (from === to || !S.jokers[from]) return; var j = S.jokers.splice(from, 1)[0]; S.jokers.splice(Math.max(0, Math.min(S.jokers.length, to)), 0, j); }
+  function leaveShop() {
+    var notes = [];
+    S.jokers.forEach(function (j) { if (j.k === 'duplicator' && S.cons.length) { var c = pick(S.cons.filter(function (x) { return !x.neg; }).concat(S.cons)); addCons(c.k, true); notes.push({ u: j.u, txt: 'Copied ' + CONS[c.k].n }); } });
+    S.shop = null;
+    if (S.bi === 2) { S.ante++; S.bi = 0; rollAnte(); } else S.bi++;
+    S.phase = 'blind';
+    return notes;
+  }
+
+  // ═══ Consumables ═════════════════════════════════════════════════════════
+  function handAvailable() { var h = curHand(); return (S.phase === 'play' || (S.phase === 'pack' && S.pack && S.pack.hand)) && h.length > 0; }
+  // fromSlot: the card is in a consumable slot (using it frees that slot)
+  function consCheck(k, ids, fromSlot) {
+    var d = CONS[k]; ids = ids || [];
+    if (d.sel) {
+      if (!handAvailable()) return 'Use this during a round: select cards in your hand first';
+      var h = curHand();
+      if (ids.some(function (id) { return h.indexOf(id) < 0; })) return 'Select cards in your hand';
+      if (ids.length < d.sel[0] || ids.length > d.sel[1]) return d.sel[0] === d.sel[1] ? 'Select exactly ' + d.sel[0] + ' card' + (d.sel[0] > 1 ? 's' : '') : 'Select up to ' + d.sel[1] + ' cards';
+    }
+    if (d.inHand && !handAvailable()) return 'Use this during a round, while you hold cards';
+    if (d.can && !d.can()) return k === 't_repeat' ? 'Use a Tarot or Planet card first' : (k === 't_summon' || k === 's_pact' || k === 's_heart') ? 'No room for a Joker' : 'Nothing to use it on yet';
+    if (d.room && !fromSlot && !consRoom()) return 'No room in your consumable slots';
+    return '';
+  }
+  function useKey(k, ids) {
+    var d = CONS[k];
+    var msg = d.use(ids || []);
+    if (d.t === 'tarot') { S.stats.tarots++; jokerEvent('tarot'); }
+    if (d.t !== 'spectral' && k !== 't_repeat') S.lastCons = k;
+    if (S.phase === 'play') sortHand();
+    if (S.pack && S.pack.hand) sortList(S.pack.hand);
+    refreshHs();
+    return msg || '';
+  }
+  function useCons(i, ids) {
+    var c = S.cons[i]; if (!c) return { err: 'Nothing there' };
+    var why = consCheck(c.k, ids, true); if (why) return { err: why };
+    S.cons.splice(i, 1);
+    return { msg: useKey(c.k, ids), k: c.k };
+  }
+  function sortList(list) { var keep = S.hand; S.hand = list; sortHand(); S.hand = keep; }
+
+  // ═══ Booster packs ═══════════════════════════════════════════════════════
+  function openPack(kind, size, back) {
+    var show = packShow(kind, size), ch = [], used = [];
+    for (var i = 0; i < show; i++) {
+      var it;
+      if (kind === 'standard') it = { t: 'card', card: randomPlayingCard(true) };
+      else if (kind === 'buffoon') it = jokerItem(null, undefined, ch.map(function (c) { return c.k; }).concat(shopJokerKeys()));
+      else if (kind === 'celestial') it = { t: 'cons', k: i === 0 && hasV('chart') ? 'p_' + mostPlayed() : consKey('planet', used) };
+      else if (kind === 'spectral' || (kind === 'arcana' && hasV('omen') && rnd() < 0.2)) it = { t: 'cons', k: consKey('spectral', used) };
+      else it = { t: 'cons', k: consKey('tarot', used) };
+      if (it.k) used.push(it.k);
+      ch.push(it);
+    }
+    var p = { kind: kind, size: size, choices: ch, left: PSIZE[size].pick, back: back };
+    if (kind === 'arcana' || kind === 'spectral') { p.hand = shuffle(S.deck.slice()).slice(0, handSizeNow()); sortList(p.hand); }
+    S.pack = p; S.phase = 'pack';
+    return p;
+  }
+  function pickPack(i, ids) {
+    var p = S.pack, it = p && p.choices[i];
+    if (!it || it.taken) return { err: 'Already taken' };
+    var msg = '';
+    if (it.t === 'joker') { if (!jokerRoom() && it.ed !== 'neg') return { err: 'No room. Sell a Joker first' }; addJoker(it.k, it.ed, { cost: it.base }); }
+    else if (it.t === 'cons') { var why = consCheck(it.k, ids, false); if (why) return { err: why }; msg = useKey(it.k, ids); }
+    else if (it.t === 'card') addToDeck(newCard(it.card.r, it.card.s, it.card));
+    it.taken = true; p.left--;
+    var closed = false;
+    if (p.left <= 0 || p.choices.every(function (c) { return c.taken; })) { closePack(); closed = true; }
+    return { msg: msg, closed: closed };
+  }
+  function closePack() { var back = S.pack ? S.pack.back : 'shop'; S.pack = null; S.phase = back; }
+
+  // ═══ Balance bot (test hooks and simulations) ═════════════════════════════
+  function subsets(arr, maxK, exactK) {
+    var out = [];
+    (function rec(start, cur) {
+      if (cur.length && (!exactK || cur.length === exactK)) out.push(cur.slice());
+      if (cur.length === maxK) return;
+      for (var i = start; i < arr.length; i++) { cur.push(arr[i]); rec(i + 1, cur); cur.pop(); }
+    })(0, []);
+    return out;
+  }
+  function bestPlay() {
+    var B = activeBoss(), ex = B && B.five ? Math.min(5, S.hand.length) : 0, best = null;
+    subsets(S.hand, 5, ex).forEach(function (ids) {
+      if (S.forced && ids.indexOf(S.forced) < 0) return;
+      var r = score(ids, false), t = r.total + ids.length * 0.01;
+      if (!best || t > best.t) best = { ids: ids, total: r.total, hand: r.hand, t: t };
+    });
+    if (!best) best = { ids: [S.hand[0]], total: 0, hand: 'high' };
+    return best;
+  }
+  function botDiscard() {
+    var cards = S.hand.map(C).filter(function (c) { return c.id !== S.forced; }), bySuit = {}, byRank = {};
+    cards.forEach(function (c) { if (isStone(c)) return; bySuit[c.s] = (bySuit[c.s] || 0) + 1; byRank[RV[c.r]] = (byRank[RV[c.r]] || 0) + 1; });
+    var fs = Object.keys(bySuit).sort(function (a, b) { return bySuit[b] - bySuit[a]; })[0], fc = bySuit[fs] || 0;
+    var groups = Object.keys(byRank).filter(function (v) { return byRank[v] >= 2; }).length;
+    var win = null, wn = 0;
+    for (var lo = 1; lo <= 10; lo++) { var have = []; for (var v = lo; v < lo + 5; v++) { var vv = v === 1 ? 14 : v; if (byRank[vv]) have.push(vv); } if (have.length > wn) { wn = have.length; win = have; } }
+    var fav = mostPlayed(), keep;
+    if (fc >= 4 || (fav === 'flush' && fc >= 3)) keep = function (c) { return c.s === fs || c.e === 'wild'; };
+    else if (groups >= 1 && fav !== 'straight') keep = function (c) { return !isStone(c) && byRank[RV[c.r]] >= 2; };
+    else if (wn >= 4) { var seen = {}; keep = function (c) { var v = RV[c.r]; if (win.indexOf(v) >= 0 && !seen[v]) { seen[v] = 1; return true; } return false; }; }
+    else { var top = cards.slice().sort(function (a, b) { return rankOf(b) - rankOf(a); }).slice(0, 2); keep = function (c) { return top.indexOf(c) >= 0; }; }
+    var toss = cards.filter(function (c) { return !keep(c) && !isStone(c) && c.e !== 'steel' && c.e !== 'gold'; }).sort(function (a, b) { return rankOf(a) - rankOf(b); }).slice(0, 5).map(function (c) { return c.id; });
+    if (!toss.length) toss = cards.slice().sort(function (a, b) { return rankOf(a) - rankOf(b); }).slice(0, 1).map(function (c) { return c.id; });
+    return toss;
+  }
+  function jScore(k) {
+    var d = JK[k], s = d.r * 3, fav = mostPlayed();
+    if (/\{x\|/.test(d.d)) s += 5;
+    if (d.before || d.disc || (d.on && Object.keys(d.on).length)) s += 1;
+    if (/Pair/.test(d.d) && /^(pair|two|three|full|four)$/.test(fav)) s += 3;
+    if (/Flush/.test(d.d) && fav === 'flush') s += 4;
+    if (/Straight/.test(d.d) && fav === 'straight') s += 4;
+    if (d.debt || d.freeRR || d.dice || d.moon || k === 'bones' || k === 'well' || k === 'piggy' || k === 'goose' || k === 'egg' || k === 'credit' || k === 'eight' || k === 'drifter') s -= 4;
+    if (k === 'copy' || k === 'mirror') s += 2;
+    return s;
+  }
+  function botUseCons() {
+    for (var i = 0; i < S.cons.length; i++) {
+      var c = S.cons[i], d = CONS[c.k], ids = [];
+      if (d.t === 'spectral' && /destroy|Destroys/.test(d.d) && c.k !== 's_pyre') { if (S.phase !== 'play') continue; }
+      if (d.sel) {
+        if (!handAvailable()) continue;
+        var h = curHand().map(C).sort(function (a, b) { return rankOf(b) - rankOf(a); });
+        if (c.k === 't_shears') ids = h.slice(-d.sel[1]).map(function (x) { return x.id; });
+        else if (c.k === 't_twin') { ids = [h[h.length - 1].id, h[0].id]; var hh = curHand(); ids.sort(function (a, b) { return hh.indexOf(a) - hh.indexOf(b); }); if (C(ids[0]) === h[0]) ids.reverse(); }
+        else if (d.suit) { var cnt = {}; h.forEach(function (x) { cnt[x.s] = (cnt[x.s] || 0) + 1; }); ids = h.filter(function (x) { return x.s !== d.suit; }).slice(-d.sel[1]).map(function (x) { return x.id; }); }
+        else ids = h.filter(function (x) { return !x.e; }).slice(0, d.sel[1]).map(function (x) { return x.id; });
+        if (ids.length < d.sel[0]) continue;
+      }
+      var r = useCons(i, ids);
+      if (!r.err) return true;
+    }
+    return false;
+  }
+  function botStep() {
+    var ph = S.phase;
+    if (ph === 'blind') {
+      var t = S.bi < 2 && S.tags[S.bi];
+      if (t && /^(rare|poly|negative|economy|charm|buffoon)$/.test(t.k) && S.jokers.length >= 2 && rnd() < 0.5) { skipBlind(); return true; }
+      startBlind(); return true;
+    }
+    if (ph === 'play') {
+      if (botUseCons()) return true;
+      var b = bestPlay(), need = S.target - S.score;
+      if (b.total < need && S.discards > 0 && b.total * S.hands < need * 1.1) discard(botDiscard());
+      else play(b.ids);
+      return S.phase !== 'over';
+    }
+    if (ph === 'cashout') { if (S.winPending) { S.winPending = false; return false; } collect(); return true; }
+    if (ph === 'shop') {
+      botUseCons();
+      for (var g = 0; g < 8; g++) {
+        var did = false;
+        S.shop.vouchers.forEach(function (it, i) { if (!it.sold && S.money >= it.price + 15 && /hand1|hand2|bin1|shelf|discount|jar|big1|slip|slot|chart|planetarium|star1|rrdeal/.test(it.k)) { buy('vouchers', i); did = true; } });
+        S.shop.items.forEach(function (it, i) {
+          if (!it || it.sold || S.money < it.price) return;
+          if (it.t === 'joker') {
+            if (!jokerRoom() && it.ed !== 'neg') {
+              var worst = 0; S.jokers.forEach(function (j, q) { if (jScore(j.k) < jScore(S.jokers[worst].k)) worst = q; });
+              if (jScore(it.k) > jScore(S.jokers[worst].k) + 3) sellJoker(worst); else return;
+            }
+            if (S.jokers.length < 3 || jScore(it.k) >= 6 || S.money - it.price >= 20) { buy('items', i); did = true; }
+          } else if (it.t === 'cons' && CONS[it.k].t === 'planet' && (CONS[it.k].hand === mostPlayed() || S.money > 25)) { buy('items', i, true); did = true; }
+          else if (it.t === 'cons' && consRoom() && S.money > 12) { buy('items', i); did = true; }
+        });
+        if (S.phase !== 'shop') return true;
+        if (!did && S.jokers.length < 5 && S.money >= rerollCost() + 12) { reroll(); did = true; }
+        if (!did) break;
+      }
+      S.shop.packs.forEach(function (it, i) { if (S.phase === 'shop' && it && !it.sold && S.money >= it.price + 8 && (it.kind !== 'buffoon' || jokerRoom())) buy('packs', i); });
+      if (S.phase === 'shop') leaveShop();
+      return true;
+    }
+    if (ph === 'pack') {
+      var p = S.pack, bi = -1;
+      p.choices.forEach(function (it, i) {
+        if (bi >= 0 || it.taken) return;
+        if (it.t === 'joker' && (jokerRoom() || it.ed === 'neg')) bi = i;
+        else if (it.t === 'cons' && CONS[it.k].t === 'planet') bi = i;
+        else if (it.t === 'card' && (it.card.e || it.card.ed || it.card.sl)) bi = i;
+      });
+      if (bi >= 0) { var r = pickPack(bi, []); if (!r.err) return true; }
+      // tarots needing cards: try with the best cards in the pack's hand
+      for (var i = 0; i < p.choices.length && S.phase === 'pack'; i++) {
+        var it = p.choices[i]; if (it.taken || it.t !== 'cons') continue;
+        var d = CONS[it.k], ids = [];
+        if (d.sel) ids = S.pack.hand.map(C).filter(function (c) { return !c.e; }).sort(function (a, b) { return rankOf(b) - rankOf(a); }).slice(0, d.sel[1]).map(function (c) { return c.id; });
+        if (d.sel && d.suit) { ids = S.pack.hand.slice(0, d.sel[1]); }
+        if (it.k === 't_shears' || CONS[it.k].t === 'spectral' && /Destroys/.test(d.d)) continue;
+        if (!pickPack(i, ids).err) return true;
+      }
+      if (S.phase === 'pack') closePack();
+      return true;
+    }
+    return false;
+  }
+  function simRun(seed, deck) {
+    newRun('Bot', deck || 'red', seed);
+    var guard = 0;
+    while (guard++ < 6000 && botStep()) {}
+    return { ante: S.ante, bi: S.bi, boss: S.boss, won: S.won, best: S.stats.best, money: S.money, jokers: S.jokers.map(function (j) { return j.k; }), lost: S.stats.lostTo, hands: S.stats.hands };
+  }
+
+  // ═══ Exports ══════════════════════════════════════════════════════════════
+  E.RANKS = RANKS; E.RV = RV; E.SUITS = SUITS; E.SUITN = SUITN; E.GLYPH = GLYPH; E.ENH = ENH; E.EDN = EDN; E.SEAL = SEAL;
+  E.HANDS = HANDS; E.HMAP = HMAP; E.PLANETS = PLANETS; E.JK = JK; E.CONS = CONS; E.BOSSES = BOSSES; E.TAGS = TAGS; E.VOUCHERS = VOUCHERS; E.DECKS = DECKS;
+  E.PACKS = PACKS; E.PSIZE = PSIZE; E.RARITY = RARITY; E.CONS_PRICE = CONS_PRICE;
+  E.hChips = hChips; E.hMult = hMult; E.chipsOf = chipsOf; E.isStone = isStone; E.isFace = isFace; E.suitIs = suitIs; E.cardName = cardName; E.evalHand = evalHand;
+  E.newRun = newRun; E.rollAnte = rollAnte; E.anteBase = anteBase; E.blindInfo = blindInfo; E.activeBoss = activeBoss; E.optNow = optNow; E.isDebuffed = isDebuffed;
+  E.startBlind = startBlind; E.skipBlind = skipBlind; E.score = score; E.play = play; E.discard = discard; E.canPlay = canPlay; E.collect = collect;
+  E.genShop = genShop; E.reroll = reroll; E.rerollCost = rerollCost; E.buy = buy; E.sellJoker = sellJoker; E.sellCons = sellCons; E.sellValue = sellValue; E.consSell = consSell;
+  E.moveJoker = moveJoker; E.leaveShop = leaveShop; E.useCons = useCons; E.consCheck = consCheck; E.openPack = openPack; E.pickPack = pickPack; E.closePack = closePack;
+  E.packShow = packShow; E.sortHand = sortHand; E.mostPlayed = mostPlayed; E.maxHands = maxHands; E.maxDisc = maxDisc; E.handSizeNow = handSizeNow;
+  E.jslots = jslots; E.cslots = cslots; E.jokerRoom = jokerRoom; E.consRoom = consRoom; E.interestCap = interestCap; E.canAfford = canAfford; E.debtLimit = debtLimit;
+  E.addJoker = addJoker; E.addCons = addCons; E.newCard = newCard; E.addToDeck = addToDeck; E.applyVoucher = applyVoucher; E.levelUp = levelUp; E.applyTag = applyTag;
+  E.canRerollBoss = canRerollBoss; E.rerollBoss = doRerollBoss; E.curHand = curHand; E.handAvailable = handAvailable; E.loseRun = loseRun; E.endRound = endRound;
+  E.bestPlay = bestPlay; E.botStep = botStep; E.simRun = simRun; E.C = C; E.hasV = hasV; E.fmt = fmt; E.fx = fx; E.jflag = jflag; E.hookOf = hookOf;
+  E.seed = function (n) { S.rs = n | 0; };
+  Object.defineProperty(E, 'S', { get: function () { return S; }, set: function (v) { S = v; } });
+  root.JRE = E;
+  if (typeof module !== 'undefined' && module.exports) module.exports = E;
+})(typeof window !== 'undefined' ? window : globalThis);

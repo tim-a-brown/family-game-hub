@@ -153,8 +153,10 @@ var GameIcon = (function () {
     dealornodeal: function (c) { return path('M8.5 7V5.2A1.7 1.7 0 0 1 10.2 3.5h3.6a1.7 1.7 0 0 1 1.7 1.7V7', 'none', ' stroke="' + K + '" stroke-width="2"') + rect(2, 7, 20, 13.5, 2.5, c) + rect(2, 11.5, 20, 2.2, 0, K, ' opacity=".25"') + rect(10.4, 10.5, 3.2, 4.2, .8, Y); },
     // a fortune cookie with its paper slip peeking out
     fortune: function (c) {
-      return path('M2.5 17.5C2.3 10.2 6.6 5 12 5s9.7 5.2 9.5 12.5c-2.1-1.4-4.6-2-6.4-1.6L12 19l-3.1-3.1c-1.8-.4-4.3.2-6.4 1.6z', c) +
-        line('M12 6.5c-.3 4-.2 8.4 0 12.5', K, 1.3) +
+      return path('M2.4 17.4C1.6 11.2 5.9 5.6 12 5.4c6.1.2 10.4 5.8 9.6 12-1.5-1.3-3.7-2-5.4-1.6-1.6.5-3 1.9-4.2 3.8-1.2-1.9-2.6-3.3-4.2-3.8-1.7-.4-3.9.3-5.4 1.6z', c) +
+        path('M5 12.6c1.2-2.7 3.4-4.6 5.6-5.1', 'none', ' stroke="' + W + '" stroke-width="1.3" stroke-linecap="round" opacity=".55"') +
+        path('M12 19c-.9-2.6-1-5.6-.2-8.6', 'none', ' stroke="' + K + '" stroke-width="1.2" stroke-linecap="round" opacity=".45"') +
+        path('M2.4 17.4c1.5-1.3 3.7-2 5.4-1.6 1.6.5 3 1.9 4.2 3.8 1.2-1.9 2.6-3.3 4.2-3.8 1.7-.4 3.9.3 5.4 1.6', 'none', ' stroke="' + K + '" stroke-width="1" opacity=".3"') +
         rect(16.2, 14.2, 7.4, 2.6, .5, W, ' stroke="' + K + '" stroke-width=".9" transform="rotate(-14 16.2 15.5)"') +
         path('M17.6 15.2h3.8', 'none', ' stroke="' + R + '" stroke-width=".9" transform="rotate(-14 16.2 15.5)"');
     },
