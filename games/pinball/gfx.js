@@ -71,9 +71,15 @@ export function glowCanvas(size = 128, stops) {
 // One shared library per game. Colours come from the table theme.
 export class Materials {
   constructor(theme = {}) {
-    this.theme = theme; this.cache = {};
+    this.theme = theme; this.cache = {}; this.textures = [];
     const scuff = canvasTex(noiseCanvas(128, 128, 20, 70, 11, { scratches: 40 }), { linear: true, repeat: [2, 2] });
-    this.scuff = scuff;
+    this.scuff = scuff; this.textures.push(scuff);
+  }
+  // everything this library made: called when the table is left
+  dispose() {
+    for (const k in this.cache) { const m = this.cache[k]; if (m && m.dispose) m.dispose(); }
+    this.textures.forEach(t => t.dispose()); this.textures.length = 0; this.cache = {};
+    if (this._glowTex) { this._glowTex.dispose(); this._glowTex = null; }
   }
   get(key, make) { return this.cache[key] || (this.cache[key] = make()); }
   chrome() { return this.get('chrome', () => new THREE.MeshStandardMaterial({ color: 0xe9ebf0, metalness: 1, roughness: 0.27, envMapIntensity: 0.9 })); }
@@ -101,7 +107,7 @@ export class Materials {
   basic(color, o = {}) { return new THREE.MeshBasicMaterial(Object.assign({ color }, o)); }
   wood(base = '#6b4325', key) {
     return this.get('wood' + base + (key || ''), () => {
-      const t = canvasTex(woodCanvas(512, 256, base, 5), { repeat: [1, 1] });
+      const t = canvasTex(woodCanvas(512, 256, base, 5), { repeat: [1, 1] }); this.textures.push(t);
       return new THREE.MeshStandardMaterial({ map: t, roughness: 0.55, metalness: 0 });
     });
   }

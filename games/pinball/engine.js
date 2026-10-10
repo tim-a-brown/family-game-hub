@@ -1016,16 +1016,25 @@ function buildScene(G, T, opts, mark = () => {}) {
   RC.fitCamera = fitCamera;
 
   // ── Post-processing ──
-  let composer = null, bloom = null, size = new THREE.Vector2();
+  let composer = null, bloom = null, outPass = null, size = new THREE.Vector2();
+  // EffectComposer.dispose() frees only its own two targets: the bloom pass holds eleven more (five mips twice
+  // plus the bright pass), so every pass is disposed by hand or textures pile up across tables and resizes
+  function dropComposer() {
+    if (!composer) return;
+    if (bloom) { bloom.dispose(); bloom = null; }
+    if (outPass) { outPass.dispose(); outPass = null; }
+    composer.passes.forEach(ps => { if (ps.dispose && ps !== bloom && ps !== outPass) ps.dispose(); });
+    composer.dispose(); composer = null;
+  }
   function makeComposer(w, h) {
-    if (composer) { composer.dispose(); composer = null; }
+    dropComposer();
     if ((thumb && !hq) || quality < 1) return;
     const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: quality >= 2 ? 4 : 0 });
     composer = new EffectComposer(renderer, rt);
     composer.addPass(new RenderPass(scene, camera));
     bloom = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), theme.bloom, 0.35, theme.bloomThreshold || 1.12);
     composer.addPass(bloom);
-    composer.addPass(new OutputPass());
+    outPass = new OutputPass(); composer.addPass(outPass);
   }
   RC.resize = function () {
     const c = renderer.domElement, w = c.clientWidth || c.width, h = c.clientHeight || c.height;
@@ -1104,7 +1113,9 @@ function buildScene(G, T, opts, mark = () => {}) {
   RC.dispose = function () {
     scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { for (const k in m) if (m[k] && m[k].isTexture) m[k].dispose(); m.dispose(); }); } });
     RC.disposables.forEach(d => d.dispose && d.dispose());
-    if (composer) composer.dispose();
+    mats.dispose();
+    dropComposer();
+    if (key.shadow.map) { key.shadow.map.dispose(); key.shadow.map = null; }
     renderer.renderLists.dispose();
   };
   RC.toWorld = toWorld;
