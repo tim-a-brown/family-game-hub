@@ -1473,6 +1473,7 @@ window.dispatchEvent(new Event('cab3d-ready'));
   // ── Setup: the machine picker ─────────────────────────────────────────────
   function showSetup() {
     gen++; S = null; M = null; stopCycle(); AU.spinStop(); AU.anticStop(); Scene.hide(); Scene.dim(false); hideCab();
+    Kit.titleSwitch(null);
     Kit.setup(app, {
       modes: MODES.map(function (m) { return { id: m, icon: 'star', title: INFO[m].title, desc: INFO[m].desc }; }),
       players: { min: 1, max: 1, count: 1, label: "Who's playing?" },
@@ -1539,7 +1540,7 @@ window.dispatchEvent(new Event('cab3d-ready'));
       last: null, feat: null
     };
     S.stops = MM.reels.map(function (st) { return rnd(st.length); });
-    Kit.gameStart();
+    Kit.gameStart(); machineTitle();
     save(); render();
   }
 
@@ -2572,6 +2573,8 @@ window.dispatchEvent(new Event('cab3d-ready'));
       detail: dt
     });
   }
+  // Title: the machine's name; tap it to cash out and pick another machine
+  function machineTitle() { if (S && INFO[S.mode]) Kit.titleSwitch(INFO[S.mode].title, cashOut, 'Cash out and pick another machine'); }
   function cashOut() {
     if (busy()) { Kit.toast(S && S.feat ? 'Finish the feature first' : 'Wait for the reels to stop'); return; }
     if (!S) { showSetup(); return; }
@@ -2618,7 +2621,7 @@ window.dispatchEvent(new Event('cab3d-ready'));
       if (saved.feat) settleFeature(saved);
       if (saved.spins > 0) recordSession(saved);
       clearSave(); showSetup();
-    } else { S = saved; Kit.gameStart(); render(); }
+    } else { S = saved; Kit.gameStart(); machineTitle(); render(); }
   } else showSetup();
 })();
 </script>

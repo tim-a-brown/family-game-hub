@@ -25,6 +25,7 @@
 //   Kit.rules()                                open the rules sheet
 //   Kit.theme.pick() / .get() / .set(id)       app colour theme (localStorage fgh_theme)
 //   Kit.init({orient:'landscape'|'portrait'})  phones only (orientTablets:true adds iPads): lock or show a turn-your-device cover; 'kit:orient' event
+//   Kit.titleSwitch(text, onClick, label) / (null)   title shows the table/machine/level with a down arrow; tap = the game's own picker
 // window.GN is kept as an alias for haptic/toast/confirm/sheet.
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
@@ -817,7 +818,33 @@
       el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Menu', html: ICON.more, onclick: menu })
     ]);
     doc.body.insertBefore(bar, doc.body.firstChild);
+    gbarEl = bar;
     return bar;
+  }
+
+  // Kit.titleSwitch(text, onClick, label): for games with their own picker (a pinball table, a slot
+  // machine, a level, a teller). The bar title shows what's being played, with a small down arrow;
+  // tapping it goes back to the game's own picker instead of all the way home.
+  // Kit.titleSwitch(null) puts the plain game name back (use it while the picker is showing).
+  var gbarEl = null, tsw = null;
+  function titleSwitch(text, onClick, label) {
+    var ttl = gbarEl && gbarEl.querySelector('.ttl'); if (!ttl) return;
+    var txt = ttl.lastElementChild && ttl.lastElementChild.classList.contains('k-chev') ? ttl.lastElementChild.previousElementSibling : ttl.lastElementChild;
+    if (!tsw) {
+      tsw = { name: txt.textContent, fn: null, chev: el('span', { class: 'k-chev', 'aria-hidden': 'true', html: icon('down') }) };
+      ttl.addEventListener('click', function () { if (tsw.fn) { sfx('tap'); tsw.fn(); } });
+      ttl.addEventListener('keydown', function (e) { if (tsw.fn && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); tsw.fn(); } });
+    }
+    tsw.fn = text ? onClick : null;
+    txt.textContent = text || tsw.name;
+    if (text) {
+      if (!tsw.chev.parentNode) ttl.appendChild(tsw.chev);
+      ttl.classList.add('k-switch'); ttl.setAttribute('role', 'button'); ttl.setAttribute('tabindex', '0');
+      ttl.setAttribute('aria-label', text + '. ' + (label || 'Choose another'));
+    } else {
+      if (tsw.chev.parentNode) tsw.chev.remove();
+      ttl.classList.remove('k-switch'); ttl.removeAttribute('role'); ttl.removeAttribute('tabindex'); ttl.removeAttribute('aria-label');
+    }
   }
   function catName(id) { try { for (var i = 0; i < GAME_CATS.length; i++) if (GAME_CATS[i].id === id) return GAME_CATS[i].name; } catch (e) {} return ''; }
   function findGameSafe(k) { try { return typeof findGame === 'function' ? findGame(k) : null; } catch (e) { return null; } }
@@ -2057,7 +2084,7 @@
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
-    resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
+    titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
 })();

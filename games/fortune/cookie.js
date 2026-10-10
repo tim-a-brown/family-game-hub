@@ -378,28 +378,35 @@ const CSS = `
 .ck{position:absolute;inset:0;overflow:hidden;background:#24100a;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .ck canvas{position:absolute;inset:0;display:block;width:100%;height:100%;outline:none;touch-action:none;cursor:default;}
 .ck canvas.hot{cursor:pointer;}
-.ck-hint{position:absolute;left:50%;top:12px;z-index:2;transform:translateX(-50%);padding:7px 15px;border-radius:999px;white-space:nowrap;
-  background:rgba(22,9,4,.55);color:#fbe7c8;font-weight:800;font-size:.92rem;letter-spacing:.02em;pointer-events:none;
-  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 0 0 1px rgba(255,220,170,.12);transition:opacity .3s,transform .3s;}
+.ck{--ck-gold:#ecc66d;--ck-gold-2:#b98a35;}
+/* Controls are red lacquer plaques with a gold rule, like the restaurant's menu boards and the cloth's trim */
+.ck-plq{position:relative;border:0;border-radius:10px;color:var(--ck-gold);
+  background:linear-gradient(180deg,#6a1014 0%,#4a080b 48%,#330507 100%);
+  box-shadow:inset 0 0 0 1.5px var(--ck-gold-2),inset 0 0 0 4px #3d0608,inset 0 0 0 5px rgba(236,198,109,.45),
+    0 10px 20px rgba(0,0,0,.42),0 2px 3px rgba(0,0,0,.5);
+  font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;}
+.ck-plq::before{content:"";position:absolute;inset:5px 5px 50% 5px;border-radius:6px 6px 2px 2px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,226,200,.14),rgba(255,226,200,0));}
+.ck-hint{position:absolute;left:50%;top:12px;z-index:2;transform:translateX(-50%);padding:8px 20px 9px;white-space:nowrap;pointer-events:none;
+  font-style:italic;font-size:1.02rem;letter-spacing:.02em;text-shadow:0 1px 0 rgba(0,0,0,.5);transition:opacity .3s,transform .3s;}
 .ck-hint.off{opacity:0;transform:translate(-50%,-8px);}
-.ck-acts{position:absolute;left:0;right:0;bottom:calc(var(--safe-b,0px) + 14px);z-index:4;display:flex;justify-content:center;padding:0 16px;
-  pointer-events:none;opacity:0;transform:translateY(14px);transition:opacity .3s,transform .35s var(--spring,ease);}
-.ck-acts.on{opacity:1;transform:none;}
-.ck-acts.on .btn{pointer-events:auto;}
-.ck-acts .btn{min-width:210px;}
-.ck-more{position:absolute;left:0;right:0;bottom:calc(var(--safe-b,0px) + 14px);z-index:4;display:flex;justify-content:center;gap:8px;padding:0 16px;
+.ck-bar{position:absolute;left:0;right:0;bottom:calc(var(--safe-b,0px) + 14px);z-index:4;display:flex;justify-content:center;padding:0 16px;
   pointer-events:none;transition:opacity .3s,transform .35s var(--spring,ease);}
-.ck-more.off{opacity:0;transform:translateY(14px);}
-.ck-more button{pointer-events:auto;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border:0;border-radius:999px;
-  background:rgba(22,9,4,.62);color:#fbe7c8;font:inherit;font-weight:800;font-size:.95rem;letter-spacing:.01em;cursor:pointer;
-  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 0 0 1px rgba(255,220,170,.16),0 6px 16px rgba(0,0,0,.3);
-  -webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:transform .12s,background .2s;}
-.ck-more button:active{transform:scale(.96);background:rgba(60,22,10,.75);}
-.ck-more button:disabled{opacity:.5;}
-.ck-more svg{width:18px;height:18px;flex:none;}
-.ck-more .n{min-width:3.6em;padding:2px 8px;border-radius:999px;background:rgba(226,181,76,.2);color:#f3d58b;font-size:.82rem;font-variant-numeric:tabular-nums;text-align:center;}
-.ck-more .rs{width:44px;padding:0;justify-content:center;}
-.ck-more .rs[hidden]{display:none;}
+.ck-bar.off{opacity:0;transform:translateY(14px);}
+.ck-bar.off *{pointer-events:none !important;}
+.ck-bar .ck-plq{display:flex;align-items:stretch;pointer-events:auto;}
+.ck-b{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:6px 22px;border:0;background:none;color:inherit;
+  font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;border-radius:8px;transition:transform .12s;}
+.ck-b:active{transform:scale(.96);}
+.ck-b:disabled{cursor:default;opacity:.55;}
+.ck-b:focus-visible{outline:2px solid var(--ck-gold);outline-offset:-6px;}
+.ck-b svg{width:19px;height:19px;flex:none;}
+.ck-b .t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1;}
+.ck-b .l{font-weight:700;font-size:.86rem;letter-spacing:.16em;text-transform:uppercase;text-shadow:0 1px 0 rgba(0,0,0,.55);}
+.ck-b .s{margin-top:3px;font-style:italic;font-size:.8rem;letter-spacing:.02em;color:#e3c88f;opacity:.85;font-variant-numeric:oldstyle-nums tabular-nums;}
+.ck-b + .ck-b::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:1px;background:linear-gradient(180deg,transparent,var(--ck-gold-2),transparent);}
+.ck-b.rs{min-width:54px;padding:0 16px;}
+.ck-b[hidden]{display:none;}
 .ck-slipbox{position:absolute;left:0;top:0;z-index:3;pointer-events:none;transform-origin:50% 50%;will-change:transform;
   filter:drop-shadow(0 12px 14px rgba(0,0,0,.42)) drop-shadow(0 2px 2px rgba(0,0,0,.35));}
 .ck-curl{transform:perspective(700px) rotateX(9deg);transform-origin:50% 50%;}
@@ -450,8 +457,8 @@ export default {
   rules: '<h3>Fortune Cookie</h3>' +
     '<p>A table full of fresh fortune cookies. <b>Tap one</b> to pick it up. It snaps in two and the paper slip unrolls with your fortune.</p>' +
     '<ul><li>Every slip has a fortune, six <b>lucky numbers</b> and a <b>Learn Chinese</b> word with how to say it.</li>' +
-    '<li>Tap the table or <b>New cookie</b> to put the slip away. The table restocks itself.</li>' +
-    '<li><b>More cookies</b> drops another cookie on the table. Hold it to keep pouring, up to 40. The arrow button sets the table back to a dozen.</li>' +
+    '<li>Tap the table or <b>Another cookie</b> to put the slip away. The table restocks itself.</li>' +
+    '<li><b>Add a cookie</b> drops another cookie on the table. Hold it to keep pouring, up to 40. The arrow button sets the table back to a dozen.</li>' +
     '<li>You won’t see the same fortune twice until you’ve read most of them.</li></ul>',
   mount
 };
@@ -467,17 +474,19 @@ function mount(stage, api) {
   let styleEl = document.getElementById('ck-style');
   if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = 'ck-style'; styleEl.textContent = CSS; document.head.appendChild(styleEl); }
   const root = document.createElement('div'); root.className = 'ck';
-  const hint = document.createElement('div'); hint.className = 'ck-hint'; hint.textContent = 'Pick a cookie';
-  const acts = document.createElement('div'); acts.className = 'ck-acts';
-  const newBtn = document.createElement('button'); newBtn.type = 'button'; newBtn.className = 'btn btn-primary';
-  newBtn.innerHTML = (Kit ? Kit.icon('sync') : '') + '<span>New cookie</span>';
-  acts.appendChild(newBtn);
-  const more = document.createElement('div'); more.className = 'ck-more';
-  const moreBtn = document.createElement('button'); moreBtn.type = 'button';
-  const resetBtn = document.createElement('button'); resetBtn.type = 'button'; resetBtn.className = 'rs';
+  const hint = document.createElement('div'); hint.className = 'ck-hint ck-plq'; hint.textContent = 'Choose a cookie';
+  // after a cookie is opened: one plaque with "Another cookie"
+  const acts = document.createElement('div'); acts.className = 'ck-bar off';
+  const newBtn = document.createElement('button'); newBtn.type = 'button'; newBtn.className = 'ck-b';
+  newBtn.innerHTML = (Kit ? Kit.icon('sync') : '') + '<span class="t"><span class="l">Another cookie</span></span>';
+  const actsPlq = document.createElement('div'); actsPlq.className = 'ck-plq'; actsPlq.appendChild(newBtn); acts.appendChild(actsPlq);
+  // at the table: "Add a cookie" (hold to keep pouring) and, once there are extras, back to a dozen
+  const more = document.createElement('div'); more.className = 'ck-bar';
+  const moreBtn = document.createElement('button'); moreBtn.type = 'button'; moreBtn.className = 'ck-b';
+  const resetBtn = document.createElement('button'); resetBtn.type = 'button'; resetBtn.className = 'ck-b rs';
   resetBtn.setAttribute('aria-label', 'Back to a dozen cookies'); resetBtn.title = 'Back to a dozen cookies';
   resetBtn.innerHTML = Kit ? Kit.icon('undo') : '';
-  more.appendChild(moreBtn); more.appendChild(resetBtn);
+  const morePlq = document.createElement('div'); morePlq.className = 'ck-plq'; morePlq.appendChild(moreBtn); morePlq.appendChild(resetBtn); more.appendChild(morePlq);
   const live = document.createElement('div'); live.className = 'sr-only'; live.setAttribute('aria-live', 'polite');
   stage.appendChild(root);
 
@@ -937,7 +946,7 @@ function mount(stage, api) {
       c.slip.scale.setScalar(O.slip0.s + (1.25 - O.slip0.s) * us);
     }
     if (!O.handed && t >= HANDOFF) { O.handed = true; handOff(); }
-    if (!O.done && t >= DONE) { O.done = true; state = 'open'; acts.classList.add('on'); hint.textContent = 'Tap the table for a new cookie'; hint.classList.remove('off'); }
+    if (!O.done && t >= DONE) { O.done = true; state = 'open'; acts.classList.remove('off'); hint.textContent = 'Tap the table to put it away'; hint.classList.remove('off'); }
     return !O.done || t < DONE + 0.1;
   }
 
@@ -1010,7 +1019,7 @@ function mount(stage, api) {
     state = 'closing';
     const c = O.c;
     C = { c, t0: T, freed: false, stocked: false, p0: c.root.position.clone() };
-    acts.classList.remove('on'); hint.classList.add('off');
+    acts.classList.add('off'); hint.classList.add('off');
     if (slipBox) {
       const sb = slipBox; slipBox = null;
       sb.getAnimations().forEach((a) => a.finish && a.commitStyles && (a.commitStyles(), a.cancel()));
@@ -1045,7 +1054,7 @@ function mount(stage, api) {
         for (const k of cookies) if (k !== nc) { const d = Math.hypot(k.x - c.x, k.z - c.z); k.hop = { t0: T + 0.42 + d * 0.06 }; }
       }
       state = 'idle'; O = null;
-      hint.textContent = 'Pick a cookie'; hint.classList.remove('off'); more.classList.remove('off');
+      hint.textContent = 'Choose a cookie'; hint.classList.remove('off'); more.classList.remove('off');
     }
     return !C.stocked || !C.freed;
   }
@@ -1124,7 +1133,7 @@ function mount(stage, api) {
   resetBtn.addEventListener('click', () => { stopPour(); resetTable(); });
   function moreLabel() {
     const n = total(), full = n >= MAX;
-    moreBtn.innerHTML = (Kit ? Kit.icon('plus') : '') + '<span>' + (full ? 'Table is full' : 'More cookies') + '</span><span class="n">' + n + ' / ' + MAX + '</span>';
+    moreBtn.innerHTML = (Kit ? Kit.icon('plus') : '') + '<span class="t"><span class="l">' + (full ? 'Table is full' : 'Add a cookie') + '</span><span class="s">' + n + ' of ' + MAX + ' on the table' + (full ? '' : ' · hold for more') + '</span></span>';
     moreBtn.disabled = full;
     moreBtn.setAttribute('aria-label', full ? 'The table is full: ' + n + ' cookies' : 'Add a cookie. ' + n + ' of ' + MAX + ' on the table');
     resetBtn.hidden = extra <= 0;

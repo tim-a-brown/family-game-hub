@@ -745,6 +745,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function leaveGame() {
     view = 'none'; state = 'none'; paused = false; stopDrum(); Mus.stop(true);
+    Kit.titleSwitch(null);
     root.classList.remove('pg-on');
     if (ro) { ro.disconnect(); ro = null; }
   }
@@ -840,6 +841,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // ═══ Level flow ══════════════════════════════════════════════════════════
   function startLevel(n, cfg, saved) {
     objs = buildLevel(n);
+    // title: the level's name; tap it for the level picker
+    Kit.titleSwitch(LEVELS[n - 1] ? LEVELS[n - 1].name : 'Level ' + n, function () { if (L && !L.done) save(); showSetup(); }, 'Choose another level');
     movers = objs.filter(function (o) { return o.mov; });
     L = {
       n: n, def: LEVELS[n - 1], who: cfg.who || 'Player', master: cfg.master || 'guide', fireMode: cfg.fireMode || 'lift',

@@ -1795,6 +1795,8 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function resetFx() { tweens = []; timers = []; parts = []; fxs = []; popups = []; banner = null; shake = 0; playing = false; hint = null; sel = -1; down = null; }
   function startLevel(n, cfg, saved) {
     var def = levelDef(n);
+    // title: the level; tap it for the level picker
+    Kit.titleSwitch((def.name || 'Level ' + n), function () { if (L && view === 'game' && state !== 'done') save(); showSetup(); }, 'Choose another level');
     L = { n: n, def: def, mode: cfg.mode || 'level', who: cfg.who || 'Player', run: cfg.mode === 'run' ? (cfg.run || newRun()) : null, started: (saved && saved.started) || Date.now() };
     G = saved && saved.g ? CM.load(saved.g) : CM.create(def, (Date.now() ^ (n * 7919)) & 0x7fffffff);
     if (!CM.hasMove(G) && G.moves > 0) CM.shuffle(G);
@@ -1811,6 +1813,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
   function leaveGame() {
     view = 'none'; state = 'none'; clearHint(); resetFx();
+    Kit.titleSwitch(null);
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     clearTimeout(showIntro.t); introEl = null;
     root.classList.remove('cm-on');

@@ -19,14 +19,6 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidd
 .gbar{flex:none;}
 .ft-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;}
 
-/* Game bar title: the teller's name, tap to switch */
-.gbar .ttl.ft-switch{cursor:pointer;border-radius:12px;margin:-4px 0;padding:4px 6px 4px 2px;transition:background .15s;}
-.gbar .ttl.ft-switch:active{background:var(--w08);}
-.gbar .ttl > span:not(.gi):not(.ft-chev){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
-@media (max-width:440px){.gbar .ttl.ft-switch .gi{display:none;}}
-.gbar .ttl .ft-chev{display:inline-grid;place-items:center;flex:none;width:22px;height:22px;margin-left:-4px;border-radius:50%;background:var(--w08);color:var(--text-2);}
-.gbar .ttl .ft-chev .ico{width:15px;height:15px;}
-
 /* ── Picker: each teller is a little scene ───────────────────────────── */
 .ft-pick{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
   padding:4px max(16px,env(safe-area-inset-right)) calc(var(--safe-b) + 22px) max(16px,env(safe-area-inset-left));}
@@ -143,23 +135,9 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidd
     menu: [{ icon: 'swap', label: 'Choose a teller', onClick: function () { showPicker(); } }]
   };
   var bar = Kit.init(initOpts);
-  var ttl = bar.querySelector('.ttl'), ttlText = ttl ? ttl.lastChild : null, chev = null;
   function setTitle(t) {
-    if (!ttl) return;
-    ttlText.textContent = t ? t.name : 'Fortune Teller';
-    if (t) {
-      if (!chev) chev = el('span', { class: 'ft-chev', html: Kit.icon('down') });
-      if (!chev.parentNode) ttl.appendChild(chev);
-      ttl.classList.add('ft-switch'); ttl.setAttribute('role', 'button'); ttl.setAttribute('tabindex', '0');
-      ttl.setAttribute('aria-label', t.name + '. Choose a different teller');
-    } else {
-      if (chev && chev.parentNode) chev.remove();
-      ttl.classList.remove('ft-switch'); ttl.removeAttribute('role'); ttl.removeAttribute('tabindex'); ttl.removeAttribute('aria-label');
-    }
-  }
-  if (ttl) {
-    ttl.addEventListener('click', function () { if (current) { Kit.sfx('tap'); showPicker(); } });
-    ttl.addEventListener('keydown', function (e) { if (current && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showPicker(); } });
+    if (t) Kit.titleSwitch(t.name, showPicker, 'Choose a different teller');
+    else Kit.titleSwitch(null);
   }
 
   // ═══ Picker art: a small scene for each teller (inline SVG, no images) ═══
