@@ -77,17 +77,22 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 <script type="module">
 import * as THREE from 'three';
 import { createGame, renderThumb, fmt, audio } from './pinball/engine.js';
-import haunted from './pinball/tables/haunted.js';
-import nebula from './pinball/tables/nebula.js';
-import pirate from './pinball/tables/pirate.js';
-import jungle from './pinball/tables/jungle.js';
-import neon from './pinball/tables/neon.js';
-import midway from './pinball/tables/midway.js';
+import { stubTable } from './pinball/tables/stub.js';
 
 const el = Kit.el, app = document.getElementById('app'), root = document.documentElement;
 const KEY = 'pinball', SELK = 'pinball_sel';
-const TABLES = { haunted, nebula, pirate, jungle, neon, midway };
 const IDS = ['haunted', 'nebula', 'pirate', 'jungle', 'neon', 'midway'];
+// Each table is its own module; one table failing to load must not take the page down with it.
+const NAMES = { haunted: ['Haunted Manor', 'HAUNTED', '#7dd3a8'], nebula: ['Nebula Run', 'NEBULA', '#22d3ee'], pirate: ["Pirate's Cove", 'PIRATE', '#fbbf24'], jungle: ['Jungle Temple', 'JUNGLE', '#84cc16'], neon: ['Neon Nights', 'NEON', '#f472b6'], midway: ['Midway Mayhem', 'MIDWAY', '#f87171'] };
+const TABLES = {};
+await Promise.all(IDS.map(async id => {
+  try { TABLES[id] = (await import('./pinball/tables/' + id + '.js')).default; }
+  catch (e) {
+    console.error('Pinball: table "' + id + '" failed to load', e);
+    const n = NAMES[id];
+    TABLES[id] = stubTable({ id, name: n[0], short: n[1], color: n[2], desc: 'This table is being rebuilt.', diff: 2, music: { url: '../sounds/pinball/' + id + '.mp3', samples: 0, rate: 32000 }, theme: { accent: n[2], pop: n[2] } });
+  }
+}));
 function lsGet(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function selTable() { const h = (location.hash || '').slice(1); if (TABLES[h]) return h; const s = lsGet(SELK, 'haunted'); return TABLES[s] ? s : 'haunted'; }
