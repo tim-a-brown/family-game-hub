@@ -603,6 +603,55 @@ Kit.init({ id: 'hiscores', mark: false });
     R(g, x + (face > 0 ? 0 : -2), y - 5, 2, 2, '#fff'); R(g, x + (face > 0 ? 1 : -1), y - 4, 1, 1, '#000');
     R(g, x - 3, y, 2, 1, '#f97316'); R(g, x + 1, y, 2, 1, '#f97316'); R(g, x - 4, y + 1, 3, 1, '#ea580c'); R(g, x + 1, y + 1, 3, 1, '#ea580c');
   }
+  // Crossy Road's chicken, face on (x = middle, y = top of the comb); flat = squashed
+  function chicken(g, x, y, flat) {
+    x = Math.round(x); y = Math.round(y);
+    if (flat) { R(g, x - 5, y + 7, 10, 3, '#fff'); R(g, x - 5, y + 9, 10, 1, '#d6d3d1'); R(g, x - 1, y + 6, 2, 1, '#ff3b3b'); R(g, x - 6, y + 9, 1, 1, '#ff9a1a'); R(g, x + 5, y + 9, 1, 1, '#ff9a1a'); return; }
+    R(g, x - 1, y, 2, 2, '#ff3b3b'); R(g, x - 3, y + 2, 6, 6, '#fff'); R(g, x - 3, y + 7, 6, 1, '#d6d3d1');
+    R(g, x - 4, y + 4, 1, 3, '#e7e5e4'); R(g, x + 3, y + 4, 1, 3, '#e7e5e4');
+    R(g, x - 2, y + 3, 1, 1, '#111'); R(g, x + 1, y + 3, 1, 1, '#111'); R(g, x - 1, y + 4, 2, 1, '#ff9a1a'); R(g, x - 1, y + 5, 2, 1, '#ff3b3b');
+    R(g, x - 2, y + 8, 1, 1, '#ff9a1a'); R(g, x + 1, y + 8, 1, 1, '#ff9a1a');
+  }
+  // a little car (or a box truck) on a road lane, y = top of the car
+  function car(g, x, y, w, c, truck, dir) {
+    x = Math.round(x);
+    if (truck) {
+      var bx = dir > 0 ? x : x + 7, cx = dir > 0 ? x + w - 7 : x;
+      R(g, bx, y, w - 7, 7, '#e5e7eb'); R(g, bx, y + 6, w - 7, 1, '#9ca3af'); R(g, cx, y + 2, 7, 5, c); R(g, cx + (dir > 0 ? 3 : 1), y + 3, 3, 1, '#cbe7ff');
+    } else { R(g, x, y + 3, w, 4, c); R(g, x + 3, y + 1, w - 6, 2, c); R(g, x + 4, y + 2, w - 8, 1, '#cbe7ff'); R(g, x, y + 3, w, 1, 'rgba(255,255,255,.3)'); }
+    R(g, x + 2, y + 7, 3, 1, '#111'); R(g, x + w - 5, y + 7, 3, 1, '#111'); R(g, dir > 0 ? x + w - 1 : x, y + 4, 1, 1, '#fff6c4');
+  }
+  // Willy the daredevil: f 0 spread out, 1 tucked, 2 flat on a roof, 3 standing with arms up (x = middle, y = feet / roof)
+  function daredevil(g, x, y, f) {
+    x = Math.round(x); y = Math.round(y);
+    var Y = '#ffd84a', Rd = '#e5263f', W = '#fff6ea', K = '#2a1030';
+    if (f === 0) { R(g, x - 1, y - 9, 3, 3, Y); R(g, x, y - 8, 2, 1, K); R(g, x - 1, y - 6, 3, 4, Rd); R(g, x, y - 6, 1, 4, W); R(g, x - 3, y - 7, 2, 1, Rd); R(g, x + 2, y - 7, 2, 1, Rd); R(g, x - 4, y - 8, 1, 1, Rd); R(g, x + 4, y - 8, 1, 1, Rd); R(g, x - 2, y - 2, 1, 2, Rd); R(g, x + 2, y - 2, 1, 2, Rd); R(g, x - 3, y, 2, 1, K); R(g, x + 2, y, 2, 1, K); }
+    else if (f === 1) { R(g, x - 2, y - 6, 5, 5, Rd); R(g, x - 2, y - 4, 5, 1, W); R(g, x - 1, y - 8, 3, 3, Y); R(g, x + 1, y - 7, 1, 1, K); R(g, x - 2, y - 1, 2, 1, K); R(g, x + 1, y - 1, 2, 1, K); }
+    else if (f === 2) { R(g, x - 4, y - 2, 8, 2, Rd); R(g, x - 4, y - 2, 8, 1, W); R(g, x + 4, y - 3, 3, 3, Y); R(g, x + 6, y - 2, 1, 1, K); R(g, x - 6, y - 2, 2, 2, K); }
+    else { R(g, x - 1, y - 10, 3, 3, Y); R(g, x, y - 9, 2, 1, K); R(g, x - 1, y - 7, 3, 4, Rd); R(g, x, y - 7, 1, 4, W); R(g, x - 2, y - 10, 1, 3, Rd); R(g, x + 2, y - 10, 1, 3, Rd); R(g, x - 1, y - 3, 1, 2, Rd); R(g, x + 1, y - 3, 1, 2, Rd); R(g, x - 2, y - 1, 2, 1, K); R(g, x + 1, y - 1, 2, 1, K); }
+  }
+  // the cannon: wheel at (x, y), barrel at angle a (radians, up is negative)
+  function cannon(g, x, y, a) {
+    g.save(); g.translate(x + 2, y - 4); g.rotate(a);
+    g.fillStyle = '#e5263f'; g.fillRect(-3, -3, 17, 6); g.fillStyle = '#ffd84a'; g.fillRect(3, -3, 2, 6); g.fillRect(9, -3, 2, 6); g.fillStyle = '#7a1020'; g.fillRect(14, -3, 2, 6);
+    g.restore();
+    R(g, x - 4, y - 3, 10, 3, '#4a2a1a'); g.fillStyle = '#3f2a1d'; g.beginPath(); g.arc(x, y - 1, 4, 0, TAU); g.fill(); R(g, x - 1, y - 2, 2, 2, '#ffd84a');
+  }
+  // Centipede Chaos: a segment (cx, cy = middle) and a mushroom (x, y = top left of its 8×8 cell, hp 4 = whole)
+  function centSeg(g, cx, cy, head, i, fr) {
+    cx = Math.round(cx); cy = Math.round(cy);
+    var c = head ? '#ffd23d' : (i % 2 ? '#7dffb0' : '#d4ff3d');
+    R(g, cx - 4, cy + (fr ? 0 : 1), 1, 2, '#ff3d5a'); R(g, cx + 3, cy + (fr ? 1 : 0), 1, 2, '#ff3d5a');
+    R(g, cx - 3, cy - 2, 6, 4, c); R(g, cx - 2, cy - 3, 4, 6, c); R(g, cx - 2, cy - 2, 2, 1, 'rgba(255,255,255,.55)');
+    if (head) { R(g, cx - 2, cy - 1, 1, 1, '#111'); R(g, cx + 1, cy - 1, 1, 1, '#111'); R(g, cx - 2, cy - 5, 1, 2, '#ffd23d'); R(g, cx + 1, cy - 5, 1, 2, '#ffd23d'); R(g, cx - 1, cy + 1, 2, 1, '#ff3d5a'); }
+  }
+  function mushroom(g, x, y, hp) {
+    g.save(); g.beginPath(); g.rect(x, y, 8, Math.ceil(8 * hp / 4)); g.clip();
+    R(g, x + 2, y, 4, 1, '#ff5aa0'); R(g, x + 1, y + 1, 6, 3, '#ff5aa0'); R(g, x + 1, y + 3, 6, 1, '#c02670');
+    R(g, x + 2, y + 1, 1, 1, '#ffd0e6'); R(g, x + 5, y + 2, 1, 1, '#ffd0e6'); R(g, x + 3, y + 4, 2, 3, '#fff3b0'); R(g, x + 3, y + 6, 2, 1, '#d8c27a');
+    g.restore();
+  }
+  function neonBlock(g, x, y, w, h, c) { R(g, x, y, w, h, c); R(g, x, y, w, 1, 'rgba(255,255,255,.6)'); R(g, x, y + h - 1, w, 1, 'rgba(0,0,0,.45)'); R(g, x, y, 1, h, 'rgba(255,255,255,.25)'); }
 
   var ART = {
     tetris: function (W, H) {

@@ -554,7 +554,19 @@ function wrapperGeometries(V) {
     g.computeBoundingSphere(); g.computeBoundingBox();
     return g;
   }
-  return [half(-1), half(1)];
+  const L = half(-1), R = half(1);
+  // and the whole pack in one piece (one draw while it lies on the table)
+  const whole = new THREE.BufferGeometry(), nL = L.attributes.position.count;
+  for (const k of ['position', 'normal', 'uv', 'film']) {
+    const a = L.attributes[k], b = R.attributes[k], arr = new Float32Array(a.array.length + b.array.length);
+    arr.set(a.array); arr.set(b.array, a.array.length);
+    whole.setAttribute(k, new THREE.BufferAttribute(arr, a.itemSize));
+  }
+  const ia = L.index.array, ib = R.index.array, idx = new Uint32Array(ia.length + ib.length);
+  idx.set(ia); for (let i = 0; i < ib.length; i++) idx[ia.length + i] = ib[i] + nL;
+  whole.setIndex(new THREE.BufferAttribute(idx, 1));
+  whole.computeBoundingSphere(); whole.computeBoundingBox();
+  return [L, R, whole];
 }
 // The top of the pack at (x, z) in pack units, for fitting a pack around a cookie.
 function wrapTop(V, x, z) {
@@ -936,7 +948,7 @@ function mount(stage, api) {
     const c = { root: rootG, pose, body, halves, slip, mat, blob, base, x, z, scale, restY: rootG.position.y,
       restQ: pose.quaternion.clone(), w: (bb.max.x - bb.min.x) * scale, blobS: blob.scale.clone(), wob: null, hop: null, drop: null, dim: 1, alive: true, P, wrap, pack };
     halves.forEach((h) => { h.mesh.userData.cookie = c; pickables.push(h.mesh); });
-    wrap.meshes.forEach((m) => { m.userData.cookie = c; pickables.push(m); });
+    wrap.whole.userData.cookie = c; pickables.push(wrap.whole);
     return c;
   }
   // Fit a cellophane pack around a cookie lying in its resting pose. The pack lies flat on the
@@ -972,11 +984,13 @@ function mount(stage, api) {
     const inv = pose.quaternion.clone().invert();
     g.position.set(cx * cs + cz * sn, y0, -cx * sn + cz * cs).applyQuaternion(inv);
     g.quaternion.copy(inv).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), phi));
-    const meshes = W.g.map((geo) => { const m = new THREE.Mesh(geo, filmMat); m.scale.set(Sx, Sy, Sz); m.renderOrder = 2; g.add(m); return m; });
+    // on the table the pack is one mesh; its two halves (hidden till then) take over when it's unwrapped
+    const mk = (geo, vis) => { const m = new THREE.Mesh(geo, filmMat); m.scale.set(Sx, Sy, Sz); m.renderOrder = 2; m.visible = vis; g.add(m); return m; };
+    const whole = mk(W.g[2], true), meshes = [mk(W.g[0], false), mk(W.g[1], false)];
     pose.add(g);
     // footprint on the table (before the cookie's scale and place): centre, long-axis angle, half sizes
     const pk = { cx: cx * cs + cz * sn, cz: -cx * sn + cz * cs, ang: phi, hl: Sx * (1 + V.Lf), hw: Sz * V.Wf };
-    return { g, meshes, S: new THREE.Vector3(Sx, Sy, Sz), pk, on: true };
+    return { g, whole, meshes, S: new THREE.Vector3(Sx, Sy, Sz), pk, on: true };
   }
   function packAt(pk, x, z, scale, turn) {
     const c = Math.cos(turn), s = Math.sin(turn);
@@ -1022,7 +1036,7 @@ function mount(stage, api) {
   function freeCookie(c) {
     c.alive = false;
     scene.remove(c.root); scene.remove(c.blob);
-    c.wrap.meshes.forEach((m) => { if (m.parent) m.parent.remove(m); const i = pickables.indexOf(m); if (i >= 0) pickables.splice(i, 1); });
+    [c.wrap.whole, ...c.wrap.meshes].forEach((m) => { if (m.parent) m.parent.remove(m); const i = pickables.indexOf(m); if (i >= 0) pickables.splice(i, 1); });
     c.halves.forEach((h) => { h.mesh.geometry.dispose(); const i = pickables.indexOf(h.mesh); if (i >= 0) pickables.splice(i, 1); });
     c.mat.dispose(); c.slip.material.dispose(); c.blob.material.dispose();
     const i = cookies.indexOf(c); if (i >= 0) cookies.splice(i, 1);
@@ -1265,7 +1279,9 @@ function mount(stage, api) {
       split: false, torn: false, fl: null, nudge: -9, cracked: false, handed: false, done: false,
       fortune: nextFortune(), nums: luckyNumbers(), word: WORDS[Math.floor(Math.random() * WORDS.length)],
       slip0: { p: c.slip.position.clone(), q: c.slip.quaternion.clone(), s: c.slip.scale.x } };
-    c.wrap.meshes.forEach((m) => { m.renderOrder = 6; m.material = filmMat2; });   // drawn after the veil, which it rises above; both faces show as it comes apart
+    // the halves take over from the one-piece pack: drawn after the veil (which they rise above), both faces showing as they come apart
+    c.wrap.whole.visible = false;
+    c.wrap.meshes.forEach((m) => { m.renderOrder = 6; m.material = filmMat2; m.visible = true; });
     dimTo = 0.4;
     hint.classList.add('off'); more.classList.add('off');
     crinkleCtx();   // wake the audio inside the tap, so the tear can be heard on iPhone
@@ -1368,7 +1384,7 @@ function mount(stage, api) {
     if (!O.torn) {
       O.torn = true; O.tornAt = T;
       crinkle(0.6, 1); sfx('flip', 0.5); haptic('medium');
-      Wp.meshes.forEach((m) => { const i = pickables.indexOf(m); if (i >= 0) pickables.splice(i, 1); });
+      const i = pickables.indexOf(Wp.whole); if (i >= 0) pickables.splice(i, 1);
     }
     const k = t - TEAR;
     if (k < PULL) {
