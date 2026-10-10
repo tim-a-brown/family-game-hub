@@ -328,8 +328,11 @@ const Casino = (function(){
     if(d.gy == null) return;
     var se = document.scrollingElement || document.documentElement;
     if(se.scrollHeight <= window.innerHeight + 2) return;
-    var top = 64, sp = 0;
-    if(d.gy < top + 50 && se.scrollTop > 0) sp = -Math.ceil((top + 50 - d.gy) / 5);
+    // Near the top edge (under the game bar) the page scrolls up; over a bet it waits for the very edge,
+    // so a bet that sits near the top can still be dropped on
+    var bar = document.querySelector('.gbar'), top = bar ? Math.max(0, bar.getBoundingClientRect().bottom) : 0, sp = 0;
+    var band = d.tgt != null ? 14 : 44;
+    if(d.gy < top + band && se.scrollTop > 0) sp = -Math.ceil((top + band - d.gy) / 4);
     else if(d.armed && d.gy > d.trayTop - 46 && d.gy < d.trayTop + 30 && se.scrollTop + window.innerHeight < se.scrollHeight - 1) sp = Math.ceil((d.gy - (d.trayTop - 46)) / 5);
     if(!sp) return;
     window.scrollBy(0, Math.max(-14, Math.min(14, sp)));
