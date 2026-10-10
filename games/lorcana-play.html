@@ -11417,7 +11417,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var ref = roomCol(db).doc(netCode());
         ref.get().then(function (sn) {
           if (sn.exists && Date.now() - (sn.data().at || 0) < 12 * 3600e3 && ++tries < 6) return attempt();
-          return ref.set({ host: { name: me.name, pin: FGHSync.pin(), dev: NET.dev, deck: JSON.stringify(dk), mat: myMat(), goal: me.goal === 50 ? 50 : 20, casual: me.casual === 'no' ? 'no' : 'yes' }, guest: null, status: 'waiting', at: Date.now(), seq: 0, owner: 0, st: null, defs: null, pr: null, an: null, w: null, by: NET.dev })
+          return ref.set({ host: { name: me.name, dev: NET.dev, deck: JSON.stringify(dk), mat: myMat(), goal: me.goal === 50 ? 50 : 20, casual: me.casual === 'no' ? 'no' : 'yes' }, guest: null, status: 'waiting', at: Date.now(), seq: 0, owner: 0, st: null, defs: null, pr: null, an: null, w: null, by: NET.dev })
             .then(function () { netListen(ref, 0); netWaitScreen(ref.id, true); });
         }).catch(netErr);
       })();
@@ -11436,7 +11436,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           if (d.host && d.host.dev === NET.dev) throw new Error('That’s your own table. Join it from the other device.');
           if (d.status !== 'waiting') throw new Error('That table already has two players');
           if (d.host.casual === 'no' && deckInks(dk.cards).length > 2) throw new Error(d.host.name + '’s table doesn’t allow casual decks. Pick a deck with one or two inks to join.');
-          tx.update(ref, { guest: { name: me.name === d.host.name ? me.name + ' 2' : me.name, pin: FGHSync.pin(), dev: NET.dev, deck: JSON.stringify(dk), mat: myMat() }, status: 'joined', at: Date.now(), by: NET.dev });
+          tx.update(ref, { guest: { name: me.name === d.host.name ? me.name + ' 2' : me.name, dev: NET.dev, deck: JSON.stringify(dk), mat: myMat() }, status: 'joined', at: Date.now(), by: NET.dev });
         });
       }).then(function () { netListen(ref, 1); netWaitScreen(code, false); });
     }).catch(function (e) { Kit.toast(e.message || String(e)); });
