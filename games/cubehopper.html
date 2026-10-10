@@ -564,7 +564,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.level >= 1 && s.lives > 0 ? s : null; } catch (e) { return null; } }
 
   // ═══ Kit shell ═══════════════════════════════════════════════════════════
-  Kit.init({
+  Kit.init({ orient: 'portrait', orientTablets: true,
     id: 'cubehopper',
     theme: { wood: ['#4a3550', '#2a1c30'] },
     onNew: function () { clearSave(); showSetup(); },
@@ -747,6 +747,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   });
   document.addEventListener('keyup', function (e) { delete keys[e.code || e.key]; });
   document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } else wake(); });
+  document.addEventListener('kit:orient', function (e) { if (!e.detail.ok) { pauseGame(); save(); } });   // device turned the wrong way: pause behind the cover
   window.addEventListener('blur', function () { pauseGame(); });
   window.addEventListener('pagehide', function () { save(); });
 
