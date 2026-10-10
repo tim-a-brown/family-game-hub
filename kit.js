@@ -797,7 +797,8 @@
         list.appendChild(el('div', { class: 'k-name' }, [
           el('button', { type: 'button', class: 'av-btn', 'aria-label': 'Change ' + poss(n) + ' avatar', title: 'Change avatar', onclick: function () { avatarEdit(n, paint); } }, [avEl(n, null, 'var(--surface-3)')]),
           el('span', { class: 'grow' }, [el('span', { text: n }), p ? el('small', { class: 'k-plays', text: p + (p === 1 ? ' game' : ' games') }) : null]),
-          el('button', { type: 'button', class: 'icon-btn' + (window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(n) ? ' lk-on' : ''), 'aria-label': 'Link ' + n + ' to their profile', title: 'Link to their profile', html: icon('link'), onclick: function () { linkSheet(n, paint); } }),
+          // the signed-in person is already themselves: no link button for them
+          whoMark(n) === 'me' ? el('span', { class: 'k-you', text: 'You' }) : el('button', { type: 'button', class: 'icon-btn' + (window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(n) ? ' lk-on' : ''), 'aria-label': 'Link ' + n + ' to their profile', title: 'Link to their profile', html: icon('link'), onclick: function () { linkSheet(n, paint); } }),
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Rename ' + n, html: icon('pencil'), onclick: function () {
             var inp = el('input', { class: 'input', maxlength: 14, value: n, autocomplete: 'off' }), s2;
             function go() {
