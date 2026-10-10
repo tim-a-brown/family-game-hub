@@ -104,8 +104,8 @@ function build(T) {
   T.lower({ flipColor: '#f6efe0', flipRubber: '#c8302c', bxColor: '#ffcc3a', saveColor: '#e8463c', extraColor: '#ff9a40', bxY: 302, slingArt: paintSling });
 
   // ── Left side: the MIDWAY orbit lane, the human cannonball, the shooting gallery ──
-  T.wall([[2, 612], [6, 588], [16, 570], [32, 558], [52, 552]], { style: 'wood', r: 4, h: 34 });
-  T.post(54, 552, { style: 'rubber', r: 5 });
+  T.wall([[2, 612], [6, 588], [16, 570], [32, 558], [50, 553], [58, 562]], { style: 'wood', r: 4, h: 34 });
+  T.post(60, 566, { style: 'rubber', r: 5 });
   T.post(62, 618, { style: 'rubber', r: 5 });   // bottom of the lane guide (the block's wall); the lane mouth is 54 mm wide
   T.spinner({ id: 'spinner', x: 31, y: 690, w: 46, angle: 90, label: 'MIDWAY', color: '#f4ecd8', art: spinArt });
   T.orbit({ id: 'orbitL', a: [8, 660, 60, 660], dirA: [0, 1], b: [434, 660, 478, 660], dirB: [0, -1] });
@@ -127,7 +127,8 @@ function build(T) {
   const wheel = T.comp(new Wheel(T, { id: 'wheel', x: WHEEL.x, y: WHEEL.y, r: WHEEL.r, hub: WHEEL.hub, speed: 1.25, n: 6 }));
   const coasterPts = spline(COASTER, 6), chutePts = spline(CHUTE, 6);
   const coaster = T.world.path({ pts: coasterPts, style: 'wire', fric: 55, exitLvl: 'main', minExit: 320, lvl: 'main',
-    onExit(b, u, e, w) { const h = Math.hypot(e[3], e[4]) || 1, sp = Math.max(u, 320) * 0.9; w.airborne(b, e[0], e[1], Math.max(e[2], 0), e[3] / h * sp, e[4] / h * sp, 0, 'main'); b.noPath = 0.4; G.sfx('wireEnd', { x: e[0], vol: 0.5 }); G.emit('coaster', 'coaster', b, { speed: u }); },
+    onExit(b, u, e, w) { const h = Math.hypot(e[3], e[4]) || 1, sp = Math.max(u, 320) * 0.9, j = (Math.random() - 0.5) * 0.3, cj = Math.cos(j), sj = Math.sin(j), dx = e[3] / h, dy = e[4] / h;
+      w.airborne(b, e[0], e[1], Math.max(e[2], 0), (dx * cj - dy * sj) * sp, (dx * sj + dy * cj) * sp, 0, 'main'); b.noPath = 0.4; G.sfx('wireEnd', { x: e[0], vol: 0.5 }); G.emit('coaster', 'coaster', b, { speed: u }); },
     onFail(b) { b.path.s = 1; b.path.u = 380; } });
   const chute = T.world.path({ pts: chutePts, style: 'wire', fric: 55, lvl: 'main',
     onExit(b, u, e, w) { b.mode = 'free'; b.path = null; G.comps.gumball.receive(b); G.emit('chuteIn', 'chute', b); },
@@ -262,7 +263,7 @@ function makeRules() {
         spins: 0, spinsNeed: 20, lockLit: false, locks: 0, wheelMB: false, rides: 0, rideN: 0, jp: {}, jpV: 100000, superLit: false,
         puck: 0, puckT: 0, bell: 0, strong: false, hurry: 0, strongDone: 0,
         barkerHits: 0, mouthOpen: false, barker: false, bShot: 0, bShotT: 0, bVal: 50000, fed: 0,
-        ducksBanks: 0, dunks: 0, dunkAt: -9, monkeyT: -9, grandLit: false, grand: false, saidT: -9, tauntT: 0, chimeT: 0, bellAt: -9, hornT: 8 };
+        ducksBanks: 0, dunks: 0, dunkAt: -9, lastMajor: '', rideAgain: false, monkeyT: -9, grandLit: false, grand: false, saidT: -9, tauntT: 0, chimeT: 0, bellAt: -9, hornT: 8 };
       G.say(pick(LINES.start));
     },
     say(G, k, force) { if (G.time - G.b.saidT < 3.5 && !force) return; if (G.say(pick(LINES[k]), { force })) G.b.saidT = G.time; },
@@ -292,19 +293,20 @@ function makeRules() {
           if (!B.lockLit && !B.wheelMB) { B.spins++; if (B.spins >= B.spinsNeed) { B.spins = 0; B.lockLit = true; G.msg('MIDWAY SPINNER', 'LOCK IS LIT', { anim: 'gumball' }); G.sfx('award'); } }
           break;
         case 'pop':
+          B.lastMajor = 'pops';
           if (B.mode === 'bumpers') { G.add(8000); B.have++; R.progress(G, 'BUMPER CARS'); }
           if (B.grand) G.add(8000);
           break;
         case 'drop': G.pulse('d' + d.i, 0.3); if (B.mode === 'ducks') G.add(30000); else G.add(6000); break;
         case 'bank':
-          B.ducksBanks++; G.cnt('duckBank'); B.monkeyT = G.time;
+          B.lastMajor = 'ducks'; B.ducksBanks++; G.cnt('duckBank'); B.monkeyT = G.time;
           if (B.mode === 'ducks') { G.add(150000); B.have++; R.progress(G, 'DUCK SHOOT'); }
           else { G.add(25000); G.msg('DUCKS DOWN', fmt(40000 * G.mult), { anim: 'ducks' }); }
           R.barkerShot(G, 'ducks');
           break;
         case 'target':
-          if (id === 'dunk') R.dunk(G);
-          else if (id === 'striker') R.strike(G);
+          if (id === 'dunk') { B.lastMajor = 'dunk'; R.dunk(G); }
+          else if (id === 'striker') { B.lastMajor = 'striker'; R.strike(G); }
           break;
         case 'lane':
           if (/^lane[WIN]$/.test(id)) {
@@ -313,18 +315,22 @@ function makeRules() {
           }
           break;
         case 'orbit':
-          G.combo(id); G.add(9000);
+          B.lastMajor = id; G.combo(id); G.add(9000);
           if (B.grand) R.grandShot(G, id); else if (!R.barkerShot(G, id)) G.msg('MIDWAY', fmt(12000 * G.mult), {});
           break;
-        case 'wheelIn':
-          G.cnt('ride'); B.rides++; B.rideN++; G.add(15000); G.combo('wheel');
+        case 'wheelIn': {
+          // riding again straight off the coaster's inlane feed pays little: the midway wants you to play the other games
+          const again = B.lastMajor === 'wheel'; B.lastMajor = 'wheel'; B.rideAgain = again;
+          G.cnt('ride'); B.rides++; B.rideN++; G.add(again ? 5000 : 15000);
           if (B.grand) { G.add(300000, { x: WHEEL.x, y: WHEEL.y, color: '#ffcc3a' }); G.msg('GRAND PRIZE RIDE', '300,000', { anim: 'wheel' }); }
           else if (B.wheelMB) G.msg('WHEEL RIDE', 'COASTER IS A JACKPOT', { anim: 'wheel', dur: 1.2 });
           else if (B.lockLit && B.locks < 2) G.msg('LOCK IS LIT', 'HOLD ON TIGHT', { anim: 'wheel', dur: 1.4 });
+          else if (again) G.msg('SAME RIDE AGAIN', 'TRY ANOTHER GAME', { anim: 'wheel', dur: 1.2 });
           else { G.msg('WHEEL RIDE', fmt(15000 * G.mult), { anim: 'wheel' }); R.say(G, 'wheel'); }
           if (B.mode === 'coaster') { B.have++; G.add(75000); R.progress(G, 'COASTER'); }
           R.barkerShot(G, 'wheel');
           break;
+        }
         case 'wheelOut':
           if (d && d.route === 'chute') { G.msg('INTO THE GUMBALL', '', { anim: 'gumball', dur: 1.2 }); }
           else if (B.lockLit && B.locks >= 2 && !B.wheelMB && !G.mb) R.startWheelMB(G);
@@ -334,14 +340,15 @@ function makeRules() {
           G.msg('BALL ' + B.locks + ' LOCKED', B.locks === 2 ? 'RIDE AGAIN FOR MULTIBALL' : 'IN THE GUMBALL MACHINE', { anim: 'gumball' }); G.sfx('ratchet', { vol: 0.6 });
           break;
         case 'coaster':
-          G.cnt('coaster'); G.combo('coaster'); G.sfx('ratchet', { vol: 0.3, x: 440 });
+          G.cnt('coaster'); G.sfx('ratchet', { vol: 0.3, x: 440 });
           if (B.grand) G.add(100000);
           else if (B.wheelMB && B.jp.coaster) { R.jackpot(G, 'coaster'); }
-          else { G.add(40000); G.msg('ROLLER COASTER', fmt(40000 * G.mult), { anim: 'wheel' }); R.say(G, 'coaster'); }
+          else if (B.rideAgain) { G.add(10000); }
+          else { G.combo('coaster'); G.add(40000); G.msg('ROLLER COASTER', fmt(40000 * G.mult), { anim: 'wheel' }); R.say(G, 'coaster'); }
           break;
-        case 'scoop': if (id === 'booth') R.booth(G); break;
+        case 'scoop': if (id === 'booth') { B.lastMajor = 'booth'; R.booth(G); } break;
         case 'mouthHit':
-          B.barkerHits++; G.add(4000);
+          B.lastMajor = 'barker'; B.barkerHits++; G.add(4000);
           if (!B.mouthOpen && !B.barker && B.barkerHits >= 3) R.openMouth(G);
           else if (!B.mouthOpen) { G.msg('THE BARKER', (3 - B.barkerHits) + ' MORE TO OPEN HIS MOUTH', { anim: 'barker', dur: 1.2 }); if (G.time - B.tauntT > 6) { B.tauntT = G.time; R.say(G, 'face'); } }
           break;
@@ -355,7 +362,7 @@ function makeRules() {
         case 'mouthOut': G.comp('barker').close(); if (B.wheelMB && !B.superLit) G.comp('barker').close(); break;
         case 'kickback': G.msg('HUMAN CANNONBALL', '', { style: 'flash', dur: 1.2 }); G.sfx('cannon', { vol: 0.9, x: 26 }); G.cnt('cannon'); break;
         case 'ringCatch':
-          G.cnt('ring'); B.monkeyT = G.time; G.sfx('chimeHi', { vol: 0.6 });
+          B.lastMajor = 'ring'; G.cnt('ring'); B.monkeyT = G.time; G.sfx('chimeHi', { vol: 0.6 });
           if (B.mode === 'ring') { G.add(90000); B.have++; R.progress(G, 'RING TOSS'); }
           else if (B.grand) G.add(100000);
           else { G.add(40000); G.msg('RINGED!', fmt(40000 * G.mult), {}); }
@@ -966,13 +973,15 @@ function barkerModel(RC, toy) {
   const whiteG = mergeGeo([-12, 12].map(x => { const w = new THREE.SphereGeometry(6.5, 16, 12); w.translate(x, 27, 50); return w; }));
   B.add(M.plastic('#fbf8f0', { roughness: 0.15, clearcoat: 1 }), bake(whiteG));
   const eyes = [-12, 12].map(x => { const pg = new THREE.SphereGeometry(1.7, 10, 8); pg.translate(0, 2.4, 0); const ir = vcMesh([[new THREE.SphereGeometry(3.2, 12, 10), '#2a4a8a'], [pg, '#0a0a0a']], VC.plastic, false); ir.position.set(x, 32.4, 50); g.add(ir); return ir; });
-  // jaw (hinged at the back) with its teeth, a dark mouth cavity behind it
-  const jp = new THREE.Group(); jp.position.set(0, -6, 22); g.add(jp);
-  const jawG = new THREE.SphereGeometry(24, 24, 12, 0, TAU, PI / 2, PI / 2); jawG.rotateX(-PI / 2); jawG.scale(1.05, 1.2, 0.75); jawG.translate(0, 14, 2);
-  const teethG = new THREE.BoxGeometry(24, 6, 3); teethG.translate(0, 28, 3);
-  jp.add(vcMesh([[jawG, '#e8b690'], [teethG, '#fbf8f0']], VC.plastic));
-  const cav = new THREE.SphereGeometry(21, 16, 12); cav.scale(1, 1, 0.6); cav.translate(0, 6, 22); B.add(M.paint('#1a0608', { roughness: 1 }), bake(cav));
-  const ut = new THREE.BoxGeometry(26, 7, 3.5); ut.translate(0, 24, 22); B.add(M.plastic('#fbf8f0', { roughness: 0.15, clearcoat: 1 }), bake(ut));
+  // the mouth: a dark cavity just inside the face, upper teeth along its top, and a chin that swings down from a hinge inside the head
+  const cav = new THREE.SphereGeometry(1, 18, 12); cav.scale(15, 7, 9); cav.translate(0, 28, 24); B.add(M.paint('#2a0a0c', { roughness: 1 }), bake(cav));
+  const tongue = new THREE.SphereGeometry(1, 12, 8); tongue.scale(8, 6, 3); tongue.translate(0, 30, 18); B.add(M.plastic('#c84a58', { roughness: 0.4 }), bake(tongue));
+  const ut = new THREE.BoxGeometry(24, 5, 4); ut.translate(0, 31.5, 31); B.add(M.plastic('#fbf8f0', { roughness: 0.15, clearcoat: 1 }), bake(ut));
+  const jp = new THREE.Group(); jp.position.set(0, -4, 30); g.add(jp);
+  const jawG = new THREE.SphereGeometry(1, 24, 16); jawG.scale(19, 17, 9); jawG.translate(0, 26, -10);
+  const teethG = new THREE.BoxGeometry(22, 4, 3); teethG.translate(0, 34, -3);
+  const lip = new THREE.TorusGeometry(13, 2.2, 8, 20, PI); lip.rotateZ(PI); lip.rotateX(PI / 2); lip.translate(0, 41, -1);
+  jp.add(vcMesh([[jawG, '#e4ab86'], [teethG, '#fbf8f0'], [lip, '#c8766a']], VC.plastic));
   // straw boater (pushed back on his head), collar and bow tie: static
   const straw = M.plastic('#e9d79a', { roughness: 0.75 });
   const brim = new THREE.CylinderGeometry(34, 34, 1.6, 36); brim.rotateX(PI / 2); brim.translate(0, -14, 66); B.add(straw, bake(brim));
@@ -983,7 +992,7 @@ function barkerModel(RC, toy) {
   [-1, 1].forEach(sd => { const bt = new THREE.ConeGeometry(5, 10, 3); bt.rotateZ(sd * PI / 2); bt.translate(sd * 6, 18, 6); B.add(blue, bake(bt)); });
   const knot = new THREE.SphereGeometry(2.6, 10, 8); knot.translate(0, 19, 6); B.add(blue, bake(knot));
   g.userData.pose = (k, look, t) => {
-    jp.rotation.x = -k * 0.95; jp.position.z = 22 - k * 3;
+    jp.rotation.x = -k * 0.62;
     const lx = look[0] * c - look[1] * s, ly = look[0] * s + look[1] * c;   // world -> local
     eyes.forEach((ir, i) => { ir.position.x = (i ? 12 : -12) + lx * 3.2; ir.position.z = 50 + (ly > 0 ? -1.6 : 0.6); });
     head.rotation.z = Math.sin(t * 0.7) * 0.03 + k * Math.sin(t * 9) * 0.02;
@@ -1066,23 +1075,25 @@ function dunkModel(RC) {
 // the carousel: a striped canopy with brass poles and horses turns over the spinning disc; three chrome legs hold the outer ring
 function carouselModel(RC) {
   const M = RC.mats, B = RC.batch, [x, y] = CAROUSEL, G = RC.G;
-  const ring = new THREE.TorusGeometry(48, 1.4, 8, 48); ring.translate(x, y, 72); B.add(M.chrome(), ring);
-  for (const [px, py] of CAR_LEGS) { const a = Math.atan2(py - y, px - x); B.add(M.chrome(), tubeGeo([[px, py, 40], [x + Math.cos(a) * 48, y + Math.sin(a) * 48, 71]], 1.8, 2, 8)); }
-  const g = new THREE.Group(); g.position.set(x, y, 74); RC.root.add(g);
+  const ring = new THREE.TorusGeometry(42, 1.4, 8, 48); ring.translate(x, y, 86); B.add(M.chrome(), ring);
+  for (const [px, py] of CAR_LEGS) { const a = Math.atan2(py - y, px - x); B.add(M.chrome(), tubeGeo([[px, py, 40], [x + Math.cos(a) * 42, y + Math.sin(a) * 42, 85]], 1.8, 2, 8)); }
+  const g = new THREE.Group(); g.position.set(x, y, 88); RC.root.add(g);
   const tex = stripeTex(RC, 16, '#c8302c', '#f4ecd8'); tex.wrapS = THREE.RepeatWrapping;
-  g.add(mesh(latheGeo(0, 0, [[46, 0], [44, 1], [34, 5], [20, 10], [8, 15], [0, 18]], 32), new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.5, clearcoat: 0.3, side: THREE.DoubleSide })));
+  g.add(mesh(latheGeo(0, 0, [[40, 0], [38, 1], [30, 5], [18, 10], [7, 15], [0, 18]], 32), new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.5, clearcoat: 0.3, side: THREE.DoubleSide })));
   const P = [];
-  for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; const s = new THREE.SphereGeometry(4.2, 8, 6); s.scale(1, 1, 0.5); s.translate(Math.cos(a) * 44, Math.sin(a) * 44, 0); P.push([s, '#ffcc3a']); }
+  for (let i = 0; i < 14; i++) { const a = i / 14 * TAU; const s = new THREE.SphereGeometry(4, 8, 6); s.scale(1, 1, 0.5); s.translate(Math.cos(a) * 38, Math.sin(a) * 38, 0); P.push([s, '#ffcc3a']); }
   P.push([latheGeo(0, 0, [[0, 17], [4, 18], [3, 22], [1.5, 26], [0, 30]], 12), '#d8b26a']);
+  P.push([(() => { const c = new THREE.CylinderGeometry(3, 3, 46, 10); c.rotateX(PI / 2); c.translate(0, 0, -23); return c; })(), '#d8b26a']);
   for (let i = 0; i < 6; i++) {
-    const a = i / 6 * TAU, px = Math.cos(a) * 30, py = Math.sin(a) * 30;
-    const pole = new THREE.CylinderGeometry(0.9, 0.9, 36, 6); pole.rotateX(PI / 2); pole.translate(px, py, -16); P.push([pole, '#d8b26a']);
-    const hz = -24 + (i % 2) * 3, ca = Math.cos(a + PI / 2), sa = Math.sin(a + PI / 2), horse = ['#f6efe0', '#e8c8a0', '#8a6a4a'][i % 3];
-    const body = new THREE.BoxGeometry(8, 3.2, 3.6); body.rotateZ(a + PI / 2); body.translate(px, py, hz); P.push([body, horse]);
-    const neck = new THREE.BoxGeometry(2.6, 2.4, 4); neck.rotateZ(a + PI / 2); neck.translate(px + ca * 4.2, py + sa * 4.2, hz + 2.6); P.push([neck, horse]);
-    const headH = new THREE.BoxGeometry(4, 2.2, 2.4); headH.rotateZ(a + PI / 2); headH.translate(px + ca * 6, py + sa * 6, hz + 4.4); P.push([headH, horse]);
-    for (const k of [-2.8, 2.8]) for (const sd of [-1.2, 1.2]) { const leg = new THREE.BoxGeometry(1, 1, 4); leg.translate(px + ca * k - sa * sd, py + sa * k + ca * sd, hz - 3.5); P.push([leg, horse]); }
-    const saddle = new THREE.BoxGeometry(3, 3.6, 1.2); saddle.rotateZ(a + PI / 2); saddle.translate(px, py, hz + 2.2); P.push([saddle, i % 2 ? '#c8302c' : '#1d4e9a']);
+    const a = i / 6 * TAU, px = Math.cos(a) * 34, py = Math.sin(a) * 34;
+    const pole = new THREE.CylinderGeometry(1, 1, 50, 6); pole.rotateX(PI / 2); pole.translate(px, py, -24); P.push([pole, '#d8b26a']);
+    const hz = -34 + (i % 2) * 4, ca = Math.cos(a + PI / 2), sa = Math.sin(a + PI / 2), horse = ['#f6efe0', '#e8c8a0', '#8a6a4a'][i % 3];
+    const body = new THREE.BoxGeometry(11, 4.4, 5); body.rotateZ(a + PI / 2); body.translate(px, py, hz); P.push([body, horse]);
+    const neck = new THREE.BoxGeometry(3.4, 3.2, 5.5); neck.rotateZ(a + PI / 2); neck.translate(px + ca * 5.6, py + sa * 5.6, hz + 3.6); P.push([neck, horse]);
+    const headH = new THREE.BoxGeometry(5.5, 3, 3.2); headH.rotateZ(a + PI / 2); headH.translate(px + ca * 8.2, py + sa * 8.2, hz + 6); P.push([headH, horse]);
+    for (const k of [-3.8, 3.8]) for (const sd of [-1.6, 1.6]) { const leg = new THREE.BoxGeometry(1.3, 1.3, 5.5); leg.translate(px + ca * k - sa * sd, py + sa * k + ca * sd, hz - 4.8); P.push([leg, horse]); }
+    const saddle = new THREE.BoxGeometry(4, 5, 1.6); saddle.rotateZ(a + PI / 2); saddle.translate(px, py, hz + 3); P.push([saddle, i % 2 ? '#c8302c' : '#1d4e9a']);
+    const mane = new THREE.BoxGeometry(1.2, 3, 3); mane.rotateZ(a + PI / 2); mane.translate(px + ca * 4.8, py + sa * 4.8, hz + 6.2); P.push([mane, '#3a2416']);
   }
   g.add(vcMesh(P, VC.plastic));
   RC.anim.push(() => { const c = G.comps.carousel; if (c) g.rotation.z = c.a; });
