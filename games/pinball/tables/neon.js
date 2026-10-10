@@ -880,7 +880,7 @@ function skylineModel(RC) {
 }
 // legs and wall brackets holding the wireforms (placed where no ball travels)
 function wireLegs(RC) {
-  const B = RC.batch, s = RC.mats.steel(), w = RC.world;
+  const B = RC.batch, s = RC.mats.steel(), w = RC.G.world;
   const leg = (x, y, z) => { B.add(s, cylGeo(x, y, 1.6, 0, z - 1, 8)); B.add(s, cylGeo(x, y, 4, 0, 1.5, 8)); };
   const at = (comp, f) => { const p = w.pathAt(comp.path, comp.path.L * f); return p; };
   // skyline wire: posts on the wheel-house wall, brackets off the left wall, a post at the lane end

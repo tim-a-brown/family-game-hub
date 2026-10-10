@@ -27,7 +27,7 @@ const DECK_POLY = [[337, 670], [337, 700], [339, 788], [348, 834], [364, 860], [
 const CANNON = [376, 768];
 const FORT = { x: 150, y: 918, face: 290 };          // centre and the way it faces
 const KRAKEN = { mx: 290, my: 585, rx: 290, ry: 628 }; // magnet and the rock
-const CHEST = { x: 125, y: 760, w: 60, d: 44 };
+const CHEST = { x: 138, y: 760, w: 60, d: 44 };
 const WHIRL = [262, 880];
 const HARBOUR = [58, 452];
 const PORTS = ['PORT MARROW', 'SKULL BAY', 'SALT HARBOUR', 'BLACKREEF'];
@@ -37,7 +37,7 @@ const rot = (cx, cy, a, x, y) => [cx + Math.cos(a) * x - Math.sin(a) * y, cy + M
 const FORT_ROT = deg(FORT.face) + PI / 2;
 const fortPt = (x, y) => rot(FORT.x, FORT.y, FORT_ROT, x, y);
 const FORT_BLOCK = [fortPt(-52, 46), fortPt(52, 46), fortPt(52, -26), fortPt(-52, -26)];
-const CHEST_BOX = [[CHEST.x - CHEST.w / 2, CHEST.y - CHEST.d / 2], [CHEST.x - CHEST.w / 2, CHEST.y + CHEST.d / 2], [CHEST.x + CHEST.w / 2, CHEST.y + CHEST.d / 2], [CHEST.x + CHEST.w / 2, CHEST.y - CHEST.d / 2]];
+const CHEST_BOX = [[CHEST.x - CHEST.w / 2, CHEST.y - CHEST.d / 2], [CHEST.x - CHEST.w / 2, CHEST.y + CHEST.d / 2], [CHEST.x, CHEST.y + CHEST.d / 2 + 12], [CHEST.x + CHEST.w / 2, CHEST.y + CHEST.d / 2], [CHEST.x + CHEST.w / 2, CHEST.y - CHEST.d / 2]];   // peaked back: nothing rests on the lid
 const NO_LAND = [HULL, FORT_BLOCK, CHEST_BOX];
 
 export default {
@@ -55,7 +55,7 @@ export default {
     '<li><b>The Kraken:</b> spell S-E-A on the lagoon targets and the Kraken wakes. Roll past the rock and a tentacle grabs the ball and drags it under to the treasure chest. Three balls in the chest start <b>Kraken Multiball</b>: ramps and orbits are jackpots, then the Kraken itself is the super jackpot.</li>' +
     '<li><b>Plunder ports:</b> knock down the M-A-P drop targets to light Plunder at the harbour scoop (bottom left). Each port lights three shots for 35 seconds; make all three to plunder it. Four ports on the map.</li>' +
     '<li><b>The storm:</b> roll through the whirlpool under the top lanes five times and the sky breaks: rain, lightning, the whirlpool spins and everything scores double for 30 seconds.</li>' +
-    '<li><b>Top lanes:</b> A-R-R raises the bonus multiplier; the flippers move the lit lane. Lighting all three the second time lights the lifeboat kickback on the left outlane. The ship\'s wheel spinner on the right orbit pays doubloons.</li>' +
+    '<li><b>Top lanes:</b> A-R-R raises the bonus multiplier; the flippers move the lit lane. Lighting all three the second time lights the lifeboat kickback on the right outlane. The ship\'s wheel spinner on the right orbit pays doubloons.</li>' +
     '<li><b>Davy Jones:</b> plunder all four ports, win Kraken Multiball, take the fort and survive the storm to light the compass, then shoot the harbour: four balls, sixty seconds, every shot a jackpot and the Kraken a 300,000 super.</li></ul>',
   theme: {
     playfield: '#163b44', cabinet: '#2a1a10', wood: '#4a2e18', rails: 'gold', rubber: '#1a1414', postColor: '#d9c8a0', postRubber: '#2a1a14',
@@ -87,9 +87,10 @@ function build(T) {
   T.post(64, 601, { style: 'rubber', r: 5 });
   T.orbit({ id: 'orbitL', a: [8, 660, 62, 660], dirA: [0, 1], b: [430, 660, 478, 660], dirB: [0, -1] });
   T.orbit({ id: 'orbitR', a: [430, 660, 478, 660], dirA: [0, 1], b: [8, 660, 62, 660], dirB: [0, -1] });
-  T.scoop({ id: 'harbour', x: HARBOUR[0], y: HARBOUR[1], r: 12, eject: { angle: 330, speed: 1450 }, hold: 1.0 });
-  T.wall([[68, 470], [40, 500], [2, 548]], { style: 'wood', r: 4, h: 30, color: '#5a3a1e' });   // the quay wall seals the pocket behind the scoop
-  T.kickback({ id: 'lifeboat', x: 24, y: 205, power: 2300, label: 'LIFEBOAT', color: '#7fd4ff' });
+  T.scoop({ id: 'harbour', x: HARBOUR[0], y: HARBOUR[1], r: 12, eject: { angle: 300, speed: 1300 }, hold: 1.0 });
+  T.wall([[75, 462], [40, 500], [2, 548]], { style: 'wood', r: 4, h: 30, color: '#5a3a1e' });   // the quay walls seal the chute behind the scoop
+  T.wall([[41, 442], [60, 396], [96, 372]], { style: 'wood', r: 4, h: 30, color: '#5a3a1e' });
+  T.kickback({ id: 'lifeboat', x: 458, y: 205, power: 2300, label: 'LIFEBOAT', color: '#7fd4ff' });
 
   // ── Right side: ship's wheel orbit lane, the galleon, the plank ramp, M-A-P drops ──
   T.wall([[478, 612], [474, 588], [464, 572], [448, 562], [432, 558]], { style: 'wood', r: 4, h: 34, color: '#5a3a1e' });
@@ -128,8 +129,8 @@ function build(T) {
 
   // ── The treasure chest (ball lock) ──
   T.wall(CHEST_BOX, { style: 'invisible', mat: 'wood', r: 3, closed: true });
-  CHEST_BOX.forEach(p => T.post(p[0], p[1], { style: 'rubber', r: 5 }));
-  T.ao({ kind: 'poly', pts: CHEST_BOX, a: 0.55, blur: 10 });
+  [CHEST_BOX[0], CHEST_BOX[1], CHEST_BOX[3], CHEST_BOX[4]].forEach(p => T.post(p[0], p[1], { style: 'rubber', r: 5 }));
+  T.ao({ kind: 'poly', pts: CHEST_BOX.slice(0, 2).concat(CHEST_BOX.slice(3)), a: 0.55, blur: 10 });
   T.ballLock({ id: 'chest', slots: [[CHEST.x - 14, CHEST.y - 6, 3], [CHEST.x + 14, CHEST.y - 6, 3], [CHEST.x, CHEST.y + 8, 20]], hidden: false, exit: { x: CHEST.x, y: CHEST.y - 44, vx: 0, vy: -380 } });
 
   // ── The fort on its island (upper left) ──
