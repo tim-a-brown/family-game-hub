@@ -82,7 +82,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .ct-row span{font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(var(--ct-rgb),.85);}
 .ct-row b{font-family:var(--display);font-weight:400;font-size:1.35rem;color:#fff;font-variant-numeric:tabular-nums;}
 .ct-row b small{font-family:var(--font, system-ui);font-size:.72rem;font-weight:800;color:rgba(255,255,255,.55);margin-left:4px;}
-.ct-row.score b{font-size:2.3rem;line-height:1;color:#ffd84a;text-shadow:0 0 14px rgba(255,190,40,.5);}
+.ct-row.ct-score b{font-size:2.3rem;line-height:1;color:#ffd84a;text-shadow:0 0 14px rgba(255,190,40,.5);}
 .ct-row.me span,.ct-row.me b{color:var(--who,#ffd84a);}
 .ct-row .nm{display:flex;align-items:center;gap:8px;font-weight:900;color:#fff;font-size:.95rem;letter-spacing:0;text-transform:none;}
 .ct-row .dot{width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c);}
@@ -151,7 +151,7 @@ const KEY = 'crazytower', HI = 'crazytower';
 // ═══ The tower's rules ══════════════════════════════════════════════════════
 // World units: a full block is BASE × BASE across and BH tall. Block n (1, 2, 3...) sits on block n-1;
 // the pedestal is block 0 and its top is y = 0.
-const BASE = 3, BH = 0.82, HOVER = 1.15, RANGE = 4.3, FLOOR = -3.6;
+const BASE = 3, BH = 0.82, HOVER = 1.15, RANGE = 4.3, FLOOR = -3.6, PLINTH = BASE + 1.6;
 const JACKPOT = 40, MARKS = [10, 20, 30], JACKPOT_BONUS = 100;
 const PERF = 0.14;                 // a drop this close to the block below counts as perfect (snaps on)
 const GROW_AT = 3, GROW = 0.3;     // from the 3rd perfect in a row, each perfect widens the block a little
@@ -165,7 +165,7 @@ function hslRgb(h, s, l) {
   const f = n => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1))));
   return [f(0), f(8), f(4)];
 }
-function colorAt(n) { return new THREE.Color().setHSL(hueAt(n) / 360, 0.92, 0.56); }
+function colorAt(n) { return new THREE.Color().setHSL(hueAt(n) / 360, 0.95, 0.5); }
 
 // ═══ Sound (synthesized) ════════════════════════════════════════════════════
 const Snd = (() => {
@@ -235,8 +235,8 @@ const WHITE = new THREE.Color(1, 1, 1);
 // Glossy block with glowing LED edges: a standard material plus a few lines of shader that light the
 // edges of the box (from its own size) and darken the bottom of each side a touch.
 function boxMat(color, edge, emis) {
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: .2, metalness: .08, envMapIntensity: 1.1 });
-  mat.emissive.copy(color).multiplyScalar(emis == null ? .2 : emis);
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: .28, metalness: .05, envMapIntensity: .3 });
+  mat.emissive.copy(color).multiplyScalar(emis == null ? .22 : emis);
   const u = { uHalf: { value: new THREE.Vector3(1, 1, 1) }, uEdge: { value: edge.clone() }, uFlash: { value: 0 } };
   mat.userData.u = u;
   mat.onBeforeCompile = sh => {
@@ -255,7 +255,7 @@ function boxMat(color, edge, emis) {
   return mat;
 }
 function boxMesh(w, h, d, color, edgeK, emis) {
-  const edge = color.clone().lerp(WHITE, .5).multiplyScalar(2.4 * (edgeK == null ? 1 : edgeK));
+  const edge = color.clone().lerp(WHITE, .3).multiplyScalar(1.7 * (edgeK == null ? 1 : edgeK));
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), boxMat(color, edge, emis));
   mesh.material.userData.u.uHalf.value.set(w / 2, h / 2, d / 2);
   return mesh;
@@ -308,8 +308,8 @@ function initGL() {
   const pm = new THREE.PMREMGenerator(renderer);
   scene.environment = pm.fromScene(new RoomEnvironment(renderer), 0.04).texture; pm.dispose();
   camera = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.1, 400);
-  scene.add(new THREE.HemisphereLight(0xa8b8ff, 0x1a0b26, 0.55));
-  const key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(10, 16, 3); scene.add(key);
+  scene.add(new THREE.HemisphereLight(0xa8b8ff, 0x1a0b26, 0.4));
+  const key = new THREE.DirectionalLight(0xffffff, 1.35); key.position.set(10, 16, 3); scene.add(key);
   const rim = new THREE.DirectionalLight(0xff6ad5, 0.5); rim.position.set(-8, 4, -6); scene.add(rim);
 
   // Backdrop: a vertical gradient that shifts colour as the tower climbs
@@ -318,9 +318,22 @@ function initGL() {
   scene.background = bgTex; paintBg(192);
 
   // Floor: dark glass with a neon grid and a pool of light under the tower
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshBasicMaterial({ color: 0x07050f }));
-  floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR - .01; scene.add(floor);
-  const grid = new THREE.GridHelper(120, 60, 0xff3cc8, 0x3b2a9a); grid.position.y = FLOOR; grid.material.transparent = true; grid.material.opacity = .55; grid.material.toneMapped = false; scene.add(grid);
+  // (a round stage that fades into the backdrop, so the gradient shows once the tower climbs)
+  const floorTex = canvasTex(1024, 1024, (g, w, h) => {
+    const lines = document.createElement('canvas'); lines.width = w; lines.height = h; const l = lines.getContext('2d');
+    for (let i = 0; i <= 16; i++) {
+      const p = Math.round(i * w / 16) + .5, mid = i === 8;
+      l.strokeStyle = mid ? 'rgba(255,70,210,.95)' : 'rgba(120,90,255,.75)'; l.lineWidth = mid ? 4 : 3;
+      l.beginPath(); l.moveTo(p, 0); l.lineTo(p, h); l.moveTo(0, p); l.lineTo(w, p); l.stroke();
+    }
+    l.globalCompositeOperation = 'destination-in';
+    const m = l.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); m.addColorStop(0, 'rgba(0,0,0,1)'); m.addColorStop(.55, 'rgba(0,0,0,.7)'); m.addColorStop(1, 'rgba(0,0,0,0)');
+    l.fillStyle = m; l.fillRect(0, 0, w, h);
+    const r = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); r.addColorStop(0, 'rgba(6,3,14,.96)'); r.addColorStop(.6, 'rgba(6,3,14,.75)'); r.addColorStop(1, 'rgba(6,3,14,0)');
+    g.fillStyle = r; g.fillRect(0, 0, w, h); g.drawImage(lines, 0, 0);
+  });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(34, 34), new THREE.MeshBasicMaterial({ map: floorTex, transparent: true, depthWrite: false, toneMapped: false }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR; scene.add(floor);
   const pool = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
     map: canvasTex(128, 128, (g, w, h) => { const r = g.createRadialGradient(64, 64, 4, 64, 64, 64); r.addColorStop(0, 'rgba(120,200,255,.55)'); r.addColorStop(.4, 'rgba(160,80,255,.18)'); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(0, 0, w, h); }) }));
   pool.rotation.x = -Math.PI / 2; pool.position.y = FLOOR + .02; scene.add(pool);
@@ -330,7 +343,7 @@ function initGL() {
   pedestal = boxMesh(BASE, colH, BASE, new THREE.Color(0x1a1430), .55, .05);
   pedestal.material.userData.u.uEdge.value.set(.3, 1.6, 2.4);
   pedestal.position.y = -colH / 2; scene.add(pedestal);
-  const plinth = boxMesh(BASE + 1.6, .5, BASE + 1.6, new THREE.Color(0x150f26), 1, .04);
+  const plinth = boxMesh(PLINTH, .5, PLINTH, new THREE.Color(0x150f26), 1, .04);
   plinth.material.userData.u.uEdge.value.set(2.4, .4, 1.8);
   plinth.position.y = FLOOR + .25; scene.add(plinth);
 
@@ -379,7 +392,7 @@ function buildMarks() {
     const g = frame(jp ? S + .5 : S, jp ? .12 : .06, col); g.position.y = y; scene.add(g);
     let lb;
     if (jp) { lb = label('JACKPOT', '+' + JACKPOT_BONUS, '#ffb21a', 1.7); lb.position.set(-(S + .5) / 2 - .4, y + 1.5, -(S + .5) / 2 - .4); }
-    else { lb = label(String(n), '+' + n, '#4fd2ff', 1.05); const d = S / Math.SQRT2 + lb.scale.x / 2 + .2; lb.position.copy(dirL).multiplyScalar(d); lb.position.y = y + .1; }
+    else { lb = label(String(n), '+' + n, '#4fd2ff', 1.45); const d = S / Math.SQRT2 + lb.scale.x / 2 + .2; lb.position.copy(dirL).multiplyScalar(d); lb.position.y = y + .1; }
     scene.add(lb);
     const m = { n, g, lb, col, lit: 0, hitT: -9 };
     if (jp) {
@@ -447,7 +460,7 @@ function makeComposer(W, H) {
     composer = new EffectComposer(renderer, rt);
     composer.setPixelRatio(1); composer.setSize(W, H);
     composer.addPass(new RenderPass(scene, camera));
-    bloom = new UnrealBloomPass(new THREE.Vector2(W, H), .95, .5, .78);
+    bloom = new UnrealBloomPass(new THREE.Vector2(W, H), .7, .4, .92);
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
   } catch (e) { composer = null; }
@@ -458,7 +471,7 @@ let live = false, state = 'idle', paused = false, countdown = 0, shownCount = 0;
 let players = [], pi = 0, multi = false, session = { runs: 0, best: 0 };
 let stack = [], cur = null, debris = [], spawnT = 0, run = null, phaseT = 0, lastRun = null;
 let T = 0, camY = 1.4, camTY = 1.4, camX = 0, camZ = 0, zoom = 1, zoomT = 1, shake = 0;
-function hiBest() { let b = 0; try { b = ArcadeHi.best(HI) || 0; } catch (e) {} return b; }
+function hiBest() { let b = 0; try { b = Math.max(ArcadeHi.best(HI) || 0, parseInt(localStorage.getItem('crazytower_best'), 10) || 0); } catch (e) {} return b; }
 function topBlock() { return stack[stack.length - 1]; }
 function height() { return Math.max(0, stack.length - 1); }
 
@@ -599,7 +612,7 @@ function addDebris(p, color, axis, sgn, y, push, reuse) {
   if (reuse) { resizeBox(mesh, p.w, BH, p.d); }
   mesh.position.set(p.x, y, p.z); mesh.rotation.set(0, 0, 0); scene.add(mesh);
   const spin = (2.2 + Math.random() * 2.2) * (push > .8 ? .7 : 1);
-  const d = { mesh, vy: -1, vx: 0, vz: 0, wx: 0, wz: 0, t: 0 };
+  const d = { mesh, vy: -1, vx: 0, vz: 0, wx: 0, wz: 0, t: 0, hw: p.w / 2, hd: p.d / 2, rest: false };
   if (axis === 'x') { d.vx = sgn * (.8 + Math.random() * .7) * push; d.wz = -sgn * spin; }
   else { d.vz = sgn * (.8 + Math.random() * .7) * push; d.wx = sgn * spin; }
   debris.push(d);
@@ -683,7 +696,21 @@ function update(dt) {
     const d = debris[i], m = d.mesh; d.t += dt;
     d.vy -= 26 * dt; m.position.x += d.vx * dt; m.position.y += d.vy * dt; m.position.z += d.vz * dt;
     m.rotation.x += d.wx * dt; m.rotation.z += d.wz * dt;
-    if (m.position.y < FLOOR + .3 && d.vy < 0) { m.position.y = FLOOR + .3; d.vy = -d.vy * .25; d.vx *= .5; d.vz *= .5; d.wx *= .4; d.wz *= .4; if (Math.abs(d.vy) < .6) { d.vy = 0; d.wx = d.wz = 0; } }
+    // below the pedestal's top the column is in the way: keep pieces outside it
+    if (m.position.y < BH && !d.rest) {
+      const px = m.position.x, pz = m.position.z, hx = BASE / 2 + d.hw, hz = BASE / 2 + d.hd;
+      if (Math.abs(px) < hx && Math.abs(pz) < hz) { if (hx - Math.abs(px) < hz - Math.abs(pz)) { m.position.x = Math.sign(px || 1) * hx; d.vx = Math.abs(d.vx) * Math.sign(px || 1); } else { m.position.z = Math.sign(pz || 1) * hz; d.vz = Math.abs(d.vz) * Math.sign(pz || 1); } }
+    }
+    const onPlinth = Math.abs(m.position.x) < PLINTH / 2 + .1 && Math.abs(m.position.z) < PLINTH / 2 + .1;
+    const ground = (onPlinth ? FLOOR + .5 : FLOOR) + BH / 2;
+    if (m.position.y < ground && d.vy < 0) {
+      m.position.y = ground; d.vy = -d.vy * .22; d.vx *= .45; d.vz *= .45; d.wx *= .35; d.wz *= .35;
+      if (Math.abs(d.vy) < .8) {   // settle flat on a face
+        d.vy = 0; d.vx = d.vz = 0; d.wx = d.wz = 0; d.rest = true;
+        const q = Math.PI / 2; m.rotation.x = Math.round(m.rotation.x / q) * q; m.rotation.z = Math.round(m.rotation.z / q) * q;
+      }
+    }
+    if (d.rest) { d.vy = 0; m.position.y = ground; }
     if (m.position.y < camY - 40 || d.t > 12) { dropMesh(m); debris.splice(i, 1); }
   }
   // sparks
@@ -769,6 +796,7 @@ function finishRun() {
   const p = players[pi], h = height(), sc = run.score, isBest = sc > 0 && sc > run.best0;
   p.score = sc; p.height = h; p.perfects = run.perfects; p.bestStreak = run.bestStreak; p.jackpot = run.jackpot;
   session.runs++; session.best = Math.max(session.best, sc);
+  try { if (sc > (parseInt(localStorage.getItem('crazytower_best'), 10) || 0)) localStorage.setItem('crazytower_best', String(sc)); } catch (e) {}
   lastRun = { name: p.name, score: sc, height: h, perfects: run.perfects, bestStreak: run.bestStreak, jackpot: run.jackpot, isBest, oldBest: run.best0, marks: run.marks.slice(), minW: run.minW };
   if (!multi) recordSolo();
   render();
@@ -890,7 +918,7 @@ function overlay() {
       '<div class="ct-card">' +
       '<div class="ct-row"><span>Height</span><b>' + r.height + '<small>blocks</small></b></div>' +
       '<div class="ct-row"><span>Perfect drops</span><b>' + r.perfects + (r.bestStreak > 1 ? '<small>best ' + r.bestStreak + ' in a row</small>' : '') + '</b></div>' +
-      '<div class="ct-row score"><span>Score</span><b id="cnt">0</b></div>' +
+      '<div class="ct-row ct-score"><span>Score</span><b id="cnt">0</b></div>' +
       '<div class="ct-row"><span>Best</span><b>' + (r.isBest ? '<span class="ct-new">NEW</span>' : '') + Math.max(hiBest(), r.score) + '</b></div>' +
       '<div class="ct-note">' + (r.jackpot ? 'You topped the tower!' : left === 1 ? '1 more block to the jackpot' : left + ' more blocks to the jackpot') + '</div></div>' +
       '<div class="ct-acts"><button class="btn btn-primary btn-lg" type="button" id="ov-again">Build again</button>' +

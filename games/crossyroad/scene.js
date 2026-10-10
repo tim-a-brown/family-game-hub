@@ -198,7 +198,7 @@ export function createScene(renderer) {
   const wl = new THREE.Mesh(M.wing, matV), wr = new THREE.Mesh(M.wing, matV); wl.castShadow = wr.castShadow = true;
   wl.position.set(-0.3, 0.1, 0); wl.rotation.y = PI; wr.position.set(0.3, 0.1, 0);
   const wlP = new THREE.Group(), wrP = new THREE.Group(); wlP.add(wl); wrP.add(wr);
-  eagle.add(eBody, wlP, wrP); eagle.visible = false; scene.add(eagle);
+  eagle.add(eBody, wlP, wrP); eagle.visible = false; eagle.scale.setScalar(1.55); scene.add(eagle);
 
   const cam = new THREE.OrthographicCamera(-5, 5, 10, -10, 0.1, 200);
   const OFF = new THREE.Vector3(Math.sin(YAW) * Math.cos(PITCH), Math.sin(PITCH), Math.cos(YAW) * Math.cos(PITCH));
@@ -344,7 +344,7 @@ export function createScene(renderer) {
       P.rail.add(gx, top + 0.09, z - 0.24, 0, gw, 1, 1); P.rail.add(gx, top + 0.09, z + 0.24, 0, gw, 1, 1);
       const tr = trainAt(row, t);
       // the crossing signal at the right-hand edge, lamps flashing while a train is due
-      const sxp = HALF + 0.9, szp = z + 0.42;
+      const sxp = HALF + 0.72, szp = z + 0.44;
       P.signal.add(sxp, top, szp);
       const on = tr && tr.warn, ph = Math.floor(t * 5) % 2;
       [-0.1, 0.1].forEach((dz, i) => {
@@ -374,6 +374,7 @@ export function createScene(renderer) {
     return groundTop(row);
   }
   const FACE = { u: 0, d: PI, l: PI / 2, r: -PI / 2 };
+  const CS = 1.18;   // chicken scale
   function drawChicken(G, t, dt) {
     const Pl = G.p, D = G.death;
     crouch += ((crouchWant && !D && !Pl.hop ? 1 : 0) - crouch) * Math.min(1, dt * 22);
@@ -399,32 +400,32 @@ export function createScene(renderer) {
       sy *= 1 - 0.24 * crouch; sxz *= 1 + 0.14 * crouch;
       const bu = t - Pl.bumpAt;
       if (bu >= 0 && bu < 0.16) { const s = Math.sin(PI * bu / 0.16) * 0.12; x += -Math.sin(face) * s; rr += Math.cos(face) * s; }
-      chick.position.set(x, y, -rr); chick.scale.set(sxz, sy, sxz);
+      chick.position.set(x, y, -rr); chick.scale.set(sxz * CS, sy * CS, sxz * CS);
       return;
     }
     const u = D.t, z = -D.row;
     if (D.cause === 'car') {
       const k = Math.min(1, u / 0.06);
       chick.position.set(D.x, rowTopAt(G, Math.round(D.row)) + 0.01, z);
-      chick.scale.set(1 + 0.45 * k, 1 - 0.9 * k, 1 + 0.45 * k);
+      chick.scale.set(CS * (1 + 0.45 * k), CS * (1 - 0.9 * k), CS * (1 + 0.45 * k));
     } else if (D.cause === 'train') {
       chick.position.set(D.x + (D.dir || 1) * 20 * u, 0.4 + 7 * u - 5 * u * u, z - u * 2);
-      chick.rotation.set(u * 14, face, u * 9); chick.scale.set(1, 1, 1);
+      chick.rotation.set(u * 14, face, u * 9); chick.scale.setScalar(CS);
       if (u > 1) chick.visible = false;
     } else if (D.cause === 'water' || D.cause === 'edge') {
-      chick.position.set(D.x, -0.15 - u * 2.6, z); chick.scale.set(1, 1, 1);
+      chick.position.set(D.x, -0.15 - u * 2.6, z); chick.scale.setScalar(CS);
       if (u > 0.3) chick.visible = false;
     } else if (D.cause === 'eagle') {
       eagle.visible = true;
       let ex, ey, ez;
-      if (u < 0.6) { const k = u / 0.6, e = k * k; ex = D.x; ey = 7.5 + (0.95 - 7.5) * e; ez = z - 13 * (1 - e); }
-      else { const k = (u - 0.6) / 1.4, e = k * k * 0.6 + k * 0.4; ex = D.x; ey = 0.95 + 9 * e; ez = z + 18 * e; }
+      if (u < 0.6) { const k = u / 0.6, e = k * k; ex = D.x; ey = 8 + (1.45 - 8) * e; ez = z - 13 * (1 - e); }
+      else { const k = (u - 0.6) / 1.4, e = k * k * 0.6 + k * 0.4; ex = D.x; ey = 1.45 + 9 * e; ez = z + 18 * e; }
       eagle.position.set(ex, ey, ez); eagle.rotation.set(u < 0.6 ? -0.35 : 0.25, PI, 0);
       const fl = u < 0.5 ? 0.25 : Math.sin(u * 22) * 0.7;
       wlP.rotation.z = -fl; wrP.rotation.z = fl;
       if (u < 0.6) chick.position.set(D.x, rowTopAt(G, Math.round(D.row)), z);
-      else chick.position.set(ex, ey - 0.95, ez + 0.05);
-      chick.scale.set(1, 1, 1);
+      else chick.position.set(ex, ey - 1.45, ez + 0.05);
+      chick.scale.setScalar(CS);
     }
   }
 
