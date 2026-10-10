@@ -1180,9 +1180,11 @@
     if (k === 'copy' || k === 'mirror') s += 2;
     return s;
   }
+  function mostPlayedRecent() { var best = 'high', n = 0; Object.keys(S.playsRound || {}).forEach(function (k) { if (S.playsRound[k] > n) { n = S.playsRound[k]; best = k; } }); return n ? best : mostPlayed(); }
   function botUseCons() {
     for (var i = 0; i < S.cons.length; i++) {
       var c = S.cons[i], d = CONS[c.k], ids = [];
+      if (/^(s_curse|s_effigy|s_pact|s_void|s_unison|s_pyre|t_shears)$/.test(c.k)) { if (S.phase === 'shop') sellCons(i); continue; }
       if (d.t === 'spectral' && /destroy|Destroys/.test(d.d) && c.k !== 's_pyre') { if (S.phase !== 'play') continue; }
       if (d.sel) {
         if (!handAvailable()) continue;
@@ -1197,6 +1199,26 @@
       if (!r.err) return true;
     }
     return false;
+  }
+  // Value of a joker line-up: average best score over a few sample hands (a private RNG, so the run's luck is untouched)
+  function botValue(jokers) {
+    var keep = { j: S.jokers, h: S.hand, ph: S.phase, hands: S.hands, draw: S.draw, bi: S.bi, disc: S.discards, rs: S.rs, pr: S.handsPlayedRound };
+    S.jokers = jokers; S.phase = 'play'; S.bi = 0; S.hands = 2; S.discards = 1; S.handsPlayedRound = 1;
+    var seed = 12345 + S.round * 31, tot = 0, K = 6;
+    function r() { seed = (seed * 1103515245 + 12345) >>> 0; return seed / 4294967296; }
+    for (var k = 0; k < K; k++) {
+      var d = S.deck.slice(); for (var i = d.length - 1; i > 0; i--) { var q = Math.floor(r() * (i + 1)), t = d[i]; d[i] = d[q]; d[q] = t; }
+      S.hand = d.slice(0, 8); S.draw = d.slice(8); tot += bestPlay().total;
+    }
+    S.jokers = keep.j; S.hand = keep.h; S.phase = keep.ph; S.hands = keep.hands; S.draw = keep.draw; S.bi = keep.bi; S.discards = keep.disc; S.rs = keep.rs; S.handsPlayedRound = keep.pr;
+    return tot / K;
+  }
+  function botJokerGain(it) {
+    var base = botValue(S.jokers), cand = { k: it.k, u: -1, v: JK[it.k].init ? JK[it.k].init() : {}, ed: it.ed };
+    if (jokerRoom() || it.ed === 'neg') return { gain: botValue(S.jokers.concat([cand])) / Math.max(1, base), sell: -1 };
+    var best = { gain: 0, sell: -1 };
+    S.jokers.forEach(function (j, i) { var l = S.jokers.slice(); l[i] = cand; var g = botValue(l) / Math.max(1, base); if (g > best.gain) best = { gain: g, sell: i }; });
+    return best;
   }
   function botStep() {
     var ph = S.phase;
@@ -1215,25 +1237,26 @@
     if (ph === 'cashout') { if (S.winPending) { S.winPending = false; return false; } collect(); return true; }
     if (ph === 'shop') {
       botUseCons();
-      for (var g = 0; g < 8; g++) {
+      var reserve = S.ante >= 2 ? Math.min(25, 6 * S.ante) : 0;
+      for (var g = 0; g < 10; g++) {
         var did = false;
-        S.shop.vouchers.forEach(function (it, i) { if (!it.sold && S.money >= it.price + 15 && /hand1|hand2|bin1|shelf|discount|jar|big1|slip|slot|chart|planetarium|star1|rrdeal/.test(it.k)) { buy('vouchers', i); did = true; } });
+        S.shop.vouchers.forEach(function (it, i) { if (!it.sold && S.money >= it.price + reserve && /hand1|hand2|bin1|shelf|discount|jar|big1|slip|slot|chart|planetarium|star1|rrdeal|vault/.test(it.k)) { buy('vouchers', i); did = true; } });
         S.shop.items.forEach(function (it, i) {
-          if (!it || it.sold || S.money < it.price) return;
+          if (!it || it.sold || !canAfford(it.price) || S.phase !== 'shop') return;
           if (it.t === 'joker') {
-            if (!jokerRoom() && it.ed !== 'neg') {
-              var worst = 0; S.jokers.forEach(function (j, q) { if (jScore(j.k) < jScore(S.jokers[worst].k)) worst = q; });
-              if (jScore(it.k) > jScore(S.jokers[worst].k) + 3) sellJoker(worst); else return;
-            }
-            if (S.jokers.length < 3 || jScore(it.k) >= 6 || S.money - it.price >= 20) { buy('items', i); did = true; }
-          } else if (it.t === 'cons' && CONS[it.k].t === 'planet' && (CONS[it.k].hand === mostPlayed() || S.money > 25)) { buy('items', i, true); did = true; }
-          else if (it.t === 'cons' && consRoom() && S.money > 12) { buy('items', i); did = true; }
+            var spare = S.money - it.price;
+            var jg = botJokerGain(it), need = S.jokers.length < 2 ? 1.05 : spare >= reserve ? 1.12 : 1.5;
+            if (jg.gain < need) return;
+            if (jg.sell >= 0) sellJoker(jg.sell);
+            if (!buy('items', i)) did = true;
+          } else if (it.t === 'cons' && CONS[it.k].t === 'planet' && (CONS[it.k].hand === mostPlayed() || CONS[it.k].hand === mostPlayedRecent()) && S.money - it.price >= reserve / 2) { if (!buy('items', i, true)) did = true; }
+          else if (it.t === 'cons' && consRoom() && S.money - it.price > reserve + 4 && CONS[it.k].t === 'tarot') { if (!buy('items', i)) did = true; }
         });
         if (S.phase !== 'shop') return true;
-        if (!did && S.jokers.length < 5 && S.money >= rerollCost() + 12) { reroll(); did = true; }
+        if (!did && (S.jokers.length < 4 || S.ante >= 3) && S.money - rerollCost() >= reserve + 6) { reroll(); did = true; }
         if (!did) break;
       }
-      S.shop.packs.forEach(function (it, i) { if (S.phase === 'shop' && it && !it.sold && S.money >= it.price + 8 && (it.kind !== 'buffoon' || jokerRoom())) buy('packs', i); });
+      S.shop.packs.forEach(function (it, i) { if (S.phase === 'shop' && it && !it.sold && S.money - it.price >= reserve + 2 && (it.kind !== 'buffoon' || jokerRoom()) && it.kind !== 'standard') buy('packs', i); });
       if (S.phase === 'shop') leaveShop();
       return true;
     }
@@ -1241,7 +1264,7 @@
       var p = S.pack, bi = -1;
       p.choices.forEach(function (it, i) {
         if (bi >= 0 || it.taken) return;
-        if (it.t === 'joker' && (jokerRoom() || it.ed === 'neg')) bi = i;
+        if (it.t === 'joker' && (jokerRoom() || it.ed === 'neg') && botJokerGain(it).gain > 1.02) bi = i;
         else if (it.t === 'cons' && CONS[it.k].t === 'planet') bi = i;
         else if (it.t === 'card' && (it.card.e || it.card.ed || it.card.sl)) bi = i;
       });
@@ -1249,6 +1272,7 @@
       // tarots needing cards: try with the best cards in the pack's hand
       for (var i = 0; i < p.choices.length && S.phase === 'pack'; i++) {
         var it = p.choices[i]; if (it.taken || it.t !== 'cons') continue;
+        if (/^(s_curse|s_effigy|s_pact|s_void|s_unison|s_pyre)$/.test(it.k)) continue;
         var d = CONS[it.k], ids = [];
         if (d.sel) ids = S.pack.hand.map(C).filter(function (c) { return !c.e; }).sort(function (a, b) { return rankOf(b) - rankOf(a); }).slice(0, d.sel[1]).map(function (c) { return c.id; });
         if (d.sel && d.suit) { ids = S.pack.hand.slice(0, d.sel[1]); }
