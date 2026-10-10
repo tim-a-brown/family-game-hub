@@ -14,7 +14,8 @@
  *   ArcadeHi.config(key)          - the board's settings ({} for a plain score board)
  *   ArcadeHi.config(key, {...})   - add or override settings on this page (labels,
  *                                   format). A new low board must also go in HI_BOARDS.
- *   ArcadeHi.fmt(key, value)      - a value as the board shows it ('4:05', '42 moves')
+ *   ArcadeHi.fmt(key, value, short) - a value as the board shows it ('4:05', '42 moves';
+ *                                   short: '42', for a table headed MOVES)
  *   ArcadeHi.top(key)             - the board's best value, linked players included (null if none)
  *   ArcadeHi.better(key, a, b)    - is value a better than b on this board
  *   ArcadeHi.marbles(left, offCenter, seconds) - the value a marble solitaire finish is stored as
@@ -48,14 +49,15 @@ const ArcadeHi = (function(){
     const n = Math.floor(v + 1e-9), f = Math.round((v - n) * 1e6), off = f >= 500000;
     return { left: n, off: off, sec: off ? f - 500000 : f };
   }
-  function fmt(key, v){
+  // short: for a table whose heading already names the unit ('42', '1 center 0:32')
+  function fmt(key, v, short){
     const c = conf(key);
     v = Number(v) || 0;
     if(c.unit === 'time') return clock(v, c.dec);
-    if(c.unit === 'moves') return v.toLocaleString() + (v === 1 ? ' move' : ' moves');
+    if(c.unit === 'moves') return v.toLocaleString() + (short ? '' : v === 1 ? ' move' : ' moves');
     if(c.unit === 'marbles'){
       const m = marblesRead(v);
-      return (m.left === 1 && !m.off ? '1 center' : m.left + ' left') + (m.sec ? ' · ' + clock(m.sec) : '');
+      return (m.left === 1 && !m.off ? '1 center' : m.left + ' left') + (m.sec ? (short ? ' ' : ' · ') + clock(m.sec) : '');
     }
     return v.toLocaleString();
   }
@@ -427,7 +429,8 @@ const ArcadeHi = (function(){
   }
 
   const PAGE = /^(ast|breakout|flappy|flappywild|pac|peggle|paddleball|cubehopper|snake|tetris|pinball_[a-z]+)$/;
-  function onPage(key){ return PAGE.test(String(key||'')); }
+  // ...and every board in HI_BOARDS (games.js): the puzzle games, each level or size on its own board
+  function onPage(key){ key = String(key||''); if(PAGE.test(key)) return true; try{ return typeof hiBoard === 'function' && !!hiBoard(key); }catch(e){ return false; } }
   // ── Public API ─────────────────────────────────────────────────────────────
   return {
     // The cleaned-up board (real scores only, highest first) and the top score
@@ -440,7 +443,7 @@ const ArcadeHi = (function(){
     config(key, c){ if(c && typeof c === 'object') CFG[key] = Object.assign(CFG[key] || {}, c); return conf(key); },
     low(key){ return isLow(key); },
     better(key, a, b){ return better(key, a, b); },
-    fmt(key, v){ return fmt(key, v); },
+    fmt(key, v, short){ return fmt(key, v, short); },
     unit(key){ return unitName(key); },
     title(key){ return boardTitle(key); },
     // The board's best value, linked players included; null when the board is empty
