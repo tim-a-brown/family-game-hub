@@ -101,7 +101,19 @@
 
   // ── Scan localStorage ─────────────────────────────────────────────────
   function scanLocal(){
-    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null, lorc: scanLorc(), avatars: null, ghDel: null, links: null };
+    var out = scanLocalRaw();
+    // Frequent players removed before roster edits synced: carry them over (oldest possible time, so any newer
+    // change on another device wins)
+    var hid = lsJSON('gn_hidden_names');
+    if(Array.isArray(hid) && hid.length){
+      var pl = out.players && typeof out.players === 'object' ? out.players : {};
+      hid.forEach(function(n){ if(typeof n === 'string' && n.trim() && !pl[n.trim().toLowerCase()]) pl[n.trim().toLowerCase()] = { n: n.trim(), t: 1, h: 1 }; });
+      if(Object.keys(pl).length) out.players = pl;
+    }
+    return out;
+  }
+  function scanLocalRaw(){
+    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null, lorc: scanLorc(), avatars: null, ghDel: null, links: null, players: null };
     for(var i = 0; i < LS.length; i++){
       var k = LS.key(i);
       if(!k) continue;
@@ -123,6 +135,8 @@
         try{ out.links = JSON.parse(LS.getItem(k)) || null; }catch(e){}
       } else if(k === 'fgh_avatars'){
         try{ out.avatars = JSON.parse(LS.getItem(k)) || null; }catch(e){}
+      } else if(k === 'fgh_players_at'){
+        try{ out.players = JSON.parse(LS.getItem(k)) || null; }catch(e){}
       } else if(k === 'fav_games_updated_at'){
         try{ out.favsAt = parseInt(LS.getItem(k)) || null; }catch(e){}
       }
@@ -225,6 +239,30 @@
     return all.slice(0, 300);
   }
 
+  // Roster edits: per name, the newest change (hide or show) wins
+  function mergePlayers(a, b){
+    var out = {}, any = false;
+    [a || {}, b || {}].forEach(function(m){
+      if(!m || typeof m !== 'object') return;
+      Object.keys(m).forEach(function(k){ var r = m[k]; if(!r || typeof r !== 'object' || !r.n) return; if(!out[k] || (Number(r.t) || 0) > (Number(out[k].t) || 0)){ out[k] = { n: String(r.n), t: Number(r.t) || 0, h: r.h ? 1 : 0 }; any = true; } });
+    });
+    return any ? out : null;
+  }
+  // Apply roster edits on this device: hidden names stay hidden, added names show in Frequent players
+  function applyPlayers(pl){
+    if(!pl) return;
+    try{ LS.setItem('fgh_players_at', JSON.stringify(pl)); }catch(e){}
+    var hid = lsJSON('gn_hidden_names'); if(!Array.isArray(hid)) hid = [];
+    var fp = lsJSON('frequent_players'); if(!Array.isArray(fp)) fp = [];
+    Object.keys(pl).forEach(function(k){
+      var r = pl[k];
+      hid = hid.filter(function(x){ return String(x).toLowerCase() !== k; });
+      if(r.h){ hid.push(r.n); fp = fp.filter(function(x){ return String(x).toLowerCase() !== k; }); }
+      else if(!fp.some(function(x){ return String(x).toLowerCase() === k; })) fp.push(r.n);
+    });
+    try{ LS.setItem('gn_hidden_names', JSON.stringify(hid)); LS.setItem('frequent_players', JSON.stringify(fp)); }catch(e){}
+  }
+
   function mergeSnapshots(local, remote){
     var out = { hi: {}, gh: {}, rklists: null, favs: null, favsAt: null };
     var keys = {};
@@ -240,6 +278,7 @@
     out.avatars = mergeAvatars(local.avatars, remote.avatars);
     out.ghDel = mergeDel(local.ghDel, remote.ghDel);
     out.links = mergeLinks(local.links, remote.links);
+    out.players = mergePlayers(local.players, remote.players);
     if(out.ghDel) Object.keys(out.gh).forEach(function(k){ out.gh[k] = out.gh[k].filter(function(r){ return !out.ghDel[ghId(k, r)]; }); });
     // Favorites: newest favsAt timestamp wins the whole list. This lets
     // deletions propagate — unfavoriting bumps the local timestamp, and on
@@ -346,6 +385,7 @@
     if(snap.links){
       try{ LS.setItem('fgh_links', JSON.stringify(mergeLinks(snap.links, lsJSON('fgh_links')))); }catch(e){}
     }
+    if(snap.players) applyPlayers(mergePlayers(snap.players, lsJSON('fgh_players_at')));
     if(snap.avatars){
       var av = mergeAvatars(snap.avatars, lsJSON('fgh_avatars'));
       try{ LS.setItem('fgh_avatars', JSON.stringify(av)); }catch(e){}
@@ -423,7 +463,7 @@
         return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, ghDel:null, links:null, isNew:true};
       }
       var d = doc.data() || {};
-      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, isNew:false, moved: !!d.moved };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, players: d.players||null, isNew:false, moved: !!d.moved };
       console.log('[sync] pull', {
         rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
         favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
@@ -525,6 +565,7 @@
     if(snap.avatars) doc.avatars = sanitizeForFirestore(snap.avatars);
     if(snap.ghDel) doc.ghDel = sanitizeForFirestore(snap.ghDel);
     if(snap.links) doc.links = sanitizeForFirestore(snap.links);
+    if(snap.players) doc.players = sanitizeForFirestore(snap.players);
     console.log('[sync] push', {
       rklists_count: snap.rklists && snap.rklists.lists ? (Array.isArray(snap.rklists.lists) ? snap.rklists.lists.length : Object.keys(snap.rklists.lists).length) : 0,
       favs_count: Array.isArray(snap.favs) ? snap.favs.length : 'absent',
@@ -546,9 +587,9 @@
     return ref.set(doc, { merge: true }).catch(function(err){
       // Rules that don't allow `lorcana` yet would refuse the whole save:
       // save everything else instead of losing it
-      if((doc.avatars || doc.ghDel || doc.links || doc.labelAt) && err && err.code === 'permission-denied'){
-        console.warn('[sync] cloud refused avatars/ghDel/links/labelAt fields; saving the rest');
-        delete doc.avatars; delete doc.ghDel; delete doc.links; delete doc.labelAt;
+      if((doc.avatars || doc.ghDel || doc.links || doc.labelAt || doc.players) && err && err.code === 'permission-denied'){
+        console.warn('[sync] cloud refused avatars/ghDel/links/labelAt/players fields; saving the rest');
+        delete doc.avatars; delete doc.ghDel; delete doc.links; delete doc.labelAt; delete doc.players;
         return ref.set(doc, { merge: true }).catch(function(err2){
           if(doc.lorcana && err2 && err2.code === 'permission-denied'){ delete doc.lorcana; return ref.set(doc, { merge: true }); }
           throw err2;
@@ -729,7 +770,7 @@
 
   function noteWrite(key){
     if(!key) return;
-    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'fgh_gh_del' && key !== 'fgh_links' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
+    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'fgh_players_at' && key !== 'fgh_gh_del' && key !== 'fgh_links' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
     if(isPin()){ markWrite(); schedulePush(); }
   }
 

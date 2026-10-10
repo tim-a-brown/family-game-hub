@@ -923,9 +923,25 @@
     var node = el('div', null, [box, foot, el('button', { type: 'button', class: 'btn btn-ghost btn-block', style: { 'margin-top': '8px' }, html: icon('pencil') + '<span>Edit frequent players</span>', onclick: function () { s.close(); managePlayers(); } })]);
     s = sheet({ title: o.title || 'Who is it?', node: node });
   }
-  function unhide(n) {
-    var h = hiddenNames().filter(function (x) { return x.toLowerCase() !== String(n).toLowerCase(); });
+  // Roster edits sync with the account (localStorage fgh_players_at, synced as 'players'): each name's newest
+  // change wins on every device, so a removed player stays removed after a reinstall or on another phone.
+  var PL_KEY = 'fgh_players_at';
+  function plRead() { try { var m = JSON.parse(lsGet(PL_KEY, '{}')); return m && typeof m === 'object' && !Array.isArray(m) ? m : {}; } catch (e) { return {}; } }
+  function plMark(n, hidden) {
+    n = String(n || '').trim(); if (!n) return;
+    var m = plRead(); m[n.toLowerCase()] = { n: n, t: Date.now(), h: hidden ? 1 : 0 }; lsSet(PL_KEY, JSON.stringify(m));
+    try { if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(PL_KEY); } catch (e) {}
+  }
+  function hideName(n) {
+    var h = hiddenNames(); if (h.indexOf(n) < 0) h.push(n); lsSet('gn_hidden_names', JSON.stringify(h));
+    plMark(n, true);
+  }
+  // added: the player was added on purpose (not just typed into a game), so other devices list them too
+  function unhide(n, added) {
+    var k = String(n).toLowerCase(), was = hiddenNames().some(function (x) { return x.toLowerCase() === k; });
+    var h = hiddenNames().filter(function (x) { return x.toLowerCase() !== k; });
     lsSet('gn_hidden_names', JSON.stringify(h));
+    if (was || added) plMark(n, false);
   }
   // Frequent players editor: add, rename, remove. Used in a sheet (game menu,
   // home menu, name picker) and full-page on games/players.html.
@@ -950,7 +966,7 @@
               fpWrite(fp);
               var c = nameCounts(), ok = n.toLowerCase(), nk = v.toLowerCase();
               if (c[ok]) { c[nk] = (c[nk] || 0) + c[ok]; delete c[ok]; lsSet('gn_name_counts', JSON.stringify(c)); }
-              var h = hiddenNames(); if (h.indexOf(n) < 0) h.push(n); lsSet('gn_hidden_names', JSON.stringify(h)); unhide(v);
+              hideName(n); unhide(v, true);
               sfx('good'); paint();
             }
             inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
@@ -959,7 +975,7 @@
           } }),
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Remove ' + n, html: icon('close'), onclick: function () {
             fpWrite(fpRead().filter(function (x) { return x.toLowerCase() !== n.toLowerCase(); }));
-            var h = hiddenNames(); if (h.indexOf(n) < 0) h.push(n); lsSet('gn_hidden_names', JSON.stringify(h));
+            hideName(n);
             sfx('tap'); toast(n + ' removed'); paint();
           } })
         ]));
@@ -969,7 +985,7 @@
     function add() {
       var v = inp.value.trim(); if (!v) return;
       if (!fpRead().some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) fpWrite(fpRead().concat([v]));
-      unhide(v); inp.value = ''; sfx('pop'); paint();
+      unhide(v, true); inp.value = ''; sfx('pop'); paint();
     }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') add(); });
     wrap.appendChild(el('p', { class: 'muted', style: { 'margin-bottom': '12px' }, text: 'These names are offered whenever a game asks who’s playing, most played first.' }));
@@ -1852,7 +1868,7 @@
   }
   function forgetName(name) {
     fpWrite(fpRead().filter(function (x) { return avKey(x) !== avKey(name); }));
-    var h = hiddenNames(); if (h.indexOf(name) < 0) h.push(name); lsSet('gn_hidden_names', JSON.stringify(h));
+    hideName(name);
   }
   // Remove a linked player, and choose what happens to the games you played with them:
   // keep them as they are, keep them under a made-up name, or delete them.
