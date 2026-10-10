@@ -131,6 +131,7 @@ function build(T) {
   altar.mesh = RC => altarModel(RC, altar); altar.render = () => {};
   T.ao({ kind: 'poly', pts: [[ALTAR[0], ALTAR[1]], [ALTAR[2], ALTAR[1]], [ALTAR[2], ALTAR[3]], [ALTAR[0], ALTAR[3]]], a: 0.6, blur: 12 });
   T.wall([[204, 688], [212, 792], [294, 762]], { style: 'invisible', mat: 'wood', r: 3 });
+  T.wall([[212, 792], [204, 900], [196, 1006]], { style: 'invisible', mat: 'wood', r: 3 });   // seals the strip under the chamber
   T.wall([[150, 688], [204, 688]], { style: 'invisible', mat: 'plastic', r: 2 });
   T.standupTarget({ id: 'sealL', x: 226, y: 694, angle: 270, w: 18, label: '', color: '#b89a54', art: sealArt });
   T.standupTarget({ id: 'sealR', x: 278, y: 694, angle: 270, w: 18, label: '', color: '#b89a54', art: sealArt });
