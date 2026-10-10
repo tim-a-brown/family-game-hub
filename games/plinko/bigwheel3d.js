@@ -653,7 +653,7 @@ export function BigWheel3D(host, hooks, api) {
   }
   // slow device: drop the trail and bloom, then shadows and the reflection, then resolution
   function adapt(ms) {
-    if (!spinning || window.PlinkoWheel.fixedQ) return;
+    if (!spinning || window.PlinkoWheel.fixedQ || ms > 500) return;   // a long gap is the tab coming back, not a slow frame
     slowT = ms > 22 ? slowT + ms / 1000 : Math.max(0, slowT - ms / 3000);
     if (slowT > 0.8 && level < 3) {
       slowT = 0; level++;
@@ -682,20 +682,20 @@ export function BigWheel3D(host, hooks, api) {
     } else {
       st.om = 0; k = Math.min(60, Math.round(dt / WSIM_H));
       for (j = 0; j < k; j++) sim.step(WSIM_H, flapTick, true);
-      active = Math.abs(st.b) > 0.002 || Math.abs(st.bv) > 0.02 || mode === 'result' || mode === 'jack';
+      active = Math.abs(st.b) > 0.002 || Math.abs(st.bv) > 0.02;
     }
     if (Math.abs(par.tx - par.x) > 0.002 || Math.abs(par.ty - par.y) > 0.002) { par.x += (par.tx - par.x) * Math.min(1, dt * 6); par.y += (par.ty - par.y) * Math.min(1, dt * 6); active = true; }
-    // idle: the bulbs only need a few frames a second
-    const idleTick = now - lastDraw > 110;
+    // idle: the bulbs only need a few frames a second; the result glow pulses at about 20
+    const pulse = mode === 'result' || mode === 'jack', idleTick = now - lastDraw > (pulse ? 48 : 110);
     if (active) { stepBulbs(now, dt, false); draw(now); }
-    else if (idleTick || needDraw) { stepBulbs(now, dt, true); draw(now); }
+    else if (idleTick || needDraw) { stepBulbs(now, dt, !pulse); draw(now); }
     if (document.visibilityState === 'visible') raf = requestAnimationFrame(loop);
   }
   function kick() { if (!raf && !dead) { last = performance.now(); raf = requestAnimationFrame(loop); } }
   document.addEventListener('visibilitychange', kick, sig);
 
   // ── Pull it down: the front panel follows the finger, the release speed sets the spin ──
-  function pxPerUnit() { const d = camera.position.distanceTo(new THREE.Vector3(0, 0, R)); return H / (2 * d * Math.tan(FOV / 2 * Math.PI / 180)); }
+  function pxPerUnit() { const d = camera.position.distanceTo(scratch.p.set(0, 0, R)); return H / (2 * d * Math.tan(FOV / 2 * Math.PI / 180)); }
   function yOf(e) { const r = cv.getBoundingClientRect(); return (e.clientY - r.top) / (r.height || 1) * H; }
   cv.addEventListener('pointerdown', function (e) {
     if (spinning || !hooks.canSpin()) return;

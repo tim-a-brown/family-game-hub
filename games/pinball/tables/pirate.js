@@ -401,7 +401,7 @@ function makeRules() {
           if (id === 'plank') { G.cnt('plank'); G.add(10000); if (!R.jp(G, 'plank')) { R.shot(G, 'plank'); } }
           if (id === 'rigging') { G.cnt('rig'); G.add(15000); if (!R.jp(G, 'rigging')) { if (!R.shot(G, 'rigging')) G.msg('THE RIGGING', fmt(20000 * G.mult), {}); } }
           break;
-        case 'orbit': G.combo(id); if (!R.jp(G, id)) { if (!R.shot(G, id)) G.msg(id === 'orbitL' ? 'THE COVE' : "THE SHIP'S WHEEL", fmt(G.add(B.storm ? 50000 : 5000)), {}); else G.add(5000); } break;
+        case 'orbit': G.combo(id); if (!R.jp(G, id)) { if (!R.shot(G, id)) G.msg(id === 'orbitL' ? 'THE COVE' : "THE SHIP'S WHEEL", fmt(G.add(B.storm ? 50000 : 8000)), {}); else G.add(8000); } break;
         case 'cannonLoad': G.msg('CANNON LOADED', 'FLIPPER AIMS, RELEASE FIRES', { anim: 'cannon', dur: 2.4 }); R.say(G, 'load'); G.pulse('flShip', 0.4); break;
         case 'cannonFire': G.cnt('cannon'); B.cannonBallT = G.time; G.msg('FIRE!', '', { style: 'flash', dur: 0.9, now: true, anim: 'cannon' }); R.say(G, 'fire', true); G.pulse('flShip', 0.3); break;
         case 'fortHit': R.fortHit(G, b, d); break;
@@ -427,7 +427,7 @@ function makeRules() {
           if (B.storm) { G.add(25000); G.msg('WHIRLPOOL', fmt(25000 * G.mult), { dur: 0.9 }); }
           else if (B.davy) G.add(25000);
           else if (B.whirls >= 5 && !Object.keys(G.modes).length && !G.mb) R.startStorm(G);
-          else if (!B.stormLitShown || B.whirls < 5) { G.add(3000); G.msg('WHIRLPOOL', (5 - (B.whirls % 5 || (B.whirls >= 5 ? 5 : 0))) + ' MORE FOR THE STORM', { dur: 1 }); }
+          else if (!B.stormLitShown || B.whirls < 5) { G.add(5000); G.msg('WHIRLPOOL', (5 - (B.whirls % 5 || (B.whirls >= 5 ? 5 : 0))) + ' MORE FOR THE STORM', { dur: 1 }); }
           R.shot(G, 'whirl');
           break;
         case 'kickback': G.msg('LIFEBOAT', 'BACK IN PLAY', { style: 'flash', dur: 1.1 }); G.sfx('bell', { vol: 0.4 }); break;
@@ -441,12 +441,12 @@ function makeRules() {
       if (left === 0) {
         B.ports[B.port] = 1; G.cnt('port'); G.jackpot(120000, 'PORT PLUNDERED', { color: '#ffd166', sound: 'jackpot' }); R.say(G, 'plundered');
         G.endMode('port'); R.checkCompass(G);
-      } else { G.add(30000); G.msg(PORTS[B.port], fmt(30000 * G.mult) + '  ' + left + ' TO GO', { anim: 'ship' }); G.sfx('coins', { vol: 0.5 }); }
+      } else { G.add(40000); G.msg(PORTS[B.port], fmt(40000 * G.mult) + '  ' + left + ' TO GO', { anim: 'ship' }); G.sfx('coins', { vol: 0.5 }); }
       return true;
     },
     jp(G, id) {
       const B = G.b; if (!(B.jpLit[id] || B.davy)) return false;
-      const v = B.davy ? 100000 : 60000;
+      const v = B.davy ? 100000 : 75000;
       if (!B.davy) delete B.jpLit[id];
       B.jp++; G.jackpot(v, B.davy ? 'DAVY JONES JACKPOT' : 'KRAKEN JACKPOT', { color: '#5fe8d0' }); R.say(G, 'jackpot');
       if (B.krakenMB && !Object.keys(B.jpLit).length && !B.superLit) { B.superLit = true; G.msg('SUPER JACKPOT', 'AT THE KRAKEN', {}); }
@@ -908,7 +908,7 @@ function mergeGeos(list) {
 function sailGeo(w, h, belly) {
   const g = new THREE.PlaneGeometry(w, h, 10, 6), p = g.attributes.position;
   for (let i = 0; i < p.count; i++) { const x = p.getX(i) / (w / 2), y = p.getY(i) / (h / 2); p.setZ(i, -belly * (1 - x * x) * (1 - y * y * 0.6) - belly * 0.3 * (1 - y)); }
-  g.rotateX(PI / 2);   // plane in x/z, normal along y
+  g.rotateX(PI / 2); g.rotateX(-0.55);   // plane in x/z, leaning back so the player sees the canvas
   g.computeVertexNormals(); return g;
 }
 function galleonModel(RC) {
@@ -1002,10 +1002,10 @@ function krakenModel(RC) {
   // tentacle that rises out of the lagoon behind it, arches over the caught ball and drags it under
   const g = new THREE.Group(); g.position.set(KRAKEN.rx, KRAKEN.ry, 0); RC.root.add(g);
   const skinC = canvas(256, 256), sg = skinC.getContext('2d'), r = rng(19);
-  sg.fillStyle = '#2a4a4a'; sg.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 400; i++) { sg.fillStyle = 'rgba(' + (r() < 0.5 ? '90,40,80' : '20,90,80') + ',' + (0.1 + r() * 0.3) + ')'; sg.beginPath(); sg.arc(r() * 256, r() * 256, 3 + r() * 14, 0, TAU); sg.fill(); }
+  sg.fillStyle = '#4a3a66'; sg.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 400; i++) { sg.fillStyle = 'rgba(' + (r() < 0.5 ? '150,70,130' : '40,120,110') + ',' + (0.1 + r() * 0.3) + ')'; sg.beginPath(); sg.arc(r() * 256, r() * 256, 3 + r() * 14, 0, TAU); sg.fill(); }
   // suckers down one side
-  for (let yy = 8; yy < 256; yy += 18) for (let xx = 100; xx <= 156; xx += 28) { sg.fillStyle = '#c8b0a0'; sg.beginPath(); sg.arc(xx, yy + (xx % 56 ? 9 : 0), 7, 0, TAU); sg.fill(); sg.fillStyle = '#5a3040'; sg.beginPath(); sg.arc(xx, yy + (xx % 56 ? 9 : 0), 3.5, 0, TAU); sg.fill(); }
+  for (let yy = 8; yy < 256; yy += 18) for (let xx = 100; xx <= 156; xx += 28) { sg.fillStyle = '#f0d8c8'; sg.beginPath(); sg.arc(xx, yy + (xx % 56 ? 9 : 0), 7, 0, TAU); sg.fill(); sg.fillStyle = '#5a3040'; sg.beginPath(); sg.arc(xx, yy + (xx % 56 ? 9 : 0), 3.5, 0, TAU); sg.fill(); }
   const skin = new THREE.MeshStandardMaterial({ map: RC.tex(skinC), roughness: 0.45, metalness: 0 });
   const head = mesh(new THREE.SphereGeometry(16.5, 22, 14, 0, TAU, 0, PI / 2), skin); head.scale.set(1, 1.1, 0.75); head.position.z = -1; g.add(head);
   const eyeMat = new THREE.MeshStandardMaterial({ color: '#201808', emissive: '#ffd040', emissiveIntensity: 0.1, roughness: 0.3 });
