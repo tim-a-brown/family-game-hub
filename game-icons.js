@@ -243,10 +243,11 @@ var GameIcon = (function () {
       return '<g transform="rotate(-35 10 15)">' + rect(3, 11, 17, 7.5, 2.4, R) + rect(7.5, 11, 1.8, 7.5, 0, Y) + rect(13, 11, 1.8, 7.5, 0, Y) + rect(18.5, 10.2, 2.6, 9.1, .9, Y) + rect(4.5, 12.2, 13, 1.4, .7, W, ' opacity=".35"') + '</g>' +
         rect(2.5, 20.5, 19, 2, 1, S) + circ(9, 17.5, 4.6, Y) + circ(9, 17.5, 3.1, K) + circ(9, 17.5, 1.3, Y) + circ(20, 4.5, 1.5, W, ' opacity=".7"') + circ(22, 2.6, 1, W, ' opacity=".5"');
     },
-    centipede: function () {   // a mushroom, a shot and a green centipede with a yellow head
-      var s = path('M13 9.6a5 5 0 0 1 10 0z', '#ff4fd8') + rect(16.6, 9.4, 2.8, 3.6, .9, CREAM) + circ(16.2, 6.8, .9, W) + circ(19.6, 7.6, .7, W) + rect(5.4, 3, 1.4, 5, .7, W);
-      [[2.8, 20], [6.6, 20], [10.4, 20], [14.2, 20]].forEach(function (p) { s += line('M' + p[0] + ' ' + (p[1] - 3.4) + 'v6.8', '#3dff7a', 1); s += circ(p[0], p[1], 2, '#3dff7a'); });
-      return s + circ(18.4, 20, 2.4, '#e4ff3d') + circ(19.3, 19.1, .75, K) + circ(19.3, 20.9, .75, K) + line('M20.4 18.2l2-2.2M20.4 21.8l2 2', '#e4ff3d', .9);
+    centipede: function () {   // the centipede: green body segments winding to a yellow head
+      var segs = [[3, 16.5], [6.4, 13.8], [10, 12.6], [13.6, 13.6], [16.6, 11.6]], s = '';
+      segs.forEach(function (p) { s += line('M' + (p[0] - 1.6) + ' ' + (p[1] - 3.2) + 'l1.6 3.2 1.6-3.2M' + (p[0] - 1.6) + ' ' + (p[1] + 3.2) + 'l1.6-3.2 1.6 3.2', '#3dff7a', .9); });
+      segs.forEach(function (p) { s += circ(p[0], p[1], 2.5, '#3dff7a') + circ(p[0] - .7, p[1] - .8, .8, '#b6ffcc'); });
+      return s + circ(20, 10.2, 2.9, '#e4ff3d') + circ(21, 9.3, .8, K) + circ(21.3, 11.3, .8, K) + line('M21.3 7.6l1.6-2.8M22.4 9.4l1.4-1.4', '#e4ff3d', .9);
     },
     crazytower: function () { return line('M2.5 3h19', Y, 1.3) + rect(13, 5.4, 8.5, 3.4, .8, '#ff5cc8') + line('M9.6 7.1h2', '#ff9be0', 1.1) + rect(7.5, 9.8, 7.5, 3.4, .8, '#b26bff') + rect(6.8, 13.8, 8.6, 3.4, .8, '#7a7dff') + rect(6, 17.8, 10, 3.4, .8, '#38e1ff') + rect(17.6, 15.2, 3, 3, .6, '#b26bff', ' transform="rotate(28 19.1 16.7)"'); },
     crossyroad: function () {   // the boxy voxel chicken
