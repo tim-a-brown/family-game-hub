@@ -460,9 +460,9 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
   // ==/WHEELSIM==
   window.PlinkoWheel = { WHEEL: WHEEL, simSpin: simSpin, buttonSpin: buttonSpin, pullToSpin: pullToSpin, W_MIN: W_MIN, W_MAX: W_MAX, rig: null };
 
-  // The Big Wheel, drawn in 3D on a canvas: a drum of panels turning about a horizontal axis, seen
-  // from the front, between two checkered pillars lined with marquee bulbs. Panels curve away top and
-  // bottom; the one facing you is full size. Pull it down to spin.
+  // The Big Wheel, drawn in 3D on a canvas: a 20-sided drum turning about a horizontal axis, seen
+  // from the front, between two checkered pillars lined with marquee bulbs. Each panel is a flat face;
+  // the faces above and below tilt away. The one facing you is full size. Pull it down to spin.
   // The real prop, rendered in 3D (games/plinko/bigwheel3d.js) when the module and WebGL are there;
   // the canvas renderer below is the fallback and shares the physics loop, hooks and contract.
   function want3D() {
@@ -724,57 +724,52 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     }
 
     // ── Per frame ──
-    function drawDrum(off) {
-      var th = st.th + (off || 0), R = L.R, cx = L.cx, d = dpr, phi = L.phMax, total = WN * PHt;
-      while (phi > -L.phMax) {
-        var s0 = sc(phi), sn = Math.sin(phi), cs = Math.cos(phi);
-        var der = Math.abs(cs * s0 - sn * sn * (L.Dc - 1) / Math.pow(L.Dc - cs, 2));
-        var stp = Math.max(0.0015, Math.min(0.05, 2.5 / (d * R * Math.max(der, 1e-3))));
-        var phi1 = Math.max(phi - stp, -L.phMax);
-        var y0 = py(phi), y1 = py(phi1), hw = hwAt((phi + phi1) / 2);
-        var t0 = ((-phi - th) / WA * PHt) % total; if (t0 < 0) t0 += total;
-        var sh = (phi - phi1) / WA * PHt;
-        g.drawImage(tex, 0, t0, TW, sh, (cx - hw) * d, y0 * d, 2 * hw * d, (y1 - y0) * d + 0.75);
-        phi = phi1;
+    // A 20-gon prism: each panel is a flat face tangent to the circle at its centre, the creases (where
+    // the pegs sit) at radius 1 / cos(WA / 2). The camera sits at z = Dc in front of the axle.
+    var CR = 1 / Math.cos(WA / 2), TA = Math.tan(WA / 2);
+    function proj(y3, z3) { var k = (L.Dc - 1) / (L.Dc - z3); return { y: L.cy - L.R * y3 * k, hw: L.dw / 2 * k }; }
+    function crease(ph) { return proj(CR * Math.sin(ph), CR * Math.cos(ph)); }
+    function drawDrum(off, shade) {
+      var th = st.th + (off || 0), d = dpr, c0 = 1 / L.Dc, N = 6, faces = [], j, i;
+      for (j = 0; j < WN; j++) { var pc = wrap(-(th + (j + 0.5) * WA)); if (Math.cos(pc) > c0 + 0.01) faces.push([Math.abs(pc), j, pc]); }
+      faces.sort(function (a, b) { return b[0] - a[0]; });   // far faces first, the facing one last
+      for (var f = 0; f < faces.length; f++) {
+        j = faces[f][1]; var phc = faces[f][2], sn = Math.sin(phc), cs = Math.cos(phc);
+        // the face runs straight from its top crease to its bottom crease
+        var ty = sn + TA * cs, tz = cs - TA * sn, by = sn - TA * cs, bz = cs + TA * sn, pts = [];
+        for (i = 0; i <= N; i++) { var u = i / N; pts.push(proj(ty + (by - ty) * u, tz + (bz - tz) * u)); }
+        for (i = 0; i < N; i++) {
+          var p0 = pts[i], p1 = pts[i + 1], hw = (p0.hw + p1.hw) / 2;
+          g.drawImage(tex, 0, (j + i / N) * PHt, TW, PHt / N, (L.cx - hw) * d, p0.y * d, 2 * hw * d, (p1.y - p0.y) * d + 0.75);
+        }
+        if (shade) {   // flat shading per face: the key light's highlight sits on one face at a time
+          var lit = Math.max(0, (cs - c0) / (1 - c0)), spec = 0.2 * Math.exp(-Math.pow((phc - 0.3) / 0.13, 2)) + 0.06 * Math.exp(-Math.pow(phc / 0.35, 2));
+          g.beginPath(); g.moveTo((L.cx - pts[0].hw) * d, pts[0].y * d); g.lineTo((L.cx + pts[0].hw) * d, pts[0].y * d); g.lineTo((L.cx + pts[N].hw) * d, pts[N].y * d); g.lineTo((L.cx - pts[N].hw) * d, pts[N].y * d); g.closePath();
+          g.fillStyle = 'rgba(0,0,0,' + (0.97 * (1 - Math.pow(lit, 1.1))).toFixed(3) + ')'; g.fill();
+          g.fillStyle = 'rgba(255,248,230,' + spec.toFixed(3) + ')'; g.fill();
+        }
       }
-    }
-    var shadeCache = null;
-    function drumShade() {
-      if (shadeCache && shadeCache.W === L.W && shadeCache.H === L.H) return shadeCache;
-      var yT = py(L.phMax), yB = py(-L.phMax), dk = g.createLinearGradient(0, yT, 0, yB), sp = g.createLinearGradient(0, yT, 0, yB);
-      var c0 = 1 / L.Dc;
-      for (var i = 0; i <= 40; i++) {
-        var ph = L.phMax - i / 40 * 2 * L.phMax, y = (py(ph) - yT) / (yB - yT);
-        var lit = Math.max(0, (Math.cos(ph) - c0) / (1 - c0));
-        dk.addColorStop(Math.max(0, Math.min(1, y)), 'rgba(0,0,0,' + (0.97 * (1 - Math.pow(lit, 1.1))).toFixed(3) + ')');
-        var spec = 0.2 * Math.exp(-Math.pow((ph - 0.3) / 0.13, 2)) + 0.06 * Math.exp(-Math.pow(ph / 0.35, 2));
-        sp.addColorStop(Math.max(0, Math.min(1, y)), 'rgba(255,248,230,' + spec.toFixed(3) + ')');
-      }
-      var path = new Path2D();
-      for (var k = 0; k <= 40; k++) { var p2 = L.phMax - k / 40 * 2 * L.phMax; path.lineTo(L.cx + hwAt(p2), py(p2)); }
-      for (var k2 = 40; k2 >= 0; k2--) { var p3 = L.phMax - k2 / 40 * 2 * L.phMax; path.lineTo(L.cx - hwAt(p3), py(p3)); }
-      path.closePath();
-      shadeCache = { W: L.W, H: L.H, dk: dk, sp: sp, path: path };
-      return shadeCache;
     }
     function drawPegsAndRails() {
-      var sh = drumShade(), c0 = 1 / L.Dc;
-      // dark side rails along both edges of the drum
-      g.save(); g.lineWidth = Math.max(2, L.dw * 0.03); g.strokeStyle = '#0b0b0e';
+      var c0 = 1 / L.Dc, cr = [], k;
+      for (k = 0; k < WN; k++) { var p = wrap(-(st.th + k * WA)); if (Math.cos(p) > c0 - 0.02) cr.push([p, crease(p)]); }
+      cr.sort(function (a, b) { return b[0] - a[0]; });
+      // dark side rails along both edges: straight runs between the creases
+      g.save(); g.lineWidth = Math.max(2, L.dw * 0.03); g.strokeStyle = '#0b0b0e'; g.lineJoin = 'round';
       [-1, 1].forEach(function (sd) {
         g.beginPath();
-        for (var k = 0; k <= 40; k++) { var p = L.phMax - k / 40 * 2 * L.phMax; g.lineTo(L.cx + sd * hwAt(p), py(p)); }
+        cr.forEach(function (c) { g.lineTo(L.cx + sd * c[1].hw, c[1].y); });
         g.stroke();
       });
-      g.restore(); void sh;
-      // pegs between panels, sticking out of both edges
-      for (var k = 0; k < WN; k++) {
-        var ph = wrap(-(st.th + k * WA)), cs = Math.cos(ph);
+      g.restore();
+      // pegs at the creases, sticking out of both edges
+      for (k = 0; k < cr.length; k++) {
+        var ph = cr[k][0], cs = Math.cos(ph);
         if (cs < c0 + 0.03) continue;
-        var s = sc(ph), y = py(ph), len = L.W * 0.024 * s, tk = Math.max(2, L.dw * 0.03 * s * Math.max(0.35, cs));
-        var lit = Math.max(0, (cs - c0) / (1 - c0));
+        var s = sc(ph), y = cr[k][1].y, len = L.W * 0.024 * s, tk = Math.max(2, L.dw * 0.03 * s * Math.max(0.35, cs));
+        var lit = Math.max(0, (cs - c0) / (1 - c0)), hwk = cr[k][1].hw;
         [-1, 1].forEach(function (sd) {
-          var x0 = L.cx + sd * hwAt(ph), x1 = x0 + sd * len;
+          var x0 = L.cx + sd * hwk, x1 = x0 + sd * len;
           var pg = g.createLinearGradient(0, y - tk / 2, 0, y + tk / 2);
           pg.addColorStop(0, 'rgba(255,255,255,' + (0.35 + 0.65 * lit) + ')'); pg.addColorStop(0.5, 'rgb(' + Math.round(90 + 110 * lit) + ',' + Math.round(95 + 110 * lit) + ',' + Math.round(105 + 110 * lit) + ')'); pg.addColorStop(1, '#2a2c33');
           g.fillStyle = pg;
@@ -855,7 +850,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
       if (glowIdx < 0) return;
       var j = glowIdx, top = wrap(-(st.th + j * WA)), bot = top - WA;
       if (Math.cos(top) < 0.2 && Math.cos(bot) < 0.2) return;
-      var yT = py(top), yB = py(bot), hw = hwAt((top + bot) / 2), t = (now - modeT0) / 1000, pulse = 0.6 + 0.4 * Math.sin(t * 8);
+      var yT = crease(top).y, yB = crease(bot).y, hw = proj(Math.sin((top + bot) / 2), Math.cos((top + bot) / 2)).hw, t = (now - modeT0) / 1000, pulse = 0.6 + 0.4 * Math.sin(t * 8);
       var col = WHEEL[j] === 7 ? '255,214,90' : WHEEL[j] === 1 ? '150,255,140' : '255,230,160';
       g.save();
       g.fillStyle = 'rgba(' + col + ',' + (0.12 * pulse) + ')'; g.fillRect(L.cx - hw, yT, hw * 2, yB - yT);
@@ -870,13 +865,10 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.clearRect(0, 0, cv.width, cv.height);
       g.drawImage(back, 0, 0);
-      drawDrum(0);
+      drawDrum(0, true);
       var sp = Math.abs(st.om);
-      if (sp > 1.5) { g.globalAlpha = Math.min(0.4, (sp - 1.5) * 0.1); drawDrum(-st.om * 0.005); drawDrum(-st.om * 0.01); g.globalAlpha = 1; }
+      if (sp > 1.5) { g.globalAlpha = Math.min(0.4, (sp - 1.5) * 0.1); drawDrum(-st.om * 0.005, true); drawDrum(-st.om * 0.01, true); g.globalAlpha = 1; }
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      var sh = drumShade();
-      g.fillStyle = sh.dk; g.fill(sh.path);
-      g.fillStyle = sh.sp; g.fill(sh.path);
       drawGlow(now);
       drawPegsAndRails();
       g.setTransform(1, 0, 0, 1, 0, 0);
@@ -965,10 +957,10 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
       setMode: function (m, idx) { mode = m; modeT0 = performance.now(); glowIdx = idx == null ? -1 : idx; if (m === 'idle') readout = null; else if (idx != null) readout = WHEEL[idx]; kick(); },
       // the panel facing you, in page coordinates (chips fly from here)
       panelRect: function () {
-        var r = cv.getBoundingClientRect(), k = r.width / L.W, hh = L.R * WA / 2;
+        var r = cv.getBoundingClientRect(), k = r.width / L.W, hh = L.R * Math.tan(WA / 2);
         return { x: r.left + L.cx * k, y: r.top + L.cy * k, w: L.dw * k, h: hh * 2 * k };
       },
-      redraw: function () { if (tex) { buildTexture(); buildBack(); buildFront(); shadeCache = null; draw(performance.now()); } },
+      redraw: function () { if (tex) { buildTexture(); buildBack(); buildFront(); draw(performance.now()); } },
       destroy: function () { dead = true; if (raf) cancelAnimationFrame(raf); raf = 0; clearTimeout(idleT); idleT = 0; document.removeEventListener('visibilitychange', kick); }
     };
   }

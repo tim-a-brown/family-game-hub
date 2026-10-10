@@ -257,14 +257,22 @@ function sizeDmd() {
   const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
   if (w && h && (dmdEl.width !== w || dmdEl.height !== h)) { dmdEl.width = w; dmdEl.height = h; if (G && G.dmdReset) G.dmdReset(); }
 }
+// The page's own slow tick (5/s) while a game is live: the FIRE button for a loaded cannon, the kit's menu sheet
+// pausing the game, and the BEST tag under the display following this game once it passes the table's record.
+// It stops while paused, hidden or finished (resumeGame and the visibility handler start it again).
 let uiRaf = 0;
 function tickUI() {
-  uiRaf = 0; if (!G || view !== 'game') return;
+  if (uiRaf) { clearTimeout(uiRaf); uiRaf = 0; }
+  if (!G || view !== 'game' || G.paused || G.finished || document.hidden) return;
   if (fireBtn) fireBtn.classList.toggle('show', !!G.cannon);
+  if (G.state !== 'over' && document.querySelector('.k-scrim')) { pauseGame(); return; }
+  const bv = Math.max(bestBase, G.score || 0);
+  if (bestEl && bv !== shownBest) { shownBest = bv; bestEl.lastChild.textContent = fmt(bv); }
   uiRaf = setTimeout(tickUI, 200);
 }
 function leaveGame() {
   view = 'none';
+  if (uiRaf) { clearTimeout(uiRaf); uiRaf = 0; }
   if (G) { G.destroy(); G = null; }
   if (viewEl) viewEl.querySelectorAll('.pb-load').forEach(e => e.remove());
   root.classList.remove('pb-on');
@@ -332,7 +340,7 @@ document.addEventListener('keyup', e => {
   else if (k === 'a' || k === 'A' || e.code === 'ControlLeft') G.setMagna(false);
   syncFlips();
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); else tickUI(); });
 window.addEventListener('blur', () => pauseGame());
 
 function pauseGame() {
@@ -350,16 +358,8 @@ function pauseGame() {
 function resumeGame() {
   if (!G || !G.paused) return;
   pauseEl.classList.remove('show');
-  Kit.sfx('tap'); G.resume();
+  Kit.sfx('tap'); G.resume(); tickUI();
 }
-// the kit's menu sheet pauses the game while open
-setInterval(() => {
-  if (view !== 'game' || !G) return;
-  if (!G.paused && G.state !== 'over' && document.querySelector('.k-scrim')) pauseGame();
-  // the BEST tag under the display follows this game once it passes the table's record
-  const bv = Math.max(bestBase, G.score || 0);
-  if (bestEl && bv !== shownBest) { shownBest = bv; bestEl.lastChild.textContent = fmt(bv); }
-}, 300);
 
 // ═══ Game over: history record, high scores, results ═══════════════════════════
 function finish(g0) {

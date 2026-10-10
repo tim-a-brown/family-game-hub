@@ -28,6 +28,10 @@ const FLOOR_Y = PY0 - BASE.h;
 const POINTER = { x: 0.72, z: 1.03, len: 0.4, hh: 0.1 };
 const READ = { x: PX + PW / 2, y: 0.15, w: 0.36, h: 0.22, d: 0.08 };
 const FOV = 26;
+// The drum is a 20-gon prism: each panel is a flat face tangent to the circle of radius R at its centre; the
+// creases (where the pegs sit) are at the circumradius R / cos(WA / 2).
+function faceH(n) { return 2 * R * Math.tan(Math.PI / n); }
+function creaseR(n) { return R / Math.cos(Math.PI / n); }
 
 let shared = null;        // renderer, canvas, environment, textures (built once per page)
 const scratch = { v: new THREE.Vector3(), m: new THREE.Matrix4(), q: new THREE.Quaternion(), c: new THREE.Color(), s: new THREE.Vector3(1, 1, 1), p: new THREE.Vector3() };
@@ -60,7 +64,7 @@ function smooth(e0, e1, x) { const t = Math.max(0, Math.min(1, (x - e0) / (e1 - 
 function noise2(x, y) { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); }
 
 // ── Panel artwork: the printed vinyl (the plate's shading and bevel come from the geometry and the lights) ──
-function paintPanel(c, v, x, y, w, h) {
+function paintPanel(c, v, x, y, w, h, FH) {
   const kind = v === 7 ? 'star' : v === 1 ? 'green' : 'black';
   const body = c.createLinearGradient(0, y, 0, y + h);
   if (kind === 'green') { body.addColorStop(0, '#5cc95f'); body.addColorStop(1, '#3aa746'); }
@@ -74,7 +78,7 @@ function paintPanel(c, v, x, y, w, h) {
   c.fillStyle = '#050506'; c.fillRect(x, y, w, sm); c.fillRect(x, y + h - sm, w, sm);
   c.fillStyle = 'rgba(255,255,255,.22)'; c.fillRect(x, y + sm, w, Math.max(1, h * 0.006));
   // the raised plate: gold (or dark green) bevel ring, then the plate face
-  const bx = x + BOX.x * w, by = y + BOX.y * h, bw = BOX.w * w, bh = BOX.h * h, r = BOX.r * h, bev = BEV / (2 * Math.PI * R / 20) * h;
+  const bx = x + BOX.x * w, by = y + BOX.y * h, bw = BOX.w * w, bh = BOX.h * h, r = BOX.r * h, bev = BEV / FH * h;
   const fr = c.createLinearGradient(0, by, 0, by + bh);
   if (kind === 'green') { fr.addColorStop(0, '#2f8a3a'); fr.addColorStop(1, '#17601f'); }
   else { fr.addColorStop(0, '#fff0b0'); fr.addColorStop(0.35, '#e0b84e'); fr.addColorStop(0.7, '#b8871f'); fr.addColorStop(1, '#f0d27a'); }
@@ -113,11 +117,11 @@ function paintPanel(c, v, x, y, w, h) {
 }
 // 20 panels in a 4 x 5 atlas (one texture, <= 2048 px)
 function buildAtlas(WHEEL) {
-  const A = DW / (2 * Math.PI * R / WHEEL.length), CW = 512, CH = Math.round(CW / A);
+  const FH = faceH(WHEEL.length), A = DW / FH, CW = 512, CH = Math.round(CW / A);
   const AW = 2048, AH = shared.renderer.capabilities.isWebGL2 ? CH * 5 : 2048;
   const [cn, c] = cv2d(AW, AH);
   c.fillStyle = '#0a0a0c'; c.fillRect(0, 0, AW, AH);
-  WHEEL.forEach((v, j) => paintPanel(c, v, (j % 4) * CW, Math.floor(j / 4) * CH, CW, CH));
+  WHEEL.forEach((v, j) => paintPanel(c, v, (j % 4) * CW, Math.floor(j / 4) * CH, CW, CH, FH));
   const t = tex(cn); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
   return { tex: t, cell: j => [(j % 4) * CW / AW, Math.floor(j / 4) * CH / AH, CW / AW, CH / AH] };
 }
@@ -240,7 +244,7 @@ function dollarGeometry(D, size) {
   g.setIndex(idx); g.computeVertexNormals(); return g;
 }
 
-// ── The drum: 20 curved panels with their raised plates as a heightfield on the cylinder ──
+// ── The drum: 20 flat faces, each with its raised plate as a heightfield on the face (sharp creases between faces) ──
 function samples(n, edges, bev) {
   const s = []; for (let i = 0; i <= n; i++) s.push(i / n);
   edges.forEach(e => { for (let k = -5; k <= 5; k++) s.push(e + k * bev / 4); });
@@ -249,7 +253,8 @@ function samples(n, edges, bev) {
   return u;
 }
 function panelGeometry(j, WN, atlas) {
-  const WA = 2 * Math.PI / WN, PH = WA * R, cell = atlas.cell(j), phi0 = -j * WA;
+  const WA = 2 * Math.PI / WN, PH = faceH(WN), cell = atlas.cell(j), phc = -(j + 0.5) * WA;
+  const ny = Math.sin(phc), nz = Math.cos(phc), ty = Math.cos(phc), tz = -Math.sin(phc);   // face normal and its 'up' tangent
   const bs = BEV / DW, bt = BEV / PH;
   const S = samples(20, [BOX.x, BOX.x + BOX.w], bs), T = samples(16, [BOX.y, BOX.y + BOX.h], bt);
   T.push(0.012, 0.024, 0.976, 0.988); T.sort((a, b) => a - b);
@@ -262,8 +267,8 @@ function panelGeometry(j, WN, atlas) {
     const d = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rad;
     let h = d <= -BEV ? PLATE : d >= 0 ? 0 : PLATE * Math.sqrt(Math.max(0, 1 - Math.pow((d + BEV) / BEV, 2)));
     const e = Math.min(t, 1 - t); if (e < 0.024) h -= 0.007 * (1 - e / 0.024);   // the seam groove
-    const phi = phi0 - t * WA, rr2 = R + h;
-    pos.push(u, rr2 * Math.sin(phi), rr2 * Math.cos(phi));
+    const rr2 = R + h;
+    pos.push(u, rr2 * ny + v * ty, rr2 * nz + v * tz);
     uv.push(cell[0] + s * cell[2], 1 - (cell[1] + t * cell[3]));
   }
   for (let b = 0; b < T.length - 1; b++) for (let a = 0; a < S.length - 1; a++) {
@@ -294,7 +299,7 @@ function ensureShared(canvas) {
 export function BigWheel3D(host, hooks, api) {
   if (!supported()) return null;
   const WHEEL = api.WHEEL, WN = api.WN, WA = api.WA, WSIM_H = api.WSIM_H, WSIM_CAP = api.WSIM_CAP, flapTick = api.flapTick;
-  const PH = WA * R;
+  const PH = faceH(WN), CR = creaseR(WN);
   const sh = ensureShared(shared ? shared.canvas : document.createElement('canvas'));
   const renderer = sh.renderer, cv = sh.canvas;
   cv.setAttribute('tabindex', '0'); cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'The Big Wheel. Swipe down on it to spin, or press Space.');
@@ -353,14 +358,21 @@ export function BigWheel3D(host, hooks, api) {
     const shells = []; for (let j = 0; j < WN; j++) shells.push(panelGeometry(j, WN, atlas));
     const shell = addMesh(merge(shells), M.vinyl, drum, true, true); shell.name = 'shell';
     // the inside of the drum, the dark steel side plates, the chrome rims, pegs and axle
-    addMesh(place(new THREE.CylinderGeometry(R - 0.004, R - 0.004, DW, 64, 1, true), 0, 0, 0, [0, 0, Math.PI / 2]), M.inner, drum, false, false);
+    // (a cylinder with WN radial segments is a WN-gon prism whose vertices sit on the creases)
+    addMesh(place(new THREE.CylinderGeometry(CR - 0.004, CR - 0.004, DW, WN, 1, true), 0, 0, 0, [0, 0, Math.PI / 2]), M.inner, drum, false, false);
     const plates = [];
-    [-1, 1].forEach(sd => plates.push(place(new THREE.CylinderGeometry(R - 0.035, R - 0.035, 0.02, 64), sd * (DW / 2 - 0.07), 0, 0, [0, 0, Math.PI / 2])));
+    [-1, 1].forEach(sd => plates.push(place(new THREE.CylinderGeometry(CR - 0.035, CR - 0.035, 0.02, WN), sd * (DW / 2 - 0.07), 0, 0, [0, 0, Math.PI / 2])));
     addMesh(merge(plates), M.steel, drum, false, true);
-    const chrome = [];
-    [-1, 1].forEach(sd => chrome.push(place(new THREE.TorusGeometry(R - 0.002, 0.016, 8, 96), sd * DW / 2, 0, 0, [0, Math.PI / 2, 0])));
+    const chrome = [], rr = CR - 0.004, edge = 2 * rr * Math.sin(WA / 2), ap = rr * Math.cos(WA / 2);
+    [-1, 1].forEach(sd => {   // the chrome rim follows the creases: a straight run per face and a knuckle at each crease
+      for (let k = 0; k < WN; k++) {
+        const phc = -(k + 0.5) * WA, phk = -k * WA;
+        chrome.push(place(new THREE.CylinderGeometry(0.016, 0.016, edge + 0.004, 8), sd * DW / 2, ap * Math.sin(phc), ap * Math.cos(phc), [-phc, 0, 0]));
+        chrome.push(place(new THREE.SphereGeometry(0.018, 8, 6), sd * DW / 2, rr * Math.sin(phk), rr * Math.cos(phk)));
+      }
+    });
     for (let k = 0; k < WN; k++) {
-      const phi = -k * WA, rp = R - 0.03;
+      const phi = -k * WA, rp = CR - 0.012;
       chrome.push(place(new THREE.CapsuleGeometry(0.017, DW + 0.17, 3, 10), 0, rp * Math.sin(phi), rp * Math.cos(phi), [0, 0, Math.PI / 2]));
     }
     chrome.push(place(new THREE.CylinderGeometry(0.045, 0.045, 1.3, 20), 0, 0, 0, [0, 0, Math.PI / 2]));
@@ -755,7 +767,7 @@ export function BigWheel3D(host, hooks, api) {
     panelRect: function () {
       const r = cv.getBoundingClientRect(), v = scratch.v;
       const proj = (x, y, z) => { v.set(x, y, z).project(camera); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; };
-      const c = proj(0, 0, R + PLATE), l = proj(-DW / 2, 0, R), rgt = proj(DW / 2, 0, R), t = proj(0, R * Math.sin(WA / 2), R * Math.cos(WA / 2)), b = proj(0, -R * Math.sin(WA / 2), R * Math.cos(WA / 2));
+      const c = proj(0, 0, R + PLATE), l = proj(-DW / 2, 0, R), rgt = proj(DW / 2, 0, R), t = proj(0, R * Math.tan(WA / 2), R), b = proj(0, -R * Math.tan(WA / 2), R);
       return { x: c[0], y: c[1], w: rgt[0] - l[0], h: b[1] - t[1] };
     },
     redraw: function () { if (!dead) rebuildTextures(); },
