@@ -259,6 +259,7 @@ function startGame(id, balls, who) {
   const r = getRenderer();
   if (!r) { app.className = 'stage'; app.innerHTML = ''; app.appendChild(el('div', { class: 'pb-nogl', text: 'This device can\'t show the 3D tables (WebGL is off or unavailable).' })); return; }
   const def = TABLES[id];
+  Kit.titleSwitch(def.name, () => showSetup(), 'Choose another table');   // the table's name; tap it for the table picker
   app.className = 'stage'; app.innerHTML = '';
   root.classList.add('pb-on');
   dmdEl = el('canvas', { class: 'pb-dmd' + (def.display && def.display.type === 'lcd' ? ' lcd' : ''), 'aria-label': 'Score display' });
@@ -541,6 +542,7 @@ function bindPlunger() {
 }
 function leaveGame() {
   view = 'none';
+  Kit.titleSwitch(null);
   if (uiRaf) { clearTimeout(uiRaf); uiRaf = 0; }
   if (plunger.raf) { cancelAnimationFrame(plunger.raf); plunger.raf = 0; }
   plunger.el = null; plunger.drag = null; plunger.snap = null; plunger.d = 0;
