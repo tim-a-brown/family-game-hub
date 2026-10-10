@@ -192,10 +192,11 @@ function mount(stage, api) {
   allowBtn.innerHTML = icon('phone') + '<span>Allow motion</span>';
 
   // ── State the renderers draw ──
-  const S = { glow: 0, px: 0, lift: 0, pz: 0, tiltX: 0, tiltZ: 0, flip: 0, depth: 1, face: 0, spinAxis: [0.3, 1, 0.2], spin: 0, wobX: 0, wobY: 0, wobZ: 0, bubbles: [] };
+  const S = { glow: 0, px: 0, lift: 0, pz: 0, tiltX: 0, tiltZ: 0, flip: 0, depth: 1, face: 0, spinAxis: [0.3, 1, 0.2], spin: 0, wobX: 0, wobY: 0, wobZ: 0, bubbles: [], swirl: Math.random() * 50 };
   let phase = 'rest';            // rest | shake | reveal | rise | answer
   let ox = 0, oy = 0, vx = 0, vy = 0, tx = 0, ty = 0;   // the ball's offset on screen, in ball radii (y up)
   let fx = 0, fy = 0, fT = 0;    // push from the phone's motion (ball radii / s^2) and when it last came
+  let pvx = 0, pvy = 0, stir = 0;   // last frame's velocity (for the slosh the bubbles feel) and how stirred the liquid is
   let vflip = 0, flipTarget = 0, riseT = 0, landed = false, spin0 = 0, wph = [0, 0, 0], shakeLast = 0, shakeVia = '', answers = 0, lastFace = -1;
   let R = null, raf = 0, lastT = 0, lastDraw = 0, W = 0, H = 0, needDraw = true, hidden = document.visibilityState !== 'visible';
 
@@ -215,8 +216,9 @@ function mount(stage, api) {
 
   function step(dt, now) {
     // the ball on its spring: follows the finger tightly while held, bounces home when let go
-    const held = !!ptr, k = held ? 150 : 70, c = held ? 17 : 8.6;
-    if (now - fT > 120) { fx = 0; fy = 0; }
+    if (now - fT > 150) { fx = 0; fy = 0; }
+    // the spring is softer while the phone's motion pushes the ball (so it can swing), firm under a finger
+    const held = !!ptr, pushed = !held && now - fT < 600, k = held ? 150 : pushed ? 42 : 70, c = held ? 17 : pushed ? 7.4 : 8.6;
     if (!held) { tx = 0; ty = 0; }
     const n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n;
     for (let i = 0; i < n; i++) {
@@ -226,6 +228,8 @@ function mount(stage, api) {
       vflip += (30 * (flipTarget - S.flip) - 8.5 * vflip) * h; S.flip += vflip * h;
     }
     ox = clamp(ox, -1.25, 1.25); oy = clamp(oy, -0.7, 1.0);
+    if (Math.abs(ox) >= 1.25 && ox * vx > 0) vx *= -0.3;
+    if (oy >= 1.0 && vy > 0) vy *= -0.3;
     S.px = ox; S.lift = Math.max(0, oy); S.pz = Math.max(0, -oy) * 1.3;
     S.tiltZ = clamp(-vx * 0.035, -0.35, 0.35); S.tiltX = clamp(-vy * 0.03, -0.3, 0.3);
     if (!held && !fx && !fy && Math.abs(ox) + Math.abs(oy) < 0.003 && Math.abs(vx) + Math.abs(vy) < 0.03) { ox = oy = vx = vy = 0; }   // at rest: snap still
@@ -265,25 +269,54 @@ function mount(stage, api) {
       riseT += dt; S.glow = glowAt(riseT); if (S.glow <= 0.02) S.glow = 0;
       busy = true;
     }
-    // bubbles drift up to the glass and pop
-    if (S.bubbles.length) {
-      for (const b of S.bubbles) { if (phase === 'answer' || phase === 'rest') b.a -= dt * 1.2; b.y -= b.v * dt; b.x += Math.sin(now / 300 + b.ph) * dt * 0.03; if (b.y < 0.01) b.a -= dt * 3; }
-      S.bubbles = S.bubbles.filter(b => b.a > 0);
-      busy = true;
-    }
+    // the liquid: its clouds drift faster while it's stirred, and the bubbles feel the ball's sway
+    const ax = dt > 0 ? (vx - pvx) / dt : 0, ay = dt > 0 ? (vy - pvy) / dt : 0; pvx = vx; pvy = vy;
+    stir = Math.max(stir * Math.exp(-dt / 1.4), clamp((Math.abs(ax) + Math.abs(ay)) / 60, 0, 1));
+    if (busy || S.bubbles.length) S.swirl += dt * (0.05 + 0.9 * stir);
+    if (S.bubbles.length && stepBubbles(dt, now, ax, ay)) busy = true;
     return busy;
   }
+  // Bubbles: free ones rise to the glass and pop; the few that stay (b.stay) slide along the inside of the glass,
+  // pushed by the ball's sway (an accelerating liquid sends air the way the ball is speeding up), wander a little
+  // after a shake and then settle, which stops the frames.
+  function stepBubbles(dt, now, ax, ay) {
+    let moving = false;
+    const shown = phase === 'rise' || phase === 'answer';
+    for (const b of S.bubbles) {
+      if (b.y > 0) {
+        b.y = Math.max(0, b.y - b.v * dt); b.x += Math.sin(now / 300 + b.ph) * dt * 0.03; moving = true;
+        if (b.y === 0 && b.stay) { b.vx = (Math.random() - 0.5) * 0.12; b.vz = (Math.random() - 0.5) * 0.12; b.w = 1; }
+      }
+      if (!shown || (b.y === 0 && !b.stay)) { b.a -= dt * (shown ? 3 : 1.6); moving = true; continue; }
+      if (b.y === 0) {
+        // slide along the glass: x is screen right, z is screen down (the window faces the camera)
+        b.w = (b.w || 0) * Math.exp(-dt / 0.9);
+        const wx = Math.sin(now / 410 + b.ph) * 0.05 * b.w, wz = Math.cos(now / 530 + b.ph * 1.7) * 0.05 * b.w;
+        b.vx += (ax * 0.012 + wx) * dt; b.vz += (-ay * 0.012 + wz) * dt;
+        const damp = Math.exp(-dt * 2.6); b.vx *= damp; b.vz *= damp;
+        b.x += b.vx * dt; b.z += b.vz * dt;
+        const rr = Math.hypot(b.x, b.z), lim = 0.9 - b.r * 0.04;
+        if (rr > lim) { const nx = b.x / rr, nz = b.z / rr, vn = b.vx * nx + b.vz * nz; b.x = nx * lim; b.z = nz * lim; if (vn > 0) { b.vx -= 1.6 * vn * nx; b.vz -= 1.6 * vn * nz; } }
+        if (Math.abs(b.vx) + Math.abs(b.vz) > 0.0015 || b.w > 0.02) moving = true; else { b.vx = b.vz = 0; b.w = 0; }
+      }
+    }
+    S.bubbles = S.bubbles.filter(b => b.a > 0);
+    return moving;
+  }
   function glowAt(t) { return t < 2.05 ? 0 : t < 2.25 ? (t - 2.05) / 0.2 : Math.exp(-(t - 2.25) / 0.38); }
-  function bubble(y) {
+  function bubble(y, stay) {
     if (S.bubbles.length > 26) return;
-    const a = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * 0.92;
-    S.bubbles.push({ x: Math.cos(a) * rr, z: Math.sin(a) * rr, y: clamp(y, 0.05, 0.9), v: 0.3 + Math.random() * 0.4, r: Math.random(), a: 0.5 + Math.random() * 0.5, ph: Math.random() * 6 });
+    const a = Math.random() * Math.PI * 2, rr = stay ? 0.42 + Math.sqrt(Math.random()) * 0.45 : Math.sqrt(Math.random()) * 0.92;
+    S.bubbles.push({ x: Math.cos(a) * rr, z: Math.sin(a) * rr, y: clamp(y, 0.05, 0.9), v: 0.3 + Math.random() * 0.4, r: stay ? 0.15 + Math.random() * 0.55 : Math.random() * 0.6, a: stay ? 1 : 0.5 + Math.random() * 0.5, ph: Math.random() * 6, stay: !!stay, vx: 0, vz: 0, w: 0 });
   }
 
   // ── Shake → reveal ──
   function startShake(via) {
     shakeVia = via; shakeLast = performance.now();
-    if (phase !== 'shake') { phase = 'shake'; S.glow = 0; srEl.textContent = ''; Kit && Kit.haptic && Kit.haptic('medium'); }
+    if (phase !== 'shake') {
+      phase = 'shake'; S.glow = 0; srEl.textContent = ''; Kit && Kit.haptic && Kit.haptic('medium');
+      for (const b of S.bubbles) { b.stay = false; b.vx = (Math.random() - 0.5) * 0.8; b.vz = (Math.random() - 0.5) * 0.8; }
+    }
     kick();
   }
   function endShake() {
@@ -298,6 +331,10 @@ function mount(stage, api) {
     wph = [Math.random() * 6, Math.random() * 6, Math.random() * 6];
     riseT = 0; landed = false; phase = 'rise';
     for (let i = 0; i < 8; i++) bubble(0.5 + Math.random() * 0.4);
+    // a few stay: they rise with the die and sit against the glass, like the air in a real one
+    const keepN = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < keepN; i++) bubble(0.25 + Math.random() * 0.45, true);
+    stir = 1;
     sfx('splash', 0.22);
   }
   function showAnswer() {

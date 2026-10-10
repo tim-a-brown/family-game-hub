@@ -102,7 +102,6 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-plunger.wait .cue{animation:pbCue 2.2s ease-in-out infinite;}
 .pb-plunger.held .cue{animation:none;opacity:0;}
 @keyframes pbCue{0%,100%{opacity:.15;}50%{opacity:.85;}}
-.pb-flip.under{opacity:.35;transition:opacity .12s;}
 .pb-pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:6;background:rgba(6,4,14,.6);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);}
 .pb-pause.show{display:flex;}
 .pb-pause .card{width:min(270px,82%);text-align:center;padding:22px 18px 16px;border-radius:var(--r-lg);background:var(--bg-2);box-shadow:var(--shadow);}
@@ -455,21 +454,20 @@ function drawPlunger() {
   g.fillStyle = chromeX(g, cx - 8 * s, cx + 8 * s); rrect(g, cx - 8 * s, kTop - 1, 16 * s, fH + 2, 2 * s); g.fill();
   g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(cx - 8 * s, kTop + fH - 1, 16 * s, 1);
   // turned knob: a short neck, a straight barrel that widens a touch, a domed end
-  const kt = kTop + fH, wTop = kW * 0.8, r = kW * 0.42;
-  g.beginPath();
-  g.moveTo(cx - wTop / 2 + 3 * s, kt);
-  g.quadraticCurveTo(cx - wTop / 2, kt, cx - wTop / 2, kt + 3 * s);
-  g.lineTo(cx - kW / 2, kt + kH - r);
-  g.bezierCurveTo(cx - kW / 2, kt + kH - r * 0.2, cx - kW * 0.3, kt + kH, cx, kt + kH);
-  g.bezierCurveTo(cx + kW * 0.3, kt + kH, cx + kW / 2, kt + kH - r * 0.2, cx + kW / 2, kt + kH - r);
-  g.lineTo(cx + wTop / 2, kt + 3 * s);
-  g.quadraticCurveTo(cx + wTop / 2, kt, cx + wTop / 2 - 3 * s, kt);
-  g.closePath();
+  const kt = kTop + fH, wTop = kW * 0.8, r = kW * 0.42, knob = new Path2D();
+  knob.moveTo(cx - wTop / 2 + 3 * s, kt);
+  knob.quadraticCurveTo(cx - wTop / 2, kt, cx - wTop / 2, kt + 3 * s);
+  knob.lineTo(cx - kW / 2, kt + kH - r);
+  knob.bezierCurveTo(cx - kW / 2, kt + kH - r * 0.2, cx - kW * 0.3, kt + kH, cx, kt + kH);
+  knob.bezierCurveTo(cx + kW * 0.3, kt + kH, cx + kW / 2, kt + kH - r * 0.2, cx + kW / 2, kt + kH - r);
+  knob.lineTo(cx + wTop / 2, kt + 3 * s);
+  knob.quadraticCurveTo(cx + wTop / 2, kt, cx + wTop / 2 - 3 * s, kt);
+  knob.closePath();
   const kg = g.createLinearGradient(cx - kW / 2, 0, cx + kW / 2, 0);
   kg.addColorStop(0, mixHex(col, '#000000', 0.62)); kg.addColorStop(0.2, mixHex(col, '#000000', 0.18)); kg.addColorStop(0.36, mixHex(col, '#ffffff', 0.45));
   kg.addColorStop(0.5, col); kg.addColorStop(0.78, mixHex(col, '#000000', 0.38)); kg.addColorStop(1, mixHex(col, '#000000', 0.7));
-  g.fillStyle = kg; g.fill();
-  g.save(); g.clip();
+  g.fillStyle = kg; g.fill(knob);
+  g.save(); g.clip(knob);
   const vg = g.createLinearGradient(0, kt, 0, kt + kH); vg.addColorStop(0, 'rgba(0,0,0,.35)'); vg.addColorStop(0.3, 'rgba(0,0,0,0)'); vg.addColorStop(0.8, 'rgba(255,255,255,.06)'); vg.addColorStop(1, 'rgba(0,0,0,.3)');
   g.fillStyle = vg; g.fillRect(cx - kW / 2, kt, kW, kH);
   // a grip groove round the barrel, the room light on its shoulder, and the dome's rim
@@ -481,21 +479,21 @@ function drawPlunger() {
   const dg = g.createLinearGradient(0, kt + kH - r, 0, kt + kH); dg.addColorStop(0, 'rgba(0,0,0,0)'); dg.addColorStop(1, 'rgba(0,0,0,.4)');
   g.fillStyle = dg; g.fillRect(cx - kW / 2, kt + kH - r, kW, r);
   g.restore();
-  g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 1; g.stroke();
+  g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 1; g.stroke(knob);
 }
 function plungerStep(now) {
   const P = plunger; if (!P.el || !G || view !== 'game') return false;
   if (P.drag) { /* P.d follows the finger (pointermove) */ }
   else if (G.pulling) { P.snap = null; P.d = Math.min(1, G.pull) * P.travel; }   // a held key
   else if (P.snap) {
-    // released: the spring drives it home in ~60 ms, a small overshoot into the housing, then rest
+    // released: the spring drives it home in ~35 ms (it is what throws the ball), a small bounce into the
+    // housing, then rest. A tap first dips the knob a little.
     const t = now - P.snap.t0, f = P.snap.from, os = Math.min(5 * P.s, 2 + f * 0.06);
-    if (P.snap.dip && t < 55) P.d = f * Math.sin(t / 55 * Math.PI / 2);
-    else { const u = t - (P.snap.dip ? 55 : 0); P.d = u < 60 ? f * (1 - (u / 60) * (u / 60)) : u < 170 ? -os * Math.sin((u - 60) / 110 * Math.PI) * (1 - (u - 60) / 220) : 0; if (u >= 170) P.snap = null; }
+    if (P.snap.dip && t < 45) P.d = f * Math.sin(t / 45 * Math.PI / 2);
+    else { const u = t - (P.snap.dip ? 45 : 0); P.d = u < 35 ? f * (1 - (u / 35) * (u / 35)) : u < 150 ? -os * Math.sin((u - 35) / 115 * Math.PI) * (1 - (u - 35) / 200) : 0; if (u >= 150) P.snap = null; }
   }
   else P.d = 0;
   drawPlunger();
-  if (flipBtn.R) flipBtn.R.classList.toggle('under', P.d > 0 && P.hTop + P.d + (P.H - PL.shadow * P.s - P.travel - PL.pad * P.s) > P.limit - 2);
   plungerState();
   return !!(P.drag || P.snap || G.pulling);
 }
@@ -559,7 +557,7 @@ const ptr = {};
 const keys = { L: false, R: false };
 function resetInput() {
   for (const k in ptr) delete ptr[k]; keys.L = keys.R = false; btnHeld.L = btnHeld.R = false;
-  if (viewEl) viewEl.querySelectorAll('.pb-arc.on, .pb-flip.under').forEach(b => b.classList.remove('on', 'under'));
+  if (viewEl) viewEl.querySelectorAll('.pb-arc.on').forEach(b => b.classList.remove('on'));
   const P = plunger; if (P.drag || P.d) { P.drag = null; P.snap = null; P.d = 0; if (P.el) { P.el.classList.remove('held'); drawPlunger(); } }
 }
 function syncFlips() {

@@ -21,7 +21,30 @@ const INR = RD * 0.7946545;           // die inradius (centre to face)
 const DIE_Y = YG - 0.008 - INR;       // die centre when its face touches the glass
 const SINK = 0.78;                    // how far the die sinks
 const FOV = 30, ELEV = 15 * Math.PI / 180;
-const LIQ = new THREE.Color(0.006, 0.014, 0.055);   // the liquid (linear)
+const LIQ = new THREE.Color(0.0085, 0.02, 0.085);   // the liquid's own murky glow (linear), where it is deep enough to hide everything
+// The liquid, shared by the die and the inside of the ball. Light gets in only through the window, so what you
+// see through any part of it is the dye's in-scattered glow (brighter in the middle, shaded by the lip, with soft
+// clouds of dye) mixed with whatever is behind it by how far the ray travels through the liquid. ebMurk takes
+// the point where the ray leaves through the glass, so the die melts into the backdrop with no seam.
+const MURK = `
+uniform vec3 uLiq; uniform vec3 uCam; uniform float uYG; uniform float uRin; uniform float uK; uniform float uT;
+float ebH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float ebN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(ebH(i), ebH(i + vec2(1.0, 0.0)), f.x), mix(ebH(i + vec2(0.0, 1.0)), ebH(i + vec2(1.0, 1.0)), f.x), f.y); }
+vec3 ebMurk(vec2 g){
+  float r = length(g) / uRin;
+  vec2 q = g * 3.2 + vec2(uT * 0.11, -uT * 0.07);
+  float n = 0.55 * ebN(q) + 0.3 * ebN(q * 2.1 + vec2(4.7, 1.3) - uT * 0.05) + 0.15 * ebN(q * 4.3 + 9.1);
+  float lit = mix(0.42, 1.0, smoothstep(1.02, 0.15, r));
+  return uLiq * lit * (0.62 + 0.76 * n);
+}
+// how much of a point at p (ball space) still shows through the liquid, and where its ray meets the glass
+float ebPath(vec3 p, out vec2 g){
+  float dv = max(0.0, uYG - p.y - 0.010);
+  vec3 vd = normalize(uCam - p); float cv = max(0.3, vd.y);
+  float s = dv / cv; g = p.xz + vd.xz * s; return s;
+}
+`;
 
 function supported() {
   try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; }
@@ -131,13 +154,6 @@ export function create(host, ANSWERS, post) {
     const [c, g] = cv2d(n, n), gr = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
     stops.forEach(s => gr.addColorStop(s[0], s[1])); g.fillStyle = gr; g.fillRect(0, 0, n, n); return tex(c, false);
   }
-  function bubbleTex() {
-    const n = 64, [c, g] = cv2d(n, n), gr = g.createRadialGradient(n / 2, n / 2, n * 0.2, n / 2, n / 2, n / 2);
-    gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.72, 'rgba(255,255,255,.18)'); gr.addColorStop(0.9, 'rgba(255,255,255,.75)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = gr; g.fillRect(0, 0, n, n);
-    g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(n * 0.38, n * 0.36, n * 0.07, 0, 7); g.fill();
-    return tex(c, false);
-  }
   // fine grain for the surface so the spotlight's falloff doesn't band
   function grainTex() {
     const n = 256, [c, g] = cv2d(n, n), id = g.createImageData(n, n);
@@ -154,36 +170,55 @@ export function create(host, ANSWERS, post) {
     lip: keep(new THREE.MeshPhysicalMaterial({ color: 0x08080a, roughness: 0.32, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.12, envMapIntensity: 0.7, side: THREE.DoubleSide })),
     glass: keep(new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: 0.03, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 0.9, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })),
     die: null,
-    interior: keep(new THREE.ShaderMaterial({
-      side: THREE.BackSide, depthWrite: false,
-      uniforms: { uCol: { value: new THREE.Color(0.02, 0.05, 0.19) }, uYG: { value: YG }, uK: { value: 3.2 } },
-      vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: 'uniform vec3 uCol; uniform float uYG; uniform float uK; varying vec3 vP; void main(){ float d = max(0.0, uYG - vP.y); float r = length(vP.xz); gl_FragColor = vec4(uCol * exp(-d * uK) * (0.55 + 0.45 * smoothstep(0.7, 0.0, r)), 1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}'
-    })),
+    interior: null,
     floor: keep(new THREE.MeshStandardMaterial({ color: 0x2c2c31, roughness: 0.82, metalness: 0, envMapIntensity: 0.0, dithering: true })),
     shadow: keep(new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthWrite: false, opacity: 0.9 })),
     shadowCore: keep(new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthWrite: false, opacity: 0.95 })),
-    bubbles: keep(new THREE.PointsMaterial({ size: 0.075, sizeAttenuation: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true }))
+    bubbles: null
   };
-  Object.keys(M).forEach(k => { if (M[k] && k !== 'floor') M[k].fog = false; });
   M.floor.roughnessMap = grainTex();
   M.shadow.alphaMap = radial(256, [[0, 'rgb(150,150,150)'], [0.35, 'rgb(90,90,90)'], [0.7, 'rgb(25,25,25)'], [1, 'rgb(0,0,0)']]);
   M.shadowCore.alphaMap = radial(256, [[0, 'rgb(255,255,255)'], [0.3, 'rgb(200,200,200)'], [0.65, 'rgb(60,60,60)'], [1, 'rgb(0,0,0)']]);
-  M.bubbles.map = bubbleTex();
 
-  // The die: lit like the rest, then mixed into the liquid by its distance behind the glass; anything
-  // outside the ball's shell is dropped (the die is bigger than a real one could be, for a readable face)
-  const dieU = { uLocal: { value: new THREE.Matrix4() }, uYG: { value: YG }, uK: { value: 26.0 }, uLiq: { value: LIQ.clone() } };
+  // the liquid's uniforms, shared by the die, the inside of the ball and the bubbles
+  const liqU = { uLiq: { value: LIQ.clone() }, uCam: { value: new THREE.Vector3(0, 5, 0) }, uYG: { value: YG }, uRin: { value: RIN }, uK: { value: 34.0 }, uT: { value: 0 } };
+  // the inside of the ball: black plastic walls seen through the liquid (dark right by the lip, then all murk)
+  M.interior = keep(new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, uniforms: liqU,
+    vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: MURK + 'varying vec3 vP; void main(){ vec2 g; float s = ebPath(vP, g); float T = exp(-s * uK * 0.6); gl_FragColor = vec4(ebMurk(g) * (1.0 - T) + vec3(0.002, 0.003, 0.008) * T, 1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}'
+  }));
+  // bubbles: little air pockets drawn as round sprites (a bright rim, a hot highlight, a faint lens of light
+  // inside), dimmed by the liquid in front of them
+  M.bubbles = keep(new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, uniforms: { uPx: { value: 400 } },
+    vertexShader: 'uniform float uPx; attribute float aSize; attribute float aAlpha; varying float vA; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = max(1.0, 2.0 * aSize * projectionMatrix[1][1] * uPx / -mv.z); vA = aAlpha; }',
+    fragmentShader: 'varying float vA; void main(){ vec2 q = gl_PointCoord * 2.0 - 1.0; q.y = -q.y; float r = length(q); if (r > 1.0 || vA <= 0.0) discard;' +
+      'float rim = smoothstep(0.55, 0.9, r) * (1.0 - smoothstep(0.9, 1.0, r));' +
+      'vec2 h = q - vec2(-0.34, 0.36); float hl = exp(-dot(h, h) * 34.0);' +
+      'vec2 k = q - vec2(0.3, -0.42); float lens = exp(-dot(k, k) * 9.0) * 0.28 * (1.0 - smoothstep(0.75, 0.95, r));' +
+      'float a = clamp(rim * 0.62 + hl * 0.95 + lens + 0.05, 0.0, 1.0) * vA;' +
+      'vec3 c = mix(vec3(0.55, 0.7, 1.0), vec3(1.0), clamp(hl * 1.2, 0.0, 1.0));' +
+      'gl_FragColor = vec4(c, a);\n#include <colorspace_fragment>\n}'
+  }));
+  Object.keys(M).forEach(k => { if (M[k] && k !== 'floor') M[k].fog = false; });
+
+  // The die: lit like the rest, then seen through the liquid: the face pressed to the glass stays crisp, the rest
+  // sinks into the murk within a few millimetres, and the faces turned away from the window (lit only by light that
+  // has come the long way through the dye) are lost almost at once. Anything outside the ball's shell is dropped
+  // (the die is bigger than a real one could be, for a readable face).
+  const dieU = Object.assign({ uLocal: { value: new THREE.Matrix4() }, uSide: { value: 5.0 }, uVeil: { value: 0.05 } }, liqU);
   M.die = keep(new THREE.MeshPhysicalMaterial({ roughness: 0.34, metalness: 0, clearcoat: 0.45, clearcoatRoughness: 0.25, envMapIntensity: 0.55, emissive: 0xffffff, emissiveIntensity: 0.1 }));
   M.die.map = dieTex(); M.die.emissiveMap = M.die.map; M.die.fog = false;
-  M.die.customProgramCacheKey = () => 'eb-die';
+  M.die.customProgramCacheKey = () => 'eb-die2';
   M.die.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, dieU);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform mat4 uLocal; varying vec3 vBall; varying float vFace;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBall = (uLocal * vec4(transformed, 1.0)).xyz; vFace = normalize(mat3(uLocal) * objectNormal).y;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uYG; uniform float uK; uniform vec3 uLiq; varying vec3 vBall; varying float vFace;')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + MURK + 'uniform float uSide; uniform float uVeil; varying vec3 vBall; varying float vFace;')
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (length(vBall) > 0.965) discard;')
-      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n{ float d = max(0.0, uYG - vBall.y - 0.012); float f = max(1.0 - exp(-d * uK), 0.95 * (1.0 - smoothstep(0.86, 0.985, vFace))); gl_FragColor.rgb = mix(gl_FragColor.rgb, uLiq * exp(-d * 2.0), f); }');
+      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n{ vec2 g; float s = ebPath(vBall, g); float side = 1.0 - smoothstep(0.86, 0.985, vFace);' +
+        ' float T = exp(-s * uK - side * uSide - uVeil); gl_FragColor.rgb = min(gl_FragColor.rgb, vec3(3.0)) * T + ebMurk(g) * (1.0 - T); }');
   };
 
   // ── Geometry ──
@@ -228,9 +263,9 @@ export function create(host, ANSWERS, post) {
     return mesh(src, M.die, ball);
   })();
 
-  // bubbles (positions written per frame)
-  const NB = 28, bPos = new Float32Array(NB * 3), bCol = new Float32Array(NB * 3), bGeo = keep(new THREE.BufferGeometry());
-  bGeo.setAttribute('position', new THREE.BufferAttribute(bPos, 3)); bGeo.setAttribute('color', new THREE.BufferAttribute(bCol, 3));
+  // bubbles (positions written per frame): x, z across the window, y = how far behind the glass
+  const NB = 28, bPos = new Float32Array(NB * 3), bSize = new Float32Array(NB), bA = new Float32Array(NB), bGeo = keep(new THREE.BufferGeometry());
+  bGeo.setAttribute('position', new THREE.BufferAttribute(bPos, 3)); bGeo.setAttribute('aSize', new THREE.BufferAttribute(bSize, 1)); bGeo.setAttribute('aAlpha', new THREE.BufferAttribute(bA, 1));
   const bubbles = new THREE.Points(bGeo, M.bubbles); bubbles.frustumCulled = false; bubbles.renderOrder = 9; ball.add(bubbles);
 
   // surface and contact shadow
@@ -310,16 +345,25 @@ export function create(host, ANSWERS, post) {
     die.visible = S.depth < 0.995;
     M.die.emissiveIntensity = 0.1 + 0.55 * (S.glow || 0);   // the brief brighten as the answer lands
     die.updateMatrix(); dieU.uLocal.value.copy(die.matrix);
-    // bubbles: x, z across the window, y = depth behind the glass
+    // the liquid: where the camera is, seen from inside the ball, and how far its clouds have drifted
+    ball.updateMatrixWorld(true);
+    liqU.uCam.value.copy(camera.position); ball.worldToLocal(liqU.uCam.value);
+    liqU.uT.value = S.swirl || 0;
+    // bubbles: a sprite sits just in front of the die's face when the bubble touches the glass, deeper ones
+    // go behind it (hidden by the die, dimmed by the liquid)
     const B = S.bubbles || [];
+    let nb = 0;
     for (let i = 0; i < NB; i++) {
       const b = B[i];
-      if (!b || b.a <= 0) { bCol[i * 3] = bCol[i * 3 + 1] = bCol[i * 3 + 2] = 0; bPos[i * 3 + 1] = -5; continue; }
-      bPos[i * 3] = b.x * RIN; bPos[i * 3 + 1] = YG - 0.01 - b.y; bPos[i * 3 + 2] = b.z * RIN;
-      const k = b.a * Math.exp(-b.y * 3) * 1.1; bCol[i * 3] = k * 0.75; bCol[i * 3 + 1] = k * 0.85; bCol[i * 3 + 2] = k;
+      if (!b || b.a <= 0) { bA[i] = 0; bPos[i * 3 + 1] = -5; continue; }
+      const rad = 0.009 + 0.021 * b.r, sx = b.x * RIN, sz = b.z * RIN, rr = Math.hypot(sx, sz), lim = RIN - rad * 1.1;
+      const k = rr > lim ? lim / rr : 1;
+      bPos[i * 3] = sx * k; bPos[i * 3 + 1] = YG - 0.004 - b.y; bPos[i * 3 + 2] = sz * k;
+      bSize[i] = rad; bA[i] = Math.min(1, b.a) * Math.exp(-b.y * liqU.uK.value * 0.8); nb++;
     }
-    bGeo.attributes.position.needsUpdate = true; bGeo.attributes.color.needsUpdate = true;
-    bubbles.visible = B.length > 0;
+    bGeo.attributes.position.needsUpdate = true; bGeo.attributes.aSize.needsUpdate = true; bGeo.attributes.aAlpha.needsUpdate = true;
+    bubbles.visible = nb > 0 && f > 0.3;
+    M.bubbles.uniforms.uPx.value = H * dpr / 2;
     // contact shadow: tight and dark on the surface, softer and lighter as the ball lifts
     const lift = Math.max(0, ball.position.y), k = 1 / (1 + lift * 2.2);
     shadow.position.set(ball.position.x + 0.08, -0.998, ball.position.z - 0.05); shadow.scale.setScalar(2.9 * (1 + lift * 0.6)); M.shadow.opacity = 0.85 * k;

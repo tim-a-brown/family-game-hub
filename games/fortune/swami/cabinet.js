@@ -23,7 +23,7 @@ export function layout(w, h) {
   const L = { w, h, wide, bulbs: [] };
   if (!wide) {
     // fixed parts, in cabinet widths: crest, case frame, shelf, lower panel, plinth
-    const CR = 0.34, FR = 0.07, SH = 0.04, LOW = 0.42, BASE = 0.07, F = CR + FR + SH + LOW + BASE;
+    const CR = 0.34, FR = 0.07, SH = 0.04, LOW = 0.54, BASE = 0.07, F = CR + FR + SH + LOW + BASE;
     let W = Math.min(w - 2 * m, 680);
     let caseH = (h - 2 * m) - W * F;
     const minH = 0.82 * 0.76 * W, maxH = 1.0 * 0.76 * W;
@@ -37,10 +37,12 @@ export function layout(w, h) {
     L.shelf = { x: x0 - 0.02 * W, y: L.body.y + L.body.h, w: W * 1.04, h: SH * W };
     L.low = { x: x0, y: L.shelf.y + L.shelf.h, w: W, h: LOW * W };
     L.base = { x: x0 - 0.025 * W, y: L.low.y + L.low.h, w: W * 1.05, h: BASE * W };
-    L.coin = { cx: x0 + 0.27 * W, cy: L.low.y + 0.17 * W, w: 0.16 * W, h: 0.24 * W };
+    L.coin = { cx: x0 + 0.27 * W, cy: L.low.y + 0.165 * W, w: 0.15 * W, h: 0.225 * W };
     L.slot = { cx: x0 + 0.70 * W, y: L.low.y + 0.115 * W, w: 0.30 * W, h: 0.02 * W, bh: 0.11 * W };
     L.card = { w: 0.255 * W, hang: Math.min(L.low.h - 0.115 * W - 0.03 * W, 0.255 * W * 1.4 * 0.88) };
-    L.token = { cx: x0 + 0.27 * W, cy: L.low.y + 0.345 * W, r: 0.042 * W };
+    // the token sits in a lit brass dish right under the coin plate, with a "TAKE A TOKEN" plate below
+    L.token = { cx: x0 + 0.27 * W, cy: L.low.y + 0.357 * W, r: Math.min(0.07 * W, Math.max(22, 0.055 * W)) };
+    L.plaque = { cx: x0 + 0.27 * W, cy: L.low.y + 0.463 * W, w: 0.235 * W, h: 0.052 * W };
     L.u = W / 100;
     // marquee bulbs: around the arch, then down both pillars
     const bs = 0.034 * W;
@@ -72,11 +74,12 @@ export function layout(w, h) {
     L.pillL = { x: x0, y: bodyY, w: pw, h: bodyH };
     L.pillR = { x: x0 + W - pw, y: bodyY, w: pw, h: bodyH };
     const cw = Math.min(pw * 0.5, H * 0.28);
-    L.coin = { cx: x0 + pw * 0.5, cy: bodyY + bodyH * 0.36, w: Math.min(pw * 0.42, H * 0.17), h: Math.min(pw * 0.62, H * 0.25) };
+    L.coin = { cx: x0 + pw * 0.5, cy: bodyY + bodyH * 0.31, w: Math.min(pw * 0.42, H * 0.17), h: Math.min(pw * 0.62, H * 0.25) };
     const sy = bodyY + bodyH * 0.06 + H * 0.085;
     L.slot = { cx: L.pillR.x + pw * 0.5, y: sy, w: cw * 1.12, h: H * 0.018, bh: H * 0.13 };
     L.card = { w: cw, hang: Math.min(bodyY + bodyH - sy - H * 0.04, cw * 1.4 * 0.88) };
-    L.token = { cx: x0 + pw * 0.5, cy: bodyY + bodyH * 0.8, r: Math.min(H * 0.055, pw * 0.16) };
+    L.token = { cx: x0 + pw * 0.5, cy: bodyY + bodyH * 0.665, r: Math.min(pw * 0.2, Math.max(22, H * 0.06)) };
+    L.plaque = { cx: x0 + pw * 0.5, cy: bodyY + bodyH * 0.84, w: Math.min(pw * 0.62, H * 0.27), h: Math.min(pw * 0.14, H * 0.056) };
     L.u = H / 60;
     const bs = Math.min(0.045 * H, 0.03 * W);
     L.bulbR = bs / 2;
@@ -358,10 +361,10 @@ function tall(g, L, F) {
   goldFrame(g, ip, 0.012 * W, false);
   cornerFans(g, ip, 0.05 * W);
   // centre medallion: a painted eye in a sunburst
-  medallion(g, x0 + 0.5 * W, low.y + 0.31 * W, 0.045 * W, F);
+  medallion(g, x0 + 0.5 * W, low.y + 0.37 * W, 0.045 * W, F);
   coinPlate(g, L, F);
   cardSlot(g, L, F);
-  tokenDish(g, L);
+  tokenDish(g, L, F);
   // plinth
   g.fillStyle = lin(g, 0, base.y, 0, base.y + base.h, [[0, '#2a1d20'], [0.5, '#0c0607'], [1, '#050203']]);
   g.fillRect(base.x, base.y, base.w, base.h);
@@ -403,7 +406,7 @@ function wideCab(g, L, F) {
   goldFrame(g, open, H * 0.026, true);
   coinPlate(g, L, F);
   cardSlot(g, L, F);
-  tokenDish(g, L);
+  tokenDish(g, L, F);
   g.fillStyle = lin(g, 0, base.y, 0, base.y + base.h, [[0, '#2a1d20'], [0.5, '#0c0607'], [1, '#050203']]);
   g.fillRect(base.x, base.y, base.w, base.h);
   g.fillStyle = gold(g, 0, base.y, 0, base.y + H * 0.012); g.fillRect(base.x, base.y, base.w, H * 0.01);
@@ -499,14 +502,40 @@ function cardSlot(g, L, F) {
   const r2 = bh * 0.06;
   [[bx + bh * 0.2, by + bh * 0.3], [bx + bw - bh * 0.2, by + bh * 0.3]].forEach(p => screw(g, p[0], p[1], r2));
 }
-function tokenDish(g, L) {
-  const t = L.token, r = t.r * 1.5;
-  g.save(); g.translate(t.cx, t.cy + t.r * 0.25); g.scale(1, 0.45);
-  g.fillStyle = lin(g, -r, -r, r, r, [[0, '#fff1b8'], [0.4, '#b8862b'], [1, '#4a300a']]);
-  g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
-  g.fillStyle = rad(g, 0, -r * 0.2, r * 0.1, 0, 0, r * 0.82, [[0, '#2a1a06'], [1, '#6a4a14']]);
-  g.beginPath(); g.arc(0, 0, r * 0.82, 0, TAU); g.fill();
+// The token cup: a pool of warm light on the panel, a brass dish the token stands in, and a stamped
+// brass plate under it saying what to do
+function tokenDish(g, L, F) {
+  const t = L.token, r = t.r * 1.5, dy = t.cy + t.r * 0.25;
+  // lamp light falling on the panel around the dish
+  g.save();
+  g.globalCompositeOperation = 'screen';
+  g.fillStyle = rad(g, t.cx, t.cy - t.r * 0.2, t.r * 0.2, t.cx, t.cy, t.r * 2.6, [[0, 'rgba(255,200,120,.38)'], [0.55, 'rgba(255,150,70,.14)'], [1, 'rgba(255,120,40,0)']]);
+  g.beginPath(); g.arc(t.cx, t.cy, t.r * 2.6, 0, TAU); g.fill();
   g.restore();
+  // the dish: a brass rim, a dark well, a lit front lip
+  g.save(); g.translate(t.cx, dy); g.scale(1, 0.45);
+  g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = r * 0.25; g.shadowOffsetY = r * 0.18;
+  g.fillStyle = lin(g, -r, -r, r, r, [[0, '#fff1b8'], [0.4, '#c8962f'], [1, '#5a3a0c']]);
+  g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
+  g.shadowColor = 'transparent';
+  g.fillStyle = rad(g, 0, -r * 0.25, r * 0.1, 0, 0, r * 0.82, [[0, '#1a0f04'], [1, '#6a4a14']]);
+  g.beginPath(); g.arc(0, 0, r * 0.8, 0, TAU); g.fill();
+  g.strokeStyle = 'rgba(255,246,210,.7)'; g.lineWidth = r * 0.06;
+  g.beginPath(); g.arc(0, 0, r * 0.93, Math.PI * 0.15, Math.PI * 0.85); g.stroke();
+  g.restore();
+  // stamped plate
+  const p = L.plaque; if (!p) return;
+  const x = p.cx - p.w / 2, y = p.cy - p.h / 2;
+  g.save();
+  g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = p.h * 0.3; g.shadowOffsetY = p.h * 0.1;
+  rr(g, x, y, p.w, p.h, p.h * 0.22);
+  g.fillStyle = lin(g, 0, y, 0, y + p.h, [[0, '#fff0b0'], [0.3, '#e2b24a'], [0.75, '#a77a22'], [1, '#d9ae52']]); g.fill();
+  g.restore();
+  rr(g, x, y, p.w, p.h, p.h * 0.22); g.strokeStyle = 'rgba(50,30,5,.8)'; g.lineWidth = Math.max(0.6, p.h * 0.04); g.stroke();
+  const sr = p.h * 0.12;
+  screw(g, x + p.h * 0.32, p.cy, sr); screw(g, x + p.w - p.h * 0.32, p.cy, sr);
+  const fs = p.h * 0.5;
+  engraved(g, 'TAKE A TOKEN', p.cx, p.cy + p.h * 0.04, fs, fs + 'px ' + F.bungee, '#3a1a04', p.w - p.h * 1.1);
 }
 
 function glass(g, L) {

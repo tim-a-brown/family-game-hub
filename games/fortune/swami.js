@@ -10,7 +10,7 @@ import { createScene } from './swami/scene.js';
 import { layout, paint, paintToken } from './swami/cabinet.js';
 import { paintCard, CARD_RATIO } from './swami/card.js';
 
-const DECK_KEY = 'fortune_swami_deck', VOICE_KEY = 'fortune_swami_voice';
+const DECK_KEY = 'fortune_swami_deck', VOICE_KEY = 'fortune_swami_voice', SEEN_KEY = 'fortune_zandor_seen';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const T_WAKE = 0.35, T_CARD = 3.7, FEED = 1.4, WIND = 1.3;   // seconds
 const F = { bungee: '"ZD Bungee", Impact, "Arial Black", sans-serif', cinzel: '"ZD Cinzel", Georgia, serif', pagella: '"ZD Pagella", "Book Antiqua", Georgia, serif' };
@@ -62,11 +62,20 @@ const CSS = `
 .zd-hit.coin:active{background:rgba(255,230,160,.10);}
 .zd-case{cursor:default;}
 .zd-token{position:absolute;border-radius:50%;cursor:grab;touch-action:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.6));transition:opacity .4s;will-change:transform;}
+.zd-token::before{content:"";position:absolute;inset:-12px;border-radius:50%;}
 .zd-token canvas{position:static;width:100%;height:100%;}
+.zd-glint{position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none;}
+.zd-glint::after{content:"";position:absolute;top:-10%;bottom:-10%;left:-45%;width:38%;background:linear-gradient(100deg,rgba(255,250,225,0),rgba(255,252,235,.9) 50%,rgba(255,250,225,0));transform:skewX(-14deg);animation:zd-glint 6s ease-in-out 1.6s infinite;}
+.zd-token.call .zd-glint::after{animation-duration:3.6s;}
+@keyframes zd-glint{0%,74%{transform:translateX(0) skewX(-14deg)}90%,100%{transform:translateX(420%) skewX(-14deg)}}
 .zd-token.gone{opacity:0;pointer-events:none;}
 .zd-token.lift{cursor:grabbing;filter:drop-shadow(0 10px 8px rgba(0,0,0,.55));}
-.zd-token.hint{animation:zd-hint 2.4s ease-in-out 1.2s 2;}
+.zd-token.lift .zd-glint,.zd-token.gone .zd-glint{display:none;}
+.zd-token.call{animation:zd-hop 3.6s ease-in-out 1.2s infinite;}
+@keyframes zd-hop{0%,64%,100%{transform:none}71%{transform:translateY(-22%) rotate(-6deg)}78%{transform:none}83%{transform:translateY(-7%) rotate(3deg)}88%{transform:none}}
+.zd-token.hint{animation:zd-hint 2.4s ease-in-out .2s 2;}
 @keyframes zd-hint{0%,100%{transform:none}45%{transform:translateY(-6px) rotate(-8deg)}55%{transform:translateY(-6px) rotate(8deg)}}
+@media (prefers-reduced-motion:reduce){.zd-token.call{animation:none}.zd-glint::after{animation:none;opacity:0}}
 .zd-clip{position:absolute;overflow:hidden;pointer-events:none;}
 .zd-card{position:absolute;left:0;top:0;width:100%;border-radius:3%/2.2%;box-shadow:0 2px 6px rgba(0,0,0,.55);cursor:pointer;pointer-events:auto;touch-action:manipulation;}
 .zd-voice{position:absolute;right:10px;top:10px;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,214,120,.45);background:rgba(20,8,10,.6);color:#f3d27a;display:grid;place-items:center;padding:0;cursor:pointer;}
@@ -92,7 +101,7 @@ export default {
   blurb: 'Carnival fortune machine',
   rules: '<h3>The Great Zandor</h3>' +
     '<p>Zandor is an old carnival fortune machine. He sees all, and he has opinions.</p>' +
-    '<p><b>Drop a token.</b> Tap the coin slot, or drag the brass token into it. The lights chase, his eyes glow, and he waves his hands over the crystal ball.</p>' +
+    '<p><b>Drop a token.</b> Take the brass token from the lit dish under the coin slot and drag it into the slot, or just tap the slot. The lights chase, his eyes glow, and he waves his hands over the crystal ball.</p>' +
     '<p><b>Take your card.</b> A few seconds later a printed fortune card slides out of the slot. Tap it to read it up close, with your lucky number and lucky day.</p>' +
     '<p>Tap <b>Put it away</b> to go back to the booth, or <b>Another token</b> to ask again. There are 400 fortunes, and he deals them like a deck, so you won\'t see one again until you\'ve seen them all.</p>' +
     '<p>The speaker button lets Zandor read your card aloud. It starts off.</p>' +
@@ -117,8 +126,11 @@ export default {
     const caseHit = document.createElement('div'); caseHit.className = 'zd-hit zd-case';
     const coinHit = document.createElement('button'); coinHit.type = 'button'; coinHit.className = 'zd-hit coin'; coinHit.setAttribute('aria-label', 'Drop a token in the slot');
     const clip = document.createElement('div'); clip.className = 'zd-clip';
-    const token = document.createElement('div'); token.className = 'zd-token hint'; token.setAttribute('aria-hidden', 'true');
-    const tokenCv = document.createElement('canvas'); token.appendChild(tokenCv);
+    // Until the first token goes in, it hops in its dish now and then; after that it only catches the light
+    let seen = lsGet(SEEN_KEY) === '1';
+    const token = document.createElement('div'); token.className = 'zd-token' + (seen ? '' : ' call'); token.setAttribute('aria-hidden', 'true');
+    const tokenCv = document.createElement('canvas'), glint = document.createElement('i'); glint.className = 'zd-glint';
+    token.append(tokenCv, glint);
     const voiceBtn = document.createElement('button'); voiceBtn.type = 'button'; voiceBtn.className = 'zd-voice';
     root.append(inner, cab, bulbsEl, caseHit, coinHit, clip, token);
     const canSpeak = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
@@ -299,12 +311,21 @@ export default {
 
     // ── The token ──
     let drag = null;
-    function tokenHome() { token.style.transition = 'transform .35s cubic-bezier(.3,1.4,.5,1), opacity .4s'; token.style.transform = ''; }
+    function tokenHome() {
+      token.style.transition = 'transform .35s cubic-bezier(.3,1.4,.5,1), opacity .4s'; token.style.transform = '';
+      if (!seen) later(() => { if (!drag && (state === 'idle' || state === 'card')) token.classList.add('call'); }, 400);
+    }
+    function markSeen() { if (!seen) { seen = true; lsSet(SEEN_KEY, '1'); } token.classList.remove('call', 'hint'); }
+    token.addEventListener('animationend', e => {
+      if (e.animationName !== 'zd-hint') return;
+      token.classList.remove('hint');
+      if (!seen && !drag) token.classList.add('call');
+    });
     function slotCenter() { return { x: L.coin.cx, y: L.coin.cy - L.coin.h * 0.05 }; }
     token.addEventListener('pointerdown', e => {
       if (!(state === 'idle' || state === 'card') || token.classList.contains('gone')) return;
       e.preventDefault();
-      token.classList.remove('hint');
+      token.classList.remove('hint', 'call');
       drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
       try { token.setPointerCapture(e.pointerId); } catch (err) {}
       token.style.transition = 'none'; token.classList.add('lift');
@@ -333,8 +354,8 @@ export default {
     caseHit.addEventListener('click', () => {
       if (state !== 'idle' && state !== 'card') return;
       sfx('tap', 0.4);
-      if (Kit && Kit.toast) Kit.toast('Zandor needs a token. Drop one in the slot.');
-      token.classList.remove('hint'); void token.offsetWidth; token.classList.add('hint');
+      if (Kit && Kit.toast) Kit.toast('Zandor needs a token. Drag the brass token into the slot.');
+      token.classList.remove('hint', 'call'); void token.offsetWidth; token.classList.add('hint');
     });
 
     // Fly the token from where it is into the slot, turn it edge-on, and drop it in
@@ -342,14 +363,16 @@ export default {
       if (!(state === 'idle' || state === 'card') || token.classList.contains('gone')) return;
       if (state === 'card') dropOldCard();
       state = 'performing';
-      token.classList.remove('hint');
+      markSeen();
       const s = slotCenter(), ex = s.x - L.token.cx, ey = s.y - L.token.cy;
+      // shrink to the slot's length on the way in, so the token fits the slot it drops through
+      const k = Math.max(0.5, Math.min(1, (L.coin.h * 0.36) / (L.token.r * 2)));
       token.style.transition = 'none';
       const a = token.animate([
         { transform: 'translate(' + from[0] + 'px,' + from[1] + 'px) scale(1.15)' },
-        { transform: 'translate(' + ex + 'px,' + (ey - L.coin.h * 0.06) + 'px) scale(1.05)', offset: 0.55 },
-        { transform: 'translate(' + ex + 'px,' + (ey - L.coin.h * 0.06) + 'px) scale(.2, 1)', offset: 0.75, opacity: 1 },
-        { transform: 'translate(' + ex + 'px,' + (ey + L.coin.h * 0.08) + 'px) scale(.12, .9)', opacity: 0 }
+        { transform: 'translate(' + ex + 'px,' + (ey - L.coin.h * 0.06) + 'px) scale(' + k + ')', offset: 0.55 },
+        { transform: 'translate(' + ex + 'px,' + (ey - L.coin.h * 0.06) + 'px) scale(' + (0.2 * k) + ',' + k + ')', offset: 0.75, opacity: 1 },
+        { transform: 'translate(' + ex + 'px,' + (ey + L.coin.h * 0.08) + 'px) scale(' + (0.12 * k) + ',' + (0.9 * k) + ')', opacity: 0 }
       ], { duration: 520, easing: 'cubic-bezier(.4,0,.3,1)' });
       later(() => { token.classList.add('gone'); token.style.transform = ''; token.style.transition = ''; }, 500);
       void a;
