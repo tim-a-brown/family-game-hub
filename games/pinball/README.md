@@ -50,8 +50,10 @@ real game headlessly (see Testing).
   takes `lvl: 'id'` to live on that level. Balls change levels through ramps (`exitLvl`), `trapDoor`, `vuk`,
   `subway`, `powerfield`, `ferrisWheel`, or `world.airborne`.
 
-Standard anchors (used by the helpers): flippers at y 165 either side of `cx = 243`; shooter lane x 480..520;
-the arch centre (260, 802) radius 258; the apron up to y ~108. Keep the lower third standard unless the table's
+Standard anchors (used by the helpers): flipper pivots at y 165, 93.5 mm either side of `cx = 243`; shooter lane
+x 480..520; the arch centre (260, 802) radius 258; the apron up to y ~108. At rest the flipper tips leave a 31 mm
+gap (1.15 ball widths): a ball straight down the middle drains unless nudged, as on a real machine. Never put a
+post or collider in that gap. Keep the lower third standard unless the table's
 character demands otherwise (consistent feel across the six tables).
 
 ## The builder `T` (inside `build(T)`)
@@ -134,7 +136,7 @@ Each entry: options, the events it emits (`rules.event(G, type, id, ball, data)`
 | `supercharger` | `pts style magnets:[0.25,..] laps boost exitLvl loopBack color` | `superLap` {lap,speed}, `supercharger`. |
 | `hologram` | `x y z size:[w,h] draw(g,w,h,t,holo) path(t)->[x,y,z] hit visible` | `holoHit` (a ball passes through, with `hit` radius). `show() hide()`, `.flare`. |
 | `scoreMotor` | — | `score(points)` pays out 10s/100s/1000s one chime at a time (EM style). |
-| `plunger` | made by `T.shooter` | `G.plunger`: `load({auto, power})`, `fire(p)`, `holds(ball)`. |
+| `plunger` | made by `T.shooter` | `G.plunger`: `load({auto, power})`, `fire(p)`, `holds(ball)`. In the lane: rubber tip, rod and main spring on a chrome bracket (y 32..38); the tip draws back 36 mm and the spring compresses. The knob outside the cabinet is drawn by the page, lined up with the lane through `G.project(x, y, z, view)`. Input: `G.pullStart('drag'|'time')`, `G.pullDrag` (0..1, the knob), `G.pullEnd({tap, cancel})`; a knob tap is a medium launch (`def.tapLaunch`, default 0.6). |
 
 Component sounds are built in (`audio.js` recipes). To add a table-specific sound, `audio().define(name, dur,
 S => {...})` in `build` and play with `G.sfx(name)`; see the recipes in `audio.js` for the synth helpers
@@ -274,8 +276,13 @@ loads slower.
 
 60 fps on a recent iPhone: < 200 draw calls, < 400k triangles, textures under ~40 MB total. Use `RC.batch` for
 static geometry; one material per look; `cylGeo` segment counts 10-20; avoid per-frame geometry rebuilding;
-canvas textures at most 1024 px for decals. The engine drops bloom, then shadows, then resolution if frames run
-long. Check `__pin.get().render` (calls, tris) and `.frame` (ms, slow in headless swiftshader).
+canvas textures at most 1024 px for decals. The render target is capped at 1.5 megapixels (a phone's play view
+at 2x); bigger screens such as an iPad render at a lower pixel ratio and are CSS-scaled. The bloom chain works at
+one pixel per CSS pixel. Adaptive quality watches the real time between frames (GPU-bound frames show up there,
+not in the frame's own time); ~0.35 s of sustained missed vsyncs steps down one level: render scale 0.85, bloom
+off, shadow map 1024, shadows off, render scale 0.7. The display redraws at most ~30 times a second and only
+presents when its dots change. Check `__pin.get().render` (calls, tris, level) and `.frame` (ms, slow in
+headless swiftshader); `G.T.R.rtInfo()` gives the render target, bloom and shadow sizes.
 
 ## Load time and battery
 
@@ -292,7 +299,8 @@ In the page (`games/pinball.html`), `window.__pin`:
 `start(id, balls)`, `ready()`, `get()` (state, balls, stats, frame times, draw calls), `flip(side, on)`,
 `launch(p)`, `nudge()`, `speed(k)`, `auto(on, skill)`, `sim(sec, skill)` (headless autopilot inside the live
 game), `run(sec)`, `place(x, y, vx, vy, lvl)`, `set(key, v)` (`G.b`), `comp(id)`, `trigger(id, ...)`, `mode(name)`,
-`render()`, `headless(id, balls)` (a game with no renderer: `g.sim(600, 0.85)` runs 600 s), `audio()`.
+`render()`, `headless(id, balls)` (a game with no renderer: `g.sim(600, 0.85)` runs 600 s), `audio()`,
+`plunger()` (the knob's layout: lane x, travel, grab rect), `ui(ms)` (draw the plunger now; `ms` into a snap).
 
 Before you hand a table in:
 1. `layout.html?t=<id>` looks right; a 900 s sim at skill 0.85 ends with `stats.stuck == 0`, `esc == 0`, and the

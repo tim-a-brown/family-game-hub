@@ -12,6 +12,15 @@
 <script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<style>
+/* Queen of Spades row: a dashed slot in every column; tap one to put the Queen there */
+.qs-slot{display:grid;place-items:center;width:100%;height:54px;padding:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.qs-slot .pcard{--cw:34px;transform:rotate(-4deg);}
+.qs-slot .ph{display:grid;place-items:center;width:32px;height:45px;border:1.5px dashed rgba(60,80,160,.32);border-radius:4px;font-family:var(--hand);font-size:.8rem;color:rgba(106,106,128,.55);transition:background .15s;}
+.qs-slot:active .ph{background:rgba(255,220,60,.35);}
+.spad.many .qs-slot .pcard{--cw:30px;}
+.spad.many .qs-slot .ph{width:28px;height:40px;}
+</style>
 </head>
 <body>
 <main class="stage" id="app"></main>
@@ -28,7 +37,7 @@
     menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history('hearts', { keys: ['ht'], title: 'Hearts: past games' }); } }],
     rules:
       '<p class="goal">Play Hearts with a real deck and keep score here. When someone reaches the target, the <b>lowest score wins</b>.</p>' +
-      '<h3>After each hand</h3><p>Enter how many <b>hearts</b> each player took and who took the <b>Queen of Spades</b>. Hearts are 1 point each and the Queen is 13.</p>' +
+      '<h3>After each hand</h3><p>The open row on the sheet is this hand. Set how many <b>hearts</b> each player took (tap + and −, or type), then tap the <b>Queen of Spades</b> into the column of whoever took her. Hearts are 1 point each and the Queen is 13. Tap <b>Lock hand</b> to write it in; a fresh row opens below.</p><p>Made a mistake? Tap a hand on the sheet. It opens again right there: change it and tap <b>Save</b>, or <b>Delete</b> it.</p>' +
       '<h3>Shooting the moon</h3><p>If one player takes all 13 hearts and the Queen, they score 0 and everyone else gets 26. This is detected automatically.</p>' +
       '<h3>Player counts</h3><ul><li><b>4 players:</b> full deck, 13 cards each.</li><li><b>3 players:</b> remove the 2♦.</li><li><b>5 players:</b> remove the 2♦ and 2♣.</li><li><b>6 players:</b> remove the 2♦, 2♣, 3♦ and 3♣.</li></ul><p>Passing rotates left, right, across, then no pass (with 3 or 5+ players, just alternate left and right).</p>'
   });
@@ -45,60 +54,91 @@
     });
   }
 
+  // A saved hand back into hearts + who took the Queen (same rule the old pop-up used)
+  function fromScores(sc, n) {
+    var q = -1, h;
+    var moon = sc.filter(function (v) { return v === 26; }).length === n - 1 && sc.indexOf(0) >= 0;
+    if (moon) { q = sc.indexOf(0); h = sc.map(function (v, i) { return i === q ? 13 : 0; }); }
+    else {
+      sc.forEach(function (v, i) { if (v >= 13) q = i; });
+      h = sc.map(function (v, i) { return i === q ? v - 13 : v; });
+    }
+    return { h: h, q: q };
+  }
+  function scoreHand(h, q) {
+    if (h[q] === 13) return h.map(function (v, i) { return i === q ? 0 : 26; });
+    return h.map(function (v, i) { return v + (i === q ? 13 : 0); });
+  }
+
+  // ── The open hand on the sheet: hearts in each column, the Queen tapped into one ──
+  function entryRows(ctx) {
+    var n = ctx.sides.length, names = ctx.sides.map(function (s) { return s.name; });
+    var st = ctx.editing ? fromScores(ctx.prev.scores, n) : (ctx.draft() || { h: names.map(function () { return 0; }), q: -1 });
+    if (!st.h || st.h.length !== n) st = { h: names.map(function () { return 0; }), q: -1 };
+    function hearts() { return st.h.map(function (v) { return Math.max(0, Math.min(13, Number(v) || 0)); }); }
+    var rowA = el('tr', { class: 'open' }, [el('th', { class: 'rn' }, [String(ctx.round), el('small', { text: 'HEARTS' })])]);
+    var rowB = el('tr', { class: 'sub' }, [el('th', { class: 'rn', text: 'QUEEN' })]);
+    var eqs = [], slots = [];
+    names.forEach(function (nm, i) {
+      var stp = Scorepad.step({ value: st.h[i], min: 0, max: 13, label: nm + ' hearts taken', onChange: function (v) { st.h[i] = v == null ? 0 : v; refresh(); } });
+      var eq = el('small', { class: 'eq' }); eqs.push(eq);
+      rowA.appendChild(el('td', null, [stp, eq]));
+      var slot = el('button', { type: 'button', class: 'qs-slot', 'aria-label': nm + ' took the Queen of Spades', onclick: function () { giveQueen(i); } });
+      slots.push(slot);
+      rowB.appendChild(el('td', null, [slot]));
+    });
+    function paintQueen(from) {
+      slots.forEach(function (sl, i) {
+        sl.innerHTML = '';
+        sl.setAttribute('aria-pressed', i === st.q ? 'true' : 'false');
+        if (i === st.q) { var c = Kit.card('Q', 's'); sl.appendChild(c); if (from) Cards.fly(c, from, { ms: 320, endRot: -4 }); }
+        else sl.appendChild(el('span', { class: 'ph', text: 'Q♠' }));
+      });
+    }
+    function giveQueen(i) {
+      var from = st.q >= 0 && st.q !== i ? slots[st.q].querySelector('.pcard') : null;
+      st.q = st.q === i ? -1 : i;
+      Kit.sfx(st.q >= 0 ? 'deal' : 'tap'); Kit.haptic('light');
+      paintQueen(st.q >= 0 ? from : null); refresh();
+    }
+    function refresh() {
+      var h = hearts(), sum = h.reduce(function (a, b) { return a + b; }, 0), q = st.q, moon = q >= 0 && h[q] === 13;
+      eqs.forEach(function (eq, i) {
+        eq.className = 'eq';
+        if (moon) { eq.textContent = i === q ? 'moon!' : '+26'; eq.classList.add(i === q ? 'good' : 'bad'); }
+        else eq.textContent = i === q ? '+13 = ' + (h[i] + 13) : '';
+      });
+      ctx.pending(q >= 0 ? scoreHand(h, q) : h);
+      if (sum > 13) ctx.status('Hearts add up to ' + sum + '. There are 13.', false);
+      else if (sum < 13) ctx.status('Hearts add up to ' + sum + '. There are 13.', 'wait');
+      else if (q < 0) ctx.status('Tap the Queen of Spades into the column of whoever took it.', 'wait');
+      else if (moon) ctx.status(names[q] + ' shot the moon! 0 for ' + names[q] + ', 26 for everyone else.', true);
+      else ctx.status('Looks right.', true);
+      if (!ctx.editing) ctx.draft(st);
+    }
+    paintQueen(null); refresh();
+    ctx.entry = { st: st, hearts: hearts };
+    return [rowA, rowB];
+  }
+  function lockHand(ctx) {
+    var h = ctx.entry.hearts(), q = ctx.entry.st.q, sum = h.reduce(function (a, b) { return a + b; }, 0);
+    if (sum !== 13 || q < 0) return;
+    var scores = scoreHand(h, q), extra = { highlights: [] };
+    if (h[q] === 13) {
+      extra.highlights.push(ctx.sides[q].name + ' shot the moon in hand ' + ctx.round + '!');
+      extra.callout = 'Shot the moon!';
+      if (!ctx.editing) Kit.confetti({ count: 90 });
+    }
+    ctx.done(scores, extra);
+  }
+
   function startPad() {
     var cfg = JSON.parse(localStorage.getItem(SETUP));
     pad = Scorepad(app, {
       key: 'ht', title: 'Hearts', mode: 'Scorekeeper', lowWins: true, target: cfg.target,
       sides: cfg.names.map(function (n) { return { name: n }; }),
       goal: 'Lowest score wins · game ends at ' + cfg.target,
-      form: function (ctx) {
-        var n = ctx.sides.length, prevQ = -1, prevHearts = null;
-        if (ctx.prev) {
-          var sc = ctx.prev.scores, moon = sc.filter(function (v) { return v === 26; }).length === n - 1 && sc.indexOf(0) >= 0;
-          if (moon) { prevQ = sc.indexOf(0); prevHearts = sc.map(function (v, i) { return i === prevQ ? 13 : 0; }); }
-          else {
-            sc.forEach(function (v, i) { if (v >= 13) prevQ = i; });
-            prevHearts = sc.map(function (v, i) { return i === prevQ ? v - 13 : v; });
-          }
-        }
-        ctx.node.appendChild(el('div', { class: 'label', text: 'Hearts taken' }));
-        var rows = ctx.sides.map(function (s, i) {
-          var r = ctx.number(i, { min: 0, max: 13, neg: false, value: prevHearts ? prevHearts[i] : 0 });
-          r.input.addEventListener('input', check);
-          ctx.node.appendChild(r); return r;
-        });
-        ctx.node.appendChild(el('div', { class: 'label', style: { 'margin-top': '6px' }, text: 'Who took the Queen of Spades?' }));
-        var q = prevQ, seg = el('div', { class: 'seg', style: { 'flex-wrap': 'wrap' } });
-        ctx.sides.forEach(function (s, i) {
-          seg.appendChild(el('button', { type: 'button', text: s.name, class: i === q ? 'on' : '', onclick: function () {
-            q = i; Array.prototype.forEach.call(seg.children, function (b, j) { b.classList.toggle('on', j === i); }); Kit.sfx('tap'); check();
-          } }));
-        });
-        ctx.node.appendChild(seg);
-        var note = el('div', { class: 'rnote' }); ctx.node.appendChild(note);
-        var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this hand' });
-        ctx.node.appendChild(btn);
-        function hearts() { return rows.map(function (r) { return Math.max(0, Math.min(13, r.value())); }); }
-        function check() {
-          var h = hearts(), sum = h.reduce(function (a, b) { return a + b; }, 0);
-          var ok = sum === 13 && q >= 0;
-          note.className = 'rnote' + (ok ? '' : ' bad');
-          note.textContent = sum !== 13 ? 'Hearts add up to ' + sum + '. There are 13.' : q < 0 ? 'Pick who took the Queen' : (h[q] === 13 ? ctx.sides[q].name + ' shot the moon!' : 'Looks right');
-          btn.disabled = !ok;
-          return ok;
-        }
-        btn.addEventListener('click', function () {
-          if (!check()) return;
-          var h = hearts(), scores, extra = { highlights: [] };
-          if (h[q] === 13) {
-            scores = ctx.sides.map(function (s, i) { return i === q ? 0 : 26; });
-            extra.highlights.push(ctx.sides[q].name + ' shot the moon in hand ' + ctx.round + '!');
-            extra.callout = 'Shot the moon!'; Kit.confetti({ count: 90 });
-          } else scores = h.map(function (v, i) { return v + (i === q ? 13 : 0); });
-          ctx.done(scores, extra);
-        });
-        check();
-      }
+      entryRows: entryRows, onLock: lockHand, lockLabel: 'Lock hand'
     });
   }
 

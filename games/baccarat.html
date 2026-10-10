@@ -31,6 +31,8 @@
 .print .hit{fill:rgba(255,230,160,0);cursor:pointer;transition:fill .2s;-webkit-tap-highlight-color:transparent;}
 .print .hit:active{fill:rgba(255,230,160,.14);}
 .betting .print .hit{fill:rgba(255,230,160,.035);}
+.print .hit.cz-tgt{fill:rgba(255,213,74,.3)!important;stroke:#ffd54a;stroke-width:3;}
+.print .hit.cz-no{fill:rgba(255,92,98,.18)!important;stroke:#ff5c62;stroke-width:3;}
 .print .hit.won{fill:rgba(255,230,160,.22);animation:bandwin 1s ease-in-out 3;}
 @keyframes bandwin{50%{fill:rgba(255,230,160,.36);}}
 .print .zonebox{fill:rgba(0,0,0,.12);stroke:rgba(246,214,140,.55);stroke-width:1.3;}
@@ -112,12 +114,7 @@
 /* Chip tray + actions, pinned to the bottom */
 .dock{position:sticky;bottom:0;z-index:30;margin:0 -16px;padding:10px 16px calc(var(--safe-b) + 10px);
   background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 0%,transparent) 0,color-mix(in srgb,var(--bg) 92%,transparent) 16px,var(--bg) 100%);}
-.tray{display:flex;justify-content:space-around;align-items:center;gap:4px;padding:8px 8px;border-radius:18px;margin-bottom:8px;}
-.tray button{border:0;padding:0;background:none;border-radius:50%;cursor:pointer;transition:transform .2s var(--spring);}
-.tray .bchip{--sz:min(13vw,54px);font-size:calc(var(--sz) * .27);}
-.tray button.sel{transform:translateY(-6px);}
-.tray button.sel .bchip{box-shadow:0 0 0 3px #ffe08a,0 0 16px rgba(255,224,138,.7),0 6px 10px rgba(0,0,0,.45);}
-.tray button:disabled{opacity:.3;}
+.tray{border-radius:18px;margin-bottom:8px;padding:6px;}
 .acts{display:grid;grid-template-columns:auto 1fr 1.5fr;gap:8px;}
 .acts .btn{min-height:52px;}
 .acts .icon-only{width:52px;padding:0;}
@@ -209,7 +206,7 @@
       '<li>Limits: Player and Banker up to $1,000; Tie and pairs up to $200.</li></ul>' +
       '<h3>The scoreboard</h3><p>The <b>Big Road</b> tracks the shoe: red circles are Banker wins, blue are Player, a green line marks a tie, and small dots mark pairs. A new column starts each time the winner changes. Fun to watch, but past hands never change the odds of the next one.</p>' +
       '<h3>Best bets</h3><p>House edge: Banker 1.06%, Player 1.24%, Tie 14.4%, pairs 10.4%. Banker is the best bet on the table.</p>' +
-      '<h3>Playing</h3><p>Pick a chip from the tray, tap a betting area to place it, then Deal. Undo takes back your last chip. <b>Cash out</b> ends the session and saves it to Past sessions. Your bankroll is shared by every casino game.</p>'
+      '<h3>Playing</h3><p>Drag a chip from the rack onto Player, Banker, Tie or a Pair circle. The spot lights up under the chip; let go to put it down (let go anywhere else and it goes back to the rack). Then Deal. Shortcut: tap a chip to pick it, then tap betting areas. Undo takes back your last chip. <b>Cash out</b> ends the session and saves it to Past sessions. Your bankroll is shared by every casino game.</p>'
   });
   function openHistory() { Kit.history(HKEY, { title: 'Baccarat: past sessions' }); }
 
@@ -344,12 +341,24 @@
     app.appendChild(el('div', { class: 'board' }, [el('div', { class: 'board-h' }, [seg, dom.cnt]), dom.road]));
 
     // Dock: chip tray and actions
-    dom.tray = el('div', { class: 'tray wood' });
-    DENOMS.slice().reverse().forEach(function (v) {
-      var b = el('button', { type: 'button', 'aria-label': '$' + v + ' chip', html: chipHtml(v), onclick: function () { sel = v; Kit.sfx('chip'); Kit.haptic('light'); paintTray(); } });
-      b.dataset.v = v;
-      dom.tray.appendChild(b);
+    dom.chips = Casino.rack({
+      value: sel,
+      table: function () { return dom.felt; },
+      enabled: function () { return !!S && !busy; },
+      can: function (v) { return v <= Casino.balance() - sumBets(S.bets); },
+      ok: function (k, v) { return sumBets(S.bets) + v <= Casino.balance() && (S.bets[k] || 0) + v <= SPOTS[k].max; },
+      ghost: function () { return Math.max(34, Math.round(dom.felt.clientWidth * 0.1)); },
+      tap: function (v) { sel = v; Kit.sfx('chip'); Kit.haptic('light'); },
+      start: function (kind, v) { sel = v; },
+      over: function (k, v) {
+        if (!dom.hint) return;
+        if (k == null) { dom.hint.textContent = 'Drop the ' + money(v) + ' chip on a bet'; return; }
+        dom.hint.textContent = (S.bets[k] || 0) + v > SPOTS[k].max ? SPOTS[k].name + ' limit is ' + money(SPOTS[k].max) : SPOTS[k].name + ' · let go to bet ' + money(v);
+      },
+      done: function (placed) { if (!placed) paintButtons(); },
+      drop: function (k, v) { sel = v; return placeChip(k); }
     });
+    dom.tray = el('div', { class: 'tray wood' }, [dom.chips.el]);
     dom.hint = el('div', { class: 'hint' });
     dom.undo = el('button', { type: 'button', class: 'btn btn-soft icon-only', 'aria-label': 'Undo last chip', html: Kit.icon('undo'), onclick: undoChip });
     dom.clear = el('button', { type: 'button', class: 'btn btn-soft', text: 'Clear', onclick: clearBets });
@@ -389,12 +398,7 @@
     if (cls) { st.classList.remove(cls); void st.offsetWidth; st.classList.add(cls); }
   }
   function paintTray() {
-    var bal = Casino.balance() - sumBets(S.bets);
-    dom.tray.querySelectorAll('button').forEach(function (b) {
-      var v = +b.dataset.v;
-      b.classList.toggle('sel', v === sel);
-      b.disabled = busy || v > bal;
-    });
+    dom.chips.value(sel); dom.chips.refresh();
   }
   function paintButtons() {
     var t = sumBets(S.bets), last = S.last ? sumBets(S.last) : 0, bal = Casino.balance();
@@ -407,7 +411,7 @@
     var h = '';
     if (!busy) {
       if (bal < 1 && !t) h = 'Out of chips. Reset the bankroll from the menu.';
-      else if (!t) h = S.hand ? 'Place your next bet' : 'Pick a chip, then tap Player, Banker or Tie';
+      else if (!t) h = S.hand ? 'Place your next bet' : 'Drag a chip onto Player, Banker or Tie';
       else h = describeBets(S.bets);
     }
     dom.hint.textContent = h;
@@ -489,16 +493,17 @@
     }
   }
   function placeChip(k) {
-    if (!S || busy) return;
+    if (!S || busy) return false;
     var bal = Casino.balance(), t = sumBets(S.bets);
-    if (t + sel > bal) { Kit.toast('Not enough in your bankroll for that chip'); Kit.haptic('error'); return; }
-    if ((S.bets[k] || 0) + sel > SPOTS[k].max) { Kit.toast(SPOTS[k].name + ' limit is ' + money(SPOTS[k].max)); Kit.haptic('error'); return; }
+    if (t + sel > bal) { Kit.toast('Not enough in your bankroll for that chip'); Kit.haptic('error'); return false; }
+    if ((S.bets[k] || 0) + sel > SPOTS[k].max) { Kit.toast(SPOTS[k].name + ' limit is ' + money(SPOTS[k].max)); Kit.haptic('error'); return false; }
     clearTableIfDone();
     S.bets[k] = (S.bets[k] || 0) + sel;
     S.placed.push({ k: k, v: sel });
     Kit.sfx('chip'); Kit.haptic('light');
     paintStack(k, S.bets[k], 'drop');
     save(); paint();
+    return true;
   }
   function undoChip() {
     if (!S || busy) return;

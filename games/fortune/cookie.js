@@ -1198,6 +1198,9 @@ function mount(stage, api) {
       hero: () => { if (!O) return null; const p = O.c.root.position.clone().project(camera); return { ndc: [p.x, p.y, p.z], pos: O.c.root.position.toArray(), cam: camera.position.toArray() }; },
       hold: (on) => { hold = !!on; if (hold && raf) { cancelAnimationFrame(raf); raf = 0; } else kick(); },
       step: (sec) => { const n = Math.round(sec / 0.016); for (let i = 0; i < n; i++) { T += 0.016; update(0.016); } renderer.render(scene, camera); return state; },
+      // average ms to draw one frame (GPU included), over n draws
+      perf: (n) => { const gl = renderer.getContext(), px = new Uint8Array(4), sync = () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); n = n || 10; renderer.render(scene, camera); sync(); const a = performance.now(); for (let i = 0; i < n; i++) { renderer.render(scene, camera); sync(); } return +((performance.now() - a) / n).toFixed(2); },
+      calls: () => { renderer.render(scene, camera); return renderer.info.render.calls; },
       screen: (i) => { const c = cookies[i || 0]; const p = c.root.position.clone().project(camera); return { x: (p.x + 1) / 2 * W, y: (1 - p.y) / 2 * H }; }
     }
   };

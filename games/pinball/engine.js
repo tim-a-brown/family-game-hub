@@ -1142,9 +1142,11 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     bloom = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), theme.bloom, 0.35, theme.bloomThreshold || 1.12);
     composer.addPass(bloom);
     // EffectComposer built on our own target takes its size in device pixels and multiplies by the pixel ratio
-    // again, so addPass sized the bloom chain at full device resolution (4x the pixels at 2x). Size it here:
-    // the bright pass at one pixel per CSS pixel (the glow then looks the same on every screen and ratio)
-    { const k = Math.min(1, 1 / (RC.dpr || 1)); bloom.setSize(2 * Math.round(w * k), 2 * Math.round(h * k)); }
+    // again, so addPass sized the bloom chain at full device resolution on a 2x screen (4x the pixels). Size it
+    // here: on high-density screens the bright pass runs at one pixel per CSS pixel (the glow looks the same on a
+    // phone and on an iPad rendering at a lower ratio); on 1x screens and the picker pictures at half resolution,
+    // as it always was there.
+    { const r = RC.dpr || 1, k = r > 1.2 ? 1 / r : 0.5; bloom.setSize(2 * Math.round(w * k), 2 * Math.round(h * k)); }
     if (RC.qLevel >= 2) bloom.enabled = false;   // adaptive quality already dropped it
     outPass = new OutputPass(); composer.addPass(outPass);
   }

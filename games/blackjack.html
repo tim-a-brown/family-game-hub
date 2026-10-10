@@ -126,11 +126,7 @@
 .st .bank{color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .st .bank b{color:var(--text);}
 .st .big{font-family:var(--display);font-weight:400;font-size:1.35rem;color:var(--yellow);font-variant-numeric:tabular-nums;}
-.rack{display:flex;justify-content:space-between;gap:6px;padding:10px 12px 12px;border-radius:18px;}
-.rack .ck{--ck:min(54px,calc((100vw - 110px) / 5));cursor:pointer;transition:transform .15s var(--spring),opacity .15s;
-  box-shadow:inset 0 0 0 2px rgba(0,0,0,.25),0 3px 0 rgba(0,0,0,.45),0 6px 10px rgba(0,0,0,.4);}
-.rack .ck:active:not(:disabled){transform:translateY(2px) scale(.94);}
-.rack .ck:disabled{opacity:.3;cursor:default;}
+.rack{padding:6px;border-radius:18px;}
 .acts{display:grid;gap:8px;grid-template-columns:repeat(var(--n,2),1fr);}
 .acts .btn{min-height:54px;padding:0 8px;font-size:1.05rem;}
 .acts .btn.sm{min-height:46px;font-size:.95rem;}
@@ -184,7 +180,7 @@
       '<p class="goal">Beat the dealer: finish closer to 21 than the dealer without going over.</p>' +
       '<h3>Card values</h3><ul><li>2 to 10 count their number. J, Q and K count 10.</li>' +
       '<li>An Ace counts 1 or 11, whichever helps you. A hand where the Ace counts 11 is called <b>soft</b> (shown like 7/17).</li></ul>' +
-      '<h3>Playing a hand</h3><ol><li>Tap chips to build your bet, then <b>Deal</b>. You get two cards face up. The dealer gets one up and one face down.</li>' +
+      '<h3>Playing a hand</h3><ol><li>Drag chips from the rack into your betting circle to build your bet (or tap a chip to add it), then <b>Deal</b>. Let go anywhere else and the chip goes back to the rack. You get two cards face up. The dealer gets one up and one face down.</li>' +
       '<li>On your turn choose: <b>Hit</b> (take a card), <b>Stand</b> (stop), <b>Double</b> (double your bet and take exactly one more card), ' +
       '<b>Split</b> (two cards of the same value become two hands, each with its own bet), or <b>Surrender</b> if it is turned on (give up and get half your bet back; first move only).</li>' +
       '<li>Go over 21 and you <b>bust</b>: you lose right away, even if the dealer busts later.</li>' +
@@ -344,20 +340,26 @@
     save(); render();
     if (shuffled) { Kit.toast('Cut card reached: fresh shuffle'); Kit.sfx('roll'); }
   }
-  function addChip(v, from) {
-    if (!S || S.phase !== 'bet') return;
+  // Add a chip to a seat's bet (the selected seat unless one is given). Returns true if it went down.
+  function addChip(v, from, seat) {
+    if (!S || S.phase !== 'bet') return false;
+    if (seat != null && S.seats[seat] && !S.seats[seat].cpu) S.sel = seat;
     var i = S.sel, cap = Math.min(TABLE_MAX, bank(i));
     if (S.bets[i] + v > cap) {
       Kit.haptic('error'); Kit.sfx('bad');
       Kit.toast(S.bets[i] + v > TABLE_MAX ? 'Table limit is $1,000 a hand' : 'Not enough in the bank');
-      return;
+      if (seat != null) render();
+      return false;
     }
     snapshot();
+    var fr = from && from.isConnected ? from.getBoundingClientRect() : null;   // the rack is redrawn below
     S.bets[i] += v; Kit.sfx('chip'); Kit.haptic('light');
     save(); render();
     var top = dom.felt.querySelector('.seat[data-seat="' + i + '"] .spot .stk:not(.dbl):not(.pay) .ck:last-child');
-    if (top && from) Cards.fly(top, from, { ms: 300 });
+    if (top && fr) Cards.fly(top, { getBoundingClientRect: function () { return fr; } }, { ms: 300 });
+    return true;
   }
+  function seatRoom(i) { return Math.min(TABLE_MAX, bank(i)) - S.bets[i]; }
   function clearBet() { if (!S.bets[S.sel]) return; snapshot(); S.bets[S.sel] = 0; Kit.sfx('whoosh'); save(); render(); }
   function rebet() {
     var any = false; snapshot();
@@ -936,7 +938,7 @@
   function betSpot(i) {
     var s = S.seats[i], human = !s.cpu, sel = S.phase === 'bet' && S.sel === i && human;
     var hand = el('div', { class: 'hand' });
-    var spot = el('button', { type: 'button', class: 'spot' + (sel ? ' sel' : '') + (S.phase === 'bet' && human ? ' tap' : ''), 'aria-label': s.name + "'s bet",
+    var spot = el('button', { type: 'button', class: 'spot' + (sel ? ' sel' : '') + (S.phase === 'bet' && human ? ' tap' : ''), 'aria-label': s.name + "'s bet", 'data-spot': S.phase === 'bet' && human ? String(i) : null,
       onclick: function () { if (S.phase === 'bet' && human && S.sel !== i) { S.sel = i; Kit.sfx('tap'); save(); render(); } } });
     var b = S.phase === 'bet' ? S.bets[i] : 0;
     if (b) { spot.appendChild(stackEl(b)); spot.appendChild(el('span', { class: 'amt', text: money(b) })); }
@@ -1032,20 +1034,25 @@
         c.appendChild(el('p', { class: 'muted center', text: (i === 0 ? 'The casino bank is empty.' : s.name + ' is out of chips.') }));
         acts([btn(i === 0 ? 'Reset bank to $1,000' : 'Buy $1,000 in chips', 'btn-yellow', function () { rebuy(i); })], 1);
       } else {
-        var rack = el('div', { class: 'rack wood' });
-        CHIPS.forEach(function (v) {
-          var b = el('button', { type: 'button', class: 'ck', 'data-v': v, 'aria-label': '$' + v + ' chip', onclick: function () { addChip(v, b); } }, [el('b', { text: String(v) })]);
-          if (S.bets[i] + v > Math.min(TABLE_MAX, bank(i))) b.disabled = true;
-          rack.appendChild(b);
+        // Chip rack: drag a chip into a betting circle, or tap one to add it to the selected seat
+        var rk = Casino.rack({
+          denoms: CHIPS, value: null, select: false,
+          table: function () { return dom.felt; },
+          enabled: function () { return !!S && S.phase === 'bet'; },
+          can: function (v) { return humans().some(function (j) { return seatRoom(j) >= v; }); },
+          ok: function (j, v) { return seatRoom(+j) >= v; },
+          ghost: function () { var se = dom.felt.querySelector('.seat'), ck = se ? parseFloat(getComputedStyle(se).getPropertyValue('--ck')) : 0; return Math.max(34, Math.round((ck || 36) * 1.15)); },
+          tap: function (v) { addChip(v, rk.el.querySelector('.cz-slot[data-v="' + v + '"]')); },
+          drop: function (j, v) { return addChip(v, null, +j); }
         });
-        c.appendChild(rack);
+        c.appendChild(el('div', { class: 'rack wood' }, [rk.el]));
         var last = humans().some(function (j) { return S.seats[j].last > 0; }) && !humans().some(function (j) { return S.bets[j] > 0; });
         acts([
           last ? btn('Rebet', 'btn-soft', rebet) : btn('Clear', 'btn-soft', clearBet, { disabled: !S.bets[i] }),
           btn(Kit.icon('play') + '<span>Deal</span>', 'btn-primary wide', deal)
         ], 3);
       }
-      c.appendChild(el('div', { class: 'st' }, [el('span', { class: 'bank grow', html: (humans().length > 1 ? 'Tap a circle to bet for someone else · ' : '') + 'Bank <b>' + money(left) + '</b>' }),
+      c.appendChild(el('div', { class: 'st' }, [el('span', { class: 'bank grow', html: (humans().length > 1 ? 'Drag chips to anyone\'s circle · ' : '') + 'Bank <b>' + money(left) + '</b>' }),
         el('button', { type: 'button', class: 'linkb', html: Kit.icon('coins') + '<span>Cash out</span>', onclick: endSession })]));
     } else if (ph === 'ins' && S.insQ >= 0) {
       var ih = S.hands[S.insQ], bj = isBJ(ih), cost = insCost(ih);
