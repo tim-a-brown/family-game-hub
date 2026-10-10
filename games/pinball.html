@@ -55,43 +55,57 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-dmd.lcd{aspect-ratio:4/1;}
 .pb-view{flex:1;min-height:0;position:relative;}
 .pb-gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}
-.pb-btn{position:absolute;z-index:3;width:54px;height:54px;border-radius:50%;border:0;display:grid;place-items:center;color:#fff;
-  background:rgba(20,18,28,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22);font:900 .62rem/1 var(--font, system-ui);letter-spacing:.06em;}
-.pb-btn .ico{width:20px;height:20px;}
-.pb-btn span{display:block;margin-top:2px;}
-.pb-btn:active,.pb-btn.on{background:rgba(255,255,255,.28);}
-.pb-nudge{left:50%;transform:translateX(-50%);bottom:calc(var(--safe-b) + 8px);}
-.pb-magna{left:10px;bottom:calc(var(--safe-b) + 74px);}
-.pb-fire{right:10px;bottom:calc(var(--safe-b) + 74px);background:rgba(200,40,40,.7);display:none;}
-.pb-fire.show{display:grid;}
-/* arcade flipper buttons: concave cap in a coloured ring, sink and brighten when held */
-.pb-flip{position:absolute;z-index:3;bottom:calc(var(--safe-b) + 10px);width:68px;height:68px;border-radius:50%;border:0;padding:0;touch-action:none;-webkit-user-select:none;user-select:none;
-  background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.22),rgba(255,255,255,0) 60%),radial-gradient(circle at 50% 50%,#2a2636 0 58%,var(--c,#7fd4a4) 60% 70%,#141220 72%);
-  box-shadow:0 6px 0 #0a090e,0 10px 18px rgba(0,0,0,.6),inset 0 2px 6px rgba(255,255,255,.12),inset 0 -8px 10px rgba(0,0,0,.45);color:#fff;display:grid;place-items:center;transition:transform .06s,box-shadow .06s,filter .06s;}
-.pb-flip .ico{width:30px;height:30px;stroke-width:2.6;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));}
-.pb-flip.on{transform:translateY(5px);box-shadow:0 1px 0 #0a090e,0 4px 10px rgba(0,0,0,.6),inset 0 2px 6px rgba(255,255,255,.2),inset 0 -6px 10px rgba(0,0,0,.35);filter:brightness(1.35) saturate(1.2);}
+/* Arcade pushbuttons: a glossy convex cap (highlight upper-left, darker to the rim) seated in a slightly darker
+   bezel ring with a seam shadow and a lip highlight. Opaque plastic, no glyphs. --cap sets the colour family. */
+.pb-arc{position:relative;border:0;padding:0;border-radius:50%;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+  --cap:#d93a2b;--cap-hi:#ff8d7c;--cap-lo:#8e1d14;--bez:#a8291d;--bez-lo:#6e170f;
+  background:radial-gradient(circle at 50% 50%,var(--bez) 0 70%,var(--bez-lo) 71% 100%);
+  border:2px solid color-mix(in srgb,var(--c,#d93a2b) 28%,var(--bez-lo));
+  box-shadow:0 3px 0 rgba(0,0,0,.55),0 8px 14px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.35),inset 0 -2px 3px rgba(0,0,0,.35);}
+.pb-arc::before{content:"";position:absolute;inset:11%;border-radius:50%;
+  background:radial-gradient(circle at 36% 30%,var(--cap-hi) 0,var(--cap) 38%,var(--cap) 62%,var(--cap-lo) 100%);
+  box-shadow:0 0 0 2px rgba(0,0,0,.42),0 2px 3px rgba(0,0,0,.45),inset 0 2px 3px rgba(255,255,255,.45),inset 0 -4px 7px rgba(0,0,0,.3);
+  transition:transform .06s,filter .06s,box-shadow .06s;}
+.pb-arc::after{content:"";position:absolute;left:26%;top:17%;width:34%;height:20%;border-radius:50%;background:rgba(255,255,255,.55);filter:blur(3px);transition:opacity .06s,transform .06s;}
+.pb-arc.on::before{transform:translateY(3.5px);filter:brightness(.82) saturate(1.1);box-shadow:0 0 0 2px rgba(0,0,0,.6),0 0 0 rgba(0,0,0,0),inset 0 1px 2px rgba(255,255,255,.25),inset 0 5px 8px rgba(0,0,0,.45);}
+.pb-arc.on::after{opacity:.3;transform:translateY(3.5px);}
+.pb-flip{position:absolute;z-index:3;bottom:calc(var(--safe-b) + 10px);width:72px;height:72px;}
 .pb-flipL{left:10px;}.pb-flipR{right:10px;}
 .pb-view.no-flipbtns .pb-flip{display:none;}
-.pb-magna{left:10px;bottom:calc(var(--safe-b) + 92px);}
-.pb-fire{right:10px;bottom:calc(var(--safe-b) + 92px);}
-.pb-view.no-flipbtns .pb-magna,.pb-view.no-flipbtns .pb-fire{bottom:calc(var(--safe-b) + 74px);}
-/* launch overlay: plunger rod + spring and a strength gauge, lower right, while a ball waits in the lane */
-.pb-launch{position:absolute;right:12px;bottom:calc(var(--safe-b) + 170px);z-index:3;width:172px;height:214px;pointer-events:none;opacity:0;transition:opacity .25s;display:none;--pull:0;}
-.pb-launch.show{display:block;opacity:.72;}
+/* smaller buttons with an engraved legend plate under them, like the printed labels on a lockdown bar */
+/* the small buttons sit in the same apron row as the flippers: L · MAGNET · NUDGE · FIRE · R, legends aligned */
+.pb-ctl{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;gap:3px;width:60px;bottom:calc(var(--safe-b) + 3px);}
+.pb-ctl .pb-arc{width:50px;height:50px;}
+.pb-leg{display:block;padding:2px 6px 1px;border-radius:3px;background:#15131a;border:1px solid #3d3946;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 1px 2px rgba(0,0,0,.6);
+  font:800 9.5px/1.3 var(--font,system-ui);letter-spacing:.14em;color:#d8cfbb;text-shadow:0 1px 0 #000;white-space:nowrap;}
+.pb-nudge{left:50%;transform:translateX(-50%);}
+.pb-nudge .pb-arc{--cap:#efe6d4;--cap-hi:#fffdf6;--cap-lo:#a89b84;--bez:#b9ad98;--bez-lo:#7a7062;}
+.pb-magna{left:88px;}
+.pb-magna .pb-arc{--cap:#2f6fdb;--cap-hi:#8fb8ff;--cap-lo:#163a86;--bez:#245bb5;--bez-lo:#12306a;}
+.pb-fire{right:88px;display:none;}
+.pb-fire .pb-arc{--cap:#f1c531;--cap-hi:#fff2a8;--cap-lo:#a07c0c;--bez:#c9a324;--bez-lo:#7c6208;}
+.pb-fire.show{display:flex;}
+.pb-view.no-flipbtns .pb-magna{left:14px;}.pb-view.no-flipbtns .pb-fire{right:14px;}
+/* Launch gauge: a slim chrome rail hugging the cabinet's right edge beside the shooter lane. Four etched ticks
+   with tiny labels; the pulled portion glows amber from the bottom and the reached ticks brighten. */
+.pb-launch{position:absolute;right:6px;bottom:calc(var(--safe-b) + 182px);z-index:3;width:12px;height:min(36%,300px);pointer-events:none;opacity:0;transition:opacity .25s;display:none;--pull:0;}
+.pb-launch.show{display:block;opacity:.8;}
 .pb-launch.pulling{opacity:1;transition:opacity .1s;}
-.pb-launch .gauge{position:absolute;left:0;top:14px;width:22px;height:150px;border-radius:11px;background:rgba(12,10,18,.78);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22),0 4px 12px rgba(0,0,0,.5);overflow:hidden;}
-.pb-launch .gauge b{position:absolute;left:3px;right:3px;bottom:3px;height:calc((100% - 6px) * var(--pull));border-radius:8px;background:linear-gradient(to top,#7fd4a4,#ffd45a 55%,#ff5a3a);box-shadow:0 0 10px rgba(255,212,90,.6);}
-.pb-launch .gauge i{position:absolute;left:4px;right:4px;height:1px;background:rgba(255,255,255,.35);}
-.pb-launch .lbl{position:absolute;left:28px;width:62px;font:900 .56rem/1 var(--font,system-ui);letter-spacing:.08em;color:rgba(255,255,255,.85);text-shadow:0 1px 2px #000;white-space:nowrap;}
-.pb-launch .lbl:before{content:"";position:absolute;left:-6px;top:50%;width:5px;height:1px;background:currentColor;opacity:.6;}
-.pb-launch .lbl.top{top:11px;}.pb-launch .lbl.med{top:84px;}.pb-launch .lbl.skill{top:99px;color:#ffd45a;}.pb-launch .lbl.soft{top:126px;color:#9fd4a4;}
-.pb-launch.snap .rod,.pb-launch.snap .spring,.pb-launch.snap .gauge b{transition:transform .12s cubic-bezier(.2,1.6,.4,1),height .12s;}
-.pb-launch .pct{position:absolute;left:0;top:168px;width:22px;text-align:center;font:900 .62rem/1 var(--font,system-ui);color:#fff;text-shadow:0 1px 2px #000;}
-.pb-launch svg{position:absolute;left:94px;top:0;width:78px;height:196px;overflow:visible;}
-.pb-launch .rod{transform:translateY(calc(var(--pull) * 62px));}
-.pb-launch .spring{transform-origin:50% 60px;transform:scaleY(calc(1 + var(--pull) * 1.6));}
-.pb-launch .hint{position:absolute;left:0;top:184px;width:96px;font:800 .58rem/1.15 var(--font,system-ui);letter-spacing:.04em;color:rgba(255,255,255,.9);text-shadow:0 1px 2px #000;}
-.pb-launch.pulling .hint{display:none;}
+.pb-launch .rail{position:absolute;inset:0;border-radius:6px;background:linear-gradient(90deg,#5c616b,#eef1f6 32%,#a7adb9 58%,#464b55);
+  box-shadow:0 1px 3px rgba(0,0,0,.7),inset 0 0 0 1px rgba(0,0,0,.35);}
+.pb-launch .fill{position:absolute;left:3px;right:3px;bottom:3px;height:calc((100% - 6px) * var(--pull));border-radius:3px;
+  background:linear-gradient(to top,#ff9a2e,#ffcc4a);box-shadow:0 0 6px 1px rgba(255,170,60,.75),0 0 14px rgba(255,140,30,.45);}
+.pb-launch.snap .fill{transition:height .12s;}
+.pb-launch .tick{position:absolute;left:-3px;right:-3px;height:2px;background:linear-gradient(#1a1a1f,#1a1a1f 50%,rgba(255,255,255,.55) 51%);opacity:.75;bottom:calc(var(--at) * 100% - 1px);}
+.pb-launch .tick.lit{background:#ffd37a;box-shadow:0 0 6px rgba(255,200,90,.9);opacity:1;}
+.pb-launch .tick span{position:absolute;right:16px;top:-5px;font:800 6.5px/1 var(--font,system-ui);letter-spacing:.12em;color:rgba(255,255,255,.5);text-shadow:0 1px 0 rgba(0,0,0,.8);white-space:nowrap;}
+.pb-launch .tick.lit span{color:#ffd9a0;}
+.pb-launch .hint{position:absolute;right:0;top:calc(100% + 10px);font:700 8.5px/1.2 var(--font,system-ui);letter-spacing:.06em;color:rgba(255,255,255,.45);white-space:nowrap;text-shadow:0 1px 0 #000;}
+.pb-launch.pulling .hint,.pb-launch.nohint .hint{display:none;}
+/* amber readout that floats just left of the finger while dragging */
+.pb-tag{position:absolute;z-index:4;pointer-events:none;display:none;padding:3px 7px;border-radius:5px;background:linear-gradient(#ffd56a,#f29a1d);color:#3a1d00;font:900 13px/1 var(--font,system-ui);letter-spacing:.02em;
+  box-shadow:0 2px 6px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.5);transform:translate(-100%,-50%);}
+.pb-tag.show{display:block;}
 .pb-pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:6;background:rgba(6,4,14,.6);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);}
 .pb-pause.show{display:flex;}
 .pb-pause .card{width:min(270px,82%);text-align:center;padding:22px 18px 16px;border-radius:var(--r-lg);background:var(--bg-2);box-shadow:var(--shadow);}
@@ -234,9 +248,10 @@ function showSetup() {
 }
 
 // ═══ Play view ═══════════════════════════════════════════════════════════════
-let dmdEl = null, pauseEl = null, viewEl = null, fireBtn = null, magBtn = null, ro = null, launchEl = null;
-const flipBtn = { L: null, R: null }, btnHeld = { L: false, R: false };
+let dmdEl = null, pauseEl = null, viewEl = null, fireBtn = null, magBtn = null, fireCtl = null, magCtl = null, ro = null, launchEl = null, tagEl = null;
+const flipBtn = { L: null, R: null }, btnHeld = { L: false, R: false }, finger = { x: 0, y: 0 };
 function btnsOn() { return lsGet('pinball_btns', '1') !== '0'; }
+function launchesSoFar() { return +lsGet('pinball_launches', '0') || 0; }
 function startGame(id, balls, who) {
   leaveGame();
   const r = getRenderer();
@@ -248,41 +263,38 @@ function startGame(id, balls, who) {
   viewEl = el('div', { class: 'pb-view' });
   viewEl.appendChild(glCanvas);
   pauseEl = el('div', { class: 'pb-pause' });
-  const nudgeBtn = el('button', { type: 'button', class: 'pb-btn pb-nudge', 'aria-label': 'Nudge', html: Kit.icon('hand') + '<span>NUDGE</span>' });
-  magBtn = el('button', { type: 'button', class: 'pb-btn pb-magna', 'aria-label': 'Magnet', html: Kit.icon('target') + '<span>MAGNET</span>' });
-  fireBtn = el('button', { type: 'button', class: 'pb-btn pb-fire', 'aria-label': 'Fire', html: Kit.icon('bolt') + '<span>FIRE</span>' });
-  // arcade flipper buttons (hold = up); the table colour rings them
-  flipBtn.L = el('button', { type: 'button', class: 'pb-flip pb-flipL', 'aria-label': 'Left flipper', html: Kit.icon('back') });
-  flipBtn.R = el('button', { type: 'button', class: 'pb-flip pb-flipR', 'aria-label': 'Right flipper', html: Kit.icon('right') });
-  viewEl.style.setProperty('--c', def.color || '#7fd4a4');
+  // small arcade buttons with engraved legends under them
+  const ctl = (cls, legend, label) => { const b = el('button', { type: 'button', class: 'pb-arc', 'aria-label': label }); const w = el('div', { class: 'pb-ctl ' + cls }, [b, el('span', { class: 'pb-leg', text: legend })]); return [w, b]; };
+  const [nudgeCtl, nudgeBtn] = ctl('pb-nudge', 'NUDGE', 'Nudge');
+  [magCtl, magBtn] = ctl('pb-magna', 'MAGNET', 'Magnet');
+  [fireCtl, fireBtn] = ctl('pb-fire', 'FIRE', 'Fire');
+  // the big red arcade flipper buttons (hold = up); the table's accent tints their bezels
+  flipBtn.L = el('button', { type: 'button', class: 'pb-arc pb-flip pb-flipL', 'aria-label': 'Left flipper' });
+  flipBtn.R = el('button', { type: 'button', class: 'pb-arc pb-flip pb-flipR', 'aria-label': 'Right flipper' });
+  viewEl.style.setProperty('--c', def.color || '#d93a2b');
   viewEl.classList.toggle('no-flipbtns', !btnsOn());
-  // launch overlay: the plunger pulled back on a spring and the strength gauge
-  launchEl = el('div', { class: 'pb-launch', 'aria-hidden': 'true', html:
-    '<div class="gauge"><i style="top:50%"></i><i style="top:60%"></i><i style="top:78%"></i><b></b></div>' +
-    '<span class="lbl top">FULL</span><span class="lbl med">MEDIUM</span><span class="lbl skill">SKILL SHOT</span><span class="lbl soft">SOFT</span><span class="pct">0%</span>' +
-    '<svg viewBox="0 0 78 196"><defs><linearGradient id="pbChrome" x1="0" x2="1"><stop offset="0" stop-color="#5a5f6c"/><stop offset=".35" stop-color="#f4f6fa"/><stop offset=".6" stop-color="#9aa1ae"/><stop offset="1" stop-color="#454a55"/></linearGradient>' +
-    '<linearGradient id="pbKnob" x1="0" x2="1"><stop offset="0" stop-color="#6b1d1d"/><stop offset=".4" stop-color="#e84a4a"/><stop offset="1" stop-color="#5a1414"/></linearGradient></defs>' +
-    '<rect x="26" y="0" width="26" height="40" rx="3" fill="#1b1a22" stroke="rgba(255,255,255,.2)"/>' +
-    '<g class="spring"><path d="M39 40 l10 6 l-20 6 l20 6 l-20 6 l20 6 l-20 6 l20 6 l-20 6 l20 6 l-10 4" fill="none" stroke="url(#pbChrome)" stroke-width="3.2" stroke-linejoin="round"/></g>' +
-    '<g class="rod"><rect x="34" y="34" width="10" height="92" rx="2" fill="url(#pbChrome)"/><rect x="31" y="30" width="16" height="8" rx="2" fill="#222"/><ellipse cx="39" cy="140" rx="16" ry="14" fill="url(#pbKnob)" stroke="rgba(0,0,0,.6)"/><ellipse cx="34" cy="134" rx="5" ry="3" fill="rgba(255,255,255,.35)"/></g></svg>' +
-    '<span class="hint">DRAG DOWN TO PULL</span>' });
-  viewEl.append(nudgeBtn, magBtn, fireBtn, flipBtn.L, flipBtn.R, launchEl);
-  for (const side of ['L', 'R']) {
-    const b = flipBtn[side];
-    b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (!G || G.paused) return; audio().ctx(); try { b.setPointerCapture(e.pointerId); } catch (er) {} btnHeld[side] = true; b.classList.add('on'); syncFlips(); });
-    const rel = e => { if (!btnHeld[side]) return; btnHeld[side] = false; b.classList.remove('on'); syncFlips(); };
-    b.addEventListener('pointerup', rel); b.addEventListener('pointercancel', rel); b.addEventListener('lostpointercapture', rel);
-  }
+  // launch gauge beside the shooter lane and the finger readout
+  const ticks = [[0.22, 'SOFT'], [0.4, 'SKILL'], [0.6, 'MEDIUM'], [1, 'FULL']];
+  launchEl = el('div', { class: 'pb-launch' + (launchesSoFar() >= 3 ? ' nohint' : ''), 'aria-hidden': 'true' }, [
+    el('div', { class: 'rail' }), el('div', { class: 'fill' }),
+    ...ticks.map(([at, t]) => el('div', { class: 'tick', style: { '--at': at }, 'data-at': at }, [el('span', { text: t })])),
+    el('span', { class: 'hint', text: 'DRAG DOWN TO PULL' })]);
+  tagEl = el('div', { class: 'pb-tag', text: '0%' });
+  viewEl.append(nudgeCtl, magCtl, fireCtl, flipBtn.L, flipBtn.R, launchEl, tagEl);
+  const btnDown = (e, fn) => { e.preventDefault(); e.stopPropagation(); fn(); };
+  const press = (btn, down, upFn) => {
+    btn.addEventListener('pointerdown', e => { btnDown(e, () => { if (!G || G.paused) return; audio().ctx(); try { btn.setPointerCapture(e.pointerId); } catch (er) {} btn.classList.add('on'); down(); }); });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => btn.addEventListener(t, () => { if (!btn.classList.contains('on')) return; btn.classList.remove('on'); if (upFn) upFn(); }));
+  };
+  press(nudgeBtn, () => G && G.nudge());
+  press(magBtn, () => { if (G) G.setMagna(true); }, () => { if (G && G.input.magna) G.setMagna(false); });
+  press(fireBtn, () => G && G.fire());
+  for (const side of ['L', 'R']) press(flipBtn[side], () => { btnHeld[side] = true; syncFlips(); }, () => { btnHeld[side] = false; syncFlips(); });
   // the table's best score under the display, overtaken live by this game
   bestEl = el('div', { class: 'pb-best' }, [el('small', { text: 'BEST' }), el('b', { text: fmt(ArcadeHi.best('pinball_' + id)) })]);
   bestBase = ArcadeHi.best('pinball_' + id); shownBest = -1;
   app.append(el('div', { class: 'pb-band' }, [dmdEl, bestEl]), viewEl, pauseEl);
   const loadTxt = el('span', { text: 'Building the table…' }), loadBar = el('b'), loading = el('div', { class: 'pb-load' }, [loadTxt, el('i', null, [loadBar])]); viewEl.appendChild(loading);
-  const btnDown = (e, fn) => { e.preventDefault(); e.stopPropagation(); fn(); };
-  nudgeBtn.addEventListener('pointerdown', e => btnDown(e, () => G && G.nudge()));
-  magBtn.addEventListener('pointerdown', e => btnDown(e, () => { if (G) { G.setMagna(true); magBtn.classList.add('on'); } }));
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => magBtn.addEventListener(t, () => { if (G && G.input.magna) { G.setMagna(false); magBtn.classList.remove('on'); } }));
-  fireBtn.addEventListener('pointerdown', e => btnDown(e, () => G && G.fire()));
   view = 'game';
   // build after the loading text paints
   requestAnimationFrame(() => setTimeout(async () => {
@@ -295,7 +307,7 @@ function startGame(id, balls, who) {
     if (view !== 'game' || g.destroyed) { g.destroy(); return; }
     G = g;
     loading.remove();
-    magBtn.style.display = G.hasMagna ? '' : 'none';
+    magCtl.style.display = G.hasMagna ? '' : 'none';
     if (ro) ro.disconnect();
     ro = new ResizeObserver(() => { sizeDmd(); if (G) G.resize(); }); ro.observe(viewEl); ro.observe(dmdEl);
     Kit.gameStart();
@@ -316,7 +328,7 @@ let uiRaf = 0;
 function tickUI() {
   if (uiRaf) { clearTimeout(uiRaf); uiRaf = 0; }
   if (!G || view !== 'game' || G.paused || G.finished || document.hidden) return;
-  if (fireBtn) fireBtn.classList.toggle('show', !!G.cannon);
+  if (fireCtl) fireCtl.classList.toggle('show', !!G.cannon);
   launchUI();
   if (G.state !== 'over' && document.querySelector('.k-scrim')) { pauseGame(); return; }
   const bv = Math.max(bestBase, G.score || 0);
@@ -327,7 +339,11 @@ function tickUI() {
 // animation rate only while pulling; it fades when the ball leaves the lane.
 let launchRaf = 0, snapUntil = 0;
 // the plunger snaps forward like a rubber band when let go: the overlay stays for the snap, then fades
-function releasePull(o) { if (!G) return; const was = G.pulling; G.pullEnd(o); if (was && !o.cancel) snapUntil = performance.now() + 380; launchUI(); }
+function releasePull(o) {
+  if (!G) return; const was = G.pulling; G.pullEnd(o);
+  if (was && !o.cancel) { snapUntil = performance.now() + 380; const n = launchesSoFar() + 1; lsSet('pinball_launches', String(n)); if (n >= 3 && launchEl) launchEl.classList.add('nohint'); }
+  launchUI();
+}
 // finger pull: 1:1 with the drag, a little spring resistance that eases near full pull
 const PULL_FULL = 0.24;   // a full pull is this fraction of the view height (~190 px on a phone)
 function dragToPull(dy, h) {
@@ -344,7 +360,17 @@ function launchUI() {
   launchEl.classList.toggle('snap', snapping);
   const pull = wait && G.pulling ? G.pull : 0;
   launchEl.style.setProperty('--pull', pull.toFixed(3));
-  launchEl.querySelector('.pct').textContent = Math.round(pull * 100) + '%';
+  launchEl.querySelectorAll('.tick').forEach(t => t.classList.toggle('lit', pull > 0.02 && pull >= +t.dataset.at - 0.01));
+  // the readout floats just left of the finger (or beside the rail for a keyboard pull)
+  const showTag = wait && G.pulling;
+  tagEl.classList.toggle('show', showTag);
+  if (showTag) {
+    tagEl.textContent = Math.round(pull * 100) + '%';
+    const r = viewEl.getBoundingClientRect(), lr = launchEl.getBoundingClientRect();
+    const fx = G.pullMode === 'drag' && finger.x ? finger.x - r.left - 18 : lr.left - r.left - 8;
+    const fy = G.pullMode === 'drag' && finger.x ? finger.y - r.top : lr.bottom - r.top - (lr.height - 6) * pull - 3;
+    tagEl.style.left = Math.max(60, fx) + 'px'; tagEl.style.top = Math.max(12, Math.min(r.height - 12, fy)) + 'px';
+  }
   if (wait && (G.pulling || snapping)) launchRaf = requestAnimationFrame(launchUI);
 }
 function leaveGame() {
@@ -362,7 +388,7 @@ function leaveGame() {
 // ═══ Input ═══════════════════════════════════════════════════════════════════
 const ptr = {};
 const keys = { L: false, R: false };
-function resetInput() { for (const k in ptr) delete ptr[k]; keys.L = keys.R = false; btnHeld.L = btnHeld.R = false; if (flipBtn.L) { flipBtn.L.classList.remove('on'); flipBtn.R.classList.remove('on'); } }
+function resetInput() { for (const k in ptr) delete ptr[k]; keys.L = keys.R = false; btnHeld.L = btnHeld.R = false; finger.x = 0; if (viewEl) viewEl.querySelectorAll('.pb-arc.on').forEach(b => b.classList.remove('on')); }
 function syncFlips() {
   if (!G) return;
   let L = keys.L || btnHeld.L, R = keys.R || btnHeld.R;
@@ -374,11 +400,11 @@ function syncFlips() {
 // left/right halves are the flippers. The buttons handle their own pointers and never reach here.
 app.addEventListener('pointerdown', e => {
   if (view !== 'game' || !G || G.paused) return;
-  if (e.target.closest && e.target.closest('.pb-pause, .pb-btn, .pb-flip')) return;
+  if (e.target.closest && e.target.closest('.pb-pause, .pb-ctl, .pb-arc')) return;
   e.preventDefault();
   audio().ctx();
   let role = e.clientX < window.innerWidth / 2 ? 'L' : 'R';
-  if (G.waitPlunge && !G.pulling) { role = 'P'; G.pullStart('drag'); launchUI(); }
+  if (G.waitPlunge && !G.pulling) { role = 'P'; finger.x = e.clientX; finger.y = e.clientY; G.pullStart('drag'); launchUI(); }
   const r = viewEl.getBoundingClientRect();
   ptr[e.pointerId] = { role, y0: e.clientY, h: r.height, t0: G.time, maxDy: 0 };
   try { app.setPointerCapture(e.pointerId); } catch (er) {}
@@ -386,7 +412,7 @@ app.addEventListener('pointerdown', e => {
 });
 app.addEventListener('pointermove', e => {
   const p = ptr[e.pointerId]; if (!p || p.role !== 'P' || !G) return;
-  const dy = e.clientY - p.y0; p.maxDy = Math.max(p.maxDy, Math.abs(dy)); p.dy = dy;
+  const dy = e.clientY - p.y0; p.maxDy = Math.max(p.maxDy, Math.abs(dy)); p.dy = dy; finger.x = e.clientX; finger.y = e.clientY;
   G.pullDrag = dragToPull(dy, p.h);
 });
 function up(e) {
