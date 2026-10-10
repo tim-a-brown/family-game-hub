@@ -109,6 +109,17 @@
 .cn-spin{width:18px;height:18px;flex:none;border-radius:50%;border:3px solid var(--w15,rgba(255,255,255,.15));border-top-color:var(--text-2);animation:cn-spin 1s linear infinite;}
 @keyframes cn-spin{to{transform:rotate(360deg);}}
 .cn-opt{display:flex;flex-direction:column;gap:6px;}
+/* Your games: one row per game you have going */
+.cn-mines:empty{display:none;}
+.cn-mines{gap:8px;}
+.cn-mine{width:100%;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer;}
+.cn-mine:active{transform:scale(.99);}
+.cn-mine .ico{width:20px;height:20px;}
+.cn-ic{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--w08,rgba(255,255,255,.08));color:var(--text-2);}
+.cn-chev{color:var(--text-3);flex:none;display:grid;}
+.cn-turn{border:1.5px solid color-mix(in srgb,var(--accent) 70%,transparent);background:color-mix(in srgb,var(--accent) 12%,var(--surface));}
+.cn-yours{color:var(--accent);font-weight:900;}
+.setup .cn-mines,.k-setup .cn-mines{margin:4px 0 8px;}
 
 /* iPad / large screens: bigger board; landscape puts bars, moves and buttons beside the board */
 @media (min-width:700px) and (orientation:portrait){
@@ -503,6 +514,7 @@
     menu: [
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Chess: past games' }); } },
       { icon: 'globe', label: 'Play online', when: function () { return !online() && NET.screen !== 'lobby'; }, onClick: function () { openOnline(); } },
+      { icon: 'globe', label: 'Your online games', when: function () { return online(); }, onClick: function () { netStop(false); lsP(NETK, null); showLobby(); } },
       { icon: 'swap', label: 'Flip the board', onClick: function () { if (S && S.pos) { S.flip = !S.flip; save(); render(); } } },
       { icon: 'hand', label: 'Offer a draw', when: function () { return online() && !S.over; }, onClick: function () { netOfferDraw(); } },
       { icon: 'close', label: 'Resign', when: function () { return !online() || !S.over; }, onClick: function () { resign(); } },
@@ -528,8 +540,11 @@
       '<li>Each player uses their own phone or tablet, signed in with their own PIN on the home screen.</li>' +
       '<li>One player picks <b>Play online</b> and opens a table, choosing White, Black or a coin toss. The other player picks Play online too and joins it from the list, or types its 4-letter code. Tables opened by people you\'ve linked show first.</li>' +
       '<li>Your pieces are always at the bottom, and you can only move on your turn. Moves can\'t be taken back.</li>' +
-      '<li>Use the buttons under the board to offer a draw or resign. Leaving the table in the middle of a game counts as resigning.</li>' +
-      '<li>Closed the app by mistake? Open Chess again and you\'re back in the game. If the other player is away for a few minutes on their turn, you can claim the win.</li>' +
+      '<li>You don\'t both need to be there at once. A game stays open for as long as it takes, days or weeks: make your move, close the app, and the other player moves whenever they next open Chess.</li>' +
+      '<li><b>Your games</b>, at the top of Play online, lists every game you have going, on any device signed in with your PIN: who you\'re playing, whose move it is, and when the last move was. Tap one to pick it up. You can have several going at once.</li>' +
+      '<li>A table nobody has joined stays in the list for 30 days. You can close it any time.</li>' +
+      '<li>Use the buttons under the board to offer a draw or resign. <b>Leave the table</b> in the middle of a game counts as resigning; to just step away, close the app or pick <b>Your online games</b>.</li>' +
+      '<li>If the other player hasn\'t moved in two weeks, you can claim the win, or keep waiting.</li>' +
       '<li>After a game, <b>Rematch</b> starts a new one with the colours swapped.</li></ul>'
   });
 
@@ -566,6 +581,8 @@
     // the start button says where online goes
     var startLabel = function () { var b = su.el.querySelector('.k-start'); if (b) b.textContent = su.state.mode === 'online' ? 'Find a table' : "Let's play!"; };
     su.el.addEventListener('click', startLabel); startLabel();
+    // signed in: your online games (any device with your PIN), right under the title
+    if (netReady()) { var hero = su.el.querySelector('.setup-hero'); su.el.insertBefore(mineBox('Your online games'), hero ? hero.nextSibling : su.el.firstChild); }
   }
   function newGame(swap) {
     cancelThink();
@@ -651,7 +668,7 @@
       var forkMate = S.events.some(function (e) { return e.type === 'fork' && e.side === res.winner; });
       hl.push(winner.name + ' checkmated ' + loser.name + ' in ' + moves + (moves === 1 ? ' move' : ' moves') + ' with a ' + PNAME[lastPiece] + (forkMate && lastPiece === 2 ? ' after a knight fork' : ''));
     } else if (res.type === 'resign') hl.push(loser.name + ' resigned after ' + moves + ' moves');
-    else if (res.type === 'abandon') hl.push(loser.name + ' left the game after ' + moves + ' moves, so ' + winner.name + ' won');
+    else if (res.type === 'abandon') hl.push(loser.name + ' stopped moving after ' + moves + ' moves, so ' + winner.name + ' claimed the win');
     else hl.push(DRAW_TEXT[res.type] + ' after ' + moves + ' moves');
     var evs = S.events.filter(function (e) { return e.type !== 'castle'; });
     evs.slice(-4).forEach(function (e) { hl.push(e.text); });
@@ -676,7 +693,7 @@
         NET.win = Kit.win({
           icon: !winner ? 'users' : 'trophy', lose: lose,
           title: !winner ? (res.type === 'stalemate' ? "Stalemate: it's a draw" : "It's a draw") : winner.me ? 'You win!' : winner.name + ' wins',
-          sub: res.type === 'mate' ? 'Checkmate in ' + moves + (moves === 1 ? ' move' : ' moves') : res.type === 'resign' ? loser.name + ' resigned' : res.type === 'abandon' ? loser.name + ' left the game' : DRAW_TEXT[res.type],
+          sub: res.type === 'mate' ? 'Checkmate in ' + moves + (moves === 1 ? ' move' : ' moves') : res.type === 'resign' ? loser.name + ' resigned' : res.type === 'abandon' ? loser.name + ' stopped moving' : DRAW_TEXT[res.type],
           againLabel: 'Rematch', again: function () { NET.win = null; netRematch(); },
           extra: [{ label: 'View the board', onClick: function () { NET.win = null; } }],
           closeLabel: 'Leave the table', onClose: function () { NET.win = null; netLeave(false); showLobby(); }
@@ -874,13 +891,13 @@
     turnEl.style.setProperty('--c', pos.turn === 1 ? '#f3e6c8' : '#d9a878');
     if (S.over) {
       var r = S.result, w = r.winner ? pl(r.winner) : null;
-      turnEl.appendChild(el('span', { text: r.type === 'mate' ? 'Checkmate! ' + w.name + ' wins' : r.type === 'resign' ? w.name + ' wins by resignation' : r.type === 'abandon' ? w.name + ' wins: ' + pl(-r.winner).name + ' left' : DRAW_TEXT[r.type] }));
+      turnEl.appendChild(el('span', { text: r.type === 'mate' ? 'Checkmate! ' + w.name + ' wins' : r.type === 'resign' ? w.name + ' wins by resignation' : r.type === 'abandon' ? w.name + ' wins: ' + pl(-r.winner).name + ' stopped moving' : DRAW_TEXT[r.type] }));
       return;
     }
     turnEl.appendChild(el('span', { class: 'dot' }));
     if (online()) {
-      var mine = pos.turn === mySide(), aw = netAway();
-      turnEl.appendChild(el('span', { html: (chk ? 'Check! ' : '') + (mine ? 'Your move' : aw ? Kit.esc(p.name) + ' seems to be away' : '<span class="think">' + Kit.esc(Kit.poss(p.name)) + ' move <i></i><i></i><i></i></span>') }));
+      var mine = pos.turn === mySide(), aw = netAway(), seen = netSeen();
+      turnEl.appendChild(el('span', { html: (chk ? 'Check! ' : '') + (mine ? 'Your move' : aw ? Kit.esc(Kit.poss(p.name)) + ' move · ' + (seen ? 'last here ' + agoText(seen) : 'not here right now') : '<span class="think">' + Kit.esc(Kit.poss(p.name)) + ' move <i></i><i></i><i></i></span>') }));
       return;
     }
     turnEl.appendChild(el('span', { text: (chk ? 'Check! ' : '') + (p.cpu ? p.name + ' is thinking…' : Kit.poss(p.name) + ' move') }));
@@ -984,9 +1001,12 @@
   //   hw (host has White in game 1; rematches swap)  game (1, 2…)  t0 (game start)  moves []
   //   result {type, winner 1|-1|0, by}  offer {side, n, id, no} (draw offer)  again {h, g} (rematch asks)
   //   hb {h, g} (each device's last heartbeat)  at  by
-  // The room store is pluggable: tests set window.__chessRooms to an in-memory one with the same calls.
-  var NETK = 'chess_online', NETME = 'chess_net_me', NETDONE = 'chess_net_done';
-  var AWAY_MS = 75000, CLAIM_MS = 180000, HB_MS = 25000, UCI_RE = /^[a-h][1-8][a-h][1-8][nbrq]?$/;
+  //   host.acct / guest.acct: the seat's account tag (a one-way hash of its PIN), so "Your games" finds the table
+  //   from any device signed in with that PIN
+  // Games are correspondence-style: nothing times out. Either player can come back days later, on any of their
+  // devices, and move. The room store is pluggable: tests set window.__chessRooms to an in-memory one with the same calls.
+  var NETK = 'chess_online', NETL = 'chess_net_mine', NETME = 'chess_net_me', NETDONE = 'chess_net_done';
+  var AWAY_MS = 75000, CLAIM_MS = 14 * 864e5, WAIT_MS = 30 * 864e5, HB_MS = 25000, UCI_RE = /^[a-h][1-8][a-h][1-8][nbrq]?$/;
   var NET = { code: null, seat: null, d: null, off: null, lobbyOff: null, lobbyGen: 0, sending: false, hbT: 0, tickT: 0, seenAt: 0, seenHb: null,
     win: null, offerSheet: null, offerSeen: '', noSeen: '', againSeen: '', screen: '', awayWas: false, claimWas: false, errAt: 0 };
   function lsJ(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
@@ -1025,6 +1045,17 @@
           off = col(d).where('status', '==', 'waiting').limit(40).onSnapshot(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); cb(l); }, err);
         }).catch(err);
         return function () { dead = true; if (off) off(); };
+      },
+      // this account's tables (open or being played), at either seat: small one-off queries
+      mine: function (tag) {
+        return db().then(function (d) {
+          function q(seat, st) {
+            return col(d).where(seat + '.acct', '==', tag).where('status', 'in', st).limit(20).get()
+              .catch(function () { return col(d).where(seat + '.acct', '==', tag).limit(40).get(); })   // in case the two-field query is refused
+              .then(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); return l; });
+          }
+          return Promise.all([q('host', ['waiting', 'playing']), q('guest', ['playing'])]).then(function (r) { return r[0].concat(r[1]); });
+        });
       }
     };
   }
@@ -1081,6 +1112,50 @@
     }).catch(function () { return null; }));
   }
   function myTag() { var own = window.FGHSync && FGHSync.links ? FGHSync.links().own : null; return linkTag(own && own.code); }
+  // This account's tag (host.acct / guest.acct): a slow one-way hash of the PIN, never the PIN itself. Every device
+  // signed in with the PIN makes the same tag, so a game started on the phone shows up on the iPad. Shared with
+  // Lorcana and the home screen (same salt, same cache).
+  var ACT = {};
+  function acctTag() {
+    var R = rooms(), pin = R.pin ? R.pin() : window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? FGHSync.pin() : null;
+    var c = window.crypto && window.crypto.subtle;
+    if (!pin || !c || typeof TextEncoder === 'undefined') return Promise.resolve(null);
+    if (ACT[pin]) return ACT[pin];
+    var k = pinKey(pin), saved = lsJ('fgh_acct_tag', null);
+    if (saved && saved.k === k && saved.t) return (ACT[pin] = Promise.resolve(saved.t));
+    var enc = new TextEncoder();
+    return (ACT[pin] = c.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveBits']).then(function (key) {
+      return c.deriveBits({ name: 'PBKDF2', salt: enc.encode('fgh-online-account'), iterations: 150000, hash: 'SHA-256' }, key, 64);
+    }).then(function (b) {
+      var t = Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+      lsP('fgh_acct_tag', { k: k, t: t });
+      return t;
+    }).catch(function () { return null; }));
+  }
+  // a quick check that the cached tag is for the PIN signed in now (not a secret)
+  function pinKey(p) { var h = 5381; for (var i = 0; i < p.length; i++) h = ((h << 5) + h + p.charCodeAt(i)) | 0; return 'p' + (h >>> 0).toString(36); }
+  // How a seat at a table belongs here: 2 = this device sat there, 1 = this account (another device), 0 = not ours
+  function seatIs(s, tag) { return !s ? 0 : s.dev === NET.dev ? 2 : tag && s.acct === tag ? 1 : 0; }
+  // Tables this device has sat at (a back-up for "Your games": older tables have no account tag)
+  function netRemember(code, seat) {
+    var l = lsJ(NETL, []); if (!Array.isArray(l)) l = [];
+    l = l.filter(function (x) { return x && x.code !== code; }); l.unshift({ code: code, seat: seat, at: Date.now() });
+    lsP(NETL, l.slice(0, 12));
+  }
+  function netForget(code) {
+    var l = lsJ(NETL, []); if (Array.isArray(l)) lsP(NETL, l.filter(function (x) { return x && x.code !== code; }));
+    var m = lsJ(NETK, null); if (m && m.code === code) lsP(NETK, null);
+  }
+  function agoText(ts) {
+    var s = Math.max(0, (Date.now() - ts) / 1000), n;
+    if (s < 60) return 'just now';
+    if (s < 3600) { n = Math.floor(s / 60); return n + (n === 1 ? ' minute ago' : ' minutes ago'); }
+    if (s < 86400) { n = Math.floor(s / 3600); return n + (n === 1 ? ' hour ago' : ' hours ago'); }
+    n = Math.floor(s / 86400);
+    if (n === 1) return 'yesterday';
+    if (n < 14) return n + ' days ago';
+    n = Math.floor(n / 7); return n + ' weeks ago';
+  }
   // The people you've linked: [{name (as you know them), code, them (their own profile name)}]
   function netPeople() {
     var L = window.FGHSync && FGHSync.links ? FGHSync.links() : null, out = [];
@@ -1089,7 +1164,8 @@
     return out;
   }
   // Mark each table opened by someone you've linked (r.who): by its tag, or by name for a table without one
-  function netWhose(list) {
+  // (who: which seat to look at, for "Your games"; the host by default)
+  function netWhose(list, who) {
     var ppl = netPeople();
     list.forEach(function (r) { r.who = null; });
     if (!ppl.length || !list.length) return Promise.resolve(list);
@@ -1097,7 +1173,7 @@
     return Promise.all(ppl.map(function (p) { return linkTag(p.code); })).then(function (tags) {
       var canTag = tags.some(function (t) { return !!t; });
       list.forEach(function (r) {
-        var h = r.d.host || {}, i = -1;
+        var h = (who ? who(r) : r.d.host) || {}, i = -1;
         if (h.lk && canTag) i = tags.indexOf(h.lk);
         else if (h.name) { var n = nk(h.name); for (var j = 0; j < ppl.length && i < 0; j++) if (nk(ppl[j].name) === n || (ppl[j].them && nk(ppl[j].them) === n)) i = j; }
         r.who = i >= 0 ? ppl[i] : null;
@@ -1110,14 +1186,19 @@
   function netHost(me) {
     if (!me.name) { Kit.toast('Pick your name first'); return; }
     var R = rooms(), pick = me.pick === 'b' || me.pick === 'r' ? me.pick : 'w';
-    myTag().then(function (tag) {
-      var host = { name: me.name, dev: NET.dev, pick: pick };
+    Promise.all([myTag(), acctTag()]).then(function (tags) {
+      var tag = tags[0], host = { name: me.name, dev: NET.dev, pick: pick };
       if (tag) host.lk = tag;   // so the people linked to you see it's your table
+      if (tags[1]) host.acct = tags[1];   // so your other devices find it
       var tries = 0;
       return (function attempt() {
         var code = netCode();
         return R.get(code).then(function (d) {
-          if (d && Date.now() - netLast(d) < 12 * 3600e3 && ++tries < 6) return attempt();
+          // never reuse the code of a table that's open or being played, however old (games can run for weeks)
+          if (d && (d.status === 'waiting' || d.status === 'playing' || Date.now() - netLast(d) < 24 * 3600e3)) {
+            if (++tries < 8) return attempt();
+            throw new Error('Couldn’t find a free table code. Try again.');
+          }
           var now = Date.now();
           return R.set(code, { host: host, guest: null, status: 'waiting', hw: pick === 'r' ? Math.random() < 0.5 : pick === 'w', game: 1, t0: now, moves: [], result: null, offer: null, again: null, hb: { h: now }, at: now, by: NET.dev })
             .then(function () { netListen(code, 'h'); showWait(); Kit.sfx('pop'); });
@@ -1129,41 +1210,63 @@
     if (!me.name) { Kit.toast('Pick your name first'); return; }
     code = String(code || '').trim().toUpperCase();
     if (!/^[A-Z]{4}$/.test(code)) { Kit.toast('Table codes are 4 letters'); return; }
-    myTag().then(function (tag) {
+    Promise.all([myTag(), acctTag()]).then(function (tags) {
+      var tag = tags[0];
       return rooms().tx(code, function (d) {
         if (!d) throw new Error('No open table with code ' + code);
         if (d.host && d.host.dev === NET.dev) throw new Error('That’s your own table. Join it from the other device.');
         if (d.status !== 'waiting' || d.guest) throw new Error('That table already has two players');
         var g = { name: String(me.name).toLowerCase() === String(d.host.name || '').toLowerCase() ? me.name + ' 2' : me.name, dev: NET.dev };
         if (tag) g.lk = tag;
+        if (tags[1]) g.acct = tags[1];
         var now = Date.now();
         return { guest: g, status: 'playing', t0: now, at: now, by: NET.dev, 'hb.g': now };
       });
     }).then(function () { netListen(code, 'g'); showMsg('Joining the table…'); }).catch(toastErr);
   }
-  function netRejoin(mine) {
-    return rooms().get(mine.code).then(function (d) {
-      var stale = d && Date.now() - netLast(d) > (d.status === 'over' ? 30 * 60e3 : 7 * 24 * 3600e3);
-      var seatOk = d && (mine.seat === 'h' ? d.host && d.host.dev === NET.dev : d.guest && d.guest.dev === NET.dev);
-      if (!d || d.status === 'closed' || stale || !seatOk) { lsP(NETK, null); return false; }
-      netListen(mine.code, mine.seat);
-      if (d.status === 'waiting') { NET.d = d; showWait(); }
-      return true;
+  // Sit back down at a table: from this device's last game, "Your games", or a link (any device with your PIN).
+  // seat: the seat it was at here ('h' or 'g'), or null to work it out. Nothing expires a game in progress.
+  function netRejoin(mine) { return netOpen(mine.code, mine.seat); }
+  function netOpen(code, seat) {
+    return Promise.all([rooms().get(code), acctTag()]).then(function (r) {
+      var d = r[0], tag = r[1];
+      if (!d || d.status === 'closed' || (d.status === 'over' && Date.now() - netLast(d) > 30 * 60e3)) { netForget(code); return false; }
+      var hs = seatIs(d.host, tag), gs = seatIs(d.guest, tag);
+      if (seat === 'h' && !hs || seat === 'g' && !gs) seat = null;
+      if (!seat) seat = hs > gs ? 'h' : gs > hs ? 'g' : hs ? 'ask' : null;
+      if (!seat) { netForget(code); return false; }
+      // both seats are this PIN (two people sharing one) and this device sat at neither: ask who's playing
+      var pick = seat === 'ask' ? new Promise(function (res) {
+        Kit.sheet({ title: 'Who’s playing here?', html: '<p class="muted">Both players at this table use your PIN.</p>', actions: [
+          { label: 'Play as ' + d.host.name, primary: true, onClick: function () { res('h'); } },
+          { label: 'Play as ' + d.guest.name, onClick: function () { res('g'); } }], onCancel: function () { res(null); } });
+      }) : Promise.resolve(seat);
+      return pick.then(function (s) {
+        if (!s) return false;
+        // tables from before account tags: tag this seat now so your other devices find it
+        var st = s === 'h' ? d.host : d.guest;
+        if (tag && st && !st.acct) { var p = {}; p[(s === 'h' ? 'host' : 'guest') + '.acct'] = tag; rooms().update(code, p).catch(function () {}); }
+        netListen(code, s);
+        if (d.status === 'waiting') { NET.d = d; showWait(); }
+        return true;
+      });
     });
   }
   function netListen(code, seat) {
     lobbyOff(); if (NET.off) NET.off();
     NET.code = code; NET.seat = seat; NET.d = null; NET.sending = false; NET.seenAt = Date.now(); NET.seenHb = null;
-    lsP(NETK, { code: code, seat: seat, at: Date.now() });
+    lsP(NETK, { code: code, seat: seat, at: Date.now() }); netRemember(code, seat);
     NET.off = rooms().watch(code, netOnDoc, netErr);
     clearInterval(NET.hbT); NET.hbT = setInterval(netBeat, HB_MS);
     clearInterval(NET.tickT); NET.tickT = setInterval(netTick, 5000);
   }
+  // Stop listening to the table. forget: the game is finished with here (left, closed or ended)
   function netStop(forget) {
+    var code = NET.code;
     if (NET.off) { NET.off(); NET.off = null; }
     clearInterval(NET.hbT); clearInterval(NET.tickT);
     NET.code = null; NET.seat = null; NET.sending = false; netCloseOffer();
-    if (forget) lsP(NETK, null);
+    if (forget) { lsP(NETK, null); if (code) netForget(code); }
   }
   function lobbyOff() { if (NET.lobbyOff) { NET.lobbyOff(); NET.lobbyOff = null; } }
   // Leave the table. In the middle of a game (after the first move) that counts as resigning.
@@ -1184,15 +1287,20 @@
     (inGame ? Kit.confirm('Leave this game?', { ok: 'Leave and resign', danger: true, body: 'Leaving now counts as resigning, so ' + Kit.esc(pl(-mySide()).name) + ' wins.' }) : Promise.resolve(true))
       .then(function (ok) { if (ok) { netLeave(); showLobby(); } });
   }
+  // "I'm here": only while a game is on screen and the page is showing (a hidden or closed app writes nothing)
   function netBeat() {
-    if (!NET.code || document.visibilityState !== 'visible') return;
+    if (!NET.code || document.visibilityState !== 'visible' || NET.screen !== 'game' || !NET.d || NET.d.status !== 'playing') return;
     var p = {}; p['hb.' + NET.seat] = Date.now();
     rooms().update(NET.code, p).catch(function () {});
   }
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && NET.code) { NET.seenAt = Date.now(); netBeat(); netTick(); } });
-  // The other player is away: no heartbeat or move seen here for a while (timed on this device's clock)
+  // The other player isn't looking at the game right now: no heartbeat or move seen here for a while (this device's clock).
+  // Only a label: games never time out.
   function netAway() { return !!(NET.code && NET.d && NET.d.status === 'playing' && Date.now() - NET.seenAt > AWAY_MS); }
-  function netCanClaim() { return !!(online() && !S.over && NET.code && NET.d && NET.d.status === 'playing' && S.pos.turn !== mySide() && Date.now() - NET.seenAt > CLAIM_MS); }
+  // When the other player was last at the table (their heartbeat), for "last here 2 days ago"
+  function netSeen() { var h = NET.d && NET.d.hb && NET.d.hb[otherSeat()]; return h && h < Date.now() - AWAY_MS ? h : 0; }
+  // A game stuck on the other player's move for two weeks can be claimed (by hand; nothing happens by itself)
+  function netCanClaim() { return !!(online() && !S.over && NET.code && NET.d && NET.d.status === 'playing' && S.pos.turn !== mySide() && Date.now() - (NET.d.at || 0) > CLAIM_MS); }
   function netTick() {
     if (!online() || NET.screen !== 'game') return;
     var a = netAway(), c = netCanClaim();
@@ -1312,7 +1420,7 @@
   function netClaim() {
     if (!netCanClaim()) return;
     var opp = pl(-mySide()).name;
-    Kit.confirm('Claim the win?', { ok: 'Claim the win', body: Kit.esc(opp) + ' hasn’t been back for a few minutes. Claiming ends the game as a win for you.' }).then(function (ok) {
+    Kit.confirm('Claim the win?', { ok: 'Claim the win', body: Kit.esc(opp) + ' hasn’t moved in two weeks. Claiming ends the game as a win for you. You can also keep waiting.' }).then(function (ok) {
       if (ok && netCanClaim()) netEnd({ type: 'abandon', winner: mySide() }).catch(toastErr);
     });
   }
@@ -1418,7 +1526,73 @@
     }
     wrap.appendChild(spinRow(host ? 'Waiting for the other player' : 'Waiting for the game to start',
       host ? 'On their device: Chess, then Play online. Your table shows up there, or they can type the code.' : 'The game starts in a moment.'));
+    if (host) wrap.appendChild(el('p', { class: 'cn-note', style: { 'text-align': 'center' }, text: 'No need to wait here. Your table stays open for 30 days, and the game waits for you in Your games once they join.' }));
+    if (host) wrap.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', text: 'Back to Your games', onclick: function () { netStop(false); lsP(NETK, null); showLobby(); } }));
     wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: host ? 'Close the table' : 'Leave', onclick: function () { netLeave(); showLobby(); } }));
+  }
+  // ── Your games: every table this account has open or going, from any device signed in with the PIN ──
+  // One small read, no listening: the account's tables at either seat, plus any this device remembers (older tables
+  // have no account tag). Each comes back with seat, the other player's name, and whose move it is.
+  function netMine() {
+    var R = rooms();
+    return acctTag().then(function (tag) {
+      var local = (lsJ(NETL, []) || []).concat([lsJ(NETK, null)]).filter(function (x) { return x && x.code; });
+      return Promise.resolve(tag && R.mine ? R.mine(tag) : []).catch(function (e) { console.warn('[chess] your games', e); return []; }).then(function (list) {
+        var have = {}, more = [];
+        list.forEach(function (r) { have[r.code] = 1; });
+        local.forEach(function (x) { if (!have[x.code]) { have[x.code] = 1; more.push(x.code); } });
+        return Promise.all(more.slice(0, 8).map(function (c) {
+          return R.get(c).then(function (d) { if (!d || d.status === 'closed' || d.status === 'over') { netForget(c); return null; } return { code: c, d: d }; }, function () { return null; });
+        })).then(function (extra) { return list.concat(extra.filter(Boolean)); });
+      }).then(function (list) {
+        var out = [];
+        list.forEach(function (r) {
+          var d = r.d;
+          if (!d || !d.host || (d.status !== 'waiting' && d.status !== 'playing')) return;
+          var hs = seatIs(d.host, tag), gs = seatIs(d.guest, tag);
+          if (!hs && !gs) return;
+          r.seat = hs > gs ? 'h' : gs > hs ? 'g' : null;   // null: both seats are this PIN (asked when opened)
+          r.wait = d.status === 'waiting';
+          r.when = d.at || d.t0 || 0;
+          if (!r.wait) {
+            var hw = hostWhite(d) ? 1 : -1, toMove = (d.moves || []).length % 2 === 0 ? 1 : -1;
+            r.mine = !r.seat || toMove === (r.seat === 'h' ? hw : -hw);
+            r.opp = r.seat === 'g' ? d.host : d.guest;
+            r.n = (d.moves || []).length;
+          }
+          out.push(r);
+        });
+        out.sort(function (a, b) { return (b.mine ? 2 : b.wait ? 0 : 1) - (a.mine ? 2 : a.wait ? 0 : 1) || b.when - a.when; });
+        return netWhose(out.filter(function (r) { return r.opp; }), function (r) { return r.opp; }).then(function () { return out; });
+      });
+    });
+  }
+  // One of your games as a row: who it's against, whose move, when the last move was. Tap to open it.
+  function mineRow(r) {
+    var go = function () { Kit.sfx('pop'); showMsg('Opening your game…'); netOpen(r.code, r.seat).then(function (ok) { if (!ok) { Kit.toast('That game has ended'); showLobby(); } }).catch(function (e) { netErr(e); showLobby(); }); };
+    if (r.wait) {
+      return el('button', { type: 'button', class: 'cn-room cn-mine', onclick: go }, [
+        el('span', { class: 'cn-ic', html: Kit.icon('globe') }),
+        el('div', { class: 'grow' }, [el('b', { text: 'Your table · code ' + r.code }), el('small', { text: 'Waiting for someone to join · opened ' + agoText(r.when) })]),
+        el('span', { class: 'cn-chev', html: Kit.icon('right') })]);
+    }
+    var nm = r.who ? r.who.name : r.opp.name || 'Someone';
+    return el('button', { type: 'button', class: 'cn-room cn-mine' + (r.mine ? ' cn-turn' : ''), onclick: go }, [
+      Kit.avatar.el(nm, null, Kit.color(1)),
+      el('div', { class: 'grow' }, [el('b', { text: 'vs ' + nm }),
+        el('small', { html: (r.mine ? '<span class="cn-yours">Your move</span>' : Kit.esc('Waiting for ' + nm)) + ' · ' + Kit.esc((r.n ? 'last move ' : 'started ') + agoText(r.when)) })]),
+      el('span', { class: 'cn-chev', html: Kit.icon('right') })]);
+  }
+  // Fill a box with your games (nothing at all when there are none)
+  function mineBox(title) {
+    var box = el('div', { class: 'stack cn-mines' });
+    if (!netReady()) return box;
+    netMine().then(function (list) {
+      if (!box.isConnected || !list.length) return;
+      box.appendChild(el('h2', { class: 'cn-h', text: title }));
+      list.forEach(function (r) { box.appendChild(mineRow(r)); });
+    }).catch(function (e) { console.warn('[chess] your games', e); });
+    return box;
   }
   function colourLine(h, nm) {
     return h.pick === 'r' ? 'Coin toss for colours' : nm + ' plays ' + (h.pick === 'b' ? 'Black, you play White' : 'White, you play Black');
@@ -1434,13 +1608,9 @@
       wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Play on this device instead', onclick: function () { showLocal(); } }));
       return;
     }
-    var mine = lsJ(NETK, null);
-    if (mine && mine.code) {
-      wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>Back to your game</span>', onclick: function () {
-        netRejoin(mine).then(function (ok) { if (!ok) { Kit.toast('That game has ended'); showLobby(); } }).catch(netErr);
-      } }));
-    }
-    wrap.appendChild(el('p', { class: 'cn-note', text: 'Each of you plays on your own device, like sitting across the board. One of you opens a table; the other joins it.' }));
+    netStop(false);
+    wrap.appendChild(mineBox('Your games'));
+    wrap.appendChild(el('p', { class: 'cn-note', text: 'Each of you plays on your own device, like sitting across the board. One of you opens a table; the other joins it. You don’t both need to be here at once: games stay open, so move when you can and come back any time, on any device signed in with your PIN.' }));
     var me = netMe(), seat = el('div');
     function paintMe() {
       seat.innerHTML = '';
@@ -1466,9 +1636,11 @@
     var code = el('input', { class: 'input', type: 'text', maxlength: '4', placeholder: 'Code', 'aria-label': 'Table code', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false' });
     wrap.appendChild(el('div', { class: 'cn-join' }, [code, el('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: function () { netJoin(code.value, me); } })]));
     function fail(e) { box.innerHTML = ''; box.appendChild(el('p', { class: 'cn-note', text: 'Couldn’t reach the tables: ' + (e && e.message || e) })); }
+    var myAcct = null; acctTag().then(function (t) { myAcct = t; });
+    var yoursNote = function (h) { return h.acct && h.acct === myAcct ? ' · opened with your PIN' : ''; };
     NET.lobbyOff = rooms().open(function (list) {
       if (!box.isConnected) { lobbyOff(); return; }
-      list = list.filter(function (r) { return r.d && r.d.host && r.d.status === 'waiting' && r.d.host.dev !== NET.dev && Date.now() - netLast(r.d) < 6 * 3600e3; })
+      list = list.filter(function (r) { return r.d && r.d.host && r.d.status === 'waiting' && r.d.host.dev !== NET.dev && Date.now() - netLast(r.d) < WAIT_MS; })
         .sort(function (a, b) { return (b.d.at || 0) - (a.d.at || 0); });
       var gen = ++NET.lobbyGen;
       netWhose(list).then(function (list) {
@@ -1482,12 +1654,12 @@
             var nm = r.who.name;
             box.appendChild(el('div', { class: 'cn-room cn-pal' }, [
               Kit.avatar.el(nm, null, Kit.color(1)),
-              el('div', { class: 'grow' }, [el('b', { text: Kit.poss(nm) + ' table' }), el('small', { text: colourLine(h, nm) + ' · code ' + r.code })]),
+              el('div', { class: 'grow' }, [el('b', { text: Kit.poss(nm) + ' table' }), el('small', { text: colourLine(h, nm) + ' · code ' + r.code + yoursNote(h) })]),
               el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block cn-go', html: Kit.icon('play') + '<span>' + Kit.esc('Join ' + Kit.poss(nm) + ' table') + '</span>', onclick: go })]));
           } else {
             box.appendChild(el('div', { class: 'cn-room' }, [
               Kit.avatar.el(h.name || '?', null, Kit.color(1)),
-              el('div', { class: 'grow' }, [el('b', { text: Kit.poss(h.name || 'Someone') + ' table' }), el('small', { text: colourLine(h, h.name || 'They') + ' · code ' + r.code })]),
+              el('div', { class: 'grow' }, [el('b', { text: Kit.poss(h.name || 'Someone') + ' table' }), el('small', { text: colourLine(h, h.name || 'They') + ' · code ' + r.code + yoursNote(h) })]),
               el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: go })]));
           }
         });
@@ -1497,7 +1669,7 @@
 
   // ── Test hook (used by automated checks; harmless otherwise) ─────────────
   window.__chess = {
-    net: { NET: NET, lobby: function () { showLobby(); }, away: function (ms) { NET.seenAt -= ms; netTick(); }, linkTag: linkTag },
+    net: { NET: NET, lobby: function () { showLobby(); }, away: function (ms) { NET.seenAt -= ms; netTick(); }, linkTag: linkTag, acctTag: acctTag, mine: netMine, open: netOpen },
     E: E, state: function () { return S; },
     fen: function (fen) { if (!S) return; cancelThink(); S.busy = false; S.pos = fromFen(fen); S.keys = [E.key(S.pos)]; S.hist = []; S.moves = []; S.events = []; S.last = null; S.over = false; S.result = null; S.caps = { '1': [], '-1': [] }; sel = -1; selMoves = []; save(); render(); maybeCpu(); },
     move: function (from, to, promo) { var f = (8 - +from[1]) * 8 + FILES.indexOf(from[0]), t = (8 - +to[1]) * 8 + FILES.indexOf(to[0]); commit({ f: f, t: t, promo: promo || 0 }); },
@@ -1508,8 +1680,12 @@
   // ── Boot ─────────────────────────────────────────────────────────────────
   // An online table this device is at comes first (a reload mid-game picks it back up), then a saved local game
   (function () {
-    var q = new URLSearchParams(location.search), mine = lsJ(NETK, null);
-    if (mine && mine.code && netReady()) {
+    var q = new URLSearchParams(location.search), mine = lsJ(NETK, null), room = String(q.get('room') || '').toUpperCase();
+    // a link to one of your games (the home screen's "your move")
+    if (/^[A-Z]{4}$/.test(room) && netReady()) {
+      showMsg('Opening your game…');
+      netOpen(room, mine && mine.code === room ? mine.seat : null).then(function (ok) { if (!ok) { Kit.toast('That game has ended'); showLobby(); } }).catch(function (e) { netErr(e); showLobby(); });
+    } else if (mine && mine.code && netReady()) {
       showMsg('Reconnecting to your online game…');
       netRejoin(mine).then(function (ok) { if (!ok) { if (q.get('online')) showLobby(); else showLocal(); } }).catch(function (e) { netErr(e); showLocal(); });
     } else if (q.get('online')) showLobby();

@@ -179,7 +179,7 @@
 .pland .pbar .btn{min-height:52px;padding:0 4px;font-size:.95rem;}
 .pland .pbar .btn .ico{width:18px;height:18px;}
 .pland .pbar .hint{font-size:.86rem;line-height:1.3;}
-.stage.pland .pboard{--cw:clamp(34px,11.5dvh,48px);gap:4px;}
+.stage.pland .pboard{--cw:clamp(30px,min(11.5dvh,(100vw - 270px) * .085),48px);gap:4px;}
 /* opponents: cards beside the name, so each seat is short */
 .pland .pseat.ls{display:grid;grid-template-columns:auto auto;column-gap:5px;row-gap:3px;align-items:center;justify-items:start;min-width:0;}
 .pland .pseat.ls > .cards{grid-row:1 / 3;}
@@ -193,19 +193,21 @@
 .pland .pseat .cards.face{--cw:30px;min-height:42px;}
 .pland .pseat .cards.face .pcard+.pcard{margin-left:-8px;}
 .pland .pseat .cards.face.om .pcard+.pcard{margin-left:-17px;}
-/* top seats say what they did beside them (below is where their chips go) */
+/* top and upper side seats say what they did beside them (below is where their chips go) */
 .pland .ls-t .psay,.pland .ls-lt .psay{top:50%;left:100%;transform:translate(5px,-50%);}
 .pland .ls-rt .psay{top:50%;left:auto;right:100%;transform:translate(-5px,-50%);}
+.pland .ls-l .psay,.pland .ls-r .psay{top:auto;bottom:100%;transform:translate(-50%,-3px);}
 .pland .pseat .pdealer{position:absolute;top:-9px;right:-9px;width:20px;height:20px;font-size:.62rem;}
 .pland .ls-rt .pdealer,.pland .ls-r .pdealer,.pland .ls-rb .pdealer{right:auto;left:-9px;}
 /* your seat: cards, then your name and chips */
-.pme{position:absolute;left:50%;bottom:3%;transform:translateX(-50%);z-index:4;display:flex;align-items:flex-end;gap:8px;}
-.pme .pdealer{align-self:center;}
+.pme{position:absolute;left:50%;bottom:2.5%;transform:translateX(-50%);z-index:4;display:flex;flex-direction:column;align-items:center;}
+.pme .pdealer{position:absolute;left:-30px;top:12px;}
 .stage.pland .phand{--cw:clamp(44px,15dvh,62px);gap:5px;min-height:0;}
 .stage.pland .phand.om{--cw:clamp(40px,13dvh,54px);gap:0;}
 .pland .phand.om .pcard+.pcard{margin-left:-10px;}
 .pland .phand .pcard{box-shadow:0 0 0 1px rgba(0,0,0,.15),0 6px 14px rgba(0,0,0,.45);}
-.pland .pseat.me{position:relative;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;padding-bottom:2px;}
+.pland .pseat.me{position:relative;z-index:2;margin-top:-20px;gap:4px;min-width:0;}
+.pland .pseat.me .psay{top:50%;bottom:auto;left:100%;transform:translate(6px,-50%);}
 .pland .ppot{flex-direction:row;align-items:flex-end;}
 .pland .ppot .lbl{font-size:.76rem;}
 .pland .pbet .amt{font-size:.72rem;}
@@ -1239,9 +1241,10 @@
   // Phone sideways: a wide table. Opponents sit along the top and the two ends (al/ar: pinned by their
   // outer edge so they never hang off the rail); your cards sit at the bottom centre, controls on the right.
   var LANDQ = window.matchMedia ? matchMedia('(orientation:landscape) and (max-height:500px)') : { matches: false };
-  var POSL = { t: [50, 10], lt: [27, 12], rt: [73, 12], l: [3, 40], r: [97, 40], lb: [3, 60], rb: [97, 60] };
-  var BETL = { t: [50, 25.5], lt: [30, 27], rt: [70, 27], l: [21, 30], r: [79, 30], lb: [19, 76], rb: [81, 76] };
-  var LAYL = { 2: ['b', 't'], 3: ['b', 'lt', 'rt'], 4: ['b', 'l', 't', 'r'], 5: ['b', 'lb', 'lt', 'rt', 'rb'], 6: ['b', 'lb', 'lt', 't', 'rt', 'rb'] };
+  var POSL = { t: [50, 10], lt: [27, 12], rt: [73, 12], l: [3, 31], r: [97, 31], lb: [3, 67], rb: [97, 67] };
+  var BETL = { t: [50, 22], lt: [30, 25], rt: [70, 25], l: [34, 21], r: [66, 21], lb: [13, 51], rb: [87, 51] };
+  var CENL = [50, 47];   // the board sits a little high so your cards have room below it
+  var LAYL = { 2: ['b', 't'], 3: ['b', 'lt', 'rt'], 4: ['b', 'l', 't', 'r'], 5: ['b', 'lb', 'lt', 'rt', 'rb'], 6: ['b', 'lb', 'l', 't', 'r', 'rb'] };
   function onLand() { if (S && S.kind === 'table') renderTable(!S.hand || app.classList.contains('after')); }
   if (LANDQ.addEventListener) LANDQ.addEventListener('change', onLand); else if (LANDQ.addListener) LANDQ.addListener(onLand);
   function lerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
@@ -1319,7 +1322,7 @@
       // Chips in front of the seat
       var bp = lerp(pos, CEN, me ? 0.36 : 0.42), side = pos[0] < 40 ? 'l' : pos[0] > 60 ? 'r' : '';
       if (side) bp = [side === 'l' ? 25 : 75, pos[1] + (pos[1] < 40 ? 8 : pos[1] > 60 ? -7 : 9)];
-      if (land) { bp = me ? [50, 63] : BETL[lay[i]]; side = ''; }
+      if (land) { bp = me ? [50, 59] : BETL[lay[i]]; side = ''; }
       function atBet(node) { at(node, bp); if (side) node.classList.add('b' + side); return node; }
       if (H && H.bet[i] > 0) {
         var be = el('div', { class: 'pbet' }, [chipStack(H.bet[i]), el('span', { class: 'amt', text: amt(H.bet[i]) })]);
@@ -1344,7 +1347,7 @@
     if (H && !done) {
       var potAmt = H.pot;
       var pe = potEl = el('div', { class: 'ppot' }, [potAmt ? chipStack(potAmt, 4) : null, el('span', { class: 'lbl', text: 'Pot ' + amt(potAll()) })]);
-      tb.appendChild(at(pe, land ? [50, 34] : [50, 33]));
+      tb.appendChild(at(pe, land ? [50, 31] : [50, 33]));
     }
     // Board
     var board = el('div', { class: 'pboard' });
@@ -1357,12 +1360,12 @@
         board.appendChild(ce);
       } else board.appendChild(Kit.card('', '', { cls: 'slot' }));
     }
-    tb.appendChild(at(board, CEN));
+    tb.appendChild(at(board, land ? CENL : CEN));
     // Result message
     if (done) {
       /* result text sits under your cards */
     } else if (H && H.phase === 'runout') {
-      tb.appendChild(at(el('div', { class: 'pmsg', html: 'All in: <b>running it out</b>' }), land ? [50, 66] : [50, 68]));
+      tb.appendChild(at(el('div', { class: 'pmsg', html: 'All in: <b>running it out</b>' }), land ? [50, 60] : [50, 68]));
     }
     app.appendChild(tb);
 

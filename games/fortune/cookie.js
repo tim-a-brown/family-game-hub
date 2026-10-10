@@ -450,7 +450,7 @@ function crinkleCanvases(seed) {
 // 0.5..1 the bottom sheet back again, so in the flat seal both sheets land on the same z
 // and the zigzag teeth line up. Each pack is split along a jagged tear line near x = 0 into
 // a left and a right half (shared geometries, a few variants).
-const WR = { M: 64, ROWS: 46, TOOTH: 0.05, NT: 2.5, NB: 5 };
+const WR = { M: 56, RB: 6, RT: 18, RF: 4, TOOTH: 0.05, NT: 2.5, NB: 5 };
 function wrapperShape(R) {
   const V = {
     Lb: 0.42 + R() * 0.1,        // where the pillow starts to taper toward the seal
@@ -485,7 +485,7 @@ function wrapBase(V, x, sg, o) {
   return o;
 }
 function wrapperGeometries(V) {
-  const M = WR.M, NC = M * 2, ROWS = WR.ROWS;
+  const M = WR.M, NC = M * 2, RB = WR.RB, RT = RB + WR.RT, ROWS = RT + WR.RF;
   const P0 = { x: 0, y: 0, z: 0 }, Pa = { x: 0, y: 0, z: 0 }, Pb = { x: 0, y: 0, z: 0 }, Pc = { x: 0, y: 0, z: 0 }, Pd = { x: 0, y: 0, z: 0 };
   // normal of the base surface by finite differences (outward)
   function baseN(x, sg, out) {
@@ -521,11 +521,11 @@ function wrapperGeometries(V) {
     for (let r = 0; r <= ROWS; r++) {
       for (let j = 0; j < NC; j++) {
         const sg = j / NC, tear = V.tear[j], tip = 1 + V.Lf - (j % 2 ? WR.TOOTH : 0);
-        // rows: 8 across the body, 26 through the taper, the rest across the crimp
+        // rows: a few across the body, most through the taper, a few across the crimp
         let ax;
-        if (r <= 8) ax = tear * side + (V.Lb - tear * side) * (r / 8);
-        else if (r <= 34) { const u = (r - 8) / 26; ax = V.Lb + (1 - V.Lb) * u; }
-        else ax = 1 + (tip - 1) * ((r - 34) / (ROWS - 34));
+        if (r <= RB) ax = tear * side + (V.Lb - tear * side) * (r / RB);
+        else if (r <= RT) { const u = (r - RB) / (RT - RB); ax = V.Lb + (1 - V.Lb) * u; }
+        else ax = 1 + (tip - 1) * ((r - RT) / (ROWS - RT));
         const x = side * ax;
         surf(x, sg, P0);
         // normal from the displaced surface
