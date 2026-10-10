@@ -54,7 +54,11 @@ var GAMES = [
     ] },
 
   // ── Board ────────────────────────────────────────────────────────────────
-  { id: 'chess',       name: 'Chess',        color: '#64748b', cat: 'board', min: 1, max: 2, tag: 'The classic, vs computer or a friend', play: 'chess' },
+  { id: 'chess',       name: 'Chess',        color: '#64748b', cat: 'board', min: 1, max: 2, tag: 'The classic, vs computer, a friend, or online', play: 'chess',
+    launch: [
+      { icon: 'phone', title: 'Play on this device', desc: 'Against the computer or pass and play', file: 'chess.html' },
+      { icon: 'users', title: 'Play online', desc: 'Two devices, each signed in with its own PIN', file: 'chess.html?online=1' }
+    ] },
   { id: 'checkers',    name: 'Checkers',     color: '#dc2626', cat: 'board', min: 1, max: 2, tag: 'Jump, king, and clear the board', play: 'checkers' },
   { id: 'connectfour', name: 'Connect Four', color: '#2563eb', cat: 'board', min: 1, max: 2, tag: 'Four in a row wins', play: 'connectfour' },
   { id: 'tictactoe',   name: 'Tic-Tac-Toe',  color: '#06b6d4', cat: 'board', min: 1, max: 3, tag: 'Classic, Ultimate, and 3-player', play: 'tictactoe' },
