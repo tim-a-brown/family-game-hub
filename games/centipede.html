@@ -748,7 +748,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function collide() {
     G.players.forEach(function (P) {
-      if (!P.alive || P.inv > 0 || G.phase === 'dead') return;
+      if (!P.alive || P.inv > 0 || G.phase === 'dead' || G.noDie) return;
       var dead = false, i;
       for (i = 0; i < G.segs.length && !dead; i++) { var s = G.segs[i]; if (Math.abs(s.x - P.x) < 7.5 && Math.abs(s.y - P.y) < 7.5) dead = true; }
       for (i = 0; i < G.foes.length && !dead; i++) if (foeTest(G.foes[i], P.x, P.y, 2)) dead = true;
@@ -963,7 +963,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     app.appendChild(wrapEl); app.appendChild(stripEl);
     app.appendChild(el('div', { class: 'ar-hint ar-desk', text: 'Mouse or arrow keys to move · hold the button or Space to fire · F auto-fire' + (online ? '' : ' · P pauses') }));
     if (ro) ro.disconnect();
-    ro = new ResizeObserver(fit); ro.observe(app);
+    ro = new ResizeObserver(fit); ro.observe(app); ro.observe(wrapEl);
     cssW = 0; fit(); hudDirty = true; shown = {};
     fx.parts = []; fx.pops = []; fx.arcs = []; fx.shake = 0; fx.flash = 0;
     ctl.touches = {}; ctl.nt = 0; ctl.steer = null; ctl.dx = ctl.dy = 0; ctl.mouse = false; ctl.keys = {};
@@ -1711,7 +1711,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     run: function (sec) { var n = Math.round(sec / STEP); for (var i = 0; i < n && G && !G.ended; i++) { sim(STEP); if (G.mode === 'host') netHostTick(); } draw(); updateHud(); },
     wave: function (n) { G.chains = []; G.segs = []; G.boss = null; G.foes = []; G.shots = []; startWave(n); },
     clearWave: function () { G.chains = []; G.segs = []; if (G.boss) G.boss.hp = 1; },
-    god: function (on) { G.players.forEach(function (p) { p.inv = on ? 1e9 : 0; }); },
+    god: function (on) { G.noDie = !!on; },
     power: function (k) { var P = G.players[0]; P.power = k; P.powerT = POW_T; },
     move: function (x, y) { var P = G.players[0]; P.x = x; P.y = y; },
     fire: function (on) { ctl.keys[' '] = !!on; },

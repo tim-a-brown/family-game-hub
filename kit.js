@@ -25,6 +25,7 @@
 //   Kit.rules()                                open the rules sheet
 //   Kit.theme.pick() / .get() / .set(id)       app colour theme (localStorage fgh_theme)
 //   Kit.init({orient:'landscape'|'portrait'})  phones only (orientTablets:true adds iPads): lock or show a turn-your-device cover; 'kit:orient' event
+//   Kit.orient('landscape'|'portrait'|null, tablets?)  same gate, set or lifted later (per mode); Kit.orientOk() -> bool
 //   Kit.titleSwitch(text, onClick, label) / (null)   title shows the table/machine/level with a down arrow; tap = the game's own picker
 // window.GN is kept as an alias for haptic/toast/confirm/sheet.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -760,28 +761,39 @@
     try { return matchMedia('(hover:none) and (pointer:coarse)').matches; } catch (e) { return false; }
   }
   // tablets: true also gates touch tablets (iPad) for games whose table only works one way (pinball)
-  function orientGate(want, tablets) {
-    if (!(isPhone() || (tablets && isTouchTablet()))) return;
-    var cover = null;
-    function lock() { try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock(want).catch(function () {}); } catch (e) {} }
-    function check() {
-      var land = window.innerWidth > window.innerHeight, ok = want === 'landscape' ? land : !land;
-      if (!ok && !cover) {
-        cover = el('div', { class: 'k-rotate k-rotate-' + want, role: 'alertdialog', 'aria-live': 'polite' }, [
-          el('div', { class: 'k-rot-ph', 'aria-hidden': 'true' }, [el('i')]),
-          el('b', { text: 'Turn your ' + (isPhone() ? 'phone' : 'iPad') + (want === 'landscape' ? ' sideways' : ' upright') }),
-          el('span', { text: (game ? game.name : 'This game') + (want === 'landscape' ? ' plays in landscape.' : ' plays in portrait.') })
-        ]);
-        doc.body.appendChild(cover);
-      } else if (ok && cover) { cover.remove(); cover = null; }
-      if (ok !== orientOk) { orientOk = ok; try { doc.dispatchEvent(new CustomEvent('kit:orient', { detail: { ok: ok } })); } catch (e) {} }
+  // Kit.orient(want|null, tablets) runs the same gate later, for games whose modes differ (Poker: the
+  // Hold'em table is landscape, the video poker machine portrait); null lifts it (e.g. on the setup screen).
+  var orWant = null, orTabs = false, orCover = null, orHooked = false, orTap = false;
+  function orUnlock() { try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch (e) {} }
+  function orLock() { if (orWant && orGated()) try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock(orWant).catch(function () {}); } catch (e) {} }
+  function orGated() { return !!orWant && (isPhone() || (orTabs && isTouchTablet())); }
+  function orCheck() {
+    var land = window.innerWidth > window.innerHeight, ok = !orGated() || (orWant === 'landscape' ? land : !land);
+    if (orCover && (ok || orCover.getAttribute('data-want') !== orWant)) { orCover.remove(); orCover = null; }
+    if (!ok && !orCover && doc.body) {
+      orCover = el('div', { class: 'k-rotate k-rotate-' + orWant, 'data-want': orWant, role: 'alertdialog', 'aria-live': 'polite' }, [
+        el('div', { class: 'k-rot-ph', 'aria-hidden': 'true' }, [el('i')]),
+        el('b', { text: 'Turn your ' + (isPhone() ? 'phone' : 'iPad') + (orWant === 'landscape' ? ' sideways' : ' upright') }),
+        el('span', { text: (game ? game.name : 'This game') + (orWant === 'landscape' ? ' plays in landscape.' : ' plays in portrait.') })
+      ]);
+      doc.body.appendChild(orCover);
     }
-    lock();
-    doc.addEventListener('pointerdown', lock, { once: true, passive: true });   // some browsers only lock after a tap
-    window.addEventListener('resize', check);
-    window.addEventListener('orientationchange', function () { setTimeout(check, 150); });
-    window.addEventListener('pagehide', function () { try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch (e) {} });
-    if (doc.body) check(); else doc.addEventListener('DOMContentLoaded', check);
+    if (ok !== orientOk) { orientOk = ok; try { doc.dispatchEvent(new CustomEvent('kit:orient', { detail: { ok: ok } })); } catch (e) {} }
+  }
+  function orientGate(want, tablets) {
+    want = want === 'landscape' || want === 'portrait' ? want : null;
+    if (want === orWant && !!tablets === orTabs) return;
+    orWant = want; orTabs = !!tablets;
+    if (!orGated()) orUnlock();
+    if (orGated() && !orHooked) {
+      orHooked = true;
+      doc.addEventListener('pointerdown', function () { if (orTap) { orTap = false; orLock(); } }, { passive: true });   // some browsers only lock after a tap
+      window.addEventListener('resize', orCheck);
+      window.addEventListener('orientationchange', function () { setTimeout(orCheck, 150); });
+      window.addEventListener('pagehide', orUnlock);
+    }
+    orTap = true; orLock();
+    if (doc.body) orCheck(); else doc.addEventListener('DOMContentLoaded', orCheck);
   }
 
   function init(o) {
@@ -2083,6 +2095,7 @@
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
+    orient: function (want, tablets) { orientGate(want, tablets); },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
     titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };

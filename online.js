@@ -130,13 +130,13 @@
       ack: function (code, id) { return db().then(function (d) { return ref(d, code).collection('sig').doc(id).delete(); }); }
     };
   }
-  // Two tabs of one browser (tests): each table and each message under its own localStorage key, changes
-  // announced on a BroadcastChannel
+  // Two tabs of one browser (tests): each table and each message under its own localStorage key; the other
+  // tabs hear about changes through the storage event
   function localTransport(name) {
-    var P = 'online_local_' + (name || 'db') + ':', subs = [], bc = null;
-    try { bc = new BroadcastChannel(P); bc.onmessage = fire; } catch (e) {}
+    var P = 'online_local_' + (name || 'db') + ':', subs = [];
+    window.addEventListener('storage', function (e) { if (!e.key || e.key.indexOf(P) === 0) fire(); });
     function all(pre) { var out = {}; try { for (var i = 0; i < LS.length; i++) { var k = LS.key(i); if (k && k.indexOf(P + pre) === 0) { var v = lsGet(k, null); if (v) out[k.slice((P + pre).length)] = v; } } } catch (e) {} return out; }
-    function put(k, v) { if (v == null) { try { LS.removeItem(P + k); } catch (e) {} } else lsSet(P + k, v); if (bc) bc.postMessage(1); setTimeout(fire, 0); }
+    function put(k, v) { if (v == null) { try { LS.removeItem(P + k); } catch (e) {} } else lsSet(P + k, v); setTimeout(fire, 0); }
     function fire() { subs.slice().forEach(function (s) { try { s(); } catch (e) { console.error(e); } }); }
     function sub(fn) { subs.push(fn); setTimeout(function () { if (subs.indexOf(fn) >= 0) fn(); }, 0); return function () { var i = subs.indexOf(fn); if (i >= 0) subs.splice(i, 1); }; }
     return {

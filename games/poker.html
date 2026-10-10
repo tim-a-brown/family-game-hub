@@ -149,6 +149,70 @@
 .tlist .row small{display:block;color:var(--text-3);font-weight:700;}
 .tlist .row .s{font-weight:900;font-variant-numeric:tabular-nums;}
 
+/* ── Phone sideways (Hold'em / Omaha): wide table on the left, your cards at its bottom centre,
+      blinds, hand name and the action buttons in a column on the right. One screen, no scrolling. ── */
+@media (orientation:landscape) and (max-height:500px){
+  .gbar{padding-top:calc(var(--safe-t) + 3px);padding-bottom:3px;}
+  .gbar .icon-btn{width:36px;height:36px;}
+  .gbar .icon-btn svg{width:20px;height:20px;}
+  .gbar .ttl{font-size:1.05rem;}
+  .gbar .ttl .gi .gicon{width:28px;height:28px;}
+}
+.stage.pland{max-width:none;margin:0;height:calc(100dvh - var(--gbh,44px));display:grid;
+  grid-template-columns:minmax(0,1fr) clamp(190px,27vw,250px);grid-template-rows:auto auto minmax(0,1fr) auto auto;column-gap:12px;
+  padding:2px calc(var(--corner-x) + 2px) calc(var(--safe-b) + 8px) 10px;}
+.stage.pland .ptable{grid-column:1;grid-row:1 / -1;height:auto;min-height:0;margin:0;border-radius:30% / 50%;}
+.pland .ptable > .felt-in{inset:9px;border-radius:30% / 50%;}
+.pland .ptable > .felt-in::after{inset:15% 9%;border-radius:30% / 50%;}
+.pland .pinfo{grid-column:2;grid-row:1;flex-direction:column;align-items:stretch;gap:3px;margin:4px 2px 8px;font-size:.78rem;}
+.pland .pinfo > span:not(.bank){display:block;white-space:normal;}
+.pland .plabel{grid-column:2;grid-row:2;margin:0 2px;min-height:0;font-size:.92rem;line-height:1.25;text-align:left;}
+.pland .plabel.res{font-size:.84rem;}
+.pland .praise{grid-column:2;grid-row:4;margin:0 0 8px;padding:6px 10px 8px;}
+.pland .praise .top b{font-size:1.25rem;}
+.pland .praise .muted{font-size:.8rem;}
+.pland .praise .btn-sm{min-height:36px;padding:0 12px;font-size:.88rem;}
+.pland .praise input[type=range]{height:28px;}
+.pland .praise .pre{gap:4px;margin-top:2px;}
+.pland .praise .pre .chip{min-height:30px;padding:0 2px;font-size:.76rem;}
+.pland .pbar{grid-column:2;grid-row:5;gap:6px;min-height:52px;}
+.pland .pbar .btn{min-height:52px;padding:0 4px;font-size:.95rem;}
+.pland .pbar .btn .ico{width:18px;height:18px;}
+.pland .pbar .hint{font-size:.86rem;line-height:1.3;}
+.stage.pland .pboard{--cw:clamp(34px,11.5dvh,48px);gap:4px;}
+/* opponents: cards beside the name, so each seat is short */
+.pland .pseat.ls{display:grid;grid-template-columns:auto auto;column-gap:5px;row-gap:3px;align-items:center;justify-items:start;min-width:0;}
+.pland .pseat.ls > .cards{grid-row:1 / 3;}
+.pland .pseat.al{transform:translate(0,-50%);}
+.pland .pseat.ar{transform:translate(-100%,-50%);}
+.pland .pseat .tag{font-size:.74rem;max-width:104px;padding-right:7px;}
+.pland .pseat .tag .avatar{width:20px;height:20px;}
+.pland .pseat .stack{font-size:.7rem;}
+.pland .pseat .cards{--cw:22px;min-height:31px;}
+.pland .pseat .cards .pcard+.pcard{margin-left:-12px;}
+.pland .pseat .cards.face{--cw:30px;min-height:42px;}
+.pland .pseat .cards.face .pcard+.pcard{margin-left:-8px;}
+.pland .pseat .cards.face.om .pcard+.pcard{margin-left:-17px;}
+/* top seats say what they did beside them (below is where their chips go) */
+.pland .ls-t .psay,.pland .ls-lt .psay{top:50%;left:100%;transform:translate(5px,-50%);}
+.pland .ls-rt .psay{top:50%;left:auto;right:100%;transform:translate(-5px,-50%);}
+.pland .pseat .pdealer{position:absolute;top:-9px;right:-9px;width:20px;height:20px;font-size:.62rem;}
+.pland .ls-rt .pdealer,.pland .ls-r .pdealer,.pland .ls-rb .pdealer{right:auto;left:-9px;}
+/* your seat: cards, then your name and chips */
+.pme{position:absolute;left:50%;bottom:3%;transform:translateX(-50%);z-index:4;display:flex;align-items:flex-end;gap:8px;}
+.pme .pdealer{align-self:center;}
+.stage.pland .phand{--cw:clamp(44px,15dvh,62px);gap:5px;min-height:0;}
+.stage.pland .phand.om{--cw:clamp(40px,13dvh,54px);gap:0;}
+.pland .phand.om .pcard+.pcard{margin-left:-10px;}
+.pland .phand .pcard{box-shadow:0 0 0 1px rgba(0,0,0,.15),0 6px 14px rgba(0,0,0,.45);}
+.pland .pseat.me{position:relative;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;padding-bottom:2px;}
+.pland .ppot{flex-direction:row;align-items:flex-end;}
+.pland .ppot .lbl{font-size:.76rem;}
+.pland .pbet .amt{font-size:.72rem;}
+.pland .stk .col i{width:17px;height:5px;margin-top:-2px;}
+.pland .stk .col i:last-child{height:8px;}
+.pland .pmsg{font-size:.78rem;padding:4px 12px;}
+
 /* ── iPad portrait: taller table, bigger cards and labels ── */
 @media (min-width:700px) and (min-height:900px) and (orientation:portrait){
   .ptable{height:clamp(500px,58dvh,680px);}
@@ -393,8 +457,13 @@
     if (S.tourn) return g + ' tournament · ' + alive().length + ' left';
     return g + ' cash · ' + usd(S.players[0].stack) + ' on the table';
   }
-  function later(fn, ms) { var t = token; clearTimeout(timer); timer = setTimeout(function () { if (t === token) fn(); }, ms); }
-  function stop() { token++; clearTimeout(timer); }
+  // Timed steps (computer moves, dealing) wait while the turn-your-phone cover is up, and carry on once it's turned
+  var held = null;
+  function later(fn, ms) { var t = token; clearTimeout(timer); held = null; timer = setTimeout(function () { if (t !== token) return; if (Kit.orientOk && !Kit.orientOk()) held = fn; else fn(); }, ms); }
+  function stop() { token++; clearTimeout(timer); held = null; }
+  document.addEventListener('kit:orient', function (e) { if (e.detail.ok && held) { var f = held; held = null; later(f, 500); } });
+  // Phones: the Hold'em / Omaha table plays sideways, the video poker machine upright; the setup screen either way
+  function orient(want) { if (Kit.orient) Kit.orient(want); }
   function modeName(st) {
     st = st || S;
     if (st.kind === 'vp') return 'Video poker';
@@ -404,7 +473,8 @@
 
   // ── Setup ──────────────────────────────────────────────────────────────────
   function showSetup() {
-    stop(); S = null; undoStack = []; raiseUI = null; app.classList.remove('raising');
+    stop(); S = null; undoStack = []; raiseUI = null; app.classList.remove('raising', 'pland');
+    orient(null);
     Kit.setup(app, {
       modes: [
         { id: 'he', icon: 'cards', title: 'Texas Hold\'em', desc: '2 cards each, 5 shared. Against computer players.' },
@@ -577,7 +647,8 @@
 
   function renderVP(o) {
     o = o || {};
-    app.classList.remove('raising');
+    orient('portrait');
+    app.classList.remove('raising', 'pland');
     app.innerHTML = '';
     var cab = el('div', { class: 'vp' });
     cab.appendChild(el('div', { class: 'vp-title', text: 'Jacks or Better' }));
@@ -1165,13 +1236,25 @@
   var POS = { b: [50, 94], lb: [14, 71], lt: [14, 29], t: [50, 8.5], rt: [86, 29], rb: [86, 71], l: [13, 47], r: [87, 47] };
   var LAY = { 2: ['b', 't'], 3: ['b', 'lt', 'rt'], 4: ['b', 'l', 't', 'r'], 5: ['b', 'lb', 'lt', 'rt', 'rb'], 6: ['b', 'lb', 'lt', 't', 'rt', 'rb'] };
   var CEN = [50, 50];
+  // Phone sideways: a wide table. Opponents sit along the top and the two ends (al/ar: pinned by their
+  // outer edge so they never hang off the rail); your cards sit at the bottom centre, controls on the right.
+  var LANDQ = window.matchMedia ? matchMedia('(orientation:landscape) and (max-height:500px)') : { matches: false };
+  var POSL = { t: [50, 10], lt: [27, 12], rt: [73, 12], l: [3, 40], r: [97, 40], lb: [3, 60], rb: [97, 60] };
+  var BETL = { t: [50, 25.5], lt: [30, 27], rt: [70, 27], l: [21, 30], r: [79, 30], lb: [19, 76], rb: [81, 76] };
+  var LAYL = { 2: ['b', 't'], 3: ['b', 'lt', 'rt'], 4: ['b', 'l', 't', 'r'], 5: ['b', 'lb', 'lt', 'rt', 'rb'], 6: ['b', 'lb', 'lt', 't', 'rt', 'rb'] };
+  function onLand() { if (S && S.kind === 'table') renderTable(!S.hand || app.classList.contains('after')); }
+  if (LANDQ.addEventListener) LANDQ.addEventListener('change', onLand); else if (LANDQ.addListener) LANDQ.addListener(onLand);
   function lerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
   function at(node, p) { node.classList.add('pa'); node.style.left = p[0] + '%'; node.style.top = p[1] + '%'; return node; }
   var R = {}, raiseUI = null, tableEl = null, potEl = null, seatEls = [], betEls = [];
 
   function renderTable(final) {
-    var H = S.hand, n = N(), lay = LAY[n];
+    var H = S.hand, n = N(), land = LANDQ.matches, lay = (land ? LAYL : LAY)[n];
+    orient('landscape');
     app.innerHTML = '';
+    app.classList.toggle('pland', land);
+    app.classList.toggle('after', !!final);
+    if (land) { var gb = document.querySelector('.gbar'); app.style.setProperty('--gbh', (gb ? gb.offsetHeight : 44) + 'px'); }
     // Info strip
     var left, right;
     if (S.tourn) {
@@ -1187,11 +1270,12 @@
     var tb = tableEl = el('div', { class: 'ptable wood' });
     tb.appendChild(el('div', { class: 'felt-in' }));
     seatEls = []; betEls = [];
+    var meSeat = null, meDealer = null;
     var done = H && H.phase === 'done';
     var main = done ? (H.results.filter(function (r) { return !r.back; })[0] || H.results[0]) : null;
     S.players.forEach(function (p, i) {
-      var pos = POS[lay[i]], me = i === 0;
-      var seat = el('div', { class: 'pseat' + (me ? ' me' : '') + (/^(l|r|lt|rt)$/.test(lay[i]) ? ' up' : '') + (lay[i] === 't' ? ' top' : '') });
+      var me = i === 0, pos = land && !me ? POSL[lay[i]] : POS[lay[i]];
+      var seat = el('div', { class: 'pseat' + (me ? ' me' : '') + (land ? (me ? '' : ' ls ls-' + lay[i]) : (/^(l|r|lt|rt)$/.test(lay[i]) ? ' up' : '') + (lay[i] === 't' ? ' top' : '')) });
       if (p.out) seat.classList.add('out');
       if (H && H.folded[i]) seat.classList.add('fold');
       if (H && H.phase === 'bet' && H.actor === i) seat.classList.add('turn');
@@ -1225,11 +1309,17 @@
         var sy = el('div', { class: 'psay' + (done && H.scores && H.scores[i] != null ? ' hand' : say === 'Fold' ? ' fold' : '') + (H && H.sayNew === i ? ' new' : ''), text: say });
         seat.appendChild(sy);
       }
-      tb.appendChild(at(seat, pos));
+      if (land && me) meSeat = seat;
+      else {
+        tb.appendChild(at(seat, pos));
+        if (land && /^(l|lb)$/.test(lay[i])) seat.classList.add('al');
+        if (land && /^(r|rb)$/.test(lay[i])) seat.classList.add('ar');
+      }
       seatEls[i] = seat;
       // Chips in front of the seat
       var bp = lerp(pos, CEN, me ? 0.36 : 0.42), side = pos[0] < 40 ? 'l' : pos[0] > 60 ? 'r' : '';
       if (side) bp = [side === 'l' ? 25 : 75, pos[1] + (pos[1] < 40 ? 8 : pos[1] > 60 ? -7 : 9)];
+      if (land) { bp = me ? [50, 63] : BETL[lay[i]]; side = ''; }
       function atBet(node) { at(node, bp); if (side) node.classList.add('b' + side); return node; }
       if (H && H.bet[i] > 0) {
         var be = el('div', { class: 'pbet' }, [chipStack(H.bet[i]), el('span', { class: 'amt', text: amt(H.bet[i]) })]);
@@ -1239,7 +1329,10 @@
         var we = el('div', { class: 'pbet won' }, [chipStack(gain), el('span', { class: 'amt', text: '+' + amt(gain) })]);
         tb.appendChild(atBet(we)); betEls[i] = we;
       }
-      if (H && H.button === i) {
+      if (H && H.button === i && land) {
+        var dl = el('div', { class: 'pdealer', text: 'D', 'aria-label': 'Dealer button' });
+        if (me) meDealer = dl; else seat.appendChild(dl);
+      } else if (H && H.button === i) {
         var dp = lerp(pos, CEN, me ? 0.3 : 0.24);
         dp[0] += pos[0] < 50 ? 8 : pos[0] > 50 ? -8 : (me ? -16 : 16);
         dp[1] += pos[0] === 50 ? 0 : -6;
@@ -1251,7 +1344,7 @@
     if (H && !done) {
       var potAmt = H.pot;
       var pe = potEl = el('div', { class: 'ppot' }, [potAmt ? chipStack(potAmt, 4) : null, el('span', { class: 'lbl', text: 'Pot ' + amt(potAll()) })]);
-      tb.appendChild(at(pe, [50, 33]));
+      tb.appendChild(at(pe, land ? [50, 34] : [50, 33]));
     }
     // Board
     var board = el('div', { class: 'pboard' });
@@ -1269,7 +1362,7 @@
     if (done) {
       /* result text sits under your cards */
     } else if (H && H.phase === 'runout') {
-      tb.appendChild(at(el('div', { class: 'pmsg', html: 'All in: <b>running it out</b>' }), [50, 68]));
+      tb.appendChild(at(el('div', { class: 'pmsg', html: 'All in: <b>running it out</b>' }), land ? [50, 66] : [50, 68]));
     }
     app.appendChild(tb);
 
@@ -1282,7 +1375,8 @@
       if (done && H.five && H.five[0] && main && main.v != null && main.w.indexOf(0) >= 0) ce.classList.add(H.five[0].indexOf(c) >= 0 ? 'best' : 'unused');
       hand.appendChild(ce);
     });
-    app.appendChild(hand);
+    if (land) tb.appendChild(el('div', { class: 'pme' }, [meDealer, hand, meSeat]));
+    else app.appendChild(hand);
     var label = '', dim = false;
     if (H && H.inHand[0]) {
       if (H.folded[0]) { label = 'You folded'; dim = true; }
