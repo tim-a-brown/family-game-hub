@@ -221,17 +221,19 @@ function mount(stage, api) {
     const held = !!ptr, pushed = !held && now - fT < 600, k = held ? 150 : pushed ? 42 : 70, c = held ? 17 : pushed ? 7.4 : 8.6;
     if (!held) { tx = 0; ty = 0; }
     const n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n;
+    // a hard shake of the phone meets a stiffening wall, so the ball swings a long way but stays on the screen:
+    // the room it has is what's left of half the screen beside the ball (bigger while the window is round)
+    const bp = (R ? R.ballPx() : 120) * (1 + 0.22 * clamp(S.flip, 0, 1));
+    const Lx = pushed ? clamp(W / 2 / bp - 1.04, 0.3, 1.25) : 1.25, Lu = pushed ? clamp(H / 2 / bp - 1.04, 0.3, 1.0) : 1.0, Ld = pushed ? Math.min(0.7, Lu) : 0.7;
     for (let i = 0; i < n; i++) {
-      // a hard shake of the phone meets a stiffening wall, so the ball swings a long way but stays on the screen
-      const wx = pushed ? 7 * k * ox * ox * ox : 0, wy = pushed ? 7 * k * oy * oy * oy : 0;
+      const wx = pushed ? 6 * k * ox * ox * ox / (Lx * Lx) : 0, wy = pushed ? 6 * k * oy * oy * oy / (Lu * Lu) : 0;
       vx += (k * (tx - ox) - wx - c * vx + fx) * h; vy += (k * (ty - oy) - wy - c * vy + fy) * h;
       ox += vx * h; oy += vy * h;
-      if (oy < -0.7) { oy = -0.7; if (vy < 0) vy *= -0.3; }
+      if (ox < -Lx || ox > Lx) { ox = clamp(ox, -Lx, Lx); if (ox * vx > 0) vx *= -0.3; }
+      if (oy > Lu) { oy = Lu; if (vy > 0) vy *= -0.3; }
+      if (oy < -Ld) { oy = -Ld; if (vy < 0) vy *= -0.3; }
       vflip += (30 * (flipTarget - S.flip) - 8.5 * vflip) * h; S.flip += vflip * h;
     }
-    ox = clamp(ox, -1.25, 1.25); oy = clamp(oy, -0.7, 1.0);
-    if (Math.abs(ox) >= 1.25 && ox * vx > 0) vx *= -0.3;
-    if (oy >= 1.0 && vy > 0) vy *= -0.3;
     S.px = ox; S.lift = Math.max(0, oy); S.pz = Math.max(0, -oy) * 1.3;
     S.tiltZ = clamp(-vx * 0.035, -0.35, 0.35); S.tiltX = clamp(-vy * 0.03, -0.3, 0.3);
     if (!held && !fx && !fy && Math.abs(ox) + Math.abs(oy) < 0.003 && Math.abs(vx) + Math.abs(vy) < 0.03) { ox = oy = vx = vy = 0; }   // at rest: snap still
