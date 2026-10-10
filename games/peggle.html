@@ -630,7 +630,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       '<h3>Pegs</h3><ul><li><b>Blue</b>: 10 points.</li><li><b>Orange</b>: 100 points. Clear them all to win.</li>' +
       '<li><b>Purple</b>: 500 points. It jumps to a new peg after every shot.</li><li><b>Green</b>: 10 points and sets off your power.</li></ul>' +
       '<h3>Multiplier</h3><p>The meter on the right fills as you hit orange pegs. All points are multiplied: <b>×2</b> after 10 orange pegs, <b>×3</b> at 15, <b>×5</b> at 19 and <b>×10</b> at 22.</p>' +
-      '<h3>Free balls</h3><ul><li>Land the ball in the moving <b>bucket</b> at the bottom.</li><li>Score <b>25,000</b>, <b>75,000</b> and <b>125,000</b> points in a single shot (one free ball each).</li></ul>' +
+      '<h3>Free balls</h3><ul><li>Land the ball in the moving <b>bucket</b> at the bottom.</li><li>Score <b>25,000</b>, <b>75,000</b> and <b>125,000</b> points in a single shot (one free ball each).</li><li>If a ball touches <b>no pegs at all</b>, a coin is flipped. Heads, you get the ball back.</li></ul>' +
       '<h3>Style shots</h3><ul><li><b>Long Shot</b> +25,000: fly a long way between pegs and hit an orange one.</li><li><b>Off the Wall</b> +2,000: bounce off a side wall into an orange peg.</li></ul>' +
       '<h3>Green peg powers</h3><p>Pick one power before you start:</p><ul><li><b>Super Guide</b>: a long aiming line that shows the bounces, for your next 3 shots.</li>' +
       '<li><b>Multiball</b>: a second ball pops out of the green peg.</li><li><b>Spooky Ball</b>: when the ball falls out the bottom, it comes back once from the top.</li>' +
@@ -833,7 +833,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     L = {
       n: n, def: LEVELS[n - 1], who: cfg.who || 'Player', master: cfg.master || 'guide', fireMode: cfg.fireMode || 'lift',
       ballsLeft: 10, score: 0, orangeHit: 0, purple: -1, guide: 0, fever: false, done: false, shots: [],
-      stats: { maxShot: 0, maxHits: 0, free: 0, freeBucket: 0, freeScore: 0, long: 0, wall: 0, powers: 0, fever: 0, stuck: 0 },
+      stats: { maxShot: 0, maxHits: 0, free: 0, freeBucket: 0, freeScore: 0, freeLucky: 0, flips: 0, long: 0, wall: 0, powers: 0, fever: 0, stuck: 0 },
       started: Date.now(), totalOrange: 0
     };
     wt = 0; ang = 0;
@@ -847,7 +847,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     }
     L.totalOrange = orangeTotal();
     L.orangeHit = objs.filter(function (o) { return o.c === 'o' && o.gone; }).length;
-    balls = []; shot = null; fx.parts = []; fx.pops = []; fx.banners = []; fx.later = [];
+    balls = []; shot = null; fx.parts = []; fx.pops = []; fx.banners = []; fx.later = []; fx.coin = null;
     zoom.on = false; zoom.z = 1; timeScale = tsTarget = 1; hitStop = 0; flash = 0; shake = 0; recoil = 0;
     if (L.purple < 0) movePurple();
     rebuildColliders(); placeAll(wt); shownScore = -1;
@@ -918,9 +918,20 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function freeBall(why, kind) {
     L.ballsLeft++; L.stats.free++;
-    if (kind === 'bucket') L.stats.freeBucket++; else L.stats.freeScore++;
+    if (kind === 'bucket') L.stats.freeBucket++; else if (kind === 'lucky') L.stats.freeLucky = (L.stats.freeLucky || 0) + 1; else L.stats.freeScore++;
     banner('FREE BALL', why, '#9df5b5', 1.6, 0.3);
     sFree(); Kit.haptic('success'); updateHud();
+  }
+  function coinFlip() {
+    var heads = (window.__forceR != null ? window.__forceR : Math.random()) < 0.5;
+    L.stats.flips = (L.stats.flips || 0) + 1;
+    fx.coin = { t: 0, heads: heads, spin: 6 + 2 * Math.floor(Math.random() * 2) };   // an even number of half-turns, plus one more for tails
+    Kit.sfx('flip'); Kit.haptic('light');
+    later(COIN_TOSS, function () {
+      Kit.sfx('chip');
+      if (heads) freeBall('Lucky coin flip', 'lucky');
+      else { banner('', 'No luck this time', '#ffb3bb', 1.2, 0.3); Kit.haptic('light'); }
+    });
   }
   function style(name, pts, b, k) {
     shot.styles.push(name); L.stats[k] = (L.stats[k] || 0) + 1;
@@ -989,7 +1000,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       // Catch: bucket or fever buckets
       if (!L.fever) {
         if (b.y > BUCKET_Y + 6 && b.y < BUCKET_Y + 30 && Math.abs(b.x - bx) < 28) {
-          balls.splice(i, 1); freeBall('Bucket catch', 'bucket'); bucketFlash = 1; shake = Math.max(shake, 4);
+          balls.splice(i, 1); if (shot) shot.bucket = true; freeBall('Bucket catch', 'bucket'); bucketFlash = 1; shake = Math.max(shake, 4);
           for (var k = 0; k < 14; k++) part(b.x, BUCKET_Y, (Math.random() - 0.5) * 200, -100 - Math.random() * 200, '#ffe7a8', 0.7, 2.2);
           continue;
         }
@@ -1066,7 +1077,10 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     q.forEach(function (o, i) { later(t + i * gap, function () { removePeg(o); sPop(Math.min(i, 30)); }); });
     later(t + q.length * gap + 0.25, finishShot);
   }
+  // A shot that touches no pegs (and isn't caught by the bucket) gets a coin flip: heads gives the ball back
+  var COIN_TOSS = 1.35;
   function finishShot() {
+    if (shot && !L.fever && !shot.hits.length && !shot.bucket && !shot.flipped) { shot.flipped = true; coinFlip(); later(COIN_TOSS + 1.0, finishShot); return; }
     var s = shot.score;
     L.score += s;
     L.shots.push(s);
@@ -1090,7 +1104,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (st.maxHits >= 12) h.push(st.maxHits + ' pegs in one shot');
     if (st.long) h.push(st.long === 1 ? 'Made a Long Shot' : st.long + ' Long Shots');
     if (st.wall) h.push(st.wall === 1 ? 'Made an Off the Wall shot' : st.wall + ' Off the Wall shots');
-    if (st.free) h.push(st.free + (st.free === 1 ? ' free ball' : ' free balls') + (st.freeBucket ? ' (' + st.freeBucket + ' in the bucket)' : ''));
+    if (st.free) h.push(st.free + (st.free === 1 ? ' free ball' : ' free balls') + (st.freeBucket ? ' (' + st.freeBucket + ' in the bucket)' : '') + (st.freeLucky ? ' (' + st.freeLucky + ' from a lucky coin flip)' : ''));
     return h.slice(0, 6);
   }
   function recordLevel(won) {
@@ -1230,6 +1244,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     fx.pops.forEach(function (p) { p.life -= dt; p.y -= 22 * dt; });
     fx.pops = fx.pops.filter(function (p) { return p.life > 0; });
     fx.banners.forEach(function (b) { b.life -= dt; });
+    if (fx.coin) { fx.coin.t += dt; if (fx.coin.t > COIN_TOSS + 1.0) fx.coin = null; }
     fx.banners = fx.banners.filter(function (b) { return b.life > 0; });
     recoil = Math.max(0, recoil - dt * 5); shake = Math.max(0, shake - dt * 20); flash = Math.max(0, flash - dt * 1.4);
     meterPulse = Math.max(0, meterPulse - dt * 1.5); bucketFlash = Math.max(0, bucketFlash - dt * 1.6); pwFlash = Math.max(0, pwFlash - dt);
@@ -1340,6 +1355,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     g.save(); g.translate(RAIL, 0); g.beginPath(); g.rect(0, 0, FW, FH); g.clip();
     if (zoom.z > 1.02) { var vg = g.createRadialGradient(FW / 2, FH / 2, FH * 0.25, FW / 2, FH / 2, FH * 0.7); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,' + (0.55 * (zoom.z - 1) / 1.1).toFixed(3) + ')'); g.fillStyle = vg; g.fillRect(0, 0, FW, FH); }
     drawShotScore(g);
+    drawCoin(g);
     drawBanners(g);
     if (flash > 0) { g.fillStyle = 'rgba(255,250,230,' + (flash * 0.7).toFixed(3) + ')'; g.fillRect(0, 0, FW, FH); }
     g.restore();
@@ -1503,6 +1519,54 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       g.font = '400 13px ' + DFONT; g.fillStyle = '#fff'; g.fillText('×' + m, w + 6, 6.5);
     }
     g.restore();
+  }
+  // The lucky coin: tossed up from the middle of the board, tumbling end over end, lands heads (a ball) or tails (rings)
+  function drawCoin(g) {
+    var c = fx.coin; if (!c) return;
+    var p = clamp(c.t / COIN_TOSS, 0, 1), R = 30, landed = p >= 1;
+    var end = c.spin * PI + (c.heads ? 0 : PI);           // even half-turns land heads, odd land tails
+    var ang = end * (1 - Math.pow(1 - p, 2.2));
+    var lift = Math.sin(p * PI) * 150 * (1 - p * 0.15);
+    var bounce = landed ? Math.abs(Math.sin(clamp((c.t - COIN_TOSS) / 0.35, 0, 1) * PI)) * 10 * (1 - clamp((c.t - COIN_TOSS) / 0.35, 0, 1)) : 0;
+    var fade = clamp((COIN_TOSS + 1.0 - c.t) / 0.3, 0, 1);
+    var cy = FH * 0.5 - lift - bounce, sy = Math.cos(ang), front = sy >= 0, k = Math.max(0.06, Math.abs(sy));
+    g.save(); g.globalAlpha = fade;
+    // shadow on the board, tighter as the coin comes down
+    var sh = 1 - lift / 170;
+    g.fillStyle = 'rgba(0,0,0,' + (0.32 * sh).toFixed(3) + ')';
+    g.beginPath(); g.ellipse(FW / 2, FH * 0.5 + R + 8, R * (0.5 + 0.5 * sh), 6 * sh + 1, 0, 0, TAU); g.fill();
+    g.translate(FW / 2, cy);
+    // edge thickness shows while the coin is turned
+    var edge = 5 * Math.sqrt(1 - k * k) * (front ? 1 : -1);
+    g.fillStyle = '#8a5a10';
+    g.beginPath(); g.ellipse(0, edge, R, R * k, 0, 0, TAU); g.fill();
+    g.scale(1, k);
+    var gr = g.createRadialGradient(-R * 0.35, -R * 0.4, 2, 0, 0, R);
+    gr.addColorStop(0, '#fff2b8'); gr.addColorStop(0.45, '#f2c24a'); gr.addColorStop(1, '#b07a14');
+    g.fillStyle = gr; g.beginPath(); g.arc(0, 0, R, 0, TAU); g.fill();
+    g.lineWidth = 2.5; g.strokeStyle = '#8a5a10'; g.stroke();
+    g.lineWidth = 1.5; g.strokeStyle = 'rgba(255,240,190,.7)'; g.beginPath(); g.arc(0, 0, R - 5, 0, TAU); g.stroke();
+    if (front) {
+      // heads: a silver ball
+      var bg = g.createRadialGradient(-4, -5, 1, 0, 0, 12);
+      bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.6, '#c9ccd6'); bg.addColorStop(1, '#7c8090');
+      g.fillStyle = bg; g.beginPath(); g.arc(0, 1, 12, 0, TAU); g.fill();
+      g.lineWidth = 1.5; g.strokeStyle = 'rgba(120,80,10,.55)'; g.stroke();
+    } else {
+      // tails: plain struck rings
+      g.lineWidth = 2; g.strokeStyle = 'rgba(138,90,16,.75)';
+      g.beginPath(); g.arc(0, 0, 15, 0, TAU); g.stroke();
+      g.beginPath(); g.arc(0, 0, 8, 0, TAU); g.stroke();
+    }
+    g.restore();
+    if (landed) {
+      g.save(); g.globalAlpha = fade * clamp((c.t - COIN_TOSS) / 0.2, 0, 1);
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 12px ' + FONT;
+      g.lineWidth = 3.5; g.strokeStyle = 'rgba(0,0,0,.65)'; g.lineJoin = 'round';
+      var lbl = c.heads ? 'HEADS' : 'TAILS';
+      g.strokeText(lbl, FW / 2, FH * 0.5 + R + 26); g.fillStyle = c.heads ? '#9df5b5' : 'rgba(255,255,255,.85)'; g.fillText(lbl, FW / 2, FH * 0.5 + R + 26);
+      g.restore();
+    }
   }
   function drawBanners(g) {
     fx.banners.forEach(function (b) {
@@ -1765,6 +1829,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     aim: function (deg) { ang = clamp(deg * PI / 180, -MAX_ANG, MAX_ANG); },
     fire: fire, speed: function (k) { speedMul = k; },
     start: function (n, master) { startLevel(n, { who: 'Tester', master: master || 'guide', fireMode: 'lift' }); },
+    empty: function () { objs.forEach(function (o) { o.gone = true; o.goneT = -9; }); },   // tests: a shot that can't touch a peg
     leaveOne: function () { var left = objs.filter(function (o) { return o.c === 'o' && !o.gone; }); left.slice(1).forEach(function (o) { o.gone = true; o.goneT = -9; }); L.orangeHit = L.totalOrange - 1; },
     // aim at the angle that hits the most orange pegs (prediction ignores lighting)
     autoAim: function (wantTarget) {
