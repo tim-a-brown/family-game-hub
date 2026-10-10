@@ -385,7 +385,7 @@ function mount(stage, api) {
   const woodTex = keep(new THREE.CanvasTexture(woodCanvas()));
   woodTex.colorSpace = THREE.SRGBColorSpace; woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping;
   woodTex.repeat.set(5, 5); woodTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const tableMat = keep(new THREE.MeshPhysicalMaterial({ map: woodTex, roughness: 0.5, clearcoat: 0.3, clearcoatRoughness: 0.3, envMapIntensity: 0.06 }));
+  const tableMat = keep(new THREE.MeshPhysicalMaterial({ map: woodTex, roughness: 0.56, clearcoat: 0.18, clearcoatRoughness: 0.35, envMapIntensity: 0.06 }));
   const table = new THREE.Mesh(keep(new THREE.PlaneGeometry(60, 60)), tableMat);
   table.rotation.x = -Math.PI / 2; table.receiveShadow = true; scene.add(table);
 
@@ -486,7 +486,7 @@ function mount(stage, api) {
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   const tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   // The camera backs off until the visible table holds about a dozen cookies, whatever the screen shape.
-  const COUNT = 11, PER = 4.0;
+  const COUNT = 11, PER = 4.4;
   function placeCamera(d) {
     camera.position.set(0, d * Math.sin(ELEV), d * Math.cos(ELEV));
     camera.lookAt(0, 0, 0);
@@ -501,7 +501,10 @@ function mount(stage, api) {
   function fitCamera() {
     camera.aspect = W / H;
     placeCamera(10);
-    const d = 10 * Math.sqrt(COUNT * PER / tableArea());
+    // enough table for the cookies, and at least ~4 cookies across the middle of the screen
+    const a = onTable(-1, 0), b = onTable(1, 0);
+    const across = a && b ? a.distanceTo(b) : 10;
+    const d = Math.max(10 * Math.sqrt(COUNT * PER / tableArea()), 10 * 6.6 / across);
     placeCamera(d);
     key.position.set(-0.22 * d, 1.25 * d, -0.1 * d); key.target.position.set(0, 0, -0.04 * d);
     key.angle = 0.62; key.distance = 0; key.decay = 0; key.intensity = 2.7;
@@ -513,7 +516,7 @@ function mount(stage, api) {
   }
   function placeAll() {
     cookies.slice().forEach(freeCookie);
-    const n = COUNT, sc = 1;
+    const n = Math.max(9, Math.min(12, Math.round(tableArea() / PER))), sc = 1;
     const pts = [], v = new THREE.Vector3();
     for (let k = 0; k < n; k++) {
       let best = null, bestD = -1;
@@ -645,8 +648,11 @@ function mount(stage, api) {
   function presentTarget(c) {
     const a = W / H, tv = tanV(), cw = c.w;
     const portrait = a < 1;
-    const D = cw / Math.min((portrait ? 0.56 : 0.4) * 2 * tv * a, (portrait ? 0.3 : 0.42) * 2 * tv);
-    ndc.set(0, portrait ? 0.34 : 0.3); ray.setFromCamera(ndc, camera);
+    let D = cw / Math.min((portrait ? 0.56 : 0.4) * 2 * tv * a, (portrait ? 0.3 : 0.42) * 2 * tv);
+    ndc.set(0, portrait ? 0.34 : 0.16); ray.setFromCamera(ndc, camera);
+    // never further than halfway to the table, so it always clearly rises off it
+    const toTable = ray.ray.distanceToPlane(tablePlane);
+    if (toTable) D = Math.min(D, 0.52 * toTable);
     const pos = ray.ray.origin.clone().addScaledVector(ray.ray.direction, D);
     // creased front toward you, tipped back a little so you see over the top
     const q = camera.quaternion.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.42, Math.PI + 0.18, 0.05, 'XYZ')));
@@ -745,7 +751,7 @@ function mount(stage, api) {
     const h = slipBox.offsetHeight || 110;
     const portrait = W < H;
     const btnRoom = 86;
-    let cy = H * (portrait ? 0.63 : 0.64);
+    let cy = H * (portrait ? 0.63 : 0.66);
     cy = Math.min(cy, H - btnRoom - h / 2 - 8);
     slipBox.style.left = ((W - sw) / 2) + 'px';
     slipBox.style.top = (cy - h / 2) + 'px';

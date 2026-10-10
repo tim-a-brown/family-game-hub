@@ -35,7 +35,8 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidd
 .ft-hero h1{font-family:var(--display);font-weight:400;font-size:2.3rem;letter-spacing:.01em;}
 .ft-hero p{color:var(--text-2);font-weight:700;}
 .ft-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
-@media (min-width:760px){.ft-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;}}
+@media (min-width:760px){.ft-grid{gap:18px;max-width:640px;margin:0 auto;}.ft-hero{padding:22px 0 22px;}.ft-hero h1{font-size:2.8rem;}}
+@media (min-width:760px) and (min-aspect-ratio:5/4){.ft-grid{grid-template-columns:repeat(4,minmax(0,1fr));max-width:none;}}
 @media (orientation:landscape) and (max-height:520px){
   .ft-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
   .ft-hero{flex-direction:row;justify-content:center;gap:12px;padding:2px 0 10px;}
@@ -91,13 +92,37 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidd
       rules: '<p>A table full of fresh fortune cookies. <b>Tap one</b> to pick it up and crack it open. The paper slip inside unrolls with your fortune, your lucky numbers and a word of Chinese to learn.</p><p>Tap the table or <b>New cookie</b> to put the slip away. The table restocks itself. You won’t see the same fortune again until you’ve read most of them.</p>' },
     { id: 'eightball', file: 'eightball', icon: 'target', name: 'Mystic 8 Ball', blurb: 'Ask a yes-or-no question, then shake',
       rules: '<p>Think of a <b>yes-or-no question</b>. Shake the ball (or tap it), then wait for the answer to float up in the little window.</p>' },
-    { id: 'oracle', file: 'oracle', icon: 'compass', name: 'The Oracle', blurb: 'Drop a coin and spin the dial',
+    { id: 'oracle', file: 'oracle', icon: 'compass', name: 'Oracle Dial', blurb: 'Drop a coin and spin the dial',
       rules: '<p>A vintage coin-op oracle. <b>Drop a coin</b> and give the dial a spin. Where the pointer stops is your fortune.</p>' },
-    { id: 'swami', file: 'swami', icon: 'eye', name: 'The Swami', blurb: 'A carnival booth that prints your card',
-      rules: '<p>Step up to the carnival booth. The Swami gazes into the crystal and the machine <b>prints your fortune on a card</b>.</p>' }
+    { id: 'swami', file: 'swami', icon: 'eye', name: 'The Great Zandor', blurb: 'A carnival fortune machine that prints your card',
+      rules: '<p>Step up to the carnival booth. The Great Zandor gazes into his crystal and the machine <b>prints your fortune on a card</b>.</p>' }
   ];
   function teller(id) { for (var i = 0; i < TELLERS.length; i++) if (TELLERS[i].id === id) return TELLERS[i]; return null; }
   var loadedRules = {};
+  // Load a teller's module once. Its own name and rules replace the hub's stand-ins as soon as it arrives.
+  var mods = {};
+  function loadMod(t) {
+    if (!mods[t.id]) {
+      mods[t.id] = import('./fortune/' + t.file + '.js').then(function (mod) {
+        var m = mod && mod.default;
+        if (!m || typeof m.mount !== 'function') throw new Error('not a teller');
+        adopt(t, m);
+        return m;
+      });
+      mods[t.id].catch(function () { delete mods[t.id]; });   // try again next time (it may still be landing)
+    }
+    return mods[t.id];
+  }
+  function adopt(t, m) {
+    if (m.name && m.name !== t.name) {
+      t.name = String(m.name);
+      var card = stageEl.querySelector('.ft-card[data-id="' + t.id + '"]');
+      if (card) { card.querySelector('.ft-name span').textContent = t.name; card.setAttribute('aria-label', t.name + '. ' + t.blurb); }
+      if (current === t) setTitle(t);
+    }
+    if (m.rules && loadedRules[t.id] !== m.rules) { loadedRules[t.id] = String(m.rules); initOpts.rules = buildRules(); }
+  }
+  function prefetchAll() { TELLERS.forEach(function (t) { loadMod(t).catch(function () {}); }); }
 
   function buildRules() {
     var h = '<p class="goal">Ask the fortune tellers what the future holds. Choose a teller, then follow its lead.</p>';
@@ -214,6 +239,7 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidd
       ]));
     });
     var hero = el('div', { class: 'ft-hero' }, [el('h1', { text: 'Fortune Teller' }), el('p', { text: 'Who would you like to ask?' })]);
+    prefetchAll();
     stageEl.appendChild(el('div', { class: 'ft-pick' }, [el('div', { class: 'ft-pick-in' }, [hero, grid])]));
   }
 
@@ -236,11 +262,8 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidd
     var token = loadToken;
     var wait = el('div', { class: 'ft-wait' }, [el('span', { text: 'Setting up…' })]);
     stageEl.appendChild(wait);
-    import('./fortune/' + t.file + '.js').then(function (mod) {
+    loadMod(t).then(function (m) {
       if (token !== loadToken) return;
-      var m = mod && mod.default;
-      if (!m || typeof m.mount !== 'function') throw new Error('not a teller');
-      if (m.rules) { loadedRules[t.id] = m.rules; initOpts.rules = buildRules(); }
       stageEl.innerHTML = '';
       var host = el('div', { class: 'ft-teller', style: { position: 'absolute', inset: '0' } });
       stageEl.appendChild(host);
@@ -264,6 +287,8 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidd
   // ═══ Boot: straight into the last teller, or the picker the first time ══
   var lm = lastMode();
   if (lm && teller(lm)) open(lm); else showPicker();
+  // fetch the other tellers in the background, so names and "How to play" are their own
+  setTimeout(prefetchAll, lm ? 2500 : 300);
 })();
 </script>
 </body>
