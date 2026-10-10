@@ -1304,7 +1304,7 @@
   E.jslots = jslots; E.cslots = cslots; E.jokerRoom = jokerRoom; E.consRoom = consRoom; E.interestCap = interestCap; E.canAfford = canAfford; E.debtLimit = debtLimit;
   E.addJoker = addJoker; E.addCons = addCons; E.newCard = newCard; E.addToDeck = addToDeck; E.applyVoucher = applyVoucher; E.levelUp = levelUp; E.applyTag = applyTag;
   E.canRerollBoss = canRerollBoss; E.rerollBoss = doRerollBoss; E.curHand = curHand; E.handAvailable = handAvailable; E.loseRun = loseRun; E.endRound = endRound;
-  E.bestPlay = bestPlay; E.botStep = botStep; E.simRun = simRun; E.C = C; E.hasV = hasV; E.fmt = fmt; E.fx = fx; E.jflag = jflag; E.hookOf = hookOf;
+  E.bestPlay = bestPlay; E.botDiscard = botDiscard; E.botStep = botStep; E.simRun = simRun; E.C = C; E.hasV = hasV; E.fmt = fmt; E.fx = fx; E.jflag = jflag; E.hookOf = hookOf;
   E.seed = function (n) { S.rs = n | 0; };
   Object.defineProperty(E, 'S', { get: function () { return S; }, set: function (v) { S = v; } });
   root.JRE = E;
