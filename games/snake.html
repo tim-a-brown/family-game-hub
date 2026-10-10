@@ -99,23 +99,79 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (o.lp) { var f2 = a.createBiquadFilter(); f2.type = 'lowpass'; f2.frequency.value = o.lp; n.connect(f2); out = f2; }
     out.connect(g); g.connect(master); n.start(t); n.stop(t + dur + 0.05);
   }
-  function noise(t0, dur, vol, type, freq) {
-    var a = ac(); if (!a) return;
+  function noise(t0, dur, vol, type, freq, o) {
+    var a = ac(); if (!a) return; o = o || {};
     if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate); var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
-    var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime + t0;
-    s.buffer = noiseBuf; f.type = type || 'bandpass'; f.frequency.value = freq || 1000;
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+    var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = o.at != null ? o.at : a.currentTime + t0;
+    s.buffer = noiseBuf; f.type = type || 'bandpass'; f.frequency.setValueAtTime(freq || 1000, t);
+    if (o.to) f.frequency.exponentialRampToValueAtTime(o.to, t + dur);
+    if (o.q) f.Q.value = o.q;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + (o.att || 0.003)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(o.out || master); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
   }
   function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
-  function sTurn() { osc('triangle', 330, 0, 0.04, 0.03); }
-  function sEat(n) { var m = 72 + (n % 8); osc('square', mtof(m), 0, 0.07, 0.05, { lp: 2500 }); osc('triangle', mtof(m + 7), 0.05, 0.1, 0.07); noise(0, 0.06, 0.08, 'bandpass', 2600); }
-  function sGold() { [76, 80, 83, 88, 92].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.05, 0.18, 0.07); }); noise(0, 0.25, 0.02, 'bandpass', 3000); }
-  function sGoldAppear() { osc('sine', mtof(88), 0, 0.15, 0.05); osc('sine', mtof(95), 0.08, 0.2, 0.05); }
-  function sCrash() { noise(0, 0.35, 0.3, 'lowpass', 500); osc('sawtooth', 220, 0, 0.4, 0.08, { to: 55, lp: 900 }); }
-  function sPopSeg(i) { osc('sine', 300 + (i % 12) * 30, 0, 0.05, 0.03, { to: 160 }); }
-  function sOver() { [67, 63, 60, 55].forEach(function (m, i) { osc('triangle', mtof(m), 0.3 + i * 0.16, 0.3, 0.07); }); }
-  function sStart() { osc('triangle', mtof(72), 0, 0.1, 0.06); osc('triangle', mtof(79), 0.08, 0.16, 0.07); }
+  // Sound effects: short and punchy so they cut through the music
+  function sTurn() { osc('square', 880, 0, 0.03, 0.05, { to: 660, lp: 3000 }); noise(0, 0.025, 0.06, 'highpass', 5000); }
+  function sEat(n) {
+    // a chomp, then a blip that climbs a scale with every apple (resets each octave)
+    var SC = [0, 2, 4, 7, 9, 12, 14, 16], m = 67 + SC[n % SC.length];
+    noise(0, 0.05, 0.22, 'bandpass', 900, { q: 1.5 }); osc('square', 180, 0, 0.06, 0.14, { to: 70, lp: 1200 });
+    osc('square', mtof(m), 0.035, 0.08, 0.09, { lp: 3200 }); osc('triangle', mtof(m + 12), 0.07, 0.14, 0.1);
+  }
+  function sGold() {
+    noise(0, 0.05, 0.2, 'bandpass', 1200, { q: 1.5 });
+    [76, 79, 83, 88, 91, 95].forEach(function (m, i) { osc('square', mtof(m), 0.03 + i * 0.045, 0.12, 0.07, { lp: 4000 }); osc('triangle', mtof(m + 12), 0.03 + i * 0.045, 0.2, 0.06); });
+    noise(0.05, 0.4, 0.05, 'highpass', 6000, { att: 0.08 });
+  }
+  function sGoldAppear() { [88, 95, 100].forEach(function (m, i) { osc('sine', mtof(m), i * 0.07, 0.22, 0.08); }); }
+  function sWrap() { noise(0, 0.18, 0.16, 'bandpass', 600, { to: 4000, q: 4, att: 0.04 }); osc('sine', 300, 0, 0.16, 0.06, { to: 900 }); }
+  function sCrash() {
+    noise(0, 0.5, 0.55, 'lowpass', 900, { to: 120 }); osc('sine', 150, 0, 0.45, 0.4, { to: 38 });
+    osc('sawtooth', 240, 0, 0.5, 0.12, { to: 50, lp: 1100 }); osc('square', 90, 0.02, 0.25, 0.1, { to: 45, lp: 600 });
+  }
+  function sPopSeg(i) { osc('square', 520 + (i % 12) * 45, 0, 0.06, 0.05, { to: 180, lp: 2500 }); }
+  function sOver() { [67, 66, 65, 64].forEach(function (m, i) { osc('square', mtof(m), 0.3 + i * 0.22, i === 3 ? 0.7 : 0.2, 0.07, { lp: 1800 }); osc('triangle', mtof(m - 12), 0.3 + i * 0.22, i === 3 ? 0.7 : 0.2, 0.1); }); }
+  function sStart() { [60, 64, 67, 72].forEach(function (m, i) { osc('square', mtof(m), i * 0.06, 0.1, 0.07, { lp: 3500 }); }); osc('triangle', mtof(84), 0.24, 0.25, 0.1); }
+
+  // ═══ Music: an original chiptune loop (A minor, F, C, G) that plays while the snake moves.
+  // Tempo follows the snake's speed. Toggle in the menu ('snake_music').
+  var M_LEAD = [69, 72, 76, 72, 74, 72, 69, 67,  65, 69, 72, 69, 71, 69, 65, 64,  64, 67, 72, 76, 74, 72, 71, 72,  74, 0, 71, 0, 67, 69, 71, 74,
+                76, 0, 76, 79, 81, 79, 76, 74,  72, 0, 72, 74, 77, 76, 74, 72,  71, 72, 74, 76, 79, 76, 74, 72,  71, 0, 67, 0, 69, 0, 71, 0];
+  var M_BASS = [45, 41, 48, 43];
+  var mus = { on: false, step: 0, next: 0, bus: null };
+  function musicOn() { try { return localStorage.getItem('snake_music') !== '0'; } catch (e) { return true; } }
+  function eighth() { return 0.13 + interval() * 1.1; }   // relaxed ~0.32 s, turbo ~0.2 s
+  function mNote(type, f, t, dur, vol, lp) {
+    var n = AC.createOscillator(), g = AC.createGain(), out = n;
+    n.type = type; n.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.006); g.gain.setValueAtTime(vol, t + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    if (lp) { var f2 = AC.createBiquadFilter(); f2.type = 'lowpass'; f2.frequency.value = lp; n.connect(f2); out = f2; }
+    out.connect(g); g.connect(mus.bus); n.start(t); n.stop(t + dur + 0.03);
+  }
+  function musicTick() {
+    // called every frame while the snake is moving; schedules a little ahead
+    if (!musicOn() || !ac()) { if (mus.on) musicStop(); return; }
+    if (!mus.bus) { mus.bus = AC.createGain(); mus.bus.connect(master); }
+    var now = AC.currentTime;
+    if (!mus.on) { mus.on = true; mus.bus.gain.cancelScheduledValues(now); mus.bus.gain.setValueAtTime(0.0001, now); mus.bus.gain.exponentialRampToValueAtTime(1, now + 0.25); }
+    if (mus.next < now) mus.next = now + 0.05;
+    var e = eighth();
+    while (mus.next < now + 0.15) {
+      var t = mus.next, i = mus.step % M_LEAD.length, bar = Math.floor(i / 8) % 4, beat = i % 8, ld = M_LEAD[i];
+      if (ld) mNote('square', mtof(ld), t, e * 0.85, 0.045, 2600);
+      mNote('triangle', mtof(M_BASS[bar] + (beat % 2 ? 12 : 0)), t, e * 0.9, 0.11);
+      if (beat % 4 === 0) { var k = AC.createOscillator(), kg = AC.createGain(); k.frequency.setValueAtTime(130, t); k.frequency.exponentialRampToValueAtTime(40, t + 0.1); kg.gain.setValueAtTime(0.25, t); kg.gain.exponentialRampToValueAtTime(0.0001, t + 0.12); k.connect(kg); kg.connect(mus.bus); k.start(t); k.stop(t + 0.15); }
+      if (beat % 2 === 1) noise(0, 0.04, 0.05, 'highpass', 7000, { at: t, out: mus.bus });
+      mus.step++; mus.next += e;
+    }
+  }
+  function musicStop(hard) {
+    if (!mus.on) return; mus.on = false;
+    if (!AC || !mus.bus) return;
+    var now = AC.currentTime, g = mus.bus.gain;
+    g.cancelScheduledValues(now); g.setValueAtTime(g.value || 0.0001, now); g.exponentialRampToValueAtTime(0.0001, now + (hard ? 0.04 : 0.3));
+    mus.next = 0;
+  }
 
   // ═══ State ═══════════════════════════════════════════════════════════════
   var G = null, view = 'none', paused = false;
@@ -151,7 +207,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (nx < 0) { nx = COLS - 1; wrapped = true; } else if (nx >= COLS) { nx = 0; wrapped = true; }
       if (ny < 0) { ny = ROWS - 1; wrapped = true; } else if (ny >= ROWS) { ny = 0; wrapped = true; }
     }
-    if (wrapped) G.stats.wraps++;
+    if (wrapped) { G.stats.wraps++; sWrap(); }
     var growing = G.grow > 0;
     if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) { die('wall', nx, ny); return; }
     if (!cellFree(nx, ny, !growing)) { die('self', nx, ny); return; }
@@ -183,6 +239,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function interval() { return SPEEDS[G.speed].ms * Math.max(0.72, 1 - G.apples * 0.005) / 1000; }
 
   function die(why, x, y) {
+    musicStop(true);
     G.phase = 'dying'; G.why = why; G.dieT = 0; G.popped = 0; G.crash = { x: x, y: y };
     G.prev = null;
     clearSave();
@@ -215,7 +272,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     onNew: function () { clearSave(); showSetup(); },
     menu: [
       { icon: 'trophy', label: 'High scores', onClick: function () { pauseGame(); ArcadeHi.show('snake', 'Snake'); } },
-      { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Snake: past games' }); } }
+      { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Snake: past games' }); } },
+      { icon: 'sound', label: 'Music on / off', onClick: function () { var on = !musicOn(); try { localStorage.setItem('snake_music', on ? '1' : '0'); } catch (e) {} if (!on) musicStop(true); Kit.toast(on ? 'Music on' : 'Music off'); } }
     ],
     rules:
       '<p class="goal">Guide the snake to the apples. Every apple makes it longer. Don\'t crash!</p>' +
@@ -225,7 +283,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       '<h3>Apples</h3><ul><li><b>Red apple</b>: points and one more piece of tail.</li>' +
       '<li><b>Golden apple</b>: shows up now and then for a short time. Worth 5 times as much. Grab it before it disappears!</li></ul>' +
       '<h3>Crashing</h3><p>The game ends if the snake runs into its own tail, or into the wall when walls are on. With <b>Wrap around</b>, the snake goes out one side and comes back in the other.</p>' +
-      '<h3>Speed</h3><p>Pick Relaxed, Normal, Fast or Turbo. Faster speeds score more for each apple: 5, 10, 15 or 20 points. The snake also speeds up a little as it grows.</p>'
+      '<h3>Speed</h3><p>Pick Relaxed, Normal, Fast or Turbo. Faster speeds score more for each apple: 5, 10, 15 or 20 points. The snake also speeds up a little as it grows.</p>' +
+      '<h3>Sound</h3><p>Music plays while the snake is moving and speeds up with it. Turn it off in the menu with <b>Music on / off</b>.</p>'
   });
 
   // ═══ Setup ═══════════════════════════════════════════════════════════════
@@ -279,7 +338,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (!raf) { lastT = 0; raf = requestAnimationFrame(loop); }
   }
   function leaveGame() {
-    view = 'none'; paused = false;
+    view = 'none'; paused = false; musicStop(true);
     root.classList.remove('ar-on');
     if (ro) { ro.disconnect(); ro = null; }
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
@@ -347,7 +406,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function pauseGame() {
     if (view !== 'game' || paused || !G || (G.phase !== 'play' && G.phase !== 'wait')) return;
     if (G.phase === 'wait') { save(); return; }
-    paused = true; gest = null;
+    paused = true; gest = null; musicStop(true);
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
     showOverlay('Paused', 'Length ' + G.body.length + ' · ' + fmt(G.score) + ' points', 'Resume');
     save();
@@ -386,7 +445,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       G.stats = Object.assign(G.stats, saved.stats || {});
     }
     if (!G.food) G.food = placeFood('apple');
-    fx.parts = []; fx.pops = []; fx.shake = 0; fx.flash = 0; fx.banner = null;
+    fx.parts = []; fx.pops = []; fx.shake = 0; fx.flash = 0; fx.banner = null; mus.step = 0;
     Kit.gameStart();
     buildView();
     hudDirty = true; updateHud();
@@ -459,6 +518,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       G.acc += dt;
       var iv = interval(), n = 0;
       while (G.acc >= iv && n++ < 4 && G.phase === 'play') { G.acc -= iv; step(); }
+      if (G.phase === 'play') musicTick();
     } else if (G.phase === 'dying') {
       G.dieT += dt;
       // after a beat, the snake pops apart from head to tail
