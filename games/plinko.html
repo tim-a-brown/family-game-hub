@@ -69,13 +69,18 @@ body{background:
 .pk-b{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;pointer-events:none;
   background:radial-gradient(circle at 40% 35%,#fffdf0 0%,#ffe08a 40%,#d99a12 100%);
   box-shadow:0 0 7px 1px rgba(255,205,80,.75);transition:opacity .3s;}
-.pk-frame.chase .pk-b{animation:pkb 1.5s linear infinite;}
-.pk-frame.chase .pk-b.q1{animation-delay:-.5s;}
-.pk-frame.chase .pk-b.q2{animation-delay:-1s;}
+/* Chase: the bulb's glow lives on its own layer so the chase is opacity only */
+.pk-frame.chase .pk-b{box-shadow:none;animation:pkb 1.5s linear infinite;}
+.pk-frame.chase .pk-b::before{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:0 0 7px 1px rgba(255,205,80,.75);animation:pkb-glow 1.5s linear infinite;}
+.pk-frame.chase .pk-b.q1,.pk-frame.chase .pk-b.q1::before{animation-delay:-.5s;}
+.pk-frame.chase .pk-b.q2,.pk-frame.chase .pk-b.q2::before{animation-delay:-1s;}
+.pk-frame.dim .pk-b::before{content:none;}
+@media (prefers-reduced-motion:reduce){.pk-frame.chase .pk-b::before{animation-duration:.01ms!important;}}
 .pk-frame.jack .pk-b{animation:pkj .3s linear infinite;}
 .pk-frame.jack .pk-b.q1{animation-delay:-.1s;}
 .pk-frame.jack .pk-b.q2{animation-delay:-.2s;}
-@keyframes pkb{0%,32%{opacity:1;}34%,100%{opacity:.28;box-shadow:none;}}
+@keyframes pkb{0%,32%{opacity:1;}34%,100%{opacity:.28;}}
+@keyframes pkb-glow{34%,100%{opacity:0;}}
 @keyframes pkj{0%,32%{opacity:1;background:#fff;box-shadow:0 0 12px 3px rgba(255,230,140,.95);}34%,100%{opacity:.3;box-shadow:none;}}
 .pk-frame.dim .pk-b{opacity:.18;box-shadow:none;animation:none;}
 .pk-frame.shake{animation:shake .45s;}

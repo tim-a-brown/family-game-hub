@@ -55,8 +55,17 @@ body.in-scene .ctrls .btn-max{box-shadow:0 5px 0 rgba(0,0,0,.45),0 0 0 1px var(-
 .ov{position:fixed;inset:0;z-index:1;pointer-events:none;}
 .ov .win{position:absolute;pointer-events:none;}
 .ov .cell{position:absolute;pointer-events:none;}
-.ov .cell.hit::before{content:"";position:absolute;inset:1px;border-radius:7px;pointer-events:none;box-shadow:inset 0 0 0 3px var(--hit,#ffc83d),0 0 14px var(--hitglow,rgba(255,200,61,.75));animation:hitpulse .8s ease-in-out infinite;}
-@keyframes hitpulse{50%{box-shadow:inset 0 0 0 3px #fff3b0,0 0 24px var(--hitglow,rgba(255,200,61,.95));}}
+/* Winning cells: the gold frame stays put; its glow (::after) and a brighter frame
+   with a wider glow (i.hl) cross-fade. Opacity only, so no repaint per frame. */
+.ov .cell.hit::before,.ov .cell.hit::after{content:"";position:absolute;inset:1px;border-radius:7px;pointer-events:none;}
+.ov .cell>i.hl{display:none;position:absolute;inset:1px;border-radius:7px;pointer-events:none;}
+.ov .cell.hit::before{box-shadow:inset 0 0 0 3px var(--hit,#ffc83d);}
+.ov .cell.hit>i.hl{display:block;box-shadow:inset 0 0 0 3px #fff3b0,0 0 24px var(--hitglow,rgba(255,200,61,.95));opacity:0;animation:hitpulse .8s ease-in-out infinite;}
+.ov .cell.hit::after{box-shadow:0 0 14px var(--hitglow,rgba(255,200,61,.75));animation:hitpulse-out .8s ease-in-out infinite;}
+@keyframes hitpulse{50%{opacity:1;}}
+/* it ran on a pseudo-element before, which the kit's reduced-motion rule never touched */
+@media (prefers-reduced-motion:reduce){.ov .cell.hit>i.hl{animation-duration:.8s!important;}}
+@keyframes hitpulse-out{50%{opacity:0;}}
 .fbv{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-family:Bungee,var(--display);font-size:calc(var(--ch,60px) * .22);line-height:1;color:#fff;
   text-shadow:0 0 3px #7a1000,0 1px 0 #7a1000,0 -1px 0 #7a1000,1px 0 0 #7a1000,-1px 0 0 #7a1000;pointer-events:none;white-space:nowrap;letter-spacing:-.02em;z-index:1;}
 .fbv.jp{font-size:calc(var(--ch,60px) * .17);color:#fff27a;}
@@ -115,8 +124,10 @@ body.in-scene .ctrls .btn-max{box-shadow:0 5px 0 rgba(0,0,0,.45),0 0 0 1px var(-
 .win.hsmode .hs{display:grid;}
 .spot{position:relative;border-radius:8px;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%,#3a0808,#120202);box-shadow:inset 0 0 0 1px rgba(255,200,80,.25),inset 0 4px 10px rgba(0,0,0,.6);display:grid;place-items:center;}
 .spot>svg{width:88%;height:88%;}
-.spot.spin::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(255,120,40,0) 0 30%,rgba(255,150,50,.55) 40%,rgba(255,120,40,0) 52%);background-size:100% 70%;animation:spotspin .18s linear infinite;filter:blur(1.5px);}
-@keyframes spotspin{to{background-position:0 100%;}}
+/* Spinning streaks: a taller strip (one extra 70% tile above) that slides down 30%
+   of the spot (transform only). 41.176% = 70/170, 17.647% = 30/170. */
+.spot.spin::after{content:"";position:absolute;left:0;right:0;top:-70%;bottom:0;background:repeating-linear-gradient(180deg,rgba(255,120,40,0) 0 30%,rgba(255,150,50,.55) 40%,rgba(255,120,40,0) 52%);background-size:100% 41.176%;animation:spotspin .18s linear infinite;filter:blur(1.5px);}
+@keyframes spotspin{to{transform:translateY(17.647%);}}
 .spot.antic{box-shadow:0 0 0 3px #ffe066,0 0 22px 6px rgba(255,190,40,.9);}
 .spot.lock{animation:popsym .5s cubic-bezier(.3,1.6,.5,1);box-shadow:inset 0 0 0 2px #ffd45a,0 0 14px rgba(255,150,40,.7);}
 .spot.collect{animation:collect .4s ease-out;}
@@ -1625,7 +1636,7 @@ window.dispatchEvent(new Event('cab3d-ready'));
     dom.tap = el('div', { class: 'cab3d-tap', onclick: function () { skipNow = true; } }); ov.appendChild(dom.tap);
     dom.win = el('div', { class: 'win' }); ov.appendChild(dom.win); dom.frame = dom.win;
     dom.cells = [];
-    for (var c = 0; c < M.reels.length; c++) { dom.cells[c] = []; for (var r = 0; r < M.rows; r++) { var d = el('div', { class: 'cell' }); dom.cells[c][r] = d; dom.win.appendChild(d); } }
+    for (var c = 0; c < M.reels.length; c++) { dom.cells[c] = []; for (var r = 0; r < M.rows; r++) { var d = el('div', { class: 'cell' }, [el('i', { class: 'hl' })]); dom.cells[c][r] = d; dom.win.appendChild(d); } }
     dom.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); dom.svg.setAttribute('class', 'lines-svg'); dom.win.appendChild(dom.svg);
     dom.tabs = [];
     if (M.id === 'classic') M.lines.forEach(function (ln, li) {

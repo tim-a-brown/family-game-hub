@@ -73,8 +73,16 @@
 .slab.w{background:linear-gradient(180deg,#fffaf0,#d6c7a7);box-shadow:0 1px 0 rgba(0,0,0,.35);}
 .slab.b{background:linear-gradient(180deg,#5a5450,#151210);box-shadow:0 1px 0 rgba(0,0,0,.5);}
 .offhit{position:absolute;border:0;background:transparent;border-radius:6px;padding:0;}
-.offhit.dest{box-shadow:0 0 0 3px #ffd84a, 0 0 18px rgba(255,216,74,.7);animation:glowb 1.1s ease-in-out infinite;}
-@keyframes glowb{50%{box-shadow:0 0 0 3px rgba(255,216,74,.4), 0 0 6px rgba(255,216,74,.3);}}
+/* Bear-off target: ring dims and the glow tightens. All one colour, so it's built
+   from layers that only change opacity: the dim ring stays, the bright ring+wide
+   glow fades out while the tight glow fades in. */
+.offhit.dest{box-shadow:0 0 0 3px rgba(255,216,74,.4);}
+.offhit.dest::before,.offhit.dest::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;}
+.offhit.dest::before{box-shadow:0 0 0 3px #ffd84a, 0 0 18px rgba(255,216,74,.7);animation:glowb 1.1s ease-in-out infinite;}
+.offhit.dest::after{box-shadow:0 0 6px rgba(255,216,74,.3);opacity:0;animation:glowb-in 1.1s ease-in-out infinite;}
+@keyframes glowb{50%{opacity:0;}}
+@keyframes glowb-in{50%{opacity:1;}}
+@media (prefers-reduced-motion:reduce){.offhit.dest::before,.offhit.dest::after{animation-duration:.01ms!important;}}
 .dicebox{position:absolute;display:flex;align-items:center;justify-content:center;gap:6px;pointer-events:none;z-index:5;}
 .dicebox .die{--ds:30px;pointer-events:none;}
 .dicebox .die.used{opacity:.3;transform:scale(.85);filter:grayscale(.5);}
