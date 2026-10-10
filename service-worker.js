@@ -50,6 +50,7 @@ const PRECACHE_URLS = [
   '/icon-192.png',
   '/icon-512.png',
   '/apple-touch-icon.png',
+  '/apple-touch-icon-precomposed.png',
   '/favicon.png',
   '/icon.svg',
   // Game sounds (recorded, CC0)
@@ -339,6 +340,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
 
   if (req.method !== 'GET') return;
+
+  // App icons and the manifest always come straight from the network (iOS reads them when adding to the
+  // home screen; a cached or failed copy would leave a plain letter icon)
+  if (url.origin === self.location.origin && /^\/(apple-touch-icon[^/]*|icon-\d+\.png|favicon\.png|manifest\.json)$/.test(url.pathname)) return;
 
   // Lorcana card art: from the device when we have it
   if (isArt(url)) { event.respondWith(artFetch(req)); return; }
