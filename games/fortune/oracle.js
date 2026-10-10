@@ -367,8 +367,15 @@ function drawCabinet(c, k, dpr, mode) {
   // dial: the paper disc sits slightly proud of the face
   c.save();
   c.shadowColor = 'rgba(0,0,0,.75)'; c.shadowBlur = 22 * k * dpr; c.shadowOffsetY = 7 * k * dpr; c.shadowOffsetX = 3 * k * dpr;
-  c.fillStyle = '#000'; c.beginPath(); c.arc(DIAL.x, DIAL.y, DIAL.r - 2, 0, TAU); c.fill();
+  c.fillStyle = '#100d09'; c.beginPath(); c.arc(DIAL.x, DIAL.y, DIAL.r - 2, 0, TAU); c.fill();
   c.restore();
+  // what shows when the disc is lifted off: a worn recess, a felt ring and the brass spindle
+  const rg = c.createRadialGradient(DIAL.x - 60, DIAL.y - 80, 20, DIAL.x, DIAL.y, DIAL.r);
+  rg.addColorStop(0, '#2a241b'); rg.addColorStop(0.75, '#16120d'); rg.addColorStop(1, '#070504');
+  c.fillStyle = rg; c.beginPath(); c.arc(DIAL.x, DIAL.y, DIAL.r - 4, 0, TAU); c.fill();
+  c.strokeStyle = 'rgba(120,30,30,.35)'; c.lineWidth = 26; c.beginPath(); c.arc(DIAL.x, DIAL.y, DIAL.r * 0.55, 0, TAU); c.stroke();
+  c.strokeStyle = 'rgba(200,170,110,.12)'; c.lineWidth = 1.5; c.beginPath(); c.arc(DIAL.x, DIAL.y, DIAL.r - 6, 0, TAU); c.stroke();
+  screw(c, DIAL.x, DIAL.y, 16, 0.8);
 
   // coin plate on the right rail
   const cp = COINPLATE;
@@ -608,10 +615,10 @@ const CSS = `
 .orc-cv{position:absolute;display:block;max-width:none;max-height:none;opacity:0;transition:opacity .35s ease}
 .orc-cv.on{opacity:1}
 .orc-clip{position:absolute;overflow:hidden;pointer-events:none}
-.orc-card{position:absolute;inset:0 6px 10px 6px;transform:translateY(-104%);transition:transform .75s cubic-bezier(.2,.85,.25,1);pointer-events:auto;cursor:pointer;
+.orc-card{position:absolute;inset:0 14px 20px 14px;transform:translateY(-104%);transition:transform .75s cubic-bezier(.2,.85,.25,1);pointer-events:auto;cursor:pointer;
   color:#2a180c;background-color:#efe2c0;border-radius:2px 2px 5px 5px;
-  box-shadow:0 8px 16px rgba(0,0,0,.4),inset 0 0 22px rgba(130,85,30,.32),inset 0 -2px 0 rgba(120,80,30,.25)}
-.orc.l .orc-card{inset:6px 10px 6px 0;transform:translateX(-104%);border-radius:2px 5px 5px 2px}
+  box-shadow:0 5px 10px rgba(0,0,0,.38),inset 0 0 22px rgba(130,85,30,.32),inset 0 -2px 0 rgba(120,80,30,.25)}
+.orc.l .orc-card{inset:16px 20px 16px 0;transform:translateX(-104%);border-radius:2px 5px 5px 2px}
 .orc-card.out,.orc.l .orc-card.out{transform:none}
 .orc-card-in{position:absolute;inset:7px;border:1.5px solid rgba(70,40,15,.6);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;padding:6px 12px;box-sizing:border-box}
 .orc-card-in:before{content:"";position:absolute;inset:3px;border:1px solid rgba(70,40,15,.35);pointer-events:none}
@@ -697,10 +704,10 @@ function mount(stage, api) {
     if (mode === 'p') {
       const sy = y0 + TSLOT_P.y * k, cwid = Math.min(TSLOT_P.w * k * 0.98, 400);
       const chgt = clamp(h - sy - 74 - pad, 96, 240);
-      L.clipH = chgt + 10;
-      Object.assign(clip.style, { left: (x0 + cw / 2 - cwid / 2 - 6) + 'px', top: sy + 'px', width: (cwid + 12) + 'px', height: L.clipH + 'px' });
+      L.clipH = chgt + 20;
+      Object.assign(clip.style, { left: (x0 + cw / 2 - cwid / 2 - 14) + 'px', top: sy + 'px', width: (cwid + 28) + 'px', height: L.clipH + 'px' });
     } else {
-      const sx = x0 + TSLOT_L.x * k, ht = Math.min(TSLOT_L.h * k * 0.98, 300) + 12, wd = Math.min(w - pad - sx, 380);
+      const sx = x0 + TSLOT_L.x * k, ht = Math.min(TSLOT_L.h * k * 0.98, 300) + 32, wd = Math.min(w - pad - sx, 380);
       L.clipH = ht;
       Object.assign(clip.style, { left: sx + 'px', top: (y0 + TSLOT_L.y * k - ht / 2) + 'px', width: wd + 'px', height: ht + 'px' });
     }
@@ -950,7 +957,7 @@ function mount(stage, api) {
     }
     // then shrink the ticket to its print (portrait: it hangs from the slot)
     if (L && L.mode === 'p') {
-      box.style.bottom = 'auto'; const need = box.offsetHeight + 30; box.style.bottom = '';
+      box.style.bottom = 'auto'; const need = box.offsetHeight + 40; box.style.bottom = '';
       clip.style.height = Math.min(L.clipH, Math.max(need, 110)) + 'px';
     }
   }
