@@ -23,6 +23,7 @@
 //   Kit.color(i)                               player colour for seat i
 //   Kit.resume.set(label, {keys}) / .clear()           "Continue" rail on home
 //   Kit.rules()                                open the rules sheet
+//   Kit.theme.pick() / .get() / .set(id)       app colour theme (localStorage fgh_theme)
 // window.GN is kept as an alias for haptic/toast/confirm/sheet.
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
@@ -39,8 +40,28 @@
     if (!m) { m = doc.createElement('meta'); m.name = name; doc.head.appendChild(m); }
     m.content = content;
   }
+  // ── App theme (colours only). Set on <html> before first paint; Kit.theme has the list and picker.
+  var THEME_LIST = [
+    { id: 'night', name: 'Night', bg: '#141029', s: '#2d2556', t: '#fbf8ff', a: '#ffc83d', light: false },
+    { id: 'light', name: 'Light', bg: '#f3f1f9', s: '#dcd8ec', t: '#1b1733', a: '#ff5c9a', light: true },
+    { id: 'dark', name: 'Dark', bg: '#0b0b0f', s: '#2f2f39', t: '#f4f4f7', a: '#4da3ff', light: false },
+    { id: 'midnight', name: 'Midnight', bg: 'linear-gradient(180deg,#123a7c,#050a18)', bar: '#123a7c', s: '#1f376f', t: '#f1f5ff', a: '#ffc83d', light: false },
+    { id: 'forest', name: 'Forest', bg: 'linear-gradient(180deg,#0f5234,#04110b)', bar: '#0f5234', s: '#1d4a34', t: '#eef8f1', a: '#ffc83d', light: false },
+    { id: 'velvet', name: 'Red velvet', bg: 'radial-gradient(120% 90% at 50% 0%,#7a1a34,#1f060e)', bar: '#4a1024', s: '#601c35', t: '#fff3f5', a: '#ffc83d', light: false },
+    { id: 'parchment', name: 'Parchment', bg: '#eee3c6', s: '#d8c59a', t: '#2c2212', a: '#e3a81c', light: true }
+  ];
+  function themeRec(id) { for (var i = 0; i < THEME_LIST.length; i++) if (THEME_LIST[i].id === id) return THEME_LIST[i]; return THEME_LIST[0]; }
+  function themeGet() { return themeRec(lsGet('fgh_theme', 'night')).id; }
+  function themeApply(id) {
+    // Pages with their own fixed backdrop (<html data-theme-fixed>, e.g. Lorcana's night sky) stay on Night
+    var t = themeRec(root.hasAttribute('data-theme-fixed') ? 'night' : id);
+    if (t.id === 'night') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t.id);
+    meta('theme-color', t.bar || t.bg);
+    meta('apple-mobile-web-app-status-bar-style', t.light ? 'default' : 'black');
+  }
+  function themeSet(id) { lsSet('fgh_theme', themeRec(id).id); themeApply(id); }
   meta('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
-  meta('theme-color', '#141029');
+  themeApply(themeGet());
   meta('apple-mobile-web-app-capable', 'yes');
   meta('mobile-web-app-capable', 'yes');
   meta('apple-mobile-web-app-status-bar-style', 'black');
@@ -523,6 +544,26 @@
     sfx('pop');
     sheet({ title: 'How to play', html: '<div class="rules">' + opts.rules + '</div>', actions: [{ label: 'Got it', primary: true }] });
   }
+  // Theme picker: a swatch per theme, tap to switch at once
+  function themePick(onDone) {
+    sfx('pop');
+    var grid = el('div', { class: 'k-themes' }), cur = themeGet(), s;
+    THEME_LIST.forEach(function (t) {
+      var b = el('button', { type: 'button', class: 'k-theme' + (t.id === cur ? ' on' : ''), 'aria-pressed': String(t.id === cur), onclick: function () {
+        themeSet(t.id); cur = t.id; sfx('tap'); haptic('light');
+        Array.prototype.forEach.call(grid.children, function (c) { var on = c._id === cur; c.classList.toggle('on', on); c.setAttribute('aria-pressed', String(on)); });
+        if (onDone) onDone(t);
+      } }, [
+        el('span', { class: 'sw', style: { '--t-bg': t.bg, '--t-s': t.s, '--t-t': t.t, '--t-a': t.a } }, [el('i'), el('i'), el('i'), el('b'), el('span', { class: 'ck', html: icon('check') })]),
+        el('span', { text: t.name })
+      ]);
+      b._id = t.id;
+      grid.appendChild(b);
+    });
+    s = sheet({ title: 'Theme', node: grid, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+    return s;
+  }
+
   // The game menu, in groups: the game itself, the game's own sections (opts.menu items can name a section),
   // settings as on/off switches (items with a toggle function, plus Sound), then help and leaving
   function menu() {
@@ -560,6 +601,7 @@
     });
     if (game && game.cat === 'casino' && window.Casino && Casino.showHistory) item(G, 'chart', 'Bankroll history', function () { Casino.showHistory(); });
     toggle('Settings', 'sound', 'Sound', '', soundOn, function () { lsSet('gn_sound', soundOn() ? '0' : '1'); sfx('good'); });
+    item('Settings', 'palette', 'Theme', function () { themePick(); }, '', themeRec(themeGet()).name);
     var M = 'More';
     if (opts.rules) item(M, 'book', 'How to play', rules);
     item(M, 'users', 'Frequent players', function () { managePlayers(); });
@@ -1901,6 +1943,7 @@
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
+    theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
     resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
