@@ -175,7 +175,7 @@ function build(T) {
   ins('davyL', 243, 426, { shape: 'star', w: 18, h: 18, color: '#ff6a6a' });
   T.flasher('flFort', fortPt(-40, 30)[0], fortPt(-40, 30)[1], { color: '#ff8a40', r: 9, z0: 6 });
   T.flasher('flShip', 400, 690, { color: '#ffd090', r: 9, z0: DECK_Z });
-  T.flasher('flKrak', 232, 548, { color: '#5fe8d0', r: 9, z0: 0 });
+  T.bulb('flKrak', 232, 548, 14, { color: '#5fe8d0', r: 3, k: 6 });
   T.flasher('flTop', 110, 1030, { color: '#9fd8ff', r: 10, z0: 40 });
   // lanterns (GI bulbs) on posts round the cove
   [[14, 360], [14, 520], [470, 360], [470, 530], [18, 860], [120, 1040], [300, 1042], [470, 1000], [300, 560]].forEach((p, i) => T.bulb('lant' + i, p[0], p[1], 30, { color: '#ffc070', r: 3, k: 3.2, on: 1 }));
@@ -262,14 +262,14 @@ class ShipCannon {
     const brass = RC.mats.brass(), wood = RC.mats.wood('#4a2c14', 'carriage'), iron = RC.mats.iron();
     // carriage: two cheeks, an axle and four wheels, all turning with the gun
     const turret = new THREE.Group(); turret.position.z = 1; g.add(turret);
-    const L = this.o.barrel;
-    [-7, 7].forEach(y => { const ch = new THREE.Mesh(new THREE.BoxGeometry(L * 0.55, 3.5, 11), wood); ch.position.set(L * 0.1, y, 7.5); ch.castShadow = true; turret.add(ch); });
-    [[-4, -9], [-4, 9], [L * 0.28, -9], [L * 0.28, 9]].forEach(([x, y]) => { const w = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 2.4, 14), wood); w.position.set(x, y, 4); w.castShadow = true; turret.add(w); });
+    const L = this.o.barrel, woodG = [], brassG = [];
+    [-7, 7].forEach(y => woodG.push(new THREE.BoxGeometry(L * 0.55, 3.5, 11).translate(L * 0.1, y, 7.5)));
+    [[-4, -9], [-4, 9], [L * 0.28, -9], [L * 0.28, 9]].forEach(([x, y]) => woodG.push(new THREE.CylinderGeometry(4, 4, 2.4, 14).translate(x, y, 4)));
     const barrelG = latheGeo(0, 0, [[0, -L * 0.45], [6.5, -L * 0.45], [6.8, -L * 0.3], [5.6, -L * 0.05], [5.2, L * 0.3], [6.2, L * 0.46], [6.2, L * 0.55], [3.6, L * 0.55], [3.6, L * 0.4], [0, L * 0.4]], 18);
-    barrelG.rotateX(-PI / 2); barrelG.rotateZ(-PI / 2);   // lathe runs along +x after this
-    const barrel = new THREE.Mesh(barrelG, brass); barrel.position.set(L * 0.35, 0, 14); barrel.castShadow = true; turret.add(barrel);
-    const knob = new THREE.Mesh(new THREE.SphereGeometry(3.4, 10, 8), brass); knob.position.set(-L * 0.12, 0, 14); turret.add(knob);
-    [-5, 5].forEach(y => { const tr = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 4, 8), iron); tr.rotation.x = PI / 2; tr.position.set(L * 0.1, y * 1.6, 14); turret.add(tr); });
+    barrelG.rotateX(-PI / 2); barrelG.rotateZ(-PI / 2); barrelG.translate(L * 0.35, 0, 14);   // lathe runs along +x after this
+    brassG.push(barrelG, new THREE.SphereGeometry(3.4, 10, 8).translate(-L * 0.12, 0, 14));
+    [-5, 5].forEach(y => brassG.push(new THREE.CylinderGeometry(1.6, 1.6, 4, 8).rotateX(PI / 2).translate(L * 0.1, y * 1.6, 14)));
+    turret.add(mesh(mergeGeos(woodG), wood)); turret.add(mesh(mergeGeos(brassG), brass)); void iron;
     // muzzle glow (a plane that flares on fire)
     const gl = new THREE.Mesh(new THREE.PlaneGeometry(26, 26), RC.mats.glow('#ffc070')); gl.position.set(L * 0.95, 0, 14); gl.rotation.y = PI / 2; gl.renderOrder = 8; gl.material.opacity = 0; turret.add(gl);
     // the loaded ball glows a little so the player sees the gun is live
@@ -402,7 +402,7 @@ function makeRules() {
           if (id === 'rigging') { G.cnt('rig'); G.add(15000); if (!R.jp(G, 'rigging')) { if (!R.shot(G, 'rigging')) G.msg('THE RIGGING', fmt(20000 * G.mult), {}); } }
           break;
         case 'orbit': G.combo(id); if (!R.jp(G, id)) { if (!R.shot(G, id)) G.msg(id === 'orbitL' ? 'THE COVE' : "THE SHIP'S WHEEL", fmt(G.add(B.storm ? 50000 : 5000)), {}); else G.add(5000); } break;
-        case 'cannonLoad': G.msg('CANNON LOADED', 'HOLD A FLIPPER TO AIM, LET GO TO FIRE', { anim: 'cannon', dur: 2.4 }); R.say(G, 'load'); G.pulse('flShip', 0.4); break;
+        case 'cannonLoad': G.msg('CANNON LOADED', 'FLIPPER AIMS, RELEASE FIRES', { anim: 'cannon', dur: 2.4 }); R.say(G, 'load'); G.pulse('flShip', 0.4); break;
         case 'cannonFire': G.cnt('cannon'); B.cannonBallT = G.time; G.msg('FIRE!', '', { style: 'flash', dur: 0.9, now: true, anim: 'cannon' }); R.say(G, 'fire', true); G.pulse('flShip', 0.3); break;
         case 'fortHit': R.fortHit(G, b, d); break;
         case 'popupHit':
@@ -949,7 +949,7 @@ function galleonModel(RC) {
   fgc.fillStyle = '#efe6d8'; fgc.beginPath(); fgc.arc(64, 28, 16, 0, TAU); fgc.fill(); fgc.fillRect(54, 40, 20, 9); fgc.fillStyle = '#141216'; fgc.beginPath(); fgc.arc(58, 26, 4.5, 0, TAU); fgc.arc(70, 26, 4.5, 0, TAU); fgc.fill(); [56, 62, 68].forEach(x => fgc.fillRect(x, 43, 2.5, 5));
   fgc.strokeStyle = '#efe6d8'; fgc.lineWidth = 4; fgc.beginPath(); fgc.moveTo(34, 60); fgc.lineTo(94, 14); fgc.moveTo(94, 60); fgc.lineTo(34, 14); fgc.stroke();
   const flagMat = new THREE.MeshStandardMaterial({ map: RC.tex(fc), roughness: 0.8, side: THREE.DoubleSide });
-  const flagMeshes = flags.map(f => { const m = new THREE.Mesh(f.g, flagMat); m.castShadow = true; RC.root.add(m); return m; });
+  const flagMesh = new THREE.Mesh(mergeGeos(flags.map(f => f.g)), flagMat); flagMesh.castShadow = true; RC.root.add(flagMesh); const flagMeshes = [flagMesh];
   // bowsprit, anchor and the stern lantern cage
   B.add(trim, tubeGeo([[392, 876, DECK_Z + 6], [394, 905, DECK_Z + 16], [396, 926, DECK_Z + 24]], 2.2, 6, 7));
   B.add(ropeMat, tubeGeo([[396, 926, DECK_Z + 24], [378, 838, DECK_Z + 90]], 0.5, 2, 4));
@@ -962,7 +962,7 @@ function galleonModel(RC) {
     const G = RC.G, stormy = G.b ? G.b.rain : 0;
     wm.rotation.z = Math.sin(t * 0.5) * 0.4 + (stormy ? Math.sin(t * 6) * 0.3 : 0);
     sailMesh.scale.y = 1 + 0.06 * Math.sin(t * 1.3) * (1 + stormy * 2); sailMesh.position.y = -3 * Math.sin(t * 1.3) * (1 + stormy);
-    flagMeshes.forEach((m, i) => { m.rotation.z = Math.sin(t * (4 + stormy * 6) + i) * 0.22 + Math.sin(t * 9 + i * 2) * 0.06; m.scale.x = 0.9 + 0.1 * Math.sin(t * 7 + i); });
+    flagMeshes.forEach((m, i) => { m.scale.x = 0.9 + 0.1 * Math.sin(t * (7 + stormy * 6)); m.scale.y = 0.94 + 0.06 * Math.sin(t * 5 + 1); });
   });
   return null;
 }
@@ -982,12 +982,11 @@ function chestModel(RC) {
   // lid: a domed top hinged at the back
   const lid = new THREE.Group(); lid.position.set(x, y + d / 2 - 1, h); RC.root.add(lid);
   const dome = new THREE.CylinderGeometry(d / 2, d / 2, w, 18, 1, false, 0, PI); dome.rotateZ(PI / 2); dome.translate(0, -d / 2 + 1, 0);
-  const lidM = mesh(dome, wood); lid.add(lidM);
   const lidEnds = new THREE.CircleGeometry(d / 2, 18, 0, PI); const e1 = lidEnds.clone(); e1.rotateY(PI / 2); e1.translate(w / 2, -d / 2 + 1, 0); const e2 = lidEnds.clone(); e2.rotateY(-PI / 2); e2.translate(-w / 2, -d / 2 + 1, 0);
-  lid.add(mesh(mergeGeos([e1, e2]), wood));
+  lid.add(mesh(mergeGeos([dome, e1, e2]), wood));
   const bands = [-16, 16].map(dx => { const bnd = new THREE.CylinderGeometry(d / 2 + 0.6, d / 2 + 0.6, 4, 18, 1, true, 0, PI); bnd.rotateZ(PI / 2); bnd.translate(dx, -d / 2 + 1, 0); return bnd; });
+  bands.push(new THREE.BoxGeometry(8, 2, 7).translate(0, -d + 1, 2));
   lid.add(mesh(mergeGeos(bands), brass));
-  const lock = mesh(new THREE.BoxGeometry(8, 2, 7), brass); lock.position.set(0, -d + 1, 2); lid.add(lock);
   let openK = 0, lastN = 0, lastT = -9;
   RC.anim.push((dt, t) => {
     const G = RC.G, ch = G.comps.chest, n = ch ? ch.balls.length : 0;
@@ -1013,13 +1012,13 @@ function krakenModel(RC) {
   const eyes = mesh(mergeGeos([new THREE.SphereGeometry(2.8, 10, 8).translate(-6, -13, 7), new THREE.SphereGeometry(2.8, 10, 8).translate(6, -13, 7)]), eyeMat); g.add(eyes);
   // tentacle: a tapered cylinder along z, skinned to a chain of bones
   const N = 8, H = 112, seg = H / N;
-  const geo = new THREE.CylinderGeometry(2.4, 8.5, H, 10, 32); geo.translate(0, H / 2, 0); geo.rotateX(PI / 2);
+  const geo = new THREE.CylinderGeometry(3, 11, H, 12, 32); geo.translate(0, H / 2, 0); geo.rotateX(PI / 2);
   const pos = geo.attributes.position, si = [], sw = [];
   for (let i = 0; i < pos.count; i++) { const z = Math.max(0, pos.getZ(i)); let b = Math.min(N - 1, Math.floor(z / seg)), t = Math.min(1, (z - b * seg) / seg); const b2 = Math.min(N - 1, b + 1); si.push(b, b2, 0, 0); sw.push(1 - t * 0.5, t * 0.5, 0, 0); }
   geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
   const bones = []; for (let i = 0; i < N; i++) { const b = new THREE.Bone(); b.position.z = i ? seg : 0; if (i) bones[i - 1].add(b); bones.push(b); }
   const tent = new THREE.SkinnedMesh(geo, skin); tent.castShadow = true; tent.add(bones[0]); tent.bind(new THREE.Skeleton(bones));
-  const tg = new THREE.Group(); tg.position.set(0, 14, -4); tg.add(tent); g.add(tg);
+  const tg = new THREE.Group(); tg.position.set(0, 16, -4); tg.add(tent); g.add(tg);
   let rise = 0.5, curl = 0.3, sink = 0, phase = 0;
   RC.anim.push((dt, t) => {
     const G = RC.G, B = G.b || {}, grab = B.grab, mag = G.comps.kraken, awake = !!(mag && mag.active) || !!grab;
@@ -1027,7 +1026,7 @@ function krakenModel(RC) {
     if (grab) { const k = Math.min(1, grab.t / 0.7); wantRise = 1; wantCurl = 0.36 + 0.14 * k; if (grab.mode === 'lock' && grab.t > 1.05) wantSink = 1; if (grab.mode === 'super' && grab.t > 0.9) { wantCurl = 0.1; wantRise = 1; } }
     rise += (wantRise - rise) * Math.min(1, dt * (grab ? 4 : 1.2)); curl += (wantCurl - curl) * Math.min(1, dt * (grab ? 5 : 1.5)); sink += (wantSink - sink) * Math.min(1, dt * 3.5);
     phase += dt * (grab ? 5 : 1.1);
-    tg.position.z = -4 - (1 - rise) * 70 - sink * 95;
+    tg.position.z = -4 - (1 - rise) * 60 - sink * 95;
     bones.forEach((b, i) => { if (!i) { b.rotation.x = -0.25 + curl * 0.6; b.rotation.y = Math.sin(t * 0.6) * 0.08; return; } b.rotation.x = curl * (0.75 + 0.25 * Math.sin(phase + i * 0.7)) + Math.sin(phase * 1.3 + i) * 0.04; b.rotation.y = Math.sin(phase * 0.8 + i * 0.9) * 0.05; });
     g.rotation.z = Math.sin(t * 0.4) * 0.05; head.position.z = -1 - sink * 20;
     eyeMat.emissiveIntensity = awake ? 2.2 + Math.sin(t * 6) * 0.8 : 0.1;
@@ -1048,18 +1047,15 @@ function fortModel(RC, fort) {
   for (const s of [-1, 1]) { const parts = [new THREE.BoxGeometry(34, 12, 34).translate(0, 0, 17)]; for (let i = 0; i < 3; i++) parts.push(new THREE.BoxGeometry(7, 12, 6).translate(-12 + i * 12, 0, 37)); piece(mergeGeos(parts), s * 31, -20, 0, stone, [s * 0.6, -1]); }
   // the gate arch (lintel over the opening) and the drawbridge
   piece(new THREE.BoxGeometry(30, 12, 10), 0, -20, 30, stone, [0, -1]);
-  const gate = mesh(new THREE.BoxGeometry(24, 2.6, 27), wood); gate.position.set(0, 0, 13.5); const gp = new THREE.Group(); gp.position.set(0, -27, 0.5); gp.add(gate); g.add(gp);
-  [-8, 8].forEach(x => { const st = mesh(new THREE.BoxGeometry(2, 3, 25), RC.mats.iron()); st.position.set(x, -0.4, 13); gate.add(st); });
+  const gate = mesh(mergeGeos([new THREE.BoxGeometry(24, 2.6, 27), new THREE.BoxGeometry(2, 3.2, 25).translate(-8, 0, 0), new THREE.BoxGeometry(2, 3.2, 25).translate(8, 0, 0)]), wood); gate.position.set(0, 0, 13.5); const gp = new THREE.Group(); gp.position.set(0, -27, 0.5); gp.add(gate); g.add(gp);
   // side and back walls
   piece(mergeGeos([new THREE.BoxGeometry(12, 60, 30).translate(-46, 12, 15), new THREE.BoxGeometry(12, 60, 30).translate(46, 12, 15), new THREE.BoxGeometry(104, 12, 28).translate(0, 42, 14), ...[0, 1, 2, 3, 4, 5, 6].map(i => new THREE.BoxGeometry(8, 12, 5).translate(-42 + i * 14, 42, 30.5))]), 0, 0, 0, stone, [0, 1]);
   // round towers on the front corners, tiled roofs, a lit window, a flag
-  const winMat = new THREE.MeshStandardMaterial({ color: '#201008', emissive: '#ffb860', emissiveIntensity: 1.4 });
   for (const s of [-1, 1]) {
     const tw = new THREE.Group(); tw.position.set(s * 46, -22, 0); g.add(tw); pieces.push({ m: tw, x: s * 46, y: -22, z: 0, dir: [s, -0.6], r: r() - 0.5 });
-    tw.add(mesh(cylGeo(0, 0, 13, 0, 50, 14), stone)); tw.add(mesh(new THREE.ConeGeometry(16, 20, 14).rotateX(PI / 2).translate(0, 0, 60), roof));
-    tw.add(mesh(new THREE.TorusGeometry(13.5, 1.2, 6, 14).translate(0, 0, 48), stone));
-    const wm = new THREE.Mesh(new THREE.BoxGeometry(4, 2, 7), winMat); wm.position.set(s * 2, -12.6, 28); tw.add(wm);
-    if (s > 0) { tw.add(mesh(cylGeo(0, 0, 0.9, 68, 92, 6), RC.mats.iron())); const fl = new THREE.Mesh(new THREE.PlaneGeometry(14, 8).translate(7, 0, 0).rotateX(PI / 2), RC.mats.paint('#c8352e', { side: THREE.DoubleSide })); fl.position.set(0, 0, 88); tw.add(fl); tw.userData.flag = fl; }
+    const sg2 = [cylGeo(0, 0, 13, 0, 50, 14), new THREE.TorusGeometry(13.5, 1.2, 6, 14).translate(0, 0, 48)]; if (s > 0) sg2.push(cylGeo(0, 0, 0.9, 68, 92, 6));
+    tw.add(mesh(mergeGeos(sg2), stone)); tw.add(mesh(new THREE.ConeGeometry(16, 20, 14).rotateX(PI / 2).translate(0, 0, 60), roof));
+    if (s > 0) { const fl = new THREE.Mesh(new THREE.PlaneGeometry(14, 8).translate(7, 0, 0).rotateX(PI / 2), RC.mats.paint('#c8352e', { side: THREE.DoubleSide })); fl.position.set(0, 0, 88); tw.add(fl); tw.userData.flag = fl; }
   }
   // the keep floor inside (dark flagstones) so the scoop sits in a courtyard
   g.add(mesh(new THREE.BoxGeometry(70, 46, 1.6).translate(0, 10, 0.8), RC.mats.paint('#3a3630', { roughness: 0.95 }), false));
@@ -1090,37 +1086,45 @@ function sceneryModel(RC) {
   B.add(RC.mats.wood('#7a5430', 'crate'), boxGeo(498, 1030, 10, 24, 24, 20)); B.add(RC.mats.wood('#7a5430', 'crate'), boxGeo(498, 1030, 26, 18, 18, 12, 0.4));
   // palm: a leaning trunk with fronds
   const trunk = tubeGeo([[14, 1040, 0], [18, 1046, 40], [28, 1050, 80], [42, 1052, 110]], 4, 10, 8); B.add(RC.mats.wood('#6a4a2a', 'palm'), trunk);
-  const fronds = []; for (let i = 0; i < 7; i++) { const a = i / 7 * TAU; const f = new THREE.PlaneGeometry(10, 40, 1, 6); const p = f.attributes.position; for (let k = 0; k < p.count; k++) { const y = p.getY(k); p.setZ(k, -y * y * 0.012 - Math.abs(p.getX(k)) * 0.4); } f.translate(0, 20, 0); f.rotateX(-0.4); f.rotateZ(a); f.translate(42, 1052, 112); fronds.push(f); }
-  const fr = mesh(mergeGeos(fronds), RC.mats.paint('#2f7a3a', { side: THREE.DoubleSide, roughness: 0.8 })); RC.root.add(fr);
+  const fronds = []; for (let i = 0; i < 7; i++) { const a = i / 7 * TAU; const f = new THREE.PlaneGeometry(10, 40, 1, 6); const p = f.attributes.position; for (let k = 0; k < p.count; k++) { const y = p.getY(k); p.setZ(k, -y * y * 0.012 - Math.abs(p.getX(k)) * 0.4); } f.translate(0, 20, 0); f.rotateX(-0.4); f.rotateZ(a); fronds.push(f); }
+  const fr = mesh(mergeGeos(fronds), RC.mats.paint('#2f7a3a', { side: THREE.DoubleSide, roughness: 0.8 })); fr.position.set(42, 1052, 112); RC.root.add(fr);
   // the lighthouse on the back right, striped, with a lamp room and a sweeping beam
   const lc = canvas(64, 256), lg = lc.getContext('2d'); for (let i = 0; i < 8; i++) { lg.fillStyle = i % 2 ? '#b83a2a' : '#efe6d8'; lg.fillRect(0, i * 32, 64, 32); }
   const lhMat = new THREE.MeshStandardMaterial({ map: RC.tex(lc), roughness: 0.6 });
   const lh = mesh(cylGeo(470, 1052, 13, 0, 118, 16, 10), lhMat); RC.root.add(lh);
   B.add(iron, cylGeo(470, 1052, 12, 118, 121, 16)); B.add(RC.mats.clear('#fff4d0', 0.3), cylGeo(470, 1052, 8, 121, 140, 12)); B.add(iron, latheGeo(470, 1052, [[0, 140], [11, 140], [0, 154]], 12));
   const beamMat = RC.mats.glow('#fff0c0'); beamMat.opacity = 0.55;
-  const beam = new THREE.Mesh(new THREE.PlaneGeometry(220, 16).translate(110, 0, 0), beamMat); beam.position.set(470, 1052, 131); beam.renderOrder = 7; RC.root.add(beam);
+  const beam = new THREE.Mesh(new THREE.PlaneGeometry(130, 14).translate(65, 0, 0), beamMat); beam.position.set(470, 1052, 131); beam.renderOrder = 7; RC.root.add(beam);
   // the parrot on a perch at the back left
   const parrot = parrotModel(RC); parrot.position.set(70, 1046, 62); RC.root.add(parrot);
   B.add(brass, cylGeo(70, 1046, 1.8, 0, 56, 8)); B.add(brass, new THREE.TorusGeometry(10, 1.2, 6, 16).translate(70, 1046, 58));
   RC.anim.push((dt, t) => {
-    const G = RC.G; beam.rotation.z = t * 0.9; beam.scale.x = 1 + 0.1 * Math.sin(t * 7);
-    beamMat.opacity = 0.35 + 0.25 * Math.max(0, Math.cos(t * 0.9 * 2)) + (G.b ? G.b.rain * 0.3 : 0);
+    const G = RC.G; beam.rotation.z = PI * 0.9 + Math.sin(t * 0.45) * 0.9; beam.scale.x = 1 + 0.08 * Math.sin(t * 7);
+    beamMat.opacity = 0.3 + (G.b ? G.b.rain * 0.3 : 0);
     fr.rotation.z = Math.sin(t * 0.8) * 0.03 * (1 + (G.b ? G.b.rain * 5 : 0));
   });
   return null;
 }
+function colGeo(geo, hex) { const g = geo.index ? geo.toNonIndexed() : geo; const c = new THREE.Color(hex), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; }
+function mergeCol(list) {
+  const m = mergeGeos(list); let n = 0; list.forEach(g => n += g.attributes.position.count); const col = new Float32Array(n * 3); let o = 0;
+  for (const g of list) { col.set(g.attributes.color.array, o * 3); o += g.attributes.position.count; } m.setAttribute('color', new THREE.BufferAttribute(col, 3)); return m;
+}
 function parrotModel(RC) {
-  const g = new THREE.Group();
-  const red = RC.mats.plastic('#d8302a', { roughness: 0.6, clearcoat: 0.2 }), blue = RC.mats.plastic('#2a5ad8', { roughness: 0.6 }), yel = RC.mats.plastic('#f0c040', { roughness: 0.5 }), beak = RC.mats.plastic('#3a3030', { roughness: 0.5 });
-  const body = mesh(new THREE.SphereGeometry(7, 14, 10), red); body.scale.set(0.8, 1, 1.25); body.position.z = 8; g.add(body);
+  // a parrot on its perch: four meshes (body, head, two wings) with vertex colours
+  const g = new THREE.Group(), mat = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.55, clearcoat: 0.25 });
+  const RED = '#d8302a', BLUE = '#2a5ad8', YEL = '#f0c040', DARK = '#3a3030', WHITE = '#ffffff', GREEN = '#2f9a4a';
+  const body = mesh(mergeCol([
+    colGeo(new THREE.SphereGeometry(7, 14, 10).scale(0.8, 1, 1.25).translate(0, 0, 8), RED),
+    colGeo(new THREE.BoxGeometry(4, 16, 1.4).translate(0, 9, 0).rotateX(0.5).translate(0, 5, 2), YEL),
+    colGeo(cylGeo(-2, 0, 0.6, -4, 0, 5), DARK), colGeo(cylGeo(2, 0, 0.6, -4, 0, 5), DARK)]), mat);
+  g.add(body);
   const headG = new THREE.Group(); headG.position.set(0, -2, 17); g.add(headG);
-  headG.add(mesh(new THREE.SphereGeometry(4.8, 14, 10), red));
-  const bk = mesh(new THREE.ConeGeometry(2.4, 6, 10).rotateX(-PI / 2).translate(0, -6, -0.5), beak); headG.add(bk);
-  const eyes = mesh(mergeGeos([new THREE.SphereGeometry(1.1, 8, 6).translate(-2.6, -3.2, 1.2), new THREE.SphereGeometry(1.1, 8, 6).translate(2.6, -3.2, 1.2)]), RC.mats.plastic('#fff')); headG.add(eyes);
-  const pupils = mesh(mergeGeos([new THREE.SphereGeometry(0.6, 6, 5).translate(-2.7, -4, 1.3), new THREE.SphereGeometry(0.6, 6, 5).translate(2.7, -4, 1.3)]), beak); headG.add(pupils);
-  const wings = [-1, 1].map(s => { const w = mesh(new THREE.SphereGeometry(5, 10, 8).scale(0.35, 1, 0.9).translate(0, 1, -2), blue); const p = new THREE.Group(); p.position.set(s * 5.5, 0, 10); p.add(w); g.add(p); return p; });
-  const tail = mesh(new THREE.BoxGeometry(4, 16, 1.4).translate(0, 9, 0).rotateX(0.5), yel); tail.position.set(0, 5, 2); g.add(tail);
-  [-1, 1].forEach(s => g.add(mesh(cylGeo(s * 2, 0, 0.6, -4, 0, 5), yel)));
+  headG.add(mesh(mergeCol([
+    colGeo(new THREE.SphereGeometry(4.8, 14, 10), RED), colGeo(new THREE.ConeGeometry(2.4, 6, 10).rotateX(-PI / 2).translate(0, -6, -0.5), DARK),
+    colGeo(new THREE.SphereGeometry(1.1, 8, 6).translate(-2.6, -3.2, 1.2), WHITE), colGeo(new THREE.SphereGeometry(1.1, 8, 6).translate(2.6, -3.2, 1.2), WHITE),
+    colGeo(new THREE.SphereGeometry(0.6, 6, 5).translate(-2.7, -4, 1.3), DARK), colGeo(new THREE.SphereGeometry(0.6, 6, 5).translate(2.7, -4, 1.3), DARK)]), mat));
+  const wings = [-1, 1].map(s => { const w = mesh(mergeCol([colGeo(new THREE.SphereGeometry(5, 10, 8).scale(0.35, 1, 0.9).translate(0, 1, -2), s < 0 ? BLUE : GREEN)]), mat); const p = new THREE.Group(); p.position.set(s * 5.5, 0, 10); p.add(w); g.add(p); return p; });
   RC.anim.push((dt, t) => {
     const G = RC.G, B = G.b || {}, talking = G.time - (B.saidT || -9) < 2.2, stormy = B.rain || 0;
     headG.rotation.y = Math.sin(t * 0.7) * 0.5 + (talking ? Math.sin(t * 14) * 0.25 : 0); headG.rotation.x = talking ? Math.abs(Math.sin(t * 12)) * 0.25 : Math.sin(t * 0.3) * 0.1;

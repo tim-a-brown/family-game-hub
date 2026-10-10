@@ -111,9 +111,8 @@ function build(T) {
   T.level('maze', { z: MAZE_Z, bounds: MAZE_BOX });
   const shelves = [
     MAZE_POLY,                                   // outer wall, open at the bottom
-    [[196, 972], [122, 964]],                    // shelf 1: gap on the left
-    [[57, 930], [150, 922]],                     // shelf 2: gap on the right
-    [[196, 890], [110, 884]]                     // shelf 3: gap on the left
+    [[196, 948], [118, 942]],                    // shelf 1: slopes down to the gap on the left
+    [[37, 892], [150, 886]]                      // shelf 2: slopes down to the gap on the right
   ];
   const maze = T.tiltingMiniField({ id: 'maze', lvl: 'maze', box: MAZE_BOX, walls: shelves, max: 1150 });
   maze.mesh = () => {}; maze.render = () => {};     // the chamber draws itself (chamberModel)
@@ -736,15 +735,14 @@ function stoneTex(RC, w, h, base, seed, o = {}) {
   if (o.moss) for (let i = 0; i < o.moss; i++) { g.fillStyle = 'rgba(70,130,60,' + (0.2 + r() * 0.3) + ')'; g.beginPath(); g.ellipse(r() * w, h * 0.7 + r() * h * 0.3, 6 + r() * 14, 3 + r() * 6, 0, 0, TAU); g.fill(); }
   return RC.tex(c);
 }
-function stoneMat(RC, tex, o = {}) { return new THREE.MeshStandardMaterial(Object.assign({ map: tex, roughness: 0.88, metalness: 0 }, o)); }
+function stoneMat(RC, tex, o = {}) { return RC.mats.get('stone' + tex.id + JSON.stringify(o), () => new THREE.MeshStandardMaterial(Object.assign({ map: tex, roughness: 0.88, metalness: 0 }, o))); }
 function goldMat(RC) { return RC.mats.get('goldIdol', () => new THREE.MeshStandardMaterial({ color: 0xf2c14e, metalness: 1, roughness: 0.3, emissive: 0xf2c14e, emissiveIntensity: 0, envMapIntensity: 1.2 })); }
 // a small gold idol: squat body, big head, headdress, red eyes. Returns a group (origin at its feet).
 function idolModel(RC, s = 1) {
-  const g = new THREE.Group(), gold = goldMat(RC);
-  g.add(mesh(latheGeo(0, 0, [[0, 0], [7, 0], [8, 3], [6, 9], [7, 13], [5, 16], [0, 17]], 14), gold));
-  const head = mesh(new THREE.BoxGeometry(11, 9, 10), gold); head.position.set(0, 0, 22); g.add(head);
-  const hd = mesh(new THREE.ConeGeometry(8, 8, 6), gold); hd.rotation.x = PI / 2; hd.position.set(0, 0, 31); g.add(hd);
-  [-3, 3].forEach(x => { const a = mesh(new THREE.BoxGeometry(3, 3, 10), gold); a.position.set(x * 3.2, -2, 10); g.add(a); });
+  const g = new THREE.Group(), gold = goldMat(RC), parts = [latheGeo(0, 0, [[0, 0], [7, 0], [8, 3], [6, 9], [7, 13], [5, 16], [0, 17]], 14)];
+  parts.push(new THREE.BoxGeometry(11, 9, 10).translate(0, 0, 22), new THREE.ConeGeometry(8, 8, 6).rotateX(PI / 2).translate(0, 0, 31));
+  [-3, 3].forEach(x => parts.push(new THREE.BoxGeometry(3, 3, 10).translate(x * 3.2, -2, 10)));
+  g.add(mesh(mergeGeos(parts), gold));
   const eyes = new THREE.Mesh(mergeGeos([new THREE.SphereGeometry(1.4, 8, 6).translate(-2.8, -4.6, 23), new THREE.SphereGeometry(1.4, 8, 6).translate(2.8, -4.6, 23)]), new THREE.MeshStandardMaterial({ color: '#300', emissive: '#ff3030', emissiveIntensity: 1.5 }));
   g.add(eyes); g.userData.eyes = eyes; g.scale.setScalar(s);
   return g;
@@ -772,7 +770,7 @@ function chamberModel(RC, maze) {
   // the slab under it and the carved walls (one stone mesh)
   const stoneT = stoneTex(RC, 512, 128, '#6a6456', 31, { blocks: 32, moss: 20 });
   const sm = stoneMat(RC, stoneT);
-  const parts = [slabGeo(MAZE_POLY.map(local), -10, 10, { bevel: 1.5 })];
+  const parts = [slabGeo(MAZE_POLY.map(local), -10, 10, { bevel: 1.5 }), latheGeo(IDOL[0] - cx, IDOL[1] - cy + 24, [[12, 0], [12, 36], [0, 44]], 10)];
   const walls = maze.walls.map(wp => wp.map(local));
   walls.forEach((wp, i) => { const geo = wallGeo(wp, i ? 6 : 7, 0, 16, { bevel: 1 }); if (geo) parts.push(geo); });
   const sw = mesh(mergeGeos(parts), sm); g.add(sw);
@@ -780,10 +778,10 @@ function chamberModel(RC, maze) {
   const cup = latheGeo(IDOL[0] - cx, IDOL[1] - cy, [[17, 0.3], [16, -4], [13, -18], [0, -20]], 20); g.add(mesh(cup, RC.mats.steel(), false));
   // the idol behind its hole, eyes glowing; a stone niche round it
   const idol = idolModel(RC, 1); idol.position.set(IDOL[0] - cx, IDOL[1] - cy + 22, 0); g.add(idol);
-  const niche = mesh(latheGeo(IDOL[0] - cx, IDOL[1] - cy + 24, [[12, 0], [12, 36], [0, 44]], 10), sm); g.add(niche); niche.position.z = 0;
   // torches on the deck (bulbs do the light; these are the sticks and flames)
-  const flames = [];
-  [[76, 946], [190, 1000]].forEach(([x, y]) => { g.add(mesh(cylGeo(x - cx, y - cy, 2.2, 0, 24, 8), RC.mats.wood('#5a3a20', 'torch'))); g.add(mesh(cylGeo(x - cx, y - cy, 3.4, 22, 27, 8), RC.mats.iron())); const f = new THREE.PlaneGeometry(10, 18); f.rotateX(PI / 2); f.translate(x - cx, y - cy - 1, 34); flames.push(f); });
+  const flames = [], sticks = [];
+  [[76, 946], [190, 1000]].forEach(([x, y]) => { sticks.push(cylGeo(x - cx, y - cy, 2.2, 0, 24, 8), cylGeo(x - cx, y - cy, 3.4, 22, 27, 8)); const f = new THREE.PlaneGeometry(10, 18); f.rotateX(PI / 2); f.translate(x - cx, y - cy - 1, 34); flames.push(f); });
+  g.add(mesh(mergeGeos(sticks), RC.mats.iron()));
   const fm = new THREE.Mesh(mergeGeos(flames), RC.mats.glow('#ffb45a')); fm.renderOrder = 8; g.add(fm);
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   RC.root.add(g);
@@ -848,10 +846,8 @@ function altarModel(RC, altar) {
   const [x0, y0, x1, y1] = ALTAR, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, w = x1 - x0, d = y1 - y0, H = 44;
   const g = new THREE.Group(); g.position.set(cx, cy, 0);
   const side = stoneTex(RC, 256, 128, '#6e6858', 51, { glyphs: 12, moss: 8 }), top = stoneTex(RC, 256, 256, '#7a7462', 52, { blocks: 64 });
-  const block = mesh(new THREE.BoxGeometry(w, d, H), [stoneMat(RC, side), stoneMat(RC, side), stoneMat(RC, side), stoneMat(RC, side), stoneMat(RC, top), stoneMat(RC, side)]);
-  block.position.z = H / 2; g.add(block);
-  // a lip round the top and a carved sun on the top face
-  g.add(mesh(new THREE.BoxGeometry(w + 4, d + 4, 3), stoneMat(RC, top)).translateZ(H - 1));
+  const block = mesh(mergeGeos([new THREE.BoxGeometry(w, d, H).translate(0, 0, H / 2), new THREE.BoxGeometry(w + 4, d + 4, 3).translate(0, 0, H - 1)]), stoneMat(RC, side));
+  g.add(block);
   const sun = mesh(new THREE.TorusGeometry(12, 1.6, 6, 24), goldMat(RC)); sun.position.z = H + 0.8; g.add(sun);
   const idol = idolModel(RC, 0.9); idol.position.set(0, 2, H + 0.5); g.add(idol);
   // offering bowl at the front edge
@@ -882,9 +878,7 @@ function snakeModel(RC, toy) {
   const skin = new THREE.MeshPhysicalMaterial({ map: scaleT, bumpMap: scaleT, bumpScale: 0.6, roughness: 0.45, clearcoat: 0.5, clearcoatRoughness: 0.3 });
   // body: coiled behind the head (local -y), tail tip tucked
   const body = tubeGeo([[0, 10, 24], [0, -4, 22], [4, -22, 16], [14, -36, 10], [28, -46, 8], [36, -62, 8], [24, -80, 8], [8, -82, 8], [-2, -70, 8], [6, -58, 8]], 8.5, 70, 10);
-  g.add(mesh(body, skin));
-  // neck rising to the head
-  g.add(mesh(tubeGeo([[0, -4, 22], [0, 2, 30], [0, 6, 38]], 7.5, 10, 10), skin));
+  g.add(mesh(mergeGeos([body, tubeGeo([[0, -4, 22], [0, 2, 30], [0, 6, 38]], 7.5, 10, 10)]), skin));
   // hood: a flat spread shape behind the head, tilted back a little
   const hs = new THREE.Shape(); hs.moveTo(0, -4); hs.bezierCurveTo(-26, 0, -30, 26, -16, 40); hs.bezierCurveTo(-8, 46, 8, 46, 16, 40); hs.bezierCurveTo(30, 26, 26, 0, 0, -4);
   const hoodG = new THREE.ExtrudeGeometry(hs, { depth: 3, bevelEnabled: true, bevelThickness: 1, bevelSize: 1, bevelSegments: 2 });
@@ -917,18 +911,18 @@ function templeModel(RC, toy) {
   const g = new THREE.Group(), pieces = [], rubble = [];
   const wallT = stoneTex(RC, 256, 128, '#7a7260', 71, { blocks: 24, glyphs: 10, moss: 10 }), topT = stoneTex(RC, 128, 128, '#8a8270', 72, { blocks: 32 });
   const sm = stoneMat(RC, wallT), tm = stoneMat(RC, topT);
-  const tier = (w, d, h, y, z, tag) => { const m = mesh(new THREE.BoxGeometry(w, d, h), [sm, sm, sm, sm, tm, sm]); m.position.set(0, y, z + h / 2); g.add(m); pieces.push({ m, z: z + h / 2, y, r: (Math.random() - 0.5) * 1.2, tag }); return m; };
+  const tier = (w, d, h, y, z, tag) => { const m = mesh(new THREE.BoxGeometry(w, d, h), sm); m.position.set(0, y, z + h / 2); g.add(m); pieces.push({ m, z: z + h / 2, y, r: (Math.random() - 0.5) * 1.2, tag }); return m; };
   tier(60, 42, 30, 21, 0, 0);
   tier(46, 32, 24, 24, 30, 1);
   tier(30, 20, 20, 25, 54, 2);
   // steps up the front, the doorway, carved lintel
-  for (let i = 0; i < 5; i++) { const s = mesh(new THREE.BoxGeometry(16, 4, 3), tm); s.position.set(0, -2 + i * 4, 3 + i * 5.5); g.add(s); pieces.push({ m: s, z: 3 + i * 5.5, y: -2 + i * 4, r: 0.4, tag: 0 }); }
+  { const sg = []; for (let i = 0; i < 5; i++) sg.push(new THREE.BoxGeometry(16, 4, 3).translate(0, -2 + i * 4, 3 + i * 5.5)); const s = mesh(mergeGeos(sg), tm); g.add(s); pieces.push({ m: s, z: 0, y: 0, r: 0.4, tag: 0 }); }
   const door = mesh(new THREE.BoxGeometry(14, 6, 18), RC.mats.paint('#050403', { roughness: 1 })); door.position.set(0, -0.5, 9); g.add(door); pieces.push({ m: door, z: 9, y: -0.5, r: 0, tag: 0 });
   const lintel = mesh(new THREE.BoxGeometry(20, 5, 4), goldMat(RC)); lintel.position.set(0, -0.8, 20); g.add(lintel); pieces.push({ m: lintel, z: 20, y: -0.8, r: 0.3, tag: 1 });
   // the idol inside (revealed when the walls fall)
   const idol = idolModel(RC, 1.1); idol.position.set(0, 18, 1); g.add(idol);
   // rubble that appears on collapse
-  for (let i = 0; i < 7; i++) { const s = mesh(new THREE.DodecahedronGeometry(3 + Math.random() * 3), sm); s.position.set((Math.random() - 0.5) * 70, -8 - Math.random() * 10, 3); s.scale.setScalar(0.01); g.add(s); rubble.push(s); }
+  { const rg = [], rr = rng(73); for (let i = 0; i < 7; i++) rg.push(new THREE.DodecahedronGeometry(3 + rr() * 3).translate((rr() - 0.5) * 70, -8 - rr() * 10, 3)); const s = mesh(mergeGeos(rg), sm); s.scale.z = 0.01; g.add(s); rubble.push(s); }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   g.userData.pose = (stage, fall, wob, t) => {
     pieces.forEach((p, i) => {
@@ -938,7 +932,7 @@ function templeModel(RC, toy) {
       p.m.visible = gone < 0.98 || p.tag === 0;
       if (stage >= 2 && p.tag === 2) p.m.rotation.z = 0.08 + Math.sin(t * 2) * 0.02; else if (stage >= 1 && p.tag === 1) p.m.rotation.z = 0.05;
     });
-    rubble.forEach((s, i) => s.scale.setScalar(0.01 + fall * (0.8 + (i % 3) * 0.2)));
+    rubble.forEach(s => { s.scale.z = 0.01 + fall; s.visible = fall > 0.02; });
     idol.userData.eyes.material.emissiveIntensity = 1.2 + fall * 3 * Math.abs(Math.sin(t * 5));
     idol.position.z = 1 + fall * 6;
   };

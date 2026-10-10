@@ -143,12 +143,12 @@ function build(T) {
   T.wall([[426, 620], [426, 764]], { style: 'metal', h: 26 });
   T.post(426, 617, { style: 'rubber', r: 5 }); T.post(426, 534, { style: 'rubber', r: 5 });
   T.wall([[444, 490], [478, 518]], { style: 'metal', h: 24 });
-  T.post(370, 654, { style: 'rubber', r: 5 }); T.post(416, 646, { style: 'rubber', r: 5 });
-  T.wall([[416, 646], [426, 619]], { style: 'metal', h: 24 });
+  T.post(366, 656, { style: 'rubber', r: 5 }); T.post(418, 644, { style: 'rubber', r: 5 });
+  T.wall([[418, 644], [426, 619]], { style: 'metal', h: 24 });
   const loopPts = [[392, 650, 0], [394, 690, 4], [397, 735, 18], [398, 800, 32]];
-  for (let k = 1; k <= 8; k++) { const a = k / 8 * TAU; loopPts.push([398 + 32 * k / 8, 800 + 36 * Math.sin(a), 68 - 36 * Math.cos(a)]); }
-  loopPts.push([432, 842, 44], [432, 882, 52], [420, 920, 56], [408, 946, 57], [398, 952, 57]);
-  T.ramp({ id: 'loop', style: 'plastic', w: 36, color: '#ff4fb0', opacity: 0.3, edge: '#ff9ad6', wallH: 22, exitLvl: 'roof', entryMin: 160, minExit: 260, supports: false, pts: loopPts });
+  for (let k = 1; k <= 8; k++) { const a = k / 8 * TAU; loopPts.push([398 + 44 * k / 8, 800 + 36 * Math.sin(a), 68 - 36 * Math.cos(a)]); }
+  loopPts.push([444, 842, 42], [442, 882, 50], [426, 920, 56], [410, 946, 57], [398, 952, 57]);
+  T.ramp({ id: 'loop', style: 'plastic', w: 40, color: '#ff4fb0', opacity: 0.3, edge: '#ff9ad6', wallH: 22, exitLvl: 'roof', entryMin: 160, minExit: 260, supports: false, pts: loopPts });
 
   // ── The ROOFTOP: raised deck with the moving launcher and the V-I-P bank ──
   T.miniField({ id: 'roof', z: ROOF.z, box: ROOF.box, floor: '#0b0816', paint: paintRoof, legs: [[228, 928], [392, 928], [228, 1002], [392, 1002]],
@@ -159,7 +159,7 @@ function build(T) {
   T.dropTargetBank({ id: 'vip', x: 310, y: 998, angle: 270, n: 3, w: 28, gap: 6, lvl: 'roof', labels: ['V', 'I', 'P'], color: '#f6f0ff', ink: '#2a0a3a', resetDelay: 2.2 });
   // the way down: a long chrome wireform over the loop ramp and down the right side to the right inlane
   T.vuk({ id: 'roofExit', x: 394, y: 926, lvl: 'roof', hole: false, power: 1000, hold: 0.25, style: 'wire', wireMat: 'chrome', exitLvl: 'main', supports: false,
-    path: [[394, 926, 56], [412, 914, 70], [436, 898, 82], [458, 874, 80], [470, 830, 70], [472, 740, 56], [470, 640, 46], [466, 540, 38], [458, 440, 26], [444, 378, 14], [430, 352, 8], [424, 346, 7]] });
+    path: [[394, 926, 56], [412, 914, 74], [436, 896, 86], [460, 872, 86], [478, 830, 74], [478, 740, 58], [476, 640, 46], [470, 540, 38], [460, 440, 26], [446, 378, 14], [430, 352, 8], [424, 346, 7]] });
 
   // ── Centre: THE ORB (ring-catch under a hanging chrome orb) and its lock ──
   T.post(243, 700, { style: 'metal', r: 6, h: 48 });
@@ -848,7 +848,7 @@ function neonModel(RC) {
   neonTube(RC, [[64, 836, 43], [66, 888, 43]].concat(arc).concat([[204, 1008, 43], [204, 838, 43]]), C.cyan, 1.3, 2.2);
   // the loop ramp: pink tubes along both top edges (the ball glows through the pink plastic)
   const lp = RC.G.comps.loop.pts;
-  for (const lat of [-17, 17]) neonTube(RC, offsetPath3(lp, lat, 22), C.hot, 1.1, 2.0);
+  for (const lat of [-19, 19]) neonTube(RC, offsetPath3(lp, lat, 22), C.hot, 1.1, 2.0);
   // violet tubes along the inlane guides
   neonTube(RC, [[46, 328, 24], [46, 218, 24]], C.violet, 1.1, 1.8); neonTube(RC, [[440, 328, 24], [440, 218, 24]], C.violet, 1.1, 1.8);
   // the orb pylon gets a violet ring
@@ -890,10 +890,10 @@ function wireLegs(RC) {
   const sk = RC.G.comps.wheel; [0.14, 0.34, 0.56, 0.78].forEach(f => { const p = at(sk, f); if (f < 0.2) leg(p[0], p[1], p[2]); else { B.add(s, tubeGeo([[4, p[1], 36], [p[0] - 15, p[1], p[2] + 2]], 1.6, 2, 6)); B.add(s, boxGeo(4, p[1], 36, 3, 10, 6)); } });
   // roof exit wire: a post by the deck leg, then brackets off the shooter-lane wall down the right side
   const re = RC.G.comps.roofExit; leg(452, 896, at(re, 0.14)[2]);
-  [0.36, 0.52, 0.68, 0.84].forEach(f => { const p = at(re, f); B.add(s, tubeGeo([[484, p[1], 36], [p[0] + 15, p[1], p[2] + 2]], 1.6, 2, 6)); B.add(s, boxGeo(484, p[1], 36, 4, 10, 6)); });
+  [0.42, 0.56, 0.7, 0.84].forEach(f => { const p = at(re, f); B.add(s, tubeGeo([[506, p[1], 40], [p[0] + 12, p[1], p[2] + 2]], 1.6, 2, 6)); B.add(s, boxGeo(508, p[1], 40, 4, 10, 6)); });
   // the loop ramp: a cradle under the corkscrew and legs under the climb to the deck (outside the lanes)
   const lp = RC.G.comps.loop.pts;
-  [[0.52, 404, 758], [0.66, 428, 846], [0.8, 440, 900]].forEach(([f, x, y]) => { const p = w.pathAt(RC.G.comps.loop.path, RC.G.comps.loop.path.L * f); B.add(s, cylGeo(x, y, 2, 0, p[2] - 3, 8)); B.add(s, cylGeo(x, y, 5, 0, 1.5, 8)); B.add(s, tubeGeo([[x, y, p[2] - 3], [p[0], p[1], p[2] - 3]], 1.6, 2, 6)); });
+  [[0.52, 404, 758], [0.66, 440, 846], [0.8, 448, 900]].forEach(([f, x, y]) => { const p = w.pathAt(RC.G.comps.loop.path, RC.G.comps.loop.path.L * f); B.add(s, cylGeo(x, y, 2, 0, p[2] - 3, 8)); B.add(s, cylGeo(x, y, 5, 0, 1.5, 8)); B.add(s, tubeGeo([[x, y, p[2] - 3], [p[0], p[1], p[2] - 3]], 1.6, 2, 6)); });
   void lp;
   return null;
 }
