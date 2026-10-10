@@ -79,6 +79,7 @@ var GAMES = [
   { id: 'shellgame',   name: 'Shell Game',   color: '#0d9488', cat: 'dice', min: 1, max: 4, tag: 'Keep your eye on the ball', play: 'shellgame' },
   { id: 'farkle',      name: 'Farkle',       color: '#000', cat: 'dice', min: 1, max: 6, tag: 'Push your luck to 10,000', play: 'farkle' },
   { id: 'lrc',         name: 'Left Right Center', color: '#000', cat: 'dice', min: 2, max: 10, tag: 'Roll and pass the chips', play: 'lrc' },
+  { id: 'fortune',     name: 'Fortune Teller', color: '#000', cat: 'dice', min: 1, max: 0, tag: 'Cookies, an oracle dial, a carnival swami and the 8 ball', play: 'fortune' },
 
   // ── Puzzles ──────────────────────────────────────────────────────────────
   { id: '2048',        name: '2048',         color: '#f97316', cat: 'puzzle', min: 1, max: 1, tag: 'Slide and merge to 2048', play: '2048' },

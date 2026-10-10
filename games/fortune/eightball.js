@@ -191,11 +191,11 @@ function mount(stage, api) {
   allowBtn.innerHTML = icon('phone') + '<span>Allow motion</span>';
 
   // ── State the renderers draw ──
-  const S = { px: 0, lift: 0, pz: 0, tiltX: 0, tiltZ: 0, flip: 0, depth: 1, face: 0, spinAxis: [0.3, 1, 0.2], spin: 0, wobX: 0, wobY: 0, wobZ: 0, bubbles: [] };
+  const S = { glow: 0, px: 0, lift: 0, pz: 0, tiltX: 0, tiltZ: 0, flip: 0, depth: 1, face: 0, spinAxis: [0.3, 1, 0.2], spin: 0, wobX: 0, wobY: 0, wobZ: 0, bubbles: [] };
   let phase = 'rest';            // rest | shake | reveal | rise | answer
   let ox = 0, oy = 0, vx = 0, vy = 0, tx = 0, ty = 0;   // the ball's offset on screen, in ball radii (y up)
   let fx = 0, fy = 0, fT = 0;    // push from the phone's motion (ball radii / s^2) and when it last came
-  let vflip = 0, flipTarget = 0, riseT = 0, spin0 = 0, wph = [0, 0, 0], shakeLast = 0, shakeVia = '', answers = 0, lastFace = -1;
+  let vflip = 0, flipTarget = 0, riseT = 0, landed = false, spin0 = 0, wph = [0, 0, 0], shakeLast = 0, shakeVia = '', answers = 0, lastFace = -1;
   let R = null, raf = 0, lastT = 0, lastDraw = 0, W = 0, H = 0, needDraw = true, hidden = document.visibilityState !== 'visible';
 
   // ── Loop: frames only while something moves; at most ~60 draws a second ──
@@ -206,7 +206,8 @@ function mount(stage, api) {
     const dt = Math.min(0.05, Math.max(0, (now - lastT) / 1000)); lastT = now;
     if (lastDraw) R.adapt(now - lastDraw);
     const moving = step(dt, now);
-    R.draw(S); lastDraw = now; needDraw = false;
+    if (!hook.noRender) R.draw(S);
+    lastDraw = now; needDraw = false;
     if (moving) raf = requestAnimationFrame(frame);
     else lastDraw = 0;
   }
@@ -253,27 +254,34 @@ function mount(stage, api) {
       S.wobZ = drift * Math.sin(4.3 * riseT + wph[1]) + settle * 0.7 * Math.sin(9.1 * (riseT - 1.5) + 1.1);
       S.wobY = drift * 0.8 * Math.sin(2.9 * riseT + wph[2]) + settle * 0.4 * Math.sin(7.3 * (riseT - 1.5) + 0.4);
       if (riseT < 1.4 && Math.random() < dt * 10) bubble(S.depth * 0.9 + 0.1);
-      if (riseT > 3.3) { S.wobX = S.wobY = S.wobZ = 0; S.spin = 0; S.depth = 0; showAnswer(); }
+      // the face meets the glass: a crisp brighten with the chime
+      if (riseT > 2.05 && !landed) { landed = true; sfx('sparkle', 0.6); Kit && Kit.haptic && Kit.haptic('success'); }
+      S.glow = glowAt(riseT);
+      if (riseT > 3.0) { S.wobX = S.wobY = S.wobZ = 0; S.spin = 0; S.depth = 0; showAnswer(); }
+      busy = true;
+    } else if (phase === 'answer' && S.glow > 0.02) {
+      riseT += dt; S.glow = glowAt(riseT); if (S.glow <= 0.02) S.glow = 0;
       busy = true;
     }
     // bubbles drift up to the glass and pop
     if (S.bubbles.length) {
-      for (const b of S.bubbles) { b.y -= b.v * dt; b.x += Math.sin(now / 300 + b.ph) * dt * 0.03; if (b.y < 0.01) b.a -= dt * 3; }
+      for (const b of S.bubbles) { if (phase === 'answer' || phase === 'rest') b.a -= dt * 1.2; b.y -= b.v * dt; b.x += Math.sin(now / 300 + b.ph) * dt * 0.03; if (b.y < 0.01) b.a -= dt * 3; }
       S.bubbles = S.bubbles.filter(b => b.a > 0);
       busy = true;
     }
     return busy;
   }
+  function glowAt(t) { return t < 2.05 ? 0 : t < 2.25 ? (t - 2.05) / 0.2 : Math.exp(-(t - 2.25) / 0.38); }
   function bubble(y) {
     if (S.bubbles.length > 26) return;
     const a = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * 0.92;
-    S.bubbles.push({ x: Math.cos(a) * rr, z: Math.sin(a) * rr, y: clamp(y, 0.05, 0.9), v: 0.12 + Math.random() * 0.22, r: Math.random(), a: 0.5 + Math.random() * 0.5, ph: Math.random() * 6 });
+    S.bubbles.push({ x: Math.cos(a) * rr, z: Math.sin(a) * rr, y: clamp(y, 0.05, 0.9), v: 0.3 + Math.random() * 0.4, r: Math.random(), a: 0.5 + Math.random() * 0.5, ph: Math.random() * 6 });
   }
 
   // ── Shake → reveal ──
   function startShake(via) {
     shakeVia = via; shakeLast = performance.now();
-    if (phase !== 'shake') { phase = 'shake'; srEl.textContent = ''; Kit && Kit.haptic && Kit.haptic('medium'); }
+    if (phase !== 'shake') { phase = 'shake'; S.glow = 0; srEl.textContent = ''; Kit && Kit.haptic && Kit.haptic('medium'); }
     kick();
   }
   function endShake() {
@@ -286,7 +294,7 @@ function mount(stage, api) {
     const a = [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5], l = Math.hypot(a[0], a[1], a[2]) || 1;
     S.spinAxis = a.map(x => x / l); spin0 = (Math.random() < 0.5 ? -1 : 1) * (2.2 + Math.random() * 1.6); S.spin = spin0;
     wph = [Math.random() * 6, Math.random() * 6, Math.random() * 6];
-    riseT = 0; phase = 'rise';
+    riseT = 0; landed = false; phase = 'rise';
     for (let i = 0; i < 8; i++) bubble(0.5 + Math.random() * 0.4);
     sfx('splash', 0.22);
   }
@@ -294,7 +302,6 @@ function mount(stage, api) {
     phase = 'answer'; answers++;
     const a = ANSWERS[S.face];
     srEl.textContent = a.text;
-    sfx('sparkle', 0.6); Kit && Kit.haptic && Kit.haptic('success');
     setHint(null);
     try { onAnswer(a.text); } catch (e) {}
   }
@@ -485,11 +492,13 @@ function mount(stage, api) {
 
   // ── Test hook ──
   const hook = window.__eight = {
-    get phase() { return phase; }, get state() { return Object.assign({ phase, ox, oy, answers, motionOn, motionSeen, motionState, hint: hintEl.classList.contains('on') ? hintEl.textContent : '', allow: !allowBtn.hidden, drawing: !!raf, held: !!ptr, renderer: R ? (R.is3D ? '3d' : '2d') : '' }, S, { bubbles: S.bubbles.length }); },
+    noRender: false,   // tests: run the motion without drawing (software GL is too slow for real-time gestures)
+    get phase() { return phase; }, get state() { return Object.assign({ phase, ox, oy, answers, motionOn, motionSeen, motionState, hint: hintEl.classList.contains('on') ? hintEl.textContent : '', allow: !allowBtn.hidden, drawing: !!raf, held: !!ptr, ptr: ptr ? { E: Math.round(ptr.E), turn: +ptr.turn.toFixed(2), ok: ptr.ok } : null, renderer: R ? (R.is3D ? '3d' : '2d') : '' }, S, { bubbles: S.bubbles.length }); },
     get answer() { return phase === 'answer' ? ANSWERS[S.face].text : null; },
     answers: ANSWERS,
     shake(ms) { startShake('test'); shakeLast = performance.now() + 1e6; setTimeout(() => endShake(), ms || 600); },
     info: () => (R ? R.info() : null),
+    R: () => R,
     redraw: () => { if (R) R.draw(S); }
   };
   return { unmount };

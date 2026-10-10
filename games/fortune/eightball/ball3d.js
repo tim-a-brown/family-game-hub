@@ -16,7 +16,7 @@ const TW = 0.7;                       // half-angle of the window opening (from 
 const RH = Math.sin(TW), YH = Math.cos(TW);
 const RIN = RH - 0.045, YG = YH - 0.055;   // the glass: radius and height (recessed behind a lip)
 const T8 = 0.5, TC = T8 + 0.08;       // the white circle's half-angle and the decal cap around it (-Y pole)
-const RD = 0.86;                      // die circumradius (only the part inside the ball is ever drawn)
+const RD = 1.02 * (Math.sin(0.7) - 0.045) / 0.6070619;   // die circumradius: its face triangle just fills the window (only the part inside the ball is drawn)
 const INR = RD * 0.7946545;           // die inradius (centre to face)
 const DIE_Y = YG - 0.008 - INR;       // die centre when its face touches the glass
 const SINK = 0.78;                    // how far the die sinks
@@ -73,6 +73,7 @@ export function create(host, ANSWERS, post) {
   const envRT = pm.fromScene(room.scene, 0.02, 0.1, 60); pm.dispose(); room.dispose();
   keep(envRT);
   const scene = new THREE.Scene(); scene.environment = envRT.texture;
+  scene.fog = new THREE.Fog(0x000000, 10, 30);   // only the surface takes fog: it fades to black past the light
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.5, 60);
 
   // ── Textures ──
@@ -159,11 +160,12 @@ export function create(host, ANSWERS, post) {
       vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
       fragmentShader: 'uniform vec3 uCol; uniform float uYG; uniform float uK; varying vec3 vP; void main(){ float d = max(0.0, uYG - vP.y); float r = length(vP.xz); gl_FragColor = vec4(uCol * exp(-d * uK) * (0.55 + 0.45 * smoothstep(0.7, 0.0, r)), 1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}'
     })),
-    floor: keep(new THREE.MeshStandardMaterial({ color: 0x1d1d22, roughness: 0.72, metalness: 0, envMapIntensity: 0.03, dithering: true })),
+    floor: keep(new THREE.MeshStandardMaterial({ color: 0x2c2c31, roughness: 0.82, metalness: 0, envMapIntensity: 0.0, dithering: true })),
     shadow: keep(new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthWrite: false, opacity: 0.9 })),
     shadowCore: keep(new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthWrite: false, opacity: 0.95 })),
-    bubbles: keep(new THREE.PointsMaterial({ size: 0.05, sizeAttenuation: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true }))
+    bubbles: keep(new THREE.PointsMaterial({ size: 0.075, sizeAttenuation: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true }))
   };
+  Object.keys(M).forEach(k => { if (M[k] && k !== 'floor') M[k].fog = false; });
   M.floor.roughnessMap = grainTex();
   M.shadow.alphaMap = radial(256, [[0, 'rgb(150,150,150)'], [0.35, 'rgb(90,90,90)'], [0.7, 'rgb(25,25,25)'], [1, 'rgb(0,0,0)']]);
   M.shadowCore.alphaMap = radial(256, [[0, 'rgb(255,255,255)'], [0.3, 'rgb(200,200,200)'], [0.65, 'rgb(60,60,60)'], [1, 'rgb(0,0,0)']]);
@@ -171,9 +173,9 @@ export function create(host, ANSWERS, post) {
 
   // The die: lit like the rest, then mixed into the liquid by its distance behind the glass; anything
   // outside the ball's shell is dropped (the die is bigger than a real one could be, for a readable face)
-  const dieU = { uLocal: { value: new THREE.Matrix4() }, uYG: { value: YG }, uK: { value: 6.0 }, uLiq: { value: LIQ.clone() } };
+  const dieU = { uLocal: { value: new THREE.Matrix4() }, uYG: { value: YG }, uK: { value: 16.0 }, uLiq: { value: LIQ.clone() } };
   M.die = keep(new THREE.MeshPhysicalMaterial({ roughness: 0.34, metalness: 0, clearcoat: 0.45, clearcoatRoughness: 0.25, envMapIntensity: 0.55, emissive: 0xffffff, emissiveIntensity: 0.1 }));
-  M.die.map = dieTex(); M.die.emissiveMap = M.die.map;
+  M.die.map = dieTex(); M.die.emissiveMap = M.die.map; M.die.fog = false;
   M.die.customProgramCacheKey = () => 'eb-die';
   M.die.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, dieU);
@@ -232,14 +234,16 @@ export function create(host, ANSWERS, post) {
   const bubbles = new THREE.Points(bGeo, M.bubbles); bubbles.frustumCulled = false; bubbles.renderOrder = 9; ball.add(bubbles);
 
   // surface and contact shadow
-  const floor = mesh(new THREE.PlaneGeometry(40, 40), M.floor); floor.rotation.x = -Math.PI / 2; floor.position.y = -1;
+  const floor = mesh(new THREE.PlaneGeometry(160, 160), M.floor); floor.rotation.x = -Math.PI / 2; floor.position.y = -1;
   const shadow = mesh(new THREE.PlaneGeometry(1, 1), M.shadow); shadow.rotation.x = -Math.PI / 2; shadow.position.y = -0.998; shadow.renderOrder = 1;
   const shadowCore = mesh(new THREE.PlaneGeometry(1, 1), M.shadowCore); shadowCore.rotation.x = -Math.PI / 2; shadowCore.position.y = -0.997; shadowCore.renderOrder = 2;
 
   // ── Lights: a soft key spot from above (the pool on the surface), a cool rim from behind ──
-  const key = new THREE.SpotLight(0xfff1e2, 70, 0, 0.42, 1, 2); key.position.set(-1.4, 7.5, 2.6); key.target.position.set(0, -1, 0.1); scene.add(key); scene.add(key.target);
-  const rim = new THREE.DirectionalLight(0xcfdcff, 1.6); rim.position.set(1.2, 2.2, -4); scene.add(rim);
-  const rim2 = new THREE.DirectionalLight(0xffe8d0, 0.6); rim2.position.set(-3, 1.2, -2.5); scene.add(rim2);
+  const key = new THREE.SpotLight(0xfff1e2, 420, 0, 0.36, 1, 2); key.position.set(-1.2, 8, 2.2); key.target.position.set(0.1, -1, 0.5); scene.add(key); scene.add(key.target);
+  // the rims come mostly from the studio's strip lights; these only add a faint edge (kept low: at a grazing
+  // angle they would light the whole surface)
+  const rim = new THREE.DirectionalLight(0xcfdcff, 0.25); rim.position.set(1.2, 2.2, -4); scene.add(rim);
+  const rim2 = new THREE.DirectionalLight(0xffe8d0, 0.1); rim2.position.set(-3, 1.2, -2.5); scene.add(rim2);
   scene.add(new THREE.HemisphereLight(0x8090b0, 0x050505, 0.08));
 
   // ── Orientation: the 8 faces the camera at rest; a half-turn about x brings the window round ──
@@ -274,6 +278,7 @@ export function create(host, ANSWERS, post) {
     const shift = (top + avail / 2) - H / 2;
     camera.setViewOffset(W, H, 0, -shift, W, H);
     camera.near = Math.max(0.3, dist * 0.3); camera.far = dist + 40;
+    scene.fog.near = dist - 0.5; scene.fog.far = dist + 7.5;
     camera.updateProjectionMatrix();
   }
   function ballPx() { return (H / 2) / (dist * Math.tan(FOV / 2 * Math.PI / 180)); }
@@ -298,6 +303,7 @@ export function create(host, ANSWERS, post) {
     die.quaternion.copy(q2).multiply(q1).multiply(ALIGN[face]);
     die.position.set(S.wobZ * 0.02, DIE_Y - SINK * S.depth, -S.wobX * 0.02);
     die.visible = S.depth < 0.995;
+    M.die.emissiveIntensity = 0.1 + 0.55 * (S.glow || 0);   // the brief brighten as the answer lands
     die.updateMatrix(); dieU.uLocal.value.copy(die.matrix);
     // bubbles: x, z across the window, y = depth behind the glass
     const B = S.bubbles || [];
@@ -305,7 +311,7 @@ export function create(host, ANSWERS, post) {
       const b = B[i];
       if (!b || b.a <= 0) { bCol[i * 3] = bCol[i * 3 + 1] = bCol[i * 3 + 2] = 0; bPos[i * 3 + 1] = -5; continue; }
       bPos[i * 3] = b.x * RIN; bPos[i * 3 + 1] = YG - 0.01 - b.y; bPos[i * 3 + 2] = b.z * RIN;
-      const k = b.a * Math.exp(-b.y * 4) * 0.8; bCol[i * 3] = k * 0.75; bCol[i * 3 + 1] = k * 0.85; bCol[i * 3 + 2] = k;
+      const k = b.a * Math.exp(-b.y * 3) * 1.1; bCol[i * 3] = k * 0.75; bCol[i * 3 + 1] = k * 0.85; bCol[i * 3 + 2] = k;
     }
     bGeo.attributes.position.needsUpdate = true; bGeo.attributes.color.needsUpdate = true;
     bubbles.visible = B.length > 0;
@@ -335,6 +341,7 @@ export function create(host, ANSWERS, post) {
   }
   return {
     is3D: true, cv, layout, draw, ballPx, adapt, destroy,
+    _dbg: { scene, M, key, rim, rim2, camera },
     info: () => ({ level, dpr, post: !!composer, bloom: !!(bloom && bloom.enabled), frames, ms: +lastMs.toFixed(2), calls: renderer.info.render.calls, tris: renderer.info.render.triangles, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries })
   };
 }

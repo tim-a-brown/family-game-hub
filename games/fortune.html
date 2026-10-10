@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fortune Teller</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js","three/addons/":"../vendor/three/addons/"}}</script>
+<style>
+/* The page is one screen: the game bar, then the stage the teller fills */
+html,body{height:100%;}
+body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;}
+.gbar{flex:none;}
+.ft-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;}
+
+/* Game bar title: the teller's name, tap to switch */
+.gbar .ttl.ft-switch{cursor:pointer;border-radius:12px;margin:-4px 0;padding:4px 6px 4px 2px;transition:background .15s;}
+.gbar .ttl.ft-switch:active{background:var(--w08);}
+.gbar .ttl .ft-chev{display:inline-grid;place-items:center;flex:none;width:22px;height:22px;margin-left:-4px;border-radius:50%;background:var(--w08);color:var(--text-2);}
+.gbar .ttl .ft-chev .ico{width:15px;height:15px;}
+
+/* ── Picker: each teller is a little scene ───────────────────────────── */
+.ft-pick{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  padding:4px max(16px,env(safe-area-inset-right)) calc(var(--safe-b) + 22px) max(16px,env(safe-area-inset-left));}
+.ft-pick-in{max-width:880px;margin:0 auto;}
+.ft-hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:6px 0 16px;}
+.ft-hero h1{font-family:var(--display);font-weight:400;font-size:2.3rem;letter-spacing:.01em;}
+.ft-hero p{color:var(--text-2);font-weight:700;}
+.ft-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+@media (min-width:760px){.ft-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;}}
+@media (orientation:landscape) and (max-height:520px){
+  .ft-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
+  .ft-hero{flex-direction:row;justify-content:center;gap:12px;padding:2px 0 10px;}
+  .ft-hero h1{font-size:1.7rem;}
+}
+.ft-card{position:relative;display:flex;flex-direction:column;border:0;padding:0;text-align:left;color:var(--text);
+  border-radius:20px;overflow:hidden;background:var(--surface);
+  box-shadow:0 0 0 1.5px var(--w08),0 10px 24px -10px rgba(0,0,0,.55);
+  transition:transform .18s var(--spring),box-shadow .18s;}
+.ft-card:active{transform:scale(.96);}
+.ft-card:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+.ft-card.last{box-shadow:0 0 0 2.5px var(--accent),0 12px 26px -10px rgba(0,0,0,.6);}
+.ft-art{position:relative;aspect-ratio:5/4;overflow:hidden;}
+.ft-art svg{position:absolute;inset:0;width:100%;height:100%;display:block;}
+.ft-card:hover .ft-art svg .bob,.ft-card:focus-visible .ft-art svg .bob{animation:ft-bob 1.6s ease-in-out infinite;}
+@keyframes ft-bob{50%{transform:translateY(-3px);}}
+.ft-txt{display:flex;flex-direction:column;gap:3px;padding:10px 12px 13px;}
+.ft-name{display:flex;align-items:center;gap:7px;font-weight:900;font-size:1.06rem;line-height:1.15;}
+.ft-name .ico{width:19px;height:19px;flex:none;color:var(--accent);}
+.ft-blurb{font-size:.84rem;color:var(--text-2);line-height:1.3;font-weight:600;}
+.ft-tag{position:absolute;top:8px;left:8px;padding:3px 9px;border-radius:999px;font-size:.68rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase;
+  background:rgba(10,8,20,.62);color:#fff;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+@media (min-width:760px){.ft-txt{padding:12px 14px 15px;}.ft-name{font-size:1.15rem;}.ft-blurb{font-size:.9rem;}}
+
+/* ── Loading and "coming soon" ────────────────────────────────────────── */
+.ft-wait{position:absolute;inset:0;display:grid;place-items:center;color:var(--text-3);font-weight:800;}
+.ft-wait span{animation:ft-fade 1.2s ease-in-out infinite alternate;}
+@keyframes ft-fade{from{opacity:.35;}to{opacity:1;}}
+.ft-soon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px 20px calc(var(--safe-b) + 20px);}
+.ft-soon .card{width:100%;max-width:360px;text-align:center;padding:24px 20px 20px;border-radius:var(--r-xl);background:var(--surface);box-shadow:0 0 0 1.5px var(--w08),var(--shadow-sm);}
+.ft-soon .art{width:140px;margin:0 auto 12px;border-radius:18px;overflow:hidden;aspect-ratio:5/4;position:relative;opacity:.9;}
+.ft-soon .art svg{position:absolute;inset:0;width:100%;height:100%;}
+.ft-soon h2{font-family:var(--display);font-weight:400;font-size:1.8rem;}
+.ft-soon .when{margin:4px 0 6px;font-weight:900;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);}
+.ft-soon p{color:var(--text-2);margin-bottom:16px;}
+</style>
+</head>
+<body>
+<main class="ft-stage" id="stage"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, stageEl = document.getElementById('stage');
+  var MODE_KEY = 'fortune_mode';
+
+  // ═══ The tellers ════════════════════════════════════════════════════════
+  // Each is an ES module in games/fortune/ with the same shape:
+  //   export default { id, name, blurb, rules, mount(stage, api) -> { unmount() } }
+  // The hub keeps its own name, blurb and rules for each, so the picker and "How to play"
+  // read well even before a module has loaded (or while one is still being built).
+  var TELLERS = [
+    { id: 'cookie', file: 'cookie', icon: 'moon', name: 'Fortune Cookie', blurb: 'Pick a cookie, crack it open',
+      rules: '<p>A table full of fresh fortune cookies. <b>Tap one</b> to pick it up and crack it open. The paper slip inside unrolls with your fortune, your lucky numbers and a word of Chinese to learn.</p><p>Tap the table or <b>New cookie</b> to put the slip away. The table restocks itself. You won’t see the same fortune again until you’ve read most of them.</p>' },
+    { id: 'eightball', file: 'eightball', icon: 'target', name: 'Mystic 8 Ball', blurb: 'Ask a yes-or-no question, then shake',
+      rules: '<p>Think of a <b>yes-or-no question</b>. Shake the ball (or tap it), then wait for the answer to float up in the little window.</p>' },
+    { id: 'oracle', file: 'oracle', icon: 'compass', name: 'The Oracle', blurb: 'Drop a coin and spin the dial',
+      rules: '<p>A vintage coin-op oracle. <b>Drop a coin</b> and give the dial a spin. Where the pointer stops is your fortune.</p>' },
+    { id: 'swami', file: 'swami', icon: 'eye', name: 'The Swami', blurb: 'A carnival booth that prints your card',
+      rules: '<p>Step up to the carnival booth. The Swami gazes into the crystal and the machine <b>prints your fortune on a card</b>.</p>' }
+  ];
+  function teller(id) { for (var i = 0; i < TELLERS.length; i++) if (TELLERS[i].id === id) return TELLERS[i]; return null; }
+  var loadedRules = {};
+
+  function buildRules() {
+    var h = '<p class="goal">Ask the fortune tellers what the future holds. Choose a teller, then follow its lead.</p>';
+    TELLERS.forEach(function (t) {
+      var r = loadedRules[t.id];
+      // a module's own rules start with its <h3> title; ours get one here
+      h += r ? r : '<h3>' + Kit.esc(t.name) + '</h3>' + t.rules;
+    });
+    h += '<h3>Switching tellers</h3><p>Tap the name at the top, or open the menu and choose <b>Choose a teller</b>. The app remembers your last teller and opens it straight away next time.</p>' +
+      '<p class="dim">Just for fun. The fortunes are made up, so take them with a grain of salt (and a cookie).</p>';
+    return h;
+  }
+
+  var initOpts = {
+    id: 'fortune',
+    rules: buildRules(),
+    menu: [{ icon: 'swap', label: 'Choose a teller', onClick: function () { showPicker(); } }]
+  };
+  var bar = Kit.init(initOpts);
+  var ttl = bar.querySelector('.ttl'), ttlText = ttl ? ttl.lastChild : null, chev = null;
+  function setTitle(t) {
+    if (!ttl) return;
+    ttlText.textContent = t ? t.name : 'Fortune Teller';
+    if (t) {
+      if (!chev) chev = el('span', { class: 'ft-chev', html: Kit.icon('down') });
+      if (!chev.parentNode) ttl.appendChild(chev);
+      ttl.classList.add('ft-switch'); ttl.setAttribute('role', 'button'); ttl.setAttribute('tabindex', '0');
+      ttl.setAttribute('aria-label', t.name + '. Choose a different teller');
+    } else {
+      if (chev && chev.parentNode) chev.remove();
+      ttl.classList.remove('ft-switch'); ttl.removeAttribute('role'); ttl.removeAttribute('tabindex'); ttl.removeAttribute('aria-label');
+    }
+  }
+  if (ttl) {
+    ttl.addEventListener('click', function () { if (current) { Kit.sfx('tap'); showPicker(); } });
+    ttl.addEventListener('keydown', function (e) { if (current && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showPicker(); } });
+  }
+
+  // ═══ Picker art: a small scene for each teller (inline SVG, no images) ═══
+  var ART = {
+    cookie: '<svg viewBox="0 0 200 160" aria-hidden="true"><defs>' +
+      '<radialGradient id="fa-ck-bg" cx="50%" cy="40%" r="75%"><stop offset="0" stop-color="#8a2a1c"/><stop offset=".6" stop-color="#5a1610"/><stop offset="1" stop-color="#2c0907"/></radialGradient>' +
+      '<linearGradient id="fa-ck-c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6cf7e"/><stop offset=".55" stop-color="#e2a54f"/><stop offset="1" stop-color="#b8742b"/></linearGradient>' +
+      '<linearGradient id="fa-ck-d" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b8742b"/><stop offset=".5" stop-color="#f3c672"/><stop offset="1" stop-color="#a9651f"/></linearGradient></defs>' +
+      '<rect width="200" height="160" fill="url(#fa-ck-bg)"/>' +
+      '<g opacity=".18" stroke="#000" stroke-width="2"><path d="M0 34 C60 30 120 40 200 33"/><path d="M0 96 C70 92 140 104 200 95"/><path d="M0 140 C60 136 130 146 200 139"/></g>' +
+      '<ellipse cx="100" cy="128" rx="62" ry="10" fill="#000" opacity=".35"/>' +
+      '<g class="bob"><path d="M42 118 C40 70 70 44 100 44 C130 44 160 70 158 118 C146 110 124 104 112 108 L100 122 L88 108 C76 104 54 110 42 118Z" fill="url(#fa-ck-c)"/>' +
+      '<path d="M100 50 C98 80 99 104 100 122" stroke="#9b5a1e" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>' +
+      '<path d="M54 92 C64 70 80 58 96 54" stroke="#fff3d0" stroke-width="4" fill="none" stroke-linecap="round" opacity=".45"/>' +
+      '<rect x="146" y="98" width="44" height="12" rx="1" fill="#fbf7ee" transform="rotate(-14 146 104)"/>' +
+      '<path d="M156 102h20M156 106h14" stroke="#c0282d" stroke-width="1.6" transform="rotate(-14 146 104)"/></g>' +
+      '<g fill="#e7b25e"><circle cx="40" cy="134" r="2.2"/><circle cx="152" cy="138" r="1.8"/><circle cx="166" cy="130" r="1.4"/></g></svg>',
+    eightball: '<svg viewBox="0 0 200 160" aria-hidden="true"><defs>' +
+      '<radialGradient id="fa-eb-bg" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#2b2f63"/><stop offset="1" stop-color="#0a0b1e"/></radialGradient>' +
+      '<radialGradient id="fa-eb-b" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#5a5a66"/><stop offset=".25" stop-color="#1c1c24"/><stop offset="1" stop-color="#000"/></radialGradient>' +
+      '<radialGradient id="fa-eb-w" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#1b3fb8"/><stop offset="1" stop-color="#06123d"/></radialGradient></defs>' +
+      '<rect width="200" height="160" fill="url(#fa-eb-bg)"/>' +
+      '<g fill="#fff" opacity=".55"><circle cx="24" cy="22" r="1.2"/><circle cx="170" cy="30" r="1"/><circle cx="150" cy="14" r="1.4"/><circle cx="36" cy="60" r=".9"/><circle cx="182" cy="74" r="1.1"/></g>' +
+      '<ellipse cx="100" cy="140" rx="52" ry="8" fill="#000" opacity=".5"/>' +
+      '<g class="bob"><circle cx="100" cy="82" r="56" fill="url(#fa-eb-b)"/>' +
+      '<circle cx="100" cy="88" r="24" fill="#05050a"/><circle cx="100" cy="88" r="20" fill="url(#fa-eb-w)"/>' +
+      '<path d="M100 76 L112 96 H88 Z" fill="#3d6cff" opacity=".9"/>' +
+      '<ellipse cx="80" cy="52" rx="18" ry="9" fill="#fff" opacity=".18" transform="rotate(-28 80 52)"/></g></svg>',
+    oracle: '<svg viewBox="0 0 200 160" aria-hidden="true"><defs>' +
+      '<linearGradient id="fa-or-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1f3b2e"/><stop offset="1" stop-color="#0b1711"/></linearGradient>' +
+      '<radialGradient id="fa-or-d" cx="45%" cy="40%" r="70%"><stop offset="0" stop-color="#fff4cf"/><stop offset=".7" stop-color="#e9d39a"/><stop offset="1" stop-color="#b99a52"/></radialGradient>' +
+      '<linearGradient id="fa-or-r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7dc8a"/><stop offset=".5" stop-color="#a87a26"/><stop offset="1" stop-color="#f0cf72"/></linearGradient></defs>' +
+      '<rect width="200" height="160" fill="url(#fa-or-bg)"/>' +
+      '<g opacity=".25" stroke="#d7b45a" fill="none"><rect x="10" y="10" width="180" height="140" rx="10"/></g>' +
+      '<circle cx="100" cy="80" r="56" fill="url(#fa-or-r)"/><circle cx="100" cy="80" r="49" fill="url(#fa-or-d)"/>' +
+      '<g stroke="#6b4a14" stroke-width="1.4">' + (function () { var s = ''; for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6; s += '<path d="M' + (100 + Math.cos(a) * 40).toFixed(1) + ' ' + (80 + Math.sin(a) * 40).toFixed(1) + 'L' + (100 + Math.cos(a) * 48).toFixed(1) + ' ' + (80 + Math.sin(a) * 48).toFixed(1) + '"/>'; } return s; })() + '</g>' +
+      '<g class="bob" style="transform-origin:100px 80px"><path d="M100 80 L100 40" stroke="#7a1d14" stroke-width="4" stroke-linecap="round"/><path d="M100 34 L106 46 H94Z" fill="#7a1d14"/></g>' +
+      '<circle cx="100" cy="80" r="7" fill="url(#fa-or-r)" stroke="#6b4a14"/>' +
+      '<rect x="160" y="118" width="22" height="6" rx="3" fill="#0a0f0c" stroke="#d7b45a" stroke-width="1"/></svg>',
+    swami: '<svg viewBox="0 0 200 160" aria-hidden="true"><defs>' +
+      '<linearGradient id="fa-sw-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a1240"/><stop offset="1" stop-color="#12051a"/></linearGradient>' +
+      '<linearGradient id="fa-sw-cu" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7a0f22"/><stop offset=".5" stop-color="#c22a3a"/><stop offset="1" stop-color="#7a0f22"/></linearGradient>' +
+      '<radialGradient id="fa-sw-o" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#e9fbff"/><stop offset=".5" stop-color="#7fd4ff"/><stop offset="1" stop-color="#2a5f9a"/></radialGradient></defs>' +
+      '<rect width="200" height="160" fill="url(#fa-sw-bg)"/>' +
+      '<path d="M30 160 V46 Q100 4 170 46 V160" fill="#2a0c1c" stroke="#e8b84a" stroke-width="5"/>' +
+      '<g fill="#ffe38a">' + (function () { var s = ''; for (var i = 0; i <= 10; i++) { var t = i / 10, x = 30 + 140 * t, y = 46 - 168 * t * (1 - t) * 0.5 - (t > 0 && t < 1 ? 0 : 0); s += '<circle cx="' + x.toFixed(1) + '" cy="' + (46 - 84 * t * (1 - t)).toFixed(1) + '" r="2.6"/>'; } return s; })() + '</g>' +
+      '<path d="M36 52 Q60 70 64 160 H36Z M164 52 Q140 70 136 160 H164Z" fill="url(#fa-sw-cu)"/>' +
+      '<g class="bob"><path d="M80 72 Q100 46 120 72 Q122 80 100 82 Q78 80 80 72Z" fill="#f2efe6"/><circle cx="100" cy="60" r="4" fill="#2fb6a0"/>' +
+      '<ellipse cx="100" cy="92" rx="15" ry="13" fill="#b07a52"/><path d="M90 98 Q100 106 110 98" stroke="#2a160c" stroke-width="2" fill="none"/></g>' +
+      '<circle cx="100" cy="124" r="14" fill="url(#fa-sw-o)"/><rect x="84" y="136" width="32" height="6" rx="2" fill="#e8b84a"/>' +
+      '<rect x="118" y="146" width="26" height="14" rx="1.5" fill="#f6efd9" transform="rotate(-8 118 146)"/></svg>'
+  };
+
+  // ═══ Screens ════════════════════════════════════════════════════════════
+  var current = null, handle = null, loadToken = 0;
+  function leaveTeller() {
+    loadToken++;
+    if (handle) { try { handle.unmount(); } catch (e) { console.warn('fortune: unmount', e); } }
+    handle = null; current = null;
+    stageEl.innerHTML = '';
+  }
+  function lastMode() { try { return localStorage.getItem(MODE_KEY); } catch (e) { return null; } }
+  function remember(id) { try { localStorage.setItem(MODE_KEY, id); } catch (e) {} }
+
+  function showPicker() {
+    leaveTeller();
+    setTitle(null);
+    var last = lastMode();
+    var grid = el('div', { class: 'ft-grid' });
+    TELLERS.forEach(function (t) {
+      grid.appendChild(el('button', { type: 'button', class: 'ft-card' + (t.id === last ? ' last' : ''), 'data-id': t.id, 'aria-label': t.name + '. ' + t.blurb,
+        onclick: function () { Kit.sfx('pop'); Kit.haptic('light'); open(t.id); } }, [
+        el('div', { class: 'ft-art', html: ART[t.id] || '' }, t.id === last ? [el('span', { class: 'ft-tag', text: 'Last time' })] : []),
+        el('div', { class: 'ft-txt' }, [
+          el('div', { class: 'ft-name', html: Kit.icon(t.icon) + '<span>' + Kit.esc(t.name) + '</span>' }),
+          el('div', { class: 'ft-blurb', text: t.blurb })
+        ])
+      ]));
+    });
+    var hero = el('div', { class: 'ft-hero' }, [el('h1', { text: 'Fortune Teller' }), el('p', { text: 'Who would you like to ask?' })]);
+    stageEl.appendChild(el('div', { class: 'ft-pick' }, [el('div', { class: 'ft-pick-in' }, [hero, grid])]));
+  }
+
+  function comingSoon(t) {
+    stageEl.innerHTML = '';
+    stageEl.appendChild(el('div', { class: 'ft-soon' }, [el('div', { class: 'card' }, [
+      el('div', { class: 'art', html: ART[t.id] || '' }),
+      el('h2', { text: t.name }),
+      el('div', { class: 'when', text: 'Coming soon' }),
+      el('p', { text: 'This teller is still setting up the booth. Try one of the others for now.' }),
+      el('button', { type: 'button', class: 'btn btn-primary btn-block', html: Kit.icon('swap') + '<span>Choose a teller</span>', onclick: function () { Kit.sfx('tap'); showPicker(); } })
+    ])]));
+  }
+
+  function open(id) {
+    var t = teller(id); if (!t) { showPicker(); return; }
+    leaveTeller();
+    remember(id);
+    current = t; setTitle(t);
+    var token = loadToken;
+    var wait = el('div', { class: 'ft-wait' }, [el('span', { text: 'Setting up…' })]);
+    stageEl.appendChild(wait);
+    import('./fortune/' + t.file + '.js').then(function (mod) {
+      if (token !== loadToken) return;
+      var m = mod && mod.default;
+      if (!m || typeof m.mount !== 'function') throw new Error('not a teller');
+      if (m.rules) { loadedRules[t.id] = m.rules; initOpts.rules = buildRules(); }
+      stageEl.innerHTML = '';
+      var host = el('div', { class: 'ft-teller', style: { position: 'absolute', inset: '0' } });
+      stageEl.appendChild(host);
+      handle = m.mount(host, { Kit: Kit, onAnswer: function () {} }) || { unmount: function () {} };
+    }).catch(function (e) {
+      if (token !== loadToken) return;
+      console.warn('fortune: ' + t.id + ' is not ready', e);
+      handle = null;
+      comingSoon(t);
+    });
+  }
+
+  // ═══ Test hooks (used by automated checks) ═══════════════════════════════
+  window.__fortune = {
+    open: open, picker: showPicker,
+    current: function () { return current ? current.id : null; },
+    handle: function () { return handle; },
+    tellers: function () { return TELLERS.map(function (t) { return t.id; }); }
+  };
+
+  // ═══ Boot: straight into the last teller, or the picker the first time ══
+  var lm = lastMode();
+  if (lm && teller(lm)) open(lm); else showPicker();
+})();
+</script>
+</body>
+</html>
