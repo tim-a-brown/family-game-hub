@@ -1252,7 +1252,7 @@ class Hologram extends Comp {
     this.m = new THREE.Mesh(new THREE.PlaneGeometry(this.size[0], this.size[1]), this.mat); this.m.renderOrder = 9; RC.root.add(this.m);
     this.fr = 0;
   }
-  render(dt) {
+  render(dt, RC) {
     if (!this.m) return;
     this.m.visible = this.vis > 0.02;
     if (!this.m.visible) return;
