@@ -16,24 +16,38 @@
 /* Names across the top can wrap (handwriting is narrow) so six or seven players still read */
 .spad thead th{white-space:normal;line-height:1;height:auto;padding:7px 1px 6px;font-size:1.05rem;}
 .spad.many thead th{font-size:.92rem;}
-/* The open round: a row of boxes (the column you're scoring is underlined), then one strip of the deck's action cards.
-   Only one of each card exists, so a card is tapped onto the current player and shows their initial. */
-.spad tr.open td{cursor:pointer;}
-.spad tr.open td.cur{background:rgba(200,16,46,.07);box-shadow:inset 0 -3px 0 #c8102e;}
+/* The open round: a box per player, then that player's cards running straight down their column */
 .spad tr.open td.busted input.cell{opacity:.25;}
 .spad td .eq{display:block;font-family:var(--hand);font-size:.82rem;line-height:1;color:#7a7a90;margin:2px 0 1px;min-height:.85rem;white-space:nowrap;overflow:hidden;}
 .spad td .eq.bust{color:#c8102e;}
-.spad tr.cards td{height:auto;padding:5px 6px 9px;border-left:0;border-top:0;text-align:left;}
-.spad tr.cards th.rn{font-size:.56rem;color:#8a8796;letter-spacing:.08em;line-height:1.1;}
-.f7s{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
-.f7s button{position:relative;height:38px;padding:0 4px;border:1.5px solid rgba(40,40,60,.4);border-radius:8px;background:#fffdf7;color:#2a2a3a;font-family:var(--font);font-weight:900;font-size:.82rem;line-height:1;font-variant-numeric:tabular-nums;box-shadow:0 1px 0 rgba(0,0,0,.18);transition:transform .12s var(--spring),background .12s;}
-.f7s button:active{transform:scale(.94);}
-.f7s button.on{background:var(--pc,#ff8a00);border-color:var(--pc,#ff8a00);color:#1b1b28;}
-.f7s button.bust.on{background:#c8102e;border-color:#c8102e;color:#fff;}
-.f7s button .who{position:absolute;top:-7px;right:-5px;display:none;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#2a2a3a;color:#fff;font-size:.62rem;font-weight:900;line-height:17px;text-align:center;box-shadow:0 0 0 2px #fffaf0;}
-.f7s button.on .who{display:block;}
-.f7s .f7-hint{grid-column:1 / -1;font-family:var(--hand);font-size:.95rem;color:#8a8796;line-height:1.1;margin:-1px 0 1px;}
-@media (min-width:480px){ .f7s{grid-template-columns:repeat(8,1fr);} .f7s .f7-hint{order:-1;} }
+.spad td .sum{display:block;height:40px;line-height:40px;font-size:1.35rem;color:var(--ink);border-bottom:2px dashed rgba(60,80,160,.4);}
+.spad tr.cards td{height:auto;padding:3px 2px 7px;vertical-align:top;border-top:0;}
+.spad tr.cards th.rn{vertical-align:top;padding-top:7px;font-size:.56rem;color:#8a8796;letter-spacing:.08em;line-height:1.1;}
+.f7c{display:flex;flex-direction:column;gap:3px;}
+.f7c button,.f7c .n{height:30px;width:100%;padding:0;border:1px solid rgba(60,80,160,.3);border-radius:7px;background:rgba(255,255,255,.55);color:#2a2a3a;font-family:var(--font);font-weight:900;font-size:.72rem;line-height:1;font-variant-numeric:tabular-nums;}
+.f7c button{transition:transform .12s var(--spring),background .12s;}
+.f7c button:active{transform:scale(.94);}
+.f7c button:disabled{opacity:.3;}
+.f7c button.bust.on{background:#c8102e;border-color:#c8102e;color:#fff;}
+.f7c button.frz,.f7c button.f3,.f7c button.sc{background:rgba(90,200,250,.18);border-color:rgba(26,136,196,.35);}
+.f7c button.frz.on,.f7c button.f3.on,.f7c button.sc.on{background:#5ac8fa;border-color:#1a88c4;color:#06283d;}
+.f7c button.f7.on,.f7c .f7.on{background:#ffd23f;border-color:#e0a800;color:#2b1a00;}
+.f7c button.mod{background:rgba(255,138,0,.16);border-color:rgba(255,138,0,.45);}
+.f7c button.mod.on{background:#ff8a00;border-color:#e07600;color:#2b1a00;}
+.f7c button.x2{background:rgba(255,210,63,.22);border-color:rgba(224,168,0,.45);}
+.f7c button.x2.on{background:#ffc42e;border-color:#e0a800;color:#2b1a00;}
+.f7c .gap{height:2px;}
+/* Count every card: each number card gets a − and a + */
+.f7c .n{display:grid;grid-template-columns:26px 1fr 26px;align-items:center;overflow:hidden;}
+.f7c .n b{font-family:var(--hand);font-weight:400;font-size:1.05rem;}
+.f7c .n.on{background:#2a2a3a;color:#fff;border-color:#2a2a3a;}
+.f7c .n button{height:100%;border:0;border-radius:0;background:transparent;color:inherit;font-size:1rem;transition:none;}
+.f7c .n button:active{background:rgba(0,0,0,.12);}
+.f7c .f7{display:flex;align-items:center;justify-content:center;height:30px;border:1px dashed rgba(60,80,160,.3);border-radius:7px;font-weight:900;font-size:.72rem;color:#8a8796;background:transparent;}
+/* Counting every card needs room: the sheet scrolls sideways, round numbers stay put */
+.spad.ext{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.spad.ext table{table-layout:fixed;}
+.spad.ext th.rn{position:sticky;left:0;z-index:1;background:#f9f1dd;}
 /* The sheet's "fix a round" form keeps the card helpers */
 .f7p{display:flex;flex-direction:column;gap:4px;padding:8px 10px 10px;border-radius:var(--r);background:rgba(255,255,255,.05);}
 .f7p .rrow{padding:0;background:none;}
@@ -59,22 +73,25 @@
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app'), pad = null;
-  var SETUP = 'flip7_pad_setup', ENTRY = 'flip7_entry', MODS = [2, 4, 6, 8, 10], BONUS = 15;
+  var SETUP = 'flip7_pad_setup', ENTRY = 'flip7_entry', EXT = 'flip7_ext', MODS = [2, 4, 6, 8, 10], BONUS = 15, NUMS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   var cfg = null, st = null;
+  function ext() { return localStorage.getItem(EXT) === '1'; }
 
   Kit.init({
     id: 'flip7', title: 'Flip 7 score',
     onNew: function () { if (pad) pad.clear(); localStorage.removeItem(SETUP); localStorage.removeItem(ENTRY); showSetup(); },
     undo: function () { if (pad) pad.undo(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history('f7', { keys: ['flip7'], title: 'Flip 7: past games' }); } }],
+    menu: [
+      { icon: 'cards', label: 'Count every card', sub: 'Tap each card instead of typing the total', toggle: ext, onClick: function (on) { localStorage.setItem(EXT, on ? '1' : '0'); if (pad) pad.render(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history('f7', { keys: ['flip7'], title: 'Flip 7: past games' }); } }
+    ],
     rules:
       '<p class="goal">Play Flip 7 with the real cards and keep score here. First to <b>200</b> at the end of a round wins.</p>' +
-      '<h3>After each round</h3><ul><li>The open row on the sheet is this round. Tap a player\'s box and type their <b>number cards</b> total.</li>' +
-      '<li>With their box selected, tap the cards they had: <b>&times;2</b> (doubles the number cards only, before any +cards) and <b>+2 to +10</b>. The deck has one of each, so a card moves to whoever you tap it onto.</li>' +
-      '<li>Tap <b>F7</b> for the player who got 7 different numbers. They get <b>15 bonus points</b> and the round ends.</li>' +
-      '<li>Tap <b>Bust</b> for anyone who flipped a duplicate number. They score 0 this round, cards included.</li>' +
+      '<h3>After each round</h3><ul><li>The open row on the sheet is this round. Type each player\'s <b>round total</b> in their box: number cards, doubled by <b>&times;2</b> if they have it, plus any <b>+2 to +10</b> cards.</li>' +
+      '<li>Under the box, tap <b>Bust</b> for anyone who flipped a duplicate number (they score 0, cards included), <b>Freeze</b> if they were frozen, and <b>F7</b> for the player who got 7 different numbers (<b>15 bonus points</b>, and the round ends).</li>' +
       '<li>Tap <b>Lock round</b>. The round is written in, and a fresh row opens below it.</li>' +
       '<li>Made a mistake? Tap a locked round to fix it.</li></ul>' +
+      '<h3>Count every card</h3><p>Turn it on in the menu. Each column lists the cards: <b>0 to 12</b> with a &minus; and + each, the <b>+2 to +10</b> and <b>&times;2</b> cards, and <b>Freeze</b>, <b>Flip Three</b> and <b>Second Chance</b>. The round total is added up for you, and seven different numbers light up <b>F7</b> on their own. The deck has one of each action card, so the sheet won\'t let two players claim the same one.</p>' +
       '<h3>Quick rules</h3><ul><li>On your turn, flip a card or stay.</li><li>A duplicate number busts you, unless you have a Second Chance.</li>' +
       '<li><b>Freeze</b> makes a player stop and keep their points. <b>Flip Three</b> makes a player flip 3 cards.</li>' +
       '<li>Don\'t shuffle between rounds. Shuffle the discards only when the deck runs out.</li></ul>' +
@@ -84,10 +101,14 @@
   function showSetup() {
     Kit.setup(app, {
       players: { min: 2, max: 8, count: 4 },
-      options: [{ id: 'target', label: 'Play to', help: 'The first player to reach this many points wins.', value: 200, choices: [[200, '200 · standard'], [100, '100 · quick']] }],
+      options: [
+        { id: 'target', label: 'Play to', help: 'The first player to reach this many points wins.', value: 200, choices: [[200, '200 · standard'], [100, '100 · quick']] },
+        { id: 'count', label: 'Scoring', help: 'Type each round total, or tap every card and let the sheet add it up.', value: ext() ? 'cards' : 'total', choices: [['total', 'Type the total'], ['cards', 'Count every card']] }
+      ],
       start: 'Start scoring',
       onStart: function (c) {
         localStorage.setItem(SETUP, JSON.stringify({ names: c.players.map(function (p) { return p.name; }), target: +c.options.target || 200 }));
+        localStorage.setItem(EXT, c.options.count === 'cards' ? '1' : '0');
         localStorage.removeItem(ENTRY);
         startPad();
       }
@@ -99,7 +120,7 @@
     t.forEach(function (v, i) { if (v === m) who.push(i); });
     return { max: m, who: who };
   }
-  function blank() { return { bust: false, x2: false, f7: false, mods: [], nums: '' }; }
+  function blank() { return { bust: false, frz: false, f3: false, sc: false, x2: false, f7: false, mods: [], nums: '', cards: [] }; }
   // Rebuild the helpers from a saved round: detail looks like "×2 +4+10 F7" or "bust"
   function parse(score, detail) {
     var d = String(detail || ''), o = { bust: /bust/i.test(d), x2: /×2/.test(d), f7: /F7/.test(d), mods: [] };
@@ -108,38 +129,49 @@
     o.nums = o.bust ? 0 : Math.max(0, Math.round(o.x2 ? rest / 2 : rest));
     return o;
   }
-  function numsOf(s) { return parseInt(String(s.nums).replace(/[^0-9]/g, ''), 10) || 0; }
-  function ptsOf(s) {
+  // Number-card points: counted cards when counting, else the typed total (which already includes ×2 and +cards)
+  function numsOf(s) { return s.cards && s.cards.length ? s.cards.reduce(function (a, b) { return a + b; }, 0) : parseInt(String(s.nums).replace(/[^0-9]/g, ''), 10) || 0; }
+  function isF7(s) { return s.cards && s.cards.length ? s.cards.length >= 7 : !!s.f7; }
+  function ptsOf(s, counted) {
     if (s.bust) return 0;
-    var nums = Math.max(0, numsOf(s));
-    return (s.x2 ? nums * 2 : nums) + s.mods.reduce(function (a, b) { return a + b; }, 0) + (s.f7 ? BONUS : 0);
+    if (counted) return (s.x2 ? numsOf(s) * 2 : numsOf(s)) + s.mods.reduce(function (a, b) { return a + b; }, 0) + (isF7(s) ? BONUS : 0);
+    return numsOf(s) + (s.f7 ? BONUS : 0);
   }
-  // What's wrong with a set of entries (the deck has only one of each action card)
-  function problems(list, names, strict) {
-    var out = [], f7s = list.filter(function (s) { return s.f7; }).length;
+  function problems(list, names, strict, counted) {
+    var out = [], f7s = list.filter(function (s) { return isF7(s) && !s.bust; }).length;
     if (f7s > 1) out.push('Only one player can Flip 7 (the round ends right away).');
-    var x2s = list.filter(function (s) { return s.x2 && !s.bust; }).length;
-    if (x2s > 1) out.push('There is only one ×2 card.');
-    MODS.forEach(function (v) {
-      if (list.filter(function (s) { return !s.bust && s.mods.indexOf(v) >= 0; }).length > 1) out.push('There is only one +' + v + ' card.');
-    });
+    if (counted) {
+      var x2s = list.filter(function (s) { return s.x2 && !s.bust; }).length;
+      if (x2s > 1) out.push('There is only one ×2 card.');
+      MODS.forEach(function (v) { if (list.filter(function (s) { return !s.bust && s.mods.indexOf(v) >= 0; }).length > 1) out.push('There is only one +' + v + ' card.'); });
+    }
     list.forEach(function (s, i) {
       if (s.bust) return;
-      var nums = numsOf(s);
-      if (nums > 63) out.push(names[i] + ': 7 numbers add up to 63 at most.');
-      else if (s.f7 && nums < 21) out.push(names[i] + ': a Flip 7 is at least 21 (0 to 6).');
+      if (counted) { if (s.cards.length > 7) out.push(names[i] + ': 7 number cards at most.'); return; }
+      var n = numsOf(s);
+      if (n > 171) out.push(names[i] + ': the most a round can score is 171.');
+      else if (s.f7 && n < 21) out.push(names[i] + ': a Flip 7 is at least 21 (0 to 6).');
     });
-    if (strict) list.forEach(function (s, i) { if (!s.bust && String(s.nums).trim() === '' && !s.f7 && !s.mods.length && !s.x2) out.push('Enter ' + names[i] + '\'s number cards, or tap Bust.'); });
+    if (strict) list.forEach(function (s, i) {
+      if (s.bust) return;
+      if (counted ? !s.cards.length && !s.mods.length && !s.x2 && !s.frz && !s.f3 && !s.sc : String(s.nums).trim() === '' && !s.f7 && !s.frz) out.push('Enter ' + names[i] + '\'s round, or tap Bust.');
+    });
     return out;
   }
-  function detailOf(s) {
+  function detailOf(s, counted) {
     if (s.bust) return 'bust';
-    return ((s.x2 ? '×2 ' : '') + s.mods.slice().sort(function (a, b) { return a - b; }).map(function (v) { return '+' + v; }).join('') + (s.f7 ? ' F7' : '')).trim();
+    var bits = [];
+    if (counted) { if (s.x2) bits.push('×2'); if (s.mods.length) bits.push(s.mods.slice().sort(function (a, b) { return a - b; }).map(function (v) { return '+' + v; }).join('')); }
+    if (isF7(s)) bits.push('F7');
+    if (s.frz) bits.push('Frz'); if (s.f3) bits.push('F3'); if (s.sc) bits.push('SC');
+    return bits.join(' ');
   }
-  function extraOf(list, scores, names, r) {
-    var extra = { detail: list.map(detailOf), highlights: [] };
+  function extraOf(list, scores, names, r, counted) {
+    var extra = { detail: list.map(function (s) { return detailOf(s, counted); }), highlights: [] };
+    if (counted) extra.data = { cards: list.map(function (s) { return s.bust ? 'bust' : s.cards.slice().sort(function (a, b) { return a - b; }).join(' '); }) };
     list.forEach(function (s, i) {
-      if (s.f7) { extra.highlights.push(names[i] + ' flipped 7 in round ' + r + ' for +' + BONUS + ' (' + scores[i] + ' points)'); extra.callout = 'Flip 7!'; }
+      if (s.bust) return;
+      if (isF7(s)) { extra.highlights.push(names[i] + ' flipped 7 in round ' + r + ' for +' + BONUS + ' (' + scores[i] + ' points)'); extra.callout = 'Flip 7!'; }
       else if (scores[i] >= 50) extra.highlights.push(names[i] + ' scored ' + scores[i] + ' in round ' + r + (s.x2 ? ' with the ×2' : ''));
     });
     var alive = list.map(function (s, i) { return s.bust ? -1 : i; }).filter(function (i) { return i >= 0; });
@@ -153,76 +185,80 @@
   }
   function saveEntry() { try { localStorage.setItem(ENTRY, JSON.stringify(st)); } catch (e) {} }
 
-  // ── The open round, drawn on the sheet ──
-  // A row of number boxes, then one strip of the deck's action cards. The deck has exactly one ×2, one of each
-  // +2…+10 and only one player can Flip 7 in a round, so each card is tapped onto the current player (the column
-  // whose box was touched last) and shows their initial. Bust is per player.
-  var cur = 0;
-  function initial(nm) { return String(nm || '?').trim().charAt(0).toUpperCase(); }
+  // ── The open round on the sheet: a box per player, then their cards straight down the column ──
   function entryRows(ctx) {
-    var names = cfg.names, N = names.length, cells = [], chips = {};
-    if (cur >= N) cur = 0;
+    var names = cfg.names, N = names.length, counted = ext(), cells = [];
     var rowA = el('tr', { class: 'open' }, [el('th', { class: 'rn', text: String(ctx.round) })]);
     var rowB = el('tr', { class: 'cards' }, [el('th', { class: 'rn', text: 'CARDS' })]);
-    var strip = el('div', { class: 'f7s' }), hint = el('div', { class: 'f7-hint' });
-    rowB.appendChild(el('td', { colspan: String(N) }, [strip]));
-    function has(s, k) { return k === 'x2' ? s.x2 : k === 'f7' ? s.f7 : s.mods.indexOf(+k) >= 0; }
-    function set(s, k, on) { if (k === 'x2') s.x2 = on; else if (k === 'f7') s.f7 = on; else { var j = s.mods.indexOf(+k); if (on && j < 0) s.mods.push(+k); if (!on && j >= 0) s.mods.splice(j, 1); } }
-    function ownerOf(k) { for (var i = 0; i < N; i++) if (has(st[i], k)) return i; return -1; }
     function refresh() {
       st.forEach(function (s, i) {
-        var c = cells[i], p = ptsOf(s), n = numsOf(s);
-        c.td.classList.toggle('cur', i === cur); c.td.classList.toggle('busted', s.bust);
+        var c = cells[i], p = ptsOf(s, counted), n = numsOf(s);
+        c.td.classList.toggle('busted', s.bust);
+        if (c.inp) c.inp.disabled = s.bust;
+        if (c.sum) c.sum.textContent = s.bust ? '0' : (s.cards.length || s.mods.length || s.x2 ? String(p) : '–');
         c.eq.className = 'eq' + (s.bust ? ' bust' : '');
-        c.eq.textContent = s.bust ? 'bust' : (p !== n || s.x2 || s.mods.length || s.f7) ? '= ' + p : '';
+        c.eq.textContent = s.bust ? 'bust' : counted ? (s.cards.length ? s.cards.length + (s.cards.length === 1 ? ' card' : ' cards') + (isF7(s) ? ' F7' : '') : '') : (s.f7 ? '+15 F7 = ' + p : s.frz ? 'frozen' : '');
+        Object.keys(c.btn).forEach(function (k) {
+          var b = c.btn[k], on = k === 'x2' ? s.x2 : k === 'bust' ? s.bust : k === 'frz' ? s.frz : k === 'f3' ? s.f3 : k === 'sc' ? s.sc : k === 'f7' ? isF7(s) : s.mods.indexOf(+k) >= 0;
+          b.classList.toggle('on', on); if (b.tagName === 'BUTTON') b.disabled = s.bust && k !== 'bust';
+        });
+        Object.keys(c.num).forEach(function (k) { c.num[k].classList.toggle('on', s.cards.indexOf(+k) >= 0); c.num[k].querySelectorAll('button').forEach(function (b) { b.disabled = s.bust; }); });
       });
-      Object.keys(chips).forEach(function (k) {
-        var b = chips[k];
-        if (k === 'bust') { b.classList.toggle('on', st[cur].bust); return; }
-        var o = ownerOf(k);
-        b.classList.toggle('on', o >= 0);
-        b.style.setProperty('--pc', o >= 0 ? Kit.color(o) : '');
-        b.lastChild.textContent = o >= 0 ? initial(names[o]) : '';
-        b.setAttribute('aria-label', (k === 'x2' ? '×2 card' : k === 'f7' ? 'Flip 7 bonus' : '+' + k + ' card') + (o >= 0 ? ', ' + names[o] : ''));
-      });
-      hint.textContent = 'Tap the cards ' + names[cur] + ' had' + (st[cur].bust ? ' (busted: 0 this round)' : '');
-      ctx.pending(st.map(function (s) { return s.bust || String(s.nums).trim() !== '' || s.f7 || s.x2 || s.mods.length ? ptsOf(s) : 0; }));
+      ctx.pending(st.map(function (s) { return s.bust || String(s.nums).trim() !== '' || s.f7 || s.x2 || s.mods.length || s.cards.length ? ptsOf(s, counted) : 0; }));
       saveEntry();
     }
-    function setCur(i) { if (cur !== i) { cur = i; refresh(); } }
     names.forEach(function (nm, i) {
-      var s = st[i];
-      var inp = el('input', { class: 'cell', type: 'text', inputmode: 'numeric', placeholder: '–', value: s.nums === '' ? '' : String(s.nums), 'aria-label': nm + ' number cards, round ' + ctx.round, enterkeyhint: i < N - 1 ? 'next' : 'done' });
-      inp.addEventListener('input', function () { s.nums = inp.value.replace(/[^0-9]/g, ''); refresh(); });
-      inp.addEventListener('focus', function () { inp.select(); setCur(i); });
-      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var nx = cells[i + 1]; if (nx) nx.inp.focus(); else inp.blur(); } });
-      var eq = el('small', { class: 'eq' });
-      var td = el('td', { onclick: function (e) { setCur(i); if (e.target !== inp && !s.bust) inp.focus(); } }, [inp, eq]);
-      rowA.appendChild(td);
-      cells.push({ inp: inp, eq: eq, td: td });
+      var s = st[i], c = { btn: {}, num: {} };
+      if (!counted) {
+        c.inp = el('input', { class: 'cell', type: 'text', inputmode: 'numeric', placeholder: '–', value: s.nums === '' ? '' : String(s.nums), 'aria-label': nm + ' round total, round ' + ctx.round, enterkeyhint: i < N - 1 ? 'next' : 'done' });
+        c.inp.addEventListener('input', function () { s.nums = c.inp.value.replace(/[^0-9]/g, ''); refresh(); });
+        c.inp.addEventListener('focus', function () { c.inp.select(); });
+        c.inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var nx = cells[i + 1]; if (nx && nx.inp) nx.inp.focus(); else c.inp.blur(); } });
+      } else c.sum = el('span', { class: 'sum', 'aria-label': nm + ' round total' });
+      c.eq = el('small', { class: 'eq' });
+      c.td = el('td', null, [c.inp || c.sum, c.eq]);
+      rowA.appendChild(c.td);
+      var col = el('div', { class: 'f7c' });
+      function chip(k, label, cls, aria, fn) {
+        var b = el('button', { type: 'button', class: cls || '', text: label, 'aria-label': aria + ' for ' + nm, onclick: function () { fn(); Kit.sfx('tap'); Kit.haptic('light'); refresh(); } });
+        c.btn[k] = b; col.appendChild(b);
+      }
+      if (counted) {
+        NUMS.forEach(function (v) {
+          var row = el('div', { class: 'n' }, [
+            el('button', { type: 'button', text: '−', 'aria-label': 'Remove ' + v + ' for ' + nm, onclick: function () { var j = s.cards.indexOf(v); if (j >= 0) { s.cards.splice(j, 1); Kit.sfx('tap'); } refresh(); } }),
+            el('b', { text: String(v) }),
+            el('button', { type: 'button', text: '+', 'aria-label': 'Add ' + v + ' for ' + nm, onclick: function () { if (s.cards.indexOf(v) < 0) { s.cards.push(v); Kit.sfx('tap'); Kit.haptic('light'); } else Kit.toast('A second ' + v + ' is a bust'); refresh(); } })
+          ]);
+          c.num[String(v)] = row; col.appendChild(row);
+        });
+        col.appendChild(el('div', { class: 'gap' }));
+        chip('x2', '×2', 'x2', '×2 card', function () { s.x2 = !s.x2; });
+        MODS.forEach(function (v) { chip(String(v), '+' + v, 'mod', '+' + v + ' card', function () { var j = s.mods.indexOf(v); if (j >= 0) s.mods.splice(j, 1); else s.mods.push(v); }); });
+        col.appendChild(el('div', { class: 'gap' }));
+        chip('frz', 'Freeze', 'frz', 'Freeze card', function () { s.frz = !s.frz; });
+        chip('f3', 'Flip 3', 'f3', 'Flip Three card', function () { s.f3 = !s.f3; });
+        chip('sc', '2nd Ch.', 'sc', 'Second Chance card', function () { s.sc = !s.sc; });
+        var f7 = el('div', { class: 'f7', text: 'F7 +15', 'aria-label': 'Flip 7 bonus (7 different numbers)' }); c.btn.f7 = f7; col.appendChild(f7);
+        chip('bust', 'Bust', 'bust', 'Bust', function () { s.bust = !s.bust; });
+      } else {
+        chip('bust', 'Bust', 'bust', 'Bust', function () { s.bust = !s.bust; if (s.bust) { s.f7 = false; c.inp.blur(); } });
+        chip('frz', 'Freeze', 'frz', 'Freeze card', function () { s.frz = !s.frz; });
+        chip('f7', 'F7', 'f7', 'Flip 7 bonus', function () { s.f7 = !s.f7; if (s.f7) s.bust = false; });
+      }
+      rowB.appendChild(el('td', null, [col]));
+      cells.push(c);
     });
-    function chip(k, label, cls) {
-      var b = el('button', { type: 'button', class: cls || '', onclick: function () {
-        var s = st[cur];
-        if (k === 'bust') { s.bust = !s.bust; if (s.bust) { s.f7 = false; cells[cur].inp.blur(); } }
-        else if (has(s, k)) set(s, k, false);
-        else { var o = ownerOf(k); if (o >= 0) set(st[o], k, false); set(s, k, true); if (k === 'f7') s.bust = false; }
-        Kit.sfx('tap'); Kit.haptic('light'); refresh();
-      } }, [el('span', { text: label }), el('span', { class: 'who' })]);
-      chips[k] = b; strip.appendChild(b);
-    }
-    chip('x2', '×2', 'x2'); MODS.forEach(function (v) { chip(String(v), '+' + v); }); chip('f7', 'F7', 'f7'); chip('bust', 'Bust', 'bust');
-    strip.appendChild(hint);
     refresh();
     return [rowA, rowB];
   }
   function lockRound() {
-    var names = cfg.names, r = pad.state().rounds.length + 1;
-    var p = problems(st, names, true);
+    var names = cfg.names, r = pad.state().rounds.length + 1, counted = ext();
+    var p = problems(st, names, true, counted);
     if (p.length) { Kit.toast(p[0]); Kit.haptic('error'); return; }
-    var scores = st.map(ptsOf), extra = extraOf(st, scores, names, r);
+    var scores = st.map(function (s) { return ptsOf(s, counted); }), extra = extraOf(st, scores, names, r, counted);
     if (extra.callout) Kit.confetti({ count: 70 });
-    st = names.map(blank); cur = 0; saveEntry();
+    st = names.map(blank); saveEntry();
     pad.add(scores, extra);
   }
 
@@ -236,13 +272,19 @@
       isOver: function (t) { var tp = top(t); return tp.max >= cfg.target && tp.who.length === 1; },
       winner: function (t) { var tp = top(t); return tp.who.length === 1 ? tp.who[0] : -1; },
       entryRows: entryRows, onLock: lockRound, lockLabel: 'Lock round',
-      afterRender: function () { var p = app.querySelector('.spad'); if (p) p.classList.toggle('many', cfg.names.length >= 5); },
+      afterRender: function () {
+        var p = app.querySelector('.spad'), tbl = p && p.querySelector('table'), N = cfg.names.length, counted = ext();
+        if (!p) return;
+        p.classList.toggle('many', N >= 5); p.classList.toggle('ext', counted);
+        if (tbl) tbl.style.minWidth = counted ? (44 + N * 96) + 'px' : '';
+      },
       onEnd: function () { localStorage.removeItem(ENTRY); st = cfg.names.map(blank); },
-      // Fixing a locked round: the same helpers, in a sheet
+      // Fixing a locked round: the card helpers, in a sheet
       form: function (ctx) {
         var list = ctx.sides.map(function (s, i) {
-          return ctx.prev ? parse(ctx.prev.scores[i], ctx.prev.detail && ctx.prev.detail[i]) : blank();
+          return ctx.prev ? parse(ctx.prev.scores[i], ctx.prev.detail && ctx.prev.detail[i]) : { bust: false, x2: false, f7: false, mods: [], nums: 0 };
         });
+        function pts(s) { if (s.bust) return 0; var n = Math.max(0, Number(s.nums) || 0); return (s.x2 ? n * 2 : n) + s.mods.reduce(function (a, b) { return a + b; }, 0) + (s.f7 ? BONUS : 0); }
         var blocks = ctx.sides.map(function (s, i) {
           var box = el('div', { class: 'f7p' });
           var row = ctx.number(i, { min: 0, max: 78, neg: false, value: list[i].nums });
@@ -270,6 +312,7 @@
         var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this round' });
         ctx.node.appendChild(btn);
         function refresh() {
+          var out = [];
           list.forEach(function (s, i) {
             var b = blocks[i]; s.nums = b.row.value();
             b.box.classList.toggle('busted', s.bust);
@@ -279,21 +322,24 @@
             b.btns.bust.classList.toggle('on', s.bust);
             Object.keys(b.btns).forEach(function (k) { if (k !== 'bust') b.btns[k].disabled = s.bust; });
             b.row.input.disabled = s.bust;
-            var v = ptsOf(s);
+            var v = pts(s);
             b.res.firstChild.textContent = s.bust ? 'Bust: 0 this round' : 'Total after: ' + (ctx.totals[i] - (ctx.prev ? Number(ctx.prev.scores[i]) || 0 : 0) + v);
             b.res.lastChild.textContent = s.bust ? '0' : '+' + v;
+            if (!s.bust && s.nums > 63) out.push(ctx.sides[i].name + ': 7 numbers add up to 63 at most.');
+            else if (!s.bust && s.f7 && s.nums < 21) out.push(ctx.sides[i].name + ': a Flip 7 is at least 21 (0 to 6).');
           });
-          var p = problems(list, ctx.sides.map(function (s) { return s.name; }), false);
-          note.className = 'rnote' + (p.length ? ' bad' : '');
-          note.textContent = p.length ? p[0] : 'Looks right';
-          btn.disabled = !!p.length;
-          return !p.length;
+          if (list.filter(function (s) { return s.f7; }).length > 1) out.push('Only one player can Flip 7 (the round ends right away).');
+          if (list.filter(function (s) { return s.x2 && !s.bust; }).length > 1) out.push('There is only one ×2 card.');
+          MODS.forEach(function (v) { if (list.filter(function (s) { return !s.bust && s.mods.indexOf(v) >= 0; }).length > 1) out.push('There is only one +' + v + ' card.'); });
+          note.className = 'rnote' + (out.length ? ' bad' : '');
+          note.textContent = out.length ? out[0] : 'Looks right';
+          btn.disabled = !!out.length;
+          return !out.length;
         }
         btn.addEventListener('click', function () {
           if (!refresh()) return;
-          var scores = list.map(ptsOf), names = ctx.sides.map(function (s) { return s.name; });
-          var extra = extraOf(list, scores, names, ctx.round);
-          if (ctx.prev) { extra.highlights = []; delete extra.callout; }
+          var scores = list.map(pts), names = ctx.sides.map(function (s) { return s.name; });
+          var extra = { detail: list.map(function (s) { return s.bust ? 'bust' : ((s.x2 ? '×2 ' : '') + s.mods.slice().sort(function (a, b) { return a - b; }).map(function (v) { return '+' + v; }).join('') + (s.f7 ? ' F7' : '')).trim(); }), highlights: [] };
           ctx.done(scores, extra);
         });
         refresh();
