@@ -539,4 +539,34 @@
       extra: [shotsKey]
     });
   });
+
+  // ═══ Space Invaders ═══
+  // the rack as it stood at the end: invaders still up in white, the ones shot down as faint outlines
+  var INV = [
+    ['...XXXX...', '.XXXXXXXX.', 'XXX.XX.XXX', 'XXXXXXXXXX', '..XX..XX..', '.XX....XX.'],
+    ['..X...X..', '...XXX...', '.XXXXXXX.', 'XX.XXX.XX', 'XXXXXXXXX', '.X.....X.'],
+    ['..XXXX..', '.XXXXXX.', 'XX.XX.XX', 'XXXXXXXX', '..X..X..', '.X.XX.X.']
+  ];
+  R('invaders', function (e, ui) {
+    var d = e.dt; if (!d || !d.rack) return null;
+    var rk = String(d.rack), CW = 16, RH = 14, P = 1.4, W = 11 * CW + 8, H = 5 * RH + 30, s = '<rect width="' + W + '" height="' + H + '" fill="#000"/>';
+    for (var r = 0; r < 5; r++) for (var c = 0; c < 11; c++) {
+      var on = rk.charAt(r * 11 + c) === '1', t = r < 2 ? 0 : r < 4 ? 1 : 2, rows = INV[t], w = rows[0].length;
+      var x0 = 4 + c * CW + (CW - w * P) / 2, y0 = 6 + (4 - r) * RH, path = '';
+      rows.forEach(function (row, j) { for (var i = 0; i < row.length; i++) if (row.charAt(i) === 'X') path += 'M' + (x0 + i * P).toFixed(1) + ' ' + (y0 + j * P).toFixed(1) + 'h' + P + 'v' + P + 'h-' + P + 'z'; });
+      s += '<path d="' + path + '" fill="' + (on ? '#f2f2f2' : 'rgba(255,255,255,.08)') + '"/>';
+    }
+    s += '<rect x="0" y="' + (H - 6) + '" width="' + W + '" height="1.5" fill="#2fd35a"/>';
+    s += '<path d="M' + (W / 2 - 8) + ' ' + (H - 8) + 'h16v-4h-6v-2h-1v-1h-2v1h-1v2h-6z" fill="' + (d.why === 'invaded' ? '#ff4a4a' : '#2fd35a') + '"/>';
+    var k = String(d.k || '').split(',').map(Number), acc = d.sh ? Math.round((d.hi || 0) / d.sh * 100) + '%' : '';
+    var killed = (k[0] || 0) + (k[1] || 0) + (k[2] || 0);
+    return screen(ui, {
+      ac: '#2fd35a', title: 'Game over · wave ' + d.w, score: n(myScore(e)), rank: rankText(d),
+      pic: svg(W, H, s, { crisp: true, aria: 'The invaders left at the end: solid ones were still up, faint ones were shot down' }), picMax: 300,
+      stats: [['Wave', d.w, d.cl ? 'cleared ' + d.cl : ''], ['Invaders', n(killed), (k[2] || 0) + ' top · ' + (k[1] || 0) + ' mid · ' + (k[0] || 0) + ' low'],
+        ['Accuracy', acc, d.sh ? n(d.sh) + ' shots' : ''], d.u ? ['Saucers', d.u, n(d.up) + ' points' + (d.ub >= 300 ? ' · hit a 300' : '')] : null,
+        d.bs ? ['Bombs shot', d.bs] : null, d.ex ? ['Extra cannon', 'Yes'] : null],
+      foot: d.why === 'invaded' ? 'The invaders landed' : 'Last cannon hit', footOk: false
+    });
+  });
 })();

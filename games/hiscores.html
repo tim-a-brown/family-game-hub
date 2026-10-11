@@ -196,6 +196,8 @@ Kit.init({ id: 'hiscores', mark: false });
       c: { sel: '#4f6bd8', sd: '#050b24', sm: '#1e3a8a', bd: '#0b1a45', trim: '#f97316', mq: 'linear-gradient(180deg,#14143a,#05050f)', tc: '#f97316', glow: '#fb923c', hc: '#f97316', lc: '#93c5fd', rows: ['#facc15', '#60a5fa', '#f97316', '#a78bfa'], pn: '#0a0a23', pn2: '#1e2a6b', btna: '#f97316', btnb: '#60a5fa', ball: '#f97316', bgo: '.65' } },
     { key: 'snake', game: 'snake', title: 'SNAKE', anim: 'snake',
       c: { sel: '#4ade80', sd: '#04180b', sm: '#166534', bd: '#0b3a1e', trim: '#4ade80', mq: 'linear-gradient(180deg,#0f3d22,#041a0c)', tc: '#a3e635', glow: '#22c55e', hc: '#c5f07a', lc: '#8bac0f', rows: ['#c5f07a', '#9bbc0f', '#e0f8a0'], pn: '#052e16', pn2: '#14532d', btna: '#a3e635', btnb: '#22c55e', ball: '#22c55e', scr: '#0d260d', bgo: '.55' } },
+    { key: 'invaders', game: 'invaders', title: 'SPACE INVADERS', short: 'INVADERS', anim: 'invaders',
+      c: { sel: '#2fd35a', sd: '#030303', sm: '#1c1c1c', bd: '#0b0b0b', trim: '#2fd35a', mq: 'linear-gradient(180deg,#d42a2a 0,#d42a2a 20%,#070707 20%,#070707 80%,#1f9e44 80%)', tc: '#fff', glow: '#2fd35a', hc: '#ff4a4a', lc: '#7dff9a', rows: ['#ffffff', '#2fd35a', '#ff4a4a'], pn: '#080808', pn2: '#1d1d1d', btna: '#2fd35a', btnb: '#ff4a4a', ball: '#2fd35a', scr: '#000', bgo: '.65' } },
     { key: 'tetris', game: 'tetris', title: 'TETRIS', anim: 'tetris', letters: ['#00e5ff', '#ffe600', '#b14dff', '#3dff6a', '#ff3b3b', '#ff9f1a'],
       c: { sel: '#a66bff', sd: '#12062e', sm: '#3d1d8f', bd: '#1d0b4d', trim: '#00e5ff', mq: 'linear-gradient(180deg,#1f0d52,#0a0420)', tc: '#fff', glow: '#a78bfa', hc: '#00e5ff', lc: '#c4b5fd', rows: ['#00e5ff', '#ffe600', '#b14dff', '#3dff6a', '#ff3b3b', '#ff9f1a'], pn: '#12062e', pn2: '#2c1470', btna: '#b14dff', btnb: '#00e5ff', ball: '#b14dff', bgo: '.55' } },
     { key: 'willycrash', game: 'willycrash', title: 'WILLY CRASH', short: 'WILLY', anim: 'willy',
@@ -311,6 +313,9 @@ Kit.init({ id: 'hiscores', mark: false });
     crazytower: { pal: { P: '#ff4fb4', p: '#b3246f', C: '#4fd2ff', c: '#1f86b0', M: '#d946ef', m: '#8a1fa0', G: '#ffb21a', g: '#a86a00' }, rows: [
       '...PPPPPP...', '...pppppp...', '..CCCCCCC...', '..ccccccc...', '....MMMMMMM.', '....mmmmmmm.',
       '.GGGGGGGGGG.', '.gggggggggg.'] },
+    // an invader, mid-march
+    invaders: { pal: { W: '#f2f2f2', G: '#2fd35a' }, rows: [
+      '..W...W..', '...WWW...', '.WWWWWWW.', 'WW.WWW.WW', 'WWWWWWWWW', '.W.....W.', 'W.......W'] },
     // the centipede: lime body, yellow head with antennae
     centipede: { pal: { G: '#d4ff3d', L: '#7dffb0', Y: '#ffd23d', K: '#111111', R: '#ff3d5a' }, rows: [
       '.........K..K', '..........KK.', '.GG.......YY.', 'GGGG.....YYYY', 'GGGG.LL..YKYK', '.GG.LLLL.YYYY', '....LLLL..RR.', 'K..K.LL......', '....K..K.....'] }
@@ -649,6 +654,22 @@ Kit.init({ id: 'hiscores', mark: false });
     R(g, x + 2, y, 4, 1, '#ff5aa0'); R(g, x + 1, y + 1, 6, 3, '#ff5aa0'); R(g, x + 1, y + 3, 6, 1, '#c02670');
     R(g, x + 2, y + 1, 1, 1, '#ffd0e6'); R(g, x + 5, y + 2, 1, 1, '#ffd0e6'); R(g, x + 3, y + 4, 2, 3, '#fff3b0'); R(g, x + 3, y + 6, 2, 1, '#d8c27a');
     g.restore();
+  }
+  // Space Invaders: three original alien shapes (t 0 bottom rows, 1 middle, 2 top), two march frames each
+  var ALIEN = [
+    [['...XXXX...', '.XXXXXXXX.', 'XXX.XX.XXX', 'XXXXXXXXXX', '..XX..XX..', '.XX....XX.'], ['...XXXX...', '.XXXXXXXX.', 'XXX.XX.XXX', 'XXXXXXXXXX', '..XX..XX..', 'XX......XX']],
+    [['..X...X..', '...XXX...', '.XXXXXXX.', 'XX.XXX.XX', 'XXXXXXXXX', '.X.....X.'], ['..X...X..', '...XXX...', '.XXXXXXX.', 'XX.XXX.XX', 'XXXXXXXXX', 'X.......X']],
+    [['..XXXX..', '.XXXXXX.', 'XX.XX.XX', 'XXXXXXXX', '..X..X..', '.X.XX.X.'], ['..XXXX..', '.XXXXXX.', 'XX.XX.XX', 'XXXXXXXX', '.X.XX.X.', 'X......X']]
+  ];
+  function alien(g, x, y, t, f, c, s) {
+    var rows = ALIEN[t][f ? 1 : 0], w = rows[0].length; s = s || 1; g.fillStyle = c || '#f2f2f2';
+    x = Math.round(x - w * s / 2); y = Math.round(y);
+    rows.forEach(function (row, j) { for (var i = 0; i < row.length; i++) if (row[i] === 'X') g.fillRect(x + i * s, y + j * s, s, s); });
+  }
+  function saucer(g, x, y, t, s) {
+    s = s || 1; x = Math.round(x); y = Math.round(y);
+    g.fillStyle = '#ff4040'; g.fillRect(x - 3 * s, y, 6 * s, s); g.fillRect(x - 5 * s, y + s, 10 * s, s); g.fillRect(x - 6 * s, y + 2 * s, 12 * s, s); g.fillRect(x - 4 * s, y + 3 * s, 8 * s, s);
+    g.fillStyle = '#ffd0d0'; for (var i = -1; i <= 1; i++) if ((Math.floor(t * 6) + i + 3) % 3) g.fillRect(x + i * 4 * s, y + 2 * s, s, s);
   }
   function neonBlock(g, x, y, w, h, c) { R(g, x, y, w, h, c); R(g, x, y, w, 1, 'rgba(255,255,255,.6)'); R(g, x, y + h - 1, w, 1, 'rgba(0,0,0,.45)'); R(g, x, y, 1, h, 'rgba(255,255,255,.25)'); }
 
@@ -1448,6 +1469,102 @@ Kit.init({ id: 'hiscores', mark: false });
       };
     },
 
+    // Space Invaders: the rack marches and steps down, faster as it thins out; the cannon picks it off from behind the
+    // shields, bombs chew the shields away, and now and then the red saucer crosses the top
+    invaders: function (W, H) {
+      var CW = 13, RH = 11, GY = H - 6, CY = GY - 9, SHY = CY - 22, sp = sparks(), pp = popups(), t = 0, score = 0, wave = 0;
+      var rack, rx, ry, dir, stepT, fr, shot, bombs, ufo, ufoT, cannonX = W / 2, dead = 0, shields, landed = 0, fireT = 0, bombT = 1;
+      function newWave() {
+        wave++; rack = []; for (var r = 0; r < 5; r++) for (var c = 0; c < 11; c++) rack.push({ r: r, c: c, on: true });
+        rx = Math.round((W - 11 * CW) / 2); ry = 22 + Math.min(3, wave - 1) * 4; dir = 1; stepT = 0; fr = 0; shot = null; bombs = []; ufo = null; ufoT = rnd(6, 10);
+        shields = [0, 1, 2, 3].map(function (i) {
+          var x0 = Math.round(W * (0.14 + i * 0.24) - 8), px = [];
+          for (var y = 0; y < 8; y++) for (var x = 0; x < 16; x++) { var arch = y >= 5 && x >= 5 && x <= 10, corner = (y === 0 && (x < 2 || x > 13)) || (y === 1 && (x < 1 || x > 14)); px.push(!arch && !corner); }
+          return { x: x0, px: px };
+        });
+      }
+      newWave();
+      function pos(v) { return { x: rx + v.c * CW + CW / 2, y: ry + (4 - v.r) * RH }; }
+      function alive() { return rack.filter(function (v) { return v.on; }); }
+      // a projectile at (x, y) eats a few pixels of shield; true if it hit
+      function chew(x, y, n) {
+        for (var i = 0; i < shields.length; i++) {
+          var s = shields[i], lx = Math.floor(x - s.x), ly = Math.floor(y - SHY);
+          if (lx < 0 || lx > 15 || ly < 0 || ly > 7 || !s.px[ly * 16 + lx]) continue;
+          for (var k = 0; k < n; k++) { var ax = lx + irnd(-1, 1), ay = ly + irnd(-1, 1); if (ax >= 0 && ax < 16 && ay >= 0 && ay < 8) s.px[ay * 16 + ax] = false; }
+          s.px[ly * 16 + lx] = false; return true;
+        }
+        return false;
+      }
+      return {
+        step: function (dt) {
+          t += dt; sp.step(dt, 20); pp.step(dt); fireT -= dt;
+          if (landed > 0) { landed -= dt; if (landed <= 0) { wave = 0; score = 0; newWave(); } return; }
+          var live = alive();
+          if (!live.length) { pp.add('WAVE ' + (wave + 1), W / 2, H * 0.4, '#7dff9a'); newWave(); return; }
+          // the march: one step at a time, quicker as the rack thins out
+          stepT += dt;
+          var every = 0.05 + 0.5 * live.length / 55;
+          if (stepT >= every) {
+            stepT = 0; fr ^= 1;
+            var minX = Math.min.apply(null, live.map(function (v) { return pos(v).x; })), maxX = Math.max.apply(null, live.map(function (v) { return pos(v).x; }));
+            if ((dir > 0 && maxX + 7 + 2 > W) || (dir < 0 && minX - 7 - 2 < 0)) { ry += 4; dir = -dir; } else rx += 2 * dir;
+            live.forEach(function (v) { var p = pos(v); for (var k = 0; k < 6; k++) chew(p.x + irnd(-5, 5), p.y + k, 1); });
+            var low = Math.max.apply(null, live.map(function (v) { return pos(v).y; }));
+            if (low + 6 >= CY) { pp.add('INVADED', W / 2, H * 0.45, '#ff4a4a'); sp.burst(cannonX, CY, 24, ['#2fd35a', '#fff'], 50); landed = 2; return; }
+          }
+          // bombs from the bottom invader of a random column
+          bombT -= dt;
+          if (bombT <= 0 && bombs.length < 3) {
+            bombT = rnd(0.5, 1.4);
+            var cols = {}; live.forEach(function (v) { if (!cols[v.c] || v.r < cols[v.c].r) cols[v.c] = v; });
+            var ks = Object.keys(cols), b = cols[ks[irnd(0, ks.length - 1)]], p = pos(b); bombs.push({ x: p.x, y: p.y + 6, k: irnd(0, 1) });
+          }
+          bombs.forEach(function (b) { b.y += 50 * dt; });
+          bombs = bombs.filter(function (b) {
+            if (chew(b.x, b.y + 3, 6)) return false;
+            if (!dead && b.y + 3 >= CY && b.y < CY + 7 && Math.abs(b.x - cannonX) < 6) { dead = 1.2; sp.burst(cannonX, CY + 3, 22, ['#2fd35a', '#fff', '#a3ffbf'], 45); return false; }
+            if (b.y >= GY - 2) { sp.burst(b.x, GY - 1, 3, ['#fff']); return false; }
+            return true;
+          });
+          if (!ufo && (ufoT -= dt) <= 0) { var d = Math.random() < 0.5 ? 1 : -1; ufo = { x: d > 0 ? -10 : W + 10, v: 28 * d }; }
+          if (ufo) { ufo.x += ufo.v * dt; if (ufo.x < -14 || ufo.x > W + 14) { ufo = null; ufoT = rnd(9, 14); } }
+          // the cannon: lines up under the lowest invader it can reach, or the saucer, and fires
+          if (dead > 0) { dead -= dt; if (dead <= 0) cannonX = W / 2; }
+          else {
+            var tx = cannonX;
+            if (ufo && ufo.x > 10 && ufo.x < W - 10) tx = ufo.x + ufo.v * (CY - 12) / 220;
+            else { var tgt = null; live.forEach(function (v) { var q = pos(v); if (!tgt || q.y > tgt.y + 1 || (Math.abs(q.y - tgt.y) <= 1 && Math.abs(q.x - cannonX) < Math.abs(tgt.x - cannonX))) tgt = q; }); if (tgt) tx = tgt.x + dir * (2 / (0.05 + 0.5 * live.length / 55)) * (CY - tgt.y) / 220; }   // aim ahead of the march
+            if (bombs.some(function (b) { return b.y > CY - 30 && Math.abs(b.x - cannonX) < 6; })) tx = cannonX + (cannonX < W / 2 ? 14 : -14);   // dodge
+            cannonX += Math.max(-60 * dt, Math.min(60 * dt, tx - cannonX)); cannonX = Math.max(8, Math.min(W - 8, cannonX));
+            if (!shot && fireT <= 0 && Math.abs(tx - cannonX) < 4) { shot = { x: Math.round(cannonX), y: CY - 2 }; fireT = 0.15; }
+          }
+          if (shot) {
+            // move in small steps so a fast shot can't skip past a shield or an invader
+            var hit = false, dy = 220 * dt;
+            for (var stp = 0; stp < dy && !hit; stp += 2) {
+              shot.y -= Math.min(2, dy - stp);
+              if (chew(shot.x, shot.y, 4)) hit = true;
+              else live.some(function (v) { var q = pos(v); if (Math.abs(q.x - shot.x) <= 5 && shot.y >= q.y && shot.y <= q.y + 6) { v.on = false; hit = true; var t2 = v.r < 2 ? 0 : v.r < 4 ? 1 : 2; score += [10, 20, 30][t2]; sp.burst(q.x, q.y + 3, 10, ['#fff', '#ddd'], 40); return true; } return false; });
+            }
+            if (!hit && ufo && Math.abs(ufo.x - shot.x) < 7 && shot.y < 16 && shot.y > 6) { var pts = [50, 100, 150, 300][irnd(0, 3)]; score += pts; pp.add(String(pts), ufo.x, 8, '#ff4040'); sp.burst(ufo.x, 12, 18, ['#ff4040', '#fff'], 50); ufo = null; ufoT = rnd(9, 14); hit = true; }
+            if (hit || shot.y < 0) shot = null;
+          }
+        },
+        draw: function (g) {
+          txt(g, 'SCORE ' + score, 4, 2, '#fff', 'left'); txt(g, 'W' + wave, W - 4, 2, '#fff', 'right');
+          if (ufo) saucer(g, ufo.x, 10, t);
+          rack.forEach(function (v) { if (!v.on) return; var p = pos(v), ty = v.r < 2 ? 0 : v.r < 4 ? 1 : 2; alien(g, p.x, p.y, ty, fr, p.y > SHY - 8 ? '#2fd35a' : '#f2f2f2'); });
+          shields.forEach(function (s) { g.fillStyle = '#2fd35a'; for (var i = 0; i < 128; i++) if (s.px[i]) g.fillRect(s.x + (i % 16), SHY + Math.floor(i / 16), 1, 1); });
+          bombs.forEach(function (b) { var z = Math.floor(t * 12) % 2; R(g, b.x + (b.k ? (z ? 1 : -1) : 0), b.y, 1, 2, '#fff'); R(g, b.x + (b.k ? (z ? -1 : 1) : 0), b.y + 2, 1, 2, '#fff'); if (!b.k) R(g, b.x - 1, b.y + 1 + z * 2, 3, 1, '#fff'); });
+          if (shot) R(g, shot.x, shot.y - 3, 1, 4, '#fff');
+          if (!dead || Math.floor(t * 10) % 2) { var cx = Math.round(cannonX); if (!dead) { R(g, cx - 6, CY + 3, 13, 4, '#2fd35a'); R(g, cx - 5, CY + 2, 11, 1, '#2fd35a'); R(g, cx - 1, CY, 3, 2, '#2fd35a'); R(g, cx, CY - 1, 1, 1, '#2fd35a'); } else { R(g, cx - 6, CY + 5, 4, 2, '#2fd35a'); R(g, cx + 2, CY + 4, 5, 3, '#2fd35a'); R(g, cx - 1, CY + 3, 2, 1, '#2fd35a'); } }
+          R(g, 0, GY, W, 1, '#2fd35a');
+          sp.draw(g); pp.draw(g);
+        }
+      };
+    },
+
     // Puzzle boards: a quiet grid of tiles, a few glowing up and fading in the game's colours
     puzzle: function (W, H, b) {
       var S = 10, C = Math.ceil(W / S), RW = Math.ceil(H / S), lit = [], cols = [b.c.glow, b.c.hc, b.c.trim];
@@ -1519,6 +1636,10 @@ Kit.init({ id: 'hiscores', mark: false });
         R(g, 21, 18 - ((t * 40) % 22), 1, 4, '#fff'); return;
       }
       for (var i = 3; i >= 0; i--) centSeg(g, 19 - i * 5, 10 + Math.round(Math.sin(t * 6 - i) * 2), i === 0, i, Math.floor(t * 8 + i) % 2);
+    },
+    invaders: function (g, t, side) {
+      if (side) { saucer(g, 12, 5 + Math.round(Math.sin(t * 2)), t, 2); return; }
+      alien(g, 12, 3 + (Math.floor(t * 2) % 4 === 3 ? 2 : 0), 1, Math.floor(t * 2) % 2, '#f2f2f2', 2);
     },
     pong: function (g, t, side) { var y = 9 + Math.sin(t * 2.2) * 5; if (side) { R(g, 18, y - 4, 2, 8, '#fff'); R(g, 6 + Math.abs(Math.sin(t * 2.2)) * 8, 8, 2, 2, '#fff'); } else { var bx = 6 + Math.abs(((t * 9) % 22) - 11); R(g, 2, 9 - Math.sin(t * 2.2) * 3 - 4, 2, 8, '#fff'); R(g, 20, 9 + Math.sin(t * 2.2) * 3 - 4, 2, 8, '#fff'); R(g, bx, 8 + Math.round(Math.sin(t * 3) * 3), 2, 2, '#fff'); } }
   };
