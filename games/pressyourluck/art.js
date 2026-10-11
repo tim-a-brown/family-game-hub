@@ -59,14 +59,18 @@ var PYLArt = (function () {
     s += '<g class="g-arml">' + limb('M-22-48 C-31-46-32-36-25-30') + '<path d="M-25-30 l-4 3 M-25-30 l1 4" stroke="' + OL + '" stroke-width="2" stroke-linecap="round"/></g>';
     // a lean bean of a body with the yellow $ patch
     s += '<path d="M-24-61 C-26-46-23-26-15-16 C-8-12 8-12 15-16 C23-26 26-46 24-61z" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.6"/>';
-    s += '<path d="M-11-46 L11-46 L10-27 L-10-27z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="1.8" stroke-linejoin="round"/>';
-    s += '<text x="0" y="-31.5" text-anchor="middle" font-family="Bungee, sans-serif" font-size="15" fill="#fff" stroke="' + OL + '" stroke-width=".9" paint-order="stroke">$</text>';
     // right arm (in front), holds the prop; pointed fingers
     s += '<g class="g-armr">' + limb('M22-50 C27-51 29-49 31-46') + (o.prop || '') +
       '<path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + OL + '" stroke-width="4.2" stroke-linecap="round"/><path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + RED + '" stroke-width="2" stroke-linecap="round"/></g>';
     // the head goes straight into the body: no chin line across the chest (the patch moves with the head)
     s += '<g class="g-head" transform="translate(0 -80) scale(1 .9)">' + head(o) +
       '<path d="M-22.6 20.5 L22.6 20.5 C23.6 28 24.4 34 24.6 40 L-24.6 40 C-24.4 34-23.6 28-22.6 20.5z" fill="' + RED + '"/></g>';
+    // the big yellow chest patch right under the grin, with a chunky white double-barred $
+    s += '<path d="M-19-58.5 C-8-56.5 8-56.5 19-58.5 C18.5-46 17-34 14-27 C12-24 9-23 0-23 C-9-23-12-24-14-27 C-17-34-18.5-46-19-58.5z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="2.2" stroke-linejoin="round"/>';
+    var dl = 'M-2.2-55 L-2.2-26.5 M3.2-55 L3.2-26.5', ds = 'M9.5-48.5 C7-53-1-54.5-5.5-52 C-11-49-9.5-43-2-41.2 C6-39.5 10-36 7.5-31 C5-26.5-4-26.5-9.5-31';
+    s += '<path d="' + dl + '" stroke="' + OL + '" stroke-width="5.6" stroke-linecap="round"/><path d="' + ds + '" fill="none" stroke="' + OL + '" stroke-width="8.4" stroke-linecap="round" stroke-linejoin="round"/>';
+    s += '<path d="' + dl + '" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><path d="' + ds + '" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>';
+    s += '<circle cx="-5.2" cy="-47" r="1.3" fill="' + OL + '"/>';
     return s;
   }
   function headSVG(cls) {
