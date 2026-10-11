@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Press Your Luck: drawings. All original SVG: the Whammy gremlin (our own
-// character: a lime imp with bat ears and a toothy grin), the prize pictures
+// Press Your Luck: drawings. All SVG drawn here: the Whammy (a grinning red imp
+// in a yellow mask and cape, $ on his chest), the prize pictures
 // and the Whammy scenes that play on the centre screen.
-//   PYLArt.head()                    the gremlin's head (for Whammy squares)
+//   PYLArt.head()                    the Whammy's head (for Whammy squares)
 //   PYLArt.prize(key)                a prize picture (viewBox 0 0 64 40)
 //   PYLArt.PRIZES                    {r1:[...], r2:[...]} name / value / art
 //   PYLArt.scene(variant, bankText)  a Whammy scene (viewBox 0 -46 240 216; the stamp sits above the action)
@@ -10,62 +10,57 @@
 // ═══════════════════════════════════════════════════════════════════════════
 var PYLArt = (function () {
   'use strict';
-  var INK = '#1b1240', LIME = '#8fe34a', LIME2 = '#5fb52a', LIME3 = '#2c5a12', EYE = '#fff36b';
+  var INK = '#1b1240', OL = '#140a0c', RED = '#e3262c', RED2 = '#b8141c', RED3 = '#ff5a52', YEL = '#ffe23a', YEL2 = '#e0b400';
 
-  // ── The gremlin ───────────────────────────────────────────────────────────
-  // Head drawn around (0,0), roughly x −46…46, y −44…30. o.soot: blackened face
+  // ── The Whammy ─────────────────────────────────────────────────────────────
+  // A grinning red imp: spiky red hair, a yellow mask, one eye winking, a red bulb nose and a huge
+  // square-toothed grin. Head drawn around (0,0), roughly x −46…46, y −44…30. o.soot: blackened face
   function head(o) {
     o = o || {};
-    var s = '';
-    // bat ears
-    s += '<path d="M-20-10 L-47-27 L-40-12 L-46-4 L-33-1 L-36 8 L-20 6z" fill="' + LIME + '" stroke="' + LIME3 + '" stroke-width="2.4" stroke-linejoin="round"/>';
-    s += '<path d="M20-10 L47-27 L40-12 L46-4 L33-1 L36 8 L20 6z" fill="' + LIME + '" stroke="' + LIME3 + '" stroke-width="2.4" stroke-linejoin="round"/>';
-    s += '<path d="M-24-6 L-40-19 L-35-8 L-27 0z M24-6 L40-19 L35-8 L27 0z" fill="#e8708c" opacity=".75"/>';
-    // stubby horns
-    s += '<path d="M-13-24 C-17-36-12-43-5-44 C-9-37-7-31-4-26z M13-24 C17-36 12-43 5-44 C9-37 7-31 4-26z" fill="#f5e6a6" stroke="' + LIME3 + '" stroke-width="2" stroke-linejoin="round"/>';
-    // the head
-    s += '<path d="M0-30 C20-30 29-17 29-2 C29 16 17 29 0 29 C-17 29-29 16-29-2 C-29-17-20-30 0-30z" fill="' + LIME + '" stroke="' + LIME3 + '" stroke-width="2.6"/>';
-    s += '<path d="M-20-20 C-14-27-4-29 4-28" fill="none" stroke="#c7f59a" stroke-width="3" stroke-linecap="round" opacity=".8"/>';
-    // tuft of purple hair
-    s += '<path d="M-6-29 L-10-41 L-2-33 L1-45 L4-33 L12-40 L7-29z" fill="#7a3cff" stroke="#3d1580" stroke-width="1.6" stroke-linejoin="round"/>';
-    if (o.soot) s += '<path d="M-24 2 C-22-18-8-24 4-22 C18-20 26-8 24 6 C14 0 4 8-6 2 C-14-2-18 6-24 2z" fill="#2b2b33" opacity=".85"/>';
-    // eyes
-    s += '<g class="g-eyes"><ellipse cx="-11" cy="-7" rx="8.5" ry="9.5" fill="' + EYE + '" stroke="' + LIME3 + '" stroke-width="1.8"/><ellipse cx="11" cy="-7" rx="8.5" ry="9.5" fill="' + EYE + '" stroke="' + LIME3 + '" stroke-width="1.8"/>' +
-      '<ellipse class="g-pup" cx="-9.5" cy="-5.5" rx="2.4" ry="6" fill="' + INK + '"/><ellipse class="g-pup" cx="12.5" cy="-5.5" rx="2.4" ry="6" fill="' + INK + '"/>' +
-      '<circle cx="-12.5" cy="-11" r="1.8" fill="#fff"/><circle cx="9.5" cy="-11" r="1.8" fill="#fff"/></g>';
-    // sly brows
-    s += '<path d="M-21-19 L-4-13 M21-19 L4-13" stroke="' + LIME3 + '" stroke-width="4" stroke-linecap="round"/>';
-    // nose
-    s += '<ellipse cx="0" cy="4" rx="3.6" ry="2.4" fill="' + LIME2 + '"/>';
-    // the grin, full of crooked teeth
-    s += '<path d="M-19 9 C-12 25 12 25 19 9 C8 14-8 14-19 9z" fill="#4a0a22" stroke="' + LIME3 + '" stroke-width="2" stroke-linejoin="round"/>';
-    s += '<path d="M-15 11.5 L-12.5 17 L-10 12.8 L-7.5 18 L-4.5 13.4 L-1.5 18.5 L1.5 13.6 L4.5 18.4 L7.5 13.3 L10 17.6 L12.5 12.6 L15 16.4 L16.5 11.2 C8 14.2-8 14.2-15 11.5z" fill="#fffbea"/>';
-    s += '<path d="M-6 20 C-2 23 3 23 6 20 C3 21.5-2 21.5-6 20z" fill="#ff5c8a"/>';
+    var s = '', K = ' stroke="' + OL + '" stroke-width="2.6" stroke-linejoin="round"';
+    // little pointed yellow ears behind the mask
+    s += '<path d="M-27-14 L-38-26 L-33-8z M27-14 L38-26 L33-8z" fill="' + YEL + '"' + K + '/>';
+    // spiky red hair
+    s += '<path d="M-24-18 L-32-30 L-20-28 L-22-42 L-10-31 L-6-46 L1-32 L9-45 L11-30 L22-40 L20-26 L32-29 L25-16z" fill="' + RED + '"' + K + '/>';
+    // the head: wide at the grin
+    s += '<path d="M0-30 C18-30 27-20 28-8 C30 4 34 12 30 20 C24 30 10 32 0 32 C-10 32-24 30-30 20 C-34 12-30 4-28-8 C-27-20-18-30 0-30z" fill="' + RED + '"' + K + '/>';
+    s += '<path d="M-18-24 C-10-28 0-29 8-27" fill="none" stroke="' + RED3 + '" stroke-width="3" stroke-linecap="round" opacity=".7"/>';
+    // the yellow mask across the eyes
+    s += '<path d="M-29-15 C-20-21-8-20 0-17 C8-20 20-21 29-15 C30-9 26-1 18-2 C10-3 6-8 0-7 C-6-8-10-3-18-2 C-26-1-30-9-29-15z" fill="' + YEL + '"' + K + '/>';
+    if (o.soot) s += '<path d="M-28 4 C-26-16-10-24 2-22 C18-20 28-8 27 8 C16 2 4 10-6 4 C-14 0-20 8-28 4z" fill="#2b2b33" opacity=".85"/>';
+    // eyes: one wide open, one winking
+    s += '<g class="g-eyes"><ellipse cx="-12" cy="-11" rx="6.5" ry="7" fill="#fff" stroke="' + OL + '" stroke-width="2"/>' +
+      '<circle class="g-pup" cx="-11" cy="-10" r="2.8" fill="' + OL + '"/>' +
+      '<path d="M6-11 C9-14 15-14 18-10 M6-11 L3-13 M6-11 L3-9" fill="none" stroke="' + OL + '" stroke-width="2.4" stroke-linecap="round"/></g>';
+    // the grin: wide, white, square teeth
+    s += '<path d="M-29-1 C-24 26 24 26 29-1 C16 5-16 5-29-1z" fill="#fff"' + K + '/>';
+    s += '<path d="M-26 9.5 C-12 13 12 13 26 9.5" fill="none" stroke="' + OL + '" stroke-width="1.7"/>';
+    s += '<path d="M-19 3.4 L-18 19.5 M-9.5 4.6 L-9.2 22.6 M0 4.9 L0 23.4 M9.5 4.6 L9.2 22.6 M19 3.4 L18 19.5" stroke="' + OL + '" stroke-width="1.7" stroke-linecap="round"/>';
+    // the bulb nose
+    s += '<circle cx="0" cy="-3" r="5.8" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.2"/><circle cx="-1.8" cy="-4.8" r="1.6" fill="#fff" opacity=".55"/>';
     return s;
   }
-  // Whole gremlin, feet at y≈0, head at y≈-92; centred on x=0. Arms are groups so scenes can swing them.
+  // Whole Whammy, feet at y≈0, head at y≈-92; centred on x=0. Arms are groups so scenes can swing them.
   // o.prop: html for something held in the right hand (drawn in the arm group, hand at (30,-46))
   function body(o) {
     o = o || {};
-    var s = '';
-    // tail
-    s += '<path d="M14-14 C34-10 40-26 30-34 C26-37 22-33 25-30" fill="none" stroke="' + LIME3 + '" stroke-width="7" stroke-linecap="round"/>';
-    s += '<path d="M14-14 C34-10 40-26 30-34 C26-37 22-33 25-30" fill="none" stroke="' + LIME + '" stroke-width="4" stroke-linecap="round"/>';
-    s += '<path d="M20-30 L30-36 L28-25z" fill="#7a3cff" stroke="#3d1580" stroke-width="1.4" stroke-linejoin="round"/>';
-    // legs + feet
-    s += '<path d="M-9-16 L-11-5 M9-16 L11-5" stroke="' + LIME3 + '" stroke-width="7" stroke-linecap="round"/>';
-    s += '<path d="M-9-16 L-11-5 M9-16 L11-5" stroke="' + LIME + '" stroke-width="4" stroke-linecap="round"/>';
-    s += '<ellipse cx="-14" cy="-3" rx="10" ry="5" fill="' + LIME2 + '" stroke="' + LIME3 + '" stroke-width="2"/><ellipse cx="14" cy="-3" rx="10" ry="5" fill="' + LIME2 + '" stroke="' + LIME3 + '" stroke-width="2"/>';
-    // left arm (behind the body), on the hip or waving
-    s += '<g class="g-arml"><path d="M-14-46 C-26-44-30-36-24-30" fill="none" stroke="' + LIME3 + '" stroke-width="7" stroke-linecap="round"/><path d="M-14-46 C-26-44-30-36-24-30" fill="none" stroke="' + LIME + '" stroke-width="4" stroke-linecap="round"/><circle cx="-23" cy="-29" r="4.4" fill="' + LIME + '" stroke="' + LIME3 + '" stroke-width="2"/></g>';
-    // pear body in a little striped vest
-    s += '<path d="M-15-56 C-22-40-22-20-13-13 C-6-9 6-9 13-13 C22-20 22-40 15-56z" fill="' + LIME + '" stroke="' + LIME3 + '" stroke-width="2.6"/>';
-    s += '<path d="M-15-55 C-20-42-20-26-15-18 L-5-14 L-3-50z M15-55 C20-42 20-26 15-18 L5-14 L3-50z" fill="#ff3d6e" stroke="#7a0f2c" stroke-width="1.6" stroke-linejoin="round"/>';
-    s += '<path d="M-13-46 L-6-44 M-15-36 L-5-34 M-15-26 L-5-24 M13-46 L6-44 M15-36 L5-34 M15-26 L5-24" stroke="#ffd23d" stroke-width="2"/>';
-    s += '<ellipse cx="0" cy="-30" rx="5" ry="10" fill="#c7f59a" opacity=".7"/>';
-    // right arm (in front), holds the prop
-    s += '<g class="g-armr"><path d="M14-48 C24-50 28-48 30-46" fill="none" stroke="' + LIME3 + '" stroke-width="7" stroke-linecap="round"/><path d="M14-48 C24-50 28-48 30-46" fill="none" stroke="' + LIME + '" stroke-width="4" stroke-linecap="round"/>' +
-      (o.prop || '') + '<circle cx="31" cy="-46" r="4.6" fill="' + LIME + '" stroke="' + LIME3 + '" stroke-width="2"/></g>';
+    var s = '', K = ' stroke="' + OL + '" stroke-width="2.4" stroke-linejoin="round"';
+    function limb(d) { return '<path d="' + d + '" fill="none" stroke="' + OL + '" stroke-width="8" stroke-linecap="round"/><path d="' + d + '" fill="none" stroke="' + RED + '" stroke-width="4.6" stroke-linecap="round"/>'; }
+    // the yellow cape, flaring out behind
+    s += '<path d="M-12-58 C-26-48-34-26-32-10 C-24-14-18-12-12-8 L12-8 C18-12 24-14 32-10 C34-26 26-48 12-58z" fill="' + YEL + '"' + K + '/>';
+    s += '<path d="M-20-40 C-24-30-26-20-26-12 M20-40 C24-30 26-20 26-12" fill="none" stroke="' + YEL2 + '" stroke-width="1.8" opacity=".8"/>';
+    // legs, one crossed over the other, and pointed red shoes
+    s += limb('M-6-16 C-6-10 4-7 6 0') + limb('M6-16 C8-10-2-6-6-1');
+    s += '<path d="M2 0 C6-3 14-3 19 1 C14 2 8 3 2 3z M-2-1 C-7-4-15-4-20 0 C-15 1-8 2-2 2z" fill="' + RED + '"' + K + '/>';
+    // left arm (behind the body), hand on the hip or waving
+    s += '<g class="g-arml">' + limb('M-13-48 C-24-46-26-36-18-30') + '<path d="M-18-30 l-4 3 M-18-30 l1 4" stroke="' + OL + '" stroke-width="2" stroke-linecap="round"/></g>';
+    // a lean bean of a body with the yellow $ patch
+    s += '<path d="M-13-58 C-19-44-18-24-11-16 C-6-12 6-12 11-16 C18-24 19-44 13-58z" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.6"/>';
+    s += '<path d="M-9-48 L9-48 L8-28 L-8-28z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="1.8" stroke-linejoin="round"/>';
+    s += '<text x="0" y="-31.5" text-anchor="middle" font-family="Bungee, sans-serif" font-size="15" fill="#fff" stroke="' + OL + '" stroke-width=".9" paint-order="stroke">$</text>';
+    // right arm (in front), holds the prop; pointed fingers
+    s += '<g class="g-armr">' + limb('M13-50 C22-52 27-50 30-46') + (o.prop || '') +
+      '<path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + OL + '" stroke-width="4.2" stroke-linecap="round"/><path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + RED + '" stroke-width="2" stroke-linecap="round"/></g>';
     s += '<g class="g-head" transform="translate(0 -84) scale(.86)">' + head(o) + '</g>';
     return s;
   }
