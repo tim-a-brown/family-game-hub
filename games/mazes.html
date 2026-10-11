@@ -19,14 +19,14 @@ body{overflow-x:hidden;}
 .mz.play{max-width:none;display:flex;flex-direction:column;align-items:center;padding:0 12px calc(var(--safe-b) + 8px);overflow:hidden;}
 
 /* ── Counters ── */
-.hud{display:flex;gap:8px;width:100%;max-width:520px;margin:2px auto 8px;flex:none;}
+.hud{display:flex;gap:8px;width:100%;max-width:520px;margin:2px auto 16px;flex:none;}
 .cnt{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 8px;border-radius:14px;background:var(--w06);box-shadow:inset 0 0 0 1px var(--w06);}
 .cnt .ico{width:20px;height:20px;flex:none;color:var(--text-3);}
 .cnt .tx{display:flex;flex-direction:column;line-height:1.05;min-width:0;}
 .cnt small{font-size:.6rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);}
 .cnt b{font-family:var(--display);font-weight:400;font-size:1.3rem;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cnt.time b{color:var(--accent);}
-.cnt.time.pen b{animation:penflash .9s ease;}
+.cnt.time.penal b{animation:penflash .9s ease;}
 @keyframes penflash{30%{color:#ff6b5a;transform:scale(1.12);}}
 
 /* ── The clipboard and the puzzle page ── */
@@ -369,6 +369,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     stage = el('div', { class: 'stage' }); app.appendChild(stage);
     tools = el('div', { class: 'tools' }); app.appendChild(tools);
     tipEl = el('div', { class: 'tip' }); app.appendChild(tipEl);
+    Kit.orient('portrait');   // phones only: a maze page (and the labyrinth) stands upright
     if (S.mode === 'tilt') buildTilt(); else buildPencil();
     updHud(); updTime();
     if (!S.done && S.going) startClock();
@@ -481,14 +482,14 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
   function drawPencil() {
     svg.innerHTML = '';
     var u = 1 / pxu;   // units per screen pixel at fit
-    var wallW = Math.max(1.5, Math.min(3.2, U * pxu * 0.1)) * u;
+    wallPx = Math.max(1.5, Math.min(3.2, U * pxu * 0.1)); var wallW = wallPx * u;
     gC = sv('g', { id: 'mzc' });
     gC.appendChild(sv('path', { class: 'walls', d: MC.walls(M, tr, true), 'stroke-width': wallW.toFixed(3) }));
     gC.appendChild(marks(u, wallW));
     solEl = sv('path', { class: 'solp', 'stroke-width': (U * 0.2).toFixed(2), 'stroke-dasharray': (U * 0.5) + ' ' + (U * 0.35), d: '' });
     hintEl = sv('path', { class: 'hintp', 'stroke-width': (U * 0.24).toFixed(2), 'stroke-dasharray': (U * 0.42) + ' ' + (U * 0.3), d: '' });
     hintDot = sv('circle', { class: 'hintdot', r: (U * 0.42).toFixed(2), cx: 0, cy: 0, 'stroke-width': (U * 0.12).toFixed(2) });
-    var pw = Math.max(U * 0.32, 3.2 * u);
+    var pw = Math.max(U * 0.28, 3.2 * u);
     bleedEl = sv('path', { class: 'pen-bleed', 'stroke-width': (pw * 1.55).toFixed(2), d: '' });
     penEl = sv('path', { class: 'pen', 'stroke-width': pw.toFixed(2), d: '' });
     sweepEl = sv('path', { class: 'sweep', 'stroke-width': (pw * 0.45).toFixed(2), d: '' });
@@ -502,33 +503,40 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
   }
   // START and FINISH, printed: an arrow into the way in, an arrow out of the way out (a star in the middle of a round maze)
   function marks(u, wallW) {
-    var g = sv('g', { class: 'marks' }), fs = 10.5 * u, L = Math.max(U * 0.9, 15 * u), gap = 3 * u;
+    var g = sv('g', { class: 'marks' }), fs = 10.5 * u, L = 15 * u, gap = 3 * u;
     function arrow(x0, y0, x1, y1) {
-      var dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, hw = Math.max(U * 0.24, 4.2 * u), hl = Math.max(U * 0.32, 6 * u);
+      var dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, hw = 4.2 * u, hl = 6.5 * u;
       g.appendChild(sv('path', { d: 'M' + x0 + ' ' + y0 + 'L' + (x1 - ux * hl * 0.6) + ' ' + (y1 - uy * hl * 0.6), 'stroke-width': (wallW * 0.9).toFixed(3) }));
       g.appendChild(sv('path', { class: 'fill', d: 'M' + x1 + ' ' + y1 + 'L' + (x1 - ux * hl - uy * hw) + ' ' + (y1 - uy * hl + ux * hw) + 'L' + (x1 - ux * hl + uy * hw) + ' ' + (y1 - uy * hl - ux * hw) + 'Z' }));
     }
-    function label(t, x, y, anchor) {
-      var tx = sv('text', { x: x.toFixed(2), y: y.toFixed(2), 'font-size': fs.toFixed(2), 'text-anchor': anchor || 'middle', 'dominant-baseline': 'central' }); tx.textContent = t; g.appendChild(tx);
+    // labels stay on the page: nudged in from the edges
+    function label(t, x, y, rot) {
+      var hw = t.length * fs * 0.36 + 2 * u, hh = fs * 0.6;
+      if (rot) { var t2 = hw; hw = hh; hh = t2; }
+      x = Math.max(content.x + hw, Math.min(content.x + content.w - hw, x));
+      y = Math.max(content.y + hh, Math.min(content.y + content.h - hh, y));
+      var tx = sv('text', { x: x.toFixed(2), y: y.toFixed(2), 'font-size': fs.toFixed(2), 'text-anchor': 'middle', 'dominant-baseline': 'central' });
+      if (rot) tx.setAttribute('transform', 'rotate(' + rot + ' ' + x.toFixed(2) + ' ' + y.toFixed(2) + ')');
+      tx.textContent = t; g.appendChild(tx);
     }
     var s = MC.door(M, 'start', tr), f = MC.door(M, 'finish', tr);
-    // into the start
     arrow(s.x + s.dx * (gap + L), s.y + s.dy * (gap + L), s.x + s.dx * gap, s.y + s.dy * gap);
     if (M.shape === 'round') {
-      var d = gap + L + 7 * u, lx = s.x + s.dx * d, ly = s.y + s.dy * d;
-      label('START', lx + (s.dx > 0.35 ? 18 * u : s.dx < -0.35 ? -18 * u : 0), ly + (Math.abs(s.dx) <= 0.35 ? s.dy * 2 * u : 0));
+      label('START', s.x, s.y + gap + L + 8 * u);
       // a printed star in the middle
       var R1 = U * 0.62, R2 = R1 * 0.45, pts = '';
       for (var k = 0; k < 10; k++) { var a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? R2 : R1; pts += (k ? 'L' : 'M') + (r * Math.cos(a)).toFixed(2) + ' ' + (r * Math.sin(a)).toFixed(2); }
       g.appendChild(sv('path', { class: 'fill goal', d: pts + 'Z' }));
     } else {
-      if (tr) { label('START', s.x - (gap + L) * 0.5, s.y - Math.max(U * 0.55, 9 * u)); }
-      else label('START', s.x, s.y - gap - L - 7 * u);
       arrow(f.x + f.dx * gap, f.y + f.dy * gap, f.x + f.dx * (gap + L), f.y + f.dy * (gap + L));
-      var gl = sv('g', { class: 'goal' });
-      g.appendChild(gl);
-      if (tr) label('FINISH', f.x + (gap + L) * 0.5, f.y - Math.max(U * 0.55, 9 * u));
-      else label('FINISH', f.x, f.y + gap + L + 7 * u);
+      g.appendChild(sv('g', { class: 'goal' }));
+      if (tr) {   // on its side: the labels run up the margins, beyond the arrows
+        label('START', s.x - gap - L - 8 * u, s.y, -90);
+        label('FINISH', f.x + gap + L + 8 * u, f.y, 90);
+      } else {
+        label('START', s.x, s.y - gap - L - 7 * u);
+        label('FINISH', f.x, f.y + gap + L + 7 * u);
+      }
     }
     return g;
   }
@@ -582,7 +590,13 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     var r = svg.getBoundingClientRect();
     return [view.x + (cx - r.left) / pxu, view.y + (cy - r.top) / pxu];
   }
-  function applyView() { if (svg && view) svg.setAttribute('viewBox', view.x.toFixed(3) + ' ' + view.y.toFixed(3) + ' ' + view.w.toFixed(3) + ' ' + view.h.toFixed(3)); }
+  var wallPx = 2;
+  function applyView() {
+    if (!svg || !view) return;
+    svg.setAttribute('viewBox', view.x.toFixed(3) + ' ' + view.y.toFixed(3) + ' ' + view.w.toFixed(3) + ' ' + view.h.toFixed(3));
+    // printed lines thicken a little when zoomed in, not in proportion (they'd look like a marker)
+    var w = svg.querySelector('.walls'); if (w) w.setAttribute('stroke-width', (wallPx * Math.pow(pxu / fitPxu, 0.45) / pxu).toFixed(3));
+  }
   function clampView() {
     ['x', 'y'].forEach(function (a) {
       var w = a === 'x' ? 'w' : 'h';
@@ -733,13 +747,22 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     if (S.mode === 'tilt') { keyTilt(e.key, dir, true); e.preventDefault(); return; }
     if (S.done) return;
     e.preventDefault();
-    var h = MC.center(M, S.head, tr), best = -1, bd = 0.45;
-    M.links[S.head].forEach(function (x) { var q = MC.center(M, x, tr), dx = q[0] - h[0], dy = q[1] - h[1], l = Math.hypot(dx, dy) || 1, dot = (dx * dir[0] + dy * dir[1]) / l; if (dot > bd) { bd = dot; best = x; } });
+    var best = -1, bd = 0.45;
+    M.links[S.head].forEach(function (x) { var v = stepDir(S.head, x), dot = v[0] * dir[0] + v[1] * dir[1]; if (dot > bd) { bd = dot; best = x; } });
     if (S.head === M.start && best < 0 && !S.going) return;
     if (best < 0) { SND.bump(); return; }
     pushUndo(); moveTo(best);
     if (zoomed()) { var q = MC.center(M, S.head, tr), m0 = view.w * 0.2; if (q[0] < view.x + m0 || q[0] > view.x + view.w - m0 || q[1] < view.y + m0 || q[1] > view.y + view.h - m0) centerOn(q); }
   });
+  // Which way a step leaves the square: round mazes go straight in or out, or along the ring
+  function stepDir(a, b) {
+    var h = MC.center(M, a, tr), q = MC.center(M, b, tr), dx = q[0] - h[0], dy = q[1] - h[1];
+    if (M.shape === 'round' && a !== 0 && b !== 0) {
+      if (M.ring[a] !== M.ring[b]) { var o = M.ring[a] > M.ring[b] ? h : q, l0 = Math.hypot(o[0], o[1]) || 1, sg = M.ring[b] > M.ring[a] ? 1 : -1; dx = sg * o[0] / l0; dy = sg * o[1] / l0; }
+      else { var l1 = Math.hypot(h[0], h[1]) || 1, tx = -h[1] / l1, ty = h[0] / l1, sg2 = tx * dx + ty * dy >= 0 ? 1 : -1; dx = sg2 * tx; dy = sg2 * ty; }
+    }
+    var l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l];
+  }
   document.addEventListener('keyup', function (e) { if (S && S.mode === 'tilt') keyTilt(e.key, null, false); });
 
   // ── Hints and giving up ──
@@ -752,7 +775,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     var show = route.slice(0, Math.min(route.length, back + 1 + 6));
     var p = PENALTY[S.size] || 10;
     S.hints++; S.pen += p; go(); updHud(); updTime(); save();
-    hud.timeBox.classList.remove('pen'); void hud.timeBox.offsetWidth; hud.timeBox.classList.add('pen');
+    hud.timeBox.classList.remove('penal'); void hud.timeBox.offsetWidth; hud.timeBox.classList.add('penal');
     SND.hint(); Kit.haptic('light'); Kit.callout('+' + p + 's');
     if (back > 0) Kit.toast('Back up to the blue circle first');
     if (S.mode === 'tilt') { labHint = { cells: show, back: back ? route[back] : -1, t: performance.now() }; return; }
@@ -899,7 +922,6 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     labHint = null; labReveal = !!S.revealed;
     if (S.done) doneTools();
     else setTools([btn('lightbulb', 'Hint', hint, 'btn-soft grow'), btn('compass', 'Level', function () { level(true); }, 'btn-soft')]);
-    Kit.orient('portrait');
     layoutTilt();
     bindTilt();
     if (!S.done) askTilt();
@@ -1207,7 +1229,9 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     daily: function (d) { return MC.daily(d || today()); },
     newGame: function (o) { newGame(o); },
     setup: function () { leave(); showSetup(); },
-    lab: function () { return { follow: follow, cellPx: cellPx, tr: tr }; }
+    lab: function () { return { follow: follow, cellPx: cellPx, tr: tr }; },
+    stepDir: function (a, b) { return stepDir(a, b); },
+    centerHead: function () { centerOn(MC.center(M, S.head, tr)); }
   };
 
   // ── Boot ───────────────────────────────────────────────────────────────
