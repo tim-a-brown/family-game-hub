@@ -245,7 +245,7 @@ body.pyl-on{
 .pyls.land .pod .ps{grid-area:s;padding:0 10px 9px;font-size:14px;}
 
 /* ── Controls: the big red button and Pass ───────────────────────────── */
-.ctl{display:grid;grid-template-columns:minmax(0,1fr) var(--dome) minmax(0,1fr);align-items:center;gap:10px;--dome:clamp(108px,28vw,150px);min-height:calc(var(--dome) + 4px);}
+.ctl{display:grid;grid-template-columns:minmax(0,1fr) var(--dome) minmax(0,1fr);align-items:center;gap:10px;--dome:clamp(108px,33vw,150px);min-height:calc(var(--dome) + 4px);}
 .pyls.land .ctl{grid-template-columns:var(--dome) minmax(0,1fr);grid-template-areas:"h h" "d p";row-gap:10px;}
 .pyls.land .ctl .hint{grid-area:h;text-align:center;}
 .pyls.land .ctl .dome{grid-area:d;}
@@ -336,6 +336,16 @@ body.pyl-on{
 @keyframes dots{0%{opacity:0;}50%{opacity:1;}}
 .gate .big{font-family:"Bungee",var(--display);font-size:clamp(26px,8vw,44px);color:var(--pc);line-height:1;text-shadow:0 0 .5em color-mix(in srgb,var(--pc) 50%,transparent);}
 
+/* Tablets: bigger podiums, button and question text */
+@media (min-width:600px) and (min-height:600px){
+  .pod .pn{font-size:16px;padding:7px 8px 6px;} .pod .pb{font-size:42px;margin-top:7px;} .pod .ps{font-size:15px;} .pod .pw svg{width:22px;height:18px;}
+  .ctl{--dome:clamp(108px,22vw,170px);} .hint{font-size:17px;} .hint b{font-size:20px;}
+  .passb{padding:14px 20px 12px;} .passb span{font-size:23px;} .passb small{font-size:14px;}
+  .qt{font-size:clamp(24px,4.4vw,40px);} .qo{gap:12px;} .qo button{font-size:22px;min-height:62px;padding:10px 14px;} .qo button b{width:34px;height:34px;font-size:17px;}
+  .qh .who{font-size:21px;} .qh .qn,.qh .cat{font-size:16px;} .qbulbs{gap:6px;} .qbulbs i{width:17px;height:17px;} .ql{font-size:18px;} .qf{font-size:19px;}
+  .pan p{font-size:21px;} .stand{max-width:520px;} .stand .nm{font-size:21px;} .stand .bk{font-size:40px;} .stand .ex{font-size:16px;}
+  .gobtn{font-size:23px;padding:16px 34px 14px;} .rnd{font-size:28px;} .gate .big{font-size:56px;}
+}
 @media (prefers-reduced-motion:reduce){ .bulbs circle{animation:none;} .sl.in{animation:none;} }
 </style>
 </head>
@@ -467,7 +477,7 @@ body.pyl-on{
   // ── State ─────────────────────────────────────────────────────────────────
   var S = null, shell = null;
   var ui = { await: null, busy: false };
-  var T = { show: [], next: [], lit: -1, hopT: 0, tick: 0, running: false, frozen: false };
+  var T = { show: [], next: [], lit: -1, hopT: 0, tick: 0, running: false, frozen: false, spinId: 0 };
   var FORCE = [];   // test hook: where the next stops land
   function cur() { return S && S.cur >= 0 ? S.players[S.cur] : null; }
   function active() { return S.players.filter(function (p) { return !p.out; }); }
@@ -619,7 +629,7 @@ body.pyl-on{
       if (bh > bw * 0.95) bh = bw * 0.95;
       if (bh < bw * 0.76) bw = bh / 0.76;
     } else {
-      var reserve = W >= 600 ? 310 : 256;
+      var reserve = W >= 600 ? 340 : 256;
       bw = W; bh = Math.min(H - reserve, bw * 1.3);
       if (bh < bw * 0.86) { bh = Math.max(bh, 300); bw = Math.min(W, bh / 0.86); }
     }
@@ -983,9 +993,9 @@ body.pyl-on{
       return stopBoard();
     }
     ui.await = 'stop'; renderCtl();
-    // nobody's there? stop on its own after a while
-    var e = epoch;
-    setTimeout(function () { if (e === epoch && ui.await === 'stop' && T.running) domeTap(); }, 25000);
+    // nobody's there? this spin stops on its own after a while
+    var e = epoch, id = ++T.spinId;
+    setTimeout(function () { if (e === epoch && id === T.spinId && ui.await === 'stop' && T.running) domeTap(); }, 25000);
   }
   function takeForce(i, dest) {
     var f = FORCE[0]; if (!f || !!f.dest !== !!dest) return i;
