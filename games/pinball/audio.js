@@ -234,11 +234,17 @@ export class Audio {
     if (M.src && M.id !== id) this.musicStop(true);
     if (!M.src) {
       const buf = M.bufs[id]; if (!buf) { this.musicLoad(id, url); return; }
-      const d = buf.getChannelData(0); let lead = 0; const lim = Math.min(d.length, 8000);
-      while (lead < lim && Math.abs(d[lead]) < 1e-3) lead++; if (lead >= lim) lead = 0;
+      // Each music file holds its loop plus PAD samples of its own tail before it and its own head after it
+      // (sounds/pinball/make-music.py), so the loop window sits PAD/2 inside continuous audio, clear of MP3 start-up
+      // and padding and of the resampler's edges. A browser that trims the MP3 encoder delay decodes exactly
+      // loop + 2 * PAD; one that does not puts priming silence first, so then find where the audio starts.
+      const PAD = 2048, lr = loopRate || 32000, d = buf.getChannelData(0); let lead = 0;
+      if (!loopSamples || Math.abs(buf.duration - (loopSamples + 2 * PAD) / lr) > 0.002) {
+        const lim = Math.min(d.length, 8000); while (lead < lim && Math.abs(d[lead]) < 1e-3) lead++; if (lead >= lim) lead = 0;
+      }
       const s = a.createBufferSource(), g = a.createGain();
-      s.buffer = buf; s.loop = true; s.loopStart = lead / buf.sampleRate;
-      s.loopEnd = loopSamples ? Math.min(buf.duration, s.loopStart + loopSamples / (loopRate || 32000)) : buf.duration;
+      s.buffer = buf; s.loop = true; s.loopStart = lead / buf.sampleRate + (loopSamples ? PAD / 2 / lr : 0);
+      s.loopEnd = loopSamples ? Math.min(buf.duration, s.loopStart + loopSamples / lr) : buf.duration;
       g.gain.value = 0.0001; s.connect(g); g.connect(this.musicBus); s.start(0, s.loopStart);
       M.src = s; M.g = g; M.id = id;
     }

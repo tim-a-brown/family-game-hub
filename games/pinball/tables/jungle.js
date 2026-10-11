@@ -1005,7 +1005,7 @@ function makeExplain() {
     walls: { name: 'Temple Walls', text: '2,750 points each. Knock all three down for Boulder Run: 25 seconds where everything scores double and the boulder rolls.' },
     snake: { kind: 'Ball lock', name: 'The Serpent', text: '5,000 points a hit. Three hits open its mouth: feed it to lock a ball. The third ball starts Serpent Multiball, and after its jackpots the open mouth is the 150,000 super jackpot.' },
     totems: { ids: ['tot1', 'tot2', 'tot3'], kind: 'Pop bumpers', name: 'Totem Bumpers', text: '2,500 points a hit, 7,500 in the Lost City. In the Obsidian Blade hunt every hit counts.' },
-    key: { ids: ['laneK', 'laneE', 'laneY'], kind: 'Top lanes', name: 'K-E-Y Lanes', text: '1,000 points each; the flipper buttons move the lit lane. K-E-Y wins a key: bonus multiplier up, the vine lit and a relic lit at the altar. A soft launch into the flashing lane is the 50,000 skill shot.' },
+    key: { ids: ['laneK', 'laneE', 'laneY'], kind: 'Top lanes', name: 'K-E-Y Lanes', text: '1,000 points each; the flipper buttons move the lit lane. K-E-Y wins a key: bonus multiplier up, the vine lit and a relic lit at the altar. A soft launch into the flashing lane is the skill shot.' },
     temple: { name: 'The Temple', text: '5,000 points a hit and 15,000 each time a wall cracks. Nine hits bring it down: 100,000 and a key.' },
     boulder: { ids: [], at: [[170, 470, 34]], path: [[0, 470, 30], [380, 470, 30]], kind: 'Toy', name: 'The Boulder', text: 'Rolls back and forth across the gorge during Boulder Run and the Lost City. 7,500 points if it hits your ball.' },
     cave: null

@@ -929,7 +929,7 @@ function makeExplain() {
     launcher: { name: 'Rooftop Launcher', text: 'The ball from the Super-Loop drops in here. Slide it with the flipper buttons, then press FIRE to shoot it at V-I-P.' },
     vip: { name: 'V-I-P Targets', text: '750 points each. Knock all three down for the Rooftop jackpot: 50,000 and extra ball lit the first time, 75,000 after that. It also lights Second Wind.' },
     roof: { kind: 'Upper playfield', name: 'The Rooftop', text: 'A raised deck at the top of the Super-Loop with the moving launcher and the V-I-P targets. The chrome wire brings the ball back down to your right flipper.' },
-    orb: { kind: 'Magnet', name: 'The Orb', text: 'When lit, its magnet catches the ball dead centre. With the lock lit it beams the ball away: three locks start Orb Multiball, and after its jackpots the Orb is the 200,000 super jackpot. Otherwise a mystery award, or 5,000.' },
+    orb: { kind: 'Magnet', name: 'The Orb', text: 'When lit, its magnet catches the ball dead centre. With the lock lit it beams the ball away: three locks start Orb Multiball, with a 200,000 super jackpot here. Otherwise a mystery award, or 5,000.' },
     backstage: { name: 'Backstage Scoop', text: '12,500 points, then it starts what is lit: Midnight Drive, extra ball, Wind, or the next club track (six track shots in 35 seconds for 75,000). Nothing lit? A random award.' },
     pops: { ids: ['pop1', 'pop2', 'pop3'], kind: 'Pop bumpers', name: 'Beat Bumpers', text: '500 points a hit, 4,500 in Midnight Drive. In the Neon Rain track every hit is a 6,000 track shot.' },
     dj: { kind: 'Hologram', name: 'The DJ', text: '5,000 points when the ball passes through him. He shows up on the Rooftop during club tracks and multiball.' },
