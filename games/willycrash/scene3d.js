@@ -184,7 +184,7 @@ export function WillyCrash3D(api, host) {
   const cyl = (r0, r1, h, n) => new THREE.CylinderGeometry(r0, r1, h, n || 12);
 
   // ── The city: rebuilt whenever the page builds a new one ──
-  let city = null, built = null, facades = [], dyn = { ants: [], lamps: [], cans: [], cars: [], bills: [], acs: [], tanks: [], solars: [], awns: [], pads: [] };
+  let city = null, built = null, facades = [], dyn = { ants: [], lamps: [], cans: [], cars: [], bills: [], acs: [], tanks: [], solars: [], awns: [], pads: [], sp: [], dogs: [] };
   function facadeTexture(b) {
     const s = 2, [c, x] = cv2d(b.w * s, b.h * s);
     api.paintFacade(b, x, s);
@@ -194,7 +194,7 @@ export function WillyCrash3D(api, host) {
   function buildCity(st) {
     if (city) { scene.remove(city); city.traverse(o => { if (o.geometry) o.geometry.dispose(); }); facades.forEach(f => f.t.dispose()); }
     city = new THREE.Group(); scene.add(city); facades = [];
-    dyn = { ants: [], lamps: [], cans: [], cars: [], bills: [], acs: [], tanks: [], solars: [], awns: [], pads: [] };
+    dyn = { ants: [], lamps: [], cans: [], cars: [], bills: [], acs: [], tanks: [], solars: [], awns: [], pads: [], sp: [], dogs: [] };
     built = st.B;
     const parapetMat = lam('#bdb5aa'), corniceMat = lam('#cfc8be'), ink = lam('#2a2430'), roofMat = new THREE.MeshLambertMaterial({ map: T.roof });
     st.B.forEach((b, i) => {
@@ -282,6 +282,8 @@ export function WillyCrash3D(api, host) {
       const lid = new THREE.Mesh(cyl(8.5, 8.5, 3, 10), lam('#9aa6bc')); lid.position.y = 21.5; grp.add(lid);
       dyn.cans.push({ can, grp, lid });
     });
+    (st.sprops || []).forEach(sp => addStreetProp(sp));
+    (st.dogs || []).forEach(d => addDog(d));
     // the street, the pavement, the cannon's grass, and the water past the pier
     const sea = st.SEA_X;
     const road = new THREE.Mesh(new THREE.PlaneGeometry(sea + 3000, 900), lam('#5c5966')); road.rotation.x = -Math.PI / 2; road.position.set((sea - 3000) / 2, 0, 0); city.add(road);
@@ -292,6 +294,112 @@ export function WillyCrash3D(api, host) {
     const water = new THREE.Mesh(new THREE.PlaneGeometry(6000, 900), lam('#3d86c8')); water.rotation.x = -Math.PI / 2; water.position.set(sea + 3000, -6, 0); city.add(water);
     const pier = new THREE.Mesh(box(8, 46, 900), lam('#6b4a3a')); pier.position.set(sea - 2, -18, 0); city.add(pier);
     buildBackdropStrips();
+  }
+  // ── Street props: carts, cafe tables, crates, stands, barriers, cones, hydrants, mailboxes, dumpsters, phone booths ──
+  const SPT = {};
+  function spTex(key, draw, w, h) { if (SPT[key]) return SPT[key]; const [c, x] = cv2d(w || 128, h || 64); draw(x, c.width, c.height); return (SPT[key] = tex(c)); }
+  function umbrellaMesh(r, col) {
+    const t = spTex('umb' + col, (x, w, h) => { for (let i = 0; i < 12; i++) { x.fillStyle = i % 2 ? '#fff6ea' : col; x.fillRect(i * w / 12, 0, w / 12 + 1, h); } });
+    const m = new THREE.Mesh(new THREE.ConeGeometry(r, r * .42, 12, 1, true), new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide }));
+    return m;
+  }
+  function addStreetProp(sp) {
+    const ink = lam('#2a2430'), root = new THREE.Group(); root.position.set(sp.x, 0, 0); city.add(root);
+    const pivot = new THREE.Group(); root.add(pivot); const body = new THREE.Group(); pivot.add(body);
+    const o = { sp, root, pivot, body, parts: {} };
+    const add = (geo, mat, x, y, z, parent) => { const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); (parent || body).add(m); return m; };
+    if (sp.k === 'cart') {
+      add(box(30, 18, 18), lam('#e8e8f0'), 0, 17); add(box(30.4, 5, 18.4), lam(sp.col), 0, 15);
+      const wg = cyl(5, 5, 3, 10).rotateX(Math.PI / 2); add(wg, ink, -9, 5, 9.5); add(wg, ink, 9, 5, 9.5); add(wg, ink, -9, 5, -9.5); add(wg, ink, 9, 5, -9.5);
+      o.parts.pole = add(cyl(.9, .9, 28, 6), lam('#6a6a78'), 0, 40);
+    } else if (sp.k === 'cafe') {
+      add(cyl(8, 8, 2, 14), lam('#e9e4da'), 0, 13); add(cyl(1, 1, 12, 6), ink, 0, 6); add(cyl(5, 5, 1, 10), ink, 0, .5);
+      [-14, 14].forEach(cx => { add(box(8, 1.4, 8), lam('#c8562e'), cx, 7); add(box(1.2, 7, 1.2), ink, cx, 3.5); add(box(8, 6, 1.2), lam('#c8562e'), cx + (cx < 0 ? -3.4 : 3.4), 10.5).rotation.y = Math.PI / 2; });
+      o.parts.pole = add(cyl(.8, .8, 30, 6), lam('#6a6a78'), 0, 29);
+    } else if (sp.k === 'crates') {
+      const wood = new THREE.MeshLambertMaterial({ map: spTex('crate', (x, w, h) => { x.fillStyle = '#c99a5a'; x.fillRect(0, 0, w, h); x.strokeStyle = 'rgba(90,50,20,.7)'; x.lineWidth = 6; x.strokeRect(3, 3, w - 6, h - 6); x.beginPath(); x.moveTo(0, 0); x.lineTo(w, h); x.stroke(); }, 64, 64) });
+      o.parts.c0 = add(box(24, 15, 22), wood, 0, 7.5, 0, root); o.parts.c1 = add(box(24, 15, 22), wood, 0, 22.5, 0, root);
+    } else if (sp.k === 'stand') {
+      const sign = new THREE.MeshLambertMaterial({ map: spTex('stand' + sp.stand[0], (x, w, h) => { x.fillStyle = sp.stand[1]; x.fillRect(0, 0, w, h); x.fillStyle = sp.stand[2]; x.font = '400 26px ' + C.FONT; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(sp.stand[0], w / 2, h * .32); x.fillStyle = 'rgba(255,255,255,.8)'; x.fillRect(10, h * .6, w - 20, h * .26); }) });
+      const col = lam(sp.stand[1]);
+      add(box(26, 24, 16), [col, col, col, col, sign, col], 0, 12);
+    } else if (sp.k === 'barrier') {
+      const plank = new THREE.MeshLambertMaterial({ map: spTex('barrier', (x, w, h) => { x.fillStyle = '#ff7a1a'; x.fillRect(0, 0, w, h); x.fillStyle = '#fff'; for (let i = 0; i < 6; i++) x.fillRect(i * w / 6 + 4, 0, w / 12, h); }) });
+      add(box(30, 6, 3), plank, 0, 13);
+      const lg = merge([at(box(1.6, 12, 1.6), -12, 5, 4, .25), at(box(1.6, 12, 1.6), -12, 5, -4, -.25), at(box(1.6, 12, 1.6), 12, 5, 4, -.25), at(box(1.6, 12, 1.6), 12, 5, -4, .25)]);
+      add(lg, ink, 0, 0);
+    } else if (sp.k === 'cone') {
+      add(new THREE.ConeGeometry(4, 14, 10), lam('#ff7a1a'), 0, 7); add(cyl(2.6, 3, 2.5, 10), lam('#ffffff'), 0, 7); add(box(10, 1.2, 10), lam('#ff7a1a'), 0, .6);
+    } else if (sp.k === 'hyd') {
+      const red = lam('#e5263f');
+      add(cyl(5, 5, 14, 12), red, 0, 7); add(new THREE.SphereGeometry(5, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), red, 0, 14); add(cyl(2, 2, 14, 8).rotateZ(Math.PI / 2), red, 0, 9.5);
+    } else if (sp.k === 'mail') {
+      const blue = lam('#2f5fd0');
+      o.parts.box = add(box(14, 16, 12), blue, 0, 8); o.parts.top = add(cyl(7, 7, 12, 12, 1).rotateX(Math.PI / 2), blue, 0, 16);
+      add(box(8, 1.6, .6), lam('#ffffff'), 0, 10, 6.2);
+    } else if (sp.k === 'dump') {
+      const green = lam('#2f8a4a');
+      add(box(40, 24, 26), green, 0, 12);
+      const hinge = new THREE.Group(); hinge.position.set(-20, 24, 0); body.add(hinge);
+      const lid = add(box(40, 2.4, 26), lam('#257040'), 20, 1.2, 0, hinge); o.parts.hinge = hinge;
+    } else if (sp.k === 'booth') {
+      const red = lam('#e5263f');
+      const frame = merge([at(box(20, 4, 20), 0, 46, 0), at(box(20, 3, 20), 0, 1.5, 0), at(box(2, 46, 2), -9, 23, 9), at(box(2, 46, 2), 9, 23, 9), at(box(2, 46, 2), -9, 23, -9), at(box(2, 46, 2), 9, 23, -9)]);
+      add(frame, red, 0, 0);
+      o.parts.glass = add(box(18, 40, 18), new THREE.MeshLambertMaterial({ color: '#bfe3ff', transparent: true, opacity: .45, depthWrite: false }), 0, 23.5);
+      o.parts.shards = add(merge([at(box(6, 10, .6), -6, 36, 9.4, .4), at(box(5, 8, .6), 6, 8, 9.4, -.3), at(box(.6, 9, 6), 9.4, 34, -5, .2)]), new THREE.MeshLambertMaterial({ color: '#cfefff', transparent: true, opacity: .7 }), 0, 0);
+      const lt = new THREE.MeshBasicMaterial({ map: spTex('phone', (x, w, h) => { x.fillStyle = '#e5263f'; x.fillRect(0, 0, w, h); x.fillStyle = '#fff'; x.font = '400 34px ' + C.FONT; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('PHONE', w / 2, h / 2); }) });
+      add(new THREE.PlaneGeometry(18, 4), lt, 0, 46, 10.2);
+    }
+    if (sp.umb) {
+      const ug = new THREE.Group(); city.add(ug);
+      const r = (sp.umb.x1 - sp.umb.x0) / 2, m = umbrellaMesh(r, sp.col); m.position.y = r * .21; ug.add(m);
+      o.umb = ug; o.umbY = -sp.umb.y0;
+    }
+    dyn.sp.push(o);
+  }
+  function addDog(d) {
+    const grp = new THREE.Group(); city.add(grp);
+    const fur = lam(d.c), dark = lam('#6a4220');
+    const bodyM = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), fur); bodyM.scale.set(10, 5, 5.5); bodyM.position.y = 11; grp.add(bodyM);
+    const headM = new THREE.Mesh(new THREE.SphereGeometry(4.6, 12, 8), fur); headM.position.set(10, 16, 0); grp.add(headM);
+    const snout = new THREE.Mesh(new THREE.SphereGeometry(2.4, 8, 6), fur); snout.position.set(14, 15, 0); grp.add(snout);
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(1, 6, 4), lam('#2a2430')); nose.position.set(16.2, 15.6, 0); grp.add(nose);
+    [[1, 1], [1, -1]].forEach(e => { const ear = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), dark); ear.scale.set(1.6, 3.4, 1); ear.position.set(8.5, 17, 3.6 * e[1]); ear.rotation.z = .5; grp.add(ear); });
+    const tail = new THREE.Mesh(cyl(.9, .5, 8, 6), fur); tail.position.set(-12, 15, 0); tail.rotation.z = .9; grp.add(tail);
+    const legs = [];
+    [[-6, 3], [-6, -3], [6, 3], [6, -3]].forEach(l => { const leg = new THREE.Group(); leg.position.set(l[0], 8, l[1]); const m = new THREE.Mesh(cyl(1.3, 1.1, 8, 6), fur); m.position.y = -4; leg.add(m); grp.add(leg); legs.push(leg); });
+    dyn.dogs.push({ d, grp, legs, tail });
+  }
+  function updateStreet(st) {
+    dyn.sp.forEach(o => {
+      const sp = o.sp, tk = api.tipK(sp), wd = sp.wd || 1;
+      if (sp.k === 'cone') {
+        if (sp.wt >= 0) { const cp = api.conePos(sp); o.root.position.set(cp.x, -cp.y - 7, 0); o.root.rotation.z = -(cp.spin * wd + (cp.down ? wd * Math.PI / 2 : 0)); }
+        else { o.root.position.set(sp.x, 0, 0); o.root.rotation.z = 0; }
+      } else if (sp.k === 'crates') {
+        if (sp.wt >= 0) { [o.parts.c0, o.parts.c1].forEach((m, i) => { m.position.set(wd * (8 + i * 18) * tk, 7.5 - 1.5 * tk + (1 - tk) * i * 15, 0); m.rotation.z = -wd * tk * (1.2 + i) * .5; }); }
+        else { o.parts.c0.position.set(0, 7.5, 0); o.parts.c1.position.set(0, 22.5, 0); o.parts.c0.rotation.z = o.parts.c1.rotation.z = 0; }
+      } else if (sp.k === 'cart' || sp.k === 'cafe' || sp.k === 'stand' || sp.k === 'barrier') {
+        const hw = sp.k === 'cafe' ? 8 : sp.w / 2;
+        o.pivot.position.x = wd * hw; o.body.position.x = -wd * hw; o.pivot.rotation.z = -tk * wd * Math.PI / 2;
+      }
+      if (o.parts.pole) o.parts.pole.visible = sp.ut < 0;
+      if (o.parts.hinge) { const la = sp.lid < 0 ? 0 : Math.min(1, (st.t - sp.lid) * 6) * (st.t - sp.lid < 1.2 ? 1 : Math.max(0, 1 - (st.t - sp.lid - 1.2) * 3)); o.parts.hinge.rotation.z = la * 1.9; }
+      if (o.parts.glass) { o.parts.glass.visible = !sp.glass; o.parts.shards.visible = !!sp.glass; }
+      if (o.parts.top) { o.parts.box.scale.y = 1 - sp.dent * .2; o.parts.top.position.y = 16 - sp.dent * 3.2; }
+      if (o.umb) {
+        if (sp.ut >= 0) { const u = api.umbPos(sp); o.umb.position.set(u.x, -u.y, 0); o.umb.rotation.z = -(u.spin * wd + (u.down ? wd * 2.6 : 0)); o.umb.visible = true; }
+        else if (sp.wt >= 0) o.umb.visible = false;
+        else { o.umb.visible = true; o.umb.position.set(sp.x, o.umbY - 4, 0); o.umb.rotation.z = 0; }
+      }
+    });
+    dyn.dogs.forEach(o => {
+      const d = o.d, run = d.st ? Math.sin(d.ph * 22) : 0;
+      o.grp.position.set(d.x, d.st ? Math.abs(run) * 1.5 : 0, 20); o.grp.rotation.y = d.f < 0 ? Math.PI : 0;
+      o.legs.forEach((l, i) => { l.rotation.z = (i % 2 ? 1 : -1) * run * .7; });
+      o.tail.rotation.z = .9 + Math.sin(d.ph * 12) * .3;
+    });
   }
   function overBuilding(st, x0, x1) { return st.B.some(b => x1 > b.x0 - 4 && x0 < b.x1 + 4); }
   function addProp(p, b) {
@@ -513,9 +621,10 @@ export function WillyCrash3D(api, host) {
   // onto the roofs. Coming in to land: push in close and low, swung round a little. Settled: a framing shot.
   const rig = { x: 0, y: 0, d: 2000, pitch: .08, yaw: .06, init: false, mode: 'aim' };
   let W = 300, H = 500, dpr = 1, maxDpr = 2;
-  function distFor(zoom) { return (C.VW0 * H / (W * zoom)) / (2 * TANH); }
+  // the page's 2D scale fits its 400-unit reference to the short side of the screen
+  function distFor(zoom) { return (C.VW0 * H / (Math.min(W, H) * zoom)) / (2 * TANH); }
   // for the close shots: frame a set height of the world, whatever the screen shape
-  function distSee(units) { return units / (2 * TANH) * Math.max(1, (H / W) * .62); }
+  function distSee(units) { return units / (2 * TANH) * clamp((H / W) * .62, .72, 1.6); }
   function surfaceBelow(st, x, y) {
     let top = 0;   // the street
     for (let i = 0; i < st.COL.length; i++) { const c = st.COL[i]; if (c.k === 'ground' || c.off) continue; if (x >= c.x0 && x <= c.x1 && c.y0 >= y - 2 && -c.y0 > top) top = -c.y0; }
@@ -585,6 +694,7 @@ export function WillyCrash3D(api, host) {
     }
     if (st.rag && head.parent !== W3) W3.add(head);
     if (peek.visible && head.parent === peek) { head.position.set(C.BARREL - 2, 0, 0); head.rotation.set(0, 0, -Math.PI / 2); head.scale.set(C.WS, C.WS, C.WS); mouth.scale.y = HR * .3; teeth.visible = true; }
+    updateStreet(st);
     updateBirds(st);
     updateParticles(st);
     placeCamera(st);

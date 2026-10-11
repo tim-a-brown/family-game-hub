@@ -44,6 +44,20 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 .deck canvas{display:block;width:100%;height:100%;border-radius:16px;touch-action:none;cursor:grab;}
 .deck canvas:active{cursor:grabbing;}
 @media (max-height:760px){ .deck{height:118px;} .plate b{font-size:1.2rem;} }
+/* Landscape (phones and iPads turned sideways): the playfield takes the width; the plates and the control
+   panel stack in a side column, clear of the notch */
+@media (orientation:landscape) and (min-aspect-ratio:6/5){
+  html.ar-on #app{max-width:none;padding:0 calc(env(safe-area-inset-right,0px) + 8px) calc(var(--safe-b) + 6px) calc(env(safe-area-inset-left,0px) + 8px);}
+  .wc-view{display:grid;grid-template-columns:minmax(0,1fr) clamp(150px,19vw,240px);grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:"cab hud" "cab deck" "cab hint";gap:7px;align-items:stretch;}
+  .hud{grid-area:hud;display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .hud .plate{padding:3px 6px;}
+  .hud .plate.gold{grid-column:1 / -1;order:-1;}
+  .hud .pbtn{width:auto;min-height:44px;}
+  .cab{grid-area:cab;}
+  .deck{grid-area:deck;height:clamp(150px,46vh,300px);align-self:end;width:100%;}
+  .hint{grid-area:hint;font-size:.72rem;}
+}
 .ov{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;pointer-events:none;}
 .ov[hidden]{display:none;}
 .ov button{pointer-events:auto;}
@@ -203,15 +217,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // ═══ Canvas setup ═══════════════════════════════════════════════════════
   var cv = $('cv'), g = cv.getContext('2d'), scr = $('scr'), cab = $('cab'), dk = $('dk'), dg = dk.getContext('2d'), deckEl = $('deck');
   var W = 360, H = 600, DPR = 1, K = 1, DW = 360, DH = 120;
+  function landscape() { try { return matchMedia('(orientation:landscape) and (min-aspect-ratio:6/5)').matches; } catch (e) { return false; } }
   function fit() {
     var r = cab.getBoundingClientRect(), aw = Math.floor(r.width - 14), ah = Math.floor(r.height - 14);
     if (aw < 50 || ah < 50) return;
     DPR = Math.min(window.devicePixelRatio || 1, 2.5);
-    W = aw; H = ah; K = W / VW0;
+    // the 400-unit reference scale fits the short side, so landscape shows more city instead of zooming in
+    W = aw; H = ah; K = Math.min(W, H) / VW0;
     scr.style.width = W + 'px'; scr.style.height = H + 'px';
     cv.style.width = W + 'px'; cv.style.height = H + 'px';
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-    $('hud').style.maxWidth = (W + 14) + 'px'; deckEl.style.maxWidth = (W + 14) + 'px';
+    var side = landscape(); $('hud').style.maxWidth = side ? '' : (W + 14) + 'px'; deckEl.style.maxWidth = side ? '' : (W + 14) + 'px';
     var dr = dk.getBoundingClientRect(); DW = Math.max(100, Math.round(dr.width)); DH = Math.max(60, Math.round(dr.height));
     dk.width = Math.round(DW * DPR); dk.height = Math.round(DH * DPR);
     strips = null;
@@ -460,7 +476,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     sp_cart: { r: .35, mu: .4 }, sp_umb: { r: .45, mu: .3 }, sp_crates: { r: .25, mu: .5 }, sp_cone: { r: .4, mu: .5 }, sp_cafe: { r: .35, mu: .4 },
     sp_hyd: { r: .62, mu: .3 }, sp_mail: { r: .45, mu: .35 }, sp_dump: { r: .35, mu: .45 }, sp_barrier: { r: .35, mu: .45 }, sp_stand: { r: .3, mu: .5 }, sp_booth: { r: .4, mu: .3 }, car: { r: .5, mu: .35 }, can: { r: .3, mu: .45 }, ground: { r: .3, mu: .6 }
   };
-  var WALL_MU = .15;    // side faces are smooth: he slides down them; he doesn't cling, climb or wedge in a gap
+  var WALL_MU = .06;    // side faces are slick: he slides down them; he doesn't cling, climb or wedge across a gap
   var JP_MU = .45;      // the jackpot's painted bullseye is slick, and its roof has no curbs: land soft or slide off
   var cands = [];
   function ragStep(h) {
@@ -617,7 +633,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function boing(sp, p, y0) {
     var R = rag; R.boings = (R.boings || 0) + 1;
     Snd.boing(); Kit.haptic('light');
-    var up = Math.min(650, sp * .72);
+    var up = Math.min(480, sp * .62);   // a street-level bounce, not a second launch
     R.P.forEach(function (q) { var vx = (q.x - q.px), vy = -up * HS; q.px = q.x - vx * .9; q.py = q.y - vy; });
     puff(p.x, y0, 3, '#f3e6dc');
   }
@@ -1131,9 +1147,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function viewW(z) { return W / (K * z); }
   function viewH(z) { return H / (K * z); }
   // Aiming: the cannon bottom left, most of the city to its right, sky above for the arc
-  function camAim() { var z = Math.min(.6, VW0 / 950), vw = viewW(z), vh = viewH(z); return { x: -40 + vw / 2, y: 46 - vh / 2, z: z }; }
+  // (950 units across in portrait; the whole row of seven when the screen is wide)
+  function camAim() { var want = W > H * 1.2 ? 1360 : 950, z = Math.min(.6, (W / K) / want), vw = viewW(z), vh = viewH(z); return { x: -40 + vw / 2, y: 46 - vh / 2, z: z }; }
   // The whole row of buildings
-  function camOverview() { var x0 = CITY_X0 - 60, x1 = (B.length ? B[B.length - 1].x1 : 1200) + 60, z = Math.min(.6, VW0 / (x1 - x0)), vh = viewH(z); return { x: (x0 + x1) / 2, y: 46 - vh / 2, z: z }; }
+  function camOverview() { var x0 = CITY_X0 - 60, x1 = (B.length ? B[B.length - 1].x1 : 1200) + 60, z = Math.min(.6, (W / K) / (x1 - x0)), vh = viewH(z); return { x: (x0 + x1) / 2, y: 46 - vh / 2, z: z }; }
   function setCam(a, b, e) { cam.x = lerp(a.x, b.x, e); cam.y = lerp(a.y, b.y, e); cam.z = lerp(a.z, b.z, e); }
   function followCam(tx, ty, tz, dt, rate) {
     cam.z += (tz - cam.z) * Math.min(1, dt * 2.5);
@@ -1533,7 +1550,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     // 50 points anywhere off the roofs
     for (var i = 0; i < B.length - 1; i++) {
       var gx = (B[i].x1 + B[i + 1].x0) / 2;
-      if (G3) anchor3(gx, 0, 20); else anchor2(gx, -20 * s);
+      if (G3) anchor3(gx, -62, 6); else anchor2(gx, -62 - 6 * s);   // above the street props
       g.fillStyle = '#e5263f'; g.strokeStyle = '#fff'; g.lineWidth = 2;
       g.beginPath(); g.moveTo(0, -10); g.lineTo(7, -2); g.lineTo(3, -2); g.lineTo(3, 6); g.lineTo(-3, 6); g.lineTo(-3, -2); g.lineTo(-7, -2); g.closePath(); g.stroke(); g.fill();
       g.font = '400 13px ' + FONT; g.lineWidth = 3.5; g.strokeStyle = INK; g.strokeText('50', 0, -18); g.fillStyle = '#fff'; g.fillText('50', 0, -18);
@@ -2024,17 +2041,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.fill();
     var gl = g.createRadialGradient(cx, cy, 10, cx, cy, W * .7); gl.addColorStop(0, 'rgba(255,255,230,.8)'); gl.addColorStop(1, 'rgba(255,255,230,0)');
     g.fillStyle = gl; g.fillRect(0, 0, W, H);
-    var pop = ease(clamp(tt / .35, 0, 1)), big = Math.min(76, W * .2);   // sized for '5,000'
-    g.save(); g.translate(W / 2, H * .17); g.scale(.6 + .4 * pop, .6 + .4 * pop); g.rotate(-.04);
+    var wide = W > H * 1.2, pop = ease(clamp(tt / .35, 0, 1)), big = Math.min(76, W * (wide ? .14 : .2), H * .22);   // sized for '5,000'
+    g.save(); if (wide) g.translate(W * .34, H * .42); else g.translate(W / 2, H * .17); g.scale(.6 + .4 * pop, .6 + .4 * pop); g.rotate(-.04);
     g.font = '400 ' + big + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
     g.lineWidth = big * .1; g.strokeStyle = '#8a1010'; g.strokeText('5,000', 0, 0); g.fillStyle = '#e5262c'; g.fillText('5,000', 0, 0);
     g.font = '400 ' + Math.round(big * .36) + 'px ' + FONT; g.lineWidth = big * .05; g.strokeText('POINTS', 0, big * .62); g.fillText('POINTS', 0, big * .62);
     g.restore();
     // Willy, big, one hand on his hip and the other pointing up
-    var s = WS, sc = Math.min(W, H * .6) / 82, bob = Math.sin(tt * 6) * 1.2;
+    var s = WS, sc = (wide ? H * .78 : Math.min(W, H * .6)) / 82, bob = Math.sin(tt * 6) * 1.2;
     var P = [[0, -48], [1, -38], [0, -24], [-7, -30], [-4, -23], [7, -47], [9, -58], [-4, -12], [-6, -1], [4, -12], [6, -1]];
     var pose = P.map(function (q) { return { x: q[0] * s, y: (q[1] + bob * (q[1] < -20 ? 1 : 0)) * s }; });
-    g.save(); g.translate(W / 2 + 10, H * .9); g.scale(sc / s, sc / s); drawPose(pose, 'grin'); g.restore();
+    g.save(); g.translate(wide ? W * .72 : W / 2 + 10, H * (wide ? .96 : .9)); g.scale(sc / s, sc / s); drawPose(pose, 'grin'); g.restore();
     g.globalAlpha = 1;
   }
   // Jackpot, part 2: the bonus stage, Willy dancing on a bullseye under a marquee
@@ -2051,10 +2068,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.font = '400 ' + Math.round(W * .13) + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(255,255,255,.12)';
     g.fillText('5,000', W / 2, H * .38); g.font = '400 ' + Math.round(W * .11) + 'px ' + FONT; g.fillText('POINTS', W / 2, H * .5);
     // the BONUS marquee: bulb-lit letters
-    var L = 'BONUS', fs = Math.min(64, W * .17), lw = fs * .78;
+    var L = 'BONUS', fs = Math.min(64, W * .17, H * .15), lw = fs * .78;
     g.font = '400 ' + fs + 'px ' + FONT; g.lineJoin = 'round';
     for (var i = 0; i < L.length; i++) {
-      var lx = W / 2 + (i - 2) * lw, ly = H * .1, col = ['#ffe14a', '#ff8a2a', '#ffffff', '#7ab8ff', '#ffe14a'][i];
+      var lx = W / 2 + (i - 2) * lw, ly = Math.max(H * .1, fs * .62), col = ['#ffe14a', '#ff8a2a', '#ffffff', '#7ab8ff', '#ffe14a'][i];
       g.lineWidth = 8; g.strokeStyle = '#3a1a5a'; g.strokeText(L[i], lx, ly); g.fillStyle = col; g.fillText(L[i], lx, ly);
       for (var k = 0; k < 4; k++) { var on = (Math.floor(tt * 10) + k + i) % 3 === 0; g.fillStyle = on ? '#fffbe0' : 'rgba(255,230,150,.5)'; g.beginPath(); g.arc(lx - fs * .18 + (k % 2) * fs * .36, ly - fs * .2 + (k >> 1) * fs * .4, on ? 3 : 2, 0, TAU); g.fill(); }
     }
@@ -2081,7 +2098,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     [[8, 8], [w - 8, 8], [8, h - 8], [w - 8, h - 8]].forEach(function (p) { x.fillStyle = '#8a8fb8'; x.beginPath(); x.arc(p[0], p[1], 2.6, 0, TAU); x.fill(); x.fillStyle = 'rgba(255,255,255,.4)'; x.beginPath(); x.arc(p[0] - .6, p[1] - .6, 1, 0, TAU); x.fill(); });
     var aimNow = state === 'aim', dep = clamp(plVis, 0, 1);
     // ── the LAUNCH star
-    var cx = w / 2, sr = Math.min(h * .3, 40), scy = h - sr * .78 - 4;
+    // wide panel: gauge left, LAUNCH middle, dial right. Tall panel (landscape side column): gauge down the left, dial top right, LAUNCH below it
+    var tall = h > w * .9, RX = tall ? 44 : 0, RW = w - RX;
+    var cx = tall ? RX + RW / 2 : w / 2, sr = tall ? Math.min(RW * .3, 40, h * .16) : Math.min(h * .3, 40), scy = h - sr * .78 - 4;
     x.save(); x.translate(cx, scy); x.scale(1.45, .95);
     x.beginPath(); for (var i = 0; i < 10; i++) { var a = -PI / 2 + i * PI / 5, r = i % 2 ? sr * .5 : sr; x.lineTo(Math.cos(a) * r, Math.sin(a) * r); } x.closePath();
     var sg = x.createLinearGradient(0, -sr, 0, sr); sg.addColorStop(0, '#ffe46b'); sg.addColorStop(1, '#f2a91a');
@@ -2091,10 +2110,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     x.font = '400 ' + Math.round(sr * .42) + 'px ' + FONT; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round';
     x.lineWidth = 4; x.strokeStyle = '#fff'; x.strokeText('LAUNCH!', cx, scy + sr * .12); x.fillStyle = ready ? 'rgb(' + Math.round(200 + 40 * glow) + ',30,40)' : '#c4202f'; x.fillText('LAUNCH!', cx, scy + sr * .12);
     // the rod and T-handle above it (it goes down when pushed)
-    var travel = Math.min(h * .2, 24), top0 = scy - sr * .9, hy = Math.max(14, top0 - travel * (1 - dep) - 4);
+    var dialBottom = tall ? 40 + Math.min(RW * .42, h * .22, 52) : 0;
+    var travel = tall ? Math.max(10, Math.min(30, scy - sr * .9 - dialBottom - 26)) : Math.min(h * .2, 24), top0 = scy - sr * .9, hy = Math.max(tall ? dialBottom + 16 : 14, top0 - travel * (1 - dep) - 4);
     var rg = x.createLinearGradient(cx - 5, 0, cx + 5, 0); rg.addColorStop(0, '#5a5f78'); rg.addColorStop(.5, '#1d2030'); rg.addColorStop(1, '#3a3e52');
     x.fillStyle = rg; x.fillRect(cx - 7, hy, 14, top0 - hy + 4);
-    var hw2 = Math.min(150, w * .4), hx = cx - hw2 / 2;
+    var hw2 = Math.min(150, tall ? RW * .8 : w * .4), hx = cx - hw2 / 2;
     x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(hx + 3, hy - 3, hw2, 12);
     var hg = x.createLinearGradient(0, hy - 7, 0, hy + 7); hg.addColorStop(0, '#f2f3f8'); hg.addColorStop(.5, '#b8bcc9'); hg.addColorStop(1, '#7c8094');
     x.fillStyle = hg; x.beginPath(); x.moveTo(hx + 7, hy - 7); x.arcTo(hx + hw2, hy - 7, hx + hw2, hy + 7, 7); x.arcTo(hx + hw2, hy + 7, hx, hy + 7, 7); x.arcTo(hx, hy + 7, hx, hy - 7, 7); x.arcTo(hx, hy - 7, hx + hw2, hy - 7, 7); x.fill();
@@ -2116,7 +2136,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       }
     }
     // ── left: cannon speed (arcade) or plunger power (aim yourself)
-    var gx = Math.max(30, w * .13), gy0 = 22, gy1 = h - 12, gw = 18, gh = gy1 - gy0;
+    var gx = tall ? 24 : Math.max(30, w * .13), gy0 = 22, gy1 = h - 12, gw = 18, gh = gy1 - gy0;
     x.font = '900 10px system-ui, sans-serif'; x.textAlign = 'center'; x.fillStyle = 'rgba(210,220,255,.8)'; x.fillText(arcade ? 'SPEED' : 'POWER', gx, 12);
     x.fillStyle = '#0a0c1c'; x.beginPath(); x.moveTo(gx - gw / 2 + 6, gy0); x.arcTo(gx + gw / 2, gy0, gx + gw / 2, gy1, 6); x.arcTo(gx + gw / 2, gy1, gx - gw / 2, gy1, 6); x.arcTo(gx - gw / 2, gy1, gx - gw / 2, gy0, 6); x.arcTo(gx - gw / 2, gy0, gx + gw / 2, gy0, 6); x.fill();
     if (arcade) {
@@ -2129,7 +2149,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       }
       x.font = '400 15px ' + FONT; x.textAlign = 'left'; x.lineWidth = 3; x.strokeStyle = '#0a0c1c';
       var sl = ['Normal', 'Fast', 'Faster', 'Fastest'][jpLevel];
-      x.save(); x.translate(gx + gw / 2 + 6, gy1 - 5 - (jpLevel + .5) * ph2); x.strokeText(sl, 0, 0); x.fillStyle = '#fff'; x.fillText(sl, 0, 0); x.restore();
+      if (!tall) { x.save(); x.translate(gx + gw / 2 + 6, gy1 - 5 - (jpLevel + .5) * ph2); x.strokeText(sl, 0, 0); x.fillStyle = '#fff'; x.fillText(sl, 0, 0); x.restore(); }
     } else {
       var pv = aimNow ? depth : lastPow > 0 ? lastPow : 0;
       if (pv > 0) {
@@ -2145,7 +2165,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       }
     }
     // ── right: angle dial (the gold arc is the cannon's swing)
-    var dr = Math.min(h * .46, 50, w * .13), dx = w - Math.max(14, w * .05) - dr, dyy = h - 12;
+    var dr = tall ? Math.min(RW * .42, h * .22, 52) : Math.min(h * .46, 50, w * .13), dx = tall ? RX + (RW - dr) / 2 : w - Math.max(14, w * .05) - dr, dyy = tall ? 40 + dr : h - 12;
     x.font = '900 10px system-ui, sans-serif'; x.textAlign = 'center'; x.fillStyle = 'rgba(210,220,255,.8)'; x.fillText('ANGLE', dx + dr / 2, 12);
     x.fillStyle = '#0a0c1c'; x.beginPath(); x.moveTo(dx, dyy); x.arc(dx, dyy, dr + 4, -PI / 2, 0); x.closePath(); x.fill();
     var lo = arcade ? ARC_LO : 24, hi = arcade ? ARC_HI : 80;
@@ -2330,7 +2350,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function kick() { if (!raf && live && !paused && !document.hidden && state !== 'over' && state !== 'idle') { last = 0; raf = requestAnimationFrame(loop); } }
 
   // ═══ Kit shell ══════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait', orientTablets: true,
+  Kit.init({
     id: 'willycrash',
     theme: { wood: ['#7a3a2a', '#4a1e14'] },
     onNew: showSetup, confirmNew: false,
