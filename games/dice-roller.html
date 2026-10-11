@@ -104,6 +104,7 @@
 .hrow{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:8px 14px;border:0;border-radius:16px;background:var(--w05);color:var(--text);text-align:left;animation:rise .4s var(--ease) both;}
 .hrow:active{background:var(--w1);}
 .hrow .hl{flex:1;min-width:0;}
+.hrow .hn{flex:none;display:grid;place-items:center;min-width:34px;height:34px;padding:0 6px;border-radius:11px;background:var(--w07);color:var(--text-2);font-family:var(--display);font-size:1rem;font-variant-numeric:tabular-nums;}
 .hrow .hl b{display:block;font-weight:900;font-size:.95rem;}
 .hrow .hl small{display:block;color:var(--text-3);font-weight:700;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hrow .ht{font-family:var(--display);font-size:1.7rem;color:var(--text);font-variant-numeric:tabular-nums;}
@@ -221,6 +222,8 @@
   var presets = Array.isArray(saved.presets) ? saved.presets : DEFAULT_PRESETS.slice();
   var shakeOn = !!saved.shake;
   var history = ssGet(HKEY) || [];
+  // each roll's number this session (older saves had none: count them up from the first)
+  history.forEach(function (h, i) { if (!h.n) h.n = history.length - i; });
   var last = saved.last || null;   // {label, mod, total, dice:[{k,v,fx,fy,q}]}
 
   function emptyPool() { var p = {}; SIDES.forEach(function (s) { p[s] = 0; }); return p; }
@@ -920,7 +923,7 @@
     last = { label: readout.label, total: total, mod: mod, parts: readout.parts,
       dice: dice.map(function (d) { return { k: d.kind, n: d.num, fx: d.x / W, fy: d.y / H, q: d.q, h: d.held ? 1 : 0 }; }) };
     persist();
-    history.unshift({ t: Date.now(), label: readout.label, pool: JSON.parse(JSON.stringify(pool)), mod: mod, parts: readout.parts, total: total });
+    history.unshift({ n: ((history[0] && history[0].n) || 0) + 1, t: Date.now(), label: readout.label, pool: JSON.parse(JSON.stringify(pool)), mod: mod, parts: readout.parts, total: total });
     if (history.length > 60) history.length = 60;
     ssSet(HKEY, history);
     renderHistory();
@@ -1109,11 +1112,12 @@
     if (!history.length) { histEl.appendChild(el('div', { class: 'hempty', text: 'Your rolls will show up here.' })); return; }
     history.forEach(function (h, i) {
       var vals = h.parts.map(function (p) { return p.v; }).join(', ') + (h.mod ? (h.mod > 0 ? ' + ' : ' − ') + Math.abs(h.mod) : '');
-      histEl.appendChild(el('button', { type: 'button', class: 'hrow', style: i ? { 'animation-delay': '0s', animation: 'none' } : null, 'aria-label': 'Load ' + h.label, onclick: function () {
+      histEl.appendChild(el('button', { type: 'button', class: 'hrow', style: i ? { 'animation-delay': '0s', animation: 'none' } : null, 'aria-label': 'Roll ' + h.n + ': ' + h.label + ', ' + h.total + '. Load these dice', onclick: function () {
         if (rolling) return;
         pool = emptyPool(); SIDES.forEach(function (s) { pool[s] = h.pool[s] || 0; }); mod = h.mod || 0;
         Kit.sfx('pop'); syncTray(true); poolChanged(); showTray();
       } }, [
+        el('div', { class: 'hn', 'aria-label': 'Roll ' + h.n, text: String(h.n) }),
         el('div', { class: 'hl' }, [el('b', { text: h.label }), el('small', { text: vals + ' · ' + timeAgo(h.t) })]),
         el('div', { class: 'ht', text: String(h.total) })
       ]));
