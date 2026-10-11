@@ -22,8 +22,9 @@ var PYLArt = (function () {
     s += '<path d="M-27-14 L-38-26 L-33-8z M27-14 L38-26 L33-8z" fill="' + YEL + '"' + K + '/>';
     // spiky red hair
     s += '<path d="M-24-18 L-32-30 L-20-28 L-22-42 L-10-31 L-6-46 L1-32 L9-45 L11-30 L22-40 L20-26 L32-29 L25-16z" fill="' + RED + '"' + K + '/>';
-    // the head: wide at the grin
-    s += '<path d="M0-30 C18-30 27-20 28-8 C30 4 34 12 30 20 C24 30 10 32 0 32 C-10 32-24 30-30 20 C-34 12-30 4-28-8 C-27-20-18-30 0-30z" fill="' + RED + '"' + K + '/>';
+    // the head: wide at the grin. On his body (o.body) there's no jaw: the sides run straight down into the shoulders
+    s += '<path d="' + (o.body ? 'M0-30 C18-30 27-20 28-8 C29.5 4 31 12 31 24 L-31 24 C-31 12-29.5 4-28-8 C-27-20-18-30 0-30z'
+      : 'M0-30 C18-30 27-20 28-8 C30 4 34 12 30 20 C24 30 10 32 0 32 C-10 32-24 30-30 20 C-34 12-30 4-28-8 C-27-20-18-30 0-30z') + '" fill="' + RED + '"' + K + '/>';
     s += '<path d="M-18-24 C-10-28 0-29 8-27" fill="none" stroke="' + RED3 + '" stroke-width="3" stroke-linecap="round" opacity=".7"/>';
     // the yellow mask across the eyes
     s += '<path d="M-29-15 C-20-21-8-20 0-17 C8-20 20-21 29-15 C30-9 26-1 18-2 C10-3 6-8 0-7 C-6-8-10-3-18-2 C-26-1-30-9-29-15z" fill="' + YEL + '"' + K + '/>';
@@ -56,17 +57,18 @@ var PYLArt = (function () {
     s += limb('M-6-16 C-6-10 4-7 6 0') + limb('M6-16 C8-10-2-6-6-1');
     s += '<path d="M2 0 C6-3 14-3 19 1 C14 2 8 3 2 3z M-2-1 C-7-4-15-4-20 0 C-15 1-8 2-2 2z" fill="' + RED + '"' + K + '/>';
     // left arm (behind the body), hand on the hip or waving
-    s += '<g class="g-arml">' + limb('M-22-48 C-31-46-32-36-25-30') + '<path d="M-25-30 l-4 3 M-25-30 l1 4" stroke="' + OL + '" stroke-width="2" stroke-linecap="round"/></g>';
+    s += '<g class="g-arml">' + limb('M-28-48 C-35-45-35-36-29-30') + '<path d="M-29-30 l-4 3 M-29-30 l1 4" stroke="' + OL + '" stroke-width="2" stroke-linecap="round"/></g>';
     // a lean bean of a body with the yellow $ patch
-    s += '<path d="M-24-61 C-26-46-23-26-15-16 C-8-12 8-12 15-16 C23-26 26-46 24-61z" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.6"/>';
+    s += '<path d="M-31-60 C-32-46-26-26-16-16 C-8-12 8-12 16-16 C26-26 32-46 31-60z" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.6"/>';
     // right arm (in front), holds the prop; pointed fingers
-    s += '<g class="g-armr">' + limb('M22-50 C27-51 29-49 31-46') + (o.prop || '') +
+    s += '<g class="g-armr">' + limb('M28-50 C31-50 32-48 33-46') + (o.prop || '') +
       '<path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + OL + '" stroke-width="4.2" stroke-linecap="round"/><path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + RED + '" stroke-width="2" stroke-linecap="round"/></g>';
     // the head goes straight into the body: no chin line across the chest (the patch moves with the head)
-    s += '<g class="g-head" transform="translate(0 -80) scale(1 .9)">' + head(o) +
-      '<path d="M-22.6 20.5 L22.6 20.5 C23.6 28 24.4 34 24.6 40 L-24.6 40 C-24.4 34-23.6 28-22.6 20.5z" fill="' + RED + '"/></g>';
+    var ho = {}; for (var k in o) ho[k] = o[k]; ho.body = true;
+    s += '<g class="g-head" transform="translate(0 -80) scale(1 .9)">' + head(ho) +
+      '<path d="M-29.6 22.4 L29.6 22.4 L29.8 36 L-29.8 36z" fill="' + RED + '"/></g>';
     // the big yellow chest patch right under the grin, with a chunky white double-barred $
-    s += '<path d="M-19-58.5 C-8-56.5 8-56.5 19-58.5 C18.5-46 17-34 14-27 C12-24 9-23 0-23 C-9-23-12-24-14-27 C-17-34-18.5-46-19-58.5z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="2.2" stroke-linejoin="round"/>';
+    s += '<path d="M-22-58.5 C-9-56.5 9-56.5 22-58.5 C21.5-46 19.5-34 15.5-27 C13-24 9-23 0-23 C-9-23-13-24-15.5-27 C-19.5-34-21.5-46-22-58.5z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="2.2" stroke-linejoin="round"/>';
     var dl = 'M-2.2-55 L-2.2-26.5 M3.2-55 L3.2-26.5', ds = 'M9.5-48.5 C7-53-1-54.5-5.5-52 C-11-49-9.5-43-2-41.2 C6-39.5 10-36 7.5-31 C5-26.5-4-26.5-9.5-31';
     s += '<path d="' + dl + '" stroke="' + OL + '" stroke-width="5.6" stroke-linecap="round"/><path d="' + ds + '" fill="none" stroke="' + OL + '" stroke-width="8.4" stroke-linecap="round" stroke-linejoin="round"/>';
     s += '<path d="' + dl + '" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><path d="' + ds + '" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>';
