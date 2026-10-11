@@ -769,6 +769,7 @@
   }
 
   function noteWrite(key){
+    if(/\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search)) return;
     if(!key) return;
     if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'fgh_players_at' && key !== 'fgh_gh_del' && key !== 'fgh_links' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
     if(isPin()){ markWrite(); schedulePush(); }
@@ -850,6 +851,8 @@
 
   // ── Bootstrap ─────────────────────────────────────────────────────────
   function boot(){
+    // a page opened to edit a game's defaults (?defaults=1) changes nothing but that game's setup: no sync
+    if(/\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search)){ notifyReady(); return; }
     var m = mode();
     if(m === 'pin' && PIN_RE.test(pin()||'')){
       if(typeof navigator !== 'undefined' && navigator.onLine === false){

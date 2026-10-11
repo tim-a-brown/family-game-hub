@@ -31,6 +31,18 @@
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
   'use strict';
+  // Editing a game's defaults (games/<page>.html?defaults=1, from Game defaults in the profile menu): the page
+  // must show its setup screen as if new and change nothing but that game's remembered setup. So for this page
+  // load the game's own saves read as empty (it can't resume a game in progress) and the only storage write
+  // that lands is gn_setup_*. Your account, players, scores and history still read normally; sync.js stays off.
+  var EDIT_DEFAULTS = /\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search);
+  if (EDIT_DEFAULTS) (function () {
+    var SP = Storage.prototype, get = SP.getItem, set = SP.setItem, del = SP.removeItem;
+    var KEEP = /^(gn_|fgh_|hi_|gh_|lorcana_|my_name$|frequent_players$|casino_bank$|rklists$|fav_games$)/;
+    SP.getItem = function (k) { return this === window.localStorage && !KEEP.test(String(k)) ? null : get.call(this, k); };
+    SP.setItem = function (k, v) { if (this === window.localStorage && !/^gn_setup_/.test(String(k))) return; return set.call(this, k, v); };
+    SP.removeItem = function (k) { if (this === window.localStorage) return; return del.call(this, k); };
+  })();
   if (window.Kit) return;
   var doc = document, root = doc.documentElement;
   var LS = (function () { try { return window.localStorage; } catch (e) { return null; } })();
@@ -1068,11 +1080,7 @@
     var saved = {};
     try { saved = JSON.parse(lsGet('gn_setup_' + (game ? game.id : pageKey()), '{}')) || {}; } catch (e) {}
     if (saved.mode && !o.modeLocked && o.modes && o.modes.some(function (m) { return m.id === saved.mode; })) state.mode = saved.mode;
-    else if (!o.modeLocked && o.modes) { var dm = defMode(o.modes); if (dm) state.mode = dm; }
-    (o.options || []).forEach(function (op) {
-      if (saved.options && saved.options[op.id] != null) { state.options[op.id] = saved.options[op.id]; return; }
-      var dv = defOption(op, state.mode); state.options[op.id] = dv != null ? dv : op.value;
-    });
+    (o.options || []).forEach(function (op) { state.options[op.id] = saved.options && saved.options[op.id] != null ? saved.options[op.id] : op.value; });
     var names = (saved.names || []).map(function (n) { return isPersonName(n) ? n : ''; });
     var bots = cpuNames(8);
     var openHelp = {};
@@ -1081,8 +1089,9 @@
     wrap.appendChild(el('div', { class: 'setup-hero' }, [
       game && window.GameIcon ? el('div', { class: 'k-hero-ic', html: GameIcon(game.id) }) : null,
       el('h1', { text: o.title || (game && game.name) || '' }),
-      el('p', { text: o.intro || (game && game.tag) || '' })
+      el('p', { text: EDIT_DEFAULTS ? 'Set how this game starts. Saved on this device.' : o.intro || (game && game.tag) || '' })
     ]));
+    if (EDIT_DEFAULTS) wrap.firstChild.insertBefore(el('div', { class: 'k-defs-tag', text: 'Defaults' }), wrap.firstChild.querySelector('h1'));
 
     var modesBox = null;
     if (o.modes && o.modes.length > 1) {
@@ -1240,6 +1249,34 @@
       return g;
     }
 
+    // a short line for the Game defaults list: the mode, the player count and each option shown
+    function summary() {
+      var bits = [];
+      if (o.modes && o.modes.length > 1) { var m = o.modes.filter(function (x) { return x.id === state.mode; })[0]; if (m) bits.push(m.title); }
+      if (P) { var r = range(); if (r[1] > r[0]) bits.push(state.count + (state.count === 1 ? ' player' : ' players')); }
+      (o.options || []).forEach(function (op) {
+        if (op.when && !op.when(state.mode)) return;
+        var c = (choicesOf(op) || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0];
+        if (c) bits.push(c[1]);
+      });
+      return bits.join(' · ');
+    }
+    function saveSetup() {
+      lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names.map(function (n) { return isPersonName(n) ? n : ''; }), sum: summary() }));
+    }
+    if (EDIT_DEFAULTS) {
+      var saveBtn = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: 'Save defaults', onclick: function () {
+        saveSetup(); sfx('good'); haptic('success'); toast('Saved');
+        setTimeout(function () { location.href = rootPath() + 'index.html#game-defaults'; }, 450);
+      } });
+      // some games relabel their start button (e.g. "Play level 1"); here it always says what it does
+      if (window.MutationObserver) new MutationObserver(function () { if (saveBtn.textContent !== 'Save defaults') saveBtn.textContent = 'Save defaults'; }).observe(saveBtn, { childList: true, characterData: true, subtree: true });
+      wrap.appendChild(saveBtn);
+      wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Cancel', onclick: function () { location.href = rootPath() + 'index.html#game-defaults'; } }));
+      host.appendChild(wrap);
+      renderModes(); renderSeats();
+      return { el: wrap, state: state };
+    }
     var startBtn = el('button', {
       type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: o.start || "Let's play!",
       onclick: function () {
@@ -1254,7 +1291,7 @@
           }
         }
         if (picked.length) countPlays(picked);
-        lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names.map(function (n) { return isPersonName(n) ? n : ''; }) }));
+        saveSetup();
         sfx('pop'); haptic('medium');
         o.onStart && o.onStart({ mode: state.mode, players: players, options: state.options });
       }
@@ -1798,68 +1835,43 @@
     s = sheet({ title: 'Link ' + name, node: node, actions: [{ label: 'Link', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
     setTimeout(function () { inp.focus(); }, 300);
   }
-  // ── Game defaults: where every game's setup starts until you pick something else in that game ──
-  // gn_defaults (this device): {vs: 'cpu'|'people', skill: 'easy'|'med'|'hard', diff: 'easy'|'med'|'hard'}; gn_music: '0' = off.
-  // Changing one here clears that choice from every game's remembered setup (gn_setup_*), so it takes effect everywhere.
-  var DEF_IDS = { easy: ['easy'], med: ['med', 'medium', 'normal', 'classic'], hard: ['hard'] };
-  var PEOPLE_MODES = ['pass', '2p', 'pp', 'two', 'family', 'local'];
-  function defsGet() { try { return JSON.parse(lsGet('gn_defaults', '{}')) || {}; } catch (e) { return {}; } }
-  function defMode(modes) {
-    var d = defsGet(), ids = modes.map(function (m) { return m.id; });
-    if (d.vs === 'cpu' && ids.indexOf('cpu') >= 0) return 'cpu';
-    if (d.vs === 'people') { for (var i = 0; i < PEOPLE_MODES.length; i++) if (ids.indexOf(PEOPLE_MODES[i]) >= 0) return PEOPLE_MODES[i]; }
-    return null;
+  // ── Game defaults: each game's own setup, set ahead of time ──
+  // The list (profile menu) opens a game's page with ?defaults=1: its normal setup screen, saving instead of
+  // starting (see EDIT_DEFAULTS at the top). The choices land in gn_setup_<id>, the same place a game remembers
+  // its last setup, with a short summary (sum) for the list. SETUP_PAGES: the pages that call Kit.setup.
+  var SETUP_PAGES = ['asteroids', 'axisallies-score', 'axisallies', 'baccarat', 'backgammon', 'battleship', 'bingo', 'blackjack', 'boggle', 'breakout', 'candymatch', 'centipede', 'checkers', 'chess', 'chinesecheckers', 'codebreaker', 'connectfour', 'conversation', 'craps', 'crazytower', 'cribbage', 'crossyroad', 'cubehopper', 'dealornodeal', 'dominoes', 'dotsboxes', 'euchre-ai', 'euchre', 'farkle', 'five-crowns', 'fivecrownss-ai', 'flappybird', 'flip7-ai', 'flip7', 'gin-rummy-ai', 'gin-rummy', 'go', 'hangman', 'hearts-ai', 'hearts', 'horserace', 'invaders', 'lorcana-play', 'lorcana', 'lrc', 'madlibs', 'mahjong', 'mahjong4', 'mancala', 'marbles', 'marblesolitaire', 'mathpuzzles', 'mazes', 'memorymatch', 'minesweeper', 'minigolf', 'othello', 'pacman', 'paddleball', 'paigow', 'peggle', 'phase10-ai', 'phase10', 'pinball', 'plinko', 'poker', 'pokersquares', 'pressyourluck', 'riddlestories', 'rook-ai', 'rook', 'roulette', 'sandlot', 'scorecard', 'shellgame', 'slidepuzzle', 'slots', 'snake', 'solitaire', 'spades-ai', 'spades', 'sudoku', 'tetris', 'threecardpoker', 'tictactoe', 'trivia', 'wheeloffortune', 'willycrash', 'wizard-ai', 'wizard', 'wordscramble', 'wordsearch', 'wouldyourather', 'yahtzee'];
+  function setupPageOf(g) {
+    if (g.play && SETUP_PAGES.indexOf(g.play) >= 0) return g.play;
+    if (g.score && SETUP_PAGES.indexOf(g.score) >= 0) return g.score;
+    return SETUP_PAGES.indexOf(g.id) >= 0 ? g.id : null;
   }
-  function defOption(op, mode) {
-    var d = defsGet(), want = op.id === 'level' && op.label === 'Computer skill' ? d.skill : op.id === 'diff' ? d.diff : null, ch;
-    try { ch = typeof op.choices === 'function' ? op.choices(0, mode) : op.choices; } catch (e) { ch = null; }
-    if (!ch) return null;
-    var has = function (id) { return ch.some(function (c) { return String(c[0]) === id; }); };
-    if (want && DEF_IDS[want]) { for (var i = 0; i < DEF_IDS[want].length; i++) if (has(DEF_IDS[want][i])) return DEF_IDS[want][i]; }
-    if ((op.id === 'amb' || op.id === 'music') && lsGet('gn_music', '1') === '0' && has('off')) return 'off';
-    return null;
-  }
-  // forget one remembered choice in every game (field: 'mode' or an option id)
-  function defClear(field) {
-    try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i); if (!k || k.indexOf('gn_setup_') !== 0) continue;
-        var v = JSON.parse(localStorage.getItem(k) || '{}'); if (!v || typeof v !== 'object') continue;
-        var ch = false;
-        if (field === 'mode') { if (v.mode != null) { delete v.mode; ch = true; } }
-        else (Array.isArray(field) ? field : [field]).forEach(function (f) { if (v.options && v.options[f] != null) { delete v.options[f]; ch = true; } });
-        if (ch) localStorage.setItem(k, JSON.stringify(v));
-      }
-    } catch (e) {}
-  }
+  function setupSaved(id) { try { return JSON.parse(lsGet('gn_setup_' + id, 'null')); } catch (e) { return null; } }
+  function rootPath() { return /\/games\//.test(location.pathname) ? '../' : ''; }
   function defaultsSheet() {
-    var box = el('div', { class: 'k-defs' });
-    function row(label, help, choices, cur, pick) {
-      var seg = el('div', { class: 'seg' });
-      choices.forEach(function (c) { seg.appendChild(el('button', { type: 'button', class: String(cur()) === String(c[0]) ? 'on' : '', text: c[1], onclick: function () { pick(c[0]); sfx('tap'); haptic('light'); paint(); } })); });
-      return el('div', { class: 'k-opt help-on' }, [el('div', { class: 'label' }, [el('span', { text: label })]), seg, el('p', { class: 'k-help', text: help })]);
-    }
-    function setDef(k, v) { var d = defsGet(); if (v) d[k] = v; else delete d[k]; lsSet('gn_defaults', JSON.stringify(d)); }
+    var list = (typeof GAMES !== 'undefined' ? GAMES : []).filter(function (g) { return !g.hidden && setupPageOf(g); });
+    var q = el('input', { class: 'input', type: 'search', placeholder: 'Find a game', autocomplete: 'off', 'aria-label': 'Find a game' });
+    var box = el('div', { class: 'k-list k-defs' });
     function paint() {
-      var d = defsGet(); box.innerHTML = '';
-      box.appendChild(el('p', { class: 'muted', style: { margin: '0 0 6px' }, text: 'Where every game starts. Change something inside a game and that game remembers it; changing it here sets it for every game again.' }));
-      box.appendChild(row('Play against', 'For games you can play against the computer or with people taking turns on this device.',
-        [['cpu', 'Computer'], ['people', 'People'], ['', 'Each game']], function () { return d.vs || ''; }, function (v) { setDef('vs', v); defClear('mode'); }));
-      box.appendChild(row('Computer skill', 'How hard the computer plays in Chess, Checkers, Connect Four, Othello, Backgammon and the other board games.',
-        [['easy', 'Easy'], ['med', 'Medium'], ['hard', 'Hard'], ['', 'Each game']], function () { return d.skill || ''; }, function (v) { setDef('skill', v); defClear('level'); }));
-      box.appendChild(row('Puzzle difficulty', 'For games with a Difficulty choice, like Hangman and Code Breaker.',
-        [['easy', 'Easy'], ['med', 'Medium'], ['hard', 'Hard'], ['', 'Each game']], function () { return d.diff || ''; }, function (v) { setDef('diff', v); defClear('diff'); }));
-      box.appendChild(row('Sound', 'Game sounds everywhere.',
-        [['1', 'On'], ['0', 'Off']], function () { return lsGet('gn_sound', '1'); }, function (v) { lsSet('gn_sound', v); }));
-      box.appendChild(row('Music', 'Background music in the arcade games and pinball.',
-        [['1', 'On'], ['0', 'Off']], function () { return lsGet('gn_music', '1'); }, function (v) {
-          lsSet('gn_music', v); defClear(['amb', 'music']);
-          try { var ks = []; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && /_music$/.test(k)) ks.push(k); } ks.forEach(function (k) { localStorage.removeItem(k); }); } catch (e) {}
-        }));
-      box.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', html: icon('palette') + '<span>Theme: ' + esc(themeRec(themeGet()).name) + '</span>', onclick: function () { themePick(); } }));
+      var t = q.value.trim().toLowerCase(); box.innerHTML = '';
+      var cats = typeof GAME_CATS !== 'undefined' ? GAME_CATS : [{ id: null, name: '' }];
+      cats.forEach(function (c) {
+        var gs = list.filter(function (g) { return (c.id == null || g.cat === c.id) && (!t || g.name.toLowerCase().indexOf(t) >= 0); });
+        if (!gs.length) return;
+        if (c.name) box.appendChild(el('div', { class: 'label k-sec', text: c.name }));
+        gs.forEach(function (g) {
+          var sv = setupSaved(g.id), sum = sv && sv.sum ? sv.sum : sv ? 'Last game’s setup' : 'Not set yet';
+          box.appendChild(el('button', { type: 'button', onclick: function () { location.href = rootPath() + 'games/' + setupPageOf(g) + '.html?defaults=1'; } }, [
+            el('span', { class: 'ic gic', html: window.GameIcon ? GameIcon(g.id) : '' }),
+            el('span', { class: 'grow' }, [el('b', { text: g.name }), el('small', { text: sum })]),
+            el('span', { class: 'chev', html: icon('right') })]));
+        });
+      });
+      if (!box.firstChild) box.appendChild(el('p', { class: 'muted', text: 'No game called that.' }));
     }
+    q.addEventListener('input', paint);
     paint();
-    sheet({ title: 'Game defaults', node: box, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+    sheet({ title: 'Game defaults', node: el('div', null, [el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Pick a game to set how it starts: who plays, the computer’s skill and its options. A game also remembers whatever you pick when you start it.' }), q, box]),
+      actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
   // Your profile: the code to give people, and whether their games need your OK first
   function profileSheet() {
@@ -2181,7 +2193,7 @@
   window.Kit = {
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
-    defaults: { sheet: defaultsSheet, get: defsGet },
+    defaults: { sheet: defaultsSheet, get: setupSaved },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },

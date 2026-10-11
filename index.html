@@ -888,6 +888,11 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
     if (n && !pendNoted) { pendNoted = true; Kit.toast(n + (n === 1 ? ' game' : ' games') + ' to review. Tap your avatar.'); }
   });
   refreshWho();
+  // back from setting a game's defaults: show the list again
+  if (location.hash === '#game-defaults') {
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    setTimeout(function () { Kit.defaults.sheet(); }, 250);
+  }
   if (mode === 'pin' && window.FGHSync) {
     $('me').classList.add('syncdot');
     if (FGHSync.onStatusChange) FGHSync.onStatusChange(function (s) { var hv = $('me').classList.contains('has-av'); $('me').className = 'me syncdot s-' + s.state + (hv ? ' has-av' : ''); });
