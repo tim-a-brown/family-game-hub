@@ -19,53 +19,51 @@ var PYLArt = (function () {
     o = o || {};
     var s = '', K = ' stroke="' + OL + '" stroke-width="2.6" stroke-linejoin="round"';
     // little pointed yellow ears behind the mask
-    s += '<path d="M-23-14 L-34-26 L-29-8z M23-14 L34-26 L29-8z" fill="' + YEL + '"' + K + '/>';
+    s += '<path d="M-27-14 L-38-26 L-33-8z M27-14 L38-26 L33-8z" fill="' + YEL + '"' + K + '/>';
     // spiky red hair
-    s += '<path d="M-21-18 L-29-30 L-18-28 L-20-42 L-9-31 L-5-46 L1-32 L8-45 L10-30 L20-40 L18-26 L29-29 L22-16z" fill="' + RED + '"' + K + '/>';
+    s += '<path d="M-24-18 L-32-30 L-20-28 L-22-42 L-10-31 L-6-46 L1-32 L9-45 L11-30 L22-40 L20-26 L32-29 L25-16z" fill="' + RED + '"' + K + '/>';
     // the head: wide at the grin
-    s += '<path d="M0-30 C15-30 23-20 24-8 C25 4 27 12 24 21 C19 30 9 33 0 33 C-9 33-19 30-24 21 C-27 12-25 4-24-8 C-23-20-15-30 0-30z" fill="' + RED + '"' + K + '/>';
+    s += '<path d="M0-30 C18-30 27-20 28-8 C30 4 34 12 30 20 C24 30 10 32 0 32 C-10 32-24 30-30 20 C-34 12-30 4-28-8 C-27-20-18-30 0-30z" fill="' + RED + '"' + K + '/>';
     s += '<path d="M-18-24 C-10-28 0-29 8-27" fill="none" stroke="' + RED3 + '" stroke-width="3" stroke-linecap="round" opacity=".7"/>';
     // the yellow mask across the eyes
-    s += '<path d="M-26-15 C-18-21-7-20 0-17 C7-20 18-21 26-15 C27-9 23-1 16-2 C9-3 5-8 0-7 C-5-8-9-3-16-2 C-23-1-27-9-26-15z" fill="' + YEL + '"' + K + '/>';
-    if (o.soot) s += '<path d="M-24 4 C-22-16-9-24 2-22 C16-20 24-8 23 8 C14 2 4 10-6 4 C-13 0-18 8-24 4z" fill="#2b2b33" opacity=".85"/>';
+    s += '<path d="M-29-15 C-20-21-8-20 0-17 C8-20 20-21 29-15 C30-9 26-1 18-2 C10-3 6-8 0-7 C-6-8-10-3-18-2 C-26-1-30-9-29-15z" fill="' + YEL + '"' + K + '/>';
+    if (o.soot) s += '<path d="M-28 4 C-26-16-10-24 2-22 C18-20 28-8 27 8 C16 2 4 10-6 4 C-14 0-20 8-28 4z" fill="#2b2b33" opacity=".85"/>';
     // eyes: both open; now and then he winks (the page animates g-reye / g-wink; each head at its own moment)
     var wd = 'style="animation-delay:-' + (Math.random() * 7).toFixed(2) + 's"';
-    s += '<g class="g-eyes"><ellipse cx="-10.5" cy="-11" rx="6.2" ry="7" fill="#fff" stroke="' + OL + '" stroke-width="2"/>' +
-      '<circle class="g-pup" cx="-9.5" cy="-10" r="2.8" fill="' + OL + '"/>' +
-      '<g class="g-reye" ' + wd + '><ellipse cx="10.5" cy="-11" rx="6.2" ry="7" fill="#fff" stroke="' + OL + '" stroke-width="2"/><circle class="g-pup" cx="11.5" cy="-10" r="2.8" fill="' + OL + '"/></g>' +
-      '<path class="g-wink" opacity="0" ' + wd + ' d="M5-11 C8-14 13-14 16-10 M5-11 L2-13 M5-11 L2-9" fill="none" stroke="' + OL + '" stroke-width="2.4" stroke-linecap="round"/></g>';
+    s += '<g class="g-eyes"><ellipse cx="-12" cy="-11" rx="6.5" ry="7" fill="#fff" stroke="' + OL + '" stroke-width="2"/>' +
+      '<circle class="g-pup" cx="-11" cy="-10" r="2.8" fill="' + OL + '"/>' +
+      '<g class="g-reye" ' + wd + '><ellipse cx="12" cy="-11" rx="6.5" ry="7" fill="#fff" stroke="' + OL + '" stroke-width="2"/><circle class="g-pup" cx="13" cy="-10" r="2.8" fill="' + OL + '"/></g>' +
+      '<path class="g-wink" ' + wd + ' d="M6-11 C9-14 15-14 18-10 M6-11 L3-13 M6-11 L3-9" fill="none" stroke="' + OL + '" stroke-width="2.4" stroke-linecap="round"/></g>';
     // the grin: wide, white, square teeth
-    s += '<path d="M-25 0 C-21 26 21 26 25 0 C14 5-14 5-25 0z" fill="#fff"' + K + '/>';
-    s += '<path d="M-22.5 10 C-11 13 11 13 22.5 10" fill="none" stroke="' + OL + '" stroke-width="1.7"/>';
-    s += '<path d="M-16.5 3.6 L-15.8 19.8 M-8.3 4.6 L-8 22.6 M0 4.9 L0 23.4 M8.3 4.6 L8 22.6 M16.5 3.6 L15.8 19.8" stroke="' + OL + '" stroke-width="1.7" stroke-linecap="round"/>';
+    s += '<path d="M-29-1 C-24 26 24 26 29-1 C16 5-16 5-29-1z" fill="#fff"' + K + '/>';
+    s += '<path d="M-26 9.5 C-12 13 12 13 26 9.5" fill="none" stroke="' + OL + '" stroke-width="1.7"/>';
+    s += '<path d="M-19 3.4 L-18 19.5 M-9.5 4.6 L-9.2 22.6 M0 4.9 L0 23.4 M9.5 4.6 L9.2 22.6 M19 3.4 L18 19.5" stroke="' + OL + '" stroke-width="1.7" stroke-linecap="round"/>';
     // the bulb nose
     s += '<circle cx="0" cy="-3" r="5.8" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.2"/><circle cx="-1.8" cy="-4.8" r="1.6" fill="#fff" opacity=".55"/>';
     return s;
   }
-  // Whole Whammy, feet at y≈0, head at y≈-103 on a skinny neck; centred on x=0. Arms are groups so scenes can swing them.
+  // Whole Whammy, feet at y≈0, head at y≈-92; centred on x=0. Arms are groups so scenes can swing them.
   // o.prop: html for something held in the right hand (drawn in the arm group, hand at (30,-46))
   function body(o) {
     o = o || {};
     var s = '', K = ' stroke="' + OL + '" stroke-width="2.4" stroke-linejoin="round"';
     function limb(d) { return '<path d="' + d + '" fill="none" stroke="' + OL + '" stroke-width="8" stroke-linecap="round"/><path d="' + d + '" fill="none" stroke="' + RED + '" stroke-width="4.6" stroke-linecap="round"/>'; }
     // the yellow cape, flaring out behind
-    s += '<path d="M-10-58 C-22-48-29-26-28-10 C-21-14-16-12-11-8 L11-8 C16-12 21-14 28-10 C29-26 22-48 10-58z" fill="' + YEL + '"' + K + '/>';
-    s += '<path d="M-17-40 C-21-30-23-20-23-12 M17-40 C21-30 23-20 23-12" fill="none" stroke="' + YEL2 + '" stroke-width="1.8" opacity=".8"/>';
+    s += '<path d="M-12-58 C-26-48-34-26-32-10 C-24-14-18-12-12-8 L12-8 C18-12 24-14 32-10 C34-26 26-48 12-58z" fill="' + YEL + '"' + K + '/>';
+    s += '<path d="M-20-40 C-24-30-26-20-26-12 M20-40 C24-30 26-20 26-12" fill="none" stroke="' + YEL2 + '" stroke-width="1.8" opacity=".8"/>';
     // legs, one crossed over the other, and pointed red shoes
     s += limb('M-6-16 C-6-10 4-7 6 0') + limb('M6-16 C8-10-2-6-6-1');
     s += '<path d="M2 0 C6-3 14-3 19 1 C14 2 8 3 2 3z M-2-1 C-7-4-15-4-20 0 C-15 1-8 2-2 2z" fill="' + RED + '"' + K + '/>';
     // left arm (behind the body), hand on the hip or waving
-    s += '<g class="g-arml">' + limb('M-11-48 C-22-46-24-36-17-30') + '<path d="M-17-30 l-4 3 M-17-30 l1 4" stroke="' + OL + '" stroke-width="2" stroke-linecap="round"/></g>';
+    s += '<g class="g-arml">' + limb('M-13-48 C-24-46-26-36-18-30') + '<path d="M-18-30 l-4 3 M-18-30 l1 4" stroke="' + OL + '" stroke-width="2" stroke-linecap="round"/></g>';
     // a lean bean of a body with the yellow $ patch
-    s += '<path d="M-11-58 C-16-44-16-24-10-16 C-5-12 5-12 10-16 C16-24 16-44 11-58z" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.6"/>';
-    s += '<path d="M-8-48 L8-48 L7-28 L-7-28z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="1.8" stroke-linejoin="round"/>';
+    s += '<path d="M-13-58 C-19-44-18-24-11-16 C-6-12 6-12 11-16 C18-24 19-44 13-58z" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.6"/>';
+    s += '<path d="M-9-48 L9-48 L8-28 L-8-28z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="1.8" stroke-linejoin="round"/>';
     s += '<text x="0" y="-31.5" text-anchor="middle" font-family="Bungee, sans-serif" font-size="15" fill="#fff" stroke="' + OL + '" stroke-width=".9" paint-order="stroke">$</text>';
     // right arm (in front), holds the prop; pointed fingers
-    s += '<g class="g-armr">' + limb('M11-50 C21-52 27-50 30-46') + (o.prop || '') +
+    s += '<g class="g-armr">' + limb('M13-50 C22-52 27-50 30-46') + (o.prop || '') +
       '<path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + OL + '" stroke-width="4.2" stroke-linecap="round"/><path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + RED + '" stroke-width="2" stroke-linecap="round"/></g>';
-    // a skinny neck up to the head
-    s += '<path d="M0-70 L0-56" stroke="' + OL + '" stroke-width="9.5" stroke-linecap="round"/><path d="M0-71 L0-55" stroke="' + RED + '" stroke-width="5.6" stroke-linecap="round"/>';
-    s += '<g class="g-head" transform="translate(0 -95) scale(.86)">' + head(o) + '</g>';
+    s += '<g class="g-head" transform="translate(0 -84) scale(.86)">' + head(o) + '</g>';
     return s;
   }
   function headSVG(cls) {
@@ -143,7 +141,7 @@ var PYLArt = (function () {
       s += moneyBag(80, 132, 'w-bag');
       s += puff(80, 116, 26, 'w-poof', 0);
       var wand = '<g class="w-wand"><path d="M31-46 L6-66" stroke="#1f1a2e" stroke-width="4" stroke-linecap="round"/><path d="M8-64 L4-68" stroke="#fff" stroke-width="4" stroke-linecap="round"/></g>';
-      s += '<g class="w-guy"><g transform="translate(170 156)">' + body({ prop: wand }) + '<g transform="translate(0 -127)"><rect x="-17" y="-26" width="34" height="26" rx="3" fill="#1f1a2e" stroke="#0e0a1e" stroke-width="1.6"/><rect x="-17" y="-9" width="34" height="5" fill="#ff3d6e"/><ellipse cx="0" cy="0" rx="26" ry="5" fill="#1f1a2e"/></g></g></g>';
+      s += '<g class="w-guy"><g transform="translate(170 156)">' + body({ prop: wand }) + '<g transform="translate(0 -116)"><rect x="-17" y="-26" width="34" height="26" rx="3" fill="#1f1a2e" stroke="#0e0a1e" stroke-width="1.6"/><rect x="-17" y="-9" width="34" height="5" fill="#ff3d6e"/><ellipse cx="0" cy="0" rx="26" ry="5" fill="#1f1a2e"/></g></g></g>';
       s += '<g class="w-stars"><path d="M60 80 l3 7 7 3-7 3-3 7-3-7-7-3 7-3z M104 96 l2 5 5 2-5 2-2 5-2-5-5-2 5-2z M70 136 l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#ffd23d"/></g>';
     } else {   // mallet
       s += '<g class="w-pig"><g transform="translate(150 128)"><ellipse rx="34" ry="24" fill="#ff9ec0" stroke="#8a2050" stroke-width="2.2"/><ellipse cx="30" cy="-2" rx="8" ry="9" fill="#ff7aa8" stroke="#8a2050" stroke-width="2"/><circle cx="28" cy="-4" r="1.6" fill="#8a2050"/><circle cx="33" cy="-4" r="1.6" fill="#8a2050"/><circle cx="16" cy="-10" r="2.2" fill="#2a2440"/><path d="M8-22 L14-32 L18-20z" fill="#ff7aa8" stroke="#8a2050" stroke-width="2"/><rect x="-10" y="-25" width="14" height="3" rx="1.5" fill="#8a2050"/><path d="M-20 20 v8 M18 20 v8" stroke="#8a2050" stroke-width="5" stroke-linecap="round"/></g></g>';
