@@ -633,8 +633,9 @@ function filmMaterial(normalTex, frostTex, side) {
 function makeWorld() {
   const G = -15, DT = 1 / 120, ITER = 6, SLOP = 0.003, MU_T = 0.55, MU_B = 0.6, MAXSUB = 5;
   const bodies = [], cons = [], pairs = new Map();
-  let walls = [], acc = 0, stepMs = 0;
+  let walls = [], obst = [], acc = 0, stepMs = 0;
   const up = new THREE.Vector3(0, 1, 0);
+  const FOOT = [[1, 1], [1, -1], [-1, 1], [-1, -1], [0, 0], [1, 0], [-1, 0]];
   function boxPoints(hx, hy, hz) {
     const a = [];
     // the pillow is rounded at its sides: its top and bottom edges sit in from the widest point,
@@ -656,7 +657,7 @@ function makeWorld() {
     return b;
   }
   function remove(b) { b.active = false; const i = bodies.indexOf(b); if (i >= 0) bodies.splice(i, 1); }
-  function wake(b) { if (b && b.active && !b.held && !b.awake) { b.awake = true; b.still = 0; b.calm = 0; b.age = 0; b.wakes = (b.wakes || 0) + 1; } }
+  function wake(b) { if (b && b.active && !b.held && !b.awake) { b.awake = true; b.still = 0; b.calm = 0; b.age = 0; b.sv = 1; b.sw = 1; b.wakes = (b.wakes || 0) + 1 } }
   function wakeNear(b, pad) {
     for (const o of bodies) if (o !== b && o.active && !o.held && o.p.distanceTo(b.p) < o.rad + b.rad + (pad || 0.2)) wake(o);
   }
@@ -768,9 +769,9 @@ function makeWorld() {
           // a sleeping pack is solid ground, unless it's hit hard, or shoved deep by something on the move.
           // (Resting overlap alone never wakes it: in a deep pile that would keep waking the pile forever.)
           let hit = 0;
-          const moving = a.v.lengthSq() > 0.09;
+          const moving = a.v.lengthSq() > 0.25;
           for (let i = n0; i < cons.length; i++) { const c = cons[i]; hit = Math.max(hit, -relVel(c, t3).dot(c.n), moving && c.depth > 0.05 ? 0.5 : 0); }
-          if (hit > 0.4) {
+          if (hit > 0.6) {
             wake(b); if (hit > 1) wakeNear(b, 0.05);   // a real knock also stirs whatever leans on it
             frameOf(b); for (let i = n0; i < cons.length; i++) { const c = cons[i]; c.kn = mass(c, c.n); c.kt = mass(c, c.ta); c.kb = mass(c, c.tb); }
           }
@@ -778,7 +779,8 @@ function makeWorld() {
       }
     }
     // velocities
-    for (let it = 0; it < ITER; it++) {
+    const iters = aw.length > 24 ? ITER - 2 : ITER;   // a big tumble gets a few less passes, to keep frames smooth
+    for (let it = 0; it < iters; it++) {
       for (const c of cons) {
         if (!c.kn) continue;
         const rv = relVel(c, t3);
@@ -824,6 +826,30 @@ function makeWorld() {
           if (vn < 0) { b.v.x -= wl.nx * vn * 1.3; b.v.z -= wl.nz * vn * 1.3; }
         }
       }
+      // invisible barriers (the table under the plaques): no corner of the pack's footprint may sit
+      // inside one; a pack that slides in is eased back out the nearest side, like bumping a wall
+      if (obst.length && b.p.y < 1.6) {   // (once it's down among the others, not while it falls)
+        const R = b.R, hx = b.he.x * 1.2, hz = b.he.z;   // (x: out to the crimped ends)
+        for (const ob of obst) {
+          let deep = 0, nx = 0, nz = 0;
+          for (const [sx, sz] of FOOT) {
+            const px = b.p.x + R[0] * hx * sx + R[2] * hz * sz, pz = b.p.z + R[6] * hx * sx + R[8] * hz * sz;
+            let inD = 1e9, ex = 0, ez = 0, inside = true;
+            for (const e of ob) {
+              const d = (px - e.x) * e.nx + (pz - e.z) * e.nz;   // outward normal: > 0 outside
+              if (d >= 0) { inside = false; break; }
+              if (e.exit && -d < inD) { inD = -d; ex = e.nx; ez = e.nz; }
+            }
+            if (inside && inD > deep) { deep = inD; nx = ex; nz = ez; }
+          }
+          if (deep > 0) {
+            b.p.x += nx * deep * 0.12; b.p.z += nz * deep * 0.12;
+            const vn = b.v.x * nx + b.v.z * nz;
+            if (vn < 0) { b.v.x -= nx * vn; b.v.z -= nz * vn; }   // no further in; the push above eases it out
+            if (deep > 0.08) b.still = 0;   // (a pack wedged against it by the pile may still settle there, just at its edge)
+          }
+        }
+      }
       // sleep
       b.age += DT;
       const v2 = b.v.lengthSq(), w2 = b.w.lengthSq();
@@ -831,7 +857,9 @@ function makeWorld() {
       if (v2 < 2.5e-4 && w2 < 1e-3) { b.v.set(0, 0, 0); b.w.set(0, 0, 0); }
       if (v2 < 0.012 && w2 < 0.05) b.still += DT; else b.still = 0;
       // calm: barely moving (a pack fidgeting in a pile) for a second also counts as settled
-      if (v2 < 0.07 && w2 < 0.2) b.calm = (b.calm || 0) + DT; else b.calm = 0;
+      // (on smoothed speeds, so a pack fidgeting back and forth in a pile still counts)
+      b.sv = (b.sv || 0) * 0.94 + Math.sqrt(v2) * 0.06; b.sw = (b.sw || 0) * 0.94 + Math.sqrt(w2) * 0.06;
+      if (b.sv < 0.25 && b.sw < 0.4) b.calm = (b.calm || 0) + DT; else b.calm = 0;
       if (b.still > 0.3 || b.calm > 0.8 || b.age > 6) { b.awake = false; b.calm = 0; b.v.set(0, 0, 0); b.w.set(0, 0, 0); events && events.push(b); }
     }
     return true;
@@ -847,7 +875,13 @@ function makeWorld() {
   }
   // settle quietly, without drawing (a freshly laid table)
   function settle(maxSteps) { for (let i = 0; i < maxSteps; i++) if (!sub(null)) break; acc = 0; }
-  return { bodies, add, remove, wake, wakeNear, step, settle, setWalls: (w) => { walls = w; }, ms: () => stepMs, DT };
+  // obstacles: convex polygons on the table, each a list of edges { x, z, nx, nz } (outward normals)
+  function setObstacles(list) {
+    obst = list;
+    // anything already resting inside one wakes and gets eased out
+    for (const b of bodies) if (b.active && !b.held && !b.awake && list.some((ob) => ob.every((e) => (b.p.x - e.x) * e.nx + (b.p.z - e.z) * e.nz < b.he.x))) wake(b);
+  }
+  return { bodies, add, remove, wake, wakeNear, step, settle, setWalls: (w) => { walls = w; }, setObstacles, ms: () => stepMs, DT };
 }
 
 // ── Styles for the overlay (slip, hint, button). The table keeps its own colours in every theme.
@@ -969,7 +1003,7 @@ export default {
     '<p>A table full of fresh fortune cookies, each in its own cellophane wrapper. <b>Tap one</b> to pick it up: the wrapper tears open and comes off. <b>Tap the cookie again</b> to crack it. It snaps in two and the paper slip unrolls with your fortune.</p>' +
     '<ul><li>Every slip has a fortune, six <b>lucky numbers</b> and a <b>Learn Chinese</b> word with how to say it.</li>' +
     '<li>Tap the table or <b>Another cookie</b> to put the slip away. The table restocks itself.</li>' +
-    '<li><b>Add a cookie</b> drops another cookie on the table. It lands on or bumps into the others, and a crowded table piles up. Hold it to keep pouring, up to 80; past 50 they pile up. The arrow button sets the table back to a dozen.</li>' +
+    '<li><b>Add a cookie</b> drops another cookie on the table. It lands on or bumps into the others, and a crowded table piles up. Hold it to keep pouring, up to 80; past 40 they pile up. The arrow button sets the table back to a dozen.</li>' +
     '<li>You won’t see the same fortune twice until you’ve read most of them.</li></ul>',
   mount
 };
@@ -1304,7 +1338,7 @@ function mount(stage, api) {
   const tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   // The camera backs off until the visible table holds about a dozen cookies, whatever the screen shape.
   // "More cookies" adds up to MAX; the camera eases back a little to make room for each one.
-  const COUNT = 11, PER = 4.4, PER_MORE = 3.6, MAX = 80, ROOM = 50, MORE_KEY = 'fortune_cookie_more';
+  const COUNT = 11, PER = 4.4, PER_MORE = 3.6, MAX = 80, ROOM = 40, MORE_KEY = 'fortune_cookie_more';
   let baseD = 10, baseN = COUNT, camD = 0, camTo = 0;
   let extra = Math.max(0, Math.min(MAX, parseInt(lsGet(MORE_KEY), 10) || 0));
   const total = () => Math.min(MAX, baseN + extra);
@@ -1352,12 +1386,62 @@ function mount(stage, api) {
     ndc.set(x, y); ray.setFromCamera(ndc, camera);
     return ray.ray.intersectPlane(tablePlane, out || new THREE.Vector3());
   }
-  // The most open spot on the visible table (as seen from camera distance d), away from `pts`.
+  // Table regions hidden by the plaques (seen from the eased camera): the screen rect of each
+  // plaque, plus a margin, cast down onto the table. For the top plaque the cast also reaches
+  // down to the height of a small pile, as one just in front of it would still poke up under it.
+  let zones = [];
+  function plaqueZones() {
+    const rr = root.getBoundingClientRect(), M = 14, out = [];
+    const rects = [[hint, 1.2], [morePlq, 0]];
+    placeCamera(camTo);
+    for (const [el, h] of rects) {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      const x0 = r.left - rr.left - M, x1 = r.right - rr.left + M, y0 = r.top - rr.top - M, y1 = r.bottom - rr.top + M;
+      const pts = [];
+      const cast = (sx, sy, hy) => {
+        ndc.set(sx / W * 2 - 1, -(sy / H) * 2 + 1); ray.setFromCamera(ndc, camera);
+        const p = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -hy), new THREE.Vector3());
+        if (p) pts.push({ x: p.x, z: p.z });
+      };
+      for (const sx of [x0, x1]) { for (const sy of [y0, y1]) cast(sx, sy, 0); if (h) cast(sx, y1, h); }
+      const hull = convexHull(pts);
+      if (hull.length < 3) continue;
+      const cx = hull.reduce((a, q) => a + q.x, 0) / hull.length, cz = hull.reduce((a, q) => a + q.z, 0) / hull.length;
+      out.push(hull.map((a, i) => {
+        const b = hull[(i + 1) % hull.length], ex = b.x - a.x, ez = b.z - a.z, l = Math.hypot(ex, ez) || 1;
+        let nx = ez / l, nz = -ex / l;
+        if ((cx - a.x) * nx + (cz - a.z) * nz > 0) { nx = -nx; nz = -nz; }   // outward
+        // a pack is only ever eased out on the table's side (not off past the edge of the view)
+        const cl = Math.hypot(cx, cz) || 1, exit = (-cx * nx - cz * nz) / cl > -0.3;
+        return { x: a.x, z: a.z, nx, nz, exit };
+      }));
+    }
+    placeCamera(camD);
+    zones = out;
+    return out;
+  }
+  function convexHull(p) {
+    p = p.slice().sort((a, b) => a.x - b.x || a.z - b.z);
+    const cr = (o, a, b) => (a.x - o.x) * (b.z - o.z) - (a.z - o.z) * (b.x - o.x), lo = [], hi = [];
+    for (const q of p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+    for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (hi.length >= 2 && cr(hi[hi.length - 2], hi[hi.length - 1], q) <= 0) hi.pop(); hi.push(q); }
+    lo.pop(); hi.pop();
+    return lo.concat(hi);
+  }
+  // how far outside the plaque zones a point is (negative: inside one)
+  function zoneGap(x, z) {
+    let g = 1e9;
+    for (const ob of zones) { let d = -1e9; for (const e of ob) d = Math.max(d, (x - e.x) * e.nx + (z - e.z) * e.nz); g = Math.min(g, d); }
+    return g;
+  }
+  // The most open spot on the visible table (as seen from camera distance d), away from `pts`
+  // and clear of the plaque zones by about a pack's length.
   function freeSpot(pts, d, tries) {
     let best = null, bestD = -1;
-    for (let t = 0; t < tries; t++) {
+    for (let t = 0; t < tries || (!best && t < tries + 120); t++) {
       const p = onTableAt(-0.86 + Math.random() * 1.72, -0.8 + Math.random() * 1.5, d);
-      if (!p) continue;
+      if (!p || zoneGap(p.x, p.z) < 1.05) continue;
       let dmin = 1e9;
       for (const q of pts) dmin = Math.min(dmin, Math.hypot(p.x - q.x, p.z - q.z));
       if (dmin > bestD) { bestD = dmin; best = { x: p.x, z: p.z }; }
@@ -1366,6 +1450,7 @@ function mount(stage, api) {
   }
   function placeAll() {
     cookies.slice().forEach(freeCookie);
+    wallsFor = ''; updateWalls();
     const n = total(), sc = 1, pts = [];
     for (let k = 0; k < n; k++) { const p = freeSpot(pts, camTo, 40); if (p) pts.push(p); }
     pts.sort((a, b) => a.z - b.z);   // far ones first, so near ones draw over them
@@ -1390,11 +1475,14 @@ function mount(stage, api) {
     b.held = true; b.release = T + delay; b.awake = false; b.landed = false;
     syncCookie(c);
   }
-  // soft walls along the edge of the visible table (as it will be once the camera has eased)
-  let wallsFor = -1;
+  // soft walls along the edge of the visible table (as it will be once the camera has eased),
+  // and invisible barriers on the table under the two plaques, so no cookie hides beneath them
+  let wallsFor = '';
   function updateWalls() {
-    if (Math.abs(wallsFor - camTo) < 1e-3 && world.walls) return;
-    wallsFor = camTo;
+    const key = camTo.toFixed(3) + '|' + W + '|' + H;
+    if (key === wallsFor && world.walls) return;
+    wallsFor = key;
+    world.setObstacles(plaqueZones());
     const pts = [[-0.92, -0.86], [0.92, -0.86], [0.92, 0.8], [-0.92, 0.8]].map((q) => onTableAt(q[0], q[1], camTo));
     if (pts.some((q) => !q)) return;
     const cx = pts.reduce((a, q) => a + q.x, 0) / 4, cz = pts.reduce((a, q) => a + q.z, 0) / 4;
@@ -1984,6 +2072,10 @@ function mount(stage, api) {
       state: () => state,
       count: () => cookies.length,
       // drop one straight onto cookie i (to watch a collision)
+      // drop one at a screen point (canvas px), wherever that is (to test the plaque barriers)
+      dropAt: (sx, sy) => { const p = onTable(sx / W * 2 - 1, -(sy / H) * 2 + 1); return p ? addCookie({ x: p.x, z: p.z }) : false; },
+      zones: () => zones.map((ob) => ob.map((e) => [+e.x.toFixed(2), +e.z.toFixed(2)])),
+      gaps: () => cookies.filter((c) => c !== openC).map((c) => +zoneGap(c.rb.p.x, c.rb.p.z).toFixed(2)),
       dropOn: (i) => { const c = cookies[i]; return c ? addCookie({ x: c.rb.p.x + 0.3, z: c.rb.p.z + 0.1 }) : false; },
       more: (n) => { let k = 0; for (let i = 0; i < (n || 1); i++) if (addCookie()) k++; return k; },
       reset: () => resetTable(),
@@ -2009,6 +2101,7 @@ function mount(stage, api) {
       // advance without drawing (fast, for automation); returns the slowest physics frame in ms
       sim: (sec) => { const n = Math.round(sec / 0.016); let mx = 0, sum = 0, k = 0; for (let i = 0; i < n; i++) { T += 0.016; update(0.016); const m = world.ms(); mx = Math.max(mx, m); if (m > 0.05) { sum += m; k++; } } physStat.max = Math.max(physStat.max, mx); physStat.sum += sum; physStat.n += k; return +mx.toFixed(2); },
       settleMs: () => +settleMs.toFixed(1),
+      openIdx: () => cookies.indexOf(openC),
       cam: () => ({ d: +camD.toFixed(3), to: +camTo.toFixed(3) }),
       awakeInfo: () => world.bodies.filter((b) => b.active && b.awake).map((b) => ({ v: +b.v.length().toFixed(3), w: +b.w.length().toFixed(3), still: +b.still.toFixed(2), age: +b.age.toFixed(2), wakes: b.wakes || 0, y: +b.p.y.toFixed(2) })),
       physStat: () => ({ max: +physStat.max.toFixed(2), avg: +(physStat.sum / Math.max(1, physStat.n)).toFixed(2), frames: physStat.n }),

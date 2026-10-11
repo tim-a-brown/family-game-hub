@@ -5,7 +5,7 @@
 //   PYLArt.head()                    the gremlin's head (for Whammy squares)
 //   PYLArt.prize(key)                a prize picture (viewBox 0 0 64 40)
 //   PYLArt.PRIZES                    {r1:[...], r2:[...]} name / value / art
-//   PYLArt.scene(variant, bankText)  a Whammy scene (viewBox 0 0 240 170)
+//   PYLArt.scene(variant, bankText)  a Whammy scene (viewBox 0 -46 240 216; the stamp sits above the action)
 //   PYLArt.SCENES                    variant names
 // ═══════════════════════════════════════════════════════════════════════════
 var PYLArt = (function () {
@@ -104,13 +104,14 @@ var PYLArt = (function () {
       ['piano', 'Baby grand piano', 6750], ['ring', 'Diamond ring', 4950], ['moto', 'Motorcycle', 3850], ['hottub', 'Hot tub', 3400], ['camper', 'Camper', 8600]]
   };
 
-  // ── Whammy scenes (viewBox 0 0 240 170) ───────────────────────────────────
+  // ── Whammy scenes (viewBox 0 -46 240 216) ──────────────────────────────────
   // Each scene is a little cartoon about 2.8 s long; CSS keyframes (in the page) drive the classes.
   function bankText(t, cls) {
     return '<text class="' + (cls || 'w-bank') + '" x="120" y="96" text-anchor="middle" font-family="Jersey 10, monospace" font-size="54" fill="#ffd23d" stroke="#7a4a00" stroke-width="1.2">' + t + '</text>';
   }
   function bill(x, y, r, cls, d) {
-    return '<g class="' + cls + '" style="--d:' + d + 's"><g transform="translate(' + x + ' ' + y + ') rotate(' + r + ')"><rect x="-13" y="-7" width="26" height="14" rx="2" fill="#7fd36b" stroke="#2c6a1f" stroke-width="1.4"/><circle cx="0" cy="0" r="4.2" fill="#c7f0b0" stroke="#2c6a1f" stroke-width="1"/><text x="0" y="2.6" text-anchor="middle" font-size="7" font-family="Bungee, sans-serif" fill="#2c6a1f">$</text></g></g>';
+    // --tx/--ty: how far to fly to reach the vacuum nozzle (at 132,122 once he has rolled in)
+    return '<g class="' + cls + '" style="--d:' + d + 's;--tx:' + (132 - x) + 'px;--ty:' + (122 - y) + 'px"><g transform="translate(' + x + ' ' + y + ') rotate(' + r + ')"><rect x="-13" y="-7" width="26" height="14" rx="2" fill="#7fd36b" stroke="#2c6a1f" stroke-width="1.4"/><circle cx="0" cy="0" r="4.2" fill="#c7f0b0" stroke="#2c6a1f" stroke-width="1"/><text x="0" y="2.6" text-anchor="middle" font-size="7" font-family="Bungee, sans-serif" fill="#2c6a1f">$</text></g></g>';
   }
   function moneyBag(x, y, cls) {
     return '<g class="' + (cls || '') + '"><g transform="translate(' + x + ' ' + y + ')"><path d="M-8-30 L8-30 L4-22 C20-16 24 2 18 10 C12 16-12 16-18 10 C-24 2-20-16-4-22z" fill="#d9b26a" stroke="#6a4a14" stroke-width="2" stroke-linejoin="round"/><path d="M-9-22 L9-22" stroke="#6a4a14" stroke-width="3" stroke-linecap="round"/><text x="0" y="6" text-anchor="middle" font-family="Bungee, sans-serif" font-size="17" fill="#6a4a14">$</text></g></g>';
@@ -120,11 +121,10 @@ var PYLArt = (function () {
   }
   var SCENES = ['eraser', 'bomb', 'vacuum', 'hat', 'mallet'];
   function scene(v, bank) {
-    var s = '<svg class="wscene w-' + v + '" viewBox="0 0 240 170" aria-hidden="true">';
-    s += '<rect class="w-flash" x="0" y="0" width="240" height="170" fill="#ff2b4a"/>';
+    var s = '<svg class="wscene w-' + v + '" viewBox="0 -46 240 216" aria-hidden="true">';
+    s += '<rect class="w-flash" x="-200" y="-200" width="640" height="600" fill="#ff2b4a"/>';
     if (v === 'eraser') {
-      s += bankText(bank);
-      s += '<rect class="w-rub" x="40" y="50" width="160" height="60" fill="#120a2e"/>';
+      s += bankText(bank, 'w-bank w-erase');
       s += '<g class="w-crumbs"><rect x="150" y="104" width="5" height="3" fill="#ff9ec0"/><rect x="120" y="108" width="4" height="3" fill="#ff9ec0"/><rect x="90" y="104" width="5" height="3" fill="#ff9ec0"/><rect x="70" y="110" width="4" height="3" fill="#ff9ec0"/></g>';
       var eraser = '<g transform="translate(31 -46) rotate(-20)"><rect x="-6" y="-34" width="22" height="36" rx="4" fill="#ff9ec0" stroke="#8a2050" stroke-width="2"/><rect x="-6" y="-34" width="22" height="12" rx="3" fill="#4a7dff" stroke="#1f3a8a" stroke-width="2"/></g>';
       s += '<g class="w-guy"><g transform="translate(0 150)">' + body({ prop: eraser }) + '</g></g>';
@@ -136,7 +136,7 @@ var PYLArt = (function () {
       s += '<g class="w-guy"><g transform="translate(64 156) scale(.95)">' + body({}) + '</g></g>';
       s += '<g class="w-soot"><g transform="translate(64 156) scale(.95)">' + body({ soot: true }) + '</g></g>';
     } else if (v === 'vacuum') {
-      for (var i = 0; i < 7; i++) s += bill(150 + (i % 3) * 26, 60 + Math.floor(i / 3) * 26 + (i % 2) * 6, (i * 37) % 60 - 30, 'w-bill', (0.7 + i * 0.13).toFixed(2));
+      for (var i = 0; i < 7; i++) s += bill(160 + (i % 3) * 26, 60 + Math.floor(i / 3) * 26 + (i % 2) * 6, (i * 37) % 60 - 30, 'w-bill', (0.7 + i * 0.13).toFixed(2));
       var hose = '<g><path d="M31-46 C40-46 52-40 62-36" fill="none" stroke="#5a5470" stroke-width="6" stroke-linecap="round"/><path d="M60-42 L74-30 L68-26 L56-36z" fill="#8a90a0" stroke="#2a2440" stroke-width="2"/></g>';
       s += '<g class="w-guy"><g transform="translate(-60 156)"><rect x="-58" y="-34" width="40" height="30" rx="10" fill="#ff3d6e" stroke="#7a0f2c" stroke-width="2"/><circle cx="-50" cy="-3" r="6" fill="#2a2440"/><circle cx="-26" cy="-3" r="6" fill="#2a2440"/><path d="M-18-24 C-6-26 4-40 14-46" fill="none" stroke="#5a5470" stroke-width="5"/>' + body({ prop: hose }) + '</g></g>';
     } else if (v === 'hat') {
@@ -157,14 +157,14 @@ var PYLArt = (function () {
       var mallet = '<g class="w-mallet"><path d="M31-46 L31-96" stroke="#a0612f" stroke-width="5" stroke-linecap="round"/><rect x="12" y="-118" width="38" height="24" rx="5" fill="#c98a4b" stroke="#6a3a12" stroke-width="2.2"/><path d="M20-118 v24 M42-118 v24" stroke="#6a3a12" stroke-width="1.6"/></g>';
       s += '<g class="w-guy"><g transform="translate(76 156)">' + body({ prop: mallet }) + '</g></g>';
     }
-    s += '<g class="w-stamp"><g transform="translate(120 40) rotate(-6)"><rect x="-86" y="-22" width="172" height="44" rx="8" fill="#ff2b4a" stroke="#fff" stroke-width="3"/><text x="0" y="12" text-anchor="middle" font-family="Bungee, sans-serif" font-size="30" fill="#fff">WHAMMY!</text></g></g>';
+    s += '<g class="w-stamp"><g transform="translate(120 -18) rotate(-6)"><rect x="-86" y="-22" width="172" height="44" rx="8" fill="#ff2b4a" stroke="#fff" stroke-width="3"/><text x="0" y="12" text-anchor="middle" font-family="Bungee, sans-serif" font-size="30" fill="#fff">WHAMMY!</text></g></g>';
     return s + '</svg>';
   }
   // Fourth Whammy: he waves goodbye under an OUT stamp
   function outScene(name) {
-    return '<svg class="wscene w-out" viewBox="0 0 240 170" aria-hidden="true"><rect class="w-flash" x="0" y="0" width="240" height="170" fill="#ff2b4a"/>' +
+    return '<svg class="wscene w-out" viewBox="0 -46 240 216" aria-hidden="true"><rect class="w-flash" x="-200" y="-200" width="640" height="600" fill="#ff2b4a"/>' +
       '<g class="w-guy"><g transform="translate(120 160) scale(.95)">' + body({}) + '</g></g>' +
-      '<g class="w-stamp"><g transform="translate(120 36) rotate(-6)"><rect x="-100" y="-24" width="200" height="48" rx="8" fill="#1f1a2e" stroke="#ff2b4a" stroke-width="4"/><text x="0" y="12" text-anchor="middle" font-family="Bungee, sans-serif" font-size="26" fill="#ff2b4a">4 WHAMMIES</text></g></g></svg>';
+      '<g class="w-stamp"><g transform="translate(120 -18) rotate(-6)"><rect x="-100" y="-24" width="200" height="48" rx="8" fill="#1f1a2e" stroke="#ff2b4a" stroke-width="4"/><text x="0" y="12" text-anchor="middle" font-family="Bungee, sans-serif" font-size="26" fill="#ff2b4a">4 WHAMMIES</text></g></g></svg>';
   }
   return { head: head, headSVG: headSVG, body: body, prize: prize, PRIZES: PRIZES, ART: ART, scene: scene, outScene: outScene, SCENES: SCENES };
 })();
