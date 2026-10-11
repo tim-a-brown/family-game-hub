@@ -785,14 +785,17 @@ function hideExplain() {
   if (ex.el) ex.el.classList.remove('show');
   if (G) G.highlight(null);
 }
-// top or bottom of the view: wherever leaves more of the highlighted feature's screen area clear
+// top or bottom of the view: the bottom (above Return to play) unless the card would cover the highlighted part
+// there; then the top, unless it would cover it there too; then wherever more of it stays clear
 function placeExplain() {
   if (!ex.f || !G || !ex.el) return;
   const g = G.featureGeom(ex.f), ys = [];
-  for (const c of g.circ) { const p = G.projectNow(c.x, c.y, c.z); if (p) ys.push(p.y); }
+  for (const c of g.circ) { const p = G.projectNow(c.x, c.y, c.z); if (p) ys.push(p.y - c.r * 0.4, p.y + c.r * 0.4); }
   for (const pa of g.paths) for (let i = 0; i < pa.pts.length; i += 4) { const q = pa.pts[i], p = G.projectNow(q[0], q[1], q[2]); if (p) ys.push(p.y); }
-  const h = viewEl.clientHeight || 1, y0 = ys.length ? Math.min(...ys) : h / 2, y1 = ys.length ? Math.max(...ys) : h / 2;
-  const top = y0 > h - y1;   // more room above the feature than below it
+  const h = viewEl.clientHeight || 1, ch = ex.el.offsetHeight || 180, rb = retBtn ? viewEl.getBoundingClientRect().bottom - retBtn.getBoundingClientRect().top : 70;
+  const y0 = ys.length ? Math.min(...ys) : h / 2, y1 = ys.length ? Math.max(...ys) : h / 2;
+  const botTop = h - Math.max(rb, 64) - 14 - ch, topBot = 12 + ch + 8;   // where the card's edge would be in each place
+  const top = y1 < botTop ? false : y0 > topBot ? true : y0 > h - y1;
   ex.el.classList.toggle('top', top); ex.el.classList.toggle('bot', !top);
 }
 function lookTap(cx, cy) {

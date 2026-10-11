@@ -26,7 +26,9 @@ export default {
   fit: { top: 120, lookY: 0.47 },   // camera framing (optional; `topPhi` for the top-down view, default 82)
   anims: { name(g, t, W, H, msg) {...} },   // DMD pixel animations, see Display
   build(T) { ... },      // geometry: components, walls, inserts, models
-  rules: { ... }         // the game: events, lamps, modes, bonus
+  rules: { ... },        // the game: events, lamps, modes, bonus
+  explain: { ... },      // look-around instruction cards: what each part is and how it scores (see Table features)
+  cardFont: '"Cinzel", Georgia, serif'   // optional: the card's title font (default: display.font, else Bungee)
 };
 ```
 
@@ -296,6 +298,53 @@ runs at full rate while it does. The page offers it while a ball waits in the sh
 starts it, a drag pans, "Return to play" ends it, and a ball coming into play ends it too. `G.lookHint` (set by
 the page) takes every other turn of the launch hint on the display.
 
+## Table features (the look-around explainer)
+
+In look-around a quick tap (one finger, under 450 ms, moving less than 10 px; a click on a computer) on a part of
+the table rings it in 3D and shows its instruction card: the part's name and a sentence or two on how it scores and
+what it leads to. The card is printed card stock in a chrome holder (brass on `rails: 'gold'` tables) with a band in
+the table's `color`; it sits at the bottom, or at the top when it would cover the part. A tap on empty table, its
+close button, Return to play or the end of look-around closes it; a tap on another part switches to it. The Return to
+play button's hint says "Tap a feature to learn it".
+
+Describe your table's parts in `explain`, keyed by component id (one entry may cover several parts):
+
+```js
+explain: {
+  spinner: { name: 'Hall Spinner', text: '150 points every half turn. ...' },              // key = a component id
+  pops: { ids: ['pop1', 'pop2', 'pop3'], kind: 'Pop bumpers', name: 'Spirit Bumpers', text: '...' },
+  coffin: { ids: ['coffinSaucer'], at: [[262, 708, 34]], kind: 'Ball lock', name: 'The Coffin', text: '...' },
+  secretStairs: { ids: [], at: [[306, 462, 20]], lvl: 'cellar', kind: 'Hole', name: 'Secret Stairs', text: '...' },
+  boulder: { ids: [], at: [[170, 470, 34]], path: [[0, 470, 30], [380, 470, 30]], name: 'The Boulder', text: '...' },
+  hand: null                                                                               // never explain this part
+}
+```
+
+* `name` (the card's title) and `text` (plain language, no emoji) are required. Take every number from your rules
+  code, engine defaults included: a pop is 500 from the engine plus whatever your `event` adds; G.mult modes double it.
+  Say what a part leads to ("three hits light the lock", "a jackpot in multiball"), not every edge case.
+* `kind`: the small caption over the title (default: the part's type, e.g. "Pop bumper", "Ramp").
+* `ids`: the components this entry covers (default `[key]` when `key` is a component id). Each is ringed where it is
+  and can be tapped; ramps and wireforms (anything with `pts`) also light their path, orbits their route round the
+  arch. Covered ids get no generic card.
+* `at: [[x, y, r, dz]...]`: extra tap-and-ring circles for parts that are not components (a model, a raw wall) or to
+  enlarge one; `lvl` sets their level's height (`dz` adds to it). `path: [[x, y, z]...]`: an extra glowing line.
+* `area: true` makes the `at` circles a large area that loses to any smaller part under the finger (mini-playfields
+  are areas automatically).
+* `null` hides a part (hidden subways, ball locks under a toy, a score motor).
+
+Anything with an id that the map doesn't cover gets a generic card from its type (engine `GENERIC`: pop bumper,
+slingshot, in/outlanes, drop targets, targets, spinner, scoop, kickback, Magna-Save, ramp, orbit, disc...), quoting
+the engine's default points; flippers, gates, diverters and the plunger never get one. Explain everything your rules
+score differently. Check with `__pin.features()` (generic ones are flagged) and by tapping round the table (in
+headless Chromium one frame can take seconds, so set `window.__pinTapMs = 60000` before real CDP taps).
+
+Engine API: `G.features()` (the list: `{key, name, text, kind, comps, generic}`), `G.featureGeom(f)` (its circles
+`{x, y, z, r, area}` and paths), `G.pickFeature(x, y)` (the feature under a canvas point in CSS px, for the camera as
+it is or is easing to; deep inside a small part beats the edge of a big one), `G.highlight(f | null)` (the pulsing
+ring, halo and ping in the table colour, drawn over everything; moving parts keep their ring),
+`G.projectNow(x, y, z)` (a table point on the canvas for the live camera).
+
 ## Load time and battery
 
 `createGame` records the time of each build phase in `G.marks` (paint, pmrem, statics, components, batch, compile,
@@ -309,7 +358,9 @@ loops.
 
 In the page (`games/pinball.html`), `window.__pin`:
 `start(id, balls)`, `ready()`, `get()` (state, balls, stats, frame times, draw calls), `flip(side, on)`,
-`launch(p)`, `nudge()`, `look(z, px, py)` (look-around; `look(null)` returns), `speed(k)`, `auto(on, skill)`, `sim(sec, skill)` (headless autopilot inside the live
+`launch(p)`, `nudge()`, `look(z, px, py)` (look-around; `look(null)` returns), `features()` (every explained
+part, generic ones flagged), `featurePoint(key)` (where a part is on screen now, client px, for a real tap),
+`explain(key)` (open its card while looking), `explained()` (the open card), `speed(k)`, `auto(on, skill)`, `sim(sec, skill)` (headless autopilot inside the live
 game), `run(sec)`, `place(x, y, vx, vy, lvl)`, `set(key, v)` (`G.b`), `comp(id)`, `trigger(id, ...)`, `mode(name)`,
 `render()`, `headless(id, balls)` (a game with no renderer: `g.sim(600, 0.85)` runs 600 s), `audio()`,
 `plunger()` (the knob's layout: lane x, travel, grab rect), `ui(ms)` (draw the plunger now; `ms` into a snap).

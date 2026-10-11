@@ -73,6 +73,7 @@ const GENERIC = {
   popUpTargets: { kind: 'Targets', name: 'Pop-up targets', text: 'Rise out of the floor when lit: knock them back down.' },
   ferrisWheel: { kind: 'Toy', name: 'Wheel', text: 'Carries the ball up and drops it somewhere new.' },
   fan: { kind: 'Toy', name: 'Fan', text: 'Blows the ball across the table while it runs.' },
+  hologram: { kind: 'Hologram', name: 'Hologram', text: 'A projected figure: the ball can pass right through it.' },
   powerfield: { kind: 'Playfield', name: 'Powerfield', text: 'A vertical field with no flippers: the flipper buttons fire magnets that fling the ball up.' },
   tiltingMiniField: { kind: 'Playfield', name: 'Tilting maze', text: 'The flipper buttons tilt it left and right.' },
   miniField: { kind: 'Playfield', name: 'Mini playfield', text: 'A small playfield of its own on another level.' }
@@ -106,7 +107,18 @@ function compGeom(c, circ, paths, lvlZ) {
     case 'kickback': add(c.x, c.y, 22); return;
     case 'magnet': case 'magnaSave': case 'ringCatch': case 'spinningDisc': add(c.x, c.y, (o.r || 30) + 4); return;
     case 'fan': case 'gumballMachine': add(c.x, c.y, 28); return;
-    case 'orbit': for (const L of [o.a, o.b]) add((L[0] + L[2]) / 2, (L[1] + L[3]) / 2, Math.hypot(L[2] - L[0], L[3] - L[1]) / 2 + 4); return;
+    case 'orbit': {
+      const m = [o.a, o.b].map(L => [(L[0] + L[2]) / 2, (L[1] + L[3]) / 2]).sort((p, q) => p[0] - q[0]);
+      for (const L of [o.a, o.b]) add((L[0] + L[2]) / 2, (L[1] + L[3]) / 2, Math.hypot(L[2] - L[0], L[3] - L[1]) / 2 + 4);
+      // the usual orbit (a lane up each side, round under the top arch): draw its route, left to right
+      const W = c.T.W, Lt = c.T.L, ax = W / 2, ay = Lt - 258;
+      if (m[0][0] < W * 0.25 && m[1][0] > W * 0.75 && m[0][1] < ay && m[1][1] < ay) {
+        const r0 = ax - m[0][0], r1 = m[1][0] - ax, pts = [[m[0][0], m[0][1], z + 3]];
+        for (let i = 0; i <= 24; i++) { const k = i / 24, a = PI * (1 - k), r = r0 + (r1 - r0) * k; pts.push([ax + Math.cos(a) * r, ay + Math.sin(a) * r, z + 3]); }
+        pts.push([m[1][0], m[1][1], z + 3]); paths.push({ pts, key: 'orbit:' + m.join() });
+      }
+      return;
+    }
     case 'ramp': add(c.x, c.y, c.w / 2 + 4); paths.push({ pts: c.pts.map(p => [p[0], p[1], z + p[2]]) }); return;
     case 'movingLauncher': add((o.x0 + o.x1) / 2, o.y, (o.x1 - o.x0) / 2 + 14); return;
     case 'cannon': add(c.x, c.y, 26, z + 10); if (o.load) add(o.load[0], o.load[1], (o.load[2] || 12) + 8, lvlZ(c.lvl)); return;
@@ -783,6 +795,9 @@ export function createGame(def, opts = {}) {
   function featGeom(f) {
     const circ = [], paths = [];
     for (const c of f.comps) compGeom(c, circ, paths, lvlZ);
+    // the two directions of one orbit share their lanes and route: ring and draw them once
+    for (let i = circ.length - 1; i > 0; i--) if (circ.slice(0, i).some(q => Math.abs(q.x - circ[i].x) < 1 && Math.abs(q.y - circ[i].y) < 1 && Math.abs(q.r - circ[i].r) < 1)) circ.splice(i, 1);
+    for (let i = paths.length - 1; i > 0; i--) if (paths[i].key && paths.slice(0, i).some(q => q.key === paths[i].key)) paths.splice(i, 1);
     const z = lvlZ(f.lvl);
     if (f.at) for (const p of f.at) circ.push({ x: p[0], y: p[1], r: p[2] || 20, z: z + (p[3] || 0), area: f.area });
     if (f.path) paths.push({ pts: f.path.map(p => [p[0], p[1], p[2] != null ? p[2] : z]) });

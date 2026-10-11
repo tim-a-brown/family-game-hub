@@ -70,7 +70,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     </div>
   </div>
   <div class="deck wood" id="deck"><canvas id="dk" aria-label="TNT plunger: drag down and let go to fire"></canvas></div>
-  <div class="hint">Hold Space (or drag down) to load the TNT, let go to fire. Slide back up to cancel. P pauses.</div>
+  <div class="hint">Hold Space or drag down to load the TNT, let go to fire. P pauses.</div>
 </div>
 <script>
 (function () {
@@ -467,6 +467,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       var a = sc[j - 1], b = sc[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1, df = (d - 6 * WS) / d;
       if (j === 1) { b.x -= dx * df; b.y -= dy * df; } else { a.x += dx * df * .5; a.y += dy * df * .5; b.x -= dx * df * .5; b.y -= dy * df * .5; }
     }
+    // the scarf lies on roofs and the street instead of hanging through them
+    if (!R.noCol) for (var k = 1; k < sc.length; k++) {
+      var s = sc[k];
+      for (var c2 = 0; c2 < cands.length; c2++) {
+        var c = cands[c2];
+        if (s.x <= c.x0 - 1.5 || s.x >= c.x1 + 1.5 || s.y <= c.y0 - 1.5 || s.y >= c.y1 + 1.5) continue;
+        var pt = s.y - c.y0 + 1.5, pl = s.x - c.x0 + 1.5, pr = c.x1 + 1.5 - s.x, m = Math.min(pt, pl, pr);
+        if (m === pt) { s.y = c.y0 - 1.5; s.px = s.x - (s.x - s.px) * .6; s.py = s.y; }
+        else if (m === pl) { s.x = c.x0 - 1.5; s.px = s.x; } else { s.x = c.x1 + 1.5; s.px = s.x; }
+      }
+    }
   }
   // Each body part is a ball; each collider is a box with rounded corners (ball vs box: push out along
   // the line to the closest point). Rounded corners matter: a hand that ends up on a roof edge rolls
@@ -614,7 +625,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       case 'car':
         if (sp > 120) {
           c.cool = t + .5; c.car.bob = 1;
-          if (sp > 320 && core) {
+          if (sp > 300) {
             var was = c.car.dent; c.car.dent = Math.min(1, c.car.dent + sp / 1400);
             if (!c.car.crack && sp > 420) { c.car.crack = 1; for (var g2 = 0; g2 < 10; g2++) parts.push({ k: 'glass', x: c.x0 + 20 + Math.random() * 20, y: c.y0 - 4, vx: (Math.random() - .5) * 200, vy: -60 - Math.random() * 160, life: 1, max: 1, s: 1.5 + Math.random() * 2, rot: Math.random() * 6, vr: (Math.random() - .5) * 24 }); }
             if (c.car.dent > was + .05) Snd.crumple();
@@ -1620,7 +1631,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function aimHint() {
     var y = 66 + (wind ? 30 : 0), a = .8 + Math.sin(t * 4) * .2, pulling = drag || keyHold, bw = Math.min(310, W - 24);
     var l1 = pulling ? 'Let go to fire!' : FINE ? 'Hold Space or drag down to pull' : 'Pull down anywhere to load the TNT',
-        l2 = pulling ? 'Watch the cannon angle. Slide back up to cancel' : 'The cannon swings: let go at the right moment';
+        l2 = pulling ? (drag ? 'Watch the cannon angle. Slide back up to cancel' : 'Watch the cannon angle as you let go') : 'The cannon swings: let go at the right moment';
     g.globalAlpha = a; g.fillStyle = 'rgba(20,8,34,.74)'; rr(W / 2 - bw / 2, y - 18, bw, 44, 14); g.fill();
     txt(l1, W / 2, y - 3, 15, pulling ? '#ffd84a' : '#fff', 'center', 0);
     txt(l2, W / 2, y + 14, 11.5, '#ffd0b8', 'center', 0);
@@ -1972,7 +1983,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     },
     pel: function () { var p = rag.P[PEL]; return { x: p.x, y: p.y, vx: (p.x - p.px) / HS, vy: (p.y - p.py) / HS }; },
     parts: function () { return rag.P.map(function (p) { return { x: p.x, y: p.y, vx: (p.x - p.px) / HS, vy: (p.y - p.py) / HS }; }); },
-    jack: function () { return jack && { x0: jack.x0, x1: jack.x1, y0: jack.y0, padX: jack.padX, hw: jack.hw }; },
+    jack: function () { return jack && { x0: jack.x0, x1: jack.x1, y0: jack.y0, padX: jack.padX, hw: jack.hw, touch: jack.touch && jack.touch.x }; },
     tgt: function () { return tgt && { x0: tgt.x0, x1: tgt.x1, y0: tgt.y0, padX: tgt.padX, hw: tgt.hw }; },
     sea: function () { return SEA_X; },
     state: function () { return state; }, res: function () { return res; }, cur: function () { return cur; },
