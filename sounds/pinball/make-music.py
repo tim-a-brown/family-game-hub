@@ -383,57 +383,204 @@ def neon():
                 'arp': (0.4, [lambda x: reverb(x, 3.0, 0.08, 7000, 0.5)])}
 
 
+def circ_fx(fn):
+    """Apply a bus effect (IIR filter, saturation) seamlessly: run it over three copies and keep the middle one."""
+    return lambda x: fn(np.tile(x, 3))[len(x):2 * len(x)]
+
+
+def organ_pipe(f, dur, reed=1.0, flute=0.6, vol=1.0, punch=1.0):
+    """Fairground band-organ note: a brassy reed (trumpet) rank, a band-limited narrow pulse through a
+    horn formant, and a slightly sharp flute rank so the two beat gently. Punchy onset: the pipe speaks a
+    touch flat and settles, with a short chiff of wind; the tone sags a little after the attack."""
+    n = int((dur + 0.05) * SR)
+    t = np.arange(n) / SR
+    scoop = 1 - 0.012 * punch * np.exp(-t / 0.018)
+    out = np.zeros(n)
+    if reed:
+        ph = 2 * np.pi * np.cumsum(f * scoop) / SR + rng.random() * 6
+        x = np.zeros(n)
+        for k in range(1, int(min(7000, SR * 0.45) / f) + 1):
+            x += np.sin(np.pi * k * 0.28) / k * np.sin(k * ph)
+        out += reed * (bandpass(x, 1700, 0.9) * 0.9 + lowpass(x, 2500) * 0.5)
+    if flute:
+        ph = 2 * np.pi * np.cumsum(f * 1.0025 * scoop) / SR + rng.random() * 6
+        out += flute * 0.6 * (np.sin(ph) + 0.3 * np.sin(2 * ph) + 0.12 * np.sin(3 * ph))
+    chiff = bandpass(rng.standard_normal(n), min(f * 3, 7000), 2) * np.exp(-t / 0.012) * 0.25 * punch
+    e = env(n, 0.006, 0.04) * (0.78 + 0.22 * np.exp(-t / 0.12))
+    return (out * e + chiff) * vol
+
+
+def tuba(f, dur):
+    """Oom-pah tuba: additive brass whose upper harmonics flare on the attack (the 'blat') then mellow."""
+    n = int((dur + 0.06) * SR)
+    t = np.arange(n) / SR
+    ph = 2 * np.pi * np.cumsum(f * (1 - 0.02 * np.exp(-t / 0.025))) / SR
+    br = np.exp(-t / 0.07)
+    x = np.zeros(n)
+    for k in range(1, int(min(3000, SR * 0.45) / f) + 1):
+        x += np.exp(-(k - 1) / (1.5 + 5 * br)) / k * np.sin(k * ph)
+    return x * env(n, 0.012, 0.06) * (0.7 + 0.3 * br)
+
+
+def march_snare(acc=1.0):
+    n = int(0.22 * SR)
+    t = np.arange(n) / SR
+    wires = (bandpass(rng.standard_normal(n), 3500, 0.7) + highpass(rng.standard_normal(n), 2000) * 0.5) * np.exp(-t / 0.055)
+    body = (np.sin(2 * np.pi * 185 * t) + 0.4 * np.sin(2 * np.pi * 330 * t)) * np.exp(-t / 0.03)
+    return (wires * 0.7 + body * 0.5) * acc
+
+
+def cymbal(decay=0.05, hp=6000, dur=None):
+    """Metallic cymbal: clashing square waves at inharmonic ratios plus hiss. Short = hand cymbal 'chick', long = crash."""
+    n = int((dur or decay * 6) * SR)
+    t = np.arange(n) / SR
+    metal = sum(np.sign(np.sin(2 * np.pi * fr * 1.6 * t + rng.random() * 6)) for fr in (205.3, 304.4, 369.6, 522.7, 540.0, 800.0))
+    x = highpass(metal, hp) * 0.25 + highpass(rng.standard_normal(n), hp + 1000) * 0.5
+    return lowpass(x, 11000) * np.exp(-t / decay) * np.minimum(t / 0.001, 1)
+
+
+def xylo(f, dur=0.6):
+    return modal(f, dur, [1, 3.0, 6.1], [0.22, 0.07, 0.025], [1, 0.3, 0.08], 0.002, 0.4)
+
+
+def glock(f, dur=1.4):
+    return modal(f, dur, [1, 2.76, 5.4, 8.93], [0.9, 0.35, 0.12, 0.05], [1, 0.35, 0.12, 0.05], 0.0015, 0.2)
+
+
+def slide_whistle(pts, dur):
+    """Slide whistle: a near-pure tone gliding through (fraction-of-note, midi) points, with a little breath."""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    u, m = zip(*pts)
+    f = mtof(np.interp(t / dur, u, m)) * (1 + 0.004 * np.sin(2 * np.pi * 6 * t))
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    breath = bandpass(rng.standard_normal(n), 2200, 1.2) * 0.05
+    return (np.sin(ph) + 0.06 * np.sin(2 * ph) + breath) * env(n, 0.03, 0.05)
+
+
 def midway():
-    # a quiet steam-calliope waltz in F (3/4 at 72 bpm): layered detuned pipes with a breathy chiff, an oom-pah-pah
-    # of bass pipe and chord pipes, a sparse glockenspiel answer, all in a big tent with a long reverb
-    beat = 60 / 72
-    bar = 3 * beat
-    tr = Track(bar * 16)
-
-    def pipe(f, dur, vol=1.0, bright=1.0):
-        """Calliope whistle: a steam-blown pipe. Two mistuned voices of odd-and-even partials, slow vibrato, breath noise."""
-        n = int(dur * SR)
-        t = np.arange(n) / SR
-        out = np.zeros(n)
-        for cents in (-7, 7):
-            ff = f * 2 ** (cents / 1200)
-            vib = 1 + 0.004 * np.sin(2 * np.pi * 5.4 * t + rng.random() * 6) * np.clip(t / 0.25, 0, 1)
-            ph = 2 * np.pi * np.cumsum(ff * vib) / SR
-            for k, a in ((1, 1.0), (2, 0.5), (3, 0.42 * bright), (4, 0.2 * bright), (5, 0.12 * bright), (6, 0.06 * bright)):
-                if ff * k < SR * 0.45:
-                    out += a * np.sin(k * ph + rng.random() * 6)
-        out /= 2.3
-        breath = bandpass(rng.standard_normal(n), min(f * 3, 6000), 2.5) * 0.08 + bandpass(rng.standard_normal(n), min(f * 1.0, 3000), 8) * 0.05
-        chiff = bandpass(rng.standard_normal(n), min(f * 4, 8000), 1.5) * np.exp(-t / 0.025) * 0.5
-        e = env(n, 0.035, 0.18)
-        return (out * e + breath * e + chiff) * vol * 0.5
-
-    chords = {'F': ([65, 69, 72], 41), 'C': ([64, 67, 70, 72], 48), 'Bb': ([62, 65, 70], 46), 'Gm': ([62, 67, 70], 43)}
-    prog = ['F', 'C', 'Bb', 'F', 'F', 'C', 'Bb', 'F', 'F', 'Gm', 'C', 'F', 'F', 'Bb', 'C', 'F']
-    for b, name in enumerate(prog):
-        notes, bass = chords[name]
+    # an upbeat circus march in C (2/4, 137 bpm), 32 bars: A theme with chromatic runs, A' (with a tenor
+    # counter-line), a bouncy polka trio in F with glockenspiel, then a stop-time chromatic climb and a
+    # turnaround, ending with a snare roll and a slide whistle back into the top. A bright fairground band
+    # organ (reed + flute + piccolo ranks) over oom-pah tuba and organ chords, bass drum, march snare and
+    # hand cymbals, xylophone on the runs. Every 16th note is exactly 3500 samples, so the loop is 28.0 s.
+    s16 = 3500 / SR
+    bar = 8 * s16
+    tr = Track(bar * 32)
+    CH = {'C': ([64, 67, 72], 48, 43), 'A7': ([61, 64, 67], 45, 40), 'Dm': ([62, 65, 69], 50, 45),
+          'G7': ([62, 65, 71], 43, 38), 'D7': ([62, 66, 72], 50, 45), 'E7': ([62, 64, 68], 52, 47),
+          'F': ([65, 69, 72], 41, 36), 'Bb': ([62, 65, 70], 46, 41), 'C7': ([64, 67, 70], 48, 43)}
+    prog = ['C', 'A7', 'Dm', 'G7', 'C', 'A7', 'D7', 'G7',
+            'C', 'A7', 'Dm', 'G7', 'C', 'E7', ('F', 'G7'), 'C',
+            'F', 'F', 'C7', 'F', 'F', 'Bb', 'C7', 'D7',
+            'G7', 'G7', 'C', 'A7', 'Dm', 'G7', 'C', 'G7']
+    # the tune, one list per bar of (16th within the bar, midi, length in 16ths); original, written for this table
+    a1 = [[(0, 67, 1), (1, 68, 1), (2, 69, 1), (3, 70, 1), (4, 72, 2), (6, 76, 2)],
+          [(0, 79, 2), (2, 78, 1), (3, 77, 1), (4, 76, 2), (6, 73, 2)],
+          [(0, 74, 2), (2, 77, 2), (4, 81, 2), (6, 77, 2)],
+          [(0, 79, 1), (1, 78, 1), (2, 79, 1), (3, 81, 1), (4, 79, 2), (6, 77, 2)]]
+    tune = a1 + [
+        [(0, 76, 1), (1, 75, 1), (2, 76, 1), (3, 79, 1), (4, 84, 4)],
+        [(0, 82, 2), (2, 81, 1), (3, 80, 1), (4, 79, 1), (5, 78, 1), (6, 77, 1), (7, 76, 1)],
+        [(0, 78, 2), (2, 74, 2), (4, 72, 2), (6, 69, 2)],
+        [(0, 71, 2), (2, 74, 2), (4, 77, 2)]] + a1 + [
+        [(0, 76, 1), (1, 75, 1), (2, 76, 1), (3, 79, 1), (4, 84, 4)],
+        [(0, 83, 2), (2, 82, 1), (3, 81, 1), (4, 80, 2), (6, 76, 2)],
+        [(0, 77, 2), (2, 81, 2), (4, 79, 2), (6, 77, 1), (7, 74, 1)],
+        [(0, 72, 2), (2, 67, 2), (4, 72, 2)],
+        # trio (polka) in F
+        [(0, 69, 2), (2, 72, 2), (4, 77, 2), (6, 76, 1), (7, 77, 1)],
+        [(0, 81, 3), (3, 79, 1), (4, 77, 2), (6, 72, 2)],
+        [(0, 70, 2), (2, 72, 1), (3, 70, 1), (4, 79, 2), (6, 76, 2)],
+        [(0, 77, 4), (4, 72, 2), (6, 69, 2)],
+        [(0, 69, 2), (2, 72, 2), (4, 77, 2), (6, 76, 1), (7, 77, 1)],
+        [(0, 82, 3), (3, 81, 1), (4, 77, 2), (6, 74, 2)],
+        [(0, 79, 1), (1, 78, 1), (2, 79, 1), (3, 76, 1), (4, 72, 2), (6, 70, 2)],
+        [(0, 66, 2), (2, 69, 2), (4, 72, 2), (6, 74, 2)],
+        # stop-time chromatic climb, turnaround
+        [(k, 71 + k, 1) for k in range(8)],
+        [(0, 79, 2), (2, 78, 1), (3, 79, 1), (4, 80, 1), (5, 81, 1), (6, 82, 1), (7, 83, 1)],
+        [(0, 84, 4), (4, 79, 2), (6, 76, 2)],
+        [(0, 82, 1), (1, 81, 1), (2, 80, 1), (3, 79, 1), (4, 78, 1), (5, 77, 1), (6, 76, 1), (7, 73, 1)],
+        [(0, 74, 2), (2, 77, 2), (4, 81, 2), (6, 77, 2)],
+        [(0, 79, 2), (2, 77, 2), (4, 74, 2), (6, 71, 2)],
+        [(0, 72, 2), (2, 76, 2), (4, 79, 2), (6, 84, 2)],
+        [(0, 83, 2)]]
+    walks = {7: [(0, 43, 4), (4, 45, 2), (6, 47, 2)], 15: [(0, 36, 4), (4, 38, 2), (6, 40, 2)],
+             23: [(0, 50, 4), (4, 48, 2), (6, 45, 2)], 31: [(0, 43, 4), (4, 45, 2), (6, 47, 2)]}
+    counter = {8: [52], 9: [49], 10: [50], 11: [53], 12: [52], 13: [56], 14: [57, 55], 15: [52]}
+    stop = (24, 25)
+    trio = range(16, 24)
+    for b in range(32):
         t0 = b * bar
-        tr.add('bass', pipe(mtof(bass), beat * 0.9, 0.9, 0.5), t0)
-        tr.add('bass', pipe(mtof(bass + 12), beat * 0.9, 0.35, 0.5), t0 + 0.01)
-        for k in (1, 2):
-            for i, m in enumerate(notes):
-                tr.add('chords', pipe(mtof(m), beat * 0.55, 0.42 / len(notes) ** 0.5, 0.8), t0 + k * beat + 0.012 * i)
-    # the tune, in quarter and half notes (bar, beat, midi, beats)
-    melody = [(0, 0, 72, 1), (0, 1, 69, 1), (0, 2, 65, 1), (1, 0, 67, 2), (1, 2, 69, 1), (2, 0, 70, 1), (2, 1, 69, 1), (2, 2, 67, 1), (3, 0, 65, 3),
-              (4, 0, 72, 1), (4, 1, 74, 1), (4, 2, 76, 1), (5, 0, 77, 2), (5, 2, 76, 1), (6, 0, 74, 1), (6, 1, 72, 1), (6, 2, 70, 1), (7, 0, 69, 3),
-              (8, 0, 69, 1), (8, 1, 70, 1), (8, 2, 72, 1), (9, 0, 74, 2), (9, 2, 72, 1), (10, 0, 70, 1), (10, 1, 69, 1), (10, 2, 67, 1), (11, 0, 72, 3),
-              (12, 0, 72, 1), (12, 1, 69, 1), (12, 2, 65, 1), (13, 0, 67, 2), (13, 2, 70, 1), (14, 0, 69, 1), (14, 1, 67, 1), (14, 2, 64, 1), (15, 0, 65, 3)]
-    for b, k, m, d in melody:
-        when = b * bar + k * beat
-        tr.add('lead', pipe(mtof(m + 12), d * beat * 0.92, 0.75, 1.0), when)
-        tr.add('lead', pipe(mtof(m), d * beat * 0.92, 0.3, 0.7), when + 0.008)
-    # a glockenspiel answers the ends of phrases
-    for b, k, m in [(3, 1, 84), (3, 2, 81), (7, 1, 88), (7, 2, 84), (11, 1, 86), (11, 2, 84), (15, 1, 84), (15, 1.5, 81), (15, 2, 77)]:
-        tr.add('glock', music_box(mtof(m), 2.2) * 0.5, b * bar + k * beat)
-    return tr, {'lead': (0.8, [lambda x: chorus(x, 0.003, 0.35, 0.011, 0.4), lambda x: reverb(x, 2.4, 0.03, 5500, 0.42)]),
-                'chords': (0.55, [lambda x: chorus(x, 0.003, 0.3), lambda x: reverb(x, 2.4, 0.03, 4500, 0.45)]),
-                'bass': (0.6, [lambda x: reverb(x, 1.8, 0.02, 2500, 0.3)]),
-                'glock': (0.35, [lambda x: reverb(x, 3.5, 0.05, 7000, 0.6)])}
+        halves = prog[b] if isinstance(prog[b], tuple) else (prog[b], prog[b])
+        # oom: tuba and bass drum on the beats (root, then the fifth below), walking bass at phrase ends
+        if b in stop:
+            bass = [(0, CH[halves[0]][1], 4)]
+        elif b in walks:
+            bass = walks[b]
+        else:
+            bass = [(0, CH[halves[0]][1], 4), (4, CH[halves[1]][1 if halves[0] != halves[1] else 2], 4)]
+        for k, m, ln in bass:
+            tr.add('tuba', tuba(mtof(m), min(ln, 2.2) * s16), t0 + k * s16)
+        for k in ((0,) if b in stop else (0, 4)):
+            tr.add('kick', drum(95, 52, 0.35, 0.15, 250) * (1.0 if k == 0 else 0.75), t0 + k * s16)
+        # pah: short organ chords on the off-beats (one big hit in stop time)
+        for k, name in ([(0, halves[0])] if b in stop else [(2, halves[0]), (6, halves[1])] if b != 31 else [(2, halves[0])]):
+            for i, m in enumerate(CH[name][0]):
+                tr.add('pah', organ_pipe(mtof(m), (2.5 if b in stop else 1.2) * s16, 0.7, 0.6, 0.5), t0 + k * s16 + 0.004 * i)
+        # snare and hand cymbals: off-beat 'chick', ghost pickups, ruffs into phrase ends, 16ths in stop time
+        if b in stop:
+            sn = [(k, 0.25 + 0.05 * k + (0.3 if b == 25 else 0)) for k in range(8)]
+        elif b == 31:
+            sn = [(2, 0.8)] + [(4 + k / 2, 0.3 + 0.08 * k) for k in range(8)]
+        elif b in trio:
+            sn = [(2, 0.55), (6, 0.55)]
+        elif b % 4 == 3:
+            sn = [(2, 0.8), (4, 0.4), (5, 0.5), (6, 0.65), (7, 0.8)]
+        else:
+            sn = [(2, 0.8), (3, 0.25), (6, 0.8), (7, 0.3)]
+        for k, a in sn:
+            tr.add('snare', march_snare(a), t0 + k * s16)
+        if b in stop:
+            tr.add('cym', cymbal(0.25, 5000) * 0.8, t0)
+        else:
+            for k in (2, 6):
+                tr.add('cym', cymbal(0.045) * (0.4 if b in trio else 0.5), t0 + k * s16)
+        if b in (0, 16, 26):
+            tr.add('cym', cymbal(0.9, 4000, 2.5) * 0.9, t0)
+        # the tune: brassy band organ with a piccolo rank an octave up; the trio is lighter and flutier
+        for k, m, ln in tune[b]:
+            when = t0 + k * s16
+            d = ln * s16 * (0.92 if ln == 1 else 0.78)
+            if b in trio:
+                tr.add('lead', organ_pipe(mtof(m), d, 0.5, 1.0, 0.9, 0.8), when)
+                tr.add('glock', glock(mtof(m + 12), 1.2) * 0.5, when)
+            else:
+                tr.add('lead', organ_pipe(mtof(m), d, 1.0, 0.6, 1.0), when)
+                tr.add('lead', organ_pipe(mtof(m + 12), d, 0.0, 1.0, 0.28, 0.5), when)
+            if b in (5, 13) or 24 <= b <= 27:
+                tr.add('xylo', xylo(mtof(m + 12)) * 0.8, when)
+        if b in counter:
+            for i, m in enumerate(counter[b]):
+                ln = 8 / len(counter[b])
+                tr.add('counter', organ_pipe(mtof(m), ln * s16 * 0.9, 0.8, 0.5, 0.5, 0.4), t0 + i * ln * s16)
+    # glockenspiel dings on the big notes, slide-whistle flourishes into the trio and back to the top
+    for b, k in ((4, 4), (12, 4), (26, 0)):
+        tr.add('glock', glock(mtof(96), 1.6) * 0.45, b * bar + k * s16)
+    tr.add('whistle', slide_whistle([(0, 72), (0.15, 70), (1, 84)], 2 * s16), 15 * bar + 6 * s16)
+    tr.add('whistle', slide_whistle([(0, 67), (0.5, 74), (1, 88)], 6 * s16), 31 * bar + 2 * s16)
+    tent = lambda w: (lambda x: reverb(x, 1.4, 0.015, 6000, w))
+    return tr, {'lead': (0.55, [lambda x: chorus(x, 0.002, 0.5, 0.008, 0.25), tent(0.24)]),
+                'counter': (0.5, [tent(0.3)]),
+                'pah': (0.5, [tent(0.24)]),
+                'tuba': (0.6, [tent(0.12)]),
+                'kick': (0.55, [tent(0.12)]),
+                'snare': (0.22, [tent(0.2)]),
+                'cym': (0.16, [tent(0.15)]),
+                'xylo': (0.35, [tent(0.25)]),
+                'glock': (0.22, [tent(0.3)]),
+                'whistle': (0.3, [tent(0.3)])}
 
 
 def main():

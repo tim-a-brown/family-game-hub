@@ -141,7 +141,7 @@ export function createGame(def, opts = {}) {
     ao(shape) { T.aos.push(shape); },
     spline, arcPts, deg, BR, MAT
   };
-  for (const name in COMPONENTS) T[name] = (o = {}) => T.comp(new COMPONENTS[name](T, o));
+  for (const name in COMPONENTS) T[name] = (o = {}) => { const c = new COMPONENTS[name](T, o); c.type = name; return T.comp(c); };
   T.lower = o => lower(T, o); T.shooter = o => shooter(T, o);
   G.T = T;
 
