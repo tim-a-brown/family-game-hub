@@ -628,9 +628,10 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
   // ═══ Full game: levels 1 to 13 in a row, one total ═══════════════════════
-  // Starting level 1 starts a run. It goes on while the level started is the one it's on: the next level after a
-  // clear, or the same level again after running out of balls. Any other level ends it, with no score. Only the
-  // attempt that clears a level adds to the total. {v, cur: level it's on, lv: [score that cleared each level], tries, started}
+  // Starting level 1 starts a run, like a credit on an arcade machine: it goes on while you clear each level in turn.
+  // Running out of balls ends it, and its total (every level's score, the last one included) goes on the Full game
+  // board; a retry of that level only counts for the level's own board. Starting any other level ends it with no
+  // entry. {v, cur: level it's on, lv: [each level's score], tries (always 0 now), started}
   function loadRun() { try { var r = JSON.parse(localStorage.getItem(RUNK)); return r && r.v === 1 && r.cur >= 1 && r.cur <= NL && Array.isArray(r.lv) ? r : null; } catch (e) { return null; } }
   function saveRun() { try { if (run) localStorage.setItem(RUNK, JSON.stringify(run)); else localStorage.removeItem(RUNK); } catch (e) {} }
   function runTotal(r) { return (r ? r.lv : []).reduce(function (a, b) { return a + (Number(b) || 0); }, 0); }
@@ -672,9 +673,9 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       '<h3>Extreme Fever</h3><p>When the ball heads for the last orange peg, everything slows down. Hit it to start <b>Extreme Fever</b>: the bottom turns into bonus buckets worth <b>10,000</b>, <b>50,000</b> or <b>100,000</b>.</p>' +
       '<h3>Levels</h3><p>There are ' + NL + ' levels. Clear a level to unlock the next one. Later levels have pegs that move.</p>' +
       '<h3>High scores</h3><ul><li><b>Level boards</b>: every level has its own high-score board. When a level ends, your score for it can go on that level\'s board.</li>' +
-      '<li><b>Full game</b>: start at level 1 and clear every level in order, all the way to level ' + NL + '. Your scores for the levels add up to one total for the Full game board.</li>' +
-      '<li>Ran out of balls? Play the same level again and the full game goes on. Only the try that clears a level counts toward the total.</li>' +
-      '<li>Starting any other level (skipping ahead, or replaying an earlier one) ends the full game. Starting level 1 begins a new one.</li></ul>'
+      '<li><b>Full game</b>: start at level 1 and clear the levels in order. Every level\'s score adds to one total, like a single credit on an arcade machine.</li>' +
+      '<li>Run out of balls and the full game is over: its total, including the level you were on, goes on the Full game board. You can try that level again, but only for the level\'s own board.</li>' +
+      '<li>Clearing level ' + NL + ' finishes the full game. Starting any other level (skipping ahead, or replaying an earlier one) ends it with no score. Starting level 1 begins a new one.</li></ul>'
   });
 
   // the level on the table (or picked on the level screen); its board, with the Full game and the other levels a tap away
@@ -1192,21 +1193,24 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     });
   }
   // a finished full game in Past games: the total, and each level's score as a round
-  function recordRun(r) {
-    var tot = runTotal(r), hiR = ArcadeHi.list(RUNB), lv = [];
+  // outAt: the level the balls ran out on (null when all the levels were cleared)
+  function recordRun(r, outAt) {
+    var tot = runTotal(r), hiR = ArcadeHi.list(RUNB), lv = [], upto = outAt || NL;
     for (var i = 0; i < NL; i++) lv.push(Number(r.lv[i]) || 0);
     var bi = lv.indexOf(Math.max.apply(null, lv));
+    var played = lv.slice(0, upto);
     Kit.record(KEY, {
-      detail: { run: 1, lv: lv, of: NL, rt: r.tries || 0, ma: L.master,
+      detail: { run: 1, lv: played, of: NL, out: outAt || 0, ma: L.master,
         hr: tot > 0 && (hiR.length < ArcadeHi.max || tot > hiR[hiR.length - 1].score) ? hiR.filter(function (x) { return x.score >= tot; }).length + 1 : 0, hb: hiR.length ? hiR[0].score : 0 },
-      started: r.started, mode: 'All ' + NL + ' levels in a row',
+      started: r.started, mode: outAt ? 'Full game, out on level ' + outAt : 'All ' + NL + ' levels in a row',
       players: [{ name: L.who, score: tot }], winner: null,
-      rounds: { labels: lv.map(function (s, i) { return 'Level ' + (i + 1); }), scores: lv.map(function (s) { return [s]; }) },
-      highlights: ['Cleared all ' + NL + ' levels in a row', 'Best level: ' + (bi + 1) + ' (' + LEVELS[bi].name + '), ' + fmt(lv[bi]),
-        r.tries ? (r.tries === 1 ? '1 retry along the way' : r.tries + ' retries along the way') : 'Every level cleared on the first try'],
-      summary: 'Full game · all ' + NL + ' levels · ' + fmt(tot),
+      rounds: { labels: played.map(function (s, i) { return 'Level ' + (i + 1); }), scores: played.map(function (s) { return [s]; }) },
+      highlights: [outAt ? 'Out of balls on level ' + outAt + ' (' + LEVELS[outAt - 1].name + ')' : 'Cleared all ' + NL + ' levels in a row',
+        outAt ? (outAt - 1) + ' of ' + NL + (outAt - 1 === 1 ? ' level' : ' levels') + ' cleared' : null,
+        'Best level: ' + (bi + 1) + ' (' + LEVELS[bi].name + '), ' + fmt(lv[bi])].filter(Boolean),
+      summary: 'Full game · ' + (outAt ? 'to level ' + outAt : 'all ' + NL + ' levels') + ' · ' + fmt(tot),
       badge: 'Full game',
-      meta: { fullGame: 1, runScore: tot, score: tot, levels: NL, tries: r.tries || 0, result: 'win', master: L.master }
+      meta: { fullGame: 1, runScore: tot, score: tot, levels: upto, cleared: outAt ? outAt - 1 : NL, tries: 0, result: outAt ? 'loss' : 'win', master: L.master }
     });
   }
   function levelWon() {
@@ -1221,7 +1225,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (inR) {
       run.lv[n - 1] = sc;
       if (n < NL) { run.cur = n + 1; saveRun(); }
-      else { full = run; recordRun(full); run = null; saveRun(); }
+      else { full = run; recordRun(full, null); run = null; saveRun(); }
     }
     var cleared = fmt(sc) + ' points · ' + L.ballsLeft + (L.ballsLeft === 1 ? ' ball' : ' balls') + ' left' + (L.stats.feverBucket ? ' · ' + fmt(L.stats.feverBucket) + ' fever bucket' : '');
     if (full) {
@@ -1235,8 +1239,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
             sub: fmt(tot) + ' points · all ' + NL + ' levels in a row',
             notesTitle: 'Your full game',
             notes: ['Level ' + n + ' (' + LEVELS[n - 1].name + '): ' + cleared,
-              'Best level: ' + (bi + 1) + ' (' + LEVELS[bi].name + '), ' + fmt(lv[bi]),
-              full.tries ? 'Took ' + full.tries + (full.tries === 1 ? ' retry' : ' retries') + ' along the way' : 'Every level cleared on the first try'],
+              'Best level: ' + (bi + 1) + ' (' + LEVELS[bi].name + '), ' + fmt(lv[bi])],
             again: function () { startLevel(1, cfg); }, againLabel: 'New full game',
             extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(RUNB, 'Peggle: full game'); } }, { label: 'Choose level', onClick: showSetup }]
           });
@@ -1260,15 +1263,30 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     L.done = true; clearSave();
     var prog = loadProg(); if (L.score > (prog.best[L.n] || 0)) { prog.best[L.n] = L.score; saveProg(prog); }
     recordLevel(false);
-    var cfg = { who: L.who, master: L.master, fireMode: L.fireMode }, n = L.n, left = orangeLeft(), inR = inRun();
-    // the full game goes on if this level is played again; this try's score doesn't count
-    if (inR) { run.tries = (run.tries || 0) + 1; saveRun(); }
+    var cfg = { who: L.who, master: L.master, fireMode: L.fireMode }, n = L.n, left = orangeLeft(), inR = inRun(), sc = L.score;
+    // out of balls ends the full game: its total (this level's points too) goes on the Full game board, in the same
+    // initials entry as this level's score; trying the level again only counts for the level's own board
+    if (inR) {
+      run.lv[n - 1] = sc;
+      var full = run, tot = runTotal(full); recordRun(full, n); run = null; saveRun();
+      ArcadeHi.check(RUNB, tot, function () {
+        Kit.win({
+          lose: true, title: 'Game over',
+          sub: 'Full game: ' + fmt(tot) + ' points · out of balls on level ' + n,
+          notesTitle: 'Your full game',
+          notes: ['Level ' + n + ' (' + LEVELS[n - 1].name + '): ' + fmt(sc) + ' points, ' + left + ' orange ' + (left === 1 ? 'peg' : 'pegs') + ' left',
+            (n - 1) + ' of ' + NL + (n - 1 === 1 ? ' level' : ' levels') + ' cleared'],
+          again: function () { startLevel(1, cfg); }, againLabel: 'New full game',
+          extra: [{ label: 'Try level ' + n + ' again (level board only)', onClick: function () { startLevel(n, cfg); } },
+            { label: 'High scores', onClick: function () { ArcadeHi.show(RUNB, 'Peggle: full game'); } }, { label: 'Choose level', onClick: showSetup }]
+        });
+      }, { also: [{ key: lvKey(n), score: sc }] });
+      return;
+    }
     ArcadeHi.check(lvKey(n), L.score, function () {
       Kit.win({
         lose: true, title: 'Out of balls',
         sub: left + ' orange ' + (left === 1 ? 'peg' : 'pegs') + ' left · ' + fmt(L.score) + ' points',
-        notesTitle: inR ? 'Full game still on' : null,
-        notes: inR ? ['Try level ' + n + ' again to keep it going', (n > 1 ? fmt(runTotal(run)) + ' points from levels 1 to ' + (n - 1) : 'Level 1 of ' + NL)] : null,
         again: function () { startLevel(n, cfg); }, againLabel: 'Try level ' + n + ' again',
         extra: [{ label: 'Choose level', onClick: showSetup }]
       });

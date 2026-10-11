@@ -314,14 +314,15 @@
       var BW = 22, GP = 5, CH = 120, W = lv.length * (BW + GP) + GP, s2 = '<rect width="' + W + '" height="' + (CH + 22) + '" rx="6" fill="#0b0b1c"/>';
       lv.forEach(function (v, i) {
         var h = Math.max(2, Math.round(v / top * (CH - 10))), x = GP + i * (BW + GP);
-        s2 += '<rect x="' + x + '" y="' + (CH - h) + '" width="' + BW + '" height="' + h + '" rx="3" fill="' + (i === bi ? '#ffd45a' : PEG.o) + '"/>' +
+        s2 += '<rect x="' + x + '" y="' + (CH - h) + '" width="' + BW + '" height="' + h + '" rx="3" fill="' + (d.out && i === lv.length - 1 ? '#8b93b8' : i === bi ? '#ffd45a' : PEG.o) + '"/>' +
           '<text x="' + (x + BW / 2) + '" y="' + (CH + 15) + '" text-anchor="middle" font-size="11" font-weight="800" fill="rgba(233,236,255,.6)" font-family="ui-monospace,monospace">' + (i + 1) + '</text>';
       });
       return screen(ui, {
-        ac: '#ffd45a', title: 'Full game · all ' + (d.of || lv.length) + ' levels', score: n(myScore(e)), rank: rankText(d),
+        ac: '#ffd45a', title: d.out ? 'Full game · out on level ' + d.out : 'Full game · all ' + (d.of || lv.length) + ' levels', score: n(myScore(e)), rank: rankText(d),
         pic: svg(W, CH + 22, s2, { aria: 'Score on each level, level 1 to ' + lv.length }), picMax: 360,
-        stats: [['Levels', lv.length + '/' + (d.of || lv.length), 'in a row'], ['Best level', n(top), (bi + 1) + ' · ' + (PEG_LV[bi] || '')], ['Retries', d.rt || 0, d.rt ? 'after running out of balls' : 'every level first try']],
-        foot: 'Full game complete', footOk: true
+        stats: [['Cleared', (d.out ? d.out - 1 : lv.length) + '/' + (d.of || lv.length), 'levels in a row'], ['Best level', n(top), (bi + 1) + ' · ' + (PEG_LV[bi] || '')],
+          d.out ? ['Ended', 'Level ' + d.out, 'out of balls'] : d.rt ? ['Retries', d.rt, 'after running out of balls'] : ['Ended', 'Level ' + lv.length, 'all cleared']],
+        foot: d.out ? 'Out of balls on level ' + d.out + (PEG_LV[d.out - 1] ? ' (' + PEG_LV[d.out - 1] + ')' : '') : 'Full game complete', footOk: !d.out
       });
     }
     if (!d || d.n == null) return null;
