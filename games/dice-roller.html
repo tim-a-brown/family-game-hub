@@ -16,7 +16,25 @@
 .tray{border-radius:26px;padding:9px;margin:2px 0 12px;}
 .tray .felt-in{position:relative;border-radius:19px;height:clamp(230px,36vh,380px);overflow:hidden;cursor:pointer;touch-action:manipulation;}
 .tray canvas{position:absolute;inset:0;width:100%;height:100%;}
-.tray .lockhint{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:.72rem;font-weight:900;letter-spacing:.12em;color:rgba(255,255,255,.55);text-transform:uppercase;pointer-events:none;}
+.tray .lockhint{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);white-space:nowrap;padding:2px 10px;border-radius:99px;background:rgba(0,0,0,.28);text-align:center;font-size:.72rem;font-weight:900;letter-spacing:.12em;color:rgba(255,255,255,.7);text-transform:uppercase;pointer-events:none;}
+.tray .felt-in.light .lockhint{background:rgba(255,255,255,.55);}
+.tray .felt-in.light .lockhint,.tray .felt-in.light .hint{color:rgba(40,28,10,.55);}
+/* Tabletop picker */
+.tt-h{margin:4px 0 8px;}
+.tt-top{position:sticky;top:-10px;z-index:2;margin:-10px -20px 6px;padding:10px 20px 10px;background:var(--bg-2);}
+.tt-prev{border-radius:18px;padding:7px;box-shadow:inset 0 2px 0 rgba(255,255,255,.18), inset 0 -3px 0 rgba(0,0,0,.25), 0 8px 18px rgba(0,0,0,.5);}
+.tt-prev .in{position:relative;height:120px;border-radius:12px;overflow:hidden;box-shadow:inset 0 4px 12px rgba(0,0,0,.55);}
+.tt-prev .in.st{outline:2px dashed var(--st);outline-offset:-7px;}
+.tt-prev img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;}
+.tt-prev .cap{position:absolute;left:50%;bottom:7px;transform:translateX(-50%);white-space:nowrap;padding:3px 10px;border-radius:99px;background:rgba(10,8,20,.6);font-size:.74rem;font-weight:800;color:#fff;}
+.tt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:12px 10px;margin-bottom:16px;}
+.tt-sw{border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:stretch;gap:5px;color:var(--text);font:inherit;cursor:pointer;}
+.tt-sw .fr{display:block;aspect-ratio:1.3;border-radius:12px;padding:5px;box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 3px 8px rgba(0,0,0,.4);}
+.tt-sw .in{display:block;width:100%;height:100%;border-radius:8px;box-shadow:inset 0 3px 8px rgba(0,0,0,.5);}
+.tt-sw .in.st{outline:1.5px dashed var(--st);outline-offset:-5px;}
+.tt-sw .nm{font-size:.78rem;font-weight:800;text-align:center;line-height:1.15;}
+.tt-sw.on .fr{box-shadow:0 0 0 3px var(--yellow), 0 3px 8px rgba(0,0,0,.4);}
+.tt-sw.on .nm{color:var(--yellow);}
 .tray .hint{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;font-family:var(--display);font-size:1.25rem;color:rgba(255,255,255,.5);pointer-events:none;}
 
 /* Read-out plaque under the tray */
@@ -159,6 +177,7 @@
     id: 'dice-roller',
     theme: { felt: ['#8a2a36', '#5e1823', '#430f18'], wood: ['#7a4a2a', '#4e2c16'] },
     menu: [
+      { icon: 'palette', label: 'Tabletop', onClick: function () { pickTable(); } },
       { icon: 'history', label: 'Clear roll history', onClick: function () { clearHistory(); } },
       { icon: 'phone', label: function () { return shakeOn ? 'Shake to roll: on' : 'Shake to roll: off'; }, onClick: function () { toggleShake(); } }
     ],
@@ -174,7 +193,8 @@
       '<h3>Rolling</h3><ul><li>Tap <b>Roll</b>, tap the tray, or press Space.</li>' +
       '<li><b>Lock a die</b>: tap it in the tray. A gold ring marks it, and it stays put on the next roll while the rest tumble. Tap it again to unlock. The total still counts every die.</li><li>On a phone, turn on <b>Shake to roll</b> and give your phone a shake.</li>' +
       '<li><b>Quick picks</b> load a set of dice in one tap. Save your own with <b>Save current</b>.</li>' +
-      '<li>Tap a roll in the history to load those dice again.</li></ul>'
+      '<li>Tap a roll in the history to load those dice again.</li></ul>' +
+      '<h3>Your table</h3><p>Open the menu and pick <b>Tabletop</b> to change the tray: felts, leather, stone, wood, maps and more, with a rim to match. <b>Surprise me</b> picks one for you.</p>'
   });
 
   // ── Saved settings ───────────────────────────────────────────────────────
@@ -368,6 +388,138 @@
 
   // ── Tray canvas ──────────────────────────────────────────────────────────
   var felt = document.getElementById('felt'), cv = document.getElementById('cv'), cx = cv.getContext('2d');
+
+  // ── Tabletop: the tray's surface and rim ─────────────────────────────────
+  var TKEY = 'diceroller_table';
+  function feltBg(a, b, c) { return 'radial-gradient(rgba(255,255,255,.035) 1px, transparent 1px) 0 0/4px 4px, radial-gradient(120% 90% at 50% 35%, ' + a + ' 0%, ' + b + ' 70%, ' + c + ' 100%)'; }
+  function plankBg(a, b, c) {
+    return 'repeating-linear-gradient(90deg, transparent 0 calc(25% - 2px), rgba(0,0,0,.38) calc(25% - 2px) 25%), ' +
+      'repeating-linear-gradient(90deg, rgba(0,0,0,.07) 0 1px, transparent 1px 7px), repeating-linear-gradient(91deg, rgba(255,255,255,.05) 0 3px, transparent 3px 23px), ' +
+      'linear-gradient(90deg, ' + a + ', ' + b + ' 30%, ' + c + ' 60%, ' + b + ')';
+  }
+  function marbleBg(base, vein) {
+    return 'linear-gradient(115deg, transparent 40%, ' + vein + ' 41%, transparent 43%), linear-gradient(60deg, transparent 62%, ' + vein + ' 63%, transparent 64.5%), ' +
+      'linear-gradient(150deg, transparent 20%, ' + vein + ' 21%, transparent 22.2%), linear-gradient(20deg, transparent 75%, ' + vein + ' 75.6%, transparent 76.4%), ' + base;
+  }
+  // flagstones: rows of offset stones, each a slightly different shade
+  var FLAG = 'url("data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="72" height="96"><rect x="1" y="1" width="70" height="46" fill="rgba(255,255,255,.04)"/><rect x="37" y="49" width="70" height="46" fill="rgba(0,0,0,.08)"/><rect x="-35" y="49" width="70" height="46" fill="rgba(255,255,255,.07)"/><path d="M0 0H72M0 48H72M0 96H72M0 0V48M36 48V96" stroke="rgba(0,0,0,.55)" stroke-width="2.5" fill="none"/></svg>') + '")';
+  var STARS = [[20, 30, 1], [80, 120, 1], [150, 60, 1.5], [200, 160, 1], [110, 190, 1.2], [40, 150, 0.8], [180, 20, 0.9], [60, 80, 0.7]].map(function (s) {
+    return 'radial-gradient(' + s[2] + 'px ' + s[2] + 'px at ' + s[0] + 'px ' + s[1] + 'px, #fff, transparent) 0 0/230px 210px';
+  }).join(', ');
+  var SURFACES = [
+    // felts
+    { id: 'red', name: 'Casino red', bg: feltBg('#8a2a36', '#5e1823', '#430f18') },
+    { id: 'green', name: 'Card table', bg: feltBg('#188a5c', '#0d5c3c', '#0a4a30') },
+    { id: 'royal', name: 'Royal blue', bg: feltBg('#2a56b8', '#173a82', '#0f2960') },
+    { id: 'navy', name: 'Navy', bg: feltBg('#1f3358', '#14223d', '#0c1529') },
+    { id: 'purple', name: 'Purple', bg: feltBg('#6a3aa8', '#45207a', '#2f1358') },
+    { id: 'velvet', name: 'Velvet', bg: 'radial-gradient(60% 40% at 30% 20%, rgba(255,255,255,.12), transparent), ' + feltBg('#7a1838', '#520c24', '#360616') },
+    { id: 'teal', name: 'Teal', bg: feltBg('#13827a', '#0b5752', '#073e3a') },
+    { id: 'charcoal', name: 'Charcoal', bg: feltBg('#4a4a52', '#303036', '#202024') },
+    { id: 'black', name: 'Black', bg: feltBg('#242428', '#141416', '#0a0a0c') },
+    { id: 'orange', name: 'Burnt orange', bg: feltBg('#b8561e', '#853810', '#5e2608') },
+    { id: 'pink', name: 'Pink', bg: feltBg('#c74a86', '#962f62', '#6e1f47') },
+    { id: 'mustard', name: 'Mustard', bg: feltBg('#b8901c', '#866610', '#5e4708') },
+    { id: 'sky', name: 'Sky blue', bg: feltBg('#3a9ad0', '#2272a3', '#165279') },
+    { id: 'forest', name: 'Forest', bg: feltBg('#2f5a2a', '#1d3d1a', '#122910') },
+    // leathers and cloth
+    { id: 'leather', name: 'Saddle leather', bg: 'radial-gradient(rgba(0,0,0,.14) 1px, transparent 1.5px) 0 0/5px 5px, radial-gradient(rgba(255,255,255,.05) 1px, transparent 1.5px) 2px 3px/7px 7px, radial-gradient(120% 90% at 50% 35%, #8a5530, #5a3218 75%, #3e210f)', stitch: 'rgba(255,225,180,.35)' },
+    { id: 'blackleather', name: 'Black leather', bg: 'radial-gradient(rgba(255,255,255,.05) 1px, transparent 1.5px) 0 0/5px 5px, radial-gradient(rgba(0,0,0,.3) 1px, transparent 1.5px) 2px 3px/7px 7px, radial-gradient(120% 90% at 50% 35%, #3a3a3e, #222225 75%, #141416)', stitch: 'rgba(255,200,61,.4)' },
+    { id: 'denim', name: 'Denim', bg: 'repeating-linear-gradient(45deg, rgba(255,255,255,.06) 0 1px, transparent 1px 3px), repeating-linear-gradient(-45deg, rgba(0,0,0,.12) 0 1px, transparent 1px 4px), radial-gradient(120% 90% at 50% 35%, #3d5f8f, #2a4670 75%, #1d3354)', stitch: 'rgba(230,150,60,.6)' },
+    // stone
+    { id: 'slate', name: 'Slate', bg: 'repeating-linear-gradient(115deg, rgba(255,255,255,.025) 0 2px, transparent 2px 11px), radial-gradient(120% 90% at 40% 30%, #4a5058, #2e3238 70%, #202328)' },
+    { id: 'marble', name: 'White marble', bg: marbleBg('radial-gradient(120% 90% at 50% 35%, #f4f2ee, #dcd8d0 80%, #c9c4ba)', 'rgba(120,120,135,.28)'), light: true },
+    { id: 'blackmarble', name: 'Black marble', bg: marbleBg('radial-gradient(120% 90% at 50% 35%, #2a2a2e, #1a1a1d 80%, #101012)', 'rgba(220,190,120,.35)') },
+    { id: 'dungeon', name: 'Dungeon floor', bg: 'radial-gradient(120% 100% at 50% 40%, transparent 40%, rgba(0,0,0,.55)), ' + FLAG + ' 0 0/72px 96px, radial-gradient(rgba(255,255,255,.04) 1px, transparent 1.5px) 0 0/5px 5px, linear-gradient(#615c55, #4a4640)' },
+    { id: 'chalk', name: 'Chalkboard', bg: 'radial-gradient(40% 30% at 30% 40%, rgba(255,255,255,.07), transparent), radial-gradient(30% 25% at 70% 65%, rgba(255,255,255,.05), transparent), linear-gradient(#304037, #26332c)' },
+    // wood tops
+    { id: 'oaktop', name: 'Oak table', bg: plankBg('#b07a45', '#c48a52', '#a8703c') },
+    { id: 'walnuttop', name: 'Walnut table', bg: plankBg('#5e3d26', '#6e482d', '#52341f') },
+    { id: 'cork', name: 'Cork', bg: 'radial-gradient(rgba(60,30,10,.35) 1px, transparent 1.6px) 0 0/6px 6px, radial-gradient(rgba(255,230,190,.25) 1px, transparent 1.6px) 3px 2px/5px 5px, radial-gradient(rgba(90,50,20,.3) 1.5px, transparent 2px) 1px 4px/9px 9px, linear-gradient(#c49a6c, #a87b4f)', light: true },
+    // paper and maps
+    { id: 'grid', name: 'Battle grid', bg: 'linear-gradient(rgba(60,90,140,.28) 1px, transparent 1px) 0 0/22px 22px, linear-gradient(90deg, rgba(60,90,140,.28) 1px, transparent 1px) 0 0/22px 22px, linear-gradient(#f3efe2, #e6e0cf)', light: true },
+    { id: 'parchment', name: 'Old map', bg: 'radial-gradient(120% 100% at 50% 45%, transparent 50%, rgba(90,55,20,.45)), radial-gradient(rgba(110,70,30,.12) 1px, transparent 1.6px) 0 0/6px 6px, radial-gradient(120% 90% at 50% 40%, #efe0b8, #dcc590 70%, #c4a468)', light: true },
+    { id: 'checker', name: 'Diner check', bg: 'conic-gradient(#ece5d6 25%, #b8262d 0 50%, #ece5d6 0 75%, #b8262d 0) 0 0/48px 48px', light: true },
+    // out there
+    { id: 'space', name: 'Deep space', bg: STARS + ', radial-gradient(50% 40% at 75% 70%, rgba(120,60,200,.35), transparent), radial-gradient(120% 90% at 30% 20%, #2a1f5c, #110b2b 60%, #05030f)' },
+    { id: 'neon', name: 'Neon grid', bg: 'linear-gradient(rgba(255,60,200,.38) 1px, transparent 1px) 0 0/28px 28px, linear-gradient(90deg, rgba(60,220,255,.32) 1px, transparent 1px) 0 0/28px 28px, radial-gradient(120% 90% at 50% 35%, #2a0f4a, #14072a 80%, #0a0316)' },
+    { id: 'carbon', name: 'Carbon fiber', bg: 'radial-gradient(120% 90% at 50% 35%, rgba(255,255,255,.08), transparent 70%), repeating-linear-gradient(45deg, #1b1b1d 0 4px, #26262a 4px 8px), #1b1b1d' },
+    { id: 'sand', name: 'Beach sand', bg: 'radial-gradient(rgba(120,80,30,.2) 1px, transparent 1.4px) 0 0/4px 4px, radial-gradient(rgba(255,255,255,.3) 1px, transparent 1.4px) 2px 1px/5px 5px, radial-gradient(120% 90% at 50% 35%, #ecd4a0, #d6b679 75%, #ba985c)', light: true },
+    { id: 'ice', name: 'Ice', bg: 'linear-gradient(125deg, transparent 30%, rgba(255,255,255,.4) 31%, transparent 33%), linear-gradient(40deg, transparent 55%, rgba(255,255,255,.3) 56%, transparent 57%), linear-gradient(170deg, transparent 70%, rgba(255,255,255,.25) 70.5%, transparent 71.5%), radial-gradient(120% 90% at 50% 35%, #d8f1fb, #9fd3ea 75%, #6fb3d3)', light: true },
+    { id: 'lava', name: 'Lava rock', bg: 'radial-gradient(30% 20% at 25% 35%, rgba(255,90,20,.35), transparent), radial-gradient(25% 18% at 72% 68%, rgba(255,120,30,.3), transparent), radial-gradient(rgba(0,0,0,.35) 1.5px, transparent 2px) 0 0/7px 7px, radial-gradient(120% 90% at 50% 35%, #3a2420, #241513 75%, #140b0a)' }
+  ];
+  function woodBg(a, b) { return 'repeating-linear-gradient(92deg, rgba(255,255,255,.05) 0 2px, transparent 2px 9px), repeating-linear-gradient(88deg, rgba(0,0,0,.07) 0 1px, transparent 1px 14px), linear-gradient(180deg, ' + a + ', ' + b + ')'; }
+  function metalBg(a, b, c) { return 'repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), linear-gradient(180deg, ' + a + ', ' + b + ' 45%, ' + c + ' 55%, ' + b + ')'; }
+  function lacquerBg(a, b) { return 'linear-gradient(180deg, rgba(255,255,255,.22), transparent 35%), linear-gradient(180deg, ' + a + ', ' + b + ')'; }
+  var RIMS = [
+    { id: 'oak', name: 'Oak', bg: woodBg('#7a4a2a', '#4e2c16') },
+    { id: 'maple', name: 'Maple', bg: woodBg('#d2a86e', '#a87a44') },
+    { id: 'cherry', name: 'Cherry', bg: woodBg('#9a3f2a', '#64220f') },
+    { id: 'walnut', name: 'Walnut', bg: woodBg('#5a3a24', '#36200f') },
+    { id: 'mahogany', name: 'Mahogany', bg: woodBg('#7a2e1e', '#4a160b') },
+    { id: 'ebony', name: 'Ebony', bg: woodBg('#2c2420', '#141010') },
+    { id: 'driftwood', name: 'Driftwood', bg: woodBg('#9b9188', '#6d655d') },
+    { id: 'bamboo', name: 'Bamboo', bg: 'repeating-linear-gradient(90deg, transparent 0 46px, rgba(90,60,20,.45) 46px 49px, transparent 49px 50px), ' + woodBg('#d9b56a', '#a8843e') },
+    { id: 'redlacquer', name: 'Red lacquer', bg: lacquerBg('#c0262f', '#7a0f16') },
+    { id: 'blacklacquer', name: 'Black lacquer', bg: lacquerBg('#3a3a40', '#0e0e10') },
+    { id: 'whitepaint', name: 'White painted', bg: lacquerBg('#f2efe8', '#c9c4b8') },
+    { id: 'mint', name: 'Mint painted', bg: lacquerBg('#9fd8c0', '#5fa58a') },
+    { id: 'brass', name: 'Brass', bg: metalBg('#e6c76a', '#a8842c', '#f3dd8e') },
+    { id: 'gold', name: 'Gold', bg: metalBg('#ffe08a', '#c9952a', '#fff0b8') },
+    { id: 'copper', name: 'Copper', bg: metalBg('#e0956a', '#a0532c', '#f0b890') },
+    { id: 'steel', name: 'Steel', bg: metalBg('#d6dbe0', '#8a929a', '#eef1f4') },
+    { id: 'stone', name: 'Stone', bg: 'radial-gradient(rgba(0,0,0,.18) 1px, transparent 1.5px) 0 0/5px 5px, radial-gradient(rgba(255,255,255,.12) 1px, transparent 1.5px) 2px 3px/6px 6px, linear-gradient(180deg, #9a958c, #6a665f)' },
+    { id: 'leatherwrap', name: 'Leather wrap', bg: 'radial-gradient(rgba(0,0,0,.18) 1px, transparent 1.5px) 0 0/4px 4px, linear-gradient(180deg, #6a3f22, #3e2210)' }
+  ];
+  function byId(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return list[0]; }
+  var table = (function () { var t = lsGet(TKEY) || {}; return { s: byId(SURFACES, t.s).id, r: byId(RIMS, t.r).id }; })();
+  var trayEl = document.querySelector('.tray');
+  function applyTable() {
+    var sf = byId(SURFACES, table.s), rm = byId(RIMS, table.r);
+    felt.style.background = sf.bg;
+    felt.style.outline = sf.stitch ? '2px dashed ' + sf.stitch : '';
+    felt.style.outlineOffset = sf.stitch ? '-9px' : '';
+    felt.classList.toggle('light', !!sf.light);
+    trayEl.style.background = rm.bg;
+  }
+  function saveTable() {
+    lsSet(TKEY, table);
+    try { if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(TKEY); } catch (e) {}
+  }
+  function pickTable() {
+    var node = el('div', { class: 'tt' });
+    function swatch(rimBg, surf, label, on, pick) {
+      return el('button', { type: 'button', class: 'tt-sw' + (on ? ' on' : ''), 'aria-pressed': on ? 'true' : 'false', onclick: pick }, [
+        el('span', { class: 'fr', style: { background: rimBg } }, [el('span', { class: 'in' + (surf.stitch ? ' st' : ''), style: { background: surf.bg, '--st': surf.stitch || 'transparent' } })]),
+        el('span', { class: 'nm', text: label })
+      ]);
+    }
+    function render() {
+      node.innerHTML = '';
+      var sf = byId(SURFACES, table.s), rm = byId(RIMS, table.r), shot = null;
+      // the tray as it looks now, with your dice on it (the sheet covers the real one)
+      try { shot = cv.toDataURL(); } catch (e) {}
+      node.appendChild(el('div', { class: 'tt-top' }, [el('div', { class: 'tt-prev', style: { background: rm.bg } }, [
+        el('div', { class: 'in' + (sf.stitch ? ' st' : ''), style: { background: sf.bg, '--st': sf.stitch || 'transparent' } }, [shot ? el('img', { src: shot, alt: '' }) : null, el('div', { class: 'cap', text: sf.name + ' · ' + rm.name + ' rim' })])
+      ])]));
+      node.appendChild(el('div', { class: 'label tt-h', text: 'Surface' }));
+      var g1 = el('div', { class: 'tt-grid' });
+      SURFACES.forEach(function (s) { g1.appendChild(swatch(rm.bg, s, s.name, s.id === table.s, function () { table.s = s.id; changed(); })); });
+      node.appendChild(g1);
+      node.appendChild(el('div', { class: 'label tt-h', text: 'Tray rim' }));
+      var g2 = el('div', { class: 'tt-grid' });
+      RIMS.forEach(function (r) { g2.appendChild(swatch(r.bg, sf, r.name, r.id === table.r, function () { table.r = r.id; changed(); })); });
+      node.appendChild(g2);
+    }
+    function changed() { Kit.sfx('tap'); Kit.haptic('light'); applyTable(); saveTable(); render(); }
+    render();
+    Kit.sheet({ title: 'Tabletop', node: node, actions: [
+      { label: 'Surprise me', keep: true, cls: 'btn-soft', onClick: function () { table.s = SURFACES[rint(SURFACES.length)].id; table.r = RIMS[rint(RIMS.length)].id; changed(); } },
+      { label: 'Done', primary: true }
+    ] });
+  }
+  applyTable();
+
   var W = 300, H = 240, DPR = 1, S = 30;
   var TILT = 0.36, CT = Math.cos(TILT), ST = Math.sin(TILT);
   var LIGHT = norm([-0.35, -0.6, 0.75]);
