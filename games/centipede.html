@@ -1538,6 +1538,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function hostTable(name) {
     closeLobby(); busy('Opening your table…');
     Online.host({ game: 'centipede', name: name, max: 3 }).then(function (table) {
+      // the server refused the new table: back to the lobby instead of a waiting room nobody can find
+      table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + (Online.errText ? Online.errText(e) : '')); leaveOnline(false); goLobby(); });
       net.mode = 'host'; net.table = table; net.me = name; net.pidN = 1;
       net.roster = [{ pid: 1, name: name, dev: Online.dev(), host: true }];
       table.on('peer', function (peer) {
