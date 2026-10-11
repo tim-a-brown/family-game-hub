@@ -107,6 +107,29 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-return .ico{width:18px;height:18px;color:var(--c,#7fd4a4);}
 .pb-return small{display:block;font-weight:700;font-size:.72rem;color:#c9c1e6;margin-top:3px;}
 .pb-view.looking .pb-return{display:flex;}
+/* The look-around explainer: tap a feature and its instruction card slides in, printed on card stock in a chrome
+   holder (brass on the tables with gold rails), with a band in the table's colour. It sits at the top or the bottom,
+   whichever leaves the tapped part in view. */
+.pb-ex{position:absolute;z-index:6;left:50%;width:min(390px,calc(100% - 24px));opacity:0;visibility:hidden;pointer-events:none;
+  transform:translate(-50%,10px) scale(.97);transition:transform .24s cubic-bezier(.2,.9,.25,1.1),opacity .18s,visibility 0s linear .24s;}
+.pb-ex.top{top:12px;transform:translate(-50%,-10px) scale(.97);}
+.pb-ex.bot{bottom:calc(var(--safe-b) + 78px);}
+.pb-ex.show{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,0) scale(1);transition:transform .24s cubic-bezier(.2,.9,.25,1.1),opacity .18s,visibility 0s;}
+.pb-ex .hold{padding:5px;border-radius:14px;background:linear-gradient(150deg,#fbfcfe 0%,#9aa1ab 26%,#e6e9ee 50%,#5f656e 78%,#c9ced6 100%);
+  box-shadow:0 16px 36px rgba(0,0,0,.62),0 3px 8px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.7);}
+.pb-ex.brass .hold{background:linear-gradient(150deg,#fff1c4 0%,#b8873a 28%,#f3d58a 50%,#7a5418 78%,#d9b062 100%);}
+.pb-ex .card{position:relative;border-radius:9px;padding:13px 16px 11px;color:#2a2118;
+  background:radial-gradient(130% 90% at 25% 0%,rgba(255,255,255,.6),rgba(255,255,255,0) 60%),linear-gradient(#f8f2e1,#ede2c6);
+  box-shadow:inset 0 0 0 3px var(--c,#d93a2b),inset 0 0 0 6px #f4ecd6,inset 0 0 0 7px rgba(58,44,30,.4),inset 0 2px 6px rgba(0,0,0,.12);}
+.pb-ex .kind{display:inline-block;margin:2px 0 0 1px;padding:4px 8px 3px;border-radius:3px;background:var(--c,#d93a2b);color:#140e08;
+  font:800 10px/1 var(--font,system-ui);letter-spacing:.16em;text-transform:uppercase;box-shadow:0 1px 0 rgba(0,0,0,.18);}
+.pb-ex h3{margin:8px 40px 5px 1px;font-family:var(--exf,"Bungee",Impact,sans-serif);font-weight:var(--exw,400);font-size:1.3rem;line-height:1.08;letter-spacing:.03em;text-transform:uppercase;color:#1d160e;}
+.pb-ex p{margin:0 2px;font:650 .95rem/1.42 var(--font,system-ui);color:#3a2d20;}
+.pb-ex .ft{display:flex;align-items:center;gap:8px;margin:10px 2px 0;font:800 9px/1 var(--font,system-ui);letter-spacing:.2em;text-transform:uppercase;color:rgba(58,44,30,.6);}
+.pb-ex .ft::before,.pb-ex .ft::after{content:"";flex:1;height:1px;background:rgba(58,44,30,.25);}
+.pb-ex .x{position:absolute;right:9px;top:9px;width:36px;height:36px;padding:0;border:0;border-radius:50%;display:grid;place-items:center;
+  background:rgba(58,44,30,.09);color:#3a2d20;-webkit-tap-highlight-color:transparent;}
+.pb-ex .x .ico{width:17px;height:17px;}
 .pb-pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:6;background:rgba(6,4,14,.6);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);}
 .pb-pause.show{display:flex;}
 .pb-pause .card{width:min(270px,82%);text-align:center;padding:22px 18px 16px;border-radius:var(--r-lg);background:var(--bg-2);box-shadow:var(--shadow);}
@@ -285,10 +308,11 @@ function startGame(id, balls, who) {
   plunger.el = el('div', { class: 'pb-plunger' }, [plunger.cv = el('canvas', { 'aria-hidden': 'true' }),
     plunger.grab = el('button', { type: 'button', class: 'grab', 'aria-label': 'Plunger: pull down and let go to launch the ball' })]);
   plunger.th = Object.assign({}, def.theme || {}); plunger.knobCol = plunger.th.knob || '#e8dcc0'; plunger.layers = null; plunger.shown = false; plunger.ball = false;
-  retBtn = el('button', { type: 'button', class: 'pb-return', html: Kit.icon('play') + '<span>Return to play<small>' + (TOUCH ? 'Pinch to zoom · drag to look around' : 'Scroll to zoom · drag to look around') + '</small></span>',
+  retBtn = el('button', { type: 'button', class: 'pb-return', html: Kit.icon('play') + '<span>Return to play<small>' + (TOUCH ? 'Tap a feature to learn it · pinch to zoom' : 'Click a feature to learn it · scroll to zoom') + '</small></span>',
     onclick: () => { Kit.sfx('tap'); exitLook(); } });
   retBtn.addEventListener('pointerdown', e => e.stopPropagation());
-  viewEl.append(nudgeCtl, magCtl, fireCtl, flipBtn.L, flipBtn.R, plunger.el, retBtn);
+  buildExplain(def);
+  viewEl.append(nudgeCtl, magCtl, fireCtl, flipBtn.L, flipBtn.R, plunger.el, ex.el, retBtn);
   bindPlunger();
   const btnDown = (e, fn) => { e.preventDefault(); e.stopPropagation(); fn(); };
   const press = (btn, down, upFn) => {
@@ -661,7 +685,7 @@ function bindPlunger() {
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, end));
 }
 function leaveGame() {
-  view = 'none'; look = null; lookG = null;
+  view = 'none'; look = null; lookG = null; ex.f = null; ex.el = null;
   Kit.titleSwitch(null);
   if (uiRaf) { clearTimeout(uiRaf); uiRaf = 0; }
   if (plunger.raf) { cancelAnimationFrame(plunger.raf); plunger.raf = 0; }
@@ -700,7 +724,7 @@ function enterLook() {
   // it starts as big as the view being played and zooms in up to about 3x from there, never out past it
   const z0 = G.lookBase();
   look = { z: z0, px: 0, py: 0, zMin: z0, zMax: z0 * 3 }; lookG = null;
-  for (const id in ptr) ptr[id].role = 'look';
+  for (const id in ptr) { ptr[id].role = 'look'; ptr[id].multi = true; }   // the pinch that started it is never a tap
   keys.L = keys.R = false; btnHeld.L = btnHeld.R = false; syncFlips();
   viewEl.querySelectorAll('.pb-arc.on').forEach(b => b.classList.remove('on'));
   hidePlunger(); viewEl.classList.add('looking');
@@ -709,6 +733,7 @@ function enterLook() {
 }
 function exitLook() {
   if (!look) return;
+  hideExplain();
   look = null; lookG = null;
   for (const id in ptr) delete ptr[id];
   if (viewEl) viewEl.classList.remove('looking');
@@ -724,6 +749,59 @@ function lookMove(k, cx, cy, dx, dy) {
   L.z = z1; L.px -= dx / (r.width / 2) / z1; L.py += dy / (r.height / 2) / z1;
   G.look(L, false);
   const c = G.lookState(); if (c) Object.assign(L, c);       // the engine keeps the pan inside the table
+  placeExplain();
+}
+// ── The explainer: in look-around a quick tap (short, nearly still, one finger) picks the table feature under it.
+// The engine rings it on the table and the card shows its name and how it scores (the table's `explain` map, or a
+// generic line for the part). A tap on empty table, the card's close button, Return to play or the end of
+// look-around closes it; a tap on another feature switches to it.
+const ex = { el: null, kind: null, name: null, text: null, foot: null, f: null };
+function buildExplain(def) {
+  const font = def.cardFont || (def.display && def.display.font) || '"Bungee", Impact, sans-serif';
+  ex.f = null;
+  ex.el = el('div', { class: 'pb-ex bot' + ((def.theme && def.theme.rails) === 'gold' ? ' brass' : ''), role: 'dialog', 'aria-live': 'polite',
+    style: { '--exf': font, '--exw': /Cinzel/.test(font) ? '700' : '400' } }, [
+    el('div', { class: 'hold' }, [el('div', { class: 'card' }, [
+      ex.kind = el('span', { class: 'kind' }), ex.name = el('h3'), ex.text = el('p'),
+      ex.foot = el('div', { class: 'ft', text: def.name }),
+      el('button', { type: 'button', class: 'x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: () => { Kit.sfx('tap'); hideExplain(); } })
+    ])])
+  ]);
+  ex.el.addEventListener('pointerdown', e => e.stopPropagation());
+}
+function showExplain(f) {
+  if (!ex.el || !G) return;
+  ex.f = f;
+  ex.kind.textContent = f.kind || 'Feature'; ex.kind.style.display = f.kind ? '' : 'none';
+  ex.name.textContent = f.name; ex.text.textContent = f.text;
+  ex.el.setAttribute('aria-label', f.name);
+  G.highlight(f);
+  placeExplain();
+  ex.el.classList.add('show');
+}
+function hideExplain() {
+  if (!ex.f) return;
+  ex.f = null;
+  if (ex.el) ex.el.classList.remove('show');
+  if (G) G.highlight(null);
+}
+// top or bottom of the view: wherever leaves more of the highlighted feature's screen area clear
+function placeExplain() {
+  if (!ex.f || !G || !ex.el) return;
+  const g = G.featureGeom(ex.f), ys = [];
+  for (const c of g.circ) { const p = G.projectNow(c.x, c.y, c.z); if (p) ys.push(p.y); }
+  for (const pa of g.paths) for (let i = 0; i < pa.pts.length; i += 4) { const q = pa.pts[i], p = G.projectNow(q[0], q[1], q[2]); if (p) ys.push(p.y); }
+  const h = viewEl.clientHeight || 1, y0 = ys.length ? Math.min(...ys) : h / 2, y1 = ys.length ? Math.max(...ys) : h / 2;
+  const top = y0 > h - y1;   // more room above the feature than below it
+  ex.el.classList.toggle('top', top); ex.el.classList.toggle('bot', !top);
+}
+function lookTap(cx, cy) {
+  if (!G || !look) return;
+  const r = glCanvas.getBoundingClientRect(), f = G.pickFeature(cx - r.left, cy - r.top);
+  if (!f) { if (ex.f) Kit.sfx('tap'); hideExplain(); return; }
+  if (ex.f && ex.f.key === f.key) return;
+  Kit.sfx('tap'); G.haptic('light');
+  showExplain(f);
 }
 function lookPts() { const a = []; for (const id in ptr) if (ptr[id].role === 'look') a.push(ptr[id]); return a; }
 function lookBase() {
@@ -737,17 +815,23 @@ function lookBase() {
 // pointers and never reach here.
 app.addEventListener('pointerdown', e => {
   if (view !== 'game' || !G || G.paused) return;
-  if (e.target.closest && e.target.closest('.pb-pause, .pb-ctl, .pb-arc, .pb-plunger, .pb-return')) return;
+  if (e.target.closest && e.target.closest('.pb-pause, .pb-ctl, .pb-arc, .pb-plunger, .pb-return, .pb-ex')) return;
   e.preventDefault();
   audio().ctx();
   try { app.setPointerCapture(e.pointerId); } catch (er) {}
-  if (look) { ptr[e.pointerId] = { role: 'look', x: e.clientX, y: e.clientY }; lookBase(); return; }
+  if (look) {
+    // a second finger makes it a pinch: none of the fingers down now can be a tap
+    ptr[e.pointerId] = { role: 'look', x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now() };
+    if (Object.keys(ptr).length > 1) for (const id in ptr) ptr[id].multi = true;
+    lookBase(); return;
+  }
   ptr[e.pointerId] = { role: e.clientX < window.innerWidth / 2 ? 'L' : 'R', x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY };
   syncFlips();
 });
 app.addEventListener('pointermove', e => {
   const p = ptr[e.pointerId]; if (!p || view !== 'game' || !G) return;
   p.x = e.clientX; p.y = e.clientY;
+  if (p.t0 && Math.hypot(p.x - p.x0, p.y - p.y0) > 10) p.moved = true;   // a drag, not a tap
   if (!look) {
     // a pinch on the table while the ball waits in the lane: start looking around
     const t = Object.keys(ptr).map(id => ptr[id]);
@@ -776,7 +860,10 @@ app.addEventListener('gesturestart', e => { if (view === 'game') e.preventDefaul
 function up(e) {
   const p = ptr[e.pointerId]; if (!p) return;
   delete ptr[e.pointerId];
-  if (p.role === 'look') { lookBase(); return; }
+  if (p.role === 'look') {
+    if (e.type === 'pointerup' && look && p.t0 && !p.multi && !p.moved && performance.now() - p.t0 < 450) lookTap(p.x, p.y);
+    lookBase(); return;
+  }
   syncFlips();
 }
 app.addEventListener('pointerup', up);
@@ -902,6 +989,15 @@ window.__pin = {
   ui(ms) { const P = plunger; plungerStep(ms != null && P.snap ? P.snap.t0 + ms : performance.now()); },   // draw the plunger now (ms: that far into a snap)
   plunger() { const P = plunger; if (!P.el) return null; const r = P.el.getBoundingClientRect(), gm = P.geo || {}; return { rect: [r.left, r.top, r.width, r.height].map(Math.round), raf: P.raf, travel: P.travel, d: P.d, show: P.shown, cls: P.el.className, ball: P.ball, fly: P.fly, knobY: r.top + (gm.k0 || 0) + (gm.fH || 0) + (gm.kH || 0) / 2, laneY: r.top + (gm.tip0 || 0) * 0.6, flY: r.top + (gm.yFl || 0) }; },
   view(m, animate) { if (m) setViewMode(m); return G ? G.view() : viewMode(); },
+  // the look-around explainer: every feature, where one is on screen now (client px, for a tap), the open card
+  features() { return G ? G.features().map(f => ({ key: f.key, name: f.name, kind: f.kind, text: f.text, generic: !!f.generic })) : null; },
+  featurePoint(key) {
+    const f = G && G.features().find(f => f.key === key); if (!f) return null;
+    const g = G.featureGeom(f), c = g.circ[0] || (g.paths[0] && { x: g.paths[0].pts[0][0], y: g.paths[0].pts[0][1], z: g.paths[0].pts[0][2] }); if (!c) return null;
+    const p = G.projectNow(c.x, c.y, c.z), r = glCanvas.getBoundingClientRect(); return p && { x: r.left + p.x, y: r.top + p.y };
+  },
+  explained() { return ex.f ? { key: ex.f.key, name: ex.f.name, kind: ex.f.kind, cls: ex.el.className } : null; },
+  explain(key) { const f = G && G.features().find(f => f.key === key); if (f && look) showExplain(f); else hideExplain(); return !!f; },
   look(z, px, py) { if (z === null) { exitLook(); return null; } if (!look && !enterLook()) return null; if (z != null) { look.z = Math.max(look.zMin, Math.min(look.zMax, z)); look.px = px || 0; look.py = py || 0; G.look(look, false); const c = G.lookState(); if (c) Object.assign(look, c); } return look && Object.assign({}, look); },
   // deterministic frames for screenshots: stop the live loop, step the game, draw once
   freeze() { if (G) G.pause(); },

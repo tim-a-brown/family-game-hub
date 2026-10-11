@@ -258,8 +258,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     }
     b.padX = x + w * (isJack ? .4 : .38 + R() * .1); b.hw = Math.round(Math.min(isJack ? 36 : 56, w * .3));
     COL.push({ x0: x, x1: x + w, y0: -h, y1: 0, k: 'b', b: b });
-    COL.push({ x0: x - 3, x1: x + 5, y0: -h - 6, y1: -h, k: 'lip', b: b });
-    COL.push({ x0: x + w - 5, x1: x + w + 3, y0: -h - 6, y1: -h, k: 'lip', b: b });
+    // roof-edge curbs sit flush with the walls: nothing overhangs for a hand to hook over
+    COL.push({ x0: x, x1: x + 7, y0: -h - 6, y1: -h, k: 'lip', b: b });
+    COL.push({ x0: x + w - 7, x1: x + w, y0: -h - 6, y1: -h, k: 'lip', b: b });
     if (!isJack && R() < .55) { var a = { x0: x - 30, x1: x, y0: -40, y1: -33, k: 'awn', col: AWN[(R() * AWN.length) | 0], sq: 0 }; COL.push(a); b.awn = a; }
     return b;
   }
@@ -346,7 +347,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var STAND = [[0, -22], [0, -14], [0, 0], [-6, -7], [-8, 1], [6, -7], [8, 1], [-3, 9], [-3, 18], [3, 9], [3, 18]];
   var FLY = [[0, -22], [0, -14], [0, 0], [-5, -20], [-4, -29], [5, -20], [4, -29], [-3, 9], [-4, 18], [3, 9], [4, 18]];
   var RADS = [8, 4, 6, 3.5, 4, 3.5, 4, 4, 4.5, 4, 4.5];
-  var MASS = [1.2, 1.5, 2.2, .6, .5, .6, .5, .9, .7, .9, .7];
+  // Weight per body part, roughly a real body (and how a Unity ragdoll like the arcade's splits it):
+  // chest + hips about half, helmeted head a tenth, legs a third, arms the rest.
+  //           head neck(chest) hips  elbows/hands     knees/feet
+  var MASS = [1.1, 2.6, 2.4, .35, .25, .35, .25, .8, .5, .8, .5];
+  // Air drag per part (1/s). Light, floppy hands and feet catch the air; the heavy middle doesn't.
+  // Applied with zero net force, so the flight path is unchanged: it just makes the limbs trail and
+  // the head and chest lead, the way a body tumbling through the air reads.
+  var DRAG = [.12, 0, 0, .45, .8, .45, .8, .25, .55, .25, .55];
+  var MTOT = MASS.reduce(function (a, b) { return a + b; }, 0);
   var LINKS = [[0, 1], [1, 2], [0, 2], [1, 3], [3, 4], [1, 5], [5, 6], [2, 7], [7, 8], [2, 9], [9, 10]];
   var MINS = [[7, 9, 4], [8, 10, 3], [3, 2, 8], [5, 2, 8], [4, 0, 7], [6, 0, 7], [7, 1, 15], [9, 1, 15], [8, 2, 9], [10, 2, 9], [4, 2, 5], [6, 2, 5]];
   var CONS = (function () {
@@ -369,10 +378,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     sc.forEach(function (q) { q.px = q.x - vx * HS; q.py = q.y - vy * HS; });
     return { P: P, sc: sc, t: 0, airT: 1, sticky: false, landed: false, pinT: 0, noCol: false, restT: 0, wet: false, wetT: 0, dance: null, mood: 'yell', face: 1, splatted: false, dizzy: 0, roofB: null, done: false };
   }
+  // Surfaces: r = bounce, mu = sliding friction (Coulomb: grip scales with how hard he is pressed into
+  // the surface, so a hard landing bites and a glancing one skids; a wall he is only brushing can't hold him).
   var MAT = {
-    b: { r: .22, ft: .07, fs: .035 }, lip: { r: .3, ft: .08, fs: .05 }, ac: { r: .3, ft: .08, fs: .05 }, tank: { r: .35, ft: .05, fs: .05 },
-    bill: { r: .45, ft: .05, fs: .04 }, awn: { r: .9, ft: .02, fs: .05 }, car: { r: .5, ft: .05, fs: .05 }, can: { r: .3, ft: .06, fs: .05 }, ground: { r: .28, ft: .085, fs: .05 }
+    b: { r: .26, mu: .55 }, lip: { r: .3, mu: .5 }, ac: { r: .38, mu: .4 }, tank: { r: .38, mu: .35 },
+    bill: { r: .45, mu: .4 }, awn: { r: .9, mu: .3 }, car: { r: .5, mu: .35 }, can: { r: .3, mu: .45 }, ground: { r: .3, mu: .6 }
   };
+  var WALL_MU = .3;     // side faces are smooth: he slides down them, he doesn't climb or cling
   var cands = [];
   function ragStep(h) {
     var R = rag, P = R.P, i, p, h2 = h * h;
@@ -384,10 +396,19 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if (R.pinT <= 0) unpin();
       scarfStep(h); return;
     }
-    var damp = R.sticky ? .95 : 1, ws = R.airT > .05 ? wind : 0;
+    // Once he has stuck a target landing, a little extra settling so he comes to rest on the pad
+    // instead of rocking forever (he still slides and tumbles with whatever momentum he had).
+    var damp = R.sticky && R.airT < .1 ? .996 : 1, ws = R.airT > .05 ? wind : 0;
+    // air drag on the limbs, with the net force taken back out (see DRAG)
+    var air = R.airT > .05 && !R.wet, fx = 0, fy = 0;
+    for (i = 0; i < 11; i++) {
+      p = P[i]; p.dx = 0; p.dy = 0;
+      if (air && DRAG[i]) { p.dx = -DRAG[i] * (p.x - p.px) / h; p.dy = -DRAG[i] * (p.y - p.py) / h; fx += MASS[i] * p.dx; fy += MASS[i] * p.dy; }
+    }
+    fx /= MTOT; fy /= MTOT;
     for (i = 0; i < 11; i++) {
       p = P[i];
-      var vx = (p.x - p.px) * damp, vy = (p.y - p.py) * damp, ax = ws, ay = G;
+      var vx = (p.x - p.px) * damp, vy = (p.y - p.py) * damp, ax = ws + p.dx - fx, ay = G + p.dy - fy;
       if (flail) {
         var tt = R.t;
         if (i === LH) { ax += Math.cos(tt * 13) * 1700; ay += Math.sin(tt * 13) * 1700; }
@@ -426,41 +447,46 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if (j === 1) { b.x -= dx * df; b.y -= dy * df; } else { a.x += dx * df * .5; a.y += dy * df * .5; b.x -= dx * df * .5; b.y -= dy * df * .5; }
     }
   }
-  function collideP(p, pi, h, first) {
+  // Each body part is a ball; each collider is a box with rounded corners (ball vs box: push out along
+  // the line to the closest point). Rounded corners matter: a hand that ends up on a roof edge rolls
+  // off it instead of hooking on and holding him against the wall.
+  function collideP(p, pi, h, ev) {
     var r = p.r;
     for (var i = 0; i < cands.length; i++) {
-      var c = cands[i], ex0 = c.x0 - r, ex1 = c.x1 + r, ey0 = c.y0 - r, ey1 = c.y1 + r;
-      var x = p.x, y = p.y, px = p.px, py = p.py;
-      if ((x > px ? x : px) < ex0 || (x < px ? x : px) > ex1 || (y > py ? y : py) < ey0 || (y < py ? y : py) > ey1) continue;
-      var face = null, dx = x - px, dy = y - py, tt, q;
-      if (first) {
-        var bt = 2;
-        if (dy > 0 && py <= ey0 && y >= ey0) { tt = (ey0 - py) / dy; q = px + dx * tt; if (q >= ex0 && q <= ex1 && tt < bt) { bt = tt; face = 'top'; } }
-        if (dy < 0 && py >= ey1 && y <= ey1) { tt = (ey1 - py) / dy; q = px + dx * tt; if (q >= ex0 && q <= ex1 && tt < bt) { bt = tt; face = 'bot'; } }
-        if (dx > 0 && px <= ex0 && x >= ex0) { tt = (ex0 - px) / dx; q = py + dy * tt; if (q >= ey0 && q <= ey1 && tt < bt) { bt = tt; face = 'left'; } }
-        if (dx < 0 && px >= ex1 && x <= ex1) { tt = (ex1 - px) / dx; q = py + dy * tt; if (q >= ey0 && q <= ey1 && tt < bt) { bt = tt; face = 'right'; } }
+      var c = cands[i], x = p.x, y = p.y;
+      if (x + r <= c.x0 || x - r >= c.x1 || y + r <= c.y0 || y - r >= c.y1) continue;
+      var qx = x < c.x0 ? c.x0 : x > c.x1 ? c.x1 : x, qy = y < c.y0 ? c.y0 : y > c.y1 ? c.y1 : y;
+      var dx = x - qx, dy = y - qy, nx, ny, pen;
+      if (dx || dy) {
+        var d2 = dx * dx + dy * dy; if (d2 >= r * r) continue;
+        var d = Math.sqrt(d2); nx = dx / d; ny = dy / d; pen = r - d;
+      } else {
+        // centre got inside (fast hit): leave by the face it came in through (latest slab entry)
+        var px = p.px, py = p.py, mx = x - px, my = y - py, best = -1e9, f = 0, tt;
+        if (px < c.x0 && mx > 0) { tt = (c.x0 - r - px) / mx; if (tt > best) { best = tt; f = 1; } }
+        if (px > c.x1 && mx < 0) { tt = (c.x1 + r - px) / mx; if (tt > best) { best = tt; f = 2; } }
+        if (py < c.y0 && my > 0) { tt = (c.y0 - r - py) / my; if (tt > best) { best = tt; f = 3; } }
+        if (py > c.y1 && my < 0) { tt = (c.y1 + r - py) / my; if (tt > best) { best = tt; f = 4; } }
+        if (!f) { var pl = x - c.x0, pr = c.x1 - x, pt = y - c.y0, pb = c.y1 - y, m = Math.min(pl, pr, pt, pb); f = m === pt ? 3 : m === pl ? 1 : m === pr ? 2 : 4; }
+        nx = f === 1 ? -1 : f === 2 ? 1 : 0; ny = f === 3 ? -1 : f === 4 ? 1 : 0;
+        pen = f === 1 ? x - c.x0 + r : f === 2 ? c.x1 - x + r : f === 3 ? y - c.y0 + r : c.y1 - y + r;
       }
-      if (!face) {
-        if (x <= ex0 || x >= ex1 || y <= ey0 || y >= ey1) continue;
-        var pl = x - ex0, pr = ex1 - x, pt = y - ey0, pb = ey1 - y, m = Math.min(pl, pr, pt, pb);
-        face = m === pt ? 'top' : m === pl ? 'left' : m === pr ? 'right' : 'bot';
-      }
-      resolve(p, pi, c, face, h, first);
+      resolve(p, pi, c, nx, ny, pen, h, ev);
     }
   }
-  function resolve(p, pi, c, face, h, ev) {
-    var vx = p.x - p.px, vy = p.y - p.py, nx = 0, ny = 0, mat = MAT[c.k] || MAT.b;
-    if (face === 'top') { p.y = c.y0 - p.r; ny = -1; } else if (face === 'bot') { p.y = c.y1 + p.r; ny = 1; }
-    else if (face === 'left') { p.x = c.x0 - p.r; nx = -1; } else { p.x = c.x1 + p.r; nx = 1; }
+  function resolve(p, pi, c, nx, ny, pen, h, ev) {
+    var vx = p.x - p.px, vy = p.y - p.py, mat = MAT[c.k] || MAT.b;
+    p.x += nx * pen; p.y += ny * pen;
     var vn = vx * nx + vy * ny;
     if (vn >= 0) { p.px = p.x - vx; p.py = p.y - vy; return; }
-    var tx = vx - vn * nx, ty = vy - vn * ny, fr = face === 'top' ? mat.ft : mat.fs;
-    if (rag.sticky && face === 'top') fr = .3;
-    var sp = -vn / h, nvn = sp < 50 ? 0 : -vn * mat.r;
-    var nvx = tx * (1 - fr) - nvn * nx * -1, nvy = ty * (1 - fr) - nvn * ny * -1;
-    p.px = p.x - nvx; p.py = p.y - nvy;
+    var face = ny <= -.6 ? 'top' : ny >= .6 ? 'bot' : nx < 0 ? 'left' : 'right';
+    var sp = -vn / h, e = sp < 60 ? 0 : mat.r + (pi === HEAD ? .12 : 0);   // the helmet bounces a little more
+    var mu = face === 'top' ? mat.mu * (rag.sticky ? 1.6 : 1) : Math.min(mat.mu, WALL_MU);
+    var tx = vx - vn * nx, ty = vy - vn * ny, tl = Math.sqrt(tx * tx + ty * ty);
+    var k = tl > 1e-9 ? Math.max(0, 1 - mu * -vn * (1 + e) / tl) : 0;
+    p.px = p.x - (tx * k - e * vn * nx); p.py = p.y - (ty * k - e * vn * ny);
     rag.airT = 0;
-    if (ev) hit(c, face, sp, p, pi);
+    if (ev) hit(c, face, sp, p, pi, tl * k / h);
   }
 
   // ═══ Things Willy hits ══════════════════════════════════════════════════
@@ -988,8 +1014,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(x - 4, y, w + 8, 2);
     g.strokeStyle = INK; g.lineWidth = 2.2; g.strokeRect(x, y, w, h); g.strokeRect(x - 4, y, w + 8, 9);
     // lips
-    g.fillStyle = b.c2; g.fillRect(x - 3, y - 6, 8, 6); g.fillRect(x + w - 5, y - 6, 8, 6);
-    g.strokeRect(x - 3, y - 6, 8, 6); g.strokeRect(x + w - 5, y - 6, 8, 6);
+    g.fillStyle = b.c2; g.fillRect(x, y - 6, 7, 6); g.fillRect(x + w - 7, y - 6, 7, 6);
+    g.strokeRect(x, y - 6, 7, 6); g.strokeRect(x + w - 7, y - 6, 7, 6);
     if (b.jack) drawJackDeco(b);
     if (b.awn) drawAwning(b.awn);
     b.props.forEach(drawProp);

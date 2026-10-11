@@ -6,7 +6,8 @@
 Everything is synthesised here from scratch (no samples, no General MIDI):
 detuned "supersaw" and noise pads through slow filters, Karplus-Strong
 plucked strings, modal (physically modelled) marimba and music box, a breathy
-flute, percussion from filtered noise with swing, chorus, soft saturation and
+flute, an additive fairground band organ, brass tuba, slide whistle,
+percussion from filtered noise and metallic oscillators, chorus, soft saturation and
 a generated convolution reverb. Every note tail and the reverb wrap round the
 loop end, so each file loops with no seam. Output: <table>.mp3 (32 kHz mono,
 64 kbps) next to this script, plus loops.json with each loop's exact length.
@@ -244,7 +245,7 @@ def master(tr, mix):
     out = highpass(np.tile(out, 3), 60)[tr.n:2 * tr.n]
     out = soft(out / (np.max(np.abs(out)) + 1e-9) * 0.9, 1.2)
     rms = np.sqrt(np.mean(out ** 2))
-    out *= min(0.95 / (np.max(np.abs(out)) + 1e-9), 0.18 / (rms + 1e-9))   # about -15 dBFS RMS, peaks below 0 dB
+    out *= min(0.95 / (np.max(np.abs(out)) + 1e-9), getattr(tr, 'rms', 0.18) / (rms + 1e-9))   # about -15 dBFS RMS, peaks below 0 dB
     return out
 
 
@@ -467,6 +468,7 @@ def midway():
     s16 = 3500 / SR
     bar = 8 * s16
     tr = Track(bar * 32)
+    tr.rms = 0.168   # a bright band organ sounds louder than the other beds at equal RMS: about -16 LUFS like them
     CH = {'C': ([64, 67, 72], 48, 43), 'A7': ([61, 64, 67], 45, 40), 'Dm': ([62, 65, 69], 50, 45),
           'G7': ([62, 65, 71], 43, 38), 'D7': ([62, 66, 72], 50, 45), 'E7': ([62, 64, 68], 52, 47),
           'F': ([65, 69, 72], 41, 36), 'Bb': ([62, 65, 70], 46, 41), 'C7': ([64, 67, 70], 48, 43)}
@@ -571,13 +573,13 @@ def midway():
     tr.add('whistle', slide_whistle([(0, 72), (0.15, 70), (1, 84)], 2 * s16), 15 * bar + 6 * s16)
     tr.add('whistle', slide_whistle([(0, 67), (0.5, 74), (1, 88)], 6 * s16), 31 * bar + 2 * s16)
     tent = lambda w: (lambda x: reverb(x, 1.4, 0.015, 6000, w))
-    return tr, {'lead': (0.55, [lambda x: chorus(x, 0.002, 0.5, 0.008, 0.25), tent(0.24)]),
+    return tr, {'lead': (0.55, [lambda x: chorus(x, 0.002, 0.5, 0.008, 0.25), circ_fx(lambda x: lowpass(x, 6500)), tent(0.24)]),
                 'counter': (0.5, [tent(0.3)]),
-                'pah': (0.5, [tent(0.24)]),
-                'tuba': (0.6, [tent(0.12)]),
+                'pah': (0.62, [tent(0.24)]),
+                'tuba': (0.42, [tent(0.12)]),
                 'kick': (0.55, [tent(0.12)]),
-                'snare': (0.22, [tent(0.2)]),
-                'cym': (0.16, [tent(0.15)]),
+                'snare': (0.28, [tent(0.2)]),
+                'cym': (0.13, [tent(0.15)]),
                 'xylo': (0.35, [tent(0.25)]),
                 'glock': (0.22, [tent(0.3)]),
                 'whistle': (0.3, [tent(0.3)])}

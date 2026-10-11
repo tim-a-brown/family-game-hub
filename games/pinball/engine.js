@@ -43,6 +43,87 @@ function lampValue(s, t, ph) {
   return 0;
 }
 
+// ── Table features: generic explanations and where each part is ─────────────
+// The look-around explainer (G.features) uses these for any component a table's `explain` map doesn't
+// describe. The points are the engine's own defaults (see G.emit); tables that add scoring explain their parts.
+const GENERIC = {
+  popBumper: { kind: 'Pop bumper', name: 'Pop bumper', text: 'Kicks the ball away the moment it touches: 500 points a hit.' },
+  slingshot: { kind: 'Slingshot', name: 'Slingshot', text: 'The rubber above the flipper kicks the ball back across the table: 110 points a kick.' },
+  dropTargetBank: { kind: 'Drop targets', name: 'Drop targets', text: '750 points for each target you knock down, and 15,000 for the whole bank. They pop back up after a moment.' },
+  standupTarget: { kind: 'Target', name: 'Target', text: '1,000 points a hit.' },
+  spinner: { kind: 'Spinner', name: 'Spinner', text: 'Scores every half turn: the harder you shoot through it, the longer it spins.' },
+  scoop: { kind: 'Scoop', name: 'Scoop', text: 'Holds the ball for a moment, 2,500 points, then kicks it back into play.' },
+  vuk: { kind: 'Kicker', name: 'Kicker hole', text: 'Catches the ball and fires it up and away.' },
+  subway: { kind: 'Hole', name: 'Hole', text: 'Swallows the ball and sends it somewhere else on the table.' },
+  kickback: { kind: 'Kickback', name: 'Kickback', text: 'When its lamp is lit, a ball falling down this outlane is fired straight back into play.' },
+  magnaSave: { kind: 'Magnet', name: 'Magna-Save', text: 'Hold the MAGNET button as the ball heads for the outlane: the magnet catches it, and letting go throws it back. One charge per ball.' },
+  magnet: { kind: 'Magnet', name: 'Magnet', text: 'A magnet under the playfield that grabs the ball when it is turned on.' },
+  ringCatch: { kind: 'Magnet', name: 'Magnet', text: 'When lit, a magnet under the toy catches the ball and holds it for a moment.' },
+  ramp: { kind: 'Ramp', name: 'Ramp', text: '5,000 points a trip. A soft shot rolls back down: hit it firmly.' },
+  orbit: { kind: 'Orbit', name: 'Orbit', text: 'A lane round the top of the table: 3,000 points each time the ball goes all the way round.' },
+  spinningDisc: { kind: 'Spinning disc', name: 'Spinning disc', text: 'A turning disc in the floor that drags the ball round and throws it off in a new direction. No points of its own.' },
+  trapDoor: { kind: 'Trap door', name: 'Trap door', text: 'When it opens, the ball can fall through to the level below.' },
+  ballLock: { kind: 'Lock', name: 'Ball lock', text: 'Locked balls wait here until multiball starts.' },
+  cannon: { kind: 'Cannon', name: 'Ball cannon', text: 'Loads the ball and sweeps: hold a flipper button to steer, let go (or press FIRE) to shoot.' },
+  movingLauncher: { kind: 'Launcher', name: 'Launcher', text: 'Holds the ball: slide it with the flipper buttons, then press FIRE.' },
+  gumballMachine: { kind: 'Lock', name: 'Gumball machine', text: 'Locked balls wait inside until multiball starts.' },
+  mouthToy: { kind: 'Toy', name: 'Toy', text: 'Hit it to make it react; when its mouth is open, shoot the ball inside.' },
+  shakingToy: { kind: 'Toy', name: 'Toy', text: 'Shakes when the ball hits it.' },
+  crumblingToy: { kind: 'Toy', name: 'Toy', text: 'Every hit cracks it a little more until it collapses.' },
+  popUpTargets: { kind: 'Targets', name: 'Pop-up targets', text: 'Rise out of the floor when lit: knock them back down.' },
+  ferrisWheel: { kind: 'Toy', name: 'Wheel', text: 'Carries the ball up and drops it somewhere new.' },
+  fan: { kind: 'Toy', name: 'Fan', text: 'Blows the ball across the table while it runs.' },
+  powerfield: { kind: 'Playfield', name: 'Powerfield', text: 'A vertical field with no flippers: the flipper buttons fire magnets that fling the ball up.' },
+  tiltingMiniField: { kind: 'Playfield', name: 'Tilting maze', text: 'The flipper buttons tilt it left and right.' },
+  miniField: { kind: 'Playfield', name: 'Mini playfield', text: 'A small playfield of its own on another level.' }
+};
+function genericFeature(c) {
+  if (/^(in|out)[LR]$/.test(c.id) && c.type === 'rolloverLane') return c.id[0] === 'i'
+    ? { kind: 'Inlane', name: (c.id[2] === 'L' ? 'Left' : 'Right') + ' inlane', text: 'Rolls the ball back down to the flipper: 500 points.' }
+    : { kind: 'Outlane', name: (c.id[3] === 'L' ? 'Left' : 'Right') + ' outlane', text: '2,000 points, but the ball is on its way down the drain: nudge, or save it with the kickback or magnet if the table has one.' };
+  if (c.type === 'rolloverLane') return { kind: 'Rollover lane', name: 'Rollover lane', text: '1,000 points each time the ball rolls over it.' };
+  if (c.type === 'slingshot') return Object.assign({}, GENERIC.slingshot, { name: (c.o && c.o.side === 'R' ? 'Right' : 'Left') + ' slingshot' });
+  if ((c.type === 'subway' || c.type === 'vuk') && c.o && c.o.hole === false) return null;
+  if (c.type === 'ballLock' && c.o && c.o.hidden) return null;
+  return GENERIC[c.type] || null;
+}
+// pick/ring circles and highlight paths for one component (table mm; z above the playfield)
+function compGeom(c, circ, paths, lvlZ) {
+  const o = c.o || {}, z = c.z0 != null ? c.z0 : lvlZ(c.lvl), t = c.type;
+  const add = (x, y, r, zz, area) => circ.push({ x, y, r, z: zz != null ? zz : z, area: !!area });
+  const box = (b, zz, area) => { add((b[0] + b[2]) / 2, (b[1] + b[3]) / 2, Math.hypot(b[2] - b[0], b[3] - b[1]) * 0.36, zz, area); paths.push({ pts: [[b[0], b[1], zz], [b[2], b[1], zz], [b[2], b[3], zz], [b[0], b[3], zz]], closed: true }); };
+  switch (t) {
+    case 'flipper': case 'gate': case 'diverter': case 'plunger': case 'scoreMotor': return;
+    case 'popBumper': add(c.x, c.y, (o.r || 22) + 6); return;
+    case 'slingshot': add(c.x, c.y, 32); return;
+    case 'dropTargetBank': add(c.x, c.y, c.targets.length * (c.w + (o.gap != null ? o.gap : 3)) / 2 + 6); return;
+    case 'standupTarget': case 'spinner': add(c.x, c.y, (o.w || 20) / 2 + 8); return;
+    case 'rolloverLane': add(c.x, c.y, (o.r || 11) + 7); return;
+    case 'popUpTargets': (o.targets || []).forEach(p => add(p.x, p.y, (p.w || 22) / 2 + 6)); return;
+    case 'mouthToy': case 'crumblingToy': add(c.x, c.y, (o.w || 40) / 2 + 10); return;
+    case 'scoop': case 'trapDoor': add(c.x, c.y, (o.r || 12) + 10); return;
+    case 'subway': case 'vuk': if (o.hole !== false) add(c.x, c.y, (o.r || 12) + 10); return;
+    case 'kickback': add(c.x, c.y, 22); return;
+    case 'magnet': case 'magnaSave': case 'ringCatch': case 'spinningDisc': add(c.x, c.y, (o.r || 30) + 4); return;
+    case 'fan': case 'gumballMachine': add(c.x, c.y, 28); return;
+    case 'orbit': for (const L of [o.a, o.b]) add((L[0] + L[2]) / 2, (L[1] + L[3]) / 2, Math.hypot(L[2] - L[0], L[3] - L[1]) / 2 + 4); return;
+    case 'ramp': add(c.x, c.y, c.w / 2 + 4); paths.push({ pts: c.pts.map(p => [p[0], p[1], z + p[2]]) }); return;
+    case 'movingLauncher': add((o.x0 + o.x1) / 2, o.y, (o.x1 - o.x0) / 2 + 14); return;
+    case 'cannon': add(c.x, c.y, 26, z + 10); if (o.load) add(o.load[0], o.load[1], (o.load[2] || 12) + 8, lvlZ(c.lvl)); return;
+    case 'ballLock': if (!o.hidden) (c.slots || []).forEach(s => add(s[0], s[1], 15, z + (s[2] || 0))); return;
+    case 'grabber': if (o.home) add(o.home[0], o.home[1], 22, Math.max(z, o.home[2])); return;
+    case 'hologram': if (c.p && c.vis > 0.3) add(c.p[0], c.p[1], (o.hit || 30) + 6, c.p[2]); return;
+    case 'mistMagnet': if (o.path) paths.push({ pts: o.path.map(p => [p[0], p[1], z + 3]) }); return;
+    case 'miniField': case 'powerfield': if (o.box) box(o.box, z, true); return;
+    case 'tiltingMiniField': if (o.box) box(o.box, lvlZ(o.lvl), true); return;
+    case 'elevator': if (o.box) box(o.box, c.z || 0, false); return;
+  }
+  // anything else (table-built parts): its position, and its path if it has one
+  if (!c.x && !c.y) return;
+  add(c.x, c.y, Math.min(70, (c.r || o.r || 16) + 8));
+  if (Array.isArray(c.pts) && c.pts.length > 1) paths.push({ pts: c.pts.map(p => [p[0], p[1], (p[2] || 0) + z]) });
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 export function createGame(def, opts = {}) {
   const headless = !!opts.headless, thumb = !!opts.thumb, hq = !!opts.hq;
@@ -581,6 +662,7 @@ export function createGame(def, opts = {}) {
   // the per-frame test: the same checks as busyWhy without building the reason strings
   function busy() {
     if (RC && (RC.tween || performance.now() - G.camT < 250)) return true;   // the camera is moving (view change, look-around)
+    if (RC && RC.hl) return true;                                              // the explainer's highlight pulses
     if (G.dm || G.show || G.bonus || G.shakeA > 0.01 || G.flashA > 0.01 || G.lightning > 0.01) return true;
     if (G.pulling || G.input.L || G.input.R || G.input.magna) return true;
     if (G.plunger && G.plunger.busy && G.plunger.busy()) return true;
@@ -672,7 +754,65 @@ export function createGame(def, opts = {}) {
     return Math.max(1, Math.min(3, k));
   };
   G.view = () => RC ? RC.view : 'first';
-  G.renderOnce = function () { if (RC) RC.render(1 / 60); if (disp) disp.render((g, w, h) => dmdScene(g, w, h)); };
+
+  // ── Table features (the look-around explainer) ─────────────────────────────
+  // def.explain = { key: { name, text, kind, ids, at, path, lvl, area } | null } (see README). G.features() lists
+  // every explained feature plus a generic one for each scoring component the table doesn't describe (null hides
+  // one). G.pickFeature(x, y) finds the feature under a canvas point (CSS px) for the camera as it stands (or is
+  // easing to); G.highlight(f) rings it on the table in the table's colour (null clears).
+  let featList = null;
+  G.features = function () {
+    if (featList) return featList;
+    const ex = def.explain || {}, out = [], seen = new Set();
+    for (const key in ex) {
+      const e = ex[key], ids = e && e.ids ? e.ids : G.comps[key] ? [key] : [];
+      seen.add(key); ids.forEach(id => seen.add(id));
+      if (!e) continue;
+      const comps = ids.map(id => G.comps[id]).filter(Boolean), c0 = comps[0], gen = c0 && genericFeature(c0);
+      out.push({ key, name: e.name, text: e.text, kind: e.kind || (gen ? gen.kind : ''), comps, at: e.at || null, path: e.path || null, lvl: e.lvl || null, area: !!e.area });
+    }
+    for (const c of G.compList) {
+      if (!c.id || seen.has(c.id)) continue;
+      const gen = genericFeature(c); if (!gen) continue;
+      seen.add(c.id); out.push({ key: c.id, name: gen.name, text: gen.text, kind: gen.kind, comps: [c], generic: true });
+    }
+    return (featList = out);
+  };
+  const lvlZ = l => (T.levels[l || 'main'] || { z: 0 }).z || 0;
+  // where a feature is: pick/ring circles {x, y, z, r, area} and highlight paths {pts: [[x, y, z]...], closed}
+  function featGeom(f) {
+    const circ = [], paths = [];
+    for (const c of f.comps) compGeom(c, circ, paths, lvlZ);
+    const z = lvlZ(f.lvl);
+    if (f.at) for (const p of f.at) circ.push({ x: p[0], y: p[1], r: p[2] || 20, z: z + (p[3] || 0), area: f.area });
+    if (f.path) paths.push({ pts: f.path.map(p => [p[0], p[1], p[2] != null ? p[2] : z]) });
+    return { circ, paths };
+  }
+  G.featureGeom = featGeom;
+  G.pickFeature = function (sx, sy, slop = 22) {
+    if (!RC) return null;
+    let best = null, bs = 1e9;
+    const test = (f, x, y, z, r, pen) => {
+      const p = RC.projectNow(x, y, z); if (!p) return;
+      const q = RC.projectNow(x + r, y, z), rp = Math.max(4, q ? Math.hypot(q.x - p.x, q.y - p.y) : r);
+      const d = Math.hypot(sx - p.x, sy - p.y); if (d > rp + slop) return;
+      const s = (d <= rp ? d / rp : 1 + (d - rp) / slop) + pen;   // deep inside a small part beats the edge of a big one
+      if (s < bs) { bs = s; best = f; }
+    };
+    for (const f of G.features()) {
+      const g = featGeom(f);
+      for (const c of g.circ) test(f, c.x, c.y, c.z, c.r, c.area ? 1 : 0);
+      for (const pa of g.paths) { let lx = -1e9, ly = -1e9; for (const p of pa.pts) { if (Math.hypot(p[0] - lx, p[1] - ly) < 18) continue; lx = p[0]; ly = p[1]; test(f, p[0], p[1], p[2], 16, 0.35); } }
+    }
+    return best;
+  };
+  G.highlight = function (f) {
+    if (!RC) return;
+    RC.setHighlight(f ? () => featGeom(f) : null, def.color || theme.accent || '#ffd27a');
+    G.kick();
+  };
+  G.projectNow = function (x, y, z) { return RC ? RC.projectNow(x, y, z || 0) : null; };
+  G.renderOnce =function () { if (RC) RC.render(1 / 60); if (disp) disp.render((g, w, h) => dmdScene(g, w, h)); };
   G.resize = function () { if (RC) RC.resize(); if (disp) disp.render((g, w, h) => dmdScene(g, w, h)); };
 
   // ── Start ────────────────────────────────────────────────────────────────
@@ -1166,6 +1306,53 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     projV.copy(toWorld(x, y, z)).project(projCam);
     return { x: (projV.x + 1) / 2 * w, y: (1 - projV.y) / 2 * h };
   };
+  // the same for the camera as it is now (look-around pans and zooms), or where it is easing to; null behind it
+  RC.projectNow = function (x, y, z) {
+    const tw = RC.tween, el = renderer.domElement, w = el.clientWidth || el.width, h = el.clientHeight || el.height;
+    projCam.fov = tw ? tw.f1 : camera.fov; projCam.aspect = camera.aspect; projCam.position.copy(tw ? tw.p1 : camBase.pos); projCam.lookAt(tw ? tw.l1 : camBase.look);
+    projCam.updateMatrixWorld(); projCam.updateProjectionMatrix();
+    projV.copy(toWorld(x, y, z)).project(projCam);
+    if (projV.z > 1 || projV.z < -1) return null;
+    return { x: (projV.x + 1) / 2 * w, y: (1 - projV.y) / 2 * h };
+  };
+  // The explainer's highlight: a glowing ring (with a soft halo and a slow ping) round each part of the feature
+  // and a glowing line along its paths, in the table's colour, drawn over everything. get() is called every frame
+  // for the ring positions, so a moving part (a ghost, a boulder) keeps its ring. null clears it.
+  RC.hl = null;
+  // the halo: a soft band of light on the ring itself (the plane is 3r across, so r sits at 2/3 of its radius)
+  const hlHalo = thumb ? null : tex(glowCanvas(128, [[0, 'rgba(255,255,255,.07)'], [0.5, 'rgba(255,255,255,.12)'], [0.667, 'rgba(255,255,255,.9)'], [0.8, 'rgba(255,255,255,.22)'], [1, 'rgba(255,255,255,0)']]));
+  RC.setHighlight = function (get, color) {
+    if (RC.hl) { root.remove(RC.hl.g); RC.hl.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); RC.hl = null; }
+    const geo = get && get(); if (!geo || (!geo.circ.length && !geo.paths.length)) return;
+    const col = new THREE.Color(color).multiplyScalar(1.7);
+    const mat = () => new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, toneMapped: false, side: THREE.DoubleSide });
+    const g = new THREE.Group(), rings = [], tubes = [], ord = o => { o.renderOrder = 40; o.frustumCulled = false; return o; };
+    for (const c of geo.circ) {
+      const r = Math.max(8, c.r), s = new THREE.Group(); s.position.set(c.x, c.y, c.z + 1.5);
+      const ring = ord(new THREE.Mesh(new THREE.RingGeometry(r - 2.4, r + 1.2, 72), mat()));
+      const ping = ord(new THREE.Mesh(new THREE.RingGeometry(r - 1, r + 0.8, 72), mat()));
+      const halo = ord(new THREE.Mesh(new THREE.PlaneGeometry(r * 3, r * 3), new THREE.MeshBasicMaterial({ color: col, map: hlHalo, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, toneMapped: false })));
+      s.add(halo, ring, ping); g.add(s); rings.push({ s, ring, ping, halo });
+    }
+    for (const p of geo.paths) {
+      if (p.pts.length < 2) continue;
+      const curve = new THREE.CatmullRomCurve3(p.pts.map(q => new THREE.Vector3(q[0], q[1], q[2] + 4)), !!p.closed, p.closed ? 'catmullrom' : 'centripetal', p.closed ? 0.05 : 0.5);
+      const n = Math.min(400, Math.max(12, p.pts.length * 3));
+      const core = ord(new THREE.Mesh(new THREE.TubeGeometry(curve, n, 1.6, 6, !!p.closed), mat()));
+      const glow = ord(new THREE.Mesh(new THREE.TubeGeometry(curve, n, 5, 8, !!p.closed), mat())); glow.material.opacity = 0.16;
+      g.add(glow, core); tubes.push({ core, glow });
+    }
+    root.add(g);
+    let t = 0;
+    RC.hl = { g, step(dt) {
+      t += dt; const k = 0.5 + 0.5 * Math.sin(t * TAU * 0.8), u = (t * 0.7) % 1;
+      const live = get(); if (live && live.circ.length === rings.length) live.circ.forEach((c, i) => rings[i].s.position.set(c.x, c.y, c.z + 1.5));
+      for (const r of rings) { r.ring.material.opacity = 0.6 + 0.4 * k; r.halo.material.opacity = 0.16 + 0.16 * k; r.ping.scale.setScalar(1 + 0.45 * u); r.ping.material.opacity = 0.7 * (1 - u) * (1 - u); }
+      for (const tb of tubes) { tb.core.material.opacity = 0.5 + 0.4 * k; tb.glow.material.opacity = 0.1 + 0.12 * k; }
+    } };
+    RC.hl.step(0);
+  };
+  RC.anim.push(dt => { if (RC.hl) RC.hl.step(dt); });
 
   // ── Post-processing ──
   let composer = null, bloom = null, outPass = null, size = new THREE.Vector2();

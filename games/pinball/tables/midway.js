@@ -57,7 +57,7 @@ export default {
   intro: 'STEP RIGHT UP',
   display: { type: 'dmd', color: '#ffa030' },
   msgStyle: 'zoom',
-  music: { url: '../sounds/pinball/midway.mp3', samples: 1280000, rate: 32000 },
+  music: { url: '../sounds/pinball/midway.mp3', samples: 896000, rate: 32000 },
   speech: { pitch: 1.15, rate: 1.08, voice: 'Fred|Daniel|Male|Google UK English Male' },
   rulesHtml:
     '<p>A boardwalk carnival. The barker wants your money; the prizes are plush.</p><ul>' +
