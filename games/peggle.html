@@ -195,7 +195,9 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function sMult() { osc('square', mtof(79), 0, 0.12, 0.04, { lp: 2000 }); osc('square', mtof(86), 0.09, 0.2, 0.04, { lp: 2000 }); }
   function sPower() { [79, 83, 86, 91, 95].forEach(function (m, i) { osc('sine', mtof(m), i * 0.045, 0.22, 0.06); }); }
   function sSpooky() { osc('sine', 300, 0, 0.6, 0.08, { to: 900 }); osc('sine', 450, 0.05, 0.6, 0.05, { to: 1300 }); }
-  var Mus = ArcadeMusic.create({ key: 'peggle_music', song: ArcadeMusic.songs.peggle, ctx: ac, out: function () { return master; } });
+  // Each level has its own loop (arcade-music.js songs.peggleLevels, in LEVELS order)
+  function levelSong(n) { var s = ArcadeMusic.songs.peggleLevels; return (s && s[(n - 1) % s.length]) || ArcadeMusic.songs.peggle; }
+  var Mus = ArcadeMusic.create({ key: 'peggle_music', song: levelSong(1), ctx: ac, out: function () { return master; } });
   function sLose() { [64, 60, 57, 52].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.18, 0.3, 0.08); }); }
   function sLastBall() { osc('square', 440, 0, 0.1, 0.035, { lp: 1800 }); osc('square', 440, 0.16, 0.1, 0.035, { lp: 1800 }); }
   function sBucket(big) {
@@ -841,6 +843,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // ═══ Level flow ══════════════════════════════════════════════════════════
   function startLevel(n, cfg, saved) {
     objs = buildLevel(n);
+    Mus.setSong(levelSong(n)); Mus.restart();
     // title: the level's name; tap it for the level picker
     Kit.titleSwitch(LEVELS[n - 1] ? LEVELS[n - 1].name : 'Level ' + n, function () { if (L && !L.done) save(); showSetup(); }, 'Choose another level');
     movers = objs.filter(function (o) { return o.mov; });
@@ -1880,7 +1883,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       return { deg: bestA * 180 / PI, score: bestS };
     },
     paths: function () { return balls.map(function (b) { return [b.x, b.y, b.vx, b.vy]; }); },
-    pause: pauseGame, resume: resumeGame,
+    pause: pauseGame, resume: resumeGame, music: function () { return Mus.song(); },
     tune: function (e, g) { E_PEG = e; GRAV = g; }
   };
 

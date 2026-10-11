@@ -11,6 +11,10 @@
 //   M.tick();     // call every frame while the game is actively being played
 //   M.stop(hard); // call when play stops (pause, game over, menu); a no-op when already quiet
 //   M.menuItem    // { icon, label, onClick } for Kit.init({ menu })
+//   M.setSong(s)  // switch to another song (e.g. per level). Starts it from the top; while playing, the
+//                 // old song fades out over ~0.4s and the new one fades in. A no-op when s is already playing.
+//   M.song()      // the current song object
+//   M.restart()   // start the current song from the top
 //
 // Notes are scheduled a fraction of a second ahead, so music stops as soon as tick() does.
 (function () {
@@ -59,15 +63,129 @@
       bass: [43, 0, 50, 0, 43, 43, 50, 0,  40, 0, 47, 0, 40, 40, 47, 0,  36, 0, 43, 0, 36, 36, 43, 0,  38, 0, 45, 0, 38, 38, 45, 0],
       drums: 'khshkhsh'
     },
-    // Calm and glassy F major for Peggle (F Dm Bb C), no drums
-    peggle: {
-      eighth: 0.27, leadWave: 'triangle', leadVol: 0.085, leadLen: 1.6, echo: 0.3, bassWave: 'sine', bassVol: 0.12, bassLen: 3.6, drumVol: 0,
-      lead: [72, 0, 69, 0, 72, 74, 77, 0,  74, 0, 0, 72, 69, 0, 0, 0,  70, 0, 74, 0, 77, 0, 74, 72,  72, 0, 0, 0, 0, 0, 0, 0,
-             77, 0, 76, 0, 77, 79, 81, 0,  81, 0, 79, 77, 74, 0, 0, 0,  77, 0, 74, 0, 70, 72, 74, 77,  76, 0, 0, 0, 79, 0, 0, 0],
-      bass: [41, 0, 0, 0, 48, 0, 0, 0,  38, 0, 0, 0, 45, 0, 0, 0,  34, 0, 0, 0, 41, 0, 0, 0,  36, 0, 0, 0, 43, 0, 0, 0],
-      drums: ''
-    }
   };
+
+  // Peggle: one gentle loop per level, in the order of the game's LEVELS (songs.peggle is level 1).
+  songs.peggleLevels = [
+    // 1 First Light (dawn): G major (G D Em C), slow sunrise arpeggios, glassy triangle, no drums
+    {
+      eighth: 0.26, leadWave: 'triangle', leadVol: 0.085, leadLen: 1.5, echo: 0.25, bassWave: 'sine', bassVol: 0.12, bassLen: 3.6, drumVol: 0,
+      lead: [67, 0, 71, 0, 74, 0, 79, 0,  78, 0, 74, 0, 69, 0, 74, 76,  79, 0, 76, 0, 71, 0, 76, 0,  76, 74, 72, 0, 67, 0, 0, 0,
+             79, 0, 0, 81, 83, 0, 79, 0,  81, 0, 78, 0, 74, 0, 76, 78,  79, 0, 0, 76, 74, 0, 71, 0,  72, 0, 76, 0, 74, 0, 0, 0],
+      bass: [43, 0, 0, 0, 50, 0, 0, 0,  38, 0, 0, 0, 45, 0, 0, 0,  40, 0, 0, 0, 47, 0, 0, 0,  36, 0, 0, 0, 43, 0, 0, 0],
+      drums: ''
+    },
+    // 2 Rainbow Arches (sunset sea): Eb major (Eb Cm Ab Bb), lilting swing, soft sine lead, lapping drums
+    {
+      eighth: 0.24, swing: 0.33, leadWave: 'sine', leadVol: 0.085, leadLen: 1.3, echo: 0.35, bassVol: 0.1, bassLen: 1.6, drumVol: 0.35,
+      lead: [70, 0, 75, 0, 79, 0, 77, 75,  72, 0, 0, 75, 79, 0, 0, 0,  72, 0, 77, 0, 80, 0, 79, 77,  79, 0, 0, 0, 77, 0, 0, 0,
+             82, 0, 79, 0, 75, 0, 79, 82,  84, 0, 0, 82, 79, 0, 75, 0,  80, 0, 79, 0, 77, 0, 72, 0,  74, 0, 77, 0, 70, 0, 0, 0],
+      bass: [39, 0, 46, 0, 51, 0, 46, 0,  36, 0, 43, 0, 48, 0, 43, 0,  44, 0, 51, 0, 48, 0, 51, 0,  34, 0, 41, 0, 46, 0, 41, 0],
+      drums: 'k..h..h.'
+    },
+    // 3 Spiral (starry night): A minor music-box lullaby (Am F C G Am F Dm E), spiralling arpeggios, no drums
+    {
+      eighth: 0.3, leadWave: 'triangle', leadVol: 0.1, leadLen: 0.9, echo: 0.4, bassWave: 'sine', bassVol: 0.12, bassLen: 3.6, drumVol: 0,
+      lead: [76, 0, 72, 0, 69, 0, 72, 76,  77, 0, 72, 0, 69, 0, 65, 0,  72, 0, 76, 0, 79, 0, 76, 72,  74, 0, 71, 0, 67, 0, 0, 0,
+             81, 0, 79, 76, 72, 0, 76, 0,  77, 0, 76, 72, 69, 0, 72, 0,  74, 0, 77, 0, 81, 0, 77, 74,  71, 0, 68, 0, 64, 0, 0, 0],
+      bass: [45, 0, 0, 0, 52, 0, 0, 0,  41, 0, 0, 0, 48, 0, 0, 0,  36, 0, 0, 0, 43, 0, 0, 0,  43, 0, 0, 0, 50, 0, 0, 0,
+             45, 0, 0, 0, 52, 0, 0, 0,  41, 0, 0, 0, 48, 0, 0, 0,  38, 0, 0, 0, 45, 0, 0, 0,  40, 0, 0, 0, 47, 0, 0, 0],
+      drums: ''
+    },
+    // 4 Bubbles (aurora): E major pentatonic (E C#m A B), bouncy staccato sine bubbles, light kit
+    {
+      eighth: 0.2, leadWave: 'sine', leadVol: 0.11, leadLen: 0.55, echo: 0.3, bassVol: 0.13, bassLen: 0.8, drumVol: 0.4,
+      lead: [76, 80, 83, 0, 88, 0, 83, 0,  85, 0, 80, 0, 76, 0, 73, 0,  73, 76, 81, 0, 85, 0, 81, 0,  83, 0, 78, 0, 75, 0, 71, 0,
+             80, 0, 80, 83, 88, 0, 0, 0,  85, 0, 83, 80, 76, 0, 80, 0,  81, 0, 80, 0, 78, 0, 76, 0,  78, 0, 75, 0, 78, 0, 0, 0],
+      bass: [40, 0, 47, 0, 52, 0, 47, 0,  37, 0, 44, 0, 49, 0, 44, 0,  33, 0, 40, 0, 45, 0, 40, 0,  35, 0, 42, 0, 47, 0, 42, 0],
+      drums: 'k.h.k.hh'
+    },
+    // 5 Hourglass (dunes): D minor (Dm C Bb A), lazy camel-walk swing, mellow filtered square
+    {
+      eighth: 0.21, swing: 0.28, leadVol: 0.06, leadLp: 1800, bassVol: 0.14, drumVol: 0.45,
+      lead: [74, 0, 77, 76, 74, 0, 69, 0,  72, 0, 76, 74, 72, 0, 67, 0,  70, 0, 74, 72, 70, 0, 74, 77,  76, 0, 73, 0, 69, 0, 0, 0,
+             81, 0, 0, 77, 79, 81, 77, 74,  79, 0, 0, 76, 79, 0, 76, 72,  77, 0, 74, 0, 70, 0, 74, 77,  76, 0, 73, 0, 76, 0, 0, 0],
+      bass: [38, 0, 45, 0, 50, 0, 45, 0,  36, 0, 43, 0, 48, 0, 43, 0,  34, 0, 41, 0, 46, 0, 41, 0,  33, 0, 40, 0, 45, 0, 40, 0],
+      drums: 'k..hs..h'
+    },
+    // 6 Diamonds (forest): C major waltz in 3/4 (6 steps a bar), oom-pah-pah bass, 16 bars
+    {
+      eighth: 0.21, leadWave: 'triangle', leadVol: 0.1, leadLen: 1.1, echo: 0.2, bassVol: 0.13, drumVol: 0.35,
+      lead: [72, 0, 76, 0, 79, 0,  81, 0, 0, 79, 76, 0,  77, 0, 81, 0, 84, 0,  83, 0, 0, 0, 79, 0,
+             76, 0, 79, 0, 84, 0,  84, 0, 83, 81, 76, 0,  77, 0, 81, 0, 79, 77,  74, 0, 0, 0, 71, 0,
+             72, 0, 77, 0, 81, 0,  79, 0, 0, 77, 74, 0,  76, 0, 79, 0, 83, 0,  81, 0, 0, 79, 76, 0,
+             77, 0, 74, 0, 77, 81,  79, 0, 74, 0, 71, 74,  72, 0, 0, 0, 0, 0,  0, 0, 67, 0, 71, 0],
+      bass: [36, 0, 43, 0, 48, 0,  33, 0, 40, 0, 45, 0,  41, 0, 48, 0, 53, 0,  43, 0, 50, 0, 55, 0,
+             36, 0, 43, 0, 48, 0,  33, 0, 40, 0, 45, 0,  38, 0, 45, 0, 50, 0,  43, 0, 50, 0, 55, 0,
+             41, 0, 48, 0, 53, 0,  43, 0, 50, 0, 55, 0,  40, 0, 47, 0, 52, 0,  33, 0, 40, 0, 45, 0,
+             38, 0, 45, 0, 50, 0,  43, 0, 50, 0, 55, 0,  36, 0, 43, 0, 48, 0,  36, 0, 43, 0, 48, 0],
+      drums: 'k.h.h.'
+    },
+    // 7 Twin Peaks (mountains): Bb major (Bb F Eb Bb Gm Eb F Bb), yodelling octave leaps, gentle march
+    {
+      eighth: 0.23, leadVol: 0.07, leadLp: 2000, leadLen: 0.8, echo: 0.25, bassVol: 0.14, drumVol: 0.4,
+      lead: [70, 0, 82, 0, 77, 0, 74, 0,  72, 0, 84, 0, 81, 0, 77, 0,  79, 0, 82, 0, 79, 0, 75, 0,  77, 0, 74, 0, 70, 0, 0, 0,
+             79, 0, 79, 82, 86, 0, 82, 0,  84, 0, 82, 79, 75, 0, 79, 0,  77, 0, 81, 0, 84, 0, 81, 77,  82, 0, 0, 0, 70, 0, 0, 0],
+      bass: [34, 0, 41, 0, 34, 0, 41, 0,  41, 0, 48, 0, 41, 0, 48, 0,  39, 0, 46, 0, 39, 0, 46, 0,  34, 0, 41, 0, 34, 0, 41, 0,
+             43, 0, 50, 0, 43, 0, 50, 0,  39, 0, 46, 0, 39, 0, 46, 0,  41, 0, 48, 0, 41, 0, 48, 0,  34, 0, 41, 0, 34, 0, 41, 0],
+      drums: 'k.h.s.h.'
+    },
+    // 8 The Wheel (deep sea): B Dorian (Bm E Bm E D A E E), slow floating sine with long echoes, soft pulse
+    {
+      eighth: 0.29, leadWave: 'sine', leadVol: 0.08, leadLen: 1.8, echo: 0.4, bassWave: 'sine', bassVol: 0.11, bassLen: 3.8, drumVol: 0.35,
+      lead: [78, 0, 0, 0, 74, 0, 71, 0,  73, 0, 76, 0, 80, 0, 0, 0,  78, 0, 0, 81, 78, 0, 74, 0,  76, 0, 80, 0, 76, 0, 0, 0,
+             74, 0, 78, 0, 81, 0, 86, 0,  85, 0, 0, 81, 76, 0, 0, 0,  80, 0, 81, 0, 83, 0, 80, 0,  76, 0, 0, 0, 73, 0, 0, 0],
+      bass: [35, 0, 0, 0, 42, 0, 0, 0,  40, 0, 0, 0, 47, 0, 0, 0,  35, 0, 0, 0, 42, 0, 0, 0,  40, 0, 0, 0, 47, 0, 0, 0,
+             38, 0, 0, 0, 45, 0, 0, 0,  33, 0, 0, 0, 40, 0, 0, 0,  40, 0, 0, 0, 47, 0, 0, 0,  40, 0, 0, 0, 47, 0, 0, 0],
+      drums: 'k...h...'
+    },
+    // 9 Sliders (canyon): A Mixolydian (A G D A A G D E), quick galloping western, bright filtered square
+    {
+      eighth: 0.17, leadVol: 0.07, leadLp: 2400, leadLen: 0.75, bassVol: 0.14, bassLen: 0.7, drumVol: 0.5,
+      lead: [76, 0, 76, 78, 81, 0, 76, 0,  79, 0, 74, 0, 71, 0, 74, 0,  78, 0, 74, 0, 69, 0, 74, 78,  76, 0, 73, 0, 69, 0, 0, 0,
+             81, 0, 81, 83, 85, 0, 81, 0,  83, 0, 79, 0, 74, 0, 79, 83,  81, 0, 78, 0, 74, 0, 78, 81,  80, 0, 76, 0, 71, 0, 0, 0],
+      bass: [45, 0, 45, 52, 45, 0, 45, 52,  43, 0, 43, 50, 43, 0, 43, 50,  38, 0, 38, 45, 38, 0, 38, 45,  45, 0, 45, 52, 45, 0, 45, 52,
+             45, 0, 45, 52, 45, 0, 45, 52,  43, 0, 43, 50, 43, 0, 43, 50,  38, 0, 38, 45, 38, 0, 38, 45,  40, 0, 40, 47, 40, 0, 40, 47],
+      drums: 'k.hhs.hh'
+    },
+    // 10 Orbits (nebula): Ab Lydian (Ab Bb Cm Bb Ab Bb Eb Eb), circling arpeggios, soft filtered saw, no drums
+    {
+      eighth: 0.25, leadWave: 'sawtooth', leadVol: 0.085, leadLp: 1600, leadLen: 1.4, echo: 0.35, bassWave: 'sine', bassVol: 0.11, bassLen: 3.6, drumVol: 0,
+      lead: [72, 0, 75, 0, 79, 0, 75, 0,  74, 0, 77, 0, 82, 0, 77, 0,  75, 0, 79, 0, 84, 0, 79, 0,  82, 0, 0, 77, 74, 0, 70, 0,
+             84, 0, 0, 0, 80, 0, 79, 75,  77, 0, 0, 0, 74, 0, 77, 82,  79, 0, 0, 82, 79, 0, 75, 0,  70, 0, 74, 0, 75, 0, 0, 0],
+      bass: [44, 0, 0, 0, 51, 0, 0, 0,  46, 0, 0, 0, 53, 0, 0, 0,  36, 0, 0, 0, 43, 0, 0, 0,  46, 0, 0, 0, 53, 0, 0, 0,
+             44, 0, 0, 0, 51, 0, 0, 0,  46, 0, 0, 0, 53, 0, 0, 0,  39, 0, 0, 0, 46, 0, 0, 0,  39, 0, 0, 0, 46, 0, 0, 0],
+      drums: ''
+    },
+    // 11 Pendulum (temple at sunset): G Dorian (Gm C Gm C Eb F D D), swinging tick-tock bass, triangle lead
+    {
+      eighth: 0.22, swing: 0.2, leadWave: 'triangle', leadVol: 0.1, leadLen: 1, echo: 0.25, bassVol: 0.13, bassLen: 0.8, drumVol: 0.45,
+      lead: [79, 0, 74, 0, 70, 0, 74, 0,  76, 0, 72, 0, 67, 0, 72, 0,  79, 0, 82, 0, 81, 79, 74, 0,  76, 0, 79, 0, 72, 0, 0, 0,
+             75, 0, 79, 0, 82, 0, 79, 75,  77, 0, 81, 0, 84, 0, 81, 77,  78, 0, 81, 0, 86, 0, 81, 78,  81, 0, 78, 0, 74, 0, 0, 0],
+      bass: [43, 0, 55, 0, 43, 0, 55, 0,  36, 0, 48, 0, 36, 0, 48, 0,  43, 0, 55, 0, 43, 0, 55, 0,  36, 0, 48, 0, 36, 0, 48, 0,
+             39, 0, 51, 0, 39, 0, 51, 0,  41, 0, 53, 0, 41, 0, 53, 0,  38, 0, 50, 0, 38, 0, 50, 0,  38, 0, 50, 0, 38, 0, 50, 0],
+      drums: 'k.h.h.h.'
+    },
+    // 12 Galaxy: Db major (Db Bbm Gb Ab Db Fm Gb Ab), broad sweeping tune, half-time drums
+    {
+      eighth: 0.24, leadVol: 0.05, leadLp: 1800, leadLen: 1.5, echo: 0.35, bassVol: 0.13, drumVol: 0.4,
+      lead: [77, 0, 0, 0, 80, 0, 85, 0,  82, 0, 0, 80, 77, 0, 73, 0,  78, 0, 0, 0, 82, 0, 85, 0,  84, 0, 0, 82, 80, 0, 0, 0,
+             85, 0, 84, 82, 80, 0, 77, 0,  80, 0, 0, 77, 72, 0, 77, 80,  82, 0, 0, 78, 73, 0, 78, 82,  80, 0, 0, 0, 75, 0, 72, 0],
+      bass: [37, 0, 44, 0, 37, 0, 44, 0,  34, 0, 41, 0, 34, 0, 41, 0,  42, 0, 49, 0, 42, 0, 49, 0,  44, 0, 51, 0, 44, 0, 51, 0,
+             37, 0, 44, 0, 37, 0, 44, 0,  41, 0, 48, 0, 41, 0, 48, 0,  42, 0, 49, 0, 42, 0, 49, 0,  44, 0, 51, 0, 44, 0, 51, 0],
+      drums: 'k...s..h'
+    },
+    // 13 Clockwork: F major (F C Dm Bb F C Bb C), brisk ticking staccato arpeggios, tick-tock kit
+    {
+      eighth: 0.18, leadVol: 0.07, leadLp: 2600, leadLen: 0.65, echo: 0.2, bassVol: 0.15, bassLen: 0.8, drumVol: 0.45,
+      lead: [77, 72, 69, 72, 77, 0, 81, 0,  79, 76, 72, 76, 79, 0, 84, 0,  81, 77, 74, 77, 81, 0, 77, 0,  82, 0, 77, 0, 74, 0, 77, 0,
+             81, 0, 0, 79, 77, 0, 72, 0,  76, 0, 79, 0, 84, 0, 79, 76,  74, 0, 77, 0, 82, 0, 81, 79,  79, 0, 76, 0, 72, 0, 0, 0],
+      bass: [41, 0, 53, 0, 48, 0, 53, 0,  36, 0, 48, 0, 43, 0, 48, 0,  38, 0, 50, 0, 45, 0, 50, 0,  34, 0, 46, 0, 41, 0, 46, 0,
+             41, 0, 53, 0, 48, 0, 53, 0,  36, 0, 48, 0, 43, 0, 48, 0,  34, 0, 46, 0, 41, 0, 46, 0,  36, 0, 48, 0, 43, 0, 48, 0],
+      drums: 'khh.shh.'
+    }
+  ];
+  songs.peggle = songs.peggleLevels[0];
 
   // A game's own switch wins; a game you haven't set follows the Game defaults switch (gn_music, default on)
   function musicOn(key) { try { var v = localStorage.getItem(key); return v == null ? localStorage.getItem('gn_music') !== '0' : v !== '0'; } catch (e) { return true; } }
@@ -130,8 +248,19 @@
         st.step++; st.next += e;
       }
     }
+    function setSong(song) {
+      if (!song || song === S) return;
+      S = song; st.step = 0; st.next = 0;
+      if (!st.on || !st.ac || !st.bus) return;
+      // Playing: fade the old song out on its own bus; the next tick() fades the new one in on a fresh bus
+      var old = st.bus, now = st.ac.currentTime;
+      try { old.gain.cancelScheduledValues(now); old.gain.setValueAtTime(Math.max(0.0001, old.gain.value), now); old.gain.exponentialRampToValueAtTime(0.0001, now + 0.4); } catch (e) {}
+      setTimeout(function () { try { old.disconnect(); } catch (e) {} }, 1000);
+      st.bus = null; st.on = false;
+    }
     return {
-      tick: tick, stop: stop,
+      tick: tick, stop: stop, setSong: setSong,
+      song: function () { return S; },
       on: function () { return musicOn(o.key); },
       restart: function () { st.step = 0; },
       menuItem: {
