@@ -243,7 +243,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var BVAL0 = [250, 350, 1000, 5000, 1000, 350, 250], STREET_T = 50;   // the cabinet's tickets x 10
   //           width, height (the far right one is the giant)
   var BSPEC = [[88, 190], [82, 330], [86, 300], [104, 350], [86, 315], [82, 365], [94, 520]];
-  var MANS_H = 16, MANS_W = .14;   // the jackpot roof's slate slopes: their height, and how far in they run each side (share of the width)
+  var MANS_H = 16, MANS_W = .12;   // the jackpot roof's slate slopes: their height, and how far in they run each side (share of the width)
   var EDGE_T = 1000;    // coming to rest on those slopes (still on the building, off the flat deck)
   var CITY_X0 = 330, GAP = 54;
   var B = [], COL = [], cars = [], cans = [], lamps = [], ants = [], chims = [], perches = [], sprops = [], dogs = [], SEA_X = 1560, WORLD_END = 2100, citySeed = 1;
@@ -493,9 +493,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     sp_hyd: { r: .62, mu: .3 }, sp_mail: { r: .45, mu: .35 }, sp_dump: { r: .35, mu: .45 }, sp_barrier: { r: .35, mu: .45 }, sp_stand: { r: .3, mu: .5 }, sp_booth: { r: .4, mu: .3 }, car: { r: .5, mu: .35 }, can: { r: .3, mu: .45 }, ground: { r: .3, mu: .6 }
   };
   var WALL_MU = .06;    // side faces are slick: he slides down them; he doesn't cling, climb or wedge across a gap
-  var JP_MU = .45;      // the jackpot's painted bullseye is slick, and its roof has no curbs: land soft or slide off
-  var JP_KEEP = .6;     // how much of his skid survives touchdown on the jackpot deck (other roofs: .45)
-  var SLATE_MU = .3;    // its slate slopes (about 50 degrees) can't hold him: he always slides down and off
+  var JP_MU = .9;       // the jackpot deck: no curbs and no sticky landing like the other roofs (but the slates do the real work)
+  var JP_KEEP = .35;    // how much of his skid survives touchdown on the jackpot deck (other roofs: .45)
+  var SLATE_MU = .7;    // its slate slopes (53 to 58 degrees) can't hold him: anything on them slides down and off
   var cands = [];
   function ragStep(h) {
     var R = rag, P = R.P, i, p, h2 = h * h;
@@ -909,7 +909,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (!b.touch) { var cx = 0; for (var i = 0; i < 11; i++) cx += R.P[i].x * MASS[i]; b.touch = { x: clamp(cx / MTOT, b.x0, b.x1) }; }
     R.roofB = b;
     if (!R.landed) {
-      // ordinary roofs grip a landing; the jackpot's slick pad doesn't
+      // ordinary roofs grip a landing; the jackpot's small deck doesn't
       R.landed = true; R.sticky = b !== jpB; slowHold = b === jpB ? .55 : .3;
       // touchdown soaks up most of his spin and some of his skid (the body crumples onto the roof), so a
       // fair landing stays up there; a fast or edge-of-the-roof landing still tumbles off
@@ -1135,7 +1135,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         jp = jp && onDeck;
         var val = edge ? EDGE_T : b.val;
         r = { code: jp ? 'jackpot' : 'roof', name: jp ? 'JACKPOT!' : fmt(val) + ' points!', tickets: val, col: jp ? '#ffd84a' : val >= 1000 ? '#7dffb3' : '#7fe0ff',
-              where: jp ? 'Jackpot roof' : edge ? 'Edge of the jackpot roof' : 'Building ' + (b.idx + 1) + ' roof', bi: b.idx };
+              where: jp ? 'Jackpot roof' : edge ? 'Jackpot slates' : 'Building ' + (b.idx + 1) + ' roof', bi: b.idx };
         R.dance = { x: clamp(pl.x, b.x0 + Math.max(16, b === jpB ? b.msw + 8 : 0), b.x1 - Math.max(16, b === jpB ? b.msw + 8 : 0)), y: b.y0, t: 0, k: 0 };
       } else {
         var gap = pl.x > CITY_X0 && pl.x < B[B.length - 1].x1;
@@ -2448,7 +2448,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       '<li>Tap during the fly-over to skip it. Tap after a shot to go to the next one.</li></ul>' +
       '<h3>Aim yourself (setup option)</h3><ul><li>The cannon still swings, but you also choose the power: <b>pull the handle down</b> (anywhere on the screen works) and <b>let go to fire</b>. Slide back up to cancel.</li>' +
       '<li>On a computer, hold <b>Space</b> to pull and let go to fire.</li></ul>' +
-      '<h3>Landing</h3><p>Points go by where Willy ends up once he stops. He comes in hot and can skid and tumble, so a roof only counts if he stays on it. The jackpot roof has no curbs and a slick painted bullseye: land soft, or he slides right off.</p>' +
+      '<h3>Landing</h3><p>Points go by where Willy ends up once he stops. He comes in hot and can skid and tumble, so a roof only counts if he stays on it.</p>' +
+      '<h3>The jackpot roof</h3><p>The 5,000 point building has a slate roof like a mansard: the bullseye sits on a small flat deck with steep slates sloping away on every side. Only stopping on the flat deck pays the jackpot. Land near the edge and he slides down the slates and off, and he scores wherever he ends up. (If he somehow stops on the slates and is still on the building, that pays 1,000.)</p>' +
       '<h3>After a jackpot</h3><ul><li>The cannon swings faster for the next shot (the SPEED lamps on the left). It eases back a notch after each shot that misses the jackpot.</li>' +
       '<li>The jackpot moves one building to the right.</li></ul>' +
       '<p>He crashes into everything on the way: windows, chimneys, antennas, dishes, billboards, lamps and cars, and down on the street hot dog carts, umbrellas, cafe tables, news, fruit and flower stands, crates, trash cans, cones, barriers, hydrants, mailboxes, dumpsters and phone booths (and the dog will run). That is just for fun; only the landing pays. <b>P</b> pauses.</p>'
