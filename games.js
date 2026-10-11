@@ -232,16 +232,11 @@ var HI_BOARDS = (function () {
   add('peggle', 'peggle_run', { label: 'Full game', tab: 'Full game', pin: 1 });
   PEGGLE_LEVELS.forEach(function (nm, i) { add('peggle', 'peggle_l' + (i + 1), { label: 'Level ' + (i + 1) + ': ' + nm, tab: 'L' + (i + 1) }); });
   add('peggle', 'peggle', { label: 'Older scores', tab: 'Older', tabIf: function () { return peggleOld() > 0; } });
-  // Centipede: scores from the Centipede Chaos game go on their own board (hi_centipede_chaos). hi_centipede is the
-  // board from the earlier, 1981-style game: it shows as Older while it has scores, and is never changed.
+  // Centipede: scores from the Centipede Chaos game go on their own board (hi_centipede_chaos). The earlier game's
+  // board (hi_centipede) is retired: no longer shown anywhere, its stored data left as it was.
   add('centipede', 'centipede_chaos', { label: '', tab: 'Chaos', pin: 1 });
-  add('centipede', 'centipede', { label: 'Older scores', tab: 'Older', tabIf: function () { return centipedeOld() > 0; } });
   return b;
 })();
-// How many real scores the older Centipede board (hi_centipede) holds; it's shown as Older only while it has any
-function centipedeOld() {
-  try { var v = JSON.parse(window.localStorage.getItem('hi_centipede') || '[]'); return Array.isArray(v) ? v.filter(function (e) { return e && e.score !== null && e.score !== '' && isFinite(Number(e.score)) && Number(e.score) > 0; }).length : 0; } catch (e) { return 0; }
-}
 function hiBoard(key) { return HI_BOARDS.hasOwnProperty(String(key)) ? HI_BOARDS[String(key)] : null; }
 function hiLow(key) { var c = hiBoard(key); return !!(c && c.low); }
 
