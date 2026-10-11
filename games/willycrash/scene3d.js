@@ -46,6 +46,8 @@ export function WillyCrash3D(api, host) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setClearColor(0x8cc4ee, 1);
   renderer.info.autoReset = false;
+  const gl = renderer.getContext();
+  canvas.addEventListener('webglcontextlost', e => e.preventDefault());
   const maxAniso = Math.min(4, renderer.capabilities.getMaxAnisotropy());
   function tex(c, repeat) {
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso;
@@ -385,7 +387,7 @@ export function WillyCrash3D(api, host) {
   const nose = mesh(unitSph, M.nose, head); nose.scale.set(HR * .56, HR * .34, HR * .36); nose.position.set(HR * 1.06, -HR * .32, 0); nose.rotation.z = -.45;
   const mouth = mesh(unitSph, M.mouth, head); mouth.scale.set(HR * .5, HR * .3, HR * .5); mouth.position.set(HR * .55, -HR * .72, 0);
   const teeth = mesh(box(1, 1, 1), M.teeth, head); teeth.scale.set(HR * .7, HR * .18, HR * .62); teeth.position.set(HR * .62, -HR * .62, 0);
-  const helmet = mesh(new THREE.SphereGeometry(1, 18, 10, 0, Math.PI * 2, 0, Math.PI * .56), M.helmet, head); helmet.scale.set(HR * 1.08, HR * 1.08, HR * 1.08); helmet.rotation.z = .15;
+  const helmet = mesh(new THREE.SphereGeometry(1, 18, 10, 0, Math.PI * 2, 0, Math.PI * .5), M.helmet, head); helmet.scale.set(HR * 1.07, HR * 1.07, HR * 1.07); helmet.rotation.z = .3;
   const backHair = mesh(unitSph, M.hair, head); backHair.scale.set(HR * .6, HR * .95, HR * .85); backHair.position.set(-HR * .55, -HR * .4, 0);
   const lens = mesh(new THREE.CylinderGeometry(1, 1, 1, 18), M.lens, head); lens.rotation.z = Math.PI / 2; lens.scale.set(HR * .42, HR * .3, HR * .62); lens.position.set(HR * .86, HR * .02, 0);
   const frame = mesh(new THREE.TorusGeometry(1, .16, 6, 18), M.frame, head); frame.rotation.y = Math.PI / 2; frame.scale.set(HR * .62, HR * .46, HR * .62); frame.position.set(HR * 1.0, HR * .02, 0);
@@ -495,7 +497,7 @@ export function WillyCrash3D(api, host) {
     for (let i = 0; i < ps.length && n < MAXP; i++) {
       const q = ps[i], a = Math.min(1, q.life / q.max * 1.6);
       const grow = q.k === 'smoke' || q.k === 'dust' ? 1 + (1 - q.life / q.max) * 1.8 : 1;
-      const sz = (q.k === 'smoke' || q.k === 'dust' ? q.s * 2 * grow : q.k === 'spark' ? 3 : q.k === 'lid' ? 12 : q.k === 'chip' || q.k === 'conf' ? 5 : q.k === 'glass' ? q.s * 1.6 : q.s * 2);
+      const sz = (q.k === 'smoke' || q.k === 'dust' ? q.s * 2 * grow : q.k === 'spark' ? 3 : q.k === 'lid' ? 12 : q.k === 'chip' ? 4.5 : q.k === 'conf' ? 3.2 : q.k === 'glass' ? q.s * 1.6 : q.s * 2);
       pPos[n * 3] = q.x; pPos[n * 3 + 1] = -q.y; pPos[n * 3 + 2] = q.k === 'smoke' && q.c ? -8 : 0;
       let col = q.c || PCOL[q.k] || '#ffffff', alpha = a * (q.k === 'smoke' ? .75 : 1);
       if (col.indexOf('rgba') === 0) { const m = col.match(/[\d.]+/g); pc.setRGB(m[0] / 255, m[1] / 255, m[2] / 255, THREE.SRGBColorSpace); alpha *= +m[3]; } else pc.setStyle(col, THREE.SRGBColorSpace);
@@ -512,6 +514,8 @@ export function WillyCrash3D(api, host) {
   const rig = { x: 0, y: 0, d: 2000, pitch: .08, yaw: .06, init: false, mode: 'aim' };
   let W = 300, H = 500, dpr = 1, maxDpr = 2;
   function distFor(zoom) { return (C.VW0 * H / (W * zoom)) / (2 * TANH); }
+  // for the close shots: frame a set height of the world, whatever the screen shape
+  function distSee(units) { return units / (2 * TANH) * Math.max(1, (H / W) * .62); }
   function surfaceBelow(st, x, y) {
     let top = 0;   // the street
     for (let i = 0; i < st.COL.length; i++) { const c = st.COL[i]; if (c.k === 'ground' || c.off) continue; if (x >= c.x0 && x <= c.x1 && c.y0 >= y - 2 && -c.y0 > top) top = -c.y0; }
@@ -523,12 +527,12 @@ export function WillyCrash3D(api, host) {
     if (st.state === 'intro' || st.state === 'aim' || st.state === 'idle' || !R) return { x: cam.x, y: -cam.y, d: distFor(cam.z), pitch: .07, yaw: .07, mode: 'aim' };
     const P = R.P, pl = P[C.PEL], vx = (pl.x - pl.px) / C.HS, vy = (pl.y - pl.py) / C.HS;
     const ground = surfaceBelow(st, pl.x, pl.y), above = -pl.y - ground;
-    if (st.state === 'result') return { x: pl.x + 10, y: -pl.y + 26, d: distFor(R.dance ? 1.55 : 1.7), pitch: .3, yaw: .32, mode: 'result' };
+    if (st.state === 'result') return { x: pl.x + 10, y: -pl.y + 24, d: distSee(R.dance ? 300 : 270), pitch: .3, yaw: .32, mode: 'result' };
     const descending = vy > -60, close = R.landed || R.airT < .3 || (descending && above < 230);
-    if (close) return { x: pl.x + clamp(vx * .08, -30, 30), y: -pl.y + 10, d: distFor(2.8), pitch: .34, yaw: .42, mode: 'land' };
+    if (close) return { x: pl.x + clamp(vx * .08, -30, 30), y: -pl.y + 10, d: distSee(230), pitch: .34, yaw: .42, mode: 'land' };
     // in the air: lead him, and pitch over once he is past the top of his arc
     const k = descending ? 1 : clamp((vy + 500) / 500, 0, 1);
-    return { x: pl.x + clamp(vx * .5, -220, 220), y: -pl.y + clamp(-vy * .28, -220, 160), d: distFor(lerp(1, 1.15, k)), pitch: lerp(.14, .66, k), yaw: lerp(.06, .2, k), mode: 'fly' };
+    return { x: pl.x + clamp(vx * .5, -220, 220), y: -pl.y + clamp(-vy * .28, -220, 160), d: distSee(lerp(640, 560, k)), pitch: lerp(.14, .66, k), yaw: lerp(.06, .2, k), mode: 'fly' };
   }
   function tick(dt) {
     const st = api.get(), w = wantCam(st);
@@ -551,6 +555,7 @@ export function WillyCrash3D(api, host) {
   // ── Per frame ──
   let frames = 0, lastMs = 0, slowT = 0, level = 0, lastDraw = 0;
   function draw() {
+    if (gl.isContextLost()) throw new Error('WebGL context lost');
     const st = api.get();
     if (st.B !== built) buildCity(st);
     // repaint any facade whose windows broke or got a splat crack, or whose value changed (jackpot moves)
