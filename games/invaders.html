@@ -253,7 +253,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var input = { l: false, r: false, fire: false, fireBuf: 0, target: null, kl: false, kr: false, kf: false };
 
   function marchDelay(n) { for (var i = 0; i < MARCH_N.length; i++) if (n >= MARCH_N[i]) return MARCH_D[i]; return 5; }
-  function reloadRate() { var s = G.score; return s < 200 ? 48 : s < 1000 ? 16 : s < 2000 ? 11 : s < 3000 ? 8 : 7; }
+  // (the original counts these in bomb steps, and each bomb steps every third frame)
+  function reloadRate() { var s = G.score; return 3 * (s < 200 ? 48 : s < 1000 ? 16 : s < 2000 ? 11 : s < 3000 ? 8 : 7); }
   function waveBase(n) { return BASE_Y[n <= 9 ? n - 1 : 1 + ((n - 2) % 8)]; }
 
   function resetShields() {
@@ -413,9 +414,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     G.reload = 0;
   }
   function moveBombs() {
-    var spd = G.alive <= 8 ? 5 : 4, phase = G.frame % 3;
-    for (var i = bombs.length - 1; i >= 0; i--) {
-      var b = bombs[i]; if (b.type !== phase) continue;
+    var spd = G.alive <= 8 ? 5 : 4, phase = G.frame % 3, list = bombs;
+    for (var i = list.length - 1; i >= 0; i--) {
+      if (bombs !== list) return;   // the cannon was hit: every bomb is gone
+      var b = list[i]; if (!b || b.type !== phase) continue;
       b.f = (b.f + 1) & 3;
       var sp = SP['b' + b.type][b.f], gone = false;
       for (var k = 0; k < spd && !gone; k++) {
@@ -607,7 +609,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     fireEl = el('button', { type: 'button', class: 'inv-fire', 'aria-label': 'Fire', text: 'FIRE' });
     hold(fireEl, function () { input.fire = true; input.fireBuf = 8; }, function () { input.fire = false; });
     setAuto(G.auto, true);
-    return el('div', { class: 'inv-deck ar-touch' }, [el('div', { class: 'inv-top' }, [pb, el('span', { class: 'lab', text: G.move === 'buttons' ? 'Hold to move' : 'Slide · fire' })]), autoEl, left, fireEl]);
+    return el('div', { class: 'inv-deck ar-touch' }, [el('div', { class: 'inv-top' }, [pb, el('span', { class: 'lab', text: 'Tap the screen to fire too' })]), autoEl, left, fireEl]);
   }
   function setAuto(on, quiet) {
     if (!G) return;
@@ -824,7 +826,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var ph = G.phase;
     if (ph === 'ready' || ph === 'play') movePlayer();
     if (ph === 'ready') {
-      if (G.shown < invs.length) G.shown++;
+      if (G.shown < invs.length && (!G.intro || G.readyT <= 62)) G.shown++;   // first game: the greeting, then the rack fills in
       if (--G.readyT <= 0 && G.shown >= invs.length) { G.phase = 'play'; G.restored = false; }
     } else if (ph === 'play') {
       if (input.fireBuf > 0 || input.fire || input.kf || G.auto) { if (tryFire()) input.fireBuf = 0; }
@@ -921,7 +923,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     for (var l = 0; l < Math.min(lv - 1, 5); l++) spr(SP.cannon[0], 24 + l * 16, 240);
     if (G.auto) text('AUTO', 184, 241);
     // messages
-    if (G.phase === 'ready' && G.intro && G.readyT > 20) { text('PLAY', 96, 88); text('PLAYER<1>', 76, 104); }
+    if (G.phase === 'ready' && G.intro && G.shown === 0) { text('PLAY', 96, 88); text('PLAYER<1>', 76, 104); }
     if (G.phase === 'clear' && G.clearT > 20) { var wm = 'WAVE ' + (G.wave + 1); text(wm, Math.round(112 - wm.length * 4), 112); }
     if (G.phase === 'over') { var go = 'GAME OVER'.slice(0, Math.floor(G.overT / 7)); text(go, 76, 40); }
     // the cabinet's coloured overlay: red strip across the top, green over the bunkers and cannon
