@@ -634,8 +634,10 @@ function makeWorld() {
   const up = new THREE.Vector3(0, 1, 0);
   function boxPoints(hx, hy, hz) {
     const a = [];
-    for (const sy of [-1, 1]) for (const sz of [-1, 1]) for (const fx of [-1, -1 / 3, 1 / 3, 1]) a.push(fx * hx, sy * hy, sz * hz);
-    for (const sy of [-1, 1]) for (const sx of [-1, 1]) a.push(sx * hx, sy * hy, 0);
+    // the pillow is rounded at its sides: its top and bottom edges sit in from the widest point,
+    // so a pack won't balance on its side
+    for (const sy of [-1, 1]) for (const sz of [-1, 1]) for (const fx of [-1, -1 / 3, 1 / 3, 1]) a.push(fx * hx, sy * hy, sz * hz * 0.72);
+    for (const sy of [-1, 1]) for (const sx of [-1, 1]) a.push(sx * hx * 0.85, sy * hy, 0);
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.push(sx * hx, 0, sz * hz);
     a.push(0, -hy, 0, 0, hy, 0);
     return new Float32Array(a);
@@ -1984,6 +1986,8 @@ function mount(stage, api) {
       openScreen: () => { if (!openC) return null; const p = openC.root.getWorldPosition(new THREE.Vector3()).project(camera); return { x: (p.x + 1) / 2 * W, y: (1 - p.y) / 2 * H }; },
       hero: () => { if (!O) return null; const p = O.c.root.position.clone().project(camera); return { ndc: [p.x, p.y, p.z], pos: O.c.root.position.toArray(), cam: camera.position.toArray() }; },
       hold: (on) => { hold = !!on; if (hold && raf) { cancelAnimationFrame(raf); raf = 0; } else kick(); },
+      // advance without drawing (fast, for automation); returns the slowest physics frame in ms
+      sim: (sec) => { const n = Math.round(sec / 0.016); let mx = 0; for (let i = 0; i < n; i++) { T += 0.016; update(0.016); mx = Math.max(mx, world.ms()); } return +mx.toFixed(2); },
       step: (sec) => { const n = Math.round(sec / 0.016); for (let i = 0; i < n; i++) { T += 0.016; update(0.016); } renderer.render(scene, camera); return state; },
       // average ms to draw one frame (GPU included), over n draws
       perf: (n) => { const gl = renderer.getContext(), px = new Uint8Array(4), sync = () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); n = n || 10; renderer.render(scene, camera); sync(); const a = performance.now(); for (let i = 0; i < n; i++) { renderer.render(scene, camera); sync(); } return +((performance.now() - a) / n).toFixed(2); },
