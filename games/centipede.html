@@ -88,27 +88,40 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   setField(FIELD[0], FIELD[1]);
   // HB: a band across the top of the screen for the score plates (the floor runs under it; nothing plays there)
   var HB = 16;
-  var MUSH_HP = 3, LIFE_EVERY = 15000, CSPD = 64, HEAD_X = 1.45, FAST_AT = 60000;
-  // Bosses. vu: size of one of its cubes; r: its hit area (an ellipse, half-width and half-height)
+  var MUSH_HP = 3, LIFE_EVERY = 20000, CSPD = 64, HEAD_X = 1.45;
+  // Bosses (see the boss section for how each one fights). vu: size of one of its cubes; r: its body (an
+  // ellipse: half-width, half-height); bonus: flat points for beating it; hy: where it hovers, as a share of
+  // the way down to the players' area.
   var BOSS = {
-    wasp: { name: 'Wasp Queen', hp: 130, pts: 5000, vu: 2.2, r: [34, 23], c: '#8dff5a', hy: 0.42 },
-    firefly: { name: 'The Firefly', hp: 130, pts: 7500, vu: 2.1, r: [25, 25], c: '#eaff3d', hy: 0.4 },
-    beetle: { name: 'Iron Beetle', hp: 200, pts: 10000, vu: 1.9, r: [33, 24], c: '#5ec8ff', hy: 0.3 },
-    mega: { name: 'Mega Spider', hp: 380, pts: 25000, vu: 1.6, r: [42, 29], c: '#ff4fd8', hy: 0.4 }
+    wasp: { name: 'Killer Wasp', hp: 120, bonus: 10000, vu: 2.0, r: [30, 22], c: '#ffe23d', hy: 0.36 },
+    firefly: { name: 'Night Flyer', hp: 105, bonus: 10000, vu: 2.0, r: [36, 22], c: '#b98cff', hy: 0.34 },
+    beetle: { name: 'Blast Beetle', hp: 150, bonus: 10000, vu: 1.9, r: [30, 27], c: '#ff4a7a', hy: 0.3 },
+    mega: { name: 'Mega Spider', hp: 230, bonus: 100000, vu: 1.6, r: [42, 29], c: '#ff2d8a', hy: 0.34 }
   };
-  // Ten waves on themed stages, each with its own mushroom layout. chains: [length, how many]
+  // Ten waves on themed stages, each with its own mushroom layout; after wave 10 the loop starts again,
+  // faster each time (endless). A regular wave sends `trains` centipedes (len: segments, from-to), one every
+  // `gap` seconds or sooner once the field is clear, at most `live` at a time. The other bugs come about every
+  // so many seconds: spiders (how many at once), fleas, wasp swarms, ant swarms, fireflies, blast beetles.
+  // split: how much faster the back half of a shot centipede gets. speed: everything moves faster.
   var WAVES = [null,
-    { theme: 'blue', stage: 'Circuit', pat: 'chevron', chains: [[12, 1], [8, 1]], spiders: 1 },
-    { theme: 'red', stage: 'Lava', pat: 'stripes', chains: [[10, 2], [1, 2]], spiders: 1, bees: 1 },
-    { boss: 'wasp', theme: 'hive', pat: 'arena', spiders: 1 },
-    { theme: 'green', stage: 'Jungle', pat: 'ring', chains: [[10, 2], [6, 1], [1, 2]], spiders: 1, bees: 1, scorp: 1 },
-    { theme: 'purple', stage: 'Neon', pat: 'arrows', chains: [[8, 3], [1, 3]], spiders: 2, bees: 1 },
-    { boss: 'firefly', theme: 'hiveG', pat: 'arena', spiders: 1 },
-    { theme: 'blue', stage: 'Circuit', pat: 'rows', chains: [[12, 2], [8, 1], [1, 3]], spiders: 1, bees: 1, scorp: 1 },
-    { theme: 'red', stage: 'Lava', pat: 'diamonds', chains: [[10, 3], [1, 4]], spiders: 2, bees: 1, scorp: 1 },
-    { boss: 'beetle', theme: 'hive', pat: 'arena', spiders: 1 },
-    { boss: 'mega', theme: 'hiveP', pat: 'arena', spiders: 0 }];
+    { theme: 'blue', stage: 'Circuit', pat: 'chevron', trains: 7, len: [8, 10], gap: 9, live: 2, spiders: 1, fleas: 9, wasps: 17, ants: 21 },
+    { theme: 'red', stage: 'Lava', pat: 'stripes', trains: 8, len: [9, 12], gap: 8.5, live: 2, spiders: 1, fleas: 8, wasps: 14, ants: 17 },
+    { boss: 'wasp', theme: 'hive', pat: 'arena' },
+    { theme: 'green', stage: 'Jungle', pat: 'ring', trains: 9, len: [10, 12], gap: 8, live: 3, split: 1.25, spiders: 1, fleas: 9, wasps: 16, fireflies: 11, beetles: 14 },
+    { theme: 'purple', stage: 'Neon', pat: 'arrows', trains: 10, len: [10, 13], gap: 7.5, live: 3, split: 1.3, spiders: 2, fleas: 8, ants: 14, fireflies: 9, beetles: 11 },
+    { boss: 'firefly', theme: 'night', pat: 'arena' },
+    { theme: 'blue', stage: 'Circuit', pat: 'rows', trains: 11, len: [11, 14], gap: 7, live: 3, split: 1.35, speed: 1.15, spiders: 2, fleas: 7, wasps: 10, ants: 12, fireflies: 12, beetles: 13 },
+    { theme: 'red', stage: 'Lava', pat: 'diamonds', trains: 12, len: [12, 14], gap: 6.5, live: 3, split: 1.4, speed: 1.25, spiders: 2, fleas: 6, wasps: 9, ants: 10, fireflies: 10, beetles: 11 },
+    { boss: 'beetle', theme: 'crimson', pat: 'arena' },
+    { boss: 'mega', theme: 'web', pat: 'arena' }];
   var LAST = WAVES.length - 1;
+  // Wave n (endless after 10): the loop's design, faster and longer each time round
+  function waveDef(n) {
+    n = Math.max(1, n || 1);
+    var b = WAVES[(n - 1) % LAST + 1], loop = Math.floor((n - 1) / LAST);
+    if (!loop) return b;
+    return Object.assign({}, b, { loop: loop, speed: (b.speed || 1) * (1 + 0.15 * loop), trains: b.trains ? b.trains + 2 * loop : 0, gap: b.gap ? Math.max(4.5, b.gap - 0.5 * loop) : 0 });
+  }
   // Stage looks: floor colours, then the colours of the mushrooms (cap, spots, stem), the centipede
   // (body, legs, face) and the spider (body, legs) on that stage.
   var THEMES = {
@@ -116,26 +129,27 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     red: { kind: 'grid', base: '#6a0c34', deep: '#22030f', line: '#ff3d74', hi: '#ffb3cb', mush: ['#ffcf2e', '#ffffff', '#fff1cc'], centi: ['#3d8bff', '#ffd23d', '#ff3dd0'], spider: ['#a15cff', '#ffd23d'] },
     green: { kind: 'grid', base: '#07583a', deep: '#01170e', line: '#2dffa4', hi: '#b6ffdc', mush: ['#ff2e44', '#ffffff', '#efe6da'], centi: ['#ffb02e', '#ff5cd6', '#ff3d2a'], spider: ['#a15cff', '#ffd23d'] },
     purple: { kind: 'grid', base: '#3a0f78', deep: '#10042a', line: '#b763ff', hi: '#e6c8ff', mush: ['#ff2e44', '#ffffff', '#efe6da'], centi: ['#3ddc4a', '#ff9a1f', '#ff4a2a'], spider: ['#ff5c9a', '#ffd23d'] },
-    hive: { kind: 'hex', base: '#3a2c0c', deep: '#100b02', line: '#ff9a2a', line2: '#86ff3d', hi: '#ffd08a', mush: ['#ff2e44', '#ffffff', '#efe6da'], centi: ['#3ddc4a', '#ff9a1f', '#ff4a2a'], spider: ['#a15cff', '#ffd23d'] },
-    hiveG: { kind: 'hex', base: '#103a1a', deep: '#030f06', line: '#86ff3d', line2: '#ffd23d', hi: '#d2ffb0', mush: ['#ff2e44', '#ffffff', '#efe6da'], centi: ['#3d8bff', '#ffd23d', '#ff3dd0'], spider: ['#a15cff', '#ffd23d'] },
-    hiveP: { kind: 'hex', base: '#3a0c40', deep: '#0e0210', line: '#ff4fd8', line2: '#ff9a2a', hi: '#ffc0f0', mush: ['#ffcf2e', '#ffffff', '#fff1cc'], centi: ['#3ddc4a', '#ff9a1f', '#ff4a2a'], spider: ['#a15cff', '#ffd23d'] }
+    hive: { kind: 'hex', base: '#3a2c0c', deep: '#100b02', line: '#ff9a2a', line2: '#ffe23d', hi: '#ffd08a', mush: ['#ff2e44', '#ffffff', '#efe6da'], centi: ['#3ddc4a', '#ff9a1f', '#ff4a2a'], spider: ['#a15cff', '#ffd23d'] },
+    night: { kind: 'hex', base: '#2a1258', deep: '#08021c', line: '#b763ff', line2: '#5ef0ff', hi: '#e0c8ff', mush: ['#ff2e44', '#ffffff', '#efe6da'], centi: ['#3ddc4a', '#ff9a1f', '#ff4a2a'], spider: ['#ff5c9a', '#ffd23d'] },
+    crimson: { kind: 'hex', base: '#3e0a22', deep: '#100208', line: '#ff3d6a', line2: '#ff9a2a', hi: '#ffc0d0', mush: ['#ffcf2e', '#ffffff', '#fff1cc'], centi: ['#3ddc4a', '#ff9a1f', '#ff4a2a'], spider: ['#a15cff', '#ffd23d'] },
+    web: { kind: 'web', base: '#320c5a', deep: '#0a0220', line: '#ff2d8a', line2: '#8a5cff', hi: '#ffb0e0', mush: ['#ffcf2e', '#ffffff', '#fff1cc'], centi: ['#3ddc4a', '#ff9a1f', '#ff4a2a'], spider: ['#ff5c9a', '#ffd23d'] }
   };
   var PCOL = ['#3fa9ff', '#ffd23d', '#c46bff'];   // player ships: blue, yellow, purple, like the cabinet's three seats
-  // Power-ups. The weapons last POW_T seconds; a new weapon replaces the one you have. Shield and Bomb stand alone.
+  // Power-ups, the Chaos set: rare (one floats in high up every 20 to 30 seconds), so they're worth going for.
+  // The weapons last POW_T seconds; a new weapon replaces the one you have. Shield and Bomb stand alone.
   var POW = {
-    flame: { c: '#ff7a1f', name: 'Flame' }, ice: { c: '#5ef0ff', name: 'Ice spread' }, homing: { c: '#ff5cd6', name: 'Homing' },
-    rapid: { c: '#ffe23d', name: 'Rapid fire' }, shield: { c: '#7dffb0', name: 'Shield' }, bomb: { c: '#ff4a3d', name: 'Bomb' }
+    scatter: { c: '#ffb02e', name: 'Scatter' }, shock: { c: '#5ef0ff', name: 'Shock' }, beam: { c: '#ff4fd8', name: 'Beam' },
+    bomb: { c: '#ff4a3d', name: 'Bomb' }, shield: { c: '#7dffb0', name: 'Shield' }
   };
-  var POWK = ['flame', 'ice', 'homing', 'rapid', 'shield', 'bomb'], POW_T = 10, SHIELD_T = 8, BOMB_R = 70;
-  // Damage to a boss from each kind of hit. Power-ups beat plain shots by about a third, never more.
-  var BDMG = { laser: 1, rapid: 0.8, ice: 0.45, homing: 1.1, flame: 0.8, bomb: 10 };
+  var POWK = ['scatter', 'shock', 'beam', 'bomb', 'shield'], POW_T = 12, SHIELD_T = 8, BOMB_R = 70, CAP_LIFE = 12;
+  // Damage to a boss from each kind of hit (where its armour lets it through)
+  var BDMG = { laser: 1, scatter: 0.4, shock: 1, beam: 0.75, bomb: 8, blast: 6 };
   var BOSS_NP = 1;        // each extra online player adds 100% to a boss's health
-  var BST = ['enter', 'fly', 'warn', 'dive', 'rise', 'slam', 'back', 'die'];
-  var DIFF = { relaxed: { lives: 5, spd: 0.85, name: 'Relaxed' }, arcade: { lives: 3, spd: 1, name: 'Arcade' } };
+  var BST = ['enter', 'fly', 'warn', 'dive', 'rise', 'slam', 'back', 'die', 'track', 'loop', 'exit', 'rest', 'glide', 'crawl', 'perch', 'leap', 'ground', 'lunge', 'climb'];
+  var DIFF = { relaxed: { lives: 5, spd: 0.85, boss: 0.8, name: 'Relaxed' }, arcade: { lives: 3, spd: 1, boss: 1, name: 'Arcade' } };
   var DRAG = { slow: 1.2, normal: 1.7, fast: 2.4 };
-  var FT = ['spider', 'flea', 'scorp', 'ball'], KT = ['sting', 'spark', 'venom', 'ember'], BT = ['wasp', 'firefly', 'beetle', 'mega'], BK = ['laser', 'rapid', 'ice', 'homing'];
+  var FT = ['spider', 'flea', 'scorp', 'ball', 'wasp', 'bwasp', 'ant', 'ffly', 'beetle', 'mini'], KT = ['sting', 'spark', 'venom', 'ember', 'fire'], BT = ['wasp', 'firefly', 'beetle', 'mega'], BK = ['laser', 'scatter', 'shock'];
   var PH = ['intro', 'play', 'clear', 'dead', 'over', 'won'];
-
   // ═══ Sound: small WebAudio synth that follows the kit's sound setting ═══
   var AC = null, master = null, nbuf = null;
   function sndOn() { try { return localStorage.getItem('gn_sound') !== '0'; } catch (e) { return true; } }
@@ -198,7 +212,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     extra: function () { [79, 83, 86, 91].forEach(function (m, i) { osc('square', mtof(m), i * 0.06, 0.1, 0.05, { lp: 5000 }); }); osc('triangle', mtof(95), 0.24, 0.3, 0.07); },
     warn: function () { [0, 0.22].forEach(function (t) { osc('sawtooth', 440, t, 0.18, 0.06, { to: 880, lp: 2000 }); }); },
     over: function () { [67, 66, 65, 64].forEach(function (m, i) { osc('square', mtof(m), 0.2 + i * 0.22, i === 3 ? 0.7 : 0.2, 0.06, { lp: 1800 }); osc('triangle', mtof(m - 12), 0.2 + i * 0.22, i === 3 ? 0.7 : 0.2, 0.09); }); },
-    shoot: function () { osc('sawtooth', 900, 0, 0.12, 0.04, { to: 400, lp: 2400 }); }
+    shoot: function () { osc('sawtooth', 900, 0, 0.12, 0.04, { to: 400, lp: 2400 }); },
+    scatter: function () { osc('square', 1500, 0, 0.05, 0.016, { to: 700, lp: 4000 }); noise(0, 0.03, 0.03, 'highpass', 3000); },
+    beam: function () { osc('sawtooth', 260 + Math.random() * 40, 0, 0.07, 0.022, { lp: 1900 }); },
+    zap: function () { noise(0, 0.08, 0.12, 'highpass', 4000); osc('square', 1200, 0, 0.06, 0.035, { to: 3000, lp: 6000 }); },
+    tink: function () { osc('triangle', 2400 + Math.random() * 600, 0, 0.04, 0.02); },
+    capin: function () { [84, 88, 91].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.06, 0.18, 0.04); }); },
+    charge: function () { osc('sine', 300, 0, 0.5, 0.025, { to: 900 }); },
+    pulse: function () { noise(0, 0.3, 0.12, 'lowpass', 900, { to: 120 }); osc('sine', 160, 0, 0.3, 0.12, { to: 50 }); },
+    lob: function () { osc('sine', 220, 0, 0.25, 0.06, { to: 520 }); },
+    dive: function () { osc('sawtooth', 900, 0, 0.45, 0.05, { to: 200, lp: 2200 }); },
+    slam: function () { noise(0, 0.45, 0.4, 'lowpass', 900, { to: 60 }); osc('sine', 90, 0, 0.4, 0.3, { to: 30 }); },
+    web: function () { noise(0, 0.25, 0.06, 'bandpass', 3000, { to: 900, q: 2 }); }
   };
   var sLast = {};
   function snd(name) {
@@ -235,31 +260,39 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       { icon: 'logout', label: 'Leave the online game', when: function () { return !!net.mode; }, onClick: function () { leaveOnline(true); } }
     ],
     rules:
-      '<p class="goal">Centipedes crawl down through a glowing field of mushrooms. Blast them before they reach you, grab power-ups, and beat four bosses. Ten waves in all.</p>' +
+      '<p class="goal">Centipedes crawl down through a glowing field of mushrooms, with spiders, wasps, ants and more close behind. Blast them before they reach you, beat the four bosses, and see how far you can go: after wave 10 the game keeps going, faster each time round.</p>' +
       '<h3>Flying and shooting</h3><ul><li><b>Phone or tablet:</b> put a finger down anywhere and drag. Your ship moves with your finger, like a trackball, so your thumb never hides it.</li>' +
       '<li>Your ship fires on its own. To fire only while a finger is down, change <b>Firing</b> on the setup screen, or tap <b>Auto-fire on or off</b> in the menu.</li>' +
       '<li>You can fly anywhere in the bottom part of the screen. The faint line shows the top of your area. Your ship flies over mushrooms.</li>' +
       '<li><b>Computer:</b> fly with the mouse, the arrow keys or WASD. With auto-fire off, hold the mouse button or Space to fire. F turns auto-fire on or off, P pauses.</li>' +
       '<li>Hold your phone or tablet sideways to play. If you turn it upright, the game pauses until you turn it back.</li></ul>' +
+      '<h3>Waves</h3><p>A wave sends centipede after centipede: a new one comes in every few seconds, sooner once you\'ve cleared the field. Clear them all to finish the wave (<b>250</b> times the wave number as a bonus). The longer a wave goes on, the more bugs join in, and after 40 seconds fast black wasps start coming. Waves 3, 6, 9 and 10 are boss battles.</p>' +
       '<h3>The centipede</h3><ul><li>It crawls sideways. When it bumps a mushroom or the edge, it drops down a row and turns around. In your area it bounces back up a little and keeps coming.</li>' +
-      '<li>Shoot a segment and it turns into a mushroom. The centipede splits in two, and the back half grows a new head.</li>' +
-      '<li>Body segment <b>10</b>, head <b>100</b>. Loose single heads are faster. Clear every centipede to finish the wave.</li>' +
-      '<li>Once a centipede gets into your area, extra heads start crawling in from the sides.</li></ul>' +
-      '<h3>Mushrooms</h3><p>Every wave sets its mushrooms out in its own pattern: arrows, stripes, rings and more. A mushroom takes 3 hits (<b>1</b> point). A <b>purple</b> mushroom has been poisoned by a scorpion. A centipede that touches one dives straight down at you.</p>' +
+      '<li>Shoot a segment and it turns into a mushroom. The centipede splits in two, and the back half grows a new head (in later waves the back half is faster).</li>' +
+      '<li>Body segment <b>10</b>, head <b>100</b>. Once a centipede gets into your area, extra heads crawl in from the sides.</li></ul>' +
+      '<h3>Mushrooms</h3><p>Every wave sets its mushrooms out in its own pattern. A mushroom takes 3 hits and is worth <b>1</b> point (nothing during a boss fight).</p>' +
       '<h3>Other bugs</h3><ul><li><b>Spider</b>: zigzags through your area and eats mushrooms. <b>300</b>, <b>600</b> or <b>900</b>: the closer it is when you hit it, the more it\'s worth.</li>' +
-      '<li><b>Bee</b>: dives straight down, dropping mushrooms. Takes 2 hits. <b>200</b>.</li>' +
-      '<li><b>Scorpion</b>: crawls across the upper field and poisons every mushroom it touches. <b>1,000</b>.</li></ul>' +
-      '<h3>Power-ups</h3><p>Glowing rings drop from bugs and float down from the top. Fly into one or shoot it.</p><ul>' +
-      '<li><b>Flame</b>: a short flamethrower that burns through everything just ahead of you.</li>' +
-      '<li><b>Ice spread</b>: five shots in a fan. Anything it hits is frozen and slows down for a moment.</li>' +
-      '<li><b>Homing</b>: pink missiles that chase the nearest bug and fly over mushrooms.</li>' +
-      '<li><b>Rapid fire</b>: twin lasers, almost twice as fast.</li>' +
-      '<li>Those four last 10 seconds. The ring around your ship shows the time left. Picking up a new one swaps it.</li>' +
-      '<li><b>Shield</b>: 8 seconds when nothing can hurt you, and bugs that touch you get smashed.</li>' +
-      '<li><b>Bomb</b>: blows up everything near the ring, right away.</li></ul>' +
+      '<li><b>Flea</b>: drops straight down, leaving a trail of mushrooms. Takes 2 hits. <b>200</b>.</li>' +
+      '<li><b>Wasp</b>: flies in, locks on to you and dive-bombs. <b>200</b>. A <b>black wasp</b> is faster, takes 2 hits and comes back round for another go. <b>400</b>.</li>' +
+      '<li><b>Ants</b>: a sudden line marching across or down the field. <b>50</b> each.</li>' +
+      '<li><b>Firefly</b>: flies down at an angle from a top corner. When its glow builds, a circle lights up under it: get out of the circle before it flashes. <b>250</b>.</li>' +
+      '<li><b>Blast beetle</b>: walks down toward you and takes 3 hits. When it goes, it blows up the mushrooms and bugs around it. <b>300</b>.</li></ul>' +
+      '<h3>Power-ups</h3><p>Power-ups are rare: one floats in high up every 20 to 30 seconds and stays about 12 seconds. Shoot it to take it (clear a path through the mushrooms if you need to).</p><ul>' +
+      '<li><b>Scatter</b>: five shots in a fan.</li>' +
+      '<li><b>Shock</b>: every hit throws lightning on to the nearest bugs.</li>' +
+      '<li><b>Beam</b>: a laser straight up that goes through everything in its path.</li>' +
+      '<li>Those three last 12 seconds. The ring around your ship shows the time left. Picking up a new one swaps it.</li>' +
+      '<li><b>Bomb</b>: blows up everything near the ring, right away.</li>' +
+      '<li><b>Shield</b>: 8 seconds when nothing can hurt you, and bugs that touch you get smashed.</li></ul>' +
       '<h3>Combos</h3><p>Hit bugs quickly, one after another. Every 5 in a row is a combo bonus: x5 is <b>100</b>, x10 is <b>200</b>, x15 is <b>300</b> and so on.</p>' +
-      '<h3>Bosses</h3><p>Waves 3, 6, 9 and 10 are boss battles in the hive. The bar at the top shows the boss\'s health. The <b>Wasp Queen</b> fires stings and sends little bees. She marks a lane in red, then dives straight down it, so step out of the lane. The <b>Firefly</b> can only be hit while it glows. It fires sparks and drops embers that grow into mushrooms. The <b>Iron Beetle</b> drops boulders as it sweeps across, and tosses one at you when it passes over you. Boulders take 3 hits (<b>50</b> each). At half health it calls in a centipede. Wave 10 is the <b>Mega Spider</b>: venom fans, baby spiders and a mushroom-flattening slam. Watch for the warning flash before an attack. Every boss gets faster at half health, and Ice slows a boss down for a moment. A boss is worth <b>5,000</b>, <b>7,500</b>, <b>10,000</b> and, for the Mega Spider, <b>25,000</b>, plus <b>5</b> for every hit.</p>' +
-      '<h3>Lives</h3><p>Touching a bug, a boss or a boss\'s shot costs a life. You\'re back a moment later, with a few seconds of safety. You get an extra life every <b>15,000</b> points. Clear a wave for a bonus of <b>250</b> times the wave number. Arcade starts with 3 lives. Relaxed starts with 5, with slower bugs and weaker bosses.</p>' +
+      '<h3>Bosses</h3><p>Each boss is armoured: your shots bounce off except at its weak spot or in its weak moment. The bar at the top shows its health, and it gets angrier at two thirds and one third.</p><ul>' +
+      '<li><b>Killer Wasp</b> (wave 3): follows you along the top, locks on, loops and dives straight at you. Dodge sideways, then get under it: only while it climbs back up, thorax glowing, can it be hurt. It sends ordinary wasps too.</li>' +
+      '<li><b>Night Flyer</b> (wave 6): sweeps corner to corner, lighting up circles on the ground as it goes (the sides are the worst place to be), and brings fireflies. Between sweeps it rests at the top with its glowing core open: only the core takes damage.</li>' +
+      '<li><b>Blast Beetle</b> (wave 9): crawls across lane by lane, lobbing fireballs that roll across the mushrooms and go off. Only straight shots on its head plate hurt it (Scatter bounces off). Shoot a fireball down near it and the blast hurts it too. It sends blast beetles.</li>' +
+      '<li><b>Mega Spider</b> (wave 10): crawls along the top firing venom, spins web walls of mushrooms and sends baby spiders, then leaps over you and pounds the ground (move away from its shadow). It can only be hurt properly while it\'s down on the ground; up top only Beam and Shock get through, a little. <b>One life:</b> if you\'re hit during this fight, it\'s over (for you, online).</li></ul>' +
+      '<p>Beating the Killer Wasp, the Night Flyer or the Blast Beetle is worth <b>10,000</b>. The Mega Spider is worth <b>100,000</b>. Every hit on a boss is <b>5</b>.</p>' +
+      '<h3>Endless</h3><p>After wave 10 the waves start again from the first stage, with the wave number still counting up. Each time round everything is faster, the waves are longer, the bosses are tougher, and their bonuses go up.</p>' +
+      '<h3>Lives</h3><p>Touching a bug, a boss, a boss\'s shot or a flashing circle costs a life. You\'re back a moment later, with a few seconds of safety. You get an extra life every <b>20,000</b> points. Arcade starts with 3 lives. Relaxed starts with 5, with slower bugs and weaker, slower bosses.</p>' +
       '<h3>Play online</h3><p>Two or three players, each on their own phone or tablet, play the same field together, like the three-player cabinet. Each player has their own coloured ship (blue, yellow, purple), score and lives. One opens a table; the others join it from the list (tables opened by people you\'ve linked show up first) or with the 4-letter code. Everyone shares the team score and also has their own. Bosses get tougher for each extra player. Extra lives come from the team score and go to everyone. If you lose your last life, you\'re back in at the start of the next wave, or sooner if the team earns an extra life. The game ends when everyone is out at once. Players can join a game already going. An online game can\'t be paused, and it ends for everyone if the host leaves.</p>' +
       '<p>If your score makes the board, enter your initials for the high scores.</p>'
   });
@@ -268,7 +301,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   var G = null;          // the game (solo, or the host's copy online)
   var GV = null;         // a guest's view of the host's game
   var screen = 'none', paused = false, cfgLast = null, refit = false;
-  var fx = { parts: [], pops: [], exps: [], flames: [], shake: 0, flash: 0, flashC: '#fff', banner: null };
+  var fx = { parts: [], pops: [], exps: [], arcs: [], trail: [], shake: 0, flash: 0, flashC: '#fff', banner: null, card: null };
   var nid = 1;
   function newId() { return nid++; }
   function view() { return GV || G; }
@@ -285,7 +318,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
   function solo() { return G && G.mode === 'solo'; }
   function alivePlayers() { return G.players.filter(function (p) { return p.alive; }); }
-  function themeOf(R) { var w = WAVES[(R && R.wave) || 1]; return THEMES[(w && w.theme) || 'blue']; }
+  function themeOf(R) { return THEMES[waveDef((R && R.wave) || 1).theme || 'blue']; }
 
   // ═══ Effects (also sent to the other devices online) ════════════════════
   function ev(a) { applyFx(a); if (G && G.mode === 'host') net.evq.push(a); }
@@ -298,6 +331,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function flash(c, a) { ev(['f', c, a]); }
   function banner(t, sub, c) { ev(['n', t, sub || '', c || '#ffffff']); }
   function ring(x, y, r, c) { ev(['r', r1(x), r1(y), r, c]); }
+  function arc(x1, y1, x2, y2, c) { ev(['z', r1(x1), r1(y1), r1(x2), r1(y2), c || '#bff8ff']); }
+  function card(title, sub, c, sub2) { ev(['c', title, sub, c, sub2 || '']); }
   function buzz(pid, kind) { ev(['h', pid, kind]); }
   function applyFx(a) {
     switch (a[0]) {
@@ -308,8 +343,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       case 'k': fx.shake = Math.min(1.2, Math.max(fx.shake, a[1])); break;
       case 'f': fx.flash = Math.max(fx.flash, a[2]); fx.flashC = a[1]; break;
       case 'n': fx.banner = { text: a[1], sub: a[2], c: a[3], life: 2.2, max: 2.2 }; break;
+      case 'c': fx.card = { title: a[1], sub: a[2], c: a[3], sub2: a[4], life: 3.6, max: 3.6 }; fx.banner = null; break;
       case 'x': fx.exps.push({ x: a[1], y: a[2], c: a[3], r: a[4] ? 22 : 11, life: a[4] ? 0.5 : 0.32, max: a[4] ? 0.5 : 0.32 }); break;
       case 'r': fx.exps.push({ x: a[1], y: a[2], c: a[4], r: a[3], ring: true, life: 0.6, max: 0.6 }); break;
+      case 'z': if (fx.arcs.length < 24) fx.arcs.push({ x1: a[1], y1: a[2], x2: a[3], y2: a[4], c: a[5] || '#bff8ff', life: 0.22 }); break;
       case 'h': if (a[1] === myPid()) Kit.haptic(a[2]); break;
     }
   }
@@ -325,59 +362,57 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function makeGame(cfg) {
     nid = 1;
     setField(cfg.cols, cfg.rows);
-    G = { mode: cfg.mode, diff: DIFF[cfg.diff] ? cfg.diff : 'arcade', wave: 0, phase: 'intro', phaseT: 0, t: 0, score: 0, nextLife: LIFE_EVERY,
+    G = { mode: cfg.mode, diff: DIFF[cfg.diff] ? cfg.diff : 'arcade', wave: 0, phase: 'intro', phaseT: 0, introT: 1.8, t: 0, waveT: 0, score: 0, nextLife: LIFE_EVERY,
       grid: new Uint8Array(COLS * ROWS), pois: new Uint8Array(COLS * ROWS), md: cfg.mode === 'host' ? [] : null,
-      chains: [], segs: [], foes: [], boss: null, shots: [], caps: [], bullets: [], players: [],
-      tSpider: 4, tBee: 5, tScorp: 9, tHead: 0, tCap: 8, inZone: false, started: Date.now(), ended: false, best0: ArcadeHi.best(HI),
-      stats: { segs: 0, heads: 0, spiders: 0, fleas: 0, scorps: 0, bosses: 0, powers: 0, mush: 0, maxWave: 1, combo: 0 } };
+      chains: [], segs: [], foes: [], boss: null, shots: [], caps: [], bullets: [], zones: [], players: [],
+      trainsLeft: 0, tTrain: 0, tSpider: 4, tFlea: 5, tWasp: 8, tAnt: 10, tFfly: 8, tBeetle: 10, tBlack: 0, tHead: 0, tCap: 14, inZone: false, oneLife: false,
+      started: Date.now(), ended: false, best0: ArcadeHi.best(HI),
+      stats: { segs: 0, heads: 0, spiders: 0, fleas: 0, scorps: 0, bugs: 0, bosses: 0, powers: 0, mush: 0, maxWave: 1, combo: 0, saved: false } };
     cfg.players.forEach(function (p) { addPlayer(p); });
     startWave(1);
   }
-  function cspeed() { return CSPD * DIFF[G.diff].spd * (1 + 0.035 * (G.wave - 1)) * (G.score >= FAST_AT ? 1.15 : 1); }
+  function cspeed() { return CSPD * DIFF[G.diff].spd * (1 + 0.03 * Math.min(9, (G.wave - 1) % LAST)) * (waveDef(G.wave).speed || 1); }
+  function bugSpeed() { return DIFF[G.diff].spd * (waveDef(G.wave).speed || 1); }
   function spawnX(ci) { return [W / 2, W * 0.25, W * 0.75][ci] || W / 2; }
   function spawnY() { return H - 28; }
   function addPlayer(p) {
     var used = G.players.map(function (q) { return q.ci; }), ci = 0;
     while (used.indexOf(ci) >= 0) ci++;
     var P = { id: p.id, dev: p.dev || null, name: p.name || 'Player', ci: ci, color: PCOL[ci % 3], x: spawnX(ci), y: spawnY(), alive: true, lives: DIFF[G.diff].lives, score: 0,
-      inv: 2.5, respawn: 0, power: null, powerT: 0, shield: 0, fire: false, cool: 0, flameT: 0, flaming: false, side: 1, combo: 0, comboT: 0,
+      inv: 2.5, respawn: 0, power: null, powerT: 0, shield: 0, fire: false, cool: 0, beamT: 0, beaming: false, side: 1, combo: 0, comboT: 0, benched: false,
       local: !!p.local, tx: null, ty: null, deaths: 0, lastIn: performance.now() };
     G.players.push(P);
     if (G.boss) rescaleBoss();
     return P;
   }
-  function isBossWave(n) { return !!(WAVES[n] && WAVES[n].boss); }
+  function isBossWave(n) { return !!waveDef(n).boss; }
 
   function startWave(n) {
-    G.wave = n; G.phase = 'intro'; G.phaseT = 0; G.inZone = false; G.tHead = 0; G.tCap = rnd(6, 9);
+    var w = waveDef(n);
+    G.wave = n; G.phase = 'intro'; G.phaseT = 0; G.introT = w.boss ? 3.6 : 1.8; G.waveT = 0; G.inZone = false; G.tHead = 0;
     G.stats.maxWave = Math.max(G.stats.maxWave, n);
-    G.chains = []; G.segs = []; G.foes = []; G.shots = []; G.caps = [];
-    var w = WAVES[n];
-    // anyone out of lives comes back for the new wave (online)
-    G.players.forEach(function (p) { if (!p.alive && p.lives <= 0 && G.mode !== 'solo') { p.lives = 1; p.respawn = 0.6; } });
+    G.chains = []; G.segs = []; G.foes = []; G.shots = []; G.caps = []; G.zones = []; G.boss = null; G.oneLife = false;
+    G.trainsLeft = w.trains || 0; G.tTrain = 0;
+    G.tSpider = rnd(3, 6); G.tFlea = rnd(4, 8); G.tWasp = rnd(7, 11); G.tAnt = rnd(9, 13); G.tFfly = rnd(5, 9); G.tBeetle = rnd(8, 12); G.tBlack = 0; G.tCap = rnd(12, 18);
+    // anyone out comes back for the new wave (online; and anyone benched by the Mega Spider's one-life rule)
+    G.players.forEach(function (p) {
+      if (p.benched) { p.benched = false; if (p.lives > 0) p.respawn = 0.6; }
+      if (!p.alive && p.lives <= 0 && G.mode !== 'solo') { p.lives = 1; p.respawn = 0.6; }
+    });
     plant(w);
-    if (w.boss) { banner(BOSS[w.boss].name, n === LAST ? 'Final battle!' : 'Boss battle', BOSS[w.boss].c); sound('warn'); }
-    else { banner('Wave ' + n, w.stage, THEMES[w.theme].hi); sound('wave'); }
+    if (w.boss) {
+      makeBoss(w.boss);
+      var D = BOSS[w.boss];
+      card(D.name, 'Boss bonus: ' + fmt(bossBonus(w.boss)), D.c, w.boss === 'mega' ? 'One life: no extra lives in this fight' : '');
+      sound('warn');
+    } else { banner('Wave ' + n, n > LAST ? w.stage + ' - endless' : w.stage, THEMES[w.theme].hi); sound('wave'); }
     if (G.mode === 'host') { G.md = []; net.gridDirty = true; if (net.table) net.table.setStatus('playing', 'Wave ' + n); }
   }
-  function spawnWave() {
-    var w = WAVES[G.wave], sp = cspeed();
-    if (w.boss) { makeBoss(w.boss); return; }
-    // the centipedes come in at the top, each at its own column, one after another
-    var used = [], k = 0;
-    w.chains.forEach(function (cd) {
-      for (var i = 0; i < cd[1]; i++) {
-        var col, tries = 0;
-        do { col = ri(2, COLS - 3); } while (used.some(function (x) { return Math.abs(x - col) < 4; }) && tries++ < 30);
-        used.push(col);
-        makeChain(cd[0], col, Math.random() < 0.5 ? 1 : -1, sp * (cd[0] === 1 ? HEAD_X : 1), -1 - k * 3); k++;
-      }
-    });
-  }
+  function bossBonus(type) { return BOSS[type].bonus * (1 + (waveDef(G.wave).loop || 0)); }
 
   // ═══ Mushroom layouts: a designed pattern for each wave ═════════════════
   // Patterns are drawn in field fractions (u across, v down the upper field and a little into the
-  // players' area), so the same design fits a wide or a tall field.
+  // players' area), so the same design fits any field.
   function plant(w) {
     G.grid.fill(0); G.pois.fill(0);
     var top = 2, bot = Math.min(ROWS - 4, PZ + 1);
@@ -393,7 +428,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     function chev(u, v, dir, arm) { var du = 2 / (COLS - 1), dv = 1 / (bot - top); for (var k = 0; k <= arm; k++) { at(u - k * du, v + dir * k * dv); at(u + k * du, v + dir * k * dv); } }
     var p = w.pat, n, i, j;
     if (p === 'chevron') {
-      // long lines down from the top corners, and a row of arrows across the middle
       line(0.04, 0, 0.16, 0.62, 1.4); line(0.96, 0, 0.84, 0.62, 1.4);
       n = Math.max(2, Math.floor(COLS / 9));
       for (i = 0; i < n; i++) chev(0.28 + 0.44 * (n === 1 ? 0.5 : i / (n - 1)), 0.66, 1, 2);
@@ -412,7 +446,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     } else if (p === 'rows') {
       [0.12, 0.45, 0.8].forEach(function (v, k) { for (var c = 1 + (k % 2) * 4; c < COLS - 1; c += 8) { put(c, V(v)); put(c + 1, V(v)); put(c + 2, V(v)); } });
     } else if (p === 'diamonds') {
-      var nx = Math.max(2, Math.round(COLS / 11)), ny = ROWS > COLS ? 3 : 2;
+      var nx = Math.max(2, Math.round(COLS / 11)), ny = 2;
       for (i = 0; i < nx; i++) for (j = 0; j < ny; j++) {
         var cu = U((i + 0.5) / nx), rv = V((j + 0.5) / ny), a = 3;
         for (var k = 0; k < a; k++) { put(cu - a + k, rv - k); put(cu + a - k, rv - k); put(cu - a + k, rv + k); put(cu + a - k, rv + k); }
@@ -435,6 +469,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     for (var j = 0; j < len + 2; j++) ch.trail.push({ c: c, r: r0 - j, dx: dx, vy: 1, vert: true, pz: false });
     G.chains.push(ch);
     return ch;
+  }
+  // The next centipede train of a wave comes in at the top, away from the others (in later waves with a loose
+  // fast head or two)
+  function spawnTrain() {
+    var w = waveDef(G.wave), len = ri(w.len[0], w.len[1]), sp = cspeed(), used = G.chains.map(function (c) { return c.to.c; }), col, tries = 0;
+    do { col = ri(2, COLS - 3); } while (used.some(function (x) { return Math.abs(x - col) < 5; }) && tries++ < 30);
+    makeChain(len, col, Math.random() < 0.5 ? 1 : -1, sp, -1);
+    var heads = (G.wave % LAST) >= 4 || G.wave > LAST ? (Math.random() < 0.5 ? 1 : 0) + ((G.wave - 1) % LAST >= 6 ? 1 : 0) : 0;
+    for (var i = 0; i < heads; i++) makeChain(1, ri(1, COLS - 2), Math.random() < 0.5 ? 1 : -1, sp * HEAD_X, -3 - i * 2);
+    G.trainsLeft--;
   }
   function sideHead() {
     var dx = Math.random() < 0.5 ? 1 : -1, r = ri(PZ, ROWS - 2), c = dx > 0 ? -1 : COLS;
@@ -496,15 +540,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     // the segment becomes a mushroom where it was
     var c = Math.floor(sg.x / CELL), r = Math.floor(sg.y / CELL);
     if (inField(c, r) && !G.grid[idx(c, r)] && r < ROWS - 1) setMush(c, r, MUSH_HP, 0);
-    // the back half becomes its own centipede with a new head
+    // the back half becomes its own centipede with a new head (faster in later waves)
     var back = ch.segs.slice(k + 1);
     if (back.length) {
-      var j = k + 1, from = ch.trail[j] || ch.trail[ch.trail.length - 1], to = ch.trail[k] || ch.to;
-      G.chains.push({ id: newId(), segs: back, trail: ch.trail.slice(j), to: { c: to.c, r: to.r }, prog: ch.prog, dx: from.dx, vy: from.vy, vert: from.vert, pz: from.pz, sp: ch.sp, frz: ch.frz });
+      var j = k + 1, from = ch.trail[j] || ch.trail[ch.trail.length - 1], to = ch.trail[k] || ch.to, sp = Math.min(ch.sp * (waveDef(G.wave).split || 1), cspeed() * 1.9);
+      G.chains.push({ id: newId(), segs: back, trail: ch.trail.slice(j), to: { c: to.c, r: to.r }, prog: ch.prog, dx: from.dx, vy: from.vy, vert: from.vert, pz: from.pz, sp: sp, frz: ch.frz });
     }
     ch.segs = ch.segs.slice(0, k);
     if (!ch.segs.length) G.chains.splice(G.chains.indexOf(ch), 1);
-    if (Math.random() < (head ? 0.1 : 0.015)) dropCap(sg.x, sg.y);
     rebuildSegs();
   }
 
@@ -512,12 +555,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function award(P, pts, x, y, show) {
     if (P) P.score += pts;
     G.score += pts;
-    if (show) popup(x, y - 6, pts, P ? P.color : '#fff');
+    if (show) popup(x, y - 6, fmt(pts), P ? P.color : '#fff', pts >= 5000);
     // passing your best score (solo): a moment to celebrate, once a game
     if (G.mode === 'solo' && !G.beatBest && G.best0 > 0 && G.score > G.best0) { G.beatBest = true; banner('New high score!', '', '#ffd23d'); sound('extra'); buzz(P && P.id, 'success'); }
     while (G.score >= G.nextLife) {
       G.nextLife += LIFE_EVERY;
-      G.players.forEach(function (p) { p.lives++; if (!p.alive && p.lives === 1 && p.respawn <= 0) p.respawn = 0.8; });
+      G.players.forEach(function (p) { p.lives++; if (!p.alive && !p.benched && p.lives === 1 && p.respawn <= 0) p.respawn = 0.8; });
       sound('extra'); popup(W / 2, PZY - 14, 'Extra life', '#7dffb0', true);
       G.players.forEach(function (p) { buzz(p.id, 'success'); });
     }
@@ -533,10 +576,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       popup(P.x, P.y - 24, 'Combo x' + P.combo + ' +' + b, '#ffe23d', true); sound('combo');
     }
   }
-  function capKind() { var r = Math.random() * 6.2; return r < 1.1 ? 'flame' : r < 2.2 ? 'ice' : r < 3.3 ? 'homing' : r < 4.6 ? 'rapid' : r < 5.4 ? 'shield' : 'bomb'; }
-  function dropCap(x, y, k) {
-    if (G.caps.length >= 4) return;
-    G.caps.push({ id: newId(), x: clamp(x, 12, W - 12), y: y, k: k || capKind(), t: 0 });
+  function capKind() { var rel = G.diff === 'relaxed', r = Math.random() * (rel ? 4.8 : 4.4); return r < 1 ? 'scatter' : r < 2 ? 'shock' : r < 3 ? 'beam' : r < 3.8 ? 'bomb' : 'shield'; }
+  // Power-ups are rare: one at a time, floating in the upper part of the field for CAP_LIFE seconds.
+  // Shoot it (or fly into it) to take it.
+  function spawnCap(k) {
+    var y = rnd(0.14, 0.5) * PZY, x = rnd(30, W - 30);
+    G.caps.push({ id: newId(), x: x, y: y, y0: y, k: k || capKind(), t: 0 });
+    sound('capin');
   }
   function givePower(P, cap) {
     var i = G.caps.indexOf(cap); if (i < 0) return;
@@ -550,26 +596,31 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (k === 'shield') P.shield = SHIELD_T; else { P.power = k; P.powerT = POW_T; }
     popup(P.x, P.y - 18, POW[k].name, c, true);
   }
-  // Bomb: everything within reach of the ring goes up at once
+  // A blast: everything within reach goes up (mushrooms, bugs, centipede segments); a boss in reach takes a hit
+  function blast(P, x, y, R, bossDmg, cause) {
+    var R2 = R * R, ids = G.segs.filter(function (s) { return (s.x - x) * (s.x - x) + (s.y - y) * (s.y - y) < R2; }).map(function (s) { return s.id; });
+    ids.forEach(function (id) { var s = segById(id); if (s) hitSeg(s, P); });
+    G.foes.slice().forEach(function (o) { if (o !== cause && (o.x - x) * (o.x - x) + (o.y - y) * (o.y - y) < R2) hitFoe(o, P, 9); });
+    var c0 = Math.floor((x - R) / CELL), c1 = Math.floor((x + R) / CELL), q0 = Math.floor((y - R) / CELL), q1 = Math.floor((y + R) / CELL), boss = isBossWave(G.wave);
+    for (var r = q0; r <= q1; r++) for (var c = c0; c <= c1; c++) if (mush(c, r) && (cx(c) - x) * (cx(c) - x) + (cx(r) - y) * (cx(r) - y) < R2) { setMush(c, r, 0); if (!boss) award(P, 1, 0, 0, false); }
+    var B = G.boss; if (B && bossDmg && B.st !== 'die' && B.st !== 'enter' && Math.hypot(B.x - x, B.y - y) < R + BOSS[B.type].r[0] * 0.8) hitBoss(P, bossDmg, B.x, B.y, 'blast');
+  }
   function bomb(P, x, y) {
     ring(x, y, BOMB_R, '#ff9a3d'); boom(x, y, '#ffb13d', true); burst(x, y, '#ff7a1f', 18, 1.8); burst(x, y, '#ffe23d', 10, 1.4);
     sound('bomb'); shake(0.9); flash('#ffb13d', 0.35);
     popup(x, y - 8, 'Bomb', '#ff6a3d', true);
-    var R2 = BOMB_R * BOMB_R, ids = G.segs.filter(function (s) { return (s.x - x) * (s.x - x) + (s.y - y) * (s.y - y) < R2; }).map(function (s) { return s.id; });
-    ids.forEach(function (id) { var s = segById(id); if (s) hitSeg(s, P); });
-    G.foes.slice().forEach(function (o) { if ((o.x - x) * (o.x - x) + (o.y - y) * (o.y - y) < R2) hitFoe(o, P, 9); });
-    G.shots = G.shots.filter(function (s) { return (s.x - x) * (s.x - x) + (s.y - y) * (s.y - y) >= R2; });
-    var c0 = Math.floor((x - BOMB_R) / CELL), c1 = Math.floor((x + BOMB_R) / CELL), q0 = Math.floor((y - BOMB_R) / CELL), q1 = Math.floor((y + BOMB_R) / CELL);
-    for (var r = q0; r <= q1; r++) for (var c = c0; c <= c1; c++) if (mush(c, r) && (cx(c) - x) * (cx(c) - x) + (cx(r) - y) * (cx(r) - y) < R2) { setMush(c, r, 0); award(P, 1, 0, 0, false); }
-    var B = G.boss; if (B && B.st !== 'die' && Math.hypot(B.x - x, B.y - y) < BOMB_R + BOSS[B.type].r[0]) hitBoss(P, BDMG.bomb, B.x, B.y, 'bomb');
+    G.shots = G.shots.filter(function (s) { return (s.x - x) * (s.x - x) + (s.y - y) * (s.y - y) >= BOMB_R * BOMB_R; });
+    blast(P, x, y, BOMB_R, BDMG.bomb);
   }
   function killPlayer(P) {
     if (!P.alive) return;
-    P.alive = false; P.lives--; P.deaths++; P.power = null; P.powerT = 0; P.shield = 0; P.fire = false; P.flaming = false; P.combo = 0;
+    P.alive = false; P.lives--; P.deaths++; P.power = null; P.powerT = 0; P.shield = 0; P.fire = false; P.beaming = false; P.combo = 0;
     boom(P.x, P.y, P.color, true); burst(P.x, P.y, P.color, 22, 1.5); burst(P.x, P.y, '#ffffff', 8, 1);
     sound('die'); shake(0.8); flash('#ff3d5a', 0.45); buzz(P.id, 'error');
     G.bullets = G.bullets.filter(function (b) { return b.o !== P.id; });
-    if (P.lives > 0) P.respawn = 1.6;
+    // the Mega Spider's one-life rule: no coming back during the fight
+    if (G.oneLife) { P.benched = true; P.respawn = 0; if (G.mode !== 'solo') popup(P.x, P.y - 12, P.name + ' is out', P.color, true); }
+    else if (P.lives > 0) P.respawn = 1.6;
     else if (G.mode !== 'solo') popup(P.x, P.y - 12, P.name + ' is out', P.color, true);
   }
   // Back in at the bottom, safe for a moment; bugs and shots right where the ship appears are cleared away
@@ -584,30 +635,32 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   var STEP = 1 / 60;
   function sim(dt) {
     G.t += dt; G.phaseT += dt;
-    if (G.phase === 'over' || G.phase === 'won') { if (G.phaseT > 2.2 && !G.ended) endGame(G.phase === 'won'); return; }
+    if (G.phase === 'over' || G.phase === 'won') { if (G.phaseT > 2.2 && !G.ended) endGame(G.stats.saved); return; }
     G.players.forEach(function (P) { playerStep(P, dt); });
-    if (G.phase === 'intro' && G.phaseT > 1.7) { G.phase = 'play'; G.phaseT = 0; spawnWave(); }
+    if (G.phase === 'intro' && G.phaseT > G.introT) { G.phase = 'play'; G.phaseT = 0; if (G.boss && G.boss.type === 'mega') G.oneLife = true; }
+    if (G.phase === 'play') G.waveT += dt;
     G.chains.forEach(function (ch) { if (ch.frz > 0) ch.frz -= dt; moveChain(ch, ch.sp * (ch.frz > 0 ? 0.4 : 1) * (ch.segs.length === 1 ? 1.1 : 1) * dt); });
     rebuildSegs();
     foesStep(dt);
     if (G.boss) bossStep(G.boss, dt);
     shotsStep(dt);
+    zonesStep(dt);
     capsStep(dt);
     bulletsStep(dt);
     collide();
     spawnStep(dt);
-    if (G.phase === 'play' && !G.chains.length && !G.boss) { G.phase = 'clear'; G.phaseT = 0; waveBonus(); }
-    if (G.phase === 'clear' && G.phaseT > 2.4) { if (G.wave >= LAST) { G.phase = 'won'; G.phaseT = 0; } else startWave(G.wave + 1); }
-    if (G.phase !== 'over' && G.players.length && G.players.every(function (p) { return !p.alive && p.lives <= 0; })) { G.phase = 'over'; G.phaseT = 0; sound('over'); }
+    if (G.phase === 'play' && !G.chains.length && !G.boss && !G.trainsLeft) { G.phase = 'clear'; G.phaseT = 0; waveBonus(); }
+    if (G.phase === 'clear' && G.phaseT > 2.6) startWave(G.wave + 1);
+    if (G.phase !== 'over' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); })) { G.phase = 'over'; G.phaseT = 0; sound('over'); }
   }
   function waveBonus() {
-    var b = 250 * G.wave, bw = isBossWave(G.wave);
+    var b = 250 * G.wave, bw = isBossWave(G.wave), mega = bw && waveDef(G.wave).boss === 'mega';
     G.players.forEach(function (p) { if (p.alive) p.score += b; });
     G.score += b;
-    banner(G.wave >= LAST ? 'Garden saved!' : bw ? 'Boss defeated!' : 'Wave clear', '+' + fmt(b) + ' bonus', '#ffd23d');
+    banner(mega ? 'Garden saved!' : bw ? 'Boss defeated!' : 'Wave clear', mega ? 'Endless mode next' : '+' + fmt(b) + ' bonus', '#ffd23d');
     sound('clear');
-    G.foes = G.foes.filter(function (f) { return f.type !== 'ball'; }); G.shots = [];
-    if (G.wave >= LAST) { shake(0.6); }
+    G.foes = G.foes.filter(function (f) { return f.type !== 'ball'; }); G.shots = []; G.zones = [];
+    if (mega) shake(0.6);
     while (G.score >= G.nextLife) award(null, 0, 0, 0, false);
   }
 
@@ -620,7 +673,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (P.comboT > 0) { P.comboT -= dt; if (P.comboT <= 0) P.combo = 0; }
     if (P.shield > 0) P.shield = Math.max(0, P.shield - dt);
     if (P.powerT > 0) { P.powerT -= dt; if (P.powerT <= 0) { P.power = null; P.powerT = 0; } }
-    if (!P.alive) { P.flaming = false; if (P.respawn > 0 && P.lives > 0) { P.respawn -= dt; if (P.respawn <= 0) respawn(P); } return; }
+    if (!P.alive) { P.beaming = false; if (P.respawn > 0 && P.lives > 0 && !P.benched) { P.respawn -= dt; if (P.respawn <= 0) respawn(P); } return; }
     if (P.local) {
       var m = takeInput(P, dt);
       movePlayer(P, m[0], m[1]);
@@ -630,28 +683,25 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       if (performance.now() - P.lastIn > 600) P.fire = false;
     }
     P.cool -= dt;
-    P.flaming = false;
+    P.beaming = false;
     if (!P.fire || G.phase === 'clear' && G.phaseT > 1.5) return;
     var pw = P.power;
-    if (pw === 'flame') { P.flaming = true; P.flameT -= dt; if (P.flameT <= 0) { P.flameT = 0.07; flameTick(P); if (P.local) snd('flame'); } return; }
+    if (pw === 'beam') { P.beaming = true; P.beamT -= dt; if (P.beamT <= 0) { P.beamT = 0.07; beamTick(P); if (P.local) snd('beam'); } return; }
     if (P.cool > 0) return;
-    if (pw === 'rapid') { P.side = -P.side; shoot(P, P.x + P.side * 3.4, 0, 'rapid'); P.cool = 0.065; if (P.local) snd('rapid'); }
-    else if (pw === 'ice') { [-0.34, -0.17, 0, 0.17, 0.34].forEach(function (a) { shoot(P, P.x, a, 'ice'); }); P.cool = 0.17; if (P.local) snd('ice'); }
-    else if (pw === 'homing') { [-0.75, 0, 0.75].forEach(function (a) { shoot(P, P.x, a, 'homing'); }); P.cool = 0.32; if (P.local) snd('homing'); }
+    if (pw === 'scatter') { [-0.36, -0.18, 0, 0.18, 0.36].forEach(function (a) { shoot(P, P.x, a, 'scatter'); }); P.cool = 0.17; if (P.local) snd('scatter'); }
+    else if (pw === 'shock') { shoot(P, P.x, 0, 'shock'); P.cool = 0.12; if (P.local) snd('shot'); }
     else { shoot(P, P.x, 0, 'laser'); P.cool = 0.12; if (P.local) snd('shot'); }
   }
-  var BSPD = { laser: 640, rapid: 700, ice: 520, homing: 300 };
+  var BSPD = { laser: 640, scatter: 540, shock: 640 };
   function shoot(P, x, a, k) {
     var v = BSPD[k];
-    G.bullets.push({ id: newId(), o: P.id, x: x, y: P.y - 9, vx: Math.sin(a) * v, vy: -Math.cos(a) * v, k: k, P: P, life: k === 'homing' ? 2.4 : 9, tg: null });
+    G.bullets.push({ id: newId(), o: P.id, x: x, y: P.y - 9, vx: Math.sin(a) * v, vy: -Math.cos(a) * v, k: k, P: P });
   }
 
   // ── Bullets ──
   function bulletsStep(dt) {
     for (var i = G.bullets.length - 1; i >= 0; i--) {
-      var b = G.bullets[i];
-      if (b.k === 'homing') { b.life -= dt; if (b.life <= 0) { G.bullets.splice(i, 1); continue; } steer(b, dt); }
-      var n = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 4), gone = false;
+      var b = G.bullets[i], n = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 4), gone = false;
       for (var s = 0; s < n && !gone; s++) {
         b.x += b.vx * dt / n; b.y += b.vy * dt / n;
         if (b.y < -8 || b.x < -8 || b.x > W + 8 || b.y > H + 8) { gone = true; break; }
@@ -660,111 +710,162 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       if (gone) { var j = G.bullets.indexOf(b); if (j >= 0) G.bullets.splice(j, 1); }
     }
   }
-  // Homing missiles turn toward the nearest bug (or the boss) and fly over mushrooms
-  function steer(b, dt) {
-    var t = b.tg, tx = null, ty = null;
-    if (t) {
-      if (t.s) { var s = segById(t.s); if (s) { tx = s.x; ty = s.y; } }
-      else if (t.f) { var o = G.foes.filter(function (f) { return f.id === t.f; })[0]; if (o) { tx = o.x; ty = o.y; } }
-      else if (t.b && G.boss && G.boss.st !== 'die') { tx = G.boss.x; ty = G.boss.y; }
-    }
-    if (tx == null) {
-      var best = 1e9; b.tg = null;
-      G.segs.forEach(function (s) { var d = Math.hypot(s.x - b.x, s.y - b.y) + (s.y > b.y ? 60 : 0); if (d < best) { best = d; b.tg = { s: s.id }; tx = s.x; ty = s.y; } });
-      G.foes.forEach(function (o) { var d = Math.hypot(o.x - b.x, o.y - b.y) + (o.y > b.y ? 60 : 0); if (d < best) { best = d; b.tg = { f: o.id }; tx = o.x; ty = o.y; } });
-      if (G.boss && G.boss.st !== 'die') { var d = Math.hypot(G.boss.x - b.x, G.boss.y - b.y); if (d < best) { b.tg = { b: 1 }; tx = G.boss.x; ty = G.boss.y; } }
-    }
-    if (tx == null) return;
-    var a = Math.atan2(b.vy, b.vx), want = Math.atan2(ty - b.y, tx - b.x), da = want - a;
-    while (da > PI) da -= TAU; while (da < -PI) da += TAU;
-    a += clamp(da, -7 * dt, 7 * dt);
-    var v = BSPD.homing + (2.4 - b.life) * 120;
-    b.vx = Math.cos(a) * v; b.vy = Math.sin(a) * v;
-  }
   function bulletHit(b) {
-    var P = b.P, w = b.k === 'ice' ? 1.5 : 0.5, i;
-    if (b.k !== 'homing') for (i = 0; i < G.caps.length; i++) { var cp = G.caps[i]; if (Math.abs(cp.x - b.x) < 8 + w && Math.abs(cp.y - b.y) < 8) { givePower(P, cp); return true; } }
-    if (G.boss && bossTest(G.boss, b.x, b.y, w)) { if (b.k === 'ice') G.boss.frz = 2; hitBoss(P, BDMG[b.k], b.x, b.y, b.k); return true; }
-    for (i = 0; i < G.foes.length; i++) { var o = G.foes[i]; if (foeTest(o, b.x, b.y, w)) { if (b.k === 'ice') { o.frz = 2.5; } hitFoe(o, P, 1); return true; } }
-    for (i = 0; i < G.segs.length; i++) { var sg = G.segs[i]; if (Math.abs(sg.x - b.x) < 5.5 + w && Math.abs(sg.y - b.y) < 6) { if (b.k === 'ice') { sg.ch.frz = 2.5; burst(sg.x, sg.y, '#bff8ff', 4, 0.6); } hitSeg(sg, P); return true; } }
-    if (b.k === 'homing') return false;
+    var P = b.P, w = b.k === 'scatter' ? 1.2 : 0.5, i;
+    for (i = 0; i < G.caps.length; i++) { var cp = G.caps[i]; if (Math.abs(cp.x - b.x) < 9 + w && Math.abs(cp.y - b.y) < 9) { givePower(P, cp); return true; } }
+    // a boss's fireball: shot down, it goes off where it is
+    for (i = 0; i < G.shots.length; i++) { var f = G.shots[i]; if (f.k === 'fire' && Math.abs(f.x - b.x) < 6 + w && Math.abs(f.y - f.z - b.y) < 7) { fireBoom(f, P, true); return true; } }
+    if (G.boss) { var bh = bossHit(G.boss, b.x, b.y, b.k); if (bh) { if (bh >= 2) hitBoss(P, BDMG[b.k] * (bh === 3 ? 0.35 : 1), b.x, b.y, b.k); else deflect(b.x, b.y); if (b.k === 'shock' && bh >= 2) shock(P, b.x, b.y, null); return true; } }
+    for (i = 0; i < G.foes.length; i++) { var o = G.foes[i]; if (foeTest(o, b.x, b.y, w)) { hitFoe(o, P, 1); if (b.k === 'shock') shock(P, b.x, b.y, o); return true; } }
+    for (i = 0; i < G.segs.length; i++) { var sg = G.segs[i]; if (Math.abs(sg.x - b.x) < 5.5 + w && Math.abs(sg.y - b.y) < 6) { var sx = sg.x, sy = sg.y; hitSeg(sg, P); if (b.k === 'shock') shock(P, sx, sy, null); return true; } }
     var c = Math.floor(b.x / CELL), r = Math.floor(b.y / CELL);
     if (mush(c, r)) { hitMush(c, r, P, 1); return true; }
     return false;
   }
+  function deflect(x, y) { if (Math.random() < 0.5) burst(x, y, '#d8def0', 2, 0.6); snd('tink'); }
   function hitMush(c, r, P, dmg) {
     var hp = Math.max(0, mush(c, r) - dmg);
+    var po = G.pois[idx(c, r)];
     setMush(c, r, hp);
-    if (!hp) { award(P, 1, 0, 0, false); G.stats.mush++; burst(cx(c), cx(r), G.pois[idx(c, r)] ? '#b04dff' : themeOf(G).mush[0], 5, 0.7); snd('pop'); }
+    // mushrooms are worth a point, except during a boss fight
+    if (!hp) { if (!isBossWave(G.wave)) award(P, 1, 0, 0, false); G.stats.mush++; burst(cx(c), cx(r), po ? '#b04dff' : themeOf(G).mush[0], 5, 0.7); snd('pop'); }
     else snd('mush');
   }
-  // Flame: a short cone of fire just ahead of the ship, burning whatever is in it several times a second
-  var FLAME_R = 112;
-  function inCone(P, x, y, pad) { var d = P.y - 6 - y; if (d < -6 || d > FLAME_R + (pad || 0)) return false; return Math.abs(x - P.x) < 6 + Math.max(0, d) * 0.2 + (pad || 0); }
-  function flameTick(P) {
-    P.flameN = (P.flameN || 0) + 1;
-    var hits = G.segs.filter(function (s) { return inCone(P, s.x, s.y, 3); }).slice(0, 2).map(function (s) { return s.id; });
-    hits.forEach(function (id) { var s = segById(id); if (s) hitSeg(s, P); });
-    G.foes.slice().forEach(function (o) { if (inCone(P, o.x, o.y, 5)) hitFoe(o, P, 1); });
-    G.caps.slice().forEach(function (cp) { if (inCone(P, cp.x, cp.y, 6)) givePower(P, cp); });
-    var B = G.boss; if (B && B.st !== 'die' && bossTest(B, B.x, B.y, 0) && inCone(P, B.x, B.y + BOSS[B.type].r[1] * 0.6, BOSS[B.type].r[0])) hitBoss(P, BDMG.flame, B.x, B.y + BOSS[B.type].r[1] * 0.6, 'flame');
-    if (P.flameN % 2) return;          // mushrooms burn at half the rate
-    var y0 = P.y - 6, rTop = Math.max(0, Math.floor((y0 - FLAME_R) / CELL)), rBot = Math.floor(y0 / CELL);
-    for (var r = rBot; r >= rTop; r--) for (var c = Math.floor((P.x - 30) / CELL); c <= Math.floor((P.x + 30) / CELL); c++) if (mush(c, r) && inCone(P, cx(c), cx(r), 3)) hitMush(c, r, P, 1);
+  // Shock: each hit throws lightning on to the nearest bugs (up to three, close by)
+  function shock(P, x, y, skip) {
+    var c = [];
+    G.segs.forEach(function (s) { var d = Math.hypot(s.x - x, s.y - y); if (d > 2 && d < 60) c.push({ d: d, s: s.id, x: s.x, y: s.y }); });
+    G.foes.forEach(function (o) { if (o === skip) return; var d = Math.hypot(o.x - x, o.y - y); if (d < 64) c.push({ d: d, o: o, x: o.x, y: o.y }); });
+    c.sort(function (a, b) { return a.d - b.d; });
+    c.slice(0, 3).forEach(function (t) {
+      arc(x, y, t.x, t.y);
+      if (t.s) { var s = segById(t.s); if (s) hitSeg(s, P); } else if (G.foes.indexOf(t.o) >= 0) hitFoe(t.o, P, 1);
+    });
+    if (c.length) sound('zap');
+  }
+  // Beam: a piercing laser straight up from the ship, burning everything in its column several times a second
+  function beamTick(P) {
+    P.beamN = (P.beamN || 0) + 1;
+    var x = P.x, top = P.y - 8;
+    G.segs.filter(function (s) { return Math.abs(s.x - x) < 6 && s.y < top; }).slice(0, 3).map(function (s) { return s.id; }).forEach(function (id) { var s = segById(id); if (s) hitSeg(s, P); });
+    G.foes.slice().forEach(function (o) { if (o.y < top && foeTest(o, x, o.y, 2)) hitFoe(o, P, 1); });
+    G.caps.slice().forEach(function (cp) { if (cp.y < top && Math.abs(cp.x - x) < 9) givePower(P, cp); });
+    G.shots.slice().forEach(function (f) { if (f.k === 'fire' && f.y < top && Math.abs(f.x - x) < 7) fireBoom(f, P, true); });
+    var B = G.boss;
+    if (B && B.y < top) { var bh = bossHit(B, x, B.y + (B.type === 'beetle' ? BOSS.beetle.r[1] * 0.6 : B.type === 'firefly' ? -4 : 0), 'beam'); if (bh >= 2) hitBoss(P, BDMG.beam * (bh === 3 ? 0.35 : 1), x, B.y, 'beam'); }
+    if (P.beamN % 2) return;           // mushrooms in the column burn at half the rate
+    var c = Math.floor(x / CELL);
+    for (var r = Math.floor(top / CELL); r >= 0; r--) if (mush(c, r)) hitMush(c, r, P, 1);
   }
 
-  // ── Spiders, bees (fleas), scorpions, boulders ──
-  function foeTest(o, x, y, w) {
-    var hx = o.type === 'spider' ? 11 : o.type === 'scorp' ? 10.5 : o.type === 'ball' ? 6 : 7, hy = o.type === 'spider' ? 7.5 : o.type === 'flea' ? 7 : 6;
-    return Math.abs(o.x - x) < hx + (w || 0) && Math.abs(o.y - y) < hy + (w || 0) * 0.5;
-  }
+  // ── The bugs ──
+  // spider: zigzags in the players' area, eats mushrooms · flea: drops straight down, planting mushrooms ·
+  // wasp / black wasp: flies in, locks on and dive-bombs (a black wasp is faster and comes back round) ·
+  // ant: marches in a sudden line (across, or down from the top) · firefly (ffly): flies down diagonally from
+  // a top corner, and its glow hits the ground as a shockwave · blast beetle: walks down steadily, homing in on
+  // you, and explodes when it's shot · mini: the Mega Spider's babies · scorp/ball: scorpion, boulder
+  var FOE = {
+    spider: { hx: 11, hy: 7.5, pts: 300, c: '#a15cff' }, mini: { hx: 7, hy: 5, pts: 100, c: '#ff5c9a' },
+    flea: { hx: 6, hy: 7, pts: 200, c: '#ff5cd6' }, wasp: { hx: 8, hy: 7, pts: 200, c: '#ffd23d' }, bwasp: { hx: 8, hy: 7, pts: 400, c: '#ffe23d' },
+    ant: { hx: 6, hy: 5, pts: 50, c: '#ff6a3d' }, ffly: { hx: 9, hy: 7, pts: 250, c: '#d4ff3d' }, beetle: { hx: 9, hy: 9, pts: 300, c: '#ff4a7a' },
+    scorp: { hx: 10.5, hy: 6, pts: 1000, c: '#ff8a2a' }, ball: { hx: 6, hy: 6, pts: 50, c: '#9aa0b0' }
+  };
+  function foeTest(o, x, y, w) { var f = FOE[o.type] || FOE.ant; return Math.abs(o.x - x) < f.hx + (w || 0) && Math.abs(o.y - y) < f.hy + (w || 0) * 0.5; }
   // touching: a tighter box than the one shots use, so a near miss is a miss
-  function foeTouch(o, x, y) {
-    var hx = o.type === 'spider' ? 8 : o.type === 'scorp' ? 8 : o.type === 'ball' ? 5 : 5.5, hy = o.type === 'spider' ? 5.5 : o.type === 'flea' ? 5.5 : 4.5;
-    return Math.abs(o.x - x) < hx + 2 && Math.abs(o.y - y) < hy + 2.5;
-  }
+  function foeTouch(o, x, y) { var f = FOE[o.type] || FOE.ant; return Math.abs(o.x - x) < f.hx * 0.72 + 2 && Math.abs(o.y - y) < f.hy * 0.72 + 2.5; }
   function hitFoe(o, P, dmg) {
     if (G.foes.indexOf(o) < 0) return;
     o.hp -= dmg;
-    if (o.type === 'flea' && o.hp > 0) { o.vy *= 1.8; burst(o.x, o.y, '#ffd23d', 4); snd('mush'); return; }
-    if (o.type === 'ball' && o.hp > 0) { burst(o.x, o.y, '#9aa0b0', 4); snd('mush'); return; }
+    if (o.hp > 0) { o.hurt = 0.12; burst(o.x, o.y, (FOE[o.type] || FOE.ant).c, 4); snd('mush'); if (o.type === 'flea') o.vy *= 1.6; return; }
     G.foes.splice(G.foes.indexOf(o), 1);
-    var pts = 0, col = '#fff', T = themeOf(G);
-    if (o.type === 'spider') {
-      var near = P ? Math.abs(P.y - o.y) : 99; pts = near < 25 ? 900 : near < 55 ? 600 : 300; col = T.spider[0]; G.stats.spiders++;
-      if (Math.random() < 0.35) dropCap(o.x, o.y);
-    } else if (o.type === 'flea') { pts = 200; col = '#ffd23d'; G.stats.fleas++; if (Math.random() < 0.3) dropCap(o.x, o.y); }
-    else if (o.type === 'scorp') { pts = 1000; col = '#ff8a2a'; G.stats.scorps++; if (Math.random() < 0.7) dropCap(o.x, o.y); }
-    else if (o.type === 'ball') { pts = 50; col = '#9aa0b0'; }
-    award(P, pts, o.x, o.y, true);
+    var f = FOE[o.type] || FOE.ant, pts = f.pts, col = o.type === 'spider' ? themeOf(G).spider[0] : f.c;
+    if (o.type === 'spider') { var near = P ? Math.abs(P.y - o.y) : 99; pts = near < 25 ? 900 : near < 55 ? 600 : 300; G.stats.spiders++; }
+    else if (o.type === 'flea') G.stats.fleas++;
+    else if (o.type !== 'ball') G.stats.bugs++;
+    award(P, pts, o.x, o.y, o.type !== 'ant' && o.type !== 'mini');
     if (o.type !== 'ball') noteKill(P);
-    boom(o.x, o.y, col, o.type !== 'ball'); burst(o.x, o.y, col, o.type === 'ball' ? 6 : 12, 1.1);
-    sound(o.type === 'spider' ? 'spider' : 'kill');
+    boom(o.x, o.y, col, o.type !== 'ball' && o.type !== 'ant'); burst(o.x, o.y, col, o.type === 'ant' ? 5 : 11, 1.1);
+    sound(o.type === 'spider' ? 'spider' : o.type === 'beetle' ? 'bomb' : 'kill');
+    // a blast beetle goes off: mushrooms and bugs around it go too (and a boss right there takes a hit)
+    if (o.type === 'beetle') { ring(o.x, o.y, 34, '#ff7a3d'); boom(o.x, o.y, '#ffb13d', true); shake(0.35); blast(P, o.x, o.y, 32, BDMG.blast * 0.5, o); }
     if (pts >= 600) buzz(P && P.id, 'light');
   }
+  function count(type) { var n = 0; G.foes.forEach(function (o) { if (o.type === type) n++; }); return n; }
+  function nearPlayer(x, y) { return G.players.some(function (p) { return p.alive && Math.abs(p.x - x) < 16 && Math.abs(p.y - y) < 16; }); }
+  function addFoe(o) { o.id = newId(); o.t = 0; G.foes.push(o); return o; }
+  function spawnSpider(mini, x, y) {
+    var left = Math.random() < 0.5, sp = bugSpeed();
+    return addFoe({ type: mini ? 'mini' : 'spider', x: x != null ? x : left ? -12 : W + 12, y: y != null ? y : rnd(PZY - 20, H - 14), vx: (x != null ? (Math.random() < 0.5 ? 1 : -1) : left ? 1 : -1) * (mini ? 70 : 46) * sp, vy: 80, zt: 0, hp: 1, drop: y != null && y < PZY - 20 });
+  }
+  function spawnFlea() { sound('flea'); return addFoe({ type: 'flea', x: cx(ri(1, COLS - 2)), y: -8, vy: (105 + 10 * Math.min(8, G.wave)) * bugSpeed(), hp: 2, row: -1 }); }
+  function spawnWasps(n, black) {
+    for (var i = 0; i < n; i++) addFoe({ type: black ? 'bwasp' : 'wasp', st: 'in', x: rnd(20, W - 20), y: -10 - i * 18, ty: rnd(0.2, 0.62) * PZY, hp: black ? 2 : 1, aim: rnd(0.5, 0.9), loops: 0 });
+    sound('flea');
+  }
+  // ants: a sudden line marching across (a random height) or down from the top (a random column)
+  function spawnAnts() {
+    var n = ri(5, 8), across = Math.random() < 0.55, sp = 58 * bugSpeed();
+    if (across) { var left = Math.random() < 0.5, y = rnd(PZY * 0.35, H - 20); for (var i = 0; i < n; i++) addFoe({ type: 'ant', x: left ? -10 - i * 13 : W + 10 + i * 13, y: y, vx: left ? sp : -sp, vy: 0, hp: 1 }); }
+    else { var x = rnd(20, W - 20); for (var j = 0; j < n; j++) addFoe({ type: 'ant', x: x, y: -10 - j * 13, vx: 0, vy: sp * 0.9, hp: 1 }); }
+    sound('scorp');
+  }
+  function spawnFirefly(fromX, fromY) {
+    var left = fromX != null ? fromX < W / 2 : Math.random() < 0.5, sp = bugSpeed();
+    return addFoe({ type: 'ffly', x: fromX != null ? fromX : left ? -10 : W + 10, y: fromY != null ? fromY : rnd(0.08, 0.3) * PZY, vx: (left ? 1 : -1) * rnd(62, 80) * sp, vy: rnd(26, 36) * sp, hp: 1, tp: rnd(0.4, 1.2), glow: 0 });
+  }
+  function spawnBeetle(x, y) { return addFoe({ type: 'beetle', x: x != null ? x : rnd(20, W - 20), y: y != null ? y : -10, vx: 0, hp: 3 }); }
   function foesStep(dt) {
+    var sp = bugSpeed();
     for (var i = G.foes.length - 1; i >= 0; i--) {
-      var o = G.foes[i], gone = false, sl = o.type === 'ball' ? 1 : DIFF[G.diff].spd; o.t += dt;
-      if (o.frz > 0) { o.frz -= dt; sl *= 0.4; }
-      var d = dt * sl;
-      if (o.type === 'spider') {
-        var ymin = PZY - 3 * CELL, ymax = H - 8;
+      var o = G.foes[i], gone = false, d = dt * (o.type === 'ball' ? 1 : sp); o.t += dt;
+      if (o.hurt > 0) o.hurt -= dt;
+      if (o.type === 'spider' || o.type === 'mini') {
+        var ymin = PZY - 3 * CELL, ymax = H - 8, mini = o.type === 'mini';
         if (o.drop) { o.y += 100 * d; o.x += o.vx * 0.3 * d; if (o.y > ymin + 8) o.drop = false; }
         else {
           o.zt -= d;
-          if (o.zt <= 0) { o.zt = rnd(0.25, 0.85); o.still = Math.random() < 0.25; o.vy = (Math.random() < 0.5 ? -1 : 1) * (70 + G.wave * 4) * rnd(0.8, 1.2); }
+          if (o.zt <= 0) { o.zt = rnd(0.25, 0.85) * (mini ? 0.6 : 1); o.still = Math.random() < 0.25; o.vy = (Math.random() < 0.5 ? -1 : 1) * (70 + Math.min(10, G.wave) * 4) * rnd(0.8, 1.2) * (mini ? 1.3 : 1); }
           if (!o.still) o.x += o.vx * d;
           o.y += o.vy * d;
           if (o.y < ymin) { o.y = ymin; o.vy = Math.abs(o.vy); } if (o.y > ymax) { o.y = ymax; o.vy = -Math.abs(o.vy); }
           var c = Math.floor(o.x / CELL), r = Math.floor(o.y / CELL), key = c + ',' + r;
-          if (key !== o.cell) { o.cell = key; if (mush(c, r) && Math.random() < 0.3) { setMush(c, r, 0); burst(cx(c), cx(r), themeOf(G).mush[0], 4, 0.6); } }
+          if (!mini && key !== o.cell) { o.cell = key; if (mush(c, r) && Math.random() < 0.3) { setMush(c, r, 0); burst(cx(c), cx(r), themeOf(G).mush[0], 4, 0.6); } }
         }
         if ((o.vx > 0 && o.x > W + 16) || (o.vx < 0 && o.x < -16)) gone = true;
+        if (mini && o.t > 14) gone = true;
       } else if (o.type === 'flea') {
         o.y += o.vy * d;
         var fr = Math.floor(o.y / CELL), fc = Math.floor(o.x / CELL);
-        if (fr !== o.row) { o.row = fr; if (fr >= 2 && fr < PZ + 2 && !mush(fc, fr) && Math.random() < 0.2 && !nearPlayer(cx(fc), cx(fr))) setMush(fc, fr, MUSH_HP, 0); }
+        if (fr !== o.row) { o.row = fr; if (fr >= 2 && fr < PZ + 2 && !mush(fc, fr) && Math.random() < 0.3 && !nearPlayer(cx(fc), cx(fr))) setMush(fc, fr, MUSH_HP, 0); }
         if (o.y > H + 8) gone = true;
+      } else if (o.type === 'wasp' || o.type === 'bwasp') {
+        var black = o.type === 'bwasp';
+        if (o.st === 'in') { o.y += 95 * d; o.x += Math.sin(o.t * 3 + o.id) * 24 * d; if (o.y >= o.ty) { o.st = 'aim'; o.at = o.aim; } }
+        else if (o.st === 'aim') {
+          o.x += Math.sin(o.t * 22) * 0.5; o.at -= d;
+          if (o.at <= 0) { var T = target(), dx = T.x - o.x, dy = T.y - o.y, n = Math.max(1, Math.hypot(dx, dy)), v = black ? 245 : 170; o.vx = dx / n * v; o.vy = dy / n * v; o.st = 'dive'; }
+        } else {
+          o.x += o.vx * d; o.y += o.vy * d;
+          if (o.y > H + 12 || o.x < -16 || o.x > W + 16) {
+            // a black wasp loops round from the top for another go
+            if (black && o.loops < 2) { o.loops++; o.st = 'in'; o.y = -12; o.x = rnd(20, W - 20); o.ty = rnd(0.2, 0.6) * PZY; o.aim = 0.45; } else gone = true;
+          }
+        }
+      } else if (o.type === 'ant') {
+        o.x += o.vx * d; o.y += o.vy * d;
+        if (o.x < -140 || o.x > W + 140 || o.y > H + 12) gone = true;
+      } else if (o.type === 'ffly') {
+        o.x += o.vx * d; o.y += o.vy * d;
+        // its glow builds, then hits the ground below it: a shockwave nobody should stand in
+        if (o.y > PZY * 0.55) { o.tp -= d; o.glow = Math.max(0, 1 - o.tp / 0.6); if (o.tp <= 0) { o.tp = rnd(1.4, 1.9); zone(o.x, clamp(o.y + 18, PZY + 12, H - 14), 30, 0.75); } }
+        if (o.x < -16 || o.x > W + 16 || o.y > H + 12) gone = true;
+      } else if (o.type === 'beetle') {
+        // walks down steadily and turns toward the nearest ship (it has locked on)
+        var T2 = nearest(o.x, o.y); o.vx += (clamp(T2.x - o.x, -1, 1) * 28 - o.vx) * Math.min(1, d * 2);
+        o.x += o.vx * d; o.y += 22 * d;
+        var bc2 = Math.floor(o.x / CELL), br2 = Math.floor(o.y / CELL);
+        if (mush(bc2, br2) && Math.random() < 0.05) setMush(bc2, br2, Math.max(0, mush(bc2, br2) - 1));
+        if (o.y > H + 12) gone = true;
       } else if (o.type === 'scorp') {
         o.x += o.vx * d;
         var sc = Math.floor(o.x / CELL), sr = Math.floor(o.y / CELL);
@@ -779,53 +880,88 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       if (gone) G.foes.splice(i, 1);
     }
   }
-  function nearPlayer(x, y) { return G.players.some(function (p) { return p.alive && Math.abs(p.x - x) < 16 && Math.abs(p.y - y) < 16; }); }
-  function count(type) { var n = 0; G.foes.forEach(function (o) { if (o.type === type) n++; }); return n; }
-  // Who comes in, wave by wave (see WAVES): spiders in the players' area, bees diving from the top,
-  // scorpions across the upper field, loose heads from the sides once a centipede reaches the players,
-  // and a power-up ring floating down every so often.
+  // Who comes in, wave by wave (see WAVES). Centipede trains arrive on a timer, sooner once the field is
+  // clear; the other bugs each on their own timer. If a regular wave drags past 40 seconds, black wasps come.
+  // A power-up floats in every 20 to 30 seconds (never two at once).
+  function every(key, avg, fn) { if (!avg) return; G[key] -= G.dt; if (G[key] <= 0) { G[key] = avg * rnd(0.75, 1.25) / Math.sqrt(waveDef(G.wave).speed || 1); fn(); } }
   function spawnStep(dt) {
     if (G.phase !== 'play') return;
-    var w = WAVES[G.wave], boss = !!w.boss, np = G.players.length, hot = Math.min(1, G.score / 80000);
+    var w = waveDef(G.wave), boss = !!w.boss, np = G.players.length, rel = G.diff === 'relaxed';
+    G.dt = dt;
+    if (!boss) {
+      if (!G.chains.length && G.tTrain > 2.2) G.tTrain = 2.2;
+      G.tTrain -= dt;
+      var live = G.chains.filter(function (c) { return c.segs.length > 1; }).length;
+      if (G.trainsLeft > 0 && G.tTrain <= 0 && live < w.live) { spawnTrain(); G.tTrain = w.gap * rnd(0.85, 1.15); }
+      every('tFlea', w.fleas, function () { if (count('flea') < 1 + (np > 1 ? 1 : 0)) spawnFlea(); });
+      every('tWasp', w.wasps, function () { spawnWasps(ri(2, 3), false); });
+      every('tAnt', w.ants, spawnAnts);
+      every('tFfly', w.fireflies, function () { if (count('ffly') < 2) spawnFirefly(); });
+      every('tBeetle', w.beetles, function () { if (count('beetle') < 2) spawnBeetle(); });
+      if (G.waveT > 40) { G.tBlack -= dt; if (G.tBlack <= 0) { G.tBlack = Math.max(4, 10 - (G.waveT - 40) / 12) * (rel ? 1.4 : 1); if (count('bwasp') < 3) spawnWasps(1, true); } }
+      if (G.inZone) { G.tHead -= dt; if (G.tHead <= 0) { G.tHead = Math.max(5, 9 - (G.wave % LAST) * 0.35); var heads = G.chains.filter(function (c) { return c.segs.length === 1; }).length; if (heads < 3) sideHead(); } }
+    }
     G.tSpider -= dt;
-    if (G.tSpider <= 0) {
-      G.tSpider = rnd(4, 7.5) - 1.5 * hot + (boss ? 3 : 0);
-      if (count('spider') < (w.spiders || 0) + (np > 1 && w.spiders ? 1 : 0)) {
-        var left = Math.random() < 0.5;
-        G.foes.push({ id: newId(), type: 'spider', x: left ? -12 : W + 12, y: rnd(PZY - 20, H - 14), vx: (left ? 1 : -1) * (44 + 22 * hot), vy: 80, zt: 0, t: 0, hp: 1 });
-        snd('spider');
-      }
-    }
-    if (w.bees) {
-      G.tBee -= dt;
-      if (G.tBee <= 0) { G.tBee = rnd(3.5, 6.5) - hot; if (count('flea') < w.bees + (np > 1 ? 1 : 0)) { G.foes.push({ id: newId(), type: 'flea', x: cx(ri(1, COLS - 2)), y: -8, vy: 105 + 35 * hot, hp: 2, t: 0, row: -1 }); sound('flea'); } }
-    }
-    if (w.scorp) {
-      G.tScorp -= dt;
-      if (G.tScorp <= 0) { G.tScorp = rnd(9, 14); if (!count('scorp')) { var l2 = Math.random() < 0.5; G.foes.push({ id: newId(), type: 'scorp', x: l2 ? -12 : W + 12, y: cx(ri(2, PZ - 3)), vx: (l2 ? 1 : -1) * (40 + 20 * hot), hp: 1, t: 0 }); sound('scorp'); } }
-    }
-    if (!boss && G.inZone) {
-      G.tHead -= dt;
-      if (G.tHead <= 0) { G.tHead = Math.max(4, 8 - G.wave * 0.35); var heads = G.chains.filter(function (c) { return c.segs.length === 1; }).length; if (heads < 3) sideHead(); }
-    }
+    if (G.tSpider <= 0) { G.tSpider = rnd(4, 7.5) + (boss ? 4 : 0); var ms = boss ? (w.boss === 'mega' ? 0 : 1) : (w.spiders || 0) + (np > 1 ? 1 : 0); if (count('spider') < ms) { spawnSpider(false); snd('spider'); } }
     G.tCap -= dt;
-    if (G.tCap <= 0) { G.tCap = rnd(11, 16); dropCap(rnd(30, W - 30), -6); }
+    if (G.tCap <= 0) { G.tCap = rnd(20, 30) * (rel ? 0.85 : 1); if (!G.caps.length) spawnCap(); }
+  }
+
+  // ── Ground shockwaves (fireflies, the Night Flyer, the Mega Spider's landing) ──
+  // A zone shows a faint warning ring for `warn` seconds, then flares: anyone inside it then loses a life.
+  var ZC = ['#d4ff3d', '#b98cff', '#ff2d8a'];     // shockwave colours: firefly, Night Flyer, Mega Spider
+  function zone(x, y, R, warn, ci) { G.zones.push({ id: newId(), x: x, y: y, R: R, t: -warn, ci: ci || 0 }); if (warn > 0) snd('charge'); }
+  var ZONE_ON = 0.35;
+  function zonesStep(dt) {
+    for (var i = G.zones.length - 1; i >= 0; i--) {
+      var z = G.zones[i], was = z.t; z.t += dt;
+      if (was < 0 && z.t >= 0) { sound('pulse'); shake(0.15); }
+      if (z.t > ZONE_ON + 0.2) G.zones.splice(i, 1);
+    }
   }
 
   // ── Enemy shots and power-up rings ──
-  function fireShot(x, y, ang, sp, k, extra) { var s = { id: newId(), x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, k: k }; if (extra) for (var q in extra) s[q] = extra[q]; G.shots.push(s); }
-  function target() { var a = alivePlayers(); return a.length ? pick(a) : { x: W / 2, y: H - 15 }; }
+  function fireShot(x, y, ang, sp, k, extra) { var s = { id: newId(), x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, k: k, z: 0 }; if (extra) for (var q in extra) s[q] = extra[q]; G.shots.push(s); return s; }
+  function target() { var a = alivePlayers(); return a.length ? pick(a) : { x: W / 2, y: H - 15, alive: false }; }
+  // a fireball lobbed by the Blast Beetle: flies in an arc, lands, rolls across the mushrooms, then goes off
+  function lobFire(B, tx, ty) {
+    var x = B.x, y = B.y + BOSS.beetle.r[1] * 0.7, ft = 1.15;
+    fireShot(x, y, 0, 0, 'fire', { vx: (tx - x) / ft, vy: (ty - y) / ft, z: 8, vz: 300 * ft / 2, st: 'air', roll: 3 });
+    sound('lob');
+  }
+  function fireBoom(f, P, shot) {
+    var i = G.shots.indexOf(f); if (i < 0) return;
+    G.shots.splice(i, 1);
+    var x = f.x, y = f.y;
+    boom(x, y, '#ff7a1f', true); ring(x, y, shot ? 34 : 22, '#ffb13d'); burst(x, y, '#ffb02e', 10, 1.3); sound('bomb'); shake(0.3);
+    if (shot) { award(P, 50, x, y, true); blast(P, x, y, 34, BDMG.blast); }
+    else {
+      blast(null, x, y, 22, 0);
+      G.players.forEach(function (p) { if (p.alive && p.inv <= 0 && p.shield <= 0 && Math.hypot(p.x - x, p.y - y) < 18) { if (G.noDie) { if (G.threats) G.threats.push({ pid: p.id, by: 'fire' }); } else { p.lastBy = 'fire'; killPlayer(p); } } });
+    }
+  }
   function shotsStep(dt) {
     for (var i = G.shots.length - 1; i >= 0; i--) {
-      var s = G.shots[i]; s.x += s.vx * dt; s.y += s.vy * dt;
+      var s = G.shots[i];
+      if (s.k === 'fire') {
+        s.x += s.vx * dt; s.y += s.vy * dt; s.vz -= 300 * dt; s.z += s.vz * dt;
+        if (s.st === 'air' && s.z <= 0) { s.st = 'roll'; s.z = 0; s.vz = 70; var T = target(); s.vx = (T.x > s.x ? 1 : -1) * 58; s.vy = 0; }
+        if (s.st === 'roll') {
+          if (s.z <= 0) { s.z = 0; s.vz = 55; }
+          var c0 = Math.floor(s.x / CELL), r0 = Math.floor(s.y / CELL); if (mush(c0, r0)) { setMush(c0, r0, 0); burst(cx(c0), cx(r0), themeOf(G).mush[0], 4, 0.6); }
+          s.roll -= dt; if (s.roll <= 0 || s.x < 4 || s.x > W - 4) { fireBoom(s, null, false); continue; }
+        }
+        continue;
+      }
+      s.x += s.vx * dt; s.y += s.vy * dt;
       if (s.k === 'ember' && s.y >= s.ty) { var c = Math.floor(s.x / CELL), r = Math.floor(s.y / CELL); if (inField(c, r) && !mush(c, r) && !nearPlayer(s.x, s.y)) setMush(c, r, MUSH_HP, 0); burst(s.x, s.y, '#ffb13d', 5, 0.6); G.shots.splice(i, 1); continue; }
       if (s.x < -10 || s.x > W + 10 || s.y < -20 || s.y > H + 10) G.shots.splice(i, 1);
     }
   }
   function capsStep(dt) {
     for (var i = G.caps.length - 1; i >= 0; i--) {
-      var cp = G.caps[i]; cp.t += dt; cp.y += 24 * dt; cp.x += Math.sin(cp.t * 2.2) * 9 * dt;
-      if (cp.y > H + 10) { G.caps.splice(i, 1); continue; }
+      var cp = G.caps[i]; cp.t += dt; cp.y = cp.y0 + Math.sin(cp.t * 2.4) * 3;
+      if (cp.t > CAP_LIFE) { burst(cp.x, cp.y, POW[cp.k].c, 6, 0.6); G.caps.splice(i, 1); continue; }
       for (var j = 0; j < G.players.length; j++) { var P = G.players[j]; if (P.alive && Math.abs(P.x - cp.x) < 11 && Math.abs(P.y - cp.y) < 11) { givePower(P, cp); break; } }
     }
   }
@@ -837,8 +973,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       for (i = 0; i < segs.length && !dead; i++) { var s = segs[i]; if (Math.abs(s.x - P.x) < 6.5 && Math.abs(s.y - P.y) < 6.5) { if (sh) { var s2 = segById(s.id); if (s2) { hitSeg(s2, P); snd('block'); } } else dead = 'centipede'; } }
       var foes = G.foes.slice();
       for (i = 0; i < foes.length && !dead; i++) if (foeTouch(foes[i], P.x, P.y)) { if (sh) { hitFoe(foes[i], P, 9); snd('block'); } else dead = foes[i].type; }
-      for (i = G.shots.length - 1; i >= 0 && !dead; i--) { var o = G.shots[i]; if (o.k !== 'ember' && Math.abs(o.x - P.x) < 4.5 && Math.abs(o.y - P.y) < 5.5) { if (sh) { G.shots.splice(i, 1); burst(o.x, o.y, '#7dffb0', 4, 0.6); snd('block'); } else dead = o.k; } }
-      if (!dead && !sh && G.boss && G.boss.st !== 'die' && bossTest(G.boss, P.x, P.y, 1)) dead = G.boss.type;
+      for (i = G.shots.length - 1; i >= 0 && !dead; i--) {
+        var o = G.shots[i]; if (o.k === 'ember') continue;
+        var hit = o.k === 'fire' ? o.z < 7 && Math.abs(o.x - P.x) < 6 && Math.abs(o.y - P.y) < 6 : Math.abs(o.x - P.x) < 4.5 && Math.abs(o.y - P.y) < 5.5;
+        if (hit) { if (sh) { if (o.k === 'fire') fireBoom(o, P, true); else { G.shots.splice(i, 1); burst(o.x, o.y, '#7dffb0', 4, 0.6); } snd('block'); } else dead = o.k; }
+      }
+      for (i = 0; i < G.zones.length && !dead; i++) { var z = G.zones[i]; if (z.t >= 0 && z.t < ZONE_ON && Math.hypot(z.x - P.x, z.y - P.y) < z.R - 2) { if (!sh) dead = 'shockwave'; } }
+      if (!dead && !sh && G.boss && bossTouch(G.boss, P.x, P.y)) dead = G.boss.type;
       // test mode (god): note what would have hit, instead of losing a life
       if (dead && G.noDie) { if (G.threats) G.threats.push({ pid: P.id, by: dead, t: Math.round(G.t * 100) / 100 }); return; }
       if (dead) { P.lastBy = dead; killPlayer(P); }
@@ -846,15 +987,27 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
 
   // ═══ Bosses ═════════════════════════════════════════════════════════════
-  // Positions scale with the field: they hover in the upper part (a fraction of the way down to the
-  // players' area) and sway across a share of its width.
+  // Each boss is armoured: shots bounce off except at its weak spot or in its weak moment, so a fight is about
+  // timing and position rather than holding the fire button. Each gets angrier at two thirds and one third
+  // health (faster, more attacks). Positions scale with the field.
+  //   Killer Wasp (wave 3): follows you along the top, locks on, does a loop and dives straight at you. Only
+  //     while it pulls back up out of the dive (its thorax glows) can it be hurt. Sends ordinary wasps.
+  //   Night Flyer (wave 6): sweeps corner to corner on long diagonals, raining shockwaves on the ground (worst at
+  //     the sides), and fills the arena with fireflies. Between sweeps it rests at the top with its core open:
+  //     only the core takes damage.
+  //   Blast Beetle (wave 9): crawls across lane by lane and lobs fireballs that roll across the mushrooms and go
+  //     off. Its armour stops everything but straight shots on the head plate (Scatter bounces off). A fireball
+  //     shot down near it goes off against it. Sends blast beetles.
+  //   Mega Spider (wave 10): crawls along the top firing venom, lays web barriers of mushrooms, sends baby
+  //     spiders, then leaps over you and pounds the ground. Only on the ground (and lunging) is it open; up top only
+  //     Beam and Shock get through, a little. One life: nobody comes back during this fight.
   function makeBoss(type) {
-    var np = Math.max(1, G.players.length), hp = Math.round(BOSS[type].hp * bossScale(np) * (G.diff === 'relaxed' ? 0.85 : 1));
-    var hy = Math.max(BOSS[type].r[1] + 14, PZY * BOSS[type].hy);
-    var B = { id: newId(), type: type, x: W / 2, y: -50, y0: -50, hx: W / 2, hy: hy, hy0: hy, hp: hp, max: hp, t: 0, st: 'enter', stT: 0, flash: 0, frz: 0,
-      lit: 1, cyc: 0, tA: 2.2, tB: 6, tC: 9, tD: 3, tE: 4.5, vx: 40 + W * 0.08, dirY: 1, enraged: false, drops: [0.75, 0.5, 0.25], last: null, spawned: false, np: np, lane: null };
-    G.boss = B;
-    shake(0.4); sound('warn');
+    var np = Math.max(1, G.players.length), loop = waveDef(G.wave).loop || 0, D = BOSS[type];
+    var hp = Math.round(D.hp * bossScale(np) * DIFF[G.diff].boss * (1 + 0.4 * loop));
+    var hy = Math.max(D.r[1] + 12, PZY * D.hy);
+    G.boss = { id: newId(), type: type, x: W / 2, y: -70, hy: hy, hy0: hy, hp: hp, max: hp, t: 0, st: 'enter', stT: 0, flash: 0, ph: 0, np: np,
+      tA: 2, tB: 5, tC: 6, tE: 5, vx: 26, dirY: 1, vul: false, z: 0, last: null, legs: [], drop: 0, lane: null };
+    shake(0.4);
   }
   function bossScale(np) { return 1 + BOSS_NP * (np - 1); }
   // someone joins online in the middle of a boss fight: the boss gets tougher to match
@@ -862,107 +1015,162 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var B = G.boss, np = Math.max(1, G.players.length); if (!B || B.st === 'die' || np <= B.np) return;
     var k = bossScale(np) / bossScale(B.np); B.hp *= k; B.max *= k; B.np = np;
   }
-  function bossTest(B, x, y, pad) {
-    if (B.st === 'die' || (B.type === 'firefly' && B.lit < 0.45)) return false;
-    var R = BOSS[B.type].r, dx = (x - B.x) / (R[0] + pad), dy = (y - B.y) / (R[1] + pad);
+  function rageOf(B) { return (1 + 0.22 * B.ph) * (G.diff === 'relaxed' ? 0.82 : 1) * (1 + 0.08 * (waveDef(G.wave).loop || 0)); }
+  // Where a shot meets a boss: 0 missed it, 1 armour (the shot bounces off), 2 its weak spot, 3 a glancing hit
+  function bossHit(B, x, y, k) {
+    if (B.st === 'die') return 0;
+    var R = BOSS[B.type].r, dx = (x - B.x) / R[0], dy = (y - (B.y - (B.z || 0))) / R[1], inside = dx * dx + dy * dy < 1;
+    if (B.st === 'enter') return inside ? 1 : 0;
+    if (B.type === 'wasp') return inside ? (B.st === 'exit' ? 2 : 1) : 0;
+    if (B.type === 'firefly') { var core = Math.hypot(x - B.x, y - (B.y - 6)) < 9; if (core && B.st === 'rest') return 2; return inside || core ? 1 : 0; }
+    if (B.type === 'beetle') { if (!inside) return 0; var head = y > B.y + R[1] * 0.3 && Math.abs(x - B.x) < R[0] * 0.5; return head && k !== 'scatter' ? 2 : 1; }
+    if (!inside || B.st === 'leap') return 0;
+    if (B.st === 'ground' || B.st === 'lunge') return 2;
+    return k === 'beam' || k === 'shock' ? 3 : 1;
+  }
+  function bossTouch(B, x, y) {
+    if (B.st === 'die' || B.st === 'enter' || (B.type === 'mega' && B.st === 'leap' && B.z > 14)) return false;
+    var R = BOSS[B.type].r, dx = (x - B.x) / (R[0] * 0.8), dy = (y - B.y) / (R[1] * 0.8);
     return dx * dx + dy * dy < 1;
   }
   function hitBoss(P, dmg, x, y, k) {
-    var B = G.boss; if (!B || B.st === 'die') return;
-    B.hp -= dmg; B.flash = 0.09; B.last = P;
+    var B = G.boss; if (!B || B.st === 'die' || B.st === 'enter') return;
+    B.hp -= dmg; B.flash = 0.08; B.last = P;
     if (P) { P.score += 5; G.score += 5; }
-    if (k !== 'flame' || Math.random() < 0.4) { burst(x, y, '#fff', 2, 0.7); burst(x, y, BOSS[B.type].c, 2, 0.9); }
-    sound('bhit'); shake(0.12);
-    while (B.drops.length && B.hp / B.max <= B.drops[0]) { B.drops.shift(); dropCap(B.x, B.y + 12); }
-    if (!B.enraged && B.hp <= B.max / 2) { B.enraged = true; flash(BOSS[B.type].c, 0.3); if (B.type === 'beetle' && !B.spawned) { B.spawned = true; makeChain(6, ri(3, COLS - 4), 1, 80); } }
-    if (B.hp <= 0) { B.hp = 0; B.st = 'die'; B.stT = 0; G.shots = []; sound('kill'); buzz(P && P.id, 'success'); }
+    if (k !== 'beam' || Math.random() < 0.4) { burst(x, y, '#fff', 2, 0.7); burst(x, y, BOSS[B.type].c, 2, 0.9); }
+    sound('bhit'); shake(0.1);
+    var f = B.hp / B.max, ph = f < 0.34 ? 2 : f < 0.67 ? 1 : 0;
+    if (ph > B.ph && B.hp > 0) { B.ph = ph; flash(BOSS[B.type].c, 0.35); shake(0.6); sound('warn'); popup(B.x, B.y - BOSS[B.type].r[1] - 8, ph === 2 ? 'Furious!' : 'Angry!', BOSS[B.type].c, true); }
+    if (B.hp <= 0) { B.hp = 0; B.st = 'die'; B.stT = 0; G.shots = []; G.zones = []; sound('kill'); buzz(P && P.id, 'success'); }
   }
   function approach(B, tx, ty, k, dt) { var f = Math.min(1, dt * k); B.x += (tx - B.x) * f; B.y += (ty - B.y) * f; }
+  function nearest(x, y) { var a = alivePlayers(); if (!a.length) return { x: W / 2, y: H - 15, alive: false }; return a.reduce(function (m, p) { return Math.hypot(p.x - x, p.y - y) < Math.hypot(m.x - x, m.y - y) ? p : m; }); }
   function bossStep(B, dt) {
     B.t += dt; B.stT += dt; if (B.flash > 0) B.flash -= dt;
-    if (B.frz > 0) B.frz -= dt;
-    var rage = (B.enraged ? 1.35 : 1) * (B.frz > 0 ? 0.6 : 1), R = BOSS[B.type].r, sw = Math.max(20, W / 2 - R[0] - 8);
-    if (B.st === 'enter') { var k = Math.min(1, B.stT / 1.6); B.y = B.y0 + (B.hy - B.y0) * (1 - Math.pow(1 - k, 3)); if (k >= 1) { B.st = 'fly'; B.stT = 0; } return; }
+    var D = BOSS[B.type], R = D.r, rage = rageOf(B);
+    if (B.st === 'enter') { approach(B, W / 2, B.hy, 1.6, dt); if (G.phase === 'play') { B.st = { wasp: 'track', firefly: 'rest', beetle: 'crawl', mega: 'perch' }[B.type]; B.stT = 0; } return; }
     if (B.st === 'die') {
-      if (Math.random() < dt * 14) { var ex = B.x + rnd(-R[0], R[0]), ey = B.y + rnd(-R[1], R[1]), ec = pick([BOSS[B.type].c, '#fff', '#ffb13d']); boom(ex, ey, ec, true); burst(ex, ey, ec, 6, 1.2); snd('kill'); shake(0.35); }
-      if (B.stT > 1.5) {
-        burst(B.x, B.y, BOSS[B.type].c, 40, 2.2); burst(B.x, B.y, '#fff', 20, 1.5); boom(B.x, B.y, '#ffffff', true); ring(B.x, B.y, 90, BOSS[B.type].c);
+      if (Math.random() < dt * 14) { var ex = B.x + rnd(-R[0], R[0]), ey = B.y + rnd(-R[1], R[1]), ec = pick([D.c, '#fff', '#ffb13d']); boom(ex, ey, ec, true); burst(ex, ey, ec, 6, 1.2); snd('kill'); shake(0.35); }
+      if (B.stT > 1.6) {
+        burst(B.x, B.y, D.c, 40, 2.2); burst(B.x, B.y, '#fff', 20, 1.5); boom(B.x, B.y, '#ffffff', true); ring(B.x, B.y, 90, D.c);
         sound('bdie'); shake(1.2); flash('#fff', 0.7);
-        var P = B.last; award(P, BOSS[B.type].pts, B.x, B.y, true); G.stats.bosses++;
+        award(B.last, bossBonus(B.type), B.x, B.y, true); G.stats.bosses++;
+        if (B.type === 'mega') { G.stats.saved = true; G.oneLife = false; }
         G.players.forEach(function (p) { buzz(p.id, 'success'); });
-        G.boss = null; G.foes = G.foes.filter(function (o) { return o.type !== 'ball'; });
+        G.foes.forEach(function (o) { burst(o.x, o.y, '#ffffff', 4, 0.8); });
+        G.boss = null; G.foes = []; G.shots = []; G.zones = [];
       }
       return;
     }
-    if (B.type === 'wasp') {
-      if (B.st === 'fly') {
-        approach(B, W / 2 + Math.sin(B.t * 0.9) * sw * 0.8, B.hy + Math.sin(B.t * 1.8) * PZY * 0.1, 3, dt);
-        B.tA -= dt * rage; if (B.tA <= 0) { B.tA = 2.8; var T = target(), a = Math.atan2(T.y - B.y, T.x - B.x); [-0.22, 0, 0.22].forEach(function (d) { fireShot(B.x, B.y + R[1] * 0.7, a + d, 135 * rage, 'sting'); }); sound('shoot'); }
-        // her little bees: two at a time, diving at the players
-        B.tE -= dt * rage; if (B.tE <= 0) { B.tE = 6; if (count('flea') < 4) { [-1, 1].forEach(function (s) { G.foes.push({ id: newId(), type: 'flea', x: clamp(B.x + s * R[0] * 0.5, 8, W - 8), y: B.y + R[1] * 0.5, vy: 95, hp: 1, t: 0, row: -1 }); }); sound('flea'); } }
-        B.tB -= dt; if (B.tB <= 0) { B.st = 'warn'; B.stT = 0; B.lane = clamp(target().x, R[0] * 0.6, W - R[0] * 0.6); sound('warn'); }
-      } else if (B.st === 'warn') {
-        // she lines up over a lane (marked down to the bottom of the screen) and buzzes, then dives straight down it
-        approach(B, B.lane, B.hy - 8, 6, dt); B.x += Math.sin(B.t * 60) * 0.6;
-        if (B.stT > (B.enraged ? 0.85 : 1.05)) { B.st = 'dive'; B.stT = 0; B.x = B.lane; B.sy = B.y; }
-      } else if (B.st === 'dive') {
-        // right through the players' area and out of the bottom, smashing the mushrooms in her lane
-        var k2 = Math.min(1, B.stT / 0.9); B.x = B.lane; B.y = B.sy + (H + 50 - B.sy) * k2 * k2;
-        var wc = Math.floor(B.x / CELL), wr = Math.floor((B.y + 6) / CELL);
-        for (var dc0 = -1; dc0 <= 1; dc0++) for (var dr0 = -1; dr0 <= 1; dr0++) if (mush(wc + dc0, wr + dr0)) { setMush(wc + dc0, wr + dr0, 0); burst(cx(wc + dc0), cx(wr + dr0), themeOf(G).mush[0], 3, 0.6); }
-        if (k2 >= 1) { B.st = 'rise'; B.stT = 0; B.y = -50; B.lane = null; }
-      } else if (B.st === 'rise') { approach(B, W / 2 + Math.sin(B.t * 0.9) * sw * 0.8, B.hy, 2.4, dt); if (B.stT > 1.4) { B.st = 'fly'; B.stT = 0; B.tB = rnd(5, 7) / rage; } }
-    } else if (B.type === 'firefly') {
-      B.cyc += dt; var LIT = 2.6, DARK = 1.6;
-      if (B.cyc > LIT + DARK) B.cyc -= LIT + DARK;
-      var lit = B.cyc < LIT;
-      B.lit += ((lit ? 1 : 0.06) - B.lit) * Math.min(1, dt * 7);
-      if (!lit && !B.moved && B.cyc > LIT + DARK * 0.5) { B.moved = true; B.hx = rnd(R[0] + 14, W - R[0] - 14); B.hy = rnd(0.25, 0.75) * PZY; B.x = B.hx; B.y = B.hy; }
-      if (lit) B.moved = false;
-      approach(B, B.hx + Math.sin(B.t * 1.7) * 18, B.hy + Math.sin(B.t * 2.3) * 10, 2, dt);
-      if (lit && B.cyc > 0.4) {
-        B.tA -= dt * rage;
-        if (B.tA <= 0) {
-          B.tA = 1.05; B.vol = (B.vol || 0) + 1;
-          if (B.vol % 2) { for (var q = 0; q < 10; q++) fireShot(B.x, B.y, q / 10 * TAU + B.t, 78, 'spark'); }
-          else { var T2 = target(), a2 = Math.atan2(T2.y - B.y, T2.x - B.x); [-0.15, 0, 0.15].forEach(function (d) { fireShot(B.x, B.y, a2 + d, 120, 'spark'); }); }
-          sound('shoot');
-        }
-      }
-      B.tB -= dt; if (B.tB <= 0) { B.tB = 1.7; fireShot(B.x, B.y + R[1] * 0.4, PI / 2, 55, 'ember', { ty: cx(ri(3, PZ - 1)) }); }
-    } else if (B.type === 'beetle') {
-      // It sweeps the whole width (edges included) dropping boulders, and also lets one go whenever it passes
-      // over a player, so no column, corner or bottom spot stays safe. Boulders smash mushrooms on the way down.
-      B.x += B.vx * rage * dt;
-      if (B.x < R[0] * 0.6 || B.x > W - R[0] * 0.6) { B.x = clamp(B.x, R[0] * 0.6, W - R[0] * 0.6); B.vx = -B.vx; B.hy += PZY * 0.14 * B.dirY; if (B.hy > PZY * 0.78) B.dirY = -1; if (B.hy < PZY * 0.22) B.dirY = 1; }
-      B.y += (B.hy - B.y) * Math.min(1, dt * 3);
-      B.tA -= dt * rage; B.tD -= dt;
-      var over = alivePlayers().filter(function (p) { return Math.abs(p.x - B.x) < R[0] * 0.6; })[0];
-      if (B.tA <= 0 || (over && B.tD <= 0)) {
-        var bx = B.x;
-        if (B.tA <= 0) B.tA = 2.1; else { B.tD = 3 / rage; bx = over.x; }
-        G.foes.push({ id: newId(), type: 'ball', x: clamp(bx, 6, W - 6), y: B.y + R[1] * 0.7, vy: 95, hp: 3, t: 0 }); sound('shoot');
-      }
-    } else if (B.type === 'mega') {
-      if (B.st === 'fly') {
-        approach(B, W / 2 + Math.sin(B.t * 0.7) * sw * 0.75, B.hy + Math.sin(B.t * 1.3) * PZY * 0.08, 2.5, dt);
-        B.tA -= dt * rage; if (B.tA <= 0) { B.tA = 2.7; var T3 = target(), a3 = Math.atan2(T3.y - B.y, T3.x - B.x), n = B.enraged ? 7 : 5; for (var v = 0; v < n; v++) fireShot(B.x, B.y + R[1] * 0.6, a3 + (v - (n - 1) / 2) * 0.17, 125, 'venom'); sound('shoot'); }
-        B.tB -= dt; if (B.tB <= 0) { B.tB = 6; if (count('spider') < 3) { G.foes.push({ id: newId(), type: 'spider', x: B.x, y: B.y + R[1] * 0.7, vx: (Math.random() < 0.5 ? 1 : -1) * 55, vy: 80, zt: 0, t: 0, hp: 1, drop: true }); snd('spider'); } }
-        B.tC -= dt * rage; if (B.tC <= 0) { B.st = 'warn'; B.stT = 0; sound('warn'); }
-      } else if (B.st === 'warn') { B.x += Math.sin(B.t * 50) * 0.7; if (B.stT > 0.75) { B.st = 'slam'; B.stT = 0; B.sy = B.y; B.landed = false; } }
-      else if (B.st === 'slam') {
-        // down to just above the players' area, flattening the mushrooms under it
-        var k3 = Math.min(1, B.stT / 0.85), floorY = Math.max(B.sy, PZY - R[1] - 6); B.y = B.sy + (floorY - B.sy) * k3 * k3;
-        var mc = Math.floor(B.x / CELL), mr = Math.floor(B.y / CELL);
-        for (var dc = -2; dc <= 2; dc++) for (var dr = -1; dr <= 1; dr++) if (mush(mc + dc, mr + dr)) setMush(mc + dc, mr + dr, 0);
-        if (k3 >= 1 && !B.landed) {
-          B.landed = true; shake(0.6); ring(B.x, B.y + R[1] * 0.5, 60, BOSS.mega.c);
-          if (B.enraged) for (var q2 = 0; q2 < 10; q2++) fireShot(B.x, B.y, q2 / 10 * TAU, 85, 'venom');
-        }
-        if (k3 >= 1 && B.stT > 1.2) { B.st = 'back'; B.stT = 0; }
-      } else if (B.st === 'back') { approach(B, B.x, B.hy, 2.2, dt); if (B.stT > 1.3) { B.st = 'fly'; B.stT = 0; B.tC = rnd(9, 12); } }
-    }
+    if (B.type === 'wasp') waspStep(B, dt, rage, R);
+    else if (B.type === 'firefly') flyerStep(B, dt, rage, R);
+    else if (B.type === 'beetle') beetleStep(B, dt, rage, R);
+    else megaStep(B, dt, rage, R);
   }
+  function waspStep(B, dt, rage, R) {
+    var ph = B.ph;
+    if (B.st === 'track') {
+      if (!B.tgt || !B.tgt.alive) B.tgt = target();
+      approach(B, clamp(B.tgt.x, R[0], W - R[0]), B.hy + Math.sin(B.t * 2.2) * 6, 1.3 * rage, dt);
+      B.tA -= dt * rage;
+      if (B.tA <= 0) { B.tA = ph >= 2 ? 1.9 : 2.6; var a = Math.atan2(B.tgt.y - B.y, B.tgt.x - B.x), n = ph >= 2 ? 5 : 3; for (var v = 0; v < n; v++) fireShot(B.x, B.y + R[1] * 0.6, a + (v - (n - 1) / 2) * 0.2, 128 * rage, 'sting'); sound('shoot'); }
+      B.tE -= dt * rage;
+      if (B.tE <= 0) { B.tE = 8 - ph * 1.5; if (count('wasp') < 2 + ph) spawnWasps(1 + (ph ? 1 : 0), false); }
+      if (B.stT > (3.6 - ph * 0.7) / Math.sqrt(rage)) lockLoop(B);
+    } else if (B.st === 'loop') {
+      // a theatrical loop over its target, then the dive
+      B.la += dt * TAU / (1.05 - 0.12 * ph);
+      B.x = B.lcx + Math.sin(B.la) * 20; B.y = B.lcy + Math.cos(B.la) * 20;
+      if (B.la >= TAU) {
+        B.st = 'dive'; B.stT = 0;
+        var dx = B.lx - B.x, dy = B.ly - B.y, n2 = Math.max(1, Math.hypot(dx, dy)), v2 = (240 + 30 * ph) * Math.sqrt(rage);
+        B.vx = dx / n2 * v2; B.vy = Math.max(70, dy / n2 * v2); sound('dive');
+      }
+    } else if (B.st === 'dive') {
+      B.x += B.vx * dt; B.y += B.vy * dt;
+      if (B.y >= H - 24 || B.x < R[0] * 0.6 || B.x > W - R[0] * 0.6) { B.x = clamp(B.x, R[0] * 0.6, W - R[0] * 0.6); B.y = Math.min(B.y, H - 24); B.st = 'exit'; B.stT = 0; shake(0.4); sound('slam'); }
+    } else if (B.st === 'exit') {
+      // pulling up out of the dive, slowly: thorax glowing, open to fire from below
+      B.y -= (56 - 4 * ph) * dt; B.x += Math.sin(B.t * 3) * 10 * dt;
+      if (B.y <= B.hy) { B.y = B.hy; if (ph >= 2 && Math.random() < 0.4) lockLoop(B); else { B.st = 'track'; B.stT = 0; } }
+    }
+    B.vul = B.st === 'exit';
+  }
+  function lockLoop(B) { B.tgt = target(); B.st = 'loop'; B.stT = 0; B.lx = B.tgt.x; B.ly = B.tgt.y; B.la = 0; B.lcx = B.x; B.lcy = B.y - 20; sound('warn'); }
+  function flyerStep(B, dt, rage, R) {
+    var ph = B.ph;
+    if (B.st === 'rest') {
+      approach(B, W / 2, B.hy, 2.5, dt);
+      if (!B.volley && B.stT > 0.5 && ph >= 1) { B.volley = true; var n = 10 + 2 * ph; for (var q = 0; q < n; q++) fireShot(B.x, B.y, q / n * TAU + B.t, 70 * rage, 'spark'); sound('shoot'); }
+      if (B.stT > 3.0 - 0.45 * ph) {
+        // a sweep: long diagonals from side to side, alternately low (into the players' area) and high
+        B.st = 'glide'; B.stT = 0; B.volley = false; B.legs = []; B.drop = 0.3;
+        var right = Math.random() < 0.5, legs = 2 + (ph >= 1 ? 1 : 0) + (ph >= 2 ? 1 : 0);
+        for (var i = 0; i < legs; i++) { var onRight = (i % 2 === 0) === right; B.legs.push({ x: onRight ? W - R[0] * 0.7 : R[0] * 0.7, y: i % 2 === 0 ? PZY * 0.92 : PZY * 0.2 }); }
+        for (var f = 0; f < 1 + ph; f++) if (count('ffly') < 3 + ph) spawnFirefly(Math.random() < 0.5 ? -10 : W + 10, rnd(0.05, 0.3) * PZY);
+        sound('warn');
+      }
+    } else if (B.st === 'glide') {
+      var L = B.legs[0]; if (!L) { B.st = 'rest'; B.stT = 0; return; }
+      var dx = L.x - B.x, dy = L.y - B.y, d = Math.hypot(dx, dy), v = (145 + 25 * ph) * rage * dt;
+      // its light comes down behind it as it sweeps: small shockwaves across the players' area
+      B.drop -= dt; if (B.drop <= 0) { B.drop = 0.55 - 0.07 * ph; zone(clamp(B.x + rnd(-12, 12), 12, W - 12), rnd(PZY + 14, H - 14), 22, 0.65, 1); }
+      if (d <= v) {
+        B.x = L.x; B.y = L.y; B.legs.shift();
+        // at a low corner: a wide shockwave down that side of the arena
+        if (L.y > PZY * 0.5) zone(L.x < W / 2 ? 36 : W - 36, H - 36, 52, 0.8, 1);
+        if (!B.legs.length) { B.st = 'rest'; B.stT = 0; }
+      } else { B.x += dx / d * v; B.y += dy / d * v; }
+    }
+    B.vul = B.st === 'rest';
+  }
+  function beetleStep(B, dt, rage, R) {
+    var ph = B.ph;
+    // a slow crawl across its lane; at each side it moves to another lane (down, then back up)
+    B.x += B.vx * (1 + 0.25 * ph) * rage * dt;
+    if (B.x < R[0] * 0.7 || B.x > W - R[0] * 0.7) { B.x = clamp(B.x, R[0] * 0.7, W - R[0] * 0.7); B.vx = -B.vx; B.hy += PZY * 0.12 * B.dirY; if (B.hy > PZY * 0.62) B.dirY = -1; if (B.hy < PZY * 0.22) B.dirY = 1; }
+    B.y += (B.hy - B.y) * Math.min(1, dt * 2);
+    B.tA -= dt * rage;
+    if (B.tA <= 0) {
+      B.tA = 2.7 - 0.5 * ph;
+      var T = target(), n = ph >= 2 ? 2 : 1;
+      for (var i = 0; i < n; i++) lobFire(B, clamp(T.x + (i ? rnd(-70, 70) : rnd(-15, 15)), 10, W - 10), clamp(T.y + rnd(-25, 5), PZY + 8, H - 12));
+    }
+    B.tE -= dt * rage;
+    if (B.tE <= 0) { B.tE = 8 - ph * 1.2; for (var k = 0; k < 1 + (ph >= 2 ? 1 : 0); k++) if (count('beetle') < 2 + ph) spawnBeetle(clamp(B.x + (k ? R[0] : -R[0]), 10, W - 10), B.y); }
+    B.vul = true;
+  }
+  function megaStep(B, dt, rage, R) {
+    var ph = B.ph, sw = Math.max(20, W / 2 - R[0] - 8);
+    if (B.st === 'perch') {
+      approach(B, W / 2 + Math.sin(B.t * 0.7) * sw * 0.8, B.hy + Math.sin(B.t * 1.3) * 5, 2.2, dt); B.z = 0;
+      B.tA -= dt * rage;
+      if (B.tA <= 0) { B.tA = 2.5 - 0.3 * ph; var T = target(), a = Math.atan2(T.y - B.y, T.x - B.x), n = 5 + 2 * ph; for (var v = 0; v < n; v++) fireShot(B.x, B.y + R[1] * 0.6, a + (v - (n - 1) / 2) * 0.16, 116 * rage, 'venom'); sound('shoot'); }
+      B.tB -= dt * rage; if (B.tB <= 0) { B.tB = 8 - ph; webWall(B); }
+      B.tC -= dt * rage; if (B.tC <= 0) { B.tC = 9 - 1.5 * ph; minis(B, 3 + ph); }
+      if (B.stT > (4.8 - 0.8 * ph) / Math.sqrt(rage)) { var T2 = target(); B.st = 'leap'; B.stT = 0; B.sx = B.x; B.sy = B.y; B.lx = clamp(T2.x, R[0], W - R[0]); B.ly = PZY - R[1] * 0.35; sound('warn'); }
+    } else if (B.st === 'leap') {
+      // bounds across to land over its target (its shadow shows where), then pounds the ground
+      var k = Math.min(1, B.stT / 0.95); B.x = B.sx + (B.lx - B.sx) * k; B.y = B.sy + (B.ly - B.sy) * k; B.z = Math.sin(k * PI) * 46;
+      if (k >= 1) {
+        B.z = 0; B.st = 'ground'; B.stT = 0; zone(B.x, B.y + R[1] * 0.4, 44 + 6 * ph, 0, 2); shake(0.8); sound('slam');
+        var mc = Math.floor(B.x / CELL), mr = Math.floor(B.y / CELL);
+        for (var dc = -4; dc <= 4; dc++) for (var dr = -2; dr <= 3; dr++) if (mush(mc + dc, mr + dr)) setMush(mc + dc, mr + dr, 0);
+        if (ph >= 1) minis(B, 2 + ph);
+      }
+    } else if (B.st === 'ground') { if (B.stT > 2.6 - 0.3 * ph) { B.st = 'lunge'; B.stT = 0; B.sy = B.y; } }
+    else if (B.st === 'lunge') { var k2 = Math.min(1, B.stT / 0.7); B.y = B.sy + Math.sin(k2 * PI) * 16; if (k2 >= 1) { B.st = 'climb'; B.stT = 0; } }
+    else if (B.st === 'climb') { approach(B, B.x, B.hy, 2.6, dt); if (B.stT > 1.1) { B.st = 'perch'; B.stT = 0; } }
+    B.vul = B.st === 'ground' || B.st === 'lunge';
+  }
+  // a web shot across the field that sets into a barrier of mushrooms
+  function webWall(B) {
+    var r = ri(Math.max(3, PZ - 7), PZ - 1), len = ri(8, 14), c0 = clamp(Math.round(B.x / CELL) - (len >> 1) + ri(-6, 6), 0, COLS - len);
+    for (var c = c0; c < c0 + len; c++) if (Math.random() < 0.85) setMush(c, r, MUSH_HP, 0);
+    for (var k = 0; k < 3; k++) arc(B.x, B.y, cx(c0 + (k === 0 ? 0 : k === 1 ? len - 1 : len >> 1)), cx(r), '#ff7ac8');
+    sound('web');
+  }
+  function minis(B, n) { for (var i = 0; i < n && count('mini') < 8; i++) spawnSpider(true, clamp(B.x + rnd(-BOSS.mega.r[0] * 0.5, BOSS.mega.r[0] * 0.5), 10, W - 10), B.y + BOSS.mega.r[1] * 0.5); snd('spider'); }
 
   // ═══ Input ══════════════════════════════════════════════════════════════
   var ctl = { steer: null, dx: 0, dy: 0, abs: false, ax: 0, ay: 0, touches: {}, nt: 0, mouse: false, auto: true, keys: {}, drag: 1.7 };
@@ -1083,7 +1291,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (ro) ro.disconnect();
     ro = new ResizeObserver(fit); ro.observe(app); ro.observe(wrapEl);
     cssW = 0; fit(); hudDirty = true; shownTheme = null;
-    fx.parts = []; fx.pops = []; fx.exps = []; fx.flames = []; fx.shake = 0; fx.flash = 0; fx.banner = null;
+    fx.parts = []; fx.pops = []; fx.exps = []; fx.arcs = []; fx.trail = []; fx.shake = 0; fx.flash = 0; fx.banner = null; fx.card = null;
     ctl.touches = {}; ctl.nt = 0; ctl.steer = null; ctl.dx = ctl.dy = 0; ctl.mouse = false; ctl.keys = {};
     barPause(!online);
     // the game plays sideways: phones and iPads held upright get the kit's "turn your phone" cover (and the
@@ -1193,7 +1401,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     fx.parts = fx.parts.filter(function (p) { p.life -= dt; p.vx *= k; p.vy *= k; p.x += p.vx * dt; p.y += p.vy * dt; p.vz -= 420 * dt; p.z += p.vz * dt; if (p.z < 0) { p.z = 0; p.vz = -p.vz * 0.35; } return p.life > 0; });
     fx.pops = fx.pops.filter(function (p) { p.life -= dt; p.y -= dt * (p.big ? 12 : 18); return p.life > 0; });
     fx.exps = fx.exps.filter(function (e) { e.life -= dt; return e.life > 0; });
-    fx.flames = fx.flames.filter(function (f) { f.life -= dt; f.x += f.vx * dt; f.y += f.vy * dt; return f.life > 0; });
+    fx.arcs = fx.arcs.filter(function (a) { a.life -= dt; return a.life > 0; });
+    fx.trail = fx.trail.filter(function (t) { t.life -= dt; return t.life > 0; });
+    if (fx.card) { fx.card.life -= dt; if (fx.card.life <= 0) fx.card = null; }
     if (fx.banner) { fx.banner.life -= dt; if (fx.banner.life <= 0) fx.banner = null; }
     fx.shake = Math.max(0, fx.shake - dt * 2.2); fx.flash = Math.max(0, fx.flash - dt * 3);
   }
@@ -1321,68 +1531,95 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function rockSpr(f) { return spx('rk' + f, function () { return voxelize(gspr(ROCK, { R: '#9aa0b4', D: '#5a6070' }, f === 1), 1.15); }); }
   function cubeSpr(col) { return spx('cb' + col, function () { return voxelize(gspr(['CC', 'CC'], { C: col }), 0.9, { ext: 0.6, shadow: 0.3 }); }); }
 
+  var FLEA = [['...PPPP....', '..PPPPPP...', '.PPPHPPPPL.', 'PPPPPPPPP.L', 'PPPPPPPPL..', '.PPPPPPL...', '..PEPP.....', '.L..L......', 'L....L.....'],
+              ['...PPPP....', '..PPPPPP...', '.PPPHPPPPL.', 'PPPPPPPPPL.', 'PPPPPPPPL..', '.PPPPPPL...', '..PEPP.....', '..L..L.....', '.L....L....']];
+  var ANT = [['L.......L', '.L.KKK.L.', '...KRK...', 'LL.KKK.LL', '..KRRRK..', '.LKRRRKL.', '..KRRRK..', '.L.KKK.L.', 'L.......L'],
+             ['.L.....L.', 'L..KKK..L', '...KRK...', '.LLKKKLL.', '..KRRRK..', 'L.KRRRK.L', '..KRRRK..', 'L..KKK..L', '.L.....L.']];
+  var FFLY = [['WW.......WW', 'WWW.....WWW', '.WWWKKKWWW.', '...KRRRK...', '....KKK....', '...GGGGG...', '..GLLLLLG..', '..GLLLLLG..', '...GLLLG...', '....GGG....'],
+              ['...........', 'WWWW...WWWW', '.WWWKKKWWW.', '...KRRRK...', '....KKK....', '...GGGGG...', '..GLLLLLG..', '..GLLLLLG..', '...GLLLG...', '....GGG....']];
+  var BEETLE = [['L...CCCCC...L', '.L.CCOOOCC.L.', '..CCOOOOOCC..', 'LLCOOOOOOOCLL', '..COOOOOOOC..', 'LLCCOOOOOCCLL', '..CCCCCCCCC..', '.L.CHHHHHC.L.', '....HHHHH....', '...M.....M...', '....M...M....'],
+                ['.L..CCCCC..L.', 'L..CCOOOCC..L', '..CCOOOOOCC..', '.LCOOOOOOOCL.', 'L.COOOOOOOC.L', '.LCCOOOOOCCL.', 'L.CCCCCCCCC.L', '...CHHHHHC...', '....HHHHH....', '...M.....M...', '....M...M....']];
+  // the wasp, head first (it flies at you); the black wasp is the same shape in black with neon bands
+  var WASPA = [['.WW.....WW.', 'WWWW...WWWW', 'WWWWW.WWWWW', '.WWWKKKWWW.', '...KYYYK...', '...YKKKY...', '...KYYYK...', '...YKKKY...', '....KYK....', '.....K.....', '.....S.....'],
+               ['...........', '...........', 'WWWW...WWWW', '.WWWKKKWWW.', '...KYYYK...', '...YKKKY...', '...KYYYK...', '...YKKKY...', '....KYK....', '.....K.....', '.....S.....']];
+  function fleaSpr(fr, hurt) { return spx('fl' + fr + hurt, function () { return voxelize(gspr(FLEA[fr], { P: hurt ? '#ffffff' : '#e04ad0', H: '#ff9af0', E: '#1a0618', L: '#ff9af0' }), 1.2, { emit: ['#1a0618'] }); }); }
+  function antSpr(fr) { return spx('ant' + fr, function () { return voxelize(gspr(ANT[fr], { K: '#3a0a12', R: '#ff5a3d', L: '#ff9a6a' }), 1.0); }); }
+  function fflySpr(fr, lit) { return spx('ff' + fr + (lit ? 1 : 0), function () { return voxelize(gspr(FFLY[fr], { W: '#e8ffd8', K: '#3a3a1a', R: '#ff6b3d', G: '#a8d830', L: lit ? '#fbffc0' : '#c8e060' }), 1.2, { emit: lit ? ['#fbffc0'] : [] }); }); }
+  function beetleSpr(fr, hurt) { return spx('bt' + fr + hurt, function () { return voxelize(gspr(BEETLE[fr], { C: hurt ? '#ffffff' : '#c0305a', O: '#ffb02e', H: '#ff8ab0', M: '#ff3d2a', L: '#ff5a3d' }), 1.25, { emit: ['#ffb02e'] }); }); }
+  function waspSpr(fr, black) { return spx('wa' + fr + (black ? 1 : 0), function () { return voxelize(gspr(WASPA[fr], black ? { Y: '#16101e', K: '#ffe23d', W: '#6a5a9a', S: '#ffffff' } : { Y: '#ffd23d', K: '#1a1206', W: '#d8f4ff', S: '#ffffff' }), 1.25, black ? { emit: ['#ffe23d'] } : null); }); }
+  function miniSpr(tk, fr) { return spx('mi' + tk + fr, function () { var T = THEMES[tk]; return voxelize(gspr(SPIDER[fr], { P: '#ff5c9a', Y: T.spider[1], R: '#ffffff' }), 0.85, { emit: ['#ffffff'] }); }); }
+
   // ── Bosses: bigger pixel art, voxelized the same way ──
+  // Killer Wasp: a black-and-neon-yellow hornet with barbed wings; its thorax glows pink and yellow when open
+  // Night Flyer: an iridescent firefly, cyan core, green striped body; its purple wings are drawn see-through
+  // Blast Beetle: an armoured crimson stag beetle with a glowing top plate; its head plate (front) is the target
+  // Mega Spider: a dark arachnid with glowing pink leg segments and markings
   function bossSpr(B, fr) {
-    var cr = B.type === 'beetle' ? Math.min(3, Math.floor((1 - B.hp / B.max) * 4)) : 0;
-    var key = 'B' + B.type + fr + cr + (B.enraged ? 'r' : '') + (B.type === 'firefly' ? (B.lit > 0.5 ? 'L' : 'D') : '');
+    var open = !!B.vul, ph = B.ph || 0;
+    var key = 'B' + B.type + fr + (open ? 'o' : '') + ph;
     return spx(key, function () {
-      var p, emit = [], ay = null;
+      var p, emit = [];
       if (B.type === 'wasp') {
-        // the Wasp Queen: green, with mesh wings and a glowing abdomen
-        p = painter(36, 30, 18, 15);
-        var G1 = '#5ae84a', G2 = '#279a34', K = '#164a1c', Y = '#c6ff4a', CORE = '#f2ffc0', L = '#2f8a38', EYE = B.enraged ? '#ffffff' : '#ff3d3d';
-        p.both(function (s) { p.ell(s * 9, fr ? -9 : -7, 8.5, fr ? 2.5 : 4, function (t, yy, xx) { return (xx + yy) & 1 ? '#e6ffe8' : '#8fd8a4'; }); });
-        p.both(function (s) { p.line(s * 3, -4, s * 8, -1, L).line(s * 8, -1, s * 9, 3, L).line(s * 3, -3, s * 7, 3, L).line(s * 7, 3, s * 7, 6, L); });
-        p.ell(0, 3.5, 6, 7, function (t, yy) { return (yy >> 1) % 2 ? K : Y; });
-        p.ell(0, 4, 2.2, 3, CORE);
-        p.line(0, 11, 0, 14, '#ffffff');
-        p.ell(0, -4, 4.5, 3.5, G2);
-        p.ell(0, -9, 4, 3.5, G1).ell(-2, -9.5, 1.2, 1.8, EYE).ell(2, -9.5, 1.2, 1.8, EYE);
-        p.both(function (s) { p.line(s, -12, s * 4, -15, G1).line(s * 4, -15, s * 6, -15, G1); });
-        emit = [CORE, EYE];
+        p = painter(46, 40, 23, 18);
+        var K = '#16101e', Y = '#ffe23d', TH = open ? '#ff6ab8' : '#5a1a3a', TH2 = open ? '#ffe23d' : '#3a1028', EYE = ph >= 2 ? '#ffffff' : '#ffe23d';
+        p.both(function (s) {
+          p.ell(s * 12, fr ? -11 : -9, 11.5, fr ? 4 : 6.5, function (t, yy, xx) { return (xx + yy) & 1 ? '#5a4c7a' : '#2e2648'; });
+          for (var k = 0; k < 5; k++) p.line(s * (5 + k * 3.6), (fr ? -14 : -15) + (k % 2), s * (6.5 + k * 3.6), (fr ? -17 : -19) + (k % 2), Y);   // barbs
+        });
+        p.both(function (s) { p.line(s * 3, -2, s * 9, 1, Y).line(s * 9, 1, s * 10, 6, Y).line(s * 3, 0, s * 8, 6, Y).line(s * 8, 6, s * 8, 10, Y); });
+        p.ell(0, 8, 7, 10, function (t, yy) { return (yy >> 1) % 2 ? K : Y; });
+        p.line(0, 18, 0, 21, '#ffffff');
+        p.ell(0, -3, 6, 5, function (t) { return t < 0.5 ? TH : TH2; });
+        p.ell(0, -11, 5.5, 4, K).ell(-2.6, -12, 1.5, 1.8, EYE).ell(2.6, -12, 1.5, 1.8, EYE);
+        p.both(function (s) { p.line(s, -15, s * 4, -19, Y).line(s * 3, -8, s * 5, -6, Y); });
+        emit = [EYE].concat(open ? [TH, TH2] : []);
       } else if (B.type === 'firefly') {
-        var lit = B.lit > 0.5;
-        p = painter(32, 32, 16, 16);
-        p.both(function (s) { p.ell(s * 6, fr ? -6 : -4, 6.5, fr ? 2 : 3, '#eaffd8').ell(s * 6, fr ? -6 : -4, 5.5, fr ? 1 : 2, '#86b070'); });
-        p.both(function (s) { p.line(s * 2, -1, s * 6, 2, '#8a7a3a').line(s * 6, 2, s * 7, 5, '#8a7a3a').line(s * 2, 1, s * 5, 6, '#8a7a3a'); });
-        p.ell(0, -2, 3.5, 4.5, '#a07a40');
-        var L1 = '#ffffff', L2 = '#f4ff8a', L3 = '#d4f030';
-        p.ell(0, 5, 4.5, 5.5, lit ? function (t) { return t < 0.3 ? L1 : t < 0.7 ? L2 : L3; } : function (t) { return t < 0.5 ? '#5a6420' : '#3a4410'; });
-        p.ell(0, -7.5, 3, 2.5, '#ff6b3d').dot(-1, -8, '#1a0a06').dot(1, -8, '#1a0a06');
-        p.both(function (s) { p.line(s, -10, s * 3, -13, '#ff9a6b'); });
-        if (lit) emit = [L1, L2, L3];
+        p = painter(30, 40, 15, 18);
+        var CO = open ? '#c8ffff' : '#2a8a9a', CI = open ? '#5ef0ff' : '#1a5a6a';
+        p.both(function (s) { p.line(s * 2, -2, s * 8, 2, '#2a2040').line(s * 8, 2, s * 9, 7, '#2a2040').line(s * 2, 2, s * 6, 9, '#2a2040'); });
+        p.ell(0, 6, 4.5, 11, function (t, yy) { return (yy >> 1) % 2 ? '#3dff9a' : '#0e6a44'; });
+        p.ell(0, -2, 4, 3, '#1a2a3a');
+        p.ell(0, -8, 6.5, 5.5, CO).ell(0, -8, 3.6, 3, CI);
+        p.both(function (s) { p.line(s * 2, -13, s * 5, -17, '#9a7aff'); });
+        emit = open ? [CO, CI] : [];
       } else if (B.type === 'beetle') {
-        p = painter(44, 40, 22, 20);
-        p.both(function (s) { for (var k = 0; k < 3; k++) { var bob = fr ? (k % 2 ? 1 : -1) : 0; p.line(s * 8, -4 + k * 5, s * 16, -7 + k * 6 + bob, '#7aa0c0').line(s * 16, -7 + k * 6 + bob, s * 19, -3 + k * 7 + bob, '#7aa0c0'); } });
-        p.ell(0, 2, 14.5, 10.5, '#9fd6ff').ell(0, 2, 13.5, 9.5, function (t) { return t < 0.25 ? '#7aaee0' : t < 0.6 ? '#4a7aa8' : '#2a4a70'; });
-        p.ell(-5, -3, 3, 1.5, '#d8eeff').line(0, -6, 0, 11, '#14263a');
-        if (cr >= 1) p.line(-8, -3, -5, 1, '#ffffff').line(-5, 1, -8, 5, '#ffffff');
-        if (cr >= 2) p.line(7, -4, 4, 0, '#ffffff').line(4, 0, 8, 4, '#ffffff');
-        if (cr >= 3) p.line(-3, 8, 3, 10, '#ffffff');
-        p.ell(0, -9, 6, 3.5, '#3a6088');
-        p.both(function (s) { p.line(s * 3, -11, s * 6, -15, '#cfe8ff').line(s * 6, -15, s * 3, -17, '#cfe8ff'); });
-        var BE = B.enraged ? '#ff3d5a' : '#5ef0ff';
-        p.rect(-4, -10, 2, 2, BE).rect(2, -10, 2, 2, BE);
-        emit = [BE];
+        p = painter(50, 50, 25, 22);
+        var LEG = '#ff5a3d', LD = '#8a1a10', PL = ph >= 2 ? '#fff0a0' : '#ffb02e', PL2 = ph >= 2 ? '#ffffff' : '#ffe08a';
+        p.both(function (s) { for (var k = 0; k < 3; k++) { var bob = fr ? (k % 2 ? 1 : -1) : 0; p.line(s * 10, -6 + k * 7, s * 19, -10 + k * 8 + bob, LD).line(s * 19, -10 + k * 8 + bob, s * 22, -5 + k * 9 + bob, LEG).line(s * 10, -7 + k * 7, s * 19, -11 + k * 8 + bob, LEG); } });
+        p.ell(0, -1, 15.5, 16.5, function (t) { return t < 0.3 ? '#e04a7a' : t < 0.7 ? '#c0305a' : '#8a1a40'; });
+        p.line(0, -16, 0, 12, '#5a0a28');
+        p.ell(0, -5, 9.5, 10, function (t, yy, xx) { return (xx + yy) & 1 ? PL : PL2; });
+        p.ell(0, 15, 9.5, 5, '#ff8ab0').ell(0, 14, 7.5, 3, '#ffc0d8');
+        p.both(function (s) { p.line(s * 4, 18, s * 9, 23, '#ff3d2a').line(s * 5, 18, s * 10, 23, '#ff3d2a').line(s * 9, 23, s * 6, 27, '#ff3d2a').line(s * 10, 23, s * 7, 27, '#ff3d2a'); });
+        p.rect(-4, 11, 2, 2, '#ffe23d').rect(2, 11, 2, 2, '#ffe23d');
+        emit = [PL, PL2, '#ffe23d'];
       } else {
-        p = painter(76, 56, 38, 22); ay = 22 + 6;
-        var LG = '#ff4fd8', LD = '#7a1a6a';
+        p = painter(76, 56, 38, 22);
+        var LG = '#ff2d8a', LD2 = '#2a0d3a', EY = ph >= 1 ? '#ffffff' : '#ffb0d0';
         p.both(function (s) {
           for (var k = 0; k < 4; k++) {
             var bob = (k % 2 ? 1 : -1) * (fr ? 1.5 : -1.5), kx = s * (15 + k * 1.5), ky = -14 + k * 6 + bob, fx2 = s * (26 + k * 2), fy = -2 + k * 7 - bob;
-            p.line(s * 6, -3 + k * 2.5, kx, ky + 1, LD).line(kx, ky + 1, fx2, fy + 1, LD);
-            p.line(s * 6, -4 + k * 2.5, kx, ky, LG).line(kx, ky, fx2, fy, LG);
+            p.line(s * 6, -3 + k * 2.5, kx, ky + 1, LD2).line(kx, ky + 1, fx2, fy + 1, LD2);
+            p.line(s * 6, -4 + k * 2.5, kx, ky, LD2).line(kx, ky, (kx + fx2) / 2, (ky + fy) / 2, LG).line((kx + fx2) / 2, (ky + fy) / 2, fx2, fy, LD2);
+            p.dot(kx, ky, LG);
           }
         });
-        p.ell(0, 6, 13.5, 11, LG).ell(0, 6, 12.5, 10, function (t) { return t < 0.3 ? '#6a1a6a' : '#3a0c40'; });
-        p.ell(0, 3.5, 2.5, 2.5, '#ff3d5a').ell(0, 9, 2.5, 2.5, '#ff3d5a').rect(0, 5, 1, 2, '#ff3d5a');
-        p.ell(0, -7, 9, 7, LG).ell(0, -7, 8, 6, '#2a0a30');
-        var ey = B.enraged ? '#ffffff' : '#ff3d5a';
-        p.rect(-4, -10, 2, 2, ey).rect(2, -10, 2, 2, ey).dot(-6, -7, ey).dot(6, -7, ey).dot(-2, -13, ey).dot(1, -13, ey);
-        p.both(function (s) { p.line(s * 2, -2, s * 3, 1, '#ffb0e8'); });
-        emit = [ey];
+        p.ell(0, 6, 13.5, 11, LG).ell(0, 6, 12.5, 10, function (t) { return t < 0.3 ? '#3a0c48' : '#1e0828'; });
+        p.ell(0, 3.5, 2.5, 2.5, LG).ell(0, 9, 2.5, 2.5, LG).rect(0, 5, 1, 2, LG).line(-6, 2, -3, 11, LG).line(6, 2, 3, 11, LG);
+        p.ell(0, -7, 9, 7, LG).ell(0, -7, 8, 6, '#1e0828');
+        p.rect(-4, -10, 2, 2, EY).rect(2, -10, 2, 2, EY).dot(-6, -7, EY).dot(6, -7, EY).dot(-2, -13, EY).dot(1, -13, EY);
+        p.both(function (s) { p.line(s * 2, -2, s * 3, 2, '#ff9ad0'); });
+        emit = [EY, LG];
       }
       return voxelize(p.c, BOSS[B.type].vu, { emit: emit, ext: 0.9, shadow: 0.55, ax: p.ox, ay: p.oy });
+    });
+  }
+  // the Night Flyer's see-through wings (drawn under its body)
+  function flyerWings(fr) {
+    return spx('BW' + fr, function () {
+      var p = painter(60, 40, 30, 18);
+      p.both(function (s) { p.ell(s * 15, fr ? -7 : -4, 14, fr ? 8 : 11, function (t, yy, xx) { return (xx + yy) & 1 ? '#e2d4ff' : '#9a7aff'; }); p.ell(s * 10, 9, 8, 5, function (t, yy, xx) { return (xx + yy) & 1 ? '#c8b4ff' : '#7a5cdf'; }); });
+      return voxelize(p.c, BOSS.firefly.vu, { ext: 0.4, shadow: 0.25, ax: p.ox, ay: p.oy });
     });
   }
 
@@ -1429,10 +1666,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function capIcon(x, k) {
     x.strokeStyle = '#ffffff'; x.fillStyle = '#ffffff'; x.lineWidth = 1.2; x.lineCap = 'round'; x.lineJoin = 'round';
     var i, a;
-    if (k === 'flame') { x.beginPath(); x.moveTo(0, -4.8); x.bezierCurveTo(2.8, -1.8, 3.6, 0.6, 3, 2.2); x.bezierCurveTo(2.4, 4.4, -2.4, 4.4, -3, 2.2); x.bezierCurveTo(-3.4, 0.6, -2.2, -0.8, -1.3, -1.6); x.bezierCurveTo(-1.1, -0.2, -0.2, 0.4, 0.3, -0.6); x.bezierCurveTo(0.7, -2, 0, -3.6, 0, -4.8); x.closePath(); x.fill(); }
-    else if (k === 'ice') { for (i = 0; i < 3; i++) { a = i * PI / 3 + PI / 2; x.beginPath(); x.moveTo(Math.cos(a) * 4.6, Math.sin(a) * 4.6); x.lineTo(-Math.cos(a) * 4.6, -Math.sin(a) * 4.6); x.stroke(); } for (i = 0; i < 6; i++) { a = i * PI / 3 + PI / 2; var tx = Math.cos(a) * 3, ty = Math.sin(a) * 3; x.beginPath(); x.moveTo(tx + Math.cos(a + 0.9) * 1.4, ty + Math.sin(a + 0.9) * 1.4); x.lineTo(tx, ty); x.lineTo(tx + Math.cos(a - 0.9) * 1.4, ty + Math.sin(a - 0.9) * 1.4); x.stroke(); } }
-    else if (k === 'homing') { [-0.6, 0, 0.6].forEach(function (an) { x.save(); x.rotate(an); x.beginPath(); x.moveTo(0, 3.6); x.lineTo(0, -3.4); x.moveTo(-1.6, -1.6); x.lineTo(0, -3.6); x.lineTo(1.6, -1.6); x.stroke(); x.restore(); }); }
-    else if (k === 'rapid') { [-2.4, 1.2].forEach(function (y) { x.beginPath(); x.moveTo(-3.2, y + 2.4); x.lineTo(0, y - 0.8); x.lineTo(3.2, y + 2.4); x.stroke(); }); }
+    if (k === 'scatter') { [-0.62, -0.31, 0, 0.31, 0.62].forEach(function (an) { x.save(); x.rotate(an); x.beginPath(); x.moveTo(0, 3.6); x.lineTo(0, -3.2); x.stroke(); x.beginPath(); x.arc(0, -4, 0.8, 0, TAU); x.fill(); x.restore(); }); }
+    else if (k === 'shock') { x.beginPath(); x.moveTo(1.2, -5); x.lineTo(-2.4, 0.4); x.lineTo(0.2, 0.4); x.lineTo(-1.2, 5); x.lineTo(2.6, -0.8); x.lineTo(0, -0.8); x.closePath(); x.fill(); }
+    else if (k === 'beam') { x.fillRect(-1, -5, 2, 9); x.beginPath(); x.moveTo(-3.4, 4.6); x.lineTo(3.4, 4.6); x.stroke(); x.beginPath(); x.moveTo(-2.4, -3.6); x.lineTo(-3.6, -5); x.moveTo(2.4, -3.6); x.lineTo(3.6, -5); x.stroke(); }
     else if (k === 'shield') { x.beginPath(); x.moveTo(0, -4.6); x.lineTo(3.8, -3.1); x.lineTo(3.4, 0.9); x.quadraticCurveTo(2.6, 3.4, 0, 4.8); x.quadraticCurveTo(-2.6, 3.4, -3.4, 0.9); x.lineTo(-3.8, -3.1); x.closePath(); x.stroke(); }
     else { x.beginPath(); x.arc(-0.6, 1, 3, 0, TAU); x.fill(); x.beginPath(); x.moveTo(1.4, -1.4); x.quadraticCurveTo(2.2, -3.4, 3.6, -3.6); x.stroke(); x.beginPath(); x.arc(3.8, -3.8, 0.9, 0, TAU); x.fill(); }
   }
@@ -1511,7 +1747,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var q = Math.max(3, Math.round(CELL * k * 0.5));
     for (var yy = 0; yy < h; yy += q) for (var xx = 0; xx < w; xx += q) { var r = R(); if (r < 0.3) { x.fillStyle = hexA(T.hi, 0.025 + R() * 0.06); x.fillRect(xx, yy, q - 1, q - 1); } else if (r > 0.85) { x.fillStyle = 'rgba(0,0,0,' + (0.08 + R() * 0.14).toFixed(3) + ')'; x.fillRect(xx, yy, q, q); } }
     x.lineCap = 'round';
-    if (T.kind === 'grid') {
+    if (T.kind === 'grid' || T.kind === 'web') {
       // glowing lines on a floor seen at a slight tilt: the lines lean in toward a point far above,
       // and the cross lines get closer together toward the top
       var cxp = w / 2, sp = CELL * k * 2, nV = Math.ceil(w / sp / 2) + 4, rowsN = Math.max(4, Math.round(h / sp)), ys = [], i2;
@@ -1521,14 +1757,33 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
         for (var v = -nV; v <= nV; v++) { var xb = cxp + v * sp * 1.12, xt = cxp + (xb - cxp) * 0.78; x.strokeStyle = hexA(T.line, pass[1] * (v % 4 === 0 ? 1.6 : 1)); x.beginPath(); x.moveTo(xt, 0); x.lineTo(xb, h); x.stroke(); }
         ys.forEach(function (y, n2) { x.strokeStyle = hexA(T.line, pass[1] * (n2 % 4 === 0 ? 1.6 : 1)); x.beginPath(); x.moveTo(0, y); x.lineTo(w, y); x.stroke(); });
       });
-      // circuit traces with little pads at their ends
-      var nT = 8 + Math.round(w * h / (k * k * 5000));
+      // circuit traces with little pads at their ends (the web arena has a web instead)
+      var nT = T.kind === 'web' ? 0 : 8 + Math.round(w * h / (k * k * 5000));
       for (var t = 0; t < nT; t++) {
         var px = Math.round(R() * w / (CELL * k)) * CELL * k, py = Math.round(R() * h / (CELL * k)) * CELL * k, horiz = R() < 0.5;
         var ta = 0.3 + R() * 0.3, pts = [[px, py]];
         for (var s2 = 0, st = 2 + Math.floor(R() * 4); s2 < st; s2++) { var Ln = (1 + Math.floor(R() * 5)) * CELL * k * (R() < 0.5 ? -1 : 1); if (horiz) px += Ln; else py += Ln; horiz = !horiz; pts.push([px, py]); }
         [[4 * k, 0.12], [Math.max(1, 0.9 * k), ta]].forEach(function (ps) { x.strokeStyle = hexA(ps[1] > 0.2 ? T.hi : T.line, ps[1]); x.lineWidth = ps[0]; x.beginPath(); pts.forEach(function (q, qi) { x[qi ? 'lineTo' : 'moveTo'](q[0], q[1]); }); x.stroke(); });
         x.fillStyle = hexA(T.hi, 0.75); x.fillRect(px - 1.5 * k, py - 1.5 * k, 3 * k, 3 * k);
+      }
+      if (T.kind === 'web') {
+        // the Mega Spider's arena: a great web across the floor, threads out from the middle and rings that sag between them
+        var wx = w / 2, wy = h * 0.42, spokes = 14, far = Math.hypot(w, h), ring = CELL * k * 3.2, ang = [];
+        for (var sp2 = 0; sp2 < spokes; sp2++) ang.push(sp2 / spokes * TAU + (R() - 0.5) * 0.15);
+        [[5 * k, 0.1, T.line], [Math.max(1, 0.9 * k), 0.55, T.line]].forEach(function (ps) {
+          x.lineWidth = ps[0]; x.strokeStyle = hexA(ps[2], ps[1]);
+          ang.forEach(function (a) { x.beginPath(); x.moveTo(wx, wy); x.lineTo(wx + Math.cos(a) * far, wy + Math.sin(a) * far); x.stroke(); });
+          for (var rr2 = ring; rr2 < far; rr2 += ring * (1 + rr2 / far)) {
+            x.beginPath();
+            for (var q2 = 0; q2 <= spokes; q2++) {
+              var a0 = ang[q2 % spokes], a1 = ang[(q2 + 1) % spokes] + (q2 + 1 >= spokes ? TAU : 0), xa = wx + Math.cos(a0) * rr2, ya = wy + Math.sin(a0) * rr2;
+              if (!q2) x.moveTo(xa, ya);
+              if (q2 < spokes) { var am = (a0 + a1) / 2, sag = rr2 * 0.86; x.quadraticCurveTo(wx + Math.cos(am) * sag, wy + Math.sin(am) * sag, wx + Math.cos(a1) * rr2, wy + Math.sin(a1) * rr2); }
+            }
+            x.stroke();
+          }
+        });
+        var cg = x.createRadialGradient(wx, wy, 0, wx, wy, ring * 2); cg.addColorStop(0, hexA(T.line, 0.35)); cg.addColorStop(1, hexA(T.line, 0)); x.fillStyle = cg; x.fillRect(0, 0, w, h);
       }
     } else {
       // the hive: a fine honeycomb underfoot, and big glowing hexagons in two colours
@@ -1561,12 +1816,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function warm(R, wv) {
     if (!wv.boss || R.phase !== 'intro') return;
     var t = wv.boss, list = [];
-    [0, 1].forEach(function (fr) { [false, true].forEach(function (en) {
-      if (t === 'beetle') [1, 0.7, 0.45, 0.2].forEach(function (h) { list.push([{ type: t, hp: h, max: 1, enraged: en, lit: 1 }, fr]); });
-      else if (t === 'firefly') [1, 0].forEach(function (l) { list.push([{ type: t, hp: 1, max: 1, enraged: en, lit: l }, fr]); });
-      else list.push([{ type: t, hp: 1, max: 1, enraged: en, lit: 1 }, fr]);
-    }); });
-    for (var i = 0; i < list.length; i++) { var before = Object.keys(SPX).length; bossSpr(list[i][0], list[i][1]); if (Object.keys(SPX).length > before) return; }
+    [0, 1].forEach(function (fr) { [false, true].forEach(function (op) { [0, 1, 2].forEach(function (ph) { list.push([{ type: t, vul: op, ph: ph }, fr]); }); }); });
+    if (t === 'firefly') { if (!SPX.BW0) { flyerWings(0); return; } if (!SPX.BW1) { flyerWings(1); return; } }
+    for (var i = 0; i < list.length; i++) { var B = list[i][0]; if (SPX['B' + B.type + list[i][1] + (B.vul ? 'o' : '') + B.ph]) continue; bossSpr(B, list[i][1]); return; }
   }
 
   // ── Drawing a frame ──
