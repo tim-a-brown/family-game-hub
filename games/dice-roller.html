@@ -16,6 +16,7 @@
 .tray{border-radius:26px;padding:9px;margin:2px 0 12px;}
 .tray .felt-in{position:relative;border-radius:19px;height:clamp(230px,36vh,380px);overflow:hidden;cursor:pointer;touch-action:manipulation;}
 .tray canvas{position:absolute;inset:0;width:100%;height:100%;}
+.tray .lockhint{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:.72rem;font-weight:900;letter-spacing:.12em;color:rgba(255,255,255,.55);text-transform:uppercase;pointer-events:none;}
 .tray .hint{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;font-family:var(--display);font-size:1.25rem;color:rgba(255,255,255,.5);pointer-events:none;}
 
 /* Read-out plaque under the tray */
@@ -111,6 +112,7 @@
     <div class="felt-in" id="felt" role="button" aria-label="Roll the dice">
       <canvas id="cv"></canvas>
       <div class="hint" id="hint" hidden>Tap a die below<br>to put it in the tray</div>
+      <div class="lockhint" id="lockhint" hidden></div>
     </div>
   </div>
 
@@ -169,7 +171,8 @@
       '<h3>Special dice</h3><ul><li><b>d4</b>: the pyramid die. Read the number at the <b>top point</b>.</li>' +
       '<li><b>d10</b>: numbered 1 to 10.</li>' +
       '<li><b>d100</b>: two dice. One shows tens (00 to 90), the other ones (0 to 9). Add them: 40 and 7 is 47. 00 and 0 is 100.</li></ul>' +
-      '<h3>Rolling</h3><ul><li>Tap <b>Roll</b>, tap the tray, or press Space.</li><li>On a phone, turn on <b>Shake to roll</b> and give your phone a shake.</li>' +
+      '<h3>Rolling</h3><ul><li>Tap <b>Roll</b>, tap the tray, or press Space.</li>' +
+      '<li><b>Lock a die</b>: tap it in the tray. A gold ring marks it, and it stays put on the next roll while the rest tumble. Tap it again to unlock. The total still counts every die.</li><li>On a phone, turn on <b>Shake to roll</b> and give your phone a shake.</li>' +
       '<li><b>Quick picks</b> load a set of dice in one tap. Save your own with <b>Save current</b>.</li>' +
       '<li>Tap a roll in the history to load those dice again.</li></ul>'
   });
@@ -403,6 +406,12 @@
     var gr = cx.createRadialGradient(0, 0, 0, 0, 0, rx);
     gr.addColorStop(0, 'rgba(0,0,0,' + a + ')'); gr.addColorStop(0.6, 'rgba(0,0,0,' + a * 0.55 + ')'); gr.addColorStop(1, 'rgba(0,0,0,0)');
     cx.fillStyle = gr; cx.beginPath(); cx.arc(0, 0, rx, 0, Math.PI * 2); cx.fill();
+    if (d.held) {
+      var hg = cx.createRadialGradient(0, 0, s * 0.7, 0, 0, s * 1.5);
+      hg.addColorStop(0, 'rgba(255,200,61,.45)'); hg.addColorStop(1, 'rgba(255,200,61,0)');
+      cx.fillStyle = hg; cx.beginPath(); cx.arc(0, 0, s * 1.5, 0, Math.PI * 2); cx.fill();
+      cx.strokeStyle = '#ffc83d'; cx.lineWidth = 3.2; cx.beginPath(); cx.arc(0, 0, s * 1.12, 0, Math.PI * 2); cx.stroke();
+    }
     if (d.glow) {
       var gg = cx.createRadialGradient(0, -s * 0.3, s * 0.3, 0, -s * 0.3, s * 1.9);
       gg.addColorStop(0, 'rgba(255,214,90,.75)'); gg.addColorStop(1, 'rgba(255,214,90,0)');
@@ -492,7 +501,32 @@
     dice.forEach(drawShadow);
     dice.slice().sort(function (a, b) { return (a.y + a.z * 0.2) - (b.y + b.z * 0.2); }).forEach(drawDie);
     document.getElementById('hint').hidden = dice.length > 0;
+    paintLockHint();
   }
+  // Under the dice once they've been rolled: how to lock, or how many are locked
+  function paintLockHint() {
+    var lh = document.getElementById('lockhint'), n = dice.filter(function (d) { return d.held; }).length;
+    var show = !rolling && dice.length > 1 && (readout || n);
+    lh.hidden = !show;
+    if (show) lh.textContent = n ? (n === dice.length ? 'All locked · tap a die to unlock' : n + ' locked · tap a die to unlock') : 'Tap a die to lock it';
+  }
+  // Which die is under a tap (the one on top wins), or null
+  function dieAt(px, py) {
+    var best = null, bz = -Infinity;
+    dice.forEach(function (d) {
+      var g = GEO[KIND[d.kind].geo], s = S * g.scale, cy = d.y - (g.rest * s + d.z) * ST;
+      if (Math.hypot(px - d.x, py - cy) < s * 1.15 && d.y > bz) { best = d; bz = d.y; }
+    });
+    return best;
+  }
+  // Lock or unlock a die; a d100's two dice go together
+  function toggleHold(d) {
+    var i = dice.indexOf(d), pair = d.kind === 'pt' ? dice[i + 1] : d.kind === 'pu' ? dice[i - 1] : null, on = !d.held;
+    d.held = on; if (pair) pair.held = on;
+    Kit.sfx(on ? 'pop' : 'tap'); Kit.haptic('light');
+    persistHeld(); draw(); setRollBtn();
+  }
+  function persistHeld() { if (last && last.dice && last.dice.length === dice.length) { last.dice.forEach(function (x, i) { x.h = dice[i].held ? 1 : 0; }); persist(); } }
 
   // Which way is "up" in the die's own frame for a given result
   function upDirFor(kind, num) {
@@ -668,7 +702,8 @@
   }
   function syncTray(animate) {
     finishAll();
-    var want = kindsFor(pool), have = dice.slice(), keep = [], added = [];
+    // taking dice out: unlocked ones go first
+    var want = kindsFor(pool), have = dice.filter(function (d) { return d.held; }).concat(dice.filter(function (d) { return !d.held; })), keep = [], added = [];
     want.forEach(function (k) {
       var i = -1;
       for (var j = 0; j < have.length; j++) if (have[j] && have[j].kind === k) { i = j; break; }
@@ -699,9 +734,11 @@
     if (rolling) return;
     if (!dice.length) { Kit.toast('Add some dice first'); Kit.haptic('error'); return; }
     finishAll();
+    var movers = dice.filter(function (d) { return !d.held; }), held = dice.filter(function (d) { return d.held; });
+    if (!movers.length) { Kit.toast('Every die is locked. Tap one to unlock it.'); Kit.haptic('error'); return; }
     rolling = true; setRollBtn();
-    dice.forEach(function (d) { d.target = 1 + rint(KIND[d.kind].sides); d.glow = false; });
-    var a = simulate(dice.slice(), [], 'roll');
+    dice.forEach(function (d) { d.glow = false; d.target = d.held ? d.num : 1 + rint(KIND[d.kind].sides); });
+    var a = simulate(movers, held, 'roll');
     a.done = function () { rolling = false; settle(); };
     Kit.sfx('roll'); Kit.haptic(how === 'shake' ? 'heavy' : 'medium');
     showRolling();
@@ -725,7 +762,7 @@
     draw();
     // Remember the table as it lies
     last = { label: readout.label, total: total, mod: mod, parts: readout.parts,
-      dice: dice.map(function (d) { return { k: d.kind, n: d.num, fx: d.x / W, fy: d.y / H, q: d.q }; }) };
+      dice: dice.map(function (d) { return { k: d.kind, n: d.num, fx: d.x / W, fy: d.y / H, q: d.q, h: d.held ? 1 : 0 }; }) };
     persist();
     history.unshift({ t: Date.now(), label: readout.label, pool: JSON.parse(JSON.stringify(pool)), mod: mod, parts: readout.parts, total: total });
     if (history.length > 60) history.length = 60;
@@ -786,11 +823,18 @@
   // ── Controls ─────────────────────────────────────────────────────────────
   var rollBtn = document.getElementById('roll');
   function setRollBtn() {
-    rollBtn.innerHTML = Kit.icon('dice') + '<span>' + (rolling ? 'Rolling…' : !dice.length ? 'Roll' : exprOf(pool, mod).length <= 14 ? 'Roll ' + esc(exprOf(pool, mod)) : 'Roll ' + dice.length + ' dice') + '</span>';
-    rollBtn.disabled = rolling || !dice.length;
+    var nh = dice.filter(function (d) { return d.held; }).length, nf = dice.length - nh;
+    rollBtn.innerHTML = Kit.icon('dice') + '<span>' + (rolling ? 'Rolling…' : !dice.length ? 'Roll' : nh && !nf ? 'All locked' : nh ? 'Roll ' + nf + ' unlocked' : exprOf(pool, mod).length <= 14 ? 'Roll ' + esc(exprOf(pool, mod)) : 'Roll ' + dice.length + ' dice') + '</span>';
+    rollBtn.disabled = rolling || !dice.length || (nh > 0 && !nf);
+    paintLockHint();
   }
   rollBtn.addEventListener('click', function () { askMotion(); roll(); });
-  felt.addEventListener('click', function () { askMotion(); if (dice.length) roll(); });
+  felt.addEventListener('click', function (e) {
+    askMotion();
+    if (!dice.length || rolling) return;
+    var r = felt.getBoundingClientRect(), d = dieAt(e.clientX - r.left, e.clientY - r.top);
+    if (d) toggleHold(d); else roll();
+  });
   document.addEventListener('keydown', function (e) {
     if ((e.key === ' ' || e.key === 'Enter') && (e.target === document.body || e.target === felt)) { e.preventDefault(); roll(); }
   });
@@ -962,7 +1006,7 @@
     resize();
     var kinds = kindsFor(pool);
     if (last && last.dice && last.dice.length === kinds.length && last.dice.every(function (d, i) { return d.k === kinds[i]; })) {
-      dice = last.dice.map(function (d) { return { id: idSeq++, kind: d.k, num: d.n, target: d.n, x: d.fx * W, y: d.fy * H, z: 0, q: d.q }; });
+      dice = last.dice.map(function (d) { return { id: idSeq++, kind: d.k, num: d.n, target: d.n, x: d.fx * W, y: d.fy * H, z: 0, q: d.q, held: !!d.h }; });
       S = sizeFor(dice.length); clampAll();
       readout = { label: last.label, total: last.total, parts: last.parts || [], mod: last.mod || 0 };
       draw();
@@ -975,7 +1019,7 @@
   if (document.fonts && document.fonts.load) document.fonts.load('40px "Lilita One"').then(function () { draw(); }).catch(function () {});
 
   // test hook
-  window.__dice = { roll: roll, get dice() { return dice; }, get readout() { return readout; }, GEO: GEO };
+  window.__dice = { roll: roll, hold: function (i) { toggleHold(dice[i]); }, get dice() { return dice; }, get readout() { return readout; }, GEO: GEO };
 })();
 </script>
 </body>
