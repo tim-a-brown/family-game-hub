@@ -87,7 +87,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   var CELL = 10, COLS = 22, ROWS = 36, W = 220, H = 360, PZ = 23, PZY = 230;
   function setField(c, r) { COLS = c; ROWS = r; W = c * CELL; H = r * CELL; PZ = ROWS - Math.round(ROWS * (ROWS > COLS ? 0.36 : 0.42)); PZY = PZ * CELL; }
   setField(22, 36);
-  function fieldFor(aw, ah) { var a = aw / Math.max(1, ah); return a >= 1 ? [clamp(Math.round(22 * a), 30, 46), 22] : [22, clamp(Math.round(22 / a), 28, 40)]; }
+  // HB: a band across the top of the screen for the score plates (the floor runs under it; nothing plays there)
+  var HB = 16;
+  function fieldFor(aw, ah) {
+    if (aw >= ah) { var s1 = ah / (22 * CELL + HB); return [clamp(Math.floor(aw / s1 / CELL), 30, 46), 22]; }
+    var s2 = aw / (22 * CELL); return [22, clamp(Math.floor((ah / s2 - HB) / CELL), 28, 46)];
+  }
   var MUSH_HP = 3, LIFE_EVERY = 15000, CSPD = 64, HEAD_X = 1.45, FAST_AT = 60000;
   // Bosses. vu: size of one of its cubes; r: its hit area (an ellipse, half-width and half-height)
   var BOSS = {
@@ -977,7 +982,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     return [tx, ty];
   }
   var cssScale = 1;
-  function toLogical(e) { var r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; }
+  function toLogical(e) { var r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * (H + HB) - HB]; }
   function bindInput() {
     app.addEventListener('pointerdown', function (e) {
       if (screen !== 'game' || e.target.closest('button, .ar-ov, .gbar')) return;
@@ -1107,7 +1112,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var aw = wrapEl.clientWidth - 6, ah = wrapEl.clientHeight - 6;
     if (aw < 40 || ah < 40) return;
     DPR = Math.min(window.devicePixelRatio || 1, 2);
-    var s = Math.min(aw / W, ah / H), w = Math.floor(W * s), h = Math.floor(H * s), dw = Math.round(w * DPR);
+    var s = Math.min(aw / W, ah / (H + HB)), w = Math.floor(W * s), h = Math.floor((H + HB) * s), dw = Math.round(w * DPR);
     if (dw === cssW && cv.width) return;
     cssW = dw; cssScale = w / W;
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
@@ -1524,7 +1529,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       x.shadowBlur = 0;
     }
     // the top of the players' area: a faint glowing dashed line
-    var zy = PZY * k, zg = x.createLinearGradient(0, zy, 0, h); zg.addColorStop(0, hexA(T.line, 0.08)); zg.addColorStop(1, hexA(T.line, 0));
+    var zy = (PZY + HB) * k, zg = x.createLinearGradient(0, zy, 0, h); zg.addColorStop(0, hexA(T.line, 0.08)); zg.addColorStop(1, hexA(T.line, 0));
     x.fillStyle = zg; x.fillRect(0, zy, w, h - zy);
     x.setLineDash([3 * k, 3 * k]); x.strokeStyle = hexA(T.hi, 0.25); x.lineWidth = Math.max(1, 0.6 * k); x.beginPath(); x.moveTo(0, zy); x.lineTo(w, zy); x.stroke(); x.setLineDash([]);
     var vg = x.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)');
@@ -1532,3 +1537,618 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     BGC = {}; BGC[key] = c;
     return c;
   }
+
+  // ── Drawing a frame ──
+  var drawT = 0, lastDraw = 0;
+  function colOf(R, pid) { for (var i = 0; i < R.players.length; i++) if (R.players[i].id === pid) return PCOL[R.players[i].ci % 3]; return '#ffffff'; }
+  function draw() {
+    var R = view(); if (!g || !R || !cv.width) return;
+    var now = performance.now(), dtD = lastDraw ? Math.min(0.05, (now - lastDraw) / 1000) : 0; lastDraw = now;
+    drawT = now / 1000;
+    var wv = WAVES[R.wave || 1] || WAVES[1], tk = wv.theme, T = THEMES[tk], x = g, me = myPid();
+    if (shownTheme !== tk) { shownTheme = tk; if (cabEl) cabEl.style.setProperty('--cc-glow', T.line); }
+    var sx = 0, sy = 0;
+    if (fx.shake > 0) { var m = fx.shake * fx.shake * 5 * S; sx = (Math.random() - 0.5) * m; sy = (Math.random() - 0.5) * m; }
+    x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
+    x.fillStyle = T.deep; x.fillRect(0, 0, cv.width, cv.height);
+    x.drawImage(bgSpr(tk), sx, sy);
+    // a slow band of light sweeping down the floor
+    var band = ((drawT * 0.11) % 1.5 - 0.25) * cv.height, bh = cv.height * 0.16;
+    var bgr = x.createLinearGradient(0, band - bh, 0, band + bh); bgr.addColorStop(0, hexA(T.line, 0)); bgr.addColorStop(0.5, hexA(T.line, 0.08)); bgr.addColorStop(1, hexA(T.line, 0));
+    x.globalCompositeOperation = 'lighter'; x.fillStyle = bgr; x.fillRect(0, band - bh, cv.width, bh * 2); x.globalCompositeOperation = 'source-over';
+    var L = hudLayout(R);
+    drawLives(x, R, L);                      // the lives plates sit on the floor, under everything
+    var oy = HB * S;
+    x.setTransform(S, 0, 0, S, sx, sy + oy);
+    var fr = Math.floor(drawT * 8) % 2;
+    // mushrooms, row by row so a lower one sits in front
+    var grid = R.grid, pois = R.pois;
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) { var hp = grid[r * COLS + c]; if (hp) drawSpr(x, mushSpr(tk, Math.min(MUSH_HP, hp), pois[r * COLS + c] ? 1 : 0), cx(c), cx(r) - 0.5); }
+    if (R.boss && R.boss.type === 'wasp' && R.boss.lane != null && (R.boss.st === 'warn' || R.boss.st === 'dive')) drawLane(x, R.boss);
+    R.segs.forEach(function (s) { if (s.y > -8) { var f2 = (fr + (s.id & 1)) % 2; drawSpr(x, segSpr(tk, s.head, f2, s.dx < 0, s.frz), s.x, s.y + Math.sin(drawT * 12 + s.id) * 0.4); } });
+    R.foes.forEach(function (o) { drawFoe(x, o, tk, fr); });
+    if (R.boss) drawBoss(x, R.boss);
+    // light: power-up halos, enemy shots, lasers, flames
+    x.globalCompositeOperation = 'lighter';
+    R.caps.forEach(function (cp) { glow(x, cp.x, cp.y, 20, POW[cp.k].c, 0.45 + 0.2 * Math.sin(drawT * 6 + cp.id)); });
+    R.bullets.forEach(function (b) { if (GV && b.o === me && b.k !== 'homing') return; drawBullet(x, b, colOf(R, b.o)); });
+    if (GV) GV.lb.forEach(function (b) { drawBullet(x, b, PCOL[GV.ci % 3]); });
+    drawFlames(x, R, dtD, me);
+    x.globalCompositeOperation = 'source-over';
+    R.shots.forEach(function (s) { drawShot(x, s); });
+    R.caps.forEach(function (cp) { drawSpr(x, capSpr(cp.k), cp.x, cp.y, 1 + 0.07 * Math.sin(drawT * 5 + cp.id)); });
+    R.players.forEach(function (p) { drawShip(x, p, me); });
+    // explosions, sparks and flying cubes
+    x.globalCompositeOperation = 'lighter';
+    fx.exps.forEach(function (e) { drawBoom(x, e); });
+    fx.parts.forEach(function (p) { if (p.glow) glow(x, p.x, p.y - p.z, 3.2 * p.s, p.c, p.life / p.max); });
+    x.globalCompositeOperation = 'source-over';
+    fx.parts.forEach(function (p) { if (!p.glow) { var k2 = p.life / p.max; x.globalAlpha = k2 > 0.3 ? 1 : k2 / 0.3; drawSpr(x, cubeSpr(p.c), p.x, p.y - p.z, p.s * (0.55 + 0.45 * k2)); } });
+    x.globalAlpha = 1;
+    // names under the ships online
+    if (R.players.length > 1) R.players.forEach(function (p) {
+      if (!p.alive) return;
+      var px = p.x, py = p.y; if (GV && p.id === me && GV.pred.alive) { px = GV.pred.x; py = GV.pred.y; }
+      x.globalAlpha = 0.9; outlined(p.name.length > 9 ? p.name.slice(0, 8) + '…' : p.name, px, py + 15, 5.5, PCOL[p.ci % 3], 1.4); x.globalAlpha = 1;
+    });
+    // screen-space: score pop-ups, HUD, banners
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    var fpS = Math.max(1, Math.round(L.fp * 0.75));
+    fx.pops.forEach(function (p) {
+      var k3 = p.life / p.max; if (k3 < 0.2 && Math.floor(drawT * 20) % 2) return;
+      var t = p.big ? txt(p.text, p.c, L.fp, p.c) : txt(p.text, p.c, fpS);
+      x.globalAlpha = Math.min(1, k3 * 4); drawTxtAt(x, t, clamp(p.x * S + sx, t.w / 2, L.cw - t.w / 2), p.y * S + sy + oy, p.big && k3 > 0.88 ? 1 + (k3 - 0.88) * 3 : 1); x.globalAlpha = 1;
+    });
+    drawHud(x, R, L);
+    if (fx.flash > 0) { x.globalAlpha = fx.flash * 0.28; x.fillStyle = fx.flashC; x.fillRect(0, 0, cv.width, cv.height); x.globalAlpha = 1; }
+    if (fx.banner) drawBanner(x, L);
+    if (R.phase === 'over' || R.phase === 'won') {
+      var ov = clamp((R.phaseT || 0) / 0.4, 0, 1);
+      x.globalAlpha = ov * 0.55; x.fillStyle = '#02030a'; x.fillRect(0, 0, cv.width, cv.height); x.globalAlpha = 1;
+      if (ov >= 1 || Math.floor(drawT * 16) % 2) { var tt = R.phase === 'won' ? txt('Garden saved!', '#ffd23d', L.fp * 2, '#ffb02e') : txt('Game over', '#ff4a6a', L.fp * 2, '#ff3d5a'); drawTxtAt(x, tt, L.cw / 2, L.ch * 0.45, Math.min(1, L.cw * 0.9 / tt.w)); }
+    }
+    if (GV && GV.stall) { x.fillStyle = 'rgba(0,0,0,.6)'; x.fillRect(0, L.ch * 0.5 - 20 * DPR, L.cw, 40 * DPR); drawTxtAt(x, txt('Waiting for ' + GV.hostName, '#ffffff', L.fp), L.cw / 2, L.ch * 0.5); }
+  }
+  function font(px) { return '400 ' + px + 'px "Lilita One", ui-rounded, system-ui, sans-serif'; }
+  function outlined(t, x0, y0, px, col, lw) { g.font = font(px); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.lineWidth = lw || px * 0.22; g.strokeStyle = 'rgba(0,0,0,.8)'; g.strokeText(t, x0, y0); g.fillStyle = col; g.fillText(t, x0, y0); }
+  function drawShip(x, p, me) {
+    var px = p.x, py = p.y;
+    if (GV && p.id === me && GV.pred.alive) { px = GV.pred.x; py = GV.pred.y; }
+    if (!p.alive) return;
+    var blink = p.inv > 0 && Math.floor(drawT * 12) % 2, col = PCOL[p.ci % 3], a = blink ? 0.35 : 1;
+    x.globalCompositeOperation = 'lighter';
+    glow(x, px, py, 22, col, 0.32 * a);
+    glow(x, px, py + 8.5, 4 + Math.random() * 2.5, '#ffffff', 0.6 * a);
+    x.globalCompositeOperation = 'source-over';
+    x.globalAlpha = a;
+    x.save(); x.translate(px, py); x.rotate(drawT * 1.3); drawSpr(x, ringSpr(p.ci), 0, 0); x.restore();
+    x.globalAlpha = a;
+    drawSpr(x, shipSpr(p.ci), px, py - 1);
+    x.lineCap = 'round';
+    // time left on a weapon: an arc round the ring
+    if (p.power && p.powerT > 0) { x.strokeStyle = POW[p.power].c; x.lineWidth = 1.8; x.beginPath(); x.arc(px, py, 14, -PI / 2, -PI / 2 + TAU * clamp(p.powerT / POW_T, 0, 1)); x.stroke(); }
+    // shield: a bubble, its own arc for the time left, flickering as it runs out
+    if (p.shield > 0 && (p.shield > 1.5 || Math.floor(drawT * 10) % 2)) {
+      x.globalCompositeOperation = 'lighter'; glow(x, px, py, 24, POW.shield.c, 0.3 * a); x.globalCompositeOperation = 'source-over';
+      x.globalAlpha = 0.5 * a; x.strokeStyle = '#c8ffe0'; x.lineWidth = 0.8; x.beginPath(); x.arc(px, py, 17 + Math.sin(drawT * 9) * 0.6, 0, TAU); x.stroke();
+      x.globalAlpha = a; x.strokeStyle = POW.shield.c; x.lineWidth = 1.4; x.beginPath(); x.arc(px, py, 17, -PI / 2, -PI / 2 + TAU * clamp(p.shield / SHIELD_T, 0, 1)); x.stroke();
+    }
+    x.globalAlpha = 1;
+  }
+  function drawBullet(x, b, col) {
+    if (b.k === 'rapid') drawBoltAt(x, b.x, b.y, b.vx, b.vy, POW.rapid.c, 12, 1.8);
+    else if (b.k === 'ice') { glow(x, b.x, b.y, 6, POW.ice.c, 0.6); drawBoltAt(x, b.x, b.y, b.vx, b.vy, POW.ice.c, 8, 2.8); }
+    else if (b.k === 'homing') { drawBoltAt(x, b.x, b.y, b.vx, b.vy, POW.homing.c, 14, 3); glow(x, b.x, b.y, 7, POW.homing.c, 0.8); glow(x, b.x, b.y, 2.5, '#ffffff', 0.9); }
+    else drawBoltAt(x, b.x, b.y, b.vx || 0, b.vy || -1, col, 16, 2.4);
+  }
+  // Flames are drawn here only (each device makes its own), from every ship that has the Flame and is firing
+  function drawFlames(x, R, dt, me) {
+    R.players.forEach(function (p) {
+      var px = p.x, py = p.y, on = p.flaming;
+      if (GV && p.id === me) { on = GV.flameLocal; px = GV.pred.x; py = GV.pred.y; }
+      if (!on || !p.alive) return;
+      var n = Math.min(8, Math.round(dt * 110 + Math.random()));
+      for (var i = 0; i < n; i++) { if (fx.flames.length > 240) fx.flames.shift(); var l = rnd(0.26, 0.36); fx.flames.push({ x: px + rnd(-1.5, 1.5), y: py - 9, vx: rnd(-62, 62), vy: -rnd(270, 330), life: l, max: l }); }
+    });
+    fx.flames.forEach(function (f) {
+      var k = f.life / f.max, sz = 3 + (1 - k) * 10, col = k > 0.72 ? '#fff3b0' : k > 0.42 ? '#ffa02e' : '#ff4a1f';
+      glow(x, f.x, f.y, sz, col, 0.3 + 0.45 * k);
+    });
+  }
+  function drawLane(x, B) {
+    if (B.st === 'warn' && Math.floor(drawT * 12) % 2) return;
+    var hw = BOSS.wasp.r[0] * 0.8, top = B.y + 14, off = (drawT * 70) % 14;
+    x.globalCompositeOperation = 'lighter';
+    x.strokeStyle = 'rgba(255,61,90,.85)'; x.lineWidth = 1.2; x.setLineDash([5, 4]); x.lineDashOffset = -off;
+    x.beginPath(); x.moveTo(B.lane - hw, top); x.lineTo(B.lane - hw, H); x.moveTo(B.lane + hw, top); x.lineTo(B.lane + hw, H); x.stroke(); x.setLineDash([]);
+    x.fillStyle = 'rgba(255,61,90,.1)'; x.fillRect(B.lane - hw, top, hw * 2, H - top);
+    x.strokeStyle = 'rgba(255,120,140,.8)'; x.lineWidth = 1.4;
+    for (var y = top + off; y < H; y += 14) { x.beginPath(); x.moveTo(B.lane - 4, y); x.lineTo(B.lane, y + 4); x.lineTo(B.lane + 4, y); x.stroke(); }
+    x.globalCompositeOperation = 'source-over';
+  }
+  function drawBoom(x, e) {
+    var k = 1 - e.life / e.max;
+    if (e.ring) { x.globalAlpha = (1 - k) * 0.9; x.strokeStyle = e.c; x.lineWidth = 3 * (1 - k) + 0.6; x.beginPath(); x.arc(e.x, e.y, e.r * Math.pow(k, 0.55), 0, TAU); x.stroke(); x.globalAlpha = 1; glow(x, e.x, e.y, e.r * 0.8, e.c, (1 - k) * 0.35); return; }
+    glow(x, e.x, e.y, e.r * (0.5 + k), e.c, (1 - k) * 0.9);
+    glow(x, e.x, e.y, e.r * 0.35 * (1 - k), '#ffffff', 1 - k);
+    x.globalAlpha = (1 - k) * 0.8; x.strokeStyle = e.c; x.lineWidth = 1.5 * (1 - k) + 0.3; x.beginPath(); x.arc(e.x, e.y, e.r * k * 1.1, 0, TAU); x.stroke(); x.globalAlpha = 1;
+  }
+  // a boss's shot: a hot core with a dark rim and a glow, so it stands out on any floor
+  function drawShot(x, s) {
+    var on = Math.floor(drawT * 20) % 2, col = s.k === 'sting' ? '#ffd23d' : s.k === 'spark' ? '#eaff3d' : s.k === 'venom' ? '#5aff7a' : '#ff9a2a';
+    x.globalCompositeOperation = 'lighter'; glow(x, s.x, s.y, 8, col, 0.75);
+    if (s.k === 'sting') { drawBoltAt(x, s.x, s.y, s.vx, s.vy, col, 9, 2.4); x.globalCompositeOperation = 'source-over'; return; }
+    x.globalCompositeOperation = 'source-over';
+    x.fillStyle = 'rgba(10,4,14,.8)'; x.beginPath(); x.arc(s.x, s.y, 2.9, 0, TAU); x.fill();
+    x.fillStyle = on ? '#ffffff' : shade(col, 0.5); x.beginPath(); x.arc(s.x, s.y, 2, 0, TAU); x.fill();
+  }
+  function drawFoe(x, o, tk, fr) {
+    var f2 = (fr + (o.id & 1)) % 2, s;
+    if (o.type === 'spider') s = spiderSpr(tk, f2);
+    else if (o.type === 'flea') s = beeSpr(Math.floor(drawT * 22 + o.id) % 2, o.hp < 2 ? 1 : 0);
+    else if (o.type === 'scorp') s = scorpSpr(f2, o.vx < 0);
+    else s = rockSpr(Math.floor(o.y / 6) % 2);
+    drawSpr(x, s, o.x, o.y);
+    if (o.frz > 0) { x.globalCompositeOperation = 'lighter'; glow(x, o.x, o.y, 13, POW.ice.c, 0.45); x.globalCompositeOperation = 'source-over'; }
+  }
+  function drawBoss(x, B) {
+    var D = BOSS[B.type], fr = Math.floor(drawT * (B.type === 'mega' || B.type === 'beetle' ? 6 : 14)) % 2, sp = bossSpr(B, fr), px = B.x, py = B.y;
+    if (B.st === 'die') { if (Math.floor(drawT * 20) % 2) return; px += rnd(-1.5, 1.5); py += rnd(-1.5, 1.5); }
+    var dim = B.type === 'firefly' && B.lit <= 0.5;
+    x.globalCompositeOperation = 'lighter';
+    glow(x, px, py, D.r[0] * 2.3, D.c, dim ? 0.06 : B.type === 'firefly' ? 0.5 : 0.24);
+    x.globalCompositeOperation = 'source-over';
+    x.globalAlpha = dim ? 0.5 : 1;
+    drawSpr(x, sp, px, py);
+    if (B.flash > 0 || B.hitf) { if (Math.floor(drawT * 30) % 2) drawSprImg(x, sp, sp.w || (sp.w = tintCanvas(sp.c, '#ffffff', 0.6)), px, py); }
+    else if (B.st === 'warn' && Math.floor(drawT * 14) % 2) drawSprImg(x, sp, sp.r || (sp.r = tintCanvas(sp.c, '#ff3d5a', 0.55)), px, py);
+    if (B.frz > 0) drawSprImg(x, sp, sp.i || (sp.i = tintCanvas(sp.c, '#8ff4ff', 0.35)), px, py);
+    x.globalAlpha = 1;
+  }
+
+  // ── HUD: the cabinet's coloured plates, drawn into the screen ──
+  // Score plates along the top (one per player, in their colour; solo shows the high score on the right),
+  // lives plates along the bottom, the wave or the boss's name in the middle, the boss's health bar under it.
+  function hudLayout(R) {
+    var cw = cv.width, ch = cv.height, css = cw / DPR;
+    var fp = Math.max(1, Math.round(DPR * (css > 900 ? 2.6 : css > 600 ? 2.1 : css > 330 ? 1.6 : 1.3)));
+    var m = Math.round(5 * DPR), ph = fp * 13, pw = Math.round(Math.min(cw * 0.3, fp * 60));
+    var ps = R.players.slice().sort(function (a, b) { return a.ci - b.ci; });
+    var slots = ps.length >= 3 ? [m, Math.round((cw - pw) / 2), cw - m - pw] : ps.length === 2 ? [m, cw - m - pw] : [m];
+    return { fp: fp, m: m, ph: ph, pw: pw, ps: ps, slots: slots, cw: cw, ch: ch, lw: Math.round(fp * 30), lh: Math.round(fp * 11) };
+  }
+  function plateSpr(w, h, col, dim) {
+    return spx('pl' + w + 'x' + h + col + (dim ? 1 : 0), function () {
+      var pad = Math.round(h * 0.4), c = mk(w + pad * 2, h + pad * 2), x = c.getContext('2d'), k = Math.max(1, h / 16), cut = Math.round(h * 0.28);
+      function path(ins) { var a = pad + ins, b = pad + ins, w2 = w - ins * 2, h2 = h - ins * 2, ct = Math.max(1, cut - ins * 0.6); x.beginPath(); x.moveTo(a + ct, b); x.lineTo(a + w2 - ct, b); x.lineTo(a + w2, b + ct); x.lineTo(a + w2, b + h2 - ct); x.lineTo(a + w2 - ct, b + h2); x.lineTo(a + ct, b + h2); x.lineTo(a, b + h2 - ct); x.lineTo(a, b + ct); x.closePath(); }
+      path(0); x.fillStyle = 'rgba(2,4,16,.84)'; x.fill();
+      x.shadowColor = col; x.shadowBlur = dim ? k * 2 : k * 6;
+      path(k); x.strokeStyle = dim ? hexA(col, 0.6) : col; x.lineWidth = k * 1.8; x.stroke();
+      x.shadowBlur = 0;
+      path(k * 3.2); x.strokeStyle = hexA(col, dim ? 0.2 : 0.4); x.lineWidth = Math.max(1, k * 0.8); x.setLineDash([k * 1.3, k * 1.3]); x.stroke(); x.setLineDash([]);
+      return { c: c, pad: pad };
+    });
+  }
+  function meter(x, X, Y, w, h, col, f) {
+    x.fillStyle = 'rgba(2,4,16,.8)'; x.fillRect(X - 1, Y - 1, w + 2, h + 2);
+    x.fillStyle = col; x.shadowColor = col; x.shadowBlur = h * 2; x.fillRect(X, Y, Math.max(0, w * clamp(f, 0, 1)), h); x.shadowBlur = 0;
+  }
+  function gem(x, X, Y, s, col) {
+    x.beginPath(); x.moveTo(X, Y - s); x.lineTo(X + s * 0.46, Y - s * 0.15); x.lineTo(X, Y + s * 0.75); x.lineTo(X - s * 0.46, Y - s * 0.15); x.closePath();
+    x.fillStyle = shade(col, 0.35); x.shadowColor = col; x.shadowBlur = s * 0.8; x.fill(); x.shadowBlur = 0;
+    x.beginPath(); x.moveTo(X, Y - s); x.lineTo(X + s * 0.46, Y - s * 0.15); x.lineTo(X, Y + s * 0.75); x.closePath(); x.fillStyle = shade(col, -0.15); x.fill();
+  }
+  function drawLives(x, R, L) {
+    var y = L.ch - L.m - L.lh, fp = Math.max(1, L.fp - (L.fp > 3 ? 1 : 0));
+    L.ps.forEach(function (p, i) {
+      var n = L.slots.length, X = i === 0 ? L.m : i === n - 1 ? L.cw - L.m - L.lw : Math.round((L.cw - L.lw) / 2), col = PCOL[p.ci % 3];
+      var pl = plateSpr(L.lw, L.lh, col, true);
+      x.globalAlpha = 0.9; x.drawImage(pl.c, X - pl.pad, y - pl.pad); x.globalAlpha = 1;
+      var t = txt('x' + Math.max(0, p.lives), '#ffffff', fp), s = L.lh * 0.36, gx = X + L.lw / 2 - (t.w + s * 1.4) / 2 + s * 0.5;
+      gem(x, gx, y + L.lh / 2, s, col);
+      drawTxtAt(x, t, gx + s * 0.9 + t.w / 2, y + L.lh / 2);
+    });
+  }
+  function drawHud(x, R, L) {
+    var fp = L.fp, y = L.m;
+    L.ps.forEach(function (p, i) {
+      var X = L.slots[i], col = PCOL[p.ci % 3], dim = !p.alive && p.lives <= 0;
+      var pl = plateSpr(L.pw, L.ph, col, dim); x.drawImage(pl.c, X - pl.pad, y - pl.pad);
+      drawTxtAt(x, txt(fmt(p.score), dim ? '#8890a8' : '#ffffff', fp), X + L.pw / 2, y + L.ph / 2);
+      // weapon and shield time left, under the plate
+      var yy = y + L.ph + Math.round(fp * 1.5), mh = Math.max(2, Math.round(fp * 0.9));
+      if (p.alive && p.power && p.powerT > 0) { meter(x, X + L.pw * 0.1, yy, L.pw * 0.8, mh, POW[p.power].c, p.powerT / POW_T); yy += mh + fp * 1.5; }
+      if (p.alive && p.shield > 0) meter(x, X + L.pw * 0.1, yy, L.pw * 0.8, mh, POW.shield.c, p.shield / SHIELD_T);
+    });
+    if (L.ps.length === 1 && !net.mode) {
+      var best = Math.max(G ? G.best0 : 0, R.score), X2 = L.cw - L.m - L.pw, pl2 = plateSpr(L.pw, L.ph, '#c8d0e8', true);
+      x.drawImage(pl2.c, X2 - pl2.pad, y - pl2.pad);
+      var ht = txt('Hi ' + fmt(best), '#d8def0', fp); drawTxtAt(x, ht, X2 + L.pw / 2, y + L.ph / 2, Math.min(1, (L.pw - fp * 4) / ht.w));
+    }
+    var midX = L.cw / 2, labY = L.ps.length >= 3 ? y + L.ph + fp * 7 : y + L.ph / 2, fpL = Math.max(1, fp - 1), room = L.ps.length >= 3 ? L.cw * 0.5 : L.cw - 2 * (L.m + L.pw) - fp * 4;
+    if (R.boss) {
+      var B = R.boss, D = BOSS[B.type], f = clamp(B.hp / B.max, 0, 1), nt = txt(D.name, D.c, fpL);
+      drawTxtAt(x, nt, midX, labY, Math.min(1, room / nt.w));
+      var bw = Math.round(L.cw * (L.cw > L.ch ? 0.44 : 0.6)), bh = Math.max(4, Math.round(fp * 2)), bx = Math.round((L.cw - bw) / 2), by = Math.round(Math.max(labY + fp * 5, y + L.ph + fp * 3)), k = Math.max(1, Math.round(fp / 2));
+      x.fillStyle = 'rgba(2,4,16,.85)'; x.fillRect(bx - k * 2, by - k * 2, bw + k * 4, bh + k * 4);
+      x.strokeStyle = hexA(D.c, 0.8); x.lineWidth = k; x.strokeRect(bx - k * 1.5, by - k * 1.5, bw + k * 3, bh + k * 3);
+      var gr = x.createLinearGradient(0, by, 0, by + bh); gr.addColorStop(0, shade(D.c, 0.6)); gr.addColorStop(1, D.c);
+      x.fillStyle = gr; x.shadowColor = D.c; x.shadowBlur = bh * 1.5; x.fillRect(bx, by, Math.round(bw * f), bh); x.shadowBlur = 0;
+      x.fillStyle = 'rgba(2,4,16,.5)'; for (var q = 1; q < 20; q++) x.fillRect(bx + Math.round(bw * q / 20), by, Math.max(1, k), bh);
+    } else if (R.wave) {
+      var wt = txt('Wave ' + R.wave + '/' + LAST, '#ffffff', fpL); drawTxtAt(x, wt, midX, labY, Math.min(1, room / wt.w));
+    }
+  }
+  function drawBanner(x, L) {
+    var bn = fx.banner, k = 1 - bn.life / bn.max, a = k < 0.08 ? k / 0.08 : bn.life < 0.4 ? bn.life / 0.4 : 1;
+    if (k < 0.15 && Math.floor(drawT * 16) % 2) return;
+    var big = txt(bn.text, bn.c, Math.round(L.fp * 2.2), bn.c), fit2 = Math.min(1, L.cw * 0.92 / big.w), sc = (k < 0.1 ? 1.5 - k * 5 : 1) * fit2, cy = L.ch * 0.42;
+    x.globalAlpha = a; drawTxtAt(x, big, L.cw / 2, cy, sc);
+    if (bn.sub) { var st = txt(bn.sub, '#ffffff', L.fp); drawTxtAt(x, st, L.cw / 2, cy + big.h * fit2 * 0.5 + st.h * 0.6, Math.min(1, L.cw * 0.9 / st.w)); }
+    x.globalAlpha = 1;
+  }
+
+  // ═══ End of a game ══════════════════════════════════════════════════════
+  // won: the garden is saved (wave 10 beaten). note: why an online game ended early ('host' left)
+  function endGame(won, res, note) {
+    var R = res || null;
+    if (G && G.ended && !res) return;
+    if (G) G.ended = true;
+    Mus.stop(true);
+    if (!R) {
+      R = { won: !!won, wave: G.wave, score: G.score, players: G.players.map(function (p) { return { id: p.id, name: p.name, score: p.score, ci: p.ci }; }), stats: G.stats, started: G.started, diff: G.diff };
+      if (G.mode === 'host') netOver(R);
+    }
+    var me = R.players.filter(function (p) { return p.id === myPid(); })[0] || R.players[0] || { name: 'Player', score: 0 };
+    var online = R.players.length > 1 || !!net.mode, st = R.stats || {}, h = [];
+    h.push(R.won ? 'Saved the garden: beat all 10 waves' : 'Reached wave ' + R.wave + ' of ' + LAST);
+    if (st.bosses) h.push('Beat ' + st.bosses + (st.bosses === 1 ? ' boss' : ' bosses'));
+    if (st.segs) h.push('Shot ' + st.segs + ' centipede segments (' + (st.heads || 0) + ' heads)');
+    if (st.spiders) h.push('Got ' + st.spiders + (st.spiders === 1 ? ' spider' : ' spiders'));
+    if (st.powers) h.push('Picked up ' + st.powers + (st.powers === 1 ? ' power-up' : ' power-ups'));
+    if (st.combo >= 5) h.push('Best combo x' + st.combo);
+    if (online) h.push('Team score ' + fmt(R.score));
+    if (note) h.push(note);
+    var myScore = online ? me.score : R.score;
+    Kit.record(KEY, {
+      started: R.started || null, mode: (online ? 'Online co-op' : 'Solo') + ' · ' + (DIFF[R.diff] || DIFF.arcade).name,
+      players: online ? R.players.map(function (p) { return { name: p.name, score: p.score }; }) : [{ name: me.name, score: R.score }],
+      winner: online ? null : undefined, highlights: h,
+      summary: (online ? fmt(R.score) + ' team · ' : fmt(R.score) + ' points · ') + (R.won ? 'garden saved' : 'wave ' + R.wave),
+      badge: R.won ? 'Saved' : 'Wave ' + R.wave,
+      meta: { score: R.score, wave: R.wave, won: !!R.won, online: online }
+    });
+    var best0 = G ? G.best0 : ArcadeHi.best(HI), best = myScore > best0 && myScore > 0;
+    var again = net.mode ? function () { backToTable(); } : online ? goLobby : function () { startSolo(cfgLast || { who: me.name, diff: 'arcade' }); };
+    ArcadeHi.check(HI, myScore, function () {
+      Kit.win({
+        lose: !R.won && !best, icon: R.won || best ? 'trophy' : 'meh',
+        title: note && !R.won ? 'Game over' : R.won ? 'You saved the garden!' : best ? 'New high score!' : 'Game over',
+        sub: (online ? 'Team ' + fmt(R.score) + ' · you ' + fmt(me.score) : fmt(R.score) + ' points') + ' · ' + (R.won ? 'all 10 waves' : 'wave ' + R.wave),
+        rank: online ? R.players.slice().sort(function (a, b) { return b.score - a.score; }).map(function (p) { return { name: p.name, score: fmt(p.score), color: PCOL[p.ci % 3] }; }) : null,
+        notes: note ? [note] : null,
+        again: again, againLabel: net.mode ? (net.mode === 'host' ? 'Back to your table' : 'Back to the table') : online ? 'Find another table' : 'Play again',
+        extra: net.mode ? [{ label: 'Leave the table', onClick: function () { leaveOnline(false); goLobby(); } }] : [{ label: 'High scores', onClick: function () { ArcadeHi.show(HI, 'Centipede'); showSetup(); } }, { label: 'Change settings', onClick: showSetup }, { label: 'Play online', onClick: goLobby }]
+      });
+    });
+  }
+
+  // ═══ Online ═════════════════════════════════════════════════════════════
+  // The host's device runs the game. Every 50 ms it sends everyone a snapshot (fast lane: positions of
+  // everything that moves) and, on the reliable lane, the effects and mushroom changes since the last one
+  // (the whole field, with its shape, at the start of each wave). Each guest sends its ship's position and
+  // fire button about 30 times a second, moves its own ship at once (so it feels instant) and draws
+  // everything else 100 ms in the past, smoothly between two snapshots.
+  var net = { mode: null, table: null, peer: null, roster: [], evq: [], snapT: 0, seq: 0, lobby: null, wait: null, gridDirty: false, pidN: 1, inT: 0, me: null, hostName: '' };
+  var DELAY = 100;
+  function meName() { var m = lsGet(NETME, {}) || {}; return m.name || (function () { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } })() || (Kit.knownNames && Kit.knownNames()[0]) || ''; }
+  function goLobby() {
+    leaveView(); leaveOnline(false);
+    screen = 'lobby'; app.className = 'stage'; root.classList.remove('ar-on');
+    var s = lsGet('centi_opts', {}) || {}; ctl.auto = s.auto !== false; ctl.drag = DRAG[s.drag] || DRAG.normal;
+    net.lobby = Online.lobby(app, {
+      game: 'centipede', title: 'Play Online', max: 3,
+      intro: 'Two or three players, each on their own device, on the same field.',
+      me: { name: meName() },
+      onName: function (n) { var m = lsGet(NETME, {}) || {}; m.name = n; lsSet(NETME, m); },
+      onHost: function (me) { hostTable(me.name); },
+      onJoin: function (code, room, me) { joinTable(code, me.name); },
+      onSolo: function () { showSetup(); }, solo: 'Play solo instead',
+      sub: function (r) { return r.status === 'playing' ? (r.info || 'Playing') + ' · ' + (r.n || 1) + ' of 3 · join in' : (r.n || 1) + ' of 3 players'; },
+      note: 'Each device connects straight to the host’s. If a device can’t connect, try both on the same Wi-Fi.'
+    });
+    window.scrollTo(0, 0);
+  }
+  function closeLobby() { if (net.lobby) { net.lobby.close(); net.lobby = null; } }
+  function busy(text) { app.innerHTML = ''; app.appendChild(el('div', { class: 'ol' }, [el('div', { class: 'ol-row' }, [el('i', { class: 'ol-spin' }), el('div', { class: 'grow' }, [el('b', { text: text })])])])); }
+
+  // ── Hosting ──
+  function hostTable(name) {
+    closeLobby(); busy('Opening your table…');
+    Online.host({ game: 'centipede', name: name, max: 3 }).then(function (table) {
+      // the server refused the new table: back to the lobby instead of a waiting room nobody can find
+      table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + (Online.errText ? Online.errText(e) : '')); leaveOnline(false); goLobby(); });
+      net.mode = 'host'; net.table = table; net.me = name; net.pidN = 1;
+      net.roster = [{ pid: 1, name: name, dev: Online.dev(), host: true }];
+      table.on('peer', function (peer) {
+        peer._pid = ++net.pidN;
+        peer.send({ t: 'hi', you: peer._pid }, true);
+        net.roster.push({ pid: peer._pid, name: uniqueName(peer.name), dev: peer.id, peer: peer });
+        sendRoster();
+        Kit.toast(peerName(peer) + ' joined'); Kit.sfx('pop');
+        if (G && G.mode === 'host' && !G.ended) {     // joining a game already going
+          var P = addPlayer({ id: peer._pid, name: peerName(peer), dev: peer.id });
+          popup(P.x, P.y - 14, P.name + ' joined', P.color, true); sound('extra');
+          sendInit(peer);
+        }
+      });
+      table.on('leave', function (peer) {
+        net.roster = net.roster.filter(function (r) { return r.peer !== peer; });
+        sendRoster();
+        Kit.toast(peerName(peer) + ' left');
+        if (G && G.mode === 'host') {
+          var P = G.players.filter(function (p) { return p.id === peer._pid; })[0];
+          if (P) { if (P.alive) burst(P.x, P.y, P.color, 20, 1.2); G.players.splice(G.players.indexOf(P), 1); G.bullets = G.bullets.filter(function (b) { return b.o !== P.id; }); }
+        }
+      });
+      table.on('msg', function (peer, m) {
+        if (m.t === 'i' && G && G.mode === 'host') {
+          var P = G.players.filter(function (p) { return p.id === peer._pid; })[0];
+          if (P) { P.tx = m.x / 4; P.ty = m.y / 4; P.fire = !!m.f; P.lastIn = performance.now(); }
+        }
+      });
+      showWait();
+    }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
+  }
+  function peerName(peer) { var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; return r ? r.name : peer.name; }
+  function uniqueName(n) { var base = n || 'Player', k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
+  function rosterMsg() { return { t: 'ro', ro: net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host }; }), playing: !!(G && G.mode === 'host' && !G.ended) }; }
+  function sendRoster() { if (net.table) net.table.broadcast(rosterMsg(), true); if (net.wait) net.wait.update(waitPlayers(net.roster, 1)); }
+  function waitPlayers(ro, mePid) { return ro.map(function (r, i) { return { name: r.name, host: !!r.host, me: r.pid === mePid, color: PCOL[i % 3] }; }); }
+  function showWait() {
+    leaveView(); closeLobby(); screen = 'wait'; app.className = 'stage'; root.classList.remove('ar-on');
+    if (net.mode === 'host') {
+      net.table.setStatus('open', '');
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 3, players: waitPlayers(net.roster, 1), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
+        note: 'Everyone shares the team score and keeps their own score too.' });
+    } else {
+      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 3, players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); } });
+    }
+    window.scrollTo(0, 0);
+  }
+  function hostStart() {
+    var s = lsGet('centi_opts', {}) || {};
+    net.wait = null; G = null; GV = null;
+    buildView();
+    var f = wantField();
+    makeGame({ mode: 'host', cols: f[0], rows: f[1], diff: s.diff || 'arcade', players: net.roster.map(function (r) { return { id: r.pid, name: r.name, local: !!r.host, dev: r.dev }; }) });
+    Kit.gameStart();
+    net.roster.forEach(function (r) { if (r.peer) sendInit(r.peer); });
+    net.gridDirty = false;
+    net.table.setStatus('playing', 'Wave 1');
+    cssW = 0; fit();
+  }
+  function gridStr() { var s = ''; for (var i = 0; i < G.grid.length; i++) s += String.fromCharCode(48 + G.grid[i] + (G.pois[i] ? 4 : 0)); return s; }
+  function sendInit(peer) {
+    peer.send({ t: 'init', you: peer._pid, g: gridStr(), fc: COLS, fr: ROWS, w: G.wave, ph: PH.indexOf(G.phase), diff: G.diff, ro: rosterMsg().ro, host: net.me }, true);
+  }
+  function q4(v) { return Math.round(v * 4); }
+  function ang(vx, vy) { return Math.round(Math.atan2(vy, vx) * 100); }
+  function netHostTick() {
+    var now = performance.now();
+    if (now - net.snapT < 50) return;
+    net.snapT = now;
+    var t = net.table; if (!t || !t.count()) { net.evq = []; if (G.md) G.md.length = 0; net.gridDirty = false; return; }
+    if (net.gridDirty) { net.gridDirty = false; G.md = []; t.broadcast({ t: 'e', ev: net.evq, w: G.wave, g: gridStr(), fc: COLS, fr: ROWS }, true); net.evq = []; }
+    else if (net.evq.length || G.md.length) { t.broadcast({ t: 'e', ev: net.evq, m: G.md, w: G.wave }, true); net.evq = []; G.md = []; }
+    var s = { t: 's', q: ++net.seq, tm: Math.round(now), w: G.wave, ph: PH.indexOf(G.phase), pt: Math.round(G.phaseT * 10), sc: G.score, c: [], f: [], k: [], u: [], cp: [], p: [], b: 0 };
+    G.segs.forEach(function (sg) { s.c.push(sg.id, q4(sg.x), q4(sg.y), (sg.head ? 1 : 0) | (sg.dx < 0 ? 2 : 0) | (sg.frz ? 4 : 0)); });
+    G.foes.forEach(function (o) { s.f.push(o.id, FT.indexOf(o.type), q4(o.x), q4(o.y), o.hp, (o.vx < 0 ? 1 : 0) | (o.frz > 0 ? 2 : 0)); });
+    G.shots.forEach(function (o) { s.k.push(o.id, KT.indexOf(o.k), q4(o.x), q4(o.y), ang(o.vx, o.vy)); });
+    G.bullets.forEach(function (b) { s.u.push(b.id, b.o, q4(b.x), q4(b.y), BK.indexOf(b.k), ang(b.vx, b.vy)); });
+    G.caps.forEach(function (c) { s.cp.push(c.id, POWK.indexOf(c.k), q4(c.x), q4(c.y)); });
+    G.players.forEach(function (p) { s.p.push([p.id, q4(p.x), q4(p.y), (p.alive ? 1 : 0) | (p.inv > 0 ? 2 : 0) | (p.flaming ? 4 : 0), p.lives, p.score, p.power ? POWK.indexOf(p.power) + 1 : 0, Math.round(p.powerT * 10), p.ci, p.name, Math.round(p.shield * 10)]); });
+    if (G.boss) { var B = G.boss; s.b = [B.id, BT.indexOf(B.type), q4(B.x), q4(B.y), Math.round(B.hp * 10) / 10, Math.round(B.max * 10) / 10, BST.indexOf(B.st), Math.round(B.lit * 100), B.flash > 0 ? 1 : 0, B.enraged ? 1 : 0, B.lane == null ? -1 : q4(B.lane), B.frz > 0 ? 1 : 0]; }
+    t.broadcast(s, false);
+  }
+  function netOver(R) {
+    if (!net.table) return;
+    if (net.evq.length || G.md.length) { net.table.broadcast({ t: 'e', ev: net.evq, m: G.md }, true); net.evq = []; G.md = []; }
+    net.table.broadcast({ t: 'over', r: R }, true);
+    net.table.setStatus('open', '');
+  }
+  function backToTable() {
+    if (net.mode === 'host' && net.table && !net.table.closed) { G = null; showWait(); sendRoster(); return; }
+    if (net.mode === 'guest' && net.peer && !net.peer.closed) { GV = null; showWait(); return; }
+    leaveOnline(false); goLobby();
+  }
+
+  // ── Joining ──
+  function joinTable(code, name) {
+    closeLobby(); busy('Connecting to the table…');
+    Online.join(code, { game: 'centipede', name: name }).then(function (peer) {
+      net.mode = 'guest'; net.peer = peer; net.hostName = peer.name; net.me = name; net.roster = []; net.myPid = null;
+      peer.on('msg', guestMsg);
+      peer.on('close', function (why) {
+        if (net.peer !== peer) return;
+        var playing = screen === 'game' && GV && !GV.ended;
+        net.peer = null; net.mode = null;
+        if (playing) { GV.ended = true; var res = GV.lastRes(); endGame(false, res, (net.hostName || 'The host') + (why === 'host' || why === 'left' ? ' left the game' : '’s table lost its connection')); }
+        else if (screen === 'wait') { Kit.toast((net.hostName || 'The host') + ' closed the table'); goLobby(); }
+      });
+      showWait();
+    }).catch(function (e) {
+      var msg = e && e.nat ? e.message : Online.errText(e);
+      if (e && e.nat) Kit.sheet({ title: 'Couldn’t connect', html: '<p>' + Kit.esc(msg) + '</p>' }); else Kit.toast(msg);
+      goLobby();
+    });
+  }
+  function guestMsg(m) {
+    if (m.t === 'hi') { net.myPid = m.you; return; }
+    if (m.t === 'ro') { net.roster = m.ro; if (net.wait) net.wait.update(waitPlayers(m.ro, net.myPid)); if (GV) GV.names = m.ro; return; }
+    if (m.t === 'init') { net.myPid = m.you; net.roster = m.ro; guestStart(m); return; }
+    if (!GV) return;
+    if (m.t === 's') { guestSnap(m); return; }
+    if (m.t === 'e') { setTimeout(function () { if (!GV) return; if (m.g) guestGrid(m.g, m.fc, m.fr); else guestDiffs(m.m); (m.ev || []).forEach(applyFx); }, DELAY); return; }
+    if (m.t === 'over') { var R = m.r; setTimeout(function () { if (!GV || GV.ended) return; GV.ended = true; GV.phase = R.won ? 'won' : 'over'; GV.phaseT = 0; setTimeout(function () { endGame(R.won, R); }, 1800); }, DELAY); }
+  }
+  // the whole field from the host (a new wave), and its shape if that changed
+  function guestGrid(gs, fc, fr) {
+    if (fc && fr && (fc !== COLS || fr !== ROWS)) { setField(fc, fr); refit = true; }
+    GV.grid = new Uint8Array(COLS * ROWS); GV.pois = new Uint8Array(COLS * ROWS);
+    for (var i = 0; i < gs.length && i < GV.grid.length; i++) { var v = gs.charCodeAt(i) - 48; GV.grid[i] = v & 3; GV.pois[i] = v >= 4 ? 1 : 0; }
+  }
+  function guestStart(m) {
+    net.wait = null;
+    Array.prototype.forEach.call(document.querySelectorAll('.k-win'), function (n) { n.remove(); });
+    setField(m.fc || 22, m.fr || 36);
+    GV = { mode: 'guest', me: m.you, ci: 0, grid: null, pois: null, wave: m.w, phase: PH[m.ph] || 'intro', phaseT: 0, score: 0,
+      segs: [], foes: [], shots: [], bullets: [], caps: [], players: [], boss: null, buf: [], off: null, lastAt: performance.now(),
+      pred: { x: W / 2, y: H - 16, alive: false, cool: 0, side: 1 }, lb: [], flameLocal: false, power: null, hostName: m.host || net.hostName, stall: false, ended: false, sendT: 0, diff: m.diff, started: Date.now() };
+    guestGrid(m.g, m.fc, m.fr);
+    GV.lastRes = function () { return { won: false, wave: GV.wave, score: GV.score, players: GV.players.map(function (p) { return { id: p.id, name: p.name, score: p.score, ci: p.ci }; }), stats: {}, started: GV.started, diff: GV.diff }; };
+    G = null;
+    Kit.gameStart();
+    buildView();
+  }
+  function guestDiffs(md) { if (!md) return; for (var i = 0; i + 2 < md.length; i += 3) { if (md[i] < GV.grid.length) { GV.grid[md[i]] = md[i + 1]; GV.pois[md[i]] = md[i + 2]; } } }
+  function guestSnap(s) {
+    var now = performance.now(), sample = s.tm - now;
+    GV.off = GV.off == null ? sample : Math.max(sample, GV.off - 1);
+    GV.lastAt = now;
+    var b = GV.buf; if (b.length && s.q <= b[b.length - 1].q) return;
+    b.push(s); if (b.length > 14) b.shift();
+  }
+  function lerpArr(A, B, stride, a, build) {
+    var out = [], map = {};
+    if (A) for (var i = 0; i < A.length; i += stride) map[A[i]] = i;
+    for (var j = 0; j < B.length; j += stride) {
+      var k = map[B[j]], x = B[j + 2] / 4, y = B[j + 3] / 4;
+      if (k != null && A) { x = A[k + 2] / 4 + (x - A[k + 2] / 4) * a; y = A[k + 3] / 4 + (y - A[k + 3] / 4) * a; }
+      out.push(build(B, j, x, y));
+    }
+    return out;
+  }
+  function guestFrame(dt) {
+    var V = GV, now = performance.now();
+    V.phaseT += dt;
+    V.stall = !V.ended && now - V.lastAt > 1500;
+    if (V.buf.length) {
+      var rt = now + V.off - DELAY, b = V.buf, A = b[0], B = b[b.length - 1];
+      for (var i = 0; i < b.length - 1; i++) if (b[i].tm <= rt && b[i + 1].tm >= rt) { A = b[i]; B = b[i + 1]; break; }
+      if (rt >= b[b.length - 1].tm) A = B = b[b.length - 1];
+      else if (rt <= b[0].tm) A = B = b[0];
+      var a = B.tm > A.tm ? clamp((rt - A.tm) / (B.tm - A.tm), 0, 1) : 1;
+      if (V.wave !== B.w) V.wave = B.w;
+      var ph = PH[B.ph]; if (!V.ended && ph !== V.phase) { V.phase = ph; V.phaseT = B.pt / 10; }
+      V.score = B.sc;
+      V.segs = lerpArr(A.c, B.c, 4, a, function (r, j, x, y) { return { id: r[j], x: x, y: y, head: !!(r[j + 3] & 1), dx: r[j + 3] & 2 ? -1 : 1, frz: !!(r[j + 3] & 4) }; });
+      V.foes = lerpArr(A.f, B.f, 6, a, function (r, j, x, y) { return { id: r[j], type: FT[r[j + 1]], x: x, y: y, hp: r[j + 4], vx: r[j + 5] & 1 ? -1 : 1, frz: r[j + 5] & 2 ? 1 : 0 }; });
+      V.shots = lerpArr(A.k, B.k, 5, a, function (r, j, x, y) { var an = r[j + 4] / 100; return { id: r[j], k: KT[r[j + 1]], x: x, y: y, vx: Math.cos(an), vy: Math.sin(an) }; });
+      V.bullets = lerpArr(A.u, B.u, 6, a, function (r, j, x, y) { var an = r[j + 5] / 100; return { id: r[j], o: r[j + 1], x: x, y: y, k: BK[r[j + 4]], vx: Math.cos(an) * 100, vy: Math.sin(an) * 100 }; });
+      V.caps = lerpArr(A.cp, B.cp, 4, a, function (r, j, x, y) { return { id: r[j], k: POWK[r[j + 1]], x: x, y: y }; });
+      if (B.b) {
+        var bb = B.b, ab = A.b && A.b[0] === bb[0] ? A.b : bb;
+        if (Math.abs(bb[2] - ab[2]) > 400 || Math.abs(bb[3] - ab[3]) > 400) ab = bb;   // a jump (the Wasp back in at the top, the Firefly moving in the dark): don't slide across
+        var bx = ab[2] / 4 + (bb[2] - ab[2]) / 4 * a, by = ab[3] / 4 + (bb[3] - ab[3]) / 4 * a;
+        if (!V.boss || V.boss.id !== bb[0]) V.boss = { id: bb[0] };
+        var VB = V.boss; VB.type = BT[bb[1]]; VB.x = bx; VB.y = by; VB.hp = bb[4]; VB.max = bb[5]; VB.st = BST[bb[6]]; VB.lit = bb[7] / 100; VB.hitf = !!bb[8]; VB.flash = 0; VB.enraged = !!bb[9]; VB.lane = bb[10] == null || bb[10] < 0 ? null : bb[10] / 4; VB.frz = bb[11] ? 1 : 0;
+      } else V.boss = null;
+      var pm = {}; (A.p || []).forEach(function (p) { pm[p[0]] = p; });
+      var wasAlive = V.pred.alive;
+      V.players = B.p.map(function (p) {
+        var o = pm[p[0]] || p, P = { id: p[0], x: o[1] / 4 + (p[1] - o[1]) / 4 * a, y: o[2] / 4 + (p[2] - o[2]) / 4 * a, alive: !!(p[3] & 1), inv: p[3] & 2 ? 1 : 0, flaming: !!(p[3] & 4), lives: p[4], score: p[5], power: p[6] ? POWK[p[6] - 1] : null, powerT: p[7] / 10, ci: p[8], name: p[9], shield: (p[10] || 0) / 10 };
+        if (P.id === V.me) { V.ci = P.ci; V.power = P.power; if (P.alive && !wasAlive) { V.pred.x = p[1] / 4; V.pred.y = p[2] / 4; } V.pred.alive = P.alive; }
+        return P;
+      });
+    }
+    guestLocal(dt);
+  }
+  // A guest's own ship: moved here straight away; its plain, rapid and ice shots are drawn here too (the
+  // host's copy decides what they hit). Homing missiles and hits come from the host.
+  function guestLocal(dt) {
+    var V = GV, P = V.pred;
+    V.flameLocal = false;
+    if (P.alive && !V.ended) {
+      var m = takeInput(P, dt); movePlayer(P, m[0], m[1]);
+      var f = firing();
+      V.sendT -= dt;
+      if (V.sendT <= 0 && net.peer) { V.sendT = 1 / 30; net.peer.send({ t: 'i', x: q4(P.x), y: q4(P.y), f: f ? 1 : 0 }, false); }
+      P.cool -= dt;
+      var pw = V.power;
+      if (f && pw === 'flame') { V.flameLocal = true; snd('flame'); }
+      else if (f && P.cool <= 0 && pw !== 'homing') {
+        if (pw === 'rapid') { P.side = -P.side; V.lb.push({ x: P.x + P.side * 3.4, y: P.y - 9, vx: 0, vy: -BSPD.rapid, k: 'rapid' }); P.cool = 0.065; snd('rapid'); }
+        else if (pw === 'ice') { [-0.34, -0.17, 0, 0.17, 0.34].forEach(function (an) { V.lb.push({ x: P.x, y: P.y - 9, vx: Math.sin(an) * BSPD.ice, vy: -Math.cos(an) * BSPD.ice, k: 'ice' }); }); P.cool = 0.17; snd('ice'); }
+        else { V.lb.push({ x: P.x, y: P.y - 9, vx: 0, vy: -BSPD.laser, k: 'laser' }); P.cool = 0.12; snd('shot'); }
+      } else if (f && pw === 'homing' && P.cool <= 0) { P.cool = 0.32; snd('homing'); }
+    } else if (net.peer && !V.ended) { V.sendT -= dt; if (V.sendT <= 0) { V.sendT = 0.2; net.peer.send({ t: 'i', x: q4(P.x), y: q4(P.y), f: 0 }, false); } }
+    for (var i = V.lb.length - 1; i >= 0; i--) {
+      var b = V.lb[i], n = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 4), gone = false;
+      for (var s = 0; s < n && !gone; s++) {
+        b.x += b.vx * dt / n; b.y += b.vy * dt / n;
+        if (b.y < -8 || b.x < -8 || b.x > W + 8) { gone = true; break; }
+        var cc = Math.floor(b.x / CELL), rr = Math.floor(b.y / CELL);
+        if (inField(cc, rr) && V.grid[idx(cc, rr)]) gone = true;
+        for (var k = 0; k < V.segs.length && !gone; k++) if (Math.abs(V.segs[k].x - b.x) < 6 && Math.abs(V.segs[k].y - b.y) < 6) gone = true;
+        for (var f2 = 0; f2 < V.foes.length && !gone; f2++) if (Math.abs(V.foes[f2].x - b.x) < 8 && Math.abs(V.foes[f2].y - b.y) < 7) gone = true;
+        for (var c2 = 0; c2 < V.caps.length && !gone; c2++) if (Math.abs(V.caps[c2].x - b.x) < 8 && Math.abs(V.caps[c2].y - b.y) < 8) gone = true;
+        if (!gone && V.boss && V.boss.st !== 'die') { var R = BOSS[V.boss.type].r, ex = (b.x - V.boss.x) / R[0], ey = (b.y - V.boss.y) / R[1]; if (ex * ex + ey * ey < 1 && !(V.boss.type === 'firefly' && V.boss.lit < 0.45)) gone = true; }
+      }
+      if (gone) V.lb.splice(i, 1);
+    }
+  }
+
+  // ── Leaving ──
+  // ask: confirm first (from a menu or button). quiet: the page is closing
+  function leaveOnline(ask, quiet) {
+    if (!net.mode) { closeLobby(); return; }
+    if (ask) {
+      var body = net.mode === 'host' ? 'The game ends for everyone at your table.' : 'You can join again from the list.';
+      Kit.confirm(screen === 'game' ? 'Leave the game?' : 'Leave the table?', { ok: 'Leave', body: body }).then(function (ok) { if (ok) { leaveOnline(false); goLobby(); } });
+      return;
+    }
+    if (net.table) net.table.close();
+    if (net.peer) { var p = net.peer; net.peer = null; p.close('left'); }
+    net.mode = null; net.table = null; net.wait = null; net.roster = [];
+    if (!quiet) { GV = null; if (G && G.mode === 'host') G = null; }
+    closeLobby();
+  }
+
+  // ═══ Test hooks (automated checks) ══════════════════════════════════════
+  window.__centi = {
+    state: function () { return G; }, view: function () { return GV; }, net: net, ctl: ctl, perf: perf,
+    solo: function (o) { o = o || {}; applyOpts({}); startSolo({ who: o.who || 'Tim', diff: o.diff || 'arcade' }); },
+    hold: function (on) { hold = !!on; },
+    run: function (sec) { var n = Math.round(sec / STEP); for (var i = 0; i < n && G && !G.ended; i++) { sim(STEP); if (G.mode === 'host') netHostTick(); fxStep(STEP); } if (refit) { refit = false; cssW = 0; fit(); } draw(); },
+    step: function (n) { for (var i = 0; i < n && G && !G.ended; i++) sim(STEP); },     // simulate without drawing
+    threats: function (on) { if (on) G.threats = []; return G.threats; },               // with god on: what would have hit
+    field: function () { var rows = []; for (var r = 0; r < ROWS; r++) { var n = 0; for (var c = 0; c < COLS; c++) if (G.grid[idx(c, r)]) n++; rows.push(n); } return rows; },
+    dims: function () { return { cols: COLS, rows: ROWS, W: W, H: H, PZ: PZ, PZY: PZY, S: S, canvas: cv ? [cv.width, cv.height, cv.style.width, cv.style.height] : null }; },
+    put: function (c, r, hp, po) { setMush(c, r, hp, po); },
+    consts: { CELL: CELL, WAVES: WAVES, BOSS: BOSS, BDMG: BDMG, POWK: POWK, THEMES: THEMES },
+    wave: function (n) { G.chains = []; G.segs = []; G.boss = null; G.foes = []; G.shots = []; startWave(n); },
+    clearWave: function () { G.chains = []; G.segs = []; if (G.boss) G.boss.hp = 1; },
+    god: function (on) { G.noDie = !!on; },
+    power: function (k, pid) { var P = pid ? G.players.filter(function (p) { return p.id === pid; })[0] : G.players[0]; if (k === 'shield') P.shield = SHIELD_T; else if (k === 'bomb') bomb(P, P.x, P.y - 40); else { P.power = k; P.powerT = POW_T; } },
+    cap: function (k, x, y) { G.caps.push({ id: newId(), x: x, y: y, k: k, t: 0 }); },
+    move: function (x, y) { var P = G.players[0]; P.x = x; P.y = y; },
+    fire: function (on) { ctl.keys[' '] = !!on; },
+    auto: function (on) { ctl.auto = !!on; },
+    kill: function () { killPlayer(G.players[0]); },
+    hitBoss: function (n) { for (var i = 0; i < n; i++) hitBoss(G.players[0], 1, G.boss.x, G.boss.y); },
+    lobby: function () { goLobby(); }, host: function (n) { hostTable(n || 'Tim'); }, join: function (c, n) { joinTable(c, n || 'Sam'); }, start: function () { hostStart(); },
+    draw: function () { draw(); }, fx: fx, sprites: function () { return Object.keys(SPX).length; }
+  };
+  window.__cc = window.__centi;
+
+  // ═══ Boot ═══════════════════════════════════════════════════════════════
+  bindInput();
+  (function () {
+    var s = lsGet('centi_opts', {}) || {}; ctl.auto = s.auto !== false; ctl.drag = DRAG[s.drag] || DRAG.normal;
+    if (/[?&]online=1/.test(location.search)) goLobby(); else showSetup();
+  })();
+})();
+</script>
+</body>
+</html>

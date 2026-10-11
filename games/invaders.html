@@ -123,6 +123,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     ufo: [['.....######.....', '...##########...', '..############..', '.##.##.##.##.##.', '################', '..###..##..###..', '...#........#...'],
           ['.....######.....', '...##########...', '..############..', '##.##.##.##.##.#', '################', '..###..##..###..', '...#........#...']],
     base: [['......###......', '....#######....', '..###########..', '.#############.', '###############', '###############', '##.##.###.##.##']],
+    bomb: [['.........#.', '........#..', '.......#...', '...#####...', '..#######..', '.##.######.', '.#.#######.', '.#########.', '.#########.', '..#######..', '...#####...']],
     zig: [['#..', '.#.', '..#', '.#.', '#..', '.#.', '..#'], ['..#', '.#.', '#..', '.#.', '..#', '.#.', '#..']]
   };
   var KIND = {
@@ -148,10 +149,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     R: { name: 'RAPID', col: '#ff9a2e', dur: 10, w: 26 },
     S: { name: 'SPREAD', col: '#3ef2ff', dur: 10, w: 26 },
     M: { name: 'MEGA', col: '#ff4fd8', dur: 8, w: 18 },
-    B: { name: 'BOMB', col: '#ffd84a', w: 10 },
     H: { name: 'SHIELD', col: '#8dff4a', w: 20 }
   };
-  var PU_LETTER = { R: 'R', S: 'S', M: 'M', B: 'B', H: '+' };
+  var PU_LETTER = { R: 'R', S: 'S', M: 'M', H: '+' };
 
   // ── 5 x 7 arcade lettering ──────────────────────────────────────────────
   var FONT = {
@@ -214,7 +214,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function sHit() { if (!gate('hit', 0.035)) return; noise(0, 0.2, 0.15, 'bandpass', 2400, 500); osc('square', 560, 0, 0.12, 0.03, { to: 90, lp: 2200 }); }
   function sBig() { if (!gate('big', 0.08)) return; noise(0, 0.6, 0.26, 'lowpass', 1800, 120); osc('sawtooth', 170, 0, 0.5, 0.06, { to: 40, lp: 900 }); }
   function sClank() { if (!gate('clank', 0.06)) return; osc('square', 210, 0, 0.05, 0.035, { lp: 1400 }); noise(0, 0.05, 0.05, 'bandpass', 3400); }
-  function sBombPop() { if (!gate('bp', 0.05)) return; osc('triangle', 1400, 0, 0.09, 0.05, { to: 2600 }); noise(0, 0.06, 0.04, 'highpass', 4000); }
+  function sMissilePop() { if (!gate('bp', 0.05)) return; osc('triangle', 1400, 0, 0.09, 0.05, { to: 2600 }); noise(0, 0.06, 0.04, 'highpass', 4000); }
   function sPower() { [0, 4, 7, 12, 16].forEach(function (m, i) { osc('square', 523 * Math.pow(2, m / 12), i * 0.05, 0.12, 0.035, { lp: 4200 }); }); }
   function sShield() { noise(0, 0.35, 0.2, 'lowpass', 700, 90); osc('sawtooth', 95, 0, 0.3, 0.07, { to: 45, lp: 600 }); }
   function sDeflect() { if (!gate('defl', 0.08)) return; osc('sine', 900, 0, 0.18, 0.05, { to: 1800 }); }
@@ -222,7 +222,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function sCombo(n) { if (!gate('cb', 0.06)) return; [0, 7, 12].forEach(function (m, i) { osc('square', 660 * Math.pow(2, (Math.min(n, 60) / 10 + m) / 12), i * 0.05, 0.09, 0.03, { lp: 3600 }); }); }
   function sWave() { [64, 67, 71, 76, 79].forEach(function (m, i) { osc('square', mtof(m), i * 0.08, 0.16, 0.035, { lp: 3000 }); }); }
   function sWarn() { for (var i = 0; i < 3; i++) osc('sawtooth', 330, i * 0.4, 0.3, 0.05, { to: 165, lp: 1400 }); }
-  function sNova() { noise(0, 1.2, 0.3, 'lowpass', 2400, 80); osc('sine', 120, 0, 1.0, 0.12, { to: 30 }); osc('sawtooth', 800, 0, 0.5, 0.04, { to: 80, lp: 2000 }); }
+  function sBlast() { noise(0, 1.2, 0.3, 'lowpass', 2400, 80); osc('sine', 120, 0, 1.0, 0.12, { to: 30 }); osc('sawtooth', 800, 0, 0.5, 0.04, { to: 80, lp: 2000 }); }
+  function sBombAppear() { [72, 79, 84].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.07, 0.12, 0.05); }); }
+  function sBombBoom() { noise(0, 1.4, 0.34, 'lowpass', 2600, 60); osc('sine', 110, 0, 1.1, 0.14, { to: 28 }); osc('sawtooth', 600, 0, 0.6, 0.05, { to: 50, lp: 1800 }); noise(0.05, 0.5, 0.12, 'bandpass', 3000, 300); }
   var ufoSnd = null;
   function ufoSoundOn() {
     if (ufoSnd) return; var a = ac(); if (!a || a.state !== 'running') return;
@@ -250,7 +252,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
 
   // ═══ State ═══════════════════════════════════════════════════════════════
   var G = null, view = 'none', paused = false;
-  var invs = [], shots = [], bombs = [], pups = [], parts = [], rings = [], pops = [], boss = null, ufo = null, F = null;
+  var invs = [], shots = [], missiles = [], pups = [], parts = [], rings = [], pops = [], boss = null, ufo = null, F = null, bomb = null;
   var aim = { x: 300, y: 260 };
   var stick = { x: 0, y: 0, on: false, id: null };
   var keys = { l: false, r: false, u: false, d: false, f: false, hold: 0 };
@@ -320,8 +322,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   }
   function startWave(n) {
     G.wave = n; G.waveT = 0; G.hurt = 0;
-    invs = []; bombs = []; shots = []; boss = null; ufo = null; F = null; ufoSoundOff();
-    G.ufoT = rnd(12, 18); G.bombT = 3; G.diveT = rnd(4, 6);
+    invs = []; missiles = []; shots = []; boss = null; ufo = null; F = null; ufoSoundOff();
+    G.ufoT = rnd(12, 18); G.misT = 3; G.diveT = rnd(4, 6); G.bombT = rnd(6, 9); bomb = null;
     G.isBoss = n % 5 === 0;
     if (G.isBoss) { buildBoss(n); banner(n === LAST_WAVE ? 'FINAL WAVE' : 'UFO WAVE', boss.d.name, '#ff4f7a', 2.6); sWarn(); }
     else {
@@ -415,11 +417,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   }
   function shotHits(s) {
     var j, x = s.x, y = s.y;
+    if (bomb && Math.abs(x - bomb.x) < 26 && Math.abs(y - bomb.y) < 26) { s.dead = true; detonate(bomb.x, bomb.y); return; }
     for (j = 0; j < pups.length; j++) { var p = pups[j]; if (!p.dead && Math.abs(x - p.x) < 22 && Math.abs(y - p.y) < 18) { collect(p); s.dead = true; return; } }
-    for (j = 0; j < bombs.length; j++) {
-      var b = bombs[j]; if (b.dead) continue;
+    for (j = 0; j < missiles.length; j++) {
+      var b = missiles[j]; if (b.dead) continue;
       var bw = b.orb ? 15 : 12, bh = b.orb ? 15 : 17;
-      if (Math.abs(x - b.x) < bw && Math.abs(y - b.y) < bh) { s.dead = true; if (s.mega) megaBlast(x, y); else popBomb(b, true); return; }
+      if (Math.abs(x - b.x) < bw && Math.abs(y - b.y) < bh) { s.dead = true; if (s.mega) megaBlast(x, y); else popMissile(b, true); return; }
     }
     if (ufo && !ufo.dead && Math.abs(x - ufo.x) < 34 && Math.abs(y - ufo.y) < 16) { s.dead = true; if (s.mega) megaBlast(x, y); else hurtUfo(1); return; }
     if (boss && !boss.die && !boss.enter && Math.abs(x - boss.x) < boss.aw * 0.44 && Math.abs(y - boss.y) < boss.ah * 0.44) { s.dead = true; if (s.mega) megaBlast(x, y); else hurtBoss(1, x, y); return; }
@@ -433,7 +436,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     ring(x, y, '#ff4fd8', R, 0.45, 110); burst(x, y, '#ff9af0', 18, 1.2, 1.1);
     sBig(); fx.shake = Math.max(fx.shake, 0.25);
     invs.forEach(function (v) { if (!v.dead && Math.hypot(v.x - x, v.y - y) < R + v.w / 2) hurtInv(v, 2); });
-    bombs.forEach(function (b) { if (!b.dead && Math.hypot(b.x - x, b.y - y) < R) popBomb(b, true); });
+    missiles.forEach(function (b) { if (!b.dead && Math.hypot(b.x - x, b.y - y) < R) popMissile(b, true); });
     if (ufo && !ufo.dead && Math.hypot(ufo.x - x, ufo.y - y) < R + 30) hurtUfo(2);
     if (boss && !boss.die && !boss.enter && Math.abs(boss.x - x) < boss.aw / 2 + R && Math.abs(boss.y - y) < boss.ah / 2 + R) hurtBoss(3, x, y);
   }
@@ -462,17 +465,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       invs.push(c);
     }
   }
-  function popBomb(b, shot) {
+  function popMissile(b, shot) {
     b.dead = true;
-    if (shot) { award(25, b.x, b.y, '#ffb36b', true); G.stats.bombsShot++; charge(0.5); }
+    if (shot) { award(25, b.x, b.y, '#ffb36b', true); G.stats.missilesShot++; charge(0.5); }
     burst(b.x, b.y, b.orb ? '#ff5fa0' : '#ffb36b', 7, 0.7, 0.8); ring(b.x, b.y, '#ffcf8a', 22, 0.25, 26);
-    sBombPop();
+    sMissilePop();
   }
 
   // ═══ Power-ups ═══════════════════════════════════════════════════════════
   function dropPup(x, y, k) {
     if (!k) {
-      var low = G.shield < 55, w = [['R', 26], ['S', 26], ['M', 18], ['B', 9], ['H', low ? 30 : 12]], tot = 0, i;
+      var low = G.shield < 55, w = [['R', 26], ['S', 26], ['M', 18], ['H', low ? 30 : 12]], tot = 0, i;
       for (i = 0; i < w.length; i++) tot += w[i][1];
       var r = Math.random() * tot; k = 'R';
       for (i = 0; i < w.length; i++) { r -= w[i][1]; if (r <= 0) { k = w[i][0]; break; } }
@@ -488,22 +491,46 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     ring(p.x, p.y, d.col, 50, 0.4, 60); burst(p.x, p.y, d.col, 12, 0.8, 0.9);
     sPower(); Kit.haptic('success');
     G.stats.pups++;
-    if (p.k === 'B') nova();
-  }
-  function nova() {
-    var px = pivotX();
-    ring(px, PIVOT_Y, '#ffd84a', Math.max(WW, WH) * 1.1, 0.9, 0); ring(px, PIVOT_Y, '#ffffff', Math.max(WW, WH) * 0.9, 0.7, 0);
-    fx.flash = 1; fx.flashCol = '255,230,140'; fx.shake = 0.6; sNova();
-    G.novaT = 0.9;
-  }
-  function novaHit() {
-    invs.forEach(function (v) { if (!v.dead && v.y > -10 && v.st !== 'enter') hurtInv(v, v.big ? 2 : 3); });
-    bombs.forEach(function (b) { if (!b.dead) popBomb(b, true); });
-    if (ufo && !ufo.dead) hurtUfo(3);
-    if (boss && !boss.die && !boss.enter) hurtBoss(Math.ceil(boss.max * 0.1), boss.x, boss.y);
   }
 
-  // ═══ The formation, divers, bombs ══════════════════════════════════════════
+  // ═══ BOMBs (as on the Frenzy cabinet): one appears now and then and zips around the swarm.
+  // Shoot it and it blows up right there, wiping out everything near it.
+  var BOMB_R = 165;
+  function stepBomb(dt) {
+    if (G.phase === 'play' && !bomb) {
+      G.bombT -= dt;
+      if (G.bombT <= 0) {
+        G.bombT = rnd(14, 20);
+        if (boss || members() >= 5) {
+          var ph = Math.random() * 6.28;
+          bomb = { t: 0, life: 9, ph: ph, fx: rnd(0.55, 0.8), fy: rnd(1.1, 1.5), cy: (boss ? boss.ty + boss.ah / 2 + 90 : F ? Math.min(F.y + 120, BARRIER - 190) : 220), x: 0, y: 0 };
+          bombPos(bomb); ring(bomb.x, bomb.y, '#ffd84a', 60, 0.4, 70); sBombAppear();
+          G.stats.bombsSeen++;
+        }
+      }
+    }
+    if (!bomb) return;
+    bomb.t += dt; bombPos(bomb);
+    if (bomb.t > bomb.life) { ring(bomb.x, bomb.y, '#ffd84a', 40, 0.3, 40); bomb = null; }
+  }
+  function bombPos(b) {
+    var ax = Math.max(40, WW / 2 - 50), ay = Math.min(70, (BARRIER - 130 - b.cy));
+    b.x = WW / 2 + ax * Math.sin(b.t * b.fx * 1.6 + b.ph);
+    b.y = clamp(b.cy + Math.max(20, ay) * Math.sin(b.t * b.fy * 1.6 + b.ph * 0.7), 110, BARRIER - 120);
+  }
+  function detonate(x, y) {
+    bomb = null; G.stats.bombs++;
+    ring(x, y, '#ffd84a', BOMB_R * 1.15, 0.65, 0); ring(x, y, '#ff6a3e', BOMB_R, 0.8, 0); ring(x, y, '#fff1c0', BOMB_R * 0.75, 0.45, BOMB_R);
+    burst(x, y, '#ffb13e', 34, 2.2, 1.5); burst(x, y, '#ff4f3e', 20, 1.6, 1.3); burst(x, y, '#ffffff', 14, 1.2, 1);
+    fx.flash = 1; fx.flashCol = '255,215,140'; fx.shake = 0.75; sBombBoom(); Kit.haptic('heavy');
+    pop(x, y - 20, 'BOMB!', '#ffd84a', 1);
+    invs.forEach(function (v) { if (!v.dead && v.st !== 'enter' && Math.hypot(v.x - x, v.y - y) < BOMB_R + v.w / 2) hurtInv(v, v.big ? 4 : 3); });
+    missiles.forEach(function (m) { if (!m.dead && Math.hypot(m.x - x, m.y - y) < BOMB_R + 10) popMissile(m, true); });
+    if (ufo && !ufo.dead && Math.hypot(ufo.x - x, ufo.y - y) < BOMB_R + 34) hurtUfo(3);
+    if (boss && !boss.die && !boss.enter && Math.abs(boss.x - x) < boss.aw / 2 + BOMB_R && Math.abs(boss.y - y) < boss.ah / 2 + BOMB_R) hurtBoss(Math.ceil(boss.max * 0.15), boss.x, boss.y);
+  }
+
+  // ═══ The formation, divers, missiles ═══════════════════════════════════════
   function members() { var n = 0; for (var i = 0; i < invs.length; i++) if (!invs[i].dead && (invs[i].st === 'form' || invs[i].st === 'enter')) n++; return n; }
   function stepFormation(dt) {
     if (!F) return;
@@ -578,23 +605,23 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     explode(v.x, BARRIER - 6, v.col, v.big);
     hitBarrier(v.x, v.big ? 20 : 12);
   }
-  function stepBombs(dt) {
+  function stepMissiles(dt) {
     var w = G.wave;
     if (G.phase === 'play' && !G.isBoss) {
-      G.bombT -= dt;
-      if (G.bombT <= 0) {
-        G.bombT = rnd(0.6, 1.4) * Math.max(0.6, 3.1 - w * 0.11);
+      G.misT -= dt;
+      if (G.misT <= 0) {
+        G.misT = rnd(0.6, 1.4) * Math.max(0.6, 3.1 - w * 0.11);
         var cand = invs.filter(function (v) { return !v.dead && v.st !== 'enter' && v.y > 30 && v.y < BARRIER - 90; });
-        if (cand.length) { var v = pick(cand); bombs.push({ x: v.x, y: v.y + v.h / 2, vx: 0, vy: Math.min(230, 92 + w * 5), t: 0, orb: false, dead: false }); }
+        if (cand.length) { var v = pick(cand); missiles.push({ x: v.x, y: v.y + v.h / 2, vx: 0, vy: Math.min(230, 92 + w * 5), t: 0, orb: false, dead: false }); }
       }
     }
-    for (var i = 0; i < bombs.length; i++) {
-      var b = bombs[i]; if (b.dead) continue;
+    for (var i = 0; i < missiles.length; i++) {
+      var b = missiles[i]; if (b.dead) continue;
       b.t += dt; b.x += b.vx * dt; b.y += b.vy * dt;
       if (b.x < 8 || b.x > WW - 8) { b.vx = -b.vx; b.x = clamp(b.x, 8, WW - 8); }
       if (b.y >= BARRIER - 6) { b.dead = true; burst(b.x, BARRIER - 4, '#ffb36b', 8, 0.8, 0.9); hitBarrier(b.x, b.orb ? 8 : 7); }
     }
-    bombs = bombs.filter(function (b) { return !b.dead; });
+    missiles = missiles.filter(function (b) { return !b.dead; });
   }
   function hitBarrier(x, dmg) {
     if (G.phase !== 'play' && G.phase !== 'clear') return;
@@ -639,7 +666,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       fx.shake = Math.max(fx.shake, 0.25);
       if (b.dieT > 1.7) {
         explode(b.x, b.y, b.d.col, true); burst(b.x, b.y, '#ffffff', 40, 2, 1.6); ring(b.x, b.y, b.d.col, 260, 0.8, 200);
-        fx.flash = 1; fx.flashCol = '255,240,220'; fx.shake = 0.8; sNova();
+        fx.flash = 1; fx.flashCol = '255,240,220'; fx.shake = 0.8; sBlast();
         var bonus = 2000 + G.wave * 100; G.score += bonus * (G.frenzyT > 0 ? 2 : 1); pop(b.x, b.y, String(bonus * (G.frenzyT > 0 ? 2 : 1)), '#fff', 1);
         G.stats.bosses++; Kit.callout('Boss down!', '#ffd84a'); Kit.haptic('success');
         boss = null;
@@ -657,7 +684,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       var cnt = angry ? 7 : 5, sp = Math.min(200, 110 + G.wave * 2);
       for (var i = 0; i < cnt; i++) {
         var a = Math.PI / 2 + (i - (cnt - 1) / 2) * 0.2;
-        bombs.push({ x: b.x, y: b.y + b.ah * 0.35, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, orb: true, dead: false });
+        missiles.push({ x: b.x, y: b.y + b.ah * 0.35, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, orb: true, dead: false });
       }
       osc('sawtooth', 300, 0, 0.2, 0.04, { to: 140, lp: 1500 });
     }
@@ -677,7 +704,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     burst(x, y, b.d.col, 4, 0.7, 0.8); sClank();
     if (b.hp <= 0) {
       b.hp = 0; b.die = 1; b.dieT = 0; sBig(); Kit.haptic('heavy');
-      bombs.forEach(function (o) { if (!o.dead) popBomb(o, false); });
+      missiles.forEach(function (o) { if (!o.dead) popMissile(o, false); });
       invs.forEach(function (v) { if (!v.dead) killInv(v); });
     }
   }
@@ -689,7 +716,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (perfect) { bonus += 1000; G.stats.perfect++; }
     G.score += bonus;
     G.shield = Math.min(SHIELD_MAX, G.shield + 15);
-    bombs.forEach(function (b) { popBomb(b, false); }); bombs = [];
+    missiles.forEach(function (b) { popMissile(b, false); }); missiles = [];
     pups.forEach(function (p) { p.home = true; });
     if (ufo) { ufo = null; ufoSoundOff(); }
     banner(G.wave === LAST_WAVE ? 'YOU WIN!' : 'WAVE ' + G.wave + ' CLEAR', (perfect ? 'PERFECT  ' : '') + '+' + fmt(bonus), '#8dff4a', 2.4);
@@ -702,7 +729,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     var px = pivotX();
     explode(px, PIVOT_Y, '#8dff4a', true); burst(px, PIVOT_Y, '#ffffff', 30, 1.8, 1.4); ring(px, PIVOT_Y, '#ff4f7a', 220, 0.8, 160);
     fx.shake = 0.9; fx.flash = 1; fx.flashCol = '255,80,90';
-    sBig(); sNova(); Kit.haptic('error');
+    sBig(); sBlast(); Kit.haptic('error');
     MUS.stop(); ufoSoundOff(); clearSave();
   }
 
@@ -743,13 +770,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (G.frenzyT > 0) { G.frenzyT -= dt; G.fz = FZ_MAX * Math.max(0, G.frenzyT) / FRENZY_DUR; if (G.frenzyT <= 0) { G.frenzyT = 0; G.fz = 0; } }
     else if (G.t - G.lastKill > 2.5) G.fz = Math.max(0, G.fz - dt * 1.5);
     if (G.t - G.lastKill > 1.1 && G.combo) G.combo = 0;
-    if (G.novaT > 0) { G.novaT -= dt; if (G.novaT <= 0.6 && !G.novaDone) { G.novaDone = true; novaHit(); } if (G.novaT <= 0) G.novaDone = false; }
     // firing
     G.cool -= dt;
     if (live && G.phase === 'play' && (input.fire || input.mouse || keys.f || SET.auto) && G.cool <= 0) { fire(); G.cool = fireRate(); }
     stepShots(dt);
     if (G.phase !== 'dying') {
-      stepFormation(dt); stepInvaders(dt); stepBoss(dt); stepUfo(dt); stepBombs(dt);
+      stepFormation(dt); stepInvaders(dt); stepBoss(dt); stepUfo(dt); stepMissiles(dt); stepBomb(dt);
     }
     // power-up capsules drift down; the crosshair grabs them too
     for (var i = 0; i < pups.length; i++) {
@@ -831,13 +857,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       '<li><b>Gold invaders</b> carry a power-up.</li>' +
       '<li>Some invaders break away and <b>dive</b> at the shield. Get them first!</li>' +
       '<li>The <b>mystery UFO</b> zooms across the top. Hit it twice for 100 to 300 points and a power-up.</li></ul>' +
-      '<h3>Bombs and your shield</h3><p>Invaders drop bombs. Shoot them out of the sky for 25 points. A bomb or an invader that reaches the bottom hurts your <b>shield</b>. When the shield runs out, the game is over. You get some shield back after every wave.</p>' +
+      '<h3>BOMBs</h3><p>Every so often a glowing red <b>BOMB</b> appears and zips around between the invaders. Shoot it and it blows up right there, wiping out every invader near it and any missiles too. Big invaders and bosses take a big hit. Wait until it\'s in the thick of the swarm for the biggest blast!</p>' +
+      '<h3>Missiles and your shield</h3><p>Invaders fire missiles. Shoot them out of the sky for 25 points. A missile or an invader that reaches the bottom hurts your <b>shield</b>. When the shield runs out, the game is over. You get some shield back after every wave.</p>' +
       '<h3>Power-ups</h3><p>Shoot a capsule, or touch it with the crosshair, to grab it.</p><ul>' +
       '<li><b>R Rapid</b>: fires twice as fast.</li><li><b>S Spread</b>: three shots at once.</li>' +
-      '<li><b>M Mega</b>: exploding shots that hit everything nearby.</li><li><b>B Bomb</b>: a blast that clears the screen.</li>' +
+      '<li><b>M Mega</b>: exploding shots that hit everything nearby.</li>' +
       '<li><b>+ Shield</b>: fixes your shield and puts up a force field for a few seconds.</li></ul>' +
       '<h3>Combos and Frenzy</h3><p>Hit invaders quickly one after another for a <b>combo</b>. Every 6 in a row raises your points multiplier, up to x5. Each hit also fills the <b>Frenzy</b> meter. When it\'s full, Frenzy starts: rapid spread shots and double points for 8 seconds.</p>' +
-      '<h3>Bosses</h3><p>Every fifth wave is a <b>UFO wave</b> with a giant boss: the Mothership, the Crab King, the Squid Queen or the Octo Titan. Watch its health bar at the top. It fires showers of bombs and sends out small invaders. Bosses get angrier when their health is half gone.</p>' +
+      '<h3>Bosses</h3><p>Every fifth wave is a <b>UFO wave</b> with a giant boss: the Mothership, the Crab King, the Squid Queen or the Octo Titan. Watch its health bar at the top. It fires showers of missiles and sends out small invaders. Bosses get angrier when their health is half gone.</p>' +
       '<h3>Winning</h3><p>Every wave you clear gives you bonus points, plus 1,000 more for a <b>perfect</b> wave with no shield damage. Clear all 50 waves to save Earth!</p>'
   });
 
@@ -954,9 +981,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function rescale(f) {
     invs.forEach(function (v) { v.x *= f; v.hx *= Math.min(1, f) < 1 ? f : 1; v.sx *= f; v.cx *= f; if (v.dv) v.dv.x0 *= f; });
     if (F) F.x *= f;
-    shots.forEach(function (s) { s.x *= f; }); bombs.forEach(function (b) { b.x *= f; }); pups.forEach(function (p) { p.x *= f; p.x0 *= f; });
+    shots.forEach(function (s) { s.x *= f; }); missiles.forEach(function (b) { b.x *= f; }); pups.forEach(function (p) { p.x *= f; p.x0 *= f; });
     parts.forEach(function (p) { p.x *= f; }); rings.forEach(function (r) { r.x *= f; }); pops.forEach(function (p) { p.x *= f; });
     if (boss) boss.x *= f; if (ufo) ufo.x *= f;
+    if (bomb) bombPos(bomb);
     aim.x *= f;
   }
   function leaveGame() {
@@ -1072,14 +1100,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
 
   // ═══ Game flow ═══════════════════════════════════════════════════════════
   function bestScore() { return ArcadeHi.best(HI); }
-  function newStats() { return { kills: 0, bigs: 0, bosses: 0, ufos: 0, ufoSeen: 0, shots: 0, bombsShot: 0, pups: 0, frenzies: 0, maxCombo: 0, cleared: 0, perfect: 0, dives: 0, dmg: 0 }; }
+  function newStats() { return { kills: 0, bigs: 0, bosses: 0, ufos: 0, ufoSeen: 0, shots: 0, missilesShot: 0, bombs: 0, bombsSeen: 0, pups: 0, frenzies: 0, maxCombo: 0, cleared: 0, perfect: 0, dives: 0, dmg: 0 }; }
   function startGame(cfg, saved) {
     G = {
       who: cfg.who || 'Player', score: 0, shield: SHIELD_MAX, wave: 1, t: 0, waveT: 0, phase: 'play', started: Date.now(), best0: bestScore(),
       stats: newStats(), cool: 0, ang: -Math.PI / 2, recoil: 0, muzzle: 0, pw: { R: 0, S: 0, M: 0 }, bubble: 0, fz: 0, frenzyT: 0,
-      combo: 0, lastKill: -9, barHit: 0, barX: 0, hurt: 0, novaT: 0, ban: null
+      combo: 0, lastKill: -9, barHit: 0, barX: 0, hurt: 0, ban: null
     };
-    invs = []; shots = []; bombs = []; pups = []; parts = []; rings = []; pops = []; boss = null; ufo = null; F = null;
+    invs = []; shots = []; missiles = []; pups = []; parts = []; rings = []; pops = []; boss = null; ufo = null; F = null; bomb = null;
     fx.shake = 0; fx.flash = 0;
     resetInput();
     Kit.gameStart();
@@ -1104,11 +1132,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (st.ufos) h.push('Hit ' + st.ufos + ' mystery UFO' + (st.ufos === 1 ? '' : 's'));
     if (st.maxCombo >= 6) h.push('Best combo: ' + st.maxCombo + ' in a row');
     if (st.frenzies) h.push('Went into Frenzy ' + st.frenzies + (st.frenzies === 1 ? ' time' : ' times'));
-    if (st.bombsShot >= 3) h.push('Shot down ' + st.bombsShot + ' bombs');
+    if (st.bombs) h.push('Set off ' + st.bombs + (st.bombs === 1 ? ' BOMB' : ' BOMBs'));
+    if (st.missilesShot >= 3) h.push('Shot down ' + st.missilesShot + ' missiles');
     if (st.perfect) h.push(st.perfect + ' perfect wave' + (st.perfect === 1 ? '' : 's'));
     var hiL = ArcadeHi.list(HI);
     var detail = {
-      w: G.wave, cl: st.cleared, k: st.kills, bg: st.bigs, b: st.bosses, u: st.ufos, mc: st.maxCombo, fz: st.frenzies, sh: st.shots, bs: st.bombsShot, pu: st.pups, pf: st.perfect,
+      w: G.wave, cl: st.cleared, k: st.kills, bg: st.bigs, b: st.bosses, u: st.ufos, mc: st.maxCombo, fz: st.frenzies, sh: st.shots, bs: st.missilesShot, bm: st.bombs, pu: st.pups, pf: st.perfect,
       won: won ? 1 : 0, why: won ? 'won' : 'shield',
       hr: sc > 0 && (hiL.length < ArcadeHi.max || sc > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= sc; }).length + 1 : 0, hb: G.best0 || 0
     };
@@ -1247,8 +1276,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     var x = aim.x, y = aim.y, i;
     if (boss && !boss.die && Math.abs(x - boss.x) < boss.aw * 0.44 && Math.abs(y - boss.y) < boss.ah * 0.44) return true;
     if (ufo && Math.abs(x - ufo.x) < 36 && Math.abs(y - ufo.y) < 18) return true;
+    if (bomb && Math.abs(x - bomb.x) < 28 && Math.abs(y - bomb.y) < 28) return true;
     for (i = 0; i < invs.length; i++) if (hitBox(invs[i], x, y, 8)) return true;
-    for (i = 0; i < bombs.length; i++) if (Math.abs(x - bombs[i].x) < 16 && Math.abs(y - bombs[i].y) < 20) return true;
+    for (i = 0; i < missiles.length; i++) if (Math.abs(x - missiles[i].x) < 16 && Math.abs(y - missiles[i].y) < 20) return true;
     return false;
   }
   function draw() {
@@ -1304,9 +1334,23 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       g.drawImage(ps.c, p.x - ps.w / 2, p.y - ps.h / 2, ps.w, ps.h);
       g.globalAlpha = 1;
     }
-    // bombs
-    for (i = 0; i < bombs.length; i++) {
-      var o = bombs[i];
+    // the BOMB: pulsing, fuse sparking, labelled so nobody misses it
+    if (bomb) {
+      var bk = bomb.t, bfade = bk < 0.25 ? bk / 0.25 : bomb.life - bk < 2 && ((bk * 8) | 0) & 1 ? 0.45 : 1, pul = 1 + 0.08 * Math.sin(bk * 10);
+      g.globalCompositeOperation = 'lighter';
+      drawGlow('#ff4f3e', bomb.x, bomb.y, 46 * pul, 0.35 * bfade);
+      g.globalAlpha = 0.5 * bfade; g.strokeStyle = '#ffd84a'; g.lineWidth = 2;
+      g.beginPath(); g.arc(bomb.x, bomb.y, 30 + 6 * Math.sin(bk * 6), 0, 6.2832); g.stroke(); g.globalAlpha = 1;
+      g.globalCompositeOperation = 'source-over';
+      drawSpr(ledSprite('bomb', ART.bomb[0], '#ff4f5e', 3.8), bomb.x, bomb.y, bfade);
+      g.globalCompositeOperation = 'lighter';
+      drawGlow(((bk * 14) | 0) & 1 ? '#ffffff' : '#ffd84a', bomb.x + 17, bomb.y - 21, 9 + 4 * Math.random(), bfade);
+      g.globalCompositeOperation = 'source-over';
+      g.globalAlpha = bfade; text('BOMB', bomb.x, bomb.y - 40, 1.6, '#ffd84a', 'c'); g.globalAlpha = 1;
+    }
+    // missiles
+    for (i = 0; i < missiles.length; i++) {
+      var o = missiles[i];
       if (o.orb) { drawGlow('#ff4f9a', o.x, o.y, 18, 0.9); drawGlow('#ffffff', o.x, o.y, 6, 0.9); }
       else { var zf = ((o.t * 10) | 0) & 1; drawGlow('#ff8a3e', o.x, o.y, 14, 0.35); drawSpr(ledSprite('zig' + zf, ART.zig[zf], '#ffb36b', 3.2), o.x, o.y); }
     }
@@ -1467,8 +1511,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       if (!G) return null;
       return { phase: G.phase, wave: G.wave, score: G.score, shield: G.shield, aim: { x: aim.x, y: aim.y }, ang: G.ang, WW: WW, WH: WH,
         invs: invs.length, bigs: invs.filter(function (v) { return v.big; }).length, divers: invs.filter(function (v) { return v.st === 'dive'; }).length,
-        shots: shots.length, bombs: bombs.length, pups: pups.map(function (p) { return p.k; }), pw: { R: G.pw.R, S: G.pw.S, M: G.pw.M }, bubble: G.bubble,
-        boss: boss && { name: boss.d.name, hp: boss.hp, max: boss.max, die: boss.die, enter: boss.enter }, ufo: !!ufo, combo: G.combo, mult: comboMult(), fz: G.fz, frenzy: G.frenzyT,
+        shots: shots.length, missiles: missiles.length, pups: pups.map(function (p) { return p.k; }), pw: { R: G.pw.R, S: G.pw.S, M: G.pw.M }, bubble: G.bubble,
+        bomb: bomb && { x: bomb.x, y: bomb.y }, boss: boss && { name: boss.d.name, hp: boss.hp, max: boss.max, die: boss.die, enter: boss.enter }, ufo: !!ufo, combo: G.combo, mult: comboMult(), fz: G.fz, frenzy: G.frenzyT,
         stick: { x: stick.x, y: stick.y, on: stick.on }, set: { auto: SET.auto, invX: SET.invX, invY: SET.invY, right: SET.right }, layout: lay,
         paused: paused, ended: !!G.ended, stats: G.stats, parts: parts.length };
     },
@@ -1478,13 +1522,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     setAim: function (x, y) { aim.x = x; aim.y = y; },
     wave: function (n) { startWave(n); },
     boss: function () { startWave(Math.ceil((G.wave + 1) / 5) * 5); },
-    power: function (k, x, y) { dropPup(x == null ? aim.x : x, y == null ? aim.y - 60 : y, k); },
+    power: function (k, x, y) { if (k && !PU[k]) return; dropPup(x == null ? aim.x : x, y == null ? aim.y - 60 : y, k); },
     give: function (k) { collect({ k: k, x: aim.x, y: aim.y, dead: false }); },
     shield: function (n) { G.shield = n; },
     score: function (n) { G.score = n; },
     killAll: function () { invs.forEach(function (v) { if (!v.dead) killInv(v, true); v.dead = true; }); invs = []; },
     hurtBoss: function (n) { if (boss) hurtBoss(n, boss.x, boss.y); },
-    bomb: function (x, y) { bombs.push({ x: x, y: y, vx: 0, vy: 120, t: 0, orb: false, dead: false }); },
+    missile: function (x, y) { missiles.push({ x: x, y: y, vx: 0, vy: 120, t: 0, orb: false, dead: false }); },
+    bomb: function () { G.bombT = 0; bomb = null; stepBomb(0); return bomb && { x: bomb.x, y: bomb.y }; },
+    shootBomb: function () { if (bomb) detonate(bomb.x, bomb.y); },
     frenzy: function () { G.fz = FZ_MAX; startFrenzy(); },
     ufo: function () { G.ufoT = 0; },
     die: function () { G.bubble = 0; G.phase = 'play'; G.shield = 1; hitBarrier(WW / 2, 99); },
