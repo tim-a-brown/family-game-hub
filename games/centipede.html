@@ -95,7 +95,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   var BOSS = {
     wasp: { name: 'Killer Wasp', hp: 120, bonus: 10000, vu: 2.0, r: [30, 22], c: '#ffe23d', hy: 0.44 },
     firefly: { name: 'Night Flyer', hp: 105, bonus: 10000, vu: 2.0, r: [36, 22], c: '#b98cff', hy: 0.34 },
-    beetle: { name: 'Blast Beetle', hp: 150, bonus: 10000, vu: 1.9, r: [30, 27], c: '#ff4a7a', hy: 0.3 },
+    beetle: { name: 'Blast Beetle', hp: 330, bonus: 10000, vu: 1.9, r: [30, 27], c: '#ff4a7a', hy: 0.3 },
     mega: { name: 'Mega Spider', hp: 230, bonus: 100000, vu: 1.6, r: [42, 29], c: '#ff2d8a', hy: 0.34 }
   };
   // Ten waves on themed stages, each with its own mushroom layout; after wave 10 the loop starts again,
@@ -1075,7 +1075,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       if (!B.tgt || !B.tgt.alive) B.tgt = target();
       approach(B, clamp(B.tgt.x, R[0], W - R[0]), B.hy + Math.sin(B.t * 2.2) * 6, 1.3 * rage, dt);
       B.tA -= dt * rage;
-      if (B.tA <= 0) { B.tA = ph >= 2 ? 2.3 : 3.0; var a = Math.atan2(B.tgt.y - B.y, B.tgt.x - B.x), n = (G.diff === 'relaxed' ? 1 : 3) + (ph >= 2 ? 2 : 0); for (var v = 0; v < n; v++) fireShot(B.x, B.y + R[1] * 0.6, a + (v - (n - 1) / 2) * 0.2, 128 * rage, 'sting'); sound('shoot'); }
+      if (B.tA <= 0) { B.tA = ph >= 2 ? 2.3 : 3.0; var a = Math.atan2(B.tgt.y - B.y, B.tgt.x - B.x), n = (G.diff === 'relaxed' ? 1 : 3) + (ph >= 2 ? 2 : 0); for (var v = 0; v < n; v++) fireShot(B.x, B.y + R[1] * 0.6, a + (v - (n - 1) / 2) * 0.24, 104 * rage, 'sting'); sound('shoot'); }
       B.tE -= dt * rage;
       if (B.tE <= 0) { B.tE = 8 - ph * 1.5; if (count('wasp') < 2 + ph) spawnWasps(1 + (ph ? 1 : 0), false); }
       if (B.stT > (3.6 - ph * 0.7) / Math.sqrt(rage)) lockLoop(B);
@@ -1116,11 +1116,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var L = B.legs[0]; if (!L) { B.st = 'rest'; B.stT = 0; return; }
       var dx = L.x - B.x, dy = L.y - B.y, d = Math.hypot(dx, dy), v = (145 + 25 * ph) * rage * dt;
       // its light comes down behind it as it sweeps: small shockwaves across the players' area
-      B.drop -= dt; if (B.drop <= 0) { B.drop = 0.55 - 0.07 * ph; zone(clamp(B.x + rnd(-12, 12), 12, W - 12), rnd(PZY + 14, H - 14), 22, 0.65, 1); }
+      B.drop -= dt; if (B.drop <= 0) { B.drop = 0.85 - 0.1 * ph; zone(clamp(B.x + rnd(-12, 12), 12, W - 12), rnd(PZY + 14, H - 14), 22, 0.85, 1); }
       if (d <= v) {
         B.x = L.x; B.y = L.y; B.legs.shift();
         // at a low corner: a wide shockwave down that side of the arena
-        if (L.y > PZY * 0.5) zone(L.x < W / 2 ? 36 : W - 36, H - 36, 52, 0.8, 1);
+        if (L.y > PZY * 0.5) zone(L.x < W / 2 ? 36 : W - 36, H - 36, 52, 1.0, 1);
         if (!B.legs.length) { B.st = 'rest'; B.stT = 0; }
       } else { B.x += dx / d * v; B.y += dy / d * v; }
     }
@@ -1147,7 +1147,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (B.st === 'perch') {
       approach(B, W / 2 + Math.sin(B.t * 0.7) * sw * 0.8, B.hy + Math.sin(B.t * 1.3) * 5, 2.2, dt); B.z = 0;
       B.tA -= dt * rage;
-      if (B.tA <= 0) { B.tA = 2.5 - 0.3 * ph; var T = target(), a = Math.atan2(T.y - B.y, T.x - B.x), n = 5 + 2 * ph; for (var v = 0; v < n; v++) fireShot(B.x, B.y + R[1] * 0.6, a + (v - (n - 1) / 2) * 0.16, 116 * rage, 'venom'); sound('shoot'); }
+      if (B.tA <= 0) { B.tA = 2.5 - 0.3 * ph; var T = target(), a = Math.atan2(T.y - B.y, T.x - B.x), n = 5 + ph; for (var v = 0; v < n; v++) fireShot(B.x, B.y + R[1] * 0.6, a + (v - (n - 1) / 2) * 0.18, 96 * rage, 'venom'); sound('shoot'); }
       B.tB -= dt * rage; if (B.tB <= 0) { B.tB = 8 - ph; webWall(B); }
       B.tC -= dt * rage; if (B.tC <= 0) { B.tC = 9 - 1.5 * ph; minis(B, 3 + ph); }
       if (B.stT > (4.8 - 0.8 * ph) / Math.sqrt(rage)) { var T2 = target(); B.st = 'leap'; B.stT = 0; B.sx = B.x; B.sy = B.y; B.lx = clamp(T2.x, R[0], W - R[0]); B.ly = PZY - R[1] * 0.35; sound('warn'); }
