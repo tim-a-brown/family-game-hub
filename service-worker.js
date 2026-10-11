@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v491-2026-10-10-icon-png';
+const CACHE_VERSION = 'v492-2026-10-11-arcade-online-casino';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -121,9 +121,6 @@ const PRECACHE_URLS = [
   '/games/crazytower.html',
   '/games/centipede.html',
   '/games/invaders.html',
-  '/games/pressyourluck.html',
-  '/games/pressyourluck/art.js',
-  '/games/pressyourluck/sound.js',
   '/online.js',
   '/games/dealornodeal.html',
   '/games/dice-roller.html',
