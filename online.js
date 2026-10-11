@@ -22,8 +22,12 @@
 //   Online.lobby(root, opts)             the lobby screen (see below); returns {close, refresh}
 //   Online.waitRoom(root, opts)          the "waiting for players" screen; returns {update(players), close}
 //   Online.host(opts) -> Promise<Table>  open a table and take players (Table: code, peers, on(), setStatus(), close())
+//                                        on('fail', fn(err)): the server refused the new table after all (rare)
+//   Online.busy(button, label) -> undo   show a button as busy ("Opening…" and a spinner) and disable it
 //   Online.join(code, opts) -> Promise<Peer>   connect to a table
 //   Online.useTransport(t) / Online.localTransport()   swap Firestore for another signaling store
+//                                        (create(code, data): data may be a Promise; it may resolve before
+//                                        the server confirms, with {saved: Promise} for the confirmation)
 //                                        (localTransport: two tabs of one browser, for testing)
 //   Online.config.iceServers             STUN (and TURN, if one is ever added) for WebRTC
 //
@@ -34,7 +38,12 @@
 (function () {
   'use strict';
   if (window.Online) return;
-  var COL = 'arcadeRooms', V = 1, STALE = 3 * 60000, BEAT = 60000;
+  // A table writes a heartbeat every BEAT; one not heard from for STALE is gone (the host's page closed before
+  // it could delete the doc), so lobbies drop it. Hidden pages can run timers only once a minute: STALE allows that.
+  var COL = 'arcadeRooms', V = 1, STALE = 90000, BEAT = 30000;
+  // Tables closed on this device: off its lists at once, before the server says so
+  var GONE = {};
+  function gone(code) { return !!GONE[code] && Date.now() - GONE[code] < 5 * 60000; }
   var LS = (function () { try { return window.localStorage; } catch (e) { return null; } })();
   function lsGet(k, d) { try { var v = LS.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
   function lsSet(k, v) { try { LS.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -110,8 +119,17 @@
       rooms: function (game, cb, err) {
         return live(function (set) { db().then(function (d) { set(d.collection(COL).where('game', '==', game).limit(30).onSnapshot(function (qs) { var l = []; qs.forEach(function (doc) { l.push(Object.assign({ code: doc.id }, doc.data())); }); cb(l); }, err)); }).catch(err); });
       },
+      // Checks the code is free (while the data is still being made), then writes the table. Resolves as soon as
+      // the write is sent: Firestore shows it here at once and sends it in order; saved settles when the server has it.
       create: function (code, data) {
-        return db().then(function (d) { var r = ref(d, code); return r.get().then(function (sn) { if (sn.exists && Date.now() - (sn.data().at || 0) < 6 * 3600e3) throw new Error(TAKEN); return r.set(data); }); });
+        return db().then(function (d) {
+          var r = ref(d, code);
+          return Promise.all([r.get(), data]).then(function (x) {
+            var sn = x[0];
+            if (sn.exists && Date.now() - (sn.data().at || 0) < 6 * 3600e3) throw new Error(TAKEN);
+            return { saved: r.set(x[1]) };
+          });
+        });
       },
       get: function (code) { return db().then(function (d) { return ref(d, code).get(); }).then(function (sn) { return sn.exists ? sn.data() : null; }); },
       update: function (code, patch) { return db().then(function (d) { return ref(d, code).update(patch); }); },
@@ -142,7 +160,7 @@
     return {
       kind: 'local',
       rooms: function (game, cb) { return sub(function () { var r = all('room:'); cb(Object.keys(r).map(function (c) { return Object.assign({ code: c }, r[c]); }).filter(function (x) { return x.game === game; })); }); },
-      create: function (code, data) { if (lsGet(P + 'room:' + code, null)) return Promise.reject(new Error(TAKEN)); put('room:' + code, data); return Promise.resolve(); },
+      create: function (code, data) { return Promise.resolve(data).then(function (data) { if (lsGet(P + 'room:' + code, null)) throw new Error(TAKEN); put('room:' + code, data); }); },
       get: function (code) { return Promise.resolve(lsGet(P + 'room:' + code, null)); },
       update: function (code, patch) { var r = lsGet(P + 'room:' + code, null); if (!r) return Promise.reject(new Error('No such table')); put('room:' + code, Object.assign(r, patch)); return Promise.resolve(); },
       remove: function (code) { put('room:' + code, null); return Promise.resolve(); },
@@ -229,7 +247,7 @@
   function host(opts) {
     if (noRtc()) return Promise.reject(new Error('This browser can’t play online.'));
     var t = T(), me = dev(), max = opts.max || 2;
-    var table = { code: null, peers: {}, status: 'open', closed: false }, ls = { peer: [], leave: [], msg: [] }, offs = [], beat = 0, pending = {};
+    var table = { code: null, peers: {}, status: 'open', closed: false }, ls = { peer: [], leave: [], msg: [], fail: [] }, offs = [], beat = 0, pending = {};
     function fire(k, a, b) { ls[k].forEach(function (f) { try { f(a, b); } catch (e) { console.error(e); } }); }
     table.on = function (k, f) { ls[k].push(f); return table; };
     table.count = function () { return Object.keys(table.peers).length; };
@@ -249,7 +267,7 @@
       offs.forEach(function (o) { try { o(); } catch (e) {} });
       Object.keys(table.peers).forEach(function (k) { table.peers[k].close('host'); });
       Object.keys(pending).forEach(function (k) { try { pending[k].close(); } catch (e) {} });
-      if (table.code) t.remove(table.code).catch(function () {});
+      if (table.code) { GONE[table.code] = Date.now(); t.remove(table.code).catch(function () {}); }
     };
     function answer(m) {
       log('host got', m.k, 'from', m.from);
@@ -281,17 +299,27 @@
         .then(function () { log('host: answer ready'); return t.send(table.code, { id: rid(), to: from, from: me, k: 'answer', d: JSON.stringify({ sdp: pc.localDescription.sdp, sid: o.sid || '' }), at: Date.now() }); })
         .catch(function (e) { console.warn('[online] answer failed', e); peer.close('failed'); });
     }
-    return myTag().then(function (lk) {
-      var h = { name: String(opts.name || 'Player').slice(0, 20), dev: me };
-      if (lk) h.lk = lk;   // so the people linked to you see it's your table
-      var tries = 0;
-      function attempt() {
-        var code = code4();
-        var data = { game: opts.game, host: h, status: 'open', n: 1, max: max, info: opts.info || '', at: Date.now(), v: V, by: me };
-        return t.create(code, data).then(function () { return code; }, function (e) { if (e && e.message === TAKEN && ++tries < 6) return attempt(); throw e; });
-      }
-      return attempt();
-    }).then(function (code) {
+    // the link tag and the check that the code is free run side by side (nothing waits on the other)
+    var tagP = myTag(), tries = 0;
+    function attempt() {
+      var code = code4();
+      var data = tagP.then(function (lk) {
+        var h = { name: String(opts.name || 'Player').slice(0, 20), dev: me };
+        if (lk) h.lk = lk;   // so the people linked to you see it's your table
+        return { game: opts.game, host: h, status: 'open', n: 1, max: max, info: opts.info || '', at: Date.now(), v: V, by: me };
+      });
+      return t.create(code, data).then(function (res) {
+        // the table shows here straight away; if the server refuses it after all, close it and say so
+        if (res && res.saved) res.saved.catch(function (e) {
+          console.warn('[online] table not saved', e);
+          if (table.closed) return;
+          table.close();
+          if (ls.fail.length) fire('fail', e); else if (window.Kit) Kit.toast('Couldn’t open the table. ' + errText(e));
+        });
+        return code;
+      }, function (e) { if (e && e.message === TAKEN && ++tries < 6) return attempt(); throw e; });
+    }
+    return attempt().then(function (code) {
       table.code = code;
       offs.push(t.inbox(code, me, answer, function (e) { console.warn('[online] inbox', e); }));
       beat = setInterval(function () { table.setStatus(null, null, true); }, BEAT);
@@ -306,12 +334,13 @@
     code = String(code || '').trim().toUpperCase();
     if (!/^[A-Z]{4}$/.test(code)) return Promise.reject(new Error('Table codes are 4 letters'));
     var t = T(), me = dev();
+    var tagP = myTag();
     return t.get(code).then(function (room) {
       if (!room || room.game !== opts.game) throw new Error('No open table with code ' + code);
       if (room.host && room.host.dev === me) throw new Error('That’s your own table. Join it from another device.');
-      if (room.status === 'over' || Date.now() - (room.at || 0) > STALE * 3) throw new Error('That table has closed');
+      if (room.status !== 'open' && room.status !== 'playing' || Date.now() - (room.at || 0) > STALE * 3) throw new Error('That table has closed');
       if ((room.n || 1) >= (room.max || 2)) throw new Error('That table is full');
-      return myTag().then(function (lk) {
+      return tagP.then(function (lk) {
         return new Promise(function (resolve, reject) {
           var pc = newPc(), peer = new Peer(pc, room.host.dev, room.host.name), offs = [], done = false, answered = false, sid = Math.random().toString(36).slice(2, 10);
           peer.room = room; peer.code = code;
@@ -366,11 +395,36 @@
     '.ol-code{font-family:var(--display);font-size:2.8rem;letter-spacing:.2em;color:var(--accent);text-align:center;margin:0;}' +
     '.ol-join{display:flex;gap:8px;}.ol-join .input{flex:1;min-width:0;text-transform:uppercase;letter-spacing:.12em;font-weight:800;}' +
     '.ol-spin{width:18px;height:18px;flex:none;border-radius:50%;border:3px solid rgba(255,255,255,.15);border-top-color:var(--accent);animation:olspin 1s linear infinite;}' +
-    '@keyframes olspin{to{transform:rotate(360deg)}}.ol-seat .tag{font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}';
+    '@keyframes olspin{to{transform:rotate(360deg)}}.ol-seat .tag{font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}' +
+    '.btn.ol-busy:disabled{opacity:.85;filter:none;cursor:progress;}' +
+    '.ol-bspin{width:1em;height:1em;flex:none;border-radius:50%;border:.17em solid currentColor;border-right-color:transparent;animation:olspin .8s linear infinite;}';
   function css() { if (document.getElementById('ol-css')) return; var s = document.createElement('style'); s.id = 'ol-css'; s.textContent = CSS; document.head.appendChild(s); }
   function E(tag, a, kids) { return window.Kit ? Kit.el(tag, a, kids) : document.createElement(tag); }
   function esc(s) { return window.Kit ? Kit.esc(s) : String(s); }
   function av(name, color) { return window.Kit && Kit.avatar ? Kit.avatar.el(name || '?', null, color) : E('span', { class: 'avatar', text: String(name || '?').charAt(0) }); }
+  // A button that's waiting on the network: spinner, label ("Opening…"), and no more taps. Returns undo().
+  function busyBtn(btn, label) {
+    css();
+    var html = btn.innerHTML, was = btn.disabled;
+    btn.disabled = true; btn.classList.add('ol-busy'); btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = '<i class="ol-bspin" aria-hidden="true"></i><span>' + esc(label) + '</span>';
+    return function () { btn.disabled = was; btn.classList.remove('ol-busy'); btn.removeAttribute('aria-busy'); btn.innerHTML = html; };
+  }
+  // Run one network action from a button, once: busy until it settles (fn returns a promise), or until the game
+  // moves to another screen (fn returns nothing; if the screen stays, the button frees itself after a while)
+  function oneAtATime() {
+    var cur = null;
+    function run(btn, label, fn) {
+      if (cur) return false;
+      var undo = btn ? busyBtn(btn, label) : function () {}, me = cur = {};
+      var done = function () { if (cur !== me) return; cur = null; undo(); if (me.after) me.after(); };
+      var r; try { r = fn(); } catch (e) { done(); throw e; }
+      if (r && typeof r.then === 'function') r.then(done, done); else setTimeout(done, 15000);
+      return me;
+    }
+    Object.defineProperty(run, 'busy', { get: function () { return !!cur; } });
+    return run;
+  }
 
   // Online.lobby(root, opts)
   //   opts: {game, title, intro, me: {name}, onName(name), onHost(), onJoin(code, room), onSolo(), solo: label,
@@ -394,20 +448,31 @@
     var pals = E('div', { class: 'stack' });
     wrap.appendChild(pals);
     function need() { if (!me.name) { Kit.toast('Pick your name first'); return false; } return true; }
-    wrap.appendChild(E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('users') + '<span>Open a table</span>', onclick: function () { if (need()) o.onHost(me); } }));
+    // one tap, one table: a second tap while the first is under way does nothing
+    var one = oneAtATime(), held = false;
+    function act(btn, label, fn) {
+      if (!alive || !need()) return;
+      var a = one(btn, label, fn);
+      if (a) a.after = function () { if (alive && held) { held = false; paint(last); } };
+    }
+    function openTable(e) { act(e.currentTarget, 'Opening…', function () { return o.onHost(me); }); }
+    function joinAt(r) { return function (e) { act(e.currentTarget, 'Joining…', function () { return o.onJoin(r.code, r, me); }); }; }
+    wrap.appendChild(E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('users') + '<span>Open a table</span>', onclick: openTable }));
     wrap.appendChild(E('div', { class: 'ol-h', text: 'Open tables' }));
     var rooms = E('div', { class: 'stack' }, [E('p', { class: 'ol-note', text: 'Looking for open tables…' })]);
     wrap.appendChild(rooms);
     var code = E('input', { class: 'input', type: 'text', maxlength: '4', placeholder: 'Code', 'aria-label': 'Table code', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false' });
+    var codeBtn = E('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: go });
     code.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
-    function go() { if (need()) o.onJoin(code.value.trim().toUpperCase(), null, me); }
-    wrap.appendChild(E('div', { class: 'ol-join' }, [code, E('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: go })]));
+    function go() { act(codeBtn, 'Joining…', function () { return o.onJoin(code.value.trim().toUpperCase(), null, me); }); }
+    wrap.appendChild(E('div', { class: 'ol-join' }, [code, codeBtn]));
     if (o.onSolo) wrap.appendChild(E('button', { type: 'button', class: 'btn btn-ghost btn-block', text: o.solo || 'Play solo instead', onclick: o.onSolo }));
     if (o.note) wrap.appendChild(E('p', { class: 'ol-note', text: o.note }));
 
     function sub(r) { var s = o.sub ? o.sub(r) : ''; return (s ? s + ' · ' : '') + 'code ' + r.code; }
     function paint(list) {
       if (!alive) return;
+      if (one.busy) { held = true; return; }   // a join is under way: keep its button as it is, paint after
       pals.innerHTML = ''; rooms.innerHTML = '';
       var mine = list.filter(function (r) { return r.who; }), rest = list.filter(function (r) { return !r.who; });
       mine.forEach(function (r) {
@@ -415,7 +480,7 @@
         pals.appendChild(E('div', { class: 'ol-row ol-pal' }, [
           av(nm, window.Kit ? Kit.color(1) : null),
           E('div', { class: 'grow' }, [E('b', { text: nm + (r.status === 'playing' ? ' is playing' : ' has a table open') }), E('small', { text: sub(r) })]),
-          E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>' + esc('Join ' + nm + '’s table') + '</span>', onclick: function () { if (need()) o.onJoin(r.code, r, me); } })
+          E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>' + esc('Join ' + nm + '’s table') + '</span>', onclick: joinAt(r) })
         ]));
       });
       if (!rest.length) rooms.appendChild(E('p', { class: 'ol-note', text: mine.length ? 'No other open tables.' : 'No open tables yet. When someone opens one, it shows up here.' }));
@@ -423,21 +488,41 @@
         rooms.appendChild(E('div', { class: 'ol-row' }, [
           av(r.host.name, window.Kit ? Kit.color(1) : null),
           E('div', { class: 'grow' }, [E('b', { text: r.host.name + '’s table' }), E('small', { text: sub(r) })]),
-          E('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: function () { if (need()) o.onJoin(r.code, r, me); } })
+          E('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: joinAt(r) })
         ]));
       });
     }
     function got(all) {
       var now = Date.now(), d = dev();
-      var list = all.filter(function (r) { return r && r.host && r.host.dev !== d && (r.status === 'open' || r.status === 'playing') && (r.n || 1) < (r.max || 2) && now - (r.at || 0) < STALE; });
+      // only tables still taking players: not yours, not closed here, open or playing (any other status is over),
+      // not full, and heard from lately
+      var list = all.filter(function (r) { return r && r.host && r.host.dev !== d && !gone(r.code) && (r.status === 'open' || r.status === 'playing') && (r.n || 1) < (r.max || 2) && now - (r.at || 0) < STALE; });
       list.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+      sweep(all, now);
+      var sig = list.map(function (r) { return [r.code, r.status, r.n, r.info, r.host.name, r.host.lk].join('|'); }).join(',');
+      if (sig === shownSig) {   // nothing to show has changed: keep the fresh heartbeats, skip the repaint
+        var who = {}; last.forEach(function (r) { who[r.code] = r.who; });
+        list.forEach(function (r) { r.who = who[r.code] || null; });
+        last = list; return;
+      }
       last = list;
-      whose(list).then(function () { if (last === list) paint(list); });
+      whose(list).then(function () { if (last === list) { shownSig = sig; paint(list); } });
+    }
+    // Tables whose page closed before it could delete them stay in the store: clear out long-dead ones so the
+    // list query (30 at most) keeps finding the live ones
+    var swept = {}, shownSig = null;
+    function sweep(all, now) {
+      var n = 0;
+      all.forEach(function (r) {
+        if (n >= 5 || !r || !r.code || swept[r.code] || now - (r.at || 0) < 6 * 3600e3) return;
+        swept[r.code] = 1; n++;
+        T().remove(r.code).catch(function () {});
+      });
     }
     off = T().rooms(o.game, got, function (e) { if (!alive) return; rooms.innerHTML = ''; rooms.appendChild(E('p', { class: 'ol-note', text: 'Couldn’t reach the tables. ' + errText(e) })); });
     // tables go stale without a heartbeat: look again now and then
-    var tick = setInterval(function () { if (last.length) got(last); }, 30000);
-    return { close: function () { alive = false; clearInterval(tick); if (off) off(); }, refresh: function () { got(last); } };
+    var tick = setInterval(function () { if (last.length) got(last); }, 10000);
+    return { close: function () { alive = false; clearInterval(tick); if (off) off(); }, refresh: function () { shownSig = null; got(last); } };
   }
 
   // Online.waitRoom(root, {code, host: bool, hostName, players: [{name, color, me, host}], max, onStart, onLeave, note})
@@ -450,8 +535,9 @@
     wrap.appendChild(list);
     var status = E('div', { class: 'ol-row' }, [E('i', { class: 'ol-spin' }), E('div', { class: 'grow' }, [E('b', { text: '' }), E('small', { text: '' })])]);
     wrap.appendChild(status);
-    if (o.host) { startBtn = E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>Start the game</span>', onclick: function () { o.onStart(); } }); wrap.appendChild(startBtn); }
-    wrap.appendChild(E('button', { type: 'button', class: 'btn btn-ghost btn-block', text: o.host ? 'Close the table' : 'Leave the table', onclick: function () { o.onLeave(); } }));
+    var one = oneAtATime();   // Start and Close/Leave: one of them, once
+    if (o.host) { startBtn = E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>Start the game</span>', onclick: function (e) { one(e.currentTarget, 'Starting…', function () { return o.onStart(); }); } }); wrap.appendChild(startBtn); }
+    wrap.appendChild(E('button', { type: 'button', class: 'btn btn-ghost btn-block', text: o.host ? 'Close the table' : 'Leave the table', onclick: function (e) { one(e.currentTarget, o.host ? 'Closing…' : 'Leaving…', function () { return o.onLeave(); }); } }));
     if (o.note) wrap.appendChild(E('p', { class: 'ol-note', text: o.note }));
     root.appendChild(wrap);
     function update(players) {
@@ -469,7 +555,7 @@
 
   window.Online = {
     config: config, dev: dev, errText: errText, linkTag: linkTag, people: people, whose: whose, myTag: myTag,
-    lobby: lobby, waitRoom: waitRoom, host: host, join: join, NAT_MSG: NAT_MSG,
+    lobby: lobby, waitRoom: waitRoom, host: host, join: join, NAT_MSG: NAT_MSG, busy: busyBtn,
     useTransport: function (t) { transport = t; }, transport: T, localTransport: localTransport, fsTransport: fsTransport,
     _setDev: function (d) { devId = d; }
   };
