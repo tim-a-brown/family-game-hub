@@ -288,9 +288,10 @@ headless swiftshader); `G.T.R.rtInfo()` gives the render target, bloom and shado
 
 Two fitted views: `first` (angled, the player's eye) and `top` (nearly straight down); `G.setView(mode, animate)`
 tweens between them (`fit.topPhi` sets the top view's tilt). `G.look({z, px, py}, animate)` is a look-around pose
-built on the top view: zoomed `z` times (1..3) and slid by `px`, `py` (fractions of that view's half-width and
+built on the top view: zoomed `z` times (1..9) and slid by `px`, `py` (fractions of that view's half-width and
 half-height, clamped inside it); `G.look(null)` eases back to the chosen view, which never changes.
-`G.lookState()` reads the clamped pose back. Only the camera moves (physics and input are untouched), and the loop
+`G.lookState()` reads the clamped pose back; `G.lookBase()` is the zoom that shows the table as big as the
+chosen view (1 for top-down). The page starts there and allows up to 3x that. Only the camera moves (physics and input are untouched), and the loop
 runs at full rate while it does. The page offers it while a ball waits in the shooter lane: a pinch (or the wheel)
 starts it, a drag pans, "Return to play" ends it, and a ball coming into play ends it too. `G.lookHint` (set by
 the page) takes every other turn of the launch hint on the display.

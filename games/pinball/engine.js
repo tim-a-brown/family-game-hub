@@ -664,6 +664,13 @@ export function createGame(def, opts = {}) {
   };
   G.looking = () => !!(RC && RC.look);
   G.lookState = () => RC && RC.look ? Object.assign({}, RC.look) : null;
+  // the look-around zoom that shows the table as big as the chosen view does (across the middle of the playfield)
+  G.lookBase = function () {
+    if (!RC || RC.view === 'top') return 1;
+    const y = L * 0.47, a = RC.project(0, y, 0, 'first'), b = RC.project(W, y, 0, 'first'), c = RC.project(0, y, 0, 'top'), d = RC.project(W, y, 0, 'top');
+    const k = a && b && c && d ? Math.abs(b.x - a.x) / Math.max(1, Math.abs(d.x - c.x)) : 1;
+    return Math.max(1, Math.min(3, k));
+  };
   G.view = () => RC ? RC.view : 'first';
   G.renderOnce = function () { if (RC) RC.render(1 / 60); if (disp) disp.render((g, w, h) => dmdScene(g, w, h)); };
   G.resize = function () { if (RC) RC.resize(); if (disp) disp.render((g, w, h) => dmdScene(g, w, h)); };
@@ -1126,7 +1133,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     if (!animate) { camBase.pos.copy(c.pos); camBase.look.copy(c.look); camera.fov = c.fov; camera.updateProjectionMatrix(); if (key) key.position.copy(RC.keyPos[mode]); RC.tween = null; return; }
     RC.tween = { t0: performance.now(), p0: camBase.pos.clone(), l0: camBase.look.clone(), f0: camera.fov, p1: c.pos, l1: c.look, f1: c.fov, ms: 600, k0: key ? key.position.clone() : null, k1: key ? RC.keyPos[mode] : null };
   };
-  // Look-around: the top-down fit, zoomed in z times (1..3) and slid by px, py (fractions of that view's half-width
+  // Look-around: the top-down fit, zoomed in z times (1..9) and slid by px, py (fractions of that view's half-width
   // and half-height, kept inside it). null tweens back to the chosen view (RC.view never changes).
   RC.look = null;
   const lookAx = { r: new THREE.Vector3(), u: new THREE.Vector3(), d: new THREE.Vector3() };
@@ -1142,7 +1149,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
       return;
     }
     const c = RC.cams.top; if (!c) return;
-    const z = Math.max(1, Math.min(3, o.z || 1)), m = 1 - 1 / z;
+    const z = Math.max(1, Math.min(9, o.z || 1)), m = 1 - 1 / z;
     const L = RC.look = { z, px: Math.max(-m, Math.min(m, o.px || 0)), py: Math.max(-m, Math.min(m, o.py || 0)) };
     projCam.fov = c.fov; projCam.aspect = camera.aspect; projCam.position.copy(c.pos); projCam.lookAt(c.look); projCam.updateMatrixWorld();
     lookAx.r.setFromMatrixColumn(projCam.matrixWorld, 0); lookAx.u.setFromMatrixColumn(projCam.matrixWorld, 1); lookAx.d.copy(c.pos).sub(c.look);

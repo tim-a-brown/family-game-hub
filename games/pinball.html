@@ -313,7 +313,13 @@ function startGame(id, balls, who) {
     sizeDmd();
     // the table is built one phase per frame; the text and bar show the real phase
     // the camera keeps the button row clear: the apron ends above it and the buttons sit on the cabinet front
-    const padBottom = () => { const v = viewEl.getBoundingClientRect(), b = flipBtn.L.getBoundingClientRect(); return Math.max(0, v.bottom - (btnsOn() ? b.top : magCtl.getBoundingClientRect().top) + 6); };
+    // (while looking around the buttons are hidden and have no position: keep the last measure)
+    let padLast = 0;
+    const padBottom = () => {
+      if (viewEl.classList.contains('looking')) return padLast;
+      const v = viewEl.getBoundingClientRect(), b = flipBtn.L.getBoundingClientRect();
+      return (padLast = Math.max(0, v.bottom - (btnsOn() ? b.top : magCtl.getBoundingClientRect().top) + 6));
+    };
     const g = createGame(def, { renderer: r, dmdCanvas: dmdEl, balls, who, amb: ambPref, audio: audio(), onOver: finish, padBottom, view: viewMode(),
       progress: (label, frac) => { loadTxt.textContent = label + '…'; loadBar.style.width = Math.round(frac * 100) + '%'; } });
     await g.ready;
@@ -691,7 +697,9 @@ let look = null, lookG = null;
 function lookOK() { return !!G && !G.paused && !!G.waitPlunge && (G.state === 'serve' || G.state === 'play') && !G.pulling && !plunger.drag && !plunger.snap; }
 function enterLook() {
   if (look || !lookOK()) return false;
-  look = { z: 1, px: 0, py: 0 }; lookG = null;
+  // it starts as big as the view being played and zooms in up to about 3x from there, never out past it
+  const z0 = G.lookBase();
+  look = { z: z0, px: 0, py: 0, zMin: z0, zMax: z0 * 3 }; lookG = null;
   for (const id in ptr) ptr[id].role = 'look';
   keys.L = keys.R = false; btnHeld.L = btnHeld.R = false; syncFlips();
   viewEl.querySelectorAll('.pb-arc.on').forEach(b => b.classList.remove('on'));
@@ -710,7 +718,7 @@ function exitLook() {
 // zoom by k about a point on the canvas (client x, y), then slide by (dx, dy) client px
 function lookMove(k, cx, cy, dx, dy) {
   const r = glCanvas.getBoundingClientRect(); if (!r.width || !r.height) return;
-  const L = look, z0 = L.z, z1 = Math.max(1, Math.min(3, z0 * k));
+  const L = look, z0 = L.z, z1 = Math.max(L.zMin, Math.min(L.zMax, z0 * k));
   const nx = (cx - r.left - r.width / 2) / (r.width / 2), ny = (cy - r.top - r.height / 2) / (r.height / 2);
   L.px += nx / z0 - nx / z1; L.py -= ny / z0 - ny / z1;       // keep the point under the fingers where it is
   L.z = z1; L.px -= dx / (r.width / 2) / z1; L.py += dy / (r.height / 2) / z1;
@@ -894,7 +902,7 @@ window.__pin = {
   ui(ms) { const P = plunger; plungerStep(ms != null && P.snap ? P.snap.t0 + ms : performance.now()); },   // draw the plunger now (ms: that far into a snap)
   plunger() { const P = plunger; if (!P.el) return null; const r = P.el.getBoundingClientRect(), gm = P.geo || {}; return { rect: [r.left, r.top, r.width, r.height].map(Math.round), raf: P.raf, travel: P.travel, d: P.d, show: P.shown, cls: P.el.className, ball: P.ball, fly: P.fly, knobY: r.top + (gm.k0 || 0) + (gm.fH || 0) + (gm.kH || 0) / 2, laneY: r.top + (gm.tip0 || 0) * 0.6, flY: r.top + (gm.yFl || 0) }; },
   view(m, animate) { if (m) setViewMode(m); return G ? G.view() : viewMode(); },
-  look(z, px, py) { if (z === null) { exitLook(); return null; } if (!look && !enterLook()) return null; if (z != null) { look.z = z; look.px = px || 0; look.py = py || 0; G.look(look, false); const c = G.lookState(); if (c) Object.assign(look, c); } return look && Object.assign({}, look); },
+  look(z, px, py) { if (z === null) { exitLook(); return null; } if (!look && !enterLook()) return null; if (z != null) { look.z = Math.max(look.zMin, Math.min(look.zMax, z)); look.px = px || 0; look.py = py || 0; G.look(look, false); const c = G.lookState(); if (c) Object.assign(look, c); } return look && Object.assign({}, look); },
   // deterministic frames for screenshots: stop the live loop, step the game, draw once
   freeze() { if (G) G.pause(); },
   step(sec) { if (!G) return null; G.run(sec); G.renderOnce(); return G.snapshot(); },
