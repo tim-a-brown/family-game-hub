@@ -619,6 +619,222 @@ function filmMaterial(normalTex, frostTex, side) {
   return m;
 }
 
+// ── Table physics ───────────────────────────────────────────────────────
+// A small rigid-body solver for the wrapped cookies on the table. Each pack is a box (its
+// pillow, without the floppy seals) that touches the world through 26 points on its corners,
+// edges and faces: a point under the table, or inside another pack's box, is a contact. Contacts
+// are solved with sequential impulses (friction, a little bounce), overlaps are pushed apart
+// directly, and a body that has been still for a moment falls asleep. Sleeping bodies cost
+// nothing and act as solid ground until something hits them hard enough to wake them, so the
+// scene stops rendering once everything has settled.
+function makeWorld() {
+  const G = -15, DT = 1 / 120, ITER = 7, SLOP = 0.003, MU_T = 0.55, MU_B = 0.4, MAXSUB = 5;
+  const bodies = [], cons = [], pairs = new Map();
+  let walls = [], acc = 0, stepMs = 0;
+  const up = new THREE.Vector3(0, 1, 0);
+  function boxPoints(hx, hy, hz) {
+    const a = [];
+    for (const sy of [-1, 1]) for (const sz of [-1, 1]) for (const fx of [-1, -1 / 3, 1 / 3, 1]) a.push(fx * hx, sy * hy, sz * hz);
+    for (const sy of [-1, 1]) for (const sx of [-1, 1]) a.push(sx * hx, sy * hy, 0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.push(sx * hx, 0, sz * hz);
+    a.push(0, -hy, 0, 0, hy, 0);
+    return new Float32Array(a);
+  }
+  // he: half extents (pack frame: x long, y up, z across)
+  function add(he, p, q, data) {
+    const m = 1, ix = (he.y * he.y + he.z * he.z) / 3, iy = (he.x * he.x + he.z * he.z) / 3, iz = (he.x * he.x + he.y * he.y) / 3;
+    const b = { he: he.clone(), p: p.clone(), q: q.clone(), v: new THREE.Vector3(), w: new THREE.Vector3(), invM: 1 / m,
+      invI: new THREE.Vector3(1 / (m * ix), 1 / (m * iy), 1 / (m * iz)), R: new Float32Array(9), lp: boxPoints(he.x, he.y, he.z), wp: null,
+      rad: he.length(), awake: false, still: 0, age: 0, held: false, active: true, imp: 0, impT: 0, data };
+    b.wp = new Float32Array(b.lp.length);
+    bodies.push(b);
+    return b;
+  }
+  function remove(b) { b.active = false; const i = bodies.indexOf(b); if (i >= 0) bodies.splice(i, 1); }
+  function wake(b) { if (b && b.active && !b.held && !b.awake) { b.awake = true; b.still = 0; b.age = 0; } }
+  function wakeNear(b, pad) {
+    for (const o of bodies) if (o !== b && o.active && !o.held && o.p.distanceTo(b.p) < o.rad + b.rad + (pad || 0.2)) wake(o);
+  }
+  function frameOf(b) {
+    const q = b.q, x = q.x, y = q.y, z = q.z, w = q.w, R = b.R;
+    R[0] = 1 - 2 * (y * y + z * z); R[1] = 2 * (x * y - z * w); R[2] = 2 * (x * z + y * w);
+    R[3] = 2 * (x * y + z * w); R[4] = 1 - 2 * (x * x + z * z); R[5] = 2 * (y * z - x * w);
+    R[6] = 2 * (x * z - y * w); R[7] = 2 * (y * z + x * w); R[8] = 1 - 2 * (x * x + y * y);
+    const lp = b.lp, wp = b.wp, px = b.p.x, py = b.p.y, pz = b.p.z;
+    for (let i = 0; i < lp.length; i += 3) {
+      const a = lp[i], c = lp[i + 1], d = lp[i + 2];
+      wp[i] = px + R[0] * a + R[1] * c + R[2] * d; wp[i + 1] = py + R[3] * a + R[4] * c + R[5] * d; wp[i + 2] = pz + R[6] * a + R[7] * c + R[8] * d;
+    }
+  }
+  // world inverse inertia times a vector (into out)
+  function iI(b, v, out) {
+    const R = b.R, I = b.invI;
+    const lx = (R[0] * v.x + R[3] * v.y + R[6] * v.z) * I.x, ly = (R[1] * v.x + R[4] * v.y + R[7] * v.z) * I.y, lz = (R[2] * v.x + R[5] * v.y + R[8] * v.z) * I.z;
+    return out.set(R[0] * lx + R[1] * ly + R[2] * lz, R[3] * lx + R[4] * ly + R[5] * lz, R[6] * lx + R[7] * ly + R[8] * lz);
+  }
+  const t1 = new THREE.Vector3(), t2 = new THREE.Vector3(), t3 = new THREE.Vector3(), t4 = new THREE.Vector3();
+  let pool = [];
+  function con(a, b, px, py, pz, n, depth) {
+    const c = pool.pop() || { ra: new THREE.Vector3(), rb: new THREE.Vector3(), n: new THREE.Vector3(), ta: new THREE.Vector3(), tb: new THREE.Vector3() };
+    c.a = a; c.b = b; c.n.copy(n); c.depth = depth;
+    c.ra.set(px - a.p.x, py - a.p.y, pz - a.p.z);
+    if (b) c.rb.set(px - b.p.x, py - b.p.y, pz - b.p.z); else c.rb.set(0, 0, 0);
+    // tangents
+    if (Math.abs(n.y) < 0.9) c.ta.set(0, 1, 0).cross(n).normalize(); else c.ta.set(1, 0, 0).cross(n).normalize();
+    c.tb.copy(n).cross(c.ta);
+    c.kn = mass(c, c.n); c.kt = mass(c, c.ta); c.kb = mass(c, c.tb);
+    c.jn = 0; c.jt = 0; c.jb = 0;
+    const vn = relVel(c, t3).dot(n);
+    c.bias = vn < -1.2 ? -0.22 * vn : 0;
+    c.mu = b ? MU_B : MU_T;
+    cons.push(c);
+    return c;
+  }
+  const dyn = (b) => b && b.awake;
+  function mass(c, d) {
+    let k = 0;
+    if (dyn(c.a)) { k += c.a.invM; t1.copy(c.ra).cross(d); iI(c.a, t1, t2); k += t2.cross(c.ra).dot(d); }
+    if (dyn(c.b)) { k += c.b.invM; t1.copy(c.rb).cross(d); iI(c.b, t1, t2); k += t2.cross(c.rb).dot(d); }
+    return k > 1e-9 ? 1 / k : 0;
+  }
+  function relVel(c, out) {
+    out.copy(c.a.w).cross(c.ra).add(c.a.v);
+    if (c.b) { t4.copy(c.b.w).cross(c.b ? c.rb : t4).add(c.b.v); out.sub(t4); }
+    return out;
+  }
+  function impulse(c, d, j) {
+    if (dyn(c.a)) { c.a.v.addScaledVector(d, j * c.a.invM); t1.copy(c.ra).cross(d).multiplyScalar(j); c.a.w.add(iI(c.a, t1, t2)); }
+    if (dyn(c.b)) { c.b.v.addScaledVector(d, -j * c.b.invM); t1.copy(c.rb).cross(d).multiplyScalar(-j); c.b.w.add(iI(c.b, t1, t2)); }
+  }
+  const nrm = new THREE.Vector3();
+  // points of a inside b's box -> contacts pushing a out through b's nearest face
+  function pointsIn(a, b) {
+    const R = b.R, he = b.he, wp = a.wp;
+    let deep = 0;
+    for (let i = 0; i < wp.length; i += 3) {
+      const dx = wp[i] - b.p.x, dy = wp[i + 1] - b.p.y, dz = wp[i + 2] - b.p.z;
+      const lx = R[0] * dx + R[3] * dy + R[6] * dz; let ox = he.x - Math.abs(lx); if (ox <= 0) continue;
+      const ly = R[1] * dx + R[4] * dy + R[7] * dz; let oy = he.y - Math.abs(ly); if (oy <= 0) continue;
+      const lz = R[2] * dx + R[5] * dy + R[8] * dz; let oz = he.z - Math.abs(lz); if (oz <= 0) continue;
+      // the thin pack slides over or under rather than through: favour the top and bottom faces a little
+      oy *= 0.8;
+      let k = 0, d = ox, s = Math.sign(lx) || 1;
+      if (oy < d) { k = 1; d = oy; s = Math.sign(ly) || 1; }
+      if (oz < d) { k = 2; d = oz; s = Math.sign(lz) || 1; }
+      if (k === 1) d /= 0.8;
+      nrm.set(R[k] * s, R[3 + k] * s, R[6 + k] * s);
+      con(a, b, wp[i], wp[i + 1], wp[i + 2], nrm, d);
+      if (d > deep) { deep = d; pairDeep(a, b, nrm, d); }
+    }
+  }
+  function pairDeep(a, b, n, d) {
+    const key = a.id < b.id ? a.id + ':' + b.id : b.id + ':' + a.id;
+    const e = pairs.get(key);
+    const sg = a.id < b.id ? 1 : -1;
+    if (!e) pairs.set(key, { a: sg > 0 ? a : b, b: sg > 0 ? b : a, n: n.clone().multiplyScalar(sg), d });
+    else if (d > e.d) { e.d = d; e.n.copy(n).multiplyScalar(sg); }
+  }
+  let ids = 1;
+  function sub(events) {
+    const act = bodies.filter((b) => b.active && !b.held);
+    for (const b of act) if (!b.id) b.id = ids++;
+    const aw = act.filter((b) => b.awake);
+    if (!aw.length) return false;
+    for (const b of aw) {
+      b.v.y += G * DT;
+      b.v.multiplyScalar(1 - 0.25 * DT); b.w.multiplyScalar(1 - 1.6 * DT);
+    }
+    for (const b of act) frameOf(b);
+    pool.push(...cons); cons.length = 0; pairs.clear();
+    const tableDeep = new Map();
+    for (const a of aw) {
+      let td = 0;
+      const wp = a.wp;
+      for (let i = 1; i < wp.length; i += 3) if (wp[i] < 0) { con(a, null, wp[i - 1], wp[i], wp[i + 1], up, -wp[i]); td = Math.max(td, -wp[i]); }
+      if (td > 0) tableDeep.set(a, td);
+      for (const b of act) {
+        if (b === a || (b.awake && b.id < a.id)) continue;
+        const r = a.rad + b.rad, dx = a.p.x - b.p.x, dy = a.p.y - b.p.y, dz = a.p.z - b.p.z;
+        if (dx * dx + dy * dy + dz * dz > r * r) continue;
+        const n0 = cons.length;
+        pointsIn(a, b); pointsIn(b, a);
+        if (cons.length === n0) continue;
+        if (!b.awake) {
+          // a sleeping pack is solid ground, unless it's hit hard or pushed into
+          let hit = 0;
+          for (let i = n0; i < cons.length; i++) { const c = cons[i]; hit = Math.max(hit, -relVel(c, t3).dot(c.n), c.depth * 20); }
+          if (hit > 0.35) { wake(b); wakeNear(b, 0.05); frameOf(b); for (let i = n0; i < cons.length; i++) { const c = cons[i]; c.kn = mass(c, c.n); c.kt = mass(c, c.ta); c.kb = mass(c, c.tb); } }
+        }
+      }
+    }
+    // velocities
+    for (let it = 0; it < ITER; it++) {
+      for (const c of cons) {
+        if (!c.kn) continue;
+        const rv = relVel(c, t3);
+        let j = (c.bias - rv.dot(c.n)) * c.kn;
+        const j0 = c.jn; c.jn = Math.max(0, j0 + j); j = c.jn - j0;
+        if (j) impulse(c, c.n, j);
+        const lim = c.mu * c.jn;
+        const rv2 = relVel(c, t3);
+        let jt = -rv2.dot(c.ta) * c.kt, jt0 = c.jt; c.jt = Math.max(-lim, Math.min(lim, jt0 + jt)); jt = c.jt - jt0; if (jt) impulse(c, c.ta, jt);
+        let jb = -relVel(c, t3).dot(c.tb) * c.kb, jb0 = c.jb; c.jb = Math.max(-lim, Math.min(lim, jb0 + jb)); jb = c.jb - jb0; if (jb) impulse(c, c.tb, jb);
+      }
+    }
+    // how hard things hit (for sounds), per body
+    for (const c of cons) {
+      if (c.jn > c.a.imp) { c.a.imp = c.jn; c.a.impT = c.b ? 1 : 0; }
+      if (c.b && c.jn > c.b.imp) { c.b.imp = c.jn; c.b.impT = 1; }
+    }
+    // move
+    for (const b of aw) {
+      b.p.addScaledVector(b.v, DT);
+      const w = b.w, q = b.q, h = DT * 0.5;
+      const qx = q.x, qy = q.y, qz = q.z, qw = q.w;
+      q.x += h * (w.x * qw + w.y * qz - w.z * qy); q.y += h * (w.y * qw + w.z * qx - w.x * qz);
+      q.z += h * (w.z * qw + w.x * qy - w.y * qx); q.w += h * (-w.x * qx - w.y * qy - w.z * qz);
+      q.normalize();
+    }
+    // push overlaps apart (once per body or pair, not per point)
+    for (const [b, d] of tableDeep) if (d > SLOP) b.p.y += (d - SLOP) * 0.5;
+    for (const e of pairs.values()) {
+      if (e.d <= SLOP) continue;
+      const ma = e.a.awake ? 1 : 0, mb = e.b.awake ? 1 : 0, s = ma + mb; if (!s) continue;
+      const k = (e.d - SLOP) * 0.45 / s;
+      if (ma) e.a.p.addScaledVector(e.n, k);
+      if (mb) e.b.p.addScaledVector(e.n, -k);
+    }
+    // soft walls at the edge of the visible table, on the pack's centre
+    for (const b of aw) {
+      for (const wl of walls) {
+        const d = (b.p.x - wl.x) * wl.nx + (b.p.z - wl.z) * wl.nz - b.he.z;
+        if (d < 0) {
+          b.p.x -= wl.nx * d * 0.3; b.p.z -= wl.nz * d * 0.3;
+          const vn = b.v.x * wl.nx + b.v.z * wl.nz;
+          if (vn < 0) { b.v.x -= wl.nx * vn * 1.3; b.v.z -= wl.nz * vn * 1.3; }
+        }
+      }
+      // sleep
+      b.age += DT;
+      if (b.v.lengthSq() < 0.012 && b.w.lengthSq() < 0.05) b.still += DT; else b.still = 0;
+      if (b.still > 0.3 || b.age > 9) { b.awake = false; b.v.set(0, 0, 0); b.w.set(0, 0, 0); events && events.push(b); }
+    }
+    return true;
+  }
+  // advance by dt (fixed substeps); true while anything is awake
+  function step(dt, events) {
+    const t0 = performance.now();
+    acc = Math.min(acc + dt, DT * MAXSUB);
+    let any = bodies.some((b) => b.active && !b.held && b.awake);
+    while (acc >= DT) { acc -= DT; any = sub(events) || any; }
+    stepMs = performance.now() - t0;
+    return bodies.some((b) => b.active && !b.held && b.awake) || any;
+  }
+  // settle quietly, without drawing (a freshly laid table)
+  function settle(maxSteps) { for (let i = 0; i < maxSteps; i++) if (!sub(null)) break; acc = 0; }
+  return { bodies, add, remove, wake, wakeNear, step, settle, setWalls: (w) => { walls = w; }, ms: () => stepMs, DT };
+}
+
 // ── Styles for the overlay (slip, hint, button). The table keeps its own colours in every theme.
 const CSS = `
 .ck{position:absolute;inset:0;overflow:hidden;background:#24100a;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
@@ -877,6 +1093,22 @@ function mount(stage, api) {
   // ── Cookies ──────────────────────────────────────────────────────────
   let seedN = (Date.now() & 0xffff) + 1;
   const cookies = [];
+  const world = makeWorld();
+  // place a cookie's groups where its rigid body is
+  const _sq = new THREE.Quaternion(), _sv = new THREE.Vector3(), _sx = new THREE.Vector3();
+  function syncCookie(c) {
+    const b = c.rb;
+    _sq.copy(b.q).multiply(c.q0i);
+    c.root.quaternion.copy(_sq);
+    c.root.position.copy(b.p).sub(_sv.copy(c.off0).applyQuaternion(_sq));
+    // the soft shadow follows along the table, fading as the pack rises
+    _sx.set(1, 0, 0).applyQuaternion(b.q);
+    const lift = Math.max(0, b.p.y - b.he.y * 1.2);
+    c.blob.position.set(b.p.x, 0.004, b.p.z);
+    c.blob.rotation.set(-Math.PI / 2, 0, Math.atan2(-_sx.z, _sx.x));
+    c.blob.material.opacity = 0.85 * Math.max(0.12, 1 - lift / 3);
+    c.blob.scale.copy(c.blobS).multiplyScalar(1 + lift * 0.12);
+  }
   const pickables = [];
 
   function makeCookie(x, z, scale) {
@@ -938,15 +1170,21 @@ function mount(stage, api) {
     rootG.updateMatrixWorld(true);
     const bb2 = new THREE.Box3().setFromObject(pose, true);
     rootG.position.set(x, -bb2.min.y, z);
+    rootG.updateMatrixWorld(true);
+    // the rigid body: the pack's pillow as a box, sitting on the table where the pack does
+    const S = wrap.S, he = new THREE.Vector3(S.x * 0.98, S.y * 0.5 * 0.85, S.z * 0.92).multiplyScalar(scale);
+    const pq = wrap.g.getWorldQuaternion(new THREE.Quaternion());
+    const ctrW = wrap.g.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, he.y, 0));
     const blob = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, opacity: 0.85 }));
-    blob.rotation.x = -Math.PI / 2;
-    const fw = (bb2.max.x - bb2.min.x), fd = (bb2.max.z - bb2.min.z);
-    blob.scale.set(fw * 1.15, fd * 1.15, 1);
-    blob.position.set(x, 0.004, z);
+    blob.rotation.order = 'XYZ';
+    blob.scale.set(he.x * 1.9, he.z * 1.9, 1);
     blob.renderOrder = 1;
     scene.add(blob); scene.add(rootG);
     const c = { root: rootG, pose, body, halves, slip, mat, blob, base, x, z, scale, restY: rootG.position.y,
-      restQ: pose.quaternion.clone(), w: (bb.max.x - bb.min.x) * scale, blobS: blob.scale.clone(), wob: null, hop: null, drop: null, dim: 1, alive: true, P, wrap, pack };
+      restQ: pose.quaternion.clone(), w: (bb.max.x - bb.min.x) * scale, blobS: blob.scale.clone(), dim: 1, alive: true, P, wrap, pack,
+      off0: ctrW.clone().sub(rootG.position), q0i: pq.clone().invert() };
+    c.rb = world.add(he, ctrW, pq, c);
+    syncCookie(c);
     halves.forEach((h) => { h.mesh.userData.cookie = c; pickables.push(h.mesh); });
     wrap.whole.userData.cookie = c; pickables.push(wrap.whole);
     return c;
@@ -1035,6 +1273,7 @@ function mount(stage, api) {
   }
   function freeCookie(c) {
     c.alive = false;
+    world.remove(c.rb);
     scene.remove(c.root); scene.remove(c.blob);
     [c.wrap.whole, ...c.wrap.meshes].forEach((m) => { if (m.parent) m.parent.remove(m); const i = pickables.indexOf(m); if (i >= 0) pickables.splice(i, 1); });
     c.halves.forEach((h) => { h.mesh.geometry.dispose(); const i = pickables.indexOf(h.mesh); if (i >= 0) pickables.splice(i, 1); });
@@ -1114,18 +1353,54 @@ function mount(stage, api) {
     for (let k = 0; k < n; k++) { const p = freeSpot(pts, camTo, 40); if (p) pts.push(p); }
     pts.sort((a, b) => a.z - b.z);   // far ones first, so near ones draw over them
     pts.forEach((p) => cookies.push(makeCookie(p.x, p.z, sc * (0.82 + Math.random() * 0.12))));
+    // a freshly laid table: let anything that ended up overlapping settle, without drawing it
+    updateWalls();
+    cookies.forEach((k) => world.wake(k.rb));
+    world.settle(360);
+    cookies.forEach(syncCookie);
+  }
+  // Drop a cookie onto the table from above: after `delay` it falls from `h` up, turning and
+  // tumbling a little (tumble: also tipped and spinning, as one tossed on rather than set down).
+  function dropIn(c, delay, h, tumble) {
+    const b = c.rb;
+    b.p.y += h;
+    if (tumble) {
+      const ax = new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+      b.q.premultiply(new THREE.Quaternion().setFromAxisAngle(ax, (Math.random() - 0.5) * 1.4));
+      b.w.set((Math.random() - 0.5) * 5, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 5);
+      b.v.set((Math.random() - 0.5) * 1.2, -1.5, (Math.random() - 0.5) * 1.2);
+    } else { b.w.set(0, (Math.random() - 0.5) * 4, 0); b.v.set(0, -1, 0); }
+    b.held = true; b.release = T + delay; b.awake = false; b.landed = false;
+    syncCookie(c);
+  }
+  // soft walls along the edge of the visible table (as it will be once the camera has eased)
+  let wallsFor = -1;
+  function updateWalls() {
+    if (Math.abs(wallsFor - camTo) < 1e-3 && world.walls) return;
+    wallsFor = camTo;
+    const pts = [[-0.92, -0.86], [0.92, -0.86], [0.92, 0.8], [-0.92, 0.8]].map((q) => onTableAt(q[0], q[1], camTo));
+    if (pts.some((q) => !q)) return;
+    const cx = pts.reduce((a, q) => a + q.x, 0) / 4, cz = pts.reduce((a, q) => a + q.z, 0) / 4;
+    const ws = pts.map((a, i) => {
+      const b = pts[(i + 1) % 4], ex = b.x - a.x, ez = b.z - a.z, l = Math.hypot(ex, ez) || 1;
+      let nx = -ez / l, nz = ex / l;
+      if ((cx - a.x) * nx + (cz - a.z) * nz < 0) { nx = -nx; nz = -nz; }
+      return { x: a.x, z: a.z, nx, nz };
+    });
+    world.setWalls(ws); world.walls = ws;
   }
   // "More cookies": one more drops onto the table each time (up to MAX); the camera eases back to make room.
   function addCookie() {
     if (state !== 'idle' || C || total() >= MAX) return false;
     extra = Math.min(MAX - baseN, extra + 1); lsSet(MORE_KEY, String(extra));
     camTo = distFor(total());
-    const p = freeSpot(cookies.map((c) => ({ x: c.x, z: c.z })), camTo, 160);
+    // somewhere fairly open, but only a few tries: on a busy table it may well land on or against others
+    updateWalls();
+    const p = freeSpot(cookies.map((c) => ({ x: c.rb.p.x, z: c.rb.p.z })), camTo * 0.96, 6);
     if (!p) return false;
     const nc = makeCookie(p.x, p.z, 0.82 + Math.random() * 0.12);
-    nc.drop = { t0: T };
     cookies.push(nc);
-    for (const k of cookies) if (k !== nc) { const d = Math.hypot(k.x - p.x, k.z - p.z); if (d < 6) k.hop = { t0: T + 0.42 + d * 0.06 }; }
+    dropIn(nc, 0, 3.6 + Math.random() * 1.4, true);
     sfx('whoosh', 0.35);
     moreLabel(); kick();
     return true;
@@ -1136,7 +1411,7 @@ function mount(stage, api) {
     extra = 0; lsSet(MORE_KEY, '0');
     camTo = distFor(total());
     clearCrumbs();
-    placeAll(); cookies.forEach((k, i) => { k.drop = { t0: T + 0.25 + i * 0.05 }; });
+    placeAll(); cookies.forEach((k, i) => dropIn(k, 0.25 + i * 0.05, 4.2, false));
     sfx('whoosh'); haptic('medium');
     moreLabel(); kick();
   }
@@ -1158,41 +1433,46 @@ function mount(stage, api) {
     if (busy) raf = requestAnimationFrame(frame);
   }
 
-  // ── Per-cookie motion: wobble, hop, drop-in ──────────────────────────
+  // ── Per-cookie motion: the table physics ─────────────────────────────
   const tq = new THREE.Quaternion(), te = new THREE.Euler(), yAxis = new THREE.Vector3(0, 1, 0);
-  function bounce(t) {
-    const n = 7.5625, d = 2.75;
-    if (t < 1 / d) return n * t * t;
-    if (t < 2 / d) return n * (t -= 1.5 / d) * t + 0.75;
-    if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + 0.9375;
-    return n * (t -= 2.625 / d) * t + 0.984375;
+  // a touch: a little rock and hop (a real nudge, so it can knock into its neighbours)
+  function wobble(c, amp) {
+    if (!c || c === openC || !c.rb || c.rb.held) return;
+    const b = c.rb;
+    world.wake(b);
+    const ax = new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+    b.w.addScaledVector(ax, amp * 22);
+    b.v.y += amp * 9;
+    kick();
   }
-  function wobble(c, amp) { if (c && c !== openC) { c.wob = { t0: T, amp }; kick(); } }
-  function idleMotion(c) {
-    let busy = false, y = c.restY, ax = 0, az = 0, spin = 0;
-    if (c.wob) {
-      const t = T - c.wob.t0;
-      if (t > 1.3) c.wob = null;
-      else { const a = c.wob.amp * Math.exp(-t * 4.2) * Math.sin(t * 24); az += a; ax += a * 0.45; y += Math.max(0, c.wob.amp * 0.8 * Math.exp(-t * 7) * Math.sin(t * 24)) * 0.6; busy = true; }
+  let lastSnd = 0, lastBuzz = 0;
+  function physics(dt) {
+    // drops waiting to fall
+    for (const c of cookies) {
+      const b = c.rb;
+      if (b && b.held && c !== openC && T >= b.release) { b.held = false; b.awake = true; b.still = 0; b.age = 0; }
     }
-    if (c.hop) {
-      const t = T - c.hop.t0;
-      if (t > 0.34) { c.hop = null; c.wob = { t0: T, amp: 0.05 }; busy = true; }
-      else if (t > 0) { const u = t / 0.34; y += 0.22 * c.scale * Math.sin(Math.PI * u); az += 0.08 * Math.sin(Math.PI * u); busy = true; }
-      else busy = true;
+    let busy = world.step(dt);
+    for (const c of cookies) {
+      if (c === openC) continue;
+      const b = c.rb;
+      if (b.held) { busy = true; continue; }
+      if (b.awake || b.imp) syncCookie(c);
+      // sounds scaled by how hard it hit: a tap on the table, a rustle of film against film
+      if (b.imp > 0.25) {
+        const k = Math.min(1, b.imp / 5);
+        if (!b.landed && b.impT === 0) {
+          b.landed = true;
+          sfx('tap', 0.35 + 0.65 * k);
+          if (T - lastBuzz > 0.12) { haptic(k > 0.5 ? 'light' : 'tick'); lastBuzz = T; }
+        } else if (T - lastSnd > 0.07 && b.imp > 0.6) {
+          lastSnd = T;
+          if (b.impT === 1) crinkle(0.04 + 0.1 * k, 0.15 + 0.6 * k); else sfx('tick', 0.3 + 0.4 * k);
+        }
+        b.landed = true;
+      }
+      b.imp = 0;
     }
-    if (c.drop) {
-      const t = T - c.drop.t0, D = 0.75;
-      if (t >= D) { c.drop = null; c.wob = { t0: T, amp: 0.09 }; sfx('tap'); haptic('light'); busy = true; }
-      else if (t > 0) { const e = bounce(t / D); y += 4.2 * (1 - e); spin = 2.8 * (1 - ease.outCubic(t / D)); busy = true; }
-      else { y += 4.2; busy = true; }
-      const hgt = y - c.restY;
-      c.blob.material.opacity = 0.85 * Math.max(0.15, 1 - hgt / 4);
-      c.blob.scale.copy(c.blobS).multiplyScalar(1 + hgt * 0.15);
-    }
-    c.root.position.y = y;
-    te.set(ax, spin, az, 'XYZ'); tq.setFromEuler(te);
-    c.pose.quaternion.copy(tq).multiply(c.restQ);
     return busy;
   }
 
@@ -1272,8 +1552,11 @@ function mount(stage, api) {
   }
   // auto: crack it as soon as it's unwrapped (automation only)
   function unwrapCookie(c, auto) {
-    if (state !== 'idle' || !c || !c.alive || c.drop) return;
-    state = 'unwrapping'; openC = c; c.wob = null; c.hop = null;
+    if (state !== 'idle' || !c || !c.alive || c.rb.held) return;
+    state = 'unwrapping'; openC = c;
+    // take it out of the table physics (anything resting on it will fall), from the pose it's in now
+    world.wakeNear(c.rb, 0.3); world.remove(c.rb);
+    c.pose.quaternion.premultiply(c.root.quaternion); c.root.quaternion.identity();
     const tgt = presentTarget(c);
     O = { c, t0: T, p0: c.root.position.clone(), q0: c.pose.quaternion.clone(), tgt, auto: !!auto, t1: null,
       split: false, torn: false, fl: null, nudge: -9, cracked: false, handed: false, done: false,
@@ -1520,13 +1803,12 @@ function mount(stage, api) {
     }
     if (!C.stocked && t >= 0.3) {
       C.stocked = true;
-      if (needLayout) { needLayout = false; placeAll(); cookies.forEach((k, i) => { k.drop = { t0: T + i * 0.05 }; }); }
+      if (needLayout) { needLayout = false; placeAll(); cookies.forEach((k, i) => dropIn(k, i * 0.05, 4.2, false)); }
       else {
-        const nc = makeCookie(c.x, c.z, c.scale);
-        nc.drop = { t0: T };
+        // a new cookie drops in where that one was (and lands on whatever's there now)
+        const nc = makeCookie(c.rb.p.x, c.rb.p.z, c.scale);
         cookies.push(nc);
-        // the rest of the table hops in a ripple as the new cookie lands
-        for (const k of cookies) if (k !== nc) { const d = Math.hypot(k.x - c.x, k.z - c.z); k.hop = { t0: T + 0.42 + d * 0.06 }; }
+        dropIn(nc, 0, 4.2, true);
       }
       state = 'idle'; O = null;
       hint.textContent = 'Choose a cookie'; hint.classList.remove('off'); more.classList.remove('off');
@@ -1544,7 +1826,8 @@ function mount(stage, api) {
       if (O && state !== 'open' && state !== 'closing') O.tgt = presentTarget(O.c);
       busy = true;
     }
-    for (const c of cookies) if (c !== openC) busy = idleMotion(c) || busy;
+    updateWalls();
+    busy = physics(dt) || busy;
     if (O && state !== 'closing') busy = updateOpen(dt) || busy;
     if (C) { const b = updateClose(); if (!b) C = null; busy = b || busy; }
     busy = updateCrumbs(dt) || busy;
@@ -1601,7 +1884,7 @@ function mount(stage, api) {
   function onKey(e) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      if (state === 'idle') { const live = cookies.filter((c) => !c.drop); unwrapCookie(live[Math.floor(Math.random() * live.length)]); }
+      if (state === 'idle') { const live = cookies.filter((c) => !c.rb.held); unwrapCookie(live[Math.floor(Math.random() * live.length)]); }
       else if (state === 'ready') crackCookie();
       else if (state === 'open') closeCookie();
     } else if (e.key === 'Escape' && state === 'open') closeCookie();
@@ -1683,10 +1966,14 @@ function mount(stage, api) {
       more: (n) => { let k = 0; for (let i = 0; i < (n || 1); i++) if (addCookie()) k++; return k; },
       reset: () => resetTable(),
       // open: both steps (unwrap, then crack as soon as it's unwrapped). unwrap: step 1 only; crack: step 2.
-      open: (i) => { const list = cookies.filter((c) => !c.drop); unwrapCookie(list[i == null ? Math.floor(Math.random() * list.length) : Math.min(i, list.length - 1)], true); return state; },
-      unwrap: (i) => { const list = cookies.filter((c) => !c.drop); unwrapCookie(list[i == null ? Math.floor(Math.random() * list.length) : Math.min(i, list.length - 1)], false); return state; },
+      open: (i) => { const list = cookies.filter((c) => !c.rb.held); unwrapCookie(list[i == null ? Math.floor(Math.random() * list.length) : Math.min(i, list.length - 1)], true); return state; },
+      unwrap: (i) => { const list = cookies.filter((c) => !c.rb.held); unwrapCookie(list[i == null ? Math.floor(Math.random() * list.length) : Math.min(i, list.length - 1)], false); return state; },
       crack: () => { crackCookie(); return state; },
       wrapped: () => cookies.filter((c) => c.wrap.on).length,
+      // physics: bodies awake, ms of the last physics step, and each pack's height off the table / tilt
+      awake: () => world.bodies.filter((b) => b.active && (b.awake || b.held)).length,
+      physMs: () => +world.ms().toFixed(2),
+      poses: () => cookies.filter((c) => c !== openC).map((c) => { const up = new THREE.Vector3(0, 1, 0).applyQuaternion(c.rb.q); return { y: +(c.rb.p.y - c.rb.he.y).toFixed(3), tilt: +Math.acos(Math.min(1, Math.abs(up.y))).toFixed(2), x: +c.rb.p.x.toFixed(2), z: +c.rb.p.z.toFixed(2) }; }),
       // a tap at (x, y) in canvas pixels (as screen() and openScreen() report them)
       tap: (x, y) => { const r = canvas.getBoundingClientRect(), ev = { clientX: r.left + x, clientY: r.top + y, button: 0, pointerType: 'touch' }; onDown(ev); onUp(ev); return state; },
       close: () => { closeCookie(); return state; },
