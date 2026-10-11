@@ -114,7 +114,7 @@
     return out;
   }
   function scanLocalRaw(){
-    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null, lorc: scanLorc(), avatars: null, ghDel: null, links: null, players: null };
+    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null, lorc: scanLorc(), avatars: null, ghDel: null, links: null, players: null, prefs: scanPrefs() };
     for(var i = 0; i < LS.length; i++){
       var k = LS.key(i);
       if(!k) continue;
@@ -143,6 +143,41 @@
       }
     }
     return out;
+  }
+
+  // ── Preferences ───────────────────────────────────────────────────────
+  // Theme, sound, music, home layout, per-game defaults and game options follow the PIN to every device (cloud
+  // `prefs`). Each setting goes by when this device last saw it change (fgh_prefs_at {key: {v, at}}); settings
+  // already on a device before they synced count as oldest, so the account's copy wins over them.
+  var PREF_RE = /^(fgh_theme|gn_sound|gn_music|hs_attract|gn_cat_order|gn_setup_.+|gn_home_view|gn_spin|mazes_loupe|pinball_view|pinball_btns|wordle_hard|sandlot_fast|invaders_auto|jr_motion|jr_scan|jr_speed|lorc_fast|lorc_hints|lorc_sort|lorc_mat|lorc_dk_filter|fortune_mode|trivia_cats|trivia_levels|wyr_cats|hangman_cat|wordscramble_cat|wordsearch_cat|mahjong_dim|centi_opts|randomtools_settings|[a-z0-9]+_sort|[a-z0-9]+_music)$/;
+  var PREFS_AT = 'fgh_prefs_at';
+  function stampPrefs(){
+    var had = LS.getItem(PREFS_AT) != null, rec = lsJSON(PREFS_AT) || {}, now = had ? Date.now() : 1, changed = !had, seen = {}, i, k, v;
+    for(i = 0; i < LS.length; i++){
+      k = LS.key(i); if(!k || !PREF_RE.test(k)) continue;
+      seen[k] = 1; v = LS.getItem(k);
+      if(!rec[k] || rec[k].v !== v){ rec[k] = { v: v, at: now }; changed = true; }
+    }
+    Object.keys(rec).forEach(function(k){ if(!seen[k] && rec[k] && rec[k].v !== null){ rec[k] = { v: null, at: now }; changed = true; } });
+    if(changed) try{ LS.setItem(PREFS_AT, JSON.stringify(rec)); }catch(e){}
+    return had && changed;
+  }
+  function scanPrefs(){ stampPrefs(); var r = lsJSON(PREFS_AT); return r && Object.keys(r).length ? r : null; }
+  // newest wins per setting; on a tie the account's copy (remote, b) wins
+  function mergePrefs(a, b){
+    if(!a && !b) return null;
+    var out = {};
+    [a || {}, b || {}].forEach(function(src){ Object.keys(src).forEach(function(k){ var r = src[k]; if(!r || typeof r !== 'object' || !PREF_RE.test(k)) return; if(!out[k] || (Number(r.at) || 0) >= (Number(out[k].at) || 0)) out[k] = { v: typeof r.v === 'string' ? r.v : null, at: Number(r.at) || 0 }; }); });
+    return out;
+  }
+  function applyPrefs(p){
+    var rec = mergePrefs(lsJSON(PREFS_AT), p), theme = LS.getItem('fgh_theme');
+    Object.keys(rec).forEach(function(k){
+      var v = rec[k].v;
+      try{ if(v === null) LS.removeItem(k); else if(LS.getItem(k) !== v) LS.setItem(k, v); }catch(e){}
+    });
+    try{ LS.setItem(PREFS_AT, JSON.stringify(rec)); }catch(e){}
+    if(LS.getItem('fgh_theme') !== theme) try{ if(window.Kit && Kit.theme) Kit.theme.set(LS.getItem('fgh_theme') || 'night'); }catch(e){}
   }
 
   // ── Lorcana decks + bookmarks ─────────────────────────────────────────
@@ -280,6 +315,7 @@
     out.ghDel = mergeDel(local.ghDel, remote.ghDel);
     out.links = mergeLinks(local.links, remote.links);
     out.players = mergePlayers(local.players, remote.players);
+    out.prefs = mergePrefs(local.prefs, remote.prefs);
     if(out.ghDel) Object.keys(out.gh).forEach(function(k){ out.gh[k] = out.gh[k].filter(function(r){ return !out.ghDel[ghId(k, r)]; }); });
     // Favorites: newest favsAt timestamp wins the whole list. This lets
     // deletions propagate — unfavoriting bumps the local timestamp, and on
@@ -387,6 +423,7 @@
       try{ LS.setItem('fgh_links', JSON.stringify(mergeLinks(snap.links, lsJSON('fgh_links')))); }catch(e){}
     }
     if(snap.players) applyPlayers(mergePlayers(snap.players, lsJSON('fgh_players_at')));
+    if(snap.prefs) applyPrefs(snap.prefs);
     if(snap.avatars){
       var av = mergeAvatars(snap.avatars, lsJSON('fgh_avatars'));
       try{ LS.setItem('fgh_avatars', JSON.stringify(av)); }catch(e){}
@@ -464,7 +501,7 @@
         return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, ghDel:null, links:null, isNew:true};
       }
       var d = doc.data() || {};
-      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, players: d.players||null, isNew:false, moved: !!d.moved };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, players: d.players||null, prefs: d.prefs||null, isNew:false, moved: !!d.moved };
       console.log('[sync] pull', {
         rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
         favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
@@ -567,6 +604,7 @@
     if(snap.ghDel) doc.ghDel = sanitizeForFirestore(snap.ghDel);
     if(snap.links) doc.links = sanitizeForFirestore(snap.links);
     if(snap.players) doc.players = sanitizeForFirestore(snap.players);
+    if(snap.prefs) doc.prefs = sanitizeForFirestore(snap.prefs);
     console.log('[sync] push', {
       rklists_count: snap.rklists && snap.rklists.lists ? (Array.isArray(snap.rklists.lists) ? snap.rklists.lists.length : Object.keys(snap.rklists.lists).length) : 0,
       favs_count: Array.isArray(snap.favs) ? snap.favs.length : 'absent',
@@ -586,6 +624,10 @@
     // and pushes before device B's newly-saved data lands — merge:false
     // would wipe the cloud field entirely.
     return ref.set(doc, { merge: true }).catch(function(err){
+      // Rules that don't allow `prefs` yet: save everything else
+      if(doc.prefs && err && err.code === 'permission-denied'){ console.warn('[sync] cloud refused prefs; saving the rest'); delete doc.prefs; return ref.set(doc, { merge: true }); }
+      throw err;
+    }).catch(function(err){
       // Rules that don't allow `lorcana` yet would refuse the whole save:
       // save everything else instead of losing it
       if((doc.avatars || doc.ghDel || doc.links || doc.labelAt || doc.players) && err && err.code === 'permission-denied'){
@@ -737,7 +779,7 @@
   // empties the device; signing in unpacks only that PIN's own stash before syncing with its cloud copy. So
   // nothing from one PIN is ever merged into another. Only the device's own settings stay put.
   var SPACE_KEY = 'fgh_space', STASH = 'fgh_space_';
-  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|emu|theme|space(_.*)?)|gn_sound|gn_music|hs_attract|online_dev(_override)?|online_transport|lorc_dev|firebase.*)$|_music$/;
+  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|emu|space(_.*)?)|online_dev(_override)?|online_transport|lorc_dev|eightball_motion|lorc_tilt(_asked)?|firebase.*)$/;
   function spaceOf(p){ var h = 5381; p = String(p || ''); for(var i = 0; i < p.length; i++) h = ((h << 5) + h + p.charCodeAt(i)) | 0; return 'p' + (h >>> 0).toString(36); }
   function curSpace(){ return LS.getItem(SPACE_KEY) || (isPin() ? spaceOf(pin()) : 'g'); }
   function switchSpace(to){
@@ -809,7 +851,7 @@
   function noteWrite(key){
     if(/\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search)) return;
     if(!key) return;
-    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'fgh_players_at' && key !== 'fgh_gh_del' && key !== 'fgh_links' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
+    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'fgh_players_at' && key !== 'fgh_gh_del' && key !== 'fgh_links' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games' && !(PREF_RE.test(key) && stampPrefs())) return;
     if(isPin()){ markWrite(); schedulePush(); }
   }
 
@@ -892,6 +934,7 @@
     // a page opened to edit a game's defaults (?defaults=1) changes nothing but that game's setup: no sync
     if(/\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search)){ notifyReady(); return; }
     var m = mode();
+    if(m === 'pin' && PIN_RE.test(pin()||'') && stampPrefs()) markWrite();   // settings changed since the last sync
     if(m === 'pin' && PIN_RE.test(pin()||'')){
       if(typeof navigator !== 'undefined' && navigator.onLine === false){
         setStatus('offline');
@@ -944,6 +987,10 @@
     });
     window.addEventListener('offline', function(){
       setStatus('offline');
+    });
+    // settings a game saved straight to the device: send them when the app goes to the background
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'hidden' && isPin() && !(/\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search)) && stampPrefs()){ markWrite(); schedulePush(); }
     });
   }
 

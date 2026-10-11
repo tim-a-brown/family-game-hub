@@ -47,7 +47,7 @@
   var doc = document, root = doc.documentElement;
   var LS = (function () { try { return window.localStorage; } catch (e) { return null; } })();
   function lsGet(k, d) { try { var v = LS.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
-  function lsSet(k, v) { try { LS.setItem(k, v); } catch (e) {} }
+  function lsSet(k, v) { try { LS.setItem(k, v); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(k); }   // settings follow the PIN
 
   // ── Page metas, manifest, gestures, wake lock ─────────────────────────────
   function meta(name, content) {
