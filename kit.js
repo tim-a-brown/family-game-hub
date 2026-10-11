@@ -1195,9 +1195,12 @@
             } });
             clr.hidden = !inp.value;
             field.appendChild(clr);
-            field.appendChild(el('button', { type: 'button', class: 'seat-btn', 'aria-label': 'Choose a player', html: icon('users'), onclick: function () {
+            var pick = el('button', { type: 'button', class: 'seat-btn', 'aria-label': 'Choose a player', html: icon('users'), onclick: function () {
               pickName(function (n) { names[i] = n; renderSeats(); }, { taken: names.slice(0, state.count).filter(function (x, j) { return j !== i; }), title: 'Seat ' + (i + 1) });
-            } }));
+            } });
+            field.appendChild(pick);
+            // the seat's avatar is a big target for choosing who sits there, too
+            row.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.seat > .avatar, .seat > .seat-av')) { sfx('tap'); pick.click(); } });
           }
           row.appendChild(field);
           // Two or more people (no computer seats): a handle to drag a player up or down the order
