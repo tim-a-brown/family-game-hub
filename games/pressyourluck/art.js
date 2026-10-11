@@ -21,7 +21,7 @@ var PYLArt = (function () {
     // little pointed yellow ears behind the mask
     s += '<path d="M-27-14 L-38-26 L-33-8z M27-14 L38-26 L33-8z" fill="' + YEL + '"' + K + '/>';
     // spiky red hair
-    s += '<path d="M-24-18 L-32-30 L-20-28 L-22-42 L-10-31 L-6-46 L1-32 L9-45 L11-30 L22-40 L20-26 L32-29 L25-16z" fill="' + RED + '"' + K + '/>';
+    s += '<g class="g-hair"><path d="M-24-18 L-32-30 L-20-28 L-22-42 L-10-31 L-6-46 L1-32 L9-45 L11-30 L22-40 L20-26 L32-29 L25-16z" fill="' + RED + '"' + K + '/></g>';
     // the head: wide at the grin. On his body (o.body) there's no jaw: the sides run straight down into the shoulders
     s += '<path d="' + (o.body ? 'M0-30 C18-30 27-20 28-8 C29.5 4 31 12 31 24 L-31 24 C-31 12-29.5 4-28-8 C-27-20-18-30 0-30z'
       : 'M0-30 C18-30 27-20 28-8 C30 4 34 12 30 20 C24 30 10 32 0 32 C-10 32-24 30-30 20 C-34 12-30 4-28-8 C-27-20-18-30 0-30z') + '" fill="' + RED + '"' + K + '/>';
@@ -44,36 +44,61 @@ var PYLArt = (function () {
     s += '<circle cx="0" cy="-3" r="5.8" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.2"/><circle cx="-1.8" cy="-4.8" r="1.6" fill="#fff" opacity=".55"/>';
     return s;
   }
-  // Whole Whammy, feet at y≈0, head at y≈-92; centred on x=0. Arms are groups so scenes can swing them.
-  // o.prop: html for something held in the right hand (drawn in the arm group, hand at (30,-46))
+  // Arms: each is a shoulder group (g-armr / g-arml, swings the whole arm) holding the upper arm and an
+  // elbow group (g-forer / g-forel, bends the elbow) holding the forearm, the hand and any prop. Each arm
+  // is drawn twice with the same classes, outline first and colour second, so the two halves move together
+  // and the elbow joint never shows. Joint positions (the page's CSS uses them as transform origins):
+  var ARM = { r: { s: [28, -56], e: [40, -40], h: [46, -51] }, l: { s: [-28, -56], e: [-40, -41], h: [-31, -31] } };
+  function seg(a, b, bend) {   // a gently curved limb segment from a to b
+    var mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, dx = b[0] - a[0], dy = b[1] - a[1];
+    return 'M' + a[0] + ' ' + a[1] + ' Q' + (mx - dy * bend).toFixed(1) + ' ' + (my + dx * bend).toFixed(1) + ' ' + b[0] + ' ' + b[1];
+  }
+  // a red mitten with three pointed fingers and a thumb, pointing along the forearm
+  function hand(side) {
+    var A = ARM[side], ang = Math.atan2(A.h[1] - A.e[1], A.h[0] - A.e[0]) * 180 / Math.PI;
+    return '<g transform="translate(' + A.h[0] + ' ' + A.h[1] + ') rotate(' + ang.toFixed(0) + ')' + (side === 'l' ? ' scale(1 -1)' : '') + '">' +
+      '<path d="M-1-3.6 L1.2-9.4 L3.6-3.8z" fill="' + RED + '" stroke="' + OL + '" stroke-width="1.6" stroke-linejoin="round"/>' +
+      '<path d="M-3.2-2.8 C0-5 4-4.6 6.2-2.8 L11.6-3.6 L7.4-.9 L12.2.7 L7.2 1.8 L10.6 4.6 L5.2 3.8 C2.6 5.8-1.6 5.4-3.2 3.4z" fill="' + RED + '" stroke="' + OL + '" stroke-width="1.6" stroke-linejoin="round"/></g>';
+  }
+  // prop: drawn in the hand's frame, laid out as if the hand were at (33,-46)
+  function arm(side, prop) {
+    var A = ARM[side], b = side === 'r' ? 1 : -1, ua = seg(A.s, A.e, .14 * b), fa = seg(A.e, A.h, .12 * b);
+    function pass(col, w1, w2, extra) {
+      return '<g class="g-arm' + side + '"><path d="' + ua + '" fill="none" stroke="' + col + '" stroke-width="' + w1 + '" stroke-linecap="round"/>' +
+        '<g class="g-fore' + side + '"><path d="' + fa + '" fill="none" stroke="' + col + '" stroke-width="' + w2 + '" stroke-linecap="round"/>' + (extra || '') + '</g></g>';
+    }
+    return pass(OL, 9, 8) + pass(RED, 5.6, 4.6, (prop ? '<g transform="translate(' + (A.h[0] - 33) + ' ' + (A.h[1] + 46) + ')">' + prop + '</g>' : '') + hand(side));
+  }
+  // Whole Whammy, feet at y≈0, head at y≈-92; centred on x=0. Arms bend at the elbow (see arm()); the cape
+  // (g-cape), hair (g-hair), head (g-hd) and whole body (g-bod, origin at the feet) are groups the page animates.
+  // o.prop: html for something held in the right hand (hand at (46,-51); the prop is laid out for a hand at (33,-46))
   function body(o) {
     o = o || {};
     var s = '', K = ' stroke="' + OL + '" stroke-width="2.4" stroke-linejoin="round"';
     function limb(d) { return '<path d="' + d + '" fill="none" stroke="' + OL + '" stroke-width="8" stroke-linecap="round"/><path d="' + d + '" fill="none" stroke="' + RED + '" stroke-width="4.6" stroke-linecap="round"/>'; }
     // the yellow cape, flaring out behind
-    s += '<path d="M-22-60 C-36-48-42-26-40-10 C-31-14-23-12-16-8 L16-8 C23-12 31-14 40-10 C42-26 36-48 22-60z" fill="' + YEL + '"' + K + '/>';
-    s += '<path d="M-28-40 C-32-30-34-20-34-12 M28-40 C32-30 34-20 34-12" fill="none" stroke="' + YEL2 + '" stroke-width="1.8" opacity=".8"/>';
+    s += '<g class="g-cape"><path d="M-22-60 C-36-48-42-26-40-10 C-31-14-23-12-16-8 L16-8 C23-12 31-14 40-10 C42-26 36-48 22-60z" fill="' + YEL + '"' + K + '/>';
+    s += '<path d="M-28-40 C-32-30-34-20-34-12 M28-40 C32-30 34-20 34-12" fill="none" stroke="' + YEL2 + '" stroke-width="1.8" opacity=".8"/></g>';
     // legs, one crossed over the other, and pointed red shoes
     s += limb('M-6-16 C-6-10 4-7 6 0') + limb('M6-16 C8-10-2-6-6-1');
     s += '<path d="M2 0 C6-3 14-3 19 1 C14 2 8 3 2 3z M-2-1 C-7-4-15-4-20 0 C-15 1-8 2-2 2z" fill="' + RED + '"' + K + '/>';
     // left arm (behind the body), hand on the hip or waving
-    s += '<g class="g-arml">' + limb('M-28-48 C-35-45-35-36-29-30') + '<path d="M-29-30 l-4 3 M-29-30 l1 4" stroke="' + OL + '" stroke-width="2" stroke-linecap="round"/></g>';
+    s += arm('l', o.propL);
     // a lean bean of a body with the yellow $ patch
     s += '<path d="M-31-60 C-32-46-26-26-16-16 C-8-12 8-12 16-16 C26-26 32-46 31-60z" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.6"/>';
     // right arm (in front), holds the prop; pointed fingers
-    s += '<g class="g-armr">' + limb('M28-50 C31-50 32-48 33-46') + (o.prop || '') +
-      '<path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + OL + '" stroke-width="4.2" stroke-linecap="round"/><path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + RED + '" stroke-width="2" stroke-linecap="round"/></g>';
+    s += arm('r', o.prop);
     // the head goes straight into the body: no chin line across the chest (the patch moves with the head)
     var ho = {}; for (var k in o) ho[k] = o[k]; ho.body = true;
-    s += '<g class="g-head" transform="translate(0 -80) scale(1 .9)">' + head(ho) +
-      '<path d="M-29.6 22.4 L29.6 22.4 L29.8 36 L-29.8 36z" fill="' + RED + '"/></g>';
+    s += '<g class="g-hd"><g class="g-head" transform="translate(0 -80) scale(1 .9)">' + head(ho) +
+      '<path d="M-29.6 22.4 L29.6 22.4 L29.8 36 L-29.8 36z" fill="' + RED + '"/></g></g>';
     // the big yellow chest patch right under the grin, with a chunky white double-barred $
     s += '<path d="M-22-58.5 C-9-56.5 9-56.5 22-58.5 C21.5-46 19.5-34 15.5-27 C13-24 9-23 0-23 C-9-23-13-24-15.5-27 C-19.5-34-21.5-46-22-58.5z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="2.2" stroke-linejoin="round"/>';
     var dl = 'M-1.8-55 L-1.8-26.5 M2.4-55 L2.4-26.5', ds = 'M7.41-48.5 C5.46-53-0.78-54.5-4.29-52 C-8.58-49-7.41-43-1.56-41.2 C4.68-39.5 7.8-36 5.85-31 C3.9-26.5-3.12-26.5-7.41-31';
     s += '<path d="' + dl + '" stroke="' + OL + '" stroke-width="5" stroke-linecap="round"/><path d="' + ds + '" fill="none" stroke="' + OL + '" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round"/>';
     s += '<path d="' + dl + '" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="' + ds + '" fill="none" stroke="#fff" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>';
     s += '<circle cx="-4" cy="-47" r="1.1" fill="' + OL + '"/>';
-    return s;
+    return '<g class="g-bod">' + s + '</g>';
   }
   function headSVG(cls) {
     return '<svg class="' + (cls || 'g-sq') + '" viewBox="-50 -48 100 80" aria-hidden="true">' + head() + '</svg>';
