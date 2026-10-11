@@ -93,7 +93,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // ellipse: half-width, half-height); bonus: flat points for beating it; hy: where it hovers, as a share of
   // the way down to the players' area.
   var BOSS = {
-    wasp: { name: 'Killer Wasp', hp: 120, bonus: 10000, vu: 2.0, r: [30, 22], c: '#ffe23d', hy: 0.36 },
+    wasp: { name: 'Killer Wasp', hp: 120, bonus: 10000, vu: 2.0, r: [30, 22], c: '#ffe23d', hy: 0.44 },
     firefly: { name: 'Night Flyer', hp: 105, bonus: 10000, vu: 2.0, r: [36, 22], c: '#b98cff', hy: 0.34 },
     beetle: { name: 'Blast Beetle', hp: 150, bonus: 10000, vu: 1.9, r: [30, 27], c: '#ff4a7a', hy: 0.3 },
     mega: { name: 'Mega Spider', hp: 230, bonus: 100000, vu: 1.6, r: [42, 29], c: '#ff2d8a', hy: 0.34 }
@@ -104,8 +104,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // so many seconds: spiders (how many at once), fleas, wasp swarms, ant swarms, fireflies, blast beetles.
   // split: how much faster the back half of a shot centipede gets. speed: everything moves faster.
   var WAVES = [null,
-    { theme: 'blue', stage: 'Circuit', pat: 'chevron', trains: 7, len: [8, 10], gap: 9, live: 2, spiders: 1, fleas: 9, wasps: 17, ants: 21 },
-    { theme: 'red', stage: 'Lava', pat: 'stripes', trains: 8, len: [9, 12], gap: 8.5, live: 2, spiders: 1, fleas: 8, wasps: 14, ants: 17 },
+    { theme: 'blue', stage: 'Circuit', pat: 'chevron', trains: 7, len: [8, 10], gap: 9, live: 2, spiders: 1, fleas: 13, wasps: 20 },
+    { theme: 'red', stage: 'Lava', pat: 'stripes', trains: 8, len: [9, 12], gap: 8.5, live: 2, spiders: 1, fleas: 11, wasps: 17, ants: 22 },
     { boss: 'wasp', theme: 'hive', pat: 'arena' },
     { theme: 'green', stage: 'Jungle', pat: 'ring', trains: 9, len: [10, 12], gap: 8, live: 3, split: 1.25, spiders: 1, fleas: 9, wasps: 16, fireflies: 11, beetles: 14 },
     { theme: 'purple', stage: 'Neon', pat: 'arrows', trains: 10, len: [10, 13], gap: 7.5, live: 3, split: 1.3, spiders: 2, fleas: 8, ants: 14, fireflies: 9, beetles: 11 },
@@ -805,7 +805,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // ants: a sudden line marching across (a random height) or down from the top (a random column)
   function spawnAnts() {
     var n = ri(5, 8), across = Math.random() < 0.55, sp = 58 * bugSpeed();
-    if (across) { var left = Math.random() < 0.5, y = rnd(PZY * 0.35, H - 20); for (var i = 0; i < n; i++) addFoe({ type: 'ant', x: left ? -10 - i * 13 : W + 10 + i * 13, y: y, vx: left ? sp : -sp, vy: 0, hp: 1 }); }
+    if (across) { var left = Math.random() < 0.5, y = rnd(PZY * 0.3, PZY + 14); for (var i = 0; i < n; i++) addFoe({ type: 'ant', x: left ? -10 - i * 13 : W + 10 + i * 13, y: y, vx: left ? sp : -sp, vy: 0, hp: 1 }); }
     else { var x = rnd(20, W - 20); for (var j = 0; j < n; j++) addFoe({ type: 'ant', x: x, y: -10 - j * 13, vx: 0, vy: sp * 0.9, hp: 1 }); }
     sound('scorp');
   }
@@ -883,7 +883,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // Who comes in, wave by wave (see WAVES). Centipede trains arrive on a timer, sooner once the field is
   // clear; the other bugs each on their own timer. If a regular wave drags past 40 seconds, black wasps come.
   // A power-up floats in every 20 to 30 seconds (never two at once).
-  function every(key, avg, fn) { if (!avg) return; G[key] -= G.dt; if (G[key] <= 0) { G[key] = avg * rnd(0.75, 1.25) / Math.sqrt(waveDef(G.wave).speed || 1); fn(); } }
+  function every(key, avg, fn) { if (!avg) return; G[key] -= G.dt; if (G[key] <= 0) { G[key] = avg * rnd(0.75, 1.25) * (G.diff === 'relaxed' ? 1.3 : 1) / Math.sqrt(waveDef(G.wave).speed || 1); fn(); } }
   function spawnStep(dt) {
     if (G.phase !== 'play') return;
     var w = waveDef(G.wave), boss = !!w.boss, np = G.players.length, rel = G.diff === 'relaxed';
@@ -892,17 +892,19 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       if (!G.chains.length && G.tTrain > 2.2) G.tTrain = 2.2;
       G.tTrain -= dt;
       var live = G.chains.filter(function (c) { return c.segs.length > 1; }).length;
-      if (G.trainsLeft > 0 && G.tTrain <= 0 && live < w.live) { spawnTrain(); G.tTrain = w.gap * rnd(0.85, 1.15); }
+      if (G.trainsLeft > 0 && G.tTrain <= 0 && live < Math.max(2, w.live - (G.diff === 'relaxed' ? 1 : 0))) { spawnTrain(); G.tTrain = w.gap * rnd(0.85, 1.15); }
       every('tFlea', w.fleas, function () { if (count('flea') < 1 + (np > 1 ? 1 : 0)) spawnFlea(); });
-      every('tWasp', w.wasps, function () { spawnWasps(ri(2, 3), false); });
+      if (G.tBlack > 0 && (G.waveT <= 40 || G.trainsLeft)) G.tBlack = 0;
+      every('tWasp', w.wasps, function () { spawnWasps(G.wave < 3 ? ri(1, 2) : ri(2, 3), false); });
       every('tAnt', w.ants, spawnAnts);
       every('tFfly', w.fireflies, function () { if (count('ffly') < 2) spawnFirefly(); });
       every('tBeetle', w.beetles, function () { if (count('beetle') < 2) spawnBeetle(); });
-      if (G.waveT > 40) { G.tBlack -= dt; if (G.tBlack <= 0) { G.tBlack = Math.max(4, 10 - (G.waveT - 40) / 12) * (rel ? 1.4 : 1); if (count('bwasp') < 3) spawnWasps(1, true); } }
-      if (G.inZone) { G.tHead -= dt; if (G.tHead <= 0) { G.tHead = Math.max(5, 9 - (G.wave % LAST) * 0.35); var heads = G.chains.filter(function (c) { return c.segs.length === 1; }).length; if (heads < 3) sideHead(); } }
+      // dragging on: every centipede is in, 40 seconds have gone, and the wave still isn't clear
+      if (G.waveT > 40 && !G.trainsLeft && G.wave > 1) { G.tBlack -= dt; if (G.tBlack <= 0) { G.tBlack = Math.max(4, 10 - (G.waveT - 40) / 12) * (rel ? 1.4 : 1); if (count('bwasp') < 3) spawnWasps(1, true); } }
+      if (G.inZone) { G.tHead -= dt; if (G.tHead <= 0) { G.tHead = Math.max(7, 12 - (G.wave % LAST) * 0.4); var heads = G.chains.filter(function (c) { return c.segs.length === 1; }).length; if (heads < 3) sideHead(); } }
     }
     G.tSpider -= dt;
-    if (G.tSpider <= 0) { G.tSpider = rnd(4, 7.5) + (boss ? 4 : 0); var ms = boss ? (w.boss === 'mega' ? 0 : 1) : (w.spiders || 0) + (np > 1 ? 1 : 0); if (count('spider') < ms) { spawnSpider(false); snd('spider'); } }
+    if (G.tSpider <= 0) { G.tSpider = ((G.wave - 1) % LAST >= 3 ? rnd(7, 12) : rnd(9, 15)) * (G.diff === 'relaxed' ? 1.25 : 1) + (boss ? 4 : 0); var ms = boss ? (w.boss === 'mega' ? 0 : 1) : (w.spiders || 0) + (np > 1 ? 1 : 0); if (count('spider') < ms) { spawnSpider(false); snd('spider'); } }
     G.tCap -= dt;
     if (G.tCap <= 0) { G.tCap = rnd(20, 30) * (rel ? 0.85 : 1); if (!G.caps.length) spawnCap(); }
   }
@@ -1073,7 +1075,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       if (!B.tgt || !B.tgt.alive) B.tgt = target();
       approach(B, clamp(B.tgt.x, R[0], W - R[0]), B.hy + Math.sin(B.t * 2.2) * 6, 1.3 * rage, dt);
       B.tA -= dt * rage;
-      if (B.tA <= 0) { B.tA = ph >= 2 ? 1.9 : 2.6; var a = Math.atan2(B.tgt.y - B.y, B.tgt.x - B.x), n = ph >= 2 ? 5 : 3; for (var v = 0; v < n; v++) fireShot(B.x, B.y + R[1] * 0.6, a + (v - (n - 1) / 2) * 0.2, 128 * rage, 'sting'); sound('shoot'); }
+      if (B.tA <= 0) { B.tA = ph >= 2 ? 2.3 : 3.0; var a = Math.atan2(B.tgt.y - B.y, B.tgt.x - B.x), n = (G.diff === 'relaxed' ? 1 : 3) + (ph >= 2 ? 2 : 0); for (var v = 0; v < n; v++) fireShot(B.x, B.y + R[1] * 0.6, a + (v - (n - 1) / 2) * 0.2, 128 * rage, 'sting'); sound('shoot'); }
       B.tE -= dt * rage;
       if (B.tE <= 0) { B.tE = 8 - ph * 1.5; if (count('wasp') < 2 + ph) spawnWasps(1 + (ph ? 1 : 0), false); }
       if (B.stT > (3.6 - ph * 0.7) / Math.sqrt(rage)) lockLoop(B);
@@ -1828,7 +1830,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var R = view(); if (!g || !R || !cv.width) return;
     var now = performance.now(), dtD = lastDraw ? Math.min(0.05, (now - lastDraw) / 1000) : 0; lastDraw = now;
     drawT = now / 1000;
-    var wv = WAVES[R.wave || 1] || WAVES[1], tk = wv.theme, T = THEMES[tk], x = g, me = myPid();
+    var wv = waveDef(R.wave || 1), tk = wv.theme, T = THEMES[tk], x = g, me = myPid();
     if (shownTheme !== tk) { shownTheme = tk; if (cabEl) cabEl.style.setProperty('--cc-glow', T.line); }
     var sx = 0, sy = 0;
     if (fx.shake > 0) { var m = fx.shake * fx.shake * 5 * S; sx = (Math.random() - 0.5) * m; sy = (Math.random() - 0.5) * m; }
@@ -1846,19 +1848,20 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     // mushrooms, row by row so a lower one sits in front
     var grid = R.grid, pois = R.pois;
     for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) { var hp = grid[r * COLS + c]; if (hp) drawSpr(x, mushSpr(tk, Math.min(MUSH_HP, hp), pois[r * COLS + c] ? 1 : 0), cx(c), cx(r) - 0.5); }
-    if (R.boss && R.boss.type === 'wasp' && R.boss.lane != null && (R.boss.st === 'warn' || R.boss.st === 'dive')) drawLane(x, R.boss);
+    drawZones(x, R.zones || []);
     R.segs.forEach(function (s) { if (s.y > -8) { var f2 = (fr + (s.id & 1)) % 2; drawSpr(x, segSpr(tk, s.head, f2, s.dx < 0, s.frz), s.x, s.y + Math.sin(drawT * 12 + s.id) * 0.4); } });
     R.foes.forEach(function (o) { drawFoe(x, o, tk, fr); });
     if (R.boss) drawBoss(x, R.boss);
-    // light: power-up halos, enemy shots, lasers, flames
+    // light: power-up halos, lasers, beams, lightning
     x.globalCompositeOperation = 'lighter';
-    R.caps.forEach(function (cp) { glow(x, cp.x, cp.y, 20, POW[cp.k].c, 0.45 + 0.2 * Math.sin(drawT * 6 + cp.id)); });
-    R.bullets.forEach(function (b) { if (GV && b.o === me && b.k !== 'homing') return; drawBullet(x, b, colOf(R, b.o)); });
+    R.caps.forEach(function (cp) { var fade = cp.t > CAP_LIFE - 3 && Math.floor(drawT * 8) % 2 ? 0.2 : 1; glow(x, cp.x, cp.y, 22, POW[cp.k].c, (0.5 + 0.2 * Math.sin(drawT * 6 + cp.id)) * fade); });
+    R.bullets.forEach(function (b) { if (GV && b.o === me) return; drawBullet(x, b, colOf(R, b.o)); });
     if (GV) GV.lb.forEach(function (b) { drawBullet(x, b, PCOL[GV.ci % 3]); });
-    drawFlames(x, R, dtD, me);
+    drawBeams(x, R, me);
+    drawArcs(x);
     x.globalCompositeOperation = 'source-over';
     R.shots.forEach(function (s) { drawShot(x, s); });
-    R.caps.forEach(function (cp) { drawSpr(x, capSpr(cp.k), cp.x, cp.y, 1 + 0.07 * Math.sin(drawT * 5 + cp.id)); });
+    R.caps.forEach(function (cp) { if (cp.t > CAP_LIFE - 3 && Math.floor(drawT * 8) % 2) return; drawSpr(x, capSpr(cp.k), cp.x, cp.y, 1.1 + 0.08 * Math.sin(drawT * 5 + cp.id)); });
     R.players.forEach(function (p) { drawShip(x, p, me); });
     // explosions, sparks and flying cubes
     x.globalCompositeOperation = 'lighter';
@@ -1883,11 +1886,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     });
     drawHud(x, R, L);
     if (fx.flash > 0) { x.globalAlpha = fx.flash * 0.28; x.fillStyle = fx.flashC; x.fillRect(0, 0, cv.width, cv.height); x.globalAlpha = 1; }
-    if (fx.banner) drawBanner(x, L);
+    if (fx.card) drawCard(x, L);
+    else if (fx.banner) drawBanner(x, L);
     if (R.phase === 'over' || R.phase === 'won') {
       var ov = clamp((R.phaseT || 0) / 0.4, 0, 1);
       x.globalAlpha = ov * 0.55; x.fillStyle = '#02030a'; x.fillRect(0, 0, cv.width, cv.height); x.globalAlpha = 1;
-      if (ov >= 1 || Math.floor(drawT * 16) % 2) { var tt = R.phase === 'won' ? txt('Garden saved!', '#ffd23d', L.fp * 2, '#ffb02e') : txt('Game over', '#ff4a6a', L.fp * 2, '#ff3d5a'); drawTxtAt(x, tt, L.cw / 2, L.ch * 0.45, Math.min(1, L.cw * 0.9 / tt.w)); }
+      if (ov >= 1 || Math.floor(drawT * 16) % 2) { var tt = txt('Game over', '#ff4a6a', L.fp * 2, '#ff3d5a'); drawTxtAt(x, tt, L.cw / 2, L.ch * 0.45, Math.min(1, L.cw * 0.9 / tt.w)); }
     }
     if (GV && GV.stall) { x.fillStyle = 'rgba(0,0,0,.6)'; x.fillRect(0, L.ch * 0.5 - 20 * DPR, L.cw, 40 * DPR); drawTxtAt(x, txt('Waiting for ' + GV.hostName, '#ffffff', L.fp), L.cw / 2, L.ch * 0.5); }
   }
@@ -1918,41 +1922,53 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     x.globalAlpha = 1;
   }
   function drawBullet(x, b, col) {
-    if (b.k === 'rapid') drawBoltAt(x, b.x, b.y, b.vx, b.vy, POW.rapid.c, 12, 1.8);
-    else if (b.k === 'ice') { glow(x, b.x, b.y, 6, POW.ice.c, 0.6); drawBoltAt(x, b.x, b.y, b.vx, b.vy, POW.ice.c, 8, 2.8); }
-    else if (b.k === 'homing') { drawBoltAt(x, b.x, b.y, b.vx, b.vy, POW.homing.c, 14, 3); glow(x, b.x, b.y, 7, POW.homing.c, 0.8); glow(x, b.x, b.y, 2.5, '#ffffff', 0.9); }
+    if (b.k === 'scatter') { glow(x, b.x, b.y, 5, POW.scatter.c, 0.6); drawBoltAt(x, b.x, b.y, b.vx, b.vy, POW.scatter.c, 8, 2.6); }
+    else if (b.k === 'shock') { glow(x, b.x, b.y, 7, POW.shock.c, 0.7); drawBoltAt(x, b.x, b.y, 0, -1, POW.shock.c, 14, 2.6); }
     else drawBoltAt(x, b.x, b.y, b.vx || 0, b.vy || -1, col, 16, 2.4);
   }
-  // Flames are drawn here only (each device makes its own), from every ship that has the Flame and is firing
-  function drawFlames(x, R, dt, me) {
+  // Beam: a piercing laser from the ship straight to the top of the field (each device draws its own)
+  function drawBeams(x, R, me) {
     R.players.forEach(function (p) {
-      var px = p.x, py = p.y, on = p.flaming;
-      if (GV && p.id === me) { on = GV.flameLocal; px = GV.pred.x; py = GV.pred.y; }
+      var px = p.x, py = p.y, on = p.beaming;
+      if (GV && p.id === me) { on = GV.beamLocal; px = GV.pred.x; py = GV.pred.y; }
       if (!on || !p.alive) return;
-      // the jet itself: a hot cone from the nose, flickering
-      var top = py - 9 - FLAME_R, hw = 6 + FLAME_R * 0.2, gr = x.createLinearGradient(0, py - 9, 0, top);
-      gr.addColorStop(0, 'rgba(255,250,210,.95)'); gr.addColorStop(0.25, 'rgba(255,170,50,.7)'); gr.addColorStop(0.7, 'rgba(255,70,20,.35)'); gr.addColorStop(1, 'rgba(255,40,10,0)');
-      x.globalAlpha = 0.75 + Math.random() * 0.25; x.fillStyle = gr;
-      x.beginPath(); x.moveTo(px - 2.5, py - 8); x.quadraticCurveTo(px - hw * 0.5, py - 9 - FLAME_R * 0.45, px - hw, top); x.lineTo(px + hw, top); x.quadraticCurveTo(px + hw * 0.5, py - 9 - FLAME_R * 0.45, px + 2.5, py - 8); x.closePath(); x.fill();
+      var top = -HB, len = py - 8 - top, fl = 0.75 + Math.random() * 0.25, c = POW.beam.c;
+      x.globalAlpha = 0.28 * fl; x.fillStyle = c; x.fillRect(px - 5, top, 10, len);
+      x.globalAlpha = 0.6 * fl; x.fillRect(px - 2.2, top, 4.4, len);
+      x.globalAlpha = 0.95; x.fillStyle = '#ffffff'; x.fillRect(px - 0.9, top, 1.8, len);
       x.globalAlpha = 1;
-      glow(x, px, py - 12, 9, '#fff3b0', 0.9);
-      var n = Math.min(10, Math.round(dt * 150 + Math.random()));
-      for (var i = 0; i < n; i++) { if (fx.flames.length > 260) fx.flames.shift(); var l = rnd(0.24, 0.34); fx.flames.push({ x: px + rnd(-2, 2), y: py - 10, vx: rnd(-62, 62), vy: -rnd(280, 340), life: l, max: l }); }
-    });
-    fx.flames.forEach(function (f) {
-      var k = f.life / f.max, sz = 5 + (1 - k) * 13, col = k > 0.75 ? '#fff3b0' : k > 0.45 ? '#ffa02e' : '#ff4a1f';
-      glow(x, f.x, f.y, sz, col, 0.35 + 0.5 * k);
+      glow(x, px, py - 10, 9, '#ffffff', 0.8); glow(x, px, py - 10, 16, c, 0.6);
     });
   }
-  function drawLane(x, B) {
-    if (B.st === 'warn' && Math.floor(drawT * 12) % 2) return;
-    var hw = BOSS.wasp.r[0] * 0.8, top = B.y + 14, off = (drawT * 70) % 14;
+  // lightning (Shock) and web threads (the Mega Spider): a jagged bright line
+  function drawArcs(x) {
+    fx.arcs.forEach(function (a) {
+      var n = 6, x0 = a.x1, y0 = a.y1;
+      x.strokeStyle = a.c; x.lineWidth = 1.4; x.globalAlpha = Math.min(1, a.life / 0.12); x.beginPath(); x.moveTo(x0, y0);
+      for (var i = 1; i <= n; i++) { var t = i / n, xx = a.x1 + (a.x2 - a.x1) * t + (i < n ? rnd(-3, 3) : 0), yy = a.y1 + (a.y2 - a.y1) * t + (i < n ? rnd(-3, 3) : 0); x.lineTo(xx, yy); }
+      x.stroke(); x.globalAlpha = 1;
+      glow(x, a.x2, a.y2, 6, a.c, 0.7);
+    });
+  }
+  // ground shockwaves: a dashed warning circle that blinks faster as it comes, then a bright flare
+  function drawZones(x, zs) {
+    if (!zs.length) return;
     x.globalCompositeOperation = 'lighter';
-    x.strokeStyle = 'rgba(255,61,90,.85)'; x.lineWidth = 1.2; x.setLineDash([5, 4]); x.lineDashOffset = -off;
-    x.beginPath(); x.moveTo(B.lane - hw, top); x.lineTo(B.lane - hw, H); x.moveTo(B.lane + hw, top); x.lineTo(B.lane + hw, H); x.stroke(); x.setLineDash([]);
-    x.fillStyle = 'rgba(255,61,90,.1)'; x.fillRect(B.lane - hw, top, hw * 2, H - top);
-    x.strokeStyle = 'rgba(255,120,140,.8)'; x.lineWidth = 1.4;
-    for (var y = top + off; y < H; y += 14) { x.beginPath(); x.moveTo(B.lane - 4, y); x.lineTo(B.lane, y + 4); x.lineTo(B.lane + 4, y); x.stroke(); }
+    zs.forEach(function (z) {
+      var col = ZC[z.ci || 0];
+      if (z.t < 0) {
+        var on = Math.floor(drawT * (z.t > -0.3 ? 16 : 8)) % 2;
+        x.globalAlpha = on ? 0.9 : 0.45; x.strokeStyle = col; x.lineWidth = 1.2; x.setLineDash([4, 3]); x.lineDashOffset = -drawT * 20;
+        x.beginPath(); x.arc(z.x, z.y, z.R, 0, TAU); x.stroke(); x.setLineDash([]);
+        x.globalAlpha = 0.1; x.fillStyle = col; x.beginPath(); x.arc(z.x, z.y, z.R, 0, TAU); x.fill();
+        x.globalAlpha = 1;
+      } else {
+        var k = clamp(z.t / ZONE_ON, 0, 1), fade = z.t > ZONE_ON ? Math.max(0, 1 - (z.t - ZONE_ON) / 0.2) : 1;
+        glow(x, z.x, z.y, z.R * 1.25, col, 0.9 * fade);
+        glow(x, z.x, z.y, z.R * 0.5, '#ffffff', 0.6 * fade * (1 - k));
+        x.globalAlpha = fade; x.strokeStyle = col; x.lineWidth = 2.5; x.beginPath(); x.arc(z.x, z.y, z.R * (0.7 + 0.3 * k), 0, TAU); x.stroke(); x.globalAlpha = 1;
+      }
+    });
     x.globalCompositeOperation = 'source-over';
   }
   function drawBoom(x, e) {
@@ -1962,9 +1978,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     glow(x, e.x, e.y, e.r * 0.35 * (1 - k), '#ffffff', 1 - k);
     x.globalAlpha = (1 - k) * 0.8; x.strokeStyle = e.c; x.lineWidth = 1.5 * (1 - k) + 0.3; x.beginPath(); x.arc(e.x, e.y, e.r * k * 1.1, 0, TAU); x.stroke(); x.globalAlpha = 1;
   }
-  // a boss's shot: a hot core with a dark rim and a glow, so it stands out on any floor
+  // a boss's shot: a hot core with a dark rim and a glow, so it stands out on any floor; a fireball: a glowing
+  // cube ball up in the air (its shadow on the ground under it)
   function drawShot(x, s) {
-    var on = Math.floor(drawT * 20) % 2, col = s.k === 'sting' ? '#ffd23d' : s.k === 'spark' ? '#eaff3d' : s.k === 'venom' ? '#5aff7a' : '#ff9a2a';
+    var on = Math.floor(drawT * 20) % 2;
+    if (s.k === 'fire') {
+      var z = s.z || 0;
+      x.globalAlpha = 0.45; x.fillStyle = '#000'; x.beginPath(); x.ellipse(s.x + 1, s.y + 2, 4.5, 2.2, 0, 0, TAU); x.fill(); x.globalAlpha = 1;
+      x.globalCompositeOperation = 'lighter'; glow(x, s.x, s.y - z, 12, '#ff7a1f', 0.85); glow(x, s.x, s.y - z, 5, '#fff0a0', on ? 1 : 0.7); x.globalCompositeOperation = 'source-over';
+      drawSpr(x, cubeSpr(on ? '#ffb02e' : '#ff5a1f'), s.x, s.y - z, 2.2);
+      return;
+    }
+    var col = s.k === 'sting' ? '#ffd23d' : s.k === 'spark' ? '#c8a0ff' : s.k === 'venom' ? '#ff5ab0' : '#ff9a2a';
     x.globalCompositeOperation = 'lighter'; glow(x, s.x, s.y, 8, col, 0.75);
     if (s.k === 'sting') { drawBoltAt(x, s.x, s.y, s.vx, s.vy, col, 9, 2.4); x.globalCompositeOperation = 'source-over'; return; }
     x.globalCompositeOperation = 'source-over';
@@ -1972,26 +1997,67 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     x.fillStyle = on ? '#ffffff' : shade(col, 0.5); x.beginPath(); x.arc(s.x, s.y, 2, 0, TAU); x.fill();
   }
   function drawFoe(x, o, tk, fr) {
-    var f2 = (fr + (o.id & 1)) % 2, s;
+    var f2 = (fr + (o.id & 1)) % 2, fast = Math.floor(drawT * 22 + o.id) % 2, s, hurt = o.hurt > 0 ? 1 : 0;
     if (o.type === 'spider') s = spiderSpr(tk, f2);
-    else if (o.type === 'flea') s = beeSpr(Math.floor(drawT * 22 + o.id) % 2, o.hp < 2 ? 1 : 0);
+    else if (o.type === 'mini') s = miniSpr(tk, fast);
+    else if (o.type === 'flea') s = fleaSpr(f2, o.hp < 2 ? 1 : 0);
+    else if (o.type === 'wasp' || o.type === 'bwasp') s = waspSpr(fast, o.type === 'bwasp');
+    else if (o.type === 'ant') s = antSpr(f2);
+    else if (o.type === 'ffly') s = fflySpr(fast, (o.glow || 0) > 0.4);
+    else if (o.type === 'beetle') s = beetleSpr(f2, hurt);
     else if (o.type === 'scorp') s = scorpSpr(f2, o.vx < 0);
     else s = rockSpr(Math.floor(o.y / 6) % 2);
+    if (o.type === 'ffly') { x.globalCompositeOperation = 'lighter'; glow(x, o.x, o.y + 3, 10 + 10 * (o.glow || 0), '#d4ff3d', 0.35 + 0.5 * (o.glow || 0)); x.globalCompositeOperation = 'source-over'; }
+    if (o.type === 'bwasp') { x.globalCompositeOperation = 'lighter'; glow(x, o.x, o.y, 11, '#ffe23d', 0.3); x.globalCompositeOperation = 'source-over'; }
     drawSpr(x, s, o.x, o.y);
-    if (o.frz > 0) { x.globalCompositeOperation = 'lighter'; glow(x, o.x, o.y, 13, POW.ice.c, 0.45); x.globalCompositeOperation = 'source-over'; }
   }
   function drawBoss(x, B) {
-    var D = BOSS[B.type], fr = Math.floor(drawT * (B.type === 'mega' || B.type === 'beetle' ? 6 : 14)) % 2, sp = bossSpr(B, fr), px = B.x, py = B.y;
+    var D = BOSS[B.type], fr = Math.floor(drawT * (B.type === 'mega' || B.type === 'beetle' ? 6 : 14)) % 2, sp = bossSpr(B, fr), px = B.x, py = B.y - (B.z || 0);
     if (B.st === 'die') { if (Math.floor(drawT * 20) % 2) return; px += rnd(-1.5, 1.5); py += rnd(-1.5, 1.5); }
-    var dim = B.type === 'firefly' && B.lit <= 0.5;
+    // the Killer Wasp leaves a yellow streak behind it as it loops and dives
+    if (B.type === 'wasp' && (B.st === 'loop' || B.st === 'dive')) fx.trail.push({ x: px, y: py, life: 0.35 });
+    if (fx.trail.length) { x.globalCompositeOperation = 'lighter'; fx.trail.forEach(function (t) { glow(x, t.x, t.y, 14 * t.life / 0.35 + 4, '#ffe23d', t.life * 1.6); }); x.globalCompositeOperation = 'source-over'; }
+    // the Mega Spider in the air: its shadow on the ground shows where it will land
+    if (B.type === 'mega' && B.z > 1) { x.globalAlpha = 0.5; x.fillStyle = '#000'; x.beginPath(); x.ellipse(B.x, B.y + D.r[1] * 0.4, D.r[0] * (1 - B.z / 120), D.r[1] * 0.5 * (1 - B.z / 120), 0, 0, TAU); x.fill(); x.globalAlpha = 1; }
     x.globalCompositeOperation = 'lighter';
-    glow(x, px, py, D.r[0] * 2.3, D.c, dim ? 0.06 : B.type === 'firefly' ? 0.5 : 0.24);
+    var gl = B.type === 'firefly' ? (B.vul ? 0.55 : 0.28) : B.vul && B.type !== 'beetle' ? 0.4 : 0.2;
+    glow(x, px, py, D.r[0] * 2.2, D.c, gl);
+    // the Night Flyer's light sweeping down as it glides
+    if (B.type === 'firefly' && B.st === 'glide') {
+      var sw2 = Math.sin(drawT * 3) * 0.5, gr = x.createLinearGradient(px, py, px, py + 120);
+      gr.addColorStop(0, 'rgba(94,240,255,.35)'); gr.addColorStop(1, 'rgba(185,140,255,0)');
+      x.fillStyle = gr; x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.sin(sw2 - 0.45) * 130, py + Math.cos(sw2 - 0.45) * 130); x.lineTo(px + Math.sin(sw2 + 0.45) * 130, py + Math.cos(sw2 + 0.45) * 130); x.closePath(); x.fill();
+    }
     x.globalCompositeOperation = 'source-over';
-    x.globalAlpha = dim ? 0.5 : 1;
+    if (B.type === 'firefly') { x.globalAlpha = 0.62; drawSpr(x, flyerWings(fr), px, py - 2); x.globalAlpha = 1; }
     drawSpr(x, sp, px, py);
     if (B.flash > 0 || B.hitf) { if (Math.floor(drawT * 30) % 2) drawSprImg(x, sp, sp.w || (sp.w = tintCanvas(sp.c, '#ffffff', 0.6)), px, py); }
-    else if (B.st === 'warn' && Math.floor(drawT * 14) % 2) drawSprImg(x, sp, sp.r || (sp.r = tintCanvas(sp.c, '#ff3d5a', 0.55)), px, py);
-    if (B.frz > 0) drawSprImg(x, sp, sp.i || (sp.i = tintCanvas(sp.c, '#8ff4ff', 0.35)), px, py);
+    // weak spots, glowing: the Wasp's thorax (open), the Flyer's core (open), the Beetle's head plate, the Spider on the ground
+    x.globalCompositeOperation = 'lighter';
+    var pulse = 0.55 + 0.45 * Math.sin(drawT * 10);
+    if (B.vul) {
+      if (B.type === 'wasp') { glow(x, px, py - 6, 16, '#ff6ab8', 0.7 * pulse); glow(x, px, py - 6, 7, '#ffe23d', 0.8 * pulse); }
+      else if (B.type === 'firefly') { glow(x, px, py - 16, 18, '#5ef0ff', 0.8 * pulse); glow(x, px, py - 16, 7, '#ffffff', 0.9); }
+      else if (B.type === 'beetle') glow(x, px, py + D.r[1] * 0.55, 12, '#ff8ab0', 0.35 + 0.25 * pulse);
+      else glow(x, px, py + 4, 26, '#ff2d8a', 0.45 * pulse);
+    }
+    x.globalCompositeOperation = 'source-over';
+  }
+  // A boss's entrance: its name in neon between two lit lines, with its bonus underneath (like the cabinet)
+  function drawCard(x, L) {
+    var cd = fx.card, k = 1 - cd.life / cd.max, a = k < 0.06 ? k / 0.06 : cd.life < 0.5 ? cd.life / 0.5 : 1;
+    var cy = L.ch * 0.6, fpT = Math.round(L.fp * 2.6), t = txt(cd.title, cd.c, fpT, cd.c), fit = Math.min(1, L.cw * 0.7 / t.w), sc = (k < 0.12 ? 1.35 - k / 0.12 * 0.35 : 1) * fit;
+    var band = t.h * fit * 2.6;
+    x.globalAlpha = a * 0.6; var gr = x.createLinearGradient(0, cy - band / 2, 0, cy + band / 2); gr.addColorStop(0, 'rgba(4,2,16,0)'); gr.addColorStop(0.5, 'rgba(4,2,16,.85)'); gr.addColorStop(1, 'rgba(4,2,16,0)');
+    x.fillStyle = gr; x.fillRect(0, cy - band / 2, L.cw, band);
+    x.globalAlpha = a;
+    var half = t.w * sc / 2 + L.fp * 4, lw = Math.max(2, Math.round(L.fp * 0.8)), m = L.cw * 0.06;
+    x.globalCompositeOperation = 'lighter';
+    [[lw * 4, 0.25], [lw, 1]].forEach(function (pass) { x.fillStyle = hexA(cd.c, pass[1] * a); x.fillRect(m, cy - pass[0] / 2, L.cw / 2 - half - m, pass[0]); x.fillRect(L.cw / 2 + half, cy - pass[0] / 2, L.cw / 2 - half - m, pass[0]); });
+    x.globalCompositeOperation = 'source-over';
+    drawTxtAt(x, t, L.cw / 2, cy, sc);
+    var st = txt(cd.sub, '#e8e4f4', L.fp); drawTxtAt(x, st, L.cw / 2, cy + t.h * sc * 0.55 + st.h * 0.6, Math.min(1, L.cw * 0.9 / st.w));
+    if (cd.sub2) { var s2 = txt(cd.sub2, '#ff6a8a', Math.max(1, L.fp - 1)); drawTxtAt(x, s2, L.cw / 2, cy + t.h * sc * 0.55 + st.h * 1.4 + s2.h * 0.4, Math.min(1, L.cw * 0.9 / s2.w)); }
     x.globalAlpha = 1;
   }
 
@@ -2063,8 +2129,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var gr = x.createLinearGradient(0, by, 0, by + bh); gr.addColorStop(0, shade(D.c, 0.6)); gr.addColorStop(1, D.c);
       x.fillStyle = gr; x.fillRect(bx, by, Math.round(bw * f), bh);
       x.fillStyle = 'rgba(2,4,16,.5)'; for (var q = 1; q < 20; q++) x.fillRect(bx + Math.round(bw * q / 20), by, Math.max(1, k), bh);
+      // where it gets angrier: marks at two thirds and one third
+      x.fillStyle = '#ffffff'; [0.34, 0.67].forEach(function (m2) { x.fillRect(bx + Math.round(bw * m2) - k, by - k * 2, k * 2, bh + k * 4); });
     } else if (R.wave) {
-      var wt = txt('Wave ' + R.wave + '/' + LAST, '#ffffff', fpL); drawTxtAt(x, wt, midX, labY, Math.min(1, room / wt.w));
+      var wt = txt(R.wave > LAST ? 'Wave ' + R.wave : 'Wave ' + R.wave + '/' + LAST, '#ffffff', fpL); drawTxtAt(x, wt, midX, labY, Math.min(1, room / wt.w));
     }
   }
   function drawBanner(x, L) {
@@ -2077,7 +2145,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
 
   // ═══ End of a game ══════════════════════════════════════════════════════
-  // won: the garden is saved (wave 10 beaten). note: why an online game ended early ('host' left)
+  // won: the Mega Spider was beaten (the game then carries on, endless, until everyone is out).
+  // note: why an online game ended early ('host' left)
   function endGame(won, res, note) {
     var R = res || null;
     if (G && G.ended && !res) return;
@@ -2089,7 +2158,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     }
     var me = R.players.filter(function (p) { return p.id === myPid(); })[0] || R.players[0] || { name: 'Player', score: 0 };
     var online = R.players.length > 1 || !!net.mode, st = R.stats || {}, h = [];
-    h.push(R.won ? 'Saved the garden: beat all 10 waves' : 'Reached wave ' + R.wave + ' of ' + LAST);
+    h.push(R.won ? 'Beat the Mega Spider and reached wave ' + R.wave : 'Reached wave ' + R.wave + ' of ' + LAST);
     if (st.bosses) h.push('Beat ' + st.bosses + (st.bosses === 1 ? ' boss' : ' bosses'));
     if (st.segs) h.push('Shot ' + st.segs + ' centipede segments (' + (st.heads || 0) + ' heads)');
     if (st.spiders) h.push('Got ' + st.spiders + (st.spiders === 1 ? ' spider' : ' spiders'));
@@ -2102,8 +2171,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       started: R.started || null, mode: (online ? 'Online co-op' : 'Solo') + ' · ' + (DIFF[R.diff] || DIFF.arcade).name,
       players: online ? R.players.map(function (p) { return { name: p.name, score: p.score }; }) : [{ name: me.name, score: R.score }],
       winner: online ? null : undefined, highlights: h,
-      summary: (online ? fmt(R.score) + ' team · ' : fmt(R.score) + ' points · ') + (R.won ? 'garden saved' : 'wave ' + R.wave),
-      badge: R.won ? 'Saved' : 'Wave ' + R.wave,
+      summary: (online ? fmt(R.score) + ' team · ' : fmt(R.score) + ' points · ') + 'wave ' + R.wave + (R.won ? ', Mega Spider beaten' : ''),
+      badge: 'Wave ' + R.wave,
       meta: { score: R.score, wave: R.wave, won: !!R.won, online: online }
     });
     var best0 = G ? G.best0 : ArcadeHi.best(HI), best = myScore > best0 && myScore > 0;
@@ -2111,8 +2180,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     ArcadeHi.check(HI, myScore, function () {
       Kit.win({
         lose: !R.won && !best, icon: R.won || best ? 'trophy' : 'meh',
-        title: note && !R.won ? 'Game over' : R.won ? 'You saved the garden!' : best ? 'New high score!' : 'Game over',
-        sub: (online ? 'Team ' + fmt(R.score) + ' · you ' + fmt(me.score) : fmt(R.score) + ' points') + ' · ' + (R.won ? 'all 10 waves' : 'wave ' + R.wave),
+        title: note && !R.won ? 'Game over' : best ? 'New high score!' : R.won ? 'You beat the Mega Spider!' : 'Game over',
+        sub: (online ? 'Team ' + fmt(R.score) + ' · you ' + fmt(me.score) : fmt(R.score) + ' points') + ' · wave ' + R.wave,
         rank: online ? R.players.slice().sort(function (a, b) { return b.score - a.score; }).map(function (p) { return { name: p.name, score: fmt(p.score), color: PCOL[p.ci % 3] }; }) : null,
         notes: note ? [note] : null,
         again: again, againLabel: net.mode ? (net.mode === 'host' ? 'Back to your table' : 'Back to the table') : online ? 'Find another table' : 'Play again',
@@ -2228,14 +2297,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var t = net.table; if (!t || !t.count()) { net.evq = []; if (G.md) G.md.length = 0; net.gridDirty = false; return; }
     if (net.gridDirty) { net.gridDirty = false; G.md = []; t.broadcast({ t: 'e', ev: net.evq, w: G.wave, g: gridStr(), fc: COLS, fr: ROWS }, true); net.evq = []; }
     else if (net.evq.length || G.md.length) { t.broadcast({ t: 'e', ev: net.evq, m: G.md, w: G.wave }, true); net.evq = []; G.md = []; }
-    var s = { t: 's', q: ++net.seq, tm: Math.round(now), w: G.wave, ph: PH.indexOf(G.phase), pt: Math.round(G.phaseT * 10), sc: G.score, c: [], f: [], k: [], u: [], cp: [], p: [], b: 0 };
+    var s = { t: 's', q: ++net.seq, tm: Math.round(now), w: G.wave, ph: PH.indexOf(G.phase), pt: Math.round(G.phaseT * 10), sc: G.score, c: [], f: [], k: [], u: [], cp: [], p: [], zn: [], b: 0 };
     G.segs.forEach(function (sg) { s.c.push(sg.id, q4(sg.x), q4(sg.y), (sg.head ? 1 : 0) | (sg.dx < 0 ? 2 : 0) | (sg.frz ? 4 : 0)); });
-    G.foes.forEach(function (o) { s.f.push(o.id, FT.indexOf(o.type), q4(o.x), q4(o.y), o.hp, (o.vx < 0 ? 1 : 0) | (o.frz > 0 ? 2 : 0)); });
-    G.shots.forEach(function (o) { s.k.push(o.id, KT.indexOf(o.k), q4(o.x), q4(o.y), ang(o.vx, o.vy)); });
+    G.foes.forEach(function (o) { s.f.push(o.id, FT.indexOf(o.type), q4(o.x), q4(o.y), o.hp, (o.vx < 0 ? 1 : 0) | (o.hurt > 0 ? 2 : 0) | ((o.glow || 0) > 0.4 ? 4 : 0)); });
+    G.shots.forEach(function (o) { s.k.push(o.id, KT.indexOf(o.k), q4(o.x), q4(o.y), ang(o.vx, o.vy), q4(o.z || 0)); });
+    G.zones.forEach(function (z) { s.zn.push(z.id, q4(z.x), q4(z.y), z.R, Math.round(z.t * 100), z.ci); });
     G.bullets.forEach(function (b) { s.u.push(b.id, b.o, q4(b.x), q4(b.y), BK.indexOf(b.k), ang(b.vx, b.vy)); });
-    G.caps.forEach(function (c) { s.cp.push(c.id, POWK.indexOf(c.k), q4(c.x), q4(c.y)); });
-    G.players.forEach(function (p) { s.p.push([p.id, q4(p.x), q4(p.y), (p.alive ? 1 : 0) | (p.inv > 0 ? 2 : 0) | (p.flaming ? 4 : 0), p.lives, p.score, p.power ? POWK.indexOf(p.power) + 1 : 0, Math.round(p.powerT * 10), p.ci, p.name, Math.round(p.shield * 10)]); });
-    if (G.boss) { var B = G.boss; s.b = [B.id, BT.indexOf(B.type), q4(B.x), q4(B.y), Math.round(B.hp * 10) / 10, Math.round(B.max * 10) / 10, BST.indexOf(B.st), Math.round(B.lit * 100), B.flash > 0 ? 1 : 0, B.enraged ? 1 : 0, B.lane == null ? -1 : q4(B.lane), B.frz > 0 ? 1 : 0]; }
+    G.caps.forEach(function (c) { s.cp.push(c.id, POWK.indexOf(c.k), q4(c.x), q4(c.y), Math.round(c.t * 10)); });
+    G.players.forEach(function (p) { s.p.push([p.id, q4(p.x), q4(p.y), (p.alive ? 1 : 0) | (p.inv > 0 ? 2 : 0) | (p.beaming ? 4 : 0), p.lives, p.score, p.power ? POWK.indexOf(p.power) + 1 : 0, Math.round(p.powerT * 10), p.ci, p.name, Math.round(p.shield * 10)]); });
+    if (G.boss) { var B = G.boss; s.b = [B.id, BT.indexOf(B.type), q4(B.x), q4(B.y), Math.round(B.hp * 10) / 10, Math.round(B.max * 10) / 10, BST.indexOf(B.st), Math.round(B.z || 0), B.flash > 0 ? 1 : 0, B.ph, -1, B.vul ? 1 : 0]; }
     t.broadcast(s, false);
   }
   function netOver(R) {
@@ -2290,8 +2360,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     Array.prototype.forEach.call(document.querySelectorAll('.k-win'), function (n) { n.remove(); });
     setField(m.fc || FIELD[0], m.fr || FIELD[1]);
     GV = { mode: 'guest', me: m.you, ci: 0, grid: null, pois: null, wave: m.w, phase: PH[m.ph] || 'intro', phaseT: 0, score: 0,
-      segs: [], foes: [], shots: [], bullets: [], caps: [], players: [], boss: null, buf: [], off: null, lastAt: performance.now(),
-      pred: { x: W / 2, y: H - 16, alive: false, cool: 0, side: 1 }, lb: [], flameLocal: false, power: null, hostName: m.host || net.hostName, stall: false, ended: false, sendT: 0, diff: m.diff, started: Date.now() };
+      segs: [], foes: [], shots: [], bullets: [], caps: [], zones: [], players: [], boss: null, buf: [], off: null, lastAt: performance.now(),
+      pred: { x: W / 2, y: H - 16, alive: false, cool: 0, side: 1 }, lb: [], beamLocal: false, power: null, hostName: m.host || net.hostName, stall: false, ended: false, sendT: 0, diff: m.diff, started: Date.now() };
     guestGrid(m.g, m.fc, m.fr);
     GV.lastRes = function () { return { won: false, wave: GV.wave, score: GV.score, players: GV.players.map(function (p) { return { id: p.id, name: p.name, score: p.score, ci: p.ci }; }), stats: {}, started: GV.started, diff: GV.diff }; };
     G = null;
@@ -2330,21 +2400,22 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var ph = PH[B.ph]; if (!V.ended && ph !== V.phase) { V.phase = ph; V.phaseT = B.pt / 10; }
       V.score = B.sc;
       V.segs = lerpArr(A.c, B.c, 4, a, function (r, j, x, y) { return { id: r[j], x: x, y: y, head: !!(r[j + 3] & 1), dx: r[j + 3] & 2 ? -1 : 1, frz: !!(r[j + 3] & 4) }; });
-      V.foes = lerpArr(A.f, B.f, 6, a, function (r, j, x, y) { return { id: r[j], type: FT[r[j + 1]], x: x, y: y, hp: r[j + 4], vx: r[j + 5] & 1 ? -1 : 1, frz: r[j + 5] & 2 ? 1 : 0 }; });
-      V.shots = lerpArr(A.k, B.k, 5, a, function (r, j, x, y) { var an = r[j + 4] / 100; return { id: r[j], k: KT[r[j + 1]], x: x, y: y, vx: Math.cos(an), vy: Math.sin(an) }; });
+      V.foes = lerpArr(A.f, B.f, 6, a, function (r, j, x, y) { return { id: r[j], type: FT[r[j + 1]], x: x, y: y, hp: r[j + 4], vx: r[j + 5] & 1 ? -1 : 1, hurt: r[j + 5] & 2 ? 1 : 0, glow: r[j + 5] & 4 ? 1 : 0 }; });
+      V.shots = lerpArr(A.k, B.k, 6, a, function (r, j, x, y) { var an = r[j + 4] / 100; return { id: r[j], k: KT[r[j + 1]], x: x, y: y, vx: Math.cos(an), vy: Math.sin(an), z: r[j + 5] / 4 }; });
+      V.zones = []; for (var zi = 0; zi + 5 < (B.zn || []).length; zi += 6) V.zones.push({ id: B.zn[zi], x: B.zn[zi + 1] / 4, y: B.zn[zi + 2] / 4, R: B.zn[zi + 3], t: B.zn[zi + 4] / 100, ci: B.zn[zi + 5] });
       V.bullets = lerpArr(A.u, B.u, 6, a, function (r, j, x, y) { var an = r[j + 5] / 100; return { id: r[j], o: r[j + 1], x: x, y: y, k: BK[r[j + 4]], vx: Math.cos(an) * 100, vy: Math.sin(an) * 100 }; });
-      V.caps = lerpArr(A.cp, B.cp, 4, a, function (r, j, x, y) { return { id: r[j], k: POWK[r[j + 1]], x: x, y: y }; });
+      V.caps = lerpArr(A.cp, B.cp, 5, a, function (r, j, x, y) { return { id: r[j], k: POWK[r[j + 1]], x: x, y: y, t: r[j + 4] / 10 }; });
       if (B.b) {
         var bb = B.b, ab = A.b && A.b[0] === bb[0] ? A.b : bb;
         if (Math.abs(bb[2] - ab[2]) > 400 || Math.abs(bb[3] - ab[3]) > 400) ab = bb;   // a jump (the Wasp back in at the top, the Firefly moving in the dark): don't slide across
         var bx = ab[2] / 4 + (bb[2] - ab[2]) / 4 * a, by = ab[3] / 4 + (bb[3] - ab[3]) / 4 * a;
         if (!V.boss || V.boss.id !== bb[0]) V.boss = { id: bb[0] };
-        var VB = V.boss; VB.type = BT[bb[1]]; VB.x = bx; VB.y = by; VB.hp = bb[4]; VB.max = bb[5]; VB.st = BST[bb[6]]; VB.lit = bb[7] / 100; VB.hitf = !!bb[8]; VB.flash = 0; VB.enraged = !!bb[9]; VB.lane = bb[10] == null || bb[10] < 0 ? null : bb[10] / 4; VB.frz = bb[11] ? 1 : 0;
+        var VB = V.boss; VB.type = BT[bb[1]]; VB.x = bx; VB.y = by; VB.hp = bb[4]; VB.max = bb[5]; VB.st = BST[bb[6]]; VB.z = bb[7] || 0; VB.hitf = !!bb[8]; VB.flash = 0; VB.ph = bb[9] || 0; VB.vul = !!bb[11];
       } else V.boss = null;
       var pm = {}; (A.p || []).forEach(function (p) { pm[p[0]] = p; });
       var wasAlive = V.pred.alive;
       V.players = B.p.map(function (p) {
-        var o = pm[p[0]] || p, P = { id: p[0], x: o[1] / 4 + (p[1] - o[1]) / 4 * a, y: o[2] / 4 + (p[2] - o[2]) / 4 * a, alive: !!(p[3] & 1), inv: p[3] & 2 ? 1 : 0, flaming: !!(p[3] & 4), lives: p[4], score: p[5], power: p[6] ? POWK[p[6] - 1] : null, powerT: p[7] / 10, ci: p[8], name: p[9], shield: (p[10] || 0) / 10 };
+        var o = pm[p[0]] || p, P = { id: p[0], x: o[1] / 4 + (p[1] - o[1]) / 4 * a, y: o[2] / 4 + (p[2] - o[2]) / 4 * a, alive: !!(p[3] & 1), inv: p[3] & 2 ? 1 : 0, beaming: !!(p[3] & 4), lives: p[4], score: p[5], power: p[6] ? POWK[p[6] - 1] : null, powerT: p[7] / 10, ci: p[8], name: p[9], shield: (p[10] || 0) / 10 };
         if (P.id === V.me) { V.ci = P.ci; V.power = P.power; if (P.alive && !wasAlive) { V.pred.x = p[1] / 4; V.pred.y = p[2] / 4; } V.pred.alive = P.alive; }
         return P;
       });
@@ -2355,7 +2426,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // host's copy decides what they hit). Homing missiles and hits come from the host.
   function guestLocal(dt) {
     var V = GV, P = V.pred;
-    V.flameLocal = false;
+    V.beamLocal = false;
     if (P.alive && !V.ended) {
       var m = takeInput(P, dt); movePlayer(P, m[0], m[1]);
       var f = firing();
@@ -2363,12 +2434,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       if (V.sendT <= 0 && net.peer) { V.sendT = 1 / 30; net.peer.send({ t: 'i', x: q4(P.x), y: q4(P.y), f: f ? 1 : 0 }, false); }
       P.cool -= dt;
       var pw = V.power;
-      if (f && pw === 'flame') { V.flameLocal = true; snd('flame'); }
-      else if (f && P.cool <= 0 && pw !== 'homing') {
-        if (pw === 'rapid') { P.side = -P.side; V.lb.push({ x: P.x + P.side * 3.4, y: P.y - 9, vx: 0, vy: -BSPD.rapid, k: 'rapid' }); P.cool = 0.065; snd('rapid'); }
-        else if (pw === 'ice') { [-0.34, -0.17, 0, 0.17, 0.34].forEach(function (an) { V.lb.push({ x: P.x, y: P.y - 9, vx: Math.sin(an) * BSPD.ice, vy: -Math.cos(an) * BSPD.ice, k: 'ice' }); }); P.cool = 0.17; snd('ice'); }
-        else { V.lb.push({ x: P.x, y: P.y - 9, vx: 0, vy: -BSPD.laser, k: 'laser' }); P.cool = 0.12; snd('shot'); }
-      } else if (f && pw === 'homing' && P.cool <= 0) { P.cool = 0.32; snd('homing'); }
+      if (f && pw === 'beam') { V.beamLocal = true; snd('beam'); }
+      else if (f && P.cool <= 0) {
+        if (pw === 'scatter') { [-0.36, -0.18, 0, 0.18, 0.36].forEach(function (an) { V.lb.push({ x: P.x, y: P.y - 9, vx: Math.sin(an) * BSPD.scatter, vy: -Math.cos(an) * BSPD.scatter, k: 'scatter' }); }); P.cool = 0.17; snd('scatter'); }
+        else { V.lb.push({ x: P.x, y: P.y - 9, vx: 0, vy: -BSPD.laser, k: pw === 'shock' ? 'shock' : 'laser' }); P.cool = 0.12; snd('shot'); }
+      }
     } else if (net.peer && !V.ended) { V.sendT -= dt; if (V.sendT <= 0) { V.sendT = 0.2; net.peer.send({ t: 'i', x: q4(P.x), y: q4(P.y), f: 0 }, false); } }
     for (var i = V.lb.length - 1; i >= 0; i--) {
       var b = V.lb[i], n = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 4), gone = false;
@@ -2380,7 +2450,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
         for (var k = 0; k < V.segs.length && !gone; k++) if (Math.abs(V.segs[k].x - b.x) < 6 && Math.abs(V.segs[k].y - b.y) < 6) gone = true;
         for (var f2 = 0; f2 < V.foes.length && !gone; f2++) if (Math.abs(V.foes[f2].x - b.x) < 10 && Math.abs(V.foes[f2].y - b.y) < 7.5) gone = true;
         for (var c2 = 0; c2 < V.caps.length && !gone; c2++) if (Math.abs(V.caps[c2].x - b.x) < 8 && Math.abs(V.caps[c2].y - b.y) < 8) gone = true;
-        if (!gone && V.boss && V.boss.st !== 'die') { var R = BOSS[V.boss.type].r, ex = (b.x - V.boss.x) / R[0], ey = (b.y - V.boss.y) / R[1]; if (ex * ex + ey * ey < 1 && !(V.boss.type === 'firefly' && V.boss.lit < 0.45)) gone = true; }
+        if (!gone && V.boss && V.boss.st !== 'die') { var R = BOSS[V.boss.type].r, ex = (b.x - V.boss.x) / R[0], ey = (b.y - V.boss.y) / R[1]; if (ex * ex + ey * ey < 1) gone = true; }
       }
       if (gone) V.lb.splice(i, 1);
     }
@@ -2418,14 +2488,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     clearWave: function () { G.chains = []; G.segs = []; if (G.boss) G.boss.hp = 1; },
     god: function (on) { G.noDie = !!on; },
     power: function (k, pid) { var P = pid ? G.players.filter(function (p) { return p.id === pid; })[0] : G.players[0]; if (k === 'shield') P.shield = SHIELD_T; else if (k === 'bomb') bomb(P, P.x, P.y - 40); else { P.power = k; P.powerT = POW_T; } },
-    cap: function (k, x, y) { G.caps.push({ id: newId(), x: x, y: y, k: k, t: 0 }); },
+    cap: function (k, x, y) { G.caps.push({ id: newId(), x: x, y: y, y0: y, k: k, t: 0 }); },
+    spawn: function (type, x, y) { return type === 'wasp' || type === 'bwasp' ? spawnWasps(1, type === 'bwasp') : type === 'ant' ? spawnAnts() : type === 'ffly' ? spawnFirefly(x, y) : type === 'beetle' ? spawnBeetle(x, y) : type === 'flea' ? spawnFlea() : type === 'mini' ? spawnSpider(true, x, y) : spawnSpider(false); },
+    zone: function (x, y, R, warn, ci) { zone(x, y, R, warn, ci); },
+    bossSet: function (st, ph) { var B = G.boss; if (!B) return; if (ph != null) { B.ph = ph; B.hp = B.max * (ph === 2 ? 0.3 : ph === 1 ? 0.6 : 1); } if (st === 'loop') lockLoop(B); else if (st) { B.st = st; B.stT = 0; } },
     move: function (x, y) { var P = G.players[0]; P.x = x; P.y = y; },
     fire: function (on) { ctl.keys[' '] = !!on; },
     auto: function (on) { ctl.auto = !!on; },
     kill: function () { killPlayer(G.players[0]); },
-    hitBoss: function (n) { for (var i = 0; i < n; i++) hitBoss(G.players[0], 1, G.boss.x, G.boss.y); },
+    hitBoss: function (n) { for (var i = 0; i < n && G.boss; i++) hitBoss(G.players[0], 1, G.boss.x, G.boss.y); },
     lobby: function () { goLobby(); }, host: function (n) { hostTable(n || 'Tim'); }, join: function (c, n) { joinTable(c, n || 'Sam'); }, start: function () { hostStart(); },
-    draw: function () { draw(); }, fx: fx, prof: function () { var o = {}, t0 = performance.now(); mushSpr('green', 3, 0); o.mush = performance.now() - t0; t0 = performance.now(); txt('Wave 9', '#ffffff', 9, '#ff0000'); o.txtGlow = performance.now() - t0; t0 = performance.now(); txt('Wave 9', '#ffffff', 5); o.txt = performance.now() - t0; t0 = performance.now(); capSpr('ice'); o.cap = performance.now() - t0; t0 = performance.now(); segSpr('green', true, 0, 0, 0); o.seg = performance.now() - t0; for (var k in o) o[k] = Math.round(o[k]); return o; }, bgTime: function (tk) { var t0 = performance.now(); bgSpr(tk); return Math.round(performance.now() - t0); }, sprites: function () { return Object.keys(SPX).length; }
+    draw: function () { draw(); }, fx: fx, prof: function () { var o = {}, t0 = performance.now(); mushSpr('green', 3, 0); o.mush = performance.now() - t0; t0 = performance.now(); txt('Wave 9', '#ffffff', 9, '#ff0000'); o.txtGlow = performance.now() - t0; t0 = performance.now(); txt('Wave 9', '#ffffff', 5); o.txt = performance.now() - t0; t0 = performance.now(); capSpr('scatter'); o.cap = performance.now() - t0; t0 = performance.now(); segSpr('green', true, 0, 0, 0); o.seg = performance.now() - t0; for (var k in o) o[k] = Math.round(o[k]); return o; }, bgTime: function (tk) { var t0 = performance.now(); bgSpr(tk); return Math.round(performance.now() - t0); }, sprites: function () { return Object.keys(SPX).length; }
   };
   window.__cc = window.__centi;
 
