@@ -223,6 +223,24 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
   ].filter(function (b) { return typeof findGame !== 'function' || findGame(b.game); });
   BOARDS.forEach(function (b) { b.sec = 'arcade'; });
   var want = (location.hash || '').slice(1);
+  // ── Peggle: one cabinet, stepping through the full game, then each level (those with scores, level 1, and the one
+  // asked for), then the old all-levels board while it still has scores not filed on a level (peggleOld, games.js) ──
+  (function () {
+    var at = -1; BOARDS.forEach(function (b, i) { if (b.key === 'peggle') at = i; });
+    if (at < 0 || typeof HI_BOARDS === 'undefined' || !HI_BOARDS.peggle_run || typeof ArcadeHi === 'undefined') return;
+    var base = BOARDS[at], left = 0, NL = PEGGLE_LEVELS.length;
+    try { left = peggleOld(true); } catch (e) {}
+    if (want === 'peggle') want = 'peggle_run';   // the game, from an older link
+    var keys = Object.keys(HI_BOARDS).filter(function (k) { return HI_BOARDS[k].game === 'peggle'; }).filter(function (k) {
+      if (k === 'peggle') return left > 0;
+      return k === 'peggle_run' || k === 'peggle_l1' || k === want || ArcadeHi.board(k).length;
+    });
+    BOARDS.splice.apply(BOARDS, [at, 1].concat(keys.map(function (k) {
+      var lv = /^peggle_l(\d+)$/.exec(k);
+      return Object.assign({}, base, { key: k, mode: k === 'peggle_run' ? 'FULL GAME' : lv ? 'LEVEL ' + lv[1] : 'OLDER',
+        tag: k === 'peggle_run' ? 'FULL GAME · ALL ' + NL + ' LEVELS' : lv ? 'LEVEL ' + lv[1] + ' · ' + String(PEGGLE_LEVELS[lv[1] - 1] || '').toUpperCase() : 'OLDER SCORES · ALL LEVELS' });
+    })));
+  })();
 
   // ── Puzzles: every board in HI_BOARDS (games.js), A to Z, in a plain cabinet of the game's own colour ──
   // Games with lots of boards (Math Puzzles, Marble Solitaire) show only the boards that have scores, plus a default.
@@ -260,6 +278,7 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     Object.keys(HI_BOARDS).forEach(function (k) { var g = HI_BOARDS[k].game; if (games.indexOf(g) < 0) games.push(g); });
     games.sort(function (a, b) { return pzName(a).localeCompare(pzName(b), 'en', { numeric: true }); });
     games.forEach(function (game) {
+      if (BOARDS.some(function (b) { return b.game === game; })) return;   // has its own arcade cabinet (Peggle)
       var keys = Object.keys(HI_BOARDS).filter(function (k) { return HI_BOARDS[k].game === game; });
       if (keys.length > 6) keys = keys.filter(function (k) { return k === PZ_DEFAULT[game] || k === want || ArcadeHi.board(k).length; });
       var c = pzTheme(pzColor(game)), name = pzName(game).toUpperCase();

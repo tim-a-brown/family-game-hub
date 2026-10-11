@@ -305,8 +305,26 @@
 
   // ═══ Peggle ═══
   var PEG = { b: '#2f7ff0', o: '#ff7417', p: '#a24cf0', g: '#1fbf55' };
+  var PEG_LV = ['First Light', 'Rainbow Arches', 'Spiral', 'Bubbles', 'Hourglass', 'Diamonds', 'Twin Peaks', 'The Wheel', 'Sliders', 'Orbits', 'Pendulum', 'Galaxy', 'Clockwork'];
   R('peggle', function (e, ui) {
-    var d = e.dt; if (!d || d.n == null) return null;
+    var d = e.dt;
+    // a full game: levels 1 to 13 in a row, a bar for each level's score
+    if (d && d.run && Array.isArray(d.lv)) {
+      var lv = d.lv.map(function (v) { return Number(v) || 0; }), top = Math.max.apply(null, lv.concat([1])), bi = lv.indexOf(top);
+      var BW = 22, GP = 5, CH = 120, W = lv.length * (BW + GP) + GP, s2 = '<rect width="' + W + '" height="' + (CH + 22) + '" rx="6" fill="#0b0b1c"/>';
+      lv.forEach(function (v, i) {
+        var h = Math.max(2, Math.round(v / top * (CH - 10))), x = GP + i * (BW + GP);
+        s2 += '<rect x="' + x + '" y="' + (CH - h) + '" width="' + BW + '" height="' + h + '" rx="3" fill="' + (i === bi ? '#ffd45a' : PEG.o) + '"/>' +
+          '<text x="' + (x + BW / 2) + '" y="' + (CH + 15) + '" text-anchor="middle" font-size="11" font-weight="800" fill="rgba(233,236,255,.6)" font-family="ui-monospace,monospace">' + (i + 1) + '</text>';
+      });
+      return screen(ui, {
+        ac: '#ffd45a', title: 'Full game · all ' + (d.of || lv.length) + ' levels', score: n(myScore(e)), rank: rankText(d),
+        pic: svg(W, CH + 22, s2, { aria: 'Score on each level, level 1 to ' + lv.length }), picMax: 360,
+        stats: [['Levels', lv.length + '/' + (d.of || lv.length), 'in a row'], ['Best level', n(top), (bi + 1) + ' · ' + (PEG_LV[bi] || '')], ['Retries', d.rt || 0, d.rt ? 'after running out of balls' : 'every level first try']],
+        foot: 'Full game complete', footOk: true
+      });
+    }
+    if (!d || d.n == null) return null;
     var pic = null;
     if (d.pg) {
       var W = 360, y0 = 80, y1 = 590, s = '<defs><radialGradient id="pgbg" cx=".5" cy=".3" r=".9"><stop offset="0" stop-color="#26285a"/><stop offset="1" stop-color="#0b0b1c"/></radialGradient></defs><rect y="' + y0 + '" width="' + W + '" height="' + (y1 - y0) + '" fill="url(#pgbg)"/>';

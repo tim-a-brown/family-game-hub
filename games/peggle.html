@@ -46,7 +46,14 @@ html.pg-on,html.pg-on body{height:100%;overflow:hidden;overscroll-behavior:none;
 html.pg-on body{display:flex;flex-direction:column;
   background:radial-gradient(90% 50% at 50% 0%, rgba(255,150,60,.13) 0%, rgba(255,150,60,0) 70%),var(--bg);}
 html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 6px calc(var(--safe-b) + 8px);display:flex;flex-direction:column;align-items:center;justify-content:center;}
-.pg-hud{flex:none;display:flex;align-items:stretch;gap:6px;width:100%;max-width:100%;margin-bottom:6px;}
+.pg-hud{flex:none;display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;width:100%;max-width:100%;margin-bottom:6px;}
+/* the full game under way: a quiet line under the plates */
+.pg-run{flex:1 0 100%;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:-1px;font-size:.66rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(255,210,140,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
+.pg-run b{color:#ffd45a;font-weight:900;}
+.pg-run i{font-style:normal;opacity:.5;}
+.pg-runl{margin:-2px 0 10px;font-size:.8rem;font-weight:700;color:var(--text-2);line-height:1.35;}
+.pg-runl b{color:var(--text);}
 .pg-plate.pg-best{flex:.7;}
 .pg-plate{position:relative;display:flex;flex-direction:column;justify-content:center;min-width:0;padding:5px 11px;border-radius:14px;
   background:linear-gradient(180deg,#2a1d12 0%,#170f08 100%);
@@ -106,6 +113,10 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   'use strict';
   var el = Kit.el, app = document.getElementById('app'), root = document.documentElement;
   var KEY = 'peggle', SAVE = 'peggle_state', PROG = 'peggle_progress';
+  // High scores: a board per level (hi_peggle_l1..13) and the full game (hi_peggle_run). The run under way is kept
+  // on this device only (peggle_runstate). Old one-for-all board hi_peggle: see peggleOld in games.js.
+  var RUNK = 'peggle_runstate', RUNB = 'peggle_run';
+  function lvKey(n) { return 'peggle_l' + n; }
   var PI = Math.PI, TAU = PI * 2;
 
   // ═══ Playfield geometry & physics constants (logical units) ═══════════════
@@ -612,9 +623,26 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       shots: L.shots, stats: L.stats, started: L.started, ang: ang, wt: wt
     };
     try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
-    Kit.resume.set('Level ' + L.n + ' · ' + L.ballsLeft + (L.ballsLeft === 1 ? ' ball' : ' balls') + ' left');
+    Kit.resume.set((inRun() ? 'Full game · ' : '') + 'Level ' + L.n + ' · ' + L.ballsLeft + (L.ballsLeft === 1 ? ' ball' : ' balls') + ' left');
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+
+  // ═══ Full game: levels 1 to 13 in a row, one total ═══════════════════════
+  // Starting level 1 starts a run. It goes on while the level started is the one it's on: the next level after a
+  // clear, or the same level again after running out of balls. Any other level ends it, with no score. Only the
+  // attempt that clears a level adds to the total. {v, cur: level it's on, lv: [score that cleared each level], tries, started}
+  function loadRun() { try { var r = JSON.parse(localStorage.getItem(RUNK)); return r && r.v === 1 && r.cur >= 1 && r.cur <= NL && Array.isArray(r.lv) ? r : null; } catch (e) { return null; } }
+  function saveRun() { try { if (run) localStorage.setItem(RUNK, JSON.stringify(run)); else localStorage.removeItem(RUNK); } catch (e) {} }
+  function runTotal(r) { return (r ? r.lv : []).reduce(function (a, b) { return a + (Number(b) || 0); }, 0); }
+  var run = loadRun();
+  // a level is starting: does the run go on, start over or end?
+  function runFor(n, resuming) {
+    if (run && run.cur === n) return;
+    if (n === 1 && !resuming) run = { v: 1, cur: 1, lv: [], tries: 0, started: Date.now() };
+    else run = null;
+    saveRun();
+  }
+  function inRun() { return !!(run && L && run.cur === L.n); }
   function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.n >= 1 && s.n <= NL ? s : null; } catch (e) { return null; } }
 
   // ═══ Kit shell ═══════════════════════════════════════════════════════════
@@ -642,16 +670,25 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       '<li><b>Multiball</b>: a second ball pops out of the green peg.</li><li><b>Spooky Ball</b>: when the ball falls out the bottom, it comes back once from the top.</li>' +
       '<li><b>Random</b>: each green peg picks one of these powers by surprise.</li><li><b>Off</b>: no powers. Green pegs are just 10 points.</li></ul>' +
       '<h3>Extreme Fever</h3><p>When the ball heads for the last orange peg, everything slows down. Hit it to start <b>Extreme Fever</b>: the bottom turns into bonus buckets worth <b>10,000</b>, <b>50,000</b> or <b>100,000</b>.</p>' +
-      '<h3>Levels</h3><p>There are ' + NL + ' levels. Clear a level to unlock the next one. Later levels have pegs that move.</p>'
+      '<h3>Levels</h3><p>There are ' + NL + ' levels. Clear a level to unlock the next one. Later levels have pegs that move.</p>' +
+      '<h3>High scores</h3><ul><li><b>Level boards</b>: every level has its own high-score board. When a level ends, your score for it can go on that level\'s board.</li>' +
+      '<li><b>Full game</b>: start at level 1 and clear every level in order, all the way to level ' + NL + '. Your scores for the levels add up to one total for the Full game board.</li>' +
+      '<li>Ran out of balls? Play the same level again and the full game goes on. Only the try that clears a level counts toward the total.</li>' +
+      '<li>Starting any other level (skipping ahead, or replaying an earlier one) ends the full game. Starting level 1 begins a new one.</li></ul>'
   });
 
-  function showHighScores() { ArcadeHi.show('peggle', 'Peggle'); }
+  // the level on the table (or picked on the level screen); its board, with the Full game and the other levels a tap away
+  function showHighScores() {
+    if (view === 'game' && L && !L.done) save();
+    var n = view === 'game' && L ? L.n : clamp(loadProg().sel || 1, 1, NL);
+    ArcadeHi.show(lvKey(n), 'Peggle: level ' + n);
+  }
 
   // ═══ Setup: level select + power choice ══════════════════════════════════
   var LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
   function showSetup() {
     leaveGame();
-    var prog = loadProg(), sel = clamp(prog.sel || prog.unlocked, 1, prog.unlocked);
+    var prog = loadProg(), sel = clamp(run ? run.cur : prog.sel || prog.unlocked, 1, prog.unlocked);
     app.className = 'stage pg-setup';
     var s = Kit.setup(app, {
       intro: 'Aim, bounce and clear the orange pegs',
@@ -689,7 +726,10 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       drawThumb(cv, n);
     });
     var hero = s.el.querySelector('.setup-hero');
-    var box = el('div', null, [head, grid]);
+    var runl = el('div', { class: 'pg-runl', html: run && run.cur > 1
+      ? '<b>Full game under way:</b> level ' + run.cur + ' of ' + NL + ' is next, ' + fmt(runTotal(run)) + ' points so far. Any other level ends it.'
+      : 'For a <b>Full game</b> score, start at level 1 and clear all ' + NL + ' levels in order.' });
+    var box = el('div', null, [head, runl, grid]);
     hero.parentNode.insertBefore(box, hero.nextSibling);
     label();
     window.scrollTo(0, 0);
@@ -726,6 +766,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     pwEl = el('div', { class: 'pg-plate pg-pw' });
     bestEl = el('div', { class: 'pg-plate pg-best' }, [el('small', { text: 'Best' }), el('b', { text: '0' })]);
     hudEl = el('div', { class: 'pg-hud' }, [lvEl, scoreEl, bestEl, pwEl]);
+    if (inRun()) hudEl.appendChild(el('div', { class: 'pg-run', 'aria-label': 'Full game, level ' + L.n + ' of ' + NL + ', ' + fmt(runTotal(run)) + ' points so far',
+      html: 'Full game <i>·</i> level ' + L.n + ' of ' + NL + ' <i>·</i> <b>' + fmt(runTotal(run)) + '</b>' }));
     cssW = 0;
     canvas = el('canvas', { 'aria-label': 'Peggle board' });
     gctx = canvas.getContext('2d');
@@ -842,6 +884,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   // ═══ Level flow ══════════════════════════════════════════════════════════
   function startLevel(n, cfg, saved) {
+    runFor(n, !!saved);
     objs = buildLevel(n);
     Mus.setSong(levelSong(n)); Mus.restart();
     // title: the level's name; tap it for the level picker
@@ -872,7 +915,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     buildView();
     state = 'aim'; paused = false;
     updateHud();
-    banner('Level ' + n, L.def.name, '#ffffff', 2.2);
+    banner('Level ' + n, L.def.name + (inRun() ? ' · full game ' + n + '/' + NL : ''), '#ffffff', 2.2);
     save();
   }
   function movePurple() {
@@ -1127,7 +1170,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function recordLevel(won) {
     var shots = L.shots.slice(0, 40);
     // history detail: every peg where it sat at the end (colour letter, capital = hit and cleared) and the level's numbers
-    var hiL = ArcadeHi.list('peggle'), sc0 = L.score;
+    var hiL = ArcadeHi.list(lvKey(L.n)), sc0 = L.score;
     var pegs = objs.map(function (o) {
       var c = o.gone ? o.c.toUpperCase() : o.c;
       return (o.k === 'brick' ? [o.x, o.y, o.x2, o.y2] : [o.x, o.y]).map(function (v) { return Math.round(v); }).join(',') + c;
@@ -1145,7 +1188,25 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       highlights: highlights(won),
       summary: 'Level ' + L.n + (won ? ' cleared' : ' · out of balls') + ' · ' + fmt(L.score),
       badge: 'Lvl ' + L.n,
-      meta: { level: L.n, levelName: L.def.name, cleared: !!won, levelScore: L.score, score: L.score, balls: L.ballsLeft, result: won ? 'win' : 'loss', master: L.master, feverBonus: L.stats.feverBucket || 0 }
+      meta: { level: L.n, levelName: L.def.name, cleared: !!won, levelScore: L.score, score: L.score, balls: L.ballsLeft, result: won ? 'win' : 'loss', master: L.master, feverBonus: L.stats.feverBucket || 0, fullGame: inRun() ? 1 : 0 }
+    });
+  }
+  // a finished full game in Past games: the total, and each level's score as a round
+  function recordRun(r) {
+    var tot = runTotal(r), hiR = ArcadeHi.list(RUNB), lv = [];
+    for (var i = 0; i < NL; i++) lv.push(Number(r.lv[i]) || 0);
+    var bi = lv.indexOf(Math.max.apply(null, lv));
+    Kit.record(KEY, {
+      detail: { run: 1, lv: lv, of: NL, rt: r.tries || 0, ma: L.master,
+        hr: tot > 0 && (hiR.length < ArcadeHi.max || tot > hiR[hiR.length - 1].score) ? hiR.filter(function (x) { return x.score >= tot; }).length + 1 : 0, hb: hiR.length ? hiR[0].score : 0 },
+      started: r.started, mode: 'Full game: all ' + NL + ' levels',
+      players: [{ name: L.who, score: tot }], winner: null,
+      rounds: { labels: lv.map(function (s, i) { return 'Level ' + (i + 1); }), scores: lv.map(function (s) { return [s]; }) },
+      highlights: ['Cleared all ' + NL + ' levels in a row', 'Best level: ' + (bi + 1) + ' (' + LEVELS[bi].name + '), ' + fmt(lv[bi]),
+        r.tries ? (r.tries === 1 ? '1 retry along the way' : r.tries + ' retries along the way') : 'Every level cleared on the first try'],
+      summary: 'Full game · all ' + NL + ' levels · ' + fmt(tot),
+      badge: 'Full game',
+      meta: { fullGame: 1, runScore: tot, score: tot, levels: NL, tries: r.tries || 0, result: 'win', master: L.master }
     });
   }
   function levelWon() {
@@ -1154,15 +1215,44 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     prog.cleared[L.n] = 1; prog.unlocked = clamp(Math.max(prog.unlocked, L.n + 1), 1, NL);
     if (L.score > (prog.best[L.n] || 0)) prog.best[L.n] = L.score;
     prog.sel = L.n < NL ? L.n + 1 : L.n; saveProg(prog);
+    var cfg = { who: L.who, master: L.master, fireMode: L.fireMode }, n = L.n, sc = L.score, inR = inRun(), full = null;
     recordLevel(true);
-    var cfg = { who: L.who, master: L.master, fireMode: L.fireMode }, n = L.n;
-    ArcadeHi.check('peggle', L.score, function () {
+    // the full game: bank this level's score; the last level finishes it
+    if (inR) {
+      run.lv[n - 1] = sc;
+      if (n < NL) { run.cur = n + 1; saveRun(); }
+      else { full = run; recordRun(full); run = null; saveRun(); }
+    }
+    var cleared = fmt(sc) + ' points · ' + L.ballsLeft + (L.ballsLeft === 1 ? ' ball' : ' balls') + ' left' + (L.stats.feverBucket ? ' · ' + fmt(L.stats.feverBucket) + ' fever bucket' : '');
+    if (full) {
+      // one initials entry for both boards: the full game's total, and this level's score
+      var tot = runTotal(full), lv = full.lv.map(function (v) { return Number(v) || 0; }), bi = lv.indexOf(Math.max.apply(null, lv));
+      Kit.callout('Full game!', '#ffd45a'); Kit.haptic('success');
+      setTimeout(function () {
+        ArcadeHi.check(RUNB, tot, function () {
+          Kit.win({
+            title: 'Full game complete!',
+            sub: fmt(tot) + ' points · all ' + NL + ' levels in a row',
+            notesTitle: 'Your full game',
+            notes: ['Level ' + n + ' (' + LEVELS[n - 1].name + '): ' + cleared,
+              'Best level: ' + (bi + 1) + ' (' + LEVELS[bi].name + '), ' + fmt(lv[bi]),
+              full.tries ? 'Took ' + full.tries + (full.tries === 1 ? ' retry' : ' retries') + ' along the way' : 'Every level cleared on the first try'],
+            again: function () { startLevel(1, cfg); }, againLabel: 'New full game',
+            extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(RUNB, 'Peggle: full game'); } }, { label: 'Choose level', onClick: showSetup }]
+          });
+        }, { also: [{ key: lvKey(n), score: sc }] });
+      }, 1100);
+      return;
+    }
+    ArcadeHi.check(lvKey(n), sc, function () {
       Kit.win({
         title: 'Level ' + n + ' cleared!',
-        sub: fmt(L.score) + ' points · ' + L.ballsLeft + (L.ballsLeft === 1 ? ' ball' : ' balls') + ' left' + (L.stats.feverBucket ? ' · ' + fmt(L.stats.feverBucket) + ' fever bucket' : ''),
+        sub: cleared,
+        notesTitle: inR ? 'Full game' : null,
+        notes: inR ? ['Level ' + n + ' of ' + NL + ' done, ' + fmt(runTotal(run)) + ' points so far', 'Next: level ' + (n + 1) + ' (' + LEVELS[n].name + ')'] : null,
         again: function () { startLevel(n < NL ? n + 1 : n, cfg); },
         againLabel: n < NL ? 'Next level' : 'Play again',
-        extra: [{ label: 'Replay level ' + n, onClick: function () { startLevel(n, cfg); } }, { label: 'Choose level', onClick: showSetup }]
+        extra: [{ label: 'Replay level ' + n + (inR ? (n === 1 ? ' (full game starts over)' : ' (ends the full game)') : ''), onClick: function () { startLevel(n, cfg); } }, { label: 'Choose level', onClick: showSetup }]
       });
     });
   }
@@ -1170,11 +1260,15 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     L.done = true; clearSave();
     var prog = loadProg(); if (L.score > (prog.best[L.n] || 0)) { prog.best[L.n] = L.score; saveProg(prog); }
     recordLevel(false);
-    var cfg = { who: L.who, master: L.master, fireMode: L.fireMode }, n = L.n, left = orangeLeft();
-    ArcadeHi.check('peggle', L.score, function () {
+    var cfg = { who: L.who, master: L.master, fireMode: L.fireMode }, n = L.n, left = orangeLeft(), inR = inRun();
+    // the full game goes on if this level is played again; this try's score doesn't count
+    if (inR) { run.tries = (run.tries || 0) + 1; saveRun(); }
+    ArcadeHi.check(lvKey(n), L.score, function () {
       Kit.win({
         lose: true, title: 'Out of balls',
         sub: left + ' orange ' + (left === 1 ? 'peg' : 'pegs') + ' left · ' + fmt(L.score) + ' points',
+        notesTitle: inR ? 'Full game still on' : null,
+        notes: inR ? ['Try level ' + n + ' again to keep it going', (n > 1 ? fmt(runTotal(run)) + ' points from levels 1 to ' + (n - 1) : 'Level 1 of ' + NL)] : null,
         again: function () { startLevel(n, cfg); }, againLabel: 'Try level ' + n + ' again',
         extra: [{ label: 'Choose level', onClick: showSetup }]
       });
@@ -1214,7 +1308,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       scoreEl.querySelector('b').textContent = fmt(shownScore);
       if (was >= 0 && shownScore === L.score) { scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump'); }
     }
-    if (bestLv !== L.n) { bestLv = L.n; bestBase = loadProg().best[L.n] || 0; }
+    if (bestLv !== L.n) { bestLv = L.n; bestBase = Math.max(ArcadeHi.best(lvKey(L.n)) || 0, loadProg().best[L.n] || 0); }
     var bv = Math.max(bestBase, L.score);
     if (bestEl && shownBest !== bv) { shownBest = bv; bestEl.querySelector('b').textContent = fmt(bv); }
     var hs = state + '|' + balls.length + '|' + L.guide + '|' + balls.some(function (b) { return b.spooky; });
@@ -1884,10 +1978,15 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     },
     paths: function () { return balls.map(function (b) { return [b.x, b.y, b.vx, b.vy]; }); },
     pause: pauseGame, resume: resumeGame, music: function () { return Mus.song(); },
+    // tests: end the level now with this score (cleared, or out of balls), and read the full game under way
+    win: function (score) { if (!L || L.done) return; L.score = score; balls = []; state = 'done'; levelWon(); },
+    lose: function (score) { if (!L || L.done) return; L.score = score; L.ballsLeft = 0; balls = []; state = 'done'; L.done = true; levelLost(); },
+    run: function () { return run ? JSON.parse(JSON.stringify(run)) : null; },
     tune: function (e, g) { E_PEG = e; GRAV = g; }
   };
 
   // ═══ Boot ════════════════════════════════════════════════════════════════
+  try { if (typeof peggleOld === 'function') peggleOld(true); } catch (e) {}
   var saved = loadSave();
   if (saved) startLevel(saved.n, { who: saved.who, master: saved.master, fireMode: saved.fireMode }, saved);
   else showSetup();
