@@ -519,7 +519,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     fx /= MTOT; fy /= MTOT;
     for (i = 0; i < 11; i++) {
       p = P[i];
-      var vx = (p.x - p.px) * damp, vy = (p.y - p.py) * damp, ax = ws + p.dx - fx, ay = G + p.dy - fy;
+      var vx = (p.x - p.px) * damp, vy = (p.y - p.py) * damp, ax = ws + p.dx - fx + (R.slipT > 0 ? R.slipAx : 0), ay = G + p.dy - fy;
       if (flail) {
         var tt = R.t;
         if (i === LH) { ax += Math.cos(tt * 13) * 1700; ay += Math.sin(tt * 13) * 1700; }
@@ -533,7 +533,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     // candidate colliders near the body
     var x0 = 1e9, x1 = -1e9; for (i = 0; i < 11; i++) { if (P[i].x < x0) x0 = P[i].x; if (P[i].x > x1) x1 = P[i].x; if (P[i].px < x0) x0 = P[i].px; if (P[i].px > x1) x1 = P[i].px; }
     cands.length = 0;
-    if (!R.noCol) for (i = 0; i < COL.length; i++) { var c = COL[i]; if (!c.off && c.x1 >= x0 - 20 && c.x0 <= x1 + 20) cands.push(c); }
+    // (while slipping free of a wedge, the low roof curbs don't count: nothing hooks behind them)
+    if (!R.noCol) for (i = 0; i < COL.length; i++) { var c = COL[i]; if (!c.off && c.x1 >= x0 - 20 && c.x0 <= x1 + 20 && !(c.k === 'lip' && R.slipT > 0)) cands.push(c); }
     for (i = 0; i < 11; i++) collideP(P[i], i, h, true);
     for (var it = 0; it < 4; it++) {
       for (var k = 0; k < CONS.length; k++) {
@@ -1085,8 +1086,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       // never left hanging in a gap: a body bridged between two buildings (a roof edge and the jackpot's
       // slates, say) loses its grip for a moment and gets a nudge, so it drops to the street
       if (R.airT < .2 && mv < 60 && !(R.slipT > 0) && pl.y < -110 && inGap(pl.x)) {
-        R.slipT = .7; var gc = gapMid(pl.x), nx = clamp(gc - pl.x, -1, 1) * 40 * HS;
-        P.forEach(function (q) { q.px -= nx; });
+        R.slipT = .7; R.slipAx = (gapMid(pl.x) > pl.x ? 1 : -1) * 900;   // a shove toward the middle of the gap, off whatever it was wedged on
       }
       if (R.pinT <= 0 && R.airT < .2 && !(R.slipT > 0) && mv < (R.sticky ? 30 : 22)) R.restT += dt; else R.restT = 0;
       if (R.wet) R.wetT += dt;
@@ -2484,6 +2484,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     step: function (sec, draw) { var n = Math.round((sec || 0) / DT); for (var i = 0; i < n; i++) update(DT); if (draw) { render(); drawDeck(); } return state; },
     angle: function () { return angle; }, level: function () { return jpLevel; }, jpI: function () { return jpI; },
     setJp: function (i) { jpI = i; startShot(); },
+    dbg: function () { return { slipAx: rag.slipAx, P: rag.P.map(function (p) { return [+(p.x).toFixed(2), +(p.y).toFixed(2), +((p.x - p.px) / HS).toFixed(1), +((p.y - p.py) / HS).toFixed(1), p.r]; }) }; },
     tune: function (o) { if (o.jpMu != null) JP_MU = o.jpMu; if (o.keep != null) JP_KEEP = o.keep; if (o.slate != null) SLATE_MU = o.slate; if (o.mh != null) MANS_H = o.mh; if (o.mw != null) MANS_W = o.mw; },
     // drop Willy (standing pose, pelvis at x,y) with a velocity, as if fired
     drop: function (x, y, vx, vy, spin) {
@@ -2503,7 +2504,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     state: function () { return state; }, res: function () { return res; }, cur: function () { return cur; },
     result: function (tt) { resultT = tt; render(); },
     nparts: function () { return parts.length; },
-    ragInfo: function () { return rag && { pinT: rag.pinT, airT: rag.airT, restT: rag.restT, noCol: rag.noCol, dance: !!rag.dance, sticky: rag.sticky, wet: rag.wet, landed: rag.landed }; },
+    ragInfo: function () { return rag && { slipT: rag.slipT, pinT: rag.pinT, airT: rag.airT, restT: rag.restT, noCol: rag.noCol, dance: !!rag.dance, sticky: rag.sticky, wet: rag.wet, landed: rag.landed }; },
     cam: function (x, y, z) { cam.x = x; cam.y = y; cam.z = z || 1; render(); },
     col: function () { return COL.map(function (c) { return { k: c.k, x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1 }; }); },
     ants: function () { return ants.map(function (a) { return { x: a.x, y: a.y, h: a.h, dish: a.dish }; }); },
