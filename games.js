@@ -96,6 +96,7 @@ var GAMES = [
   { id: 'mahjong',     name: 'Mahjong Tiles', color: '#059669', cat: 'puzzle', min: 1, max: 1, tag: 'Match free tiles, clear the stack', play: 'mahjong' },
   { id: 'mathpuzzles', name: 'Math Puzzles', color: '#0891b2', cat: 'puzzle', min: 1, max: 1, tag: 'Patterns, sequences and brain teasers', play: 'mathpuzzles' },
   { id: 'candymatch',  name: 'Candy Match',  color: '#ff4f9a', cat: 'puzzle', min: 1, max: 1, tag: 'Swap candies, match three, beat the level', play: 'candymatch' },
+  { id: 'mazes',       name: 'Mazes',        color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Draw your way out, or tilt a steel ball', play: 'mazes' },
 
   // ── Words ────────────────────────────────────────────────────────────────
   { id: 'wordle',      name: 'Wordle',       color: '#22c55e', cat: 'words', min: 1, max: 1, tag: 'Guess the word in six tries', play: 'wordle' },
@@ -216,6 +217,13 @@ var HI_BOARDS = (function () {
     });
   });
   add('candymatch', 'candymatch', { label: '', unit: 'score' });
+  // Mazes: best times per size, drawn (Pencil) and rolled (Labyrinth)
+  [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard'], ['expert', 'Expert']].forEach(function (d) {
+    add('mazes', 'mazes_' + d[0], { label: d[1], tab: d[1], low: 1, unit: 'time', dec: 1 });
+  });
+  [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard'], ['expert', 'Expert']].forEach(function (d) {
+    add('mazes', 'mazes_tilt_' + d[0], { label: 'Labyrinth ' + d[1], tab: 'Tilt ' + d[1], low: 1, unit: 'time', dec: 1 });
+  });
   return b;
 })();
 function hiBoard(key) { return HI_BOARDS.hasOwnProperty(String(key)) ? HI_BOARDS[String(key)] : null; }

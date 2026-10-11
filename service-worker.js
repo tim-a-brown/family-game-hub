@@ -124,6 +124,8 @@ const PRECACHE_URLS = [
   '/games/pressyourluck.html',
   '/games/pressyourluck/art.js',
   '/games/pressyourluck/sound.js',
+  '/games/mazes.html',
+  '/games/mazes/maze-core.js',
   '/online.js',
   '/games/dealornodeal.html',
   '/games/dice-roller.html',

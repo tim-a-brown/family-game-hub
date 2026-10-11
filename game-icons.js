@@ -175,6 +175,10 @@ var GameIcon = (function () {
     // Puzzles
     '2048': function (c) { return rect(1.5, 5, 21, 14, 3, c) + txt('2048', 8.6, W, 12.4); },
     sudoku: function (c) { return rect(2, 2, 20, 20, 2, 'none', ' stroke="' + K + '" stroke-width="1.8"') + line('M8.7 2v20M15.3 2v20M2 8.7h20M2 15.3h20', K, 1) + txt('9', 7.5, c, 5.6, 5.4) + txt('3', 7.5, c, 12, 12) + txt('7', 7.5, R, 18.6, 18.6); },
+    mazes: function () {   // a tiny printed maze, in at the top and out at the bottom, with the red pen line through it
+      return line('M5.3 .8V12H12V5.3h6.7V23.2', R, 2.3) +
+        line('M8.7 2H22V22M15.3 22H2V2M8.7 2v6.7M15.3 8.7V22M8.7 15.3h6.6', K, 2);
+    },
     minesweeper: function () { return line('M12 2.5v19M2.5 12h19M5.3 5.3l13.4 13.4M18.7 5.3 5.3 18.7', K, 2.2) + circ(12, 12, 6.5, K) + circ(9.8, 9.8, 1.8, W); },
     memorymatch: function (c) { return rect(1.5, 4, 10, 15, 2, c) + rect(12.5, 4, 10, 15, 2, W, ' stroke="' + K + '" stroke-width="1.6"') + txt('?', 11, W, 11.5, 6.5) + path('M17.5 7.5l1.2 2.4 2.6.4-1.9 1.8.4 2.6-2.3-1.2-2.3 1.2.4-2.6-1.9-1.8 2.6-.4z', Y); },
     mahjong: function () { return rect(6, 1.5, 15, 19, 2.5, '#d9cba6') + rect(3, 3.5, 15, 19, 2.5, CREAM, ' stroke="' + K + '" stroke-width="1.3"') + line('M8 8v10M10.5 8v10M13 8v10', G, 1.8) + line('M7 12.5h7.5', G, 1.2); },
