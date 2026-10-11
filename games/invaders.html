@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Space Invaders</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
+<style>
+/* ── Play view: fills the screen, no page scroll ────────────────────────── */
+html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
+html.ar-on body{display:flex;flex-direction:column;
+  background:radial-gradient(90% 50% at 50% 0%, rgba(60,255,110,.11) 0%, rgba(60,255,110,0) 70%),var(--bg);}
+html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 8px calc(var(--safe-b) + 10px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
+.ar-wrap{flex:none;width:100%;display:flex;align-items:center;justify-content:center;touch-action:none;}
+.ar-cab{position:relative;padding:7px;border-radius:20px;}
+.ar-cab canvas{display:block;border-radius:12px;background:#020306;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+/* glass: soft vignette and a faint reflection, like looking into the cabinet */
+.ar-cab::after{content:"";position:absolute;inset:7px;border-radius:12px;pointer-events:none;
+  background:radial-gradient(130% 95% at 50% 50%,transparent 60%,rgba(0,0,0,.55) 100%),
+    linear-gradient(160deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,0) 28%);
+  box-shadow:inset 0 0 0 2px rgba(0,0,0,.65),inset 0 0 18px rgba(0,0,0,.6);}
+.ar-ov{position:absolute;inset:7px;border-radius:12px;display:none;align-items:center;justify-content:center;z-index:4;
+  background:rgba(2,8,4,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+.ar-ov.show{display:flex;animation:pop .3s var(--spring);}
+.ar-ov .card{width:min(260px,84%);text-align:center;padding:20px 16px 14px;border-radius:var(--r-lg);background:var(--bg-2);box-shadow:var(--shadow);}
+.ar-ov h2{font-family:var(--display);font-weight:400;font-size:2rem;margin:0 0 2px;}
+.ar-ov p{color:var(--text-2);margin:0 0 12px;font-weight:700;font-size:.92rem;}
+.ar-ov .btn{margin-top:8px;}
+.ar-hint{flex:none;font-size:.8rem;color:var(--text-3);text-align:center;font-weight:700;}
+/* ── Touch deck: slide pad (or left/right buttons) under the left thumb, fire under the right ── */
+.inv-deck{flex:1 1 auto;min-height:128px;max-height:236px;width:100%;max-width:540px;display:grid;
+  grid-template-columns:1fr 116px;grid-template-rows:34px minmax(0,1fr);gap:8px 12px;
+  touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.inv-deck *{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.inv-top{display:flex;align-items:center;gap:8px;min-width:0;}
+.inv-top .lab{font-size:.7rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(170,255,190,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.inv-pbtn{flex:none;width:44px;height:34px;border:0;border-radius:12px;display:grid;place-items:center;color:#d3ffdc;
+  background:linear-gradient(180deg,#1b2a20,#0d1610);box-shadow:inset 0 0 0 1.5px rgba(120,255,160,.28),0 4px 10px rgba(0,0,0,.35);}
+.inv-pbtn:active{transform:scale(.94);}
+.inv-pbtn svg{width:18px;height:18px;}
+.inv-auto{justify-self:stretch;border:0;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:8px;
+  font-family:var(--display);font-size:1rem;letter-spacing:.1em;color:rgba(220,255,228,.7);
+  background:linear-gradient(180deg,#1b2a20,#0d1610);box-shadow:inset 0 0 0 1.5px rgba(120,255,160,.28),0 4px 10px rgba(0,0,0,.35);}
+.inv-auto i{width:10px;height:10px;border-radius:50%;background:#26402e;box-shadow:inset 0 1px 2px rgba(0,0,0,.6);}
+.inv-auto.on{color:#eaffef;box-shadow:inset 0 0 0 1.5px rgba(120,255,160,.7),0 0 16px rgba(60,255,110,.25);}
+.inv-auto.on i{background:#4dff7c;box-shadow:0 0 8px #4dff7c,0 0 2px #fff inset;}
+.inv-slide{position:relative;border-radius:22px;min-height:0;overflow:hidden;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 2px,transparent 2px 14px),linear-gradient(180deg,#18241c 0%,#0c140f 100%);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.08),inset 0 0 0 1.5px rgba(120,255,160,.22),inset 0 -8px 18px rgba(0,0,0,.45),0 8px 18px rgba(0,0,0,.4);
+  transition:box-shadow .12s;}
+.inv-slide.on{box-shadow:inset 0 1.5px 0 rgba(255,255,255,.1),inset 0 0 0 1.5px rgba(120,255,160,.6),inset 0 -8px 18px rgba(0,0,0,.45),0 0 22px rgba(60,255,110,.18);}
+.inv-slide small{position:absolute;left:0;right:0;top:9px;text-align:center;font-size:.6rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:rgba(170,255,190,.45);}
+.inv-slide .rail{position:absolute;left:22px;right:22px;top:50%;height:4px;margin-top:2px;border-radius:2px;background:rgba(0,0,0,.55);box-shadow:0 1px 0 rgba(255,255,255,.07);}
+.inv-slide .rail i{position:absolute;top:50%;width:30px;height:16px;margin:-8px 0 0 -15px;border-radius:5px 5px 3px 3px;
+  background:linear-gradient(180deg,#9dffb5,#2fd35a);box-shadow:0 0 12px rgba(60,255,110,.55),0 2px 0 #11612a;}
+.inv-slide .arr{position:absolute;bottom:10px;font-size:.62rem;font-weight:900;color:rgba(170,255,190,.32);letter-spacing:.1em;}
+.inv-lr{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;}
+.inv-key{border:0;border-radius:20px;display:flex;align-items:center;justify-content:center;color:#e3ffe9;min-height:0;
+  background:linear-gradient(180deg,#22382a 0%,#132017 100%);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.14),inset 0 0 0 1.5px rgba(120,255,160,.25),0 4px 0 #07100a,0 8px 14px rgba(0,0,0,.4);transition:transform .06s,box-shadow .06s;}
+.inv-key svg{width:30px;height:30px;stroke-width:3;}
+.inv-key.on{transform:translateY(3px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.14),inset 0 0 0 1.5px rgba(120,255,160,.55),0 1px 0 #07100a;}
+.inv-fire{align-self:center;justify-self:center;width:112px;height:112px;max-height:100%;aspect-ratio:1;border-radius:50%;border:0;color:#fff;
+  font-family:var(--display);font-size:1.3rem;letter-spacing:.08em;text-shadow:0 2px 0 rgba(0,0,0,.35);
+  background:radial-gradient(circle at 40% 30%,#ff9aa8 0%,#f0435d 45%,#a3152c 100%);
+  box-shadow:0 6px 0 #5e0a19,0 12px 22px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.45),0 0 0 5px rgba(0,0,0,.28);transition:transform .05s,box-shadow .05s;}
+.inv-fire.on{transform:translateY(4px);box-shadow:0 2px 0 #5e0a19,0 0 26px rgba(255,80,100,.55),inset 0 2px 0 rgba(255,255,255,.45),0 0 0 5px rgba(0,0,0,.28);}
+@media (hover:hover) and (pointer:fine){ .ar-touch{display:none!important;} }
+@media (hover:none),(pointer:coarse){ .ar-desk{display:none!important;} }
+@media (max-height:720px){ .inv-deck{grid-template-columns:1fr 96px;grid-template-rows:30px minmax(0,1fr);} .inv-fire{width:94px;height:94px;font-size:1.1rem;} .inv-pbtn,.inv-auto{height:30px;} }
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), root = document.documentElement;
+  var KEY = 'invaders', HI = 'invaders', SAVE = 'invaders_state', MUSIC = 'invaders_music', AUTOK = 'invaders_auto';
+  var W = 224, H = 256, TICK = 1 / 60;
+  var TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
+  // Screen layout (the original's 224 x 256 portrait monitor)
+  var PLAYER_Y = 216, SHIELD_Y = 192, GROUND_Y = 239, UFO_Y = 40, SHOT_TOP = 36;
+  var PX_MIN = 16, PX_MAX = W - 16 - 13, RACK_X = 24, EDGE_L = 10, EDGE_R = 214;
+  var SHIELD_X = [32, 77, 122, 167];
+  var BASE_Y = [120, 144, 160, 168, 168, 168, 176, 176, 176];    // bottom row's top edge for each new wave
+  // Bombs: every reload-rate frames one may drop (one of each kind at most), faster as the score climbs
+  var PLUNGER_COLS = [1, 7, 1, 1, 1, 4, 11, 1, 6, 3, 1, 1, 11, 9, 2, 8];
+  var SQUIGGLY_COLS = [11, 1, 6, 3, 1, 1, 11, 9, 2, 8, 2, 11, 4, 7, 10];
+  // Mystery ship: worth this much by how many shots you've fired (23rd shot, then every 15th, is 300)
+  var UFO_PTS = [100, 50, 50, 100, 150, 100, 100, 50, 300, 100, 100, 100, 50, 150, 100];
+  // The march: frames between notes for invaders left
+  var MARCH_N = [50, 43, 36, 28, 22, 17, 13, 10, 8, 7, 6, 5, 4, 3, 2, 1];
+  var MARCH_D = [52, 46, 39, 34, 28, 24, 21, 19, 16, 14, 13, 12, 11, 9, 7, 5];
+
+  function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function soundOn() { return lsGet('gn_sound', '1') !== '0'; }
+  function musicOn() { return lsGet(MUSIC, '1') !== '0'; }
+
+  // ═══ Sprites (drawn here from the classic shapes; '#' is a lit pixel) ═════
+  var ART = {
+    squid: [['...##...', '..####..', '.######.', '##.##.##', '########', '..#..#..', '.#.##.#.', '#.#..#.#'],
+            ['...##...', '..####..', '.######.', '##.##.##', '########', '.#.##.#.', '#......#', '.#....#.']],
+    crab: [['..#.....#..', '...#...#...', '..#######..', '.##.###.##.', '###########', '#.#######.#', '#.#.....#.#', '...##.##...'],
+           ['..#.....#..', '#..#...#..#', '#.#######.#', '###.###.###', '###########', '.#########.', '..#.....#..', '.#.......#.']],
+    oct: [['....####....', '.##########.', '############', '###..##..###', '############', '...##..##...', '..##.##.##..', '##........##'],
+          ['....####....', '.##########.', '############', '###..##..###', '############', '..###..###..', '.##..##..##.', '..##....##..']],
+    ufo: [['.....######.....', '...##########...', '..############..', '.##.##.##.##.##.', '################', '..###..##..###..', '...#........#...']],
+    cannon: [['......#......', '.....###.....', '.....###.....', '.###########.', '#############', '#############', '#############', '#############']],
+    pboom: [['..#.......#.....', '.....#..........', '...#..#.#..#....', '..........#..#..', '...#.####.......', '.#..######..#...', '..##########.#..', '.#############..'],
+            ['#......#.....#..', '....#.....#.....', '.#.......#....#.', '......#.........', '..#.#..##.#.#...', '...########.#..#', '.#.##########...', '..############.#']],
+    iboom: [['....#...#....', '.#...#.#...#.', '..#.......#..', '...#.....#...', '##.........##', '...#.....#...', '..#..#.#..#..', '.#..#...#..#.']],
+    sboom: [['#...#..#', '..#...#.', '.######.', '########', '.######.', '..#..#..', '.#..#..#', '#..#...#']],
+    bboom: [['..#...', '#...#.', '.####.', '#####.', '.#####', '####..', '.#.##.', '#..#.#']],
+    uboom: [['...#..#.#..#.....#..', '#....#.....#..#.....', '..#.##.##.###...#..#', '.#.###########..#...', '...##.##.##.##.#....', '#..###########..#..#', '..#..#.#.#..#.#.....', '.#....#....#...#..#.']],
+    // rolling (twists down toward you), plunger, squiggly
+    b0: [['.#.', '.#.', '##.', '.##', '.#.', '.#.', '.#.', '.#.'], ['.#.', '.#.', '.#.', '.#.', '##.', '.##', '.#.', '.#.'],
+         ['.#.', '.#.', '.#.', '.#.', '.#.', '.#.', '.##', '##.'], ['.##', '##.', '.#.', '.#.', '.#.', '.#.', '.#.', '.#.']],
+    b1: [['###', '.#.', '.#.', '.#.', '.#.', '.#.', '.#.', '.#.'], ['.#.', '.#.', '###', '.#.', '.#.', '.#.', '.#.', '.#.'],
+         ['.#.', '.#.', '.#.', '.#.', '###', '.#.', '.#.', '.#.'], ['.#.', '.#.', '.#.', '.#.', '.#.', '.#.', '###', '.#.']],
+    b2: [['#..', '.#.', '..#', '.#.', '#..', '.#.', '..#', '.#.'], ['.#.', '..#', '.#.', '#..', '.#.', '..#', '.#.', '#..'],
+         ['..#', '.#.', '#..', '.#.', '..#', '.#.', '#..', '.#.'], ['.#.', '#..', '.#.', '..#', '.#.', '#..', '.#.', '..#']],
+    shield: [['....##############....', '...################...', '..##################..', '.####################.',
+              '######################', '######################', '######################', '######################',
+              '######################', '######################', '######################', '########......########',
+              '#######........#######', '######..........######', '######..........######', '######..........######']]
+  };
+  var SP = {};
+  function buildSprite(rows) {
+    var h = rows.length, w = rows[0].length, m = new Uint8Array(w * h);
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var x = c.getContext('2d'), img = x.createImageData(w, h);
+    for (var y = 0; y < h; y++) for (var i = 0; i < w; i++) if (rows[y].charAt(i) === '#') {
+      m[y * w + i] = 1; var o = (y * w + i) * 4; img.data[o] = img.data[o + 1] = img.data[o + 2] = 255; img.data[o + 3] = 255;
+    }
+    x.putImageData(img, 0, 0);
+    return { w: w, h: h, m: m, c: c, rows: rows };
+  }
+  Object.keys(ART).forEach(function (k) { SP[k] = ART[k].map(buildSprite); });
+  var TYPES = [{ s: 'oct', pts: 10, off: 2, w: 12, name: 'octopus' }, { s: 'crab', pts: 20, off: 2, w: 11, name: 'crab' }, { s: 'squid', pts: 30, off: 4, w: 8, name: 'squid' }];
+  function rowType(r) { return r < 2 ? 0 : r < 4 ? 1 : 2; }
+
+  // ── 5 x 7 arcade lettering, one 8-pixel cell per character ────────────────
+  var FONT = {
+    A: [14, 17, 17, 31, 17, 17, 17], B: [30, 17, 17, 30, 17, 17, 30], C: [14, 17, 16, 16, 16, 17, 14], D: [30, 17, 17, 17, 17, 17, 30],
+    E: [31, 16, 16, 30, 16, 16, 31], F: [31, 16, 16, 30, 16, 16, 16], G: [15, 16, 16, 19, 17, 17, 15], H: [17, 17, 17, 31, 17, 17, 17],
+    I: [14, 4, 4, 4, 4, 4, 14], J: [1, 1, 1, 1, 1, 17, 14], K: [17, 18, 20, 24, 20, 18, 17], L: [16, 16, 16, 16, 16, 16, 31],
+    M: [17, 27, 21, 21, 17, 17, 17], N: [17, 17, 25, 21, 19, 17, 17], O: [14, 17, 17, 17, 17, 17, 14], P: [30, 17, 17, 30, 16, 16, 16],
+    Q: [14, 17, 17, 17, 21, 18, 13], R: [30, 17, 17, 30, 20, 18, 17], S: [15, 16, 16, 14, 1, 1, 30], T: [31, 4, 4, 4, 4, 4, 4],
+    U: [17, 17, 17, 17, 17, 17, 14], V: [17, 17, 17, 17, 17, 10, 4], W: [17, 17, 17, 21, 21, 21, 10], X: [17, 17, 10, 4, 10, 17, 17],
+    Y: [17, 17, 10, 4, 4, 4, 4], Z: [31, 1, 2, 4, 8, 16, 31],
+    0: [14, 17, 19, 21, 25, 17, 14], 1: [4, 12, 4, 4, 4, 4, 14], 2: [14, 17, 1, 6, 8, 16, 31], 3: [31, 2, 4, 2, 1, 17, 14],
+    4: [2, 6, 10, 18, 31, 2, 2], 5: [31, 16, 30, 1, 1, 17, 14], 6: [6, 8, 16, 30, 17, 17, 14], 7: [31, 1, 2, 4, 8, 8, 8],
+    8: [14, 17, 17, 14, 17, 17, 14], 9: [14, 17, 17, 15, 1, 2, 12],
+    '<': [2, 4, 8, 16, 8, 4, 2], '>': [8, 4, 2, 1, 2, 4, 8], '-': [0, 0, 0, 31, 0, 0, 0], '=': [0, 0, 31, 0, 31, 0, 0],
+    '?': [14, 17, 1, 2, 4, 0, 4], '!': [4, 4, 4, 4, 4, 0, 4], '.': [0, 0, 0, 0, 0, 0, 4], '*': [4, 21, 14, 4, 14, 21, 4], ',': [0, 0, 0, 0, 4, 4, 8]
+  };
+  var GLYPH = {};
+  function glyph(ch) {
+    if (GLYPH[ch] !== undefined) return GLYPH[ch];
+    var f = FONT[ch]; if (!f) return (GLYPH[ch] = null);
+    var rows = f.map(function (b) { var s = ''; for (var i = 4; i >= 0; i--) s += b & (1 << i) ? '#' : '.'; return s; });
+    return (GLYPH[ch] = buildSprite(rows));
+  }
+
+  // ═══ Sound (all synthesized; the march is the "music") ═════════════════════
+  var AC = null, master = null, noiseBuf = null;
+  function ac() {
+    if (!soundOn()) return null;
+    if (!AC) {
+      var C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
+      try { AC = new C(); } catch (e) { return null; }
+      master = AC.createGain(); master.gain.value = 0.8;
+      var comp = AC.createDynamicsCompressor(); master.connect(comp); comp.connect(AC.destination);
+    }
+    if (AC.state === 'suspended' && !paused) { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+  function osc(type, f, t0, dur, vol, o) {
+    var a = ac(); if (!a) return; o = o || {};
+    var t = a.currentTime + t0, n = a.createOscillator(), g = a.createGain(), out = n;
+    n.type = type; n.frequency.setValueAtTime(f, t);
+    if (o.to) n.frequency.exponentialRampToValueAtTime(o.to, t + (o.slide || dur));
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + (o.att || 0.004)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    if (o.lp) { var f2 = a.createBiquadFilter(); f2.type = 'lowpass'; f2.frequency.value = o.lp; n.connect(f2); out = f2; }
+    out.connect(g); g.connect(master); n.start(t); n.stop(t + dur + 0.05);
+    return n;
+  }
+  function noise(t0, dur, vol, type, freq, to) {
+    var a = ac(); if (!a) return;
+    if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate); var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime + t0;
+    s.buffer = noiseBuf; f.type = type || 'bandpass'; f.frequency.setValueAtTime(freq || 1000, t);
+    if (to) f.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+  }
+  var lastS = {};
+  function gate(k, gap) { var a = ac(); if (!a) return false; if (a.currentTime - (lastS[k] || -1) < gap) return false; lastS[k] = a.currentTime; return true; }
+  // The famous four-note bass, one note per step of the march
+  var MARCH = [98.0, 87.3, 77.8, 73.4];
+  function sMarch(i) {
+    if (!musicOn()) return; var a = ac(); if (!a) return;
+    var f = MARCH[i & 3];
+    osc('square', f * 1.06, 0, 0.13, 0.2, { to: f, slide: 0.03, lp: 820 });
+    osc('triangle', f, 0, 0.15, 0.22);
+  }
+  function sShot() { if (!gate('shot', 0.05)) return; noise(0, 0.16, 0.09, 'bandpass', 5200, 1400); osc('square', 1500, 0, 0.11, 0.035, { to: 380, lp: 3600 }); }
+  function sKill() { if (!gate('kill', 0.03)) return; noise(0, 0.24, 0.22, 'bandpass', 2600, 600); osc('square', 640, 0, 0.17, 0.05, { to: 90, lp: 2400 }); }
+  function sBoom() { noise(0, 1.1, 0.34, 'lowpass', 1600, 160); osc('sawtooth', 190, 0, 0.9, 0.08, { to: 38, lp: 900 }); noise(0.05, 0.6, 0.12, 'bandpass', 3000, 400); }
+  function sUfoHit() {
+    var a = ac(); if (!a) return;
+    var t = a.currentTime, o = a.createOscillator(), l = a.createOscillator(), lg = a.createGain(), g = a.createGain(), f = a.createBiquadFilter();
+    o.type = 'square'; o.frequency.setValueAtTime(1150, t); o.frequency.exponentialRampToValueAtTime(700, t + 1.0);
+    l.type = 'square'; l.frequency.value = 15; lg.gain.value = 260; l.connect(lg); lg.connect(o.frequency);
+    f.type = 'lowpass'; f.frequency.value = 2800;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.02); g.gain.setValueAtTime(0.05, t + 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.05);
+    o.connect(f); f.connect(g); g.connect(master); o.start(t); l.start(t); o.stop(t + 1.1); l.stop(t + 1.1);
+  }
+  function sExtra() { for (var i = 0; i < 6; i++) osc('square', 1760, i * 0.1, 0.06, 0.03, { lp: 4000 }); }
+  function sClear() { [72, 76, 79, 84].forEach(function (m, i) { osc('square', 440 * Math.pow(2, (m - 69) / 12), i * 0.09, 0.16, 0.035, { lp: 3000 }); }); }
+  function sBombHit() { if (!gate('bh', 0.06)) return; noise(0, 0.08, 0.06, 'bandpass', 1800); }
+  var ufoSnd = null;
+  function ufoSoundOn() {
+    if (ufoSnd) return; var a = ac(); if (!a || a.state !== 'running') return;
+    var t = a.currentTime, o = a.createOscillator(), l = a.createOscillator(), lg = a.createGain(), f = a.createBiquadFilter(), g = a.createGain();
+    o.type = 'square'; o.frequency.value = 600; l.type = 'triangle'; l.frequency.value = 7; lg.gain.value = 190;
+    l.connect(lg); lg.connect(o.frequency); f.type = 'lowpass'; f.frequency.value = 1500;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.03, t + 0.1);
+    o.connect(f); f.connect(g); g.connect(master); o.start(t); l.start(t);
+    ufoSnd = { o: o, l: l, g: g };
+  }
+  function ufoSoundOff() {
+    if (!ufoSnd) return; var s = ufoSnd; ufoSnd = null;
+    try { var t = AC.currentTime; s.g.gain.cancelScheduledValues(t); s.g.gain.setValueAtTime(Math.max(0.0001, s.g.gain.value), t); s.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05); s.o.stop(t + 0.07); s.l.stop(t + 0.07); } catch (e) {}
+  }
+
+  // ═══ State ═══════════════════════════════════════════════════════════════
+  var G = null, view = 'none', paused = false;
+  var invs = [], bombs = [], booms = [];
+  var SH = new Uint8Array(W * H), shDirty = true;
+  var input = { l: false, r: false, fire: false, fireBuf: 0, target: null, kl: false, kr: false, kf: false };
+
+  function marchDelay(n) { for (var i = 0; i < MARCH_N.length; i++) if (n >= MARCH_N[i]) return MARCH_D[i]; return 5; }
+  function reloadRate() { var s = G.score; return s < 200 ? 48 : s < 1000 ? 16 : s < 2000 ? 11 : s < 3000 ? 8 : 7; }
+  function waveBase(n) { return BASE_Y[n <= 9 ? n - 1 : 1 + ((n - 2) % 8)]; }
+
+  function resetShields() {
+    SH.fill(0);
+    var s = SP.shield[0];
+    SHIELD_X.forEach(function (x0) { for (var y = 0; y < s.h; y++) for (var x = 0; x < s.w; x++) if (s.m[y * s.w + x]) SH[(SHIELD_Y + y) * W + x0 + x] = 1; });
+    for (var x = 0; x < W; x++) SH[GROUND_Y * W + x] = 1;
+    shDirty = true;
+  }
+  function erode(sp, x0, y0) {
+    for (var y = 0; y < sp.h; y++) {
+      var yy = y0 + y; if (yy < 0 || yy >= H) continue;
+      for (var x = 0; x < sp.w; x++) { var xx = x0 + x; if (xx < 0 || xx >= W || !sp.m[y * sp.w + x]) continue; SH[yy * W + xx] = 0; }
+    }
+    shDirty = true;
+  }
+  function shHit(sp, x0, y0) {
+    for (var y = 0; y < sp.h; y++) {
+      var yy = y0 + y; if (yy < 0 || yy >= H) continue;
+      for (var x = 0; x < sp.w; x++) { var xx = x0 + x; if (xx >= 0 && xx < W && sp.m[y * sp.w + x] && SH[yy * W + xx]) return true; }
+    }
+    return false;
+  }
+  function overlap(a, ax, ay, b, bx, by) {
+    var x0 = Math.max(ax, bx), x1 = Math.min(ax + a.w, bx + b.w), y0 = Math.max(ay, by), y1 = Math.min(ay + a.h, by + b.h);
+    for (var y = y0; y < y1; y++) for (var x = x0; x < x1; x++) if (a.m[(y - ay) * a.w + x - ax] && b.m[(y - by) * b.w + x - bx]) return true;
+    return false;
+  }
+
+  function buildRack(n) {
+    var by = waveBase(n); invs = [];
+    for (var r = 0; r < 5; r++) for (var c = 0; c < 11; c++) invs.push({ r: r, c: c, t: rowType(r), x: RACK_X + c * 16, y: by - r * 16, alive: true, f: 0 });
+    G.alive = 55; G.cursor = 0; G.dir = 1; G.dx = 2; G.dy = 0; G.boomT = 0;
+  }
+  function startWave(n, fresh) {
+    G.wave = n; buildRack(n); resetShields();
+    bombs = []; booms = []; G.shot = null; G.ufo = null; G.ufoT = 0; G.reload = 0; G.marchT = 0; G.note = 0;
+    G.shown = 0; G.phase = 'ready'; G.readyT = fresh ? 130 : 70; G.intro = !!fresh;
+    ufoSoundOff();
+    save();
+  }
+
+  // ── Player and shooting ──────────────────────────────────────────────────
+  function tryFire() {
+    if (!G || (G.phase !== 'play') || G.shot || G.shotBoom > 0) return false;
+    G.shot = { x: Math.round(G.px) + 6, y: PLAYER_Y - 4 };
+    G.shots++; G.stats.shots++;
+    sShot();
+    return true;
+  }
+  function movePlayer() {
+    var kd = (input.r || input.kr ? 1 : 0) - (input.l || input.kl ? 1 : 0);
+    if (kd) { G.px = clamp(G.px + kd * 1.15, PX_MIN, PX_MAX); input.target = null; }
+    else if (input.target != null) {
+      var d = clamp(input.target, PX_MIN, PX_MAX) - G.px;
+      if (Math.abs(d) < 0.05) G.px = clamp(input.target, PX_MIN, PX_MAX);
+      else G.px += clamp(d, -2.4, 2.4);
+    }
+  }
+  function moveShot() {
+    var s = G.shot; if (!s) return;
+    for (var k = 0; k < 4; k++) {
+      s.y -= 1;
+      if (s.y <= SHOT_TOP) { G.shot = null; shotBoom(s.x - 3, SHOT_TOP - 4, 'top'); return; }
+      // the mystery ship
+      var u = G.ufo;
+      if (u && !u.dead && s.x >= Math.round(u.x) && s.x < Math.round(u.x) + 16 && s.y >= UFO_Y && s.y < UFO_Y + 7 && SP.ufo[0].m[(s.y - UFO_Y) * 16 + s.x - Math.round(u.x)]) { G.shot = null; hitUfo(); return; }
+      // invaders
+      for (var i = 0; i < invs.length; i++) {
+        var v = invs[i]; if (!v.alive || (G.phase === 'ready' && i >= G.shown)) continue;
+        var T = TYPES[v.t], ix = v.x + T.off;
+        if (s.x < ix || s.x >= ix + T.w || s.y < v.y || s.y >= v.y + 8) continue;
+        var sp = SP[T.s][v.f];
+        if (!sp.m[(s.y - v.y) * sp.w + s.x - ix] && !sp.m[Math.min(7, s.y - v.y + 1) * sp.w + s.x - ix]) continue;
+        G.shot = null; killInvader(v); return;
+      }
+      // bombs
+      for (var j = 0; j < bombs.length; j++) {
+        var b = bombs[j];
+        if (s.x >= b.x - 1 && s.x <= b.x + 3 && s.y >= b.y && s.y < b.y + 8) {
+          bombs.splice(j, 1); G.shot = null; G.stats.bombsShot++; shotBoom(s.x - 3, s.y - 4, 'bomb'); sBombHit(); return;
+        }
+      }
+      // shields and the ground
+      if (s.y < H && SH[s.y * W + s.x]) { G.shot = null; erode(SP.sboom[0], s.x - 4, s.y - 6); shotBoom(s.x - 4, s.y - 6, 'shield'); return; }
+    }
+  }
+  function shotBoom(x, y, why) { booms.push({ sp: SP.sboom[0], x: x, y: y, t: 16 }); G.shotBoom = 16; }
+  function killInvader(v) {
+    v.alive = false; G.alive--;
+    var T = TYPES[v.t];
+    addScore(T.pts);
+    G.stats.kills[v.t]++; G.stats.hits++;
+    booms.push({ sp: SP.iboom[0], x: v.x + 1, y: v.y, t: 16, inv: 1 });
+    G.boomT = 16;     // the march stops for a moment while it explodes
+    sKill(); Kit.haptic('tick');
+    if (G.stats.hits % 10 === 0) save();
+  }
+  function hitUfo() {
+    var u = G.ufo, pts = UFO_PTS[G.shots % 15];
+    u.dead = true; u.t = 0; u.pts = pts;
+    addScore(pts); G.stats.ufos++; G.stats.ufoPts += pts; G.stats.hits++;
+    if (pts > G.stats.ufoBest) G.stats.ufoBest = pts;
+    ufoSoundOff(); sUfoHit(); Kit.haptic('medium');
+    if (pts >= 300) Kit.callout('300 points!', '#ff5a5a');
+  }
+  function addScore(n) {
+    G.score += n;
+    if (!G.bonus && G.score >= 1500) { G.bonus = true; G.lives++; G.stats.bonusWave = G.wave; sExtra(); Kit.haptic('success'); Kit.callout('Extra cannon!', '#4dff7c'); }
+  }
+
+  // ── The rack: one invader moves per frame, so the fewer left, the faster they go ──
+  function moveRack() {
+    for (var guard = 0; guard <= invs.length; guard++) {
+      if (G.cursor >= invs.length) { G.cursor = 0; endCycle(); }
+      var v = invs[G.cursor++];
+      if (!v.alive) continue;
+      v.x += G.dx; v.y += G.dy; v.f ^= 1;
+      var T = TYPES[v.t];
+      if (v.y + 8 > SHIELD_Y) {   // invaders eat through the shields on their way down
+        for (var yy = v.y; yy < v.y + 8 && yy < GROUND_Y; yy++) for (var xx = v.x + T.off; xx < v.x + T.off + T.w; xx++) if (xx >= 0 && xx < W) SH[yy * W + xx] = 0;
+        shDirty = true;
+      }
+      if (v.y + 8 >= PLAYER_Y) { killPlayer(true); }
+      return;
+    }
+  }
+  function endCycle() {
+    if (G.dy) { G.dy = 0; G.dx = 2 * G.dir; }
+    else {
+      var mn = 999, mx = -999;
+      for (var i = 0; i < invs.length; i++) { var v = invs[i]; if (!v.alive) continue; var T = TYPES[v.t]; mn = Math.min(mn, v.x + T.off); mx = Math.max(mx, v.x + T.off + T.w); }
+      if ((G.dir > 0 && mx >= EDGE_R) || (G.dir < 0 && mn <= EDGE_L)) { G.dir = -G.dir; G.dy = 8; G.dx = 0; G.stats.drops++; }
+      else G.dx = 2 * G.dir;
+    }
+    if (!G.dy && G.alive === 1 && G.dir > 0) G.dx = 3;
+  }
+
+  // ── Bombs ───────────────────────────────────────────────────────────────
+  function lowestInCol(c) { for (var r = 0; r < 5; r++) { var v = invs[r * 11 + c]; if (v.alive) return v; } return null; }
+  function tryBomb(type) {
+    if (G.reload < reloadRate() || G.alive === 0 || G.noBombs) return;
+    for (var i = 0; i < bombs.length; i++) if (bombs[i].type === type) return;
+    var v = null;
+    if (type === 0) {   // rolling: drops from the column right over the cannon
+      var pc = Math.round(G.px) + 6, best = 99;
+      for (var c = 0; c < 11; c++) { var lo = lowestInCol(c); if (!lo) continue; var d = Math.abs(lo.x + 7.5 - pc); if (d < best) { best = d; v = lo; } }
+      if (best > 12) v = null;
+    } else {
+      if (type === 1 && G.alive === 1) return;
+      var tab = type === 1 ? PLUNGER_COLS : SQUIGGLY_COLS, k = type === 1 ? 'pp' : 'sp';
+      var col = tab[G[k] % tab.length] - 1; G[k]++;
+      v = lowestInCol(col);
+    }
+    if (!v) return;
+    bombs.push({ type: type, x: v.x + 6, y: v.y + 8, f: 0 });
+    G.reload = 0;
+  }
+  function moveBombs() {
+    var spd = G.alive <= 8 ? 5 : 4, phase = G.frame % 3;
+    for (var i = bombs.length - 1; i >= 0; i--) {
+      var b = bombs[i]; if (b.type !== phase) continue;
+      b.f = (b.f + 1) & 3;
+      var sp = SP['b' + b.type][b.f], gone = false;
+      for (var k = 0; k < spd && !gone; k++) {
+        b.y += 1;
+        if (G.shot && G.shot.x >= b.x - 1 && G.shot.x <= b.x + 3 && G.shot.y >= b.y && G.shot.y < b.y + 8) {
+          G.shot = null; G.stats.bombsShot++; shotBoom(b.x - 2, b.y, 'bomb'); sBombHit(); gone = true; break;
+        }
+        if (G.phase === 'play' && overlap(sp, b.x, b.y, SP.cannon[0], Math.round(G.px), PLAYER_Y)) { gone = true; killPlayer(false); break; }
+        if (b.y + 8 > GROUND_Y) { erode(SP.bboom[0], b.x - 1, GROUND_Y - 5); booms.push({ sp: SP.bboom[0], x: b.x - 1, y: GROUND_Y - 6, t: 10 }); gone = true; break; }
+        if (b.y + 8 > SHIELD_Y - 1 && shHit(sp, b.x, b.y)) { erode(SP.bboom[0], b.x - 1, b.y + 3); booms.push({ sp: SP.bboom[0], x: b.x - 1, y: b.y + 3, t: 10 }); gone = true; break; }
+      }
+      if (gone) { var j = bombs.indexOf(b); if (j >= 0) bombs.splice(j, 1); }
+    }
+  }
+
+  // ── The mystery ship ───────────────────────────────────────────────────
+  function spawnUfo() {
+    var fromRight = G.shots % 2 === 0;
+    G.ufo = { x: fromRight ? W : -16, vx: fromRight ? -0.75 : 0.75, dead: false, t: 0 };
+    G.ufoT = 0; G.stats.ufoSeen++;
+  }
+  function ufoTick() {
+    var u = G.ufo;
+    if (!u) { G.ufoT++; if (G.ufoT >= 1536 && G.alive >= 8 && G.phase === 'play') spawnUfo(); return; }
+    if (u.dead) { u.t++; if (u.t > 100) G.ufo = null; return; }
+    u.x += u.vx;
+    if (u.x < -18 || u.x > W + 2) { G.ufo = null; ufoSoundOff(); }
+  }
+
+  // ── Losing a cannon, clearing a wave ─────────────────────────────────────
+  function killPlayer(invaded) {
+    if (G.phase !== 'play' && G.phase !== 'ready') return;
+    G.phase = 'dying'; G.dieT = 0; G.shot = null; bombs = [];
+    if (invaded) { G.lives = 0; G.why = 'invaded'; } else { G.lives--; G.why = 'bombed'; }
+    G.stats.lost++;
+    fx.shake = 0.5; fx.flash = 1;
+    sBoom(); Kit.haptic('error');
+    save();
+  }
+  function tickDying() {
+    G.dieT++;
+    if (G.dieT === 1 || G.dieT === 60) ufoSoundOff();
+    if (G.dieT < 130) return;
+    if (G.lives <= 0) { G.phase = 'over'; G.overT = 0; ufoSoundOff(); return; }
+    G.px = PX_MIN + 8; input.target = null; G.phase = 'play'; G.reload = 0;
+  }
+  function tickClear() {
+    G.clearT++;
+    if (G.clearT === 1) { sClear(); Kit.haptic('success'); Kit.callout('Wave ' + G.wave + ' cleared!', '#4dff7c'); }
+    if (G.clearT > 110) startWave(G.wave + 1, false);
+  }
+
+  // ═══ Persistence ═════════════════════════════════════════════════════════
+  function packShields() {
+    var bytes = '', y0 = SHIELD_Y - 8, n = (GROUND_Y + 1 - y0) * W;
+    for (var i = 0; i < n; i += 8) { var b = 0; for (var k = 0; k < 8; k++) if (SH[y0 * W + i + k]) b |= 1 << k; bytes += String.fromCharCode(b); }
+    return btoa(bytes);
+  }
+  function unpackShields(s) {
+    try {
+      var bytes = atob(s), y0 = SHIELD_Y - 8; SH.fill(0);
+      for (var i = 0; i < bytes.length; i++) { var b = bytes.charCodeAt(i); for (var k = 0; k < 8; k++) if (b & (1 << k)) SH[y0 * W + i * 8 + k] = 1; }
+      shDirty = true; return true;
+    } catch (e) { return false; }
+  }
+  function save() {
+    if (!G || G.ended || G.phase === 'over') return;
+    if (G.phase === 'dying' && G.lives <= 0) { clearSave(); return; }
+    var s = { v: 1, who: G.who, move: G.move, started: G.started, score: G.score, lives: G.lives, bonus: G.bonus, shots: G.shots, pp: G.pp, sp: G.sp,
+      stats: G.stats, best0: G.best0, px: Math.round(G.px) };
+    if (G.phase === 'clear' || (G.phase === 'ready' && G.shown < invs.length && !G.restored)) { s.wave = G.phase === 'clear' ? G.wave + 1 : G.wave; s.fresh = 1; }
+    else {
+      s.wave = G.wave;
+      s.inv = invs.map(function (v) { return v.alive ? 1 : 0; }).join('');
+      s.xy = invs.map(function (v) { return v.x + ',' + v.y + ',' + v.f; }).join(';');
+      s.rk = [G.cursor, G.dir, G.dx, G.dy]; s.sh = packShields(); s.ufoT = G.ufoT;
+    }
+    try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
+    Kit.resume.set('Wave ' + s.wave + ' · ' + fmt(G.score) + ' points');
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.wave >= 1 && s.lives > 0 ? s : null; } catch (e) { return null; } }
+
+  // ═══ Kit shell ═══════════════════════════════════════════════════════════
+  Kit.init({ orient: 'portrait', orientTablets: true,
+    id: 'invaders',
+    theme: { wood: ['#3a3f46', '#1b1e23'] },
+    onNew: function () { clearSave(); showSetup(); },
+    menu: [
+      { icon: 'trophy', label: 'High scores', onClick: function () { pauseGame(); ArcadeHi.show(HI, 'Space Invaders'); } },
+      { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Space Invaders: past games' }); } },
+      { icon: 'sound', label: 'Music on / off', onClick: function () { var on = !musicOn(); lsSet(MUSIC, on ? '1' : '0'); Kit.toast(on ? 'March music on' : 'March music off'); } }
+    ],
+    rules:
+      '<p class="goal">Stop the invaders before they land. Shoot every one of them to clear the wave. Each new wave starts a little lower.</p>' +
+      '<h3>Controls</h3><ul>' +
+      '<li><b>Slide</b> your thumb on the slide pad to move the cannon left and right. You can also drag anywhere on the screen. Your finger doesn\'t have to be on the cannon.</li>' +
+      '<li>Press <b>FIRE</b> to shoot. Hold it down to keep shooting. You can also tap the screen.</li>' +
+      '<li><b>AUTO</b> shoots for you, as fast as the cannon can. Tap it again to turn it off.</li>' +
+      '<li>Prefer buttons? Pick <b>Left / right buttons</b> on the setup screen.</li>' +
+      '<li>Keyboard: <b>Left</b>/<b>Right</b> or A/D to move, <b>Space</b> to fire, <b>F</b> for auto-fire, <b>P</b> to pause.</li></ul>' +
+      '<h3>One shot at a time</h3><p>Your cannon can only have one shot on the screen. You can fire again once it hits something or flies off the top, so make each one count.</p>' +
+      '<h3>Points</h3><ul><li>Bottom two rows (octopus): <b>10</b></li><li>Middle two rows (crab): <b>20</b></li><li>Top row (squid): <b>30</b></li>' +
+      '<li><b>Mystery ship</b> (flies across the top): <b>50 to 300</b>. Its value depends on how many shots you\'ve fired. Old arcade trick: if your <b>23rd</b> shot hits it, it\'s worth 300, and then every 15th shot after that.</li></ul>' +
+      '<h3>The march</h3><p>The invaders step sideways, and drop down a row each time they reach the edge. The fewer there are, the faster they march, and the faster the bass beat goes. The last one is very quick!</p>' +
+      '<h3>Shields</h3><p>Hide under the four green shields. They wear away bit by bit from your shots and the invaders\' bombs, and the invaders chew through them on the way down.</p>' +
+      '<h3>Lives</h3><p>You have 3 cannons and earn one extra cannon at <b>1,500</b> points. A bomb that hits your cannon costs one. The game is over when you run out of cannons, or right away if the invaders reach the ground.</p>' +
+      '<h3>Sound</h3><p>The marching beat is the music. Turn it off in the menu with <b>Music on / off</b>.</p>'
+  });
+
+  // ═══ Setup ═══════════════════════════════════════════════════════════════
+  function showSetup() {
+    leaveGame();
+    app.className = 'stage';
+    var opts = [];
+    if (TOUCH) opts.push({ id: 'move', label: 'Moving the cannon', help: 'How you move the cannon. Either way, the FIRE button is on the right.',
+      choices: [['slide', 'Slide pad', 'Slide your thumb left and right on a pad (or anywhere on the screen).'], ['buttons', 'Left / right buttons', 'Two buttons, like the arcade machine.']], value: 'slide' });
+    Kit.setup(app, {
+      title: Kit.game && Kit.game() ? undefined : 'Space Invaders',
+      intro: 'Stop the invaders before they land',
+      options: opts,
+      players: { min: 1, max: 1, count: 1, label: 'Player' },
+      start: 'Play',
+      onStart: function (cfg) {
+        var o = cfg.options || {};
+        startGame({ who: cfg.players[0] ? cfg.players[0].name : 'Player', move: o.move === 'buttons' ? 'buttons' : 'slide' });
+      }
+    });
+    window.scrollTo(0, 0);
+  }
+
+  // ═══ Play view ═══════════════════════════════════════════════════════════
+  var cv, g, wrapEl, cabEl, ovEl, deckEl, hintEl, slideEl, knobEl, autoEl, fireEl, ro = null;
+  var DPR = 1, K = 1, CSS_S = 1, bw = 0, bh = 0;
+  var buf, bx, shCv, shx, shImg, glow1, gx1, glow2, gx2, bgCv = null, scanCv = null;
+  var SVG_PAUSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9 6v12M15 6v12"/></svg>';
+
+  function makeCanvas(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  function buildView() {
+    app.className = 'stage'; app.innerHTML = '';
+    root.classList.add('ar-on');
+    cv = el('canvas', { 'aria-label': 'Space Invaders playfield' }); g = cv.getContext('2d');
+    ovEl = el('div', { class: 'ar-ov' });
+    cabEl = el('div', { class: 'ar-cab wood' }, [cv, ovEl]);
+    wrapEl = el('div', { class: 'ar-wrap' }, [cabEl]);
+    app.appendChild(wrapEl);
+    deckEl = buildDeck(); app.appendChild(deckEl);
+    hintEl = el('div', { class: 'ar-hint ar-desk', text: 'Left / Right or A / D to move · Space fires · F auto-fire · P pauses' });
+    app.appendChild(hintEl);
+    if (!buf) {
+      buf = makeCanvas(W, H); bx = buf.getContext('2d');
+      shCv = makeCanvas(W, H); shx = shCv.getContext('2d'); shImg = shx.createImageData(W, H);
+      glow1 = makeCanvas(W / 2, H / 2); gx1 = glow1.getContext('2d');
+      glow2 = makeCanvas(W / 4, H / 4); gx2 = glow2.getContext('2d');
+    }
+    shDirty = true;
+    bindInput();
+    if (ro) ro.disconnect();
+    ro = new ResizeObserver(fit); ro.observe(app);
+    bw = 0; fit();
+    view = 'game';
+    if (!raf) { lastT = 0; raf = requestAnimationFrame(loop); }
+  }
+  function hold(b, down, up) {
+    b.addEventListener('pointerdown', function (e) { e.preventDefault(); ac(); try { b.setPointerCapture(e.pointerId); } catch (er) {} b.classList.add('on'); down(); });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (ev) { b.addEventListener(ev, function () { if (!b.classList.contains('on')) return; b.classList.remove('on'); up(); }); });
+    b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  }
+  function buildDeck() {
+    var pb = el('button', { type: 'button', class: 'inv-pbtn', 'aria-label': 'Pause', html: SVG_PAUSE, onclick: function () { Kit.sfx('tap'); pauseGame(); } });
+    autoEl = el('button', { type: 'button', class: 'inv-auto', 'aria-label': 'Auto-fire', 'aria-pressed': 'false', html: '<i></i><span>AUTO</span>', onclick: function () { setAuto(!G.auto); Kit.sfx('tap'); } });
+    var left;
+    if (G.move === 'buttons') {
+      var bl = el('button', { type: 'button', class: 'inv-key', 'aria-label': 'Move left', html: Kit.icon('back') });
+      var br = el('button', { type: 'button', class: 'inv-key', 'aria-label': 'Move right', html: Kit.icon('right') });
+      hold(bl, function () { input.l = true; }, function () { input.l = false; });
+      hold(br, function () { input.r = true; }, function () { input.r = false; });
+      left = el('div', { class: 'inv-lr' }, [bl, br]);
+      slideEl = knobEl = null;
+    } else {
+      knobEl = el('i');
+      slideEl = el('div', { class: 'inv-slide', 'aria-label': 'Slide pad: slide left and right to move the cannon' }, [
+        el('small', { text: 'Slide to move' }), el('div', { class: 'rail' }, [knobEl]),
+        el('span', { class: 'arr', style: { left: '14px' }, text: 'LEFT' }), el('span', { class: 'arr', style: { right: '14px' }, text: 'RIGHT' })
+      ]);
+      bindSlide(slideEl, 1.3);
+      left = slideEl;
+    }
+    fireEl = el('button', { type: 'button', class: 'inv-fire', 'aria-label': 'Fire', text: 'FIRE' });
+    hold(fireEl, function () { input.fire = true; input.fireBuf = 8; }, function () { input.fire = false; });
+    setAuto(G.auto, true);
+    return el('div', { class: 'inv-deck ar-touch' }, [el('div', { class: 'inv-top' }, [pb, el('span', { class: 'lab', text: G.move === 'buttons' ? 'Hold to move' : 'Slide · fire' })]), autoEl, left, fireEl]);
+  }
+  function setAuto(on, quiet) {
+    if (!G) return;
+    G.auto = !!on; lsSet(AUTOK, on ? '1' : '0');
+    if (autoEl) { autoEl.classList.toggle('on', G.auto); autoEl.setAttribute('aria-pressed', G.auto ? 'true' : 'false'); }
+    if (!quiet && TOUCH === false) Kit.toast(G.auto ? 'Auto-fire on' : 'Auto-fire off');
+  }
+  function leaveGame() {
+    view = 'none'; paused = false; ufoSoundOff();
+    root.classList.remove('ar-on');
+    if (ro) { ro.disconnect(); ro = null; }
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    resetInput();
+  }
+  function resetInput() { input.l = input.r = input.fire = input.kl = input.kr = input.kf = false; input.fireBuf = 0; drag = null; if (slideEl) slideEl.classList.remove('on'); }
+  function fit() {
+    if (!wrapEl) return;
+    var cs = getComputedStyle(app), padB = parseFloat(cs.paddingBottom) || 0, padT = parseFloat(cs.paddingTop) || 0;
+    var deckOn = deckEl && getComputedStyle(deckEl).display !== 'none';
+    var reserve = deckOn ? (window.innerHeight < 720 ? 128 : 142) + 8 : (hintEl && hintEl.offsetHeight ? hintEl.offsetHeight + 8 : 0);
+    var aw = app.clientWidth - 16 - 14, ah = app.clientHeight - padT - padB - reserve - 14;
+    var s = Math.max(0.5, Math.min(aw / W, ah / H));
+    DPR = Math.min(window.devicePixelRatio || 1, 3);
+    var dk = s * DPR, fk = Math.floor(dk);
+    if (fk >= 2 && fk / dk >= 0.9) dk = fk;   // whole device pixels per game pixel when that costs little
+    var w = Math.round(W * dk), h = Math.round(H * dk);
+    if (w === bw && cv.width) return;
+    bw = w; bh = h; K = dk; CSS_S = dk / DPR;
+    cv.width = w; cv.height = h;
+    cv.style.width = (w / DPR) + 'px'; cv.style.height = (h / DPR) + 'px';
+    wrapEl.style.height = (h / DPR + 14) + 'px';
+    bgCv = null; scanCv = null;
+    draw();
+  }
+
+  // ── Input: relative drag on the slide pad and the screen, tap to fire ─────
+  var drag = null, bound = false;
+  function nudge(dxCss, gain) {
+    if (!G || paused) return;
+    var base = input.target == null ? G.px : input.target;
+    input.target = clamp(base + dxCss / CSS_S * gain, PX_MIN, PX_MAX);
+  }
+  function bindSlide(node, gain) {
+    var sd = null;
+    node.addEventListener('pointerdown', function (e) { e.preventDefault(); ac(); try { node.setPointerCapture(e.pointerId); } catch (er) {} sd = { id: e.pointerId, x: e.clientX }; node.classList.add('on'); if (G) input.target = G.px; });
+    node.addEventListener('pointermove', function (e) { if (!sd || e.pointerId !== sd.id) return; e.preventDefault(); nudge(e.clientX - sd.x, gain); sd.x = e.clientX; });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (ev) { node.addEventListener(ev, function (e) { if (sd && e.pointerId === sd.id) { sd = null; node.classList.remove('on'); } }); });
+  }
+  function bindInput() {
+    wrapEl.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('.ar-ov')) return;
+      e.preventDefault(); ac();
+      if (!G || paused) return;
+      try { wrapEl.setPointerCapture(e.pointerId); } catch (er) {}
+      drag = { id: e.pointerId, x: e.clientX, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false };
+      input.target = G.px;
+    });
+    wrapEl.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      e.preventDefault();
+      nudge(e.clientX - drag.x, 1.1); drag.x = e.clientX;
+      if (Math.abs(e.clientX - drag.x0) > 9 || Math.abs(e.clientY - drag.y0) > 9) drag.moved = true;
+    });
+    function up(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var d = drag; drag = null;
+      if (!G || paused) return;
+      if (!d.moved && performance.now() - d.t0 < 320) { input.fireBuf = 8; }
+    }
+    wrapEl.addEventListener('pointerup', up);
+    wrapEl.addEventListener('pointercancel', function () { drag = null; });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (view !== 'game' || document.querySelector('.k-scrim, .k-win, .ahi-overlay')) return;
+    var k = e.key;
+    if (k === 'p' || k === 'P' || k === 'Escape') { e.preventDefault(); if (paused) resumeGame(); else pauseGame(); return; }
+    if (paused) { if (k === 'Enter' || k === ' ') { e.preventDefault(); resumeGame(); } return; }
+    ac();
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A') { input.kl = true; e.preventDefault(); }
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') { input.kr = true; e.preventDefault(); }
+    else if (k === ' ' || k === 'ArrowUp' || k === 'w' || k === 'W' || k === 'Enter') { e.preventDefault(); if (!e.repeat) input.fireBuf = 8; input.kf = true; }
+    else if ((k === 'f' || k === 'F') && G && !e.repeat) { setAuto(!G.auto); }
+  });
+  document.addEventListener('keyup', function (e) {
+    var k = e.key;
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A') input.kl = false;
+    if (k === 'ArrowRight' || k === 'd' || k === 'D') input.kr = false;
+    if (k === ' ' || k === 'ArrowUp' || k === 'w' || k === 'W' || k === 'Enter') input.kf = false;
+  });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } else wake(); });
+  document.addEventListener('kit:orient', function (e) { if (!e.detail.ok) { pauseGame(); save(); } });   // phone turned the wrong way: pause behind the cover
+  window.addEventListener('blur', function () { pauseGame(); });
+  window.addEventListener('pagehide', function () { save(); });
+
+  function pauseGame() {
+    if (view !== 'game' || paused || !G || G.ended || G.phase === 'over') return;
+    paused = true; resetInput(); ufoSoundOff();
+    if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
+    showOverlay('Paused', 'Wave ' + G.wave + ' · ' + fmt(G.score) + ' points', 'Resume');
+    save();
+    draw();
+  }
+  function showOverlay(title, sub, btn) {
+    ovEl.innerHTML = '';
+    ovEl.appendChild(el('div', { class: 'card' }, [
+      el('h2', { text: title }), el('p', { text: sub }),
+      el('button', { type: 'button', class: 'btn btn-primary btn-block', text: btn, onclick: resumeGame }),
+      el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'New game', onclick: function () { Kit.confirm('Start a new game?', { ok: 'New game', body: 'This game will be lost.' }).then(function (ok) { if (ok) { clearSave(); showSetup(); } }); } })
+    ]));
+    ovEl.classList.add('show');
+  }
+  function resumeGame() {
+    if (!paused) return;
+    paused = false; ovEl.classList.remove('show'); lastT = 0; acc = 0;
+    if (AC && AC.state === 'suspended') try { AC.resume(); } catch (e) {}
+    Kit.sfx('tap');
+    wake();
+  }
+
+  // ═══ Game flow ═══════════════════════════════════════════════════════════
+  function bestScore() { return ArcadeHi.best(HI); }
+  function newStats() { return { kills: [0, 0, 0], shots: 0, hits: 0, ufos: 0, ufoPts: 0, ufoBest: 0, ufoSeen: 0, lost: 0, cleared: 0, drops: 0, bombsShot: 0, bonusWave: 0 }; }
+  function startGame(cfg, saved) {
+    G = {
+      who: cfg.who || 'Player', move: cfg.move === 'buttons' ? 'buttons' : 'slide', score: 0, lives: 3, bonus: false, wave: 1,
+      px: PX_MIN + 8, shot: null, shotBoom: 0, shots: 0, pp: 0, sp: 0, frame: 0, reload: 0, ufo: null, ufoT: 0,
+      phase: 'ready', started: Date.now(), best0: bestScore(), stats: newStats(), auto: lsGet(AUTOK, '0') === '1', noBombs: false
+    };
+    fx.shake = 0; fx.flash = 0;
+    resetInput(); input.target = null;
+    Kit.gameStart();
+    if (saved) {
+      ['score', 'lives', 'shots', 'pp', 'sp', 'started', 'best0'].forEach(function (k) { if (saved[k] != null) G[k] = saved[k]; });
+      G.bonus = !!saved.bonus; G.stats = Object.assign(newStats(), saved.stats || {});
+      if (saved.px) G.px = clamp(saved.px, PX_MIN, PX_MAX);
+      buildView();
+      if (saved.fresh || !saved.inv || !saved.xy) startWave(saved.wave, false);
+      else {
+        G.wave = saved.wave; buildRack(saved.wave);
+        var xy = String(saved.xy).split(';');
+        invs.forEach(function (v, i) { v.alive = saved.inv.charAt(i) === '1'; var p = (xy[i] || '').split(','); if (p.length === 3) { v.x = +p[0]; v.y = +p[1]; v.f = +p[2] & 1; } });
+        G.alive = invs.filter(function (v) { return v.alive; }).length;
+        if (saved.rk) { G.cursor = saved.rk[0] | 0; G.dir = saved.rk[1] < 0 ? -1 : 1; G.dx = +saved.rk[2] || 2 * G.dir; G.dy = +saved.rk[3] || 0; }
+        if (!saved.sh || !unpackShields(saved.sh)) resetShields();
+        G.ufoT = saved.ufoT || 0; G.shown = invs.length; G.restored = true;
+        bombs = []; booms = []; G.phase = 'ready'; G.readyT = 40; G.intro = false; G.marchT = 0; G.note = 0;
+      }
+      paused = true; showOverlay('Welcome back', 'Wave ' + G.wave + ' · ' + fmt(G.score) + ' points', 'Continue');
+    } else {
+      buildView();
+      startWave(1, true);
+    }
+    draw();
+  }
+  function endGame() {
+    if (G.ended) return; G.ended = true;
+    clearSave(); ufoSoundOff();
+    var st = G.stats, h = [], kills = st.kills[0] + st.kills[1] + st.kills[2];
+    h.push('Reached wave ' + G.wave + (st.cleared ? ' (cleared ' + st.cleared + ')' : ''));
+    h.push('Shot down ' + kills + (kills === 1 ? ' invader' : ' invaders'));
+    if (st.ufos) h.push('Hit ' + st.ufos + ' mystery ship' + (st.ufos === 1 ? '' : 's') + ' for ' + fmt(st.ufoPts) + ' points' + (st.ufoBest >= 300 ? ' (a 300!)' : ''));
+    if (st.shots >= 10) h.push('Accuracy: ' + Math.round(st.hits / st.shots * 100) + '% of ' + st.shots + ' shots');
+    if (G.bonus) h.push('Earned the extra cannon at 1,500 points');
+    if (st.bombsShot >= 3) h.push('Shot down ' + st.bombsShot + ' bombs in mid-air');
+    h.push(G.why === 'invaded' ? 'The invaders landed on wave ' + G.wave : 'Last cannon hit on wave ' + G.wave);
+    var hiL = ArcadeHi.list(HI), sc = G.score;
+    var detail = {
+      w: G.wave, cl: st.cleared, k: st.kills.join(','), u: st.ufos, up: st.ufoPts, ub: st.ufoBest, sh: st.shots, hi: st.hits, bs: st.bombsShot,
+      why: G.why || '', ex: G.bonus ? 1 : 0, left: G.alive, rack: invs.map(function (v) { return v.alive ? 1 : 0; }).join(''),
+      hr: sc > 0 && (hiL.length < ArcadeHi.max || sc > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= sc; }).length + 1 : 0, hb: G.best0 || 0
+    };
+    Kit.record(KEY, {
+      detail: detail, started: G.started, mode: '',
+      players: [{ name: G.who, score: sc }], winner: null,
+      highlights: h.slice(0, 7), summary: fmt(sc) + ' points · wave ' + G.wave, badge: 'Wave ' + G.wave,
+      meta: { score: sc, wave: G.wave, kills: kills, ufos: st.ufos }
+    });
+    var who = G.who, move = G.move, best = sc > G.best0 && sc > 0, wave = G.wave;
+    ArcadeHi.check(HI, sc, function () {
+      Kit.win({
+        lose: !best, icon: best ? 'trophy' : 'meh',
+        title: best ? 'New high score!' : G.why === 'invaded' ? 'The invaders landed!' : 'Game over',
+        sub: fmt(sc) + ' points · reached wave ' + wave,
+        again: function () { startGame({ who: who, move: move }); }, againLabel: 'Play again',
+        extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(HI, 'Space Invaders'); showSetup(); } }, { label: 'Change settings', onClick: showSetup }]
+      });
+    });
+  }
+
+  // ═══ Loop (logic runs at the original's 60 steps a second) ═══════════════
+  var raf = 0, lastT = 0, acc = 0;
+  var fx = { shake: 0, flash: 0 };
+  function loop(t) {
+    raf = 0;
+    var dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 0; lastT = t;
+    if (view !== 'game' || !G) { ufoSoundOff(); return; }
+    if (!paused) {
+      acc += dt;
+      var n = 0;
+      while (acc >= TICK && n++ < 6) { acc -= TICK; update(); }
+      if (n >= 6) acc = 0;
+    }
+    draw();
+    // Battery: no frames while paused, once the game is over or with the page hidden (wake() restarts)
+    if (!paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
+  }
+  function wake() { if (!raf && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
+  function update() {
+    G.frame++;
+    for (var i = booms.length - 1; i >= 0; i--) if (--booms[i].t <= 0) booms.splice(i, 1);
+    if (G.shotBoom > 0) G.shotBoom--;
+    fx.shake = Math.max(0, fx.shake - TICK * 2); fx.flash = Math.max(0, fx.flash - TICK * 3);
+    if (input.fireBuf > 0) input.fireBuf--;
+    var ph = G.phase;
+    if (ph === 'ready' || ph === 'play') movePlayer();
+    if (ph === 'ready') {
+      if (G.shown < invs.length) G.shown++;
+      if (--G.readyT <= 0 && G.shown >= invs.length) { G.phase = 'play'; G.restored = false; }
+    } else if (ph === 'play') {
+      if (input.fireBuf > 0 || input.fire || input.kf || G.auto) { if (tryFire()) input.fireBuf = 0; }
+      if (G.boomT > 0) G.boomT--; else if (G.alive > 0) moveRack();
+      if (G.phase !== 'play') return;
+      moveShot();
+      G.reload++;
+      tryBomb(G.frame % 3);
+      moveBombs();
+      if (G.phase !== 'play') return;
+      ufoTick();
+      if (G.ufo && !G.ufo.dead) ufoSoundOn(); else ufoSoundOff();
+      if (--G.marchT <= 0 && G.alive > 0) { sMarch(G.note); G.note = (G.note + 1) & 3; G.marchT = marchDelay(G.alive); }
+      if (G.alive === 0 && G.boomT <= 0) { G.phase = 'clear'; G.clearT = 0; G.stats.cleared++; bombs = []; G.shot = null; G.ufo = null; ufoSoundOff(); save(); }
+    } else if (ph === 'dying') { moveShot(); if (G.ufo) ufoTick(); tickDying(); }
+    else if (ph === 'clear') { if (G.ufo) ufoTick(); tickClear(); }
+    else if (ph === 'over') { G.overT++; if (G.overT > 9 * 7 + 100) endGame(); }
+  }
+
+  // ═══ Rendering: a 224 x 256 pixel screen, blown up crisply, with a little CRT glow ═══
+  var WHITE = '#f3f6ff', RED = '#ff3d3d', GREEN = '#36ff63';
+  function text(s, x, y) {
+    for (var i = 0; i < s.length; i++) { var gl = glyph(s.charAt(i)); if (gl) bx.drawImage(gl.c, x + i * 8, y); }
+  }
+  function pad(n, w) { var s = String(Math.max(0, n)); while (s.length < w) s = '0' + s; return s; }
+  function spr(sp, x, y) { bx.drawImage(sp.c, Math.round(x), Math.round(y)); }
+  function paintBg() {
+    bgCv = makeCanvas(bw, bh); var x = bgCv.getContext('2d');
+    var gr = x.createLinearGradient(0, 0, 0, bh); gr.addColorStop(0, '#05060d'); gr.addColorStop(1, '#020304');
+    x.fillStyle = gr; x.fillRect(0, 0, bw, bh);
+    // the faint moonscape behind the glass, like the deluxe cabinets
+    var mx = bw * 0.74, my = bh * 0.66, mr = bw * 0.36;
+    var mg = x.createRadialGradient(mx - mr * 0.3, my - mr * 0.35, mr * 0.1, mx, my, mr);
+    mg.addColorStop(0, 'rgba(255,226,170,.075)'); mg.addColorStop(0.7, 'rgba(220,180,130,.045)'); mg.addColorStop(1, 'rgba(220,180,130,0)');
+    x.fillStyle = mg; x.beginPath(); x.arc(mx, my, mr, 0, Math.PI * 2); x.fill();
+    [[0.62, 0.6, 0.06], [0.82, 0.55, 0.04], [0.7, 0.74, 0.05], [0.86, 0.72, 0.03], [0.6, 0.78, 0.025]].forEach(function (c) {
+      x.fillStyle = 'rgba(0,0,0,.08)'; x.beginPath(); x.arc(bw * c[0], bh * c[1], bw * c[2], 0, Math.PI * 2); x.fill();
+    });
+    // distant stars
+    var seed = 7; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    for (var i = 0; i < 46; i++) { x.fillStyle = 'rgba(200,215,255,' + (0.05 + rnd() * 0.14) + ')'; var s = Math.max(1, K * 0.6); x.fillRect(Math.round(rnd() * bw), Math.round(rnd() * bh * 0.7), s, s); }
+  }
+  function paintScan() {
+    scanCv = makeCanvas(bw, bh); var x = scanCv.getContext('2d');
+    var lh = Math.max(1, Math.round(K * 0.32));
+    x.fillStyle = 'rgba(0,0,0,.3)';
+    for (var y = 0; y < H; y++) x.fillRect(0, Math.round((y + 1) * K) - lh, bw, lh);
+  }
+  function updateShields() {
+    var d = shImg.data, y0 = SHIELD_Y - 8, y1 = GROUND_Y + 1;
+    for (var i = y0 * W; i < y1 * W; i++) { var o = i * 4, on = SH[i]; d[o] = d[o + 1] = d[o + 2] = 255; d[o + 3] = on ? 255 : 0; }
+    shx.putImageData(shImg, 0, 0, 0, y0, W, y1 - y0);
+    shDirty = false;
+  }
+  function draw() {
+    if (!g || !G || !bw) return;
+    if (!bgCv) paintBg();
+    if (!scanCv) paintScan();
+    if (shDirty) updateShields();
+    var f = G.frame;
+    // ── the game screen, white phosphor on black
+    bx.clearRect(0, 0, W, H);
+    bx.drawImage(shCv, 0, 0);
+    var hiNow = Math.max(bestScore(), G.score);
+    text('SCORE<1>', 8, 8); text('HI-SCORE', 88, 8); text('WAVE', 176, 8);
+    var blink = G.phase === 'ready' && G.intro && (f >> 3) & 1;
+    if (!blink) text(pad(G.score, 4), 24, 24);
+    text(pad(hiNow, 4), 104, 24); text(pad(G.wave, 2), 184, 24);
+    // invaders
+    for (var i = 0; i < invs.length; i++) {
+      var v = invs[i]; if (!v.alive) continue;
+      if (G.phase === 'ready' && i >= G.shown) continue;
+      var T = TYPES[v.t]; spr(SP[T.s][v.f], v.x + T.off, v.y);
+    }
+    // mystery ship
+    var u = G.ufo;
+    if (u) {
+      if (!u.dead) spr(SP.ufo[0], u.x, UFO_Y);
+      else if (u.t < 24) spr(SP.uboom[0], u.x - 2, UFO_Y);
+      else { var ps = String(u.pts); text(ps, Math.round(u.x + 8 - ps.length * 4), UFO_Y); }
+    }
+    // explosions
+    for (var b = 0; b < booms.length; b++) spr(booms[b].sp, booms[b].x, booms[b].y);
+    // the cannon
+    if (G.phase === 'dying') { if (G.dieT < 70) spr(SP.pboom[(G.dieT >> 3) & 1], Math.round(G.px) - 1, PLAYER_Y); }
+    else if (G.phase !== 'over') spr(SP.cannon[0], G.px, PLAYER_Y);
+    // shots and bombs
+    bx.fillStyle = '#fff';
+    if (G.shot) bx.fillRect(G.shot.x, G.shot.y, 1, 4);
+    for (var j = 0; j < bombs.length; j++) spr(SP['b' + bombs[j].type][bombs[j].f], bombs[j].x, bombs[j].y);
+    // lives
+    var lv = Math.max(0, G.lives);
+    text(String(lv), 8, 241);
+    for (var l = 0; l < Math.min(lv - 1, 5); l++) spr(SP.cannon[0], 24 + l * 16, 240);
+    if (G.auto) text('AUTO', 184, 241);
+    // messages
+    if (G.phase === 'ready' && G.intro && G.readyT > 20) { text('PLAY', 96, 88); text('PLAYER<1>', 76, 104); }
+    if (G.phase === 'clear' && G.clearT > 20) { var wm = 'WAVE ' + (G.wave + 1); text(wm, Math.round(112 - wm.length * 4), 112); }
+    if (G.phase === 'over') { var go = 'GAME OVER'.slice(0, Math.floor(G.overT / 7)); text(go, 76, 40); }
+    // the cabinet's coloured overlay: red strip across the top, green over the bunkers and cannon
+    bx.globalCompositeOperation = 'source-atop';
+    bx.fillStyle = WHITE; bx.fillRect(0, 0, W, H);
+    bx.fillStyle = RED; bx.fillRect(0, 32, W, 16);
+    bx.fillStyle = GREEN; bx.fillRect(0, 184, W, 56); bx.fillRect(0, 240, 136, 16);
+    bx.globalCompositeOperation = 'source-over';
+    // ── onto the tube
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+    g.drawImage(bgCv, 0, 0);
+    var ox = 0, oy = 0;
+    if (fx.shake > 0) { var m = fx.shake * fx.shake * 6 * K; ox = Math.round((Math.random() - 0.5) * m); oy = Math.round((Math.random() - 0.5) * m); }
+    g.imageSmoothingEnabled = false;
+    g.drawImage(buf, ox, oy, bw, bh);
+    // phosphor glow
+    gx1.clearRect(0, 0, W / 2, H / 2); gx1.imageSmoothingEnabled = true; gx1.drawImage(buf, 0, 0, W / 2, H / 2);
+    gx2.clearRect(0, 0, W / 4, H / 4); gx2.imageSmoothingEnabled = true; gx2.drawImage(glow1, 0, 0, W / 4, H / 4);
+    g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = 0.42; g.drawImage(glow1, ox, oy, bw, bh);
+    g.globalAlpha = 0.3; g.drawImage(glow2, ox, oy, bw, bh);
+    g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+    g.drawImage(scanCv, 0, 0);
+    if (fx.flash > 0) { g.fillStyle = 'rgba(255,255,255,' + (fx.flash * 0.07).toFixed(3) + ')'; g.fillRect(0, 0, bw, bh); }
+    // slide pad marker follows the cannon
+    if (knobEl) { var pct = (G.px - PX_MIN) / (PX_MAX - PX_MIN) * 100; if (Math.abs(pct - (knobEl._p || -1)) > 0.2) { knobEl._p = pct; knobEl.style.left = pct.toFixed(1) + '%'; } }
+  }
+
+  // ═══ Test hooks ══════════════════════════════════════════════════════════
+  window.__inv = {
+    get: function () {
+      if (!G) return null;
+      var alive = invs.filter(function (v) { return v.alive; });
+      var shield = 0; for (var i = (SHIELD_Y) * W; i < (SHIELD_Y + 16) * W; i++) shield += SH[i];
+      var ground = 0; for (var x = 0; x < W; x++) ground += SH[GROUND_Y * W + x];
+      return { phase: G.phase, wave: G.wave, score: G.score, lives: G.lives, alive: G.alive, px: G.px, shots: G.shots, shot: G.shot && { x: G.shot.x, y: G.shot.y },
+        bombs: bombs.map(function (b) { return { type: b.type, x: b.x, y: b.y }; }), ufo: G.ufo && { x: G.ufo.x, dead: G.ufo.dead, pts: G.ufo.pts },
+        dir: G.dir, dx: G.dx, dy: G.dy, cursor: G.cursor, boomT: G.boomT, marchT: G.marchT, marchDelay: marchDelay(G.alive), bonus: G.bonus, auto: G.auto,
+        minY: alive.length ? Math.min.apply(null, alive.map(function (v) { return v.y; })) : 0, maxY: alive.length ? Math.max.apply(null, alive.map(function (v) { return v.y; })) : 0,
+        minX: alive.length ? Math.min.apply(null, alive.map(function (v) { return v.x; })) : 0, maxX: alive.length ? Math.max.apply(null, alive.map(function (v) { return v.x; })) : 0,
+        shieldPx: shield, groundPx: ground, paused: paused, ended: !!G.ended, stats: G.stats, frame: G.frame, why: G.why || '', reload: reloadRate() };
+    },
+    step: function (n) { for (var i = 0; i < (n || 1); i++) { if (G.ended) break; update(); } draw(); return this.get(); },
+    setX: function (x) { G.px = clamp(x, PX_MIN, PX_MAX); input.target = null; },
+    fire: function () { return tryFire(); },
+    kill: function (i) { var v = invs[i]; if (v && v.alive) killInvader(v); },
+    killAllBut: function (n) { var keep = 0; invs.forEach(function (v) { if (!v.alive) return; if (keep < n) keep++; else { v.alive = false; G.alive--; } }); },
+    noBombs: function (on) { G.noBombs = !!on; if (on) bombs = []; },
+    bomb: function (x, type, y) { bombs.push({ type: type || 0, x: x, y: y == null ? 150 : y, f: 0 }); },
+    ufo: function () { spawnUfo(); },
+    setShots: function (n) { G.shots = n; },
+    setScore: function (n) { G.score = n; },
+    addScore: function (n) { addScore(n); },
+    lowerRack: function (dy) { invs.forEach(function (v) { v.y += dy; }); },
+    auto: function (on) { setAuto(on); },
+    phase: function (p) { G.phase = p; if (p === 'play') { G.shown = invs.length; G.readyT = 0; } },
+    stop: function () { if (raf) { cancelAnimationFrame(raf); raf = 0; } paused = true; },
+    go: function () { paused = false; wake(); },
+    save: save, pause: pauseGame, resume: resumeGame
+  };
+
+  // ═══ Boot ════════════════════════════════════════════════════════════════
+  var saved = loadSave();
+  if (saved) startGame({ who: saved.who, move: saved.move }, saved);
+  else showSetup();
+})();
+</script>
+</body>
+</html>
