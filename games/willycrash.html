@@ -57,7 +57,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 <div class="wc-view" id="view" hidden>
   <div class="hud" id="hud">
     <div class="plate"><small>Shot</small><b id="h-shot">1/5</b></div>
-    <div class="plate gold" id="p-score"><small>Tickets</small><b id="h-score">0</b></div>
+    <div class="plate gold" id="p-score"><small>Points</small><b id="h-score">0</b></div>
     <div class="plate"><small>Best</small><b id="h-best">0</b></div>
     <button class="pbtn" id="btn-pause" type="button" aria-label="Pause"></button>
   </div>
@@ -216,7 +216,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
 
   // ═══ City ═══════════════════════════════════════════════════════════════
-  // The arcade's playfield: seven brick high-rises in a row, each paying a set number of tickets for a
+  // The arcade's playfield: seven brick high-rises in a row, each paying a set number of points for a
   // landing on its roof (25, 35, 100, the 500 jackpot in the middle, 100, 35, 25). Anywhere else, the
   // street, the gaps between buildings or the bay, pays 5.
   var BVAL0 = [25, 35, 100, 500, 100, 35, 25], STREET_T = 5;
@@ -229,7 +229,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var AWN = [['#e5263f', '#fff3e0'], ['#e5263f', '#fff3e0'], ['#2f7dff', '#fff3e0'], ['#22a866', '#fff3e0']];
   // made-up ads (the cabinet's billboards advertise other arcade games)
   var ADS = [['ROLL-A-BALL', '#2f9a4a', '#fff4c8'], ['PICK THE LOCK', '#1f6f78', '#e8fbff'], ['PIZZA', '#ff6a2b', '#fff'], ['SODA POP', '#e5263f', '#fff'],
-             ['TICKETS!', '#ffc22e', '#7a1020'], ['MOVIES', '#2b2d6e', '#ffd84a']];
+             ['SALE!', '#ffc22e', '#7a1020'], ['MOVIES', '#2b2d6e', '#ffd84a']];
   var CARC = ['#e5263f', '#2f7dff', '#ffc22e', '#22b866', '#8b55ff', '#ff7a29', '#e8e8f0'];
   function buildCity(seed) {
     var R = rng(seed);
@@ -536,7 +536,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
 
   // ═══ Things Willy hits ══════════════════════════════════════════════════
-  // Tickets only come from where Willy ends up (as in the arcade); the things he smashes on the way get
+  // Points only come from where Willy ends up (as in the arcade); the things he smashes on the way get
   // a word, not points.
   function award(pts, x, y, label, col) {
     if (!cur || !label) return;
@@ -850,7 +850,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (state !== 'flight' && state !== 'result') Snd.wind(0);
 
     if (state === 'intro') {
-      // fly over the whole city with its ticket values (like the cabinet's attract card), then back to the cannon
+      // fly over the whole city with its point values (like the cabinet's attract card), then back to the cannon
       introT += dt;
       var ov = camOverview(), ca = camAim(), e, T = introTimes();
       if (introT < T[0]) { e = ease(introT / T[0]); setCam(camFrom, ov, e); }
@@ -933,7 +933,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     flock.forEach(function (f) { f.ph += dt; f.x += f.vx * dt; if (f.hit) { f.y += (f.vy || 0) * dt; f.vy = (f.vy || 0) - 20 * dt; } else f.y += Math.sin(f.ph * 2) * 6 * dt; });
   }
 
-  // Tickets go by where Willy ends up once he stops: a roof pays its number, anywhere else pays 5
+  // Points go by where Willy ends up once he stops: a roof pays its number, anywhere else pays 5
   function evaluate() {
     var R = rag, pl = R.P[PEL], r = null, b = null;
     Snd.wind(0);
@@ -943,7 +943,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       for (var i = 0; i < B.length; i++) { var c = B[i]; if (pl.x > c.x0 - 6 && pl.x < c.x1 + 6 && pl.y < c.y0 + 4 && pl.y > c.y0 - 110) { b = c; break; } }
       if (b) {
         var jp = b === jpB;
-        r = { code: jp ? 'jackpot' : 'roof', name: jp ? 'JACKPOT!' : b.val + ' tickets!', tickets: b.val, col: jp ? '#ffd84a' : b.val >= 100 ? '#7dffb3' : '#7fe0ff',
+        r = { code: jp ? 'jackpot' : 'roof', name: jp ? 'JACKPOT!' : b.val + ' points!', tickets: b.val, col: jp ? '#ffd84a' : b.val >= 100 ? '#7dffb3' : '#7fe0ff',
               where: jp ? 'Jackpot roof' : 'Building ' + (b.idx + 1) + ' roof', bi: b.idx };
         R.dance = { x: clamp(pl.x, b.x0 + 16, b.x1 - 16), y: b.y0, t: 0, k: 0 };
       } else {
@@ -1235,12 +1235,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       for (var i = 0; i < 7; i++) { var a = c.a + i * TAU / 7; g.moveTo(c.x + Math.cos(a) * 5, c.y + Math.sin(a) * 5); g.lineTo(c.x + Math.cos(a + .2) * c.r * .6, c.y + Math.sin(a + .2) * c.r * .6); g.lineTo(c.x + Math.cos(a) * c.r, c.y + Math.sin(a) * c.r); }
       g.stroke();
     });
-    // the ticket value painted big and red across the top floor, as in the arcade
+    // the point value painted big and red across the top floor, as in the arcade
     var big = Math.min(jp ? 30 : 26, w * (b.val >= 100 ? .32 : .42));
     g.font = '400 ' + big + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
     g.lineWidth = 3; g.strokeStyle = 'rgba(90,10,10,.55)'; g.strokeText(String(b.val), x + w / 2, y + 19);
     g.fillStyle = jp ? '#ffcf3a' : '#e0262c'; g.fillText(String(b.val), x + w / 2, y + 19);
-    g.font = '400 ' + Math.round(big * .36) + 'px ' + FONT; g.lineWidth = 2; g.strokeText('TICKETS', x + w / 2, y + 33); g.fillText('TICKETS', x + w / 2, y + 33);
+    g.font = '400 ' + Math.round(big * .36) + 'px ' + FONT; g.lineWidth = 2; g.strokeText('POINTS', x + w / 2, y + 33); g.fillText('POINTS', x + w / 2, y + 33);
     // cornice: a grey stone slab
     g.fillStyle = '#cfc8be'; g.fillRect(x - 3, y - 1, w + 6, 8);
     g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(x - 3, y + 7, w + 6, 2);
@@ -1332,7 +1332,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     gr.addColorStop(0, 'rgba(255,240,170,.4)'); gr.addColorStop(1, 'rgba(255,240,170,0)');
     g.fillStyle = gr; g.beginPath(); g.moveTo(x - 3, y); g.lineTo(x + Math.cos(a - .09) * 540, y + Math.sin(a - .09) * 540); g.lineTo(x + Math.cos(a + .09) * 540, y + Math.sin(a + .09) * 540); g.lineTo(x + 3, y); g.fill();
   }
-  // Ticket values over each roof and "5" at the gaps, like the cabinet's attract card (shown while aiming)
+  // Point values over each roof and "5" at the gaps, like the cabinet's attract card (shown while aiming)
   function drawValueMarks() {
     var a = state === 'intro' ? clamp(introT / .4, 0, 1) : state === 'aim' ? 1 : 0;
     if (a <= 0) return;
@@ -1347,10 +1347,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       g.beginPath(); g.moveTo(-5, -6); g.lineTo(5, -6); g.lineTo(5, 2); g.lineTo(11, 2); g.lineTo(0, 14); g.lineTo(-11, 2); g.lineTo(-5, 2); g.closePath(); g.stroke(); g.fill();
       g.font = '400 ' + (jp ? 26 : 17) + 'px ' + FONT; g.lineWidth = 4; g.strokeStyle = INK;
       g.strokeText(String(b.val), 0, jp ? -26 : -20); g.fillStyle = jp ? '#ffd23a' : '#fff'; g.fillText(String(b.val), 0, jp ? -26 : -20);
-      g.font = '400 10px ' + FONT; g.lineWidth = 3; g.strokeText('TICKETS', 0, jp ? -10 : -8); g.fillStyle = jp ? '#fff3b0' : '#ffe0e0'; g.fillText('TICKETS', 0, jp ? -10 : -8);
+      g.font = '400 10px ' + FONT; g.lineWidth = 3; g.strokeText('POINTS', 0, jp ? -10 : -8); g.fillStyle = jp ? '#fff3b0' : '#ffe0e0'; g.fillText('POINTS', 0, jp ? -10 : -8);
       g.restore();
     });
-    // 5 tickets anywhere off the roofs
+    // 5 points anywhere off the roofs
     for (var i = 0; i < B.length - 1; i++) {
       var gx = (B[i].x1 + B[i + 1].x0) / 2;
       g.save(); g.translate(gx, -20 * s); g.scale(s, s);
@@ -1701,7 +1701,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.fillStyle = 'rgba(255,190,30,.95)'; rr(x - 98, y - 15, 92, 30, 12); g.fill();
     g.beginPath(); g.moveTo(x - 6, y - 9); g.lineTo(x + 4, y); g.lineTo(x - 6, y + 9); g.fill();
     txt('JACKPOT', x - 52, y - 5, 12, '#5a2a00', 'center', 0);
-    txt('500 tickets', x - 52, y + 8, 11, '#7a3a00', 'center', 0);
+    txt('500 points', x - 52, y + 8, 11, '#7a3a00', 'center', 0);
   }
   function introBanner() {
     var T = introTimes(), a = clamp(Math.min(introT / .25, (T[2] - .1 - introT) / .3), 0, 1), y = H * .2, sc = .8 + .2 * ease(introT / .3);
@@ -1709,7 +1709,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.save(); g.translate(W / 2, y); g.scale(sc, sc);
     g.fillStyle = 'rgba(20,24,60,.72)'; rr(-140, -34, 280, 78, 18); g.fill();
     txt('SHOT ' + (shotIdx + 1) + ' OF ' + SHOTS, 0, -10, 30, '#fff');
-    var sub = jpMoved ? 'Jackpot moved! The cannon is faster' : shotIdx === 0 ? 'Land on a roof to win its tickets' : shotIdx === SHOTS - 1 ? 'Last shot! Jackpot is 500 tickets' : 'Jackpot is 500 tickets';
+    var sub = jpMoved ? 'Jackpot moved! The cannon is faster' : shotIdx === 0 ? 'Land on a roof to win its points' : shotIdx === SHOTS - 1 ? 'Last shot! Jackpot is 500 points' : 'Jackpot is 500 points';
     txt(sub, 0, 22, 14, '#ffe6a8', 'center', 0);
     g.restore(); g.globalAlpha = 1;
   }
@@ -1749,7 +1749,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.textAlign = 'right'; g.fillStyle = '#5a3d16'; g.font = '400 17px ' + FONT; g.fillText('+' + r.tickets, px + pw - 16, py + 22);
     g.fillStyle = '#e8d5a8'; g.fillRect(px + 12, py + ph - 38, pw - 24, 1.5);
     g.font = '800 13px system-ui, sans-serif'; g.textAlign = 'left'; g.fillStyle = '#c0702a'; g.fillText('SHOT ' + c.n + ' OF ' + SHOTS, px + 16, py + ph - 18);
-    g.textAlign = 'right'; g.font = '400 20px ' + FONT; g.fillStyle = '#e5263f'; g.fillText(fmt(total) + ' tickets', px + pw - 16, py + ph - 18);
+    g.textAlign = 'right'; g.font = '400 20px ' + FONT; g.fillStyle = '#e5263f'; g.fillText(fmt(total) + ' points', px + pw - 16, py + ph - 18);
     g.restore(); g.globalAlpha = 1;
     if (tt > 1) tapHint();
   }
@@ -1771,7 +1771,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.save(); g.translate(W / 2, H * .17); g.scale(.6 + .4 * pop, .6 + .4 * pop); g.rotate(-.04);
     g.font = '400 ' + big + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
     g.lineWidth = big * .1; g.strokeStyle = '#8a1010'; g.strokeText('500', 0, 0); g.fillStyle = '#e5262c'; g.fillText('500', 0, 0);
-    g.font = '400 ' + Math.round(big * .36) + 'px ' + FONT; g.lineWidth = big * .05; g.strokeText('TICKETS', 0, big * .62); g.fillText('TICKETS', 0, big * .62);
+    g.font = '400 ' + Math.round(big * .36) + 'px ' + FONT; g.lineWidth = big * .05; g.strokeText('POINTS', 0, big * .62); g.fillText('POINTS', 0, big * .62);
     g.restore();
     // Willy, big, one hand on his hip and the other pointing up
     var s = WS, sc = Math.min(W, H * .6) / 82, bob = Math.sin(tt * 6) * 1.2;
@@ -1792,7 +1792,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.strokeStyle = 'rgba(220,220,255,.18)'; g.lineWidth = 2;
     g.beginPath(); for (var x = W * .06; x < W * .96; x += W * .15) { g.moveTo(x, H * .14); g.lineTo(x, H * .78); g.moveTo(x, H * .14); g.lineTo(x + W * .15, H * .46); g.moveTo(x + W * .15, H * .14); g.lineTo(x, H * .46); g.moveTo(x, H * .46); g.lineTo(x + W * .15, H * .78); g.moveTo(x + W * .15, H * .46); g.lineTo(x, H * .78); } g.stroke();
     g.font = '400 ' + Math.round(W * .2) + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(255,255,255,.12)';
-    g.fillText('500', W / 2, H * .38); g.font = '400 ' + Math.round(W * .11) + 'px ' + FONT; g.fillText('TICKETS', W / 2, H * .5);
+    g.fillText('500', W / 2, H * .38); g.font = '400 ' + Math.round(W * .11) + 'px ' + FONT; g.fillText('POINTS', W / 2, H * .5);
     // the BONUS marquee: bulb-lit letters
     var L = 'BONUS', fs = Math.min(64, W * .17), lw = fs * .78;
     g.font = '400 ' + fs + 'px ' + FONT; g.lineJoin = 'round';
@@ -1979,7 +1979,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var ov = $('ov');
     if (!paused) { ov.hidden = true; ov.innerHTML = ''; ov.className = 'ov'; return; }
     ov.className = 'ov pausecard'; ov.hidden = false;
-    ov.innerHTML = '<h2>Paused</h2><div style="color:#ffd9c8;font-weight:800;margin-top:6px">Shot ' + Math.min(SHOTS, shotIdx + 1) + ' of ' + SHOTS + ' · ' + fmt(total) + ' tickets</div>' +
+    ov.innerHTML = '<h2>Paused</h2><div style="color:#ffd9c8;font-weight:800;margin-top:6px">Shot ' + Math.min(SHOTS, shotIdx + 1) + ' of ' + SHOTS + ' · ' + fmt(total) + ' points</div>' +
       '<button class="btn btn-primary btn-lg" type="button" id="ov-resume">' + Kit.icon('play') + 'Keep playing</button>' +
       '<button class="btn btn-ghost" type="button" id="ov-new">New game</button>';
     $('ov-resume').addEventListener('click', function (e) { e.stopPropagation(); Kit.sfx('tap'); resume(); });
@@ -1992,7 +1992,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function resume() { if (!paused) return; paused = false; overlay(); kick(); }
 
   // ═══ Game over ══════════════════════════════════════════════════════════
-  function landName(s) { return s.land === 'jackpot' ? 'JACKPOT' : s.land === 'roof' ? 'Roof, ' + s.tickets + ' tickets' : s.land === 'splash' ? 'Splash' : 'Street'; }
+  function landName(s) { return s.land === 'jackpot' ? 'JACKPOT' : s.land === 'roof' ? 'Roof, ' + s.tickets + ' points' : s.land === 'splash' ? 'Splash' : 'Street'; }
   function finish() {
     state = 'over'; Snd.quiet(); Mus.stop(false); overlay();
     var jp = shots.filter(function (s) { return s.land === 'jackpot'; }).length;
@@ -2003,7 +2003,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var hl = [];
     if (jp) hl.push('Hit the JACKPOT' + (jp > 1 ? ' ' + jp + ' times' : '') + '!');
     hl.push('Landed on a roof ' + landed + ' of ' + SHOTS + ' times');
-    if (bestShot) hl.push('Best shot: ' + fmt(bestShot.total) + ' tickets on shot ' + bestShot.n);
+    if (bestShot) hl.push('Best shot: ' + fmt(bestShot.total) + ' points on shot ' + bestShot.n);
     if (ev.win) hl.push('Smashed ' + ev.win + (ev.win === 1 ? ' window' : ' windows'));
     if (ev.splat) hl.push('Splatted into a wall ' + (ev.splat === 1 ? 'once' : ev.splat + ' times'));
     if (ev.pig + ev.bird) hl.push('Scared ' + (ev.pig + ev.bird) + ' pigeons');
@@ -2028,7 +2028,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         detail: detail, started: started, mode: (jp ? 'Jackpot' : '') + (aimMode === 'arcade' ? '' : (jp ? ' · ' : '') + 'Aim yourself'),
         players: [{ name: who, score: total }], winner: null,
         rounds: { labels: shots.map(function (s) { return 'S' + s.n; }), scores: shots.map(function (s) { return [s.total]; }) },
-        highlights: hl.slice(0, 10), summary: fmt(total) + ' tickets' + (jp ? ' · jackpot' : ''), badge: fmt(total),
+        highlights: hl.slice(0, 10), summary: fmt(total) + ' points' + (jp ? ' · jackpot' : ''), badge: fmt(total),
         meta: { score: total, jackpot: jp }
       });
     } catch (e) {}
@@ -2039,7 +2039,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       Kit.win({
         lose: !(isBest || jp), icon: isBest || jp ? 'trophy' : 'meh',
         title: jp ? 'Jackpot!' : isBest ? 'New high score!' : 'Show’s over',
-        sub: fmt(total) + ' tickets · ' + landed + ' of ' + SHOTS + ' on a roof',
+        sub: fmt(total) + ' points · ' + landed + ' of ' + SHOTS + ' on a roof',
         notes: notes, notesTitle: 'Your shots',
         again: function () { newGame(); }, againLabel: 'Launch again',
         extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(HI, 'Willy Crash'); showSetup(); } }, { label: 'Change player', onClick: showSetup }]
@@ -2081,15 +2081,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       Mus.menuItem
     ],
     rules:
-      '<p class="goal">Fire Willy the daredevil out of the cannon and land him on a rooftop. Each roof pays tickets; the middle building is the 500 ticket jackpot. You get 5 shots. Most tickets wins a spot on the high-score board.</p>' +
-      '<h3>The city</h3><p>Seven brick buildings in a row. Their roofs pay <b>25, 35, 100, 500, 100, 35, 25</b> tickets, painted on each building and shown over its roof while you aim. Anywhere else (the street, the gaps between buildings, the bay) pays <b>5</b>.</p>' +
+      '<p class="goal">Fire Willy the daredevil out of the cannon and land him on a rooftop. Each roof pays points; the middle building is the 500 point jackpot. You get 5 shots. Most points wins a spot on the high-score board.</p>' +
+      '<h3>The city</h3><p>Seven brick buildings in a row. Their roofs pay <b>25, 35, 100, 500, 100, 35, 25</b> points, painted on each building and shown over its roof while you aim. Anywhere else (the street, the gaps between buildings, the bay) pays <b>5</b>.</p>' +
       '<h3>Firing (Arcade)</h3><ul><li>The cannon swings up and down on its own. You only choose <b>when</b> to fire: every shot leaves the cannon at the same speed.</li>' +
       '<li><b>Tap anywhere</b> (or press the big LAUNCH handle) to fire. On a computer, press <b>Space</b> or click.</li>' +
       '<li>The red and white dashes show where Willy will start to fly. The dial shows the angle; steeper shots land closer.</li>' +
       '<li>Tap during the fly-over to skip it. Tap after a shot to go to the next one.</li></ul>' +
       '<h3>Aim yourself (setup option)</h3><ul><li>The cannon still swings, but you also choose the power: <b>pull the handle down</b> (anywhere on the screen works) and <b>let go to fire</b>. Slide back up to cancel.</li>' +
       '<li>On a computer, hold <b>Space</b> to pull and let go to fire.</li></ul>' +
-      '<h3>Landing</h3><p>Tickets go by where Willy ends up once he stops. He comes in hot and can skid and tumble, so a roof only counts if he stays on it. The jackpot roof has no curbs and a slick painted bullseye: land soft, or he slides right off.</p>' +
+      '<h3>Landing</h3><p>Points go by where Willy ends up once he stops. He comes in hot and can skid and tumble, so a roof only counts if he stays on it. The jackpot roof has no curbs and a slick painted bullseye: land soft, or he slides right off.</p>' +
       '<h3>After a jackpot</h3><ul><li>The cannon swings faster for the next shot (the SPEED lamps on the left). It eases back a notch after each shot that misses the jackpot.</li>' +
       '<li>The jackpot moves one building to the right.</li></ul>' +
       '<p>He crashes into everything on the way: windows, chimneys, antennas, dishes, billboards, lamps, cars. That is just for fun; only the landing pays. <b>P</b> pauses.</p>'
@@ -2145,7 +2145,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var v = $('view'); if (v.parentNode === $('app')) document.body.appendChild(v);
     v.hidden = true;
     Kit.setup($('app'), {
-      intro: 'Fire the daredevil onto the rooftops for tickets',
+      intro: 'Fire the daredevil onto the rooftops for points',
       players: { min: 1, max: 1, count: 1, label: 'Player' },
       options: [{ id: 'aim', label: 'Cannon', value: 'arcade', choices: [
         ['arcade', 'Arcade', 'Like the real machine: the cannon swings by itself and every shot has the same power. Tap once to fire at the right moment.'],

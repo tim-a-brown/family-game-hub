@@ -514,8 +514,8 @@
   // where each of the five shots came down: a city sketch with the target roof, the jackpot tower and the sea
   var WLAND = { bull: ['Bullseye', '#ffd84a'], great: ['Great', '#7dffb3'], nice: ['Nice', '#7fe0ff'], roof: ['Target roof', '#c9b8ff'], wrong: ['Wrong roof', '#ffb0d0'],
     crash: ['Crash', '#ff8a5c'], splash: ['Splash', '#7fd0ff'], jackpot: ['JACKPOT', '#ffd84a'], jackpad: ['Tower pad', '#ffd84a'], jackroof: ['Top of the tower', '#ffd84a'] };
-  // Willy Crash v2 (the arcade's seven-building ticket city). Records with detail.v === 2 carry
-  // rb (roof building index per shot, -1 = street/gap/bay), jb (jackpot building per shot), ps (tickets per shot).
+  // Willy Crash v2 (the arcade's seven-building points city). Records with detail.v === 2 carry
+  // rb (roof building index per shot, -1 = street/gap/bay), jb (jackpot building per shot), ps (points per shot).
   var WC2_H = [190, 330, 300, 350, 315, 365, 520], WC2_V = [25, 35, 100, 500, 100, 35, 25];
   function willyV2(e, ui, d) {
     var ls = String(d.ls).split(','), ps = String(d.ps || '').split(',').map(Number);
@@ -546,9 +546,9 @@
       return ['#' + (i + 1) + ' ' + w[0] + ' · ' + n(ps[i] || 0), w[1]];
     }));
     return screen(ui, {
-      ac: '#ffd84a', title: d.jp ? 'Jackpot!' : 'Show’s over', score: n(myScore(e)) + ' tickets', rank: rankText(d),
+      ac: '#ffd84a', title: d.jp ? 'Jackpot!' : 'Show’s over', score: n(myScore(e)) + ' points', rank: rankText(d),
       pic: svg(W, H, s, { aria: 'Where each shot landed' }), picMax: 340,
-      stats: [['On a roof', roofs + ' of ' + ls.length], d.jp ? ['Jackpots', d.jp] : null, best ? ['Best shot', n(best) + ' tickets'] : null,
+      stats: [['On a roof', roofs + ' of ' + ls.length], d.jp ? ['Jackpots', d.jp] : null, best ? ['Best shot', n(best) + ' points'] : null,
         d.am === 's' ? ['Cannon', 'Aim yourself'] : null, d.wn ? ['Windows', d.wn] : null, d.pg ? ['Pigeons', d.pg] : null],
       extra: [shotsKey]
     });
