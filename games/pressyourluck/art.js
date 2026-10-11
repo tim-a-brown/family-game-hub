@@ -70,8 +70,8 @@ var PYLArt = (function () {
     // the big yellow chest patch right under the grin, with a chunky white double-barred $
     s += '<path d="M-22-58.5 C-9-56.5 9-56.5 22-58.5 C21.5-46 19.5-34 15.5-27 C13-24 9-23 0-23 C-9-23-13-24-15.5-27 C-19.5-34-21.5-46-22-58.5z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="2.2" stroke-linejoin="round"/>';
     var dl = 'M-1.8-55 L-1.8-26.5 M2.4-55 L2.4-26.5', ds = 'M7.41-48.5 C5.46-53-0.78-54.5-4.29-52 C-8.58-49-7.41-43-1.56-41.2 C4.68-39.5 7.8-36 5.85-31 C3.9-26.5-3.12-26.5-7.41-31';
-    s += '<path d="' + dl + '" stroke="' + OL + '" stroke-width="5" stroke-linecap="round"/><path d="' + ds + '" fill="none" stroke="' + OL + '" stroke-width="7.2" stroke-linecap="round" stroke-linejoin="round"/>';
-    s += '<path d="' + dl + '" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="' + ds + '" fill="none" stroke="#fff" stroke-width="3.9" stroke-linecap="round" stroke-linejoin="round"/>';
+    s += '<path d="' + dl + '" stroke="' + OL + '" stroke-width="5" stroke-linecap="round"/><path d="' + ds + '" fill="none" stroke="' + OL + '" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round"/>';
+    s += '<path d="' + dl + '" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="' + ds + '" fill="none" stroke="#fff" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>';
     s += '<circle cx="-4" cy="-47" r="1.1" fill="' + OL + '"/>';
     return s;
   }
