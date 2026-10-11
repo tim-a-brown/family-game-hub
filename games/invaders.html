@@ -401,9 +401,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       G.nb++; G.stats.bonuses++;
       G.shield = SHIELD_MAX; addBomb(null, null, true);
       fx.glitch = 0.5; sPower(); Kit.haptic('success');
-      Kit.callout('Bonus! Shield full + a BOMB', '#6dff4a');
+      callout('Bonus!', '#6dff4a'); pop(WW / 2, BUNK_Y - 40, 'SHIELD FULL + BOMB', '#6dff4a', 1);
     }
   }
+  // one callout at a time, so they never pile up on each other
+  var coT = -1e9;
+  function callout(txt, col) { var now = Date.now(); if (now - coT < 1600) return; coT = now; Kit.callout(txt, col); }
   function comboMult() { return Math.min(5, 1 + Math.floor(G.combo / 6)); }
   function award(pts, x, y, col, noCombo) {
     var mult = 1;
@@ -602,9 +605,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       var b = bombs[i]; if (b.dead) continue;
       b.t += dt;
       if (b.fuse > 0) { b.fuse -= dt; if (b.fuse <= 0) detonate(b, b.chain); continue; }
-      b.x += b.vx * dt; b.y += b.vy * dt;
-      if (b.x < bx.x0) { b.x = bx.x0; b.vx = Math.abs(b.vx); } else if (b.x > bx.x1) { b.x = bx.x1; b.vx = -Math.abs(b.vx); }
-      if (b.y > bx.y1) { b.y = bx.y1; b.vy = -Math.abs(b.vy); } else if (b.y < bx.y0 && b.vy < 0) b.vy = Math.abs(b.vy);
+      b.x += b.vx * dt; b.y += b.vy * dt; b.bf = Math.max(0, (b.bf || 0) - dt * 2.5);
+      if (b.x < bx.x0) { b.x = bx.x0; b.vx = Math.abs(b.vx); b.bf = 1; } else if (b.x > bx.x1) { b.x = bx.x1; b.vx = -Math.abs(b.vx); b.bf = 1; }
+      if (b.y > bx.y1) { b.y = bx.y1; b.vy = -Math.abs(b.vy); b.bf = 1; } else if (b.y < bx.y0 && b.vy < 0) { b.vy = Math.abs(b.vy); b.bf = 1; }
     }
     bombs = bombs.filter(function (b) { return !b.dead; });
   }
@@ -619,7 +622,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       var cb = 250 * chain * fm; addScore(cb);
       pop(x, y - 22, 'CHAIN X' + chain, '#ffe23e', 1); pop(x, y + 4, '+' + cb, '#ffffff', 0);
       fx.glitch = 0.4;
-      if (chain === 2) Kit.callout('Chain reaction!', '#ffb02e');
+      if (chain === 2) callout('Chain reaction!', '#ffb02e');
     } else pop(x, y - 22, 'BOMB!', '#ffb02e', 1);
     invs.forEach(function (v) { if (!v.dead && v.st !== 'enter' && Math.hypot(v.x - x, v.y - y) < BOMB_R + v.w / 2) hurtInv(v, v.big ? 4 : 3); });
     lasers.forEach(function (m) { if (!m.dead && Math.hypot(m.x - x, m.y - y) < BOMB_R + 10) popLaser(m, true); });
@@ -666,7 +669,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     var mult = B ? Math.min(10, B.streak) : 1, pts = (u.ship ? 1000 : 100) * mult * (G.frenzyT > 0 ? 2 : 1);
     addScore(pts); G.stats.ufos++; charge(1.5);
     pop(u.x, u.y, String(pts), u.ship ? GOLD : '#ff8aa0', 1);
-    if (mult >= 2) pop(u.x, u.y - 20, 'STREAK X' + mult, '#ffffff', 0);
     if (B && B.streak % 5 === 0) sCombo(B.streak * 2);
     explode(u.x, u.y, u.ship ? GOLD : '#ff3b5c', u.ship);
     if (u.ship) { sBig(); dropPup(u.x, u.y + 10); Kit.haptic('medium'); } else sHit();
@@ -818,7 +820,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
         explode(b.x, b.y, b.d.col, true); burst(b.x, b.y, 'fire', 50, 2, 1.6); ring(b.x, b.y, '#ff8a2e', 240, 0.8, 180);
         fx.glitch = 0.6; fx.shake = 0.8; sBlast();
         var bonus = (2000 + G.wave * 100) * (G.frenzyT > 0 ? 2 : 1); addScore(bonus); pop(b.x, b.y, String(bonus), '#fff', 1);
-        G.stats.bosses++; Kit.callout('Boss down!', '#ffb02e'); Kit.haptic('success');
+        G.stats.bosses++; callout('Boss down!', '#ffb02e'); Kit.haptic('success');
         boss = null;
       }
       return;
@@ -873,7 +875,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (B) banner('UFOS HIT ' + B.hit + '/' + B.total, (perfect ? 'PERFECT  ' : '') + '+' + fmt(bonus), '#ffd23e', 2.6);
     else banner(G.wave === LAST_WAVE ? 'YOU WIN!' : 'STAGE ' + G.wave + ' CLEAR', (perfect ? 'PERFECT  ' : '') + '+' + fmt(bonus), '#6dff4a', 2.4);
     sWave(); Kit.haptic('success');
-    if (perfect) Kit.callout(B ? 'Every UFO!' : 'Perfect stage!', '#6dff4a');
+    if (perfect) callout(B ? 'Every UFO!' : 'Perfect stage!', '#6dff4a');
   }
   function die(why) {
     if (G.phase === 'dying') return;
@@ -1027,7 +1029,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       '<li><b>Flashing white invaders</b> carry a power-up.</li>' +
       '<li>Some invaders break away and <b>dive</b> at the bottom. And the fewer are left, the faster the swarm marches down.</li>' +
       '<li>The <b>mystery UFO</b> zooms across the top. Hit it twice for 100 to 300 points and a prize.</li></ul>' +
-      '<h3>BOMBs</h3><p>Orange balls with a <b>B</b> bounce around the screen. Shoot one and it explodes, wiping out every invader near it. If another BOMB is inside the blast it goes off too: a <b>chain reaction</b> worth extra points. Try saving them until the screen is packed! But watch out: stray shots (especially spread and ring shots) can set them off early. You start with three, one more turns up every stage, and invaders sometimes drop them.</p>' +
+      '<h3>BOMBs</h3><p>Red balls with a <b>B</b> on them flash orange as they bounce around the screen. Shoot one and it explodes, wiping out every invader near it. If another BOMB is inside the blast it goes off too: a <b>chain reaction</b> worth extra points. Try saving them until the screen is packed! But watch out: stray shots (especially spread and ring shots) can set them off early. You start with three, one more turns up every stage, and invaders sometimes drop them.</p>' +
       '<h3>Bunkers and your base</h3><p>Invaders shoot lasers back. The green bunkers above <b>PROTECT</b> block them, but get chipped away. Lasers and diving invaders that get past hurt your base\'s <b>shield</b> (the bar at the bottom). Shoot lasers out of the sky for 25 points. The game ends if the shield runs out, or if the swarm reaches the bunkers.</p>' +
       '<h3>Power-ups</h3><p>Shoot an orb, or touch it with a target, to grab it.</p><ul>' +
       '<li><b>R Rapid</b>: fires twice as fast.</li><li><b>S Spread</b>: three shots at once.</li>' +
@@ -1101,7 +1103,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (autoEl) { autoEl.classList.toggle('on', SET.auto); autoEl.setAttribute('aria-pressed', SET.auto ? 'true' : 'false'); }
     if (!SZ.length) return;
     var rev = SET.invX && SET.invY ? ' · reversed' : SET.invX ? ' · left/right reversed' : SET.invY ? ' · up/down reversed' : '';
-    if (SET.two) { SZ[0].lab.textContent = 'Left cannon' + (SET.auto ? '' : ' · hold to fire'); SZ[1].lab.textContent = 'Right cannon' + (SET.auto ? '' : ' · hold to fire'); }
+    if (SET.two) { SZ[0].lab.textContent = 'Left cannon'; SZ[1].lab.textContent = 'Right cannon'; }
     else SZ[0].lab.textContent = 'Aim' + rev;
     SZ[0].zone.classList.toggle('c1', SET.two); SZ[1].zone.classList.toggle('c2', SET.two);
   }
@@ -1112,6 +1114,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   }
   function detach(n) { if (n && n.parentNode) n.parentNode.removeChild(n); }
   // Lay out the controls: under the screen when upright, either side of it when turned sideways
+  // the screen is tall like the cabinet's; on a short phone held sideways let it be as wide as it is tall
+  function maxAsp() { return lay.indexOf('land') === 0 && app.clientHeight < 560 ? 1 : 0.8; }
   function arrange() {
     var W0 = app.clientWidth, H0 = app.clientHeight;
     var mode = !TOUCH ? 'desk' : W0 > H0 * 1.15 ? 'land' : 'port';
@@ -1122,7 +1126,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       var st = Math.round(Math.min(dh - 26, (W0 - 104) / 2 - 10, 160));
       app.style.setProperty('--stick', st + 'px'); app.style.setProperty('--fire', Math.round(st * 0.78) + 'px');
     } else if (mode === 'land') {
-      var sw = Math.round(clamp((W0 - H0 * 0.8) / 2 - 12, 128, 230));
+      var sw = Math.round(clamp((W0 - H0 * (H0 < 560 ? 1 : 0.8)) / 2 - 12, 128, 230));
       app.style.setProperty('--side-w', sw + 'px');
       var st2 = Math.round(Math.min(sw - 14, H0 * 0.55, 170));
       app.style.setProperty('--stick', st2 + 'px'); app.style.setProperty('--fire', Math.round(st2 * 0.78) + 'px');
@@ -1146,7 +1150,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     arrange();
     var aw = scrEl.clientWidth, ah = scrEl.clientHeight;
     if (aw < 40 || ah < 40) return;
-    var asp = clamp(aw / ah, 0.55, 0.8), cw, ch;   // a tall screen, like the cabinet's
+    var asp = clamp(aw / ah, 0.55, maxAsp()), cw, ch;
     if (aw / ah > asp) { ch = ah; cw = ah * asp; } else { cw = aw; ch = aw / asp; }
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     var w = Math.round(cw * DPR), h = Math.round(ch * DPR);
@@ -1424,18 +1428,23 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     var d = r * 0.72; x.beginPath(); x.moveTo(-d, -d); x.lineTo(d, d); x.moveTo(d, -d); x.lineTo(-d, d); x.stroke();
     return (SC[k] = { c: c, s: r + pad });
   }
-  // BOMB: an orange ball with a B on it
-  function bombSprite(lit) {
-    var k = 'B' + (lit ? 1 : 0), s = SC[k]; if (s) return s;
-    var r = 15, pad = 12, size = (r + pad) * 2 * S, c = makeCanvas(Math.ceil(size), Math.ceil(size)), x = c.getContext('2d');
+  // BOMB: a red ball with a B on it; 'o' is its orange flash, 'w' the white-hot one just before it blows
+  var BOMB_LOOK = {
+    r: { glow: '#ff2a2a', c: ['#ff9a8a', '#ff2a2a', '#9a0010'], b: '#ffe6dc' },
+    o: { glow: '#ff8a2e', c: ['#fff2d6', '#ffb02e', '#ff5a1a'], b: '#8a1a00' },
+    w: { glow: '#ffffff', c: ['#ffffff', '#fff2d6', '#ffb02e'], b: '#ff5a2e' }
+  };
+  function bombSprite(kind) {
+    var k = 'B' + kind, s = SC[k]; if (s) return s;
+    var L = BOMB_LOOK[kind], r = 15, pad = 12, size = (r + pad) * 2 * S, c = makeCanvas(Math.ceil(size), Math.ceil(size)), x = c.getContext('2d');
     x.scale(S, S); x.translate(r + pad, r + pad);
-    x.shadowColor = '#ff8a2e'; x.shadowBlur = 12 * S;
+    x.shadowColor = L.glow; x.shadowBlur = 12 * S;
     var gr = x.createRadialGradient(-5, -6, 2, 0, 0, r);
-    gr.addColorStop(0, lit ? '#ffffff' : '#fff2d6'); gr.addColorStop(0.45, lit ? '#fff2d6' : '#ffb02e'); gr.addColorStop(1, lit ? '#ffb02e' : '#e0521a');
+    gr.addColorStop(0, L.c[0]); gr.addColorStop(0.45, L.c[1]); gr.addColorStop(1, L.c[2]);
     x.fillStyle = gr; x.beginPath(); x.arc(0, 0, r, 0, 6.2832); x.fill();
     x.shadowBlur = 0;
     var rows = glyphRows('B'), cell = 2.6, gx = -2.5 * cell, gy = -3.5 * cell;
-    x.fillStyle = lit ? '#ff5a2e' : '#7a1d00';
+    x.fillStyle = L.b;
     for (var rr = 0; rr < 7; rr++) for (var i = 0; i < 5; i++) if (rows[rr].charAt(i) === '#') x.fillRect(gx + i * cell + 0.25, gy + rr * cell + 0.25, cell - 0.5, cell - 0.5);
     return (SC[k] = { c: c, s: r + pad });
   }
@@ -1543,8 +1552,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     }
     // BOMBs
     for (i = 0; i < bombs.length; i++) {
-      var bb = bombs[i], lit = bb.fuse > 0 && ((bb.t * 30) | 0) & 1, bsp = bombSprite(lit), pul = lit ? 1.15 : 1 + 0.04 * Math.sin(bb.t * 8);
+      // red, pulsing orange, with a brighter orange flash each time it bounces (white-hot when its fuse is lit)
+      var bb = bombs[i], lit = bb.fuse > 0 && ((bb.t * 30) | 0) & 1, pul = lit ? 1.15 : 1 + 0.05 * Math.sin(bb.t * 8) + 0.1 * (bb.bf || 0);
+      var bsp = bombSprite(lit ? 'w' : 'r'), fl = Math.min(1, 0.35 + 0.35 * Math.sin(bb.t * 9) + (bb.bf || 0));
       g.drawImage(bsp.c, bb.x - bsp.s * pul, bb.y - bsp.s * pul, bsp.s * 2 * pul, bsp.s * 2 * pul);
+      if (!lit && fl > 0.02) { var osp = bombSprite('o'); g.globalAlpha = fl; g.drawImage(osp.c, bb.x - osp.s * pul, bb.y - osp.s * pul, osp.s * 2 * pul, osp.s * 2 * pul); g.globalAlpha = 1; }
     }
     // invader lasers
     for (i = 0; i < lasers.length; i++) {
@@ -1662,7 +1674,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function drawHud(t) {
     var ORG = '#ff8a2e', WHITE = '#f4f4ff', YEL = '#ffe23e';
     // P1 and score, the next BONUS AT goal
-    text('P1', 8, 7, 1.7, ORG); text(String(G.score), 8, 19, 2.1, ORG);
+    text('P1', 8, 5, 1.5, ORG); text(String(G.score), 8, 18, 2.1, ORG);
     var bt = 'BONUS AT ' + bonusAt(G.nb) + ' POINTS', bc = Math.min(1.7, (WW - 100) / (bt.length * 6));
     runs([['BONUS AT ', WHITE], [String(bonusAt(G.nb)), YEL], [' POINTS', WHITE]], WW - 8, 9, bc, 'r');
     // the frame: \___/ in orange, with the INVADER BONUS (or the stage name) inside
