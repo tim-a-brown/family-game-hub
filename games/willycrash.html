@@ -1140,7 +1140,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       // (the jackpot roof: only the flat deck pays the jackpot; stopped on its slates, still on the building, pays 1,000)
       for (var i = 0; i < B.length; i++) { var c = B[i], low = c === jpB ? c.mh : 0; if (pl.x > c.x0 - 6 && pl.x < c.x1 + 6 && pl.y < c.y0 + low + 4 && pl.y > c.y0 - 110) { b = c; break; } }
       if (b) {
-        var jp = b === jpB, onDeck = jp && pl.x > b.x0 + b.msw - 4 && pl.x < b.x1 - b.msw + 4 && pl.y < b.y0 + 4, edge = jp && !onDeck;
+        // (on the jackpot, by his centre of mass: lying on the deck with his legs folded over the edge still counts)
+        var cmx = 0, cmy = 0; for (var q = 0; q < 11; q++) { cmx += R.P[q].x * MASS[q]; cmy += R.P[q].y * MASS[q]; } cmx /= MTOT; cmy /= MTOT;
+        var jp = b === jpB, onDeck = jp && cmx > b.x0 + b.msw - 2 && cmx < b.x1 - b.msw + 2 && cmy < b.y0 + 2, edge = jp && !onDeck;
         jp = jp && onDeck;
         var val = edge ? EDGE_T : b.val;
         r = { code: jp ? 'jackpot' : 'roof', name: jp ? 'JACKPOT!' : fmt(val) + ' points!', tickets: val, col: jp ? '#ffd84a' : val >= 1000 ? '#7dffb3' : '#7fe0ff',
@@ -2484,7 +2486,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     step: function (sec, draw) { var n = Math.round((sec || 0) / DT); for (var i = 0; i < n; i++) update(DT); if (draw) { render(); drawDeck(); } return state; },
     angle: function () { return angle; }, level: function () { return jpLevel; }, jpI: function () { return jpI; },
     setJp: function (i) { jpI = i; startShot(); },
-    dbg: function () { return { slipAx: rag.slipAx, P: rag.P.map(function (p) { return [+(p.x).toFixed(2), +(p.y).toFixed(2), +((p.x - p.px) / HS).toFixed(1), +((p.y - p.py) / HS).toFixed(1), p.r]; }) }; },
     tune: function (o) { if (o.jpMu != null) JP_MU = o.jpMu; if (o.keep != null) JP_KEEP = o.keep; if (o.slate != null) SLATE_MU = o.slate; if (o.mh != null) MANS_H = o.mh; if (o.mw != null) MANS_W = o.mw; },
     // drop Willy (standing pose, pelvis at x,y) with a velocity, as if fired
     drop: function (x, y, vx, vy, spin) {

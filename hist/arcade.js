@@ -528,8 +528,11 @@
     var jp0 = isNaN(jb[0]) ? 3 : jb[0];
     WC2_H.forEach(function (h, i) {
       var x = X0 + i * (BW + GAP), y = GY - h * SC, isJ = i === jp0, v = isJ ? 5000 : i === 3 ? WC2_V[jp0] : WC2_V[i];
-      s += '<rect x="' + x + '" y="' + y.toFixed(1) + '" width="' + BW + '" height="' + (GY - y).toFixed(1) + '" fill="#9a4b36" stroke="#2b1e3f" stroke-width="1"/>';
-      s += '<text x="' + (x + BW / 2) + '" y="' + (y + 10).toFixed(1) + '" text-anchor="middle" font-size="8" font-weight="900" fill="' + (isJ ? '#ffd23a' : '#ffd9c0') + '" font-family="ui-rounded,system-ui,sans-serif">' + v + '</text>';
+      var my = (y + 3.2).toFixed(1);   // the jackpot building's mansard: slate slopes up to a small flat deck
+      if (isJ) s += '<path d="M' + x + ' ' + GY + 'V' + my + 'L' + (x + 3.5) + ' ' + y.toFixed(1) + 'H' + (x + BW - 3.5) + 'L' + (x + BW) + ' ' + my + 'V' + GY + 'Z" fill="#9a4b36" stroke="#2b1e3f" stroke-width="1"/>' +
+        '<path d="M' + x + ' ' + my + 'L' + (x + 3.5) + ' ' + y.toFixed(1) + 'H' + (x + BW - 3.5) + 'L' + (x + BW) + ' ' + my + 'Z" fill="#4b5262" stroke="#2b1e3f" stroke-width="1"/>';
+      else s += '<rect x="' + x + '" y="' + y.toFixed(1) + '" width="' + BW + '" height="' + (GY - y).toFixed(1) + '" fill="#9a4b36" stroke="#2b1e3f" stroke-width="1"/>';
+      s += '<text x="' + (x + BW / 2) + '" y="' + (y + (isJ ? 13 : 10)).toFixed(1) + '" text-anchor="middle" font-size="8" font-weight="900" fill="' + (isJ ? '#ffd23a' : '#ffd9c0') + '" font-family="ui-rounded,system-ui,sans-serif">' + v + '</text>';
       if (isJ) s += '<rect x="' + (x + 4) + '" y="' + (y - 1.5).toFixed(1) + '" width="' + (BW - 8) + '" height="2" fill="#e5263f"/><rect x="' + (x + 9) + '" y="' + (y - 1.5).toFixed(1) + '" width="' + (BW - 18) + '" height="2" fill="#fff"/>';
     });
     var used = {};
