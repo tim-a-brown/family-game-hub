@@ -6,7 +6,8 @@
 Everything is synthesised here from scratch (no samples, no General MIDI):
 detuned "supersaw" and noise pads through slow filters, Karplus-Strong
 plucked strings, modal (physically modelled) marimba and music box, a breathy
-flute, an additive fairground band organ, brass tuba, slide whistle,
+flute, an additive fairground band organ, a multi-rank church/theatre pipe
+organ, FM bells, a theremin-like glide, brass tuba, slide whistle,
 percussion from filtered noise and metallic oscillators, chorus, soft saturation and
 a generated convolution reverb. Every note tail and the reverb wrap round the
 loop end, so each file loops with no seam. Output: <table>.mp3 (32 kHz mono,
@@ -279,11 +280,11 @@ def nebula():
     for when, pts, dur in lead:
         tr.add('lead', theremin(pts, dur), when)
     echo = lambda x: sum(0.55 ** j * np.roll(x, int(j * 0.75 * SR)) for j in range(6))   # circular: seamless
-    return tr, {'drone': (1.0, [lambda x: chorus(x, 0.004, 0.25),   # 0.25 Hz: whole LFO cycles per loop, so no seam
+    return tr, {'drone': (0.75, [lambda x: chorus(x, 0.004, 0.25),   # 0.25 Hz: whole LFO cycles per loop, so no seam
                                   lambda x: reverb(x, 6.0, 0.04, 6000, 0.5)]),
                 'air': (0.4, [lambda x: reverb(x, 6.0, 0.05, 4000, 0.6)]),
                 'sub': (0.5, []),
-                'ping': (0.3, [echo, lambda x: reverb(x, 4.0, 0.04, 8000, 0.4)]),
+                'ping': (0.55, [echo, lambda x: reverb(x, 4.0, 0.04, 8000, 0.4)]),
                 'radar': (0.16, [echo, lambda x: reverb(x, 3.0, 0.03, 8000, 0.4)]),
                 'lead': (0.4, [lambda x: reverb(x, 5.0, 0.06, 6000, 0.45)])}
 
