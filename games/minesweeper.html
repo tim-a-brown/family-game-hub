@@ -93,13 +93,8 @@ body{overflow-x:hidden;}
 .tools .seg > button.on.flagm{background:#b8323a;color:#fff;}
 .zoom{display:flex;gap:6px;}
 .zoom .icon-btn{width:46px;height:46px;font-family:var(--display);font-size:1.4rem;}
-.hintline{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;font-size:.8rem;font-weight:600;color:var(--text-3);margin:12px auto 0;max-width:520px;}
-.hintline span{white-space:nowrap;padding:5px 11px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);}
-.hintline span:first-child{border-color:rgba(255,255,255,.18);}
-.hintline.flagm span:first-child{border-color:rgba(255,123,130,.45);background:rgba(184,50,58,.16);}
-.hintline b{font-weight:800;color:var(--text-2);margin-right:4px;}
-.hintline em{font-style:normal;font-weight:800;color:var(--text);}
-.hintline.flagm em{color:#ff7b82;}
+.hintline{text-align:center;font-size:.82rem;font-weight:600;line-height:1.4;color:var(--text-3);margin:12px auto 0;max-width:340px;}
+.hintline b{font-weight:800;color:var(--text-2);}
 </style>
 </head>
 <body>
@@ -177,10 +172,9 @@ body{overflow-x:hidden;}
       '<h3>Digging</h3><ul><li><b>Tap</b> a square to dig it up. Your first dig is always safe and opens up an area.</li>' +
       '<li>A <b>number</b> tells you how many mines touch that square, including the corners (up to 8).</li>' +
       '<li>An empty square has no mines around it, so its neighbours open by themselves.</li></ul>' +
-      '<h3>Flags</h3><ul><li>When you are sure a square hides a mine, plant a <b>flag</b> on it: ' + (TOUCH ? '<b>press and hold</b>' : '<b>right-click</b>') + ' it, or switch the bottom button to <b>Flag</b> and tap.</li>' +
-      '<li>In <b>Flag</b> mode it works the other way round: ' + (TOUCH ? 'tap' : 'click') + ' plants or removes a flag, and press and hold digs. The hints under the board always show what each move does right now.</li>' +
+      '<h3>Flags</h3><ul><li>When you are sure a square hides a mine, plant a <b>flag</b> on it: switch the bottom button to <b>Flag</b> and ' + (TOUCH ? 'tap' : 'click') + ' the square' + (TOUCH ? '' : ', or just right-click it') + '. ' + (TOUCH ? 'Tap' : 'Click') + ' a flag again in Flag mode to take it off. Switch back to <b>Dig</b> to keep digging.</li>' +
       '<li>Flags stop you digging there by accident. The counter shows mines left minus flags planted.</li></ul>' +
-      '<h3>Quick clear</h3><p>Tap a number that already has the right number of flags around it, and all its other neighbours open at once. If a flag is wrong, that sets off a mine!</p>' +
+      '<h3>Clearing around a number</h3><p>Say a square shows <b>2</b> and you have already flagged the 2 mines next to it. Every other square around it must be safe, so ' + (TOUCH ? 'tap' : 'click') + ' the 2 and they all open at once. It saves digging them one by one. If one of your flags is wrong, that sets off a mine!</p>' +
       '<h3>Levels</h3><ul><li><b>Beginner:</b> 9 × 9, 10 mines.</li><li><b>Intermediate:</b> 16 × 16, 40 mines.</li><li><b>Expert:</b> 30 × 16, 99 mines. On a phone it stands upright; use + to zoom and drag to look around.</li></ul>' +
       '<h3>Tips</h3><ul><li>A 1 touching just one hidden square: that square is a mine.</li><li>If a number already has all its flags, every other square around it is safe.</li></ul>' +
       '<p>Undo takes back your last move, even a mine. Wins with an undo don\'t count for best times.</p>'
@@ -559,38 +553,27 @@ body{overflow-x:hidden;}
   function setTool(t) {
     tool = t; hud.dig.classList.toggle('on', t === 'dig'); hud.flag.classList.toggle('on', t === 'flag');
     hud.dig.setAttribute('aria-pressed', t === 'dig'); hud.flag.setAttribute('aria-pressed', t === 'flag');
-    hintFor(t);
+    hintFor();
   }
-  // What each gesture does right now: it flips with the Dig / Flag switch.
-  function hintFor(t) {
+  // The Dig / Flag switch says what a tap does; the hint only covers clearing around a number.
+  function hintFor() {
     if (!hud.hint) return;
-    var tap = TOUCH ? 'Tap' : 'Click', hold = 'Hold', flag = t === 'flag';
-    var items = [[tap, flag ? 'flag' : 'dig', true]];
-    if (TOUCH || flag) items.push([hold, flag ? 'dig' : 'flag']);
-    if (!TOUCH) items.push(['Right-click', 'flag']);
-    items.push([tap + ' a number', 'open around it']);
-    hud.hint.className = 'hintline' + (flag ? ' flagm' : '');
-    hud.hint.innerHTML = items.map(function (x) { return '<span><b>' + x[0] + '</b>' + (x[2] ? '<em>' + x[1] + '</em>' : x[1]) + '</span>'; }).join('');
+    hud.hint.innerHTML = (TOUCH ? '' : '<b>Right-click</b> to flag. ') +
+      'When a number has all its mines flagged, <b>' + (TOUCH ? 'tap' : 'click') + '</b> it to open every other square around it.';
   }
 
   // ── Input: tap, long-press, right-click, panning ──────────────────────────
   function bindField() {
-    var down = null, lp = null, lastLP = 0;
+    var down = null;
     function cellOf(e) { var c = e.target.closest('.cell'); return c ? +c.getAttribute('data-i') : -1; }
-    function clear() { clearTimeout(lp); if (down && cellEls[down.i]) cellEls[down.i].classList.remove('press'); }
+    function clear() { if (down && cellEls[down.i]) cellEls[down.i].classList.remove('press'); }
     field.addEventListener('pointerdown', function (e) {
       if (!S || S.over) return;
       var i = cellOf(e); if (i < 0) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      down = { i: i, x: e.clientX, y: e.clientY, id: e.pointerId, fired: false };
+      down = { i: i, x: e.clientX, y: e.clientY, id: e.pointerId };
       if (!S.open[i] && !S.flag[i] && tool === 'dig') cellEls[i].classList.add('press');
       if (S.open[i] && S.adj[i]) peekPress(i, true);
-      clearTimeout(lp);
-      lp = setTimeout(function () {
-        if (!down) return; down.fired = true; lastLP = Date.now(); clear(); peekPress(down.i, false);
-        if (S.open[down.i]) return;
-        if (tool === 'dig') toggleFlag(down.i); else dig(down.i);
-      }, 360);
     });
     field.addEventListener('pointermove', function (e) {
       if (down && e.pointerId === down.id && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 9) { clear(); peekPress(down.i, false); down = null; }
@@ -599,14 +582,14 @@ body{overflow-x:hidden;}
     field.addEventListener('pointerup', function (e) {
       if (!down || e.pointerId !== down.id) return;
       var d = down; down = null; clear(); peekPress(d.i, false);
-      if (d.fired || !S || S.over) return;
+      if (!S || S.over) return;
       var i = d.i;
       if (S.open[i]) { chord(i); return; }
       if (tool === 'flag') toggleFlag(i); else dig(i);
     });
     field.addEventListener('contextmenu', function (e) {
       e.preventDefault();
-      if (TOUCH || Date.now() - lastLP < 800 || !S || S.over) return;
+      if (TOUCH || !S || S.over) return;
       var i = cellOf(e); if (i < 0) return;
       if (S.open[i]) chord(i); else toggleFlag(i);
     });
