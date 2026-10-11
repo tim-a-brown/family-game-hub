@@ -1118,7 +1118,7 @@
         var data = d.data() || {};
         l.others[lk(name)] = { name: String(name).trim(), code: code, them: data.name || '', at: Date.now() };
         linksSet(l); applyAvatar(name, code, data);
-        data._sent = linkBackfill(name, code);
+        data._sent = linkBackfill(name, code, { rejected: data.rejected || [] });
         return data;
       });
     });
@@ -1155,52 +1155,99 @@
   }
   function outbox(){ var o = lsJSON(OUTBOX); return Array.isArray(o) ? o : []; }
   // Send a finished game to everyone linked in it
+  // Outbox items: a whole game (sent as recorded), or for past games just where to find it ({ref:1, n: name}),
+  // so a long backlog stays small on the device
+  function saveOutbox(ob){
+    var full = ob.filter(function(it){ return !it.ref; }).slice(-200), refs = ob.filter(function(it){ return it.ref; }).slice(-5000);
+    try{ LS.setItem(OUTBOX, JSON.stringify(refs.concat(full))); }catch(e){}
+  }
   function linkSend(key, e){
     var codes = {};
     (e.players || []).forEach(function(p){ if(p && p.link) codes[p.link] = 1; });
     var list = Object.keys(codes); if(!list.length) return;
     var ob = outbox();
     list.forEach(function(code){ ob.push({ code: code, id: e._id, key: key, entry: JSON.stringify(e), from: label() || myName() || 'Someone', by: myName() || '', at: Date.now() }); });
-    try{ LS.setItem(OUTBOX, JSON.stringify(ob.slice(-200))); }catch(err){}
+    saveOutbox(ob);
     flushOutbox();
   }
-  // Linking someone after games with them are already in your history: those games go to them too.
-  // Marks the player in each stored game (so it isn't sent twice) and queues a copy for their inbox.
-  function linkBackfill(name, code){
-    var k = lk(name), n = 0, ob = outbox(), seen = {}, keys = [];
+  // Link someone after the fact: every past game with them in it goes to their history too (games they already
+  // have, deleted, or said "Not me" to are skipped). opts.all sends ones marked before again.
+  function linkBackfill(name, code, opts){
+    opts = opts || {};
+    var k = lk(name), n = 0, ob = outbox(), seen = {}, keys = [], rej = {};
+    (opts.rejected || []).forEach(function(id){ rej[id] = 1; });
     ob.forEach(function(it){ seen[it.code + '|' + it.id] = 1; });
     try{ for(var i = 0; i < LS.length; i++){ var kk = LS.key(i); if(kk && kk.indexOf('gh_') === 0 && kk !== 'gh_dedup_v1') keys.push(kk); } }catch(e){}
     keys.forEach(function(kk){
       var list; try{ list = JSON.parse(LS.getItem(kk)); }catch(e){ return; }
       if(!Array.isArray(list)) return;
-      var changed = false;
+      var gk = kk.slice(3), changed = false;
       list.forEach(function(e){
-        if(!e || typeof e !== 'object' || e._from || !e._id || !Array.isArray(e.players)) return;
-        var hit = false;
-        e.players.forEach(function(p){ if(p && typeof p === 'object' && !p.cpu && lk(p.name) === k && p.link !== code){ p.link = code; hit = true; } });
+        if(!e || typeof e !== 'object' || e._from || !Array.isArray(e.players)) return;
+        var hit = false, had = false;
+        e.players.forEach(function(p){
+          if(typeof p === 'string'){ if(lk(p) === k) hit = true; return; }
+          if(!p || typeof p !== 'object' || p.cpu || lk(p.name) !== k) return;
+          hit = true; if(p.link === code) had = true; else { p.link = code; changed = true; }
+        });
         if(!hit) return;
-        changed = true;
-        if(seen[code + '|' + e._id]) return;
-        ob.push({ code: code, id: e._id, key: kk.slice(3), entry: JSON.stringify(e), from: label() || myName() || 'Someone', by: myName() || '', at: Date.now() }); n++;
+        // an older record without an id gets one now (the same on every device), so it can be sent and said "Not me" to
+        if(!e._id){ e._id = legacyId(ghId(gk, e)); e._ed = Date.now(); changed = true; }
+        var id = e._id;
+        if((had && !opts.all) || rej[id] || seen[code + '|' + id]) return;
+        seen[code + '|' + id] = 1;
+        ob.push({ ref: 1, code: code, id: id, key: gk, n: k, from: label() || myName() || 'Someone', by: myName() || '', at: Date.now() }); n++;
       });
       if(changed){ try{ LS.setItem(kk, JSON.stringify(list)); noteWrite(kk); }catch(e){} }
     });
-    if(n){ try{ LS.setItem(OUTBOX, JSON.stringify(ob.slice(-400))); }catch(e){} flushOutbox(); }
+    if(n){ saveOutbox(ob); flushOutbox(); }
     return n;
   }
-  function flushOutbox(){
-    var ob = outbox(); if(!ob.length || !isPin() || (typeof navigator !== 'undefined' && navigator.onLine === false)) return Promise.resolve();
-    return ensureFirebase().then(function(){
-      return Promise.all(ob.map(function(it){
-        return linkCol().doc(it.code).collection('inbox').doc(it.id).set({ key: it.key, entry: it.entry, from: it.from, by: it.by, at: it.at })
-          .then(function(){ return it; }).catch(function(e){ console.warn('[links] send failed', e); return null; });
-      })).then(function(done){
-        var sent = done.filter(Boolean).map(function(it){ return it.code + '|' + it.id; });
-        try{ LS.setItem(OUTBOX, JSON.stringify(outbox().filter(function(it){ return sent.indexOf(it.code + '|' + it.id) < 0; }))); }catch(e){}
-      });
-    });
+  function legacyId(s){
+    var h1 = 0x811c9dc5, h2 = 5381;
+    for(var i = 0; i < s.length; i++){ var c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = ((h2 << 5) + h2 + c) | 0; }
+    return 'l' + (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36);
   }
-  // A game from someone else's device, filed under your history: the player they linked to you becomes you
+  // A past game as sent: players listed by name become {name}, the linked one marked, and an id if it never had one
+  function refEntry(it){
+    var list = lsJSON('gh_' + it.key), e = null;
+    if(Array.isArray(list)) for(var i = 0; i < list.length; i++){ if(list[i] && ghId(it.key, list[i]) === it.id){ e = list[i]; break; } }
+    if(!e) return null;
+    e = JSON.parse(JSON.stringify(e));
+    if(!e._id) e._id = it.id;
+    e.players = (e.players || []).map(function(p){
+      if(typeof p === 'string') p = { name: p };
+      if(p && typeof p === 'object' && !p.cpu && lk(p.name) === it.n) p.link = it.code;
+      return p;
+    });
+    return JSON.stringify(e);
+  }
+  var _flushing = null;
+  function flushOutbox(){
+    if(_flushing) return _flushing;
+    var ob = outbox(); if(!ob.length || !isPin() || (typeof navigator !== 'undefined' && navigator.onLine === false)) return Promise.resolve();
+    var sent = {}, i = 0;
+    function chunk(){
+      var part = ob.slice(i, i + 40); i += 40;
+      if(!part.length) return Promise.resolve();
+      return Promise.all(part.map(function(it){
+        var entry = it.ref ? refEntry(it) : it.entry;
+        if(!entry){ sent[it.code + '|' + it.id] = 1; return null; }   // deleted since: nothing to send
+        return linkCol().doc(it.code).collection('inbox').doc(it.id).set({ key: it.key, entry: entry, from: it.from, by: it.by, at: it.at })
+          .then(function(){ sent[it.code + '|' + it.id] = 1; }).catch(function(e){ console.warn('[links] send failed', e); });
+      })).then(chunk);
+    }
+    _flushing = ensureFirebase().then(chunk).then(function(){
+      saveOutbox(outbox().filter(function(it){ return !sent[it.code + '|' + it.id]; }));
+    }).then(function(){ _flushing = null; }, function(e){ _flushing = null; console.warn('[links] flush failed', e); });
+    return _flushing;
+  }
+  // Already in this account's history (or deleted from it): a game sent again needs no review
+  function haveGame(key, id){
+    var del = lsJSON('fgh_gh_del'); if(del && del[id]) return true;
+    var list = lsJSON('gh_' + key);
+    return Array.isArray(list) && list.some(function(r){ return r && ghId(key, r) === id; });
+  }
   function received(own, d){
     var x = d.data() || {}, e;
     try{ e = JSON.parse(x.entry); }catch(err){ return null; }
@@ -1231,7 +1278,7 @@
         jobs.push(linkCol().doc(own.code).collection('inbox').limit(100).get().then(function(q){
           var pend = [];
           return Promise.all(q.docs.map(function(d){
-            var it = received(own, d); if(!it) return d.ref.delete();
+            var it = received(own, d); if(!it || haveGame(it.key, it.entry._id || it.id)) return d.ref.delete();
             if(own.ask){ pend.push(it); return null; }
             if(!window.GameHistory) return null;   // filed by a page that keeps history
             fileGame(it); return d.ref.delete();
@@ -1252,6 +1299,8 @@
           else delete c[k];
           try{ LS.setItem(LHI, JSON.stringify(c)); }catch(e){}
           unmarkRejected(r.code, data.rejected || []);
+          // links made before every past game went across (older records, long backlogs): send them once more
+          if(!r.bf){ linkBackfill(r.name, r.code, { all: true, rejected: data.rejected || [] }); var L3 = linksGet(); if(L3.others[k]){ L3.others[k].bf = 1; try{ LS.setItem('fgh_links', JSON.stringify(L3)); }catch(e){} } }
         }).catch(function(e){ console.warn('[links] read failed', r.code, e); }));
       });
       jobs.push(flushOutbox());
