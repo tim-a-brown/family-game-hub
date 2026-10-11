@@ -1839,19 +1839,19 @@
   // How the ways of playing together fit: PINs, linking, one shared phone, each on their own device
   function togetherSheet() {
     sheet({ title: 'Playing together', html: '<div class="rules">' +
-      '<p class="goal">Play on one phone or each on your own. Link the people you play with and your games, avatars and high scores follow everyone.</p>' +
-      '<h3>Your PIN</h3><p>Signing in with a PIN on the home screen keeps your game history, high scores and Lorcana decks, and brings them to every phone or tablet signed in with it. Linking and online Chess and Lorcana need one. Guests can play, but nothing is saved past this device.</p>' +
+      '<p class="goal">There are a few ways to play with other people here. Here’s how they fit together.</p>' +
+      '<h3>Your PIN</h3><p>Your PIN is your account. Sign in with it on any phone or tablet and your games, high scores and Lorcana decks are all there. You’ll need one to link players or to play Chess or Lorcana online. Playing as a guest works fine, but nothing leaves that device.</p>' +
       '<h3>Linking players</h3><ul>' +
-        '<li>Your code is on this screen. Send it with <b>Share</b> or read it out.</li>' +
-        '<li>To link someone: open <b>Frequent players</b> (in any game’s menu), tap the link button next to their name and type their code.</li>' +
-        '<li>Once linked, their avatar comes from their own phone, games you play with them go to their history too, and you see their best arcade scores.</li>' +
-        '<li>Linking goes one way. For the games they record to come to you, they link you with your code.</li></ul>' +
-      '<h3>Everyone on one phone</h3><p>Pass this phone around: pick everyone in the player list when the game starts. The game is saved here, and a copy goes to each linked player’s history. People who turned on <b>Ask before adding games</b> see it under Games to review first, and can tap <b>Not me</b> if it wasn’t them.</p>' +
-      '<h3>Each on your own device</h3><ul>' +
-        '<li><b>Chess</b> and <b>Lorcana</b> online: each person signs in with their own PIN on their own phone or tablet. One opens a table, the other joins it from the list or types its 4-letter code.</li>' +
-        '<li>Those games stay open for days or weeks. Pick one up on any device signed in with your PIN; the home screen shows when it’s your move.</li>' +
-        '<li><b>Centipede Chaos</b> online is played live, 2 or 3 at once. No PIN needed.</li>' +
-        '<li>Tables opened by people you’ve linked show first, with their avatar, so you don’t need their code.</li></ul>' +
+        '<li>Your code is on this screen. Tap <b>Share</b> to send it, or just read it out.</li>' +
+        '<li>To link someone, open <b>Frequent players</b> from any game’s menu, tap the link button next to their name, and enter their code.</li>' +
+        '<li>After that, their avatar comes from their own phone, games you play together show up in their history too, and you’ll see their best arcade scores.</li>' +
+        '<li>Links go one way. If they want the games they record to show up in your history, they need to link you back.</li></ul>' +
+      '<h3>Playing on one phone</h3><p>Just pass the phone around. Pick everyone at the start, and when the game ends it’s saved here, with a copy sent to anyone you’ve linked. If someone has <b>Ask before adding games</b> turned on, they get to look it over first, and can tap <b>Not me</b> if it wasn’t them.</p>' +
+      '<h3>Playing on separate phones</h3><ul>' +
+        '<li><b>Chess</b> and <b>Lorcana</b>: each of you signs in with your own PIN on your own device. One opens a table, and the other joins from the list or types in its 4-letter code.</li>' +
+        '<li>These don’t have to be finished in one sitting. Leave a game going for days or weeks and pick it up on any device with your PIN. The home screen lets you know when it’s your move.</li>' +
+        '<li><b>Centipede</b> is played live, with 2 or 3 people at once. It works without a PIN, and friends can jump into a game that’s already going.</li>' +
+        '<li>If someone you’ve linked has a table open, it shows up first with their avatar, so you don’t have to ask for the code.</li></ul>' +
       '</div>', actions: [{ label: 'Got it', primary: true }] });
   }
   // Your arcade initials: offered first (and filled in) when you make a high score; people who link you see your best scores

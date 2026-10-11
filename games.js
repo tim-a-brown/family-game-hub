@@ -135,7 +135,7 @@ var GAMES = [
   { id: 'crossyroad',  name: 'Crossy Road',  color: '#84cc16', cat: 'arcade', min: 1, max: 1, tag: 'Hop across roads and rivers', play: 'crossyroad' },
   { id: 'willycrash',  name: 'Willy Crash',  color: '#ff6a3d', cat: 'arcade', min: 1, max: 1, tag: 'Blast the daredevil onto the rooftop', play: 'willycrash' },
   { id: 'crazytower',  name: 'Crazy Tower',  color: '#000', cat: 'arcade', min: 1, max: 4, tag: 'Drop the blocks, stack to the jackpot', play: 'crazytower' },
-  { id: 'centipede',   name: 'Centipede Chaos', color: '#000', cat: 'arcade', min: 1, max: 3, tag: 'Blast the centipedes, beat the bosses, solo or online', play: 'centipede',
+  { id: 'centipede',   name: 'Centipede', color: '#000', cat: 'arcade', min: 1, max: 3, tag: 'Blast the centipedes, beat the bosses, solo or online', play: 'centipede',
     launch: [
       { icon: 'gamepad', title: 'Play solo', desc: 'Ten waves and four bosses', file: 'centipede.html' },
       { icon: 'users', title: 'Play online', desc: '2 or 3 players, each on their own device', file: 'centipede.html?online=1' }
