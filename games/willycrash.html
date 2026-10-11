@@ -188,8 +188,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 
   // ═══ World constants ════════════════════════════════════════════════════
   var G = 600;                         // gravity, world units / s²
-  var VMIN = 260, VMAX = 1360;         // launch speed at 0% and 100% plunger
-  var PIV = { x: 72, y: -60 }, BARREL = 66;
+  var VMIN = 260, VMAX = 1360;         // "Aim yourself": launch speed at 0% and 100% plunger
+  var VFIX = 940;                      // arcade: every shot leaves the cannon at the same speed; only the angle changes
+  var ARC_LO = 60, ARC_HI = 86;        // arcade: the cannon sweeps between these angles
+  var PIV = { x: 70, y: -28 }, BARREL = 70;
   var WS = 1.5;                        // Willy's size
   var VW0 = 400;                       // world units across the screen at zoom 1
   var DT = 1 / 120, SUB = 2, HS = DT / SUB;
@@ -214,82 +216,96 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
 
   // ═══ City ═══════════════════════════════════════════════════════════════
-  var B = [], COL = [], cars = [], cans = [], lamps = [], ants = [], perches = [], jack = null, SEA_X = 2700, WORLD_END = 3200, citySeed = 1;
-  var PAL = [['#ec7f62', '#b9553f'], ['#5cbab2', '#3a8b84'], ['#f3c66c', '#c8973a'], ['#a08bdc', '#7660b8'], ['#f0a3b6', '#c97590'],
-             ['#73a8ea', '#4d7fc6'], ['#e3d6bd', '#b4a383'], ['#93d27e', '#64a552']];
-  var AWN = [['#e5263f', '#fff3e0'], ['#2f7dff', '#fff3e0'], ['#22a866', '#fff3e0'], ['#ff8a1f', '#fff3e0']];
-  var ADS = [['SODA POP', '#e5263f', '#fff'], ['DONUTS', '#ff8ab4', '#5a1838'], ['TACOS', '#ffc22e', '#5a2a00'], ['PIZZA', '#ff6a2b', '#fff'],
-             ['MOVIES', '#2b2d6e', '#ffd84a'], ['BURGERS', '#2fbf71', '#fff'], ['GYM', '#3a3a48', '#ffd84a'], ['ICE CREAM', '#7ad7ff', '#1b3d6b']];
+  // The arcade's playfield: seven brick high-rises in a row, each paying a set number of tickets for a
+  // landing on its roof (25, 35, 100, the 500 jackpot in the middle, 100, 35, 25). Anywhere else, the
+  // street, the gaps between buildings or the bay, pays 5.
+  var BVAL0 = [25, 35, 100, 500, 100, 35, 25], STREET_T = 5;
+  //           width, height (the far right one is the giant)
+  var BSPEC = [[84, 190], [76, 330], [80, 300], [92, 350], [80, 315], [76, 365], [90, 520]];
+  var CITY_X0 = 330, GAP = 48;
+  var B = [], COL = [], cars = [], cans = [], lamps = [], ants = [], chims = [], perches = [], SEA_X = 1560, WORLD_END = 2100, citySeed = 1;
+  var jpI = 3, jpB = null, jpLevel = 0, jpMoved = false;
+  var BRICK = [['#a4563c', '#7e3f2b'], ['#9a4b36', '#743624'], ['#b0623f', '#86472d'], ['#94503a', '#6e3a29']];
+  var AWN = [['#e5263f', '#fff3e0'], ['#e5263f', '#fff3e0'], ['#2f7dff', '#fff3e0'], ['#22a866', '#fff3e0']];
+  // made-up ads (the cabinet's billboards advertise other arcade games)
+  var ADS = [['ROLL-A-BALL', '#2f9a4a', '#fff4c8'], ['PICK THE LOCK', '#1f6f78', '#e8fbff'], ['PIZZA', '#ff6a2b', '#fff'], ['SODA POP', '#e5263f', '#fff'],
+             ['TICKETS!', '#ffc22e', '#7a1020'], ['MOVIES', '#2b2d6e', '#ffd84a']];
   var CARC = ['#e5263f', '#2f7dff', '#ffc22e', '#22b866', '#8b55ff', '#ff7a29', '#e8e8f0'];
   function buildCity(seed) {
     var R = rng(seed);
-    B = []; COL = []; cars = []; cans = []; lamps = []; ants = []; perches = [];
-    var x = 250, last = -1, adI = (R() * ADS.length) | 0;
-    while (x < 2140) {
-      var tt = (x - 250) / 1890, w = Math.round(132 + R() * 96), h = Math.round(118 + R() * 100 + tt * 175), pi;
-      do { pi = (R() * PAL.length) | 0; } while (pi === last); last = pi;
-      var b = mkB(x, w, h, PAL[pi], R, false);
-      // rooftop props: tall things sit behind the pad (they catch an overshoot), low ones in front
-      var rx0 = b.padX + b.hw + 8, rx1 = b.x1 - 8, room = rx1 - rx0;
-      if (room >= 40 && R() < .45) { var cx = rx0 + room / 2; var tk = { x0: cx - 16, x1: cx + 16, y0: -h - 50, y1: -h - 20, k: 'tank', leak: 0, wob: 0 }; COL.push(tk); b.props.push(tk); }
-      else if (room >= 58) { var bw = Math.min(78, room), ad = ADS[adI++ % ADS.length]; var bl = { x0: rx1 - bw, x1: rx1, y0: -h - 54, y1: -h - 18, k: 'bill', ad: ad, ang: 0, av: 0 }; COL.push(bl); b.props.push(bl); }
-      else if (room >= 20) { var ax = rx0 + (room - 18) * R(); var ac = { x0: ax, x1: ax + 18, y0: -h - 12, y1: -h, k: 'ac' }; COL.push(ac); b.props.push(ac); }
-      var lx0 = b.x0 + 9, lx1 = b.padX - b.hw - 8;
-      if (lx1 - lx0 > 24 && R() < .55) { var ax2 = lx0 + (lx1 - lx0 - 20) * R(); var ac2 = { x0: ax2, x1: ax2 + 20, y0: -h - 11, y1: -h, k: 'ac' }; COL.push(ac2); b.props.push(ac2); }
-      // a TV antenna on about half the roofs, clear of the pad and the other props (it bends, it doesn't block)
-      if (R() < .55) {
-        var spots = [b.x0 + 14 + R() * 20, b.x1 - 14 - R() * 20, b.padX + (R() < .5 ? -1 : 1) * (b.hw + 12)];
-        for (var si = 0; si < spots.length; si++) {
-          var sx = spots[si];
-          if (Math.abs(sx - b.padX) < b.hw + 8 || sx < b.x0 + 10 || sx > b.x1 - 10) continue;
-          if (b.props.some(function (pp) { return sx > pp.x0 - 8 && sx < pp.x1 + 8; })) continue;
-          ants.push({ x: sx, y: -h, h: 30 + R() * 12, ang: 0, av: 0, bent: 0, cool: 0, hs: -1, ph: R() * 6 }); break;
-        }
-      }
-      perches.push({ x: b.x0 + 6, y: -h - 6 }); if (R() < .5) perches.push({ x: b.x0 + 14, y: -h - 6 });
+    B = []; COL = []; cars = []; cans = []; lamps = []; ants = []; chims = []; perches = [];
+    var x = CITY_X0, adI = (R() * ADS.length) | 0, left0 = false;
+    BSPEC.forEach(function (sp, i) {
+      var b = mkB(i, x, sp[0], sp[1], BRICK[(i + (R() * 2 | 0)) % BRICK.length], R);
+      // rooftop clutter near the edges, leaving the middle of each roof clear to land on
+      var kinds = i === 6 ? ['tank', 'bill'] : [['chim', 'dish', 'solar', 'acrow', 'ant', 'bill'][(R() * 6) | 0], ['chim', 'dish', 'acrow', 'ant', 'solar'][(R() * 5) | 0]];
+      if (kinds[0] === kinds[1]) kinds.pop();
+      kinds.forEach(function (k, n) {
+        var left = n === 0 ? R() < .5 : !left0, cx = left ? b.x0 + 16 : b.x1 - 16;
+        if (n === 0) left0 = left;
+        addProp(b, k, cx, left, R, ADS[adI++ % ADS.length]);
+      });
+      perches.push({ x: b.x0 + 6, y: b.y0 - 6 }); if (R() < .5) perches.push({ x: b.x1 - 8, y: b.y0 - 6 });
       if (b.awn) perches.push({ x: b.awn.x0 + 8, y: b.awn.y0 });
       B.push(b);
-      x += w + Math.round(38 + R() * 48);
+      x += sp[0] + GAP;
+    });
+    var cityX1 = x - GAP;
+    SEA_X = cityX1 + 380; WORLD_END = SEA_X + 560;
+    // street furniture: lamps in the open street and some gaps, a car each side of the city, trash cans in gaps
+    [CITY_X0 - 90, cityX1 + 70, cityX1 + 250].forEach(function (lx) { lamps.push(mkLamp(lx)); if (R() < .5) perches.push({ x: lx + 12, y: -88 }); });
+    for (var gi = 0; gi < 6; gi++) {
+      var gx = B[gi].x1, roll = R();
+      if (roll < .35) lamps.push(mkLamp(gx + 14));
+      else if (roll < .75) { var can = { x: gx + 16 + R() * 10, knocked: 0 }; cans.push(can); COL.push({ x0: can.x, x1: can.x + 15, y0: -21, y1: 0, k: 'can', can: can }); }
     }
-    jack = mkB(Math.max(x + 20, 2320), 156, 560, ['#2f7392', '#1f4f68'], R, true);
-    B.push(jack); perches.push({ x: jack.x0 + 6, y: jack.y0 - 6 });
-    SEA_X = jack.x1 + 130; WORLD_END = SEA_X + 560;
-    // Street furniture
-    for (var lx = 190; lx < SEA_X - 40; lx += 175 + R() * 40) { lamps.push({ x: lx, out: 0, ang: 0, av: 0, cool: 0, hs: -1 }); if (R() < .4) perches.push({ x: lx + 12, y: -86 }); }
-    var cx2 = 170 + R() * 120;
-    while (cx2 < SEA_X - 90) {
-      if (R() < .62) { var car = { x: cx2, c: CARC[(R() * CARC.length) | 0], alarm: 0, bob: 0, flip: R() < .5, dent: 0, crack: 0 }; cars.push(car); COL.push({ x0: cx2, x1: cx2 + 60, y0: -25, y1: -8, k: 'car', car: car }); cx2 += 60; }
-      else { var can = { x: cx2, knocked: 0 }; cans.push(can); COL.push({ x0: cx2, x1: cx2 + 15, y0: -21, y1: 0, k: 'can', can: can }); cx2 += 15; }
-      cx2 += 120 + R() * 170;
-    }
+    [CITY_X0 - 210, cityX1 + 130].forEach(function (cx) { var car = { x: cx, c: CARC[(R() * CARC.length) | 0], alarm: 0, bob: 0, flip: R() < .5, dent: 0, crack: 0 }; cars.push(car); COL.push({ x0: cx, x1: cx + 60, y0: -25, y1: -8, k: 'car', car: car }); });
     COL.push({ x0: -3000, x1: SEA_X, y0: 0, y1: 4000, k: 'ground' });
     COL.push({ x0: -3000, x1: -70, y0: -4000, y1: 4000, k: 'ground' });
     COL.forEach(function (c, i) { c.id = i; c.cool = 0; c.wob = c.wob || 0; c.dent = 0; c.rest = 0; c.dead = 0; c.lean = 0; });
   }
-  function mkB(x, w, h, pal, R, isJack) {
-    var b = { x0: x, x1: x + w, y0: -h, y1: 0, w: w, h: h, c: pal[0], c2: pal[1], jack: isJack, wins: [], props: [], cracks: [], touch: null, awn: null, deco: (R() * 3) | 0 };
-    var cw = isJack ? 26 : 24, cols = Math.max(2, Math.floor((w - 26) / cw)), ox = x + (w - cols * cw) / 2 + (cw - 13) / 2;
-    var top = -h + 24, bot = -44, rows = Math.max(1, Math.floor((bot - top) / 30));
-    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
-      if (isJack && c === 2) continue;   // the sign runs down the middle
-      b.wins.push({ x: ox + c * cw, y: top + r * 30, w: 13, h: 18, lit: R() < .55, warm: R() < .7, col: c, broken: 0 });
-    }
-    b.padX = x + w * (isJack ? .4 : .38 + R() * .1); b.hw = Math.round(Math.min(isJack ? 36 : 56, w * .3));
+  function mkLamp(x) { return { x: x, out: 0, ang: 0, av: 0, cool: 0, hs: -1 }; }
+  function addProp(b, k, cx, left, R, ad) {
+    var y = b.y0, c;
+    if (k === 'chim') { c = { x0: cx - 7, x1: cx + 7, y0: y - 26, y1: y, k: 'chim', smoke: R() * 3 }; chims.push(c); }
+    else if (k === 'solar') c = { x0: cx - 15, x1: cx + 15, y0: y - 10, y1: y, k: 'solar', crack: 0, tilt: left ? 1 : -1 };
+    else if (k === 'acrow') { var x0 = left ? b.x0 + 7 : b.x1 - 7 - 34; [0, 17].forEach(function (o) { var a = { x0: x0 + o, x1: x0 + o + 16, y0: y - 11, y1: y, k: 'ac' }; COL.push(a); b.props.push(a); }); return; }
+    else if (k === 'tank') c = { x0: cx - 16, x1: cx + 16, y0: y - 50, y1: y - 20, k: 'tank', leak: 0, wob: 0 };
+    else if (k === 'bill') { var bw = 58, bx0 = left ? b.x0 + 4 : b.x1 - 4 - bw; c = { x0: bx0, x1: bx0 + bw, y0: y - 52, y1: y - 18, k: 'bill', ad: ad, ang: 0, av: 0 }; }
+    else { ants.push({ x: cx, y: y, h: k === 'dish' ? 22 : 30 + R() * 12, ang: 0, av: 0, bent: 0, cool: 0, hs: -1, ph: R() * 6, dish: k === 'dish', face: left ? 1 : -1 }); return; }
+    COL.push(c); b.props.push(c);
+  }
+  function mkB(i, x, w, h, pal, R) {
+    var b = { idx: i, x0: x, x1: x + w, y0: -h, y1: 0, w: w, h: h, c: pal[0], c2: pal[1], wins: [], props: [], cracks: [], touch: null, awn: null, val: BVAL0[i],
+      fe: R() < .6 ? (R() < .5 ? -1 : 1) : 0 };
+    // a tight grid of windows, like the arcade's brick towers
+    var cw = 17, cols = Math.max(2, Math.floor((w - 14) / cw)), ox = x + (w - cols * cw) / 2 + (cw - 11) / 2;
+    var top = -h + 40, bot = -40, rows = Math.max(1, Math.floor((bot - top) / 26));
+    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) b.wins.push({ x: ox + c * cw, y: top + r * 26, w: 11, h: 15, lit: R() < .18, col: c, broken: 0 });
+    b.padX = x + w / 2; b.hw = Math.round(w * .32);
     COL.push({ x0: x, x1: x + w, y0: -h, y1: 0, k: 'b', b: b });
-    // roof-edge curbs sit flush with the walls: nothing overhangs for a hand to hook over
-    COL.push({ x0: x, x1: x + 7, y0: -h - 6, y1: -h, k: 'lip', b: b });
-    COL.push({ x0: x + w - 7, x1: x + w, y0: -h - 6, y1: -h, k: 'lip', b: b });
-    if (!isJack && R() < .55) { var a = { x0: x - 30, x1: x, y0: -40, y1: -33, k: 'awn', col: AWN[(R() * AWN.length) | 0], sq: 0 }; COL.push(a); b.awn = a; }
+    // roof-edge curbs sit flush with the walls: nothing overhangs for a hand to hook over. The jackpot roof
+    // has none (see startShot), so a sloppy landing there slides right off, as in the arcade.
+    b.lips = [{ x0: x, x1: x + 6, y0: -h - 5, y1: -h, k: 'lip', b: b }, { x0: x + w - 6, x1: x + w, y0: -h - 5, y1: -h, k: 'lip', b: b }];
+    b.lips.forEach(function (l) { COL.push(l); });
+    if (R() < .45) { var a = { x0: x - 26, x1: x, y0: -40, y1: -33, k: 'awn', col: AWN[(R() * AWN.length) | 0], sq: 0 }; COL.push(a); b.awn = a; }
     return b;
+  }
+  // Where the jackpot sits this shot, and what every roof pays
+  function placeJackpot() {
+    B.forEach(function (b, i) { b.val = BVAL0[i]; });
+    if (jpI !== 3) { B[3].val = BVAL0[jpI]; B[jpI].val = 500; }
+    jpB = B[jpI];
+    B.forEach(function (b) { b.lips.forEach(function (l) { l.off = b === jpB; }); });
   }
 
   // ═══ State ══════════════════════════════════════════════════════════════
-  var state = 'idle', paused = false, live = false, who = 'Player';
-  var shotIdx = 0, shots = [], total = 0, best0 = 0, tgt = null, wind = 0, cur = null, started = 0;
-  var angle = 45, sweepT = 0, depth = 0, plVis = 0, drag = null, keyHold = false, lastPow = -1, lastAng = -1, lastTick = 0, firstFire = true;
+  var state = 'idle', paused = false, live = false, who = 'Player', aimMode = 'arcade';
+  var shotIdx = 0, shots = [], total = 0, best0 = 0, wind = 0, cur = null, started = 0;
+  var angle = 70, sweepT = 0, depth = 0, plVis = 0, drag = null, keyHold = false, lastPow = -1, lastAng = -1, lastTick = 0, firstFire = true;
   var cam = { x: 200, y: -200, z: 1 }, camFrom = null, introT = 0, resultT = 0, flightT = 0;
   var t = 0, shake = 0, flash = 0, recoil = 0, timeScale = 1, slowHold = 0, slowOn = false, testSpeed = 1;
-  var rag = null, parts = [], pops = [], picks = [], pigeons = [], flock = [], lastLand = [], res = null, trail = [];
+  var rag = null, parts = [], pops = [], pigeons = [], flock = [], lastLand = [], res = null, trail = [];
   var lastThud = 0, lastBonk = 0, lastScrape = 0, lastCrunch = 0, hitStop = 0;
 
   function bestScore() { return ArcadeHi.best(HI); }
@@ -303,48 +319,32 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function newGame() {
     citySeed = (Date.now() ^ (Math.random() * 1e9)) | 0;
     buildCity(citySeed);
+    jpI = 3; jpLevel = 0; jpMoved = false;
     shotIdx = 0; shots = []; total = 0; best0 = bestScore(); lastPow = -1; lastAng = -1; lastLand = []; firstFire = true;
     started = Date.now(); Kit.gameStart(); Kit.resume.clear();
     parts = []; pops = []; rag = null;
-    var c = camAim(); cam.x = c.x; cam.y = c.y; cam.z = 1;
+    var c = camOverview(); cam.x = c.x; cam.y = c.y; cam.z = c.z;
     hud(); startShot();
   }
-  // Each shot: a target building further out, plus stars along a good path
-  var BANDS = [[380, 640], [620, 960], [900, 1300], [1250, 1700], [1600, 2140]];
   function startShot() {
-    var R = rng(citySeed + shotIdx * 7919), band = BANDS[Math.min(shotIdx, BANDS.length - 1)];
-    var pool = B.filter(function (b) { return !b.jack && b.padX - PIV.x >= band[0] && b.padX - PIV.x <= band[1] && !shots.some(function (s) { return s.tb === B.indexOf(b); }); });
-    if (!pool.length) pool = B.filter(function (b) { return !b.jack; });
-    tgt = pool[(R() * pool.length) | 0];
-    wind = shotIdx >= 2 ? Math.round((R() * 2 - 1) * (10 + shotIdx * 4)) : 0;
-    if (Math.abs(wind) < 5) wind = 0;
+    var R = rng(citySeed + shotIdx * 7919);
+    placeJackpot();
     B.forEach(function (b) { b.touch = null; });
     COL.forEach(function (c) { c.hitShot = -1; c.cool = 0; });
     ants.forEach(function (a) { a.hs = -1; a.cool = 0; }); lamps.forEach(function (l) { l.hs = -1; l.cool = 0; });
     hitStop = 0;
     cans.forEach(function (c) { c.knocked = 0; });
-    cur = { n: shotIdx + 1, tb: B.indexOf(tgt), angle: 0, power: 0, land: '', name: '', landPts: 0, crash: 0, stars: 0, x2: false, total: 0,
-      ev: { win: 0, pig: 0, bird: 0, bill: 0, tank: 0, car: 0, can: 0, awn: 0, splat: 0, oof: 0, ac: 0, ant: 0, lamp: 0 } };
+    cur = { n: shotIdx + 1, jb: jpI, speed: jpLevel, angle: 0, power: 0, land: '', bi: -1, name: '', tickets: 0, total: 0,
+      ev: { win: 0, pig: 0, bird: 0, bill: 0, tank: 0, car: 0, can: 0, awn: 0, splat: 0, oof: 0, ac: 0, ant: 0, lamp: 0, chim: 0, solar: 0 } };
     rag = null; res = null; trail = [];
-    // stars along a mid-height arc to the pad, and a 2X balloon from the second shot on
-    picks = [];
-    var aDeg = 44 + R() * 14, sol = solve(tgt.padX, tgt.y0 - 16, aDeg);
-    if (sol) {
-      var a = aDeg * PI / 180, vx = Math.cos(a) * sol.v, vy = -Math.sin(a) * sol.v, st = pelStart(a);
-      var T = (tgt.padX - st.x) / vx;
-      [.3, .52, .74].forEach(function (f, i) {
-        var tt = T * f; if (i === 1 && R() < .35) return;
-        picks.push({ k: 'star', x: st.x + vx * tt + (R() - .5) * 30, y: st.y + vy * tt + .5 * G * tt * tt + (R() - .5) * 50, got: 0, ph: R() * 6 });
-      });
-      if (shotIdx >= 1 && R() < .55) { var t2 = T * (.45 + R() * .2); picks.push({ k: 'x2', x: st.x + vx * t2, y: st.y + vy * t2 + .5 * G * t2 * t2 - 70 - R() * 50, got: 0, ph: R() * 6 }); }
-    }
-    // pigeons back on their perches, and a flock crossing the sky
+    // pigeons back on their perches, and a few birds crossing the sky
     pigeons = [];
     perches.forEach(function (p) { if (R() < .45) pigeons.push({ x: p.x, y: p.y, st: 0, vx: 0, vy: 0, f: R() < .5 ? 1 : -1, ph: R() * 6, hit: 0 }); });
     flock = [];
-    if (R() < .7) { var fy = -260 - R() * 300, fx = 300 + R() * Math.max(200, tgt.padX - 400); for (var i = 0; i < 5; i++) flock.push({ x: fx + i * 22 - (i % 2) * 10, y: fy + (i % 3) * 14 - i * 4, vx: 38, ph: R() * 6, hit: 0 }); }
+    if (R() < .7) { var fy = -420 - R() * 300, fx = 300 + R() * 500; for (var i = 0; i < 5; i++) flock.push({ x: fx + i * 22 - (i % 2) * 10, y: fy + (i % 3) * 14 - i * 4, vx: 38, ph: R() * 6, hit: 0 }); }
     state = 'intro'; introT = 0; camFrom = { x: cam.x, y: cam.y, z: cam.z };
-    angle = 45; sweepT = 0; depth = 0; drag = null; keyHold = false;
+    // the cannon starts each shot at the top of its swing
+    angle = aimMode === 'arcade' ? ARC_HI : 45; sweepT = 0; depth = 0; drag = null; keyHold = false;
     timeScale = 1; slowOn = false; slowHold = 0;
     Snd.swoosh();
     hud(); kick();
@@ -352,7 +352,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function toAim() { if (state !== 'intro') return; state = 'aim'; sweepT = 0; }
   // Where Willy's hips start for a given barrel angle
   function pelStart(a) { var mx = PIV.x + Math.cos(a) * BARREL, my = PIV.y - Math.sin(a) * BARREL; return { x: mx - Math.cos(a) * 22 * WS, y: my + Math.sin(a) * 22 * WS }; }
-  // Launch speed (and plunger power) that carries the hips to (tx, ty) at this angle: ballistic, no wind
+  // Launch speed (and plunger power) that carries the hips to (tx, ty) at this angle: ballistic
   function solve(tx, ty, aDeg) {
     var a = aDeg * PI / 180, c = Math.cos(a), s = Math.sin(a), st = pelStart(a);
     var dx = tx - st.x, dy = st.y - ty, den = 2 * c * c * (dx * s / c - dy);
@@ -360,12 +360,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var v = Math.sqrt(G * dx * dx / den);
     return { v: v, p: (v - VMIN) / (VMAX - VMIN) };
   }
-  function sweepPeriod() { return 2.7 - shotIdx * .14; }
+  // Arcade: the cannon swings steadily up and down; each jackpot speeds it up for the following shots
+  // (one notch per jackpot, easing back a notch after each shot that misses it).
+  function sweepPeriod() { return aimMode === 'arcade' ? 3.6 / Math.pow(1.3, jpLevel) : 2.7 - shotIdx * .14; }
 
   // ═══ Ragdoll (verlet) ═══════════════════════════════════════════════════
   var HEAD = 0, NECK = 1, PEL = 2, LE = 3, LH = 4, RE = 5, RH = 6, LK = 7, LF = 8, RK = 9, RF = 10;
-  var STAND = [[0, -22], [0, -14], [0, 0], [-6, -7], [-8, 1], [6, -7], [8, 1], [-3, 9], [-3, 18], [3, 9], [3, 18]];
-  var FLY = [[0, -22], [0, -14], [0, 0], [-5, -20], [-4, -29], [5, -20], [4, -29], [-3, 9], [-4, 18], [3, 9], [4, 18]];
+  // A lanky build: long noodly arms and legs, like the arcade's Willy
+  var STAND = [[0, -23], [0, -14], [0, 0], [-6, -6], [-8, 3], [6, -6], [8, 3], [-3, 11], [-3, 22], [3, 11], [3, 22]];
+  var FLY = [[0, -23], [0, -14], [0, 0], [-5, -22], [-4, -32], [5, -22], [4, -32], [-3, 11], [-4, 22], [3, 11], [4, 22]];
   var RADS = [8, 4, 6, 3.5, 4, 3.5, 4, 4, 4.5, 4, 4.5];
   // Weight per body part, roughly a real body (and how a Unity ragdoll like the arcade's splits it):
   // chest + hips about half, helmeted head a tenth, legs a third, arms the rest.
@@ -378,7 +381,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var DRAGK = 1;
   var MTOT = MASS.reduce(function (a, b) { return a + b; }, 0);
   var LINKS = [[0, 1], [1, 2], [0, 2], [1, 3], [3, 4], [1, 5], [5, 6], [2, 7], [7, 8], [2, 9], [9, 10]];
-  var MINS = [[7, 9, 4], [8, 10, 3], [3, 2, 8], [5, 2, 8], [4, 0, 7], [6, 0, 7], [7, 1, 15], [9, 1, 15], [8, 2, 9], [10, 2, 9], [4, 2, 5], [6, 2, 5]];
+  var MINS = [[7, 9, 4], [8, 10, 3], [3, 2, 8], [5, 2, 8], [4, 0, 7], [6, 0, 7], [7, 1, 16], [9, 1, 16], [8, 2, 11], [10, 2, 11], [4, 2, 5], [6, 2, 5]];
   var CONS = (function () {
     function d(a, b) { var dx = STAND[a][0] - STAND[b][0], dy = STAND[a][1] - STAND[b][1]; return Math.sqrt(dx * dx + dy * dy) * WS; }
     var L = LINKS.map(function (l) { return [l[0], l[1], d(l[0], l[1]), 0]; });
@@ -390,22 +393,25 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var hx = PIV.x + Math.cos(a) * (BARREL - 6), hy = PIV.y - Math.sin(a) * (BARREL - 6);
     var P = [], vx = Math.cos(a) * v, vy = -Math.sin(a) * v, spin = 2.4;
     for (var i = 0; i < 11; i++) {
-      var lx = FLY[i][0] * WS, ly = (FLY[i][1] + 22) * WS;
+      var lx = FLY[i][0] * WS, ly = (FLY[i][1] + 23) * WS;
       P.push({ x: hx + lx * cs - ly * sn, y: hy + lx * sn + ly * cs, px: 0, py: 0, r: RADS[i] * WS * .9, im: 1 / MASS[i] });
     }
     var c = P[PEL];
     P.forEach(function (p) { var rvx = -spin * (p.y - c.y), rvy = spin * (p.x - c.x); p.px = p.x - (vx + rvx) * HS; p.py = p.y - (vy + rvy) * HS; });
-    var sc = []; for (var k = 0; k < 5; k++) sc.push({ x: P[NECK].x - Math.cos(a) * k * 5, y: P[NECK].y + Math.sin(a) * k * 5, px: 0, py: 0 });
+    // his long hair: a short verlet strand hanging from the back of the helmet
+    var sc = []; for (var k = 0; k < 4; k++) sc.push({ x: P[HEAD].x - Math.cos(a) * k * 4, y: P[HEAD].y + Math.sin(a) * k * 4, px: 0, py: 0 });
     sc.forEach(function (q) { q.px = q.x - vx * HS; q.py = q.y - vy * HS; });
     return { P: P, sc: sc, t: 0, airT: 1, sticky: false, landed: false, pinT: 0, noCol: false, restT: 0, wet: false, wetT: 0, dance: null, mood: 'yell', face: 1, splatted: false, dizzy: 0, roofB: null, done: false };
   }
   // Surfaces: r = bounce, mu = sliding friction (Coulomb: grip scales with how hard he is pressed into
   // the surface, so a hard landing bites and a glancing one skids; a wall he is only brushing can't hold him).
   var MAT = {
+    chim: { r: .3, mu: .5 }, solar: { r: .35, mu: .3 },
     b: { r: .26, mu: .65 }, lip: { r: .3, mu: .55 }, ac: { r: .38, mu: .4 }, tank: { r: .38, mu: .35 },
     bill: { r: .45, mu: .4 }, awn: { r: .45, mu: .3 }, car: { r: .5, mu: .35 }, can: { r: .3, mu: .45 }, ground: { r: .3, mu: .6 }
   };
-  var WALL_MU = .3;     // side faces are smooth: he slides down them, he doesn't climb or cling
+  var WALL_MU = .3;
+  var JP_MU = .3;       // the jackpot's painted bullseye is slick, and its roof has no curbs: land soft or slide off     // side faces are smooth: he slides down them, he doesn't climb or cling
   var cands = [];
   function ragStep(h) {
     var R = rag, P = R.P, i, p, h2 = h * h;
@@ -443,7 +449,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     // candidate colliders near the body
     var x0 = 1e9, x1 = -1e9; for (i = 0; i < 11; i++) { if (P[i].x < x0) x0 = P[i].x; if (P[i].x > x1) x1 = P[i].x; if (P[i].px < x0) x0 = P[i].px; if (P[i].px > x1) x1 = P[i].px; }
     cands.length = 0;
-    if (!R.noCol) for (i = 0; i < COL.length; i++) { var c = COL[i]; if (c.x1 >= x0 - 20 && c.x0 <= x1 + 20) cands.push(c); }
+    if (!R.noCol) for (i = 0; i < COL.length; i++) { var c = COL[i]; if (!c.off && c.x1 >= x0 - 20 && c.x0 <= x1 + 20) cands.push(c); }
     for (i = 0; i < 11; i++) collideP(P[i], i, h, true);
     for (var it = 0; it < 4; it++) {
       for (var k = 0; k < CONS.length; k++) {
@@ -456,15 +462,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     }
     scarfStep(h);
   }
+  function hairRoot(R) {
+    // the back of his head, just under the helmet rim
+    var hd = R.P[HEAD], nk = R.P[NECK], ux = hd.x - nk.x, uy = hd.y - nk.y, l = Math.sqrt(ux * ux + uy * uy) || 1;
+    ux /= l; uy /= l;
+    return { x: hd.x - uy * R.face * -4 * WS - ux * 1 * WS, y: hd.y + ux * R.face * -4 * WS - uy * 1 * WS };
+  }
   function scarfStep(h) {
-    var R = rag, sc = R.sc, n = R.P[NECK], h2 = h * h;
+    var R = rag, sc = R.sc, n = hairRoot(R), h2 = h * h;
     sc[0].x = n.x; sc[0].y = n.y; sc[0].px = n.x; sc[0].py = n.y;
     for (var i = 1; i < sc.length; i++) {
       var q = sc[i], vx = (q.x - q.px) * .985, vy = (q.y - q.py) * .985;
       q.px = q.x; q.py = q.y; q.x += vx + wind * h2; q.y += vy + G * .35 * h2;
     }
     for (var it = 0; it < 2; it++) for (var j = 1; j < sc.length; j++) {
-      var a = sc[j - 1], b = sc[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1, df = (d - 6 * WS) / d;
+      var a = sc[j - 1], b = sc[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1, df = (d - 4 * WS) / d;
       if (j === 1) { b.x -= dx * df; b.y -= dy * df; } else { a.x += dx * df * .5; a.y += dy * df * .5; b.x -= dx * df * .5; b.y -= dy * df * .5; }
     }
     // the scarf lies on roofs and the street instead of hanging through them
@@ -514,7 +526,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (vn >= 0) { p.px = p.x - vx; p.py = p.y - vy; return; }
     var face = ny <= -.6 ? 'top' : ny >= .6 ? 'bot' : nx < 0 ? 'left' : 'right';
     var sp = -vn / h, e = sp < 60 ? 0 : mat.r + (pi === HEAD ? .12 : 0);   // the helmet bounces a little more
-    var mu = face === 'top' ? mat.mu * (rag.sticky ? 2.2 : 1) : Math.min(mat.mu, WALL_MU);
+    var mu = face === 'top' ? (c.k === 'b' && c.b === jpB ? JP_MU : mat.mu * (rag.sticky ? 2.2 : 1)) : Math.min(mat.mu, WALL_MU);
     var tx = vx - vn * nx, ty = vy - vn * ny, tl = Math.sqrt(tx * tx + ty * ty);
     var k = tl > 1e-9 ? Math.max(0, 1 - mu * -vn * (1 + e) / tl) : 0;
     p.px = p.x - (tx * k - e * vn * nx); p.py = p.y - (ty * k - e * vn * ny);
@@ -523,10 +535,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
 
   // ═══ Things Willy hits ══════════════════════════════════════════════════
+  // Tickets only come from where Willy ends up (as in the arcade); the things he smashes on the way get
+  // a word, not points.
   function award(pts, x, y, label, col) {
-    if (!cur) return;
-    cur.crash += pts;
-    addPop(x, y, (label ? label + ' ' : '') + '+' + pts, col || '#fff', 1.3);
+    if (!cur || !label) return;
+    addPop(x, y, label + '!', col || '#fff', 1.1);
   }
   // floating score text; a new one steps up above any still rising nearby so they never stack
   function addPop(x, y, txt, col, life) {
@@ -645,6 +658,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
           if (once) { c.hitShot = shotIdx; cur.ev.can++; award(15, p.x, c.y0 - 14, 'Trash can', '#c8f07a'); }
         }
         break;
+      case 'chim':
+        if (sp > 160) {
+          c.cool = t + .3; crunch(Math.min(1, sp / 600)); c.puff = 1;
+          chips(p.x, p.y, Math.min(9, 3 + sp / 120), '#9c4a34', face === 'left' ? PI : face === 'right' ? 0 : -PI / 2, sp * .35);
+          for (var sm = 0; sm < 8; sm++) parts.push({ k: 'smoke', x: (c.x0 + c.x1) / 2 + (Math.random() - .5) * 8, y: c.y0, vx: (Math.random() - .5) * 60, vy: -40 - Math.random() * 70, life: 1.2, max: 1.6, s: 5 + Math.random() * 5, c: '#6c6872' });
+          if (once) { c.hitShot = shotIdx; cur.ev.chim++; award(0, p.x, c.y0 - 14, 'Chimney', '#ffb08a'); }
+        }
+        break;
+      case 'solar':
+        if (sp > 140) {
+          c.cool = t + .3; c.crack = Math.min(3, c.crack + 1); Snd.zap(); Snd.glass(); sparks(p.x, c.y0 + 2, 8);
+          for (var sg2 = 0; sg2 < 8; sg2++) parts.push({ k: 'glass', x: p.x + (Math.random() - .5) * 16, y: c.y0, vx: (Math.random() - .5) * 180, vy: -60 - Math.random() * 150, life: 1, max: 1, s: 1.5 + Math.random() * 2, rot: Math.random() * 6, vr: (Math.random() - .5) * 24 });
+          if (once) { c.hitShot = shotIdx; cur.ev.solar++; award(0, p.x, c.y0 - 14, 'Zap', '#9fd8ff'); }
+        }
+        break;
       case 'ac':
         if (sp > 150) {
           c.cool = t + .3; c.wob = 1; c.dent = Math.min(1, c.dent + sp / 1000); Snd.clang(); crunch(.5);
@@ -673,7 +701,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         a.cool = t + .25; a.av += (vx > 0 ? 1 : -1) * Math.min(7, sp / 110);
         if (sp > 520) a.bent = clamp(a.bent + (vx > 0 ? 1 : -1) * .35, -.7, .7);
         knock(q, .88); Snd.twang(); sparks(a.x + Math.sin(tip) * a.h, a.y - a.h, 5, 160);
-        if (a.hs !== shotIdx) { a.hs = shotIdx; cur.ev.ant++; award(15, a.x, a.y - a.h - 14, 'Antenna', '#d8e6ff'); }
+        if (a.hs !== shotIdx) { a.hs = shotIdx; cur.ev.ant++; award(15, a.x, a.y - a.h - 14, a.dish ? 'Dish' : 'Antenna', '#d8e6ff'); }
         break;
       }
     });
@@ -702,8 +730,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     // the landing spot is where his body (centre of mass) is when he first touches, not whichever hand or boot got there first
     if (!b.touch) { var cx = 0; for (var i = 0; i < 11; i++) cx += R.P[i].x * MASS[i]; b.touch = { x: clamp(cx / MTOT, b.x0, b.x1) }; }
     R.roofB = b;
-    if ((b === tgt || b === jack) && !R.landed) {
-      R.landed = true; R.sticky = true; slowHold = .55;
+    if (!R.landed) {
+      // ordinary roofs grip a landing; the jackpot's slick pad doesn't
+      R.landed = true; R.sticky = b !== jpB; slowHold = b === jpB ? .55 : .3;
       dust(p.x, b.y0, 10, 'top');
     }
   }
@@ -716,7 +745,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       var w = col0[i]; if (Math.abs(w.y + 9 - y) > 46) break;
       w.broken = 1; got++;
       for (var k = 0; k < 14; k++) parts.push({ k: 'glass', x: w.x + Math.random() * w.w, y: w.y + Math.random() * w.h, vx: out * (40 + Math.random() * 200), vy: -120 + Math.random() * 160, life: 1.3, max: 1.3, s: 2 + Math.random() * 3.5, rot: Math.random() * 6, vr: (Math.random() - .5) * 24 });
-      cur.ev.win++; award(25, w.x, w.y - 6, 'Window', '#bfe9ff');
+      cur.ev.win++; award(25, w.x, w.y - 6, 'Smash', '#bfe9ff');
     }
     if (got) { Snd.glass(); Kit.haptic('light'); }
   }
@@ -747,14 +776,19 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
 
   // ═══ Fire! ══════════════════════════════════════════════════════════════
-  function curAngle() { return 45 + 30 * Math.sin(sweepT * TAU / sweepPeriod()); }
+  // Arcade: a steady swing between ARC_HI and ARC_LO (starting at the top). Aim yourself: the original wide sine sweep.
+  function curAngle() {
+    var u = sweepT / sweepPeriod();
+    if (aimMode === 'arcade') { u -= Math.floor(u); var tri = u < .5 ? u * 2 : 2 - u * 2; return ARC_HI - (ARC_HI - ARC_LO) * tri; }
+    return 52 + 28 * Math.sin(u * TAU);
+  }
   function fire(aDeg, pow) {
     if (state !== 'aim') return;
     pow = clamp(pow, 0, 1); Snd.unlock(); Snd.fuse(0);
-    var a = aDeg * PI / 180, v = VMIN + pow * (VMAX - VMIN);
+    var a = aDeg * PI / 180, v = aimMode === 'arcade' ? VFIX : VMIN + pow * (VMAX - VMIN);
     rag = makeRag(a, v);
-    cur.angle = Math.round(aDeg); cur.power = Math.round(pow * 100);
-    lastPow = pow; lastAng = aDeg; angle = aDeg;
+    cur.angle = Math.round(aDeg); cur.power = aimMode === 'arcade' ? 0 : Math.round(pow * 100);
+    lastPow = aimMode === 'arcade' ? -1 : pow; lastAng = aDeg; angle = aDeg;
     state = 'flight'; flightT = 0; recoil = 1; flash = .5; shake = 9; depth = 0; plVis = 1; firstFire = false;
     var mx = PIV.x + Math.cos(a) * (BARREL + 6), my = PIV.y - Math.sin(a) * (BARREL + 6);
     for (var i = 0; i < 22; i++) { var sa = a + (Math.random() - .5) * .9, s = 60 + Math.random() * 260; parts.push({ k: 'smoke', x: mx, y: my, vx: Math.cos(sa) * s, vy: -Math.sin(sa) * s - 20, life: 1 + Math.random() * .8, max: 1.8, s: 7 + Math.random() * 9 }); }
@@ -791,21 +825,30 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if (c.k === 'ac' && c.wob) c.wob = Math.max(0, c.wob - dt * 2.5);
       if (c.k === 'awn' && c.sq) c.sq = Math.max(0, c.sq - dt * 3);
     });
+    // chimney smoke: a lazy grey plume drifting off to the right (a bigger burst after he hits one)
+    chims.forEach(function (c) {
+      c.smoke -= dt;
+      if (c.smoke <= 0) {
+        c.smoke = c.puff > 0 ? .06 : .28; if (c.puff) c.puff = Math.max(0, c.puff - .08);
+        parts.push({ k: 'smoke', x: (c.x0 + c.x1) / 2 + (Math.random() - .5) * 4, y: c.y0 - 2, vx: 10 + Math.random() * 14, vy: -26 - Math.random() * 16, life: 2.2, max: 2.6, s: 3 + Math.random() * 2.5, c: 'rgba(110,104,116,.75)' });
+      }
+    });
     cars.forEach(function (c) { if (c.alarm > 0) c.alarm -= dt; if (c.bob > 0) c.bob = Math.max(0, c.bob - dt * 2.5); });
-    // springy antennas and swaying lamp posts
+    // springy antennas and dishes, swaying lamp posts
     ants.forEach(function (a) { if (a.ang || a.av) { a.av += (-a.ang * 160 - a.av * 5) * dt; a.ang += a.av * dt; if (Math.abs(a.ang) < .001 && Math.abs(a.av) < .01) { a.ang = 0; a.av = 0; } } });
     lamps.forEach(function (l) { if (l.ang || l.av) { l.av += (-l.ang * 60 - l.av * 2.2) * dt; l.ang += l.av * dt; if (Math.abs(l.ang) < .0008 && Math.abs(l.av) < .008) { l.ang = 0; l.av = 0; } } });
     pigeonsUpdate(dt);
     if (state !== 'flight' && state !== 'result') Snd.wind(0);
 
     if (state === 'intro') {
+      // fly over the whole city with its ticket values (like the cabinet's attract card), then back to the cannon
       introT += dt;
-      var ct = camOn(tgt), ca = camAim(), e;
-      if (introT < 1.1) { e = ease(introT / 1.1); setCam(camFrom, ct, e); }
-      else if (introT < 2.3) setCam(ct, ct, 1);
-      else if (introT < 3.2) { e = ease((introT - 2.3) / .9); setCam(ct, ca, e); }
+      var ov = camOverview(), ca = camAim(), e, T = introTimes();
+      if (introT < T[0]) { e = ease(introT / T[0]); setCam(camFrom, ov, e); }
+      else if (introT < T[1]) setCam(ov, ov, 1);
+      else if (introT < T[2]) { e = ease((introT - T[1]) / (T[2] - T[1])); setCam(ov, ca, e); }
       else toAim();
-      if (introT > 2.3 && introT - dt <= 2.3) Snd.swoosh();
+      if (introT > T[1] && introT - dt <= T[1]) Snd.swoosh();
     } else if (state === 'aim') {
       sweepT += dt; angle = curAngle();
       if (keyHold) setDepth(Math.min(1, depth + dt * .55));
@@ -816,6 +859,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (!drag && !keyHold) plVis += ((state === 'aim' ? 0 : plVis > .99 && recoil > .6 ? 1 : 0) - plVis) * Math.min(1, dt * 7);
     else plVis = depth;
   }
+  function introTimes() { return shotIdx === 0 ? [.5, 2.6, 3.4] : jpMoved ? [.8, 2.4, 3.1] : [.6, 1.4, 2.1]; }
   function flightUpdate(dt) {
     var R = rag; if (!R) return;
     if (state === 'flight') flightT += dt;
@@ -829,52 +873,37 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if ((trail.length === 0 || flightT - trail[trail.length - 1][2] > .05) && !R.landed) trail.push([pl.x, pl.y, flightT]);
       if (trail.length > 160) trail.shift();
       Snd.wind(R.airT > .1 ? sp : 0);
-      pickupsCheck();
-      // slow motion as he drops toward a target roof
-      var want = 1;
-      if (!R.landed && vy > 0) [tgt, jack].forEach(function (b) {
-        if (pl.x > b.x0 - 50 && pl.x < b.x1 + 10 && pl.y < b.y0 && b.y0 - pl.y < 130) want = .3;
-      });
+      birdsCheck();
+      // slow motion as he drops toward the jackpot roof
+      var want = 1, b = jpB;
+      if (!R.landed && vy > 0 && pl.x > b.x0 - 50 && pl.x < b.x1 + 10 && pl.y < b.y0 && b.y0 - pl.y < 130) want = .3;
       if (R.landed) { slowHold -= dt / Math.max(.3, timeScale); want = slowHold > 0 ? .35 : 1; }
       slowOn = want < 1; timeScale += (want - timeScale) * Math.min(1, dt * (want < timeScale ? 14 : 3));
-      // rest / end
-      // at rest when the body as a whole (weighted by mass) has all but stopped: a twitching hand doesn't count
+      // rest / end: at rest when the body as a whole (weighted by mass) has all but stopped
       var mv = 0; for (var i = 0; i < 11; i++) { var p = P[i]; mv += MASS[i] * (Math.abs(p.x - p.px) + Math.abs(p.y - p.py)); }
       mv /= HS * MTOT;
       R.calm = R.airT < .1 && mv < 40;
       if (R.pinT <= 0 && R.airT < .2 && mv < (R.sticky ? 30 : 22)) R.restT += dt; else R.restT = 0;
       if (R.wet) R.wetT += dt;
-      if (R.restT > .45 || R.wetT > 1.1 || flightT > 11 || pl.x > WORLD_END + 400) evaluate();
+      if (R.restT > .45 || R.wetT > 1.1 || flightT > 12 || pl.x > WORLD_END + 400) evaluate();
     } else {
       timeScale += (1 - timeScale) * Math.min(1, dt * 3);
       resultT += dt;
-      if (resultT > 3.6) nextShot();
+      if (resultT > resultLen()) nextShot();
     }
     // camera
     var zt = state === 'result' ? (R.dance ? 1.3 : 1.12) : slowOn || R.landed ? 1.22 : clamp(1.05 - (sp - 300) / 2100, .6, 1);
     var tx = pl.x + (state === 'flight' ? clamp(vx * .2, -150, 150) : 0), ty = pl.y + (state === 'flight' ? clamp(vy * .1, -120, 120) : -viewH(cam.z) * .17);
     followCam(tx, ty, zt, dt, state === 'flight' ? 6 : 3);
   }
-  function pickupsCheck() {
+  // the jackpot gets the full show: the sunburst card, then the bonus stage
+  var JP_SUN = .9, JP_STAGE = 2.9, JP_END = 5.6;
+  function resultLen() { return res && res.code === 'jackpot' ? JP_END + .4 : 3.6; }
+  function birdsCheck() {
     var P = rag.P;
-    picks.forEach(function (k) {
-      if (k.got) return;
-      var r = k.k === 'x2' ? 24 : 18;
-      for (var i = 0; i < 11; i += (i === 2 ? 2 : 1)) {
-        var dx = P[i].x - k.x, dy = P[i].y - k.y;
-        if (dx * dx + dy * dy < r * r) {
-          k.got = 1;
-          if (k.k === 'star') { cur.stars++; Snd.star(); addPop(k.x, k.y - 14, 'Star +100', '#ffd84a', 1.2); }
-          else { cur.x2 = true; Snd.pop(); addPop(k.x, k.y - 20, 'Double points', '#ff7ad9', 1.5); }
-          Kit.haptic('light');
-          for (var j = 0; j < 14; j++) { var a = Math.random() * TAU, s = 60 + Math.random() * 160; parts.push({ k: k.k === 'star' ? 'spark' : 'conf', x: k.x, y: k.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: .6, max: .6, s: 2.5, c: ['#ff7ad9', '#7fe0ff', '#ffd84a'][j % 3], rot: 0, vr: 10 }); }
-          break;
-        }
-      }
-    });
     flock.forEach(function (f) {
       if (f.hit) return;
-      for (var i = 0; i < 11; i += 2) { var dx = P[i].x - f.x, dy = P[i].y - f.y; if (dx * dx + dy * dy < 16 * 16) { f.hit = 1; f.vy = -40; f.vx = 140; feathers(f.x, f.y, 10); Snd.flap(); cur.ev.bird++; award(25, f.x, f.y - 10, 'Birdie', '#fff'); break; } }
+      for (var i = 0; i < 11; i += 2) { var dx = P[i].x - f.x, dy = P[i].y - f.y; if (dx * dx + dy * dy < 16 * 16) { f.hit = 1; f.vy = -40; f.vx = 140; feathers(f.x, f.y, 10); Snd.flap(); cur.ev.bird++; break; } }
     });
   }
   function feathers(x, y, n) { for (var i = 0; i < n; i++) parts.push({ k: 'feather', x: x, y: y, vx: (Math.random() - .5) * 160, vy: -Math.random() * 120, life: 1.8, max: 1.8, s: Math.random() * 3, rot: Math.random() * 6, vr: (Math.random() - .5) * 6 }); }
@@ -888,81 +917,79 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
           b.st = 1; b.f = dx > 0 ? -1 : 1; b.vx = b.f * (70 + Math.random() * 60); b.vy = -90 - Math.random() * 60;
           if (dx * dx + dy * dy < 20 * 20) { feathers(b.x, b.y, 6); b.hit = 1; }
           if (t - (pigeonsUpdate.last || 0) > .25) { pigeonsUpdate.last = t; Snd.flap(); if (Math.random() < .5) setTimeout(Snd.coo, 120); }
-          if (cur && cur.ev.pig < 12) { cur.ev.pig++; award(b.hit ? 20 : 10, b.x, b.y - 8, '', '#e8e4ff'); }
+          if (cur && cur.ev.pig < 12) cur.ev.pig++;
         }
       } else if (b.st === 1) { b.vy -= 30 * dt; b.x += b.vx * dt; b.y += b.vy * dt; }
     });
     flock.forEach(function (f) { f.ph += dt; f.x += f.vx * dt; if (f.hit) { f.y += (f.vy || 0) * dt; f.vy = (f.vy || 0) - 20 * dt; } else f.y += Math.sin(f.ph * 2) * 6 * dt; });
   }
 
+  // Tickets go by where Willy ends up once he stops: a roof pays its number, anywhere else pays 5
   function evaluate() {
-    var R = rag, pl = R.P[PEL], r = { code: 'crash', name: 'Crash!', pts: 0, col: '#ff8a5c' };
+    var R = rag, pl = R.P[PEL], r = null, b = null;
     Snd.wind(0);
-    if (R.wet) r = { code: 'splash', name: 'Splash!', pts: 0, col: '#7fd0ff' };
+    if (R.wet) r = { code: 'splash', name: 'Splash!', tickets: STREET_T, col: '#7fd0ff', where: 'In the bay' };
     else {
-      var b = null;
       for (var i = 0; i < B.length; i++) { var c = B[i]; if (pl.x > c.x0 - 6 && pl.x < c.x1 + 6 && pl.y < c.y0 + 4 && pl.y > c.y0 - 70) { b = c; break; } }
       if (b) {
-        var tx = b.touch ? b.touch.x : pl.x, d = Math.abs(tx - b.padX);
-        cur.touchX = Math.round(tx);
-        if (b === jack) {
-          if (d <= b.hw * .34) r = { code: 'jackpot', name: 'JACKPOT!', pts: 5000, col: '#ffd84a' };
-          else if (d <= b.hw) r = { code: 'jackpad', name: 'Tower pad!', pts: 2500, col: '#ffd84a' };
-          else r = { code: 'jackroof', name: 'Top of the tower!', pts: 1500, col: '#ffd84a' };
-        } else if (b === tgt) {
-          if (d <= b.hw * .24) r = { code: 'bull', name: 'BULLSEYE!', pts: 1000, col: '#ffd84a' };
-          else if (d <= b.hw * .58) r = { code: 'great', name: 'Great landing!', pts: 500, col: '#7dffb3' };
-          else if (d <= b.hw) r = { code: 'nice', name: 'Nice landing!', pts: 250, col: '#7fe0ff' };
-          else r = { code: 'roof', name: 'On the roof', pts: 100, col: '#c9b8ff' };
-        } else r = { code: 'wrong', name: 'Wrong roof', pts: 50, col: '#ffb0d0' };
-        if (b === tgt || b === jack) R.dance = { x: clamp(pl.x, b.x0 + 16, b.x1 - 16), y: b.y0, t: 0, k: 0 };
+        var jp = b === jpB;
+        r = { code: jp ? 'jackpot' : 'roof', name: jp ? 'JACKPOT!' : b.val + ' tickets!', tickets: b.val, col: jp ? '#ffd84a' : b.val >= 100 ? '#7dffb3' : '#7fe0ff',
+              where: jp ? 'The jackpot roof' : 'Roof of building ' + (b.idx + 1), bi: b.idx };
+        R.dance = { x: clamp(pl.x, b.x0 + 16, b.x1 - 16), y: b.y0, t: 0, k: 0 };
+      } else {
+        var gap = pl.x > CITY_X0 && pl.x < B[B.length - 1].x1;
+        r = { code: 'crash', name: 'Crash!', tickets: STREET_T, col: '#ff8a5c', where: gap ? 'Down between the buildings' : 'In the street' };
       }
     }
     lastLand.push({ x: Math.round(pl.x), y: Math.round(pl.y) }); if (lastLand.length > 4) lastLand.shift();
-    cur.land = r.code; cur.name = r.name; cur.landPts = r.pts;
-    cur.total = (r.pts + cur.crash + cur.stars * 100) * (cur.x2 ? 2 : 1);
+    cur.land = r.code; cur.name = r.name; cur.tickets = r.tickets; cur.bi = r.bi != null ? r.bi : -1; cur.total = r.tickets;
     res = r; total += cur.total; shots.push(cur);
     state = 'result'; resultT = 0; timeScale = Math.max(timeScale, .6); slowOn = false;
     hud(true);
+    // the jackpot speeds the cannon up and moves the jackpot one building to the right for the next shot
+    jpMoved = false;
+    if (r.code === 'jackpot') { jpLevel = Math.min(3, jpLevel + 1); jpI = jpI >= 5 ? 2 : jpI + 1; jpMoved = true; }
+    else jpLevel = Math.max(0, jpLevel - 1);
     if (R.dance) {
       R.mood = 'grin'; R.dizzy = 0;
-      var big = r.code === 'bull' || r.code === 'jackpot';
+      var big = r.code === 'jackpot';
       Snd.cheer(); setTimeout(function () { Snd.fanfare(big); }, 150);
       Kit.haptic('success');
-      confettiAt(R.dance.x, R.dance.y - 40, big ? 90 : 40);
-      if (big) { Kit.callout(r.code === 'jackpot' ? 'Jackpot!' : 'Bullseye!', '#ffd84a'); flash = .5; }
-      if (r.code === 'jackpot') try { Kit.confetti(); } catch (e) {}
-    } else if (r.code === 'wrong') { Snd.fanfare(false); R.mood = 'grin'; }
-    else { R.mood = r.code === 'splash' ? 'yell' : 'dizzy'; R.dizzy = r.code === 'splash' ? 0 : 1; setTimeout(Snd.wahwah, 250); }
+      confettiAt(R.dance.x, R.dance.y - 40, big ? 90 : 30);
+      if (big) { flash = .5; try { Kit.confetti(); } catch (e) {} }
+    } else { R.mood = r.code === 'splash' ? 'yell' : 'dizzy'; R.dizzy = r.code === 'splash' ? 0 : 1; setTimeout(Snd.wahwah, 250); }
   }
   function confettiAt(x, y, n) {
     var C = ['#ff4d6d', '#ffd84a', '#3ddc84', '#38bdf8', '#b07aff', '#fff'];
     for (var i = 0; i < n; i++) { var a = -PI / 2 + (Math.random() - .5) * 2.2, s = 150 + Math.random() * 330; parts.push({ k: 'conf', x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 2.4, max: 2.4, s: Math.random() * 3, c: C[i % C.length], rot: Math.random() * 6, vr: (Math.random() - .5) * 20 }); }
   }
-  function danceStep(dt) {
-    var R = rag, D = R.dance, P = R.P, s = WS;
-    D.t += dt;
-    var tt = D.t, bx = D.x, by = D.y, bob = Math.abs(Math.sin(tt * 6.2)) * 3 * s, sw = Math.sin(tt * 3.1);
-    var pel = { x: bx + sw * 3 * s, y: by - 20 * s - bob };
-    var pose = [];
+  // A little victory dance (also used, big, on the bonus stage)
+  function dancePose(tt, bx, by) {
+    var s = WS, bob = Math.abs(Math.sin(tt * 6.2)) * 3 * s, sw = Math.sin(tt * 3.1);
+    var pel = { x: bx + sw * 3 * s, y: by - 24 * s - bob }, pose = [];
     pose[PEL] = pel;
     pose[NECK] = { x: pel.x - sw * 1.5 * s, y: pel.y - 14 * s };
-    pose[HEAD] = { x: pose[NECK].x - sw * 2 * s, y: pose[NECK].y - 8 * s };
+    pose[HEAD] = { x: pose[NECK].x - sw * 2 * s, y: pose[NECK].y - 9 * s };
     var phase = Math.floor(tt / 1.6) % 2;
     function arm(side, eI, hI) {
       var n = pose[NECK], e, h;
-      if (phase === 0) { var A = Math.sin(tt * 6.2) * 1.1; e = { x: n.x + Math.sin(A + side * .25) * 8 * s, y: n.y + Math.cos(A) * 7 * s }; h = { x: e.x + Math.sin(A * 1.5 + side * .2) * 8 * s, y: e.y + Math.cos(A * 1.4) * 6 * s }; }
-      else { var up = Math.abs(Math.sin(tt * 6.2)); e = { x: n.x + side * 7 * s, y: n.y - 3 * s }; h = { x: e.x + side * 2 * s, y: e.y - (5 + up * 5) * s }; }
+      if (phase === 0) { var A = Math.sin(tt * 6.2) * 1.1; e = { x: n.x + Math.sin(A + side * .25) * 8 * s, y: n.y + Math.cos(A) * 8 * s }; h = { x: e.x + Math.sin(A * 1.5 + side * .2) * 9 * s, y: e.y + Math.cos(A * 1.4) * 7 * s }; }
+      else { var up = Math.abs(Math.sin(tt * 6.2)); e = { x: n.x + side * 8 * s, y: n.y - 3 * s }; h = { x: e.x + side * 2 * s, y: e.y - (6 + up * 5) * s }; }
       pose[eI] = e; pose[hI] = h;
     }
     arm(-1, LE, LH); arm(1, RE, RH);
     var lk = Math.max(0, Math.sin(tt * 6.2)) * 5 * s, rk = Math.max(0, -Math.sin(tt * 6.2)) * 5 * s;
-    pose[LK] = { x: pel.x - 4 * s, y: pel.y + 9 * s - lk }; pose[LF] = { x: bx - 5 * s, y: by - 4 * s - lk * .8 };
-    pose[RK] = { x: pel.x + 4 * s, y: pel.y + 9 * s - rk }; pose[RF] = { x: bx + 5 * s, y: by - 4 * s - rk * .8 };
-    var k = Math.min(1, dt * (D.t < .4 ? 8 : 20));
+    pose[LK] = { x: pel.x - 5 * s, y: pel.y + 11 * s - lk }; pose[LF] = { x: bx - 5 * s, y: by - 4 * s - lk * .8 };
+    pose[RK] = { x: pel.x + 5 * s, y: pel.y + 11 * s - rk }; pose[RF] = { x: bx + 5 * s, y: by - 4 * s - rk * .8 };
+    return pose;
+  }
+  function danceStep(dt) {
+    var R = rag, D = R.dance, P = R.P;
+    D.t += dt;
+    var pose = dancePose(D.t, D.x, D.y), k = Math.min(1, dt * (D.t < .4 ? 8 : 20));
     for (var i = 0; i < 11; i++) { P[i].x += (pose[i].x - P[i].x) * k; P[i].y += (pose[i].y - P[i].y) * k; P[i].px = P[i].x; P[i].py = P[i].y; }
     R.face = 1; scarfStep(HS);
-    if (Math.random() < dt * 6) parts.push({ k: 'spark', x: bx + (Math.random() - .5) * 60, y: by - 20 - Math.random() * 60, vx: 0, vy: -30, life: .5, max: .5, s: 2 });
+    if (Math.random() < dt * 6) parts.push({ k: 'spark', x: D.x + (Math.random() - .5) * 60, y: D.y - 20 - Math.random() * 60, vx: 0, vy: -30, life: .5, max: .5, s: 2 });
   }
   function nextShot() {
     if (state !== 'result') return;
@@ -974,8 +1001,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // ═══ Camera ═════════════════════════════════════════════════════════════
   function viewW(z) { return W / (K * z); }
   function viewH(z) { return H / (K * z); }
-  function camAim() { var vw = viewW(1), vh = viewH(1); return { x: PIV.x - vw * .26 + vw / 2, y: -.33 * vh, z: 1 }; }
-  function camOn(b) { var z = .85, vh = viewH(z); return { x: b.jack ? b.padX : (b.x0 + b.x1) / 2, y: Math.min(b.y0 + vh * .06, 46 - vh / 2), z: z }; }
+  // Aiming: the cannon bottom left, most of the city to its right, sky above for the arc
+  function camAim() { var z = .5, vw = viewW(z), vh = viewH(z); return { x: -50 + vw / 2, y: 46 - vh / 2, z: z }; }
+  // The whole row of buildings
+  function camOverview() { var x0 = CITY_X0 - 60, x1 = (B.length ? B[B.length - 1].x1 : 1200) + 60, z = Math.min(.6, VW0 / (x1 - x0)), vh = viewH(z); return { x: (x0 + x1) / 2, y: 46 - vh / 2, z: z }; }
   function setCam(a, b, e) { cam.x = lerp(a.x, b.x, e); cam.y = lerp(a.y, b.y, e); cam.z = lerp(a.z, b.z, e); }
   function followCam(tx, ty, tz, dt, rate) {
     cam.z += (tz - cam.z) * Math.min(1, dt * 2.5);
