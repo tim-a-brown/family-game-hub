@@ -828,6 +828,7 @@ function makeWorld() {
       }
       // invisible barriers (the table under the plaques): no corner of the pack's footprint may sit
       // inside one; a pack that slides in is eased back out the nearest side, like bumping a wall
+      b.inZone = 0;
       if (obst.length && b.p.y < 1.6) {   // (once it's down among the others, not while it falls)
         const R = b.R, hx = b.he.x * 1.2, hz = b.he.z;   // (x: out to the crimped ends)
         for (const ob of obst) {
@@ -842,8 +843,13 @@ function makeWorld() {
             }
             if (inside && inD > deep) { deep = inD; nx = ex; nz = ez; }
           }
+          b.inZone = Math.max(b.inZone, deep);
           if (deep > 0) {
-            b.p.x += nx * deep * 0.12; b.p.z += nz * deep * 0.12;
+            // out the nearest side, leaning toward the middle of the table (so a neighbour at that side can't pin it there)
+            const cl = Math.hypot(b.p.x, b.p.z) || 1;
+            nx -= 0.7 * b.p.x / cl; nz -= 0.7 * b.p.z / cl;
+            const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
+            b.p.x += nx * Math.min(deep, 1) * 0.05; b.p.z += nz * Math.min(deep, 1) * 0.05;
             const vn = b.v.x * nx + b.v.z * nz;
             if (vn < 0) { b.v.x -= nx * vn; b.v.z -= nz * vn; }   // no further in; the push above eases it out
             if (deep > 0.08) b.still = 0;   // (a pack wedged against it by the pile may still settle there, just at its edge)
@@ -860,7 +866,7 @@ function makeWorld() {
       // (on smoothed speeds, so a pack fidgeting back and forth in a pile still counts)
       b.sv = (b.sv || 0) * 0.94 + Math.sqrt(v2) * 0.06; b.sw = (b.sw || 0) * 0.94 + Math.sqrt(w2) * 0.06;
       if (b.sv < 0.25 && b.sw < 0.4) b.calm = (b.calm || 0) + DT; else b.calm = 0;
-      if (b.still > 0.3 || b.calm > 0.8 || b.age > 6) { b.awake = false; b.calm = 0; b.v.set(0, 0, 0); b.w.set(0, 0, 0); events && events.push(b); }
+      if ((b.still > 0.3 || b.calm > 0.8 || b.age > 6) && !(b.inZone > 0.03 && b.age < 6)) { b.awake = false; b.calm = 0; b.v.set(0, 0, 0); b.w.set(0, 0, 0); events && events.push(b); }
     }
     return true;
   }
