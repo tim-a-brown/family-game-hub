@@ -28,6 +28,7 @@
 // you in them; your app files those under your history (or asks first) and clears the inbox.
 // Each deck and each bookmark goes by its own timestamp, so edits, deletes and
 // un-bookmarks on one device carry over to the others.
+// Each PIN (and guest play) keeps its own space on a shared device (fgh_space, fgh_space_<id>): see switchSpace.
 (function(){
   'use strict';
   var LS = window.localStorage;
@@ -638,6 +639,7 @@
 
   // ── Entry points ──────────────────────────────────────────────────────
   function continueAsGuest(){
+    switchSpace('g');
     LS.setItem(MODE_KEY, 'guest');
     LS.removeItem(PIN_KEY);
     notifyReady();
@@ -646,13 +648,16 @@
   function signInWithPin(p){
     if(!PIN_RE.test(p||'')) return Promise.reject(new Error('PIN must be 4 digits'));
     if(weakPin(p)){ var we = new Error('That PIN is too easy to guess. Pick a less common one.'); we.code = 'weak'; return Promise.reject(we); }
+    // this PIN's own things only: whatever else is on the device is packed away first
+    switchSpace(spaceOf(p));
     LS.setItem(MODE_KEY, 'pin');
     LS.setItem(PIN_KEY, p);
+    ssSet(PULL_KEY, '0');
     return ensureFirebase()
       .then(pullCloud)
       .then(function(remote){
         if(remote.moved){
-          signOut();
+          signOut(); LS.removeItem(STASH + spaceOf(p));
           var me = new Error('That PIN was changed. Sign in with the new one.'); me.code = 'moved'; throw me;
         }
         try{ LS.removeItem(MOVED_FLAG); }catch(e){}
@@ -663,14 +668,17 @@
         writeSnapshotToLocal(merged); reconcileName();
         return pushNow({ force: true }).then(function(){ ssSet(PULL_KEY, String(Date.now())); return {isNew: remote.isNew}; });
       })
-      .then(function(result){ notifyReady(); return result; });
+      .then(function(result){ notifyReady(); return result; },
+            function(err){ if(isPin() && pin() === p) signOut(); throw err; });   // not signed in after all: pack it away again
   }
 
   // Another device changed this account's PIN: the old PIN is wiped and marked moved. Sign this device out
   // (its games stay on the device) and send it to the sign-in page, which explains what happened.
   function movedOut(){
     console.warn('[sync] this PIN was changed on another device; signing out');
+    var old = curSpace();
     signOut();
+    LS.removeItem(STASH + old);   // nobody can sign in with the old PIN again; its games live on under the new one
     try{ LS.setItem(MOVED_FLAG, '1'); }catch(e){}
     setStatus('idle');
     try{ if(!/\/gate\.html$/.test(location.pathname)) location.replace('/gate.html'); }catch(e){}
@@ -697,9 +705,9 @@
         takeLabel(remote);
         writeSnapshotToLocal(mergeSnapshots(scanLocal(), remote)); reconcileName();
         oldRef = cloudRef();
-        LS.setItem(PIN_KEY, np);
+        LS.setItem(PIN_KEY, np); LS.setItem(SPACE_KEY, spaceOf(np));
         try{ LS.removeItem(SIG_KEY); }catch(e){}
-        return pushNow({ force: true }).catch(function(err){ LS.setItem(PIN_KEY, op); throw err; });
+        return pushNow({ force: true }).catch(function(err){ LS.setItem(PIN_KEY, op); LS.setItem(SPACE_KEY, spaceOf(op)); throw err; });
       })
       .then(function(){
         // Retire the old PIN. If the cloud rules don't allow it yet, the move still stands; the old copy stays.
@@ -716,9 +724,39 @@
   }
 
   function signOut(){
+    switchSpace('g');
     LS.removeItem(MODE_KEY);
     LS.removeItem(PIN_KEY);
     LS.removeItem(LABEL_KEY);
+    ssSet(PULL_KEY, '0');
+  }
+
+  // ── One device, several accounts ──────────────────────────────────────
+  // Each PIN (and guest play) has its own space on the device. Signing out packs everything of that account
+  // (scores, history, names, avatars, links, favourites, decks, saved games, settings) into one stash key and
+  // empties the device; signing in unpacks only that PIN's own stash before syncing with its cloud copy. So
+  // nothing from one PIN is ever merged into another. Only the device's own settings stay put.
+  var SPACE_KEY = 'fgh_space', STASH = 'fgh_space_';
+  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|emu|theme|space(_.*)?)|gn_sound|gn_music|hs_attract|online_dev(_override)?|online_transport|lorc_dev|firebase.*)$|_music$/;
+  function spaceOf(p){ var h = 5381; p = String(p || ''); for(var i = 0; i < p.length; i++) h = ((h << 5) + h + p.charCodeAt(i)) | 0; return 'p' + (h >>> 0).toString(36); }
+  function curSpace(){ return LS.getItem(SPACE_KEY) || (isPin() ? spaceOf(pin()) : 'g'); }
+  function switchSpace(to){
+    var from = curSpace();
+    if(from === to){ try{ LS.setItem(SPACE_KEY, to); }catch(e){} return; }
+    var keys = [], packed = {}, i, k;
+    for(i = 0; i < LS.length; i++){ k = LS.key(i); if(k && !DEVICE_RE.test(k)) keys.push(k); }
+    keys.forEach(function(k){ packed[k] = LS.getItem(k); });
+    keys.forEach(function(k){ LS.removeItem(k); });
+    if(keys.length){
+      try{ LS.setItem(STASH + from, JSON.stringify(packed)); }
+      catch(e){ console.warn('[sync] could not keep ' + from + ' on this device (storage full); its cloud copy is safe', e); }
+    }
+    var raw = LS.getItem(STASH + to), back = null;
+    try{ back = raw ? JSON.parse(raw) : null; }catch(e){}
+    LS.removeItem(STASH + to);
+    if(back) Object.keys(back).forEach(function(k){ if(!DEVICE_RE.test(k) && typeof back[k] === 'string') try{ LS.setItem(k, back[k]); }catch(e){} });
+    try{ LS.setItem(SPACE_KEY, to); }catch(e){}
+    _pushPending = false;
   }
 
   // ── Sync status tracking ──────────────────────────────────────────────
