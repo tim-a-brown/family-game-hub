@@ -143,6 +143,13 @@ var GameIcon = (function () {
     mahjong4: function () { return rect(4, 1.5, 16, 21, 2.5, CREAM, ' stroke="' + K + '" stroke-width="1.4"') + txt('中', 13, R, 12.5); },
 
     // Dice & luck
+    // the big red STOP button on its chrome base
+    pressyourluck: function () {
+      return path('M2 15.6v2.9c0 2 4.5 3.6 10 3.6s10-1.6 10-3.6v-2.9z', S) + '<ellipse cx="12" cy="15.6" rx="10" ry="3.6" fill="#dcd8ea"/>' +
+        path('M4.2 15.4C4.2 9 7.6 5.2 12 5.2s7.8 3.8 7.8 10.2c-1.6 1.2-4.5 1.8-7.8 1.8s-6.2-.6-7.8-1.8z', R) +
+        '<ellipse cx="9" cy="8.9" rx="2.3" ry="1.4" fill="' + W + '" opacity=".55" transform="rotate(-25 9 8.9)"/>' +
+        txt('STOP', 4.6, W, 12.6) + line('M12 .8v2M4.6 2.6l1.3 1.5M19.4 2.6l-1.3 1.5', K, 1.3);
+    },
     yahtzee: function () { return circ(6, 6, 2.4, K) + circ(18, 6, 2.4, K) + circ(12, 12, 2.4, R) + circ(6, 18, 2.4, K) + circ(18, 18, 2.4, K); },
     plinko: function (c) { var s = ''; [[12, 5], [8, 10], [16, 10], [4, 15], [12, 15], [20, 15]].forEach(function (p) { s += circ(p[0], p[1], 1.5, K); }); return s + circ(14, 7.7, 2.6, c) + rect(2, 19.5, 20, 2.5, 1, c, ' opacity=".5"'); },
     wheeloffortune: function () {
