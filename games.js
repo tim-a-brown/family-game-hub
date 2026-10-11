@@ -187,6 +187,8 @@ var GAMES = [
 //   tab    short name for the board's tab            low  1 = lower is better
 //   unit   'time' (seconds, m:ss) | 'moves' | 'marbles' (see ArcadeHi.marbles)
 //          | 'points' | 'score'                      dec  decimals on times
+// Peggle's level names, in the order of LEVELS in games/peggle.html
+var PEGGLE_LEVELS = ['First Light', 'Rainbow Arches', 'Spiral', 'Bubbles', 'Hourglass', 'Diamonds', 'Twin Peaks', 'The Wheel', 'Sliders', 'Orbits', 'Pendulum', 'Galaxy', 'Clockwork'];
 var HI_BOARDS = (function () {
   var b = {};
   function add(game, key, o) { o.game = game; b[key] = o; }
@@ -224,10 +226,73 @@ var HI_BOARDS = (function () {
   [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard'], ['expert', 'Expert']].forEach(function (d) {
     add('mazes', 'mazes_tilt_' + d[0], { label: 'Labyrinth ' + d[1], tab: 'Tilt ' + d[1], low: 1, unit: 'time', dec: 1 });
   });
+  // Peggle: the full game (levels 1 to 13 in order, one total) and a board per level. hi_peggle is the old
+  // board with every level mixed: it shows as Older only while it holds scores not filed on a level (see peggleOld).
+  //   pin: always a tab, even empty      tabIf: shown as a tab only while this says so
+  add('peggle', 'peggle_run', { label: 'Full game', tab: 'Full game', pin: 1 });
+  PEGGLE_LEVELS.forEach(function (nm, i) { add('peggle', 'peggle_l' + (i + 1), { label: 'Level ' + (i + 1) + ': ' + nm, tab: 'L' + (i + 1) }); });
+  add('peggle', 'peggle', { label: 'Older scores', tab: 'Older', tabIf: function () { return peggleOld() > 0; } });
   return b;
 })();
 function hiBoard(key) { return HI_BOARDS.hasOwnProperty(String(key)) ? HI_BOARDS[String(key)] : null; }
 function hiLow(key) { var c = hiBoard(key); return !!(c && c.low); }
+
+// Peggle's old one-for-all board (hi_peggle): how many of its scores are not on a level board yet.
+// peggleOld(true) files what it can first: a score goes on the level whose history record (gh_peggle) has the
+// same score and was saved just before it (the initials come up right after the level ends). The copy keeps its
+// initials and date, so it's skipped if it's already there, and sync's merge sees one score, not two.
+// It runs again only when the old board or the history has changed (peggle_hi_mig); hi_peggle is never changed.
+function peggleOld(fix) {
+  var LS; try { LS = window.localStorage; } catch (e) { return 0; }
+  function rd(k) { try { var v = JSON.parse(LS.getItem(k) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+  function sig(e) { return String(e.name).trim().toUpperCase() + '|' + Number(e.score) + '|' + (e.date || ''); }
+  var old = rd('hi_peggle').filter(function (e) { return e && e.score !== null && e.score !== '' && isFinite(Number(e.score)) && Number(e.score) > 0; });
+  if (!old.length) return 0;
+  var NL = PEGGLE_LEVELS.length, boards = {}, have = {}, n;
+  for (n = 1; n <= NL; n++) { boards[n] = rd('hi_peggle_l' + n); boards[n].forEach(function (e) { if (e) have[sig(e)] = 1; }); }
+  var left = old.filter(function (e) { return !have[sig(e)]; });
+  if (!fix || !left.length) return left.length;
+  var hist = rd('gh_peggle');
+  function mark(nLeft) { return old.length + '|' + nLeft + '|' + hist.length + '|' + (hist[0] && hist[0]._date || 0); }
+  try { if (LS.getItem('peggle_hi_mig') === mark(left.length)) return left.length; } catch (e) {}
+  var lvh = hist.filter(function (h) { return h && h.level >= 1 && h.level <= NL && h._date; });
+  var MON = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  // 'Oct 9, 2026 3:45 PM' (older scores: no year) -> [start, end] of that minute, or of the day without a time
+  function when(d) {
+    var m = /^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?(?:\s+(\d{4}))?(?:\s+(\d{1,2}):(\d{2})\s*([AaPp])\.?[Mm])?/.exec(String(d || '').trim());
+    if (!m || MON.indexOf(m[1].toLowerCase()) < 0) return null;
+    var mo = MON.indexOf(m[1].toLowerCase()), now = new Date(), y = m[3] ? +m[3] : now.getFullYear();
+    if (!m[3] && new Date(y, mo, +m[2]) > now) y--;
+    if (!m[4]) { var a = new Date(y, mo, +m[2]).getTime(); return [a, a + 864e5]; }
+    var h = (+m[4]) % 12 + (/p/i.test(m[6]) ? 12 : 0), t = new Date(y, mo, +m[2], h, +m[5]).getTime();
+    return [t, t + 6e4];
+  }
+  var changed = {};
+  left = left.filter(function (e) {
+    var w = when(e.date), sc = Number(e.score); if (!w) return true;
+    var timed = w[1] - w[0] < 864e5, best = null, bestGap = Infinity, tie = false;
+    lvh.forEach(function (h) {
+      var hs = Number(h.levelScore != null ? h.levelScore : h.score);
+      if (hs !== sc) return;
+      // timed: the score was entered within 12 hours after the level's record; untimed: the same day
+      var gap = timed ? w[0] - h._date : 0;
+      if (timed ? (gap < -12e4 || gap > 432e5) : (h._date < w[0] || h._date >= w[1])) return;
+      gap = Math.abs(gap);
+      if (gap < bestGap) { best = h; bestGap = gap; tie = false; }
+      else if (gap === bestGap && best && best.level !== h.level) tie = true;
+    });
+    if (!best || tie) return true;
+    boards[best.level].push({ name: e.name, score: sc, date: e.date });
+    changed[best.level] = 1;
+    return false;
+  });
+  Object.keys(changed).forEach(function (k) {
+    var list = boards[k].sort(function (a, b) { return Number(b.score) - Number(a.score); }).slice(0, 50);
+    try { LS.setItem('hi_peggle_l' + k, JSON.stringify(list)); if (typeof FGHSync !== 'undefined' && FGHSync.noteWrite) FGHSync.noteWrite('hi_peggle_l' + k); } catch (e) {}
+  });
+  try { LS.setItem('peggle_hi_mig', mark(left.length)); } catch (e) {}
+  return left.length;
+}
 
 // Lookup by game id or by any of its files (hearts-ai → hearts).
 function findGame(key) {

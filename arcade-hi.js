@@ -19,7 +19,10 @@
  *   ArcadeHi.top(key)             - the board's best value, linked players included (null if none)
  *   ArcadeHi.better(key, a, b)    - is value a better than b on this board
  *   ArcadeHi.marbles(left, offCenter, seconds) - the value a marble solitaire finish is stored as
- * Boards with siblings (same game in HI_BOARDS) show tabs to switch between them.
+ * Boards with siblings (same game in HI_BOARDS) show tabs to switch between them. A game with lots of boards
+ * shows tabs only for the boards with scores, plus any marked pin: 1; a board with tabIf() is a tab only while it says so.
+ *   ArcadeHi.check(key, score, onDone, { also: [{ key, score }] })
+ *     - one initials entry files the score on several boards (Peggle's last level: the full game and the level)
  */
 const ArcadeHi = (function(){
   const MAX = 50;
@@ -73,10 +76,13 @@ const ArcadeHi = (function(){
   function siblings(key){
     const c = conf(key);
     if(!c.game || typeof HI_BOARDS === 'undefined') return [];
-    const all = Object.keys(HI_BOARDS).filter(k=>HI_BOARDS[k] && HI_BOARDS[k].game === c.game);
+    const all = Object.keys(HI_BOARDS).filter(k=>HI_BOARDS[k] && HI_BOARDS[k].game === c.game).filter(k=>{
+      const f = conf(k).tabIf; if(k === key || typeof f !== 'function') return true;
+      try{ return !!f(); }catch(e){ return true; }
+    });
     if(all.length < 2) return [];
-    // lots of boards (Math Puzzles): only the ones with scores, plus this one
-    return all.length > 8 ? all.filter(k=>k === key || merged(k).length) : all;
+    // lots of boards (Math Puzzles): only the ones with scores, plus this one and any pinned
+    return all.length > 8 ? all.filter(k=>k === key || conf(k).pin || merged(k).length) : all;
   }
 
   // Read the board, skipping any entry without a real score (a bad entry
@@ -149,6 +155,8 @@ const ArcadeHi = (function(){
 .ahi-score-disp{text-align:center;margin-bottom:16px;}
 .ahi-score-val{font-family:var(--display);font-size:2rem;font-weight:900;color:#f5c842;}
 .ahi-score-lbl{font-size:.72rem;color:rgba(255,255,255,.4);margin-top:2px;}
+.ahi-also{font-size:.78rem;color:rgba(255,255,255,.6);margin-top:8px;}
+.ahi-also b{color:#f5c842;font-weight:900;}
 /* Leaderboard table */
 .ahi-table{width:100%;border-collapse:collapse;font-size:.82rem;}
 .ahi-table th{color:rgba(255,255,255,.4);font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1);}
@@ -181,7 +189,8 @@ const ArcadeHi = (function(){
 
   // ── Name entry screen ─────────────────────────────────────────────────────
   const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  function showEntry(key, score, onDone){
+  function showEntry(key, score, onDone, also){
+    also = also || [];
     injectCSS();
     const mine = myIni();
     const letters = mine ? (mine+'AAA').slice(0,3).split('') : ['A','A','A'];
@@ -198,6 +207,7 @@ const ArcadeHi = (function(){
         <div class="ahi-score-disp">
           <div class="ahi-score-val">${esc(fmt(key, score))}</div>
           <div class="ahi-score-lbl">${lbl}${unitName(key).toUpperCase()}</div>
+          ${also.map(a=>`<div class="ahi-also">Also on ${esc(conf(a.key).label || boardTitle(a.key) || a.key)}: <b>${esc(fmt(a.key, a.score))}</b></div>`).join('')}
         </div>
         <div id="ahi-quick-wrap"></div>
         <div class="ahi-slots" id="ahi-slots"></div>
@@ -334,6 +344,7 @@ const ArcadeHi = (function(){
         }
         const name = letters.join('').trim()||'???';
         insert(key, name, score);
+        also.forEach(a=>insert(a.key, name, a.score));
       }
       overlay.remove();
       onDone && onDone();
@@ -428,7 +439,7 @@ const ArcadeHi = (function(){
     overlay.addEventListener('remove', () => document.removeEventListener('keydown', onEsc));
   }
 
-  const PAGE = /^(ast|breakout|flappy|flappywild|pac|peggle|paddleball|cubehopper|snake|tetris|crossyroad|willycrash|crazytower|centipede|invaders|pinball_[a-z]+)$/;
+  const PAGE = /^(ast|breakout|flappy|flappywild|pac|peggle|peggle_l\d+|peggle_run|paddleball|cubehopper|snake|tetris|crossyroad|willycrash|crazytower|centipede|invaders|pinball_[a-z]+)$/;
   // ...and every board in HI_BOARDS (games.js): the puzzle games, each level or size on its own board
   function onPage(key){ key = String(key||''); if(PAGE.test(key)) return true; try{ return typeof hiBoard === 'function' && !!hiBoard(key); }catch(e){ return false; } }
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -451,11 +462,15 @@ const ArcadeHi = (function(){
     qualifies(key, score){ return score > 0 && qualifies(key, score); },
     marbles(left, offCenter, sec){ return marblesCode(left, offCenter, sec); },
     readMarbles(v){ return marblesRead(v); },
-    check(key, score, onDone){
+    check(key, score, onDone, opts){
+      const also = ((opts && opts.also) || []).filter(a=>a && a.key && a.score>0 && qualifies(a.key, a.score));
       if(score>0 && qualifies(key, score)){
         showEntry(key, score, ()=>{
           onDone && onDone();
-        });
+        }, also);
+      } else if(also.length){
+        const a = also.shift();
+        showEntry(a.key, a.score, ()=>{ onDone && onDone(); }, also);
       } else {
         onDone && onDone();
       }
