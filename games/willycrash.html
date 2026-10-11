@@ -1714,6 +1714,31 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     result: function () { return res; },
     cam: function () { return cam; }
   };
+  // Deterministic test hook: freeze the real-time loop and step the simulation by hand
+  window.__wc = {
+    seed: function (s) { citySeed = s; buildCity(s); shotIdx = 0; shots = []; total = 0; startShot(); },
+    step: function (sec) { var n = Math.round((sec || 0) / DT); for (var i = 0; i < n; i++) update(DT); render(); drawDeck(); return state; },
+    // drop Willy (standing pose, pelvis at x,y) with a velocity, as if fired
+    drop: function (x, y, vx, vy, spin) {
+      if (state === 'intro') toAim();
+      state = 'aim'; fire(45, .5);
+      var P = rag.P;
+      for (var i = 0; i < 11; i++) { P[i].x = x + STAND[i][0] * WS; P[i].y = y + STAND[i][1] * WS; }
+      var c = P[PEL], w = spin || 0;
+      P.forEach(function (p) { p.px = p.x - (vx - w * (p.y - c.y)) * HS; p.py = p.y - (vy + w * (p.x - c.x)) * HS; });
+      rag.sc.forEach(function (q) { q.x = P[NECK].x; q.y = P[NECK].y; q.px = q.x - vx * HS; q.py = q.y - vy * HS; });
+      wind = 0; return true;
+    },
+    pel: function () { var p = rag.P[PEL]; return { x: p.x, y: p.y, vx: (p.x - p.px) / HS, vy: (p.y - p.py) / HS }; },
+    parts: function () { return rag.P.map(function (p) { return { x: p.x, y: p.y, vx: (p.x - p.px) / HS, vy: (p.y - p.py) / HS }; }); },
+    jack: function () { return jack && { x0: jack.x0, x1: jack.x1, y0: jack.y0, padX: jack.padX, hw: jack.hw }; },
+    tgt: function () { return tgt && { x0: tgt.x0, x1: tgt.x1, y0: tgt.y0, padX: tgt.padX, hw: tgt.hw }; },
+    sea: function () { return SEA_X; },
+    state: function () { return state; }, res: function () { return res; }, cur: function () { return cur; },
+    nparts: function () { return parts.length; },
+    cam: function (x, y, z) { cam.x = x; cam.y = y; cam.z = z || 1; render(); },
+    col: function () { return COL.map(function (c) { return { k: c.k, x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1 }; }); }
+  };
 
   // ═══ Setup ══════════════════════════════════════════════════════════════
   function showSetup() {
