@@ -158,12 +158,24 @@ export function createGame(def, opts = {}) {
     tilted: false, tiltM: 0, nudgeT: -9, mb: false, comboN: 0, lastShot: '', lastShotT: -9, skill: null,
     st: {}, pb: {}, b: {}, ballScores: [], drains: [], ballStart: 0, laters: [], dq: [], dm: null,
     flashA: 0, flashC: '#fff', shakeA: 0, bonus: null, overT: 0, started: Date.now(), finished: false, pending: 0,
-    stats: { stuck: 0, esc: 0, maxStill: 0, at: [], drains: 0, saves: 0 }, comps: {}, compList: [], lamps: {}, lampList: [], show: null,
+    stats: { stuck: 0, esc: 0, maxStill: 0, at: [], drains: 0, saves: 0, rescued: 0, returned: 0, errors: 0, errAt: [] }, comps: {}, compList: [], lamps: {}, lampList: [], show: null,
     dark: 0, darkT: 0, lightning: 0, giLevel: 1, rules: def.rules || {}, input: { L: false, R: false, magna: false, fire: false },
     plunger: null, trough: 0, paused: false, frameMs: [], quality: 2, scroller: { text: null, w: 0, off: 0, hold: 0, turn: 0, last: 0 }
   };
   const RL = G.rules;
-  function R(name, ...a) { const f = RL[name]; return f ? f.call(RL, G, ...a) : undefined; }
+  // A bug in one table rule, component or display animation must never stop the game: the error is logged
+  // once (per place and message) and play carries on (an uncaught throw in the frame used to end the
+  // requestAnimationFrame chain and freeze the table with every button dead).
+  const errSeen = new Set();
+  function oops(where, e) {
+    G.stats.errors = (G.stats.errors || 0) + 1;
+    const k = where + ': ' + (e && e.message || e);
+    if (errSeen.has(k) || errSeen.size > 30) return; errSeen.add(k);
+    if (G.stats.errAt.length < 20) G.stats.errAt.push(k);
+    console.error('[pinball] ' + k, e);
+  }
+  G.oops = oops;
+  function R(name, ...a) { const f = RL[name]; if (!f) return undefined; try { return f.call(RL, G, ...a); } catch (e) { oops('rules.' + name, e); return undefined; } }
   G.call = R;
 
   // ── Table builder (T) ────────────────────────────────────────────────────
@@ -503,10 +515,111 @@ export function createGame(def, opts = {}) {
   }
   function finish() { if (G.finished) return; G.finished = true; if (opts.onOver) opts.onOver(G); }
 
+  // ── Ball safety ──────────────────────────────────────────────────────────
+  // Nothing may strand a game. Balls off the table go back to the shooter lane. A free ball resting (or rattling
+  // round one spot) gets a search kick; one that is still there after three kicks (wedged against a moving part,
+  // a pocket a kick can't clear) goes back to the shooter lane. A ball a component holds (scoop, subway, mouth,
+  // VUK, magnet, wheel...) far longer than that component ever holds one is let out by the component
+  // (`comp.rescue(ball)`; `comp.maxHold` seconds, default HOLD_MAX), and if that doesn't free it, it goes back to
+  // the shooter lane. A ball stalled on a ramp or wireform is pushed on to the exit. Deliberate holds are left
+  // alone: locked balls (ball locks, the gumball machine, rules locks), mist balls, a scoop's keep(), the
+  // plunger, a ball cradled on a held flipper, and anything a component vouches for with `legitHold(ball)`.
+  // A ball returned to the lane is served straight back: it never costs the player a ball.
+  const HOLD_MAX = 15;
+  function scrub(o, b) {   // forget a ball in a component's usual places (after it was taken away from it)
+    if (!o || typeof o !== 'object') return;
+    for (const k of ['balls', 'carry', 'wait', 'riders']) { const a = o[k]; if (Array.isArray(a)) { const i = a.indexOf(b); if (i >= 0) a.splice(i, 1); } }
+    if (Array.isArray(o.q)) { const i = o.q.findIndex(e => e && e.b === b); if (i >= 0) o.q.splice(i, 1); }
+    if (o.ball === b) o.ball = null; if (o.held === b) o.held = null; if (o.flight && o.flight.b === b) o.flight = null;
+    if (o.occ) for (const k in o.occ) if (o.occ[k] === b) delete o.occ[k];
+    if (G.cannon === o && !o.ball) G.cannon = null;
+  }
+  function returnToLane(b, why) {
+    G.stats.returned++; if (G.stats.at.length < 40) G.stats.at.push('return:' + why + ':' + b.lvl + ':' + b.mode + ':' + Math.round(b.x) + ',' + Math.round(b.y));
+    const owner = b.held && b.held.owner;
+    world.removeBall(b); if (RC) RC.dropBall(b); scrub(owner, b);
+    if (G.state !== 'play' && G.state !== 'serve') return;
+    G.serve(true); G.msg('BALL RETURNED', '', { style: 'slide', dur: 1.2 });
+  }
+  function heldSafety(b, dt) {
+    const h = b.held, o = h && h.owner;
+    if (!h) { returnToLane(b, 'orphan'); return; }
+    // the time held since this hold began, not counting time locked (a lock's release holds the ball briefly)
+    if (b.hsHold !== h) { b.hsHold = h; h.st = 0; }
+    h.st += dt;
+    if (b.kept || (o && o.legitHold && o.legitHold(b))) { h.st = 0; return; }
+    const max = o && typeof o.maxHold === 'number' ? Math.max(HOLD_MAX, o.maxHold) : HOLD_MAX;
+    if (h.st < max) return;
+    const id = o ? (o.id || o.type || '?') : '?';
+    if (!h.rescued) {
+      h.rescued = true; G.stats.rescued++; if (G.stats.at.length < 40) G.stats.at.push('held:' + id + ':' + b.mode + ':' + Math.round(b.x) + ',' + Math.round(b.y));
+      let ok = false; try { ok = !!(o && o.rescue && o.rescue(b)); } catch (e) { oops('rescue ' + id, e); }
+      if (!ok) returnToLane(b, 'held:' + id);
+      return;
+    }
+    if (h.st > max + 3) returnToLane(b, 'held:' + id);   // the component let go but the ball is still stuck in it
+  }
+  let cradlers = null;
+  function ballSafety(dt) {
+    const live = G.state === 'play' || G.state === 'serve';
+    if (!cradlers) cradlers = G.compList.filter(c => typeof c.cradles === 'function');
+    for (const b of world.balls.slice()) {
+      if (!isFinite(b.x) || !isFinite(b.y) || b.x < -40 || b.x > W + 40 || b.y > L + 60) {
+        G.stats.esc++; if (G.stats.at.length < 40) G.stats.at.push('esc:' + b.lvl + ':' + b.mode + ':' + Math.round(b.x) + ',' + Math.round(b.y)); world.removeBall(b); if (RC) RC.dropBall(b); scrub(b.held && b.held.owner, b); if (!b.locked && G.state === 'play') G.serve(true); continue;
+      }
+      if (b.mode !== 'free' || b.locked || b.mist) {
+        b.stillT = 0; b.ax = b.x; b.ay = b.y; b.bx = null;
+        if (b.locked || b.mist || !live) continue;
+        if (b.mode === 'held' || b.mode === 'hidden') heldSafety(b, dt);
+        else if (b.mode === 'path' && b.path) {   // stalled on a ramp or wireform (a flat top, a dip): on to the exit
+          if (Math.abs(b.path.u) < 25) {
+            b.pathStall = (b.pathStall || 0) + dt;
+            if (b.pathStall > 4) {
+              b.pathStall = 0; b.pathPush = (b.pathPush || 0) + 1; G.stats.rescued++;
+              if (G.stats.at.length < 40) G.stats.at.push('path:' + Math.round(b.x) + ',' + Math.round(b.y) + ',' + Math.round(b.z));
+              if (b.pathPush > 2) returnToLane(b, 'path'); else b.path.u = Math.max(450, b.path.p.minExit || 0);
+            }
+          } else b.pathStall = 0;
+        }
+        continue;
+      }
+      b.pathPush = 0; b.pathStall = 0;
+      // a search kick; the 4th time in the same spot inside 15 s, the ball goes back to the shooter lane instead
+      const kick = (r, fn) => {
+        const again = b.kickX != null && Math.hypot(b.x - b.kickX, b.y - b.kickY) < r && G.time - b.kickT < 15;
+        b.kicks = again ? (b.kicks || 0) + 1 : 1; b.kickX = b.x; b.kickY = b.y; b.kickT = G.time;
+        if (b.kicks >= 4 && live) { returnToLane(b, 'wedged'); return true; }
+        fn(); return false;
+      };
+      // a ball bouncing round the same spot (within 70 mm) for 8 s without reaching a flipper is as stuck as a
+      // resting one: a bumper/wall ping-pong, a toy pocket
+      // held still on purpose by the player: on a raised flipper, or in a level the player is tilting (comp.cradles)
+      const cradled = (b.onFlip && b.onFlip.pressed) || cradlers.some(c => c.cradles(b));
+      if (b.bx == null || Math.hypot(b.x - b.bx, b.y - b.by) > 70 || b.onFlip || cradled || (G.plunger && G.plunger.holds(b))) { b.bx = b.x; b.by = b.y; b.boxT = 0; }
+      else if ((b.boxT = (b.boxT || 0) + dt) > 8) {
+        b.boxT = 0; G.stats.stuck++; if (G.stats.at.length < 40) G.stats.at.push('loop:' + b.lvl + ':' + Math.round(b.x) + ',' + Math.round(b.y));
+        if (kick(70, () => { b.vx += (Math.random() - 0.5) * 900; b.vy += 300; })) continue;
+      }
+      if (Math.hypot(b.x - b.ax, b.y - b.ay) > 12) { b.ax = b.x; b.ay = b.y; b.stillT = 0; }
+      else {
+        b.stillT += dt;
+        if (cradled || (G.plunger && G.plunger.holds(b))) b.stillT = Math.min(b.stillT, 1);
+        if (!cradled && b.stillT > G.stats.maxStill) G.stats.maxStill = b.stillT;
+        if (b.stillT > 2.8) {
+          G.stats.stuck++; b.stillT = 0; if (G.stats.at.length < 40) G.stats.at.push(b.lvl + ':' + Math.round(b.x) + ',' + Math.round(b.y));
+          if (kick(45, () => {
+            b.vx = (b.x < W / 2 ? 1 : -1) * (200 + Math.random() * 200); b.vy = 700 + Math.random() * 400;
+            G.shake(0.4); G.sfx('kick', { x: b.x, vol: 0.5 });
+          })) continue;
+        }
+      }
+    }
+  }
+
   // ── Per-frame bookkeeping ────────────────────────────────────────────────
   function update(dt) {
     G.time = world.time;
-    for (let i = G.laters.length - 1; i >= 0; i--) { const l = G.laters[i]; l.t -= dt; if (l.t <= 0) { G.laters.splice(i, 1); l.fn(); } }
+    for (let i = G.laters.length - 1; i >= 0; i--) { const l = G.laters[i]; l.t -= dt; if (l.t <= 0) { G.laters.splice(i, 1); try { l.fn(); } catch (e) { oops('later', e); } } }
     if (G.saveT > 0) G.saveT -= dt;
     if (G.multT > 0) { G.multT -= dt; if (G.multT <= 0) { G.mult = G.multBase; R('multEnd'); } }
     for (const id in G.modes) { G.modes[id] -= dt; if (G.modes[id] <= 0) G.endMode(id); }
@@ -521,30 +634,8 @@ export function createGame(def, opts = {}) {
     // plunger strength: the knob follows the finger 1:1 (it can ease off again); a key builds with hold time
     if (G.pulling) G.pull = G.pullMode === 'drag' ? Math.min(1, Math.max(0, G.pullDrag || 0)) : Math.min(1, Math.max(G.pull, (G.time - G.pullT0) / 1.1));
     if (G.plunger) G.plunger.pullTo(G.pulling ? G.pull : 0);
-    for (const c of G.compList) if (c.update) c.update(dt);
-    // ball safety: stuck balls get a search kick; balls off the table go back to the shooter lane
-    for (const b of world.balls.slice()) {
-      if (!isFinite(b.x) || !isFinite(b.y) || b.x < -40 || b.x > W + 40 || b.y > L + 60) {
-        G.stats.esc++; if (G.stats.at.length < 40) G.stats.at.push('esc:' + b.lvl + ':' + b.mode + ':' + Math.round(b.x) + ',' + Math.round(b.y)); world.removeBall(b); if (RC) RC.dropBall(b); if (!b.locked) { if (G.activeBalls() === 0 && G.state === 'play') G.serve(true); else if (G.state === 'play') G.serve(true); } continue;
-      }
-      if (b.mode !== 'free' || b.locked || b.mist) { b.stillT = 0; b.ax = b.x; b.ay = b.y; continue; }
-      // a ball bouncing round the same spot (within 70 mm) for 8 s without reaching a flipper is as stuck as a
-      // resting one: a bumper/wall ping-pong, a toy pocket
-      if (b.bx == null || Math.hypot(b.x - b.bx, b.y - b.by) > 70 || b.onFlip) { b.bx = b.x; b.by = b.y; b.boxT = 0; }
-      else if ((b.boxT = (b.boxT || 0) + dt) > 8) { b.boxT = 0; G.stats.stuck++; if (G.stats.at.length < 40) G.stats.at.push('loop:' + b.lvl + ':' + Math.round(b.x) + ',' + Math.round(b.y)); b.vx += (Math.random() - 0.5) * 900; b.vy += 300; }
-      if (Math.hypot(b.x - b.ax, b.y - b.ay) > 12) { b.ax = b.x; b.ay = b.y; b.stillT = 0; }
-      else {
-        b.stillT += dt;
-        const cradled = b.onFlip && b.onFlip.pressed;
-        if (cradled || (G.plunger && G.plunger.holds(b))) b.stillT = Math.min(b.stillT, 1);
-        if (!cradled && b.stillT > G.stats.maxStill) G.stats.maxStill = b.stillT;
-        if (b.stillT > 2.8) {
-          G.stats.stuck++; b.stillT = 0; if (G.stats.at.length < 40) G.stats.at.push(b.lvl + ':' + Math.round(b.x) + ',' + Math.round(b.y));
-          b.vx = (b.x < W / 2 ? 1 : -1) * (200 + Math.random() * 200); b.vy = 700 + Math.random() * 400;
-          G.shake(0.4); G.sfx('kick', { x: b.x, vol: 0.5 });
-        }
-      }
-    }
+    for (const c of G.compList) if (c.update) { try { c.update(dt); } catch (e) { oops('update ' + (c.id || c.type || '?'), e); } }
+    ballSafety(dt);
     R('update', dt);
     lampsUpdate(dt);
     // bonus count
@@ -707,10 +798,12 @@ export function createGame(def, opts = {}) {
     const interval = chained && last ? now - last : 0;
     const rdt = last ? Math.min(0.05, (now - last) / 1000) : 1 / 60; last = now;
     const dt = rdt * speedMul;
-    if (G.state !== 'over') physics(dt);
-    update(dt);
+    // every stage is guarded: an error is logged and the loop carries on (an uncaught throw here ended the
+    // requestAnimationFrame chain: the table froze mid-shot and no button answered)
+    try { if (G.state !== 'over') physics(dt); } catch (e) { acc = 0; oops('physics', e); }
+    try { update(dt); } catch (e) { oops('update', e); }
     if (G.destroyed) return;
-    if (AU) {
+    if (AU) try {
       let v = 0, rv = 0, rs = '';
       for (const b of world.balls) { if (b.mode === 'free') v = Math.max(v, Math.hypot(b.vx, b.vy)); else if (b.mode === 'path') { const u = Math.abs(b.path.u); if (u > rv) { rv = u; rs = b.path.p.style === 'wire' ? 'wire' : 'plastic'; } } }
       rollArg.v = v; rollArg.rv = rv; rollArg.rs = rs;
@@ -718,16 +811,17 @@ export function createGame(def, opts = {}) {
       let modeOn = false; for (const k in G.modes) { modeOn = true; break; }
       const mus = def.music || {};
       AU.musicTick(G.amb && AU.soundOn() && G.state !== 'over', def.id, mus.url, mus.samples, mus.rate, (G.mb || modeOn || G.bonus || (G.dm && G.dm.style === 'jackpot')) ? 0.5 : 1);
-    }
-    if (RC) RC.render(rdt);
+    } catch (e) { oops('audio', e); }
+    if (RC) try { RC.render(rdt); } catch (e) { oops('render', e); }
     // the dot-matrix display redraws at most ~30 times a second (a real DMD's content changes no faster, and
     // its readback and two full-size blits per draw scale with the display's size)
-    if (disp && (now - dmdT >= 30 || !chained)) { dmdT = now; disp.render(dmdFn); }
+    if (disp && (now - dmdT >= 30 || !chained)) { dmdT = now; try { disp.render(dmdFn); } catch (e) { oops('display', e); } }
     const ms = performance.now() - t0; G.frameMs.push(ms); if (G.frameMs.length > 240) G.frameMs.shift();
-    if (RC) RC.adapt(ms, interval);
+    if (RC) try { RC.adapt(ms, interval); } catch (e) { oops('adapt', e); }
     G.stats.frames++;
     if (G.finished) return;
-    if (busy()) { G.stats.rafReq++; chained = true; raf = requestAnimationFrame(frame); }
+    let bz = true; try { bz = busy(); } catch (e) { oops('busy', e); }
+    if (bz) { G.stats.rafReq++; chained = true; raf = requestAnimationFrame(frame); }
     else { G.stats.idleFrames++; chained = false; idleTimer = setTimeout(() => { idleTimer = 0; if (!raf && !G.paused && !G.destroyed) { G.stats.rafReq++; raf = requestAnimationFrame(frame); } }, 83); }
   }
   let chained = false, dmdT = 0;
@@ -886,7 +980,7 @@ export function createGame(def, opts = {}) {
     const small = (s, x, y, a) => smallText(g, s, x, y * Hd / 32, a);
     const ink = lcd ? (def.display.ink || '#fff') : '#fff', ink2 = lcd ? (def.display.ink2 || '#9cf') : '#888';
     g.fillStyle = ink;
-    if (lcd && def.display.bg) { def.display.bg(g, Wd, Hd, t, G); g.fillStyle = ink; }
+    if (lcd && def.display.bg) { try { def.display.bg(g, Wd, Hd, t, G); } catch (e) { oops('display bg', e); } g.fillStyle = ink; }
     if (G.state === 'over') {
       if (Math.floor(G.overT * 3) % 2 === 0 || G.overT > 1.2) big('GAME OVER', 11, 17);
       small(fmt(G.score), cx, 23, 'center'); return;
@@ -901,7 +995,7 @@ export function createGame(def, opts = {}) {
     }
     const m = G.dm;
     if (m) {
-      if (m.anim && def.anims && def.anims[m.anim]) { g.save(); def.anims[m.anim](g, m.t, Wd, Hd, m); g.restore(); g.fillStyle = ink; }
+      if (m.anim && def.anims && def.anims[m.anim]) { g.save(); try { def.anims[m.anim](g, m.t, Wd, Hd, m); } catch (e) { oops('display anim ' + m.anim, e); } g.restore(); g.fillStyle = ink; }
       if (m.style === 'flash' && Math.floor(m.t * 8) % 2) { g.fillRect(0, 0, Wd, Hd); g.fillStyle = '#000'; }
       if (m.style === 'jackpot') {
         g.strokeStyle = lcd ? ink2 : '#777'; g.lineWidth = 1;

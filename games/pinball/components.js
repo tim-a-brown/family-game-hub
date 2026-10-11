@@ -349,8 +349,8 @@ class Scoop extends Comp {
   }
   keep(b) { b.kept = true; }
   drop(b) { const i = this.balls.indexOf(b); if (i >= 0) this.balls.splice(i, 1); }
-  eject(speed) {
-    const b = this.balls.find(b => !b.kept) || this.balls[0]; if (!b) return;
+  eject(speed, which) {
+    const b = which || this.balls.find(b => !b.kept) || this.balls[0]; if (!b || this.balls.indexOf(b) < 0) return;
     this.balls.splice(this.balls.indexOf(b), 1); b.kept = false;
     const a = deg(this.ej.angle + (Math.random() - 0.5) * (this.o.spread || 6)), sp = speed || this.ej.speed;
     this.world.release(b, this.o.x + Math.cos(a) * 4, this.o.y + Math.sin(a) * 4, Math.cos(a) * sp, Math.sin(a) * sp, this.lvl);
@@ -359,12 +359,19 @@ class Scoop extends Comp {
   }
   // another component hands a ball over (subway, VUK chain)
   receive(b, hold) { this.world.hold(b, this, { x0: this.o.x, y0: this.o.y }); b.hidden = false; this.balls.push(b); this.holdT = hold != null ? hold : 0.6; }
+  // the engine's safety net: a ball held far too long comes out now
+  rescue(b) { if (this.balls.indexOf(b) < 0) return false; this.eject(0, b); return true; }
   trigger() { const b = this.world.addBall(this.o.x, this.o.y, { lvl: this.lvl }); this.onSensor(b); }
   update(dt) {
     if (this.kickT > 0) this.kickT -= dt;
-    if (this.balls.some(b => !b.kept) && this.holdT > 0) { this.holdT -= dt; if (this.holdT <= 0) this.eject(); }
     // drop balls that left (drained or removed)
     this.balls = this.balls.filter(b => !b.removed);
+    if (this.balls.some(b => !b.kept)) {
+      // two balls in at once (a subway or another component handing one over while one is held): the timer
+      // re-arms for the next, so the second ball is never left in the hole
+      if (this.holdT > 0) { this.holdT -= dt; if (this.holdT <= 0) { this.eject(); if (this.balls.some(b => !b.kept)) this.holdT = 0.6; } }
+      else this.holdT = 0.6;
+    }
   }
   onTilt() { this.holdT = Math.min(this.holdT, 0.3); }
   mesh(RC) {
@@ -389,14 +396,21 @@ class VUK extends Comp {
   onSensor(b) { this.world.hold(b, this, { x0: b.x, y0: b.y }); this.balls.push(b); this.holdT = this.o.hold != null ? this.o.hold : 0.5; this.sfx('scoop', { vol: 0.7 }); this.emit(this.o.event || 'vuk', b); }
   receive(b, hold) { this.world.hold(b, this, { x0: this.o.x, y0: this.o.y }); b.hidden = false; this.balls.push(b); this.holdT = hold != null ? hold : 0.4; }
   stepHeld(b, dt, h) { b.x = this.o.x; b.y = this.o.y; b.z = this.z0 - 10; }
-  fire() {
-    const b = this.balls.find(b => !b.kept); if (!b) return;
+  fire(which) {
+    const b = which || this.balls.find(b => !b.kept); if (!b || this.balls.indexOf(b) < 0) return;
     this.balls.splice(this.balls.indexOf(b), 1);
     b.mode = 'free'; b.held = null; this.world.enterPath(b, this.path, this.o.power || 2600);
     this.sfx('vuk', { vol: 0.95 }); this.G.shake(0.35); this.emit('vukFire', b);
   }
+  rescue(b) { if (this.balls.indexOf(b) < 0) return false; this.fire(b); return true; }
   trigger() { const b = this.world.addBall(this.o.x, this.o.y, { lvl: this.lvl }); this.onSensor(b); }
-  update(dt) { if (this.balls.some(b => !b.kept) && this.holdT > 0) { this.holdT -= dt; if (this.holdT <= 0) this.fire(); } this.balls = this.balls.filter(b => !b.removed); }
+  update(dt) {
+    this.balls = this.balls.filter(b => !b.removed);
+    if (this.balls.some(b => !b.kept)) {   // a second ball waiting re-arms the timer (see Scoop)
+      if (this.holdT > 0) { this.holdT -= dt; if (this.holdT <= 0) { this.fire(); if (this.balls.some(b => !b.kept)) this.holdT = 0.5; } }
+      else this.holdT = 0.5;
+    }
+  }
 }
 
 // ── Kickback (outlane) ───────────────────────────────────────────────────────
@@ -452,6 +466,7 @@ class Magnet extends Comp {
   }
   fling(angle, speed) { const a = deg(angle); this.release(Math.cos(a) * speed, Math.sin(a) * speed); }
   on() { this.active = true; } off() { this.active = false; }
+  rescue(b) { if (this.held !== b) return false; this.release(); return true; }
   onTilt() { this.active = false; if (this.held) this.release(0, -200); }
   trigger() { this.active = true; const b = this.world.addBall(this.o.x, this.o.y - 2, {}); this.grab(b); }
   update(dt) {
@@ -503,6 +518,8 @@ class MistMagnet extends Comp {
     b.vx = (b.x - other.x) / BR * imp * 0.5; b.vy = (b.y - other.y) / BR * imp * 0.5;
     this.sfx('clack', { vol: 1 }); this.G.shake(0.5); this.emit('mistFree', b);
   }
+  get maxHold() { return this.L / this.speed + 6; }
+  rescue(b) { if (this.ball !== b) return false; this.stop(); return true; }
   stop() { const b = this.ball; this.ball = null; if (b) { if (b.mist) { this.world.removeBall(b); if (this.RC) this.RC.dropBall(b); } else this.world.release(b, b.x, b.y, 0, -300, this.lvl); } }
   trigger() { this.start(); }
   update() { if (this.ball && this.ended) { this.ended = false; const b = this.ball; this.emit('mistEnd', b); if (this.ball === b) this.stop(); } if (this.ball && this.ball.removed) this.ball = null; }
@@ -702,6 +719,7 @@ class Subway extends Comp {
     this.sfx(this.o.style === 'teleport' ? 'whoosh' : 'scoop', { vol: 0.7 }); this.flashA = 1; this.emit(this.o.event || 'subway', b);
   }
   receive(b) { this.take(b, 0.3); }
+  rescue(b) { const e = this.q.find(e => e.b === b); if (!e) return false; e.hold = false; e.t = 0; return true; }
   update(dt) {
     this.flashA = Math.max(0, this.flashA - dt * 2);
     for (let i = this.q.length - 1; i >= 0; i--) {
@@ -870,6 +888,8 @@ class TiltingMiniField extends Comp {
   }
   onFlip(side, on) { const L = this.G.input.L, R = this.G.input.R; this.want = (R ? 1 : 0) - (L ? 1 : 0); }
   step(dt) { this.tilt += clamp(this.want - this.tilt, -5 * dt, 5 * dt); this.lv.gx = this.tilt * this.max; }
+  // the engine's ball safety: a ball the player is holding in a corner with a tilt is like a cradled ball
+  cradles(b) { return b.lvl === this.o.lvl && this.want !== 0; }
   trigger() { this.want = 1; }
   mesh(RC) {
     const g = grp(this.cx, this.cy, this.lv.z); const m = RC.mats.paint(this.o.wallColor || '#6a4a2a');
@@ -894,6 +914,8 @@ class Cannon extends Comp {
   stepHeld(b) { b.x = this.o.x; b.y = this.o.y; b.z = this.z0 + 20; }
   onFlip(side, on) { this.rot = (this.G.input.L ? 1 : 0) - (this.G.input.R ? 1 : 0); }
   onFire() { if (!this.ball) return false; this.fire(); return true; }
+  get maxHold() { return this.auto + 6; }
+  rescue(b) { if (this.ball !== b) return false; this.fire(); return true; }
   fire() {
     const b = this.ball; if (!b) return; this.ball = null; if (this.G.cannon === this) this.G.cannon = null;
     const sp = this.o.power || 3000, L = this.o.barrel || 40;
@@ -926,6 +948,7 @@ class MovingLauncher extends Comp {
   stepHeld(b) { b.x = this.o.x0 + (this.o.x1 - this.o.x0) * this.pos; b.y = this.o.y; b.z = this.z0; }
   onFlip() { this.dir = (this.G.input.R ? 1 : 0) - (this.G.input.L ? 1 : 0); }
   onFire() { if (!this.ball) return false; this.fire(); return true; }
+  rescue(b) { if (this.ball !== b) return false; this.fire(); return true; }
   fire() { const b = this.ball; if (!b) return; this.ball = null; this.G.cannon = null; this.world.release(b, b.x, b.y + 4, 0, this.o.power || 2200, this.lvl); this.sfx('launch'); this.emit('launcherFire', b, { pos: this.pos }); }
   trigger() { const b = this.world.addBall(this.o.x0, this.o.y, { lvl: this.lvl }); this.receive(b); }
   update(dt) { if (this.ball) { this.t += dt; this.pos = clamp(this.pos + this.dir * 0.9 * dt, 0, 1); if (this.t > 8) this.fire(); } }
@@ -945,6 +968,8 @@ class Grabber extends Comp {
   at(s) { const c = this.cum; let i = 1; while (i < c.length - 1 && c[i] < s) i++; const k = (s - c[i - 1]) / ((c[i] - c[i - 1]) || 1), a = this.route[i - 1], b = this.route[i]; return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k]; }
   // take a ball (usually one a scoop/saucer is holding)
   grab(b) { if (this.state !== 'idle') return false; this.ball = b; this.world.hold(b, this, {}); this.state = 'rise'; this.t = 0; this.sfx(this.o.riseSound || 'lid', { vol: 0.8 }); this.emit('grab', b); return true; }
+  get maxHold() { return this.L / (this.o.speed || 110) + 8; }
+  rescue(b) { if (this.ball !== b) return false; this.dropBall(); this.state = 'back'; this.t = 0; return true; }
   stepHeld(b, dt) { if (this.state === 'carry' || this.state === 'drop') { b.x = this.pos.x; b.y = this.pos.y; b.z = Math.max(this.z0, this.pos.z - BR * 2 - 2); } }
   update(dt) {
     this.t += dt;
@@ -984,11 +1009,16 @@ class MouthToy extends Comp {
   onContact(b, c, imp) { if (imp < 80 || this.G.time - this.last < 0.3) return; this.last = this.G.time; this.sfx('plastic', { vol: 0.8 }); this.emit('mouthHit', b); }
   onSensor(b) { this.world.hide(b, this, {}); this.balls.push(b); this.holdT = this.o.hold || 1.5; this.sfx('scoop'); this.emit('mouth', b); }
   stepHeld() {}
-  spit(speed = 1400) { const b = this.balls.shift(); if (!b) return; const a = Math.atan2(this.f[1], this.f[0]) + (Math.random() - 0.5) * 0.4; this.world.release(b, this.o.x + this.f[0] * 24, this.o.y + this.f[1] * 24, Math.cos(a) * speed, Math.sin(a) * speed, this.lvl); b.noCap[this.id] = this.world.time + 1; this.sfx('kick'); this.emit('mouthOut', b); }
+  rescue(b) { if (this.balls.indexOf(b) < 0) return false; this.spit(1400, b); return true; }
+  spit(speed = 1400, which) { const i = which ? this.balls.indexOf(which) : 0; const b = i >= 0 ? this.balls.splice(i, 1)[0] : null; if (!b) return; const a = Math.atan2(this.f[1], this.f[0]) + (Math.random() - 0.5) * 0.4; this.world.release(b, this.o.x + this.f[0] * 24, this.o.y + this.f[1] * 24, Math.cos(a) * speed, Math.sin(a) * speed, this.lvl); b.noCap[this.id] = this.world.time + 1; this.sfx('kick'); this.emit('mouthOut', b); }
   trigger() { this.open(); const b = this.world.addBall(this.o.x, this.o.y, {}); this.onSensor(b); }
   update(dt) {
     this.jaw += ((this.isOpen || this.balls.length ? 1 : 0) - this.jaw) * Math.min(1, dt * 6);
-    if (this.balls.length && this.holdT > 0 && !this.o.manual) { this.holdT -= dt; if (this.holdT <= 0) this.spit(); }
+    this.balls = this.balls.filter(b => !b.removed);
+    if (this.balls.length && !this.o.manual) {   // a second ball inside re-arms the timer (see Scoop)
+      if (this.holdT > 0) { this.holdT -= dt; if (this.holdT <= 0) { this.spit(); if (this.balls.length) this.holdT = 0.8; } }
+      else this.holdT = 0.8;
+    }
     const b = this.world.balls.find(b => !b.hidden); if (b) { const dx = b.x - this.o.x, dy = b.y - this.o.y, l = Math.hypot(dx, dy) || 1; this.look = [dx / l, dy / l]; }
   }
   mesh(RC) { const m = (this.o.model || defaultHead)(RC, this); m.position.set(this.o.x, this.o.y, this.z0); m.rotation.z = Math.atan2(this.f[1], this.f[0]) - PI / 2; RC.root.add(m); this.m = m; }
@@ -1032,6 +1062,8 @@ class FerrisWheel extends Comp {
     const p = this.bucketPos(h.k); b.x = p[0]; b.y = p[1]; b.z = p[2] - BR;
     const top = ((p[3] % TAU) + TAU) % TAU; if (h.t > 0.6 && Math.abs(top - PI / 2) < 0.08) this.dump(b);
   }
+  get maxHold() { return TAU / Math.max(0.2, Math.abs(this.w)) + 6; }
+  rescue(b) { if (this.carry.indexOf(b) < 0) return false; this.dump(b); return true; }
   dump(b) { this.carry.splice(this.carry.indexOf(b), 1); const e = this.o.exit; this.world.airborne(b, e.x, e.y, e.z || 40, e.vx || 0, e.vy || 0, 0, e.lvl || this.lvl); this.sfx('clank', { vol: 0.8 }); this.emit('wheelOut', b); }
   step(dt) { this.a += this.w * dt; }
   trigger() { const b = this.world.addBall(this.o.entry[0], this.o.entry[1], {}); this.onSensor(b); }

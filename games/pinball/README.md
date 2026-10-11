@@ -354,6 +354,32 @@ a component can report `busy()` if it animates something that must run at full r
 it is the biggest honest cost (canvas painting is CPU work); avoid large `shadowBlur` fills and huge gradients in
 loops.
 
+## Ball safety and errors (engine)
+
+Nothing may strand a game; the engine checks every ball each frame and none of this costs the player a ball:
+* A free ball resting 2.8 s (or rattling round one 70 mm spot for 8 s) gets a search kick, unless the player is
+  holding it there: cradled on a raised flipper, or in a level a component says the player is steering
+  (`comp.cradles(ball) -> true`; the tilting mini-field does this while a button tilts it). The 4th time in the same
+  spot within 15 s (wedged against a moving part, a pocket a kick can't clear) it goes back to the shooter lane and
+  is served straight back ("BALL RETURNED"). Balls off the table also go back to the lane.
+* A ball a component holds (`held`/`hidden`: scoop, subway, mouth, VUK, magnet, wheel, grabber...) longer than
+  `comp.maxHold` seconds (default 15; a number or getter, at least 15) is handed to `comp.rescue(ball)` (let it out
+  the normal way; return true if you did). Without a rescue, or if the ball is still held 3 s later, it goes back to
+  the shooter lane and the engine forgets it in the component's `balls`/`carry`/`wait`/`riders`/`q`/`ball`/`held`.
+  Left alone: locked balls (`b.locked`: ball locks, the gumball machine, `G.lockBall`), mist balls, a scoop's
+  `keep()`, the plunger, a ball cradled on a held flipper, and anything a component vouches for with
+  `legitHold(ball) -> true`. A custom component that holds balls longer than 15 s on purpose must lock them or
+  say so with `maxHold`/`legitHold`.
+* A ball stalled on a ramp or wireform (speed under 25 mm/s for 4 s) is pushed on towards the exit; the third time,
+  back to the lane.
+* Scoops, VUKs and mouth toys with two balls inside let them out one after the other (the hold timer re-arms).
+* Counted in `G.stats`: `stuck` (kicks), `rescued`, `returned`, `esc`, `errors`; `at` lists where.
+
+A throw in a rule hook, a later, a component's update, the renderer or a display animation is caught, logged once
+(`console.error('[pinball] where: message')`, also `G.stats.errAt`) and play carries on. (An uncaught throw used to
+end the frame loop: the table froze mid-shot and no button answered.) Still treat every logged error as a bug:
+canvas calls such as `arc`/`ellipse` throw on a negative radius, so clamp computed radii in display animations.
+
 ## Testing
 
 In the page (`games/pinball.html`), `window.__pin`:
