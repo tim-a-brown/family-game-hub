@@ -64,7 +64,9 @@ var PYLArt = (function () {
     // right arm (in front), holds the prop; pointed fingers
     s += '<g class="g-armr">' + limb('M16-50 C24-52 28-50 30-46') + (o.prop || '') +
       '<path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + OL + '" stroke-width="4.2" stroke-linecap="round"/><path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + RED + '" stroke-width="2" stroke-linecap="round"/></g>';
-    s += '<g class="g-head" transform="translate(0 -80) scale(1 .9)">' + head(o) + '</g>';
+    // the head goes straight into the body: no chin line across the chest (the patch moves with the head)
+    s += '<g class="g-head" transform="translate(0 -80) scale(1 .9)">' + head(o) +
+      '<path d="M-16.4 26 C-16.4 31-16 35-15.6 38 L15.6 38 C16 35 16.4 31 16.4 26z" fill="' + RED + '"/></g>';
     return s;
   }
   function headSVG(cls) {
