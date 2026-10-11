@@ -775,11 +775,12 @@
 
   // ── One device, several accounts ──────────────────────────────────────
   // Each PIN (and guest play) has its own space on the device. Signing out packs everything of that account
-  // (scores, history, names, avatars, links, favourites, decks, saved games, settings) into one stash key and
-  // empties the device; signing in unpacks only that PIN's own stash before syncing with its cloud copy. So
-  // nothing from one PIN is ever merged into another. Only the device's own settings stay put.
+  // (scores, history, names, avatars, links, favourites, decks, saved games, settings, look and layout, its
+  // online-table identity) into one stash key and empties the device and this session's storage; signing in
+  // unpacks only that PIN's own stash before syncing with its cloud copy. So nothing from one PIN is ever merged
+  // into another. Only the phone's motion-permission answers and test flags stay with the device.
   var SPACE_KEY = 'fgh_space', STASH = 'fgh_space_';
-  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|emu|space(_.*)?)|online_dev(_override)?|online_transport|lorc_dev|eightball_motion|lorc_tilt(_asked)?|firebase.*)$/;
+  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|emu|space(_.*)?)|online_transport|eightball_motion|lorc_tilt(_asked)?|firebase.*)$/;
   function spaceOf(p){ var h = 5381; p = String(p || ''); for(var i = 0; i < p.length; i++) h = ((h << 5) + h + p.charCodeAt(i)) | 0; return 'p' + (h >>> 0).toString(36); }
   function curSpace(){ return LS.getItem(SPACE_KEY) || (isPin() ? spaceOf(pin()) : 'g'); }
   function switchSpace(to){
@@ -798,6 +799,8 @@
     LS.removeItem(STASH + to);
     if(back) Object.keys(back).forEach(function(k){ if(!DEVICE_RE.test(k) && typeof back[k] === 'string') try{ LS.setItem(k, back[k]); }catch(e){} });
     try{ LS.setItem(SPACE_KEY, to); }catch(e){}
+    // this browser session's leftovers (dice log, open scorecard, map view...) belonged to the last account too
+    try{ if(SS) Object.keys(SS).forEach(function(k){ if(k !== 'online_dev_override') SS.removeItem(k); }); }catch(e){}
     _pushPending = false;
   }
 
