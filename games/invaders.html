@@ -1346,9 +1346,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   }
 
   // ═══ Loop ════════════════════════════════════════════════════════════════
-  var raf = 0, lastT = 0, acc = 0;
+  var raf = 0, lastT = 0, acc = 0, frozen = false;   // frozen: test hook, the clock stops but input still works
   function loop(t) {
     raf = 0;
+    if (frozen) return;
     var dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 0; lastT = t;
     if (view !== 'game' || !G) { ufoSoundOff(); return; }
     if (!paused && !G.ended) {
@@ -1361,7 +1362,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     draw();
     if (!paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
   }
-  function wake() { if (!raf && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
+  function wake() { if (!raf && !frozen && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
 
   // ═══ Rendering: an LED screen ════════════════════════════════════════════
   // LED sprite: each lit art pixel is a glowing dot. Rendered once per colour and size, at screen resolution.
@@ -1730,8 +1731,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
         rec: G.rec.slice(), paused: paused, ended: !!G.ended, why: G.why || '', stats: G.stats, parts: parts.length };
     },
     step: function (n) { for (var i = 0; i < (n || 1); i++) { if (G.ended) break; update(); } draw(); return this.get(); },
-    stop: function () { if (raf) { cancelAnimationFrame(raf); raf = 0; } paused = true; },
-    go: function () { paused = false; wake(); },
+    stop: function () { frozen = true; if (raf) { cancelAnimationFrame(raf); raf = 0; } },
+    go: function () { frozen = false; paused = false; wake(); },
     setAim: function (x, y, i) { aims[i || 0].x = x; aims[i || 0].y = y; if (!i && !SET.two) { aims[1].x = x; aims[1].y = y; } },
     wave: function (n) { startWave(n); },
     boss: function () { var n = G.wave + 1; while (n % 5) n++; startWave(n); },
