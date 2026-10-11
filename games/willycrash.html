@@ -217,9 +217,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 
   // ═══ City ═══════════════════════════════════════════════════════════════
   // The arcade's playfield: seven brick high-rises in a row, each paying a set number of points for a
-  // landing on its roof (25, 35, 100, the 500 jackpot in the middle, 100, 35, 25). Anywhere else, the
-  // street, the gaps between buildings or the bay, pays 5.
-  var BVAL0 = [25, 35, 100, 500, 100, 35, 25], STREET_T = 5;
+  // landing on its roof (250, 350, 1,000, the 5,000 jackpot in the middle, 1,000, 350, 250: the cabinet's tickets x 10). Anywhere else, the
+  // street, the gaps between buildings or the bay, pays 50.
+  var BVAL0 = [250, 350, 1000, 5000, 1000, 350, 250], STREET_T = 50;   // the cabinet's tickets x 10
   //           width, height (the far right one is the giant)
   var BSPEC = [[88, 190], [82, 330], [86, 300], [104, 350], [86, 315], [82, 365], [94, 520]];
   var CITY_X0 = 330, GAP = 54;
@@ -295,7 +295,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // Where the jackpot sits this shot, and what every roof pays
   function placeJackpot() {
     B.forEach(function (b, i) { b.val = BVAL0[i]; });
-    if (jpI !== 3) { B[3].val = BVAL0[jpI]; B[jpI].val = 500; }
+    if (jpI !== 3) { B[3].val = BVAL0[jpI]; B[jpI].val = 5000; }
     jpB = B[jpI];
     B.forEach(function (b) { b.lips.forEach(function (l) { l.off = b === jpB; }); });
   }
@@ -933,7 +933,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     flock.forEach(function (f) { f.ph += dt; f.x += f.vx * dt; if (f.hit) { f.y += (f.vy || 0) * dt; f.vy = (f.vy || 0) - 20 * dt; } else f.y += Math.sin(f.ph * 2) * 6 * dt; });
   }
 
-  // Points go by where Willy ends up once he stops: a roof pays its number, anywhere else pays 5
+  // Points go by where Willy ends up once he stops: a roof pays its number, anywhere else pays 50
   function evaluate() {
     var R = rag, pl = R.P[PEL], r = null, b = null;
     Snd.wind(0);
@@ -943,7 +943,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       for (var i = 0; i < B.length; i++) { var c = B[i]; if (pl.x > c.x0 - 6 && pl.x < c.x1 + 6 && pl.y < c.y0 + 4 && pl.y > c.y0 - 110) { b = c; break; } }
       if (b) {
         var jp = b === jpB;
-        r = { code: jp ? 'jackpot' : 'roof', name: jp ? 'JACKPOT!' : b.val + ' points!', tickets: b.val, col: jp ? '#ffd84a' : b.val >= 100 ? '#7dffb3' : '#7fe0ff',
+        r = { code: jp ? 'jackpot' : 'roof', name: jp ? 'JACKPOT!' : fmt(b.val) + ' points!', tickets: b.val, col: jp ? '#ffd84a' : b.val >= 1000 ? '#7dffb3' : '#7fe0ff',
               where: jp ? 'Jackpot roof' : 'Building ' + (b.idx + 1) + ' roof', bi: b.idx };
         R.dance = { x: clamp(pl.x, b.x0 + 16, b.x1 - 16), y: b.y0, t: 0, k: 0 };
       } else {
@@ -1236,10 +1236,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       g.stroke();
     });
     // the point value painted big and red across the top floor, as in the arcade
-    var big = Math.min(jp ? 30 : 26, w * (b.val >= 100 ? .32 : .42));
+    var big = Math.min(jp ? 30 : 26, w * (b.val >= 5000 ? .24 : b.val >= 1000 ? .26 : .32));
     g.font = '400 ' + big + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
-    g.lineWidth = 3; g.strokeStyle = 'rgba(90,10,10,.55)'; g.strokeText(String(b.val), x + w / 2, y + 19);
-    g.fillStyle = jp ? '#ffcf3a' : '#e0262c'; g.fillText(String(b.val), x + w / 2, y + 19);
+    g.lineWidth = 3; g.strokeStyle = 'rgba(90,10,10,.55)'; g.strokeText(fmt(b.val), x + w / 2, y + 19);
+    g.fillStyle = jp ? '#ffcf3a' : '#e0262c'; g.fillText(fmt(b.val), x + w / 2, y + 19);
     g.font = '400 ' + Math.round(big * .36) + 'px ' + FONT; g.lineWidth = 2; g.strokeText('POINTS', x + w / 2, y + 33); g.fillText('POINTS', x + w / 2, y + 33);
     // cornice: a grey stone slab
     g.fillStyle = '#cfc8be'; g.fillRect(x - 3, y - 1, w + 6, 8);
@@ -1346,17 +1346,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       g.fillStyle = col; g.strokeStyle = '#fff'; g.lineWidth = 2.5;
       g.beginPath(); g.moveTo(-5, -6); g.lineTo(5, -6); g.lineTo(5, 2); g.lineTo(11, 2); g.lineTo(0, 14); g.lineTo(-11, 2); g.lineTo(-5, 2); g.closePath(); g.stroke(); g.fill();
       g.font = '400 ' + (jp ? 26 : 17) + 'px ' + FONT; g.lineWidth = 4; g.strokeStyle = INK;
-      g.strokeText(String(b.val), 0, jp ? -26 : -20); g.fillStyle = jp ? '#ffd23a' : '#fff'; g.fillText(String(b.val), 0, jp ? -26 : -20);
+      g.strokeText(fmt(b.val), 0, jp ? -26 : -20); g.fillStyle = jp ? '#ffd23a' : '#fff'; g.fillText(fmt(b.val), 0, jp ? -26 : -20);
       g.font = '400 10px ' + FONT; g.lineWidth = 3; g.strokeText('POINTS', 0, jp ? -10 : -8); g.fillStyle = jp ? '#fff3b0' : '#ffe0e0'; g.fillText('POINTS', 0, jp ? -10 : -8);
       g.restore();
     });
-    // 5 points anywhere off the roofs
+    // 50 points anywhere off the roofs
     for (var i = 0; i < B.length - 1; i++) {
       var gx = (B[i].x1 + B[i + 1].x0) / 2;
       g.save(); g.translate(gx, -20 * s); g.scale(s, s);
       g.fillStyle = '#e5263f'; g.strokeStyle = '#fff'; g.lineWidth = 2;
       g.beginPath(); g.moveTo(0, -10); g.lineTo(7, -2); g.lineTo(3, -2); g.lineTo(3, 6); g.lineTo(-3, 6); g.lineTo(-3, -2); g.lineTo(-7, -2); g.closePath(); g.stroke(); g.fill();
-      g.font = '400 13px ' + FONT; g.lineWidth = 3.5; g.strokeStyle = INK; g.strokeText('5', 0, -18); g.fillStyle = '#fff'; g.fillText('5', 0, -18);
+      g.font = '400 13px ' + FONT; g.lineWidth = 3.5; g.strokeStyle = INK; g.strokeText('50', 0, -18); g.fillStyle = '#fff'; g.fillText('50', 0, -18);
       g.restore();
     }
     g.globalAlpha = 1;
@@ -1681,7 +1681,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     function mx(wx) { return x0 + 8 + (wx + 60) / span * (w - 16); }
     var base = y + h - 6, sy = (h - 10) / 540;
     B.forEach(function (b) {
-      var col = b === jpB ? (Math.floor(t * 4) % 2 ? '#ffd23a' : '#ffb21a') : b.val >= 100 ? '#e0805a' : '#b9806a';
+      var col = b === jpB ? (Math.floor(t * 4) % 2 ? '#ffd23a' : '#ffb21a') : b.val >= 1000 ? '#e0805a' : '#b9806a';
       g.fillStyle = col; g.fillRect(mx(b.x0), base - b.h * sy, Math.max(2, b.w / span * (w - 16)), b.h * sy);
     });
     g.fillStyle = 'rgba(120,190,255,.9)'; g.fillRect(mx(SEA_X), base - 1, mx(WORLD_END) - mx(SEA_X), 2);
@@ -1709,7 +1709,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.save(); g.translate(W / 2, y); g.scale(sc, sc);
     g.fillStyle = 'rgba(20,24,60,.72)'; rr(-140, -34, 280, 78, 18); g.fill();
     txt('SHOT ' + (shotIdx + 1) + ' OF ' + SHOTS, 0, -10, 30, '#fff');
-    var sub = jpMoved ? 'Jackpot moved! The cannon is faster' : shotIdx === 0 ? 'Land on a roof to win its points' : shotIdx === SHOTS - 1 ? 'Last shot! Jackpot is 500 points' : 'Jackpot is 500 points';
+    var sub = jpMoved ? 'Jackpot moved! The cannon is faster' : shotIdx === 0 ? 'Land on a roof to win its points' : shotIdx === SHOTS - 1 ? 'Last shot! Jackpot is 5,000 points' : 'Jackpot is 500 points';
     txt(sub, 0, 22, 14, '#ffe6a8', 'center', 0);
     g.restore(); g.globalAlpha = 1;
   }
@@ -1767,10 +1767,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.fill();
     var gl = g.createRadialGradient(cx, cy, 10, cx, cy, W * .7); gl.addColorStop(0, 'rgba(255,255,230,.8)'); gl.addColorStop(1, 'rgba(255,255,230,0)');
     g.fillStyle = gl; g.fillRect(0, 0, W, H);
-    var pop = ease(clamp(tt / .35, 0, 1)), big = Math.min(110, W * .3);
+    var pop = ease(clamp(tt / .35, 0, 1)), big = Math.min(76, W * .2);   // sized for '5,000'
     g.save(); g.translate(W / 2, H * .17); g.scale(.6 + .4 * pop, .6 + .4 * pop); g.rotate(-.04);
     g.font = '400 ' + big + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
-    g.lineWidth = big * .1; g.strokeStyle = '#8a1010'; g.strokeText('500', 0, 0); g.fillStyle = '#e5262c'; g.fillText('500', 0, 0);
+    g.lineWidth = big * .1; g.strokeStyle = '#8a1010'; g.strokeText('5,000', 0, 0); g.fillStyle = '#e5262c'; g.fillText('5,000', 0, 0);
     g.font = '400 ' + Math.round(big * .36) + 'px ' + FONT; g.lineWidth = big * .05; g.strokeText('POINTS', 0, big * .62); g.fillText('POINTS', 0, big * .62);
     g.restore();
     // Willy, big, one hand on his hip and the other pointing up
@@ -1791,8 +1791,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     // scaffolding
     g.strokeStyle = 'rgba(220,220,255,.18)'; g.lineWidth = 2;
     g.beginPath(); for (var x = W * .06; x < W * .96; x += W * .15) { g.moveTo(x, H * .14); g.lineTo(x, H * .78); g.moveTo(x, H * .14); g.lineTo(x + W * .15, H * .46); g.moveTo(x + W * .15, H * .14); g.lineTo(x, H * .46); g.moveTo(x, H * .46); g.lineTo(x + W * .15, H * .78); g.moveTo(x + W * .15, H * .46); g.lineTo(x, H * .78); } g.stroke();
-    g.font = '400 ' + Math.round(W * .2) + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(255,255,255,.12)';
-    g.fillText('500', W / 2, H * .38); g.font = '400 ' + Math.round(W * .11) + 'px ' + FONT; g.fillText('POINTS', W / 2, H * .5);
+    g.font = '400 ' + Math.round(W * .13) + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(255,255,255,.12)';
+    g.fillText('5,000', W / 2, H * .38); g.font = '400 ' + Math.round(W * .11) + 'px ' + FONT; g.fillText('POINTS', W / 2, H * .5);
     // the BONUS marquee: bulb-lit letters
     var L = 'BONUS', fs = Math.min(64, W * .17), lw = fs * .78;
     g.font = '400 ' + fs + 'px ' + FONT; g.lineJoin = 'round';
@@ -2081,8 +2081,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       Mus.menuItem
     ],
     rules:
-      '<p class="goal">Fire Willy the daredevil out of the cannon and land him on a rooftop. Each roof pays points; the middle building is the 500 point jackpot. You get 5 shots. Most points wins a spot on the high-score board.</p>' +
-      '<h3>The city</h3><p>Seven brick buildings in a row. Their roofs pay <b>25, 35, 100, 500, 100, 35, 25</b> points, painted on each building and shown over its roof while you aim. Anywhere else (the street, the gaps between buildings, the bay) pays <b>5</b>.</p>' +
+      '<p class="goal">Fire Willy the daredevil out of the cannon and land him on a rooftop. Each roof pays points; the middle building is the 5,000 point jackpot. You get 5 shots. Most points wins a spot on the high-score board.</p>' +
+      '<h3>The city</h3><p>Seven brick buildings in a row. Their roofs pay <b>250, 350, 1,000, 5,000, 1,000, 350, 250</b> points, painted on each building and shown over its roof while you aim. Anywhere else (the street, the gaps between buildings, the bay) pays <b>50</b>.</p>' +
       '<h3>Firing (Arcade)</h3><ul><li>The cannon swings up and down on its own. You only choose <b>when</b> to fire: every shot leaves the cannon at the same speed.</li>' +
       '<li><b>Tap anywhere</b> (or press the big LAUNCH handle) to fire. On a computer, press <b>Space</b> or click.</li>' +
       '<li>The red and white dashes show where Willy will start to fly. The dial shows the angle; steeper shots land closer.</li>' +

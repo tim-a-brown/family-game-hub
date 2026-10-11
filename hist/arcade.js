@@ -516,7 +516,7 @@
     crash: ['Crash', '#ff8a5c'], splash: ['Splash', '#7fd0ff'], jackpot: ['JACKPOT', '#ffd84a'], jackpad: ['Tower pad', '#ffd84a'], jackroof: ['Top of the tower', '#ffd84a'] };
   // Willy Crash v2 (the arcade's seven-building points city). Records with detail.v === 2 carry
   // rb (roof building index per shot, -1 = street/gap/bay), jb (jackpot building per shot), ps (points per shot).
-  var WC2_H = [190, 330, 300, 350, 315, 365, 520], WC2_V = [25, 35, 100, 500, 100, 35, 25];
+  var WC2_H = [190, 330, 300, 350, 315, 365, 520], WC2_V = [250, 350, 1000, 5000, 1000, 350, 250];
   function willyV2(e, ui, d) {
     var ls = String(d.ls).split(','), ps = String(d.ps || '').split(',').map(Number);
     var rb = String(d.rb || '').split(',').map(Number), jb = String(d.jb || '').split(',').map(Number);
@@ -527,7 +527,7 @@
     s += '<g transform="translate(16 ' + (GY - 6) + ') rotate(-70)"><rect x="-2" y="-4" width="20" height="8" fill="#fff6ea"/><rect x="4" y="-4" width="3" height="8" fill="#e5263f"/><rect x="11" y="-4" width="3" height="8" fill="#e5263f"/></g><circle cx="16" cy="' + (GY - 5) + '" r="5.5" fill="#2c52c0" stroke="#fff" stroke-width="1.5"/>';
     var jp0 = isNaN(jb[0]) ? 3 : jb[0];
     WC2_H.forEach(function (h, i) {
-      var x = X0 + i * (BW + GAP), y = GY - h * SC, isJ = i === jp0, v = isJ ? 500 : i === 3 ? WC2_V[jp0] : WC2_V[i];
+      var x = X0 + i * (BW + GAP), y = GY - h * SC, isJ = i === jp0, v = isJ ? 5000 : i === 3 ? WC2_V[jp0] : WC2_V[i];
       s += '<rect x="' + x + '" y="' + y.toFixed(1) + '" width="' + BW + '" height="' + (GY - y).toFixed(1) + '" fill="#9a4b36" stroke="#2b1e3f" stroke-width="1"/>';
       s += '<text x="' + (x + BW / 2) + '" y="' + (y + 10).toFixed(1) + '" text-anchor="middle" font-size="8" font-weight="900" fill="' + (isJ ? '#ffd23a' : '#ffd9c0') + '" font-family="ui-rounded,system-ui,sans-serif">' + v + '</text>';
       if (isJ) s += '<rect x="' + (x + 4) + '" y="' + (y - 1.5).toFixed(1) + '" width="' + (BW - 8) + '" height="2" fill="#e5263f"/><rect x="' + (x + 9) + '" y="' + (y - 1.5).toFixed(1) + '" width="' + (BW - 18) + '" height="2" fill="#fff"/>';
