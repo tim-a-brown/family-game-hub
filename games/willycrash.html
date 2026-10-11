@@ -483,6 +483,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // the line to the closest point). Rounded corners matter: a hand that ends up on a roof edge rolls
   // off it instead of hooking on and holding him against the wall.
   function collideP(p, pi, h, ev) {
+    if (rag.noCol) return;   // splatted flat on a wall face for a moment: leave the pose alone
     var r = p.r;
     for (var i = 0; i < cands.length; i++) {
       var c = cands[i], x = p.x, y = p.y;
@@ -513,7 +514,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (vn >= 0) { p.px = p.x - vx; p.py = p.y - vy; return; }
     var face = ny <= -.6 ? 'top' : ny >= .6 ? 'bot' : nx < 0 ? 'left' : 'right';
     var sp = -vn / h, e = sp < 60 ? 0 : mat.r + (pi === HEAD ? .12 : 0);   // the helmet bounces a little more
-    var mu = face === 'top' ? mat.mu * (rag.sticky ? 1.8 : 1) : Math.min(mat.mu, WALL_MU);
+    var mu = face === 'top' ? mat.mu * (rag.sticky ? 2.2 : 1) : Math.min(mat.mu, WALL_MU);
     var tx = vx - vn * nx, ty = vy - vn * ny, tl = Math.sqrt(tx * tx + ty * ty);
     var k = tl > 1e-9 ? Math.max(0, 1 - mu * -vn * (1 + e) / tl) : 0;
     p.px = p.x - (tx * k - e * vn * nx); p.py = p.y - (ty * k - e * vn * ny);
