@@ -628,7 +628,7 @@ function filmMaterial(normalTex, frostTex, side) {
 // nothing and act as solid ground until something hits them hard enough to wake them, so the
 // scene stops rendering once everything has settled.
 function makeWorld() {
-  const G = -15, DT = 1 / 120, ITER = 7, SLOP = 0.003, MU_T = 0.55, MU_B = 0.4, MAXSUB = 5;
+  const G = -15, DT = 1 / 120, ITER = 6, SLOP = 0.003, MU_T = 0.55, MU_B = 0.4, MAXSUB = 5;
   const bodies = [], cons = [], pairs = new Map();
   let walls = [], acc = 0, stepMs = 0;
   const up = new THREE.Vector3(0, 1, 0);
@@ -730,7 +730,7 @@ function makeWorld() {
     }
   }
   function pairDeep(a, b, n, d) {
-    const key = a.id < b.id ? a.id + ':' + b.id : b.id + ':' + a.id;
+    const key = a.id < b.id ? a.id * 65536 + b.id : b.id * 65536 + a.id;
     const e = pairs.get(key);
     const sg = a.id < b.id ? 1 : -1;
     if (!e) pairs.set(key, { a: sg > 0 ? a : b, b: sg > 0 ? b : a, n: n.clone().multiplyScalar(sg), d });
@@ -1358,7 +1358,7 @@ function mount(stage, api) {
     // a freshly laid table: let anything that ended up overlapping settle, without drawing it
     updateWalls();
     cookies.forEach((k) => world.wake(k.rb));
-    world.settle(360);
+    world.settle(600);
     cookies.forEach(syncCookie);
   }
   // Drop a cookie onto the table from above: after `delay` it falls from `h` up, turning and
@@ -1959,6 +1959,7 @@ function mount(stage, api) {
     stage.innerHTML = '';
   }
 
+  const physStat = { max: 0, sum: 0, n: 0 };
   return {
     unmount,
     // automated checks
@@ -1975,7 +1976,7 @@ function mount(stage, api) {
       // physics: bodies awake, ms of the last physics step, and each pack's height off the table / tilt
       awake: () => world.bodies.filter((b) => b.active && (b.awake || b.held)).length,
       physMs: () => +world.ms().toFixed(2),
-      poses: () => cookies.filter((c) => c !== openC).map((c) => { const up = new THREE.Vector3(0, 1, 0).applyQuaternion(c.rb.q); return { y: +(c.rb.p.y - c.rb.he.y).toFixed(3), tilt: +Math.acos(Math.min(1, Math.abs(up.y))).toFixed(2), x: +c.rb.p.x.toFixed(2), z: +c.rb.p.z.toFixed(2) }; }),
+      poses: () => cookies.filter((c) => c !== openC).map((c) => { const up = new THREE.Vector3(0, 1, 0).applyQuaternion(c.rb.q); let lo = 1e9; for (let i = 1; i < c.rb.wp.length; i += 3) lo = Math.min(lo, c.rb.wp[i]); return { y: +(c.rb.p.y - c.rb.he.y).toFixed(3), low: +lo.toFixed(3), tilt: +Math.acos(Math.min(1, Math.abs(up.y))).toFixed(2), x: +c.rb.p.x.toFixed(2), z: +c.rb.p.z.toFixed(2) }; }),
       // a tap at (x, y) in canvas pixels (as screen() and openScreen() report them)
       tap: (x, y) => { const r = canvas.getBoundingClientRect(), ev = { clientX: r.left + x, clientY: r.top + y, button: 0, pointerType: 'touch' }; onDown(ev); onUp(ev); return state; },
       close: () => { closeCookie(); return state; },
@@ -1987,7 +1988,9 @@ function mount(stage, api) {
       hero: () => { if (!O) return null; const p = O.c.root.position.clone().project(camera); return { ndc: [p.x, p.y, p.z], pos: O.c.root.position.toArray(), cam: camera.position.toArray() }; },
       hold: (on) => { hold = !!on; if (hold && raf) { cancelAnimationFrame(raf); raf = 0; } else kick(); },
       // advance without drawing (fast, for automation); returns the slowest physics frame in ms
-      sim: (sec) => { const n = Math.round(sec / 0.016); let mx = 0; for (let i = 0; i < n; i++) { T += 0.016; update(0.016); mx = Math.max(mx, world.ms()); } return +mx.toFixed(2); },
+      sim: (sec) => { const n = Math.round(sec / 0.016); let mx = 0, sum = 0, k = 0; for (let i = 0; i < n; i++) { T += 0.016; update(0.016); const m = world.ms(); mx = Math.max(mx, m); if (m > 0.05) { sum += m; k++; } } physStat.max = Math.max(physStat.max, mx); physStat.sum += sum; physStat.n += k; return +mx.toFixed(2); },
+      cam: () => ({ d: +camD.toFixed(3), to: +camTo.toFixed(3) }),
+      physStat: () => ({ max: +physStat.max.toFixed(2), avg: +(physStat.sum / Math.max(1, physStat.n)).toFixed(2), frames: physStat.n }),
       step: (sec) => { const n = Math.round(sec / 0.016); for (let i = 0; i < n; i++) { T += 0.016; update(0.016); } renderer.render(scene, camera); return state; },
       // average ms to draw one frame (GPU included), over n draws
       perf: (n) => { const gl = renderer.getContext(), px = new Uint8Array(4), sync = () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); n = n || 10; renderer.render(scene, camera); sync(); const a = performance.now(); for (let i = 0; i < n; i++) { renderer.render(scene, camera); sync(); } return +((performance.now() - a) / n).toFixed(2); },
