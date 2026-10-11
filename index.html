@@ -458,7 +458,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
     var vis = visibleGames(), favCount = vis.filter(isFav).length;
     var items = [{ id: 'all', label: 'All', n: vis.length, ic: 'tiles', cls: 'all' }];
     if (favCount) items.push({ id: 'fav', label: 'Favorites', n: favCount, ic: 'star', cls: 'fav' });
-    GAME_CATS.forEach(function (c) {
+    Kit.cats().forEach(function (c) {
       var n = vis.filter(function (g) { return g.cat === c.id; }).length;
       if (n) items.push({ id: c.id, label: c.name, n: n, ic: c.id, color: c.color });
     });
@@ -771,6 +771,8 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
     return s < 60 ? 'just now' : s < 3600 ? Math.floor(s / 60) + 'm ago' : s < 86400 ? Math.floor(s / 3600) + 'h ago' : Math.floor(s / 86400) + 'd ago';
   }
 
+  // Preferences changed the section order: redraw
+  window.addEventListener('kit:cats', function () { render(); });
   function render() {
     renderChips();
     renderRail();
@@ -779,7 +781,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
     if (state.cat === 'all') {
       var favs = vis.filter(isFav);
       if (favs.length && !state.q) list.appendChild(section('Favorites', 'star', favs, null, true));
-      GAME_CATS.forEach(function (c) {
+      Kit.cats().forEach(function (c) {
         var gs = vis.filter(function (g) { return g.cat === c.id; });
         if (gs.length) list.appendChild(section(c.name, c.id, gs, c.id === 'casino' ? bankBadge() : c.id === 'arcade' ? hiLink() : null));
       });
@@ -891,7 +893,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
   // back from setting a game's defaults: show the list again
   if (location.hash === '#game-defaults') {
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
-    setTimeout(function () { Kit.defaults.sheet(); }, 250);
+    setTimeout(function () { Kit.prefs(); }, 250);
   }
   if (mode === 'pin' && window.FGHSync) {
     $('me').classList.add('syncdot');
@@ -966,7 +968,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
       item('gamepad', 'Arcade initials', function () { Kit.links.initials(); }, '', el('span', { class: 'k-ini', text: ini || 'Set' }));
     }
     item('users', 'Frequent players', function () { Kit.managePlayers(); });
-    item('sliders', 'Game defaults', function () { Kit.defaults.sheet(); });
+    item('sliders', 'Preferences', function () { Kit.prefs(); });
     // Linked players: their own section, then the rest of the settings
     if (mode === 'pin' && Kit.links.panel) {
       node.appendChild(list);

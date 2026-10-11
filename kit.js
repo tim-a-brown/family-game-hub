@@ -873,6 +873,14 @@
       ttl.classList.remove('k-switch'); ttl.removeAttribute('role'); ttl.removeAttribute('tabindex'); ttl.removeAttribute('aria-label');
     }
   }
+  // Home screen sections in the order you set in Preferences (gn_cat_order: [cat ids]); new sections go at the end
+  function catsOrdered() {
+    var base = typeof GAME_CATS !== 'undefined' ? GAME_CATS.slice() : [], order = [];
+    try { order = JSON.parse(lsGet('gn_cat_order', '[]')) || []; } catch (e) {}
+    if (!Array.isArray(order) || !order.length) return base;
+    var at = function (c) { var i = order.indexOf(c.id); return i < 0 ? 1000 + base.indexOf(c) : i; };
+    return base.sort(function (a, b) { return at(a) - at(b); });
+  }
   function catName(id) { try { for (var i = 0; i < GAME_CATS.length; i++) if (GAME_CATS[i].id === id) return GAME_CATS[i].name; } catch (e) {} return ''; }
   function findGameSafe(k) { try { return typeof findGame === 'function' ? findGame(k) : null; } catch (e) { return null; } }
 
@@ -1852,11 +1860,33 @@
   function rootPath() { return /\/games\//.test(location.pathname) ? '../' : ''; }
   function defaultsSheet() {
     var list = (typeof GAMES !== 'undefined' ? GAMES : []).filter(function (g) { return !g.hidden && setupPageOf(g); });
+    // Home screen sections: move them up and down; Favorites always stays first
+    var ord = el('div', { class: 'k-ord' });
+    function moveCat(i, d) {
+      var cs = catsOrdered().map(function (c) { return c.id; }), j = i + d; if (j < 0 || j >= cs.length) return;
+      var t = cs[i]; cs[i] = cs[j]; cs[j] = t; lsSet('gn_cat_order', JSON.stringify(cs)); sfx('tap'); haptic('light'); paintOrd();
+      try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
+    }
+    function paintOrd() {
+      ord.innerHTML = '';
+      ord.appendChild(el('div', { class: 'k-ord-row fixed' }, [el('span', { class: 'ic', html: icon('star') }), el('span', { class: 'grow' }, [el('b', { text: 'Favorites' }), el('small', { text: 'Always first' })])]));
+      var cs = catsOrdered();
+      cs.forEach(function (c, i) {
+        var up = el('button', { type: 'button', class: 'k-ord-b up', 'aria-label': 'Move ' + c.name + ' up', html: icon('down'), onclick: function () { moveCat(i, -1); } });
+        var dn = el('button', { type: 'button', class: 'k-ord-b', 'aria-label': 'Move ' + c.name + ' down', html: icon('down'), onclick: function () { moveCat(i, 1); } });
+        up.disabled = i === 0; dn.disabled = i === cs.length - 1;
+        ord.appendChild(el('div', { class: 'k-ord-row' }, [el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: c.name })]), up, dn]));
+      });
+      if (lsGet('gn_cat_order', '') && lsGet('gn_cat_order', '') !== '[]') ord.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block k-ord-reset', text: 'Back to the usual order', onclick: function () {
+        lsSet('gn_cat_order', '[]'); sfx('tap'); paintOrd(); try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
+      } }));
+    }
+    paintOrd();
     var q = el('input', { class: 'input', type: 'search', placeholder: 'Find a game', autocomplete: 'off', 'aria-label': 'Find a game' });
     var box = el('div', { class: 'k-list k-defs' });
     function paint() {
       var t = q.value.trim().toLowerCase(); box.innerHTML = '';
-      var cats = typeof GAME_CATS !== 'undefined' ? GAME_CATS : [{ id: null, name: '' }];
+      var cats = catsOrdered(); if (!cats.length) cats = [{ id: null, name: '' }];
       cats.forEach(function (c) {
         var gs = list.filter(function (g) { return (c.id == null || g.cat === c.id) && (!t || g.name.toLowerCase().indexOf(t) >= 0); });
         if (!gs.length) return;
@@ -1873,7 +1903,10 @@
     }
     q.addEventListener('input', paint);
     paint();
-    sheet({ title: 'Game defaults', node: el('div', null, [el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Pick a game to set how it starts: who plays, the computer’s skill and its options. A game also remembers whatever you pick when you start it.' }), q, box]),
+    sheet({ title: 'Preferences', node: el('div', null, [
+        el('div', { class: 'label k-sec', text: 'Home screen sections' }), ord,
+        el('div', { class: 'label k-sec', text: 'Game defaults' }),
+        el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Pick a game to set how it starts: who plays, the computer’s skill and its options. A game also remembers whatever you pick when you start it.' }), q, box]),
       actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
   // Your profile: the code to give people, and whether their games need your OK first
@@ -2196,7 +2229,7 @@
   window.Kit = {
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
-    defaults: { sheet: defaultsSheet, get: setupSaved },
+    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: defaultsSheet, cats: catsOrdered,
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },
