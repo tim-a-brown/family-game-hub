@@ -284,6 +284,17 @@ off, shadow map 1024, shadows off, render scale 0.7. The display redraws at most
 presents when its dots change. Check `__pin.get().render` (calls, tris, level) and `.frame` (ms, slow in
 headless swiftshader); `G.T.R.rtInfo()` gives the render target, bloom and shadow sizes.
 
+## Camera views and look-around
+
+Two fitted views: `first` (angled, the player's eye) and `top` (nearly straight down); `G.setView(mode, animate)`
+tweens between them (`fit.topPhi` sets the top view's tilt). `G.look({z, px, py}, animate)` is a look-around pose
+built on the top view: zoomed `z` times (1..3) and slid by `px`, `py` (fractions of that view's half-width and
+half-height, clamped inside it); `G.look(null)` eases back to the chosen view, which never changes.
+`G.lookState()` reads the clamped pose back. Only the camera moves (physics and input are untouched), and the loop
+runs at full rate while it does. The page offers it while a ball waits in the shooter lane: a pinch (or the wheel)
+starts it, a drag pans, "Return to play" ends it, and a ball coming into play ends it too. `G.lookHint` (set by
+the page) takes every other turn of the launch hint on the display.
+
 ## Load time and battery
 
 `createGame` records the time of each build phase in `G.marks` (paint, pmrem, statics, components, batch, compile,
@@ -297,7 +308,7 @@ loops.
 
 In the page (`games/pinball.html`), `window.__pin`:
 `start(id, balls)`, `ready()`, `get()` (state, balls, stats, frame times, draw calls), `flip(side, on)`,
-`launch(p)`, `nudge()`, `speed(k)`, `auto(on, skill)`, `sim(sec, skill)` (headless autopilot inside the live
+`launch(p)`, `nudge()`, `look(z, px, py)` (look-around; `look(null)` returns), `speed(k)`, `auto(on, skill)`, `sim(sec, skill)` (headless autopilot inside the live
 game), `run(sec)`, `place(x, y, vx, vy, lvl)`, `set(key, v)` (`G.b`), `comp(id)`, `trigger(id, ...)`, `mode(name)`,
 `render()`, `headless(id, balls)` (a game with no renderer: `g.sim(600, 0.85)` runs 600 s), `audio()`,
 `plunger()` (the knob's layout: lane x, travel, grab rect), `ui(ms)` (draw the plunger now; `ms` into a snap).

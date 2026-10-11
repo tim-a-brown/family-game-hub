@@ -580,6 +580,7 @@ export function createGame(def, opts = {}) {
   }
   // the per-frame test: the same checks as busyWhy without building the reason strings
   function busy() {
+    if (RC && (RC.tween || performance.now() - G.camT < 250)) return true;   // the camera is moving (view change, look-around)
     if (G.dm || G.show || G.bonus || G.shakeA > 0.01 || G.flashA > 0.01 || G.lightning > 0.01) return true;
     if (G.pulling || G.input.L || G.input.R || G.input.magna) return true;
     if (G.plunger && G.plunger.busy && G.plunger.busy()) return true;
@@ -653,6 +654,16 @@ export function createGame(def, opts = {}) {
     if (RC) RC.dispose();
   };
   G.setView = function (mode, animate) { if (RC) RC.setView(mode, animate); };
+  // Look around the table (the page allows it while no ball is in play): o = { z, px, py } (see RC.setLook), null
+  // to go back to the chosen view. Only the camera moves; frames run at full rate while it does.
+  G.camT = 0;
+  G.look = function (o, animate) {
+    if (!RC) return; RC.setLook(o, animate); G.camT = performance.now();
+    if (idleTimer) { clearTimeout(idleTimer); idleTimer = 0; }
+    G.kick();
+  };
+  G.looking = () => !!(RC && RC.look);
+  G.lookState = () => RC && RC.look ? Object.assign({}, RC.look) : null;
   G.view = () => RC ? RC.view : 'first';
   G.renderOnce = function () { if (RC) RC.render(1 / 60); if (disp) disp.render((g, w, h) => dmdScene(g, w, h)); };
   G.resize = function () { if (RC) RC.resize(); if (disp) disp.render((g, w, h) => dmdScene(g, w, h)); };
@@ -755,7 +766,8 @@ export function createGame(def, opts = {}) {
     // the status line: short texts hold, long ones scroll right-to-left all the way through, and the text only
     // changes at the end of a pass (so a rotating status or the launch hint never jumps mid-scroll)
     const S = G.scroller, hint = touchUI ? 'PULL THE PLUNGER TO LAUNCH' : 'HOLD SPACE TO LAUNCH';
-    let want = String((G.tiltM >= 1.9 && !G.tilted) ? 'CAREFUL: TILT WARNING' : (G.waitPlunge && S.turn % 2 === 0) ? hint : (R('status') || '')).toUpperCase();
+    const hintN = () => G.lookHint && S.turn % 4 === 2 ? G.lookHint : hint;   // the page's look-around hint takes every other turn
+    let want = String((G.tiltM >= 1.9 && !G.tilted) ? 'CAREFUL: TILT WARNING' : (G.waitPlunge && S.turn % 2 === 0) ? hintN() : (R('status') || '')).toUpperCase();
     const dt = S.last ? Math.min(0.05, t - S.last) : 0; S.last = t;   // wall clock; a hitch moves the text at most 2 dots
     if (S.text == null) { S.text = want; S.w = smallW(want); S.off = 0; S.hold = 0; }
     const scrolling = S.w > Wd - 2;
@@ -764,7 +776,7 @@ export function createGame(def, opts = {}) {
     const urgent = /TILT/.test(want) && !/TILT/.test(S.text);
     if (done || urgent) {
       if (done && G.waitPlunge && !urgent) S.turn++;   // alternate hint / status at the end of each pass
-      const next = String((G.tiltM >= 1.9 && !G.tilted) ? 'CAREFUL: TILT WARNING' : (G.waitPlunge && S.turn % 2 === 0) ? hint : (R('status') || '')).toUpperCase();
+      const next = String((G.tiltM >= 1.9 && !G.tilted) ? 'CAREFUL: TILT WARNING' : (G.waitPlunge && S.turn % 2 === 0) ? hintN() : (R('status') || '')).toUpperCase();
       if (next !== S.text || scrolling) { S.text = next; S.w = smallW(next); S.off = 0; }
       S.hold = 0;
     }
@@ -1100,10 +1112,12 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     camera.position.copy(c.pos); camera.lookAt(c.look);
     camBase.pos.copy(c.pos); camBase.look.copy(c.look); RC.phi = c.phi; RC.tween = null;
     if (RC.keyPos) RC.lights.key.position.copy(RC.keyPos[RC.view]);
+    if (RC.look) RC.setLook(RC.look, false);
   }
   // switch views; animate over 0.6 s unless told not to (physics and input are untouched: only the camera moves)
   RC.setView = function (mode, animate = true) {
     mode = mode === 'top' ? 'top' : 'first';
+    if (RC.look) { RC.view = mode; RC.setLook(null, animate); return; }
     if (mode === RC.view && !RC.tween) return;
     RC.view = mode;
     const c = RC.cams[mode]; if (!c) return;
@@ -1111,6 +1125,30 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     const key = RC.lights && RC.keyPos ? RC.lights.key : null;
     if (!animate) { camBase.pos.copy(c.pos); camBase.look.copy(c.look); camera.fov = c.fov; camera.updateProjectionMatrix(); if (key) key.position.copy(RC.keyPos[mode]); RC.tween = null; return; }
     RC.tween = { t0: performance.now(), p0: camBase.pos.clone(), l0: camBase.look.clone(), f0: camera.fov, p1: c.pos, l1: c.look, f1: c.fov, ms: 600, k0: key ? key.position.clone() : null, k1: key ? RC.keyPos[mode] : null };
+  };
+  // Look-around: the top-down fit, zoomed in z times (1..3) and slid by px, py (fractions of that view's half-width
+  // and half-height, kept inside it). null tweens back to the chosen view (RC.view never changes).
+  RC.look = null;
+  const lookAx = { r: new THREE.Vector3(), u: new THREE.Vector3(), d: new THREE.Vector3() };
+  RC.setLook = function (o, animate = true) {
+    const key = RC.lights && RC.keyPos ? RC.lights.key : null;
+    const go = (pos, look, fov, kp, ms) => {
+      if (!animate) { camBase.pos.copy(pos); camBase.look.copy(look); camera.fov = fov; camera.updateProjectionMatrix(); if (key) key.position.copy(kp); RC.tween = null; return; }
+      RC.tween = { t0: performance.now(), p0: camBase.pos.clone(), l0: camBase.look.clone(), f0: camera.fov, p1: pos.clone(), l1: look.clone(), f1: fov, ms, k0: key ? key.position.clone() : null, k1: key ? kp : null };
+    };
+    if (!o) {
+      if (!RC.look) return; RC.look = null;
+      const c = RC.cams[RC.view]; if (c) go(c.pos, c.look, c.fov, RC.keyPos ? RC.keyPos[RC.view] : null, 500);
+      return;
+    }
+    const c = RC.cams.top; if (!c) return;
+    const z = Math.max(1, Math.min(3, o.z || 1)), m = 1 - 1 / z;
+    const L = RC.look = { z, px: Math.max(-m, Math.min(m, o.px || 0)), py: Math.max(-m, Math.min(m, o.py || 0)) };
+    projCam.fov = c.fov; projCam.aspect = camera.aspect; projCam.position.copy(c.pos); projCam.lookAt(c.look); projCam.updateMatrixWorld();
+    lookAx.r.setFromMatrixColumn(projCam.matrixWorld, 0); lookAx.u.setFromMatrixColumn(projCam.matrixWorld, 1); lookAx.d.copy(c.pos).sub(c.look);
+    const th = Math.tan(c.fov * PI / 360) * lookAx.d.length();
+    const look = c.look.clone().addScaledVector(lookAx.r, L.px * th * camera.aspect).addScaledVector(lookAx.u, L.py * th);
+    go(look.clone().addScaledVector(lookAx.d, 1 / z), look, c.fov, RC.keyPos ? RC.keyPos.top : null, RC.tween ? 350 : 500);
   };
   RC.fitCamera = fitCamera;
   const projCam = new THREE.PerspectiveCamera(40, 1, 0.05, 20), projV = new THREE.Vector3();
