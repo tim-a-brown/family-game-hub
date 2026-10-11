@@ -33,7 +33,7 @@ var PYLArt = (function () {
     s += '<g class="g-eyes"><ellipse cx="-12" cy="-11" rx="6.5" ry="7" fill="#fff" stroke="' + OL + '" stroke-width="2"/>' +
       '<circle class="g-pup" cx="-11" cy="-10" r="2.8" fill="' + OL + '"/>' +
       '<g class="g-reye" ' + wd + '><ellipse cx="12" cy="-11" rx="6.5" ry="7" fill="#fff" stroke="' + OL + '" stroke-width="2"/><circle class="g-pup" cx="13" cy="-10" r="2.8" fill="' + OL + '"/></g>' +
-      '<path class="g-wink" ' + wd + ' d="M6-11 C9-14 15-14 18-10 M6-11 L3-13 M6-11 L3-9" fill="none" stroke="' + OL + '" stroke-width="2.4" stroke-linecap="round"/></g>';
+      '<path class="g-wink" opacity="0" ' + wd + ' d="M6-11 C9-14 15-14 18-10 M6-11 L3-13 M6-11 L3-9" fill="none" stroke="' + OL + '" stroke-width="2.4" stroke-linecap="round"/></g>';
     // the grin: wide, white, square teeth
     s += '<path d="M-29-1 C-24 26 24 26 29-1 C16 5-16 5-29-1z" fill="#fff"' + K + '/>';
     s += '<path d="M-26 9.5 C-12 13 12 13 26 9.5" fill="none" stroke="' + OL + '" stroke-width="1.7"/>';
@@ -49,21 +49,21 @@ var PYLArt = (function () {
     var s = '', K = ' stroke="' + OL + '" stroke-width="2.4" stroke-linejoin="round"';
     function limb(d) { return '<path d="' + d + '" fill="none" stroke="' + OL + '" stroke-width="8" stroke-linecap="round"/><path d="' + d + '" fill="none" stroke="' + RED + '" stroke-width="4.6" stroke-linecap="round"/>'; }
     // the yellow cape, flaring out behind
-    s += '<path d="M-12-58 C-26-48-34-26-32-10 C-24-14-18-12-12-8 L12-8 C18-12 24-14 32-10 C34-26 26-48 12-58z" fill="' + YEL + '"' + K + '/>';
-    s += '<path d="M-20-40 C-24-30-26-20-26-12 M20-40 C24-30 26-20 26-12" fill="none" stroke="' + YEL2 + '" stroke-width="1.8" opacity=".8"/>';
+    s += '<path d="M-15-58 C-30-48-38-26-36-10 C-28-14-21-12-15-8 L15-8 C21-12 28-14 36-10 C38-26 30-48 15-58z" fill="' + YEL + '"' + K + '/>';
+    s += '<path d="M-23-40 C-28-30-30-20-30-12 M23-40 C28-30 30-20 30-12" fill="none" stroke="' + YEL2 + '" stroke-width="1.8" opacity=".8"/>';
     // legs, one crossed over the other, and pointed red shoes
     s += limb('M-6-16 C-6-10 4-7 6 0') + limb('M6-16 C8-10-2-6-6-1');
     s += '<path d="M2 0 C6-3 14-3 19 1 C14 2 8 3 2 3z M-2-1 C-7-4-15-4-20 0 C-15 1-8 2-2 2z" fill="' + RED + '"' + K + '/>';
     // left arm (behind the body), hand on the hip or waving
-    s += '<g class="g-arml">' + limb('M-13-48 C-24-46-26-36-18-30') + '<path d="M-18-30 l-4 3 M-18-30 l1 4" stroke="' + OL + '" stroke-width="2" stroke-linecap="round"/></g>';
+    s += '<g class="g-arml">' + limb('M-16-48 C-27-46-29-36-21-30') + '<path d="M-21-30 l-4 3 M-21-30 l1 4" stroke="' + OL + '" stroke-width="2" stroke-linecap="round"/></g>';
     // a lean bean of a body with the yellow $ patch
-    s += '<path d="M-13-58 C-19-44-18-24-11-16 C-6-12 6-12 11-16 C18-24 19-44 13-58z" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.6"/>';
-    s += '<path d="M-9-48 L9-48 L8-28 L-8-28z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="1.8" stroke-linejoin="round"/>';
+    s += '<path d="M-16-60 C-23-44-22-24-14-16 C-8-12 8-12 14-16 C22-24 23-44 16-60z" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.6"/>';
+    s += '<path d="M-10-48 L10-48 L9-28 L-9-28z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="1.8" stroke-linejoin="round"/>';
     s += '<text x="0" y="-31.5" text-anchor="middle" font-family="Bungee, sans-serif" font-size="15" fill="#fff" stroke="' + OL + '" stroke-width=".9" paint-order="stroke">$</text>';
     // right arm (in front), holds the prop; pointed fingers
-    s += '<g class="g-armr">' + limb('M13-50 C22-52 27-50 30-46') + (o.prop || '') +
+    s += '<g class="g-armr">' + limb('M16-50 C24-52 28-50 30-46') + (o.prop || '') +
       '<path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + OL + '" stroke-width="4.2" stroke-linecap="round"/><path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + RED + '" stroke-width="2" stroke-linecap="round"/></g>';
-    s += '<g class="g-head" transform="translate(0 -84) scale(.86)">' + head(o) + '</g>';
+    s += '<g class="g-head" transform="translate(0 -80) scale(1 .9)">' + head(o) + '</g>';
     return s;
   }
   function headSVG(cls) {
