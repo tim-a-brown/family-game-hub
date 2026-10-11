@@ -96,10 +96,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   var MUSH_HP = 3, LIFE_EVERY = 15000, CSPD = 64, HEAD_X = 1.45, FAST_AT = 60000;
   // Bosses. vu: size of one of its cubes; r: its hit area (an ellipse, half-width and half-height)
   var BOSS = {
-    wasp: { name: 'Wasp Queen', hp: 110, pts: 5000, vu: 1.5, r: [24, 16], c: '#8dff5a', hy: 0.42 },
-    firefly: { name: 'The Firefly', hp: 120, pts: 7500, vu: 1.5, r: [18, 18], c: '#eaff3d', hy: 0.4 },
-    beetle: { name: 'Iron Beetle', hp: 170, pts: 10000, vu: 1.35, r: [24, 17], c: '#5ec8ff', hy: 0.3 },
-    mega: { name: 'Mega Spider', hp: 320, pts: 25000, vu: 1.15, r: [31, 21], c: '#ff4fd8', hy: 0.4 }
+    wasp: { name: 'Wasp Queen', hp: 130, pts: 5000, vu: 2.2, r: [34, 23], c: '#8dff5a', hy: 0.42 },
+    firefly: { name: 'The Firefly', hp: 130, pts: 7500, vu: 2.1, r: [25, 25], c: '#eaff3d', hy: 0.4 },
+    beetle: { name: 'Iron Beetle', hp: 200, pts: 10000, vu: 1.9, r: [33, 24], c: '#5ec8ff', hy: 0.3 },
+    mega: { name: 'Mega Spider', hp: 380, pts: 25000, vu: 1.6, r: [42, 29], c: '#ff4fd8', hy: 0.4 }
   };
   // Ten waves on themed stages, each with its own mushroom layout. chains: [length, how many]
   var WAVES = [null,
@@ -307,7 +307,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function applyFx(a) {
     switch (a[0]) {
       case 'b': for (var i = 0; i < a[4]; i++) { var an = Math.random() * TAU, v = (35 + Math.random() * 120) * a[5]; part(a[1], a[2], Math.cos(an) * v, Math.sin(an) * v, a[3], 0.45 + Math.random() * 0.5, 0.7 + Math.random() * 0.9, i % 3 === 0); } break;
-      case 'p': fx.pops.push({ x: a[1], y: a[2], text: a[3], c: a[4], big: !!a[5], life: a[5] ? 1.3 : 0.9, max: a[5] ? 1.3 : 0.9 }); if (fx.pops.length > 24) fx.pops.shift(); break;
+      case 'p': if (a[5]) fx.pops.forEach(function (q) { if (q.big && q.max - q.life < 0.6 && Math.abs(q.x - a[1]) < 70 && Math.abs(q.y - a[2]) < 14) q.y -= 11; });
+        fx.pops.push({ x: a[1], y: a[2], text: a[3], c: a[4], big: !!a[5], life: a[5] ? 1.3 : 0.9, max: a[5] ? 1.3 : 0.9 }); if (fx.pops.length > 24) fx.pops.shift(); break;
       case 's': snd(a[1]); break;
       case 'k': fx.shake = Math.min(1.2, Math.max(fx.shake, a[1])); break;
       case 'f': fx.flash = Math.max(fx.flash, a[2]); fx.flashC = a[1]; break;
@@ -422,7 +423,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       for (j = 0; j < 2; j++) for (i = 0; i < n + j; i++) chev((i + (j ? 0.25 : 0.75)) / (n + 0.5), j ? 0.68 : 0.28, -1, 2);
       line(0.02, 0.92, 0.12, 0.92, 2); line(0.88, 0.92, 0.98, 0.92, 2);
     } else if (p === 'rows') {
-      [0.12, 0.38, 0.64, 0.9].forEach(function (v, k) { for (var c = (k % 2) * 3; c < COLS; c += 6) { put(c, V(v)); put(c + 1, V(v)); put(c + 2, V(v)); } });
+      [0.12, 0.45, 0.8].forEach(function (v, k) { for (var c = 1 + (k % 2) * 4; c < COLS - 1; c += 8) { put(c, V(v)); put(c + 1, V(v)); put(c + 2, V(v)); } });
     } else if (p === 'diamonds') {
       var nx = Math.max(2, Math.round(COLS / 11)), ny = ROWS > COLS ? 3 : 2;
       for (i = 0; i < nx; i++) for (j = 0; j < ny; j++) {
@@ -725,7 +726,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
 
   // ── Spiders, bees (fleas), scorpions, boulders ──
   function foeTest(o, x, y, w) {
-    var hx = o.type === 'spider' ? 9 : o.type === 'scorp' ? 9 : o.type === 'ball' ? 6 : 6, hy = o.type === 'spider' ? 6.5 : o.type === 'flea' ? 6 : 5.5;
+    var hx = o.type === 'spider' ? 11 : o.type === 'scorp' ? 10.5 : o.type === 'ball' ? 6 : 7, hy = o.type === 'spider' ? 7.5 : o.type === 'flea' ? 7 : 6;
     return Math.abs(o.x - x) < hx + (w || 0) && Math.abs(o.y - y) < hy + (w || 0) * 0.5;
   }
   function hitFoe(o, P, dmg) {
@@ -902,9 +903,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (B.type === 'wasp') {
       if (B.st === 'fly') {
         approach(B, W / 2 + Math.sin(B.t * 0.9) * sw * 0.8, B.hy + Math.sin(B.t * 1.8) * PZY * 0.1, 3, dt);
-        B.tA -= dt * rage; if (B.tA <= 0) { B.tA = 2.8; var T = target(), a = Math.atan2(T.y - B.y, T.x - B.x); [-0.22, 0, 0.22].forEach(function (d) { fireShot(B.x, B.y + 12, a + d, 135 * rage, 'sting'); }); sound('shoot'); }
+        B.tA -= dt * rage; if (B.tA <= 0) { B.tA = 2.8; var T = target(), a = Math.atan2(T.y - B.y, T.x - B.x); [-0.22, 0, 0.22].forEach(function (d) { fireShot(B.x, B.y + R[1] * 0.7, a + d, 135 * rage, 'sting'); }); sound('shoot'); }
         // her little bees: two at a time, diving at the players
-        B.tE -= dt * rage; if (B.tE <= 0) { B.tE = 6; if (count('flea') < 4) { [-1, 1].forEach(function (s) { G.foes.push({ id: newId(), type: 'flea', x: clamp(B.x + s * 14, 8, W - 8), y: B.y + 10, vy: 95, hp: 1, t: 0, row: -1 }); }); sound('flea'); } }
+        B.tE -= dt * rage; if (B.tE <= 0) { B.tE = 6; if (count('flea') < 4) { [-1, 1].forEach(function (s) { G.foes.push({ id: newId(), type: 'flea', x: clamp(B.x + s * R[0] * 0.5, 8, W - 8), y: B.y + R[1] * 0.5, vy: 95, hp: 1, t: 0, row: -1 }); }); sound('flea'); } }
         B.tB -= dt; if (B.tB <= 0) { B.st = 'warn'; B.stT = 0; B.lane = clamp(target().x, R[0] * 0.6, W - R[0] * 0.6); sound('warn'); }
       } else if (B.st === 'warn') {
         // she lines up over a lane (marked down to the bottom of the screen) and buzzes, then dives straight down it
@@ -934,7 +935,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
           sound('shoot');
         }
       }
-      B.tB -= dt; if (B.tB <= 0) { B.tB = 1.7; fireShot(B.x, B.y + 8, PI / 2, 55, 'ember', { ty: cx(ri(3, PZ - 1)) }); }
+      B.tB -= dt; if (B.tB <= 0) { B.tB = 1.7; fireShot(B.x, B.y + R[1] * 0.4, PI / 2, 55, 'ember', { ty: cx(ri(3, PZ - 1)) }); }
     } else if (B.type === 'beetle') {
       // It sweeps the whole width (edges included) dropping boulders, and also lets one go whenever it passes
       // over a player, so no column, corner or bottom spot stays safe. Boulders smash mushrooms on the way down.
@@ -942,17 +943,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       if (B.x < R[0] * 0.6 || B.x > W - R[0] * 0.6) { B.x = clamp(B.x, R[0] * 0.6, W - R[0] * 0.6); B.vx = -B.vx; B.hy += PZY * 0.14 * B.dirY; if (B.hy > PZY * 0.78) B.dirY = -1; if (B.hy < PZY * 0.22) B.dirY = 1; }
       B.y += (B.hy - B.y) * Math.min(1, dt * 3);
       B.tA -= dt * rage; B.tD -= dt;
-      var over = alivePlayers().filter(function (p) { return Math.abs(p.x - B.x) < 16; })[0];
+      var over = alivePlayers().filter(function (p) { return Math.abs(p.x - B.x) < R[0] * 0.6; })[0];
       if (B.tA <= 0 || (over && B.tD <= 0)) {
         var bx = B.x;
         if (B.tA <= 0) B.tA = 2.1; else { B.tD = 3 / rage; bx = over.x; }
-        G.foes.push({ id: newId(), type: 'ball', x: clamp(bx, 6, W - 6), y: B.y + 14, vy: 95, hp: 3, t: 0 }); sound('shoot');
+        G.foes.push({ id: newId(), type: 'ball', x: clamp(bx, 6, W - 6), y: B.y + R[1] * 0.7, vy: 95, hp: 3, t: 0 }); sound('shoot');
       }
     } else if (B.type === 'mega') {
       if (B.st === 'fly') {
         approach(B, W / 2 + Math.sin(B.t * 0.7) * sw * 0.75, B.hy + Math.sin(B.t * 1.3) * PZY * 0.08, 2.5, dt);
-        B.tA -= dt * rage; if (B.tA <= 0) { B.tA = 2.7; var T3 = target(), a3 = Math.atan2(T3.y - B.y, T3.x - B.x), n = B.enraged ? 7 : 5; for (var v = 0; v < n; v++) fireShot(B.x, B.y + 16, a3 + (v - (n - 1) / 2) * 0.17, 125, 'venom'); sound('shoot'); }
-        B.tB -= dt; if (B.tB <= 0) { B.tB = 6; if (count('spider') < 3) { G.foes.push({ id: newId(), type: 'spider', x: B.x, y: B.y + 18, vx: (Math.random() < 0.5 ? 1 : -1) * 55, vy: 80, zt: 0, t: 0, hp: 1, drop: true }); snd('spider'); } }
+        B.tA -= dt * rage; if (B.tA <= 0) { B.tA = 2.7; var T3 = target(), a3 = Math.atan2(T3.y - B.y, T3.x - B.x), n = B.enraged ? 7 : 5; for (var v = 0; v < n; v++) fireShot(B.x, B.y + R[1] * 0.6, a3 + (v - (n - 1) / 2) * 0.17, 125, 'venom'); sound('shoot'); }
+        B.tB -= dt; if (B.tB <= 0) { B.tB = 6; if (count('spider') < 3) { G.foes.push({ id: newId(), type: 'spider', x: B.x, y: B.y + R[1] * 0.7, vx: (Math.random() < 0.5 ? 1 : -1) * 55, vy: 80, zt: 0, t: 0, hp: 1, drop: true }); snd('spider'); } }
         B.tC -= dt * rage; if (B.tC <= 0) { B.st = 'warn'; B.stT = 0; sound('warn'); }
       } else if (B.st === 'warn') { B.x += Math.sin(B.t * 50) * 0.7; if (B.stT > 0.75) { B.st = 'slam'; B.stT = 0; B.sy = B.y; B.landed = false; } }
       else if (B.st === 'slam') {
@@ -1292,9 +1293,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       return voxelize(gspr(head ? HEAD[fr] : SEG[fr], { B: body, D: shade(body, -0.32), L: legs, A: legs, M: legs, F: face, K: '#120a0a' }, flip), 1.05, { emit: ['#120a0a'] });
     });
   }
-  function spiderSpr(tk, fr) { return spx('sp' + tk + fr, function () { var T = THEMES[tk]; return voxelize(gspr(SPIDER[fr], { P: T.spider[0], Y: T.spider[1], R: '#ff2a2a' }), 1.15, { emit: ['#ff2a2a'] }); }); }
-  function beeSpr(fr, hurt) { return spx('bee' + fr + hurt, function () { return voxelize(gspr(BEE[fr], { Y: hurt ? '#ffffff' : '#ffd23d', K: '#1a1206', W: '#d8f4ff' }), 1.0); }); }
-  function scorpSpr(fr, flip) { return spx('sc' + fr + (flip ? 1 : 0), function () { return voxelize(gspr(SCORP[fr], { O: '#ff7a2a', T: '#ffb03d', S: '#ffffff', C: '#ff4a2a', L: '#ffb03d', K: '#1a0a06' }, flip), 1.1, { emit: ['#1a0a06'] }); }); }
+  function spiderSpr(tk, fr) { return spx('sp' + tk + fr, function () { var T = THEMES[tk]; return voxelize(gspr(SPIDER[fr], { P: T.spider[0], Y: T.spider[1], R: '#ff2a2a' }), 1.45, { emit: ['#ff2a2a'] }); }); }
+  function beeSpr(fr, hurt) { return spx('bee' + fr + hurt, function () { return voxelize(gspr(BEE[fr], { Y: hurt ? '#ffffff' : '#ffd23d', K: '#1a1206', W: '#d8f4ff' }), 1.3); }); }
+  function scorpSpr(fr, flip) { return spx('sc' + fr + (flip ? 1 : 0), function () { return voxelize(gspr(SCORP[fr], { O: '#ff7a2a', T: '#ffb03d', S: '#ffffff', C: '#ff4a2a', L: '#ffb03d', K: '#1a0a06' }, flip), 1.35, { emit: ['#1a0a06'] }); }); }
   function rockSpr(f) { return spx('rk' + f, function () { return voxelize(gspr(ROCK, { R: '#9aa0b4', D: '#5a6070' }, f === 1), 1.15); }); }
   function cubeSpr(col) { return spx('cb' + col, function () { return voxelize(gspr(['CC', 'CC'], { C: col }), 0.9, { ext: 0.6, shadow: 0.3 }); }); }
 
@@ -1538,6 +1539,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     return c;
   }
 
+  // Boss pictures for every state are made while the wave's banner shows, one per frame, so the fight never stalls
+  function warm(R, wv) {
+    if (!wv.boss || R.phase !== 'intro') return;
+    var t = wv.boss, list = [];
+    [0, 1].forEach(function (fr) { [false, true].forEach(function (en) {
+      if (t === 'beetle') [1, 0.7, 0.45, 0.2].forEach(function (h) { list.push([{ type: t, hp: h, max: 1, enraged: en, lit: 1 }, fr]); });
+      else if (t === 'firefly') [1, 0].forEach(function (l) { list.push([{ type: t, hp: 1, max: 1, enraged: en, lit: l }, fr]); });
+      else list.push([{ type: t, hp: 1, max: 1, enraged: en, lit: 1 }, fr]);
+    }); });
+    for (var i = 0; i < list.length; i++) { var before = Object.keys(SPX).length; bossSpr(list[i][0], list[i][1]); if (Object.keys(SPX).length > before) return; }
+  }
+
   // ── Drawing a frame ──
   var drawT = 0, lastDraw = 0;
   function colOf(R, pid) { for (var i = 0; i < R.players.length; i++) if (R.players[i].id === pid) return PCOL[R.players[i].ci % 3]; return '#ffffff'; }
@@ -1556,6 +1569,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var band = ((drawT * 0.11) % 1.5 - 0.25) * cv.height, bh = cv.height * 0.16;
     var bgr = x.createLinearGradient(0, band - bh, 0, band + bh); bgr.addColorStop(0, hexA(T.line, 0)); bgr.addColorStop(0.5, hexA(T.line, 0.08)); bgr.addColorStop(1, hexA(T.line, 0));
     x.globalCompositeOperation = 'lighter'; x.fillStyle = bgr; x.fillRect(0, band - bh, cv.width, bh * 2); x.globalCompositeOperation = 'source-over';
+    warm(R, wv);
     var L = hudLayout(R);
     drawLives(x, R, L);                      // the lives plates sit on the floor, under everything
     var oy = HB * S;
@@ -1647,12 +1661,19 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var px = p.x, py = p.y, on = p.flaming;
       if (GV && p.id === me) { on = GV.flameLocal; px = GV.pred.x; py = GV.pred.y; }
       if (!on || !p.alive) return;
-      var n = Math.min(8, Math.round(dt * 110 + Math.random()));
-      for (var i = 0; i < n; i++) { if (fx.flames.length > 240) fx.flames.shift(); var l = rnd(0.26, 0.36); fx.flames.push({ x: px + rnd(-1.5, 1.5), y: py - 9, vx: rnd(-62, 62), vy: -rnd(270, 330), life: l, max: l }); }
+      // the jet itself: a hot cone from the nose, flickering
+      var top = py - 9 - FLAME_R, hw = 6 + FLAME_R * 0.2, gr = x.createLinearGradient(0, py - 9, 0, top);
+      gr.addColorStop(0, 'rgba(255,250,210,.95)'); gr.addColorStop(0.25, 'rgba(255,170,50,.7)'); gr.addColorStop(0.7, 'rgba(255,70,20,.35)'); gr.addColorStop(1, 'rgba(255,40,10,0)');
+      x.globalAlpha = 0.75 + Math.random() * 0.25; x.fillStyle = gr;
+      x.beginPath(); x.moveTo(px - 2.5, py - 8); x.quadraticCurveTo(px - hw * 0.5, py - 9 - FLAME_R * 0.45, px - hw, top); x.lineTo(px + hw, top); x.quadraticCurveTo(px + hw * 0.5, py - 9 - FLAME_R * 0.45, px + 2.5, py - 8); x.closePath(); x.fill();
+      x.globalAlpha = 1;
+      glow(x, px, py - 12, 9, '#fff3b0', 0.9);
+      var n = Math.min(10, Math.round(dt * 150 + Math.random()));
+      for (var i = 0; i < n; i++) { if (fx.flames.length > 260) fx.flames.shift(); var l = rnd(0.24, 0.34); fx.flames.push({ x: px + rnd(-2, 2), y: py - 10, vx: rnd(-62, 62), vy: -rnd(280, 340), life: l, max: l }); }
     });
     fx.flames.forEach(function (f) {
-      var k = f.life / f.max, sz = 3 + (1 - k) * 10, col = k > 0.72 ? '#fff3b0' : k > 0.42 ? '#ffa02e' : '#ff4a1f';
-      glow(x, f.x, f.y, sz, col, 0.3 + 0.45 * k);
+      var k = f.life / f.max, sz = 5 + (1 - k) * 13, col = k > 0.75 ? '#fff3b0' : k > 0.45 ? '#ffa02e' : '#ff4a1f';
+      glow(x, f.x, f.y, sz, col, 0.35 + 0.5 * k);
     });
   }
   function drawLane(x, B) {
@@ -2091,7 +2112,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
         var cc = Math.floor(b.x / CELL), rr = Math.floor(b.y / CELL);
         if (inField(cc, rr) && V.grid[idx(cc, rr)]) gone = true;
         for (var k = 0; k < V.segs.length && !gone; k++) if (Math.abs(V.segs[k].x - b.x) < 6 && Math.abs(V.segs[k].y - b.y) < 6) gone = true;
-        for (var f2 = 0; f2 < V.foes.length && !gone; f2++) if (Math.abs(V.foes[f2].x - b.x) < 8 && Math.abs(V.foes[f2].y - b.y) < 7) gone = true;
+        for (var f2 = 0; f2 < V.foes.length && !gone; f2++) if (Math.abs(V.foes[f2].x - b.x) < 10 && Math.abs(V.foes[f2].y - b.y) < 7.5) gone = true;
         for (var c2 = 0; c2 < V.caps.length && !gone; c2++) if (Math.abs(V.caps[c2].x - b.x) < 8 && Math.abs(V.caps[c2].y - b.y) < 8) gone = true;
         if (!gone && V.boss && V.boss.st !== 'die') { var R = BOSS[V.boss.type].r, ex = (b.x - V.boss.x) / R[0], ey = (b.y - V.boss.y) / R[1]; if (ex * ex + ey * ey < 1 && !(V.boss.type === 'firefly' && V.boss.lit < 0.45)) gone = true; }
       }
@@ -2120,7 +2141,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     state: function () { return G; }, view: function () { return GV; }, net: net, ctl: ctl, perf: perf,
     solo: function (o) { o = o || {}; applyOpts({}); startSolo({ who: o.who || 'Tim', diff: o.diff || 'arcade' }); },
     hold: function (on) { hold = !!on; },
-    run: function (sec) { var n = Math.round(sec / STEP); for (var i = 0; i < n && G && !G.ended; i++) { sim(STEP); if (G.mode === 'host') netHostTick(); fxStep(STEP); } if (refit) { refit = false; cssW = 0; fit(); } draw(); },
+    run: function (sec) { var n = Math.round(sec / STEP); for (var i = 0; i < n && G && !G.ended; i++) { sim(STEP); if (G.mode === 'host') netHostTick(); fxStep(STEP); if (n - i < 24) { lastDraw = performance.now() - STEP * 1000; draw(); } } if (refit) { refit = false; cssW = 0; fit(); } lastDraw = performance.now() - STEP * 1000; draw(); },
     step: function (n) { for (var i = 0; i < n && G && !G.ended; i++) sim(STEP); },     // simulate without drawing
     threats: function (on) { if (on) G.threats = []; return G.threats; },               // with god on: what would have hit
     field: function () { var rows = []; for (var r = 0; r < ROWS; r++) { var n = 0; for (var c = 0; c < COLS; c++) if (G.grid[idx(c, r)]) n++; rows.push(n); } return rows; },
