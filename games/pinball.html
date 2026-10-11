@@ -821,7 +821,7 @@ app.addEventListener('pointerdown', e => {
   try { app.setPointerCapture(e.pointerId); } catch (er) {}
   if (look) {
     // a second finger makes it a pinch: none of the fingers down now can be a tap
-    ptr[e.pointerId] = { role: 'look', x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now() };
+    ptr[e.pointerId] = { role: 'look', x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: e.timeStamp || performance.now() };
     if (Object.keys(ptr).length > 1) for (const id in ptr) ptr[id].multi = true;
     lookBase(); return;
   }
@@ -861,7 +861,9 @@ function up(e) {
   const p = ptr[e.pointerId]; if (!p) return;
   delete ptr[e.pointerId];
   if (p.role === 'look') {
-    if (e.type === 'pointerup' && look && p.t0 && !p.multi && !p.moved && performance.now() - p.t0 < 450) lookTap(p.x, p.y);
+    // input event times, not handler times: a slow frame between the two must not turn a tap into a hold
+    // (headless tests, where one frame takes seconds, widen the window with window.__pinTapMs)
+    if (e.type === 'pointerup' && look && p.t0 && !p.multi && !p.moved && (e.timeStamp || performance.now()) - p.t0 < (window.__pinTapMs || 450)) lookTap(p.x, p.y);
     lookBase(); return;
   }
   syncFlips();

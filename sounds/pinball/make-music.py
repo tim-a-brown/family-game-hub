@@ -251,7 +251,9 @@ def master(tr, mix):
 
 # ── the five tables ──────────────────────────────────────────────────────────
 def nebula():
-    # spacey ambient: slow evolving supersaw/noise pads in D, sub drone, distant glassy sparkles
+    # spacey: slow evolving supersaw/noise pads in D, sub drone, distant glassy sparkles, and what sets it apart from
+    # the haunted organ: a pulsing sequencer (16th-note resonant synth arpeggio with a dotted-8th echo, its filter
+    # slowly opening and closing) over a soft 8th-note pulse bass, at 120 bpm, so the track is always moving
     beat = 8.0
     tr = Track(beat * 4)
     chords = [[38, 45, 52, 54, 61], [35, 42, 50, 54, 57], [31, 38, 47, 50, 54], [33, 40, 49, 52, 57]]
@@ -263,10 +265,38 @@ def nebula():
     tr.bus('sub')[:] += 0.35 * np.sin(2 * np.pi * fsub * t) * (0.7 + 0.3 * np.sin(2 * np.pi * t / (beat * 4)))
     for k, (when, m) in enumerate([(1.5, 74), (5.2, 81), (9.0, 78), (13.7, 85), (17.4, 76), (21.1, 83), (25.6, 81), (29.2, 88)]):
         tr.add('glass', music_box(mtof(m), 4.0) * 0.5, when)
-    return tr, {'pad': (1.0, [lambda x: chorus(x, 0.005, 0.25), lambda x: reverb(x, 6.0, 0.04, 5000, 0.55)]),
-                'air': (0.6, [lambda x: reverb(x, 6.0, 0.05, 4000, 0.6)]),
+    s16 = 0.125
+    for i, ch in enumerate(chords):
+        pcs = {m % 12 for m in ch}
+        notes = [m for m in range(62, 100) if m % 12 in pcs][:8]
+        for k in range(64):
+            when = i * beat + k * s16
+            m = notes[(k % 4) + (k // 4) % 4]                          # rising 4-note cells that climb, then reset
+            cut = 1400 + 1800 * (0.5 - 0.5 * np.cos(2 * np.pi * when / 16.0))   # filter sweep, two cycles per loop
+            tr.add('arp', seq_blip(mtof(m), 0.32, cut * 2.2, cut * 0.35) * (1.0 if k % 4 == 0 else 0.62), when)
+        for k in range(16):
+            tr.add('pulse', seq_blip(mtof(ch[0] + 12), 0.22, 900, 180, 1.2, 0.12) * (1.0 if k % 2 == 0 else 0.6), i * beat + k * 2 * s16)
+    echo = lambda x: x + 0.38 * np.roll(x, int(0.375 * SR)) + 0.15 * np.roll(x, int(0.75 * SR))   # circular: seamless
+    return tr, {'pad': (0.75, [lambda x: chorus(x, 0.005, 0.25), lambda x: reverb(x, 6.0, 0.04, 5000, 0.55)]),
+                'air': (0.45, [lambda x: reverb(x, 6.0, 0.05, 4000, 0.6)]),
                 'sub': (0.5, []),
-                'glass': (0.55, [lambda x: reverb(x, 7.0, 0.08, 7000, 0.75)])}
+                'glass': (0.55, [lambda x: reverb(x, 7.0, 0.08, 7000, 0.75)]),
+                'arp': (0.34, [echo, lambda x: reverb(x, 3.0, 0.03, 7000, 0.35)]),
+                'pulse': (0.5, [lambda x: reverb(x, 1.5, 0.02, 3000, 0.15)])}
+
+
+def seq_blip(f, dur, cut0, cut1, res=2.5, decay=0.25):
+    """Analogue-sequencer note: a sawtooth through a resonant 4-pole-style lowpass whose cutoff snaps from cut0 down
+    to cut1 (the 'blip'), done additively so it stays alias-free."""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    fc = cut1 + (cut0 - cut1) * np.exp(-t / 0.05)
+    ph = 2 * np.pi * f * t + rng.random() * 6
+    x = np.zeros(n)
+    for k in range(1, int(min(9000, SR * 0.45) / f) + 1):
+        r = k * f / fc
+        x += (1.0 / k) / np.sqrt(1 + r ** 8) * (1 + res * np.exp(-((r - 1) / 0.25) ** 2)) * np.sin(k * ph)
+    return x * env(n, 0.003, 0.06) * np.exp(-t / decay)
 
 
 def pirate():
@@ -300,24 +330,83 @@ def pirate():
                 'sea': (0.25, [])}
 
 
+ORGAN_SPECTRA = {'principal': [1, 0.45, 0.3, 0.2, 0.14, 0.1, 0.07, 0.05, 0.035, 0.025],   # open diapason
+                 'flute': [1, 0.2, 0.08],
+                 'bourdon': [1, 0, 0.28, 0, 0.1, 0, 0.04],                                 # stopped pipe: odd harmonics
+                 'reed': [1 / k ** 0.75 for k in range(1, 25)]}                             # trumpet / bombarde
+
+
+def pipe_organ(f, dur, ranks, a=0.5, r=0.5, trem=0.0):
+    """Church / theatre pipe organ note. ranks = [(footage ratio to 8', rank kind, level), ...]: e.g. 0.5 is 16',
+    1 is 8', 2 is 4', 3 and 4 a 2 2/3' + 2' mixture. Each rank is its own slightly mistuned pipe with its own
+    spectrum, so the stops beat against each other like a real chest; a puff of chiff on the speech; a slow swell
+    attack; an optional theatre-organ tremulant (wobbling wind: pitch and loudness)."""
+    n = int((dur + r) * SR)
+    t = np.arange(n) / SR
+    wob = np.sin(2 * np.pi * 6.1 * t + rng.random() * 6)
+    pm = 1 + 0.003 * trem * wob
+    out = np.zeros(n)
+    for ratio, kind, lvl in ranks:
+        fr = f * ratio * 2 ** (rng.uniform(-2.5, 2.5) / 1200)
+        ph = 2 * np.pi * np.cumsum(fr * pm) / SR
+        for k, amp in enumerate(ORGAN_SPECTRA[kind], 1):
+            if amp and fr * k < min(6500, SR * 0.45):
+                out += lvl * amp * np.sin(k * ph + rng.random() * 6)
+    chiff = bandpass(rng.standard_normal(n), min(f * 3, 6000), 3) * np.exp(-t / 0.04) * 0.15
+    wind = bandpass(rng.standard_normal(n), min(f * 2, 4000), 6) * 0.015
+    e = env(n, a, r)
+    return (out * (1 + 0.18 * trem * wob) + wind) * e + chiff * (e > 0)
+
+
 def haunted():
-    # dark ambient: a low beating drone, a slow string swell, and a sparse, slightly out-of-tune music box
-    tr = Track(40.0)
+    # gothic pipe-organ piece in D minor (4/4, 72 bpm, 12 bars): a pedal line creeping down chromatically
+    # (lament bass), slow-swelling full-organ chords through diminished and Neapolitan colours, a tremulant reed
+    # solo that climbs to a climax, the old out-of-tune music box carrying the tune in the hushed first phrase,
+    # and the low beating drone underneath, all in a cavernous chapel
+    beat = 60 / 72
+    bar = 4 * beat
+    tr = Track(bar * 12)
     t = np.arange(tr.n) / SR
     drone = circ(lambda n: highpass(sum(lowpass(saw(mtof(m) * (1 + d), n), 420) for m, d in [(38, 0), (38, 0.003), (45, 0), (51, 0.002)]), 70), tr.n)
     tr.bus('drone')[:] += drone * (0.6 + 0.4 * np.sin(2 * np.pi * t / 40.0) ** 2)
-    for when, notes in [(2.0, [50, 51]), (18.0, [53, 54]), (30.0, [49, 50])]:
-        tr.add('strings', pad(notes, 12.0, (300, 900), 4.0, 5.0, 9), when)
-    box = [(0.0, 74), (1.2, 77), (2.4, 76), (3.6, 72), (5.4, 70), (7.2, 69),
-           (20.0, 74), (21.2, 81), (22.4, 77), (23.6, 76), (25.4, 73), (28.0, 74)]
-    for when, m in box:
-        tr.add('box', music_box(mtof(m) * (1 + rng.uniform(-0.006, 0.006)), 3.5) * 0.6, when)
-    for when in (11.0, 33.0):
-        tr.add('air', noise_pad(420, 7.0, 4, 2.5, 3.5) * 0.8, when)
-    return tr, {'drone': (0.35, [lambda x: reverb(x, 5.0, 0.02, 2000, 0.4)]),
-                'strings': (0.9, [lambda x: chorus(x, 0.006, 0.18), lambda x: reverb(x, 6.0, 0.05, 4000, 0.55)]),
-                'box': (0.8, [lambda x: reverb(x, 6.5, 0.06, 6000, 0.7)]),
-                'air': (0.4, [lambda x: reverb(x, 5.0, 0.05, 3000, 0.5)])}
+    SOFT = [(0.5, 'bourdon', 0.7), (1, 'flute', 0.8), (1, 'principal', 0.3), (2, 'flute', 0.25)]
+    MID = [(0.5, 'bourdon', 0.7), (1, 'principal', 0.9), (2, 'principal', 0.45), (1, 'reed', 0.25)]
+    FULL = [(0.5, 'bourdon', 0.75), (1, 'principal', 1.0), (2, 'principal', 0.55), (3, 'principal', 0.22), (4, 'principal', 0.25), (1, 'reed', 0.5)]
+    PEDAL = [(0.5, 'bourdon', 1.0), (1, 'principal', 0.6), (1, 'reed', 0.35)]
+    SOLO = [(1, 'reed', 0.9), (1, 'principal', 0.5), (2, 'principal', 0.2)]
+    # (pedal note, chord) per bar: Dm, Dm/C#, Dm/C, B half-dim | Bb, Gm/Bb, Eb (Neapolitan), A7b9 | C#dim7, Dm/F, Gm6, A7b9
+    harm = [(38, [62, 65, 69]), (37, [62, 65, 69]), (36, [62, 65, 69]), (35, [62, 65, 69, 71]),
+            (34, [62, 65, 70]), (34, [62, 67, 70]), (39, [63, 67, 70]), (33, [61, 64, 67, 70]),
+            (37, [61, 64, 67, 70]), (41, [62, 65, 69]), (43, [62, 64, 67, 70]), (33, [61, 64, 67, 70])]
+    for b, (ped, ch) in enumerate(harm):
+        reg, lvl = (SOFT, 0.75) if b < 4 else (MID, 0.85) if b < 8 else (FULL, 1.0)
+        for i, m in enumerate(ch):
+            tr.add('organ', pipe_organ(mtof(m), bar + 0.15, reg, 0.9, 0.7) * lvl / len(ch) ** 0.5, b * bar + 0.02 * i)
+        tr.add('organ', pipe_organ(mtof(ch[0] - 12), bar + 0.15, reg, 0.9, 0.7) * lvl * 0.5, b * bar)   # left hand doubles low
+        tr.add('pedal', pipe_organ(mtof(ped), bar + 0.1, PEDAL, 0.35, 0.5) * (0.8 if b < 4 else 1.0), b * bar)
+    # the tune (bar, beat, midi, beats): original
+    tune = [(0, 0, 74, 2), (0, 2, 77, 1), (0, 3, 76, 1), (1, 0, 76, 3), (1, 3, 73, 1), (2, 0, 74, 2), (2, 2, 81, 2),
+            (3, 0, 81, 1), (3, 1, 80, 1), (3, 2, 77, 2),
+            (4, 0, 77, 2), (4, 2, 74, 1), (4, 3, 77, 1), (5, 0, 82, 3), (5, 3, 81, 1), (6, 0, 79, 2), (6, 2, 75, 2),
+            (7, 0, 73, 2), (7, 2, 82, 1), (7, 3, 81, 1),
+            (8, 0, 82, 2), (8, 2, 79, 1), (8, 3, 76, 1), (9, 0, 77, 2), (9, 2, 74, 2), (10, 0, 79, 1), (10, 1, 82, 1),
+            (10, 2, 86, 2), (11, 0, 85, 2), (11, 2, 82, 1), (11, 3, 81, 1)]
+    for b, k, m, d in tune:
+        when = b * bar + k * beat
+        if b < 4:   # hushed first phrase: the old music box, slightly out of tune
+            tr.add('box', music_box(mtof(m + 12) * (1 + rng.uniform(-0.007, 0.007)), 3.5) * 0.6, when)
+        else:
+            tr.add('solo', pipe_organ(mtof(m), d * beat * 0.95, SOLO, 0.12, 0.35, 1.0), when)
+            if b >= 8:
+                tr.add('solo', pipe_organ(mtof(m - 12), d * beat * 0.95, SOLO, 0.12, 0.35, 1.0) * 0.45, when)
+    for when, m in [(5 * bar + 2 * beat, 86), (6 * bar + 3 * beat, 87)]:   # a couple of stray music-box notes later on
+        tr.add('box', music_box(mtof(m) * (1 + rng.uniform(-0.008, 0.008)), 3.5) * 0.4, when)
+    chapel = lambda w: (lambda x: reverb(x, 4.5, 0.035, 4000, w))
+    return tr, {'drone': (0.2, [lambda x: reverb(x, 5.0, 0.02, 2000, 0.4)]),
+                'organ': (0.55, [chapel(0.42)]),
+                'pedal': (0.5, [chapel(0.35)]),
+                'solo': (0.42, [chapel(0.38)]),
+                'box': (0.6, [lambda x: reverb(x, 6.5, 0.06, 6000, 0.65)])}
 
 
 def jungle():
