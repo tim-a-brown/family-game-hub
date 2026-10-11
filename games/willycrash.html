@@ -243,6 +243,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var BVAL0 = [250, 350, 1000, 5000, 1000, 350, 250], STREET_T = 50;   // the cabinet's tickets x 10
   //           width, height (the far right one is the giant)
   var BSPEC = [[88, 190], [82, 330], [86, 300], [104, 350], [86, 315], [82, 365], [94, 520]];
+  var MANS_H = 16, MANS_W = .14;   // the jackpot roof's slate slopes: their height, and how far in they run each side (share of the width)
+  var EDGE_T = 1000;    // coming to rest on those slopes (still on the building, off the flat deck)
   var CITY_X0 = 330, GAP = 54;
   var B = [], COL = [], cars = [], cans = [], lamps = [], ants = [], chims = [], perches = [], sprops = [], dogs = [], SEA_X = 1560, WORLD_END = 2100, citySeed = 1;
   var jpI = 3, jpB = null, jpLevel = 0, jpMoved = false;
@@ -267,7 +269,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         if (n === 0) left0 = left;
         addProp(b, k, cx, left, R, ADS[adI++ % ADS.length]);
       });
-      perches.push({ x: b.x0 + 6, y: b.y0 - 6 }); if (R() < .5) perches.push({ x: b.x1 - 8, y: b.y0 - 6 });
+      perches.push({ x: b.x0 + 6, y: b.y0 - 6, b: b }); if (R() < .5) perches.push({ x: b.x1 - 8, y: b.y0 - 6, b: b });
       if (b.awn) perches.push({ x: b.awn.x0 + 8, y: b.awn.y0 });
       B.push(b);
       x += sp[0] + GAP;
@@ -335,7 +337,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     else if (k === 'acrow') { var x0 = left ? b.x0 + 7 : b.x1 - 7 - 34; [0, 17].forEach(function (o) { var a = { x0: x0 + o, x1: x0 + o + 16, y0: y - 11, y1: y, k: 'ac' }; COL.push(a); b.props.push(a); }); return; }
     else if (k === 'tank') c = { x0: cx - 16, x1: cx + 16, y0: y - 50, y1: y - 20, k: 'tank', leak: 0, wob: 0 };
     else if (k === 'bill') { var bw = 58, bx0 = left ? b.x0 + 4 : b.x1 - 4 - bw; c = { x0: bx0, x1: bx0 + bw, y0: y - 52, y1: y - 18, k: 'bill', ad: ad, ang: 0, av: 0 }; }
-    else { ants.push({ x: cx, y: y, h: k === 'dish' ? 22 : 30 + R() * 12, ang: 0, av: 0, bent: 0, cool: 0, hs: -1, ph: R() * 6, dish: k === 'dish', face: left ? 1 : -1 }); return; }
+    else { ants.push({ x: cx, y: y, h: k === 'dish' ? 22 : 30 + R() * 12, ang: 0, av: 0, bent: 0, cool: 0, hs: -1, ph: R() * 6, dish: k === 'dish', face: left ? 1 : -1, b: b, off: false }); return; }
     COL.push(c); b.props.push(c);
   }
   function mkB(i, x, w, h, pal, R) {
@@ -346,7 +348,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var top = -h + 40, bot = -40, rows = Math.max(1, Math.floor((bot - top) / 26));
     for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) b.wins.push({ x: ox + c * cw, y: top + r * 26, w: 11, h: 15, lit: R() < .18, col: c, broken: 0 });
     b.padX = x + w / 2; b.hw = Math.round(w * .32);
-    COL.push({ x0: x, x1: x + w, y0: -h, y1: 0, k: 'b', b: b });
+    b.box = { x0: x, x1: x + w, y0: -h, y1: 0, k: 'b', b: b }; COL.push(b.box);
+    // The jackpot building's mansard top (switched on by placeJackpot): a flat deck for the bullseye with
+    // steep slate slopes down to the walls on both sides, so a landing near the edge slides off, as in the arcade.
+    var s = b.msw = Math.round(w * MANS_W), mh = b.mh = MANS_H, L = Math.sqrt(s * s + mh * mh);
+    b.mans = { x0: x, x1: x + w, y0: -h, y1: -h + mh, k: 'mans', b: b, off: true,
+      E: [{ ax: x, ay: -h + mh, bx: x + s, by: -h, nx: -mh / L, ny: -s / L }, { ax: x + s, ay: -h, bx: x + w - s, by: -h, nx: 0, ny: -1 },
+          { ax: x + w - s, ay: -h, bx: x + w, by: -h + mh, nx: mh / L, ny: -s / L }] };
+    COL.push(b.mans);
     // roof-edge curbs sit flush with the walls: nothing overhangs for a hand to hook over. The jackpot roof
     // has none (see startShot), so a sloppy landing there slides right off, as in the arcade.
     b.lips = [{ x0: x, x1: x + 6, y0: -h - 5, y1: -h, k: 'lip', b: b }, { x0: x + w - 6, x1: x + w, y0: -h - 5, y1: -h, k: 'lip', b: b }];
@@ -359,7 +368,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     B.forEach(function (b, i) { b.val = BVAL0[i]; });
     if (jpI !== 3) { B[3].val = BVAL0[jpI]; B[jpI].val = 5000; }
     jpB = B[jpI];
-    B.forEach(function (b) { b.lips.forEach(function (l) { l.off = b === jpB; }); });
+    // the jackpot roof is the mansard: no curbs, no clutter, the walls stop where the slates start
+    B.forEach(function (b) {
+      var jp = b === jpB;
+      b.lips.forEach(function (l) { l.off = jp; });
+      b.props.forEach(function (c) { c.off = jp; });
+      b.box.y0 = jp ? b.y0 + b.mh : b.y0; b.mans.off = !jp;
+    });
+    ants.forEach(function (a) { a.off = a.b === jpB; });
   }
 
   // ═══ State ══════════════════════════════════════════════════════════════
@@ -403,7 +419,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     rag = null; res = null; trail = [];
     // pigeons back on their perches, and a few birds crossing the sky
     pigeons = [];
-    perches.forEach(function (p) { if (R() < .45) pigeons.push({ x: p.x, y: p.y, st: 0, vx: 0, vy: 0, f: R() < .5 ? 1 : -1, ph: R() * 6, hit: 0 }); });
+    perches.forEach(function (p) { if (R() < .45 && p.b !== jpB) pigeons.push({ x: p.x, y: p.y, st: 0, vx: 0, vy: 0, f: R() < .5 ? 1 : -1, ph: R() * 6, hit: 0 }); });
     flock = [];
     if (R() < .7) { var fy = -420 - R() * 300, fx = 300 + R() * 500; for (var i = 0; i < 5; i++) flock.push({ x: fx + i * 22 - (i % 2) * 10, y: fy + (i % 3) * 14 - i * 4, vx: 38, ph: R() * 6, hit: 0 }); }
     state = 'intro'; introT = 0; camFrom = { x: cam.x, y: cam.y, z: cam.z };
@@ -471,13 +487,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // the surface, so a hard landing bites and a glancing one skids; a wall he is only brushing can't hold him).
   var MAT = {
     chim: { r: .3, mu: .5 }, solar: { r: .35, mu: .3 },
-    b: { r: .26, mu: .65 }, lip: { r: .3, mu: .55 }, ac: { r: .38, mu: .4 }, tank: { r: .38, mu: .35 },
+    b: { r: .26, mu: .65 }, mans: { r: .3, mu: .3 }, lip: { r: .3, mu: .55 }, ac: { r: .38, mu: .4 }, tank: { r: .38, mu: .35 },
     bill: { r: .45, mu: .4 }, awn: { r: .45, mu: .3 },
     sp_cart: { r: .35, mu: .4 }, sp_umb: { r: .45, mu: .3 }, sp_crates: { r: .25, mu: .5 }, sp_cone: { r: .4, mu: .5 }, sp_cafe: { r: .35, mu: .4 },
     sp_hyd: { r: .62, mu: .3 }, sp_mail: { r: .45, mu: .35 }, sp_dump: { r: .35, mu: .45 }, sp_barrier: { r: .35, mu: .45 }, sp_stand: { r: .3, mu: .5 }, sp_booth: { r: .4, mu: .3 }, car: { r: .5, mu: .35 }, can: { r: .3, mu: .45 }, ground: { r: .3, mu: .6 }
   };
   var WALL_MU = .06;    // side faces are slick: he slides down them; he doesn't cling, climb or wedge across a gap
   var JP_MU = .45;      // the jackpot's painted bullseye is slick, and its roof has no curbs: land soft or slide off
+  var JP_KEEP = .6;     // how much of his skid survives touchdown on the jackpot deck (other roofs: .45)
+  var SLATE_MU = .3;    // its slate slopes (about 50 degrees) can't hold him: he always slides down and off
   var cands = [];
   function ragStep(h) {
     var R = rag, P = R.P, i, p, h2 = h * h;
@@ -566,6 +584,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     for (var i = 0; i < cands.length; i++) {
       var c = cands[i], x = p.x, y = p.y;
       if (x + r <= c.x0 || x - r >= c.x1 || y + r <= c.y0 || y - r >= c.y1) continue;
+      if (c.E) { collideMans(p, pi, c, h, ev); continue; }
       var qx = x < c.x0 ? c.x0 : x > c.x1 ? c.x1 : x, qy = y < c.y0 ? c.y0 : y > c.y1 ? c.y1 : y;
       var dx = x - qx, dy = y - qy, nx, ny, pen;
       if (dx || dy) {
@@ -585,6 +604,28 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       resolve(p, pi, c, nx, ny, pen, h, ev);
     }
   }
+  // The mansard: a trapezoid (two slopes and the deck; its base sits on the walls). Ball vs convex
+  // polygon: push out of the nearest face if the centre got inside, else away from the closest point.
+  function collideMans(p, pi, c, h, ev) {
+    var x = p.x, y = p.y, r = p.r, E = c.E, best = -1e9, bi = 0, i, e;
+    for (i = 0; i < 3; i++) { e = E[i]; var sd = (x - e.ax) * e.nx + (y - e.ay) * e.ny; if (sd > best) { best = sd; bi = i; } }
+    if (best >= r) return;
+    var nx, ny, pen;
+    if (best < 0 && y < c.y1) { nx = E[bi].nx; ny = E[bi].ny; pen = r - best; }
+    else {
+      var dm = 1e9, qx = 0, qy = 0;
+      for (i = 0; i < 3; i++) {
+        e = E[i]; var ex = e.bx - e.ax, ey = e.by - e.ay, k = clamp(((x - e.ax) * ex + (y - e.ay) * ey) / (ex * ex + ey * ey), 0, 1);
+        var cx = e.ax + ex * k, cy = e.ay + ey * k, d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+        if (d2 < dm) { dm = d2; qx = cx; qy = cy; }
+      }
+      if (dm >= r * r) return;
+      var d = Math.sqrt(dm);
+      if (d < 1e-6) { nx = E[bi].nx; ny = E[bi].ny; } else { nx = (x - qx) / d; ny = (y - qy) / d; }
+      pen = r - d;
+    }
+    resolve(p, pi, c, nx, ny, pen, h, ev);
+  }
   function resolve(p, pi, c, nx, ny, pen, h, ev) {
     var vx = p.x - p.px, vy = p.y - p.py, mat = MAT[c.mk] || MAT[c.k] || MAT.b;
     p.x += nx * pen; p.y += ny * pen;
@@ -592,7 +633,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (vn >= 0) { p.px = p.x - vx; p.py = p.y - vy; return; }
     var face = ny <= -.6 ? 'top' : ny >= .6 ? 'bot' : nx < 0 ? 'left' : 'right';
     var sp = -vn / h, e = sp < 60 ? 0 : mat.r + (pi === HEAD ? .12 : 0);   // the helmet bounces a little more
-    var mu = face === 'top' ? (c.k === 'b' && c.b === jpB ? JP_MU : mat.mu * (rag.sticky ? 2.2 : 1)) : Math.min(mat.mu, WALL_MU);
+    var mu = c.k === 'mans' ? (ny < -.97 ? JP_MU : SLATE_MU) : face === 'top' ? (c.k === 'b' && c.b === jpB ? JP_MU : mat.mu * (rag.sticky ? 2.2 : 1)) : Math.min(mat.mu, WALL_MU);
     var tx = vx - vn * nx, ty = vy - vn * ny, tl = Math.sqrt(tx * tx + ty * ty);
     var k = tl > 1e-9 ? Math.max(0, 1 - mu * -vn * (1 + e) / tl) : 0;
     p.px = p.x - (tx * k - e * vn * nx); p.py = p.y - (ty * k - e * vn * ny);
@@ -693,10 +734,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function crunch(v) { if (t - lastCrunch > .09) { lastCrunch = t; Snd.crunch(v); } }
   function hit(c, face, sp, p, pi, slide) {
     var R = rag;
-    if (c.k === 'b' && face === 'top') roofTouch(c.b, p);
+    if (c.k === 'b' && face === 'top' && c.b !== jpB) roofTouch(c.b, p);
+    var deck = c.k === 'mans' && p.x > c.x0 + c.b.msw && p.x < c.x1 - c.b.msw && p.y < c.y0;
+    if (deck) roofTouch(c.b, p);
     if (c.k === 'lip' && face === 'top') roofTouch(c.b, p);
     // skidding along a roof or the street kicks up a trail of dust
-    if (face === 'top' && slide > 150 && (c.k === 'b' || c.k === 'ground' || c.k === 'lip')) {
+    if ((face === 'top' || c.k === 'mans') && slide > 150 && (c.k === 'b' || c.k === 'ground' || c.k === 'lip' || c.k === 'mans')) {
       if (Math.random() < .3) parts.push({ k: 'dust', x: p.x, y: p.y + p.r, vx: -Math.sign(p.x - p.px) * (20 + Math.random() * 40), vy: -10 - Math.random() * 30, life: .5, max: .8, s: 2.5 + Math.random() * 3 });
       if (t - lastScrape > .14 && slide > 220) { lastScrape = t; Snd.scrape(Math.min(1, slide / 600)); }
     }
@@ -722,6 +765,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         } else if (face === 'top' && sp > 260 && core) {
           c.cool = t + .15;
           chips(p.x, c.y0, Math.min(7, 2 + sp / 160), 'rgba(60,40,70,.85)', -PI / 2 - dirx * .5, sp * .3);   // roof gravel
+        }
+        break;
+      case 'mans':
+        if (deck) {
+          if (sp > 260 && core) { c.cool = t + .15; chips(p.x, c.y0, Math.min(7, 2 + sp / 160), 'rgba(60,40,70,.85)', -PI / 2 - dirx * .5, sp * .3); }
+        } else {
+          // on the slates: they clatter, a few chips come loose, and the first time each shot he hits them, "Whoa"
+          if (sp > 200) { c.cool = t + .14; crunch(Math.min(1, sp / 800)); chips(p.x, p.y + p.r * .5, Math.min(8, 2 + sp / 130), '#4b5262', -PI / 2 + (p.x < c.b.padX ? -.6 : .6), sp * .35); }
+          if (once && core) { c.hitShot = shotIdx; award(0, p.x, c.y0 - 18, 'Whoa', '#c9d4ff'); }
         }
         break;
       case 'lip':
@@ -817,7 +869,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function sensors() {
     var P = rag.P, pl = P[PEL];
     ants.forEach(function (a) {
-      if (Math.abs(a.x - pl.x) > 70 || a.cool > t) return;
+      if (a.off || Math.abs(a.x - pl.x) > 70 || a.cool > t) return;
       var tip = a.ang + a.bent;
       for (var i = 0; i < 11; i++) {
         var q = P[i], ax = a.x + Math.sin(tip) * Math.max(0, a.y - q.y);
@@ -864,7 +916,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       var mx = 0, my = 0;
       for (var j = 0; j < 11; j++) { mx += (R.P[j].x - R.P[j].px) * MASS[j]; my += (R.P[j].y - R.P[j].py) * MASS[j]; }
       mx /= MTOT; my /= MTOT;
-      var keep = b === jpB ? .6 : .45;
+      var keep = b === jpB ? JP_KEEP : .45;
       R.P.forEach(function (q) { var vx = q.x - q.px, vy = q.y - q.py; q.px = q.x - (mx * keep + (vx - mx) * .35); q.py = q.y - (my + (vy - my) * .35); });
       dust(p.x, b.y0, 10, 'top');
     }
@@ -960,6 +1012,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     });
     // chimney smoke: a lazy grey plume drifting off to the right (a bigger burst after he hits one)
     chims.forEach(function (c) {
+      if (c.off) return;
       c.smoke -= dt;
       if (c.smoke <= 0) {
         c.smoke = c.puff > 0 ? .06 : .28; if (c.puff) c.puff = Math.max(0, c.puff - .08);
@@ -1075,12 +1128,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (R.wet) r = { code: 'splash', name: 'Splash!', tickets: STREET_T, col: '#7fd0ff', where: 'In the bay' };
     else {
       // (resting up on a billboard, chimney or water tower still counts as being on that roof)
-      for (var i = 0; i < B.length; i++) { var c = B[i]; if (pl.x > c.x0 - 6 && pl.x < c.x1 + 6 && pl.y < c.y0 + 4 && pl.y > c.y0 - 110) { b = c; break; } }
+      // (the jackpot roof: only the flat deck pays the jackpot; stopped on its slates, still on the building, pays 1,000)
+      for (var i = 0; i < B.length; i++) { var c = B[i], low = c === jpB ? c.mh : 0; if (pl.x > c.x0 - 6 && pl.x < c.x1 + 6 && pl.y < c.y0 + low + 4 && pl.y > c.y0 - 110) { b = c; break; } }
       if (b) {
-        var jp = b === jpB;
-        r = { code: jp ? 'jackpot' : 'roof', name: jp ? 'JACKPOT!' : fmt(b.val) + ' points!', tickets: b.val, col: jp ? '#ffd84a' : b.val >= 1000 ? '#7dffb3' : '#7fe0ff',
-              where: jp ? 'Jackpot roof' : 'Building ' + (b.idx + 1) + ' roof', bi: b.idx };
-        R.dance = { x: clamp(pl.x, b.x0 + 16, b.x1 - 16), y: b.y0, t: 0, k: 0 };
+        var jp = b === jpB, onDeck = jp && pl.x > b.x0 + b.msw - 4 && pl.x < b.x1 - b.msw + 4 && pl.y < b.y0 + 4, edge = jp && !onDeck;
+        jp = jp && onDeck;
+        var val = edge ? EDGE_T : b.val;
+        r = { code: jp ? 'jackpot' : 'roof', name: jp ? 'JACKPOT!' : fmt(val) + ' points!', tickets: val, col: jp ? '#ffd84a' : val >= 1000 ? '#7dffb3' : '#7fe0ff',
+              where: jp ? 'Jackpot roof' : edge ? 'Edge of the jackpot roof' : 'Building ' + (b.idx + 1) + ' roof', bi: b.idx };
+        R.dance = { x: clamp(pl.x, b.x0 + Math.max(16, b === jpB ? b.msw + 8 : 0), b.x1 - Math.max(16, b === jpB ? b.msw + 8 : 0)), y: b.y0, t: 0, k: 0 };
       } else {
         var gap = pl.x > CITY_X0 && pl.x < B[B.length - 1].x1;
         r = { code: 'crash', name: 'Crash!', tickets: STREET_T, col: '#ff8a5c', where: gap ? 'Between buildings' : 'In the street' };
@@ -1308,7 +1364,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     drawStreet(vx0, vx1);
     drawJackpotBeam();
     B.forEach(function (b) { if (b.x1 + 40 > vx0 && b.x0 - 40 < vx1) drawBuilding(b); });
-    ants.forEach(function (a) { if (a.x > vx0 && a.x < vx1) drawAntenna(a); });
+    ants.forEach(function (a) { if (!a.off && a.x > vx0 && a.x < vx1) drawAntenna(a); });
     lamps.forEach(function (l) { if (l.x > vx0 - 30 && l.x < vx1) drawLamp(l); });
     cars.forEach(function (c) { if (c.x + 70 > vx0 && c.x < vx1) drawCar(c); });
     cans.forEach(function (c) { if (c.x + 20 > vx0 && c.x < vx1) drawCan(c); });
@@ -1379,23 +1435,46 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (SEA_X > x0) { g.fillStyle = '#6b4a3a'; g.fillRect(SEA_X - 6, 0, 8, 40); g.fillStyle = '#4a3328'; g.fillRect(SEA_X - 6, 0, 8, 3); }
   }
   function drawBuilding(b) {
-    var x = b.x0, y = b.y0, w = b.w, h = b.h, jp = b === jpB;
+    var x = b.x0, y = b.y0, w = b.w, h = b.h, jp = b === jpB, cy = jp ? y + b.mh : y;
     drawFacade(b);
-    // cornice: a grey stone slab
-    g.fillStyle = '#cfc8be'; g.fillRect(x - 3, y - 1, w + 6, 8);
-    g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(x - 3, y + 7, w + 6, 2);
-    g.fillStyle = '#e8e3da'; g.fillRect(x - 3, y - 1, w + 6, 2);
-    g.strokeStyle = INK; g.lineWidth = 2; g.strokeRect(x, y, w, h);
+    // cornice: a grey stone slab (on the jackpot building, at the foot of the slates)
+    g.fillStyle = '#cfc8be'; g.fillRect(x - 3, cy - 1, w + 6, 8);
+    g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(x - 3, cy + 7, w + 6, 2);
+    g.fillStyle = '#e8e3da'; g.fillRect(x - 3, cy - 1, w + 6, 2);
+    g.strokeStyle = INK; g.lineWidth = 2; g.strokeRect(x, cy, w, h - (cy - y));
+    if (jp) drawMansard(b);
     // curbs (none on the jackpot roof)
-    if (!jp) { g.fillStyle = '#bdb5aa'; b.lips.forEach(function (l) { g.fillRect(l.x0, l.y0, l.x1 - l.x0, l.y1 - l.y0); g.strokeRect(l.x0, l.y0, l.x1 - l.x0, l.y1 - l.y0); }); }
+    else { g.fillStyle = '#bdb5aa'; b.lips.forEach(function (l) { g.fillRect(l.x0, l.y0, l.x1 - l.x0, l.y1 - l.y0); g.strokeRect(l.x0, l.y0, l.x1 - l.x0, l.y1 - l.y0); }); }
     if (b.awn) drawAwning(b.awn);
-    b.props.forEach(drawProp);
+    if (!jp) b.props.forEach(drawProp);
     if (jp) drawPad(b);
+  }
+  // the jackpot building's mansard: dark slate slopes either side of the flat deck the bullseye sits on
+  function drawMansard(b) {
+    var x0 = b.x0, x1 = b.x1, y = b.y0, s = b.msw, yb = y + b.mh;
+    function path() { g.beginPath(); g.moveTo(x0 - 1, yb); g.lineTo(x0 + s, y); g.lineTo(x1 - s, y); g.lineTo(x1 + 1, yb); g.closePath(); }
+    g.save(); path(); g.clip();
+    g.fillStyle = '#4b5262'; g.fillRect(x0 - 2, y - 1, x1 - x0 + 4, b.mh + 2);
+    // rows of slates: staggered tiles, each row's lower edge in shadow
+    for (var r = 0, ry = y + 1; ry < yb; r++, ry += 4) {
+      g.fillStyle = 'rgba(20,24,36,.45)'; g.fillRect(x0 - 2, ry + 3, x1 - x0 + 4, 1);
+      g.fillStyle = 'rgba(20,24,36,.3)'; for (var tx = x0 - 2 + (r % 2) * 2.5; tx < x1 + 2; tx += 5) g.fillRect(tx, ry, .8, 3.2);
+      g.fillStyle = 'rgba(190,205,235,.16)'; g.fillRect(x0 - 2, ry, x1 - x0 + 4, .8);
+    }
+    // the front slope faces the sky and catches more light than the two side slopes
+    g.fillStyle = 'rgba(170,190,230,.14)'; g.fillRect(x0 + s, y, x1 - x0 - 2 * s, b.mh);
+    g.fillStyle = 'rgba(10,12,24,.22)'; g.beginPath(); g.moveTo(x0 - 1, yb); g.lineTo(x0 + s, y); g.lineTo(x0 + s, yb); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(x1 + 1, yb); g.lineTo(x1 - s, y); g.lineTo(x1 - s, yb); g.closePath(); g.fill();
+    g.restore();
+    g.fillStyle = '#d8d2c8'; g.fillRect(x0 + s - 1, y - 1.2, x1 - x0 - 2 * s + 2, 2.4);   // stone trim along the deck edge
+    path(); g.strokeStyle = INK; g.lineWidth = 2; g.stroke();
   }
   // the front of a building: brick, windows, fire escape, shop front and the painted value (also painted
   // onto the 3D view's facade textures)
   function drawFacade(b) {
-    var x = b.x0, y = b.y0, w = b.w, h = b.h, jp = b === jpB;
+    var x = b.x0, y = b.y0, w = b.w, h = b.h, jp = b === jpB, dy = jp ? b.mh : 0;
+    // (the jackpot building's walls stop under its slates)
+    g.save(); if (jp) { g.beginPath(); g.rect(x - 1, y + dy, w + 2, h - dy + 1); g.clip(); }
     // brick body with a little side shading
     g.fillStyle = b.c; g.fillRect(x, y, w, h);
     if (brickPat) { g.fillStyle = brickPat; g.fillRect(x, y, w, h); }
@@ -1443,9 +1522,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     // the point value painted big and red across the top floor, as in the arcade
     var big = Math.min(jp ? 30 : 26, w * (b.val >= 5000 ? .24 : b.val >= 1000 ? .26 : .32));
     g.font = '400 ' + big + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
-    g.lineWidth = 3; g.strokeStyle = 'rgba(90,10,10,.55)'; g.strokeText(fmt(b.val), x + w / 2, y + 19);
-    g.fillStyle = jp ? '#ffcf3a' : '#e0262c'; g.fillText(fmt(b.val), x + w / 2, y + 19);
-    g.font = '400 ' + Math.round(big * .36) + 'px ' + FONT; g.lineWidth = 2; g.strokeText('POINTS', x + w / 2, y + 33); g.fillText('POINTS', x + w / 2, y + 33);
+    g.lineWidth = 3; g.strokeStyle = 'rgba(90,10,10,.55)'; g.strokeText(fmt(b.val), x + w / 2, y + dy + 19);
+    g.fillStyle = jp ? '#ffcf3a' : '#e0262c'; g.fillText(fmt(b.val), x + w / 2, y + dy + 19);
+    g.font = '400 ' + Math.round(big * .36) + 'px ' + FONT; g.lineWidth = 2; g.strokeText('POINTS', x + w / 2, y + dy + 33); g.fillText('POINTS', x + w / 2, y + dy + 33);
+    g.restore();
   }
     function drawAwning(a) {
     var sq = Math.sin(a.sq * PI) * 4, x0 = a.x0, x1 = a.x1, y0 = a.y0 + sq, y1 = a.y1;
@@ -1537,7 +1617,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     function anchor2(x, y) { g.save(); g.translate(x, y); g.scale(s, s); }
     g.globalAlpha = a; g.lineJoin = 'round'; g.textAlign = 'center'; g.textBaseline = 'middle';
     B.forEach(function (b) {
-      var jp = b === jpB, bob = Math.sin(t * 4 + b.idx) * 3, top = b.props.reduce(function (m, p) { return Math.min(m, p.y0); }, b.y0);
+      var jp = b === jpB, bob = Math.sin(t * 4 + b.idx) * 3, top = b.props.reduce(function (m, p) { return p.off ? m : Math.min(m, p.y0); }, b.y0);
       if (G3) anchor3(b.padX, Math.min(b.y0, top), 34 - bob); else anchor2(b.padX, Math.min(b.y0 - 34 * s, top - 12 * s) + bob * s);
       var col = jp ? '#ffd23a' : '#e5263f';
       g.fillStyle = col; g.strokeStyle = '#fff'; g.lineWidth = 2.5;
@@ -2393,6 +2473,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g3: function () { return G3 ? G3.info() : null; }, drop3d: function () { drop3D(); render(); },
     step: function (sec, draw) { var n = Math.round((sec || 0) / DT); for (var i = 0; i < n; i++) update(DT); if (draw) { render(); drawDeck(); } return state; },
     angle: function () { return angle; }, level: function () { return jpLevel; }, jpI: function () { return jpI; },
+    setJp: function (i) { jpI = i; startShot(); },
+    tune: function (o) { if (o.jpMu != null) JP_MU = o.jpMu; if (o.keep != null) JP_KEEP = o.keep; if (o.slate != null) SLATE_MU = o.slate; if (o.mh != null) MANS_H = o.mh; if (o.mw != null) MANS_W = o.mw; },
     // drop Willy (standing pose, pelvis at x,y) with a velocity, as if fired
     drop: function (x, y, vx, vy, spin) {
       if (state === 'intro') toAim();

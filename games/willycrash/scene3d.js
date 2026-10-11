@@ -170,8 +170,23 @@ export function WillyCrash3D(api, host) {
     }
     return tex(c, true);
   }
+  // slates for the jackpot building's mansard: staggered rows, each row's lower edge in shadow
+  function slateTex() {
+    const [c, x] = cv2d(128, 64);
+    x.fillStyle = '#4b5262'; x.fillRect(0, 0, 128, 64);
+    for (let r = 0; r < 4; r++) {
+      const y = r * 16;
+      for (let k = -1; k < 9; k++) {
+        const tx = k * 16 + (r % 2) * 8, v = ((k * 7 + r * 13) % 5) * 5;
+        x.fillStyle = 'rgb(' + (68 + v) + ',' + (75 + v) + ',' + (92 + v) + ')'; x.fillRect(tx + 1, y + 1, 14, 13);
+        x.fillStyle = 'rgba(190,205,235,.18)'; x.fillRect(tx + 1, y + 1, 14, 2);
+      }
+      x.fillStyle = 'rgba(15,18,30,.55)'; x.fillRect(0, y + 14, 128, 2);
+    }
+    return tex(c, true);
+  }
   const T = {
-    roof: roofTex(),
+    roof: roofTex(), slate: slateTex(),
     sideA: brickTex('#a4563c', '#7e3f2b', true), sideB: brickTex('#94503a', '#6e3a29', true),
     chim: brickTex('#a04a33', '#7a3a28', false),
     awnRed: stripeTex('#e5263f', '#fff3e0', 8), awnBlue: stripeTex('#2f7dff', '#fff3e0', 8), awnGreen: stripeTex('#22a866', '#fff3e0', 8),
@@ -190,7 +205,36 @@ export function WillyCrash3D(api, host) {
     api.paintFacade(b, x, s);
     const t = tex(c); return { t, c, x, s };
   }
-  function brokenKey(b) { let n = 0; b.wins.forEach(w => { if (w.broken) n++; }); return n + '/' + b.cracks.length + '/' + b.val; }
+  function brokenKey(b) { let n = 0; b.wins.forEach(w => { if (w.broken) n++; }); return n + '/' + b.cracks.length + '/' + b.val + '/' + (b.mans && !b.mans.off ? 'j' : ''); }
+  // The jackpot building's mansard: four slate slopes from the wall tops up to the flat deck (built for every
+  // building that can hold the jackpot, shown on whichever one has it), with the deck and a stone trim.
+  function mansardMesh(b) {
+    const s = b.msw, mh = b.mh, yb = b.h - mh, yt = b.h, hz = DEPTH / 2;
+    const xa = b.x0 - 1, xb = b.x1 + 1, za = -hz - 1, zb = hz + 1, xc = b.x0 + s, xd = b.x1 - s, zc = -hz + s, zd = hz - s;
+    const pos = [], uv = [], ctr = new THREE.Vector3(b.x0 + b.w / 2, yb, 0);
+    function quad(a, bq, c, d) {   // bottom edge a-b, top edge d-c
+      const len = Math.hypot(bq[0] - a[0], bq[2] - a[2]), sl = Math.hypot(mh, s), U = len / 40, V = sl / 20;
+      const v3 = q => new THREE.Vector3(q[0], q[1], q[2]);
+      let A = v3(a), B = v3(bq), Cc = v3(c), D = v3(d);
+      const n = new THREE.Vector3().crossVectors(B.clone().sub(A), D.clone().sub(A)), out = A.clone().add(Cc).multiplyScalar(.5).sub(ctr);
+      let ua = [0, 0], ub = [U, 0], uc = [U - U * s / len, V], ud = [U * s / len, V];
+      if (n.dot(out) < 0) { [A, B] = [B, A]; [Cc, D] = [D, Cc]; [ua, ub] = [ub, ua]; [uc, ud] = [ud, uc]; }
+      [[A, ua], [B, ub], [Cc, uc], [A, ua], [Cc, uc], [D, ud]].forEach(([p, t]) => { pos.push(p.x, p.y, p.z); uv.push(t[0], t[1]); });
+    }
+    quad([xa, yb, zb], [xb, yb, zb], [xd, yt, zd], [xc, yt, zd]);   // front
+    quad([xb, yb, za], [xa, yb, za], [xc, yt, zc], [xd, yt, zc]);   // back
+    quad([xa, yb, za], [xa, yb, zb], [xc, yt, zd], [xc, yt, zc]);   // left
+    quad([xb, yb, zb], [xb, yb, za], [xd, yt, zc], [xd, yt, zd]);   // right
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.computeVertexNormals();
+    const grp = new THREE.Group();
+    grp.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: T.slate })));
+    const deck = new THREE.Mesh(new THREE.PlaneGeometry(xd - xc, zd - zc), new THREE.MeshLambertMaterial({ map: T.roof })); deck.rotation.x = -Math.PI / 2; deck.position.set((xc + xd) / 2, yt, 0); grp.add(deck);
+    const tw = 1.6, trim = [at(box(xd - xc + tw, 1.2, tw), (xc + xd) / 2, yt + .3, zc), at(box(xd - xc + tw, 1.2, tw), (xc + xd) / 2, yt + .3, zd),
+      at(box(tw, 1.2, zd - zc), xc, yt + .3, 0), at(box(tw, 1.2, zd - zc), xd, yt + .3, 0)];
+    grp.add(new THREE.Mesh(merge(trim), lam('#d8d2c8')));
+    return grp;
+  }
   function buildCity(st) {
     if (city) { scene.remove(city); city.traverse(o => { if (o.geometry) o.geometry.dispose(); }); facades.forEach(f => f.t.dispose()); }
     city = new THREE.Group(); scene.add(city); facades = [];
@@ -200,13 +244,20 @@ export function WillyCrash3D(api, host) {
     st.B.forEach((b, i) => {
       const f = facadeTexture(b); f.key = brokenKey(b); f.b = b; facades.push(f);
       const side = i % 2 ? T.sideB : T.sideA;
-      const sideT = side.clone(); sideT.needsUpdate = true; sideT.repeat.set(DEPTH / 64, b.h / 128);
-      const sideMat = new THREE.MeshLambertMaterial({ map: sideT });
-      const front = new THREE.MeshLambertMaterial({ map: f.t });
-      const body = new THREE.Mesh(box(b.w, b.h, DEPTH), [sideMat, sideMat, roofMat, sideMat, front, sideMat]);
-      body.position.set(b.x0 + b.w / 2, b.h / 2, 0); city.add(body);
+      // the body in two parts: the walls, and a top band (one slate-height) that gives way to the mansard on the jackpot building
+      const MH = b.mh, lowH = b.h - MH;
+      const sideT = side.clone(); sideT.needsUpdate = true; sideT.repeat.set(DEPTH / 64, lowH / 128);
+      const sideT2 = side.clone(); sideT2.needsUpdate = true; sideT2.repeat.set(DEPTH / 64, MH / 128); sideT2.offset.set(0, (lowH / 128) % 1);
+      const sideMat = new THREE.MeshLambertMaterial({ map: sideT }), sideMat2 = new THREE.MeshLambertMaterial({ map: sideT2 });
+      f.t.repeat.set(1, lowH / b.h); f.t.offset.set(0, 0);
+      f.t2 = f.t.clone(); f.t2.needsUpdate = true; f.t2.repeat.set(1, MH / b.h); f.t2.offset.set(0, lowH / b.h);
+      const body = new THREE.Mesh(box(b.w, lowH, DEPTH), [sideMat, sideMat, roofMat, sideMat, new THREE.MeshLambertMaterial({ map: f.t }), sideMat]);
+      body.position.set(b.x0 + b.w / 2, lowH / 2, 0); city.add(body);
+      const band = new THREE.Mesh(box(b.w, MH, DEPTH), [sideMat2, sideMat2, roofMat, sideMat2, new THREE.MeshLambertMaterial({ map: f.t2 }), sideMat2]);
+      band.position.set(b.x0 + b.w / 2, lowH + MH / 2, 0); city.add(band); b._band3 = band;
+      const mans = mansardMesh(b); mans.visible = false; city.add(mans); b._mans3 = mans;
       // cornice slab, then the parapet curbs (the jackpot roof has none)
-      const cor = new THREE.Mesh(box(b.w + 6, 8, DEPTH + 6), corniceMat); cor.position.set(b.x0 + b.w / 2, b.h - 3, 0); city.add(cor);
+      const cor = new THREE.Mesh(box(b.w + 6, 8, DEPTH + 6), corniceMat); cor.position.set(b.x0 + b.w / 2, b.h - 3, 0); city.add(cor); b._cor3 = cor;
       const par = [];
       par.push(at(box(6, 5, DEPTH), b.x0 + 3, b.h + 2.5, 0), at(box(6, 5, DEPTH), b.x1 - 3, b.h + 2.5, 0));
       par.push(at(box(b.w, 5, 4), b.x0 + b.w / 2, b.h + 2.5, DEPTH / 2 - 2), at(box(b.w, 5, 4), b.x0 + b.w / 2, b.h + 2.5, -DEPTH / 2 + 2));
@@ -228,7 +279,8 @@ export function WillyCrash3D(api, host) {
         const grp = new THREE.Group(); grp.position.set(a.x1, -a.y0 + 2, 0); m.position.set(-aw / 2, 0, 0); grp.add(m); grp.rotation.z = .28; city.add(grp);
         dyn.awns.push({ a, grp });
       }
-      b.props.forEach(p => addProp(p, b));
+      b._props3 = new THREE.Group(); city.add(b._props3);
+      b.props.forEach(p => addProp(p, b, b._props3));
       // the bullseye pad and its ring of bulbs (moved when the jackpot moves)
       const pad = new THREE.Group(); pad.visible = false;
       const pt = (() => { const [c, x] = cv2d(256, 256); [[1, '#e5263f'], [.78, '#fff6ea'], [.56, '#e5263f'], [.34, '#fff6ea'], [.16, '#e5263f']].forEach(r => { x.fillStyle = r[1]; x.beginPath(); x.arc(128, 128, 124 * r[0], 0, Math.PI * 2); x.fill(); }); return tex(c); })();
@@ -252,7 +304,7 @@ export function WillyCrash3D(api, host) {
         [[.55, 24], [.72, 18], [.88, 12]].forEach(cb => { const bar = new THREE.Mesh(box(cb[1], 1.2, 1.2), ink); bar.position.y = a.h * cb[0]; mast.add(bar); const bar2 = bar.clone(); bar2.rotation.y = Math.PI / 2; mast.add(bar2); });
         const tip = new THREE.Mesh(new THREE.SphereGeometry(2, 6, 4), basic('#ff5a5a')); tip.position.y = a.h; mast.add(tip); a._tip3 = tip;
       }
-      dyn.ants.push({ a, mast });
+      dyn.ants.push({ a, mast, grp });
     });
     // street lamps: on the open street and in the gaps they stand where Willy can hit them (z 0), in front of buildings out by the kerb
     st.lamps.forEach(l => {
@@ -402,7 +454,7 @@ export function WillyCrash3D(api, host) {
     });
   }
   function overBuilding(st, x0, x1) { return st.B.some(b => x1 > b.x0 - 4 && x0 < b.x1 + 4); }
-  function addProp(p, b) {
+  function addProp(p, b, city) {
     const ink = lam('#2a2430');
     if (p.k === 'chim') {
       const m = new THREE.Mesh(box(p.x1 - p.x0, p.y1 - p.y0 - 3, 14), new THREE.MeshLambertMaterial({ map: T.chim }));
@@ -668,11 +720,15 @@ export function WillyCrash3D(api, host) {
     const st = api.get();
     if (st.B !== built) buildCity(st);
     // repaint any facade whose windows broke or got a splat crack, or whose value changed (jackpot moves)
-    facades.forEach(f => { const k = brokenKey(f.b); if (k !== f.key) { f.key = k; api.paintFacade(f.b, f.x, f.s); f.t.needsUpdate = true; } });
+    facades.forEach(f => { const k = brokenKey(f.b); if (k !== f.key) { f.key = k; api.paintFacade(f.b, f.x, f.s); f.t.needsUpdate = true; f.t2.needsUpdate = true; } });
     const t = st.t;
     dyn.pads.forEach(o => { o.pad.visible = o.b === st.jpB; if (o.pad.visible) { for (let k = 0; k < 16; k++) o.bulbs.setColorAt(k, pc.set((Math.floor(t * 9) + k) % 4 === 0 ? 0xfffbe0 : 0xffb84a)); o.bulbs.instanceColor.needsUpdate = true; } });
-    dyn.pads.forEach(o => { o.b._par3.visible = o.b !== st.jpB; });
-    dyn.ants.forEach(o => { o.mast.rotation.z = -(o.a.ang + o.a.bent); if (o.a._tip3) o.a._tip3.material.color.set(Math.floor(t * 1.5 + o.a.ph) % 2 ? '#ff5a5a' : '#8a2a3a'); });
+    dyn.pads.forEach(o => {
+      const jp = o.b === st.jpB;
+      o.b._par3.visible = !jp; o.b._band3.visible = !jp; o.b._mans3.visible = jp; o.b._props3.visible = !jp;
+      o.b._cor3.position.y = jp ? o.b.h - o.b.mh - 1 : o.b.h - 3;
+    });
+    dyn.ants.forEach(o => { o.grp.visible = !o.a.off; o.mast.rotation.z = -(o.a.ang + o.a.bent); if (o.a._tip3) o.a._tip3.material.color.set(Math.floor(t * 1.5 + o.a.ph) % 2 ? '#ff5a5a' : '#8a2a3a'); });
     dyn.lamps.forEach(o => { o.grp.rotation.z = -o.l.ang; o.bulb.material.color.set(o.l.out ? '#5a5068' : '#fff1b8'); });
     dyn.cans.forEach(o => { const k = o.can.knocked; o.grp.rotation.z = k ? -k * Math.PI / 2 : 0; o.grp.position.y = k ? 7 : 0; o.lid.visible = !k; });
     dyn.cars.forEach(o => { const c = o.car; o.grp.position.y = Math.sin(c.bob * 20) * c.bob * 2.5; o.cab.scale.y = 1 - (c.dent || 0) * .35; o.glass.scale.y = 1 - (c.dent || 0) * .35; o.glass.material.color.set(c.crack ? '#9fc6e6' : '#bfe3ff'); });
