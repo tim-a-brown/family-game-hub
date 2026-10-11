@@ -28,7 +28,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
 .cc-cab{position:relative;padding:2px;border-radius:12px;background:#01020a;
   box-shadow:0 0 0 1px color-mix(in srgb,var(--cc-glow,#3f8cff) 55%,transparent),0 0 30px -8px var(--cc-glow,#3f8cff),0 16px 40px rgba(0,0,0,.6);
   transition:box-shadow .8s;}
-.cc-cab canvas{display:block;border-radius:10px;background:#02040e;}
+.cc-cab canvas{display:block;border-radius:10px;position:relative;}
+.cc-cab canvas.cc-floor{position:absolute;left:2px;top:2px;background:#02040e;}
+/* a slow band of light sweeping down the floor (drawn by the browser, not the game loop) */
+.cc-sweep{position:absolute;inset:2px;border-radius:10px;overflow:hidden;pointer-events:none;mix-blend-mode:screen;}
+.cc-sweep::before{content:"";position:absolute;left:0;right:0;top:0;height:32%;
+  background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--cc-glow,#3f8cff) 16%,transparent),transparent);
+  animation:cc-sweep 12s linear infinite;}
+@keyframes cc-sweep{from{transform:translateY(-110%);}to{transform:translateY(330%);}}
+@media (prefers-reduced-motion:reduce){.cc-sweep{display:none;}}
 .ar-ov{position:absolute;inset:2px;border-radius:10px;display:none;align-items:center;justify-content:center;z-index:4;
   background:rgba(2,6,20,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
 .ar-ov.show{display:flex;animation:pop .3s var(--spring);}
@@ -1067,7 +1075,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
 
   // ═══ Play view ══════════════════════════════════════════════════════════
-  var cv, g, wrapEl, cabEl, ovEl, stripEl, fireBtn, pauseBtn = null, ro = null;
+  var floorCv = null, floorKey = '', cv, g, wrapEl, cabEl, ovEl, stripEl, fireBtn, pauseBtn = null, ro = null;
   var DPR = 1, S = 1, cssW = 0, hudDirty = true;
   var SVG_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg>';
   var SVG_DRAG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M8 7l4-4 4 4M8 17l4 4 4-4M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>';
@@ -1086,7 +1094,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var online = !!net.mode;
     cv = el('canvas', { 'aria-label': 'Centipede field' }); g = cv.getContext('2d');
     ovEl = el('div', { class: 'ar-ov' });
-    cabEl = el('div', { class: 'cc-cab' }, [cv, ovEl]);
+    floorCv = el('canvas', { class: 'cc-floor', 'aria-hidden': 'true' }); floorKey = '';
+    cabEl = el('div', { class: 'cc-cab' }, [floorCv, el('div', { class: 'cc-sweep' }), cv, ovEl]);
     wrapEl = el('div', { class: 'cc-wrap' }, [cabEl]);
     fireBtn = el('button', { type: 'button', class: 'cc-fire' + (ctl.auto ? ' on' : ''), html: '<span>Auto-fire</span><i></i>', onclick: function () { setAuto(!ctl.auto); } });
     stripEl = el('div', { class: 'cc-strip ar-touch' }, [el('div', { class: 'cc-pad', html: SVG_DRAG + '<span>Drag anywhere to fly</span>' }), fireBtn]);
@@ -1118,8 +1127,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     cssW = dw; cssScale = w / W;
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
     cv.width = dw; cv.height = Math.round(h * DPR);
+    floorCv.style.width = w + 'px'; floorCv.style.height = h + 'px'; floorKey = '';
     S = cv.width / W;
-    SPX = {}; TXT = {}; TXTN = 0; BGC = {};
+    SPX = {}; TXT = {}; TXTN = 0;
     draw();
   }
 
@@ -1149,7 +1159,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
 
   // ═══ Loop ═══════════════════════════════════════════════════════════════
-  var raf = 0, lastT = 0, acc = 0, hold = false, frameAt = 0, perf = { n: 0, t: 0, worst: 0 };
+  var raf = 0, lastT = 0, acc = 0, hold = false, frameAt = 0, perf = { n: 0, t: 0, worst: 0, slow: [] };
   function loop() {
     raf = 0;
     frame(true);
@@ -1177,6 +1187,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var t0 = performance.now();
     draw();
     var dd = performance.now() - t0; perf.n++; perf.t += dd; if (dd > perf.worst) perf.worst = dd;
+    if (dd > 40 && perf.slow.length < 30) perf.slow.push([Math.round(dd), Object.keys(SPX).length, TXTN]);
   }
   function wake() { if (!raf && screen === 'game' && !paused && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
   function fxStep(dt) {
@@ -1194,7 +1205,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // shaded cubes at screen resolution: lit from the upper left, rounded off toward the edges, with the
   // cubes' sides showing underneath and a soft shadow on the floor. All of it is drawn once per screen
   // size and kept, so a frame is just copies of finished pictures.
-  var SPX = {}, TXT = {}, TXTN = 0, BGC = {}, shownTheme = null;
+  var SPX = {}, TXT = {}, TXTN = 0, shownTheme = null;
   function spx(k, fn) { return SPX[k] || (SPX[k] = fn()); }
   // pixel art from rows of characters; map: character -> colour ('.' and unmapped are clear). flip: mirror it
   function gspr(rows, map, flip) {
@@ -1477,8 +1488,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // ── The stage floor: drawn once per stage and screen size ──
   function hexPath(x, x0, y0, r) { x.beginPath(); for (var i = 0; i < 6; i++) { var a = PI / 6 + i * PI / 3; x[i ? 'lineTo' : 'moveTo'](x0 + Math.cos(a) * r, y0 + Math.sin(a) * r); } x.closePath(); }
   function bgSpr(tk) {
-    var key = tk + COLS + 'x' + ROWS + ':' + cv.width + 'x' + cv.height;
-    if (BGC[key]) return BGC[key];
     var T = THEMES[tk], w = cv.width, h = cv.height, k = S, c = mk(w, h), x = c.getContext('2d'), seed = 11 + tk.length * 977;
     function R() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
     var gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, T.deep); gr.addColorStop(0.6, shade(T.base, -0.3)); gr.addColorStop(1, T.base);
@@ -1535,7 +1544,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     x.setLineDash([3 * k, 3 * k]); x.strokeStyle = hexA(T.hi, 0.25); x.lineWidth = Math.max(1, 0.6 * k); x.beginPath(); x.moveTo(0, zy); x.lineTo(w, zy); x.stroke(); x.setLineDash([]);
     var vg = x.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)');
     x.fillStyle = vg; x.fillRect(0, 0, w, h);
-    BGC = {}; BGC[key] = c;
     return c;
   }
 
@@ -1562,13 +1570,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (shownTheme !== tk) { shownTheme = tk; if (cabEl) cabEl.style.setProperty('--cc-glow', T.line); }
     var sx = 0, sy = 0;
     if (fx.shake > 0) { var m = fx.shake * fx.shake * 5 * S; sx = (Math.random() - 0.5) * m; sy = (Math.random() - 0.5) * m; }
+    // the floor is its own canvas underneath, painted only when the stage or the size changes
+    var fk = tk + COLS + 'x' + ROWS + ':' + cv.width + 'x' + cv.height;
+    if (floorKey !== fk) { floorKey = fk; floorCv.width = cv.width; floorCv.height = cv.height; floorCv.getContext('2d').drawImage(bgSpr(tk), 0, 0); }
     x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
-    x.fillStyle = T.deep; x.fillRect(0, 0, cv.width, cv.height);
-    x.drawImage(bgSpr(tk), sx, sy);
-    // a slow band of light sweeping down the floor
-    var band = ((drawT * 0.11) % 1.5 - 0.25) * cv.height, bh = cv.height * 0.16;
-    var bgr = x.createLinearGradient(0, band - bh, 0, band + bh); bgr.addColorStop(0, hexA(T.line, 0)); bgr.addColorStop(0.5, hexA(T.line, 0.08)); bgr.addColorStop(1, hexA(T.line, 0));
-    x.globalCompositeOperation = 'lighter'; x.fillStyle = bgr; x.fillRect(0, band - bh, cv.width, bh * 2); x.globalCompositeOperation = 'source-over';
+    x.clearRect(0, 0, cv.width, cv.height);
     warm(R, wv);
     var L = hudLayout(R);
     drawLives(x, R, L);                      // the lives plates sit on the floor, under everything
