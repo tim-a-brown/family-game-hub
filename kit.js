@@ -146,6 +146,7 @@
     help: '<circle cx="12" cy="12" r="9.5"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
     more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    sliders: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
     shuffle: '<path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/>',
     users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
     user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
@@ -1067,7 +1068,11 @@
     var saved = {};
     try { saved = JSON.parse(lsGet('gn_setup_' + (game ? game.id : pageKey()), '{}')) || {}; } catch (e) {}
     if (saved.mode && !o.modeLocked && o.modes && o.modes.some(function (m) { return m.id === saved.mode; })) state.mode = saved.mode;
-    (o.options || []).forEach(function (op) { state.options[op.id] = saved.options && saved.options[op.id] != null ? saved.options[op.id] : op.value; });
+    else if (!o.modeLocked && o.modes) { var dm = defMode(o.modes); if (dm) state.mode = dm; }
+    (o.options || []).forEach(function (op) {
+      if (saved.options && saved.options[op.id] != null) { state.options[op.id] = saved.options[op.id]; return; }
+      var dv = defOption(op, state.mode); state.options[op.id] = dv != null ? dv : op.value;
+    });
     var names = (saved.names || []).map(function (n) { return isPersonName(n) ? n : ''; });
     var bots = cpuNames(8);
     var openHelp = {};
@@ -1793,6 +1798,69 @@
     s = sheet({ title: 'Link ' + name, node: node, actions: [{ label: 'Link', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
     setTimeout(function () { inp.focus(); }, 300);
   }
+  // ── Game defaults: where every game's setup starts until you pick something else in that game ──
+  // gn_defaults (this device): {vs: 'cpu'|'people', skill: 'easy'|'med'|'hard', diff: 'easy'|'med'|'hard'}; gn_music: '0' = off.
+  // Changing one here clears that choice from every game's remembered setup (gn_setup_*), so it takes effect everywhere.
+  var DEF_IDS = { easy: ['easy'], med: ['med', 'medium', 'normal', 'classic'], hard: ['hard'] };
+  var PEOPLE_MODES = ['pass', '2p', 'pp', 'two', 'family', 'local'];
+  function defsGet() { try { return JSON.parse(lsGet('gn_defaults', '{}')) || {}; } catch (e) { return {}; } }
+  function defMode(modes) {
+    var d = defsGet(), ids = modes.map(function (m) { return m.id; });
+    if (d.vs === 'cpu' && ids.indexOf('cpu') >= 0) return 'cpu';
+    if (d.vs === 'people') { for (var i = 0; i < PEOPLE_MODES.length; i++) if (ids.indexOf(PEOPLE_MODES[i]) >= 0) return PEOPLE_MODES[i]; }
+    return null;
+  }
+  function defOption(op, mode) {
+    var d = defsGet(), want = op.id === 'level' && op.label === 'Computer skill' ? d.skill : op.id === 'diff' ? d.diff : null, ch;
+    try { ch = typeof op.choices === 'function' ? op.choices(0, mode) : op.choices; } catch (e) { ch = null; }
+    if (!ch) return null;
+    var has = function (id) { return ch.some(function (c) { return String(c[0]) === id; }); };
+    if (want && DEF_IDS[want]) { for (var i = 0; i < DEF_IDS[want].length; i++) if (has(DEF_IDS[want][i])) return DEF_IDS[want][i]; }
+    if ((op.id === 'amb' || op.id === 'music') && lsGet('gn_music', '1') === '0' && has('off')) return 'off';
+    return null;
+  }
+  // forget one remembered choice in every game (field: 'mode' or an option id)
+  function defClear(field) {
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i); if (!k || k.indexOf('gn_setup_') !== 0) continue;
+        var v = JSON.parse(localStorage.getItem(k) || '{}'); if (!v || typeof v !== 'object') continue;
+        var ch = false;
+        if (field === 'mode') { if (v.mode != null) { delete v.mode; ch = true; } }
+        else (Array.isArray(field) ? field : [field]).forEach(function (f) { if (v.options && v.options[f] != null) { delete v.options[f]; ch = true; } });
+        if (ch) localStorage.setItem(k, JSON.stringify(v));
+      }
+    } catch (e) {}
+  }
+  function defaultsSheet() {
+    var box = el('div', { class: 'k-defs' });
+    function row(label, help, choices, cur, pick) {
+      var seg = el('div', { class: 'seg' });
+      choices.forEach(function (c) { seg.appendChild(el('button', { type: 'button', class: String(cur()) === String(c[0]) ? 'on' : '', text: c[1], onclick: function () { pick(c[0]); sfx('tap'); haptic('light'); paint(); } })); });
+      return el('div', { class: 'k-opt help-on' }, [el('div', { class: 'label' }, [el('span', { text: label })]), seg, el('p', { class: 'k-help', text: help })]);
+    }
+    function setDef(k, v) { var d = defsGet(); if (v) d[k] = v; else delete d[k]; lsSet('gn_defaults', JSON.stringify(d)); }
+    function paint() {
+      var d = defsGet(); box.innerHTML = '';
+      box.appendChild(el('p', { class: 'muted', style: { margin: '0 0 6px' }, text: 'Where every game starts. Change something inside a game and that game remembers it; changing it here sets it for every game again.' }));
+      box.appendChild(row('Play against', 'For games you can play against the computer or with people taking turns on this device.',
+        [['cpu', 'Computer'], ['people', 'People'], ['', 'Each game']], function () { return d.vs || ''; }, function (v) { setDef('vs', v); defClear('mode'); }));
+      box.appendChild(row('Computer skill', 'How hard the computer plays in Chess, Checkers, Connect Four, Othello, Backgammon and the other board games.',
+        [['easy', 'Easy'], ['med', 'Medium'], ['hard', 'Hard'], ['', 'Each game']], function () { return d.skill || ''; }, function (v) { setDef('skill', v); defClear('level'); }));
+      box.appendChild(row('Puzzle difficulty', 'For games with a Difficulty choice, like Hangman and Code Breaker.',
+        [['easy', 'Easy'], ['med', 'Medium'], ['hard', 'Hard'], ['', 'Each game']], function () { return d.diff || ''; }, function (v) { setDef('diff', v); defClear('diff'); }));
+      box.appendChild(row('Sound', 'Game sounds everywhere.',
+        [['1', 'On'], ['0', 'Off']], function () { return lsGet('gn_sound', '1'); }, function (v) { lsSet('gn_sound', v); }));
+      box.appendChild(row('Music', 'Background music in the arcade games and pinball.',
+        [['1', 'On'], ['0', 'Off']], function () { return lsGet('gn_music', '1'); }, function (v) {
+          lsSet('gn_music', v); defClear(['amb', 'music']);
+          try { var ks = []; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && /_music$/.test(k)) ks.push(k); } ks.forEach(function (k) { localStorage.removeItem(k); }); } catch (e) {}
+        }));
+      box.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', html: icon('palette') + '<span>Theme: ' + esc(themeRec(themeGet()).name) + '</span>', onclick: function () { themePick(); } }));
+    }
+    paint();
+    sheet({ title: 'Game defaults', node: box, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+  }
   // Your profile: the code to give people, and whether their games need your OK first
   function profileSheet() {
     var node = el('div', { class: 'lk' }), s;
@@ -2113,6 +2181,7 @@
   window.Kit = {
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
+    defaults: { sheet: defaultsSheet, get: defsGet },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },

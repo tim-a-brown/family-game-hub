@@ -2,7 +2,7 @@
 // a game's own AudioContext.
 //
 //   var M = ArcadeMusic.create({
-//     key:  'breakout_music',            // localStorage on/off switch (default on)
+//     key:  'breakout_music',            // localStorage on/off switch (unset: follows gn_music, default on)
 //     song: ArcadeMusic.songs.breakout,
 //     ctx:  function () { return ac(); }, // the game's AudioContext, or null when sound is off
 //     out:  function () { return master; },
@@ -69,7 +69,8 @@
     }
   };
 
-  function musicOn(key) { try { return localStorage.getItem(key) !== '0'; } catch (e) { return true; } }
+  // A game's own switch wins; a game you haven't set follows the Game defaults switch (gn_music, default on)
+  function musicOn(key) { try { var v = localStorage.getItem(key); return v == null ? localStorage.getItem('gn_music') !== '0' : v !== '0'; } catch (e) { return true; } }
 
   function create(o) {
     var S = o.song, st = { on: false, step: 0, next: 0, bus: null, ac: null, nb: null };
