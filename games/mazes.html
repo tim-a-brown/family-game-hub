@@ -79,10 +79,10 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
 .mzs.done .goal{animation:goalpop .7s var(--spring) .2s both;}
 @keyframes goalpop{40%{transform:scale(1.45);}}
 
-/* the magnifier that floats above your finger on small mazes */
-.loupe{position:fixed;z-index:60;width:136px;height:136px;margin:-68px 0 0 -68px;border-radius:50%;overflow:hidden;pointer-events:none;
+/* the magnifier on small mazes: parked in a corner away from your finger, so the way ahead stays in view */
+.loupe{position:fixed;z-index:60;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;overflow:hidden;pointer-events:none;
   background:radial-gradient(130% 90% at 50% 40%,#fffcf3 0%,#fbf4e3 70%,#f3e8cf 100%);
-  box-shadow:0 0 0 3px #d7dbe2, 0 0 0 5px #8a929e, 0 12px 26px rgba(0,0,0,.5), inset 0 0 18px rgba(0,0,0,.12);opacity:0;transform:scale(.6);transition:opacity .12s, transform .16s var(--spring);}
+  box-shadow:0 0 0 3px #d7dbe2, 0 0 0 5px #8a929e, 0 12px 26px rgba(0,0,0,.5), inset 0 0 18px rgba(0,0,0,.12);opacity:0;transform:scale(.6);transition:opacity .12s, transform .16s var(--spring), left .24s var(--ease), top .24s var(--ease);}
 .loupe.on{opacity:1;transform:none;}
 .loupe svg{width:100%;height:100%;display:block;}
 .loupe::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(60% 40% at 32% 22%,rgba(255,255,255,.45),transparent 70%);}
@@ -216,6 +216,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(S ? S.mode : 'pencil', S ? S.size : 'easy')); } },
       { icon: 'history', label: 'Past games', onClick: function () { pastGames(); } },
       { icon: 'lightbulb', label: 'Hint', sub: 'Shows the next few steps (costs time)', when: function () { return live(); }, onClick: function () { hint(); } },
+      { icon: 'search', label: 'Magnifier', sub: 'A close-up of the squares under your finger, parked in a corner', when: function () { return TOUCH; }, toggle: function () { return loupeOn(); }, onClick: function () { lsSet('mazes_loupe', loupeOn() ? '0' : '1'); if (!loupeOn()) hideLoupe(); Kit.toast(loupeOn() ? 'Magnifier on' : 'Magnifier off'); } },
       { icon: 'eye', label: 'Reveal the way out', sub: 'Gives up on this maze', when: function () { return live(); }, onClick: function () { askReveal(); } },
       { icon: 'compass', label: 'Level the board', sub: 'Make the way you are holding it flat', when: function () { return live() && S.mode === 'tilt'; }, onClick: function () { level(true); } }
     ],
@@ -224,7 +225,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       '<h3>Pencil</h3><ul>' +
       '<li>Put your finger on the red dot at <b>Start</b> and drag along the corridors. The line follows the squares and stops at walls.</li>' +
       '<li>Took a wrong turn? <b>Drag back</b> along your line and it rubs itself out. Or press anywhere on your line to carry on from there.</li>' +
-      '<li>Big mazes: <b>pinch</b> to zoom and drag with two fingers to look around' + (TOUCH ? '; a magnifier shows what is under your finger.' : '. On a computer, scroll to zoom and use the arrow keys to move one square.') + '</li>' +
+      '<li>Big mazes: <b>pinch</b> to zoom and drag with two fingers to look around' + (TOUCH ? '; a magnifier in the corner shows what is under your finger (turn it off in the menu).' : '. On a computer, scroll to zoom and use the arrow keys to move one square.') + '</li>' +
       '<li>Round mazes start at the edge and finish in the middle.</li></ul>' +
       '<h3>Labyrinth</h3><ul>' +
       '<li>A wooden box with a steel ball. <b>Tilt</b> your phone or iPad to roll the ball to the gold-ringed hole at the finish.</li>' +
@@ -720,8 +721,13 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       edgeRaf = requestAnimationFrame(tick);
     });
   }
+  // The magnifier parks in a top corner of the screen, on the side away from your finger, so it never covers
+  // the way ahead; it only swaps sides when your finger comes close to it (and drops to a bottom corner when the
+  // finger is up there itself). It shows about 5 squares each way at a readable size.
+  var loupeAt = null;
+  function loupeOn() { return lsGet('mazes_loupe', '1') !== '0'; }
   function showLoupe(cx, cy, p) {
-    if (pxu * U >= 26) { hideLoupe(); return; }
+    if (pxu * U >= 26 || !loupeOn()) { hideLoupe(); return; }
     if (!loupe) {
       loupe = el('div', { class: 'loupe', 'aria-hidden': 'true' });
       loupeSvg = sv('svg', {});
@@ -729,15 +735,23 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       loupeSvg.appendChild(sv('circle', { class: 'lc', r: 1, fill: 'none', stroke: 'rgba(35,38,58,.35)' }));
       loupe.appendChild(loupeSvg); document.body.appendChild(loupe);
     }
-    var D = 136, s = 34 / U, w = D / s;   // a square 34 px across in the loupe
+    var D = 150, s = 28 / U, w = D / s;   // a square 28 px across in the loupe
     loupeSvg.setAttribute('viewBox', (p[0] - w / 2).toFixed(2) + ' ' + (p[1] - w / 2).toFixed(2) + ' ' + w.toFixed(2) + ' ' + w.toFixed(2));
     var lc = loupeSvg.querySelector('.lc'); lc.setAttribute('cx', p[0]); lc.setAttribute('cy', p[1]); lc.setAttribute('r', (U * 0.75).toFixed(2)); lc.setAttribute('stroke-width', (U * 0.06).toFixed(2));
-    var y = cy - 118; if (y - D / 2 < 8) y = cy + 118;
-    var x = Math.max(D / 2 + 6, Math.min(window.innerWidth - D / 2 - 6, cx));
-    loupe.style.left = x + 'px'; loupe.style.top = y + 'px';
+    var r = svg.getBoundingClientRect(), vw = window.innerWidth, m = D / 2 + 8;
+    var top = Math.max(r.top, 8) + D / 2 + 4, bot = Math.min(r.bottom, window.innerHeight - 8) - D / 2 - 4;
+    var spots = [[m, top], [vw - m, top], [m, bot], [vw - m, bot]];
+    var near = function (a) { return a && Math.hypot(a[0] - cx, a[1] - cy) < D * 0.5 + 70; };
+    if (!loupeAt || near(loupeAt)) {
+      // the farthest top corner from the finger; a bottom one when both top corners are close
+      var pick = null, best = -1;
+      spots.forEach(function (q, i) { var d = Math.hypot(q[0] - cx, q[1] - cy) - (i >= 2 ? 120 : 0); if (!near(q) && d > best) { best = d; pick = q; } });
+      loupeAt = pick || spots[cx < vw / 2 ? 1 : 0];
+    }
+    loupe.style.left = loupeAt[0] + 'px'; loupe.style.top = loupeAt[1] + 'px';
     loupe.classList.add('on');
   }
-  function hideLoupe() { if (loupe) loupe.classList.remove('on'); }
+  function hideLoupe() { if (loupe) loupe.classList.remove('on'); loupeAt = null; }
   // Arrow keys: one square in that direction, if the way is open
   document.addEventListener('keydown', function (e) {
     if (!S || document.querySelector('.k-scrim,.k-win,.ahi-overlay')) return;
