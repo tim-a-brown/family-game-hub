@@ -1257,16 +1257,30 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function drop3D() { if (G3) { try { G3.destroy(); } catch (e) {} } G3 = null; want3D = false; }
   // the module loads after this script; pick it up as soon as it is there
   window.addEventListener('wc3d-ready', function () { if (live) { start3D(); render(); } });
-  // the aim line in 3D: the same red and white dashed arc, projected from the flight plane
+  // The aim guide: a short run of dots chasing out of the muzzle along the first two thirds of the old arc,
+  // fading as they go. proj maps a flight-plane point to the screen (the 3D view projects it).
+  function drawAimDots(a, proj, px) {
+    // the same size on screen at any zoom: px screen pixels, in whatever units the canvas is drawing in
+    var m = g.getTransform(), r0 = px / ((Math.hypot(m.a, m.b) / DPR) || 1);
+    var v = aimMode === 'arcade' ? VFIX : VMIN + depth * (VMAX - VMIN), st = pelStart(a), vx = Math.cos(a) * v, vy = -Math.sin(a) * v;
+    var T = aimMode === 'arcade' ? .62 : .45, mx = PIV.x + Math.cos(a) * (BARREL + 4), t0 = (mx - st.x) / (vx || 1), T1 = t0 + (T - t0) * 2 / 3;
+    var P = [], L = [0], N = 40;
+    for (var d = 0; d <= N; d++) { var tt = t0 + (T1 - t0) * d / N; P.push(proj(st.x + vx * tt, st.y + vy * tt + .5 * G * tt * tt)); if (d) L.push(L[d - 1] + Math.hypot(P[d].x - P[d - 1].x, P[d].y - P[d - 1].y)); }
+    var len = L[N], SP = r0 * 4.6, off = (t * r0 * 13) % SP, j = 0;
+    for (var s = off; s <= len; s += SP) {
+      while (j < N - 1 && L[j + 1] < s) j++;
+      var f = (s - L[j]) / ((L[j + 1] - L[j]) || 1), x = P[j].x + (P[j + 1].x - P[j].x) * f, y = P[j].y + (P[j + 1].y - P[j].y) * f;
+      var k = s / len, r = r0 * (1 - k * .45), al = Math.min(1, s / (SP * .8)) * (1 - k * k * .85);
+      g.globalAlpha = al;
+      g.fillStyle = 'rgba(40,20,30,.55)'; g.beginPath(); g.arc(x, y + r * .25, r + 1.2, 0, TAU); g.fill();
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+    }
+    g.globalAlpha = 1;
+  }
+  // the aim guide in 3D, projected from the flight plane
   function drawAim3() {
     if (state !== 'aim' || !(aimMode === 'arcade' || depth > .02)) return;
-    var a = angle * PI / 180, v = aimMode === 'arcade' ? VFIX : VMIN + depth * (VMAX - VMIN), st = pelStart(a), vx = Math.cos(a) * v, vy = -Math.sin(a) * v;
-    var T = aimMode === 'arcade' ? .62 : .45, mx = PIV.x + Math.cos(a) * (BARREL + 4), t0 = (mx - st.x) / (vx || 1);
-    g.lineCap = 'butt'; g.lineJoin = 'round'; g.beginPath();
-    for (var d = 0; d <= 24; d++) { var tt = t0 + (T - t0) * d / 24, p = G3.project(st.x + vx * tt, st.y + vy * tt + .5 * G * tt * tt); if (d) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }
-    g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 4.5; g.stroke();
-    g.setLineDash([8, 8]); g.lineDashOffset = -t * 36; g.strokeStyle = '#e5263f'; g.stroke(); g.setLineDash([]);
-    g.lineCap = 'round';
+    drawAimDots(angle * PI / 180, function (x, y) { return G3.project(x, y); }, 4);
   }
 
   // ═══ Render ═════════════════════════════════════════════════════════════
@@ -1943,17 +1957,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function drawCannon() {
     var aimNow = state === 'aim' || state === 'intro', a = (aimNow ? angle : lastAng >= 0 ? lastAng : ARC_HI) * PI / 180;
     var charging = drag || keyHold;
-    // trajectory preview: a red and white dashed arc out of the muzzle
-    if (state === 'aim' && (aimMode === 'arcade' || depth > .02)) {
-      var v = aimMode === 'arcade' ? VFIX : VMIN + depth * (VMAX - VMIN), st = pelStart(a), vx = Math.cos(a) * v, vy = -Math.sin(a) * v;
-      var T = aimMode === 'arcade' ? .62 : .45, mx = PIV.x + Math.cos(a) * (BARREL + 4), my = PIV.y - Math.sin(a) * (BARREL + 4);
-      var t0 = (mx - st.x) / (vx || 1);
-      g.lineCap = 'butt'; g.beginPath();
-      for (var d = 0; d <= 24; d++) { var tt = t0 + (T - t0) * d / 24, px = st.x + vx * tt, py = st.y + vy * tt + .5 * G * tt * tt; if (d) g.lineTo(px, py); else g.moveTo(px, py); }
-      g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 5; g.stroke();
-      g.setLineDash([9, 9]); g.lineDashOffset = -t * 40; g.strokeStyle = '#e5263f'; g.stroke(); g.setLineDash([]);
-      g.lineCap = 'round';
-    }
+    // aim guide: dots chasing out of the muzzle
+    if (state === 'aim' && (aimMode === 'arcade' || depth > .02)) drawAimDots(a, function (x, y) { return { x: x, y: y }; }, 4);
     g.strokeStyle = INK; g.lineWidth = 2.2;
     // carriage trail down to the grass
     g.fillStyle = '#2c52c0'; g.beginPath(); g.moveTo(PIV.x + 6, PIV.y - 4); g.lineTo(PIV.x - 52, -3); g.lineTo(PIV.x - 50, 2); g.lineTo(PIV.x + 2, PIV.y + 10); g.closePath(); g.fill(); g.stroke();
@@ -2082,7 +2087,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var FINE = (function () { try { return matchMedia('(hover:hover) and (pointer:fine)').matches; } catch (e) { return false; } })();
   function aimHint() {
     var y = 66, a = .8 + Math.sin(t * 4) * .2, pulling = drag || keyHold, bw = Math.min(310, W - 24), l1, l2;
-    if (aimMode === 'arcade') { l1 = FINE ? 'Press Space or click to fire' : 'Tap anywhere to fire'; l2 = 'The cannon swings: fire when the dashes point at a roof'; }
+    if (aimMode === 'arcade') { l1 = FINE ? 'Press Space or click to fire' : 'Tap anywhere to fire'; l2 = 'The cannon swings: fire when the dots point at a roof'; }
     else {
       l1 = pulling ? 'Let go to fire!' : FINE ? 'Hold Space or drag down to pull' : 'Pull down anywhere for power';
       l2 = pulling ? (drag ? 'Watch the cannon angle. Slide back up to cancel' : 'Watch the cannon angle as you let go') : 'The cannon swings: let go at the right moment';
@@ -2455,7 +2460,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       '<h3>The city</h3><p>Seven brick buildings in a row. Their roofs pay <b>250, 350, 1,000, 5,000, 1,000, 350, 250</b> points, painted on each building and shown over its roof while you aim. Anywhere else (the street, the gaps between buildings, the bay) pays <b>50</b>.</p>' +
       '<h3>Firing (Arcade)</h3><ul><li>The cannon swings up and down on its own. You only choose <b>when</b> to fire: every shot leaves the cannon at the same speed.</li>' +
       '<li><b>Tap anywhere</b> (or press the big LAUNCH handle) to fire. On a computer, press <b>Space</b> or click.</li>' +
-      '<li>The red and white dashes show where Willy will start to fly. The dial shows the angle; steeper shots land closer.</li>' +
+      '<li>The dots chasing out of the cannon show where Willy will start to fly. The dial shows the angle; steeper shots land closer.</li>' +
       '<li>Tap during the fly-over to skip it. Tap after a shot to go to the next one.</li></ul>' +
       '<h3>Aim yourself (setup option)</h3><ul><li>The cannon still swings, but you also choose the power: <b>pull the handle down</b> (anywhere on the screen works) and <b>let go to fire</b>. Slide back up to cancel.</li>' +
       '<li>On a computer, hold <b>Space</b> to pull and let go to fire.</li></ul>' +
