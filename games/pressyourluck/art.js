@@ -50,23 +50,23 @@ var PYLArt = (function () {
     var s = '', K = ' stroke="' + OL + '" stroke-width="2.4" stroke-linejoin="round"';
     function limb(d) { return '<path d="' + d + '" fill="none" stroke="' + OL + '" stroke-width="8" stroke-linecap="round"/><path d="' + d + '" fill="none" stroke="' + RED + '" stroke-width="4.6" stroke-linecap="round"/>'; }
     // the yellow cape, flaring out behind
-    s += '<path d="M-15-58 C-30-48-38-26-36-10 C-28-14-21-12-15-8 L15-8 C21-12 28-14 36-10 C38-26 30-48 15-58z" fill="' + YEL + '"' + K + '/>';
-    s += '<path d="M-23-40 C-28-30-30-20-30-12 M23-40 C28-30 30-20 30-12" fill="none" stroke="' + YEL2 + '" stroke-width="1.8" opacity=".8"/>';
+    s += '<path d="M-22-60 C-36-48-42-26-40-10 C-31-14-23-12-16-8 L16-8 C23-12 31-14 40-10 C42-26 36-48 22-60z" fill="' + YEL + '"' + K + '/>';
+    s += '<path d="M-28-40 C-32-30-34-20-34-12 M28-40 C32-30 34-20 34-12" fill="none" stroke="' + YEL2 + '" stroke-width="1.8" opacity=".8"/>';
     // legs, one crossed over the other, and pointed red shoes
     s += limb('M-6-16 C-6-10 4-7 6 0') + limb('M6-16 C8-10-2-6-6-1');
     s += '<path d="M2 0 C6-3 14-3 19 1 C14 2 8 3 2 3z M-2-1 C-7-4-15-4-20 0 C-15 1-8 2-2 2z" fill="' + RED + '"' + K + '/>';
     // left arm (behind the body), hand on the hip or waving
-    s += '<g class="g-arml">' + limb('M-16-48 C-27-46-29-36-21-30') + '<path d="M-21-30 l-4 3 M-21-30 l1 4" stroke="' + OL + '" stroke-width="2" stroke-linecap="round"/></g>';
+    s += '<g class="g-arml">' + limb('M-22-48 C-31-46-32-36-25-30') + '<path d="M-25-30 l-4 3 M-25-30 l1 4" stroke="' + OL + '" stroke-width="2" stroke-linecap="round"/></g>';
     // a lean bean of a body with the yellow $ patch
-    s += '<path d="M-16-60 C-23-44-22-24-14-16 C-8-12 8-12 14-16 C22-24 23-44 16-60z" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.6"/>';
-    s += '<path d="M-10-48 L10-48 L9-28 L-9-28z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="1.8" stroke-linejoin="round"/>';
+    s += '<path d="M-24-61 C-26-46-23-26-15-16 C-8-12 8-12 15-16 C23-26 26-46 24-61z" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.6"/>';
+    s += '<path d="M-11-46 L11-46 L10-27 L-10-27z" fill="' + YEL + '" stroke="' + OL + '" stroke-width="1.8" stroke-linejoin="round"/>';
     s += '<text x="0" y="-31.5" text-anchor="middle" font-family="Bungee, sans-serif" font-size="15" fill="#fff" stroke="' + OL + '" stroke-width=".9" paint-order="stroke">$</text>';
     // right arm (in front), holds the prop; pointed fingers
-    s += '<g class="g-armr">' + limb('M16-50 C24-52 28-50 30-46') + (o.prop || '') +
+    s += '<g class="g-armr">' + limb('M22-50 C27-51 29-49 31-46') + (o.prop || '') +
       '<path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + OL + '" stroke-width="4.2" stroke-linecap="round"/><path d="M29-48 L37-50 M30-45 L37-43 M30-46 L38-46" stroke="' + RED + '" stroke-width="2" stroke-linecap="round"/></g>';
     // the head goes straight into the body: no chin line across the chest (the patch moves with the head)
     s += '<g class="g-head" transform="translate(0 -80) scale(1 .9)">' + head(o) +
-      '<path d="M-16.4 26 C-16.4 31-16 35-15.6 38 L15.6 38 C16 35 16.4 31 16.4 26z" fill="' + RED + '"/></g>';
+      '<path d="M-22.6 20.5 L22.6 20.5 C23.6 28 24.4 34 24.6 40 L-24.6 40 C-24.4 34-23.6 28-22.6 20.5z" fill="' + RED + '"/></g>';
     return s;
   }
   function headSVG(cls) {
