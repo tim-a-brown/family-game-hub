@@ -67,7 +67,8 @@ export default {
   fit: { top: 120, lookY: 0.47 },
   anims: lcdAnims(),
   build,
-  rules: makeRules()
+  rules: makeRules(),
+  explain: makeExplain()
 };
 
 // ── LCD: a synthwave backdrop behind every message, in colour ──────────────
@@ -911,4 +912,29 @@ function windStreaks(RC) {
     im.instanceMatrix.needsUpdate = true;
   });
   return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPLAIN: the look-around instruction cards (tap a part of the table). Every number is what the rules above pay,
+// engine defaults included (README: "Table features").
+// ═══════════════════════════════════════════════════════════════════════════
+function makeExplain() {
+  return {
+    spinner: { name: 'DRIVE Spinner', text: '200 points every half turn, 500 during Wind. Every 45 spins light Wind at the Backstage scoop.' },
+    strip: { ids: ['orbitL', 'orbitR'], kind: 'Orbit', name: 'The Strip', text: '9,000 points for a loop round the top, either way, and more during Wind. Big shots one after another score combos; in Orb Multiball both sides are jackpots.' },
+    kickback: { name: 'Second Wind', text: 'The left outlane kickback, lit at the start of every ball: a draining ball is fired back into play. The Rooftop jackpot, the Orb and Backstage can light it again.' },
+    neo: { ids: ['neo0', 'neo1', 'neo2'], kind: 'Targets', name: 'N-E-O Targets', text: '1,000 points each. Spell N-E-O for 20,000 and to light the Orb: a ball lock, or a mystery award when the lock is full. In the Laser Show track the flashing ones are 15,000 track shots.' },
+    wheel: { kind: 'Ferris wheel', name: 'Skyline Wheel', text: 'Shoot the lane under it for a ride: 15,000, then 30,000, then 45,000 a ride. Every third ride lights Skyline and the next ride starts it: 45 seconds of 60,000 rides. A jackpot in Orb Multiball.' },
+    loop: { name: 'Super-Loop', text: 'A full loop-the-loop up to the Rooftop: 25,000 points, 55,000 during Skyline. Hit it hard: a soft shot rolls back out. A jackpot in Orb Multiball.' },
+    launcher: { name: 'Rooftop Launcher', text: 'The ball from the Super-Loop drops in here. Slide it with the flipper buttons, then press FIRE to shoot it at V-I-P.' },
+    vip: { name: 'V-I-P Targets', text: '750 points each. Knock all three down for the Rooftop jackpot: 50,000 and extra ball lit the first time, 75,000 after that. It also lights Second Wind.' },
+    roof: { kind: 'Upper playfield', name: 'The Rooftop', text: 'A raised deck at the top of the Super-Loop with the moving launcher and the V-I-P targets. The chrome wire brings the ball back down to your right flipper.' },
+    orb: { kind: 'Magnet', name: 'The Orb', text: 'When lit, its magnet catches the ball dead centre. With the lock lit it beams the ball away: three locks start Orb Multiball, and after its jackpots the Orb is the 200,000 super jackpot. Otherwise a mystery award, or 5,000.' },
+    backstage: { name: 'Backstage Scoop', text: '12,500 points, then it starts what is lit: Midnight Drive, extra ball, Wind, or the next club track (six track shots in 35 seconds for 75,000). Nothing lit? A random award.' },
+    pops: { ids: ['pop1', 'pop2', 'pop3'], kind: 'Pop bumpers', name: 'Beat Bumpers', text: '500 points a hit, 4,500 in Midnight Drive. In the Neon Rain track every hit is a 6,000 track shot.' },
+    dj: { kind: 'Hologram', name: 'The DJ', text: '5,000 points when the ball passes through him. He shows up on the Rooftop during club tracks and multiball.' },
+    discs: { ids: ['disc0', 'disc1'], kind: 'Spinning discs', name: 'Dance Floor', text: 'Two discs that spin during Wind and Midnight Drive, dragging the ball round. No points of their own.' },
+    fan: { kind: 'Toy', name: 'Wind Machine', text: 'Blows across the dance floor during Wind: 30 seconds where everything scores double. 45 DRIVE spins or the Orb light Wind at Backstage.' },
+    orbLock: null, roofExit: null
+  };
 }

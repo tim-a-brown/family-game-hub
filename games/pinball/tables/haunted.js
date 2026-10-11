@@ -65,7 +65,9 @@ export default {
     clock(g, t, W, H) { g.strokeStyle = '#888'; g.beginPath(); g.arc(18, 16, 13, 0, TAU); g.stroke(); const a = -PI / 2 + t * 2; g.strokeStyle = '#fff'; g.beginPath(); g.moveTo(18, 16); g.lineTo(18 + Math.cos(a) * 10, 16 + Math.sin(a) * 10); g.stroke(); g.beginPath(); g.moveTo(18, 16); g.lineTo(18, 7); g.stroke(); }
   },
   build,
-  rules: makeRules()
+  rules: makeRules(),
+  explain: makeExplain(),
+  cardFont: '"Cinzel", Georgia, serif'
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -839,4 +841,38 @@ function candleFlicker(RC, t) {
   // the GI flickers like gas lamps; a little warm sway in the key light
   const G = RC.G, gi = RC.lights.gi;
   if (gi[4]) gi[4].intensity = gi[4].userData.base * (0.8 + 0.2 * Math.sin(t * 11) * Math.sin(t * 4.7)) * (1 - G.dark);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPLAIN: the look-around instruction cards (tap a part of the table). Every number is what the code above pays,
+// engine defaults included (README: "Table features").
+// ═══════════════════════════════════════════════════════════════════════════
+function makeExplain() {
+  return {
+    spinner: { name: 'Hall Spinner', text: '150 points every half turn. It hangs in the left orbit lane: shoot the Haunted Hall hard to spin it longer.' },
+    hall: { ids: ['orbitL', 'orbitR'], kind: 'Orbit', name: 'Haunted Hall', text: '8,000 points for a loop round the top of the manor, either way. Big shots one after another score combos; in multiball both sides are jackpots.' },
+    portraits: { name: 'The Portraits', text: '750 points for each portrait you knock down. Drop all three to light Lights Out at the séance scoop: 30 seconds in the dark, everything doubled and the ghost a jackpot.' },
+    magna: { name: 'Magna-Save', text: 'Hold the MAGNET button as the ball heads down the left outlane: the magnet catches it, and letting go throws it back. One charge per ball; B-O-O and the séance add more.' },
+    seance: { name: 'Séance Scoop', text: '12,500 points, then it starts whatever is lit: the Witching Hour, extra ball, Lights Out or Mist Multiball. Nothing lit? A random award: kickback, bonus up, 25,000, ball save or a magnet charge.' },
+    kickback: { name: 'Resurrect', text: 'The right outlane kickback: while its lamp is lit, a draining ball is fired back into play. The crypt jackpot and the séance light it.' },
+    coffin: { ids: ['coffinSaucer'], at: [[262, 708, 34]], kind: 'Ball lock', name: 'The Coffin', text: 'Knock on its foot (2,500 a knock) to light the lock, then shoot the hole in front: the skeletal hand drags the ball inside. Three balls start Grave Robber multiball; after its jackpots the coffin is the 250,000 super jackpot.' },
+    boo: { ids: ['boo0', 'boo1', 'boo2'], kind: 'Targets', name: 'B-O-O Targets', text: '1,000 points each. Spell B-O-O for 20,000 and a magnet charge, and the chandelier comes alive.' },
+    chandelier: { name: 'The Chandelier', text: 'Once B-O-O lights it, its magnet catches the ball: 25,000 and a random award (bonus up, the cellar door, 50,000, ball save or extra ball).' },
+    mist: { kind: 'Multiball', name: 'The Mist', text: 'Every third Spirit Walk lights Mist at the séance. A glowing ball drifts along here: hit it with yours (10,000 a hit) to set it free and start Mist Multiball, where ramps and orbits are 50,000 jackpots.' },
+    cellarDoor: { name: 'Cellar Trap Door', text: 'Spell R-I-P to open it for 20 seconds. Fall through for 25,000 and play the cellar under the floor with its own flippers.' },
+    cellar: { kind: 'Lower playfield', name: 'The Cellar', text: 'A basement under the cracked floor with two flippers of its own, the Furnace, two bones and the secret stairs. Drain out of it and the ball comes back up on the left.' },
+    furnace: { name: 'The Furnace', text: "The cellar's pop bumper: 2,000 points a hit." },
+    bones: { ids: ['boneL', 'boneR'], kind: 'Targets', name: 'The Bones', text: '6,000 points each. Hit both bones and the secret stairs for the 100,000 crypt jackpot, which also lights the kickback.' },
+    secretStairs: { ids: [], at: [[306, 462, 20]], lvl: 'cellar', kind: 'Hole', name: 'Secret Stairs', text: '20,000 points, and the ball climbs straight up to the attic. With both bones it wins the crypt jackpot.' },
+    attic: { kind: 'Upper playfield', name: 'The Attic', text: 'A little playfield at the top of the Attic Stairs, with its own flipper on the left button. Spell W-I-L up here and visit the mirror.' },
+    will: { ids: ['will0', 'will1', 'will2'], kind: 'Targets', name: 'W-I-L Targets', text: '1,000 points each. Spell W-I-L to read the will: the first time lights extra ball, after that it pays 75,000.' },
+    mirror: { name: 'The Mirror', text: 'The attic scoop: 17,500 points and the bonus multiplier goes up a step.' },
+    bannister: { name: 'The Bannister', text: "The attic's drain: the ball slides down the iron bannister to your left flipper, 5,000 points." },
+    stairs: { name: 'Attic Stairs', text: '15,000 points a climb, and the ball rolls out onto the attic playfield. Big shots one after another score combos; it is a jackpot in multiball.' },
+    spirit: { name: 'Spirit Walk', text: '20,000 points a ride round the iron wireform, 35,000 every third ride, which also lights Mist at the séance. A jackpot in multiball.' },
+    pops: { ids: ['pop1', 'pop2', 'pop3'], kind: 'Pop bumpers', name: 'Spirit Bumpers', text: '500 points a hit (5,500 during the Witching Hour). Every hit adds to the Spirits line of the end-of-ball bonus.' },
+    rip: { ids: ['laneR', 'laneI', 'laneP'], kind: 'Top lanes', name: 'R-I-P Lanes', text: '1,000 points each; the flipper buttons move the lit lanes. Spell R-I-P to raise the bonus multiplier and open the cellar door. A soft launch into the flashing lane is the 50,000 skill shot.' },
+    ghost: { name: 'The Ghost', text: 'Pass through it for 5,000. During Lights Out and the Witching Hour it is a jackpot: 50,000, and 25,000 more each time you catch it.' },
+    hand: null, coffinLock: null, cellarReturn: null
+  };
 }

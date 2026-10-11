@@ -76,7 +76,8 @@ export default {
   fit: { top: 120, lookY: 0.47 },
   anims: ANIMS,
   build,
-  rules: makeRules()
+  rules: makeRules(),
+  explain: makeExplain()
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -789,3 +790,32 @@ function slingArt(g, w, h, side) {
   g.fillStyle = '#eafcff'; g.font = '400 34px "Bungee", Impact'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(side === 'L' ? 'PORT' : 'STBD', w / 2, h * 0.55);
 }
 // ── LCD: a scrolling starfield with a nebula glow; scenes draw over it ──
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPLAIN: the look-around instruction cards (tap a part of the table). Every number is what the rules above pay,
+// engine defaults included (README: "Table features").
+// ═══════════════════════════════════════════════════════════════════════════
+function makeExplain() {
+  return {
+    cannonL: { name: 'Port Cannon', text: 'When lit, the hole in the far-left lane loads this turret; every third teleport lights it. Steer with a flipper button, let go or press FIRE: 5,000, and a hit on the mothership or the saucer within 3 seconds is a 50,000 direct hit.' },
+    cannonR: { at: [[455, 930, 22]], name: 'Starboard Cannon', text: 'When lit, the hole at the top of the right orbit loads this turret; every second orbit lights it. Steer with a flipper button, let go or press FIRE: 5,000, and 50,000 for a direct hit on the mothership or the saucer.' },
+    thrusters: { ids: ['kickback', 'kickbackR'], kind: 'Kickbacks', name: 'Thrusters', text: 'Kickbacks on both outlanes, lit at the start of every ball: a draining ball is fired back into play. Mission Control can light them again.' },
+    well: { kind: 'Upper playfield', name: 'Gravity Well', text: 'A vertical field with no flippers: each flipper button fires a magnet that flings the ball up. Reach the top gate for 25,000, or a ball lock when LOCK is lit. Falling back out pays 2,000.' },
+    warpLock: { kind: 'Ball lock', name: 'Containment Tube', text: 'Locked balls wait here. Light the lock at W-E-LL, then climb the Gravity Well; three locks start Warp Multiball with 60,000 jackpots.' },
+    gravity: { name: 'Gravity Ramp', text: '15,000 points, and the ball is lifted into the Gravity Well. Big shots one after another score combos; a jackpot in Warp Multiball.' },
+    well3: { ids: ['lk0', 'lk1', 'lk2'], kind: 'Targets', name: 'W-E-LL Targets', text: '3,000 points each. Hit all three to light the lock at the Gravity Well.' },
+    laneWarp: { kind: 'Rollover lane', name: 'Warp Lane', text: '4,000 points each time the ball rolls down it.' },
+    orbit: { name: 'Orbit', text: '10,000 points up the right side and round the top, where the ball can clip the saucer. Every second orbit lights the starboard cannon; a jackpot in Warp Multiball.' },
+    laneSkill: { kind: 'Rollover lane', name: 'Launch Pad', text: '3,000 points. A soft launch that stops here while it flashes is the 50,000 skill shot.' },
+    mission: { name: 'Mission Control', text: '7,500 points, then it starts what is lit: Event Horizon, extra ball, the antimatter ball, or a planet (three planet shots in 40 seconds, then 100,000). Nothing lit? A random award.' },
+    warp: { kind: 'Ramp', name: 'Warp Loop', text: 'Three laps of a raised loop, faster each time: 5,000 and 10,000 for the laps, then 20,000 to 60,000 at the exit by warp speed. Six runs light the antimatter ball; the 3rd and 9th light extra ball.' },
+    pops: { ids: ['pop1', 'pop2', 'pop3'], kind: 'Pop bumpers', name: 'Asteroids', text: '2,000 points a hit. While the planet Cinder is in range each hit is a 5,000 planet shot.' },
+    ship: { name: 'Mothership', text: '2,750 points each. Drop all three to light a planet at Mission Control; when one is already lit they pay 40,000.' },
+    tpIn: { kind: 'Teleporter', name: 'Teleporter', text: '10,000 points, and the ball reappears in the right orbit. It collects a lit extra ball, and every third teleport lights the port cannon.' },
+    tube: { name: 'The Tube', text: '10,000 points through the clear tube and down to your right flipper. Big shots one after another score combos; a jackpot in Warp Multiball.' },
+    saucer: { kind: 'Toy', name: 'The Saucer', text: '7,500 points a hit. Six hits start Saucer Attack: for 40 seconds every hit is a jackpot, 50,000 and growing.' },
+    am: { ids: ['am0', 'am1'], kind: 'Targets', name: 'Antimatter Targets', text: "3,000 points each. Hit both to light the antimatter ball at Mission Control: a white ball the magnets can't hold, and everything scores double for 45 seconds." },
+    slings: { ids: ['slingL', 'slingR'], kind: 'Slingshots', name: 'Slingshots', text: 'The rubbers above the flippers kick the ball back across the table: 310 points a kick.' },
+    wellTop: null
+  };
+}

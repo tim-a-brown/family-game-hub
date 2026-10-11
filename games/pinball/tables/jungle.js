@@ -77,7 +77,8 @@ export default {
     vines(g, t, W, H) { g.strokeStyle = '#4fa04a'; g.lineWidth = 1.5; for (let i = 0; i < 5; i++) { const x = 10 + i * (W - 20) / 4; g.beginPath(); g.moveTo(x, 0); for (let y = 0; y < H; y += 4) g.lineTo(x + Math.sin(y * 0.3 + t * 2 + i) * 3, y); g.stroke(); } }
   },
   build,
-  rules: makeRules()
+  rules: makeRules(),
+  explain: makeExplain()
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -984,4 +985,29 @@ function sceneryModel(RC) {
 function torchFlicker(RC, t) {
   const G = RC.G, gi = RC.lights.gi;
   gi.forEach((l, i) => { l.intensity = l.userData.base * (0.82 + 0.18 * Math.sin(t * (11 + i)) * Math.sin(t * 4.7 + i * 2)) * (1 - G.dark) * (G.tilted ? 0.15 : 1); });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPLAIN: the look-around instruction cards (tap a part of the table). Every number is what the rules above pay,
+// engine defaults included (README: "Table features").
+// ═══════════════════════════════════════════════════════════════════════════
+function makeExplain() {
+  return {
+    vine: { name: 'Vine Swing', text: 'The left outlane kickback, lit at the start of every ball and again by every key: a draining ball swings straight back into play.' },
+    gorge: { ids: ['orbitL', 'orbitR'], kind: 'Orbit', name: 'The Gorge', text: '13,000 points for a loop round the top, either way, and more during Boulder Run. Big shots one after another score combos; in Serpent Multiball both sides are jackpots.' },
+    climb: { name: 'The Climb', text: '15,000 points, and the ball is fired up the brass wire to the idol chamber.' },
+    maze: { kind: 'Upper playfield', name: 'Idol Chamber', text: "A stone maze up top: the flipper buttons tilt it. Steer the ball into the idol's hole; fall off the bottom and you drop back to the left side for 5,000." },
+    idol: { kind: 'Hole', name: 'The Idol', text: 'A 75,000 jackpot for steering the ball in, then it drops onto the altar. The second idol lights extra ball, and it is the shot for the Eye of the Idol relic.' },
+    bridge: { name: 'Rope Bridge', text: '25,000 points across the table and back to your right flipper, more during Boulder Run. Big shots one after another score combos; a jackpot in Serpent Multiball.' },
+    seals: { ids: ['sealL', 'sealR'], kind: 'Targets', name: 'Altar Seals', text: '3,500 points each. Break both and the altar rises.' },
+    altar: { ids: ['altarSaucer', 'altar'], kind: 'Scoop', name: 'The Altar', text: 'Once raised, shoot the hole at its foot: 12,500 points, then a relic hunt if you hold a key (lit shots in 35 seconds, 75,000 for the relic), extra ball, the Lost City, or an offering.' },
+    disc: { name: 'Sacrificial Stone', text: 'A stone disc in the floor that turns one way, then the other, dragging the ball round. No points of its own.' },
+    walls: { name: 'Temple Walls', text: '2,750 points each. Knock all three down for Boulder Run: 25 seconds where everything scores double and the boulder rolls.' },
+    snake: { kind: 'Ball lock', name: 'The Serpent', text: '5,000 points a hit. Three hits open its mouth: feed it to lock a ball. The third ball starts Serpent Multiball, and after its jackpots the open mouth is the 150,000 super jackpot.' },
+    totems: { ids: ['tot1', 'tot2', 'tot3'], kind: 'Pop bumpers', name: 'Totem Bumpers', text: '2,500 points a hit, 7,500 in the Lost City. In the Obsidian Blade hunt every hit counts.' },
+    key: { ids: ['laneK', 'laneE', 'laneY'], kind: 'Top lanes', name: 'K-E-Y Lanes', text: '1,000 points each; the flipper buttons move the lit lane. K-E-Y wins a key: bonus multiplier up, the vine lit and a relic lit at the altar. A soft launch into the flashing lane is the 50,000 skill shot.' },
+    temple: { name: 'The Temple', text: '5,000 points a hit and 15,000 each time a wall cracks. Nine hits bring it down: 100,000 and a key.' },
+    boulder: { ids: [], at: [[170, 470, 34]], path: [[0, 470, 30], [380, 470, 30]], kind: 'Toy', name: 'The Boulder', text: 'Rolls back and forth across the gorge during Boulder Run and the Lost City. 7,500 points if it hits your ball.' },
+    cave: null
+  };
 }

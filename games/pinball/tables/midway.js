@@ -89,7 +89,8 @@ export default {
   },
   dmdIdle: dmdReels,
   build,
-  rules: makeRules()
+  rules: makeRules(),
+  explain: makeExplain()
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1251,4 +1252,28 @@ function defineSounds() {
   A.define('horn', 0.7, S => { S.osc('sawtooth', 330, 0, 0.5, 0.08, { bp: 900, q: 1.4, att: 0.03, to: 300 }); S.osc('sawtooth', 334, 0, 0.5, 0.08, { bp: 950, q: 1.4, att: 0.03, to: 303 }); S.osc('sine', 165, 0, 0.45, 0.08, { att: 0.03, to: 150 }); S.noise(0, 0.5, 0.03, { bp: 1200, q: 2, att: 0.05 }); });
   A.define('gulp', 0.6, S => { S.osc('sine', 320, 0, 0.32, 0.3, { to: 70 }); S.noise(0, 0.15, 0.25, { lp: 700 }); S.noise(0.22, 0.1, 0.2, { bp: 500, q: 2 }); S.osc('sine', 140, 0.3, 0.12, 0.3, { to: 60 }); });
   A.define('cannon', 1.3, S => { S.osc('sine', 95, 0, 0.5, 0.9, { to: 28 }); S.noise(0, 0.25, 0.7, { lp: 600 }); S.noise(0.02, 0.7, 0.3, { lp: 200 }); S.ring(2400, 0.01, 0.2, 0.06); });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPLAIN: the look-around instruction cards (tap a part of the table). Every number is what the rules above pay,
+// engine defaults included (README: "Table features").
+// ═══════════════════════════════════════════════════════════════════════════
+function makeExplain() {
+  return {
+    spinner: { name: 'MIDWAY Spinner', text: '800 points every half turn, 2,000 in multiball. Twenty spins light the lock at the Ferris wheel.' },
+    orbits: { ids: ['orbitL', 'orbitR'], kind: 'Orbit', name: 'Midway Orbits', text: '15,000 points for a loop round the top, either way. Big shots one after another score combos; 100,000 each in the Grand Prize.' },
+    ducks: { name: 'Duck Shoot', text: '8,750 points a duck and 50,000 for the whole row. In the Duck Shoot prize game they pay far more: two rows win it.' },
+    cannon: { name: 'Human Cannonball', text: 'The left outlane kickback, lit at the start of every ball and by every third dunk: a draining ball is fired back into play.' },
+    dunk: { name: 'Dunk Tank', text: '16,000 points a dunk. Every third dunk adds 30,000 and arms the cannonball; the ninth lights extra ball.' },
+    wheel: { kind: 'Ferris wheel', name: 'Ferris Wheel', text: 'Shoot the lane under it: 20,000 a ride (5,000 if you ride twice in a row). The gondola drops the ball onto the roller coaster for 50,000 more, or into the gumball machine when the lock is lit.' },
+    gumball: { kind: 'Ball lock', name: 'Gumball Machine', text: "Locked balls wait inside. With two in, the next ride starts Wheel Multiball: the coaster is a 200,000-and-up jackpot, the ticket booth a double jackpot, then the barker's mouth the 500,000 super." },
+    carousel: { name: 'Carousel', text: 'A turning disc that drags the ball round, faster during Bumper Cars and the Grand Prize. No points of its own.' },
+    ring: { kind: 'Magnet', name: 'Ring Toss', text: 'Lit only in the Ring Toss game and the Grand Prize: a magnet catches the ball under the ring for 90,000 (two catches win Ring Toss).' },
+    barker: { kind: 'Toy', name: 'The Barker', text: '5,000 points a hit to his face. Three hits open his mouth: feed him for 50,000 and Barker mode, where every shot he calls pays 60,000 and up.' },
+    striker: { kind: 'Target', name: 'High Striker', text: '11,000 points a hit, and the harder you hit it, the higher the puck climbs. Ring the bell to start Strongman: hit the pad again within 25 seconds for up to 300,000.' },
+    booth: { name: 'Ticket Booth', text: '22,500 points. When STEP RIGHT UP is lit it starts the next prize game (30 seconds; win it for 200,000 and a plush prize). It also collects extra ball and starts the Grand Prize.' },
+    pops: { ids: ['pop1', 'pop2', 'pop3'], kind: 'Pop bumpers', name: 'Bumper Cars', text: '1,500 points a hit, and 10,500 in the Bumper Cars game (15 hits win it).' },
+    win: { ids: ['laneW', 'laneI', 'laneN'], kind: 'Top lanes', name: 'W-I-N Lanes', text: '1,000 points each; the flipper buttons move the lit lane. W-I-N raises the bonus multiplier and lights STEP RIGHT UP at the booth. A soft launch into the flashing lane is the 50,000 skill shot.' },
+    motor: null
+  };
 }

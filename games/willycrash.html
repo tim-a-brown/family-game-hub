@@ -70,7 +70,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     </div>
   </div>
   <div class="deck wood" id="deck"><canvas id="dk" aria-label="TNT plunger: drag down and let go to fire"></canvas></div>
-  <div class="hint">Drag the plunger down or hold Space, then let go to fire</div>
+  <div class="hint">Hold Space (or drag down) to load the TNT, let go to fire. Slide back up to cancel. P pauses.</div>
 </div>
 <script>
 (function () {
@@ -214,7 +214,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
 
   // ═══ City ═══════════════════════════════════════════════════════════════
-  var B = [], COL = [], cars = [], cans = [], lamps = [], perches = [], jack = null, SEA_X = 2700, WORLD_END = 3200, citySeed = 1;
+  var B = [], COL = [], cars = [], cans = [], lamps = [], ants = [], perches = [], jack = null, SEA_X = 2700, WORLD_END = 3200, citySeed = 1;
   var PAL = [['#ec7f62', '#b9553f'], ['#5cbab2', '#3a8b84'], ['#f3c66c', '#c8973a'], ['#a08bdc', '#7660b8'], ['#f0a3b6', '#c97590'],
              ['#73a8ea', '#4d7fc6'], ['#e3d6bd', '#b4a383'], ['#93d27e', '#64a552']];
   var AWN = [['#e5263f', '#fff3e0'], ['#2f7dff', '#fff3e0'], ['#22a866', '#fff3e0'], ['#ff8a1f', '#fff3e0']];
@@ -223,7 +223,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var CARC = ['#e5263f', '#2f7dff', '#ffc22e', '#22b866', '#8b55ff', '#ff7a29', '#e8e8f0'];
   function buildCity(seed) {
     var R = rng(seed);
-    B = []; COL = []; cars = []; cans = []; lamps = []; perches = [];
+    B = []; COL = []; cars = []; cans = []; lamps = []; ants = []; perches = [];
     var x = 250, last = -1, adI = (R() * ADS.length) | 0;
     while (x < 2140) {
       var tt = (x - 250) / 1890, w = Math.round(132 + R() * 96), h = Math.round(118 + R() * 100 + tt * 175), pi;
@@ -236,6 +236,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       else if (room >= 20) { var ax = rx0 + (room - 18) * R(); var ac = { x0: ax, x1: ax + 18, y0: -h - 12, y1: -h, k: 'ac' }; COL.push(ac); b.props.push(ac); }
       var lx0 = b.x0 + 9, lx1 = b.padX - b.hw - 8;
       if (lx1 - lx0 > 24 && R() < .55) { var ax2 = lx0 + (lx1 - lx0 - 20) * R(); var ac2 = { x0: ax2, x1: ax2 + 20, y0: -h - 11, y1: -h, k: 'ac' }; COL.push(ac2); b.props.push(ac2); }
+      // a TV antenna on about half the roofs, clear of the pad and the other props (it bends, it doesn't block)
+      if (R() < .55) {
+        var spots = [b.x0 + 14 + R() * 20, b.x1 - 14 - R() * 20, b.padX + (R() < .5 ? -1 : 1) * (b.hw + 12)];
+        for (var si = 0; si < spots.length; si++) {
+          var sx = spots[si];
+          if (Math.abs(sx - b.padX) < b.hw + 8 || sx < b.x0 + 10 || sx > b.x1 - 10) continue;
+          if (b.props.some(function (pp) { return sx > pp.x0 - 8 && sx < pp.x1 + 8; })) continue;
+          ants.push({ x: sx, y: -h, h: 30 + R() * 12, ang: 0, av: 0, bent: 0, cool: 0, hs: -1, ph: R() * 6 }); break;
+        }
+      }
       perches.push({ x: b.x0 + 6, y: -h - 6 }); if (R() < .5) perches.push({ x: b.x0 + 14, y: -h - 6 });
       if (b.awn) perches.push({ x: b.awn.x0 + 8, y: b.awn.y0 });
       B.push(b);
@@ -245,16 +255,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     B.push(jack); perches.push({ x: jack.x0 + 6, y: jack.y0 - 6 });
     SEA_X = jack.x1 + 130; WORLD_END = SEA_X + 560;
     // Street furniture
-    for (var lx = 190; lx < SEA_X - 40; lx += 175 + R() * 40) { lamps.push({ x: lx }); if (R() < .4) perches.push({ x: lx + 12, y: -86 }); }
+    for (var lx = 190; lx < SEA_X - 40; lx += 175 + R() * 40) { lamps.push({ x: lx, out: 0, ang: 0, av: 0, cool: 0, hs: -1 }); if (R() < .4) perches.push({ x: lx + 12, y: -86 }); }
     var cx2 = 170 + R() * 120;
     while (cx2 < SEA_X - 90) {
-      if (R() < .62) { var car = { x: cx2, c: CARC[(R() * CARC.length) | 0], alarm: 0, bob: 0, flip: R() < .5 }; cars.push(car); COL.push({ x0: cx2, x1: cx2 + 60, y0: -25, y1: -8, k: 'car', car: car }); cx2 += 60; }
+      if (R() < .62) { var car = { x: cx2, c: CARC[(R() * CARC.length) | 0], alarm: 0, bob: 0, flip: R() < .5, dent: 0, crack: 0 }; cars.push(car); COL.push({ x0: cx2, x1: cx2 + 60, y0: -25, y1: -8, k: 'car', car: car }); cx2 += 60; }
       else { var can = { x: cx2, knocked: 0 }; cans.push(can); COL.push({ x0: cx2, x1: cx2 + 15, y0: -21, y1: 0, k: 'can', can: can }); cx2 += 15; }
       cx2 += 120 + R() * 170;
     }
     COL.push({ x0: -3000, x1: SEA_X, y0: 0, y1: 4000, k: 'ground' });
     COL.push({ x0: -3000, x1: -70, y0: -4000, y1: 4000, k: 'ground' });
-    COL.forEach(function (c, i) { c.id = i; c.cool = 0; });
+    COL.forEach(function (c, i) { c.id = i; c.cool = 0; c.wob = c.wob || 0; c.dent = 0; c.rest = 0; c.dead = 0; c.lean = 0; });
   }
   function mkB(x, w, h, pal, R, isJack) {
     var b = { x0: x, x1: x + w, y0: -h, y1: 0, w: w, h: h, c: pal[0], c2: pal[1], jack: isJack, wins: [], props: [], cracks: [], touch: null, awn: null, deco: (R() * 3) | 0 };
@@ -280,7 +290,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var cam = { x: 200, y: -200, z: 1 }, camFrom = null, introT = 0, resultT = 0, flightT = 0;
   var t = 0, shake = 0, flash = 0, recoil = 0, timeScale = 1, slowHold = 0, slowOn = false, testSpeed = 1;
   var rag = null, parts = [], pops = [], picks = [], pigeons = [], flock = [], lastLand = [], res = null, trail = [];
-  var lastThud = 0, lastBonk = 0;
+  var lastThud = 0, lastBonk = 0, lastScrape = 0, lastCrunch = 0, hitStop = 0;
 
   function bestScore() { return ArcadeHi.best(HI); }
   function hud(bump) {
@@ -310,9 +320,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (Math.abs(wind) < 5) wind = 0;
     B.forEach(function (b) { b.touch = null; });
     COL.forEach(function (c) { c.hitShot = -1; c.cool = 0; });
+    ants.forEach(function (a) { a.hs = -1; a.cool = 0; }); lamps.forEach(function (l) { l.hs = -1; l.cool = 0; });
+    hitStop = 0;
     cans.forEach(function (c) { c.knocked = 0; });
     cur = { n: shotIdx + 1, tb: B.indexOf(tgt), angle: 0, power: 0, land: '', name: '', landPts: 0, crash: 0, stars: 0, x2: false, total: 0,
-      ev: { win: 0, pig: 0, bird: 0, bill: 0, tank: 0, car: 0, can: 0, awn: 0, splat: 0, oof: 0 } };
+      ev: { win: 0, pig: 0, bird: 0, bill: 0, tank: 0, car: 0, can: 0, awn: 0, splat: 0, oof: 0, ac: 0, ant: 0, lamp: 0 } };
     rag = null; res = null; trail = [];
     // stars along a mid-height arc to the pad, and a 2X balloon from the second shot on
     picks = [];
@@ -362,7 +374,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // Air drag per part (1/s). Light, floppy hands and feet catch the air; the heavy middle doesn't.
   // Applied with zero net force, so the flight path is unchanged: it just makes the limbs trail and
   // the head and chest lead, the way a body tumbling through the air reads.
-  var DRAG = [.12, 0, 0, .45, .8, .45, .8, .25, .55, .25, .55];
+  var DRAG = [.06, 0, 0, .22, .4, .22, .4, .12, .28, .12, .28];
+  var DRAGK = 1;
   var MTOT = MASS.reduce(function (a, b) { return a + b; }, 0);
   var LINKS = [[0, 1], [1, 2], [0, 2], [1, 3], [3, 4], [1, 5], [5, 6], [2, 7], [7, 8], [2, 9], [9, 10]];
   var MINS = [[7, 9, 4], [8, 10, 3], [3, 2, 8], [5, 2, 8], [4, 0, 7], [6, 0, 7], [7, 1, 15], [9, 1, 15], [8, 2, 9], [10, 2, 9], [4, 2, 5], [6, 2, 5]];
@@ -389,8 +402,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // Surfaces: r = bounce, mu = sliding friction (Coulomb: grip scales with how hard he is pressed into
   // the surface, so a hard landing bites and a glancing one skids; a wall he is only brushing can't hold him).
   var MAT = {
-    b: { r: .26, mu: .55 }, lip: { r: .3, mu: .5 }, ac: { r: .38, mu: .4 }, tank: { r: .38, mu: .35 },
-    bill: { r: .45, mu: .4 }, awn: { r: .9, mu: .3 }, car: { r: .5, mu: .35 }, can: { r: .3, mu: .45 }, ground: { r: .3, mu: .6 }
+    b: { r: .26, mu: .65 }, lip: { r: .3, mu: .55 }, ac: { r: .38, mu: .4 }, tank: { r: .38, mu: .35 },
+    bill: { r: .45, mu: .4 }, awn: { r: .45, mu: .3 }, car: { r: .5, mu: .35 }, can: { r: .3, mu: .45 }, ground: { r: .3, mu: .6 }
   };
   var WALL_MU = .3;     // side faces are smooth: he slides down them, he doesn't climb or cling
   var cands = [];
@@ -411,7 +424,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var air = R.airT > .05 && !R.wet, fx = 0, fy = 0;
     for (i = 0; i < 11; i++) {
       p = P[i]; p.dx = 0; p.dy = 0;
-      if (air && DRAG[i]) { p.dx = -DRAG[i] * (p.x - p.px) / h; p.dy = -DRAG[i] * (p.y - p.py) / h; fx += MASS[i] * p.dx; fy += MASS[i] * p.dy; }
+      if (air && DRAG[i]) { p.dx = -DRAG[i] * DRAGK * (p.x - p.px) / h; p.dy = -DRAG[i] * DRAGK * (p.y - p.py) / h; fx += MASS[i] * p.dx; fy += MASS[i] * p.dy; }
     }
     fx /= MTOT; fy /= MTOT;
     for (i = 0; i < 11; i++) {
@@ -512,55 +525,100 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     }
     pops.push({ x: x, y: y, txt: txt, col: col, life: life, max: life });
   }
-  function hit(c, face, sp, p, pi) {
+  // debris helpers: chips of brick or paint, grit, sparks, puffs
+  function chips(x, y, n, col, dir, sp) {
+    for (var i = 0; i < n; i++) {
+      var a = (dir == null ? -PI / 2 : dir) + (Math.random() - .5) * 1.8, s = (sp || 160) * (.4 + Math.random() * .8);
+      parts.push({ k: 'chip', x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 60, life: .9 + Math.random() * .5, max: 1.4, s: 2.5, c: col, rot: Math.random() * 6, vr: (Math.random() - .5) * 24, w: 3 + Math.random() * 3 });
+    }
+  }
+  function sparks(x, y, n, sp) {
+    for (var i = 0; i < n; i++) { var a = Math.random() * TAU, s = (sp || 220) * (.4 + Math.random() * .8); parts.push({ k: 'spark', x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 80, life: .25 + Math.random() * .3, max: .55, s: 1.6 }); }
+  }
+  function puff(x, y, n, col) {
+    for (var i = 0; i < n; i++) { var a = -PI / 2 + (Math.random() - .5) * 2, s = 20 + Math.random() * 60; parts.push({ k: 'dust', x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: .6 + Math.random() * .4, max: 1, s: 3 + Math.random() * 4, c: col }); }
+  }
+  function crunch(v) { if (t - lastCrunch > .09) { lastCrunch = t; Snd.crunch(v); } }
+  function hit(c, face, sp, p, pi, slide) {
     var R = rag;
     if (c.k === 'b' && face === 'top') roofTouch(c.b, p);
     if (c.k === 'lip' && face === 'top') roofTouch(c.b, p);
+    // skidding along a roof or the street kicks up a trail of dust
+    if (face === 'top' && slide > 150 && (c.k === 'b' || c.k === 'ground' || c.k === 'lip')) {
+      if (Math.random() < .3) parts.push({ k: 'dust', x: p.x, y: p.y + p.r, vx: -Math.sign(p.x - p.px) * (20 + Math.random() * 40), vy: -10 - Math.random() * 30, life: .5, max: .8, s: 2.5 + Math.random() * 3 });
+      if (t - lastScrape > .14 && slide > 220) { lastScrape = t; Snd.scrape(Math.min(1, slide / 600)); }
+    }
     if (sp < 70) return;
     var core = pi === PEL || pi === HEAD || pi === NECK;
     if (sp > 230 && core && t - lastThud > .1) {
       lastThud = t; Snd.thud(Math.min(1, sp / 900));
-      dust(p.x - (face === 'left' ? -p.r : 0), p.y + (face === 'top' ? p.r : 0), Math.min(14, 4 + sp / 80), face);
+      dust(p.x - (face === 'left' ? -p.r : face === 'right' ? p.r : 0), p.y + (face === 'top' ? p.r : 0), Math.min(14, 4 + sp / 80), face);
       shake = Math.max(shake, Math.min(10, sp / 110));
       if (sp > 480) Kit.haptic('medium');
+      if (sp > 820) hitStop = Math.max(hitStop, .05);   // a beat of hit-stop on the really big ones
     }
     if (pi === HEAD && sp > 360 && t - lastBonk > .5) { lastBonk = t; Snd.bonk(); R.dizzy = Math.max(R.dizzy, 1); }
     if (c.cool > t) return;
-    var once = c.hitShot !== shotIdx;
+    var once = c.hitShot !== shotIdx, dirx = face === 'left' ? -1 : face === 'right' ? 1 : Math.sign(p.x - p.px) || 1;
     switch (c.k) {
       case 'b':
-        if (face === 'left' && sp > 220) {
+        if ((face === 'left' || face === 'right') && sp > 220) {
           c.cool = t + .12;
-          breakWindows(c.b, p.y, sp);
-          if (sp > 560 && core && !R.splatted) splat(c.b, p);
+          breakWindows(c.b, p.y, sp, face);
+          if (sp > 300) { chips(p.x - dirx * p.r, p.y, Math.min(8, 2 + sp / 140), c.b.c2, face === 'left' ? PI : 0, sp * .35); crunch(Math.min(1, sp / 900)); }
+          if (face === 'left' && sp > 560 && core && !R.splatted) splat(c.b, p);
+        } else if (face === 'top' && sp > 260 && core) {
+          c.cool = t + .15;
+          chips(p.x, c.y0, Math.min(7, 2 + sp / 160), 'rgba(60,40,70,.85)', -PI / 2 - dirx * .5, sp * .3);   // roof gravel
+        }
+        break;
+      case 'lip':
+        if (sp > 240) {
+          c.cool = t + .2; crunch(Math.min(1, sp / 700));
+          chips(p.x, p.y + (face === 'top' ? p.r : 0), Math.min(9, 3 + sp / 120), c.b.c2, face === 'top' ? -PI / 2 : face === 'left' ? PI : 0, sp * .4);
+          puff(p.x, c.y0, 3);
         }
         break;
       case 'awn':
         if (face === 'top' && sp > 170) {
           // a trampoline that gives back most (not all) of the drop, so the bounces die away
           c.cool = t + .3; c.sq = 1; Snd.boing(); Kit.haptic('light');
-          var up = Math.min(700, sp * .8);
+          var up = Math.min(650, sp * .72);
           R.P.forEach(function (q) { var vx = (q.x - q.px), vy = -up * HS; q.px = q.x - vx * .9; q.py = q.y - vy; });
+          puff(p.x, c.y0, 3, '#f3e6dc');
           if (cur.ev.awn < 3) { cur.ev.awn++; award(15, p.x, c.y0 - 20, 'Boing', '#7fe0ff'); }
         }
         break;
       case 'tank':
         if (sp > 140) {
           c.cool = t + .4; c.wob = 1; Snd.clang(); setTimeout(Snd.splash, 60);
-          for (var i = 0; i < 26; i++) parts.push({ k: 'drop', x: (c.x0 + c.x1) / 2 + (Math.random() - .5) * 26, y: c.y0 + 10 + Math.random() * 18, vx: (Math.random() - .5) * 260, vy: -60 - Math.random() * 220, life: 1.2, max: 1.2, s: 2 + Math.random() * 2.5 });
-          if (once) { c.hitShot = shotIdx; c.leak = 3; cur.ev.tank++; award(60, p.x, c.y0 - 16, 'Water tower', '#7fd0ff'); }
+          c.lean = clamp(c.lean + dirx * sp / 7000, -.14, .14);
+          c.hole = { x: clamp(p.x, c.x0 + 4, c.x1 - 4) - (c.x0 + c.x1) / 2, y: clamp(p.y, c.y0 + 6, c.y1 - 4) - c.y1, d: p.x < (c.x0 + c.x1) / 2 ? -1 : 1 };
+          var big = sp > 450;
+          for (var i = 0; i < (big ? 40 : 24); i++) parts.push({ k: 'drop', x: (c.x0 + c.x1) / 2 + (Math.random() - .5) * 26, y: c.y0 + 10 + Math.random() * 18, vx: (Math.random() - .5) * (big ? 360 : 260), vy: -60 - Math.random() * (big ? 320 : 220), life: 1.2, max: 1.2, s: 2 + Math.random() * 2.5 });
+          if (big) { c.leak = Math.max(c.leak, 5); Snd.hiss(); shake = Math.max(shake, 5); }
+          if (once) { c.hitShot = shotIdx; c.leak = Math.max(c.leak, 3); cur.ev.tank++; award(60, p.x, c.y0 - 16, 'Water tower', '#7fd0ff'); }
         }
         break;
       case 'bill':
         if (sp > 120) {
           c.cool = t + .3; c.av += (face === 'left' ? 1 : face === 'right' ? -1 : (p.x > (c.x0 + c.x1) / 2 ? 1 : -1)) * Math.min(4, sp / 220);
           Snd.thwack(); for (var j = 0; j < 8; j++) parts.push({ k: 'chip', x: p.x, y: p.y, vx: (Math.random() - .5) * 200, vy: -Math.random() * 200, life: .8, max: .8, s: 2.5, c: c.ad[1], rot: Math.random() * 6, vr: (Math.random() - .5) * 20 });
+          // pop the nearest bulbs along the top
+          var bw = c.x1 - c.x0, bi = clamp(Math.round((p.x - c.x0 - 8) / ((bw - 16) / 3)), 0, 3);
+          if (!(c.dead & (1 << bi))) { c.dead |= 1 << bi; sparks(c.x0 + 8 + bi * (bw - 16) / 3, c.y0 - 2, 7); Snd.zap(); }
+          if (sp > 520 && !c.rest) { c.rest = (face === 'right' ? -1 : 1) * .16; crunch(.8); chips(p.x, c.y1, 5, '#3a3a48', PI / 2, 120); }   // knocked crooked on its frame
           if (once) { c.hitShot = shotIdx; cur.ev.bill++; award(40, p.x, c.y0 - 14, 'Billboard', '#ffd84a'); }
         }
         break;
       case 'car':
         if (sp > 120) {
           c.cool = t + .5; c.car.bob = 1;
+          if (sp > 320 && core) {
+            var was = c.car.dent; c.car.dent = Math.min(1, c.car.dent + sp / 1400);
+            if (!c.car.crack && sp > 420) { c.car.crack = 1; for (var g2 = 0; g2 < 10; g2++) parts.push({ k: 'glass', x: c.x0 + 20 + Math.random() * 20, y: c.y0 - 4, vx: (Math.random() - .5) * 200, vy: -60 - Math.random() * 160, life: 1, max: 1, s: 1.5 + Math.random() * 2, rot: Math.random() * 6, vr: (Math.random() - .5) * 24 }); }
+            if (c.car.dent > was + .05) Snd.crumple();
+          }
           if (once) { c.hitShot = shotIdx; c.car.alarm = 2.6; Snd.alarm(); cur.ev.car++; award(30, p.x, c.y0 - 16, 'Car alarm', '#ffb35a'); }
           else Snd.thwack();
         }
@@ -569,34 +627,83 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         if (sp > 100 && !c.can.knocked) {
           c.can.knocked = p.x < c.x0 + 7 ? 1 : -1; Snd.clang();
           parts.push({ k: 'lid', x: c.x0 + 7, y: c.y0, vx: (c.can.knocked) * 140, vy: -260, life: 1.6, max: 1.6, s: 7, rot: 0, vr: 14 });
+          // rubbish spills out
+          var TR = ['#f2efe6', '#9bd86a', '#ffd84a', '#c9a27a', '#e8e8f0'];
+          for (var m = 0; m < 8; m++) parts.push({ k: 'chip', x: c.x0 + 7 + c.can.knocked * 8, y: -6, vx: c.can.knocked * (40 + Math.random() * 140), vy: -60 - Math.random() * 140, life: 1.6, max: 1.6, s: 2.5, c: TR[m % TR.length], rot: Math.random() * 6, vr: (Math.random() - .5) * 18, w: 3 + Math.random() * 3 });
           if (once) { c.hitShot = shotIdx; cur.ev.can++; award(15, p.x, c.y0 - 14, 'Trash can', '#c8f07a'); }
         }
         break;
       case 'ac':
-        if (sp > 200) { c.cool = t + .3; Snd.clang(); }
+        if (sp > 150) {
+          c.cool = t + .3; c.wob = 1; c.dent = Math.min(1, c.dent + sp / 1000); Snd.clang(); crunch(.5);
+          sparks((c.x0 + c.x1) / 2, c.y0 + 3, 6); puff((c.x0 + c.x1) / 2, c.y0, 4, '#eef0f8');
+          if (once) { c.hitShot = shotIdx; cur.ev.ac++; award(15, p.x, c.y0 - 14, 'AC unit', '#d8e6ff'); }
+        }
         break;
       case 'ground':
         if (sp > 620 && core && !cur.ev.oof) { c.cool = t + .5; cur.ev.oof = 1; award(20, p.x, p.y - 30, 'Oof', '#ffb0a0'); }
         break;
     }
   }
+  // Things he passes through rather than bounces off: TV antennas bend and spring back, street lamps
+  // sway and their bulbs smash. Each slows the part that clips it a touch, so you feel the knock.
+  function knock(q, k) { var vx = q.x - q.px, vy = q.y - q.py; q.px = q.x - vx * k; q.py = q.y - vy * k; }
+  function sensors() {
+    var P = rag.P, pl = P[PEL];
+    ants.forEach(function (a) {
+      if (Math.abs(a.x - pl.x) > 70 || a.cool > t) return;
+      var tip = a.ang + a.bent;
+      for (var i = 0; i < 11; i++) {
+        var q = P[i], ax = a.x + Math.sin(tip) * Math.max(0, a.y - q.y);
+        if (q.y < a.y - a.h - q.r || q.y > a.y || Math.abs(q.x - ax) > q.r + 2) continue;
+        var vx = (q.x - q.px) / HS, sp = Math.abs(vx) + Math.abs((q.y - q.py) / HS) * .3;
+        if (sp < 60) continue;
+        a.cool = t + .25; a.av += (vx > 0 ? 1 : -1) * Math.min(7, sp / 110);
+        if (sp > 520) a.bent = clamp(a.bent + (vx > 0 ? 1 : -1) * .35, -.7, .7);
+        knock(q, .88); Snd.twang(); sparks(a.x + Math.sin(tip) * a.h, a.y - a.h, 5, 160);
+        if (a.hs !== shotIdx) { a.hs = shotIdx; cur.ev.ant++; award(15, a.x, a.y - a.h - 14, 'Antenna', '#d8e6ff'); }
+        break;
+      }
+    });
+    lamps.forEach(function (l) {
+      if (Math.abs(l.x - pl.x) > 70 || l.cool > t) return;
+      var ca = Math.cos(l.ang), sa = Math.sin(l.ang), hx = l.x + 12 * ca + 82 * sa, hy = 12 * sa - 82 * ca;
+      for (var i = 0; i < 11; i++) {
+        var q = P[i], dx = q.x - hx, dy = q.y - hy, onHead = dx * dx + dy * dy < (q.r + 7) * (q.r + 7);
+        var onPole = !onHead && q.y > -84 && q.y < -4 && Math.abs(q.x - (l.x + sa * -q.y)) < q.r + 1.5;
+        if (!onHead && !onPole) continue;
+        var vx = (q.x - q.px) / HS, vy = (q.y - q.py) / HS, sp = Math.sqrt(vx * vx + vy * vy);
+        if (sp < 70) continue;
+        l.cool = t + .25; l.av += (vx > 0 ? 1 : -1) * Math.min(2.4, sp / 260);
+        knock(q, onPole ? .7 : .85);
+        if (onHead && !l.out) {
+          l.out = 1; Snd.smash(); sparks(hx, hy, 12, 260); Kit.haptic('light');
+          for (var k = 0; k < 10; k++) parts.push({ k: 'glass', x: hx + (Math.random() - .5) * 6, y: hy + 2, vx: (Math.random() - .5) * 180, vy: -40 - Math.random() * 140, life: 1.1, max: 1.1, s: 1.5 + Math.random() * 2, rot: Math.random() * 6, vr: (Math.random() - .5) * 24 });
+        } else Snd.clang();
+        if (l.hs !== shotIdx) { l.hs = shotIdx; cur.ev.lamp++; award(20, hx, hy - 16, 'Street lamp', '#fff1b8'); }
+        break;
+      }
+    });
+  }
   function roofTouch(b, p) {
     var R = rag;
-    if (!b.touch) b.touch = { x: p.x };
+    // the landing spot is where his body (centre of mass) is when he first touches, not whichever hand or boot got there first
+    if (!b.touch) { var cx = 0; for (var i = 0; i < 11; i++) cx += R.P[i].x * MASS[i]; b.touch = { x: clamp(cx / MTOT, b.x0, b.x1) }; }
     R.roofB = b;
     if ((b === tgt || b === jack) && !R.landed) {
       R.landed = true; R.sticky = true; slowHold = .55;
       dust(p.x, b.y0, 10, 'top');
     }
   }
-  function breakWindows(b, y, sp) {
-    var col0 = b.wins.filter(function (w) { return w.col === 0 && !w.broken; });
+  function breakWindows(b, y, sp, face) {
+    var edge = face === 'right' ? Math.max.apply(null, b.wins.map(function (w) { return w.col; })) : 0, out = face === 'right' ? 1 : -1;
+    var col0 = b.wins.filter(function (w) { return w.col === edge && !w.broken; });
     col0.sort(function (a, c) { return Math.abs(a.y + 9 - y) - Math.abs(c.y + 9 - y); });
     var n = sp > 520 ? 2 : 1, got = 0;
     for (var i = 0; i < col0.length && got < n; i++) {
       var w = col0[i]; if (Math.abs(w.y + 9 - y) > 46) break;
       w.broken = 1; got++;
-      for (var k = 0; k < 14; k++) parts.push({ k: 'glass', x: w.x + Math.random() * w.w, y: w.y + Math.random() * w.h, vx: -40 - Math.random() * 200, vy: -120 + Math.random() * 160, life: 1.3, max: 1.3, s: 2 + Math.random() * 3.5, rot: Math.random() * 6, vr: (Math.random() - .5) * 24 });
+      for (var k = 0; k < 14; k++) parts.push({ k: 'glass', x: w.x + Math.random() * w.w, y: w.y + Math.random() * w.h, vx: out * (40 + Math.random() * 200), vy: -120 + Math.random() * 160, life: 1.3, max: 1.3, s: 2 + Math.random() * 3.5, rot: Math.random() * 6, vr: (Math.random() - .5) * 24 });
       cur.ev.win++; award(25, w.x, w.y - 6, 'Window', '#bfe9ff');
     }
     if (got) { Snd.glass(); Kit.haptic('light'); }
@@ -662,11 +769,20 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     for (var j = pops.length - 1; j >= 0; j--) { pops[j].life -= dt; if (pops[j].life <= 0) pops.splice(j, 1); }
     shake = Math.max(0, shake - dt * 30); flash = Math.max(0, flash - dt * 2.5); recoil = Math.max(0, recoil - dt * 3);
     COL.forEach(function (c) {
-      if (c.k === 'bill' && (c.ang || c.av)) { c.av += (-c.ang * 90 - c.av * 4) * dt; c.ang += c.av * dt; if (Math.abs(c.ang) < .001 && Math.abs(c.av) < .01) { c.ang = 0; c.av = 0; } }
-      if (c.k === 'tank') { if (c.wob) c.wob = Math.max(0, c.wob - dt * 1.5); if (c.leak > 0) { c.leak -= dt; if (Math.random() < .5) parts.push({ k: 'drop', x: c.x0 + 6 + Math.random() * 20, y: c.y1, vx: (Math.random() - .5) * 20, vy: 20, life: 1.2, max: 1.2, s: 1.8 }); } }
+      if (c.k === 'bill' && (c.ang !== c.rest || c.av)) { c.av += (-(c.ang - c.rest) * 90 - c.av * 4) * dt; c.ang += c.av * dt; if (Math.abs(c.ang - c.rest) < .001 && Math.abs(c.av) < .01) { c.ang = c.rest; c.av = 0; } }
+      if (c.k === 'tank') {
+        if (c.wob) c.wob = Math.max(0, c.wob - dt * 1.5);
+        // a jet of water from where he hit it, dying down as the tank drains
+        if (c.leak > 0) { c.leak -= dt; var hl = c.hole || { x: 0, y: -10, d: 1 }, jet = Math.min(1, c.leak / 2);
+          if (Math.random() < .7) parts.push({ k: 'drop', x: (c.x0 + c.x1) / 2 + hl.x, y: c.y1 + hl.y, vx: hl.d * (40 + jet * 90) + (Math.random() - .5) * 16, vy: -20 - jet * 40 + Math.random() * 10, life: 1.2, max: 1.2, s: 1.4 + jet }); }
+      }
+      if (c.k === 'ac' && c.wob) c.wob = Math.max(0, c.wob - dt * 2.5);
       if (c.k === 'awn' && c.sq) c.sq = Math.max(0, c.sq - dt * 3);
     });
     cars.forEach(function (c) { if (c.alarm > 0) c.alarm -= dt; if (c.bob > 0) c.bob = Math.max(0, c.bob - dt * 2.5); });
+    // springy antennas and swaying lamp posts
+    ants.forEach(function (a) { if (a.ang || a.av) { a.av += (-a.ang * 160 - a.av * 5) * dt; a.ang += a.av * dt; if (Math.abs(a.ang) < .001 && Math.abs(a.av) < .01) { a.ang = 0; a.av = 0; } } });
+    lamps.forEach(function (l) { if (l.ang || l.av) { l.av += (-l.ang * 60 - l.av * 2.2) * dt; l.ang += l.av * dt; if (Math.abs(l.ang) < .0008 && Math.abs(l.av) < .008) { l.ang = 0; l.av = 0; } } });
     pigeonsUpdate(dt);
     if (state !== 'flight' && state !== 'result') Snd.wind(0);
 
@@ -692,7 +808,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var R = rag; if (!R) return;
     if (state === 'flight') flightT += dt;
     if (R.dance) danceStep(dt);
-    else for (var s = 0; s < SUB; s++) ragStep(HS);
+    else if (hitStop > 0) hitStop -= dt;
+    else { for (var s = 0; s < SUB; s++) ragStep(HS); if (state === 'flight' && !R.noCol) sensors(); }
     var P = R.P, pl = P[PEL], vx = (pl.x - pl.px) / HS, vy = (pl.y - pl.py) / HS, sp = Math.sqrt(vx * vx + vy * vy);
     if (Math.abs(vx) > 40) R.face = vx > 0 ? 1 : -1;
     if (R.dizzy && !R.dance && R.airT < .2) R.mood = 'dizzy';
@@ -923,7 +1040,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var vx0 = cam.x - W / 2 / kz - 80, vx1 = cam.x + W / 2 / kz + 80;
     drawStreet(vx0, vx1);
     B.forEach(function (b) { if (b.x1 + 40 > vx0 && b.x0 - 40 < vx1) drawBuilding(b); });
-    lamps.forEach(function (l) { if (l.x > vx0 && l.x < vx1) drawLamp(l.x); });
+    ants.forEach(function (a) { if (a.x > vx0 && a.x < vx1) drawAntenna(a); });
+    lamps.forEach(function (l) { if (l.x > vx0 - 30 && l.x < vx1) drawLamp(l); });
     cars.forEach(function (c) { if (c.x + 70 > vx0 && c.x < vx1) drawCar(c); });
     cans.forEach(function (c) { if (c.x + 20 > vx0 && c.x < vx1) drawCan(c); });
     drawTargetMarks();
@@ -945,7 +1063,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (wind) drawWind();
     if (state === 'aim' || state === 'intro') offscreenArrow();
     if (state === 'intro') introBanner();
-    if (state === 'aim' && firstFire && shotIdx === 0) aimHint();
+    if (state === 'aim' && firstFire && shotIdx < 2) aimHint();
     if (state === 'result') drawResult();
   }
   function layer(s, f, baseY, alpha) {
@@ -1064,11 +1182,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function drawProp(c) {
     g.strokeStyle = INK; g.lineWidth = 2;
     if (c.k === 'ac') {
-      g.fillStyle = '#c9c4d8'; g.fillRect(c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0); g.strokeRect(c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0);
-      g.fillStyle = '#8a84a0'; for (var i = c.x0 + 3; i < c.x1 - 3; i += 4) g.fillRect(i, c.y0 + 3, 2, c.y1 - c.y0 - 6);
+      // rattles when hit and keeps a dent in its lid
+      var jx = Math.sin(t * 47) * c.wob * 1.6, aw = c.x1 - c.x0, dn = c.dent * 3;
+      g.save(); g.translate(jx, 0);
+      g.fillStyle = '#c9c4d8'; g.beginPath(); g.moveTo(c.x0, c.y1); g.lineTo(c.x0, c.y0); g.lineTo(c.x0 + aw * .3, c.y0); g.lineTo(c.x0 + aw * .5, c.y0 + dn); g.lineTo(c.x0 + aw * .7, c.y0); g.lineTo(c.x1, c.y0); g.lineTo(c.x1, c.y1); g.closePath(); g.fill(); g.stroke();
+      g.fillStyle = '#8a84a0'; for (var i = c.x0 + 3; i < c.x1 - 3; i += 4) g.fillRect(i, c.y0 + 3 + dn * .6, 2, c.y1 - c.y0 - 6 - dn * .6);
+      g.restore();
     } else if (c.k === 'tank') {
       var cx = (c.x0 + c.x1) / 2, wob = Math.sin(t * 30) * c.wob * 2;
-      g.save(); g.translate(cx, c.y1); g.rotate(wob * .03);
+      g.save(); g.translate(cx, c.y1 + 20); g.rotate(wob * .03 + c.lean); g.translate(0, -20);
       g.strokeStyle = '#4a3328'; g.lineWidth = 2.4;
       g.beginPath(); g.moveTo(-12, 0); g.lineTo(-14, 20); g.moveTo(12, 0); g.lineTo(14, 20); g.moveTo(-13, 10); g.lineTo(13, 10); g.moveTo(-12, 0); g.lineTo(13, 18); g.stroke();
       g.fillStyle = '#b5764a'; g.strokeStyle = INK; g.lineWidth = 2;
@@ -1076,6 +1198,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       g.fillStyle = 'rgba(0,0,0,.18)'; for (var k = -12; k < 16; k += 7) g.fillRect(k, -30, 1.4, 30);
       g.fillStyle = '#3a3a48'; g.fillRect(-17, -22, 34, 2.5); g.fillRect(-17, -8, 34, 2.5);
       g.fillStyle = '#8a5236'; g.beginPath(); g.moveTo(-19, -29); g.lineTo(0, -44); g.lineTo(19, -29); g.closePath(); g.fill(); g.stroke();
+      if (c.hole) { g.fillStyle = '#2a1a14'; g.beginPath(); g.ellipse(c.hole.d * 14, c.hole.y, 2, 3, 0, 0, TAU); g.fill(); }
       g.restore();
     } else if (c.k === 'bill') {
       var bx = (c.x0 + c.x1) / 2, bw = c.x1 - c.x0, bh = c.y1 - c.y0;
@@ -1088,7 +1211,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       g.fillStyle = c.ad[2]; g.font = '400 ' + Math.min(15, bw / (c.ad[0].length * .62)) + 'px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(c.ad[0], 0, -bh / 2 - 17);
       var on = Math.floor(t * 4) % 2;
-      g.fillStyle = on ? '#fff6c4' : '#ffd36a'; for (var j = 0; j < 4; j++) { g.beginPath(); g.arc(-bw / 2 + 8 + j * (bw - 16) / 3, -bh - 20, 1.8, 0, TAU); g.fill(); }
+      for (var j = 0; j < 4; j++) { g.fillStyle = c.dead & (1 << j) ? '#4a4050' : on ? '#fff6c4' : '#ffd36a'; g.beginPath(); g.arc(-bw / 2 + 8 + j * (bw - 16) / 3, -bh - 20, 1.8, 0, TAU); g.fill(); }
       g.restore();
     }
   }
@@ -1131,22 +1254,49 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       g.restore();
     }
   }
-  function drawLamp(x) {
-    g.strokeStyle = '#3a3150'; g.lineWidth = 3; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, -78); g.quadraticCurveTo(x, -86, x + 10, -86); g.stroke();
+  function drawLamp(l) {
+    var x = l.x;
     g.fillStyle = '#3a3150'; g.fillRect(x - 4, -6, 8, 6);
-    var gl = g.createRadialGradient(x + 12, -82, 1, x + 12, -82, 26); gl.addColorStop(0, 'rgba(255,230,150,.9)'); gl.addColorStop(1, 'rgba(255,230,150,0)');
-    g.fillStyle = gl; g.beginPath(); g.arc(x + 12, -82, 26, 0, TAU); g.fill();
-    g.fillStyle = '#fff1b8'; g.beginPath(); g.arc(x + 12, -82, 3.5, 0, TAU); g.fill();
+    g.save(); g.translate(x, 0); g.rotate(l.ang);
+    g.strokeStyle = '#3a3150'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -78); g.quadraticCurveTo(0, -86, 10, -86); g.stroke();
+    g.fillStyle = '#3a3150'; g.beginPath(); g.moveTo(6, -87); g.lineTo(18, -87); g.lineTo(15, -82); g.lineTo(9, -82); g.closePath(); g.fill();
+    if (!l.out) {
+      var gl = g.createRadialGradient(12, -80, 1, 12, -80, 26); gl.addColorStop(0, 'rgba(255,230,150,.9)'); gl.addColorStop(1, 'rgba(255,230,150,0)');
+      g.fillStyle = gl; g.beginPath(); g.arc(12, -80, 26, 0, TAU); g.fill();
+      g.fillStyle = '#fff1b8'; g.beginPath(); g.arc(12, -81, 3.5, 0, TAU); g.fill();
+    } else {
+      // smashed: a jagged stub of glass and a dead socket
+      g.fillStyle = '#5a5068'; g.beginPath(); g.arc(12, -81.5, 1.6, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(200,230,255,.7)'; g.beginPath(); g.moveTo(9, -82); g.lineTo(10.5, -79); g.lineTo(12, -81); g.lineTo(13.5, -78.5); g.lineTo(15, -82); g.closePath(); g.fill();
+    }
+    g.restore();
+  }
+  function drawAntenna(a) {
+    // a rooftop TV aerial: mast, three crossbars, and a little red light on top
+    var tip = a.ang + a.bent;
+    g.save(); g.translate(a.x, a.y);
+    g.strokeStyle = '#3a3150'; g.lineWidth = 2; g.lineCap = 'round';
+    var n = 6, px = 0, py = 0, pts = [[0, 0]];
+    for (var i = 1; i <= n; i++) { var f = i / n, aa = tip * f; px += Math.sin(aa) * a.h / n; py -= Math.cos(aa) * a.h / n; pts.push([px, py]); }
+    g.beginPath(); pts.forEach(function (q, i) { if (i) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]); }); g.stroke();
+    g.fillStyle = '#3a3150'; g.fillRect(-4, -2, 8, 2);
+    g.lineWidth = 1.6;
+    [[3, 12], [4, 9], [5, 6]].forEach(function (cb) { var q = pts[cb[0]], aa = tip * cb[0] / n, cx = Math.cos(aa), sy = Math.sin(aa); g.beginPath(); g.moveTo(q[0] - cx * cb[1], q[1] - sy * cb[1]); g.lineTo(q[0] + cx * cb[1], q[1] + sy * cb[1]); g.stroke(); });
+    var top = pts[n], blink = Math.floor(t * 1.5 + a.ph) % 2;
+    if (blink) { g.fillStyle = 'rgba(255,80,80,.35)'; g.beginPath(); g.arc(top[0], top[1], 5, 0, TAU); g.fill(); }
+    g.fillStyle = blink ? '#ff5a5a' : '#8a2a3a'; g.beginPath(); g.arc(top[0], top[1], 1.8, 0, TAU); g.fill();
+    g.restore();
   }
   function drawCar(c) {
-    var x = c.x, bob = Math.sin(c.bob * 20) * c.bob * 2.5, y = -8 + bob;
+    var x = c.x, bob = Math.sin(c.bob * 20) * c.bob * 2.5, y = -8 + bob, dn = (c.dent || 0) * 4;
     g.save(); if (c.flip) { g.translate(x + 60, 0); g.scale(-1, 1); x = 0; }
     g.fillStyle = 'rgba(20,10,30,.3)'; g.fillRect(x + 2, -2, 56, 3);
     g.strokeStyle = INK; g.lineWidth = 2;
     g.fillStyle = c.c; rr(x, y - 16, 60, 13, 5); g.fill(); g.stroke();
-    g.beginPath(); g.moveTo(x + 12, y - 16); g.lineTo(x + 20, y - 27); g.lineTo(x + 42, y - 27); g.lineTo(x + 50, y - 16); g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = '#bfe3ff'; g.beginPath(); g.moveTo(x + 16, y - 17); g.lineTo(x + 22, y - 25); g.lineTo(x + 30, y - 25); g.lineTo(x + 30, y - 17); g.fill();
-    g.beginPath(); g.moveTo(x + 33, y - 17); g.lineTo(x + 33, y - 25); g.lineTo(x + 41, y - 25); g.lineTo(x + 47, y - 17); g.fill();
+    g.beginPath(); g.moveTo(x + 12, y - 16); g.lineTo(x + 20, y - 27 + dn * .6); g.lineTo(x + 31, y - 27 + dn); g.lineTo(x + 42, y - 27 + dn * .6); g.lineTo(x + 50, y - 16); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = c.crack ? '#9fc6e6' : '#bfe3ff'; g.beginPath(); g.moveTo(x + 16, y - 17); g.lineTo(x + 22, y - 25 + dn * .6); g.lineTo(x + 30, y - 25 + dn * .9); g.lineTo(x + 30, y - 17); g.fill();
+    g.beginPath(); g.moveTo(x + 33, y - 17); g.lineTo(x + 33, y - 25 + dn * .9); g.lineTo(x + 41, y - 25 + dn * .6); g.lineTo(x + 47, y - 17); g.fill();
+    if (c.crack) { g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = .8; g.beginPath(); g.moveTo(x + 25, y - 21); g.lineTo(x + 20, y - 18); g.moveTo(x + 25, y - 21); g.lineTo(x + 29, y - 24); g.moveTo(x + 25, y - 21); g.lineTo(x + 28, y - 17.5); g.moveTo(x + 25, y - 21); g.lineTo(x + 22, y - 24); g.stroke(); g.strokeStyle = INK; g.lineWidth = 2; }
     g.fillStyle = 'rgba(255,255,255,.3)'; g.fillRect(x + 4, y - 14, 50, 2);
     var on = c.alarm > 0 && Math.floor(t * 8) % 2;
     g.fillStyle = on ? '#fff36a' : '#ffe9b0'; g.fillRect(x + 55, y - 13, 5, 4);
@@ -1200,60 +1350,112 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     for (var i = 0; i < trail.length; i += 2) { g.beginPath(); g.arc(trail[i][0], trail[i][1], 1.8, 0, TAU); g.fill(); }
   }
   // ── Willy ──
-  var SUIT = '#f6f2ea', SUIT2 = '#d9d2c6', RED = '#e5263f', BLUE = '#2f5fd0', SKIN = '#ffcf9f';
+  // A 70s-style daredevil, the look the arcade cabinet goes for: white stunt leathers with a blue starred
+  // yoke, red racing stripes, a big gold belt buckle, red boots, white gauntlets, and a white helmet with a
+  // starred band, goggles and a chin strap. Big helmeted head, broad chest: a cartoon stuntman, a bit battered.
+  var SUIT = '#f7f3ec', SUIT2 = '#d6cdc0', RED = '#e5263f', RED2 = '#b81d33', BLUE = '#2a56c6', GOLD = '#ffc22e', SKIN = '#ffcf9f';
+  function dot(x, y, r, col) { g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
   function drawWilly(R) {
     var P = R.P, s = WS;
     g.lineCap = 'round'; g.lineJoin = 'round';
     // scarf
     g.strokeStyle = INK; g.lineWidth = 5 * s; g.beginPath(); R.sc.forEach(function (q, i) { if (i) g.lineTo(q.x, q.y); else g.moveTo(q.x, q.y); }); g.stroke();
     g.strokeStyle = RED; g.lineWidth = 3.2 * s; g.stroke();
-    function limb(a, b, c, w, col, end, endW) {
+    var tail = R.sc[R.sc.length - 1]; dot(tail.x, tail.y, 2.6 * s, INK); dot(tail.x, tail.y, 1.7 * s, RED);
+    // a two-part limb: outline, fill, a racing stripe down it, then the boot or glove on the end
+    function limb(a, b, c, w, col, stripe, end, endW, cuff) {
       g.strokeStyle = INK; g.lineWidth = w + 2.6; g.beginPath(); g.moveTo(P[a].x, P[a].y); g.lineTo(P[b].x, P[b].y); g.lineTo(P[c].x, P[c].y); g.stroke();
       g.strokeStyle = col; g.lineWidth = w; g.stroke();
-      var ex = lerp(P[b].x, P[c].x, .45), ey = lerp(P[b].y, P[c].y, .45);
+      var ex = lerp(P[b].x, P[c].x, .5), ey = lerp(P[b].y, P[c].y, .5);
+      g.strokeStyle = stripe; g.lineWidth = w * .28; g.beginPath(); g.moveTo(P[a].x, P[a].y); g.lineTo(P[b].x, P[b].y); g.lineTo(ex, ey); g.stroke();
       g.strokeStyle = INK; g.lineWidth = endW + 2.6; g.beginPath(); g.moveTo(ex, ey); g.lineTo(P[c].x, P[c].y); g.stroke();
       g.strokeStyle = end; g.lineWidth = endW; g.stroke();
+      // cuff band where the boot or glove starts
+      var cx = lerp(ex, P[c].x, .18), cy = lerp(ey, P[c].y, .18);
+      dot(cx, cy, endW * .55, cuff);
     }
-    limb(PEL, LK, LF, 6 * s, SUIT2, '#b81d33', 6.6 * s);
-    limb(NECK, LE, LH, 4.6 * s, SUIT2, '#e8e0d0', 5.2 * s);
-    // torso
-    var n = P[NECK], p = P[PEL];
-    g.strokeStyle = INK; g.lineWidth = 12 * s + 2.6; g.beginPath(); g.moveTo(n.x, n.y); g.lineTo(p.x, p.y); g.stroke();
-    g.strokeStyle = SUIT; g.lineWidth = 12 * s; g.stroke();
-    g.strokeStyle = RED; g.lineWidth = 3 * s; g.beginPath(); g.moveTo(n.x, n.y); g.lineTo(lerp(n.x, p.x, .8), lerp(n.y, p.y, .8)); g.stroke();
-    var bx = lerp(n.x, p.x, .82), by = lerp(n.y, p.y, .82), tx = (p.x - n.x), ty = (p.y - n.y), tl = Math.sqrt(tx * tx + ty * ty) || 1;
-    g.strokeStyle = '#ffc22e'; g.lineWidth = 3 * s; g.beginPath(); g.moveTo(bx - ty / tl * 6 * s, by + tx / tl * 6 * s); g.lineTo(bx + ty / tl * 6 * s, by - tx / tl * 6 * s); g.stroke();
-    limb(PEL, RK, RF, 6 * s, SUIT, RED, 6.6 * s);
-    limb(NECK, RE, RH, 4.6 * s, SUIT, '#fff', 5.2 * s);
+    limb(PEL, LK, LF, 6.4 * s, SUIT2, '#a8202f', RED2, 6.8 * s, '#e6ddd0');
+    limb(NECK, LE, LH, 4.4 * s, SUIT2, '#24479e', '#e6ddd0', 5.2 * s, '#a8202f');
+    // torso: broad shoulders tapering to the hips
+    var n = P[NECK], p = P[PEL], ux = p.x - n.x, uy = p.y - n.y, L = Math.sqrt(ux * ux + uy * uy) || 1;
+    ux /= L; uy /= L;
+    var vx = -uy * R.face, vy = ux * R.face, sw = 6.6 * s, hw = 5 * s;
+    function pt(along, side) { return [n.x + ux * along + vx * side, n.y + uy * along + vy * side]; }
+    function poly(pts) { g.beginPath(); pts.forEach(function (q, i) { if (i) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]); }); g.closePath(); }
+    var body = [pt(-2.2 * s, sw), pt(-2.2 * s, -sw), pt(L + 2.6 * s, -hw), pt(L + 2.6 * s, hw)];
+    poly(body); g.fillStyle = SUIT; g.fill(); g.strokeStyle = INK; g.lineWidth = 2.4; g.stroke();
+    // starred blue yoke: a V from the shoulders
+    g.save(); poly(body); g.clip();
+    poly([pt(-3 * s, sw + 1), pt(-3 * s, -sw - 1), pt(L * .52, 0)]); g.fillStyle = BLUE; g.fill();
+    // red stripes down the front, from the V to the belt
+    g.strokeStyle = RED; g.lineWidth = 1.5 * s;
+    g.beginPath(); var a1 = pt(L * .38, 1.6 * s), a2 = pt(L + 1 * s, 1.6 * s), b1 = pt(L * .38, -1.6 * s), b2 = pt(L + 1 * s, -1.6 * s);
+    g.moveTo(a1[0], a1[1]); g.lineTo(a2[0], a2[1]); g.moveTo(b1[0], b1[1]); g.lineTo(b2[0], b2[1]); g.stroke();
+    g.restore();
+    [[.06, 2.8], [.06, -2.8], [.24, 0]].forEach(function (q) { var c = pt(L * q[0], q[1] * s); star(c[0], c[1], 1.5 * s, '#fff', true); });
+    // belt and big gold buckle
+    var b0 = pt(L + .4 * s, hw + .6), b3 = pt(L + .4 * s, -hw - .6);
+    g.strokeStyle = INK; g.lineWidth = 3.2 * s + 2; g.beginPath(); g.moveTo(b0[0], b0[1]); g.lineTo(b3[0], b3[1]); g.stroke();
+    g.strokeStyle = '#2b2d6e'; g.lineWidth = 3.2 * s; g.stroke();
+    var bk = pt(L + .4 * s, 0);
+    g.save(); g.translate(bk[0], bk[1]); g.rotate(Math.atan2(uy, ux));
+    g.fillStyle = GOLD; g.strokeStyle = INK; g.lineWidth = 1.2; rr(-2 * s, -2.6 * s, 4 * s, 5.2 * s, 1.2 * s); g.fill(); g.stroke();
+    g.restore();
+    limb(PEL, RK, RF, 6.4 * s, SUIT, RED, RED, 6.8 * s, '#fff');
+    limb(NECK, RE, RH, 4.4 * s, SUIT, BLUE, '#fff', 5.2 * s, RED);
     // head
-    var h = P[HEAD], r = 7.6 * s, ang = Math.atan2(h.y - p.y, h.x - p.x) + PI / 2;
+    var h = P[HEAD], ang = Math.atan2(h.y - n.y, h.x - n.x) + PI / 2;
     g.save(); g.translate(h.x, h.y); g.rotate(ang); g.scale(R.face, 1);
-    g.fillStyle = INK; g.beginPath(); g.arc(0, 0, r + 1.3, 0, TAU); g.fill();
-    g.fillStyle = SKIN; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
-    // helmet
-    g.fillStyle = '#fff'; g.beginPath(); g.arc(0, 0, r + .4, PI * .93, PI * 2.04); g.closePath(); g.fill();
-    g.strokeStyle = INK; g.lineWidth = 1.3; g.stroke();
-    g.strokeStyle = RED; g.lineWidth = 2.6 * s; g.beginPath(); g.arc(0, 0, r * .72, PI * 1.08, PI * 1.9); g.stroke();
-    star(-r * .25, -r * .38, r * .26, BLUE);
-    // goggles
-    g.fillStyle = INK; g.fillRect(-r, -r * .12, r * 2, r * .26);
-    g.fillStyle = '#26324f'; rr(r * .18, -r * .3, r * .9, r * .55, r * .2); g.fill();
-    g.fillStyle = 'rgba(160,220,255,.9)'; g.fillRect(r * .32, -r * .22, r * .22, r * .14);
-    // mouth
-    g.fillStyle = '#7a1020'; g.strokeStyle = '#7a1020'; g.lineWidth = 1.4;
-    if (R.mood === 'yell') { g.beginPath(); g.ellipse(r * .5, r * .5, r * .2, r * .26, 0, 0, TAU); g.fill(); }
-    else if (R.mood === 'grin') { g.beginPath(); g.arc(r * .4, r * .32, r * .32, .1, PI - .4); g.fill(); g.fillStyle = '#fff'; g.fillRect(r * .18, r * .34, r * .5, r * .1); }
-    else if (R.mood === 'splat') { g.beginPath(); g.ellipse(r * .4, r * .5, r * .34, r * .14, 0, 0, TAU); g.fill(); }
-    else { g.beginPath(); g.moveTo(r * .15, r * .5); for (var i = 1; i <= 4; i++) g.lineTo(r * .15 + i * r * .14, r * .5 + (i % 2 ? -1 : 1) * r * .08); g.stroke(); }
+    drawHead(7.6 * s, R.mood);
     g.restore();
     // dizzy stars
     if (R.dizzy && !R.dance && (R.mood === 'dizzy' || state === 'result')) {
       for (var k = 0; k < 3; k++) { var a = t * 4 + k * TAU / 3; star(h.x + Math.cos(a) * 12 * s, h.y - 10 * s + Math.sin(a) * 4 * s, 3.2 * s, '#ffd84a'); }
     }
   }
-  function star(x, y, r, col) {
+  // Willy's head in local space: facing +x, up is -y
+  function drawHead(r, mood) {
+    // outline, then skin: round head with a big stuntman chin
+    g.fillStyle = INK; g.beginPath(); g.arc(0, 0, r + 1.3, 0, TAU); g.fill();
+    g.beginPath(); g.ellipse(r * .32, r * .52, r * .62 + 1.3, r * .44 + 1.3, -.2, 0, TAU); g.fill();
+    g.fillStyle = SKIN; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
+    g.beginPath(); g.ellipse(r * .32, r * .52, r * .62, r * .44, -.2, 0, TAU); g.fill();
+    g.fillStyle = 'rgba(90,50,60,.16)'; g.beginPath(); g.ellipse(r * .36, r * .66, r * .5, r * .28, -.2, 0, TAU); g.fill();   // stubble
+    // nose
+    g.fillStyle = INK; g.beginPath(); g.arc(r * .96, r * .14, r * .22 + 1, 0, TAU); g.fill();
+    g.fillStyle = '#ffb98a'; g.beginPath(); g.arc(r * .96, r * .14, r * .22, 0, TAU); g.fill();
+    // helmet shell
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(0, 0, r + .5, PI * .93, PI * 2.05); g.closePath(); g.fill();
+    g.strokeStyle = INK; g.lineWidth = 1.4; g.stroke();
+    g.save(); g.beginPath(); g.arc(0, 0, r + .5, PI * .93, PI * 2.05); g.closePath(); g.clip();
+    // red stripe over the crown, blue starred band round the rim
+    g.strokeStyle = RED; g.lineWidth = r * .28; g.beginPath(); g.arc(0, 0, r * .62, PI * 1.12, PI * 1.88); g.stroke();
+    g.fillStyle = BLUE; g.fillRect(-r - 2, -r * .36, r * 2 + 4, r * .3);
+    g.restore();
+    star(-r * .55, -r * .21, r * .13, '#fff', true); star(-r * .05, -r * .21, r * .13, '#fff', true); star(r * .45, -r * .21, r * .13, '#fff', true);
+    // visor peak
+    g.fillStyle = '#fff'; g.strokeStyle = INK; g.lineWidth = 1.3;
+    g.beginPath(); g.moveTo(r * .55, -r * .08); g.quadraticCurveTo(r * 1.15, -r * .2, r * 1.32, -r * .02); g.lineTo(r * .7, r * .04); g.closePath(); g.fill(); g.stroke();
+    // goggles: strap and a big lens with a glint
+    g.fillStyle = INK; g.fillRect(-r, -r * .02, r * 1.6, r * .22);
+    g.fillStyle = INK; rr(r * .18, -r * .06, r * .98, r * .56, r * .22); g.fill();
+    g.fillStyle = '#2f4f86'; rr(r * .26, 0, r * .82, r * .44, r * .18); g.fill();
+    g.fillStyle = 'rgba(180,230,255,.95)'; g.fillRect(r * .38, r * .06, r * .24, r * .12);
+    // chin strap and a sticking plaster: this is not his first crash
+    g.strokeStyle = INK; g.lineWidth = 1.2; g.beginPath(); g.moveTo(-r * .55, r * .2); g.quadraticCurveTo(-r * .2, r * .9, r * .2, r * .92); g.stroke();
+    g.save(); g.translate(-r * .1, r * .5); g.rotate(.5);
+    g.fillStyle = '#f2d2a2'; g.fillRect(-r * .26, -r * .08, r * .52, r * .16); g.fillRect(-r * .08, -r * .26, r * .16, r * .52);
+    g.restore();
+    // mouth
+    g.fillStyle = '#7a1020'; g.strokeStyle = '#7a1020'; g.lineWidth = 1.4;
+    if (mood === 'yell') { g.beginPath(); g.ellipse(r * .62, r * .62, r * .2, r * .26, 0, 0, TAU); g.fill(); g.fillStyle = '#fff'; g.fillRect(r * .5, r * .4, r * .24, r * .08); }
+    else if (mood === 'grin') { g.beginPath(); g.arc(r * .5, r * .46, r * .34, .15, PI - .45); g.fill(); g.fillStyle = '#fff'; g.fillRect(r * .26, r * .5, r * .5, r * .1); }
+    else if (mood === 'splat') { g.beginPath(); g.ellipse(r * .55, r * .62, r * .34, r * .14, 0, 0, TAU); g.fill(); }
+    else { g.beginPath(); g.moveTo(r * .3, r * .64); for (var i = 1; i <= 4; i++) g.lineTo(r * .3 + i * r * .13, r * .64 + (i % 2 ? -1 : 1) * r * .08); g.stroke(); }
+  }
+  function star(x, y, r, col, flat) {
     g.beginPath(); for (var i = 0; i < 10; i++) { var a = -PI / 2 + i * PI / 5, rr2 = i % 2 ? r * .45 : r; g.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2); } g.closePath();
-    g.fillStyle = col; g.fill(); g.strokeStyle = INK; g.lineWidth = .9; g.stroke();
+    g.fillStyle = col; g.fill(); if (!flat) { g.strokeStyle = INK; g.lineWidth = .9; g.stroke(); }
   }
   // ── Cannon on its stunt truck ──
   function drawCannon() {
@@ -1279,14 +1481,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     // Willy peeking out while aiming
     if (aimNow) {
       g.save(); g.translate(BARREL - 2, 0); g.rotate(PI / 2);
-      var r = 7.6 * WS;
-      g.fillStyle = INK; g.beginPath(); g.arc(0, 0, r + 1.3, 0, TAU); g.fill();
-      g.fillStyle = SKIN; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
-      g.fillStyle = '#fff'; g.beginPath(); g.arc(0, 0, r + .4, PI * .93, PI * 2.04); g.closePath(); g.fill(); g.strokeStyle = INK; g.lineWidth = 1.3; g.stroke();
-      g.strokeStyle = RED; g.lineWidth = 2.6 * WS; g.beginPath(); g.arc(0, 0, r * .72, PI * 1.08, PI * 1.9); g.stroke();
-      g.fillStyle = INK; g.fillRect(-r, -r * .12, r * 2, r * .26);
-      g.fillStyle = '#26324f'; rr(r * .18, -r * .3, r * .9, r * .55, r * .2); g.fill();
-      g.fillStyle = '#7a1020'; g.beginPath(); g.arc(r * .4, r * .32, r * .3, .1, PI - .4); g.fill();
+      drawHead(7.6 * WS, 'grin');
       g.restore();
     }
     var bg = g.createLinearGradient(0, -17, 0, 17); bg.addColorStop(0, '#6c7fc0'); bg.addColorStop(.35, '#3a4a8a'); bg.addColorStop(1, '#1b2350');
@@ -1334,11 +1529,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       switch (q.k) {
         case 'smoke': case 'dust':
           var gr = 1 + (1 - q.life / q.max) * 1.8;
-          g.fillStyle = q.k === 'smoke' ? '#d8cfe0' : '#e6d2bf'; g.beginPath(); g.arc(q.x, q.y, q.s * gr, 0, TAU); g.fill(); break;
+          g.fillStyle = q.c || (q.k === 'smoke' ? '#d8cfe0' : '#e6d2bf'); g.beginPath(); g.arc(q.x, q.y, q.s * gr, 0, TAU); g.fill(); break;
         case 'spark': g.strokeStyle = '#ffe9a0'; g.lineWidth = q.s; g.beginPath(); g.moveTo(q.x, q.y); g.lineTo(q.x - q.vx * .03, q.y - q.vy * .03); g.stroke(); break;
         case 'glass': g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.fillStyle = '#cfefff'; g.beginPath(); g.moveTo(-q.s, -q.s * .6); g.lineTo(q.s, 0); g.lineTo(-q.s * .3, q.s); g.closePath(); g.fill(); g.restore(); break;
         case 'drop': g.fillStyle = '#8fd6ff'; g.beginPath(); g.arc(q.x, q.y, q.s, 0, TAU); g.fill(); break;
-        case 'conf': case 'chip': g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.fillStyle = q.c; g.fillRect(-3, -1.6, 6, 3.2); g.restore(); break;
+        case 'conf': case 'chip': var cw2 = q.w || 6; g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.fillStyle = q.c; g.fillRect(-cw2 / 2, -1.6, cw2, 3.2); g.restore(); break;
         case 'feather': g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.fillStyle = '#f2f0ff'; g.beginPath(); g.ellipse(0, 0, 4.5, 1.6, 0, 0, TAU); g.fill(); g.restore(); break;
         case 'lid': g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.fillStyle = '#9aa6bc'; g.strokeStyle = INK; g.lineWidth = 1.5; rr(-8.5, -2, 17, 4, 1.5); g.fill(); g.stroke(); g.restore(); break;
       }
@@ -1423,10 +1618,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     txt(sub + 'Target ' + ft(tgt.padX - PIV.x) + ' ft away', 0, 22, 15, '#ffd0b8', 'center', 0);
     g.restore(); g.globalAlpha = 1;
   }
+  // first-time coaching: what to do, then (mid-pull) how to fire or back out
+  var FINE = (function () { try { return matchMedia('(hover:hover) and (pointer:fine)').matches; } catch (e) { return false; } })();
   function aimHint() {
-    var y = 66 + (wind ? 30 : 0), a = .75 + Math.sin(t * 4) * .25;
-    g.globalAlpha = a; g.fillStyle = 'rgba(20,8,34,.7)'; rr(W / 2 - 150, y - 16, 300, 32, 14); g.fill();
-    txt('Pull the plunger down, let go to fire', W / 2, y, 14, '#fff', 'center', 0);
+    var y = 66 + (wind ? 30 : 0), a = .8 + Math.sin(t * 4) * .2, pulling = drag || keyHold, bw = Math.min(310, W - 24);
+    var l1 = pulling ? 'Let go to fire!' : FINE ? 'Hold Space or drag down to pull' : 'Pull down anywhere to load the TNT',
+        l2 = pulling ? 'Watch the cannon angle. Slide back up to cancel' : 'The cannon swings: let go at the right moment';
+    g.globalAlpha = a; g.fillStyle = 'rgba(20,8,34,.74)'; rr(W / 2 - bw / 2, y - 18, bw, 44, 14); g.fill();
+    txt(l1, W / 2, y - 3, 15, pulling ? '#ffd84a' : '#fff', 'center', 0);
+    txt(l2, W / 2, y + 14, 11.5, '#ffd0b8', 'center', 0);
     g.globalAlpha = 1;
   }
   function drawResult() {
@@ -1461,7 +1661,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.restore(); g.globalAlpha = 1;
     if (tt > 1) {
       g.globalAlpha = .75 + Math.sin(t * 5) * .25; g.fillStyle = 'rgba(20,8,34,.72)'; rr(W / 2 - 92, H - 46, 184, 30, 15); g.fill();
-      txt(shotIdx + 1 >= SHOTS ? 'Tap to finish' : 'Tap for the next shot', W / 2, H - 31, 14, '#fff', 'center', 0); g.globalAlpha = 1;
+      txt((shotIdx + 1 >= SHOTS ? 'Tap to finish' : 'Tap for the next shot') + (FINE ? ' (Space)' : ''), W / 2, H - 31, 14, '#fff', 'center', 0); g.globalAlpha = 1;
     }
   }
 
@@ -1552,7 +1752,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
 
   // ═══ Input ══════════════════════════════════════════════════════════════
-  function pullPx() { return clamp(DH * .85, 80, 120); }
+  // Full power is a 120px pull, or less when the finger starts low on the screen and there is no room left
+  // below it to pull that far (a thumb on the plunger itself, on a short phone).
+  function pullPx(y0) { var room = (window.innerHeight || 800) - (y0 || 0) - 14; return clamp(Math.min(DH * .85, room), 56, 120); }
   function setDepth(d) {
     var old = depth; depth = clamp(d, 0, 1);
     var a = Math.floor(old * 10), b = Math.floor(depth * 10);
@@ -1570,10 +1772,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (e.button && e.button !== 0) return;
     if (!live || paused || blocked()) return;
     e.preventDefault(); Snd.unlock();
-    if (state === 'intro') { if (introT > .25) toAim(); return; }
-    if (state === 'result') { if (resultT > .8) nextShot(); return; }
+    // a press during the fly-over skips it and goes straight into the pull
+    if (state === 'intro') { if (introT < .25) return; toAim(); }
+    if (state === 'result') { if (resultT > .6) nextShot(); return; }
     if (state !== 'aim') return;
-    drag = { id: e.pointerId, y0: e.clientY };
+    drag = { id: e.pointerId, y0: e.clientY, px: pullPx(e.clientY) };
     try { $('view').setPointerCapture(e.pointerId); } catch (er) {}
     setDepth(0); kick();
   });
@@ -1581,7 +1784,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (!drag || e.pointerId !== drag.id) return;
     e.preventDefault();
     if (state !== 'aim' || paused) return;
-    setDepth((e.clientY - drag.y0) / pullPx());
+    setDepth((e.clientY - drag.y0) / drag.px);
   });
   $('view').addEventListener('pointerup', function (e) { if (!drag || e.pointerId !== drag.id) return; drag = null; release(); });
   $('view').addEventListener('pointercancel', function () { drag = null; depth = 0; Snd.fuse(0); });
@@ -1593,7 +1796,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (paused) { if (k === 'Enter' || k === 'Space') { e.preventDefault(); resume(); } return; }
     if (k === 'Space' || k === 'ArrowDown' || k === 'KeyS' || k === 'Enter') {
       e.preventDefault(); if (e.repeat) return; Snd.unlock();
-      if (state === 'intro') toAim();
+      if (state === 'intro') { toAim(); if (k !== 'Enter') { keyHold = true; setDepth(0); } }
       else if (state === 'result') { if (resultT > .5) nextShot(); }
       else if (state === 'aim' && k !== 'Enter') { keyHold = true; setDepth(0); }
     }
@@ -1634,7 +1837,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var bulls = shots.filter(function (s) { return s.land === 'bull'; }).length, jp = shots.filter(function (s) { return s.land === 'jackpot'; }).length;
     var tower = shots.filter(function (s) { return /^jack/.test(s.land); }).length;
     var landed = shots.filter(function (s) { return /^(bull|great|nice|roof|jack)/.test(s.land); }).length;
-    var ev = { win: 0, pig: 0, bird: 0, bill: 0, tank: 0, car: 0, splat: 0, awn: 0 }, stars = 0;
+    var ev = { win: 0, pig: 0, bird: 0, bill: 0, tank: 0, car: 0, splat: 0, awn: 0, lamp: 0, ant: 0, ac: 0 }, stars = 0;
     shots.forEach(function (s) { for (var k in ev) ev[k] += s.ev[k] || 0; stars += s.stars; });
     var bestShot = shots.slice().sort(function (a, b) { return b.total - a.total; })[0];
     var hl = [];
@@ -1648,6 +1851,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (ev.pig + ev.bird) hl.push('Scared ' + (ev.pig + ev.bird) + ' pigeons');
     if (ev.car) hl.push('Set off ' + ev.car + (ev.car === 1 ? ' car alarm' : ' car alarms'));
     if (ev.tank) hl.push('Burst ' + ev.tank + (ev.tank === 1 ? ' water tower' : ' water towers'));
+    if (ev.lamp) hl.push('Knocked into ' + ev.lamp + (ev.lamp === 1 ? ' street lamp' : ' street lamps'));
+    if (ev.ant) hl.push('Bent ' + ev.ant + (ev.ant === 1 ? ' TV antenna' : ' TV antennas'));
     if (stars) hl.push('Grabbed ' + stars + (stars === 1 ? ' star' : ' stars'));
     var isBest = total > 0 && total > best0;
     if (isBest) hl.push('New high score' + (best0 ? ' (old best ' + fmt(best0) + ')' : ''));
@@ -1726,12 +1931,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       '<h3>Launching</h3><ul><li>The cannon swings up and down on its own.</li>' +
       '<li><b>Drag the TNT plunger down</b> (anywhere on the screen works too). The further you pull, the harder the blast. The gauge on the left shows your power.</li>' +
       '<li><b>Let go to fire.</b> Willy flies at whatever angle the cannon is pointing at that moment, so time your release. The dial on the right shows the angle.</li>' +
+      '<li>Changed your mind? <b>Slide back up</b> before you let go and nothing fires.</li>' +
       '<li>White dots show the start of the flight while you pull. The marks on the gauge and dial show your last shot.</li>' +
+      '<li>Tap during the fly-over to skip it and start pulling straight away. Tap after a shot to go to the next one.</li>' +
       '<li>On a computer, hold <b>Space</b> (or the Down arrow) to pull and let go to fire. <b>P</b> pauses.</li></ul>' +
-      '<h3>Landing</h3><p>Each shot has a target building with a bullseye pad on the roof (the red arrow, and the red building on the map at the top). Where Willy first touches the roof counts:</p>' +
+      '<h3>Landing</h3><p>Each shot has a target building with a bullseye pad on the roof (the red arrow, and the red building on the map at the top). Where Willy first touches the roof counts, as long as he stays up there. He comes in hot, so he can skid and tumble a little after touchdown; if he slides right off the roof, it is a crash.</p>' +
       '<ul><li><b>Bullseye</b> (center): 1,000</li><li><b>Inner ring</b>: 500</li><li><b>Outer ring</b>: 250</li><li>Anywhere else on the target roof: 100</li><li>Some other roof: 50</li></ul>' +
       '<h3>The jackpot tower</h3><p>The tall gold-topped tower at the far end of the city is always there. Land on it for 1,500, on its pad for 2,500, or hit its bullseye for the <b>5,000 point jackpot</b>.</p>' +
-      '<h3>Crashing</h3><p>Miss, and Willy crashes into the city. Everything he hits scores a little: windows 25, water towers 60, billboards 40, car alarms 30, awnings (they bounce him) 15, trash cans 15, pigeons 10, a wall splat 50.</p>' +
+      '<h3>Crashing</h3><p>Miss, and Willy crashes into the city. Everything he hits scores a little (once per thing per shot): windows 25, water towers 60, billboards 40, car alarms 30, street lamps 20, TV antennas 15, air-conditioning units 15, awnings (they bounce him) 15, trash cans 15, pigeons 10, a hard landing 20, a wall splat 50.</p>' +
       '<h3>Bonuses</h3><ul><li>Fly through a <b>star</b> for 100.</li><li>Pop the <b>2X balloons</b> to double that shot.</li><li>From shot 3 the <b>wind</b> blows (top left). It pushes Willy a little left or right.</li></ul>'
   });
   window.__willy = {
@@ -1773,6 +1980,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     sea: function () { return SEA_X; },
     state: function () { return state; }, res: function () { return res; }, cur: function () { return cur; },
     nparts: function () { return parts.length; },
+    dragk: function (k) { DRAGK = k; },
     ragInfo: function () { return rag && { pinT: rag.pinT, airT: rag.airT, restT: rag.restT, noCol: rag.noCol, dance: !!rag.dance, sticky: rag.sticky, wet: rag.wet, landed: rag.landed }; },
     cam: function (x, y, z) { cam.x = x; cam.y = y; cam.z = z || 1; render(); },
     col: function () { return COL.map(function (c) { return { k: c.k, x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1 }; }); }

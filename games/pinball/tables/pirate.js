@@ -68,7 +68,8 @@ export default {
   fit: { top: 125, lookY: 0.47 },
   anims: lcdAnims(),
   build,
-  rules: makeRules()
+  rules: makeRules(),
+  explain: makeExplain()
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1148,4 +1149,31 @@ function rainModel(RC) {
     layers.forEach((l, i) => { l.t.offset.y -= dt * l.sp; l.t.offset.x += dt * 0.05 * (i + 1); l.m.material.opacity = k * (0.45 - i * 0.12) * (1 + G.lightning * 0.6); l.m.visible = k > 0.02; });
   });
   return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPLAIN: the look-around instruction cards (tap a part of the table). Every number is what the rules above pay,
+// engine defaults included (README: "Table features").
+// ═══════════════════════════════════════════════════════════════════════════
+function makeExplain() {
+  return {
+    orbits: { ids: ['orbitL', 'orbitR'], kind: 'Orbit', name: "The Cove and the Ship's Wheel", text: '11,000 points for a loop round the top, either way, and 50,000 extra during the Storm. Big shots one after another score combos; in Kraken Multiball both sides are jackpots.' },
+    spinner: { name: "Ship's Wheel Spinner", text: '120 points every half turn, 320 in the Storm and Davy Jones. Each spin also counts a doubloon for the end-of-ball bonus.' },
+    map: { name: 'M-A-P Targets', text: '750 points each. Knock all three down to light Plunder at the harbour scoop; while Plunder is already lit they pay 40,000.' },
+    harbour: { name: 'The Harbour', text: '7,500 points, then it starts what is lit: Davy Jones, extra ball, or Plunder (a port with three lit shots in 35 seconds: 40,000 each, 150,000 to plunder it). Nothing lit? Doubloons, ball save, the lifeboat or bonus up.' },
+    lifeboat: { name: 'Lifeboat', text: 'The right outlane kickback: while lit, a draining ball is fired back into play. Spelling A-R-R for the second time lights it, and the harbour can too.' },
+    plank: { name: 'The Plank', text: "20,000 points, and the ball rolls aboard the galleon to load the ship's cannon. A Kraken jackpot in multiball." },
+    cannon: { kind: 'Cannon', name: "Ship's Cannon", text: 'Loaded by the Plank. Hold a flipper button to swing the gun, let go (or press FIRE) to shoot. A direct hit on the fort is 40,000, and a 75,000 cannon jackpot during Broadside.' },
+    fort: { ids: [], at: [[158, 912, 44]], kind: 'Toy', name: 'The Fort', text: 'Three hits (3,000 each) lower the drawbridge and raise the palisade; a cannon hit counts double. Three cannon hits during Broadside take the fort: 300,000 and extra ball lit.' },
+    palisade: { kind: 'Targets', name: 'The Palisade', text: 'Rises when the drawbridge falls: 10,000 for each one you knock down. Knock all three down and the keep opens.' },
+    keep: { name: 'The Keep', text: 'The hole inside the fort, open once the palisade is down: 12,500 points, and it starts Broadside (45 seconds: load the cannon and hit the fort).' },
+    kraken: { kind: 'Magnet', name: 'The Kraken', text: 'Spell S-E-A to wake it, then roll past the rock: a tentacle drags the ball down to the treasure chest. Three balls in the chest start Kraken Multiball; after its jackpots the Kraken is the 200,000 super jackpot.' },
+    sea: { ids: ['sea0', 'sea1', 'sea2'], kind: 'Targets', name: 'S-E-A Targets', text: '1,000 points each. Spell S-E-A for 15,000 and the Kraken wakes.' },
+    chest: { kind: 'Ball lock', name: 'Treasure Chest', text: 'Balls the Kraken takes wait here. The third one starts Kraken Multiball: the ramps and orbits are 75,000 jackpots.' },
+    whirl: { kind: 'Whirlpool', name: 'The Whirlpool', text: '5,000 points each time the ball rolls through. Five passes start the Storm: 30 seconds where everything scores double and every pass is 25,000.' },
+    kegs: { ids: ['keg1', 'keg2'], kind: 'Pop bumpers', name: 'Powder Kegs', text: '500 points a hit, 5,500 in Davy Jones. Each hit adds to the Powder Kegs line of the bonus.' },
+    arr: { ids: ['laneA', 'laneR1', 'laneR2'], kind: 'Top lanes', name: 'A-R-R Lanes', text: '1,000 points and a doubloon each; the flipper buttons move the lit lanes. Spell A-R-R to raise the bonus multiplier. A soft launch into the flashing lane is the 50,000 skill shot.' },
+    rigging: { name: 'The Rigging', text: '20,000 points over the top of the cove and down to your right flipper. Big shots one after another score combos; a Kraken jackpot in multiball.' },
+    deck: null, deep: null
+  };
 }

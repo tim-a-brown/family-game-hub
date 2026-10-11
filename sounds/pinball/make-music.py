@@ -251,52 +251,89 @@ def master(tr, mix):
 
 # ── the five tables ──────────────────────────────────────────────────────────
 def nebula():
-    # spacey: slow evolving supersaw/noise pads in D, sub drone, distant glassy sparkles, and what sets it apart from
-    # the haunted organ: a pulsing sequencer (16th-note resonant synth arpeggio with a dotted-8th echo, its filter
-    # slowly opening and closing) over a soft 8th-note pulse bass, at 120 bpm, so the track is always moving
+    # deep space, kept apart from both the haunted organ and the Neon synthwave (no supersaw, no saw bass, no beat):
+    # a drone of sine partials whose upper harmonics shimmer in and out, a slow sub throb, glassy FM-bell pings in a
+    # floating 3+3+4+3+3 pattern with long echoes, radar blips, and a theremin-like gliding lead, in D lydian
     beat = 8.0
     tr = Track(beat * 4)
     chords = [[38, 45, 52, 54, 61], [35, 42, 50, 54, 57], [31, 38, 47, 50, 54], [33, 40, 49, 52, 57]]
     for i, ch in enumerate(chords):
-        tr.add('pad', pad(ch, beat + 3, (350, 1300) if i % 2 == 0 else (1300, 450), 2.5, 3.0), i * beat - 1.0)
+        for m in ch[1:]:
+            tr.add('drone', shimmer(mtof(m + 12), beat + 3, 2.5, 3.0) / len(ch) ** 0.5, i * beat - 1.0)
         tr.add('air', noise_pad(mtof(ch[-1] + 12), beat + 3, 9, 3, 3), i * beat - 1.0)
     t = np.arange(tr.n) / SR
     fsub = round(mtof(38) * tr.n / SR) / (tr.n / SR)   # whole cycles per loop
-    tr.bus('sub')[:] += 0.35 * np.sin(2 * np.pi * fsub * t) * (0.7 + 0.3 * np.sin(2 * np.pi * t / (beat * 4)))
-    for k, (when, m) in enumerate([(1.5, 74), (5.2, 81), (9.0, 78), (13.7, 85), (17.4, 76), (21.1, 83), (25.6, 81), (29.2, 88)]):
-        tr.add('glass', music_box(mtof(m), 4.0) * 0.5, when)
-    s16 = 0.125
+    throb = 0.55 + 0.45 * np.cos(2 * np.pi * t / 2.0) ** 2   # a slow throb, 16 per loop
+    tr.bus('sub')[:] += 0.35 * np.sin(2 * np.pi * fsub * t) * throb
+    step = 0.25
     for i, ch in enumerate(chords):
         pcs = {m % 12 for m in ch}
-        notes = [m for m in range(62, 100) if m % 12 in pcs][:8]
-        for k in range(64):
-            when = i * beat + k * s16
-            m = notes[(k % 4) + (k // 4) % 4]                          # rising 4-note cells that climb, then reset
-            cut = 1400 + 1800 * (0.5 - 0.5 * np.cos(2 * np.pi * when / 16.0))   # filter sweep, two cycles per loop
-            tr.add('arp', seq_blip(mtof(m), 0.32, cut * 2.2, cut * 0.35) * (1.0 if k % 4 == 0 else 0.62), when)
-        for k in range(16):
-            tr.add('pulse', seq_blip(mtof(ch[0] + 12), 0.22, 900, 180, 1.2, 0.12) * (1.0 if k % 2 == 0 else 0.6), i * beat + k * 2 * s16)
-    echo = lambda x: x + 0.38 * np.roll(x, int(0.375 * SR)) + 0.15 * np.roll(x, int(0.75 * SR))   # circular: seamless
-    return tr, {'pad': (0.75, [lambda x: chorus(x, 0.005, 0.25), lambda x: reverb(x, 6.0, 0.04, 5000, 0.55)]),
-                'air': (0.45, [lambda x: reverb(x, 6.0, 0.05, 4000, 0.6)]),
+        notes = [m for m in range(69, 110) if m % 12 in pcs][:7]
+        for half in range(2):
+            for j, (k, idx) in enumerate(zip((0, 3, 6, 10, 13), ((0, 2, 4, 3, 6), (1, 4, 2, 5, 3))[half])):
+                when = i * beat + half * 4.0 + k * step
+                tr.add('ping', fm_ping(mtof(notes[idx]), 1.8) * (1.0 if j == 0 else 0.7), when)
+        tr.add('radar', radar_blip(), i * beat + 5.5)
+    lead = [(8.4, [(0, 81), (1.6, 78), (2.6, 83), (4.2, 81)], 6.4),
+            (24.4, [(0, 76), (1.2, 81), (2.5, 85), (4.0, 83), (5.0, 81)], 6.6)]
+    for when, pts, dur in lead:
+        tr.add('lead', theremin(pts, dur), when)
+    echo = lambda x: sum(0.55 ** j * np.roll(x, int(j * 0.75 * SR)) for j in range(6))   # circular: seamless
+    return tr, {'drone': (1.0, [lambda x: chorus(x, 0.004, 0.25),   # 0.25 Hz: whole LFO cycles per loop, so no seam
+                                  lambda x: reverb(x, 6.0, 0.04, 6000, 0.5)]),
+                'air': (0.4, [lambda x: reverb(x, 6.0, 0.05, 4000, 0.6)]),
                 'sub': (0.5, []),
-                'glass': (0.55, [lambda x: reverb(x, 7.0, 0.08, 7000, 0.75)]),
-                'arp': (0.34, [echo, lambda x: reverb(x, 3.0, 0.03, 7000, 0.35)]),
-                'pulse': (0.5, [lambda x: reverb(x, 1.5, 0.02, 3000, 0.15)])}
+                'ping': (0.3, [echo, lambda x: reverb(x, 4.0, 0.04, 8000, 0.4)]),
+                'radar': (0.16, [echo, lambda x: reverb(x, 3.0, 0.03, 8000, 0.4)]),
+                'lead': (0.4, [lambda x: reverb(x, 5.0, 0.06, 6000, 0.45)])}
 
 
-def seq_blip(f, dur, cut0, cut1, res=2.5, decay=0.25):
-    """Analogue-sequencer note: a sawtooth through a resonant 4-pole-style lowpass whose cutoff snaps from cut0 down
-    to cut1 (the 'blip'), done additively so it stays alias-free."""
+def shimmer(f, dur, a, r):
+    """Space drone voice: sine partials (fundamental plus 2nd-8th harmonics), each slightly detuned and fading in and
+    out on its own slow cycle, so the top of the sound glitters without any saw buzz."""
     n = int(dur * SR)
     t = np.arange(n) / SR
-    fc = cut1 + (cut0 - cut1) * np.exp(-t / 0.05)
-    ph = 2 * np.pi * f * t + rng.random() * 6
     x = np.zeros(n)
-    for k in range(1, int(min(9000, SR * 0.45) / f) + 1):
-        r = k * f / fc
-        x += (1.0 / k) / np.sqrt(1 + r ** 8) * (1 + res * np.exp(-((r - 1) / 0.25) ** 2)) * np.sin(k * ph)
-    return x * env(n, 0.003, 0.06) * np.exp(-t / decay)
+    for k, amp in ((1, 1.0), (2, 0.35), (3, 0.22), (4, 0.14), (5, 0.1), (6, 0.08), (8, 0.06)):
+        if f * k < SR * 0.45:
+            lfo = 0.5 + 0.5 * np.sin(2 * np.pi * rng.uniform(0.07, 0.35) * t + rng.random() * 6) if k > 1 else 1
+            x += amp * lfo * np.sin(2 * np.pi * f * k * (1 + rng.uniform(-0.0015, 0.0015)) * t + rng.random() * 6)
+    return x * env(n, a, r) * 0.6
+
+
+def fm_ping(f, dur=1.8, ratio=1.41, index=2.6):
+    """Glassy FM bell: a sine phase-modulated by an inharmonic partner whose depth dies away quickly."""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    idx = index * np.exp(-t / 0.12) + 0.25
+    return np.sin(2 * np.pi * f * t + idx * np.sin(2 * np.pi * f * ratio * t)) * np.exp(-t / 0.45) * env(n, 0.002, 0.1)
+
+
+def radar_blip():
+    """Sonar/radar: two short rising sine chirps."""
+    out = np.zeros(int(0.6 * SR))
+    for k, (start, a) in enumerate(((0.0, 1.0), (0.22, 0.6))):
+        n = int(0.09 * SR)
+        t = np.arange(n) / SR
+        f = 1500 * (1 + 0.35 * t / 0.09)
+        x = np.sin(2 * np.pi * np.cumsum(f) / SR) * env(n, 0.004, 0.06) * a
+        i = int(start * SR)
+        out[i:i + n] += x
+    return out
+
+
+def theremin(pts, dur):
+    """Theremin / ondes martenot: a near-sine voice gliding between pitches (portamento), with a wide slow vibrato."""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    target = np.zeros(n)
+    for when, m in pts:
+        target[int(when * SR):] = m
+    b, a = signal.butter(1, 4.0 / (SR / 2))   # about 0.1 s glide
+    curve = signal.lfilter(b, a, target - target[0]) + target[0]
+    f = mtof(curve) * (1 + 0.011 * np.sin(2 * np.pi * 5.3 * t) * np.clip(t / 0.6, 0, 1))
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    return (np.sin(ph) + 0.12 * np.sin(2 * ph) + 0.04 * np.sin(3 * ph)) * env(n, 0.5, 1.2) * 0.5
 
 
 def pirate():
