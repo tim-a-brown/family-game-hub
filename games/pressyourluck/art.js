@@ -36,8 +36,9 @@ var PYLArt = (function () {
       '<path class="g-wink" opacity="0" ' + wd + ' d="M6-11 C9-14 15-14 18-10 M6-11 L3-13 M6-11 L3-9" fill="none" stroke="' + OL + '" stroke-width="2.4" stroke-linecap="round"/></g>';
     // the grin: wide, white, square teeth
     s += '<path d="M-29-1 C-24 26 24 26 29-1 C16 5-16 5-29-1z" fill="#fff"' + K + '/>';
-    s += '<path d="M-26 9.5 C-12 13 12 13 26 9.5" fill="none" stroke="' + OL + '" stroke-width="1.7"/>';
-    s += '<path d="M-19 3.4 L-18 19.5 M-9.5 4.6 L-9.2 22.6 M0 4.9 L0 23.4 M9.5 4.6 L9.2 22.6 M19 3.4 L18 19.5" stroke="' + OL + '" stroke-width="1.7" stroke-linecap="round"/>';
+    // the gaps between the teeth stop at the lips
+    s += '<path d="M-23.9 9.6 C-12 13 12 13 23.9 9.6" fill="none" stroke="' + OL + '" stroke-width="1.7"/>';
+    s += '<path d="M-19 3.4 L-18.6 13.6 M-9.5 4.6 L-9.4 17.8 M0 4.9 L0 19 M9.5 4.6 L9.4 17.8 M19 3.4 L18.6 13.6" stroke="' + OL + '" stroke-width="1.7" stroke-linecap="butt"/>';
     // the bulb nose
     s += '<circle cx="0" cy="-3" r="5.8" fill="' + RED + '" stroke="' + OL + '" stroke-width="2.2"/><circle cx="-1.8" cy="-4.8" r="1.6" fill="#fff" opacity=".55"/>';
     return s;
