@@ -959,7 +959,7 @@ export default {
     '<p>A table full of fresh fortune cookies, each in its own cellophane wrapper. <b>Tap one</b> to pick it up: the wrapper tears open and comes off. <b>Tap the cookie again</b> to crack it. It snaps in two and the paper slip unrolls with your fortune.</p>' +
     '<ul><li>Every slip has a fortune, six <b>lucky numbers</b> and a <b>Learn Chinese</b> word with how to say it.</li>' +
     '<li>Tap the table or <b>Another cookie</b> to put the slip away. The table restocks itself.</li>' +
-    '<li><b>Add a cookie</b> drops another cookie on the table. It lands on or bumps into the others, and a crowded table piles up. Hold it to keep pouring, up to 50. The arrow button sets the table back to a dozen.</li>' +
+    '<li><b>Add a cookie</b> drops another cookie on the table. It lands on or bumps into the others, and a crowded table piles up. Hold it to keep pouring, up to 80; past 50 they pile up. The arrow button sets the table back to a dozen.</li>' +
     '<li>You won’t see the same fortune twice until you’ve read most of them.</li></ul>',
   mount
 };
@@ -1294,11 +1294,12 @@ function mount(stage, api) {
   const tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   // The camera backs off until the visible table holds about a dozen cookies, whatever the screen shape.
   // "More cookies" adds up to MAX; the camera eases back a little to make room for each one.
-  const COUNT = 11, PER = 4.4, PER_MORE = 3.6, MAX = 50, MORE_KEY = 'fortune_cookie_more';
+  const COUNT = 11, PER = 4.4, PER_MORE = 3.6, MAX = 80, ROOM = 50, MORE_KEY = 'fortune_cookie_more';
   let baseD = 10, baseN = COUNT, camD = 0, camTo = 0;
   let extra = Math.max(0, Math.min(MAX, parseInt(lsGet(MORE_KEY), 10) || 0));
   const total = () => Math.min(MAX, baseN + extra);
-  const distFor = (n) => baseD * Math.sqrt((baseN * PER + Math.max(0, n - baseN) * PER_MORE) / (baseN * PER));
+  // the view backs away to make room up to ROOM cookies; past that the table stays put and they pile up
+  const distFor = (n) => { n = Math.min(n, ROOM); return baseD * Math.sqrt((baseN * PER + Math.max(0, n - baseN) * PER_MORE) / (baseN * PER)); };
   function placeCamera(d) {
     camera.position.set(0, d * Math.sin(ELEV), d * Math.cos(ELEV));
     camera.lookAt(0, 0, 0);
