@@ -140,7 +140,7 @@ var GAMES = [
       { icon: 'gamepad', title: 'Play solo', desc: 'Ten waves and four bosses', file: 'centipede.html' },
       { icon: 'users', title: 'Play online', desc: '2 or 3 players, each on their own device', file: 'centipede.html?online=1' }
     ] },
-  { id: 'invaders',    name: 'Space Invaders', color: '#2fd35a', cat: 'arcade', min: 1, max: 1, tag: 'Stop the invaders before they land', play: 'invaders' },
+  { id: 'invaders',    name: 'Space Invaders', color: '#2fd35a', cat: 'arcade', min: 1, max: 2, tag: 'Stop the invaders before they land', play: 'invaders' },
   { id: 'asteroids',   name: 'Asteroids',   color: '#6366f1', cat: 'arcade', min: 1, max: 1, tag: 'Blast rocks, stay alive', play: 'asteroids' },
   { id: 'peggle',      name: 'Peggle',       color: '#fb923c', cat: 'arcade', min: 1, max: 1, tag: 'Aim, bounce, clear the orange pegs', play: 'peggle' },
   { id: 'cubehopper',  name: 'Q*bert',       color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Hop the pyramid, change every cube', play: 'cubehopper' },
