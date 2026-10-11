@@ -565,10 +565,10 @@ export function WillyCrash3D(api, host) {
     mouth.scale.y = HR * .3 * open; teeth.visible = mood !== 'splat' && mood !== 'dizzy';
   }
   function drawWilly(R) {
-    const P = R.P, s = C.WS, p = i => P[i];
+    const P = R.P, s = C.WS, k = s / C.WS_ART, p = i => P[i];
     W3.visible = true;
     limbMeshes.forEach(o => {
-      const a = p(o.L[0]), b = p(o.L[1]), r = o.L[2] * s, z = o.L[4];
+      const a = p(o.L[0]), b = p(o.L[1]), r = o.L[2] * s, z = o.L[4] * k;
       seg(o.m, a.x, -a.y, z, b.x, -b.y, z, r);
       o.j.position.set(b.x, -b.y, z); o.j.scale.set(r, r, r);
     });
@@ -578,12 +578,12 @@ export function WillyCrash3D(api, host) {
     shoulders.position.set(n.x, -n.y, 0); shoulders.scale.set(5.6 * s, 3.4 * s, 5.4 * s);
     [[C.LE, C.LH, -4], [C.RE, C.RH, 4]].forEach((L, k) => {
       const e = p(L[0]), hd = p(L[1]);
-      gloves[k].position.set(hd.x, -hd.y, L[2]); gloves[k].scale.set(3.3 * s, 3.3 * s, 3.3 * s);
-      seg(cuffs[k], lerp(e.x, hd.x, .45), -lerp(e.y, hd.y, .45), L[2], hd.x, -hd.y, L[2], 3.1 * s);
+      gloves[k].position.set(hd.x, -hd.y, L[2] * s / C.WS_ART); gloves[k].scale.set(3.3 * s, 3.3 * s, 3.3 * s);
+      seg(cuffs[k], lerp(e.x, hd.x, .45), -lerp(e.y, hd.y, .45), L[2] * s / C.WS_ART, hd.x, -hd.y, L[2] * s / C.WS_ART, 3.1 * s);
     });
     [[C.LK, C.LF, -3.5], [C.RK, C.RF, 3.5]].forEach((L, k) => {
-      const kn = p(L[0]), f = p(L[1]), dx = f.x - kn.x, dy = f.y - kn.y, l = Math.hypot(dx, dy) || 1;
-      boots[k].position.set(f.x + dx / l * 1.5, -(f.y + dy / l * 1.5), L[2]); boots[k].scale.set(5 * s, 3.6 * s, 3.6 * s);
+      const kn = p(L[0]), f = p(L[1]), dx = f.x - kn.x, dy = f.y - kn.y, l = Math.hypot(dx, dy) || 1, o = s;
+      boots[k].position.set(f.x + dx / l * o, -(f.y + dy / l * o), L[2] * s / C.WS_ART); boots[k].scale.set(5 * s, 3.6 * s, 3.6 * s);
       boots[k].rotation.z = -Math.atan2(dy, dx);
     });
     R.sc.forEach((q, i) => { const m = hairBits[i]; if (!m) return; m.position.set(q.x, -q.y, -1); const r = (3.6 - i * .5) * s; m.scale.set(r, r, r); });
@@ -618,7 +618,7 @@ export function WillyCrash3D(api, host) {
   const peek = new THREE.Group(); barrel.add(peek);   // Willy's head poking out while aiming
 
   // ── Birds ──
-  const birdGeo = merge([at(new THREE.SphereGeometry(5.5, 8, 6).scale(1, .75, .8), 0, 4, 0), at(new THREE.SphereGeometry(3, 8, 6), 5, 8, 0)]);
+  const birdGeo = merge([at(new THREE.SphereGeometry(5.5, 8, 6).scale(1, .75, .8), 0, 4, 0), at(new THREE.SphereGeometry(3, 8, 6), 5, 8, 0)]).scale(C.BIRD_S, C.BIRD_S, C.BIRD_S);
   const birdMat = lam('#9b97b4');
   let birds = null, birdsFor = null, flockFor = null;
   function syncBirds(st) {
@@ -688,12 +688,16 @@ export function WillyCrash3D(api, host) {
     if (st.state === 'intro' || st.state === 'aim' || st.state === 'idle' || !R) return { x: cam.x, y: -cam.y, d: distFor(cam.z), pitch: .07, yaw: .07, mode: 'aim' };
     const P = R.P, pl = P[C.PEL], vx = (pl.x - pl.px) / C.HS, vy = (pl.y - pl.py) / C.HS;
     const ground = surfaceBelow(st, pl.x, pl.y), above = -pl.y - ground;
-    if (st.state === 'result') return { x: pl.x + 10, y: -pl.y + 24, d: distSee(R.dance ? 300 : 270), pitch: .3, yaw: .32, mode: 'result' };
-    const descending = vy > -60, close = R.landed || R.airT < .3 || (descending && above < 230);
-    if (close) return { x: pl.x + clamp(vx * .08, -30, 30), y: -pl.y + 10, d: distSee(230), pitch: .34, yaw: .42, mode: 'land' };
+    // Close-ups look at him fairly straight on, at his own height: dropping into a gap or onto the street
+    // the camera is level with him; up on a roof it sits a little higher, enough to see the roof (and the bullseye).
+    const onRoof = st.B.some(b => pl.x > b.x0 - 8 && pl.x < b.x1 + 8 && -pl.y > b.h - 24);
+    const tilt = onRoof ? .17 : .05, swing = onRoof ? .22 : 0;   // (square on to a gap, so its corners don't hide him)
+    if (st.state === 'result') { const fx = R.dance ? R.dance.x : pl.x, fy = R.dance ? R.dance.y - 14 : pl.y - 8; return { x: fx, y: -fy, d: distSee(R.dance ? 150 : 140), pitch: tilt, yaw: swing, mode: 'result' }; }
+    const descending = vy > -60, close = R.landed || R.airT < .3 || (descending && above < (onRoof ? 230 : 320));
+    if (close) return { x: pl.x + clamp(vx * .08, -30, 30), y: -pl.y + 8, d: distSee(onRoof ? 165 : 185), pitch: tilt, yaw: swing, mode: 'land' };
     // in the air: lead him, and pitch over once he is past the top of his arc
     const k = descending ? 1 : clamp((vy + 500) / 500, 0, 1);
-    return { x: pl.x + clamp(vx * .5, -220, 220), y: -pl.y + clamp(-vy * .28, -220, 160), d: distSee(lerp(640, 560, k)), pitch: lerp(.14, .66, k), yaw: lerp(.06, .2, k), mode: 'fly' };
+    return { x: pl.x + clamp(vx * .5, -220, 220), y: -pl.y + clamp(-vy * .28, -220, 160), d: distSee(lerp(460, 400, k)), pitch: lerp(.14, .66, k), yaw: lerp(.06, .2, k), mode: 'fly' };
   }
   function tick(dt) {
     const st = api.get(), w = wantCam(st);
@@ -701,8 +705,8 @@ export function WillyCrash3D(api, host) {
     const fast = w.mode === 'aim' ? 9 : w.mode === 'land' ? 3.2 : 2.6;
     rig.x = approach(rig.x, w.x, fast, dt); rig.y = approach(rig.y, w.y, fast, dt);
     rig.d = approach(rig.d, w.d, w.mode === 'land' ? 2.2 : 2.6, dt);
-    rig.pitch = approach(rig.pitch, w.pitch, w.mode === 'aim' ? 4 : 1.5, dt);
-    rig.yaw = approach(rig.yaw, w.yaw, w.mode === 'aim' ? 4 : 1.3, dt);
+    rig.pitch = approach(rig.pitch, w.pitch, w.mode === 'aim' ? 4 : w.mode === 'fly' ? 1.5 : 3, dt);
+    rig.yaw = approach(rig.yaw, w.yaw, w.mode === 'aim' ? 4 : w.mode === 'fly' ? 1.3 : 2.4, dt);
     rig.mode = w.mode;
   }
   function placeCamera(st) {
@@ -743,13 +747,13 @@ export function WillyCrash3D(api, host) {
     if (st.rag) {
       drawWilly(st.rag); peek.visible = false;
       const pl = st.rag.P[C.PEL], gy = surfaceBelow(st, pl.x, pl.y), h = Math.max(0, -pl.y - gy);
-      shadow.visible = true; shadow.position.set(pl.x, gy + .8, 0); const r = 16 * (1 + h / 300); shadow.scale.set(r, r * .6, 1); shadow.material.opacity = .3 / (1 + h / 160);
+      shadow.visible = true; shadow.position.set(pl.x, gy + .8, 0); const r = 16 * C.WS / C.WS_ART * (1 + h / 300); shadow.scale.set(r, r * .6, 1); shadow.material.opacity = .3 / (1 + h / 160);
     } else {
       W3.visible = false; shadow.visible = false;
       peek.visible = aimNow; if (peek.visible) { if (head.parent !== peek) peek.add(head); }
     }
     if (st.rag && head.parent !== W3) W3.add(head);
-    if (peek.visible && head.parent === peek) { head.position.set(C.BARREL - 2, 0, 0); head.rotation.set(0, 0, -Math.PI / 2); head.scale.set(C.WS, C.WS, C.WS); mouth.scale.y = HR * .3; teeth.visible = true; }
+    if (peek.visible && head.parent === peek) { head.position.set(C.BARREL - 2, 0, 0); head.rotation.set(0, 0, -Math.PI / 2); head.scale.set(C.PEEK_S, C.PEEK_S, C.PEEK_S); mouth.scale.y = HR * .3; teeth.visible = true; }
     updateStreet(st);
     updateBirds(st);
     updateParticles(st);

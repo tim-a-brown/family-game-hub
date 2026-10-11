@@ -207,10 +207,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // ═══ World constants ════════════════════════════════════════════════════
   var G = 600;                         // gravity, world units / s²
   var VMIN = 260, VMAX = 1360;         // "Aim yourself": launch speed at 0% and 100% plunger
-  var VFIX = 1000;                     // arcade: every shot leaves the cannon at the same speed; only the angle changes
+  var VFIX = 1040;                     // arcade: every shot leaves the cannon at the same speed; only the angle changes (a touch
+                                       // faster than 1000 since the gaps widened, so the sweep still reaches the same roofs)
   var ARC_LO = 69, ARC_HI = 87;        // arcade: the cannon sweeps between these angles
   var PIV = { x: 70, y: -28 }, BARREL = 70;
-  var WS = 1.5;                        // Willy's size
+  // Willy's size: about one storey tall (a storey is 26 units), so he reads as a person next to the buildings,
+  // cars and lamps. Everything about him (body, radii, joints, drawing, 3D model) scales from this; his
+  // drawings were made at WS_ART and are scaled down from there so the outlines keep their weight.
+  var WS = .45, WS_ART = 1.5;
+  var PEEK_S = WS * 1.6;               // his head peeking out of the cannon while aiming (a touch bigger, so it reads)
+  var BIRD_S = .6;                     // pigeons, in proportion
+  var DUST_S = .55;                    // dust kicked up where he hits (so it doesn't swallow him)
   var VW0 = 400;                       // world units across the screen at zoom 1
   var DT = 1 / 120, SUB = 2, HS = DT / SUB;
 
@@ -245,7 +252,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var BSPEC = [[88, 190], [82, 330], [86, 300], [104, 350], [86, 315], [82, 365], [94, 520]];
   var MANS_H = 16, MANS_W = .12;   // the jackpot roof's slate slopes: their height, and how far in they run each side (share of the width)
   var EDGE_T = 1000;    // coming to rest on those slopes (still on the building, off the flat deck)
-  var CITY_X0 = 330, GAP = 54;
+  var CITY_X0 = 330, GAP = 70;
   var B = [], COL = [], cars = [], cans = [], lamps = [], ants = [], chims = [], perches = [], sprops = [], dogs = [], SEA_X = 1560, WORLD_END = 2100, citySeed = 1;
   var jpI = 3, jpB = null, jpLevel = 0, jpMoved = false;
   var BRICK = [['#a4563c', '#7e3f2b'], ['#9a4b36', '#743624'], ['#b0623f', '#86472d'], ['#94503a', '#6e3a29']];
@@ -522,10 +529,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       var vx = (p.x - p.px) * damp, vy = (p.y - p.py) * damp, ax = ws + p.dx - fx + (R.slipT > 0 ? R.slipAx : 0), ay = G + p.dy - fy;
       if (flail) {
         var tt = R.t;
-        if (i === LH) { ax += Math.cos(tt * 13) * 1700; ay += Math.sin(tt * 13) * 1700; }
-        else if (i === RH) { ax += Math.cos(tt * 13 + PI) * 1700; ay += Math.sin(tt * 13 + PI) * 1700; }
-        else if (i === LF) { ax += Math.cos(tt * 10 + .5) * 1200; ay += Math.sin(tt * 10 + .5) * 1200; }
-        else if (i === RF) { ax += Math.cos(tt * 10 + .5 + PI) * 1200; ay += Math.sin(tt * 10 + .5 + PI) * 1200; }
+        var fa = 1700 * WS / WS_ART, fl = 1200 * WS / WS_ART;   // windmilling arms and legs, in proportion to his size
+        if (i === LH) { ax += Math.cos(tt * 13) * fa; ay += Math.sin(tt * 13) * fa; }
+        else if (i === RH) { ax += Math.cos(tt * 13 + PI) * fa; ay += Math.sin(tt * 13 + PI) * fa; }
+        else if (i === LF) { ax += Math.cos(tt * 10 + .5) * fl; ay += Math.sin(tt * 10 + .5) * fl; }
+        else if (i === RF) { ax += Math.cos(tt * 10 + .5 + PI) * fl; ay += Math.sin(tt * 10 + .5 + PI) * fl; }
       }
       if (p.x > SEA_X && p.y > 10) { vx *= .88; vy *= .86; ay = 60; if (!R.wet) enterWater(p); }
       p.px = p.x; p.py = p.y; p.x += vx + ax * h2; p.y += vy + ay * h2;
@@ -742,7 +750,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (c.k === 'lip' && face === 'top') roofTouch(c.b, p);
     // skidding along a roof or the street kicks up a trail of dust
     if ((face === 'top' || c.k === 'mans') && slide > 150 && (c.k === 'b' || c.k === 'ground' || c.k === 'lip' || c.k === 'mans')) {
-      if (Math.random() < .3) parts.push({ k: 'dust', x: p.x, y: p.y + p.r, vx: -Math.sign(p.x - p.px) * (20 + Math.random() * 40), vy: -10 - Math.random() * 30, life: .5, max: .8, s: 2.5 + Math.random() * 3 });
+      if (Math.random() < .3) parts.push({ k: 'dust', x: p.x, y: p.y + p.r, vx: -Math.sign(p.x - p.px) * (20 + Math.random() * 40), vy: -10 - Math.random() * 30, life: .5, max: .8, s: (2.5 + Math.random() * 3) * DUST_S });
       if (t - lastScrape > .14 && slide > 220) { lastScrape = t; Snd.scrape(Math.min(1, slide / 600)); }
     }
     if (sp < 70) return;
@@ -941,7 +949,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     R.splatted = true; R.pinT = .55; R.noCol = true; R.mood = 'splat'; R.splatB = b;
     var SP = [[0, -22], [0, -14], [0, 0], [-9, -16], [-13, -25], [9, -16], [13, -25], [-6, 9], [-9, 18], [6, 9], [9, 18]];
     R.P.forEach(function (q, i) { q.x = cx + SP[i][0] * WS; q.y = cy + SP[i][1] * WS; q.px = q.x; q.py = q.y; });
-    b.cracks.push({ x: cx, y: cy - 6 * WS, r: 22 + Math.random() * 6, a: Math.random() * 6 });
+    b.cracks.push({ x: cx, y: cy - 6 * WS, r: (22 + Math.random() * 6) * WS / WS_ART, a: Math.random() * 6 });
     Snd.splat(); shake = 12; flash = .35; Kit.haptic('heavy');
     cur.ev.splat++; award(50, cx, cy - 40, 'Splat', '#ff9a7a');
   }
@@ -958,7 +966,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function dust(x, y, n, face) {
     for (var i = 0; i < n; i++) {
       var a = face === 'left' ? PI + (Math.random() - .5) * 1.6 : -PI / 2 + (Math.random() - .5) * 2.6, s = 40 + Math.random() * 110;
-      parts.push({ k: 'dust', x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s * .6, life: .7 + Math.random() * .4, max: 1.1, s: 5 + Math.random() * 6 });
+      parts.push({ k: 'dust', x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s * .6, life: .7 + Math.random() * .4, max: 1.1, s: (5 + Math.random() * 6) * DUST_S });
     }
   }
 
@@ -1097,7 +1105,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if (resultT > resultLen()) nextShot();
     }
     // camera
-    var zt = state === 'result' ? (R.dance ? 1.3 : 1.12) : slowOn || R.landed ? 1.22 : clamp(1.05 - (sp - 300) / 2100, .6, 1);
+    // (close-ups come in tighter than the flight view: he is about a storey tall)
+    var zt = state === 'result' ? (R.dance ? 2.1 : 1.9) : slowOn || R.landed ? 1.75 : clamp(1.05 - (sp - 300) / 2100, .6, 1);
     var tx = pl.x + (state === 'flight' ? clamp(vx * .2, -150, 150) : 0), ty = pl.y + (state === 'flight' ? clamp(vy * .1, -120, 120) : -viewH(cam.z) * .17);
     followCam(tx, ty, zt, dt, state === 'flight' ? 6 : 3);
   }
@@ -1215,7 +1224,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function viewH(z) { return H / (K * z); }
   // Aiming: the cannon bottom left, most of the city to its right, sky above for the arc
   // (950 units across in portrait; the whole row of seven when the screen is wide)
-  function camAim() { var want = W > H * 1.2 ? 1360 : 950, z = Math.min(.6, (W / K) / want), vw = viewW(z), vh = viewH(z); return { x: -40 + vw / 2, y: 46 - vh / 2, z: z }; }
+  function camAim() { var want = W > H * 1.2 ? 1440 : 1000, z = Math.min(.6, (W / K) / want), vw = viewW(z), vh = viewH(z); return { x: -40 + vw / 2, y: 46 - vh / 2, z: z }; }
   // The whole row of buildings
   function camOverview() { var x0 = CITY_X0 - 60, x1 = (B.length ? B[B.length - 1].x1 : 1200) + 60, z = Math.min(.6, (W / K) / (x1 - x0)), vh = viewH(z); return { x: (x0 + x1) / 2, y: 46 - vh / 2, z: z }; }
   function setCam(a, b, e) { cam.x = lerp(a.x, b.x, e); cam.y = lerp(a.y, b.y, e); cam.z = lerp(a.z, b.z, e); }
@@ -1234,7 +1243,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // canvas then only carries the screen overlays. Without WebGL (or with ?wc=2d) the 2D renderer below runs.
   var G3 = null, want3D = !/[?&]wc=2d\b/.test(location.search);
   var API3 = {
-    C: { PIV: PIV, BARREL: BARREL, WS: WS, VW0: VW0, HS: HS, FONT: FONT, HEAD: HEAD, NECK: NECK, PEL: PEL, LE: LE, LH: LH, RE: RE, RH: RH, LK: LK, LF: LF, RK: RK, RF: RF },
+    C: { PIV: PIV, BARREL: BARREL, WS: WS, WS_ART: WS_ART, PEEK_S: PEEK_S, BIRD_S: BIRD_S, VW0: VW0, HS: HS, FONT: FONT, HEAD: HEAD, NECK: NECK, PEL: PEL, LE: LE, LH: LH, RE: RE, RH: RH, LK: LK, LF: LF, RK: RK, RF: RF },
     tipK: tipK, conePos: conePos, umbPos: umbPos,
     get: function () {
       return { B: B, COL: COL, cars: cars, cans: cans, lamps: lamps, ants: ants, pigeons: pigeons, flock: flock, parts: parts, rag: rag, state: state, cam: cam,
@@ -1811,7 +1820,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.restore();
   }
   function drawPigeon(x, y, f, st, ph) {
-    g.save(); g.translate(x, y); g.scale(f, 1);
+    g.save(); g.translate(x, y); g.scale(f * BIRD_S, BIRD_S);
     g.fillStyle = '#9b97b4'; g.strokeStyle = INK; g.lineWidth = 1.2;
     g.beginPath(); g.ellipse(0, -4, 6, 4, 0, 0, TAU); g.fill(); g.stroke();
     g.beginPath(); g.arc(5, -8, 3, 0, TAU); g.fill(); g.stroke();
@@ -1835,7 +1844,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var RED = '#e5263f', BLUE = '#2a56c6', GOLD = '#ffc22e', SKIN = '#ffcf9f', HAIR = '#8f5b2c', HAIR2 = '#6a4220';
   function dot(x, y, r, col) { g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
   function drawWilly(R) {
-    var P = R.P, s = WS;
+    // drawn at the art size around his hips, then scaled down to his real size
+    var k = WS / WS_ART;
+    if (k !== 1 && !R.art) {
+      var o = R.P[PEL], up = function (q) { return { x: o.x + (q.x - o.x) / k, y: o.y + (q.y - o.y) / k }; };
+      var big = { P: R.P.map(up), sc: R.sc.map(up), face: R.face, mood: R.mood, dizzy: R.dizzy, dance: R.dance, art: true };
+      g.save(); g.translate(o.x, o.y); g.scale(k, k); g.translate(-o.x, -o.y); drawWilly(big); g.restore();
+      return;
+    }
+    var P = R.P, s = WS_ART;
     g.lineCap = 'round'; g.lineJoin = 'round';
     // long hair streaming out behind
     var sc = R.sc;
@@ -1965,7 +1982,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     // barrel
     var rc = recoil * 9;
     g.save(); g.translate(PIV.x, PIV.y); g.rotate(-a); g.translate(-rc, 0);
-    if (aimNow) { g.save(); g.translate(BARREL - 2, 0); g.rotate(PI / 2); drawHead(7.4 * WS, 'grin'); g.restore(); }
+    if (aimNow) { g.save(); g.translate(BARREL - 2, 0); g.rotate(PI / 2); g.scale(PEEK_S / WS_ART, PEEK_S / WS_ART); drawHead(7.4 * WS_ART, 'grin'); g.restore(); }
     function barrelPath() { g.beginPath(); g.moveTo(-14, -13); g.lineTo(BARREL - 8, -15); g.lineTo(BARREL - 8, 15); g.lineTo(-14, 13); g.closePath(); }
     g.fillStyle = INK; g.beginPath(); g.arc(-14, 0, 15.5, 0, TAU); g.fill();
     g.fillStyle = '#2c52c0'; g.beginPath(); g.arc(-14, 0, 13.2, 0, TAU); g.fill();
