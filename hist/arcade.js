@@ -514,8 +514,48 @@
   // where each of the five shots came down: a city sketch with the target roof, the jackpot tower and the sea
   var WLAND = { bull: ['Bullseye', '#ffd84a'], great: ['Great', '#7dffb3'], nice: ['Nice', '#7fe0ff'], roof: ['Target roof', '#c9b8ff'], wrong: ['Wrong roof', '#ffb0d0'],
     crash: ['Crash', '#ff8a5c'], splash: ['Splash', '#7fd0ff'], jackpot: ['JACKPOT', '#ffd84a'], jackpad: ['Tower pad', '#ffd84a'], jackroof: ['Top of the tower', '#ffd84a'] };
+  // Willy Crash v2 (the arcade's seven-building ticket city). Records with detail.v === 2 carry
+  // rb (roof building index per shot, -1 = street/gap/bay), jb (jackpot building per shot), ps (tickets per shot).
+  var WC2_H = [190, 330, 300, 350, 315, 365, 520], WC2_V = [25, 35, 100, 500, 100, 35, 25];
+  function willyV2(e, ui, d) {
+    var ls = String(d.ls).split(','), ps = String(d.ps || '').split(',').map(Number);
+    var rb = String(d.rb || '').split(',').map(Number), jb = String(d.jb || '').split(',').map(Number);
+    var W = 300, H = 150, GY = 136, BW = 27, GAP = 9, X0 = 40, SC = 104 / 520, s = '';
+    s += '<defs><linearGradient id="wc2sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5fa6e6"/><stop offset=".75" stop-color="#bfe0f5"/><stop offset="1" stop-color="#ffe2a0"/></linearGradient></defs>';
+    s += '<rect width="' + W + '" height="' + GY + '" fill="url(#wc2sky)"/><rect y="' + (GY - 26) + '" width="' + W + '" height="12" fill="#7fbde6"/>';
+    s += '<rect y="' + GY + '" width="' + W + '" height="' + (H - GY) + '" fill="#5c5966"/><rect width="34" y="' + (GY - 1) + '" height="' + (H - GY + 1) + '" fill="#5fbf4a"/>';
+    s += '<g transform="translate(16 ' + (GY - 6) + ') rotate(-70)"><rect x="-2" y="-4" width="20" height="8" fill="#fff6ea"/><rect x="4" y="-4" width="3" height="8" fill="#e5263f"/><rect x="11" y="-4" width="3" height="8" fill="#e5263f"/></g><circle cx="16" cy="' + (GY - 5) + '" r="5.5" fill="#2c52c0" stroke="#fff" stroke-width="1.5"/>';
+    var jp0 = isNaN(jb[0]) ? 3 : jb[0];
+    WC2_H.forEach(function (h, i) {
+      var x = X0 + i * (BW + GAP), y = GY - h * SC, isJ = i === jp0, v = isJ ? 500 : i === 3 ? WC2_V[jp0] : WC2_V[i];
+      s += '<rect x="' + x + '" y="' + y.toFixed(1) + '" width="' + BW + '" height="' + (GY - y).toFixed(1) + '" fill="#9a4b36" stroke="#2b1e3f" stroke-width="1"/>';
+      s += '<text x="' + (x + BW / 2) + '" y="' + (y + 10).toFixed(1) + '" text-anchor="middle" font-size="8" font-weight="900" fill="' + (isJ ? '#ffd23a' : '#ffd9c0') + '" font-family="ui-rounded,system-ui,sans-serif">' + v + '</text>';
+      if (isJ) s += '<rect x="' + (x + 4) + '" y="' + (y - 1.5).toFixed(1) + '" width="' + (BW - 8) + '" height="2" fill="#e5263f"/><rect x="' + (x + 9) + '" y="' + (y - 1.5).toFixed(1) + '" width="' + (BW - 18) + '" height="2" fill="#fff"/>';
+    });
+    var used = {};
+    ls.forEach(function (code, i) {
+      var b = rb[i], k = used[b] = (used[b] || 0) + 1, sd = k % 2 ? -1 : 1, step = Math.floor((k - 1) / 2) + (k % 2 ? 0 : 1), x, y;
+      if (b >= 0 && b < 7) { x = X0 + b * (BW + GAP) + BW / 2 + sd * step * 6; y = GY - WC2_H[b] * SC - 9; }
+      else { x = X0 + 10 + ((i * 37) % 230); y = GY + 7; }
+      var c = code === 'jackpot' ? '#ffd84a' : b >= 0 ? (ps[i] >= 100 ? '#7dffb3' : '#7fe0ff') : '#ff8a5c';
+      s += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="6" fill="' + c + '" stroke="#1a0d24" stroke-width="1.4"/><text x="' + x.toFixed(1) + '" y="' + (y + 2.8).toFixed(1) + '" text-anchor="middle" font-size="8" font-weight="900" fill="#1a0d24" font-family="ui-monospace,monospace">' + (i + 1) + '</text>';
+    });
+    var roofs = rb.filter(function (b) { return b >= 0; }).length, best = Math.max.apply(null, ps.concat([0]));
+    var shotsKey = key(ui, ls.map(function (code, i) {
+      var b = rb[i], w = code === 'jackpot' ? ['JACKPOT', '#ffd84a'] : b >= 0 ? ['Roof', ps[i] >= 100 ? '#7dffb3' : '#7fe0ff'] : [code === 'splash' ? 'Bay' : 'Street', '#ff8a5c'];
+      return ['#' + (i + 1) + ' ' + w[0] + ' · ' + n(ps[i] || 0), w[1]];
+    }));
+    return screen(ui, {
+      ac: '#ffd84a', title: d.jp ? 'Jackpot!' : 'Show’s over', score: n(myScore(e)) + ' tickets', rank: rankText(d),
+      pic: svg(W, H, s, { aria: 'Where each shot landed' }), picMax: 340,
+      stats: [['On a roof', roofs + ' of ' + ls.length], d.jp ? ['Jackpots', d.jp] : null, best ? ['Best shot', n(best) + ' tickets'] : null,
+        d.am === 's' ? ['Cannon', 'Aim yourself'] : null, d.wn ? ['Windows', d.wn] : null, d.pg ? ['Pigeons', d.pg] : null],
+      extra: [shotsKey]
+    });
+  }
   R('willycrash', function (e, ui) {
     var d = e.dt; if (!d || !d.ls) return null;
+    if (d.v === 2) return willyV2(e, ui, d);
     var ls = String(d.ls).split(','), ps = String(d.ps || '').split(',').map(Number);
     var W = 300, H = 150, GY = 134, s = '';
     s += '<defs><linearGradient id="wcsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e0b3a"/><stop offset=".6" stop-color="#7a2a6e"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>';
