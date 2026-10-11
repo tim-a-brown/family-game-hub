@@ -11,7 +11,10 @@ organ, FM bells, a theremin-like glide, brass tuba, slide whistle,
 percussion from filtered noise and metallic oscillators, chorus, soft saturation and
 a generated convolution reverb. Every note tail and the reverb wrap round the
 loop end, so each file loops with no seam. Output: <table>.mp3 (32 kHz mono,
-64 kbps) next to this script, plus loops.json with each loop's exact length.
+64 kbps, the loop plus PAD samples of wrap-around either side) next to this
+script, plus loops.json with each loop's exact length, the PAD, and where in the
+loop the player starts and wraps ('start', in samples: the quietest moment,
+chosen by wrap_point so the join is inaudible).
 """
 import json, os, subprocess
 import numpy as np
@@ -19,6 +22,11 @@ from scipy import signal
 
 SR = 32000
 HERE = os.path.dirname(os.path.abspath(__file__))
+# Each mp3 holds its loop with PAD samples of the loop's own tail before it and its own head after it. The player
+# (games/pinball/audio.js, MUSIC_PAD) loops a window that starts PAD/2 into the file, so the loop points sit inside
+# continuous audio, clear of the MP3 encoder's start-up and end padding and the browser resampler's edges, whether or
+# not the browser trims the encoder delay.
+PAD = 2048
 rng = np.random.default_rng(7)
 
 
@@ -37,8 +45,15 @@ class Track:
         return self.buses[name]
 
     def add(self, name, x, t):
-        """Add x starting at time t, wrapping anything past the loop end to the start."""
+        """Add x starting at time t, wrapping anything past the loop end to the start. Every note gets a 1 ms
+        fade-in and a 3 ms fade-out here, so no note can start or stop on a non-zero sample (a click)."""
         b = self.bus(name)
+        x = np.array(x, float)
+        fi, fo = min(len(x) // 4, int(0.001 * SR)), min(len(x) // 4, int(0.003 * SR))
+        if fi:
+            x[:fi] *= np.linspace(0, 1, fi)
+        if fo:
+            x[-fo:] *= np.linspace(1, 0, fo)
         i = int(round(t * SR)) % self.n
         while len(x):
             k = min(len(x), self.n - i)
@@ -55,6 +70,11 @@ def circ(gen, n, fade=0.6):
     w = np.linspace(0, 1, m)
     y[:m] = x[:m] * w + x[n:n + m] * (1 - w)
     return y
+
+
+def circ_fx(fn):
+    """Apply a bus effect (IIR filter, saturation) seamlessly: run it over three copies and keep the middle one."""
+    return lambda x: fn(np.tile(x, 3))[len(x):2 * len(x)]
 
 
 # ── building blocks ──────────────────────────────────────────────────────────
@@ -84,8 +104,9 @@ def highpass(x, fc):
     return signal.lfilter(b, a, x)
 
 
-def sweep_lowpass(x, f0, f1, steps=24):
-    """Lowpass whose cutoff glides f0 -> f1 across x (block-wise, smooth enough for pads)."""
+def sweep_lowpass(x, f0, f1, steps=None):
+    """Lowpass whose cutoff glides f0 -> f1 across x (block-wise, in small enough steps that it cannot zipper)."""
+    steps = steps or max(24, len(x) // 512)
     out = np.zeros_like(x)
     edges = np.linspace(0, len(x), steps + 1).astype(int)
     zi = None
@@ -187,29 +208,31 @@ def drum(f0, f1, dur, noise_amt=0.3, nf=400):
     f = f1 + (f0 - f1) * np.exp(-t / 0.03)
     body = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / (dur * 0.35))
     skin = bandpass(rng.standard_normal(n), nf, 1.5) * np.exp(-t / 0.02) * noise_amt
-    return body + skin
+    return (body + skin) * env(n, 0, dur * 0.3)   # fade the tail out rather than cutting it off
 
 
 def shaker(dur=0.09, f=7000):
     n = int(dur * SR)
     t = np.arange(n) / SR
-    e = np.minimum(t / 0.012, 1) * np.exp(-t / 0.03)
+    e = np.minimum(t / 0.012, 1) * np.exp(-t / 0.03) * env(n, 0, dur * 0.4)
     return highpass(rng.standard_normal(n), f) * e * 0.5
 
 
 def snare(dur=0.3):
     n = int(dur * SR)
     t = np.arange(n) / SR
-    return bandpass(rng.standard_normal(n), 1800, 0.8) * np.exp(-t / 0.07) * 0.8 + np.sin(2 * np.pi * 190 * t) * np.exp(-t / 0.04) * 0.5
+    x = bandpass(rng.standard_normal(n), 1800, 0.8) * np.exp(-t / 0.07) * 0.8 + np.sin(2 * np.pi * 190 * t) * np.exp(-t / 0.04) * 0.5
+    return x * env(n, 0, dur * 0.3)
 
 
 def chorus(x, depth=0.004, rate=0.6, base=0.012, mix=0.5):
     n = len(x)
     t = np.arange(n)
+    rate = max(1, round(rate * n / SR)) / (n / SR)   # a whole number of LFO cycles per loop, so the seam cannot jump
     out = x.copy()
     for k, ph in enumerate((0, 2.1)):
         d = (base + depth * np.sin(2 * np.pi * rate * t / SR + ph)) * SR
-        out += mix * np.interp((t - d) % n, t, x)   # circular: stays seamless
+        out += mix * np.interp((t - d) % n, t, x, period=n)   # circular: stays seamless
     return out / (1 + mix)
 
 
@@ -502,18 +525,14 @@ def neon():
             tr.add('arp', pluck(mtof(arp[k % 4]), 0.6, 0.8, 0.993) * 0.5, t0 + k * beat / 2 + beat / 4)
     # sidechain pump on the chords, locked to the beat
     t = np.arange(tr.n) / SR
-    pump = 1 - 0.45 * np.exp(-((t % beat) / 0.12))
+    ph = t % beat
+    pump = 1 - 0.45 * np.exp(-ph / 0.12) * (1 - np.exp(-ph / 0.004))   # ducks in over ~10 ms: no gain step, no click
     tr.buses['chords'] = tr.buses['chords'] * pump
     return tr, {'chords': (0.8, [lambda x: chorus(x, 0.004, 0.5), lambda x: reverb(x, 3.0, 0.03, 6000, 0.4)]),
-                'bass': (0.45, [soft, lambda x: highpass(x, 55)]),
+                'bass': (0.45, [soft, circ_fx(lambda x: highpass(x, 55))]),
                 'drums': (0.45, [lambda x: reverb(x, 0.9, 0.01, 5000, 0.15)]),
                 'snare': (0.45, [lambda x: reverb(x, 2.4, 0.02, 5000, 0.5)]),
                 'arp': (0.4, [lambda x: reverb(x, 3.0, 0.08, 7000, 0.5)])}
-
-
-def circ_fx(fn):
-    """Apply a bus effect (IIR filter, saturation) seamlessly: run it over three copies and keep the middle one."""
-    return lambda x: fn(np.tile(x, 3))[len(x):2 * len(x)]
 
 
 def organ_pipe(f, dur, reed=1.0, flute=0.6, vol=1.0, punch=1.0):
@@ -555,7 +574,7 @@ def march_snare(acc=1.0):
     t = np.arange(n) / SR
     wires = (bandpass(rng.standard_normal(n), 3500, 0.7) + highpass(rng.standard_normal(n), 2000) * 0.5) * np.exp(-t / 0.055)
     body = (np.sin(2 * np.pi * 185 * t) + 0.4 * np.sin(2 * np.pi * 330 * t)) * np.exp(-t / 0.03)
-    return (wires * 0.7 + body * 0.5) * acc
+    return (wires * 0.7 + body * 0.5) * acc * env(n, 0, 0.06)
 
 
 def cymbal(decay=0.05, hp=6000, dur=None):
@@ -564,7 +583,7 @@ def cymbal(decay=0.05, hp=6000, dur=None):
     t = np.arange(n) / SR
     metal = sum(np.sign(np.sin(2 * np.pi * fr * 1.6 * t + rng.random() * 6)) for fr in (205.3, 304.4, 369.6, 522.7, 540.0, 800.0))
     x = highpass(metal, hp) * 0.25 + highpass(rng.standard_normal(n), hp + 1000) * 0.5
-    return lowpass(x, 11000) * np.exp(-t / decay) * np.minimum(t / 0.001, 1)
+    return lowpass(x, 11000) * np.exp(-t / decay) * np.minimum(t / 0.001, 1) * env(n, 0, n / SR * 0.3)   # crash fades out, not cut
 
 
 def xylo(f, dur=0.6):
@@ -712,16 +731,31 @@ def midway():
                 'whistle': (0.3, [tent(0.3)])}
 
 
+def wrap_point(out):
+    """The player's loop wrap joins two separately encoded copies of the same instant, whose MP3 coding noise differs
+    a little, and the coding noise is largest where the music is loud and noisy (a snare, full organ). So put the
+    wrap in the quietest, least noisy 30 ms of the loop: least energy above 1.5 kHz, then least energy overall."""
+    n = len(out)
+    hf = highpass(np.tile(out, 3), 1500)[n:2 * n]
+    w = int(0.03 * SR)
+
+    def mavg(x):   # circular moving average, centred
+        c = np.cumsum(np.r_[x[-w:], x, x[:w]])
+        return (c[w + w // 2:w + w // 2 + n] - c[w // 2 - 1 + 1:w // 2 + n]) / w
+    return int(np.argmin(mavg(hf ** 2) + 0.1 * mavg(out ** 2)))
+
+
 def main():
     # python3 make-music.py [table ...]: render only those tables (default: all), merging their lengths into loops.json
     import sys
     tables = [('nebula', nebula), ('pirate', pirate), ('haunted', haunted), ('jungle', jungle), ('neon', neon), ('midway', midway)]
     want = sys.argv[1:]
-    loops = {}
+    loops, starts = {}, {}
     lp = os.path.join(HERE, 'loops.json')
     if want and os.path.exists(lp):
         with open(lp) as f:
-            loops = json.load(f).get('samples', {})
+            old = json.load(f)
+            loops, starts = old.get('samples', {}), old.get('start', {})
     for name, fn in tables:
         if want and name not in want:
             continue
@@ -729,14 +763,18 @@ def main():
         out = master(tr, mix)
         wav = os.path.join(HERE, name + '.wav')
         from scipy.io import wavfile
-        wavfile.write(wav, SR, (out * 32767).astype(np.int16))
+        i = wrap_point(out)                           # the file's loop starts here, so the player wraps here
+        rot = np.roll(out, -((i + PAD // 2) % tr.n))  # file sample PAD/2 (where the player starts) = loop sample i
+        padded = np.concatenate([rot[-PAD:], rot, rot[:PAD]])
+        starts[name] = i
+        wavfile.write(wav, SR, np.round(padded * 32767).astype(np.int16))
         mp3 = os.path.join(HERE, name + '.mp3')
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-ac', '1', '-ar', str(SR), '-c:a', 'libmp3lame', '-b:a', '64k', mp3], check=True)
         os.remove(wav)
         loops[name] = tr.n
         print(name, '%.2f s' % (tr.n / SR), os.path.getsize(mp3) // 1024, 'KB', 'rms %.3f' % np.sqrt(np.mean(out ** 2)))
     with open(os.path.join(HERE, 'loops.json'), 'w') as f:
-        json.dump({'rate': SR, 'samples': loops}, f)
+        json.dump({'rate': SR, 'pad': PAD, 'samples': loops, 'start': starts}, f)
 
 
 if __name__ == '__main__':
