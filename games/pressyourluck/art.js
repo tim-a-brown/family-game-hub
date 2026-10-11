@@ -13,7 +13,7 @@ var PYLArt = (function () {
   var INK = '#1b1240', OL = '#140a0c', RED = '#e3262c', RED2 = '#b8141c', RED3 = '#ff5a52', YEL = '#ffe23a', YEL2 = '#e0b400';
 
   // ── The Whammy ─────────────────────────────────────────────────────────────
-  // A grinning red imp: spiky red hair, a yellow mask, one eye winking, a red bulb nose and a huge
+  // A grinning red imp: spiky red hair, a yellow mask, a sly wink now and then, a red bulb nose and a huge
   // square-toothed grin. Head drawn around (0,0), roughly x −46…46, y −44…30. o.soot: blackened face
   function head(o) {
     o = o || {};
@@ -28,10 +28,12 @@ var PYLArt = (function () {
     // the yellow mask across the eyes
     s += '<path d="M-29-15 C-20-21-8-20 0-17 C8-20 20-21 29-15 C30-9 26-1 18-2 C10-3 6-8 0-7 C-6-8-10-3-18-2 C-26-1-30-9-29-15z" fill="' + YEL + '"' + K + '/>';
     if (o.soot) s += '<path d="M-28 4 C-26-16-10-24 2-22 C18-20 28-8 27 8 C16 2 4 10-6 4 C-14 0-20 8-28 4z" fill="#2b2b33" opacity=".85"/>';
-    // eyes: one wide open, one winking
+    // eyes: both open; now and then he winks (the page animates g-reye / g-wink; each head at its own moment)
+    var wd = 'style="animation-delay:-' + (Math.random() * 7).toFixed(2) + 's"';
     s += '<g class="g-eyes"><ellipse cx="-12" cy="-11" rx="6.5" ry="7" fill="#fff" stroke="' + OL + '" stroke-width="2"/>' +
       '<circle class="g-pup" cx="-11" cy="-10" r="2.8" fill="' + OL + '"/>' +
-      '<path d="M6-11 C9-14 15-14 18-10 M6-11 L3-13 M6-11 L3-9" fill="none" stroke="' + OL + '" stroke-width="2.4" stroke-linecap="round"/></g>';
+      '<g class="g-reye" ' + wd + '><ellipse cx="12" cy="-11" rx="6.5" ry="7" fill="#fff" stroke="' + OL + '" stroke-width="2"/><circle class="g-pup" cx="13" cy="-10" r="2.8" fill="' + OL + '"/></g>' +
+      '<path class="g-wink" ' + wd + ' d="M6-11 C9-14 15-14 18-10 M6-11 L3-13 M6-11 L3-9" fill="none" stroke="' + OL + '" stroke-width="2.4" stroke-linecap="round"/></g>';
     // the grin: wide, white, square teeth
     s += '<path d="M-29-1 C-24 26 24 26 29-1 C16 5-16 5-29-1z" fill="#fff"' + K + '/>';
     s += '<path d="M-26 9.5 C-12 13 12 13 26 9.5" fill="none" stroke="' + OL + '" stroke-width="1.7"/>';
