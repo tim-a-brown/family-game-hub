@@ -195,7 +195,9 @@
       '<li><b>d10</b>: numbered 1 to 10.</li>' +
       '<li><b>d100</b>: two dice. One shows tens (00 to 90), the other ones (0 to 9). Add them: 40 and 7 is 47. 00 and 0 is 100.</li></ul>' +
       '<h3>Rolling</h3><ul><li>Tap <b>Roll</b>, tap the tray, or press Space.</li>' +
-      '<li><b>Lock a die</b>: tap it in the tray. It glows gold and stays put on the next roll while the rest tumble. Tap it again to unlock. The total still counts every die.</li><li>On a phone, turn on <b>Shake to roll</b> and give your phone a shake.</li>' +
+      '<li><b>Lock a die</b>: tap it in the tray. It glows gold and stays put on the next roll while the rest tumble. Tap it again to unlock. The total still counts every die.</li>' +
+      '<li><b>Move a locked die</b>: drag it anywhere on the table. It keeps the same number up. Drag in a curve to turn it.</li>' +
+      '<li>On a phone, turn on <b>Shake to roll</b> and give your phone a shake.</li>' +
       '<li><b>Quick picks</b> load a set of dice in one tap. Save your own with <b>Save current</b>.</li>' +
       '<li>Tap a roll in the history to load those dice again.</li></ul>' +
       '<h3>Your table</h3><p>Open the menu and pick <b>Tabletop</b> to change the tray: felts, leather, stone, wood, maps and more, with a rim to match. <b>Surprise me</b> picks one for you.</p>'
@@ -685,7 +687,7 @@
     Kit.sfx(on ? 'pop' : 'tap'); Kit.haptic('light');
     persistHeld(); draw(); setRollBtn(); if (readout) showReadout();
   }
-  function persistHeld() { if (last && last.dice && last.dice.length === dice.length) { last.dice.forEach(function (x, i) { x.h = dice[i].held ? 1 : 0; }); persist(); } }
+  function persistHeld() { if (last && last.dice && last.dice.length === dice.length) { last.dice.forEach(function (x, i) { x.h = dice[i].held ? 1 : 0; x.fx = dice[i].x / W; x.fy = dice[i].y / H; x.q = dice[i].q; }); persist(); } }
 
   // Which way is "up" in the die's own frame for a given result
   function upDirFor(kind, num) {
@@ -999,8 +1001,65 @@
     paintLockHint();
   }
   rollBtn.addEventListener('click', function () { askMotion(); roll(); });
+  // ── Moving a locked die: drag it anywhere on the table. It slides flat, the same face up, and turns
+  // as it goes (drag in a curve to spin it). A short tap still locks or unlocks.
+  var drag = null, dragged = false;
+  function feltPt(e) { var r = felt.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  felt.addEventListener('pointerdown', function (e) {
+    if (rolling || !dice.length || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    var pt = feltPt(e), d = dieAt(pt.x, pt.y);
+    if (!d || !d.held) return;
+    drag = { d: d, id: e.pointerId, x0: pt.x, y0: pt.y, ox: d.x - pt.x, oy: d.y - pt.y, last: pt, moved: false, ang: null };
+    try { felt.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  // keep the page from scrolling while a locked die is under the finger
+  felt.addEventListener('touchstart', function (e) {
+    if (rolling || !e.touches.length) return;
+    var r = felt.getBoundingClientRect(), t = e.touches[0], d = dieAt(t.clientX - r.left, t.clientY - r.top);
+    if (d && d.held) e.preventDefault();
+  }, { passive: false });
+  felt.addEventListener('pointermove', function (e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    var pt = feltPt(e), d = drag.d;
+    if (!drag.moved) {
+      if (Math.hypot(pt.x - drag.x0, pt.y - drag.y0) < 7) return;
+      drag.moved = true; d.z = 16; Kit.haptic('light');
+    }
+    // turn with the direction of travel: a curving drag spins the die about its upright axis
+    var dx = pt.x - drag.last.x, dy = pt.y - drag.last.y;
+    if (Math.hypot(dx, dy) > 2) {
+      var a = Math.atan2(dy, dx);
+      if (drag.ang !== null) { var da = a - drag.ang; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; d.q = qnorm(qmul(qaxis([0, 0, 1], -da * 0.9), d.q)); }
+      d.q = qnorm(qmul(qaxis([0, 0, 1], -dx * 0.006), d.q));
+      drag.ang = a; drag.last = pt;
+    }
+    d.x = pt.x + drag.ox; d.y = pt.y + drag.oy;
+    var b = bounds(d); d.x = Math.max(b.x0, Math.min(b.x1, d.x)); d.y = Math.max(b.y0, Math.min(b.y1, d.y));
+    draw();
+  });
+  function endDrag(e) {
+    if (!drag || (e && e.pointerId !== drag.id)) return;
+    var d = drag.d, moved = drag.moved; drag = null;
+    if (!moved) return;
+    dragged = true; setTimeout(function () { dragged = false; }, 400);
+    // set it down clear of the other dice
+    var minD = S * 1.75;
+    for (var k = 0; k < 24; k++) {
+      var hit = null; dice.forEach(function (o) { if (o !== d && Math.hypot(o.x - d.x, o.y - d.y) < minD) hit = o; });
+      if (!hit) break;
+      var dx = d.x - hit.x, dy = d.y - hit.y, dd = Math.hypot(dx, dy) || 1;
+      d.x = hit.x + dx / dd * (minD + 1); d.y = hit.y + dy / dd * (minD + 1);
+      var b = bounds(d); d.x = Math.max(b.x0, Math.min(b.x1, d.x)); d.y = Math.max(b.y0, Math.min(b.y1, d.y));
+    }
+    d.z = 0; clack(260, 'land'); Kit.haptic('light');
+    persistHeld(); draw();
+  }
+  felt.addEventListener('pointerup', endDrag);
+  felt.addEventListener('pointercancel', endDrag);
+
   felt.addEventListener('click', function (e) {
     askMotion();
+    if (dragged) { dragged = false; return; }
     if (!dice.length || rolling) return;
     var r = felt.getBoundingClientRect(), d = dieAt(e.clientX - r.left, e.clientY - r.top);
     if (d) toggleHold(d); else roll();
