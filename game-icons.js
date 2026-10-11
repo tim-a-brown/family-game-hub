@@ -243,6 +243,11 @@ var GameIcon = (function () {
       return '<g transform="rotate(-35 10 15)">' + rect(3, 11, 17, 7.5, 2.4, R) + rect(7.5, 11, 1.8, 7.5, 0, Y) + rect(13, 11, 1.8, 7.5, 0, Y) + rect(18.5, 10.2, 2.6, 9.1, .9, Y) + rect(4.5, 12.2, 13, 1.4, .7, W, ' opacity=".35"') + '</g>' +
         rect(2.5, 20.5, 19, 2, 1, S) + circ(9, 17.5, 4.6, Y) + circ(9, 17.5, 3.1, K) + circ(9, 17.5, 1.3, Y) + circ(20, 4.5, 1.5, W, ' opacity=".7"') + circ(22, 2.6, 1, W, ' opacity=".5"');
     },
+    invaders: function () {   // one classic invader (the crab), pixel for pixel
+      var rows = ['..#.....#..', '...#...#...', '..#######..', '.##.###.##.', '###########', '#.#######.#', '#.#.....#.#', '...##.##...'], d = '';
+      rows.forEach(function (r, y) { for (var x = 0; x < 11; x++) if (r.charAt(x) === '#') d += 'M' + (1 + x * 2) + ' ' + (4 + y * 2) + 'h2v2h-2z'; });
+      return path(d, '#4dff7c');
+    },
     centipede: function () {   // the centipede: green body segments winding to a yellow head
       var segs = [[3, 16.5], [6.4, 13.8], [10, 12.6], [13.6, 13.6], [16.6, 11.6]], s = '';
       segs.forEach(function (p) { s += line('M' + (p[0] - 1.6) + ' ' + (p[1] - 3.2) + 'l1.6 3.2 1.6-3.2M' + (p[0] - 1.6) + ' ' + (p[1] + 3.2) + 'l1.6-3.2 1.6 3.2', '#3dff7a', .9); });
