@@ -108,6 +108,9 @@
 .cn-join .input{flex:1;min-width:0;text-transform:uppercase;letter-spacing:.12em;font-weight:800;}
 .cn-spin{width:18px;height:18px;flex:none;border-radius:50%;border:3px solid var(--w15,rgba(255,255,255,.15));border-top-color:var(--text-2);animation:cn-spin 1s linear infinite;}
 @keyframes cn-spin{to{transform:rotate(360deg);}}
+/* a button waiting on the network: "Opening…" with a small spinner */
+.btn.cn-busy:disabled{opacity:.85;filter:none;cursor:progress;}
+.cn-bspin{width:1em;height:1em;flex:none;border-radius:50%;border:.17em solid currentColor;border-right-color:transparent;animation:cn-spin .8s linear infinite;}
 .cn-opt{display:flex;flex-direction:column;gap:6px;}
 /* Your games: one row per game you have going */
 .cn-mines:empty{display:none;}
@@ -1008,12 +1011,28 @@
   var NETK = 'chess_online', NETL = 'chess_net_mine', NETME = 'chess_net_me', NETDONE = 'chess_net_done';
   var AWAY_MS = 75000, CLAIM_MS = 14 * 864e5, WAIT_MS = 30 * 864e5, HB_MS = 25000, UCI_RE = /^[a-h][1-8][a-h][1-8][nbrq]?$/;
   var NET = { code: null, seat: null, d: null, off: null, lobbyOff: null, lobbyGen: 0, sending: false, hbT: 0, tickT: 0, seenAt: 0, seenHb: null,
-    win: null, offerSheet: null, offerSeen: '', noSeen: '', againSeen: '', screen: '', awayWas: false, claimWas: false, errAt: 0 };
+    win: null, offerSheet: null, offerSeen: '', noSeen: '', againSeen: '', screen: '', awayWas: false, claimWas: false, errAt: 0, acting: null, gone: {} };
   function lsJ(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
   function lsP(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   NET.dev = lsJ('chess_dev', '') || (function () { var d = Math.random().toString(36).slice(2, 10); lsP('chess_dev', d); return d; })();
   function netErr(e) { try { console.warn(e); } catch (x) {} if (Date.now() - NET.errAt > 8000) { NET.errAt = Date.now(); Kit.toast('Connection problem: ' + (e && e.message || e)); } }
   function toastErr(e) { Kit.toast(e && e.message || String(e)); }
+  // One lobby action at a time (open, join, sit back down): the first tap shows the button busy and any more taps
+  // do nothing until it's done. fn returns a promise; the button comes back when it settles (if still on screen).
+  function netAct(btn, label, fn) {
+    if (NET.acting) return;
+    var me = NET.acting = {}, html = btn && btn.innerHTML;
+    if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); if (label) { btn.classList.add('cn-busy'); btn.innerHTML = '<i class="cn-bspin" aria-hidden="true"></i><span>' + Kit.esc(label) + '</span>'; } }
+    var done = function () {
+      if (NET.acting !== me) return; NET.acting = null;
+      if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.classList.remove('cn-busy'); btn.innerHTML = html; }
+    };
+    var r; try { r = fn(); } catch (e) { done(); throw e; }
+    Promise.resolve(r).then(done, done);
+  }
+  // Tables closed or left on this device: off its lists at once, before the server catches up
+  function netGone(code) { if (code) NET.gone[code] = Date.now(); }
+  function isGone(code) { return !!NET.gone[code] && Date.now() - NET.gone[code] < 10 * 60e3; }
 
   function fireRooms() {
     function db() { return window.FGHSync && FGHSync.db ? FGHSync.db() : Promise.reject(new Error('Sync isn’t loaded')); }
@@ -1183,34 +1202,35 @@
   }
 
   // ── Opening, joining, leaving ──
+  // Open a table. The tags and the check that the code is free go at the same time, and the waiting screen shows as
+  // soon as the table is written here (Firestore sends it on in order); if the server refuses it, back to the lobby.
   function netHost(me) {
     if (!me.name) { Kit.toast('Pick your name first'); return; }
-    var R = rooms(), pick = me.pick === 'b' || me.pick === 'r' ? me.pick : 'w';
-    Promise.all([myTag(), acctTag()]).then(function (tags) {
-      var tag = tags[0], host = { name: me.name, dev: NET.dev, pick: pick };
-      if (tag) host.lk = tag;   // so the people linked to you see it's your table
-      if (tags[1]) host.acct = tags[1];   // so your other devices find it
-      var tries = 0;
-      return (function attempt() {
-        var code = netCode();
-        return R.get(code).then(function (d) {
-          // never reuse the code of a table that's open or being played, however old (games can run for weeks)
-          if (d && (d.status === 'waiting' || d.status === 'playing' || Date.now() - netLast(d) < 24 * 3600e3)) {
-            if (++tries < 8) return attempt();
-            throw new Error('Couldn’t find a free table code. Try again.');
-          }
-          var now = Date.now();
-          return R.set(code, { host: host, guest: null, status: 'waiting', hw: pick === 'r' ? Math.random() < 0.5 : pick === 'w', game: 1, t0: now, moves: [], result: null, offer: null, again: null, hb: { h: now }, at: now, by: NET.dev })
-            .then(function () { netListen(code, 'h'); showWait(); Kit.sfx('pop'); });
-        });
-      })();
-    }).catch(netErr);
+    var R = rooms(), pick = me.pick === 'b' || me.pick === 'r' ? me.pick : 'w', tagsP = Promise.all([myTag(), acctTag()]), tries = 0;
+    return (function attempt() {
+      var code = netCode();
+      return Promise.all([R.get(code), tagsP]).then(function (x) {
+        var d = x[0], tags = x[1];
+        // never reuse the code of a table that's open or being played, however old (games can run for weeks)
+        if (d && (d.status === 'waiting' || d.status === 'playing' || Date.now() - netLast(d) < 24 * 3600e3)) {
+          if (++tries < 8) return attempt();
+          throw new Error('Couldn’t find a free table code. Try again.');
+        }
+        var host = { name: me.name, dev: NET.dev, pick: pick };
+        if (tags[0]) host.lk = tags[0];   // so the people linked to you see it's your table
+        if (tags[1]) host.acct = tags[1];   // so your other devices find it
+        var now = Date.now(), data = { host: host, guest: null, status: 'waiting', hw: pick === 'r' ? Math.random() < 0.5 : pick === 'w', game: 1, t0: now, moves: [], result: null, offer: null, again: null, hb: { h: now }, at: now, by: NET.dev };
+        var saved = R.set(code, data);
+        netListen(code, 'h'); NET.d = data; showWait(); Kit.sfx('pop');
+        Promise.resolve(saved).catch(function (e) { if (NET.code !== code) return; netStop(true); netErr(e); showLobby(); });
+      });
+    })().catch(netErr);
   }
   function netJoin(code, me) {
     if (!me.name) { Kit.toast('Pick your name first'); return; }
     code = String(code || '').trim().toUpperCase();
     if (!/^[A-Z]{4}$/.test(code)) { Kit.toast('Table codes are 4 letters'); return; }
-    Promise.all([myTag(), acctTag()]).then(function (tags) {
+    return Promise.all([myTag(), acctTag()]).then(function (tags) {
       var tag = tags[0];
       return rooms().tx(code, function (d) {
         if (!d) throw new Error('No open table with code ' + code);
@@ -1273,6 +1293,7 @@
   function netLeave() {
     var code = NET.code, d = NET.d, R = rooms();
     if (!code) return;
+    netGone(code);   // off this device's lists straight away
     if (d && d.status === 'waiting' && NET.seat === 'h') { netStop(true); R.del(code).catch(function () {}); return; }
     if (online() && !S.over && d && d.status === 'playing' && (d.moves || []).length) {
       var res = { type: 'resign', winner: -mySide() };
@@ -1553,7 +1574,7 @@
         var out = [];
         list.forEach(function (r) {
           var d = r.d;
-          if (!d || !d.host || (d.status !== 'waiting' && d.status !== 'playing')) return;
+          if (!d || !d.host || (d.status !== 'waiting' && d.status !== 'playing') || isGone(r.code)) return;
           var hs = seatIs(d.host, tag), gs = seatIs(d.guest, tag);
           if (!hs && !gs) return;
           r.seat = hs > gs ? 'h' : gs > hs ? 'g' : null;   // null: both seats are this PIN (asked when opened)
@@ -1574,7 +1595,12 @@
   }
   // One of your games as a row: who it's against, whose move, when the last move was. Tap to open it.
   function mineRow(r) {
-    var go = function () { Kit.sfx('pop'); showMsg('Opening your game…'); netOpen(r.code, r.seat).then(function (ok) { if (!ok) { Kit.toast('That game has ended'); showLobby(); } }).catch(function (e) { netErr(e); showLobby(); }); };
+    var go = function () {
+      netAct(null, '', function () {
+        Kit.sfx('pop'); showMsg('Opening your game…');
+        return netOpen(r.code, r.seat).then(function (ok) { if (!ok) { Kit.toast('That game has ended'); showLobby(); } }).catch(function (e) { netErr(e); showLobby(); });
+      });
+    };
     if (r.wait) {
       return el('button', { type: 'button', class: 'cn-room cn-mine', onclick: go }, [
         el('span', { class: 'cn-ic', html: Kit.icon('globe') }),
@@ -1634,18 +1660,20 @@
     }
     paintSeg();
     wrap.appendChild(el('div', { class: 'cn-opt' }, [el('div', { class: 'label', text: 'Your colour at a table you open' }), seg]));
-    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Open a table', onclick: function () { netHost(me); } }));
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Open a table', onclick: function (e) { var b = e.currentTarget; if (!me.name) { Kit.toast('Pick your name first'); return; } netAct(b, 'Opening…', function () { return netHost(me); }); } }));
     wrap.appendChild(el('h2', { class: 'cn-h', text: 'Tables waiting for a player' }));
     var box = el('div', { class: 'stack' }, [el('p', { class: 'cn-note', text: 'Looking for open tables…' })]);
     wrap.appendChild(box);
     var code = el('input', { class: 'input', type: 'text', maxlength: '4', placeholder: 'Code', 'aria-label': 'Table code', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false' });
-    wrap.appendChild(el('div', { class: 'cn-join' }, [code, el('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: function () { netJoin(code.value, me); } })]));
+    wrap.appendChild(el('div', { class: 'cn-join' }, [code, el('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: function (e) { var b = e.currentTarget; netAct(b, 'Joining…', function () { return netJoin(code.value, me); }); } })]));
     function fail(e) { box.innerHTML = ''; box.appendChild(el('p', { class: 'cn-note', text: 'Couldn’t reach the tables: ' + (e && e.message || e) })); }
     var myAcct = null; acctTag().then(function (t) { myAcct = t; });
     var yoursNote = function (h) { return h.acct && h.acct === myAcct ? ' · opened with your PIN' : ''; };
     NET.lobbyOff = rooms().open(function (list) {
       if (!box.isConnected) { lobbyOff(); return; }
-      list = list.filter(function (r) { return r.d && r.d.host && r.d.status === 'waiting' && r.d.host.dev !== NET.dev && Date.now() - netLast(r.d) < WAIT_MS; })
+      // still waiting for a player (the query asks for that; a closed, finished or deleted table drops out), not
+      // closed here a moment ago, not this device's own, and not left untouched for over 30 days
+      list = list.filter(function (r) { return r.d && r.d.host && r.d.status === 'waiting' && !isGone(r.code) && r.d.host.dev !== NET.dev && Date.now() - netLast(r.d) < WAIT_MS; })
         .sort(function (a, b) { return (b.d.at || 0) - (a.d.at || 0); });
       var gen = ++NET.lobbyGen;
       netWhose(list).then(function (list) {
@@ -1654,7 +1682,7 @@
         if (!list.length) { box.appendChild(el('p', { class: 'cn-note', text: 'No open tables yet. When the other player opens one, it shows up here.' })); return; }
         // tables opened by people you've linked come first, with their avatar and a big Join button
         list.filter(function (r) { return r.who; }).concat(list.filter(function (r) { return !r.who; })).forEach(function (r) {
-          var h = r.d.host, go = function () { netJoin(r.code, me); };
+          var h = r.d.host, go = function (e) { var b = e.currentTarget; netAct(b, 'Joining…', function () { return netJoin(r.code, me); }); };
           if (r.who) {
             var nm = r.who.name;
             box.appendChild(el('div', { class: 'cn-room cn-pal' }, [

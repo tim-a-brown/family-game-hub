@@ -1511,6 +1511,9 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .net-room b{display:block;}
 .net-room small{display:block;color:var(--text-3);font-weight:700;font-size:.8rem;}
 .net-code{font-family:var(--display);font-size:2.6rem;letter-spacing:.18em;color:var(--gilt);text-align:center;margin:6px 0;}
+/* a button waiting on the network: "Opening…" with a small spinner */
+.btn.net-busy:disabled{opacity:.85;filter:none;cursor:progress;}
+.net-bspin{width:1em;height:1em;flex:none;border-radius:50%;border:.17em solid currentColor;border-right-color:transparent;animation:spin .8s linear infinite;}
 .net-join{display:flex;gap:8px;}
 .net-join .input{flex:1;min-width:0;text-transform:uppercase;letter-spacing:.12em;font-weight:800;}
 .net-note{color:var(--text-3);font-size:.9rem;margin:0;}
@@ -11287,9 +11290,25 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   //   seq  owner (seat running the game)  st  defs  pr {id, seat, k, d, f, cp, go, ans}  an {id, v}  w  at  by (dev.seat)
   var NETK = 'lorc_online', NETL = 'lorc_net_mine', NETME = 'lorc_net_me', WAIT_MS = 30 * 864e5;
   var NET = { seat: null, owner: false, ref: null, unsub: null, lobbyOff: null, seq: 0, synced: false, pend: null, pn: 0, answered: {}, showing: null, feedSeen: 0, feedMax: 0, defs: null, next: null, pt: 0, dealt: false, errAt: 0,
-    cp: null, ans: [], rp: [], px: null, pgo: null, wq: null, wbusy: false, rt: 0, taking: false, retake: false, doc: null };
+    cp: null, ans: [], rp: [], px: null, pgo: null, wq: null, wbusy: false, rt: 0, taking: false, retake: false, doc: null, acting: null, gone: {}, peekOff: null };
   NET.dev = lsGet('lorc_dev', '') || (function () { var d = Math.random().toString(36).slice(2, 10); lsSet('lorc_dev', d); return d; })();
   function netErr(e) { console.warn(e); if (Date.now() - NET.errAt > 8000) { NET.errAt = Date.now(); Kit.toast('Connection problem: ' + (e && e.message || e)); } }
+  // One lobby action at a time (open, join, sit back down): the first tap shows the button busy and any more taps
+  // do nothing until it's done. fn returns a promise; the button comes back when it settles (if still on screen).
+  function netAct(btn, label, fn) {
+    if (NET.acting) return;
+    var me = NET.acting = {}, html = btn && btn.innerHTML;
+    if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); if (label) { btn.classList.add('net-busy'); btn.innerHTML = '<i class="net-bspin" aria-hidden="true"></i><span>' + esc(label) + '</span>'; } }
+    var done = function () {
+      if (NET.acting !== me) return; NET.acting = null;
+      if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.classList.remove('net-busy'); btn.innerHTML = html; }
+    };
+    var r; try { r = fn(); } catch (e) { done(); throw e; }
+    Promise.resolve(r).then(done, done);
+  }
+  // Tables closed or left on this device: off its lists at once, before the server catches up
+  function netGone(code) { if (code) NET.gone[code] = Date.now(); }
+  function isGone(code) { return !!NET.gone[code] && Date.now() - NET.gone[code] < 10 * 60e3; }
   // Is this choice someone else's (and so a question for their device)? Returns their seat, or null.
   function netWho(dec) {
     if (!S || S.mode !== 'online' || !NET.owner) return null;
@@ -11592,8 +11611,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var m = lsGet(NETK, null); if (m && m.code === code) try { localStorage.removeItem(NETK); } catch (e) {}
   }
   function netOver(w) { if (NET.owner) netPush(true, { w: w, status: 'over' }); netStop(true); }
-  function netLeave() { var r = NET.ref; if (r) r.update({ status: 'closed', at: Date.now(), by: NET.dev }).catch(function () {}); netStop(true); }
-  function lobbyOff() { if (NET.lobbyOff) { NET.lobbyOff(); NET.lobbyOff = null; } }
+  function netLeave() { var r = NET.ref; if (r) { netGone(r.id); r.update({ status: 'closed', at: Date.now(), by: NET.dev }).catch(function () {}); } netStop(true); }
+  function lobbyOff() { if (NET.lobbyOff) { NET.lobbyOff(); NET.lobbyOff = null; } if (NET.peekOff) NET.peekOff(); }
   function netDb() { return window.FGHSync && FGHSync.db ? FGHSync.db() : Promise.reject(new Error('Sync isn’t loaded')); }
   function roomCol(db) { return db.collection('lorcanaRooms'); }
   // Your name and deck for online play
@@ -11607,30 +11626,31 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return { name: dk.name, cards: dk.cards };
   }
   function netCode() { var A = 'ABCDEFGHJKLMNPQRSTUVWXYZ', c = ''; for (var i = 0; i < 4; i++) c += A.charAt(Math.floor(Math.random() * A.length)); return c; }
+  // Open a table. The tags and the check that the code is free go at the same time, and the waiting screen shows as
+  // soon as the table is written here (Firestore sends it on in order); if the server refuses it, back to the lobby.
   function netHost(me) {
     var dk = netDeck(me); if (!dk) return;
     if (me.casual === 'no' && deckInks(dk.cards).length > 2) { Kit.toast('Your deck is a casual deck, and this table doesn’t allow them. Pick another deck or allow casual decks.'); Kit.sfx('bad'); return; }
-    var own = window.FGHSync && FGHSync.links ? FGHSync.links().own : null;
-    netDb().then(function (db) {
-      return Promise.all([linkTag(own && own.code), acctTag()]).then(function (tags) {
-        var tag = tags[0], host = { name: me.name, dev: NET.dev, deck: JSON.stringify(dk), mat: myMat(), goal: me.goal === 50 ? 50 : 20, casual: me.casual === 'no' ? 'no' : 'yes' };
-        if (tag) host.lk = tag;   // so the people linked to you see it's your table
-        if (tags[1]) host.acct = tags[1];   // so your other devices find it
-        var tries = 0;
-        (function attempt() {
-          var ref = roomCol(db).doc(netCode());
-          ref.get().then(function (sn) {
-            // never reuse the code of a table that's open or being played, however old (games can run for weeks)
-            var x = sn.exists ? sn.data() : null;
-            if (x && (x.status === 'waiting' || x.status === 'joined' || x.status === 'playing' || Date.now() - (x.at || 0) < 24 * 3600e3)) {
-              if (++tries < 8) return attempt();
-              throw new Error('Couldn’t find a free table code. Try again.');
-            }
-            return ref.set({ host: host, guest: null, status: 'waiting', at: Date.now(), seq: 0, owner: 0, st: null, defs: null, pr: null, an: null, w: null, by: NET.dev })
-              .then(function () { netListen(ref, 0); netWaitScreen(ref.id, true); });
-          }).catch(netErr);
-        })();
-      });
+    var own = window.FGHSync && FGHSync.links ? FGHSync.links().own : null, tagsP = Promise.all([linkTag(own && own.code), acctTag()]);
+    return netDb().then(function (db) {
+      var tries = 0;
+      return (function attempt() {
+        var ref = roomCol(db).doc(netCode());
+        return Promise.all([ref.get(), tagsP]).then(function (r) {
+          // never reuse the code of a table that's open or being played, however old (games can run for weeks)
+          var x = r[0].exists ? r[0].data() : null, tags = r[1];
+          if (x && (x.status === 'waiting' || x.status === 'joined' || x.status === 'playing' || Date.now() - (x.at || 0) < 24 * 3600e3)) {
+            if (++tries < 8) return attempt();
+            throw new Error('Couldn’t find a free table code. Try again.');
+          }
+          var host = { name: me.name, dev: NET.dev, deck: JSON.stringify(dk), mat: myMat(), goal: me.goal === 50 ? 50 : 20, casual: me.casual === 'no' ? 'no' : 'yes' };
+          if (tags[0]) host.lk = tags[0];   // so the people linked to you see it's your table
+          if (tags[1]) host.acct = tags[1];   // so your other devices find it
+          var saved = ref.set({ host: host, guest: null, status: 'waiting', at: Date.now(), seq: 0, owner: 0, st: null, defs: null, pr: null, an: null, w: null, by: NET.dev });
+          netListen(ref, 0); netWaitScreen(ref.id, true);
+          saved.catch(function (e) { if (!NET.ref || NET.ref.id !== ref.id) return; netStop(true); netErr(e); showLobby(); });
+        });
+      })();
     }).catch(netErr);
   }
   // ── Tables opened by the people you've linked (sync.js player links) ──
@@ -11697,7 +11717,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Open tables from a lobby query, newest first (not your own, not stale)
   function netRooms(qs) {
     var list = [];
-    qs.forEach(function (doc) { var d = doc.data(); if (d.host && d.host.dev !== NET.dev && Date.now() - (d.at || 0) < WAIT_MS) list.push({ code: doc.id, d: d }); });
+    // still waiting for a player (the queries ask for that; a closed, finished or deleted table drops out), not closed
+    // here a moment ago, not this device's own, and not left untouched for over 30 days
+    qs.forEach(function (doc) { var d = doc.data(); if (d.host && d.status === 'waiting' && !isGone(doc.id) && d.host.dev !== NET.dev && Date.now() - (d.at || 0) < WAIT_MS) list.push({ code: doc.id, d: d }); });
     return list.sort(function (a, b) { return (b.d.at || 0) - (a.d.at || 0); });
   }
   // Mark each table opened by someone you've linked (r.who): by its tag, or by name for a table without one
@@ -11753,31 +11775,46 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     paint();
     s = Kit.sheet({ title: 'Join ' + nm + '’s table', node: node, actions: [
-      { label: 'Join', primary: true, keep: true, onClick: function () { if (!netDeck(me)) return; s.close(); netJoin(r.code, me); } },
+      { label: 'Join', primary: true, keep: true, onClick: function () { if (!netDeck(me)) return; s.close(); netAct(null, '', function () { Kit.toast('Joining ' + nm + '’s table…', 4000); return netJoin(r.code, me); }); } },
       { label: 'Not now', cls: 'btn-ghost' }] });
   }
-  // On the setup screen: a quick look (one read, no listening) for tables your linked people have open
+  // On the setup screen: tables your linked people have open. Live while the setup screen shows, so a table that
+  // closes (or fills) drops off straight away.
   function netPeek(into, before) {
+    if (NET.peekOff) NET.peekOff();
     if (!window.FGHSync || !FGHSync.isPin || !FGHSync.isPin() || !netPeople().length) return;
-    netDb().then(function (db) { return roomCol(db).where('status', '==', 'waiting').limit(40).get(); })
-      .then(function (qs) { return netWhose(netRooms(qs)); })
-      .then(function (list) {
-        if (ui.screen !== 'setup' || !into.isConnected) return;
-        var seen = {};
-        list.forEach(function (r) {
-          if (!r.who || seen[r.who.code]) return; seen[r.who.code] = 1;   // newest table per person
-          var card = palRoom(r, r.who.name + ' has a table open', 'Join ' + r.who.name + '’s table', function () { Kit.sfx('pop'); netJoinSheet(r); });
-          card.classList.add('net-peek');
-          into.insertBefore(card, before);
+    var off = null, dead = false, cards = [], n = 0, chk = 0;
+    function here() { return !dead && ui.screen === 'setup' && into.isConnected; }
+    function clear() { cards.forEach(function (c) { c.remove(); }); cards = []; }
+    function stop() { dead = true; clearInterval(chk); if (off) off(); if (NET.peekOff === stop) NET.peekOff = null; }
+    NET.peekOff = stop;
+    chk = setInterval(function () { if (!here()) stop(); }, 5000);
+    netDb().then(function (db) {
+      if (dead) return;
+      off = roomCol(db).where('status', '==', 'waiting').limit(40).onSnapshot(function (qs) {
+        if (!here()) { stop(); return; }
+        var k = ++n;
+        netWhose(netRooms(qs)).then(function (list) {
+          if (k !== n || !here()) return;
+          clear();
+          var seen = {}, at = before && before.parentNode === into ? before : null;
+          list.forEach(function (r) {
+            if (!r.who || seen[r.who.code]) return; seen[r.who.code] = 1;   // newest table per person
+            var card = palRoom(r, r.who.name + ' has a table open', 'Join ' + r.who.name + '’s table', function () { Kit.sfx('pop'); netJoinSheet(r); });
+            card.classList.add('net-peek');
+            into.insertBefore(card, at);
+            cards.push(card);
+          });
         });
-      }).catch(function (e) { console.warn('[lorcana] open tables', e); });
+      }, function (e) { console.warn('[lorcana] open tables', e); stop(); });
+    }).catch(function (e) { console.warn('[lorcana] open tables', e); stop(); });
   }
   function netJoin(code, me) {
     var dk = netDeck(me); if (!dk) return;
     code = String(code || '').trim().toUpperCase();
     if (!/^[A-Z]{4}$/.test(code)) { Kit.toast('Table codes are 4 letters'); return; }
     var own = window.FGHSync && FGHSync.links ? FGHSync.links().own : null;
-    Promise.all([netDb(), linkTag(own && own.code), acctTag()]).then(function (r) {
+    return Promise.all([netDb(), linkTag(own && own.code), acctTag()]).then(function (r) {
       var db = r[0], ref = roomCol(db).doc(code);
       return db.runTransaction(function (tx) {
         return tx.get(ref).then(function (sn) {
@@ -11866,7 +11903,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           var out = [];
           list.forEach(function (r) {
             var d = r.d;
-            if (!d || !d.host || ['waiting', 'joined', 'playing'].indexOf(d.status) < 0) return;
+            if (!d || !d.host || ['waiting', 'joined', 'playing'].indexOf(d.status) < 0 || isGone(r.code)) return;
             var hs = seatIs(d.host, tag), gs = seatIs(d.guest, tag);
             if (!hs && !gs) return;
             r.seat = hs > gs ? 0 : gs > hs ? 1 : null;   // null: both seats are this PIN (asked when opened)
@@ -11894,9 +11931,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // One of your games as a row: who it's against, whose turn, when the last move was. Tap to open it.
   function mineRow(r) {
-    var go = function () {
-      Kit.sfx('pop'); Kit.toast('Opening your game…', 1500);
-      netOpen(r.code, r.seat).then(function (ok) { if (!ok) { Kit.toast('That game has ended'); if (ui.screen === 'lobby') showLobby(); } }).catch(netErr);
+    var go = function (e) {
+      var b = e && e.currentTarget, chev = b && b.querySelector('.net-chev');
+      netAct(b, '', function () {
+        Kit.sfx('pop'); if (chev) chev.innerHTML = '<i class="net-bspin" aria-hidden="true"></i>';
+        return netOpen(r.code, r.seat).then(function (ok) { if (!ok) { Kit.toast('That game has ended'); if (ui.screen === 'lobby') showLobby(); } }).catch(netErr);
+      });
     };
     var chev = el('span', { class: 'net-chev', html: Kit.icon('right') });
     if (r.wait) {
@@ -11938,6 +11978,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     wrap.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', text: 'Back to Your games', onclick: function () { netStop(false); try { localStorage.removeItem(NETK); } catch (e) {} showLobby(); } }));
     wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: host ? 'Close the table' : 'Leave', onclick: function () {
       var r = NET.ref; netStop(true);
+      if (r && host) netGone(r.id);   // closed: off this device's lists at once (a guest leaving reopens the table for others)
       if (r) (host ? r.delete() : r.update({ guest: null, status: 'waiting', at: Date.now(), by: NET.dev })).catch(function () {});
       showLobby();
     } }));
@@ -11984,12 +12025,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       seg([['yes', 'Allowed'], ['no', 'Not allowed']], me.casual === 'no' ? 'no' : 'yes', function (v) { me.casual = v; keep(); })]));
     var sub = function () { if (!seats.isConnected) { DB.subs.splice(DB.subs.indexOf(sub), 1); return; } paint(); };
     DB.subs.push(sub);
-    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Open a table', onclick: function () { netHost(me); } }));
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Open a table', onclick: function (e) { var b = e.currentTarget; netAct(b, 'Opening…', function () { return netHost(me); }); } }));
     wrap.appendChild(el('h2', { class: 'net-h', text: 'Tables waiting for a player' }));
     var rooms = el('div', { class: 'stack' }, [el('p', { class: 'net-note', text: 'Looking for open tables…' })]);
     wrap.appendChild(rooms);
     var code = el('input', { class: 'input', type: 'text', maxlength: '4', placeholder: 'Code', 'aria-label': 'Table code', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false' });
-    wrap.appendChild(el('div', { class: 'net-join' }, [code, el('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: function () { netJoin(code.value, me); } })]));
+    var joinBtn = function (code) { return function (e) { var b = e.currentTarget; netAct(b, 'Joining…', function () { return netJoin(typeof code === 'function' ? code() : code, me); }); }; };
+    wrap.appendChild(el('div', { class: 'net-join' }, [code, el('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: joinBtn(function () { return code.value; }) })]));
     window.scrollTo(0, 0);
     netDb().then(function (db) {
       if (ui.screen !== 'lobby' || !rooms.isConnected) return;
@@ -12003,7 +12045,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           pals.innerHTML = '';
           if (mine.length) {
             pals.appendChild(el('h2', { class: 'net-h', text: 'Your people' }));
-            mine.forEach(function (r) { pals.appendChild(palRoom(r, r.who.name + '’s table', 'Join ' + r.who.name + '’s table', function () { netJoin(r.code, me); })); });
+            mine.forEach(function (r) { pals.appendChild(palRoom(r, r.who.name + '’s table', 'Join ' + r.who.name + '’s table', joinBtn(r.code))); });
           }
           rooms.innerHTML = '';
           if (!rest.length) rooms.appendChild(el('p', { class: 'net-note', text: mine.length ? 'No other open tables.' : 'No open tables yet. When the other player opens one, it shows up here.' }));
@@ -12011,7 +12053,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
             rooms.appendChild(el('div', { class: 'net-room' }, [
               el('span', { class: 'avatar', style: { '--c': Kit.color(1) }, text: (r.d.host.name || '?').charAt(0).toUpperCase() }),
               el('div', { class: 'grow' }, [el('b', { text: r.d.host.name + '’s table' }), el('small', { html: roomInfo(r) })]),
-              el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: function () { netJoin(r.code, me); } })]));
+              el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: joinBtn(r.code) })]));
           });
         });
       }, function (e) { rooms.innerHTML = ''; rooms.appendChild(el('p', { class: 'net-note', text: 'Couldn’t reach the tables: ' + (e.message || e) })); });
