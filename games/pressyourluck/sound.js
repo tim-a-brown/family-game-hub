@@ -153,6 +153,48 @@ var PYLSound = (function () {
       noise({ t: 1.05, f: 1200, f2: 300, q: .8, d: .45, v: .12 }); kick(1.05, .12);
       chord([72, 76, 79], 1.6, .3, .035);
       cackle(1.95, 4, 1.15);
+    } else if (variant === 'scissors') {
+      for (var a = 0; a < 6; a++) { noise({ t: .25 + a * .19, f: 5200, q: 3, d: .035, v: .045 }); note({ type: 'square', f: 2400, t: .25 + a * .19, d: .02, v: .015 }); }
+      noise({ t: 1.66, f: 4200, q: 2, d: .08, v: .1 }); note({ type: 'square', f: 1800, f2: 900, t: 1.66, d: .06, v: .04 });
+      note({ type: 'sine', f: 700, f2: 200, t: 1.75, d: .5, v: .05, slide: .5 });
+      cackle(2.0, 4);
+    } else if (variant === 'rod') {
+      noise({ t: .66, f: 700, f2: 3200, q: 1.5, d: .25, v: .06 });
+      note({ type: 'sine', f: 900, f2: 300, t: .95, d: .12, v: .06 });
+      for (var r = 0; r < 9; r++) note({ type: 'square', f: N(91), t: 1.33 + r * .045, d: .015, v: .02, lp: 4000 });
+      noise({ t: 1.8, f: 2400, f2: 600, q: 1.5, d: .3, v: .06 });
+      cackle(2.0, 4, 1.05);
+    } else if (variant === 'tuba') {
+      [[.7, 41, .18], [1.02, 41, .18], [1.42, 34, .7]].forEach(function (b) {
+        [-8, 8].forEach(function (det) { note({ type: 'sawtooth', f: N(b[1]), det: det, t: b[0], a: .03, sus: b[2], d: .2, v: .07, lp: 500, lp2: 1400, q: 3 }); });
+        noise({ t: b[0], f: 900, q: .7, d: b[2] + .1, v: .03 });
+      });
+      cackle(2.15, 4, .95);
+    } else if (variant === 'pie') {
+      noise({ t: .93, f: 900, f2: 2600, q: 1.4, d: .3, v: .05 });
+      noise({ t: 1.24, ft: 'lowpass', f: 1400, f2: 200, d: .3, v: .2 }); kick(1.24, .18);
+      cackle(1.4, 6, 1.1);
+    } else if (variant === 'roller') {
+      noise({ t: .5, ft: 'lowpass', f: 500, a: .1, sus: .7, d: .2, v: .06 });
+      for (var q = 0; q < 4; q++) note({ type: 'sine', f: 1400 - q * 150, f2: 600, t: 1.45 + q * .1, d: .08, v: .04 });
+      cackle(2.2, 4, 1.15);
+    } else if (variant === 'trapdoor') {
+      note({ type: 'square', f: 180, f2: 90, t: 1.0, d: .1, v: .08, lp: 1200 }); noise({ t: 1.0, f: 800, q: 2, d: .08, v: .08 });
+      noise({ t: 1.05, f: 300, q: 1, d: .18, v: .06 });
+      note({ type: 'sine', f: 1700, f2: 160, t: 1.25, d: .6, v: .06, slide: .6 });
+      kick(1.95, .12);
+      cackle(2.1, 4);
+    } else if (variant === 'teeth') {
+      for (var w = 0; w < 6; w++) note({ type: 'square', f: N(86), t: .55 + w * .06, d: .012, v: .02, lp: 4000 });
+      for (var c2 = 0; c2 < 14; c2++) noise({ t: .9 + c2 * .1, f: 3600, q: 4, d: .025, v: .05 });
+      cackle(1.3, 6, 1.05);
+    } else if (variant === 'broom' || variant === 'sack' || variant === 'stomp') {
+      // he zips off to the podium, then does his work there
+      note({ type: 'sine', f: 300, f2: 1800, t: .95, d: .22, v: .05, slide: .2 });
+      if (variant === 'broom') [1.4, 1.73, 2.06].forEach(function (t) { noise({ t: t, f: 2600, f2: 1200, q: 1.2, d: .2, v: .07 }); });
+      else if (variant === 'sack') for (var k2 = 0; k2 < 6; k2++) note({ type: 'sine', f: N(84 + k2 * 2), t: 1.45 + k2 * .12, d: .07, v: .05 });
+      else { [1.55, 1.9, 2.25].forEach(function (t) { kick(t, .3); noise({ t: t, f: 500, q: 1.4, d: .08, v: .08 }); }); note({ type: 'sine', f: 1500, f2: 300, t: 1.6, d: .9, v: .035, slide: .9 }); }
+      cackle(2.45, 4, 1.1);
     } else {   // mallet
       note({ type: 'sine', f: 300, f2: 900, t: .5, d: .35, v: .04, slide: .35 });
       note({ type: 'square', f: 180, f2: 90, t: 1.0, d: .12, v: .1, lp: 1200 }); kick(1.0, .3); noise({ t: 1.0, f: 600, q: 2, d: .1, v: .12 });

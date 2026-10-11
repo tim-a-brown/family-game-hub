@@ -141,8 +141,8 @@ var PYLArt = (function () {
     return '<text class="' + (cls || 'w-bank') + '" x="120" y="96" text-anchor="middle" font-family="Jersey 10, monospace" font-size="54" fill="#ffd23d" stroke="#7a4a00" stroke-width="1.2">' + t + '</text>';
   }
   function bill(x, y, r, cls, d) {
-    // --tx/--ty: how far to fly to reach the vacuum nozzle (at 132,122 once he has rolled in)
-    return '<g class="' + cls + '" style="--d:' + d + 's;--tx:' + (132 - x) + 'px;--ty:' + (122 - y) + 'px"><g transform="translate(' + x + ' ' + y + ') rotate(' + r + ')"><rect x="-13" y="-7" width="26" height="14" rx="2" fill="#7fd36b" stroke="#2c6a1f" stroke-width="1.4"/><circle cx="0" cy="0" r="4.2" fill="#c7f0b0" stroke="#2c6a1f" stroke-width="1"/><text x="0" y="2.6" text-anchor="middle" font-size="7" font-family="Bungee, sans-serif" fill="#2c6a1f">$</text></g></g>';
+    // --tx/--ty: how far to fly to reach the vacuum nozzle (at 144,122 once he has rolled in)
+    return '<g class="' + cls + '" style="--d:' + d + 's;--tx:' + (144 - x) + 'px;--ty:' + (122 - y) + 'px"><g transform="translate(' + x + ' ' + y + ') rotate(' + r + ')"><rect x="-13" y="-7" width="26" height="14" rx="2" fill="#7fd36b" stroke="#2c6a1f" stroke-width="1.4"/><circle cx="0" cy="0" r="4.2" fill="#c7f0b0" stroke="#2c6a1f" stroke-width="1"/><text x="0" y="2.6" text-anchor="middle" font-size="7" font-family="Bungee, sans-serif" fill="#2c6a1f">$</text></g></g>';
   }
   function moneyBag(x, y, cls) {
     return '<g class="' + (cls || '') + '"><g transform="translate(' + x + ' ' + y + ')"><path d="M-8-30 L8-30 L4-22 C20-16 24 2 18 10 C12 16-12 16-18 10 C-24 2-20-16-4-22z" fill="#d9b26a" stroke="#6a4a14" stroke-width="2" stroke-linejoin="round"/><path d="M-9-22 L9-22" stroke="#6a4a14" stroke-width="3" stroke-linecap="round"/><text x="0" y="6" text-anchor="middle" font-family="Bungee, sans-serif" font-size="17" fill="#6a4a14">$</text></g></g>';
@@ -150,34 +150,76 @@ var PYLArt = (function () {
   function puff(x, y, r, cls, d) {
     return '<g class="' + cls + '" style="--d:' + d + 's"><circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="#f4f0ff"/><circle cx="' + (x - r * .8) + '" cy="' + (y + r * .3) + '" r="' + r * .7 + '" fill="#e6e0ff"/><circle cx="' + (x + r * .8) + '" cy="' + (y + r * .25) + '" r="' + r * .75 + '" fill="#ece6ff"/></g>';
   }
-  var SCENES = ['eraser', 'bomb', 'vacuum', 'hat', 'mallet'];
-  function scene(v, bank) {
-    var s = '<svg class="wscene w-' + v + '" viewBox="0 -46 240 216" aria-hidden="true">';
+  // Jersey 10 is monospaced: $ and digits are 0.636em wide, a comma 0.318em
+  function adv(c) { return c === ',' || c === '.' ? .318 : .636; }
+  function bankW(t) { var w = 0; for (var i = 0; i < t.length; i++) w += adv(t[i]); return w; }
+  function fit(t, maxW, max) { return Math.min(max, maxW / Math.max(1, bankW(t))); }
+  function bankAt(t, cx, y, sz, cls) {
+    return '<text' + (cls ? ' class="' + cls + '"' : '') + ' x="' + cx + '" y="' + (+y).toFixed(1) + '" text-anchor="middle" font-family="Jersey 10, monospace" font-size="' + sz.toFixed(1) + '" fill="#ffd23d" stroke="#7a4a00" stroke-width="1.2">' + t + '</text>';
+  }
+  // the bank one character at a time, each in its own group (--i, transform origin at its middle); more(i, x, w) adds style
+  function bankChars(t, cx, y, sz, cls, more) {
+    var x = cx - bankW(t) * sz / 2, s = '';
+    for (var i = 0; i < t.length; i++) {
+      var w = adv(t[i]) * sz, mx = x + w / 2;
+      s += '<g class="' + cls + '" style="--i:' + i + ';transform-origin:' + mx.toFixed(1) + 'px ' + (y - sz * .3).toFixed(1) + 'px' + (more ? ';' + more(i, mx, w) : '') + '">' + bankAt(t[i], mx.toFixed(1), y, sz) + '</g>';
+      x += w;
+    }
+    return s;
+  }
+  // The Whammy in a scene: w-guy moves him across, w-hop up and down, w-sq squashes and stretches him (origin at his feet).
+  // pre: drawn with him but not squashed (a vacuum cart); post: on top of him and squashed with him (a top hat)
+  function guy(x, y, o, sc, pre, post) {
+    return '<g class="w-guy"><g class="w-hop"><g transform="translate(' + x + ' ' + y + ')' + (sc ? ' scale(' + sc + ')' : '') + '">' + (pre || '') + '<g class="w-sq">' + body(o) + (post || '') + '</g></g></g></g>';
+  }
+  var uid = 0;
+  // Gear he carries to the podium (props laid out for a hand at (33,-46); the floor is y=5 here)
+  function gear(v) {
+    if (v === 'broom') return '<g class="w-broom"><path d="M18-64 L57-6" stroke="#4a2a0c" stroke-width="5" stroke-linecap="round"/><path d="M18-64 L57-6" stroke="#c98a4b" stroke-width="2.6" stroke-linecap="round"/>' +
+      '<rect x="40" y="-10" width="35" height="7" rx="2.5" fill="#a0612f" stroke="#4a2a0c" stroke-width="1.8"/><path d="M42-3 L73-3 L75 5 L40 5z" fill="#ffd36b" stroke="#8a5a10" stroke-width="1.6" stroke-linejoin="round"/>' +
+      '<path d="M46-2 L45 4 M52-2 L52 4 M58-2 L58 4 M64-2 L65 4 M70-2 L71 4" stroke="#8a5a10" stroke-width="1"/></g>';
+    if (v === 'sack') return '<g class="w-sackb"><path d="M36-44 C25-31 27-8 44-3 C58 1 69-9 65-26 C63-36 57-42 53-44z" fill="#d9b26a" stroke="#6a4a14" stroke-width="2" stroke-linejoin="round"/>' +
+      '<path d="M40-36 C36-28 36-16 42-10" fill="none" stroke="#f0d08a" stroke-width="2" stroke-linecap="round"/><ellipse cx="44.5" cy="-44" rx="9" ry="3.4" fill="#5a3a0a" stroke="#6a4a14" stroke-width="1.6"/>' +
+      '<text x="48" y="-14" text-anchor="middle" font-family="Bungee, sans-serif" font-size="14" fill="#6a4a14">$</text></g>';
+    return '';
+  }
+  var PODIUM = ['broom', 'sack', 'stomp'];
+  var SCENES = ['eraser', 'bomb', 'vacuum', 'hat', 'mallet', 'scissors', 'rod', 'tuba', 'pie', 'roller', 'trapdoor', 'teeth'].concat(PODIUM);
+  // o.dir: for the podium scenes, which way the podiums are ('dn' below the board, 'rt' beside it)
+  function scene(v, bank, o) {
+    o = o || {};
+    var pod = PODIUM.indexOf(v) >= 0, id = 'wsc' + (++uid), sz;
+    var s = '<svg class="wscene w-' + v + (pod ? ' w-dash w-' + (o.dir === 'rt' ? 'rt' : 'dn') : '') + '" viewBox="0 -46 240 216" aria-hidden="true">';
     s += '<rect class="w-flash" x="-200" y="-200" width="640" height="600" fill="#ff2b4a"/>';
+    s += '<clipPath id="' + id + 'v"><rect x="0" y="-46" width="240" height="216"/></clipPath><g clip-path="url(#' + id + 'v)">';
     if (v === 'eraser') {
       s += bankText(bank, 'w-bank w-erase');
       s += '<g class="w-crumbs"><rect x="150" y="104" width="5" height="3" fill="#ff9ec0"/><rect x="120" y="108" width="4" height="3" fill="#ff9ec0"/><rect x="90" y="104" width="5" height="3" fill="#ff9ec0"/><rect x="70" y="110" width="4" height="3" fill="#ff9ec0"/></g>';
       var eraser = '<g transform="translate(31 -46) rotate(-20)"><rect x="-6" y="-34" width="22" height="36" rx="4" fill="#ff9ec0" stroke="#8a2050" stroke-width="2"/><rect x="-6" y="-34" width="22" height="12" rx="3" fill="#4a7dff" stroke="#1f3a8a" stroke-width="2"/></g>';
-      s += '<g class="w-guy"><g transform="translate(0 150)">' + body({ prop: eraser }) + '</g></g>';
+      s += guy(-13, 155, { prop: eraser });
     } else if (v === 'bomb') {
       s += bankText(bank, 'w-bank w-gone');
       s += '<g class="w-bomb"><g transform="translate(150 118)"><circle r="22" fill="#2a2440" stroke="#0e0a1e" stroke-width="2"/><circle cx="-8" cy="-8" r="6" fill="#fff" opacity=".25"/><rect x="-6" y="-29" width="12" height="9" rx="2" fill="#5a5470"/><path d="M0-29 C2-38 10-40 14-36" fill="none" stroke="#c9a26a" stroke-width="2.4"/><g class="w-spark"><path d="M14-36 l3-7 l1 6 l6-2 l-5 4 l5 4 l-6-1 l-1 6 l-2-6 l-6 1 l5-4z" fill="#ffd23d"/></g></g></g>';
       s += '<circle class="w-boom" cx="150" cy="112" r="70" fill="#fff6c8"/>';
       s += puff(150, 112, 18, 'w-smoke', 0) + puff(120, 100, 12, 'w-smoke', .1) + puff(178, 98, 13, 'w-smoke', .2);
-      s += '<g class="w-guy"><g transform="translate(64 156) scale(.95)">' + body({}) + '</g></g>';
+      s += guy(64, 156, {}, .95);
       s += '<g class="w-soot"><g transform="translate(64 156) scale(.95)">' + body({ soot: true }) + '</g></g>';
     } else if (v === 'vacuum') {
-      for (var i = 0; i < 7; i++) s += bill(160 + (i % 3) * 26, 60 + Math.floor(i / 3) * 26 + (i % 2) * 6, (i * 37) % 60 - 30, 'w-bill', (0.7 + i * 0.13).toFixed(2));
+      for (var i = 0; i < 7; i++) s += bill(170 + (i % 3) * 24, 60 + Math.floor(i / 3) * 26 + (i % 2) * 6, (i * 37) % 60 - 30, 'w-bill', (0.7 + i * 0.13).toFixed(2));
       var hose = '<g><path d="M31-46 C40-46 52-40 62-36" fill="none" stroke="#5a5470" stroke-width="6" stroke-linecap="round"/><path d="M60-42 L74-30 L68-26 L56-36z" fill="#8a90a0" stroke="#2a2440" stroke-width="2"/></g>';
-      s += '<g class="w-guy"><g transform="translate(-60 156)"><rect x="-58" y="-34" width="40" height="30" rx="10" fill="#ff3d6e" stroke="#7a0f2c" stroke-width="2"/><circle cx="-50" cy="-3" r="6" fill="#2a2440"/><circle cx="-26" cy="-3" r="6" fill="#2a2440"/><path d="M-18-24 C-6-26 4-40 14-46" fill="none" stroke="#5a5470" stroke-width="5"/>' + body({ prop: hose }) + '</g></g>';
+      var wheel = function (x) { return '<g class="w-wheel" style="transform-origin:' + x + 'px -3px"><circle cx="' + x + '" cy="-3" r="6" fill="#2a2440"/><path d="M' + (x - 4) + '-3h8M' + x + '-7v8" stroke="#8a90a0" stroke-width="1.6"/></g>'; };
+      var cart = '<rect x="-58" y="-34" width="40" height="30" rx="10" fill="#ff3d6e" stroke="#7a0f2c" stroke-width="2"/><path d="M-52-28 C-46-31-34-31-28-28" fill="none" stroke="#ff9ec0" stroke-width="2" stroke-linecap="round"/>' + wheel(-50) + wheel(-26) +
+        '<path d="M-18-24 C-4-28 18-44 42-50" fill="none" stroke="#5a5470" stroke-width="5" stroke-linecap="round"/>';
+      s += guy(-60, 161, { prop: hose }, 0, cart);
     } else if (v === 'hat') {
       s += bankText(bank, 'w-bank w-fade');
       s += moneyBag(80, 132, 'w-bag');
       s += puff(80, 116, 26, 'w-poof', 0);
       var wand = '<g class="w-wand"><path d="M31-46 L6-66" stroke="#1f1a2e" stroke-width="4" stroke-linecap="round"/><path d="M8-64 L4-68" stroke="#fff" stroke-width="4" stroke-linecap="round"/></g>';
-      s += '<g class="w-guy"><g transform="translate(170 156)">' + body({ prop: wand }) + '<g transform="translate(0 -116)"><rect x="-17" y="-26" width="34" height="26" rx="3" fill="#1f1a2e" stroke="#0e0a1e" stroke-width="1.6"/><rect x="-17" y="-9" width="34" height="5" fill="#ff3d6e"/><ellipse cx="0" cy="0" rx="26" ry="5" fill="#1f1a2e"/></g></g></g>';
+      var tophat = '<g class="w-tophat"><g transform="translate(0 -116)"><rect x="-17" y="-26" width="34" height="26" rx="3" fill="#1f1a2e" stroke="#0e0a1e" stroke-width="1.6"/><rect x="-17" y="-9" width="34" height="5" fill="#ff3d6e"/><ellipse cx="0" cy="0" rx="26" ry="5" fill="#1f1a2e"/></g></g>';
+      s += guy(166, 158, { prop: wand }, 0, '', tophat);
       s += '<g class="w-stars"><path d="M60 80 l3 7 7 3-7 3-3 7-3-7-7-3 7-3z M104 96 l2 5 5 2-5 2-2 5-2-5-5-2 5-2z M70 136 l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#ffd23d"/></g>';
-    } else {   // mallet
+    } else if (v === 'mallet') {
       s += '<g class="w-pig"><g transform="translate(150 128)"><ellipse rx="34" ry="24" fill="#ff9ec0" stroke="#8a2050" stroke-width="2.2"/><ellipse cx="30" cy="-2" rx="8" ry="9" fill="#ff7aa8" stroke="#8a2050" stroke-width="2"/><circle cx="28" cy="-4" r="1.6" fill="#8a2050"/><circle cx="33" cy="-4" r="1.6" fill="#8a2050"/><circle cx="16" cy="-10" r="2.2" fill="#2a2440"/><path d="M8-22 L14-32 L18-20z" fill="#ff7aa8" stroke="#8a2050" stroke-width="2"/><rect x="-10" y="-25" width="14" height="3" rx="1.5" fill="#8a2050"/><path d="M-20 20 v8 M18 20 v8" stroke="#8a2050" stroke-width="5" stroke-linecap="round"/></g></g>';
       var coins = '';
       [[-40, -50], [-14, -64], [16, -60], [40, -44], [-30, -30], [30, -24]].forEach(function (c, i) {
@@ -186,16 +228,103 @@ var PYLArt = (function () {
       s += coins;
       s += '<g class="w-shards"><path d="M130 120 l-10 6 6 8z M164 112 l12 -2 -4 10z M150 140 l6 12 -10 -2z" fill="#ff9ec0" stroke="#8a2050" stroke-width="1.4"/></g>';
       var mallet = '<g class="w-mallet"><path d="M31-46 L31-96" stroke="#a0612f" stroke-width="5" stroke-linecap="round"/><rect x="12" y="-118" width="38" height="24" rx="5" fill="#c98a4b" stroke="#6a3a12" stroke-width="2.2"/><path d="M20-118 v24 M42-118 v24" stroke="#6a3a12" stroke-width="1.6"/></g>';
-      s += '<g class="w-guy"><g transform="translate(76 156)">' + body({ prop: mallet }) + '</g></g>';
+      s += guy(50, 161, { prop: mallet });
+    } else if (v === 'scissors') {
+      // giant scissors snip the bank in half along y=110; the two halves fall away
+      sz = fit(bank, 136, 46);
+      var by = 110 + sz * .31;
+      s += '<defs><clipPath id="' + id + 'a"><rect x="0" y="-60" width="240" height="170"/></clipPath><clipPath id="' + id + 'b"><rect x="0" y="110" width="240" height="80"/></clipPath></defs>';
+      s += '<g class="w-h1"><g clip-path="url(#' + id + 'a)">' + bankAt(bank, 166, by, sz) + '</g></g>';
+      s += '<g class="w-h2"><g clip-path="url(#' + id + 'b)">' + bankAt(bank, 166, by, sz) + '</g></g>';
+      var blade = function (cls, g) {
+        return '<g class="' + cls + '"><ellipse cx="29" cy="' + (-46 - 11 * g) + '" rx="8" ry="5.6" fill="none" stroke="#2a2440" stroke-width="5.6"/><ellipse cx="29" cy="' + (-46 - 11 * g) + '" rx="8" ry="5.6" fill="none" stroke="#ff3d6e" stroke-width="3"/>' +
+          '<path d="M35 ' + (-46 - 8 * g) + ' L52-46" stroke="#2a2440" stroke-width="5.4" stroke-linecap="round"/><path d="M35 ' + (-46 - 8 * g) + ' L52-46" stroke="#ff3d6e" stroke-width="2.8" stroke-linecap="round"/>' +
+          '<path d="M48 ' + (-46 - 4 * g) + ' C88 ' + (-46 - 6 * g) + ' 134 ' + (-46 - 4 * g) + ' 170 ' + (-46 - .6 * g) + ' L50 ' + (-46 + 1.6 * g) + 'z" fill="#e4e8f0" stroke="#2a2440" stroke-width="1.8" stroke-linejoin="round"/>' +
+          '<path d="M60 ' + (-46 - 3 * g) + ' C100 ' + (-46 - 4 * g) + ' 134 ' + (-46 - 3 * g) + ' 160 ' + (-46 - 1 * g) + '" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></g>';
+      };
+      s += guy(56, 161, { prop: '<g class="w-snip">' + blade('w-bl2', -1) + blade('w-bl1', 1) + '<circle cx="52" cy="-46" r="3" fill="#8a90a0" stroke="#2a2440" stroke-width="1.4"/></g>' });
+    } else if (v === 'rod') {
+      // he casts a fishing line, hooks the bank and reels it in over his shoulder
+      sz = fit(bank, 136, 44);
+      s += '<g class="w-catch">' + bankAt(bank, 161, 126, sz) + '</g>';
+      var rod = '<g class="w-rod"><path d="M26-38 L100-150" stroke="#4a2a0c" stroke-width="5" stroke-linecap="round"/><path d="M26-38 L100-150" stroke="#c98a4b" stroke-width="2.6" stroke-linecap="round"/>' +
+        '<g class="w-line"><path d="M100-150 L100-66" stroke="#fff" stroke-width="1.1" opacity=".9"/><path d="M100-67 v8 c0 7-9 7-9 0" fill="none" stroke="#c9ced8" stroke-width="2.4" stroke-linecap="round"/></g>' +
+        '<circle cx="40" cy="-59" r="6.5" fill="#8a90a0" stroke="#2a2440" stroke-width="1.6"/><path class="w-crank" d="M40-59 L47-65" stroke="#2a2440" stroke-width="2.4" stroke-linecap="round"/></g>';
+      s += guy(48, 156, { prop: rod });
+    } else if (v === 'tuba') {
+      // three blasts on a big brass horn: the digits wobble, lean, then blow away
+      sz = fit(bank, 104, 40);
+      s += bankChars(bank, 184, 104 + sz * .31, sz, 'w-ch', function (i) { return '--fy:' + (-70 - (i % 3) * 26) + ';animation-delay:' + (.7 + i * .035).toFixed(3) + 's'; });
+      var wind = function (d) { return '<g class="w-wind" style="--d:' + d + 's"><path d="M130 94 c8-4 16 4 24 0 s16 4 24 0 M136 106 c8-4 16 4 24 0 s16 4 24 0 M130 118 c8-4 16 4 24 0 s16 4 24 0" fill="none" stroke="#e6f2ff" stroke-width="2.2" stroke-linecap="round"/></g>'; };
+      var note = function (x, y, d) { return '<g class="w-note" style="--d:' + d + 's"><g transform="translate(' + x + ' ' + y + ')"><ellipse rx="4.6" ry="3.4" transform="rotate(-20)" fill="#fff"/><path d="M4-1 V-16 C9-14 11-10 9-5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></g></g>'; };
+      s += wind(.72) + wind(1.02) + wind(1.42) + note(132, 82, .74) + note(124, 74, 1.04) + note(136, 78, 1.44);
+      var horn = '<g class="w-bell"><path d="M44-48 C50-50 54-52 60-52" fill="none" stroke="#7a5410" stroke-width="7" stroke-linecap="round"/><path d="M44-48 C50-50 54-52 60-52" fill="none" stroke="#f0b93a" stroke-width="4.4" stroke-linecap="round"/>' +
+        '<path d="M58-56 C68-58 76-68 84-76 L84-28 C76-36 68-46 58-48z" fill="#f0b93a" stroke="#7a5410" stroke-width="2" stroke-linejoin="round"/><path d="M62-54 C70-57 76-64 81-70" fill="none" stroke="#fff3c0" stroke-width="1.4" stroke-linecap="round"/>' +
+        '<ellipse cx="84" cy="-52" rx="6" ry="24" fill="#c08a24" stroke="#7a5410" stroke-width="2"/><ellipse cx="85" cy="-52" rx="3" ry="18" fill="#5a3a0a"/></g>' +
+        '<ellipse cx="37" cy="-48" rx="10" ry="8" fill="none" stroke="#7a5410" stroke-width="6.4"/><ellipse cx="37" cy="-48" rx="10" ry="8" fill="none" stroke="#f0b93a" stroke-width="3.8"/>' +
+        '<path d="M32-56 v-5 M37-57 v-5 M42-56 v-5" stroke="#7a5410" stroke-width="3" stroke-linecap="round"/>';
+      // the lead pipe runs in front of him into his grin
+      var lead = '<path d="M41-56 C34-62 26-66 19-68" fill="none" stroke="#7a5410" stroke-width="5" stroke-linecap="round"/><path d="M41-56 C34-62 26-66 19-68" fill="none" stroke="#f0b93a" stroke-width="2.8" stroke-linecap="round"/><path d="M17-72 L20-64" stroke="#7a5410" stroke-width="4.4" stroke-linecap="round"/>';
+      s += guy(44, 158, { prop: horn }, .86, '', lead);
+    } else if (v === 'pie') {
+      // a cream pie, wound up and thrown: SPLAT on the bank
+      sz = fit(bank, 120, 46);
+      s += bankAt(bank, 70, 104, sz, 'w-pied');
+      var pie = function (cls) { return '<g class="' + cls + '"><path d="M-15 0 L15 0 L11 8 L-11 8z" fill="#b8bfcc" stroke="#4a4f60" stroke-width="1.8" stroke-linejoin="round"/><path d="M-17 0 C-17-6-12-9-8-8 C-6-12 0-12 2-9 C5-12 11-11 12-7 C16-7 18-3 17 0z" fill="#fff8ec" stroke="#c8b8a0" stroke-width="1.6" stroke-linejoin="round"/><circle cx="1" cy="-12" r="3.2" fill="#e3262c" stroke="#7a0f14" stroke-width="1.2"/></g>'; };
+      s += '<g class="w-splat"><g transform="translate(70 88)"><path d="M-62 0 C-70-14-54-20-48-30 C-44-44-24-36-16-44 C-6-54 10-40 20-46 C34-52 44-36 54-34 C70-30 66-14 64-4 C72 6 62 18 50 18 C46 30 36 22 30 24 C26 40 16 40 14 26 C2 30-10 24-14 30 C-18 44-30 42-30 26 C-44 30-56 24-54 12 C-66 14-70 6-62 0z" fill="#fff8ec" stroke="#d8c8b0" stroke-width="2" stroke-linejoin="round"/>' +
+        '<path d="M-40-14 C-30-22-14-20-6-26 M14-30 C24-30 34-24 40-18" fill="none" stroke="#efe2cc" stroke-width="4" stroke-linecap="round"/><circle cx="6" cy="-6" r="6" fill="#e3262c" stroke="#7a0f14" stroke-width="1.6"/><circle cx="4" cy="-8" r="1.8" fill="#fff" opacity=".6"/></g></g>';
+      [[-30, 18], [-10, 26], [18, 22], [40, 14]].forEach(function (d, i) { s += '<rect class="w-drip" x="' + (70 + d[0]) + '" y="' + (88 + d[1] - 4) + '" width="7" height="' + (14 + i * 4) + '" rx="3.5" fill="#fff8ec" style="--d:' + (i * .12).toFixed(2) + 's;transform-origin:' + (73.5 + d[0]) + 'px ' + (84 + d[1]) + 'px"/>'; });
+      s += '<g class="w-tin"><g transform="translate(70 104)"><path d="M-15 0 L15 0 L11 8 L-11 8z" fill="#b8bfcc" stroke="#4a4f60" stroke-width="1.8" stroke-linejoin="round"/></g></g>';
+      s += guy(170, 156, { prop: '<g transform="translate(44 -58) scale(1.35)">' + pie('w-held') + '</g>' });
+      s += '<g class="w-fly"><g class="w-flyy"><g class="w-spin"><g transform="translate(214 104) scale(1.5)">' + pie('') + '</g></g></g></g>';
+    } else if (v === 'roller') {
+      // a paint roller paints right over the total
+      sz = fit(bank, 196, 52);
+      s += bankAt(bank, 120, 112, sz);
+      s += '<g class="w-paint"><path d="M14 62 C40 59 70 64 100 61 C140 58 180 64 226 61 L226 128 C190 131 150 126 110 129 C70 132 40 127 14 129z" fill="#e3262c"/><path d="M22 70 C80 67 150 72 218 68" fill="none" stroke="#ff7a74" stroke-width="3" opacity=".7" stroke-linecap="round"/></g>';
+      [34, 70, 112, 150, 196].forEach(function (x, i) { s += '<rect class="w-drip" x="' + x + '" y="122" width="7" height="' + (16 + (i * 7) % 13) + '" rx="3.5" fill="#e3262c" style="--d:' + (i * .09).toFixed(2) + 's;transform-origin:' + (x + 3.5) + 'px 122px"/>'; });
+      var roller = '<path d="M30-44 L60-60" stroke="#2a2440" stroke-width="5" stroke-linecap="round"/><path d="M30-44 L60-60" stroke="#8a90a0" stroke-width="2.6" stroke-linecap="round"/><path d="M59-60 L73-60 M73-92 L73-28" stroke="#2a2440" stroke-width="3" stroke-linecap="round"/>' +
+        '<rect x="66" y="-94" width="15" height="68" rx="6" fill="#e3262c" stroke="#7a0f14" stroke-width="2"/><path d="M69-88 v8 M72-74 v8 M76-84 v8 M70-60 v8 M77-50 v8 M71-42 v8" stroke="#ff7a74" stroke-width="2" stroke-linecap="round"/>';
+      s += guy(0, 156, { prop: roller });
+      s += '<g class="w-peek"><g transform="translate(214 118) rotate(-16) scale(.75)">' + head({}) + '</g></g>';
+    } else if (v === 'trapdoor') {
+      // he pulls a lever, the stage floor opens and the bank drops through
+      sz = fit(bank, 112, 46);
+      s += '<defs><clipPath id="' + id + '"><rect x="-10" y="-60" width="260" height="188"/></clipPath></defs>';
+      s += '<rect x="-10" y="128" width="260" height="60" fill="#241050"/><rect class="w-pit" x="26" y="128" width="132" height="60" fill="#06020f"/>' +
+        '<rect x="-10" y="126" width="36" height="5" fill="#6a4ac8"/><rect x="158" y="126" width="92" height="5" fill="#6a4ac8"/><path d="M-10 140 H26 M158 140 H250" stroke="#33186e" stroke-width="2"/>';
+      s += '<g clip-path="url(#' + id + ')"><g class="w-drop">' + bankAt(bank, 86, 126, sz) + '</g></g>';
+      s += '<g class="w-fl1"><rect x="26" y="126" width="66" height="5" fill="#8a6ae0" stroke="#2a1460" stroke-width="1"/></g><g class="w-fl2"><rect x="92" y="126" width="66" height="5" fill="#8a6ae0" stroke="#2a1460" stroke-width="1"/></g>';
+      s += '<rect x="212" y="121" width="18" height="7" rx="2" fill="#3a3550" stroke="#140a0c" stroke-width="1.4"/><g class="w-lever"><path d="M221 124 L226 82" stroke="#140a0c" stroke-width="5" stroke-linecap="round"/><path d="M221 124 L226 82" stroke="#c9ced8" stroke-width="2.6" stroke-linecap="round"/><circle cx="226.5" cy="79" r="5.5" fill="#ff3d6e" stroke="#140a0c" stroke-width="1.6"/></g>';
+      s += guy(180, 130, {});
+    } else if (v === 'teeth') {
+      // wind-up chattering teeth march across and gobble the digits one by one
+      sz = fit(bank, 116, 44);
+      s += bankChars(bank, 174, 120, sz, 'w-ch', function (i, mx, w) { return 'animation-delay:' + (1.0 + Math.max(0, mx - w * .3 - 120) / (200 / 1.5)).toFixed(2) + 's'; });
+      var teeth = '<g class="w-key"><path d="M-27-17 h-7" stroke="#8a90a0" stroke-width="3"/><path d="M-34-17 L-40-26 L-37-17 L-40-8z" fill="#c9ced8" stroke="#2a2440" stroke-width="1.4" stroke-linejoin="round"/></g>' +
+        '<path d="M-14 0 C-14-5-6-6-5-1z M5-1 C6-6 14-5 14 0z" fill="#ff8a3d" stroke="#2a2440" stroke-width="1.4" stroke-linejoin="round"/>' +
+        '<path d="M-26-15 C-26-3 26-3 26-15z" fill="#ff7aa8" stroke="#8a2050" stroke-width="2" stroke-linejoin="round"/><path d="M-20-15 h40 v-5 h-40z" fill="#fff" stroke="#8a2050" stroke-width="1.2"/><path d="M-12-15v-5 M-4-15v-5 M4-15v-5 M12-15v-5" stroke="#8a2050" stroke-width="1"/>' +
+        '<g class="w-jaw"><path d="M-26-20 C-26-38 26-38 26-20z" fill="#ff7aa8" stroke="#8a2050" stroke-width="2" stroke-linejoin="round"/><path d="M-20-20 h40 v5 h-40z" fill="#fff" stroke="#8a2050" stroke-width="1.2"/><path d="M-12-20v5 M-4-20v5 M4-20v5 M12-20v5" stroke="#8a2050" stroke-width="1"/><circle cx="14" cy="-28" r="2" fill="#fff" opacity=".6"/></g>';
+      s += guy(42, 156, {});
+      s += '<g class="w-march"><g class="w-tdrop"><g transform="translate(90 128) scale(1.2)"><g class="w-thop"><g class="w-tsq">' + teeth + '</g></g></g></g></g>';
+    } else {   // broom, sack, stomp: he grabs his gear and dashes off to the podium, where the rest happens
+      s += '<g class="w-zl w-zl-dn"><path d="M100 118 V170 M120 104 V170 M140 118 V170" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".7"/></g>' +
+        '<g class="w-zl w-zl-rt"><path d="M130 70 H240 M122 96 H240 M130 122 H240" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".7"/></g>';
+      s += puff(120, 132, 20, 'w-dpuff', 0);
+      s += '<g class="w-chev w-chev-dn"><path d="M100 96 L120 112 L140 96 M100 120 L120 136 L140 120" fill="none" stroke="#ffd23d" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></g>' +
+        '<g class="w-chev w-chev-rt"><path d="M112 92 L128 112 L112 132 M136 92 L152 112 L136 132" fill="none" stroke="#ffd23d" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></g>';
+      s += guy(v === 'stomp' ? 120 : 104, 154, { prop: gear(v) });
     }
-    s += '<g class="w-stamp"><g transform="translate(120 -18) rotate(-6)"><rect x="-86" y="-22" width="172" height="44" rx="8" fill="#ff2b4a" stroke="#fff" stroke-width="3"/><text x="0" y="12" text-anchor="middle" font-family="Bungee, sans-serif" font-size="30" fill="#fff">WHAMMY!</text></g></g>';
+    s += '</g><g class="w-stamp"><g transform="translate(120 -18) rotate(-6)"><rect x="-86" y="-22" width="172" height="44" rx="8" fill="#ff2b4a" stroke="#fff" stroke-width="3"/><text x="0" y="12" text-anchor="middle" font-family="Bungee, sans-serif" font-size="30" fill="#fff">WHAMMY!</text></g></g>';
     return s + '</svg>';
   }
-  // Fourth Whammy: he waves goodbye under an OUT stamp
+  // Fourth Whammy: he hops up and waves goodbye under an OUT stamp
   function outScene(name) {
     return '<svg class="wscene w-out" viewBox="0 -46 240 216" aria-hidden="true"><rect class="w-flash" x="-200" y="-200" width="640" height="600" fill="#ff2b4a"/>' +
-      '<g class="w-guy"><g transform="translate(120 160) scale(.95)">' + body({}) + '</g></g>' +
+      guy(120, 160, {}, .95) +
       '<g class="w-stamp"><g transform="translate(120 -18) rotate(-6)"><rect x="-100" y="-24" width="200" height="48" rx="8" fill="#1f1a2e" stroke="#ff2b4a" stroke-width="4"/><text x="0" y="12" text-anchor="middle" font-family="Bungee, sans-serif" font-size="26" fill="#ff2b4a">4 WHAMMIES</text></g></g></svg>';
   }
-  return { head: head, headSVG: headSVG, body: body, prize: prize, PRIZES: PRIZES, ART: ART, scene: scene, outScene: outScene, SCENES: SCENES };
+  // The Whammy for the podium overlay (the page places, scales and animates him): his gear in hand
+  function podGuy(v) { return body({ prop: gear(v) }); }
+  return { head: head, headSVG: headSVG, body: body, prize: prize, PRIZES: PRIZES, ART: ART, scene: scene, outScene: outScene, podGuy: podGuy, SCENES: SCENES, PODIUM: PODIUM };
 })();
