@@ -1296,7 +1296,11 @@
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && NET.code) { NET.seenAt = Date.now(); netBeat(); netTick(); } });
   // The other player isn't looking at the game right now: no heartbeat or move seen here for a while (this device's clock).
   // Only a label: games never time out.
-  function netAway() { return !!(NET.code && NET.d && NET.d.status === 'playing' && Date.now() - NET.seenAt > AWAY_MS); }
+  function netAway() {
+    if (!NET.code || !NET.d || NET.d.status !== 'playing') return false;
+    var h = NET.d.hb && NET.d.hb[otherSeat()];
+    return Date.now() - NET.seenAt > AWAY_MS || !h || Date.now() - h > 5 * 60e3;   // (minutes of slack for clocks that disagree)
+  }
   // When the other player was last at the table (their heartbeat), for "last here 2 days ago"
   function netSeen() { var h = NET.d && NET.d.hb && NET.d.hb[otherSeat()]; return h && h < Date.now() - AWAY_MS ? h : 0; }
   // A game stuck on the other player's move for two weeks can be claimed (by hand; nothing happens by itself)
@@ -1317,7 +1321,8 @@
     }
     var prev = NET.d; NET.d = d;
     var hb = d.hb && d.hb[otherSeat()];
-    if (hb !== NET.seenHb || !prev || (prev.moves || []).length !== (d.moves || []).length) { NET.seenHb = hb; NET.seenAt = Date.now(); }
+    // their heartbeat or their move: they're at the table now
+    if (hb !== NET.seenHb || !prev || ((prev.moves || []).length !== (d.moves || []).length && d.by !== NET.dev)) { NET.seenHb = hb; NET.seenAt = Date.now(); }
     if (d.status === 'waiting') {
       if (NET.seat === 'h') { if (NET.screen !== 'wait' || !prev) showWait(); }
       else { netStop(true); Kit.toast('That table isn’t open any more'); showLobby(); }

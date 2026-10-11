@@ -11554,8 +11554,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       netPush(false, { pr: null, an: null });   // goes with the next write of the game
       render(); p.cb(JSON.parse(d.an.v));
     }
+    // another of your devices took the game over while this one was running it: step back
+    if (NET.owner && d.st && d.seq > NET.seq && byDev(d) !== NET.dev && bySeat(d) === NET.seat) netLost(d);
     // the game, from the other device (or this one's last copy, after a reload)
-    if (d.st && d.seq > NET.seq && (byDev(d) !== NET.dev || !NET.synced)) netApply(d);
+    else if (d.st && d.seq > NET.seq && (byDev(d) !== NET.dev || !NET.synced)) netApply(d);
     else if (d.st && !NET.synced) netApply(d);
     if (!S || S.mode !== 'online') return;
     // a question for me
@@ -11874,8 +11876,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
               if (d.status === 'joined') { r.deal = true; r.mine = me === 0; }
               else {
                 try { st = d.st ? JSON.parse(d.st) : null; } catch (e) {}
-                var open = !!(d.pr && !(d.an && d.an.id === d.pr.id));
-                if (st && st.phase === 'mull') { r.mull = true; r.mine = !(st.mull || {})[me] || (open && d.pr.seat === me); }
+                var answered = !!(d.pr && d.an && d.an.id === d.pr.id), open = !!d.pr && !answered, mu = st && st.mull || {};
+                // opening hands: yours to choose, a question to you, or the other's answer waiting for your device
+                if (st && st.phase === 'mull') { r.mull = true; r.mine = !mu[me] || (open && d.pr.seat === me) || (!open && d.owner === me && (answered || mu[1 - me])); }
                 else r.mine = open ? d.pr.seat === me : d.owner === me;
                 if (st && st.P && st.phase === 'play') { r.turn = st.turn; r.lore = [st.P[me].lore, st.P[1 - me].lore]; }
               }

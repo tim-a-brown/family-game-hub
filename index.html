@@ -721,9 +721,9 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
         });
         r[2].concat(r[3]).forEach(function (x) {
           var d = x.d, me = x.seat === 'host' ? 0 : 1; if (seen['l' + x.code] || !d.host || !d.guest) return; seen['l' + x.code] = 1;
-          var open = !!(d.pr && !(d.an && d.an.id === d.pr.id)), mine;
+          var answered = !!(d.pr && d.an && d.an.id === d.pr.id), open = !!d.pr && !answered, mine;
           if (d.status === 'joined') mine = me === 0;
-          else if (/"phase":"mull"/.test(d.st || '')) { try { var st = JSON.parse(d.st); mine = !(st.mull || {})[me] || (open && d.pr.seat === me); } catch (e) { mine = false; } }
+          else if (/"phase":"mull"/.test(d.st || '')) { try { var mu = JSON.parse(d.st).mull || {}; mine = !mu[me] || (open && d.pr.seat === me) || (!open && d.owner === me && (answered || mu[1 - me])); } catch (e) { mine = false; } }
           else mine = open ? d.pr.seat === me : d.owner === me;
           if (mine) out.push({ id: 'lorcana', code: x.code, at: d.at || 0, vs: knownBy(me === 0 ? d.guest : d.host), href: 'games/lorcana-play.html?online=1&room=' + x.code });
         });

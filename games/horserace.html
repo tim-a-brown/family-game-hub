@@ -203,19 +203,19 @@
   .pstrip{height:30px;}
   .pstrip .sc{top:3px;}
   .bank{gap:5px;}
-  .bank div{padding:4px 6px;display:flex;align-items:baseline;justify-content:center;gap:5px;border-radius:10px;}
-  .bank small{font-size:.55rem;letter-spacing:.06em;}
-  .bank b{font-size:.92rem;}
+  .bank div{padding:3px 6px;border-radius:10px;}
+  .bank small{font-size:.55rem;letter-spacing:.06em;line-height:1.2;}
+  .bank b{font-size:.9rem;line-height:1.2;}
 
   .stage.hr.ph-bet{display:grid;grid-template-columns:minmax(0,1fr) var(--side);column-gap:12px;
     grid-template-rows:auto auto auto auto minmax(0,1fr);
     grid-template-areas:"prog bank" "prog types" "prog info" "prog pk" "prog slip";}
   .ph-bet .tw,.ph-bet .stand{display:none;}
   .ph-bet .prog{grid-area:prog;margin:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 8px 20px rgba(0,0,0,.4);}
-  .ph-bet .prog .ph{position:sticky;top:0;z-index:2;padding:7px 10px 5px;background:#fffaf0;}
-  .ph-bet .prog .ph h3{font-size:1.1rem;}
+  .ph-bet .prog .ph{position:sticky;top:0;z-index:2;gap:8px;padding:7px 10px 5px;background:#fffaf0;}
+  .ph-bet .prog .ph h3{flex:none;font-size:1.05rem;}
   .ph-bet .prog .ph .tap{display:none;}
-  .ph-bet .prog .ph .cond{display:inline;}
+  .ph-bet .prog .ph .cond{display:block;min-width:0;font-size:.6rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .ph-bet .hz{grid-template-columns:26px 26px minmax(0,1fr) auto;gap:8px;min-height:46px;padding:4px 10px;}
   .ph-bet .cloth{width:26px;height:32px;font-size:1.1rem;}
   .ph-bet .silk{width:26px;height:26px;}
@@ -225,7 +225,7 @@
   .ph-bet .ml small{margin-top:2px;}
   .ph-bet .bank{grid-area:bank;margin-bottom:6px;}
   .ph-bet .btypes{grid-area:types;margin-bottom:6px;gap:5px;}
-  .btypes button{min-height:32px;font-size:.84rem;border-radius:10px;}
+  .btypes button{min-height:30px;font-size:.84rem;border-radius:10px;}
   .btypes button small{display:none;}
   .ph-bet .pinfo{grid-area:info;margin:0 2px 6px;min-height:0;font-size:.78rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
   .pinfo:has(.htip) .bth,.pinfo:has(.htip) br{display:none;}
@@ -242,6 +242,12 @@
   .acts .icon-btn{width:42px;height:42px;}
   .acts .btn{min-height:42px;}
 
+  /* Small phones (iPhone SE): the program drops the silks and running-style tags so the names fit */
+  @media (max-width:760px){
+    .ph-bet .hz{grid-template-columns:26px minmax(0,1fr) auto;}
+    .ph-bet .hz > span:nth-child(2),.ph-bet .ml small{display:none;}
+  }
+
   .stage.hr.ph-race{display:flex;flex-direction:column;padding-bottom:calc(var(--safe-b) + 6px);}
   .ph-race .tw{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin:0;}
   .ph-race .tw-in,.ph-result .tw-in{flex:1 1 0;min-height:0;}
@@ -255,8 +261,8 @@
 
   .stage.hr.ph-result{display:flex;gap:12px;align-items:stretch;}
   .ph-result .hcol{display:flex;flex-direction:column;min-width:0;min-height:0;}
-  .ph-result .hcol.a{flex:1.1 1 0;}
-  .ph-result .hcol.b{flex:1 1 0;overflow-y:auto;overscroll-behavior:contain;}
+  .ph-result .hcol.a{flex:1 1 0;}
+  .ph-result .hcol.b{flex:1.12 1 0;overflow-y:auto;overscroll-behavior:contain;}
   .ph-result .tw{flex:1 1 0;min-height:110px;display:flex;flex-direction:column;}
   .ph-result .call{flex:none;min-height:0;padding:8px 12px;margin-bottom:6px;}
   .ph-result .bank{flex:none;margin-bottom:0;}
@@ -1064,7 +1070,7 @@
     // ── Camera, dust, calls ───────────────────────────────────────────
     // A wide screen (a phone on its side, an iPad in landscape) gets the whole-field camera: it pulls back
     // to frame every runner, from the leader's nose to the last horse's tail, instead of following the leaders.
-    function wideCam() { return W / Hh >= 2; }
+    function wideCam() { return W / Hh >= 2 && Hh >= 160; }
     // Horses as tall, against the height of the picture, as they are in the upright view
     function wideBase() { return W / (Hh * 0.115); }
     function photoW() { return wideCam() ? wideBase() * 0.62 : 8.5; }
@@ -1743,7 +1749,7 @@
     // Running order, leader on the left. A wide strip is a tote board: the leaders get their names
     // (as many as fit, all of them on a big screen), the rest of the field just their numbers.
     var w = R.strip.clientWidth || 340, n = rank.length, k = 0, NW = 30, x = 8;
-    if (w >= 480) for (k = n; k > 0; k--) { NW = (w - 16 - (n - 1) * 4 - (n - k) * 30) / k; if (NW >= 118) break; }
+    if (w >= 480) for (k = n; k > 0; k--) { NW = (w - 16 - (n - 1) * 4 - (n - k) * 30) / k; if (NW >= 136) break; }
     NW = Math.floor(Math.min(170, NW));
     if (R.strip.classList.contains('nm') !== k > 0) R.strip.classList.toggle('nm', k > 0);
     var step = k ? 0 : Math.min(40, (w - 16 - 30) / Math.max(1, n - 1));

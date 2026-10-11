@@ -313,8 +313,7 @@ Kit.init({ id: 'hiscores', mark: false });
       '.GGGGGGGGGG.', '.gggggggggg.'] },
     // the centipede: lime body, yellow head with antennae
     centipede: { pal: { G: '#d4ff3d', L: '#7dffb0', Y: '#ffd23d', K: '#111111', R: '#ff3d5a' }, rows: [
-      '.............K..K', '..............KK.', '.GG......GG...YY.', 'GGGG.LL.GGGG.YYYY', 'GGGGLLLLGGGG.KYKY',
-      '.GG.LLLL.GG..YYYY', '.....LL.......RR.', 'K..K....K..K.....'] }
+      '.........K..K', '..........KK.', '.GG.......YY.', 'GGGG.....YYYY', 'GGGG.LL..YKYK', '.GG.LLLL.YYYY', '....LLLL..RR.', 'K..K.LL......', '....K..K.....'] }
   };
   function spriteCanvas(game) {
     var sp = SPR[game]; if (!sp) return null;
@@ -1073,6 +1072,382 @@ Kit.init({ id: 'hiscores', mark: false });
         }
       };
     },
+    // Crossy Road: the chicken hops up through grass, roads, rivers and railways while the view scrolls along with it
+    crossy: function (W, H) {
+      var L = 12, CARS = ['#ef4444', '#3b82f6', '#f59e0b', '#a855f7', '#ec4899', '#14b8a6'];
+      var lanes, plan, gen, ck, cam, score, dead, wait, t = 0, pp = popups(), sp = sparks();
+      function nextType(k) {
+        if (k < 3) return 'grass';
+        if (!plan.length) {
+          var r = Math.random(), n;
+          if (r < 0.55) { n = irnd(1, 3); while (n--) plan.push('road'); }
+          else if (r < 0.78) { n = Math.random() < 0.7 ? 1 : 2; while (n--) plan.push('river'); }
+          else plan.push('rail');
+          plan.push('grass'); if (Math.random() < 0.35) plan.push('grass');
+        }
+        return plan.shift();
+      }
+      function make(k) {
+        var tp = k < 0 ? 'grass' : nextType(k), dir = Math.random() < 0.5 ? -1 : 1, o = { tp: tp, dir: dir, items: [], bush: [] }, x;
+        if (tp === 'grass') {
+          for (x = irnd(2, 12); x < W - 8; x += irnd(14, 30)) if (Math.abs(x + 4 - W / 2) > 12) o.bush.push({ x: x, tree: Math.random() < 0.5 });
+          if (k > 3 && Math.random() < 0.2) o.coin = { x: W / 2 };
+        } else if (tp === 'road') { o.v = rnd(22, 44) * dir; for (x = rnd(-20, 10); x < W + 30; x += rnd(44, 80)) { var tr = Math.random() < 0.2; o.items.push({ x: x, w: tr ? 24 : irnd(13, 16), c: CARS[irnd(0, CARS.length - 1)], tr: tr }); } }
+        else if (tp === 'river') { o.v = rnd(12, 22) * dir; for (x = rnd(-30, 0); x < W + 30; x += rnd(40, 56)) o.items.push({ x: x, w: irnd(24, 34) }); }
+        else { o.v = 220 * dir; o.trainT = rnd(1, 4); }
+        return o;
+      }
+      function lane(k) { if (k < 0 || (k <= gen && !lanes[k])) return lanes[k] || (lanes[k] = make(-1)); while (gen < k) { gen++; lanes[gen] = make(gen); } return lanes[k]; }
+      function reset() { lanes = {}; plan = []; gen = -1; ck = { k: 0, x: W / 2, hop: null }; cam = 0; score = 0; dead = null; wait = 0.6; }
+      reset();
+      var SPAN = W + 60;
+      function wrapX(o, c) { if (o.v > 0 && c.x > W + 30) c.x -= SPAN; if (o.v < 0 && c.x + c.w < -30) c.x += SPAN; }
+      // is a chicken at x in trouble on lane o, tau seconds from now? (hit on a road or rail, not on a log in a river)
+      function trouble(o, x, tau) {
+        var over = o.items.some(function (c) { var cx = c.x + o.v * tau; return [cx, cx - SPAN, cx + SPAN].some(function (q) { return o.tp === 'river' ? x > q + 2 && x < q + c.w - 2 : x + 3 > q && x - 3 < q + c.w; }); });
+        return o.tp === 'river' ? !over : o.tp === 'grass' ? false : over;
+      }
+      function safe(o, x, a, b) {
+        if (o.tp === 'grass') return true;
+        if (o.tp === 'rail' && (o.items.length || o.trainT < b + 0.8)) return false;
+        if (o.tp === 'river') return !trouble(o, x, 0.18) && !trouble(o, x, 0.45) && x > 14 && x < W - 14;
+        for (var tau = a; tau <= b; tau += 0.05) if (trouble(o, x, tau)) return false;
+        return true;
+      }
+      function die(kind) {
+        var y = top(ck.k) + 6;
+        dead = { t: 0, kind: kind };
+        sp.burst(ck.x, y, 16, kind === 'splash' ? ['#bfe9ff', '#fff', '#5fb8f0'] : ['#fff', '#e7e5e4', '#ff3b3b'], 40);
+        pp.add(kind === 'splash' ? 'SPLASH' : 'SPLAT', ck.x, y - 12, '#fff');
+      }
+      function top(k) { return Math.round(H - L * 3 - (k - cam) * L); }
+      return {
+        step: function (dt) {
+          t += dt; pp.step(dt); sp.step(dt, 60);
+          // traffic, logs and trains (only the lanes near the screen)
+          var k0 = Math.floor(cam) - 4, k1 = Math.ceil(cam + H / L) + 2;
+          for (var k = k0; k <= k1; k++) {
+            var o = lane(k);
+            if (o.tp === 'rail') {
+              o.trainT -= dt;
+              if (!o.items.length && o.trainT <= 0) o.items.push({ x: o.v > 0 ? -W * 1.3 : W, w: W * 1.3 });
+              o.items.forEach(function (c) { c.x += o.v * dt; });
+              if (o.items.length && (o.items[0].x > W + 4 || o.items[0].x + o.items[0].w < -4)) { o.items = []; o.trainT = rnd(3, 6); }
+            } else if (o.items.length) o.items.forEach(function (c) { c.x += o.v * dt; wrapX(o, c); });
+          }
+          Object.keys(lanes).forEach(function (q) { if (+q < k0 - 4) delete lanes[q]; });
+          cam += (ck.k - cam) * Math.min(1, dt * 5);
+          if (dead) { dead.t += dt; if (dead.t > 1.8) reset(); return; }
+          var cur = lane(ck.k);
+          if (ck.hop) {
+            ck.hop.p += dt / 0.18;
+            if (ck.hop.p >= 1) {
+              ck.k = ck.hop.to; ck.hop = null; cur = lane(ck.k);
+              if (ck.k > score) score = ck.k;
+              wait = cur.tp === 'grass' ? rnd(0.1, 0.5) : rnd(0.03, 0.15);
+              if (cur.coin && Math.abs(cur.coin.x - ck.x) < 7) { cur.coin = null; pp.add('+1', ck.x, top(ck.k) - 8, '#ffd23a'); sp.burst(ck.x, top(ck.k) + 4, 8, ['#ffd23a', '#fff3a6'], 30); }
+              if (trouble(cur, ck.x, 0) || (cur.tp === 'river' && (ck.x < 2 || ck.x > W - 2))) die(cur.tp === 'river' ? 'splash' : 'splat');
+            }
+            return;
+          }
+          if (cur.tp === 'river') ck.x += cur.v * dt;   // riding a log
+          if (trouble(cur, ck.x, 0) || ck.x < 2 || ck.x > W - 2) { die(cur.tp === 'river' ? 'splash' : 'splat'); return; }
+          wait -= dt;
+          if (wait > 0) return;
+          var nx = lane(ck.k + 1), careless = Math.random() < 0.003;
+          if (careless || safe(nx, ck.x, 0.1, 0.7)) ck.hop = { from: ck.k, to: ck.k + 1, p: 0 };
+          else if (cur.tp !== 'grass' && cur.tp !== 'river' && !safe(cur, ck.x, 0, 0.35) && ck.k > 0 && safe(lane(ck.k - 1), ck.x, 0.1, 0.5)) ck.hop = { from: ck.k, to: ck.k - 1, p: 0 };
+          else wait = 0.05;
+        },
+        draw: function (g) {
+          var k0 = Math.floor(cam) - 4, k1 = Math.ceil(cam + H / L) + 1;
+          for (var k = k1; k >= k0; k--) {
+            var o = lane(k), y = top(k);
+            if (y > H || y < -L - 4) continue;
+            if (o.tp === 'grass') {
+              R(g, 0, y, W, L, k % 2 ? '#6fbf3c' : '#78c846');
+              o.bush.forEach(function (b) {
+                if (b.tree) { R(g, b.x + 3, y + 6, 2, 5, '#7c4a1e'); R(g, b.x, y - 3, 8, 9, '#2f7d32'); R(g, b.x + 1, y - 3, 6, 1, '#4caf50'); R(g, b.x, y + 5, 8, 1, '#1f5e22'); }
+                else { R(g, b.x, y + 4, 8, 6, '#3a8f3a'); R(g, b.x + 1, y + 4, 6, 1, '#5cb85c'); }
+              });
+              if (o.coin) { var bob = Math.round(Math.sin(t * 5) * 1); R(g, o.coin.x - 2, y + 3 + bob, 4, 5, '#ffd23a'); R(g, o.coin.x - 1, y + 4 + bob, 1, 3, '#fff3a6'); }
+            } else if (o.tp === 'road') {
+              R(g, 0, y, W, L, '#4b5058');
+              if (lane(k + 1).tp === 'road') for (var x = 2; x < W; x += 10) R(g, x, y, 5, 1, '#e5e7eb');
+              else R(g, 0, y, W, 1, '#6b7280');
+              o.items.forEach(function (c) { car(g, c.x, y + 2, c.w, c.c, c.tr, o.dir); });
+            } else if (o.tp === 'river') {
+              R(g, 0, y, W, L, '#2b8fd6');
+              for (var i = 0; i < 5; i++) { var rx = ((i * 37 + t * 8 * o.dir) % W + W) % W; R(g, rx, y + 3 + (i % 3) * 3, 4, 1, 'rgba(255,255,255,.3)'); }
+              o.items.forEach(function (c) { R(g, c.x, y + 2, c.w, 8, '#8b5a2b'); R(g, c.x, y + 2, c.w, 1, '#b07a45'); R(g, c.x, y + 9, c.w, 1, '#5e3a1a'); R(g, c.x, y + 3, 1, 6, '#d2a679'); R(g, c.x + c.w - 1, y + 3, 1, 6, '#d2a679'); });
+            } else {
+              R(g, 0, y, W, L, '#7a7468');
+              for (var x2 = 0; x2 < W; x2 += 5) R(g, x2, y + 2, 2, 8, '#5b4636');
+              R(g, 0, y + 3, W, 1, '#d6d3d1'); R(g, 0, y + 8, W, 1, '#d6d3d1');
+              var warn = o.items.length || o.trainT < 1.2;
+              R(g, W - 8, y - 4, 1, 6, '#222'); R(g, W - 10, y - 7, 5, 4, '#222'); R(g, W - 9, y - 6, 3, 2, warn && Math.floor(t * 8) % 2 ? '#ff3b3b' : '#5a2020');
+              o.items.forEach(function (c) {
+                R(g, c.x, y + 1, c.w, 9, '#d43b3b'); R(g, c.x, y + 3, c.w, 2, '#ffe9a8'); R(g, c.x, y + 9, c.w, 1, '#7a1414');
+                for (var j = 18; j < c.w; j += 20) R(g, c.x + j, y + 1, 2, 9, '#3a0d0d');
+              });
+            }
+          }
+          var p = ck.hop ? ck.hop.p : 0, kk = ck.hop ? ck.hop.from + (ck.hop.to - ck.hop.from) * p : ck.k;
+          chicken(g, ck.x, top(kk) + 1 - Math.sin(p * Math.PI) * 4, dead && dead.kind === 'splat');
+          if (dead && dead.kind === 'splash') R(g, ck.x - 5, top(ck.k) + 5, 10, 2, 'rgba(255,255,255,.7)');
+          txt(g, String(score), 7, 7, 'rgba(0,0,0,.5)', 'left'); txt(g, String(score), 6, 6, '#fff', 'left');
+          sp.draw(g); pp.draw(g);
+        }
+      };
+    },
+
+    // Willy Crash: a cannon fires the daredevil in an arc over the dusk city onto the rooftop target (or the wall)
+    willy: function (W, H) {
+      var GY = H - 10, CX = 12, sp = sparks(), pp = popups(), t = 0, phase = 'aim', pt = 0, shotN = 0, total = 0;
+      var tgt = { x0: Math.round(W * 0.6), x1: W - 6, y: GY - Math.max(46, Math.round(GY * 0.42)) };
+      tgt.mid = Math.round((tgt.x0 + tgt.x1) / 2); tgt.hw = (tgt.x1 - tgt.x0) / 2;
+      var mid = { x0: Math.round(W * 0.3), x1: Math.round(W * 0.44), y: GY - Math.max(26, Math.round(GY * 0.24)) };
+      var back = [], stars = [], wins = [];
+      for (var x = -4; x < W; x += irnd(10, 18)) back.push({ x: x, w: irnd(10, 18), h: irnd(Math.round(GY * 0.25), Math.round(GY * 0.55)) });
+      for (var i = 0; i < 22; i++) stars.push({ x: irnd(0, W), y: irnd(0, Math.round(H * 0.4)) });
+      [mid, tgt].forEach(function (b) { for (var wy = b.y + 6; wy < GY - 4; wy += 7) for (var wx = b.x0 + 3; wx < b.x1 - 3; wx += 6) if (Math.random() < 0.55) wins.push({ x: wx, y: wy, c: Math.random() < 0.8 ? '#ffd36a' : '#7fe0ff' }); });
+      back.forEach(function (b) { for (var wy = GY - b.h + 4; wy < GY - 3; wy += 5) for (var wx = b.x + 2; wx < b.x + b.w - 2; wx += 4) if (Math.random() < 0.25) wins.push({ x: wx, y: wy, c: 'rgba(255,211,106,.45)', s: 1 }); });
+      var birds = [{ x: tgt.x0 + 4, home: tgt.x0 + 4, y: tgt.y, st: 0 }, { x: tgt.x1 - 12, home: tgt.x1 - 12, y: tgt.y, st: 0 }];
+      var man = null, ang = -0.5, aim = -0.5, trail = [], res = null, G = 110;
+      var OUT = [['bull', 'BULLSEYE', 1000, '#ffd84a', 0.24], ['great', 'GREAT', 500, '#7dffb3', 0.2], ['nice', 'NICE', 250, '#7fe0ff', 0.14], ['roof', 'ON THE ROOF', 100, '#c9b8ff', 0.1],
+        ['wrong', 'WRONG ROOF', 50, '#ffb0d0', 0.14], ['wall', 'SPLAT', 0, '#ff8a5c', 0.18]];
+      function pick() { var r = Math.random(), a = 0; for (var i = 0; i < OUT.length; i++) { a += OUT[i][4]; if (r < a) return OUT[i]; } return OUT[0]; }
+      function plan() {
+        var o = pick(), s = Math.random() < 0.5 ? -1 : 1, tx, ty, T = rnd(1.3, 1.6);
+        if (o[0] === 'bull') tx = tgt.mid + s * rnd(0, tgt.hw * 0.15);
+        else if (o[0] === 'great') tx = tgt.mid + s * rnd(tgt.hw * 0.3, tgt.hw * 0.5);
+        else if (o[0] === 'nice') tx = tgt.mid + s * rnd(tgt.hw * 0.62, tgt.hw * 0.9);
+        else if (o[0] === 'roof') tx = s < 0 ? tgt.x0 + 2 : tgt.x1 - 3;
+        if (o[0] === 'wrong') { tx = rnd(mid.x0 + 3, mid.x1 - 3); ty = mid.y; T = rnd(1, 1.2); }
+        else if (o[0] === 'wall') { tx = tgt.x0 + 6; ty = tgt.y + rnd(14, 26); }
+        else ty = tgt.y;
+        var vx = (tx - CX) / T, vy = (ty - (GY - 8) - 0.5 * G * T * T) / T;
+        aim = Math.atan2(vy, vx);
+        return { o: o, vx: vx, vy: vy, T: T };
+      }
+      var next = plan();
+      return {
+        step: function (dt) {
+          t += dt; pt += dt; sp.step(dt, 40); pp.step(dt);
+          birds.forEach(function (b) { if (b.st) { b.x -= 30 * dt; b.y -= 22 * dt; if (b.y < -10) { b.st = 0; b.y = tgt.y; b.x = b.home; } } });
+          if (phase === 'aim') {
+            ang += (aim - ang) * Math.min(1, dt * 4);
+            if (pt > 1.1) {
+              phase = 'fly'; pt = 0; shotN++; trail = [];
+              var mx = CX + 2 + Math.cos(ang) * 16, my = GY - 4 + Math.sin(ang) * 16;
+              man = { x0: CX, y0: GY - 8, x: mx, y: my, vx: next.vx, vy: next.vy, f: 0 };
+              sp.burst(mx, my, 14, ['#fff', '#ffd84a', '#ff8a3d', '#c9c4d8'], 45);
+            }
+          } else if (phase === 'fly') {
+            var m = man, tau = pt, o = next.o;
+            m.x = m.x0 + m.vx * tau; m.y = m.y0 + m.vy * tau + 0.5 * G * tau * tau; m.f = Math.floor(tau * 8) % 2;
+            if (Math.floor(tau * 20) !== m.tk) { m.tk = Math.floor(tau * 20); trail.push({ x: m.x, y: m.y - 4 }); if (trail.length > 14) trail.shift(); }
+            birds.forEach(function (b) { if (!b.st && Math.abs(b.x - m.x) < 14 && Math.abs(b.y - m.y) < 18) { b.st = 1; pp.add('+10', b.x, b.y - 10, '#e8e4ff'); } });
+            var hitWall = o[0] === 'wall' && m.x >= tgt.x0 - 2 && m.y > tgt.y;
+            if (tau >= next.T || hitWall) {
+              phase = 'land'; pt = 0;
+              if (hitWall) { m.x = tgt.x0 - 3; m.wall = true; }
+              else { m.y = o[0] === 'wrong' ? mid.y : tgt.y; m.wall = false; }
+              total += o[2];
+              var lbl = o[1] + (o[2] ? ' +' + o[2] : ''), lw = lbl.length * 4 + 2; pp.add(lbl, Math.max(lw, Math.min(W - lw, m.x)), m.y - 22, o[3]);
+              sp.burst(m.x, m.y, o[0] === 'bull' ? 30 : 12, o[0] === 'bull' ? ['#ffd84a', '#fff', '#ff4d4d', '#7dffb3'] : [o[3], '#fff'], o[0] === 'bull' ? 70 : 40);
+              res = o;
+            }
+          } else if (phase === 'land') {
+            if (man.wall) man.y = Math.min(GY, man.y + 14 * dt);
+            else if (pt < 0.4 && res[0] !== 'wrong') man.x += (res[0] === 'roof' ? 0 : 10) * dt * (1 - pt / 0.4);
+            if (pt > 2) {
+              phase = 'aim'; pt = 0; man = null; trail = [];
+              if (shotN >= 5) { shotN = 0; total = 0; }
+              next = plan();
+            }
+          }
+        },
+        draw: function (g) {
+          var sky = g.createLinearGradient(0, 0, 0, GY); sky.addColorStop(0, '#1e0b3a'); sky.addColorStop(0.55, '#7a2a6e'); sky.addColorStop(1, '#ff8a3d');
+          g.fillStyle = sky; g.fillRect(0, 0, W, GY);
+          stars.forEach(function (s, i) { if ((i + Math.floor(t * 2)) % 7) R(g, s.x, s.y, 1, 1, 'rgba(255,255,255,.55)'); });
+          g.fillStyle = '#ffb347'; g.beginPath(); var SY = Math.round(GY * 0.55); g.arc(Math.round(W * 0.42), SY, 20, 0, TAU); g.fill();
+          for (var y = SY + 2; y < SY + 20; y += 5) R(g, W * 0.42 - 22, y, 44, 1 + Math.floor((y - SY) / 6), '#c2507a');
+          back.forEach(function (b) { R(g, b.x, GY - b.h, b.w, b.h, '#3b1a5a'); });
+          wins.forEach(function (w) { if (w.s) R(g, w.x, w.y, 1, 1, w.c); });
+          // the low "wrong roof" building and the target building with its bullseye pad
+          R(g, mid.x0, mid.y, mid.x1 - mid.x0, GY - mid.y, '#5a2a7a'); R(g, mid.x0, mid.y, mid.x1 - mid.x0, 2, '#8a4aa8');
+          R(g, tgt.x0, tgt.y, tgt.x1 - tgt.x0, GY - tgt.y, '#4a1f66'); R(g, tgt.x0, tgt.y, 2, GY - tgt.y, '#7a3b8f');
+          wins.forEach(function (w) { if (!w.s) R(g, w.x, w.y, 2, 3, w.c); });
+          var hw = tgt.hw;
+          [[1, '#e5263f'], [0.58, '#fff6ea'], [0.24, '#ffd84a']].forEach(function (z) { R(g, tgt.mid - hw * z[0], tgt.y - 1, hw * z[0] * 2, 2, z[1]); });
+          R(g, tgt.x1 - 3, tgt.y - 12, 1, 11, '#ccc'); R(g, tgt.x1 - 9, tgt.y - 12, 6, 4, Math.floor(t * 3) % 2 ? '#ffd84a' : '#e5263f');
+          birds.forEach(function (b) { var by = Math.round(b.y), fl = b.st && Math.floor(t * 10) % 2; R(g, b.x - 2, by - 4, 4, 3, '#c9c4d8'); R(g, b.x + 1, by - 5, 2, 2, '#9a94b0'); R(g, b.x + 3, by - 4, 1, 1, '#ffb347'); if (b.st) R(g, b.x - 3, by - (fl ? 7 : 3), 3, 1, '#e8e4ff'); });
+          R(g, 0, GY, W, H - GY, '#1a0d24'); R(g, 0, GY, W, 1, '#3b1f4a');
+          for (var x = 4; x < W; x += 14) R(g, x, GY + 4, 6, 1, 'rgba(255,211,106,.4)');
+          trail.forEach(function (p, i) { if (i % 2 === 0) R(g, p.x, p.y, 1, 1, 'rgba(255,255,255,' + (0.25 + 0.5 * i / trail.length).toFixed(2) + ')'); });
+          cannon(g, CX, GY, ang);
+          if (man) {
+            if (phase === 'fly') daredevil(g, man.x, man.y, man.f);
+            else if (man.wall) daredevil(g, man.x, man.y, 0);
+            else daredevil(g, man.x, man.y, pt > 0.7 && res && res[2] >= 250 ? 3 : 2);
+          } else if (phase === 'aim') { var hx = CX + 2 + Math.cos(ang) * 13, hy = GY - 4 + Math.sin(ang) * 13; R(g, hx - 1, hy - 2, 3, 3, '#ffd84a'); }
+          txt(g, 'SHOT ' + Math.max(1, shotN) + '/5', 5, 5, '#fff', 'left'); txt(g, String(total), W - 5, 5, '#ffd84a', 'right');
+          sp.draw(g); pp.draw(g);
+        }
+      };
+    },
+
+    // Crazy Tower: neon blocks slide in from the sides and stop; the overhang is cut off and falls away
+    tower: function (W, H) {
+      var BH = 8, BW0 = 64, GY = H - 16, COL = ['#ff3d7f', '#ff4fb4', '#d946ef', '#a855f7', '#4fd2ff', '#22d3ee', '#ffb21a'];
+      var stack, mover, falls = [], cam = 0, streak = 0, wait = 0.6, endT = 0, t = 0, sp = sparks(), pp = popups(), MARKS = [10, 20, 30], JP = 40;
+      function reset() { stack = [{ x: Math.round(W / 2 - BW0 / 2), w: BW0 }]; mover = null; streak = 0; wait = 0.6; }
+      reset();
+      function lvY(n) { return Math.round(GY - n * BH + cam); }   // top of block n (the pedestal is block 0, its top at GY)
+      function spawn() {
+        var top = stack[stack.length - 1], dir = stack.length % 2 ? 1 : -1;
+        mover = { x: dir > 0 ? -top.w * 0.6 : W - top.w * 0.4, w: top.w, v: dir * rnd(80, 100), dir: dir, c: COL[(stack.length - 1) % COL.length],
+          err: Math.random() < 0.38 ? 0 : Math.round(rnd(1, 6)) * (Math.random() < 0.5 ? -1 : 1) };
+        if (stack.length > 6 && Math.random() < 0.05) mover.err = mover.dir * (top.w + 2);   // now and then: a total miss
+      }
+      function collapse() {
+        stack.slice(1).forEach(function (b, i) { falls.push({ x: b.x, y: lvY(i + 1), w: b.w, c: b.c, vx: rnd(-40, 40), vy: rnd(-40, 0) }); });
+        stack.length = 1;
+      }
+      function place() {
+        var m = mover, top = stack[stack.length - 1], n = stack.length;
+        m.x = top.x + m.err; mover = null;
+        if (m.err === 0) {
+          streak++; var b = { x: top.x, w: top.w, c: m.c };
+          if (streak >= 3 && b.w < BW0) { b.w = Math.min(BW0, b.w + 4); b.x -= 2; }
+          stack.push(b); pp.add('PERFECT', W / 2, lvY(n) - 12, '#fff'); sp.burst(b.x + b.w / 2, lvY(n) + 3, 18, [m.c, '#fff'], 55);
+        } else {
+          streak = 0;
+          var l = Math.max(m.x, top.x), r = Math.min(m.x + m.w, top.x + top.w);
+          if (r - l < 2) { falls.push({ x: m.x, y: lvY(n), w: m.w, c: m.c, vx: m.dir * 20, vy: 0 }); pp.add('TOWER DOWN', W / 2, lvY(n) - 14, '#ff4fb4'); endT = 1.4; return; }
+          stack.push({ x: l, w: r - l, c: m.c });
+          if (m.x < top.x) falls.push({ x: m.x, y: lvY(n), w: top.x - m.x, c: m.c, vx: -14, vy: 0 });
+          else falls.push({ x: top.x + top.w, y: lvY(n), w: m.x + m.w - top.x - top.w, c: m.c, vx: 14, vy: 0 });
+        }
+        var h = stack.length - 1;
+        if (MARKS.indexOf(h) >= 0) { pp.add(h + ' HIGH', W / 2, lvY(h) - 22, '#4fd2ff'); sp.burst(W / 2, lvY(h), 24, ['#4fd2ff', '#fff', '#ff4fb4'], 60); }
+        if (h >= JP) { pp.add('JACKPOT', W / 2, lvY(h) - 22, '#ffb21a'); for (var i = 0; i < 6; i++) sp.burst(rnd(10, W - 10), rnd(10, H * 0.6), 14, ['#ff4040', '#ffb040', '#ffff40', '#40ff60', '#40d0ff', '#d070ff'], 60); endT = 2.4; }
+        if (stack[stack.length - 1].w < 4) endT = 1.2;
+      }
+      return {
+        step: function (dt) {
+          t += dt; sp.step(dt, 40); pp.step(dt);
+          falls.forEach(function (f) { f.vy += 220 * dt; f.y += f.vy * dt; f.x += f.vx * dt; });
+          falls = falls.filter(function (f) { return f.y < H + 10; });
+          var want = Math.max(0, (stack.length + 1) * BH - H * 0.55);
+          cam += (want - cam) * Math.min(1, dt * 3);
+          if (endT > 0) { endT -= dt; if (endT <= 0) { collapse(); reset(); wait = 1.4; } return; }
+          if (!mover) { wait -= dt; if (wait <= 0) spawn(); return; }
+          mover.x += mover.v * dt;
+          var top = stack[stack.length - 1], goal = top.x + mover.err;
+          if ((mover.dir > 0 && mover.x >= goal) || (mover.dir < 0 && mover.x <= goal)) { place(); wait = rnd(0.1, 0.3); }
+        },
+        draw: function (g) {
+          for (var x = 8; x < W; x += 16) R(g, x, 0, 1, H, 'rgba(79,210,255,.07)');
+          for (var n = 0; n < 60; n += 5) { var gy = lvY(n); if (gy > -2 && gy < GY) R(g, 0, gy, W, 1, 'rgba(255,79,180,.08)'); }
+          // height marks up the side, and the jackpot line
+          MARKS.concat([JP]).forEach(function (m) {
+            var my = lvY(m), on = stack.length - 1 >= m, c = m === JP ? '#ffb21a' : '#4fd2ff';
+            if (my < -8 || my > GY) return;
+            for (var x = 0; x < W; x += 6) R(g, x, my, 3, 1, on ? c : 'rgba(255,255,255,.18)');
+            txt(g, m === JP ? 'JACKPOT' : String(m), m === JP ? W / 2 : W - 4, my - 9, on || Math.floor(t * 2) % 2 ? c : 'rgba(255,255,255,.35)', m === JP ? 'center' : 'right');
+          });
+          // the pedestal
+          var b0 = stack[0], py = lvY(0);
+          R(g, b0.x - 6, py, b0.w + 12, H - py, '#1d1633'); R(g, b0.x - 6, py, b0.w + 12, 1, '#4fd2ff'); R(g, b0.x - 6, py, 1, H - py, 'rgba(79,210,255,.4)'); R(g, b0.x + b0.w + 5, py, 1, H - py, 'rgba(79,210,255,.4)');
+          for (var i = 1; i < stack.length; i++) { var b = stack[i], y = lvY(i); if (y > H || y < -BH) continue; neonBlock(g, b.x, y, b.w, BH, b.c); }
+          if (mover) { var my2 = lvY(stack.length); g.globalAlpha = 0.25; R(g, mover.x, my2 + BH, mover.w, 1, mover.c); g.globalAlpha = 1; neonBlock(g, mover.x, my2, mover.w, BH, mover.c); }
+          falls.forEach(function (f) { neonBlock(g, f.x, f.y, f.w, BH, f.c); });
+          txt(g, String(stack.length - 1), 6, 6, '#fff', 'left');
+          sp.draw(g); pp.draw(g);
+        }
+      };
+    },
+
+    // Centipede Chaos: a centipede winds down through the mushrooms; the shooter at the bottom picks it apart
+    centipede: function (W, H) {
+      var S = 8, C = Math.floor(W / S), RW = Math.floor(H / S), ox = Math.floor((W - C * S) / 2), oy = Math.floor((H - RW * S) / 2), GAP = S;
+      var mush = {}, cents = [], shot = null, gun = { x: W / 2 }, fireT = 0, acc = 0, speed = 44, waveT = 0, score = 0, t = 0, sp = sparks(), pp = popups();
+      function key(c, r) { return c + ',' + r; }
+      function seed() { mush = {}; for (var r = 1; r < RW - 4; r++) for (var c = 0; c < C; c++) if (Math.random() < 0.1) mush[key(c, r)] = 4; }
+      function spawn(n) { var c = { hist: [], n: n, mode: 'h', hdir: 1, drop: 0 }; for (var i = 0; i <= n * GAP; i++) c.hist.push({ x: -i, y: 0 }); cents.push(c); }
+      seed(); spawn(11);
+      function derive(c) {
+        var a = c.hist[0], b = c.hist[1], lastH = 1;
+        for (var j = 0; j + 1 < c.hist.length; j++) if (c.hist[j].x !== c.hist[j + 1].x) { lastH = c.hist[j].x > c.hist[j + 1].x ? 1 : -1; break; }
+        if (!b || a.y === b.y) { c.mode = 'h'; c.hdir = b ? (a.x > b.x ? 1 : -1) : lastH; return; }
+        var left = (S - a.y % S) % S;
+        if (left) { c.mode = 'd'; c.drop = left; c.hdir = lastH; } else { c.mode = 'h'; c.hdir = -lastH; }
+      }
+      function move(c) {
+        var h = c.hist[0], x = h.x, y = h.y;
+        if (c.mode === 'h' && x >= 0 && x % S === 0) {
+          var col = x / S, row = y / S, nc = col + c.hdir;
+          if (nc < 0 || nc >= C || mush[key(nc, row)]) { if (row >= RW - 2) c.hdir = -c.hdir; else { c.mode = 'd'; c.drop = S; } }
+        }
+        if (c.mode === 'h') x += c.hdir;
+        else { y += 1; if (--c.drop <= 0) { c.mode = 'h'; c.hdir = -c.hdir; } }
+        c.hist.unshift({ x: x, y: y }); if (c.hist.length > c.n * GAP + 1) c.hist.length = c.n * GAP + 1;
+      }
+      function segAt(c, i) { return c.hist[Math.min(i * GAP, c.hist.length - 1)]; }
+      function hit(c, i) {
+        var p = segAt(c, i), cx = ox + p.x + S / 2, cy = oy + p.y + S / 2, col = Math.round(p.x / S), row = Math.round(p.y / S);
+        sp.burst(cx, cy, 12, ['#d4ff3d', '#ffd23d', '#fff'], 45);
+        score += i === 0 ? 100 : 10; if (i === 0 || Math.random() < 0.3) pp.add(i === 0 ? '100' : '10', cx, cy - 8, i === 0 ? '#ffd23d' : '#d4ff3d');
+        if (row < RW - 1 && col >= 0 && col < C) mush[key(col, row)] = 4;
+        cents.splice(cents.indexOf(c), 1);
+        if (i > 0) cents.push({ hist: c.hist.slice(0, i * GAP + 1), n: i, mode: c.mode, hdir: c.hdir, drop: c.drop });
+        if (i < c.n - 1) { var r = { hist: c.hist.slice((i + 1) * GAP), n: c.n - i - 1 }; if (r.hist.length) { derive(r); cents.push(r); } }
+      }
+      return {
+        step: function (dt) {
+          t += dt; sp.step(dt, 30); pp.step(dt); fireT -= dt;
+          if (!cents.length) {
+            waveT += dt;
+            if (waveT > 1.4) { waveT = 0; speed = Math.min(64, speed + 4); if (Object.keys(mush).length > C * RW * 0.22) seed(); spawn(irnd(9, 12)); }
+          }
+          acc += dt * speed;
+          while (acc >= 1) { acc -= 1; cents.forEach(move); }
+          // the shooter goes after the lowest segment
+          var tx = W / 2, low = -1;
+          cents.forEach(function (c) { for (var i = 0; i < c.n; i++) { var p = segAt(c, i); if (p.x >= 0 && p.y > low) { low = p.y; tx = ox + p.x + S / 2; } } });
+          var gy = oy + (RW - 1) * S + S / 2;
+          gun.x += Math.max(-60 * dt, Math.min(60 * dt, tx - gun.x)); gun.x = Math.max(ox + 4, Math.min(ox + C * S - 4, gun.x));
+          if (!shot && fireT <= 0 && cents.length && Math.abs(tx - gun.x) < 6) { shot = { x: Math.round(gun.x), y: gy - 5 }; fireT = 0.1; }
+          if (shot) {
+            shot.y -= 220 * dt;
+            if (shot.y < 0) shot = null;
+            else {
+              var done = false;
+              cents.slice().some(function (c) { for (var i = 0; i < c.n; i++) { var p = segAt(c, i); if (Math.abs(ox + p.x + S / 2 - shot.x) < 4 && Math.abs(oy + p.y + S / 2 - shot.y) < 4) { hit(c, i); done = true; return true; } } return false; });
+              if (!done) { var mk = key(Math.floor((shot.x - ox) / S), Math.floor((shot.y - oy) / S)); if (mush[mk]) { mush[mk]--; if (!mush[mk]) { delete mush[mk]; score += 1; } done = true; } }
+              if (done) shot = null;
+              if (!cents.length && done) { pp.add('WAVE CLEAR', W / 2, H * 0.4, '#ff8cc0'); sp.burst(W / 2, H * 0.4, 30, ['#ff5aa0', '#d4ff3d', '#ffd23d', '#fff'], 60); }
+            }
+          }
+        },
+        draw: function (g) {
+          for (var y = 0; y < RW; y++) for (var x = 0; x < C; x++) if ((x + y) % 3 === 0) R(g, ox + x * S + 4, oy + y * S + 4, 1, 1, 'rgba(125,255,176,.12)');
+          R(g, 0, oy + (RW - 4) * S, W, 1, 'rgba(255,90,160,.15)');
+          Object.keys(mush).forEach(function (k) { var a = k.split(','); mushroom(g, ox + (+a[0]) * S, oy + (+a[1]) * S, mush[k]); });
+          var fr = Math.floor(t * 10) % 2;
+          cents.forEach(function (c) { for (var i = c.n - 1; i >= 0; i--) { var p = segAt(c, i); if (p.x < -S) continue; centSeg(g, ox + p.x + S / 2, oy + p.y + S / 2, i === 0, i, (fr + i) % 2); } });
+          if (shot) R(g, shot.x, shot.y - 3, 1, 4, '#fff');
+          var gx = Math.round(gun.x), gy = oy + (RW - 1) * S + S / 2;
+          R(g, gx - 3, gy - 1, 7, 4, '#5ec8ff'); R(g, gx - 2, gy - 3, 5, 2, '#7dffb0'); R(g, gx, gy - 5, 1, 2, '#fff'); R(g, gx - 3, gy + 3, 7, 1, '#2b6f99');
+          txt(g, String(score), W / 2, 4, '#ff8cc0');
+          sp.draw(g); pp.draw(g);
+        }
+      };
+    },
+
     // Puzzle boards: a quiet grid of tiles, a few glowing up and fading in the game's colours
     puzzle: function (W, H, b) {
       var S = 10, C = Math.ceil(W / S), RW = Math.ceil(H / S), lit = [], cols = [b.c.glow, b.c.hc, b.c.trim];
@@ -1110,6 +1485,40 @@ Kit.init({ id: 'hiscores', mark: false });
       if (side) { var on = Math.floor(t * 3) % 2, c = b && b.c ? b.c.glow : '#f0f'; g.fillStyle = on ? c : '#333'; g.beginPath(); g.arc(12, 9, 7, 0, TAU); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(12, 9, 3, 0, TAU); g.fill(); return; }
       var a = Math.sin(t * 5) > 0.6 ? -0.5 : 0.35; g.save(); g.translate(5, 14); g.rotate(a); R(g, 0, -1, 13, 3, '#ff3b3b'); g.restore();
       var by = 3 + Math.abs(Math.sin(t * 2.5)) * 6; g.fillStyle = '#d7dde8'; g.beginPath(); g.arc(14, by, 3, 0, TAU); g.fill(); R(g, 13, by - 2, 1, 1, '#fff');
+    },
+    crossy: function (g, t, side) {
+      if (side) {   // a car driving along a strip of road
+        R(g, 0, 4, 24, 11, '#4b5058'); for (var x = 0; x < 24; x += 6) R(g, x, 9, 3, 1, '#e5e7eb');
+        car(g, ((t * 16) % 40) - 14, 5, 13, '#ef4444', false, 1); return;
+      }
+      R(g, 0, 15, 24, 3, '#78c846'); chicken(g, 12, 5 - Math.round(Math.abs(Math.sin(t * 4)) * 4));
+    },
+    willy: function (g, t, side) {
+      var ph = (t % 1.8) / 1.8;
+      if (side) {   // the daredevil flies in from the left and lands on a roof
+        R(g, 12, 15, 12, 3, '#4a1f66'); R(g, 14, 14, 8, 1, '#e5263f'); R(g, 16, 14, 4, 1, '#ffd84a');
+        if (ph < 0.6) { var p = ph / 0.6; daredevil(g, p * 18, 15 - Math.sin(p * Math.PI) * 9 + p * -1, Math.floor(t * 8) % 2); } else daredevil(g, 18, 14, 3);
+        return;
+      }
+      cannon(g, 6, 17, -0.75);
+      if (ph < 0.15) { g.fillStyle = 'rgba(255,255,255,.8)'; g.beginPath(); g.arc(19, 6, 3 + ph * 20, 0, TAU); g.fill(); R(g, 18, 5, 2, 2, '#ffd84a'); }
+    },
+    tower: function (g, t, side) {
+      if (side) {   // a slice breaking off and falling
+        neonBlock(g, 6, 13, 12, 4, '#ffb21a'); neonBlock(g, 6, 9, 12, 4, '#4fd2ff'); neonBlock(g, 6, 5, 10, 4, '#ff4fb4');
+        var f = (t % 1.2) / 1.2; neonBlock(g, 16 + f * 3, 5 + f * f * 14, 3, 4, '#ff4fb4'); return;
+      }
+      neonBlock(g, 5, 13, 14, 4, '#d946ef'); neonBlock(g, 6, 9, 13, 4, '#22d3ee');
+      neonBlock(g, Math.round(6 + Math.sin(t * 2.4) * 6), 5, 12, 4, '#ff3d7f');
+    },
+    centipede: function (g, t, side) {
+      if (side) {   // a mushroom, and a shot going up past it
+        R(g, 7, 2, 10, 1, '#ff5aa0'); R(g, 5, 3, 14, 6, '#ff5aa0'); R(g, 5, 8, 14, 1, '#c02670');
+        var on = Math.floor(t * 2) % 2; R(g, 8, 4, 2, 2, on ? '#fff' : '#ffd0e6'); R(g, 14, 5, 2, 2, on ? '#ffd0e6' : '#fff');
+        R(g, 10, 9, 4, 6, '#fff3b0'); R(g, 10, 14, 4, 1, '#d8c27a');
+        R(g, 21, 18 - ((t * 40) % 22), 1, 4, '#fff'); return;
+      }
+      for (var i = 3; i >= 0; i--) centSeg(g, 19 - i * 5, 10 + Math.round(Math.sin(t * 6 - i) * 2), i === 0, i, Math.floor(t * 8 + i) % 2);
     },
     pong: function (g, t, side) { var y = 9 + Math.sin(t * 2.2) * 5; if (side) { R(g, 18, y - 4, 2, 8, '#fff'); R(g, 6 + Math.abs(Math.sin(t * 2.2)) * 8, 8, 2, 2, '#fff'); } else { var bx = 6 + Math.abs(((t * 9) % 22) - 11); R(g, 2, 9 - Math.sin(t * 2.2) * 3 - 4, 2, 8, '#fff'); R(g, 20, 9 + Math.sin(t * 2.2) * 3 - 4, 2, 8, '#fff'); R(g, bx, 8 + Math.round(Math.sin(t * 3) * 3), 2, 2, '#fff'); } }
   };
