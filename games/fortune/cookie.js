@@ -631,7 +631,7 @@ function filmMaterial(normalTex, frostTex, side) {
 // nothing and act as solid ground until something hits them hard enough to wake them, so the
 // scene stops rendering once everything has settled.
 function makeWorld() {
-  const G = -15, DT = 1 / 120, ITER = 6, SLOP = 0.003, MU_T = 0.55, MU_B = 0.4, MAXSUB = 5;
+  const G = -15, DT = 1 / 120, ITER = 6, SLOP = 0.003, MU_T = 0.55, MU_B = 0.6, MAXSUB = 5;
   const bodies = [], cons = [], pairs = new Map();
   let walls = [], acc = 0, stepMs = 0;
   const up = new THREE.Vector3(0, 1, 0);
@@ -656,7 +656,7 @@ function makeWorld() {
     return b;
   }
   function remove(b) { b.active = false; const i = bodies.indexOf(b); if (i >= 0) bodies.splice(i, 1); }
-  function wake(b) { if (b && b.active && !b.held && !b.awake) { b.awake = true; b.still = 0; b.age = 0; } }
+  function wake(b) { if (b && b.active && !b.held && !b.awake) { b.awake = true; b.still = 0; b.calm = 0; b.age = 0; b.wakes = (b.wakes || 0) + 1; } }
   function wakeNear(b, pad) {
     for (const o of bodies) if (o !== b && o.active && !o.held && o.p.distanceTo(b.p) < o.rad + b.rad + (pad || 0.2)) wake(o);
   }
@@ -765,10 +765,15 @@ function makeWorld() {
         pointsIn(a, b); pointsIn(b, a);
         if (cons.length === n0) continue;
         if (!b.awake) {
-          // a sleeping pack is solid ground, unless it's hit hard or pushed into
+          // a sleeping pack is solid ground, unless it's hit hard, or shoved deep by something on the move.
+          // (Resting overlap alone never wakes it: in a deep pile that would keep waking the pile forever.)
           let hit = 0;
-          for (let i = n0; i < cons.length; i++) { const c = cons[i]; hit = Math.max(hit, -relVel(c, t3).dot(c.n), c.depth * 20); }
-          if (hit > 0.35) { wake(b); wakeNear(b, 0.05); frameOf(b); for (let i = n0; i < cons.length; i++) { const c = cons[i]; c.kn = mass(c, c.n); c.kt = mass(c, c.ta); c.kb = mass(c, c.tb); } }
+          const moving = a.v.lengthSq() > 0.09;
+          for (let i = n0; i < cons.length; i++) { const c = cons[i]; hit = Math.max(hit, -relVel(c, t3).dot(c.n), moving && c.depth > 0.05 ? 0.5 : 0); }
+          if (hit > 0.4) {
+            wake(b); if (hit > 1) wakeNear(b, 0.05);   // a real knock also stirs whatever leans on it
+            frameOf(b); for (let i = n0; i < cons.length; i++) { const c = cons[i]; c.kn = mass(c, c.n); c.kt = mass(c, c.ta); c.kb = mass(c, c.tb); }
+          }
         }
       }
     }
@@ -821,8 +826,13 @@ function makeWorld() {
       }
       // sleep
       b.age += DT;
-      if (b.v.lengthSq() < 0.012 && b.w.lengthSq() < 0.05) b.still += DT; else b.still = 0;
-      if (b.still > 0.3 || b.age > 9) { b.awake = false; b.v.set(0, 0, 0); b.w.set(0, 0, 0); events && events.push(b); }
+      const v2 = b.v.lengthSq(), w2 = b.w.lengthSq();
+      // creep: motion too small to see is just solver noise in a pile; stop it outright
+      if (v2 < 2.5e-4 && w2 < 1e-3) { b.v.set(0, 0, 0); b.w.set(0, 0, 0); }
+      if (v2 < 0.012 && w2 < 0.05) b.still += DT; else b.still = 0;
+      // calm: barely moving (a pack fidgeting in a pile) for a second also counts as settled
+      if (v2 < 0.07 && w2 < 0.2) b.calm = (b.calm || 0) + DT; else b.calm = 0;
+      if (b.still > 0.3 || b.calm > 0.8 || b.age > 6) { b.awake = false; b.calm = 0; b.v.set(0, 0, 0); b.w.set(0, 0, 0); events && events.push(b); }
     }
     return true;
   }
@@ -2000,6 +2010,7 @@ function mount(stage, api) {
       sim: (sec) => { const n = Math.round(sec / 0.016); let mx = 0, sum = 0, k = 0; for (let i = 0; i < n; i++) { T += 0.016; update(0.016); const m = world.ms(); mx = Math.max(mx, m); if (m > 0.05) { sum += m; k++; } } physStat.max = Math.max(physStat.max, mx); physStat.sum += sum; physStat.n += k; return +mx.toFixed(2); },
       settleMs: () => +settleMs.toFixed(1),
       cam: () => ({ d: +camD.toFixed(3), to: +camTo.toFixed(3) }),
+      awakeInfo: () => world.bodies.filter((b) => b.active && b.awake).map((b) => ({ v: +b.v.length().toFixed(3), w: +b.w.length().toFixed(3), still: +b.still.toFixed(2), age: +b.age.toFixed(2), wakes: b.wakes || 0, y: +b.p.y.toFixed(2) })),
       physStat: () => ({ max: +physStat.max.toFixed(2), avg: +(physStat.sum / Math.max(1, physStat.n)).toFixed(2), frames: physStat.n }),
       step: (sec) => { const n = Math.round(sec / 0.016); for (let i = 0; i < n; i++) { T += 0.016; update(0.016); } renderer.render(scene, camera); return state; },
       // average ms to draw one frame (GPU included), over n draws
