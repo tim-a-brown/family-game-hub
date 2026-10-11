@@ -423,10 +423,11 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
   // the drum energy, and can stop it right on a peg edge before it rocks back into a panel.
   // Angles: pegs sit at th + k*WA; the panel facing the pointer is index(). th grows as the front of
   // the drum moves down (you pull it down).
-  var WP = { Iw: 1, HP: 1.22, FL: 0.285, RP: 0.925, PR: 0.024, kf: 0.3, Kp: 0.1, bs: 0.08, If: 0.0003, cf: 0.007,
+  var WP = { Iw: 1.4, HP: 1.22, FL: 0.285, RP: 0.925, PR: 0.024, kf: 0.3, Kp: 0.1, bs: 0.08, If: 0.0003, cf: 0.007,
     kc: 300, cc: 0.5, mu: 0.05, F0: 0.25, F1: 0.04, Cd: 0.01, Fs: 0.03, W1: 0.08 };
-  // W_MIN still makes more than a full turn (the wheel has to go all the way around); W_MAX is about 4 turns.
-  var W_MIN = 3.2, W_MAX = 7.4, WSIM_H = 1 / 600, WSIM_CAP = 40;
+  // A heavy drum (Iw 1.4): it gets going slowly and coasts. W_MIN still makes more than a full turn (the
+  // wheel has to go all the way around); W_MAX is about 2.6 turns at two-thirds of a turn a second.
+  var W_MIN = 2.6, W_MAX = 4.2, WSIM_H = 1 / 600, WSIM_CAP = 40;
   function makeWheelSim() {
     var A = WA, P = WP, s = { th: 0, om: 0, b: 0, bv: 0, t: 0, touch: false, rest: 0 };
     function hw(u) { return 0.05 * (1 - u) + 0.010 * u; }
@@ -469,7 +470,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
   // A spin from a pull: pull speed (drum radians per second) sets the strength, with a little
   // randomness so nobody can aim. Returns 0 when the pull is too weak to make a full turn.
   function pullToSpin(om, rnd) {
-    var w = om * 1.2;
+    var w = om * 0.9;   // the drum is heavy: it leaves the hand a little slower than the pull
     if (w < W_MIN) return 0;
     return Math.min(W_MAX * 1.05, w) * (0.94 + (rnd || Math.random)() * 0.12);
   }
