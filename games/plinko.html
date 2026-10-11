@@ -205,9 +205,12 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
   var WU = COLS + 2 * WALL, HU = FLOOR + 0.06 + PLATE + 0.08;
   // Staggered rows: even rows sit over the slot centres, odd rows line up with
   // the dividers (with half pegs set into the side walls).
-  // In the over-the-slot rows, the outside column gets a rounded bumper on the
-  // wall instead of a peg, so a chip can never wedge between a peg and a wall.
-  var BR = 0.3, PEGS = [];
+  // In the over-the-slot rows, the outside column gets a triangular bumper on
+  // the wall instead of a peg (like the show's board), so a chip can never wedge
+  // between a peg and a wall. BR is its half-height, TD how far it points in:
+  // less than a chip's radius, so a chip's centre (kept R off the wall) is
+  // always outside it.
+  var BR = 0.4, TD = 0.31, PEGS = [];
   for (var r = 0; r < ROWS; r++) {
     var row = [];
     if (r % 2 === 0) { row.push({ x: 0, r: BR, b: 1 }); for (var k = 1; k < COLS - 1; k++) row.push({ x: k + 0.5, r: PR }); row.push({ x: COLS, r: BR, b: 1 }); }
@@ -246,6 +249,18 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     c.vx += jt * tx; c.vy += jt * ty; c.w -= 2 * jt / R;
     if (ev && -vn > 0.3) ev.push({ x: px, y: py, s: -vn, peg: isPeg });
   }
+  // A wall triangle: two edges from the wall out to its point. The chip hits the
+  // nearest point on the nearer edge (the point itself included).
+  function hitTri(c, wx, py, ev) {
+    var ax = wx ? COLS - TD : TD, best = null, bd = 1e9;
+    for (var e = -1; e <= 1; e += 2) {
+      var x0 = wx, y0 = py + e * BR, ex = ax - x0, ey = py - y0;
+      var u = ((c.x - x0) * ex + (c.y - y0) * ey) / (ex * ex + ey * ey); u = u < 0 ? 0 : u > 1 ? 1 : u;
+      var qx = x0 + ex * u, qy = y0 + ey * u, d2 = (c.x - qx) * (c.x - qx) + (c.y - qy) * (c.y - qy);
+      if (d2 < bd) { bd = d2; best = [qx, qy]; }
+    }
+    if (bd < R * R) hitCircle(c, best[0], best[1], 0, ev, false);
+  }
   function step(c, h, ev) {
     c.t += h;
     c.vy += PH.g * h;
@@ -256,7 +271,10 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     for (var r = Math.max(0, r0); r <= Math.min(ROWS - 1, r0 + 3); r++) {
       var py = Y0 + r * GAP, row = PEGS[r];
       if (Math.abs(c.y - py) > R + BR) continue;
-      for (var i = 0; i < row.length; i++) { var pg = row[i]; if (Math.abs(c.x - pg.x) < R + pg.r && Math.abs(c.y - py) < R + pg.r) hitCircle(c, pg.x, py, pg.r, ev, true); }
+      for (var i = 0; i < row.length; i++) {
+        var pg = row[i]; if (Math.abs(c.x - pg.x) >= R + pg.r || Math.abs(c.y - py) >= R + pg.r) continue;
+        if (pg.b) hitTri(c, pg.x, py, ev); else hitCircle(c, pg.x, py, pg.r, ev, true);
+      }
     }
     // Slot dividers (thin posts from the last peg row down to the floor)
     if (c.y + R > YL) {
@@ -1327,12 +1345,17 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
       var y = Y0 + r * GAP;
       PEGS[r].forEach(function (pg) {
         var px = pg.x;
-        if (pg.b) { // wall bumper: a chrome half-disc
+        if (pg.b) { // wall bumper: a chrome triangle pointing into the board
+          var wx = X(px), tx = X(px ? COLS - TD : TD), tri = function (ox, oy) { c.beginPath(); c.moveTo(wx, y - BR + oy); c.lineTo(tx + ox, y + oy); c.lineTo(wx, y + BR + oy); c.closePath(); };
           c.save(); c.beginPath(); c.rect(X(0), y - BR - 0.1, COLS, 2 * BR + 0.3); c.clip();
-          c.fillStyle = 'rgba(0,0,0,.4)'; c.beginPath(); c.arc(X(px) + 0.03, y + 0.06, BR, 0, 6.283); c.fill();
-          var bg2 = c.createRadialGradient(X(px) + (px ? -BR * 0.5 : BR * 0.5), y - BR * 0.45, BR * 0.05, X(px), y, BR);
-          bg2.addColorStop(0, '#f4f6fb'); bg2.addColorStop(0.5, '#aab2c4'); bg2.addColorStop(1, '#4d5468');
-          c.fillStyle = bg2; c.beginPath(); c.arc(X(px), y, BR, 0, 6.283); c.fill();
+          c.fillStyle = 'rgba(0,0,0,.4)'; tri(px ? -0.03 : 0.03, 0.06); c.fill();
+          var bg2 = c.createLinearGradient(wx, y - BR, tx, y + BR * 0.6);
+          bg2.addColorStop(0, '#f4f6fb'); bg2.addColorStop(0.45, '#aab2c4'); bg2.addColorStop(1, '#4d5468');
+          c.fillStyle = bg2; tri(0, 0); c.fill();
+          // lit top edge, shaded bottom edge
+          c.lineWidth = 0.025; c.lineCap = 'round';
+          c.strokeStyle = 'rgba(255,255,255,.85)'; c.beginPath(); c.moveTo(wx, y - BR); c.lineTo(tx, y); c.stroke();
+          c.strokeStyle = 'rgba(30,34,48,.7)'; c.beginPath(); c.moveTo(tx, y); c.lineTo(wx, y + BR); c.stroke();
           c.restore();
           return;
         }
