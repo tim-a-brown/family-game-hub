@@ -6,6 +6,9 @@
 // and unrolls with your fortune, lucky numbers and a word of Chinese. Tap the table to put
 // it away; the table restocks.
 //
+// The cookies on the table are real objects: a small rigid-body solver (makeWorld) lets new
+// ones land on, slide into and pile up against the others, then puts everything to sleep.
+//
 // Shared teller interface (see games/fortune.html):
 //   export default { id, name, blurb, rules, mount(stage, api) -> { unmount() } }
 // The returned handle also carries `test` (open/close/state) for automated checks.
@@ -956,7 +959,7 @@ export default {
     '<p>A table full of fresh fortune cookies, each in its own cellophane wrapper. <b>Tap one</b> to pick it up: the wrapper tears open and comes off. <b>Tap the cookie again</b> to crack it. It snaps in two and the paper slip unrolls with your fortune.</p>' +
     '<ul><li>Every slip has a fortune, six <b>lucky numbers</b> and a <b>Learn Chinese</b> word with how to say it.</li>' +
     '<li>Tap the table or <b>Another cookie</b> to put the slip away. The table restocks itself.</li>' +
-    '<li><b>Add a cookie</b> drops another cookie on the table. Hold it to keep pouring, up to 40. The arrow button sets the table back to a dozen.</li>' +
+    '<li><b>Add a cookie</b> drops another cookie on the table. It lands on or bumps into the others, and a crowded table piles up. Hold it to keep pouring, up to 50. The arrow button sets the table back to a dozen.</li>' +
     '<li>You won’t see the same fortune twice until you’ve read most of them.</li></ul>',
   mount
 };
@@ -1096,6 +1099,7 @@ function mount(stage, api) {
   let seedN = (Date.now() & 0xffff) + 1;
   const cookies = [];
   const world = makeWorld();
+  let settleMs = 0;
   // place a cookie's groups where its rigid body is
   const _sq = new THREE.Quaternion(), _sv = new THREE.Vector3(), _sx = new THREE.Vector3();
   function syncCookie(c) {
@@ -1290,7 +1294,7 @@ function mount(stage, api) {
   const tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   // The camera backs off until the visible table holds about a dozen cookies, whatever the screen shape.
   // "More cookies" adds up to MAX; the camera eases back a little to make room for each one.
-  const COUNT = 11, PER = 4.4, PER_MORE = 3.6, MAX = 40, MORE_KEY = 'fortune_cookie_more';
+  const COUNT = 11, PER = 4.4, PER_MORE = 3.6, MAX = 50, MORE_KEY = 'fortune_cookie_more';
   let baseD = 10, baseN = COUNT, camD = 0, camTo = 0;
   let extra = Math.max(0, Math.min(MAX, parseInt(lsGet(MORE_KEY), 10) || 0));
   const total = () => Math.min(MAX, baseN + extra);
@@ -1358,7 +1362,7 @@ function mount(stage, api) {
     // a freshly laid table: let anything that ended up overlapping settle, without drawing it
     updateWalls();
     cookies.forEach((k) => world.wake(k.rb));
-    world.settle(600);
+    const st0 = performance.now(); world.settle(600); settleMs = performance.now() - st0;
     cookies.forEach(syncCookie);
   }
   // Drop a cookie onto the table from above: after `delay` it falls from `h` up, turning and
@@ -1392,13 +1396,14 @@ function mount(stage, api) {
     world.setWalls(ws); world.walls = ws;
   }
   // "More cookies": one more drops onto the table each time (up to MAX); the camera eases back to make room.
-  function addCookie() {
+  function addCookie(at) {
+    crinkleCtx();   // (inside the tap, so the landing rustles can be heard on iPhone)
     if (state !== 'idle' || C || total() >= MAX) return false;
     extra = Math.min(MAX - baseN, extra + 1); lsSet(MORE_KEY, String(extra));
     camTo = distFor(total());
     // somewhere fairly open, but only a few tries: on a busy table it may well land on or against others
     updateWalls();
-    const p = freeSpot(cookies.map((c) => ({ x: c.rb.p.x, z: c.rb.p.z })), camTo * 0.96, 6);
+    const p = at || freeSpot(cookies.map((c) => ({ x: c.rb.p.x, z: c.rb.p.z })), camTo * 0.96, 6);
     if (!p) return false;
     const nc = makeCookie(p.x, p.z, 0.82 + Math.random() * 0.12);
     cookies.push(nc);
@@ -1847,6 +1852,7 @@ function mount(stage, api) {
   let press = null, hover = null;
   function onDown(e) {
     if (e.button > 0) return;
+    crinkleCtx();
     try { canvas.focus({ preventScroll: true }); } catch (x) {}
     if (state === 'open') { press = { table: true, x: e.clientX, y: e.clientY }; return; }
     if (state === 'ready') { press = { ready: true, x: e.clientX, y: e.clientY }; return; }
@@ -1966,6 +1972,8 @@ function mount(stage, api) {
     test: {
       state: () => state,
       count: () => cookies.length,
+      // drop one straight onto cookie i (to watch a collision)
+      dropOn: (i) => { const c = cookies[i]; return c ? addCookie({ x: c.rb.p.x + 0.3, z: c.rb.p.z + 0.1 }) : false; },
       more: (n) => { let k = 0; for (let i = 0; i < (n || 1); i++) if (addCookie()) k++; return k; },
       reset: () => resetTable(),
       // open: both steps (unwrap, then crack as soon as it's unwrapped). unwrap: step 1 only; crack: step 2.
@@ -1989,6 +1997,7 @@ function mount(stage, api) {
       hold: (on) => { hold = !!on; if (hold && raf) { cancelAnimationFrame(raf); raf = 0; } else kick(); },
       // advance without drawing (fast, for automation); returns the slowest physics frame in ms
       sim: (sec) => { const n = Math.round(sec / 0.016); let mx = 0, sum = 0, k = 0; for (let i = 0; i < n; i++) { T += 0.016; update(0.016); const m = world.ms(); mx = Math.max(mx, m); if (m > 0.05) { sum += m; k++; } } physStat.max = Math.max(physStat.max, mx); physStat.sum += sum; physStat.n += k; return +mx.toFixed(2); },
+      settleMs: () => +settleMs.toFixed(1),
       cam: () => ({ d: +camD.toFixed(3), to: +camTo.toFixed(3) }),
       physStat: () => ({ max: +physStat.max.toFixed(2), avg: +(physStat.sum / Math.max(1, physStat.n)).toFixed(2), frames: physStat.n }),
       step: (sec) => { const n = Math.round(sec / 0.016); for (let i = 0; i < n; i++) { T += 0.016; update(0.016); } renderer.render(scene, camera); return state; },
