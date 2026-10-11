@@ -13,6 +13,8 @@
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
 <script src="../arcade-music.js"></script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js","three/addons/":"../vendor/three/addons/"}}</script>
+<script type="module" src="willycrash/scene3d.js"></script>
 <style>
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
 html.ar-on body{display:flex;flex-direction:column;
@@ -36,6 +38,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 .bezel{position:relative;padding:7px;border-radius:22px;}
 .scr{position:relative;border-radius:15px;overflow:hidden;background:#2a2560;box-shadow:inset 0 0 0 2px rgba(0,0,0,.45);}
 .scr canvas{display:block;touch-action:none;}
+.scr canvas.wc-gl{position:absolute;left:0;top:0;}
+#cv{position:relative;z-index:1;}
 .deck{flex:none;width:100%;height:136px;padding:6px;border-radius:22px;position:relative;}
 .deck canvas{display:block;width:100%;height:100%;border-radius:16px;touch-action:none;cursor:grab;}
 .deck canvas:active{cursor:grabbing;}
@@ -211,6 +215,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var dr = dk.getBoundingClientRect(); DW = Math.max(100, Math.round(dr.width)); DH = Math.max(60, Math.round(dr.height));
     dk.width = Math.round(DW * DPR); dk.height = Math.round(DH * DPR);
     strips = null;
+    if (G3) G3.resize(W, H, window.devicePixelRatio || 1);
     if (state === 'aim' || state === 'idle') { var c = camAim(); cam.x = c.x; cam.y = c.y; cam.z = c.z; }
     render(); drawDeck();
   }
@@ -867,6 +872,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     }
     if (!drag && !keyHold) plVis += ((state === 'aim' ? 0 : plVis > .99 && recoil > .6 ? 1 : 0) - plVis) * Math.min(1, dt * 7);
     else plVis = depth;
+    if (G3) G3.tick(dt);
   }
   function introTimes() { return shotIdx === 0 ? [.5, 2.6, 3.4] : jpMoved ? [.8, 2.4, 3.1] : [.6, 1.4, 2.1]; }
   function flightUpdate(dt) {
@@ -1025,6 +1031,46 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     cam.y = Math.min(cam.y, 46 - vh / 2);
   }
 
+  // ═══ 3D view ════════════════════════════════════════════════════════════
+  // willycrash/scene3d.js draws this same world in 3D with three.js (buildings extruded into depth, a
+  // directed camera), when the module loads and WebGL is there. All the simulation stays here; the 2D
+  // canvas then only carries the screen overlays. Without WebGL (or with ?wc=2d) the 2D renderer below runs.
+  var G3 = null, want3D = !/[?&]wc=2d\b/.test(location.search);
+  var API3 = {
+    C: { PIV: PIV, BARREL: BARREL, WS: WS, VW0: VW0, HS: HS, FONT: FONT, HEAD: HEAD, NECK: NECK, PEL: PEL, LE: LE, LH: LH, RE: RE, RH: RH, LK: LK, LF: LF, RK: RK, RF: RF },
+    get: function () {
+      return { B: B, COL: COL, cars: cars, cans: cans, lamps: lamps, ants: ants, pigeons: pigeons, flock: flock, parts: parts, rag: rag, state: state, cam: cam,
+        angle: angle, lastAng: lastAng, jpB: jpB, t: t, recoil: recoil, shake: shake, SEA_X: SEA_X };
+    },
+    strips: function () { if (!strips) buildStrips(); return strips; },
+    // paint a building's front (the 2D artwork) onto a texture canvas at s pixels per world unit
+    paintFacade: function (b, ctx, s) {
+      if (!strips) buildStrips();
+      var g0 = g; g = ctx;
+      try { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.setTransform(s, 0, 0, s, -b.x0 * s, -b.y0 * s); drawFacade(b); }
+      finally { g = g0; }
+    }
+  };
+  function start3D() {
+    if (G3 || !want3D || !window.WillyCrash3D) return;
+    try { G3 = window.WillyCrash3D(API3, scr); if (G3) G3.resize(W, H, window.devicePixelRatio || 1); }
+    catch (e) { console.warn('Willy Crash 3D failed, using the 2D view', e); drop3D(); }
+  }
+  function drop3D() { if (G3) { try { G3.destroy(); } catch (e) {} } G3 = null; want3D = false; }
+  // the module loads after this script; pick it up as soon as it is there
+  window.addEventListener('wc3d-ready', function () { if (live) { start3D(); render(); } });
+  // the aim line in 3D: the same red and white dashed arc, projected from the flight plane
+  function drawAim3() {
+    if (state !== 'aim' || !(aimMode === 'arcade' || depth > .02)) return;
+    var a = angle * PI / 180, v = aimMode === 'arcade' ? VFIX : VMIN + depth * (VMAX - VMIN), st = pelStart(a), vx = Math.cos(a) * v, vy = -Math.sin(a) * v;
+    var T = aimMode === 'arcade' ? .62 : .45, mx = PIV.x + Math.cos(a) * (BARREL + 4), t0 = (mx - st.x) / (vx || 1);
+    g.lineCap = 'butt'; g.lineJoin = 'round'; g.beginPath();
+    for (var d = 0; d <= 24; d++) { var tt = t0 + (T - t0) * d / 24, p = G3.project(st.x + vx * tt, st.y + vy * tt + .5 * G * tt * tt); if (d) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }
+    g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 4.5; g.stroke();
+    g.setLineDash([8, 8]); g.lineDashOffset = -t * 36; g.strokeStyle = '#e5263f'; g.stroke(); g.setLineDash([]);
+    g.lineCap = 'round';
+  }
+
   // ═══ Render ═════════════════════════════════════════════════════════════
   // Backdrop as in the arcade: a bright sky going gold at the horizon, a rainbow, and a bay with a white
   // skyline across the water (a pyramid tower, a statue on its island); low pastel shops behind the street.
@@ -1081,10 +1127,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     brickPat = g.createPattern(bc, 'repeat');
     try { brickPat.setTransform(new DOMMatrix().scale(.5)); } catch (e) {}
   }
-  function w2s(x, y) { var kz = K * cam.z; return { x: (x - cam.x) * kz + W / 2, y: (y - cam.y) * kz + H / 2 }; }
+  function w2s(x, y) { if (G3) return G3.project(x, y); var kz = K * cam.z; return { x: (x - cam.x) * kz + W / 2, y: (y - cam.y) * kz + H / 2 }; }
   function render() {
     if (!B.length) return;
     if (!strips) buildStrips();
+    if (G3) {
+      // 3D: the WebGL view draws the world underneath; this canvas only carries the screen overlays
+      try { G3.draw(); } catch (e) { console.warn('Willy Crash 3D draw failed, back to 2D', e); drop3D(); return render(); }
+      g.setTransform(DPR, 0, 0, DPR, 0, 0); g.clearRect(0, 0, W, H);
+      drawAim3(); drawValueMarks();
+      overlays(); return;
+    }
     var kz = K * cam.z, shx = (Math.random() - .5) * shake, shy = (Math.random() - .5) * shake;
     var aim = camAim();
     g.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -1138,6 +1191,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     drawValueMarks();
     // screen-space overlays
     g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    overlays();
+  }
+  function overlays() {
     if (flash > 0) { g.fillStyle = 'rgba(255,240,210,' + Math.min(.6, flash) + ')'; g.fillRect(0, 0, W, H); }
     if (rag && state === 'flight' && !rag.landed) speedLines();
     if (timeScale < .8) vignette(1 - timeScale);
@@ -1191,6 +1247,22 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
   function drawBuilding(b) {
     var x = b.x0, y = b.y0, w = b.w, h = b.h, jp = b === jpB;
+    drawFacade(b);
+    // cornice: a grey stone slab
+    g.fillStyle = '#cfc8be'; g.fillRect(x - 3, y - 1, w + 6, 8);
+    g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(x - 3, y + 7, w + 6, 2);
+    g.fillStyle = '#e8e3da'; g.fillRect(x - 3, y - 1, w + 6, 2);
+    g.strokeStyle = INK; g.lineWidth = 2; g.strokeRect(x, y, w, h);
+    // curbs (none on the jackpot roof)
+    if (!jp) { g.fillStyle = '#bdb5aa'; b.lips.forEach(function (l) { g.fillRect(l.x0, l.y0, l.x1 - l.x0, l.y1 - l.y0); g.strokeRect(l.x0, l.y0, l.x1 - l.x0, l.y1 - l.y0); }); }
+    if (b.awn) drawAwning(b.awn);
+    b.props.forEach(drawProp);
+    if (jp) drawPad(b);
+  }
+  // the front of a building: brick, windows, fire escape, shop front and the painted value (also painted
+  // onto the 3D view's facade textures)
+  function drawFacade(b) {
+    var x = b.x0, y = b.y0, w = b.w, h = b.h, jp = b === jpB;
     // brick body with a little side shading
     g.fillStyle = b.c; g.fillRect(x, y, w, h);
     if (brickPat) { g.fillStyle = brickPat; g.fillRect(x, y, w, h); }
@@ -1241,16 +1313,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.lineWidth = 3; g.strokeStyle = 'rgba(90,10,10,.55)'; g.strokeText(fmt(b.val), x + w / 2, y + 19);
     g.fillStyle = jp ? '#ffcf3a' : '#e0262c'; g.fillText(fmt(b.val), x + w / 2, y + 19);
     g.font = '400 ' + Math.round(big * .36) + 'px ' + FONT; g.lineWidth = 2; g.strokeText('POINTS', x + w / 2, y + 33); g.fillText('POINTS', x + w / 2, y + 33);
-    // cornice: a grey stone slab
-    g.fillStyle = '#cfc8be'; g.fillRect(x - 3, y - 1, w + 6, 8);
-    g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(x - 3, y + 7, w + 6, 2);
-    g.fillStyle = '#e8e3da'; g.fillRect(x - 3, y - 1, w + 6, 2);
-    g.strokeStyle = INK; g.lineWidth = 2; g.strokeRect(x, y, w, h);
-    // curbs (none on the jackpot roof)
-    if (!jp) { g.fillStyle = '#bdb5aa'; b.lips.forEach(function (l) { g.fillRect(l.x0, l.y0, l.x1 - l.x0, l.y1 - l.y0); g.strokeRect(l.x0, l.y0, l.x1 - l.x0, l.y1 - l.y0); }); }
-    if (b.awn) drawAwning(b.awn);
-    b.props.forEach(drawProp);
-    if (jp) drawPad(b);
   }
     function drawAwning(a) {
     var sq = Math.sin(a.sq * PI) * 4, x0 = a.x0, x1 = a.x1, y0 = a.y0 + sq, y1 = a.y1;
@@ -1336,12 +1398,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function drawValueMarks() {
     var a = state === 'intro' ? clamp(introT / .4, 0, 1) : state === 'aim' ? 1 : 0;
     if (a <= 0) return;
-    var kz = K * cam.z, s = 1 / kz;
+    var kz = K * cam.z, s = G3 ? 1 : 1 / kz;
+    // in 3D the labels hang over the projected roof, screen-sized
+    function anchor3(x, y, up) { var p = G3.project(x, y); g.save(); g.translate(p.x, p.y - up); }
+    function anchor2(x, y) { g.save(); g.translate(x, y); g.scale(s, s); }
     g.globalAlpha = a; g.lineJoin = 'round'; g.textAlign = 'center'; g.textBaseline = 'middle';
     B.forEach(function (b) {
-      var jp = b === jpB, bob = Math.sin(t * 4 + b.idx) * 3 * s, top = b.props.reduce(function (m, p) { return Math.min(m, p.y0); }, b.y0);
-      var y = Math.min(b.y0 - 34 * s, top - 12 * s) + bob;
-      g.save(); g.translate(b.padX, y); g.scale(s, s);
+      var jp = b === jpB, bob = Math.sin(t * 4 + b.idx) * 3, top = b.props.reduce(function (m, p) { return Math.min(m, p.y0); }, b.y0);
+      if (G3) anchor3(b.padX, Math.min(b.y0, top), 34 - bob); else anchor2(b.padX, Math.min(b.y0 - 34 * s, top - 12 * s) + bob * s);
       var col = jp ? '#ffd23a' : '#e5263f';
       g.fillStyle = col; g.strokeStyle = '#fff'; g.lineWidth = 2.5;
       g.beginPath(); g.moveTo(-5, -6); g.lineTo(5, -6); g.lineTo(5, 2); g.lineTo(11, 2); g.lineTo(0, 14); g.lineTo(-11, 2); g.lineTo(-5, 2); g.closePath(); g.stroke(); g.fill();
@@ -1353,7 +1417,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     // 50 points anywhere off the roofs
     for (var i = 0; i < B.length - 1; i++) {
       var gx = (B[i].x1 + B[i + 1].x0) / 2;
-      g.save(); g.translate(gx, -20 * s); g.scale(s, s);
+      if (G3) anchor3(gx, 0, 20); else anchor2(gx, -20 * s);
       g.fillStyle = '#e5263f'; g.strokeStyle = '#fff'; g.lineWidth = 2;
       g.beginPath(); g.moveTo(0, -10); g.lineTo(7, -2); g.lineTo(3, -2); g.lineTo(3, 6); g.lineTo(-3, 6); g.lineTo(-3, -2); g.lineTo(-7, -2); g.closePath(); g.stroke(); g.fill();
       g.font = '400 13px ' + FONT; g.lineWidth = 3.5; g.strokeStyle = INK; g.strokeText('50', 0, -18); g.fillStyle = '#fff'; g.fillText('50', 0, -18);
@@ -1701,7 +1765,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.fillStyle = 'rgba(255,190,30,.95)'; rr(x - 98, y - 15, 92, 30, 12); g.fill();
     g.beginPath(); g.moveTo(x - 6, y - 9); g.lineTo(x + 4, y); g.lineTo(x - 6, y + 9); g.fill();
     txt('JACKPOT', x - 52, y - 5, 12, '#5a2a00', 'center', 0);
-    txt('500 points', x - 52, y + 8, 11, '#7a3a00', 'center', 0);
+    txt('5,000 points', x - 52, y + 8, 11, '#7a3a00', 'center', 0);
   }
   function introBanner() {
     var T = introTimes(), a = clamp(Math.min(introT / .25, (T[2] - .1 - introT) / .3), 0, 1), y = H * .2, sc = .8 + .2 * ease(introT / .3);
@@ -1709,7 +1773,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     g.save(); g.translate(W / 2, y); g.scale(sc, sc);
     g.fillStyle = 'rgba(20,24,60,.72)'; rr(-140, -34, 280, 78, 18); g.fill();
     txt('SHOT ' + (shotIdx + 1) + ' OF ' + SHOTS, 0, -10, 30, '#fff');
-    var sub = jpMoved ? 'Jackpot moved! The cannon is faster' : shotIdx === 0 ? 'Land on a roof to win its points' : shotIdx === SHOTS - 1 ? 'Last shot! Jackpot is 5,000 points' : 'Jackpot is 500 points';
+    var sub = jpMoved ? 'Jackpot moved! The cannon is faster' : shotIdx === 0 ? 'Land on a roof to win its points' : shotIdx === SHOTS - 1 ? 'Last shot! Jackpot is 5,000 points' : 'Jackpot is 5,000 points';
     txt(sub, 0, 22, 14, '#ffe6a8', 'center', 0);
     g.restore(); g.globalAlpha = 1;
   }
@@ -2111,6 +2175,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   window.__wc = {
     seed: function (s) { citySeed = s; buildCity(s); jpI = 3; jpLevel = 0; jpMoved = false; shotIdx = 0; shots = []; total = 0; startShot(); },
     mode: function (m) { aimMode = m; }, vfix: function (v) { VFIX = v; },
+    g3: function () { return G3 ? G3.info() : null; }, drop3d: function () { drop3D(); render(); },
     step: function (sec, draw) { var n = Math.round((sec || 0) / DT); for (var i = 0; i < n; i++) update(DT); if (draw) { render(); drawDeck(); } return state; },
     angle: function () { return angle; }, level: function () { return jpLevel; }, jpI: function () { return jpI; },
     // drop Willy (standing pose, pelvis at x,y) with a velocity, as if fired
@@ -2158,7 +2223,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         var app = $('app'); app.className = ''; app.innerHTML = '';
         document.documentElement.classList.add('ar-on');
         v.hidden = false; app.appendChild(v); live = true;
-        Snd.unlock(); fit(); newGame(); fit(); overlay();
+        Snd.unlock(); fit(); start3D(); newGame(); fit(); overlay();
       }
     });
     window.scrollTo(0, 0);
