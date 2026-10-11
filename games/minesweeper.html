@@ -93,7 +93,13 @@ body{overflow-x:hidden;}
 .tools .seg > button.on.flagm{background:#b8323a;color:#fff;}
 .zoom{display:flex;gap:6px;}
 .zoom .icon-btn{width:46px;height:46px;font-family:var(--display);font-size:1.4rem;}
-.hintline{text-align:center;font-size:.8rem;font-weight:700;color:var(--text-3);margin-top:8px;}
+.hintline{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;font-size:.8rem;font-weight:600;color:var(--text-3);margin:12px auto 0;max-width:520px;}
+.hintline span{white-space:nowrap;padding:5px 11px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);}
+.hintline span:first-child{border-color:rgba(255,255,255,.18);}
+.hintline.flagm span:first-child{border-color:rgba(255,123,130,.45);background:rgba(184,50,58,.16);}
+.hintline b{font-weight:800;color:var(--text-2);margin-right:4px;}
+.hintline em{font-style:normal;font-weight:800;color:var(--text);}
+.hintline.flagm em{color:#ff7b82;}
 </style>
 </head>
 <body>
@@ -172,6 +178,7 @@ body{overflow-x:hidden;}
       '<li>A <b>number</b> tells you how many mines touch that square, including the corners (up to 8).</li>' +
       '<li>An empty square has no mines around it, so its neighbours open by themselves.</li></ul>' +
       '<h3>Flags</h3><ul><li>When you are sure a square hides a mine, plant a <b>flag</b> on it: ' + (TOUCH ? '<b>press and hold</b>' : '<b>right-click</b>') + ' it, or switch the bottom button to <b>Flag</b> and tap.</li>' +
+      '<li>In <b>Flag</b> mode it works the other way round: ' + (TOUCH ? 'tap' : 'click') + ' plants or removes a flag, and press and hold digs. The hints under the board always show what each move does right now.</li>' +
       '<li>Flags stop you digging there by accident. The counter shows mines left minus flags planted.</li></ul>' +
       '<h3>Quick clear</h3><p>Tap a number that already has the right number of flags around it, and all its other neighbours open at once. If a flag is wrong, that sets off a mine!</p>' +
       '<h3>Levels</h3><ul><li><b>Beginner:</b> 9 × 9, 10 mines.</li><li><b>Intermediate:</b> 16 × 16, 40 mines.</li><li><b>Expert:</b> 30 × 16, 99 mines. On a phone it stands upright; use + to zoom and drag to look around.</li></ul>' +
@@ -481,7 +488,7 @@ body{overflow-x:hidden;}
     ]);
     tools.appendChild(hud.zoom);
     app.appendChild(tools);
-    app.appendChild(hud.hint = el('div', { class: 'hintline', text: TOUCH ? 'Tap to dig · press and hold to flag · tap a number to quick-clear' : 'Click to dig · right-click to flag · click a number to quick-clear' }));
+    app.appendChild(hud.hint = el('div', { class: 'hintline', 'aria-live': 'polite' }));
     layout(true);
     bindField();
     setTool(tool); updHud(); updTime(); tension();
@@ -497,7 +504,7 @@ body{overflow-x:hidden;}
     var availW = Math.min(vw - 24, S.cols > 16 ? 1180 : tab ? 780 : 620) - 16 - 2;
     var big = vr > 16;
     if (hud.hint) hud.hint.style.display = big ? 'none' : '';
-    var availH = window.innerHeight - 58 - 64 - 68 - (big ? 0 : 44) - 22;
+    var availH = window.innerHeight - 58 - 64 - 68 - (big ? 0 : 80) - 22;
     baseCs = Math.max(14, Math.floor(Math.min(tab ? 72 : 44, availW / vc, Math.max(availH, vr * 16) / vr)));
     var cs = Math.round(baseCs * zoom);
     field.style.setProperty('--cs', cs + 'px');
@@ -552,6 +559,18 @@ body{overflow-x:hidden;}
   function setTool(t) {
     tool = t; hud.dig.classList.toggle('on', t === 'dig'); hud.flag.classList.toggle('on', t === 'flag');
     hud.dig.setAttribute('aria-pressed', t === 'dig'); hud.flag.setAttribute('aria-pressed', t === 'flag');
+    hintFor(t);
+  }
+  // What each gesture does right now: it flips with the Dig / Flag switch.
+  function hintFor(t) {
+    if (!hud.hint) return;
+    var tap = TOUCH ? 'Tap' : 'Click', hold = 'Hold', flag = t === 'flag';
+    var items = [[tap, flag ? 'flag' : 'dig', true]];
+    if (TOUCH || flag) items.push([hold, flag ? 'dig' : 'flag']);
+    if (!TOUCH) items.push(['Right-click', 'flag']);
+    items.push([tap + ' a number', 'open around it']);
+    hud.hint.className = 'hintline' + (flag ? ' flagm' : '');
+    hud.hint.innerHTML = items.map(function (x) { return '<span><b>' + x[0] + '</b>' + (x[2] ? '<em>' + x[1] + '</em>' : x[1]) + '</span>'; }).join('');
   }
 
   // ── Input: tap, long-press, right-click, panning ──────────────────────────
