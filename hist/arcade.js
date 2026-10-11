@@ -460,4 +460,83 @@
       foot: last ? 'Last ball lost ' + (last === 'T' ? 'to ' : '') + PBDW[last] : '', footOk: false
     });
   });
+
+  // ═══ Crazy Tower ═══
+  // the tower from the side: each block's centre and width (world units, BASE = 3 across), colours climbing the spectrum as in the game
+  R('crazytower', function (e, ui) {
+    var d = e.dt; if (!d || d.h == null || d.t == null) return null;
+    var bl = String(d.t || '').split(';').filter(Boolean).map(function (q) { var a = q.split(',').map(Number); return { x: (a[0] || 0) / 100, w: (a[2] || 0) / 100 }; });
+    var BASE = 3, JP = 40, U = 36, BH = 6, W = 180, rows = Math.max(12, bl.length + 2), H = 16 + rows * BH + 18, gy = H - 18, cx = W / 2, s = '';
+    s += '<rect width="' + W + '" height="' + H + '" fill="#0b0716"/>';
+    for (var x = 10; x < W; x += 20) s += '<rect x="' + x + '" y="0" width=".6" height="' + gy + '" fill="rgba(79,210,255,.08)"/>';
+    [10, 20, 30, JP].forEach(function (m) {
+      if (m > rows) return;
+      var y = gy - m * BH, c = m === JP ? '#ffb21a' : '#4fd2ff', on = bl.length >= m;
+      s += '<line x1="0" y1="' + y + '" x2="' + W + '" y2="' + y + '" stroke="' + c + '" stroke-opacity="' + (on ? 0.8 : 0.3) + '" stroke-dasharray="3 3"/>';
+      s += '<text x="' + (W - 3) + '" y="' + (y - 2) + '" text-anchor="end" font-size="7" font-weight="800" fill="' + c + '" fill-opacity="' + (on ? 1 : 0.5) + '" font-family="ui-monospace,monospace">' + (m === JP ? 'JACKPOT' : m) + '</text>';
+    });
+    s += '<rect x="' + (cx - BASE * U / 2 - 8) + '" y="' + gy + '" width="' + (BASE * U + 16) + '" height="18" fill="#1d1633"/><rect x="' + (cx - BASE * U / 2 - 8) + '" y="' + gy + '" width="' + (BASE * U + 16) + '" height="1.2" fill="#4fd2ff"/>';
+    bl.forEach(function (b, i) {
+      var hue = (192 + (i + 1) * 8.6) % 360, x0 = cx + (b.x - b.w / 2) * U, y = gy - (i + 1) * BH;
+      s += '<rect x="' + x0.toFixed(1) + '" y="' + y + '" width="' + Math.max(0.5, b.w * U).toFixed(1) + '" height="' + BH + '" fill="hsl(' + hue.toFixed(0) + ',90%,60%)"/>' +
+        '<rect x="' + x0.toFixed(1) + '" y="' + y + '" width="' + Math.max(0.5, b.w * U).toFixed(1) + '" height="1" fill="rgba(255,255,255,.5)"/>';
+    });
+    var mk = String(d.mk || '').split(',').filter(Boolean);
+    return screen(ui, {
+      ac: d.jp ? '#ffb21a' : '#ff4fb4', title: d.jp ? 'Jackpot!' : 'Game over', score: n(myScore(e)), rank: rankText(d),
+      pic: svg(W, H, s, { aria: 'The tower as it was built' }), side: true, picMax: 150,
+      stats: [['Height', plural(d.h, 'block')], ['Perfect drops', d.pf || 0], d.bs > 1 ? ['Best streak', d.bs + ' perfect'] : null,
+        mk.length ? ['Marks hit', mk.join(' · ')] : null, d.jp ? ['Jackpot', 'Yes', '+100 bonus'] : null, d.rn > 1 ? ['Tower', '#' + d.rn, 'this sitting'] : null],
+      foot: d.jp ? 'Reached the jackpot' : '', footOk: !!d.jp
+    });
+  });
+
+  // ═══ Willy Crash ═══
+  // where each of the five shots came down: a city sketch with the target roof, the jackpot tower and the sea
+  var WLAND = { bull: ['Bullseye', '#ffd84a'], great: ['Great', '#7dffb3'], nice: ['Nice', '#7fe0ff'], roof: ['Target roof', '#c9b8ff'], wrong: ['Wrong roof', '#ffb0d0'],
+    crash: ['Crash', '#ff8a5c'], splash: ['Splash', '#7fd0ff'], jackpot: ['JACKPOT', '#ffd84a'], jackpad: ['Tower pad', '#ffd84a'], jackroof: ['Top of the tower', '#ffd84a'] };
+  R('willycrash', function (e, ui) {
+    var d = e.dt; if (!d || !d.ls) return null;
+    var ls = String(d.ls).split(','), ps = String(d.ps || '').split(',').map(Number);
+    var W = 300, H = 150, GY = 134, s = '';
+    s += '<defs><linearGradient id="wcsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e0b3a"/><stop offset=".6" stop-color="#7a2a6e"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>';
+    s += '<rect width="' + W + '" height="' + GY + '" fill="url(#wcsky)"/><circle cx="120" cy="78" r="22" fill="#ffb347" opacity=".85"/>';
+    [[30, 60], [44, 80], [108, 50], [128, 70], [222, 66], [236, 46]].forEach(function (b) { s += '<rect x="' + b[0] + '" y="' + (GY - b[1]) + '" width="16" height="' + b[1] + '" fill="#3b1a5a"/>'; });
+    var MID = { x0: 66, x1: 104, y: 100 }, TG = { x0: 140, x1: 226, y: 76 }, JK = { x0: 246, x1: 264, y: 34 }, SEA = 272;
+    s += '<rect x="' + MID.x0 + '" y="' + MID.y + '" width="' + (MID.x1 - MID.x0) + '" height="' + (GY - MID.y) + '" fill="#5a2a7a"/>';
+    s += '<rect x="' + TG.x0 + '" y="' + TG.y + '" width="' + (TG.x1 - TG.x0) + '" height="' + (GY - TG.y) + '" fill="#4a1f66"/>';
+    var tm = (TG.x0 + TG.x1) / 2, hw = (TG.x1 - TG.x0) / 2 * 0.72;   // the bullseye pad; the rest of the roof is plain
+    [[1, '#e5263f'], [0.58, '#fff6ea'], [0.24, '#ffd84a']].forEach(function (z) { s += '<rect x="' + (tm - hw * z[0]) + '" y="' + (TG.y - 2) + '" width="' + (hw * z[0] * 2) + '" height="3" fill="' + z[1] + '"/>'; });
+    s += '<rect x="' + JK.x0 + '" y="' + JK.y + '" width="' + (JK.x1 - JK.x0) + '" height="' + (GY - JK.y) + '" fill="#2c1a4a"/><rect x="' + (JK.x0 - 2) + '" y="' + (JK.y - 3) + '" width="' + (JK.x1 - JK.x0 + 4) + '" height="3" fill="#ffd84a"/>';
+    s += '<rect x="' + SEA + '" y="' + (GY - 4) + '" width="' + (W - SEA) + '" height="' + (H - GY + 4) + '" fill="#2b6fb0"/><rect x="0" y="' + GY + '" width="' + SEA + '" height="' + (H - GY) + '" fill="#1a0d24"/>';
+    s += '<g transform="translate(14 ' + (GY - 6) + ') rotate(-40)"><rect x="-3" y="-4" width="22" height="8" fill="#e5263f"/><rect x="5" y="-4" width="3" height="8" fill="#ffd84a"/></g><circle cx="14" cy="' + (GY - 4) + '" r="5" fill="#3f2a1d"/>';
+    // the landing spots, numbered by shot; same-place shots fan out a little
+    var used = {};
+    function spot(code, i) {
+      var k = used[code] = (used[code] || 0) + 1, sd = k % 2 ? -1 : 1, step = Math.floor((k - 1) / 2) + (k % 2 ? 0 : 1);
+      switch (code) {
+        case 'bull': return [tm + sd * step * 7, TG.y];
+        case 'great': return [tm + sd * (hw * 0.42 + step * 3), TG.y];
+        case 'nice': return [tm + sd * (hw * 0.78 + step * 3), TG.y];
+        case 'roof': return [sd < 0 ? TG.x0 + 3 + step * 4 : TG.x1 - 3 - step * 4, TG.y];
+        case 'wrong': return [(MID.x0 + MID.x1) / 2 + sd * step * 9, MID.y];
+        case 'splash': return [SEA + 10 + ((k - 1) * 6) % 12, GY - 2];
+        case 'jackpot': case 'jackpad': case 'jackroof': return [(JK.x0 + JK.x1) / 2 + sd * step * 6, JK.y - 3];
+        default: return [126 + ((k - 1) * 9) % 22, GY];
+      }
+    }
+    ls.forEach(function (code, i) {
+      var p = spot(code, i), c = (WLAND[code] || WLAND.crash)[1];
+      s += '<circle cx="' + p[0].toFixed(1) + '" cy="' + (p[1] - 8) + '" r="6.5" fill="' + c + '" stroke="#1a0d24" stroke-width="1.5"/><text x="' + p[0].toFixed(1) + '" y="' + (p[1] - 5.2) + '" text-anchor="middle" font-size="8" font-weight="900" fill="#1a0d24" font-family="ui-monospace,monospace">' + (i + 1) + '</text>';
+    });
+    var landed = ls.filter(function (c) { return /^(bull|great|nice|roof|jack)/.test(c); }).length, best = Math.max.apply(null, ps.concat([0]));
+    var shotsKey = key(ui, ls.map(function (c, i) { var w = WLAND[c] || [c, '#ff8a5c']; return ['#' + (i + 1) + ' ' + w[0] + (ps[i] ? ' · ' + n(ps[i]) : ''), w[1]]; }));
+    return screen(ui, {
+      ac: '#ffd84a', title: d.jp ? 'Jackpot!' : 'Show’s over', score: n(myScore(e)), rank: rankText(d),
+      pic: svg(W, H, s, { aria: 'Where each shot landed' }), picMax: 340,
+      stats: [['Landed', landed + ' of ' + ls.length], d.bu ? ['Bullseyes', d.bu] : null, d.jp ? ['Jackpots', d.jp] : null, best ? ['Best shot', n(best)] : null,
+        d.wn ? ['Windows', d.wn] : null, d.pg ? ['Pigeons', d.pg] : null, d.st ? ['Stars', d.st] : null],
+      extra: [shotsKey]
+    });
+  });
 })();
