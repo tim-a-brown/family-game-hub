@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mazes</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
+<script src="mazes/maze-core.js"></script>
+<style>
+body{overflow-x:hidden;}
+.mz{max-width:560px;margin:0 auto;padding:0 16px calc(var(--safe-b) + 16px);}
+.mz.play{max-width:none;display:flex;flex-direction:column;align-items:center;padding:0 12px calc(var(--safe-b) + 8px);overflow:hidden;}
+
+/* ── Counters ── */
+.hud{display:flex;gap:8px;width:100%;max-width:520px;margin:2px auto 8px;flex:none;}
+.cnt{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 8px;border-radius:14px;background:var(--w06);box-shadow:inset 0 0 0 1px var(--w06);}
+.cnt .ico{width:20px;height:20px;flex:none;color:var(--text-3);}
+.cnt .tx{display:flex;flex-direction:column;line-height:1.05;min-width:0;}
+.cnt small{font-size:.6rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);}
+.cnt b{font-family:var(--display);font-weight:400;font-size:1.3rem;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cnt.time b{color:var(--accent);}
+.cnt.time.pen b{animation:penflash .9s ease;}
+@keyframes penflash{30%{color:#ff6b5a;transform:scale(1.12);}}
+
+/* ── The clipboard and the puzzle page ── */
+.stage{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;}
+.clip{position:relative;border-radius:16px;padding:24px 11px 12px;flex:none;}
+.clip::after{content:"";position:absolute;inset:6px;border-radius:12px;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);}
+.clamp{position:absolute;z-index:3;top:-9px;left:50%;transform:translateX(-50%);width:min(44%,170px);height:34px;border-radius:9px 9px 14px 14px;
+  background:linear-gradient(180deg,#f4f6f9 0%,#c8ced7 38%,#9aa3af 62%,#d9dee5 100%);
+  box-shadow:inset 0 1px 0 #fff, inset 0 -2px 0 rgba(0,0,0,.18), 0 4px 7px rgba(0,0,0,.4);}
+.clamp::before{content:"";position:absolute;left:50%;top:7px;transform:translateX(-50%);width:26%;height:9px;border-radius:6px;background:linear-gradient(180deg,#4a5260,#7d8592);box-shadow:inset 0 2px 3px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.7);}
+.clamp::after{content:"";position:absolute;left:8%;right:8%;bottom:4px;height:3px;border-radius:2px;background:rgba(0,0,0,.14);}
+.sheet{position:relative;border-radius:3px;padding:9px 10px 8px;color:#23263a;}
+.sheet.paper{background:
+    radial-gradient(rgba(120,90,40,.055) 1px,transparent 1.3px) 0 0/5px 5px,
+    radial-gradient(130% 90% at 50% 40%,#fffcf3 0%,#fbf4e3 70%,#f3e8cf 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8), 0 2px 0 #e2d5b8, 0 3px 0 #f2e8d0, 0 4px 0 #d8caa9, 0 10px 16px -6px rgba(0,0,0,.5);}
+.sh-head{display:flex;align-items:flex-end;justify-content:space-between;gap:4px 12px;flex-wrap:wrap;padding:0 3px 5px;margin-bottom:2px;border-bottom:1.5px solid rgba(35,38,58,.8);}
+.sh-l{display:flex;align-items:baseline;gap:8px;min-width:0;}
+.sh-no{font-family:var(--display);font-size:1.02rem;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;}
+.sh-sub{font-size:.64rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#6a6c80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sh-time{display:flex;align-items:baseline;gap:5px;font-size:.62rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#6a6c80;white-space:nowrap;}
+.sh-time i{display:inline-block;min-width:58px;border-bottom:1.2px solid #9a9cae;font-style:normal;font-family:var(--hand);font-size:1.3rem;line-height:.9;letter-spacing:0;text-transform:none;color:#c63a2b;text-align:center;}
+.sh-time i.write{animation:write .9s steps(9) both;}
+@keyframes write{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
+
+svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overflow:hidden;cursor:crosshair;}
+.walls{fill:none;stroke:#23263a;stroke-linecap:round;stroke-linejoin:round;}
+.marks path{fill:none;stroke:#23263a;stroke-linecap:round;stroke-linejoin:round;}
+.marks path.fill{fill:#23263a;stroke:none;}
+.marks text{font-family:var(--display);fill:#23263a;letter-spacing:.06em;}
+.pen,.pen-bleed,.sweep,.hintp,.solp{fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.pen{stroke:#d0392a;opacity:.93;mix-blend-mode:multiply;}
+.pen-bleed{stroke:#d0392a;opacity:.16;}
+.nib{fill:#a5261a;}
+.nib-ring{fill:none;stroke:#d0392a;transform-box:fill-box;transform-origin:center;animation:nibp 1.8s ease-out infinite;}
+@keyframes nibp{0%{transform:scale(.6);opacity:.7;}80%,100%{transform:scale(1.9);opacity:0;}}
+.mzs.drawing .nib-ring,.mzs.done .nib-ring,.mzs.done .nib{display:none;}
+.hintp{stroke:#2a74c9;opacity:0;}
+.hintp.on{animation:hintp 3.6s ease forwards;}
+@keyframes hintp{0%{opacity:0;}10%,70%{opacity:.95;}100%{opacity:0;}}
+.hintdot{fill:none;stroke:#2a74c9;opacity:0;}
+.hintdot.on{animation:hintp 3.6s ease forwards;}
+.solp{stroke:#2a74c9;opacity:.85;}
+.solp.draw{animation:solin 1.6s ease-out both;}
+@keyframes solin{from{stroke-dashoffset:var(--len);}to{stroke-dashoffset:0;}}
+.sweep{stroke:#fff6c8;opacity:0;}
+.sweep.go{animation:sweep 1.25s ease-in-out forwards;}
+@keyframes sweep{0%{opacity:.95;stroke-dashoffset:var(--len);}85%{opacity:.95;}100%{opacity:0;stroke-dashoffset:calc(var(--len) * -0.2);}}
+.goal{transform-box:fill-box;transform-origin:center;}
+.mzs.done .goal{animation:goalpop .7s var(--spring) .2s both;}
+@keyframes goalpop{40%{transform:scale(1.45);}}
+
+/* the magnifier that floats above your finger on small mazes */
+.loupe{position:fixed;z-index:60;width:136px;height:136px;margin:-68px 0 0 -68px;border-radius:50%;overflow:hidden;pointer-events:none;
+  background:radial-gradient(130% 90% at 50% 40%,#fffcf3 0%,#fbf4e3 70%,#f3e8cf 100%);
+  box-shadow:0 0 0 3px #d7dbe2, 0 0 0 5px #8a929e, 0 12px 26px rgba(0,0,0,.5), inset 0 0 18px rgba(0,0,0,.12);opacity:0;transform:scale(.6);transition:opacity .12s, transform .16s var(--spring);}
+.loupe.on{opacity:1;transform:none;}
+.loupe svg{width:100%;height:100%;display:block;}
+.loupe::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(60% 40% at 32% 22%,rgba(255,255,255,.45),transparent 70%);}
+
+/* ── Controls under the board ── */
+.tools{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;width:100%;max-width:520px;margin:10px auto 0;flex:none;}
+.tools .btn{min-height:46px;gap:8px;}
+.tools .btn .ico{width:20px;height:20px;}
+.tools .grow{flex:1;max-width:220px;}
+.tools .zm{display:flex;gap:6px;}
+.tools .zm .icon-btn{width:44px;height:44px;}
+.tools .zm .icon-btn .ico{width:20px;height:20px;}
+.tools .pen-k{font-family:var(--display);font-weight:400;font-size:.8rem;opacity:.75;}
+.tip{flex:none;text-align:center;font-size:.78rem;font-weight:700;color:var(--text-3);margin-top:6px;min-height:1.1em;}
+
+/* ── Labyrinth: a wooden box with a steel ball ── */
+.lab-wrap{position:relative;perspective:1100px;flex:none;}
+.lab-box{position:relative;border-radius:18px;padding:12px;transform-style:preserve-3d;transition:transform .14s linear;}
+.lab-box canvas{display:block;border-radius:6px;touch-action:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.4), 0 0 0 2px rgba(0,0,0,.25);}
+.lab-ask{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;padding:20px;}
+.lab-ask .card{max-width:300px;text-align:center;padding:20px 18px;border-radius:22px;background:var(--glass);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;align-items:center;}
+.lab-ask .card .ico{width:40px;height:40px;color:var(--accent);}
+.lab-ask .card b{font-size:1.1rem;}
+.lab-ask .card p{color:var(--text-2);font-size:.9rem;}
+.stick{position:fixed;z-index:30;width:92px;height:92px;margin:-46px 0 0 -46px;border-radius:50%;pointer-events:none;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.35), 0 0 0 1px rgba(0,0,0,.25);background:rgba(20,16,41,.22);}
+.stick i{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#c9ced6 45%,#5d6470);box-shadow:0 4px 8px rgba(0,0,0,.4);}
+
+/* ── Setup: today's maze ── */
+.daily{display:flex;align-items:center;gap:14px;padding:14px;border-radius:20px;background:var(--surface);box-shadow:var(--shadow-sm), inset 0 0 0 1px var(--w06);}
+.dcal{flex:none;width:54px;border-radius:8px;overflow:hidden;text-align:center;background:linear-gradient(180deg,#fffcf3,#f3e8cf);color:#23263a;box-shadow:0 3px 0 #cbbd9c, 0 6px 12px rgba(0,0,0,.35);transform:rotate(-3deg);}
+.dcal small{display:block;background:#d0392a;color:#fff;font-size:.62rem;font-weight:900;letter-spacing:.14em;padding:3px 0 2px;}
+.dcal b{display:block;font-family:var(--display);font-weight:400;font-size:1.65rem;line-height:1.25;}
+.daily .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.daily .tx b{font-size:1.05rem;font-weight:900;}
+.daily .tx small{font-size:.84rem;color:var(--text-2);line-height:1.3;}
+.daily .tx .st{display:inline-flex;align-items:center;gap:5px;color:var(--accent);font-weight:800;}
+.daily .tx .st .ico{width:15px;height:15px;}
+.daily .btn{flex:none;}
+.bt-table{width:100%;border-collapse:collapse;font-size:.92rem;}
+.bt-table th{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);text-align:left;padding:6px 6px;font-weight:900;}
+.bt-table td{padding:9px 6px;border-top:1px solid var(--w08);}
+.bt-table td b{font-family:var(--display);font-weight:400;font-size:1.05rem;}
+</style>
+</head>
+<body>
+<main class="mz" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), MC = MazeCore, U = MC.U;
+  var SAVE = 'mazes_state', HKEY = 'mazes', TOUCH = matchMedia('(pointer:coarse)').matches;
+  var SIZE_ORDER = ['easy', 'medium', 'hard', 'expert'];
+  var PENALTY = { easy: 5, medium: 10, hard: 15, expert: 20 };   // seconds a hint costs
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  // ── High score boards: best times per size, lower is better (listed in HI_BOARDS in games.js) ──
+  function hiKey(mode, size) { return 'mazes_' + (mode === 'tilt' ? 'tilt_' : '') + size; }
+  SIZE_ORDER.forEach(function (z) {
+    var nm = MC.SIZES[z].name;
+    [['pencil', nm, nm], ['tilt', 'Labyrinth ' + nm, 'Tilt ' + nm]].forEach(function (b) {
+      var k = hiKey(b[0], z);
+      try { if (typeof hiBoard !== 'function' || !hiBoard(k)) ArcadeHi.config(k, { game: 'mazes', label: b[1], tab: b[2], low: 1, unit: 'time', dec: 1 }); } catch (e) {}
+    });
+  });
+
+  // ── Sound: soft pen, eraser, wood and steel (respects the kit's sound switch) ──
+  var AC = null;
+  function ac() {
+    if (lsGet('gn_sound', '1') === '0') return null;
+    if (!AC) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; try { AC = new C(); } catch (e) { return null; } }
+    if (AC.state === 'suspended') { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+  function tone(fr, t0, dur, type, vol, slide) {
+    var a = ac(); if (!a) return;
+    var o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+    o.type = type || 'sine'; o.frequency.setValueAtTime(fr, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.03);
+  }
+  var noiseBuf = null;
+  function nbuf(a) { if (!noiseBuf) { var n = a.sampleRate * 2; noiseBuf = a.createBuffer(1, n, a.sampleRate); var d = noiseBuf.getChannelData(0); for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; } return noiseBuf; }
+  function noise(t0, dur, vol, type, fr, q, sweepTo) {
+    var a = ac(); if (!a) return;
+    var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime + t0;
+    s.buffer = nbuf(a);
+    f.type = type || 'bandpass'; f.frequency.setValueAtTime(fr, t); if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t + dur); f.Q.value = q || 1;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.008, dur / 4)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(a.destination); s.start(t, Math.random()); s.stop(t + dur + 0.02);
+  }
+  var lastSnd = 0;
+  var SND = {
+    pen: function () { var n = performance.now(); if (n - lastSnd < 38) return; lastSnd = n; noise(0, 0.05, 0.035, 'bandpass', 3000 + Math.random() * 900, 1.1); },
+    erase: function () { var n = performance.now(); if (n - lastSnd < 50) return; lastSnd = n; noise(0, 0.07, 0.05, 'bandpass', 700 + Math.random() * 250, 0.8); },
+    bump: function () { tone(150, 0, 0.06, 'sine', 0.05, 110); },
+    knock: function (v) { v = Math.min(1, v); tone(230 + Math.random() * 40, 0, 0.07, 'triangle', 0.03 + 0.12 * v, 150); noise(0, 0.03, 0.02 + 0.08 * v, 'bandpass', 1700, 2); },
+    fall: function () { tone(620, 0, 0.32, 'sine', 0.09, 140); tone(110, 0.3, 0.16, 'sine', 0.16, 60); noise(0.3, 0.1, 0.06, 'lowpass', 500); },
+    goal: function () { tone(260, 0, 0.12, 'sine', 0.14, 90); [880, 1175, 1568].forEach(function (f, i) { tone(f, 0.12 + i * 0.07, 0.3, 'triangle', 0.06); }); },
+    hint: function () { [740, 988].forEach(function (f, i) { tone(f, i * 0.07, 0.18, 'sine', 0.05); }); }
+  };
+  // Rolling steel ball: looped noise through a low filter, louder and brighter the faster it rolls
+  var roll = null;
+  function rollSet(speed) {
+    var a = AC; if (!a || lsGet('gn_sound', '1') === '0') { if (roll) rollStop(); return; }
+    if (!roll) {
+      try {
+        var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+        s.buffer = nbuf(a); s.loop = true; f.type = 'lowpass'; f.Q.value = 2; g.gain.value = 0;
+        s.connect(f); f.connect(g); g.connect(a.destination); s.start(); roll = { s: s, f: f, g: g };
+      } catch (e) { return; }
+    }
+    var t = a.currentTime, v = Math.min(1, speed / 8);
+    roll.g.gain.setTargetAtTime(speed < 0.15 ? 0 : 0.012 + 0.07 * v, t, 0.05);
+    roll.f.frequency.setTargetAtTime(220 + 900 * v, t, 0.05);
+  }
+  function rollStop() { if (roll) { try { roll.s.stop(); } catch (e) {} roll = null; } }
+
+  // ── Shell ──────────────────────────────────────────────────────────────────
+  var inCatalog = typeof findGame === 'function' && !!findGame('mazes');
+  Kit.init({
+    id: 'mazes',
+    title: inCatalog ? null : 'Mazes', color: inCatalog ? null : '#2b8fd9',
+    theme: { wood: ['#a9784a', '#76502d'] },
+    onNew: function () { leave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'calendar', label: 'Daily maze', top: true, onClick: function () { askDaily(); } },
+      { icon: 'chart', label: 'Best times', onClick: function () { showBests(); } },
+      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(S ? S.mode : 'pencil', S ? S.size : 'easy')); } },
+      { icon: 'history', label: 'Past games', onClick: function () { pastGames(); } },
+      { icon: 'lightbulb', label: 'Hint', sub: 'Shows the next few steps (costs time)', when: function () { return live(); }, onClick: function () { hint(); } },
+      { icon: 'eye', label: 'Reveal the way out', sub: 'Gives up on this maze', when: function () { return live(); }, onClick: function () { askReveal(); } },
+      { icon: 'compass', label: 'Level the board', sub: 'Make the way you are holding it flat', when: function () { return live() && S.mode === 'tilt'; }, onClick: function () { level(true); } }
+    ],
+    rules:
+      '<p class="goal">Find the one way from <b>Start</b> to <b>Finish</b>. Every maze has exactly one route, and every square can be reached.</p>' +
+      '<h3>Pencil</h3><ul>' +
+      '<li>Put your finger on the red dot at <b>Start</b> and drag along the corridors. The line follows the squares and stops at walls.</li>' +
+      '<li>Took a wrong turn? <b>Drag back</b> along your line and it rubs itself out. Or press anywhere on your line to carry on from there.</li>' +
+      '<li>Big mazes: <b>pinch</b> to zoom and drag with two fingers to look around' + (TOUCH ? '; a magnifier shows what is under your finger.' : '. On a computer, scroll to zoom and use the arrow keys to move one square.') + '</li>' +
+      '<li>Round mazes start at the edge and finish in the middle.</li></ul>' +
+      '<h3>Labyrinth</h3><ul>' +
+      '<li>A wooden box with a steel ball. <b>Tilt</b> your phone or iPad to roll the ball to the gold-ringed hole at the finish.</li>' +
+      '<li>No tilting (or on a computer)? <b>Drag</b> on the board to tip it that way, or use the arrow keys.</li>' +
+      '<li>With <b>holes</b> on, drop into one and the ball goes back to the start. The holes are only on the wrong turns.</li>' +
+      '<li>Hold the phone the way you like and use <b>Level the board</b> in the menu to make that flat.</li></ul>' +
+      '<h3>Hints and times</h3><ul>' +
+      '<li><b>Hint</b> shows the next few steps in blue (backing up first if you are off the route). Each hint adds 5 to 20 seconds, more on bigger mazes.</li>' +
+      '<li><b>Reveal</b> shows the whole way out and ends the maze without a time.</li>' +
+      '<li>Your time, with hint seconds added, goes on the best-times board for that size.</li></ul>' +
+      '<h3>Daily maze</h3><p>One new maze every day, the same for everyone: small on Mondays, biggest on Saturdays. Solve it each day to build a streak.</p>'
+  });
+
+  // ── State ────────────────────────────────────────────────────────────────
+  // S: {mode, size, shape, paths, holes, seed, daily, replay, name, head, ms, hints, pen, wrong, drawn, U:[heads],
+  //     started (ts), going (clock running), done, solved, revealed, falls, ball:{x,y}}
+  var S = null, M = null, onPath = null, pathList = [];
+  function live() { return !!(S && !S.done); }
+  function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function dayLabel(day, long) { var d = new Date(day + 'T12:00:00'); return d.toLocaleDateString(undefined, long ? { weekday: 'long', month: 'short', day: 'numeric' } : { weekday: 'short', month: 'short', day: 'numeric' }); }
+  function secsOf() { return Math.round((S.ms / 1000 + S.pen) * 10) / 10; }
+  function clock(sec, tenths) {
+    sec = Math.max(0, sec); var m = Math.floor(sec / 60), s = sec - m * 60;
+    return m + ':' + (s < 10 ? '0' : '') + (tenths ? s.toFixed(1) : String(Math.floor(s)));
+  }
+  function mazeName(o) { o = o || S; return o.mode === 'tilt' ? 'Labyrinth · ' + MC.SIZES[o.size].name : MC.SIZES[o.size].name + ' ' + (o.shape === 'round' ? 'round' : 'square'); }
+  function myName() {
+    var n = ''; try { var g = JSON.parse(lsGet('gn_setup_mazes', '{}')); n = g && g.names && g.names[0] || ''; } catch (e) {}
+    return n || lsGet('my_name', '').trim() || 'You';
+  }
+
+  // ── History, best times, streak ──────────────────────────────────────────
+  function hist() { try { return GameHistory.load(HKEY) || []; } catch (e) { return []; } }
+  function cleanSolve(e) { return e && e.solved && !e.revealed && !e.replay && e.secs > 0; }
+  function bestOf(mode, size) { var b = 0; hist().forEach(function (e) { if (cleanSolve(e) && (e.play || 'pencil') === mode && e.size === size && (!b || e.secs < b)) b = e.secs; }); return b; }
+  var hiTop = {};
+  function boardBest(mode, size) {
+    var k = hiKey(mode, size); if (!(k in hiTop)) { var t = null; try { t = ArcadeHi.top(k); } catch (e) {} hiTop[k] = t != null ? t : 0; }
+    var b = bestOf(mode, size), t2 = hiTop[k]; return t2 && (!b || t2 < b) ? t2 : b;
+  }
+  function dailyDone(day) { var r = null; hist().forEach(function (e) { if (e && e.daily === day && e.solved && !e.revealed && (!r || e.secs < r.secs)) r = e; }); return r; }
+  function streak() {
+    var days = {}; hist().forEach(function (e) { if (e && e.daily && e.solved && !e.revealed) days[e.daily] = 1; });
+    var d = new Date(), n = 0, k = function (x) { return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2); };
+    if (!days[k(d)]) d.setDate(d.getDate() - 1);   // today not done yet: the streak still stands from yesterday
+    while (days[k(d)]) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+
+  // ── Save / resume ────────────────────────────────────────────────────────
+  var saveT = 0;
+  function save(now) {
+    if (!S || S.done) return;
+    clearTimeout(saveT);
+    var go = function () {
+      if (!S || S.done) return;
+      if (S.mode === 'tilt' && ball) S.ball = { x: +ball.x.toFixed(3), y: +ball.y.toFixed(3) };
+      lsSet(SAVE, JSON.stringify(S));
+      if (S.going || S.head !== M.start || S.ms > 0) Kit.resume.set((S.daily ? 'Daily maze' : mazeName()) + ' · ' + clock(S.ms / 1000));
+    };
+    if (now) go(); else saveT = setTimeout(go, 400);
+  }
+  function clearSave() { clearTimeout(saveT); try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function leave() { stopClock(); stopLoop(); clearSave(); S = null; Kit.orient(null); hideLoupe(); }
+
+  // ── Setup ────────────────────────────────────────────────────────────────
+  function showSetup() {
+    stopClock(); stopLoop(); hideLoupe(); Kit.orient(null);
+    app.className = 'mz'; app.style.height = '';
+    function sizeHelp(z) { var s = MC.SIZES[z]; return s.cols + ' × ' + s.rows + ' squares, or ' + s.rings + ' rings when round.'; }
+    var st = Kit.setup(app, {
+      title: inCatalog ? null : 'Mazes',
+      intro: 'Find the one way out',
+      modes: [
+        { id: 'pencil', icon: 'pencil', title: 'Pencil', desc: 'Draw your way out with a finger, like a puzzle book' },
+        { id: 'tilt', icon: 'phone', title: 'Labyrinth', desc: 'Tilt the phone to roll a steel ball out of a wooden maze' }
+      ],
+      mode: 'pencil',
+      options: [
+        { id: 'size', label: 'Size', value: 'easy', choices: SIZE_ORDER.map(function (z) { return [z, MC.SIZES[z].name, sizeHelp(z)]; }) },
+        { id: 'shape', label: 'Shape', value: 'square', when: function (m) { return m !== 'tilt'; },
+          choices: [['square', 'Square', 'Start at the top, finish at the bottom.'], ['round', 'Round', 'A circular maze: start at the edge, finish in the middle.']] },
+        { id: 'paths', label: 'Paths', value: 'winding',
+          choices: [['winding', 'Winding', 'Long twisting corridors with few side turns.'], ['mixed', 'Mixed', 'A bit of everything, like a puzzle book.'], ['branchy', 'Branchy', 'Lots of short dead ends at every turn.']] },
+        { id: 'holes', label: 'Holes', value: 'off', when: function (m) { return m === 'tilt'; },
+          choices: [['off', 'None', 'A plain wooden maze.'], ['on', 'Holes', 'Holes on the wrong turns: drop in and the ball goes back to the start.']] }
+      ],
+      players: { min: 1, max: 1, names: true, label: 'Who is solving?' },
+      start: 'New maze',
+      onStart: function (cfg) {
+        var o = cfg.options, nm = cfg.players[0] && cfg.players[0].name;
+        if (!nm || /^Player \d+$/.test(nm)) nm = lsGet('my_name', '').trim() || 'You';
+        newGame({ mode: cfg.mode, size: o.size, shape: cfg.mode === 'tilt' ? 'square' : o.shape, paths: o.paths, holes: o.holes === 'on', name: nm });
+      }
+    });
+    // Today's maze, on top
+    var day = today(), dm = MC.daily(day), done = dailyDone(day), sk = streak();
+    var card = el('div', { class: 'daily' }, [
+      el('div', { class: 'dcal', 'aria-hidden': 'true' }, [el('small', { text: new Date(day + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase() }), el('b', { text: String(+day.slice(8)) })]),
+      el('div', { class: 'tx' }, [
+        el('b', { text: 'Daily maze' }),
+        el('small', { text: MC.SIZES[dm.size].name + ' ' + (dm.shape === 'round' ? 'round' : 'square') + ' · ' + MC.PATHS[dm.paths].toLowerCase() + ' paths · the same maze for everyone today' }),
+        done ? el('small', { class: 'st', html: Kit.icon('check') + '<span>Solved in ' + clock(done.secs, true) + (sk > 1 ? ' · ' + sk + '-day streak' : '') + '</span>' })
+          : sk ? el('small', { class: 'st', html: Kit.icon('flame') + '<span>' + sk + '-day streak. Keep it going!</span>' }) : null
+      ]),
+      el('button', { type: 'button', class: 'btn ' + (done ? 'btn-soft' : 'btn-primary') + ' btn-sm', text: done ? 'Again' : 'Play', onclick: function () { Kit.sfx('pop'); startDaily(); } })
+    ]);
+    var hero = st.el.querySelector('.setup-hero');
+    if (hero && hero.nextSibling) st.el.insertBefore(card, hero.nextSibling); else st.el.appendChild(card);
+  }
+  function startDaily() {
+    var day = today(), dm = MC.daily(day);
+    newGame({ mode: 'pencil', size: dm.size, shape: dm.shape, paths: dm.paths, holes: false, seed: dm.seed, daily: day, replay: !!dailyDone(day), name: myName() });
+  }
+  function askDaily() {
+    if (S && S.daily === today() && !S.done) { Kit.toast('This is today’s maze'); return; }
+    if (live() && (S.going || S.ms > 0)) {
+      Kit.confirm('Leave this maze for the daily maze?', { ok: 'Daily maze', body: 'This maze will be lost.' }).then(function (ok) { if (ok) { leave(); startDaily(); } });
+    } else { leave(); startDaily(); }
+  }
+  function newGame(o) {
+    clearSave(); stopLoop();
+    S = { v: 1, mode: o.mode === 'tilt' ? 'tilt' : 'pencil', size: o.size, shape: o.shape, paths: o.paths, holes: !!o.holes,
+      seed: o.seed || (100000 + Math.floor(Math.random() * 900000)), daily: o.daily || null, replay: !!o.replay, name: o.name || myName(),
+      head: -1, ms: 0, hints: 0, pen: 0, wrong: 0, drawn: 0, U: [], started: Date.now(), going: false, done: false, solved: false, revealed: false, falls: 0, ball: null };
+    M = MC.make(S); S.head = M.start;
+    Kit.gameStart();
+    build();
+  }
+
+  // ── Build the play screen ────────────────────────────────────────────────
+  var hud = {}, stage = null, tools = null, tipEl = null;
+  function build() {
+    hideLoupe();
+    app.innerHTML = ''; app.className = 'mz play';
+    var h = el('div', { class: 'hud' });
+    hud.timeBox = el('div', { class: 'cnt time' }, [el('span', { html: Kit.icon('history') }), el('span', { class: 'tx' }, [el('small', { text: 'Time' }), hud.time = el('b', { text: '0:00' })])]);
+    h.appendChild(hud.timeBox);
+    h.appendChild(el('div', { class: 'cnt' }, [el('span', { html: Kit.icon('trophy') }), el('span', { class: 'tx' }, [el('small', { text: S.daily ? 'Daily' : 'Best' }), hud.best = el('b')])]));
+    h.appendChild(el('div', { class: 'cnt' }, [el('span', { html: Kit.icon(S.mode === 'tilt' && S.holes ? 'target' : 'lightbulb') }), el('span', { class: 'tx' }, [hud.thirdL = el('small', { text: S.mode === 'tilt' && S.holes ? 'Falls' : 'Hints' }), hud.third = el('b')])]));
+    app.appendChild(h);
+    stage = el('div', { class: 'stage' }); app.appendChild(stage);
+    tools = el('div', { class: 'tools' }); app.appendChild(tools);
+    tipEl = el('div', { class: 'tip' }); app.appendChild(tipEl);
+    if (S.mode === 'tilt') buildTilt(); else buildPencil();
+    updHud(); updTime();
+    if (!S.done && S.going) startClock();
+  }
+  function updHud() {
+    if (!S) return;
+    var b = S.daily ? (function () { var d = dailyDone(S.daily); return d ? d.secs : 0; })() : boardBest(S.mode, S.size);
+    hud.best.textContent = b ? clock(b, b < 60) : '–';
+    hud.third.textContent = S.mode === 'tilt' && S.holes ? String(S.falls) : S.hints ? S.hints + ' · +' + S.pen + 's' : '0';
+  }
+  function updTime() { if (hud.time) hud.time.textContent = clock(S.ms / 1000 + S.pen); }
+  function setTools(list) {
+    tools.innerHTML = '';
+    list.forEach(function (b) { if (b) tools.appendChild(b); });
+  }
+  function btn(icon, label, fn, cls) {
+    return el('button', { type: 'button', class: 'btn ' + (cls || 'btn-soft'), html: Kit.icon(icon) + '<span>' + Kit.esc(label) + '</span>', onclick: function () { Kit.sfx('tap'); fn(); } });
+  }
+  function doneTools() {
+    setTools([
+      btn('sparkle', S.daily ? 'Random maze' : 'Next maze', function () { var o = S; newGame({ mode: o.mode, size: o.size, shape: o.shape, paths: o.paths, holes: o.holes, name: o.name }); }, 'btn-primary grow'),
+      btn('pencil', 'Change', function () { leave(); showSetup(); }, 'btn-soft')
+    ]);
+    tipEl.textContent = '';
+  }
+
+  // ── Clock ────────────────────────────────────────────────────────────────
+  var clockT = null, lastT = 0;
+  function paused() { return document.hidden || !!document.querySelector('.k-scrim, .ahi-overlay, .k-win'); }
+  function startClock() {
+    stopClock(); if (!S || S.done) return;
+    lastT = performance.now();
+    clockT = setInterval(function () {
+      var now = performance.now();
+      if (!paused()) S.ms += Math.min(1000, now - lastT);
+      lastT = now; updTime();
+      if (Math.floor(S.ms / 5000) !== Math.floor((S.ms - 250) / 5000)) save();
+    }, 250);
+  }
+  function stopClock() { if (clockT) clearInterval(clockT); clockT = null; }
+  function go() { if (!S.going && !S.done) { S.going = true; S.started = Date.now(); Kit.gameStart(); startClock(); } }
+  document.addEventListener('visibilitychange', function () { lastT = performance.now(); if (document.hidden && S) save(true); if (document.hidden) rollSet(0); });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Pencil: an ink-printed maze on a clipboard, solved with a red felt-tip
+  // ═══════════════════════════════════════════════════════════════════════
+  var svg = null, gC = null, penEl = null, bleedEl = null, nibEl = null, ringEl = null, hintEl = null, hintDot = null, solEl = null, sweepEl = null, timeI = null;
+  var tr = false, content = null, view = null, pxu = 1, fitPxu = 1, NS = 'http://www.w3.org/2000/svg';
+  function sv(tag, attrs) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); return n; }
+  function buildPencil() {
+    var clip = el('div', { class: 'clip wood' }, [el('div', { class: 'clamp', 'aria-hidden': 'true' })]);
+    var sheet = el('div', { class: 'sheet paper' });
+    var head = el('div', { class: 'sh-head' }, [
+      el('div', { class: 'sh-l' }, [
+        el('span', { class: 'sh-no', text: S.daily ? 'Daily maze' : 'Maze ' + S.seed }),
+        el('span', { class: 'sh-sub', text: S.daily ? dayLabel(S.daily) + ' · ' + MC.SIZES[S.size].name : MC.SIZES[S.size].name + ' · ' + MC.PATHS[S.paths] })
+      ]),
+      el('span', { class: 'sh-time' }, [el('span', { text: 'Time' }), timeI = el('i', { text: S.solved ? clock(secsOf(), true) : '' })])
+    ]);
+    sheet.appendChild(head);
+    svg = sv('svg', { class: 'mzs', role: 'img', 'aria-label': mazeName() + ' maze. Drag from Start to Finish.' });
+    sheet.appendChild(svg); clip.appendChild(sheet); stage.appendChild(clip);
+    hud.zoom = el('div', { class: 'zm' }, [
+      el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Zoom out', html: Kit.icon('minus'), onclick: function () { zoomBy(1 / 1.6); } }),
+      el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Zoom in', html: Kit.icon('plus'), onclick: function () { zoomBy(1.6, true); } })
+    ]);
+    if (S.done) doneTools();
+    else setTools([btn('lightbulb', 'Hint', hint, 'btn-soft grow'), btn('undo', 'Undo', undo, 'btn-soft'), hud.zoom]);
+    layoutPencil();
+    bindPencil();
+  }
+  // Fit the page to the screen: the maze as big as it goes, on its side when that makes the squares bigger
+  function layoutPencil() {
+    if (!svg) return;
+    var top = stage.getBoundingClientRect().top + (window.scrollY || 0);
+    var below = tools.offsetHeight + 10 + tipEl.offsetHeight + 6 + 10;
+    var safeB = parseFloat(getComputedStyle(app).paddingBottom) || 0;
+    var availH = Math.max(220, window.innerHeight - top - below - safeB);
+    var availW = Math.min(app.clientWidth - 24, 1100);
+    app.style.height = (window.innerHeight - app.getBoundingClientRect().top - (window.scrollY ? 0 : 0)) + 'px';
+    var headH = svg.previousSibling ? svg.previousSibling.offsetHeight + 2 : 30;
+    var W = availW - 22 - 20, H = availH - 36 - 17 - headH;
+    var cap = Math.min(window.innerWidth, window.innerHeight) >= 700 ? 54 : 46;
+    var m = M, cell, mx, my, cw, ch;
+    var myB = null;
+    if (m.shape === 'round') {
+      tr = false; mx = 8; my = 8; myB = 38;   // START sits under the maze
+      cell = Math.min(cap, (W - 2 * mx) / (2 * m.rings), (H - my - myB) / (2 * m.rings));
+      cw = ch = 2 * m.rings * cell;
+    } else {
+      var a = Math.min((W - 16) / m.cols, (H - 72) / m.rows), b = Math.min((W - 72) / m.rows, (H - 32) / m.cols);
+      tr = b > a * 1.08;
+      if (tr) { mx = 36; my = 16; cell = Math.min(cap, b); cw = m.rows * cell; ch = m.cols * cell; }
+      else { mx = 8; my = 36; cell = Math.min(cap, a); cw = m.cols * cell; ch = m.rows * cell; }
+    }
+    cell = Math.max(6, Math.floor(cell * 10) / 10);
+    if (m.shape === 'round') { cw = ch = 2 * m.rings * cell; } else if (tr) { cw = m.rows * cell; ch = m.cols * cell; } else { cw = m.cols * cell; ch = m.rows * cell; }
+    fitPxu = pxu = cell / U;
+    var b0 = MC.bounds(m, tr);
+    if (myB == null) myB = my;
+    content = { x: b0.x - mx / pxu, y: b0.y - my / pxu, w: b0.w + 2 * mx / pxu, h: b0.h + (my + myB) / pxu };
+    svg.setAttribute('width', Math.round(cw + 2 * mx)); svg.setAttribute('height', Math.round(ch + my + myB));
+    svg.style.width = Math.round(cw + 2 * mx) + 'px'; svg.style.height = Math.round(ch + my + myB) + 'px';
+    view = { x: content.x, y: content.y, w: content.w, h: content.h };
+    drawPencil();
+    applyView();
+    hud.zoom.style.display = cell < 30 && !S.done ? '' : 'none';
+    tipEl.textContent = S.done ? '' : cell < 30 ? (TOUCH ? 'Drag from the red dot · pinch to zoom' : 'Drag from the red dot · scroll to zoom · arrow keys work too') : (TOUCH ? 'Drag from the red dot along the corridors' : 'Drag from the red dot, or use the arrow keys');
+  }
+  function drawPencil() {
+    svg.innerHTML = '';
+    var u = 1 / pxu;   // units per screen pixel at fit
+    var wallW = Math.max(1.5, Math.min(3.2, U * pxu * 0.1)) * u;
+    gC = sv('g', { id: 'mzc' });
+    gC.appendChild(sv('path', { class: 'walls', d: MC.walls(M, tr, true), 'stroke-width': wallW.toFixed(3) }));
+    gC.appendChild(marks(u, wallW));
+    solEl = sv('path', { class: 'solp', 'stroke-width': (U * 0.2).toFixed(2), 'stroke-dasharray': (U * 0.5) + ' ' + (U * 0.35), d: '' });
+    hintEl = sv('path', { class: 'hintp', 'stroke-width': (U * 0.24).toFixed(2), 'stroke-dasharray': (U * 0.42) + ' ' + (U * 0.3), d: '' });
+    hintDot = sv('circle', { class: 'hintdot', r: (U * 0.42).toFixed(2), cx: 0, cy: 0, 'stroke-width': (U * 0.12).toFixed(2) });
+    var pw = Math.max(U * 0.32, 3.2 * u);
+    bleedEl = sv('path', { class: 'pen-bleed', 'stroke-width': (pw * 1.55).toFixed(2), d: '' });
+    penEl = sv('path', { class: 'pen', 'stroke-width': pw.toFixed(2), d: '' });
+    sweepEl = sv('path', { class: 'sweep', 'stroke-width': (pw * 0.45).toFixed(2), d: '' });
+    ringEl = sv('circle', { class: 'nib-ring', r: (pw * 1.1).toFixed(2), 'stroke-width': (pw * 0.35).toFixed(2) });
+    nibEl = sv('circle', { class: 'nib', r: (pw * 0.62).toFixed(2) });
+    [solEl, hintEl, hintDot, bleedEl, penEl, sweepEl, ringEl, nibEl].forEach(function (n) { gC.appendChild(n); });
+    svg.appendChild(gC);
+    svg.classList.toggle('done', !!S.done);
+    setPath(S.head, true);
+    if (S.revealed) showSolution(false);
+  }
+  // START and FINISH, printed: an arrow into the way in, an arrow out of the way out (a star in the middle of a round maze)
+  function marks(u, wallW) {
+    var g = sv('g', { class: 'marks' }), fs = 10.5 * u, L = Math.max(U * 0.9, 15 * u), gap = 3 * u;
+    function arrow(x0, y0, x1, y1) {
+      var dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, hw = Math.max(U * 0.24, 4.2 * u), hl = Math.max(U * 0.32, 6 * u);
+      g.appendChild(sv('path', { d: 'M' + x0 + ' ' + y0 + 'L' + (x1 - ux * hl * 0.6) + ' ' + (y1 - uy * hl * 0.6), 'stroke-width': (wallW * 0.9).toFixed(3) }));
+      g.appendChild(sv('path', { class: 'fill', d: 'M' + x1 + ' ' + y1 + 'L' + (x1 - ux * hl - uy * hw) + ' ' + (y1 - uy * hl + ux * hw) + 'L' + (x1 - ux * hl + uy * hw) + ' ' + (y1 - uy * hl - ux * hw) + 'Z' }));
+    }
+    function label(t, x, y, anchor) {
+      var tx = sv('text', { x: x.toFixed(2), y: y.toFixed(2), 'font-size': fs.toFixed(2), 'text-anchor': anchor || 'middle', 'dominant-baseline': 'central' }); tx.textContent = t; g.appendChild(tx);
+    }
+    var s = MC.door(M, 'start', tr), f = MC.door(M, 'finish', tr);
+    // into the start
+    arrow(s.x + s.dx * (gap + L), s.y + s.dy * (gap + L), s.x + s.dx * gap, s.y + s.dy * gap);
+    if (M.shape === 'round') {
+      var d = gap + L + 7 * u, lx = s.x + s.dx * d, ly = s.y + s.dy * d;
+      label('START', lx + (s.dx > 0.35 ? 18 * u : s.dx < -0.35 ? -18 * u : 0), ly + (Math.abs(s.dx) <= 0.35 ? s.dy * 2 * u : 0));
+      // a printed star in the middle
+      var R1 = U * 0.62, R2 = R1 * 0.45, pts = '';
+      for (var k = 0; k < 10; k++) { var a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? R2 : R1; pts += (k ? 'L' : 'M') + (r * Math.cos(a)).toFixed(2) + ' ' + (r * Math.sin(a)).toFixed(2); }
+      g.appendChild(sv('path', { class: 'fill goal', d: pts + 'Z' }));
+    } else {
+      if (tr) { label('START', s.x - (gap + L) * 0.5, s.y - Math.max(U * 0.55, 9 * u)); }
+      else label('START', s.x, s.y - gap - L - 7 * u);
+      arrow(f.x + f.dx * gap, f.y + f.dy * gap, f.x + f.dx * (gap + L), f.y + f.dy * (gap + L));
+      var gl = sv('g', { class: 'goal' });
+      g.appendChild(gl);
+      if (tr) label('FINISH', f.x + (gap + L) * 0.5, f.y - Math.max(U * 0.55, 9 * u));
+      else label('FINISH', f.x, f.y + gap + L + 7 * u);
+    }
+    return g;
+  }
+  // The line is always the one way from the start to its end (S.head): drawing back rubs it out
+  function setPath(c, quiet) {
+    if (onPath) pathList.forEach(function (x) { onPath[x] = 0; });
+    if (!onPath || onPath.length !== M.n) onPath = new Uint8Array(M.n);
+    S.head = c; pathList = MC.pathTo(M, c);
+    pathList.forEach(function (x) { onPath[x] = 1; });
+    if (!penEl) return;
+    var d = MC.line(M, pathList, tr, { entry: true, exit: S.solved });
+    penEl.setAttribute('d', d); bleedEl.setAttribute('d', d);
+    var p = S.solved && M.shape !== 'round' ? tipPoint() : MC.center(M, c, tr);
+    nibEl.setAttribute('cx', p[0].toFixed(2)); nibEl.setAttribute('cy', p[1].toFixed(2));
+    ringEl.setAttribute('cx', p[0].toFixed(2)); ringEl.setAttribute('cy', p[1].toFixed(2));
+  }
+  function tipPoint() { var f = MC.door(M, 'finish', tr); return [f.x + f.dx * U * 0.9, f.y + f.dy * U * 0.9]; }
+
+  // ── Moving the line ──
+  var lastDir = 0;
+  function moveTo(c, hook) {
+    if (!S || S.done || c === S.head || c < 0) return false;
+    var tp = MC.treePath(M, S.head, c, hook ? null : 2);
+    if (!tp) return false;
+    var old = S.head, back = M.depth[c] < M.depth[old];
+    if (back && lastDir > 0 && !onSolution(old)) S.wrong++;
+    lastDir = back ? -1 : 1;
+    S.drawn += tp.length - 1;
+    go();
+    setPath(c);
+    if (back) SND.erase(); else SND.pen();
+    if (c === M.finish) { solved(); return true; }
+    save();
+    return true;
+  }
+  var solSet = null;
+  function onSolution(c) { if (!solSet) { solSet = new Uint8Array(M.n); M.solution.forEach(function (x) { solSet[x] = 1; }); } return !!solSet[c]; }
+  function pushUndo() { if (!S.U.length || S.U[S.U.length - 1] !== S.head) { S.U.push(S.head); if (S.U.length > 60) S.U.shift(); } }
+  function undo() {
+    if (!S || S.done) { Kit.toast(S && S.solved ? 'This maze is solved' : 'Nothing to undo'); return; }
+    if (S.mode === 'tilt') { Kit.toast('The ball can’t roll back. Tilt it!'); return; }
+    var prev = null;
+    while (S.U.length && (prev = S.U.pop()) === S.head) prev = null;
+    if (prev == null) { Kit.toast('Nothing to undo'); return; }
+    lastDir = 0; setPath(prev); Kit.sfx('whoosh'); save();
+  }
+
+  // ── Input: draw with one finger; pinch / two fingers / the wheel to zoom and look around ──
+  var pts = {}, gesture = null, lastP = null, loupe = null, loupeSvg = null, edgeRaf = 0, finger = null, bumpT = 0, nudgeT = 0;
+  function toMaze(cx, cy) {
+    var r = svg.getBoundingClientRect();
+    return [view.x + (cx - r.left) / pxu, view.y + (cy - r.top) / pxu];
+  }
+  function applyView() { if (svg && view) svg.setAttribute('viewBox', view.x.toFixed(3) + ' ' + view.y.toFixed(3) + ' ' + view.w.toFixed(3) + ' ' + view.h.toFixed(3)); }
+  function clampView() {
+    ['x', 'y'].forEach(function (a) {
+      var w = a === 'x' ? 'w' : 'h';
+      if (view[w] >= content[w]) view[a] = content[a] + (content[w] - view[w]) / 2;
+      else view[a] = Math.max(content[a], Math.min(content[a] + content[w] - view[w], view[a]));
+    });
+  }
+  function setScale(s, cx, cy) {   // zoom to s px per unit, keeping the point under (cx, cy) still
+    var maxS = Math.max(fitPxu, 50 / U);
+    s = Math.max(fitPxu, Math.min(maxS, s));
+    var r = svg.getBoundingClientRect(), p = toMaze(cx, cy);
+    pxu = s; view.w = r.width / s; view.h = r.height / s;
+    view.x = p[0] - (cx - r.left) / s; view.y = p[1] - (cy - r.top) / s;
+    clampView(); applyView();
+  }
+  function zoomBy(k, onHead) {
+    if (!svg) return;
+    var r = svg.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    setScale(pxu * k, cx, cy);
+    if (onHead) centerOn(MC.center(M, S.head, tr));
+    Kit.sfx('tap');
+  }
+  function centerOn(p) { view.x = p[0] - view.w / 2; view.y = p[1] - view.h / 2; clampView(); applyView(); }
+  function zoomed() { return pxu > fitPxu * 1.01; }
+  function bindPencil() {
+    svg.addEventListener('pointerdown', function (e) {
+      if (!S || e.button > 0) return;
+      try { svg.setPointerCapture(e.pointerId); } catch (x) {}
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY, t: e.pointerType };
+      var ids = Object.keys(pts);
+      if (ids.length >= 2) { endDraw(); startPinch(); return; }
+      if (S.done) { gesture = zoomed() ? { k: 'pan', x: e.clientX, y: e.clientY } : null; return; }
+      var p = toMaze(e.clientX, e.clientY), c = MC.cellAt(M, p[0], p[1], tr), hc = MC.center(M, S.head, tr);
+      var near = Math.hypot(p[0] - hc[0], p[1] - hc[1]) <= Math.max(U * (S.head === M.start ? 1.9 : 0.8), 30 / pxu);
+      if (near || (c >= 0 && onPath[c])) {
+        pushUndo();
+        gesture = { k: 'draw', id: e.pointerId, touch: e.pointerType !== 'mouse' };
+        svg.classList.add('drawing');
+        lastP = near ? hc : p;
+        if (!near && c !== S.head) moveTo(c, true);
+        finger = { x: e.clientX, y: e.clientY };
+        drawAt(e.clientX, e.clientY);
+        edgeLoop();
+      } else {
+        gesture = { k: zoomed() ? 'pan' : 'none', x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY };
+      }
+    });
+    svg.addEventListener('pointermove', function (e) {
+      var pt = pts[e.pointerId]; if (!pt) return;
+      pt.x = e.clientX; pt.y = e.clientY;
+      if (!gesture) return;
+      if (gesture.k === 'pinch') return movePinch();
+      if (gesture.k === 'draw' && e.pointerId === gesture.id) { finger = { x: e.clientX, y: e.clientY }; drawAt(e.clientX, e.clientY); }
+      else if (gesture.k === 'pan') { view.x -= (e.clientX - gesture.x) / pxu; view.y -= (e.clientY - gesture.y) / pxu; gesture.x = e.clientX; gesture.y = e.clientY; clampView(); applyView(); }
+    });
+    function up(e) {
+      if (!pts[e.pointerId]) return;
+      delete pts[e.pointerId];
+      var ids = Object.keys(pts);
+      if (gesture && gesture.k === 'none' && Math.hypot(e.clientX - gesture.sx, e.clientY - gesture.sy) < 10 && S && !S.done) nudge();
+      if (gesture && gesture.k === 'draw') endDraw();
+      if (ids.length === 1 && gesture && gesture.k === 'pinch') { var q = pts[ids[0]]; gesture = { k: 'pan', x: q.x, y: q.y }; }
+      else if (!ids.length) gesture = null;
+    }
+    svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+    svg.addEventListener('wheel', function (e) { e.preventDefault(); setScale(pxu * Math.exp(-e.deltaY * 0.0022), e.clientX, e.clientY); }, { passive: false });
+  }
+  function nudge() {
+    var now = Date.now(); if (now - nudgeT < 2500) return; nudgeT = now;
+    Kit.toast(S.head === M.start ? 'Start at the red dot by START' : 'Carry on from the red dot, or press on your line');
+    ringEl && ringEl.animate && ringEl.animate([{ transform: 'scale(.6)', opacity: 1 }, { transform: 'scale(2.6)', opacity: 0 }], { duration: 700, iterations: 2 });
+  }
+  function startPinch() {
+    var ids = Object.keys(pts), a = pts[ids[0]], b = pts[ids[1]];
+    gesture = { k: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y) || 1, s: pxu, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, view: { x: view.x, y: view.y, w: view.w, h: view.h } };
+  }
+  function movePinch() {
+    var ids = Object.keys(pts); if (ids.length < 2) return;
+    var a = pts[ids[0]], b = pts[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, g = gesture;
+    var r = svg.getBoundingClientRect(), p0 = [g.view.x + (g.mx - r.left) / g.s, g.view.y + (g.my - r.top) / g.s];
+    var s = Math.max(fitPxu, Math.min(Math.max(fitPxu, 50 / U), g.s * d / g.d));
+    pxu = s; view.w = r.width / s; view.h = r.height / s;
+    view.x = p0[0] - (mx - r.left) / s; view.y = p0[1] - (my - r.top) / s;
+    clampView(); applyView();
+  }
+  function endDraw() {
+    if (gesture && gesture.k === 'draw') gesture = null;
+    finger = null; lastP = null; if (svg) svg.classList.remove('drawing');
+    cancelAnimationFrame(edgeRaf); edgeRaf = 0; hideLoupe();
+  }
+  // Walk the finger's track in small steps so a fast stroke still turns every corner
+  function drawAt(cx, cy) {
+    if (!S || S.done) return;
+    var p = toMaze(cx, cy), a = lastP || p, dist = Math.hypot(p[0] - a[0], p[1] - a[1]), n = Math.max(1, Math.ceil(dist / (U * 0.25)));
+    var blocked = false;
+    for (var i = 1; i <= n; i++) {
+      var q = [a[0] + (p[0] - a[0]) * i / n, a[1] + (p[1] - a[1]) * i / n], c = MC.cellAt(M, q[0], q[1], tr);
+      if (c < 0 || c === S.head) continue;
+      if (!moveTo(c)) blocked = true; else blocked = false;
+      if (S.done) break;
+    }
+    lastP = p;
+    if (blocked) { var now = performance.now(); if (now - bumpT > 260) { bumpT = now; SND.bump(); Kit.haptic('tick'); } }
+    if (gesture && gesture.touch) showLoupe(cx, cy, p);
+  }
+  // While drawing on a zoomed maze, a finger near the edge slides the page along
+  function edgeLoop() {
+    cancelAnimationFrame(edgeRaf);
+    edgeRaf = requestAnimationFrame(function tick() {
+      if (!gesture || gesture.k !== 'draw' || !finger) return;
+      if (zoomed()) {
+        var r = svg.getBoundingClientRect(), M0 = 40, vx = 0, vy = 0;
+        if (finger.x < r.left + M0) vx = -(r.left + M0 - finger.x) / M0; else if (finger.x > r.right - M0) vx = (finger.x - r.right + M0) / M0;
+        if (finger.y < r.top + M0) vy = -(r.top + M0 - finger.y) / M0; else if (finger.y > r.bottom - M0) vy = (finger.y - r.bottom + M0) / M0;
+        if (vx || vy) {
+          var ox = view.x, oy = view.y;
+          view.x += Math.max(-1, Math.min(1, vx)) * 7 / pxu; view.y += Math.max(-1, Math.min(1, vy)) * 7 / pxu; clampView();
+          if (view.x !== ox || view.y !== oy) { applyView(); drawAt(finger.x, finger.y); }
+        }
+      }
+      edgeRaf = requestAnimationFrame(tick);
+    });
+  }
+  function showLoupe(cx, cy, p) {
+    if (pxu * U >= 26) { hideLoupe(); return; }
+    if (!loupe) {
+      loupe = el('div', { class: 'loupe', 'aria-hidden': 'true' });
+      loupeSvg = sv('svg', {});
+      loupeSvg.appendChild(sv('use', { href: '#mzc' }));
+      loupeSvg.appendChild(sv('circle', { class: 'lc', r: 1, fill: 'none', stroke: 'rgba(35,38,58,.35)' }));
+      loupe.appendChild(loupeSvg); document.body.appendChild(loupe);
+    }
+    var D = 136, s = 34 / U, w = D / s;   // a square 34 px across in the loupe
+    loupeSvg.setAttribute('viewBox', (p[0] - w / 2).toFixed(2) + ' ' + (p[1] - w / 2).toFixed(2) + ' ' + w.toFixed(2) + ' ' + w.toFixed(2));
+    var lc = loupeSvg.querySelector('.lc'); lc.setAttribute('cx', p[0]); lc.setAttribute('cy', p[1]); lc.setAttribute('r', (U * 0.75).toFixed(2)); lc.setAttribute('stroke-width', (U * 0.06).toFixed(2));
+    var y = cy - 118; if (y - D / 2 < 8) y = cy + 118;
+    var x = Math.max(D / 2 + 6, Math.min(window.innerWidth - D / 2 - 6, cx));
+    loupe.style.left = x + 'px'; loupe.style.top = y + 'px';
+    loupe.classList.add('on');
+  }
+  function hideLoupe() { if (loupe) loupe.classList.remove('on'); }
+  // Arrow keys: one square in that direction, if the way is open
+  document.addEventListener('keydown', function (e) {
+    if (!S || document.querySelector('.k-scrim,.k-win,.ahi-overlay')) return;
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+    var dir = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] }[e.key];
+    if (!dir) return;
+    if (S.mode === 'tilt') { keyTilt(e.key, dir, true); e.preventDefault(); return; }
+    if (S.done) return;
+    e.preventDefault();
+    var h = MC.center(M, S.head, tr), best = -1, bd = 0.45;
+    M.links[S.head].forEach(function (x) { var q = MC.center(M, x, tr), dx = q[0] - h[0], dy = q[1] - h[1], l = Math.hypot(dx, dy) || 1, dot = (dx * dir[0] + dy * dir[1]) / l; if (dot > bd) { bd = dot; best = x; } });
+    if (S.head === M.start && best < 0 && !S.going) return;
+    if (best < 0) { SND.bump(); return; }
+    pushUndo(); moveTo(best);
+    if (zoomed()) { var q = MC.center(M, S.head, tr), m0 = view.w * 0.2; if (q[0] < view.x + m0 || q[0] > view.x + view.w - m0 || q[1] < view.y + m0 || q[1] > view.y + view.h - m0) centerOn(q); }
+  });
+  document.addEventListener('keyup', function (e) { if (S && S.mode === 'tilt') keyTilt(e.key, null, false); });
+
+  // ── Hints and giving up ──
+  function hint() {
+    if (!live()) return;
+    var from = S.mode === 'tilt' ? ballCell() : S.head;
+    var route = MC.treePath(M, from, M.finish);
+    if (!route || route.length < 2) return;
+    var back = 0; while (back + 1 < route.length && M.depth[route[back + 1]] < M.depth[route[back]]) back++;
+    var show = route.slice(0, Math.min(route.length, back + 1 + 6));
+    var p = PENALTY[S.size] || 10;
+    S.hints++; S.pen += p; go(); updHud(); updTime(); save();
+    hud.timeBox.classList.remove('pen'); void hud.timeBox.offsetWidth; hud.timeBox.classList.add('pen');
+    SND.hint(); Kit.haptic('light'); Kit.callout('+' + p + 's');
+    if (back > 0) Kit.toast('Back up to the blue circle first');
+    if (S.mode === 'tilt') { labHint = { cells: show, back: back ? route[back] : -1, t: performance.now() }; return; }
+    hintEl.setAttribute('d', MC.line(M, show, tr));
+    var bp = MC.center(M, back > 0 ? route[back] : show[Math.min(show.length - 1, 1)], tr);
+    hintDot.setAttribute('cx', bp[0]); hintDot.setAttribute('cy', bp[1]);
+    [hintEl, hintDot].forEach(function (n) { n.classList.remove('on'); void n.getBoundingClientRect(); n.classList.add('on'); });
+    hintDot.style.display = back > 0 ? '' : 'none';
+    if (zoomed()) centerOn(MC.center(M, show[Math.min(show.length - 1, back + 2)], tr));
+  }
+  function askReveal() {
+    if (!live()) return;
+    Kit.confirm('Show the way out?', { ok: 'Show me', body: 'This maze ends without a time.' }).then(function (ok) { if (ok) reveal(); });
+  }
+  function reveal() {
+    if (!live()) return;
+    S.done = true; S.revealed = true; stopClock(); hideLoupe();
+    recordGame();
+    clearSave();
+    if (S.mode === 'tilt') { labReveal = true; } else { svg.classList.add('done'); showSolution(true); }
+    Kit.sfx('whoosh');
+    doneTools();
+    setTimeout(function () {
+      Kit.win({ lose: true, icon: 'eye', title: 'There’s the way out', sub: mazeName() + ' maze · the blue line is the only route',
+        againLabel: 'Try a new maze', again: function () { var o = S; newGame({ mode: o.mode, size: o.size, shape: o.shape, paths: o.paths, holes: o.holes, name: o.name }); },
+        extra: [{ label: 'Change maze', onClick: function () { leave(); showSetup(); } }],
+        closeLabel: 'Look at the maze', onClose: function () {} });
+    }, 1700);
+  }
+  function showSolution(anim) {
+    if (!solEl) return;
+    solEl.setAttribute('d', MC.line(M, M.solution, tr, { entry: true, exit: true }));
+    if (anim) {
+      var len = solEl.getTotalLength ? solEl.getTotalLength() : 1000;
+      solEl.style.setProperty('--len', len);
+      solEl.setAttribute('stroke-dasharray', len + ' ' + len);
+      solEl.classList.add('draw');
+      setTimeout(function () { if (solEl) { solEl.classList.remove('draw'); solEl.setAttribute('stroke-dasharray', (U * 0.5) + ' ' + (U * 0.35)); } }, 1700);
+    }
+  }
+
+  // ── Solved ──
+  function solved() {
+    var sec = secsOf();
+    S.done = true; S.solved = true; S.secs = sec; stopClock(); hideLoupe(); endDraw(); rollSet(0);
+    var mode = S.mode, size = S.size, key = hiKey(mode, size);
+    var prev = S.daily ? 0 : boardBest(mode, size), eligible = !S.replay, isBest = eligible && !S.daily && (!prev || sec < prev);
+    var sk0 = S.daily && !S.replay ? streak() : 0;
+    recordGame();
+    clearSave();
+    var sk = S.daily && !S.replay ? streak() : 0;
+    if (mode === 'pencil') {
+      setPath(S.head);
+      svg.classList.add('drawing'); svg.classList.add('done');
+      if (zoomed()) { pxu = fitPxu; view = { x: content.x, y: content.y, w: content.w, h: content.h }; applyView(); }
+      var d = penEl.getAttribute('d'); sweepEl.setAttribute('d', d);
+      var len = sweepEl.getTotalLength ? sweepEl.getTotalLength() : 1000;
+      sweepEl.style.setProperty('--len', len); sweepEl.setAttribute('stroke-dasharray', (len * 0.18) + ' ' + len);
+      sweepEl.classList.add('go');
+      timeI.textContent = clock(sec, true); timeI.classList.add('write');
+    }
+    Kit.sfx('good'); Kit.haptic('success');
+    setTimeout(function () { Kit.callout(clock(sec, true)); }, 250);
+    if (isBest && prev) setTimeout(function () { Kit.callout('New best time!'); }, 1250);
+    doneTools();
+    var notes = [];
+    var steps = M.solution.length - 1;
+    if (mode === 'pencil') notes.push('Line drawn: ' + S.drawn + ' squares · shortest way ' + steps);
+    else notes.push('Shortest way: ' + steps + ' squares');
+    notes.push(S.wrong ? S.wrong + (S.wrong === 1 ? ' wrong turn' : ' wrong turns') : (mode === 'pencil' ? 'No wrong turns!' : null));
+    if (S.hints) notes.push(S.hints + (S.hints === 1 ? ' hint' : ' hints') + ' (+' + S.pen + ' s)');
+    if (S.falls) notes.push('Fell in ' + S.falls + (S.falls === 1 ? ' hole' : ' holes'));
+    if (S.daily && !S.replay) notes.push(sk > 1 ? sk + '-day daily streak' + (sk > sk0 ? '!' : '') : 'Daily maze done for today');
+    var o = { mode: mode, size: size, shape: S.shape, paths: S.paths, holes: S.holes, name: S.name };
+    setTimeout(function () {
+      ArcadeHi.check(eligible ? key : '', eligible ? sec : 0, function () {
+        delete hiTop[key]; if (S && hud.best) updHud();
+        Kit.win({
+          title: isBest && prev ? 'New best time!' : S.daily ? 'Daily maze solved!' : 'You made it out!',
+          sub: mazeName(o) + ' in ' + clock(sec, true) + (isBest && prev ? ' (old best ' + clock(prev, true) + ')' : !isBest && prev ? ' · best ' + clock(prev, true) : ''),
+          notes: notes.filter(Boolean), notesTitle: 'Your solve',
+          againLabel: S.daily ? 'Random maze' : 'Next maze', again: function () { newGame(o); },
+          extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(key); } }, { label: 'Change maze', onClick: function () { leave(); showSetup(); } }],
+          closeLabel: 'Look at the maze', onClose: function () {}
+        });
+      });
+    }, mode === 'tilt' ? 1500 : 1700);
+  }
+  function recordGame() {
+    var sec = S.solved ? secsOf() : null, hl = [];
+    var what = (S.mode === 'tilt' ? 'Labyrinth, ' + MC.SIZES[S.size].name.toLowerCase() + (S.holes ? ' with holes' : '') : MC.SIZES[S.size].name + ' ' + S.shape + ' maze') + ' (' + (M.shape === 'round' ? M.rings + ' rings' : M.cols + ' × ' + M.rows) + '), ' + MC.PATHS[S.paths].toLowerCase() + ' paths';
+    hl.push(what);
+    if (S.solved) hl.push('Solved in ' + clock(sec, true) + (S.pen ? ' including ' + S.pen + ' s of hints' : ''));
+    else hl.push('Revealed the way out after ' + clock(S.ms / 1000));
+    if (S.daily) hl.push('Daily maze for ' + dayLabel(S.daily, true) + (S.replay ? ' (played again)' : ''));
+    if (S.hints) hl.push(S.hints + (S.hints === 1 ? ' hint' : ' hints') + ' used');
+    if (S.wrong) hl.push(S.wrong + (S.wrong === 1 ? ' wrong turn' : ' wrong turns'));
+    if (S.mode === 'pencil' && S.solved) hl.push('Drew ' + S.drawn + ' squares of line for a ' + (M.solution.length - 1) + '-square route');
+    if (S.falls) hl.push('Dropped into ' + S.falls + (S.falls === 1 ? ' hole' : ' holes'));
+    Kit.record(HKEY, {
+      started: S.started, mode: (S.daily ? 'Daily · ' : '') + mazeName(),
+      players: [{ name: S.name }], winner: S.solved ? S.name : null,
+      summary: S.solved ? 'Solved in ' + clock(sec, true) : 'Revealed', badge: S.solved ? clock(sec) : 'Revealed',
+      highlights: hl,
+      meta: { play: S.mode, size: S.size, shape: S.shape, paths: S.paths, holes: S.holes, seed: S.seed, solved: S.solved, revealed: S.revealed, secs: sec,
+        hints: S.hints, pen: S.pen, wrong: S.wrong, falls: S.falls, daily: S.daily || '', replay: S.replay },
+      detail: { s: S.seed, z: S.size, sh: S.shape, p: S.paths, h: S.mode === 'tilt' ? (S.solved ? M.finish : ballCell()) : S.head, m: S.mode, t: sec, hn: S.hints, w: S.wrong, f: S.falls }
+    });
+  }
+  function pastGames() {
+    Kit.loadHistView().then(function () {
+      try { if (window.HistView && !HistView.has('mazes')) HistView.register('mazes', MC.histView); } catch (e) {}
+      Kit.history(HKEY, { title: 'Mazes: past games' });
+    });
+  }
+  function showBests() {
+    var rows = SIZE_ORDER.map(function (z) {
+      var n = hist().filter(function (e) { return e && e.solved && e.size === z; }).length, a = boardBest('pencil', z), b = boardBest('tilt', z);
+      return '<tr><td>' + MC.SIZES[z].name + '</td><td>' + n + '</td><td><b>' + (a ? clock(a, true) : '–') + '</b></td><td><b>' + (b ? clock(b, true) : '–') + '</b></td></tr>';
+    }).join('');
+    var sk = streak(), dd = dailyDone(today());
+    Kit.sheet({ title: 'Best times', html: '<p class="muted" style="margin-bottom:10px">Fastest solves for each size, hint seconds included. Linked players count too.</p>' +
+      '<table class="bt-table"><tr><th>Size</th><th>Solved</th><th>Pencil</th><th>Labyrinth</th></tr>' + rows + '</table>' +
+      '<p class="muted" style="margin-top:14px">Daily maze: ' + (dd ? 'solved today in ' + clock(dd.secs, true) : 'not solved yet today') + (sk ? ' · ' + sk + '-day streak' : '') + '</p>',
+      actions: [{ label: 'High scores', cls: 'btn-soft', onClick: function () { ArcadeHi.show(hiKey(S ? S.mode : 'pencil', S ? S.size : 'easy')); } }, { label: 'Close', cls: 'btn-ghost' }] });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Labyrinth: the same maze as a wooden box; tilt (or drag) to roll a steel ball to the goal
+  // ═══════════════════════════════════════════════════════════════════════
+  var cv = null, cx2 = null, boxEl = null, wrapEl = null, ball = null, holes = [], cellPx = 30, dpr = 1, cam = { x: 0, y: 0 }, follow = false, viewW = 0, viewH = 0;
+  var staticCv = null, raf = 0, lastF = 0, tiltIn = { x: 0, y: 0 }, dragTilt = null, keyT = { x: 0, y: 0 }, keysDown = {}, oriOn = false, neutral = null, labHint = null, labReveal = false;
+  var BR = 0.27, WH = 0.075, HR = 0.31, ACC = 30, FRIC = 1.15, VMAX = 10;
+  function buildTilt() {
+    wrapEl = el('div', { class: 'lab-wrap' });
+    boxEl = el('div', { class: 'lab-box wood' });
+    cv = el('canvas', { class: 'lab', 'aria-label': mazeName() + '. Tilt or drag to roll the ball to the finish.' });
+    boxEl.appendChild(cv); wrapEl.appendChild(boxEl); stage.appendChild(wrapEl);
+    cx2 = cv.getContext('2d');
+    holes = S.holes ? placeHoles() : [];
+    if (!ball) ball = {};
+    var sp = S.ball || startPos();
+    ball.x = sp.x; ball.y = sp.y; ball.vx = 0; ball.vy = 0; ball.state = 'spawn'; ball.t = 0;
+    labHint = null; labReveal = !!S.revealed;
+    if (S.done) doneTools();
+    else setTools([btn('lightbulb', 'Hint', hint, 'btn-soft grow'), btn('compass', 'Level', function () { level(true); }, 'btn-soft')]);
+    Kit.orient('portrait');
+    layoutTilt();
+    bindTilt();
+    if (!S.done) askTilt();
+    startLoop();
+  }
+  function startPos() { return { x: M.start % M.cols + 0.5, y: Math.floor(M.start / M.cols) + 0.5 }; }
+  function ballCell() { if (!ball) return M.start; var c = Math.max(0, Math.min(M.cols - 1, Math.floor(ball.x))), r = Math.max(0, Math.min(M.rows - 1, Math.floor(ball.y))); return r * M.cols + c; }
+  // Holes sit on the wrong turns (never on the route or right beside it), not touching each other
+  function placeHoles() {
+    var R = MC.rng(M.seed ^ 0x5bd1e995), on = new Uint8Array(M.n), near = new Uint8Array(M.n), out = [], cand = [];
+    M.solution.forEach(function (c) { on[c] = 1; near[c] = 1; M.links[c].forEach(function (x) { near[x] = 1; }); });
+    for (var i = 0; i < M.n; i++) if (!near[i]) cand.push(i);
+    cand.sort(function (a, b) { return (M.links[a].length === 1 ? 0 : 1) - (M.links[b].length === 1 ? 0 : 1) || a - b; });
+    var want = Math.round(M.n * ({ easy: 0.06, medium: 0.07, hard: 0.08, expert: 0.08 })[S.size]), taken = {};
+    var dead = cand.filter(function (c) { return M.links[c].length === 1; }), rest = cand.filter(function (c) { return M.links[c].length !== 1; });
+    function shuf(a) { for (var k = a.length - 1; k > 0; k--) { var j = Math.floor(R() * (k + 1)), t = a[k]; a[k] = a[j]; a[j] = t; } return a; }
+    shuf(dead).concat(shuf(rest)).forEach(function (c) {
+      if (out.length >= want) return;
+      var r = Math.floor(c / M.cols), q = c % M.cols;
+      for (var dr = -1; dr <= 1; dr++) for (var dq = -1; dq <= 1; dq++) if (taken[(r + dr) * M.cols + (q + dq)] && q + dq >= 0 && q + dq < M.cols) return;
+      taken[c] = 1; out.push({ c: c, x: q + 0.5, y: r + 0.5 });
+    });
+    return out;
+  }
+  function layoutTilt() {
+    if (!cv) return;
+    var top = stage.getBoundingClientRect().top + (window.scrollY || 0);
+    var below = tools.offsetHeight + 10 + tipEl.offsetHeight + 6 + 10, safeB = parseFloat(getComputedStyle(app).paddingBottom) || 0;
+    app.style.height = (window.innerHeight - app.getBoundingClientRect().top) + 'px';
+    var H = Math.max(200, window.innerHeight - top - below - safeB) - 24 - 8, W = Math.min(app.clientWidth - 24, 1100) - 24;
+    var bw = M.cols + 0.6, bh = M.rows + 0.6;
+    var a = Math.min(W / bw, H / bh), b = Math.min(W / bh, H / bw);
+    tr = b > a * 1.08;
+    var fit = tr ? b : a, cap = Math.min(window.innerWidth, window.innerHeight) >= 700 ? 60 : 52;
+    viewW = tr ? bh : bw; viewH = tr ? bw : bh;
+    if (fit >= 24) { follow = false; cellPx = Math.min(cap, Math.floor(fit)); }
+    else { follow = true; cellPx = TOUCH ? 32 : 30; }
+    var cw = follow ? Math.floor(Math.min(W, viewW * cellPx)) : Math.round(viewW * cellPx), ch = follow ? Math.floor(Math.min(H, viewH * cellPx)) : Math.round(viewH * cellPx);
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.style.width = cw + 'px'; cv.style.height = ch + 'px'; cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+    buildStatic();
+    camTo(true);
+    tipEl.textContent = S.done ? '' : (oriOn ? 'Tilt to roll the ball to the gold ring' : TOUCH ? 'Drag on the board to tip it' : 'Drag on the board, or use the arrow keys');
+  }
+  function V(x, y) { return tr ? [y + 0.3, x + 0.3] : [x + 0.3, y + 0.3]; }   // maze squares → board units (with the rim)
+  // Floor, holes, goal and walls, drawn once into a picture of the whole board
+  function buildStatic() {
+    var W = Math.ceil(viewW * cellPx * dpr), H = Math.ceil(viewH * cellPx * dpr);
+    staticCv = document.createElement('canvas'); staticCv.width = W; staticCv.height = H;
+    var g = staticCv.getContext('2d'), k = cellPx * dpr, R = MC.rng(M.seed);
+    // maple floor with grain
+    var fl = g.createLinearGradient(0, 0, W, H); fl.addColorStop(0, '#e2c08c'); fl.addColorStop(1, '#d2aa72');
+    g.fillStyle = fl; g.fillRect(0, 0, W, H);
+    g.globalAlpha = 0.16; g.strokeStyle = '#8a5a2b';
+    var horiz = !tr;
+    for (var i = 0; i < (horiz ? H : W) / (3 * dpr); i++) {
+      var p = i * 3 * dpr + R() * 3 * dpr, amp = 2 + R() * 6, ph = R() * 6, lw = 0.4 + R() * 1.4;
+      g.lineWidth = lw * dpr; g.beginPath();
+      for (var s = 0; s <= (horiz ? W : H); s += 24 * dpr) { var o = p + Math.sin(s / (90 * dpr) + ph) * amp * dpr; if (horiz) { if (s) g.lineTo(s, o); else g.moveTo(s, o); } else { if (s) g.lineTo(o, s); else g.moveTo(o, s); } }
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+    // printed start ring
+    var sp = V(M.start % M.cols + 0.5, Math.floor(M.start / M.cols) + 0.5);
+    g.strokeStyle = 'rgba(60,35,15,.45)'; g.lineWidth = 0.05 * k; g.setLineDash([0.09 * k, 0.07 * k]);
+    g.beginPath(); g.arc(sp[0] * k, sp[1] * k, 0.36 * k, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+    // holes
+    function hole(x, y, goal) {
+      var q = V(x, y), hx = q[0] * k, hy = q[1] * k, r = HR * k;
+      if (goal) { g.fillStyle = '#e8b93a'; g.beginPath(); g.arc(hx, hy, r + 0.09 * k, 0, Math.PI * 2); g.fill(); g.strokeStyle = '#8a6214'; g.lineWidth = 0.025 * k; g.stroke(); }
+      var gr = g.createRadialGradient(hx - r * 0.25, hy - r * 0.3, r * 0.1, hx, hy, r);
+      gr.addColorStop(0, '#000'); gr.addColorStop(0.7, '#1a0f07'); gr.addColorStop(1, '#4a2e15');
+      g.fillStyle = gr; g.beginPath(); g.arc(hx, hy, r, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = 'rgba(255,240,210,.35)'; g.lineWidth = 0.03 * k; g.beginPath(); g.arc(hx, hy, r, 0.1 * Math.PI, 0.9 * Math.PI); g.stroke();
+    }
+    holes.forEach(function (h) { hole(h.x, h.y, false); });
+    hole(M.finish % M.cols + 0.5, Math.floor(M.finish / M.cols) + 0.5, true);
+    // walls: shadow, body, then a lit top edge
+    var segs = MC.segments(M), path = new Path2D();
+    segs.forEach(function (s) { var a = V(s[0], s[1]), b = V(s[2], s[3]); path.moveTo(a[0] * k, a[1] * k); path.lineTo(b[0] * k, b[1] * k); });
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    g.save(); g.translate(0.06 * k, 0.1 * k); g.strokeStyle = 'rgba(40,20,5,.32)'; g.lineWidth = (WH * 2 + 0.07) * k; g.stroke(path); g.restore();
+    g.strokeStyle = '#6b4120'; g.lineWidth = WH * 2 * k; g.stroke(path);
+    g.save(); g.translate(-0.012 * k, -0.02 * k); g.strokeStyle = 'rgba(255,214,160,.55)'; g.lineWidth = WH * 0.75 * k; g.stroke(path); g.restore();
+  }
+  function camTo(snap) {
+    if (!follow) { cam.x = 0; cam.y = 0; return; }
+    var vw = cv.width / dpr / cellPx, vh = cv.height / dpr / cellPx, b = V(ball.x, ball.y);
+    var tx = Math.max(0, Math.min(viewW - vw, b[0] - vw / 2)), ty = Math.max(0, Math.min(viewH - vh, b[1] - vh / 2));
+    if (snap) { cam.x = tx; cam.y = ty; } else { cam.x += (tx - cam.x) * 0.12; cam.y += (ty - cam.y) * 0.12; }
+  }
+  function renderLab() {
+    if (!cx2 || !staticCv) return;
+    var k = cellPx * dpr, g = cx2;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, cv.width, cv.height);
+    g.drawImage(staticCv, -cam.x * k, -cam.y * k);
+    g.setTransform(1, 0, 0, 1, -cam.x * k, -cam.y * k);
+    // the route, painted on (after Reveal)
+    if (labReveal) {
+      g.strokeStyle = 'rgba(42,116,201,.75)'; g.lineWidth = 0.14 * k; g.lineCap = 'round'; g.lineJoin = 'round'; g.setLineDash([0.32 * k, 0.22 * k]);
+      g.beginPath(); M.solution.forEach(function (c, i) { var q = V(c % M.cols + 0.5, Math.floor(c / M.cols) + 0.5); if (i) g.lineTo(q[0] * k, q[1] * k); else g.moveTo(q[0] * k, q[1] * k); }); g.stroke(); g.setLineDash([]);
+    }
+    // hint: glowing marbles of light along the next steps
+    if (labHint) {
+      var age = (performance.now() - labHint.t) / 3600;
+      if (age >= 1) labHint = null;
+      else {
+        var al = age < 0.1 ? age / 0.1 : age > 0.7 ? (1 - age) / 0.3 : 1;
+        labHint.cells.forEach(function (c, i) {
+          var q = V(c % M.cols + 0.5, Math.floor(c / M.cols) + 0.5), pulse = 0.5 + 0.5 * Math.sin(performance.now() / 160 - i * 0.7);
+          g.fillStyle = 'rgba(64,150,255,' + (al * (0.35 + 0.45 * pulse)).toFixed(3) + ')';
+          g.beginPath(); g.arc(q[0] * k, q[1] * k, (0.12 + 0.06 * pulse) * k, 0, Math.PI * 2); g.fill();
+        });
+        if (labHint.back >= 0) { var bq = V(labHint.back % M.cols + 0.5, Math.floor(labHint.back / M.cols) + 0.5); g.strokeStyle = 'rgba(64,150,255,' + al + ')'; g.lineWidth = 0.07 * k; g.beginPath(); g.arc(bq[0] * k, bq[1] * k, 0.4 * k, 0, Math.PI * 2); g.stroke(); }
+      }
+    }
+    // the steel ball and its shadow
+    var b = V(ball.x, ball.y), bx = b[0] * k, by = b[1] * k, sc = 1, dark = 0;
+    if (ball.state === 'fall' || ball.state === 'goal') { var t = Math.min(1, ball.t / 0.42); sc = 1 - 0.55 * t; dark = t; var h = V(ball.hx, ball.hy); bx += (h[0] * k - bx) * t; by += (h[1] * k - by) * t; }
+    if (ball.state === 'spawn') { var t2 = Math.min(1, ball.t / 0.35); sc = 1.35 - 0.35 * t2; }
+    var r = BR * k * sc;
+    if (dark < 0.9) {
+      var sh = g.createRadialGradient(bx + 0.07 * k, by + 0.11 * k, 0, bx + 0.07 * k, by + 0.11 * k, r * 1.25);
+      sh.addColorStop(0, 'rgba(30,15,5,' + (0.45 * (1 - dark)) + ')'); sh.addColorStop(1, 'rgba(30,15,5,0)');
+      g.fillStyle = sh; g.beginPath(); g.arc(bx + 0.07 * k, by + 0.11 * k, r * 1.25, 0, Math.PI * 2); g.fill();
+    }
+    var bg = g.createRadialGradient(bx - r * 0.38, by - r * 0.42, r * 0.06, bx, by, r);
+    bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.22, '#e3e7ec'); bg.addColorStop(0.62, '#8c94a0'); bg.addColorStop(1, '#2c3038');
+    g.globalAlpha = 1 - dark * 0.7;
+    g.fillStyle = bg; g.beginPath(); g.arc(bx, by, r, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.28)'; g.lineWidth = r * 0.12; g.beginPath(); g.arc(bx, by, r * 0.7, 0.15 * Math.PI, 0.55 * Math.PI); g.stroke();
+    g.globalAlpha = 1;
+  }
+  // Physics: tilt pushes the ball, the felt-smooth floor slows it, walls bounce it
+  function cellWalls(c) {
+    var r = Math.floor(c / M.cols), q = c % M.cols, out = [];
+    if (r === 0 || !MC.linked(M, c, c - M.cols)) out.push([q, r, q + 1, r]);
+    if (r === M.rows - 1 || !MC.linked(M, c, c + M.cols)) out.push([q, r + 1, q + 1, r + 1]);
+    if (q === 0 || !MC.linked(M, c, c - 1)) out.push([q, r, q, r + 1]);
+    if (q === M.cols - 1 || !MC.linked(M, c, c + 1)) out.push([q + 1, r, q + 1, r + 1]);
+    return out;
+  }
+  var wallCache = null;
+  function wallsNear(x, y) {
+    if (!wallCache || wallCache.n !== M.n || wallCache.seed !== M.seed) { wallCache = { n: M.n, seed: M.seed, w: [] }; for (var i = 0; i < M.n; i++) wallCache.w.push(cellWalls(i)); }
+    var q0 = Math.floor(x), r0 = Math.floor(y), out = [];
+    for (var r = r0 - 1; r <= r0 + 1; r++) for (var q = q0 - 1; q <= q0 + 1; q++) if (r >= 0 && q >= 0 && r < M.rows && q < M.cols) out = out.concat(wallCache.w[r * M.cols + q]);
+    return out;
+  }
+  function stepPhys(dt) {
+    var ax = 0, ay = 0, t = dragTilt || (keyT.x || keyT.y ? keyT : tiltIn);
+    var sx = t.x, sy = t.y;
+    if (tr) { ax = sy; ay = sx; } else { ax = sx; ay = sy; }
+    ax *= ACC; ay *= ACC;
+    // holes pull a ball that rolls over their rim
+    var all = holes.concat([{ x: M.finish % M.cols + 0.5, y: Math.floor(M.finish / M.cols) + 0.5, goal: true }]);
+    for (var i = 0; i < all.length; i++) {
+      var h = all[i], dx = h.x - ball.x, dy = h.y - ball.y, d = Math.hypot(dx, dy);
+      if (d < HR + 0.08) {
+        if (d < HR * 0.72) { sink(h); return; }
+        var pull = 34 * (1 - d / (HR + 0.08)); ax += dx / (d || 1) * pull; ay += dy / (d || 1) * pull;
+      }
+    }
+    ball.vx += ax * dt; ball.vy += ay * dt;
+    var f = Math.exp(-FRIC * dt); ball.vx *= f; ball.vy *= f;
+    var sp = Math.hypot(ball.vx, ball.vy); if (sp > VMAX) { ball.vx *= VMAX / sp; ball.vy *= VMAX / sp; }
+    ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+    var hit = 0;
+    for (var pass = 0; pass < 2; pass++) {
+      wallsNear(ball.x, ball.y).forEach(function (s) {
+        var ex = s[2] - s[0], ey = s[3] - s[1], l2 = ex * ex + ey * ey, tt = l2 ? Math.max(0, Math.min(1, ((ball.x - s[0]) * ex + (ball.y - s[1]) * ey) / l2)) : 0;
+        var px = s[0] + ex * tt, py = s[1] + ey * tt, dx2 = ball.x - px, dy2 = ball.y - py, d2 = Math.hypot(dx2, dy2), min = BR + WH;
+        if (d2 < min && d2 > 1e-6) {
+          var nx = dx2 / d2, ny = dy2 / d2; ball.x = px + nx * min; ball.y = py + ny * min;
+          var vn = ball.vx * nx + ball.vy * ny;
+          if (vn < 0) { ball.vx -= 1.38 * vn * nx; ball.vy -= 1.38 * vn * ny; hit = Math.max(hit, -vn); }
+        }
+      });
+    }
+    // keep it in the box whatever happens
+    ball.x = Math.max(BR + WH, Math.min(M.cols - BR - WH, ball.x)); ball.y = Math.max(BR + WH, Math.min(M.rows - BR - WH, ball.y));
+    return hit;
+  }
+  function sink(h) {
+    ball.state = h.goal ? 'goal' : 'fall'; ball.t = 0; ball.hx = h.x; ball.hy = h.y; ball.vx = ball.vy = 0; rollSet(0);
+    if (h.goal) { SND.goal(); Kit.haptic('success'); }
+    else { SND.fall(); Kit.haptic('heavy'); S.falls++; updHud(); }
+  }
+  function startLoop() {
+    cancelAnimationFrame(raf); lastF = performance.now();
+    raf = requestAnimationFrame(function frame(now) {
+      raf = requestAnimationFrame(frame);
+      var dt = Math.min(0.05, (now - lastF) / 1000); lastF = now;
+      if (!S || S.mode !== 'tilt' || !cv) return;
+      if (paused()) { rollSet(0); renderLab(); return; }
+      if (ball.state === 'fall' || ball.state === 'goal') {
+        ball.t += dt;
+        if (ball.t >= 0.45) {
+          if (ball.state === 'goal') { ball.state = 'in'; solved(); }
+          else { var sp = startPos(); ball.x = sp.x; ball.y = sp.y; ball.vx = ball.vy = 0; ball.state = 'spawn'; ball.t = 0; save(); }
+        }
+      } else if (ball.state === 'spawn') { ball.t += dt; if (ball.t >= 0.35) ball.state = 'roll'; }
+      else if (ball.state === 'roll' && !S.done) {
+        var n = Math.max(1, Math.ceil(Math.hypot(ball.vx, ball.vy) * dt / 0.08)), hit = 0;
+        for (var i = 0; i < Math.min(n, 10) && ball.state === 'roll'; i++) hit = Math.max(hit, stepPhys(dt / Math.min(n, 10)) || 0);
+        var spd = Math.hypot(ball.vx, ball.vy);
+        if (hit > 0.8) { SND.knock(hit / 6); if (hit > 3.5) Kit.haptic('light'); }
+        if (spd > 0.25) go();
+        rollSet(ball.state === 'roll' ? spd : 0);
+        if (spd > 0.05 && Math.floor(now / 2000) !== Math.floor((now - dt * 1000) / 2000)) save();
+      }
+      // the box leans the way it is tipped
+      var tt = dragTilt || (keyT.x || keyT.y ? keyT : tiltIn);
+      if (boxEl && !S.done) boxEl.style.transform = 'rotateX(' + (-tt.y * 5).toFixed(2) + 'deg) rotateY(' + (tt.x * 5).toFixed(2) + 'deg)';
+      camTo(false);
+      renderLab();
+    });
+  }
+  function stopLoop() { cancelAnimationFrame(raf); raf = 0; rollStop(); }
+  // ── Tilt input ──
+  function onOri(e) {
+    if (e.beta == null || e.gamma == null || !S || S.mode !== 'tilt') return;
+    if (!oriOn) { oriOn = true; if (tipEl && !S.done) tipEl.textContent = 'Tilt to roll the ball to the gold ring'; var ask = document.querySelector('.lab-ask'); if (ask) ask.remove(); }
+    if (!neutral) neutral = { b: e.beta, g: e.gamma };
+    var K = 1 / Math.sin(20 * Math.PI / 180);
+    var dx = Math.max(-1, Math.min(1, Math.sin((e.gamma - neutral.g) * Math.PI / 180) * K)), dy = Math.max(-1, Math.min(1, Math.sin((e.beta - neutral.b) * Math.PI / 180) * K));
+    var ang = (screen.orientation && typeof screen.orientation.angle === 'number' ? screen.orientation.angle : (window.orientation || 0)) % 360;
+    if (ang < 0) ang += 360;
+    var x = dx, y = dy;
+    if (ang === 90) { x = dy; y = -dx; } else if (ang === 180) { x = -dx; y = -dy; } else if (ang === 270) { x = -dy; y = dx; }
+    if (Math.hypot(x, y) < 0.04) { x = 0; y = 0; }   // a little dead zone so a level board stays still
+    tiltIn = { x: x, y: y, raw: e };
+  }
+  function level(say) {
+    var r = tiltIn.raw; neutral = r ? { b: r.beta, g: r.gamma } : null; tiltIn = { x: 0, y: 0, raw: r };
+    if (say) { Kit.toast(oriOn ? 'Board levelled' : 'Level: tilting isn’t on, drag on the board instead'); Kit.haptic('light'); }
+  }
+  var oriHooked = false;
+  function hookOri() { if (oriHooked) return; oriHooked = true; window.addEventListener('deviceorientation', onOri); }
+  function askTilt() {
+    var DOE = window.DeviceOrientationEvent;
+    if (!DOE || !TOUCH) return;
+    if (typeof DOE.requestPermission === 'function') {
+      if (oriOn) return;
+      var ask = el('div', { class: 'lab-ask' }, [el('div', { class: 'card' }, [
+        el('span', { html: Kit.icon('phone') }), el('b', { text: 'Tilt to roll' }),
+        el('p', { text: 'Let the game feel your phone tilting. Or skip it and drag on the board.' }),
+        el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Use tilt', onclick: function () {
+          Kit.sfx('pop'); ac();
+          DOE.requestPermission().then(function (st) { if (st === 'granted') { hookOri(); neutral = null; } else Kit.toast('No tilt: drag on the board instead'); }).catch(function () { Kit.toast('No tilt: drag on the board instead'); });
+          ask.remove();
+        } }),
+        el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Drag instead', onclick: function () { Kit.sfx('tap'); ask.remove(); } })
+      ])]);
+      wrapEl.appendChild(ask);
+    } else hookOri();
+  }
+  var stickEl = null;
+  function bindTilt() {
+    var origin = null;
+    cv.addEventListener('pointerdown', function (e) {
+      if (!S || S.done || e.button > 0) return;
+      ac(); try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+      origin = { x: e.clientX, y: e.clientY, id: e.pointerId }; dragTilt = { x: 0, y: 0 };
+      if (!stickEl) { stickEl = el('div', { class: 'stick', 'aria-hidden': 'true' }, [el('i')]); document.body.appendChild(stickEl); }
+      stickEl.style.display = ''; stickEl.style.left = e.clientX + 'px'; stickEl.style.top = e.clientY + 'px'; stickEl.firstChild.style.transform = '';
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (!origin || e.pointerId !== origin.id) return;
+      var dx = (e.clientX - origin.x) / 46, dy = (e.clientY - origin.y) / 46, l = Math.hypot(dx, dy);
+      if (l > 1) { dx /= l; dy /= l; }
+      dragTilt = { x: dx, y: dy };
+      stickEl.firstChild.style.transform = 'translate(' + (dx * 28) + 'px,' + (dy * 28) + 'px)';
+    });
+    function up(e) { if (!origin || e.pointerId !== origin.id) return; origin = null; dragTilt = null; if (stickEl) stickEl.style.display = 'none'; }
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  }
+  function keyTilt(key, dir, down) {
+    if (down && dir) keysDown[key] = dir; else delete keysDown[key];
+    var x = 0, y = 0; Object.keys(keysDown).forEach(function (k) { x += keysDown[k][0]; y += keysDown[k][1]; });
+    keyT = { x: Math.max(-1, Math.min(1, x)) * 0.75, y: Math.max(-1, Math.min(1, y)) * 0.75 };
+    if (down) ac();
+  }
+
+  var rz; window.addEventListener('resize', function () {
+    clearTimeout(rz); rz = setTimeout(function () { if (!S || !stage || !stage.isConnected) return; if (S.mode === 'tilt') layoutTilt(); else layoutPencil(); }, 150);
+  });
+
+  // ── Test hooks ─────────────────────────────────────────────────────────
+  window.__maze = {
+    state: function () { return S && JSON.parse(JSON.stringify(S)); },
+    maze: function () { return M; },
+    seed: function () { return S && S.seed; },
+    path: function () { return pathList.slice(); },
+    solve: function () { if (!live()) return; if (S.mode === 'tilt') { ball.x = M.finish % M.cols + 0.5; ball.y = Math.floor(M.finish / M.cols) + 0.5; } else moveTo(M.finish, true); },
+    move: function (c) { return moveTo(c); },
+    cellXY: function (c) { var p = MC.center(M, c, tr), r = svg.getBoundingClientRect(); return [r.left + (p[0] - view.x) * pxu, r.top + (p[1] - view.y) * pxu]; },
+    view: function () { return { view: view, pxu: pxu, fit: fitPxu, tr: tr }; },
+    hint: hint, reveal: reveal, undo: undo,
+    tilt: function (x, y) { tiltIn = { x: x, y: y }; },
+    ball: function () { return ball && { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy, state: ball.state, cell: ballCell() }; },
+    place: function (x, y) { ball.x = x; ball.y = y; ball.vx = ball.vy = 0; ball.state = 'roll'; },
+    holes: function () { return holes.slice(); },
+    daily: function (d) { return MC.daily(d || today()); },
+    newGame: function (o) { newGame(o); },
+    setup: function () { leave(); showSetup(); },
+    lab: function () { return { follow: follow, cellPx: cellPx, tr: tr }; }
+  };
+
+  // ── Boot ───────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.v === 1 && MC.SIZES[saved.size] && !saved.done && typeof saved.head === 'number') {
+    S = saved; M = MC.make(S);
+    if (S.head < 0 || S.head >= M.n) S.head = M.start;
+    S.U = Array.isArray(S.U) ? S.U.filter(function (x) { return x >= 0 && x < M.n; }) : [];
+    if (S.ball && !(S.ball.x > 0 && S.ball.y > 0 && S.ball.x < M.cols && S.ball.y < M.rows)) S.ball = null;
+    build();
+  } else showSetup();
+})();
+</script>
+</body>
+</html>

@@ -208,6 +208,21 @@ var PYLSound = (function () {
     [48, 53, 55, 48].forEach(function (m, i) { note({ type: 'sawtooth', f: N(m), t: i * s * 1.5, d: .3, v: .07, lp: 600 }); });
     [84, 88, 91, 96, 100].forEach(function (m, i) { note({ type: 'square', f: N(m), t: .75 + i * .06, d: .14, v: .03, lp: 4000, wet: .4 }); });
   }
-  return { hop: hop, stop: stop, blink: blink, cash: cash, spin: spin, prize: prize, bigBucks: bigBucks, doubled: doubled, move: move,
+  // toss-ups: each seat's buzzer has its own pitch; the lock-in click; nobody buzzed
+  function buzz(seat) {
+    var f = [330, 392, 466][seat % 3] || 330;
+    note({ type: 'square', f: f, d: .32, v: .07, lp: 2400 }); note({ type: 'sawtooth', f: f * 1.5, d: .3, v: .04, lp: 2000 });
+    note({ type: 'sine', f: N(91), t: .05, d: .5, v: .08, wet: .3 });
+  }
+  function lock() { note({ type: 'square', f: N(76), d: .05, v: .05, lp: 2600 }); note({ type: 'square', f: N(83), t: .06, d: .09, v: .05, lp: 2600 }); noise({ f: 2600, q: 2, d: .03, v: .05 }); }
+  function timeup() { note({ type: 'sawtooth', f: N(58), d: .5, v: .05, lp: 900 }); note({ type: 'sawtooth', f: N(53), t: .2, d: .6, v: .05, lp: 800 }); }
+  // the bonus round's entrance: a big brass build, then the Whammy laughs
+  function bonus() {
+    [55, 60, 62, 67].forEach(function (m, i) { note({ type: 'sawtooth', f: N(m - 12), t: i * .18, d: .2, v: .06, lp: 700 }); snare(i * .18, .05); });
+    chord([67, 71, 74], .72, .16, .05); chord([69, 72, 76], .9, .16, .05); chord([71, 74, 79, 83], 1.08, 1.1, .055); kick(1.08, .25);
+    [91, 95, 98, 103].forEach(function (m, i) { note({ type: 'square', f: N(m), t: 1.15 + i * .06, d: .12, v: .025, lp: 4000, wet: .4 }); });
+    cackle(2.1, 5, 1);
+  }
+  return { buzz: buzz, lock: lock, timeup: timeup, bonus: bonus, hop: hop, stop: stop, blink: blink, cash: cash, spin: spin, prize: prize, bigBucks: bigBucks, doubled: doubled, move: move,
     whammy: whammy, out4: out4, chant: chant, intro: intro, round: round, turn: turn, right: right, wrong: wrong, tick: tick, bulbOff: bulbOff, pass: pass, finale: finale, cackle: cackle };
 })();
