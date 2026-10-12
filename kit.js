@@ -795,7 +795,9 @@
       orCover = el('div', { class: 'k-rotate k-rotate-' + orWant, 'data-want': orWant, role: 'alertdialog', 'aria-live': 'polite' }, [
         el('div', { class: 'k-rot-ph', 'aria-hidden': 'true' }, [el('i')]),
         el('b', { text: 'Turn your ' + (isPhone() ? 'phone' : 'iPad') + (orWant === 'landscape' ? ' sideways' : ' upright') }),
-        el('span', { text: (game ? game.name : 'This game') + (orWant === 'landscape' ? ' plays in landscape.' : ' plays in portrait.') })
+        el('span', { text: (game ? game.name : 'This game') + (orWant === 'landscape' ? ' plays in landscape.' : ' plays in portrait.') }),
+        // a way out when the device can't (or won't) turn: rotation lock, a stand, a desk
+        el('button', { type: 'button', class: 'k-rot-home', html: icon('home') + '<span>Back to home</span>', onclick: function () { sfx('tap'); location.href = rootPath() + 'index.html'; } })
       ]);
       doc.body.appendChild(orCover);
     }
