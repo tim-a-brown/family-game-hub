@@ -530,11 +530,11 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       B.row(548, 40, 320, 40);
     } },
     { name: 'Racetrack', bg: 'stadium', intro: ['track'], mus: [8, 1, 0.9], build: function (B) {
-      B.w = 2.5; B.track(20, stadium(110, 250, 330, 75), 1 / 13); B.w = 1;
+      B.w = 3; B.track(20, stadium(110, 250, 330, 75), 1 / 10); B.w = 1;
       B.bumper(110, 330); B.bumper(250, 330);
       for (var y = 300; y <= 360; y += 30) B.row(y, 150, 210, 30);
       B.row(108, 30, 330, 30); B.row(165, 50, 310, 40);
-      B.row(470, 40, 320, 40); B.row(510, 60, 300, 40); B.row(548, 40, 320, 40);
+      B.row(470, 40, 320, 40); B.row(530, 60, 300, 40);
     } },
     { name: 'Gravity Well', bg: 'hole', intro: ['well'], mus: [11, -2, 1.1], build: function (B) {
       B.well(180, 330, 165, 430);
@@ -566,9 +566,11 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       B.row(530, 40, 320, 40);
     } },
     { name: 'Splitter', bg: 'city', intro: ['split'], mus: [3, -2, 1], build: function (B) {
-      B.split(110, 235, 18); B.split(250, 235, 18);
+      // the splitters sit out at the sides, guarded by pegs: getting through one is a skill shot
+      B.split(64, 290, 17); B.split(296, 290, 17);
       B.row(108, 30, 330, 30);
-      [110, 250].forEach(function (cx) { B.arc(cx, 235, 46, -0.32 * PI, 0.32 * PI, 3); B.arc(cx, 235, 46, 0.68 * PI, 1.32 * PI, 3); });
+      [64, 296].forEach(function (cx) { B.arc(cx, 290, 44, 0.15 * PI, 0.85 * PI, 4); B.arc(cx, 290, 44, cx < 180 ? -0.4 * PI : 1.05 * PI, cx < 180 ? -0.05 * PI : 1.4 * PI, 2); });
+      B.row(190, 60, 300, 48);
       B.iron = 1; B.w = 3; [[180, 200], [180, 280], [60, 380], [300, 380], [130, 470], [230, 470]].forEach(function (p) { B.peg(p[0], p[1]); }); B.iron = 0;
       B.lattice(function (x, y) { B.w = Math.abs(x - 180) > 100 && y > 430 ? 4 : 1; return Math.abs(x - 180) > 30 || y > 440; }, 44, 330, 556);
       B.w = 1;
@@ -1642,6 +1644,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (st.maxHits >= 12) h.push(st.maxHits + ' pegs in one shot');
     if (st.long) h.push(st.long === 1 ? 'Made a Long Shot' : st.long + ' Long Shots');
     if (st.wall) h.push(st.wall === 1 ? 'Made an Off the Wall shot' : st.wall + ' Off the Wall shots');
+    if (st.splits) h.push(st.splits === 1 ? 'Split the ball once' : 'Split the ball ' + st.splits + ' times');
+    if (st.switches) h.push(st.switches === 1 ? 'Dropped the shields' : 'Dropped the shields ' + st.switches + ' times');
     if (st.free) h.push(st.free + (st.free === 1 ? ' free ball' : ' free balls') + (st.freeBucket ? ' (' + st.freeBucket + ' in the bucket)' : '') + (st.freeLucky ? ' (' + st.freeLucky + ' from a lucky coin flip)' : ''));
     return h.slice(0, 6);
   }

@@ -77,7 +77,9 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 
 /* The hand, on its own wooden rail */
 .rail{margin-top:12px;border-radius:22px;padding:0 0 4px;}
-.rail .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px 0;color:#fff;font-weight:900;font-size:.85rem;}
+.rail .hd{display:flex;align-items:center;gap:8px;min-height:48px;padding:8px 10px 0 14px;color:#fff;font-weight:900;font-size:.85rem;}
+.rail .hd > span:first-child{flex:1;min-width:0;}
+.rail .hd .btn{flex:none;min-width:120px;}
 .rail .hd span{opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.rail .hd span:last-child{flex:none;}
 .hrow{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;padding:20px 14px 12px;--cw:124px;scrollbar-width:none;}
 .hrow::-webkit-scrollbar{display:none;}
@@ -842,7 +844,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     if (flipNow) btn = el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('play') + '<span>Turn over the ' + w.pr + '</span>', onclick: flipCard });
     else if (myTurn && V.hand) {
       var ready = ui.sel.length === V.pick;
-      btn = el('button', { type: 'button', class: 'btn btn-primary btn-lg' + (ready ? ' ready' : ''), disabled: !ready, html: ready ? Kit.icon('play') + '<span>' + (V.pick > 1 ? 'Play these ' + V.pick : 'Play it') + '</span>' : '<span>' + (V.pick > 1 ? 'Pick ' + V.pick + ' cards' : 'Pick a card') + '</span>', onclick: playSelected });
+      btn = el('button', { type: 'button', class: 'btn btn-primary btn-sm' + (ready ? ' ready' : ''), disabled: !ready, html: ready ? Kit.icon('play') + '<span>' + (V.pick > 1 ? 'Play these ' + V.pick : 'Play it') + '</span>' : '<span>' + (V.pick > 1 ? 'Pick ' + V.pick : 'Pick one') + '</span>', onclick: playSelected });
     } else if (V.phase === 'judge' && canJudge) {
       if (V.subs.some(function (x) { return !x.c; })) btn = el('button', { type: 'button', class: 'btn btn-soft btn-lg', html: Kit.icon('swap') + '<span>Turn them all over</span>', onclick: function () { Kit.haptic('medium'); doAct({ t: 'all' }); } });
       else btn = el('button', { type: 'button', class: 'btn btn-primary btn-lg' + (ui.jsel >= 0 ? ' ready' : ''), disabled: ui.jsel < 0, html: Kit.icon('trophy') + '<span>' + (ui.jsel < 0 ? 'Tap your favorite' : 'This one wins') + '</span>', onclick: function () { if (ui.jsel >= 0) { Kit.haptic('heavy'); doAct({ t: 'pick', i: ui.jsel }); } } });
@@ -853,7 +855,9 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     if (showHand) {
       var rail = el('div', { class: 'rail wood' + (myTurn ? ' live' : '') });
       var title = V.mode === 'pass' ? esc(V.players[V.me].name) + '’s cards' : 'Your cards';
-      rail.appendChild(el('div', { class: 'hd', html: '<span>' + title + '</span>' + (V.extra && myTurn ? '<span class="xtra">+' + V.extra + ' drawn</span>' : '') }));
+      var hd = el('div', { class: 'hd', html: '<span>' + title + '</span>' + (V.extra && myTurn ? '<span class="xtra">+' + V.extra + ' drawn</span>' : '') });
+      if (btn && myTurn) hd.appendChild(btn);
+      rail.appendChild(hd);
       var hand = el('div', { class: 'hrow' + (myTurn ? '' : ' off') });
       var prevIds = prev && prev.hand && prev.me === V.me ? prev.hand.map(function (c) { return c.id; }) : null;
       var fresh = [], nH = V.hand.length;
@@ -864,6 +868,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
         if (prevIds && prevIds.indexOf(c.id) < 0) fresh.push(ce);
         if (myTurn) ce.addEventListener('click', function () {
           var at = ui.sel.indexOf(c.id);
+          if (at >= 0 && V.pick === 1) { playSelected(); return; }   // tap the lifted card again to play it
           if (at >= 0) ui.sel.splice(at, 1);
           else { if (ui.sel.length >= V.pick) ui.sel.shift(); ui.sel.push(c.id); }
           Kit.sfx(at >= 0 ? 'tap' : 'pop'); Kit.haptic('light'); render(V);
@@ -885,7 +890,6 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
         });
       }
       rail.appendChild(hand);
-      if (btn && myTurn) rail.appendChild(el('div', { class: 'bar' }, [btn]));
       app.appendChild(rail);
       hand.scrollLeft = sx;
     }

@@ -34,6 +34,7 @@
 .pl .who{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.1;}
 .pl .nm{font-weight:800;font-size:.8rem;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pl.on .nm{color:var(--text);}
+.pl.me .nm::after{content:" · you";font-weight:700;color:var(--text-3);}
 .pl .pt{font-family:var(--display);font-size:1.3rem;font-variant-numeric:tabular-nums;line-height:1.05;}
 .pl .think{position:absolute;right:6px;top:4px;display:none;color:var(--c);}
 .pl.busy .think{display:block;}
@@ -207,8 +208,8 @@
 .unseen .u .tl{--ts:34px;cursor:default;}
 .unseen .u b{font-weight:900;color:var(--text-2);font-size:.9rem;}
 .unseen .u.zero{opacity:.3;}
-.swap{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:10px 0 4px;padding:14px 10px 18px;border-radius:12px;background:linear-gradient(180deg,#9a6233,#64391a);}
-.swap .tl{--ts:46px;cursor:pointer;transition:transform .18s var(--spring),box-shadow .18s;}
+.swap{display:flex;flex-wrap:nowrap;justify-content:center;gap:6px;margin:10px 0 4px;padding:14px 10px 18px;border-radius:12px;background:linear-gradient(180deg,#9a6233,#64391a);}
+.swap .tl{--ts:min(46px,calc((min(100vw,560px) - 110px) / 7));flex:none;cursor:pointer;transition:transform .18s var(--spring),box-shadow .18s;}
 .swap .tl.on{transform:translateY(-14%);box-shadow:0 0 0 3px #ff8a3d,0 10px 14px rgba(0,0,0,.4);}
 .drawf{display:flex;flex-direction:column;gap:10px;margin-top:6px;}
 .drawf .r{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:14px;background:var(--w05);}
@@ -993,6 +994,7 @@
     S.players.forEach(function (p, i) {
       var c = V.pls.children[i];
       c.classList.toggle('on', !S.over && S.turn === i);
+      c.classList.toggle('me', S.mode === 'online' && i === net.seat);
       c.classList.toggle('busy', !S.over && S.turn === i && (p.cpu && busy));
       var pt = c.querySelector('.pt'); if (!pt._anim) pt.textContent = String(p.score);
       c.setAttribute('aria-label', p.name + ': ' + p.score + ' points' + (S.turn === i && !S.over ? ', to play' : ''));
@@ -1106,7 +1108,7 @@
     b2.disabled = !mine;
     var b3 = el('button', { type: 'button', class: 'btn btn-soft sm', html: Kit.icon('right') + '<span>Pass</span>', onclick: function () { passAsk(); } });
     b3.disabled = !mine;
-    var b4 = el('button', { type: 'button', class: 'btn btn-primary play', html: Kit.icon('check') + '<span>' + (r && r.ok ? 'Play ' + r.score : 'Play') + '</span>', onclick: function () { submit(); } });
+    var b4 = el('button', { type: 'button', class: 'btn ' + (pend.length && !(r && r.ok) ? 'btn-soft' : 'btn-primary') + ' play', html: Kit.icon('check') + '<span>' + (r && r.ok ? 'Play ' + r.score : 'Play') + '</span>', onclick: function () { submit(); } });
     b4.disabled = !mine || !pend.length;
     [b1, b2, b3, b4].forEach(function (b) { a.appendChild(b); });
   }
@@ -1496,12 +1498,18 @@
       if (pan.moved && Z.z > 1.01) { Z.tx = pan.tx + dx; Z.ty = pan.ty + dy; clampZoom(); applyZoom(false); }
     }
   }
+  // the click a browser sends after a tap must not reach a sheet that the tap just opened
+  function swallowClick() {
+    function stop(ev) { ev.stopPropagation(); ev.preventDefault(); off(); }
+    function off() { window.removeEventListener('click', stop, true); }
+    window.addEventListener('click', stop, true); setTimeout(off, 450);
+  }
   function onUp(e) {
-    if (G && e.pointerId === G.pid) { endTileGesture(e); return; }
+    if (G && e.pointerId === G.pid) { swallowClick(); endTileGesture(e); return; }
     if (!ptrs[e.pointerId]) return;
     delete ptrs[e.pointerId];
     if (pinch) { if (!Object.keys(ptrs).length) pinch = null; pan = null; return; }
-    if (pan && !pan.moved) boardTap(cellAt(e.clientX, e.clientY));
+    if (pan && !pan.moved) { swallowClick(); boardTap(cellAt(e.clientX, e.clientY)); }
     pan = null;
   }
   function boardTap(i) {
@@ -1659,8 +1667,9 @@
       net.mode = 'host'; net.table = table; net.seat = 0;
       net.roster = [{ name: name, dev: Online.dev(), host: true }];
       table.on('peer', function (peer) {
-        net.roster.push({ name: uniqueName(peer.name), dev: peer.id, peer: peer });
-        sendRoster(); Kit.toast(peer.name + ' joined'); Kit.sfx('pop');
+        var un = uniqueName(peer.name);
+        net.roster.push({ name: un, dev: peer.id, peer: peer });
+        sendRoster(); Kit.toast(un + ' joined'); Kit.sfx('pop');
       });
       table.on('leave', function (peer) {
         var r = net.roster.filter(function (x) { return x.peer === peer; })[0];
@@ -1822,6 +1831,7 @@
       if (res.type === 'exch' && bagN() >= 7) { var u2 = {}, ids = []; res.tiles.forEach(function (l) { var rt = myRack().filter(function (x) { return x.l === l && !u2[x.id]; })[0]; if (rt) { u2[rt.id] = 1; ids.push(rt.id); } }); doSwap(viewSeat(), ids); return 'swap'; }
       doPass(viewSeat()); return 'pass';
     },
+    dbg: function () { return { selId: selId, cursor: cursor, G: !!G, ptrs: Object.keys(ptrs), pinch: !!pinch, pan: pan }; },
     submit: submit, recall: recall, pass: function () { doPass(S.turn); }, robot: function () { return busy; },
     newGame: function (o) { newGame(o); }, ready: function () { return !!V.root && !busy; }, myTurn: myTurn, fit: fit
   };
