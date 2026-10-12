@@ -167,7 +167,8 @@ const Casino = (function(){
       }
       var ic = (typeof GameIcon === 'function' && typeof findGame === 'function' && findGame(e.game)) ? GameIcon(e.game) : '';
       // played from your bankroll at someone else's table (or taken back with "Not me")
-      var t = e.table ? (e.rev ? 'Not me: ' : 'At ') + (Kit.poss ? Kit.poss(e.table) : e.table + "'s") + ' table: ' + (e.name || e.game) : (e.name || e.game);
+      var tbl = e.table ? (Kit.poss ? Kit.poss(e.table) : e.table + "'s") + ' table' : '';
+      var t = !e.table ? (e.name || e.game) : e.rev ? (e.name || e.game) + ' at ' + tbl + ': not me' : 'At ' + tbl + ': ' + (e.name || e.game);
       box.appendChild(el('div', { class: 'cz-row' }, [
         el('span', { html: ic, style: { display: 'contents' } }),
         el('span', { class: 'tx' }, [el('div', { class: 't', text: t }), el('div', { class: 'd', text: when(e._date) + (e.bets ? ' · ' + e.bets + (e.bets === 1 ? ' bet' : ' bets') : '') + (e.best ? ' · best payout ' + money(e.best) : '') })]),

@@ -139,6 +139,13 @@
 .tag .nm{display:flex;flex-direction:column;min-width:0;line-height:1.1;}
 .tag .nm b{font-size:calc(var(--u)*11.5);font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tag .nm small{font-size:calc(var(--u)*10);font-weight:800;color:#bfe9cf;font-variant-numeric:tabular-nums;white-space:nowrap;}
+/* a seat playing from a linked player's own bankroll: a link badge on the avatar and a blue-tinted amount */
+.tag .av{position:relative;display:inline-flex;flex:none;}
+.tag .lk{position:absolute;right:calc(var(--u)*-4);bottom:calc(var(--u)*-3);display:grid;place-items:center;width:calc(var(--u)*13);height:calc(var(--u)*13);border-radius:50%;background:#5b8cff;color:#fff;box-shadow:0 0 0 1.5px rgba(10,20,15,.9);}
+.tag .lk .ico{width:72%;height:72%;stroke-width:3;}
+.tag.own .nm small{color:#b9cdff;}
+.tag .nm small.in{animation:bjIn .9s ease-out;}
+@keyframes bjIn{0%{transform:scale(1.35);color:#ffd54a;}100%{transform:none;}}
 .tight .tag{gap:3px;padding:2px 7px 2px 2px;}
 .tight .tag .avatar{width:calc(var(--u)*18);height:calc(var(--u)*18);font-size:calc(var(--u)*9);}
 .tight .tag .nm b{font-size:calc(var(--u)*11);letter-spacing:-.01em;}
@@ -169,6 +176,9 @@
 .st .grow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .st .avatar{width:28px;height:28px;font-size:.8rem;}
 .st .bank{color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.st .bank.grow{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.st .lkb{display:inline-grid;place-items:center;width:16px;height:16px;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-3px;}
+.st .lkb .ico{width:11px;height:11px;stroke-width:3;}
 .st .bank b{color:var(--text);}
 .st .big{font-family:var(--display);font-weight:400;font-size:1.35rem;color:var(--yellow);font-variant-numeric:tabular-nums;}
 .rack{padding:6px;border-radius:18px;}
@@ -265,6 +275,8 @@
   function adj(i, a) { if (!a) return; if (srcOf(i) === 'mine') setRaw(rawBank() + a); else S.seats[i].bank += a; }
   function mineSeat() { for (var i = 0; i < S.seats.length; i++) if (srcOf(i) === 'mine') return i; return -1; }
   function bankWord(i) { var k = srcOf(i); return k === 'mine' ? 'Bank' : k === 'link' ? Kit.poss(S.seats[i].name) + ' bankroll' : k === 'table' ? 'Table money' : 'Chips'; }
+  // Short label by a seat's amount; a linked player's own bankroll carries the same link badge as their seat
+  function moneyLabel(i) { return srcOf(i) === 'link' ? '<span class="lkb">' + Kit.icon('link') + '</span>Bankroll' : Kit.esc(bankWord(i)); }
   function isMe(n) {
     var k = String(n || '').trim().toLowerCase(); if (!k) return false;
     var me = ''; try { me = (localStorage.getItem('my_name') || '').trim().toLowerCase(); } catch (e) {}
@@ -402,16 +414,15 @@
       round: 0, phase: 'bet', bets: [], sel: 0, hands: [], cur: -1, dealer: [], hole: true, insQ: -1,
       rounds: [], notes: [], startBank: rawBank(), msg: ''
     };
-    newShoe(); seen = {};
+    newShoe(); seen = {}; countT0 = Date.now();
     startBetting();
     // Say whose money is on the table
     var said = [];
-    S.seats.forEach(function (s, i) {
-      if (s.src === 'link') said.push(Kit.poss(s.name) + ' bankroll: ' + money(s.bank));
-      else if (s.src === 'chips' && !s.cpu && isLinked(s.name)) said.push(Kit.poss(s.name) + ' bankroll isn’t known yet, so ' + s.name + ' gets $1,000 in chips');
+    // (the seats show it: a linked player's stack carries a link badge; this only covers a bankroll that can't come)
+    S.seats.forEach(function (s) {
+      if (s.src === 'chips' && !s.cpu && isLinked(s.name)) said.push(Kit.poss(s.name) + ' bankroll isn’t shared yet, so ' + s.name + ' gets $1,000 in chips');
     });
-    if (table) said.push('Table money: everyone starts with ' + money(stake));
-    if (said.length) Kit.toast(said.join(' · '), 4200);
+    if (said.length) { Kit.sfx('chip'); Kit.toast(said.join(' · '), 4200); }
   }
 
   // ── Betting ───────────────────────────────────────────────────────────────
@@ -1241,11 +1252,15 @@
       if (S.phase === 'bet' || !mine.length) hands.appendChild(betSpot(i));
       else mine.forEach(function (h) { hands.appendChild(handEl(h, mine.indexOf(h) > 0, cw, u)); });
       seat.appendChild(hands);
-      var shown = bank(i) - (S.phase === 'bet' ? S.bets[i] : 0);
-      seat.appendChild(el('div', { class: 'tag' }, [
-        el('span', { class: 'avatar', style: { '--c': Kit.color(i) }, html: s.cpu ? Kit.icon('bot') : Kit.esc(s.name.charAt(0).toUpperCase()) }),
-        el('span', { class: 'nm' }, [el('b', { text: s.name }), el('small', { text: money(shown) })])
+      var shown = bank(i) - (S.phase === 'bet' ? S.bets[i] : 0), own = srcOf(i) === 'link';
+      var av = el('span', { class: 'avatar', style: { '--c': Kit.color(i) }, html: s.cpu ? Kit.icon('bot') : Kit.esc(s.name.charAt(0).toUpperCase()) });
+      var amt = el('small', { text: money(shown) });
+      seat.appendChild(el('div', { class: 'tag' + (own ? ' own' : ''), title: own ? Kit.poss(s.name) + ' own bankroll' : null }, [
+        own ? el('span', { class: 'av' }, [av, el('span', { class: 'lk', html: Kit.icon('link') })]) : av,
+        el('span', { class: 'nm' }, [el('b', { text: s.name }), amt])
       ]));
+      // first look at the table: each stack counts up as the money arrives
+      if (Date.now() < countT0 + 900) countIn(amt, shown);
       felt.appendChild(seat);
     });
     if (S.msg) { felt.appendChild(el('div', { class: 'bjmsg', text: S.msg })); felt.classList.add('has-msg'); }
@@ -1254,6 +1269,16 @@
     app.appendChild(dom.ctrl);
     var ms = animate();
     busyUntil = Math.max(busyUntil, Date.now() + ms);
+  }
+  var countT0 = 0;   // when a new session sat down (its stacks count up for a moment)
+  function countIn(node, to) {
+    if (Date.now() - countT0 < 120) node.classList.add('in');
+    (function step(first) {
+      if (!first && !node.isConnected) return;   // redrawn since: the new node counts on
+      var k = Math.min(1, (Date.now() - countT0) / 800), e = 1 - Math.pow(1 - k, 3);
+      node.textContent = money(Math.round(to * e));
+      if (k < 1) requestAnimationFrame(function () { step(false); });
+    })(true);
   }
   // Preferred spots along the arc; pack tighter when split hands need room
   function seatPositions(n, widths, W, gap, u) {
@@ -1388,7 +1413,7 @@
           btn(Kit.icon('play') + '<span>Deal</span>', 'btn-primary wide', deal)
         ], 3);
       }
-      c.appendChild(el('div', { class: 'st' }, [el('span', { class: 'bank grow', html: (humans().length > 1 ? 'Drag chips to anyone\'s circle · ' : '') + Kit.esc(bankWord(i)) + ' <b>' + money(left) + '</b>' }),
+      c.appendChild(el('div', { class: 'st' }, [el('span', { class: 'bank grow', html: (humans().length > 1 && srcOf(i) !== 'link' ? 'Drag chips to anyone\'s circle · ' : '') + moneyLabel(i) + ' <b>' + money(left) + '</b>' }),
         el('button', { type: 'button', class: 'linkb', html: Kit.icon('coins') + '<span>Cash out</span>', onclick: endSession })]));
     } else if (ph === 'ins' && S.insQ >= 0) {
       var ih = S.hands[S.insQ], bj = isBJ(ih), cost = insCost(ih);
@@ -1415,7 +1440,7 @@
       if (S.seats.length === 1 || hs.length === 1 && S.mode !== 'pass') {
         var me = hs[0] != null ? hs[0] : 0, nv = nets[me];
         status([who(me), el('span', { text: nv == null ? 'You sat out' : nv > 0 ? 'You won ' + money(nv) : nv < 0 ? 'You lost ' + money(-nv) : 'Push: your bet comes back' })],
-          el('span', { class: 'bank', html: Kit.esc(bankWord(me)) + ' <b>' + money(bank(me)) + '</b>' }));
+          el('span', { class: 'bank', html: moneyLabel(me) + ' <b>' + money(bank(me)) + '</b>' }));
       } else {
         var nb = el('div', { class: 'nets' });
         S.seats.forEach(function (s, j) { if (nets[j] != null) nb.appendChild(el('span', { class: nets[j] > 0 ? 'up' : nets[j] < 0 ? 'down' : '', text: s.name + ' ' + (nets[j] ? signed(nets[j]) : 'push') })); });
