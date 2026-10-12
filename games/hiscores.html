@@ -114,6 +114,14 @@ html[data-theme="light"] body.hs .gbar,html[data-theme="parchment"] body.hs .gba
 .go .ico{flex:none;width:14px;height:14px;fill:currentColor;stroke:none;}
 .go:active{transform:translateY(3px);box-shadow:0 1px 0 color-mix(in srgb,var(--bcol) 55%,#000);}
 .go:hover{filter:brightness(1.06);}
+.att{flex:none;display:grid;place-items:center;width:48px;min-height:48px;border:0;border-radius:12px;cursor:pointer;background:rgba(0,0,0,.45);color:var(--bcol);box-shadow:inset 0 0 0 1px var(--w08);transition:background .15s,color .15s;}
+.att .ico{width:20px;height:20px;}
+.att.on{background:var(--bcol);color:var(--bink);}
+.att:active{transform:translateY(2px);}
+/* attract mode: a bar along the bottom of the screen fills while each board is up */
+.attbar{position:absolute;left:0;right:0;bottom:0;height:5px;z-index:4;pointer-events:none;opacity:0;transition:opacity .3s;background:rgba(0,0,0,.45);}
+.attbar i{display:block;height:100%;width:100%;transform-origin:left center;transform:scaleX(0);background:var(--bcol);box-shadow:0 0 8px var(--bcol),0 0 2px #fff;}
+.crt.attr .attbar{opacity:1;}
 .modes{flex:none;display:none;padding:4px;gap:4px;border-radius:12px;background:rgba(0,0,0,.45);box-shadow:inset 0 0 0 1px var(--w08);}
 .modes.on{display:flex;}
 .modes button{min-height:40px;padding:0 10px;border:0;border-radius:9px;background:none;cursor:pointer;font-family:"Press Start 2P",monospace;font-size:.5rem;color:rgba(255,255,255,.6);}
@@ -162,7 +170,8 @@ html[data-theme="light"] body.hs .gbar,html[data-theme="parchment"] body.hs .gba
 <script>
 Kit.init({ id: 'hiscores', mark: false, menu: [
   { icon: 'music', label: 'Music', sub: 'Each game\u2019s tune while you browse', toggle: function () { return !!(window.HSAttract && HSAttract.music()); }, onClick: function () { if (window.HSAttract) HSAttract.toggleMusic(); } },
-  { icon: 'sparkle', label: 'Attract mode', sub: 'Moves on to the next game when left alone', toggle: function () { return !window.HSAttract || HSAttract.attract(); }, onClick: function () { if (window.HSAttract) HSAttract.toggleAttract(); } }
+  { icon: 'play', label: 'Start attract mode', sub: 'Show every game in turn, until you tap', onClick: function () { if (window.HSAttract) HSAttract.start(); } },
+  { icon: 'sparkle', label: 'Attract mode by itself', sub: 'Starts when the screen is left alone', toggle: function () { return !window.HSAttract || HSAttract.attract(); }, onClick: function () { if (window.HSAttract) HSAttract.toggleAttract(); } }
 ] });
 // Came here from a game (its High scores button): the back button goes back to that game
 (function () {
@@ -313,10 +322,23 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
   ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, function () { if (!tapped) { tapped = true; ac(); } }, { passive: true }); });
   setInterval(function () { if (tapped && document.visibilityState === 'visible' && !document.querySelector('.k-sheet')) Mus.tick(); else Mus.stop(); }, 90);
   function attractOn() { return localStorage.getItem('hs_attract') !== '0'; }
+  var DWELL = 10, attractRun = false, attT = 0, attQuiet = 0;
+  function paintAtt() {
+    if (!attBtn) return;
+    attBtn.innerHTML = Kit.icon(attractRun ? 'pause' : 'sparkle');
+    attBtn.classList.toggle('on', attractRun);
+    attBtn.setAttribute('aria-label', attractRun ? 'Stop attract mode' : 'Start attract mode');
+    attBtn.title = attractRun ? 'Stop attract mode' : 'Attract mode: show every game in turn';
+    crt.classList.toggle('attr', attractRun);
+    attFill.style.transform = 'scaleX(' + (attractRun ? Math.min(1, attT / DWELL) : 0) + ')';
+  }
+  function startAttract(quiet) { attractRun = true; attT = 0; attQuiet = Date.now(); paintAtt(); run(); if (!quiet) Kit.toast('Attract mode: tap anywhere to stop'); }
+  function stopAttract() { if (!attractRun) return; attractRun = false; attT = 0; paintAtt(); run(); }
   window.HSAttract = {
     music: function () { return Mus.on(); },
     toggleMusic: function () { Mus.menuItem.onClick(); },
     attract: attractOn,
+    start: function () { startAttract(); },
     toggleAttract: function () { var on = !attractOn(); try { localStorage.setItem('hs_attract', on ? '1' : '0'); } catch (e) {} Kit.toast(on ? 'Attract mode on' : 'Attract mode off'); }
   };
   try { var saved = localStorage.getItem('gn_hiscores_sel'); BOARDS.forEach(function (b, i) { if (b.key === saved) cur = i; }); } catch (e) {}
@@ -332,7 +354,8 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
   var mq = el('div', { class: 'mq' }, [mqL, pzL, el('div', { class: 'mt' }, [mqT, mqS]), pzR, mqR]);
   var bg = el('canvas', { class: 'bg' }), list = el('ol'), sb = el('div', { class: 'sb', role: 'region', 'aria-live': 'polite' });
   var tube = el('div', { class: 'tube' }, [bg, el('div', { class: 'shade' }), sb]);
-  var crt = el('div', { class: 'crt' }, [tube, el('div', { class: 'lines' }), el('div', { class: 'glass' }), el('div', { class: 'fx' })]);
+  var attFill = el('i'), attBar = el('div', { class: 'attbar', 'aria-hidden': 'true' }, [attFill]);
+  var crt = el('div', { class: 'crt' }, [tube, el('div', { class: 'lines' }), el('div', { class: 'glass' }), el('div', { class: 'fx' }), attBar]);
   var st = el('button', { type: 'button', class: 'go' }, [el('i', { html: Kit.icon('play') }), el('span')]);
   // 8-bit sprites for the game buttons: the game's real character or piece, in its colours, with a dark outline
   var SPR = {
@@ -464,7 +487,9 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     var sp = st.querySelector('span');
     if (b.puzzle && sp.scrollWidth > sp.clientWidth + 1) sp.textContent = 'PLAY';
   }
-  var cp = el('div', { class: 'cp' }, [modes, st]);
+  // Attract mode on demand: steps through every game of the section, a few seconds each, until you touch anything
+  var attBtn = el('button', { type: 'button', class: 'att', onclick: function () { if (attractRun) stopAttract(); else { Kit.sfx('pop'); startAttract(); } } });
+  var cp = el('div', { class: 'cp' }, [modes, st, attBtn]);
   cab.appendChild(mq); cab.appendChild(el('div', { class: 'bez' }, [selW, crt])); cab.appendChild(cp);
   if (secBar.children.length > 1) app.appendChild(secBar);
   app.appendChild(cab);
@@ -1738,15 +1763,28 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     var dt = (now - last) / 1000; last = now; acc += dt;
     if (acc < 1 / 30) return;
     var step = acc; acc = 0; tt += step;
-    drawFrame(step, tt);
-    // attract mode: left alone for a while at the top of a board, the cabinet moves on to the next game
+    if (!REDUCED) drawFrame(step, tt);
+    var sheet = !!document.querySelector('.k-sheet');
+    if (attractRun) {
+      // attract mode: each board stays up DWELL seconds (the bar fills), then the next game
+      if (!sheet) attT += step;
+      if (attT >= DWELL) { attT = 0; attQuiet = Date.now(); stepGame(1); }
+      attFill.style.transform = 'scaleX(' + Math.min(1, attT / DWELL) + ')';
+      return;
+    }
+    // left alone for a while at the top of a board, the cabinet starts attract mode by itself (when that's on)
     idleT += step;
-    if (idleT > 24 && attractOn() && (!list || list.scrollTop < 4) && !document.querySelector('.k-sheet')) stepGame(1);
+    if (idleT > 24 && attractOn() && (!list || list.scrollTop < 4) && !sheet) { idleT = 0; startAttract(true); attQuiet = Date.now(); stepGame(1); }
   }
-  function run() { cancelAnimationFrame(raf); last = 0; if (!REDUCED && document.visibilityState === 'visible') raf = requestAnimationFrame(loop); }
+  function run() { cancelAnimationFrame(raf); last = 0; if ((!REDUCED || attractRun || attractOn()) && document.visibilityState === 'visible') raf = requestAnimationFrame(loop); }
   document.addEventListener('visibilitychange', run);
-  ['pointerdown', 'keydown', 'wheel'].forEach(function (ev) { document.addEventListener(ev, function () { idleT = 0; }, { passive: true }); });
-  sb.addEventListener('scroll', function () { idleT = 0; }, true);
+  // anything you do stops attract mode (the attract button itself, and the menu, have their own say)
+  ['pointerdown', 'keydown', 'wheel'].forEach(function (ev) { document.addEventListener(ev, function (e) {
+    idleT = 0;
+    if (attractRun && !(e.target && e.target.closest && e.target.closest('.att, .k-sheet, .k-scrim, .gbar'))) stopAttract();
+  }, { passive: true }); });
+  sb.addEventListener('scroll', function () { idleT = 0; if (attractRun && Date.now() - attQuiet > 900) stopAttract(); }, true);
+  paintAtt();
 
   function refresh() { var b = BOARDS[cur]; paintScores(b); }
   window.addEventListener('storage', function (e) { if (e.key && (e.key.indexOf('hi_') === 0 || e.key === 'fgh_link_hi')) refresh(); });
