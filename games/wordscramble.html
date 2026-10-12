@@ -67,7 +67,7 @@
 .slot.over{box-shadow:inset 0 0 0 3px #ffd76a, inset 0 2px 5px rgba(0,0,0,.45);}
 .float{position:absolute;left:50%;top:18%;transform:translate(-50%,0);font-family:var(--display);font-size:2rem;color:#ffd76a;text-shadow:0 3px 0 rgba(0,0,0,.4);pointer-events:none;animation:floatup 1s ease-out forwards;z-index:5;}
 @keyframes floatup{from{opacity:0;transform:translate(-50%,10px) scale(.6);}25%{opacity:1;transform:translate(-50%,0) scale(1.1);}to{opacity:0;transform:translate(-50%,-50px);}}
-.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;}
+.tools{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px;}
 .tools .btn{padding:0 4px;flex-direction:column;gap:2px;min-height:58px;font-size:.82rem;}
 .tools .btn .ico{width:20px;height:20px;}
 /* Overlays on the felt (ready, paused, turn summary) */
@@ -159,7 +159,8 @@
       '<h3>Playing</h3><ul><li><b>Tap</b> a tile to put it in the next empty square, or <b>drag</b> it to any square.</li>' +
       '<li>Tap a placed tile (or drag it back to the rack) to take it out.</li>' +
       '<li>When every square is full the word is checked. Any real word that uses all the letters counts.</li>' +
-      '<li><b>Shuffle</b> mixes up the rack to help you see the word.</li></ul>' +
+      '<li><b>Shuffle</b> mixes up the rack to help you see the word.</li>' +
+      '<li><b>Reset</b> takes every letter you placed back to the rack at once.</li></ul>' +
       '<h3>Scoring</h3><ul><li>A word scores the <b>Scrabble value</b> of its tiles (the small number on each tile).</li>' +
       '<li><b>Letter</b> puts one correct tile in place. That tile scores nothing.</li>' +
       '<li><b>Clue</b> shows a hint. It halves the word\'s score.</li>' +
@@ -322,7 +323,7 @@
     feltEl = el('div', { class: 'felt felt-in' });
     app.appendChild(el('div', { class: 'table wood' }, [feltEl]));
     var tools = el('div', { class: 'tools' });
-    [['shuffle', 'Shuffle', doShuffle], ['sparkle', 'Letter', hintLetter], ['lightbulb', 'Clue', showClue], ['right', 'Skip', skip]].forEach(function (b) {
+    [['undo', 'Reset', resetTiles], ['shuffle', 'Shuffle', doShuffle], ['sparkle', 'Letter', hintLetter], ['lightbulb', 'Clue', showClue], ['right', 'Skip', skip]].forEach(function (b) {
       tools.appendChild(el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon(b[0]) + '<span>' + b[1] + '</span>', onclick: b[2], disabled: S.phase !== 'play' || paused }));
     });
     app.appendChild(tools);
@@ -554,6 +555,14 @@
     if (S.phase !== 'play') return;
     if (!S.time && S.T.count >= RELAXED_WORDS) return endTurn();
     nextWord(); save(); render();
+  }
+  // Reset: every letter you've placed (not the ones a hint locked in) goes back to the rack at once
+  function resetTiles() {
+    if (busy || S.phase !== 'play') return;
+    var R = S.R;
+    if (!R.slots.some(function (t, i) { return t != null && !R.locked[i]; })) { Kit.toast('Nothing to take back'); return; }
+    flip(function () { R.slots.forEach(function (t, i) { if (t != null && !R.locked[i]) { R.slots[i] = null; R.rack[R.rack.indexOf(null)] = t; } }); paintTiles(); }, 0.35);
+    Kit.sfx('flip'); Kit.haptic('light'); save();
   }
   function doShuffle() {
     if (busy || S.phase !== 'play') return;
