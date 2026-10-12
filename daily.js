@@ -62,6 +62,21 @@ var Daily = window.Daily = (function () {
       return { id: 'mazes', what: 'Daily maze · small Monday, biggest Saturday', status: 'new' };
     }
   ];
+  // Crossword: today's Mini and today's big Crossword (ids dm-/db-YYYY-MM-DD, as games/crossword.html makes them)
+  var XW_DOW = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  var XW_LVL = ['Easy 15×15', 'Easy 15×15', 'Medium 15×15', 'Medium 15×15', 'Hard 15×15', 'Hardest 15×15', 'Big 21×21'];
+  function xwDaily(kind) {
+    return function () {
+      var id = (kind === 'mini' ? 'dm-' : 'db-') + isoDay(), dow = (new Date().getDay() + 6) % 7, best = null;
+      hist('crossword').forEach(function (e) { if (e && e.pid === id && e.secs && (!best || e.secs < best.secs)) best = e; });
+      var name = kind === 'mini' ? 'The Mini' : XW_DOW[dow] + ' Crossword', what = kind === 'mini' ? 'Daily 5×5 crossword' : 'Daily · ' + XW_LVL[dow];
+      if (best) return { id: 'crossword', name: name, what: what, status: 'done', note: clock(best.secs), q: 'kind=' + kind };
+      var st = state('crossword_state'), pr = st && st.prog && st.prog[id];
+      var going = pr && !pr.solved && pr.fill && pr.fill.some(function (r) { return r.some(function (x) { return x && x !== '#'; }); });
+      return { id: 'crossword', name: name, what: what, status: going ? 'going' : 'new', note: going && pr.secs ? clock(pr.secs) : '', q: 'kind=' + kind };
+    };
+  }
+  games.push(xwDaily('mini'), xwDaily('big'));
   // Other games add their own (the crossword adds its mini and big) with Daily.add(fn)
   function add(fn) { games.push(fn); }
 

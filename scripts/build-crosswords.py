@@ -79,6 +79,7 @@ suicide abortion hitler genocide drunk drunks booze bong weed stoned whore hell 
 nude nudes naked kinky erotic orgasm penis vagina breast breasts bra bras thong torture lynch lynched kkk isis
 nsfw xxx lsd ecstasy opium stoner pothead hooker pimp stripper bimbo hussy slut ass asses arse thc jew jews bastard bastards
 negro negroes gook spic chink dyke fag tranny retard retarded midget gypsy gypsies hooters stds std
+sext sexts sexting toke tokes toker helluva murderer murderers corpse corpses satan satanic lust lusts lustful narc narcs teat teats fatwa allah srsly wentboom starreed megameta kalechip
 '''.split())
 BAD_PARTS = ('fuck', 'shit', 'cunt', 'bitch', 'pussy', 'whore', 'slut', 'porn', 'nigg', 'dildo', 'orgasm', 'jizz',
              'twat', 'wank', 'hitler', 'nazi', 'boob', 'penis', 'vagina', 'erotic', 'horny', 'semen', 'rapist')
