@@ -268,6 +268,23 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .cont .d{font-size:.75rem;color:var(--text-2);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cont-net{box-shadow:inset 3px 0 0 var(--c), inset 0 0 0 1.5px color-mix(in srgb,var(--yellow) 70%,transparent);}
 .cont-net .d{color:var(--yellow);}
+/* Edit: every tile shows its trash, plus Clear all */
+.sec-h .cont-edit{margin-left:auto;min-height:34px;padding:0 15px;border:0;border-radius:999px;background:var(--w08);color:var(--text);font:inherit;font-weight:800;font-size:.86rem;cursor:pointer;}
+.sec-h .cont-edit.on{background:var(--yellow-fill,var(--yellow));color:#16102e;}
+.sec-h .cont-edit:active{transform:scale(.96);}
+.rail.editing .cont-w{animation:cont-in .25s ease both;}
+@keyframes cont-in{from{transform:scale(.97)}to{transform:none}}
+.rail.editing .cont{cursor:default;}
+.rail.editing .cont-net{opacity:.45;pointer-events:none;}
+.rail.editing .cont:active{transform:none;}
+.cont-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;}
+.cont-foot:empty{display:none;}
+.cont-foot{margin-top:10px;}
+.cont-clear{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 16px;border:0;border-radius:999px;background:color-mix(in srgb,#e0243c 14%,transparent);color:#e0243c;font:inherit;font-weight:800;font-size:.86rem;cursor:pointer;box-shadow:inset 0 0 0 1px color-mix(in srgb,#e0243c 40%,transparent);}
+html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#ff8a96;}
+.cont-clear .ico{width:16px;height:16px;}
+.cont-undo{display:inline-flex;align-items:center;gap:10px;min-height:38px;padding:0 6px 0 14px;border-radius:999px;background:var(--surface-2);color:var(--text-2);font-weight:700;font-size:.86rem;}
+.cont-undo button{min-height:30px;padding:0 12px;border:0;border-radius:999px;background:var(--w08);color:var(--text);font:inherit;font-weight:900;cursor:pointer;}
 .rail-more{grid-column:1/-1;justify-self:center;border:0;background:none;color:var(--text-2);font-weight:800;font-size:.85rem;padding:6px 12px;}
 
 .empty{display:none;text-align:center;padding:50px 20px;color:var(--text-2);}
@@ -337,8 +354,9 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
   </div>
 
   <section class="sec" id="cont-sec" hidden>
-    <div class="sec-h"><h2>Keep playing</h2><span class="n" id="cont-n"></span></div>
+    <div class="sec-h"><h2>Keep playing</h2><span class="n" id="cont-n"></span><button type="button" class="cont-edit" id="cont-edit" hidden>Edit</button></div>
     <div class="rail" id="rail"></div>
+    <div class="cont-foot" id="cont-foot"></div>
   </section>
 
   <div id="list"></div>
@@ -628,11 +646,44 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
   // Swipe a Keep playing tile left to reveal a trash button that deletes the saved game
   var SAVE_KEYS = {"2048":["2048_state"],"asteroids":["asteroids_state"],"baccarat":["baccarat_state"],"backgammon":["backgammon_state"],"battleship":["battleship_state"],"bingo":["bingo_state"],"blackjack":["blackjack_state"],"boggle":["boggle_state"],"breakout":["breakout_state"],"checkers":["checkers_state"],"chess":["chess_state"],"chinesecheckers":["chinesecheckers_state"],"codebreaker":["codebreaker_state"],"connectfour":["c4_state"],"conversation":["conversation_state"],"craps":["cr_state"],"cribbage":["cribbage_state"],"crossword":["crossword_state"],"cubehopper":["cubehopper_state"],"dealornodeal":["dond_state"],"dice-roller":["diceroller_state"],"dotsboxes":["dotsboxes_state"],"euchre-ai":["euchre_state"],"farkle":["farkle_state"],"fivecrownss-ai":["fivecrowns_state"],"flip7-ai":["flip7_state"],"freecell":["freecell_state"],"gin-rummy-ai":["gin_state"],"hangman":["hangman_state"],"hearts-ai":["hearts_state"],"horserace":["horserace_state"],"jokerrun":["jokerrun_state"],"lorcana":["lorcana_state"],"lrc":["lrc_state"],"madlibs":["madlibs_state"],"mahjong":["mahjong_state"],"mahjong4":["mj4_state"],"mancala":["mancala_state"],"marbles":["marbles_state"],"mathpuzzles":["mathpuzzles_state"],"memorymatch":["memorymatch_state"],"minesweeper":["minesweeper_state"],"minigolf":["mg_state"],"othello":["othello_state"],"pacman":["pacman_state"],"paddleball":["paddleball_state"],"paigow":["paigow_state"],"peggle":["peggle_state"],"phase10-ai":["phase10_state"],"plinko":["plinko_state"],"pokersquares":["pokersquares_state"],"pyramid":["pyramid_state"],"riddlestories":["riddlestories_state"],"rook-ai":["rook_state"],"roulette":["rl_state"],"scorecard":["scorecard_state"],"shellgame":["shellgame_state"],"slidepuzzle":["slidepuzzle_state"],"slots":["slots_state"],"snake":["snake_state"],"solitaire":["solitaire_state"],"spades-ai":["spades_state"],"spellingbee":["spellingbee_state"],"sudoku":["sdk_state","sudoku_state"],"tetris":["tetris_state"],"threecardpoker":["threecardpoker_state"],"tictactoe":["tictactoe_state"],"trivia":["trivia_state"],"wheeloffortune":["wof_state"],"wizard-ai":["wizard_state"],"wordle":["wordle_state"],"wordscramble":["wordscramble_state"],"wordsearch":["wordsearch_state"],"wouldyourather":["wyr_state"],"yahtzee":["yahtzee_state"],"hearts":["pad_ht"],"flip7":["pad_f7"],"rook":["pad_rk"],"spades":["pad_sp"],"euchre":["pad_eu"],"five-crowns":["pad_fc"],"gin-rummy":["pad_rm"],"phase10":["pad_p10"],"wizard":["pad_wz","wizard_pad_bids"]};
   var openTile = null;
+  // Returns what it removed, so Undo can put it back
   function deleteSaved(x) {
-    var file = x.r.file || x.g.play;
+    var file = x.r.file || x.g.play, back = { id: x.g.id, keys: {}, resume: null };
     var keys = (x.r.keys || []).concat(SAVE_KEYS[file] || []);
-    keys.forEach(function (k) { try { LS.removeItem(k); } catch (e) {} });
-    try { var all = JSON.parse(get('gn_resume', '{}')) || {}; delete all[x.g.id]; set('gn_resume', JSON.stringify(all)); } catch (e) {}
+    keys.forEach(function (k) { try { var v = LS.getItem(k); if (v != null) back.keys[k] = v; LS.removeItem(k); } catch (e) {} });
+    try { var all = JSON.parse(get('gn_resume', '{}')) || {}; back.resume = all[x.g.id] || null; delete all[x.g.id]; set('gn_resume', JSON.stringify(all)); } catch (e) {}
+    return back;
+  }
+  function restoreSaved(list) {
+    try {
+      var all = JSON.parse(get('gn_resume', '{}')) || {};
+      list.forEach(function (b) { Object.keys(b.keys).forEach(function (k) { try { LS.setItem(k, b.keys[k]); } catch (e) {} }); if (b.resume) all[b.id] = b.resume; });
+      set('gn_resume', JSON.stringify(all));
+    } catch (e) {}
+  }
+  // ── Edit: trash on every tile (no swipe, no "are you sure" for one game: Undo is right there), and Clear all ──
+  var editing = false, undoList = null, undoT = 0;
+  function setEditing(on) { editing = on; if (!on) { undoList = null; clearTimeout(undoT); } Kit.sfx('tap'); if (openTile) openTile(); renderRail(); }
+  $('cont-edit').addEventListener('click', function () { setEditing(!editing); });
+  function offerUndo(list, label) {
+    undoList = list; clearTimeout(undoT);
+    undoT = setTimeout(function () { undoList = null; renderRail(); }, 8000);
+    Kit.toast(label);
+    renderFoot();
+  }
+  function renderFoot(nGames) {
+    var foot = $('cont-foot'); foot.innerHTML = '';
+    if (undoList && undoList.length) foot.appendChild(el('span', { class: 'cont-undo' }, [
+      el('span', { text: undoList.length === 1 ? 'Game deleted' : undoList.length + ' games deleted' }),
+      el('button', { type: 'button', text: 'Undo', onclick: function () { var l = undoList; undoList = null; clearTimeout(undoT); restoreSaved(l); Kit.sfx('pop'); Kit.toast(l.length === 1 ? 'Game is back' : 'Games are back'); renderRail(); } })]));
+    if (editing && nGames > 1) foot.appendChild(el('button', { type: 'button', class: 'cont-clear', html: Kit.icon('trash') + '<span>Clear all</span>', onclick: function () {
+      var list = currentItems();
+      Kit.confirm('Clear all ' + list.length + ' games in progress?', { ok: 'Clear all', danger: true, body: 'Each one can be put back with Undo for a few seconds.' }).then(function (ok) {
+        if (!ok) return;
+        var backs = list.map(deleteSaved); Kit.haptic('success'); Kit.sfx('tap');
+        editing = false; offerUndo(backs, 'Cleared ' + backs.length + ' games'); renderRail();
+      });
+    } }));
   }
   function swipeTile(x, tile) {
     var w = el('div', { class: 'cont-w' });
@@ -641,6 +692,12 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
       [el('span', { html: Kit.icon('trash') })]);
     del.addEventListener('click', function (e) {
       e.stopPropagation();
+      if (editing) {
+        var back = deleteSaved(x); Kit.haptic('success'); Kit.sfx('tap');
+        w.style.transition = 'opacity .22s, transform .22s'; w.style.opacity = '0'; w.style.transform = 'scale(.9)';
+        setTimeout(function () { offerUndo((undoList || []).concat([back]), x.g.name + ' game deleted'); renderRail(); }, 230);
+        return;
+      }
       Kit.confirm('Delete this ongoing game?', { ok: 'Delete game', danger: true, body: x.g.name + ' · ' + (x.r.label || 'In progress') + '. Your progress will be lost.' }).then(function (ok) {
         if (!ok) { close(); return; }
         deleteSaved(x); Kit.haptic('success'); Kit.sfx('tap'); Kit.toast(x.g.name + ' game deleted');
@@ -654,7 +711,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
     function open() { if (openTile && openTile !== close) openTile(); base = -REVEAL; setX(base); w.classList.add('open'); del.tabIndex = 0; openTile = close; }
     function close() { base = 0; setX(0); w.classList.remove('open'); del.tabIndex = -1; if (openTile === close) openTile = null; }
     tile.addEventListener('pointerdown', function (e) {
-      if (e.button) return;
+      if (e.button || editing) return;
       active = true; horiz = null; moved = false; x0 = e.clientX; y0 = e.clientY; dx = 0;
     });
     tile.addEventListener('pointermove', function (e) {
@@ -675,13 +732,15 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
     }
     tile.addEventListener('pointerup', end);
     tile.addEventListener('pointercancel', end);
-    // A swipe (or tapping an open tile) shouldn't launch the game
+    if (editing) { w.classList.add('open'); setX(-REVEAL); base = -REVEAL; del.tabIndex = 0; }
+    // A swipe (or tapping an open tile) shouldn't launch the game; nor does a tap while editing
     tile.addEventListener('click', function (e) {
+      if (editing) { e.preventDefault(); return; }
       if (moved || w.classList.contains('open')) { e.preventDefault(); if (!moved) close(); moved = false; }
       else if (openTile) { e.preventDefault(); openTile(); }
     });
     // Desktop: right-click offers the same delete
-    tile.addEventListener('contextmenu', function (e) { e.preventDefault(); open(); });
+    tile.addEventListener('contextmenu', function (e) { e.preventDefault(); if (!editing) open(); });
     return w;
   }
   document.addEventListener('pointerdown', function (e) { if (openTile && !e.target.closest('.cont-w.open')) openTile(); }, true);
@@ -755,13 +814,18 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadNetTurns(); });
 
   var railAll = false;
-  function renderRail() {
+  function currentItems() {
     try { resumeMap = JSON.parse(get('gn_resume', '{}')) || {}; } catch (e) {}
     var week = Date.now() - 7 * 864e5;
-    var items = Object.keys(resumeMap).map(function (id) { return { g: findGame(id), r: resumeMap[id] }; })
+    return Object.keys(resumeMap).map(function (id) { return { g: findGame(id), r: resumeMap[id] }; })
       .filter(function (x) { return x.g && x.r && x.r.ts > week; })
       .sort(function (a, b) { return b.r.ts - a.r.ts; });
-    var rail = $('rail'); rail.innerHTML = '';
+  }
+  function renderRail() {
+    var items = currentItems();
+    if (!items.length) editing = false;
+    var rail = $('rail'); rail.innerHTML = ''; rail.classList.toggle('editing', editing);
+    var eb = $('cont-edit'); eb.hidden = !items.length; eb.textContent = editing ? 'Done' : 'Edit'; eb.classList.toggle('on', editing);
     var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g; });
     nets.forEach(function (x) {
       rail.appendChild(el('div', { class: 'cont-w' }, [el('a', { class: 'cont cont-net', href: x.n.href, style: { '--c': x.g.color }, title: x.g.name + ': your move' }, [
@@ -769,7 +833,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
         el('span', { class: 'tx' }, [el('div', { class: 'r1' }, [el('div', { class: 't', text: x.g.name }), el('span', { class: 'a', text: ago(x.n.at, true) })]), el('div', { class: 'd', text: 'Your move vs ' + x.n.vs })])
       ])]));
     });
-    var shown = railAll || items.length <= 6 ? items : items.slice(0, 6);
+    var shown = railAll || editing || items.length <= 6 ? items : items.slice(0, 6);
     shown.forEach(function (x) {
       rail.appendChild(swipeTile(x, el('a', { class: 'cont', href: 'games/' + (x.r.file || x.g.play) + '.html', style: { '--c': x.g.color }, title: x.g.name }, [
         el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
@@ -783,7 +847,8 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
     }
     var nAll = items.length + nets.length;
     $('cont-n').textContent = nAll > 1 ? nAll + ' going' : '';
-    $('cont-sec').hidden = !nAll || !!state.q || state.cat !== 'all';
+    $('cont-sec').hidden = (!nAll && !undoList) || !!state.q || state.cat !== 'all';
+    renderFoot(items.length);
   }
   function ago(ts, short) {
     var s = (Date.now() - ts) / 1000;
