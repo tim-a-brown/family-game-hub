@@ -54,7 +54,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 .plays .none{align-self:center;color:rgba(255,255,255,.55);font-weight:800;font-size:.9rem;text-align:center;max-width:280px;}
 .sub{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;border:0;padding:0;background:none;color:inherit;border-radius:14px;-webkit-tap-highlight-color:transparent;}
 .sub .cards{display:flex;}
-.sub .cards .ac + .ac{margin-left:calc(var(--cw) * -.55);}
+.sub .cards .ac + .ac{margin-left:calc(var(--cw) * -.3);transform:rotate(4deg) translateY(6px);}
 .sub.tap{cursor:pointer;}
 .sub.tap:active .ac{transform:scale(.97);}
 .sub.sel .ac .fa{box-shadow:0 0 0 4px #ffd447,0 10px 22px rgba(0,0,0,.45);}
@@ -275,11 +275,17 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   .tbl .felt-in{padding:16px 16px 20px;}
   .sent{font-size:1.15rem;}
 }
-@media (min-width:1000px) and (min-height:760px){
-  .mid{--cw:170px;}
-  .plays{--cw:140px;}
-  .hrow{--cw:156px;}
+/* Wide landscape screens (computers, iPads sideways): the pile and the played cards side by side */
+@media (min-width:1000px) and (orientation:landscape){
+  .aa{max-width:1180px;}
+  .tbl .felt-in{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:center;}
+  .tbl .felt-in > .st,.tbl .felt-in > .sent,.tbl .felt-in > .why{grid-column:1 / -1;}
+  .mid{--cw:150px;grid-column:1;}
+  .plays{--cw:128px;grid-column:2;margin-top:0;align-content:center;}
+  .plays.crowd{--cw:108px;}
+  .hrow{--cw:138px;}
 }
+@media (min-width:1000px) and (orientation:landscape) and (min-height:1000px){ .mid{--cw:176px;} .plays{--cw:148px;} .hrow{--cw:156px;} }
 </style>
 </head>
 <body>
@@ -736,6 +742,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     var w = words(V), oldRail = app.querySelector('.hrow'), sx = oldRail ? oldRail.scrollLeft : 0;
     if (ui.round !== V.round) { ui.round = V.round; ui.sel = []; ui.jsel = -1; }
     if (V.phase !== 'judge') ui.jsel = -1;
+    if (prev && prev.me !== V.me) ui.sel = [];   // pass and play: a new person holds the phone
     var same = prev && prev.round === V.round, post = [];
     app.innerHTML = '';
     // Scores: cards won. The judge's chip lifts and wears the crown; a new card bumps the count.
@@ -867,6 +874,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
         if (on && V.pick > 1) ce.appendChild(el('span', { class: 'num', text: String(ui.sel.indexOf(c.id) + 1) }));
         if (prevIds && prevIds.indexOf(c.id) < 0) fresh.push(ce);
         if (myTurn) ce.addEventListener('click', function () {
+          if (ui.flying) return;
           var at = ui.sel.indexOf(c.id);
           if (at >= 0 && V.pick === 1) { playSelected(); return; }   // tap the lifted card again to play it
           if (at >= 0) ui.sel.splice(at, 1);
@@ -913,13 +921,14 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     setTimeout(function () { ui.sweeping = false; doAct({ t: 'next' }); }, 320);
   }
   function playSelected() {
-    var V = lastV; if (!V || ui.sel.length !== V.pick) return;
+    var V = lastV; if (!V || ui.flying || ui.sel.length !== V.pick) return;
+    ui.flying = true;
     var sel = ui.sel.slice(), dst = app.querySelector('.pend.me') || app.querySelector('.plays');
     var nodes = sel.map(function (id) { return app.querySelector('.hrow .ac.sel[data-id="' + id + '"]'); }).filter(Boolean);
     nodes.forEach(function (n, k) { if (dst) setTimeout(function () { fly(n, dst, { down: true, scale: dst.classList.contains('pend') ? dst.offsetWidth / n.offsetWidth : 0.8 }); n.style.visibility = 'hidden'; }, k * 90); });
     Kit.sfx('deal'); Kit.haptic('medium');
     ui.sel = [];
-    setTimeout(function () { doAct({ t: 'play', c: sel }); }, nodes.length ? 420 + (nodes.length - 1) * 90 : 0);
+    setTimeout(function () { ui.flying = false; doAct({ t: 'play', c: sel }); }, nodes.length ? 420 + (nodes.length - 1) * 90 : 0);
   }
   // A copy of a card flies from one place to another (the real one is drawn there after)
   function fly(from, to, o) {
@@ -1007,7 +1016,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     else if (S.winners.length === 1) { var wn = S.players[S.winners[0]].name; title = meName && wn === meName && (G ? G.mode === 'solo' : true) ? 'You win!' : wn + ' wins!'; lose = G && G.mode === 'solo' && S.winners[0] !== 0; }
     else title = 'It’s a tie!';
     setTimeout(function () {
-      Kit.win({ title: title, lose: lose, icon: lose ? 'ghost' : 'trophy', sub: S.ghostWin ? 'Everyone goes home in shame.' : 'First to ' + S.target + ' ' + w, rank: rank,
+      Kit.win({ title: title, lose: lose, icon: S.ghostWin ? 'ghost' : lose ? 'meh' : 'trophy', sub: S.ghostWin ? 'Everyone goes home in shame.' : 'First to ' + S.target + ' ' + w, rank: rank,
         again: again, againLabel: net.mode ? 'Back to the table' : 'Play again',
         extra: net.mode ? [{ label: 'Leave the table', onClick: function () { leaveOnline(false); goLobby(); } }] : [{ label: 'Change settings', onClick: showSetup }],
         closeLabel: 'See the rounds', onClose: function () {} });

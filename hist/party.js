@@ -125,9 +125,57 @@
   // ── Trivia: every question, the right answer, and who got it ─────────────
   var TRIV_COLOR = { animals: '#16a34a', space: '#6d28d9', science: '#7c3aed', nature: '#059669', world: '#0284c7', america: '#2563eb',
     history: '#dc2626', colorado: '#d97706', sports: '#ea580c', movies: '#db2777', food: '#c2410c', math: '#4f46e5' };
+  // Countdown games (dt.cd): every player answers every question; pp = each player's points ('x' no answer, '-' not there)
+  function triviaCd(e, ui, d) {
+    var el = ui.el, P = names(e), cn = d.cn || {}, cc = d.cc || {}, me = d.me >= 0 && d.me < P.length ? d.me : 0, solo = P.length === 1;
+    function ccol(k) { return cc[k] || TRIV_COLOR[k] || '#64748b'; }
+    function pts(q) { return String(q.pp || '').split(','); }
+    var out = [], cats = {}, ck = [];
+    arr(d.qs).forEach(function (q) { var v = pts(q)[me], c = cats[q.k]; if (!c) { c = cats[q.k] = { r: [], p: 0 }; ck.push(q.k); } var n = +v || 0; c.r.push(n > 0 ? 1 : 0); c.p += n; });
+    if (ck.length) {
+      var grid = el('div', { class: 'tv-cats' });
+      ck.sort(function (a, b) { return cats[b].p - cats[a].p; }).forEach(function (k) {
+        var c = cats[k], r = c.r.filter(Boolean).length;
+        grid.appendChild(el('div', { class: 'tv-cat', style: { '--cc': ccol(k) } }, [
+          el('b', { text: cn[k] || k }),
+          el('span', { class: 'tv-pips', html: c.r.map(function (x) { return '<i class="' + (x ? 'y' : 'n') + '"></i>'; }).join('') }),
+          el('small', { text: (solo ? '' : P[me] + ': ') + r + ' of ' + c.r.length + ' right · ' + c.p.toLocaleString() + ' pts' })
+        ]));
+      });
+      out.push(ui.section('Categories', grid, { icon: 'tiles' }));
+    }
+    var list = el('ol', { class: 'tv-qs' });
+    arr(d.qs).forEach(function (q, i) {
+      var pp = pts(q), res;
+      if (solo) {
+        var v = pp[0], n = +v || 0;
+        res = n > 0 ? el('span', { class: 'tv-res ok' }, [el('i', { html: ui.icon('check') }), el('span', { text: '+' + n.toLocaleString() + (q.t != null ? ' in ' + q.t + 's' : '') })])
+          : el('span', { class: 'tv-res no' }, [el('i', { html: ui.icon('close') }), el('span', { text: v === 'x' ? 'Ran out of time' : q.w ? 'Said “' + q.w + '”' : 'Not quite' })]);
+      } else {
+        var who = P.map(function (n, k) { return { n: n, v: pp[k] }; }).filter(function (x) { return x.v != null && x.v !== '-'; })
+          .sort(function (a, b) { return (+b.v || 0) - (+a.v || 0); });
+        res = el('div', { class: 'tv-who' });
+        who.slice(0, 10).forEach(function (x) {
+          var n = +x.v || 0;
+          res.appendChild(el('span', { class: 'tv-pp ' + (n > 0 ? 'ok' : 'no'), text: x.n + ' ' + (n > 0 ? '+' + n.toLocaleString() : x.v === 'x' ? '–' : '✕') }));
+        });
+        if (who.length > 10) res.appendChild(el('span', { class: 'tv-pp no', text: '+' + (who.length - 10) + ' more' }));
+      }
+      list.appendChild(el('li', { class: 'tv-q', style: { '--cc': ccol(q.k) } }, [
+        el('div', { class: 'tv-top' }, [el('span', { class: 'tv-n', text: 'Q' + (i + 1) }), el('span', { class: 'tv-k', text: cn[q.k] || q.k })]),
+        el('p', { text: q.q }),
+        el('div', { class: 'tv-a' }, [el('span', { class: 'tv-ans', text: q.a })]),
+        res
+      ]));
+    });
+    out.push(ui.section('The questions', list, { icon: 'help' }));
+    if (d.n > arr(d.qs).length) out.push(el('p', { class: 'tv-more', text: '…and ' + (d.n - arr(d.qs).length) + ' more questions' }));
+    return ui.wrap(out);
+  }
   R('trivia', function (e, ui) {
     var el = ui.el, P = names(e), d = e.dt;
     if (!d || !arr(d.qs).length) return null;
+    if (d.cd) return triviaCd(e, ui, d);
     var cn = d.cn || {}, cc = d.cc || {};
     function ccol(k) { return cc[k] || TRIV_COLOR[k] || '#64748b'; }
     var out = [];
@@ -180,7 +228,9 @@
     '.tv-a{display:flex;}.tv-ans{padding:3px 9px;border-radius:8px;background:#1fa64a;color:#fff;font-weight:900;font-size:.84rem;}' +
     '.tv-res{display:flex;align-items:center;gap:5px;font-size:.78rem;font-weight:800;}.tv-res i{display:flex;}.tv-res .ico{width:14px;height:14px;}' +
     '.tv-res.ok{color:#86efac;}.tv-res.no{color:#fca5a5;}.tv-miss{font-size:.74rem;font-weight:700;color:rgba(255,255,255,.55);}' +
-    '.tv-more{margin:0;text-align:center;color:var(--text-3);font-weight:800;font-size:.82rem;}');
+    '.tv-more{margin:0;text-align:center;color:var(--text-3);font-weight:800;font-size:.82rem;}' +
+    '.tv-who{display:flex;flex-wrap:wrap;gap:4px;}.tv-pp{padding:2px 8px;border-radius:999px;font-size:.74rem;font-weight:900;}' +
+    '.tv-pp.ok{background:rgba(74,222,128,.18);color:#86efac;}.tv-pp.no{background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);}');
 
   // ── Would You Rather: each choice and how people split ────────────────────
   var WYR_CAT = { fun: ['Fun', '#e0457b'], silly: ['Silly', '#e39b12'], food: ['Food', '#d9622b'], animals: ['Animals', '#2f9e5a'], powers: ['Superpowers', '#7b5bd6'],

@@ -522,7 +522,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     } },
     { name: 'Ghost Lights', bg: 'ghost', intro: ['ghost'], mus: [2, 2, 1.1], build: function (B) {
       B.row(110, 30, 330, 30);
-      B.w = 2; B.phase = { per: 3.2, duty: 0.6, off: function (x, y) { return Math.atan2(y - 330, x - 180) / TAU; } };
+      B.w = 1.5; B.phase = { per: 3.2, duty: 0.68, off: function (x, y) { return Math.atan2(y - 330, x - 180) / TAU; } };
       B.ring(180, 330, 62, 10, 0); B.ring(180, 330, 108, 16, PI / 16); B.ring(180, 330, 154, 22, 0);
       B.phase = null; B.w = 1;
       B.peg(180, 330);
@@ -1961,7 +1961,6 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (!bgCanvas) bgCanvas = makeBackdrop();
     g.drawImage(bgCanvas, 0, 0, FW, FH);
     if (L.fever) drawRainbow(g);
-    if (rails) drawRails2(g);
     if (zones.length) drawZones(g);
     if (state === 'aim' && !paused) drawGuide(g);
     drawPegs(g);
@@ -2161,7 +2160,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       g.beginPath(); g.moveTo(pts[0], pts[1]); for (var i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]);
       g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 22; g.stroke();
       g.strokeStyle = 'rgba(255,240,210,.09)'; g.lineWidth = 20; g.stroke();
-      g.strokeStyle = 'rgba(255,240,210,.22)'; g.lineWidth = 1; g.setLineDash([6, 8]); g.lineDashOffset = -rt * 30; g.stroke(); g.setLineDash([]); g.lineDashOffset = 0;
+      g.strokeStyle = 'rgba(255,240,210,.22)'; g.lineWidth = 1; g.setLineDash([6, 8]); g.stroke(); g.setLineDash([]);
     });
     g.restore();
   }
@@ -2186,6 +2185,15 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     list.slice(0, 40).forEach(function (p) { g.beginPath(); g.arc(p[0], p[1], p[2] * pulse, 0, TAU); g.stroke(); });
     g.restore();
   }
+  function wellGlow(z) {
+    if (z.glow && z.glowS === S) return z.glow;
+    var px = Math.ceil(z.R * 2 * S), c = document.createElement('canvas'); c.width = c.height = px;
+    var w = c.getContext('2d'); w.scale(px / (z.R * 2), px / (z.R * 2));
+    var gl = w.createRadialGradient(z.R, z.R, 0, z.R, z.R, z.R);
+    gl.addColorStop(0, 'rgba(10,4,30,.6)'); gl.addColorStop(0.35, 'rgba(120,80,255,.13)'); gl.addColorStop(1, 'rgba(120,80,255,0)');
+    w.fillStyle = gl; w.fillRect(0, 0, z.R * 2, z.R * 2);
+    z.glow = c; z.glowS = S; return c;
+  }
   function drawZones(g) {
     g.save();
     for (var i = 0; i < zones.length; i++) {
@@ -2204,10 +2212,10 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
           g.stroke();
         }
       } else if (z.t === 'well') {
-        var gl = g.createRadialGradient(z.x, z.y, 0, z.x, z.y, z.R);
-        var wh = rt - (z.hitT || -9), wb = wh < 0.6 ? 0.18 * (1 - wh / 0.6) : 0;
-        gl.addColorStop(0, 'rgba(10,4,30,.6)'); gl.addColorStop(0.35, 'rgba(120,80,255,' + (0.12 + wb).toFixed(3) + ')'); gl.addColorStop(1, 'rgba(120,80,255,0)');
-        g.fillStyle = gl; g.beginPath(); g.arc(z.x, z.y, z.R, 0, TAU); g.fill();
+        // the glow is painted once into its own canvas; a ball entering it flashes it brighter
+        var wh = rt - (z.hitT || -9), wc = wellGlow(z);
+        g.drawImage(wc, z.x - z.R, z.y - z.R, z.R * 2, z.R * 2);
+        if (wh < 0.6) { g.globalAlpha = 0.9 * (1 - wh / 0.6); g.drawImage(wc, z.x - z.R, z.y - z.R, z.R * 2, z.R * 2); g.globalAlpha = 1; }
         g.lineWidth = 1.3;
         for (k = 0; k < 4; k++) {
           var p = ((rt * 0.22 + k / 4) % 1), rr = z.R * (1 - p);
@@ -2593,6 +2601,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var c = document.createElement('canvas'); c.width = Math.ceil(FW * S); c.height = Math.ceil(FH * S);
     var g = c.getContext('2d'); g.scale(S, S);
     paintBackdrop(g, BG[L.def.bg], L.n);
+    if (rails) drawRails2(g);   // the racetrack's lane is painted once, under everything
     return c;
   }
   function paintBackdrop(g, th, seed) {

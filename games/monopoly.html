@@ -75,7 +75,15 @@
 .metal .dots circle{fill:#5d626b;stroke:none;}
 /* dice and cards in the middle of the board */
 .mdice{position:absolute;left:50%;top:50%;display:flex;gap:calc(var(--bs) * .02);transform:translate(-50%,-50%);z-index:6;pointer-events:none;}
+.mdice{perspective:420px;}
 .mdice .die{--ds:calc(var(--bs) * .072);}
+.mdice .die.rolling{animation:mroll .85s cubic-bezier(.2,.8,.3,1) both;}
+@keyframes mroll{0%{transform:translate(var(--dx,-40px),-70px) rotateX(560deg) rotateY(300deg) rotateZ(var(--dr,-200deg)) scale(.55);opacity:.2;}
+  45%{transform:translate(calc(var(--dx,-40px) * -.18),10px) rotateX(140deg) rotateY(50deg) rotateZ(calc(var(--dr,-200deg) * -.12)) scale(1.1);opacity:1;}
+  70%{transform:translateY(-10px) rotateX(-18deg) rotateZ(5deg);}85%{transform:translateY(0) rotateX(6deg);}100%{transform:none;}}
+.mdeed{position:absolute;left:50%;top:50%;width:min(42%,230px);z-index:19;transform:translate(-50%,-50%);pointer-events:none;animation:mdeed 1.7s var(--ease) both;}
+.mdeed .deed{font-size:clamp(9px,calc(var(--bs) * .026),14px);}
+@keyframes mdeed{0%{opacity:0;transform:translate(-50%,-30%) perspective(700px) rotateX(70deg);}18%{opacity:1;transform:translate(-50%,-50%);}82%{opacity:1;transform:translate(-50%,-50%);}100%{opacity:0;transform:translate(-50%,-56%) scale(.94);}}
 .mdice.off{opacity:0;transition:opacity .4s;}
 .mpot{position:absolute;left:50%;top:64%;transform:translate(-50%,-50%);z-index:4;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:2px;
   font-family:var(--display);color:#1d1d1b;font-size:calc(var(--bs) * .03);}
@@ -84,14 +92,14 @@
   font-family:'Sofia Sans Condensed',sans-serif;font-weight:800;color:#1d1d1b;font-size:calc(var(--bs) * .022);}
 .mbank span{display:flex;align-items:center;gap:2px;} .mbank svg{width:calc(var(--bs) * .032);height:calc(var(--bs) * .032);}
 .mbank .low{color:#c8102e;}
-.mcard{position:absolute;left:50%;top:50%;width:58%;z-index:20;transform:translate(-50%,-50%);perspective:900px;cursor:pointer;}
+.mcard{position:absolute;left:50%;top:50%;width:min(58%,420px);z-index:20;transform:translate(-50%,-50%);perspective:900px;cursor:pointer;}
 .ccard{position:relative;aspect-ratio:1.6;border-radius:calc(var(--bs) * .014);padding:5% 7%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4%;text-align:center;
   box-shadow:0 0 0 1px rgba(0,0,0,.25), 0 14px 30px rgba(0,0,0,.45);font-family:'Sofia Sans Condensed',sans-serif;color:#1d1d1b;}
 .ccard.ch{background:linear-gradient(160deg,#ffb054,#f3901d);}
 .ccard.cc{background:linear-gradient(160deg,#fff7c4,#f8e88a);}
-.ccard .ct{font-family:var(--display);font-size:max(15px,calc(var(--bs) * .042));letter-spacing:.08em;}
+.ccard .ct{font-family:var(--display);font-size:clamp(15px,calc(var(--bs) * .042),28px);letter-spacing:.08em;}
 .ccard.cc .ct{color:#1b5fae;}
-.ccard .cx{font-weight:700;font-size:max(14px,calc(var(--bs) * .036));line-height:1.15;}
+.ccard .cx{font-weight:700;font-size:clamp(14px,calc(var(--bs) * .036),23px);line-height:1.15;}
 .ccard .ci{position:absolute;right:4%;bottom:4%;width:13%;opacity:.25;}
 .mcard.show .ccard{animation:cflip .7s var(--ease) both;}
 @keyframes cflip{0%{transform:translate(var(--fx,0),var(--fy,0)) rotate(-45deg) rotateY(180deg) scale(.4);}55%{transform:rotateY(70deg) scale(.95);}100%{transform:none;}}
@@ -131,11 +139,12 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 .thinking i:nth-child(2){animation-delay:.15s;} .thinking i:nth-child(3){animation-delay:.3s;}
 @keyframes thk{50%{opacity:.25;transform:translateY(-3px);}}
 .offer{display:flex;gap:12px;align-items:center;}
-.offer .deed{flex:none;width:150px;}
+.offer > div:first-child{flex:none;}
 .offer .side{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;}
 .bidbox{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;background:var(--w06);}
 .bidbox .amt{font-family:var(--display);font-size:1.8rem;line-height:1;}
 .bidbox small{display:block;font-weight:700;color:var(--text-2);font-size:.8rem;}
+.bidbox small{white-space:nowrap;}.bidbox .what{margin-left:auto;text-align:right;font-size:.85rem;line-height:1.25;}.bidbox .what b{display:block;}
 .bidders{display:flex;gap:4px;flex-wrap:wrap;}
 .bidders span{--c:var(--p1);display:inline-flex;align-items:center;gap:4px;padding:2px 8px 2px 3px;border-radius:99px;background:var(--w06);font-size:.78rem;font-weight:800;}
 .bidders span i{width:12px;height:12px;border-radius:50%;background:var(--c);}
@@ -709,7 +718,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
     S.players.forEach(function (q, i) { if (q.out) return; var inA = A2.act.indexOf(i) >= 0; bidders.appendChild(el('span', { class: (inA ? '' : 'outb') + (i === p ? ' now' : ''), style: { '--c': pcolor(i) } }, [el('i'), el('span', { text: q.name })])); });
     var dd = deedTag(A2.sq, view.flipSq !== A2.sq); view.flipSq = A2.sq;
     var info = el('div', { class: 'side' }, [
-      el('div', { class: 'bidbox' }, [el('div', null, [el('small', { text: hb ? 'High bid' : 'No bids yet' }), el('span', { class: 'amt', text: money(A2.high) })]), hb ? el('div', { class: 'what', text: hb }) : null]),
+      el('div', { class: 'bidbox' }, [el('div', null, [el('small', { text: hb ? 'High bid' : 'No bids yet' }), el('span', { class: 'amt', text: money(A2.high) })]), el('div', { class: 'what' }, [hb ? el('b', { text: hb }) : null, me ? el('small', { text: 'You have ' + money(x.cash) }) : null])]),
       bidders
     ]);
     box.appendChild(el('div', { class: 'offer' }, [dd, info]));
@@ -719,8 +728,8 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
         var amt = A2.high + inc;
         b.appendChild(el('button', { type: 'button', class: 'btn btn-soft', style: { 'flex': '1 1 60px' }, text: '+$' + inc, disabled: amt > x.cash || null, 'aria-label': 'Bid ' + money(amt), onclick: function () { if (!busy) act({ t: 'bid', p: p, amt: amt }); } }));
       });
+      var ps = btn('Pass', 'btn-ghost', function () { act({ t: 'pass', p: p }); }); ps.style.flex = '1 1 60px'; b.appendChild(ps);
       box.appendChild(b);
-      box.appendChild(el('div', { class: 'btns' }, [btn('Pass', 'btn-ghost', function () { act({ t: 'pass', p: p }); }), el('div', { class: 'what', style: { 'align-self': 'center', flex: '2' }, text: 'You have ' + money(x.cash) })]));
     }
   }
   function renderDebt(box, p, me) {
@@ -901,11 +910,12 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
       case 'offer': Kit.sfx('flip'); return wait(150);
       case 'trade': Kit.callout('It’s a deal!'); Kit.sfx('good'); Kit.haptic('success'); return wait(700);
       case 'tradeNo': Kit.toast('No deal'); Kit.sfx('bad'); return wait(200);
-      case 'bankrupt': { if (view.chips && view.chips[e.p]) view.chips[e.p].classList.add('hit'); Kit.callout(S.players[e.p].name + ' is bankrupt!', '#ff4d5e'); Kit.sfx('boom'); Kit.haptic('heavy'); return wait(1400); }
+      case 'bankrupt': { if (view.chips && view.chips[e.p]) view.chips[e.p].classList.add('hit');
+        var bt = view.toks[e.p]; if (bt && bt.animate && !TEST.instant) bt.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-60%) scale(1.6) rotate(25deg)' }], { duration: T(1100), easing: 'ease-in', fill: 'forwards' }); Kit.callout(S.players[e.p].name + ' is bankrupt!', '#ff4d5e'); Kit.sfx('boom'); Kit.haptic('heavy'); return wait(1400); }
       case 'debt': {
         if (view.chips && view.chips[e.p]) { view.chips[e.p].classList.remove('hit'); void view.chips[e.p].offsetWidth; view.chips[e.p].classList.add('hit'); }
-        if (e.sq >= 0) floatAt(e.sq, money(e.a) + '!', 'bad');
-        Kit.callout((S.players[e.p].name) + ' owes ' + money(e.a), '#ff4d5e'); Kit.sfx('bad'); Kit.haptic('error'); return wait(1000);
+        if (e.sq >= 0) { floatAt(e.sq, money(e.a) + '!', 'bad'); popDeed(e.sq); }
+        Kit.sfx('bad'); Kit.haptic('error'); return wait(1200);
       }
       case 'pot': Kit.callout('Jackpot!'); Kit.sfx('sparkle'); return wait(600);
       case 'turn': return wait(80);
@@ -975,7 +985,11 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
     if (e.f >= 0) { chipCash(e.f); floatChip(e.f, '−' + money(e.a), 'dn'); }
     if (e.t >= 0) { chipCash(e.t); floatChip(e.t, '+' + money(e.a), 'up'); }
     if (e.t === -2) renderCentre();
-    if (why === 'rent' && e.sq >= 0) floatAt(e.sq, 'Rent ' + money(e.a), 'bad');
+    if (why === 'rent' && e.sq >= 0) {
+      floatAt(e.sq, 'Rent ' + money(e.a), 'bad');
+      // the deed pops up with the rent that applies lit up
+      popDeed(e.sq);
+    }
     if (why === 'go') floatAt(0, '+' + money(e.a), 'good');
     if (TEST.instant) return Promise.resolve();
     var a = anchor(e.f), b = anchor(e.t), c = billColor(e.a), n = e.a >= 200 ? 3 : e.a >= 50 ? 2 : 1;
@@ -991,6 +1005,10 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
     Kit.sfx('deal', 0.8);
     if (e.f >= 0 && isHuman(e.f) && (why === 'rent' || why === 'tax')) Kit.haptic('medium');
     return wait(why === 'rent' || why === 'tax' || why === 'card' || why === 'repairs' ? 650 : why === 'go' ? 450 : 260);
+  }
+  function popDeed(sq) {
+    if (TEST.instant || sq < 0 || !SQ[sq].p) return;
+    var dp = el('div', { class: 'mdeed', html: deedHTML(sq) }); view.board.appendChild(dp); setTimeout(function () { dp.remove(); }, T(1700) + 50);
   }
   function floatChip(i, text, cls) {
     var c = view.chips && view.chips[i]; if (!c) return;
