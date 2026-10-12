@@ -63,14 +63,21 @@
   // ── Icons (drawn around 0,0, about 40 units across) ──
   var IC = {
     train: function () {
+      // a side-on steam locomotive heading left: boiler, stack, dome, cab, cowcatcher, wheels and rod
+      var B = BOARD;
       return '<g fill="' + INK + '">' +
-        '<path d="M-22 6h34v-13h-6v-6h10v6h4v13h4l4 7h-50z"/>' +       // boiler and cab
-        '<rect x="-17" y="-14" width="5" height="9" rx="1"/><rect x="-19" y="-16" width="9" height="3" rx="1"/>' +   // smokestack
-        '<path d="M-22 6l-6 8h8z"/>' +                                    // cowcatcher
-        '<rect x="2" y="-2" width="7" height="5" fill="' + BOARD + '"/>' + // cab window
-        '<circle cx="-14" cy="14" r="5"/><circle cx="-2" cy="14" r="5"/><circle cx="12" cy="14" r="5"/>' +
-        '<circle cx="-14" cy="14" r="2" fill="' + BOARD + '"/><circle cx="-2" cy="14" r="2" fill="' + BOARD + '"/><circle cx="12" cy="14" r="2" fill="' + BOARD + '"/>' +
-        '</g><path d="M-14 -18c-4-6 2-9-2-14" fill="none" stroke="' + INK + '" stroke-width="2" stroke-linecap="round" opacity=".5"/>';
+        '<path d="M-17-8h22v14h-22a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3z"/>' +                       // boiler
+        '<path d="M-15-8v-7h-3l1-4h10l1 4h-3v7z"/>' +                                           // flared smokestack
+        '<path d="M-5-8a3.5 3.5 0 0 1 7 0z"/>' +                                                 // steam dome
+        '<rect x="-23" y="-6" width="3" height="4" rx="1"/>' +                                   // headlamp
+        '<path d="M5-17h18v23h-18z"/><rect x="3" y="-20" width="22" height="3.5" rx="1"/>' +     // cab and roof
+        '<rect x="10" y="-13" width="9" height="7" rx="1" fill="' + B + '"/>' +                 // cab window
+        '<rect x="-21" y="6" width="45" height="3"/>' +                                          // frame
+        '<path d="M-20 5v11h-11z"/>' +                                                         // cowcatcher
+        '<circle cx="-14" cy="14" r="4"/><circle cx="1" cy="13" r="6.5"/><circle cx="16" cy="13" r="6.5"/>' +
+        '<circle cx="-14" cy="14" r="1.6" fill="' + B + '"/><circle cx="1" cy="13" r="2.4" fill="' + B + '"/><circle cx="16" cy="13" r="2.4" fill="' + B + '"/>' +
+        '<path d="M-14 14H16" stroke="' + B + '" stroke-width="1.4"/>' +                       // side rod
+        '</g><g fill="' + INK + '" opacity=".38"><circle cx="-10" cy="-22.5" r="2.6"/><circle cx="-4" cy="-25.5" r="3.2"/><circle cx="3" cy="-27" r="2.6"/></g>';
     },
     bulb: function () {
       return '<path d="M0-20a14 14 0 0 1 8 25.5V10h-16V5.5A14 14 0 0 1 0-20z" fill="#ffe14d" stroke="' + INK + '" stroke-width="2.4"/>' +
