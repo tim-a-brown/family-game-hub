@@ -188,7 +188,9 @@ var GAMES = [
 //   unit   'time' (seconds, m:ss) | 'moves' | 'marbles' (see ArcadeHi.marbles)
 //          | 'points' | 'score'                      dec  decimals on times
 // Peggle's level names, in the order of LEVELS in games/peggle.html
-var PEGGLE_LEVELS = ['First Light', 'Rainbow Arches', 'Spiral', 'Bubbles', 'Hourglass', 'Diamonds', 'Twin Peaks', 'The Wheel', 'Sliders', 'Orbits', 'Pendulum', 'Galaxy', 'Clockwork'];
+var PEGGLE_LEVELS = ['First Light', 'Rainbow Arches', 'Spiral', 'Bubbles', 'Hourglass', 'Diamonds', 'Twin Peaks', 'The Wheel', 'Sliders', 'Orbits', 'Pendulum', 'Galaxy', 'Clockwork',
+  'Bumper Garden', 'Iron Works', 'Portals', 'Conveyor', 'Ghost Lights', 'Racetrack', 'Gravity Well', 'Windy Ridge', 'The Vault',
+  'Splitter', 'Runaway Bucket', 'Gear Train', 'Wormholes', 'Storm Front', 'Fortress', 'Event Horizon', 'Grand Finale'];
 var HI_BOARDS = (function () {
   var b = {};
   function add(game, key, o) { o.game = game; b[key] = o; }

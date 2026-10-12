@@ -113,7 +113,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   'use strict';
   var el = Kit.el, app = document.getElementById('app'), root = document.documentElement;
   var KEY = 'peggle', SAVE = 'peggle_state', PROG = 'peggle_progress';
-  // High scores: a board per level (hi_peggle_l1..13) and the full game (hi_peggle_run). The run under way is kept
+  // High scores: a board per level (hi_peggle_l1, l2, ... one per level) and the full game (hi_peggle_run). The run under way is kept
   // on this device only (peggle_runstate). Old one-for-all board hi_peggle: see peggleOld in games.js.
   var RUNK = 'peggle_runstate', RUNB = 'peggle_run';
   function lvKey(n) { return 'peggle_l' + n; }
@@ -466,28 +466,271 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       B.row(500, 30, 330, 37.5); B.row(528, 48.75, 311.25, 37.5);
       B.group({ t: 'slide', dx: 50, dy: 0, w: 0.8 }, function () { B.brick(64, 558, 126, 558); B.brick(234, 558, 296, 558); });
       for (var y = 236; y <= 424; y += 47) { B.peg(22, y); B.peg(338, y); }
+    } },
+    // ── Levels 14 to 30: a new kind of piece every level or two, then all of them together ──
+    { name: 'Bumper Garden', bg: 'garden', intro: ['bump'], mus: [0, 2, 0.95], build: function (B) {
+      B.row(112, 30, 330, 30);
+      [[80, 210], [280, 210], [180, 330], [80, 450], [280, 450]].forEach(function (c) { B.ring(c[0], c[1], 30, 8, PI / 8); B.peg(c[0], c[1]); });
+      B.bumper(180, 210); B.bumper(36, 330); B.bumper(324, 330); B.bumper(180, 450);
+      B.lineBricks(108, 240, 148, 296, 1); B.lineBricks(252, 240, 212, 296, 1);
+      B.lineBricks(108, 420, 148, 364, 1); B.lineBricks(252, 420, 212, 364, 1);
+      B.lineBricks(180, 372, 180, 408, 1);
+      B.row(540, 40, 320, 40);
+    } },
+    { name: 'Iron Works', bg: 'foundry', intro: ['iron'], mus: [8, -2, 1], build: function (B) {
+      B.row(110, 30, 330, 30);
+      B.lineBricks(24, 160, 150, 280, 4); B.lineBricks(336, 160, 210, 280, 4);
+      B.arc(180, 150, 60, 0.15 * PI, 0.85 * PI, 6);
+      B.iron = 1; B.w = 3;
+      B.lattice(function (x, y) { return Math.abs(x - 180) / 1.2 + Math.abs(y - 385) < 75; }, 30, 300, 470);
+      B.peg(180, 250); B.peg(110, 330); B.peg(250, 330);
+      B.iron = 0; B.w = 1;
+      for (var y = 220; y <= 460; y += 40) { B.peg(26, y); B.peg(334, y); }
+      B.group({ t: 'slide', dx: 55, dy: 0, w: 0.8 }, function () { B.brick(40, 515, 110, 515); B.brick(250, 515, 320, 515); });
+      B.row(548, 60, 300, 40);
+    } },
+    { name: 'Portals', bg: 'void', intro: ['portal', 'wall'], mus: [9, 3, 1], build: function (B) {
+      // two steel boxes at the bottom: the only way in is through a portal
+      B.kind = 'wall';
+      B.lineBricks(0, 420, 124, 420, 3); B.lineBricks(124, 420, 124, 548, 3);
+      B.lineBricks(360, 420, 236, 420, 3); B.lineBricks(236, 420, 236, 548, 3);
+      B.kind = null;
+      B.portal(60, 196, 62, 446, '#ff6ad5'); B.portal(300, 196, 298, 446, '#5fe3ff');
+      B.w = 4;
+      [[30, 474], [66, 474], [102, 474], [48, 504], [84, 504], [30, 534], [66, 534], [102, 534]].forEach(function (p) { B.peg(p[0], p[1]); B.peg(360 - p[0], p[1]); });
+      B.w = 1;
+      B.arc(60, 196, 40, 0.1 * PI, 0.9 * PI, 5); B.arc(300, 196, 40, 0.1 * PI, 0.9 * PI, 5);
+      B.row(108, 40, 320, 40);
+      B.arc(180, 330, 110, PI * 1.12, PI * 1.88, 9); B.arc(180, 330, 68, PI * 1.15, PI * 1.85, 6);
+      B.arcBricks(180, 330, 150, PI * 1.3, PI * 1.7, 3);
+      B.row(290, 24, 110, 43); B.row(290, 250, 336, 43); B.row(345, 40, 100, 30); B.row(345, 260, 320, 30);
+      for (var y = 380; y <= 540; y += 40) B.peg(180, y);
+      B.peg(156, 460); B.peg(204, 460); B.peg(156, 530); B.peg(204, 530);
+    } },
+    { name: 'Conveyor', bg: 'factory', intro: ['belt'], mus: [12, -3, 1.05], build: function (B) {
+      B.row(108, 30, 330, 30); B.row(150, 50, 310, 40);
+      B.belt(24, 200, 156, 200, 170); B.belt(336, 200, 204, 200, 170);
+      B.row(250, 40, 320, 40); B.row(290, 60, 300, 40);
+      B.belt(60, 345, 300, 345, -190);
+      B.row(392, 30, 330, 37.5); B.peg(180, 430);
+      B.belt(30, 455, 150, 455, -160); B.belt(330, 455, 210, 455, -160);
+      B.row(505, 40, 320, 40); B.row(545, 60, 300, 40);
+      B.lineBricks(16, 236, 16, 320, 2); B.lineBricks(344, 236, 344, 320, 2);
+    } },
+    { name: 'Ghost Lights', bg: 'ghost', intro: ['ghost'], mus: [2, 2, 1.1], build: function (B) {
+      B.row(110, 30, 330, 30);
+      B.w = 2; B.phase = { per: 3.2, duty: 0.6, off: function (x, y) { return Math.atan2(y - 330, x - 180) / TAU; } };
+      B.ring(180, 330, 62, 10, 0); B.ring(180, 330, 108, 16, PI / 16); B.ring(180, 330, 154, 22, 0);
+      B.phase = null; B.w = 1;
+      B.peg(180, 330);
+      B.peg(24, 170); B.peg(336, 170); B.peg(24, 490); B.peg(336, 490);
+      B.row(548, 40, 320, 40);
+    } },
+    { name: 'Racetrack', bg: 'stadium', intro: ['track'], mus: [8, 1, 0.9], build: function (B) {
+      B.w = 2.5; B.track(20, stadium(110, 250, 330, 75), 1 / 13); B.w = 1;
+      B.bumper(110, 330); B.bumper(250, 330);
+      for (var y = 300; y <= 360; y += 30) B.row(y, 150, 210, 30);
+      B.row(108, 30, 330, 30); B.row(165, 50, 310, 40);
+      B.row(470, 40, 320, 40); B.row(510, 60, 300, 40); B.row(548, 40, 320, 40);
+    } },
+    { name: 'Gravity Well', bg: 'hole', intro: ['well'], mus: [11, -2, 1.1], build: function (B) {
+      B.well(180, 330, 165, 390);
+      B.bumper(180, 330, 12);
+      B.ring(180, 330, 48, 8, 0);
+      for (var k = 0; k < 4; k++) B.arc(180, 330, 92, k * PI / 2 + 0.25, k * PI / 2 + PI / 2 - 0.25, 3);
+      for (k = 0; k < 4; k++) B.arcBricks(180, 330, 136, k * PI / 2 + PI / 4 - 0.42, k * PI / 2 + PI / 4 + 0.42, 2);
+      B.w = 2; B.lattice(function (x, y) { return Math.hypot(x - 180, y - 330) > 176; }, 36, 104, 560); B.w = 1;
+    } },
+    { name: 'Windy Ridge', bg: 'ridge', intro: ['wind'], mus: [6, 2, 1], build: function (B) {
+      B.wind(0, 165, FW, 72, 380); B.wind(0, 300, FW, 72, -380); B.wind(0, 432, FW, 64, 330);
+      for (var r = 0; r < 13; r++) {
+        var y = 110 + r * 36, off = r % 2 ? 24 : 0;
+        for (var x = 30 + off; x <= 330; x += 48) {
+          B.w = (y > 160 && y < 240 && x < 100) || (y > 295 && y < 375 && x > 260) || (y > 428 && y < 500 && x < 100) ? 3 : 1;
+          B.peg(x, y);
+        }
+      }
+      B.w = 1;
+    } },
+    { name: 'The Vault', bg: 'vault', intro: ['shield'], mus: [4, -1, 1], build: function (B) {
+      B.kind = 'shield'; B.grp = 1; B.arcBricks(180, 360, 72, 0, TAU, 10); B.kind = null;
+      B.w = 6; B.ring(180, 360, 40, 7, -PI / 2); B.peg(180, 360); B.w = 1;
+      B.sw(44, 222, 1); B.sw(316, 222, 1);
+      B.row(108, 30, 330, 30); B.row(160, 50, 310, 40);
+      B.arc(180, 360, 122, PI * 1.08, PI * 1.92, 10);
+      for (var y = 280; y <= 470; y += 38) { B.peg(24, y); B.peg(336, y); }
+      B.arc(180, 360, 122, 0.12 * PI, 0.88 * PI, 8);
+      B.row(530, 40, 320, 40);
+    } },
+    { name: 'Splitter', bg: 'city', intro: ['split'], mus: [3, -2, 1], build: function (B) {
+      B.split(110, 235, 18); B.split(250, 235, 18);
+      B.row(108, 30, 330, 30);
+      [110, 250].forEach(function (cx) { B.arc(cx, 235, 46, -0.32 * PI, 0.32 * PI, 3); B.arc(cx, 235, 46, 0.68 * PI, 1.32 * PI, 3); });
+      B.iron = 1; [[180, 200], [180, 280], [60, 380], [300, 380], [130, 470], [230, 470]].forEach(function (p) { B.peg(p[0], p[1]); }); B.iron = 0;
+      B.lattice(function (x, y) { B.w = Math.abs(x - 180) > 105 && y > 440 ? 2.5 : 1; return Math.abs(x - 180) > 24 || y > 420; }, 36, 330, 556);
+      B.w = 1;
+    } },
+    { name: 'Runaway Bucket', bg: 'desert', intro: ['bucket'], mus: [4, 3, 0.9], bk: function (t) { return 1.1 * t + 1.6 * Math.sin(0.42 * t); }, build: function (B) {
+      B.row(105, 30, 330, 30);
+      for (var r = 0; r < 5; r++) {
+        B.w = 2;
+        B.group({ t: 'slide', dx: 34, dy: 10, w: 1.2 + r * 0.12, ph: r * 1.3 }, function () { for (var j = 0; j < 6; j++) B.peg(180 + (j - 2.5) * 46, 150 + r * 70); });
+        B.w = 1;
+      }
+      B.bumper(40, 325); B.bumper(320, 325); B.bumper(180, 395);
+      for (var y = 185; y <= 465; y += 70) { B.peg(22, y); B.peg(338, y); }
+      B.row(500, 40, 320, 40);
+      B.lineBricks(20, 545, 340, 545, 5);
+    } },
+    { name: 'Gear Train', bg: 'brass', intro: [], mus: [12, 2, 0.95], build: function (B) {
+      function gear(cx, cy, r, w) {
+        B.w = 2;
+        B.group({ t: 'rot', cx: cx, cy: cy, w: w }, function () {
+          for (var i = 0; i < 14; i++) if (i % 7) B.peg(cx + r * Math.cos(TAU * i / 14), cy + r * Math.sin(TAU * i / 14));
+          for (var k = 0; k < 6; k++) { var a = TAU * k / 6 + TAU / 28; B.brick(cx + (r + 13) * Math.cos(a), cy + (r + 13) * Math.sin(a), cx + (r + 25) * Math.cos(a), cy + (r + 25) * Math.sin(a)); }
+        });
+        B.w = 1;
+      }
+      gear(100, 220, 55, 0.8); gear(260, 330, 55, -0.95); gear(100, 462, 50, 1.05);
+      B.iron = 1; B.w = 2;
+      B.peg(100, 220); B.ring(100, 220, 26, 5, -PI / 2); B.peg(260, 330); B.peg(100, 462); B.ring(100, 462, 24, 5, PI / 2);
+      B.iron = 0; B.w = 1;
+      B.lattice(function (x, y) { return Math.hypot(x - 272, y - 168) < 56; }, 30, 110, 228);
+      B.row(108, 30, 150, 30);
+      B.lattice(function (x, y) { return Math.hypot(x - 268, y - 492) < 62; }, 30, 432, 556);
+      B.row(342, 24, 150, 32);
+    } },
+    { name: 'Wormholes', bg: 'nebula2', intro: ['ghost', 'portal', 'well'], mus: [9, -4, 1.05], build: function (B) {
+      B.well(180, 300, 130, 380);
+      B.portal(36, 150, 324, 540, '#ff6ad5'); B.portal(324, 150, 36, 540, '#5fe3ff');
+      B.w = 2; B.phase = { per: 2.6, duty: 0.55, off: function (x, y) { return -Math.atan2(y - 300, x - 180) / TAU; } };
+      B.ring(180, 300, 70, 12, 0);
+      B.phase = null; B.w = 1;
+      B.iron = 1; B.w = 3; B.peg(180, 300); B.ring(180, 300, 32, 4, PI / 4); B.iron = 0; B.w = 1;
+      for (var k = 0; k < 4; k++) B.arcBricks(180, 300, 112, k * PI / 2 + 0.3, k * PI / 2 + PI / 2 - 0.3, 2);
+      B.row(108, 80, 280, 40);
+      for (var y = 220; y <= 400; y += 45) { B.peg(24, y); B.peg(336, y); }
+      B.lattice(function (x, y) { return Math.hypot(x - 36, y - 540) > 40 && Math.hypot(x - 324, y - 540) > 40; }, 36, 450, 556);
+    } },
+    { name: 'Storm Front', bg: 'storm', intro: ['gust'], mus: [5, 1, 0.85], build: function (B) {
+      B.wind(0, 140, FW, 390, 320, 0.85);
+      B.w = 2.5; B.track(14, function (s) { return [180 + 125 * Math.sin(TAU * s), 330 + 85 * Math.sin(2 * TAU * s)]; }, 1 / 9); B.w = 1;
+      B.bumper(50, 190); B.bumper(310, 190); B.bumper(180, 470);
+      B.row(108, 30, 330, 30);
+      for (var y = 220; y <= 480; y += 40) { B.peg(22, y); B.peg(338, y); }
+      [300, 330, 360].forEach(function (yy) { B.peg(110, yy); B.peg(250, yy); });
+      B.row(535, 40, 320, 40);
+    } },
+    { name: 'Fortress', bg: 'castle', intro: ['shield', 'relock'], relock: 1, mus: [10, 0, 0.9], build: function (B) {
+      // two keeps behind glass; each keep's switch is on the far side, and the glass goes back up after every shot
+      B.kind = 'shield';
+      [[40, 1], [220, 2]].forEach(function (k) {
+        var x = k[0]; B.grp = k[1];
+        B.lineBricks(x, 360, x + 100, 360, 3); B.lineBricks(x + 100, 360, x + 100, 450, 2);
+        B.lineBricks(x + 100, 450, x, 450, 3); B.lineBricks(x, 450, x, 360, 2);
+      });
+      B.kind = null;
+      B.w = 6; [40, 220].forEach(function (x) { [[25, 386], [50, 386], [75, 386], [37, 420], [63, 420]].forEach(function (p) { B.peg(x + p[0], p[1]); }); }); B.w = 1;
+      B.sw(322, 232, 1); B.sw(38, 232, 2);
+      B.iron = 1; B.row(160, 40, 320, 40); B.iron = 0;
+      B.row(108, 30, 330, 30);
+      B.row(232, 90, 270, 45);
+      B.belt(30, 300, 166, 300, 150); B.belt(330, 300, 194, 300, 150);
+      for (var y = 362; y <= 462; y += 33) B.peg(180, y);
+      B.row(500, 40, 320, 40); B.row(545, 60, 300, 40);
+    } },
+    { name: 'Event Horizon', bg: 'hole2', intro: [], mus: [11, 2, 0.95], build: function (B) {
+      B.well(110, 250, 120, 420); B.well(250, 430, 120, 420);
+      [[110, 250, 0.9], [250, 430, -1.0]].forEach(function (c) {
+        B.w = 2;
+        B.group({ t: 'rot', cx: c[0], cy: c[1], w: c[2] }, function () { for (var i = 0; i < 14; i++) if (i % 5) B.peg(c[0] + 64 * Math.cos(TAU * i / 14), c[1] + 64 * Math.sin(TAU * i / 14)); });
+        B.w = 3; B.iron = 1; B.ring(c[0], c[1], 26, 5, 0); B.iron = 0; B.w = 1;
+      });
+      B.portal(330, 128, 30, 556, '#b98cff');
+      B.row(108, 30, 290, 32);
+      B.lattice(function (x, y) { return Math.hypot(x - 110, y - 250) > 95 && Math.hypot(x - 250, y - 430) > 95 && Math.hypot(x - 330, y - 128) > 32 && Math.hypot(x - 30, y - 556) > 32; }, 40, 150, 556);
+    } },
+    { name: 'Grand Finale', bg: 'finale', intro: ['relock'], relock: 1, mus: [11, 0, 0.88], bk: function (t) { return 1.0 * t + 1.4 * Math.sin(0.5 * t); }, build: function (B) {
+      B.kind = 'shield'; B.grp = 1; B.arcBricks(180, 330, 56, 0, TAU, 8); B.kind = null;
+      B.w = 6; B.iron = 1; B.peg(180, 330); B.ring(180, 330, 28, 5, -PI / 2); B.iron = 0; B.w = 1;
+      B.group({ t: 'rot', cx: 180, cy: 330, w: 0.85 }, function () {
+        for (var i = 0; i < 12; i++) {
+          var a = TAU * i / 12, x = 180 + 100 * Math.cos(a), y = 330 + 100 * Math.sin(a);
+          if (i === 0 || i === 6) B.sw(x, y, 1); else if (i % 3) B.peg(x, y);
+        }
+      });
+      B.w = 2; B.phase = { per: 2.8, duty: 0.55, off: function (x) { return x / 360; } };
+      B.arc(180, 330, 150, PI * 1.1, PI * 1.9, 10);
+      B.phase = null; B.w = 1;
+      B.split(180, 140, 16);
+      B.bumper(40, 482); B.bumper(320, 482);
+      B.portal(26, 250, 334, 250, '#ffd45a');
+      B.row(108, 30, 330, 30);
+      B.arc(180, 330, 142, 0.12 * PI, 0.88 * PI, 9);
+      for (var y = 320; y <= 440; y += 40) { B.peg(24, y); B.peg(336, y); }
+      B.row(540, 60, 300, 40);
     } }
   ];
   var NL = LEVELS.length;
+  // a stadium-shaped loop: two half circles of radius r around (x1,cy) and (x2,cy), joined by straights; s in 0..1
+  function stadium(x1, x2, cy, r) {
+    var st = x2 - x1, tot = 2 * st + TAU * r;
+    return function (s) {
+      var d = s * tot, a;
+      if (d < st) return [x1 + d, cy - r];
+      d -= st; if (d < PI * r) { a = -PI / 2 + d / r; return [x2 + r * Math.cos(a), cy + r * Math.sin(a)]; }
+      d -= PI * r; if (d < st) return [x2 - d, cy + r];
+      d -= st; a = PI / 2 + d / r; return [x1 + r * Math.cos(a), cy + r * Math.sin(a)];
+    };
+  }
+  // What each new kind of piece does, shown the first time a level with it starts
+  var MECH = {
+    bump: ['Bumpers', 'Silver bumpers kick the ball away hard'],
+    iron: ['Iron pegs', 'Pegs in a steel ring take two hits'],
+    portal: ['Portals', 'Into one portal, out of its twin'],
+    wall: ['Steel walls', 'Steel walls never break'],
+    belt: ['Conveyors', 'Moving belts carry the ball along'],
+    ghost: ['Ghost pegs', 'Faded pegs come and go. The ball flies through them while they are gone'],
+    track: ['Racetrack', 'Pegs race around the track'],
+    well: ['Gravity well', 'The swirl pulls the ball toward its middle'],
+    wind: ['Wind', 'Wind pushes the ball along the streaky bands'],
+    shield: ['Shields', 'Hit a gold switch peg to drop the glass shields'],
+    split: ['Splitter', 'Fly through a ring and the ball splits in two'],
+    bucket: ['Runaway bucket', 'The bucket speeds up and slows down'],
+    gust: ['Gusts', 'The wind keeps changing direction'],
+    relock: ['Glass comes back', 'Shields go back up after every shot']
+  };
 
   function buildLevel(n) {
     var def = LEVELS[n - 1], B = Builder();
     def.build(B);
     var objs = B.objs, rng = mkRng(n * 7919 + 13);
-    objs.forEach(function (o, i) {
-      o.i = i; o.c = 'b'; o.lit = false; o.gone = false;
+    function prep(o) {
+      o.lit = false; o.gone = false;
       if (o.k === 'brick') {
         o.bmx = (o.bx + o.bx2) / 2; o.bmy = (o.by + o.by2) / 2;
         o.hl = Math.hypot(o.bx2 - o.bx, o.by2 - o.by) / 2;
       }
       o.vx = 0; o.vy = 0; place(o, 0);
-    });
-    // 25 orange, 2 green: shuffled with the level's seed
-    var idx = objs.map(function (o, i) { return i; });
-    for (var i = idx.length - 1; i > 0; i--) { var j = Math.floor(rng() * (i + 1)); var t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
-    var nO = Math.min(25, objs.length - 4);
+    }
+    objs.forEach(function (o, i) { o.i = i; o.c = 'b'; prep(o); });
+    B.extras.forEach(function (o, i) { o.i = 1000 + i; o.c = 'x'; prep(o); });
+    var nO = Math.min(25, objs.length - 4), i, idx;
+    if (!objs.some(function (o) { return o.w; })) {
+      // 25 orange, 2 green: shuffled with the level's seed
+      idx = objs.map(function (o, i) { return i; });
+      for (i = idx.length - 1; i > 0; i--) { var j = Math.floor(rng() * (i + 1)); var t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
+    } else {
+      // weighted draw: pieces in the hard spots (w > 1) are more likely to be orange; greens go on plain ones
+      var keyed = objs.map(function (o, i) { return { i: i, k: Math.pow(rng(), 1 / (o.w || 1)) }; });
+      keyed.sort(function (a, b) { return b.k - a.k || a.i - b.i; });
+      idx = keyed.map(function (q) { return q.i; });
+      var rest = idx.slice(nO), plain = rest.filter(function (k) { return !objs[k].w; });
+      idx = idx.slice(0, nO).concat(plain.length >= 2 ? plain : rest);
+    }
     for (i = 0; i < nO; i++) objs[idx[i]].c = 'o';
     objs[idx[nO]].c = 'g'; objs[idx[nO + 1]].c = 'g';
+    objs.extras = B.extras; objs.zones = B.zones;
     return objs;
   }
 
@@ -498,6 +741,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (m.t === 'rot') a = m.w * t;
     else if (m.t === 'osc') a = m.A * Math.sin(m.w * t);
     else if (m.t === 'slide') { var s = Math.sin(m.w * t + (m.ph || 0)); ox = m.dx * s; oy = m.dy * s; }
+    else if (m.t === 'path') { var q = m.w * t + m.ph, p = m.fn(q - Math.floor(q)); ox = p[0] - m.cx; oy = p[1] - m.cy; }
     m._t = t; m._x = { c: Math.cos(a), s: Math.sin(a), ox: ox, oy: oy };
     return m._x;
   }
@@ -559,7 +803,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   // ═══ Game state ═══════════════════════════════════════════════════════════
   var L = null;            // current level run
-  var objs = [], extras = [], colliders = [], movers = [];
+  var objs = [], extras = [], colliders = [], movers = [], zones = [], phasers = [], dynAim = false;
   var balls = [], shot = null, state = 'none', view = 'none';
   var wt = 0, rt = 0, ang = 0, acc = 0, speedMul = 1, timeScale = 1, tsTarget = 1, hitStop = 0;
   var paused = false, recoil = 0, shake = 0, flash = 0;
@@ -568,7 +812,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var guideCache = { key: '', pts: [], ghost: null, t: -1 };
   var nextBallId = 1;
 
-  function bucketX(t) { return 180 + 140 * (2 / PI) * Math.asin(Math.sin(t * 0.75)); }
+  function bucketX(t) { return 180 + 140 * (2 / PI) * Math.asin(Math.sin(L && L.def.bk ? L.def.bk(t) : t * 0.75)); }
   var bucketL = { k: 'bw', r: 4, c: 'x', lit: true }, bucketR = { k: 'bw', r: 4, c: 'x', lit: true };
   function placeBucket(t) {
     var x = bucketX(t), v = (bucketX(t + 0.004) - x) / 0.004;
@@ -585,10 +829,51 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function orangeLeft() { var n = 0; for (var i = 0; i < objs.length; i++) if (objs[i].c === 'o' && !objs[i].lit && !objs[i].gone) n++; return n; }
   function orangeTotal() { var n = 0; for (var i = 0; i < objs.length; i++) if (objs[i].c === 'o') n++; return n; }
   function mult() { var h = L ? L.orangeHit : 0; return h >= 22 ? 10 : h >= 19 ? 5 : h >= 15 ? 3 : h >= 10 ? 2 : 1; }
-  function rebuildColliders() { colliders = objs.concat(L && L.fever ? posts : [bucketL, bucketR]); }
+  function rebuildColliders() { colliders = objs.concat(extras, L && L.fever ? posts : [bucketL, bucketR]); }
+  // ghost pegs: solid for the first `duty` part of each cycle; once lit they stay until cleared
+  function phaseF(o, t) { var q = t / o.ph.per + o.ph.off; return q - Math.floor(q); }
   function placeAll(t) {
     for (var i = 0; i < movers.length; i++) place(movers[i], t);
+    for (i = 0; i < phasers.length; i++) { var o = phasers[i]; o.off = !o.lit && phaseF(o, t) >= o.ph.duty; }
     if (!L || !L.fever) placeBucket(t);
+  }
+  // shields are down while their switch's group is open
+  function setShields() {
+    for (var i = 0; i < extras.length; i++) {
+      var o = extras[i];
+      if (o.t === 'shield') { var off = !!L.open[o.grp]; if (off !== !!o.off) o.offT = rt; o.off = off; }
+      else if (o.t === 'sw') o.on = !!L.open[o.grp];
+    }
+  }
+
+  // ── Zones: pushes (wind, gravity wells) before a step, jumps (portals) and splitters after it ──
+  function windA(z, t) { return z.gust ? z.ax * Math.sin(z.gust * t) : z.ax; }
+  function zonePush(b, dt, t) {
+    for (var i = 0; i < zones.length; i++) {
+      var z = zones[i];
+      if (z.t === 'wind') { if (b.x > z.x && b.x < z.x + z.w && b.y > z.y && b.y < z.y + z.h) b.vx += windA(z, t) * dt; }
+      else if (z.t === 'well') {
+        // never stronger than gravity, so the ball can't be held up forever
+        var dx = z.x - b.x, dy = z.y - b.y, d2 = dx * dx + dy * dy;
+        if (d2 < z.R * z.R && d2 > 1) { var d = Math.sqrt(d2), a = z.K * Math.min(1, 1.25 * (1 - d / z.R)) / d; b.vx += dx * a * dt; b.vy += dy * a * dt; }
+      }
+    }
+  }
+  function zoneJump(b, ev) {
+    if (b.inP && Math.hypot(b.x - b.inP.x, b.y - b.inP.y) > b.inP.r + BR) b.inP = null;
+    for (var i = 0; i < zones.length; i++) {
+      var z = zones[i];
+      if (z.t === 'portal') {
+        if (z === b.inP || Math.abs(b.x - z.x) > z.r || Math.abs(b.y - z.y) > z.r || Math.hypot(b.x - z.x, b.y - z.y) > z.r) continue;
+        var fx0 = b.x, fy0 = b.y;
+        b.x = z.to.x + (b.x - z.x) * 0.3; b.y = z.to.y + (b.y - z.y) * 0.3; b.inP = z.to;
+        if (ev) ev(b, z, fx0, fy0);
+        return;
+      } else if (z.t === 'split' && ev) {
+        var bit = 1 << i;
+        if (!((b.sp || 0) & bit) && Math.hypot(b.x - z.x, b.y - z.y) < z.r) { b.sp = (b.sp || 0) | bit; ev(b, z); }
+      }
+    }
   }
 
   // Advance one ball by dt with continuous collision. onHit(b, obj|null, wall)
@@ -603,7 +888,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (dy < 0 && b.y + dy < BR) { tw = Math.max(0, (BR - b.y) / dy); if (tw < best) { best = tw; wall = 3; } }
       var reach = Math.abs(dx) + Math.abs(dy) + BR + 3;
       for (var i = 0; i < colliders.length; i++) {
-        var o = colliders[i]; if (o.gone) continue;
+        var o = colliders[i]; if (o.gone || o.off) continue;
         var lim = o.ext + reach + (o.vx || o.vy ? 6 : 0);
         if (Math.abs(o.mx - b.x) > lim || Math.abs(o.my - b.y) > lim) continue;
         var ox = o.vx * dt * used, oy = o.vy * dt * used, rdx = dx - o.vx * dt * rem, rdy = dy - o.vy * dt * rem, R = BR + o.r, t;
@@ -613,7 +898,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       }
       if (best > 1) { b.x += dx; b.y += dy; used = 1; break; }
       b.x += dx * best; b.y += dy * best;
-      var at = used + rem * best, nx, ny, vox = 0, voy = 0, e = E_WALL;
+      var at = used + rem * best, nx, ny, vox = 0, voy = 0, e = E_WALL, fr = 0.015, kick = 0;
       if (wall === 1) { nx = 1; ny = 0; } else if (wall === 2) { nx = -1; ny = 0; } else if (wall === 3) { nx = 0; ny = 1; }
       else {
         var cx = hitO.vx * dt * at, cy = hitO.vy * dt * at, qx, qy;
@@ -626,12 +911,18 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         // never leave the ball overlapping
         if (d < BR + hitO.r) { b.x = qx + nx * (BR + hitO.r + 0.01); b.y = qy + ny * (BR + hitO.r + 0.01); }
         vox = hitO.vx; voy = hitO.vy; e = E_PEG;
+        if (hitO.t === 'bump') { e = 0.9; kick = 400; }
+        else if (hitO.belt) {
+          // a belt's surface moves along it: the ball picks up its speed
+          var bl = Math.sqrt(LL) || 1; vox += ux / bl * hitO.belt; voy += uy / bl * hitO.belt; fr = 0.35;
+        }
       }
       var rvx = b.vx - vox, rvy = b.vy - voy, vn = rvx * nx + rvy * ny;
       if (vn < 0) {
-        var ee = -vn < 30 ? 0.25 : e;
+        var ee = -vn < 30 && !kick ? 0.25 : e;
         rvx -= (1 + ee) * vn * nx; rvy -= (1 + ee) * vn * ny;
-        var tx = -ny, ty = nx, vt = rvx * tx + rvy * ty; rvx -= 0.015 * vt * tx; rvy -= 0.015 * vt * ty;
+        var tx = -ny, ty = nx, vt = rvx * tx + rvy * ty; rvx -= fr * vt * tx; rvy -= fr * vt * ty;
+        if (kick) { var vk = rvx * nx + rvy * ny; if (vk < kick) { rvx += (kick - vk) * nx; rvy += (kick - vk) * ny; } }
         b.vx = rvx + vox; b.vy = rvy + voy;
       }
       // a ball balanced exactly on top of a peg rolls off instead of sitting there
@@ -644,10 +935,12 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   // Predict a ball's path (for the aiming guide and the last-peg slow motion).
   function simulate(x, y, vx, vy, maxT, onHit) {
-    var b = { x: x, y: y, vx: vx, vy: vy }, t = wt, pts = [], n = Math.ceil(maxT / TICK), res = { pts: pts, end: null, hitT: -1 };
+    var b = { x: x, y: y, vx: vx, vy: vy, inP: null }, t = wt, pts = [], n = Math.ceil(maxT / TICK), res = { pts: pts, end: null, hitT: -1 };
     for (var i = 0; i < n; i++) {
-      if (movers.length || !L.fever) placeAll(t);
+      if (movers.length || phasers.length || !L.fever) placeAll(t);
+      if (zones.length) zonePush(b, TICK, t);
       var r = stepBall(b, TICK, function (bb, o, wall) { return onHit ? onHit(bb, o, wall, t - wt) : null; });
+      if (zones.length && r !== 'stop') zoneJump(b, null);
       t += TICK;
       if (i % 4 === 0) pts.push(b.x, b.y);
       if (r === 'stop') { res.end = { x: b.x, y: b.y }; res.hitT = t - wt; break; }
@@ -662,6 +955,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var p = { unlocked: 1, best: {}, sel: 0 };
     try { var s = JSON.parse(localStorage.getItem(PROG)); if (s) { p.unlocked = s.unlocked || 1; p.best = s.best || {}; p.sel = s.sel || 0; p.cleared = s.cleared || {}; } } catch (e) {}
     p.cleared = p.cleared || {};
+    // a cleared level always opens the next one (saved before there were more levels, unlocked stopped at the last)
+    Object.keys(p.cleared).forEach(function (k) { if (p.cleared[k]) p.unlocked = Math.max(p.unlocked, Number(k) + 1 || 1); });
     // Cleared levels also come from game history, which syncs between devices.
     try {
       GameHistory.load(KEY).forEach(function (e) {
@@ -681,12 +976,15 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       gone: objs.map(function (o) { return o.gone ? 1 : 0; }).join(''), purple: L.purple, guide: L.guide,
       shots: L.shots, stats: L.stats, started: L.started, ang: ang, wt: wt
     };
+    // later levels: iron pegs' hits left, and which shields are down
+    if (objs.some(function (o) { return o.iron; })) s.hp = objs.map(function (o) { return o.iron ? o.hp : 0; }).join('');
+    var op = Object.keys(L.open || {}); if (op.length) s.op = op;
     try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
     Kit.resume.set((inRun() ? 'Full game · ' : '') + 'Level ' + L.n + ' · ' + L.ballsLeft + (L.ballsLeft === 1 ? ' ball' : ' balls') + ' left');
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
-  // ═══ Full game: levels 1 to 13 in a row, one total ═══════════════════════
+  // ═══ Full game: every level from 1 in a row, one total ════════════════════
   // Starting level 1 starts a run, like a credit on an arcade machine: it goes on while you clear each level in turn.
   // Running out of balls ends it, and its total (every level's score, the last one included) goes on the Full game
   // board; a retry of that level only counts for the level's own board. Starting any other level ends it with no
@@ -730,7 +1028,19 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       '<li><b>Multiball</b>: a second ball pops out of the green peg.</li><li><b>Spooky Ball</b>: when the ball falls out the bottom, it comes back once from the top.</li>' +
       '<li><b>Random</b>: each green peg picks one of these powers by surprise.</li><li><b>Off</b>: no powers. Green pegs are just 10 points.</li></ul>' +
       '<h3>Extreme Fever</h3><p>When the ball heads for the last orange peg, everything slows down. Hit it to start <b>Extreme Fever</b>: the bottom turns into bonus buckets worth <b>10,000</b>, <b>50,000</b> or <b>100,000</b>.</p>' +
-      '<h3>Levels</h3><p>There are ' + NL + ' levels. Clear a level to unlock the next one. Later levels have pegs that move.</p>' +
+      '<h3>Levels</h3><p>There are ' + NL + ' levels. Clear a level to unlock the next one. Later levels have pegs that move, and from level 14 on, new pieces join in. Each one is named the first time you meet it.</p>' +
+      '<h3>Special pieces</h3><ul>' +
+      '<li><b>Bumpers</b> (silver with a gold middle): kick the ball away hard. They never break.</li>' +
+      '<li><b>Iron pegs</b> (steel ring): the first hit knocks the ring off, the second lights the peg.</li>' +
+      '<li><b>Portals</b>: a ball that falls into one comes out of its twin (same colour), still moving the same way. <b>Steel walls</b> never break.</li>' +
+      '<li><b>Conveyor belts</b>: carry the ball the way the arrows point.</li>' +
+      '<li><b>Ghost pegs</b>: fade in and out. While faded, the ball flies straight through. A lit ghost peg stays solid.</li>' +
+      '<li><b>Racetrack</b> pegs ride around a loop.</li>' +
+      '<li><b>Gravity wells</b> (purple swirl): pull the ball toward the middle.</li>' +
+      '<li><b>Wind</b> (streaky bands): pushes the ball sideways. <b>Gusts</b> keep changing direction.</li>' +
+      '<li><b>Shields</b> (glass): block the ball until you hit the gold <b>switch peg</b> of the same colour. On some levels the glass goes back up after every shot.</li>' +
+      '<li><b>Splitter</b> rings: the ball splits in two as it flies through.</li>' +
+      '<li><b>Runaway bucket</b>: speeds up and slows down.</li></ul>' +
       '<h3>High scores</h3><ul><li><b>Level boards</b>: every level has its own high-score board. When a level ends, your score for it can go on that level\'s board.</li>' +
       '<li><b>Full game</b>: start at level 1 and clear the levels in order. Every level\'s score adds to one total, like a single credit on an arcade machine.</li>' +
       '<li>Run out of balls and the full game is over: its total, including the level you were on, goes on the Full game board. You can try that level again, but only for the level\'s own board.</li>' +
@@ -799,14 +1109,27 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var g = cv.getContext('2d'), sc = cv.width / FW, list = buildLevel(n), th = BG[LEVELS[n - 1].bg];
     g.save(); g.scale(sc, sc); g.translate(0, -100);
     paintBackdrop(g, th, n);
+    (list.zones || []).forEach(function (z) {
+      if (z.t === 'wind') { g.fillStyle = 'rgba(220,235,255,.07)'; g.fillRect(z.x, z.y, z.w, z.h); }
+      else if (z.t === 'well') { g.strokeStyle = 'rgba(190,170,255,.35)'; g.lineWidth = 3; g.beginPath(); g.arc(z.x, z.y, z.R * 0.6, 0, TAU); g.stroke(); }
+      else { g.strokeStyle = z.col || '#9df5b5'; g.lineWidth = 4; g.beginPath(); g.arc(z.x, z.y, z.r, 0, TAU); g.stroke(); }
+    });
     list.forEach(function (o) {
       var col = COL[o.c];
+      g.globalAlpha = o.ph ? 0.55 : 1;
       if (o.k === 'peg') {
         g.fillStyle = col.base; g.beginPath(); g.arc(o.x, o.y, o.r, 0, TAU); g.fill();
         g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.arc(o.x - 3, o.y - 3, 3, 0, TAU); g.fill();
+        if (o.iron) { g.strokeStyle = '#b8c0cc'; g.lineWidth = 3; g.beginPath(); g.arc(o.x, o.y, o.r + 2, 0, TAU); g.stroke(); }
       } else {
         g.strokeStyle = col.base; g.lineCap = 'round'; g.lineWidth = o.r * 2; g.beginPath(); g.moveTo(o.x, o.y); g.lineTo(o.x2, o.y2); g.stroke();
       }
+    });
+    g.globalAlpha = 1;
+    (list.extras || []).forEach(function (o) {
+      var c = o.t === 'bump' ? '#d7dce6' : o.t === 'sw' ? '#e2ac36' : o.t === 'shield' ? 'rgba(127,232,255,.7)' : o.t === 'belt' ? '#2a2b31' : '#7c8596';
+      if (o.k === 'peg') { g.fillStyle = c; g.beginPath(); g.arc(o.x, o.y, o.r, 0, TAU); g.fill(); }
+      else { g.strokeStyle = c; g.lineCap = 'round'; g.lineWidth = o.r * 2; g.beginPath(); g.moveTo(o.x, o.y); g.lineTo(o.x2, o.y2); g.stroke(); }
     });
     g.restore();
   }
@@ -949,22 +1272,27 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     Mus.setSong(levelSong(n)); Mus.restart();
     // title: the level's name; tap it for the level picker
     Kit.titleSwitch(LEVELS[n - 1] ? LEVELS[n - 1].name : 'Level ' + n, function () { if (L && !L.done) save(); showSetup(); }, 'Choose another level');
-    movers = objs.filter(function (o) { return o.mov; });
+    extras = objs.extras || []; zones = objs.zones || [];
+    movers = objs.concat(extras).filter(function (o) { return o.mov; });
+    phasers = objs.filter(function (o) { return o.ph; });
+    dynAim = !!(movers.length || phasers.length || zones.some(function (z) { return z.gust; }));
     L = {
       n: n, def: LEVELS[n - 1], who: cfg.who || 'Player', master: cfg.master || 'guide', fireMode: cfg.fireMode || 'lift',
       ballsLeft: 10, score: 0, orangeHit: 0, purple: -1, guide: 0, fever: false, done: false, shots: [],
       stats: { maxShot: 0, maxHits: 0, free: 0, freeBucket: 0, freeScore: 0, freeLucky: 0, flips: 0, long: 0, wall: 0, powers: 0, fever: 0, stuck: 0 },
-      started: Date.now(), totalOrange: 0
+      started: Date.now(), totalOrange: 0, open: {}
     };
     wt = 0; ang = 0;
     if (saved) {
       L.ballsLeft = saved.ballsLeft; L.score = saved.score || 0; L.guide = saved.guide || 0; L.shots = saved.shots || [];
       L.stats = Object.assign(L.stats, saved.stats || {}); L.started = saved.started || Date.now();
       wt = saved.wt || 0; ang = saved.ang || 0;
-      var g = String(saved.gone || '');
-      objs.forEach(function (o, i) { if (g.charAt(i) === '1') o.gone = true; });
+      var g = String(saved.gone || ''), hp = String(saved.hp || '');
+      objs.forEach(function (o, i) { if (g.charAt(i) === '1') o.gone = true; if (o.iron && +hp.charAt(i) > 0) o.hp = +hp.charAt(i); });
       if (saved.purple >= 0 && objs[saved.purple] && !objs[saved.purple].gone && objs[saved.purple].c === 'b') { objs[saved.purple].c = 'p'; L.purple = saved.purple; }
+      (saved.op || []).forEach(function (k) { L.open[k] = 1; });
     }
+    setShields(); extras.forEach(function (o) { o.offT = -9; });
     L.totalOrange = orangeTotal();
     L.orangeHit = objs.filter(function (o) { return o.c === 'o' && o.gone; }).length;
     balls = []; shot = null; fx.parts = []; fx.pops = []; fx.banners = []; fx.later = []; fx.coin = null;
@@ -976,7 +1304,24 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     state = 'aim'; paused = false;
     updateHud();
     banner('Level ' + n, L.def.name + (inRun() ? ' · full game ' + n + '/' + NL : ''), '#ffffff', 2.2);
+    introMechs(L.def.intro || []);
     save();
+  }
+  // the first time a new kind of piece turns up, name it and say what it does
+  var SEEN = 'peggle_seen';
+  function introMechs(list) {
+    var seen = {}; try { seen = JSON.parse(localStorage.getItem(SEEN)) || {}; } catch (e) {}
+    var fresh = list.filter(function (k) { return MECH[k] && !seen[k]; }), at = 2.1;
+    fresh.forEach(function (k) {
+      seen[k] = 1;
+      later(at, function () {
+        if (!L || L.done || view !== 'game') return;
+        Kit.callout(MECH[k][0], '#ffd45a'); Kit.sfx('pop'); Kit.haptic('light');
+        banner('', MECH[k][1], '#ffe7a8', 3.4, 0.62);
+      });
+      at += 3.6;
+    });
+    if (fresh.length) try { localStorage.setItem(SEEN, JSON.stringify(seen)); } catch (e) {}
   }
   function movePurple() {
     if (L.purple >= 0 && objs[L.purple] && objs[L.purple].c === 'p' && !objs[L.purple].gone) objs[L.purple].c = 'b';
@@ -1007,10 +1352,54 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function onHit(b, o, wall) {
     if (wall) { if (wall !== 3) b.wall = true; sWall(); return; }
     if (o.k === 'bw' || o.k === 'post') { sWall(); return; }
+    if (o.t) { hitExtra(b, o); return; }
     var d = b.dist, wasWall = b.wall, hadHit = b.hits > 0;
     b.dist = 0; b.wall = false; b.hits++;
     if (o.lit) { sRehit(); return; }
+    if (o.hp > 1) {
+      // iron peg: the first hit knocks off its steel ring
+      o.hp--; o.crackT = rt;
+      sIron(); tickHaptic();
+      for (var i = 0; i < 10; i++) { var a = Math.random() * TAU, v = 60 + Math.random() * 120; part(o.mx, o.my, Math.cos(a) * v, Math.sin(a) * v, i % 2 ? '#e6ebf2' : '#8d96a6', 0.5, 1.8); }
+      return;
+    }
     lightPeg(o, b, { dist: d, wall: wasWall, hadHit: hadHit });
+  }
+  function hitExtra(b, o) {
+    o.hitT = rt;
+    if (o.t === 'bump') {
+      sBump(); tickHaptic();
+      for (var i = 0; i < 6; i++) { var a = Math.random() * TAU; part(o.x + Math.cos(a) * o.r, o.y + Math.sin(a) * o.r, Math.cos(a) * 140, Math.sin(a) * 140, '#ffffff', 0.3, 1.6); }
+    } else if (o.t === 'sw') {
+      if (!L.open[o.grp]) openShields(o); else sRehit();
+    } else if (o.t === 'shield') sGlass();
+    else sWall();
+  }
+  function openShields(o) {
+    L.open[o.grp] = 1; setShields();
+    L.stats.switches = (L.stats.switches || 0) + 1;
+    sSwitch(); Kit.haptic('medium'); shake = Math.max(shake, 5);
+    banner('', 'Shields down', SHIELD_COL[o.grp] || SHIELD_COL[1], 1.3, 0.3);
+    extras.forEach(function (s) {
+      if (s.t !== 'shield' || s.grp !== o.grp) return;
+      for (var i = 0; i < 6; i++) { var f = i / 5, x = s.x + (s.x2 - s.x) * f, y = s.y + (s.y2 - s.y) * f; part(x, y, (Math.random() - 0.5) * 160, -40 - Math.random() * 120, i % 2 ? '#e8fbff' : '#7fe8ff', 0.7, 1.8); }
+    });
+  }
+  var SHIELD_COL = { 1: '#7fe8ff', 2: '#ff9be0' };
+  // zones the ball went through in real play: portals and splitters
+  function zoneEv(b, z, fx0, fy0) {
+    if (z.t === 'portal') {
+      sPortal(); Kit.haptic('light'); b.trail = [];
+      burst(fx0, fy0, z.col, 8); burst(b.x, b.y, z.col, 10);
+      z.hitT = rt; z.to.hitT = rt;
+    } else if (z.t === 'split' && balls.length < 6) {
+      var nb = newBall(b.x, b.y, -b.vx * 0.85 + (b.vx >= 0 ? -40 : 40), b.vy * 0.95);
+      nb.sp = b.sp; nb.hits = b.hits; balls.push(nb);
+      L.stats.splits = (L.stats.splits || 0) + 1;
+      sSplit(); Kit.haptic('medium'); z.hitT = rt;
+      banner('', 'Split ball', '#9df5b5', 1.0, 0.25);
+      for (var i = 0; i < 12; i++) { var a = i / 12 * TAU; part(z.x, z.y, Math.cos(a) * 130, Math.sin(a) * 130, '#9df5b5', 0.45, 2); }
+    }
   }
   function lightPeg(o, b, info) {
     o.lit = true; o.litT = rt;
@@ -1114,8 +1503,10 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var bx = L.fever ? 0 : bucketX(wt);
     for (var i = balls.length - 1; i >= 0; i--) {
       var b = balls[i], px = b.x, py = b.y;
+      if (zones.length) zonePush(b, dt, wt);
       stepBall(b, dt, onHit);
       b.dist += Math.hypot(b.x - px, b.y - py);
+      if (zones.length) zoneJump(b, zoneEv);
       if (Math.floor(wt / dt) % 2 === 0) { b.trail.push(b.x, b.y); if (b.trail.length > 44) b.trail.splice(0, 2); }
       // Catch: bucket or fever buckets
       if (!L.fever) {
@@ -1151,7 +1542,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function unstick(b, hard) {
     var near = colliders.filter(function (o) {
-      if (o.gone || o.k === 'bw' || o.k === 'post') return false;
+      if (o.gone || o.off || o.t || o.k === 'bw' || o.k === 'post') return false;
       var qx, qy;
       if (o.k === 'peg') { qx = o.x; qy = o.y; }
       else { var ux = o.x2 - o.x, uy = o.y2 - o.y, s = clamp(((b.x - o.x) * ux + (b.y - o.y) * uy) / (ux * ux + uy * uy), 0, 1); qx = o.x + ux * s; qy = o.y + uy * s; }
@@ -1175,7 +1566,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function checkLastPeg() {
     var target = null;
     for (var i = 0; i < objs.length; i++) { var o = objs[i]; if (o.c === 'o' && !o.lit && !o.gone) { if (target) return; target = o; } }
-    if (!target) return;
+    if (!target || target.hp > 1) return;
     for (var j = 0; j < balls.length; j++) {
       var b = balls[j];
       var res = simulate(b.x, b.y, b.vx, b.vy, 0.55, function (bb, o) { return o === target ? 'stop' : null; });
@@ -1211,6 +1602,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (L.ballsLeft <= 0) { state = 'done'; L.done = true; sLose(); later(1.3, levelLost); return; }
     movePurple();
     state = 'aim';
+    // some levels put the glass back up after every shot
+    if (L.def.relock && Object.keys(L.open).length) { L.open = {}; setShields(); sShieldUp(); banner('', 'Shields back up', '#7fe8ff', 1.2, 0.3); }
     if (L.ballsLeft === 1) { later(0.5, function () { banner('LAST BALL', '', '#ff8a95', 1.3, 0.6); sLastBall(); }); }
     save(); updateHud();
   }
@@ -1438,6 +1831,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     fx.banners = fx.banners.filter(function (b) { return b.life > 0; });
     recoil = Math.max(0, recoil - dt * 5); shake = Math.max(0, shake - dt * 20); flash = Math.max(0, flash - dt * 1.4);
     meterPulse = Math.max(0, meterPulse - dt * 1.5); bucketFlash = Math.max(0, bucketFlash - dt * 1.6); pwFlash = Math.max(0, pwFlash - dt);
+    for (var zi = 0; zi < zones.length; zi++) if (zones[zi].t === 'wind') zones[zi].drift += windA(zones[zi], wt) * dt * 0.3;
     // camera
     var zt = zoom.on ? 2.1 : 1;
     zoom.z += (zt - zoom.z) * Math.min(1, dt * (zoom.on ? 4.5 : 2.2));
@@ -1534,8 +1928,10 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (!bgCanvas) bgCanvas = makeBackdrop();
     g.drawImage(bgCanvas, 0, 0, FW, FH);
     if (L.fever) drawRainbow(g);
+    if (zones.length) drawZones(g);
     if (state === 'aim' && !paused) drawGuide(g);
     drawPegs(g);
+    if (extras.length) drawExtras(g);
     drawBucket(g);
     drawLauncher(g);
     drawBalls(g);
@@ -1558,12 +1954,162 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         var t = (rt - o.goneT) / 0.28; if (t >= 1) continue;
         a = 1 - t; sc = 1 + t * 0.7;
       }
+      if (o.ph && !o.lit && !o.gone) a = ghostAlpha(o);
       if (o.k === 'peg') {
         var spr = pegSprite(o.c, o.lit), rad = PR * 2.3 * sc;
         if (o.lit && !o.gone) { var pulse = 1 + 0.08 * Math.sin((rt - o.litT) * 10); rad *= pulse; }
-        g.globalAlpha = a; g.drawImage(spr, o.x - rad, o.y - rad, rad * 2, rad * 2); g.globalAlpha = 1;
+        g.globalAlpha = a; g.drawImage(spr, o.x - rad, o.y - rad, rad * 2, rad * 2);
+        if (o.iron && !o.gone) {
+          // steel ring until the first hit, then it flies off
+          var ct = o.hp > 1 ? 0 : clamp((rt - (o.crackT || -9)) / 0.3, 0, 1);
+          if (ct < 1) { var rr = PR * 1.7 * (1 + ct * 0.6); g.globalAlpha = a * (1 - ct); g.drawImage(ironSprite(), o.x - rr, o.y - rr, rr * 2, rr * 2); }
+        }
+        g.globalAlpha = 1;
       } else drawBrick(g, o, a, sc);
     }
+  }
+  // a ghost peg is solid (with a shimmer just before it fades), then a faint outline while it is gone
+  function ghostAlpha(o) {
+    var f = phaseF(o, wt), per = o.ph.per, on = o.ph.duty, tIn = f * per, onT = on * per;
+    if (f >= on) { var back = (1 - f) * per; return back < 0.25 ? 0.2 + 0.6 * (1 - back / 0.25) : 0.2; }
+    var left = onT - tIn;
+    if (tIn < 0.15) return 0.8 + 0.2 * tIn / 0.15;
+    if (left < 0.6) return 0.55 + 0.35 * (0.5 + 0.5 * Math.cos((0.6 - left) * 26));
+    return 1;
+  }
+  function ironSprite() {
+    return sprite('iron', function (g) {
+      var R = PR * 1.25;
+      var gr = g.createLinearGradient(-R, -R, R, R);
+      gr.addColorStop(0, '#f4f7fb'); gr.addColorStop(0.35, '#9aa3b2'); gr.addColorStop(0.7, '#5d6574'); gr.addColorStop(1, '#2c313b');
+      g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 3.6; g.beginPath(); g.arc(0.6, 1, R, 0, TAU); g.stroke();
+      g.strokeStyle = gr; g.lineWidth = 3.2; g.beginPath(); g.arc(0, 0, R, 0, TAU); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 0.7; g.beginPath(); g.arc(0, 0, R + 1, PI * 1.05, PI * 1.6); g.stroke();
+      for (var i = 0; i < 4; i++) { var a = PI / 4 + i * PI / 2; g.fillStyle = '#2c313b'; g.beginPath(); g.arc(Math.cos(a) * R, Math.sin(a) * R, 1.1, 0, TAU); g.fill(); g.fillStyle = '#e9eef5'; g.beginPath(); g.arc(Math.cos(a) * R - 0.3, Math.sin(a) * R - 0.3, 0.5, 0, TAU); g.fill(); }
+    }, PR * 1.7);
+  }
+
+  // ── Special pieces ─────────────────────────────────────────────────────
+  function bumperSprite() {
+    return sprite('bump', function (g) {
+      var R = 13;
+      g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.arc(1.2, 2.2, R, 0, TAU); g.fill();
+      var gr = g.createRadialGradient(-R * 0.4, -R * 0.45, 1, 0, 0, R);
+      gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.35, '#d7dce6'); gr.addColorStop(0.8, '#7a8396'); gr.addColorStop(1, '#3b4150');
+      g.fillStyle = gr; g.beginPath(); g.arc(0, 0, R, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(30,34,44,.6)'; g.lineWidth = 1; g.stroke();
+      var cg = g.createRadialGradient(-2, -3, 0.5, 0, 0, R * 0.55);
+      cg.addColorStop(0, '#fff3c4'); cg.addColorStop(0.5, '#e9b949'); cg.addColorStop(1, '#8a5a0c');
+      g.fillStyle = cg; g.beginPath(); g.arc(0, 0, R * 0.55, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 1.1; g.beginPath(); g.arc(0, 0, R * 0.78, PI * 1.1, PI * 1.55); g.stroke();
+    }, 15);
+  }
+  function switchSprite(on, grp) {
+    var col = SHIELD_COL[grp] || SHIELD_COL[1];
+    return sprite('sw' + grp + (on ? 1 : 0), function (g) {
+      var R = PR + 1;
+      if (on) { var gl = g.createRadialGradient(0, 0, R * 0.5, 0, 0, R * 2); gl.addColorStop(0, col); gl.addColorStop(1, 'rgba(0,0,0,0)'); g.globalAlpha = 0.6; g.fillStyle = gl; g.beginPath(); g.arc(0, 0, R * 2, 0, TAU); g.fill(); g.globalAlpha = 1; }
+      else { g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.arc(1, 2, R + 2, 0, TAU); g.fill(); }
+      g.strokeStyle = col; g.lineWidth = 2.4; g.beginPath(); g.arc(0, 0, R + 0.6, 0, TAU); g.stroke();
+      var gr = g.createRadialGradient(-R * 0.35, -R * 0.4, 1, 0, 0, R);
+      gr.addColorStop(0, '#fff6d0'); gr.addColorStop(0.5, on ? '#ffe28a' : '#e2ac36'); gr.addColorStop(1, on ? '#c98a1c' : '#6b4810');
+      g.fillStyle = gr; g.beginPath(); g.arc(0, 0, R - 0.6, 0, TAU); g.fill();
+      // keyhole
+      g.fillStyle = on ? 'rgba(90,60,10,.35)' : '#2a1a04';
+      g.beginPath(); g.arc(0, -1.6, 2.4, 0, TAU); g.fill();
+      g.beginPath(); g.moveTo(-1.4, -0.6); g.lineTo(1.4, -0.6); g.lineTo(2.1, 4.2); g.lineTo(-2.1, 4.2); g.closePath(); g.fill();
+    }, PR * 2.2);
+  }
+  function capsule(g, o, w, style) { g.strokeStyle = style; g.lineWidth = w; g.beginPath(); g.moveTo(o.x, o.y); g.lineTo(o.x2, o.y2); g.stroke(); }
+  function drawExtras(g) {
+    g.save(); g.lineCap = 'round';
+    for (var i = 0; i < extras.length; i++) {
+      var o = extras[i], hit = rt - (o.hitT || -9);
+      if (o.t === 'bump') {
+        var s = 1 + (hit < 0.18 ? 0.18 * (1 - hit / 0.18) : 0), R = 15 * s * o.r / 13, spr = bumperSprite();
+        if (hit < 0.25) { g.fillStyle = 'rgba(255,255,255,' + (0.5 * (1 - hit / 0.25)).toFixed(3) + ')'; g.beginPath(); g.arc(o.x, o.y, o.r + 8 * (hit / 0.25) + 2, 0, TAU); g.fill(); }
+        g.drawImage(spr, o.x - R, o.y - R, R * 2, R * 2);
+      } else if (o.t === 'sw') {
+        var r2 = PR * 2.2 * (1 + (hit < 0.2 ? 0.25 * (1 - hit / 0.2) : 0));
+        g.drawImage(switchSprite(o.on, o.grp), o.x - r2, o.y - r2, r2 * 2, r2 * 2);
+      } else if (o.t === 'shield') {
+        var col = o.grp === 2 ? '255,155,224' : '127,232,255', ft = clamp((rt - o.offT) / 0.35, 0, 1);
+        if (o.off) {
+          if (L.def.relock) { g.setLineDash([2, 5]); capsule(g, o, 1.4, 'rgba(' + col + ',.35)'); g.setLineDash([]); }
+          if (ft < 1) { g.globalAlpha = 1 - ft; capsule(g, o, o.r * 2 * (1 + ft), 'rgba(' + col + ',.5)'); g.globalAlpha = 1; }
+        } else {
+          g.globalAlpha = ft;
+          capsule(g, o, o.r * 2 + 3, 'rgba(' + col + ',.18)');
+          capsule(g, o, o.r * 2, 'rgba(' + col + ',' + (hit < 0.2 ? 0.75 : 0.42) + ')');
+          g.lineWidth = 1.2; g.strokeStyle = 'rgba(255,255,255,.75)';
+          g.beginPath(); g.moveTo(o.x + (o.x2 - o.x) * 0.15, o.y + (o.y2 - o.y) * 0.15 - 2); g.lineTo(o.x + (o.x2 - o.x) * 0.55, o.y + (o.y2 - o.y) * 0.55 - 2); g.stroke();
+          g.globalAlpha = 1;
+        }
+      } else if (o.t === 'wall') {
+        capsule(g, o, o.r * 2 + 2, 'rgba(0,0,0,.45)');
+        var wg = g.createLinearGradient(0, o.my - o.r, 0, o.my + o.r);
+        wg.addColorStop(0, '#c9d0dc'); wg.addColorStop(0.5, '#6d7687'); wg.addColorStop(1, '#3a404c');
+        capsule(g, o, o.r * 2, Math.abs(o.y2 - o.y) > Math.abs(o.x2 - o.x) ? '#7c8596' : wg);
+        var len = Math.hypot(o.x2 - o.x, o.y2 - o.y), nr = Math.max(2, Math.floor(len / 14));
+        for (var k = 0; k <= nr; k++) { var f = k / nr; g.fillStyle = '#2c313b'; g.beginPath(); g.arc(o.x + (o.x2 - o.x) * f, o.y + (o.y2 - o.y) * f, 1.2, 0, TAU); g.fill(); }
+      } else if (o.t === 'belt') {
+        capsule(g, o, o.r * 2 + 2, 'rgba(0,0,0,.5)');
+        capsule(g, o, o.r * 2, '#2a2b31');
+        var L2 = Math.hypot(o.x2 - o.x, o.y2 - o.y), ux = (o.x2 - o.x) / L2, uy = (o.y2 - o.y) / L2, dir = o.belt > 0 ? 1 : -1;
+        var off = ((rt * Math.abs(o.belt) * 0.5) % 12) * dir;
+        g.strokeStyle = 'rgba(242,193,78,.85)'; g.lineWidth = 1.5; g.lineCap = 'round';
+        for (var d = 6 + ((off % 12) + 12) % 12; d < L2 - 4; d += 12) {
+          var cx = o.x + ux * d, cy = o.y + uy * d, tx = ux * 2.6 * dir, ty = uy * 2.6 * dir;
+          g.beginPath(); g.moveTo(cx - tx - uy * 3, cy - ty + ux * 3); g.lineTo(cx + tx, cy + ty); g.lineTo(cx - tx + uy * 3, cy - ty - ux * 3); g.stroke();
+        }
+        g.fillStyle = '#8d96a6'; g.beginPath(); g.arc(o.x, o.y, 2.4, 0, TAU); g.arc(o.x2, o.y2, 2.4, 0, TAU); g.fill();
+      }
+    }
+    g.restore();
+  }
+  function drawZones(g) {
+    g.save();
+    for (var i = 0; i < zones.length; i++) {
+      var z = zones[i], k;
+      if (z.t === 'wind') {
+        var a = windA(z, wt), m = Math.abs(a) / Math.max(1, Math.abs(z.ax)), dir = a >= 0 ? 1 : -1;
+        g.fillStyle = 'rgba(220,235,255,' + (0.03 + 0.04 * m).toFixed(3) + ')'; g.fillRect(z.x, z.y, z.w, z.h);
+        g.strokeStyle = 'rgba(220,235,255,' + (0.12 + 0.3 * m).toFixed(3) + ')'; g.lineWidth = 1.2; g.lineCap = 'round';
+        var rows = Math.max(3, Math.round(z.h / 16));
+        for (k = 0; k < rows * 3; k++) {
+          var ry = z.y + 6 + ((k * 37) % (rows * 13)) / (rows * 13) * (z.h - 12);
+          var rx = z.x + (((k * 113 + z.drift * (0.6 + (k % 3) * 0.25)) % z.w) + z.w) % z.w, ln = 6 + 16 * m;
+          g.beginPath(); g.moveTo(rx, ry); g.lineTo(rx - dir * ln, ry); g.stroke();
+        }
+      } else if (z.t === 'well') {
+        var gl = g.createRadialGradient(z.x, z.y, 0, z.x, z.y, z.R);
+        gl.addColorStop(0, 'rgba(10,4,30,.55)'); gl.addColorStop(0.35, 'rgba(120,80,255,.12)'); gl.addColorStop(1, 'rgba(120,80,255,0)');
+        g.fillStyle = gl; g.beginPath(); g.arc(z.x, z.y, z.R, 0, TAU); g.fill();
+        g.lineWidth = 1.3;
+        for (k = 0; k < 4; k++) {
+          var p = ((rt * 0.22 + k / 4) % 1), rr = z.R * (1 - p);
+          g.strokeStyle = 'rgba(190,170,255,' + (0.28 * Math.sin(p * PI)).toFixed(3) + ')';
+          g.beginPath(); g.arc(z.x, z.y, rr, rt * 0.8 + k, rt * 0.8 + k + PI * 1.3); g.stroke();
+        }
+      } else if (z.t === 'portal') {
+        var hp = rt - (z.hitT || -9), pr = z.r * (1 + (hp < 0.3 ? 0.3 * (1 - hp / 0.3) : 0));
+        var pg = g.createRadialGradient(z.x, z.y, 1, z.x, z.y, pr);
+        pg.addColorStop(0, 'rgba(0,0,0,.9)'); pg.addColorStop(0.6, 'rgba(0,0,0,.6)'); pg.addColorStop(1, z.col);
+        g.fillStyle = pg; g.beginPath(); g.arc(z.x, z.y, pr, 0, TAU); g.fill();
+        g.strokeStyle = z.col; g.lineWidth = 2.2; g.lineCap = 'round';
+        for (k = 0; k < 3; k++) { var a0 = rt * 3 + k * TAU / 3; g.beginPath(); g.arc(z.x, z.y, pr + 1.5, a0, a0 + 1.2); g.stroke(); }
+        g.globalAlpha = 0.55; g.lineWidth = 1.2;
+        for (k = 0; k < 3; k++) { var a1 = -rt * 4.5 + k * TAU / 3; g.beginPath(); g.arc(z.x, z.y, pr * 0.55, a1, a1 + 1.4); g.stroke(); }
+        g.globalAlpha = 1;
+      } else if (z.t === 'split') {
+        var hs = rt - (z.hitT || -9), sr = z.r * (1 + (hs < 0.3 ? 0.35 * (1 - hs / 0.3) : 0));
+        g.fillStyle = 'rgba(157,245,181,.08)'; g.beginPath(); g.arc(z.x, z.y, sr, 0, TAU); g.fill();
+        g.strokeStyle = 'rgba(157,245,181,.85)'; g.lineWidth = 2; g.setLineDash([4, 4]); g.lineDashOffset = -rt * 14;
+        g.beginPath(); g.arc(z.x, z.y, sr, 0, TAU); g.stroke(); g.setLineDash([]); g.lineDashOffset = 0;
+        for (k = 0; k < 2; k++) { var a2 = rt * 2.4 + k * PI; g.fillStyle = '#e4ffe9'; g.beginPath(); g.arc(z.x + Math.cos(a2) * sr * 0.45, z.y + Math.sin(a2) * sr * 0.45, 2.6, 0, TAU); g.fill(); }
+      }
+    }
+    g.restore();
   }
   function drawBucket(g) {
     if (!L.fever) {
@@ -1638,7 +2184,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   function drawGuide(g) {
     var sup = L.guide > 0, key = ang.toFixed(4) + '|' + sup;
-    if (guideCache.key !== key || (movers.length && rt - guideCache.t > 0.07)) {
+    if (guideCache.key !== key || (dynAim && rt - guideCache.t > 0.07)) {
       var dx = Math.sin(ang), dy = Math.cos(ang), first = null;
       var res = simulate(LX + dx * BARREL, LY + dy * BARREL, dx * V0, dy * V0, sup ? 2.2 : 0.5, function (b, o, wall) {
         if (sup) return null;
@@ -1789,8 +2335,14 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       }
       if (b.sub) {
         g.font = '900 12px ' + FONT;
-        g.lineWidth = 3.5; g.strokeStyle = 'rgba(0,0,0,.65)'; g.strokeText(b.sub.toUpperCase(), 0, b.text ? (b.shot ? 17 : 26) : 0);
-        g.fillStyle = b.text ? 'rgba(255,255,255,.9)' : b.c; g.fillText(b.sub.toUpperCase(), 0, b.text ? (b.shot ? 17 : 26) : 0);
+        g.lineWidth = 3.5; g.strokeStyle = 'rgba(0,0,0,.65)'; g.lineJoin = 'round';
+        g.fillStyle = b.text ? 'rgba(255,255,255,.9)' : b.c;
+        // long lines (a new piece's tip) wrap to fit the board
+        var words = b.sub.toUpperCase().split(' '), lines = [], ln = '';
+        words.forEach(function (w) { var t2 = ln ? ln + ' ' + w : w; if (ln && g.measureText(t2).width > 300) { lines.push(ln); ln = w; } else ln = t2; });
+        lines.push(ln);
+        var y0 = (b.text ? (b.shot ? 17 : 26) : 0) - (lines.length - 1) * 8;
+        lines.forEach(function (t3, li) { g.strokeText(t3, 0, y0 + li * 16); g.fillText(t3, 0, y0 + li * 16); });
       }
       g.restore();
     });
@@ -1871,7 +2423,24 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     nebula: { sky: ['#06051a', '#120b2c', '#08081e'], scene: 'nebula' },
     temple: { sky: ['#170d2c', '#56285a', '#d6744a'], sun: [180, 380, 74, '255,190,110'], scene: 'temple' },
     galaxy: { sky: ['#020210', '#090826', '#040316'], scene: 'galaxy' },
-    clock: { sky: ['#1a1206', '#43300e', '#221706'], scene: 'clock' }
+    clock: { sky: ['#1a1206', '#43300e', '#221706'], scene: 'clock' },
+    garden: { sky: ['#17304e', '#4f7e86', '#f0c27e'], sun: [262, 400, 46, '255,226,160'], scene: 'garden', cols: ['#2f6a44', '#215234', '#143a24'] },
+    foundry: { sky: ['#120806', '#2a120a', '#4a1c0c'], scene: 'foundry' },
+    void: { sky: ['#07031a', '#140a30', '#0a0620'], scene: 'nebula', glows: [[70, 180, 140, '255,90,210', 0.2], [290, 200, 140, '80,220,255', 0.2], [180, 480, 170, '140,90,255', 0.18]] },
+    factory: { sky: ['#0d1317', '#17232a', '#22323a'], scene: 'factory' },
+    ghost: { sky: ['#060a18', '#141d36', '#26304a'], scene: 'ghost' },
+    stadium: { sky: ['#04070f', '#0a1430', '#0e2048'], scene: 'stadium' },
+    hole: { sky: ['#010106', '#05051a', '#02020c'], scene: 'hole', tint: '255,150,70', at: [180, 330] },
+    ridge: { sky: ['#0e1a3a', '#2f5a7a', '#a6c8d8'], scene: 'ridge', cols: ['#30506a', '#1f3a52', '#13263a'] },
+    vault: { sky: ['#0c0f13', '#1a2028', '#0e1216'], scene: 'vault' },
+    city: { sky: ['#0a0820', '#2a1846', '#a0406a'], scene: 'city' },
+    desert: { sky: ['#0a0a24', '#3a2050', '#c0604a'], sun: [270, 300, 26, '255,232,205'], scene: 'dunes', cols: ['#6a3a3a', '#4e2a30', '#341c24'] },
+    brass: { sky: ['#140a06', '#3a1e0c', '#160b05'], scene: 'clock', gears: [[100, 220, 95, 18], [260, 330, 95, 18], [100, 462, 85, 16]] },
+    nebula2: { sky: ['#04061a', '#0b1030', '#060818'], scene: 'nebula', glows: [[180, 300, 160, '120,90,255', 0.24], [40, 150, 90, '255,90,210', 0.2], [320, 150, 90, '80,220,255', 0.2], [180, 560, 130, '60,140,255', 0.14]] },
+    storm: { sky: ['#07090f', '#161c2a', '#283246'], scene: 'storm' },
+    castle: { sky: ['#1a0f2e', '#4a2a5a', '#d07a5a'], sun: [250, 300, 44, '255,200,140'], scene: 'castle' },
+    hole2: { sky: ['#020108', '#0a0520', '#04020e'], scene: 'hole', tint: '170,120,255', at: [110, 250], at2: [250, 430] },
+    finale: { sky: ['#05040f', '#120a2a', '#1a0c30'], scene: 'finale' }
   };
   function makeBackdrop() {
     var c = document.createElement('canvas'); c.width = Math.ceil(FW * S); c.height = Math.ceil(FH * S);
@@ -1979,7 +2548,131 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         break;
       case 'nebula':
         stars(160, H);
-        [[90, 200, 150, '255,80,160', 0.22], [270, 420, 170, '80,140,255', 0.22], [200, 300, 120, '150,90,255', 0.18], [60, 520, 100, '60,220,255', 0.12]].forEach(function (b) { glow(b[0], b[1], b[2], b[3], b[4]); });
+        (th.glows || [[90, 200, 150, '255,80,160', 0.22], [270, 420, 170, '80,140,255', 0.22], [200, 300, 120, '150,90,255', 0.18], [60, 520, 100, '60,220,255', 0.12]]).forEach(function (b) { glow(b[0], b[1], b[2], b[3], b[4]); });
+        break;
+      case 'garden':
+        stars(18, 160); sun(th.sun);
+        layer(420, 24, 0.02, 2, th.cols[0]); layer(485, 20, 0.026, 4, th.cols[1]); layer(560, 16, 0.032, 1, th.cols[2]);
+        for (i = 0; i < 70; i++) {
+          x = rng() * W; y = 440 + rng() * 190;
+          g.fillStyle = ['rgba(255,170,200,', 'rgba(255,230,140,', 'rgba(220,200,255,'][i % 3] + (0.35 + rng() * 0.35).toFixed(2) + ')';
+          g.beginPath(); g.arc(x, y, 1.2 + rng() * 1.6, 0, TAU); g.fill();
+        }
+        break;
+      case 'foundry':
+        for (y = 0; y < H; y += 18) for (x = (y / 18) % 2 ? -18 : 0; x < W; x += 36) {
+          g.fillStyle = 'rgba(255,140,80,' + (0.025 + rng() * 0.03).toFixed(3) + ')'; g.fillRect(x + 1, y + 1, 34, 16);
+        }
+        glow(180, 660, 300, '255,120,40', 0.5); glow(180, 640, 120, '255,200,90', 0.35);
+        g.fillStyle = '#0c0503';
+        [[0, 90, 360, 104], [40, 0, 54, 640], [306, 0, 320, 640]].forEach(function (r) { g.fillRect(r[0], r[1], r[2] - r[0], r[3] - r[1]); });
+        g.fillStyle = 'rgba(255,170,110,.18)';
+        for (x = 6; x < W; x += 22) { g.beginPath(); g.arc(x, 97, 1.5, 0, TAU); g.fill(); }
+        for (i = 0; i < 40; i++) { g.fillStyle = 'rgba(255,190,90,' + (0.2 + rng() * 0.5).toFixed(2) + ')'; g.fillRect(100 + rng() * 160, 420 + rng() * 220, 1.3, 1.3); }
+        break;
+      case 'factory':
+        g.strokeStyle = 'rgba(160,200,220,.08)'; g.lineWidth = 2;
+        [[60, 140, 70, 14], [300, 260, 90, 16], [80, 470, 60, 12], [290, 560, 70, 14]].forEach(function (c) {
+          g.beginPath();
+          for (var k = 0; k <= c[3] * 2; k++) { var aa = k / (c[3] * 2) * TAU, rr2 = c[2] + (k % 2 ? 0 : 8); g.lineTo(c[0] + Math.cos(aa) * rr2, c[1] + Math.sin(aa) * rr2); }
+          g.closePath(); g.stroke(); g.beginPath(); g.arc(c[0], c[1], c[2] * 0.3, 0, TAU); g.stroke();
+        });
+        [[0, 230, W, 12], [0, 380, W, 9], [0, 520, W, 12]].forEach(function (p) { var pg = g.createLinearGradient(0, p[1], 0, p[1] + p[3]); pg.addColorStop(0, 'rgba(120,150,165,.12)'); pg.addColorStop(1, 'rgba(0,0,0,.2)'); g.fillStyle = pg; g.fillRect(p[0], p[1], p[2], p[3]); });
+        for (x = -20; x < W; x += 24) { g.fillStyle = 'rgba(242,193,78,.12)'; g.beginPath(); g.moveTo(x, H); g.lineTo(x + 12, H - 14); g.lineTo(x + 24, H - 14); g.lineTo(x + 12, H); g.fill(); }
+        break;
+      case 'ghost':
+        stars(90, 380); glow(270, 140, 110, '210,225,255', 0.28);
+        g.fillStyle = '#e8ecf6'; g.beginPath(); g.arc(270, 140, 26, 0, TAU); g.fill();
+        g.fillStyle = 'rgba(140,150,180,.22)'; [[262, 132, 6], [279, 147, 4], [272, 128, 3]].forEach(function (c) { g.beginPath(); g.arc(c[0], c[1], c[2], 0, TAU); g.fill(); });
+        layer(500, 18, 0.02, 3, 'rgba(150,170,210,.07)'); layer(540, 14, 0.03, 1, 'rgba(150,170,210,.08)');
+        g.strokeStyle = '#090c18'; g.lineCap = 'round';
+        (function tree(x0, y0, len, a, d) { if (d === 0) return; var x1 = x0 + Math.cos(a) * len, y1 = y0 + Math.sin(a) * len; g.lineWidth = d * 1.6; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); tree(x1, y1, len * 0.72, a - 0.45 - rng() * 0.2, d - 1); tree(x1, y1, len * 0.7, a + 0.4 + rng() * 0.2, d - 1); })(40, H, 120, -PI / 2 + 0.1, 6);
+        layer(600, 8, 0.03, 2, '#090c18');
+        break;
+      case 'stadium':
+        stars(40, 200);
+        [[30, 60], [330, 60]].forEach(function (l) {
+          var bg2 = g.createLinearGradient(l[0], l[1], 180, 420); bg2.addColorStop(0, 'rgba(255,250,220,.16)'); bg2.addColorStop(1, 'rgba(255,250,220,0)');
+          g.fillStyle = bg2; g.beginPath(); g.moveTo(l[0], l[1]); g.lineTo(l[0] < 180 ? 120 : 360, 520); g.lineTo(l[0] < 180 ? 0 : 240, 520); g.closePath(); g.fill();
+          glow(l[0], l[1], 40, '255,250,220', 0.6);
+        });
+        g.fillStyle = '#0a0f22'; g.fillRect(0, 440, W, 60);
+        for (i = 0; i < 220; i++) { g.fillStyle = 'rgba(' + ['255,200,160', '160,200,255', '255,255,255'][i % 3] + ',' + (0.1 + rng() * 0.25).toFixed(2) + ')'; g.fillRect(rng() * W, 444 + rng() * 52, 1.6, 1.6); }
+        for (i = 0; i < 7; i++) { g.fillStyle = i % 2 ? '#123a22' : '#164828'; g.fillRect(0, 500 + i * 20, W, 20); }
+        break;
+      case 'hole':
+        stars(200, H);
+        [th.at, th.at2].forEach(function (c) {
+          if (!c) return;
+          glow(c[0], c[1], 150, th.tint, 0.16);
+          g.save(); g.translate(c[0], c[1]); g.rotate(-0.25); g.scale(1, 0.32);
+          for (var k = 0; k < 5; k++) { g.strokeStyle = 'rgba(' + th.tint + ',' + (0.24 - k * 0.04).toFixed(2) + ')'; g.lineWidth = 7 - k; g.beginPath(); g.arc(0, 0, 60 + k * 16, 0, TAU); g.stroke(); }
+          g.restore();
+          g.fillStyle = '#000'; g.beginPath(); g.arc(c[0], c[1], 30, 0, TAU); g.fill();
+          g.strokeStyle = 'rgba(' + th.tint + ',.45)'; g.lineWidth = 1.5; g.beginPath(); g.arc(c[0], c[1], 32, 0, TAU); g.stroke();
+        });
+        break;
+      case 'ridge':
+        stars(25, 160);
+        for (i = 0; i < 7; i++) { y = 140 + i * 60 + rng() * 20; g.fillStyle = 'rgba(230,240,255,.06)'; g.beginPath(); g.ellipse(rng() * W, y, 90 + rng() * 60, 7 + rng() * 5, 0, 0, TAU); g.fill(); }
+        jagged(420, 140, 6, th.cols[0], true); jagged(500, 100, 9, th.cols[1], true); jagged(580, 50, 12, th.cols[2], false);
+        break;
+      case 'vault':
+        g.strokeStyle = 'rgba(200,215,230,.06)'; g.lineWidth = 1;
+        for (y = 0; y < H; y += 80) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+        for (x = 0; x < W; x += 120) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+        for (y = 8; y < H; y += 80) for (x = 8; x < W; x += 120) { g.fillStyle = 'rgba(220,230,240,.1)'; g.beginPath(); g.arc(x, y, 1.6, 0, TAU); g.fill(); }
+        glow(180, 360, 200, '127,232,255', 0.08);
+        g.strokeStyle = 'rgba(200,215,230,.1)';
+        [150, 132, 100].forEach(function (rr3, k) { g.lineWidth = k === 1 ? 6 : 2; g.beginPath(); g.arc(180, 360, rr3, 0, TAU); g.stroke(); });
+        for (i = 0; i < 12; i++) { var a3 = i * TAU / 12; g.lineWidth = 2; g.beginPath(); g.moveTo(180 + Math.cos(a3) * 100, 360 + Math.sin(a3) * 100); g.lineTo(180 + Math.cos(a3) * 150, 360 + Math.sin(a3) * 150); g.stroke(); }
+        break;
+      case 'city':
+        stars(50, 260); glow(180, 640, 300, '255,110,150', 0.25);
+        [[0.42, '#1a1236', 70], [0.62, '#110b26', 110]].forEach(function (lay) {
+          x = -10;
+          while (x < W + 10) {
+            var bw = 22 + rng() * 34, bh = lay[2] + rng() * 170, top2 = H - bh;
+            g.fillStyle = lay[1]; g.fillRect(x, top2, bw, bh);
+            for (var wy = top2 + 8; wy < H - 6; wy += 10) for (var wx = x + 4; wx < x + bw - 5; wx += 7) if (rng() < 0.28) { g.fillStyle = 'rgba(255,220,150,' + (lay[0] * (0.4 + rng() * 0.5)).toFixed(2) + ')'; g.fillRect(wx, wy, 3, 4); }
+            x += bw + 2;
+          }
+        });
+        break;
+      case 'storm':
+        for (i = 0; i < 14; i++) glow(rng() * W, rng() * 220, 70 + rng() * 80, '120,130,160', 0.16);
+        g.strokeStyle = 'rgba(190,210,240,.09)'; g.lineWidth = 1;
+        for (i = 0; i < 140; i++) { x = rng() * W; y = rng() * H; g.beginPath(); g.moveTo(x, y); g.lineTo(x - 6, y + 16); g.stroke(); }
+        g.strokeStyle = 'rgba(220,230,255,.35)'; g.lineWidth = 2; g.beginPath(); g.moveTo(300, 60);
+        [[284, 120], [298, 126], [276, 200], [290, 204], [262, 290]].forEach(function (p) { g.lineTo(p[0], p[1]); }); g.stroke();
+        glow(290, 150, 90, '200,215,255', 0.1);
+        layer(590, 10, 0.03, 2, '#0a0d14');
+        break;
+      case 'castle':
+        stars(14, 140); sun(th.sun);
+        g.fillStyle = '#1b0f22';
+        g.fillRect(0, 540, W, H - 540);
+        [[20, 430, 50], [290, 430, 50], [120, 470, 120]].forEach(function (t) {
+          g.fillRect(t[0], t[1], t[2], H - t[1]);
+          for (x = t[0]; x < t[0] + t[2]; x += 14) g.fillRect(x, t[1] - 10, 8, 10);
+        });
+        g.beginPath(); g.moveTo(15, 430); g.lineTo(45, 380); g.lineTo(75, 430); g.fill();
+        g.beginPath(); g.moveTo(285, 430); g.lineTo(315, 380); g.lineTo(345, 430); g.fill();
+        g.fillStyle = 'rgba(255,200,120,.5)'; [[40, 460], [310, 460], [170, 500], [200, 500]].forEach(function (w2) { g.fillRect(w2[0], w2[1], 5, 9); });
+        break;
+      case 'finale':
+        stars(160, H);
+        [['80,255,170', 210, 0], ['170,110,255', 260, 3]].forEach(function (a4) {
+          for (x = 0; x < W; x += 4) {
+            y = a4[1] + Math.sin(x * 0.02 + a4[2]) * 26;
+            var gr4 = g.createLinearGradient(0, y, 0, y + 120); gr4.addColorStop(0, 'rgba(' + a4[0] + ',0)'); gr4.addColorStop(0.25, 'rgba(' + a4[0] + ',.1)'); gr4.addColorStop(1, 'rgba(' + a4[0] + ',0)');
+            g.fillStyle = gr4; g.fillRect(x, y, 4, 120);
+          }
+        });
+        [[70, 150, '255,200,90'], [290, 120, '255,110,170'], [250, 470, '120,200,255'], [90, 520, '160,255,180']].forEach(function (f) {
+          glow(f[0], f[1], 50, f[2], 0.15);
+          for (var k = 0; k < 24; k++) { var a5 = k / 24 * TAU, r5 = 22 + rng() * 26; g.fillStyle = 'rgba(' + f[2] + ',' + (0.25 + rng() * 0.35).toFixed(2) + ')'; g.beginPath(); g.arc(f[0] + Math.cos(a5) * r5, f[1] + Math.sin(a5) * r5, 1.3, 0, TAU); g.fill(); }
+        });
         break;
       case 'temple':
         stars(20, 160); sun(th.sun);
@@ -2009,7 +2702,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         for (i = 0; i < 24; i++) { g.fillStyle = i % 2 ? 'rgba(255,200,100,.05)' : 'rgba(255,200,100,.02)'; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 600, i * TAU / 24, (i + 1) * TAU / 24); g.fill(); }
         glow(0, 0, 220, '255,190,90', 0.22);
         g.strokeStyle = 'rgba(255,210,140,.1)'; g.lineWidth = 2;
-        [[0, 0, 165, 30], [-150, -230, 70, 14], [150, 230, 80, 16]].forEach(function (c) {
+        (th.gears ? th.gears.map(function (c) { return [c[0] - 180, c[1] - 330, c[2], c[3]]; }) : [[0, 0, 165, 30], [-150, -230, 70, 14], [150, 230, 80, 16]]).forEach(function (c) {
           g.beginPath();
           for (var k = 0; k <= c[3] * 2; k++) { var aa = k / (c[3] * 2) * TAU, rr2 = c[2] + (k % 2 ? 0 : 9); g.lineTo(c[0] + Math.cos(aa) * rr2, c[1] + Math.sin(aa) * rr2); }
           g.closePath(); g.stroke(); g.beginPath(); g.arc(c[0], c[1], c[2] * 0.3, 0, TAU); g.stroke();
@@ -2059,6 +2752,27 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     win: function (score) { if (!L || L.done) return; L.score = score; balls = []; state = 'done'; levelWon(); },
     lose: function (score) { if (!L || L.done) return; L.score = score; L.ballsLeft = 0; balls = []; state = 'done'; L.done = true; levelLost(); },
     run: function () { return run ? JSON.parse(JSON.stringify(run)) : null; },
+    // tests: the special pieces on the table now
+    pieces: function () {
+      return { extras: extras.map(function (o) { return { t: o.t, x: o.x, y: o.y, off: !!o.off, on: !!o.on, grp: o.grp }; }),
+        zones: zones.map(function (z) { return { t: z.t, x: z.x, y: z.y }; }), open: Object.keys(L.open || {}),
+        iron: objs.filter(function (o) { return o.iron && !o.gone; }).map(function (o) { return { i: o.i, hp: o.hp, c: o.c, lit: o.lit }; }),
+        ghosts: phasers.filter(function (o) { return !o.gone; }).length, ghostsOff: phasers.filter(function (o) { return o.off && !o.gone; }).length,
+        orangeIdx: objs.filter(function (o) { return o.c === 'o' && !o.gone; }).map(function (o) { return o.i; }), balls: balls.length, stats: L.stats };
+    },
+    // tests: drop a ball anywhere with any speed
+    drop: function (x, y, vx, vy) { if (!L || state !== 'aim') return false; fire(); balls = [newBall(x, y, vx, vy)]; return true; },
+    // tests: for each orange peg left, is there a launcher angle whose path reaches it (lighting and iron ignored)?
+    reach: function () {
+      var want = {}, got = {};
+      objs.forEach(function (o) { if (o.c === 'o' && !o.gone && !o.lit) want[o.i] = 1; });
+      for (var d = -87; d <= 87; d += 0.5) {
+        var a = d * PI / 180, dx = Math.sin(a), dy = Math.cos(a);
+        simulate(LX + dx * BARREL, LY + dy * BARREL, dx * V0, dy * V0, 4, function (b, o) { if (o && want[o.i]) got[o.i] = 1; return null; });
+      }
+      return Object.keys(want).filter(function (k) { return !got[k]; }).map(Number);
+    },
+    open: function (g) { L.open[g || 1] = 1; setShields(); },
     tune: function (e, g) { E_PEG = e; GRAV = g; }
   };
 

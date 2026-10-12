@@ -87,11 +87,11 @@ pot weed coke hash crack meth beer booze drunk wine vodka kill killer killed mur
 # 72 words or fewer), Sunday 21x21 at about Friday difficulty.
 MIN_Q = [70, 70, 65, 60, 60, 55, 60]                # lowest list score in the pool
 MIN_F = [2.8, 2.6, 2.4, 2.2, 2.0, 1.8, 2.0]         # lowest familiarity in the pool
-FAM_W = [1.2, 1.0, 0.8, 0.6, 0.45, 0.35, 0.5]       # ranking: score/10 + FAM_W * familiarity
+FAM_W = [1.2, 1.0, 0.8, 0.6, 0.45, 0.3, 0.5]        # ranking: score/10 + FAM_W * familiarity
 BIG_SIZE = [15, 15, 15, 15, 15, 15, 21]
-BIG_BLACKS = [(36, 40), (36, 40), (35, 40), (34, 40), (31, 36), (29, 35), (74, 82)]
+BIG_BLACKS = [(36, 40), (36, 40), (35, 40), (34, 40), (32, 38), (32, 37), (74, 82)]
 BIG_WORDS = [78, 78, 78, 76, 72, 72, 140]           # most entries allowed (NYT limits)
-BIG_MAX3 = [18, 18, 16, 16, 14, 12, 30]             # most 3-letter entries
+BIG_MAX3 = [18, 18, 16, 16, 14, 14, 30]             # most 3-letter entries
 BIG_LONG = [4, 4, 4, 4, 6, 6, 10]                   # fewest entries of 8+ letters
 BIG_MAXLEN = [15, 15, 15, 15, 15, 15, 15]
 # Minis: 5x5, friendlier pool
@@ -99,7 +99,9 @@ MINI_Q = [80, 80, 80, 75, 75, 65, 75]
 MINI_F = [3.6, 3.3, 3.0, 2.7, 2.4, 2.1, 2.5]
 MINI_BLACKS = [(4, 6), (4, 6), (2, 4), (2, 4), (2, 4), (0, 2), (0, 2)]
 
-PEN = 0.05              # ranking penalty per earlier use of a word in the same day's bank (spreads vocabulary)
+# Vocabulary across the bank: a word already used somewhere gets a small ranking bonus (every distinct entry needs
+# a hand-written clue), and a word used more than FREE_USES times in the same day's bank loses PEN per extra use.
+PEN, FREE_USES, SEEN_BONUS = 0.05, 4, 1.0
 
 def slots_of(grid):
     n = len(grid); slots = []
@@ -279,7 +281,7 @@ class Filler:
         try: os.unlink(self.path)
         except OSError: pass
 
-def build(kind, day, count, words, rng, used_count, log):
+def build(kind, day, count, words, rng, used_count, log, seen_words=()):
     if kind == 'mini':
         n, q, f = 5, MINI_Q[day], MINI_F[day]
         new_pattern = lambda: random_pattern(5, MINI_BLACKS[day], 5, rng)
@@ -291,9 +293,11 @@ def build(kind, day, count, words, rng, used_count, log):
         nodes, secs = (40000, 8) if n <= 15 else (80000, 20)
     pool = {w: v[0] / 10.0 + FAM_W[day] * v[1] for w, v in words.items() if v[0] >= q and v[1] >= f and len(w) <= n}
     fl = Filler(pool, rng.randrange(1 << 30))
-    fl.cmd('set pen %g' % PEN)
+    for k, v in (('pen', PEN), ('free', FREE_USES), ('bonus', SEEN_BONUS)): fl.cmd('set %s %g' % (k, v))
     for w, k in used_count.items():
         if w in pool: fl.cmd('use %s %d' % (w, k))
+    for w in seen_words:
+        if w in pool and w not in used_count: fl.cmd('seen %s' % w)
     out, seen = [], set()
     t0 = time.time(); fails = 0
     try:
@@ -317,7 +321,7 @@ def build(kind, day, count, words, rng, used_count, log):
 _words = None
 def job(arg):
     global _words
-    kind, day, count, seed, part, have = arg
+    kind, day, count, seed, part, have, seen_words = arg
     if _words is None: _words = load_words()
     rng = random.Random(seed * 31 + day * 7 + (0 if kind == 'mini' else 1000) + len(have) * 7919 + part * 104729)
     used = {}
@@ -325,7 +329,7 @@ def job(arg):
         for d, cells in slots_of(g):
             w = ''.join(g[r][c] for r, c in cells); used[w] = used.get(w, 0) + 1
     t0 = time.time()
-    out = build(kind, day, count, _words, rng, used, lambda s: print(s, flush=True))
+    out = build(kind, day, count, _words, rng, used, lambda s: print(s, flush=True), seen_words)
     return '%s%d' % (kind, day), out, time.time() - t0
 
 def main():
@@ -358,7 +362,9 @@ def main():
                 while todo and len(running) < a.procs:
                     kind, day, cnt = todo.pop(0); part += 1
                     have = res.get('%s%d' % (kind, day), [])
-                    running.append(pool.apply_async(job, ((kind, day, cnt, a.seed, part, have),)))
+                    seen_words = sorted({''.join(g[r][c] for r, c in cells) for grids in res.values() for g in grids
+                                         for d, cells in slots_of(g)})
+                    running.append(pool.apply_async(job, ((kind, day, cnt, a.seed, part, have, seen_words),)))
                 time.sleep(0.5)
                 for r in [r for r in running if r.ready()]:
                     running.remove(r)

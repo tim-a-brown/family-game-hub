@@ -5,8 +5,11 @@
    WORDS:  one "word score" per line (a-z, score: higher = better fill).
 
    Commands on stdin, one per line; every command gets one reply line:
-     use WORD N          WORD has been used N times already (each use costs `pen` in the word's rank)
-     set NAME VALUE      pen | noise | look | beta | tries | scan | deep
+     use WORD N          WORD has been used N times already in this day's bank (each use past `free`
+                         costs `pen` in the word's rank)
+     seen WORD           WORD is already somewhere in the bank (worth `bonus` in its rank: fewer distinct
+                         entries to write clues for)
+     set NAME VALUE      pen | free | bonus | noise | look | beta | tries | scan | deep
      fill NODES ROWS     ROWS: grid rows joined by '/', '#' = black, '.' = open, a-z = fixed letter
                          reply "ok ROWS NODES" or "fail NODES"
 
@@ -33,10 +36,11 @@ static int nw[MAXL + 1], W64[MAXL + 1];
 static uint8_t *wl[MAXL + 1];          /* letters, nw*L */
 static float *wsc[MAXL + 1];           /* score */
 static int *wuse[MAXL + 1];            /* times used */
+static uint8_t *wseen[MAXL + 1];       /* already somewhere in the bank */
 static u64 *B[MAXL + 1];               /* B[L][(pos*26+c)*W + x] */
 
-static double pen = 0.15, noise = 0.6, beta = 0.25;
-static int look = 8, tries = 30;
+static double pen = 0.15, noise = 0.6, beta = 0.25, freeuse = 0, bonus = 0;
+static int look = 3, tries = 30;
 
 static u64 rs = 88172645463325252ULL;
 static inline u64 rnd(void) { rs ^= rs << 13; rs ^= rs >> 7; rs ^= rs << 17; return rs; }
@@ -90,6 +94,7 @@ static void load(const char *path) {
         wl[L] = calloc((size_t)nw[L] * L + 1, 1);
         wsc[L] = calloc(nw[L] + 1, sizeof(float));
         wuse[L] = calloc(nw[L] + 1, sizeof(int));
+        wseen[L] = calloc(nw[L] + 1, 1);
         B[L] = calloc((size_t)L * 26 * W64[L] + 1, sizeof(u64));
     }
     int idx[MAXL + 1] = {0};
@@ -274,6 +279,12 @@ static int soldepth;
 static double deadline;
 static double now(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec + t.tv_nsec * 1e-9; }
 
+/* ranking value: list score, less a penalty for heavy reuse, plus a bonus for words already in the bank */
+static inline double value(int L, int w) {
+    double u = wuse[L][w] - freeuse;
+    return wsc[L][w] - (u > 0 ? pen * u : 0) + (wseen[L][w] || wuse[L][w] ? bonus : 0);
+}
+
 static void assign(St *st, int s, int w) {
     u64 *D = st->dom + off[s]; memset(D, 0, sizeof(u64) * W64[slen[s]]);
     D[w >> 6] = 1ULL << (w & 63);
@@ -304,7 +315,7 @@ static int search(int depth) {
            skip candidates that wipe out, prefer ones that leave the most room */
         int nc = 0;
         for (int x = 0; x < W; x++) { u64 d = D[x]; while (d) { int b = __builtin_ctzll(d); d &= d - 1; int w = x * 64 + b;
-            cand[nc].w = w; cand[nc].k = wsc[L][w] - pen * wuse[L][w] + noise * rnd01(); nc++; } }
+            cand[nc].w = w; cand[nc].k = value(L, w) + noise * rnd01(); nc++; } }
         if (nc > 1) qsort(cand, nc, sizeof(Cand), candcmp);
         for (int i = 0; i < nc && i < scan && no < K; i++) {
             st_copy(&scratch, st); assign(&scratch, best, cand[i].w);
@@ -331,7 +342,7 @@ static int search(int depth) {
             const uint8_t *lt = wl[L] + (size_t)w * L; double rm = 0;
             for (int k = 0; k < L; k++) rm += lg[k][lt[k]];
             if (rm < -1e8) continue;
-            double key = wsc[L][w] - pen * wuse[L][w] + noise * rnd01() + beta * rm;
+            double key = value(L, w) + noise * rnd01() + beta * rm;
             if (no < K) { int i = no++; while (i > 0 && rk[i - 1] < key) { rk[i] = rk[i - 1]; cw[i] = cw[i - 1]; i--; } rk[i] = key; cw[i] = w; }
             else if (key > rk[K - 1]) { int i = K - 1; while (i > 0 && rk[i - 1] < key) { rk[i] = rk[i - 1]; cw[i] = cw[i - 1]; i--; } rk[i] = key; cw[i] = w; }
         } }
@@ -416,11 +427,14 @@ int main(int argc, char **argv) {
         if (sscanf(line, "%15s", cmd) != 1) continue;
         if (!strcmp(cmd, "use") && sscanf(line, "%*s %s %ld", a, &n) == 2) {
             int L, i; if (hget(a, &L, &i)) wuse[L][i] = n; printf("ok\n");
+        } else if (!strcmp(cmd, "seen") && sscanf(line, "%*s %s", a) == 1) {
+            int L, i; if (hget(a, &L, &i)) wseen[L][i] = 1; printf("ok\n");
         } else if (!strcmp(cmd, "set") && sscanf(line, "%*s %s %lf", a, &v) == 2) {
             if (!strcmp(a, "pen")) pen = v; else if (!strcmp(a, "noise")) noise = v;
             else if (!strcmp(a, "look")) look = (int)v; else if (!strcmp(a, "beta")) beta = v;
             else if (!strcmp(a, "tries")) tries = (int)v; else if (!strcmp(a, "scan")) scan = (int)v;
             else if (!strcmp(a, "deep")) deep = (int)v;
+            else if (!strcmp(a, "free")) freeuse = v; else if (!strcmp(a, "bonus")) bonus = v;
             printf("ok\n");
         } else if (!strcmp(cmd, "fill")) {
             double secs = 60; char rows[4096];
