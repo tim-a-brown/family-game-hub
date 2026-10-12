@@ -135,9 +135,20 @@ body{overflow:hidden;}
   var hard = localStorage.getItem('wordle_hard') === '1';
   function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {} if (!S.over && S.guesses.length) Kit.resume.set((S.random ? 'Practice' : 'Daily #' + S.day) + ' · ' + S.guesses.length + '/6'); }
 
-  function start(random) {
+  // review: the Daily tab was tapped after today's word is done, so show how it went (read only)
+  function start(random, review) {
     var t = today();
-    if (!random && playedToday()) { random = true; Kit.toast("You've done today's word. Here's a practice one!"); }
+    if (!random && playedToday()) {
+      var past = review ? GameHistory.load('wordle').filter(function (e) { return e.dayNum === t.day && !e.randomMode; })[0] : null;
+      var gs = past && (Array.isArray(past.guesses) ? past.guesses : past.guesses && typeof past.guesses === 'object' ? Object.keys(past.guesses).sort(function (a, b) { return +a.replace(/\D/g, '') - +b.replace(/\D/g, ''); }).map(function (k) { return past.guesses[k]; }) : null);
+      if (past && gs && gs.length) {
+        S = { answer: past.answer || t.word, guesses: gs.slice(0, 6), cur: '', over: true, won: !!past.won, random: false, day: t.day, started: past.started || Date.now(), review: true };
+        save(); build();
+        Kit.toast(S.won ? "Today's word: solved in " + S.guesses.length + '/6. A new one tomorrow.' : "Today's word was " + S.answer + '. A new one tomorrow.', 3200);
+        return;
+      }
+      random = true; Kit.toast("You've done today's word. Here's a practice one!");
+    }
     S = { answer: random ? ANSWERS[Math.floor(Math.random() * ANSWERS.length)] : t.word, guesses: [], cur: '', over: false, won: false, random: !!random, day: t.day, started: Date.now() };
     Kit.resume.clear(); save(); build();
   }
@@ -302,8 +313,8 @@ body{overflow:hidden;}
         onclick: function () {
           var want = x[0] === 'random';
           if (want === S.random && !(want && S.over)) return;
-          if (S.guesses.length && !S.over) Kit.confirm(want ? 'Switch to a practice word?' : 'Switch to the daily word?', { ok: 'Switch', body: 'This puzzle will be dropped.' }).then(function (ok) { if (ok) start(want); });
-          else start(want);
+          if (S.guesses.length && !S.over) Kit.confirm(want ? 'Switch to a practice word?' : 'Switch to the daily word?', { ok: 'Switch', body: 'This puzzle will be dropped.' }).then(function (ok) { if (ok) start(want, !want); });
+          else start(want, !want);
         }
       }));
     });
