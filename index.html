@@ -417,7 +417,12 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
   }
 
   // ── Launch (with "phone or real game?" for games that have a scorekeeper) ─
-  function go(file) { Kit.sfx('pop'); var h = String(file).split('#'); location.href = 'games/' + (/\.html/.test(h[0]) ? h[0] : h[0] + '.html') + (h[1] ? '#' + h[1] : ''); }
+  // fresh: a new game, so the players filter (Just me / Two of us / Three or more) goes along as ?np= for its setup screen
+  function go(file, fresh) {
+    Kit.sfx('pop'); var h = String(file).split('#'), f = /\.html/.test(h[0]) ? h[0] : h[0] + '.html';
+    if (fresh && state.who && state.who !== 'any') f += (f.indexOf('?') >= 0 ? '&' : '?') + 'np=' + state.who;
+    location.href = 'games/' + f + (h[1] ? '#' + h[1] : '');
+  }
   // Lorcana's cards lean and catch the light with the phone's tilt: iPhone asks for motion access
   // from a tap, so ask when Lorcana is tapped here (once; a yes is remembered for the game).
   function askMotion() {
@@ -432,12 +437,12 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
     if (g.id === 'lorcana') askMotion();
     // a game already going: offer to pick it up (or start fresh) instead of dropping straight in
     var live = null; try { live = (JSON.parse(get('gn_resume', '{}')) || {})[g.id] || null; } catch (e) {}
-    if (!g.score && !live) return go(g.play);
+    if (!g.score && !live) return go(g.play, true);
     Kit.sfx('pop');
     var box = el('div', { class: 'pick' });
     var s;
     function opt(e, t, d, file, cls) {
-      box.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); go(file); } }, [
+      box.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); go(file, cls !== 'resume' && cls !== 'tool'); } }, [
         el('span', { class: 'e', html: Kit.icon(e) }), el('span', null, [el('div', { class: 't', text: t }), el('div', { class: 'd', text: d })])
       ]));
     }

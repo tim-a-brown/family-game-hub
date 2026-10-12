@@ -1100,6 +1100,22 @@
     var names = (saved.names || []).map(function (n) { return isPersonName(n) ? n : ''; });
     var bots = cpuNames(8);
     var openHelp = {};
+    // Opened from the home screen with its players filter on (?np=1 Just me, 2 Two of us, 3 Three or more):
+    // start on a mode that suits that many people (vs Computer or solo for one, Pass & play for more) and seat them
+    var NP = 0; try { NP = Math.min(3, parseInt(new URLSearchParams(location.search).get('np'), 10) || 0); } catch (e) {}
+    if (NP && P && !EDIT_DEFAULTS) {
+      var cpuOf = function (m) { return typeof P.cpu === 'function' ? P.cpu(m) : P.cpu; };
+      var fits = function (m, h) {   // can this mode seat h people at this device? (computer seats mean one person)
+        if (cpuOf(m)) return h === 1;
+        var r = (typeof P.range === 'function' && P.range(m)) || [P.min || 1, P.max || P.min || 1];
+        return h >= 3 ? r[1] >= 3 : h >= r[0] && h <= r[1];
+      };
+      if (o.modes && o.modes.length > 1 && !o.modeLocked && !fits(state.mode, NP)) {
+        var fit = o.modes.filter(function (m) { return !/online|real/i.test(m.id) && fits(m.id, NP); })[0];
+        if (fit) state.mode = fit.id;
+      }
+      if (!cpuOf(state.mode)) saved = Object.assign({}, saved, { count: NP >= 3 ? Math.max(3, saved.count || 0) : NP });
+    }
 
     var wrap = el('div', { class: 'setup' });
     wrap.appendChild(el('div', { class: 'setup-hero' }, [
