@@ -284,7 +284,7 @@ body{overflow-x:hidden;}
 .tiles .tile{min-width:0;}
 /* long answers: one plate per row, so each reads on a line or two */
 .tiles.one{grid-template-columns:1fr;gap:9px;}
-.tiles.one .tile{min-height:56px;padding:8px 12px 10px 10px;}
+.tiles.one .tile{min-height:62px;padding:8px 12px 10px 10px;}
 .tiles.one .tile{padding-right:70px;}
 .tiles.one .tile .chip{top:50%;right:10px;margin-top:-13px;}
 .tiles.one .tile .cnt{bottom:auto;top:50%;margin-top:-11px;right:10px;}
@@ -1360,7 +1360,8 @@ body{overflow-x:hidden;}
       nb ? el('span', { class: 'bon', title: 'Streak bonus if you get this one right', html: Kit.icon('flame') + '+' + nb }) : null
     ]);
     stage.appendChild(d.meter);
-    d.tiles = el('div', { class: 'tiles' + (Math.max.apply(null, m.o.map(function (o) { return String(o).length; })) > 26 ? ' one' : '') });
+    // phones: four full-width stacked tiles (long answers fit, big tap targets); wider screens: 2 x 2 unless an answer is long
+    d.tiles = el('div', { class: 'tiles' + (innerWidth < 600 || Math.max.apply(null, m.o.map(function (o) { return String(o).length; })) > 26 ? ' one' : '') });
     d.tile = m.o.map(function (o, k) {
       var b = el('button', { type: 'button', class: 'tile blank', disabled: true, style: { '--tc': TILE[k] }, 'aria-label': 'ABCD'.charAt(k) + ': ' + o, onclick: function () { vPick(k); } }, [
         el('span', { class: 'L', text: 'ABCD'.charAt(k) }), el('span', { class: 't', text: o }), el('span', { class: 'chip' }), el('span', { class: 'cnt' })
