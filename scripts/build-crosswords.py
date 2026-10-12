@@ -22,6 +22,15 @@ DICT_URL = 'https://raw.githubusercontent.com/Crossword-Nexus/collaborative-word
 SCORE_VERSION = 3       # bump when the scoring in load_words changes, to rebuild the cached scores
 
 def load_words(path=None):
+    w = _load_words(path)
+    # XW_ALLOW=<file of words>: fill only with these (e.g. answers that already have clues)
+    allow = os.environ.get('XW_ALLOW')
+    if allow and os.path.exists(allow):
+        ok = {l.strip().lower() for l in open(allow) if l.strip()}
+        w = {k: v for k, v in w.items() if k in ok}
+    return w
+
+def _load_words(path=None):
     """word -> (quality, familiarity, words). Quality: the Collaborative Word List score (MIT licence, Crossword
     Nexus), 50 = passable, 80+ = good fill. Familiarity: wordfreq zipf of the word, or of the phrase split into
     words (ICECREAM -> "ice cream", a little lower for each extra word), so Monday gets entries everyone knows.
