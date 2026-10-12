@@ -71,6 +71,7 @@
     // Pages with their own fixed backdrop (<html data-theme-fixed>, e.g. Lorcana's night sky) stay on Night
     var t = themeRec(root.hasAttribute('data-theme-fixed') ? 'night' : id);
     if (t.id === 'night') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t.id);
+    root.style.setProperty('--theme-accent', t.a);   // the theme's own accent (games set --accent to their colour)
     meta('theme-color', t.bar || t.bg);
     meta('apple-mobile-web-app-status-bar-style', t.light ? 'default' : 'black');
   }
