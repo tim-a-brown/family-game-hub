@@ -80,7 +80,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
 @keyframes goalpop{40%{transform:scale(1.45);}}
 
 /* the magnifier on small mazes: parked in a corner away from your finger, so the way ahead stays in view */
-.loupe{position:fixed;z-index:60;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;overflow:hidden;pointer-events:none;
+.loupe{position:fixed;z-index:60;width:var(--ld,150px);height:var(--ld,150px);margin:calc(var(--ld,150px) / -2) 0 0 calc(var(--ld,150px) / -2);border-radius:50%;overflow:hidden;pointer-events:none;
   background:radial-gradient(130% 90% at 50% 40%,#fffcf3 0%,#fbf4e3 70%,#f3e8cf 100%);
   box-shadow:0 0 0 3px #d7dbe2, 0 0 0 5px #8a929e, 0 12px 26px rgba(0,0,0,.5), inset 0 0 18px rgba(0,0,0,.12);opacity:0;transform:scale(.6);transition:opacity .12s, transform .16s var(--spring), left .24s var(--ease), top .24s var(--ease);}
 .loupe.on{opacity:1;transform:none;}
@@ -723,7 +723,8 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
   }
   // The magnifier parks in a top corner of the screen, on the side away from your finger, so it never covers
   // the way ahead; it only swaps sides when your finger comes close to it (and drops to a bottom corner when the
-  // finger is up there itself). It shows about 5 squares each way at a readable size.
+  // finger is up there itself). It's big (over half the screen's short side) and only lightly zoomed, so it shows
+  // ten or more squares each way: enough of the maze around your finger to see where the path is heading.
   var loupeAt = null;
   function loupeOn() { return lsGet('mazes_loupe', '1') !== '0'; }
   function showLoupe(cx, cy, p) {
@@ -735,7 +736,9 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       loupeSvg.appendChild(sv('circle', { class: 'lc', r: 1, fill: 'none', stroke: 'rgba(35,38,58,.35)' }));
       loupe.appendChild(loupeSvg); document.body.appendChild(loupe);
     }
-    var D = 150, s = 28 / U, w = D / s;   // a square 28 px across in the loupe
+    var vmin = Math.min(window.innerWidth, window.innerHeight), D = Math.round(Math.max(180, Math.min(280, vmin * 0.56)));
+    var sq = Math.max(18, Math.min(26, pxu * U * 1.6)), s = sq / U, w = D / s;   // each square 1.6x its size on screen (18 to 26 px)
+    loupe.style.setProperty('--ld', D + 'px');
     loupeSvg.setAttribute('viewBox', (p[0] - w / 2).toFixed(2) + ' ' + (p[1] - w / 2).toFixed(2) + ' ' + w.toFixed(2) + ' ' + w.toFixed(2));
     var lc = loupeSvg.querySelector('.lc'); lc.setAttribute('cx', p[0]); lc.setAttribute('cy', p[1]); lc.setAttribute('r', (U * 0.75).toFixed(2)); lc.setAttribute('stroke-width', (U * 0.06).toFixed(2));
     var r = svg.getBoundingClientRect(), vw = window.innerWidth, m = D / 2 + 8;
