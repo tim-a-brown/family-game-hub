@@ -139,7 +139,7 @@
       st: players.map(function () { return { rentPaid: 0, rentGot: 0, dbl: 0, jail: 0, go: 0, built: 0, trades: 0, bought: 0 }; }),
       big: null   // the biggest rent paid: {a, f, t, sq}
     };
-    say(S, 'The game begins. ' + S.players[0].name + ' rolls first.');
+    say(S, 'The game begins. First to roll: ' + S.players[0].name + '.');
     return S;
   }
 

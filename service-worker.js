@@ -280,6 +280,7 @@ const PRECACHE_URLS = [
   '/games/threecardpoker.html',
   '/games/tictactoe.html',
   '/games/trivia.html',
+  '/data/trivia-questions.js',
   '/games/wheeloffortune.html',
   '/games/wizard-ai.html',
   '/games/wizard.html',
