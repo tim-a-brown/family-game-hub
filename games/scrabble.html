@@ -44,6 +44,12 @@
 .pl.bump .pt{animation:bump .5s var(--spring);}
 @keyframes bump{40%{transform:scale(1.25);color:var(--yellow);}}
 .pls-3 .pl .avatar,.pls-4 .pl .avatar{display:none;}
+.sc.roomy .pl{padding:8px 12px 8px 8px;}
+.sc.roomy .pl .avatar{display:inline-grid;width:38px;height:38px;}
+.sc.roomy .pl .nm{font-size:.95rem;}
+.sc.roomy .pl .pt{font-size:1.6rem;}
+.sc.roomy .sc-msg{font-size:1.05rem;}
+.sc.roomy .sc-acts .btn.sm{font-size:.85rem;}
 .pls-4 .pl{padding:5px 7px;}
 /* the tile bag: a drawstring cloth bag with the count on it */
 .sc-bag{flex:none;position:relative;width:54px;border:0;padding:0;border-radius:14px;background:var(--w06);color:var(--text);display:grid;place-items:center;cursor:pointer;transition:transform .15s var(--spring);}
@@ -184,7 +190,7 @@
 .lg li.sys::before{background:var(--text-3);}
 
 /* Wide screens (iPad sideways, computers): the board on the left, everything else beside it */
-.sc.wide{display:grid;grid-template-columns:auto minmax(300px,360px);grid-template-rows:auto 1fr;column-gap:22px;row-gap:10px;justify-content:center;align-items:start;padding-top:6px;}
+.sc.wide{display:grid;grid-template-columns:auto minmax(320px,400px);grid-template-rows:auto 1fr;column-gap:22px;row-gap:10px;justify-content:center;align-items:start;padding-top:6px;}
 .sc.wide .sc-frame{grid-column:1;grid-row:1 / 3;}
 .sc.wide .sc-top{grid-column:2;grid-row:1;max-width:none;flex-direction:column;}
 .sc.wide .sc-pls{flex-direction:column;}
@@ -195,6 +201,8 @@
 .sc.wide .sc-bag{width:auto;height:52px;display:flex;align-items:center;justify-content:flex-start;gap:10px;padding:0 12px;}
 .sc.wide .sc-bag b{position:static;margin:0;font-family:var(--font);font-weight:800;font-size:.92rem;color:var(--text-2);text-align:left;}
 .sc.wide .sc-side{grid-column:2;grid-row:2;max-width:none;height:100%;min-height:0;}
+.sc.wide .sc-acts .btn{min-height:56px;}
+.sc.wide .sc-acts .btn.sm{font-size:.8rem;}
 .sc.wide .sc-log{flex:1;min-height:80px;overflow:auto;padding:2px;border-radius:12px;-webkit-mask-image:none;mask-image:none;}
 .sc.wide .sc-log h4{display:block;margin:2px 4px 6px;font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
 
@@ -931,8 +939,9 @@
     V.root.classList.toggle('wide', wide);
     var rim = Math.round(Math.max(8, Math.min(16, W * 0.022))), bs;
     if (wide) {
-      bs = Math.min(H - bar - 22 - 2 * rim, W - 360 - 22 - 40 - 2 * rim, 860);
-      V.root.style.setProperty('--rt', Math.min(46, Math.floor((338 - 26) / 7 - 4)) + 'px');
+      var side = W >= 1100 ? 400 : 340;
+      bs = Math.min(H - bar - 22 - 2 * rim, W - side - 22 - 40 - 2 * rim, 860);
+      V.root.style.setProperty('--rt', Math.floor((side - 30) / 7 * 0.88) + 'px');
     } else {
       var sideW = Math.min(W - 16, 640), rt = Math.min(56, Math.floor((sideW - 24) / 7 - sideW / 7 * 0.1));
       V.root.style.setProperty('--rt', rt + 'px');
@@ -943,7 +952,8 @@
     bs = Math.max(200, Math.floor(bs));
     var gap = bs > 520 ? 2 : 1, cs = (bs - 16 * gap) / 15;
     V.root.style.setProperty('--bs', bs + 'px');
-    V.root.style.minHeight = wide ? '' : (H - bar - 2) + 'px';
+    V.root.style.minHeight = wide ? '' : Math.floor(H - bar - 4) + 'px';
+    V.root.classList.toggle('roomy', !wide && W >= 700);
     V.root.style.setProperty('--rim', rim + 'px');
     V.root.style.setProperty('--gap', gap + 'px');
     V.root.style.setProperty('--cs', cs.toFixed(3) + 'px');
