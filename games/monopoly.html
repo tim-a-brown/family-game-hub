@@ -84,14 +84,14 @@
   font-family:'Sofia Sans Condensed',sans-serif;font-weight:800;color:#1d1d1b;font-size:calc(var(--bs) * .022);}
 .mbank span{display:flex;align-items:center;gap:2px;} .mbank svg{width:calc(var(--bs) * .032);height:calc(var(--bs) * .032);}
 .mbank .low{color:#c8102e;}
-.mcard{position:absolute;left:50%;top:50%;width:48%;z-index:20;transform:translate(-50%,-50%);perspective:900px;cursor:pointer;}
+.mcard{position:absolute;left:50%;top:50%;width:58%;z-index:20;transform:translate(-50%,-50%);perspective:900px;cursor:pointer;}
 .ccard{position:relative;aspect-ratio:1.6;border-radius:calc(var(--bs) * .014);padding:5% 7%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4%;text-align:center;
   box-shadow:0 0 0 1px rgba(0,0,0,.25), 0 14px 30px rgba(0,0,0,.45);font-family:'Sofia Sans Condensed',sans-serif;color:#1d1d1b;}
 .ccard.ch{background:linear-gradient(160deg,#ffb054,#f3901d);}
 .ccard.cc{background:linear-gradient(160deg,#fff7c4,#f8e88a);}
-.ccard .ct{font-family:var(--display);font-size:calc(var(--bs) * .036);letter-spacing:.08em;}
+.ccard .ct{font-family:var(--display);font-size:max(15px,calc(var(--bs) * .042));letter-spacing:.08em;}
 .ccard.cc .ct{color:#1b5fae;}
-.ccard .cx{font-weight:700;font-size:calc(var(--bs) * .028);line-height:1.18;}
+.ccard .cx{font-weight:700;font-size:max(14px,calc(var(--bs) * .036));line-height:1.15;}
 .ccard .ci{position:absolute;right:4%;bottom:4%;width:13%;opacity:.25;}
 .mcard.show .ccard{animation:cflip .7s var(--ease) both;}
 @keyframes cflip{0%{transform:translate(var(--fx,0),var(--fy,0)) rotate(-45deg) rotateY(180deg) scale(.4);}55%{transform:rotateY(70deg) scale(.95);}100%{transform:none;}}
@@ -158,6 +158,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 .deed .dn{font-size:.72em;text-align:center;padding:3px 2px 0;color:#444;font-style:italic;}
 .deed.mortg{position:relative;}
 .deed.mortg::after{content:"MORTGAGED";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-24deg);padding:2px 10px;border:3px solid #c8102e;border-radius:6px;color:#c8102e;font-weight:900;font-size:1.4em;letter-spacing:.08em;background:rgba(255,253,246,.85);}
+.deed.sm{font-size:11px;padding:4px;}.deed.sm .dh{padding:3px 3px 4px;}
 .deed.flip{animation:dflip .65s var(--ease) both;transform-origin:50% 60%;}
 @keyframes dflip{0%{transform:perspective(700px) rotateX(80deg) translateY(30px);opacity:0;}60%{opacity:1;}100%{transform:none;}}
 
@@ -210,7 +211,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 .brow .btn{min-height:38px;padding:0 10px;}
 .sq-btn{width:40px;min-width:40px;padding:0 !important;}
 .bankline{display:flex;gap:12px;font-weight:800;font-size:.85rem;color:var(--text-2);margin:2px 0 10px;}
-.bankline svg{width:16px;height:16px;vertical-align:-3px;}
+.bankline svg{display:inline-block;width:16px;height:16px;vertical-align:-3px;}
 .tr-who{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
 .tr-who button{--c:var(--p1);display:flex;align-items:center;gap:6px;padding:4px 12px 4px 4px;border:0;border-radius:99px;background:var(--w06);color:var(--text);font-weight:800;}
 .tr-who button.on{box-shadow:inset 0 0 0 2.5px var(--c);background:var(--w1);}
@@ -598,7 +599,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
         row('One utility owned', '4 × dice', 0) + row('Both utilities owned', '10 × dice', 1) +
         '</div><div class="df">Mortgage value ' + money(s.m) + '</div>';
     }
-    return '<div class="deed' + (S && S.mort[sq] ? ' mortg' : '') + (o.flip ? ' flip' : '') + '">' + h + '</div>';
+    return '<div class="deed' + (S && S.mort[sq] ? ' mortg' : '') + (o.flip ? ' flip' : '') + (o.sm ? ' sm' : '') + '">' + h + '</div>';
   }
   function miniCard(sq, o) {
     o = o || {}; var s = SQ[sq], hs = '';
@@ -643,6 +644,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
       return;
     }
     var p = M.needs(S), x = S.players[p], me = mine(p) && !busy, cur = S.players[S.cur];
+    if (busy && disp && disp.big) { box.appendChild(turnLine(S.cur, '<span class="thinking"><i></i><i></i><i></i></span>')); return; }
     if (S.phase === 'auction') return renderAuction(box, p, me);
     if (S.phase === 'trade') return renderTradeAsk(box, p, me);
     if (S.phase === 'debt') return renderDebt(box, p, me);
@@ -695,7 +697,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
     var hb = A2.hb >= 0 ? S.players[A2.hb].name : null;
     var bidders = el('div', { class: 'bidders' });
     S.players.forEach(function (q, i) { if (q.out) return; var inA = A2.act.indexOf(i) >= 0; bidders.appendChild(el('span', { class: (inA ? '' : 'outb') + (i === p ? ' now' : ''), style: { '--c': pcolor(i) } }, [el('i'), el('span', { text: q.name })])); });
-    var dd = el('div', { html: deedHTML(A2.sq, { flip: view.flipSq !== A2.sq }) }); view.flipSq = A2.sq; dd.firstChild.style.width = '140px';
+    var dd = el('div', { html: deedHTML(A2.sq, { flip: view.flipSq !== A2.sq, sm: true }) }); view.flipSq = A2.sq; dd.firstChild.style.width = '118px';
     var info = el('div', { class: 'side' }, [
       el('div', { class: 'bidbox' }, [el('div', null, [el('small', { text: hb ? 'High bid' : 'No bids yet' }), el('span', { class: 'amt', text: money(A2.high) })]), hb ? el('div', { class: 'what', text: hb }) : null]),
       bidders
@@ -844,7 +846,8 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 
   // ═══ Animation ══════════════════════════════════════════════════════════
   function animate(ev, pre) {
-    disp = { pos: pre.pos.slice(), cash: pre.cash.slice(), jail: pre.jail.slice() };
+    disp = { pos: pre.pos.slice(), cash: pre.cash.slice(), jail: pre.jail.slice(), big: ev.some(function (e) { return /^(dice|move|card|bankrupt|jail)$/.test(e.e); }) };
+    renderStrip(); renderAct(); renderMine(); placeTokens();
     // monopolies completed by this action
     var newGroups = [];
     for (var g = 0; g < 8; g++) {
@@ -1199,7 +1202,9 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
   function highlights() {
     var h = [], P = S.players;
     if (S.big) h.push('Biggest rent: ' + P[S.big.f].name + ' paid ' + P[S.big.t].name + ' ' + money(S.big.a) + (S.big.sq >= 0 ? ' on ' + SQ[S.big.sq].n : ''));
-    for (var g = 0; g < 8; g++) { var o = S.own[M.GSQ[g][0]]; if (o >= 0 && M.ownsGroup(S, o, g)) h.push(P[o].name + ' owned the ' + GROUPS[g].n + ' group'); }
+    var held = {};
+    for (var g = 0; g < 8; g++) { var o = S.own[M.GSQ[g][0]]; if (o >= 0 && M.ownsGroup(S, o, g)) (held[o] = held[o] || []).push(GROUPS[g].n); }
+    Object.keys(held).forEach(function (o) { var L = held[o]; h.push(P[o].name + ' held ' + (L.length === 1 ? 'the ' + L[0] + ' group' : L.slice(0, -1).join(', ') + ' and ' + L[L.length - 1])); });
     S.out.forEach(function (b) { h.push(P[b.p].name + ' went bankrupt' + (b.to >= 0 ? ' to ' + P[b.to].name : '') + ' on turn ' + b.n); });
     var mostT = -1, mt = 0; S.st.forEach(function (s, i) { if (s.trades > mt) { mt = s.trades; mostT = i; } });
     if (mt >= 2) h.push(P[mostT].name + ' made ' + mt + ' trades');

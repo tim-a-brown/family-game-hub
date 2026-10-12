@@ -438,8 +438,55 @@
       var adj = d.adj ? d.adj[i] : 0;
       return [n, d.mv ? d.mv[i] : '–', d.bg ? d.bg[i] : '–', adj > 0 ? '+' + adj : adj < 0 ? String(adj) : '0'];
     });
-    out.push(ui.section('Each player', ui.table(['', 'Plays', 'Bingos', 'Tiles left'], rows)));
+    out.push(ui.section('Each player', ui.table(['', 'Plays', 'Bingos', 'Leftover'], rows)));
     out.push(ui.facts([['Ended', d.end === 'out' ? (nm[d.o] || 'Someone') + ' went out' : 'Six scoreless turns in a row'], ['Turns', d.tn], ['Computer', d.lv ? d.lv.charAt(0).toUpperCase() + d.lv.slice(1) : '']]));
+    return ui.wrap(out);
+  });
+
+  // ── Monopoly: the board at the end (who owned what, buildings, mortgages), worth, rent and who went broke ──
+  R('monopoly', function (e, ui) {
+    var d = e.dt; if (!d || !d.o) return null;
+    var nm = (e.players || []).map(function (p) { return p.name; }), out = [];
+    var GC = ['#8a4b2a', '#a9dcf5', '#d6338a', '#f3901d', '#e1251b', '#f6e100', '#1d9e55', '#1b5fae'];
+    // group of each square (-1: not a street)
+    var G = [-1, 0, -1, 0, -1, -1, 1, -1, 1, 1, -1, 2, -1, 2, 2, -1, 3, -1, 3, 3, -1, 4, -1, 4, 4, -1, 5, 5, -1, 5, -1, 6, 6, -1, 6, -1, -1, 7, -1, 7];
+    var OWN = [   // ownable squares
+      0,1,0,1,0,1,1,0,1,1,0,1,1,1,1,1,1,0,1,1,0,1,0,1,1,1,1,1,1,1,0,1,1,0,1,1,0,1,0,1];
+    var Cn = 44, Wd = (400 - 2 * Cn) / 9;
+    function rc(i) {
+      if (i === 0) return [400 - Cn, 400 - Cn, Cn, Cn, 'c']; if (i < 10) return [400 - Cn - i * Wd, 400 - Cn, Wd, Cn, 'b'];
+      if (i === 10) return [0, 400 - Cn, Cn, Cn, 'c']; if (i < 20) return [0, 400 - Cn - (i - 10) * Wd, Cn, Wd, 'l'];
+      if (i === 20) return [0, 0, Cn, Cn, 'c']; if (i < 30) return [Cn + (i - 21) * Wd, 0, Wd, Cn, 't'];
+      if (i === 30) return [400 - Cn, 0, Cn, Cn, 'c']; return [400 - Cn, Cn + (i - 31) * Wd, Cn, Wd, 'r'];
+    }
+    var s = '<svg viewBox="0 0 400 400" role="img" aria-label="The board at the end"><rect width="400" height="400" fill="#d6ead2"/>';
+    for (var i = 0; i < 40; i++) {
+      var r = rc(i), x = r[0], y = r[1], w = r[2], h = r[3], sd = r[4], o = d.o.charAt(i), hs = +d.h.charAt(i) || 0, mo = d.m.charAt(i) === '1';
+      s += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + (o !== '-' && o !== '' ? ui.color(+o) : OWN[i] ? '#eef6ec' : '#d6ead2') + '" fill-opacity="' + (o !== '-' && o !== '' ? (mo ? .35 : .8) : 1) + '" stroke="#1d1d1b" stroke-width="1"/>';
+      if (G[i] >= 0) {
+        var b = sd === 'b' ? [x, y, w, 10] : sd === 't' ? [x, y + h - 10, w, 10] : sd === 'l' ? [x + w - 10, y, 10, h] : [x, y, 10, h];
+        s += '<rect x="' + b[0].toFixed(1) + '" y="' + b[1].toFixed(1) + '" width="' + b[2].toFixed(1) + '" height="' + b[3].toFixed(1) + '" fill="' + GC[G[i]] + '" stroke="#1d1d1b" stroke-width="1"/>';
+        if (hs) {
+          var cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2;
+          if (hs === 5) s += '<rect x="' + (cx - 5) + '" y="' + (cy - 3.5) + '" width="10" height="7" rx="1" fill="#d42a2a" stroke="#fff" stroke-width=".8"/>';
+          else for (var k = 0; k < hs; k++) { var off = (k - (hs - 1) / 2) * 6.2, hx = sd === 'l' || sd === 'r' ? cx : cx + off, hy = sd === 'l' || sd === 'r' ? cy + off : cy; s += '<rect x="' + (hx - 2.4) + '" y="' + (hy - 2.4) + '" width="4.8" height="4.8" rx=".8" fill="#2ba24c" stroke="#fff" stroke-width=".6"/>'; }
+        }
+      }
+      if (mo) s += '<path d="M' + x + ' ' + y + 'l' + w + ' ' + h + '" stroke="#c8102e" stroke-width="1.6"/>';
+    }
+    s += '<text x="200" y="208" text-anchor="middle" font-family="Lilita One,system-ui,sans-serif" font-size="34" fill="#d7262e" transform="rotate(-45 200 200)">MONOPOLY</text></svg>';
+    var key = nm.map(function (n, i) { return { t: n, c: ui.color(i) }; });
+    out.push(ui.section('The board at the end', [ui.picture(s, { frame: 'wood', max: 360 }), ui.chips(key)]));
+    var rows = nm.map(function (n, i) {
+      var props = 0; for (var q = 0; q < 40; q++) if (d.o.charAt(q) === String(i)) props++;
+      var bk = (d.out || []).filter(function (b) { return b.p === i; })[0];
+      return [n, bk ? 'Bankrupt' : ui.money((d.w || [])[i]), bk ? '–' : props, ui.money((d.rg || [])[i])];
+    });
+    out.push(ui.table(['', 'Worth', 'Deeds', 'Rent in'], rows));
+    if (d.out && d.out.length) out.push(ui.section('Bankruptcies', ui.log(d.out.map(function (b) { return { c: b.p, t: nm[b.p] + ' went broke on turn ' + b.n + (b.to >= 0 ? ', to ' + nm[b.to] : ', to the bank') }; }))));
+    var opt = String(d.opt || '').split(',').filter(Boolean).map(function (o) { return { fp: 'Free Parking jackpot', go400: '$400 on Go', noauction: 'No auctions', m60: '1 hour game', m90: '90 minute game', r25: '25 rounds' }[o] || o; });
+    out.push(ui.stats([['Rounds', d.r], ['Biggest rent', d.big ? ui.money(d.big.a) : null, d.big && nm[d.big.f] ? nm[d.big.f] + ' to ' + nm[d.big.t] : ''], ['Ended', d.why === 'time' ? 'Time up' : 'Last one left']]));
+    if (opt.length) out.push(ui.chips(opt));
     return ui.wrap(out);
   });
 

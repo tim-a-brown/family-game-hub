@@ -186,7 +186,7 @@
 .lg li.fresh{animation:rise .45s var(--ease);}
 .sq.ST.go{animation:stargo 1.6s ease-in-out infinite;z-index:1;}
 @keyframes stargo{50%{box-shadow:0 0 0 calc(var(--cs) * .08) #ffd65a,0 0 calc(var(--cs) * .7) rgba(255,214,90,.85);}}
-.sq.can::before{content:"";position:absolute;inset:18%;border-radius:50%;background:radial-gradient(circle,rgba(255,200,40,.55),rgba(255,200,40,0) 70%);pointer-events:none;animation:canp 1.2s ease-in-out infinite;}
+.sq.can::before{content:"";position:absolute;inset:18%;border-radius:50%;background:radial-gradient(circle,rgba(255,196,30,.8),rgba(255,196,30,0) 70%);pointer-events:none;animation:canp 1.2s ease-in-out infinite;}
 @keyframes canp{50%{opacity:.35;}}
 .lg{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;}
 .lg li{--c:var(--p1);display:flex;align-items:baseline;gap:8px;padding:6px 10px;border-radius:10px;background:var(--w04);font-size:.9rem;color:var(--text-2);font-weight:700;}
@@ -1606,7 +1606,7 @@
     var notes = [];
     if (bingos.length) notes.push(bingos.length === 1 ? 'Bingo: ' + nm(bingos[0].p) + ' with ' + bingos[0].m : bingos.length + ' bingos: ' + bingos.map(function (b) { return b.m; }).join(', '));
     notes.push(R.type === 'out' ? nm(R.seat) + ' went out and picked up ' + R.adj[R.seat] + (R.adj[R.seat] === 1 ? ' point' : ' points') : 'Ended after six scoreless turns in a row');
-    R.adj.forEach(function (d, i) { if (d < 0) notes.push(nm(i) + ' lost ' + (-d) + ' for ' + R.left[i].replace(/\?/g, 'a blank ').split('').join(' ').replace(/a b l a n k/g, 'blank')); });
+    R.adj.forEach(function (d, i) { if (d < 0) notes.push(nm(i) + (nm(i) === 'You' ? ' were' : ' was') + ' left with ' + R.left[i].split('').map(function (l) { return l === '?' ? 'a blank' : l; }).join(' ') + ': −' + (-d)); });
     if (R.tieBreak) notes.push('Tied, so the score before leftover tiles decided it');
     var meSeat = viewSeat(), lose = w >= 0 && S.mode !== 'pp' && w !== meSeat && (P(w).cpu || S.mode === 'online');
     var title = w < 0 ? 'It’s a tie!' : (S.mode !== 'pp' && w === meSeat) || nm(w) === 'You' ? 'You win!' : nm(w) + ' wins!';
@@ -1863,7 +1863,6 @@
       if (res.type === 'exch' && bagN() >= 7) { var u2 = {}, ids = []; res.tiles.forEach(function (l) { var rt = myRack().filter(function (x) { return x.l === l && !u2[x.id]; })[0]; if (rt) { u2[rt.id] = 1; ids.push(rt.id); } }); doSwap(viewSeat(), ids); return 'swap'; }
       doPass(viewSeat()); return 'pass';
     },
-    dbg: function () { return { selId: selId, cursor: cursor, G: !!G, ptrs: Object.keys(ptrs), pinch: !!pinch, pan: pan }; },
     submit: submit, recall: recall, pass: function () { doPass(S.turn); }, robot: function () { return busy; },
     newGame: function (o) { newGame(o); }, ready: function () { return !!V.root && !busy; }, myTurn: myTurn, fit: fit
   };
