@@ -81,34 +81,32 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 .rail .hd > span:first-child{flex:1;min-width:0;}
 .rail .hd .btn{flex:none;min-width:120px;}
 .rail .hd span{opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.rail .hd span:last-child{flex:none;}
-/* The hand is a card carousel (from Lorcana's card viewer): the card in front full size, the rest turned away on
-   each side, or a fan when the whole hand fits side by side. overflow-x:clip keeps the cards inside the rail
-   sideways while dealt cards can still fly in from the pile above. */
-.hand{position:relative;--cw:158px;height:calc(var(--cw) * 1.4 + 40px);margin:0 4px;overflow-x:clip;overflow-y:visible;perspective:1100px;touch-action:pan-y;-webkit-user-select:none;user-select:none;outline:none;-webkit-tap-highlight-color:transparent;}
-.hand:focus-visible{box-shadow:0 0 0 2px rgba(255,212,71,.55);border-radius:16px;}
-.hand.flow::before{content:"";position:absolute;left:50%;top:22px;width:calc(var(--cw) * 1.9);height:calc(var(--cw) * 1.5);transform:translateX(-50%);background:radial-gradient(closest-side,rgba(255,228,170,.24),rgba(255,228,170,0));pointer-events:none;}
-.hc{position:absolute;left:50%;top:24px;width:var(--cw);height:calc(var(--cw) * 1.4);margin-left:calc(var(--cw) * -.5);will-change:transform;cursor:pointer;}
-.hc .ac::after{content:"";position:absolute;inset:0;z-index:2;border-radius:inherit;background:#120a04;opacity:calc(var(--dim,0) * .5);pointer-events:none;}
-.hc.sel .ac::after{opacity:calc(var(--dim,0) * .22);}
-.hc .ac{transition:transform .32s var(--spring);}
-.hc .ac.sel{transform:translateY(-22px);}
-.hc .ac.sel .fa{box-shadow:0 0 0 4px #ffd447,0 0 26px rgba(255,212,71,.45),0 16px 26px rgba(0,0,0,.5);}
-.hc::before{content:"";position:absolute;z-index:-1;left:8%;right:8%;bottom:-3%;height:26%;border-radius:50%;background:rgba(0,0,0,.6);filter:blur(12px);opacity:0;transition:opacity .25s;pointer-events:none;}
-.hc.front::before{opacity:1;}
-.hand.off .hc{cursor:grab;}
+/* The hand: a flat row of your cards. When they don't all fit it swipes sideways and snaps a card to the middle
+   (the swipe-through from Lorcana's card viewer); when they do, they just sit side by side. */
+.hand{--cw:158px;display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;padding:28px 0 12px;scrollbar-width:none;outline:none;-webkit-tap-highlight-color:transparent;}
+.hand::-webkit-scrollbar{display:none;}
+.hand::before,.hand::after{content:"";flex:0 0 calc(50% - var(--cw) / 2 - 12px);}
+.hand.fits{justify-content:center;scroll-snap-type:none;padding-left:14px;padding-right:14px;}
+.hand.fits::before,.hand.fits::after{display:none;}
+.hand.mdrag{scroll-snap-type:none;cursor:grabbing;}
+.hand:focus-visible{box-shadow:inset 0 0 0 2px rgba(255,212,71,.55);border-radius:16px;}
+.hc{flex:none;scroll-snap-align:center;cursor:pointer;}
+.hc .ac{transition:transform .25s var(--spring);}
+.hc .ac.sel{transform:translateY(-18px);}
+.hc .ac.sel .fa{box-shadow:0 0 0 4px #ffd447,0 14px 24px rgba(0,0,0,.45);}
+.hc.dealing{visibility:hidden;}
+.hc.kb .ac .fa{outline:3px solid rgba(255,255,255,.85);outline-offset:3px;}
 .hand.off .ac .fa{filter:saturate(.75) brightness(.86);}
-.hand.fan:not(.off) .hc:not(.front):hover .ac:not(.sel){transform:translateY(-8px);}
-.hand .ac .num{position:absolute;left:50%;top:-14px;margin-left:-14px;z-index:3;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#ffd447;color:#2b1a00;font-weight:900;font-size:.9rem;box-shadow:0 2px 6px rgba(0,0,0,.4);animation:crownIn .4s var(--spring);}
-@keyframes handDeal{0%{transform:translate(var(--fx,0px),var(--fy,-200px)) rotate(-16deg) scale(.62);opacity:.15;}60%{opacity:1;}100%{transform:none;}}
-.hc .ac.dealt{animation:handDeal .62s cubic-bezier(.2,.9,.3,1.12) both;animation-delay:var(--dl,0s);}
-/* Where you are in a big hand: a dot per card, the one in front long, picked ones gold */
-.pips{display:flex;justify-content:center;flex-wrap:wrap;margin:-4px 14px 0;padding-bottom:6px;min-height:22px;}
-.pips button{width:16px;height:22px;padding:0;border:0;background:none;display:grid;place-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:width .25s var(--spring);}
-.pips button::before{content:"";width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.32);transition:width .25s var(--spring),background .2s,box-shadow .2s;}
+@media (hover:hover){.hand:not(.off) .hc .ac:not(.sel):hover{transform:translateY(-6px);}}
+.hand .ac .num{position:absolute;left:50%;top:-13px;margin-left:-13px;z-index:3;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#ffd447;color:#2b1a00;font-weight:900;font-size:.85rem;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+/* Where you are in a big hand: a dot per card, the middle one long, picked ones gold */
+.pips{display:flex;justify-content:center;flex-wrap:wrap;margin:-6px 14px 0;padding-bottom:6px;min-height:22px;}
+.pips button{width:16px;height:22px;padding:0;border:0;background:none;display:grid;place-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.pips button::before{content:"";width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.32);transition:width .2s,background .2s;}
 .pips button.on{width:26px;}
 .pips button.on::before{width:18px;background:#fff;}
-.pips button.sel::before{background:#ffd447;box-shadow:0 0 6px rgba(255,212,71,.7);}
-.hand.fan + .pips{visibility:hidden;min-height:8px;height:8px;}
+.pips button.sel::before{background:#ffd447;}
+.hand.fits + .pips{display:none;}
 
 /* Buttons under the table */
 .acts{display:flex;gap:10px;margin-top:12px;}
@@ -285,7 +283,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   .mid.two{--cw:150px;}
   .plays{--cw:132px;gap:16px 14px;}
   .plays.crowd{--cw:112px;}
-  .hand{--cw:184px;}
+  .hand{--cw:166px;}
   .st .msg{font-size:1.12rem;}
   .tbl .felt-in{padding:16px 16px 20px;}
   .sent{font-size:1.15rem;}
@@ -298,9 +296,9 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   .mid{--cw:150px;grid-column:1;}
   .plays{--cw:128px;grid-column:2;margin-top:0;align-content:center;}
   .plays.crowd{--cw:108px;}
-  .hand{--cw:176px;}
+  .hand{--cw:148px;}
 }
-@media (min-width:1000px) and (orientation:landscape) and (min-height:1000px){ .mid{--cw:176px;} .plays{--cw:148px;} .hand{--cw:196px;} }
+@media (min-width:1000px) and (orientation:landscape) and (min-height:1000px){ .mid{--cw:176px;} .plays{--cw:148px;} .hand{--cw:160px;} }
 </style>
 </head>
 <body>
@@ -752,103 +750,50 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   }
   function nameB(V, i) { var p = V.players[i]; return '<b style="--c:' + (p ? p.color : '#ffe08a') + '">' + esc(youOr(V, i)) + '</b>'; }
 
-  // ═══ Your hand: a card carousel ════════════════════════════════════════════
-  // Ported from the Lorcana card viewer's coverflow strip (makeFlow in lorcana-play.html). Every card in the hand
-  // has a spot on one strip and pos is a float index: the card at pos is in front, full size, and the others turn
-  // away on each side. Dragging, flicking (with momentum), a trackpad, the arrow keys and tapping a card all just
-  // move pos, so the whole hand glides and settles on a card. When the whole hand fits side by side (iPads and
-  // computers) it's a fan instead: every card showing, the one in front lifted and opened out from its neighbours.
+  // ═══ Your hand: a row you swipe through ═══════════════════════════════════
+  // The swipe-through from the Lorcana card viewer, kept flat: the cards sit in one row at a size you can read.
+  // When they don't all fit, the row scrolls sideways and snaps a card to the middle (swipe, trackpad, mouse drag,
+  // the arrow keys or the dots under it); when they do fit they just sit side by side. Tapping a card picks it and
+  // brings it to the middle; tapping the picked card again plays it.
   var HF = null;
-  var REDUCED = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   function handFlow(cards, me) {
     var n = cards.length;
-    var F = { me: me, n: n, ids: cards.map(function (c) { return c.id; }), pos: 0, focus: 0, at: -1, raf: 0, sraf: 0, dragAt: 0, spread: 1, fan: false, items: [], dots: [], pending: null, onPick: null };
+    var F = { me: me, n: n, ids: cards.map(function (c) { return c.id; }), focus: 0, items: [], dots: [], pending: null, onPick: null, fits: true, sl: 0 };
     F.el = el('div', { class: 'hand', tabindex: '0', 'aria-label': 'Your cards. Arrow keys to look through them, Enter to pick.' });
     F.pips = el('div', { class: 'pips' });
     cards.forEach(function (c, j) {
       var ce = cardEl(c), hc = el('div', { class: 'hc', role: 'button', 'aria-label': ce.getAttribute('aria-label') || '' }, [ce]);
-      hc.addEventListener('click', function () { if (Date.now() - F.dragAt < 350) return; F.tap(j); });
+      hc.addEventListener('click', function () { if (Date.now() - (F.dragAt || 0) < 300) return; F.tap(j); });
       F.el.appendChild(hc); F.items.push(hc);
-      var dot = el('button', { type: 'button', tabindex: '-1', 'aria-label': 'Card ' + (j + 1) + ' of ' + n, onclick: function () { F.settle(j); } });
+      var dot = el('button', { type: 'button', tabindex: '-1', 'aria-label': 'Card ' + (j + 1) + ' of ' + n, onclick: function () { F.go(j, true); } });
       F.pips.appendChild(dot); F.dots.push(dot);
     });
-    // Sizes: the card in front is --cw wide. The fan is used when every card can show at least a third of itself
-    var W = 0, CW = 150, D1 = 100, D2 = 30, S = 0, E = 0, GAP = 12;
-    function measure() {
-      W = F.el.clientWidth || 340; CW = parseFloat(getComputedStyle(F.el).getPropertyValue('--cw')) || 150;
-      var wi = W - 24; F.fan = false; S = 0; E = 0;
-      if (n <= 1 || n * CW + (n - 1) * GAP <= wi) { F.fan = true; S = CW + GAP; }
-      else if (n > 3) { S = (wi - 3 * CW - 2 * GAP) / (n - 3); if (S >= CW * 0.34) { F.fan = true; E = 2 * (CW + GAP - S); } }
-      D1 = CW * (W > 600 ? 0.8 : 0.66);
-      D2 = Math.max(CW * 0.2, Math.min(CW * 0.5, (W / 2 - D1 - CW * 0.3) / Math.max(1, n - 2)));
-      F.el.classList.toggle('fan', F.fan); F.el.classList.toggle('flow', !F.fan);
-    }
-    function pose(j, at) {
-      var p = j - (at == null ? F.pos : at), a = Math.abs(p), sg = p < 0 ? -1 : 1, sp = F.spread;
-      if (F.fan) {
-        // a hand of cards held in a gentle arc; the one in front straightens, lifts and its neighbours part
-        var m = (n - 1) / 2, t = m ? (j - m) / m : 0, w = Math.max(0, 1 - a);
-        var fx = ((j - m) * S + E / 2 * Math.max(-1, Math.min(1, p))) * sp, fy = t * t * 12 * sp - 16 * w, rz = t * 6 * (1 - w) * sp, fs = 1 - 0.06 * (1 - w);
-        return { x: fx, y: fy, r: 0, sc: fs, t: 'translate3d(' + fx.toFixed(1) + 'px,' + fy.toFixed(1) + 'px,0) rotate(' + rz.toFixed(2) + 'deg) scale(' + fs.toFixed(3) + ')', z: j + Math.round(w * 100), o: 1, dim: 0 };
-      }
-      var x, r, sc, o = 1;
-      if (a <= 1) { x = a * D1; r = a * 50; sc = 1 - a * 0.16; }
-      else { x = D1 + (a - 1) * D2; r = 50 + (a - 1) * 5; sc = Math.max(0.55, 0.84 - (a - 1) * 0.07); o = Math.max(0, Math.min(1, (W / 2 + CW * 0.35 - x) / (CW * 0.3))); }
-      x *= sp; r *= sp;
-      return { x: sg * x, y: 0, r: r, sc: sc, t: 'translate3d(' + (sg * x).toFixed(1) + 'px,0,0) rotateY(' + (-sg * r).toFixed(1) + 'deg) scale(' + sc.toFixed(3) + ')', z: 100 - Math.round(a * 10), o: o, dim: Math.min(1, a) };
-    }
-    F.pose = pose;
-    F.render = function () {
-      for (var j = 0; j < n; j++) {
-        var b = F.items[j], q = pose(j);
-        b.style.transform = q.t; b.style.zIndex = q.z + (F.fan && b.classList.contains('sel') ? 50 : 0); b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2));
-        b.classList.toggle('front', Math.abs(j - F.pos) < 0.5);
-      }
-      var idx = Math.max(0, Math.min(n - 1, Math.round(F.pos)));
-      if (idx !== F.at) {
-        if (F.at >= 0) Kit.sfx('slide');
-        F.at = idx; F.dots.forEach(function (d, k) { d.classList.toggle('on', k === idx); });
-      }
+    F.layout = function () {
+      var cw = parseFloat(getComputedStyle(F.el).getPropertyValue('--cw')) || 150;
+      F.fits = n * cw + (n - 1) * 12 + 28 <= F.el.clientWidth;
+      F.el.classList.toggle('fits', F.fits);
+      F.track();
     };
-    F.layout = function () { measure(); F.render(); };
-    function stop() { if (F.raf) cancelAnimationFrame(F.raf); F.raf = 0; }
-    // Glide pos to a card. Longer trips take a little longer and ease out.
-    F.settle = function (target, v) {
-      target = Math.max(0, Math.min(n - 1, Math.round(target)));
-      stop(); if (!W) measure();
-      var from = F.pos, dist = target - from, t0 = performance.now();
-      var ms = REDUCED ? 120 : Math.min(900, 220 + 140 * Math.pow(Math.abs(dist), 0.85));
-      // leave at the flick's own speed (so it doesn't lurch), then ease to a stop
-      var s0 = v && dist && (v > 0) === (dist > 0) ? Math.min(3, Math.abs(v) * ms / Math.abs(dist)) : 0;
-      function ease(t) { var t2 = t * t, t3 = t2 * t; return s0 ? s0 * (t3 - 2 * t2 + t) + 3 * t2 - 2 * t3 : 1 - Math.pow(1 - t, 3); }
-      (function frame(now) {
-        var t = Math.min(1, (now - t0) / ms);
-        F.pos = from + dist * (dist ? ease(t) : 1);
-        F.render();
-        if (t < 1 && F.el.isConnected) { F.raf = requestAnimationFrame(frame); return; }
-        F.raf = 0; F.pos = target; F.focus = target; F.render();
-      })(t0);
-      return dist ? ms : 0;
+    // the card nearest the middle
+    F.track = function () {
+      if (F.fits) return;
+      var r = F.el.getBoundingClientRect(), mid = r.left + r.width / 2, best = 0, bd = 1e9;
+      F.items.forEach(function (b, j) { var q = b.getBoundingClientRect(), d = Math.abs(q.left + q.width / 2 - mid); if (d < bd) { bd = d; best = j; } });
+      if (best !== F.focus && !F.fits && F.tracked) Kit.sfx('slide', 0.5);
+      F.focus = best; F.tracked = true;
+      F.dots.forEach(function (d, k) { d.classList.toggle('on', k === best); });
     };
-    // The hand fans open from a stack (a new hand, or the phone just passed to you)
-    F.open = function () {
-      if (REDUCED) { F.spread = 1; F.render(); return; }
-      var t0 = performance.now(); F.spread = 0; F.render();
-      (function frame(now) {
-        var t = Math.min(1, (now - t0) / 560), k = 1 - Math.pow(1 - t, 3);
-        F.spread = k + Math.sin(t * Math.PI) * 0.06;   // a touch past open, then back
-        if (!F.raf) F.render();
-        if (t < 1 && F.el.isConnected) { F.sraf = requestAnimationFrame(frame); return; }
-        F.sraf = 0; F.spread = 1; F.render();
-      })(t0);
+    F.go = function (j, smooth, kb) {
+      j = Math.max(0, Math.min(n - 1, j)); var b = F.items[j]; if (!b) return;
+      // the arrow keys show which card Enter will pick
+      if (kb || F.kb) { F.kb = true; F.items.forEach(function (x, k) { x.classList.toggle('kb', k === j); }); }
+      if (F.fits) { F.focus = j; return; }
+      var left = b.offsetLeft + b.offsetWidth / 2 - F.el.clientWidth / 2;
+      if (smooth && F.el.scrollTo) F.el.scrollTo({ left: left, behavior: 'smooth' }); else F.el.scrollLeft = left;
+      if (!smooth) F.track();
     };
-    // Tap a card at the side: it comes to the front. Tap the one in front (or any card of a fan): pick it.
-    F.tap = function (j) {
-      var front = j === Math.round(F.pos);
-      if (!front) { F.settle(j); Kit.haptic('tick'); if (!F.fan) { Kit.sfx('tap', 0.5); return; } }
-      if (F.onPick) F.onPick(F.ids[j], front);
-    };
-    // Picked cards stay lifted with a gold edge wherever they are in the hand (numbered when you pick more than one)
+    F.tap = function (j) { F.go(j, true); if (F.onPick) F.onPick(F.ids[j]); };
+    // Picked cards stay lifted with a gold edge (numbered when you pick more than one)
     F.sync = function (sel, pick, live) {
       F.el.classList.toggle('off', !live);
       F.items.forEach(function (b, j) {
@@ -857,71 +802,26 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
         if (on && pick > 1) { if (!num) { num = el('span', { class: 'num' }); ce.appendChild(num); } num.textContent = String(k + 1); }
         else if (num) num.remove();
       });
-      if (F.fan) F.render();
     };
-    // Dragging: every card follows your finger (or the mouse); a flick carries on with momentum
-    var sw = null;
-    function unit() { return F.fan ? Math.max(40, S) : D1; }
-    F.dragging = function () { return !!(sw && sw.h); };
-    F.el.addEventListener('pointerdown', function (e) { if (e.button > 0) return; stop(); F.holding = null; sw = { x: e.clientX, y: e.clientY, id: e.pointerId, h: false, p0: F.pos, pts: [] }; });
+    // While a finger is on the row or it's still gliding, changes at the table wait (a redraw would stop the swipe)
+    var touching = false, lastScroll = 0, idleT = 0, md = null;
+    F.dragging = function () { return touching || !!(md && md.on) || Date.now() - lastScroll < 160; };
+    function idle() { if (F.dragging()) { idleT = setTimeout(idle, 80); return; } if (F.pending) { var pv = F.pending; F.pending = null; render(pv); } }
+    F.el.addEventListener('scroll', function () { lastScroll = Date.now(); F.sl = F.el.scrollLeft; F.track(); clearTimeout(idleT); idleT = setTimeout(idle, 180); }, { passive: true });
+    F.el.addEventListener('touchstart', function () { touching = true; }, { passive: true });
+    F.el.addEventListener('touchend', function () { touching = false; clearTimeout(idleT); idleT = setTimeout(idle, 180); }, { passive: true });
+    F.el.addEventListener('touchcancel', function () { touching = false; }, { passive: true });
+    // A mouse can drag the row too (phones and trackpads scroll it natively)
+    F.el.addEventListener('pointerdown', function (e) { if (e.pointerType !== 'mouse' || e.button > 0 || F.fits) return; md = { x: e.clientX, s: F.el.scrollLeft, on: false, id: e.pointerId }; });
     F.el.addEventListener('pointermove', function (e) {
-      if (!sw || e.pointerId !== sw.id) return;
-      var dx = e.clientX - sw.x, dy = e.clientY - sw.y;
-      if (!sw.h) {
-        if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) { sw.h = true; measure(); F.el.classList.add('drag'); try { F.el.setPointerCapture(e.pointerId); } catch (x) {} }
-        else return;
-      }
-      sw.pts.push({ x: e.clientX, t: performance.now() }); if (sw.pts.length > 8) sw.pts.shift();
-      var p = sw.p0 - dx / unit();
-      if (p < 0) p = p * 0.3; else if (p > n - 1) p = n - 1 + (p - (n - 1)) * 0.3;     // the ends push back
-      F.pos = p; F.render();
+      if (!md || e.pointerId !== md.id) return;
+      var dx = e.clientX - md.x;
+      if (!md.on) { if (Math.abs(dx) < 6) return; md.on = true; F.el.classList.add('mdrag'); try { F.el.setPointerCapture(e.pointerId); } catch (x) {} }
+      F.el.scrollLeft = md.s - dx;
     });
-    function end() {
-      if (!sw) return;
-      var s = sw; sw = null; F.el.classList.remove('drag');
-      if (!s.h) return;
-      F.dragAt = Date.now();
-      // speed at release, in cards per millisecond (positive = toward later cards)
-      var v = 0, now = performance.now(), first = null, pts = s.pts;
-      for (var i = pts.length - 1; i >= 0; i--) { if (now - pts[i].t > 90) break; first = pts[i]; }
-      if (first && pts.length && now - first.t > 6) v = -(pts[pts.length - 1].x - first.x) / (now - first.t) / unit();
-      var target = F.pos + v * 320;                 // momentum carries it on
-      if (Math.abs(v) < 0.0012) target = F.pos;      // a slow release just snaps to the nearest
-      else if (Math.round(target) === Math.round(s.p0)) target = s.p0 + (v > 0 ? 1 : -1);   // a flick always moves at least one
-      F.settle(target, v);
-      // anything that happened at the table while you dragged is drawn now
-      if (F.pending) { var pv = F.pending; F.pending = null; render(pv); }
-    }
-    F.el.addEventListener('pointerup', end);
-    F.el.addEventListener('pointercancel', end);
-    // Trackpad (two fingers sideways): the hand follows the fingers, then settles on the nearest card
-    var wt = 0, wv = 0, wlast = 0;
-    F.el.addEventListener('wheel', function (e) {
-      var dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
-      if (!dx) return;
-      e.preventDefault(); stop(); if (!W) measure();
-      var k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 400 : 1, now = performance.now();
-      F.pos = Math.max(-0.3, Math.min(n - 0.7, F.pos + dx * k / unit())); F.render();
-      wv = now - wlast < 80 ? dx * k / unit() / Math.max(8, now - wlast) : 0; wlast = now;
-      F.dragAt = Date.now();
-      clearTimeout(wt); wt = setTimeout(function () { F.settle(F.pos + wv * 140, wv); }, 110);
-    }, { passive: false });
-    // Arrow keys: one tap moves one card; holding glides, faster and faster
-    F.hold = function (dir) {
-      if (F.holding) return; stop(); if (!W) measure();
-      var h = F.holding = { dir: dir, t0: performance.now(), last: performance.now(), p0: Math.round(F.pos), v: 0 };
-      (function frame(now) {
-        if (F.holding !== h) return;
-        var el2 = (now - h.t0) / 1000, dt = Math.min(0.05, (now - h.last) / 1000); h.last = now;
-        if (el2 > 0.28) { h.v = Math.min(30, 3 + 9 * Math.pow(el2 - 0.28, 1.4) * 4); F.pos = Math.max(0, Math.min(n - 1, F.pos + dir * h.v * dt)); F.render(); }
-        F.raf = requestAnimationFrame(frame);
-      })(h.t0);
-    };
-    F.release = function () {
-      var h = F.holding; if (!h) return; F.holding = null; stop();
-      var t = h.dir > 0 ? Math.max(h.p0 + 1, Math.ceil(F.pos + 0.05)) : Math.min(h.p0 - 1, Math.floor(F.pos - 0.05));
-      F.settle(t, h.v ? h.dir * h.v / 1000 : 0);
-    };
+    function mEnd() { if (!md) return; var was = md.on; md = null; if (!was) return; F.dragAt = Date.now(); F.el.classList.remove('mdrag'); F.track(); F.go(F.focus, true); }
+    F.el.addEventListener('pointerup', mEnd);
+    F.el.addEventListener('pointercancel', mEnd);
     return F;
   }
   function sameIds(a, b) { if (a.length !== b.length) return false; for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; }
@@ -930,10 +830,9 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     if (!handLive() || e.altKey || e.ctrlKey || e.metaKey) return;
     var t = e.target, inHand = t === HF.el || HF.el.contains(t);
     if (t && t !== document.body && !inHand && /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(t.tagName)) return;
-    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); if (!e.repeat || !HF.holding) HF.hold(e.key === 'ArrowRight' ? 1 : -1); }
-    else if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); HF.tap(Math.round(HF.pos)); }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); HF.go(HF.focus + (e.key === 'ArrowRight' ? 1 : -1), true, true); }
+    else if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); HF.tap(HF.focus); }
   });
-  document.addEventListener('keyup', function (e) { if (HF && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) HF.release(); });
   window.addEventListener('resize', function () { if (HF && HF.el.isConnected) HF.layout(); });
   // A card picked from the hand: lift it (or drop it back); tapping the lifted card again plays it
   function handPick(id) {
@@ -1080,37 +979,28 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       var hd = el('div', { class: 'hd', html: '<span>' + title + '</span>' + (V.extra && myTurn ? '<span class="xtra">+' + V.extra + ' drawn</span>' : '') });
       if (btn && myTurn) hd.appendChild(btn);
       rail.appendChild(hd);
-      // The same hand as last time keeps its carousel (and where you were in it); a changed hand is laid out again
-      // on the same card; a hand you're only now seeing fans open
+      // The same hand as last time keeps its row (and where you were in it); a changed hand stays on the same card;
+      // a hand you're only now seeing starts on its middle card
       var ids = V.hand.map(function (c) { return c.id; });
       var prevIds = prev && prev.hand && prev.me === V.me ? prev.hand.map(function (c) { return c.id; }) : null;
       var freshIds = prevIds ? ids.filter(function (id) { return prevIds.indexOf(id) < 0; }) : [];
-      if (handWas && handWas.me === V.me && sameIds(handWas.ids, ids)) hf = handWas;
+      if (handWas && handWas.me === V.me && sameIds(handWas.ids, ids)) { hf = handWas; hf.at = -1; }
       else {
         hf = handFlow(V.hand, V.me);
-        var keep = handWas && handWas.me === V.me ? handWas : null;
-        if (keep) { var fi = ids.indexOf(keep.ids[Math.round(keep.focus)]); hf.pos = hf.focus = fi >= 0 ? fi : Math.max(0, Math.min(ids.length - 1, Math.round(keep.focus))); }
-        else { hf.pos = hf.focus = Math.floor((ids.length - 1) / 2); hf.opening = true; }
+        var keep = handWas && handWas.me === V.me ? handWas : null, fi = keep ? ids.indexOf(keep.ids[keep.focus]) : -1;
+        hf.at = freshIds.length ? ids.indexOf(freshIds[0]) : keep ? (fi >= 0 ? fi : Math.min(ids.length - 1, keep.focus)) : Math.floor((ids.length - 1) / 2);
+        freshIds.forEach(function (id) { hf.items[ids.indexOf(id)].classList.add('dealing'); });
       }
       HF = hf; hf.onPick = handPick;
       rail.appendChild(hf.el); rail.appendChild(hf.pips);
       app.appendChild(rail);
-      // New cards come off the pile one by one, and the hand glides round to show the first of them
+      // New cards come off the pile one by one into the hand
       if (freshIds.length && hf !== handWas) {
         Kit.sfx('deal');
         post.push(function () {
-          var dk = deck.getBoundingClientRect(), hr = hf.el.getBoundingClientRect(), first = ids.indexOf(freshIds[0]);
-          var lead = Math.min(hf.settle(first) * 0.55, 380) / 1000;   // the hand turns to make room, then the card comes in
           freshIds.forEach(function (id, k) {
-            var j = ids.indexOf(id), ce = hf.items[j].firstChild, q = hf.pose(j, first);
-            // where the pile is, seen from the card's own (moved, turned and scaled) spot in the hand
-            var cx = hr.left + hr.width / 2 + q.x, cy = hr.top + 24 + ce.offsetHeight / 2 + q.y;
-            var k2 = q.sc * Math.max(0.35, Math.cos(q.r * Math.PI / 180));
-            ce.style.setProperty('--fx', (dk.width ? (dk.left + dk.width / 2 - cx) / k2 : 0).toFixed(0) + 'px');
-            ce.style.setProperty('--fy', (dk.width ? (dk.top + dk.height / 2 - cy) / q.sc : -240).toFixed(0) + 'px');
-            ce.style.setProperty('--dl', (lead + k * .11).toFixed(2) + 's'); ce.classList.add('dealt');
-            ce.addEventListener('animationend', function dn(e) { if (e.target !== ce) return; ce.removeEventListener('animationend', dn); ce.classList.remove('dealt'); });
-            if (k) setTimeout(function () { Kit.sfx('deal', 0.6); }, lead * 1000 + k * 110);
+            var hc = hf.items[ids.indexOf(id)];
+            setTimeout(function () { dealIn(deck, hc); if (k) Kit.sfx('deal', 0.6); }, k * 110);
           });
         });
       }
@@ -1119,7 +1009,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     if (V.mode === 'pass' && V.phase === 'play' && V.me >= 0 && V.mine) app.appendChild(el('div', { class: 'hint', text: 'Played. Pass the phone on.' }));
 
     // the hand: laid out now it's on the page; picks change after the old look is in place, so the lift animates
-    if (hf) { void hf.el.offsetWidth; hf.layout(); hf.sync(ui.sel, V.pick, myTurn); if (hf.opening) { hf.opening = false; hf.open(); } }
+    if (hf) { void hf.el.offsetWidth; hf.layout(); if (hf.at >= 0) hf.go(hf.at, false); else hf.el.scrollLeft = hf.sl; hf.sync(ui.sel, V.pick, myTurn); }
     requestAnimationFrame(function () { requestAnimationFrame(function () { post.forEach(function (f) { f(); }); }); });
     if (prev && prev.phase !== 'result' && V.phase === 'result' && V.win) celebrate(V);
   }
@@ -1141,19 +1031,29 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     ui.flying = true;
     var sel = ui.sel.slice(), dst = app.querySelector('.pend.me') || app.querySelector('.plays');
     var nodes = sel.map(function (id) { return app.querySelector('.hand .ac.sel[data-id="' + id + '"]'); }).filter(Boolean);
-    nodes.forEach(function (n, k) { if (dst) setTimeout(function () { fly(n, dst, { down: true, scale: dst.classList.contains('pend') ? dst.offsetWidth * 1.4 / (n.getBoundingClientRect().height || n.offsetHeight) : 0.8 }); n.style.visibility = 'hidden'; }, k * 90); });
+    nodes.forEach(function (n, k) { if (dst) setTimeout(function () { fly(n, dst, { down: true, scale: dst.classList.contains('pend') ? dst.offsetWidth / n.offsetWidth : 0.8 }); n.style.visibility = 'hidden'; }, k * 90); });
     Kit.sfx('deal'); Kit.haptic('medium');
     ui.sel = [];
     setTimeout(function () { ui.flying = false; doAct({ t: 'play', c: sel }); }, nodes.length ? 420 + (nodes.length - 1) * 90 : 0);
   }
+  // A new card flies off the pile into its place in the hand (the card itself shows when it lands)
+  function dealIn(src, hc) {
+    var ce = hc.firstChild, r = ce.getBoundingClientRect(), s0 = src && src.getBoundingClientRect();
+    if (!r.width || !hc.isConnected) { hc.classList.remove('dealing'); return; }
+    var c = ce.cloneNode(true); c.classList.remove('sel'); c.classList.add('fly');
+    c.style.left = r.left + 'px'; c.style.top = r.top + 'px'; c.style.width = r.width + 'px'; c.style.height = r.height + 'px'; c.style.setProperty('--cw', r.width + 'px');
+    var dx = s0 && s0.width ? s0.left + s0.width / 2 - (r.left + r.width / 2) : 0, dy = s0 && s0.width ? s0.top + s0.height / 2 - (r.top + r.height / 2) : -240;
+    c.style.transition = 'none'; c.style.opacity = '.3';
+    c.style.transform = 'translate(' + dx.toFixed(0) + 'px,' + dy.toFixed(0) + 'px) rotate(-14deg) scale(' + (s0 && s0.width ? (s0.width / r.width).toFixed(2) : '.7') + ')';
+    document.body.appendChild(c); void c.offsetWidth;
+    c.style.transition = ''; c.style.transform = 'none'; c.style.opacity = '1';
+    setTimeout(function () { c.remove(); hc.classList.remove('dealing'); }, 520);
+  }
   // A copy of a card flies from one place to another (the real one is drawn there after)
   function fly(from, to, o) {
     o = o || {};
-    var r = from.getBoundingClientRect(), b = to.getBoundingClientRect();
-    if (!r.width || !b.width) return;
-    var a = { left: r.left, top: r.top, width: r.width, height: r.height };
-    // a card turned sideways in the hand flies as the flat card it is, at the size it shows
-    if (from.closest && from.closest('.hand') && from.offsetHeight) { a.width = from.offsetWidth * r.height / from.offsetHeight; a.left = r.left + r.width / 2 - a.width / 2; }
+    var a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+    if (!a.width || !b.width) return;
     var c = from.cloneNode(true); c.classList.remove('sel', 'dealt', 'drop', 'flipin', 'lift'); c.classList.add('fly');
     var nb = c.querySelector('.num'); if (nb) nb.remove();
     c.style.left = a.left + 'px'; c.style.top = a.top + 'px'; c.style.width = a.width + 'px'; c.style.height = a.height + 'px'; c.style.setProperty('--cw', a.width + 'px');
