@@ -6,7 +6,7 @@
 //   id      stable key (matches games/<file>.html unless `file` is given)
 //   name    display name          color  the game's accent colour
 //   cat     category id (see GAME_CATS)
-//   base    icon background style when it differs from the category's (word games: letter tile)
+//   base    icon background style when it differs from the category's (optional)
 //   min/max player counts (max 0 = any group)
 //   tag     one-line pitch shown in search results and the mode sheet
 //   play    file for "play on the phone" (vs computer / solo)
@@ -97,13 +97,13 @@ var GAMES = [
   { id: 'mazes',       name: 'Mazes',        color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Draw your way out, or tilt a steel ball', play: 'mazes' },
 
   // ── Words (in Puzzles & Words) ──────────────────────────────────────────
-  { id: 'wordle',      name: 'Wordle',       color: '#22c55e', cat: 'puzzle', base: 'words', min: 1, max: 1, tag: 'Guess the word in six tries', play: 'wordle' },
-  { id: 'spellingbee', name: 'Spelling Bee', color: '#facc15', cat: 'puzzle', base: 'words', min: 1, max: 1, tag: 'Make words from seven letters', play: 'spellingbee' },
-  { id: 'crossword',   name: 'Crossword', color: '#2563eb', cat: 'puzzle', base: 'words', min: 1, max: 1, tag: 'Mini and big crosswords', play: 'crossword' },
-  { id: 'boggle',      name: 'Boggle',       color: '#f97316', cat: 'puzzle', base: 'words', min: 1, max: 4, tag: 'Find words in the letter grid', play: 'boggle' },
-  { id: 'hangman',     name: 'Hangman',      color: '#8b5cf6', cat: 'puzzle', base: 'words', min: 1, max: 2, tag: 'Guess the word, letter by letter', play: 'hangman' },
-  { id: 'wordscramble',name: 'Word Scramble', color: '#14b8a6', cat: 'puzzle', base: 'words', min: 1, max: 4, tag: 'Unscramble against the clock', play: 'wordscramble' },
-  { id: 'wordsearch',  name: 'Word Search',  color: '#e11d48', cat: 'puzzle', base: 'words', min: 1, max: 1, tag: 'Find every hidden word', play: 'wordsearch' },
+  { id: 'wordle',      name: 'Wordle',       color: '#22c55e', cat: 'puzzle', min: 1, max: 1, tag: 'Guess the word in six tries', play: 'wordle' },
+  { id: 'spellingbee', name: 'Spelling Bee', color: '#facc15', cat: 'puzzle', min: 1, max: 1, tag: 'Make words from seven letters', play: 'spellingbee' },
+  { id: 'crossword',   name: 'Crossword', color: '#2563eb', cat: 'puzzle', min: 1, max: 1, tag: 'Mini and big crosswords', play: 'crossword' },
+  { id: 'boggle',      name: 'Boggle',       color: '#f97316', cat: 'puzzle', min: 1, max: 4, tag: 'Find words in the letter grid', play: 'boggle' },
+  { id: 'hangman',     name: 'Hangman',      color: '#8b5cf6', cat: 'puzzle', min: 1, max: 2, tag: 'Guess the word, letter by letter', play: 'hangman' },
+  { id: 'wordscramble',name: 'Word Scramble', color: '#14b8a6', cat: 'puzzle', min: 1, max: 4, tag: 'Unscramble against the clock', play: 'wordscramble' },
+  { id: 'wordsearch',  name: 'Word Search',  color: '#e11d48', cat: 'puzzle', min: 1, max: 1, tag: 'Find every hidden word', play: 'wordsearch' },
 
   // ── Party ────────────────────────────────────────────────────────────────
   { id: 'trivia',      name: 'Trivia',       color: '#f59e0b', cat: 'party', min: 1, max: 6, tag: 'Who knows the most?', play: 'trivia' },
