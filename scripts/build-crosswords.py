@@ -81,6 +81,12 @@ nsfw xxx lsd ecstasy opium stoner pothead hooker pimp stripper bimbo hussy slut 
 negro negroes gook spic chink dyke fag tranny retard retarded midget gypsy gypsies hooters stds std
 sext sexts sexting toke tokes toker helluva murderer murderers corpse corpses satan satanic lust lusts lustful narc narcs teat teats fatwa allah srsly wentboom starreed megameta kalechip
 '''.split())
+# plus the words the clue writers turned down (scripts/crossword-skip.txt)
+try:
+    SKIP |= {l.strip() for l in open(os.path.join(ROOT, 'scripts', 'crossword-skip.txt')) if l.strip() and not l.startswith('#')}
+except OSError:
+    pass
+
 BAD_PARTS = ('fuck', 'shit', 'cunt', 'bitch', 'pussy', 'whore', 'slut', 'porn', 'nigg', 'dildo', 'orgasm', 'jizz',
              'twat', 'wank', 'hitler', 'nazi', 'boob', 'penis', 'vagina', 'erotic', 'horny', 'semen', 'rapist')
 SKIP_PARTS = SKIP | set('''sex anal cock dick tits nude naked rape raped kinky fag cum hump humping bang screw screwed
