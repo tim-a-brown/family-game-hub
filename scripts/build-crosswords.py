@@ -19,12 +19,13 @@ import argparse, hashlib, json, os, random, re, subprocess, sys, tempfile, time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DICT_URL = 'https://raw.githubusercontent.com/Crossword-Nexus/collaborative-word-list/main/xwordlist.dict'
-SCORE_VERSION = 2       # bump when the scoring in load_words changes, to rebuild the cached scores
+SCORE_VERSION = 3       # bump when the scoring in load_words changes, to rebuild the cached scores
 
 def load_words(path=None):
-    """word -> (quality, familiarity). Quality: the Collaborative Word List score (MIT licence, Crossword Nexus),
-    50 = passable, 80+ = good fill. Familiarity: wordfreq zipf of the word, or of the phrase split into words
-    (ICECREAM -> "ice cream", a little lower for each extra word), so Monday gets entries everyone knows."""
+    """word -> (quality, familiarity, words). Quality: the Collaborative Word List score (MIT licence, Crossword
+    Nexus), 50 = passable, 80+ = good fill. Familiarity: wordfreq zipf of the word, or of the phrase split into
+    words (ICECREAM -> "ice cream", a little lower for each extra word), so Monday gets entries everyone knows.
+    Words: 1 for a dictionary word or name, else how many words the phrase splits into."""
     path = path or os.path.join(os.environ.get('TMPDIR', '/tmp'), 'xwordlist.dict')
     if not os.path.exists(path):
         subprocess.run(['curl', '-sL', '--max-time', '120', '-o', path, DICT_URL], check=True)
@@ -58,7 +59,7 @@ def load_words(path=None):
         try: q = int(q)
         except ValueError: continue
         if q < 50 or w in SKIP or any(b in w for b in BAD_PARTS): continue
-        f = zipf_frequency(w, 'en')
+        f = zipf_frequency(w, 'en'); nparts = 1
         if w not in known:
             parts = split(w)
             # a phrase: no grown-up bits, and how well known the phrase is (wordfreq scores a phrase about as
@@ -66,7 +67,8 @@ def load_words(path=None):
             if parts and len(parts) > 1 and any(x in SKIP_PARTS for x in parts): continue
             if parts and 1 < len(parts) <= 4 and len(w) >= 6:
                 f = max(f, zipf_frequency(' '.join(parts), 'en') - 0.2 * (len(parts) - 1))
-        out[w] = (q, round(f, 2))
+            if parts and len(parts) > 1: nparts = len(parts)
+        out[w] = (q, round(f, 2), nparts)
     json.dump({'_version': [SCORE_VERSION, sorted(SKIP), list(BAD_PARTS), sorted(SKIP_PARTS)], 'words': out},
               open(cache, 'w'))
     return out
@@ -75,7 +77,7 @@ def load_words(path=None):
 SKIP = set('''slave slaves slavery lube nazi nazis rape raped rapes rapist porn sexy sex sexual heroin cocaine meth
 suicide abortion hitler genocide drunk drunks booze bong weed stoned whore hell damn crap pee poop butt boob boobs
 nude nudes naked kinky erotic orgasm penis vagina breast breasts bra bras thong torture lynch lynched kkk isis
-nsfw xxx lsd ecstasy opium stoner pothead hooker pimp stripper bimbo hussy slut ass asses arse thc jew jews
+nsfw xxx lsd ecstasy opium stoner pothead hooker pimp stripper bimbo hussy slut ass asses arse thc jew jews bastard bastards
 negro negroes gook spic chink dyke fag tranny retard retarded midget gypsy gypsies hooters stds std
 '''.split())
 BAD_PARTS = ('fuck', 'shit', 'cunt', 'bitch', 'pussy', 'whore', 'slut', 'porn', 'nigg', 'dildo', 'orgasm', 'jizz',
@@ -85,7 +87,9 @@ pot weed coke hash crack meth beer booze drunk wine vodka kill killer killed mur
 
 # Monday .. Sunday. Big grids: 15x15 Monday-Saturday (Friday and Saturday are open, NYT-themeless-style grids with
 # 72 words or fewer), Sunday 21x21 at about Friday difficulty.
-MIN_Q = [70, 70, 65, 60, 60, 55, 60]                # lowest list score in the pool
+MIN_Q = [70, 70, 65, 60, 60, 60, 60]                # lowest list score in the pool
+PHRASE_Q = 70                                       # lowest list score for a multi-word entry (the list's
+                                                    # 60s are full of made-up phrases)
 MIN_F = [2.8, 2.6, 2.4, 2.2, 2.0, 1.8, 2.0]         # lowest familiarity in the pool
 FAM_W = [1.2, 1.0, 0.8, 0.6, 0.45, 0.3, 0.5]        # ranking: score/10 + FAM_W * familiarity
 BIG_SIZE = [15, 15, 15, 15, 15, 15, 21]
@@ -283,17 +287,23 @@ class Filler:
         try: os.unlink(self.path)
         except OSError: pass
 
-def build(kind, day, count, words, rng, used_count, log, seen_words=()):
+def pool_for(kind, day, words):
+    """the day's words -> ranking value (list score / 10 + FAM_W * familiarity)"""
+    n, q, f = (5, MINI_Q[day], MINI_F[day]) if kind == 'mini' else (BIG_SIZE[day], MIN_Q[day], MIN_F[day])
+    return {w: v[0] / 10.0 + FAM_W[day] * v[1] for w, v in words.items()
+            if v[0] >= (max(q, PHRASE_Q) if v[2] > 1 else q) and v[1] >= f and len(w) <= n}
+
+def build(kind, day, count, words, rng, used_count, log, seen_words=(), avoid=()):
     if kind == 'mini':
-        n, q, f = 5, MINI_Q[day], MINI_F[day]
+        n = 5
         new_pattern = lambda: random_pattern(5, MINI_BLACKS[day], 5, rng)
         nodes, secs = 5000, 2
     else:
-        n, q, f = BIG_SIZE[day], MIN_Q[day], MIN_F[day]
+        n = BIG_SIZE[day]
         maxlen = BIG_MAXLEN[day]
         new_pattern = lambda: big_pattern(n, BIG_BLACKS[day], maxlen, BIG_WORDS[day], BIG_MAX3[day], BIG_LONG[day], rng)
         nodes, secs = (40000, 8) if n <= 15 else (80000, 20)
-    pool = {w: v[0] / 10.0 + FAM_W[day] * v[1] for w, v in words.items() if v[0] >= q and v[1] >= f and len(w) <= n}
+    pool = pool_for(kind, day, words)
     fl = Filler(pool, rng.randrange(1 << 30))
     for k, v in (('pen', PEN), ('free', FREE_USES), ('bonus', SEEN_BONUS)): fl.cmd('set %s %g' % (k, v))
     for w, k in used_count.items():
@@ -309,7 +319,7 @@ def build(kind, day, count, words, rng, used_count, log, seen_words=()):
             grid = fl.fill(pat, nodes, secs)
             if not grid: fails += 1; continue
             key = '|'.join(grid)
-            if key in seen: continue
+            if key in seen or key in avoid: continue
             seen.add(key)
             for d, cells in slots_of(grid):
                 w = ''.join(grid[r][c] for r, c in cells); used_count[w] = used_count.get(w, 0) + 1
@@ -323,7 +333,7 @@ def build(kind, day, count, words, rng, used_count, log, seen_words=()):
 _words = None
 def job(arg):
     global _words
-    kind, day, count, seed, part, have, seen_words = arg
+    kind, day, count, seed, part, have, seen_words, avoid = arg
     if _words is None: _words = load_words()
     rng = random.Random(seed * 31 + day * 7 + (0 if kind == 'mini' else 1000) + len(have) * 7919 + part * 104729)
     used = {}
@@ -331,7 +341,7 @@ def job(arg):
         for d, cells in slots_of(g):
             w = ''.join(g[r][c] for r, c in cells); used[w] = used.get(w, 0) + 1
     t0 = time.time()
-    out = build(kind, day, count, _words, rng, used, lambda s: print(s, flush=True), seen_words)
+    out = build(kind, day, count, _words, rng, used, lambda s: print(s, flush=True), seen_words, set(avoid))
     return '%s%d' % (kind, day), out, time.time() - t0
 
 def main():
@@ -344,7 +354,20 @@ def main():
     ap.add_argument('--procs', type=int, default=4)
     a = ap.parse_args()
     res = json.load(open(a.out)) if os.path.exists(a.out) else {}
-    load_words(); filler_exe()          # build the caches once, before the workers start
+    words = load_words(); filler_exe()  # build the caches once, before the workers start
+    # drop grids that no longer fit the word rules (after a filter change) or repeat a grid from another day
+    seen = set()
+    for k in sorted(res):
+        m = re.fullmatch(r'(mini|big)(\d)', k)
+        if not m: continue
+        allowed = pool_for(m.group(1), int(m.group(2)), words); keep = []
+        for g in res[k]:
+            key = '|'.join(g)
+            if key in seen or any(''.join(g[r][c] for r, c in cells) not in allowed for d, cells in slots_of(g)):
+                continue
+            seen.add(key); keep.append(g)
+        if len(keep) < len(res[k]): print('%s: dropped %d old grids' % (k, len(res[k]) - len(keep)), flush=True)
+        res[k] = keep
     from multiprocessing import Pool
     part = 0
     with Pool(a.procs) as pool:
@@ -366,13 +389,15 @@ def main():
                     have = res.get('%s%d' % (kind, day), [])
                     seen_words = sorted({''.join(g[r][c] for r, c in cells) for grids in res.values() for g in grids
                                          for d, cells in slots_of(g)})
-                    running.append(pool.apply_async(job, ((kind, day, cnt, a.seed, part, have, seen_words),)))
+                    avoid = ['|'.join(g) for grids in res.values() for g in grids]
+                    running.append(pool.apply_async(job, ((kind, day, cnt, a.seed, part, have, seen_words, avoid),)))
                 time.sleep(0.5)
                 for r in [r for r in running if r.ready()]:
                     running.remove(r)
                     k, grids, secs = r.get()
-                    seen = {'|'.join(g) for g in res.get(k, [])}
-                    res[k] = res.get(k, []) + [g for g in grids if '|'.join(g) not in seen][:max(0, a.weeks - len(seen))]
+                    seen = {'|'.join(g) for grids_k in res.values() for g in grids_k}
+                    new = [g for g in grids if '|'.join(g) not in seen]
+                    res[k] = res.get(k, []) + new[:max(0, a.weeks - len(res.get(k, [])))]
                     tmp = a.out + '.tmp'
                     json.dump(res, open(tmp, 'w')); os.replace(tmp, a.out)
                     print('saved %s: %d (%.0fs)' % (k, len(res[k]), secs), flush=True)
