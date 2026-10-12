@@ -683,6 +683,22 @@ export function WillyCrash3D(api, host) {
     if (x > st.SEA_X) top = -6;
     return top;
   }
+  // Where he'll come down: a plain fall under gravity to the surface below, checked again at that x
+  // (he may drop past a roof edge into a gap). Height is world-up; t is seconds to impact.
+  const GRAV = C.G || 600;
+  function impactOf(st, pl, vx, vy) {
+    let x = pl.x, top = surfaceBelow(st, pl.x, pl.y), t = 0;
+    for (let k = 0; k < 2; k++) {
+      const h = -pl.y - top;
+      t = h <= 0 ? 0 : (-vy + Math.sqrt(vy * vy + 2 * GRAV * h)) / GRAV;
+      x = pl.x + vx * t;
+      top = surfaceBelow(st, x, pl.y);
+    }
+    return { x: x, top: top, t: t };
+  }
+  // Look point that puts a spot at height `up` at the top of the screen's bottom third, centred across
+  // (a point below the look point by a third of the half-height sits two thirds of the way down)
+  function frameLow(up, d, pitch) { return up + d * TANH / (3 * Math.cos(pitch)); }
   function wantCam(st) {
     const R = st.rag, cam = st.cam;
     if (st.state === 'intro' || st.state === 'aim' || st.state === 'idle' || !R) return { x: cam.x, y: -cam.y, d: distFor(cam.z), pitch: .07, yaw: .07, mode: 'aim' };
@@ -692,9 +708,11 @@ export function WillyCrash3D(api, host) {
     // the camera is level with him; up on a roof it sits a little higher, enough to see the roof (and the bullseye).
     const onRoof = st.B.some(b => pl.x > b.x0 - 8 && pl.x < b.x1 + 8 && -pl.y > b.h - 24);
     const tilt = onRoof ? .17 : .05, swing = onRoof ? .22 : 0;   // (square on to a gap, so its corners don't hide him)
-    if (st.state === 'result') { const fx = R.dance ? R.dance.x : pl.x, fy = R.dance ? R.dance.y - 14 : pl.y - 8; return { x: fx, y: -fy, d: distSee(R.dance ? 150 : 140), pitch: tilt, yaw: swing, mode: 'result' }; }
+    // The landing and the settle are framed on the impact point: centred across, at the top of the bottom third.
+    // Settled, that's where he actually lies (a roof, the street, a ledge or the bay).
+    if (st.state === 'result') { const fx = R.dance ? R.dance.x : pl.x, up = R.dance ? -R.dance.y : -pl.y - 6, d = distSee(R.dance ? 150 : 140); return { x: fx, y: frameLow(up, d, tilt), d: d, pitch: tilt, yaw: swing, mode: 'result' }; }
     const descending = vy > -60, close = R.landed || R.airT < .3 || (descending && above < (onRoof ? 230 : 320));
-    if (close) return { x: pl.x + clamp(vx * .08, -30, 30), y: -pl.y + 8, d: distSee(onRoof ? 165 : 185), pitch: tilt, yaw: swing, mode: 'land' };
+    if (close) { const hit = R.landed ? { x: pl.x, top: ground } : impactOf(st, pl, vx, vy), d = distSee(onRoof ? 165 : 185); return { x: hit.x, y: frameLow(hit.top, d, tilt), d: d, pitch: tilt, yaw: swing, mode: 'land' }; }
     // in the air: lead him, and pitch over once he is past the top of his arc
     const k = descending ? 1 : clamp((vy + 500) / 500, 0, 1);
     return { x: pl.x + clamp(vx * .5, -220, 220), y: -pl.y + clamp(-vy * .28, -220, 160), d: distSee(lerp(460, 400, k)), pitch: lerp(.14, .66, k), yaw: lerp(.06, .2, k), mode: 'fly' };
@@ -702,7 +720,7 @@ export function WillyCrash3D(api, host) {
   function tick(dt) {
     const st = api.get(), w = wantCam(st);
     if (!rig.init) { Object.assign(rig, w); rig.init = true; }
-    const fast = w.mode === 'aim' ? 9 : w.mode === 'land' ? 3.2 : 2.6;
+    const fast = w.mode === 'aim' ? 9 : w.mode === 'land' ? 4.2 : 2.6;
     rig.x = approach(rig.x, w.x, fast, dt); rig.y = approach(rig.y, w.y, fast, dt);
     rig.d = approach(rig.d, w.d, w.mode === 'land' ? 2.2 : 2.6, dt);
     rig.pitch = approach(rig.pitch, w.pitch, w.mode === 'aim' ? 4 : w.mode === 'fly' ? 1.5 : 3, dt);
