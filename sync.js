@@ -123,7 +123,8 @@
       } else if(k.indexOf('gh_') === 0){
         try{ out.gh[k.slice(3)] = JSON.parse(LS.getItem(k)) || []; }catch(e){}
       } else if(k === 'casino_bank'){
-        try{ out.bank = parseInt(LS.getItem(k)) || null; }catch(e){}
+        // a real $0 is a balance too (|| null used to turn it into 'no bankroll', which came back as $1,000)
+        try{ var bn = parseInt(LS.getItem(k), 10); out.bank = isNaN(bn) ? null : Math.max(0, bn); }catch(e){}
       } else if(k === 'rklists'){
         // Per-PIN saved ranker lists: stored under one key, already scoped to
         // the current user since cloud docs are addressed by PIN.
@@ -501,7 +502,7 @@
         return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, ghDel:null, links:null, isNew:true};
       }
       var d = doc.data() || {};
-      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, players: d.players||null, prefs: d.prefs||null, isNew:false, moved: !!d.moved };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: typeof d.bank === 'number' && isFinite(d.bank) ? d.bank : null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, players: d.players||null, prefs: d.prefs||null, isNew:false, moved: !!d.moved };
       console.log('[sync] pull', {
         rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
         favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
