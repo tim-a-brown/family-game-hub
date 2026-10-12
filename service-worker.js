@@ -31,6 +31,7 @@ const PRECACHE_URLS = [
   '/fonts/lilita-one.woff2',
   '/fonts/baloo2-700.woff2',
   '/fonts/fredoka-600.woff2',
+  '/fonts/lexend-zetta-400.woff2',
   '/fonts/patrick-hand.woff2',
   '/fonts/great-vibes.woff2',
   '/fonts/cinzel-700.woff2',
