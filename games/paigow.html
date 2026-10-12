@@ -13,6 +13,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../casino.js"></script>
+<script src="../coach.js"></script>
 <style>
 .stage{padding-bottom:calc(var(--safe-b) + 10px);}
 /* ── Bankroll strip (chrome) ── */
@@ -79,6 +80,10 @@
 .pz.lo .prow > .pcard + .pcard{margin-left:5px;}
 .pz.win .prow .pcard{box-shadow:0 0 0 3px var(--yellow),0 0 16px rgba(255,200,61,.55);}
 .pz.lose .prow .pcard{filter:brightness(.72) saturate(.7);}
+/* you + the strategy-help tag */
+.merow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;width:100%;}
+.merow .who{max-width:100%;}
+.pgcoach:empty{display:none;}
 .pcard.joker .big .ico{width:58%;height:58%;}
 .pcard.joker .big{color:#b8862a;}
 /* ── Casino chips ── */
@@ -237,7 +242,13 @@
     else if (real.filter(function (c) { return c.r === 'A'; }).length === 4) k = [9, 14];
     else {
       var have = {}; real.forEach(function (c) { have[c.r + c.s] = 1; });
+      // Only an Ace can help unless the four real cards could still make a straight or a flush
+      // (skipping the rest gives the same answer, much faster: the strategy help scores thousands of hands)
+      var rv = real.map(function (c) { return V[c.r]; }), uniq = rv.filter(function (x, i) { return rv.indexOf(x) === i; });
+      var mayFill = real.every(function (c) { return c.s === real[0].s; }) ||
+        (uniq.length === 4 && (Math.max.apply(null, rv) - Math.min.apply(null, rv) <= 4 || rv.every(function (x) { return x === 14 || x <= 5; })));
       RANKS.forEach(function (r) {
+        if (r !== 'A' && !mayFill) return;
         SUITS.forEach(function (s) {
           if (have[r + s]) return;
           var e = score5(real.concat([{ r: r, s: s }]));
@@ -365,7 +376,8 @@
       '<li>Shortcut: tap a chip to add it to your bet. Then tap <b>Deal</b>.</li></ul>' +
       '<h3>Setting your hands</h3><ul><li>Tap two cards to move them to your <b>low hand</b>. Tap a low card to put it back.</li>' +
       '<li>Your high hand must be <b>better</b> than your low hand (no pair high with a pair low, for example).</li>' +
-      '<li>Not sure? Tap <b>House way</b> to see how the dealer would set your cards.</li></ul>' +
+      '<li>Not sure? Tap <b>House way</b> to see how the dealer would set your cards.</li>' +
+      '<li>Turn on <b>Strategy help</b> at setup for a tag with the best split; tap it to see how the best ways compare.</li></ul>' +
       '<h3>Who wins</h3><ul><li><b>Win both</b> hands: you win even money, minus a 5% commission (rounded to the nearest dollar, at least $1).</li>' +
       '<li><b>Win one, lose one</b>: a push. You get your bet back.</li>' +
       '<li><b>Lose both</b>: you lose your bet.</li>' +
@@ -391,11 +403,12 @@
     Kit.setup(app, {
       intro: 'Set a high hand and a low hand, beat the dealer with both. Your bankroll: ' + money(bank()),
       players: { min: 1, max: 1, count: 1, label: "Who's at the table?" },
+      options: [Coach.option({ on: 'A “best split” tag while you set your hands; tap it to compare the best ways to set them.' })],
       start: 'Take a seat',
       onStart: function (cfg) {
         var nm = cfg.players[0].name; if (/^Player \d+$/.test(nm)) nm = 'You';
         S = {
-          name: nm, started: Date.now(), hand: 0, net: 0, phase: 'bet', bet: 0, last: 0, p: null, d: null, low: [], hw: null, res: null,
+          name: nm, opts: { coach: cfg.options.coach === 'on' ? 'on' : 'off' }, started: Date.now(), hand: 0, net: 0, phase: 'bet', bet: 0, last: 0, p: null, d: null, low: [], hw: null, res: null,
           log: [], ev: [], st: { won: 0, lost: 0, push: 0, streak: 0, best: 0, comm: 0, big: null, own: 0, house: 0, bestHi: null }
         };
         Kit.gameStart(); save(); render();
@@ -569,6 +582,129 @@
     });
   }
 
+  // ── Strategy help (coach.js): which way to set your cards does best? ──────
+  // Every legal setting of your 7 cards plays the same random dealer hands (drawn from the 46 cards you
+  // can't see, joker included, set by this game's own house way), scored with this game's own rules:
+  // copies go to the dealer, and wins pay even money less the 5% commission. Run in small slices after the
+  // deal so the table stays smooth; kept per hand.
+  var CO_TRIALS = 5000, coachRes = null, coachJob = null;
+  function coachOn() { return !!S && !!S.opts && S.opts.coach === 'on'; }
+  function cid(c) { return c.r + c.s; }
+  function handId() { return S && S.p ? S.hand + '#' + S.p.map(cid).join(',') : ''; }
+  function lowLabel(cs) { return cs.slice().sort(function (x, y) { return vOf(y) - vOf(x) || (isJ(x) ? -1 : 1); }).map(function (c) { return isJ(c) ? 'Joker' : c.r; }).join(' '); }
+  function settings(p) {   // every legal way to set these cards (two that make the same hands count once)
+    var seen = {}, out = [];
+    for (var i = 0; i < 7; i++) for (var j = i + 1; j < 7; j++) {
+      var s = split(p, [i, j]), hk = key5(s.hi), lk = key2(s.lo);
+      if (fouls(hk, lk)) continue;
+      var k = hk.join('.') + '|' + lk.join('.');
+      if (seen[k]) continue; seen[k] = 1;
+      out.push({ lo: [i, j], lc: s.lo, hk: hk, lk: lk, k: k, w: 0, p: 0, l: 0, hiW: 0, loW: 0, d: 0, d2: 0 });
+    }
+    return out;
+  }
+  function coachStart() {
+    if (!coachOn() || S.phase !== 'set' || !S.p) return;
+    var id = handId();
+    if ((coachRes && coachRes.id === id) || (coachJob && coachJob.id === id)) return;
+    var p = S.p.slice(), opts = settings(p), hw = houseWay(p), hs = split(p, hw.lo);
+    var hwk = key5(hs.hi).join('.') + '|' + key2(hs.lo).join('.'), hwI = 0;
+    opts.forEach(function (o, i) { if (o.k === hwk) hwI = i; });
+    var have = {}; p.forEach(function (c) { have[cid(c)] = 1; });
+    var pool = newDeck().filter(function (c) { return !have[cid(c)]; });
+    var bet = S.bet || 1, comm = commission(bet), winU = (bet - comm) / bet;
+    var job = coachJob = { id: id, n: 0 }, outs = new Array(opts.length);
+    function chunk() {
+      if (coachJob !== job) return;
+      if (!S || S.phase !== 'set' || handId() !== id) { coachJob = null; return; }
+      var t0 = performance.now();
+      while (job.n < CO_TRIALS && performance.now() - t0 < 25) {
+        for (var b = 0; b < 20 && job.n < CO_TRIALS; b++, job.n++) {
+          for (var i = 0; i < 7; i++) { var r = i + Math.floor(Math.random() * (pool.length - i)), x = pool[i]; pool[i] = pool[r]; pool[r] = x; }
+          var d = sortHand(pool.slice(0, 7)), dh = houseWay(d), ds = split(d, dh.lo), dhk = key5(ds.hi), dlk = key2(ds.lo);
+          for (var k = 0; k < opts.length; k++) {
+            var o = opts[k], hW = cmpKey(o.hk, dhk) > 0, lW = cmpKey(o.lk, dlk) > 0;
+            if (hW) o.hiW++; if (lW) o.loW++;
+            if (hW && lW) { o.w++; outs[k] = winU; } else if (hW || lW) { o.p++; outs[k] = 0; } else { o.l++; outs[k] = -1; }
+          }
+          for (k = 0; k < opts.length; k++) { var dd = outs[k] - outs[hwI]; opts[k].d += dd; opts[k].d2 += dd * dd; }
+        }
+      }
+      if (job.n < CO_TRIALS) { setTimeout(chunk, 0); return; }
+      coachJob = null; cache5 = {};   // the dealer hands filled the hand cache; let them go
+      var n = job.n;
+      opts.forEach(function (o) {
+        o.ev = (o.w * winU - o.l) / n;   // per $1 bet
+        var m = o.d / n; o.se = Math.sqrt(Math.max(0, o.d2 / n - m * m) / n);   // wobble of its edge over the house way
+      });
+      var sorted = opts.slice().sort(function (a, b) { return b.ev - a.ev; }), top = sorted[0], hwO = opts[hwI];
+      // Too close to call (under 3 wobbles, since the top of ~15 estimates is picked): stick with the house way
+      var close = top !== hwO && top.ev - hwO.ev < 3 * top.se;
+      coachRes = { id: id, n: n, bet: bet, comm: comm, opts: opts, sorted: sorted, hw: hwO, hwWhy: hw.why, rec: close ? hwO : top, top: top, close: close, pool: pool.length, joker: pool.some(isJ) };
+      paintCoach();
+    }
+    setTimeout(chunk, 0);
+  }
+  function coachReady() { return coachRes && coachRes.id === handId() ? coachRes : null; }
+  function paintCoach() {
+    var slot = document.getElementById('pgcoach');
+    if (!slot || !coachOn() || !S || S.phase !== 'set') return;
+    var r = coachReady();
+    slot.innerHTML = '';
+    var c = r ? Coach.chip('Best split: <b>Low: ' + Kit.esc(lowLabel(r.rec.lc)) + '</b>', showCoach) : Coach.chip('Best split: <b>…</b>', function () { Kit.toast('Still working out the odds'); });
+    c.setAttribute('aria-label', r ? 'Best split: low hand ' + lowLabel(r.rec.lc) + '. Tap for the odds.' : 'Working out the best split');
+    slot.appendChild(c);
+  }
+  function showCoach() {
+    var r = coachReady(); if (!r || !coachOn() || S.phase !== 'set') return;
+    var bet = r.bet, rec = r.rec, hw = r.hw, n = r.n, winAmt = bet - r.comm;
+    function cash(o) { return o.ev * bet; }
+    function hiName(o) { var t = name5(o.hk); return o.hk[0] ? t.charAt(0).toLowerCase() + t.slice(1) : t; }
+    function loName(o) { return name2(o.lk).replace(/^Pair of/, 'pair of'); }
+    function hiA(o) { var t = hiName(o); return o.hk[0] === 0 || /^(two|three|four|five) /i.test(t) ? t : 'a ' + t; }
+    var gap = (cash(rec) - cash(hw));
+    // (the recommendation card styles every <b> as a headline, so bold here uses <strong>)
+    var why;
+    if (rec === hw && !r.close) why = 'This is also the <strong>house way</strong>, the dealer’s own rule for these cards. It keeps <strong>' + hiA(rec) + '</strong> in the high hand and <strong>' + loName(rec) + '</strong> in the low hand, the best balance between winning both hands and not losing both.';
+    else if (r.close) why = 'Setting it <strong>Low: ' + Kit.esc(lowLabel(r.top.lc)) + '</strong> came out a hair ahead, but by less than these estimates can tell apart. The <strong>house way</strong> is the safe pick: ' + hiA(rec) + ' in the high hand, ' + loName(rec) + ' in the low hand.';
+    else why = 'Better than the house way (Low: ' + Kit.esc(lowLabel(hw.lc)) + ') by about <strong>' + Coach.cash(gap).replace('+', '') + '</strong> a hand on average. It plays <strong>' + hiA(rec) + '</strong> in the high hand and <strong>' + loName(rec) + '</strong> in the low hand: your high hand wins ' + Coach.pct(rec.hiW / n) + ' (house way ' + Coach.pct(hw.hiW / n) + ') and your low hand ' + Coach.pct(rec.loW / n) + ' (house way ' + Coach.pct(hw.loW / n) + ').';
+    var list = r.sorted.slice(0, 5);
+    if (list.indexOf(rec) < 0) list.push(rec);
+    if (list.indexOf(hw) < 0) list.push(hw);
+    list.sort(function (a, b) { return a === rec ? -1 : b === rec ? 1 : b.ev - a.ev; });
+    var moves = list.map(function (o) {
+      return { name: 'Low: ' + lowLabel(o.lc), best: o === rec, w: o.w / n, p: o.p / n, l: o.l / n, value: cash(o), wLabel: 'Win both', pLabel: 'Push', lLabel: 'Lose',
+        note: 'High hand: <b>' + Kit.esc(hiName(o)) + '</b> · low hand: <b>' + Kit.esc(loName(o)) + '</b>' + (o === hw ? ' · <b>the house way</b>' : '') +
+          '<br>Your high hand wins ' + Coach.pct(o.hiW / n) + ', your low hand wins ' + Coach.pct(o.loW / n) + '.' };
+    });
+    var nxt = r.sorted.filter(function (o) { return o !== rec; })[0];
+    var tips = [
+      'With this split you <b>win both hands ' + Coach.pct(rec.w / n) + '</b> of the time, <b>push ' + Coach.pct(rec.p / n) + '</b> (one hand each) and <b>lose both ' + Coach.pct(rec.l / n) + '</b>.',
+      'A win pays <b>' + money(winAmt) + '</b> on your ' + money(bet) + ' bet, after the ' + money(r.comm) + ' commission (5%, at least $1). So you lose a little on average even when you play every hand perfectly.',
+      nxt ? 'The next best way (Low: ' + Kit.esc(lowLabel(nxt.lc)) + ') ' + (cash(nxt) <= cash(rec) ? 'does about <b>' + Coach.cash(cash(rec) - cash(nxt)).replace('+', '') + '</b> worse a hand on average.' : 'is within a few cents of it.') : null,
+      r.sorted.length > list.length ? 'There are ' + r.sorted.length + ' different legal ways to set these cards; the best ' + Math.min(list.length, r.sorted.length) + ' are shown.' : 'These are all ' + r.sorted.length + ' legal way' + (r.sorted.length === 1 ? '' : 's') + ' to set these cards.'
+    ];
+    Coach.sheet({
+      title: 'How to set your hands',
+      best: { label: 'Best split' + (rec === hw ? ' · the house way' : '') + ' · estimate', value: 'Low: ' + lowLabel(rec.lc), text: why },
+      movesTitle: 'The best ways to set them',
+      intro: 'If you held these 7 cards many times, here is how each way of setting them would turn out. The dollar figure is the average result per hand on your ' + money(bet) + ' bet, commission included. A minus means you’d lose that much on average, so the smallest loss is best.',
+      moves: moves,
+      sections: [
+        { title: 'Why', items: tips },
+        { title: 'How Pai Gow works', items: [
+          'You and the dealer each split 7 cards into a <b>5-card high hand</b> and a <b>2-card low hand</b>. Your high hand must be better than your low hand.',
+          '<b>Win both</b> hands and you win even money, less a 5% commission. <b>Win one, lose one</b> and it’s a push: your bet comes back. <b>Lose both</b> and you lose your bet.',
+          'An exact tie on a hand (a “copy”) goes to the <b>dealer</b>. That, plus the commission, is how the house wins.',
+          'Pushes are the most common result, roughly 4 hands in 10, so your chips last a long time.'] },
+        { title: 'Why a strong low hand matters', text: 'You only get paid when <b>both</b> hands win, and the low hand is usually the weak link: just two cards against the dealer’s two. Putting a high card or a pair down low can turn a push into a win, as long as the high hand still holds up. The skill is in the balance: break up a strong high hand only when the low hand gains more than the high hand loses.' },
+        { title: 'The house way', text: 'The dealer doesn’t get to choose. Casinos set the dealer’s cards by a fixed rule book called the <b>house way</b> (pairs stay high, two pairs usually split, keep a straight or flush when you can, and so on). For your cards it says: <b>' + Kit.esc(r.hwWhy) + '</b>, which is Low: ' + Kit.esc(lowLabel(hw.lc)) + '. ' +
+          (rec === hw ? 'Here the best split <b>matches the house way</b>.' : 'Here the numbers favour a different split.') + ' The house way is usually at or near the best play, which is why the House way button is a good shortcut.' },
+        { title: 'About these numbers', text: 'These are <b>estimates</b>: each way of setting your cards played the same ' + n.toLocaleString('en-US') + ' random dealer hands, drawn from the ' + r.pool + ' cards you can’t see' + (r.joker ? ' (the joker included)' : '') + ', each set by the house way. The percentages can be off by a point or so; the comparison between splits is steadier, because they all faced the same dealer hands.' }
+      ]
+    });
+  }
+
   // ── Rendering ─────────────────────────────────────────────────────────────
   function cardEl(c, back) {
     if (back) return Kit.card('A', 's', { back: true });
@@ -637,9 +773,12 @@
     hi.appendChild(hrow);
     if (res) { var hb = badge(res.hiW, res.hiCopy); if (!revealing) hb.classList.add('show'); hi.appendChild(hb); }
     felt.appendChild(hi);
-    felt.appendChild(whoTag(S.name, '', 'ptag', true));
+    var me = whoTag(S.name, '', 'ptag', true);
+    if (S.phase === 'set' && coachOn()) felt.appendChild(el('div', { class: 'merow' }, [me, el('div', { id: 'pgcoach', class: 'pgcoach' })]));
+    else felt.appendChild(me);
     app.appendChild(el('div', { class: 'ctable wood' }, [felt]));
     fitRow(hrow);
+    if (S.phase === 'set' && coachOn()) { paintCoach(); coachStart(); }
 
     // Controls
     var ctl = el('div', { class: 'ctl' }), status = el('div', { class: 'status', id: 'status' }), acts = el('div', { class: 'acts' });
@@ -720,6 +859,7 @@
     var p = app.querySelectorAll('#hrow .pcard'), d = app.querySelectorAll('#drow .pcard'), order = [];
     for (var i = 0; i < 7; i++) { if (p[i]) order.push(p[i]); if (d[i]) order.push(d[i]); }
     var btns = app.querySelectorAll('.acts button'); btns.forEach(function (b) { b.disabled = true; });
+    var cch = document.getElementById('pgcoach'); if (cch) cch.style.visibility = 'hidden';
     order.forEach(function (n) { n.style.opacity = '0'; });
     busy = true; Kit.sfx('whoosh');
     order.forEach(function (n, i) {
@@ -727,6 +867,7 @@
     });
     setTimeout(function () {
       if (my !== token) return; busy = false;
+      if (cch) { cch.style.visibility = ''; paintCoach(); }
       btns.forEach(function (b) { b.disabled = false; });
       var pb = app.querySelector('.acts .btn-primary'); if (pb) pb.disabled = !legal();
       if (S.p.some(isJ)) Kit.toast('You have the joker');
@@ -801,7 +942,7 @@
   window.addEventListener('pageshow', function () { var b = document.getElementById('bankv'); if (b && S) b.textContent = money(bank() - pending()); });
 
   // Exposed for testing in the console
-  window.PaiGow = { houseWay: houseWay, key5: key5, key2: key2, name5: name5, fouls: fouls };
+  window.PaiGow = { houseWay: houseWay, key5: key5, key2: key2, name5: name5, fouls: fouls, coach: function () { return coachRes; } };
 })();
 </script>
 </body>

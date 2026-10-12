@@ -13,6 +13,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../casino.js"></script>
+<script src="../coach.js"></script>
 <style>
 .stage{padding-bottom:calc(var(--safe-b) + 10px);}
 /* ── Info strip above the table ── */
@@ -141,6 +142,12 @@
 .vp-holds .vbtn{background:linear-gradient(180deg,#e9e2c8,#bfb38a);box-shadow:0 4px 0 #6d6248,inset 0 1px 0 rgba(255,255,255,.7);color:#4a4230;}
 .vp-holds .vbtn.held{background:linear-gradient(180deg,#fff4b0,#ffd43d 45%,#e8a900);color:#3a2600;box-shadow:0 1px 0 #8a5b00,0 0 16px rgba(255,214,61,.7);transform:translateY(3px);}
 .vbtn small{display:block;font-size:.62rem;opacity:.75;letter-spacing:.04em;}
+
+/* Strategy help chip: on the felt between the board and you (portrait), above the buttons (sideways), on the machine's screen (video poker) */
+.pcoach{display:flex;justify-content:center;min-height:26px;margin:-4px 0 8px;}
+.pland .pcoach{grid-column:2;grid-row:3;align-self:end;justify-content:flex-start;min-height:0;margin:0 0 8px;}
+.vp-coach{display:flex;justify-content:center;margin-top:7px;}
+.pc-wait{padding:3px 10px;border-radius:999px;background:rgba(20,16,10,.45);color:rgba(255,255,255,.8);font-size:.78rem;font-weight:800;white-space:nowrap;}
 
 /* table list sheet */
 .tlist{display:flex;flex-direction:column;gap:8px;}
@@ -454,6 +461,110 @@
     return eq.map(function (x) { return x / iters; });
   }
 
+  // ── Strategy help math ─────────────────────────────────────────────────────
+  // Video poker: the exact average pay of all 32 ways to hold. For each hold, every possible draw from
+  // the 47 unseen cards is dealt out (C(47,k) draws when k cards are replaced: 2,598,960 final hands in
+  // all) and sorted into the pay table's rows: 0 royal .. 8 jacks or better, 9 nothing. No sampling.
+  var VPB = new Uint8Array(8192), VPS = new Uint8Array(8192);   // bit count, straight masks
+  (function () { for (var m = 1; m < 8192; m++) VPB[m] = VPB[m >> 1] + (m & 1); for (var lo = 0; lo <= 8; lo++) VPS[31 << lo] = 1; VPS[0x100F] = 1; })();
+  function vpCat(a, b, c, d, e) {
+    var ra = a >> 2, rb = b >> 2, rc = c >> 2, rd = d >> 2, re = e >> 2;
+    var m = (1 << ra) | (1 << rb) | (1 << rc) | (1 << rd) | (1 << re), n = VPB[m];
+    if (n === 5) {
+      var fl = ((a ^ b) & 3) === 0 && ((a ^ c) & 3) === 0 && ((a ^ d) & 3) === 0 && ((a ^ e) & 3) === 0;
+      if (fl) return VPS[m] ? (m === 0x1F00 ? 0 : 1) : 4;
+      return VPS[m] ? 5 : 9;
+    }
+    if (n === 4) {
+      var p = ra === rb || ra === rc || ra === rd || ra === re ? ra : rb === rc || rb === rd || rb === re ? rb : rc === rd || rc === re ? rc : rd;
+      return p >= 9 ? 8 : 9;
+    }
+    var q = (ra === rb) + (ra === rc) + (ra === rd) + (ra === re) + (rb === rc) + (rb === rd) + (rb === re) + (rc === rd) + (rc === re) + (rd === re);
+    if (n === 3) return q === 3 ? 6 : 7;
+    return q === 6 ? 2 : 3;
+  }
+  // A step-by-step job: init() -> state, step(state) -> true when finished. Returns {cnt[mask*10+row], tot[mask]}.
+  function vpHoldJob(hand) {
+    var used = {}, R = [], i, s, m;
+    hand.forEach(function (c) { used[c] = 1; });
+    for (i = 0; i < 52; i++) if (!used[i]) R.push(i);
+    var HM = [[], [], [], [], [], []], HC = [[], [], [], [], [], []];   // holds by size: masks, flat held cards
+    for (m = 0; m < 32; m++) { s = VPB[m]; HM[s].push(m); for (i = 0; i < 5; i++) if ((m >> i) & 1) HC[s].push(hand[i]); }
+    var tasks = [[0, 0]];
+    for (var k = 1; k <= 5; k++) for (i = 0; i <= 47 - k; i++) tasks.push([k, i]);
+    var st = { cnt: new Float64Array(320), tot: new Float64Array(32), t: 0 };
+    var cnt = st.cnt, L = R.length;
+    function run(k, i) {
+      var M = HM[5 - k], C = HC[5 - k], nm = M.length, h, j, l, x, y, a = R[i], b, c, d;
+      if (k === 0) { cnt[310 + vpCat(hand[0], hand[1], hand[2], hand[3], hand[4])]++; return; }
+      if (k === 1) { for (h = 0; h < nm; h++) cnt[M[h] * 10 + vpCat(C[h * 4], C[h * 4 + 1], C[h * 4 + 2], C[h * 4 + 3], a)]++; return; }
+      if (k === 2) { for (j = i + 1; j < L; j++) { b = R[j]; for (h = 0; h < nm; h++) cnt[M[h] * 10 + vpCat(C[h * 3], C[h * 3 + 1], C[h * 3 + 2], a, b)]++; } return; }
+      if (k === 3) { for (j = i + 1; j < L; j++) { b = R[j]; for (l = j + 1; l < L; l++) { c = R[l]; for (h = 0; h < nm; h++) cnt[M[h] * 10 + vpCat(C[h * 2], C[h * 2 + 1], a, b, c)]++; } } return; }
+      if (k === 4) { for (j = i + 1; j < L; j++) { b = R[j]; for (l = j + 1; l < L; l++) { c = R[l]; for (x = l + 1; x < L; x++) { d = R[x]; for (h = 0; h < nm; h++) cnt[M[h] * 10 + vpCat(C[h], a, b, c, d)]++; } } } return; }
+      for (j = i + 1; j < L; j++) { b = R[j]; for (l = j + 1; l < L; l++) { c = R[l]; for (x = l + 1; x < L; x++) { d = R[x]; for (y = x + 1; y < L; y++) cnt[vpCat(a, b, c, d, R[y])]++; } } }
+    }
+    return {
+      init: function () { return st; },
+      step: function (st) {
+        if (st.t >= tasks.length) return true;
+        run(tasks[st.t][0], tasks[st.t][1]); st.t++;
+        if (st.t < tasks.length) return false;
+        for (m = 0; m < 32; m++) { var t = 0; for (i = 0; i < 10; i++) t += cnt[m * 10 + i]; st.tot[m] = t; }
+        return true;
+      }
+    };
+  }
+  // Hold'em / Omaha: win, tie and lose chances at a showdown against nOpp players holding random cards,
+  // with the rest of the board dealt at random too (Monte Carlo). A tie of k ways is worth 1/k of the pot.
+  function showdownJob(hole, board, nOpp, om, trials) {
+    var used = {}, rest = [], i;
+    hole.concat(board).forEach(function (c) { used[c] = 1; });
+    for (i = 0; i < 52; i++) if (!used[i]) rest.push(i);
+    var hc = om ? 4 : 2, need = nOpp * hc + (5 - board.length), b = [], oh = [];
+    return {
+      init: function () { return { n: 0, win: 0, tie: 0, share: 0, trials: trials }; },
+      step: function (st) {
+        for (var it = 0; it < 50 && st.n < trials; it++, st.n++) {
+          for (var k = 0; k < need; k++) { var j = k + Math.floor(Math.random() * (rest.length - k)), t = rest[k]; rest[k] = rest[j]; rest[j] = t; }
+          var idx = 0; b.length = 0;
+          for (i = 0; i < board.length; i++) b.push(board[i]);
+          while (b.length < 5) b.push(rest[idx++]);
+          var my = score(hole, b, om), ties = 0, lost = false;
+          for (var o = 0; o < nOpp; o++) {
+            oh.length = 0; for (i = 0; i < hc; i++) oh.push(rest[idx++]);
+            var sv = score(oh, b, om);
+            if (sv > my) { lost = true; break; }
+            if (sv === my) ties++;
+          }
+          if (lost) continue;
+          if (ties) { st.tie++; st.share += 1 / (ties + 1); } else st.win++;
+        }
+        return st.n >= trials;
+      }
+    };
+  }
+  // Cards still to come that would lift you to a better kind of hand (flop and turn only). Not counted: a card
+  // that only pairs the board (everyone shares that pair), one that makes a hand on the board by itself, and
+  // pairing a card lower than the board's top card (a small pair rarely wins). Group 1 is "top pair", 9 royal.
+  function outsOf(hole, board, om) {
+    if (board.length < 3 || board.length > 4) return null;
+    var cur = score(hole, board, om), cc = catOf(cur), used = {}, groups = {}, unseen = 0, total = 0;
+    var ranks = hole.map(function (c) { return c >> 2; }), top = Math.max.apply(null, board.map(function (c) { return c >> 2; }));
+    hole.concat(board).forEach(function (c) { used[c] = 1; });
+    for (var c = 0; c < 52; c++) {
+      if (used[c]) continue;
+      unseen++;
+      var b2 = board.concat([c]), v = score(hole, b2, om), k = catOf(v);
+      if (k <= cc || k <= catOf(ev(b2))) continue;
+      if (k === 2 && ranks.indexOf(c >> 2) < 0) continue;
+      if (k === 1 && (c >> 2) <= top) continue;
+      var key = k === 8 && kOf(v, 0) === 12 ? 9 : k;
+      (groups[key] = groups[key] || []).push(c); total++;
+    }
+    var hit = board.length === 3 ? 1 - (unseen - total) * (unseen - total - 1) / (unseen * (unseen - 1)) : total / unseen;
+    return { cur: cur, total: total, unseen: unseen, hit: hit, groups: groups };
+  }
+
   // ── Money / chips ──────────────────────────────────────────────────────────
   function usd(n) { n = Math.round(n); return (n < 0 ? '−$' : '$') + Math.abs(n).toLocaleString(); }
   function signed(n) { return (n > 0 ? '+' : '') + usd(n); }
@@ -517,7 +628,8 @@
       options: [
         { id: 'fmt', label: 'Game', value: 'cash', when: function (m) { return m !== 'vp'; }, choices: [['cash', 'Cash game', 'Buy in with money from your casino bank and leave whenever you like.'], ['tourn', 'Tournament', 'Everyone starts with 1,500 chips, the blinds go up every 10 hands, and the last player left wins.'], ['turbo', 'Turbo', 'A faster tournament: the blinds go up every 5 hands.']] },
         { id: 'bet', label: 'Betting', value: 'nl', when: function (m) { return m === 'he'; }, choices: [['nl', 'No-limit', 'You can bet any amount, up to all your chips.'], ['fl', 'Fixed limit', 'Every bet and raise is one set size, with at most 4 bets a round.']] },
-        { id: 'denom', label: 'Coin size', help: 'How much each coin is worth. You bet 1 to 5 coins a hand.', value: 1, when: function (m) { return m === 'vp'; }, choices: [[1, '$1'], [5, '$5'], [25, '$25']] }
+        { id: 'denom', label: 'Coin size', help: 'How much each coin is worth. You bet 1 to 5 coins a hand.', value: 1, when: function (m) { return m === 'vp'; }, choices: [[1, '$1'], [5, '$5'], [25, '$25']] },
+        Coach.option({ on: 'A “best move” tag at your turn: which cards to hold, or whether to fold, call or raise. Tap it for the odds behind it.' })
       ],
       onStart: function (cfg) { begin(cfg); }
     });
@@ -534,7 +646,7 @@
         title: 'You have a game going',
         html: '<p class="muted">' + Kit.esc(modeName(old)) + (old.kind === 'table' && !old.tourn ? ' with ' + usd(old.players[0].stack) + ' on the table' : '') + '. Pick up where you left off?</p>',
         actions: [
-          { label: 'Resume', primary: true, onClick: function () { S = old; resume(); } },
+          { label: 'Resume', primary: true, onClick: function () { S = old; S.coach = cfg.options.coach === 'on'; resume(); } },
           { label: old.kind === 'table' && !old.tourn ? 'Cash out and start fresh' : 'Start fresh', cls: 'btn-soft', onClick: fresh }
         ]
       });
@@ -593,7 +705,7 @@
     return -1;
   }
   function newVP(cfg) {
-    S = { kind: 'vp', name: cfg.players[0].name, started: Date.now(), denom: +cfg.options.denom || 1, coins: 5, phase: 'bet',
+    S = { kind: 'vp', name: cfg.players[0].name, started: Date.now(), denom: +cfg.options.denom || 1, coins: 5, phase: 'bet', coach: cfg.options.coach === 'on',
       hand: null, held: [false, false, false, false, false], deck: null, row: -1, win: 0,
       hands: 0, bet: 0, paid: 0, wins: 0, best: 99, bestNo: 0, big: 0, bigRow: -1, counts: {}, startBank: Casino.balance() };
     Kit.gameStart(); save(); renderVP();
@@ -672,7 +784,7 @@
       title: net > 0 ? 'Up ' + usd(net) + '!' : net === 0 ? 'Broke even' : 'Down ' + usd(-net),
       sub: st.hands + ' hands · bank ' + usd(Casino.balance()),
       againLabel: 'Play again',
-      again: function () { newVP({ players: [{ name: st.name }], options: { denom: st.denom } }); },
+      again: function () { newVP({ players: [{ name: st.name }], options: { denom: st.denom, coach: st.coach ? 'on' : 'off' } }); },
       extra: [{ label: 'Change game', onClick: showSetup }]
     });
   }
@@ -711,6 +823,7 @@
     else if (S.row >= 0) msg = PAY[S.row][0] + ' · <b>win ' + usd(S.win) + '</b>';
     else msg = handName(ev(S.hand)) + ' · no win';
     scr.appendChild(el('div', { class: 'vp-msg', html: msg }));
+    var vc = coachSlot('vp-coach'); if (vc) scr.appendChild(vc);
     cab.appendChild(scr);
     var leds = el('div', { class: 'vp-leds' });
     [['WIN', S.win ? usd(S.win) : '–'], ['BET', String(S.coins)], ['CREDIT', usd(Casino.balance())]].forEach(function (x) {
@@ -764,7 +877,7 @@
     var styles = Cards.shuffle(['tag', 'lag', 'rock', 'station']).concat(Cards.shuffle(['tag', 'lag']));
     S = {
       kind: 'table', game: game, om: game === 'om', limit: game === 'he' && cfg.options.bet === 'fl', pl: game === 'om',
-      tourn: tourn, per: cfg.options.fmt === 'turbo' ? 5 : 10, started: Date.now(), handNo: 0, level: 0,
+      tourn: tourn, per: cfg.options.fmt === 'turbo' ? 5 : 10, started: Date.now(), handNo: 0, level: 0, coach: cfg.options.coach === 'on',
       sb: tourn ? LEVELS[0][0] : 1, bb: tourn ? LEVELS[0][1] : 2, button: null, hand: null,
       players: cfg.players.map(function (p, i) {
         return { name: p.name, cpu: !!p.cpu, style: p.cpu ? styles[(i - 1) % styles.length] : null, stack: stack, buyin: stack, out: false, place: 0, rebuys: 0 };
@@ -1178,7 +1291,7 @@
   }
   function ordinal(n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
   function replay(st) {
-    newTable({ mode: st.game, players: st.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), options: { fmt: st.tourn ? (st.per === 5 ? 'turbo' : 'tourn') : 'cash', bet: st.limit ? 'fl' : 'nl' } });
+    newTable({ mode: st.game, players: st.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), options: { fmt: st.tourn ? (st.per === 5 ? 'turbo' : 'tourn') : 'cash', bet: st.limit ? 'fl' : 'nl', coach: st.coach ? 'on' : 'off' } });
   }
   // Leave the finished table on screen behind the results card
   function renderAfter(st) { var keep = S; S = st; try { renderTable(true); } catch (e) {} S = keep; }
@@ -1399,6 +1512,8 @@
       tb.appendChild(at(el('div', { class: 'pmsg', html: 'All in: <b>running it out</b>' }), land ? [50, 60] : [50, 68]));
     }
     app.appendChild(tb);
+    var tc = final ? null : coachSlot('pcoach');
+    if (tc && land) app.appendChild(tc);
 
     // Your cards
     var me0 = S.players[0], hand = el('div', { class: 'phand' + (S.om ? ' om' : '') });
@@ -1420,6 +1535,7 @@
     } else if (me0.out) { label = 'You\'re out: ' + ordinal(me0.place); dim = true; }
     if (done) app.appendChild(el('div', { class: 'plabel res rise', html: resultText(H) }));
     else app.appendChild(el('div', { class: 'plabel' + (dim ? ' dim' : ''), text: label }));
+    if (!land && !final && S.coach) app.appendChild(tc || el('div', { class: 'pcoach' }));   // the row stays put between turns
 
     // Controls
     app.classList.toggle('raising', !!(raiseUI && !final));
@@ -1548,6 +1664,335 @@
     return box;
   }
   window.addEventListener('resize', function () { /* layout is all percentages */ });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Strategy help (setup option): a "best move" chip on the table; tap it for the odds behind it
+  // ═══════════════════════════════════════════════════════════════════════════
+  var cJob = null, cMemo = {}, cSlot = null;
+  // Work it out in short slices so the screen never freezes; the first slice runs straight away
+  function coachRun(key, make, finish) {
+    if (cMemo.key === key) return cMemo.v;
+    if (cJob && cJob.key === key) return null;
+    if (cJob) cJob.dead = true;
+    var job = make(), J = cJob = { key: key, st: job.init() }, sync = true;
+    function slice() {
+      if (J.dead) return;
+      var t0 = Date.now(), fin = false;
+      try { while (!fin && Date.now() - t0 < 12) fin = job.step(J.st); } catch (e) { console.warn('[coach]', e); J.dead = true; cJob = null; return; }
+      if (!fin) { setTimeout(slice, 0); return; }
+      cJob = null; cMemo = { key: key, v: finish(J.st) };
+      if (!sync) coachFill();
+    }
+    slice(); sync = false;
+    return cMemo.key === key ? cMemo.v : null;
+  }
+  // The chip's holder; null when there's no decision to help with
+  function coachSlot(cls) {
+    cSlot = null;
+    if (!S || !S.coach || coachAdvice() === undefined) return null;
+    cSlot = el('div', { class: cls });
+    coachFill();
+    return cSlot;
+  }
+  function coachAdvice() { return S.kind === 'vp' ? vpAdvice() : tableAdvice(); }
+  function coachFill() {
+    if (!cSlot || !cSlot.isConnected && cSlot.childNodes.length) return;
+    var a = S && coachAdvice();
+    cSlot.innerHTML = '';
+    if (a === undefined) return;
+    cSlot.appendChild(a ? Coach.chip(a.chip, a.open) : el('span', { class: 'pc-wait', text: 'Working out the odds…' }));
+  }
+  var SUITCH = ['♣', '♦', '♥', '♠'], SUITN = ['club', 'diamond', 'heart', 'spade'];
+  function ctxt(c) { return RN[c >> 2] + SUITCH[c & 3] + '︎'; }
+  function ctxts(cs) { return cs.map(ctxt).join(' '); }
+  function money2(x) { return '$' + (x >= 1000 ? Math.round(x).toLocaleString('en-US') : x.toFixed(2)); }
+  // 34% · 4.2% · 1 in 360 (rare results read better as "1 in")
+  function chance(p) {
+    if (p <= 0) return '0%';
+    if (p >= 0.995) return '100%';
+    if (p >= 0.1) return Math.round(p * 100) + '%';
+    if (p >= 0.01) return (Math.round(p * 1000) / 10) + '%';
+    return '1 in ' + Math.round(1 / p).toLocaleString('en-US');
+  }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  var NUMW = ['no', 'one', 'two', 'three', 'four', 'five'];
+
+  // ── Video poker: which cards to hold ──
+  function vpAdvice() {
+    if (S.kind !== 'vp' || S.phase !== 'hold' || !S.hand) return undefined;
+    var hand = S.hand.slice();
+    var res = coachRun('vp:' + hand.join(','), function () { return vpHoldJob(hand); }, function (st) { return { cnt: st.cnt, tot: st.tot }; });
+    if (!res) return null;
+    var plan = vpPlan(res), b = plan.list[0];
+    return { chip: 'Best hold: <b>' + (b.m === 0 ? 'none, draw 5' : b.m === 31 ? 'all five' : ctxts(b.cards)) + '</b>', open: function () { vpSheet(plan); } };
+  }
+  function vpPlan(res) {
+    var coins = S.coins, den = S.denom, bet = coins * den, hand = S.hand, list = [], mine = 0;
+    for (var m = 0; m < 32; m++) {
+      var tot = res.tot[m], pay = 0, pr = [];
+      for (var r = 0; r < 10; r++) { var n = res.cnt[m * 10 + r]; pr.push(n / tot); if (r < 9) pay += n * PAY[r][1][coins - 1]; }
+      var back = pay / tot * den;
+      list.push({ m: m, cards: hand.filter(function (x, i) { return (m >> i) & 1; }), back: back, net: back - bet, pr: pr, pay: 1 - pr[9], profit: 1 - pr[9] - pr[8], draws: tot });
+    }
+    S.held.forEach(function (h, i) { if (h) mine |= 1 << i; });
+    // best average pay first; on an exact tie keep more cards (four of a kind with or without the fifth card)
+    list.sort(function (a, b) { var d = b.back - a.back; return d > 1e-9 ? 1 : d < -1e-9 ? -1 : VPB[b.m] - VPB[a.m]; });
+    return { list: list, bet: bet, coins: coins, mine: mine };
+  }
+  // What a set of held cards is, in words
+  function holdDesc(cs) {
+    var n = cs.length;
+    if (!n) return 'nothing';
+    if (n === 5) { var row = vpCat(cs[0], cs[1], cs[2], cs[3], cs[4]); return row < 9 ? 'your ' + rowName(row) : 'all five cards'; }
+    var cnt = {}, suits = {};
+    cs.forEach(function (c) { cnt[c >> 2] = (cnt[c >> 2] || 0) + 1; suits[c & 3] = 1; });
+    var rk = Object.keys(cnt).map(Number).sort(function (a, b) { return b - a; });
+    var top = rk.slice().sort(function (a, b) { return cnt[b] - cnt[a] || b - a; }), g0 = cnt[top[0]], g1 = top.length > 1 ? cnt[top[1]] : 0;
+    var oneSuit = Object.keys(suits).length === 1;
+    if (g0 === 4) return 'four ' + RP[top[0]];
+    if (g0 === 3) return 'three ' + RP[top[0]] + (n > 3 ? ' and a spare card' : '');
+    if (g0 === 2 && g1 === 2) return 'two pair';
+    if (g0 === 2) return (top[0] >= 9 ? 'a high pair (' : 'a low pair (') + RP[top[0]] + ')' + (n > 2 ? ' and ' + NUMW[n - 2] + ' spare card' + (n > 3 ? 's' : '') : '');
+    var lo = rk[rk.length - 1], hi = rk[0], run = hi - lo <= 4;
+    if (cnt[12]) { var low = rk.map(function (r) { return r === 12 ? -1 : r; }); run = run || Math.max.apply(null, low) - Math.min.apply(null, low) <= 4; }
+    if (oneSuit && n >= 2 && lo >= 8) return NUMW[n] + ' cards to a royal flush';
+    if (oneSuit && n >= 3 && run) return NUMW[n] + ' cards to a straight flush';
+    if (oneSuit && n >= 3) return NUMW[n] + ' cards to a flush';
+    if (n === 4 && run) return 'four cards to a straight';
+    var highs = rk.filter(function (r) { return r >= 9; }).length;
+    if (highs === n) return n === 1 ? 'one high card (' + RW[hi] + ')' : NUMW[n] + ' high cards' + (oneSuit ? ' of the same suit' : '');
+    return n === 1 ? 'a single ' + RW[hi] : NUMW[n] + ' unmatched cards';
+  }
+  function rowName(r) { return r === 8 ? 'high pair' : PAY[r][0].toLowerCase(); }
+  function holdName(h) { return h.m === 0 ? 'Draw five new cards' : h.m === 31 ? 'Keep all five' : 'Keep ' + ctxts(h.cards); }
+  var VPOUT = ['Royal flush', 'Straight flush', 'Four of a kind', 'Full house', 'Flush', 'Straight', 'Three of a kind', 'Two pair', 'High pair (Jacks+)'];
+  function vpChances(h) {
+    var out = [];
+    for (var r = 0; r < 9; r++) if (h.pr[r] > 0) out.push(VPOUT[r] + ' ' + chance(h.pr[r]));
+    return out.join(' · ');
+  }
+  function vpSheet(plan) {
+    var L = plan.list, best = L[0], bet = plan.bet, coins = plan.coins;
+    var mineH = L.filter(function (h) { return h.m === plan.mine; })[0];
+    // Holds that are the same in all but name (a pair plus any one spare card) show once
+    var shown = [], same = {};
+    L.forEach(function (h) {
+      var twin = shown.filter(function (x) { return Math.abs(x.back - h.back) < 1e-9 && holdDesc(x.cards) === holdDesc(h.cards); })[0];
+      if (twin) { (same[twin.m] = same[twin.m] || []).push(h); if (h.m === plan.mine) mineH = twin; }
+      else if (shown.length < 5) shown.push(h);
+    });
+    if (shown.indexOf(mineH) < 0) shown.push(mineH);
+    var moves = shown.map(function (h, i) {
+      var tags = [];
+      if (h === best) tags.push('the best choice');
+      if (h === mineH && plan.mine) tags.push('what you have held now');
+      return {
+        name: holdName(h), best: h === best, value: h.net,
+        w: h.profit, p: h.pr[8], l: h.pr[9], wLabel: 'Profit', pLabel: 'Bet back', lLabel: 'Nothing',
+        note: '<b>' + (h.m === 0 ? 'Throw all five away' : cap(holdDesc(h.cards))) + '</b>' + (tags.length && h !== best ? ' (' + tags.join(', ') + ')' : '') + '. Pays back <b>' + money2(h.back) + '</b> on average' +
+          (h.m === 31 ? '.' : ' (' + h.draws.toLocaleString('en-US') + ' possible draw' + (h.draws > 1 ? 's' : '') + ').') +
+          (same[h.m] ? ' Same as ' + same[h.m].map(function (x) { return 'keeping ' + ctxts(x.cards); }).join(' or ') + '.' : '') +
+          (h.pay > 0 ? '<br>' + vpChances(h) : '')
+      };
+    });
+    var dealtRow = vpCat(S.hand[0], S.hand[1], S.hand[2], S.hand[3], S.hand[4]);
+    var why = [];
+    var second = L.filter(function (h) { return h.back < best.back - 1e-9; })[0];
+    why.push('Keeping ' + holdDesc(best.cards) + ' pays back <b>' + money2(best.back) + '</b> on average for your ' + money2(bet) + ' bet, the most of all 32 ways to hold' +
+      (second ? '. The next best, ' + (second.m === 0 ? 'drawing five new cards' : 'keeping ' + holdDesc(second.cards)) + ', pays back ' + money2(second.back) + '.' : '.'));
+    if (best.pr[9] === 0) why.push('Whatever you draw, you end with a paying hand, so your bet is safe.');
+    if (dealtRow < 9 && best.m !== 31 && best.pr[9] > 0) {
+      var big = []; for (var r = 0; r < 4 && big.length < 2; r++) if (best.pr[r] > 0) big.push(VPOUT[r].toLowerCase() + ' ' + chance(best.pr[r]) + ', paying ' + money2(PAY[r][1][coins - 1] * S.denom));
+      why.push('Yes, that means breaking up your ' + rowName(dealtRow) + ', which already pays ' + money2(PAY[dealtRow][1][coins - 1] * S.denom) + '. Going for the bigger hands (' + big.join('; ') + ') is worth more on average, even though you\'ll often end with nothing.');
+    }
+    // Where the best hold's value comes from: its biggest earner
+    var top = -1, topV = 0;
+    for (var r2 = 0; r2 < 9; r2++) { var cv = best.pr[r2] * PAY[r2][1][coins - 1]; if (cv > topV) { topV = cv; top = r2; } }
+    if (top >= 0 && best.m !== 31 && best.pr[9] > 0) why.push('Most of that comes from ' + (best.pr[top] >= 0.01 ? 'a ' + chance(best.pr[top]) + ' chance' : 'a 1 in ' + Math.round(1 / best.pr[top]).toLocaleString('en-US') + ' shot') + ' at ' + (top === 8 ? 'a high pair' : top === 6 || top === 2 ? VPOUT[top].toLowerCase() : 'a ' + VPOUT[top].toLowerCase()) + ', which pays ' + money2(PAY[top][1][coins - 1] * S.denom) + '.');
+    var often = L.slice(1, 8).filter(function (h) { return h.pay > best.pay + 0.02 || h.profit > best.profit + 0.02; })[0];
+    if (often) why.push('Keeping ' + holdDesc(often.cards) + (often.pay > best.pay + 0.02 ? ' pays something more often (' + chance(often.pay) + ' against ' + chance(best.pay) + ')' : ' makes a profit more often (' + chance(often.profit) + ' against ' + chance(best.profit) + ')') + ', but its wins are smaller, so on average it pays back less.');
+    else if (best.pay > 0 && best.pr[9] > 0 && L.every(function (h) { return h.pay <= best.pay + 1e-9; })) why.push('It also gives you the best chance of being paid at all: ' + chance(best.pay) + '.');
+    var mineBest = mineH && mineH.back >= best.back - 1e-9;
+    if (!mineBest && mineH) why.push(plan.mine ? 'What you have held now (' + holdDesc(mineH.cards) + ') pays back ' + money2(mineH.back) + ' on average: <b>' + money2(best.back - mineH.back) + ' less</b> a hand than the best hold.' : 'Right now you aren\'t holding anything, which would draw five new cards (' + money2(mineH.back) + ' on average).');
+    else if (mineBest && plan.mine) why.push('That\'s what you have held now. Press Draw.');
+    Coach.sheet({
+      title: 'Best hold',
+      best: { label: 'Best hold', value: best.m === 0 ? 'Draw five new cards' : best.m === 31 ? 'Keep all five' : 'Keep ' + ctxts(best.cards),
+        text: cap(best.m === 0 ? 'nothing here is worth keeping' : holdDesc(best.cards)) + (best.m === 0 ? ', so start fresh' : '') + '. On average it pays back <strong>' + money2(best.back) + '</strong> for your ' + money2(bet) + ' bet' + (best.net >= 0 ? ', a profit.' : ', the least you can lose.') },
+      intro: 'For each way to hold, the coach dealt out every possible draw and added up what it pays on this machine. The amount on the right is your average result per hand on your ' + money2(bet) + ' bet. These numbers are exact, not guesses.',
+      movesTitle: 'Best holds, compared',
+      moves: moves,
+      sections: [
+        { title: 'Why', items: why },
+        { title: 'How video poker works', items: [
+          'You get <b>one draw</b>: keep any cards, and the rest are replaced from the same deck. Every hand is dealt from a freshly shuffled 52-card deck, so past hands make no difference.',
+          'The pay table shows what each hand pays for the coins you bet. A <b>pair of Jacks or better</b> pays 1 for 1, so you just get your bet back. <b>Two pair</b> is the smallest real win.',
+          'This is <b>"9/6" Jacks or Better</b>: a full house pays 9 and a flush 6 per coin. That\'s one of the best machines there is. With perfect play and all 5 coins bet it pays back about <b>99.54%</b> of what goes in over the long run, so the machine still keeps about 46¢ of every $100 bet.',
+          coins < 5 ? 'You\'re betting ' + coins + ' coin' + (coins > 1 ? 's' : '') + ', so a royal flush pays 250 per coin instead of 800. That drops the long-run payback to a little over 98%. Betting all 5 coins is better value.' : 'You\'re betting all 5 coins, so a royal flush pays the full 4,000 coins.',
+          'About 45% of hands pay something, but most of those only give your bet back. A lot of the payback comes from rare big hands (a royal flush comes about once in 40,000 hands), so expect long losing stretches.',
+          'How the coach works it out: for each of the 32 ways to hold, it deals out every possible draw from the 47 cards you can\'t see (2,598,960 finished hands in all) and adds up what each pays.'
+        ] },
+        { title: 'Rules of thumb for this machine', items: [
+          'Never break up four of a kind, a straight flush or a royal flush.',
+          '<b>Four cards to a royal flush</b> beats everything else, even a flush or straight you already have.',
+          'Then: a full house, flush, three of a kind or straight; then four to a straight flush; then two pair; then a high pair (Jacks or better).',
+          'Three to a royal flush beats four to a flush. Four to a flush beats a low pair. A low pair beats four to a straight and any high cards.',
+          'Don\'t keep a spare high card with a pair: it lowers your chances of three of a kind and better.',
+          'With nothing worth keeping, throw all five away.'
+        ] }
+      ]
+    });
+  }
+
+  // ── Hold'em and Omaha: fold, check, call, bet or raise ──
+  function tableAdvice() {
+    var H = S.hand;
+    if (S.kind !== 'table' || !H || H.phase !== 'bet' || H.actor !== 0 || !H.inHand[0] || H.folded[0]) return undefined;
+    var o = options(0), nOpp = live().length - 1;
+    if (nOpp < 1) return undefined;
+    var hole = H.hole[0].slice(), board = H.board.slice(), om = S.om, trials = om ? 2000 : 4000;
+    var sd = coachRun('tb:' + hole.join(',') + '|' + board.join(',') + '|' + nOpp + (om ? 'o' : ''),
+      function () { return showdownJob(hole, board, nOpp, om, trials); },
+      function (st) { return { n: st.n, win: st.win / st.n, tie: st.tie / st.n, eq: (st.win + st.share) / st.n }; });
+    if (!sd) return null;
+    var plan = tablePlan(sd, o, nOpp), mv = plan.moves.filter(function (m) { return m.best; })[0];
+    return { chip: 'Best move: <b>' + mv.short + '</b>', open: function () { tableSheet(plan); } };
+  }
+  function cAmt(x) { return S.tourn ? Math.round(x).toLocaleString() + ' chips' : usd(x); }
+  function potOf(x) { return S.tourn ? 'the ' + Math.round(x).toLocaleString() + '-chip pot' : 'the ' + usd(x) + ' pot'; }
+  function cAmt2(x) { return S.tourn ? Math.round(x).toLocaleString() + ' chips' : money2(x); }
+  function cSigned(x) { return S.tourn ? (x >= 0.5 ? '+' : x <= -0.5 ? '−' : '') + Math.round(Math.abs(x)).toLocaleString() + ' chips' : Coach.cash(x); }
+  function pc(x) { return Math.round(x * 100) + '%'; }
+  // Two percentages being compared: one decimal place when whole numbers would look the same
+  function pcs(a, b) {
+    if (Math.round(a * 100) !== Math.round(b * 100) || Math.abs(a - b) < 1e-9) return [pc(a), pc(b)];
+    return [Math.round(a * 1000) / 10 + '%', Math.round(b * 1000) / 10 + '%'];
+  }
+  function tablePlan(sd, o, nOpp) {
+    var H = S.hand, me = S.players[0], eq = sd.eq, fair = 1 / (nOpp + 1), strong = Math.min(0.9, fair + 0.12);
+    // The pot you play for if you call. The win chances assume everyone still in goes to the showdown, so the
+    // pot counts them matching your bet too (players still to act haven't yet). From each player you can win at
+    // most what you put in yourself (all in for less).
+    var c = o.call, T0 = H.total[0] + c, now = 0, W = 0;
+    for (var j = 0; j < N(); j++) {
+      var t = j === 0 ? T0 : Math.min(H.total[j], T0);
+      now += t;
+      W += j > 0 && H.inHand[j] && !H.folded[j] ? Math.min(T0, H.total[j] + S.players[j].stack) : t;
+    }
+    var need = c > 0 ? c / W : 0, capped = c < o.toCall, behind = W - now;
+    var raiseTo = o.canRaise ? (S.limit ? o.minTo : Math.min(o.maxTo, Math.max(o.minTo, roundTo(o.isBet ? potAll() * 0.6 : H.curBet * 3)))) : 0;
+    var raiseCost = raiseTo - H.bet[0], word = o.isBet ? 'Bet' : 'Raise';
+    var best;
+    if (o.toCall > 0) best = o.canRaise && eq >= strong && eq >= need + 0.1 ? 'raise' : eq >= need ? 'call' : 'fold';
+    else best = o.canRaise && eq >= strong ? 'raise' : 'check';
+    var close = best === 'raise' || best === 'check' ? o.canRaise && Math.abs(eq - strong) < 0.03 : Math.abs(eq - need) < 0.03;
+    var callEv = eq * W - c, wpl = { w: sd.win, p: sd.tie, l: Math.max(0, 1 - sd.win - sd.tie) };
+    var moves = [];
+    if (o.toCall > 0) moves.push({ id: 'fold', short: 'Fold', name: 'Fold', value: 0, valueText: S.tourn ? '0 chips' : '$0', bar: false,
+      note: 'Costs nothing more' + (H.total[0] > 0 ? ', but the ' + cAmt(H.total[0]) + ' you\'ve already put in stays in the pot' : '') + ', and you give up any chance at ' + potOf(potAll()) + '.' });
+    if (o.canCheck) moves.push(Object.assign({ id: 'check', short: 'Check', name: 'Check', valueText: 'Free',
+      note: 'Pass without paying. ' + (H.street === 3 ? 'If everyone checks, the cards are shown and the best hand wins.' : 'If nobody bets, you see the next card for free.') +
+        ' Your share of ' + potOf(potAll()) + ' right now is worth about ' + cAmt2(eq * potAll()) + ' (your ' + pc(eq) + ' chance times the pot).' }, wpl));
+    else moves.push(Object.assign({ id: 'call', short: c >= me.stack ? 'All in' : 'Call', name: (c >= me.stack ? 'All in for ' : 'Call ') + cAmt(c), value: callEv, valueText: cSigned(callEv),
+      note: 'Average result: your ' + pc(eq) + ' share of ' + potOf(W) + ', minus the ' + cAmt(c) + ' it costs' + (behind > 0 ? ' (counting calls from the players still to act)' : '') + '. Later betting rounds aren\'t counted.' }, wpl));
+    if (o.canRaise) {
+      var allIn = raiseTo >= o.all, foldBE = raiseCost / (potAll() + raiseCost);
+      moves.push(Object.assign({ id: 'raise', short: allIn ? 'All in' : word, name: allIn ? 'All in (' + cAmt(raiseTo) + ')' : o.isBet ? 'Bet ' + cAmt(raiseTo) : 'Raise to ' + cAmt(raiseTo), valueText: 'Depends',
+        note: 'Puts in ' + cAmt(raiseCost) + (S.limit ? ' (the fixed bet size)' : ' (a usual size; you can pick another)') + '. If everyone folds you win ' + potOf(potAll()) + ' straight away; if you\'re called, the bar shows your showdown chances. ' +
+          'Its average depends on how often they fold, which nobody can know for sure. Even with no chance of winning when called, it would break even if they all folded more than ' + pc(foldBE) + ' of the time.' }, wpl));
+    }
+    moves.forEach(function (m) { m.best = m.id === best; });
+    return { sd: sd, o: o, nOpp: nOpp, eq: eq, fair: fair, strong: strong, need: need, W: W, c: c, capped: capped, now: now, behind: behind, best: best, close: close, callEv: callEv, moves: moves, raiseTo: raiseTo };
+  }
+  function omahaStart(h) {
+    var bits = [], ranks = {}, suits = {};
+    h.forEach(function (c) { ranks[c >> 2] = (ranks[c >> 2] || 0) + 1; suits[c & 3] = (suits[c & 3] || 0) + 1; });
+    Object.keys(ranks).forEach(function (r) { if (ranks[r] >= 2) bits.push('a pair of ' + RP[r]); });
+    var ss = Object.keys(suits).filter(function (s) { return suits[s] >= 2; }).length;
+    if (ss === 2) bits.push('double-suited'); else if (ss === 1) bits.push('suited');
+    var rs = h.map(function (c) { return c >> 2; }), span = Math.max.apply(null, rs) - Math.min.apply(null, rs);
+    if (Object.keys(ranks).length === 4 && span <= 4) bits.push('connected');
+    return ctxts(h) + (bits.length ? ' (' + bits.join(', ') + ')' : '');
+  }
+  function handWords(outs) {
+    var H = S.hand, hole = H.hole[0], board = H.board;
+    if (board.length < 3) return S.om ? omahaStart(hole) : startName(hole);
+    var v = score(hole, board, S.om), draws = [], g = outs ? outs.groups : {};
+    var fl = (g[5] || []).length, st = (g[4] || []).length;
+    if (fl && catOf(v) < 5) draws.push('a flush draw');
+    if (st && catOf(v) < 4) draws.push(st >= 9 ? 'a big straight draw' : st >= 7 ? 'an open-ended straight draw' : 'an inside straight draw');
+    return handName(v) + (draws.length ? ', with ' + draws.join(' and ') : '');
+  }
+  function seatWords() {
+    var H = S.hand, n = N(), rel = function (j) { return (j - H.button - 1 + n) % n; };
+    var after = live().filter(function (j) { return j !== 0 && S.players[j].stack > 0 && rel(j) > rel(0); }).length;
+    if (H.button === 0) return 'You have the dealer button, so after the flop you act last: the best seat at the table.';
+    if (!after) return 'Everyone who would act after you has folded or is all in, so you act last from here on: the best spot.';
+    return after + (after === 1 ? ' player acts' : ' players act') + ' after you on the later betting rounds, so you often have to decide before seeing what they do.';
+  }
+  function tableSheet(P) {
+    var H = S.hand, sd = P.sd, o = P.o, nOpp = P.nOpp, eq = P.eq, outs = outsOf(H.hole[0], H.board, S.om);
+    var vs = nOpp === 1 ? 'one other player' : nOpp + ' other players', mv = P.moves.filter(function (m) { return m.best; })[0];
+    var bestValue = mv.id === 'call' ? mv.name : mv.id === 'raise' ? mv.name : mv.short;
+    var reason, en = pcs(eq, P.need), ef = pcs(eq, P.fair);
+    if (P.best === 'fold') reason = 'You\'d win about ' + en[0] + ' of the time, but this call needs more than ' + en[1] + ' to pay off.';
+    else if (P.best === 'call') reason = 'You\'d win about ' + en[0] + ' of the time, more than the ' + en[1] + ' this call needs to break even.';
+    else if (P.best === 'raise') reason = 'You\'d win about ' + ef[0] + ' of the time against ' + vs + ', well above an equal share (' + ef[1] + '), so ' + (o.toCall ? 'make them pay more to stay in.' : 'bet to build the pot.');
+    else reason = 'You\'d win about ' + ef[0] + ' of the time, ' + (eq >= P.fair ? 'not far enough above an equal share (' + ef[1] + ') to bet' : 'less than an equal share (' + ef[1] + '), so betting doesn\'t pay') + ', and checking is free.';
+    if (pc(eq) !== pc(sd.win)) reason = reason.replace(' of the time', ' of the time (counting ties as part-wins)');
+    if (P.close) reason += ' It\'s close, so either choice is reasonable.';
+
+    var bv = H.board.length >= 3 ? score(H.hole[0], H.board, S.om) : 0, bo = H.board.length >= 3 ? ev(H.board) : 0;
+    var shared = !S.om && bv && catOf(bv) >= 1 && catOf(bv) === catOf(bo) && kOf(bv, 0) === kOf(bo, 0) && (catOf(bv) !== 2 || kOf(bv, 1) === kOf(bo, 1));
+    var intro = '<b>Your hand:</b> ' + Kit.esc(handWords(outs)) + '.' + (shared ? ' Careful: that ' + (catOf(bv) === 1 ? 'pair' : 'hand') + ' is on the board, so everyone still in shares it.' : '') +
+      ' Against ' + vs + ' still in, if it goes to a showdown you\'d win about <b>' + pc(sd.win) + '</b>' + (sd.tie >= 0.005 ? ', tie ' + pc(sd.tie) : '') + ' and lose ' + pc(Math.max(0, 1 - sd.win - sd.tie)) + '. An equal share would be ' + pc(P.fair) + '.';
+
+    var why = [];
+    why.push('Your chance to win (counting ties as part-wins) is about <b>' + ef[0] + '</b>. ' + (eq >= P.strong ? 'That\'s well above an equal share of ' + ef[1] + ': you\'re likely ahead.' : eq >= P.fair ? 'That\'s a bit above an equal share of ' + ef[1] + ', but not by enough to be sure you\'re ahead.' : 'That\'s below an equal share of ' + ef[1] + ': you\'re likely behind right now.'));
+    var flat = Math.abs(P.callEv) < (S.tourn ? 0.5 : 0.005);
+    if (o.toCall > 0) why.push('Calling costs ' + cAmt(P.c) + ' and you\'d need to win more than <b>' + en[1] + '</b> to break even. ' + (flat ? 'You\'re right on the line, so calling about breaks even.' : P.callEv > 0 ? 'You do, so calling wins about ' + cSigned(P.callEv).replace('+', '') + ' on average.' : 'You don\'t, so calling loses about ' + cSigned(P.callEv).replace('−', '') + ' on average. Folding loses nothing more.'));
+    else why.push('Nobody has bet, so you can check for free. ' + (o.canRaise ? (P.best === 'raise' ? 'But with a hand this strong, betting makes weaker hands pay to see more cards, and wins the pot now if everyone folds.' : 'Betting with a so-so hand mostly gets called by better hands and folds out worse ones.') : ''));
+    if (P.best === 'raise' && o.toCall > 0) why.push('Raising rather than just calling puts more money in while you\'re probably ahead, and may make others fold.');
+    if (outs && outs.total) why.push(outs.total + ' card' + (outs.total > 1 ? 's' : '') + ' still to come would improve your hand (see Outs below). That\'s already counted in your chance to win.');
+    if (o.toCall > 0) why.push('Someone has bet. Players who bet usually hold better than random cards, so your real chances are probably a bit lower than shown, more so if the bet is big.');
+
+    var secs = [{ title: 'Why', items: why }];
+    if (o.toCall > 0) secs.push({ title: 'Pot odds: is calling worth the price?', text:
+      'Calling costs <b>' + cAmt(P.c) + '</b>. The pot has <b>' + cAmt(P.now - P.c) + '</b> in it that you could win' +
+      (P.behind > 0 ? ', and if the players still to act call too, another ' + cAmt(P.behind) + ' goes in (the chances above assume they stay in)' : '') +
+      '. So you put in ' + cAmt(P.c) + ' to win ' + cAmt(P.W - P.c) + ': you need to win more than ' +
+      Math.round(P.c).toLocaleString() + ' ÷ (' + Math.round(P.W - P.c).toLocaleString() + ' + ' + Math.round(P.c).toLocaleString() + ') = <b>' + en[1] + '</b> of the time to break even. You win about ' + en[0] + ', so calling ' + (flat ? 'about <b>breaks even</b>' : eq >= P.need ? '<b>makes money</b>' : '<b>loses money</b>') + ' on average.' +
+      (P.capped ? ' (You\'d be all in for less than the bet, so from each player you can only win as much as you put in yourself.)' : '') +
+      (P.behind > 0 ? ' If someone behind you raises instead, the price goes up.' : '') });
+    if (H.board.length === 3 || H.board.length === 4) {
+      var gs = outs ? Object.keys(outs.groups).map(Number).sort(function (a, b) { return b - a; }) : [];
+      var GN = { 1: 'Top pair', 2: 'Two pair', 3: 'Three of a kind', 4: 'Straight', 5: 'Flush', 6: 'Full house', 7: 'Four of a kind', 8: 'Straight flush', 9: 'Royal flush' };
+      var items = gs.map(function (k) {
+        var cs = outs.groups[k], su = cs.every(function (c) { return (c & 3) === (cs[0] & 3); });
+        return '<b>' + GN[k] + '</b>: ' + cs.length + ' card' + (cs.length > 1 ? 's' : '') + (cs.length <= 6 ? ' (' + ctxts(cs) + ')' : su ? ' (any other ' + SUITN[cs[0] & 3] + ')' : '');
+      });
+      var left = H.board.length === 3 ? 'two cards to come' : 'one card to come';
+      secs.push({ title: 'Outs: cards that would help you', text: outs && outs.total ?
+        '<b>' + outs.total + ' card' + (outs.total > 1 ? 's' : '') + '</b> would lift you to a better hand. With ' + left + ', the chance at least one shows up by the river is about <b>' + pc(outs.hit) + '</b>. Quick trick: outs × ' + (H.board.length === 3 ? '4' : '2') + ' gives roughly the same percentage.' :
+        'No single card would lift you to a better hand of your own. To improve you\'d need two lucky cards in a row, or to win with what you have.', items: items.length ? items : null });
+    } else if (H.board.length === 5) secs.push({ title: 'Outs', text: 'All five shared cards are out, so the hand you have now is your final hand.' });
+    secs.push({ title: 'How to think about it', items: [
+      '<b>Hand strength.</b> Compare your chance to win with an equal share (with ' + (nOpp + 1) + ' players in, that\'s ' + pc(P.fair) + '). Well above it: bet or raise so weaker hands pay. Around it: check or call when the price is right. Well below: give up unless it\'s cheap.',
+      '<b>Pot odds.</b> The bigger the pot compared with the price of calling, the less often you need to win. Needing 20% and winning 30% makes money over time, even though you lose most of those hands.',
+      '<b>Position.</b> Acting after the others is an advantage because you see what they do first. ' + seatWords() + ' With a borderline hand, be more careful when several players still act after you.',
+      '<b>Future bets.</b> The averages here count only the money in the pot now. A draw that hits can win more bets later, so draws are worth a little more than the numbers show; a strong hand that could be overtaken is worth betting now.'
+    ] });
+    secs.push({ title: 'About these numbers', text: 'The coach dealt this hand out ' + sd.n.toLocaleString() + ' times with random cards for the other ' + (nOpp === 1 ? 'player' : nOpp + ' players') + ' and for the board still to come' +
+      (S.om ? ' (Omaha hands use exactly 2 of the 4 private cards and 3 shared cards)' : '') + ', and counted how often you\'d win. They are <b>estimates</b>: each percentage can be off by a point or two, and real players don\'t hold random cards. The "best move" follows a simple rule: call when you win more often than the pot odds need, bet or raise when you\'re 12 points or more above an equal share, otherwise check or fold.' });
+    Coach.sheet({
+      title: 'Your best move',
+      best: { label: 'Best move', value: bestValue, text: reason },
+      movesTitle: 'Your hand and your options',
+      intro: intro + ' The amount on the right is the average result of each choice, where it can be worked out honestly.',
+      moves: P.moves,
+      sections: secs
+    });
+  }
 
   // ── Boot ───────────────────────────────────────────────────────────────────
   var lastKey = null; try { lastKey = localStorage.getItem(LAST); } catch (e) {}

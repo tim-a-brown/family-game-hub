@@ -13,6 +13,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../casino.js"></script>
+<script src="../coach.js"></script>
 <style>
 .stage{padding-bottom:calc(var(--safe-b) + 10px);}
 /* ── Bankroll strip (chrome) ── */
@@ -240,7 +241,8 @@
       '<li>Drag chips from the rack onto the Ante or Pair Plus circle. The circle lights up under the chip; let go to put it down, or let go anywhere else and it goes back to the rack. Shortcut: tap a chip to add it to the circle that is picked (tap a circle to pick it).</li></ul>' +
       '<h3>2. Look at your cards</h3><ul><li><b>Play</b>: put out a Play bet the same size as your Ante.</li>' +
       '<li><b>Fold</b>: give up. You lose your Ante (and your Pair Plus bet).</li>' +
-      '<li>A good simple rule: play anything <b>Queen-6-4 or better</b>.</li></ul>' +
+      '<li>A good simple rule: play anything <b>Queen-6-4 or better</b>.</li>' +
+      '<li>Turn on <b>Strategy help</b> at setup for a tag with the best move; tap it for the exact odds.</li></ul>' +
       '<h3>3. The dealer shows</h3><ul><li>The dealer needs <b>Queen high or better</b> to "qualify".</li>' +
       '<li>Dealer does not qualify: your Ante wins 1 to 1 and your Play bet is returned.</li>' +
       '<li>Dealer qualifies: the better hand wins. You win: Ante and Play both pay 1 to 1. Dealer wins: you lose both. A tie returns both.</li></ul>' +
@@ -265,12 +267,13 @@
     Kit.setup(app, {
       intro: 'Beat the dealer with three cards. Your bankroll: ' + money(bank()),
       players: { min: 1, max: 1, count: 1, label: "Who's at the table?" },
-      options: [{ id: 'flush', label: 'Pair Plus: a flush pays', help: 'Pair Plus is a side bet that pays if your three cards have a pair or better.', value: 4, choices: [[4, '4 to 1 (classic)', 'The classic pay table.'], [3, '3 to 1', 'Pays a little less, as some casino tables do.']] }],
+      options: [{ id: 'flush', label: 'Pair Plus: a flush pays', help: 'Pair Plus is a side bet that pays if your three cards have a pair or better.', value: 4, choices: [[4, '4 to 1 (classic)', 'The classic pay table.'], [3, '3 to 1', 'Pays a little less, as some casino tables do.']] },
+        Coach.option({ on: 'A “best move” tag when you decide to play or fold; tap it for the exact odds.' })],
       start: 'Take a seat',
       onStart: function (cfg) {
         var nm = cfg.players[0].name; if (/^Player \d+$/.test(nm)) nm = 'You';
         S = {
-          name: nm, opts: { flush: +cfg.options.flush || 4 }, started: Date.now(), hand: 0, net: 0,
+          name: nm, opts: { flush: +cfg.options.flush || 4, coach: cfg.options.coach === 'on' ? 'on' : 'off' }, started: Date.now(), hand: 0, net: 0,
           phase: 'bet', target: 'ante', bets: { ante: 0, pp: 0, play: 0 }, last: null, p: null, d: null, res: null,
           log: [], ev: [], st: { won: 0, lost: 0, push: 0, folds: 0, streak: 0, best: 0, ppPaid: 0, bonusPaid: 0, noQual: 0, big: null, bestCat: -1 }
         };
@@ -453,6 +456,85 @@
     Kit.sheet({ title: 'Payouts', html: html, actions: [{ label: 'Got it', primary: true }] });
   }
 
+  // ── Strategy help (coach.js): exact odds for Play vs Fold ────────────────
+  // Every possible dealer hand from the 49 cards you can't see (C(49,3) = 18,424), each scored with this
+  // game's own rules: dealer qualifies with Queen high, Ante pays 1 to 1 when the dealer doesn't, Ante bonus.
+  var RS = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' };
+  function short3(v) { return v.map(function (x) { return RS[x] || x; }).join('-'); }
+  function coachOn() { return !!S && S.opts && S.opts.coach === 'on'; }
+  var coachMemo = null;
+  function playOdds(p) {
+    var id = p.map(function (c) { return c.r + c.s; }).join(',');
+    if (coachMemo && coachMemo.id === id) return coachMemo.v;
+    var pe = eval3(p), m = ANTE_BONUS[pe.cat] || 0;
+    var rest = Cards.deck().filter(function (c) { return id.split(',').indexOf(c.r + c.s) < 0; });
+    var n = 0, nq = 0, qw = 0, qt = 0, ql = 0, w = 0, t = 0, l = 0, sum = 0, R = rest.length;
+    for (var i = 0; i < R; i++) for (var j = i + 1; j < R; j++) for (var k = j + 1; k < R; k++) {
+      var de = eval3([rest[i], rest[j], rest[k]]), u;   // Play result, in Antes (Ante + Play both at risk)
+      if (!qualifies(de)) { nq++; u = 1; }
+      else { var c = cmpKey(pe.key, de.key); if (c > 0) { qw++; u = 2; } else if (c < 0) { ql++; u = -2; } else { qt++; u = 0; } }
+      u += m; n++; sum += u;
+      if (u > 0) w++; else if (u < 0) l++; else t++;
+    }
+    var v = { pe: pe, n: n, nq: nq / n, qw: qw / n, qt: qt / n, ql: ql / n, w: w / n, t: t / n, l: l / n, ev: sum / n, bonus: m, q64: q64(pe) };
+    v.play = v.ev > -1;   // Fold always loses exactly one Ante
+    coachMemo = { id: id, v: v };
+    return v;
+  }
+  var ppEdgeMemo = {};
+  function ppEdge() {   // the Pair Plus house edge for this table's pay table, from all 22,100 three-card hands
+    var pt = ppTable(), key = pt[2];
+    if (ppEdgeMemo[key] != null) return ppEdgeMemo[key];
+    var d = Cards.deck(), n = 0, sum = 0, cnt = [0, 0, 0, 0, 0, 0];
+    for (var i = 0; i < 52; i++) for (var j = i + 1; j < 52; j++) for (var k = j + 1; k < 52; k++) {
+      var c = eval3([d[i], d[j], d[k]]).cat; n++; cnt[c]++; sum += pt[c] ? pt[c] : -1;
+    }
+    return (ppEdgeMemo[key] = { edge: -sum / n, any: 1 - cnt[0] / n });
+  }
+  function showCoach() {
+    if (!coachOn() || !S.p || S.phase !== 'decide') return;
+    var r = playOdds(S.p), a = S.bets.ante, pp = S.bets.pp, pe = r.pe, hand = short3(pe.v);
+    var play = r.ev * a, fold = -a, diff = Math.abs(play - fold), close = diff < 0.02 * a;
+    var nm = pe.name.toLowerCase(), qName = pe.cat ? nm : hand;
+    var why;
+    if (r.play && pe.cat >= 1) why = 'Your ' + nm + ' beats most dealer hands' + (r.bonus ? ', and it earns an Ante bonus of ' + money(r.bonus * a) + ' just for playing' : '') + '. Folding would throw away a strong hand.';
+    else if (r.play) why = 'Folding costs your whole ' + money(a) + ' Ante for sure. Playing puts ' + money(a) + ' more out, but the dealer fails to qualify or you win often enough that you lose less on average' + (close ? ' (only just: the two are within a few cents of each other)' : '') + '.';
+    else why = 'Against a dealer who qualifies, ' + hand + ' loses too often. Playing would risk another ' + money(a) + ' and lose about ' + Coach.cash(-play).replace('+', '') + ' on average, which is worse than the ' + money(a) + ' Ante you give up by folding' + (close ? ' (only just)' : '') + '.';
+    var moves = [
+      { name: 'Play (' + money(a) + ' more)', best: r.play, w: r.w, p: r.t, l: r.l, value: play,
+        note: 'Beat a qualifying dealer and both bets pay 1 to 1. If the dealer doesn’t qualify, the Ante wins and the Play bet comes back' + (r.bonus ? '; the ' + money(r.bonus * a) + ' Ante bonus is paid even if the dealer wins' : '') + '.' + (pp && ppTable()[pe.cat] ? ' Your Pair Plus win of ' + money(pp * ppTable()[pe.cat]) + ' is also only paid if you play.' : '') },
+      { name: 'Fold', best: !r.play, bar: false, value: fold, note: 'You give up your ' + money(a) + ' Ante. Nothing more to win or lose' + (pp ? ', but your Pair Plus bet is lost too' : '') + '.' }
+    ];
+    if (!r.play) moves.reverse();
+    var tips = [
+      (r.play ? 'Play beats folding' : 'Folding beats playing') + ' by about <b>' + Coach.cash(diff).replace('+', '') + '</b> a hand on average' + (close ? '. That’s a hair: this hand sits right on the line, so either choice is fine.' : diff > 0.25 * a ? '. A clear call.' : '. Small edges like this add up over hundreds of hands.'),
+      'The dealer <b>doesn’t qualify ' + Coach.pct(r.nq) + '</b> of the time (no Queen or better). Then your Ante wins 1 to 1 and your Play bet comes back, whatever you hold.',
+      'When the dealer qualifies: you <b>win ' + Coach.pct(r.qw) + '</b>, tie ' + Coach.pct(r.qt) + ', and the dealer <b>wins ' + Coach.pct(r.ql) + '</b> (out of all deals).',
+      r.bonus ? 'Your ' + nm + ' earns the <b>Ante bonus</b> (' + r.bonus + ' to 1) whenever you play, win or lose.' : null,
+      'These odds are <b>exact</b>: every one of the ' + r.n.toLocaleString('en-US') + ' hands the dealer could hold from the 49 cards you can’t see was checked.'
+    ];
+    var ppE = ppEdge(), pt = ppTable(), ppItems = [
+      '<b>Pair Plus</b> is decided by <b>your three cards alone</b>: a pair or better wins, whatever the dealer holds.',
+      'This table pays pair 1, flush ' + pt[2] + ', straight 6, three of a kind 30 and straight flush 40 (all “to 1”). You get a pair or better ' + Coach.pct(ppE.any) + ' of the time.',
+      'Over time it keeps about <b>' + (ppE.edge * 100).toFixed(1) + '%</b> of what you bet on it for the house' + (pt[2] === 4 ? ' (the 3-to-1 flush table keeps about 7.3%)' : ' (the classic 4-to-1 flush table keeps about 2.3%)') + '. The Ante and Play bets, played this way, keep about 3.4% of the Ante.',
+      'One catch at this table: you have to <b>play</b> to get paid on Pair Plus; folding loses it. ' + (pp ? (pt[pe.cat] ? 'Yours is a winner: ' + money(pp * pt[pe.cat]) + ' if you play.' : 'Yours has no pair or better, so it loses either way.') : 'You don’t have a Pair Plus bet on this hand.')
+    ];
+    Coach.sheet({
+      title: 'Play or fold?',
+      best: { label: 'Best move · your ' + (pe.cat ? nm : hand), value: r.play ? 'Play' : 'Fold', text: why },
+      movesTitle: 'Both choices, compared',
+      intro: 'Your ' + money(a) + ' Ante is already out. If you held these exact cards many times, here is how each choice would turn out on average for the hand (Ante and Play together). A minus means you’d lose that much on average, so the smaller loss is the better choice. “Win” means you come out ahead.',
+      moves: moves,
+      sections: [
+        { title: 'Why', items: tips },
+        { title: 'The Queen-6-4 rule', text: 'The well-known rule of thumb is <b>play Queen-6-4 or better, fold anything lower</b>. It comes from the same math as above: Queen-6-4 is the weakest hand where playing loses less than folding. ' +
+          (pe.cat ? 'Any pair or better is far above it.' : 'Your ' + qName + ' is <b>' + (hand === 'Q-6-4' ? 'exactly on' : r.q64 ? 'above' : 'below') + '</b> it' + (r.q64 === r.play ? ', so the rule agrees.' : '; your exact cards tip it the other way, by only ' + Coach.cash(diff).replace('+', '') + '.')) },
+        { title: 'How the dealer qualifies', text: 'The dealer needs <b>Queen high or better</b> to play. If not, you win your Ante and your Play bet comes back. That’s why even a so-so hand like Queen-6-4 is worth playing: about 3 deals in 10, the dealer doesn’t qualify at all.' },
+        { title: 'Pair Plus, in plain words', items: ppItems }
+      ]
+    });
+  }
+
   // ── Rendering ─────────────────────────────────────────────────────────────
   function cardEl(c, back) { return back ? Kit.card('A', 's', { back: true }) : Kit.card(c.r, c.s); }
   function whoTag(name, bot, hand, id) {
@@ -520,7 +602,14 @@
     var pe = S.p ? eval3(S.p) : null;
     var pTag = whoTag(S.name, false, pe ? pe.name : '', 'ptag');
     if (showD && res.net > 0) pTag.classList.add('won');
-    felt.appendChild(el('div', { class: 'zone you' }, [pCards, pTag]));
+    var you = el('div', { class: 'zone you' }, [pCards, pTag]);
+    if (S.phase === 'decide' && coachOn()) {
+      var cr = playOdds(S.p);
+      var cc = Coach.chip('Best move: <b>' + (cr.play ? 'Play' : 'Fold') + '</b>', showCoach);
+      cc.id = 'coachchip'; cc.setAttribute('aria-label', 'Best move: ' + (cr.play ? 'Play' : 'Fold') + '. Tap for the odds.');
+      you.appendChild(cc);
+    }
+    felt.appendChild(you);
     app.appendChild(el('div', { class: 'ctable wood' }, [felt]));
 
     // controls
@@ -585,6 +674,7 @@
     var p = app.querySelectorAll('#pcards .pcard'), d = app.querySelectorAll('#dcards .pcard');
     var order = [p[0], d[0], p[1], d[1], p[2], d[2]];
     var tag = document.getElementById('ptag'); if (tag) tag.style.visibility = 'hidden';
+    var cch = document.getElementById('coachchip'); if (cch) cch.style.visibility = 'hidden';
     var btns = app.querySelectorAll('.acts button'); btns.forEach(function (b) { b.disabled = true; });
     order.forEach(function (n) { n.style.opacity = '0'; });
     busy = true; Kit.sfx('whoosh');
@@ -597,6 +687,7 @@
     setTimeout(function () {
       if (my !== token) return; busy = false;
       if (tag) { tag.style.visibility = ''; tag.classList.add('pop'); }
+      if (cch) cch.style.visibility = '';
       btns.forEach(function (b) { b.disabled = false; });
       var pe = eval3(S.p);
       if (pe.cat >= 3) { Kit.callout(pe.name + '!'); Kit.sfx('good'); Kit.haptic('success'); }
@@ -681,6 +772,9 @@
     render();
   } else showSetup();
   window.addEventListener('pageshow', function () { var b = document.getElementById('bankv'); if (b && S) b.textContent = money(bank() - pending()); });
+
+  // Exposed for testing in the console
+  window.ThreeCard = { eval3: eval3, playOdds: playOdds, ppEdge: ppEdge };
 })();
 </script>
 </body>

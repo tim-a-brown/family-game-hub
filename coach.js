@@ -26,7 +26,7 @@ var Coach = window.Coach = (function () {
       '.cch{display:flex;flex-direction:column;gap:14px;}',
       '.cch-best{border-radius:16px;padding:12px 14px;background:color-mix(in srgb,var(--green) 16%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--green) 55%,transparent);}',
       '.cch-best small{display:block;font-size:.7rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);}',
-      '.cch-best b{display:block;font-size:1.45rem;font-weight:900;margin:2px 0 4px;}',
+      '.cch-best > b{display:block;font-size:1.45rem;font-weight:900;margin:2px 0 4px;}',
       '.cch-best p{margin:0;font-size:.92rem;line-height:1.4;color:var(--text-2);}',
       '.cch h4{margin:4px 0 0;font-size:.74rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);}',
       '.cch p.plain{margin:0;font-size:.92rem;line-height:1.45;color:var(--text-2);}',

@@ -13,6 +13,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../casino.js"></script>
+<script src="../coach.js"></script>
 <style>
 .stage{max-width:520px;padding-top:0;padding-bottom:0;}
 .bankrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 4px 8px;font-weight:800;font-size:.92rem;color:var(--text-2);}
@@ -82,6 +83,10 @@
 .verdict{position:absolute;left:0;right:0;top:41.6%;text-align:center;pointer-events:none;}
 .verdict span{display:inline-block;padding:.8cqw 3.4cqw;border-radius:999px;background:rgba(0,0,0,.42);color:#fff;font-weight:900;font-size:3.7cqw;letter-spacing:.04em;white-space:nowrap;animation:pop .35s var(--spring);}
 .verdict span.gold{background:#ffc83d;color:#2b1a00;}
+/* Bet guide tag: sits where the result shows, while you bet */
+.bgtag{position:absolute;left:0;right:0;top:41.4%;display:flex;justify-content:center;z-index:7;pointer-events:none;}
+.bgtag .cch-chip{pointer-events:auto;font-size:clamp(.74rem,3.3cqw,.95rem);}
+.cch-best .bg-note{display:block;margin-top:8px;font-size:.82rem;line-height:1.35;color:var(--text-3);}
 
 /* Chips */
 .bchip{--c:#c8102e;--e:#f6f2ea;--sz:9cqw;position:relative;width:var(--sz);height:var(--sz);border-radius:50%;flex:none;
@@ -243,14 +248,15 @@
     S = null; token++; busy = false;
     Kit.setup(app, {
       players: { min: 1, max: 1, count: 1, label: "Who's playing?" },
-      options: [{ id: 'reveal', label: 'Card reveal', help: 'How the cards are turned over after the deal.', choices: [['squeeze', 'Slow squeeze', 'Cards are lifted and peeked at one corner at a time, like a high-roller table.'], ['quick', 'Quick', 'Cards flip over right away so hands go faster.']], value: 'squeeze' }],
+      options: [{ id: 'reveal', label: 'Card reveal', help: 'How the cards are turned over after the deal.', choices: [['squeeze', 'Slow squeeze', 'Cards are lifted and peeked at one corner at a time, like a high-roller table.'], ['quick', 'Quick', 'Cards flip over right away so hands go faster.']], value: 'squeeze' },
+        Coach.option({ label: 'Bet guide', help: 'Shows the smartest bet on the table. Tap it for every bet\u2019s real odds, explained in plain words.', off: 'No guide: you bet on your own.', on: 'A \u201cbest bet\u201d tag on the table; tap it to compare every bet and see what yours cost.' })],
       intro: 'Punto Banco, 8-deck shoe. Bankroll ' + money(Casino.balance()) + ', shared by every casino game',
       start: 'Take a seat',
-      onStart: function (cfg) { start(cfg.players[0].name, cfg.options.reveal); }
+      onStart: function (cfg) { start(cfg.players[0].name, cfg.options.reveal, cfg.options.coach); }
     });
   }
-  function start(name, reveal) {
-    S = { name: name, reveal: reveal || 'squeeze', started: Date.now(), startBank: Casino.balance(), bets: {}, placed: [], last: null, hand: null, frac: 0, st: blankStats(), shoe: null, roads: [] };
+  function start(name, reveal, coach) {
+    S = { name: name, reveal: reveal || 'squeeze', coach: coach === 'on' ? 'on' : 'off', started: Date.now(), startBank: Casino.balance(), bets: {}, placed: [], last: null, hand: null, frac: 0, st: blankStats(), shoe: null, roads: [] };
     newShoe(false);
     Kit.gameStart();
     save(); render();
@@ -318,6 +324,8 @@
     });
     dom.verdict = el('div', { class: 'verdict' });
     felt.appendChild(dom.verdict);
+    dom.guide = el('div', { class: 'bgtag' });
+    felt.appendChild(dom.guide);
     dom.stacks = {};
     felt.addEventListener('click', function (e) {
       var t = e.target.closest && e.target.closest('[data-spot]');
@@ -384,7 +392,7 @@
     var showBets = busy && S.hand ? S.hand.bets : S.bets;
     ORDER.forEach(function (k) { paintStack(k, showBets[k] || 0); });
     dom.felt.classList.toggle('betting', !busy);
-    paintTray(); paintButtons(); paintShoe(); paintRoad();
+    paintTray(); paintButtons(); paintShoe(); paintRoad(); paintGuide();
   }
   function paintStack(k, amt, cls) {
     var st = dom.stacks[k];
@@ -752,6 +760,72 @@
     else if (S.shoe.left === 1 && h.lastHand === false && !h._cutTold) { h._cutTold = true; setTimeout(function () { if (S && !busy) Kit.toast('Cut card is out · one more hand', 2200); }, 1200); }
   }
 
+  // ── Bet guide (setup option): best bet on the table, and the odds behind every bet ──
+  // Exact chances for a full 8-deck shoe, worked out card by card through the drawing chart above.
+  // The shoe barely moves these (a few hundredths of a percent), so the guide uses the full-shoe figures.
+  var ODDS = { B: 0.4585974, P: 0.4462466, T: 0.0951560, pair: (4 * DECKS - 1) / (52 * DECKS - 1) };
+  // Average result per $1 bet, from this table's payouts (Banker 0.95 to 1, Tie 8 to 1, pairs 11 to 1)
+  var EV = { b: ODDS.B * 0.95 - ODDS.P, p: ODDS.P - ODDS.B, t: ODDS.T * 9 - 1, pp: ODDS.pair * 12 - 1, bp: ODDS.pair * 12 - 1 };
+  function edgeTxt(x) { return (Math.abs(x) * 100).toFixed(2) + '%'; }
+  function lossTxt(x) { return '$' + Math.abs(x).toFixed(2); }
+  function betsEv(b) { var e = 0; ORDER.forEach(function (k) { if (b[k]) e += b[k] * EV[k]; }); return e; }
+  function paintGuide() {
+    if (!dom.guide) return;
+    var show = S.coach === 'on' && !busy && !dom.verdict.firstChild;
+    dom.guide.innerHTML = '';
+    if (!show) return;
+    var t = sumBets(S.bets);
+    dom.guide.appendChild(Coach.chip(t ? 'Your bets: avg loss <b>' + lossTxt(betsEv(S.bets)) + '</b> a hand' : 'Best bet: <b>Banker</b>', showGuide));
+  }
+  function showGuide() {
+    var b = S.bets, t = sumBets(b), best;
+    if (t) {
+      var ev = betsEv(b), lines = ORDER.filter(function (k) { return b[k]; }).map(function (k) {
+        return '<strong>' + SPOTS[k].name + ' ' + money(b[k]) + '</strong>: ' + Coach.cash(b[k] * EV[k]);
+      });
+      var onlyBanker = ORDER.every(function (k) { return k === 'b' || !b[k]; });
+      best = { label: 'Your bets · ' + money(t) + ' on the table', value: 'Avg loss ' + lossTxt(ev) + ' a hand',
+        text: lines.join('<br>') + '<span class="bg-note">' + (onlyBanker ? 'Banker is the best bet on the table: nothing here costs less.' :
+          'The same ' + money(t) + ' all on Banker would lose about ' + lossTxt(t * EV.b) + ' a hand on average.') + '</span>' };
+    } else {
+      best = { label: 'Best bet', value: 'Banker',
+        text: 'Banker wins a little more often than Player, and even after the 5% commission it costs you the least: about <strong>11 cents</strong> for every $10 you bet, over the long run.' };
+    }
+    Coach.sheet({
+      title: 'Bet guide',
+      best: best,
+      movesTitle: 'Every bet, compared',
+      intro: 'Chances are for one hand from a full 8-deck shoe. The amount on the right is your average result for every <b>$10</b> you bet, if you made that bet over and over.',
+      moves: [
+        { name: 'Banker', best: true, w: ODDS.B, p: ODDS.T, l: ODDS.P, pLabel: 'Tie (bet back)', value: 10 * EV.b,
+          note: 'Pays 0.95 to 1 (the house keeps 5% of the win) · house edge <b>' + edgeTxt(EV.b) + '</b>' },
+        { name: 'Player', w: ODDS.P, p: ODDS.T, l: ODDS.B, pLabel: 'Tie (bet back)', value: 10 * EV.p,
+          note: 'Pays 1 to 1 · house edge <b>' + edgeTxt(EV.p) + '</b>' },
+        { name: 'Player Pair or Banker Pair', w: ODDS.pair, l: 1 - ODDS.pair, value: 10 * EV.pp,
+          note: 'Pays 11 to 1 · hits about 1 hand in ' + (1 / ODDS.pair).toFixed(1) + '; a fair price would be ' + (1 / ODDS.pair - 1).toFixed(1) + ' to 1 · house edge <b>' + edgeTxt(EV.pp) + '</b>' },
+        { name: 'Tie', w: ODDS.T, l: 1 - ODDS.T, value: 10 * EV.t,
+          note: 'Pays 8 to 1 · hits about 1 hand in ' + (1 / ODDS.T).toFixed(1) + '; a fair price would be ' + (1 / ODDS.T - 1).toFixed(1) + ' to 1 · house edge <b>' + edgeTxt(EV.t) + '</b> (some casinos pay 9 to 1, which cuts it to 4.84%)' }
+      ],
+      sections: [
+        { title: 'Why Banker is the best bet', items: [
+          'Banker plays second. The drawing chart lets Banker see whether Player took a third card (and what it was) before deciding, so Banker wins <b>45.9%</b> of hands and Player <b>44.6%</b>. Leave out ties and Banker wins <b>50.7%</b> of the hands that have a winner.',
+          'That is why the house takes 5% of Banker wins. The commission eats most of Banker’s advantage, but not all of it: Banker still costs <b>1.06%</b>, a little less than Player’s <b>1.24%</b>.',
+          'Player is a close second and a fine bet too. Tie and the pairs pay big but cost roughly 10 to 14 times as much over time.'
+        ] },
+        { title: 'Things that make no difference', items: [
+          '<b>There are no decisions to get right.</b> Whether each hand draws a third card is fixed by the rules, so the only choice you make is the bet.',
+          '<b>Streaks don’t predict anything.</b> The scoreboard is fun to read, but every hand comes from a well-shuffled shoe. After five Bankers in a row, the next hand is still 45.9% Banker and 44.6% Player. Nobody is “due”.',
+          '<b>Counting cards doesn’t help.</b> The cards already dealt nudge these chances by only hundredths of a percent, nowhere near enough to beat the house.'
+        ] },
+        { title: 'What the numbers mean', items: [
+          '<b>House edge</b> is how much of each bet the casino keeps on average. 1.06% means about $1.06 of every $100 you bet on Banker, over many hands.',
+          'Over a handful of hands anything can happen: that is the fun of it. The more hands you play, the closer your results get to these averages.',
+          'Betting less per hand, or playing fewer hands, is the only way to lose less on average. No betting pattern changes the house edge.'
+        ] }
+      ]
+    });
+  }
+
   // ── Bankroll and session end ──────────────────────────────────────────────
   function resetBank() {
     if (busy) return;
@@ -790,7 +864,7 @@
     var s = S, st = s.st, net = st.returned - st.wagered;
     if (st.hands) recordSession(s);
     clearSave();
-    var name = s.name, reveal = s.reveal;
+    var name = s.name, reveal = s.reveal, coach = s.coach;
     showSetup();
     if (!st.hands) return;
     Kit.win({
@@ -799,7 +873,7 @@
       sub: st.hands + ' hands · Banker ' + st.counts.B + ', Player ' + st.counts.P + ', Tie ' + st.counts.T + ' · bankroll ' + money(Casino.balance()),
       lose: net < -0.004,
       againLabel: 'Play again',
-      again: function () { start(name, reveal); }
+      again: function () { start(name, reveal, coach); }
     });
   }
 

@@ -12,6 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../casino.js"></script>
+<script src="../coach.js"></script>
 <style>
 /* ── Casino chips (local; candidates for the kit) ─────────────────────────
    Standard colours: 1 white, 5 red, 25 green, 100 black, 500 purple. */
@@ -61,6 +62,15 @@
 
 .msg{min-height:24px;text-align:center;font-weight:800;color:var(--text-2);margin:-2px 0 8px;font-size:.92rem;line-height:1.3;}
 .msg b{color:var(--text);}
+/* Bet guide: tag under the message line, and the tables in its sheet */
+.bg-row{display:flex;justify-content:center;min-height:25px;margin:-2px 0 8px;}
+.bg-row.hide{visibility:hidden;}
+.cmp .bg-row{margin:-2px 0 6px;}
+.cch-best .bg-note{display:block;margin-top:8px;font-size:.82rem;line-height:1.35;color:var(--text-3);}
+.bg-ride{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px 12px;align-items:baseline;font-size:.86rem;font-weight:700;color:var(--text-2);font-variant-numeric:tabular-nums;}
+.bg-ride b{color:var(--text);font-weight:900;}
+.bg-ride .r{text-align:right;white-space:nowrap;}
+.bg-ride .hd{font-size:.68rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
 
 /* ── Betting layout on felt ──────────────────────────────────────────── */
 .tbl{border-radius:22px;padding:8px;}
@@ -151,6 +161,7 @@
   .stage.rl .hcol{align-self:stretch;}
   .stage.rl .board{align-self:stretch;min-height:118px;}
   .stage.rl > .msg{margin-top:4px;}
+  .stage.rl > .bg-row{grid-column:1;}
   .rail-in{max-width:640px;}
 }
 </style>
@@ -273,13 +284,14 @@
     Kit.setup(app, {
       intro: 'Place your bets, spin the wheel',
       players: { min: 1, max: 1, count: 1, label: "Who's playing?" },
-      options: [{ id: 'wheel', label: 'Wheel', value: 'eu', choices: [['eu', 'European (0)', '37 pockets with one green 0. Better odds for you.'], ['us', 'American (0, 00)', 'Adds a second green pocket, 00, so the house wins a bit more often.']] }],
+      options: [{ id: 'wheel', label: 'Wheel', value: 'eu', choices: [['eu', 'European (0)', '37 pockets with one green 0. Better odds for you.'], ['us', 'American (0, 00)', 'Adds a second green pocket, 00, so the house wins a bit more often.']] },
+        Coach.option({ label: 'Bet guide', help: 'Shows what the bets on this wheel really cost. Tap it for every bet\u2019s odds, explained in plain words.', off: 'No guide: you bet on your own.', on: 'A tag above the table with the house edge and what your bets cost; tap it to compare every bet.' })],
       start: 'Go to the table',
-      onStart: function (cfg) { start(cfg.options.wheel || 'eu', cfg.players[0] ? cfg.players[0].name : 'You'); }
+      onStart: function (cfg) { start(cfg.options.wheel || 'eu', cfg.players[0] ? cfg.players[0].name : 'You', cfg.options.coach); }
     });
   }
-  function start(wheel, player) {
-    S = { v: 2, wheel: wheel === 'us' ? 'us' : 'eu', player: player || 'You', bets: {}, undo: [], last: null, recent: [], wAng: -Math.PI / 2, sess: newSess(), spin: null };
+  function start(wheel, player, coach) {
+    S = { v: 2, wheel: wheel === 'us' ? 'us' : 'eu', player: player || 'You', coach: coach === 'on' ? 'on' : 'off', bets: {}, undo: [], last: null, recent: [], wAng: -Math.PI / 2, sess: newSess(), spin: null };
     Kit.gameStart();
     buildBets(S.wheel); save(); render();
     if (Casino.balance() < 1) brokeSheet();
@@ -404,6 +416,8 @@
     app.appendChild(R.bankEl);
     R.msg = el('div', { class: 'msg' });
     app.appendChild(R.msg);
+    R.guide = S.coach === 'on' ? el('div', { class: 'bg-row' }) : null;
+    if (R.guide) app.appendChild(R.guide);
     R.lay = el('div', { class: 'lay', role: 'application', 'aria-label': 'Betting table' });
     var felt = el('div', { class: 'felt-in' }, [R.lay]);
     app.appendChild(el('div', { class: 'tbl wood' }, [felt]));
@@ -529,6 +543,7 @@
     R.spin.querySelector('span').textContent = t ? 'Spin · ' + money(t) : 'Spin';
     if (!t && S.last && total(S.last)) { R.rep.innerHTML = Kit.icon('sync') + '<span>Repeat</span>'; R.rep.disabled = busy; R.rep.dataset.m = 'rep'; }
     else { R.rep.innerHTML = Kit.icon('close') + '<span>Clear</span>'; R.rep.disabled = busy || !t; R.rep.dataset.m = 'clr'; }
+    paintGuide();
   }
   function paintBoard() {
     var b = R.board; b.innerHTML = '';
@@ -788,6 +803,109 @@
     if (Casino.balance() < 1) setTimeout(brokeSheet, 1600);
   }
 
+  // ── Bet guide (setup option): what the bets on this wheel really cost ──────────
+  // Worked out pocket by pocket from this table's own bets and payouts (BETS), so it always matches the wheel.
+  function pockets() { return range(0, 36).concat(S.wheel === 'us' ? [DZ] : []); }
+  function pcT(x, d) { return (x * 100).toFixed(d == null ? 2 : d) + '%'; }
+  function dollars(x) { return '$' + Math.abs(x).toFixed(2); }
+  function edgeOf(k, pay) { return 1 - (pay + 1) * k / pockets().length; }   // share of each bet the house keeps on average
+  function spinStats(bets) {
+    var ps = pockets(), N = ps.length, stake = total(bets), ev = 0, any = 0, ahead = 0, top = -Infinity;
+    ps.forEach(function (n) {
+      var ret = 0;
+      Object.keys(bets).forEach(function (id) { var b = BETS[id]; if (b && b.nums.indexOf(n) >= 0) ret += bets[id] * (b.pay + 1); });
+      ev += (ret - stake) / N; if (ret > 0) any++; if (ret > stake) ahead++; top = Math.max(top, ret - stake);
+    });
+    return { ev: ev, any: any / N, ahead: ahead / N, top: top, stake: stake };
+  }
+  function paintGuide() {
+    if (!R.guide || !S) return;
+    R.guide.classList.toggle('hide', busy);
+    if (busy) return;
+    var us = S.wheel === 'us', html;
+    if (us && S.bets.bk) html = 'Tip: <b>skip the Top line</b>';
+    else if (total(S.bets)) html = 'Your bets: avg loss <b>' + dollars(spinStats(S.bets).ev) + '</b> a spin';
+    else html = 'Every bet: <b>' + (us ? '5.26%' : '2.70%') + ' house edge</b>';
+    if (R.guide.dataset.h === html) return;
+    R.guide.dataset.h = html; R.guide.innerHTML = '';
+    R.guide.appendChild(Coach.chip(html, showGuide));
+  }
+  // Middle half of results after 100 spins of $10 on one bet (exact, from the binomial distribution)
+  function middleHalf(k, pay, N) {
+    var n = 100, p = k / N, pm = Math.pow(1 - p, n), cdf = 0, lo = null, hi = null;
+    for (var w = 0; w <= n; w++) {
+      if (w > 0) pm *= (n - w + 1) / w * p / (1 - p);
+      cdf += pm;
+      if (lo == null && cdf >= 0.25) lo = w;
+      if (hi == null && cdf >= 0.75) { hi = w; break; }
+    }
+    function net(w) { return 10 * (pay + 1) * w - 10 * n; }
+    return [net(lo), net(hi)];
+  }
+  function showGuide() {
+    var us = S.wheel === 'us', N = pockets().length, edge = 1 / N * (us ? 2 : 1), eTxt = pcT(edge);
+    var rows = [
+      { name: 'Even-money bets', k: 18, pay: 1, what: 'Red or Black, Odd or Even, 1-18 or 19-36' },
+      { name: 'Dozen or Column', k: 12, pay: 2 },
+      { name: 'Six line', k: 6, pay: 5 },
+      { name: us ? 'Corner' : 'Corner · First four', k: 4, pay: 8 },
+      { name: 'Street · Trio', k: 3, pay: 11 },
+      { name: 'Split', k: 2, pay: 17 },
+      { name: 'Straight up', k: 1, pay: 35 }
+    ];
+    if (us) rows.push({ name: 'Top line (0-00-1-2-3)', k: 5, pay: 6 });
+    function fair(k) { var f = (N - k) / k; return parseFloat(f.toFixed(2)) + ' to 1'; }
+    var moves = rows.map(function (r) {
+      var w = r.k / N, e = edgeOf(r.k, r.pay);
+      return { name: r.name, w: w, l: 1 - w, value: -10 * e,
+        note: (r.what ? r.what + ' · covers ' : 'Covers ') + r.k + ' number' + (r.k > 1 ? 's' : '') + ' · pays ' + r.pay + ' to 1 (fair would be ' + fair(r.k) + ') · wins ' + pcT(w, 1) + ' of spins, about 1 in ' + (N / r.k).toFixed(1).replace(/\.0$/, '') + ' · house edge <b>' + pcT(e) + '</b>' };
+    });
+    var best, t = total(S.bets);
+    if (t) {
+      var st = spinStats(S.bets), hasBk = us && S.bets.bk;
+      best = { label: 'Your bets · ' + money(t) + ' on the table', value: 'Avg loss ' + dollars(st.ev) + ' a spin',
+        text: 'Chance at least one bet wins: <strong>' + pcT(st.any, 1) + '</strong><br>Chance you finish the spin ahead: <strong>' + pcT(st.ahead, 1) + '</strong><br>' +
+          (st.top > 0 ? 'Best possible spin: <strong>+' + money(st.top) + '</strong>' : 'No single spin can put you ahead with these bets') +
+          '<span class="bg-note">' + (hasBk ? 'The Top line costs 7.89%, the worst bet here. Every other bet costs ' + eTxt + '.' :
+            'Every bet on this wheel costs ' + eTxt + ', so your average loss is ' + eTxt + ' of what is on the table however you spread it. Spreading chips around changes how often you win, not what it costs.') + '</span>' };
+    } else {
+      best = { label: 'The honest answer', value: 'Every bet costs the same',
+        text: 'On this ' + (us ? 'American' : 'European') + ' wheel every bet loses <strong>' + eTxt + '</strong> on average: about ' + (us ? '53' : '27') + ' cents for every $10, whether you bet Red or a single number' +
+          (us ? ' (except the Top line, at 7.89%)' : '') + '. So pick the ride you like: outside bets win often and pay a little; inside bets win rarely and pay a lot.' };
+    }
+    var ride = el('div', { class: 'bg-ride' });
+    ['Bet', 'Wins', 'Middle half'].forEach(function (h, i) { ride.appendChild(el('span', { class: 'hd' + (i ? ' r' : ''), text: h })); });
+    rows.filter(function (r) { return r.k !== 5; }).forEach(function (r) {
+      var mh = middleHalf(r.k, r.pay, N);
+      ride.appendChild(el('b', { text: { 18: 'Red / Black', 12: 'Dozen', 6: 'Six line', 4: 'Corner', 3: 'Street', 2: 'Split', 1: 'Straight up' }[r.k] }));
+      ride.appendChild(el('span', { class: 'r', text: pcT(r.k / N, 1) }));
+      ride.appendChild(el('span', { class: 'r', text: signed(mh[0]) + ' to ' + signed(mh[1]) }));
+    });
+    Coach.sheet({
+      title: 'Bet guide',
+      best: best,
+      movesTitle: 'Every bet, compared',
+      intro: 'Smoothest ride to bumpiest. The amount on the right is the average result for every <b>$10</b> you bet: the same for every bet' + (us ? ' but the Top line' : '') + '.',
+      moves: moves,
+      sections: [
+        { title: 'Why every bet costs the same', text: 'Payouts are set as if the wheel had only the numbers 1 to 36. The green ' + (us ? '0 and 00 are' : '0 is') + ' the casino’s cut. A single number pays 35 to 1, but with ' + N + ' pockets a fair price would be ' + (N - 1) + ' to 1. Every other bet is priced the same way, so each one gives up the same ' + eTxt + '.' +
+          (us ? ' The one exception is the Top line: five numbers paying 6 to 1, where the usual pricing would give 6.2 to 1, so it costs <b>7.89%</b>.' : '') },
+        { title: 'How bumpy is the ride?', text: 'Same cost, very different ride. Say you bet $10 a spin for 100 spins: on average you’d be down about ' + money(1000 * edge) + ' whichever bet you pick. But half the time you’d finish somewhere in this range:', node: ride },
+        { title: 'Past spins don’t matter', items: [
+          '<b>The wheel has no memory.</b> After five reds in a row, red is still ' + pcT(18 / N, 1) + ' on the next spin.',
+          'The Last numbers board and “hot” numbers are just a record. No number is due, and none is hot.',
+          '<b>No betting system beats the wheel.</b> Doubling up after a loss, or covering lots of numbers, only changes the ride. You win more often, but smaller, and the cost per dollar stays ' + eTxt + '.'
+        ] },
+        { title: 'European vs American wheel', items: [
+          '<b>European</b> (one 0): every bet costs 2.70%.',
+          '<b>American</b> (0 and 00): every bet costs 5.26%, nearly double, and the Top line 7.89%. You pick the wheel when you start a session.',
+          'Some European casinos give back half of an even-money bet (like Red) when the ball lands on 0. That rule, called <b>la partage</b>, cuts those bets to 1.35%. This table doesn’t use it.'
+        ] },
+        { title: 'What the numbers mean', text: '<b>House edge</b> is the share of every bet the casino keeps on average. ' + eTxt + ' means about $' + (100 * edge).toFixed(2) + ' of every $100 you bet, over many spins. Over a few spins anything can happen; the more you play, the closer you get to the average.' }
+      ]
+    });
+  }
+
   // ── Wheel drawing ────────────────────────────────────────────────────────
   function drawWheel(cv, sizeCss, wAng, ball, hlIdx) {
     var dpr = Math.min(3, window.devicePixelRatio || 1), px = Math.round(sizeCss * dpr);
@@ -991,7 +1109,7 @@
         icon: net >= 0 ? 'coins' : 'meh', lose: net < 0,
         title: net > 0 ? 'Up ' + money(net) + '!' : net < 0 ? 'Down ' + money(-net) : 'Broke even',
         sub: ss.spins + ' spin' + (ss.spins === 1 ? '' : 's') + (ss.best ? ' · biggest win ' + signed(ss.best.amt) : '') + ' · bankroll ' + money(Casino.balance()),
-        againLabel: 'New session', again: function () { start(st.wheel, st.player); },
+        againLabel: 'New session', again: function () { start(st.wheel, st.player, st.coach); },
         extra: [{ label: 'Past sessions', onClick: function () { showSetup(); Kit.history(HKEY, { title: 'Roulette: past sessions' }); } }],
         onClose: undefined
       });

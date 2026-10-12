@@ -12,6 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../casino.js"></script>
+<script src="../coach.js"></script>
 <style>
 /* ── Casino chips (local; candidates for the kit) ─────────────────────────
    Standard colours: 1 white, 5 red, 25 green, 100 black, 500 purple. */
@@ -48,6 +49,17 @@
 .bank .gold{color:var(--yellow);} .pos{color:var(--green)!important;} .neg{color:var(--red)!important;}
 .msg{min-height:24px;text-align:center;font-weight:800;color:var(--text-2);margin:0 0 8px;font-size:.92rem;line-height:1.3;}
 .msg b{color:var(--text);}
+/* Bet guide: tag under the message line, and the dice chart in its sheet */
+.bg-row{display:flex;justify-content:center;min-height:25px;margin:-2px 0 8px;}
+.bg-row.hide{visibility:hidden;}
+.bg-dice{display:grid;grid-template-columns:auto auto minmax(40px,1fr) auto;gap:5px 10px;align-items:center;font-size:.86rem;font-weight:700;color:var(--text-2);font-variant-numeric:tabular-nums;}
+.bg-dice b{color:var(--text);font-weight:900;text-align:right;}
+.bg-dice .bar{height:9px;border-radius:999px;background:var(--w08);overflow:hidden;}
+.bg-dice .bar i{display:block;height:100%;border-radius:999px;background:#3ddc84;}
+.bg-dice .bar i.s{background:#ff6b78;}
+.bg-dice .hd{font-size:.68rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
+.bg-dice .hd:first-child{text-align:right;}
+.cch-best .bg-note{display:block;margin-top:8px;font-size:.82rem;line-height:1.35;color:var(--text-3);}
 
 /* ── Table ───────────────────────────────────────────────────────────── */
 .ctab{border-radius:22px;padding:8px;}
@@ -241,14 +253,15 @@
       players: { min: 1, max: 1, count: 1, label: "Who's shooting?" },
       options: [
         { id: 'odds', label: 'Odds allowed', help: 'The most you can bet as odds behind a line bet, compared with that bet.', value: '345', choices: [['2', '2x', 'Odds up to 2 times your line bet.'], ['345', '3-4-5x', 'Up to 3x on 4 and 10, 4x on 5 and 9, and 5x on 6 and 8. Common in casinos.'], ['10', '10x', 'Odds up to 10 times your line bet.']] },
-        { id: 'f12', label: 'Field: 12 pays', help: 'What a Field bet pays when the dice roll a 12 (a 2 always pays double).', value: '2', choices: [['2', 'Double', 'A 12 pays 2 to 1.'], ['3', 'Triple', 'A 12 pays 3 to 1, a better deal for you.']] }
+        { id: 'f12', label: 'Field: 12 pays', help: 'What a Field bet pays when the dice roll a 12 (a 2 always pays double).', value: '2', choices: [['2', 'Double', 'A 12 pays 2 to 1.'], ['3', 'Triple', 'A 12 pays 3 to 1, a better deal for you.']] },
+        Coach.option({ label: 'Bet guide', help: 'Shows the smartest bet right now. Tap it for every bet\u2019s real odds, explained in plain words.', off: 'No guide: you bet on your own.', on: 'A \u201cbest bet\u201d tag above the table; tap it to compare every bet and see what yours cost.' })
       ],
       start: 'Go to the table',
       onStart: function (cfg) { start(cfg.players[0] ? cfg.players[0].name : 'You', cfg.options); }
     });
   }
   function start(player, opts) {
-    S = { v: 2, player: player || 'You', opts: { odds: String(opts.odds || '345'), f12: +opts.f12 === 3 ? 3 : 2 }, point: 0, bets: {}, undo: [], recent: [], dice: [5, 2], sess: newSess(), anim: null };
+    S = { v: 2, player: player || 'You', opts: { odds: String(opts.odds || '345'), f12: +opts.f12 === 3 ? 3 : 2, coach: opts.coach === 'on' ? 'on' : 'off' }, point: 0, bets: {}, undo: [], recent: [], dice: [5, 2], sess: newSess(), anim: null };
     Kit.gameStart(); save(); render();
     if (Casino.balance() < 1) brokeSheet();
   }
@@ -305,6 +318,8 @@
       el('div', null, [el('small', { text: 'Session' }), R.net])
     ]));
     R.msg = el('div', { class: 'msg' }); app.appendChild(R.msg);
+    R.guide = S.opts.coach === 'on' ? el('div', { class: 'bg-row' }) : null;
+    if (R.guide) app.appendChild(R.guide);
 
     var felt = el('div', { class: 'felt-in' });
     app.appendChild(el('div', { class: 'ctab wood' }, [felt]));
@@ -433,6 +448,7 @@
     R.undo.disabled = busy || !S.undo.length;
     R.down.disabled = busy || !removable().length;
     R.roll.disabled = busy;
+    paintGuide();
   }
   function paintPuck() {
     var p = R.puck; if (!p) return;
@@ -717,6 +733,162 @@
     if (m && !/^hard/.test(id)) return R.zones['box' + m[1]];
     if (id === 'passOdds') return R.zones.pass; if (id === 'dpOdds') return R.zones.dp;
     return R.zones[id];
+  }
+
+  // ── Bet guide (setup option): the smartest bet right now, and the odds behind every bet ──
+  // Two dice make 36 combinations; everything below comes from these counts and this table's payouts.
+  var WAYS = { 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 5, 9: 4, 10: 3, 11: 2, 12: 1 };
+  var PASS_W = 244 / 495, PASS_EDGE = 7 / 495;                          // Pass / Come: 49.29% to win, 1.41%
+  var DP_W = 949 / 1980, DP_PUSH = 1 / 36, DP_EDGE = 27 / 1980;         // Don't pass / Don't come (12 pushes): 1.36%
+  function before7(n) { return WAYS[n] / (WAYS[n] + 6); }
+  function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+  function unitOf(r) { return r[1] / gcd(r[0], r[1]); }   // smallest bet that gets paid the full price
+  function pc(x, d) { var v = x * 100; return (d == null ? (Math.abs(v - Math.round(v)) < 0.05 ? v.toFixed(0) : v.toFixed(1)) : v.toFixed(d)) + '%'; }
+  function dollars(x) { return '$' + Math.abs(x).toFixed(2); }
+  function oddsMult() { var o = S.opts.odds; return o === '345' ? { 4: 3, 10: 3, 5: 4, 9: 4, 6: 5, 8: 5 } : { 4: +o, 10: +o, 5: +o, 9: +o, 6: +o, 8: +o }; }
+  function oddsLabel() { return S.opts.odds === '345' ? '3-4-5x' : S.opts.odds + 'x'; }
+  // One bet on the table: q = chance it wins from here, ev = average result each time it is settled
+  // (the house edge times the bet, with this table's rounding of wins down to the dollar)
+  function betInfo(id, a) {
+    var m, n, q, r, win, full;
+    if (id === 'pass' || id === 'come' || (m = /^come(\d+)$/.exec(id))) {
+      n = m ? +m[1] : id === 'pass' ? S.point : 0;
+      return { q: n ? before7(n) : PASS_W, ev: -PASS_EDGE * a, n: n, line: true };
+    }
+    if (id === 'dp' || id === 'dc' || (m = /^dc(\d+)$/.exec(id))) {
+      n = m ? +m[1] : id === 'dp' ? S.point : 0;
+      return { q: n ? 1 - before7(n) : DP_W, push: n ? 0 : DP_PUSH, ev: -DP_EDGE * a, n: n, line: true };
+    }
+    if ((m = /^(passOdds|comeOdds|dpOdds|dcOdds|place)(\d*)$/.exec(id))) {
+      n = m[2] ? +m[2] : S.point;
+      var lay = /^(dpOdds|dcOdds)$/.test(m[1]);
+      r = m[1] === 'place' ? PLACE[n] : lay ? LAY[n] : TAKE[n];
+      q = lay ? 1 - before7(n) : before7(n);
+      win = Math.floor(a * r[0] / r[1]); full = a * r[0] / r[1];
+      return { q: q, ev: q * win - (1 - q) * a, n: n, win: win, full: full, unit: unitOf(r) };
+    }
+    if (id === 'field') return { q: 16 / 36, ev: a * (2 + S.opts.f12 + 14 - 20) / 36, one: true };
+    if ((m = /^hard(\d+)$/.exec(id))) { n = +m[1]; q = 1 / (WAYS[n] + 6); return { q: q, ev: q * HARD[n] * a - (1 - q) * a, n: n }; }
+    if (PROPS[id]) { q = { any7: 6, anyCraps: 4, two: 1, three: 2, yo: 2, twelve: 1 }[id] / 36; return { q: q, ev: q * PROPS[id][1] * a - (1 - q) * a, one: true }; }
+    return { q: 0, ev: 0 };
+  }
+  function shortPaid(info) { return info.unit && info.win < info.full - 1e-9; }
+  function tipText() {
+    var P = S.point, B = S.bets, ids = Object.keys(B), i, n;
+    if (P && B.pass && !B.passOdds) return 'Point ' + P + ': <b>take odds</b>';
+    if (P && B.dp && !B.dpOdds) return 'Point ' + P + ': <b>lay odds</b>';
+    for (i = 0; i < BOX.length; i++) { n = BOX[i]; if (P && B['come' + n] && !B['comeOdds' + n]) return 'Come ' + n + ': <b>take odds</b>'; }
+    for (i = 0; i < ids.length; i++) { var inf = betInfo(ids[i], B[ids[i]]); if (shortPaid(inf)) return 'Tip: <b>' + nameOf(ids[i]) + ' in $' + inf.unit + 's</b>'; }
+    if (ids.length) { var ev = 0; ids.forEach(function (id) { ev += betInfo(id, B[id]).ev; }); return 'Your bets: avg loss <b>' + dollars(ev) + '</b>'; }
+    return P ? 'Point ' + P + ': <b>Come bet + odds</b>' : 'Best bet: <b>Pass + odds</b>';
+  }
+  function paintGuide() {
+    if (!R.guide || !S) return;
+    R.guide.classList.toggle('hide', busy);
+    if (busy) return;   // the roll is already settled; don't give it away
+    var html = tipText();
+    if (R.guide.dataset.h === html) return;
+    R.guide.dataset.h = html; R.guide.innerHTML = '';
+    R.guide.appendChild(Coach.chip(html, showGuide));
+  }
+  function diceChart() {
+    var g = el('div', { class: 'bg-dice' });
+    ['Total', 'Ways', '', 'Chance'].forEach(function (h) { g.appendChild(el('span', { class: 'hd', text: h })); });
+    for (var t = 2; t <= 12; t++) {
+      var w = WAYS[t], one = 36 / w;
+      g.appendChild(el('b', { text: String(t) }));
+      g.appendChild(el('span', { text: w + (w === 1 ? ' way' : ' ways') }));
+      g.appendChild(el('span', { class: 'bar' }, [el('i', { class: t === 7 ? 's' : '', style: { width: (w / 6 * 100) + '%' } })]));
+      g.appendChild(el('span', { text: pc(w / 36, 1) + ' · 1 in ' + (one % 1 ? one.toFixed(1) : one) }));
+    }
+    return g;
+  }
+  function showGuide() {
+    var P = S.point, B = S.bets, ids = Object.keys(B), t = total(B), f12 = S.opts.f12, best;
+    var mult = oddsMult(), oddsE = 0;
+    BOX.forEach(function (n) { oddsE += WAYS[n] / 36 * mult[n]; });   // average odds money per $1 on the line
+    var combo = PASS_EDGE / (1 + oddsE);
+    if (ids.length) {
+      var ev = 0, lines = [];
+      ids.forEach(function (id) {
+        var a = B[id], inf = betInfo(id, a), bits = [];
+        ev += inf.ev;
+        bits.push(Coach.cash(inf.ev));
+        if (inf.one) bits.push('wins ' + pc(inf.q) + ' of rolls');
+        else bits.push('wins ' + pc(inf.q) + (inf.line && inf.n ? ' from here' : ''));
+        if (!working(id)) bits.push('off this roll');
+        if (shortPaid(inf)) bits.push('pays $' + inf.win + ', not ' + dollars(inf.full) + ': bet in $' + inf.unit + 's');
+        lines.push('<strong>' + nameOf(id) + ' ' + money(a) + '</strong>: ' + bits.join(' · '));
+      });
+      best = { label: 'Your bets · ' + money(t) + ' on the table', value: 'Avg loss ' + dollars(ev),
+        text: lines.join('<br>') + '<span class="bg-note">The amount is what each bet loses on average every time it is settled, won or lost. Line bets count the whole bet, start to finish.</span>' };
+    } else if (P) {
+      best = { label: 'Point is ' + P, value: 'Come bet + odds',
+        text: 'New Pass line bets wait for the next come-out roll. A <strong>Come</strong> bet is the same bet starting now (1.41%). When it moves to a number, add <strong>odds</strong> behind it: they cost nothing.' };
+    } else {
+      best = { label: 'Best bet', value: 'Pass line + odds',
+        text: 'Bet the <strong>Pass line</strong> (1.41%). When a point is set, add <strong>odds</strong> behind it: they pay fair odds, so they add no cost. With this table’s ' + oddsLabel() + ' odds, the house edge on all that money drops to <strong>' + pc(combo, 2) + '</strong>.' };
+    }
+    var fieldEdge = (20 - 16 - 1 - (f12 - 1)) / 36;   // 2 pays double, 12 pays f12
+    var moves = [
+      { name: 'Odds (take or lay)', value: 0, valueText: '$0.00', bar: !!P, w: P ? before7(P) : null, l: P ? 1 - before7(P) : null, wLabel: 'Take wins', lLabel: 'Lay wins',
+        note: 'Behind a Pass, Come, Don’t pass or Don’t come bet that has a number. Pays the true odds: 2 to 1 on 4 and 10, 3 to 2 on 5 and 9, 6 to 5 on 6 and 8 (laying pays the reverse). House edge <b>0%</b>.' + (P ? ' Bar shows the ' + P + '.' : '') },
+      { name: 'Pass line + full odds', best: true, value: -10 * combo, bar: false,
+        note: 'Your line bet still costs 1.41% of itself; the odds money costs nothing. Spread over all the money at ' + oddsLabel() + ' odds, the house edge is <b>' + pc(combo, 2) + '</b>.' },
+      { name: 'Don’t pass · Don’t come', w: DP_W, p: DP_PUSH, l: 1 - DP_W - DP_PUSH, pLabel: 'Push (12)', value: -10 * DP_EDGE,
+        note: 'Pays 1 to 1 · wins on 2 or 3, then if a 7 comes before the point · house edge <b>' + pc(DP_EDGE, 2) + '</b>' },
+      { name: 'Pass line · Come', w: PASS_W, l: 1 - PASS_W, value: -10 * PASS_EDGE,
+        note: 'Pays 1 to 1 · wins on 7 or 11, then if the point comes before a 7 · house edge <b>' + pc(PASS_EDGE, 2) + '</b>' },
+      { name: 'Place 6 or 8', w: 5 / 11, l: 6 / 11, value: -10 / 66,
+        note: 'Pays 7 to 6 (fair would be 6 to 5) · bet in $6s · house edge <b>1.52%</b>' },
+      { name: 'Field', w: 16 / 36, l: 20 / 36, value: -10 * fieldEdge,
+        note: 'One roll · pays 1 to 1, double on 2, ' + (f12 === 3 ? 'triple' : 'double') + ' on 12 · misses 5, 6, 7 and 8, which come up 20 times in 36 · house edge <b>' + pc(fieldEdge, 2) + '</b>' },
+      { name: 'Place 5 or 9', w: 0.4, l: 0.6, value: -0.4,
+        note: 'Pays 7 to 5 (fair would be 3 to 2) · bet in $5s · house edge <b>4.00%</b>' },
+      { name: 'Place 4 or 10', w: 1 / 3, l: 2 / 3, value: -10 / 15,
+        note: 'Pays 9 to 5 (fair would be 2 to 1) · bet in $5s · house edge <b>6.67%</b>' },
+      { name: 'Hard 6 or 8', w: 1 / 11, l: 10 / 11, value: -10 / 11,
+        note: 'Pays 9 to 1 (fair would be 10 to 1) · 1 hard way against 5 easy ways and 6 sevens · house edge <b>9.09%</b>' },
+      { name: 'Hard 4 or 10', w: 1 / 9, l: 8 / 9, value: -10 / 9,
+        note: 'Pays 7 to 1 (fair would be 8 to 1) · house edge <b>11.11%</b>' },
+      { name: 'Any craps (2, 3, 12)', w: 4 / 36, l: 32 / 36, value: -10 / 9,
+        note: 'One roll · pays 7 to 1 (fair would be 8 to 1) · house edge <b>11.11%</b>' },
+      { name: '3 or 11', w: 2 / 36, l: 34 / 36, value: -10 / 9,
+        note: 'One roll · pays 15 to 1 (fair would be 17 to 1) · house edge <b>11.11%</b>' },
+      { name: '2 or 12', w: 1 / 36, l: 35 / 36, value: -10 * 5 / 36,
+        note: 'One roll · pays 30 to 1 (fair would be 35 to 1) · house edge <b>13.89%</b>' },
+      { name: 'Any 7', w: 6 / 36, l: 30 / 36, value: -10 / 6,
+        note: 'One roll · pays 4 to 1 (fair would be 5 to 1) · house edge <b>16.67%</b>, the worst bet on the table' }
+    ];
+    moves.sort(function (a, b) { return b.value - a.value; });
+    var secs = [];
+    if (P) secs.push({ title: 'The point is ' + P, items: [
+      'A ' + P + ' comes before a 7 <b>' + pc(before7(P), 1) + '</b> of the time: there ' + (WAYS[P] === 1 ? 'is 1 way' : 'are ' + WAYS[P] + ' ways') + ' to roll a ' + P + ' and 6 ways to roll a 7.',
+      'From here, Pass bets win ' + pc(before7(P), 1) + ' and Don’t pass bets win ' + pc(1 - before7(P), 1) + '. Odds on the ' + P + ' pay ' + oddsName(P) + ', exactly what that risk is worth.',
+      'Every point: <b>4 or 10</b> 33.3% (odds pay 2 to 1) · <b>5 or 9</b> 40% (3 to 2) · <b>6 or 8</b> 45.5% (6 to 5).'
+    ] });
+    secs.push({ title: 'The odds bet: no house edge', text: 'It’s the only bet in the casino with no house edge: it pays exactly what the risk is worth. You need a Pass or Come bet first (that part costs 1.41%), but every dollar you add as odds costs nothing on average. So the smart way to bet more is a small line bet with big odds behind it. Just know it makes the swings bigger: more money rides on whether the point comes before a 7.' });
+    secs.push({ title: 'How the dice work', text: 'Two dice make <b>36</b> combinations. <b>7</b> is the most common total (6 ways, 1 roll in 6); 2 and 12 are the rarest (1 way each, 1 in 36). Every payout above is set against these counts.', node: diceChart() });
+    secs.push({ title: 'Bet sizes that get paid in full', items: [
+      'The table rounds wins down to the dollar. A $5 Place 6 pays $5 instead of $5.83, and its house edge jumps from 1.52% to 9.09%.',
+      '<b>Place 6 or 8</b>: multiples of $6. <b>Place 4, 5, 9, 10</b>: multiples of $5.',
+      '<b>Odds</b>: any amount on 4 and 10, even amounts on 5 and 9, multiples of $5 on 6 and 8.',
+      '<b>Laying odds</b>: even amounts on 4 and 10, multiples of $3 on 5 and 9, multiples of $6 on 6 and 8.'
+    ] });
+    secs.push({ title: 'Good to know', items: [
+      '<b>Dice have no memory.</b> A hot or cold table is luck you can only see afterwards. The next roll is always 1 in 6 to be a 7.',
+      '<b>Don’t pass</b> costs a hair less than Pass (1.36% vs 1.41%), but you are betting against the shooter. Both are good bets.',
+      '<b>The middle of the table</b> (hardways and one-roll bets) pays the most and costs the most: 9% to 17% of every bet.',
+      '<b>House edge</b> is the share of a bet the casino keeps on average each time it is settled. The amounts in the list are that, for every $10.'
+    ] });
+    Coach.sheet({
+      title: 'Bet guide',
+      best: best,
+      movesTitle: 'Every bet, compared',
+      intro: 'Best to worst. Bars show the chance each bet wins or loses once it is settled; the amount on the right is the average result for every <b>$10</b> bet.',
+      moves: moves,
+      sections: secs
+    });
   }
 
   // ── Bankroll & sessions ──────────────────────────────────────────────────

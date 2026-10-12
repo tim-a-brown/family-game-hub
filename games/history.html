@@ -49,6 +49,35 @@
 .gh-empty{margin:30px 0;text-align:center;color:var(--text-2);}
 .gh-from{display:inline-flex;align-items:center;gap:4px;}
 .gh-from .ico{width:13px;height:13px;}
+.gh-pane{display:none;}
+/* iPad and computer in landscape: the list on the left, the picked game's details beside it */
+@media (min-width:900px) and (orientation:landscape){
+  .stage.gh-wide{max-width:1320px;display:grid;grid-template-columns:minmax(340px,420px) minmax(0,1fr);gap:24px;align-items:start;}
+  .gh-wide .gh-list{min-width:0;}
+  .gh-wide .gh-pane{display:block;position:sticky;top:calc(var(--safe-t) + 64px);max-height:calc(100dvh - var(--safe-t) - 80px);overflow:auto;overscroll-behavior:contain;
+    border-radius:22px;background:var(--surface-2);padding:18px 20px 22px;margin-top:6px;}
+  .gh-wide .gh-row.cur{box-shadow:inset 0 0 0 2px var(--theme-accent,var(--yellow));background:var(--surface-3);}
+  .gh-wide .gh-row:hover{background:var(--surface-3);}
+  .gh-wide .gh-row:active{transform:none;}
+  .gh-ph{display:flex;align-items:center;gap:14px;margin:0 0 14px;}
+  .gh-ph .gi{flex:none;width:56px;height:56px;border-radius:14px;overflow:hidden;}
+  .gh-ph .gi svg{width:100%;height:100%;display:block;}
+  .gh-ph .tx{flex:1;min-width:0;}
+  .gh-ph h2{font-size:1.5rem;font-weight:900;margin:0;line-height:1.15;}
+  .gh-ph small{display:block;color:var(--text-2);font-weight:700;font-size:.86rem;margin-top:2px;}
+  .gh-ph .acts{display:flex;gap:8px;flex:none;}
+  .gh-pane .k-hd{padding:0;gap:16px;}
+  .gh-pane .k-hd-meta{display:none;}
+  .gh-pane .k-hd-players{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;}
+  /* the game's own view in two columns when there is room */
+  .gh-pane .hv{display:block;columns:2 300px;column-gap:20px;}
+  .gh-pane .hv > *{break-inside:avoid;margin-bottom:16px;}
+  .gh-pane .hv-snap{max-width:420px;}
+  .gh-pane .k-race-wrap{max-width:520px;}
+  .gh-wide .fchips{flex-wrap:wrap;overflow:visible;}
+  .gh-wide .gh-tools{align-items:flex-start;}
+  .gh-pane .gh-none{color:var(--text-2);margin:40px 0;text-align:center;}
+}
 </style>
 </head>
 <body>
@@ -94,10 +123,15 @@ function line(r) {
 function when(t) { if (!t) return ''; var d = new Date(t); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
 function month(t) { return t ? new Date(t).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'Older'; }
 
+var WIDE = window.matchMedia('(min-width: 900px) and (orientation: landscape)'), cur = '';
 function paint() {
-  var all = rows(), shown = all.filter(fits);
-  app.innerHTML = '';
-  app.classList.toggle('sel', selecting);
+  var all = rows(), shown = all.filter(fits), wide = WIDE.matches;
+  var top = app; top.innerHTML = '';
+  top.classList.toggle('sel', selecting);
+  top.classList.toggle('gh-wide', wide);
+  app = el('div', { class: 'gh-list' }); top.appendChild(app);
+  var pane = el('div', { class: 'gh-pane', 'aria-live': 'polite' }); top.appendChild(pane);
+  if (wide && !shown.some(function (r) { return r.key + '|' + r.id === cur; })) cur = shown.length ? shown[0].key + '|' + shown[0].id : '';
   app.appendChild(el('div', { class: 'gh-head' }, [el('span', { text: all.length ? all.length + (all.length === 1 ? ' game saved' : ' games saved') : '' })]));
   if (window.FGHSync && FGHSync.linkPending && FGHSync.linkPending().length) {
     var n = FGHSync.linkPending().length;
@@ -126,7 +160,7 @@ function paint() {
     var pp = el('div', { class: 'pp' });
     r.ps.slice(0, 4).forEach(function (p, i) { pp.appendChild(isCpu(p) ? el('span', { class: 'avatar sm', style: { '--c': Kit.color(i) }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name || '?', 'sm', Kit.color(i))); });
     var sub = when(r.date) + (r.from ? '' : '');
-    var row = el('button', { type: 'button', class: 'gh-row' + (picked[r.key + '|' + r.id] ? ' on' : '') }, [
+    var row = el('button', { type: 'button', class: 'gh-row' + (picked[r.key + '|' + r.id] ? ' on' : '') + (wide && cur === r.key + '|' + r.id ? ' cur' : '') }, [
       el('span', { class: 'ck', html: Kit.icon('check') }),
       el('span', { class: 'gi', html: GameIcon(r.gid) }),
       el('span', { class: 'tx' }, [el('b', { text: title(r) }), el('small', { text: line(r) }),
@@ -134,6 +168,7 @@ function paint() {
       pp]);
     row.addEventListener('click', function () {
       if (selecting) { var k = r.key + '|' + r.id; if (picked[k]) delete picked[k]; else picked[k] = r; Kit.sfx('tap'); row.classList.toggle('on', !!picked[k]); bar(); return; }
+      if (WIDE.matches) { cur = r.key + '|' + r.id; Kit.sfx('tap'); app.querySelectorAll('.gh-row.cur').forEach(function (x) { x.classList.remove('cur'); }); row.classList.add('cur'); showPane(pane, r); return; }
       detail(r);
     });
     app.appendChild(row);
@@ -143,8 +178,30 @@ function paint() {
     el('button', { type: 'button', class: 'btn btn-red gh-del', text: 'Delete', onclick: delPicked })]);
   app.appendChild(b);
   bar();
+  if (wide) { var r0 = shown.filter(function (r) { return r.key + '|' + r.id === cur; })[0]; if (r0) showPane(pane, r0); else pane.appendChild(el('p', { class: 'gh-none', text: all.length ? 'No games match.' : 'Finished games show up here.' })); }
   function bar() { var n = Object.keys(picked).length, d = app.querySelector('.gh-del'); if (d) { d.textContent = n ? 'Delete ' + n : 'Delete'; d.disabled = !n; } }
+  app = top;
 }
+// Wide screens: the details sit beside the list instead of in a sheet
+function showPane(pane, r) {
+  if (!window.HistView || !HistView.ready) { Kit.loadHistView().then(function () { if (window.HistView) HistView.ready = true; if (cur === r.key + '|' + r.id) showPane(pane, r); }); return; }
+  pane.innerHTML = ''; pane.scrollTop = 0;
+  var e = r.e, meta = [when(r.date)];
+  if (e.duration) meta.push(Kit.fmtDur(e.duration)); if (e.mode) meta.push(e.mode);
+  var acts = el('div', { class: 'acts' });
+  actions(r).forEach(function (a) { if (a.label === 'Close') return; acts.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (a.label === 'Delete' ? 'btn-soft' : 'btn-ghost'), text: a.label, onclick: a.onClick })); });
+  pane.appendChild(el('div', { class: 'gh-ph' }, [el('span', { class: 'gi', html: GameIcon(r.gid) }),
+    el('div', { class: 'tx' }, [el('h2', { text: title(r) }), el('small', { text: meta.filter(Boolean).join(' · ') })]), acts]));
+  pane.appendChild(Kit.historyDetail(e, { game: r.gid }));
+}
+// Computer: up and down arrows step through the list
+document.addEventListener('keydown', function (ev) {
+  if (!WIDE.matches || selecting || (ev.key !== 'ArrowDown' && ev.key !== 'ArrowUp') || document.querySelector('.k-scrim.show') || /^(SELECT|INPUT|TEXTAREA)$/.test((ev.target || {}).tagName)) return;
+  var rows = [].slice.call(document.querySelectorAll('.gh-row')), i = rows.findIndex(function (x) { return x.classList.contains('cur'); });
+  var nx = rows[Math.max(0, Math.min(rows.length - 1, i + (ev.key === 'ArrowDown' ? 1 : -1)))];
+  if (nx && nx !== rows[i]) { ev.preventDefault(); nx.click(); nx.scrollIntoView({ block: 'nearest' }); }
+});
+WIDE.addEventListener ? WIDE.addEventListener('change', function () { paint(); }) : WIDE.addListener(function () { paint(); });
 function delPicked() {
   var list = Object.keys(picked).map(function (k) { return picked[k]; }); if (!list.length) return;
   Kit.confirm('Delete ' + list.length + (list.length === 1 ? ' game' : ' games') + ' from your history? This removes ' + (list.length === 1 ? 'it' : 'them') + ' on all your devices.', { ok: 'Delete', danger: true }).then(function (ok) {
@@ -156,6 +213,9 @@ function delPicked() {
 function detail(r) {
   if (!window.HistView || !HistView.ready) { Kit.loadHistView().then(function () { if (window.HistView) HistView.ready = true; detail(r); }); return; }
   var node = el('div', null, [Kit.historyDetail(r.e, { game: r.gid })]);
+  Kit.sheet({ title: title(r), node: node, actions: actions(r) });
+}
+function actions(r) {
   var acts = [{ label: 'Close', cls: 'btn-soft' }];
   if (r.from && window.FGHSync && FGHSync.linkNotMe) acts.unshift({ label: 'Not me', cls: 'btn-ghost', onClick: function () {
     Kit.confirm('Not you? This game leaves your history, and ' + (r.from.by || 'the sender') + '’s copy stops counting it as yours.', { ok: 'Not me', danger: true }).then(function (ok) { if (!ok) return; FGHSync.linkNotMe(r.key, r.e); Kit.toast('Removed'); paint(); });
@@ -163,7 +223,7 @@ function detail(r) {
   acts.unshift({ label: 'Delete', cls: 'btn-ghost', onClick: function () {
     Kit.confirm('Delete this game from your history? This removes it on all your devices.', { ok: 'Delete', danger: true }).then(function (ok) { if (!ok) return; var o = {}; o[r.key] = [r.id]; GameHistory.remove(o); Kit.toast('Deleted'); paint(); });
   } });
-  Kit.sheet({ title: title(r), node: node, actions: acts });
+  return acts;
 }
 paint();
 Kit.loadHistView().then(function () { if (window.HistView) HistView.ready = true; });
