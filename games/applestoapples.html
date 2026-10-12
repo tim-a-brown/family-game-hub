@@ -98,7 +98,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 .hand.off .hc{cursor:grab;}
 .hand.off .ac .fa{filter:saturate(.75) brightness(.86);}
 .hand.fan:not(.off) .hc:not(.front):hover .ac:not(.sel){transform:translateY(-8px);}
-.hand .ac .num{position:absolute;left:-7px;top:-9px;z-index:3;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#ffd447;color:#2b1a00;font-weight:900;font-size:.9rem;box-shadow:0 2px 6px rgba(0,0,0,.4);animation:crownIn .4s var(--spring);}
+.hand .ac .num{position:absolute;left:50%;top:-14px;margin-left:-14px;z-index:3;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#ffd447;color:#2b1a00;font-weight:900;font-size:.9rem;box-shadow:0 2px 6px rgba(0,0,0,.4);animation:crownIn .4s var(--spring);}
 @keyframes handDeal{0%{transform:translate(var(--fx,0px),var(--fy,-200px)) rotate(-16deg) scale(.62);opacity:.15;}60%{opacity:1;}100%{transform:none;}}
 .hc .ac.dealt{animation:handDeal .62s cubic-bezier(.2,.9,.3,1.12) both;animation-delay:var(--dl,0s);}
 /* Where you are in a big hand: a dot per card, the one in front long, picked ones gold */
@@ -801,7 +801,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     F.render = function () {
       for (var j = 0; j < n; j++) {
         var b = F.items[j], q = pose(j);
-        b.style.transform = q.t; b.style.zIndex = q.z; b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2));
+        b.style.transform = q.t; b.style.zIndex = q.z + (F.fan && b.classList.contains('sel') ? 50 : 0); b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2));
         b.classList.toggle('front', Math.abs(j - F.pos) < 0.5);
       }
       var idx = Math.max(0, Math.min(n - 1, Math.round(F.pos)));
@@ -857,6 +857,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
         if (on && pick > 1) { if (!num) { num = el('span', { class: 'num' }); ce.appendChild(num); } num.textContent = String(k + 1); }
         else if (num) num.remove();
       });
+      if (F.fan) F.render();
     };
     // Dragging: every card follows your finger (or the mouse); a flick carries on with momentum
     var sw = null;
