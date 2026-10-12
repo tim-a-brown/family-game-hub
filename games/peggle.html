@@ -206,8 +206,35 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function sMult() { osc('square', mtof(79), 0, 0.12, 0.04, { lp: 2000 }); osc('square', mtof(86), 0.09, 0.2, 0.04, { lp: 2000 }); }
   function sPower() { [79, 83, 86, 91, 95].forEach(function (m, i) { osc('sine', mtof(m), i * 0.045, 0.22, 0.06); }); }
   function sSpooky() { osc('sine', 300, 0, 0.6, 0.08, { to: 900 }); osc('sine', 450, 0.05, 0.6, 0.05, { to: 1300 }); }
-  // Each level has its own loop (arcade-music.js songs.peggleLevels, in LEVELS order)
-  function levelSong(n) { var s = ArcadeMusic.songs.peggleLevels; return (s && s[(n - 1) % s.length]) || ArcadeMusic.songs.peggle; }
+  // Special pieces on the later levels
+  var lastFx = 0;
+  function fxGate(gap) { var a = ac(); if (!a || a.currentTime - lastFx < gap) return null; lastFx = a.currentTime; return a; }
+  function sBump() { if (!fxGate(0.04)) return; osc('sine', 180, 0, 0.16, 0.2, { to: 560 }); osc('triangle', 940, 0, 0.07, 0.05, { to: 1300 }); }
+  function sIron() { if (!fxGate(0.04)) return; osc('triangle', 2350, 0, 0.16, 0.05); osc('square', 1180, 0, 0.05, 0.03, { lp: 3200 }); noise(0, 0.07, 0.1, 'highpass', 5200); }
+  function sPortal() { osc('sine', 260, 0, 0.26, 0.08, { to: 1500 }); osc('sine', 1500, 0.1, 0.22, 0.05, { to: 420 }); }
+  function sSwitch() { osc('square', 660, 0, 0.07, 0.04, { lp: 2000 }); noise(0.05, 0.55, 0.2, 'highpass', 3200); [84, 88, 91, 96].forEach(function (m, i) { osc('sine', mtof(m), 0.08 + i * 0.05, 0.3, 0.05); }); }
+  function sShieldUp() { osc('sine', 220, 0, 0.45, 0.06, { to: 660 }); osc('triangle', 660, 0.2, 0.25, 0.03); }
+  function sGlass() { if (!fxGate(0.05)) return; osc('sine', 2600, 0, 0.09, 0.035); osc('sine', 3900, 0, 0.05, 0.015); }
+  function sSplit() { osc('triangle', 700, 0, 0.12, 0.07, { to: 1400 }); osc('triangle', 1050, 0.05, 0.14, 0.05, { to: 2100 }); }
+  // Each level has its own loop (arcade-music.js songs.peggleLevels, in LEVELS order). Levels past those
+  // play a variation of one of them (mus: [song, semitones up, tempo factor]).
+  var songVar = {};
+  function levelSong(n) {
+    var s = ArcadeMusic.songs.peggleLevels, d = LEVELS && LEVELS[n - 1];
+    if (!s) return ArcadeMusic.songs.peggle;
+    if (d && d.mus) {
+      if (!songVar[n]) {
+        var b = s[d.mus[0] % s.length], v = {}, k;
+        for (k in b) v[k] = b[k];
+        v.lead = b.lead.map(function (m) { return m ? m + d.mus[1] : 0; });
+        v.bass = b.bass.map(function (m) { return m ? m + d.mus[1] : 0; });
+        v.eighth = b.eighth * d.mus[2];
+        songVar[n] = v;
+      }
+      return songVar[n];
+    }
+    return s[(n - 1) % s.length] || ArcadeMusic.songs.peggle;
+  }
   var Mus = ArcadeMusic.create({ key: 'peggle_music', song: levelSong(1), ctx: ac, out: function () { return master; } });
   function sLose() { [64, 60, 57, 52].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.18, 0.3, 0.08); }); }
   function sLastBall() { osc('square', 440, 0, 0.1, 0.035, { lp: 1800 }); osc('square', 440, 0.16, 0.1, 0.035, { lp: 1800 }); }
@@ -260,17 +287,49 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // Each level is handcrafted from pegs, bricks (capsules) and optional moving
   // groups. Orange and green pegs are picked with a fixed seed per level so a
   // level always looks the same.
+  // Later levels add special pieces (extras: bumpers, switches, shields, belts, steel walls; they collide but are
+  // never cleared) and zones the ball flies through (portals, gravity wells, wind, splitters). While building:
+  //   B.w      weight for picking orange pegs (higher = more likely orange; puts oranges in the hard spots)
+  //   B.iron   pegs take two hits          B.phase  {per, duty, off(x,y)}: ghost pegs that come and go
+  //   B.kind   'shield' | 'wall': bricks made now are that kind of extra (B.grp: which switch drops a shield)
   function Builder() {
-    var objs = [], B = { objs: objs, mov: null };
+    var objs = [], extras = [], zones = [], B = { objs: objs, extras: extras, zones: zones, mov: null, w: 1, iron: 0, phase: null, kind: null, grp: 1 };
     B.peg = function (x, y) {
       if (x < 14 || x > FW - 14 || y < 92 || y > 566) return;
       for (var i = 0; i < objs.length; i++) {
         var o = objs[i];
         if (o.k === 'peg' && o.mov === B.mov && Math.abs(o.bx - x) < 18 && Math.abs(o.by - y) < 18 && Math.hypot(o.bx - x, o.by - y) < 18) return;
       }
-      objs.push({ k: 'peg', bx: x, by: y, r: PR, mov: B.mov });
+      var p = { k: 'peg', bx: x, by: y, r: PR, mov: B.mov };
+      if (B.w !== 1) p.w = B.w;
+      if (B.iron) { p.iron = 1; p.hp = 2; }
+      if (B.phase) p.ph = { per: B.phase.per, duty: B.phase.duty, off: B.phase.off ? B.phase.off(x, y) : 0 };
+      objs.push(p);
     };
-    B.brick = function (x1, y1, x2, y2) { objs.push({ k: 'brick', bx: x1, by: y1, bx2: x2, by2: y2, r: KR, mov: B.mov }); };
+    B.brick = function (x1, y1, x2, y2) {
+      var o = { k: 'brick', bx: x1, by: y1, bx2: x2, by2: y2, r: KR, mov: B.mov };
+      if (B.kind) { o.t = B.kind; o.grp = B.grp; extras.push(o); return; }
+      if (B.w !== 1) o.w = B.w;
+      objs.push(o);
+    };
+    B.bumper = function (x, y, r) { extras.push({ k: 'peg', t: 'bump', bx: x, by: y, r: r || 13, mov: B.mov }); };
+    B.sw = function (x, y, grp) { extras.push({ k: 'peg', t: 'sw', bx: x, by: y, r: PR + 1, grp: grp || 1, mov: B.mov }); };
+    // a conveyor belt: v is the belt's speed from (x1,y1) toward (x2,y2); negative runs the other way
+    B.belt = function (x1, y1, x2, y2, v) { extras.push({ k: 'brick', t: 'belt', bx: x1, by: y1, bx2: x2, by2: y2, r: 6, belt: v, mov: null }); };
+    // portals come in pairs: a ball that falls into one comes out of the other, still moving the same way
+    B.portal = function (x1, y1, x2, y2, col) {
+      var a = { t: 'portal', x: x1, y: y1, r: 15, col: col }, b = { t: 'portal', x: x2, y: y2, r: 15, col: col };
+      a.to = b; b.to = a; zones.push(a, b);
+    };
+    B.well = function (x, y, R, K) { zones.push({ t: 'well', x: x, y: y, R: R, K: K }); };
+    // wind band: ax is the push (units/s²); gust > 0 makes it swing from one side to the other
+    B.wind = function (x, y, w, h, ax, gust) { zones.push({ t: 'wind', x: x, y: y, w: w, h: h, ax: ax, gust: gust || 0, drift: 0 }); };
+    B.split = function (x, y, r) { zones.push({ t: 'split', x: x, y: y, r: r || 16 }); };
+    // n pegs spaced along a closed path fn(s), s in 0..1, going round lps laps a second
+    B.track = function (n, fn, lps) {
+      var c = fn(0);
+      for (var i = 0; i < n; i++) B.group({ t: 'path', fn: fn, w: lps, ph: i / n, cx: c[0], cy: c[1] }, function () { B.peg(c[0], c[1]); });
+    };
     B.arc = function (cx, cy, r, a0, a1, n, ry) {
       for (var i = 0; i < n; i++) { var a = a0 + (a1 - a0) * (n === 1 ? 0.5 : i / (n - 1)); B.peg(cx + r * Math.cos(a), cy + (ry || r) * Math.sin(a)); }
     };
