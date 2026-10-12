@@ -15,6 +15,12 @@
 <script src="../online.js"></script>
 <script src="../data/trivia-questions.js"></script>
 <style>
+/* Trivia's type: Baloo 2 Bold for questions and headings, Fredoka for the answers (both SIL OFL, in fonts/) */
+@font-face{font-family:"Trivia Display";src:url("../fonts/baloo2-700.woff2") format("woff2");font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Fredoka";src:url("../fonts/fredoka-600.woff2") format("woff2");font-weight:100 900;font-display:swap;}
+:root{--display:"Trivia Display","Lilita One",var(--font);}
+.tile .t{font-family:"Fredoka",var(--font);font-weight:600;}
+
 body{overflow-x:hidden;}
 .tv{max-width:620px;margin:0 auto;padding:0 10px calc(var(--safe-b) + 16px);}
 .tv .scores{margin-bottom:2px;}
@@ -284,7 +290,7 @@ body{overflow-x:hidden;}
 .tiles .tile{min-width:0;}
 /* long answers: one plate per row, so each reads on a line or two */
 .tiles.one{grid-template-columns:1fr;gap:9px;}
-.tiles.one .tile{min-height:78px;padding:8px 12px 10px 12px;font-size:1.18rem;}
+.tiles.one .tile{min-height:78px;padding:8px 12px 10px 12px;font-size:1.4rem;}
 .tiles.one .tile .L{width:38px;height:38px;}
 .tiles.one .tile{padding-right:70px;}
 .tiles.one .tile .chip{top:50%;right:10px;margin-top:-13px;}
@@ -1991,7 +1997,8 @@ body{overflow-x:hidden;}
 (function () {
   function fit(t) {
     t.style.fontSize = ''; var fs = parseFloat(getComputedStyle(t).fontSize) || 16, n = 0;
-    while (t.scrollWidth > t.clientWidth + 1 && fs > 11 && n++ < 12) { fs -= 1; t.style.fontSize = fs + 'px'; }
+    function over() { var lh = parseFloat(getComputedStyle(t).lineHeight) || fs * 1.2; return t.scrollWidth > t.clientWidth + 1 || t.scrollHeight > lh * 2.2; }
+    while (over() && fs > 12 && n++ < 16) { fs -= 1; t.style.fontSize = fs + 'px'; }
     if (t.scrollWidth > t.clientWidth + 1) t.style.overflowWrap = 'anywhere';
   }
   // all four answers end up the same size (a lone smaller tile would point at the long answer)
