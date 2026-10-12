@@ -102,6 +102,12 @@ var GameIcon = (function () {
       }
       return tile(1, 4.5, -9, 'W', '4') + tile(12, 8, 7, 'O', '1');
     },
+    monopoly: function () {   // a green house beside a red hotel, with their shadows
+      return '<ellipse cx="12" cy="20.6" rx="11" ry="1.6" fill="#00000026"/>' +
+        path('M2 20.5V12l4.5-4.5L11 12v8.5z', G, ' stroke="' + K + '" stroke-width="1.1" stroke-linejoin="round"') + path('M1 12.6l5.5-5.5 5.5 5.5', 'none', ' stroke="#127a3f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"') + rect(5.1, 15.5, 2.8, 5, .4, '#127a3f') +
+        path('M10.5 20.5V9.5h12v11z', R, ' stroke="' + K + '" stroke-width="1.1" stroke-linejoin="round"') + path('M9.8 9.8l2.2-3.6h9.2l2 3.6z', '#ff6b78', ' stroke="' + K + '" stroke-width="1.1" stroke-linejoin="round"') +
+        rect(12.6, 12, 2, 2, .3, W) + rect(15.6, 12, 2, 2, .3, W) + rect(18.6, 12, 2, 2, .3, W) + rect(12.6, 15.6, 2, 2, .3, W) + rect(18.6, 15.6, 2, 2, .3, W) + rect(15.4, 15.8, 2.4, 4.7, .3, '#8a0f1d');
+    },
     mancala: function (c) { var s = rect(1, 6, 22, 12, 6, c); for (var i = 0; i < 3; i++) { s += circ(7.5 + i * 4.5, 9.8, 1.7, '#00000040') + circ(7.5 + i * 4.5, 14.2, 1.7, '#00000040'); } return s + '<ellipse cx="3.6" cy="12" rx="1.6" ry="3.6" fill="#00000040"/><ellipse cx="20.4" cy="12" rx="1.6" ry="3.6" fill="#00000040"/>' + circ(7.5, 9.8, .9, Y) + circ(12, 14.2, .9, G) + circ(16.5, 9.8, .9, B); },
     chinesecheckers: function (c) { return path('M12.0 1.0L15.2 6.5L21.5 6.5L18.4 12.0L21.5 17.5L15.2 17.5L12.0 23.0L8.8 17.5L2.5 17.5L5.7 12.0L2.5 6.5L8.8 6.5z', c, ' opacity=".85"') + circ(12, 4.2, 1.7, R) + circ(18.8, 16, 1.7, Y) + circ(5.2, 16, 1.7, G) + circ(12, 12, 1.7, B) + circ(8.6, 10, 1.4, W) + circ(15.4, 10, 1.4, W); },
     marbles: function (c) { var t = rect(1.5, 1.5, 21, 21, 5, c, ' opacity=".85"'); [[6,6],[12,6],[18,6],[6,12],[18,12],[6,18],[12,18],[18,18]].forEach(function (p) { t += circ(p[0], p[1], 1.3, '#00000040'); }); return t + circ(12, 12, 2.6, K) + circ(6, 6, 2, R) + circ(18, 12, 2, Y) + circ(12, 18, 2, G) + circ(6, 18, 2, B); },

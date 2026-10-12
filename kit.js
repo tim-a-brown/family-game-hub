@@ -726,6 +726,7 @@
     threecardpoker:{ felt: ['#0f6a6a', '#094848', '#063434'] },
     paigow:        { felt: ['#7a1f2a', '#521219', '#3c0c12'], back: ['#7a1f2a', '#e2a400'] },
     candymatch:    { felt: ['#5a2f6e', '#3d1d4f', '#2a1238'], wood: ['#a8623c', '#6a321c'] },
+    monopoly:      { felt: ['#1f6b4f', '#155039', '#0e3a29'], wood: ['#6b4126', '#412614'], back: ['#c8102e', '#f3901d'] },
     scrabble:      { felt: ['#1f5c4c', '#143f34', '#0d2d25'], wood: ['#8f5a2e', '#5a3417'] },
     applestoapples:{ felt: ['#245069', '#173a4f', '#0f2a3a'], back: ['#b3122e', '#e4475d'], wood: ['#8a4b2a', '#5e2f18'] }
   };

@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monopoly</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="monopoly/engine.js"></script>
+<script src="monopoly/art.js"></script>
+<style>
+@font-face{font-family:'Sofia Sans Condensed';src:url('../fonts/sofia-sans-condensed.woff2') format('woff2');font-weight:100 900;font-display:swap;}
+#app.mono{max-width:none;padding:2px 12px calc(var(--safe-b) + 20px);}
+.mlay{display:flex;flex-direction:column;gap:10px;max-width:640px;margin:0 auto;}
+.mside{display:flex;flex-direction:column;gap:10px;min-width:0;}
+
+/* ── Players ── */
+.pstrip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 4px;margin:0 -2px;}
+.pstrip::-webkit-scrollbar{display:none;}
+.pchip{--c:var(--p1);position:relative;flex:1 1 0;min-width:96px;display:flex;align-items:center;gap:7px;padding:5px 9px 5px 5px;border:0;border-radius:14px;text-align:left;
+  background:var(--surface);color:var(--text);box-shadow:var(--shadow-sm), inset 0 0 0 2px transparent;transition:transform .25s var(--spring), box-shadow .2s, opacity .3s;}
+.pchip.on{box-shadow:var(--shadow-sm), inset 0 0 0 2.5px var(--c);transform:translateY(-2px);}
+.pchip.on::after{content:"";position:absolute;left:50%;bottom:-6px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c);}
+.pchip.out{opacity:.38;filter:grayscale(.8);}
+.pchip .tkb{position:relative;flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 35% 30%, color-mix(in srgb,var(--c) 70%,#fff), var(--c) 60%, color-mix(in srgb,var(--c) 70%,#000));box-shadow:inset 0 -2px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.3);}
+.pchip .tkb svg{width:30px;height:30px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5));}
+.pchip .tx{display:flex;flex-direction:column;min-width:0;line-height:1.1;}
+.pchip .nm{font-weight:800;font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pchip .cs{font-family:var(--display);font-size:1.08rem;font-variant-numeric:tabular-nums;letter-spacing:.01em;}
+.pchip .bdg{position:absolute;top:-5px;right:-3px;display:flex;gap:2px;}
+.pchip .bdg i{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#f3901d;color:#1d1d1b;font-style:normal;box-shadow:0 1px 2px rgba(0,0,0,.4);}
+.pchip .bdg i svg{width:11px;height:11px;}
+.pchip .bdg i.card{background:#7fc4ea;}
+.pchip.hit{animation:chipHit .5s;}
+@keyframes chipHit{30%{transform:translateY(2px) scale(.96);}60%{transform:translateY(-3px);}}
+.pchip .dlt{position:absolute;left:44px;top:-14px;font-family:var(--display);font-size:1rem;pointer-events:none;animation:dlt 1.3s var(--ease) forwards;white-space:nowrap;}
+.pchip .dlt.up{color:var(--green);} .pchip .dlt.dn{color:var(--red);}
+@keyframes dlt{0%{opacity:0;transform:translateY(10px);}15%{opacity:1;transform:none;}75%{opacity:1;}100%{opacity:0;transform:translateY(-14px);}}
+
+/* ── The table and board ── */
+.mtable{position:relative;align-self:center;padding:calc(var(--bs) * .028);border-radius:calc(var(--bs) * .04);}
+.mvp{position:relative;width:var(--bs);height:var(--bs);overflow:hidden;border-radius:3px;box-shadow:0 0 0 2px rgba(0,0,0,.35), 0 6px 14px rgba(0,0,0,.35);touch-action:pan-y;background:#cfe5ca;}
+.mvp.zoomed{touch-action:none;cursor:grab;}
+.mboard{position:absolute;left:0;top:0;width:var(--bs);height:var(--bs);transform-origin:0 0;will-change:transform;}
+.mboard.ease{transition:transform .45s var(--ease);}
+.mboard svg.bsvg,.mboard svg.dyn{position:absolute;inset:0;width:100%;height:100%;}
+.mboard svg.dyn{pointer-events:none;}
+.bsvg .hit{cursor:pointer;}
+.dyn .bld.pop{transform-box:fill-box;transform-origin:50% 100%;animation:bpop .6s var(--spring) both;}
+@keyframes bpop{0%{transform:translateY(-40px) scale(.2);opacity:0;}60%{opacity:1;}100%{transform:none;}}
+.dyn .glow{animation:glowp 1.2s ease-in-out infinite;}
+@keyframes glowp{50%{opacity:.35;}}
+.dyn .newown{transform-box:fill-box;transform-origin:center;animation:ownIn .6s var(--spring) both;}
+@keyframes ownIn{from{transform:scale(0);}to{transform:none;}}
+/* tokens */
+.tk{position:absolute;left:0;top:0;width:5.4%;height:5.4%;margin:-2.7% 0 0 -2.7%;pointer-events:none;z-index:3;}
+.tk .base{position:absolute;left:8%;right:8%;bottom:-4%;height:30%;border-radius:50%;background:radial-gradient(circle at 40% 35%, color-mix(in srgb,var(--c) 60%,#fff), var(--c) 55%, color-mix(in srgb,var(--c) 60%,#000));box-shadow:0 2px 3px rgba(0,0,0,.45);}
+.tk .tok-svg{position:absolute;inset:-4% 0 6%;width:100%;height:100%;filter:drop-shadow(0 1.5px 1px rgba(0,0,0,.55));}
+.tk.cur{z-index:5;}
+.tk.cur .base{box-shadow:0 0 0 2px #fff, 0 0 10px 2px var(--c), 0 2px 3px rgba(0,0,0,.45);}
+.tk.jail .tok-svg{filter:drop-shadow(0 1.5px 1px rgba(0,0,0,.55)) grayscale(.3) brightness(.85);}
+.tk .hop{position:absolute;inset:0;}
+.metal{fill:url(#mtl);stroke:#2f3339;stroke-width:1.6;stroke-linejoin:round;}
+.metal .dk{fill:url(#mtldk);}
+.metal .hl{fill:#f4f6f9;}
+.metal .ln{fill:none;stroke:#2f3339;stroke-width:2;stroke-linecap:round;}
+.metal .ln2{fill:none;stroke:url(#mtl);stroke-width:5;stroke-linecap:round;}
+.metal .dots circle{fill:#5d626b;stroke:none;}
+/* dice and cards in the middle of the board */
+.mdice{position:absolute;left:50%;top:50%;display:flex;gap:calc(var(--bs) * .02);transform:translate(-50%,-50%);z-index:6;pointer-events:none;}
+.mdice .die{--ds:calc(var(--bs) * .072);}
+.mdice.off{opacity:0;transition:opacity .4s;}
+.mpot{position:absolute;left:50%;top:64%;transform:translate(-50%,-50%);z-index:4;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-family:var(--display);color:#1d1d1b;font-size:calc(var(--bs) * .03);}
+.mpot small{font-family:'Sofia Sans Condensed',sans-serif;font-weight:800;font-size:.55em;letter-spacing:.12em;}
+.mbank{position:absolute;left:50%;top:35%;transform:translate(-50%,-50%);z-index:4;pointer-events:none;display:flex;gap:calc(var(--bs) * .018);align-items:center;
+  font-family:'Sofia Sans Condensed',sans-serif;font-weight:800;color:#1d1d1b;font-size:calc(var(--bs) * .022);}
+.mbank span{display:flex;align-items:center;gap:2px;} .mbank svg{width:calc(var(--bs) * .032);height:calc(var(--bs) * .032);}
+.mbank .low{color:#c8102e;}
+.mcard{position:absolute;left:50%;top:50%;width:48%;z-index:20;transform:translate(-50%,-50%);perspective:900px;cursor:pointer;}
+.ccard{position:relative;aspect-ratio:1.6;border-radius:calc(var(--bs) * .014);padding:5% 7%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4%;text-align:center;
+  box-shadow:0 0 0 1px rgba(0,0,0,.25), 0 14px 30px rgba(0,0,0,.45);font-family:'Sofia Sans Condensed',sans-serif;color:#1d1d1b;}
+.ccard.ch{background:linear-gradient(160deg,#ffb054,#f3901d);}
+.ccard.cc{background:linear-gradient(160deg,#fff7c4,#f8e88a);}
+.ccard .ct{font-family:var(--display);font-size:calc(var(--bs) * .036);letter-spacing:.08em;}
+.ccard.cc .ct{color:#1b5fae;}
+.ccard .cx{font-weight:700;font-size:calc(var(--bs) * .028);line-height:1.18;}
+.ccard .ci{position:absolute;right:4%;bottom:4%;width:13%;opacity:.25;}
+.mcard.show .ccard{animation:cflip .7s var(--ease) both;}
+@keyframes cflip{0%{transform:translate(var(--fx,0),var(--fy,0)) rotate(-45deg) rotateY(180deg) scale(.4);}55%{transform:rotateY(70deg) scale(.95);}100%{transform:none;}}
+.mcard.gone{transition:opacity .3s, transform .3s;opacity:0;transform:translate(-50%,-60%) scale(.9);}
+.mfloat{position:absolute;z-index:8;pointer-events:none;transform:translate(-50%,-50%);font-family:var(--display);font-size:calc(var(--bs) * .036);color:#fff;
+  text-shadow:0 2px 0 rgba(0,0,0,.6), 0 0 8px rgba(0,0,0,.6);animation:mfl 1.5s var(--ease) forwards;white-space:nowrap;}
+@keyframes mfl{0%{opacity:0;transform:translate(-50%,-30%) scale(.6);}15%{opacity:1;transform:translate(-50%,-50%) scale(1.1);}80%{opacity:1;}100%{opacity:0;transform:translate(-50%,-130%);}}
+.mfloat.bad{color:#ffd2d2;} .mfloat.good{color:#c9ffd9;}
+.mjailfx{position:absolute;left:0;top:87%;width:13%;height:13%;z-index:7;pointer-events:none;
+  background:repeating-linear-gradient(90deg,transparent 0 14%,rgba(20,20,20,.85) 14% 20%);animation:bars 1.4s var(--ease) forwards;transform-origin:top;}
+@keyframes bars{0%{transform:scaleY(0);}30%{transform:scaleY(1);}80%{opacity:1;}100%{opacity:0;}}
+.mzoom{position:absolute;right:calc(var(--bs) * .028 + 8px);top:calc(var(--bs) * .028 + 8px);display:flex;flex-direction:column;gap:6px;z-index:10;}
+.mzoom button{width:34px;height:34px;border:0;border-radius:50%;display:grid;place-items:center;background:rgba(20,16,41,.72);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.35);}
+.mzoom button svg{width:18px;height:18px;}
+.mzoom button:disabled{opacity:.35;}
+
+/* ── Turn and actions ── */
+.mact{border-radius:20px;padding:12px;background:var(--surface);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px;}
+.turnl{--c:var(--p1);display:flex;align-items:center;gap:10px;min-height:36px;}
+.turnl .tkb{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%, color-mix(in srgb,var(--c) 70%,#fff), var(--c) 60%, color-mix(in srgb,var(--c) 70%,#000));}
+.turnl .tkb svg{width:32px;height:32px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5));}
+.turnl b{font-family:var(--display);font-weight:400;font-size:1.35rem;line-height:1.1;color:var(--c);}
+html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:color-mix(in srgb,var(--c) 45%,var(--text));}
+.turnl .sub{display:block;font-size:.85rem;font-weight:700;color:var(--text-2);}
+.turnl .grow{flex:1;min-width:0;}
+.turnl .lim{flex:none;font-size:.75rem;font-weight:800;color:var(--text-3);text-align:right;line-height:1.2;}
+.what{font-weight:700;color:var(--text-2);font-size:.95rem;}
+.what b{color:var(--text);}
+.btns{display:flex;gap:8px;flex-wrap:wrap;}
+.btns .btn{flex:1 1 140px;}
+.btns .btn .ico{width:20px;height:20px;}
+.tools{display:flex;gap:8px;}
+.tools .btn{flex:1;min-height:44px;font-size:.92rem;padding:0 8px;}
+.thinking{display:inline-flex;gap:4px;margin-left:4px;vertical-align:middle;}
+.thinking i{width:6px;height:6px;border-radius:50%;background:currentColor;animation:thk 1s infinite;}
+.thinking i:nth-child(2){animation-delay:.15s;} .thinking i:nth-child(3){animation-delay:.3s;}
+@keyframes thk{50%{opacity:.25;transform:translateY(-3px);}}
+.offer{display:flex;gap:12px;align-items:center;}
+.offer .deed{flex:none;width:150px;}
+.offer .side{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;}
+.bidbox{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;background:var(--w06);}
+.bidbox .amt{font-family:var(--display);font-size:1.8rem;line-height:1;}
+.bidbox small{display:block;font-weight:700;color:var(--text-2);font-size:.8rem;}
+.bidders{display:flex;gap:4px;flex-wrap:wrap;}
+.bidders span{--c:var(--p1);display:inline-flex;align-items:center;gap:4px;padding:2px 8px 2px 3px;border-radius:99px;background:var(--w06);font-size:.78rem;font-weight:800;}
+.bidders span i{width:12px;height:12px;border-radius:50%;background:var(--c);}
+.bidders span.outb{opacity:.35;text-decoration:line-through;}
+.bidders span.now{box-shadow:inset 0 0 0 2px var(--c);}
+.debtbar{height:10px;border-radius:5px;background:var(--w08);overflow:hidden;}
+.debtbar i{display:block;height:100%;background:linear-gradient(90deg,var(--red),var(--yellow));border-radius:5px;transition:width .4s;}
+.debtbar i.ok{background:var(--green);}
+
+/* ── Title deed card ── */
+.deed{--gc:#888;--gi:#1d1d1b;background:#fffdf6;color:#1d1d1b;border-radius:6px;padding:6px;box-shadow:0 0 0 1px rgba(0,0,0,.2), 0 8px 18px rgba(0,0,0,.3);font-family:'Sofia Sans Condensed',sans-serif;font-size:13px;line-height:1.2;}
+.deed .dh{background:var(--gc);color:var(--gi);text-align:center;padding:5px 4px 6px;border:1.5px solid #1d1d1b;}
+.deed .dh small{display:block;font-size:.66em;font-weight:800;letter-spacing:.14em;}
+.deed .dh b{display:block;font-size:1.15em;font-weight:900;letter-spacing:.03em;text-transform:uppercase;}
+.deed .di{display:grid;place-items:center;padding:6px 0 2px;} .deed .di svg{width:46px;height:46px;}
+.deed .rows{padding:5px 4px 2px;}
+.deed .dr{display:flex;justify-content:space-between;gap:6px;padding:1px 4px;border-radius:3px;}
+.deed .dr.now{background:#ffe48a;box-shadow:0 0 0 1.5px #c99a00;font-weight:800;}
+.deed .dr.c{justify-content:center;font-weight:800;}
+.deed .df{border-top:1px solid #1d1d1b;margin-top:4px;padding:4px 4px 0;text-align:center;font-size:.86em;}
+.deed .dn{font-size:.72em;text-align:center;padding:3px 2px 0;color:#444;font-style:italic;}
+.deed.mortg{position:relative;}
+.deed.mortg::after{content:"MORTGAGED";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-24deg);padding:2px 10px;border:3px solid #c8102e;border-radius:6px;color:#c8102e;font-weight:900;font-size:1.4em;letter-spacing:.08em;background:rgba(255,253,246,.85);}
+.deed.flip{animation:dflip .65s var(--ease) both;transform-origin:50% 60%;}
+@keyframes dflip{0%{transform:perspective(700px) rotateX(80deg) translateY(30px);opacity:0;}60%{opacity:1;}100%{transform:none;}}
+
+/* ── My properties ── */
+.mine{border-radius:20px;padding:12px;background:var(--surface);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px;}
+.mine h3{display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
+.mine h3 .grow{flex:1;}
+.wallet{display:flex;align-items:flex-end;gap:10px;}
+.wallet .big{font-family:var(--display);font-size:1.9rem;line-height:1;}
+.bills{display:flex;align-items:flex-end;flex-wrap:wrap;gap:3px;flex:1;justify-content:flex-end;}
+.bill{--bc:#efdcae;position:relative;width:46px;height:24px;border-radius:3px;background:var(--bc);color:#3a3326;display:grid;place-items:center;font-family:'Sofia Sans Condensed',sans-serif;font-weight:900;font-size:12px;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.55), inset 0 0 0 3px rgba(60,50,30,.25), 0 1px 2px rgba(0,0,0,.35);}
+.bill::before{content:"";position:absolute;left:30%;right:30%;top:22%;bottom:22%;border-radius:50%;border:1px solid rgba(60,50,30,.3);}
+.bill.stk{box-shadow:inset 0 0 0 2px rgba(255,255,255,.55), inset 0 0 0 3px rgba(60,50,30,.25), 2px -2px 0 -1px var(--bc), 2px -2px 0 0 rgba(0,0,0,.2), 4px -4px 0 -1px var(--bc), 4px -4px 0 0 rgba(0,0,0,.2);}
+.bill .n{position:absolute;right:-6px;top:-8px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--text);color:var(--bg);font-size:11px;display:grid;place-items:center;}
+.bill.fly{position:fixed;z-index:480;pointer-events:none;margin:-12px 0 0 -23px;}
+.groups{display:flex;flex-direction:column;gap:6px;}
+.grow-row{display:flex;gap:6px;align-items:stretch;flex-wrap:wrap;}
+.mini{--gc:#888;position:relative;width:74px;min-height:56px;border:0;padding:0 0 4px;border-radius:5px;background:#fffdf6;color:#1d1d1b;text-align:center;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(0,0,0,.25), 0 2px 4px rgba(0,0,0,.25);font-family:'Sofia Sans Condensed',sans-serif;transition:transform .15s;}
+.mini:active{transform:scale(.95);}
+.mini .mh{height:14px;background:var(--gc);border-bottom:1px solid rgba(0,0,0,.35);display:grid;place-items:center;}
+.mini .mh svg{width:13px;height:13px;}
+.mini .mn{display:block;padding:3px 3px 0;font-size:11px;font-weight:800;line-height:1.05;text-transform:uppercase;}
+.mini .hs{display:flex;justify-content:center;gap:1px;margin-top:2px;min-height:10px;} .mini .hs svg{width:12px;height:12px;}
+.mini.mortg{opacity:.55;} .mini.mortg::after{content:"MORTGAGED";position:absolute;left:0;right:0;bottom:2px;color:#c8102e;font-size:9px;font-weight:900;letter-spacing:.05em;}
+.mini.mortg .hs{display:none;}
+.mini.full{box-shadow:0 0 0 2px var(--gc), 0 2px 4px rgba(0,0,0,.25);}
+.empty{color:var(--text-3);font-weight:700;font-size:.9rem;}
+.goojf{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:8px;background:linear-gradient(160deg,#ffb054,#f3901d);color:#1d1d1b;font-family:'Sofia Sans Condensed',sans-serif;font-weight:900;font-size:.8rem;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.goojf.cc{background:linear-gradient(160deg,#fff7c4,#f8e88a);}
+.goojf svg{width:18px;height:18px;}
+
+/* ── Log ── */
+.mlog{border-radius:20px;padding:10px 12px;background:var(--w04);display:flex;flex-direction:column;gap:2px;}
+.mlog .ln{--c:var(--text-3);display:flex;gap:8px;align-items:baseline;font-size:.86rem;color:var(--text-2);line-height:1.3;padding:2px 0;}
+.mlog .ln::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--c);transform:translateY(-1px);}
+.mlog .ln:first-child{color:var(--text);font-weight:700;}
+.mlog .more{align-self:flex-start;margin-top:4px;}
+
+/* ── Sheets ── */
+.bgrp{border-radius:14px;padding:10px;background:var(--w05);margin-bottom:10px;}
+.bgrp h4{display:flex;align-items:center;gap:8px;font-size:.9rem;margin-bottom:6px;}
+.bgrp h4 i{width:16px;height:16px;border-radius:4px;background:var(--gc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.3);}
+.brow{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--w06);}
+.brow:first-of-type{border-top:0;}
+.brow .nm{flex:1;min-width:0;font-weight:800;font-size:.95rem;}
+.brow .nm small{display:block;font-weight:700;color:var(--text-3);font-size:.78rem;}
+.brow .hs{display:flex;gap:1px;min-width:62px;justify-content:center;} .brow .hs svg{width:15px;height:15px;}
+.brow .btn{min-height:38px;padding:0 10px;}
+.sq-btn{width:40px;min-width:40px;padding:0 !important;}
+.bankline{display:flex;gap:12px;font-weight:800;font-size:.85rem;color:var(--text-2);margin:2px 0 10px;}
+.bankline svg{width:16px;height:16px;vertical-align:-3px;}
+.tr-who{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.tr-who button{--c:var(--p1);display:flex;align-items:center;gap:6px;padding:4px 12px 4px 4px;border:0;border-radius:99px;background:var(--w06);color:var(--text);font-weight:800;}
+.tr-who button.on{box-shadow:inset 0 0 0 2.5px var(--c);background:var(--w1);}
+.tr-who .tkb{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--c);} .tr-who .tkb svg{width:24px;height:24px;}
+.tr-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.tr-col{border-radius:14px;padding:8px;background:var(--w05);min-width:0;}
+.tr-col h4{font-size:.78rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:2px 2px 6px;}
+.tr-props{display:flex;flex-direction:column;gap:4px;}
+.tr-p{--gc:#888;display:flex;align-items:center;gap:6px;padding:6px 8px;border:0;border-radius:10px;background:var(--w06);color:var(--text);font-weight:700;font-size:.85rem;text-align:left;}
+.tr-p i{flex:none;width:12px;height:22px;border-radius:3px;background:var(--gc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.3);}
+.tr-p.on{background:color-mix(in srgb,var(--accent) 30%,var(--surface-2));box-shadow:inset 0 0 0 2px var(--accent);}
+.tr-p:disabled{opacity:.4;}
+.tr-p small{display:block;color:var(--text-3);font-size:.72rem;}
+.tr-cash{display:flex;align-items:center;gap:4px;margin-top:8px;}
+.tr-cash .input{min-height:38px;padding:0 8px;text-align:center;font-weight:800;min-width:0;}
+.tr-cash button{flex:none;width:34px;height:38px;border:0;border-radius:10px;background:var(--w08);color:var(--text);font-weight:900;}
+.meter{margin-top:12px;}
+.meter .tr{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--red),var(--yellow),var(--green));position:relative;}
+.meter .tr i{position:absolute;top:-4px;width:6px;height:18px;margin-left:-3px;border-radius:3px;background:var(--text);box-shadow:0 0 0 2px var(--bg);transition:left .3s var(--ease);}
+.meter .lb{display:flex;justify-content:space-between;font-size:.75rem;font-weight:800;color:var(--text-3);margin-top:4px;}
+.offer-sum{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.offer-sum div{border-radius:12px;padding:8px 10px;background:var(--w06);font-weight:700;font-size:.9rem;}
+.offer-sum small{display:block;font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:2px;}
+.pass-cover{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;pointer-events:none;}
+.pass-cover .bn{--c:var(--p1);padding:12px 22px;border-radius:18px;background:rgba(20,16,41,.86);color:#fff;font-family:var(--display);font-size:calc(var(--bs) * .06);box-shadow:0 0 0 3px var(--c), 0 10px 30px rgba(0,0,0,.5);animation:bn 1.8s var(--ease) forwards;text-align:center;}
+@keyframes bn{0%{opacity:0;transform:scale(.6);}15%{opacity:1;transform:scale(1.05);}25%{transform:none;}80%{opacity:1;}100%{opacity:0;}}
+
+/* ── Wide screens: board on the left, everything else beside it ── */
+@media (orientation:landscape) and (min-width:900px){
+  #app.mono{padding-top:4px;}
+  .mlay{flex-direction:row;align-items:flex-start;max-width:1400px;gap:18px;justify-content:center;}
+  .mlay > .mtable{position:sticky;top:calc(var(--safe-t) + 58px);}
+  .mside{width:min(420px, 34vw);flex:none;}
+  .pstrip{flex-wrap:wrap;overflow:visible;}
+  .pchip{flex:1 1 calc(50% - 6px);}
+}
+@media (prefers-reduced-motion:reduce){.tk .hop{animation:none!important;}}
+</style>
+</head>
+<body>
+<main class="stage mono" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var M = MonoEngine, A = MonoArt, SQ = M.SQ, GROUPS = M.GROUPS, money = M.money;
+  var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
+  var SAVE = 'monopoly_state', KEY = 'monopoly', NETME = 'monopoly_net';
+  document.body.insertAdjacentHTML('afterbegin', A.defs());
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  // ═══ State ══════════════════════════════════════════════════════════════
+  // S: the game (engine state). mode: 'cpu' | 'pass' | 'online'. The online host and offline devices run the
+  // engine; online guests get S from the host after every action, with the events to animate.
+  var S = null, mode = null, undoStack = [], busy = 0, chain = Promise.resolve(), botT = 0, view = null, lastTurnSeen = -1;
+  var speed = lsGet('mono_speed', 'normal'), TEST = { instant: false };
+  var disp = null;   // what the board shows while an animation plays: {pos:[], cash:[], jail:[]}
+  function T(ms) { return TEST.instant ? 0 : speed === 'fast' ? Math.round(ms * 0.4) : ms; }
+  function wait(ms) { ms = T(ms); return new Promise(function (r) { if (!ms) r(); else setTimeout(r, ms); }); }
+  function isHuman(p) { return S && S.players[p] && !S.players[p].cpu; }
+  // can this device act for player p?
+  function mine(p) {
+    if (!S || p < 0 || !S.players[p]) return false;
+    if (mode === 'online') return p === net.seat && !S.players[p].out;
+    return !S.players[p].cpu && !S.players[p].out;
+  }
+  // whose properties and money the panel shows: you (vs computer, online), or the person whose turn it is (pass and play)
+  function viewer() {
+    if (mode === 'online') return net.seat;
+    if (mode === 'cpu') return 0;
+    var n = M.needs(S);
+    if (n >= 0 && isHuman(n)) return n;
+    if (isHuman(S.cur)) return S.cur;
+    return lastHuman >= 0 ? lastHuman : 0;
+  }
+  var lastHuman = -1;
+
+  Kit.init({
+    id: 'monopoly',
+    onNew: function () { stopAll(); clearSave(); if (mode === 'online') leaveOnline(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Monopoly: past games' }); } },
+      { icon: 'globe', label: 'Play online', sub: '2 to 8 players, each on their own device', when: function () { return mode !== 'online'; }, onClick: function () { stopAll(); goLobby(); } },
+      { icon: 'logout', label: 'Leave the online game', when: function () { return mode === 'online'; }, onClick: function () { leaveOnline(); showSetup(); } },
+      { icon: 'rocket', label: 'Fast computer players', sub: 'Robots move and decide quicker', toggle: function () { return speed === 'fast'; }, onClick: function () { speed = speed === 'fast' ? 'normal' : 'fast'; lsSet('mono_speed', speed); } }
+    ],
+    rules:
+      '<p class="goal">Buy property, charge rent, build houses and hotels, and be the <b>last player standing</b> when everyone else has gone bankrupt.</p>' +
+      '<h3>Your turn</h3><ul><li>Roll the two dice and move that many squares. Passing <b>Go</b> pays you <b>$200</b>.</li>' +
+      '<li>Roll <b>doubles</b> and you go again. Three doubles in a row sends you to Jail.</li>' +
+      '<li>Land on a property no one owns and you can <b>buy</b> it at the printed price. If you don’t, it goes up for <b>auction</b>: everyone (you too) can bid, and the highest bid wins.</li>' +
+      '<li>Land on someone else’s property and you pay them <b>rent</b> (shown on the title deed). No rent is paid on mortgaged property.</li>' +
+      '<li><b>Railroads</b>: $25, $50, $100 or $200 rent, for 1 to 4 owned. <b>Utilities</b>: 4 times the dice, or 10 times if the owner has both.</li>' +
+      '<li><b>Chance</b> and <b>Community Chest</b>: take a card and do what it says.</li></ul>' +
+      '<h3>Building</h3><ul><li>Own every street of a colour group (a <b>monopoly</b>) and unimproved rent there doubles. Then you can buy houses.</li>' +
+      '<li>Build <b>evenly</b>: no street can get a second house before every street in the group has one, and so on. After 4 houses comes a <b>hotel</b>.</li>' +
+      '<li>The bank has only <b>32 houses and 12 hotels</b>. When they run out, no one can build until some come back.</li>' +
+      '<li>You can sell buildings back to the bank any time for <b>half</b> what they cost (evenly, too).</li></ul>' +
+      '<h3>Jail</h3><ul><li>You go to Jail by landing on Go to Jail, from a card, or by rolling three doubles. You don’t collect $200.</li>' +
+      '<li>To get out: pay <b>$50</b> before rolling, use a <b>Get Out of Jail Free</b> card, or roll <b>doubles</b> (up to three tries; doubles move you out but don’t give another roll). After the third miss you pay $50 and move.</li>' +
+      '<li>In Jail you still collect rent, build and trade.</li></ul>' +
+      '<h3>Money trouble</h3><ul><li><b>Mortgage</b> a property to get half its price from the bank (sell the group’s buildings first). To lift the mortgage, pay that back plus <b>10% interest</b>.</li>' +
+      '<li>If you owe more than you can pay, sell buildings and mortgage property. If it still isn’t enough, you are <b>bankrupt</b>: everything you have goes to the player you owe (or back to the bank, which auctions it).</li></ul>' +
+      '<h3>Trading</h3><ul><li>Trade properties, cash and Get Out of Jail Free cards with anyone, any time on a turn. Streets in a group with buildings can’t be traded until those are sold.</li>' +
+      '<li>Taking a mortgaged property means paying the 10% interest straight away. Pay off the mortgage the same turn and that interest is all you pay.</li></ul>' +
+      '<h3>House rules (in setup, off unless you choose them)</h3><ul><li><b>Free Parking jackpot</b>: taxes and fines pile up in the middle; land on Free Parking to take them.</li>' +
+      '<li><b>$400 on Go</b>: landing exactly on Go pays double.</li><li><b>No auctions</b>: a property no one buys stays with the bank.</li>' +
+      '<li><b>Game length</b>: after the time or the number of rounds, the round is finished and the richest player wins (cash, property at its price, half if mortgaged, and buildings at cost).</li></ul>' +
+      '<h3>Playing here</h3><p>Tap any square to see its title deed. Pinch or use + to zoom the board. Build, Mortgage and Trade are under your money.</p>'
+  });
+
+  // ═══ Save / resume ══════════════════════════════════════════════════════
+  function save() {
+    if (!S || mode === 'online') return;
+    if (S.phase === 'over') { clearSave(); return; }
+    try { localStorage.setItem(SAVE, JSON.stringify({ S: S, mode: mode })); } catch (e) {}
+    Kit.resume.set('Round ' + S.round + ' · ' + M.active(S).length + ' players left', { keys: [SAVE] });
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function stopAll() { clearTimeout(botT); busy = 0; chain = Promise.resolve(); undoStack = []; closeSheet(); }
+
+  // ═══ Setup ══════════════════════════════════════════════════════════════
+  function showSetup() {
+    S = null; mode = null; view = null; app.className = 'stage'; app.innerHTML = '';
+    Kit.setup(app, {
+      modes: [
+        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against 1 to 7 computer players' },
+        { id: 'pass', icon: 'users', title: 'Pass and play', desc: '2 to 8 players sharing this phone' },
+        { id: 'online', icon: 'globe', title: 'Play online', desc: '2 to 8 players, each on their own device' }
+      ],
+      players: { min: 2, max: 8, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : false; }, range: function (m) { return m === 'online' ? [1, 1] : [2, 8]; } },
+      options: [
+        { id: 'len', label: 'Game length', value: 'all', choices: [['all', 'Classic', 'Play until one player is left. A full game can take a couple of hours.'], ['m60', '1 hour', 'After an hour, the round is finished and the richest player wins.'], ['m90', '90 min', 'After 90 minutes, the round is finished and the richest player wins.'], ['r25', '25 rounds', 'After 25 rounds, the richest player wins.']] },
+        { id: 'auction', label: 'Auctions', value: 'on', choices: [['on', 'On', 'The official rule: a property no one buys is auctioned to everyone.'], ['off', 'Off', 'House rule: a property no one buys stays with the bank.']] },
+        { id: 'fp', label: 'Free Parking jackpot', value: 'off', choices: [['off', 'Off', 'The official rule: Free Parking is just a rest.'], ['on', 'On', 'House rule: taxes and fines pile up in the middle, and landing on Free Parking takes them.']] },
+        { id: 'go400', label: 'Landing on Go', value: 'off', choices: [['off', '$200', 'The official rule: $200 for passing or landing on Go.'], ['on', '$400', 'House rule: landing exactly on Go pays $400.']] },
+        { id: 'speed', label: 'Computer speed', value: 'normal', when: function (m) { return m === 'cpu'; }, choices: [['normal', 'Easy to follow'], ['fast', 'Fast']] }
+      ],
+      onStart: function (cfg) {
+        var o = cfg.options;
+        if (cfg.mode === 'cpu') { speed = o.speed === 'fast' ? 'fast' : 'normal'; lsSet('mono_speed', speed); }
+        var opts = { len: o.len, noAuction: o.auction === 'off', fp: o.fp === 'on', go400: o.go400 === 'on' };
+        if (cfg.mode === 'online') { var me = lsGet(NETME, {}) || {}; me.name = cfg.players[0] && cfg.players[0].name !== 'You' ? cfg.players[0].name : me.name; me.opts = opts; lsSet(NETME, me); goLobby(); return; }
+        start(cfg.mode, cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), opts);
+      }
+    });
+  }
+  function start(m, players, opts) {
+    stopAll(); mode = m;
+    S = M.newGame(players, opts);
+    Kit.gameStart(); S.started = Date.now();
+    lastHuman = -1; lastTurnSeen = -1;
+    build(); save(); render();
+    setTimeout(function () { Kit.callout(S.players[0].name === 'You' ? 'You go first' : S.players[0].name + ' goes first'); Kit.sfx('whoosh'); }, 400);
+    afterChange();
+  }
+
+  // ═══ Building the screen ════════════════════════════════════════════════
+  function build() {
+    app.className = 'stage mono'; app.innerHTML = '';
+    view = {};
+    var lay = el('div', { class: 'mlay' });
+    view.strip = el('div', { class: 'pstrip', role: 'list', 'aria-label': 'Players' });
+    view.table = el('div', { class: 'mtable wood' });
+    view.vp = el('div', { class: 'mvp' });
+    view.board = el('div', { class: 'mboard' });
+    view.board.innerHTML = A.board();
+    view.dyn = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    view.dyn.setAttribute('class', 'dyn'); view.dyn.setAttribute('viewBox', '0 0 1000 1000');
+    view.board.appendChild(view.dyn);
+    view.dice = el('div', { class: 'mdice off' }, [Kit.die(1), Kit.die(1)]);
+    view.dice.querySelectorAll('.die').forEach(function (d) { d.tabIndex = -1; d.disabled = true; });
+    view.pot = el('div', { class: 'mpot' });
+    view.bank = el('div', { class: 'mbank' });
+    view.board.appendChild(view.dice); view.board.appendChild(view.pot); view.board.appendChild(view.bank);
+    view.toks = [];
+    S.players.forEach(function (p, i) {
+      var t = el('div', { class: 'tk', style: { '--c': Kit.color(i) } }, [el('div', { class: 'hop' }, [el('div', { class: 'base' }), el('div', { html: A.token(p.tok) })])]);
+      view.board.appendChild(t); view.toks.push(t);
+    });
+    view.vp.appendChild(view.board);
+    view.table.appendChild(view.vp);
+    view.zoom = el('div', { class: 'mzoom' }, [
+      el('button', { type: 'button', 'aria-label': 'Zoom in', html: Kit.icon('plus'), onclick: function () { zoomBy(1.6); } }),
+      el('button', { type: 'button', 'aria-label': 'Zoom out', html: Kit.icon('minus'), onclick: function () { zoomBy(1 / 1.6); } })
+    ]);
+    view.table.appendChild(view.zoom);
+    view.act = el('div', { class: 'mact', 'aria-live': 'polite' });
+    view.mine = el('div', { class: 'mine' });
+    view.log = el('div', { class: 'mlog' });
+    var side = el('div', { class: 'mside' }, [view.act, view.mine, view.log]);
+    // phones: players, board, then the rest; wide screens: board left, players on top of the side column
+    if (wide()) { side.insertBefore(view.strip, side.firstChild); lay.appendChild(view.table); lay.appendChild(side); }
+    else { lay.appendChild(view.strip); lay.appendChild(view.table); lay.appendChild(side); }
+    app.appendChild(lay);
+    view.wide = wide();
+    hookBoard();
+    sizeBoard();
+  }
+  function wide() { return matchMedia('(orientation:landscape) and (min-width:900px)').matches; }
+  function sizeBoard() {
+    if (!view) return;
+    // the wooden rim adds 2.8% on each side
+    var W = app.clientWidth - 24, H = window.innerHeight, avail;
+    if (wide()) avail = Math.min(H - 76, W - Math.min(420, window.innerWidth * 0.34) - 18);
+    else avail = Math.min(W, 720);
+    var bs = Math.max(240, Math.floor(avail / 1.056));
+    app.style.setProperty('--bs', bs + 'px');
+    view.bs = bs;
+    applyZoom(false);
+  }
+  var rsT = 0;
+  window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(function () { if (!view || !S) return; if (view.wide !== wide()) { build(); render(); } else { sizeBoard(); placeTokens(); } }, 120); });
+
+  // ── Zoom and pan ──
+  var Z = { z: 1, x: 0, y: 0 };
+  function clampZ() {
+    var bs = view.bs; Z.z = Math.max(1, Math.min(3.2, Z.z));
+    Z.x = Math.min(0, Math.max(bs - bs * Z.z, Z.x)); Z.y = Math.min(0, Math.max(bs - bs * Z.z, Z.y));
+  }
+  function applyZoom(ease) {
+    if (!view) return; clampZ();
+    view.board.classList.toggle('ease', !!ease);
+    view.board.style.transform = 'translate(' + Z.x + 'px,' + Z.y + 'px) scale(' + Z.z + ')';
+    view.vp.classList.toggle('zoomed', Z.z > 1.01);
+    var b = view.zoom.querySelectorAll('button'); b[0].disabled = Z.z >= 3.19; b[1].disabled = Z.z <= 1.01;
+  }
+  function zoomAt(nz, cx, cy, ease) {   // cx, cy: point in the viewport (px) that stays put
+    var bs = view.bs; if (cx == null) { cx = bs / 2; cy = bs / 2; }
+    var ux = (cx - Z.x) / Z.z, uy = (cy - Z.y) / Z.z;
+    Z.z = Math.max(1, Math.min(3.2, nz)); Z.x = cx - ux * Z.z; Z.y = cy - uy * Z.z;
+    applyZoom(ease); Kit.sfx('tick', 0.3);
+  }
+  function zoomBy(f) { zoomAt(Z.z * f, null, null, true); }
+  // keep a board point (0..1000) in view when zoomed in
+  function follow(ux, uy) {
+    if (Z.z <= 1.01) return;
+    var bs = view.bs, px = ux / 1000 * bs * Z.z + Z.x, py = uy / 1000 * bs * Z.z + Z.y, m = bs * 0.22;
+    if (px > m && px < bs - m && py > m && py < bs - m) return;
+    Z.x = bs / 2 - ux / 1000 * bs * Z.z; Z.y = bs / 2 - uy / 1000 * bs * Z.z; applyZoom(true);
+  }
+  function hookBoard() {
+    var pts = {}, start = null, pinch = null, moved = false, lastTap = 0;
+    var vp = view.vp;
+    vp.addEventListener('pointerdown', function (e) {
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var ids = Object.keys(pts);
+      if (ids.length === 1) { start = { x: e.clientX, y: e.clientY, zx: Z.x, zy: Z.y }; moved = false; }
+      if (ids.length === 2) { var a = pts[ids[0]], b = pts[ids[1]], r = vp.getBoundingClientRect(); pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: Z.z, cx: (a.x + b.x) / 2 - r.left, cy: (a.y + b.y) / 2 - r.top }; moved = true; }
+      if (Z.z > 1.01) try { vp.setPointerCapture(e.pointerId); } catch (x) {}
+    });
+    vp.addEventListener('pointermove', function (e) {
+      if (!pts[e.pointerId]) return;
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var ids = Object.keys(pts);
+      if (ids.length >= 2 && pinch) {
+        var a = pts[ids[0]], b = pts[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
+        var nz = Math.max(1, Math.min(3.2, pinch.z * d / pinch.d)), ux = (pinch.cx - Z.x) / Z.z, uy = (pinch.cy - Z.y) / Z.z;
+        Z.z = nz; Z.x = pinch.cx - ux * nz; Z.y = pinch.cy - uy * nz; applyZoom(false); return;
+      }
+      if (!start) return;
+      var dx = e.clientX - start.x, dy = e.clientY - start.y;
+      if (Math.abs(dx) + Math.abs(dy) > 8) moved = true;
+      if (Z.z > 1.01 && moved) { Z.x = start.zx + dx; Z.y = start.zy + dy; applyZoom(false); }
+    });
+    function up(e) {
+      var was = pts[e.pointerId]; delete pts[e.pointerId];
+      if (Object.keys(pts).length < 2) pinch = null;
+      if (!was || Object.keys(pts).length) return;
+      if (!moved && e.type === 'pointerup') {
+        var now = Date.now(), r = vp.getBoundingClientRect();
+        if (now - lastTap < 300) { lastTap = 0; zoomAt(Z.z > 1.5 ? 1 : 2.4, e.clientX - r.left, e.clientY - r.top, true); clearTimeout(tapT); return; }
+        lastTap = now;
+        var tgt = document.elementFromPoint(e.clientX, e.clientY), h = tgt && tgt.closest ? tgt.closest('[data-sq]') : null;
+        if (h) { var sq = +h.getAttribute('data-sq'); clearTimeout(tapT); tapT = setTimeout(function () { deedSheet(sq); }, 260); }
+      }
+      start = null;
+    }
+    var tapT = 0;
+    vp.addEventListener('pointerup', up); vp.addEventListener('pointercancel', up);
+    vp.addEventListener('wheel', function (e) { if (!e.ctrlKey && Z.z <= 1.01 && e.deltaY > 0) return; e.preventDefault(); var r = vp.getBoundingClientRect(); zoomAt(Z.z * Math.exp(-e.deltaY * 0.0022), e.clientX - r.left, e.clientY - r.top, false); }, { passive: false });
+  }
+
+  // ═══ Rendering ══════════════════════════════════════════════════════════
+  function pcolor(i) { return Kit.color(i); }
+  function render() {
+    if (!S || !view) return;
+    renderStrip(); renderDyn(); placeTokens(); renderAct(); renderMine(); renderLog(); renderCentre();
+    refreshSheet();
+  }
+  function shownCash(i) { return disp ? disp.cash[i] : S.players[i].cash; }
+  function renderStrip() {
+    var cur = S.phase === 'over' ? -1 : (S.phase === 'auction' || S.phase === 'trade' || S.phase === 'debt') ? M.needs(S) : S.cur;
+    view.strip.innerHTML = '';
+    view.chips = [];
+    S.players.forEach(function (p, i) {
+      var badges = [];
+      if (p.jail && !p.out) badges.push(el('i', { title: 'In Jail', html: A.icon('lock') }));
+      if (p.cards.length) badges.push(el('i', { class: 'card', title: 'Get Out of Jail Free', text: '' + p.cards.length }));
+      var c = el('button', { type: 'button', class: 'pchip' + (i === cur ? ' on' : '') + (p.out ? ' out' : ''), role: 'listitem', style: { '--c': pcolor(i) },
+        'aria-label': p.name + ', ' + (p.out ? 'bankrupt' : money(shownCash(i))), onclick: function () { playerSheet(i); } }, [
+        el('span', { class: 'tkb', html: A.token(p.tok) }),
+        el('span', { class: 'tx' }, [el('span', { class: 'nm', text: p.name }), el('span', { class: 'cs', text: p.out ? 'Bankrupt' : money(shownCash(i)) })]),
+        badges.length ? el('span', { class: 'bdg' }, badges) : null
+      ]);
+      view.strip.appendChild(c); view.chips.push(c);
+    });
+  }
+  function chipCash(i) { var c = view.chips && view.chips[i]; if (c) { var cs = c.querySelector('.cs'); if (cs && !S.players[i].out) cs.textContent = money(shownCash(i)); } }
+  // owners, buildings, mortgages and the square in play
+  var popSq = {};
+  function renderDyn() {
+    var o = '';
+    // the square that matters right now glows
+    var hl = S.phase === 'buy' && S.offer ? S.offer.sq : S.phase === 'auction' && S.auction ? S.auction.sq : S.last ? S.last.sq : -1;
+    if (hl >= 0 && S.phase !== 'over') { var r = A.rectOf(hl); o += '<rect class="glow" x="' + (r.x + 3) + '" y="' + (r.y + 3) + '" width="' + (r.w - 6) + '" height="' + (r.h - 6) + '" fill="none" stroke="#ffc83d" stroke-width="6" rx="4"/>'; }
+    for (var i = 0; i < 40; i++) {
+      var ow = S.own[i]; if (ow < 0) continue;
+      var r2 = A.rectOf(i), col = pcolor(ow), sd = r2.side, th = 9;
+      // a strip in the owner's colour along the outer edge
+      var strip = sd === 'b' ? [r2.x + 3, r2.y + r2.h - th - 2, r2.w - 6, th] : sd === 't' ? [r2.x + 3, r2.y + 2, r2.w - 6, th] : sd === 'l' ? [r2.x + 2, r2.y + 3, th, r2.h - 6] : [r2.x + r2.w - th - 2, r2.y + 3, th, r2.h - 6];
+      o += '<rect' + (popSq['o' + i] ? ' class="newown"' : '') + ' x="' + strip[0].toFixed(1) + '" y="' + strip[1].toFixed(1) + '" width="' + strip[2].toFixed(1) + '" height="' + strip[3].toFixed(1) + '" rx="3" fill="' + col + '" stroke="rgba(0,0,0,.55)" stroke-width="1.2"/>';
+      if (S.mort[i]) {
+        o += '<rect x="' + r2.x.toFixed(1) + '" y="' + r2.y.toFixed(1) + '" width="' + r2.w.toFixed(1) + '" height="' + r2.h.toFixed(1) + '" fill="rgba(40,30,20,.38)"/>';
+        var cx = r2.x + r2.w / 2, cy = r2.y + r2.h / 2;
+        o += '<g transform="rotate(' + (sd === 'l' || sd === 'r' ? -20 : -60) + ' ' + cx + ' ' + cy + ')"><rect x="' + (cx - 44) + '" y="' + (cy - 10) + '" width="88" height="20" rx="3" fill="rgba(255,253,246,.92)" stroke="#c8102e" stroke-width="2.5"/>' +
+          '<text x="' + cx + '" y="' + (cy + 5) + '" text-anchor="middle" font-family="Sofia Sans Condensed,sans-serif" font-weight="900" font-size="13" fill="#c8102e" letter-spacing="1">MORTGAGED</text></g>';
+      }
+      if (S.hs[i]) o += A.buildings(i, S.hs[i], popSq[i] != null ? popSq[i] : null);
+    }
+    view.dyn.innerHTML = o;
+    popSq = {};
+  }
+  function renderCentre() {
+    view.pot.innerHTML = S.opts.fp ? '<small>FREE PARKING JACKPOT</small><span>' + money(S.pot) + '</span>' : '';
+    view.bank.innerHTML = '<span class="' + (S.bankH < 6 ? 'low' : '') + '"><svg viewBox="-10 -18 20 20">' + A.house(0, 0, 1) + '</svg>' + S.bankH + '</span>' +
+      '<span class="' + (S.bankT < 3 ? 'low' : '') + '"><svg viewBox="-19 -19 38 21">' + A.hotel(0, 0, 1) + '</svg>' + S.bankT + '</span>';
+    view.bank.setAttribute('aria-label', 'The bank has ' + S.bankH + ' houses and ' + S.bankT + ' hotels left');
+  }
+  // tokens: where everyone stands (during an animation, where they're shown)
+  function posOf(i) { return disp ? disp.pos[i] : S.players[i].pos; }
+  function jailOf(i) { return disp ? disp.jail[i] : S.players[i].jail; }
+  function slotOf(i) {
+    var sq = posOf(i), jl = jailOf(i), same = [];
+    S.players.forEach(function (p, j) { if (!p.out && posOf(j) === sq && (sq !== 10 || !!jailOf(j) === !!jl)) same.push(j); });
+    return A.slot(sq, same.indexOf(i), same.length, jl);
+  }
+  function placeTokens(skip) {
+    S.players.forEach(function (p, i) {
+      var t = view.toks[i]; if (!t) return;
+      t.style.display = p.out ? 'none' : '';
+      t.classList.toggle('cur', i === S.cur && S.phase !== 'over');
+      t.classList.toggle('jail', !!jailOf(i));
+      if (skip === i) return;
+      var s = slotOf(i); t.style.left = s.x / 10 + '%'; t.style.top = s.y / 10 + '%';
+    });
+  }
+
+  // ── Title deed ──
+  function deedHTML(sq, o) {
+    o = o || {};
+    var s = SQ[sq], own = S ? S.own[sq] : -1, now = -1;
+    if (S && own >= 0 && !S.mort[sq]) {
+      if (s.k === 'st') now = S.hs[sq] ? S.hs[sq] + 1 : M.ownsGroup(S, own, s.g) ? 1 : 0;
+      if (s.k === 'rr') now = M.countOwned(S, own, M.RRS) - 1;
+      if (s.k === 'ut') now = M.countOwned(S, own, M.UTS) - 1;
+    }
+    var h = '';
+    function row(a, b, k) { return '<div class="dr' + (k === now ? ' now' : '') + '"><span>' + a + '</span><b>' + b + '</b></div>'; }
+    if (s.k === 'st') {
+      var g = GROUPS[s.g];
+      h += '<div class="dh" style="--gc:' + g.c + ';color:' + (s.g === 1 || s.g === 5 ? '#1d1d1b' : '#fff') + '"><small>TITLE DEED</small><b>' + esc(s.n) + '</b></div><div class="rows">' +
+        row('Rent', money(s.r[0]), 0) + row('Rent with whole group', money(s.r[0] * 2), 1) +
+        row('With 1 house', money(s.r[1]), 2) + row('With 2 houses', money(s.r[2]), 3) + row('With 3 houses', money(s.r[3]), 4) + row('With 4 houses', money(s.r[4]), 5) + row('With a hotel', money(s.r[5]), 6) +
+        '</div><div class="df">Mortgage value ' + money(s.m) + '<br>Houses cost ' + money(s.h) + ' each<br>Hotels, ' + money(s.h) + ' plus 4 houses</div>';
+    } else if (s.k === 'rr') {
+      h += '<div class="di">' + A.icon('train') + '</div><div class="dh" style="--gc:#fffdf6;border:0;padding-top:0"><b>' + esc(s.n) + '</b></div><div class="rows">' +
+        row('Rent', '$25', 0) + row('If 2 railroads are owned', '$50', 1) + row('If 3 railroads are owned', '$100', 2) + row('If 4 railroads are owned', '$200', 3) +
+        '</div><div class="df">Mortgage value ' + money(s.m) + '</div>';
+    } else {
+      h += '<div class="di">' + A.icon(sq === 12 ? 'bulb' : 'tap') + '</div><div class="dh" style="--gc:#fffdf6;border:0;padding-top:0"><b>' + esc(s.n) + '</b></div><div class="rows">' +
+        row('One utility owned', '4 × dice', 0) + row('Both utilities owned', '10 × dice', 1) +
+        '</div><div class="df">Mortgage value ' + money(s.m) + '</div>';
+    }
+    return '<div class="deed' + (S && S.mort[sq] ? ' mortg' : '') + (o.flip ? ' flip' : '') + '">' + h + '</div>';
+  }
+  function miniCard(sq, o) {
+    o = o || {}; var s = SQ[sq], hs = '';
+    var n = S.hs[sq];
+    if (n === 5) hs = '<svg viewBox="-19 -19 38 21">' + A.hotel(0, 0, 1) + '</svg>';
+    else for (var k = 0; k < n; k++) hs += '<svg viewBox="-10 -18 20 20">' + A.house(0, 0, 1) + '</svg>';
+    var head = s.k === 'st' ? '' : '<span style="color:#1d1d1b">' + A.icon(s.k === 'rr' ? 'train' : sq === 12 ? 'bulb' : 'tap') + '</span>';
+    var full = s.k === 'st' && M.ownsGroup(S, S.own[sq], s.g);
+    return el('button', { type: 'button', class: 'mini' + (S.mort[sq] ? ' mortg' : '') + (full ? ' full' : ''), style: { '--gc': s.k === 'st' ? GROUPS[s.g].c : '#e9e4d6' }, 'aria-label': s.n + (S.mort[sq] ? ', mortgaged' : '') + (n ? ', ' + (n === 5 ? 'hotel' : n + ' houses') : ''),
+      onclick: function () { deedSheet(sq); } }, [el('span', { class: 'mh', html: head }), el('span', { class: 'mn', text: shortName(sq) }), el('span', { class: 'hs', html: hs })]);
+  }
+  function shortName(sq) { return SQ[sq].n.replace(/ Avenue$/, ' Ave').replace(/ Railroad$/, ' R.R.').replace(/^Pennsylvania R\.R\.$/, 'Penn. R.R.').replace(/North Carolina/, 'N. Carolina').replace(/^Pennsylvania Ave$/, 'Penn. Ave'); }
+
+  // ── The action area: whose turn, what's happening, the buttons ──
+  function btn(label, cls, fn, o) {
+    o = o || {};
+    return el('button', { type: 'button', class: 'btn ' + (cls || 'btn-soft'), html: (o.icon ? Kit.icon(o.icon) : '') + '<span>' + esc(label) + '</span>', disabled: o.disabled || null, onclick: function () { if (busy) return; Kit.haptic('light'); fn(); } });
+  }
+  function act(a) { doAct(a); }
+  function turnLine(p, sub) {
+    var x = S.players[p], me = mine(p);
+    var title = me ? (mode === 'pass' ? 'Your turn, ' + x.name : x.name === 'You' ? 'Your turn' : 'Your turn, ' + x.name) : Kit.poss(x.name) + ' turn';
+    var lim = '';
+    var L = S.opts.len || 'all';
+    if (/^r/.test(L)) lim = 'Round ' + Math.min(S.round, +L.slice(1)) + ' of ' + L.slice(1);
+    else if (/^m/.test(L)) { var left = Math.max(0, +L.slice(1) * 60000 - S.elapsed); lim = left > 0 ? Math.ceil(left / 60000) + ' min left' : 'Last round'; }
+    else lim = 'Round ' + S.round;
+    if (M.limitHit(S) && S.phase !== 'over') lim = 'Last round';
+    return el('div', { class: 'turnl', style: { '--c': pcolor(p) } }, [
+      el('span', { class: 'tkb', html: A.token(x.tok) }),
+      el('div', { class: 'grow' }, [el('b', { text: title }), sub ? el('span', { class: 'sub', html: sub }) : null]),
+      el('span', { class: 'lim', text: lim })
+    ]);
+  }
+  function thinking(name) { return '<span>' + esc(name) + (mode === 'online' && !S.players[M.needs(S)].cpu ? ' is deciding' : ' is thinking') + '</span><span class="thinking"><i></i><i></i><i></i></span>'; }
+  function renderAct() {
+    var box = view.act; box.innerHTML = '';
+    if (S.phase === 'over') {
+      var w = S.winner;
+      box.appendChild(turnLine(w, S.endWhy === 'time' ? 'Richest when time ran out' : 'Last one standing'));
+      box.appendChild(el('div', { class: 'btns' }, [btn('See the results', 'btn-primary', function () { showWin(true); }, { icon: 'trophy' })]));
+      return;
+    }
+    var p = M.needs(S), x = S.players[p], me = mine(p) && !busy, cur = S.players[S.cur];
+    if (S.phase === 'auction') return renderAuction(box, p, me);
+    if (S.phase === 'trade') return renderTradeAsk(box, p, me);
+    if (S.phase === 'debt') return renderDebt(box, p, me);
+    var sub = '';
+    if (!mine(p)) sub = thinking(x.name);
+    else if (S.phase === 'roll') sub = x.jail ? 'In Jail · try ' + (x.tries + 1) + ' of 3' : S.dbl ? 'Doubles! Roll again' : '';
+    else if (S.phase === 'done' && S.last) sub = esc(lastWhat());
+    box.appendChild(turnLine(p, sub));
+    if (S.phase === 'buy' && S.offer) {
+      var sq = S.offer.sq, s = SQ[sq];
+      var side = el('div', { class: 'side' }, [
+        el('div', { class: 'what', html: '<b>' + esc(s.n) + '</b> is for sale.' + (x.cash < s.p ? ' You need ' + money(s.p - x.cash) + ' more: mortgage something first.' : '') }),
+        me ? btn('Buy for ' + money(s.p), 'btn-primary', function () { act({ t: 'buy', p: p }); }, { disabled: x.cash < s.p }) : null,
+        me ? btn(S.opts.noAuction ? 'Don’t buy' : 'Auction it', 'btn-soft', function () { act({ t: 'decline', p: p }); }, { icon: S.opts.noAuction ? null : 'hand' }) : null
+      ]);
+      var dd = el('div', { class: 'deed-wrap', html: deedHTML(sq, { flip: view.flipSq !== sq }) }); view.flipSq = sq;
+      dd.querySelector('.deed').style.width = '150px';
+      box.appendChild(el('div', { class: 'offer' }, [dd, side]));
+    } else if (S.phase === 'roll' && me) {
+      var b = el('div', { class: 'btns' });
+      if (x.jail) {
+        b.appendChild(btn('Roll for doubles', 'btn-primary', function () { act({ t: 'roll', p: p }); }, { icon: 'dice' }));
+        b.appendChild(btn('Pay $50', 'btn-soft', function () { act({ t: 'payJail', p: p }); }, { disabled: x.cash < 50 }));
+        if (x.cards.length) b.appendChild(btn('Use your card', 'btn-soft', function () { act({ t: 'useCard', p: p }); }, { icon: 'key' }));
+      } else b.appendChild(btn('Roll the dice', 'btn-primary btn-lg', function () { act({ t: 'roll', p: p }); }, { icon: 'dice' }));
+      box.appendChild(b);
+    } else if (S.phase === 'done' && me) {
+      box.appendChild(el('div', { class: 'btns' }, [btn('End turn', 'btn-primary btn-lg', function () { act({ t: 'endTurn', p: p }); }, { icon: 'right' })]));
+    }
+    // build, mortgage and trade for whoever is using the device
+    var v = viewer();
+    if (mine(v) && !busy && /^(roll|done|buy)$/.test(S.phase)) box.appendChild(toolsRow(v));
+  }
+  function lastWhat() {
+    var L = S.log.length ? S.log[S.log.length - 1].t : ''; return L.length > 90 ? L.slice(0, 88) + '…' : L;
+  }
+  function toolsRow(v) {
+    var mineProps = S.own.some(function (o) { return o === v; });
+    var canB = buildable(v).length > 0 || S.hs.some(function (n, i) { return n && S.own[i] === v; });
+    return el('div', { class: 'tools' }, [
+      btn('Build', 'btn-soft', function () { buildSheet(v); }, { icon: 'home', disabled: !canB }),
+      btn('Mortgage', 'btn-soft', function () { mortSheet(v); }, { icon: 'coins', disabled: !mineProps }),
+      btn('Trade', 'btn-soft', function () { tradeSheet(v); }, { icon: 'swap', disabled: M.active(S).length < 2 || !/^(roll|done|debt)$/.test(S.phase) })
+    ]);
+  }
+  function buildable(p) { var out = []; for (var g = 0; g < 8; g++) if (M.ownsGroup(S, p, g)) out.push(g); return out; }
+  function renderAuction(box, p, me) {
+    var A2 = S.auction, s = SQ[A2.sq], x = S.players[p];
+    box.appendChild(turnLine(p, me ? 'Bid on ' + esc(s.n) + ' or pass' : thinking(x.name)));
+    var hb = A2.hb >= 0 ? S.players[A2.hb].name : null;
+    var bidders = el('div', { class: 'bidders' });
+    S.players.forEach(function (q, i) { if (q.out) return; var inA = A2.act.indexOf(i) >= 0; bidders.appendChild(el('span', { class: (inA ? '' : 'outb') + (i === p ? ' now' : ''), style: { '--c': pcolor(i) } }, [el('i'), el('span', { text: q.name })])); });
+    var dd = el('div', { html: deedHTML(A2.sq, { flip: view.flipSq !== A2.sq }) }); view.flipSq = A2.sq; dd.firstChild.style.width = '140px';
+    var info = el('div', { class: 'side' }, [
+      el('div', { class: 'bidbox' }, [el('div', null, [el('small', { text: hb ? 'High bid' : 'No bids yet' }), el('span', { class: 'amt', text: money(A2.high) })]), hb ? el('div', { class: 'what', text: hb }) : null]),
+      bidders
+    ]);
+    box.appendChild(el('div', { class: 'offer' }, [dd, info]));
+    if (me) {
+      var b = el('div', { class: 'btns' });
+      [1, 10, 50, 100].forEach(function (inc) {
+        var amt = A2.high + inc;
+        b.appendChild(el('button', { type: 'button', class: 'btn btn-soft', style: { 'flex': '1 1 60px' }, text: '+$' + inc, disabled: amt > x.cash || null, 'aria-label': 'Bid ' + money(amt), onclick: function () { if (!busy) act({ t: 'bid', p: p, amt: amt }); } }));
+      });
+      box.appendChild(b);
+      box.appendChild(el('div', { class: 'btns' }, [btn('Pass', 'btn-ghost', function () { act({ t: 'pass', p: p }); }), el('div', { class: 'what', style: { 'align-self': 'center', flex: '2' }, text: 'You have ' + money(x.cash) })]));
+    }
+  }
+  function renderDebt(box, p, me) {
+    var D = S.debt, x = S.players[p], to = D.t >= 0 ? S.players[D.t].name : 'the bank';
+    box.appendChild(turnLine(p, me ? 'You owe ' + money(D.a) + ' to ' + esc(to) : thinking(x.name)));
+    var pct = Math.min(100, Math.round(x.cash / D.a * 100));
+    box.appendChild(el('div', { class: 'what', html: '<b>' + money(x.cash) + '</b> of ' + money(D.a) + (x.cash < D.a ? ' · raise ' + money(D.a - x.cash) + ' more by selling buildings or mortgaging' : ' · ready to pay') }));
+    box.appendChild(el('div', { class: 'debtbar' }, [el('i', { class: pct >= 100 ? 'ok' : '', style: { width: pct + '%' } })]));
+    if (me) {
+      var can = M.liquid(S, p) >= D.a;
+      box.appendChild(el('div', { class: 'btns' }, [
+        btn('Pay ' + money(D.a), 'btn-primary', function () { act({ t: 'pay', p: p }); }, { disabled: x.cash < D.a }),
+        can ? null : btn('Declare bankruptcy', 'btn-red', function () { Kit.confirm('Go bankrupt?', { ok: 'Go bankrupt', danger: true, body: 'You can’t raise ' + money(D.a) + '. Everything you have goes to ' + esc(to) + ' and you are out of the game.' }).then(function (ok) { if (ok) act({ t: 'bankrupt', p: p }); }); })
+      ]));
+      box.appendChild(toolsRow(p));
+    }
+  }
+  function renderTradeAsk(box, p, me) {
+    var T2 = S.trade, f = S.players[T2.f], to = S.players[T2.to];
+    box.appendChild(turnLine(p, me ? esc(f.name) + ' offers you a trade' : (mine(T2.f) ? 'Waiting for ' + esc(to.name) : thinking(to.name))));
+    box.appendChild(offerSummary(T2));
+    if (me) box.appendChild(el('div', { class: 'btns' }, [btn('Accept', 'btn-primary', function () { act({ t: 'answer', p: p, ok: true }); }, { icon: 'check' }), btn('Decline', 'btn-soft', function () { act({ t: 'answer', p: p, ok: false }); }, { icon: 'close' })]));
+    else if (mine(T2.f) && !busy) box.appendChild(el('div', { class: 'btns' }, [btn('Take the offer back', 'btn-ghost', function () { act({ t: 'cancel', p: T2.f }); })]));
+  }
+  function offerSummary(T2) {
+    var f = S.players[T2.f], to = S.players[T2.to];
+    return el('div', { class: 'offer-sum' }, [
+      el('div', null, [el('small', { text: f.name + ' gives' }), el('span', { text: M.sideText(S, T2.give) })]),
+      el('div', null, [el('small', { text: to.name + ' gives' }), el('span', { text: M.sideText(S, T2.get) })])
+    ]);
+  }
+
+  // ── Your money and property ──
+  var BILLS = [[500, '#f3b06a'], [100, '#ecd9a6'], [50, '#a6cdee'], [20, '#bfe2b2'], [10, '#f2e48c'], [5, '#f2c2d3'], [1, '#f4f2ea']];
+  function billColor(a) { for (var i = 0; i < BILLS.length; i++) if (a >= BILLS[i][0]) return BILLS[i]; return BILLS[6]; }
+  // a believable handful of bills for an amount (not all $500s)
+  function billsFor(cash) {
+    var out = [], rem = cash;
+    var n500 = Math.max(0, Math.floor((rem - 400) / 500)); if (n500) { out.push([500, n500]); rem -= n500 * 500; }
+    var n100 = Math.max(0, Math.floor((rem - 100) / 100)); if (n100) { out.push([100, n100]); rem -= n100 * 100; }
+    [50, 20, 10, 5, 1].forEach(function (d) { var n = Math.floor(rem / d); if (n) { out.push([d, n]); rem -= n * d; } });
+    return out;
+  }
+  function billEl(d, n) {
+    var c = billColor(d);
+    return el('span', { class: 'bill' + (n > 1 ? ' stk' : ''), style: { '--bc': c[1] }, title: n + ' × $' + d }, [el('span', { text: '$' + d }), n > 1 ? el('span', { class: 'n', text: '' + n }) : null]);
+  }
+  function renderMine() {
+    var v = viewer(), x = S.players[v], box = view.mine; box.innerHTML = '';
+    if (!x) return;
+    var who = mode === 'pass' || mode === 'online' ? x.name : x.name === 'You' ? 'Your money and property' : x.name;
+    box.appendChild(el('h3', null, [el('span', { class: 'grow', text: mode === 'cpu' ? 'Your money and property' : who }), el('span', { text: 'Worth ' + money(M.worth(S, v)) })]));
+    var bills = el('div', { class: 'bills' }); billsFor(shownCash(v)).forEach(function (b) { bills.appendChild(billEl(b[0], b[1])); });
+    box.appendChild(el('div', { class: 'wallet' }, [el('span', { class: 'big', text: x.out ? 'Bankrupt' : money(shownCash(v)) }), bills]));
+    var groups = el('div', { class: 'groups' }), any = false;
+    var order = []; for (var g = 0; g < 8; g++) order.push(M.GSQ[g]); order.push(M.RRS); order.push(M.UTS);
+    order.forEach(function (list) {
+      var row = el('div', { class: 'grow-row' });
+      list.forEach(function (sq) { if (S.own[sq] === v) { row.appendChild(miniCard(sq)); any = true; } });
+      if (row.children.length) groups.appendChild(row);
+    });
+    if (x.cards.length) groups.appendChild(el('div', { class: 'grow-row' }, x.cards.map(function (k) { return el('span', { class: 'goojf' + (k.slice(0, 2) === 'cc' ? ' cc' : ''), html: A.icon('lock') + '<span>Get Out of Jail Free</span>' }); })));
+    box.appendChild(any || x.cards.length ? groups : el('div', { class: 'empty', text: 'No property yet. Land on a square that’s for sale to buy it.' }));
+  }
+  function renderLog() {
+    var box = view.log; box.innerHTML = '';
+    var L = S.log.slice(-5).reverse();
+    L.forEach(function (l) { box.appendChild(el('div', { class: 'ln', style: { '--c': l.p >= 0 ? pcolor(l.p) : 'var(--text-3)' }, text: l.t })); });
+    box.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm more', html: Kit.icon('history') + '<span>Everything that happened</span>', onclick: logSheet }));
+  }
+
+  // ═══ Doing things ═══════════════════════════════════════════════════════
+  function snapPre() { return { pos: S.players.map(function (p) { return p.pos; }), cash: S.players.map(function (p) { return p.cash; }), jail: S.players.map(function (p) { return p.jail; }), own: S.own.slice(), hs: S.hs.slice() }; }
+  var UNDOABLE = { buy: 1, build: 1, sell: 1, sellAll: 1, mort: 1, unmort: 1 };
+  function doAct(a) {
+    if (!S) return;
+    if (mode === 'online' && net.role === 'guest') { netSend({ t: 'act', a: a }); return; }
+    var pre = snapPre();
+    var snap = mode !== 'online' && UNDOABLE[a.t] && isHuman(a.p) ? JSON.stringify(S) : null;
+    var r = M.act(S, a);
+    if (!r.ok) {
+      if (isHuman(a.p)) { Kit.toast(r.err); Kit.haptic('error'); Kit.sfx('bad'); }
+      else console.warn('[monopoly] computer move refused', a, r.err);
+      return r;
+    }
+    if (snap) { undoStack.push(snap); if (undoStack.length > 40) undoStack.shift(); }
+    else if (!/^(propose|cancel)$/.test(a.t)) undoStack = [];
+    if (isHuman(a.p)) lastHuman = a.p;
+    save();
+    if (mode === 'online' && net.role === 'host') netBroadcast(r.ev);
+    play(r.ev, pre);
+    return r;
+  }
+  // animate what happened, then show the new state and let whoever is next act
+  function play(ev, pre) {
+    busy++;
+    chain = chain.then(function () { return animate(ev, pre); }).catch(function (e) { console.error(e); }).then(function () {
+      disp = null; busy = Math.max(0, busy - 1);
+      render(); afterChange();
+    });
+  }
+  function afterChange() {
+    if (!S || busy) return;
+    if (S.phase === 'over') { clearTimeout(botT); setTimeout(function () { if (S && S.phase === 'over' && !busy) showWin(); }, T(900)); return; }
+    var p = M.needs(S);
+    if (p < 0) return;
+    // pass and play: say whose turn it is when it changes hands
+    if (mode === 'pass' && isHuman(p) && lastTurnSeen !== S.turn && S.phase === 'roll' && p === S.cur) { lastTurnSeen = S.turn; passBanner(p); }
+    if (mode === 'online' && net.role === 'guest') return;
+    if (S.players[p].cpu) {
+      clearTimeout(botT);
+      var slow = S.phase === 'roll' || S.phase === 'done' ? 700 : S.phase === 'auction' ? 650 : S.phase === 'trade' ? 1400 : 800;
+      botT = setTimeout(function () {
+        if (!S || busy || M.needs(S) !== p || !S.players[p].cpu) return;
+        var a = M.bot(S, p);
+        if (a) doAct(a);
+      }, T(slow));
+    }
+  }
+  function passBanner(p) {
+    var b = el('div', { class: 'pass-cover' }, [el('div', { class: 'bn', style: { '--c': pcolor(p) }, text: 'Your turn, ' + S.players[p].name })]);
+    view.vp.appendChild(b); setTimeout(function () { b.remove(); }, 1900);
+    Kit.sfx('pop'); Kit.haptic('medium');
+  }
+  function undo() {
+    if (mode === 'online') return Kit.toast('No undo in online games');
+    if (busy || !undoStack.length) return Kit.toast('Nothing to undo');
+    clearTimeout(botT);
+    S = JSON.parse(undoStack.pop());
+    Kit.sfx('whoosh'); Kit.toast('Taken back');
+    save(); render(); afterChange();
+  }
+
+  // ═══ Animation ══════════════════════════════════════════════════════════
+  function animate(ev, pre) {
+    disp = { pos: pre.pos.slice(), cash: pre.cash.slice(), jail: pre.jail.slice() };
+    // monopolies completed by this action
+    var newGroups = [];
+    for (var g = 0; g < 8; g++) {
+      var o = S.own[M.GSQ[g][0]];
+      if (o >= 0 && M.ownsGroup(S, o, g) && !M.GSQ[g].every(function (s) { return pre.own[s] === o; })) newGroups.push({ g: g, p: o });
+    }
+    var hotels = [];
+    S.hs.forEach(function (n, i) { if (n === 5 && pre.hs[i] !== 5) hotels.push(i); if (n > pre.hs[i]) popSq[i] = n === 5 ? 0 : n - 1; });
+    S.own.forEach(function (o2, i) { if (o2 >= 0 && pre.own[i] !== o2) popSq['o' + i] = 1; });
+    var p0 = Promise.resolve();
+    ev.forEach(function (e) { p0 = p0.then(function () { return anim1(e); }); });
+    return p0.then(function () {
+      renderDyn();
+      if (hotels.length) { Kit.callout('Hotel!'); Kit.sfx('sparkle'); Kit.haptic('success'); }
+      if (newGroups.length) {
+        var ng = newGroups[0];
+        Kit.callout(S.players[ng.p].name === 'You' ? 'Your monopoly!' : 'Monopoly for ' + S.players[ng.p].name + '!', GROUPS[ng.g].c);
+        Kit.sfx('win', 0.6); Kit.haptic('success'); Kit.confetti({ count: 70, colors: [GROUPS[ng.g].c, '#ffffff', '#ffc83d'] });
+        return wait(1100);
+      }
+    });
+  }
+  function anim1(e) {
+    switch (e.e) {
+      case 'dice': return rollDice(e.d, e.ut);
+      case 'move': return e.jail ? slideToJail(e) : hop(e);
+      case 'pay': return payFx(e);
+      case 'card': return showCard(e);
+      case 'jail': { disp.jail[e.p] = true; placeTokens(); view.vp.appendChild(el('div', { class: 'mjailfx' })); setTimeout(function () { var j = view.vp.querySelector('.mjailfx'); if (j) j.remove(); }, 1500);
+        Kit.callout(S.players[e.p].name === 'You' ? 'To Jail!' : S.players[e.p].name + ' goes to Jail!', '#ff8a3d'); Kit.sfx('clash'); Kit.haptic('heavy'); return wait(900); }
+      case 'free': disp.jail[e.p] = false; placeTokens(); Kit.sfx('good'); floatAt(10, e.how === 'doubles' ? 'Free!' : 'Out!', 'good'); return wait(400);
+      case 'buy': case 'won': {
+        if (e.p < 0) return wait(300);
+        popSq['o' + e.sq] = 1; renderDyn(); Kit.sfx('good'); Kit.haptic('success');
+        floatAt(e.sq, e.e === 'won' ? 'Sold ' + money(e.a) + '!' : 'Bought!', 'good'); return wait(600);
+      }
+      case 'build': case 'sell': renderDyn(); Kit.sfx(e.e === 'build' ? 'pop' : 'tap'); return wait(250);
+      case 'mort': case 'unmort': renderDyn(); Kit.sfx('flip'); return wait(200);
+      case 'auction': Kit.sfx('chip'); Kit.haptic('medium'); view.flipSq = -1; return wait(300);
+      case 'bid': if (view.chips && view.chips[e.p]) floatChip(e.p, e.a ? 'Bids ' + money(e.a) : 'Pass', e.a ? 'up' : 'dn'); Kit.sfx(e.a ? 'chip' : 'tap'); return wait(e.a ? 250 : 150);
+      case 'offer': Kit.sfx('flip'); return wait(150);
+      case 'trade': Kit.callout('It’s a deal!'); Kit.sfx('good'); Kit.haptic('success'); return wait(700);
+      case 'tradeNo': Kit.toast('No deal'); Kit.sfx('bad'); return wait(200);
+      case 'bankrupt': { if (view.chips && view.chips[e.p]) view.chips[e.p].classList.add('hit'); Kit.callout(S.players[e.p].name + ' is bankrupt!', '#ff4d5e'); Kit.sfx('boom'); Kit.haptic('heavy'); return wait(1400); }
+      case 'pot': Kit.callout('Jackpot!'); Kit.sfx('sparkle'); return wait(600);
+      case 'turn': return wait(80);
+    }
+    return Promise.resolve();
+  }
+  // dice: tumble in the middle of the board, changing faces as they go
+  function rollDice(d, ut) {
+    var dice = view.dice.querySelectorAll('.die');
+    view.dice.classList.remove('off');
+    Kit.sfx('roll'); Kit.haptic('medium');
+    if (TEST.instant) { dice[0].setAttribute('data-v', d[0]); dice[1].setAttribute('data-v', d[1]); return Promise.resolve(); }
+    dice.forEach(function (x, i) {
+      x.classList.remove('rolling'); void x.offsetWidth;
+      x.style.setProperty('--dx', ((i ? 1 : -1) * (40 + Math.random() * 50)) + 'px');
+      x.style.setProperty('--dr', ((Math.random() > .5 ? 1 : -1) * (300 + Math.random() * 300)) + 'deg');
+      x.style.animationDelay = (i * 70) + 'ms';
+      x.classList.add('rolling');
+    });
+    var n = 0, iv = setInterval(function () { dice.forEach(function (x) { x.setAttribute('data-v', 1 + Math.floor(Math.random() * 6)); }); if (++n > 6) { clearInterval(iv); dice[0].setAttribute('data-v', d[0]); dice[1].setAttribute('data-v', d[1]); } }, speed === 'fast' ? 40 : 70);
+    return wait(ut ? 750 : 800).then(function () { clearInterval(iv); dice[0].setAttribute('data-v', d[0]); dice[1].setAttribute('data-v', d[1]); if (d[0] === d[1]) floatCentre('Doubles!'); });
+  }
+  // the token hops square by square, with a tap on each landing
+  function hop(e) {
+    var p = e.p, t = view.toks[p], steps = Math.abs(e.n), dir = e.n < 0 ? -1 : 1;
+    if (!steps) { disp.pos[p] = e.to; placeTokens(); return Promise.resolve(); }
+    if (TEST.instant) { disp.pos[p] = e.to; placeTokens(); return Promise.resolve(); }
+    var per = Math.min(T(230), Math.max(T(70), T(2600) / steps)), sq = e.from, k = 0;
+    t.classList.add('cur');
+    return new Promise(function (res) {
+      (function next() {
+        if (k >= steps) { placeTokens(); res(); return; }
+        sq = (sq + dir + 40) % 40; k++;
+        disp.pos[p] = sq;
+        var s = k === steps ? slotOf(p) : A.centerOf(sq);
+        var fromL = parseFloat(t.style.left), fromT = parseFloat(t.style.top);
+        t.style.left = s.x / 10 + '%'; t.style.top = s.y / 10 + '%';
+        if (t.animate) {
+          t.animate([{ left: fromL + '%', top: fromT + '%' }, { left: s.x / 10 + '%', top: s.y / 10 + '%' }], { duration: per * 0.92, easing: 'ease-in-out' });
+          t.firstChild.animate([{ transform: 'translateY(0) scale(1)' }, { transform: 'translateY(-55%) scale(1.12)' }, { transform: 'translateY(0) scale(1)' }], { duration: per * 0.92, easing: 'ease-out' });
+        }
+        follow(s.x, s.y);
+        setTimeout(function () { Kit.sfx('tick', 0.35); if (k === steps) { Kit.sfx('tap'); Kit.haptic('light'); } next(); }, per);
+      })();
+    }).then(function () { if (sq === 0 || e.from + steps >= 40 && dir > 0) {} return wait(120); });
+  }
+  function slideToJail(e) {
+    var p = e.p, t = view.toks[p];
+    disp.pos[p] = 10; disp.jail[p] = true;
+    var s = slotOf(p);
+    if (!TEST.instant && t.animate) {
+      var fl = parseFloat(t.style.left), ft = parseFloat(t.style.top);
+      t.animate([{ left: fl + '%', top: ft + '%', transform: 'scale(1)' }, { left: (fl + s.x / 10) / 2 + '%', top: (ft + s.y / 10) / 2 + '%', transform: 'scale(1.6)' }, { left: s.x / 10 + '%', top: s.y / 10 + '%', transform: 'scale(1)' }], { duration: T(900), easing: 'ease-in-out' });
+    }
+    placeTokens(); follow(s.x, s.y);
+    return wait(900);
+  }
+  // money: bills fly from the payer to whoever gets paid (the bank and the jackpot are in the middle of the board)
+  function anchor(who) {
+    if (who >= 0 && view.chips && view.chips[who]) { var r = view.chips[who].getBoundingClientRect(); if (r.width) return { x: r.left + 22, y: r.top + r.height / 2 }; }
+    var b = view.vp.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height * (who === -2 ? 0.62 : 0.5) };
+  }
+  function payFx(e) {
+    if (e.f >= 0) disp.cash[e.f] -= e.a;
+    if (e.t >= 0) disp.cash[e.t] += e.a;
+    var why = e.w;
+    if (e.f >= 0) { chipCash(e.f); floatChip(e.f, '−' + money(e.a), 'dn'); }
+    if (e.t >= 0) { chipCash(e.t); floatChip(e.t, '+' + money(e.a), 'up'); }
+    if (e.t === -2) renderCentre();
+    if (why === 'rent' && e.sq >= 0) floatAt(e.sq, 'Rent ' + money(e.a), 'bad');
+    if (why === 'go') floatAt(0, '+' + money(e.a), 'good');
+    if (TEST.instant) return Promise.resolve();
+    var a = anchor(e.f), b = anchor(e.t), c = billColor(e.a), n = e.a >= 200 ? 3 : e.a >= 50 ? 2 : 1;
+    for (var k = 0; k < n; k++) (function (k) {
+      var bill = el('span', { class: 'bill fly', style: { '--bc': c[1], left: a.x + 'px', top: a.y + 'px' } }, [el('span', { text: '$' + c[0] })]);
+      document.body.appendChild(bill);
+      var dx = b.x - a.x, dy = b.y - a.y, rot = (Math.random() - 0.5) * 50;
+      var an = bill.animate([{ transform: 'translate(0,0) rotate(0) scale(.8)', opacity: 0 }, { opacity: 1, offset: 0.15 }, { transform: 'translate(' + (dx * 0.5) + 'px,' + (dy * 0.5 - 40) + 'px) rotate(' + rot + 'deg) scale(1.1)', offset: 0.5 }, { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(' + (rot * 2) + 'deg) scale(.7)', opacity: 0.2 }],
+        { duration: T(650), delay: k * T(90), easing: 'ease-in-out', fill: 'forwards' });
+      an.onfinish = function () { bill.remove(); };
+      setTimeout(function () { bill.remove(); }, T(650) + k * T(90) + 400);
+    })(k);
+    Kit.sfx('deal', 0.8);
+    if (e.f >= 0 && isHuman(e.f) && (why === 'rent' || why === 'tax')) Kit.haptic('medium');
+    return wait(why === 'rent' || why === 'tax' || why === 'card' || why === 'repairs' ? 650 : why === 'go' ? 450 : 260);
+  }
+  function floatChip(i, text, cls) {
+    var c = view.chips && view.chips[i]; if (!c) return;
+    var f = el('span', { class: 'dlt ' + cls, text: text }); c.appendChild(f); setTimeout(function () { f.remove(); }, 1400);
+  }
+  function floatAt(sq, text, cls) {
+    var c = A.centerOf(sq), f = el('div', { class: 'mfloat ' + (cls || ''), text: text, style: { left: c.x / 10 + '%', top: c.y / 10 + '%' } });
+    view.board.appendChild(f); setTimeout(function () { f.remove(); }, 1600);
+  }
+  function floatCentre(text) { var f = el('div', { class: 'mfloat', text: text, style: { left: '50%', top: '42%' } }); view.board.appendChild(f); setTimeout(function () { f.remove(); }, 1600); }
+  // Chance and Community Chest: the top card flips off its pile and grows in the middle of the board
+  function showCard(e) {
+    var isCh = e.d === 'ch';
+    var card = el('div', { class: 'mcard', role: 'dialog', 'aria-label': (isCh ? 'Chance' : 'Community Chest') + ': ' + e.t, style: { '--fx': (isCh ? 35 : -35) + '%', '--fy': (isCh ? 70 : -70) + '%' } }, [
+      el('div', { class: 'ccard ' + e.d }, [el('div', { class: 'ct', text: isCh ? 'CHANCE' : 'COMMUNITY CHEST' }), el('div', { class: 'cx', text: e.t }), el('div', { class: 'ci', html: isCh ? '' : A.icon('chest') })])
+    ]);
+    Kit.sfx('flip'); Kit.haptic('light');
+    view.board.appendChild(card);
+    requestAnimationFrame(function () { card.classList.add('show'); });
+    if (TEST.instant) { card.remove(); return Promise.resolve(); }
+    var human = isHuman(e.p) && mine(e.p);
+    return new Promise(function (res) {
+      var done = false, tm = setTimeout(go, T(human ? 3400 : 2600));
+      function go() { if (done) return; done = true; clearTimeout(tm); card.classList.add('gone'); setTimeout(function () { card.remove(); }, 320); res(); }
+      card.addEventListener('click', go);
+    });
+  }
+
+  // ═══ Sheets ═════════════════════════════════════════════════════════════
+  var sheetNow = null;
+  function openSheet(o, refresh) { closeSheet(); var s = Kit.sheet(Object.assign({}, o, { onClose: function () { if (sheetNow && sheetNow.s === s) sheetNow = null; } })); sheetNow = { s: s, refresh: refresh }; return s; }
+  function closeSheet() { if (sheetNow) { var s = sheetNow.s; sheetNow = null; s.close(); } }
+  function refreshSheet() { if (sheetNow && sheetNow.refresh) try { sheetNow.refresh(); } catch (e) { console.warn(e); } }
+  function deedSheet(sq) {
+    if (!S) return;
+    var s = SQ[sq];
+    if (!s.p) {
+      var txt = { go: 'Collect $200 each time you pass Go' + (S.opts.go400 ? ', or $400 for landing right on it.' : '.'), jail: 'Just visiting, unless you’ve been sent to Jail.', fp: S.opts.fp ? 'Taxes and fines collect here. Land on it to take the jackpot: ' + money(S.pot) + '.' : 'A free rest. Nothing happens.', gtj: 'Go straight to Jail. Don’t pass Go, don’t collect $200.', cc: 'Take a Community Chest card.', ch: 'Take a Chance card.', tax: 'Pay ' + money(s.amt) + ' to the bank.' }[s.k];
+      openSheet({ title: s.n, html: '<p class="muted">' + esc(txt) + '</p>', actions: [{ label: 'Close', cls: 'btn-soft' }] });
+      return;
+    }
+    var node = el('div');
+    function paint() {
+      node.innerHTML = '';
+      var own = S.own[sq], v = viewer(), x = S.players[v];
+      node.appendChild(el('div', { style: { 'max-width': '260px', margin: '0 auto' }, html: deedHTML(sq) }));
+      var line = own < 0 ? 'For sale: ' + money(s.p) : (own === v ? 'Yours' : 'Owned by ' + S.players[own].name) + (S.mort[sq] ? ' · mortgaged (no rent)' : s.k === 'st' && !S.hs[sq] && M.ownsGroup(S, own, s.g) ? ' · whole group: rent doubled' : '');
+      node.appendChild(el('p', { class: 'muted', style: { 'text-align': 'center', margin: '12px 0 8px', 'font-weight': '800' }, text: line }));
+      if (own === v && mine(v) && S.phase !== 'over') {
+        var b = el('div', { class: 'btns' });
+        if (s.k === 'st' && M.ownsGroup(S, v, s.g)) {
+          var why = M.canBuild(S, v, sq);
+          b.appendChild(btn(S.hs[sq] === 4 ? 'Build a hotel ' + money(s.h) : 'Build a house ' + money(s.h), 'btn-primary', function () { act({ t: 'build', p: v, sq: sq }); }, { disabled: !!why }));
+          if (S.hs[sq]) b.appendChild(btn('Sell ' + (S.hs[sq] === 5 ? 'the hotel' : 'a house') + ' +' + money(s.h / 2), 'btn-soft', function () { act({ t: 'sell', p: v, sq: sq }); }, { disabled: !!M.canSell(S, v, sq) }));
+          if (why && !/cash|evenly|hotel|houses/i.test(why)) node.appendChild(el('p', { class: 'muted', style: { 'text-align': 'center', 'font-size': '.85rem' }, text: why }));
+        }
+        if (S.mort[sq]) b.appendChild(btn('Pay off mortgage ' + money(M.unmortCost(S, sq)), 'btn-soft', function () { act({ t: 'unmort', p: v, sq: sq }); }, { disabled: x.cash < M.unmortCost(S, sq) }));
+        else b.appendChild(btn('Mortgage +' + money(s.m), 'btn-soft', function () { act({ t: 'mort', p: v, sq: sq }); }, { disabled: !!M.canMort(S, v, sq) }));
+        node.appendChild(b);
+      }
+    }
+    paint();
+    openSheet({ title: s.n, node: node, actions: [{ label: 'Close', cls: 'btn-ghost' }] }, paint);
+  }
+  function hsIcons(n) { if (n === 5) return '<svg viewBox="-19 -19 38 21">' + A.hotel(0, 0, 1) + '</svg>'; var h = ''; for (var k = 0; k < n; k++) h += '<svg viewBox="-10 -18 20 20">' + A.house(0, 0, 1) + '</svg>'; return h || '<small style="color:var(--text-3);font-weight:800">none</small>'; }
+  function buildSheet(v) {
+    var node = el('div');
+    function paint() {
+      node.innerHTML = '';
+      var x = S.players[v];
+      node.appendChild(el('div', { class: 'bankline', html: '<span>Cash ' + money(x.cash) + '</span><span><svg viewBox="-10 -18 20 20">' + A.house(0, 0, 1) + '</svg> ' + S.bankH + ' left</span><span><svg viewBox="-19 -19 38 21">' + A.hotel(0, 0, 1) + '</svg> ' + S.bankT + ' left</span>' }));
+      var gs = buildable(v), anyBuilt = S.hs.some(function (n, i) { return n && S.own[i] === v; });
+      if (!gs.length && !anyBuilt) { node.appendChild(el('p', { class: 'muted', text: 'Own every street of a colour group to build on it. Trade for the missing one!' })); return; }
+      gs.forEach(function (g) {
+        var box = el('div', { class: 'bgrp', style: { '--gc': GROUPS[g].c } }, [el('h4', null, [el('i'), el('span', { text: GROUPS[g].n }), el('small', { class: 'muted', style: { 'margin-left': 'auto', 'font-weight': '700' }, text: money(SQ[M.GSQ[g][0]].h) + ' each' })])]);
+        var mortd = M.GSQ[g].some(function (s) { return S.mort[s]; });
+        if (mortd) box.appendChild(el('p', { class: 'muted', style: { 'font-size': '.85rem' }, text: 'Pay off the mortgages in this group to build.' }));
+        M.GSQ[g].forEach(function (sq) {
+          var bw = M.canBuild(S, v, sq), sw = M.canSell(S, v, sq);
+          box.appendChild(el('div', { class: 'brow' }, [
+            el('div', { class: 'nm' }, [el('span', { text: SQ[sq].n }), el('small', { text: 'Rent ' + money(M.rent(S, sq, 7) || SQ[sq].r[0] * 2) })]),
+            el('button', { type: 'button', class: 'btn btn-soft sq-btn', 'aria-label': 'Sell from ' + SQ[sq].n, html: Kit.icon('minus'), disabled: !!sw || null, onclick: function () { if (!busy) act({ t: 'sell', p: v, sq: sq }); } }),
+            el('span', { class: 'hs', html: hsIcons(S.hs[sq]) }),
+            el('button', { type: 'button', class: 'btn btn-primary sq-btn', 'aria-label': 'Build on ' + SQ[sq].n, title: bw || '', html: Kit.icon('plus'), disabled: !!bw || null, onclick: function () { if (!busy) act({ t: 'build', p: v, sq: sq }); } })
+          ]));
+        });
+        node.appendChild(box);
+      });
+      // groups with buildings that aren't complete any more can't happen; groups that can't swap a hotel can sell everything
+      for (var g2 = 0; g2 < 8; g2++) (function (g2) {
+        if (M.GSQ[g2].some(function (s) { return S.hs[s] === 5; }) && S.bankH < 4 && M.GSQ[g2].every(function (s) { return S.own[s] === v; }))
+          node.appendChild(btn('Sell all ' + GROUPS[g2].n + ' buildings', 'btn-soft', function () { act({ t: 'sellAll', p: v, g: g2 }); }));
+      })(g2);
+      node.appendChild(el('p', { class: 'muted', style: { 'font-size': '.82rem' }, text: 'Build evenly across a group. Selling pays back half.' }));
+    }
+    paint();
+    openSheet({ title: 'Build houses and hotels', node: node, actions: [{ label: 'Done', cls: 'btn-soft' }] }, paint);
+  }
+  function mortSheet(v) {
+    var node = el('div');
+    function paint() {
+      node.innerHTML = '';
+      var x = S.players[v];
+      node.appendChild(el('div', { class: 'bankline', html: '<span>Cash ' + money(x.cash) + '</span>' }));
+      var any = false;
+      M.OWNABLE.forEach(function (sq) {
+        if (S.own[sq] !== v) return; any = true;
+        var s = SQ[sq], m = S.mort[sq], why = m ? null : M.canMort(S, v, sq), cost = M.unmortCost(S, sq);
+        node.appendChild(el('div', { class: 'brow' }, [
+          el('i', { style: { width: '10px', height: '28px', 'border-radius': '3px', background: s.k === 'st' ? GROUPS[s.g].c : '#bbb', flex: 'none' } }),
+          el('div', { class: 'nm' }, [el('span', { text: s.n }), el('small', { text: m ? 'Mortgaged' : why ? 'Has buildings in its group' : 'Rent ' + money(M.rent(S, sq, 7)) })]),
+          m ? el('button', { type: 'button', class: 'btn btn-soft', text: 'Pay off ' + money(cost), disabled: x.cash < cost || null, onclick: function () { if (!busy) act({ t: 'unmort', p: v, sq: sq }); } })
+            : el('button', { type: 'button', class: 'btn btn-soft', text: 'Mortgage +' + money(s.m), disabled: !!why || null, onclick: function () { if (!busy) act({ t: 'mort', p: v, sq: sq }); } })
+        ]));
+      });
+      if (!any) node.appendChild(el('p', { class: 'muted', text: 'You don’t own any property yet.' }));
+      node.appendChild(el('p', { class: 'muted', style: { 'font-size': '.82rem', 'margin-top': '10px' }, text: 'A mortgage gives you half the price. Paying it off costs that plus 10%.' }));
+    }
+    paint();
+    openSheet({ title: 'Mortgages', node: node, actions: [{ label: 'Done', cls: 'btn-soft' }] }, paint);
+  }
+  // Trade: pick who, tick what each side gives, add cash; a computer partner shows how keen it is
+  function tradeSheet(v) {
+    var others = M.active(S).filter(function (i) { return i !== v; });
+    if (!others.length) return;
+    var st = { to: others[0], give: { cash: 0, props: [], cards: 0 }, get: { cash: 0, props: [], cards: 0 } };
+    var node = el('div'), s;
+    function tradable(p) { return M.OWNABLE.filter(function (sq) { return S.own[sq] === p; }); }
+    function toggle(arr, sq) { var i = arr.indexOf(sq); if (i >= 0) arr.splice(i, 1); else arr.push(sq); }
+    function col(p, side, title) {
+      var c = el('div', { class: 'tr-col' }, [el('h4', { text: title })]), list = el('div', { class: 'tr-props' });
+      var props = tradable(p);
+      if (!props.length) list.appendChild(el('div', { class: 'empty', style: { 'font-size': '.8rem' }, text: 'No property' }));
+      props.forEach(function (sq) {
+        var blocked = SQ[sq].k === 'st' && M.GSQ[SQ[sq].g].some(function (x) { return S.hs[x] > 0; });
+        list.appendChild(el('button', { type: 'button', class: 'tr-p' + (side.props.indexOf(sq) >= 0 ? ' on' : ''), style: { '--gc': SQ[sq].k === 'st' ? GROUPS[SQ[sq].g].c : '#bbb' }, disabled: blocked || null,
+          onclick: function () { toggle(side.props, sq); Kit.sfx('tap'); paint(); } }, [el('i'), el('span', null, [el('span', { text: shortName(sq) }), S.mort[sq] || blocked ? el('small', { text: blocked ? 'has buildings' : 'mortgaged' }) : null])]));
+      });
+      c.appendChild(list);
+      var max = S.players[p].cash, inp = el('input', { class: 'input', type: 'number', min: '0', max: String(max), step: '10', value: String(side.cash), 'aria-label': title + ' cash', inputmode: 'numeric' });
+      inp.addEventListener('change', function () { side.cash = Math.max(0, Math.min(max, Math.floor(+inp.value || 0))); paint(); });
+      c.appendChild(el('div', { class: 'tr-cash' }, [
+        el('button', { type: 'button', text: '−', 'aria-label': 'Less cash', onclick: function () { side.cash = Math.max(0, side.cash - 50); paint(); } }), inp,
+        el('button', { type: 'button', text: '+', 'aria-label': 'More cash', onclick: function () { side.cash = Math.min(max, side.cash + 50); paint(); } })]));
+      if (S.players[p].cards.length) c.appendChild(el('button', { type: 'button', class: 'tr-p' + (side.cards ? ' on' : ''), style: { 'margin-top': '6px', '--gc': '#f3901d' }, onclick: function () { side.cards = side.cards ? 0 : 1; paint(); } }, [el('i'), el('span', { text: 'Jail Free card' })]));
+      return c;
+    }
+    function paint() {
+      node.innerHTML = '';
+      var who = el('div', { class: 'tr-who' });
+      others.forEach(function (i) {
+        who.appendChild(el('button', { type: 'button', class: i === st.to ? 'on' : '', style: { '--c': pcolor(i) }, onclick: function () { st.to = i; st.get = { cash: 0, props: [], cards: 0 }; Kit.sfx('tap'); paint(); } }, [el('span', { class: 'tkb', html: A.token(S.players[i].tok) }), el('span', { text: S.players[i].name })]));
+      });
+      node.appendChild(who);
+      node.appendChild(el('div', { class: 'tr-cols' }, [col(v, st.give, 'You give'), col(st.to, st.get, S.players[st.to].name + ' gives')]));
+      var T2 = { f: v, to: st.to, give: st.give, get: st.get }, err = M.tradeErr(S, v, st.to, T2);
+      if (S.players[st.to].cpu && !err) {
+        var keen = keenness(T2);
+        node.appendChild(el('div', { class: 'meter', 'aria-label': 'How keen ' + S.players[st.to].name + ' is' }, [el('div', { class: 'tr' }, [el('i', { style: { left: Math.round(keen * 100) + '%' } })]), el('div', { class: 'lb' }, [el('span', { text: 'No way' }), el('span', { text: S.players[st.to].name + ' would say yes' })])]));
+      }
+      var send = btn(err && /Add something/.test(err) ? 'Pick what to trade' : 'Offer this trade', 'btn-primary btn-block', function () {
+        var r = doAct({ t: 'propose', p: v, to: st.to, give: st.give, get: st.get });
+        if (!r || r.ok) closeSheet();
+      }, { icon: 'swap', disabled: !!err });
+      send.style.marginTop = '12px';
+      node.appendChild(send);
+      if (err && !/Add something/.test(err)) node.appendChild(el('p', { class: 'muted', style: { 'font-size': '.82rem', 'margin-top': '6px' }, text: err }));
+    }
+    function keenness(T2) {
+      // the computer's own sums, shown as a needle: left of the middle it says no
+      var t = JSON.parse(JSON.stringify(S));
+      var before = M.evalP(S, st.to);
+      ['give', 'get'].forEach(function (k) {
+        var from = k === 'give' ? v : st.to, dest = k === 'give' ? st.to : v, sd = T2[k];
+        t.players[from].cash -= sd.cash; t.players[dest].cash += sd.cash;
+        sd.props.forEach(function (sq) { t.own[sq] = dest; if (t.mort[sq]) t.players[dest].cash -= M.interest(sq); });
+        if (sd.cards) { t.players[from].cash -= 40; t.players[dest].cash += 40; }
+      });
+      var g = M.evalP(t, st.to) - before - 20;
+      return Math.max(0.03, Math.min(0.97, 0.5 + g / 600));
+    }
+    paint();
+    s = openSheet({ title: 'Trade', node: node, actions: [{ label: 'Cancel', cls: 'btn-ghost' }] }, null);
+  }
+  function playerSheet(i) {
+    var p = S.players[i], node = el('div');
+    node.appendChild(el('div', { class: 'wallet', style: { margin: '4px 0 12px' } }, [el('span', { class: 'big', text: p.out ? 'Bankrupt' : money(p.cash) }), el('span', { class: 'muted', style: { 'font-weight': '800' }, text: 'Worth ' + money(M.worth(S, i)) + (p.jail ? ' · in Jail' : '') })]));
+    var groups = el('div', { class: 'groups' }), any = false;
+    var order = []; for (var g = 0; g < 8; g++) order.push(M.GSQ[g]); order.push(M.RRS); order.push(M.UTS);
+    order.forEach(function (list) { var row = el('div', { class: 'grow-row' }); list.forEach(function (sq) { if (S.own[sq] === i) { row.appendChild(miniCard(sq)); any = true; } }); if (row.children.length) groups.appendChild(row); });
+    if (p.cards.length) groups.appendChild(el('div', { class: 'grow-row' }, p.cards.map(function (k) { return el('span', { class: 'goojf' + (k.slice(0, 2) === 'cc' ? ' cc' : ''), html: A.icon('lock') + '<span>Get Out of Jail Free</span>' }); })));
+    node.appendChild(any || p.cards.length ? groups : el('p', { class: 'muted', text: 'No property.' }));
+    openSheet({ title: p.name + ' · ' + A.TOK_NAME[p.tok], node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+  function logSheet() {
+    var box = el('div', { class: 'mlog', style: { background: 'none', padding: 0 } });
+    S.log.slice().reverse().forEach(function (l) { box.appendChild(el('div', { class: 'ln', style: { '--c': l.p >= 0 ? pcolor(l.p) : 'var(--text-3)' }, text: l.t })); });
+    openSheet({ title: 'What happened', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+
+  // ═══ The end ════════════════════════════════════════════════════════════
+  var shown = false;
+  function showWin(again) {
+    if (!S || S.phase !== 'over') return;
+    var w = S.winner, P = S.players;
+    if (!S.recorded) { S.recorded = true; recordGame(); }
+    var rank = P.map(function (p, i) { return { i: i, w: M.worth(S, i), out: p.out ? p.outAt : 1e9 }; })
+      .sort(function (a, b) { return (a.i === w ? -1 : b.i === w ? 1 : 0) || b.out - a.out || b.w - a.w; });
+    var lose = mode === 'cpu' ? P[w].cpu : mode === 'online' ? w !== net.seat : false;
+    Kit.win({
+      icon: lose ? 'bot' : 'trophy', lose: lose, quiet: !!again,
+      title: (P[w].name === 'You' ? 'You win!' : P[w].name + ' wins!'),
+      sub: S.endWhy === 'time' ? 'Richest when time ran out · worth ' + money(M.worth(S, w)) : 'Last one standing after ' + S.round + ' rounds',
+      rank: rank.map(function (r) { var p = P[r.i]; return { name: p.name, score: p.out ? 'Bankrupt' : money(r.w), color: pcolor(r.i), cpu: p.cpu }; }),
+      notes: highlights().slice(0, 4), notesTitle: 'How it went',
+      againLabel: mode === 'online' ? 'Back to the table' : 'Play again',
+      again: function () {
+        if (mode === 'online') { backToTable(); return; }
+        start(mode, P.map(function (p) { return { name: p.name, cpu: p.cpu }; }), S.opts);
+      },
+      extra: [{ label: 'Look at the board', onClick: function () { render(); } }, { label: 'Change players', onClick: function () { if (mode === 'online') leaveOnline(); showSetup(); } }]
+    });
+  }
+  function highlights() {
+    var h = [], P = S.players;
+    if (S.big) h.push('Biggest rent: ' + P[S.big.f].name + ' paid ' + P[S.big.t].name + ' ' + money(S.big.a) + (S.big.sq >= 0 ? ' on ' + SQ[S.big.sq].n : ''));
+    for (var g = 0; g < 8; g++) { var o = S.own[M.GSQ[g][0]]; if (o >= 0 && M.ownsGroup(S, o, g)) h.push(P[o].name + ' owned the ' + GROUPS[g].n + ' group'); }
+    S.out.forEach(function (b) { h.push(P[b.p].name + ' went bankrupt' + (b.to >= 0 ? ' to ' + P[b.to].name : '') + ' on turn ' + b.n); });
+    var mostT = -1, mt = 0; S.st.forEach(function (s, i) { if (s.trades > mt) { mt = s.trades; mostT = i; } });
+    if (mt >= 2) h.push(P[mostT].name + ' made ' + mt + ' trades');
+    var hot = 0, hw = -1; P.forEach(function (p, i) { var n = M.houses(S, i).t; if (n > hot) { hot = n; hw = i; } });
+    if (hot) h.push(P[hw].name + ' had ' + hot + ' hotel' + (hot === 1 ? '' : 's'));
+    return h;
+  }
+  function recordGame() {
+    var P = S.players, w = S.winner;
+    var o = '', hs = '', mo = '';
+    for (var i = 0; i < 40; i++) { o += S.own[i] < 0 ? '-' : String(S.own[i]); hs += String(S.hs[i]); mo += S.mort[i] ? '1' : '0'; }
+    Kit.record(KEY, {
+      started: S.started,
+      mode: (mode === 'cpu' ? 'vs Computer' : mode === 'online' ? 'Online' : 'Pass and play') + (S.opts.len !== 'all' ? ' · ' + ({ m60: '1 hour', m90: '90 min', r25: '25 rounds' }[S.opts.len] || S.opts.len) : ''),
+      players: P.map(function (p, i) { return { name: p.name, score: M.worth(S, i), cpu: p.cpu }; }),
+      winner: P[w].name,
+      highlights: highlights().slice(0, 8),
+      summary: P[w].name + ' won · ' + (S.endWhy === 'time' ? 'richest at the end' : 'last one standing') + ' · ' + S.round + ' rounds',
+      detail: { o: o, h: hs, m: mo, tk: P.map(function (p) { return p.tok; }), w: P.map(function (p, i) { return M.worth(S, i); }), c: P.map(function (p) { return p.cash; }),
+        rg: S.st.map(function (s) { return s.rentGot; }), out: S.out.map(function (b) { return { p: b.p, to: b.to, n: b.n }; }), r: S.round, t: S.turn, why: S.endWhy,
+        big: S.big, opt: [S.opts.fp ? 'fp' : '', S.opts.go400 ? 'go400' : '', S.opts.noAuction ? 'noauction' : '', S.opts.len !== 'all' ? S.opts.len : ''].filter(Boolean).join(',') }
+    });
+  }
+
+  // ═══ Online ═════════════════════════════════════════════════════════════
+  // The host's device runs the game. Guests send what they want to do ({t:'act', a}); the host checks it's
+  // their seat, plays it and sends everyone the new state with what happened ({t:'st', s, ev}).
+  var net = { role: null, table: null, peer: null, seat: 0, roster: [], wait: null, lobby: null, pidN: 0 };
+  function meName() { var m = lsGet(NETME, {}) || {}; return m.name || (function () { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } })() || ''; }
+  function goLobby() {
+    leaveOnline(); S = null; view = null; mode = null; app.className = 'stage'; app.innerHTML = '';
+    net.lobby = Online.lobby(app, {
+      game: 'monopoly', title: 'Play Online', max: 8,
+      intro: 'Two to eight players, each on their own device. One opens a table, the others join.',
+      me: { name: meName() },
+      onName: function (n) { var m = lsGet(NETME, {}) || {}; m.name = n; lsSet(NETME, m); },
+      onHost: function (me) { return hostTable(me.name); },
+      onJoin: function (code, room, me) { return joinTable(code, me.name); },
+      onSolo: function () { closeLobby(); showSetup(); }, solo: 'Play on this device instead',
+      sub: function (r) { return (r.n || 1) + ' of 8 players' + (r.status === 'playing' ? ' · playing' : ''); },
+      note: 'Each device connects straight to the host’s. If one can’t connect, try both on the same Wi-Fi.'
+    });
+    window.scrollTo(0, 0);
+  }
+  function closeLobby() { if (net.lobby) { net.lobby.close(); net.lobby = null; } }
+  function busyScreen(text) { app.innerHTML = ''; app.appendChild(el('div', { class: 'ol' }, [el('div', { class: 'ol-row' }, [el('i', { class: 'ol-spin' }), el('div', { class: 'grow' }, [el('b', { text: text })])])])); }
+  function leaveOnline() {
+    if (net.table) { try { net.table.close(); } catch (e) {} }
+    if (net.peer) { try { net.peer.close('left'); } catch (e) {} }
+    closeLobby();
+    net.role = null; net.table = null; net.peer = null; net.roster = []; net.wait = null;
+    if (mode === 'online') { mode = null; }
+  }
+  function hostTable(name) {
+    closeLobby(); busyScreen('Opening your table…');
+    return Online.host({ game: 'monopoly', name: name, max: 8, accept: function () { return S && mode === 'online' && S.phase !== 'over' ? 'That game has already started' : true; } }).then(function (table) {
+      table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(); goLobby(); });
+      net.role = 'host'; net.table = table; net.seat = 0; net.pidN = 1;
+      net.roster = [{ pid: 1, name: name, host: true }];
+      table.on('peer', function (peer) {
+        if (S && mode === 'online' && S.phase !== 'over') { peer.send({ t: 'full' }, true); setTimeout(function () { peer.close('host'); }, 300); return; }
+        peer._pid = ++net.pidN;
+        net.roster.push({ pid: peer._pid, name: uniqueName(peer.name), peer: peer });
+        sendRoster(); Kit.toast(peerName(peer) + ' joined'); Kit.sfx('pop');
+      });
+      table.on('leave', function (peer) {
+        var r = net.roster.filter(function (x) { return x.peer === peer; })[0];
+        net.roster = net.roster.filter(function (x) { return x.peer !== peer; });
+        sendRoster();
+        if (r && S && mode === 'online' && S.phase !== 'over' && r.seat != null) {
+          var pl = S.players[r.seat];
+          if (pl && !pl.out) { pl.cpu = true; S.log.push({ t: pl.name + ' left. The computer plays for them now.', p: r.seat, n: S.turn }); netBroadcast([]); render(); afterChange(); Kit.toast(pl.name + ' left · the computer takes over'); }
+        } else if (r) Kit.toast(r.name + ' left');
+      });
+      table.on('msg', function (peer, m) {
+        if (m.t !== 'act' || !S || mode !== 'online') return;
+        var r = net.roster.filter(function (x) { return x.peer === peer; })[0];
+        if (!r || r.seat == null || !m.a || m.a.p !== r.seat) { peer.send({ t: 'err', msg: 'That isn’t yours to do' }, true); return; }
+        var res = doAct(m.a);
+        if (res && !res.ok) peer.send({ t: 'err', msg: res.err }, true);
+      });
+      showWait();
+    }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
+  }
+  function peerName(peer) { var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; return r ? r.name : peer.name; }
+  function uniqueName(n) { var base = n || 'Player', k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
+  function sendRoster() {
+    var ro = net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host }; });
+    if (net.table) net.table.broadcast({ t: 'ro', ro: ro }, true);
+    if (net.wait) net.wait.update(waitPlayers(ro, 1));
+  }
+  function waitPlayers(ro, mePid) { return ro.map(function (r, i) { return { name: r.name, host: !!r.host, me: r.pid === mePid, color: Kit.color(i) }; }); }
+  function showWait() {
+    S = null; view = null; app.className = 'stage';
+    if (net.role === 'host') {
+      net.table.setStatus('open', '');
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 8, players: waitPlayers(net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host }; }), 1),
+        onStart: hostStart, onLeave: function () { leaveOnline(); goLobby(); }, note: 'Everyone starts with $1,500. House rules come from your setup screen.' });
+    } else {
+      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 8, players: waitPlayers(net.ro || [], net.myPid), onLeave: function () { leaveOnline(); goLobby(); } });
+    }
+    window.scrollTo(0, 0);
+  }
+  function hostStart() {
+    if (net.roster.length < 2) { Kit.toast('Wait for at least one more player'); return; }
+    var opts = (lsGet(NETME, {}) || {}).opts || { len: 'all' };
+    net.roster.forEach(function (r, i) { r.seat = i; });
+    net.wait = null; mode = 'online';
+    S = M.newGame(net.roster.map(function (r) { return { name: r.name, cpu: false }; }), opts);
+    Kit.gameStart(); S.started = Date.now(); undoStack = [];
+    net.roster.forEach(function (r) { if (r.peer) r.peer.send({ t: 'seat', seat: r.seat }, true); });
+    net.table.setStatus('playing', 'Round 1');
+    build(); render(); netBroadcast([]);
+    setTimeout(function () { Kit.callout(S.players[0].name + ' goes first'); }, 400);
+    afterChange();
+  }
+  function netBroadcast(ev) {
+    if (!net.table) return;
+    var s = JSON.parse(JSON.stringify(S)); s.log = s.log.slice(-40);
+    net.table.broadcast({ t: 'st', s: s, ev: ev }, true);
+    if (S.phase !== 'over') net.table.setStatus('playing', 'Round ' + S.round);
+    else net.table.setStatus('open', '');
+  }
+  function netSend(m) { if (net.peer && !net.peer.closed) net.peer.send(m, true); else Kit.toast('Not connected to the table'); }
+  function joinTable(code, name) {
+    closeLobby(); busyScreen('Connecting to the table…');
+    return Online.join(code, { game: 'monopoly', name: name }).then(function (peer) {
+      net.role = 'guest'; net.peer = peer; net.hostName = peer.name; net.ro = []; net.seat = -1;
+      peer.on('msg', guestMsg);
+      peer.on('close', function (why) {
+        if (net.peer !== peer) return;
+        var playing = S && mode === 'online' && S.phase !== 'over';
+        net.peer = null; net.role = null;
+        if (playing) { mode = null; Kit.sheet({ title: 'The game ended', html: '<p class="muted">' + esc(net.hostName || 'The host') + (why === 'host' || why === 'left' ? ' closed the table.' : '’s table lost its connection.') + '</p>', actions: [{ label: 'Back to the lobby', primary: true, onClick: goLobby }] }); }
+        else if (!S) { Kit.toast((net.hostName || 'The host') + ' closed the table'); goLobby(); }
+      });
+      showWait();
+    }).catch(function (e) {
+      var msg = e && e.nat ? e.message : Online.errText(e);
+      if (e && e.nat) Kit.sheet({ title: 'Couldn’t connect', html: '<p>' + esc(msg) + '</p>' }); else Kit.toast(msg);
+      goLobby();
+    });
+  }
+  function guestMsg(m) {
+    if (m.t === 'ro') { net.ro = m.ro; if (net.wait) net.wait.update(waitPlayers(m.ro, -1).map(function (p) { p.me = p.name === meName(); return p; })); return; }
+    if (m.t === 'full') { Kit.toast('That game has already started'); return; }
+    if (m.t === 'seat') { net.seat = m.seat; return; }
+    if (m.t === 'err') { Kit.toast(m.msg || 'Not now'); Kit.sfx('bad'); return; }
+    if (m.t === 'st') {
+      var fresh = !S || mode !== 'online';
+      if (fresh) {
+        mode = 'online'; net.wait = null; S = m.s; build(); render(); Kit.gameStart();
+        setTimeout(function () { Kit.callout(S.players[S.cur].name + ' goes first'); }, 400);
+        return;
+      }
+      var pre = snapPre(), next = m.s;
+      // animate from what's on screen to the host's new state
+      busy++;
+      chain = chain.then(function () {
+        var shownS = S; S = next;
+        S.recorded = shownS.recorded;
+        return animate(m.ev || [], pre);
+      }).catch(function (e) { console.error(e); }).then(function () { disp = null; busy = Math.max(0, busy - 1); render(); afterChange(); });
+    }
+  }
+  function backToTable() {
+    if (net.role === 'host' && net.table && !net.table.closed) { mode = null; net.roster.forEach(function (r) { delete r.seat; }); showWait(); sendRoster(); return; }
+    if (net.role === 'guest' && net.peer && !net.peer.closed) { mode = null; showWait(); return; }
+    leaveOnline(); goLobby();
+  }
+
+  // a game against the clock: count the time spent playing (not time the app sat closed)
+  setInterval(function () {
+    if (!S || S.phase === 'over' || document.hidden || (mode === 'online' && net.role === 'guest')) return;
+    if (!/^m/.test(S.opts.len || '')) return;
+    S.elapsed += 5000;
+    if (view && view.act) { var lim = view.act.querySelector('.lim'); if (lim && !M.limitHit(S)) lim.textContent = Math.ceil(Math.max(0, +S.opts.len.slice(1) * 60000 - S.elapsed) / 60000) + ' min left'; }
+  }, 5000);
+
+  // ═══ Test hooks ═════════════════════════════════════════════════════════
+  window.__mono = {
+    S: function () { return S; }, M: M, act: function (a) { return doAct(a); }, mode: function () { return mode; }, busy: function () { return busy; },
+    instant: function (on) { TEST.instant = on !== false; }, speed: function (v) { speed = v; }, seat: function () { return net.seat; }, role: function () { return net.role; },
+    setState: function (s) { S = s; build(); render(); afterChange(); }, render: function () { render(); }, deed: deedSheet, build: buildSheet, mortgage: mortSheet, trade: tradeSheet
+  };
+
+  // ═══ Start ══════════════════════════════════════════════════════════════
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (/[?&]online=1/.test(location.search)) goLobby();
+  else if (saved && saved.S && saved.S.players && saved.S.phase !== 'over' && saved.mode !== 'online') { S = saved.S; mode = saved.mode; build(); render(); afterChange(); }
+  else showSetup();
+})();
+</script>
+</body>
+</html>
