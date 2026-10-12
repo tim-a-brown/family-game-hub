@@ -504,13 +504,13 @@
     if (!d || !arr(d.rs).length) return null;
     var cah = d.dk === 'cah', open = true;
     if (cah) { try { open = localStorage.getItem('a2a_cah') === '1'; } catch (x) { open = false; } }
-    var ghost = cah ? 'Rando Cardrissian' : 'Ghost', out = [];
+    var ghost = cah && open ? 'Rando Cardrissian' : 'Ghost', out = [];
     // how many cards each player won
     var tally = P.map(function (n, i) { return { label: n, value: 0, color: ui.color(i) }; });
     if (d.gh >= 0) tally.push({ label: ghost, value: 0, color: '#9aa3b8' });
     arr(d.rs).forEach(function (r) { var k = r.b >= 0 ? r.b : d.gh >= 0 ? P.length : -1; if (tally[k]) tally[k].value++; });
     out.push(ui.stats([['Rounds', arr(d.rs).length], ['To win', d.t], ['House rules', d.ru || 'Classic']]));
-    out.push(ui.section(cah ? 'Black cards won' : 'Cards won', ui.bars(tally.map(function (t) { return { label: t.label, value: t.value, max: d.t, text: String(t.value), color: t.color }; })), { icon: 'trophy' }));
+    out.push(ui.section(cah && open ? 'Black cards won' : 'Cards won', ui.bars(tally.map(function (t) { return { label: t.label, value: t.value, max: d.t, text: String(t.value), color: t.color }; })), { icon: 'trophy' }));
     if (!open) { out.push(el('p', { class: 'aa-note', text: 'The cards from this game show on devices where its deck is turned on.' })); return ui.wrap(out); }
     var list = el('div', { class: 'aa-list' });
     arr(d.rs).forEach(function (r, i) {
