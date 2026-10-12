@@ -136,12 +136,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   };
   var PCOL = ['#3fa9ff', '#ffd23d', '#c46bff'];   // player ships: blue, yellow, purple, like the cabinet's three seats
   // Power-ups, the Chaos set: rare (one floats in high up every 20 to 30 seconds), so they're worth going for.
-  // The weapons last POW_T seconds; a new weapon replaces the one you have. Shield and Bomb stand alone.
+  // The weapons last POW_T seconds; a new weapon replaces the one you have. Bomb goes off on pickup.
   var POW = {
     scatter: { c: '#ffb02e', name: 'Scatter' }, shock: { c: '#5ef0ff', name: 'Shock' }, beam: { c: '#ff4fd8', name: 'Beam' },
-    bomb: { c: '#ff4a3d', name: 'Bomb' }, shield: { c: '#7dffb0', name: 'Shield' }
+    bomb: { c: '#ff4a3d', name: 'Bomb' }
   };
-  var POWK = ['scatter', 'shock', 'beam', 'bomb', 'shield'], POW_T = 12, SHIELD_T = 8, BOMB_R = 70, CAP_LIFE = 12;
+  var POWK = ['scatter', 'shock', 'beam', 'bomb'], POW_T = 12, BOMB_R = 70, CAP_LIFE = 12;
   // Damage to a boss from each kind of hit (where its armour lets it through)
   var BDMG = { laser: 1, scatter: 0.4, shock: 1, beam: 0.75, bomb: 8, blast: 6 };
   var BOSS_NP = 1;        // each extra online player adds 100% to a boss's health
@@ -197,8 +197,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     kill: function () { noise(0, 0.25, 0.22, 'lowpass', 1600, { to: 200 }); osc('square', 330, 0, 0.2, 0.06, { to: 110, lp: 1600 }); },
     die: function () { noise(0, 0.7, 0.5, 'lowpass', 1200, { to: 90 }); osc('sawtooth', 300, 0, 0.7, 0.12, { to: 40, lp: 1200 }); osc('sine', 120, 0, 0.6, 0.3, { to: 35 }); },
     power: function () { [72, 76, 79, 84, 88].forEach(function (m, i) { osc('square', mtof(m), i * 0.045, 0.09, 0.05, { lp: 4200 }); osc('triangle', mtof(m + 12), i * 0.045, 0.14, 0.05); }); },
-    shield: function () { [76, 83, 88, 95].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.06, 0.3, 0.05); }); },
-    block: function () { osc('triangle', 1600, 0, 0.14, 0.08, { to: 700 }); noise(0, 0.08, 0.1, 'highpass', 3000); },
     bomb: function () { noise(0, 1.0, 0.6, 'lowpass', 1800, { to: 60 }); osc('sine', 110, 0, 0.8, 0.45, { to: 30 }); osc('square', 220, 0, 0.3, 0.07, { to: 55, lp: 900 }); },
     combo: function () { [79, 83, 86].forEach(function (m, i) { osc('square', mtof(m), i * 0.05, 0.08, 0.04, { lp: 5000 }); }); },
     bhit: function () { osc('square', 180, 0, 0.07, 0.07, { to: 80, lp: 1400 }); noise(0, 0.05, 0.1, 'bandpass', 700, { q: 2 }); },
@@ -278,8 +276,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       '<li><b>Shock</b>: every hit throws lightning on to the nearest bugs.</li>' +
       '<li><b>Beam</b>: a laser straight up that goes through everything in its path.</li>' +
       '<li>Those three last 12 seconds. The ring around your ship shows the time left. Picking up a new one swaps it.</li>' +
-      '<li><b>Bomb</b>: blows up everything near the ring, right away.</li>' +
-      '<li><b>Shield</b>: 8 seconds when nothing can hurt you, and bugs that touch you get smashed.</li></ul>' +
+      '<li><b>Bomb</b>: blows up everything near the ring, right away.</li></ul>' +
       '<h3>Combos</h3><p>Hit bugs quickly, one after another. Every 5 in a row is a combo bonus: x5 is <b>100</b>, x10 is <b>200</b>, x15 is <b>300</b> and so on.</p>' +
       '<h3>Bosses</h3><p>Each boss is armoured: your shots bounce off except at its weak spot or in its weak moment. The bar at the top shows its health, and it gets angrier at two thirds and one third.</p><ul>' +
       '<li><b>Killer Wasp</b> (wave 3): follows you along the top, locks on, loops and dives straight at you. Dodge sideways, then get under it: only while it climbs back up, thorax glowing, can it be hurt. It sends ordinary wasps too.</li>' +
@@ -376,7 +373,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var used = G.players.map(function (q) { return q.ci; }), ci = 0;
     while (used.indexOf(ci) >= 0) ci++;
     var P = { id: p.id, dev: p.dev || null, name: p.name || 'Player', ci: ci, color: PCOL[ci % 3], x: spawnX(ci), y: spawnY(), alive: true, lives: DIFF[G.diff].lives, score: 0,
-      inv: 2.5, respawn: 0, power: null, powerT: 0, shield: 0, fire: false, cool: 0, beamT: 0, beaming: false, side: 1, combo: 0, comboT: 0, benched: false,
+      inv: 2.5, respawn: 0, power: null, powerT: 0, fire: false, cool: 0, beamT: 0, beaming: false, side: 1, combo: 0, comboT: 0, benched: false,
       local: !!p.local, tx: null, ty: null, deaths: 0, lastIn: performance.now() };
     G.players.push(P);
     if (G.boss) rescaleBoss();
@@ -573,7 +570,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       popup(P.x, P.y - 24, 'Combo x' + P.combo + ' +' + b, '#ffe23d', true); sound('combo');
     }
   }
-  function capKind() { var rel = G.diff === 'relaxed', r = Math.random() * (rel ? 4.8 : 4.4); return r < 1 ? 'scatter' : r < 2 ? 'shock' : r < 3 ? 'beam' : r < 3.8 ? 'bomb' : 'shield'; }
+  function capKind() { return POWK[Math.floor(Math.random() * POWK.length)]; }
   // Power-ups are rare: one at a time, floating in the upper part of the field for CAP_LIFE seconds.
   // Shoot it (or fly into it) to take it.
   function spawnCap(k) {
@@ -589,8 +586,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     G.stats.powers++;
     burst(cap.x, cap.y, c, 12, 1.2); buzz(P.id, 'success');
     if (k === 'bomb') { bomb(P, cap.x, cap.y); return; }
-    sound(k === 'shield' ? 'shield' : 'power');
-    if (k === 'shield') P.shield = SHIELD_T; else { P.power = k; P.powerT = POW_T; }
+    sound('power');
+    P.power = k; P.powerT = POW_T;
     popup(P.x, P.y - 18, POW[k].name, c, true);
   }
   // A blast: everything within reach goes up (mushrooms, bugs, centipede segments); a boss in reach takes a hit
@@ -611,7 +608,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
   function killPlayer(P) {
     if (!P.alive) return;
-    P.alive = false; P.lives--; P.deaths++; P.power = null; P.powerT = 0; P.shield = 0; P.fire = false; P.beaming = false; P.combo = 0;
+    P.alive = false; P.lives--; P.deaths++; P.power = null; P.powerT = 0; P.fire = false; P.beaming = false; P.combo = 0;
     boom(P.x, P.y, P.color, true); burst(P.x, P.y, P.color, 22, 1.5); burst(P.x, P.y, '#ffffff', 8, 1);
     sound('die'); shake(0.8); flash('#ff3d5a', 0.45); buzz(P.id, 'error');
     G.bullets = G.bullets.filter(function (b) { return b.o !== P.id; });
@@ -668,7 +665,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function playerStep(P, dt) {
     if (P.inv > 0) P.inv -= dt;
     if (P.comboT > 0) { P.comboT -= dt; if (P.comboT <= 0) P.combo = 0; }
-    if (P.shield > 0) P.shield = Math.max(0, P.shield - dt);
     if (P.powerT > 0) { P.powerT -= dt; if (P.powerT <= 0) { P.power = null; P.powerT = 0; } }
     if (!P.alive) { P.beaming = false; if (P.respawn > 0 && P.lives > 0 && !P.benched) { P.respawn -= dt; if (P.respawn <= 0) respawn(P); } return; }
     if (P.local) {
@@ -936,7 +932,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (shot) { award(P, 50, x, y, true); blast(P, x, y, 34, BDMG.blast); }
     else {
       blast(null, x, y, 22, 0);
-      G.players.forEach(function (p) { if (p.alive && p.inv <= 0 && p.shield <= 0 && Math.hypot(p.x - x, p.y - y) < 18) { if (G.noDie) { if (G.threats) G.threats.push({ pid: p.id, by: 'fire' }); } else { p.lastBy = 'fire'; killPlayer(p); } } });
+      G.players.forEach(function (p) { if (p.alive && p.inv <= 0 && Math.hypot(p.x - x, p.y - y) < 18) { if (G.noDie) { if (G.threats) G.threats.push({ pid: p.id, by: 'fire' }); } else { p.lastBy = 'fire'; killPlayer(p); } } });
     }
   }
   function shotsStep(dt) {
@@ -967,18 +963,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function collide() {
     G.players.forEach(function (P) {
       if (!P.alive || P.inv > 0) return;
-      var dead = false, i, sh = P.shield > 0;
+      var dead = false, i;
       var segs = G.segs.slice();
-      for (i = 0; i < segs.length && !dead; i++) { var s = segs[i]; if (Math.abs(s.x - P.x) < 6.5 && Math.abs(s.y - P.y) < 6.5) { if (sh) { var s2 = segById(s.id); if (s2) { hitSeg(s2, P); snd('block'); } } else dead = 'centipede'; } }
+      for (i = 0; i < segs.length && !dead; i++) { var s = segs[i]; if (Math.abs(s.x - P.x) < 6.5 && Math.abs(s.y - P.y) < 6.5) dead = 'centipede'; }
       var foes = G.foes.slice();
-      for (i = 0; i < foes.length && !dead; i++) if (foeTouch(foes[i], P.x, P.y)) { if (sh) { hitFoe(foes[i], P, 9); snd('block'); } else dead = foes[i].type; }
+      for (i = 0; i < foes.length && !dead; i++) if (foeTouch(foes[i], P.x, P.y)) dead = foes[i].type;
       for (i = G.shots.length - 1; i >= 0 && !dead; i--) {
         var o = G.shots[i]; if (o.k === 'ember') continue;
         var hit = o.k === 'fire' ? o.z < 7 && Math.abs(o.x - P.x) < 6 && Math.abs(o.y - P.y) < 6 : Math.abs(o.x - P.x) < 4.5 && Math.abs(o.y - P.y) < 5.5;
-        if (hit) { if (sh) { if (o.k === 'fire') fireBoom(o, P, true); else { G.shots.splice(i, 1); burst(o.x, o.y, '#7dffb0', 4, 0.6); } snd('block'); } else dead = o.k; }
+        if (hit) dead = o.k;
       }
-      for (i = 0; i < G.zones.length && !dead; i++) { var z = G.zones[i]; if (z.t >= 0 && z.t < ZONE_ON && Math.hypot(z.x - P.x, z.y - P.y) < z.R - 2) { if (!sh) dead = 'shockwave'; } }
-      if (!dead && !sh && G.boss && bossTouch(G.boss, P.x, P.y)) dead = G.boss.type;
+      for (i = 0; i < G.zones.length && !dead; i++) { var z = G.zones[i]; if (z.t >= 0 && z.t < ZONE_ON && Math.hypot(z.x - P.x, z.y - P.y) < z.R - 2) dead = 'shockwave'; }
+      if (!dead && G.boss && bossTouch(G.boss, P.x, P.y)) dead = G.boss.type;
       // test mode (god): note what would have hit, instead of losing a life
       if (dead && G.noDie) { if (G.threats) G.threats.push({ pid: P.id, by: dead, t: Math.round(G.t * 100) / 100 }); return; }
       if (dead) { P.lastBy = dead; killPlayer(P); }
@@ -1669,7 +1665,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (k === 'scatter') { [-0.62, -0.31, 0, 0.31, 0.62].forEach(function (an) { x.save(); x.rotate(an); x.beginPath(); x.moveTo(0, 3.6); x.lineTo(0, -3.2); x.stroke(); x.beginPath(); x.arc(0, -4, 0.8, 0, TAU); x.fill(); x.restore(); }); }
     else if (k === 'shock') { x.beginPath(); x.moveTo(1.2, -5); x.lineTo(-2.4, 0.4); x.lineTo(0.2, 0.4); x.lineTo(-1.2, 5); x.lineTo(2.6, -0.8); x.lineTo(0, -0.8); x.closePath(); x.fill(); }
     else if (k === 'beam') { x.fillRect(-1, -5, 2, 9); x.beginPath(); x.moveTo(-3.4, 4.6); x.lineTo(3.4, 4.6); x.stroke(); x.beginPath(); x.moveTo(-2.4, -3.6); x.lineTo(-3.6, -5); x.moveTo(2.4, -3.6); x.lineTo(3.6, -5); x.stroke(); }
-    else if (k === 'shield') { x.beginPath(); x.moveTo(0, -4.6); x.lineTo(3.8, -3.1); x.lineTo(3.4, 0.9); x.quadraticCurveTo(2.6, 3.4, 0, 4.8); x.quadraticCurveTo(-2.6, 3.4, -3.4, 0.9); x.lineTo(-3.8, -3.1); x.closePath(); x.stroke(); }
     else { x.beginPath(); x.arc(-0.6, 1, 3, 0, TAU); x.fill(); x.beginPath(); x.moveTo(1.4, -1.4); x.quadraticCurveTo(2.2, -3.4, 3.6, -3.6); x.stroke(); x.beginPath(); x.arc(3.8, -3.8, 0.9, 0, TAU); x.fill(); }
   }
   function capSpr(k) {
@@ -1911,12 +1906,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     x.lineCap = 'round';
     // time left on a weapon: an arc round the ring
     if (p.power && p.powerT > 0) { x.strokeStyle = POW[p.power].c; x.lineWidth = 1.8; x.beginPath(); x.arc(px, py, 14, -PI / 2, -PI / 2 + TAU * clamp(p.powerT / POW_T, 0, 1)); x.stroke(); }
-    // shield: a bubble, its own arc for the time left, flickering as it runs out
-    if (p.shield > 0 && (p.shield > 1.5 || Math.floor(drawT * 10) % 2)) {
-      x.globalCompositeOperation = 'lighter'; glow(x, px, py, 24, POW.shield.c, 0.3 * a); x.globalCompositeOperation = 'source-over';
-      x.globalAlpha = 0.5 * a; x.strokeStyle = '#c8ffe0'; x.lineWidth = 0.8; x.beginPath(); x.arc(px, py, 17 + Math.sin(drawT * 9) * 0.6, 0, TAU); x.stroke();
-      x.globalAlpha = a; x.strokeStyle = POW.shield.c; x.lineWidth = 1.4; x.beginPath(); x.arc(px, py, 17, -PI / 2, -PI / 2 + TAU * clamp(p.shield / SHIELD_T, 0, 1)); x.stroke();
-    }
     x.globalAlpha = 1;
   }
   function drawBullet(x, b, col) {
@@ -2107,10 +2096,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var X = L.slots[i], col = PCOL[p.ci % 3], dim = !p.alive && p.lives <= 0;
       var pl = plateSpr(L.pw, L.ph, col, dim); x.drawImage(pl.c, X - pl.pad, y - pl.pad);
       drawTxtAt(x, txt(fmt(p.score), dim ? '#8890a8' : '#ffffff', fp), X + L.pw / 2, y + L.ph / 2);
-      // weapon and shield time left, under the plate
+      // weapon time left, under the plate
       var yy = y + L.ph + Math.round(fp * 1.5), mh = Math.max(2, Math.round(fp * 0.9));
       if (p.alive && p.power && p.powerT > 0) { meter(x, X + L.pw * 0.1, yy, L.pw * 0.8, mh, POW[p.power].c, p.powerT / POW_T); yy += mh + fp * 1.5; }
-      if (p.alive && p.shield > 0) meter(x, X + L.pw * 0.1, yy, L.pw * 0.8, mh, POW.shield.c, p.shield / SHIELD_T);
     });
     if (L.ps.length === 1 && !net.mode) {
       var best = Math.max(G ? G.best0 : 0, R.score), X2 = L.cw - L.m - L.pw, pl2 = plateSpr(L.pw, L.ph, '#c8d0e8', true);
@@ -2302,7 +2290,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     G.zones.forEach(function (z) { s.zn.push(z.id, q4(z.x), q4(z.y), z.R, Math.round(z.t * 100), z.ci); });
     G.bullets.forEach(function (b) { s.u.push(b.id, b.o, q4(b.x), q4(b.y), BK.indexOf(b.k), ang(b.vx, b.vy)); });
     G.caps.forEach(function (c) { s.cp.push(c.id, POWK.indexOf(c.k), q4(c.x), q4(c.y), Math.round(c.t * 10)); });
-    G.players.forEach(function (p) { s.p.push([p.id, q4(p.x), q4(p.y), (p.alive ? 1 : 0) | (p.inv > 0 ? 2 : 0) | (p.beaming ? 4 : 0), p.lives, p.score, p.power ? POWK.indexOf(p.power) + 1 : 0, Math.round(p.powerT * 10), p.ci, p.name, Math.round(p.shield * 10)]); });
+    G.players.forEach(function (p) { s.p.push([p.id, q4(p.x), q4(p.y), (p.alive ? 1 : 0) | (p.inv > 0 ? 2 : 0) | (p.beaming ? 4 : 0), p.lives, p.score, p.power ? POWK.indexOf(p.power) + 1 : 0, Math.round(p.powerT * 10), p.ci, p.name]); });
     if (G.boss) { var B = G.boss; s.b = [B.id, BT.indexOf(B.type), q4(B.x), q4(B.y), Math.round(B.hp * 10) / 10, Math.round(B.max * 10) / 10, BST.indexOf(B.st), Math.round(B.z || 0), B.flash > 0 ? 1 : 0, B.ph, -1, B.vul ? 1 : 0]; }
     t.broadcast(s, false);
   }
@@ -2413,7 +2401,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var pm = {}; (A.p || []).forEach(function (p) { pm[p[0]] = p; });
       var wasAlive = V.pred.alive;
       V.players = B.p.map(function (p) {
-        var o = pm[p[0]] || p, P = { id: p[0], x: o[1] / 4 + (p[1] - o[1]) / 4 * a, y: o[2] / 4 + (p[2] - o[2]) / 4 * a, alive: !!(p[3] & 1), inv: p[3] & 2 ? 1 : 0, beaming: !!(p[3] & 4), lives: p[4], score: p[5], power: p[6] ? POWK[p[6] - 1] : null, powerT: p[7] / 10, ci: p[8], name: p[9], shield: (p[10] || 0) / 10 };
+        var o = pm[p[0]] || p, P = { id: p[0], x: o[1] / 4 + (p[1] - o[1]) / 4 * a, y: o[2] / 4 + (p[2] - o[2]) / 4 * a, alive: !!(p[3] & 1), inv: p[3] & 2 ? 1 : 0, beaming: !!(p[3] & 4), lives: p[4], score: p[5], power: p[6] ? POWK[p[6] - 1] : null, powerT: p[7] / 10, ci: p[8], name: p[9] };
         if (P.id === V.me) { V.ci = P.ci; V.power = P.power; if (P.alive && !wasAlive) { V.pred.x = p[1] / 4; V.pred.y = p[2] / 4; } V.pred.alive = P.alive; }
         return P;
       });
@@ -2485,7 +2473,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     wave: function (n) { G.chains = []; G.segs = []; G.boss = null; G.foes = []; G.shots = []; startWave(n); },
     clearWave: function () { G.chains = []; G.segs = []; if (G.boss) G.boss.hp = 1; },
     god: function (on) { G.noDie = !!on; },
-    power: function (k, pid) { var P = pid ? G.players.filter(function (p) { return p.id === pid; })[0] : G.players[0]; if (k === 'shield') P.shield = SHIELD_T; else if (k === 'bomb') bomb(P, P.x, P.y - 40); else { P.power = k; P.powerT = POW_T; } },
+    power: function (k, pid) { var P = pid ? G.players.filter(function (p) { return p.id === pid; })[0] : G.players[0]; if (k === 'bomb') bomb(P, P.x, P.y - 40); else { P.power = k; P.powerT = POW_T; } },
     cap: function (k, x, y) { G.caps.push({ id: newId(), x: x, y: y, y0: y, k: k, t: 0 }); },
     spawn: function (type, x, y) { return type === 'wasp' || type === 'bwasp' ? spawnWasps(1, type === 'bwasp') : type === 'ant' ? spawnAnts() : type === 'ffly' ? spawnFirefly(x, y) : type === 'beetle' ? spawnBeetle(x, y) : type === 'flea' ? spawnFlea() : type === 'mini' ? spawnSpider(true, x, y) : spawnSpider(false); },
     zone: function (x, y, R, warn, ci) { zone(x, y, R, warn, ci); },

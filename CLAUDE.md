@@ -50,6 +50,7 @@ Tim plans and requests changes in chat, proofs them on a preview URL, then says
 - **Subtle per-game identity:** layout and controls stay standard; each game
   gets its own table "box" via `THEMES` in `kit.js` (felt colour, card backs,
   wood). Keep it understated: colour and material, never mascots or emoji.
+- Don't tune difficulty or design around a player's age. Match the real game and Tim's choices.
 - Player setup goes through `Kit.setup` (name picker, regulars, robot names for
   computer players). Every game passes `undo` to `Kit.init` when moves can be
   taken back. The game menu always has Frequent players.
