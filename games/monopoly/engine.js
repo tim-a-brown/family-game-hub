@@ -189,6 +189,7 @@
       if (S.players[d.f].out || (d.t >= 0 && S.players[d.t].out)) { S.dq.shift(); continue; }
       if (S.players[d.f].cash < d.a) {
         S.debt = d; if (S.phase !== 'debt') S.dret = S.phase; S.phase = 'debt';
+        ev.push({ e: 'debt', p: d.f, t: d.t, a: d.a, sq: d.sq });
         say(S, nm(S, d.f) + ' owes ' + money(d.a) + ' and has to raise the money.', d.f);
         return false;
       }

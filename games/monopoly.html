@@ -103,8 +103,9 @@
 .mjailfx{position:absolute;left:0;top:87%;width:13%;height:13%;z-index:7;pointer-events:none;
   background:repeating-linear-gradient(90deg,transparent 0 14%,rgba(20,20,20,.85) 14% 20%);animation:bars 1.4s var(--ease) forwards;transform-origin:top;}
 @keyframes bars{0%{transform:scaleY(0);}30%{transform:scaleY(1);}80%{opacity:1;}100%{opacity:0;}}
-.mzoom{position:absolute;left:calc(var(--bs) * .175);bottom:calc(var(--bs) * .175);display:flex;gap:6px;z-index:10;}
-.mzoom button{width:34px;height:34px;border:0;border-radius:50%;display:grid;place-items:center;background:rgba(20,16,41,.72);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.35);}
+.mleft{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.mzoom{display:flex;gap:6px;align-self:flex-end;margin:-2px 2px 0;}
+.mzoom button{width:34px;height:30px;border:0;border-radius:10px;display:grid;place-items:center;background:var(--w08);color:var(--text);}
 .mzoom button svg{width:18px;height:18px;}
 .mzoom button:disabled{opacity:.35;}
 
@@ -117,7 +118,7 @@
 html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:color-mix(in srgb,var(--c) 45%,var(--text));}
 .turnl .sub{display:block;font-size:.85rem;font-weight:700;color:var(--text-2);}
 .turnl .grow{flex:1;min-width:0;}
-.turnl .lim{flex:none;font-size:.75rem;font-weight:800;color:var(--text-3);text-align:right;line-height:1.2;}
+.turnl .lim{flex:none;font-size:.75rem;font-weight:800;color:var(--text-2);text-align:right;line-height:1.2;}
 .what{font-weight:700;color:var(--text-2);font-size:.95rem;}
 .what b{color:var(--text);}
 .btns{display:flex;gap:8px;flex-wrap:wrap;}
@@ -164,7 +165,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 
 /* ── My properties ── */
 .mine{border-radius:20px;padding:12px;background:var(--surface);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px;}
-.mine h3{display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
+.mine h3{display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-2);}
 .mine h3 .grow{flex:1;}
 .wallet{display:flex;align-items:flex-end;gap:10px;}
 .wallet .big{font-family:var(--display);font-size:1.9rem;line-height:1;}
@@ -243,7 +244,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 @media (orientation:landscape) and (min-width:900px){
   #app.mono{padding-top:4px;}
   .mlay{flex-direction:row;align-items:flex-start;max-width:1400px;gap:18px;justify-content:center;}
-  .mlay > .mtable{position:sticky;top:calc(var(--safe-t) + 58px);}
+  .mlay > .mleft{position:sticky;top:calc(var(--safe-t) + 58px);}
   .mside{width:min(420px, 34vw);flex:none;}
   .pstrip{flex-wrap:wrap;overflow:visible;}
   .pchip{flex:1 1 calc(50% - 6px);}
@@ -401,14 +402,14 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
       el('button', { type: 'button', 'aria-label': 'Zoom in', html: Kit.icon('plus'), onclick: function () { zoomBy(1.6); } }),
       el('button', { type: 'button', 'aria-label': 'Zoom out', html: Kit.icon('minus'), onclick: function () { zoomBy(1 / 1.6); } })
     ]);
-    view.table.appendChild(view.zoom);
+    view.left = el('div', { class: 'mleft' }, [view.table, view.zoom]);
     view.act = el('div', { class: 'mact', 'aria-live': 'polite' });
     view.mine = el('div', { class: 'mine' });
     view.log = el('div', { class: 'mlog' });
     var side = el('div', { class: 'mside' }, [view.act, view.mine, view.log]);
     // phones: players, board, then the rest; wide screens: board left, players on top of the side column
-    if (wide()) { side.insertBefore(view.strip, side.firstChild); lay.appendChild(view.table); lay.appendChild(side); }
-    else { lay.appendChild(view.strip); lay.appendChild(view.table); lay.appendChild(side); }
+    if (wide()) { side.insertBefore(view.strip, side.firstChild); lay.appendChild(view.left); lay.appendChild(side); }
+    else { lay.appendChild(view.strip); lay.appendChild(view.left); lay.appendChild(side); }
     app.appendChild(lay);
     view.wide = wide();
     hookBoard();
@@ -419,7 +420,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
     if (!view) return;
     // the wooden rim adds 2.8% on each side
     var W = app.clientWidth - 24, H = window.innerHeight, avail;
-    if (wide()) avail = Math.min(H - 76, W - Math.min(420, window.innerWidth * 0.34) - 18);
+    if (wide()) avail = Math.min(H - 108, W - Math.min(420, window.innerWidth * 0.34) - 18);
     else avail = Math.min(W, 720);
     var bs = Math.max(240, Math.floor(avail / 1.056));
     app.style.setProperty('--bs', bs + 'px');
@@ -601,6 +602,15 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
     }
     return '<div class="deed' + (S && S.mort[sq] ? ' mortg' : '') + (o.flip ? ' flip' : '') + (o.sm ? ' sm' : '') + '">' + h + '</div>';
   }
+  // a small deed for auctions: colour, name, price and the rent range
+  function deedTag(sq, flip) {
+    var s = SQ[sq], lo = s.k === 'st' ? s.r[0] : s.k === 'rr' ? 25 : 0, hi = s.k === 'st' ? s.r[5] : s.k === 'rr' ? 200 : 0;
+    var head = s.k === 'st' ? '<div class="dh" style="--gc:' + GROUPS[s.g].c + ';color:' + (s.g === 1 || s.g === 5 ? '#1d1d1b' : '#fff') + '"><small>TITLE DEED</small><b>' + esc(s.n) + '</b></div>'
+      : '<div class="di">' + A.icon(s.k === 'rr' ? 'train' : sq === 12 ? 'bulb' : 'tap') + '</div><div class="dh" style="--gc:#fffdf6;border:0;padding:0"><b>' + esc(s.n) + '</b></div>';
+    var w = el('div', { style: { width: '118px', cursor: 'pointer' }, onclick: function () { deedSheet(sq); }, html: '<div class="deed sm' + (flip ? ' flip' : '') + '">' + head +
+      '<div class="rows"><div class="dr"><span>Price</span><b>' + money(s.p) + '</b></div><div class="dr"><span>Rent</span><b>' + (s.k === 'ut' ? '4× / 10× dice' : money(lo) + '–' + money(hi)) + '</b></div></div></div>' });
+    return w;
+  }
   function miniCard(sq, o) {
     o = o || {}; var s = SQ[sq], hs = '';
     var n = S.hs[sq];
@@ -619,9 +629,9 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
     return el('button', { type: 'button', class: 'btn ' + (cls || 'btn-soft'), html: (o.icon ? Kit.icon(o.icon) : '') + '<span>' + esc(label) + '</span>', disabled: o.disabled || null, onclick: function () { if (busy) return; Kit.haptic('light'); fn(); } });
   }
   function act(a) { doAct(a); }
-  function turnLine(p, sub) {
+  function turnLine(p, sub, head) {
     var x = S.players[p], me = mine(p);
-    var title = me ? (mode === 'pass' ? 'Your turn, ' + x.name : x.name === 'You' ? 'Your turn' : 'Your turn, ' + x.name) : Kit.poss(x.name) + ' turn';
+    var title = head || (me ? 'Your turn, ' + x.name : Kit.poss(x.name) + ' turn');
     var lim = '';
     var L = S.opts.len || 'all';
     if (/^r/.test(L)) lim = 'Round ' + Math.min(S.round, +L.slice(1)) + ' of ' + L.slice(1);
@@ -693,11 +703,11 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
   function buildable(p) { var out = []; for (var g = 0; g < 8; g++) if (M.ownsGroup(S, p, g)) out.push(g); return out; }
   function renderAuction(box, p, me) {
     var A2 = S.auction, s = SQ[A2.sq], x = S.players[p];
-    box.appendChild(turnLine(p, me ? 'Bid on ' + esc(s.n) + ' or pass' : thinking(x.name)));
+    box.appendChild(turnLine(p, me ? 'Bid on ' + esc(s.n) + ' or pass' : thinking(x.name), mine(p) ? 'Your bid, ' + x.name : Kit.poss(x.name) + ' bid'));
     var hb = A2.hb >= 0 ? S.players[A2.hb].name : null;
     var bidders = el('div', { class: 'bidders' });
     S.players.forEach(function (q, i) { if (q.out) return; var inA = A2.act.indexOf(i) >= 0; bidders.appendChild(el('span', { class: (inA ? '' : 'outb') + (i === p ? ' now' : ''), style: { '--c': pcolor(i) } }, [el('i'), el('span', { text: q.name })])); });
-    var dd = el('div', { html: deedHTML(A2.sq, { flip: view.flipSq !== A2.sq, sm: true }) }); view.flipSq = A2.sq; dd.firstChild.style.width = '118px';
+    var dd = deedTag(A2.sq, view.flipSq !== A2.sq); view.flipSq = A2.sq;
     var info = el('div', { class: 'side' }, [
       el('div', { class: 'bidbox' }, [el('div', null, [el('small', { text: hb ? 'High bid' : 'No bids yet' }), el('span', { class: 'amt', text: money(A2.high) })]), hb ? el('div', { class: 'what', text: hb }) : null]),
       bidders
@@ -715,7 +725,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
   }
   function renderDebt(box, p, me) {
     var D = S.debt, x = S.players[p], to = D.t >= 0 ? S.players[D.t].name : 'the bank';
-    box.appendChild(turnLine(p, me ? 'You owe ' + money(D.a) + ' to ' + esc(to) : thinking(x.name)));
+    box.appendChild(turnLine(p, me ? 'You owe ' + money(D.a) + ' to ' + esc(to) : thinking(x.name), x.name + ' owes ' + money(D.a)));
     var pct = Math.min(100, Math.round(x.cash / D.a * 100));
     box.appendChild(el('div', { class: 'what', html: '<b>' + money(x.cash) + '</b> of ' + money(D.a) + (x.cash < D.a ? ' · raise ' + money(D.a - x.cash) + ' more by selling buildings or mortgaging' : ' · ready to pay') }));
     box.appendChild(el('div', { class: 'debtbar' }, [el('i', { class: pct >= 100 ? 'ok' : '', style: { width: pct + '%' } })]));
@@ -730,7 +740,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
   }
   function renderTradeAsk(box, p, me) {
     var T2 = S.trade, f = S.players[T2.f], to = S.players[T2.to];
-    box.appendChild(turnLine(p, me ? esc(f.name) + ' offers you a trade' : (mine(T2.f) ? 'Waiting for ' + esc(to.name) : thinking(to.name))));
+    box.appendChild(turnLine(p, me ? esc(f.name) + ' offers you a trade' : (mine(T2.f) ? 'Waiting for ' + esc(to.name) : thinking(to.name)), mine(p) ? 'A trade for you, ' + to.name : 'A trade for ' + to.name));
     box.appendChild(offerSummary(T2));
     if (me) box.appendChild(el('div', { class: 'btns' }, [btn('Accept', 'btn-primary', function () { act({ t: 'answer', p: p, ok: true }); }, { icon: 'check' }), btn('Decline', 'btn-soft', function () { act({ t: 'answer', p: p, ok: false }); }, { icon: 'close' })]));
     else if (mine(T2.f) && !busy) box.appendChild(el('div', { class: 'btns' }, [btn('Take the offer back', 'btn-ghost', function () { act({ t: 'cancel', p: T2.f }); })]));
@@ -892,6 +902,11 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
       case 'trade': Kit.callout('It’s a deal!'); Kit.sfx('good'); Kit.haptic('success'); return wait(700);
       case 'tradeNo': Kit.toast('No deal'); Kit.sfx('bad'); return wait(200);
       case 'bankrupt': { if (view.chips && view.chips[e.p]) view.chips[e.p].classList.add('hit'); Kit.callout(S.players[e.p].name + ' is bankrupt!', '#ff4d5e'); Kit.sfx('boom'); Kit.haptic('heavy'); return wait(1400); }
+      case 'debt': {
+        if (view.chips && view.chips[e.p]) { view.chips[e.p].classList.remove('hit'); void view.chips[e.p].offsetWidth; view.chips[e.p].classList.add('hit'); }
+        if (e.sq >= 0) floatAt(e.sq, money(e.a) + '!', 'bad');
+        Kit.callout((S.players[e.p].name) + ' owes ' + money(e.a), '#ff4d5e'); Kit.sfx('bad'); Kit.haptic('error'); return wait(1000);
+      }
       case 'pot': Kit.callout('Jackpot!'); Kit.sfx('sparkle'); return wait(600);
       case 'turn': return wait(80);
     }
@@ -935,7 +950,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
         follow(s.x, s.y);
         setTimeout(function () { Kit.sfx('tick', 0.35); if (k === steps) { Kit.sfx('tap'); Kit.haptic('light'); } next(); }, per);
       })();
-    }).then(function () { if (sq === 0 || e.from + steps >= 40 && dir > 0) {} return wait(120); });
+    }).then(function () { return wait(120); });
   }
   function slideToJail(e) {
     var p = e.p, t = view.toks[p];
