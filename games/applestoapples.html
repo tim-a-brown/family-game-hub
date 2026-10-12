@@ -1183,15 +1183,17 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     }
     function retitle() { var p = st.el.querySelector('.setup-hero p'); if (p) p.textContent = cahOn() ? 'Fill in the blank. The Card Czar picks the funniest.' : 'Match a red card to the green card. The judge picks the best.'; initOpts.rules = rulesHtml(); }
     paint();
-    // The apple in the header: tap it 7 times in a row (each within 1.2 s) to find the grown-up deck
-    var ic = st.el.querySelector('.k-hero-ic'), taps = 0, lastTap = 0;
+    // The apple in the header: the secret takes 12 taps in a row (each within 1.2 s). The first 5 do nothing you can
+    // see; from the 6th the apple starts to shake, harder each tap, and the 12th unlocks the grown-up deck
+    var ic = st.el.querySelector('.k-hero-ic'), taps = 0, lastTap = 0, QUIET = 5, NEED = 12;
     if (ic) ic.addEventListener('click', function () {
       var now = Date.now(); taps = now - lastTap < 1200 ? taps + 1 : 1; lastTap = now;
-      // each tap wobbles a little harder, so a few taps in a row feel like something is about to happen
-      ic.style.setProperty('--wob', (6 + taps * 3) + 'deg'); ic.style.setProperty('--wsc', String(1 + taps * 0.03));
+      if (taps <= QUIET) return;
+      var k = taps - QUIET;   // 1..7
+      ic.style.setProperty('--wob', (6 + k * 3) + 'deg'); ic.style.setProperty('--wsc', String(1 + k * 0.03));
       ic.classList.remove('wob', 'spin'); void ic.offsetWidth; ic.classList.add('wob');
-      Kit.sfx(taps >= 7 ? 'sparkle' : taps >= 4 ? 'pop' : 'tap', 0.4 + taps * 0.08); Kit.haptic(taps >= 4 ? 'light' : 'tick');
-      if (taps < 7) return;
+      Kit.sfx(taps >= NEED ? 'sparkle' : k >= 4 ? 'pop' : 'tap', 0.4 + k * 0.08); Kit.haptic(k >= 4 ? 'light' : 'tick');
+      if (taps < NEED) return;
       taps = 0;
       if (cahUnlocked()) { var r0 = box.querySelector('.cah-row'); if (r0) { r0.scrollIntoView({ behavior: 'smooth', block: 'center' }); r0.classList.remove('arrive'); void r0.offsetWidth; r0.classList.add('arrive'); } return; }
       rawSet(CAHK, '1'); initOpts.rules = rulesHtml();
