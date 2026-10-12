@@ -44,7 +44,7 @@ const PRECACHE_URLS = [
   '/sync.js',
   '/hist.js',
   '/players.js',
-  '/casino.js',
+  '/casino.js', '/daily.js',
   '/coach.js',
   '/arcade-hi.js',
   '/arcade-music.js',

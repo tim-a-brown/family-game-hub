@@ -1253,13 +1253,23 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
 
   // ── Boot ───────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-  if (saved && saved.v === 1 && MC.SIZES[saved.size] && !saved.done && typeof saved.head === 'number') {
+  var going = saved && saved.v === 1 && MC.SIZES[saved.size] && !saved.done && typeof saved.head === 'number';
+  function resumeSaved() {
     S = saved; M = MC.make(S);
     if (S.head < 0 || S.head >= M.n) S.head = M.start;
     S.U = Array.isArray(S.U) ? S.U.filter(function (x) { return x >= 0 && x < M.n; }) : [];
     if (S.ball && !(S.ball.x > 0 && S.ball.y > 0 && S.ball.x < M.cols && S.ball.y < M.rows)) S.ball = null;
     build();
-  } else showSetup();
+  }
+  // ?daily=1 (the Daily puzzles list on the home screen): straight into today's maze
+  if (/[?&]daily=1/.test(location.search)) {
+    try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])daily=1&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch (e) {}
+    if (going && saved.daily === today()) resumeSaved();
+    else if (dailyDone(today())) showSetup();
+    else if (going && saved.ms > 5000) Kit.confirm("Start today's maze?", { ok: 'Start daily', cancel: 'Keep going', body: 'The maze you have going will be dropped.' }).then(function (ok) { if (ok) startDaily(); else resumeSaved(); });
+    else startDaily();
+  } else if (going) resumeSaved();
+  else showSetup();
 })();
 </script>
 </body>

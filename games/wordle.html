@@ -371,8 +371,10 @@ body{overflow:hidden;}
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-  if (saved && saved.answer && !saved.over && (saved.random || saved.day === today().day)) { S = saved; build(); }
-  else start(false);
+  // ?daily=1 (the Daily puzzles list on the home screen): today's word, or how today's went
+  var wantDaily = /[?&]daily=1/.test(location.search); if (wantDaily) { try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])daily=1&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch (e) {} }
+  if (saved && saved.answer && !saved.over && (wantDaily ? !saved.random && saved.day === today().day : saved.random || saved.day === today().day)) { S = saved; build(); }
+  else start(false, wantDaily);
 })();
 </script>
 </body>

@@ -6,6 +6,7 @@
 //   id      stable key (matches games/<file>.html unless `file` is given)
 //   name    display name          color  the game's accent colour
 //   cat     category id (see GAME_CATS)
+//   base    icon background style when it differs from the category's (word games: letter tile)
 //   min/max player counts (max 0 = any group)
 //   tag     one-line pitch shown in search results and the mode sheet
 //   play    file for "play on the phone" (vs computer / solo)
@@ -19,8 +20,7 @@ var GAME_CATS = [
   { id: 'specialty', name: 'Specialty Cards', hue: 292, sat: 58 },
   { id: 'board',  name: 'Board',       hue: 24,  sat: 78 },
   { id: 'dice',   name: 'Dice & Luck', hue: 44,  sat: 88 },
-  { id: 'puzzle', name: 'Puzzles',     hue: 205, sat: 78 },
-  { id: 'words',  name: 'Words',       hue: 172, sat: 70 },
+  { id: 'puzzle', name: 'Puzzles & Words', hue: 205, sat: 78 },
   { id: 'party',  name: 'Party',       hue: 322, sat: 68 },
   { id: 'casino', name: 'Casino',      hue: 142, sat: 62 },
   { id: 'arcade', name: 'Arcade',      hue: 252, sat: 72 },
@@ -91,21 +91,19 @@ var GAMES = [
   { id: 'marblesolitaire', name: 'Marble Solitaire', color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Jump marbles until only one is left', play: 'marblesolitaire' },
   { id: 'slidepuzzle', name: 'Slide Puzzle', color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Slide the tiles back in order', play: 'slidepuzzle' },
   { id: 'sudoku',      name: 'Sudoku',       color: '#3b82f6', cat: 'puzzle', min: 1, max: 1, tag: 'Fill the grid, 1 to 9', play: 'sudoku' },
-  { id: 'minesweeper', name: 'Minesweeper',  color: '#64748b', cat: 'puzzle', min: 1, max: 1, tag: 'Clear the field without a boom', play: 'minesweeper' },
   { id: 'memorymatch', name: 'Memory Match', color: '#d946ef', cat: 'puzzle', min: 1, max: 4, tag: 'Flip two, find the pairs', play: 'memorymatch' },
   { id: 'mahjong',     name: 'Mahjong Tiles', color: '#059669', cat: 'puzzle', min: 1, max: 1, tag: 'Match free tiles, clear the stack', play: 'mahjong' },
   { id: 'mathpuzzles', name: 'Math Puzzles', color: '#0891b2', cat: 'puzzle', min: 1, max: 1, tag: 'Patterns, sequences and brain teasers', play: 'mathpuzzles' },
-  { id: 'candymatch',  name: 'Candy Match',  color: '#ff4f9a', cat: 'puzzle', min: 1, max: 1, tag: 'Swap candies, match three, beat the level', play: 'candymatch' },
   { id: 'mazes',       name: 'Mazes',        color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Draw your way out, or tilt a steel ball', play: 'mazes' },
 
-  // ── Words ────────────────────────────────────────────────────────────────
-  { id: 'wordle',      name: 'Wordle',       color: '#22c55e', cat: 'words', min: 1, max: 1, tag: 'Guess the word in six tries', play: 'wordle' },
-  { id: 'spellingbee', name: 'Spelling Bee', color: '#facc15', cat: 'words', min: 1, max: 1, tag: 'Make words from seven letters', play: 'spellingbee' },
-  { id: 'crossword',   name: 'Crossword', color: '#2563eb', cat: 'words', min: 1, max: 1, tag: 'Mini and big crosswords', play: 'crossword' },
-  { id: 'boggle',      name: 'Boggle',       color: '#f97316', cat: 'words', min: 1, max: 4, tag: 'Find words in the letter grid', play: 'boggle' },
-  { id: 'hangman',     name: 'Hangman',      color: '#8b5cf6', cat: 'words', min: 1, max: 2, tag: 'Guess the word, letter by letter', play: 'hangman' },
-  { id: 'wordscramble',name: 'Word Scramble', color: '#14b8a6', cat: 'words', min: 1, max: 4, tag: 'Unscramble against the clock', play: 'wordscramble' },
-  { id: 'wordsearch',  name: 'Word Search',  color: '#e11d48', cat: 'words', min: 1, max: 1, tag: 'Find every hidden word', play: 'wordsearch' },
+  // ── Words (in Puzzles & Words) ──────────────────────────────────────────
+  { id: 'wordle',      name: 'Wordle',       color: '#22c55e', cat: 'puzzle', base: 'words', min: 1, max: 1, tag: 'Guess the word in six tries', play: 'wordle' },
+  { id: 'spellingbee', name: 'Spelling Bee', color: '#facc15', cat: 'puzzle', base: 'words', min: 1, max: 1, tag: 'Make words from seven letters', play: 'spellingbee' },
+  { id: 'crossword',   name: 'Crossword', color: '#2563eb', cat: 'puzzle', base: 'words', min: 1, max: 1, tag: 'Mini and big crosswords', play: 'crossword' },
+  { id: 'boggle',      name: 'Boggle',       color: '#f97316', cat: 'puzzle', base: 'words', min: 1, max: 4, tag: 'Find words in the letter grid', play: 'boggle' },
+  { id: 'hangman',     name: 'Hangman',      color: '#8b5cf6', cat: 'puzzle', base: 'words', min: 1, max: 2, tag: 'Guess the word, letter by letter', play: 'hangman' },
+  { id: 'wordscramble',name: 'Word Scramble', color: '#14b8a6', cat: 'puzzle', base: 'words', min: 1, max: 4, tag: 'Unscramble against the clock', play: 'wordscramble' },
+  { id: 'wordsearch',  name: 'Word Search',  color: '#e11d48', cat: 'puzzle', base: 'words', min: 1, max: 1, tag: 'Find every hidden word', play: 'wordsearch' },
 
   // ── Party ────────────────────────────────────────────────────────────────
   { id: 'trivia',      name: 'Trivia',       color: '#f59e0b', cat: 'party', min: 1, max: 6, tag: 'Who knows the most?', play: 'trivia' },
@@ -146,6 +144,8 @@ var GAMES = [
   { id: 'cubehopper',  name: 'Q*bert',       color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Hop the pyramid, change every cube', play: 'cubehopper' },
   { id: 'paddleball',  name: 'Pong',         color: '#000', cat: 'arcade', min: 1, max: 2, tag: 'Classic two-paddle table tennis', play: 'paddleball' },
   { id: 'pinball',     name: 'Pinball',      color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Six 3D tables: flip, ramp, lock, multiball', play: 'pinball' },
+  { id: 'minesweeper', name: 'Minesweeper',  color: '#64748b', cat: 'arcade', min: 1, max: 1, tag: 'Clear the field without a boom', play: 'minesweeper' },
+  { id: 'candymatch',  name: 'Candy Match',  color: '#ff4f9a', cat: 'arcade', min: 1, max: 1, tag: 'Swap candies, match three, beat the level', play: 'candymatch' },
 
   // ── Tools ────────────────────────────────────────────────────────────────
   { id: 'scorecard',   name: 'Scorecard',    color: '#0ea5e9', cat: 'tools', min: 1, max: 8, tag: 'Keep score for any game', play: 'scorecard' },

@@ -704,9 +704,17 @@ body{overflow-x:hidden;}
       sessionStorage.removeItem('sdk_state');
     } } catch (e) {}
   }
-  if (saved && saved.S && Array.isArray(saved.S.vals) && saved.S.vals.length === 81 && !saved.S.done) {
-    S = saved.S; U = saved.U || []; R = saved.R || []; notesMode = !!saved.notesMode; build();
-  } else showSetup();
+  var going = saved && saved.S && Array.isArray(saved.S.vals) && saved.S.vals.length === 81 && !saved.S.done;
+  function resumeSaved() { S = saved.S; U = saved.U || []; R = saved.R || []; notesMode = !!saved.notesMode; build(); }
+  // ?daily=1 (the Daily puzzles list on the home screen): straight into today's puzzle
+  if (/[?&]daily=1/.test(location.search)) {
+    try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])daily=1&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch (e) {}
+    if (going && saved.S.daily === today()) resumeSaved();
+    else if (dailyDone()) showSetup();
+    else if (going && saved.S.time > 5) Kit.confirm("Start today's daily?", { ok: 'Start daily', cancel: 'Keep playing', body: 'The ' + DIFFS[saved.S.diff] + ' puzzle you have going will be dropped.' }).then(function (ok) { if (ok) newPuzzle('daily'); else resumeSaved(); });
+    else newPuzzle('daily');
+  } else if (going) resumeSaved();
+  else showSetup();
 })();
 </script>
 </body>

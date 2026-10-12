@@ -67,6 +67,17 @@
 .cats{display:flex;flex-wrap:wrap;gap:6px;}
 .cats .chip{min-height:40px;}
 .cats .chip.on{background:var(--accent);color:var(--accent-ink);}
+/* Setup: today's puzzle */
+.daily{display:flex;align-items:center;gap:14px;padding:14px;border-radius:20px;background:var(--surface);box-shadow:var(--shadow-sm), inset 0 0 0 1px var(--w06);}
+.dcal{flex:none;width:54px;border-radius:8px;overflow:hidden;text-align:center;background:linear-gradient(180deg,#fffcf3,#f3e8cf);color:#23263a;box-shadow:0 3px 0 #cbbd9c, 0 6px 12px rgba(0,0,0,.35);transform:rotate(-3deg);}
+.dcal small{display:block;background:#d0392a;color:#fff;font-size:.62rem;font-weight:900;letter-spacing:.14em;padding:3px 0 2px;}
+.dcal b{display:block;font-family:var(--display);font-weight:400;font-size:1.65rem;line-height:1.25;}
+.daily .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.daily .tx b{font-size:1.05rem;font-weight:900;}
+.daily .tx small{font-size:.84rem;color:var(--text-2);line-height:1.3;}
+.daily .tx .st{display:inline-flex;align-items:center;gap:5px;color:var(--accent);font-weight:800;}
+.daily .tx .st .ico{width:15px;height:15px;}
+.daily .btn{flex:none;}
 @media (min-width:700px){.words{grid-template-columns:repeat(4,1fr);} .w{font-size:.95rem;}}
 /* Tablet / desktop landscape: word list printed beside the grid so the page fits the screen */
 @media (orientation:landscape) and (min-width:1000px) and (min-height:600px){
@@ -137,6 +148,7 @@
       '<h3>Which way do words go?</h3><ul><li><b>Easy</b> (8×8): across and down only.</li>' +
       '<li><b>Medium</b> (10×10): across, down and diagonally.</li>' +
       '<li><b>Hard</b> (12×12): every direction, including backwards and upside down.</li></ul>' +
+      '<h3>Daily puzzle</h3><p>A new puzzle every day, the same on every device: Easy on Monday and Tuesday, Medium midweek, Hard from Friday to Sunday.</p>' +
       '<p>Words can cross and share letters. Words always run in a straight line.</p>' +
       '<h3>Stuck?</h3><p>Tap <b>Hint</b> and the first letter of a word you haven\'t found will blink. Hints add 15 seconds to your time.</p>' +
       '<h3>Clock</h3><p><b>Stopwatch</b>: your time is your score, so try to beat your best for each size. <b>Beat the clock</b>: find them all before time runs out (2½, 4 or 7 minutes).</p>' +
@@ -151,9 +163,20 @@
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function foundCount() { return S.words.filter(function (w) { return w.f > 0; }).length; }
   function fmt(sec) { var m = Math.floor(sec / 60), s = sec % 60; return m + ':' + (s < 10 ? '0' : '') + s; }
-  function rnd(n) { return Math.floor(Math.random() * n); }
+  // random numbers: Math.random, or a seeded stream while printing the daily puzzle (the same grid on every device)
+  var rand = Math.random;
+  function seeded(a) { return function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function rnd(n) { return Math.floor(rand() * n); }
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = rnd(i + 1), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   function catPref() { try { return localStorage.getItem(CAT_KEY) || 'Animals'; } catch (e) { return 'Animals'; } }
+
+  // ── Daily puzzle: one a day, the same for everyone. Easy Monday and Tuesday, Medium midweek, Hard Friday to Sunday ──
+  var DAILY_DIFF = ['hard', 'easy', 'easy', 'medium', 'medium', 'hard', 'hard'];   // Sun..Sat
+  function today() { return Math.floor((Date.now() - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }
+  function dailyOf(day) { var r = seeded(day * 2654435761 >>> 0); r(); return { day: day, diff: DAILY_DIFF[new Date().getDay()], cat: CATS[Math.floor(r() * CATS.length)], seed: (r() * 4294967296) >>> 0 }; }
+  function dailyDone(day) { var b = null; try { GameHistory.load(KEY).forEach(function (e) { if (e && e.daily === day && !e.gaveUp && (!b || e.seconds < b.seconds)) b = e; }); } catch (x) {} return b; }
+  function myName() { try { return (localStorage.getItem('my_name') || '').trim() || 'You'; } catch (e) { return 'You'; } }
+  function startDaily() { var t = dailyOf(today()); newPuzzle(t.cat, t.diff, myName(), false, t); }
 
   // ── Setup ─────────────────────────────────────────────────────────────────
   function showSetup() {
@@ -182,6 +205,19 @@
     paint();
     var start = st.el.querySelector('.btn-lg');
     st.el.insertBefore(el('div', null, [el('div', { class: 'label', text: 'Theme' }), box]), start);
+    // Today's puzzle, under who's solving
+    var t = dailyOf(today()), done = dailyDone(t.day), d = DIFF[t.diff];
+    var card = el('div', { class: 'daily' }, [
+      el('div', { class: 'dcal', 'aria-hidden': 'true' }, [el('small', { text: new Date().toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase() }), el('b', { text: String(new Date().getDate()) })]),
+      el('div', { class: 'tx' }, [
+        el('b', { text: 'Daily word search' }),
+        el('small', { text: d.name + ' ' + d.n + '×' + d.n + ' · ' + t.cat + ' · the same puzzle for everyone today' }),
+        done ? el('small', { class: 'st', html: Kit.icon('check') + '<span>Found them all in ' + fmt(done.seconds) + '</span>' }) : null
+      ]),
+      el('button', { type: 'button', class: 'btn ' + (done ? 'btn-soft' : 'btn-primary') + ' btn-sm', text: done ? 'Again' : 'Play', onclick: function () { Kit.sfx('pop'); startDaily(); } })
+    ]);
+    var seats = st.el.querySelector('.k-seats');
+    if (seats && seats.nextSibling) st.el.insertBefore(card, seats.nextSibling); else st.el.insertBefore(card, st.el.firstChild);
   }
 
   // ── Puzzle generation ─────────────────────────────────────────────────────
@@ -222,7 +258,7 @@
         var pref = spots.filter(function (s) { return s.dr === want[0] && s.dc === want[1]; });
         if (pref.length) spots = pref;
         var crossing = spots.filter(function (s) { return s.x > 0; });
-        var s = crossing.length && Math.random() < 0.4 ? crossing[rnd(crossing.length)] : spots[rnd(spots.length)];
+        var s = crossing.length && rand() < 0.4 ? crossing[rnd(crossing.length)] : spots[rnd(spots.length)];
         for (var j = 0; j < w.length; j++) g[s.r + s.dr * j][s.c + s.dc * j] = w[j];
         placed.push({ w: w, r: s.r, c: s.c, dr: s.dr, dc: s.dc });
       }
@@ -263,11 +299,12 @@
     return out;
   }
 
-  function newPuzzle(cat, diff, player, timed) {
+  function newPuzzle(cat, diff, player, timed, daily) {
     var d = DIFF[diff], made = null;
-    for (var k = 0; k < 6 && !made; k++) made = build(pickWords(cat, d), d);
+    if (daily) rand = seeded(daily.seed);
+    try { for (var k = 0; k < 6 && !made; k++) made = build(pickWords(cat, d), d); } finally { rand = Math.random; }
     if (!made) { Kit.toast('Could not print that one. Try again!'); return; }
-    S = { cat: cat, diff: diff, n: d.n, grid: made.grid, player: player || 'You',
+    S = { cat: cat, diff: diff, n: d.n, grid: made.grid, player: player || 'You', daily: daily ? daily.day : 0,
       words: made.words.map(function (p) { return { w: p.w, r: p.r, c: p.c, dr: p.dr, dc: p.dc, f: 0 }; }),
       seconds: 0, hints: 0, order: 0, started: Date.now(), done: false, gaveUp: false, limit: timed ? d.limit : 0, combo: 0, combos: 0, timeUp: false };
     Kit.gameStart(); Kit.sfx('deal');
@@ -299,7 +336,7 @@
     var d = DIFF[S.diff];
     topEl = el('div', { class: 'ws-top' }); app.appendChild(topEl);
     var sheet = el('div', { class: 'sheet' + (fresh ? ' rise' : '') });
-    sheet.appendChild(el('div', { class: 'sheet-head' }, [el('h2', { text: S.cat }), el('small', { text: S.words.length + ' words · ' + d.name })]));
+    sheet.appendChild(el('div', { class: 'sheet-head' }, [el('h2', { text: S.cat }), el('small', { text: (S.daily ? 'Daily · ' : '') + S.words.length + ' words · ' + d.name })]));
     boardEl = el('div', { class: 'board', style: { '--n': S.n } });
     marksSvg = svgEl('marks'); selSvg = svgEl('sel');
     boardEl.appendChild(marksSvg); boardEl.appendChild(selSvg);
@@ -543,12 +580,12 @@
     if (S.hints) hl.push('Used ' + S.hints + (S.hints === 1 ? ' hint' : ' hints'));
     else if (!S.gaveUp) hl.push('No hints needed');
     Kit.record(KEY, {
-      started: S.started, mode: d.name + ' ' + d.n + '×' + d.n + ' · ' + S.cat + (S.limit ? ' · Beat the clock' : ''),
+      started: S.started, mode: (S.daily ? 'Daily · ' : '') + d.name + ' ' + d.n + '×' + d.n + ' · ' + S.cat + (S.limit ? ' · Beat the clock' : ''),
       players: [{ name: S.player, score: n }], winner: S.gaveUp ? null : S.player,
       summary: S.gaveUp ? S.player + ' found ' + n + ' of ' + total + (S.timeUp ? ' (time up)' : '') : S.player + ' found all ' + total + ' in ' + fmt(S.seconds),
       badge: S.gaveUp ? n + '/' + total : fmt(S.seconds),
       highlights: hl.slice(0, 6),
-      meta: { cat: S.cat, diff: S.diff, seconds: S.seconds, timed: !!S.limit, hints: S.hints, gaveUp: S.gaveUp, words: S.words.map(function (w) { return w.w; }) },
+      meta: { cat: S.cat, diff: S.diff, seconds: S.seconds, timed: !!S.limit, hints: S.hints, gaveUp: S.gaveUp, daily: S.daily || 0, words: S.words.map(function (w) { return w.w; }) },
       // History: the printed grid and each word as 'WORD r c dr dc order seconds' (order 0 = not found)
       detail: { g: S.grid.slice(), w: S.words.map(function (w) { return [w.w, w.r, w.c, w.dr, w.dc, w.f > 0 ? w.f : 0, w.f > 0 ? w.t || 0 : ''].join(' '); }), lim: S.limit || 0, tu: S.timeUp ? 1 : 0 }
     });
@@ -571,13 +608,22 @@
     }, 700);
   }
   function again() {
-    var cat = catPref() === 'Surprise' ? CATS[rnd(CATS.length)] : S.cat;
+    var cat = catPref() === 'Surprise' || S.daily ? CATS[rnd(CATS.length)] : S.cat;
     newPuzzle(cat, S.diff, S.player, !!S.limit);
   }
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-  if (saved && saved.grid && saved.words && !saved.done) { S = saved; render(true); startClock(); }
+  var going = saved && saved.grid && saved.words && !saved.done;
+  function resumeSaved() { S = saved; render(true); startClock(); }
+  // ?daily=1 (the Daily puzzles list on the home screen): straight into today's puzzle
+  if (/[?&]daily=1/.test(location.search)) {
+    try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])daily=1&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch (e) {}
+    if (going && saved.daily === today()) resumeSaved();
+    else if (dailyDone(today())) showSetup();
+    else if (going && saved.seconds > 5) Kit.confirm("Start today's puzzle?", { ok: 'Start daily', cancel: 'Keep going', body: 'The puzzle you have going will be dropped.' }).then(function (ok) { if (ok) startDaily(); else resumeSaved(); });
+    else startDaily();
+  } else if (going) resumeSaved();
   else showSetup();
   window.__ws = { state: function () { return S; } };
 })();

@@ -18,6 +18,7 @@
 <script src="kit.js"></script>
 <script src="players.js"></script>
 <script src="hist.js"></script>
+<script src="daily.js"></script>
 <script src="casino.js"></script>
 <script src="spin.js"></script>
 <script>
@@ -124,6 +125,12 @@ document.addEventListener('visibilitychange', function () {
 .sec-h .hs-link{margin-left:auto;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 13px;border:0;border-radius:999px;background:rgba(255,200,61,.14);color:var(--yellow);font:inherit;font-weight:800;font-size:.84rem;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(255,200,61,.3);}
 .sec-h .hs-link .ico{width:16px;height:16px;color:var(--yellow);}
 .sec-h .hs-link:active{transform:scale(.96);}
+.sec-h .dl-link{background:color-mix(in srgb,var(--blue,#3b82f6) 16%,transparent);color:var(--text);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blue,#3b82f6) 45%,transparent);}
+.sec-h .dl-link .ico{color:var(--blue,#3b82f6);}
+.sec-h .dl-link{white-space:nowrap;flex:none;}
+.sec-h .dl-link i{font-style:normal;}
+@media (max-width:430px){ .sec-h .dl-link i{display:none;} }
+.sec-h .dl-link b{font-weight:900;font-variant-numeric:tabular-nums;color:var(--text-2);}
 .sec-h .bank{margin-left:auto;display:flex;align-items:center;gap:6px;font-weight:900;color:var(--green);}
 .sec-h .bank .bank-amt{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--green);font:inherit;font-weight:900;padding:4px 2px;cursor:pointer;}
 .sec-h .bank .bank-amt .ico{width:16px;height:16px;}
@@ -597,6 +604,11 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
   function hiLink() {
     return el('button', { type: 'button', class: 'hs-link', html: Kit.icon('trophy') + '<span>High scores</span>', onclick: function () { go('hiscores'); } });
   }
+  // Puzzles & Words: today's daily puzzles, with how many are done
+  function dailyLink() {
+    var c = window.Daily ? Daily.count() : { done: 0, total: 0 };
+    return el('button', { type: 'button', class: 'hs-link dl-link', 'aria-label': 'Daily puzzles', html: Kit.icon('calendar') + '<span>Daily<i> puzzles</i></span>' + (c.done ? '<b>' + c.done + '/' + c.total + '</b>' : ''), onclick: function () { Kit.sfx('tap'); Daily.open(); } });
+  }
   function bankBadge() {
     var b = Casino.balance();
     var box = el('span', { class: 'bank' }, [
@@ -791,13 +803,13 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
       if (favs.length && !state.q) list.appendChild(section('Favorites', 'star', favs, null, true));
       Kit.cats().forEach(function (c) {
         var gs = vis.filter(function (g) { return g.cat === c.id; });
-        if (gs.length) list.appendChild(section(c.name, c.id, gs, c.id === 'casino' ? bankBadge() : c.id === 'arcade' ? hiLink() : null));
+        if (gs.length) list.appendChild(section(c.name, c.id, gs, c.id === 'casino' ? bankBadge() : c.id === 'arcade' ? hiLink() : c.id === 'puzzle' && window.Daily ? dailyLink() : null));
       });
     } else if (state.cat === 'fav') {
       list.appendChild(section('Favorites', 'star', vis.filter(isFav), null, true));
     } else {
       var c = GAME_CATS.filter(function (x) { return x.id === state.cat; })[0];
-      list.appendChild(section(c.name, c.id, vis.filter(function (g) { return g.cat === c.id; }), c.id === 'casino' ? bankBadge() : c.id === 'arcade' ? hiLink() : null));
+      list.appendChild(section(c.name, c.id, vis.filter(function (g) { return g.cat === c.id; }), c.id === 'casino' ? bankBadge() : c.id === 'arcade' ? hiLink() : c.id === 'puzzle' && window.Daily ? dailyLink() : null));
     }
     $('empty').classList.toggle('show', !vis.length);
     markWraps();

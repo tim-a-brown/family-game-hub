@@ -285,11 +285,12 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
       var keys = Object.keys(HI_BOARDS).filter(function (k) { return HI_BOARDS[k].game === game; });
       if (keys.length > 6) keys = keys.filter(function (k) { return k === PZ_DEFAULT[game] || k === want || ArcadeHi.board(k).length; });
       var c = pzTheme(pzColor(game)), name = pzName(game).toUpperCase();
+      var gm = typeof findGame === 'function' && findGame(game), sec = gm && gm.cat === 'arcade' ? 'arcade' : 'puzzle';   // Candy Match, Minesweeper sit with the arcade games
       keys.forEach(function (k) {
         var cfg = ArcadeHi.config(k), mode = pzMode(cfg), unit = cfg.unit;
         var what = cfg.low ? (unit === 'time' ? 'BEST TIMES' : unit === 'marbles' ? 'BEST FINISHES' : 'FEWEST MOVES') : 'HIGH SCORES';
         BOARDS.push({ key: k, game: game, title: name, short: PZ_SHORT[game] || name, mode: mode || null, tag: what + (mode ? ' · ' + mode : ''),
-          unit: ArcadeHi.unit(k).toUpperCase(), anim: 'puzzle', puzzle: true, sec: 'puzzle', c: c });
+          unit: ArcadeHi.unit(k).toUpperCase(), anim: 'puzzle', puzzle: true, sec: sec, c: c });
       });
     });
   })();

@@ -506,8 +506,9 @@ body{overflow-x:hidden;}
   }
 
   // ── Boot ──────────────────────────────────────────────────────────────────
-  var st = store();
-  open(st.cur === 'random' && st.random && !st.random.done ? 'random' : 'daily');
+  var st = store(), wantDaily = /[?&]daily=1/.test(location.search);   // ?daily=1: the Daily puzzles list on the home screen
+  if (wantDaily) { try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])daily=1&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch (e) {} }
+  open(!wantDaily && st.cur === 'random' && st.random && !st.random.done ? 'random' : 'daily');
   window.addEventListener('pageshow', function (e) { if (e.persisted && S && S.kind === 'daily' && S.day !== dayNum()) open('daily'); });
   // test hook
   window.__sb = { get S() { return S; }, get P() { return P; } };
