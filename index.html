@@ -442,13 +442,15 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
     }
     var board = g.cat === 'board', nw = live ? '#new' : '';
     if (live) opt('play', 'Resume game', (live.label || 'In progress') + ' · ' + ago(live.ts), live.file || g.play, 'resume');
-    if (g.launch) g.launch.forEach(function (o) { opt(o.icon, (live ? 'New: ' : '') + o.title, o.desc, o.file + nw); });
+    // tool: not a game (e.g. Lorcana's cards and decks), so no "New:" and the unfinished game stays put; listed last
+    if (g.launch) g.launch.forEach(function (o) { if (!o.tool) opt(o.icon, (live ? 'New: ' : '') + o.title, o.desc, o.file + nw); });
     else if (g.score) {
       opt('phone', (live ? 'New game: ' : '') + 'Play on this device', board ? 'The whole game here, with family or computer players' : 'You against computer players', g.play + nw);
       opt('pencil', (live ? 'New: ' : '') + (board ? 'Table companion' : 'Keep score'), board ? 'Playing on the real board? Track turns, money and roll the battles here' : 'Playing with real cards? Track the points here', g.score + nw);
     } else opt('sparkle', 'New game', 'Start over. The unfinished game is dropped; it isn’t saved to anyone’s history, linked players included.', g.play + nw);
     // several ways to play: say the same once, under the choices
     if (live && (g.launch || g.score)) box.appendChild(el('p', { class: 'muted pick-note', text: 'Starting a new game drops the unfinished one; it isn’t saved to anyone’s history, linked players included.' }));
+    if (g.launch) g.launch.forEach(function (o) { if (o.tool) opt(o.icon, o.title, o.desc, o.file, 'tool'); });
     box.insertBefore(el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b><span>' + Kit.esc(g.tag) + '</span></div>' }), box.firstChild);
     s = Kit.sheet({ node: box });
   }

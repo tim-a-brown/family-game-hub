@@ -50,7 +50,7 @@ var GAMES = [
       { icon: 'phone', title: 'Play on this device', desc: 'Against the computer or pass and play, with the real cards', file: 'lorcana-play.html' },
       { icon: 'users', title: 'Play online', desc: 'Two devices, two PINs, each with your own deck', file: 'lorcana-play.html?online=1' },
       { icon: 'pencil', title: 'Keep score', desc: 'Playing with real cards? Track the lore here', file: 'lorcana' },
-      { icon: 'book', title: 'Card library', desc: 'Browse every card, by ink, cost or film', file: 'lorcana-play.html?library=1' }
+      { icon: 'book', title: 'Cards and decks', desc: 'Browse every card and build your decks. Leaves any game as it is', file: 'lorcana-play.html?library=1', tool: true }
     ] },
 
   // ── Board ────────────────────────────────────────────────────────────────
