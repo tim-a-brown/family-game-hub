@@ -84,10 +84,10 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 /* The hand is a card carousel (from Lorcana's card viewer): the card in front full size, the rest turned away on
    each side, or a fan when the whole hand fits side by side. overflow-x:clip keeps the cards inside the rail
    sideways while dealt cards can still fly in from the pile above. */
-.hand{position:relative;--cw:158px;height:calc(var(--cw) * 1.4 + 50px);margin:0 4px;overflow-x:clip;overflow-y:visible;perspective:1100px;touch-action:pan-y;-webkit-user-select:none;user-select:none;outline:none;-webkit-tap-highlight-color:transparent;}
+.hand{position:relative;--cw:158px;height:calc(var(--cw) * 1.4 + 40px);margin:0 4px;overflow-x:clip;overflow-y:visible;perspective:1100px;touch-action:pan-y;-webkit-user-select:none;user-select:none;outline:none;-webkit-tap-highlight-color:transparent;}
 .hand:focus-visible{box-shadow:0 0 0 2px rgba(255,212,71,.55);border-radius:16px;}
-.hand.flow::before{content:"";position:absolute;left:50%;top:30px;width:calc(var(--cw) * 1.9);height:calc(var(--cw) * 1.5);transform:translateX(-50%);background:radial-gradient(closest-side,rgba(255,228,170,.24),rgba(255,228,170,0));pointer-events:none;}
-.hc{position:absolute;left:50%;top:32px;width:var(--cw);height:calc(var(--cw) * 1.4);margin-left:calc(var(--cw) * -.5);will-change:transform;cursor:pointer;}
+.hand.flow::before{content:"";position:absolute;left:50%;top:22px;width:calc(var(--cw) * 1.9);height:calc(var(--cw) * 1.5);transform:translateX(-50%);background:radial-gradient(closest-side,rgba(255,228,170,.24),rgba(255,228,170,0));pointer-events:none;}
+.hc{position:absolute;left:50%;top:24px;width:var(--cw);height:calc(var(--cw) * 1.4);margin-left:calc(var(--cw) * -.5);will-change:transform;cursor:pointer;}
 .hc .ac::after{content:"";position:absolute;inset:0;z-index:2;border-radius:inherit;background:#120a04;opacity:calc(var(--dim,0) * .5);pointer-events:none;}
 .hc.sel .ac::after{opacity:calc(var(--dim,0) * .22);}
 .hc .ac{transition:transform .32s var(--spring);}
@@ -956,7 +956,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     if (ui.round !== V.round) { ui.round = V.round; ui.sel = []; ui.jsel = -1; }
     if (V.phase !== 'judge') ui.jsel = -1;
     if (prev && prev.me !== V.me) ui.sel = [];   // pass and play: a new person holds the phone
-    var same = prev && prev.round === V.round, post = [];
+    var same = prev && prev.round === V.round, post = [], hf = null;
     app.innerHTML = '';
     // Scores: cards won. The judge's chip lifts and wears the crown; a new card bumps the count.
     var strip = el('div', { class: 'scores' });
@@ -1078,45 +1078,46 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       var hd = el('div', { class: 'hd', html: '<span>' + title + '</span>' + (V.extra && myTurn ? '<span class="xtra">+' + V.extra + ' drawn</span>' : '') });
       if (btn && myTurn) hd.appendChild(btn);
       rail.appendChild(hd);
-      var hand = el('div', { class: 'hrow' + (myTurn ? '' : ' off') });
+      // The same hand as last time keeps its carousel (and where you were in it); a changed hand is laid out again
+      // on the same card; a hand you're only now seeing fans open
+      var ids = V.hand.map(function (c) { return c.id; });
       var prevIds = prev && prev.hand && prev.me === V.me ? prev.hand.map(function (c) { return c.id; }) : null;
-      var fresh = [], nH = V.hand.length;
-      V.hand.forEach(function (c, k) {
-        var on = ui.sel.indexOf(c.id) >= 0, ce = cardEl(c, { cls: on ? 'sel' : '' });
-        var off = k - (nH - 1) / 2; ce.style.setProperty('--r', (off * 1.6).toFixed(1) + 'deg'); ce.style.setProperty('--y', (off * off * 1.1).toFixed(1) + 'px');
-        if (on && V.pick > 1) ce.appendChild(el('span', { class: 'num', text: String(ui.sel.indexOf(c.id) + 1) }));
-        if (prevIds && prevIds.indexOf(c.id) < 0) fresh.push(ce);
-        if (myTurn) ce.addEventListener('click', function () {
-          if (ui.flying) return;
-          var at = ui.sel.indexOf(c.id);
-          if (at >= 0 && V.pick === 1) { playSelected(); return; }   // tap the lifted card again to play it
-          if (at >= 0) ui.sel.splice(at, 1);
-          else { if (ui.sel.length >= V.pick) ui.sel.shift(); ui.sel.push(c.id); }
-          Kit.sfx(at >= 0 ? 'tap' : 'pop'); Kit.haptic('light'); render(V);
-        });
-        hand.appendChild(ce);
-      });
-      // new cards come off the pile one by one
-      if (fresh.length) {
+      var freshIds = prevIds ? ids.filter(function (id) { return prevIds.indexOf(id) < 0; }) : [];
+      if (handWas && handWas.me === V.me && sameIds(handWas.ids, ids)) hf = handWas;
+      else {
+        hf = handFlow(V.hand, V.me);
+        var keep = handWas && handWas.me === V.me ? handWas : null;
+        if (keep) { var fi = ids.indexOf(keep.ids[Math.round(keep.focus)]); hf.pos = hf.focus = fi >= 0 ? fi : Math.max(0, Math.min(ids.length - 1, Math.round(keep.focus))); }
+        else { hf.pos = hf.focus = Math.floor((ids.length - 1) / 2); hf.opening = true; }
+      }
+      HF = hf; hf.onPick = handPick;
+      rail.appendChild(hf.el); rail.appendChild(hf.pips);
+      app.appendChild(rail);
+      // New cards come off the pile one by one, and the hand glides round to show the first of them
+      if (freshIds.length && hf !== handWas) {
         Kit.sfx('deal');
         post.push(function () {
-          var dk = deck.getBoundingClientRect();
-          fresh.forEach(function (ce, j) {
-            var r = ce.getBoundingClientRect();
-            ce.style.setProperty('--fx', (dk.left + dk.width / 2 - r.left - r.width / 2).toFixed(0) + 'px');
-            ce.style.setProperty('--fy', (dk.top + dk.height / 2 - r.top - r.height / 2).toFixed(0) + 'px');
-            ce.style.setProperty('--dl', (j * .09) + 's'); ce.classList.add('dealt');
-            if (j) setTimeout(function () { Kit.sfx('deal', 0.6); }, j * 90);
+          var dk = deck.getBoundingClientRect(), hr = hf.el.getBoundingClientRect(), first = ids.indexOf(freshIds[0]);
+          hf.settle(first);
+          freshIds.forEach(function (id, k) {
+            var j = ids.indexOf(id), ce = hf.items[j].firstChild, q = hf.pose(j, first);
+            // where the pile is, seen from the card's own (moved, turned and scaled) spot in the hand
+            var cx = hr.left + hr.width / 2 + q.x, cy = hr.top + 24 + ce.offsetHeight / 2 + q.y;
+            var k2 = q.sc * Math.max(0.35, Math.cos(q.r * Math.PI / 180));
+            ce.style.setProperty('--fx', (dk.width ? (dk.left + dk.width / 2 - cx) / k2 : 0).toFixed(0) + 'px');
+            ce.style.setProperty('--fy', (dk.width ? (dk.top + dk.height / 2 - cy) / q.sc : -240).toFixed(0) + 'px');
+            ce.style.setProperty('--dl', (k * .11) + 's'); ce.classList.add('dealt');
+            ce.addEventListener('animationend', function dn(e) { if (e.target !== ce) return; ce.removeEventListener('animationend', dn); ce.classList.remove('dealt'); });
+            if (k) setTimeout(function () { Kit.sfx('deal', 0.6); }, k * 110);
           });
         });
       }
-      rail.appendChild(hand);
-      app.appendChild(rail);
-      hand.scrollLeft = sx;
     }
     if (btn && !(showHand && myTurn)) tbl.appendChild(el('div', { class: 'bar' }, [btn]));
     if (V.mode === 'pass' && V.phase === 'play' && V.me >= 0 && V.mine) app.appendChild(el('div', { class: 'hint', text: 'Played. Pass the phone on.' }));
 
+    // the hand: laid out now it's on the page; picks change after the old look is in place, so the lift animates
+    if (hf) { void hf.el.offsetWidth; hf.layout(); hf.sync(ui.sel, V.pick, myTurn); if (hf.opening) { hf.opening = false; hf.open(); } }
     requestAnimationFrame(function () { requestAnimationFrame(function () { post.forEach(function (f) { f(); }); }); });
     if (prev && prev.phase !== 'result' && V.phase === 'result' && V.win) celebrate(V);
   }
@@ -1137,8 +1138,8 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     var V = lastV; if (!V || ui.flying || ui.sel.length !== V.pick) return;
     ui.flying = true;
     var sel = ui.sel.slice(), dst = app.querySelector('.pend.me') || app.querySelector('.plays');
-    var nodes = sel.map(function (id) { return app.querySelector('.hrow .ac.sel[data-id="' + id + '"]'); }).filter(Boolean);
-    nodes.forEach(function (n, k) { if (dst) setTimeout(function () { fly(n, dst, { down: true, scale: dst.classList.contains('pend') ? dst.offsetWidth / n.offsetWidth : 0.8 }); n.style.visibility = 'hidden'; }, k * 90); });
+    var nodes = sel.map(function (id) { return app.querySelector('.hand .ac.sel[data-id="' + id + '"]'); }).filter(Boolean);
+    nodes.forEach(function (n, k) { if (dst) setTimeout(function () { fly(n, dst, { down: true, scale: dst.classList.contains('pend') ? dst.offsetWidth * 1.4 / (n.getBoundingClientRect().height || n.offsetHeight) : 0.8 }); n.style.visibility = 'hidden'; }, k * 90); });
     Kit.sfx('deal'); Kit.haptic('medium');
     ui.sel = [];
     setTimeout(function () { ui.flying = false; doAct({ t: 'play', c: sel }); }, nodes.length ? 420 + (nodes.length - 1) * 90 : 0);
@@ -1146,9 +1147,13 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   // A copy of a card flies from one place to another (the real one is drawn there after)
   function fly(from, to, o) {
     o = o || {};
-    var a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
-    if (!a.width || !b.width) return;
+    var r = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+    if (!r.width || !b.width) return;
+    var a = { left: r.left, top: r.top, width: r.width, height: r.height };
+    // a card turned sideways in the hand flies as the flat card it is, at the size it shows
+    if (from.closest && from.closest('.hand') && from.offsetHeight) { a.width = from.offsetWidth * r.height / from.offsetHeight; a.left = r.left + r.width / 2 - a.width / 2; }
     var c = from.cloneNode(true); c.classList.remove('sel', 'dealt', 'drop', 'flipin', 'lift'); c.classList.add('fly');
+    var nb = c.querySelector('.num'); if (nb) nb.remove();
     c.style.left = a.left + 'px'; c.style.top = a.top + 'px'; c.style.width = a.width + 'px'; c.style.height = a.height + 'px'; c.style.setProperty('--cw', a.width + 'px');
     document.body.appendChild(c);
     var tx = b.left + b.width / 2 - (a.left + a.width / 2), ty = b.top + Math.min(b.height / 2, 80) - (a.top + a.height / 2), sc = o.scale || 0.8;
