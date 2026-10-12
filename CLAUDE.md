@@ -47,6 +47,9 @@ Tim plans and requests changes in chat, proofs them on a preview URL, then says
 - Every game checks its rules against the official/standard rules, and has a
   plain-language "How to play" via `Kit.init({rules})`.
 - Fun moments: `Kit.win` (confetti), `Kit.callout`, `Kit.sfx`, `Kit.haptic`.
+- **New games: the bar is very high.** Tim expects high-end design polish, effects, sound and
+  interactivity in every new game: real materials and pieces, motion on every action, sounds and haptics,
+  big moments for big plays. Screenshot every phase and critique it before calling it done.
 - **Subtle per-game identity:** layout and controls stay standard; each game
   gets its own table "box" via `THEMES` in `kit.js` (felt colour, card backs,
   wood). Keep it understated: colour and material, never mascots or emoji.
