@@ -613,4 +613,63 @@
     gs.forEach(function (g, i) { var n = dondOne(ui, g, nm[i] || 'Player ' + (i + 1), multi); if (n) out = out.concat(n); });
     return ui.wrap(out);
   });
+  // ── Press Your Luck: each contestant's scoreboard (take-home, Whammies, prizes kept or lost) and the bonus round ──
+  HistView.css('hv-pyl', [
+    '.hv-pyl{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:14px;background:radial-gradient(120% 90% at 50% 0%,#1d2a6e,#0a0f33);',
+    'box-shadow:inset 0 0 0 3px #f6c33a,inset 0 0 0 6px #0a0f33,inset 0 0 0 7.5px rgba(246,195,58,.45),0 8px 18px -10px rgba(0,0,0,.8);}',
+    '.hv-pyl .pr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.08);}',
+    '.hv-pyl .pr.won{box-shadow:inset 0 0 0 2px #f6c33a,0 0 14px rgba(246,195,58,.35);}',
+    '.hv-pyl .nm{font-weight:900;color:#fff;font-size:.95rem;display:flex;align-items:center;gap:6px;min-width:0;}.hv-pyl .nm .ico{width:16px;height:16px;color:#f6c33a;flex:none;}',
+    '.hv-pyl .mn{font-weight:900;font-size:1.25rem;color:#ffd84a;font-variant-numeric:tabular-nums;text-shadow:0 0 10px rgba(255,200,40,.5);text-align:right;}',
+    '.hv-pyl .wh{display:flex;gap:4px;}.hv-pyl .wh i{width:14px;height:14px;border-radius:3px;box-shadow:inset 0 0 0 1.5px rgba(255,90,90,.45);}',
+    '.hv-pyl .wh i.on{background:radial-gradient(circle at 40% 35%,#ff7a6a,#c8102e);box-shadow:0 0 6px rgba(255,60,60,.6);}',
+    '.hv-pyl .wh small{font-size:.62rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#ff8a8a;margin-left:4px;align-self:center;}',
+    '.hv-pyl .pz{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px;}',
+    '.hv-pyl .pz span{font-size:.68rem;font-weight:800;padding:3px 7px;border-radius:999px;background:rgba(246,195,58,.16);color:#ffe7a0;}',
+    '.hv-pyl .pz span.lost{background:rgba(255,255,255,.06);color:rgba(255,255,255,.4);text-decoration:line-through;}',
+    '.hv-pyl .bn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border-radius:10px;background:rgba(0,0,0,.35);text-align:center;}',
+    '.hv-pyl .bn b{font-size:1.05rem;font-weight:900;color:#fff;}.hv-pyl .bn b.jp{color:#ffd84a;text-shadow:0 0 12px rgba(255,200,40,.7);}.hv-pyl .bn b.out{color:#ff8a8a;}',
+    '.hv-pyl .lv{display:flex;gap:5px;}.hv-pyl .lv i{width:22px;height:8px;border-radius:4px;background:rgba(255,255,255,.12);}.hv-pyl .lv i.on{background:#f6c33a;box-shadow:0 0 6px rgba(246,195,58,.6);}',
+    '.hv-pyl .bn small{font-size:.66rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55);}'
+  ].join(''));
+  R('pressyourluck', function (e, ui) {
+    var d = e.dt; if (!d || !d.wh) return null;
+    var el = ui.el, P = e.players || [], wh = arr(d.wh), kp = arr(d.kp), bk = arr(d.bk), B = d.bonus, box = el('div', { class: 'hv-pyl' });
+    // every prize each contestant landed on; the ones not kept at the end went to a Whammy
+    var got = P.map(function () { return []; });
+    arr(d.pz).forEach(function (z) {
+      var q = String(z).split(':'), pi = +q[0], v = q.length > 2 ? +q[q.length - 1] : null, nm = q.slice(1, q.length > 2 ? -1 : undefined).join(':');
+      if (got[pi]) got[pi].push({ n: nm, v: v });
+    });
+    var order = P.map(function (p, i) { return i; }).sort(function (a, b) { return (P[b].score || 0) - (P[a].score || 0); });
+    order.forEach(function (i) {
+      var p = P[i], w = Number(wh[i]) || 0, kept = {}, marks = [], chips = [];
+      if (kp[i] != null) String(kp[i]).split('|').filter(Boolean).forEach(function (t) { var n = t.slice(0, t.lastIndexOf(':')); kept[n] = (kept[n] || 0) + 1; });
+      for (var k = 0; k < 4; k++) marks.push(el('i', { class: k < w ? 'on' : '' }));
+      if (w >= 4) marks.push(el('small', { text: 'Out' }));
+      got[i].forEach(function (z) {
+        var lost = kp[i] != null && !(kept[z.n] > 0); if (!lost && kept[z.n]) kept[z.n]--;
+        chips.push(el('span', { class: lost ? 'lost' : '', title: lost ? 'Lost to a Whammy' : '', text: z.n + (z.v ? ' · ' + fmtK(z.v) : '') }));
+      });
+      box.appendChild(el('div', { class: 'pr' + (e.winner && p.name === e.winner ? ' won' : '') }, [
+        el('div', { class: 'nm', html: (e.winner && p.name === e.winner ? ui.icon('trophy') : '') + '<span>' + esc(p.name || 'Player') + '</span>' }),
+        el('div', { class: 'mn', text: cash(p.score) }),
+        el('div', { class: 'wh', title: w + (w === 1 ? ' Whammy' : ' Whammies') }, marks),
+        bk[i] != null && B && B.p === i && B.r !== 'jackpot' && p.score !== bk[i] ? el('div', { class: 'wh' }, [el('small', { style: { color: 'rgba(255,255,255,.55)' }, text: cash(bk[i]) + ' + bonus' })]) : el('span'),
+        chips.length ? el('div', { class: 'pz' }, chips) : null
+      ]));
+    });
+    if (B && B.r) {
+      var lv = []; for (var l = 1; l <= 5; l++) lv.push(el('i', { class: l <= (B.lv || 0) ? 'on' : '' }));
+      var who = (P[B.p] && P[B.p].name) || 'The champion';
+      box.appendChild(el('div', { class: 'bn' }, [
+        el('small', { text: 'Bonus round · ' + who }),
+        B.r === 'jackpot' ? el('b', { class: 'jp', text: 'JACKPOT · ' + cash(1000000) }) : B.r === 'keep' ? el('b', { text: 'Kept ' + cash(B.k) + ' after level ' + B.lv }) : el('b', { class: 'out', text: 'Four Whammies in level ' + B.lv }),
+        el('div', { class: 'lv', title: 'Level ' + B.lv + ' of 5' }, lv),
+        B.w ? el('small', { text: B.w + (B.w === 1 ? ' Whammy' : ' Whammies') + ' in the bonus' }) : null
+      ]));
+    }
+    var tw = wh.reduce(function (a, v) { return a + (Number(v) || 0); }, 0);
+    return ui.wrap([ui.section('The scoreboard', box), ui.stats([['Whammies', tw], ['Prizes landed', arr(d.pz).length || null]])]);
+  });
 })();

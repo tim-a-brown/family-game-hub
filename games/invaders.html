@@ -1339,8 +1339,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     var detail = {
       w: G.wave, cl: st.cleared, k: st.kills, hv: st.heavies, sp: st.splits, u: st.ufos, sh: st.shots, ls: st.lasersShot, bm: st.bombs, ch: st.chain, pf: st.perfect, fv: st.rushes,
       np: pl.length, s1: pl[0].score, b1: pl[0].best, w1: pl[0].wpn || '', s2: two ? pl[1].score : 0, b2: two ? pl[1].best : 0, w2: two ? pl[1].wpn || '' : '',
-      why: G.why || '', a50: st.all50 ? 1 : 0, hb: G.best0 || 0
+      why: G.why || '', a50: st.all50 ? 1 : 0, hb: G.best0 || 0, bu: st.bonusUfos, bt: st.bonusTotal
     };
+    var hiL = ArcadeHi.list(HI), top0 = Math.max.apply(null, pl.map(function (p) { return p.score; }));
+    detail.hr = top0 > 0 && (hiL.length < ArcadeHi.max || top0 > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= top0; }).length + 1 : 0;
     Kit.record(KEY, {
       detail: detail, started: G.started, mode: two ? '2p' : '',
       players: pl.map(function (p) { return { name: p.name, score: p.score }; }), winner: two ? undefined : null,

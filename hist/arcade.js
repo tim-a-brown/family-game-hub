@@ -609,8 +609,33 @@
     ['..X...X..', '...XXX...', '.XXXXXXX.', 'XX.XXX.XX', 'XXXXXXXXX', '.X.....X.'],
     ['..XXXX..', '.XXXXXX.', 'XX.XX.XX', 'XXXXXXXX', '..X..X..', '.X.XX.X.']
   ];
+  // Space Invaders Frenzy: the 50 stages as a grid (cleared ones lit, bonus-saucer stages marked, where it ended in red)
+  function invFrenzy(e, ui, d) {
+    var W = 300, C = 10, CW = 28, CH = 20, H = 5 * CH + 14, s = '<rect width="' + W + '" height="' + H + '" fill="#05060d"/>', w = Number(d.w) || 1;
+    for (var i = 1; i <= 50; i++) {
+      var c = (i - 1) % C, r = Math.floor((i - 1) / C), x = 6 + c * (CW + 1), y = 6 + r * (CH + 1);
+      var done = i < w || (d.a50 && i <= 50), here = i === w && !d.a50, bonus = i % 5 === 0;
+      var fill = here ? '#ff3b5c' : done ? (bonus ? '#ffd84a' : '#2fd35a') : 'rgba(255,255,255,.06)';
+      s += '<rect x="' + x + '" y="' + y + '" width="' + CW + '" height="' + CH + '" rx="3" fill="' + fill + '"' + (done || here ? '' : ' stroke="rgba(255,255,255,.12)"') + '/>';
+      s += '<text x="' + (x + CW / 2) + '" y="' + (y + CH / 2 + 3.5) + '" text-anchor="middle" font-size="9" font-weight="900" fill="' + (done || here ? '#06120a' : 'rgba(255,255,255,.35)') + '" font-family="ui-monospace,monospace">' + i + '</text>';
+    }
+    var two = d.np > 1, acc = d.sh ? Math.min(100, Math.round((d.k || 0) / d.sh * 100)) + '%' : '';
+    return screen(ui, {
+      ac: '#2fd35a', title: (d.a50 ? 'All 50 stages · ' : 'Game over · ') + 'stage ' + w, score: n(two ? Math.max(d.s1 || 0, d.s2 || 0) : myScore(e)), rank: rankText(d),
+      pic: svg(W, H, s, { aria: 'The 50 stages: green ones cleared, gold ones were saucer bonus stages, red is where it ended' }), picMax: 340,
+      stats: [two ? ['Red', n(d.s1), 'best streak ' + (d.b1 || 0), '#ff4a5a'] : null, two ? ['Blue', n(d.s2), 'best streak ' + (d.b2 || 0), '#3fa9ff'] : null,
+        ['Invaders', n(d.k), (d.hv ? d.hv + ' heavy' : '') + (d.hv && d.sp ? ' · ' : '') + (d.sp ? d.sp + ' split' : '')],
+        !two && d.b1 ? ['Best streak', d.b1 + ' hits'] : null, acc ? ['Hit rate', acc, n(d.sh) + ' shots'] : null,
+        d.u ? ['Saucers', d.u, d.bt ? d.bu + ' of ' + d.bt + ' in bonus rounds' : ''] : null, d.bm ? ['BOMBs', d.bm, d.ch > 1 ? 'best chain x' + d.ch : ''] : null,
+        d.ls ? ['Lasers shot down', d.ls] : null, d.pf ? ['Perfect stages', d.pf] : null,
+        (d.w1 || d.w2) && !two ? ['Weapon', d.w1 === 'ring' ? 'Ring' : 'Missiles'] : null],
+      extra: [key(ui, [['Cleared', '#2fd35a'], ['Saucer bonus', '#ffd84a'], [d.a50 ? 'Endless' : 'Ended here', '#ff3b5c']])],
+      foot: d.why === 'invaded' ? 'The invaders reached the bottom' : d.a50 ? 'Beat all 50 stages' : 'The shield ran out', footOk: !!d.a50
+    });
+  }
   R('invaders', function (e, ui) {
-    var d = e.dt; if (!d || !d.rack) return null;
+    var d = e.dt; if (d && !d.rack && d.w) return invFrenzy(e, ui, d);
+    if (!d || !d.rack) return null;
     var rk = String(d.rack), CW = 16, RH = 14, P = 1.4, W = 11 * CW + 8, H = 5 * RH + 30, s = '<rect width="' + W + '" height="' + H + '" fill="#000"/>';
     for (var r = 0; r < 5; r++) for (var c = 0; c < 11; c++) {
       var on = rk.charAt(r * 11 + c) === '1', t = r < 2 ? 0 : r < 4 ? 1 : 2, rows = INV[t], w = rows[0].length;
@@ -629,6 +654,71 @@
         ['Accuracy', acc, d.sh ? n(d.sh) + ' shots' : ''], d.u ? ['Saucers', d.u, n(d.up) + ' points' + (d.ub >= 300 ? ' · hit a 300' : '')] : null,
         d.bs ? ['Bombs shot', d.bs] : null, d.ex ? ['Extra cannon', 'Yes'] : null],
       foot: d.why === 'invaded' ? 'The invaders landed' : 'Last cannon hit', footOk: false
+    });
+  });
+  // ═══ Crossy Road ═══
+  // a sketch of the last few lanes, the chicken on the row where it ended and what got it
+  var CR_WHY = { car: 'Hit by a car', truck: 'Hit by a truck', train: 'Hit by a train', water: 'Fell in the river', edge: 'Swept away on a log', eagle: 'Carried off by the eagle' };
+  R('crossyroad', function (e, ui) {
+    var d = e.dt; if (!d || d.sc == null) return null;
+    var W = 300, LH = 22, rows = 6, H = rows * LH, R0 = rnd((Number(d.sd) || 7) + (Number(d.sc) || 0)), s = '', cs = d.cs || '', cx = 150;
+    // lanes from the bottom up; the top-but-one lane is where it ended, and its kind matches the cause
+    var endK = cs === 'train' ? 'rail' : cs === 'water' || cs === 'edge' ? 'river' : cs === 'eagle' ? 'grass' : 'road', kinds = [];
+    for (var i = 0; i < rows; i++) kinds.push(i === rows - 2 ? endK : i === 0 ? 'grass' : ['grass', 'road', 'road', 'river', 'rail'][Math.floor(R0() * 5)]);
+    kinds.forEach(function (k, i) {
+      var y = H - (i + 1) * LH, j;
+      if (k === 'grass') { s += '<rect y="' + y + '" width="' + W + '" height="' + LH + '" fill="' + (i % 2 ? '#94d94e' : '#8bd146') + '"/>'; for (j = 0; j < 3; j++) { var tx = 20 + R0() * 260; if (Math.abs(tx - cx) > 24) s += '<rect x="' + tx.toFixed(0) + '" y="' + (y + 4) + '" width="12" height="14" rx="2" fill="#3f8f2a"/><rect x="' + (tx + 4).toFixed(0) + '" y="' + (y + 14) + '" width="4" height="6" fill="#7a4a24"/>'; } }
+      else if (k === 'road') { s += '<rect y="' + y + '" width="' + W + '" height="' + LH + '" fill="#4b4f5a"/>'; for (j = 0; j < W; j += 26) s += '<rect x="' + j + '" y="' + (y + LH / 2 - 1) + '" width="13" height="2" fill="rgba(255,255,255,.45)"/>'; if (i !== rows - 2) { var vx = R0() * 240; if (Math.abs(vx + 15 - cx) > 30) s += '<rect x="' + vx.toFixed(0) + '" y="' + (y + 4) + '" width="30" height="14" rx="3" fill="' + ['#ff5d5d', '#5db0ff', '#ffd23d'][Math.floor(R0() * 3)] + '"/>'; } }
+      else if (k === 'river') { s += '<rect y="' + y + '" width="' + W + '" height="' + LH + '" fill="#4fb6f0"/>'; for (j = 0; j < 2; j++) { var lx = j * 150 + R0() * 60; if (!(i === rows - 2 && cs === 'water' && lx < cx + 20 && lx + 60 > cx - 20)) s += '<rect x="' + lx.toFixed(0) + '" y="' + (y + 4) + '" width="60" height="14" rx="5" fill="#8a5a2b"/>'; } }
+      else { s += '<rect y="' + y + '" width="' + W + '" height="' + LH + '" fill="#7a6b5c"/>'; for (j = 4; j < W; j += 12) s += '<rect x="' + j + '" y="' + (y + 3) + '" width="5" height="16" fill="#5a4a3a"/>'; s += '<rect y="' + (y + 6) + '" width="' + W + '" height="2" fill="#c9c9d1"/><rect y="' + (y + 14) + '" width="' + W + '" height="2" fill="#c9c9d1"/>'; }
+    });
+    var ey = H - (rows - 1) * LH, chx = cs === 'edge' ? 10 : cx, chy = ey + 4;
+    // what got it
+    if (cs === 'car' || cs === 'truck') { var vw = cs === 'truck' ? 56 : 32; s += '<rect x="' + (cx - vw - 2) + '" y="' + (ey + 3) + '" width="' + vw + '" height="16" rx="3" fill="' + (cs === 'truck' ? '#e8e8ee' : '#ff5d5d') + '"/><rect x="' + (cx - 10) + '" y="' + (ey + 5) + '" width="6" height="12" fill="rgba(30,40,60,.7)"/>'; }
+    if (cs === 'train') s += '<rect x="' + (cx - 150) + '" y="' + (ey + 2) + '" width="140" height="18" rx="3" fill="#d9363e"/><rect x="' + (cx - 30) + '" y="' + (ey + 5) + '" width="12" height="8" fill="#ffe9a0"/>';
+    if (cs === 'eagle') s += '<path d="M' + (cx - 26) + ' ' + (ey - 2) + 'q13 -12 26 0q13 -12 26 0l-26 10z" fill="#3a2a1a"/><circle cx="' + cx + '" cy="' + (ey - 1) + '" r="4" fill="#f2f2f2"/>';
+    if (cs === 'water') { chy = ey + 9; s += '<ellipse cx="' + cx + '" cy="' + (ey + 15) + '" rx="16" ry="4" fill="none" stroke="#e8f8ff" stroke-width="1.5"/>'; }
+    // the chicken
+    s += '<g transform="translate(' + (chx - 7) + ' ' + chy + ')"' + (cs === 'water' ? ' opacity=".75"' : '') + '><rect width="14" height="14" rx="2" fill="#fbfbf6"/><rect x="4" y="-4" width="6" height="4" fill="#e5263f"/><rect x="11" y="5" width="5" height="3" fill="#ff9d2a"/><rect x="8" y="3" width="2" height="2" fill="#1a1a1a"/></g>';
+    s += '<rect y="' + (H - 18) + '" width="44" height="14" rx="3" fill="rgba(0,0,0,.45)"/><text x="22" y="' + (H - 8) + '" text-anchor="middle" font-size="9" font-weight="900" fill="#fff" font-family="ui-monospace,monospace">ROW ' + n(d.sc) + '</text>';
+    return screen(ui, {
+      ac: '#84cc16', title: 'Game over', score: n(d.sc), unit: d.sc === 1 ? 'row' : 'rows', rank: rankText(d, 'rows'),
+      pic: svg(W, H, s, { aria: 'The last lanes, with the chicken where the run ended' }), picMax: 340,
+      stats: [['Coins', d.co || 0], d.hp ? ['Hops', n(d.hp)] : null, d.t ? ['Time', mmss(d.t)] : null, d.rn > 1 ? ['Run', '#' + d.rn, 'best this sitting ' + n(d.sb)] : null],
+      foot: CR_WHY[cs] || ''
+    });
+  });
+
+  // ═══ Centipede (Chaos) ═══
+  // the ten waves as a track: boss waves bigger, cleared ones lit, where it ended marked
+  var CT_BOSS = { 3: ['Killer Wasp', '#ffe23d'], 6: ['Night Flyer', '#b98cff'], 9: ['Blast Beetle', '#ff4a7a'], 10: ['Mega Spider', '#ff2d8a'] };
+  var CT_BY = { centipede: 'The centipede', spider: 'A spider', mini: 'A spider', flea: 'A flea', ant: 'An ant', beetle: 'A beetle', ffly: 'A firefly', wasp: 'A wasp', bwasp: 'A black wasp',
+    fire: 'Fire', ember: 'Fire', spark: 'A spark', sting: 'A stinger', venom: 'Venom', shockwave: 'A shockwave', button: 'A bug', firefly: 'The Night Flyer', mega: 'The Mega Spider' };
+  R('centipede', function (e, ui) {
+    var d = e.dt; if (!d || !d.w) return null;
+    var w = Number(d.w) || 1, loop = Math.floor((w - 1) / 10), at = (w - 1) % 10 + 1, W = 300, H = 92, s = '<rect width="' + W + '" height="' + H + '" fill="#060914"/>';
+    for (var gx = 0; gx < W; gx += 20) s += '<rect x="' + gx + '" width=".6" height="' + H + '" fill="rgba(80,140,255,.10)"/>';
+    var y = 48, x0 = 22, dx = 28;
+    s += '<rect x="' + x0 + '" y="' + (y - 1.5) + '" width="' + (dx * 9) + '" height="3" fill="rgba(120,160,255,.25)"/>';
+    for (var i = 1; i <= 10; i++) {
+      var x = x0 + (i - 1) * dx, b = CT_BOSS[i], done = loop > 0 || i < at || (i === at && d.won && i === 10), here = i === at && !(d.won && i === 10 && !loop);
+      var c = here ? '#ff3b5c' : done ? (b ? b[1] : '#3fa9ff') : 'rgba(255,255,255,.14)';
+      if (done && i > 1) s += '<rect x="' + (x - dx) + '" y="' + (y - 1.5) + '" width="' + dx + '" height="3" fill="#3fa9ff"/>';
+      if (b) s += '<path d="M' + x + ' ' + (y - 11) + 'l11 11l-11 11l-11-11z" fill="' + c + '"' + (done || here ? ' filter="drop-shadow(0 0 4px ' + c + ')"' : '') + '/>';
+      else s += '<circle cx="' + x + '" cy="' + y + '" r="7" fill="' + c + '"/>';
+      s += '<text x="' + x + '" y="' + (y + 3.5) + '" text-anchor="middle" font-size="9" font-weight="900" fill="' + (done || here ? '#060914' : 'rgba(255,255,255,.5)') + '" font-family="ui-monospace,monospace">' + i + '</text>';
+      if (b) s += '<text x="' + (i === 10 ? x + 12 : x) + '" y="' + (i === 3 || i === 9 ? y + 26 : y - 18) + '" text-anchor="' + (i === 10 ? 'end' : 'middle') + '" font-size="7.5" font-weight="800" fill="' + (done ? b[1] : 'rgba(255,255,255,.4)') + '" font-family="ui-monospace,monospace">' + b[0].toUpperCase() + '</text>';
+    }
+    if (loop) s += '<text x="6" y="13" text-anchor="start" font-size="8" font-weight="900" fill="#ffd84a" font-family="ui-monospace,monospace">ENDLESS · LOOP ' + (loop + 1) + '</text>';
+    var online = d.np > 1, by = CT_BY[d.by] || '';
+    if (by && CT_BOSS[at] && (d.by === 'mega' || d.by === 'firefly' || (at === 3 && d.by === 'wasp') || (at === 9 && d.by === 'beetle'))) by = 'The ' + CT_BOSS[at][0];
+    return screen(ui, {
+      ac: '#3fa9ff', title: d.won ? 'Mega Spider beaten · wave ' + w : 'Game over · wave ' + w, score: n(myScore(e)), rank: rankText(d),
+      pic: svg(W, H, s, { aria: 'The ten waves: lit ones cleared, diamonds are boss waves, red is where it ended' }), picMax: 360,
+      stats: [online ? ['Team score', n(d.ts)] : null, ['Bosses', d.b || 0, d.b && d.b < 4 ? ['Killer Wasp', 'Night Flyer', 'Blast Beetle'].slice(0, d.b).join(', ') : d.b >= 4 ? 'all four' + (d.b > 4 ? ', some twice' : '') : ''],
+        d.sg ? ['Segments', n(d.sg), (d.hd || 0) + ' heads'] : null, d.sp ? ['Spiders', d.sp] : null, d.bg ? ['Other bugs', n(d.bg)] : null,
+        d.pw ? ['Power-ups', d.pw] : null, d.cb >= 5 ? ['Best combo', 'x' + d.cb] : null, d.df === 'relaxed' ? ['Mode', 'Relaxed'] : null],
+      foot: d.won ? 'Beat the Mega Spider' : by ? 'Last life lost to: ' + by.charAt(0).toLowerCase() + by.slice(1) : '', footOk: !!d.won
     });
   });
 })();

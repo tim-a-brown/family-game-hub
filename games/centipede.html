@@ -2153,7 +2153,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (online) h.push('Team score ' + fmt(R.score));
     if (note) h.push(note);
     var myScore = online ? me.score : R.score;
+    var hiL = ArcadeHi.list(HI), P0 = G && !online ? G.players[0] : null;
     Kit.record(KEY, {
+      detail: { w: R.wave, won: R.won ? 1 : 0, df: R.diff || 'arcade', np: R.players.length, ts: online ? R.score : 0,
+        b: st.bosses || 0, sg: st.segs || 0, hd: st.heads || 0, sp: st.spiders || 0, fl: st.fleas || 0, sc: st.scorps || 0, bg: st.bugs || 0,
+        pw: st.powers || 0, ms: st.mush || 0, cb: st.combo || 0, by: (P0 && P0.lastBy) || '', nt: note ? 1 : 0,
+        hr: myScore > 0 && (hiL.length < ArcadeHi.max || myScore > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= myScore; }).length + 1 : 0,
+        hb: G ? G.best0 || 0 : 0 },
       started: R.started || null, mode: (online ? 'Online co-op' : 'Solo') + ' · ' + (DIFF[R.diff] || DIFF.arcade).name,
       players: online ? R.players.map(function (p) { return { name: p.name, score: p.score }; }) : [{ name: me.name, score: R.score }],
       winner: online ? null : undefined, highlights: h,

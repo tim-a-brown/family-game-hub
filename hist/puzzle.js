@@ -429,4 +429,36 @@
     out.push(ui.facts([['Mode', (MP_MODES[e.modeId] || '') + (e.modeId === 'timed' && e.secs ? ' · ' + (e.secs / 60) + ' min' : '')]]));
     return ui.wrap(out);
   });
+  // ── Candy Match: the run as a level path (stars and score on each), then the specials made ──
+  HistView.css('hv-candy', [
+    '.hv-cm{display:flex;flex-wrap:wrap;gap:10px 6px;justify-content:center;padding:12px 8px;border-radius:14px;',
+    'background:radial-gradient(120% 100% at 50% 0%,#ffe1f0,#f7b6d6 60%,#e98bbb);box-shadow:inset 0 0 0 2px rgba(255,255,255,.6),0 6px 16px -8px rgba(0,0,0,.5);}',
+    '.hv-cm span{display:flex;flex-direction:column;align-items:center;gap:2px;width:52px;}',
+    '.hv-cm i{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;font-style:normal;font-weight:900;font-size:.95rem;color:#fff;',
+    'background:radial-gradient(circle at 35% 30%,#ff9ccc,#e8338a 55%,#a3145c);box-shadow:0 3px 0 #7a0f45,0 4px 8px rgba(0,0,0,.3),inset 0 2px 0 rgba(255,255,255,.5);}',
+    '.hv-cm span.no i{background:radial-gradient(circle at 35% 30%,#d9d0dc,#9a8ca0 60%,#6c6072);box-shadow:0 3px 0 #4a4050,0 4px 8px rgba(0,0,0,.3);}',
+    '.hv-cm .s{display:flex;gap:1px;}.hv-cm .s .ico{width:13px;height:13px;color:rgba(122,15,69,.3);}.hv-cm .s .ico.on{color:#e0a300;fill:#ffc928;filter:drop-shadow(0 1px 0 #a36b00);}',
+    '.hv-cm small{font-size:.66rem;font-weight:900;color:#7a0f45;font-variant-numeric:tabular-nums;}',
+    '.hv-cm span.no small{color:#5a4a60;}'
+  ].join(''));
+  function candyStars(ui, n) { var b = ui.el('div', { class: 's' }); for (var k = 1; k <= 3; k++) { var x = ui.el('span', { html: ui.icon('star') }).firstChild; if (k <= n) x.classList.add('on'); b.appendChild(x); } return b; }
+  R('candymatch', function (e, ui) {
+    var d = e.dt; if (!d || (d.lv == null && d.n == null)) return null;
+    var el = ui.el, out = [], path = el('div', { class: 'hv-cm' });
+    if (d.lv != null) {
+      String(d.lv).split(',').filter(Boolean).forEach(function (t) {
+        var q = t.split(':').map(Number), won = q.length > 3 ? !!q[3] : q[2] > 0;
+        path.appendChild(el('span', { class: won ? '' : 'no', title: 'Level ' + q[0] + (won ? '' : ': out of moves') }, [el('i', { text: String(q[0]) }), won ? candyStars(ui, q[2]) : el('div', { class: 's', text: '' }), el('small', { text: (q[1] || 0).toLocaleString('en-US') })]));
+      });
+      out.push(ui.section(d.end === 'quit' ? 'The run (ended early)' : 'The run', path));
+      out.push(ui.stats([['Level reached', d.n], ['Stars', d.st], d.hr === 1 ? ['High score', 'New best'] : d.hr > 1 ? ['High scores', '#' + d.hr] : null]));
+    } else {
+      path.appendChild(el('span', { class: d.won ? '' : 'no' }, [el('i', { text: String(d.n) }), d.won ? candyStars(ui, d.st) : el('div', { class: 's' }), el('small', { text: d.won ? 'Cleared' : 'Out of moves' })]));
+      out.push(ui.section('Level ' + d.n + (d.nm ? ' · ' + d.nm : '') + ' (practice)', path));
+      out.push(ui.stats([['Moves used', d.mv], ['Stars', d.won ? d.st : null]]));
+    }
+    out.push(ui.stats([['Color bombs', d.mb || null], ['Wrapped', d.mw || null], ['Striped', d.mh || null], ['Special combos', d.cb || null],
+      ['Biggest cascade', d.cs >= 2 ? d.cs + ' clears' : null], ['Jelly cleared', d.jl || null]]));
+    return ui.wrap(out);
+  });
 })();
