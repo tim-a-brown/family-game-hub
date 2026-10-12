@@ -239,8 +239,10 @@
       '<li>Double on any first two cards, also after a split.</li>' +
       '<li>Split up to 3 times (4 hands). Split Aces get one card each and can\'t be split again. 21 after a split counts as 21, not blackjack.</li>' +
       '<li>Bets from $1 to $1,000. Odd blackjack payouts are rounded down to the dollar.</li></ul>' +
-      '<h3>Chips and bank</h3><p>Seat 1 plays from the casino bank shared by all the casino games. Other seats get $1,000 in chips for the session. ' +
-      'Turn on the hint button in setup to see what basic strategy says, with an optional card-counting coach.</p>'
+      '<h3>Whose money</h3><p>Pick <b>Money</b> in setup when several people play on this device.</p><ul>' +
+      '<li><b>Bankrolls</b>: you play from the casino bank shared by all the casino games. A player linked to their own profile brings their own bankroll (the amount their app last shared), and what they win or lose goes back to it when the session is saved. If they tap <b>Not me</b>, it doesn\'t count. Anyone else, and the computer players, get $1,000 in chips for the session.</li>' +
+      '<li><b>Table money</b>: everyone, you too, starts with the same amount ($500 to $10,000). Nobody\'s bankroll changes. Run out and you can buy back in for the same amount.</li></ul>' +
+      '<p>Turn on the hint button in setup to see what basic strategy says, with an optional card-counting coach.</p>'
   });
 
   // ── Money ─────────────────────────────────────────────────────────────────
@@ -377,12 +379,24 @@
   }
   function startSession(players, mode, o) {
     token++; clearUndo(); Kit.gameStart();
+    // Money: Table money (pass and play only) gives everyone the same stake. Otherwise you play from your casino
+    // bank (the seat with your name, else seat 1), linked players from their own bankroll, anyone else $1,000 in chips.
+    var table = mode === 'pass' && players.length > 1 && o.money === 'table';
+    var stake = STAKES.indexOf(+o.stake) >= 0 ? +o.stake : 1000;
+    var lb = players.map(function (p) { return !table && !p.cpu && !isMe(p.name) ? linkedBank(p.name) : null; });
+    var mine = -1;
+    if (!table) { players.forEach(function (p, i) { if (mine < 0 && !p.cpu && isMe(p.name)) mine = i; }); if (mine < 0 && !lb[0]) mine = 0; }
     S = {
       v: 1, started: Date.now(), mode: players.length > 1 ? mode : 'solo',
       opt: { decks: +o.decks || 6, h17: o.soft17 === 'h17', surr: o.surr === 'late', coach: o.coach || 'hint' },
+      money: table ? 'table' : 'bank', stake: stake,
       seats: players.map(function (p, i) {
-        return { name: p.name, cpu: !!p.cpu, bank: i === 0 ? null : SEAT_STACK, last: 0, rebuys: 0,
+        var src = table ? 'table' : i === mine ? 'mine' : lb[i] ? 'link' : 'chips';
+        var b = src === 'mine' ? null : src === 'table' ? stake : src === 'link' ? lb[i].bank : SEAT_STACK;
+        var s = { name: p.name, cpu: !!p.cpu, src: src, bank: b, b0: src === 'mine' ? rawBank() : b, last: 0, rebuys: 0,
           st: { hands: 0, won: 0, lost: 0, push: 0, bj: 0, net: 0, best: 0, bestRound: 0, streak: 0, bestStreak: 0, doubles: 0, splits: 0 } };
+        if (src === 'link') s.code = lb[i].code;
+        return s;
       }),
       shoe: [], cutLeft: 0, discards: 0, rc: 0, drawN: 0, hid: 0, shuffles: 0,
       round: 0, phase: 'bet', bets: [], sel: 0, hands: [], cur: -1, dealer: [], hole: true, insQ: -1,
@@ -390,6 +404,14 @@
     };
     newShoe(); seen = {};
     startBetting();
+    // Say whose money is on the table
+    var said = [];
+    S.seats.forEach(function (s, i) {
+      if (s.src === 'link') said.push(Kit.poss(s.name) + ' bankroll: ' + money(s.bank));
+      else if (s.src === 'chips' && !s.cpu && isLinked(s.name)) said.push(Kit.poss(s.name) + ' bankroll isn’t known yet, so ' + s.name + ' gets $1,000 in chips');
+    });
+    if (table) said.push('Table money: everyone starts with ' + money(stake));
+    if (said.length) Kit.toast(said.join(' · '), 4200);
   }
 
   // ── Betting ───────────────────────────────────────────────────────────────
@@ -446,9 +468,12 @@
   }
   function rebuy(i) {
     snapshot();
-    if (i === 0) Casino.reset(); else S.seats[i].bank += SEAT_STACK;
-    S.seats[i].rebuys++;
-    Kit.sfx('chip'); Kit.toast(i === 0 ? 'Casino bank reset to $1,000' : S.seats[i].name + ' bought $1,000 in chips');
+    var s = S.seats[i], k = srcOf(i);
+    if (k === 'mine') Casino.reset();
+    else if (k === 'link') s.bank = SEAT_STACK;   // like resetting their bankroll to $1,000
+    else s.bank += k === 'table' ? S.stake : SEAT_STACK;
+    s.rebuys++;
+    Kit.sfx('chip'); Kit.toast(k === 'mine' ? 'Casino bank reset to $1,000' : k === 'link' ? Kit.poss(s.name) + ' bankroll reset to $1,000' : k === 'table' ? s.name + ' bought back in for ' + money(S.stake) : s.name + ' bought $1,000 in chips');
     save(); render();
   }
 
@@ -991,7 +1016,7 @@
   // ── Session end & history ─────────────────────────────────────────────────
   function sessionNets() { return S.seats.map(function (s) { return s.st.net; }); }
   function modeLabel() {
-    return (S.mode === 'pass' ? 'Pass and play · ' : S.mode === 'cpu' ? 'With computers · ' : '') + S.opt.decks + (S.opt.decks === 1 ? ' deck' : ' decks') + ' · ' + (S.opt.h17 ? 'H17' : 'S17') + (S.opt.surr ? ' · surrender' : '');
+    return (S.mode === 'pass' ? 'Pass and play · ' : S.mode === 'cpu' ? 'With computers · ' : '') + (S.money === 'table' ? 'Table money ' + money(S.stake) + ' · ' : '') + S.opt.decks + (S.opt.decks === 1 ? ' deck' : ' decks') + ' · ' + (S.opt.h17 ? 'H17' : 'S17') + (S.opt.surr ? ' · surrender' : '');
   }
   function highlights() {
     var hl = [], nets = sessionNets();
@@ -1011,7 +1036,7 @@
   }
   // For the history view: the last hands (cards, bets, results) and the bankroll
   function histDetail() {
-    var hl = (S.hl || []).slice(), d = { hands: hl, bank: { s: S.startBank, e: rawBank() }, n: S.rounds.length };
+    var s0 = S.seats[0], hl = (S.hl || []).slice(), d = { hands: hl, bank: { s: s0.b0 != null ? s0.b0 : S.startBank, e: bank(0) }, n: S.rounds.length };
     while (JSON.stringify(d).length > 4000 && hl.length > 1) hl.shift();
     return d;
   }
@@ -1030,9 +1055,16 @@
       highlights: hl,
       summary: (single ? S.seats[0].name + (nets[0] > 0 ? ' up ' + money(nets[0]) : nets[0] < 0 ? ' down ' + money(-nets[0]) : ' broke even') : (winner ? winner + ' won' : 'No winner')) + ' · ' + S.rounds.length + ' hands',
       badge: signed(nets[0]),
-      meta: { decks: S.opt.decks, h17: S.opt.h17, hands: S.rounds.length, endBank: rawBank() },
+      meta: moneyMeta({ decks: S.opt.decks, h17: S.opt.h17, hands: S.rounds.length, endBank: rawBank() }),
       detail: histDetail()
     });
+  }
+  // Table money is noted; seats played from a linked player's bankroll carry its start and end (bk, by seat) so the
+  // change goes to their bankroll when their device files the game (sync.js)
+  function moneyMeta(m) {
+    if (S.money === 'table') { m.money = 'table'; m.stake = S.stake; delete m.endBank; return m; }
+    S.seats.forEach(function (s, i) { if (s.src === 'link' && s.code) (m.bk = m.bk || {})[i] = { s: s.b0, e: s.bank, c: s.code }; });
+    return m;
   }
   function endSession() {
     if (!S) return;
@@ -1048,18 +1080,20 @@
   function finish() {
     var nets = sessionNets(), seats = S.seats.slice(), single = seats.length === 1;
     recordSession();
-    var hands = S.rounds.length, prev = S;
+    var hands = S.rounds.length, prev = S, sub = [hands + ' hands'];
+    if (mineSeat() >= 0) sub.push('bank now ' + money(rawBank()));
+    seats.forEach(function (s) { if (s.src === 'link') sub.push(Kit.poss(s.name) + ' bankroll ' + money(s.bank)); });
     clearSave(); token++;
     var rank = seats.map(function (s, i) { return { name: s.name, score: signed(nets[i]), n: nets[i], color: Kit.color(i) }; }).sort(function (a, b) { return b.n - a.n; });
     var n0 = nets[0];
     var title = single ? (n0 > 0 ? 'Up ' + money(n0) + '!' : n0 < 0 ? 'Down ' + money(-n0) : 'Broke even') : (rank[0].n > 0 && rank[0].n !== (rank[1] || {}).n ? rank[0].name + ' wins the table!' : 'Session over');
     Kit.win({
-      title: title, sub: hands + ' hands · bank now ' + money(rawBank()), rank: single ? null : rank,
+      title: title, sub: sub.join(' · '), rank: single ? null : rank,
       lose: single ? n0 < 0 : rank[0].n <= 0, icon: single ? (n0 >= 0 ? 'trophy' : 'meh') : 'trophy',
       againLabel: 'New session',
       again: function () {
         startSession(seats.map(function (s) { return { name: s.name, cpu: s.cpu }; }), prev.mode === 'solo' ? 'cpu' : prev.mode,
-          { decks: prev.opt.decks, soft17: prev.opt.h17 ? 'h17' : 's17', surr: prev.opt.surr ? 'late' : 'off', coach: prev.opt.coach });
+          { decks: prev.opt.decks, soft17: prev.opt.h17 ? 'h17' : 's17', surr: prev.opt.surr ? 'late' : 'off', coach: prev.opt.coach, money: prev.money, stake: prev.stake });
       },
       extra: [{ label: 'Change seats or rules', onClick: showSetup }]
     });
@@ -1078,7 +1112,18 @@
     var hl = el('ul', { class: 'k-hd-hl' });
     if (S.rounds.length) highlights().slice(1).forEach(function (h) { hl.appendChild(el('li', { html: Kit.icon('sparkle') + '<span>' + Kit.esc(h) + '</span>' })); });
     var shoeInfo = el('p', { class: 'muted', style: { 'margin-top': '10px' }, text: modeLabel() + '. ' + S.shoe.length + ' cards left in the shoe, ' + Math.max(0, S.shoe.length - S.cutLeft) + ' before the cut card.' });
-    Kit.sheet({ title: 'This session', node: el('div', null, [t, hl, shoeInfo]), actions: [{ label: 'Close', cls: 'btn-soft' }] });
+    var mn = moneyNote(), moneyInfo = mn ? el('p', { class: 'muted', text: mn }) : null;
+    Kit.sheet({ title: 'This session', node: el('div', null, [t, hl, shoeInfo, moneyInfo]), actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+  // Whose money is on the table, in plain words
+  function moneyNote() {
+    if (S.money === 'table') return 'Table money: everyone started with ' + money(S.stake) + '. Nobody’s bankroll changes.';
+    var out = [];
+    S.seats.forEach(function (s, i) {
+      if (s.src === 'link') out.push(s.name + ' plays from their own bankroll (' + money(s.b0) + ' at the start). What they win or lose goes back to it when the session is saved.');
+      else if (s.src === 'mine' && humans().length > 1) out.push(s.name + ' plays from the casino bank.');
+    });
+    return out.join(' ');
   }
   // Sessions saved by the old version of this page kept final bankrolls
   function oldEntry(e) {
@@ -1321,8 +1366,9 @@
       var i = S.sel, s = S.seats[i], left = bank(i) - S.bets[i];
       status([who(i), el('span', { text: humans().length > 1 ? Kit.poss(s.name) + ' bet' : 'Your bet' })], el('span', { class: 'big', text: money(S.bets[i]) }));
       if (bank(i) < 1) {
-        c.appendChild(el('p', { class: 'muted center', text: (i === 0 ? 'The casino bank is empty.' : s.name + ' is out of chips.') }));
-        acts([btn(i === 0 ? 'Reset bank to $1,000' : 'Buy $1,000 in chips', 'btn-yellow', function () { rebuy(i); })], 1);
+        var sk = srcOf(i);
+        c.appendChild(el('p', { class: 'muted center', text: sk === 'mine' ? 'The casino bank is empty.' : sk === 'link' ? Kit.poss(s.name) + ' bankroll is empty.' : s.name + ' is out of chips.' }));
+        acts([btn(sk === 'mine' ? 'Reset bank to $1,000' : sk === 'link' ? 'Reset ' + Kit.poss(s.name) + ' bankroll to $1,000' : sk === 'table' ? 'Buy back in for ' + money(S.stake) : 'Buy $1,000 in chips', 'btn-yellow', function () { rebuy(i); })], 1);
       } else {
         // Chip rack: drag a chip into a betting circle, or tap one to add it to the selected seat
         var rk = Casino.rack({
@@ -1342,7 +1388,7 @@
           btn(Kit.icon('play') + '<span>Deal</span>', 'btn-primary wide', deal)
         ], 3);
       }
-      c.appendChild(el('div', { class: 'st' }, [el('span', { class: 'bank grow', html: (humans().length > 1 ? 'Drag chips to anyone\'s circle · ' : '') + 'Bank <b>' + money(left) + '</b>' }),
+      c.appendChild(el('div', { class: 'st' }, [el('span', { class: 'bank grow', html: (humans().length > 1 ? 'Drag chips to anyone\'s circle · ' : '') + Kit.esc(bankWord(i)) + ' <b>' + money(left) + '</b>' }),
         el('button', { type: 'button', class: 'linkb', html: Kit.icon('coins') + '<span>Cash out</span>', onclick: endSession })]));
     } else if (ph === 'ins' && S.insQ >= 0) {
       var ih = S.hands[S.insQ], bj = isBJ(ih), cost = insCost(ih);
@@ -1369,7 +1415,7 @@
       if (S.seats.length === 1 || hs.length === 1 && S.mode !== 'pass') {
         var me = hs[0] != null ? hs[0] : 0, nv = nets[me];
         status([who(me), el('span', { text: nv == null ? 'You sat out' : nv > 0 ? 'You won ' + money(nv) : nv < 0 ? 'You lost ' + money(-nv) : 'Push: your bet comes back' })],
-          el('span', { class: 'bank', html: 'Bank <b>' + money(bank(me)) + '</b>' }));
+          el('span', { class: 'bank', html: Kit.esc(bankWord(me)) + ' <b>' + money(bank(me)) + '</b>' }));
       } else {
         var nb = el('div', { class: 'nets' });
         S.seats.forEach(function (s, j) { if (nets[j] != null) nb.appendChild(el('span', { class: nets[j] > 0 ? 'up' : nets[j] < 0 ? 'down' : '', text: s.name + ' ' + (nets[j] ? signed(nets[j]) : 'push') })); });

@@ -291,6 +291,12 @@
     var d = e.dt; if (!d || !d.hands || !d.hands.length) return null;
     var out = [], hands = d.hands, many = (e.players || []).length > 1;
     out.push(bankStats(ui, d.bank, e.players && e.players[0] ? e.players[0].score : null, [['Hands', d.n || hands.length]]));
+    // seats played from a linked player's own bankroll (the change went to that bankroll)
+    if (e.bk && typeof e.bk === 'object') {
+      var bl = [];
+      Object.keys(e.bk).forEach(function (i) { var b = e.bk[i], p = (e.players || [])[i]; if (b && p && b.s != null && b.e != null) bl.push([(p.name || 'Player') + "'s bankroll", ui.money(b.s) + ' → ' + ui.money(b.e)]); });
+      if (bl.length) out.push(ui.stats(bl));
+    }
     var best = 0; hands.forEach(function (h, i) { var n = mineNet(h); if (n > mineNet(hands[best])) best = i; });
     function mineNet(h) { var n = 0, any = false; h.h.forEach(function (x) { if (x.s === 0) { n += x.n || 0; any = true; } }); return any ? n : null; }
     var card = ui.el('div', { class: 'hv' });
