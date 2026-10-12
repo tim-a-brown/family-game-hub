@@ -60,62 +60,137 @@
     o = o || {};
     return '<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" text-anchor="' + (o.a || 'middle') + '" font-family="' + (o.f || FONT) + '" font-weight="' + (o.w || 700) + '" font-size="' + size + '" fill="' + (o.c || INK) + '"' + (o.ls ? ' letter-spacing="' + o.ls + '"' : '') + (o.tr ? ' transform="' + o.tr + '"' : '') + '>' + s + '</text>';
   }
-  // ── Icons (drawn around 0,0, about 40 units across) ──
+  // ── Icons: flat line art in the classic board style (black outlines, flat fills), drawn around 0,0 inside -30..30 ──
+  function pth(d, fill, sw, more) { return '<path d="' + d + '" fill="' + fill + '" stroke="' + INK + '" stroke-width="' + (sw || 2) + '" stroke-linejoin="round" stroke-linecap="round"' + (more || '') + '/>'; }
+  function circ(x, y, r, fill, sw) { return '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + fill + '" stroke="' + INK + '" stroke-width="' + (sw || 1.6) + '"/>'; }
+  function lerp(a, b, k) { return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k]; }
+  // a point on a four-sided face Q = [bottom-left, bottom-right, top-right, top-left], u across, v up
+  function onFace(Q, u, v) { return lerp(lerp(Q[0], Q[1], u), lerp(Q[3], Q[2], u), v); }
+  function poly(p) { return 'M' + p.map(function (q) { return q[0].toFixed(1) + ' ' + q[1].toFixed(1); }).join('L') + 'Z'; }
+  function inset(Q, u0, v0, u1, v1) { return poly([onFace(Q, u0, v0), onFace(Q, u1, v0), onFace(Q, u1, v1), onFace(Q, u0, v1)]); }
+  // short dashes radiating from (x, y): angles in degrees from straight up
+  function rays(x, y, r0, r1, angs, sw) {
+    return pth(angs.map(function (a) { var s = Math.sin(a * Math.PI / 180), c = -Math.cos(a * Math.PI / 180); return 'M' + (x + s * r0).toFixed(1) + ' ' + (y + c * r0).toFixed(1) + 'L' + (x + s * r1).toFixed(1) + ' ' + (y + c * r1).toFixed(1); }).join(''), 'none', sw || 1.8);
+  }
+  // a tied money bag, bottom centre at x, y
+  function bag(x, y, s) {
+    return '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')">' +
+      pth('M-7 0C-10-6-7-11-2.5-12.5L-4.5-16Q0-18.5 4.5-16L2.5-12.5C7-11 10-6 7 0Z', '#f1eee2', 1.8 / s) +
+      pth('M-3-12.6Q0-11.2 3-12.6M-1.5-8.5Q-2.5-5-1.5-1M2.5-8Q3.5-5 2.8-2', 'none', 1.1 / s) + '</g>';
+  }
   var IC = {
     train: function () {
-      // a side-on steam locomotive heading left: boiler, stack, dome, cab, cowcatcher, wheels and rod
-      var B = BOARD;
-      return '<g fill="' + INK + '">' +
-        '<path d="M-17-8h22v14h-22a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3z"/>' +                       // boiler
-        '<path d="M-15-8v-7h-3l1-4h10l1 4h-3v7z"/>' +                                           // flared smokestack
-        '<path d="M-5-8a3.5 3.5 0 0 1 7 0z"/>' +                                                 // steam dome
-        '<rect x="-23" y="-6" width="3" height="4" rx="1"/>' +                                   // headlamp
-        '<path d="M5-17h18v23h-18z"/><rect x="3" y="-20" width="22" height="3.5" rx="1"/>' +     // cab and roof
-        '<rect x="10" y="-13" width="9" height="7" rx="1" fill="' + B + '"/>' +                 // cab window
-        '<rect x="-21" y="6" width="45" height="3"/>' +                                          // frame
-        '<path d="M-20 5v11h-11z"/>' +                                                         // cowcatcher
-        '<circle cx="-14" cy="14" r="4"/><circle cx="1" cy="13" r="6.5"/><circle cx="16" cy="13" r="6.5"/>' +
-        '<circle cx="-14" cy="14" r="1.6" fill="' + B + '"/><circle cx="1" cy="13" r="2.4" fill="' + B + '"/><circle cx="16" cy="13" r="2.4" fill="' + B + '"/>' +
-        '<path d="M-14 14H16" stroke="' + B + '" stroke-width="1.4"/>' +                       // side rod
-        '</g><g fill="' + INK + '" opacity=".38"><circle cx="-10" cy="-22.5" r="2.6"/><circle cx="-4" cy="-25.5" r="3.2"/><circle cx="3" cy="-27" r="2.6"/></g>';
+      // the classic solid locomotive heading left: flared stack, round-nosed boiler, cab with swept roof, cowcatcher, two big wheels
+      return '<g transform="translate(2 1)" fill="' + INK + '">' +
+        '<path d="M-22.5-24H-9.5L-13-7H-19Z"/>' +
+        '<path d="M-17-8H6V8H-17A8 8 0 0 1-17-8Z"/>' +
+        '<path d="M3 8V-12C3-18 8-21 14-21H24.5C20.5-18 18.5-12 18.5-4V8Z"/>' +
+        '<path d="M-19 5H-12L-21 22H-28Z"/>' +
+        '<circle cx="-6" cy="14" r="7.5"/><circle cx="11.5" cy="14" r="7.5"/></g>';
     },
     bulb: function () {
-      return '<path d="M0-20a14 14 0 0 1 8 25.5V10h-16V5.5A14 14 0 0 1 0-20z" fill="#ffe14d" stroke="' + INK + '" stroke-width="2.4"/>' +
-        '<path d="M-5 0l3 4 2-5 2 5 3-4" fill="none" stroke="#a87600" stroke-width="1.6"/>' +
-        '<rect x="-7" y="11" width="14" height="3.5" rx="1.5" fill="#888" stroke="' + INK + '" stroke-width="1.6"/><rect x="-6" y="15.5" width="12" height="3.5" rx="1.5" fill="#888" stroke="' + INK + '" stroke-width="1.6"/>' +
-        '<path d="M-14-22l-4-4M14-22l4-4M0-25v-5M-19-8h-5M19-8h5" stroke="' + INK + '" stroke-width="2" stroke-linecap="round"/>';
+      // pear-shaped bulb with a looped filament, screw base and little light dashes
+      return '<g transform="translate(0 2)">' +
+        rays(0, -8, 15.5, 20, [-135, -110, -85, -60, -35, 35, 60, 85, 110, 135], 1.9) +
+        pth('M-5 9C-5 4-12 0-12-8C-12-16-6.5-21 0-21C6.5-21 12-16 12-8C12 0 5 4 5 9Z', '#ffe33d', 2.2) +
+        pth('M-2.5 9V3L-5.5-9L0 0L5.5-9L2.5 3V9', 'none', 1.3) +
+        pth('M-5 9H5V17.5H-5Z', '#fff', 2) + pth('M-5 11.6L5 12.6M-5 14.3L5 15.3', 'none', 1.4) +
+        pth('M-2.6 17.5Q0 22.5 2.6 17.5Z', INK, 1.2) + '</g>';
     },
     tap: function () {
-      return '<path d="M-20-6h22a10 10 0 0 1 10 10v4h-8v-4a2 2 0 0 0-2-2h-22z" fill="#9fb3c4" stroke="' + INK + '" stroke-width="2.2" stroke-linejoin="round"/>' +
-        '<rect x="-6" y="-14" width="6" height="8" fill="#9fb3c4" stroke="' + INK + '" stroke-width="2"/><rect x="-14" y="-18" width="22" height="5" rx="2.5" fill="#c7d4de" stroke="' + INK + '" stroke-width="2"/>' +
-        '<path d="M8 14q-3 5 0 7 3-2 0-7z" fill="#2e8de0"/><path d="M8 25q-2 3 0 4 2-1 0-4z" fill="#2e8de0"/><rect x="-24" y="-8" width="5" height="10" rx="1" fill="#6d7f8f" stroke="' + INK + '" stroke-width="2"/>';
+      // side-on faucet: wall flange, pipe, valve with a cross handle, spout turning down
+      return '<g transform="translate(1.5 2)">' +
+        '<ellipse cx="-22" cy="0" rx="4.2" ry="9.5" fill="#fff" stroke="' + INK + '" stroke-width="2.2"/>' +
+        pth('M-19-5.5H-15V5.5H-19Z', '#fff', 2) +
+        pth('M-15-5H10C17-5 21-1 21 6V19H13V8C13 6 12 5 10 5H-15Z', '#fff', 2.2) +
+        pth('M12 18H22V21.5H12Z', '#fff', 2) +
+        pth('M-10.5-5V5', 'none', 1.6) +
+        pth('M-4 5L-3 8.5H5L6 5Z', '#fff', 2) +
+        pth('M-5-5L-3.5-11H5.5L7-5Z', '#fff', 2) +
+        pth('M-2-15H4V-11H-2Z', '#fff', 1.8) +
+        pth('M0-15V-19H2V-15Z', '#fff', 1.4) +
+        pth('M-9-21.6H11V-18.4H-9Z', '#fff', 1.8) +
+        circ(-9.5, -20, 2.7, '#fff', 1.8) + circ(11.5, -20, 2.7, '#fff', 1.8) + circ(1, -24, 2.4, '#fff', 1.8) + circ(1, -20, 1.9, '#fff', 1.4) + '</g>';
     },
     chest: function () {
-      return '<path d="M-18-4h36v18h-36z" fill="#9a5b2a" stroke="' + INK + '" stroke-width="2.2" stroke-linejoin="round"/>' +
-        '<path d="M-18-4v-4a8 8 0 0 1 8-8h20a8 8 0 0 1 8 8v4z" fill="#b8733a" stroke="' + INK + '" stroke-width="2.2" stroke-linejoin="round"/>' +
-        '<path d="M-10-16v30M10-16v30" stroke="#f2c12e" stroke-width="3"/><path d="M-18 2h36" stroke="' + INK + '" stroke-width="1.6"/>' +
-        '<rect x="-4" y="-1" width="8" height="8" rx="1.5" fill="#f2c12e" stroke="' + INK + '" stroke-width="1.6"/><circle cx="0" cy="3" r="1.3" fill="' + INK + '"/>' +
-        '<path d="M-6-20l2 3M6-20l-2 3M0-22v4" stroke="#f2c12e" stroke-width="1.8" stroke-linecap="round"/>';
+      // the open treasure chest at an angle: blue panels in a light frame, lid thrown back, money bags inside
+      var BL = '#3fa9e0', FR = '#f4f3ee';
+      var A = [-25, 14], B = [5, 22], Cc = [5, 4], D = [-25, -4], E = [24, 12], F = [24, -6], G = [-6, -14];
+      var front = [A, B, Cc, D], side = [B, E, F, Cc], lid = [G, F, [28.5, -26], [-1.5, -34]];
+      var lk = onFace(front, .42, .5);
+      return '<g transform="translate(-0.5 3.5) scale(.93)">' +
+        pth(poly(lid), FR, 2) + pth(inset(lid, .09, .13, .91, .87), BL, 1.4) +
+        pth(poly([D, Cc, F, G]), '#17344d', 2) +
+        bag(-10, 1, 1) + bag(4, 3, 1.25) +
+        pth(poly(front), FR, 2) + pth(inset(front, .06, .58, .94, .86), BL, 1.3) + pth(inset(front, .06, .13, .94, .46), BL, 1.3) +
+        pth(poly(side), FR, 2) + pth(inset(side, .13, .13, .87, .87), BL, 1.3) + pth(inset(side, .3, .48, .7, .62), FR, 1.2) +
+        '<path d="M' + (lk[0] - 1.9).toFixed(1) + ' ' + (lk[1] - 1).toFixed(1) + 'v-1.6a1.9 1.9 0 0 1 3.8 0v1.6" fill="none" stroke="' + INK + '" stroke-width="1.3"/>' +
+        pth('M' + (lk[0] - 3).toFixed(1) + ' ' + (lk[1] - 1.2).toFixed(1) + 'h6v5.2h-6z', '#fff', 1.3) + '</g>';
     },
     ring: function () {
-      return '<circle cx="0" cy="6" r="13" fill="none" stroke="#c9a227" stroke-width="5"/><circle cx="0" cy="6" r="13" fill="none" stroke="' + INK + '" stroke-width="1" opacity=".4"/>' +
-        '<path d="M-8-12h16l5 6-13 12-13-12z" fill="#bfe9ff" stroke="' + INK + '" stroke-width="1.8" stroke-linejoin="round"/><path d="M-13-6h26M-4-12l-2 6 6 12 6-12-2-6" fill="none" stroke="' + INK + '" stroke-width="1.2" opacity=".6"/>';
+      // gold band seen at an angle, a set stone and sparkle lines
+      var GO = '#f5c518';
+      return '<g transform="translate(0 2)">' +
+        rays(0, -13, 6.5, 10.5, [-88, -58, -29, 0, 29, 58, 88], 1.5) +
+        pth('M-21 9A21 11 0 1 0 21 9A21 11 0 1 0-21 9ZM-15 7.5A15 6.5 0 1 0 15 7.5A15 6.5 0 1 0-15 7.5Z', GO, 2, ' fill-rule="evenodd"') +
+        pth('M-15 7.5A15 6.5 0 1 0 15 7.5A15 6.5 0 1 0-15 7.5ZM-12.5 9.8A12.5 4 0 1 0 12.5 9.8A12.5 4 0 1 0-12.5 9.8Z', '#c8930f', 1.3, ' fill-rule="evenodd"') +
+        '<path d="M-16 14.6Q-6 19.6 8 18.7" fill="none" stroke="#fff6c4" stroke-width="1.6" stroke-linecap="round"/>' +
+        pth('M-6-1L-7.5-9H7.5L6-1Z', GO, 1.8) +
+        pth('M-6-9L-4-15H4L6-9Z', '#fff', 1.6) + pth('M-1.5-15L-2.5-9M1.5-15L2.5-9M-5-12H5', 'none', .8) + '</g>';
+    },
+    question: function (col) {
+      // a tall question mark: black outline, coloured fill, ball terminal, tapering stem
+      col = col || '#d6338a';
+      var hook = 'M-10-14C-10-23-5-28 1.5-28C8.5-28 12.5-23 12.5-16.5C12.5-9 7-6.5 3.5-3.5C1-1.3 0.5 1 0.5 4', stem = 'M-3 2H4L2.3 13Q0.5 15.6-1.3 13Z';
+      function layer(c, e) {
+        return '<path d="' + hook + '" fill="none" stroke="' + c + '" stroke-width="' + (7 + e) + '" stroke-linecap="round"/>' +
+          '<circle cx="-10" cy="-13.2" r="' + (4.4 + e / 2) + '" fill="' + c + '"/>' +
+          '<path d="' + stem + '" fill="' + c + '"' + (e ? ' stroke="' + c + '" stroke-width="' + e + '" stroke-linejoin="round"' : '') + '/>' +
+          '<circle cx="0.5" cy="22" r="' + (4.6 + e / 2) + '" fill="' + c + '"/>';
+      }
+      return '<g transform="translate(-0.5 1) scale(.9)">' + layer(INK, 4.4) + layer(col, 0) + '</g>';
     },
     diamond: function () {
       return '<path d="M0-22l18 22-18 22-18-22z" fill="none" stroke="' + INK + '" stroke-width="2.4"/>';
     },
     car: function () {
-      return '<path d="M-30 6c0-6 4-8 10-9l8-8c2-2 4-3 7-3h12c3 0 5 1 7 3l7 8c7 1 10 3 10 9v5h-61z" fill="#d7262e" stroke="' + INK + '" stroke-width="2.2" stroke-linejoin="round"/>' +
-        '<path d="M-10-9l5-5h8v9h-16zM6-14h7l6 9h-13z" fill="#bfe2f5" stroke="' + INK + '" stroke-width="1.6" stroke-linejoin="round"/>' +
-        '<circle cx="-17" cy="11" r="7" fill="' + INK + '"/><circle cx="17" cy="11" r="7" fill="' + INK + '"/><circle cx="-17" cy="11" r="3" fill="#ccc"/><circle cx="17" cy="11" r="3" fill="#ccc"/>' +
-        '<path d="M26 0h4" stroke="#ffd84a" stroke-width="3"/>';
+      // an old-fashioned car from the front: rounded cab, windshield, round grille, fenders and two tyres
+      var R = '#d7262e';
+      return '<g transform="translate(0 0.5)">' +
+        pth('M-18 6H-10V18Q-10 20.5-12.5 20.5H-15.5Q-18 20.5-18 18Z', '#fff', 2) + pth('M10 6H18V18Q18 20.5 15.5 20.5H12.5Q10 20.5 10 18Z', '#fff', 2) +
+        pth('M-10-6V-16Q-10-22-4-22H4Q10-22 10-16V-6Q20-6 22.5 1V8.5Q22.5 11 20 11H11Q10 15 0 15Q-10 15-11 11H-20Q-22.5 11-22.5 8.5V1Q-20-6-10-6Z', R, 2.2) +
+        pth('M-6.5-17H6.5V-10H-6.5Z', '#fff', 1.8) +
+        circ(0, 2, 6.5, '#fff', 2) + circ(0, 2, 2.6, '#fff', 1.6) + '</g>';
+    },
+    cop: function () {
+      // a policeman in a blue uniform and cap, whistle in his mouth, pointing up with one gloved finger
+      var B = '#2456b5';
+      return '<g transform="translate(-1 1)">' +
+        // uniform: shoulders and chest, collar, badge, buttons
+        pth('M-24 25V16C-24 9-18 5-10 4H0C5 5 8 8 10 12L14 25Z', B, 2.2) +
+        pth('M-11 4L-6 11L-1 4.5', 'none', 1.6) + circ(-16, 13, 2.4, '#f2c418', 1.2) + circ(-4, 17, 1.1, INK, .6) + circ(-3, 22, 1.1, INK, .6) +
+        // raised arm, white cuff, gloved hand with one finger up
+        pth('M1 14C4 8 8 2 11-3L18.5 2C15 7 11 12 8 17Z', B, 2.2) +
+        pth('M11-3L18.5 2L21-1.6L13.4-6.6Z', '#fff', 1.8) +
+        pth('M13.4-6.6C11-11 12-15 16-16.5L21.5-15.5C24.5-13 24.5-6 21-1.6Z', '#fff', 1.8) +
+        pth('M16.5-16L20.5-28.5C21.3-30.6 24.8-29.9 24.2-27.6L21.6-15.3Z', '#fff', 1.8) +
+        pth('M20.5-11.5H23.5M20.5-7.5H23', 'none', 1.2) +
+        // head in profile: big nose, closed eye, ear, whistle
+        pth('M-17-3C-19-10-16-19-7-20C1-20 4-15 4-11.5L8.5-7.5L4.2-6C5-2.5 2 1.5-3 2.5C-9 3.5-15 2-17-3Z', '#fff', 2) +
+        pth('M-11-9C-14-10-14-4.5-11-4.5', 'none', 1.4) + pth('M-2-10Q0-8.6 1.8-10', 'none', 1.4) +
+        pth('M2-3H7', 'none', 1.8) + circ(9, -3, 2.3, '#fff', 1.5) +
+        // cap: crown, band and black peak
+        pth('M-18.5-12C-19.5-21-13-27-3-27L9-24L4.5-15Z', B, 2) +
+        pth('M-18-12.5L4.5-15', 'none', 1.8) + pth('M-1-15L9.5-15.6L11.5-12L0-12.6Z', INK, 1.2) + '</g>';
     },
     lock: function () {
       return '<path d="M-10-4v-8a10 10 0 0 1 20 0v8" fill="none" stroke="' + INK + '" stroke-width="5"/>' +
         '<rect x="-16" y="-5" width="32" height="26" rx="4" fill="#f3901d" stroke="' + INK + '" stroke-width="2.4"/><circle cx="0" cy="5" r="3.5" fill="' + INK + '"/><path d="M0 7v7" stroke="' + INK + '" stroke-width="3"/>';
     }
   };
-  function icon(name, x, y, s) { return '<g transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + (s || 1) + ')">' + IC[name]() + '</g>'; }
+  function icon(name, x, y, s, arg) { return '<g transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + (s || 1) + ')">' + IC[name](arg) + '</g>'; }
+  // icon sizes on the squares: [top or bottom row, left or right side]
+  var ISC = { train: [1, .92], chest: [1.06, .87], question: [1.2, 1.05], bulb: [1.05, .95], tap: [1, .92], ring: [1.05, .95] };
   var QCOL = { 7: '#d6338a', 22: '#1b5fae', 36: '#f3901d' };
 
   // ── One square ──
@@ -151,47 +226,64 @@
       return out;
     }
     // special squares: label + icon + price
-    var ic = s.k === 'rr' ? 'train' : s.k === 'cc' ? 'chest' : i === 12 ? 'bulb' : i === 28 ? 'tap' : i === 38 ? 'ring' : null;
+    var ic = s.k === 'rr' ? 'train' : s.k === 'cc' ? 'chest' : s.k === 'ch' ? 'question' : i === 12 ? 'bulb' : i === 28 ? 'tap' : i === 38 ? 'ring' : null;
+    var arg = s.k === 'ch' ? QCOL[i] : null;
     if (!vert) {
       var top = r.side === 'b' ? r.y + 15 : r.y + r.h - 16 - (L.length - 1) * lh - 2;
       var mid = r.y + r.h / 2 + (r.side === 'b' ? 6 : -6);
       if (r.side === 't') { out += t(cx, r.y + 17, price, 12.5, { w: 600 }); out += names(cx, top); }
       else { out += names(cx, top); if (price) out += t(cx, r.y + r.h - 9, price, 12.5, { w: 600 }); }
-      if (s.k === 'ch') out += t(cx, mid + 18, '?', 64, { f: 'var(--display),Lilita One,sans-serif', w: 400, c: QCOL[i] });
-      else if (s.k === 'tax' && i === 4) out += icon('diamond', cx, mid + 2, 0.95) + t(cx, mid + 6, 'TAX', 12, {});
-      else if (ic) out += icon(ic, cx, mid + 2, ic === 'train' ? 0.95 : 0.9);
+      if (s.k === 'tax' && i === 4) out += icon('diamond', cx, mid + 2, 0.95) + t(cx, mid + 6, 'TAX', 12, {});
+      else if (ic) out += icon(ic, cx, mid + (s.k === 'ch' ? (r.side === 'b' ? 4 : -4) : 2), ISC[ic][0], arg);
     } else {
-      var lx = r.side === 'l' ? r.x + 38 : r.x + r.w - 38, tx = r.side === 'l' ? r.x + r.w - 46 : r.x + 46;
+      // icon on the outer half, name and price on the inner half
+      var lx = r.side === 'l' ? r.x + 30 : r.x + r.w - 31, tx = r.side === 'l' ? r.x + r.w - 46 : r.x + 46;
       var ty = r.y + r.h / 2 - (L.length * lh) / 2 + 8;
       out += names(tx, ty - (price ? 6 : 0));
       if (price) out += t(tx, ty - 6 + L.length * lh + 3, price, 12, { w: 600 });
-      if (s.k === 'ch') out += t(lx, r.y + r.h / 2 + 20, '?', 58, { f: 'var(--display),Lilita One,sans-serif', w: 400, c: QCOL[i] });
-      else if (ic) out += icon(ic, lx, r.y + r.h / 2 + 2, 0.82);
+      if (ic) out += icon(ic, lx, r.y + r.h / 2 + 1, ISC[ic][1], arg);
     }
     return out;
   }
   // ── Corners ──
+  // the big slanted block-letter GO with a white inline, baseline centre at x, y
+  function goWord(x, y) {
+    var G = 'M-6.5-29L-12-35H-21L-27-29V-11L-21-5H-12L-6.5-11V-19H-14.5', Gi = 'M-8.3-31L-12-35H-21L-27-29V-11L-21-5H-12L-6.5-11V-19H-12',
+      O = 'M12-35H21L27-29V-11L21-5H12L6-11V-29Z';
+    function s(d, c, w) { return '<path d="' + d + '" fill="none" stroke="' + c + '" stroke-width="' + w + '" stroke-linejoin="miter"/>'; }
+    return '<g transform="translate(' + x + ' ' + y + ') skewX(-12)">' + s(G, '#d7262e', 9) + s(O, '#d7262e', 9) + s(Gi, '#fff', 1.5) + s(O, '#fff', 1.5) + '</g>';
+  }
   function corner(i, r) {
     var cx = r.x + r.w / 2, cy = r.y + r.h / 2, o = '';
     if (i === 0) {
       o += '<g transform="rotate(-45 ' + cx + ' ' + cy + ')">' +
         t(cx, cy - 26, 'COLLECT $200', 12, { ls: .4 }) + t(cx, cy - 13, 'SALARY AS YOU PASS', 9.5, { ls: .3 }) +
-        t(cx, cy + 30, 'GO', 56, { f: 'var(--display),Lilita One,sans-serif', w: 400, c: '#d7262e', ls: 2 }) + '</g>' +
-        '<path d="M' + (r.x + 110) + ' ' + (r.y + 116) + 'H' + (r.x + 32) + '" stroke="#d7262e" stroke-width="9"/><path d="M' + (r.x + 14) + ' ' + (r.y + 116) + 'l20-13v26z" fill="#d7262e"/>';
+        goWord(cx, cy + 31) + '</g>' +
+        // the arrow: barbed head pointing the way round, feathered tail
+        '<path d="M' + (r.x + 106) + ' ' + (r.y + 116) + 'H' + (r.x + 26) + '" stroke="#d7262e" stroke-width="4.5"/>' +
+        '<path d="M' + (r.x + 12) + ' ' + (r.y + 116) + 'l22-11-6 11 6 11z" fill="#d7262e"/>' +
+        '<path d="M' + (r.x + 100) + ' ' + (r.y + 116) + 'l10-9h7l-10 9 10 9h-7z" fill="#d7262e"/>';
     } else if (i === 10) {
       var jx = r.x + 44, jy = r.y, js = 86;
       o += '<rect x="' + jx + '" y="' + jy + '" width="' + js + '" height="' + js + '" fill="#f3901d" stroke="' + LINE + '" stroke-width="1.8"/>';
-      o += '<rect x="' + (jx + 14) + '" y="' + (jy + 12) + '" width="' + (js - 28) + '" height="' + (js - 30) + '" fill="#fff6e0" stroke="' + LINE + '" stroke-width="1.4"/>';
-      for (var b = 0; b < 5; b++) o += '<rect x="' + (jx + 18 + b * 11.5) + '" y="' + (jy + 12) + '" width="3.4" height="' + (js - 30) + '" fill="' + INK + '"/>';
-      o += t(jx + js / 2, jy + js - 6, 'IN JAIL', 12, { ls: 1 });
+      // the cell, turned on the diagonal like the real board: IN, a barred window with a prisoner, JAIL
+      o += '<g transform="translate(' + (jx + js / 2) + ' ' + (jy + js / 2) + ') rotate(45)">' +
+        '<rect x="-28" y="-24" width="56" height="40" fill="#fff" stroke="' + INK + '" stroke-width="1.8"/>' +
+        pth('M-21 16C-19 9-12 6-7 6H7C12 6 19 9 21 16Z', '#fff', 1.5) + pth('M-4 6L0 11L4 6', 'none', 1.2) +
+        pth('M-9-9C-9-20 9-20 9-9V-2C9 4 4 6 0 6C-4 6-9 4-9-2Z', '#fff', 1.7) +
+        circ(-3.4, -8, 1.1, INK, .4) + circ(3.4, -8, 1.1, INK, .4) + pth('M0-7V-2.5H2M-3.4 2Q0 0 3.4 2M-5.5-11.5L-2-11M5.5-11.5L2-11', 'none', 1.3) +
+        [-21, -10.5, 0, 10.5, 21].map(function (b) { return '<rect x="' + (b - 1.5) + '" y="-24" width="3" height="40" fill="' + INK + '"/>'; }).join('') +
+        '<ellipse cx="-10.5" cy="1" rx="3.8" ry="4.6" fill="#fff" stroke="' + INK + '" stroke-width="1.4"/><ellipse cx="10.5" cy="1" rx="3.8" ry="4.6" fill="#fff" stroke="' + INK + '" stroke-width="1.4"/>' +
+        pth('M-14.3-0.5H-10.5M-14.3 2.5H-10.5M14.3-0.5H10.5M14.3 2.5H10.5', 'none', 1) +
+        t(0, -29, 'IN', 13, { ls: 1 }) + t(0, 33, 'JAIL', 14, { ls: 1 }) + '</g>';
       o += t(r.x + 22, r.y + 60, 'JUST', 12, { tr: 'rotate(90 ' + (r.x + 22) + ' ' + (r.y + 60) + ')', ls: 1.5 });
       o += t(r.x + 82, r.y + r.h - 11, 'VISITING', 12, { ls: 1.5 });
     } else if (i === 20) {
       o += '<g transform="rotate(135 ' + cx + ' ' + cy + ') rotate(180 ' + cx + ' ' + cy + ')">' +
-        t(cx, cy - 30, 'FREE', 19, { ls: 1.5 }) + icon('car', cx, cy + 4, 1) + t(cx, cy + 44, 'PARKING', 19, { ls: 1.5 }) + '</g>';
+        t(cx, cy - 30, 'FREE', 19, { ls: 1.5 }) + icon('car', cx, cy + 2, 1.15) + t(cx, cy + 44, 'PARKING', 19, { ls: 1.5 }) + '</g>';
     } else if (i === 30) {
       o += '<g transform="rotate(45 ' + cx + ' ' + cy + ')">' +
-        t(cx, cy - 30, 'GO TO', 19, { ls: 1.5 }) + icon('lock', cx, cy + 4, 1) + t(cx, cy + 46, 'JAIL', 21, { ls: 2 }) + '</g>';
+        t(cx, cy - 30, 'GO TO', 19, { ls: 1.5 }) + icon('cop', cx, cy + 1, 0.98) + t(cx, cy + 46, 'JAIL', 21, { ls: 2 }) + '</g>';
     }
     return o;
   }
