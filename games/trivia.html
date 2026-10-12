@@ -229,8 +229,10 @@ body{overflow-x:hidden;}
 
 /* ── Countdown (solo and online) ─────────────────────────────────────── */
 .tv.cdm{max-width:680px;}
+.cdm .stage{max-width:none;}
 .cdm .hud{flex-wrap:nowrap;gap:6px;}
-.cdm .hud .pill{padding:0 10px;gap:4px;font-size:.82rem;}
+.cdm .hud .pill{flex:none;padding:0 10px;gap:4px;font-size:.82rem;}
+@media (max-width:440px){.cdm .hud .pill{padding:0 8px;font-size:.78rem;}.cdm .hud .pill .ico{width:13px;height:13px;}.cdm .hud .pill.q .ico,.cdm .hud .pill.rk .ico{display:none;}}
 .cdm .hud .pill.sc b{min-width:3ch;text-align:right;}
 .cdm .hud .pill.sc.bump{animation:bump .45s var(--spring);}
 @keyframes bump{40%{transform:scale(1.18);}}
@@ -266,7 +268,7 @@ body{overflow-x:hidden;}
 .meter.end .tr i{opacity:.25;}
 /* after the reveal the clock shows what you earned */
 .meter.res .tr{display:none;}
-.meter .say{flex:1;min-width:0;display:none;flex-direction:column;gap:5px;}
+.meter .say{flex:1;min-width:0;display:none;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;}
 .meter.res .say{display:flex;animation:pop .45s var(--spring) both;}
 .meter .say h3{font-family:var(--display);font-weight:400;font-size:1.55rem;line-height:1;color:#fff;}
 .meter .say .chips{display:flex;flex-wrap:wrap;gap:5px;}
@@ -373,6 +375,12 @@ body{overflow-x:hidden;}
 @keyframes dlin{from{opacity:0;transform:translateX(18px) scale(.6);}to{opacity:1;transform:none;}}
 .lbr .sc{min-width:4.6ch;text-align:right;font-family:var(--display);font-size:1.25rem;color:#ffd76a;font-variant-numeric:tabular-nums;}
 .lbr.up .rk{animation:bump .5s .7s var(--spring);}
+.lb.big .lbr{height:62px;font-size:1.15rem;border-radius:16px;}
+.lb.big .lbr .sc{font-size:1.5rem;}
+.lb.big .lbr .rk{font-size:1.4rem;}
+.lb.big .lbr .avatar{width:40px;height:40px;}
+.stage.lbs{min-height:min(560px,62vh);display:flex;flex-direction:column;}
+.stage.lbs .nbar{margin-top:auto !important;padding-top:14px;}
 .lbsep{position:absolute;left:0;right:0;text-align:center;color:#8f86b3;font-weight:900;letter-spacing:.3em;}
 
 /* Countdown results */
@@ -402,6 +410,20 @@ body{overflow-x:hidden;}
   .cdm .qcard .q{font-size:1.75rem;}
   .tile{min-height:98px;font-size:1.15rem;}
   .meter .num{font-size:2.8rem;}
+}
+@media (min-width:1100px) and (min-height:860px){
+  .tv.cdm{max-width:880px;}
+  .cdm .stage{padding:20px 18px 18px;}
+  .cdm .qcard{min-height:120px;padding:16px 22px 24px;}
+  .cdm .qcard .q{font-size:2.1rem;}
+  .tile{min-height:112px;font-size:1.3rem;border-radius:20px;}
+  .tile .L{width:42px;height:42px;font-size:1.6rem;}
+  .tiles{gap:14px;}
+  .meter{min-height:78px;}
+  .meter .num{font-size:3.2rem;}
+  .meter .nb{min-width:120px;}
+  .meter .tr{height:20px;border-radius:10px;}
+  .lbr{font-size:1.1rem;}
 }
 @media (prefers-reduced-motion:reduce){
   .tile.enter,.tiles.rv .tile.ok,.reel.land,.reel.spin .ri,.reel.spin .rn{animation:none;}
@@ -727,14 +749,11 @@ body{overflow-x:hidden;}
   }
   function stopTimer() { clearInterval(timer); timer = null; }
   // Page hidden: the timer already skips its work, so stop it altogether and start it again when we are back
-  var timerWasOn = false, hiddenAt = 0;
+  var timerWasOn = false;
   document.addEventListener('visibilitychange', function () {
-    if (document.hidden) { timerWasOn = !!timer; stopTimer(); hiddenAt = performance.now(); }
+    if (document.hidden) { timerWasOn = !!timer; stopTimer(); }
     else {
       if (timerWasOn) { timerWasOn = false; if (S && S.cur) startTimer(); }
-      // Solo countdown: the clock waits for you while the app is in the background
-      if (hiddenAt && VW && VW.solo && VW.q && !VW.rv) cdShift(performance.now() - hiddenAt);
-      hiddenAt = 0;
     }
   });
   function paintRing() {
@@ -1281,7 +1300,8 @@ body{overflow-x:hidden;}
   var VW = null, raf = 0;
   function vNew(me, solo) {
     cdStop();
-    VW = { me: me, solo: !!solo, ro: [], sc: {}, prev: {}, st: 0, q: null, t0: 0, pick: -1, pickE: 0, pickPts: 0, locked: false, ph: '', a: [], l: [], log: [], rv: null, d: null, tm: [], cfg: {}, ended: false };
+    VW = { me: me, solo: !!solo, ro: [], sc: {}, prev: {}, st: 0, q: null, t0: 0, pick: -1, pickE: 0, pickPts: 0, locked: false, ph: '', a: [], l: [], log: [], rv: null, d: null, tm: [], cfg: {}, ended: false, started: Date.now() };
+    Kit.gameStart();
   }
   function later(fn, ms) { if (!VW) return; var v = VW; v.tm.push(setTimeout(function () { if (VW === v) fn(); }, ms)); }
   function cdStop(all) {
@@ -1289,7 +1309,7 @@ body{overflow-x:hidden;}
     if (VW) { VW.tm.forEach(clearTimeout); VW.tm = []; }
     if (all) { clearInterval(eTimer); clearTimeout(eNextT); if (E && E.solo) E = null; if (VW && VW.solo) VW = null; }
   }
-  // the solo clock waits while the app is hidden or a sheet covers it
+  // the solo clock waits while the app is hidden or a sheet covers it (vFrame shifts it by any gap)
   function cdShift(ms) { if (!VW || !VW.q || ms <= 0) return; VW.t0 += ms; if (E && E.solo && E.cur) E.cur.t0 += ms; }
   function vMsg(m, lag) {
     if (!VW) return;
@@ -1357,13 +1377,13 @@ body{overflow-x:hidden;}
     var d = VW && VW.d; if (!d || !d.hud || !VW.q && !VW.rv) return;
     var h = d.hud; h.innerHTML = '';
     var n = VW.q ? VW.q.n : 0, of = VW.cfg.of || (VW.q && VW.q.of) || 0;
-    h.appendChild(el('span', { class: 'pill', html: Kit.icon('help') + 'Q <b>' + Math.min(n + 1, of) + '</b>/ ' + of }));
+    h.appendChild(el('span', { class: 'pill q', html: Kit.icon('help') + 'Q <b>' + Math.min(n + 1, of) + '</b>/ ' + of }));
     d.score = el('b', { text: fmtN(VW.sc[VW.me] || 0) });
     d.scPill = el('span', { class: 'pill sc' }, [el('span', { html: Kit.icon('star') }), d.score, el('span', { text: 'pts' })]);
     h.appendChild(d.scPill);
     if (online()) {
       var act = VW.ro.filter(function (r) { return !r.gone || VW.sc[r.pid]; });
-      h.appendChild(el('span', { class: 'pill', title: 'Your place', html: Kit.icon('trophy') + '<b>' + ordn(rankOf(VW.me, VW.sc)) + '</b>/ ' + act.length }));
+      h.appendChild(el('span', { class: 'pill rk', title: 'Your place', html: Kit.icon('trophy') + '<b>' + ordn(rankOf(VW.me, VW.sc)) + '</b>/ ' + act.length }));
     }
     h.appendChild(el('span', { class: 'pill' + (VW.st >= 2 ? ' hot' : ''), html: Kit.icon('flame') + '<b>' + (VW.st || 0) + '</b>in a row' }));
   }
@@ -1580,20 +1600,20 @@ body{overflow-x:hidden;}
     var shown = byNew.slice(0, 8);
     if (shown.indexOf(byNew.filter(function (r) { return r.pid === VW.me; })[0]) < 0) { var meR = byNew.filter(function (r) { return r.pid === VW.me; })[0]; if (meR) { shown = byNew.slice(0, 7).concat([meR]); } }
     var byOld = shown.slice().sort(function (a, b) { return (prev[b.pid] || 0) - (prev[a.pid] || 0) || a.pid - b.pid; });
-    var H = 56;
+    var big = shown.length <= 4, H = big ? 70 : 56;
     stage.innerHTML = '';
     stage.appendChild(el('i', { class: 'bulbs', 'aria-hidden': 'true' }));
-    stage.classList.remove('flash-ok', 'flash-bad');
+    stage.classList.remove('flash-ok', 'flash-bad'); stage.classList.add('lbs');
     stage.appendChild(el('div', { class: 'lbh' }, [el('h2', { text: m.last ? 'Final standings' : 'Leaderboard' }), el('span', { text: 'After ' + (m.n + 1) + ' of ' + VW.q.of })]));
     stage.appendChild(el('div', { class: 'lba', html: Kit.icon('check') + '<span>' + esc(m.a) + '</span><small>' + (m.cnt[m.k] || 0) + ' of ' + people.filter(function (r) { return m.r[r.pid]; }).length + ' got it</small>' }));
-    var lb = el('div', { class: 'lb', style: { height: (shown.length * H - 6) + 'px' } });
+    var lb = el('div', { class: 'lb' + (big ? ' big' : ''), style: { height: (shown.length * H - 6) + 'px' } });
     stage.appendChild(lb);
     var rows = shown.map(function (r) {
       var oldPos = byOld.indexOf(r), newPos = shown.indexOf(r), rr = m.r[r.pid], gain = rr ? rr[2] + rr[3] : 0;
       var sc = el('span', { class: 'sc', text: fmtN(prev[r.pid] || 0) });
       var dl = el('span', { class: 'dl', text: gain ? '+' + fmtN(gain) : '' });
       var rk = el('span', { class: 'rk', text: String(rankOf(r.pid, prev)) });
-      var row = el('div', { class: 'lbr' + (r.pid === VW.me ? ' me' : '') + (r.gone ? ' gone' : ''), style: { top: (oldPos * H) + 'px' } }, [rk, Kit.avatar.el(r.name, 'sm', pcol(r.pid)), el('span', { class: 'nm', text: r.name + (r.gone ? ' (left)' : '') }), dl, sc]);
+      var row = el('div', { class: 'lbr' + (r.pid === VW.me ? ' me' : '') + (r.gone ? ' gone' : ''), style: { top: (oldPos * H) + 'px' } }, [rk, Kit.avatar.el(r.name, big ? '' : 'sm', pcol(r.pid)), el('span', { class: 'nm', text: r.name + (r.gone ? ' (left)' : '') }), dl, sc]);
       lb.appendChild(row);
       return { r: r, row: row, sc: sc, dl: dl, rk: rk, newPos: newPos, oldPos: oldPos, gain: gain };
     });
@@ -1817,7 +1837,7 @@ body{overflow-x:hidden;}
       onHost: function (me) { return hostTable(me.name); },
       onJoin: function (code, room, me) { return joinTable(code, me.name); },
       onSolo: function () { closeLobby(); showSetup(); }, solo: 'Play on this device instead',
-      sub: function (r) { return (r.status === 'playing' ? (r.info || 'Playing') + ' · join in' : (r.info ? r.info + ' · ' : '')) + ' · ' + (r.n || 1) + (r.n === 1 ? ' player' : ' players'); },
+      sub: function (r) { return [r.status === 'playing' ? 'Playing now, join in' : r.info, (r.n || 1) + ((r.n || 1) === 1 ? ' player' : ' players')].filter(Boolean).join(' · '); },
       note: 'Your table plays the level, length and categories picked on your setup screen. Each device connects straight to the host’s; if one can’t connect, try them on the same Wi-Fi.'
     });
     window.scrollTo(0, 0);
