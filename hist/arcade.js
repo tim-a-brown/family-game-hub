@@ -305,7 +305,7 @@
 
   // ═══ Peggle ═══
   var PEG = { b: '#2f7ff0', o: '#ff7417', p: '#a24cf0', g: '#1fbf55' };
-  var PEG_LV = ['First Light', 'Rainbow Arches', 'Spiral', 'Bubbles', 'Hourglass', 'Diamonds', 'Twin Peaks', 'The Wheel', 'Sliders', 'Orbits', 'Pendulum', 'Galaxy', 'Clockwork'];
+  var PEG_LV = typeof PEGGLE_LEVELS !== 'undefined' ? PEGGLE_LEVELS : ['First Light', 'Rainbow Arches', 'Spiral', 'Bubbles', 'Hourglass', 'Diamonds', 'Twin Peaks', 'The Wheel', 'Sliders', 'Orbits', 'Pendulum', 'Galaxy', 'Clockwork'];   // names from games.js
   R('peggle', function (e, ui) {
     var d = e.dt;
     // a full game: levels 1 to 13 in a row, a bar for each level's score
