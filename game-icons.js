@@ -144,12 +144,9 @@ var GameIcon = (function () {
     mahjong4: function () { return rect(4, 1.5, 16, 21, 2.5, CREAM, ' stroke="' + K + '" stroke-width="1.4"') + txt('中', 13, R, 12.5); },
 
     // Dice & luck
-    // the big red STOP button on its chrome base
+    // the Whammy's grinning head (the same drawing as games/pressyourluck/art.js)
     pressyourluck: function () {
-      return path('M2 15.6v2.9c0 2 4.5 3.6 10 3.6s10-1.6 10-3.6v-2.9z', S) + '<ellipse cx="12" cy="15.6" rx="10" ry="3.6" fill="#dcd8ea"/>' +
-        path('M4.2 15.4C4.2 9 7.6 5.2 12 5.2s7.8 3.8 7.8 10.2c-1.6 1.2-4.5 1.8-7.8 1.8s-6.2-.6-7.8-1.8z', R) +
-        '<ellipse cx="9" cy="8.9" rx="2.3" ry="1.4" fill="' + W + '" opacity=".55" transform="rotate(-25 9 8.9)"/>' +
-        txt('STOP', 4.6, W, 12.6) + line('M12 .8v2M4.6 2.6l1.3 1.5M19.4 2.6l-1.3 1.5', K, 1.3);
+      return '<g transform="translate(12 13.4) scale(.27)">' + '<path d="M-27-14 L-38-26 L-33-8z M27-14 L38-26 L33-8z" fill="#ffe23a" stroke="#140a0c" stroke-width="2.6" stroke-linejoin="round"/><path d="M-24-18 L-32-30 L-20-28 L-22-42 L-10-31 L-6-46 L1-32 L9-45 L11-30 L22-40 L20-26 L32-29 L25-16z" fill="#e3262c" stroke="#140a0c" stroke-width="2.6" stroke-linejoin="round"/><path d="M0-30 C18-30 27-20 28-8 C30 4 34 12 30 20 C24 30 10 32 0 32 C-10 32-24 30-30 20 C-34 12-30 4-28-8 C-27-20-18-30 0-30z" fill="#e3262c" stroke="#140a0c" stroke-width="2.6" stroke-linejoin="round"/><path d="M-18-24 C-10-28 0-29 8-27" fill="none" stroke="#ff5a52" stroke-width="3" stroke-linecap="round" opacity=".7"/><path d="M-29-15 C-20-21-8-20 0-17 C8-20 20-21 29-15 C30-9 26-1 18-2 C10-3 6-8 0-7 C-6-8-10-3-18-2 C-26-1-30-9-29-15z" fill="#ffe23a" stroke="#140a0c" stroke-width="2.6" stroke-linejoin="round"/><ellipse cx="-12" cy="-11" rx="6.5" ry="7" fill="#fff" stroke="#140a0c" stroke-width="2"/><circle cx="-11" cy="-10" r="2.8" fill="#140a0c"/><ellipse cx="12" cy="-11" rx="6.5" ry="7" fill="#fff" stroke="#140a0c" stroke-width="2"/><circle cx="13" cy="-10" r="2.8" fill="#140a0c"/><path d="M-29-1 C-24 26 24 26 29-1 C16 5-16 5-29-1z" fill="#fff" stroke="#140a0c" stroke-width="2.6" stroke-linejoin="round"/><path d="M-23.9 9.6 C-12 13 12 13 23.9 9.6" fill="none" stroke="#140a0c" stroke-width="1.7"/><path d="M-19 3.4 L-18.6 13.6 M-9.5 4.6 L-9.4 17.8 M0 4.9 L0 19 M9.5 4.6 L9.4 17.8 M19 3.4 L18.6 13.6" stroke="#140a0c" stroke-width="1.7" stroke-linecap="butt"/><circle cx="0" cy="-3" r="5.8" fill="#e3262c" stroke="#140a0c" stroke-width="2.2"/><circle cx="-1.8" cy="-4.8" r="1.6" fill="#fff" opacity=".55"/>' + '</g>';
     },
     yahtzee: function () { return circ(6, 6, 2.4, K) + circ(18, 6, 2.4, K) + circ(12, 12, 2.4, R) + circ(6, 18, 2.4, K) + circ(18, 18, 2.4, K); },
     plinko: function (c) { var s = ''; [[12, 5], [8, 10], [16, 10], [4, 15], [12, 15], [20, 15]].forEach(function (p) { s += circ(p[0], p[1], 1.5, K); }); return s + circ(14, 7.7, 2.6, c) + rect(2, 19.5, 20, 2.5, 1, c, ' opacity=".5"'); },
