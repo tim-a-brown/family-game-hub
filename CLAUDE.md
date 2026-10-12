@@ -38,6 +38,12 @@ Tim plans and requests changes in chat, proofs them on a preview URL, then says
 
 ## Design rules (Tim's feedback)
 
+Underlying principles for everything:
+- **Explain by design, not words.** Clear UX: the screen should show what to do and what just happened
+  (highlights, motion, placement, state you can see) instead of instructions and labels.
+- **Make gameplay fun, engaging and interesting.**
+
+
 - **No emoji in the UI.** Use `Kit.icon(name)` line icons. Emoji look cheap.
 - **Text first for finding things.** Game names must be readable at a glance.
 - **Game play areas must feel like a real game, not an app.** Use table
