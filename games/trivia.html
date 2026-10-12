@@ -280,7 +280,8 @@ body{overflow-x:hidden;}
 .meter.res.no .num{text-shadow:none;}
 
 /* Answer tiles: four bright plates, A B C D */
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px;}
+.tiles .tile{min-width:0;}
 /* long answers: one plate per row, so each reads on a line or two */
 .tiles.one{grid-template-columns:1fr;gap:9px;}
 .tiles.one .tile{min-height:56px;padding:8px 12px 10px 10px;}
@@ -1991,7 +1992,15 @@ body{overflow-x:hidden;}
     while (t.scrollWidth > t.clientWidth + 1 && fs > 11 && n++ < 12) { fs -= 1; t.style.fontSize = fs + 'px'; }
     if (t.scrollWidth > t.clientWidth + 1) t.style.overflowWrap = 'anywhere';
   }
-  function all() { document.querySelectorAll('.tile .t').forEach(fit); }
+  // all four answers end up the same size (a lone smaller tile would point at the long answer)
+  function all() {
+    document.querySelectorAll('.tiles').forEach(function (g) {
+      var ts = [].slice.call(g.querySelectorAll('.tile .t')); if (!ts.length) return;
+      ts.forEach(fit);
+      var min = Math.min.apply(null, ts.map(function (t) { return parseFloat(getComputedStyle(t).fontSize) || 16; }));
+      ts.forEach(function (t) { if ((parseFloat(t.style.fontSize) || 99) > min || !t.style.fontSize) t.style.fontSize = min + 'px'; });
+    });
+  }
   var q = 0; function soon() { if (q) return; q = requestAnimationFrame(function () { q = 0; all(); }); }
   new MutationObserver(function (ms) { for (var i = 0; i < ms.length; i++) if (ms[i].addedNodes.length) { soon(); return; } }).observe(document.body, { childList: true, subtree: true });
   window.addEventListener('resize', soon);
