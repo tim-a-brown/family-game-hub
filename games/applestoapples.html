@@ -828,6 +828,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
         if (t < 1 && F.el.isConnected) { F.raf = requestAnimationFrame(frame); return; }
         F.raf = 0; F.pos = target; F.focus = target; F.render();
       })(t0);
+      return dist ? ms : 0;
     };
     // The hand fans open from a stack (a new hand, or the phone just passed to you)
     F.open = function () {
@@ -1098,7 +1099,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
         Kit.sfx('deal');
         post.push(function () {
           var dk = deck.getBoundingClientRect(), hr = hf.el.getBoundingClientRect(), first = ids.indexOf(freshIds[0]);
-          hf.settle(first);
+          var lead = Math.min(hf.settle(first) * 0.55, 380) / 1000;   // the hand turns to make room, then the card comes in
           freshIds.forEach(function (id, k) {
             var j = ids.indexOf(id), ce = hf.items[j].firstChild, q = hf.pose(j, first);
             // where the pile is, seen from the card's own (moved, turned and scaled) spot in the hand
@@ -1106,9 +1107,9 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
             var k2 = q.sc * Math.max(0.35, Math.cos(q.r * Math.PI / 180));
             ce.style.setProperty('--fx', (dk.width ? (dk.left + dk.width / 2 - cx) / k2 : 0).toFixed(0) + 'px');
             ce.style.setProperty('--fy', (dk.width ? (dk.top + dk.height / 2 - cy) / q.sc : -240).toFixed(0) + 'px');
-            ce.style.setProperty('--dl', (k * .11) + 's'); ce.classList.add('dealt');
+            ce.style.setProperty('--dl', (lead + k * .11).toFixed(2) + 's'); ce.classList.add('dealt');
             ce.addEventListener('animationend', function dn(e) { if (e.target !== ce) return; ce.removeEventListener('animationend', dn); ce.classList.remove('dealt'); });
-            if (k) setTimeout(function () { Kit.sfx('deal', 0.6); }, k * 110);
+            if (k) setTimeout(function () { Kit.sfx('deal', 0.6); }, lead * 1000 + k * 110);
           });
         });
       }
