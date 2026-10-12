@@ -141,7 +141,11 @@ const ArcadeHi = (function(){
     s.textContent = `
 .ahi-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;animation:ahi-in .2s ease;}
 @keyframes ahi-in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
-.ahi-box{background:var(--surface,#12151c);border:1px solid var(--line-2,rgba(255,255,255,.12));border-radius:26px;padding:24px 20px;max-width:380px;width:100%;max-height:90vh;overflow-y:auto;}
+.ahi-box{background:#12151c;border:1px solid rgba(255,255,255,.12);color:#f4f4f7;color-scheme:dark;
+  /* an arcade screen: always dark, whatever the app theme, so its light text and buttons read */
+  --surface:#12151c;--surface-2:#1c2030;--surface-3:#2a2f42;--bg:#0b0d13;--bg-2:#161a24;--text:#f4f4f7;--text-2:#b8bccb;--text-3:#808597;
+  --line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.14);--seg:rgba(0,0,0,.3);--seg-track:rgba(0,0,0,.3);
+  --w05:rgba(255,255,255,.05);--w06:rgba(255,255,255,.06);--w08:rgba(255,255,255,.08);--w1:rgba(255,255,255,.1);--w12:rgba(255,255,255,.12);--w15:rgba(255,255,255,.15);--w2:rgba(255,255,255,.2);border-radius:26px;padding:24px 20px;max-width:380px;width:100%;max-height:90vh;overflow-y:auto;}
 .ahi-title{font-family:var(--display);font-size:1.6rem;font-weight:900;text-align:center;color:#f5c842;margin-bottom:4px;}
 .ahi-sub{text-align:center;color:rgba(255,255,255,.45);font-size:.78rem;margin-bottom:18px;}
 /* 3-letter name entry */

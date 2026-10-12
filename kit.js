@@ -568,10 +568,14 @@
   function playerColor(i) {
     return getComputedStyle(root).getPropertyValue('--p' + ((i % 8) + 1)).trim() || '#ffc83d';
   }
+  // Text on a colour: white or near-black, whichever stands out more (true contrast, not a brightness guess)
   function inkFor(hex) {
-    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim()); if (!m) return '#1a1033';
-    var n = parseInt(m[1], 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
-    return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#1a1033' : '#ffffff';
+    var h = String(hex).trim().replace(/^#/, '');
+    if (/^[0-9a-f]{3}$/i.test(h)) h = h.replace(/./g, '$&$&');
+    if (!/^[0-9a-f]{6}$/i.test(h)) return '#1a1033';
+    var lum = [0, 2, 4].map(function (i) { var v = parseInt(h.substr(i, 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    var L = 0.2126 * lum[0] + 0.7152 * lum[1] + 0.0722 * lum[2];
+    return 1.05 / (L + 0.05) >= (L + 0.05) / 0.0583 ? '#ffffff' : '#1a1033';
   }
 
   // ── "Continue" rail data (read by the home screen) ────────────────────────
