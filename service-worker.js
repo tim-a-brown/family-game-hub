@@ -282,6 +282,9 @@ const PRECACHE_URLS = [
   '/games/wordscramble.html',
   '/games/wordsearch.html',
   '/games/wouldyourather.html',
+  '/games/applestoapples.html',
+  '/data/a2a-cards.js',
+  '/data/cah-cards.js',
   '/games/yahtzee.html',
 ];
 

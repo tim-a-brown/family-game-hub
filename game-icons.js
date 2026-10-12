@@ -206,6 +206,11 @@ var GameIcon = (function () {
     // Party (speech bubble base)
     trivia: function (c) { return txt('?', 24, c, 12.5); },
     wouldyourather: function (c) { return txt('A', 15, c, 12.5, 6) + line('M12 4v16', K, 1.5) + txt('B', 15, P, 12.5, 18); },
+    applestoapples: function () {   // a shiny red apple with its stem and a leaf
+      return path('M12 7.6c-1.5-1.2-4-1.5-5.8.1-2.2 2-2.1 6.1-.4 9.2 1.3 2.3 3.1 4.3 4.7 4 .6-.1 1-.4 1.5-.4s.9.3 1.5.4c1.6.3 3.4-1.7 4.7-4 1.7-3.1 1.8-7.2-.4-9.2-1.8-1.6-4.3-1.3-5.8-.1z', R) +
+        path('M12 7.8c0-2 .6-3.6 1.8-4.8', 'none', ' stroke="#5a3418" stroke-width="1.7" stroke-linecap="round"') + path('M13.4 5c1-1.9 3-2.7 5.1-2.3-.6 2.1-2.6 3.3-5.1 2.3z', G) +
+        '<ellipse cx="8.3" cy="11.6" rx="1.3" ry="2.4" fill="' + W + '" opacity=".5" transform="rotate(22 8.3 11.6)"/>';
+    },
     madlibs: function (c) { return line('M3 6h18M3 12h7M3 18h12', K, 2) + line('M12.5 12.5h8', c, 2.6) + path('M16.5 21.5l1-3.4 4.6-4.6a1.5 1.5 0 0 1 2.1 2.1l-4.6 4.6z', O); },
     riddlestories: function (c) { return circ(10, 10, 6.5, 'none', ' stroke="' + K + '" stroke-width="2.4"') + line('M15 15l6.5 6.5', K, 3) + txt('?', 9, c, 10.3, 10); },
     conversation: function (c) { return circ(5, 12, 2.6, c) + circ(12, 12, 2.6, c) + circ(19, 12, 2.6, c); },

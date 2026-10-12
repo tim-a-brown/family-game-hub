@@ -725,7 +725,8 @@
     poker:         { felt: ['#24407a', '#152a55', '#0e1d3f'] },
     threecardpoker:{ felt: ['#0f6a6a', '#094848', '#063434'] },
     paigow:        { felt: ['#7a1f2a', '#521219', '#3c0c12'], back: ['#7a1f2a', '#e2a400'] },
-    candymatch:    { felt: ['#5a2f6e', '#3d1d4f', '#2a1238'], wood: ['#a8623c', '#6a321c'] }
+    candymatch:    { felt: ['#5a2f6e', '#3d1d4f', '#2a1238'], wood: ['#a8623c', '#6a321c'] },
+    applestoapples:{ felt: ['#245069', '#173a4f', '#0f2a3a'], back: ['#b3122e', '#e4475d'], wood: ['#8a4b2a', '#5e2f18'] }
   };
   function applyTheme(id) {
     var t = THEMES[id]; if (!t) return;
@@ -1877,7 +1878,7 @@
   // The list (profile menu) opens a game's page with ?defaults=1: its normal setup screen, saving instead of
   // starting (see EDIT_DEFAULTS at the top). The choices land in gn_setup_<id>, the same place a game remembers
   // its last setup, with a short summary (sum) for the list. SETUP_PAGES: the pages that call Kit.setup.
-  var SETUP_PAGES = ['asteroids', 'axisallies-score', 'axisallies', 'baccarat', 'backgammon', 'battleship', 'bingo', 'blackjack', 'boggle', 'breakout', 'candymatch', 'centipede', 'checkers', 'chess', 'chinesecheckers', 'codebreaker', 'connectfour', 'conversation', 'craps', 'crazytower', 'cribbage', 'crossyroad', 'cubehopper', 'dealornodeal', 'dominoes', 'dotsboxes', 'euchre-ai', 'euchre', 'farkle', 'five-crowns', 'fivecrownss-ai', 'flappybird', 'flip7-ai', 'flip7', 'gin-rummy-ai', 'gin-rummy', 'go', 'hangman', 'hearts-ai', 'hearts', 'horserace', 'invaders', 'lorcana-play', 'lorcana', 'lrc', 'madlibs', 'mahjong', 'mahjong4', 'mancala', 'marbles', 'marblesolitaire', 'mathpuzzles', 'mazes', 'memorymatch', 'minesweeper', 'minigolf', 'othello', 'pacman', 'paddleball', 'paigow', 'peggle', 'phase10-ai', 'phase10', 'pinball', 'plinko', 'poker', 'pokersquares', 'pressyourluck', 'riddlestories', 'rook-ai', 'rook', 'roulette', 'sandlot', 'scorecard', 'shellgame', 'slidepuzzle', 'slots', 'snake', 'solitaire', 'spades-ai', 'spades', 'sudoku', 'tetris', 'threecardpoker', 'tictactoe', 'trivia', 'wheeloffortune', 'willycrash', 'wizard-ai', 'wizard', 'wordscramble', 'wordsearch', 'wouldyourather', 'yahtzee'];
+  var SETUP_PAGES = ['applestoapples', 'asteroids','axisallies-score', 'axisallies', 'baccarat', 'backgammon', 'battleship', 'bingo', 'blackjack', 'boggle', 'breakout', 'candymatch', 'centipede', 'checkers', 'chess', 'chinesecheckers', 'codebreaker', 'connectfour', 'conversation', 'craps', 'crazytower', 'cribbage', 'crossyroad', 'cubehopper', 'dealornodeal', 'dominoes', 'dotsboxes', 'euchre-ai', 'euchre', 'farkle', 'five-crowns', 'fivecrownss-ai', 'flappybird', 'flip7-ai', 'flip7', 'gin-rummy-ai', 'gin-rummy', 'go', 'hangman', 'hearts-ai', 'hearts', 'horserace', 'invaders', 'lorcana-play', 'lorcana', 'lrc', 'madlibs', 'mahjong', 'mahjong4', 'mancala', 'marbles', 'marblesolitaire', 'mathpuzzles', 'mazes', 'memorymatch', 'minesweeper', 'minigolf', 'othello', 'pacman', 'paddleball', 'paigow', 'peggle', 'phase10-ai', 'phase10', 'pinball', 'plinko', 'poker', 'pokersquares', 'pressyourluck', 'riddlestories', 'rook-ai', 'rook', 'roulette', 'sandlot', 'scorecard', 'shellgame', 'slidepuzzle', 'slots', 'snake', 'solitaire', 'spades-ai', 'spades', 'sudoku', 'tetris', 'threecardpoker', 'tictactoe', 'trivia', 'wheeloffortune', 'willycrash', 'wizard-ai', 'wizard', 'wordscramble', 'wordsearch', 'wouldyourather', 'yahtzee'];
   function setupPageOf(g) {
     if (g.play && SETUP_PAGES.indexOf(g.play) >= 0) return g.play;
     if (g.score && SETUP_PAGES.indexOf(g.score) >= 0) return g.score;

@@ -534,7 +534,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       B.row(470, 40, 320, 40); B.row(510, 60, 300, 40); B.row(548, 40, 320, 40);
     } },
     { name: 'Gravity Well', bg: 'hole', intro: ['well'], mus: [11, -2, 1.1], build: function (B) {
-      B.well(180, 330, 165, 390);
+      B.well(180, 330, 165, 430);
       B.bumper(180, 330, 12);
       B.ring(180, 330, 48, 8, 0);
       for (var k = 0; k < 4; k++) B.arc(180, 330, 92, k * PI / 2 + 0.25, k * PI / 2 + PI / 2 - 0.25, 3);
@@ -635,7 +635,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       B.iron = 1; B.row(160, 40, 320, 40); B.iron = 0;
       B.row(108, 30, 330, 30);
       B.row(232, 90, 270, 45);
-      B.belt(30, 300, 166, 300, 150); B.belt(330, 300, 194, 300, 150);
+      B.belt(30, 300, 158, 300, 150); B.belt(330, 300, 202, 300, 150);
       for (var y = 362; y <= 462; y += 33) B.peg(180, y);
       B.row(500, 40, 320, 40); B.row(545, 60, 300, 40);
     } },
@@ -648,7 +648,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       });
       B.portal(330, 128, 30, 556, '#b98cff');
       B.row(108, 30, 290, 32);
-      B.lattice(function (x, y) { return Math.hypot(x - 110, y - 250) > 95 && Math.hypot(x - 250, y - 430) > 95 && Math.hypot(x - 330, y - 128) > 32 && Math.hypot(x - 30, y - 556) > 32; }, 40, 150, 556);
+      B.lattice(function (x, y) { return Math.hypot(x - 110, y - 250) > 95 && Math.hypot(x - 250, y - 430) > 95 && Math.hypot(x - 330, y - 128) > 32 && Math.hypot(x - 30, y - 556) > 32; }, 46, 150, 556);
     } },
     { name: 'Grand Finale', bg: 'finale', intro: ['relock'], relock: 1, mus: [11, 0, 0.88], bk: function (t) { return 1.0 * t + 1.4 * Math.sin(0.5 * t); }, build: function (B) {
       B.kind = 'shield'; B.grp = 1; B.arcBricks(180, 330, 56, 0, TAU, 8); B.kind = null;
@@ -855,7 +855,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       else if (z.t === 'well') {
         // never stronger than gravity, so the ball can't be held up forever
         var dx = z.x - b.x, dy = z.y - b.y, d2 = dx * dx + dy * dy;
-        if (d2 < z.R * z.R && d2 > 1) { var d = Math.sqrt(d2), a = z.K * Math.min(1, 1.25 * (1 - d / z.R)) / d; b.vx += dx * a * dt; b.vy += dy * a * dt; }
+        if (d2 < z.R * z.R && d2 > 1) { var d = Math.sqrt(d2), a = z.K * Math.min(1, 1.7 * (1 - d / z.R)) / d; b.vx += dx * a * dt; b.vy += dy * a * dt; }
       }
     }
   }
@@ -2758,7 +2758,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         zones: zones.map(function (z) { return { t: z.t, x: z.x, y: z.y }; }), open: Object.keys(L.open || {}),
         iron: objs.filter(function (o) { return o.iron && !o.gone; }).map(function (o) { return { i: o.i, hp: o.hp, c: o.c, lit: o.lit }; }),
         ghosts: phasers.filter(function (o) { return !o.gone; }).length, ghostsOff: phasers.filter(function (o) { return o.off && !o.gone; }).length,
-        orangeIdx: objs.filter(function (o) { return o.c === 'o' && !o.gone; }).map(function (o) { return o.i; }), balls: balls.length, stats: L.stats };
+        orangeIdx: objs.filter(function (o) { return o.c === 'o' && !o.gone; }).map(function (o) { return o.i; }), balls: balls.length, stats: L.stats,
+        bucket: L.fever ? null : bucketX(wt), movers: movers.slice(0, 3).map(function (o) { return [o.x, o.y]; }) };
     },
     // tests: drop a ball anywhere with any speed
     drop: function (x, y, vx, vy) { if (!L || state !== 'aim') return false; fire(); balls = [newBall(x, y, vx, vy)]; return true; },

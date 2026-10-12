@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apples to Apples</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<style>
+body{overflow-x:hidden;}
+.aa{max-width:980px;margin:0 auto;padding:0 10px calc(var(--safe-b) + 18px);}
+.aa .scores{margin-bottom:2px;}
+.aa .score{min-width:72px;position:relative;}
+.aa .score .sub{display:flex;align-items:center;gap:3px;white-space:nowrap;}
+.aa .score .sub .ico{width:12px;height:12px;}
+.aa .score.judge{border-color:var(--c);background:color-mix(in srgb,var(--c) 18%,transparent);}
+.aa .score.judge .nm{color:var(--c);}
+.aa .score.gone{opacity:.4;}
+.aa .score.ghost{--c:#9aa3b8;border-style:dashed;border-color:var(--w14);}
+.aa .score .pt{display:flex;align-items:center;gap:5px;}
+.aa .score .pt i{display:inline-block;width:11px;height:15px;border-radius:2.5px;background:var(--pc,#2f9b44);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.75),0 1px 2px rgba(0,0,0,.3);}
+.aa .score .ok{color:var(--green);}
+html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .score.judge .nm{color:color-mix(in srgb,var(--c) 45%,var(--text));}
+
+/* The table */
+.tbl{border-radius:24px;padding:8px;margin-top:2px;}
+.tbl .felt-in{position:relative;border-radius:18px;padding:12px 10px 16px;overflow:hidden;}
+.st{display:flex;align-items:center;gap:8px;margin:0 2px 12px;min-height:30px;}
+.st .msg{flex:1;min-width:0;font-weight:900;font-size:1rem;line-height:1.25;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.3);}
+.st .msg b{color:var(--c,#ffe08a);}
+.tag{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 9px;border-radius:999px;background:rgba(0,0,0,.28);color:rgba(255,255,255,.88);font-size:.74rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;flex:none;}
+.tag .ico{width:13px;height:13px;}
+.mid{display:flex;justify-content:center;align-items:flex-start;gap:14px;--cw:132px;}
+.deck{position:relative;flex:none;width:var(--cw);height:calc(var(--cw) * 1.4);border:0;padding:0;background:none;border-radius:calc(var(--cw) * .08);}
+.deck .ac{position:absolute;left:0;top:0;}
+.deck .ac:nth-child(1){transform:translate(4px,5px) rotate(2deg);}
+.deck .ac:nth-child(2){transform:translate(2px,2px) rotate(-1deg);}
+.deck.go{cursor:pointer;}
+.deck.go::after{content:"";position:absolute;inset:-6px;border-radius:calc(var(--cw) * .12);box-shadow:0 0 0 3px #ffd447,0 0 26px rgba(255,212,71,.6);animation:glow 1.4s ease-in-out infinite;pointer-events:none;}
+@keyframes glow{50%{opacity:.35;}}
+.deck .cnt{position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);font-size:.7rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.6);white-space:nowrap;}
+.pr-slot{flex:none;display:flex;gap:10px;}
+.pr-empty{width:var(--cw);height:calc(var(--cw) * 1.4);border-radius:calc(var(--cw) * .08);box-shadow:inset 0 0 0 2px rgba(255,255,255,.18);display:grid;place-items:center;color:rgba(255,255,255,.4);font-weight:800;font-size:.8rem;text-align:center;padding:10px;}
+.sent{margin:14px auto 0;max-width:560px;padding:12px 14px;border-radius:14px;background:#111;color:#fff;font:700 1.02rem/1.3 "Helvetica Neue",Helvetica,Arial,sans-serif;box-shadow:0 8px 18px rgba(0,0,0,.4);white-space:pre-line;animation:rise .4s var(--ease) both;}
+.sent b{color:#111;background:#fff;padding:0 4px;border-radius:3px;box-decoration-break:clone;-webkit-box-decoration-break:clone;}
+.plays{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:12px 10px;margin-top:18px;--cw:112px;min-height:calc(var(--cw) * 1.4 + 22px);}
+.plays.crowd{--cw:96px;gap:10px 8px;}
+.plays .none{align-self:center;color:rgba(255,255,255,.55);font-weight:800;font-size:.9rem;text-align:center;max-width:280px;}
+.sub{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;border:0;padding:0;background:none;color:inherit;border-radius:14px;-webkit-tap-highlight-color:transparent;}
+.sub .cards{display:flex;}
+.sub .cards .ac + .ac{margin-left:calc(var(--cw) * -.55);}
+.sub.tap{cursor:pointer;}
+.sub.tap:active .ac{transform:scale(.97);}
+.sub.sel .ac .fa{box-shadow:0 0 0 4px #ffd447,0 10px 22px rgba(0,0,0,.45);}
+.sub.sel{transform:translateY(-6px);transition:transform .2s var(--spring);}
+.sub.win .ac .fa{box-shadow:0 0 0 4px #ffd447,0 0 34px rgba(255,212,71,.7),0 12px 24px rgba(0,0,0,.45);}
+.sub.win{animation:bounce .7s var(--spring) .1s;z-index:2;}
+.sub.lose{filter:saturate(.55) brightness(.75);}
+.who{display:inline-flex;align-items:center;gap:5px;max-width:calc(var(--cw) + 20px);height:22px;padding:0 8px 0 3px;border-radius:999px;background:rgba(0,0,0,.35);color:#fff;font-size:.74rem;font-weight:900;white-space:nowrap;overflow:hidden;}
+.who .dot{flex:none;width:16px;height:16px;border-radius:50%;background:var(--c);display:grid;place-items:center;color:#14102a;font-size:.6rem;}
+.who .dot .ico{width:11px;height:11px;}
+.who span{overflow:hidden;text-overflow:ellipsis;}
+.sub.win .who{background:#ffd447;color:#2b1a00;}
+.why{position:relative;margin:16px auto 0;max-width:460px;padding:10px 14px;border-radius:16px;background:#fffdf6;color:#2a2440;font-weight:700;font-size:.95rem;line-height:1.3;box-shadow:0 8px 18px rgba(0,0,0,.35);animation:rise .4s var(--ease) .2s both;}
+.why::before{content:"";position:absolute;left:28px;top:-8px;border:8px solid transparent;border-top:0;border-bottom-color:#fffdf6;}
+.why b{color:#7a1730;}
+.think{display:inline-flex;gap:3px;margin-left:4px;vertical-align:middle;}
+.think i{width:5px;height:5px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s;}.think i:nth-child(3){animation-delay:.3s;}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+
+/* The hand, on its own wooden rail */
+.rail{margin-top:12px;border-radius:22px;padding:0 0 4px;}
+.rail .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px 0;color:#fff;font-weight:900;font-size:.85rem;}
+.rail .hd span{opacity:.85;}
+.hand{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;padding:20px 14px 12px;--cw:124px;scrollbar-width:none;}
+.hand::-webkit-scrollbar{display:none;}
+.hand .ac{cursor:pointer;transition:transform .2s var(--spring);}
+.hand .ac:first-child{margin-left:auto;}.hand .ac:last-child{margin-right:auto;}
+.hand .ac.sel{transform:translateY(-14px);}
+.hand .ac.sel .fa{box-shadow:0 0 0 4px #ffd447,0 14px 24px rgba(0,0,0,.45);}
+.hand.off .ac{cursor:default;}
+.hand.off .ac .fa{filter:saturate(.75) brightness(.86);}
+.hand .ac .num{position:absolute;left:-6px;top:-8px;z-index:3;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#ffd447;color:#2b1a00;font-weight:900;font-size:.8rem;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+
+/* Buttons under the table */
+.acts{display:flex;gap:10px;margin-top:12px;}
+.acts .btn{flex:1;}
+.hint{text-align:center;color:var(--text-3);font-size:.85rem;font-weight:700;margin-top:8px;}
+
+/* ── Cards ─────────────────────────────────────────────────────────── */
+.ac{position:relative;flex:none;width:var(--cw);height:calc(var(--cw) * 1.4);perspective:900px;border-radius:calc(var(--cw) * .08);-webkit-user-select:none;user-select:none;}
+.ac-in{position:absolute;inset:0;border-radius:inherit;transform-style:preserve-3d;transition:transform .6s var(--ease);}
+.ac.down .ac-in{transform:rotateY(180deg);}
+.ac .fa,.ac .bk{position:absolute;inset:0;border-radius:inherit;overflow:hidden;-webkit-backface-visibility:hidden;backface-visibility:hidden;}
+.ac .bk{transform:rotateY(180deg);}
+.ac .fa{display:flex;flex-direction:column;padding:calc(var(--cw) * .1) calc(var(--cw) * .09);box-shadow:0 2px 0 rgba(0,0,0,.2),0 8px 16px rgba(0,0,0,.35);}
+/* Apples: red nouns, green adjectives */
+.ac.kr .fa{color:#fff;background:radial-gradient(130% 70% at 25% 0%,rgba(255,255,255,.22),transparent 55%),linear-gradient(170deg,#e0283f 0%,#b80f2a 55%,#8e0a20 100%);
+  box-shadow:inset 0 0 0 calc(var(--cw) * .028) #fff4e8,inset 0 0 0 calc(var(--cw) * .045) rgba(0,0,0,.12),0 2px 0 rgba(0,0,0,.2),0 8px 16px rgba(0,0,0,.35);}
+.ac.kg .fa{color:#fff;background:radial-gradient(130% 70% at 25% 0%,rgba(255,255,255,.2),transparent 55%),linear-gradient(170deg,#2f9a44 0%,#1d7a32 55%,#125a23 100%);
+  box-shadow:inset 0 0 0 calc(var(--cw) * .028) #f4fff0,inset 0 0 0 calc(var(--cw) * .045) rgba(0,0,0,.12),0 2px 0 rgba(0,0,0,.2),0 8px 16px rgba(0,0,0,.35);}
+.ac .nm{font-family:var(--display);font-weight:400;font-size:calc(var(--cw) * .145);line-height:1.04;letter-spacing:.005em;overflow-wrap:anywhere;text-wrap:balance;text-shadow:0 1px 0 rgba(0,0,0,.25);}
+.ac .nm.lg{font-size:calc(var(--cw) * .125);}
+.ac .nm.xl{font-size:calc(var(--cw) * .108);}
+.ac .rl{flex:none;height:calc(var(--cw) * .014);min-height:1px;margin:calc(var(--cw) * .055) 0;border-radius:1px;background:rgba(255,255,255,.55);}
+.ac .ds{font:italic 600 calc(var(--cw) * .084)/1.25 Georgia,"Times New Roman",serif;color:rgba(255,255,255,.94);overflow:hidden;}
+.ac.kg .ds{font-style:normal;font-family:var(--font);font-weight:800;}
+.ac .mk{position:absolute;right:8%;bottom:6%;width:17%;opacity:.42;color:#fff;}
+.ac .mk svg{width:100%;height:auto;display:block;}
+.ac.kg .tp{font-size:calc(var(--cw) * .068);font-weight:900;letter-spacing:.12em;text-transform:uppercase;opacity:.8;margin-bottom:calc(var(--cw) * .03);}
+.sm .ac .ds{display:none;}
+/* Backs */
+.ac.kr .bk,.ac.kg .bk{display:grid;place-items:center;box-shadow:inset 0 0 0 calc(var(--cw) * .03) #fff4e8,0 2px 0 rgba(0,0,0,.2),0 8px 16px rgba(0,0,0,.35);}
+.ac.kr .bk{background:radial-gradient(circle at 50% 46%,rgba(255,255,255,.16) 0 22%,transparent 23%),repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 3px,transparent 3px 9px),linear-gradient(160deg,#d42139,#8e0a20);}
+.ac.kg .bk{background:radial-gradient(circle at 50% 46%,rgba(255,255,255,.16) 0 22%,transparent 23%),repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 3px,transparent 3px 9px),linear-gradient(160deg,#2f9a44,#125a23);}
+.ac .bk .ap{width:34%;color:#fff;opacity:.92;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3));}
+.ac .bk .ap svg{width:100%;height:auto;display:block;}
+/* The grown-up deck: plain black and white */
+.ac.kw .fa{background:#fff;color:#111;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12),0 2px 0 rgba(0,0,0,.2),0 8px 16px rgba(0,0,0,.35);}
+.ac.kb .fa{background:#121212;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 2px 0 rgba(0,0,0,.25),0 8px 16px rgba(0,0,0,.4);}
+.ac .tx{font:700 calc(var(--cw) * var(--fs,.1))/1.18 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:-.01em;white-space:pre-line;overflow-wrap:anywhere;overflow:hidden;}
+.ac .tx .bl{display:inline-block;min-width:2.6em;border-bottom:.11em solid currentColor;vertical-align:baseline;}
+.ac .ft{margin-top:auto;display:flex;align-items:center;gap:calc(var(--cw) * .03);font:700 calc(var(--cw) * .052)/1 "Helvetica Neue",Helvetica,Arial,sans-serif;opacity:.85;padding-top:4px;}
+.ac .ft i{display:inline-block;width:calc(var(--cw) * .06);height:calc(var(--cw) * .08);border:1px solid currentColor;border-radius:1.5px;transform:rotate(-12deg);}
+.ac .ft i + i{margin-left:calc(var(--cw) * -.04);transform:rotate(0);background:currentColor;}
+.ac .ft i + i + i{transform:rotate(12deg);background:none;}
+.ac .pk{position:absolute;right:8%;bottom:6%;display:flex;align-items:center;gap:4px;font:900 calc(var(--cw) * .06)/1 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.06em;}
+.ac .pk b{display:grid;place-items:center;width:calc(var(--cw) * .13);height:calc(var(--cw) * .13);border-radius:50%;background:#fff;color:#111;}
+.ac.kw .bk,.ac.kb .bk{padding:calc(var(--cw) * .1);font:900 calc(var(--cw) * .14)/1.02 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:-.02em;}
+.ac.kw .bk{background:#fff;color:#111;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12),0 8px 16px rgba(0,0,0,.35);}
+.ac.kb .bk{background:#121212;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 8px 16px rgba(0,0,0,.4);}
+/* Motion */
+@keyframes dealIn{from{transform:translate(-30px,-160px) rotate(-16deg) scale(.7);opacity:0;}}
+.ac.dealt{animation:dealIn .55s var(--spring) both;animation-delay:var(--dl,0s);}
+@keyframes drop{from{transform:translate(var(--dx,0px),-90px) rotate(10deg) scale(.75);opacity:0;}}
+.ac.drop{animation:drop .5s var(--spring) both;animation-delay:var(--dl,0s);}
+@keyframes flipIn{0%{transform:translateX(calc(var(--cw) * -1.1)) rotateY(180deg);}100%{transform:none;}}
+.ac.flipin .ac-in{animation:flipIn .75s var(--ease) both;}
+.ac.lift .ac-in{animation:liftIt .5s var(--spring);}
+@keyframes liftIt{40%{transform:translateY(-14px) scale(1.04);}}
+.fly{position:fixed;z-index:70;margin:0;pointer-events:none;transition:transform .5s cubic-bezier(.5,0,.25,1),opacity .5s;}
+.mid .ac.win-pr{animation:bounce .6s var(--spring);}
+
+/* Over */
+.sum{display:flex;flex-direction:column;gap:8px;}
+.sum h3{font-family:var(--display);font-weight:400;font-size:1.6rem;color:#ffe08a;text-align:center;margin:4px 0 2px;}
+.sum .rd{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.25);color:#fff;font-weight:800;font-size:.88rem;line-height:1.25;}
+.sum .rd .t{flex:1;min-width:0;}
+.sum .rd .t s{text-decoration:none;color:rgba(255,255,255,.6);font-weight:700;}
+.sum .rd .n{flex:none;font-family:var(--display);color:#ffe08a;}
+.sum .rd .pc{flex:none;width:12px;height:16px;border-radius:3px;background:var(--pc);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.75);}
+
+/* Setup: packs, house rules and the hidden deck */
+.a-sec{display:flex;flex-direction:column;gap:8px;}
+.a-sec .label{display:flex;align-items:center;gap:8px;margin:0;}
+.a-sec .label .n{margin-left:auto;font-weight:800;letter-spacing:0;text-transform:none;color:var(--text-3);}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chips .chip{min-height:40px;max-width:100%;}
+.chips .chip span{overflow:hidden;text-overflow:ellipsis;}
+.chips .chip .ico{width:16px;height:16px;}
+.chips .chip.on{background:var(--accent);color:var(--accent-ink);}
+.chips .chip .n{opacity:.7;font-size:.78rem;}
+.rnote{margin:2px 2px 0;color:var(--text-2);font-size:.86rem;line-height:1.4;}
+.rnote b{color:var(--text);}
+.more{border-radius:14px;background:var(--w04);}
+.more summary{cursor:pointer;list-style:none;padding:10px 12px;font-weight:800;font-size:.9rem;color:var(--text-2);display:flex;align-items:center;gap:6px;}
+.more summary::-webkit-details-marker{display:none;}
+.more summary .ico{width:16px;height:16px;transition:transform .2s;}
+.more[open] summary .ico{transform:rotate(180deg);}
+.more .chips{padding:0 10px 12px;}
+.cah-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r);background:#141414;color:#fff;cursor:pointer;border:0;width:100%;text-align:left;font:inherit;}
+.cah-row .grow b{display:block;font:900 1.02rem/1.15 "Helvetica Neue",Helvetica,Arial,sans-serif;}
+.cah-row .grow small{display:block;color:rgba(255,255,255,.7);font-size:.8rem;font-weight:700;margin-top:2px;}
+.cah-row .sw{flex:none;position:relative;width:48px;height:28px;border-radius:14px;background:rgba(255,255,255,.22);transition:background .2s;}
+.cah-row .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s var(--spring);}
+.cah-row[aria-checked="true"] .sw{background:#3ddc84;}
+.cah-row[aria-checked="true"] .sw::after{transform:translateX(20px);}
+.cah-hide{align-self:flex-start;border:0;background:none;color:var(--text-3);font-weight:800;font-size:.8rem;padding:4px 2px;cursor:pointer;text-decoration:underline;}
+.k-hero-ic{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.k-hero-ic.wob .gicon{animation:wob .45s var(--spring);}
+@keyframes wob{25%{transform:rotate(-12deg) scale(1.06);}60%{transform:rotate(9deg);}100%{transform:none;}}
+.loading{display:flex;align-items:center;justify-content:center;gap:10px;min-height:50vh;color:var(--text-2);font-weight:800;}
+
+@media (max-width:420px){
+  .mid{--cw:118px;gap:10px;}
+  .mid.two{--cw:104px;}
+  .mid.two .deck{display:none;}
+  .plays{--cw:104px;}
+  .plays.crowd{--cw:92px;}
+  .hand{--cw:118px;}
+}
+@media (max-width:360px){ .mid{--cw:108px;} .plays{--cw:96px;} .hand{--cw:112px;} }
+/* Tablets and computers: bigger cards */
+@media (min-width:700px){
+  .mid{--cw:156px;gap:20px;}
+  .mid.two{--cw:150px;}
+  .plays{--cw:132px;gap:16px 14px;}
+  .plays.crowd{--cw:112px;}
+  .hand{--cw:146px;gap:12px;}
+  .st .msg{font-size:1.12rem;}
+  .tbl .felt-in{padding:16px 16px 20px;}
+  .sent{font-size:1.15rem;}
+}
+@media (min-width:1000px) and (min-height:760px){
+  .mid{--cw:170px;}
+  .plays{--cw:140px;}
+  .hand{--cw:156px;}
+}
+</style>
+</head>
+<body>
+<main class="aa" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
+  var KEY = 'applestoapples', SAVE = 'a2a_state', PK = 'a2a_packs', CPK = 'a2a_cah_packs', RK = 'a2a_rules', CAHK = 'a2a_cah', CAHON = 'a2a_cah_on', NETME = 'a2a_net_me';
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function rawGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function rawSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function pickOne(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
+  function cahUnlocked() { return rawGet(CAHK) === '1'; }
+  var APPLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 7.6c-1.5-1.2-4-1.5-5.8.1-2.2 2-2.1 6.1-.4 9.2 1.3 2.3 3.1 4.3 4.7 4 .6-.1 1-.4 1.5-.4s.9.3 1.5.4c1.6.3 3.4-1.7 4.7-4 1.7-3.1 1.8-7.2-.4-9.2-1.8-1.6-4.3-1.3-5.8-.1z"/><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M12 7.8c0-2 .6-3.6 1.8-4.8"/><path fill="currentColor" d="M13.4 5c1-1.9 3-2.7 5.1-2.3-.6 2.1-2.6 3.3-5.1 2.3z"/></svg>';
+
+  // ── Card data (loaded on demand) ─────────────────────────────────────────
+  var ROOT = (function () { try { return new URL('../', location.href).href; } catch (e) { return '../'; } })();
+  var loading = {};
+  function loadScript(src) {
+    if (loading[src]) return loading[src];
+    return (loading[src] = new Promise(function (res, rej) {
+      var s = document.createElement('script'); s.src = ROOT + src;
+      s.onload = function () { res(); }; s.onerror = function () { delete loading[src]; rej(new Error('Could not load the cards')); };
+      document.head.appendChild(s);
+    }));
+  }
+  var A = null, C = null;   // the Apples deck and the grown-up deck, indexed
+  function a2aData() {
+    if (A) return Promise.resolve(A);
+    return loadScript('data/a2a-cards.js').then(function () {
+      var D = window.A2A_CARDS, RED = [], GRN = [], packs = [];
+      function rows(s) { return String(s || '').split('\n').filter(Boolean).map(function (l) { return l.split('|'); }); }
+      D.packs.forEach(function (p) {
+        var pk = { id: p.id, name: p.name, r: [RED.length, 0], g: [GRN.length, 0] };
+        rows(p.r).forEach(function (x) { RED.push({ n: x[0], d: x[1], t: (x[2] || '').split(' ').filter(Boolean), p: p.id }); });
+        rows(p.g).forEach(function (x) { GRN.push({ n: x[0], d: x[1], t: (x[2] || '').split(' ').filter(Boolean), p: p.id }); });
+        pk.r[1] = RED.length; pk.g[1] = GRN.length; packs.push(pk);
+      });
+      A = { RED: RED, GRN: GRN, packs: packs, tags: D.tags, opp: D.opp, tagList: Object.keys(D.tags) };
+      return A;
+    });
+  }
+  function cahData() {
+    if (C) return Promise.resolve(C);
+    return loadScript('data/cah-cards.js').then(function () {
+      var D = window.CAH_CARDS, WHT = [], BLK = [], packs = [];
+      D.packs.forEach(function (p) {
+        var pk = { id: p.id, name: p.name, w: [WHT.length, 0], b: [BLK.length, 0] };
+        p.w.forEach(function (t) { WHT.push({ t: t, p: p.id }); });
+        p.b.forEach(function (s) { var i = s.indexOf('|'); BLK.push({ t: s.slice(i + 1), k: Math.max(1, Math.min(3, +s.slice(0, i) || 1)), p: p.id }); });
+        pk.w[1] = WHT.length; pk.b[1] = BLK.length; packs.push(pk);
+      });
+      C = { WHT: WHT, BLK: BLK, packs: packs };
+      return C;
+    });
+  }
+  // A card as a game shows it: r red, g green (Apples); w white, b black (grown-up deck)
+  function card(k, id) {
+    if (k === 'r') { var r = A.RED[id]; return { k: 'r', id: id, n: r.n, d: r.d }; }
+    if (k === 'g') { var g = A.GRN[id]; return { k: 'g', id: id, n: g.n, d: g.d }; }
+    if (k === 'w') return { k: 'w', id: id, t: C.WHT[id].t };
+    var b = C.BLK[id]; return { k: 'b', id: id, t: b.t, pick: b.k };
+  }
+  function raw(k, id) { return k === 'r' ? A.RED[id] : k === 'g' ? A.GRN[id] : k === 'w' ? C.WHT[id] : C.BLK[id]; }
+
+  // ── Words for the deck in play ───────────────────────────────────────────
+  function words(V) {
+    var cah = V.deck === 'cah', turn = V.ak === 'g';
+    return { judge: cah ? 'Card Czar' : 'judge', Judge: cah ? 'Card Czar' : 'Judge', ans: cah ? 'white card' : turn ? 'green card' : 'red card',
+      pr: cah ? 'black card' : turn ? 'red card' : 'green card', prs: V.rules && V.rules.two && !cah ? 'green cards' : null, ghost: cah ? 'Rando Cardrissian' : 'Ghost',
+      prColor: cah ? '#222' : turn ? '#c8102e' : '#2f9b44' };
+  }
+  function officialTarget(n) { return n <= 4 ? 8 : n === 5 ? 7 : n === 6 ? 6 : n === 7 ? 5 : 4; }
+
+  // ═══ The game (the host's device, or this device for solo and pass and play) ═══
+  // G holds everything, including every hand. Screens are drawn from viewFor(player), which leaves out what
+  // that player can't see, so the same drawing code serves all three modes (online guests get only their view).
+  var G = null;
+  function act(g) { return g.players.map(function (p, i) { return i; }).filter(function (i) { return !g.players[i].gone; }); }
+  function nextActive(g, i) { for (var k = 1; k <= g.players.length; k++) { var j = (i + k) % g.players.length; if (!g.players[j].gone) return j; } return i; }
+  function subOf(g, i) { for (var k = 0; k < g.subs.length; k++) if (g.subs[k].p === i) return g.subs[k]; return null; }
+  function waiting(g) { return act(g).filter(function (i) { return i !== g.judge && !subOf(g, i); }); }
+  function nextToPlay(g) { for (var k = 1; k <= g.players.length; k++) { var j = (g.judge + k) % g.players.length; if (!g.players[j].gone && j !== g.judge && !subOf(g, j)) return j; } return -1; }
+  function minPlayers(g) { return g.ghost ? 2 : 3; }
+  function drawA(g) {
+    if (!g.pile.a.length && g.disc.length) { g.pile.a = shuffle(g.disc); g.disc = []; }
+    return g.pile.a.length ? g.pile.a.pop() : null;
+  }
+  function refill(g, i) { var p = g.players[i]; while (p.hand.length < g.hand) { var c = drawA(g); if (c == null) break; p.hand.push(c); } }
+  function drawPrompts(g) { var n = g.rules.two && g.deck !== 'cah' ? 2 : 1, out = []; while (out.length < n && g.pile.p.length) out.push(g.pile.p.pop()); return out; }
+  function persona() {
+    var tl = A ? A.tagList : [];
+    return { fav: tl.length ? [pickOne(tl), pickOne(tl)] : [], noise: 0.5 + Math.random() * 1.1, wild: 0.03 + Math.random() * 0.1, len: Math.random() < 0.5 ? -1 : 1 };
+  }
+
+  function newGame(cfg) {
+    var cah = cfg.deck === 'cah', turn = !cah && !!cfg.rules.turn;
+    var g = { v: 1, mode: cfg.mode, deck: cah ? 'cah' : 'a2a', packs: cfg.packs.slice(), rules: Object.assign({}, cfg.rules), ghost: !!cfg.ghost,
+      ansKind: cah ? 'w' : turn ? 'g' : 'r', prKind: cah ? 'b' : turn ? 'r' : 'g', hand: cah ? 10 : turn ? 5 : 7,
+      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu, pid: p.pid == null ? null : p.pid, gone: false, hand: [], won: [], pers: p.cpu ? persona() : null }; }),
+      ghostWon: [], judge: 0, round: 0, phase: 'flip', prompt: [], shown: false, subs: [], pick: 1, extra: 0, win: null, log: [], disc: [], started: Date.now(), final: false, pile: { a: [], p: [] } };
+    if (cah) { g.rules.crab = g.rules.pot = g.rules.two = g.rules.turn = false; }
+    else g.rules.heat = false;
+    var n = g.players.length;
+    g.target = cfg.target === 'auto' || !cfg.target ? officialTarget(n) : +cfg.target;
+    // the piles: every card of the chosen packs, shuffled
+    var aK = cah ? 'w' : turn ? 'g' : 'r', pK = cah ? 'b' : turn ? 'r' : 'g';
+    var src = cah ? C.packs : A.packs, seen = {};
+    src.forEach(function (pk) {
+      if (g.packs.indexOf(pk.id) < 0) return;
+      [[aK, 'a'], [pK, 'p']].forEach(function (x) {
+        var range = pk[x[0]]; for (var i = range[0]; i < range[1]; i++) {
+          var key = x[0] + ':' + String(raw(x[0], i).n || raw(x[0], i).t).toLowerCase();
+          if (seen[key]) continue; seen[key] = 1; g.pile[x[1]].push(i);
+        }
+      });
+    });
+    shuffle(g.pile.a); shuffle(g.pile.p);
+    g.judge = Math.floor(Math.random() * n);   // the first judge is picked at random; it then passes to the left
+    startRound(g);
+    return g;
+  }
+  function startRound(g) {
+    g.round++; g.subs = []; g.win = null; g.prompt = []; g.shown = false; g.pick = 1; g.extra = 0;
+    act(g).forEach(function (i) { refill(g, i); });
+    if (act(g).length < minPlayers(g)) { g.phase = 'wait'; return; }
+    if (g.players[g.judge].gone) g.judge = nextActive(g, g.judge);
+    if (g.rules.pot) {   // Apple Potpourri: play first, the judge turns the green card over after
+      g.prompt = drawPrompts(g);
+      if (!g.prompt.length) { g.final = true; g.phase = 'over'; return; }
+      g.phase = 'play'; ghostPlay(g);
+    } else g.phase = 'flip';
+  }
+  function ghostPlay(g) {
+    if (!g.ghost || subOf(g, -1)) return;
+    var c = []; for (var k = 0; k < g.pick; k++) { var x = drawA(g); if (x != null) c.push(x); }
+    if (c.length === g.pick) g.subs.push({ p: -1, c: c, rev: false });
+  }
+  function flip(g) {
+    if (!g.prompt.length) { g.prompt = drawPrompts(g); if (!g.prompt.length) { g.final = true; g.phase = 'over'; return; } }
+    g.shown = true;
+    g.pick = g.deck === 'cah' ? C.BLK[g.prompt[0]].k : 1;
+    if (g.deck === 'cah') {   // "Draw 2, pick 3" cards (and Packing Heat on pick 2): draw extra cards first
+      var extra = g.pick >= 3 ? g.pick - 1 : g.rules.heat && g.pick === 2 ? 1 : 0;
+      g.extra = extra;
+      if (extra) waiting(g).forEach(function (i) { for (var k = 0; k < extra; k++) { var c = drawA(g); if (c != null) g.players[i].hand.push(c); } });
+    }
+    ghostPlay(g);
+    if (waiting(g).length) g.phase = 'play'; else enterJudge(g);
+  }
+  function enterJudge(g) { shuffle(g.subs); g.phase = 'judge'; }
+  function play(g, i, cards) {
+    var p = g.players[i];
+    if (!p || p.gone || i === g.judge || subOf(g, i) || g.phase !== 'play') return false;
+    if (!Array.isArray(cards) || cards.length !== g.pick) return false;
+    var seen = {};
+    for (var k = 0; k < cards.length; k++) { var c = +cards[k]; if (seen[c] || p.hand.indexOf(c) < 0) return false; seen[c] = 1; }
+    p.hand = p.hand.filter(function (c) { return !seen[c]; });
+    g.subs.push({ p: i, c: cards.map(Number), rev: false });
+    if (!waiting(g).length) { if (!g.shown) g.phase = 'flip'; else enterJudge(g); }
+    return true;
+  }
+  function pickWin(g, k, why) {
+    var s = g.subs[k]; if (!s) return false;
+    g.subs.forEach(function (x) { x.rev = true; });
+    g.win = { s: k, p: s.p, why: why || '' };
+    var dest = s.p >= 0 ? g.players[s.p].won : g.ghostWon;
+    g.prompt.forEach(function (c) { dest.push(c); });
+    g.subs.forEach(function (x) { x.c.forEach(function (c) { g.disc.push(c); }); });
+    g.log.push({ j: g.judge, pr: g.prompt.slice(), c: s.c.slice(), w: s.p, n: g.subs.length });
+    g.phase = 'result';
+    if (dest.length >= g.target || g.pile.p.length < (g.rules.two ? 2 : 1)) g.final = true;
+    return true;
+  }
+  function nextRound(g) {
+    if (g.final) { g.phase = 'over'; return; }
+    g.judge = nextActive(g, g.judge);
+    startRound(g);
+  }
+  // Online: someone left. Their cards go away; if they were judging, the round starts again with the next judge.
+  function restoreRound(g) {
+    g.subs.forEach(function (s) {
+      var p = s.p >= 0 ? g.players[s.p] : null;
+      s.c.forEach(function (c) { if (p && !p.gone) p.hand.push(c); else g.disc.push(c); });
+    });
+    for (var k = g.prompt.length - 1; k >= 0; k--) g.pile.p.push(g.prompt[k]);
+    g.subs = []; g.prompt = []; g.shown = false;
+  }
+  function playerGone(g, i) {
+    var p = g.players[i]; if (!p || p.gone) return;
+    p.gone = true;
+    if (g.phase === 'over') return;
+    var mid = g.phase === 'flip' || g.phase === 'play' || g.phase === 'judge';
+    if (mid && (i === g.judge || act(g).length < minPlayers(g))) {
+      restoreRound(g); p.hand.forEach(function (c) { g.disc.push(c); }); p.hand = [];
+      if (i === g.judge) g.judge = nextActive(g, i);
+      g.round--; startRound(g); return;
+    }
+    if (mid) {
+      var s = subOf(g, i);
+      if (s) { g.subs.splice(g.subs.indexOf(s), 1); s.c.forEach(function (c) { g.disc.push(c); }); }
+      if (g.phase === 'play' && !waiting(g).length) { if (!g.shown) g.phase = 'flip'; else enterJudge(g); }
+      if (g.phase === 'judge' && !g.subs.length) { restoreRound(g); g.round--; startRound(g); }
+    }
+    p.hand.forEach(function (c) { g.disc.push(c); }); p.hand = [];
+  }
+  function addPlayer(g, name, pid) {
+    var i = g.players.length;
+    g.players.push({ name: name, color: Kit.color(i), cpu: false, pid: pid, gone: false, hand: [], won: [], pers: null });
+    refill(g, i);
+    if (g.phase === 'wait' && act(g).length >= minPlayers(g)) { g.round--; startRound(g); }
+    return i;
+  }
+
+  // One action from a player. Returns true when it changed the game.
+  function apply(g, i, a) {
+    if (!g || !a) return false;
+    var judge = i === g.judge;
+    switch (a.t) {
+      case 'flip': if (g.phase !== 'flip' || !judge) return false; flip(g); return true;
+      case 'play': return play(g, i, a.c);
+      case 'reveal': if (g.phase !== 'judge' || !judge || !g.subs[a.i] || g.subs[a.i].rev) return false; g.subs[a.i].rev = true; return true;
+      case 'all': if (g.phase !== 'judge' || !judge) return false; g.subs.forEach(function (s) { s.rev = true; }); return true;
+      case 'pick': if (g.phase !== 'judge' || !judge || !g.subs[a.i] || g.subs.some(function (s) { return !s.rev; })) return false; return pickWin(g, a.i, a.why);
+      case 'next': if (g.phase !== 'result') return false; nextRound(g); return true;
+    }
+    return false;
+  }
+
+  // ── Computer players ─────────────────────────────────────────────────────
+  // Every card carries association tags (hot, scary, royal...). A robot scores each card by how many tags it
+  // shares with the green card (for Crab Apples: with its opposites), plus its own taste and a little luck.
+  function overlap(a, b) { var n = 0; for (var i = 0; i < a.length; i++) if (b.indexOf(a[i]) >= 0) n++; return n; }
+  function oppTags(t) { var out = []; t.forEach(function (x) { (A.opp[x] || []).forEach(function (o) { if (out.indexOf(o) < 0) out.push(o); }); }); return out; }
+  function fitScore(g, ansIds, pers, noise) {
+    if (g.deck === 'cah') {
+      var len = 0; ansIds.forEach(function (c) { len += C.WHT[c].t.length; });
+      return Math.random() * 3 + (pers ? pers.len * Math.min(1, len / 60) * 0.6 : 0);
+    }
+    var s = 0, crab = g.rules.crab;
+    ansIds.forEach(function (c) {
+      var at = raw(g.ansKind, c).t;
+      g.prompt.forEach(function (pc) {
+        var pt = raw(g.prKind, pc).t;
+        s += crab ? overlap(at, oppTags(pt)) * 1.3 - overlap(at, pt) * 0.9 : overlap(at, pt) + overlap(at, oppTags(pt)) * -0.4;
+      });
+      if (pers) s += overlap(at, pers.fav) * 0.6;
+    });
+    return s + Math.random() * (noise == null ? (pers ? pers.noise : 1) : noise);
+  }
+  function combos(hand, k) {
+    if (k === 1) return hand.map(function (c) { return [c]; });
+    var out = [], h = shuffle(hand.slice()).slice(0, 8);
+    (function rec(start, cur) { if (cur.length === k) { out.push(cur.slice()); return; } for (var i = start; i < h.length; i++) { cur.push(h[i]); rec(i + 1, cur); cur.pop(); } })(0, []);
+    return shuffle(out).slice(0, 40);
+  }
+  function cpuPlay(g, i) {
+    var p = g.players[i], opts = combos(p.hand, g.pick);
+    if (!opts.length) return null;
+    if (Math.random() < p.pers.wild) return pickOne(opts);   // sometimes a robot plays something silly on purpose
+    var best = null, bs = -1e9;
+    opts.forEach(function (o) { var s = fitScore(g, o, p.pers); if (s > bs) { bs = s; best = o; } });
+    return best;
+  }
+  function cpuJudge(g) {
+    var p = g.players[g.judge], best = 0, bs = -1e9, wild = Math.random() < p.pers.wild * 0.6;
+    g.subs.forEach(function (s, k) { var sc = wild ? Math.random() : fitScore(g, s.c, p.pers); if (sc > bs) { bs = sc; best = k; } });
+    return { i: best, why: reasonFor(g, g.subs[best], p.pers, wild) };
+  }
+  var CAH_WHY = ['This one made my circuits blush.', 'I’m not proud of it, but yes.', 'Pure chaos. I love it.', 'My processors need a minute after that one.',
+    'Points for nerve.', 'Somebody here has a dark sense of humor.', 'I laughed. Out loud. With my speaker.', 'This is the one. Don’t ask me to explain.', 'Too far? Just far enough.'];
+  var WILD_WHY = ['No idea why. It just made me laugh.', 'Gut feeling.', 'It’s weird. I like weird.', 'That one made my circuits giggle.', 'I can’t explain it. I won’t try.', 'Makes no sense. Love it.'];
+  function reasonFor(g, s, pers, wild) {
+    if (g.deck === 'cah') return pickOne(CAH_WHY);
+    if (wild) return pickOne(WILD_WHY);
+    var a = raw(g.ansKind, s.c[0]), pn = g.prompt.map(function (c) { return raw(g.prKind, c); });
+    var name = a.n, pname = pn.map(function (x) { return x.n; }).join(' and ');
+    if (g.rules.crab) {
+      var ot = []; pn.forEach(function (x) { oppTags(x.t).forEach(function (o) { if (a.t.indexOf(o) >= 0 && ot.indexOf(o) < 0) ot.push(o); }); });
+      if (ot.length) return name + ' is ' + A.tags[ot[0]] + '. That’s about as far from ' + pname + ' as it gets.';
+      return 'Nothing is less ' + pname + ' than ' + name + '.';
+    }
+    var sh = []; pn.forEach(function (x) { x.t.forEach(function (t) { if (a.t.indexOf(t) >= 0 && sh.indexOf(t) < 0) sh.push(t); }); });
+    var fav = pers ? a.t.filter(function (t) { return pers.fav.indexOf(t) >= 0; }) : [];
+    if (sh.length >= 2) return pickOne([
+      name + ': ' + A.tags[sh[0]] + ' and ' + A.tags[sh[1]] + '. That’s ' + pname + '.',
+      'Nothing says ' + pname + ' like ' + name + '. So ' + A.tags[sh[0]] + ', so ' + A.tags[sh[1]] + '.',
+      name + ' is ' + A.tags[sh[0]] + ' and ' + A.tags[sh[1]] + '. Easy pick.']);
+    if (sh.length === 1) return pickOne([name + ' is as ' + A.tags[sh[0]] + ' as it gets.', 'For ' + pname + '? ' + name + '. It’s so ' + A.tags[sh[0]] + '.', 'Has to be ' + name + '. Very ' + A.tags[sh[0]] + '.']);
+    if (fav.length) return 'I can’t resist anything ' + A.tags[fav[0]] + '.';
+    return pickOne(WILD_WHY);
+  }
+  // Runs the robots' next move after a pause, one step at a time (an undo cancels a pending step)
+  var botT = 0, gen = 0;
+  function schedule() {
+    clearTimeout(botT);
+    var g = G; if (!g || g.mode !== 'solo') return;
+    var my = gen, J = g.players[g.judge], step = null, wait = 900;
+    if (g.phase === 'flip' && J.cpu) { step = function () { apply(g, g.judge, { t: 'flip' }); }; wait = 1100; }
+    else if (g.phase === 'play') {
+      var w = waiting(g).filter(function (i) { return g.players[i].cpu; });
+      if (w.length) { var i = pickOne(w); step = function () { var c = cpuPlay(g, i); if (c) apply(g, i, { t: 'play', c: c }); }; wait = 650 + Math.random() * 700; }
+    } else if (g.phase === 'judge' && J.cpu) {
+      var k = -1; for (var x = 0; x < g.subs.length; x++) if (!g.subs[x].rev) { k = x; break; }
+      if (k >= 0) { step = function () { apply(g, g.judge, { t: 'reveal', i: k }); }; wait = k === 0 ? 1000 : 850; }
+      else { step = function () { var r = cpuJudge(g); apply(g, g.judge, { t: 'pick', i: r.i, why: r.why }); }; wait = 1500 + Math.random() * 900; }
+    }
+    if (!step) return;
+    botT = setTimeout(function () { if (my !== gen || G !== g) return; step(); changed(); }, wait);
+  }
+
+  // ═══ Driving it: local moves, saving, undo ═══════════════════════════════
+  var undoStack = [], lastCfg = null, finished = false;
+  var pp = { viewer: -1, busy: false };   // pass and play: whose cards are showing (-1 nobody's)
+  function save() {
+    if (!G || G.mode === 'online') return;
+    if (G.phase === 'over') { clearSave(); return; }
+    lsSet(SAVE, { G: G, cfg: lastCfg });
+    Kit.resume.set('Round ' + G.round, { keys: [SAVE] });
+  }
+  function clearSave() { rawSet(SAVE, null); Kit.resume.clear(); }
+  function snapshot() { if (!G || G.mode === 'online') return; undoStack.push(JSON.stringify(G)); if (undoStack.length > 40) undoStack.shift(); }
+  function undo() {
+    if (net.mode) return Kit.toast('Undo isn’t available in online games');
+    if (!G || !undoStack.length) return Kit.toast('Nothing to undo');
+    if (G.phase === 'over') return Kit.toast('The game is over');
+    G = JSON.parse(undoStack.pop()); gen++; clearTimeout(botT);
+    ui.sel = []; ui.jsel = -1; lastV = null;
+    if (G.mode === 'pass') { pp.viewer = -1; pp.busy = false; Kit.handoff.close(); }
+    Kit.sfx('whoosh'); Kit.toast('Undone'); changed();
+  }
+  function meIdx() { return G ? (G.mode === 'pass' ? pp.viewer : net.mode === 'host' ? hostIdx() : 0) : -1; }
+  // A move from this device's screen
+  function doAct(a) {
+    if (net.mode === 'guest') { if (net.peer) net.peer.send({ t: 'a', a: a }, true); return; }
+    if (!G) return;
+    var who = a.t === 'play' ? meIdx() : a.t === 'next' ? G.judge : G.mode === 'pass' ? G.judge : meIdx();
+    var before = G.mode !== 'online' ? JSON.stringify(G) : null;
+    if (apply(G, who, a)) { if (before) { undoStack.push(before); if (undoStack.length > 40) undoStack.shift(); } changed(); }
+  }
+  function changed() {
+    if (!G) return;
+    save(); netSync(); paint(); schedule();
+    if (G.phase === 'over' && !finished) finish();
+  }
+  function paint() {
+    if (net.mode === 'guest') { if (net.view) render(net.view); return; }
+    if (!G) return;
+    render(viewFor(meIdx()));
+    if (G.mode === 'pass') passFlow();
+  }
+  // Pass and play: cover the screen and pass to whoever needs to see their cards next
+  function passFlow() {
+    if (!G || G.mode !== 'pass' || pp.busy) return;
+    var need = -1, msg = '', w = words(viewFor(-1));
+    if (G.phase === 'play') { need = nextToPlay(G); msg = 'Pick a ' + w.ans + (G.shown ? ' for ' + G.prompt.map(function (c) { return raw(G.prKind, c).n || 'the ' + w.pr; }).join(' and ') : '') + '.'; if (G.deck === 'cah') msg = 'Pick ' + (G.pick > 1 ? G.pick + ' white cards' : 'a white card') + ' for the black card.'; }
+    else if (G.phase === 'judge') { need = G.judge; msg = 'You’re the ' + w.judge + '. Turn the cards over, read them out loud, and pick your favorite.'; }
+    if (need < 0 || need === pp.viewer) return;
+    pp.busy = true;
+    var showing = pp.viewer >= 0;
+    pp.viewer = -1;
+    if (showing) render(viewFor(-1));
+    var P = G.players[need], my = gen;
+    setTimeout(function () {
+      if (my !== gen || !G) { pp.busy = false; return; }
+      Kit.handoff({ name: P.name, color: P.color, what: G.phase === 'judge' ? 'the played cards' : 'cards', msg: msg }).then(function () {
+        pp.busy = false; if (my !== gen || !G) return;
+        pp.viewer = need; paint();
+      });
+    }, showing ? 650 : 250);
+  }
+
+  // What one player may see (i = -1: the table only)
+  function viewFor(i) {
+    var g = G, P = g.players, ph = g.phase, open = ph === 'judge' || ph === 'result' || ph === 'over', who = ph === 'result' || ph === 'over';
+    var me = i >= 0 && P[i] ? i : -1, mine = me >= 0 ? subOf(g, me) : null;
+    var V = { deck: g.deck, mode: g.mode, rules: g.rules, ak: g.ansKind, pk: g.prKind, target: g.target, round: g.round, phase: ph, judge: g.judge, me: me,
+      pick: g.pick, extra: g.extra || 0, final: g.final, ghost: g.ghost ? { score: g.ghostWon.length } : null,
+      players: P.map(function (p, k) { return { name: p.name, color: p.color, cpu: p.cpu, score: p.won.length, gone: p.gone, played: !!subOf(g, k) }; }),
+      prompt: g.prompt.length && g.shown ? g.prompt.map(function (c) { return card(g.prKind, c); }) : null, nPrompt: g.prompt.length,
+      nSubs: g.subs.length, deckLeft: g.pile.p.length,
+      subs: open ? g.subs.map(function (s) { return { c: s.rev ? s.c.map(function (c) { return card(g.ansKind, c); }) : null, n: s.c.length, p: who ? s.p : null }; }) : null,
+      hand: me >= 0 ? P[me].hand.map(function (c) { return card(g.ansKind, c); }) : null,
+      mine: mine ? mine.c.map(function (c) { return card(g.ansKind, c); }) : null,
+      win: g.win ? { s: g.win.s, p: g.win.p, why: g.win.why } : null };
+    if (ph === 'over') V.done = summary();
+    return V;
+  }
+
+  // ═══ Drawing ═════════════════════════════════════════════════════════════
+  var ui = { sel: [], jsel: -1, round: 0 }, lastV = null;
+  function fsFor(t) { var n = String(t || '').length; return n < 34 ? .118 : n < 60 ? .1 : n < 95 ? .088 : n < 140 ? .076 : .066; }
+  function cahText(t, fill) {
+    // the black card with its blanks drawn as lines (or filled with the answers, bold)
+    var parts = String(t).split(/_+/), out = '';
+    parts.forEach(function (p, k) {
+      out += esc(p);
+      if (k < parts.length - 1) out += fill ? '<b>' + esc(fill[k] != null ? stripEnd(fill[k]) : '') + '</b>' : '<span class="bl"></span>';
+    });
+    return out;
+  }
+  function stripEnd(s) { return String(s).replace(/[.!]$/, ''); }
+  function filled(prompt, ans) {
+    var t = prompt.t, blanks = (t.match(/_+/g) || []).length;
+    if (!blanks) return esc(t) + '\n' + ans.map(function (a) { return '<b>' + esc(a.t) + '</b>'; }).join(' ');
+    return cahText(t, ans.map(function (a) { return a.t; }));
+  }
+  function cardEl(c, o) {
+    o = o || {};
+    var k = c ? c.k : o.kind, n = el('div', { class: 'ac k' + k + (o.down ? ' down' : '') + (o.cls ? ' ' + o.cls : '') });
+    var inner = el('div', { class: 'ac-in' }), face = el('div', { class: 'fa' }), back = el('div', { class: 'bk' });
+    if (c) {
+      if (k === 'r' || k === 'g') {
+        var len = c.n.length;
+        if (k === 'g') face.appendChild(el('div', { class: 'tp', text: c.tp || 'Green apple' }));
+        face.appendChild(el('div', { class: 'nm' + (len > 26 ? ' xl' : len > 16 ? ' lg' : '') , text: c.n }));
+        face.appendChild(el('div', { class: 'rl' }));
+        face.appendChild(el('div', { class: 'ds', text: k === 'g' ? '(' + c.d + ')' : c.d }));
+        face.appendChild(el('div', { class: 'mk', html: APPLE }));
+        n.setAttribute('aria-label', c.n + '. ' + c.d);
+      } else {
+        face.appendChild(el('div', { class: 'tx', style: { '--fs': String(fsFor(c.t)) }, html: k === 'b' ? cahText(c.t) : esc(c.t) }));
+        face.appendChild(el('div', { class: 'ft', html: '<i></i><i></i><i></i><span>Cards Against Humanity</span>' }));
+        if (k === 'b' && c.pick > 1) face.appendChild(el('div', { class: 'pk', html: (c.pick >= 3 ? 'DRAW 2 ' : '') + 'PICK <b>' + c.pick + '</b>' }));
+        n.setAttribute('aria-label', c.t);
+      }
+    }
+    if (k === 'r' || k === 'g') back.appendChild(el('div', { class: 'ap', html: APPLE }));
+    else back.textContent = 'Cards Against Humanity';
+    inner.appendChild(face); inner.appendChild(back); n.appendChild(inner);
+    return n;
+  }
+  function chipName(V, i) { if (i < 0) return words(V).ghost; var p = V.players[i]; return p ? p.name : '?'; }
+  function youOr(V, i) { return i === V.me && V.mode !== 'pass' ? 'You' : chipName(V, i); }
+  function render(V) {
+    var prev = lastV; lastV = V;
+    if (V.phase === 'over') { renderOver(V); return; }
+    var w = words(V), oldRail = app.querySelector('.hand'), sx = oldRail ? oldRail.scrollLeft : 0;
+    if (ui.round !== V.round) { ui.round = V.round; ui.sel = []; ui.jsel = -1; }
+    if (V.phase !== 'judge') ui.jsel = -1;
+    var newRound = !prev || prev.round !== V.round;
+    app.innerHTML = '';
+    // Scores: green cards won; the judge lifts
+    var strip = el('div', { class: 'scores' });
+    var lead = Math.max.apply(null, V.players.map(function (p) { return p.score; }).concat([0]));
+    V.players.forEach(function (p, i) {
+      var isJ = i === V.judge && V.phase !== 'wait';
+      var sub = isJ ? Kit.icon('crown') + '<span>' + esc(w.Judge) + '</span>' : p.gone ? 'left' : V.phase === 'play' ? (p.played ? Kit.icon('check') + '<span>played</span>' : 'picking') : (p.cpu ? 'computer' : '');
+      strip.appendChild(el('div', { class: 'score' + (isJ ? ' judge' : '') + (p.gone ? ' gone' : '') + (lead > 0 && p.score === lead ? ' lead' : ''), style: { '--c': p.color, '--pc': w.prColor }, 'data-i': String(i) }, [
+        el('span', { class: 'nm', text: i === V.me && V.mode !== 'pass' ? p.name + ' (you)' : p.name }), el('span', { class: 'pt', html: '<i></i>' + p.score }), el('span', { class: 'sub', html: sub || '&nbsp;' })
+      ]));
+    });
+    if (V.ghost) strip.appendChild(el('div', { class: 'score ghost', style: { '--pc': w.prColor }, 'data-i': '-1' }, [el('span', { class: 'nm', text: w.ghost }), el('span', { class: 'pt', html: '<i></i>' + V.ghost.score }), el('span', { class: 'sub', html: Kit.icon('ghost') + '<span>random</span>' })]));
+    app.appendChild(strip);
+
+    var felt = el('div', { class: 'felt-in' });
+    app.appendChild(el('div', { class: 'tbl wood' }, [felt]));
+    var meJ = V.me === V.judge && V.me >= 0, J = V.players[V.judge] || { name: '?' }, jn = J.name;
+    var passJ = V.mode === 'pass';   // in pass and play the judge acts from the shared screen
+    var canJudge = meJ || (passJ && V.phase === 'judge' && V.me === V.judge);
+    var msg = '', think = false;
+    if (V.phase === 'wait') msg = 'Waiting for more players to join…';
+    else if (V.phase === 'flip') msg = meJ || passJ ? (passJ ? '<b style="--c:' + J.color + '">' + esc(jn) + '</b>, you’re the ' + w.judge + '. Turn over a ' + w.pr + '.' : 'You’re the ' + w.judge + '. Turn over a ' + w.pr + '.') : '<b style="--c:' + J.color + '">' + esc(jn) + '</b> is the ' + w.judge + '. Turning over a ' + w.pr + '…';
+    else if (V.phase === 'play') {
+      var left = V.players.map(function (p, i) { return i; }).filter(function (i) { return i !== V.judge && !V.players[i].played && !V.players[i].gone; });
+      if (meJ) msg = 'You’re the ' + w.judge + '. Everyone is picking a card for you.';
+      else if (V.me >= 0 && !V.mine) msg = V.rules.crab ? 'Play the ' + w.ans + ' that fits it <b>least</b>.' : V.deck === 'cah' ? (V.pick > 1 ? 'Play ' + V.pick + ' white cards, in order.' : 'Play the funniest white card.') : V.prompt ? 'Play the ' + w.ans + ' that fits best.' : 'Play a ' + w.ans + '. The ' + w.pr + ' is a surprise!';
+      else msg = 'Waiting for ' + left.map(function (i) { return esc(V.players[i].name); }).join(', ') + '…';
+      if (V.me >= 0 && V.mine && !meJ) think = true;
+    } else if (V.phase === 'judge') {
+      var unrev = V.subs.some(function (s) { return !s.c; });
+      if (canJudge) msg = unrev ? 'Tap each card to turn it over. Read them out loud.' : 'Pick your favorite, then tap ' + (V.deck === 'cah' ? 'Award it' : 'Pick this one') + '.';
+      else { msg = '<b style="--c:' + J.color + '">' + esc(jn) + '</b> is ' + (unrev ? 'turning the cards over' : 'choosing') + '…'; think = true; }
+    } else if (V.phase === 'result' && V.win) {
+      var wn = chipName(V, V.win.p);
+      msg = V.win.p < 0 ? 'The ' + esc(w.ghost.toLowerCase() === 'ghost' ? 'ghost' : w.ghost) + ' card won. Nobody scores!' : '<b style="--c:' + (V.players[V.win.p] || {}).color + '">' + esc(youOr(V, V.win.p)) + '</b> ' + (V.win.p === V.me && V.mode !== 'pass' ? 'win' : 'wins') + ' the ' + (V.prompt && V.prompt.length > 1 ? 'cards' : 'card') + '!';
+    }
+    var st = el('div', { class: 'st' }, [el('div', { class: 'msg', html: msg + (think ? '<span class="think"><i></i><i></i><i></i></span>' : '') }), el('span', { class: 'tag', html: Kit.icon('trophy') + '<span>' + V.target + ' to win</span>' }), el('span', { class: 'tag', text: 'Round ' + V.round })]);
+    felt.appendChild(st);
+
+    // The deck and the face-up prompt
+    var two = V.nPrompt > 1 || (V.rules.two && V.deck !== 'cah');
+    var mid = el('div', { class: 'mid' + (two ? ' two' : '') });
+    var flipNow = V.phase === 'flip' && (meJ || passJ);
+    var deck = el('button', { type: 'button', class: 'deck' + (flipNow ? ' go' : ''), 'aria-label': flipNow ? 'Turn over a ' + w.pr : 'The ' + w.pr + ' pile', onclick: function () { if (flipNow) { Kit.haptic('light'); doAct({ t: 'flip' }); } } });
+    for (var d = 0; d < 3; d++) deck.appendChild(cardEl(null, { kind: V.pk, down: true }));
+    mid.appendChild(deck);
+    var slot = el('div', { class: 'pr-slot' });
+    if (V.prompt) V.prompt.forEach(function (c, k) {
+      c = Object.assign({}, c); if (c.k === 'g') c.tp = 'Green apple'; if (c.k === 'r') c.tp = '';
+      var ce = cardEl(c, { cls: 'prc' });
+      if (prev && !prev.prompt) { ce.classList.add('flipin'); ce.style.animationDelay = (k * .12) + 's'; }
+      slot.appendChild(ce);
+    });
+    else if (V.nPrompt) for (var h = 0; h < V.nPrompt; h++) slot.appendChild(cardEl(null, { kind: V.pk, down: true }));
+    else slot.appendChild(el('div', { class: 'pr-empty', text: V.phase === 'flip' ? (flipNow ? 'Tap the pile' : '') : '' }));
+    mid.appendChild(slot);
+    felt.appendChild(mid);
+    if (V.prompt && !prev) {} // first paint: no flip animation
+    if (V.prompt && prev && !prev.prompt && V.round === prev.round) Kit.sfx('flip');
+
+    // Played cards
+    var plays = el('div', { class: 'plays' + ((V.subs ? V.subs.length : V.nSubs) > 6 ? ' crowd' : '') });
+    if (V.phase === 'play' || V.phase === 'flip' && V.nSubs) {
+      var pn = prev && prev.round === V.round && (prev.phase === 'play' || prev.phase === 'flip') ? prev.nSubs : V.nSubs;
+      for (var s = 0; s < V.nSubs; s++) {
+        var fd = cardEl(null, { kind: V.ak, down: true, cls: s >= pn ? 'drop' : '' });
+        if (s >= pn) { fd.style.setProperty('--dx', (Math.random() * 80 - 40).toFixed(0) + 'px'); Kit.sfx('deal', 0.7); }
+        plays.appendChild(el('div', { class: 'sub' }, [fd]));
+      }
+      if (!V.nSubs) plays.appendChild(el('div', { class: 'none', text: V.phase === 'flip' ? '' : 'Played cards land here, face down.' }));
+    } else if (V.subs) {
+      V.subs.forEach(function (sb, k) {
+        var was = prev && prev.subs && prev.round === V.round ? prev.subs[k] : null;
+        var cards = el('div', { class: 'cards' }), cs = sb.c || [];
+        for (var q = 0; q < sb.n; q++) {
+          var ce = cardEl(cs[q] || null, { kind: V.ak, down: !sb.c || (was && !was.c) || (!prev && false) });
+          if (sb.c && (!was || !was.c) && prev) { (function (ce) { requestAnimationFrame(function () { requestAnimationFrame(function () { ce.classList.remove('down'); }); }); })(ce); }
+          else if (sb.c) ce.classList.remove('down');
+          cards.appendChild(ce);
+        }
+        if (sb.c && prev && was && !was.c) Kit.sfx('flip');
+        var isWin = V.win && V.win.s === k;
+        var node = el('button', { type: 'button', class: 'sub' + (V.phase === 'judge' && canJudge ? ' tap' : '') + (ui.jsel === k ? ' sel' : '') + (isWin ? ' win' : V.win ? ' lose' : ''), 'data-k': String(k) }, [cards]);
+        if (V.phase === 'result' && sb.p != null) {
+          var pc = sb.p >= 0 && V.players[sb.p] ? V.players[sb.p].color : '#9aa3b8';
+          node.appendChild(el('span', { class: 'who', html: '<i class="dot" style="--c:' + pc + '">' + (sb.p < 0 ? Kit.icon('ghost') : esc(chipName(V, sb.p).charAt(0).toUpperCase())) + '</i><span>' + esc(youOr(V, sb.p)) + '</span>' }));
+        }
+        if (V.phase === 'judge' && canJudge) node.addEventListener('click', function () {
+          if (!sb.c) { Kit.haptic('light'); doAct({ t: 'reveal', i: k }); return; }
+          if (V.subs.some(function (x) { return !x.c; })) { Kit.toast('Turn them all over first'); return; }
+          ui.jsel = ui.jsel === k ? -1 : k; Kit.sfx('tap'); Kit.haptic('light'); render(V);
+        });
+        plays.appendChild(node);
+      });
+    }
+    felt.appendChild(plays);
+    // the grown-up deck reads as a sentence
+    if (V.deck === 'cah' && V.prompt && V.subs) {
+      var show = V.phase === 'result' && V.win ? V.subs[V.win.s] : ui.jsel >= 0 ? V.subs[ui.jsel] : null;
+      if (show && show.c) felt.appendChild(el('div', { class: 'sent', html: filled(V.prompt[0], show.c) }));
+    }
+    if (V.phase === 'result' && V.win && V.win.why) felt.appendChild(el('div', { class: 'why', html: '<b>' + esc(jn) + ':</b> “' + esc(V.win.why) + '”' }));
+
+    // My hand
+    if (V.hand && V.me >= 0 && !(V.mode === 'pass' && V.phase === 'judge')) {
+      var canPlay = V.phase === 'play' && !meJ && !V.mine;
+      var rail = el('div', { class: 'rail wood' });
+      var head = canPlay ? (V.pick > 1 ? 'Your hand · pick ' + V.pick + ' in order' : 'Your hand · tap a card') : meJ ? 'Your hand · you’re judging this round' : V.mine ? 'Your hand · card played' : 'Your hand';
+      if (V.mode === 'pass') head = esc(V.players[V.me].name) + '’s hand' + (canPlay ? ' · tap a card' : '');
+      rail.appendChild(el('div', { class: 'hd', html: '<span>' + head + '</span><span>' + V.hand.length + ' cards</span>' }));
+      var hand = el('div', { class: 'hand' + (canPlay ? '' : ' off') });
+      var prevIds = prev && prev.hand && prev.me === V.me ? prev.hand.map(function (c) { return c.id; }) : [];
+      var fresh = 0;
+      V.hand.forEach(function (c) {
+        var ce = cardEl(c, { cls: ui.sel.indexOf(c.id) >= 0 ? 'sel' : '' });
+        if (ui.sel.indexOf(c.id) >= 0 && V.pick > 1) ce.appendChild(el('span', { class: 'num', text: String(ui.sel.indexOf(c.id) + 1) }));
+        if (prev && prevIds.indexOf(c.id) < 0 && !(V.mode === 'pass' && (!prev.hand || prev.me !== V.me))) { ce.classList.add('dealt'); ce.style.setProperty('--dl', (fresh++ * .07) + 's'); }
+        if (canPlay) ce.addEventListener('click', function () {
+          var at = ui.sel.indexOf(c.id);
+          if (at >= 0) ui.sel.splice(at, 1);
+          else { if (ui.sel.length >= V.pick) ui.sel.shift(); ui.sel.push(c.id); }
+          Kit.sfx('tap'); Kit.haptic('light'); render(V);
+        });
+        hand.appendChild(ce);
+      });
+      if (fresh) Kit.sfx('deal');
+      rail.appendChild(hand);
+      app.appendChild(rail);
+      hand.scrollLeft = sx;
+    }
+
+    // Buttons
+    var acts = el('div', { class: 'acts' }), hint = '';
+    if (V.phase === 'flip' && (meJ || passJ)) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('play') + '<span>Turn over the ' + w.pr + '</span>', onclick: function () { doAct({ t: 'flip' }); } }));
+    else if (V.phase === 'play' && V.hand && V.me >= 0 && !meJ && !V.mine) {
+      var ready = ui.sel.length === V.pick;
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', disabled: !ready, text: ready ? (V.pick > 1 ? 'Play these ' + V.pick : 'Play this card') : V.pick > 1 ? 'Pick ' + V.pick + ' cards' : 'Pick a card', onclick: playSelected }));
+      if (V.extra) hint = 'You drew ' + V.extra + ' extra ' + (V.extra === 1 ? 'card' : 'cards') + ' for this one.';
+    } else if (V.phase === 'judge' && canJudge) {
+      if (V.subs.some(function (x) { return !x.c; })) acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-lg', html: Kit.icon('swap') + '<span>Turn them all over</span>', onclick: function () { doAct({ t: 'all' }); } }));
+      else acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', disabled: ui.jsel < 0, html: Kit.icon('trophy') + '<span>' + (ui.jsel < 0 ? 'Tap your favorite' : V.deck === 'cah' ? 'Award it' : 'Pick this one') + '</span>', onclick: function () { if (ui.jsel >= 0) doAct({ t: 'pick', i: ui.jsel }); } }));
+      if (V.rules.crab) hint = 'Crab Apples: pick the card that is the most opposite.';
+    } else if (V.phase === 'result') {
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: V.final ? 'See who won' : 'Next round', onclick: function () { Kit.sfx('whoosh'); doAct({ t: 'next' }); } }));
+    }
+    if (acts.children.length) app.appendChild(acts);
+    if (hint) app.appendChild(el('div', { class: 'hint', text: hint }));
+    else if (V.mode === 'pass' && V.phase === 'play' && V.me >= 0 && V.mine) app.appendChild(el('div', { class: 'hint', text: 'Card played. Pass it on.' }));
+
+    // Moments
+    if (newRound && prev && V.phase !== 'wait') {}
+    if (prev && prev.phase !== 'result' && V.phase === 'result' && V.win) celebrate(V);
+  }
+  function playSelected() {
+    var V = lastV; if (!V || ui.sel.length !== V.pick) return;
+    var sel = ui.sel.slice(), dst = app.querySelector('.plays');
+    var nodes = Array.prototype.slice.call(app.querySelectorAll('.hand .ac.sel'));
+    nodes.forEach(function (n) { if (dst) fly(n, dst, { down: true }); n.style.visibility = 'hidden'; });
+    Kit.sfx('deal'); Kit.haptic('medium');
+    ui.sel = [];
+    setTimeout(function () { doAct({ t: 'play', c: sel }); }, nodes.length ? 330 : 0);
+  }
+  // A copy of a card flies from one place to another (the real one is drawn there after)
+  function fly(from, to, o) {
+    o = o || {};
+    var a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+    if (!a.width || !b.width) return;
+    var c = from.cloneNode(true); c.classList.remove('sel', 'dealt', 'drop', 'flipin'); c.classList.add('fly');
+    c.style.left = a.left + 'px'; c.style.top = a.top + 'px'; c.style.width = a.width + 'px'; c.style.height = a.height + 'px'; c.style.setProperty('--cw', a.width + 'px');
+    document.body.appendChild(c);
+    var tx = b.left + b.width / 2 - (a.left + a.width / 2), ty = b.top + Math.min(b.height / 2, 80) - (a.top + a.height / 2), sc = o.scale || 0.8;
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      c.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ') rotate(' + (Math.random() * 16 - 8).toFixed(1) + 'deg)';
+      if (o.down) c.classList.add('down');
+      if (o.fade) c.style.opacity = '0';
+    }); });
+    setTimeout(function () { c.remove(); }, 560);
+  }
+  function celebrate(V) {
+    var w = words(V), p = V.win.p;
+    setTimeout(function () {
+      if (lastV !== V) return;
+      var winNode = app.querySelector('.sub.win'), chip = app.querySelector('.score[data-i="' + p + '"]'), pr = app.querySelectorAll('.pr-slot .ac');
+      if (chip) Array.prototype.forEach.call(pr, function (n) { fly(n, chip, { scale: 0.2, fade: true }); });
+      if (p < 0) { Kit.callout(V.deck === 'cah' ? 'Rando wins!' : 'The ghost wins it!', '#c9cfdc'); Kit.sfx('bad'); Kit.haptic('error'); return; }
+      var me = p === V.me && V.mode !== 'pass', P = V.players[p];
+      Kit.callout(me ? 'You win it!' : P.name + '!', P.color);
+      Kit.sfx(me || V.mode !== 'solo' ? 'good' : 'pop'); Kit.haptic(me ? 'success' : 'light');
+      if (winNode) winNode.classList.add('lift');
+      if (V.final) setTimeout(function () { Kit.sfx('sparkle'); }, 500);
+    }, 650);
+  }
+
+  // ── The end ──────────────────────────────────────────────────────────────
+  function summary() {
+    var g = G, P = g.players;
+    var sc = P.map(function (p) { return p.won.length; }), top = Math.max.apply(null, sc.concat([0]));
+    var ghostWin = g.ghost && g.ghostWon.length >= g.target && g.ghostWon.length >= top;
+    var winners = ghostWin ? [] : P.map(function (p, i) { return i; }).filter(function (i) { return sc[i] === top && top > 0; });
+    var rounds = g.log.map(function (l) {
+      return { j: l.j, w: l.w, pr: l.pr.map(function (c) { var x = raw(g.prKind, c); return x.n || x.t; }).join(' + '), a: l.c.map(function (c) { var x = raw(g.ansKind, c); return x.n || x.t; }).join(' / ') };
+    });
+    return { players: P.map(function (p, i) { return { name: p.name, score: sc[i], cpu: p.cpu, color: p.color }; }), winners: winners, ghost: g.ghost ? g.ghostWon.length : -1, ghostWin: ghostWin,
+      rounds: rounds, deck: g.deck, target: g.target, rules: g.rules, mode: g.mode, started: g.started, kinds: [g.prKind, g.ansKind] };
+  }
+  function ruleList(r, deck) { var a = []; if (deck !== 'cah') { if (r.crab) a.push('Crab Apples'); if (r.pot) a.push('Apple Potpourri'); if (r.two) a.push('2-for-1'); if (r.turn) a.push('Apple Turnovers'); } else if (r.heat) a.push('Packing Heat'); return a; }
+  function recordGame(S) {
+    var cah = S.deck === 'cah', MODE = { solo: 'Solo', pass: 'Pass and play', online: 'Online' };
+    var hl = [];
+    if (!cah) {
+      // a few of the winning matches, so the history reads like the game
+      S.rounds.filter(function (r) { return r.w >= 0; }).slice(-3).forEach(function (r) { hl.push(S.players[r.w].name + ' won ' + r.pr + ' with ' + r.a); });
+      if (S.ghost > 0) hl.push('The ghost took ' + S.ghost + (S.ghost === 1 ? ' card' : ' cards'));
+    } else {
+      var most = -1, mi = -1; S.players.forEach(function (p, i) { if (p.score > most) { most = p.score; mi = i; } });
+    }
+    if (S.ghostWin) hl.unshift('The ghost reached ' + S.target + ' first. Everyone lost!');
+    // the round-by-round detail (hist/party.js), kept small
+    var rs = S.rounds.slice(-40).map(function (r) { return { j: r.j, b: r.w, p: String(r.pr).slice(0, 90), w: String(r.a).slice(0, 110) }; });
+    var dt = { dk: S.deck, t: S.target, ru: ruleList(S.rules, S.deck).join(', '), gh: S.ghost, rs: rs };
+    while (JSON.stringify(dt).length > 5600 && dt.rs.length > 4) dt.rs.shift();
+    Kit.record(KEY, {
+      started: S.started,
+      mode: (MODE[S.mode] || '') + ' · first to ' + S.target,
+      players: S.players.map(function (p) { return { name: p.name, score: p.score, cpu: p.cpu }; }),
+      winner: S.ghostWin ? null : S.winners.length === 1 ? S.players[S.winners[0]].name : undefined,
+      summary: S.ghostWin ? 'The ghost won' : undefined,
+      highlights: hl, detail: dt
+    });
+  }
+  function finish() {
+    finished = true; clearSave(); undoStack = [];
+    var S = G ? summary() : (net.view && net.view.done);
+    if (!S) return;
+    if (net.mode !== 'guest') recordGame(S);
+    showWin(S);
+  }
+  function showWin(S) {
+    var w = S.deck === 'cah' ? 'black cards' : 'cards';
+    var meName = net.mode ? net.myName : (G && G.mode === 'solo' ? S.players[0].name : null);
+    var rank = S.players.map(function (p, i) { return { name: p.name, score: p.score, color: p.color, cpu: p.cpu }; });
+    if (S.ghost >= 0) rank.push({ name: S.deck === 'cah' ? 'Rando Cardrissian' : 'Ghost', score: S.ghost, color: '#9aa3b8' });
+    rank.sort(function (a, b) { return b.score - a.score; });
+    var title, lose = false;
+    if (S.ghostWin) { title = S.deck === 'cah' ? 'Rando Cardrissian wins!' : 'The ghost wins!'; lose = true; }
+    else if (S.winners.length === 1) { var wn = S.players[S.winners[0]].name; title = meName && wn === meName && (G ? G.mode === 'solo' : true) ? 'You win!' : wn + ' wins!'; lose = G && G.mode === 'solo' && S.winners[0] !== 0; }
+    else title = 'It’s a tie!';
+    setTimeout(function () {
+      Kit.win({ title: title, lose: lose, icon: lose ? 'ghost' : 'trophy', sub: S.ghostWin ? 'Everyone goes home in shame.' : 'First to ' + S.target + ' ' + w, rank: rank,
+        again: again, againLabel: net.mode ? 'Back to the table' : 'Play again',
+        extra: net.mode ? [{ label: 'Leave the table', onClick: function () { leaveOnline(false); goLobby(); } }] : [{ label: 'Change settings', onClick: showSetup }],
+        closeLabel: 'See the rounds', onClose: function () {} });
+    }, 600);
+  }
+  function renderOver(V) {
+    var S = V.done; app.innerHTML = '';
+    var felt = el('div', { class: 'felt-in' });
+    app.appendChild(el('div', { class: 'tbl wood' }, [felt]));
+    var box = el('div', { class: 'sum' }, [el('h3', { text: 'How it went' })]);
+    var pc = S.deck === 'cah' ? '#222' : S.kinds && S.kinds[0] === 'r' ? '#c8102e' : '#2f9b44';
+    S.rounds.forEach(function (r, k) {
+      var who = r.w < 0 ? (S.deck === 'cah' ? 'Rando Cardrissian' : 'Ghost') : S.players[r.w] ? S.players[r.w].name : '?';
+      box.appendChild(el('div', { class: 'rd' }, [el('span', { class: 'pc', style: { '--pc': pc } }), el('span', { class: 't', html: '<b>' + esc(r.pr) + '</b> <s>·</s> ' + esc(r.a) }), el('span', { class: 'n', text: who })]));
+    });
+    felt.appendChild(box);
+    app.appendChild(el('div', { class: 'acts', style: { 'flex-direction': 'column' } }, [
+      el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: net.mode ? 'Back to the table' : 'Play again', onclick: again }),
+      net.mode ? el('button', { type: 'button', class: 'btn btn-soft btn-block', text: 'Leave the table', onclick: function () { leaveOnline(false); goLobby(); } }) : el('button', { type: 'button', class: 'btn btn-soft btn-block', text: 'Change settings', onclick: showSetup }),
+      el('button', { type: 'button', class: 'btn btn-ghost btn-block', html: Kit.icon('history') + '<span>Past games</span>', onclick: pastGames })
+    ]));
+  }
+  function again() {
+    if (net.mode === 'host') { backToTable(); return; }
+    if (net.mode === 'guest') { showWait(); return; }
+    if (lastCfg) startLocal(lastCfg); else showSetup();
+  }
+  function pastGames() { Kit.history(KEY, { title: 'Apples to Apples: past games' }); }
+
+  // ═══ Setup ═══════════════════════════════════════════════════════════════
+  function rulesHtml() {
+    var r = '<p class="goal">The judge turns over a green card. Everyone else plays the red card from their hand that fits it best. The judge picks a favorite, and whoever played it keeps the green card. First to the target wins.</p>' +
+      '<h3>A round</h3><ul>' +
+      '<li>Everyone holds <b>7 red cards</b> (things, people, places, events).</li>' +
+      '<li>The <b>judge</b> turns over a <b>green card</b> (a describing word, like Fiery).</li>' +
+      '<li>Everyone else picks the red card that fits it best and plays it face down. Nobody, not even the judge, knows whose card is whose: the game shuffles them.</li>' +
+      '<li>The judge turns them over, reads them out loud, and picks a favorite: the best fit, the funniest, or the cleverest. Any reason counts.</li>' +
+      '<li>Whoever played it keeps the green card. Everyone draws back up to 7 and the judge passes to the left.</li></ul>' +
+      '<h3>Winning</h3><p>The official targets: 4 players play to 8 green cards, 5 to 7, 6 to 6, 7 to 5, and 8 to 10 players to 4 (bigger groups too). You can pick a different target in setup.</p>' +
+      '<h3>The ghost</h3><p>Good with three players: each round one random red card from the deck is played too. If the judge picks it, nobody scores and the ghost keeps the green card. If the ghost reaches the target first, everyone loses.</p>' +
+      '<h3>House rules (from the official rules)</h3><ul>' +
+      '<li><b>Crab Apples</b>: play and pick the card that is the <b>least</b> like the green card, or its opposite.</li>' +
+      '<li><b>Apple Potpourri</b>: everyone plays a red card <b>before</b> the judge turns over the green card.</li>' +
+      '<li><b>2-for-1 Apples</b>: the judge turns over two green cards. Play one red card that fits both. The winner keeps both.</li>' +
+      '<li><b>Apple Turnovers</b>: everyone holds 5 green cards instead. The judge turns over a red card, and you play the green card that describes it best.</li></ul>' +
+      '<h3>Ways to play</h3><ul><li><b>Solo</b>: you and computer players. They play and judge by what fits, with a little personality, and say why they picked.</li>' +
+      '<li><b>Pass and play</b>: one phone. When it says Pass to Sam, hand it over. Sam holds the button to see their cards. The judge gets the phone last.</li>' +
+      '<li><b>Online</b>: everyone on their own phone, up to 24 players. Open a table and others join with its code. People can join a game that is already going.</li></ul>' +
+      '<p class="rnote">Apples to Apples is a Mattel game. The cards here are original, written for this site.</p>';
+    if (cahUnlocked()) r += '<h3>Cards Against Humanity</h3><ul>' +
+      '<li>Everyone holds <b>10 white cards</b>. The <b>Card Czar</b> turns over a <b>black card</b> with a question or a fill-in-the-blank.</li>' +
+      '<li>Everyone else plays the funniest white card. <b>Pick 2</b> cards take two white cards, played in order. <b>Draw 2, Pick 3</b> cards give everyone two extra cards first.</li>' +
+      '<li>The Czar reads them out with the black card and picks a winner, who gets the black card (an Awesome Point). The Czar passes to the left.</li>' +
+      '<li><b>Rando Cardrissian</b> (the ghost): a random white card is played every round. If Rando wins the game, everyone goes home in a state of everlasting shame.</li>' +
+      '<li><b>Packing Heat</b> (house rule): on Pick 2 cards, everyone draws an extra card first.</li></ul>' +
+      '<p class="rnote">Cards Against Humanity is distributed under a Creative Commons BY-NC-SA 2.0 license. Card text from the official packs via the JSON Against Humanity project; cards with slurs are left out. This game isn’t made by or affiliated with Cards Against Humanity, LLC.</p>';
+    return r;
+  }
+  var initOpts = {
+    id: KEY,
+    onNew: function () { showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'history', label: 'Past games', onClick: pastGames },
+      { icon: 'users', label: 'Play online', sub: 'Everyone on their own device, up to 24', when: function () { return !net.mode && screen !== 'lobby'; }, onClick: function () { goLobby(); } },
+      { icon: 'logout', label: 'Leave the online game', when: function () { return !!net.mode; }, onClick: function () { leaveOnline(true); } }
+    ],
+    rules: rulesHtml()
+  };
+  Kit.init(initOpts);
+  var screen = 'setup';
+
+  var A2A_RULES = [
+    { id: 'crab', name: 'Crab Apples', icon: 'swap', note: 'Play and pick the card that is the <b>least</b> like the green card.' },
+    { id: 'pot', name: 'Apple Potpourri', icon: 'shuffle', note: 'Play your red card <b>before</b> the green card is turned over.' },
+    { id: 'two', name: '2-for-1 Apples', icon: 'tiles', note: 'Two green cards each round. One red card has to fit both. The winner keeps both.' },
+    { id: 'turn', name: 'Apple Turnovers', icon: 'undo', note: 'Hold 5 green cards instead. The judge turns over a red card and you describe it.' }
+  ];
+  var CAH_RULES = [{ id: 'heat', name: 'Packing Heat', icon: 'flame', note: 'On Pick 2 cards, everyone draws an extra card first.' }];
+  var CAH_TOP = ['base-set', 'red-box-expansion', 'blue-box-expansion', 'green-box-expansion', 'absurd-box-expansion', 'first-expansion', 'second-expansion', 'third-expansion', 'fourth-expansion', 'fifth-expansion', 'sixth-expansion'];
+  function savedPacks() { var a = lsGet(PK, null); a = Array.isArray(a) ? a.filter(function (x) { return A.packs.some(function (p) { return p.id === x; }); }) : []; return a.length ? a : A.packs.map(function (p) { return p.id; }); }
+  function savedCahPacks() { var a = lsGet(CPK, null); a = Array.isArray(a) && C ? a.filter(function (x) { return C.packs.some(function (p) { return p.id === x; }); }) : []; return a.length ? a : ['base-set']; }
+  function savedRules() { var r = lsGet(RK, null); return r && typeof r === 'object' ? r : {}; }
+  function cahOn() { return cahUnlocked() && rawGet(CAHON) === '1'; }
+
+  function showSetup() {
+    leaveOnline(false);
+    G = null; finished = false; gen++; clearTimeout(botT); undoStack = []; lastV = null; screen = 'setup';
+    pp.viewer = -1; pp.busy = false; Kit.handoff.close();
+    window.scrollTo(0, 0);
+    app.innerHTML = ''; app.appendChild(el('div', { class: 'loading', html: '<span>Shuffling the cards…</span>' }));
+    var need = [a2aData()]; if (cahOn()) need.push(cahData().catch(function () { rawSet(CAHON, null); }));
+    Promise.all(need).then(buildSetup, function () { app.innerHTML = ''; app.appendChild(el('div', { class: 'loading', text: 'Couldn’t load the cards. Check the connection and try again.' })); });
+  }
+  function buildSetup() {
+    if (screen !== 'setup') return;
+    initOpts.rules = rulesHtml();
+    var st = Kit.setup(app, {
+      intro: cahOn() ? 'Fill in the blank. The Card Czar picks the funniest.' : 'Match a red card to the green card. The judge picks the best.',
+      modes: [
+        { id: 'solo', icon: 'bot', title: 'Solo', desc: 'You and computer players' },
+        { id: 'pass', icon: 'phone', title: 'Pass and play', desc: 'One phone passed around the table' },
+        { id: 'online', icon: 'users', title: 'Online', desc: 'Everyone on their own phone, up to 24 players' }
+      ],
+      players: { min: 3, max: 10, count: 4, cpu: function (m) { return m === 'solo' ? 'seats' : false; }, range: function (m) { return m === 'solo' ? [3, 10] : m === 'pass' ? [3, 12] : [1, 1]; } },
+      options: [
+        { id: 'target', label: 'Cards to win', value: 'auto', help: 'Official: 4 players play to 8, 5 to 7, 6 to 6, 7 to 5, and 8 or more to 4.', choices: [['auto', 'Official'], ['3', '3'], ['5', '5'], ['7', '7'], ['10', '10']] },
+        { id: 'ghost', label: 'Ghost player', value: 'auto', help: 'A random card from the deck is played every round. If the judge picks it, nobody scores. If the ghost wins the game, everyone loses.', choices: [['auto', 'With 3 players'], ['on', 'Always'], ['off', 'Off']] }
+      ],
+      start: 'Deal the cards',
+      onStart: function (cfg) { onStart(cfg, chosen()); }
+    });
+    var box = el('div', { class: 'stack' });
+    st.el.insertBefore(box, st.el.querySelector('.k-start'));
+    var packs = savedPacks(), rules = savedRules(), cpacks = null;
+    function chosen() { var on = cahOn(); return { deck: on ? 'cah' : 'a2a', packs: on ? cpacks || savedCahPacks() : packs, rules: rules }; }
+    function chip(label, on, n, fn, icon) {
+      return el('button', { type: 'button', class: 'chip' + (on ? ' on' : ''), 'aria-pressed': String(!!on), html: (icon ? Kit.icon(icon) : '') + '<span>' + esc(label) + '</span>' + (n != null ? ' <span class="n">' + n + '</span>' : ''), onclick: function () { fn(); Kit.sfx('tap'); paint(); } });
+    }
+    function paint() {
+      box.innerHTML = '';
+      var on = cahOn();
+      if (cahUnlocked()) {
+        var row = el('button', { type: 'button', class: 'cah-row', role: 'switch', 'aria-checked': String(on), onclick: function () {
+          if (on) { rawSet(CAHON, null); paint(); Kit.sfx('tap'); retitle(); return; }
+          row.disabled = true;
+          cahData().then(function () { rawSet(CAHON, '1'); Kit.sfx('pop'); Kit.haptic('light'); paint(); retitle(); }, function () { Kit.toast('Couldn’t load those cards'); row.disabled = false; });
+        } }, [el('span', { class: 'grow' }, [el('b', { text: 'Cards Against Humanity' }), el('small', { text: on ? 'On: black and white cards, for grown-ups' : 'Off: playing Apples to Apples' })]), el('span', { class: 'sw' })]);
+        box.appendChild(el('div', { class: 'a-sec' }, [row]));
+      }
+      if (on && C) {
+        cpacks = savedCahPacks();
+        var nW = 0, nB = 0; C.packs.forEach(function (p) { if (cpacks.indexOf(p.id) >= 0) { nW += p.w[1] - p.w[0]; nB += p.b[1] - p.b[0]; } });
+        var all = cpacks.length === C.packs.length;
+        function tog(id) { var i = cpacks.indexOf(id); if (i >= 0) cpacks.splice(i, 1); else cpacks.push(id); if (!cpacks.length) cpacks = ['base-set']; lsSet(CPK, cpacks); }
+        var top = el('div', { class: 'chips' }), rest = el('div', { class: 'chips' });
+        top.appendChild(chip('All official packs', all, null, function () { cpacks = all ? ['base-set'] : C.packs.map(function (p) { return p.id; }); lsSet(CPK, cpacks); }, 'tiles'));
+        C.packs.forEach(function (p) { (CAH_TOP.indexOf(p.id) >= 0 ? top : rest).appendChild(chip(p.name, cpacks.indexOf(p.id) >= 0, (p.w[1] - p.w[0]) + (p.b[1] - p.b[0]), function () { tog(p.id); })); });
+        var nRest = C.packs.filter(function (p) { return CAH_TOP.indexOf(p.id) < 0 && cpacks.indexOf(p.id) >= 0; }).length;
+        var more = el('details', { class: 'more' }, [el('summary', { html: Kit.icon('down') + '<span>Mini packs and promos (' + nRest + ' of ' + rest.children.length + ' on)</span>' }), rest]);
+        if (ui.moreOpen) more.open = true;
+        more.addEventListener('toggle', function () { ui.moreOpen = more.open; });
+        box.appendChild(el('div', { class: 'a-sec' }, [el('div', { class: 'label', html: '<span>Card packs</span><span class="n">' + nB + ' black · ' + nW + ' white</span>' }), top, more]));
+        var hr = el('div', { class: 'chips' });
+        CAH_RULES.forEach(function (r) { hr.appendChild(chip(r.name, !!rules[r.id], null, function () { rules[r.id] = !rules[r.id]; lsSet(RK, rules); }, r.icon)); });
+        box.appendChild(el('div', { class: 'a-sec' }, [el('div', { class: 'label', text: 'House rules' }), hr, el('p', { class: 'rnote', html: CAH_RULES.map(function (r) { return '<b>' + r.name + '</b>: ' + r.note; }).join('<br>') + '<br><b>Ghost player</b> is Rando Cardrissian.' })]));
+        box.appendChild(el('button', { type: 'button', class: 'cah-hide', text: 'Hide Cards Against Humanity on this device', onclick: function () { rawSet(CAHK, null); rawSet(CAHON, null); initOpts.rules = rulesHtml(); Kit.toast('Hidden'); paint(); retitle(); } }));
+        return;
+      }
+      // Apples packs: everything, or any mix
+      var allA = packs.length === A.packs.length, chips = el('div', { class: 'chips' });
+      var nr = 0, ng = 0; A.packs.forEach(function (p) { if (packs.indexOf(p.id) >= 0) { nr += p.r[1] - p.r[0]; ng += p.g[1] - p.g[0]; } });
+      chips.appendChild(chip('Everything', allA, null, function () { packs = allA ? ['core'] : A.packs.map(function (p) { return p.id; }); lsSet(PK, packs); }, 'shuffle'));
+      A.packs.forEach(function (p) {
+        var onP = !allA && packs.indexOf(p.id) >= 0;
+        chips.appendChild(chip(p.name, onP, (p.r[1] - p.r[0]) + (p.g[1] - p.g[0]), function () {
+          if (allA) packs = [p.id]; else if (onP) packs = packs.filter(function (x) { return x !== p.id; }); else packs.push(p.id);
+          if (!packs.length) packs = A.packs.map(function (x) { return x.id; });
+          lsSet(PK, packs);
+        }));
+      });
+      box.appendChild(el('div', { class: 'a-sec' }, [el('div', { class: 'label', html: '<span>Card packs</span><span class="n">' + ng + ' green · ' + nr + ' red</span>' }), chips]));
+      var rr = el('div', { class: 'chips' }), notes = [];
+      A2A_RULES.forEach(function (r) { rr.appendChild(chip(r.name, !!rules[r.id], null, function () { rules[r.id] = !rules[r.id]; lsSet(RK, rules); }, r.icon)); if (rules[r.id]) notes.push('<b>' + r.name + '</b>: ' + r.note); });
+      box.appendChild(el('div', { class: 'a-sec' }, [el('div', { class: 'label', text: 'House rules' }), rr, el('p', { class: 'rnote', html: notes.length ? notes.join('<br>') : 'Classic rules. Tap one to mix it up.' })]));
+    }
+    function retitle() { var p = st.el.querySelector('.setup-hero p'); if (p) p.textContent = cahOn() ? 'Fill in the blank. The Card Czar picks the funniest.' : 'Match a red card to the green card. The judge picks the best.'; initOpts.rules = rulesHtml(); }
+    paint();
+    // The apple in the header: tap it 7 times in a row (each within 1.2 s) to find the grown-up deck
+    var ic = st.el.querySelector('.k-hero-ic'), taps = 0, lastTap = 0;
+    if (ic) ic.addEventListener('click', function () {
+      var now = Date.now(); taps = now - lastTap < 1200 ? taps + 1 : 1; lastTap = now;
+      ic.classList.remove('wob'); void ic.offsetWidth; ic.classList.add('wob');
+      Kit.sfx(taps >= 7 ? 'sparkle' : 'tap', 0.6); Kit.haptic('tick');
+      if (taps < 7) return;
+      taps = 0;
+      if (cahUnlocked()) { Kit.toast('Already unlocked. It’s below the players.'); return; }
+      rawSet(CAHK, '1'); initOpts.rules = rulesHtml();
+      Kit.callout('Cards Against Humanity unlocked', '#ffffff'); Kit.haptic('success');
+      paint();
+      var row = box.querySelector('.cah-row'); if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+  function onStart(cfg, ch) {
+    if (cfg.mode === 'online') {
+      var nm = (cfg.players[0] && cfg.players[0].name) || '';
+      if (/^Player \d+$/.test(nm)) nm = rawGet('my_name') || nm;
+      lsSet(NETME, { name: nm });
+      net.cfg = { deck: ch.deck, packs: ch.packs.slice(), rules: Object.assign({}, ch.rules), target: cfg.options.target, ghost: cfg.options.ghost };
+      goLobby(); return;
+    }
+    var n = cfg.players.length;
+    startLocal({ mode: cfg.mode, deck: ch.deck, packs: ch.packs.slice(), rules: Object.assign({}, ch.rules), target: cfg.options.target, ghost: cfg.options.ghost === 'on' || (cfg.options.ghost === 'auto' && n === 3),
+      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: p.cpu }; }) });
+  }
+  function startLocal(cfg) {
+    var need = cfg.deck === 'cah' ? cahData() : a2aData();
+    need.then(function () {
+      if (cfg.deck === 'cah') return a2aData();
+    }).then(function () {
+      lastCfg = cfg; finished = false; undoStack = []; gen++; lastV = null; ui.sel = []; ui.jsel = -1; ui.round = 0;
+      G = newGame(cfg); screen = 'game';
+      pp.viewer = -1; pp.busy = false;
+      Kit.gameStart(); Kit.sfx('deal');
+      window.scrollTo(0, 0);
+      changed();
+    }, function () { Kit.toast('Couldn’t load the cards'); });
+  }
+
+  // ═══ Online ══════════════════════════════════════════════════════════════
+  // The host's device runs the game and sends each player only their own view: their hand, the table, and the
+  // played cards with no names on them until the judge has picked. Guests send back their moves.
+  var net = { mode: null, table: null, peer: null, roster: [], lobby: null, wait: null, nextPid: 1, view: null, myName: '', hostName: '', cfg: null, autoT: 0 };
+  function meName() { var m = lsGet(NETME, {}) || {}; return m.name || rawGet('my_name') || (Kit.knownNames && Kit.knownNames()[0]) || ''; }
+  function hostIdx() { if (!G) return 0; for (var i = 0; i < G.players.length; i++) if (G.players[i].pid === 0) return i; return 0; }
+  function closeLobby() { if (net.lobby) { net.lobby.close(); net.lobby = null; } }
+  function busy(text) { app.innerHTML = ''; app.appendChild(el('div', { class: 'ol' }, [el('div', { class: 'ol-row' }, [el('i', { class: 'ol-spin' }), el('div', { class: 'grow' }, [el('b', { text: text })])])])); }
+  function goLobby() {
+    leaveOnline(false); G = null; gen++; clearTimeout(botT); screen = 'lobby'; lastV = null;
+    window.scrollTo(0, 0);
+    net.lobby = Online.lobby(app, {
+      game: KEY, title: 'Play Online', intro: 'Everyone on their own phone or tablet. Up to 24 players.',
+      me: { name: meName() },
+      onName: function (n) { var m = lsGet(NETME, {}) || {}; m.name = n; lsSet(NETME, m); },
+      onHost: function (me) { hostTable(me.name); },
+      onJoin: function (code, room, me) { joinTable(code, me.name); },
+      onSolo: function () { showSetup(); }, solo: 'Back to setup',
+      sub: function (r) { return r.status === 'playing' ? (r.info || 'Playing') + ' · ' + (r.n || 1) + ' playing · join in' : (r.n || 1) + (r.n === 1 ? ' player' : ' players'); },
+      note: 'Each device connects straight to the host’s. If one can’t connect, try everyone on the same Wi-Fi.'
+    });
+  }
+  function hostTable(name) {
+    closeLobby(); busy('Opening your table…');
+    var need = net.cfg && net.cfg.deck === 'cah' ? cahData() : a2aData();
+    return need.then(function () { return a2aData(); }).then(function () { return Online.host({ game: KEY, name: name, max: 24 }); }).then(function (table) {
+      table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); goLobby(); });
+      if (!net.cfg) { var r = savedRules(); net.cfg = { deck: cahOn() ? 'cah' : 'a2a', packs: cahOn() ? savedCahPacks() : savedPacks(), rules: r, target: 'auto', ghost: 'auto' }; }
+      net.mode = 'host'; net.table = table; net.myName = name; net.nextPid = 1;
+      net.roster = [{ pid: 0, name: name, host: true }];
+      table.on('peer', function (peer) {
+        var r = { pid: net.nextPid++, name: uniqueName(peer.name), peer: peer };
+        peer._pid = r.pid; net.roster.push(r);
+        peer.send({ t: 'hi', you: r.pid, name: r.name }, true);
+        Kit.toast(r.name + ' joined'); Kit.sfx('pop');
+        if (G && G.phase !== 'over') { addPlayer(G, r.name, r.pid); changed(); }
+        sendRoster();
+      });
+      table.on('leave', function (peer) {
+        var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; if (!r) return;
+        net.roster = net.roster.filter(function (x) { return x !== r; });
+        Kit.toast(r.name + ' left');
+        if (G) { var i = idxOfPid(r.pid); if (i >= 0) { playerGone(G, i); changed(); } }
+        sendRoster();
+      });
+      table.on('msg', function (peer, m) {
+        if (m.t !== 'a' || !G) return;
+        var i = idxOfPid(peer._pid); if (i < 0) return;
+        if (m.a && m.a.t === 'next' && G.phase === 'result') { nextRound(G); changed(); return; }
+        if (apply(G, i, m.a)) changed();
+      });
+      showWait();
+    }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
+  }
+  function idxOfPid(pid) { if (!G) return -1; for (var i = 0; i < G.players.length; i++) if (G.players[i].pid === pid) return i; return -1; }
+  function uniqueName(n) { var base = String(n || 'Player').slice(0, 14), k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
+  function rosterMsg() { return { t: 'ro', ro: net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host }; }), playing: !!(G && G.phase !== 'over') }; }
+  function sendRoster() { if (net.table) net.table.broadcast(rosterMsg(), true); if (net.wait) net.wait.update(waitPlayers(net.roster, 0)); }
+  function waitPlayers(ro, mePid) { return ro.map(function (r, i) { return { name: r.name, host: !!r.host, me: r.pid === mePid, color: Kit.color(i) }; }); }
+  function showWait() {
+    screen = 'wait'; lastV = null; G = net.mode === 'host' ? null : G; finished = false;
+    window.scrollTo(0, 0);
+    if (net.mode === 'host') {
+      net.table.setStatus('open', '');
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 24, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
+        note: 'Three or more players. People can join while you play.' });
+    } else if (net.mode === 'guest') {
+      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 24, players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); } });
+    }
+  }
+  function hostStart() {
+    var c = net.cfg, n = net.roster.length, ghost = c.ghost === 'on' || (c.ghost === 'auto' && n === 3);
+    if (n < 3 && !(ghost && n === 2)) { Kit.toast('You need at least 3 players'); return Promise.resolve(); }
+    net.wait = null;
+    lastCfg = { mode: 'online', deck: c.deck, packs: c.packs, rules: c.rules, target: c.target, ghost: ghost, players: net.roster.map(function (r, i) { return { name: r.name, color: Kit.color(i), cpu: false, pid: r.pid }; }) };
+    G = newGame(lastCfg); screen = 'game'; finished = false; lastV = null; ui.round = 0;
+    Kit.gameStart(); Kit.sfx('deal');
+    net.table.setStatus('playing', 'Round 1');
+    sendRoster();
+    changed();
+    return Promise.resolve();
+  }
+  function netSync() {
+    if (net.mode !== 'host' || !G) return;
+    net.roster.forEach(function (r) { if (!r.peer) return; var i = idxOfPid(r.pid); if (i >= 0) r.peer.send({ t: 'v', v: viewFor(i) }, true); });
+    net.table.setStatus(G.phase === 'over' ? 'open' : 'playing', G.phase === 'over' ? '' : 'Round ' + G.round);
+    // online, the next round starts on its own after a while (anyone can tap Next sooner)
+    clearTimeout(net.autoT);
+    if (G.phase === 'result') { var my = G.round; net.autoT = setTimeout(function () { if (G && G.phase === 'result' && G.round === my) { nextRound(G); changed(); } }, 12000); }
+  }
+  function backToTable() {
+    if (net.mode === 'host' && net.table && !net.table.closed) { G = null; showWait(); net.table.broadcast({ t: 'wait' }, true); sendRoster(); return; }
+    leaveOnline(false); goLobby();
+  }
+  function joinTable(code, name) {
+    closeLobby(); busy('Connecting to the table…');
+    return Online.join(code, { game: KEY, name: name }).then(function (peer) {
+      net.mode = 'guest'; net.peer = peer; net.hostName = peer.name; net.myName = name; net.roster = []; net.myPid = null; net.view = null;
+      peer.on('msg', guestMsg);
+      peer.on('close', function (why) {
+        if (net.peer !== peer) return;
+        net.peer = null; net.mode = null;
+        Kit.toast((net.hostName || 'The host') + (why === 'host' || why === 'left' ? ' closed the table' : '’s table lost its connection'));
+        if (screen === 'game' && net.view && net.view.phase === 'over') return;
+        goLobby();
+      });
+      showWait();
+    }).catch(function (e) {
+      var msg = e && e.nat ? e.message : Online.errText(e);
+      if (e && e.nat) Kit.sheet({ title: 'Couldn’t connect', html: '<p>' + esc(msg) + '</p>' }); else Kit.toast(msg);
+      goLobby();
+    });
+  }
+  function guestMsg(m) {
+    if (m.t === 'hi') { net.myPid = m.you; if (m.name) net.myName = m.name; return; }
+    if (m.t === 'ro') { net.roster = m.ro; if (net.wait) net.wait.update(waitPlayers(m.ro, net.myPid)); return; }
+    if (m.t === 'wait') { net.view = null; lastV = null; finished = false; showWait(); return; }
+    if (m.t === 'v') {
+      var first = screen !== 'game';
+      if (first) { net.wait = null; screen = 'game'; lastV = null; finished = false; ui.round = 0; window.scrollTo(0, 0); Kit.gameStart(); }
+      net.view = m.v; render(m.v);
+      if (m.v.phase === 'over' && !finished) { finished = true; recordGame(m.v.done); showWin(m.v.done); }
+    }
+  }
+  function leaveOnline(ask) {
+    if (!net.mode) { closeLobby(); return; }
+    if (ask) {
+      Kit.confirm(screen === 'game' ? 'Leave the game?' : 'Leave the table?', { ok: 'Leave', body: net.mode === 'host' ? 'The game ends for everyone at your table.' : 'You can join again from the list.' }).then(function (ok) { if (ok) { leaveOnline(false); goLobby(); } });
+      return;
+    }
+    clearTimeout(net.autoT);
+    if (net.table) net.table.close();
+    if (net.peer) { var p = net.peer; net.peer = null; p.close('left'); }
+    net.mode = null; net.table = null; net.wait = null; net.roster = []; net.view = null;
+    if (G && G.mode === 'online') G = null;
+    closeLobby();
+  }
+  window.addEventListener('pagehide', function () { if (net.table) net.table.close(); if (net.peer) net.peer.close('left'); });
+
+  // ═══ Test hooks ══════════════════════════════════════════════════════════
+  window.__a2a = {
+    state: function () { return G; }, view: function () { return lastV; }, net: net, ui: ui, pp: pp,
+    data: function () { return { A: A, C: C }; },
+    act: function (i, a) { if (apply(G, i, a)) changed(); },
+    cpuPlay: function (i) { return cpuPlay(G, i); }, cpuJudge: function () { return cpuJudge(G); },
+    host: function (n) { return hostTable(n || 'Tim'); }, join: function (c, n) { return joinTable(c, n || 'Sam'); }, start: function () { return hostStart(); }, lobby: goLobby,
+    local: function (cfg) { startLocal(cfg); }, setup: showSetup
+  };
+
+  // ═══ Boot ════════════════════════════════════════════════════════════════
+  (function () {
+    var saved = lsGet(SAVE, null);
+    if (/[?&]online=1/.test(location.search)) { a2aData().then(goLobby, goLobby); return; }
+    if (saved && saved.G && saved.G.players && saved.G.phase && saved.G.phase !== 'over' && saved.G.mode !== 'online') {
+      var deck = saved.G.deck === 'cah' ? cahData() : Promise.resolve();
+      Promise.all([a2aData(), deck]).then(function () {
+        var g = saved.G, ok = true;
+        try { var aK = g.ansKind, pK = g.prKind, max = function (k) { return k === 'r' ? A.RED.length : k === 'g' ? A.GRN.length : k === 'w' ? C.WHT.length : C.BLK.length; };
+          g.players.forEach(function (p) { p.hand.forEach(function (c) { if (c >= max(aK)) ok = false; }); });
+          g.prompt.forEach(function (c) { if (c >= max(pK)) ok = false; });
+        } catch (e) { ok = false; }
+        if (!ok) { clearSave(); showSetup(); return; }
+        G = g; lastCfg = saved.cfg || null; screen = 'game'; pp.viewer = -1;
+        changed();
+      }, showSetup);
+      return;
+    }
+    showSetup();
+  })();
+})();
+</script>
+</body>
+</html>
