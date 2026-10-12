@@ -101,7 +101,7 @@ MINI_BLACKS = [(4, 6), (4, 6), (2, 4), (2, 4), (2, 4), (0, 2), (0, 2)]
 
 # Vocabulary across the bank: a word already used somewhere gets a small ranking bonus (every distinct entry needs
 # a hand-written clue), and a word used more than FREE_USES times in the same day's bank loses PEN per extra use.
-PEN, FREE_USES, SEEN_BONUS = 0.05, 4, 1.0
+PEN, FREE_USES, SEEN_BONUS = 0.03, 6, 0.5
 
 def slots_of(grid):
     n = len(grid); slots = []
@@ -258,8 +258,10 @@ def filler_exe():
     src = os.path.join(ROOT, 'scripts', 'xwfill.c')
     exe = os.path.join(tempfile.gettempdir(), 'xwfill-' + hashlib.sha1(open(src, 'rb').read()).hexdigest()[:12])
     if not os.path.exists(exe):
-        subprocess.run(['gcc', '-O2', '-o', exe + '.%d' % os.getpid(), src, '-lm'], check=True)
-        os.replace(exe + '.%d' % os.getpid(), exe)
+        tmp = exe + '.%d' % os.getpid()
+        if subprocess.run(['gcc', '-O2', '-march=native', '-o', tmp, src, '-lm']).returncode:
+            subprocess.run(['gcc', '-O2', '-o', tmp, src, '-lm'], check=True)
+        os.replace(tmp, exe)
     return exe
 
 class Filler:

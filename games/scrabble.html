@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scrabble</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<style>
+/* ── Materials ──────────────────────────────────────────────────────────── */
+:root{
+  --tile-font:"Futura","Century Gothic","Avenir Next","Trebuchet MS",var(--font);
+  /* maple grain: long fibres, drawn once and shared by every tile (each tile shows a different patch) */
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.42' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .48 0 0 0 0 .3 0 0 0 0 .12 0 0 0 .7 -.18'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+  --paper:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .25 0 0 0 0 .15 0 0 0 .16 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23p)'/%3E%3C/svg%3E");
+}
+.sc{--bs:360px;--cs:22px;--gap:1px;--rt:46px;--rim:10px;position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:2px 8px calc(var(--safe-b) + 10px);
+  -webkit-user-select:none;user-select:none;}
+.sc *{-webkit-tap-highlight-color:transparent;}
+
+/* Players along the top: name, score, whose turn */
+.sc-top{display:flex;align-items:stretch;gap:6px;width:100%;max-width:calc(var(--bs) + 2 * var(--rim));}
+.sc-pls{flex:1;min-width:0;display:flex;gap:6px;}
+.pl{--c:var(--p1);position:relative;flex:1 1 0;min-width:0;display:flex;align-items:center;gap:7px;padding:5px 8px 5px 5px;border-radius:14px;background:var(--w06);
+  border:2px solid transparent;transition:border-color .25s, background .25s, transform .3s var(--spring);}
+.pl.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);transform:translateY(-1px);}
+.pl .avatar{width:30px;height:30px;font-size:.85rem;}
+.pl .who{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.1;}
+.pl .nm{font-weight:800;font-size:.8rem;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pl.on .nm{color:var(--text);}
+.pl .pt{font-family:var(--display);font-size:1.3rem;font-variant-numeric:tabular-nums;line-height:1.05;}
+.pl .think{position:absolute;right:6px;top:4px;display:none;color:var(--c);}
+.pl.busy .think{display:block;}
+.think i{display:inline-block;width:4px;height:4px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+.pl.bump .pt{animation:bump .5s var(--spring);}
+@keyframes bump{40%{transform:scale(1.25);color:var(--yellow);}}
+.pls-3 .pl .avatar,.pls-4 .pl .avatar{display:none;}
+.pls-4 .pl{padding:5px 7px;}
+/* the tile bag: a drawstring cloth bag with the count on it */
+.sc-bag{flex:none;position:relative;width:54px;border:0;padding:0;border-radius:14px;background:var(--w06);color:var(--text);display:grid;place-items:center;cursor:pointer;transition:transform .15s var(--spring);}
+.sc-bag:active{transform:scale(.92);}
+.sc-bag svg{width:40px;height:40px;}
+.sc-bag b{position:absolute;left:0;right:0;top:50%;margin-top:-1px;text-align:center;font-family:var(--display);font-size:.95rem;color:#3b2410;}
+.sc-bag.shake svg{animation:bagshake .5s;}
+@keyframes bagshake{20%{transform:rotate(-9deg)}45%{transform:rotate(7deg)}70%{transform:rotate(-4deg)}}
+
+/* ── The board: a wooden frame around a printed board ─────────────────────── */
+.sc-frame{position:relative;padding:var(--rim);border-radius:calc(var(--rim) + 6px);
+  background:var(--grain) 0 0/220px 220px,
+    linear-gradient(180deg,rgba(255,255,255,.12),transparent 30%,rgba(0,0,0,.18)),
+    linear-gradient(135deg,var(--wood-a,#8f5a2e),var(--wood-b,#5e3818));
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.25),inset 0 -3px 0 rgba(0,0,0,.35),inset 0 0 0 1px rgba(0,0,0,.2),0 18px 36px -8px rgba(0,0,0,.6),0 4px 10px rgba(0,0,0,.3);}
+.sc-vp{position:relative;width:var(--bs);height:var(--bs);overflow:hidden;border-radius:4px;touch-action:none;
+  box-shadow:0 0 0 2px rgba(30,16,4,.85),0 2px 6px rgba(0,0,0,.5);background:#1d4c40;}
+.sc-bd{position:absolute;left:0;top:0;width:var(--bs);height:var(--bs);transform-origin:0 0;display:grid;
+  grid-template-columns:repeat(15,var(--cs));grid-template-rows:repeat(15,var(--cs));gap:var(--gap);padding:var(--gap);
+  background:linear-gradient(135deg,#21574a,#173f35);}
+.sc-bd.zan{transition:transform .32s var(--ease);}
+.sq{position:relative;background:var(--paper) 0 0/120px 120px,#ece3c7;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.06),inset 0 calc(var(--cs) * .05) calc(var(--cs) * .1) rgba(0,0,0,.08);}
+.sq.TW{background:var(--paper) 0 0/120px 120px,#d6493b;}
+.sq.DW{background:var(--paper) 0 0/120px 120px,#f2aca1;}
+.sq.TL{background:var(--paper) 0 0/120px 120px,#2b80c2;}
+.sq.DL{background:var(--paper) 0 0/120px 120px,#a4d2ec;}
+.sq.ST{background:var(--paper) 0 0/120px 120px,#f2aca1;}
+.pm{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-family:var(--font);font-weight:900;letter-spacing:.02em;line-height:1;pointer-events:none;}
+.pm .s{font-size:calc(var(--cs) * .36);}
+.pm .l{display:none;font-size:calc(var(--cs) * .17);line-height:1.12;letter-spacing:.04em;}
+.sc-bd.big .pm .s{display:none;}
+.sc-bd.big .pm .l{display:block;}
+.sq.TW .pm,.sq.TL .pm{color:rgba(255,255,255,.92);}
+.sq.DW .pm{color:#86302a;}
+.sq.DL .pm{color:#1e5378;}
+.sq.ST .pm svg{width:62%;height:62%;color:#8a2f28;}
+/* the typing cursor: a square outline with an arrow for the direction */
+.sq.cur::after{content:"";position:absolute;inset:-1px;border-radius:2px;box-shadow:inset 0 0 0 2.5px #ffb21a,0 0 10px rgba(255,178,26,.6);z-index:3;pointer-events:none;animation:curp 1.2s ease-in-out infinite;}
+@keyframes curp{50%{box-shadow:inset 0 0 0 2.5px rgba(255,178,26,.55),0 0 4px rgba(255,178,26,.3);}}
+.sq .arr{position:absolute;inset:0;display:grid;place-items:center;z-index:4;color:#e08a00;pointer-events:none;}
+.sq .arr svg{width:70%;height:70%;stroke-width:3.2;filter:drop-shadow(0 1px 0 rgba(255,255,255,.7));}
+.sq.hov::after{content:"";position:absolute;inset:0;background:rgba(255,200,40,.45);box-shadow:inset 0 0 0 2px #ffb21a;z-index:3;pointer-events:none;}
+
+/* ── Tiles: maple with a printed letter and its points; thickness from the edge shadow ── */
+.tl{--ts:var(--cs);position:relative;width:var(--ts);height:var(--ts);border-radius:calc(var(--ts) * .13);color:#2a1a0c;
+  background:var(--grain) var(--gx,0) var(--gy,0)/180px 180px,
+    radial-gradient(130% 90% at 25% 0%,rgba(255,255,255,.45),transparent 55%),
+    linear-gradient(165deg,#f8e6bb,#efd39c 52%,#e2bf80);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75),inset 0 calc(var(--ts) * -.06) 0 rgba(150,100,40,.28),0 calc(var(--ts) * .05) 0 #b78c4f,0 calc(var(--ts) * .08) calc(var(--ts) * .1) rgba(0,0,0,.45);
+  font-family:var(--tile-font);display:block;z-index:1;cursor:grab;touch-action:none;}
+.tl b{position:absolute;left:0;right:0;top:50%;transform:translateY(-54%);text-align:center;font-weight:800;font-size:calc(var(--ts) * .62);line-height:1;
+  text-shadow:0 1px 0 rgba(255,255,255,.45);}
+.tl i{position:absolute;right:9%;bottom:5%;font-style:normal;font-weight:800;font-size:calc(var(--ts) * .25);line-height:1;}
+.tl.bl b{color:#9a3d1e;opacity:.92;}
+.tl.bl.empty b{display:none;}
+.sq > .tl{position:absolute;left:0;top:0;width:100%;height:100%;cursor:default;}
+.sq > .tl.pend{cursor:grab;box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 0 0 calc(var(--cs) * .08) #ffc83d,0 calc(var(--cs) * .1) calc(var(--cs) * .16) rgba(0,0,0,.5);z-index:2;}
+.sq > .tl.last{background:var(--grain) var(--gx,0) var(--gy,0)/180px 180px,radial-gradient(130% 90% at 25% 0%,rgba(255,255,255,.5),transparent 55%),linear-gradient(165deg,#fde9a8,#f6d27a 52%,#ecbd5c);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75),inset 0 calc(var(--ts) * -.06) 0 rgba(150,100,40,.28),0 0 0 calc(var(--cs) * .05) rgba(255,180,40,.9),0 calc(var(--ts) * .08) calc(var(--ts) * .1) rgba(0,0,0,.45);}
+.sq > .tl.wl{animation:wl 1s ease-out;z-index:3;}
+@keyframes wl{0%{box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 0 0 0 rgba(255,214,90,.0);}25%{transform:translateY(-8%) scale(1.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 0 0 calc(var(--cs) * .1) #ffd65a,0 0 calc(var(--cs) * .8) rgba(255,214,90,.9);}100%{transform:none;}}
+.sq > .tl.drop{animation:drop .42s cubic-bezier(.3,1.5,.5,1) both;}
+@keyframes drop{0%{transform:translateY(-70%) scale(1.45);opacity:0;box-shadow:0 calc(var(--cs) * .6) calc(var(--cs) * .5) rgba(0,0,0,.3);}55%{opacity:1;}100%{transform:none;opacity:1;}}
+.sq > .tl.hide{opacity:0;}
+.sq > .tl.snap{animation:snap .28s ease-out;}
+@keyframes snap{40%{transform:scale(.9);}}
+.tl.lifted{opacity:.25;}
+.tl.ghost{position:fixed;z-index:300;pointer-events:none;cursor:grabbing;transition:width .12s,height .12s;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 calc(var(--ts) * .06) 0 #b78c4f,0 calc(var(--ts) * .45) calc(var(--ts) * .45) rgba(0,0,0,.45);transform:rotate(-4deg) scale(1.08);}
+.tl.back{background:var(--grain) var(--gx,0) var(--gy,0)/180px 180px,linear-gradient(165deg,#e9cf96,#d9b574);}
+.tl.back::after{content:"";position:absolute;inset:22%;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(120,80,30,.18);}
+
+/* the pending score bubble on the board */
+.sc-fx{position:absolute;inset:0;pointer-events:none;z-index:6;}
+.bub{position:absolute;min-width:calc(var(--cs) * .95);height:calc(var(--cs) * .95);padding:0 calc(var(--cs) * .18);border-radius:999px;display:grid;place-items:center;
+  font:400 calc(var(--cs) * .55)/1 var(--display);color:#fff;background:#2e9d58;box-shadow:0 2px 0 rgba(0,0,0,.3),0 0 0 2px #fff;transform:translate(-30%,-55%);animation:pop .35s var(--spring);}
+.bub.bad{background:#8b8478;}
+.flt{position:absolute;transform:translate(-50%,-50%);font:400 calc(var(--cs) * 1.05)/1 var(--display);color:#ffd447;white-space:nowrap;
+  text-shadow:0 2px 0 #6b3c06,0 0 12px rgba(0,0,0,.55),0 0 2px #000;animation:flt 1.3s var(--ease) forwards;}
+.flt small{display:block;text-align:center;font:800 calc(var(--cs) * .42)/1.2 var(--font);letter-spacing:.06em;color:#fff;}
+@keyframes flt{0%{opacity:0;transform:translate(-50%,-10%) scale(.5);}18%{opacity:1;transform:translate(-50%,-60%) scale(1.15);}70%{opacity:1;transform:translate(-50%,-95%) scale(1);}100%{opacity:0;transform:translate(-50%,-140%) scale(.95);}}
+
+.sc-msgrow{display:flex;align-items:center;gap:6px;}
+.sc-msgrow .sc-msg{flex:1;min-width:0;}
+.sc-zoom{flex:none;width:42px;height:42px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--w08);color:var(--text);transition:transform .15s var(--spring),opacity .2s;}
+.sc-zoom:active{transform:scale(.88);}
+.sc-zoom .ico{width:20px;height:20px;}
+.sc-frame.shake{animation:shake .4s;}
+
+/* ── Rack, messages, buttons ──────────────────────────────────────────── */
+.sc-side{display:flex;flex-direction:column;gap:8px;width:100%;max-width:calc(var(--bs) + 2 * var(--rim));flex:1;}
+.sc:not(.wide) .sc-rackwrap{margin-top:auto;}
+.sc.wide .sc-log{order:9;}
+.sc-msg{min-height:38px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;text-align:center;font-weight:800;font-size:.95rem;color:var(--text-2);padding:0 4px;cursor:pointer;}
+.sc-msg .turn{margin:0;min-height:0;font-size:1rem;}
+.sc-msg .ww{display:inline-flex;align-items:baseline;gap:4px;padding:3px 9px;border-radius:999px;background:var(--w08);color:var(--text);font-weight:900;letter-spacing:.03em;}
+.sc-msg .ww small{font-weight:800;color:var(--text-3);font-size:.78rem;}
+.sc-msg .ww.bad{background:color-mix(in srgb,var(--red) 18%,transparent);color:var(--red);text-decoration:line-through;text-decoration-thickness:2px;}
+.sc-msg .tot{font-family:var(--display);font-size:1.25rem;color:var(--text);}
+.sc-msg .err{color:var(--red);}
+.sc-msg .bingo{font-family:var(--display);color:var(--yellow);font-size:1.05rem;letter-spacing:.03em;}
+.sc-msg .last b{color:var(--text);}
+.sc-rackwrap{position:relative;padding:0 2px;}
+.sc-rack{position:relative;display:flex;justify-content:center;align-items:flex-end;gap:calc(var(--rt) * .1);min-height:calc(var(--rt) + 22px);padding:8px 10px 14px;border-radius:12px 12px 8px 8px;
+  background:var(--grain) 30px 10px/220px 220px,linear-gradient(180deg,var(--wood-a,#9a6233),var(--wood-b,#64391a));
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.22),inset 0 -2px 0 rgba(0,0,0,.25),0 10px 20px -6px rgba(0,0,0,.55);}
+/* the rack's front lip */
+.sc-rack::after{content:"";position:absolute;left:-2px;right:-2px;bottom:-6px;height:16px;border-radius:4px 4px 10px 10px;pointer-events:none;
+  background:var(--grain) 0 0/220px 220px,linear-gradient(180deg,#a86c3a,#5c3417);box-shadow:inset 0 2px 0 rgba(255,255,255,.28),0 6px 10px rgba(0,0,0,.4);}
+.sc-rack .tl{--ts:var(--rt);flex:none;transition:transform .2s var(--spring),box-shadow .2s;}
+.sc-rack .tl.sel{transform:translateY(-22%);box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 0 0 3px #ffc83d,0 calc(var(--ts) * .25) calc(var(--ts) * .25) rgba(0,0,0,.45);}
+.sc-rack .tl.gap{margin-left:calc(var(--rt) * .55);}
+.sc-rack .tl.new{animation:deal .45s var(--spring) both;}
+@keyframes deal{from{transform:translate(-60px,-30px) rotate(-20deg) scale(.6);opacity:0;}}
+.sc-rack .tl.swp{transform:translateY(-22%);box-shadow:0 0 0 3px #ff8a3d,0 8px 14px rgba(0,0,0,.4);}
+.sc-rack .none{align-self:center;color:rgba(255,240,215,.75);font-weight:800;font-size:.9rem;padding:calc(var(--rt) * .3) 0;}
+.sc-acts{display:flex;gap:8px;}
+.sc-acts .btn{flex:1;min-width:0;padding:0 6px;min-height:54px;font-size:1.05rem;gap:6px;}
+.sc-acts .btn .ico{width:20px;height:20px;}
+.sc-acts .btn.sm{flex-direction:column;gap:2px;font-size:.72rem;font-weight:800;letter-spacing:.02em;}
+.sc-acts .btn.play{flex:1.9;font-size:1.15rem;}
+.sc-acts .btn span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sc-log{display:flex;flex-direction:column;flex:1 1 0;min-height:0;overflow:hidden;-webkit-mask-image:linear-gradient(180deg,#000 70%,transparent);mask-image:linear-gradient(180deg,#000 70%,transparent);}
+.sc-log h4{display:none;}
+.sc:not(.wide) .sc-log .lg li{padding:4px 10px;font-size:.84rem;}
+.sc:not(.wide) .sc-log .lg li:first-child{background:var(--w08);}
+.lg li.fresh{animation:rise .45s var(--ease);}
+.sq.ST.go{animation:stargo 1.6s ease-in-out infinite;z-index:1;}
+@keyframes stargo{50%{box-shadow:0 0 0 calc(var(--cs) * .08) #ffd65a,0 0 calc(var(--cs) * .7) rgba(255,214,90,.85);}}
+.sq.can::before{content:"";position:absolute;inset:18%;border-radius:50%;background:radial-gradient(circle,rgba(255,200,40,.55),rgba(255,200,40,0) 70%);pointer-events:none;animation:canp 1.2s ease-in-out infinite;}
+@keyframes canp{50%{opacity:.35;}}
+.lg{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.lg li{--c:var(--p1);display:flex;align-items:baseline;gap:8px;padding:6px 10px;border-radius:10px;background:var(--w04);font-size:.9rem;color:var(--text-2);font-weight:700;}
+.lg li::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--c);transform:translateY(-1px);}
+.lg li b{color:var(--text);font-weight:900;letter-spacing:.02em;}
+.lg li .n{margin-left:auto;font-family:var(--display);font-size:1.05rem;color:var(--text);font-weight:400;}
+.lg li .bg{font-size:.7rem;font-weight:900;letter-spacing:.08em;padding:1px 6px;border-radius:6px;background:var(--yellow-fill);color:#3a2600;}
+.lg li.sys::before{background:var(--text-3);}
+
+/* Wide screens (iPad sideways, computers): the board on the left, everything else beside it */
+.sc.wide{display:grid;grid-template-columns:auto minmax(300px,360px);grid-template-rows:auto 1fr;column-gap:22px;row-gap:10px;justify-content:center;align-items:start;padding-top:6px;}
+.sc.wide .sc-frame{grid-column:1;grid-row:1 / 3;}
+.sc.wide .sc-top{grid-column:2;grid-row:1;max-width:none;flex-direction:column;}
+.sc.wide .sc-pls{flex-direction:column;}
+.sc.wide .pl{flex:none;padding:8px 12px 8px 8px;}
+.sc.wide .pl .avatar{display:inline-grid;width:36px;height:36px;}
+.sc.wide .pl .nm{font-size:.92rem;}
+.sc.wide .pl .pt{font-size:1.5rem;}
+.sc.wide .sc-bag{width:auto;height:52px;display:flex;align-items:center;justify-content:flex-start;gap:10px;padding:0 12px;}
+.sc.wide .sc-bag b{position:static;margin:0;font-family:var(--font);font-weight:800;font-size:.92rem;color:var(--text-2);text-align:left;}
+.sc.wide .sc-side{grid-column:2;grid-row:2;max-width:none;height:100%;min-height:0;}
+.sc.wide .sc-log{flex:1;min-height:80px;overflow:auto;padding:2px;border-radius:12px;-webkit-mask-image:none;mask-image:none;}
+.sc.wide .sc-log h4{display:block;margin:2px 4px 6px;font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+
+/* Sheets: blank letter picker, unseen tiles, swap, first draw */
+.pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:8px;margin-top:6px;}
+.pick button{border:0;padding:0;background:none;display:grid;place-items:center;cursor:pointer;}
+.pick .tl{--ts:46px;cursor:pointer;}
+.pick button:active .tl{transform:scale(.92);}
+.unseen{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:10px 8px;margin-top:6px;}
+.unseen .u{display:flex;align-items:center;gap:4px;}
+.unseen .u .tl{--ts:34px;cursor:default;}
+.unseen .u b{font-weight:900;color:var(--text-2);font-size:.9rem;}
+.unseen .u.zero{opacity:.3;}
+.swap{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:10px 0 4px;padding:14px 10px 18px;border-radius:12px;background:linear-gradient(180deg,#9a6233,#64391a);}
+.swap .tl{--ts:46px;cursor:pointer;transition:transform .18s var(--spring),box-shadow .18s;}
+.swap .tl.on{transform:translateY(-14%);box-shadow:0 0 0 3px #ff8a3d,0 10px 14px rgba(0,0,0,.4);}
+.drawf{display:flex;flex-direction:column;gap:10px;margin-top:6px;}
+.drawf .r{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:14px;background:var(--w05);}
+.drawf .r .nm{flex:1;font-weight:800;}
+.drawf .r .tl{--ts:44px;cursor:default;}
+.drawf .r .tl.fl{animation:flipin .5s ease-out both;}
+@keyframes flipin{0%{transform:rotateY(90deg);}100%{transform:none;}}
+.drawf .r.win{background:color-mix(in srgb,var(--yellow-fill) 22%,transparent);box-shadow:inset 0 0 0 2px var(--yellow-fill);}
+.drawf .r .tag{font-weight:900;color:var(--yellow);font-size:.85rem;}
+.drawf p{color:var(--text-2);font-weight:700;font-size:.9rem;}
+.bestb{display:flex;flex-direction:column;align-items:center;gap:6px;margin:2px 0 12px;}
+.bestb small{font-weight:800;color:var(--text-3);font-size:.8rem;letter-spacing:.02em;}
+.bestw{display:flex;justify-content:center;gap:3px;}
+.bestw .tl{--ts:min(34px,calc((min(100vw,380px) - 110px) / var(--n)));cursor:default;animation:drop2 .45s cubic-bezier(.3,1.5,.5,1) both;}
+@keyframes drop2{from{transform:translateY(-40px) scale(1.3);opacity:0;}}
+.sc-load{display:flex;flex-direction:column;align-items:center;gap:14px;padding:60px 0;color:var(--text-2);font-weight:800;}
+.sc-load .tl{--ts:52px;animation:bob 1s ease-in-out infinite;}
+@keyframes bob{50%{transform:translateY(-8px) rotate(-6deg);}}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'scrabble_state', KEY = 'scrabble';
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Engine (pure; also runs in a Web Worker, so it uses nothing outside itself)
+  // Board: 225 strings, index row*15+col: '' empty, 'A'-'Z' a tile, 'a'-'z' a blank played as that letter.
+  // A tile on the rack: 'A'-'Z' or '?' (blank). A placement: {i: square, ch: letter as it lands}.
+  // Words: a trie in typed arrays (first child / next sibling), built from the packed list.
+  // ═════════════════════════════════════════════════════════════════════════
+  function ScrabbleEngine() {
+    var N = 15, NN = 225, CENTER = 112, ALL = (1 << 26) - 1;
+    var ROWS = ['T..d...T...d..T', '.D...t...t...D.', '..D...d.d...D..', 'd..D...d...D..d', '....D.....D....', '.t...t...t...t.', '..d...d.d...d..', 'T..d...*...d..T'];
+    var LAYOUT = [];
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) LAYOUT.push(ROWS[r <= 7 ? r : 14 - r].charAt(c));
+    var LM = [], WM = [];   // letter and word multiplier per square
+    LAYOUT.forEach(function (p, i) { LM[i] = p === 'd' ? 2 : p === 't' ? 3 : 1; WM[i] = p === 'D' || p === '*' ? 2 : p === 'T' ? 3 : 1; });
+    var VALS = [1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 5, 1, 3, 1, 1, 3, 10, 1, 1, 1, 1, 4, 4, 8, 4, 10];
+    var COUNTS = [9, 2, 2, 4, 12, 2, 3, 2, 9, 1, 1, 4, 2, 6, 8, 2, 1, 6, 4, 6, 4, 2, 2, 1, 2, 1];
+    var VAL = { '?': 0 }, DIST = { '?': 2 };
+    for (var k = 0; k < 26; k++) { VAL[String.fromCharCode(65 + k)] = VALS[k]; DIST[String.fromCharCode(65 + k)] = COUNTS[k]; }
+    function idx(ch) { return (ch.charCodeAt(0) & 31) - 1; }
+    function isBlankCh(ch) { return ch >= 'a' && ch <= 'z'; }
+    function value(ch) { return !ch || ch === '?' || isBlankCh(ch) ? 0 : VALS[idx(ch)]; }
+
+    // ── Trie ──
+    var tch = null, tterm = null, tfirst = null, tnext = null, loaded = false, nWords = 0;
+    function load(packed) {
+      if (loaded) return true;
+      var cap = packed.length + 2;
+      tch = new Uint8Array(cap); tterm = new Uint8Array(cap); tfirst = new Int32Array(cap).fill(-1); tnext = new Int32Array(cap).fill(-1);
+      var tlast = new Int32Array(cap).fill(-1), n = 1, path = [0], i = 0, L = packed.length;
+      while (i < L) {
+        var cc = packed.charCodeAt(i++), share = cc < 58 ? cc - 48 : cc - 55, d = share;
+        while (i < L) {
+          var ch = packed.charCodeAt(i); if (ch < 97) break;
+          var parent = path[d], node = n++;
+          tch[node] = ch - 97;
+          if (tlast[parent] < 0) tfirst[parent] = node; else tnext[tlast[parent]] = node;
+          tlast[parent] = node;
+          path[++d] = node; i++;
+        }
+        tterm[path[d]] = 1; nWords++;
+      }
+      loaded = true;
+      return true;
+    }
+    function child(n, c) { for (var k = tfirst[n]; k >= 0; k = tnext[k]) { var x = tch[k]; if (x === c) return k; if (x > c) return -1; } return -1; }
+    function has(w) {
+      if (!loaded || !w || w.length < 2) return false;
+      var n = 0;
+      for (var i = 0; i < w.length; i++) { n = child(n, idx(w.charAt(i))); if (n < 0) return false; }
+      return !!tterm[n];
+    }
+
+    // ── Checking and scoring a play ──
+    // returns {ok, err, words:[{w, s, ok, sq:[squares]}], score, bingo, dir, main}
+    function evaluate(board, tiles) {
+      var res = { ok: false, err: '', words: [], score: 0, bingo: false };
+      if (!tiles || !tiles.length) { res.err = 'Place some tiles'; return res; }
+      var at = {}, rows = {}, cols = {};
+      for (var t = 0; t < tiles.length; t++) {
+        var p = tiles[t];
+        if (p.i < 0 || p.i >= NN || board[p.i] || at[p.i] != null) { res.err = 'That square is taken'; return res; }
+        at[p.i] = p.ch; rows[Math.floor(p.i / N)] = 1; cols[p.i % N] = 1;
+      }
+      var nr = Object.keys(rows).length, nc = Object.keys(cols).length;
+      if (nr > 1 && nc > 1) { res.err = 'Tiles must be in one row or one column'; return res; }
+      var empty = true; for (var e = 0; e < NN; e++) if (board[e]) { empty = false; break; }
+      function get(i) { return at[i] != null ? at[i] : board[i]; }
+      function filledAt(r, c) { return r >= 0 && r < N && c >= 0 && c < N && !!get(r * N + c); }
+      var dir;
+      if (tiles.length > 1) dir = nr === 1 ? 'H' : 'V';
+      else { var r0 = Math.floor(tiles[0].i / N), c0 = tiles[0].i % N; dir = filledAt(r0, c0 - 1) || filledAt(r0, c0 + 1) ? 'H' : filledAt(r0 - 1, c0) || filledAt(r0 + 1, c0) ? 'V' : 'H'; }
+      res.dir = dir;
+      var step = dir === 'H' ? 1 : N;
+      var sorted = tiles.map(function (x) { return x.i; }).sort(function (a, b) { return a - b; });
+      for (var q = sorted[0]; q <= sorted[sorted.length - 1]; q += step) if (!get(q)) { res.err = 'Tiles must be in one line with no gaps'; return res; }
+      if (empty) {
+        if (at[CENTER] == null) { res.err = 'The first word must cover the center star'; return res; }
+        if (tiles.length < 2) { res.err = 'The first word needs at least two letters'; return res; }
+      }
+      // a word through square i in direction (dr, dc)
+      function wordAt(i, dr, dc) {
+        var r = Math.floor(i / N), c = i % N;
+        while (filledAt(r - dr, c - dc)) { r -= dr; c -= dc; }
+        var sq = [];
+        while (filledAt(r, c)) { sq.push(r * N + c); r += dr; c += dc; }
+        return sq;
+      }
+      function scoreWord(sq) {
+        var sum = 0, wm = 1, w = '';
+        sq.forEach(function (i) {
+          var ch = get(i), v = value(ch);
+          w += ch.toUpperCase();
+          if (at[i] != null) { sum += v * LM[i]; wm *= WM[i]; } else sum += v;
+        });
+        return { w: w, s: sum * wm, sq: sq };
+      }
+      var words = [], touches = false;
+      var main = wordAt(tiles[0].i, dir === 'H' ? 0 : 1, dir === 'H' ? 1 : 0);
+      if (main.length >= 2) { words.push(scoreWord(main)); res.main = 0; if (main.some(function (i) { return at[i] == null; })) touches = true; }
+      tiles.forEach(function (p) {
+        var cw = wordAt(p.i, dir === 'H' ? 1 : 0, dir === 'H' ? 0 : 1);
+        if (cw.length >= 2) { words.push(scoreWord(cw)); touches = true; }
+      });
+      if (!words.length) { res.err = 'A word needs at least two letters'; return res; }
+      if (!empty && !touches) { res.err = 'New tiles must join the tiles already on the board'; return res; }
+      var bad = [];
+      words.forEach(function (w) { w.ok = has(w.w); if (!w.ok) bad.push(w.w); res.score += w.s; });
+      if (tiles.length === 7) { res.bingo = true; res.score += 50; }
+      res.words = words;
+      if (bad.length) { res.err = (bad.length > 1 ? 'Not words: ' : 'Not a word: ') + bad.join(', '); return res; }
+      res.ok = true;
+      return res;
+    }
+
+    // ── Move generator (anchors and cross-checks, after Appel & Jacobson) ──
+    // cb(tiles [{i, ch}], score) for every legal play of the rack. opts.oneDir: only across (first move)
+    function generate(board, rack, cb, opts) {
+      opts = opts || {};
+      var cnt = new Int32Array(27);
+      rack.forEach(function (l) { if (l === '?') cnt[26]++; else cnt[idx(l)]++; });
+      var empty = true; for (var e = 0; e < NN; e++) if (board[e]) { empty = false; break; }
+      var horiz, line, cross = new Int32Array(NN), crossSc = new Int32Array(NN), anchor = new Uint8Array(NN);
+      var left = [], leftBlank = [], right = [], rightBlank = [], rightK = [], wordStart = 0, anchorK = 0, nPlaced = 0;
+      function pos(k) { return horiz ? line * N + k : k * N + line; }
+      function filled(i) { return !!board[i]; }
+      function prepare() {
+        var stepX = horiz ? N : 1;   // the cross direction
+        for (var i = 0; i < NN; i++) {
+          anchor[i] = 0; cross[i] = ALL; crossSc[i] = -1;
+          if (board[i]) continue;
+          var r = Math.floor(i / N), c = i % N;
+          var nb = (r > 0 && board[i - N]) || (r < 14 && board[i + N]) || (c > 0 && board[i - 1]) || (c < 14 && board[i + 1]);
+          if (nb) anchor[i] = 1;
+          // tiles above/below (or left/right in the down pass)
+          var up = '', dn = '', j, sc = 0, has1 = false;
+          var cr = horiz ? r : c, base = horiz ? c : r;
+          function at2(k) { return horiz ? k * N + base : base * N + k; }
+          for (j = cr - 1; j >= 0 && board[at2(j)]; j--) { up = board[at2(j)] + up; sc += value(board[at2(j)]); has1 = true; }
+          for (j = cr + 1; j < N && board[at2(j)]; j++) { dn += board[at2(j)]; sc += value(board[at2(j)]); has1 = true; }
+          if (!has1) continue;
+          var n = 0, ok = true;
+          for (j = 0; j < up.length; j++) { n = child(n, idx(up.charAt(j))); if (n < 0) { ok = false; break; } }
+          var m = 0;
+          if (ok) for (var kk = tfirst[n]; kk >= 0; kk = tnext[kk]) {
+            var x = kk, good = true;
+            for (j = 0; j < dn.length; j++) { x = child(x, idx(dn.charAt(j))); if (x < 0) { good = false; break; } }
+            if (good && tterm[x]) m |= 1 << tch[kk];
+          }
+          cross[i] = m; crossSc[i] = sc;
+          void stepX;
+        }
+        if (empty) anchor[CENTER] = 1;
+      }
+      function record(endK) {
+        var start = wordStart, len = endK - start;
+        if (len < 2 || nPlaced < 1) return;
+        var main = 0, wm = 1, xs = 0, tiles = [], li = 0, ri = 0, L = left.length;
+        for (var k = start; k < endK; k++) {
+          var sq = pos(k), ch, bl;
+          if (k < anchorK && k >= anchorK - L) { ch = left[li]; bl = leftBlank[li]; li++; }
+          else if (k >= anchorK && ri < right.length && rightK[ri] === k) { ch = right[ri]; bl = rightBlank[ri]; ri++; }
+          else { main += value(board[sq]); continue; }
+          var lv = bl ? 0 : VALS[ch], lm = LM[sq], w = WM[sq];
+          main += lv * lm; wm *= w;
+          if (crossSc[sq] >= 0) xs += (crossSc[sq] + lv * lm) * w;
+          tiles.push({ i: sq, ch: String.fromCharCode((bl ? 97 : 65) + ch) });
+        }
+        cb(tiles, main * wm + xs + (tiles.length === 7 ? 50 : 0));
+      }
+      function extendRight(node, k) {
+        if (k >= N || !board[pos(k)]) {
+          if (k > anchorK && tterm[node]) record(k);
+          if (k >= N) return;
+          var sq = pos(k), mask = cross[sq];
+          if (!mask) return;
+          for (var ch = tfirst[node]; ch >= 0; ch = tnext[ch]) {
+            var c = tch[ch]; if (!(mask & (1 << c))) continue;
+            if (cnt[c]) { cnt[c]--; right.push(c); rightBlank.push(0); rightK.push(k); nPlaced++; extendRight(ch, k + 1); nPlaced--; right.pop(); rightBlank.pop(); rightK.pop(); cnt[c]++; }
+            if (cnt[26]) { cnt[26]--; right.push(c); rightBlank.push(1); rightK.push(k); nPlaced++; extendRight(ch, k + 1); nPlaced--; right.pop(); rightBlank.pop(); rightK.pop(); cnt[26]++; }
+          }
+        } else {
+          var nx = child(node, idx(board[pos(k)]));
+          if (nx >= 0) extendRight(nx, k + 1);
+        }
+      }
+      function leftPart(node, limit) {
+        wordStart = anchorK - left.length;
+        extendRight(node, anchorK);
+        if (limit <= 0) return;
+        for (var ch = tfirst[node]; ch >= 0; ch = tnext[ch]) {
+          var c = tch[ch];
+          if (cnt[c]) { cnt[c]--; left.push(c); leftBlank.push(0); nPlaced++; leftPart(ch, limit - 1); nPlaced--; left.pop(); leftBlank.pop(); cnt[c]++; }
+          if (cnt[26]) { cnt[26]--; left.push(c); leftBlank.push(1); nPlaced++; leftPart(ch, limit - 1); nPlaced--; left.pop(); leftBlank.pop(); cnt[26]++; }
+        }
+      }
+      [true, false].forEach(function (h) {
+        if (!h && (empty || opts.oneDir)) return;
+        horiz = h; prepare();
+        for (line = 0; line < N; line++) {
+          for (var k = 0; k < N; k++) {
+            var sq = pos(k); if (!anchor[sq]) continue;
+            anchorK = k; left.length = 0; leftBlank.length = 0;
+            if (k > 0 && board[pos(k - 1)]) {
+              var s = k - 1; while (s > 0 && board[pos(s - 1)]) s--;
+              var node = 0;
+              for (var j = s; j < k && node >= 0; j++) node = child(node, idx(board[pos(j)]));
+              if (node >= 0) { wordStart = s; extendRight(node, k); }
+            } else {
+              var limit = 0, jj = k - 1;
+              while (jj >= 0 && !board[pos(jj)] && !anchor[pos(jj)]) { limit++; jj--; }
+              leftPart(0, Math.min(limit, 7));
+            }
+          }
+        }
+      });
+    }
+
+    // ── Computer players ──
+    // What a tile left on the rack is worth for next turn (a rough rule of thumb: blanks and S are gold, a Q
+    // without a U and piles of the same letter hurt, and a mix of vowels and consonants keeps options open)
+    var KEEP = { '?': 25, S: 8, E: 3.5, X: 3.3, Z: 2.5, R: 1.8, A: 1, N: 1, T: 1, I: -0.5, L: 0.5, D: 0.5, H: 1, C: 0.5, M: 0.5, P: 0.3, O: -1, Y: -0.5, F: -1.5, B: -2, G: -2, K: -1.5, J: -2, W: -3, U: -3.5, V: -5, Q: -7 };
+    function leaveValue(left, bagN) {
+      if (!left.length) return 0;
+      var v = 0, seen = {}, vow = 0, hasU = left.indexOf('U') >= 0;
+      left.forEach(function (l) {
+        v += l === 'Q' && hasU ? -3 : (KEEP[l] || 0);
+        if (seen[l]) v -= l === '?' ? 10 : 'AEIOU'.indexOf(l) >= 0 ? 4 : 3;
+        seen[l] = 1;
+        if ('AEIOU'.indexOf(l) >= 0) vow++;
+      });
+      var ideal = left.length * 0.42; v -= Math.abs(vow - ideal) * 2.5;
+      if (bagN < 10) v *= bagN / 10;
+      return v;
+    }
+    function rackLeft(rack, tiles) {
+      var left = rack.slice();
+      tiles.forEach(function (t) { var l = isBlankCh(t.ch) ? '?' : t.ch, at = left.indexOf(l); if (at >= 0) left.splice(at, 1); });
+      return left;
+    }
+    // A computer's turn. level: 'easy' | 'normal' | 'hard'. Returns {type:'play', tiles, score} | {type:'exch', tiles:[letters]} | {type:'pass'}
+    function choose(board, rack, level, bagN, rnd) {
+      rnd = rnd || Math.random;
+      var empty = true; for (var e = 0; e < NN; e++) if (board[e]) { empty = false; break; }
+      var best = null, bestV = -1e9, list = [], seen = {}, max = 0;
+      generate(board, rack, function (tiles, score) {
+        if (level === 'hard') {
+          var left = rackLeft(rack, tiles), v = score;
+          if (bagN > 0) v += leaveValue(left, bagN);
+          else { var pts = 0; left.forEach(function (l) { pts += value(l); }); v += left.length ? -pts * 2 : 12; }
+          if (v > bestV) { bestV = v; best = { tiles: tiles, score: score }; }
+        } else {
+          var key = tiles.map(function (t) { return t.i + t.ch; }).join(','); if (seen[key]) return; seen[key] = 1;
+          list.push({ tiles: tiles, score: score, v: score + (bagN > 0 ? leaveValue(rackLeft(rack, tiles), bagN) * 0.5 : 0) });
+          if (score > max) max = score;
+        }
+      }, { oneDir: empty });
+      if (level !== 'hard' && list.length) {
+        // pick a play near a target: Normal goes for good plays but misses the best; Easy plays short, modest words
+        var target = level === 'easy' ? max * (0.22 + rnd() * 0.3) : max * (0.62 + rnd() * 0.28);
+        var pool = list;
+        if (level === 'easy') { var short = list.filter(function (m) { return m.tiles.length <= 4; }); if (short.length) pool = short; }
+        pool.sort(function (a, b) { return Math.abs(a.score - target) - Math.abs(b.score - target) || b.v - a.v; });
+        var pick = pool[Math.floor(rnd() * Math.min(3, pool.length))];
+        best = { tiles: pick.tiles, score: pick.score }; bestV = pick.v;
+      }
+      if (level === 'hard' && best && bagN >= 7 && bestV < 8 && best.score < 14) best = null;   // a poor rack: swap instead
+      if (best) return { type: 'play', tiles: best.tiles, score: best.score };
+      if (bagN >= 7) {
+        // keep the best few tiles, swap the rest
+        var keep = [], pool2 = rack.slice().sort(function (a, b) { return (KEEP[b] || 0) - (KEEP[a] || 0); });
+        pool2.forEach(function (l) { if (keep.length < (level === 'hard' ? 3 : 2) && (KEEP[l] || 0) > 0.5 && keep.indexOf(l) < 0) keep.push(l); });
+        var out = rack.slice(); keep.forEach(function (l) { out.splice(out.indexOf(l), 1); });
+        if (!out.length) out = rack.slice();
+        return { type: 'exch', tiles: out };
+      }
+      return { type: 'pass' };
+    }
+
+    return { N: N, CENTER: CENTER, LAYOUT: LAYOUT, VAL: VAL, DIST: DIST, value: value, isBlank: isBlankCh, load: load, has: has,
+      loaded: function () { return loaded; }, count: function () { return nWords; }, evaluate: evaluate, generate: generate, choose: choose, leaveValue: leaveValue };
+  }
+
+  var E = ScrabbleEngine();
+  var LAYOUT = E.LAYOUT, CENTER = E.CENTER;
+  var PREM = { T: 'TW', D: 'DW', t: 'TL', d: 'DL', '*': 'ST' };
+  var PREM_LONG = { TW: 'TRIPLE<br>WORD<br>SCORE', DW: 'DOUBLE<br>WORD<br>SCORE', TL: 'TRIPLE<br>LETTER<br>SCORE', DL: 'DOUBLE<br>LETTER<br>SCORE' };
+  var STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2l2.95 6.3 6.85.8-5.08 4.68 1.36 6.77L12 17.3l-6.08 3.45 1.36-6.77L2.2 9.3l6.85-.8z"/></svg>';
+  var BAG = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M17 11c-1-2 0-4 2-4h10c2 0 3 2 2 4l-2 3h-10z" fill="#7a4a22"/><path d="M15.5 14.5h17c6 4 10 11 10 18 0 7-6 11-18.5 11S5.5 39.5 5.5 32.5c0-7 4-14 10-18z" fill="#b8844c"/><path d="M15.5 14.5h17c6 4 10 11 10 18 0 7-6 11-18.5 11S5.5 39.5 5.5 32.5c0-7 4-14 10-18z" fill="url(#bgsh)"/><path d="M14 14.5c3 1.4 6.6 2 10 2s7-.6 10-2" fill="none" stroke="#6a3e18" stroke-width="2" stroke-linecap="round"/><circle cx="33.5" cy="15.5" r="2.2" fill="#e8c46a"/><defs><radialGradient id="bgsh" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></radialGradient></defs></svg>';
+  var LEVELS = [['easy', 'Easy', 'Plays short, modest words and misses a lot.'], ['normal', 'Normal', 'Finds good words, but not always the best one.'], ['hard', 'Hard', 'Checks every possible play and keeps its best tiles for next turn. Tough to beat.']];
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+
+  // ── Word list: loaded once, then words are checked straight from the trie ──
+  var dictP = null;
+  function loadDict() {
+    if (dictP) return dictP;
+    dictP = new Promise(function (res, rej) {
+      if (window.ScrabbleWords) return res();
+      var s = document.createElement('script'); s.src = '../data/scrabble-words.js';
+      s.onload = function () { res(); }; s.onerror = function () { dictP = null; rej(new Error('Couldn’t load the word list. Check the connection and try again.')); };
+      document.head.appendChild(s);
+    }).then(function () { E.load(window.ScrabbleWords.packed); });
+    return dictP;
+  }
+  // The computer thinks in a worker so the page stays smooth; the page itself is the fallback
+  var worker = null, workerOk = true, wReq = 0, wPend = {};
+  function getWorker() {
+    if (worker || !workerOk || !window.ScrabbleWords) return worker;
+    try {
+      var src = 'var E=(' + ScrabbleEngine.toString() + ')();onmessage=function(e){var d=e.data;if(d.packed){E.load(d.packed);return;}postMessage({id:d.id,res:E.choose(d.board,d.rack,d.level,d.bagN)});};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.postMessage({ packed: window.ScrabbleWords.packed });
+      worker.onmessage = function (e) { var cb = wPend[e.data.id]; delete wPend[e.data.id]; if (cb) cb(e.data.res); };
+      worker.onerror = function () { workerOk = false; worker = null; Object.keys(wPend).forEach(function (k) { var cb = wPend[k]; delete wPend[k]; cb(null); }); };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
+  }
+  function think(board, rack, level, bagN, cb) {
+    var w = getWorker();
+    function local() { return E.choose(board, rack, level, bagN); }
+    if (w) { var id = ++wReq; wPend[id] = function (res) { cb(res || local()); }; w.postMessage({ id: id, board: board, rack: rack, level: level, bagN: bagN }); }
+    else setTimeout(function () { cb(local()); }, 30);
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // State
+  // S = {mode:'cpu'|'pp'|'online', level, players:[{name, cpu, level, score, rack:[{id,l}]}], bag:[letters],
+  //      board:[225], turn, scoreless, n (turns taken), tid, log:[...], last:[squares], lastWords, draw, over, result,
+  //      started, hist:[snapshots]}
+  // ═════════════════════════════════════════════════════════════════════════
+  var S = null;
+  var pend = [];          // tiles put on the board this turn: [{id, i, ch}]
+  var selId = null;       // a rack tile picked up by a tap
+  var cursor = null;      // typing cursor {i, dir:'H'|'V'}
+  var veil = false;       // pass & play: the rack stays hidden until the next player takes the device
+  var busy = false;       // the computer is thinking, or a play is being scored
+  var thinkTok = 0;
+  var swapSel = null;     // ids picked to swap (in the swap sheet)
+
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function fullBag() { var b = []; Object.keys(E.DIST).forEach(function (l) { for (var i = 0; i < E.DIST[l]; i++) b.push(l); }); return b; }
+  function P(i) { return S.players[i]; }
+  function nm(i) { return P(i).name; }
+  function col(i) { return Kit.color(i); }
+  function rackPts(p) { var t = 0; (p.rack || []).forEach(function (x) { t += E.value(x.l); }); return t; }
+  function rackN(p) { return p.rack ? p.rack.length : p.n || 0; }
+  function bagN() { return S.bag ? S.bag.length : S.bagN || 0; }
+  function humans() { return S.players.filter(function (p) { return !p.cpu; }).length; }
+  function humanSeat() { for (var i = 0; i < S.players.length; i++) if (!S.players[i].cpu) return i; return 0; }
+  // whose rack this device shows
+  function viewSeat() { if (!S) return 0; if (S.mode === 'online') return net.seat; if (S.mode === 'cpu') return humanSeat(); return S.turn; }
+  function myRack() { var p = S && P(viewSeat()); return p && p.rack ? p.rack : []; }
+  function myTurn() { return !!S && !S.over && S.turn === viewSeat() && !P(S.turn).cpu && !veil && !busy && !net.waiting; }
+  function rackShown() { return myRack().filter(function (t) { return !pend.some(function (q) { return q.id === t.id; }); }); }
+  function tileById(id) { var r = myRack(); for (var i = 0; i < r.length; i++) if (r[i].id === id) return r[i]; return null; }
+  function draw(p) { var got = []; while (p.rack.length < 7 && S.bag.length) { var t = { id: ++S.tid, l: S.bag.pop() }; p.rack.push(t); got.push(t.id); } return got; }
+
+  function save() {
+    if (!S || S.mode === 'online') return;
+    lsSet(SAVE, S);
+    if (!S.over) Kit.resume.set(S.players.map(function (p) { return p.name + ' ' + p.score; }).join(' · '), { keys: [SAVE] });
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Rules and setup
+  // ═════════════════════════════════════════════════════════════════════════
+  Kit.init({
+    id: 'scrabble',
+    onNew: function () { leaveOnline(false); cancelThink(); clearSave(); S = null; showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Scrabble: past games' }); } },
+      { icon: 'rows', label: 'Moves so far', when: function () { return !!(S && V.root); }, onClick: function () { logSheet(); } },
+      { icon: 'tiles', label: 'Tiles left', sub: 'Letters you haven’t seen yet', when: function () { return !!(S && V.root); }, onClick: function () { unseenSheet(); } },
+      { icon: 'users', label: 'Play online', sub: '2 to 4 players, each on their own device', when: function () { return !net.mode && !(S && V.root && !S.over); }, onClick: function () { goLobby(); } },
+      { icon: 'logout', label: 'Leave the online game', when: function () { return !!net.mode; }, onClick: function () { leaveOnline(true); } }
+    ],
+    rules:
+      '<p class="goal">Build words on the board, crossword style, and score the most points.</p>' +
+      '<h3>Getting started</h3><ul>' +
+      '<li>Everyone draws a tile from the bag. The letter closest to A goes first, and a blank beats every letter. The tiles go back, and everyone draws <b>7 tiles</b>.</li>' +
+      '<li>The first word needs at least two letters, and one of them must sit on the <b>center star</b>. The star is a double word square.</li></ul>' +
+      '<h3>On your turn, do one of these</h3><ul>' +
+      '<li><b>Play</b> tiles in a single row or a single column to make a word that reads across (left to right) or down. Your tiles can’t leave gaps, and after the first turn they must join tiles already on the board.</li>' +
+      '<li>Every new word your tiles make counts, including short words made sideways where your tiles sit next to others. All of them must be real words.</li>' +
+      '<li><b>Swap</b> any number of your tiles for new ones from the bag. You can only swap while the bag has at least 7 tiles, and it uses up your turn.</li>' +
+      '<li><b>Pass</b>.</li>' +
+      '<li>After playing, you draw back up to 7 tiles.</li></ul>' +
+      '<h3>Scoring</h3><ul>' +
+      '<li>Each tile shows its points. A <b>blank</b> is worth 0 but can be any letter you choose, and it stays that letter for the rest of the game.</li>' +
+      '<li><b>DL</b> (light blue) doubles a letter and <b>TL</b> (dark blue) triples it. <b>DW</b> (pink, and the star) doubles the whole word and <b>TW</b> (red) triples it.</li>' +
+      '<li>A premium square counts only on the turn a tile is first played on it. Letter bonuses are added before word bonuses. A word across two word squares is doubled twice (×4) or tripled twice (×9).</li>' +
+      '<li>When one new tile makes two words, a premium square under it counts for both.</li>' +
+      '<li><b>Bingo:</b> use all 7 of your tiles in one turn for <b>50 bonus points</b>.</li></ul>' +
+      '<h3>Checking words</h3><p>Like most Scrabble apps, the game checks words for you. As you lay down tiles it shows every word they make and what they’d score. A play with a word that isn’t in the dictionary is refused, so you can fix it and try again: there are no challenges and no lost turns. Proper names, abbreviations and words with apostrophes or hyphens don’t count. The dictionary is ENABLE, a large free word list used by many word games, with slurs taken out and newer Scrabble words such as QI, ZA, KI and OK added.</p>' +
+      '<h3>The end</h3><ul>' +
+      '<li>The game ends when the bag is empty and someone plays their last tile, or after <b>six scoreless turns in a row</b> (passes, swaps or plays worth 0).</li>' +
+      '<li>Everyone loses the points of the tiles still on their rack. If someone went out, they add everyone else’s leftover points to their score.</li>' +
+      '<li>Highest score wins. In a tie, the player who had more before the leftover tiles were counted wins.</li></ul>' +
+      '<h3>Playing here</h3><ul>' +
+      '<li>Drag tiles onto the board, or tap a tile and then a square. Tap a tile you’ve put down to take it back. <b>Recall</b> brings them all back and <b>Shuffle</b> mixes up your rack. Drag tiles along the rack to put them in any order.</li>' +
+      '<li>On a phone, pinch the board or use the magnifier to zoom in.</li>' +
+      '<li>With a keyboard: click a square and type. Space switches between across and down, Backspace takes a tile back, Enter plays. Letters you don’t have use a blank if you have one.</li>' +
+      '<li>Tap the bag to see which tiles you haven’t seen yet.</li>' +
+      '<li><b>vs Computer:</b> 1 to 3 robots, Easy, Normal or Hard. <b>Pass and play:</b> 2 to 4 players on one device; each rack stays hidden until its player holds the button. <b>Online:</b> 2 to 4 players, each on their own phone or tablet. One opens a table, the others join from the list or with the 4-letter code.</li></ul>'
+  });
+
+  function showSetup() {
+    teardownView(); S = null;
+    app.className = 'stage';
+    Kit.setup(app, {
+      intro: 'Build words, hit the bonus squares, and score big.',
+      modes: [
+        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against 1 to 3 robots' },
+        { id: 'pp', icon: 'users', title: 'Pass & play', desc: '2 to 4 players sharing this phone' },
+        { id: 'online', icon: 'globe', title: 'Play online', desc: '2 to 4 players, each on their own device' }
+      ],
+      players: { min: 2, max: 4, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; }, range: function (m) { return m === 'online' ? [1, 1] : [2, 4]; } },
+      options: [{ id: 'level', label: 'Computer skill', value: 'normal', choices: LEVELS, when: function (m) { return m === 'cpu'; } }],
+      start: "Let's play!",
+      onStart: function (cfg) {
+        if (cfg.mode === 'online') { var me = lsGet('scrabble_net', {}) || {}; me.name = cfg.players[0].name === 'Player 1' ? '' : cfg.players[0].name; lsSet('scrabble_net', me); goLobby(); return; }
+        startLocal(cfg);
+      }
+    });
+    loadDict().catch(function () {});
+  }
+
+  function loading(text) {
+    teardownView();
+    app.className = 'stage'; app.innerHTML = '';
+    app.appendChild(el('div', { class: 'sc-load' }, [el('div', { class: 'tl', html: '<b>W</b><i>4</i>' }), el('span', { text: text || 'Getting the tiles out…' })]));
+  }
+  function startLocal(cfg) {
+    loading();
+    loadDict().then(function () {
+      var players = cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? cfg.options.level || 'normal' : null, score: 0, rack: [] }; });
+      newGame({ mode: cfg.mode, level: cfg.options.level || 'normal', players: players });
+    }).catch(function (e) { Kit.toast(e.message); showSetup(); });
+  }
+  // A fresh game: draw for first turn, deal 7 each
+  function newGame(o) {
+    cancelThink(); pend = []; selId = null; cursor = null; busy = false; veil = false;
+    S = { v: 1, mode: o.mode, level: o.level || 'normal', players: o.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.level || null, score: 0, rack: [] }; }),
+      board: [], bag: [], turn: 0, scoreless: 0, n: 0, tid: 0, log: [], last: [], lastWords: [], over: false, result: null, started: Date.now(), hist: [] };
+    for (var i = 0; i < 225; i++) S.board.push('');
+    // who goes first: each draws a tile, closest to A starts (a blank beats all); a tie draws again
+    var rank = function (l) { return l === '?' ? 0 : l.charCodeAt(0) - 63; };
+    var who = S.players.map(function (p, k) { return k; }), rounds = [];
+    while (who.length > 1) {
+      var bag = shuffle(fullBag()), picks = who.map(function (k) { return { p: k, l: bag.pop() }; });
+      rounds.push(picks);
+      var best = Math.min.apply(null, picks.map(function (x) { return rank(x.l); }));
+      who = picks.filter(function (x) { return rank(x.l) === best; }).map(function (x) { return x.p; });
+    }
+    S.turn = who[0];
+    S.draw = rounds.map(function (r) { return r.map(function (x) { return x.p + ':' + x.l; }).join(','); });
+    S.log.push({ k: 'first', p: S.turn });
+    S.bag = shuffle(fullBag());
+    for (var s = 0; s < S.players.length; s++) draw(S.players[(S.turn + s) % S.players.length]);
+    Kit.gameStart();
+    save();
+    buildView();
+    if (S.mode === 'online') sendState();
+    firstDrawSheet(function () { beginTurn(true); });
+  }
+
+  // The draw for first turn, shown as tiles flipping over
+  function firstDrawSheet(done) {
+    if (!S.draw || !S.draw.length) { done(); return; }
+    var box = el('div', { class: 'drawf' });
+    box.appendChild(el('p', { text: 'Everyone draws a tile. Closest to A goes first; a blank beats everything.' }));
+    var lastRound = S.draw[S.draw.length - 1].split(','), shown = {};
+    S.draw.forEach(function (r) { r.split(',').forEach(function (x) { var a = x.split(':'); shown[a[0]] = a[1]; }); });
+    S.players.forEach(function (p, k) {
+      var l = shown[k], won = k === S.turn, goes = p.name === 'You' ? 'Goes first'.replace('Goes', 'Go') : 'Goes first';
+      var t = tileEl(l === '?' ? '?' : l, { cls: 'fl' }); t.style.animationDelay = (0.25 + k * 0.35) + 's';
+      box.appendChild(el('div', { class: 'r' + (won ? ' win' : ''), style: { '--c': col(k) } }, [Kit.avatar.el(p.name, 'sm', col(k)), el('span', { class: 'nm', text: p.name }), won ? el('span', { class: 'tag', text: goes }) : null, t]));
+    });
+    if (S.draw.length > 1) box.appendChild(el('p', { text: 'A tie, so ' + lastRound.map(function (x) { return nm(+x.split(':')[0]); }).join(' and ') + ' drew again.' }));
+    S.players.forEach(function (p, k) { setTimeout(function () { Kit.sfx('flip'); }, 250 + k * 350); });
+    var closed = false;
+    var sh = Kit.sheet({ title: ((S.turn === viewSeat() && S.mode !== 'pp') || nm(S.turn) === 'You' ? 'You go first' : nm(S.turn) + ' goes first'), node: box, actions: [{ label: S.mode === 'online' && S.turn !== viewSeat() ? 'OK' : 'Let’s play', primary: true }], onClose: function () { if (!closed) { closed = true; done(); } } });
+    void sh;
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Turns
+  // ═════════════════════════════════════════════════════════════════════════
+  function cancelThink() { thinkTok++; }
+  function beginTurn(first) {
+    if (!S || S.over) return;
+    pend = []; selId = null;
+    var p = P(S.turn);
+    if (S.mode === 'online' && net.mode === 'guest') { veil = false; paintAll(); if (S.turn === net.seat) yourTurnPing(); return; }
+    if (p.cpu) { veil = false; paintAll(); robotTurn(); return; }
+    if (S.mode === 'pp' && humans() > 1) {
+      veil = true; paintAll();
+      var lastTxt = lastMoveText();
+      Kit.handoff({ name: p.name, color: col(S.turn), what: 'tiles', msg: first ? 'You go first.' : lastTxt }).then(function () {
+        veil = false; paintAll(); dealIn();
+      });
+      return;
+    }
+    veil = false; paintAll();
+    if (S.mode === 'online' && S.turn === net.seat && !first) yourTurnPing();
+  }
+  function yourTurnPing() { Kit.sfx('pop'); Kit.haptic('medium'); Kit.toast('Your turn'); }
+  function nextTurn() { S.turn = (S.turn + 1) % S.players.length; }
+
+  // Snapshots for Undo
+  function pushHist() {
+    S.hist.push({ seat: S.turn, cpu: P(S.turn).cpu, s: JSON.stringify({ board: S.board, bag: S.bag, pl: S.players.map(function (p) { return { score: p.score, rack: p.rack }; }), turn: S.turn, scoreless: S.scoreless, logN: S.log.length, last: S.last, lastWords: S.lastWords, tid: S.tid, n: S.n }) });
+    if (S.hist.length > 60) S.hist.shift();
+  }
+  function restore(h) {
+    var o = JSON.parse(h.s);
+    S.board = o.board; S.bag = o.bag; S.players.forEach(function (p, i) { p.score = o.pl[i].score; p.rack = o.pl[i].rack; });
+    S.turn = o.turn; S.scoreless = o.scoreless; S.log.length = o.logN; S.last = o.last; S.lastWords = o.lastWords || []; S.tid = o.tid; S.n = o.n;
+  }
+  function undo() {
+    if (!S || !V.root) return;
+    if (pend.length) { recall(); return; }
+    if (S.mode === 'online') { Kit.toast('Undo isn’t available online'); return; }
+    if (S.over) { Kit.toast('The game is over'); return; }
+    if (S.mode === 'cpu') {
+      if (!S.hist.some(function (h) { return !h.cpu; })) { Kit.toast('Nothing to undo yet'); return; }
+      cancelThink(); busy = false;
+      var h; while (S.hist.length) { h = S.hist.pop(); if (!h.cpu) break; }
+      restore(h); save(); Kit.sfx('whoosh'); zoomTo(1); paintAll(); Kit.toast('Took back your last turn');
+      return;
+    }
+    if (!S.hist.length) { Kit.toast('Nothing to undo yet'); return; }
+    var hh = S.hist.pop(); restore(hh); save(); Kit.sfx('whoosh'); zoomTo(1);
+    Kit.toast('Back to ' + Kit.poss(nm(S.turn)) + ' turn');
+    beginTurn(true);
+  }
+
+  // A play: tiles [{id, i, ch}] from seat's rack. Returns the check result (ok false: nothing happened)
+  function doPlay(seat, tiles, how) {
+    var p = P(seat), r = E.evaluate(S.board, tiles.map(function (t) { return { i: t.i, ch: t.ch }; }));
+    if (!r.ok) return r;
+    var ids = {}; for (var k = 0; k < tiles.length; k++) {
+      var t = tiles[k], rt = p.rack.filter(function (x) { return x.id === t.id; })[0];
+      if (!rt || ids[t.id] || (rt.l === '?' ? !E.isBlank(t.ch) : rt.l !== t.ch)) return { ok: false, err: 'Those tiles aren’t on the rack' };
+      ids[t.id] = 1;
+    }
+    pushHist();
+    var before = p.score;
+    tiles.forEach(function (t) { S.board[t.i] = t.ch; });
+    p.rack = p.rack.filter(function (x) { return !ids[x.id]; });
+    p.score += r.score;
+    var drawn = draw(p);
+    var mainW = r.words[0].w;
+    S.log.push({ k: 'play', p: seat, w: r.words.map(function (w) { return w.w; }).join(', '), m: mainW, s: r.score, b: r.bingo ? 1 : 0, t: tiles.length });
+    S.last = tiles.map(function (t) { return t.i; });
+    S.lastWords = r.words.map(function (w) { return { w: w.w, s: w.s, sq: w.sq }; });
+    S.scoreless = r.score > 0 ? 0 : S.scoreless + 1;
+    S.n++;
+    afterMove(seat, { kind: 'play', how: how, before: before, drawn: drawn });
+    return r;
+  }
+  function doSwap(seat, ids) {
+    var p = P(seat);
+    if (S.bag.length < 7 || !ids.length) return false;
+    pushHist();
+    var out = p.rack.filter(function (x) { return ids.indexOf(x.id) >= 0; });
+    p.rack = p.rack.filter(function (x) { return ids.indexOf(x.id) < 0; });
+    var drawn = draw(p);
+    out.forEach(function (t) { S.bag.push(t.l); }); shuffle(S.bag);
+    S.log.push({ k: 'swap', p: seat, x: out.length });
+    S.last = []; S.lastWords = [];
+    S.scoreless++; S.n++;
+    afterMove(seat, { kind: 'swap', drawn: drawn });
+    return true;
+  }
+  function doPass(seat) {
+    pushHist();
+    S.log.push({ k: 'pass', p: seat });
+    S.last = []; S.lastWords = [];
+    S.scoreless++; S.n++;
+    afterMove(seat, { kind: 'pass' });
+  }
+  function afterMove(seat, info) {
+    pend = []; selId = null; cursor = null;
+    var p = P(seat), end = null;
+    if (!p.rack.length && !S.bag.length) end = { type: 'out', seat: seat };
+    else if (S.scoreless >= 6) end = { type: 'stuck' };
+    if (end) endGame(end); else nextTurn();
+    save();
+    if (S.mode === 'online' && net.mode === 'host') sendState();
+    showMove(seat, info, function () {
+      if (S.over) { showResults(); return; }
+      beginTurn(false);
+    });
+  }
+  function endGame(end) {
+    var pre = S.players.map(function (p) { return p.score; }), adj = S.players.map(function () { return 0; }), left = S.players.map(function (p) { return p.rack.map(function (t) { return t.l; }).join(''); });
+    S.players.forEach(function (p, i) { if (end.type === 'out' && i === end.seat) return; adj[i] = -rackPts(p); });
+    if (end.type === 'out') adj[end.seat] = -adj.reduce(function (a, b) { return a + b; }, 0);
+    S.players.forEach(function (p, i) { p.score += adj[i]; });
+    var order = S.players.map(function (p, i) { return i; }).sort(function (a, b) { return P(b).score - P(a).score || pre[b] - pre[a]; });
+    var top = order[0], tie = order.length > 1 && P(order[1]).score === P(top).score && pre[order[1]] === pre[top];
+    S.over = true;
+    S.result = { type: end.type, seat: end.type === 'out' ? end.seat : -1, pre: pre, adj: adj, left: left, winner: tie ? -1 : top, order: order, tieBreak: !tie && order.length > 1 && P(order[1]).score === P(top).score };
+    S.log.push({ k: 'end', t: end.type, p: end.type === 'out' ? end.seat : -1 });
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // The computer
+  // ═════════════════════════════════════════════════════════════════════════
+  function robotTurn() {
+    var seat = S.turn, p = P(seat), tok = ++thinkTok, t0 = Date.now();
+    busy = true; paintPlayers(); paintMsg(); paintActs();
+    think(S.board.slice(), p.rack.map(function (t) { return t.l; }), p.level || S.level, S.bag.length, function (res) {
+      if (tok !== thinkTok || !S || S.over || S.turn !== seat) return;
+      setTimeout(function () {
+        if (tok !== thinkTok || !S || S.over || S.turn !== seat) return;
+        busy = false;
+        if (res.type === 'play') {
+          var used = {}, tiles = res.tiles.map(function (t) {
+            var want = E.isBlank(t.ch) ? '?' : t.ch, rt = p.rack.filter(function (x) { return x.l === want && !used[x.id]; })[0];
+            used[rt.id] = 1; return { id: rt.id, i: t.i, ch: t.ch };
+          });
+          var r = doPlay(seat, tiles, 'robot');
+          if (!r.ok) doPass(seat);
+        } else if (res.type === 'swap' || res.type === 'exch') {
+          var ids = [], u2 = {};
+          res.tiles.forEach(function (l) { var rt = p.rack.filter(function (x) { return x.l === l && !u2[x.id]; })[0]; if (rt) { u2[rt.id] = 1; ids.push(rt.id); } });
+          if (!doSwap(seat, ids)) doPass(seat);
+        } else doPass(seat);
+      }, Math.max(0, 1100 - (Date.now() - t0)));
+    });
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // View
+  // ═════════════════════════════════════════════════════════════════════════
+  var V = {}, Z = { z: 1, tx: 0, ty: 0 }, cellSig = [];
+  function teardownView() { V = {}; cellSig = []; Z = { z: 1, tx: 0, ty: 0 }; document.removeEventListener('keydown', onKey); window.removeEventListener('resize', fitSoon); }
+  function grainPos(id) { var h = (id * 2654435761) >>> 0; return { '--gx': -(h % 170) + 'px', '--gy': -((h >> 8) % 170) + 'px' }; }
+  function tileEl(l, o) {
+    o = o || {};
+    var blank = l === '?' || E.isBlank(l), letter = l === '?' ? '' : l.toUpperCase();
+    var t = el('div', { class: 'tl' + (blank ? ' bl' : '') + (l === '?' ? ' empty' : '') + (o.cls ? ' ' + o.cls : ''), style: grainPos(o.id || l.charCodeAt(0) * 7 + 3), 'data-id': o.id != null ? String(o.id) : null,
+      html: '<b>' + letter + '</b>' + (blank ? '' : '<i>' + E.value(letter) + '</i>'), 'aria-label': blank ? (letter ? 'Blank as ' + letter : 'Blank tile') : letter + ', ' + E.value(letter) + (E.value(letter) === 1 ? ' point' : ' points') });
+    return t;
+  }
+
+  function buildView() {
+    teardownView();
+    app.className = 'stage full'; app.innerHTML = '';
+    var root = el('div', { class: 'sc' });
+    V.root = root;
+    V.pls = el('div', { class: 'sc-pls' });
+    V.bag = el('button', { type: 'button', class: 'sc-bag', 'aria-label': 'Tiles left in the bag', html: BAG + '<b></b>', onclick: function () { Kit.sfx('tap'); unseenSheet(); } });
+    root.appendChild(el('div', { class: 'sc-top' }, [V.pls, V.bag]));
+    V.frame = el('div', { class: 'sc-frame' });
+    V.vp = el('div', { class: 'sc-vp' });
+    V.bd = el('div', { class: 'sc-bd', role: 'grid', 'aria-label': 'Scrabble board' });
+    V.cells = [];
+    for (var i = 0; i < 225; i++) {
+      var pm = PREM[LAYOUT[i]], c = el('div', { class: 'sq' + (pm ? ' ' + pm : ''), 'data-i': String(i) });
+      V.cells.push(c); V.bd.appendChild(c);
+    }
+    V.fx = el('div', { class: 'sc-fx' }); V.bd.appendChild(V.fx);
+    V.vp.appendChild(V.bd);
+    V.zoomBtn = el('button', { type: 'button', class: 'sc-zoom', 'aria-label': 'Zoom the board', html: Kit.icon('search'), onclick: function () { Kit.sfx('tap'); toggleZoom(); } });
+    V.frame.appendChild(V.vp);
+    root.appendChild(V.frame);
+    V.msg = el('div', { class: 'sc-msg', role: 'status', 'aria-live': 'polite', onclick: function () { if (!pend.length) logSheet(); } });
+    V.rack = el('div', { class: 'sc-rack', 'aria-label': 'Your tiles' });
+    V.acts = el('div', { class: 'sc-acts' });
+    V.log = el('div', { class: 'sc-log' });
+    root.appendChild(el('div', { class: 'sc-side' }, [el('div', { class: 'sc-msgrow' }, [V.msg, V.zoomBtn]), V.log, el('div', { class: 'sc-rackwrap' }, [V.rack]), V.acts]));
+    app.appendChild(root);
+    bindInput();
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', fitSoon);
+    fit(); paintAll();
+  }
+
+  // ── Sizes: the board as big as fits; the rest underneath (phones) or beside it (wide screens) ──
+  var fitT = 0;
+  function fitSoon() { clearTimeout(fitT); fitT = setTimeout(fit, 60); }
+  function fit() {
+    if (!V.root) return;
+    var W = window.innerWidth, H = window.innerHeight, bar = (document.querySelector('.gbar') || { offsetHeight: 58 }).offsetHeight;
+    var safeB = 10, wide = W >= 900 && W > H * 1.08;
+    V.root.classList.toggle('wide', wide);
+    var rim = Math.round(Math.max(8, Math.min(16, W * 0.022))), bs;
+    if (wide) {
+      bs = Math.min(H - bar - 22 - 2 * rim, W - 360 - 22 - 40 - 2 * rim, 860);
+      V.root.style.setProperty('--rt', Math.min(46, Math.floor((338 - 26) / 7 - 4)) + 'px');
+    } else {
+      var sideW = Math.min(W - 16, 640), rt = Math.min(56, Math.floor((sideW - 24) / 7 - sideW / 7 * 0.1));
+      V.root.style.setProperty('--rt', rt + 'px');
+      var topH = V.root.querySelector('.sc-top').offsetHeight || 46;
+      var sideH = Math.max(V.msg.offsetHeight, 42) + V.rack.parentNode.offsetHeight + V.acts.offsetHeight + 16 + 6;
+      bs = Math.min(W - 16 - 2 * rim, H - bar - topH - sideH - 8 - 2 * rim - safeB - 10, 900);
+    }
+    bs = Math.max(200, Math.floor(bs));
+    var gap = bs > 520 ? 2 : 1, cs = (bs - 16 * gap) / 15;
+    V.root.style.setProperty('--bs', bs + 'px');
+    V.root.style.minHeight = wide ? '' : (H - bar - 2) + 'px';
+    V.root.style.setProperty('--rim', rim + 'px');
+    V.root.style.setProperty('--gap', gap + 'px');
+    V.root.style.setProperty('--cs', cs.toFixed(3) + 'px');
+    V.bs = bs; V.cs = cs; V.gap = gap;
+    clampZoom(); applyZoom(false);
+  }
+
+  // ── Zoom and pan ──
+  function zmax() { return Math.max(1, Math.min(3, 46 / V.cs)); }
+  function canZoom() { return zmax() > 1.25; }
+  function clampZoom() { Z.z = Math.max(1, Math.min(zmax(), Z.z)); var m = V.bs - V.bs * Z.z; Z.tx = Math.min(0, Math.max(m, Z.tx)); Z.ty = Math.min(0, Math.max(m, Z.ty)); }
+  function applyZoom(anim) {
+    if (!V.bd) return;
+    V.bd.classList.toggle('zan', !!anim);
+    V.bd.style.transform = 'translate(' + Z.tx.toFixed(1) + 'px,' + Z.ty.toFixed(1) + 'px) scale(' + Z.z.toFixed(3) + ')';
+    V.bd.classList.toggle('big', V.cs * Z.z >= 40);
+    V.zoomBtn.hidden = !canZoom();
+    V.zoomBtn.innerHTML = Kit.icon(Z.z > 1.05 ? 'minus' : 'search');
+    V.zoomBtn.setAttribute('aria-label', Z.z > 1.05 ? 'Zoom out' : 'Zoom in');
+  }
+  function zoomTo(z, i) {
+    if (!V.bd) return;
+    var pitch = V.cs + V.gap, cx = V.bs / 2, cy = V.bs / 2;
+    if (i != null) { cx = (i % 15 + 0.5) * pitch; cy = (Math.floor(i / 15) + 0.5) * pitch; }
+    Z.z = z; Z.tx = V.bs / 2 - cx * z; Z.ty = V.bs / 2 - cy * z;
+    clampZoom(); applyZoom(true);
+  }
+  function toggleZoom() {
+    if (Z.z > 1.05) zoomTo(1);
+    else { var at = pend.length ? pend[pend.length - 1].i : cursor ? cursor.i : S && S.last.length ? S.last[0] : CENTER; zoomTo(Math.min(zmax(), 2.1), at); }
+  }
+
+  // ── Painting ──
+  function paintAll() { if (!V.root || !S) return; paintPlayers(); paintBoard(); paintRack(); paintMsg(); paintActs(); paintLog(); }
+  function paintPlayers() {
+    if (!V.pls) return;
+    V.pls.className = 'sc-pls pls-' + S.players.length;
+    if (V.pls.children.length !== S.players.length) {
+      V.pls.innerHTML = '';
+      S.players.forEach(function (p, i) {
+        V.pls.appendChild(el('div', { class: 'pl', style: { '--c': col(i) } }, [
+          p.cpu ? el('span', { class: 'avatar', style: { '--c': col(i) }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name, null, col(i)),
+          el('div', { class: 'who' }, [el('span', { class: 'nm', text: p.name }), el('span', { class: 'pt', text: String(p.score) })]),
+          el('span', { class: 'think', html: '<i></i><i></i><i></i>' })
+        ]));
+      });
+    }
+    S.players.forEach(function (p, i) {
+      var c = V.pls.children[i];
+      c.classList.toggle('on', !S.over && S.turn === i);
+      c.classList.toggle('busy', !S.over && S.turn === i && (p.cpu && busy));
+      var pt = c.querySelector('.pt'); if (!pt._anim) pt.textContent = String(p.score);
+      c.setAttribute('aria-label', p.name + ': ' + p.score + ' points' + (S.turn === i && !S.over ? ', to play' : ''));
+    });
+    var bn = bagN();
+    V.bag.querySelector('b').textContent = String(bn);
+    if (V.root.classList.contains('wide')) V.bag.querySelector('b').textContent = bn + (bn === 1 ? ' tile in the bag' : ' tiles in the bag');
+  }
+  function cellHTML(i) {
+    var ch = S.board[i];
+    if (ch) return null;
+    var pm = PREM[LAYOUT[i]];
+    if (pm === 'ST') return '<span class="pm">' + STAR + '</span>';
+    if (pm) return '<span class="pm"><span class="s">' + pm + '</span><span class="l">' + PREM_LONG[pm] + '</span></span>';
+    return '';
+  }
+  function paintBoard(fresh) {
+    if (!V.cells) return;
+    var pAt = {}; pend.forEach(function (q) { pAt[q.i] = q; });
+    var lastSet = {}; (S.last || []).forEach(function (i) { lastSet[i] = 1; });
+    for (var i = 0; i < 225; i++) {
+      var ch = S.board[i], q = pAt[i], sig = ch ? 'T' + ch + (lastSet[i] ? 'L' : '') : q ? 'P' + q.id + q.ch : 'E';
+      sig += cursor && cursor.i === i ? 'C' + cursor.dir : '';
+      if (cellSig[i] === sig) continue;
+      cellSig[i] = sig;
+      var c = V.cells[i]; c.innerHTML = ''; c.classList.remove('cur');
+      if (ch) { var t = tileEl(ch, { id: 1000 + i, cls: lastSet[i] ? 'last' : '' }); t.removeAttribute('data-id'); c.appendChild(t); }
+      else if (q) c.appendChild(tileEl(q.ch, { id: q.id, cls: 'pend' }));
+      else c.innerHTML = cellHTML(i);
+      if (cursor && cursor.i === i && !ch && !q) { c.classList.add('cur'); c.appendChild(el('span', { class: 'arr', html: Kit.icon(cursor.dir === 'H' ? 'right' : 'down') })); }
+    }
+    paintHints();
+    paintBubble();
+  }
+  function paintHints() {
+    if (!V.cells) return;
+    var holding = myTurn() && (selId != null || (G && G.drag));
+    var empty = !S.board.some(Boolean), anyPend = pend.length > 0;
+    V.cells[CENTER].classList.toggle('go', empty && !S.board[CENTER] && !pend.some(function (q) { return q.i === CENTER; }) && myTurn() && !S.over);
+    var can = {};
+    if (holding && !empty) {
+      var near = function (i) { var r = Math.floor(i / 15), c = i % 15; return (r > 0 && S.board[i - 15]) || (r < 14 && S.board[i + 15]) || (c > 0 && S.board[i - 1]) || (c < 14 && S.board[i + 1]); };
+      for (var i = 0; i < 225; i++) if (!S.board[i] && !pend.some(function (q) { return q.i === i; }) && (near(i) || anyPend && pend.some(function (q) { return Math.abs(q.i - i) === 1 && Math.floor(q.i / 15) === Math.floor(i / 15) || Math.abs(q.i - i) === 15; }))) can[i] = 1;
+    }
+    for (var j = 0; j < 225; j++) V.cells[j].classList.toggle('can', !!can[j]);
+  }
+  function paintBubble() {
+    var old = V.fx.querySelector('.bub'); if (old) old.remove();
+    if (!pend.length) return;
+    var r = check();
+    var at = pend.map(function (q) { return q.i; }).sort(function (a, b) { return b - a; })[0];
+    var pitch = V.cs + V.gap, x = (at % 15 + 1) * pitch, y = Math.floor(at / 15) * pitch;
+    V.fx.appendChild(el('div', { class: 'bub' + (r.ok ? '' : ' bad'), style: { left: x + 'px', top: y + 'px' }, text: r.ok ? String(r.score) : '?' }));
+  }
+  function check() { return E.evaluate(S.board, pend.map(function (q) { return { i: q.i, ch: q.ch }; })); }
+  function paintRack() {
+    if (!V.rack) return;
+    V.rack.innerHTML = '';
+    var me = P(viewSeat());
+    if (veil || (S.mode === 'cpu' && false)) { for (var k = 0; k < rackN(me); k++) V.rack.appendChild(el('div', { class: 'tl back', style: grainPos(k + 1) })); return; }
+    var list = rackShown();
+    if (!list.length && !pend.length) { V.rack.appendChild(el('span', { class: 'none', text: S.over ? 'Game over' : 'No tiles left' })); return; }
+    list.forEach(function (t) { V.rack.appendChild(tileEl(t.l, { id: t.id, cls: (selId === t.id ? 'sel' : '') + (t._new ? ' new' : '') })); });
+  }
+  function lastMoveText() {
+    for (var k = S.log.length - 1; k >= 0; k--) {
+      var e = S.log[k];
+      if (e.k === 'play') return nm(e.p) + ' played ' + e.m + ' for ' + e.s + (e.b ? ' (bingo!)' : '');
+      if (e.k === 'swap') return nm(e.p) + ' swapped ' + e.x + (e.x === 1 ? ' tile' : ' tiles');
+      if (e.k === 'pass') return nm(e.p) + ' passed';
+      if (e.k === 'first') return '';
+    }
+    return '';
+  }
+  function paintMsg() {
+    if (!V.msg) return;
+    var m = V.msg; m.innerHTML = '';
+    if (S.over) { var w = S.result.winner; m.appendChild(el('span', { class: 'tot', text: w < 0 ? 'It’s a tie!' : (nm(w) === 'You' ? 'You win!' : nm(w) + ' wins!') })); return; }
+    if (pend.length) {
+      var r = check();
+      if (r.words && r.words.length) {
+        r.words.forEach(function (x) { m.appendChild(el('span', { class: 'ww' + (x.ok ? '' : ' bad'), html: Kit.esc(x.w) + (x.ok ? ' <small>' + x.s + '</small>' : '') })); });
+        if (r.ok) { if (r.bingo) m.appendChild(el('span', { class: 'bingo', text: 'Bingo +50' })); m.appendChild(el('span', { class: 'tot', text: '= ' + r.score })); }
+        else if (r.err && r.err.indexOf('Not a') !== 0) m.appendChild(el('span', { class: 'err', text: r.err }));
+      } else m.appendChild(el('span', { class: 'err', text: r.err }));
+      return;
+    }
+    var p = P(S.turn), txt;
+    if (p.cpu && busy) txt = p.name + ' is thinking…';
+    else if (S.mode === 'online' && S.turn !== net.seat) txt = 'Waiting for ' + p.name + '…';
+    else if (veil) txt = 'Pass to ' + p.name;
+    else txt = (S.mode === 'pp' ? Kit.poss(p.name) : 'Your') + ' turn';
+    var t = el('span', { class: 'turn', style: { '--c': col(S.turn) } }, [el('span', { class: 'dot' }), el('span', { text: txt })]);
+    m.appendChild(t);
+    var lm = lastMoveText(), logShown = V.log && V.log.clientHeight > 30;
+    if (lm && !(p.cpu && busy) && !logShown) m.appendChild(el('span', { class: 'last', text: '· ' + lm }));
+  }
+  function paintActs() {
+    if (!V.acts) return;
+    var a = V.acts; a.innerHTML = '';
+    if (S.over) {
+      a.appendChild(el('button', { type: 'button', class: 'btn btn-primary play', html: Kit.icon('trophy') + '<span>See results</span>', onclick: function () { showResults(true); } }));
+      return;
+    }
+    var mine = myTurn(), r = pend.length ? check() : null;
+    var b1 = pend.length
+      ? el('button', { type: 'button', class: 'btn btn-soft sm', html: Kit.icon('undo') + '<span>Recall</span>', onclick: function () { recall(); } })
+      : el('button', { type: 'button', class: 'btn btn-soft sm', html: Kit.icon('shuffle') + '<span>Shuffle</span>', onclick: function () { shuffleRack(); } });
+    b1.disabled = veil || !myRack().length;
+    var b2 = el('button', { type: 'button', class: 'btn btn-soft sm', html: Kit.icon('swap') + '<span>Swap</span>', onclick: function () { swapSheet(); } });
+    b2.disabled = !mine;
+    var b3 = el('button', { type: 'button', class: 'btn btn-soft sm', html: Kit.icon('right') + '<span>Pass</span>', onclick: function () { passAsk(); } });
+    b3.disabled = !mine;
+    var b4 = el('button', { type: 'button', class: 'btn btn-primary play', html: Kit.icon('check') + '<span>' + (r && r.ok ? 'Play ' + r.score : 'Play') + '</span>', onclick: function () { submit(); } });
+    b4.disabled = !mine || !pend.length;
+    [b1, b2, b3, b4].forEach(function (b) { a.appendChild(b); });
+  }
+  function logLines() {
+    var out = [];
+    S.log.forEach(function (e) {
+      if (e.k === 'first') out.push({ c: col(e.p), html: '<span>' + Kit.esc(nm(e.p)) + (nm(e.p) === 'You' ? ' go' : ' goes') + ' first</span>', sys: 1 });
+      else if (e.k === 'play') out.push({ c: col(e.p), html: '<span>' + Kit.esc(nm(e.p)) + '</span> <b>' + Kit.esc(e.w) + '</b>' + (e.b ? ' <span class="bg">BINGO</span>' : '') + '<span class="n">' + e.s + '</span>' });
+      else if (e.k === 'swap') out.push({ c: col(e.p), html: '<span>' + Kit.esc(nm(e.p)) + ' swapped ' + e.x + (e.x === 1 ? ' tile' : ' tiles') + '</span>' });
+      else if (e.k === 'pass') out.push({ c: col(e.p), html: '<span>' + Kit.esc(nm(e.p)) + ' passed</span>' });
+      else if (e.k === 'end') out.push({ c: '', html: '<span>' + (e.t === 'out' ? Kit.esc(nm(e.p)) + ' went out' : 'Six scoreless turns in a row') + '</span>', sys: 1 });
+    });
+    if (S.over && S.result) S.result.adj.forEach(function (d, i) { if (d) out.push({ c: col(i), html: '<span>' + Kit.esc(nm(i)) + (d > 0 ? ' gets others’ leftover tiles' : ' had ' + S.result.left[i].replace(/\?/g, '·') + ' left') + '</span><span class="n">' + (d > 0 ? '+' : '−') + Math.abs(d) + '</span>' }); });
+    return out;
+  }
+  function logList(newestFirst) {
+    var ol = el('ol', { class: 'lg' }), lines = logLines();
+    if (newestFirst) lines.reverse();
+    lines.forEach(function (x) { ol.appendChild(el('li', { class: x.sys ? 'sys' : '', style: x.c ? { '--c': x.c } : null, html: x.html })); });
+    return ol;
+  }
+  function paintLog() {
+    if (!V.log) return;
+    var n = V.log.querySelectorAll('li').length;
+    V.log.innerHTML = '';
+    V.log.appendChild(el('h4', { text: 'Moves' }));
+    var ol = logList(true); V.log.appendChild(ol);
+    var now = ol.children.length; if (n && now > n) for (var k = 0; k < now - n; k++) ol.children[k].classList.add('fresh');
+  }
+  function logSheet() { if (!S) return; Kit.sheet({ title: 'Moves so far', node: S.log.length > 1 ? logList(true) : el('p', { class: 'muted', text: 'No moves yet.' }), actions: [{ label: 'Close', cls: 'btn-soft' }] }); }
+  function unseenSheet() {
+    if (!S) return;
+    var c = {}; Object.keys(E.DIST).forEach(function (l) { c[l] = E.DIST[l]; });
+    S.board.forEach(function (ch) { if (ch) c[E.isBlank(ch) ? '?' : ch]--; });
+    if (!veil) myRack().forEach(function (t) { c[t.l]--; });
+    var grid = el('div', { class: 'unseen' }), total = 0;
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ?'.split('').forEach(function (l) {
+      total += Math.max(0, c[l]);
+      grid.appendChild(el('div', { class: 'u' + (c[l] > 0 ? '' : ' zero') }, [tileEl(l), el('b', { text: '×' + Math.max(0, c[l]) })]));
+    });
+    var others = total - bagN();
+    Kit.sheet({ title: 'Tiles left', html: '<p class="muted">' + bagN() + ' in the bag' + (others > 0 ? ' and ' + others + ' on other racks' : '') + '. These are the ' + total + ' tiles you haven’t seen yet.</p>', node: grid, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+
+  // ── Motion helpers ──
+  // FLIP: tiles (by data-id) glide from where they were to where they are now
+  function rects() { var m = {}; if (!V.root) return m; Array.prototype.forEach.call(V.root.querySelectorAll('.tl[data-id]'), function (n) { m[n.getAttribute('data-id')] = n.getBoundingClientRect(); }); return m; }
+  function glide(before, o) {
+    o = o || {};
+    Array.prototype.forEach.call(V.root.querySelectorAll('.tl[data-id]'), function (n) {
+      var b = before[n.getAttribute('data-id')]; if (!b || !n.animate) return;
+      var a = n.getBoundingClientRect(); if (!a.width) return;
+      var s = a.width / (n.offsetWidth || a.width), dx = (b.left - a.left) / s, dy = (b.top - a.top) / s, k = b.width / a.width;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(k - 1) < 0.02) return;
+      n.style.transformOrigin = '0 0';
+      n.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')' }, { transform: 'none' }], { duration: o.ms || 260, easing: 'cubic-bezier(.2,.9,.3,1.05)' });
+    });
+  }
+  // new tiles come out of the bag and drop onto the rack, one after another
+  function dealIn(ids) {
+    if (!V.rack || !V.bag) return;
+    var b = V.bag.getBoundingClientRect(), bx = b.left + b.width / 2, by = b.top + b.height / 2, k = 0;
+    V.bag.classList.remove('shake'); void V.bag.offsetWidth; V.bag.classList.add('shake');
+    Array.prototype.forEach.call(V.rack.querySelectorAll('.tl[data-id]'), function (n) {
+      if (ids && ids.indexOf(+n.getAttribute('data-id')) < 0) return;
+      var a = n.getBoundingClientRect(), d = k++ * 90;
+      if (!n.animate) return;
+      n.animate([{ transform: 'translate(' + (bx - a.left - a.width / 2) + 'px,' + (by - a.top - a.height / 2) + 'px) scale(.35) rotate(-25deg)', opacity: 0 },
+        { opacity: 1, offset: 0.25 }, { transform: 'translateY(-14px) rotate(3deg)', offset: 0.75 }, { transform: 'none' }], { duration: 520, delay: d, easing: 'cubic-bezier(.25,.8,.35,1)', fill: 'backwards' });
+      setTimeout(function () { Kit.sfx('deal', 0.7); }, d + 380);
+    });
+  }
+  function cellCenter(i) { var pitch = V.cs + V.gap; return { x: (i % 15 + 0.5) * pitch + V.gap, y: (Math.floor(i / 15) + 0.5) * pitch + V.gap }; }
+  function floatText(sq, big, small) {
+    var a = cellCenter(sq[0]), b = cellCenter(sq[sq.length - 1]);
+    var f = el('div', { class: 'flt', style: { left: ((a.x + b.x) / 2) + 'px', top: ((a.y + b.y) / 2) + 'px' }, html: Kit.esc(big) + (small ? '<small>' + Kit.esc(small) + '</small>' : '') });
+    V.fx.appendChild(f); setTimeout(function () { f.remove(); }, 1400);
+  }
+  function countUp(seat, from, to, ms) {
+    var c = V.pls && V.pls.children[seat]; if (!c) return;
+    var pt = c.querySelector('.pt'), t0 = performance.now(); pt._anim = true;
+    c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump');
+    (function step(t) {
+      var k = Math.min(1, (t - t0) / ms), v = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3)));
+      pt.textContent = String(v);
+      if (k < 1) requestAnimationFrame(step); else { pt._anim = false; pt.textContent = String(P(seat).score); }
+    })(t0);
+  }
+  // A move lands: tiles drop in (one by one for others' plays), the words light up and their points rise, the score counts up
+  function showMove(seat, info, done) {
+    busy = true;
+    zoomTo(1);
+    var anyOther = info.how !== 'me';
+    paintPlayers(); paintBoard(); paintRack(); paintMsg(); paintActs(); paintLog();
+    if (info.kind !== 'play') {
+      if (info.kind === 'swap') { V.bag.classList.remove('shake'); void V.bag.offsetWidth; V.bag.classList.add('shake'); Kit.sfx('roll'); }
+      else Kit.sfx('whoosh');
+      if (seat === viewSeat() && info.drawn && info.drawn.length && !veil) dealIn(info.drawn);
+      Kit.toast(lastMoveText());
+      setTimeout(function () { busy = false; done(); }, 900);
+      return;
+    }
+    var t = 0, sqs = S.last.slice().sort(function (a, b) { return a - b; });
+    if (anyOther) {
+      sqs.forEach(function (i, k) {
+        var n = V.cells[i].querySelector('.tl'); if (!n) return;
+        n.classList.add('hide');
+        setTimeout(function () { n.classList.remove('hide'); n.classList.add('drop'); Kit.sfx('tap', 0.8); Kit.haptic('tick'); setTimeout(function () { n.classList.remove('drop'); }, 450); }, 120 + k * 190);
+      });
+      t = 120 + sqs.length * 190 + 250;
+    } else {
+      sqs.forEach(function (i) { var n = V.cells[i].querySelector('.tl'); if (n) { n.classList.add('snap'); setTimeout(function () { n.classList.remove('snap'); }, 300); } });
+      Kit.sfx('chip'); Kit.haptic('medium');
+      t = 180;
+    }
+    var words = S.lastWords || [], entry = S.log.filter(function (e) { return e.k === 'play'; }).pop();
+    words.forEach(function (w, k) {
+      setTimeout(function () {
+        w.sq.forEach(function (i) { var n = V.cells[i].querySelector('.tl'); if (n) { n.classList.remove('wl'); void n.offsetWidth; n.classList.add('wl'); } });
+        floatText(w.sq, '+' + w.s, words.length > 1 ? w.w : '');
+        Kit.sfx('tick'); Kit.haptic('light');
+      }, t + k * 480);
+    });
+    t += words.length * 480;
+    setTimeout(function () {
+      countUp(seat, info.before != null ? info.before : P(seat).score - entry.s, P(seat).score - (S.over && S.result ? S.result.adj[seat] : 0), 650);
+      if (entry.b) {
+        Kit.callout('Bingo! +50'); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: 120 });
+      } else if (entry.s >= 40) { Kit.callout(entry.m + ' ' + entry.s); Kit.sfx('sparkle'); Kit.haptic('success'); }
+      else Kit.sfx('good');
+      if (seat === viewSeat() && info.drawn && info.drawn.length && !veil) dealIn(info.drawn);
+    }, t);
+    t += entry.b ? 1500 : entry.s >= 40 ? 1200 : 750;
+    setTimeout(function () { busy = false; done(); }, t);
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Your turn: placing, recalling, playing
+  // ═════════════════════════════════════════════════════════════════════════
+  function place(id, i, ch, o) {
+    o = o || {};
+    if (!myTurn() || S.board[i] || pend.some(function (q) { return q.i === i && q.id !== id; })) return false;
+    var t = tileById(id); if (!t) return false;
+    if (t.l === '?' && !ch) {
+      var was = pend.filter(function (q) { return q.id === id; })[0];
+      if (was && E.isBlank(was.ch)) ch = was.ch;
+      else { blankPicker(function (L) { place(id, i, L.toLowerCase(), o); }); return true; }
+    }
+    var before = o.from ? o.from : rects();
+    pend = pend.filter(function (q) { return q.id !== id; });
+    pend.push({ id: id, i: i, ch: ch || t.l });
+    selId = null;
+    if (cursor && (cursor.i === i || o.typed)) advanceCursor(i);
+    else if (cursor) cursor = null;
+    paintBoard(); paintRack(); paintMsg(); paintActs();
+    glide(before);
+    Kit.sfx('tap'); Kit.haptic('light');
+    if (Z.z < 1.05 && canZoom() && V.cs < 30 && !o.typed) zoomTo(Math.min(zmax(), 2), i);
+    return true;
+  }
+  function unplace(id, toIndex) {
+    var before = rects();
+    pend = pend.filter(function (q) { return q.id !== id; });
+    if (toIndex != null) reorder(id, toIndex);
+    paintBoard(); paintRack(); paintMsg(); paintActs(); glide(before);
+    Kit.sfx('tick'); Kit.haptic('light');
+  }
+  function recall() {
+    if (!pend.length) return;
+    var before = rects();
+    pend = []; cursor = null;
+    paintBoard(); paintRack(); paintMsg(); paintActs(); glide(before, { ms: 340 });
+    Kit.sfx('whoosh'); Kit.haptic('light');
+    zoomTo(1);
+  }
+  function shuffleRack() {
+    var r = myRack(); if (!r.length) return;
+    var before = rects();
+    shuffle(r); selId = null;
+    paintRack(); glide(before, { ms: 380 });
+    Kit.sfx('roll', 0.7); Kit.haptic('light');
+    if (S.mode !== 'online') save();
+  }
+  function reorder(id, idx) {
+    var r = myRack(), t = tileById(id); if (!t) return;
+    var shown = rackShown().filter(function (x) { return x.id !== id; });
+    idx = Math.max(0, Math.min(shown.length, idx));
+    var after = shown[idx];
+    r.splice(r.indexOf(t), 1);
+    if (after) r.splice(r.indexOf(after), 0, t); else r.push(t);
+  }
+  function advanceCursor(from) {
+    if (!cursor) return;
+    var step = cursor.dir === 'H' ? 1 : 15, i = from;
+    var r = Math.floor(from / 15), c = from % 15;
+    function ok(j) { return cursor.dir === 'H' ? Math.floor(j / 15) === r && j < 225 : j < 225 && j % 15 === c; }
+    i += step;
+    while (ok(i) && (S.board[i] || pend.some(function (q) { return q.i === i; }))) i += step;
+    if (ok(i)) cursor.i = i; else cursor = null;
+  }
+  function submit() {
+    if (!myTurn() || !pend.length) return;
+    var r = check();
+    if (!r.ok) {
+      Kit.sfx('bad'); Kit.haptic('error'); Kit.toast(r.err);
+      V.frame.classList.remove('shake'); void V.frame.offsetWidth; V.frame.classList.add('shake');
+      return;
+    }
+    var tiles = pend.slice();
+    if (S.mode === 'online' && net.mode === 'guest') { net.waiting = true; paintActs(); net.peer.send({ t: 'mv', k: 'play', n: S.n, tiles: tiles }, true); return; }
+    doPlay(viewSeat(), tiles, 'me');
+  }
+  function passAsk() {
+    if (!myTurn()) return;
+    var extra = S.scoreless >= 5 ? ' This is the sixth scoreless turn in a row, so the game will end.' : '';
+    Kit.confirm('Pass your turn?', { ok: 'Pass', body: 'You score nothing this turn.' + extra }).then(function (ok) {
+      if (!ok || !myTurn()) return;
+      recall();
+      if (S.mode === 'online' && net.mode === 'guest') { net.waiting = true; paintActs(); net.peer.send({ t: 'mv', k: 'pass', n: S.n }, true); return; }
+      doPass(viewSeat());
+    });
+  }
+  function swapSheet() {
+    if (!myTurn()) return;
+    if (bagN() < 7) { Kit.toast('You can only swap while the bag has 7 or more tiles'); Kit.sfx('bad'); return; }
+    if (pend.length) recall();
+    swapSel = {};
+    var row = el('div', { class: 'swap' }), go;
+    function upd() { var n = Object.keys(swapSel).length; go.textContent = n ? 'Swap ' + n + (n === 1 ? ' tile' : ' tiles') : 'Pick tiles to swap'; go.disabled = !n; }
+    myRack().forEach(function (t) {
+      var n = tileEl(t.l, { id: t.id });
+      n.removeAttribute('data-id');
+      n.addEventListener('click', function () { if (swapSel[t.id]) delete swapSel[t.id]; else swapSel[t.id] = 1; n.classList.toggle('on', !!swapSel[t.id]); Kit.sfx('tick'); upd(); });
+      row.appendChild(n);
+    });
+    var all = el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Pick all', onclick: function () { myRack().forEach(function (t) { swapSel[t.id] = 1; }); Array.prototype.forEach.call(row.children, function (n) { n.classList.add('on'); }); upd(); } });
+    var s = Kit.sheet({ title: 'Swap tiles', html: '<p class="muted">Tap the tiles to put back in the bag. You draw the same number of new ones, and it uses your turn.</p>', node: el('div', null, [row, all]),
+      actions: [{ label: 'Pick tiles to swap', primary: true, onClick: function () {
+        var ids = Object.keys(swapSel).map(Number); if (!ids.length || !myTurn()) return;
+        if (S.mode === 'online' && net.mode === 'guest') { net.waiting = true; paintActs(); net.peer.send({ t: 'mv', k: 'swap', n: S.n, ids: ids }, true); return; }
+        doSwap(viewSeat(), ids);
+      } }, { label: 'Cancel', cls: 'btn-ghost' }] });
+    go = s.el.querySelector('.k-acts .btn'); upd();
+  }
+  function blankPicker(cb) {
+    var grid = el('div', { class: 'pick' }), s;
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(function (L) {
+      var t = tileEl(L.toLowerCase()); t.querySelector('b').textContent = L;
+      grid.appendChild(el('button', { type: 'button', 'aria-label': L, onclick: function () { s.close(); Kit.sfx('pop'); cb(L); } }, [t]));
+    });
+    s = Kit.sheet({ title: 'Which letter is the blank?', html: '<p class="muted">A blank scores 0 and stays this letter for the rest of the game.</p>', node: grid, actions: [{ label: 'Cancel', cls: 'btn-ghost' }] });
+  }
+
+  // ── Input: drag and drop, taps, pinch, keys ──
+  var G = null, ptrs = {}, pinch = null, pan = null;
+  function cellAt(x, y) {
+    var r = V.vp.getBoundingClientRect();
+    if (x < r.left || x > r.right || y < r.top || y > r.bottom) return -1;
+    var bx = (x - r.left - Z.tx) / Z.z, by = (y - r.top - Z.ty) / Z.z, pitch = V.cs + V.gap;
+    var c = Math.floor((bx - V.gap / 2) / pitch), rr = Math.floor((by - V.gap / 2) / pitch);
+    if (c < 0 || c > 14 || rr < 0 || rr > 14) return -1;
+    return rr * 15 + c;
+  }
+  function overRack(x, y) { var r = V.rack.getBoundingClientRect(); return x >= r.left - 10 && x <= r.right + 10 && y >= r.top - 24 && y <= r.bottom + 14; }
+  function rackIndexAt(x) {
+    var ts = Array.prototype.filter.call(V.rack.querySelectorAll('.tl[data-id]'), function (n) { return !n.classList.contains('lifted'); }), k = 0;
+    for (; k < ts.length; k++) { var r = ts[k].getBoundingClientRect(); if (x < r.left + r.width / 2) break; }
+    return k;
+  }
+  function bindInput() {
+    V.root.addEventListener('pointerdown', function (e) {
+      if (e.button > 0 || !S) return;
+      var tile = e.target.closest && e.target.closest('.tl[data-id]');
+      var inBoard = V.vp.contains(e.target);
+      if (tile && (V.rack.contains(tile) || tile.classList.contains('pend')) && !ptrs.length) {
+        if (!Object.keys(ptrs).length) { startTileGesture(e, tile); return; }
+      }
+      if (inBoard) boardDown(e);
+    });
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    V.vp.addEventListener('wheel', function (e) {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      var r = V.vp.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, bx = (mx - Z.tx) / Z.z, by = (my - Z.ty) / Z.z;
+      Z.z = Math.max(1, Math.min(zmax(), Z.z * Math.exp(-e.deltaY * 0.01))); Z.tx = mx - bx * Z.z; Z.ty = my - by * Z.z; clampZoom(); applyZoom(false);
+    }, { passive: false });
+  }
+  function startTileGesture(e, tile) {
+    var id = +tile.getAttribute('data-id'), fromBoard = tile.classList.contains('pend');
+    if (!fromBoard && veil) return;
+    G = { id: id, src: fromBoard ? 'board' : 'rack', x0: e.clientX, y0: e.clientY, pid: e.pointerId, el: tile, drag: false, touch: e.pointerType === 'touch' };
+    e.preventDefault();
+  }
+  function startDrag(e) {
+    if (!myTurn() && G.src === 'board') { G = null; return; }
+    G.drag = true;
+    var r = G.el.getBoundingClientRect(), t = tileById(G.id); if (!t) { G = null; return; }
+    var q = pend.filter(function (x) { return x.id === G.id; })[0];
+    var g = tileEl(q ? q.ch : t.l, { id: G.id, cls: 'ghost' }); g.removeAttribute('data-id');
+    g.style.setProperty('--ts', Math.max(r.width, 40) + 'px');
+    document.body.appendChild(g); G.ghost = g; G.size = Math.max(r.width, 40);
+    G.el.classList.add('lifted');
+    selId = null; Array.prototype.forEach.call(V.rack.querySelectorAll('.sel'), function (n) { n.classList.remove('sel'); });
+    Kit.sfx('tick', 0.6); Kit.haptic('light');
+    moveGhost(e.clientX, e.clientY); paintHints();
+  }
+  function dropPoint(x, y) { return { x: x, y: y - (G && G.touch ? G.size * 0.55 : 0) }; }
+  function moveGhost(x, y) {
+    var p = dropPoint(x, y), i = myTurn() ? cellAt(p.x, p.y) : -1;
+    var free = i >= 0 && !S.board[i] && !pend.some(function (q) { return q.i === i && q.id !== G.id; });
+    var sz = free ? Math.max(V.cs * Z.z * 1.12, 26) : G.size;
+    G.ghost.style.setProperty('--ts', sz + 'px');
+    G.ghost.style.left = (p.x - sz / 2) + 'px'; G.ghost.style.top = (p.y - sz / 2) + 'px';
+    if (G.hov !== (free ? i : -1)) {
+      if (G.hov >= 0 && V.cells[G.hov]) V.cells[G.hov].classList.remove('hov');
+      G.hov = free ? i : -1;
+      if (G.hov >= 0) { V.cells[G.hov].classList.add('hov'); Kit.haptic('tick'); }
+    }
+    // near the edge of a zoomed board: slide the board along
+    if (Z.z > 1.05 && i >= 0) {
+      var r = V.vp.getBoundingClientRect(), m = 26, dx = 0, dy = 0;
+      if (p.x < r.left + m) dx = 7; else if (p.x > r.right - m) dx = -7;
+      if (p.y < r.top + m) dy = 7; else if (p.y > r.bottom - m) dy = -7;
+      if (dx || dy) { Z.tx += dx; Z.ty += dy; clampZoom(); applyZoom(false); }
+    }
+  }
+  function endTileGesture(e) {
+    var g = G; G = null;
+    if (!g.drag) {
+      // a tap: a board tile goes home; a rack tile is picked up (or goes to the typing cursor)
+      if (g.src === 'board') { if (myTurn()) unplace(g.id); return; }
+      if (cursor && myTurn()) { place(g.id, cursor.i, null, { typed: true }); return; }
+      selId = selId === g.id ? null : g.id;
+      Kit.sfx('tick'); Kit.haptic('tick');
+      Array.prototype.forEach.call(V.rack.querySelectorAll('.tl'), function (n) { n.classList.toggle('sel', +n.getAttribute('data-id') === selId); });
+      paintHints();
+      return;
+    }
+    if (g.hov >= 0 && V.cells[g.hov]) V.cells[g.hov].classList.remove('hov');
+    var p = dropPoint(e.clientX, e.clientY), i = myTurn() ? cellAt(p.x, p.y) : -1, gr = g.ghost.getBoundingClientRect(), from = rects();
+    from[String(g.id)] = gr;
+    g.ghost.remove(); g.el.classList.remove('lifted'); paintHints();
+    if (i >= 0 && !S.board[i] && !pend.some(function (q) { return q.i === i && q.id !== g.id; })) { place(g.id, i, null, { from: from }); return; }
+    if (overRack(e.clientX, e.clientY)) {
+      var idx = rackIndexAt(e.clientX);
+      if (g.src === 'board') { pend = pend.filter(function (q) { return q.id !== g.id; }); }
+      reorder(g.id, idx);
+      paintBoard(); paintRack(); paintMsg(); paintActs(); glide(from);
+      Kit.sfx('tick'); if (S.mode !== 'online') save();
+      return;
+    }
+    // dropped somewhere else: back where it came from
+    paintBoard(); paintRack(); glide(from, { ms: 300 });
+  }
+  function boardDown(e) {
+    ptrs[e.pointerId] = { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY };
+    var ids = Object.keys(ptrs);
+    if (ids.length === 2) {
+      var a = ptrs[ids[0]], b = ptrs[ids[1]], r = V.vp.getBoundingClientRect();
+      var mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: Z.z, bx: (mx - Z.tx) / Z.z, by: (my - Z.ty) / Z.z };
+      pan = null;
+    } else if (ids.length === 1) pan = { x: e.clientX, y: e.clientY, tx: Z.tx, ty: Z.ty, moved: false };
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (G && e.pointerId === G.pid) {
+      if (!G.drag && Math.hypot(e.clientX - G.x0, e.clientY - G.y0) > 6) startDrag(e);
+      if (G && G.drag) { moveGhost(e.clientX, e.clientY); e.preventDefault(); }
+      return;
+    }
+    if (!ptrs[e.pointerId]) return;
+    ptrs[e.pointerId].x = e.clientX; ptrs[e.pointerId].y = e.clientY;
+    var ids = Object.keys(ptrs);
+    if (pinch && ids.length >= 2) {
+      var a = ptrs[ids[0]], b = ptrs[ids[1]], r = V.vp.getBoundingClientRect(), d = Math.hypot(a.x - b.x, a.y - b.y);
+      var mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
+      Z.z = Math.max(1, Math.min(zmax(), pinch.z * d / pinch.d)); Z.tx = mx - pinch.bx * Z.z; Z.ty = my - pinch.by * Z.z;
+      clampZoom(); applyZoom(false);
+      return;
+    }
+    if (pan) {
+      var dx = e.clientX - pan.x, dy = e.clientY - pan.y;
+      if (!pan.moved && Math.hypot(dx, dy) > 7) pan.moved = true;
+      if (pan.moved && Z.z > 1.01) { Z.tx = pan.tx + dx; Z.ty = pan.ty + dy; clampZoom(); applyZoom(false); }
+    }
+  }
+  function onUp(e) {
+    if (G && e.pointerId === G.pid) { endTileGesture(e); return; }
+    if (!ptrs[e.pointerId]) return;
+    delete ptrs[e.pointerId];
+    if (pinch) { if (!Object.keys(ptrs).length) pinch = null; pan = null; return; }
+    if (pan && !pan.moved) boardTap(cellAt(e.clientX, e.clientY));
+    pan = null;
+  }
+  function boardTap(i) {
+    if (i < 0 || !S || S.over) return;
+    if (!myTurn()) { if (!S.board[i]) Kit.toast(veil ? 'Pass the device first' : busy ? 'Just a moment…' : 'It’s ' + Kit.poss(nm(S.turn)) + ' turn'); return; }
+    if (S.board[i]) return;
+    if (selId != null) { place(selId, i); return; }
+    // no tile picked: set the typing cursor (tap again to switch between across and down)
+    if (cursor && cursor.i === i) cursor.dir = cursor.dir === 'H' ? 'V' : 'H';
+    else cursor = { i: i, dir: guessDir(i) };
+    Kit.sfx('tick', 0.6);
+    paintBoard();
+  }
+  function guessDir(i) {
+    if (pend.length) { var rr = pend.every(function (q) { return Math.floor(q.i / 15) === Math.floor(i / 15); }); if (rr) return 'H'; if (pend.every(function (q) { return q.i % 15 === i % 15; })) return 'V'; }
+    var c = i % 15, r = Math.floor(i / 15);
+    var hn = (c > 0 && S.board[i - 1]) || (c < 14 && S.board[i + 1]), vn = (r > 0 && S.board[i - 15]) || (r < 14 && S.board[i + 15]);
+    return vn && !hn ? 'V' : 'H';
+  }
+  function onKey(e) {
+    if (!S || !V.root || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (document.querySelector('.k-scrim,.k-win,.k-ho')) return;
+    var tg = e.target; if (tg && /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName)) return;
+    if (!myTurn()) return;
+    var k = e.key;
+    if (/^[a-zA-Z]$/.test(k)) {
+      var L = k.toUpperCase();
+      var at = cursor ? cursor.i : null;
+      if (at == null && pend.length) { var lastQ = pend[pend.length - 1], d = pend.length > 1 && pend.every(function (q) { return q.i % 15 === lastQ.i % 15; }) ? 'V' : 'H'; cursor = { i: lastQ.i, dir: d }; advanceCursor(lastQ.i); at = cursor ? cursor.i : null; }
+      if (at == null) { Kit.toast('Click a square first, then type'); return; }
+      var rack = rackShown(), t = rack.filter(function (x) { return x.l === L; })[0], blank = null;
+      if (!t) { t = rack.filter(function (x) { return x.l === '?'; })[0]; blank = L.toLowerCase(); }
+      if (!t) { Kit.sfx('bad'); Kit.toast('No ' + L + ' on your rack'); return; }
+      e.preventDefault();
+      place(t.id, at, blank, { typed: true });
+      return;
+    }
+    if (k === 'Backspace') {
+      if (!pend.length) return; e.preventDefault();
+      var q = pend[pend.length - 1]; var dir = cursor ? cursor.dir : guessDir(q.i);
+      unplace(q.id); cursor = { i: q.i, dir: dir }; paintBoard(); return;
+    }
+    if (k === 'Enter') { e.preventDefault(); submit(); return; }
+    if (k === 'Escape') { if (pend.length) recall(); else if (cursor) { cursor = null; paintBoard(); } return; }
+    if (k === ' ' && cursor) { e.preventDefault(); cursor.dir = cursor.dir === 'H' ? 'V' : 'H'; paintBoard(); return; }
+    var mv = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -15, ArrowDown: 15 }[k];
+    if (mv && cursor) {
+      e.preventDefault();
+      var n = cursor.i + mv; if ((mv === 1 && n % 15 === 0) || (mv === -1 && cursor.i % 15 === 0) || n < 0 || n > 224) return;
+      cursor.i = n; if (mv === 1 || mv === -1) cursor.dir = 'H'; else cursor.dir = 'V'; paintBoard();
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // The end
+  // ═════════════════════════════════════════════════════════════════════════
+  function showResults(again) {
+    if (!S || !S.over) return;
+    var R = S.result, order = R.order, w = R.winner;
+    if (!S.recorded) { S.recorded = true; record(); save(); clearSave(); }
+    var best = bestPlay(), bingos = S.log.filter(function (e) { return e.k === 'play' && e.b; });
+    var notes = [];
+    if (bingos.length) notes.push(bingos.length === 1 ? 'Bingo: ' + nm(bingos[0].p) + ' with ' + bingos[0].m : bingos.length + ' bingos: ' + bingos.map(function (b) { return b.m; }).join(', '));
+    notes.push(R.type === 'out' ? nm(R.seat) + ' went out and picked up ' + R.adj[R.seat] + (R.adj[R.seat] === 1 ? ' point' : ' points') : 'Ended after six scoreless turns in a row');
+    R.adj.forEach(function (d, i) { if (d < 0) notes.push(nm(i) + ' lost ' + (-d) + ' for ' + R.left[i].replace(/\?/g, 'a blank ').split('').join(' ').replace(/a b l a n k/g, 'blank')); });
+    if (R.tieBreak) notes.push('Tied, so the score before leftover tiles decided it');
+    var meSeat = viewSeat(), lose = w >= 0 && S.mode !== 'pp' && w !== meSeat && (P(w).cpu || S.mode === 'online');
+    var title = w < 0 ? 'It’s a tie!' : (S.mode !== 'pp' && w === meSeat) || nm(w) === 'You' ? 'You win!' : nm(w) + ' wins!';
+    Kit.win({
+      icon: w < 0 ? 'users' : lose ? (P(w).cpu ? 'bot' : 'trophy') : 'trophy', title: title, lose: lose, quiet: !!again,
+      sub: w >= 0 && order.length > 1 ? 'by ' + (P(order[0]).score - P(order[1]).score) + (P(order[0]).score - P(order[1]).score === 1 ? ' point' : ' points') : 'Scores are level',
+      rank: order.map(function (i) { return { name: nm(i), score: P(i).score, color: col(i), cpu: P(i).cpu }; }),
+      notes: notes, notesTitle: 'The game',
+      againLabel: net.mode ? (net.mode === 'host' ? 'Back to your table' : 'Back to the table') : 'Play again',
+      again: function () { playAgain(); },
+      extra: [{ label: 'Look at the board', onClick: function () {} }],
+      closeLabel: 'Back to games'
+    });
+    // the best play of the game, spelled out in tiles
+    var card = document.querySelector('.k-win:last-of-type .card'), sub = card && card.querySelector('.sub');
+    if (best && sub) {
+      var row = el('div', { class: 'bestw', style: { '--n': String(best.m.length) } });
+      best.m.split('').forEach(function (L, k) { var t = tileEl(L); t.style.animationDelay = (again ? 0 : 0.5 + k * 0.08) + 's'; row.appendChild(t); });
+      sub.parentNode.insertBefore(el('div', { class: 'bestb' }, [row, el('small', { text: 'Best play · ' + nm(best.p) + ' · ' + best.s + ' points' })]), sub.nextSibling);
+    }
+  }
+  function bestPlay() { var b = null; S.log.forEach(function (e) { if (e.k === 'play' && (!b || e.s > b.s)) b = e; }); return b; }
+  function playAgain() {
+    if (net.mode) { backToTable(); return; }
+    var o = { mode: S.mode, level: S.level, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; }) };
+    newGame(o);
+  }
+  function record() {
+    var R = S.result, rows = [];
+    for (var r = 0; r < 15; r++) { var row = ''; for (var c = 0; c < 15; c++) row += S.board[r * 15 + c] || '.'; rows.push(row); }
+    var plays = S.log.filter(function (e) { return e.k === 'play'; });
+    var top = plays.slice().sort(function (a, b) { return b.s - a.s; }).slice(0, 5).map(function (e) { return { p: e.p, w: e.m, s: e.s, b: e.b || 0 }; });
+    var n = S.players.length, rounds = [], cur = null, firstSeat = (S.log[0] && S.log[0].k === 'first') ? S.log[0].p : 0;
+    S.log.forEach(function (e) {
+      if (e.p == null || e.p < 0 || e.k === 'first' || e.k === 'end') return;
+      if (!cur || (e.p === firstSeat && cur[firstSeat] != null)) { cur = S.players.map(function () { return null; }); rounds.push(cur); }
+      cur[e.p] = (cur[e.p] || 0) + (e.s || 0);
+    });
+    if (rounds.length) rounds.push(R.adj.slice());
+    var hl = [], best = bestPlay();
+    if (best && !best.b) hl.push(nm(best.p) + ' played ' + best.m + ' for ' + best.s);
+    plays.filter(function (e) { return e.b; }).slice(0, 3).forEach(function (e) { hl.push(nm(e.p) + ' bingoed with ' + e.m + ' for ' + e.s); });
+    hl.push(R.type === 'out' ? nm(R.seat) + ' went out first' : 'Ended after six scoreless turns');
+    var cpus = S.players.filter(function (p) { return p.cpu; });
+    var mode = S.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : S.mode === 'pp' ? 'Pass & play' : 'Online';
+    if (cpus.length && S.mode !== 'cpu') hl.push('A robot took over for a player who left');
+    Kit.record(KEY, {
+      started: S.started, mode: mode,
+      players: S.players.map(function (p) { return { name: p.name, score: p.score, cpu: p.cpu }; }),
+      winner: R.winner >= 0 ? nm(R.winner) : null,
+      rounds: rounds.length > 1 && rounds.length <= 40 ? { labels: rounds.map(function (x, k) { return k === rounds.length - 1 ? 'End' : String(k + 1); }), scores: rounds.map(function (row) { return row.map(function (v) { return v == null ? 0 : v; }); }) } : null,
+      highlights: hl,
+      detail: { b: rows, top: top, bg: S.players.map(function (p, i) { return plays.filter(function (e) { return e.p === i && e.b; }).length; }), mv: S.players.map(function (p, i) { return plays.filter(function (e) { return e.p === i; }).length; }),
+        end: R.type, o: R.seat, adj: R.adj, left: R.left, tn: S.n, lv: S.mode === 'cpu' ? S.level : '' }
+    });
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Online: the host's device runs the game; everyone else sends their moves and sees only their own tiles
+  // ═════════════════════════════════════════════════════════════════════════
+  var net = { mode: null, table: null, peer: null, roster: [], seat: 0, lobby: null, wait: null, hostName: '', waiting: false };
+  function meName() { var m = lsGet('scrabble_net', {}) || {}; return m.name || (function () { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } })() || ''; }
+  function goLobby() {
+    leaveOnline(false); teardownView(); S = null; cancelThink();
+    app.className = 'stage';
+    loadDict().catch(function () {});
+    net.lobby = Online.lobby(app, {
+      game: 'scrabble', title: 'Scrabble Online', max: 4,
+      intro: '2 to 4 players, each on their own phone or tablet.',
+      me: { name: meName() },
+      onName: function (n) { var m = lsGet('scrabble_net', {}) || {}; m.name = n; lsSet('scrabble_net', m); },
+      onHost: function (me) { return hostTable(me.name); },
+      onJoin: function (code, room, me) { return joinTable(code, me.name); },
+      onSolo: function () { closeLobby(); showSetup(); }, solo: 'Play on this device instead',
+      sub: function (r) { return r.status === 'playing' ? 'Game in progress' : (r.n || 1) + ' of 4 players'; },
+      note: 'Each device connects straight to the host’s. If a device can’t connect, try both on the same Wi-Fi.'
+    });
+    window.scrollTo(0, 0);
+  }
+  function closeLobby() { if (net.lobby) { net.lobby.close(); net.lobby = null; } }
+  function busyScreen(text) { teardownView(); app.className = 'stage'; app.innerHTML = ''; app.appendChild(el('div', { class: 'ol' }, [el('div', { class: 'ol-row' }, [el('i', { class: 'ol-spin' }), el('div', { class: 'grow' }, [el('b', { text: text })])])])); }
+  function uniqueName(n) { var base = n || 'Player', k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
+  function rosterMsg() { return { t: 'ro', ro: net.roster.map(function (r) { return { name: r.name, host: !!r.host }; }) }; }
+  function sendRoster() { if (net.table) net.table.broadcast(rosterMsg(), true); if (net.wait) net.wait.update(waitPlayers(net.roster.map(function (r) { return { name: r.name, host: r.host }; }), 0)); }
+  function waitPlayers(ro, me) { return ro.map(function (r, i) { return { name: r.name, host: !!r.host, me: i === me, color: col(i) }; }); }
+  function hostTable(name) {
+    closeLobby(); busyScreen('Opening your table…');
+    return Online.host({ game: 'scrabble', name: name, max: 4, accept: function () { return S && S.mode === 'online' && !S.over ? 'That game has already started' : true; } }).then(function (table) {
+      table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); goLobby(); });
+      net.mode = 'host'; net.table = table; net.seat = 0;
+      net.roster = [{ name: name, dev: Online.dev(), host: true }];
+      table.on('peer', function (peer) {
+        net.roster.push({ name: uniqueName(peer.name), dev: peer.id, peer: peer });
+        sendRoster(); Kit.toast(peer.name + ' joined'); Kit.sfx('pop');
+      });
+      table.on('leave', function (peer) {
+        var r = net.roster.filter(function (x) { return x.peer === peer; })[0];
+        net.roster = net.roster.filter(function (x) { return x.peer !== peer; });
+        if (S && S.mode === 'online' && !S.over && r && r.seat != null) {
+          var p = P(r.seat); p.cpu = true; p.level = 'normal';
+          Kit.toast(p.name + ' left. A robot plays their tiles now.');
+          sendState(); paintAll();
+          if (S.turn === r.seat && !busy) robotTurn();
+        } else { sendRoster(); if (r) Kit.toast(r.name + ' left'); }
+      });
+      table.on('msg', function (peer, m) { hostMsg(peer, m); });
+      showWait();
+    }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
+  }
+  function showWait() {
+    teardownView(); closeLobby(); app.className = 'stage';
+    if (net.mode === 'host') {
+      net.table.setStatus('open', '');
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 4, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); }, note: 'Everyone plays on their own device and only sees their own tiles.' });
+    } else {
+      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 4, players: waitPlayers(net.roster, net.seat), onLeave: function () { leaveOnline(false); goLobby(); } });
+    }
+    window.scrollTo(0, 0);
+  }
+  function hostStart() {
+    if (net.roster.length < 2) { Kit.toast('Wait for at least one more player'); return Promise.resolve(); }
+    return loadDict().then(function () {
+      net.wait = null;
+      net.roster.forEach(function (r, i) { r.seat = i; });
+      newGame({ mode: 'online', players: net.roster.map(function (r) { return { name: r.name, cpu: false }; }) });
+      net.table.setStatus('playing', '');
+    });
+  }
+  // what one player may see: their own rack, everyone else's tile count
+  function pub(seat) {
+    return { v: 1, mode: 'online', players: S.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, level: p.level, score: p.score, n: p.rack.length, rack: i === seat ? p.rack : null }; }),
+      board: S.board, bagN: S.bag.length, turn: S.turn, scoreless: S.scoreless, n: S.n, tid: 0, log: S.log, last: S.last, lastWords: S.lastWords, draw: S.draw,
+      over: S.over, result: S.result, started: S.started };
+  }
+  function sendState() {
+    if (net.mode !== 'host' || !S) return;
+    net.roster.forEach(function (r) { if (r.peer && r.seat != null) r.peer.send({ t: 'st', you: r.seat, s: pub(r.seat) }, true); });
+  }
+  function hostMsg(peer, m) {
+    if (m.t !== 'mv' || !S || S.mode !== 'online' || S.over) return;
+    var r = net.roster.filter(function (x) { return x.peer === peer; })[0];
+    if (!r || r.seat == null) return;
+    function no(why) { peer.send({ t: 'no', why: why }, true); sendState(); }
+    if (S.turn !== r.seat || m.n !== S.n || busy) return no('It isn’t your turn');
+    if (m.k === 'play') { var res = doPlay(r.seat, m.tiles || [], 'net'); if (!res.ok) no(res.err); }
+    else if (m.k === 'swap') { if (!doSwap(r.seat, m.ids || [])) no('You can’t swap now'); }
+    else if (m.k === 'pass') doPass(r.seat);
+  }
+  function joinTable(code, name) {
+    closeLobby(); busyScreen('Connecting to the table…');
+    return Online.join(code, { game: 'scrabble', name: name }).then(function (peer) {
+      net.mode = 'guest'; net.peer = peer; net.hostName = peer.name; net.roster = []; net.seat = -1;
+      peer.on('msg', guestMsg);
+      peer.on('close', function (why) {
+        if (net.peer !== peer) return;
+        var playing = S && S.mode === 'online' && !S.over;
+        net.peer = null; net.mode = null; net.waiting = false;
+        Kit.handoff.close();
+        if (playing) Kit.sheet({ title: 'The game ended', html: '<p class="muted">' + Kit.esc((net.hostName || 'The host') + (why === 'host' || why === 'left' ? ' closed the table.' : '’s connection was lost.')) + '</p>', actions: [{ label: 'OK', primary: true, onClick: goLobby }], onCancel: goLobby });
+        else { Kit.toast((net.hostName || 'The host') + ' closed the table'); goLobby(); }
+      });
+      loadDict().catch(function () {});
+      showWait();
+    }).catch(function (e) {
+      var msg = e && e.nat ? e.message : Online.errText(e);
+      if (e && e.nat) Kit.sheet({ title: 'Couldn’t connect', html: '<p>' + Kit.esc(msg) + '</p>' }); else Kit.toast(msg);
+      goLobby();
+    });
+  }
+  function guestMsg(m) {
+    if (m.t === 'ro') { net.roster = m.ro; if (net.wait) { var me = -1; m.ro.forEach(function (r, i) { if (!r.host && me < 0 && r.name) me = i; }); net.wait.update(waitPlayers(m.ro, net.seat >= 0 ? net.seat : m.ro.length - 1)); } return; }
+    if (m.t === 'no') { net.waiting = false; Kit.toast(m.why || 'That didn’t work'); Kit.sfx('bad'); paintAll(); return; }
+    if (m.t === 'st') { loadDict().then(function () { applyRemote(m.s, m.you); }); }
+  }
+  function applyRemote(s, you) {
+    var prev = S;
+    net.seat = you; net.waiting = false;
+    var fresh = !prev || prev.started !== s.started || !V.root;
+    S = s;
+    if (fresh) {
+      net.wait = null; pend = []; selId = null; cursor = null; busy = false;
+      Array.prototype.forEach.call(document.querySelectorAll('.k-win'), function (n) { n.remove(); });
+      Kit.gameStart(); buildView();
+      if (S.n === 0) firstDrawSheet(function () { beginTurn(true); }); else beginTurn(true);
+      return;
+    }
+    // keep tiles you were placing if they're still yours and the squares are free
+    pend = pend.filter(function (q) { return tileById(q.id) && !S.board[q.i]; });
+    if (s.n > prev.n) {
+      var e = null; for (var k = S.log.length - 1; k >= 0; k--) if (S.log[k].k === 'play' || S.log[k].k === 'swap' || S.log[k].k === 'pass') { e = S.log[k]; break; }
+      pend = [];
+      var seat = e ? e.p : prev.turn;
+      var had = {}; ((prev.players[you] && prev.players[you].rack) || []).forEach(function (t) { had[t.id] = 1; });
+      var got = seat === you ? myRack().filter(function (t) { return !had[t.id]; }).map(function (t) { return t.id; }) : [];
+      showMove(seat, { kind: e ? e.k : 'pass', how: seat === you ? 'me' : 'net', before: prev.players[seat] ? prev.players[seat].score : 0, drawn: got }, function () {
+        if (S.over) { showResults(); return; }
+        beginTurn(false);
+      });
+    } else paintAll();
+  }
+  function backToTable() {
+    if (net.mode === 'host' && net.table && !net.table.closed) { S = null; net.roster.forEach(function (r) { delete r.seat; }); showWait(); sendRoster(); return; }
+    if (net.mode === 'guest' && net.peer && !net.peer.closed) { S = null; showWait(); return; }
+    leaveOnline(false); goLobby();
+  }
+  function leaveOnline(ask) {
+    if (!net.mode) { closeLobby(); return; }
+    if (ask) {
+      Kit.confirm('Leave the online game?', { ok: 'Leave', body: net.mode === 'host' ? 'The game ends for everyone at your table.' : 'A robot takes over your tiles.' }).then(function (ok) { if (ok) { leaveOnline(false); goLobby(); } });
+      return;
+    }
+    if (net.table) net.table.close();
+    if (net.peer) { var p = net.peer; net.peer = null; p.close('left'); }
+    net.mode = null; net.table = null; net.wait = null; net.roster = []; net.waiting = false;
+    if (S && S.mode === 'online') S = null;
+    closeLobby();
+  }
+  window.addEventListener('pagehide', function () { if (net.mode) leaveOnline(false); });
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Test hooks (automated checks)
+  // ═════════════════════════════════════════════════════════════════════════
+  window.__scrabble = {
+    E: E, state: function () { return S; }, pend: function () { return pend; }, net: net, loadDict: loadDict, zoom: function () { return Z; },
+    // put tiles from the rack on the board: word along a row ('H') or column from square i (skips filled squares)
+    lay: function (i, word, dir) {
+      var step = dir === 'V' ? 15 : 1, j = i;
+      word.split('').forEach(function (L) {
+        while (S.board[j]) j += step;
+        var low = L >= 'a' && L <= 'z', want = low ? '?' : L;
+        var t = rackShown().filter(function (x) { return x.l === want; })[0];
+        if (!t) throw new Error('No ' + want + ' on the rack');
+        pend.push({ id: t.id, i: j, ch: low ? L : t.l }); j += step;
+      });
+      paintAll(); return check();
+    },
+    // a clean board on this device's turn with these tiles (tests)
+    fresh: function (letters, board) {
+      cancelThink(); busy = false; veil = false; Kit.handoff.close();
+      Array.prototype.forEach.call(document.querySelectorAll('.k-scrim'), function (n) { n.remove(); });
+      S.board = board ? board.slice() : S.board.map(function () { return ''; }); S.turn = viewSeat(); S.last = []; S.lastWords = []; S.n = board ? 5 : 0; S.scoreless = 0; pend = []; cursor = null; selId = null; cellSig = [];
+      var p = P(viewSeat()); p.rack = letters.split('').map(function (l) { return { id: ++S.tid, l: l }; }); paintAll();
+    },
+    give: function (letters) { var p = P(viewSeat()); letters.split('').forEach(function (l, k) { if (p.rack[k]) p.rack[k].l = l; }); paintAll(); },
+    // play this device's turn the way a computer player would (tests)
+    auto: function (level) {
+      if (!myTurn()) return 'wait';
+      var res = E.choose(S.board, myRack().map(function (t) { return t.l; }), level || 'normal', bagN());
+      if (res.type === 'play') {
+        var used = {}; pend = res.tiles.map(function (t) { var want = E.isBlank(t.ch) ? '?' : t.ch, rt = myRack().filter(function (x) { return x.l === want && !used[x.id]; })[0]; used[rt.id] = 1; return { id: rt.id, i: t.i, ch: t.ch }; });
+        paintAll(); submit(); return 'play';
+      }
+      if (res.type === 'exch' && bagN() >= 7) { var u2 = {}, ids = []; res.tiles.forEach(function (l) { var rt = myRack().filter(function (x) { return x.l === l && !u2[x.id]; })[0]; if (rt) { u2[rt.id] = 1; ids.push(rt.id); } }); doSwap(viewSeat(), ids); return 'swap'; }
+      doPass(viewSeat()); return 'pass';
+    },
+    submit: submit, recall: recall, pass: function () { doPass(S.turn); }, robot: function () { return busy; },
+    newGame: function (o) { newGame(o); }, ready: function () { return !!V.root && !busy; }, myTurn: myTurn, fit: fit
+  };
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Boot
+  // ═════════════════════════════════════════════════════════════════════════
+  (function boot() {
+    if (/[?&]online=1/.test(location.search)) { goLobby(); return; }
+    var saved = lsGet(SAVE, null);
+    if (saved && saved.board && saved.players && !saved.over && saved.mode !== 'online') {
+      loading('Setting the board back up…');
+      loadDict().then(function () {
+        S = saved; busy = false; pend = []; buildView(); beginTurn(true);
+      }).catch(function (e) { Kit.toast(e.message); showSetup(); });
+      return;
+    }
+    showSetup();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -414,6 +414,35 @@
     return ui.wrap(out);
   });
 
+  // Scrabble: the final board (premium squares and maple tiles; blanks in red), the best plays, and each player's game
+  R('scrabble', function (e, ui) {
+    var d = e.dt; if (!d || !d.b || d.b.length !== 15) return null;
+    var nm = (e.players || []).map(function (p) { return p.name; });
+    var PREM = ['T..d...T...d..T', '.D...t...t...D.', '..D...d.d...D..', 'd..D...d...D..d', '....D.....D....', '.t...t...t...t.', '..d...d.d...d..', 'T..d...*...d..T'];
+    var FILL = { T: '#d6493b', D: '#f2aca1', '*': '#f2aca1', t: '#2b80c2', d: '#a4d2ec', '.': '#ece3c7' };
+    var VAL = { A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10 };
+    var cs = 20, g = 1, W = 15 * cs + 16 * g, s = '<svg viewBox="0 0 ' + W + ' ' + W + '" role="img" aria-label="Final board"><rect width="' + W + '" height="' + W + '" fill="#1d4c40"/>';
+    for (var r = 0; r < 15; r++) for (var c = 0; c < 15; c++) {
+      var x = g + c * (cs + g), y = g + r * (cs + g), ch = d.b[r].charAt(c), pm = PREM[r <= 7 ? r : 14 - r].charAt(c);
+      if (ch && ch !== '.') {
+        var blank = ch >= 'a' && ch <= 'z', L = ch.toUpperCase();
+        s += '<rect x="' + x + '" y="' + y + '" width="' + cs + '" height="' + cs + '" rx="3" fill="#efd39c"/><rect x="' + x + '" y="' + (y + cs - 2.5) + '" width="' + cs + '" height="2.5" rx="1" fill="#c99c5a"/>' +
+          '<text x="' + (x + cs * 0.46) + '" y="' + (y + cs * 0.5) + '" text-anchor="middle" dominant-baseline="central" font-size="12.5" font-weight="800" fill="' + (blank ? '#9a3d1e' : '#2a1a0c') + '" font-family="ui-rounded,system-ui,sans-serif">' + L + '</text>' +
+          (blank ? '' : '<text x="' + (x + cs - 3) + '" y="' + (y + cs - 4.5) + '" text-anchor="end" font-size="5.5" font-weight="800" fill="#2a1a0c" font-family="system-ui,sans-serif">' + VAL[L] + '</text>');
+      } else s += '<rect x="' + x + '" y="' + y + '" width="' + cs + '" height="' + cs + '" fill="' + FILL[pm] + '"/>';
+    }
+    s += '</svg>';
+    var out = [ui.section('Final board', ui.picture(s, { frame: 'wood', max: 360 }))];
+    if (d.top && d.top.length) out.push(ui.section('Best plays', ui.log(d.top.map(function (t) { return { c: t.p, b: t.w, t: t.s + ' points' + (t.b ? ' · bingo' : '') + ' · ' + (nm[t.p] || '') }; }))));
+    var rows = nm.map(function (n, i) {
+      var adj = d.adj ? d.adj[i] : 0;
+      return [n, d.mv ? d.mv[i] : '–', d.bg ? d.bg[i] : '–', adj > 0 ? '+' + adj : adj < 0 ? String(adj) : '0'];
+    });
+    out.push(ui.section('Each player', ui.table(['', 'Plays', 'Bingos', 'Tiles left'], rows)));
+    out.push(ui.facts([['Ended', d.end === 'out' ? (nm[d.o] || 'Someone') + ' went out' : 'Six scoreless turns in a row'], ['Turns', d.tn], ['Computer', d.lv ? d.lv.charAt(0).toUpperCase() + d.lv.slice(1) : '']]));
+    return ui.wrap(out);
+  });
+
   HistView.css('hv-board2', '.hv-replay{display:flex;flex-direction:column;gap:6px;}.hv-range{width:100%;accent-color:var(--yellow);}.hv-replay b{font-size:.85rem;color:var(--text-2);}' +
     '.hv-note{font-size:.78rem;color:var(--text-3);line-height:1.35;}' +
     '.hv-two{display:grid;grid-template-columns:1fr 1fr;gap:8px;}.hv-two-c{display:flex;flex-direction:column;gap:4px;min-width:0;align-items:center;text-align:center;}.hv-two-c b{font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}.hv-two-c small{font-size:.74rem;color:var(--text-3);font-weight:700;}.hv-two-c .hv-snap{padding:0;border-radius:8px;overflow:hidden;}' +

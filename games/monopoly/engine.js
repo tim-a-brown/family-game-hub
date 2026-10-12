@@ -297,6 +297,7 @@
   function finish(S, ev) {
     if (S.dq.length && !settle(S, ev)) return;
     if (S.ret) { var r = S.ret; S.ret = null; S.phase = r; return; }
+    if (S.cont && S.players[S.cur].out) S.cont = null;
     if (S.cont) {
       var c = S.cont; S.cont = null;
       if (c.k === 'move') { var x = S.players[S.cur]; moveTo(S, ev, S.cur, (x.pos + c.n) % 40); if (!land(S, ev, S.cur, c.n)) return; if (S.dq.length && !settle(S, ev)) return; }
@@ -715,23 +716,25 @@
   // the other players' complete groups. Used for buying, bidding and trading.
   var GROUP_W = [0.8, 1.05, 1.0, 1.25, 1.2, 1.05, 0.95, 1.05];   // how good each group is to own (orange and red land most)
   function evalP(S, p) {
-    var v = S.players[p].cash;
+    var v = 0, need = 350;
     for (var g = 0; g < 8; g++) {
-      var sqs = GSQ[g], mine = 0, theirs = {}, base = 0;
-      sqs.forEach(function (s) { var o = S.own[s]; if (o === p) { mine++; base += SQ[s].p * (S.mort[s] ? 0.55 : 1) + S.hs[s] * SQ[s].h * 1.1; } else if (o >= 0) theirs[o] = (theirs[o] || 0) + 1; });
-      if (mine === sqs.length) v += base * 1.9 * GROUP_W[g] + 120;
+      var sqs = GSQ[g], mine = 0, theirs = {}, base = 0, toBuild = 0;
+      sqs.forEach(function (s) { var o = S.own[s]; if (o === p) { mine++; base += SQ[s].p * (S.mort[s] ? 0.55 : 1) + S.hs[s] * SQ[s].h * 1.1; toBuild += (5 - S.hs[s]) * SQ[s].h; } else if (o >= 0) theirs[o] = (theirs[o] || 0) + 1; });
+      if (mine === sqs.length) { v += base * 1.9 * GROUP_W[g] + 150; need += toBuild; }
       else if (mine) v += base * (1 + 0.3 * (mine - 1)) * (Object.keys(theirs).length ? 0.95 : 1);
       Object.keys(theirs).forEach(function (q) {
         q = +q; if (S.players[q].out) return;
-        if (theirs[q] === sqs.length) { var gb = 0; sqs.forEach(function (s) { gb += SQ[s].p + S.hs[s] * SQ[s].h; }); v -= gb * 0.85 * GROUP_W[g] + 100; }
-        else if (theirs[q] === sqs.length - 1 && mine === 1) v += 60;   // blocking someone's group
+        if (theirs[q] === sqs.length) { var gb = 0; sqs.forEach(function (s) { gb += SQ[s].p + S.hs[s] * SQ[s].h * 1.4; }); v -= gb * 0.6 * GROUP_W[g] + 60; }
+        else if (theirs[q] === sqs.length - 1 && mine === 1) v += 50;   // blocking someone's group
       });
     }
     [RRS, UTS].forEach(function (list, u) {
       var n = countOwned(S, p, list), each = u ? 150 : 200;
       list.forEach(function (s) { if (S.own[s] === p) v += each * (S.mort[s] ? 0.55 : 1) * (1 + (u ? 0.15 : 0.22) * (n - 1)); });
     });
-    return v;
+    // cash counts in full up to what this player can use (a safety cushion and building its groups); beyond that, less
+    var c = S.players[p].cash;
+    return v + Math.min(c, need) + 0.35 * Math.max(0, c - need);
   }
   // just what evalP reads, so the computer can try thousands of trades quickly
   function lite(S) { return { players: S.players.map(function (x) { return { cash: x.cash, out: x.out }; }), own: S.own.slice(), hs: S.hs.slice(), mort: S.mort.slice() }; }
@@ -817,7 +820,8 @@
   // A trade the computer would like to offer: get the last piece of a group, for a swap and/or cash
   function botTrade(S, p) {
     var me = S.players[p], bm = S.bm[p] = S.bm[p] || {};
-    if (bm.lt && S.turn - bm.lt < 3 * active(S).length) return null;
+    if (bm.lt && S.turn - bm.lt < 2 * active(S).length) return null;
+    bm.lt = S.turn;   // looks again in a couple of rounds, offer or not
     var base = evalP(S, p), best = null;
     for (var g = 0; g < 8; g++) {
       var sqs = GSQ[g], mine = countOwned(S, p, sqs);
@@ -831,20 +835,25 @@
       S.own.forEach(function (o, i) { if (o === p && !(SQ[i].k === 'st' && SQ[i].g === g) && !sqGroupBuilt(S, i)) gives.push(i); });
       var qBase = evalP(S, q);
       gives.forEach(function (y) {
-        for (var cash = 0; cash <= Math.min(me.cash - 50, 900); cash += 25) {
+        function at(cash) {
           var T = { f: p, to: q, give: { cash: cash, props: y == null ? [] : [y], cards: 0 }, get: { cash: 0, props: [m], cards: 0 } };
-          if (!T.give.props.length && !cash) continue;
           var t = liteTrade(lite(S), T);
-          var myGain = evalP(t, p) - base, theirGain = evalP(t, q) - qBase;
-          if (myGain < 80) break;
-          var ok = theirGain > 25;
-          var key = p + '>' + q + ':' + JSON.stringify([T.give, T.get]);
-          if (ok && (bm.no || []).indexOf(key) < 0) { if (!best || myGain - theirGain > best.score) best = { T: T, score: myGain - theirGain }; break; }
+          return { T: T, mine: evalP(t, p) - base, theirs: evalP(t, q) - qBase };
         }
+        // the least cash that makes it worth their while (their gain grows with the cash, ours shrinks)
+        var lo = y == null ? 10 : 0, hi = Math.max(0, me.cash - 60), r = at(lo);
+        if (r.theirs <= 25) {
+          if (hi <= lo || at(hi).theirs <= 25) return;
+          while (hi - lo > 10) { var mid = Math.floor((lo + hi) / 2); if (at(mid).theirs > 25) hi = mid; else lo = mid; }
+          r = at(Math.ceil(hi / 10) * 10 > me.cash - 60 ? hi : Math.ceil(hi / 10) * 10);
+        }
+        if (r.mine < 80 || r.theirs <= 25) return;
+        var key = p + '>' + q + ':' + JSON.stringify([r.T.give, r.T.get]);
+        if ((bm.no || []).indexOf(key) >= 0) return;
+        if (!best || r.mine - r.theirs > best.score) best = { T: r.T, score: r.mine - r.theirs };
       });
     }
     if (!best) return null;
-    bm.lt = S.turn;
     return { t: 'propose', p: p, to: best.T.to, give: best.T.give, get: best.T.get };
   }
   function botAnswer(S, p) {

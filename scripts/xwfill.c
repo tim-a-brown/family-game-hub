@@ -1,6 +1,6 @@
 /* xwfill: fast crossword grid filler, driven by scripts/build-crosswords.py.
 
-   Build:  gcc -O2 -o xwfill scripts/xwfill.c -lm
+   Build:  gcc -O2 -march=native -o xwfill scripts/xwfill.c -lm
    Run:    xwfill WORDS [seed]
    WORDS:  one "word score" per line (a-z, score: higher = better fill).
 

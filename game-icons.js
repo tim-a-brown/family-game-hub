@@ -95,6 +95,13 @@ var GameIcon = (function () {
     backgammon: function (c) { var t = ''; for (var i = 0; i < 4; i++) { var x = 1 + i * 5.6; t += path('M' + x + ' 1h5l-2.5 9.5z', i % 2 ? K : c) + path('M' + x + ' 23h5l-2.5-9.5z', i % 2 ? c : K); } return t + circ(9, 12, 2.2, R) + circ(15, 12, 2.2, W, ' stroke="' + K + '" stroke-width="1.2"'); },
     battleship: function () { return path('M2 13h20l-3 6H5z', K) + rect(8, 9, 8, 4, 1, S) + rect(11, 5.5, 2, 4, .6, K) + line('M2 21.5c2 0 2-1.2 4-1.2s2 1.2 4 1.2 2-1.2 4-1.2 2 1.2 4 1.2 2-1.2 4-1.2', B, 1.6); },
     dotsboxes: function (c) { var s = rect(4, 4, 8, 8, 0, c, ' opacity=".55"') + line('M4 4h16M4 4v16M4 12h8M12 4v8', c, 2.2); for (var i = 0; i < 9; i++) s += circ(4 + (i % 3) * 8, 4 + Math.floor(i / 3) * 8, 1.8, K); return s; },
+    scrabble: function () {   // two maple letter tiles with their points: W 4 leaning on O 1
+      function tile(x, y, a, L, v) {
+        return '<g transform="rotate(' + a + ' ' + (x + 5.5) + ' ' + (y + 5.5) + ')">' + rect(x, y + 1, 11, 11, 2, '#b07f42') + rect(x, y, 11, 11, 2, '#f3d9a2') + rect(x + .8, y + .6, 9.4, 3, 1.4, W, ' opacity=".35"') +
+          txt(L, 8, '#2a1a0c', y + 5.4, x + 5.2) + txt(v, 3.3, '#2a1a0c', y + 9, x + 9) + '</g>';
+      }
+      return tile(1, 4.5, -9, 'W', '4') + tile(12, 8, 7, 'O', '1');
+    },
     mancala: function (c) { var s = rect(1, 6, 22, 12, 6, c); for (var i = 0; i < 3; i++) { s += circ(7.5 + i * 4.5, 9.8, 1.7, '#00000040') + circ(7.5 + i * 4.5, 14.2, 1.7, '#00000040'); } return s + '<ellipse cx="3.6" cy="12" rx="1.6" ry="3.6" fill="#00000040"/><ellipse cx="20.4" cy="12" rx="1.6" ry="3.6" fill="#00000040"/>' + circ(7.5, 9.8, .9, Y) + circ(12, 14.2, .9, G) + circ(16.5, 9.8, .9, B); },
     chinesecheckers: function (c) { return path('M12.0 1.0L15.2 6.5L21.5 6.5L18.4 12.0L21.5 17.5L15.2 17.5L12.0 23.0L8.8 17.5L2.5 17.5L5.7 12.0L2.5 6.5L8.8 6.5z', c, ' opacity=".85"') + circ(12, 4.2, 1.7, R) + circ(18.8, 16, 1.7, Y) + circ(5.2, 16, 1.7, G) + circ(12, 12, 1.7, B) + circ(8.6, 10, 1.4, W) + circ(15.4, 10, 1.4, W); },
     marbles: function (c) { var t = rect(1.5, 1.5, 21, 21, 5, c, ' opacity=".85"'); [[6,6],[12,6],[18,6],[6,12],[18,12],[6,18],[12,18],[18,18]].forEach(function (p) { t += circ(p[0], p[1], 1.3, '#00000040'); }); return t + circ(12, 12, 2.6, K) + circ(6, 6, 2, R) + circ(18, 12, 2, Y) + circ(12, 18, 2, G) + circ(6, 18, 2, B); },

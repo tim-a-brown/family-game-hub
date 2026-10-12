@@ -83,7 +83,6 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 .hrow::-webkit-scrollbar{display:none;}
 .hrow .ac{cursor:pointer;transition:transform .2s var(--spring);}
 .hrow .ac:first-child{margin-left:auto;}.hrow .ac:last-child{margin-right:auto;}
-.hrow .ac.sel{transform:translateY(-14px);}
 .hrow .ac.sel .fa{box-shadow:0 0 0 4px #ffd447,0 14px 24px rgba(0,0,0,.45);}
 .hrow.off .ac{cursor:default;}
 .hrow.off .ac .fa{filter:saturate(.75) brightness(.86);}
@@ -184,9 +183,72 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 .cah-row[aria-checked="true"] .sw::after{transform:translateX(20px);}
 .cah-hide{align-self:flex-start;border:0;background:none;color:var(--text-3);font-weight:800;font-size:.8rem;padding:4px 2px;cursor:pointer;text-decoration:underline;}
 .k-hero-ic{cursor:pointer;-webkit-tap-highlight-color:transparent;}
-.k-hero-ic.wob .gicon{animation:wob .45s var(--spring);}
-@keyframes wob{25%{transform:rotate(-12deg) scale(1.06);}60%{transform:rotate(9deg);}100%{transform:none;}}
 .loading{display:flex;align-items:center;justify-content:center;gap:10px;min-height:50vh;color:var(--text-2);font-weight:800;}
+
+/* ── Polish: state shown on the table, motion between phases ─────────── */
+.aa .score .crown{position:absolute;top:-9px;right:-5px;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#ffd447;color:#4a3000;box-shadow:0 2px 6px rgba(0,0,0,.35);animation:crownIn .5s var(--spring);}
+.aa .score .crown .ico{width:15px;height:15px;}
+@keyframes crownIn{from{transform:translateY(-10px) rotate(-30deg) scale(.4);opacity:0;}}
+.aa .score{transition:transform .3s var(--spring),border-color .2s,background .2s;}
+.aa .score.judge{transform:translateY(-2px);}
+.aa .score.done .sub{color:var(--green);}
+.aa .score .think{color:var(--text-3);margin:0;}
+.aa .score .pt.bump{animation:bump .7s var(--spring) .9s both;}
+@keyframes bump{0%{transform:none;}35%{transform:scale(1.45);color:var(--yellow);}100%{transform:none;}}
+.bar{padding:12px 4px 4px;display:flex;}
+.bar .btn{flex:1;}
+.rail .bar{padding:2px 12px 10px;}
+.btn.ready{animation:ready 1.6s ease-in-out infinite;}
+@keyframes ready{50%{box-shadow:0 5px 0 var(--b-lip),0 0 0 6px color-mix(in srgb,var(--accent) 30%,transparent);}}
+.rail.live{box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -4px 0 rgba(0,0,0,.25),0 0 0 3px color-mix(in srgb,#ffd447 55%,transparent),0 14px 30px rgba(0,0,0,.45);}
+.rail .hd .xtra{flex:none;padding:2px 8px;border-radius:999px;background:#ffd447;color:#2b1a00;opacity:1;font-size:.75rem;}
+.hrow .ac{transform:translateY(var(--y,0px)) rotate(var(--r,0deg));}
+.hrow .ac.sel{transform:translateY(-16px) rotate(0deg) scale(1.03);z-index:2;}
+@media (hover:hover){.hrow:not(.off) .ac:not(.sel):hover{transform:translateY(calc(var(--y,0px) - 6px)) rotate(var(--r,0deg));}}
+@keyframes dealFrom{0%{transform:translate(var(--fx,0px),var(--fy,-160px)) rotate(-14deg) scale(.7);opacity:.2;}70%{opacity:1;}100%{transform:translateY(var(--y,0px)) rotate(var(--r,0deg));}}
+.hrow .ac.dealt{animation:dealFrom .6s cubic-bezier(.2,.9,.3,1.15) both;animation-delay:var(--dl,0s);}
+.ac.flipin .ac-in{animation:flipIn .8s var(--ease) both;animation-delay:var(--d,0s);}
+@keyframes flipIn{0%{transform:translateX(calc(var(--cw) * -1.12)) rotateY(180deg) scale(.96);}55%{transform:translateX(calc(var(--cw) * -.2)) rotateY(40deg) scale(1.06);}100%{transform:none;}}
+.mid .prc:not(.flipin){animation:bob 4.5s ease-in-out infinite;}
+.mid .prc:nth-child(2){animation-delay:-2s;}
+@keyframes bob{50%{transform:translateY(-3px) rotate(.6deg);}}
+.deck .ac.lift{animation:liftOff .4s var(--ease) both;}
+@keyframes liftOff{to{transform:translate(40px,-10px) rotate(6deg);opacity:0;}}
+.pr-empty{box-shadow:inset 0 0 0 2px rgba(255,255,255,.14);}
+.pr-empty .ico{width:34px;height:34px;color:#ffd447;animation:poke 1.1s ease-in-out infinite;}
+@keyframes poke{50%{transform:translateX(-8px);}}
+.seat{gap:7px;}
+.pend{width:var(--cw);height:calc(var(--cw) * 1.4);border-radius:calc(var(--cw) * .08);display:grid;place-items:center;color:color-mix(in srgb,var(--c) 70%,#fff);
+  background:repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 6px,transparent 6px 12px);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 45%,transparent);}
+.pend .think{margin:0;transform:scale(1.4);}
+.pend.me{box-shadow:inset 0 0 0 2px #ffd447,0 0 22px rgba(255,212,71,.25);color:#ffd447;animation:glow 1.6s ease-in-out infinite;}
+.pend.me .ico{width:36%;height:auto;}
+.sub.shuf{transform:translate(var(--sx,0px),var(--sy,0px)) rotate(calc((var(--i) - 2) * 7deg));opacity:0;}
+.sub.shuf.go{transform:none;opacity:1;transition:transform .55s cubic-bezier(.2,.9,.3,1.15) calc(var(--i) * .07s),opacity .2s calc(var(--i) * .07s);}
+.sub.hot .ac .bk{box-shadow:inset 0 0 0 calc(var(--cw) * .03) #fff4e8,0 0 0 3px rgba(255,212,71,.75),0 0 22px rgba(255,212,71,.4);}
+.sub.hot{animation:hover 2.2s ease-in-out infinite;animation-delay:calc(var(--i) * -.4s);}
+@keyframes hover{50%{transform:translateY(-4px);}}
+.sub.reveal .ac{animation:revealPop .7s var(--spring);}
+@keyframes revealPop{0%{transform:scale(1);}40%{transform:scale(1.12) translateY(-8px);}100%{transform:none;}}
+.sub.nudge{animation:shake .4s;}
+.sub.dim .ac{filter:brightness(.72) saturate(.7);}
+.sub.dim{transform:scale(.96);transition:transform .2s;}
+.sub.sel{transform:translateY(-10px) scale(1.04);z-index:2;}
+.sub.win{transform:translateY(-12px) scale(1.06);transition:transform .5s var(--spring);}
+.sub.lose{transform:translateY(6px) scale(.94);transition:transform .5s var(--ease),filter .5s;}
+.sub .ribbon{position:absolute;top:-14px;left:50%;transform:translateX(-50%);display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#ffd447;color:#4a3000;box-shadow:0 3px 8px rgba(0,0,0,.4);animation:crownIn .6s var(--spring) .2s both;z-index:3;}
+.sub .ribbon .ico{width:18px;height:18px;}
+.who.won{background:#ffd447;color:#2b1a00;}
+.why{display:flex;align-items:center;gap:10px;}
+.why .avatar{flex:none;}
+.felt-in.sweep .plays .sub,.felt-in.sweep .pr-slot .ac,.felt-in.sweep .sent,.felt-in.sweep .why{transform:translateX(120%) rotate(14deg);opacity:0;transition:transform .32s cubic-bezier(.5,0,.75,0),opacity .32s;}
+.felt-in.sweep .plays .sub:nth-child(2n){transition-delay:.04s;}
+.k-hero-ic.wob .gicon{animation:wob .45s var(--spring);}
+@keyframes wob{25%{transform:rotate(calc(var(--wob,8deg) * -1)) scale(var(--wsc,1.04));}60%{transform:rotate(var(--wob,8deg));}100%{transform:none;}}
+.k-hero-ic.spin .gicon{animation:spinIt 1.1s cubic-bezier(.3,1.3,.5,1);}
+@keyframes spinIt{0%{transform:none;}40%{transform:rotateY(540deg) scale(1.35);filter:grayscale(1) contrast(1.4);}100%{transform:rotateY(720deg);}}
+.cah-row.arrive{animation:arrive .7s var(--spring) both;}
+@keyframes arrive{0%{transform:translateY(16px) scale(.92);opacity:0;}60%{box-shadow:0 0 0 6px rgba(255,255,255,.35);}100%{transform:none;opacity:1;box-shadow:0 0 0 0 rgba(255,255,255,0);}}
 
 @media (max-width:420px){
   .mid{--cw:106px;gap:12px;}
@@ -570,6 +632,8 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   function paint() {
     if (net.mode === 'guest') { if (net.view) render(net.view); return; }
     if (!G) return;
+    // pass and play: between turns the table is public, so nobody's hand shows
+    if (G.mode === 'pass' && G.phase !== 'play' && G.phase !== 'judge') pp.viewer = -1;
     render(viewFor(meIdx()));
     if (G.mode === 'pass') passFlow();
   }
@@ -632,6 +696,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   function cardEl(c, o) {
     o = o || {};
     var k = c ? c.k : o.kind, n = el('div', { class: 'ac k' + k + (o.down ? ' down' : '') + (o.cls ? ' ' + o.cls : '') });
+    if (c && c.id != null) n.setAttribute('data-id', String(c.id));
     var inner = el('div', { class: 'ac-in' }), face = el('div', { class: 'fa' }), back = el('div', { class: 'bk' });
     if (c) {
       if (k === 'r' || k === 'g') {
@@ -656,104 +721,110 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   }
   function chipName(V, i) { if (i < 0) return words(V).ghost; var p = V.players[i]; return p ? p.name : '?'; }
   function youOr(V, i) { return i === V.me && V.mode !== 'pass' ? 'You' : chipName(V, i); }
+  // Who sits where, from the judge's left (the order cards are played and slots are laid out)
+  function seatOrder(V) { var n = V.players.length, out = []; for (var k = 1; k < n; k++) { var j = (V.judge + k) % n; if (!V.players[j].gone) out.push(j); } return out; }
+  function nameTag(V, i, cls) {
+    var col = i >= 0 && V.players[i] ? V.players[i].color : '#9aa3b8';
+    return el('span', { class: 'who' + (cls ? ' ' + cls : ''), html: '<i class="dot" style="--c:' + col + '">' + (i < 0 ? Kit.icon('ghost') : V.players[i] && V.players[i].cpu ? Kit.icon('bot') : esc(chipName(V, i).charAt(0).toUpperCase())) + '</i><span>' + esc(youOr(V, i)) + '</span>' });
+  }
+  function nameB(V, i) { var p = V.players[i]; return '<b style="--c:' + (p ? p.color : '#ffe08a') + '">' + esc(youOr(V, i)) + '</b>'; }
   function render(V) {
     var prev = lastV; lastV = V;
     if (V.phase === 'over') { renderOver(V); return; }
     var w = words(V), oldRail = app.querySelector('.hrow'), sx = oldRail ? oldRail.scrollLeft : 0;
     if (ui.round !== V.round) { ui.round = V.round; ui.sel = []; ui.jsel = -1; }
     if (V.phase !== 'judge') ui.jsel = -1;
-    var newRound = !prev || prev.round !== V.round;
+    var same = prev && prev.round === V.round, post = [];
     app.innerHTML = '';
-    // Scores: green cards won; the judge lifts
+    // Scores: cards won. The judge's chip lifts and wears the crown; a new card bumps the count.
     var strip = el('div', { class: 'scores' });
     var lead = Math.max.apply(null, V.players.map(function (p) { return p.score; }).concat([0]));
     V.players.forEach(function (p, i) {
-      var isJ = i === V.judge && V.phase !== 'wait';
-      var sub = isJ ? Kit.icon('crown') + '<span>' + esc(w.Judge) + '</span>' : p.gone ? 'left' : V.phase === 'play' ? (p.played ? Kit.icon('check') + '<span>played</span>' : 'picking') : (p.cpu ? 'computer' : '');
-      strip.appendChild(el('div', { class: 'score' + (isJ ? ' judge' : '') + (p.gone ? ' gone' : '') + (lead > 0 && p.score === lead ? ' lead' : ''), style: { '--c': p.color, '--pc': w.prColor }, 'data-i': String(i) }, [
-        el('span', { class: 'nm', text: i === V.me && V.mode === 'online' ? p.name + ' (you)' : p.name }), el('span', { class: 'pt', html: '<i></i>' + p.score }), el('span', { class: 'sub', html: sub || '&nbsp;' })
+      var isJ = i === V.judge && V.phase !== 'wait', bump = prev && prev.players[i] && prev.players[i].score < p.score;
+      var sub = p.gone ? 'left' : isJ ? esc(w.Judge) : V.phase === 'play' ? (p.played ? Kit.icon('check') : '<span class="think"><i></i><i></i><i></i></span>') : '&nbsp;';
+      strip.appendChild(el('div', { class: 'score' + (isJ ? ' judge' : '') + (p.gone ? ' gone' : '') + (lead > 0 && p.score === lead ? ' lead' : '') + (V.phase === 'play' && p.played && !isJ ? ' done' : ''), style: { '--c': p.color, '--pc': w.prColor }, 'data-i': String(i) }, [
+        isJ ? el('span', { class: 'crown', html: Kit.icon('crown') }) : null,
+        el('span', { class: 'nm', text: i === V.me && V.mode === 'online' ? p.name + ' (you)' : p.name }), el('span', { class: 'pt' + (bump ? ' bump' : ''), html: '<i></i>' + p.score }), el('span', { class: 'sub', html: sub })
       ]));
     });
-    if (V.ghost) strip.appendChild(el('div', { class: 'score ghost', style: { '--pc': w.prColor }, 'data-i': '-1' }, [el('span', { class: 'nm', text: w.ghost }), el('span', { class: 'pt', html: '<i></i>' + V.ghost.score }), el('span', { class: 'sub', html: Kit.icon('ghost') + '<span>random</span>' })]));
+    if (V.ghost) strip.appendChild(el('div', { class: 'score ghost', style: { '--pc': w.prColor }, 'data-i': '-1' }, [el('span', { class: 'nm', text: w.ghost }), el('span', { class: 'pt' + (prev && prev.ghost && prev.ghost.score < V.ghost.score ? ' bump' : ''), html: '<i></i>' + V.ghost.score }), el('span', { class: 'sub', html: Kit.icon('ghost') })]));
     app.appendChild(strip);
 
-    var felt = el('div', { class: 'felt-in' });
-    app.appendChild(el('div', { class: 'tbl wood' }, [felt]));
-    var meJ = V.me === V.judge && V.me >= 0, J = V.players[V.judge] || { name: '?' }, jn = J.name;
+    var felt = el('div', { class: 'felt-in ph-' + V.phase }), tbl = el('div', { class: 'tbl wood' }, [felt]);
+    app.appendChild(tbl);
+    var meJ = V.me === V.judge && V.me >= 0, J = V.players[V.judge] || { name: '?' };
     var passJ = V.mode === 'pass';   // in pass and play the judge acts from the shared screen
     var canJudge = meJ || (passJ && V.phase === 'judge' && V.me === V.judge);
-    var msg = '', think = false;
-    if (V.phase === 'wait') msg = 'Waiting for more players to join…';
-    else if (V.phase === 'flip') msg = meJ || passJ ? (passJ ? '<b style="--c:' + J.color + '">' + esc(jn) + '</b>, you’re the ' + w.judge + '. Turn over a ' + w.pr + '.' : 'You’re the ' + w.judge + '. Turn over a ' + w.pr + '.') : '<b style="--c:' + J.color + '">' + esc(jn) + '</b> is the ' + w.judge + '. Turning over a ' + w.pr + '…';
-    else if (V.phase === 'play') {
-      var left = V.players.map(function (p, i) { return i; }).filter(function (i) { return i !== V.judge && !V.players[i].played && !V.players[i].gone; });
-      if (meJ) msg = 'You’re the ' + w.judge + '. Everyone is picking a card for you.';
-      else if (V.me >= 0 && !V.mine) msg = V.rules.crab ? 'Play the ' + w.ans + ' that fits it <b>least</b>.' : V.deck === 'cah' ? (V.pick > 1 ? 'Play ' + V.pick + ' white cards, in order.' : 'Play the funniest white card.') : V.prompt ? 'Play the ' + w.ans + ' that fits best.' : 'Play a ' + w.ans + '. The ' + w.pr + ' is a surprise!';
-      else msg = 'Waiting for ' + left.map(function (i) { return esc(V.players[i].name); }).join(', ') + '…';
-      if (V.me >= 0 && V.mine && !meJ) think = true;
-    } else if (V.phase === 'judge') {
-      var unrev = V.subs.some(function (s) { return !s.c; });
-      if (canJudge) msg = unrev ? 'Tap each card to turn it over. Read them out loud.' : 'Pick your favorite, then tap ' + (V.deck === 'cah' ? 'Award it' : 'Pick this one') + '.';
-      else { msg = '<b style="--c:' + J.color + '">' + esc(jn) + '</b> is ' + (unrev ? 'turning the cards over' : 'choosing') + '…'; think = true; }
-    } else if (V.phase === 'result' && V.win) {
-      var wn = chipName(V, V.win.p);
-      msg = V.win.p < 0 ? 'The ' + esc(w.ghost.toLowerCase() === 'ghost' ? 'ghost' : w.ghost) + ' card won. Nobody scores!' : '<b style="--c:' + (V.players[V.win.p] || {}).color + '">' + esc(youOr(V, V.win.p)) + '</b> ' + (V.win.p === V.me && V.mode !== 'pass' ? 'win' : 'wins') + ' the ' + (V.prompt && V.prompt.length > 1 ? 'cards' : 'card') + '!';
-    }
-    var st = el('div', { class: 'st' }, [el('div', { class: 'msg', html: msg + (think ? '<span class="think"><i></i><i></i><i></i></span>' : '') }), el('span', { class: 'tag', html: Kit.icon('trophy') + '<span>' + V.target + ' to win</span>' }), el('span', { class: 'tag', text: 'Round ' + V.round })]);
-    felt.appendChild(st);
+    var myTurn = V.phase === 'play' && V.me >= 0 && !meJ && !V.mine;
+    // One short line: whose move it is. The table itself shows the rest.
+    var msg = '';
+    if (V.phase === 'wait') msg = 'Waiting for players<span class="think"><i></i><i></i><i></i></span>';
+    else if (V.phase === 'flip') msg = meJ ? 'You’re the ' + w.judge : passJ ? nameB(V, V.judge) + ' turns a card' : nameB(V, V.judge) + ' is the ' + w.judge;
+    else if (V.phase === 'play') msg = myTurn ? (V.rules.crab ? 'Worst fit wins' : V.deck === 'cah' ? (V.pick > 1 ? 'Pick ' + V.pick + ', in order' : 'Your pick') : V.prompt ? 'Your pick' : 'Play it blind') : meJ ? 'They’re picking for you' : passJ && V.me < 0 ? 'Pass it on' : 'Picking<span class="think"><i></i><i></i><i></i></span>';
+    else if (V.phase === 'judge') { var unrev = V.subs.some(function (s) { return !s.c; }); msg = canJudge ? (unrev ? 'Turn them over' : V.rules.crab ? 'Pick the worst fit' : 'Pick a winner') : nameB(V, V.judge) + ' is judging<span class="think"><i></i><i></i><i></i></span>'; }
+    else if (V.phase === 'result' && V.win) msg = V.win.p < 0 ? 'The ' + (V.deck === 'cah' ? 'Rando' : 'ghost') + ' steals it!' : nameB(V, V.win.p) + (V.win.p === V.me && V.mode !== 'pass' ? ' win!' : ' wins!');
+    felt.appendChild(el('div', { class: 'st' }, [el('div', { class: 'msg', html: msg }),
+      el('span', { class: 'tag', title: 'First to ' + V.target + ' wins', html: Kit.icon('trophy') + '<span>' + V.target + '</span>' }), el('span', { class: 'tag', text: 'Round ' + V.round })]));
 
-    // The deck and the face-up prompt
+    // The pile and the face-up card(s). Your turn to flip: the pile glows.
     var two = V.nPrompt > 1 || (V.rules.two && V.deck !== 'cah');
     var mid = el('div', { class: 'mid' + (two ? ' two' : '') });
     var flipNow = V.phase === 'flip' && (meJ || passJ);
-    var deck = el('button', { type: 'button', class: 'deck' + (flipNow ? ' go' : ''), 'aria-label': flipNow ? 'Turn over a ' + w.pr : 'The ' + w.pr + ' pile', onclick: function () { if (flipNow) { Kit.haptic('light'); doAct({ t: 'flip' }); } } });
+    var deck = el('button', { type: 'button', class: 'deck' + (flipNow ? ' go' : ''), 'aria-label': flipNow ? 'Turn over a ' + w.pr : 'The ' + w.pr + ' pile', onclick: function () { if (flipNow) flipCard(); } });
     for (var d = 0; d < 3; d++) deck.appendChild(cardEl(null, { kind: V.pk, down: true }));
     mid.appendChild(deck);
     var slot = el('div', { class: 'pr-slot' });
     if (V.prompt) V.prompt.forEach(function (c, k) {
       c = Object.assign({}, c); if (c.k === 'g') c.tp = 'Green apple'; if (c.k === 'r') c.tp = '';
       var ce = cardEl(c, { cls: 'prc' });
-      if (prev && !prev.prompt) { ce.classList.add('flipin'); ce.style.animationDelay = (k * .12) + 's'; }
+      if (same && !prev.prompt) { ce.classList.add('flipin'); ce.style.setProperty('--d', (k * .14) + 's'); }
       slot.appendChild(ce);
     });
-    else if (V.nPrompt) for (var h = 0; h < V.nPrompt; h++) slot.appendChild(cardEl(null, { kind: V.pk, down: true }));
-    else slot.appendChild(el('div', { class: 'pr-empty', text: V.phase === 'flip' ? (flipNow ? 'Tap the pile' : '') : '' }));
+    else if (V.nPrompt) for (var h = 0; h < V.nPrompt; h++) slot.appendChild(cardEl(null, { kind: V.pk, down: true, cls: 'prc' }));
+    else slot.appendChild(el('div', { class: 'pr-empty', html: flipNow ? Kit.icon('back') : '' }));
     mid.appendChild(slot);
     felt.appendChild(mid);
-    if (V.prompt && !prev) {} // first paint: no flip animation
-    if (V.prompt && prev && !prev.prompt && V.round === prev.round) Kit.sfx('flip');
+    if (V.prompt && same && !prev.prompt) { Kit.sfx('flip'); Kit.haptic('light'); }
 
-    // Played cards
-    var plays = el('div', { class: 'plays' + ((V.subs ? V.subs.length : V.nSubs) > 6 ? ' crowd' : '') });
-    if (V.phase === 'play' || V.phase === 'flip' && V.nSubs) {
-      var pn = prev && prev.round === V.round && (prev.phase === 'play' || prev.phase === 'flip') ? prev.nSubs : V.nSubs;
-      for (var s = 0; s < V.nSubs; s++) {
-        var fd = cardEl(null, { kind: V.ak, down: true, cls: s >= pn ? 'drop' : '' });
-        if (s >= pn) { fd.style.setProperty('--dx', (Math.random() * 80 - 40).toFixed(0) + 'px'); Kit.sfx('deal', 0.7); }
-        plays.appendChild(el('div', { class: 'sub' }, [fd]));
-      }
-      if (!V.nSubs) plays.appendChild(el('div', { class: 'none', text: V.phase === 'flip' ? '' : 'Played cards land here, face down.' }));
+    // Played cards. While people pick: a seat for each, filling with a face-down card as they play.
+    var nCards = V.subs ? V.subs.length : V.nSubs;
+    var plays = el('div', { class: 'plays' + (nCards > 6 ? ' crowd' : '') });
+    if (V.phase === 'play' || V.phase === 'flip' || V.phase === 'wait') {
+      var order = seatOrder(V), ghostIn = V.ghost && V.nSubs > order.filter(function (i) { return V.players[i].played; }).length;
+      var dropped = 0;
+      order.concat(V.ghost && (V.phase === 'play' || ghostIn) ? [-1] : []).forEach(function (i) {
+        var played = i < 0 ? ghostIn : V.players[i].played, was = same && prev.players[i] && (i < 0 ? prev.nSubs >= V.nSubs : prev.players[i].played);
+        var s = el('div', { class: 'sub seat' });
+        if (played) {
+          var fd = cardEl(null, { kind: V.ak, down: true, cls: !was && same ? 'drop' : '' });
+          if (!was && same) { fd.style.setProperty('--dx', (Math.random() * 60 - 30).toFixed(0) + 'px'); fd.style.setProperty('--dl', (dropped++ * .08) + 's'); }
+          s.appendChild(fd);
+        } else s.appendChild(el('div', { class: 'pend' + (i === V.me ? ' me' : ''), style: { '--c': i >= 0 ? V.players[i].color : '#9aa3b8' }, html: i === V.me && V.phase === 'play' ? Kit.icon('hand') : '<span class="think"><i></i><i></i><i></i></span>' }));
+        s.appendChild(nameTag(V, i));
+        plays.appendChild(s);
+      });
+      if (dropped) Kit.sfx('deal');
     } else if (V.subs) {
+      var entering = !same || prev.phase !== 'judge' && V.phase === 'judge';
+      if (entering && V.phase === 'judge') { Kit.sfx('whoosh'); setTimeout(function () { Kit.sfx('deal', 0.8); }, 260); }
       V.subs.forEach(function (sb, k) {
-        var was = prev && prev.subs && prev.round === V.round ? prev.subs[k] : null;
-        var cards = el('div', { class: 'cards' }), cs = sb.c || [];
+        var was = same && prev.subs ? prev.subs[k] : null;
+        var cards = el('div', { class: 'cards' }), cs = sb.c || [], flipNowK = sb.c && was && !was.c;
         for (var q = 0; q < sb.n; q++) {
-          var ce = cardEl(cs[q] || null, { kind: V.ak, down: !sb.c || (was && !was.c) || (!prev && false) });
-          if (sb.c && (!was || !was.c) && prev) { (function (ce) { requestAnimationFrame(function () { requestAnimationFrame(function () { ce.classList.remove('down'); }); }); })(ce); }
-          else if (sb.c) ce.classList.remove('down');
+          var ce = cardEl(cs[q] || null, { kind: V.ak, down: !sb.c || flipNowK });
+          if (flipNowK) (function (ce, q) { post.push(function () { setTimeout(function () { ce.classList.remove('down'); }, q * 140); }); })(ce, q);
           cards.appendChild(ce);
         }
-        if (sb.c && prev && was && !was.c) Kit.sfx('flip');
         var isWin = V.win && V.win.s === k;
-        var node = el('button', { type: 'button', class: 'sub' + (V.phase === 'judge' && canJudge ? ' tap' : '') + (ui.jsel === k ? ' sel' : '') + (isWin ? ' win' : V.win ? ' lose' : ''), 'data-k': String(k) }, [cards]);
-        if (V.phase === 'result' && sb.p != null) {
-          var pc = sb.p >= 0 && V.players[sb.p] ? V.players[sb.p].color : '#9aa3b8';
-          node.appendChild(el('span', { class: 'who', html: '<i class="dot" style="--c:' + pc + '">' + (sb.p < 0 ? Kit.icon('ghost') : esc(chipName(V, sb.p).charAt(0).toUpperCase())) + '</i><span>' + esc(youOr(V, sb.p)) + '</span>' }));
-        }
+        var node = el('button', { type: 'button', class: 'sub' + (V.phase === 'judge' && canJudge ? ' tap' : '') + (ui.jsel === k ? ' sel' : ui.jsel >= 0 ? ' dim' : '') + (isWin ? ' win' : V.win ? ' lose' : '') + (flipNowK ? ' reveal' : '') + (V.phase === 'judge' && !sb.c && canJudge ? ' hot' : ''), 'data-k': String(k), style: { '--i': String(k) } }, [cards]);
+        if (entering && V.phase === 'judge') { node.classList.add('shuf'); post.push(function () { var pr = plays.getBoundingClientRect(), r = node.getBoundingClientRect(); node.style.setProperty('--sx', (pr.left + pr.width / 2 - r.left - r.width / 2).toFixed(0) + 'px'); node.style.setProperty('--sy', (pr.top + 40 - r.top).toFixed(0) + 'px'); node.classList.add('go'); }); }
+        if (flipNowK) { Kit.sfx('flip'); Kit.haptic('light'); }
+        if (V.phase === 'result' && sb.p != null) node.appendChild(nameTag(V, sb.p, isWin ? 'won' : ''));
+        if (isWin) node.appendChild(el('span', { class: 'ribbon', html: Kit.icon('crown') }));
         if (V.phase === 'judge' && canJudge) node.addEventListener('click', function () {
-          if (!sb.c) { Kit.haptic('light'); doAct({ t: 'reveal', i: k }); return; }
-          if (V.subs.some(function (x) { return !x.c; })) { Kit.toast('Turn them all over first'); return; }
-          ui.jsel = ui.jsel === k ? -1 : k; Kit.sfx('tap'); Kit.haptic('light'); render(V);
+          if (!sb.c) { doAct({ t: 'reveal', i: k }); return; }
+          if (V.subs.some(function (x) { return !x.c; })) { var h = app.querySelector('.sub.hot'); if (h) { h.classList.remove('nudge'); void h.offsetWidth; h.classList.add('nudge'); } Kit.haptic('error'); return; }
+          ui.jsel = ui.jsel === k ? -1 : k; Kit.sfx(ui.jsel >= 0 ? 'pop' : 'tap'); Kit.haptic('light'); render(V);
         });
         plays.appendChild(node);
       });
@@ -764,96 +835,117 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       var show = V.phase === 'result' && V.win ? V.subs[V.win.s] : ui.jsel >= 0 ? V.subs[ui.jsel] : null;
       if (show && show.c) felt.appendChild(el('div', { class: 'sent', html: filled(V.prompt[0], show.c) }));
     }
-    if (V.phase === 'result' && V.win && V.win.why) felt.appendChild(el('div', { class: 'why', html: '<b>' + esc(jn) + ':</b> “' + esc(V.win.why) + '”' }));
+    if (V.phase === 'result' && V.win && V.win.why) felt.appendChild(el('div', { class: 'why' }, [el('span', { class: 'avatar sm', style: { '--c': J.color }, html: Kit.icon('bot') }), el('span', { html: '“' + esc(V.win.why) + '”' })]));
 
-    // My hand
-    if (V.hand && V.me >= 0 && !(V.mode === 'pass' && V.phase === 'judge')) {
-      var canPlay = V.phase === 'play' && !meJ && !V.mine;
-      var rail = el('div', { class: 'rail wood' });
-      var head = canPlay ? (V.pick > 1 ? 'Your hand · pick ' + V.pick + ' in order' : 'Your hand · tap a card') : meJ ? 'Your hand · you’re judging' : V.mine ? 'Your hand · card played' : 'Your hand';
-      if (V.mode === 'pass') head = esc(V.players[V.me].name) + '’s hand' + (canPlay ? ' · tap a card' : '');
-      rail.appendChild(el('div', { class: 'hd', html: '<span>' + head + '</span><span>' + V.hand.length + ' cards</span>' }));
-      var hand = el('div', { class: 'hrow' + (canPlay ? '' : ' off') });
-      var prevIds = prev && prev.hand && prev.me === V.me ? prev.hand.map(function (c) { return c.id; }) : [];
-      var fresh = 0;
-      V.hand.forEach(function (c) {
-        var ce = cardEl(c, { cls: ui.sel.indexOf(c.id) >= 0 ? 'sel' : '' });
-        if (ui.sel.indexOf(c.id) >= 0 && V.pick > 1) ce.appendChild(el('span', { class: 'num', text: String(ui.sel.indexOf(c.id) + 1) }));
-        if (prev && prevIds.indexOf(c.id) < 0 && !(V.mode === 'pass' && (!prev.hand || prev.me !== V.me))) { ce.classList.add('dealt'); ce.style.setProperty('--dl', (fresh++ * .07) + 's'); }
-        if (canPlay) ce.addEventListener('click', function () {
+    // Buttons: on the table's wooden rim, or with your hand when it's about your cards
+    var btn = null;
+    if (flipNow) btn = el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('play') + '<span>Turn over the ' + w.pr + '</span>', onclick: flipCard });
+    else if (myTurn && V.hand) {
+      var ready = ui.sel.length === V.pick;
+      btn = el('button', { type: 'button', class: 'btn btn-primary btn-lg' + (ready ? ' ready' : ''), disabled: !ready, html: ready ? Kit.icon('play') + '<span>' + (V.pick > 1 ? 'Play these ' + V.pick : 'Play it') + '</span>' : '<span>' + (V.pick > 1 ? 'Pick ' + V.pick + ' cards' : 'Pick a card') + '</span>', onclick: playSelected });
+    } else if (V.phase === 'judge' && canJudge) {
+      if (V.subs.some(function (x) { return !x.c; })) btn = el('button', { type: 'button', class: 'btn btn-soft btn-lg', html: Kit.icon('swap') + '<span>Turn them all over</span>', onclick: function () { Kit.haptic('medium'); doAct({ t: 'all' }); } });
+      else btn = el('button', { type: 'button', class: 'btn btn-primary btn-lg' + (ui.jsel >= 0 ? ' ready' : ''), disabled: ui.jsel < 0, html: Kit.icon('trophy') + '<span>' + (ui.jsel < 0 ? 'Tap your favorite' : 'This one wins') + '</span>', onclick: function () { if (ui.jsel >= 0) { Kit.haptic('heavy'); doAct({ t: 'pick', i: ui.jsel }); } } });
+    } else if (V.phase === 'result') btn = el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: V.final ? Kit.icon('trophy') + '<span>See who won</span>' : '<span>Next round</span>' + Kit.icon('right'), onclick: nextRoundTap });
+
+    // My hand, on its own rail
+    var showHand = V.hand && V.me >= 0 && !(V.mode === 'pass' && V.phase === 'judge');
+    if (showHand) {
+      var rail = el('div', { class: 'rail wood' + (myTurn ? ' live' : '') });
+      var title = V.mode === 'pass' ? esc(V.players[V.me].name) + '’s cards' : 'Your cards';
+      rail.appendChild(el('div', { class: 'hd', html: '<span>' + title + '</span>' + (V.extra && myTurn ? '<span class="xtra">+' + V.extra + ' drawn</span>' : '') }));
+      var hand = el('div', { class: 'hrow' + (myTurn ? '' : ' off') });
+      var prevIds = prev && prev.hand && prev.me === V.me ? prev.hand.map(function (c) { return c.id; }) : null;
+      var fresh = [], nH = V.hand.length;
+      V.hand.forEach(function (c, k) {
+        var on = ui.sel.indexOf(c.id) >= 0, ce = cardEl(c, { cls: on ? 'sel' : '' });
+        var off = k - (nH - 1) / 2; ce.style.setProperty('--r', (off * 1.6).toFixed(1) + 'deg'); ce.style.setProperty('--y', (off * off * 1.1).toFixed(1) + 'px');
+        if (on && V.pick > 1) ce.appendChild(el('span', { class: 'num', text: String(ui.sel.indexOf(c.id) + 1) }));
+        if (prevIds && prevIds.indexOf(c.id) < 0) fresh.push(ce);
+        if (myTurn) ce.addEventListener('click', function () {
           var at = ui.sel.indexOf(c.id);
           if (at >= 0) ui.sel.splice(at, 1);
           else { if (ui.sel.length >= V.pick) ui.sel.shift(); ui.sel.push(c.id); }
-          Kit.sfx('tap'); Kit.haptic('light'); render(V);
+          Kit.sfx(at >= 0 ? 'tap' : 'pop'); Kit.haptic('light'); render(V);
         });
         hand.appendChild(ce);
       });
-      if (fresh) Kit.sfx('deal');
+      // new cards come off the pile one by one
+      if (fresh.length) {
+        Kit.sfx('deal');
+        post.push(function () {
+          var dk = deck.getBoundingClientRect();
+          fresh.forEach(function (ce, j) {
+            var r = ce.getBoundingClientRect();
+            ce.style.setProperty('--fx', (dk.left + dk.width / 2 - r.left - r.width / 2).toFixed(0) + 'px');
+            ce.style.setProperty('--fy', (dk.top + dk.height / 2 - r.top - r.height / 2).toFixed(0) + 'px');
+            ce.style.setProperty('--dl', (j * .09) + 's'); ce.classList.add('dealt');
+            if (j) setTimeout(function () { Kit.sfx('deal', 0.6); }, j * 90);
+          });
+        });
+      }
       rail.appendChild(hand);
+      if (btn && myTurn) rail.appendChild(el('div', { class: 'bar' }, [btn]));
       app.appendChild(rail);
       hand.scrollLeft = sx;
     }
+    if (btn && !(showHand && myTurn)) tbl.appendChild(el('div', { class: 'bar' }, [btn]));
+    if (V.mode === 'pass' && V.phase === 'play' && V.me >= 0 && V.mine) app.appendChild(el('div', { class: 'hint', text: 'Played. Pass the phone on.' }));
 
-    // Buttons
-    var acts = el('div', { class: 'acts' }), hint = '';
-    if (V.phase === 'flip' && (meJ || passJ)) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('play') + '<span>Turn over the ' + w.pr + '</span>', onclick: function () { doAct({ t: 'flip' }); } }));
-    else if (V.phase === 'play' && V.hand && V.me >= 0 && !meJ && !V.mine) {
-      var ready = ui.sel.length === V.pick;
-      acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', disabled: !ready, text: ready ? (V.pick > 1 ? 'Play these ' + V.pick : 'Play this card') : V.pick > 1 ? 'Pick ' + V.pick + ' cards' : 'Pick a card', onclick: playSelected }));
-      if (V.extra) hint = 'You drew ' + V.extra + ' extra ' + (V.extra === 1 ? 'card' : 'cards') + ' for this one.';
-    } else if (V.phase === 'judge' && canJudge) {
-      if (V.subs.some(function (x) { return !x.c; })) acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-lg', html: Kit.icon('swap') + '<span>Turn them all over</span>', onclick: function () { doAct({ t: 'all' }); } }));
-      else acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', disabled: ui.jsel < 0, html: Kit.icon('trophy') + '<span>' + (ui.jsel < 0 ? 'Tap your favorite' : V.deck === 'cah' ? 'Award it' : 'Pick this one') + '</span>', onclick: function () { if (ui.jsel >= 0) doAct({ t: 'pick', i: ui.jsel }); } }));
-      if (V.rules.crab) hint = 'Crab Apples: pick the card that is the most opposite.';
-    } else if (V.phase === 'result') {
-      acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: V.final ? 'See who won' : 'Next round', onclick: function () { Kit.sfx('whoosh'); doAct({ t: 'next' }); } }));
-    }
-    if (acts.children.length) app.appendChild(acts);
-    if (hint) app.appendChild(el('div', { class: 'hint', text: hint }));
-    else if (V.mode === 'pass' && V.phase === 'play' && V.me >= 0 && V.mine) app.appendChild(el('div', { class: 'hint', text: 'Card played. Pass it on.' }));
-
-    // Moments
-    if (newRound && prev && V.phase !== 'wait') {}
+    requestAnimationFrame(function () { requestAnimationFrame(function () { post.forEach(function (f) { f(); }); }); });
     if (prev && prev.phase !== 'result' && V.phase === 'result' && V.win) celebrate(V);
+  }
+  function flipCard() {
+    var c = app.querySelector('.deck .ac:last-child');
+    if (c) c.classList.add('lift');
+    Kit.haptic('medium');
+    doAct({ t: 'flip' });
+  }
+  // Next round: the old cards sweep off the table first
+  function nextRoundTap() {
+    if (ui.sweeping) return; ui.sweeping = true;
+    Kit.sfx('whoosh'); Kit.haptic('light');
+    var felt = app.querySelector('.felt-in'); if (felt) felt.classList.add('sweep');
+    setTimeout(function () { ui.sweeping = false; doAct({ t: 'next' }); }, 320);
   }
   function playSelected() {
     var V = lastV; if (!V || ui.sel.length !== V.pick) return;
-    var sel = ui.sel.slice(), dst = app.querySelector('.plays');
-    var nodes = Array.prototype.slice.call(app.querySelectorAll('.hrow .ac.sel'));
-    nodes.forEach(function (n) { if (dst) fly(n, dst, { down: true }); n.style.visibility = 'hidden'; });
+    var sel = ui.sel.slice(), dst = app.querySelector('.pend.me') || app.querySelector('.plays');
+    var nodes = sel.map(function (id) { return app.querySelector('.hrow .ac.sel[data-id="' + id + '"]'); }).filter(Boolean);
+    nodes.forEach(function (n, k) { if (dst) setTimeout(function () { fly(n, dst, { down: true, scale: dst.classList.contains('pend') ? dst.offsetWidth / n.offsetWidth : 0.8 }); n.style.visibility = 'hidden'; }, k * 90); });
     Kit.sfx('deal'); Kit.haptic('medium');
     ui.sel = [];
-    setTimeout(function () { doAct({ t: 'play', c: sel }); }, nodes.length ? 330 : 0);
+    setTimeout(function () { doAct({ t: 'play', c: sel }); }, nodes.length ? 420 + (nodes.length - 1) * 90 : 0);
   }
   // A copy of a card flies from one place to another (the real one is drawn there after)
   function fly(from, to, o) {
     o = o || {};
     var a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
     if (!a.width || !b.width) return;
-    var c = from.cloneNode(true); c.classList.remove('sel', 'dealt', 'drop', 'flipin'); c.classList.add('fly');
+    var c = from.cloneNode(true); c.classList.remove('sel', 'dealt', 'drop', 'flipin', 'lift'); c.classList.add('fly');
     c.style.left = a.left + 'px'; c.style.top = a.top + 'px'; c.style.width = a.width + 'px'; c.style.height = a.height + 'px'; c.style.setProperty('--cw', a.width + 'px');
     document.body.appendChild(c);
     var tx = b.left + b.width / 2 - (a.left + a.width / 2), ty = b.top + Math.min(b.height / 2, 80) - (a.top + a.height / 2), sc = o.scale || 0.8;
     requestAnimationFrame(function () { requestAnimationFrame(function () {
-      c.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ') rotate(' + (Math.random() * 16 - 8).toFixed(1) + 'deg)';
+      c.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ') rotate(' + (o.spin != null ? o.spin : (Math.random() * 16 - 8)).toFixed(1) + 'deg)';
       if (o.down) c.classList.add('down');
       if (o.fade) c.style.opacity = '0';
     }); });
     setTimeout(function () { c.remove(); }, 560);
   }
   function celebrate(V) {
-    var w = words(V), p = V.win.p;
+    var p = V.win.p;
     setTimeout(function () {
       if (lastV !== V) return;
-      var winNode = app.querySelector('.sub.win'), chip = app.querySelector('.score[data-i="' + p + '"]'), pr = app.querySelectorAll('.pr-slot .ac');
-      if (chip) Array.prototype.forEach.call(pr, function (n) { fly(n, chip, { scale: 0.2, fade: true }); });
-      if (p < 0) { Kit.callout(V.deck === 'cah' ? 'Rando wins!' : 'The ghost wins it!', '#c9cfdc'); Kit.sfx('bad'); Kit.haptic('error'); return; }
+      var chip = app.querySelector('.score[data-i="' + p + '"]'), pr = app.querySelectorAll('.pr-slot .ac');
+      if (chip) Array.prototype.forEach.call(pr, function (n, k) { setTimeout(function () { fly(n, chip, { scale: 0.18, fade: true, spin: 0 }); n.style.opacity = '.25'; }, 350 + k * 120); });
+      if (p < 0) { Kit.callout(V.deck === 'cah' ? 'Rando wins it!' : 'The ghost wins it!', '#d7dbe6'); Kit.sfx('bad'); Kit.haptic('error'); return; }
       var me = p === V.me && V.mode !== 'pass', P = V.players[p];
       Kit.callout(me ? 'You win it!' : P.name + '!', P.color);
-      Kit.sfx(me || V.mode !== 'solo' ? 'good' : 'pop'); Kit.haptic(me ? 'success' : 'light');
-      if (winNode) winNode.classList.add('lift');
-      if (V.final) setTimeout(function () { Kit.sfx('sparkle'); }, 500);
-    }, 650);
+      Kit.sfx(me || V.mode !== 'solo' ? 'good' : 'chip'); Kit.haptic(me ? 'success' : 'light');
+      setTimeout(function () { if (lastV === V) Kit.sfx('sparkle', 0.7); }, 700);
+      if (me || V.mode === 'pass') Kit.confetti({ count: 60, colors: [P.color, '#ffd447', '#ffffff', V.deck === 'cah' ? '#111111' : '#e0283f'] });
+    }, 450);
   }
 
   // ── The end ──────────────────────────────────────────────────────────────
@@ -1084,15 +1176,22 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     var ic = st.el.querySelector('.k-hero-ic'), taps = 0, lastTap = 0;
     if (ic) ic.addEventListener('click', function () {
       var now = Date.now(); taps = now - lastTap < 1200 ? taps + 1 : 1; lastTap = now;
-      ic.classList.remove('wob'); void ic.offsetWidth; ic.classList.add('wob');
-      Kit.sfx(taps >= 7 ? 'sparkle' : 'tap', 0.6); Kit.haptic('tick');
+      // each tap wobbles a little harder, so a few taps in a row feel like something is about to happen
+      ic.style.setProperty('--wob', (6 + taps * 3) + 'deg'); ic.style.setProperty('--wsc', String(1 + taps * 0.03));
+      ic.classList.remove('wob', 'spin'); void ic.offsetWidth; ic.classList.add('wob');
+      Kit.sfx(taps >= 7 ? 'sparkle' : taps >= 4 ? 'pop' : 'tap', 0.4 + taps * 0.08); Kit.haptic(taps >= 4 ? 'light' : 'tick');
       if (taps < 7) return;
       taps = 0;
-      if (cahUnlocked()) { Kit.toast('Already unlocked. It’s below the players.'); return; }
+      if (cahUnlocked()) { var r0 = box.querySelector('.cah-row'); if (r0) { r0.scrollIntoView({ behavior: 'smooth', block: 'center' }); r0.classList.remove('arrive'); void r0.offsetWidth; r0.classList.add('arrive'); } return; }
       rawSet(CAHK, '1'); initOpts.rules = rulesHtml();
-      Kit.callout('Cards Against Humanity unlocked', '#ffffff'); Kit.haptic('success');
-      paint();
-      var row = box.querySelector('.cah-row'); if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      ic.classList.remove('wob'); void ic.offsetWidth; ic.classList.add('spin');
+      Kit.haptic('success'); Kit.sfx('win');
+      Kit.confetti({ count: 150, colors: ['#111111', '#ffffff', '#8a8a8a', '#e0283f', '#2f9a44'] });
+      setTimeout(function () { Kit.callout('Cards Against Humanity unlocked', '#ffffff'); }, 450);
+      setTimeout(function () {
+        paint();
+        var row = box.querySelector('.cah-row'); if (row) { row.classList.add('arrive'); row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }, 900);
     });
   }
   function onStart(cfg, ch) {

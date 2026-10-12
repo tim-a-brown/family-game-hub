@@ -108,6 +108,8 @@ const PRECACHE_URLS = [
   '/games/breakout.html',
   '/games/candymatch.html',
   '/games/checkers.html',
+  '/games/scrabble.html',
+  '/data/scrabble-words.js',
   '/games/chess.html',
   '/games/connectfour.html',
   '/games/conversation.html',

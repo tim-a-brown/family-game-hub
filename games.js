@@ -74,6 +74,11 @@ var GAMES = [
   { id: 'dotsboxes',   name: 'Dots & Boxes', color: '#ec4899', cat: 'board', min: 1, max: 3, tag: 'Close the most boxes', play: 'dotsboxes' },
   { id: 'mancala',     name: 'Mancala',      color: '#a16207', cat: 'board', min: 1, max: 2, tag: 'Sow stones, fill your store', play: 'mancala' },
   { id: 'mahjong4',    name: 'Mahjong',      color: '#b91c1c', cat: 'board', min: 1, max: 1, tag: 'Four-player Mahjong vs the computer', play: 'mahjong4' },
+  { id: 'scrabble',    name: 'Scrabble',     color: '#c0392b', cat: 'board', min: 1, max: 4, tag: 'Build words, hit the bonus squares, vs robots, a friend, or online', play: 'scrabble',
+    launch: [
+      { icon: 'phone', title: 'Play on this device', desc: 'Against the computer or pass and play', file: 'scrabble.html' },
+      { icon: 'users', title: 'Play online', desc: '2 to 4 players, each on their own device', file: 'scrabble.html?online=1' }
+    ] },
 
   // ── Dice & luck ──────────────────────────────────────────────────────────
   { id: 'yahtzee',     name: 'Yahtzee',      color: '#ef4444', cat: 'dice', min: 1, max: 8, tag: 'Roll for the best combos', play: 'yahtzee' },
