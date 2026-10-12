@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mini Crossword</title>
+<title>Crossword</title>
 <link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
 <script src="../games.js"></script>
@@ -17,8 +17,9 @@ body{overflow:hidden;display:flex;flex-direction:column;}
 .cw{flex:1;min-height:0;display:flex;flex-direction:column;width:100%;max-width:560px;margin:0 auto;padding:0 10px;}
 
 /* Top line: puzzle chip, timer, help */
-.top{flex:none;display:flex;align-items:center;gap:8px;padding:0 0 8px;}
-.puz{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px 0 14px;border:0;border-radius:999px;background:var(--w08);color:var(--text);font-weight:900;font-size:.95rem;white-space:nowrap;}
+.top{flex:none;display:flex;align-items:center;gap:8px;padding:0 0 8px;min-width:0;width:100%;}
+.puz{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px 0 14px;border:0;border-radius:999px;background:var(--w08);color:var(--text);font-weight:900;font-size:.95rem;white-space:nowrap;min-width:0;flex:0 1 auto;}
+.puz span{overflow:hidden;text-overflow:ellipsis;}.puz .ico{flex:none;}
 .puz .ico{width:16px;height:16px;color:var(--text-3);}
 .clock{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:0;border-radius:999px;background:rgba(0,0,0,.25);color:var(--text);font-weight:900;font-variant-numeric:tabular-nums;font-size:1rem;}
 .clock .ico{width:16px;height:16px;color:var(--text-3);}
@@ -32,7 +33,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     linear-gradient(180deg,var(--np),var(--np-2));
   box-shadow:0 1px 0 rgba(255,255,255,.6) inset, 0 14px 30px rgba(0,0,0,.45);}
 .mast{display:flex;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:2px solid var(--np-ink);padding:0 2px 4px;margin-bottom:8px;font-family:var(--np-serif);}
-.mast b{font-size:1.05rem;letter-spacing:.04em;font-weight:700;font-variant:small-caps;}
+.mast b{font-size:1.05rem;letter-spacing:.04em;font-weight:700;font-variant:small-caps;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .mast span{font-size:.8rem;font-style:italic;color:var(--np-dim);white-space:nowrap;}
 .gwrap{display:flex;justify-content:center;}
 .grid{--n:5;position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);grid-template-rows:repeat(var(--n),1fr);width:min(100%,var(--gw,360px),calc(100dvh - var(--safe-t) - var(--safe-b) - var(--corner-y) - 540px));min-width:250px;aspect-ratio:1;border:2.5px solid var(--np-ink);background:var(--np-ink);gap:1px;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
@@ -62,9 +63,24 @@ body{overflow:hidden;display:flex;flex-direction:column;}
 .cbar .ct b{flex:none;font-family:var(--np-sans);font-weight:800;font-size:.9rem;}
 
 /* Clue lists */
+
+/* Big puzzles (15×15, 21×21) on a phone: the grid scrolls inside the paper, zoomed in so squares are big enough to tap */
+.zoom{display:none;width:28px;height:28px;border:1.5px solid var(--np-ink);border-radius:50%;background:none;color:var(--np-ink);padding:0;margin-left:8px;}
+.zoom .ico{width:16px;height:16px;}
+.cw.bigp .zoom{display:inline-grid;place-items:center;}
+.mast .r{display:inline-flex;align-items:center;gap:2px;}
+@media (max-width:859px){
+  .cw.bigp .paper{flex:1;min-height:0;min-width:0;width:100%;display:flex;flex-direction:column;}
+  .cw.bigp .gwrap{flex:1;min-height:0;min-width:0;width:100%;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;justify-content:flex-start;align-items:flex-start;}
+  .cw.bigp .grid{width:var(--gpx) !important;min-width:0;flex:none;margin:auto;}
+  .cw.bigp .clues{display:none;}
+}
+@media (min-width:860px){ .cw.bigp .zoom{display:none;} }
+.sq .n{pointer-events:none;}
+.cw.bigp .sq .n{font-size:calc(var(--cell) * .3);}
 .clues{flex:1;min-height:0;overflow:auto;margin:10px 0 0;padding:2px 2px 8px;scroll-behavior:smooth;}
 .clues h3{font-family:var(--np-serif);font-variant:small-caps;font-size:1rem;letter-spacing:.06em;color:var(--text-2);margin:6px 4px 4px;border-bottom:1px solid var(--line-2);padding-bottom:3px;}
-.clue{display:flex;gap:8px;padding:7px 8px;border-radius:10px;border-left:3px solid transparent;cursor:pointer;color:var(--text-2);font-size:.95rem;line-height:1.35;}
+.clue{display:flex;gap:8px;overflow-wrap:anywhere;padding:7px 8px;border-radius:10px;border-left:3px solid transparent;cursor:pointer;color:var(--text-2);font-size:.95rem;line-height:1.35;}
 .clue b{flex:none;min-width:18px;color:var(--text);font-weight:900;}
 .clue.on{background:rgba(169,209,247,.18);border-left-color:var(--hl);color:var(--text);}
 .clue.x{background:var(--w04);}
@@ -89,6 +105,16 @@ body{overflow:hidden;display:flex;flex-direction:column;}
 .pk button.done small{color:var(--green);}
 .pk button.cur{box-shadow:inset 0 0 0 2px var(--accent);}
 .pk button.prog small{color:var(--yellow);}
+.pk-today{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.pk .pk-big{min-height:96px;align-items:flex-start;justify-content:flex-start;padding:12px 14px;text-align:left;gap:2px;}
+.pk .pk-big b{font-size:1.02rem;font-weight:900;}
+.pk .pk-big small{font-size:.76rem;}
+.pk .pk-big i{margin-top:auto;font-style:normal;font-size:.8rem;font-weight:900;color:var(--accent);}
+.pk .pk-big.done i{color:var(--green);}.pk .pk-big.prog i{color:var(--yellow);}
+.pk-past{display:flex;flex-direction:column;gap:6px;}
+.pk-day{display:grid;grid-template-columns:minmax(0,1fr) 1fr 1fr;gap:6px;align-items:center;}
+.pk-day .d{font-weight:800;font-size:.86rem;color:var(--text-2);}
+.pk .pk-c{min-height:46px;font-size:.88rem;}
 .hs{display:flex;flex-direction:column;gap:8px;}
 .hs .row2{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
 .hs .row2 .btn{min-height:48px;padding:0 6px;font-size:.95rem;}
@@ -126,7 +152,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
   .main{display:contents;}
   .paper{grid-column:1;grid-row:2 / 4;align-self:start;}
   .grid{width:min(100%,calc(var(--gw,360px) * 1.25),calc(100dvh - var(--safe-t) - var(--safe-b) - 250px));}
-  .clues{grid-column:2;grid-row:2;max-height:none;}
+  .clues{grid-column:2;grid-row:2;max-height:none;height:100%;min-height:0;align-self:stretch;overflow:auto;}
   .kb{grid-column:2;grid-row:3;}
 }
 
@@ -149,7 +175,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
   </div>
   <div class="main">
     <section class="paper" id="paper">
-      <div class="mast"><b id="mast">Crossword</b><span id="by"></span></div>
+      <div class="mast"><b id="mast">Crossword</b><span class="r"><span id="by"></span><button type="button" class="zoom" id="zoom" aria-label="Zoom"></button></span></div>
       <div class="gwrap"><div class="grid" id="grid"></div></div>
       <div class="cbar">
         <button type="button" id="prev" aria-label="Previous clue"></button>
@@ -206,6 +232,41 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     {"id": "b10", "title": "Big 10", "size": "big", "grid": ["##arm##", "#brief#", "bargain", "use#sea", "disturb", "#story#", "##see##"], "clues": {"arm": "Limb with an elbow", "brief": "Short", "bargain": "Great deal", "use": "Put to work", "sea": "Ocean", "disturb": "Bother", "story": "Tale", "see": "Spot", "bud": "Flower before it blooms", "basis": "Foundation", "arrests": "Police catches", "rig": "Big truck", "toe": "\"This little piggy\"", "measure": "Use a ruler", "fiery": "Hot and flaming", "nab": "Catch"}}
   ]/*END*/;
 
+  // ── Daily puzzles ─────────────────────────────────────────────────────────
+  // Every day a new Mini (5×5) and a new Crossword: 15×15 Monday to Saturday, getting harder through the week like
+  // the newspaper, and a 21×21 on Sunday. The bank (data/xw/, built by scripts/build-crosswords.py and
+  // scripts/pack-crosswords.py) holds WEEKS puzzles for each kind and weekday; week 0 starts on EPOCH.
+  // Files: data/xw/<mini|big><weekday 0=Mon>-<block>.json, BLOCK puzzles each: [{g:[rows], c:{answer: clue}}].
+  var EPOCH = new Date(2026, 8, 28), WEEKS = 160, BLOCK = 40;
+  var DOW = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  var LEVEL = ['Easy', 'Easy', 'Medium', 'Medium', 'Hard', 'Hardest', 'Big Sunday'];
+  function dayKey(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function dateOf(key) { var m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(key); return m ? new Date(+m[1], m[2] - 1, +m[3]) : null; }
+  function dailyInfo(kind, d) {
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var days = Math.round((d - EPOCH) / 86400000), week = Math.floor(days / 7), dow = ((days % 7) + 7) % 7;
+    return { kind: kind, date: d, key: dayKey(d), dow: dow, idx: ((week % WEEKS) + WEEKS) % WEEKS, id: (kind === 'mini' ? 'dm-' : 'db-') + dayKey(d) };
+  }
+  function infoOf(id) { var m = /^d([mb])-(.+)$/.exec(id || ''), d = m && dateOf(m[2]); return d ? dailyInfo(m[1] === 'm' ? 'mini' : 'big', d) : null; }
+  function shortDate(d) { return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); }
+  var bankFiles = {}, loaded = {};
+  function loadDaily(info) {
+    var f = '../data/xw/' + info.kind + info.dow + '-' + Math.floor(info.idx / BLOCK) + '.json';
+    bankFiles[f] = bankFiles[f] || fetch(f).then(function (r) { if (!r.ok) throw new Error('missing'); return r.json(); }).catch(function (e) { delete bankFiles[f]; throw e; });
+    return bankFiles[f].then(function (arr) {
+      var x = arr[info.idx % BLOCK]; if (!x) throw new Error('missing');
+      var p = { id: info.id, daily: info.key, date: info.date, kind: info.kind, dow: info.dow, size: info.kind === 'mini' ? 'mini' : 'big', grid: x.g, clues: x.c,
+        title: info.kind === 'mini' ? 'Mini · ' + shortDate(info.date) : DOW[info.dow] + ' Crossword',
+        by: (info.kind === 'mini' ? shortDate(info.date) : info.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + (info.dow < 6 ? ' · ' + LEVEL[info.dow] : '')) };
+      loaded[p.id] = p; return p;
+    });
+  }
+  function getPuzzle(id) {
+    var p = byId(id); if (p) return Promise.resolve(p);
+    if (loaded[id]) return Promise.resolve(loaded[id]);
+    var info = infoOf(id); return info ? loadDaily(info) : Promise.reject(new Error('unknown'));
+  }
+
   Kit.init({
     id: 'crossword',
     theme: { felt: ['#2b3a55', '#1c2840', '#121b2d'] },
@@ -226,7 +287,9 @@ body{overflow:hidden;display:flex;flex-direction:column;}
       '<h3>Stuck?</h3><ul><li><b>Check</b> marks wrong letters with a red slash. Correct checked letters turn blue.</li>' +
       '<li><b>Reveal</b> fills in the answer. Revealed squares get a little red corner.</li>' +
       '<li>You can check or reveal one <b>letter</b>, the whole <b>word</b>, or the whole <b>puzzle</b>.</li></ul>' +
-      '<h3>The puzzles</h3><p><b>Minis</b> are quick 5×5 grids made for all ages. <b>Bigger</b> puzzles are 7×7 for a longer solve. The timer runs while you play; tap it to pause.</p>'
+      '<h3>Daily puzzles</h3><p>Every day brings a new <b>Mini</b> (5×5) and a new <b>Crossword</b>, the same for everyone. Like the newspaper, the Crossword is easiest on Monday and gets harder through the week, with a big 21×21 on Sunday. Past days stay in <b>Choose a puzzle</b>.</p>' +
+      '<p>On a phone, big grids open zoomed in so the squares are easy to tap; the grid scrolls to follow your answer. Tap the magnifier by the date to see the whole grid.</p>' +
+      '<h3>Classic puzzles</h3><p>A set of quick 5×5 minis and 7×7 grids, any time. The timer runs while you play; tap it to pause.</p>'
   });
   $('prev').innerHTML = Kit.icon('back'); $('next').innerHTML = Kit.icon('right');
 
@@ -258,6 +321,9 @@ body{overflow:hidden;display:flex;flex-direction:column;}
   function all() { try { return JSON.parse(localStorage.getItem(SAVE)) || {}; } catch (e) { return {}; } }
   function save() {
     var a = all(); a.cur = S.id; a.prog = a.prog || {}; a.prog[S.id] = S;
+    // dailies more than three weeks old drop off (finished ones are in the history)
+    var old = dayKey(new Date(Date.now() - 21 * 86400000));
+    Object.keys(a.prog).forEach(function (k) { var m = /^d[mb]-(.+)$/.exec(k); if (m && m[1] < old && k !== S.id) delete a.prog[k]; });
     try { localStorage.setItem(SAVE, JSON.stringify(a)); } catch (e) {}
     if (!S.solved && filledCount()) Kit.resume.set(Z.p.title + ' · ' + fmt(S.secs)); else Kit.resume.clear();
   }
@@ -268,11 +334,16 @@ body{overflow:hidden;display:flex;flex-direction:column;}
   }
   function byId(id) { for (var i = 0; i < PUZZLES.length; i++) if (PUZZLES[i].id === id) return PUZZLES[i]; return null; }
   function open(id) {
-    var p = byId(id) || PUZZLES[0];
+    return getPuzzle(id).then(show, function () {
+      Kit.toast(infoOf(id) ? 'That day’s puzzle isn’t available yet' : 'Puzzle not found');
+      if (!Z) show(PUZZLES[0]);
+    });
+  }
+  function show(p) {
     Z = model(p);
     Kit.titleSwitch(p.title || 'Crossword', openPicker, 'Choose another puzzle');
     var a = all(), st = a.prog && a.prog[p.id];
-    if (st && !st.solved && st.fill && st.fill.length === Z.n) S = st;
+    if (st && st.fill && st.fill.length === Z.n && (!st.solved || p.daily)) S = st;
     else S = { id: p.id, fill: Z.sol.map(function (r) { return r.map(function (ch) { return ch === '#' ? '#' : ''; }); }), marks: {}, r: 0, c: 0, dir: 'a', secs: 0, started: Date.now(), checks: 0, reveals: 0, solved: false };
     if (!st || st !== S || Z.sol[S.r][S.c] === '#') { var w0 = Z.words[0]; S.r = w0.cells[0][0]; S.c = w0.cells[0][1]; S.dir = w0.dir; }
     undoStack = []; paused = false;
@@ -305,11 +376,12 @@ body{overflow:hidden;display:flex;flex-direction:column;}
   var sqs = [];
   function build() {
     var p = Z.p, g = $('grid');
-    $('puz').innerHTML = '<span>' + Kit.esc(p.title) + '</span>' + Kit.icon('down');
-    $('mast').textContent = p.size === 'big' ? 'The Big Crossword' : 'The Mini Crossword';
-    $('by').textContent = 'No. ' + (PUZZLES.indexOf(p) + 1) + ' · ' + Z.n + '×' + Z.n;
+    $('puz').innerHTML = '<span>' + Kit.esc(p.daily ? p.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : p.title) + '</span>' + Kit.icon('down');
+    $('mast').textContent = p.daily ? (p.kind === 'mini' ? 'The Daily Mini' : 'The ' + DOW[p.dow] + ' Crossword') : p.size === 'big' ? 'The Big Crossword' : 'The Mini Crossword';
+    $('by').textContent = p.daily ? p.by + ' · ' + Z.n + '×' + Z.n : 'No. ' + (PUZZLES.indexOf(p) + 1) + ' · ' + Z.n + '×' + Z.n;
     g.innerHTML = ''; g.className = 'grid'; g.style.setProperty('--n', Z.n);
-    g.style.setProperty('--gw', Z.n === 5 ? '360px' : '440px');
+    g.style.setProperty('--gw', Z.n <= 5 ? '360px' : Z.n <= 7 ? '440px' : Z.n <= 15 ? '520px' : '560px');
+    $('app').classList.toggle('bigp', Z.n >= 13);
     sqs = [];
     for (var r = 0; r < Z.n; r++) { sqs.push([]); for (var c = 0; c < Z.n; c++) {
       var b = Z.sol[r][c] === '#';
@@ -335,7 +407,37 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     if (S.solved) g.classList.add('done');
     paint();
   }
-  function sizeCells() { var g = $('grid'); var w = g.getBoundingClientRect().width || 340; g.style.setProperty('--cell', (w / Z.n) + 'px'); }
+  // Big grids on a phone: fit the whole grid, or zoom in so each square is big enough to tap (the grid scrolls)
+  var zoomed = null;
+  function bigPhone() { return Z && Z.n >= 13 && innerWidth < 860; }
+  function sizeCells() {
+    var g = $('grid');
+    if (bigPhone()) {
+      var wrap = g.parentNode, fit = Math.floor(Math.min(wrap.clientWidth, wrap.clientHeight || wrap.clientWidth) / Z.n);
+      if (zoomed == null) zoomed = fit < 26;
+      var cell = zoomed ? Math.max(fit, 32) : fit;
+      g.style.setProperty('--gpx', (cell * Z.n + 5) + 'px');
+      $('zoom').innerHTML = Kit.icon(zoomed ? 'minus' : 'plus'); $('zoom').setAttribute('aria-label', zoomed ? 'Show the whole grid' : 'Zoom in');
+    } else g.style.removeProperty('--gpx');
+    var w = g.getBoundingClientRect().width || 340; g.style.setProperty('--cell', (w / Z.n) + 'px');
+  }
+  $('zoom').addEventListener('click', function () { zoomed = !zoomed; Kit.sfx('tap'); sizeCells(); keepInView(true); });
+  // keep the word being typed in view while the grid is zoomed
+  function keepInView(center) {
+    if (!bigPhone() || !zoomed || S.r < 0) return;
+    var wrap = $('grid').parentNode, w = Z.words[curWord()], sq = sqs[S.r] && sqs[S.r][S.c]; if (!sq) return;
+    var cells = w ? w.cells.map(function (q) { return sqs[q[0]][q[1]]; }) : [sq];
+    var a = cells[0], b = cells[cells.length - 1], wr = wrap.getBoundingClientRect(), pad = 8;
+    function fitAxis(lo, hi, curLo, curHi, scroll) {
+      if (!center && lo >= curLo + pad && hi <= curHi - pad) return scroll;
+      if (hi - lo > curHi - curLo - 2 * pad) return scroll + (lo - curLo) - pad;   // longer than the view: start of the word
+      return scroll + ((lo + hi) / 2 - (curLo + curHi) / 2);
+    }
+    var ar = a.getBoundingClientRect(), br = b.getBoundingClientRect(), sr = sq.getBoundingClientRect();
+    var lo = Math.min(ar.left, sr.left), hi = Math.max(br.right, sr.right), top = Math.min(ar.top, sr.top), bot = Math.max(br.bottom, sr.bottom);
+    wrap.scrollLeft = fitAxis(lo, hi, wr.left, wr.right, wrap.scrollLeft);
+    wrap.scrollTop = fitAxis(top, bot, wr.top, wr.bottom, wrap.scrollTop);
+  }
   window.addEventListener('resize', function () { if (Z) sizeCells(); });
 
   function curWord() { var a = Z.at[S.r + '_' + S.c] || {}; return a[S.dir] != null ? a[S.dir] : a[S.dir === 'a' ? 'd' : 'a']; }
@@ -368,6 +470,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
       if (t < box.scrollTop || t + on.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = Math.max(0, t - 30);
     }
     $('check').disabled = $('reveal').disabled = !!S.solved;
+    keepInView(false);
   }
 
   // ── Moving around ─────────────────────────────────────────────────────────
@@ -548,9 +651,9 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     if (longest.ans.length >= 6) hl.push('Longest answer: ' + longest.ans);
     Kit.record(KEY, {
       started: S.started, mode: Z.p.title, summary: (gaveUp ? 'Revealed' : 'Solved in ' + fmt(S.secs)) + ' · ' + Z.p.title, badge: gaveUp ? '' : fmt(S.secs),
-      highlights: hl, meta: { pid: S.id, secs: gaveUp ? null : S.secs, checks: S.checks, reveals: S.reveals, clean: clean },
+      highlights: hl, meta: { pid: S.id, secs: gaveUp ? null : S.secs, checks: S.checks, reveals: S.reveals, clean: clean, daily: Z.p.daily || '', kind: Z.p.kind || Z.p.size },
       // History picture: the filled grid ('#' = black), marks per square ('r' revealed, 'k' checked right), and the clues
-      detail: { t: Z.p.title, sz: Z.p.size, no: PUZZLES.indexOf(Z.p) + 1, g: Z.p.grid.map(function (r) { return r.toUpperCase(); }),
+      detail: { t: Z.p.title, sz: Z.p.size, no: Z.p.daily ? 0 : PUZZLES.indexOf(Z.p) + 1, g: Z.p.grid.map(function (r) { return r.toUpperCase(); }),
         m: Z.sol.map(function (row, r) { return row.map(function (ch, c) { var m = S.marks[r + '_' + c]; return ch === '#' ? '#' : m === 'rev' ? 'r' : m === 'ok' ? 'k' : '.'; }).join(''); }),
         a: Z.words.filter(function (w) { return w.dir === 'a'; }).map(function (w) { return w.clue; }),
         d: Z.words.filter(function (w) { return w.dir === 'd'; }).map(function (w) { return w.clue; }),
@@ -571,24 +674,59 @@ body{overflow:hidden;display:flex;flex-direction:column;}
   }
   function nextUnsolved() {
     var done = solvedMap(), i = PUZZLES.indexOf(Z.p);
+    // after today's Mini, today's Crossword (it loads when picked; the title is enough here)
+    if (Z.p.daily) {
+      var t = dailyInfo(Z.p.kind === 'mini' ? 'big' : 'mini', dateOf(Z.p.daily));
+      if (Z.p.daily === dayKey(new Date()) && done[t.id] === undefined) return { id: t.id, title: t.kind === 'mini' ? 'the Mini' : DOW[t.dow] + ' Crossword' };
+      return null;
+    }
     for (var k = 1; k <= PUZZLES.length; k++) { var p = PUZZLES[(i + k) % PUZZLES.length]; if (!done[p.id] && p.id !== Z.p.id) return p; }
     return null;
   }
 
-  // ── Puzzle picker ─────────────────────────────────────────────────────────
+  // ── Puzzle picker: today's two dailies, the past ones, and the classic set ──
   function openPicker() {
     Kit.sfx('pop');
     var done = solvedMap(), prog = all().prog || {}, s, box = el('div', { class: 'pk' });
-    [['mini', 'Minis · 5×5'], ['big', 'Bigger · 7×7']].forEach(function (sec) {
+    function started(id) { var pr = prog[id]; return pr && !pr.solved && pr.fill && pr.fill.some(function (r) { return r.some(function (x) { return x && x !== '#'; }); }); }
+    function pick(id) { s.close(); if (!Z || Z.p.id !== id) open(id); }
+    function state(id) { var t = done[id]; return t !== undefined ? { cls: 'done', txt: t ? fmt(t) : 'done' } : started(id) ? { cls: 'prog', txt: 'started' } : { cls: '', txt: ' ' }; }
+    var now = new Date(), tm = dailyInfo('mini', now), tb = dailyInfo('big', now);
+    box.appendChild(el('h3', { text: 'Today · ' + now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }) }));
+    var today = el('div', { class: 'pk-today' });
+    [[tm, 'The Mini', '5×5'], [tb, DOW[tb.dow] + ' Crossword', (tb.dow === 6 ? '21×21' : '15×15') + ' · ' + LEVEL[tb.dow]]].forEach(function (x) {
+      var st = state(x[0].id);
+      today.appendChild(el('button', { type: 'button', class: 'pk-big ' + st.cls + (Z && Z.p.id === x[0].id ? ' cur' : ''), onclick: function () { pick(x[0].id); } },
+        [el('b', { text: x[1] }), el('small', { text: x[2] }), el('i', { text: st.cls === 'done' ? 'Solved ' + st.txt : st.cls === 'prog' ? 'In progress' : 'Play' })]));
+    });
+    box.appendChild(today);
+    // past dailies, newest first, a week per row
+    var days = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - EPOCH) / 86400000), shown = 0, more = null;
+    if (days > 0) {
+      box.appendChild(el('h3', { text: 'Past puzzles' }));
+      var list = el('div', { class: 'pk-past' }); box.appendChild(list);
+      var addDays = function (from, count) {
+        for (var k = from; k < from + count && k <= days; k++) {
+          var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - k), mi = dailyInfo('mini', d), bi = dailyInfo('big', d);
+          var a1 = state(mi.id), a2 = state(bi.id);
+          list.appendChild(el('div', { class: 'pk-day' }, [el('span', { class: 'd', text: shortDate(d) }),
+            el('button', { type: 'button', class: 'pk-c ' + a1.cls, onclick: (function (id) { return function () { pick(id); }; })(mi.id) }, [el('span', { text: 'Mini' }), el('small', { text: a1.txt })]),
+            el('button', { type: 'button', class: 'pk-c ' + a2.cls, onclick: (function (id) { return function () { pick(id); }; })(bi.id) }, [el('span', { text: bi.dow === 6 ? 'Sunday 21×21' : 'Crossword' }), el('small', { text: a2.txt })])]));
+        }
+        shown = from + count;
+        if (more) more.remove(); more = null;
+        if (shown <= days) { more = el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Show earlier puzzles', onclick: function () { addDays(shown, 14); } }); list.appendChild(more); }
+      };
+      addDays(1, 7);
+    }
+    [['mini', 'Classic minis · 5×5'], ['big', 'Classic bigger · 7×7']].forEach(function (sec) {
       var list = PUZZLES.filter(function (p) { return p.size === sec[0]; }); if (!list.length) return;
       box.appendChild(el('h3', { text: sec[1] }));
       var g = el('div', { class: 'g' });
       list.forEach(function (p) {
-        var pr = prog[p.id], inProg = pr && !pr.solved && pr.fill && pr.fill.some(function (r) { return r.some(function (x) { return x && x !== '#'; }); });
-        var t = done[p.id];
-        g.appendChild(el('button', { type: 'button', class: (done[p.id] !== undefined ? 'done' : inProg ? 'prog' : '') + (Z && Z.p.id === p.id ? ' cur' : ''), 'aria-label': p.title,
-          onclick: function () { s.close(); if (!Z || Z.p.id !== p.id) open(p.id); } },
-          [el('span', { text: p.title.replace(/^\D+/, '') }), el('small', { text: done[p.id] !== undefined ? (t ? fmt(t) : 'done') : inProg ? 'started' : ' ' })]));
+        var st = state(p.id);
+        g.appendChild(el('button', { type: 'button', class: st.cls + (Z && Z.p.id === p.id ? ' cur' : ''), 'aria-label': p.title, onclick: function () { pick(p.id); } },
+          [el('span', { text: p.title.replace(/^\D+/, '') }), el('small', { text: st.txt })]));
       });
       box.appendChild(g);
     });
@@ -597,9 +735,17 @@ body{overflow:hidden;display:flex;flex-direction:column;}
   $('puz').addEventListener('click', openPicker);
 
   // ── Boot ──────────────────────────────────────────────────────────────────
-  var a0 = all();
-  var first = a0.cur && byId(a0.cur) && !(a0.prog && a0.prog[a0.cur] && a0.prog[a0.cur].solved) ? a0.cur : null;
-  if (!first) { var dm = solvedMap(); first = (PUZZLES.filter(function (p) { return dm[p.id] === undefined; })[0] || PUZZLES[0]).id; }
+  // ?daily=1&kind=mini|big (the Daily puzzles list on the home screen): today's puzzle. Otherwise: the puzzle you
+  // had going, else today's Mini, then today's Crossword, then the next classic you haven't solved.
+  var a0 = all(), q = location.search, dm = solvedMap(), now0 = new Date();
+  var first = null;
+  if (/[?&]daily=1/.test(q)) {
+    first = dailyInfo(/[?&]kind=big/.test(q) ? 'big' : 'mini', now0).id;
+    try { history.replaceState(history.state, '', location.pathname + location.hash); } catch (e) {}
+  }
+  if (!first && a0.cur && (byId(a0.cur) || infoOf(a0.cur)) && !(a0.prog && a0.prog[a0.cur] && a0.prog[a0.cur].solved)) first = a0.cur;
+  if (!first) { var ti = dailyInfo('mini', now0), tb0 = dailyInfo('big', now0); first = dm[ti.id] === undefined ? ti.id : dm[tb0.id] === undefined ? tb0.id : null; }
+  if (!first) first = (PUZZLES.filter(function (p) { return dm[p.id] === undefined; })[0] || PUZZLES[0]).id;
   open(first);
   window.__cw = { get S() { return S; }, get Z() { return Z; }, open: open };
 })();
