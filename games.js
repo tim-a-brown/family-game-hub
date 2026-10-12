@@ -116,7 +116,7 @@ var GAMES = [
   { id: 'wordsearch',  name: 'Word Search',  color: '#e11d48', cat: 'puzzle', min: 1, max: 1, tag: 'Find every hidden word', play: 'wordsearch' },
 
   // ── Party ────────────────────────────────────────────────────────────────
-  { id: 'trivia',      name: 'Trivia',       color: '#f59e0b', cat: 'party', min: 1, max: 6, tag: 'Who knows the most?', play: 'trivia' },
+  { id: 'trivia',      name: 'Trivia',       color: '#f59e0b', cat: 'party', min: 1, max: 24, tag: 'Who knows the most?', play: 'trivia' },
   { id: 'wouldyourather', name: 'Would You Rather', color: '#ec4899', cat: 'party', min: 2, max: 0, tag: 'Tough choices, big debates', play: 'wouldyourather' },
   { id: 'applestoapples', name: 'Apples to Apples', color: '#e0303f', cat: 'party', min: 1, max: 24, tag: 'Match a red card to the green card', play: 'applestoapples' },
   { id: 'madlibs',     name: 'Mad Libs',     color: '#f43f5e', cat: 'party', min: 1, max: 0, tag: 'Fill the blanks, read it aloud', play: 'madlibs' },
@@ -232,6 +232,10 @@ var HI_BOARDS = (function () {
     });
   });
   add('candymatch', 'candymatch', { label: '', unit: 'score' });
+  // Trivia Countdown (solo): one board per level and game length
+  [['easy', 'Elementary'], ['medium', 'General'], ['hard', 'Genius']].forEach(function (l) {
+    [10, 15, 20].forEach(function (n) { add('trivia', 'trivia_cd_' + l[0] + '_' + n, { label: l[1] + ' · ' + n + ' questions', tab: l[1] + ' ' + n, unit: 'points' }); });
+  });
   // Mazes: best times per size, drawn (Pencil) and rolled (Labyrinth)
   [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard'], ['expert', 'Expert']].forEach(function (d) {
     add('mazes', 'mazes_' + d[0], { label: d[1], tab: d[1], low: 1, unit: 'time', dec: 1 });
