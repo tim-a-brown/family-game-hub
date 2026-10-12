@@ -1102,15 +1102,17 @@
     ]));
     if (EDIT_DEFAULTS) wrap.firstChild.insertBefore(el('div', { class: 'k-defs-tag', text: 'Defaults' }), wrap.firstChild.querySelector('h1'));
 
+    // Who's playing comes first, right under the title; then the modes and options.
+    // Games that add their own pickers put them after .k-seats (options live in .k-opts).
+    var seatsBox = el('div', { class: 'stack k-seats' });
+    wrap.appendChild(seatsBox);
     var modesBox = null;
     if (o.modes && o.modes.length > 1) {
       modesBox = el('div', { class: 'modes' });
       wrap.appendChild(modesBox);
     }
-    var optsBox = el('div', { class: 'stack' });
+    var optsBox = el('div', { class: 'stack k-opts' });
     wrap.appendChild(optsBox);
-    var seatsBox = el('div', { class: 'stack' });
-    wrap.appendChild(seatsBox);
 
     function cpuFor() { return P && typeof P.cpu === 'function' ? P.cpu(state.mode) : (P && P.cpu) || false; }
     function range() {
