@@ -445,4 +445,47 @@
     '.bg-ball{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 70%,#fff),var(--c) 70%);}' +
     '.bg-ball i{display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:#fff;color:#1b1d2a;font-style:normal;font-size:.6rem;font-weight:900;}' +
     '.bg-ball.last{box-shadow:0 0 0 2px #ffd447;}');
+
+  // ── Apples to Apples: every round's winning match, as little cards ───────
+  // dt: {dk: 'a2a'|'cah', t: target, ru: house rules, gh: ghost's cards (-1 no ghost), rs: [{j judge, b winner (-1 ghost), p prompt, w winning card}]}
+  // The grown-up deck's card text shows only on a device where that deck has been unlocked.
+  R('applestoapples', function (e, ui) {
+    var el = ui.el, P = names(e), d = e.dt;
+    if (!d || !arr(d.rs).length) return null;
+    var cah = d.dk === 'cah', open = true;
+    if (cah) { try { open = localStorage.getItem('a2a_cah') === '1'; } catch (x) { open = false; } }
+    var ghost = cah ? 'Rando Cardrissian' : 'Ghost', out = [];
+    // how many cards each player won
+    var tally = P.map(function (n, i) { return { label: n, value: 0, color: ui.color(i) }; });
+    if (d.gh >= 0) tally.push({ label: ghost, value: 0, color: '#9aa3b8' });
+    arr(d.rs).forEach(function (r) { var k = r.b >= 0 ? r.b : d.gh >= 0 ? P.length : -1; if (tally[k]) tally[k].value++; });
+    out.push(ui.stats([['Rounds', arr(d.rs).length], ['To win', d.t], ['House rules', d.ru || 'Classic']]));
+    out.push(ui.section(cah ? 'Black cards won' : 'Cards won', ui.bars(tally.map(function (t) { return { label: t.label, value: t.value, max: d.t, text: String(t.value), color: t.color }; })), { icon: 'trophy' }));
+    if (!open) { out.push(el('p', { class: 'aa-note', text: 'The cards from this game show on devices where its deck is turned on.' })); return ui.wrap(out); }
+    var list = el('div', { class: 'aa-list' });
+    arr(d.rs).forEach(function (r, i) {
+      var who = r.b >= 0 ? P[r.b] || '?' : ghost, col = r.b >= 0 ? ui.color(r.b) : '#9aa3b8';
+      var pair = cah ? el('div', { class: 'aa-pair' }, [el('div', { class: 'aa-c k', text: r.p }), el('div', { class: 'aa-c w', text: r.w })])
+        : el('div', { class: 'aa-pair' }, [el('div', { class: 'aa-c g' }, [el('b', { text: r.p })]), el('div', { class: 'aa-c r' }, [el('b', { text: r.w })])]);
+      list.appendChild(el('div', { class: 'aa-rd' }, [
+        el('div', { class: 'aa-top' }, [el('span', { class: 'aa-n', text: String(i + 1) }), el('span', { text: (cah ? 'Czar ' : 'Judge ') + (P[r.j] || '?') }), el('span', { class: 'aa-w', style: { '--c': col }, text: who })]),
+        pair
+      ]));
+    });
+    out.push(ui.section('The winning matches', list, { icon: 'cards' }));
+    return ui.wrap(out);
+  });
+  HistView.css('hv-a2a',
+    '.aa-list{display:flex;flex-direction:column;gap:8px;}' +
+    '.aa-rd{display:flex;flex-direction:column;gap:6px;padding:9px 10px;border-radius:14px;background:rgba(255,255,255,.05);}' +
+    '.aa-top{display:flex;align-items:center;gap:7px;font-size:.72rem;font-weight:800;color:var(--text-3);}' +
+    '.aa-n{font-weight:900;}.aa-w{margin-left:auto;padding:2px 8px;border-radius:999px;background:var(--c);color:#16102e;font-weight:900;}' +
+    '.aa-pair{display:grid;grid-template-columns:1fr 1fr;gap:6px;}' +
+    '.aa-c{min-height:52px;padding:8px 9px;border-radius:8px;font-size:.84rem;line-height:1.2;box-shadow:0 3px 8px -4px rgba(0,0,0,.6);}' +
+    '.aa-c b{font-family:var(--display);font-weight:400;font-size:.98rem;}' +
+    '.aa-c.g{color:#fff;background:linear-gradient(170deg,#2f9a44,#145f26);box-shadow:inset 0 0 0 2px #f4fff0,0 3px 8px -4px rgba(0,0,0,.6);}' +
+    '.aa-c.r{color:#fff;background:linear-gradient(170deg,#e0283f,#9e0b22);box-shadow:inset 0 0 0 2px #fff4e8,0 3px 8px -4px rgba(0,0,0,.6);}' +
+    '.aa-c.k{color:#fff;background:#121212;font:700 .82rem/1.25 "Helvetica Neue",Helvetica,Arial,sans-serif;}' +
+    '.aa-c.w{color:#111;background:#fff;font:700 .82rem/1.25 "Helvetica Neue",Helvetica,Arial,sans-serif;}' +
+    '.aa-note{margin:0;color:var(--text-3);font-weight:700;font-size:.84rem;}');
 })();

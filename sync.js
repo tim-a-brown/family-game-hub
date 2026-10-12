@@ -856,7 +856,10 @@
     if(!key) return;
     if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'fgh_players_at' && key !== 'fgh_gh_del' && key !== 'fgh_links' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games' && !(PREF_RE.test(key) && stampPrefs())) return;
     if(isPin()){ markWrite(); schedulePush(); }
+    // the bankroll on your link profile follows casino_bank (a few seconds after it settles)
+    if(key === 'casino_bank' && isPin()){ clearTimeout(_bankPubT); _bankPubT = setTimeout(function(){ var l = linksGet(); if(l.own && l.own.code && LS.getItem('fgh_link_pub') !== pubSig()) linkPublish(); }, 5000); }
   }
+  var _bankPubT = null;
 
   // ── Diagnostic APIs ───────────────────────────────────────────────────
   // Returns the raw Firestore document for the current PIN without merging.
@@ -1043,8 +1046,43 @@
     return out;
   }
   function hiSig(){ return myInitials() + '|' + JSON.stringify(myHi()); }
-  // Linked people's initials and scores, as last read from their profiles (this device only)
+  // Your casino bankroll in whole dollars (a missing bank starts at $1,000, like casino.js), published so the
+  // people who link you can bring it to their table
+  function myBank(){ var v = LS.getItem('casino_bank'); if(v === null || v === '') return 1000; var n = parseInt(v, 10); return isNaN(n) ? 1000 : Math.max(0, n); }
+  function pubSig(){ return hiSig() + '|' + myBank(); }
+  // Linked people's initials, scores and casino bankroll, as last read from their profiles (this device only)
   var LHI = 'fgh_link_hi';
+  // A linked person's casino bankroll: {bank, at, code, them}, or null (not linked, or never published).
+  // It's what they last published, plus what they won or lost at this device's tables since then (their device
+  // applies those when it files the game, then publishes again), so playing again right away starts where they left off.
+  var LBP = 'fgh_link_bankpend';
+  function linkBank(name){
+    var r = linkOf(name); if(!r) return null;
+    var x = (lsJSON(LHI) || {})[lk(name)];
+    if(!x || x.code !== r.code || typeof x.bank !== 'number') return null;
+    var at = x.bankAt || 0, add = 0;
+    ((lsJSON(LBP) || {})[r.code] || []).forEach(function(p){ if(p && p.at > at) add += Number(p.d) || 0; });
+    return { bank: Math.max(0, x.bank + add), at: at, code: r.code, them: r.them || r.name };
+  }
+  // A game sent with bankroll changes in it (bk, see tableDelta): remember them until that person publishes again
+  function bankPending(e){
+    if(!e || !e.bk || typeof e.bk !== 'object' || !Array.isArray(e.players)) return;
+    var all = lsJSON(LBP) || {}, now = Date.now(), any = false;
+    e.players.forEach(function(p, i){
+      var b = e.bk[i]; if(!p || !p.link || !b || b.c !== p.link) return;
+      var d = Math.round(Number(b.e) - Number(b.s)); if(!d || !isFinite(d)) return;
+      var list = (all[p.link] || []).filter(function(x){ return x && x.id !== e._id && now - x.at < 30 * 864e5; });
+      list.push({ id: e._id, d: d, at: now }); all[p.link] = list.slice(-50); any = true;
+    });
+    if(any) try{ LS.setItem(LBP, JSON.stringify(all)); }catch(err){}
+  }
+  function bankPendingDrop(code, at){
+    var all = lsJSON(LBP); if(!all || !all[code]) return;
+    var list = all[code].filter(function(x){ return x && x.at > at; });
+    if(list.length === all[code].length) return;
+    if(list.length) all[code] = list; else delete all[code];
+    try{ LS.setItem(LBP, JSON.stringify(all)); }catch(err){}
+  }
   function linkHi(key){
     var c = lsJSON(LHI) || {}, l = linksGet(), out = [];
     Object.keys(c).forEach(function(k){
@@ -1078,11 +1116,12 @@
   function linkPublish(){
     var l = linksGet(); if(!l.own || !isPin()) return Promise.resolve();
     return ensureFirebase().then(function(){
-      var doc = { name: myName() || l.own.name, avatar: myAvatar(), ask: !!l.own.ask, at: Date.now(), ini: myInitials(), hi: myHi() };
-      return linkCol().doc(l.own.code).set(doc, { merge: true }).then(function(){ try{ LS.setItem('fgh_link_pub', hiSig()); }catch(e){} }).catch(function(e){
-        if(!e || e.code !== 'permission-denied') throw e;
-        delete doc.ini; delete doc.hi;   // cloud rules not updated yet
-        return linkCol().doc(l.own.code).set(doc, { merge: true });
+      var doc = { name: myName() || l.own.name, avatar: myAvatar(), ask: !!l.own.ask, at: Date.now(), ini: myInitials(), hi: myHi(), bank: myBank() }, sig = pubSig();
+      function put(){ return linkCol().doc(l.own.code).set(doc, { merge: true }); }
+      function denied(e){ if(!e || e.code !== 'permission-denied') throw e; }
+      return put().then(function(){ try{ LS.setItem('fgh_link_pub', sig); }catch(e){} }).catch(function(e){
+        denied(e); delete doc.bank;   // cloud rules not updated yet
+        return put().catch(function(e2){ denied(e2); delete doc.ini; delete doc.hi; return put(); });
       });
     }).catch(function(e){ console.warn('[links] publish failed', e); });
   }
@@ -1165,6 +1204,7 @@
     var codes = {};
     (e.players || []).forEach(function(p){ if(p && p.link) codes[p.link] = 1; });
     var list = Object.keys(codes); if(!list.length) return;
+    try{ bankPending(e); }catch(err){}
     var ob = outbox();
     list.forEach(function(code){ ob.push({ code: code, id: e._id, key: key, entry: JSON.stringify(e), from: label() || myName() || 'Someone', by: myName() || '', at: Date.now() }); });
     saveOutbox(ob);
@@ -1265,7 +1305,56 @@
     e._from = { by: x.by || '', from: x.from || '', code: own.code };
     return { id: d.id, key: x.key || 'misc', entry: e, from: x.by || x.from || 'Someone', at: x.at };
   }
-  function fileGame(it){ var GH = window.GameHistory; return GH && GH.insert ? GH.insert(it.key, it.entry) : false; }
+  function fileGame(it){
+    var GH = window.GameHistory; if(!GH || !GH.insert) return false;
+    var ok = GH.insert(it.key, it.entry);   // false when it's already here (or was deleted): nothing changes twice
+    if(ok){ try{ tableBank(it.entry, false); }catch(e){ console.warn('[links] bankroll', e); } }
+    return ok;
+  }
+  // Casino games played at someone else's table from your own bankroll: the record carries bk = {seat: {s, e, c}}
+  // (start and end of your bankroll there, and the profile code it was taken for). Filing the game changes your
+  // casino bank by that much (never below $0) and adds a line to your bankroll history; "Not me" takes it back.
+  var LEDGER = 'gh_casino_ledger';
+  function tableDelta(e){
+    var code = e && e._from && e._from.code;
+    if(!code || !e.bk || typeof e.bk !== 'object' || !Array.isArray(e.players)) return null;
+    for(var i = 0; i < e.players.length; i++){
+      var p = e.players[i], b = e.bk[i];
+      if(!p || p.link !== code || !b || b.c !== code) continue;
+      var d = Math.round(Number(b.e) - Number(b.s));
+      return isFinite(d) ? d : null;
+    }
+    return null;
+  }
+  function tableBank(e, rev){
+    var d = tableDelta(e); if(!d) return false;
+    var g = null; try{ if(typeof findGame === 'function') g = findGame(e.game); }catch(err){}
+    var info = { gid: e._id || '', game: e.game || '', name: g ? g.name : String(e.game || 'Casino'), table: e._from.by || e._from.from || 'Someone', rev: !!rev };
+    var delta = rev ? -d : d;
+    // casino.js (casino pages, home) also keeps its running session right; elsewhere the bank is written here
+    if(typeof Casino !== 'undefined' && Casino.applyRemote) return Casino.applyRemote(delta, info);
+    return bankRemote(delta, info);
+  }
+  // Change casino_bank by delta and log it in the bankroll history (same formats as casino.js). Once per game:
+  // a game id already in the history isn't applied again, and taking one back needs it to have been applied.
+  function bankRemote(delta, info){
+    info = info || {}; delta = Math.round(Number(delta) || 0); if(!delta) return false;
+    var list = lsJSON(LEDGER); if(!Array.isArray(list)) list = [];
+    if(info.gid){
+      var has = function(rev){ return list.some(function(x){ return x && x.gid === info.gid && !!x.rev === rev; }); };
+      if(has(!!info.rev) || (info.rev && !has(false))) return false;
+    }
+    var start = myBank(), end = Math.max(0, start + delta), now = Date.now();
+    try{ LS.setItem('casino_bank', String(end)); }catch(e){ return false; }
+    noteWrite('casino_bank');
+    list.push({ _date: now, kind: 'session', game: info.game || '', name: info.name || 'Casino', start: start, end: end, net: end - start,
+      wagered: 0, won: 0, bets: 0, best: 0, t0: now, table: String(info.table || 'Someone').slice(0, 40), gid: info.gid || '', rev: !!info.rev });
+    list.sort(function(a, b){ return (b._date || 0) - (a._date || 0); });
+    if(list.length > 300) list.length = 300;
+    try{ LS.setItem(LEDGER, JSON.stringify(list)); }catch(e){}
+    noteWrite(LEDGER);
+    return true;
+  }
   // Check your inbox, your linked people's avatars and rejections, and send anything waiting
   function linkPoll(force){
     if(!isPin() || _linkBusy) return Promise.resolve();
@@ -1295,7 +1384,11 @@
           var data = d.data() || {};
           applyAvatar(r.name, r.code, data);
           var c = lsJSON(LHI) || {};
-          if(data.ini || data.hi){ c[k] = { code: r.code, ini: String(data.ini || '').slice(0, 3), hi: data.hi && typeof data.hi === 'object' ? data.hi : {} }; }
+          var bk = typeof data.bank === 'number' && isFinite(data.bank) ? Math.max(0, Math.round(data.bank)) : null;
+          if(data.ini || data.hi || bk !== null){
+            c[k] = { code: r.code, ini: String(data.ini || '').slice(0, 3), hi: data.hi && typeof data.hi === 'object' ? data.hi : {} };
+            if(bk !== null){ c[k].bank = bk; c[k].bankAt = Number(data.at) || Date.now(); bankPendingDrop(r.code, c[k].bankAt); }
+          }
           else delete c[k];
           try{ LS.setItem(LHI, JSON.stringify(c)); }catch(e){}
           unmarkRejected(r.code, data.rejected || []);
@@ -1305,7 +1398,7 @@
       });
       jobs.push(flushOutbox());
       // scores that reached this device from your other devices: publish them too
-      if(l.own && l.own.code && LS.getItem('fgh_link_pub') !== hiSig()) jobs.push(linkPublish());
+      if(l.own && l.own.code && LS.getItem('fgh_link_pub') !== pubSig()) jobs.push(linkPublish());
       return Promise.all(jobs);
     }).catch(function(e){ console.warn('[links] poll failed', e); }).then(function(){ _linkBusy = false; linkEvent(); });
   }
@@ -1341,6 +1434,7 @@
   // "Not me" on a game already in your history
   function linkNotMe(key, e){
     var GH = window.GameHistory; if(GH && GH.remove) GH.remove((function(){ var o = {}; o[key] = [GH.idOf(key, e)]; return o; })());
+    try{ tableBank(e, true); }catch(err){ console.warn('[links] bankroll', err); }   // a bankroll change from it is taken back
     return e && e._id ? rejectId(e._id).catch(function(err){ console.warn('[links] not me', err); }) : Promise.resolve();
   }
   if(typeof document !== 'undefined') document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') linkPoll(); });
@@ -1367,6 +1461,7 @@
     initials: myInitials, setInitials: setInitials, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
     linkMark: linkMark, linkSend: linkSend, linkBackfill: linkBackfill, linkPoll: linkPoll,
     linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,
+    linkBank: linkBank, bankRemote: bankRemote, _fileGame: fileGame,
     _scanLocal: scanLocal, _myHi: myHi, _mergeHi: mergeHi, _hiFromFirestore: hiFromFirestore
   };
 

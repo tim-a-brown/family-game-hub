@@ -1,6 +1,7 @@
 // casino.js — shared bankroll across all casino games
 // Bankroll stored in localStorage under 'casino_bank'
 // Usage: Casino.balance(), Casino.bet(n), Casino.win(n), Casino.reset()
+//        Casino.applyRemote(delta, info)  bankroll change from a game at a linked player's table (sync.js)
 //        Casino.history()            ledger entries, newest first
 //        Casino.showHistory()        bankroll history sheet (needs kit.js)
 //
@@ -84,6 +85,17 @@ const Casino = (function(){
     var s = touch(); s.won += n; if(n > s.best) s.best = n;
     save(balance() + n);
   }
+  // A bankroll change from a game you played at someone else's table (sent to you through your link profile;
+  // sync.js calls this when it files the game). delta in dollars, info = {gid, game, name, table, rev}.
+  // The bank and the history line are written by sync.js (the same code runs on pages without casino.js);
+  // here the running session's start moves too, so this page's own session doesn't count it again.
+  function applyRemote(delta, info){
+    if(typeof FGHSync === 'undefined' || !FGHSync.bankRemote) return false;
+    var before = balance(), ok = FGHSync.bankRemote(delta, info);
+    if(ok && S) S.start += balance() - before;
+    return ok;
+  }
+
   function reset(){
     flush();
     var from = balance();
@@ -154,9 +166,11 @@ const Casino = (function(){
         return;
       }
       var ic = (typeof GameIcon === 'function' && typeof findGame === 'function' && findGame(e.game)) ? GameIcon(e.game) : '';
+      // played from your bankroll at someone else's table (or taken back with "Not me")
+      var t = e.table ? (e.rev ? 'Not me: ' : 'At ') + (Kit.poss ? Kit.poss(e.table) : e.table + "'s") + ' table: ' + (e.name || e.game) : (e.name || e.game);
       box.appendChild(el('div', { class: 'cz-row' }, [
         el('span', { html: ic, style: { display: 'contents' } }),
-        el('span', { class: 'tx' }, [el('div', { class: 't', text: e.name || e.game }), el('div', { class: 'd', text: when(e._date) + (e.bets ? ' · ' + e.bets + (e.bets === 1 ? ' bet' : ' bets') : '') + (e.best ? ' · best payout ' + money(e.best) : '') })]),
+        el('span', { class: 'tx' }, [el('div', { class: 't', text: t }), el('div', { class: 'd', text: when(e._date) + (e.bets ? ' · ' + e.bets + (e.bets === 1 ? ' bet' : ' bets') : '') + (e.best ? ' · best payout ' + money(e.best) : '') })]),
         el('span', { class: 'v ' + (e.net > 0 ? 'cz-up' : e.net < 0 ? 'cz-down' : '') }, [el('span', { text: (e.net > 0 ? '+' : '') + money(e.net) }), el('small', { text: money(e.start) + ' → ' + money(e.end) })])
       ]));
     });
@@ -464,5 +478,5 @@ const Casino = (function(){
     return r;
   }
 
-  return { balance, bet, win, reset, history, showHistory, rack, chip, stack };
+  return { balance, bet, win, reset, applyRemote, history, showHistory, rack, chip, stack };
 })();

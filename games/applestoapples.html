@@ -78,16 +78,16 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 /* The hand, on its own wooden rail */
 .rail{margin-top:12px;border-radius:22px;padding:0 0 4px;}
 .rail .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px 0;color:#fff;font-weight:900;font-size:.85rem;}
-.rail .hd span{opacity:.85;}
-.hand{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;padding:20px 14px 12px;--cw:124px;scrollbar-width:none;}
-.hand::-webkit-scrollbar{display:none;}
-.hand .ac{cursor:pointer;transition:transform .2s var(--spring);}
-.hand .ac:first-child{margin-left:auto;}.hand .ac:last-child{margin-right:auto;}
-.hand .ac.sel{transform:translateY(-14px);}
-.hand .ac.sel .fa{box-shadow:0 0 0 4px #ffd447,0 14px 24px rgba(0,0,0,.45);}
-.hand.off .ac{cursor:default;}
-.hand.off .ac .fa{filter:saturate(.75) brightness(.86);}
-.hand .ac .num{position:absolute;left:-6px;top:-8px;z-index:3;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#ffd447;color:#2b1a00;font-weight:900;font-size:.8rem;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+.rail .hd span{opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.rail .hd span:last-child{flex:none;}
+.hrow{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;padding:20px 14px 12px;--cw:124px;scrollbar-width:none;}
+.hrow::-webkit-scrollbar{display:none;}
+.hrow .ac{cursor:pointer;transition:transform .2s var(--spring);}
+.hrow .ac:first-child{margin-left:auto;}.hrow .ac:last-child{margin-right:auto;}
+.hrow .ac.sel{transform:translateY(-14px);}
+.hrow .ac.sel .fa{box-shadow:0 0 0 4px #ffd447,0 14px 24px rgba(0,0,0,.45);}
+.hrow.off .ac{cursor:default;}
+.hrow.off .ac .fa{filter:saturate(.75) brightness(.86);}
+.hrow .ac .num{position:absolute;left:-6px;top:-8px;z-index:3;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#ffd447;color:#2b1a00;font-weight:900;font-size:.8rem;box-shadow:0 2px 6px rgba(0,0,0,.4);}
 
 /* Buttons under the table */
 .acts{display:flex;gap:10px;margin-top:12px;}
@@ -189,21 +189,24 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 .loading{display:flex;align-items:center;justify-content:center;gap:10px;min-height:50vh;color:var(--text-2);font-weight:800;}
 
 @media (max-width:420px){
-  .mid{--cw:118px;gap:10px;}
-  .mid.two{--cw:104px;}
+  .mid{--cw:106px;gap:12px;}
+  .mid.two{--cw:100px;}
   .mid.two .deck{display:none;}
-  .plays{--cw:104px;}
-  .plays.crowd{--cw:92px;}
-  .hand{--cw:118px;}
+  .plays{--cw:96px;margin-top:14px;gap:10px 8px;}
+  .plays.crowd{--cw:84px;}
+  .hrow{--cw:114px;padding:16px 12px 10px;}
+  .st{margin-bottom:10px;}
+  .st .msg{font-size:.92rem;}
+  .tag{height:24px;padding:0 7px;font-size:.66rem;}
 }
-@media (max-width:360px){ .mid{--cw:108px;} .plays{--cw:96px;} .hand{--cw:112px;} }
+@media (max-width:360px){ .mid{--cw:98px;} .plays{--cw:88px;} .hrow{--cw:108px;} }
 /* Tablets and computers: bigger cards */
 @media (min-width:700px){
   .mid{--cw:156px;gap:20px;}
   .mid.two{--cw:150px;}
   .plays{--cw:132px;gap:16px 14px;}
   .plays.crowd{--cw:112px;}
-  .hand{--cw:146px;gap:12px;}
+  .hrow{--cw:146px;gap:12px;}
   .st .msg{font-size:1.12rem;}
   .tbl .felt-in{padding:16px 16px 20px;}
   .sent{font-size:1.15rem;}
@@ -211,7 +214,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 @media (min-width:1000px) and (min-height:760px){
   .mid{--cw:170px;}
   .plays{--cw:140px;}
-  .hand{--cw:156px;}
+  .hrow{--cw:156px;}
 }
 </style>
 </head>
@@ -656,7 +659,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   function render(V) {
     var prev = lastV; lastV = V;
     if (V.phase === 'over') { renderOver(V); return; }
-    var w = words(V), oldRail = app.querySelector('.hand'), sx = oldRail ? oldRail.scrollLeft : 0;
+    var w = words(V), oldRail = app.querySelector('.hrow'), sx = oldRail ? oldRail.scrollLeft : 0;
     if (ui.round !== V.round) { ui.round = V.round; ui.sel = []; ui.jsel = -1; }
     if (V.phase !== 'judge') ui.jsel = -1;
     var newRound = !prev || prev.round !== V.round;
@@ -668,7 +671,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       var isJ = i === V.judge && V.phase !== 'wait';
       var sub = isJ ? Kit.icon('crown') + '<span>' + esc(w.Judge) + '</span>' : p.gone ? 'left' : V.phase === 'play' ? (p.played ? Kit.icon('check') + '<span>played</span>' : 'picking') : (p.cpu ? 'computer' : '');
       strip.appendChild(el('div', { class: 'score' + (isJ ? ' judge' : '') + (p.gone ? ' gone' : '') + (lead > 0 && p.score === lead ? ' lead' : ''), style: { '--c': p.color, '--pc': w.prColor }, 'data-i': String(i) }, [
-        el('span', { class: 'nm', text: i === V.me && V.mode !== 'pass' ? p.name + ' (you)' : p.name }), el('span', { class: 'pt', html: '<i></i>' + p.score }), el('span', { class: 'sub', html: sub || '&nbsp;' })
+        el('span', { class: 'nm', text: i === V.me && V.mode === 'online' ? p.name + ' (you)' : p.name }), el('span', { class: 'pt', html: '<i></i>' + p.score }), el('span', { class: 'sub', html: sub || '&nbsp;' })
       ]));
     });
     if (V.ghost) strip.appendChild(el('div', { class: 'score ghost', style: { '--pc': w.prColor }, 'data-i': '-1' }, [el('span', { class: 'nm', text: w.ghost }), el('span', { class: 'pt', html: '<i></i>' + V.ghost.score }), el('span', { class: 'sub', html: Kit.icon('ghost') + '<span>random</span>' })]));
@@ -767,10 +770,10 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     if (V.hand && V.me >= 0 && !(V.mode === 'pass' && V.phase === 'judge')) {
       var canPlay = V.phase === 'play' && !meJ && !V.mine;
       var rail = el('div', { class: 'rail wood' });
-      var head = canPlay ? (V.pick > 1 ? 'Your hand · pick ' + V.pick + ' in order' : 'Your hand · tap a card') : meJ ? 'Your hand · you’re judging this round' : V.mine ? 'Your hand · card played' : 'Your hand';
+      var head = canPlay ? (V.pick > 1 ? 'Your hand · pick ' + V.pick + ' in order' : 'Your hand · tap a card') : meJ ? 'Your hand · you’re judging' : V.mine ? 'Your hand · card played' : 'Your hand';
       if (V.mode === 'pass') head = esc(V.players[V.me].name) + '’s hand' + (canPlay ? ' · tap a card' : '');
       rail.appendChild(el('div', { class: 'hd', html: '<span>' + head + '</span><span>' + V.hand.length + ' cards</span>' }));
-      var hand = el('div', { class: 'hand' + (canPlay ? '' : ' off') });
+      var hand = el('div', { class: 'hrow' + (canPlay ? '' : ' off') });
       var prevIds = prev && prev.hand && prev.me === V.me ? prev.hand.map(function (c) { return c.id; }) : [];
       var fresh = 0;
       V.hand.forEach(function (c) {
@@ -816,7 +819,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   function playSelected() {
     var V = lastV; if (!V || ui.sel.length !== V.pick) return;
     var sel = ui.sel.slice(), dst = app.querySelector('.plays');
-    var nodes = Array.prototype.slice.call(app.querySelectorAll('.hand .ac.sel'));
+    var nodes = Array.prototype.slice.call(app.querySelectorAll('.hrow .ac.sel'));
     nodes.forEach(function (n) { if (dst) fly(n, dst, { down: true }); n.style.visibility = 'hidden'; });
     Kit.sfx('deal'); Kit.haptic('medium');
     ui.sel = [];
@@ -1016,7 +1019,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       players: { min: 3, max: 10, count: 4, cpu: function (m) { return m === 'solo' ? 'seats' : false; }, range: function (m) { return m === 'solo' ? [3, 10] : m === 'pass' ? [3, 12] : [1, 1]; } },
       options: [
         { id: 'target', label: 'Cards to win', value: 'auto', help: 'Official: 4 players play to 8, 5 to 7, 6 to 6, 7 to 5, and 8 or more to 4.', choices: [['auto', 'Official'], ['3', '3'], ['5', '5'], ['7', '7'], ['10', '10']] },
-        { id: 'ghost', label: 'Ghost player', value: 'auto', help: 'A random card from the deck is played every round. If the judge picks it, nobody scores. If the ghost wins the game, everyone loses.', choices: [['auto', 'With 3 players'], ['on', 'Always'], ['off', 'Off']] }
+        { id: 'ghost', label: 'Ghost player', value: 'auto', help: 'A random card from the deck is played every round. If the judge picks it, nobody scores. If the ghost wins the game, everyone loses.', choices: [['auto', '3 players'], ['on', 'Always'], ['off', 'Off']] }
       ],
       start: 'Deal the cards',
       onStart: function (cfg) { onStart(cfg, chosen()); }

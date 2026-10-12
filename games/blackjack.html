@@ -244,16 +244,33 @@
   });
 
   // ── Money ─────────────────────────────────────────────────────────────────
-  // Seat 1's chips are the shared casino bank (casino_bank, synced). Read it
-  // directly so a bank of exactly $0 isn't mistaken for "never set".
+  // Where each seat's money comes from (seat.src):
+  //   'mine'  your casino bank (casino_bank, synced), read directly so a bank of exactly $0 isn't mistaken for "never set"
+  //   'link'  a linked player's own bankroll, as they last published it (b0); what they win or lose (bk in the
+  //           record) goes to their bankroll when their device files the game (sync.js)
+  //   'chips' $1,000 in session chips (computer seats, and people whose bankroll isn't known)
+  //   'table' Table money: everyone starts with the same amount and no bankroll changes
+  // Sessions saved before seats had a src: seat 1 is 'mine', the rest 'chips'.
+  var STAKES = [500, 1000, 5000, 10000];
   function rawBank() {
     try { var v = localStorage.getItem('casino_bank'); if (v == null) return Casino.balance(); var n = parseInt(v, 10); return isNaN(n) ? Casino.balance() : n; } catch (e) { return 1000; }
   }
   function setRaw(n) {
     try { localStorage.setItem('casino_bank', String(Math.max(0, Math.round(n)))); if (typeof FGHSync !== 'undefined' && FGHSync.noteWrite) FGHSync.noteWrite('casino_bank'); } catch (e) {}
   }
-  function bank(i) { return i === 0 ? rawBank() : S.seats[i].bank; }
-  function adj(i, a) { if (!a) return; if (i === 0) setRaw(rawBank() + a); else S.seats[i].bank += a; }
+  function srcOf(i) { var s = S.seats[i]; return s.src || (i === 0 ? 'mine' : 'chips'); }
+  function bank(i) { return srcOf(i) === 'mine' ? rawBank() : S.seats[i].bank; }
+  function adj(i, a) { if (!a) return; if (srcOf(i) === 'mine') setRaw(rawBank() + a); else S.seats[i].bank += a; }
+  function mineSeat() { for (var i = 0; i < S.seats.length; i++) if (srcOf(i) === 'mine') return i; return -1; }
+  function bankWord(i) { var k = srcOf(i); return k === 'mine' ? 'Bank' : k === 'link' ? Kit.poss(S.seats[i].name) + ' bankroll' : k === 'table' ? 'Table money' : 'Chips'; }
+  function isMe(n) {
+    var k = String(n || '').trim().toLowerCase(); if (!k) return false;
+    var me = ''; try { me = (localStorage.getItem('my_name') || '').trim().toLowerCase(); } catch (e) {}
+    if (!me) try { me = String(FGHSync.label() || '').trim().toLowerCase(); } catch (e) {}
+    return !!me && k === me;
+  }
+  function linkedBank(n) { try { return FGHSync.linkBank(n); } catch (e) { return null; } }
+  function isLinked(n) { try { return !!FGHSync.linkOf(n); } catch (e) { return false; } }
   function money(n) { n = Math.round(n); return (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US'); }
   function signed(n) { n = Math.round(n); return (n > 0 ? '+' : n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US'); }
   function chipsFor(a) {
@@ -299,7 +316,7 @@
   // ── Save / undo ───────────────────────────────────────────────────────────
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    if (S) Kit.resume.set('Hand ' + (S.round + (S.phase === 'bet' ? 1 : 0)) + ' · bank ' + money(bank(0)));
+    if (S) { var m = mineSeat(); Kit.resume.set('Hand ' + (S.round + (S.phase === 'bet' ? 1 : 0)) + (m >= 0 ? ' · bank ' + money(bank(m)) : S.money === 'table' ? ' · table money' : '')); }
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function snapshot() { undoStack.push({ s: JSON.stringify(S), b: rawBank() }); if (undoStack.length > 30) undoStack.shift(); }
@@ -327,10 +344,17 @@
   }
 
   // ── Setup ─────────────────────────────────────────────────────────────────
+  // Table money's amount shows only when Table money is picked (before Kit.setup returns, read the remembered choice)
+  var setupRef = null;
+  function moneyPick() {
+    if (setupRef) return setupRef.state.options.money;
+    try { return ((JSON.parse(localStorage.getItem('gn_setup_blackjack')) || {}).options || {}).money || 'bank'; } catch (e) { return 'bank'; }
+  }
   function showSetup() {
-    S = null; token++; clearUndo(); app.innerHTML = '';
-    Kit.setup(app, {
-      intro: 'Seat 1 plays from your casino bank: ' + money(rawBank()) + '.',
+    S = null; token++; clearUndo(); app.innerHTML = ''; setupRef = null;
+    try { FGHSync.linkPoll(); } catch (e) {}   // fresh bankrolls for linked players (at most every 20 seconds)
+    setupRef = Kit.setup(app, {
+      intro: 'You play from your casino bank: ' + money(rawBank()) + '.',
       modes: [
         { id: 'cpu', icon: 'bot', title: 'With computer players', desc: 'Extra seats are played by the computer' },
         { id: 'pass', icon: 'phone', title: 'Pass and play', desc: 'Everyone takes their turn on this device' }
@@ -340,7 +364,12 @@
         { id: 'decks', label: 'Decks in the shoe', help: 'How many decks are shuffled together; fewer decks is a tiny bit better for you.', value: 6, choices: [[1, '1'], [2, '2'], [6, '6'], [8, '8']] },
         { id: 'soft17', label: 'Dealer on soft 17', help: 'A soft 17 is a 17 with an Ace counted as 11, like Ace and 6.', value: 's17', choices: [['s17', 'Stands', 'The dealer stops on soft 17. This is a little better for you.'], ['h17', 'Hits', 'The dealer takes another card on soft 17. This is a little better for the house.']] },
         { id: 'surr', label: 'Late surrender', help: 'Surrender means giving up a bad hand and getting half your bet back.', value: 'off', choices: [['off', 'Off', 'You can’t surrender; every hand is played out.'], ['late', 'On', 'After the dealer checks for blackjack, you can give up your first two cards and keep half your bet.']] },
-        { id: 'coach', label: 'Strategy help', value: 'hint', choices: [['off', 'Off', 'No help: you play on your own.'], ['hint', 'Hint button', 'A light bulb button shows the best play by basic strategy.'], ['count', 'Hints + count', 'Hints, plus a card-counting coach that shows the count and changes the advice when it matters.']] }
+        { id: 'coach', label: 'Strategy help', value: 'hint', choices: [['off', 'Off', 'No help: you play on your own.'], ['hint', 'Hint button', 'A light bulb button shows the best play by basic strategy.'], ['count', 'Hints + count', 'Hints, plus a card-counting coach that shows the count and changes the advice when it matters.']] },
+        { id: 'money', label: 'Money', value: 'bank', when: function (m) { return m === 'pass'; }, help: 'Where everyone’s money comes from.',
+          choices: [['bank', 'Bankrolls', 'You play from your casino bank. Players linked to their own profile bring their bankroll, and what they win or lose goes back to it. Anyone else gets $1,000 in chips.'],
+            ['table', 'Table money', 'Everyone, you too, starts with the same amount. Nobody’s bankroll changes.']] },
+        { id: 'stake', label: 'Everyone starts with', value: 1000, when: function (m) { return m === 'pass' && moneyPick() === 'table'; },
+          choices: STAKES.map(function (v) { return [v, money(v)]; }) }
       ],
       start: 'Take a seat',
       onStart: function (cfg) { startSession(cfg.players, cfg.mode, cfg.options); }
