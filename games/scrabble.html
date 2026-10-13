@@ -491,6 +491,21 @@
       tiles.forEach(function (t) { var l = isBlankCh(t.ch) ? '?' : t.ch, at = left.indexOf(l); if (at >= 0) left.splice(at, 1); });
       return left;
     }
+    // Everyday words (from data/words-en.js): Easy and Normal play only these, so they sound like a person at the table.
+    // Hard uses the whole tournament list.
+    var COMMON = null;
+    function loadCommon(arr) {
+      COMMON = {}; for (var c = 0; c < arr.length; c++) COMMON[String(arr[c]).toUpperCase()] = 1;
+      // the everyday list has no two-letter words: add the ones anyone would play
+      'AH AM AN AS AT AW AX BE BY DO GO HA HE HI HM IF IN IS IT ME MY NO OF OH OK ON OR OW OX PA MA SO TO UH UM UP US WE YO YA YE'.split(' ').forEach(function (w) { COMMON[w] = 1; });
+    }
+    // how many of a play's words are not everyday words (0 = all everyday)
+    function oddWords(board, tiles) {
+      if (!COMMON) return 0;
+      var r = evaluate(board, tiles); if (!r.ok) return 99;
+      var n = 0; for (var w = 0; w < r.words.length; w++) if (!COMMON[r.words[w].w]) n++;
+      return n;
+    }
     // A computer's turn. level: 'easy' | 'normal' | 'hard'. Returns {type:'play', tiles, score} | {type:'exch', tiles:[letters]} | {type:'pass'}
     function choose(board, rack, level, bagN, rnd) {
       rnd = rnd || Math.random;
@@ -514,6 +529,15 @@
         var pool = list;
         if (level === 'easy') { var short = list.filter(function (m) { return m.tiles.length <= 4; }); if (short.length) pool = short; }
         pool.sort(function (a, b) { return Math.abs(a.score - target) - Math.abs(b.score - target) || b.v - a.v; });
+        // nearest plays to the target whose words are all everyday words (checked lazily: only as far as needed)
+        // (if no play uses only everyday words, take the nearest ones with the fewest odd words)
+        var plain = [], fewest = 99, near = [];
+        for (var q = 0; q < pool.length && plain.length < 3; q++) {
+          var odd = oddWords(board, pool[q].tiles);
+          if (!odd) plain.push(pool[q]);
+          else if (q < 400) { if (odd < fewest) { fewest = odd; near = [pool[q]]; } else if (odd === fewest && near.length < 3) near.push(pool[q]); }
+        }
+        if (plain.length) pool = plain; else if (near.length) pool = near;
         var pick = pool[Math.floor(rnd() * Math.min(3, pool.length))];
         best = { tiles: pick.tiles, score: pick.score }; bestV = pick.v;
       }
@@ -531,7 +555,7 @@
     }
 
     return { N: N, CENTER: CENTER, LAYOUT: LAYOUT, VAL: VAL, DIST: DIST, value: value, isBlank: isBlankCh, load: load, has: has,
-      loaded: function () { return loaded; }, count: function () { return nWords; }, evaluate: evaluate, generate: generate, choose: choose, leaveValue: leaveValue };
+      loaded: function () { return loaded; }, count: function () { return nWords; }, evaluate: evaluate, loadCommon: loadCommon, generate: generate, choose: choose, leaveValue: leaveValue };
   }
 
   var E = ScrabbleEngine();
@@ -552,7 +576,14 @@
       var s = document.createElement('script'); s.src = '../data/scrabble-words.js';
       s.onload = function () { res(); }; s.onerror = function () { dictP = null; rej(new Error('Couldn’t load the word list. Check the connection and try again.')); };
       document.head.appendChild(s);
-    }).then(function () { E.load(window.ScrabbleWords.packed); });
+    }).then(function () {
+      E.load(window.ScrabbleWords.packed);
+      // the everyday list is a nicety: if it can't load, the computer still plays from the full list
+      return new Promise(function (res) {
+        if (window.Words) return res();
+        var c = document.createElement('script'); c.src = '../data/words-en.js'; c.onload = c.onerror = function () { res(); }; document.head.appendChild(c);
+      }).then(function () { try { if (window.Words) E.loadCommon(Words.common()); } catch (e) {} });
+    });
     return dictP;
   }
   // The computer thinks in a worker so the page stays smooth; the page itself is the fallback
@@ -560,9 +591,10 @@
   function getWorker() {
     if (worker || !workerOk || !window.ScrabbleWords) return worker;
     try {
-      var src = 'var E=(' + ScrabbleEngine.toString() + ')();onmessage=function(e){var d=e.data;if(d.packed){E.load(d.packed);return;}postMessage({id:d.id,res:E.choose(d.board,d.rack,d.level,d.bagN)});};';
+      var src = 'var E=(' + ScrabbleEngine.toString() + ')();onmessage=function(e){var d=e.data;if(d.packed){E.load(d.packed);return;}if(d.common){E.loadCommon(d.common);return;}postMessage({id:d.id,res:E.choose(d.board,d.rack,d.level,d.bagN)});};';
       worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
       worker.postMessage({ packed: window.ScrabbleWords.packed });
+      try { if (window.Words) worker.postMessage({ common: Words.common() }); } catch (e) {}
       worker.onmessage = function (e) { var cb = wPend[e.data.id]; delete wPend[e.data.id]; if (cb) cb(e.data.res); };
       worker.onerror = function () { workerOk = false; worker = null; Object.keys(wPend).forEach(function (k) { var cb = wPend[k]; delete wPend[k]; cb(null); }); };
     } catch (e) { workerOk = false; worker = null; }
