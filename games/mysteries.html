@@ -13,6 +13,7 @@
 <script src="../players.js"></script>
 <script src="../data/mysteries-scene.js"></script>
 <script src="../data/mysteries-cases.js"></script>
+<script src="../data/mysteries-gen.js"></script>
 <style>
 /* TeX Gyre Pagella (GUST font licence, fonts/pagella-LICENSE.txt): case files are typed in it */
 @font-face{font-family:'Pagella';src:url('../fonts/pagella-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap;}
@@ -79,6 +80,10 @@ body{overflow-x:hidden;}
 .ms-card.next{box-shadow:0 0 0 3px #ffd34d,0 10px 20px rgba(0,0,0,.45);}
 .ms-card.next .no::after{content:" · NEXT";color:#c0192b;}
 .ms-yarn{position:absolute;inset:0;pointer-events:none;z-index:1;}
+/* the extra-cases file: a stack of fresh case files */
+.ms-card.extra{box-shadow:0 1px 0 rgba(255,255,255,.6) inset,5px 5px 0 -1px #efe2c2,5px 5px 0 0 rgba(90,60,20,.25),10px 10px 0 -1px #e2d1a8,10px 10px 0 0 rgba(90,60,20,.25),0 10px 18px rgba(0,0,0,.4);}
+.ms-card.extra .pin{background:radial-gradient(circle at 35% 30%,#9ad0ff,#1f6fc0 55%,#0d3a6a);}
+.ms-card.extra .new{position:absolute;right:-6px;top:10px;z-index:3;padding:2px 8px 1px;border-radius:3px;background:#1d7a46;color:#fff;font:900 .62rem/1.4 var(--font);letter-spacing:.12em;transform:rotate(8deg);box-shadow:0 2px 4px rgba(0,0,0,.3);}
 
 /* ── The case: a manila file and a photo on a wooden desk ── */
 .ms-desk{border-radius:20px;padding:12px;margin-top:4px;}
@@ -236,8 +241,13 @@ body{overflow-x:hidden;}
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app');
-  var CASES = window.MYSTERY_CASES || [], BY = {};
+  var CASES = window.MYSTERY_CASES || [], BY = {}, GEN = window.MysteryGen || null;
   CASES.forEach(function (c) { BY[c.id] = c; });
+  // a case by id: the hand-made bank, or a generated daily / extra case ('daily-1018', 'endless-hard-3')
+  function getCase(id) { return BY[id] || (GEN && id ? GEN.byId(id) : null) || null; }
+  function dayLabel(day) { return new Date(2024, 0, day).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); }
+  function caseName(c) { return c.daily ? 'Daily case' : c.gen ? 'Extra case ' + c.no : 'Case ' + c.no; }
+  function caseTab(c) { return c.daily ? 'DAILY · ' + dayLabel(c.daily).toUpperCase() : c.gen ? 'EXTRA No. ' + c.no : 'CASE ' + ('0' + c.no).slice(-2); }
   var LV = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
   var LV_DESC = { easy: 'Clear clues, one or two steps', medium: 'A few clues to put together', hard: 'Tiny details and careful logic' };
   var LV_ICON = { easy: 'search', medium: 'eye', hard: 'flame' };
@@ -248,10 +258,23 @@ body{overflow-x:hidden;}
   function byLevel(l) { return CASES.filter(function (c) { return c.level === l; }).sort(function (a, b) { return a.no - b.no; }); }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many || one + 's'); }
 
-  // ── Daily case: the bank in a fixed mixed order, one per day ─────────────
+  // ── Daily case: a freshly generated case every day (data/mysteries-gen.js; easy Mon–Tue,
+  // medium Wed–Thu, hard Fri–Sun). Days before the generator started used the bank in a fixed mixed order.
   function today() { return Math.floor((Date.now() - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }
   var ORDER = (function () { var e = byLevel('easy'), m = byLevel('medium'), h = byLevel('hard'), out = []; for (var i = 0; i < Math.max(e.length, m.length, h.length); i++) [e[i], m[i], h[i]].forEach(function (c) { if (c) out.push(c.id); }); return out; })();
-  function dailyCase(day) { return BY[ORDER[(day - 1) % ORDER.length]]; }
+  function dailyCase(day) { if (GEN && day >= GEN.FIRST_DAY) return GEN.daily(day); return BY[ORDER[(day - 1) % ORDER.length]]; }
+  // ── Extra cases: an endless supply of generated cases, one file per level ──
+  var EXTRA = 'mysteries_extra';
+  function extraNo(l) {
+    var o = {}; try { o = JSON.parse(lsGet(EXTRA, '{}')) || {}; } catch (e) {}
+    var n = o[l] || 1;
+    hist().forEach(function (e) { var m = e && /^endless-(\w+)-(\d+)$/.exec(e.cid || ''); if (m && m[1] === l) n = Math.max(n, +m[2] + 1); });
+    return n;
+  }
+  function extraDone(l, n) { var o = {}; try { o = JSON.parse(lsGet(EXTRA, '{}')) || {}; } catch (e) {} o[l] = Math.max(o[l] || 1, n + 1); lsSet(EXTRA, JSON.stringify(o)); }
+  function extraCase(l) { return GEN ? GEN.endless(l, extraNo(l)) : null; }
+  // what to open after finishing a case
+  function following(c, b) { return c.gen && !c.daily ? extraCase(c.level) : nextCase(c.level, b); }
   function hist() { try { return GameHistory.load(HKEY) || []; } catch (e) { return []; } }
   function dailyDone(day) { return hist().filter(function (e) { return e && e.daily === day; })[0] || null; }
 
@@ -278,7 +301,7 @@ body{overflow-x:hidden;}
     if (!S) return;
     if (S.done) { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); return; }
     lsSet(SAVE, JSON.stringify(S));
-    var c = BY[S.id]; if (c) Kit.resume.set((S.daily ? 'Daily · ' : '') + 'Case ' + c.no + ' · ' + c.title);
+    var c = getCase(S.id); if (c) Kit.resume.set((S.daily && !c.daily ? 'Daily · ' : '') + caseName(c) + ' · ' + c.title);
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
@@ -288,7 +311,7 @@ body{overflow-x:hidden;}
     onNew: function () { showSetup(); },
     confirmNew: false,
     menu: [
-      { icon: 'tiles', label: 'Case board', onClick: function () { showBoard(S ? BY[S.id].level : null); } },
+      { icon: 'tiles', label: 'Case board', onClick: function () { var c0 = S && getCase(S.id); showBoard(c0 ? c0.level : null); } },
       { icon: 'lightbulb', label: 'Hint', when: function () { return view === 'case' && S && !S.done && S.hints < 2; }, onClick: function () { hint(); } },
       { icon: 'eye', label: 'Show the solution', when: function () { return view === 'case' && S && !S.done; }, onClick: function () { giveUp(); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Picture Mysteries: past cases' }); } }
@@ -302,9 +325,10 @@ body{overflow-x:hidden;}
       '<li>A wrong answer gets crossed out and counted as a miss. Keep looking and try again.</li></ul>' +
       '<h3>Hints</h3><p>Each case has two hints. The first says what to think about; the second points at where to look. After both, you can ask to see the solution.</p>' +
       '<h3>Solving</h3><p>Crack the case and it gets stamped <b>Solved</b>, with the clues circled on the photo. Solve it with no hints and no misses for a gold seal. Your time, hints and misses are saved in Past games.</p>' +
-      '<h3>Levels and the daily case</h3><ul><li><b>Easy:</b> one or two clear clues.</li><li><b>Medium:</b> a few clues to put together.</li><li><b>Hard:</b> tiny details and careful logic.</li></ul><p>There is a new <b>Daily case</b> every day, the same for everyone.</p>'
+      '<h3>Levels and the daily case</h3><ul><li><b>Easy:</b> one or two clear clues.</li><li><b>Medium:</b> a few clues to put together.</li><li><b>Hard:</b> tiny details and careful logic.</li></ul><p>There is a brand-new <b>Daily case</b> every day, the same for everyone: easy on Monday and Tuesday, medium on Wednesday and Thursday, hard from Friday to Sunday.</p>' +
+      '<h3>Extra cases</h3><p>At the end of each case board is a stack of <b>extra case files</b>. Each one is a brand-new case, so you never run out.</p>'
   });
-  Kit.onBack = function () { if (view === 'case') { showBoard(BY[S.id].level); return true; } return false; };
+  Kit.onBack = function () { if (view === 'case') { var c0 = getCase(S.id); showBoard(c0 ? c0.level : null); return true; } return false; };
 
   // ── Setup ───────────────────────────────────────────────────────────────
   var boardLevel = 'easy';
@@ -331,7 +355,7 @@ body{overflow-x:hidden;}
       el('div', { class: 'cal', 'aria-hidden': 'true' }, [el('small', { text: new Date().toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase() }), el('b', { text: String(new Date().getDate()) })]),
       el('div', { class: 'tx' }, [
         el('b', { text: 'Daily case' }),
-        el('small', { text: 'Case ' + dc.no + ' · ' + LV[dc.level] + ' · a new mystery every day' }),
+        el('small', { text: (dc.gen ? dc.type : 'Case ' + dc.no) + ' · ' + LV[dc.level] + ' · a new mystery every day' }),
         done ? el('small', { class: 'st', html: Kit.icon(done.solved ? 'check' : 'eye') + '<span>' + (done.solved ? 'Solved in ' + fmt(done.secs) : 'Solution seen') + '</span>' }) : null
       ]),
       el('button', { type: 'button', class: 'btn ' + (done ? 'btn-soft' : 'btn-primary') + ' btn-sm', text: done ? 'Again' : 'Play', onclick: function () { Kit.sfx('pop'); startDaily(); } })
@@ -384,6 +408,21 @@ body{overflow-x:hidden;}
       else if (r.r) card.appendChild(el('div', { class: 'rs shown', html: Kit.icon('eye') + '<span>Solution seen</span>' }));
       grid.appendChild(card);
     });
+    if (GEN) {
+      var lc = live && !live.done && /^endless-/.test(live.id || '') ? getCase(live.id) : null, xGoing = lc && lc.level === boardLevel, xc = xGoing ? lc : extraCase(boardLevel);
+      if (xc) {
+        var xcard = el('button', { type: 'button', class: 'ms-card extra', style: { '--rot': '1.4deg', '--d': (list.length * 45) + 'ms' }, 'aria-label': 'Extra case ' + xc.no + ': ' + xc.title + '. A brand-new case every time.',
+          onclick: function () { Kit.sfx('flip'); Kit.haptic('light'); if (xGoing) { S = live; buildCase(false); } else openCase(xc.id); } });
+        xcard.appendChild(el('i', { class: 'pin' }));
+        xcard.appendChild(el('div', { class: 'th', html: thumb(xc) }));
+        if (!xGoing) xcard.appendChild(el('span', { class: 'new', text: 'NEW' }));
+        xcard.appendChild(el('div', { class: 'no', text: 'EXTRA No. ' + xc.no }));
+        xcard.appendChild(el('div', { class: 'tt', text: xc.title }));
+        xcard.appendChild(el('div', { class: 'ty', text: xc.type + ' · a new case every time' }));
+        if (xGoing) xcard.appendChild(el('div', { class: 'rs go', html: Kit.icon('pencil') + '<span>In progress · ' + fmt(live.secs) + '</span>' }));
+        grid.appendChild(xcard);
+      }
+    }
     cork.appendChild(grid);
     wrap.appendChild(cork);
     app.appendChild(wrap);
@@ -398,7 +437,7 @@ body{overflow-x:hidden;}
 
   // ── Opening a case ──────────────────────────────────────────────────────
   function openCase(id, o) {
-    var c = BY[id]; if (!c) return;
+    var c = getCase(id); if (!c) return;
     o = o || {};
     S = { id: id, secs: 0, hints: 0, misses: 0, crossed: [], sel: null, done: false, solved: false, revealed: false, daily: o.daily || 0, started: Date.now(), name: detective() };
     Kit.gameStart(); save(); buildCase(true);
@@ -407,14 +446,14 @@ body{overflow-x:hidden;}
 
   function buildCase(fresh) {
     leaveCase();
-    var c = BY[S.id]; view = 'case';
+    var c = getCase(S.id); view = 'case';
     var sz = MysteryScene.size(c), W = sz[0], H = sz[1];
-    Kit.titleSwitch((S.daily ? 'Daily · ' : '') + 'Case ' + c.no + ' · ' + LV[c.level], function () { showBoard(c.level); }, 'Back to the case board');
+    Kit.titleSwitch((S.daily && !c.daily ? 'Daily · ' : '') + caseName(c) + ' · ' + LV[c.level], function () { showBoard(c.level); }, 'Back to the case board');
     app.className = 'ms'; app.innerHTML = '';
     var desk = el('div', { class: 'ms-desk wood' }), box = el('div', { class: 'ms-case' });
     // the file
     var file = el('section', { class: 'ms-file' });
-    file.appendChild(el('div', { class: 'tab', text: 'CASE ' + ('0' + c.no).slice(-2) + ' · ' + LV[c.level].toUpperCase() }));
+    file.appendChild(el('div', { class: 'tab', text: caseTab(c) + ' · ' + LV[c.level].toUpperCase() }));
     var clock = el('span', { class: 'ms-clock', html: Kit.icon('history') + '<span>' + fmt(S.secs) + '</span>' });
     file.appendChild(el('div', { class: 'ms-fh' }, [el('h2', { text: c.title }), clock]));
     file.appendChild(el('p', { class: 'ms-setup', text: c.setup }));
@@ -517,7 +556,7 @@ body{overflow-x:hidden;}
     if (!cur) return;
     var d = cur.dock; d.innerHTML = '';
     if (S.done) {
-      var c = cur.c, b = book(), nx = nextCase(c.level, b);
+      var c = cur.c, b = book(), nx = following(c, b);
       d.appendChild(el('button', { type: 'button', class: 'btn btn-soft hint', html: Kit.icon('tiles') + '<span>Board</span>', onclick: function () { Kit.sfx('tap'); showBoard(c.level); } }));
       d.appendChild(el('button', { type: 'button', class: 'btn btn-primary go', html: '<span>' + (nx ? 'Next case' : 'Case board') + '</span>' + Kit.icon('right'), onclick: function () { Kit.sfx('pop'); if (nx) openCase(nx.id); else showBoard(c.level); } }));
       return;
@@ -584,7 +623,8 @@ body{overflow-x:hidden;}
     if (S.solved) { r.s = 1; delete r.r; if (!r.t || S.secs < r.t) r.t = S.secs; if (r.h == null || S.hints < r.h) r.h = S.hints; if (r.m == null || S.misses < r.m) r.m = S.misses; r.by = S.name; }
     else if (!r.s) r.r = 1;
     r.n = (r.n || 0) + 1;
-    bookSave(b);
+    if (BY[c.id]) bookSave(b);
+    if (c.gen && !c.daily) extraDone(c.level, c.no);
     record();
     clearSave();
     paintTags(); paintDock(); paintMisses(); selRing();
@@ -677,7 +717,7 @@ body{overflow-x:hidden;}
   }
   function celebrate() {
     if (!cur || view !== 'case') return;
-    var c = cur.c, b = book(), nx = nextCase(c.level, b);
+    var c = cur.c, b = book(), nx = following(c, b);
     var sub = c.title + ' · ' + fmt(S.secs) + (S.hints ? ' · ' + plural(S.hints, 'hint') : ' · no hints') + (S.misses ? ' · ' + plural(S.misses, 'miss', 'misses') : '');
     Kit.win({
       icon: S.perfect ? 'star' : 'trophy',
@@ -697,7 +737,7 @@ body{overflow-x:hidden;}
     if (S.daily) hl.push('Daily case for ' + new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }));
     hl.push(c.solution.verdict);
     Kit.record(HKEY, {
-      started: S.started, mode: (S.daily ? 'Daily · ' : '') + LV[c.level] + ' · Case ' + c.no,
+      started: S.started, mode: c.gen ? (c.daily ? 'Daily · ' : 'Extra · ') + LV[c.level] + ' · ' + c.type : (S.daily ? 'Daily · ' : '') + LV[c.level] + ' · Case ' + c.no,
       players: [{ name: S.name }], winner: S.solved ? S.name : null,
       summary: c.title + (S.solved ? ' · solved in ' + fmt(S.secs) : ' · solution seen'), badge: S.solved ? fmt(S.secs) : 'Seen',
       highlights: hl,
@@ -896,13 +936,13 @@ body{overflow-x:hidden;}
   });
 
   // Test hook
-  window.__ms = { get: function () { return S; }, cur: function () { return cur; }, open: openCase, board: showBoard, setup: showSetup, cases: CASES, daily: dailyCase, today: today,
+  window.__ms = { get: function () { return S; }, cur: function () { return cur; }, open: openCase, board: showBoard, setup: showSetup, cases: CASES, daily: dailyCase, today: today, extra: extraCase, getCase: getCase,
     answer: function () { if (cur) { S.sel = cur.c.answer; accuse(); } }, wrong: function () { if (cur) { var w = cur.c.choices.filter(function (ch) { return ch.id !== cur.c.answer && S.crossed.indexOf(ch.id) < 0; })[0]; if (w) { S.sel = w.id; accuse(); } } },
     hint: hint, loupe: showLoupe, hideLoupe: hideLoupe, zoom: zoomBy, skip: function () { endTour(); } };
 
   // ── Boot ────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(lsGet(SAVE, 'null')); } catch (e) {}
-  var going = saved && saved.id && BY[saved.id] && !saved.done;
+  var going = saved && saved.id && getCase(saved.id) && !saved.done;
   if (/[?&]daily=1/.test(location.search)) {
     try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])daily=1&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch (e) {}
     var day = today();

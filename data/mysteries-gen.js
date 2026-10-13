@@ -10,9 +10,10 @@
 //   MysteryGen.byId(id)              'daily-1018' / 'endless-hard-7' -> case
 //
 // Every random choice uses integer maths on a seeded generator, so a day's case
-// is the same on every device. Each case also carries `logic` (what the solver
-// in scripts/mysteries-gen-check.js needs to prove there is exactly one answer)
-// and `key` (its essential content, used to check that no case repeats).
+// is the same on every device. MysteryGen.verify(case) works the answer out
+// again from what is drawn and checks it is the only one (and that every clue
+// is needed); a case that fails is regenerated from a derived seed. Each case
+// also carries `key`, its essential content, used to check no case repeats.
 //
 // Templates: culprit (who did it, by clues left at the scene), oddone (one of a
 // row of identical things is different), missing (before/after photos),
@@ -164,7 +165,7 @@
   // src (the clue in the photo), no/noS (a clean suspect: sentence / short), oth (a different stain), vp (the culprit has it)
   var MARKS = {
     juice: function (S, thing) { return { mk: 'paint:' + thing[1] + ':chest::1.9', part: 'paint', on: 'top', col: thing[1], what: thing[2] + ' ' + thing[3] + ' juice', src: 'Fresh ' + thing[3] + ' juice dripped down the wall under the sill. The thief would have some on them.', no: '{he} has no juice on {him}', noS: 'no juice', oth: '{his} stain is {col}, not ' + thing[2], vp: 'has ' + thing[3] + ' juice down {his} front' }; },
-    flour: function () { return { mk: 'flour', part: 'flour', on: 'top', col: '#ffffff', what: 'flour', src: 'A sack of flour burst all over the floor. The thief would be covered in it.', no: '{he} has no flour on {him}', noS: 'no flour', vp: 'has flour down {his} front' }; },
+    flour: function () { return { mk: 'flour:1.7', part: 'flour', on: 'top', col: '#ffffff', what: 'flour', src: 'A sack of flour burst all over the floor. The thief would be covered in it.', no: '{he} has no flour on {him}', noS: 'no flour', vp: 'has flour down {his} front' }; },
     gold: function () { return { mk: 'paint:#d4a017:handL::1.7', part: 'paint', on: 'skinL', col: '#d4a017', what: 'gold paint', src: 'Flecks of wet gold paint are left on the plinth, so the thief has gold paint on their hands.', no: '{his} hands are clean', noS: 'clean hands', oth: '{his} hand has {col} paint on it, not gold', vp: 'has gold paint on {his} hand' }; },
     paint: function (S, thing, r) { var c = r.pick(['green', 'blue', 'red', 'yellow']); return { mk: 'paint:' + CLOTH[c] + ':elbowR:vstripes', part: 'paint', on: 'sleeveR', col: CLOTH[c], cname: c, what: c + ' paint', src: 'There’s a smudge in the wet ' + c + ' paint on the door, just at elbow height.', no: '{he} has no paint on {his} sleeves', noS: 'no paint', oth: '{his} paint is {col}, not ' + c, vp: 'has stripes of ' + c + ' paint on {his} elbow', door: CLOTH[c] }; },
     green: function () { return { mk: 'paint:#3aa65a:handR::1.7', part: 'paint', on: 'skinR', col: '#3aa65a', what: 'green paint', src: 'The pot of green paint was knocked over, so the thief got green paint on their hand.', no: '{his} hands are clean', noS: 'clean hands', oth: '{his} hand has {col} paint on it, not green', vp: 'has green paint on {his} hand' }; },
@@ -186,7 +187,9 @@
     var A = { hairCol: r.pick(Object.keys(HAIRC).filter(function (c) { return adult || c !== 'grey'; })), hairLen: r.pick(['long', 'short']), hairCurly: r.chance(0.5),
       fabCol: r.pick(CLOTH_MAIN), fabPat: r.pick(['plain', 'stripes', 'dots', 'check']), shoe: ansShoe, glove: r.pick(['brown', 'black', 'red', 'green', 'blue', 'yellow']), gloveSide: r.pick(['L', 'R']), mark: 'yes' };
     if (level !== 'easy' && K.indexOf('fabric') >= 0 && A.fabPat === 'plain') A.fabPat = r.pick(['stripes', 'dots', 'check']);
+    if (level === 'easy') A.hairLen = 'long';
     var GLOVEC = { brown: '#7a3b2a', black: '#2b2b33', red: '#c0392b', green: '#3a8a4a', blue: '#3a6ea5', yellow: '#e8b830' };
+    var gTry = 0; while (cdist(GLOVEC[A.glove], CLOTH[A.fabCol]) < 110 && gTry++ < 30) A.glove = r.pick(Object.keys(GLOVEC));
     // decoys: the first k each fail exactly one clue (so every clue is needed), the rest fail one or two
     var people = [{ ans: true, v: JSON.parse(JSON.stringify(A)), fails: [] }];
     for (var i = 0; i < N - 1; i++) {
@@ -204,7 +207,7 @@
           else v.hairCurly = !A.hairCurly;
         } else if (c === 'fabric') {
           var fm = level === 'easy' ? 'col' : level === 'medium' ? r.pick(['col', 'pat']) : 'pat';
-          if (fm === 'col') v.fabCol = otherCol(CLOTH_MAIN, A.fabCol); else v.fabPat = otherCol(['plain', 'stripes', 'dots', 'check'], A.fabPat);
+          if (fm === 'col') v.fabCol = otherCol(CLOTH_MAIN.filter(function (c3) { return K.indexOf('glove') < 0 || cdist(CLOTH[c3], GLOVEC[A.glove]) >= 110; }), A.fabCol); else v.fabPat = otherCol(['plain', 'stripes', 'dots', 'check'], A.fabPat);
         } else if (c === 'shoe') v.shoe = A.shoe === 'heel' ? 'flat' : 'heel';
         else if (c === 'glove') v.glove = level === 'easy' ? r.pick(['none', 'other']) : level === 'medium' ? r.pick(['other', 'pair']) : 'pair';
         else if (c === 'mark') v.mark = level === 'hard' && M.other ? r.pick(['none', 'other']) : 'none';
@@ -246,6 +249,8 @@
       if (K.indexOf('mark') >= 0 && M.on === 'top') { var tries = 0; while ((cdist(CLOTH[L.top], M.col) < 110 || (set.mark === 'flour' && ['white', 'yellow', 'pink', 'orange'].indexOf(L.top) >= 0)) && tries++ < 20) { if (K.indexOf('fabric') >= 0) break; L.top = r.pick(CLOTH_MAIN); } }
       if (K.indexOf('mark') >= 0 && M.on === 'sleeveR') { L.sl = null; var t2 = 0; while (cdist(CLOTH[L.top], M.col) < 110 && t2++ < 20 && K.indexOf('fabric') < 0) L.top = r.pick(CLOTH_MAIN.concat(['white', 'navy'])); }
       if (K.indexOf('mark') >= 0 && (M.on === 'skinL' || M.on === 'skinR')) { var t3 = 0; while (cdist(SKIN[L.skin], M.col) < 70 && t3++ < 20) L.skin = r.int(0, 5); }
+      // a dark glove by dark trousers is hard to see: keep them apart
+      if (K.indexOf('glove') >= 0) { var gcs = L.marks.filter(function (m2) { return /^gloves?:/.test(m2); }).map(function (m2) { return m2.split(':').pop(); }); var t4 = 0; while (gcs.some(function (gc) { return cdist(gc, L.lc) < 90; }) && t4++ < 30) L.lc = r.pick(LEGC.concat(['#c9b48a', '#8fa8c8', '#b0b0b8'])); var t5 = 0; while (K.indexOf('fabric') < 0 && gcs.some(function (gc) { return cdist(gc, CLOTH[L.top]) < 110; }) && t5++ < 30) L.top = r.pick(CLOTH_MAIN.concat(['white', 'grey'])); }
       // a few props for colour
       var hp = r.pick([null, null, 'cup', 'book', 'phone', 'balloon', 'bag']);
       if (hp && K.indexOf('glove') < 0 && K.indexOf('mark') < 0) { if (r.chance(0.5)) { L.armR = 'hold'; L.holdR = hp; } else { L.armL = 'hold'; L.holdL = hp; } }
@@ -427,7 +432,7 @@
   var ODD = {
     gnome: { kind: 'gnome', one: 'gnome', label: 'Gnome', fake: 'the fake',
       feats: {
-        buttons: { lv: 'mh', vals: [3, 2, 4], part: 'buttons', say: function (v) { return numw(v) + ' gold buttons'; } },
+        buttons: { lv: 'h', vals: [3, 2, 4], part: 'buttons', say: function (v) { return numw(v) + ' gold buttons'; } },
         buckle: { lv: 'em', vals: ['square', 'round'], say: function (v) { return 'a ' + v + ' belt buckle'; } },
         tip: { lv: 'em', vals: ['L', 'R'], say: function (v) { return 'a hat that flops to the ' + lr(v); } },
         shovel: { lv: 'e', vals: ['R', 'L'], say: function (v) { return 'a spade on the ' + lr(v); } }
@@ -512,24 +517,24 @@
       return { p: p, v: v };
     }
     // ── the picture ──
-    var items = [], ids = [], W = 400, H = 300, rows = F.rows && N > 5 ? 2 : 1;
-    var S = { gnome: N > 5 ? 1.25 : 1.4, cupcake: N > 5 ? 1.45 : 1.6, teacup: rows > 1 ? 1.3 : 1.15, nutcracker: N > 5 ? 1.2 : 1.3, birdhouse: N > 5 ? 1.15 : 1.25 }[fam];
+    var items = [], ids = [], W = 400, H = 300, rows = F.rows ? 2 : 1;
+    var S = { gnome: N > 5 ? 1.25 : 1.4, cupcake: N > 5 ? 1.45 : 1.6, teacup: 1.45, nutcracker: N > 5 ? 1.2 : 1.3, birdhouse: N > 5 ? 1.25 : 1.4 }[fam];
     if (fam === 'gnome') items.push(['sun', { x: 352, y: 36, r: 13 }], ['cloud', { x: 90, y: 40, s: 1.1 }], ['cloud', { x: 236, y: 30, s: 0.8 }], ['fence', { x: 0, y: 150, w: 400, h: 50, color: '#f4efe4' }], ['flowerbed', { x: 0, y: 158, w: 400, colors: r.shuffle(['#e04a6a', '#ffd23f', '#9b59b6', '#ff8a3d']), seed: r.int(1, 99) }]);
     if (fam === 'birdhouse') items.push(['cloud', { x: 80, y: 34 }], ['cloud', { x: 300, y: 26, s: 0.8 }], ['tree', { x: 30, y: 214, size: 0.9 }], ['tree', { x: 382, y: 214, size: 0.8 }], ['fence', { x: 0, y: 228, w: 400, h: 40, color: '#c9a77a' }]);
     if (fam === 'cupcake') items.push(['sign', { x: 130, y: 36, w: 140, h: 24, text: r.pick(['FRESH TODAY', 'CUPCAKES', 'BAKED TODAY']), size: 13, post: false, color: '#7a3b2a', ink: '#fbf6e6' }], ['svg', { svg: '<rect x="10" y="220" width="380" height="10" rx="2" fill="#f4efe4" stroke="#2b2433" stroke-width="1.2"/><rect x="10" y="230" width="380" height="70" fill="#c98a5a" stroke="#2b2433" stroke-width="1.2"/><path d="M10 238h380" stroke="#a8693a" stroke-width="1"/>' }]);
-    if (fam === 'teacup') items.push(['svg', { svg: '<rect x="14" y="10" width="372" height="290" rx="4" fill="#8a5a34" stroke="#2b2433" stroke-width="1.4"/><rect x="24" y="20" width="352" height="280" fill="#f0e2c4"/>' + (rows > 1 ? '<rect x="18" y="128" width="364" height="9" fill="#a0703f" stroke="#2b2433" stroke-width="1.1"/>' : '') + '<rect x="18" y="246" width="364" height="9" fill="#a0703f" stroke="#2b2433" stroke-width="1.1"/>' }]);
+    if (fam === 'teacup') items.push(['svg', { svg: '<rect x="14" y="10" width="372" height="290" rx="4" fill="#8a5a34" stroke="#2b2433" stroke-width="1.4"/><rect x="24" y="20" width="352" height="280" fill="#f0e2c4"/><path d="M24 20h352" stroke="#2b2433" stroke-width="1"/>' + [60, 200, 340].map(function (x) { return '<circle cx="' + x + '" cy="62" r="30" fill="#fbfaf5" stroke="#2b2433" stroke-width="1.2" opacity=".55"/>'; }).join('') + '<rect x="18" y="128" width="364" height="9" fill="#a0703f" stroke="#2b2433" stroke-width="1.1"/><rect x="18" y="246" width="364" height="9" fill="#a0703f" stroke="#2b2433" stroke-width="1.1"/>' }]);
     if (fam === 'nutcracker') items.push(['svg', { svg: '<rect x="0" y="232" width="400" height="12" fill="#8a5a34" stroke="#2b2433" stroke-width="1.2"/><rect x="0" y="244" width="400" height="56" fill="#6e4528"/>' }], ['sign', { x: 140, y: 34, w: 120, h: 22, text: 'TOY SHOP', size: 12, post: false, color: '#2f5a46', ink: '#f4efe4' }]);
     var bgs = { gnome: ['outside', { groundY: 150, ground: '#79b85a', hills: '#9fcf7a' }], birdhouse: ['outside', { groundY: 230, ground: '#79b85a', hills: '#9fcf7a' }], cupcake: ['room', { wall: '#f3e2c4', paper: 'stripes', floorY: 300 }], teacup: ['plain', { color: '#6e4a2e' }], nutcracker: ['room', { wall: '#e8d8b8', paper: 'diamonds', floorY: 300 }] };
     var perRow = Math.ceil(N / rows);
     for (var i = 0; i < N; i++) {
       var row = Math.floor(i / perRow), col = i % perRow, nIn = row === rows - 1 ? N - perRow * (rows - 1) : perRow;
       var gap = (W - 40) / nIn, x = 20 + gap * (col + 0.5);
-      var y = { gnome: 248, birdhouse: 252, cupcake: 214, teacup: rows > 1 ? (row ? 236 : 118) : 236, nutcracker: 226 }[fam];
+      var y = { gnome: 248, birdhouse: 252, cupcake: 214, teacup: row ? 236 : 118, nutcracker: 226 }[fam];
       var pp = params(i), id = 'o' + (i + 1);
       ids.push(id);
       var o = { id: id, x: Math.round(x), y: y, s: S }; for (var k in pp.p) o[k] = pp.p[k];
       items.push([F.kind, o]);
-      var ty = { gnome: 286, birdhouse: 284, cupcake: 254, teacup: rows > 1 ? (row ? 272 : 156) : 272, nutcracker: 266 }[fam];
+      var ty = { gnome: 286, birdhouse: 284, cupcake: 254, teacup: row ? 274 : 156, nutcracker: 266 }[fam];
       items.push(fam === 'gnome' || fam === 'birdhouse' ? ['stake', { x: Math.round(x), y: ty + 6, text: String(i + 1) }] : ['tag', { x: Math.round(x), y: ty, text: String(i + 1), s: 0.85 }]);
     }
     // ── words ──
@@ -537,16 +542,18 @@
     var o2 = { Owner: owner, poss: poss(owner), his: pr.his, His: pr.His, he: pr.he, n: numw(N), First: r.pick(GIRLS) };
     var setup = fill(r.pick(F.setup), o2).replace('six cups', numw(N) + ' cups');
     if (nd) setup += ' ' + F.decoyNote;
-    var Fi = F.feats[f], others = []; for (var j = 0; j < N; j++) if (j !== odd) others.push(j + 1);
+    var Fi = F.feats[f], others = [];
+    // circle the detail (or the whole thing, when the detail is something that isn't there)
+    function mk(k, val) { return Fi.part && (val || val === 0) && !(f === 'perch' && !val) ? { p: 'o' + k + '.' + Fi.part, pad: 2 } : { id: 'o' + k, pad: 1 }; } for (var j = 0; j < N; j++) if (j !== odd) others.push(j + 1);
     var dList = Object.keys(deco).map(function (i) { return deco[i][1] + ' on ' + F.one + ' ' + (+i + 1); });
     var steps = [
-      { text: plLabel(F, others) + ' all have ' + Fi.say(base[f]) + '.' + (dList.length ? ' ' + cap(andList(dList)) + (dList.length > 1 ? ' are ' : ' is ') + F.decoyAfter + '.' : ''), marks: others.slice(0, 2).map(function (k) { return Fi.part ? { p: 'o' + k + '.' + Fi.part, pad: 2 } : { id: 'o' + k }; }) },
-      { text: F.label + ' ' + (odd + 1) + ' has ' + Fi.say(oddV) + '.', marks: [Fi.part ? { p: 'o' + (odd + 1) + '.' + Fi.part, pad: 2 } : { id: 'o' + (odd + 1) }] }
+      { text: plLabel(F, others) + ' all have ' + Fi.say(base[f]) + '.' + (dList.length ? ' ' + cap(andList(dList)) + (dList.length > 1 ? ' are ' : ' is ') + F.decoyAfter + '.' : ''), marks: others.slice(0, 2).map(function (k) { return mk(k, base[f]); }) },
+      { text: F.label + ' ' + (odd + 1) + ' has ' + Fi.say(oddV) + '.', marks: [mk(odd + 1, oddV)] }
     ];
     var hintAt = others[0], areaWord = { buttons: 'buttons', buckle: 'belt', tip: 'hat', shovel: 'hands', cherry: 'top', stripes: 'wrapper', sprinkles: 'icing', swirl: 'icing', handle: 'handle', motif: 'pattern', dots: 'pattern', rim: 'rim', plume: 'hat', sword: 'side', sash: 'sash', hole: 'front', roof: 'roof', perch: 'front', chimney: 'roof', flowers: 'flowers' }[f];
     var hints = [
       { text: nd ? F.decoyNote + ' Compare the ' + F.one + 's themselves, one detail at a time.' : 'Pick one detail and check it on every ' + F.one + ', then move on to the next detail.' },
-      { text: 'Look closely at each ' + F.one + '’s ' + areaWord + '. Are they really all the same?', at: Fi.part ? { p: 'o' + hintAt + '.' + Fi.part, pad: 4 } : { id: 'o' + hintAt, pad: 2 } }
+      { text: 'Look closely at each ' + F.one + '’s ' + areaWord + '. Are they really all the same?', at: mk(hintAt, base[f]) }
     ];
     var key = 'oddone|' + fam + '|' + N + '|' + f + '|' + JSON.stringify(base) + '|' + JSON.stringify(oddV) + '|' + odd + '|' + JSON.stringify(common) + '|' + Object.keys(deco).map(function (i) { return i + deco[i][0]; }).join(',');
     return {
@@ -691,10 +698,10 @@
     bike: { lv: 'mh', who: ['Mr. Grant', 'Mrs. Okafor', 'Dr. Penn', 'Ms. Rossi'], kind: 'bike', tread: 'zigzag', col: '#3a2414', desc: 'the bike tracks with the zigzag tread',
       start: 'rack', setup: 'Someone borrowed {poss} new bike from the rack in {Park} and rode off. Its new tyres leave a zigzag pattern; the park’s other bikes have smooth tyres.', q: 'Which gate did the bike go out of?', verdict: 'The bike left by Gate {G}.',
       decoys: [['bike:plain', 0, 'smooth bike tracks'], ['bike:plain', 0, 'smooth bike tracks'], ['bigpaw', 17, 'dog prints'], ['shoe:lines', 13, 'shoe prints']] },
-    notch: { lv: 'h', who: ['the thief'], kind: 'shoe', tread: 'zigzag', notch: true, size: 16, gap: 17, side: 4.2, col: '#3a2414', desc: 'the zigzag boot prints with a notch cut out of the heel',
+    notch: { lv: 'h', who: ['the thief'], kind: 'shoe', tread: 'zigzag', notch: true, size: 17, gap: 21, side: 4.4, col: '#3a2414', desc: 'the zigzag boot prints with a notch cut out of the heel',
       start: 'bag', setup: 'A thief snatched a bag at the bandstand in {Park}, dropped it by the path and ran. The thief’s boots have a zigzag tread, with a notch cut out of one heel.', q: 'Which gate did the thief escape through?', verdict: 'The thief escaped through Gate {G}.',
-      decoys: [['shoe:zigzag', 16, 'zigzag boot prints with whole heels'], ['shoe:zigzag', 16, 'zigzag boot prints with whole heels'], ['shoe:dots', 15, 'dotted shoe prints'], ['bigpaw', 17, 'dog prints']] },
-    chevron: { lv: 'h', who: ['the thief'], kind: 'shoe', tread: 'chevron', size: 16, gap: 17, side: 4.2, col: '#3a2414', desc: 'the prints with arrow-shaped tread',
+      decoys: [['shoe:zigzag', 17, 'zigzag boot prints with whole heels'], ['shoe:zigzag', 17, 'zigzag boot prints with whole heels'], ['shoe:dots', 14, 'dotted shoe prints'], ['bigpaw', 16, 'dog prints']] },
+    chevron: { lv: 'h', who: ['the thief'], kind: 'shoe', tread: 'chevron', size: 16, gap: 20, side: 4.2, col: '#3a2414', desc: 'the prints with arrow-shaped tread',
       start: 'bag', setup: 'A thief grabbed a purse in {Park}, dropped it as they ran, and escaped through one of the gates. The thief’s trainers have a tread of little arrows.', q: 'Which gate did the thief escape through?', verdict: 'The thief escaped through Gate {G}.',
       decoys: [['shoe:zigzag', 16, 'zigzag prints'], ['shoe:zigzag', 16, 'zigzag prints'], ['shoe:lines', 15, 'striped prints'], ['bigpaw', 17, 'dog prints']] }
   };
@@ -735,7 +742,7 @@
     if (!route) { start = 4; route = walks(4, 2, 9)[0]; }
     var endGate = route[route.length - 1];
     // other trails: gate to gate, using some of the same paths
-    var nDec = level === 'easy' ? 2 : level === 'medium' ? 3 : 4, load = {}, trails = [];
+    var nDec = level === 'easy' ? 2 : 3, load = {}, trails = [];
     function ek(a, b) { return a < b ? a + '-' + b : b + '-' + a; }
     function useLoad(p, d) { for (var i = 1; i < p.length; i++) load[ek(p[i - 1], p[i])] = (load[ek(p[i - 1], p[i])] || 0) + d; }
     useLoad(route, 1);
@@ -743,8 +750,11 @@
     dk.forEach(function (d, j) {
       var g0 = r.pick(gates), cand = walks(g0, 2, 7).filter(function (p) { for (var i = 1; i < p.length; i++) if ((load[ek(p[i - 1], p[i])] || 0) >= 3) return false; return true; });
       // prefer trails that share a stretch with the route and pass through its start
-      cand.sort(function (a, b) { return score(b) - score(a); });
+      // (scores are worked out first, in order, so every browser draws the same random numbers)
       function score(p) { var s = 0; for (var i = 1; i < p.length; i++) if (load[ek(p[i - 1], p[i])]) s += 2; if (p.indexOf(start) >= 0 && j === 0) s += 5; return s + r.f(); }
+      var sc = cand.map(function (p, i) { return { p: p, s: score(p), i: i }; });
+      sc.sort(function (a, b) { return b.s - a.s || a.i - b.i; });
+      cand = sc.map(function (x) { return x.p; });
       var p = cand[Math.min(cand.length - 1, r.int(0, 2))];
       if (p) { useLoad(p, 1); trails.push({ path: p, d: d }); }
     });
@@ -759,7 +769,7 @@
         [[path[i - 1], path[i]], [path[i], path[i + 1]]].forEach(function (e) {
           if (e[0] == null || e[1] == null) return;
           var key = ek(e[0], e[1]), lo = Math.min(e[0], e[1]), hi = Math.max(e[0], e[1]);
-          var users = laneUse[key], idx = users.indexOf(me), nU = users.length, o = (idx - (nU - 1) / 2) * 8;
+          var users = laneUse[key], idx = users.indexOf(me), nU = users.length, o = (idx - (nU - 1) / 2) * 9;
           var dx = nodes[hi][0] - nodes[lo][0], dy = nodes[hi][1] - nodes[lo][1], len = Math.sqrt(dx * dx + dy * dy) || 1;
           off[0] += -dy / len * o; off[1] += dx / len * o; k++;
         });
@@ -784,10 +794,22 @@
     });
     [[24, 24], [376, 24], [24, 276], [376, 276], [140, 290], [270, 12]].forEach(function (q) { if (!nodes.some(function (nn) { return Math.abs(nn[0] - q[0]) < 30 && Math.abs(nn[1] - q[1]) < 30; })) items.push(['ttree', { x: q[0], y: q[1], r: r.int(12, 18), color: r.pick(['#4f9a4a', '#3f8a3a']) }]); });
     // the trails
+    var muds = r.shuffle(['#4a3018', '#5e3f22', '#3a2a1a', '#6b4a2a']), mudI = 0;
     function trailItem(kind, size, pts, id, extra) {
-      var k = kind.split(':'), o = { id: id, pts: pts, col: '#4a3018' };
-      if (k[0] === 'bike') { o.kind = 'bike'; o.w = 2.8; o.tread = k[1] === 'plain' ? null : 'zigzag'; }
-      else { o.kind = k[0]; o.size = size; o.tread = k[1] || (k[0] === 'shoe' ? 'lines' : null); o.gap = size * 1.05; o.side = k[0].indexOf('paw') >= 0 ? size * 0.22 : size * 0.26; }
+      var k = kind.split(':'), o = { id: id, pts: pts, col: muds[mudI++ % muds.length] };
+      if (k[0] === 'bike' && k[1] !== 'plain') {
+        // a knobbly tyre: a zigzag line along the path
+        var z = [], dash = 0, side = 1;
+        for (var q = 1; q < pts.length; q++) {
+          var ax = pts[q - 1][0], ay = pts[q - 1][1], bx = pts[q][0], by = pts[q][1], ln = Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)) || 1, ux = (bx - ax) / ln, uy = (by - ay) / ln;
+          for (var dd = dash; dd < ln; dd += 3.2) { z.push([R1(ax + ux * dd - uy * 2.3 * side), R1(ay + uy * dd + ux * 2.3 * side)]); side = -side; }
+          dash = 0;
+        }
+        z.push(pts[pts.length - 1]);
+        return ['svg', { id: id, svg: '<path d="M' + pts.map(function (q2) { return q2[0] + ' ' + q2[1]; }).join('L') + '" fill="none" stroke="' + o.col + '" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".18"/><path d="M' + z.map(function (q2) { return q2[0] + ' ' + q2[1]; }).join('L') + '" fill="none" stroke="' + o.col + '" stroke-width="1.3" stroke-linejoin="round"/>' }];
+      }
+      if (k[0] === 'bike') { o.kind = 'bike'; o.w = 2.6; o.tread = null; }
+      else { o.kind = k[0]; o.size = size; o.tread = k[1] || (k[0] === 'shoe' ? 'lines' : null); o.gap = size * (level === 'hard' ? 1.25 : 1.05); o.side = k[0].indexOf('paw') >= 0 ? size * 0.22 : size * 0.26; }
       for (var e in (extra || {})) o[e] = extra[e];
       return ['trail', o];
     }
@@ -802,7 +824,8 @@
     items.push(['svg', { id: 'start', x: R1(sp[0] + (route[1] != null && nodes[route[1]][0] > sp[0] ? -18 : 18)), y: R1(sp[1] + (nodes[route[1]][1] > sp[1] ? -16 : 16)), svg: startSvg }]);
     gates.forEach(function (gn, i) {
       var p = nodes[gn], rot = i === 1 || i === 3 ? 90 : 0;
-      var lx = i === 0 ? 30 : i === 2 ? 30 : i === 1 ? -6 : 6, ly = i === 0 ? 4 : i === 2 ? -6 : -30;
+      // labels sit beside the gate, on the side away from the nearest corner
+      var lx = i === 0 || i === 2 ? (p[0] > 300 ? -30 : 30) : i === 1 ? -6 : 6, ly = i === 0 ? 4 : i === 2 ? -6 : (p[1] < 70 ? 30 : -30);
       items.push(['tgate', { id: letters[i], x: R1(p[0] + (i === 1 ? -6 : i === 3 ? 6 : 0)), y: R1(p[1] + (i === 0 ? 6 : i === 2 ? -6 : 0)), r: rot, text: letters[i], lx: lx, ly: ly }]);
     });
     // ── words ──
@@ -917,19 +940,23 @@
   // TIMELINE: candles burning down, ice melting, shadows that don't fit
   // ═════════════════════════════════════════════════════════════════════════
   T.timeline = function (r, level, occ) {
-    var v = ['candles', 'ice', 'shadows'][(occ + hstr('timeline')) % 3];
-    if (r.chance(0.3)) v = r.pick(['candles', 'ice', 'shadows']);
-    return v === 'shadows' ? shadowAlibi(r, level) : burnOrMelt(r, level, v);
+    var v = ['candles', 'ice', 'shadows'][occ % 3];
+    return v === 'shadows' ? shadowAlibi(r, level, Math.floor(occ / 3)) : burnOrMelt(r, level, v, Math.floor(occ / 3));
   };
-  function burnOrMelt(r, level, v) {
+  // the m-th ordered pick of n things from pool (a one-to-one numbering)
+  function nthPick(pool, n, m) { pool = pool.slice(); var out = []; for (var i = 0; i < n; i++) { var k = m % pool.length; m = Math.floor(m / pool.length); out.push(pool.splice(k, 1)[0]); } return out; }
+  function burnOrMelt(r, level, v, m) {
     var N = level === 'easy' ? 4 : 5, gds = []; for (var i = 0; i < N; i++) gds.push(r.pick(['f', 'm']));
-    var nm = names(r, gds, false), ask = level === 'hard' ? r.pick(['first', 'last', 'second']) : r.pick(['first', 'last']);
+    var nm = names(r, gds, false), ask = level === 'hard' ? r.pick(['first', 'last', 'second']) : level === 'medium' ? r.pick(['first', 'last', 'first', 'last', 'second']) : r.pick(['first', 'last']);
     // amounts left: distinct, with a gap that suits the level
     var amt = [], items = [], ids = nm.map(function (n2, i) { return 'p' + (i + 1); });
     if (v === 'candles') {
       var gap = level === 'easy' ? 9 : level === 'medium' ? 7 : 5, full = 56, lens = [];
-      var pool = []; for (var L = 10; L <= 50; L += gap) pool.push(L);
-      lens = r.sample(pool, N);
+      // distinct lengths between 8 and 50, at least `gap` apart
+      var guardL = 0;
+      do { lens = []; for (var li = 0; li < N; li++) lens.push(r.int(8, 50)); lens.sort(function (a, b) { return a - b; }); } while (lens.some(function (l, i) { return i && l - lens[i - 1] < gap; }) && ++guardL < 400);
+      if (guardL >= 400) { lens = []; for (var lj = 0; lj < N; lj++) lens.push(10 + lj * gap); }
+      lens = r.shuffle(lens);
       var holders = lens.map(function () { return r.pick([6, 8, 12, 20, 30, 40]); });
       if (level !== 'easy') { var order = lens.map(function (l, i) { return i; }).sort(function (a, b) { return lens[a] - lens[b]; }); holders[order[0]] = 40; holders[order[N - 1]] = 6; }
       amt = lens;
@@ -941,13 +968,15 @@
       if (r.chance(0.6)) items.push(['cat', { x: 54, y: 280, color: r.pick(['#3a3a46', '#e3a35a', '#9a9aa6']), whiteChest: 1, dir: 'R' }]);
     } else {
       // glasses of lemonade with ice: everyone got four cubes when they arrived
-      var cubes = r.sample([0, 1, 2, 3, 4], N);
-      if (level === 'easy') cubes = r.sample([0, 1, 2, 3, 4], N);
+      // the cube counts come from this case's number, so no two ice cases ever match
+      var full = N === 4 ? 5 : 6, cpool = []; for (var cq = 0; cq <= full; cq++) cpool.push(cq);
+      var nP = 1; for (var pq = 0; pq < N; pq++) nP *= cpool.length - pq;
+      var cubes = nthPick(cpool, N, ((m || 0) * 7919 + hstr('ice')) % nP);
       amt = cubes;
       items.push(sv(bunting(0, 400, 14, r.shuffle(FLAGS))), ['table', { x: 22, y: 250, w: 356, h: 50, cloth: r.pick(['#fbf6e6', '#e8f2fb']), clothPat: 'check', clothPc: r.pick(['#3a8ad8', '#e0607a', '#3aa65a']) }]);
-      var gx0 = N === 5 ? 60 : 72, gdx = N === 5 ? 58 : 70;
-      cubes.forEach(function (c, i) { items.push(['glass', { id: ids[i], x: gx0 + i * gdx, y: 196, s: 1.7, level: r.pick([0.45, 0.6, 0.75, 0.9]), ice: c, color: r.pick(['#f2d34a', '#f6e27a']), straw: r.pick(['#e0384a', '#3a8ad8', '#3aa65a', '#f2c230']) }]); items.push(['label', { x: gx0 + i * gdx, y: 214, text: nm[i], s: 0.78 }]); });
-      items.push(['svg', { svg: '<rect x="296" y="40" width="96" height="76" rx="4" fill="#fbf6e6" stroke="#2b2433" stroke-width="1.2"/>' }], ['glass', { id: 'ref', x: 344, y: 104, s: 1.7, level: 0.9, ice: 4, color: '#f2d34a' }], ['caption', { x: 344, y: 54, text: 'Just poured', size: 10, font: 'sans', weight: 700, fill: '#7a6a52' }]);
+      var gx0 = N === 5 ? 62 : 74, gdx = N === 5 ? 62 : 74;
+      cubes.forEach(function (c, i) { items.push(['glass', { id: ids[i], x: gx0 + i * gdx, y: 198, s: 2.4, level: r.pick([0.45, 0.6, 0.75, 0.9]), ice: c, color: r.pick(['#f2d34a', '#f6e27a']), straw: r.pick(['#e0384a', '#3a8ad8', '#3aa65a', '#f2c230']) }]); items.push(['label', { x: gx0 + i * gdx, y: 214, text: nm[i], s: 0.8 }]); });
+      items.push(['svg', { svg: '<rect x="286" y="34" width="104" height="104" rx="4" fill="#fbf6e6" stroke="#2b2433" stroke-width="1.2"/>' }], ['glass', { id: 'ref', x: 338, y: 124, s: 2.4, level: 0.9, ice: full, color: '#f2d34a', straw: '#e0384a' }], ['caption', { x: 338, y: 52, text: 'Just poured', size: 11, font: 'sans', weight: 700, fill: '#7a6a52' }]);
       items.push(['sun', { x: 40, y: 50, r: 14 }]);
     }
     // order of arrival: more burnt / more melted = arrived earlier
@@ -963,9 +992,9 @@
       steps.push({ text: ask === 'first' ? poss(nm[ansI]) + ' candle is the shortest of all, so it has been burning the longest.' : ask === 'last' ? poss(nm[ansI]) + ' candle is the longest, so it was lit most recently.' : poss(nm[order[0]]) + ' candle is the shortest, and ' + poss(nm[ansI]) + ' is the next shortest.', marks: [{ id: ids[ansI], pad: -1 }].concat(ask === 'second' ? [{ id: ids[order[0]], pad: -1 }] : []) });
       hints = [{ text: 'A candle gets shorter the longer it burns. Look at the wax, not the holders.' }, { text: 'Compare each candle with the new one on the side table.', at: { id: 'ref', pad: 4 } }];
     } else {
-      setup = r.pick(['At ' + poss(host) + ' garden party, everyone got a glass of lemonade with four ice cubes the moment they arrived.', 'It was a scorching day. As each friend arrived at the picnic, ' + host + ' handed them a lemonade with four ice cubes in it.']) + ' The ice melts at the same speed in every glass. How much lemonade they have drunk doesn’t matter.';
+      setup = r.pick(['At ' + poss(host) + ' garden party, everyone got a glass of lemonade with ' + numw(full) + ' ice cubes the moment they arrived.', 'It was a scorching day. As each friend arrived at the picnic, ' + host + ' handed them a lemonade with ' + numw(full) + ' ice cubes in it.']) + ' The ice melts at the same speed in every glass. How much lemonade they have drunk doesn’t matter.';
       q = 'Who arrived ' + ask + '?';
-      steps.push({ text: 'A freshly poured glass has four ice cubes. The longer a glass has been standing, the more ice has melted.', marks: [{ id: 'ref', pad: 2 }] });
+      steps.push({ text: 'A freshly poured glass has ' + numw(full) + ' ice cubes. The longer a glass has been standing, the more ice has melted.', marks: [{ id: 'ref', pad: 2 }] });
       steps.push({ text: ask === 'first' ? poss(nm[ansI]) + ' glass has the fewest ice cubes left' + (amt[ansI] === 0 ? ': they’ve all melted' : '') + ', so it has been standing the longest.' : ask === 'last' ? poss(nm[ansI]) + ' glass has the most ice left, so it was poured most recently.' : poss(nm[order[0]]) + ' glass has the fewest cubes, and ' + poss(nm[ansI]) + ' has the next fewest.', marks: [{ id: ids[ansI], pad: 2 }].concat(ask === 'second' ? [{ id: ids[order[0]], pad: 2 }] : []) });
       hints = [{ text: 'Ice melts the longer it sits. Ignore how full the glasses are.' }, { text: 'Count the ice cubes in each glass.', at: { id: ids[order[1]], pad: 4 } }];
     }
@@ -975,15 +1004,18 @@
       choices: ids.map(function (id, i) { return { id: id, label: nm[i] }; }), answer: ids[ansI],
       scene: { bg: v === 'candles' ? ['room', { wall: '#2f3a52', paper: 'stripes', floorY: 248, floor: '#7a5233' }] : ['outside', { groundY: 210, ground: '#79b85a', hills: '#9fcf7a' }], items: items },
       hints: hints, solution: { steps: steps, verdict: nm[ansI] + ' arrived ' + ask + '.' },
-      key: 'timeline|' + v + '|' + ask + '|' + amt.join(','),
+      key: 'timeline|' + v + '|' + ask + '|' + amt.join(',') + (v === 'ice' ? '|' + full : ''),
       logic: { tpl: 'timeline', v: v, ask: ask, amounts: amt }
     };
   }
-  function shadowAlibi(r, level) {
+  function shadowAlibi(r, level, m) {
     var N = 4, gds = []; for (var i = 0; i < N; i++) gds.push(r.pick(['f', 'm']));
-    var nm = names(r, gds, false), fake = r.int(0, N - 1), dirR = r.chance(0.5) ? 1 : -1, hour = r.pick([9, 10, 4, 5]);
+    // which way the sun is, the hour, whose photo is fake and the props all come from this case's number,
+    // so no two shadow cases ever match
+    var ix = ((m || 0) * 7919 + hstr('shadows')) % 768;
+    var nm = names(r, gds, false), dirR = ix % 2 ? 1 : -1, hour = [9, 10, 4, 5][Math.floor(ix / 2) % 4], fake = Math.floor(ix / 8) % 4;
     var mode = level === 'easy' ? 'short' : level === 'medium' ? r.pick(['short', 'dir']) : 'dir';
-    var props = r.shuffle(['tree', 'pond', 'hay', 'sign']);
+    var props = nthPick(['tree', 'pond', 'hay', 'sign'], 4, Math.floor(ix / 32));
     var farm = r.pick(['Clover Farm', 'Hill Top Farm', 'Meadow Farm', 'Brook Farm', 'Apple Tree Farm']);
     function snap(i) {
       var long = !(i === fake && mode === 'short'), d = i === fake && mode === 'dir' ? -dirR : dirR, items = [], len = long ? 46 : 4, prop = props[i], px = 64;
@@ -993,7 +1025,7 @@
       if (prop === 'sign') items.push(['castShadow', { x: px, y: 98, w: 4, len: long ? 12 : 3, th: 5, back: 0, head: false, op: 0.36, dir: d }], ['sign', { x: 54, y: 78, w: 22, h: 12, text: 'EGGS', size: 6, post: 20, ink: '#7a4a2a' }]);
       var cx = d > 0 ? 24 : 44;
       if (prop === 'tree' || prop === 'hay' || prop === 'sign') cx = d > 0 ? 18 : 30;
-      items.push(['castShadow', { id: 'sh' + i, x: cx, y: 98, w: 12, len: len, th: 12, back: 0.02, op: 0.5, dir: d }]);
+      items.push(['castShadow', { id: 'sh' + i, x: cx, y: 98, w: long ? 12 : 17, len: len, th: 12, back: 0.02, op: long ? 0.5 : 0.62, dir: d }]);
       var L0 = look(r, gds[i], true); L0.armR = 'wave';
       items.push(personItem(L0, 'kid' + i, cx, 98, 0.42, null));
       if (mode === 'dir' && level === 'hard' && r.chance(0.4)) items.push(['cloud', { x: 60, y: 22, s: 0.5 }]);
@@ -1033,8 +1065,8 @@
     lefty: { say: ['{N} is left-handed, so {he} always swaps {his} knife and fork.', '{N} eats left-handed: {his} fork goes on the right.'], test: function (s) { return s.fork === 'R'; }, yes: function (s) { s.fork = 'R'; }, no: function (s) { s.fork = 'L'; }, part: 'fork', noS: 'fork on the left', yesS: 'knife and fork swapped', lv: 'emh' },
     black: { say: ['{He} drinks {his} coffee black.', '{He} never takes milk in {his} coffee.'], test: function (s) { return s.cup === '#3a2414'; }, yes: function (s) { s.cup = '#3a2414'; }, no: function (s) { s.cup = '#c8a27a'; }, part: 'cup', noS: 'milky coffee', yesS: 'black coffee', lv: 'emh' },
     milk: { say: ['{He} always has lots of milk in {his} coffee.', '{He} likes {his} coffee milky.'], test: function (s) { return s.cup === '#c8a27a'; }, yes: function (s) { s.cup = '#c8a27a'; }, no: function (s) { s.cup = '#3a2414'; }, part: 'cup', noS: 'black coffee', yesS: 'milky coffee', lv: 'emh' },
-    hat: { say: ['{He} hangs {his} hat on the back of {his} chair.', '{He} came in a hat and hung it on {his} chair.'], test: function (s) { return !!s.hat; }, yes: function (s, r) { s.hat = r.pick(['#3a4a6a', '#7a3b2a', '#2f3a2f']); s.scarf = null; s.bag = null; }, no: function (s, r) { s.hat = null; if (r.chance(0.5)) s[r.pick(['scarf', 'bag'])] = r.pick(['#c0392b', '#9b59b6', '#3a8a4a']); }, part: 'hat', noS: 'no hat', yesS: 'a hat', lv: 'emh', chair: 1 },
-    scarf: { say: ['{He} left {his} scarf on {his} chair.', '{He} hung {his} scarf over {his} chair.'], test: function (s) { return !!s.scarf; }, yes: function (s, r) { s.scarf = r.pick(['#c0392b', '#3a8a4a', '#e8862a']); s.hat = null; s.bag = null; }, no: function (s, r) { s.scarf = null; if (r.chance(0.5)) s[r.pick(['hat', 'bag'])] = r.pick(['#3a4a6a', '#9b59b6', '#7a3b2a']); }, part: 'scarf', noS: 'no scarf', yesS: 'a scarf', lv: 'mh', chair: 1 },
+    hat: { say: ['{He} hangs {his} hat on the back of {his} chair.', '{He} came in a hat and hung it on {his} chair.'], test: function (s) { return !!s.hat; }, yes: function (s, r) { s.hat = r.pick(['#c9a24a', '#e8e0c8', '#3a8ad8']); s.scarf = null; s.bag = null; }, no: function (s, r) { s.hat = null; if (r.chance(0.5)) s[r.pick(['scarf', 'bag'])] = r.pick(['#c0392b', '#9b59b6', '#3a8a4a']); }, part: 'hat', noS: 'no hat', yesS: 'a hat', lv: 'emh', chair: 1 },
+    scarf: { say: ['{He} left {his} scarf on {his} chair.', '{He} hung {his} scarf over {his} chair.'], test: function (s) { return !!s.scarf; }, yes: function (s, r) { s.scarf = r.pick(['#c0392b', '#3a8a4a', '#e8862a']); s.hat = null; s.bag = null; }, no: function (s, r) { s.scarf = null; if (r.chance(0.5)) s[r.pick(['hat', 'bag'])] = r.pick(['#c9a24a', '#9b59b6', '#3a8ad8']); }, part: 'scarf', noS: 'no scarf', yesS: 'a scarf', lv: 'mh', chair: 1 },
     lipstick: { say: ['{He} wears bright red lipstick.', '{He} always wears red lipstick.'], test: function (s) { return !!s.lipstick; }, yes: function (s) { s.lipstick = 1; }, no: function (s) { s.lipstick = 0; }, part: 'cup', noS: 'no lipstick on the cup', yesS: 'lipstick on the cup', lv: 'mh', f: 1 },
     sugar: { say: ['{He} takes a sugar lump with {his} coffee, but never eats it.', '{He} always asks for a sugar lump, then leaves it on the saucer.'], test: function (s) { return !!s.sugar; }, yes: function (s) { s.sugar = 1; }, no: function (s) { s.sugar = 0; }, part: 'cup', noS: 'no sugar lump', yesS: 'a sugar lump', lv: 'mh' },
     peas: { say: ['{He} can’t stand peas and always leaves them.', '{He} never eats {his} peas.'], test: function (s) { return !!s.peas; }, yes: function (s) { s.peas = 1; }, no: function (s) { s.peas = 0; }, part: 'fork', noS: 'no peas left', yesS: 'peas left over', lv: 'h', plate: 1 },
@@ -1079,7 +1111,7 @@
     var pos = r.int(0, N - 1); seats.splice(pos, 0, target);
     // things nobody's habits mention, so they can't help or hurt
     seats.forEach(function (s) {
-      if (K.indexOf('hat') < 0 && K.indexOf('scarf') < 0 && !s.hat && !s.scarf && !s.bag && r.chance(0.3)) s.bag = r.pick(['#9b59b6', '#c0392b', '#3a6ea5']);
+      if (K.indexOf('hat') < 0 && K.indexOf('scarf') < 0 && !s.hat && !s.scarf && !s.bag && r.chance(0.3)) s.bag = r.pick(['#9b59b6', '#c0392b', '#3a8ad8']);
       if (K.indexOf('lipstick') < 0) s.lipstick = gd === 'm' && r.chance(0.25) ? 1 : 0;
       if (K.indexOf('sugar') < 0 && r.chance(0.25)) s.sugar = 1;
       if (K.indexOf('peas') < 0 && r.chance(0.2)) s.peas = 1;
@@ -1122,19 +1154,26 @@
   // ═════════════════════════════════════════════════════════════════════════
   // IMPOSTOR: a company logo on the van vs everyone's badge, or a portrait vs claimants
   // ═════════════════════════════════════════════════════════════════════════
-  var FIRMS = [
-    { name: 'DRIP-FIX', sub: 'Plumbing', full: 'Drip-Fix Plumbing', job: 'a leaky sink', logo: { shape: 'drop', mark: 'wrench', color: '#2f8fd6' }, uni: '#1a9a9a', van: '#f4f4f4', stripe: '#1a9a9a', ink: '#16707a' },
-    { name: 'BRIGHT SPARK', sub: 'Electricians', full: 'Bright Spark Electricians', job: 'a broken light', logo: { shape: 'circle', mark: 'bolt', color: '#e8862a' }, uni: '#2b3a5a', van: '#f4f0e6', stripe: '#e8862a', ink: '#2b3a5a' },
-    { name: 'GREEN THUMB', sub: 'Gardeners', full: 'Green Thumb Gardeners', job: 'an overgrown hedge', logo: { shape: 'leaf', mark: 'bar', color: '#3a8a4a' }, uni: '#3a8a4a', van: '#f4f4f4', stripe: '#3a8a4a', ink: '#2a6a3a' },
-    { name: 'SAFE-LOCK', sub: 'Locksmiths', full: 'Safe-Lock Locksmiths', job: 'a stuck front-door lock', logo: { shape: 'shield', mark: 'dot', color: '#8a4aa0' }, uni: '#3a3a46', van: '#f4f0e6', stripe: '#8a4aa0', ink: '#5a2a6a' },
-    { name: 'HOMEFIX', sub: 'Builders', full: 'HomeFix Builders', job: 'a wobbly wall', logo: { shape: 'house', mark: 'bar', color: '#c0392b' }, uni: '#e8b830', van: '#f4f4f4', stripe: '#c0392b', ink: '#8a2a20' },
-    { name: 'STAR SHINE', sub: 'Window cleaners', full: 'Star Shine Window Cleaners', job: 'some very dirty windows', logo: { shape: 'star', mark: 'dot', color: '#e8b830' }, uni: '#3a6ea5', van: '#f4f4f4', stripe: '#3a6ea5', ink: '#2a4a7a' }
+  // trades: company names, the job, and the uniform; each case designs its own logo
+  var TRADES = [
+    { names: ['DRIP-FIX', 'AQUAFLOW', 'PIPEWORKS', 'TAP-RIGHT'], sub: 'Plumbing', word: 'Plumbing', job: ['a leaky sink', 'a dripping tap', 'a blocked drain'], role: 'Plumber' },
+    { names: ['SPARKY', 'VOLTA', 'LIVEWIRE', 'BRIGHTWIRE'], sub: 'Electricians', word: 'Electricians', job: ['a broken light', 'a fizzing plug', 'a doorbell that won’t ring'], role: 'Electrician' },
+    { names: ['LEAFY', 'GREENWAY', 'BLOOMERS', 'HEDGEHOG'], sub: 'Gardeners', word: 'Gardeners', job: ['an overgrown hedge', 'a jungle of a lawn', 'a fallen tree branch'], role: 'Gardener' },
+    { names: ['SAFE-LOCK', 'KEYMASTER', 'TUMBLER'], sub: 'Locksmiths', word: 'Locksmiths', job: ['a stuck front-door lock', 'a lost back-door key'], role: 'Locksmith' },
+    { names: ['HOMEFIX', 'BRICKLY', 'SOLIDSTONE'], sub: 'Builders', word: 'Builders', job: ['a wobbly wall', 'a crack in the porch'], role: 'Builder' },
+    { names: ['STARSHINE', 'CLEARVIEW', 'GLEAM'], sub: 'Window cleaners', word: 'Window Cleaners', job: ['some very dirty windows', 'the greenhouse glass'], role: 'Window Cleaner' }
   ];
+  var LOGO_COL = ['#2f8fd6', '#e8862a', '#3a8a4a', '#8a4aa0', '#c0392b', '#e8b830', '#1a9a9a'];
+  var UNI = ['#1a9a9a', '#2b3a5a', '#3a8a4a', '#3a3a46', '#e8b830', '#3a6ea5', '#7a2e3a', '#8a5a34'];
   T.impostor = function (r, level, occ) {
     if (level === 'hard' && r.chance(0.6)) return portrait(r, level);
-    var F = FIRMS[(occ + hstr('firm')) % FIRMS.length]; if (r.chance(0.3)) F = r.pick(FIRMS);
-    var N = level === 'easy' ? 3 : 4, real = JSON.parse(JSON.stringify(F.logo));
-    var shapes = ['drop', 'circle', 'shield', 'star', 'house', 'leaf'], marks = ['wrench', 'bolt', 'bar', 'dot'], cols = ['#2f8fd6', '#e8862a', '#3a8a4a', '#8a4aa0', '#c0392b', '#e8b830'];
+    var Tr = TRADES[(occ + hstr('firm')) % TRADES.length]; if (r.chance(0.3)) Tr = r.pick(TRADES);
+    var nmF = r.pick(Tr.names), real = { shape: r.pick(['drop', 'circle', 'shield', 'star', 'house', 'leaf']), mark: r.pick(['wrench', 'bolt', 'bar', 'dot']), color: r.pick(LOGO_COL) };
+    if (real.mark !== 'dot' && r.chance(0.5)) real.tilt = 'L';
+    var uni = r.pick(UNI.filter(function (u) { return cdist(u, real.color) > 60; }));
+    var F = { name: nmF, sub: Tr.sub, full: nmF.charAt(0) + nmF.slice(1).toLowerCase().replace(/-(.)/, function (m, x) { return '-' + x.toUpperCase(); }) + ' ' + Tr.word, job: r.pick(Tr.job), uni: uni, van: r.pick(['#f4f4f4', '#f4f0e6', '#e8eef4']), stripe: real.color, ink: '#2b3a5a', role: Tr.role };
+    var N = level === 'easy' ? 3 : 4;
+    var shapes = ['drop', 'circle', 'shield', 'star', 'house', 'leaf'], marks = ['wrench', 'bolt', 'bar', 'dot'];
     var hasTilt = real.mark === 'wrench' || real.mark === 'bolt' || real.mark === 'bar';
     var fakes = [], sigs = {}; sigs[JSON.stringify(real)] = 1;
     var modes = level === 'easy' ? ['shape', 'color', 'mark'] : level === 'medium' ? ['color', 'mark'].concat(hasTilt ? ['tilt', 'tilt'] : ['shape']) : (hasTilt ? ['tilt', 'mark', 'tilt'] : ['mark', 'color']);
@@ -1142,7 +1181,7 @@
     while (fakes.length < N - 1 && guard++ < 100) {
       var f = JSON.parse(JSON.stringify(real)), m = modes[fakes.length % modes.length];
       if (m === 'shape') f.shape = r.pick(shapes.filter(function (x) { return x !== real.shape; }));
-      if (m === 'color') f.color = r.pick(cols.filter(function (x) { return cdist(x, real.color) > 90; }));
+      if (m === 'color') f.color = r.pick(LOGO_COL.filter(function (x) { return cdist(x, real.color) > 90; }));
       if (m === 'mark') f.mark = r.pick(marks.filter(function (x) { return x !== real.mark; }));
       if (m === 'tilt') f.tilt = real.tilt === 'L' ? 'R' : 'L';
       var sg = JSON.stringify(f); if (sigs[sg]) continue; sigs[sg] = 1; f.mode = m; fakes.push(f);
@@ -1151,13 +1190,14 @@
     var gds = people.map(function () { return r.pick(['f', 'm']); }), nm = names(r, gds, false), ans = people.map(function (p) { return !!p.real; }).indexOf(true);
     var items = [['cloud', { x: 60, y: 34 }], ['house', { x: 236, y: 196, w: 156, h: 136, color: r.pick(['#e9d7b9', '#d8e2ea', '#f0d8c8']), roof: r.pick(['#4a5a6a', '#7a3a2a', '#3a4a3a']), door: r.pick(['#2f6a5a', '#7a2e3a', '#3a6ea5']) }], ['bush', { x: 386, y: 200, w: 30, flowers: '#e04a6a' }]];
     items.push(['van', { id: 'van', x: 104, y: 214, s: 1.24, color: F.van, stripe: F.stripe, logo: real, name: F.name, sub: F.sub, ink: F.ink }]);
-    var sc = 0.98, x0 = N === 3 ? 232 : 196, dx = N === 3 ? 66 : 62;
+    var sc = 0.98, x0 = N === 3 ? 236 : 194, dx = N === 3 ? 66 : 60;
     people.forEach(function (p, i) {
-      var L0 = look(r, gds[i], false); L0.top = F.uni; L0.pat = 'plain'; L0.lc = F.uni === '#e8b830' ? '#3a3a46' : F.uni; L0.legs = 'pants'; L0.shoe = r.pick(['boot', 'sneaker']); L0.acc = []; if (r.chance(0.5)) { L0.armR = 'hold'; L0.holdR = 'toolbox'; }
-      var pi = personItem(L0, 'w' + i, x0 + i * dx, 290 - (i % 2) * 4, sc, nm[i], { tagY: 12, belt: '#2b2b33', tbc: r.pick(['#c0392b', '#3a6ea5', '#3a3a46']) });
+      var L0 = look(r, gds[i], false); L0.top = F.uni; L0.pat = 'plain'; L0.lc = F.uni === '#e8b830' ? '#3a3a46' : F.uni; L0.legs = 'pants'; L0.shoe = r.pick(['boot', 'sneaker']); L0.acc = []; L0.armR = r.pick(['down', 'hip', 'down']); L0.armL = r.pick(['down', 'down', 'wave']);
+      var py = 278 - (i % 2) * 4;
+      var pi = personItem(L0, 'w' + i, x0 + i * dx, py, sc, nm[i], { tagY: 10, belt: '#2b2b33', tbc: r.pick(['#c0392b', '#3a6ea5', '#3a3a46']) });
       pi[1].top = F.uni;
       items.push(pi);
-      items.push(['logo', { x: x0 + i * dx + 7.5 * sc, y: 290 - (i % 2) * 4 - 77 * sc, r: 5.4, s: sc, logo: p.logo, p: 'w' + i + '.badge' }]);
+      items.push(['logo', { x: x0 + i * dx + 4 * sc, y: py - 74 * sc, r: 6.6, s: sc, logo: p.logo, p: 'w' + i + '.badge' }]);
     });
     var family = 'the ' + r.pick(SUR) + 's';
     var setup = cap(family) + ' called ' + F.full + ' about ' + F.job + ', and the company’s van just parked outside. Then ' + numw(N) + ' people in work clothes knocked at the door, all saying they were from ' + F.full + '. ' + (N === 3 ? 'Two of them are' : 'Three of them are') + ' tricksters after a free lunch.';
@@ -1171,28 +1211,28 @@
     people.forEach(function (p, i) { if (!p.real) steps.push({ text: poss(nm[i]) + ' badge has ' + diff(p.logo) + '.', marks: [{ p: 'w' + i + '.badge', pad: 3 }] }); });
     steps.push({ text: poss(nm[ans]) + ' badge matches the van exactly.', marks: [{ p: 'w' + ans + '.badge', pad: 3 }] });
     return {
-      type: 'Impostor', title: r.pick(['Who’s the Real ' + F.sub.replace(/s$/, '').replace('Window cleaner', 'Window Cleaner') + '?', 'Badge of Honour', 'The Copycat Workers', 'Spot the Fake']), setup: setup,
+      type: 'Impostor', title: r.pick(['Who’s the Real ' + F.role + '?', 'Badge of Honour', 'The Copycat Workers', 'Spot the Fake']).replace(/^(.{27}).*$/, 'Spot the Fake'), setup: setup,
       q: 'Who really works for ' + F.full + '?', size: [400, 300], tap: true,
       choices: nm.map(function (n2, i) { return { id: 'w' + i, label: n2 }; }), answer: 'w' + ans,
       scene: { bg: ['outside', { groundY: 186, ground: '#79b85a', walk: [196, 104], walkColor: '#d6cfc0' }], items: items },
       hints: [{ text: 'Anyone can buy a work outfit. Compare everyone’s badge with the logo on the van.' }, { text: level === 'easy' ? 'Check the shape, the colour and the sign inside each badge.' : 'Look closely at the sign inside each badge, and which way it faces.', at: { p: 'van.logo', pad: 3 } }],
       solution: { steps: steps, verdict: nm[ans] + ' is the real one.' },
-      key: 'impostor|logo|' + F.name + '|' + people.map(function (p) { return JSON.stringify(p.logo); }).join(';'),
+      key: 'impostor|logo|' + people.map(function (p) { return JSON.stringify(p.logo); }).join(';'),
       logic: { tpl: 'impostor', v: 'logo', real: real, badges: people.map(function (p) { return p.logo; }) }
     };
   };
   function portrait(r, level) {
     var gd = r.pick(['f', 'm']), N = r.pick([3, 4]);
-    // permanent marks: mole (side), nicked ear (side), scar (side)
-    var kinds = r.sample(['mole', 'ear', 'scar'], level === 'hard' ? 3 : 2), A = {};
+    // permanent marks: a mole, a scar down one cheek, and one blue eye (the other is brown); each on one side
+    var kinds = ['mole', 'scar', 'eye'], A = {};
     kinds.forEach(function (k) { A[k] = r.pick(['L', 'R']); });
     var claim = [{ m: JSON.parse(JSON.stringify(A)), real: true }], sigs = {}; sigs[JSON.stringify(A)] = 1;
     var modes = r.shuffle(['mirror', 'missing', 'oneside']), guard = 0;
     while (claim.length < N && guard++ < 50) {
       var m = JSON.parse(JSON.stringify(A)), md = modes[(claim.length - 1) % modes.length], why;
       if (md === 'mirror') { kinds.forEach(function (k) { m[k] = A[k] === 'L' ? 'R' : 'L'; }); why = 'has the marks on the wrong sides, as if copied from a mirror'; }
-      else if (md === 'missing') { var k0 = r.pick(kinds); delete m[k0]; why = 'has no ' + { mole: 'mole', ear: 'nick in the ear', scar: 'scar' }[k0]; }
-      else { var k1 = r.pick(kinds); m[k1] = A[k1] === 'L' ? 'R' : 'L'; why = 'has the ' + { mole: 'mole', ear: 'nicked ear', scar: 'scar' }[k1] + ' on the wrong side'; }
+      else if (md === 'missing') { var k0 = r.pick(kinds); delete m[k0]; why = { mole: 'has no mole', scar: 'has no scar', eye: 'has two brown eyes' }[k0]; }
+      else { var k1 = r.pick(kinds); m[k1] = A[k1] === 'L' ? 'R' : 'L'; why = k1 === 'eye' ? 'has the blue eye on the wrong side' : 'has the ' + k1 + ' on the wrong side'; }
       var sg = JSON.stringify(m); if (sigs[sg]) continue; sigs[sg] = 1;
       claim.push({ m: m, why: why });
     }
@@ -1200,22 +1240,25 @@
     var ans = claim.map(function (c) { return !!c.real; }).indexOf(true);
     var title0 = gd === 'f' ? r.pick(['Lady', 'Duchess', 'Great-aunt']) : r.pick(['Lord', 'Sir', 'Great-uncle']), first = r.pick(gd === 'f' ? ['Ada', 'Beatrice', 'Clara', 'Edith', 'Florence', 'Harriet'] : ['Edmund', 'Albert', 'Cecil', 'Rupert', 'Hugo', 'Percy']), who = title0 + ' ' + first;
     var manor = r.pick(['Blackwood Manor', 'Hollyhock Hall', 'Raven Court', 'Thornbury House', 'Ashcombe Hall']);
-    function acc(m, wall) { var a = []; if (m.mole) a.push('mole:' + m.mole + ':1.5'); if (m.ear) a.push('notch' + m.ear + ':' + wall); if (m.scar) a.push('scar:' + m.scar); return a; }
     var wall = r.pick(['#3d5a4c', '#5a3d4c', '#3d4c5a']), skin = r.int(0, 5), hcN = r.pick(['black', 'brown', 'ginger', 'blond']);
-    var pItem = ['person', { id: 'sitter', x: 60, y: 300, s: 2.2, skin: skin, hair: gd === 'f' ? 'bun' : 'side', hc: HAIRC[hcN], top: '#f4f0e6', coat: r.pick(['#2f5a3a', '#5a2a3a', '#2b3a5a']), acc: acc(A, '#6a4a36').concat(gd === 'm' ? ['tie:#a8202e'] : ['necklace:#e8c34a']), stache: gd === 'm' && r.chance(0.5) ? 1 : 0, mouth: 'flat', blush: false }];
-    var items = [['frame', { id: 'portrait', x: 140, y: 8, w: 120, h: 110, color: '#c9a227', bg: '#7a5a3a', plate: who.toUpperCase(), items: [['svg', { svg: '<rect width="120" height="112" fill="#6a4a36"/><circle cx="60" cy="40" r="50" fill="#8a6a46" opacity=".5"/>' }], pItem] }],
-      ['lamp', { x: 36, y: 250, color: '#e8c34a', on: 1 }], ['plant', { x: 372, y: 250, s: 1.1, pot: '#7a3b2a' }], ['rug', { x: 200, y: 288, w: 340, color: '#7a2e3a' }]];
-    var xs = N === 3 ? [82, 200, 318] : [62, 152, 248, 338], gds = claim.map(function () { return gd; }), nm = names(r, gds, true);
+    var scarC = [0, 1, 5].indexOf(skin) >= 0 ? '#b0483a' : '#f0c8b0';
+    function acc(m) { var a = []; if (m.mole) a.push('mole:' + m.mole + ':2:ring'); if (m.scar) a.push('scar:' + m.scar + ':cheek:' + scarC); return a; }
+    function eyes(m, o) { o.eyecL = m.eye === 'L' ? '#3a8ad8' : '#6a3a1a'; o.eyecR = m.eye === 'R' ? '#3a8ad8' : '#6a3a1a'; return o; }
+    var pItem = ['person', { id: 'sitter', x: 60, y: 300, s: 2.2, eyecL: A.eye === 'L' ? '#3a8ad8' : '#6a3a1a', eyecR: A.eye === 'R' ? '#3a8ad8' : '#6a3a1a', skin: skin, hair: gd === 'f' ? 'bun' : 'short', hc: HAIRC[hcN], top: '#f4f0e6', coat: r.pick(['#2f5a3a', '#5a2a3a', '#2b3a5a']), acc: acc(A).concat(gd === 'm' ? ['tie:#a8202e'] : ['necklace:#e8c34a']), stache: gd === 'm' && r.chance(0.5) ? 1 : 0, mouth: 'flat', blush: false }];
+    var items = [['frame', { id: 'portrait', x: 140, y: 8, w: 120, h: 110, color: '#c9a227', bg: '#7a5a3a', plate: who.toUpperCase(), items: [['svg', { svg: '<rect width="120" height="112" fill="#b89a72"/><circle cx="60" cy="40" r="50" fill="#d8c09a" opacity=".5"/>' }], pItem] }],
+      ['lamp', { x: 30, y: 262, color: '#e8c34a', on: 1 }], ['plant', { x: 374, y: 262, s: 1.1, pot: '#7a3b2a' }], ['rug', { x: 200, y: 312, w: 350, color: '#7a2e3a' }]];
+    var xs = N === 3 ? [80, 200, 320] : [58, 152, 248, 342], gds = claim.map(function () { return gd; }), nm = names(r, gds, true);
     claim.forEach(function (c, i) {
-      var L0 = look(r, gd, false); L0.skin = skin; L0.hcName = hcN; L0.hair = gd === 'f' ? r.pick(['bun', 'long', 'bob', 'pony', 'short']) : r.pick(['side', 'short', 'curly', 'spiky']);
-      L0.acc = acc(c.m, wall); if (gd === 'm' && r.chance(0.5)) L0.stache = 1; L0.glasses = null; L0.mouth = r.pick(['smile', 'flat', 'smirk']);
-      var it = personItem(L0, 'c' + i, xs[i], 294 + (i % 2) * 4, N === 3 ? 1.3 : 1.22, nm[i], { tagY: 12 });
+      // hairstyles that leave the ears and cheeks in plain view
+      var L0 = look(r, gd, false); L0.skin = skin; L0.hcName = hcN; L0.hair = gd === 'f' ? r.pick(['bun', 'pony', 'short']) : r.pick(['short', 'spiky', 'bald', 'short']);
+      L0.acc = acc(c.m); if (gd === 'm' && r.chance(0.5)) L0.stache = 1; L0.glasses = null; L0.mouth = r.pick(['smile', 'flat', 'smirk']);
+      var it = personItem(L0, 'c' + i, xs[i], 314 + (i % 2) * 3, N === 3 ? 1.45 : 1.34, nm[i], eyes(c.m, { tagY: 11 }));
       if (gd === 'm' && r.chance(0.4)) it[1].beard = 1;
       if (r.chance(0.5)) it[1].coat = r.pick(['#2b3a5a', '#5a3a22', '#2f5a3a', '#7a2e3a']);
       items.push(it);
     });
-    var markWords = { mole: 'a mole on the {s} cheek', ear: 'a nick in the {s} ear', scar: 'a little scar over the {s} eye' };
-    function partOf(k, side) { return k === 'mole' ? 'mole' : k === 'ear' ? 'ear' + side : 'scar'; }
+    var markWords = { mole: 'a mole on the {s} cheek', scar: 'a scar down the {s} cheek', eye: 'a blue {s} eye (the other one is brown)' };
+    function partOf(k, side) { return k === 'eye' ? 'eye' + side : k; }
     // L/R in the picture are the viewer's; the sitter's own right is on our left
     var desc = kinds.map(function (k) { return markWords[k].replace('{s}', A[k] === 'L' ? 'right' : 'left'); });
     var steps = [{ text: 'In the portrait, ' + first + ' has ' + andList(desc) + '. (' + (gd === 'f' ? 'Her' : 'His') + ' right is on your left.)', marks: kinds.map(function (k) { return { p: 'sitter.' + partOf(k, A[k]), pad: 3 }; }) }];
@@ -1224,14 +1267,113 @@
     return {
       type: 'Impostor', title: r.pick(['The Long-Lost ' + title0, 'The Return of ' + who, 'Who Is ' + who + '?', 'Portrait of a Fake']).replace(/^(.{28}).*$/, 'Portrait of a Fake'),
       setup: numw(N).charAt(0).toUpperCase() + numw(N).slice(1) + ' people have arrived at ' + manor + ', each saying they are ' + who + ', who sailed away years ago. The butler compares them with ' + first + '’s portrait. Clothes, hair and beards can change, but some things can’t.',
-      q: 'Which one is the real ' + who + '?', size: [400, 320], tap: true,
+      q: 'Which one is the real ' + who + '?', size: [400, 340], tap: true,
       choices: nm.map(function (n2, i) { return { id: 'c' + i, label: n2 }; }), answer: 'c' + ans,
-      scene: { bg: ['room', { wall: wall, paper: 'diamonds', floorY: 250, floor: '#6a4a32', rail: 160 }], items: items },
-      hints: [{ text: 'Ignore anything a person could change: clothes, hats, beards, haircuts.' }, { text: 'Compare the little marks on the face and ears with the portrait. Check which side each one is on.', at: { box: [140, 8, 120, 110] } }],
+      scene: { bg: ['room', { wall: wall, paper: 'diamonds', floorY: 262, floor: '#6a4a32', rail: 160 }], items: items },
+      hints: [{ text: 'Ignore anything a person could change: clothes, hats, beards, haircuts.' }, { text: 'Compare the face with the portrait: the mole, the scar and the eyes. Check which side each one is on.', at: { box: [140, 8, 120, 110] } }],
       solution: { steps: steps, verdict: nm[ans] + ' is the real ' + who + '.' },
       key: 'impostor|portrait|' + gd + '|' + JSON.stringify(A) + '|' + claim.map(function (c) { return JSON.stringify(c.m); }).join(';'),
       logic: { tpl: 'impostor', v: 'portrait', real: A, claims: claim.map(function (c) { return c.m; }) }
     };
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // The solver: works the answer out again from what is drawn in the scene,
+  // and checks there is exactly one, that it is the case's answer, and that
+  // every clue is needed. Returns a list of problems (empty = fair).
+  // ═════════════════════════════════════════════════════════════════════════
+  function walk(list, fn) { (list || []).forEach(function (it) { fn(it[0], it[1] || {}); if (it[1] && it[1].items) walk(it[1].items, fn); }); }
+  function find(c, pred) { var out = []; walk(c.scene.items, function (k, p) { if (pred(k, p)) out.push([k, p]); }); return out; }
+  function byIdIn(c, id) { return find(c, function (k, p) { return p.id === id; })[0] || null; }
+  function only(list, ok) { var m = list.filter(ok); return m; }
+  function verify(c) {
+    var P = [], L = c.logic || {}, ids = c.choices.map(function (ch) { return ch.id; });
+    if (ids.indexOf(c.answer) < 0) P.push('answer is not a choice');
+    if (ids.length !== ids.filter(function (v, i) { return ids.indexOf(v) === i; }).length) P.push('duplicate choices');
+    if (c.hints.length !== 2) P.push('needs two hints');
+    if (!c.solution.steps.length) P.push('no solution steps');
+    var fits, need = true;
+    if (L.tpl === 'culprit') {
+      var sus = ids.map(function (id) { return byIdIn(c, id)[1]; }), clues = [];
+      var hair = byIdIn(c, 'ev-hair'), scr = byIdIn(c, 'ev-scrap'), pr = byIdIn(c, 'ev-print'), gl = byIdIn(c, 'ev-glove'), mk = byIdIn(c, 'ev-mark');
+      if (hair) clues.push(function (s) { return s.hc === hair[1].color && hairLen(s.hair) === hair[1].len && hairCurly(s.hair) === !!hair[1].curly; });
+      if (scr) clues.push(function (s) { return !s.coat && s.top === scr[1].color && (s.pat || null) === (scr[1].pat || null); });
+      if (pr) clues.push(function (s) { return pr[1].kind === 'heel' ? s.shoe === 'heel' : s.shoe !== 'heel'; });
+      if (gl) clues.push(function (s) { var g1 = (s.marks || []).filter(function (m) { return /^glove:/.test(m); }); return g1.length === 1 && g1[0].split(':')[2] === gl[1].color && !(s.marks || []).some(function (m) { return /^gloves:/.test(m); }); });
+      if (mk) clues.push(function (s) { return L.mark.split(' ').every(function (m) { return (s.marks || []).indexOf(m) >= 0; }); });
+      if (clues.length !== L.clues.length) P.push('clue count mismatch: ' + clues.length + ' drawn, ' + L.clues.length + ' planned');
+      fits = function (excl) { return ids.filter(function (id, i) { return clues.every(function (f, j) { return j === excl || f(sus[i]); }); }); };
+      checkFits(fits, clues.length);
+    } else if (L.tpl === 'oddone') {
+      if (L.fam === 'clock') {
+        var cl = ids.map(function (id) { var p = byIdIn(c, id)[1]; return p.h + ':' + p.m; });
+        var odd = ids.filter(function (id, i) { return cl.filter(function (t) { return t === cl[i]; }).length === 1; });
+        if (odd.length !== 1 || odd[0] !== c.answer || cl.filter(function (t) { return t !== cl[ids.indexOf(c.answer)]; }).length !== ids.length - 1) P.push('clock times do not single out the answer');
+      } else {
+        var its = ids.map(function (id) { return byIdIn(c, id)[1]; }), keyOf = { gnome: ['buttons', 'buckle', 'tip', 'shovel'], cupcake: ['cherry', 'stripes', 'sprinkles', 'swirl', 'wrap', 'icing'], teacup: ['handle', 'motif', 'dots', 'rim', 'pc', 'band'], nutcracker: ['plume', 'sword', 'buttons', 'sash', 'jacket', 'hat'], birdhouse: ['hole', 'roof', 'perch', 'chimney', 'flowers', 'color'] }[L.fam];
+        var sigs = its.map(function (p) { return JSON.stringify(keyOf.map(function (k) { return p[k] == null ? null : p[k]; })); });
+        var lone = ids.filter(function (id, i) { return sigs.filter(function (s2) { return s2 === sigs[i]; }).length === 1; });
+        var restSame = sigs.filter(function (s2, i) { return ids[i] !== c.answer; }).every(function (s2, i, a) { return s2 === a[0]; });
+        if (lone.length !== 1 || lone[0] !== c.answer || !restSame) P.push('odd one out is not unique');
+        else { var a1 = JSON.parse(sigs[ids.indexOf(c.answer)]), b1 = JSON.parse(sigs.filter(function (s2, i) { return ids[i] !== c.answer; })[0]), nd = a1.filter(function (v, i) { return JSON.stringify(v) !== JSON.stringify(b1[i]); }).length; if (nd !== 1) P.push('odd one differs in ' + nd + ' details'); }
+      }
+    } else if (L.tpl === 'missing') {
+      var B = {}, A = {};
+      walk(c.scene.items, function (k, p) { if (p.id && /B$/.test(p.id) && OBJ[p.id.slice(0, -1)]) B[p.id.slice(0, -1)] = 1; if (p.id && /A$/.test(p.id) && OBJ[p.id.slice(0, -1)]) A[p.id.slice(0, -1)] = 1; });
+      var gone = Object.keys(B).filter(function (o) { return !A[o]; });
+      if (gone.length !== 1 || gone[0] !== c.answer) P.push('missing thing is not unique: ' + gone.join(','));
+      ids.forEach(function (o) { if (o !== c.answer && !A[o]) P.push('choice ' + o + ' is also missing'); });
+    } else if (L.tpl === 'tracks') {
+      var tr = find(c, function (k, p) { return (k === 'trail' || k === 'svg') && /^(route|tr\d)$/.test(p.id || ''); });
+      var sig = function (it) { var p = it[1]; return it[0] === 'svg' ? 'bike:zigzag' : p.kind + ':' + (p.kind === 'bike' ? 'plain' : (p.tread || '') + ':' + (p.size || 0) + ':' + (p.notch ? 'notch' : '')); };
+      var mine = tr.filter(function (it) { return it[1].id === 'route'; })[0];
+      if (!mine) P.push('no target trail');
+      else {
+        var ms = sig(mine);
+        if (tr.some(function (it) { return it !== mine && sig(it) === ms; })) P.push('another trail looks the same as the target');
+        var pts = mine[0] === 'svg' ? null : mine[1].pts, end = L.route[L.route.length - 1], gate = L.gateOf.filter(function (q) { return q[0] === end; })[0];
+        if (!gate || gate[1] !== c.answer) P.push('trail does not end at the answer gate');
+        var gt = byIdIn(c, c.answer); if (pts && gt) { var lp = pts[pts.length - 1]; if (Math.abs(lp[0] - gt[1].x) + Math.abs(lp[1] - gt[1].y) > 24) P.push('trail end is not at the gate'); }
+      }
+    } else if (L.tpl === 'keys') {
+      var imp = byIdIn(c, 'imp')[1].key, kk = ids.map(function (id) { return byIdIn(c, id)[1]; });
+      var m2 = ids.filter(function (id, i) { return kk[i].head === imp.head && kk[i].teeth.join() === imp.teeth.join(); });
+      if (m2.length !== 1 || m2[0] !== c.answer) P.push('key match is not unique');
+    } else if (L.tpl === 'timeline') {
+      if (L.v === 'shadows') {
+        var ref = byIdIn(c, 'postsh')[1], bad = ids.filter(function (id, i) { var sh = byIdIn(c, 'sh' + i)[1]; return (sh.dir || 1) !== (ref.dir || 1) || sh.len < 20; });
+        if (bad.length !== 1 || bad[0] !== c.answer) P.push('shadow alibi is not unique');
+      } else {
+        var amts = ids.map(function (id) { var p = byIdIn(c, id)[1]; return L.v === 'candles' ? p.len : p.ice; });
+        if (amts.filter(function (v, i) { return amts.indexOf(v) === i; }).length !== amts.length) P.push('two amounts are equal');
+        var ord = ids.slice().sort(function (a, b) { return amts[ids.indexOf(a)] - amts[ids.indexOf(b)]; });
+        var want = L.ask === 'first' ? ord[0] : L.ask === 'last' ? ord[ord.length - 1] : ord[1];
+        if (want !== c.answer) P.push('arrival order gives ' + want);
+        if (L.v === 'candles') { var srt = amts.slice().sort(function (a, b) { return a - b; }); for (var q = 1; q < srt.length; q++) if (srt[q] - srt[q - 1] < 5) P.push('candles too close in length'); if (byIdIn(c, 'ref')[1].len <= srt[srt.length - 1]) P.push('new candle not the longest'); }
+      }
+    } else if (L.tpl === 'seating') {
+      var tbl = find(c, function (k) { return k === 'troundtable'; })[0][1].seats;
+      var T2 = { lefty: function (s) { return s.fork === 'R'; }, black: function (s) { return s.cup === '#3a2414'; }, milk: function (s) { return s.cup === '#c8a27a'; }, hat: function (s) { return !!s.hat; }, scarf: function (s) { return !!s.scarf; }, lipstick: function (s) { return !!s.lipstick; }, sugar: function (s) { return !!s.sugar; }, peas: function (s) { return !!s.peas; }, cane: function (s) { return !!s.cane; } };
+      var hs = L.habits.map(function (h) { return T2[h]; });
+      fits = function (excl) { return ids.filter(function (id, i) { return hs.every(function (f, j) { return j === excl || f(tbl[i]); }); }); };
+      checkFits(fits, hs.length);
+    } else if (L.tpl === 'impostor') {
+      if (L.v === 'logo') {
+        var vl = JSON.stringify(norm(byIdIn(c, 'van')[1].logo)), bad2 = ids.filter(function (id) { var b2 = find(c, function (k, p) { return k === 'logo' && p.p === id + '.badge'; })[0]; return b2 && JSON.stringify(norm(b2[1].logo)) === vl; });
+        if (bad2.length !== 1 || bad2[0] !== c.answer) P.push('badge match is not unique');
+      } else {
+        var mks = function (p) { return (p.acc || []).filter(function (a) { return /^(mole|scar)/.test(a); }).map(function (a) { var q = a.split(':'); return q[0] + ':' + q[1]; }).concat(['eyes:' + p.eyecL + '/' + p.eyecR]).sort().join(','); };
+        var sit = mks(find(c, function (k, p) { return p.id === 'sitter'; })[0][1]), hit = ids.filter(function (id) { return mks(byIdIn(c, id)[1]) === sit; });
+        if (hit.length !== 1 || hit[0] !== c.answer) P.push('portrait match is not unique');
+      }
+    } else P.push('unknown template');
+    function checkFits(fn, n) {
+      var all = fn(-1);
+      if (all.length !== 1 || all[0] !== c.answer) P.push('clues fit ' + all.length + ' choices: ' + all.join(','));
+      for (var j = 0; j < n; j++) if (fn(j).length < 2) P.push('clue ' + (j + 1) + ' is not needed');
+    }
+    function norm(l) { return { shape: l.shape, mark: l.mark, tilt: l.tilt === 'L' ? 'L' : 'R', color: l.color }; }
+    return P;
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -1248,9 +1390,14 @@
     if (n > 1) { var prev = blockPerm(b - 1); if (p[0] === prev[n - 1]) { var t = p[0]; p[0] = p[1]; p[1] = t; } }
     return { tpl: p[i], occ: b };
   }
+  // a case from one template; if the solver ever finds a problem, try again from a derived seed
+  // (deterministic, so every device still gets the same case)
   function make(tpl, level, seed, occ) {
-    var r = RNG(seed), c = T[tpl](r, level, occ || 0);
-    c.level = level; c.gen = true; c.tpl = tpl;
+    var c, tries = 0;
+    do {
+      c = T[tpl](RNG(tries ? hstr(seed + ':' + tries) : seed), level, occ || 0);
+      c.level = level; c.gen = true; c.tpl = tpl; c.tries = tries;
+    } while (verify(c).length && ++tries < 12);
     return c;
   }
   var cache = {};
@@ -1265,7 +1412,7 @@
     var id = 'endless-' + level + '-' + n;
     if (cache[id]) return cache[id];
     var tpl = TPL[(n + hstr(level)) % TPL.length];
-    var c = make(tpl, level, hstr('mysteries-endless-' + level + '-' + n), n + 7);
+    var c = make(tpl, level, hstr('mysteries-endless-' + level + '-' + n), 100000 + n * 8 + TPL.indexOf(tpl));
     c.id = id; c.no = n;
     return (cache[id] = c);
   }
@@ -1274,5 +1421,5 @@
     m = /^endless-(easy|medium|hard)-(\d+)$/.exec(id || ''); if (m) return endless(m[1], +m[2]);
     return null;
   }
-  window.MysteryGen = { daily: daily, endless: endless, make: make, byId: byId, templates: TPL, levelFor: levelFor, tplFor: tplFor, FIRST_DAY: FIRST_DAY, hash: hstr, RNG: RNG };
+  window.MysteryGen = { daily: daily, endless: endless, make: make, byId: byId, verify: verify, templates: TPL, levelFor: levelFor, tplFor: tplFor, FIRST_DAY: FIRST_DAY, hash: hstr };
 })();

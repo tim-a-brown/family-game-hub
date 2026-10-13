@@ -206,7 +206,7 @@
       mb += g(s, { p: P('paint') });
     });
     if (has(mk, 'crumbs')) { var R1 = rng(7); var cs = ''; for (var ci = 0; ci < 7; ci++) cs += circ(-6 + R1() * 12, B.sh + 8 + R1() * 16, 0.9 + R1() * 0.5, '#b07a3a', { st: 0 }); mb += g(cs, { p: P('crumbs') }); }
-    if (has(mk, 'flour')) mb += g(circ(-5, B.sh + 16, 3.2, '#fff', { st: 0, op: 0.85 }) + circ(3, B.sh + 22, 2.2, '#fff', { st: 0, op: 0.8 }), { p: P('flour') });
+    if (has(mk, 'flour')) { var fs = +arg(mk, 'flour', 1, 1); mb += g(circ(-5 * fs, B.sh + 16, 3.2 * fs, '#fff', { st: 0, op: 0.85 }) + circ(3 * fs, B.sh + 16 + 6 * fs, 2.2 * fs, '#fff', { st: 0, op: 0.8 }) + (fs > 1 ? circ(4 * fs, B.sh + 12, 1.4 * fs, '#fff', { st: 0, op: 0.8 }) : ''), { p: P('flour') }); }
     if (has(mk, 'wet')) mb += g(path('M' + n(-B.sw) + ' ' + n(B.sh + 5) + 'Q' + n(-B.sw + 5) + ' ' + n(B.sh - 1) + ' -4 ' + n(B.sh + 1) + 'L-5 ' + n(B.sh + 8) + 'Q' + n(-B.sw + 4) + ' ' + n(B.sh + 10) + ' ' + n(-B.sw) + ' ' + n(B.sh + 12) + 'Z', '#1b3a6b', { st: 0, op: 0.28 }) + path('M' + n(B.sw) + ' ' + n(B.sh + 5) + 'Q' + n(B.sw - 5) + ' ' + n(B.sh - 1) + ' 4 ' + n(B.sh + 1) + 'L5 ' + n(B.sh + 8) + 'Q' + n(B.sw - 4) + ' ' + n(B.sh + 10) + ' ' + n(B.sw) + ' ' + n(B.sh + 12) + 'Z', '#1b3a6b', { st: 0, op: 0.28 }), { p: P('wetback') });
     // arms in front, then marks on the clothes (paint on an elbow sits on the sleeve)
     if ((p.armL || 'down') !== 'back') out.push(armSvg(armL, 'L', p.armL));
@@ -242,9 +242,9 @@
     s += circ(-r + 0.3, y + 1, 3, skin, { sw: 1 }) + circ(r - 0.3, y + 1, 3, skin, { sw: 1 });
     [['L', -1], ['R', 1]].forEach(function (q) {
       if (!has(acc, 'notch' + q[0])) return;
-      var d = q[1], bg = arg(acc, 'notch' + q[0], 1, '#fff');
-      s += g(path('M' + n(d * (r + 3.8)) + ' ' + n(y - 2.6) + 'L' + n(d * (r + 0.4)) + ' ' + n(y - 0.4) + 'L' + n(d * (r + 3.8)) + ' ' + n(y + 1.4) + 'Z', bg, { st: 0 }) +
-        path('M' + n(d * (r + 2.7)) + ' ' + n(y - 1.9) + 'L' + n(d * (r + 0.4)) + ' ' + n(y - 0.4) + 'L' + n(d * (r + 2.8)) + ' ' + n(y + 0.9), 'none', { sw: 0.8 }), { p: P('ear' + q[0]) });
+      var d = q[1], bg = arg(acc, 'notch' + q[0], 1, '#fff'), nk = +arg(acc, 'notch' + q[0], 2, 1), ny = y - 0.4;
+      s += g(path('M' + n(d * (r + 0.4 + 3.4 * nk)) + ' ' + n(ny - 2.2 * nk) + 'L' + n(d * (r + 0.4)) + ' ' + n(ny) + 'L' + n(d * (r + 0.4 + 3.4 * nk)) + ' ' + n(ny + 1.8 * nk) + 'Z', bg, { st: 0 }) +
+        path('M' + n(d * (r + 0.4 + 2.3 * nk)) + ' ' + n(ny - 1.5 * nk) + 'L' + n(d * (r + 0.4)) + ' ' + n(ny) + 'L' + n(d * (r + 0.4 + 2.4 * nk)) + ' ' + n(ny + 1.3 * nk), 'none', { sw: 0.8 }), { p: P('ear' + q[0]) });
     });
     if (has(acc, 'earrings')) s += circ(-r + 0.3, y + 4.5, 1.2, arg(acc, 'earrings', 1, '#e8c34a'), { sw: 0.5 }) + circ(r - 0.3, y + 4.5, 1.2, arg(acc, 'earrings', 1, '#e8c34a'), { sw: 0.5 });
     s += circ(0, y, r, skin);
@@ -253,7 +253,9 @@
     if (p.eyes === 'closed') f += path('M' + n(-ex - 1.8) + ' ' + n(ey) + 'q1.8 1.6 3.6 0M' + n(ex - 1.8) + ' ' + n(ey) + 'q1.8 1.6 3.6 0', 'none', { sw: 1 });
     else {
       var er = p.eyes === 'wide' ? 2 : 1.55, ic = p.eyec;
-      if (ic) f += circ(-ex + look, ey, er + 0.7, '#fff', { sw: 0.5 }) + circ(ex + look, ey, er + 0.7, '#fff', { sw: 0.5 }) + circ(-ex + look, ey, er, ic, { st: 0 }) + circ(ex + look, ey, er, ic, { st: 0 }) + circ(-ex + look, ey, er * 0.45, '#111', { st: 0 }) + circ(ex + look, ey, er * 0.45, '#111', { st: 0 });
+      // eyecL / eyecR: a different colour for each eye (L and R are the viewer's)
+      if (p.eyecL || p.eyecR) [[-1, p.eyecL || ic], [1, p.eyecR || ic]].forEach(function (q) { var x = q[0] * ex + look, r2 = er + 0.35; f += g(circ(x, ey, r2 + 0.8, '#fff', { sw: 0.5 }) + (q[1] ? circ(x, ey, r2, q[1], { st: 0 }) + circ(x, ey, r2 * 0.42, '#111', { st: 0 }) : circ(x, ey, er, '#2b2433', { st: 0 })), { p: P(q[0] < 0 ? 'eyeL' : 'eyeR') }); });
+      else if (ic) f += circ(-ex + look, ey, er + 0.7, '#fff', { sw: 0.5 }) + circ(ex + look, ey, er + 0.7, '#fff', { sw: 0.5 }) + circ(-ex + look, ey, er, ic, { st: 0 }) + circ(ex + look, ey, er, ic, { st: 0 }) + circ(-ex + look, ey, er * 0.45, '#111', { st: 0 }) + circ(ex + look, ey, er * 0.45, '#111', { st: 0 });
       else f += circ(-ex + look, ey, er, '#2b2433', { st: 0 }) + circ(ex + look, ey, er, '#2b2433', { st: 0 });
     }
     f += path('M' + n(-ex - 2.2) + ' ' + n(ey - 4) + 'q2.2 -1.4 4.4 0M' + n(ex - 2.2) + ' ' + n(ey - 4) + 'q2.2 -1.4 4.4 0', 'none', { st: shade(hc, -0.2), sw: 1.1 });
@@ -268,7 +270,12 @@
     else f += line(-2.8, my + 0.6, 2.8, my + 0.6, OL, 1.1);
     if (p.blush !== false) f += circ(-7.5, y + 3.5, 2.2, '#ff8a8a', { st: 0, op: 0.28 }) + circ(7.5, y + 3.5, 2.2, '#ff8a8a', { st: 0, op: 0.28 });
     if (has(acc, 'freckles')) for (var fi = 0; fi < 3; fi++) f += circ(-8 + fi * 1.6, y + 2 + (fi % 2), 0.45, '#9a5a3a', { st: 0 }) + circ(5 + fi * 1.6, y + 2 + (fi % 2), 0.45, '#9a5a3a', { st: 0 });
-    if (has(acc, 'scar')) f += g(path('M' + n(arg(acc, 'scar', 1, 'L') === 'L' ? -8 : 5) + ' ' + n(y - 6) + 'l3 4M' + n(arg(acc, 'scar', 1, 'L') === 'L' ? -8.6 : 4.4) + ' ' + n(y - 4.2) + 'l2 -1', 'none', { st: '#a8584a', sw: 0.8 }), { p: P('scar') });
+    if (has(acc, 'scar')) {
+      // 'scar:L' over the eyebrow; 'scar:L:cheek:#colour' a longer scar down the cheek, between the eye and the ear
+      var scs = arg(acc, 'scar', 1, 'L') === 'L' ? -1 : 1;
+      if (arg(acc, 'scar', 2) === 'cheek') f += g(path('M' + n(scs * 9.4) + ' ' + n(y - 3) + 'l' + n(scs * 0.8) + ' 6.4M' + n(scs * 8.2) + ' ' + n(y - 1.2) + 'l' + n(scs * 2.6) + ' -0.6M' + n(scs * 8.6) + ' ' + n(y + 1.4) + 'l' + n(scs * 2.6) + ' -0.6', 'none', { st: arg(acc, 'scar', 3, '#a8584a'), sw: 1.2 }), { p: P('scar') });
+      else f += g(path('M' + n(scs < 0 ? -8 : 5) + ' ' + n(y - 6) + 'l3 4M' + n(scs < 0 ? -8.6 : 4.4) + ' ' + n(y - 4.2) + 'l2 -1', 'none', { st: '#a8584a', sw: 0.8 }), { p: P('scar') });
+    }
     if (has(acc, 'plaster')) f += g(rect(4, y + 1, 5, 2.6, '#f0c89a', { sw: 0.6, rx: 1, a: 'transform="rotate(-25 6 ' + n(y + 2) + ')"' }), { p: P('plaster') });
     // marks on the face
     if (has(mk, 'choc')) f += g(path('M' + n(2.2) + ' ' + n(my - 0.6) + 'q2.4 -0.6 2.8 1.4q-0.8 1.8 -2.8 0.6z', '#5a2d14', { st: 0 }) + circ(5.6, my + 2.4, 0.8, '#5a2d14', { st: 0 }), { p: P('mouth') });
@@ -279,7 +286,7 @@
     }
     if (p.stache) f += g(path('M-5.6 ' + n(my - 1.4) + 'q2.8 -3 5.6 -0.6q2.8 -2.4 5.6 0.6q-2.8 1.4 -5.6 0q-2.8 1.4 -5.6 0z', p.stachec || hc, { sw: 0.7 }), { p: P('stache') });
     if (p.beard) f += g(path('M' + n(-r + 1) + ' ' + n(y + 1) + 'Q' + n(-r + 2) + ' ' + n(y + r + 6) + ' 0 ' + n(y + r + 7) + 'Q' + n(r - 2) + ' ' + n(y + r + 6) + ' ' + n(r - 1) + ' ' + n(y + 1) + 'Q' + n(r - 4) + ' ' + n(y + 7) + ' 4 ' + n(my + 1.5) + 'Q0 ' + n(my + 3) + ' -4 ' + n(my + 1.5) + 'Q' + n(-r + 4) + ' ' + n(y + 7) + ' ' + n(-r + 1) + ' ' + n(y + 1) + 'Z', p.beardc || hc, { sw: 0.9 }), { p: P('beard') });
-    if (has(acc, 'mole')) { var mside = arg(acc, 'mole', 1, 'L'); f += g(circ(mside === 'L' ? -6.8 : 6.8, y + 3.4, +arg(acc, 'mole', 2, 0.95), '#3a2418', { st: 0 }), { p: P('mole') }); }
+    if (has(acc, 'mole')) { var mside = arg(acc, 'mole', 1, 'L'), ring = arg(acc, 'mole', 3) === 'ring'; f += g(circ(mside === 'L' ? -6.8 : 6.8, y + 3.4, +arg(acc, 'mole', 2, 0.95), ring ? '#1e120c' : '#3a2418', ring ? { st: shade(skin, 0.55), sw: 0.7 } : { st: 0 }), { p: P('mole') }); }
     s += g(f, { p: P('face') });
     // hair (front)
     s += hairFront(p, y, r, hc);
@@ -709,7 +716,7 @@
     if (p.items) s += g(items(p.items), { clip: id });
     else if (p.art === 'mountain') s += g(poly([[0, h], [w * 0.35, h * 0.3], [w * 0.6, h * 0.7], [w * 0.8, h * 0.45], [w, h]], '#7a9a6a', { st: 0 }) + circ(w * 0.78, h * 0.25, h * 0.1, '#f6d36a', { st: 0 }), { clip: id });
     else if (p.art === 'boat') s += g(rect(0, h * 0.65, w, h * 0.35, '#4a8ac2', { st: 0 }) + path('M' + n(w * 0.3) + ' ' + n(h * 0.65) + 'L' + n(w * 0.7) + ' ' + n(h * 0.65) + 'L' + n(w * 0.62) + ' ' + n(h * 0.78) + 'L' + n(w * 0.38) + ' ' + n(h * 0.78) + 'Z', '#8a5a34', { sw: 0.7 }) + path('M' + n(w * 0.5) + ' ' + n(h * 0.62) + 'L' + n(w * 0.5) + ' ' + n(h * 0.2) + 'L' + n(w * 0.68) + ' ' + n(h * 0.58) + 'Z', '#fff', { sw: 0.7 }), { clip: id });
-    if (p.plate) s += rect(w / 2 - 18, h + 6, 36, 9, '#e8c34a', { sw: 0.7, rx: 1 }) + text(w / 2, h + 13, p.plate, { size: 6.5, font: 'serif' });
+    if (p.plate) { var pw = Math.max(36, String(p.plate).length * 4.6 + 8); s += rect(w / 2 - pw / 2, h + 6, pw, 9, '#e8c34a', { sw: 0.7, rx: 1 }) + text(w / 2, h + 13, p.plate, { size: 6.5, font: 'serif' }); }
     return g(s, { x: p.x, y: p.y, id: p.id });
   }
   function mirror(p) {
@@ -1133,7 +1140,7 @@
     s += rect(-11, -29, 22, 4, '#1d1d26', { sw: 0.8 }) + rect(-2.4, -29.4, 4.8, 4.8, '#e8c34a', { sw: 0.6 });
     var sd = p.sash === 'L' ? -1 : 1;
     s += g(path('M' + n(-10 * sd) + ' -50L' + n(-5 * sd) + ' -50L' + n(10 * sd) + ' -31L' + n(5 * sd) + ' -31Z', p.sashc || '#f2c230', { sw: 0.8 }), { p: id + '.sash' });
-    var bt = ''; for (var i = 0; i < (p.buttons == null ? 3 : p.buttons); i++) bt += circ(sd * -5.5, -45 + i * 5, 1.5, '#e8c34a', { sw: 0.5 });
+    var bt = ''; for (var i = 0; i < (p.buttons == null ? 3 : p.buttons); i++) bt += circ(sd * -5.5, -46 + i * 5.4, 1.9, '#e8c34a', { sw: 0.6 });
     s += g(bt, { p: id + '.buttons' });
     s += limb('M-12 -47L-15 -30', jk, 5.6) + limb('M12 -47L15 -30', jk, 5.6) + circ(-15, -29, 2.6, '#fbfaf5') + circ(15, -29, 2.6, '#fbfaf5');
     var sw = p.sword === 'L' ? -1 : 1;
@@ -1155,7 +1162,7 @@
     s += g(path('M-21 -80L0 -98L21 -80Z', rc), { p: id + '.roof' });
     var hole = p.hole === 'square' ? rect(-5, -72, 10, 10, '#2b2433', { st: 0, rx: 1 }) : p.hole === 'heart' ? path('M0 -61.5l-6 -6a3.4 3.4 0 0 1 6 -4a3.4 3.4 0 0 1 6 4z', '#2b2433', { st: 0 }) : circ(0, -67, 5, '#2b2433', { st: 0 });
     s += g(hole, { p: id + '.hole' });
-    if (p.perch) s += g(line(0, -57, 0, -52, '#7a4a2a', 2.2) + circ(0, -51.5, 1.4, '#7a4a2a', { sw: 0.5 }), { p: id + '.perch' });
+    if (p.perch) s += g(rect(-1.6, -58, 3.2, 9, '#7a4a2a', { sw: 0.8, rx: 1.2 }) + circ(0, -48.6, 2.2, '#7a4a2a', { sw: 0.7 }), { p: id + '.perch' });
     var fl = ''; for (var i = 0; i < (p.flowers || 0); i++) fl += g(flowerHead(p.flc || '#e04a6a', 1.6), { x: -10 + i * 6.6, y: -52 });
     if (fl) s += g(fl, { p: id + '.flowers' });
     if (p.bird) s += g(ell(0, 0, 5, 3.6, p.bird) + circ(4, -3, 2.6, p.bird) + path('M6.4 -3.4l2.6 0.6-2.4 1z', '#f2a23a', { sw: 0.4 }) + circ(4.6, -3.6, 0.5, OL, { st: 0 }), { x: -8, y: -96 });
