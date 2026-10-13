@@ -299,22 +299,13 @@
       (kind === 'ch' ? t(0, 26, '?', 74, { f: 'var(--display),Lilita One,sans-serif', w: 400, c: '#fff' }) : icon('chest', 0, 2, 1.25)) +
       '</g>' + t(0, h / 2 + 26, kind === 'ch' ? 'CHANCE' : 'COMMUNITY CHEST', 15, { ls: 2 }) + '</g>';
   }
-  // The name: Lexend Zetta Regular, its ink centred exactly on the band (centre 494,494).
-  // Measured at 100px: ink runs x 18..821.4 and 72 above to 1 below the baseline; letter-spacing adds after each letter.
-  function logo() {
-    var fs = 55.9, ls = 1, k = fs / 100, sh = 2.5;
-    var x = 494 - (839.4 * k + 7 * ls) / 2, y = 494 + 35.5 * k;
-    function one(dx, c) { return '<text x="' + (x + dx).toFixed(1) + '" y="' + (y + dx).toFixed(1) + '" font-family="Monopoly Logo,sans-serif" font-weight="400" font-size="' + fs + '" fill="' + c + '" letter-spacing="' + ls + '">MONOPOLY</text>'; }
-    return one(sh, '#1d1d1b') + one(0, '#fff');
-  }
   function centre() {
     var o = '';
     o += deckSpot(330, 330, -45, 'cc') + deckSpot(670, 670, -45, 'ch');
-    // the name across the middle, on a red band
-    o += '<g transform="rotate(-45 500 500)">' +
-      '<rect x="252" y="452" width="496" height="96" rx="6" fill="#1d1d1b"/>' +
-      '<rect x="246" y="446" width="496" height="96" rx="6" fill="#d7262e" stroke="#fff" stroke-width="4"/>' +
-      logo() + '</g>';
+    // the logo across the middle: its red band centred on the board (band centre sits at 49.7% / 60.6% of the image)
+    var lw = 520, lh = lw * 288 / 1066;
+    o += '<g transform="rotate(-45 500 500)"><image href="../img/monopoly-logo.webp" x="' + (494 - .497 * lw).toFixed(1) + '" y="' + (494 - .606 * lh).toFixed(1) +
+      '" width="' + lw + '" height="' + lh.toFixed(1) + '" style="filter:drop-shadow(3px 4px 0 rgba(0,0,0,.35))"/></g>';
     return o;
   }
   var boardCache = null;
