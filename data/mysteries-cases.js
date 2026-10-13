@@ -964,7 +964,7 @@
         ['held', { kind: 'magnifier', x: 196, y: 210, s: 0.9 }],
         ['svg', { id: 'dustspot', svg: '<rect x="111" y="203" width="42" height="5" fill="none" stroke="#d8d2c4" stroke-width="1" stroke-dasharray="2 1.5"/>' }],
         ['trail', { id: 'soot', pts: [[330, 214], [290, 236], [236, 256], [190, 266]], kind: 'shoe', size: 12, tread: 'zigzag', col: '#26262c', gap: 16, side: 4, op: 1 }],
-        ['armchair', { x: 304, y: 296, color: '#3a5a4a' }],
+        ['plant', { x: 372, y: 300, s: 1.1, pot: '#3a5a4a' }],
         ['cat', { x: 40, y: 286, color: '#9a9aa6', dir: 'R' }]
       ]
     },
