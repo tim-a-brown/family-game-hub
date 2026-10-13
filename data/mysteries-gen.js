@@ -421,6 +421,262 @@
   }
 
   // ═════════════════════════════════════════════════════════════════════════
+  // ODD ONE OUT: a row of things that should be identical; one differs in one detail
+  // ═════════════════════════════════════════════════════════════════════════
+  function lr(v) { return v === 'L' ? 'left' : 'right'; }
+  var ODD = {
+    gnome: { kind: 'gnome', one: 'gnome', label: 'Gnome', fake: 'the fake',
+      feats: {
+        buttons: { lv: 'mh', vals: [3, 2, 4], part: 'buttons', say: function (v) { return numw(v) + ' gold buttons'; } },
+        buckle: { lv: 'em', vals: ['square', 'round'], say: function (v) { return 'a ' + v + ' belt buckle'; } },
+        tip: { lv: 'em', vals: ['L', 'R'], say: function (v) { return 'a hat that flops to the ' + lr(v); } },
+        shovel: { lv: 'e', vals: ['R', 'L'], say: function (v) { return 'a spade on the ' + lr(v); } }
+      },
+      decoys: [['snail', 'a snail'], ['moss', 'some moss'], ['leaf', 'a leaf']], decoyNote: 'Moss, snails and leaves don’t count: they aren’t part of the mould.', decoyAfter: 'just garden visitors',
+      setup: ['{Owner}’s {n} garden gnomes all came out of the same mould, so they are exactly alike. Last night a prankster swapped one of them for a look-alike from the garden shop.', 'Every gnome in {poss} garden was cast from one mould, so they should be identical. This morning {his} neighbour admitted swapping one for a copy, as a joke.'],
+      q: ['Which gnome is the fake?', 'Which gnome was swapped?'], titles: ['The Gnome Swap', 'Gnome Sweet Gnome', 'A Gnome of a Different Mould', 'The Garden Prankster'] },
+    cupcake: { kind: 'cupcake', one: 'cupcake', label: 'Cupcake', fake: 'the odd one out',
+      feats: {
+        cherry: { lv: 'e', vals: [true, false], part: 'icing', say: function (v) { return v ? 'a cherry on top' : 'no cherry'; } },
+        stripes: { lv: 'mh', vals: [5, 4, 6], part: 'wrap', say: function (v) { return numw(v) + ' stripes on the wrapper'; } },
+        sprinkles: { lv: 'h', vals: [4, 3, 5], part: 'icing', say: function (v) { return numw(v) + ' sprinkles'; } },
+        swirl: { lv: 'mh', vals: ['R', 'L'], part: 'icing', say: function (v) { return 'an icing swirl that curls to the ' + lr(v); } }
+      },
+      decoys: [['flag', 'a flag'], ['fly', 'a fly'], ['ptag', 'a price tag']], decoyNote: 'Flags, price tags and flies don’t count.', decoyAfter: 'added after baking',
+      setup: ['{Owner} piped a tray of cupcakes for the bakery window, every one exactly the same. When {he} wasn’t looking, {his} apprentice swapped one for a cupcake from the shop across the road.', 'The cupcakes in {poss} bakery window are all made to one recipe, so they look identical. One of them is from somewhere else.'],
+      q: ['Which cupcake is the odd one out?', 'Which cupcake was swapped?'], titles: ['The Cupcake Copycat', 'Something Fishy at the Bakery', 'One of These Cupcakes', 'Icing on the Case'] },
+    teacup: { kind: 'teacup', one: 'cup', label: 'Cup', fake: 'the copy', rows: 2,
+      feats: {
+        handle: { lv: 'e', vals: ['R', 'L'], part: 'handle', say: function (v) { return 'the handle on the ' + lr(v); } },
+        motif: { lv: 'e', vals: ['dot', 'heart'], part: 'dots', say: function (v) { return v === 'heart' ? 'little hearts' : 'round spots'; } },
+        dots: { lv: 'mh', vals: [3, 4, 2], part: 'dots', say: function (v) { return numw(v) + ' spots'; } },
+        rim: { lv: 'mh', vals: [true, false], part: 'rim', say: function (v) { return v ? 'a gold rim' : 'no gold rim'; } }
+      },
+      decoys: [['steam', 'steam'], ['spoon', 'a spoon'], ['sugar', 'a sugar cube']], decoyNote: 'Tea, spoons and sugar don’t count.', decoyAfter: 'nothing to do with the cups',
+      setup: ['Great-aunt {First}’s tea set came with six cups, all exactly alike. One broke years ago, and she replaced it with a copy from a market stall.', '{Owner} collects old tea sets. This set should have six identical cups, but the seller admitted one of them is a copy.'],
+      q: ['Which cup is the copy?', 'Which cup doesn’t belong to the set?'], titles: ['A Storm in a Teacup', 'The Copied Cup', 'Not My Cup of Tea', 'The Odd Teacup'] },
+    nutcracker: { kind: 'nutcracker', one: 'soldier', label: 'Soldier', fake: 'the fake',
+      feats: {
+        plume: { lv: 'e', vals: ['#3a8ad8', '#3aa65a', '#e0384a'], part: 'plume', say: function (v) { return 'a ' + { '#3a8ad8': 'blue', '#3aa65a': 'green', '#e0384a': 'red' }[v] + ' plume'; } },
+        sword: { lv: 'em', vals: ['R', null], part: 'sword', say: function (v) { return v ? 'a sword' : 'no sword'; } },
+        buttons: { lv: 'mh', vals: [3, 2, 4], part: 'buttons', say: function (v) { return numw(v) + ' buttons'; } },
+        sash: { lv: 'mh', vals: ['R', 'L'], part: 'sash', say: function (v) { return 'a sash going down to the ' + lr(v); } }
+      },
+      decoys: [['ribbon', 'a red price ribbon'], ['dust', 'dust on the hat']], decoyNote: 'Price ribbons and dust don’t count.', decoyAfter: 'just from the shop',
+      setup: ['The toy soldiers in {poss} shop are carved from one pattern, so they’re all the same. Somebody slipped in a cheap copy, hoping nobody would notice.', '{Owner} carves toy soldiers, every one exactly alike. A rival shop has put a copy in the row to sell as one of {his}.'],
+      q: ['Which soldier is the fake?', 'Which soldier is the copy?'], titles: ['The Toy Soldier', 'Stand to Attention!', 'One Soldier Out of Line', 'The Copycat Carver'] },
+    birdhouse: { kind: 'birdhouse', one: 'birdhouse', label: 'Birdhouse', fake: 'the different one',
+      feats: {
+        hole: { lv: 'e', vals: ['round', 'square', 'heart'], part: 'hole', say: function (v) { return v === 'heart' ? 'a heart-shaped hole' : 'a ' + v + ' hole'; } },
+        roof: { lv: 'e', vals: ['#b0413e', '#3a6ea5', '#3a8a4a'], part: 'roof', say: function (v) { return 'a ' + { '#b0413e': 'red', '#3a6ea5': 'blue', '#3a8a4a': 'green' }[v] + ' roof'; } },
+        perch: { lv: 'mh', vals: [true, false], part: 'perch', say: function (v) { return v ? 'a perch' : 'no perch'; } },
+        chimney: { lv: 'mh', vals: ['R', 'L'], part: 'chimney', say: function (v) { return 'the chimney on the ' + lr(v); } },
+        flowers: { lv: 'h', vals: [3, 2, 4], part: 'flowers', say: function (v) { return numw(v) + ' painted flowers'; } }
+      },
+      decoys: [['bird', 'a bird'], ['leaf', 'a leaf']], decoyNote: 'Birds and leaves don’t count.', decoyAfter: 'just visitors',
+      setup: ['{Owner} built a row of birdhouses from one plan, all exactly the same. {His} grandson made one more to join the row, but didn’t follow the plan exactly.', 'The birdhouses along {poss} fence were all made from one kit. One was built from a different kit.'],
+      q: ['Which birdhouse is different?', 'Which birdhouse wasn’t built from the plan?'], titles: ['Birdhouse Row', 'Home Tweet Home', 'The Odd Birdhouse', 'A Different Nest'] }
+  };
+  var ODD_KEYS = ['gnome', 'cupcake', 'teacup', 'nutcracker', 'birdhouse', 'clock'];
+  function plLabel(F, list) { return (list.length > 1 ? F.label + 's ' : F.label + ' ') + andList(list.map(String)); }
+  T.oddone = function (r, level, occ) {
+    var fam = ODD_KEYS[(occ + hstr('odd')) % ODD_KEYS.length];
+    if (r.chance(0.3)) fam = r.pick(ODD_KEYS);
+    if (fam === 'clock') return clockShop(r, level);
+    var F = ODD[fam], N = level === 'easy' ? r.pick([4, 5]) : level === 'medium' ? 5 : 6;
+    var lv = level.charAt(0), feats = Object.keys(F.feats).filter(function (k) { return F.feats[k].lv.indexOf(lv) >= 0; });
+    var f = r.pick(feats), base = {};
+    Object.keys(F.feats).forEach(function (k) { base[k] = r.pick(F.feats[k].vals); });
+    var oddV = r.pick(F.feats[f].vals.filter(function (v) { return v !== base[f]; })), odd = r.int(0, N - 1);
+    // things the same for all of them, picked per case
+    var common = {};
+    if (fam === 'cupcake') { common.wrap = r.pick(['#e0607a', '#3a8ad8', '#f2c230', '#3aa65a', '#9b59b6']); common.icing = r.pick(['#fbe3ec', '#fbf6e6', '#d9b4f0', '#c8f0d8', '#7a4a2a']); common.sprinkles = base.sprinkles; }
+    if (fam === 'teacup') { common.pc = r.pick(['#3a6ea5', '#e0607a', '#3aa65a', '#e8862a']); common.band = r.pick([null, '#3a6ea5', '#c0392b']); common.rim = null; }
+    if (fam === 'nutcracker') { common.jacket = r.pick(['#c0392b', '#3a6ea5', '#3a8a4a']); common.hat = r.pick(['#1d1d26', '#7a2e3a']); }
+    if (fam === 'birdhouse') { common.color = r.pick(['#e0b351', '#f4efe4', '#8fc0d8', '#e8a87a']); }
+    if (fam === 'gnome') { common.hat = r.pick(['#d33a3a', '#3a6ea5', '#3a8a4a']); common.coat = r.pick(['#3a6ea5', '#d33a3a', '#7a3b8a', '#e8862a']); if (common.hat === common.coat) common.coat = '#e8b830'; }
+    var nd = level === 'easy' ? r.pick([0, 1]) : level === 'medium' ? 2 : 3;
+    var dIdx = r.sample(Array.apply(null, Array(N)).map(function (_, i) { return i; }).filter(function (i) { return level === 'hard' || i !== odd; }), nd);
+    var dk = r.shuffle(F.decoys), deco = {};
+    dIdx.forEach(function (i, j) { deco[i] = dk[j % dk.length]; });
+    function params(i) {
+      var p = {}, v = {};
+      Object.keys(F.feats).forEach(function (k) { v[k] = k === f && i === odd ? oddV : base[k]; });
+      for (var c in common) p[c] = common[c];
+      if (fam === 'gnome') { p.buttons = v.buttons; p.buckle = v.buckle; p.tip = v.tip; p.shovel = v.shovel; }
+      if (fam === 'cupcake') { p.cherry = v.cherry; p.stripes = v.stripes; p.sprinkles = v.sprinkles; p.swirl = v.swirl; }
+      if (fam === 'teacup') { p.handle = v.handle; p.motif = v.motif; p.dots = v.dots; p.rim = v.rim ? '#d4a017' : null; }
+      if (fam === 'nutcracker') { p.plume = v.plume; p.sword = v.sword; p.buttons = v.buttons; p.sash = v.sash; }
+      if (fam === 'birdhouse') { p.hole = v.hole; p.roof = v.roof; p.perch = v.perch; p.chimney = v.chimney; p.flowers = v.flowers; }
+      if (deco[i]) { var dd = deco[i][0]; p[dd] = dd === 'flag' ? r.pick(['#3a8ad8', '#e0384a', '#3aa65a']) : dd === 'ptag' ? r.pick(['£2', '£3', '50p']) : dd === 'ribbon' ? '#e0384a' : dd === 'bird' ? r.pick(['#3a8ad8', '#e8862a']) : 1; }
+      return { p: p, v: v };
+    }
+    // ── the picture ──
+    var items = [], ids = [], W = 400, H = 300, rows = F.rows && N > 5 ? 2 : 1;
+    var S = { gnome: N > 5 ? 1.25 : 1.4, cupcake: N > 5 ? 1.45 : 1.6, teacup: rows > 1 ? 1.3 : 1.15, nutcracker: N > 5 ? 1.2 : 1.3, birdhouse: N > 5 ? 1.15 : 1.25 }[fam];
+    if (fam === 'gnome') items.push(['sun', { x: 352, y: 36, r: 13 }], ['cloud', { x: 90, y: 40, s: 1.1 }], ['cloud', { x: 236, y: 30, s: 0.8 }], ['fence', { x: 0, y: 150, w: 400, h: 50, color: '#f4efe4' }], ['flowerbed', { x: 0, y: 158, w: 400, colors: r.shuffle(['#e04a6a', '#ffd23f', '#9b59b6', '#ff8a3d']), seed: r.int(1, 99) }]);
+    if (fam === 'birdhouse') items.push(['cloud', { x: 80, y: 34 }], ['cloud', { x: 300, y: 26, s: 0.8 }], ['tree', { x: 30, y: 214, size: 0.9 }], ['tree', { x: 382, y: 214, size: 0.8 }], ['fence', { x: 0, y: 228, w: 400, h: 40, color: '#c9a77a' }]);
+    if (fam === 'cupcake') items.push(['sign', { x: 130, y: 36, w: 140, h: 24, text: r.pick(['FRESH TODAY', 'CUPCAKES', 'BAKED TODAY']), size: 13, post: false, color: '#7a3b2a', ink: '#fbf6e6' }], ['svg', { svg: '<rect x="10" y="220" width="380" height="10" rx="2" fill="#f4efe4" stroke="#2b2433" stroke-width="1.2"/><rect x="10" y="230" width="380" height="70" fill="#c98a5a" stroke="#2b2433" stroke-width="1.2"/><path d="M10 238h380" stroke="#a8693a" stroke-width="1"/>' }]);
+    if (fam === 'teacup') items.push(['svg', { svg: '<rect x="14" y="10" width="372" height="290" rx="4" fill="#8a5a34" stroke="#2b2433" stroke-width="1.4"/><rect x="24" y="20" width="352" height="280" fill="#f0e2c4"/>' + (rows > 1 ? '<rect x="18" y="128" width="364" height="9" fill="#a0703f" stroke="#2b2433" stroke-width="1.1"/>' : '') + '<rect x="18" y="246" width="364" height="9" fill="#a0703f" stroke="#2b2433" stroke-width="1.1"/>' }]);
+    if (fam === 'nutcracker') items.push(['svg', { svg: '<rect x="0" y="232" width="400" height="12" fill="#8a5a34" stroke="#2b2433" stroke-width="1.2"/><rect x="0" y="244" width="400" height="56" fill="#6e4528"/>' }], ['sign', { x: 140, y: 34, w: 120, h: 22, text: 'TOY SHOP', size: 12, post: false, color: '#2f5a46', ink: '#f4efe4' }]);
+    var bgs = { gnome: ['outside', { groundY: 150, ground: '#79b85a', hills: '#9fcf7a' }], birdhouse: ['outside', { groundY: 230, ground: '#79b85a', hills: '#9fcf7a' }], cupcake: ['room', { wall: '#f3e2c4', paper: 'stripes', floorY: 300 }], teacup: ['plain', { color: '#6e4a2e' }], nutcracker: ['room', { wall: '#e8d8b8', paper: 'diamonds', floorY: 300 }] };
+    var perRow = Math.ceil(N / rows);
+    for (var i = 0; i < N; i++) {
+      var row = Math.floor(i / perRow), col = i % perRow, nIn = row === rows - 1 ? N - perRow * (rows - 1) : perRow;
+      var gap = (W - 40) / nIn, x = 20 + gap * (col + 0.5);
+      var y = { gnome: 248, birdhouse: 252, cupcake: 214, teacup: rows > 1 ? (row ? 236 : 118) : 236, nutcracker: 226 }[fam];
+      var pp = params(i), id = 'o' + (i + 1);
+      ids.push(id);
+      var o = { id: id, x: Math.round(x), y: y, s: S }; for (var k in pp.p) o[k] = pp.p[k];
+      items.push([F.kind, o]);
+      var ty = { gnome: 286, birdhouse: 284, cupcake: 254, teacup: rows > 1 ? (row ? 272 : 156) : 272, nutcracker: 266 }[fam];
+      items.push(fam === 'gnome' || fam === 'birdhouse' ? ['stake', { x: Math.round(x), y: ty + 6, text: String(i + 1) }] : ['tag', { x: Math.round(x), y: ty, text: String(i + 1), s: 0.85 }]);
+    }
+    // ── words ──
+    var gd = r.pick(['f', 'm']), first = r.pick(gd === 'f' ? GIRLS : BOYS), owner = (gd === 'f' ? r.pick(['Mrs.', 'Ms.']) : 'Mr.') + ' ' + r.pick(SUR), pr = pron(gd);
+    var o2 = { Owner: owner, poss: poss(owner), his: pr.his, His: pr.His, he: pr.he, n: numw(N), First: r.pick(GIRLS) };
+    var setup = fill(r.pick(F.setup), o2).replace('six cups', numw(N) + ' cups');
+    if (nd) setup += ' ' + F.decoyNote;
+    var Fi = F.feats[f], others = []; for (var j = 0; j < N; j++) if (j !== odd) others.push(j + 1);
+    var dList = Object.keys(deco).map(function (i) { return deco[i][1] + ' on ' + F.one + ' ' + (+i + 1); });
+    var steps = [
+      { text: plLabel(F, others) + ' all have ' + Fi.say(base[f]) + '.' + (dList.length ? ' ' + cap(andList(dList)) + (dList.length > 1 ? ' are ' : ' is ') + F.decoyAfter + '.' : ''), marks: others.slice(0, 2).map(function (k) { return Fi.part ? { p: 'o' + k + '.' + Fi.part, pad: 2 } : { id: 'o' + k }; }) },
+      { text: F.label + ' ' + (odd + 1) + ' has ' + Fi.say(oddV) + '.', marks: [Fi.part ? { p: 'o' + (odd + 1) + '.' + Fi.part, pad: 2 } : { id: 'o' + (odd + 1) }] }
+    ];
+    var hintAt = others[0], areaWord = { buttons: 'buttons', buckle: 'belt', tip: 'hat', shovel: 'hands', cherry: 'top', stripes: 'wrapper', sprinkles: 'icing', swirl: 'icing', handle: 'handle', motif: 'pattern', dots: 'pattern', rim: 'rim', plume: 'hat', sword: 'side', sash: 'sash', hole: 'front', roof: 'roof', perch: 'front', chimney: 'roof', flowers: 'flowers' }[f];
+    var hints = [
+      { text: nd ? F.decoyNote + ' Compare the ' + F.one + 's themselves, one detail at a time.' : 'Pick one detail and check it on every ' + F.one + ', then move on to the next detail.' },
+      { text: 'Look closely at each ' + F.one + '’s ' + areaWord + '. Are they really all the same?', at: Fi.part ? { p: 'o' + hintAt + '.' + Fi.part, pad: 4 } : { id: 'o' + hintAt, pad: 2 } }
+    ];
+    var key = 'oddone|' + fam + '|' + N + '|' + f + '|' + JSON.stringify(base) + '|' + JSON.stringify(oddV) + '|' + odd + '|' + JSON.stringify(common) + '|' + Object.keys(deco).map(function (i) { return i + deco[i][0]; }).join(',');
+    return {
+      type: 'Odd one out', title: r.pick(F.titles), setup: setup, q: r.pick(F.q), size: [W, H], tap: true,
+      choices: ids.map(function (id, i) { return { id: id, label: F.label + ' ' + (i + 1) }; }), answer: ids[odd],
+      scene: { bg: bgs[fam], items: items }, hints: hints, solution: { steps: steps, verdict: F.label + ' ' + (odd + 1) + ' is ' + F.fake + '.' }, key: key,
+      logic: { tpl: 'oddone', fam: fam, feats: Object.keys(F.feats), kind: F.kind }
+    };
+  };
+  // the clock shop: all the clocks look different, but they should all tell the same time
+  function timeWords(h, m) {
+    var H12 = ['twelve', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven'];
+    var hh = h % 12, nx = (h + 1) % 12;
+    if (m === 0) return H12[hh] + ' o’clock';
+    if (m === 15) return 'quarter past ' + H12[hh];
+    if (m === 30) return 'half past ' + H12[hh];
+    if (m === 45) return 'quarter to ' + H12[nx];
+    var MW = { 5: 'five', 10: 'ten', 20: 'twenty', 25: 'twenty-five' };
+    return m < 30 ? MW[m] + ' past ' + H12[hh] : MW[60 - m] + ' to ' + H12[nx];
+  }
+  function clockShop(r, level) {
+    var N = level === 'easy' ? 5 : 6, h = r.int(1, 12), m = r.pick([0, 10, 15, 20, 30, 40, 45, 50]), oh = h, om = m;
+    if (level === 'easy') { oh = ((h - 1 + r.pick([3, 4, 5, 6, 7])) % 12) + 1; om = r.pick([0, 15, 30, 45].filter(function (x) { return x !== m; })); }
+    else if (level === 'medium') { if (r.chance(0.5)) oh = ((h - 1 + r.pick([2, 3, 9, 10])) % 12) + 1; else om = (m + r.pick([15, 20, 30, 40, 45])) % 60; }
+    else { if (r.chance(0.5)) oh = ((h - 1 + r.pick([1, 11])) % 12) + 1; else om = (m + r.pick([10, 50])) % 60; }
+    var odd = r.int(0, N - 1), items = [], ids = [];
+    var frames = r.shuffle(['#5a3a22', '#c9a227', '#2f5a46', '#7a2e3a', '#3a3a46', '#8a5a34', '#b0413e']), faces = ['#fbf6e6', '#fdfaf0', '#f4ead0', '#eef3f7'];
+    items.push(['svg', { svg: '<rect x="0" y="262" width="400" height="38" fill="#7a5233"/><path d="M0 262h400" stroke="#2b2433" stroke-width="1.2"/>' }], ['sign', { x: 150, y: 30, w: 100, h: 22, text: 'CLOCKS', size: 12, post: false, color: '#3a3a46', ink: '#f4efe4' }]);
+    var pos = N === 5 ? [[70, 100], [200, 96], [330, 100], [130, 196], [270, 196]] : [[70, 100], [200, 96], [330, 100], [70, 200], [200, 204], [330, 200]];
+    pos = r.shuffle(pos);
+    for (var i = 0; i < N; i++) {
+      var id = 'c' + (i + 1); ids.push(id);
+      var rr = level === 'hard' ? r.int(26, 30) : r.int(22, 28);
+      items.push(['clock', { id: id, x: pos[i][0], y: pos[i][1], r: rr, h: i === odd ? oh : h, m: i === odd ? om : m, color: frames[i % frames.length], face: faces[i % faces.length], nums: r.chance(0.5) ? 1 : 0 }]);
+      items.push(['tag', { x: pos[i][0], y: pos[i][1] + rr + 16, text: String(i + 1), s: 0.85 }]);
+    }
+    var owner = r.pick(['Mr.', 'Mrs.', 'Ms.']) + ' ' + r.pick(SUR), others = []; for (var j = 0; j < N; j++) if (j !== odd) others.push(j + 1);
+    var steps = [
+      { text: 'Clocks ' + andList(others.map(String)) + ' look different, but they all say ' + timeWords(h, m) + '.', marks: others.slice(0, 2).map(function (k) { return { id: 'c' + k }; }) },
+      { text: 'Clock ' + (odd + 1) + ' says ' + timeWords(oh, om) + '. ' + r.pick(['It has stopped.', 'It stopped earlier and hasn’t moved since.']), marks: [{ id: 'c' + (odd + 1) }] }
+    ];
+    return {
+      type: 'Odd one out', title: r.pick(['Tick Tock', 'The Stopped Clock', 'Time Stands Still', 'The Clock Shop']), size: [400, 300], tap: true,
+      setup: r.pick(['Every morning, ' + owner + ' sets all the clocks in ' + (owner.indexOf('Mr.') === 0 ? 'his' : 'her') + ' shop to exactly the same time, and they keep perfect time. Today, one of them has stopped.', 'All the clocks in ' + poss(owner) + ' shop keep perfect time, and they were all set together this morning. But one clock has stopped.']) + (level !== 'easy' ? ' Don’t be fooled by the frames: only the time matters.' : ''),
+      q: r.pick(['Which clock has stopped?', 'Which clock is wrong?']),
+      choices: ids.map(function (id, i) { return { id: id, label: 'Clock ' + (i + 1) }; }), answer: ids[odd],
+      scene: { bg: ['room', { wall: r.pick(['#e8dcc0', '#dfe6e0', '#efe0d0']), paper: r.pick(['stripes', 'dots', null]), floorY: 262, floor: '#7a5233' }], items: items },
+      hints: [{ text: 'The clocks all look different, but only the time matters. Read the time on each one.' }, { text: 'Read clock ' + others[0] + ' first. Do all the others say the same?', at: { id: 'c' + others[0], pad: 3 } }],
+      solution: { steps: steps, verdict: 'Clock ' + (odd + 1) + ' has stopped.' },
+      key: 'oddone|clock|' + N + '|' + h + ':' + m + '|' + oh + ':' + om + '|' + odd,
+      logic: { tpl: 'oddone', fam: 'clock' }
+    };
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // WHAT'S MISSING: two photos of the same shelves, before and after
+  // ═════════════════════════════════════════════════════════════════════════
+  var OBJ = {
+    globe: ['the globe', 'globe', {}, 30], trophy: ['the trophy', 'trophy', { s: 1.1 }, 28], ship: ['the ship in a bottle', 'ship', {}, 58], camera: ['the camera', 'camera', {}, 26], bear: ['the teddy bear', 'bear', {}, 28],
+    toycar: ['the toy car', 'toycar', {}, 30], vase: ['the vase', 'vase', { color: '#d98a3a', s: 0.9 }, 24], books: ['the stack of books', 'books', {}, 32], teapot: ['the teapot', 'teapot', {}, 44], candle: ['the candle', 'candle', { len: 20, holder: 6, lit: false, s: 0.9 }, 24],
+    piggy: ['the piggy bank', 'piggy', {}, 40], snowglobe: ['the snow globe', 'snowglobe', {}, 30], hourglass: ['the hourglass', 'hourglass', {}, 26], duck: ['the rubber duck', 'duck', {}, 36], robot: ['the toy robot', 'robot', { s: 0.9 }, 32],
+    rocket: ['the toy rocket', 'rocket', {}, 28], shell: ['the seashell', 'shell', {}, 32], musicbox: ['the music box', 'musicbox', {}, 40], radio: ['the radio', 'radio', {}, 40], lantern: ['the lantern', 'lantern', {}, 24], plant: ['the pot plant', 'plant', { s: 0.6, pot: '#3a8a7a' }, 30], jar: ['the sweet jar', 'jar', { cookies: 4, s: 0.8, label: 'SWEETS' }, 28]
+  };
+  var MISS_SETS = [
+    { key: 'party', who: '{Owner}', place: 'treasure shelves', cap: ['Before the party', 'After the party'], setup: '{Owner} took a photo of {his} treasure shelves before {his} big party, and another one afterwards. Something is gone!', wall: '#eadcc0', paper: 'dots' },
+    { key: 'class', who: '{Owner}', place: 'show-and-tell shelves', cap: ['Monday', 'Friday'], setup: 'Class 3 keeps its show-and-tell things on two shelves. {Owner} took a photo on Monday and another on Friday, and one thing has vanished.', wall: '#e6efe6', paper: 'stripes' },
+    { key: 'shop', who: '{Owner}', place: 'shop window', cap: ['9 o’clock', '5 o’clock'], setup: 'The security camera in {poss} toy shop photographs the window shelves every morning and evening. Between the two photos, something disappeared.', wall: '#efe0d0', paper: 'diamonds' },
+    { key: 'gran', who: 'Grandma', place: 'mantelpiece shelves', cap: ['Saturday', 'Sunday'], setup: 'Grandma photographs her shelves of treasures every weekend. The grandkids visited on Sunday, and now one treasure is missing.', wall: '#f0e2d8', paper: 'stripes' },
+    { key: 'museum', who: '{Owner}', place: 'museum display', cap: ['Opening time', 'Closing time'], setup: 'The children’s museum photographs its touch-and-see shelves at opening and closing time. Today, one thing didn’t make it to closing time.', wall: '#dfe6e0', paper: null }
+  ];
+  T.missing = function (r, level, occ) {
+    var set = MISS_SETS[(occ + hstr('missing')) % MISS_SETS.length]; if (r.chance(0.3)) set = r.pick(MISS_SETS);
+    var nB = level === 'easy' ? 6 : level === 'medium' ? 7 : 8;
+    var pool = r.sample(Object.keys(OBJ), nB + 1), before = pool.slice(0, nB), extra = pool[nB];
+    // 8 slots: 4 per shelf
+    var slots = [0, 1, 2, 3, 4, 5, 6, 7];
+    var posB = r.sample(slots, nB), place = {};
+    before.forEach(function (o, i) { place[o] = posB[i]; });
+    var gone = r.pick(before), after = {}, moved = [], added = null;
+    before.forEach(function (o) { if (o !== gone) after[o] = place[o]; });
+    var free = function () { var used = {}; Object.keys(after).forEach(function (o) { used[after[o]] = 1; }); return slots.filter(function (s) { return !used[s]; }); };
+    var stay = before.filter(function (o) { return o !== gone; });
+    var nMove = level === 'easy' ? 1 : level === 'medium' ? 2 : 3;
+    var mv = r.sample(stay, nMove);
+    if (level === 'easy') { var f1 = free().filter(function (s) { return s !== place[gone]; }); if (f1.length) after[mv[0]] = r.pick(f1); else { after[mv[0]] = after[stay[0] === mv[0] ? stay[1] : stay[0]]; } }
+    else if (level === 'medium') { var t = after[mv[0]]; after[mv[0]] = after[mv[1]]; after[mv[1]] = t; }
+    else { var t2 = after[mv[0]]; after[mv[0]] = after[mv[1]]; after[mv[1]] = t2; after[mv[2]] = place[gone]; added = extra; var fr = free(); after[added] = r.pick(fr); }
+    // anything that changed place counts as moved
+    stay.forEach(function (o) { if (after[o] !== place[o]) moved.push(o); });
+    var unmoved = stay.filter(function (o) { return moved.indexOf(o) < 0; });
+    function shelfItems(map, tag) {
+      var rows = [[], []];
+      Object.keys(map).forEach(function (o) { var sl = map[o], d = OBJ[o], x = 52 + (sl % 4) * 90, it = { id: o + tag, x: x, y: 0 }; for (var k in d[2]) it[k] = d[2][k]; if (o === 'ship') it.x = x; rows[sl < 4 ? 0 : 1].push([d[1], it]); });
+      return [['frame', { x: 300, y: 10, w: 40, h: 26, art: r.f() < 0.5 ? 'mountain' : 'boat' }], ['shelf', { x: 12, y: 78, w: 352, color: '#9a6438', items: rows[0] }], ['shelf', { x: 12, y: 156, w: 352, color: '#9a6438', items: rows[1] }]];
+    }
+    var frameArt = r.pick(['mountain', 'boat']);
+    var itB = shelfItems(place, 'B'), itA = shelfItems(after, 'A');
+    itA[0][1].art = itB[0][1].art = frameArt;
+    var items = [
+      ['photo', { x: 12, y: 10, w: 376, h: 176, caption: set.cap[0], bg: ['room', { wall: set.wall, paper: set.paper, floorY: 400 }], items: itB, r: -0.6 }],
+      ['photo', { x: 12, y: 222, w: 376, h: 176, caption: set.cap[1], bg: ['room', { wall: set.wall, paper: set.paper, floorY: 400 }], items: itA, r: 0.5 }]
+    ];
+    var gd = r.pick(['f', 'm']), owner = (gd === 'f' ? r.pick(['Mrs.', 'Ms.']) : 'Mr.') + ' ' + r.pick(SUR), pr = pron(gd);
+    var setup = fill(set.setup, { Owner: owner, poss: poss(owner), his: pr.his }) + (moved.length ? ' ' + r.pick(['A few things were moved around, too.', 'Some things were moved around, too.', 'A few things got moved, as well.']) : '') + (added ? ' And something new appeared.' : '');
+    if (level === 'easy') setup = setup.replace('A few things were moved around, too.', 'One thing was moved, too.').replace('Some things were moved around, too.', 'One thing was moved, too.').replace('A few things got moved, as well.', 'One thing got moved, as well.');
+    var choiceObjs = [gone].concat(r.sample(moved, Math.min(moved.length, level === 'easy' ? 1 : 2))).concat(added ? [added] : []);
+    choiceObjs = choiceObjs.concat(r.sample(unmoved, Math.max(0, 5 - choiceObjs.length)));
+    choiceObjs = r.shuffle(choiceObjs.slice(0, 5));
+    var nameOf = function (o) { return OBJ[o][0]; };
+    var steps = [];
+    if (moved.length) steps.push({ text: cap(andList(moved.map(nameOf))) + (moved.length > 1 ? ' only moved' : ' only moved') + ': ' + (moved.length > 1 ? 'they’re still in the second photo, in new places.' : 'it’s still in the second photo, in a new place.'), marks: moved.map(function (o) { return { id: o + 'A', pad: 2 }; }) });
+    if (added) steps.push({ text: cap(nameOf(added)) + ' is new: it wasn’t in the first photo at all, so it can’t have been taken.', marks: [{ id: added + 'A', pad: 2 }] });
+    steps.push({ text: cap(nameOf(gone)) + ' is in the first photo, but nowhere in the second.', marks: [{ id: gone + 'B', pad: 3 }] });
+    var hints = [
+      { text: r.pick(['Go along the top shelf in the first photo, one thing at a time, and find each thing in the second photo.', 'Take each thing in the first photo and look for it in the second. Moved things are still there somewhere.']) },
+      { text: added ? 'Something new was added, and it’s a trap. Check the bottom shelf of the first photo too.' : 'Moved things are still in the second photo, just in a different place. Which one isn’t there at all?', at: { id: 'photo2', box: [12, 222, 376, 176] } }
+    ];
+    hints[1].at = { box: [12, 222, 376, 176] };
+    return {
+      type: 'What’s missing', title: r.pick(['The Missing Treasure', 'Now You See It', 'Spot the Gap', 'Gone Missing', 'Before and After', 'The Vanishing Act']), setup: setup,
+      q: r.pick(['What was taken?', 'What’s missing from the ' + set.place + '?', 'What disappeared?']), size: [400, 420], tap: false,
+      choices: choiceObjs.map(function (o) { return { id: o, label: cap(nameOf(o)) }; }), answer: gone,
+      scene: { bg: ['desk', { color: r.pick(['#6e4a2e', '#7a5233', '#5e4030']) }], items: items }, hints: hints,
+      solution: { steps: steps, verdict: cap(nameOf(gone)) + ' was taken.' },
+      key: 'missing|' + JSON.stringify(place) + '|' + JSON.stringify(after) + '|' + gone,
+      logic: { tpl: 'missing', before: place, after: after, gone: gone }
+    };
+  };
+
+  // ═════════════════════════════════════════════════════════════════════════
   // Putting it together
   // ═════════════════════════════════════════════════════════════════════════
   var TPL = ['culprit'];

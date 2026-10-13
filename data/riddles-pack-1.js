@@ -17,7 +17,7 @@
       alt: ['windows', 'windowpane', 'window pane'],
       hints: ['I am made of glass.', 'You look out of me to see the garden.'],
       why: 'A window is a sheet of glass in a wall that lets light in and keeps the weather out.' },
-    { id: 'p1-blanket', d: 'easy', q: "I keep you warm all night, but I'm not a fire. You tuck me in, pull me up to your chin, and kick me off when it's hot.", a: 'a blanket',
+    { id: 'p1-blanket', d: 'easy', q: "I keep you warm all night, but I'm not a fire. You snuggle under me, pull me up to your chin, and kick me off when it's hot.", a: 'a blanket',
       alt: ['blankets', 'duvet', 'quilt', 'comforter', 'bedspread', 'covers', 'bed covers', 'eiderdown'],
       hints: ['You find me on your bed.', 'I lie on top of you while you sleep.'],
       why: 'A blanket keeps you cosy in bed, until you get too hot and kick it off.' },
