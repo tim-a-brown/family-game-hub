@@ -633,11 +633,11 @@
     var s = '', w = p.w || 10, h = p.h || 40, c = p.color || '#3a6ea5';
     s += rect(0, -h, w, h, c, { sw: 0.9 }) + line(1.5, -h + 4, w - 1.5, -h + 4, shade(c, 0.35), 0.8) + line(1.5, -6, w - 1.5, -6, shade(c, 0.35), 0.8);
     if (p.crack) s += path('M' + n(w * 0.2) + ' ' + n(-h * 0.6) + 'l' + n(w * 0.35) + ' 3 ' + n(-w * 0.2) + ' 4 ' + n(w * 0.4) + ' 3', 'none', { st: shade(c, 0.5), sw: 0.7 });
-    if (p.label) s += rect(1.5, -h * 0.42 - 5, w - 3, 9, '#fbf6e6', { sw: 0.5 }) + text(w / 2, -h * 0.42 + 2, p.label, { size: Math.min(8, w * 0.8), font: 'sans', weight: 700 });
+    if (p.label) { var ly = p.upside ? -h * 0.84 : -h * 0.2; s += g(rect(-(w - 3) / 2, -4.5, w - 3, 9, '#fbf6e6', { sw: 0.5 }) + text(0, 3, p.label, { size: Math.min(8, w * 0.8), font: 'sans', weight: 700 }), { x: w / 2, y: ly, r: p.upside ? 180 : 0 }); }
     if (p.title) s += text(w / 2, -h / 2, p.title, { size: 5, fill: '#fff', r: p.upside ? 90 : -90, font: 'serif' });
     if (p.dust) s += rect(-0.2, -h - 1.6, w + 0.4, 1.6, '#d8d2c4', { st: 0 });
     if (p.marks) s += g(circ(w * 0.3, -h - 0.8, 0.7, shade(c, -0.2), { st: 0 }) + circ(w * 0.65, -h - 0.9, 0.7, shade(c, -0.2), { st: 0 }), { p: (p.id || 'book') + '.top' });
-    if (p.ribbon) s += path('M' + n(w * 0.5) + ' ' + n(-h) + 'l0 -7l-1.5 2', 'none', { st: p.ribbon, sw: 1.4 });
+    if (p.ribbon) s += path('M' + n(w * 0.5 - 1.2) + ' ' + n(-h) + 'v-8l1.2 1.6 1.2 -1.6v8z', p.ribbon, { sw: 0.5 });
     return g(s, { x: p.x, y: p.y, id: p.id, r: p.tilt });
   }
   function rug(p) { var w = p.w || 160, c = p.color || '#a3483a'; return g(ell(0, 0, w / 2, w * 0.09, c) + ell(0, 0, w / 2 - 8, w * 0.09 - 3, 'none', { st: shade(c, 0.3), sw: 1.4 }), { x: p.x, y: p.y, id: p.id }); }

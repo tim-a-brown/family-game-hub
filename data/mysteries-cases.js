@@ -988,24 +988,30 @@
     var R = (function (seed) { var a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })(77);
     var cols = ['#7a2e3a', '#2f4a6a', '#4f6a3a', '#8a5a2a', '#5a3a6a', '#a0703f', '#2f5a5a', '#6a2a2a', '#3a3a5a'];
     var shelves = [92, 186, 280], items = [], special = {
-      0: [[5, { id: 'A', label: 'A', h: 66, w: 16, color: '#2f5a5a' }], [14, { id: 'B', label: 'B', h: 70, w: 18, color: '#6a2a2a', ribbon: '#e8c34a' }]],
+      0: [[5, { id: 'A', label: 'A', h: 66, w: 16, color: '#2f5a5a' }], [14, { id: 'B', label: 'B', h: 70, w: 18, color: '#6a2a2a', ribbon: '#c0392b' }]],
       1: [[3, { id: 'C', label: 'C', h: 64, w: 15, color: '#3a3a5a', upside: 1 }], [10, { id: 'D', label: 'D', h: 68, w: 17, color: '#4f6a3a', clean: 1 }], [17, { id: 'E', label: 'E', h: 60, w: 14, color: '#8a5a2a' }]],
       2: [[7, { id: 'F', label: 'F', h: 70, w: 17, color: '#5a3a6a' }]]
     };
     items.push(['svg', { svg: '<rect x="10" y="6" width="380" height="290" fill="#3a2418" stroke="#2b2433" stroke-width="1.4"/><rect x="10" y="6" width="380" height="8" fill="#5a3a22"/><rect x="10" y="6" width="10" height="290" fill="#5a3a22"/><rect x="380" y="6" width="10" height="290" fill="#5a3a22"/>' }]);
+    var fingers = null;
     shelves.forEach(function (sy, si) {
       var x = 24, idx = 0, sp = special[si].slice();
-      items.push(['svg', { svg: '<rect x="20" y="' + sy + '" width="360" height="8" fill="#6a4426" stroke="#2b2433" stroke-width="1"/><rect x="20" y="' + (sy - 2.2) + '" width="360" height="2.2" fill="#cfc8ba"/>' }]);
+      fingers = null;
+      items.push(['svg', { svg: '<rect x="20" y="' + (sy - 2.2) + '" width="360" height="2.2" fill="#cfc8ba"/>' }]);
       while (x < 366) {
         var sb = sp.length && sp[0][0] === idx ? sp.shift()[1] : null;
         var w = sb ? sb.w : 8 + Math.floor(R() * 8), h = sb ? sb.h : 54 + Math.floor(R() * 20);
         if (x + w > 376) break;
         var c = sb ? sb.color : cols[Math.floor(R() * cols.length)];
         if (!sb && R() < 0.06) { x += 6; idx++; continue; }
-        items.push(['book', { id: sb && sb.id, x: x, y: sy, w: w, h: h, color: c, label: sb && sb.label, dust: !(sb && sb.clean), ribbon: sb && sb.ribbon, title: sb && sb.upside ? 'ATLAS' : null, upside: sb && sb.upside }]);
-        if (sb && sb.clean) items.push(['svg', { id: 'fingers', svg: '<rect x="' + (x - 3) + '" y="' + (sy - 2.4) + '" width="' + (w + 6) + '" height="2.6" fill="#6a4426"/>' + [0, 1, 2, 3].map(function (k) { return '<ellipse cx="' + (x - 1 + k * (w + 2) / 3) + '" cy="' + (sy + 3.5) + '" rx="2" ry="1.2" fill="#3a2a1e" opacity=".55"/>'; }).join('') }]);
+        items.push(['book', { id: sb && sb.id, x: x, y: sy, w: w, h: h, color: c, label: sb && sb.label, dust: !(sb && sb.clean), ribbon: sb && sb.ribbon, upside: sb && sb.upside, tilt: 0 }]);
+        if (sb && sb.clean) fingers = [x, w];
         x += w + 0.5; idx++;
       }
+      // the shelf's front edge, grey with dust, wiped clean by fingers in front of the moved book
+      var edge = '<rect x="20" y="' + sy + '" width="360" height="8" fill="#6a4426" stroke="#2b2433" stroke-width="1"/><rect x="20.6" y="' + (sy + 0.6) + '" width="358.8" height="3" fill="#bdb3a2" opacity=".85"/>';
+      items.push(['svg', { svg: edge }]);
+      if (fingers) items.push(['svg', { id: 'fingers', svg: [0, 1, 2, 3].map(function (k) { return '<rect x="' + (fingers[0] - 2 + k * (fingers[1] + 4) / 4) + '" y="' + (sy + 0.6) + '" width="' + ((fingers[1] + 4) / 4 - 1.6) + '" height="3.4" rx="1" fill="#6a4426"/>'; }).join('') }]);
     });
     items.push(['svg', { svg: '<path d="M20 6L380 6" stroke="#2b2433" stroke-width="1"/>' }]);
     add({
