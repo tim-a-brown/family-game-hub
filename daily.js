@@ -10,6 +10,7 @@
 //   Crossword     dayKey()             ('YYYY-MM-DD' local)               history daily, kind
 //   Truth or Lies today(), DAILY_LV    (days since 1 Jan 2024 local, +1) history daily, solved
 //   Cipher Cases  today(), DAILY       (days since 1 Jan 2024 local, +1) history daily, secs, revealed; ciphers_state S.g.daily
+//   Logic Grids   today(), DAILY_LV  (days since 1 Jan 2024 local, +1) history daily, logicgrid_state.S.daily
 //   Riddles       today()              (days since 1 Jan 2024 local, +1) history daily; riddles_state.daily
 var Daily = window.Daily = (function () {
   var DAY = 86400000;
@@ -21,6 +22,7 @@ var Daily = window.Daily = (function () {
   var WD = new Date().getDay();
   var SUDOKU = ['Expert', 'Easy', 'Easy', 'Medium', 'Medium', 'Hard', 'Hard'];   // Sun..Sat
   var SEARCH = ['Hard 12×12', 'Easy 8×8', 'Easy 8×8', 'Medium 10×10', 'Medium 10×10', 'Hard 12×12', 'Hard 12×12'];
+  var LOGIC = ['Hard 5×5', 'Easy 3×4', 'Easy 3×4', 'Medium 4×4', 'Medium 4×4', 'Hard 4×5', 'Hard 5×5'];   // Sun..Sat
 
   // each: {id (catalog), name, what, status: 'done'|'going'|'new', note}
   var games = [
@@ -63,6 +65,14 @@ var Daily = window.Daily = (function () {
       var s = state('mazes_state');
       if (s && s.daily === day && !s.done) return { id: 'mazes', what: 'Daily maze', status: 'going', note: s.ms ? clock(s.ms / 1000) : '' };
       return { id: 'mazes', what: 'Daily maze · small Monday, biggest Saturday', status: 'new' };
+    },
+    function logicgrid() {
+      var day = localDay(), best = null;
+      hist('logicgrid').forEach(function (e) { if (e && e.daily === day && (!best || e.seconds < best.seconds)) best = e; });
+      if (best) return { id: 'logicgrid', what: 'Daily · ' + LOGIC[WD], status: 'done', note: clock(best.seconds) };
+      var s = state('logicgrid_state'); s = s && s.S;
+      if (s && s.daily === day && !s.done) return { id: 'logicgrid', what: 'Daily · ' + LOGIC[WD], status: 'going', note: clock(s.time) };
+      return { id: 'logicgrid', what: 'Daily · ' + LOGIC[WD] + ' today', status: 'new' };
     },
     function riddles() {
       var day = localDay(), e = hist('riddles').filter(function (x) { return x && x.daily === day; })[0];
