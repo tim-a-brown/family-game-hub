@@ -2,6 +2,7 @@
 // Picture Mysteries: render every case's picture to PNG for review.
 //
 //   node scripts/mysteries-render.js [outDir] [caseId ...]     (outDir defaults to <tmp>/mysteries-review)
+//   node scripts/mysteries-render.js outDir --daily 1018-1047    generated daily cases (data/mysteries-gen.js) for those days
 //
 // For each case it writes <id>.png (the picture as the player sees it) and
 // <id>-solution.png (the same picture with the solution's marks, hint circles
@@ -15,7 +16,8 @@ try { chromium = require('playwright').chromium; } catch (e) { console.error('Pl
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.resolve(process.argv[2] || path.join(os.tmpdir(), 'mysteries-review'));
-const ONLY = process.argv.slice(3);
+const ARGS = process.argv.slice(3), DI = ARGS.indexOf('--daily');
+const DAILY = DI >= 0 ? ARGS[DI + 1].split('-').map(Number) : null, ONLY = DI >= 0 ? [] : ARGS;
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json' };
 
 function serve() {
@@ -39,7 +41,9 @@ function serve() {
   page.on('console', m => { if (m.type() === 'warning' || m.type() === 'error') console.log('console:', m.text()); });
   await page.goto(base + 'kit.css'); // same origin for the page below
   await page.setContent('<!doctype html><html><head><meta charset="utf-8"><base href="' + base + '"><link rel="stylesheet" href="kit.css"><style>body{margin:0;background:#fff;}#s{width:800px;}#s svg{display:block;width:100%;height:auto;}</style>' +
-    '<script src="data/mysteries-scene.js"></script><script src="data/mysteries-cases.js"></script></head><body><div id="s"></div></body></html>', { waitUntil: 'load' });
+    '<script src="data/mysteries-scene.js"></script><script src="data/mysteries-cases.js"></script><script src="data/mysteries-gen.js"></script></head><body><div id="s"></div></body></html>', { waitUntil: 'load' });
+  // generated dailies join the list as if they were bank cases
+  if (DAILY) await page.evaluate(([a, b]) => { window.MYSTERY_CASES = []; for (let d = a; d <= (b || a); d++) { const c = MysteryGen.daily(d), p = MysteryGen.verify(c); if (p.length) console.error('daily ' + d + ': ' + p.join('; ')); const dt = new Date(2024, 0, d); c.type = dt.toDateString() + ' · ' + c.tpl + ' · ' + c.type; MYSTERY_CASES.push(c); } }, DAILY);
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(() => Promise.all(['10px "Patrick Hand"', '10px "Lilita One"'].map(f => document.fonts.load(f))));
   const cases = await page.evaluate(() => MYSTERY_CASES.map(c => ({ id: c.id, level: c.level, no: c.no, title: c.title, setup: c.setup, q: c.q, choices: c.choices, answer: c.answer, hints: c.hints.map(h => h.text), steps: c.solution.steps.map(s => s.text), verdict: c.solution.verdict, type: c.type })));

@@ -52,6 +52,7 @@
   function orList(l) { return l.length < 2 ? (l[0] || '') : l.slice(0, -1).join(', ') + ' or ' + l[l.length - 1]; }
   var NUMW = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
   function numw(k) { return NUMW[k] || String(k); }
+  function an(w) { return (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w; }
   // fill {slots} in a phrase
   function fill(t, o) { return t.replace(/\{(\w+)\}/g, function (m, k) { return o[k] != null ? o[k] : m; }); }
   // a set of distinct names (gender per name), adults get a title + surname
@@ -189,7 +190,7 @@
     if (level !== 'easy' && K.indexOf('fabric') >= 0 && A.fabPat === 'plain') A.fabPat = r.pick(['stripes', 'dots', 'check']);
     if (level === 'easy') A.hairLen = 'long';
     var GLOVEC = { brown: '#7a3b2a', black: '#2b2b33', red: '#c0392b', green: '#3a8a4a', blue: '#3a6ea5', yellow: '#e8b830' };
-    var gTry = 0; while (cdist(GLOVEC[A.glove], CLOTH[A.fabCol]) < 110 && gTry++ < 30) A.glove = r.pick(Object.keys(GLOVEC));
+    var gTry = 0; while (cdist(GLOVEC[A.glove], CLOTH[A.fabCol]) < 75 && gTry++ < 30) A.glove = r.pick(Object.keys(GLOVEC));
     // decoys: the first k each fail exactly one clue (so every clue is needed), the rest fail one or two
     var people = [{ ans: true, v: JSON.parse(JSON.stringify(A)), fails: [] }];
     for (var i = 0; i < N - 1; i++) {
@@ -207,7 +208,7 @@
           else v.hairCurly = !A.hairCurly;
         } else if (c === 'fabric') {
           var fm = level === 'easy' ? 'col' : level === 'medium' ? r.pick(['col', 'pat']) : 'pat';
-          if (fm === 'col') v.fabCol = otherCol(CLOTH_MAIN.filter(function (c3) { return K.indexOf('glove') < 0 || cdist(CLOTH[c3], GLOVEC[A.glove]) >= 110; }), A.fabCol); else v.fabPat = otherCol(['plain', 'stripes', 'dots', 'check'], A.fabPat);
+          if (fm === 'col') { var okC = CLOTH_MAIN.filter(function (c3) { return c3 !== A.fabCol && (K.indexOf('glove') < 0 || cdist(CLOTH[c3], GLOVEC[A.glove]) >= 75); }); v.fabCol = okC.length ? r.pick(okC) : otherCol(CLOTH_MAIN, A.fabCol); } else v.fabPat = otherCol(['plain', 'stripes', 'dots', 'check'], A.fabPat);
         } else if (c === 'shoe') v.shoe = A.shoe === 'heel' ? 'flat' : 'heel';
         else if (c === 'glove') v.glove = level === 'easy' ? r.pick(['none', 'other']) : level === 'medium' ? r.pick(['other', 'pair']) : 'pair';
         else if (c === 'mark') v.mark = level === 'hard' && M.other ? r.pick(['none', 'other']) : 'none';
@@ -250,7 +251,7 @@
       if (K.indexOf('mark') >= 0 && M.on === 'sleeveR') { L.sl = null; var t2 = 0; while (cdist(CLOTH[L.top], M.col) < 110 && t2++ < 20 && K.indexOf('fabric') < 0) L.top = r.pick(CLOTH_MAIN.concat(['white', 'navy'])); }
       if (K.indexOf('mark') >= 0 && (M.on === 'skinL' || M.on === 'skinR')) { var t3 = 0; while (cdist(SKIN[L.skin], M.col) < 70 && t3++ < 20) L.skin = r.int(0, 5); }
       // a dark glove by dark trousers is hard to see: keep them apart
-      if (K.indexOf('glove') >= 0) { var gcs = L.marks.filter(function (m2) { return /^gloves?:/.test(m2); }).map(function (m2) { return m2.split(':').pop(); }); var t4 = 0; while (gcs.some(function (gc) { return cdist(gc, L.lc) < 90; }) && t4++ < 30) L.lc = r.pick(LEGC.concat(['#c9b48a', '#8fa8c8', '#b0b0b8'])); var t5 = 0; while (K.indexOf('fabric') < 0 && gcs.some(function (gc) { return cdist(gc, CLOTH[L.top]) < 110; }) && t5++ < 30) L.top = r.pick(CLOTH_MAIN.concat(['white', 'grey'])); }
+      if (K.indexOf('glove') >= 0) { var gcs = L.marks.filter(function (m2) { return /^gloves?:/.test(m2); }).map(function (m2) { return m2.split(':').pop(); }); var t4 = 0; while (gcs.some(function (gc) { return cdist(gc, L.lc) < 90; }) && t4++ < 30) L.lc = r.pick(LEGC.concat(['#c9b48a', '#8fa8c8', '#b0b0b8'])); var t5 = 0; while (K.indexOf('fabric') < 0 && gcs.some(function (gc) { return cdist(gc, CLOTH[L.top]) < 75; }) && t5++ < 30) L.top = r.pick(CLOTH_MAIN.concat(['white', 'grey'])); }
       // a few props for colour
       var hp = r.pick([null, null, 'cup', 'book', 'phone', 'balloon', 'bag']);
       if (hp && K.indexOf('glove') < 0 && K.indexOf('mark') < 0) { if (r.chance(0.5)) { L.armR = 'hold'; L.holdR = hp; } else { L.armL = 'hold'; L.holdL = hp; } }
@@ -275,7 +276,7 @@
     do { sur = r.pick(SUR); } while (taken.indexOf(sur) >= 0);
     var owner = r.pick(['Mrs.', 'Mr.', 'Ms.']) + ' ' + sur;
     var ownerG = owner.indexOf('Mr.') === 0 ? 'm' : 'f', op = pron(ownerG);
-    var o = { Owner: owner, poss: poss(owner), his: op.his, thing: thing[0], Thing: thing[0].split(' ').map(cap).join(' ').replace('Of', 'of'), Nc: cap(numw(N)), n: numw(N) };
+    var o = { Owner: owner, poss: poss(owner), his: op.his, he: op.he, thing: thing[0], Thing: thing[0].split(' ').map(cap).join(' ').replace('Of', 'of'), Nc: cap(numw(N)), n: numw(N) };
     var title = fill(r.pick(set.titles), o);
     if (title.length > 26) title = fill(set.titles[set.titles.length - 1], o);
     var setup = fill(r.pick(set.setup), o) + ' ' + fill(r.pick(set.who), o) + (level === 'easy' ? ' The thief left ' + numw(k) + ' clues behind.' : '');
@@ -294,9 +295,9 @@
     function why(c, L) {
       var v = L.v, pr = pron(L.gd), t = { he: pr.he, his: pr.his, him: pr.him }, tw = L.legs === 'dress' ? 'dress' : 'shirt';
       if (c === 'hair') return v.hairCol !== A.hairCol ? [v.hairCol + ' hair', pr.his + ' hair is ' + v.hairCol] : v.hairLen !== A.hairLen ? [v.hairLen + ' hair', pr.his + ' hair is ' + v.hairLen] : [(v.hairCurly ? 'curly' : 'straight') + ' hair', pr.his + ' hair is ' + (v.hairCurly ? 'curly' : 'straight')];
-      if (c === 'fabric') return v.fabCol !== A.fabCol ? ['a ' + v.fabCol + ' ' + tw, pr.his + ' ' + tw + ' is ' + v.fabCol] : ['a ' + PAT_ADJ[v.fabPat] + ' ' + tw, pr.his + ' ' + v.fabCol + ' ' + tw + ' is ' + PAT_ADJ[v.fabPat] + (A.fabPat === 'plain' ? '' : ', not ' + PAT_ADJ[A.fabPat])];
+      if (c === 'fabric') return v.fabCol !== A.fabCol ? [an(v.fabCol + ' ' + tw), pr.his + ' ' + tw + ' is ' + v.fabCol] : [an(PAT_ADJ[v.fabPat] + ' ' + tw), pr.his + ' ' + v.fabCol + ' ' + tw + ' is ' + PAT_ADJ[v.fabPat] + (A.fabPat === 'plain' ? '' : ', not ' + PAT_ADJ[A.fabPat])];
       if (c === 'shoe') return v.shoe === 'heel' ? ['high heels', pr.he + ' is wearing high heels'] : ['flat ' + (L.shoe === 'boot' ? 'boots' : 'sneakers'), pr.he + ' is in flat ' + (L.shoe === 'boot' ? 'boots' : 'sneakers')];
-      if (c === 'glove') { var gc = Object.keys(GLOVEC).filter(function (gk) { return L.marks.some(function (m) { return m.indexOf(GLOVEC[gk]) >= 0; }); })[0] || 'different'; return v.glove === 'pair' ? ['both gloves on', pr.he + ' still has both gloves on'] : v.glove === 'other' ? ['a ' + gc + ' glove', pr.his + ' glove is ' + gc] : ['no gloves', pr.he + ' isn’t wearing gloves']; }
+      if (c === 'glove') { var gc = Object.keys(GLOVEC).filter(function (gk) { return L.marks.some(function (m) { return m.indexOf(GLOVEC[gk]) >= 0; }); })[0] || 'different'; return v.glove === 'pair' ? ['both gloves on', pr.he + ' still has both gloves on'] : v.glove === 'other' ? [an(gc + ' glove'), pr.his + ' glove is ' + gc] : ['no gloves', pr.he + ' isn’t wearing gloves']; }
       if (v.mark === 'other') { var oc = set.mark === 'choc' ? '' : colName(v.markCol); return [M.othS || oc + ' paint', fill(M.oth, Object.assign(t, { col: oc }))]; }
       return [M.noS, fill(M.no, t)];
     }
@@ -322,7 +323,7 @@
     var L0 = P[ans], pr0 = pron(L0.gd);
     var fits = K.map(function (c) {
       if (c === 'hair') return 'has ' + A.hairLen + ', ' + (A.hairCurly ? 'curly' : 'straight') + ' ' + A.hairCol + ' hair';
-      if (c === 'fabric') return 'wears a ' + (A.fabPat === 'plain' ? 'plain' : PAT_ADJ[A.fabPat]) + ' ' + A.fabCol + ' ' + (L0.legs === 'dress' ? 'dress' : 'shirt');
+      if (c === 'fabric') return 'wears ' + an(A.fabPat === 'plain' ? 'plain' : PAT_ADJ[A.fabPat]) + ' ' + A.fabCol + ' ' + (L0.legs === 'dress' ? 'dress' : 'shirt');
       if (c === 'shoe') return A.shoe === 'heel' ? 'is in high heels' : 'is in flat ' + (L0.shoe === 'boot' ? 'boots' : 'sneakers');
       if (c === 'glove') return 'still has the other ' + A.glove + ' glove on';
       return fill(M.vp, { his: pr0.his });
@@ -389,10 +390,10 @@
       var floor = set.key === 'bakery' ? '#7a6a5a' : set.key === 'shed' ? '#6a4a2e' : '#b88a5e';
       it.push(sv('<rect width="160" height="140" fill="' + (set.key === 'shed' ? '#9fd3f2' : set.key === 'bakery' ? '#f3e2c4' : '#e6efe6') + '"/><rect x="0" y="112" width="160" height="28" fill="' + floor + '"/><path d="M0 112h160" stroke="#2b2433" stroke-width="1"/>' +
         (cup ? '<rect x="30" y="8" width="96" height="104" fill="#8a5a34" stroke="#2b2433" stroke-width="1.3"/><rect x="36" y="14" width="84" height="96" fill="#5a3a22"/><path d="M36 50h84M36 82h84" stroke="#8a5a34" stroke-width="3"/><path d="M78 14L102 20V104L78 110Z" fill="' + dc + '" stroke="#2b2433" stroke-width="1.2"/><rect x="40" y="36" width="12" height="14" fill="#e0b351" stroke="#2b2433" stroke-width=".8"/><rect x="56" y="38" width="10" height="12" fill="#3a6ea5" stroke="#2b2433" stroke-width=".8"/><rect x="96" y="56" width="5" height="10" rx="2" fill="#c9a227" stroke="#2b2433" stroke-width=".8"/>'
-          : '<rect x="34" y="6" width="74" height="106" fill="' + (set.key === 'shed' ? '#8a5a34' : '#d9c9a8') + '" stroke="#2b2433" stroke-width="1.3"/><rect x="40" y="12" width="62" height="100" fill="' + dc + '" stroke="#2b2433" stroke-width="1.2"/><rect x="47" y="20" width="48" height="34" fill="none" stroke="#2b2433" stroke-width=".9" opacity=".5"/><rect x="47" y="62" width="48" height="40" fill="none" stroke="#2b2433" stroke-width=".9" opacity=".5"/><circle cx="94" cy="64" r="2.6" fill="#e8c34a" stroke="#2b2433" stroke-width=".8"/><path d="M128 34v6" stroke="#2b2433" stroke-width="1.4"/><path d="M128 40q0 5 4 5" fill="none" stroke="#7a828c" stroke-width="2"/>') +
+          : '<rect x="34" y="6" width="74" height="106" fill="' + (set.key === 'shed' ? '#8a5a34' : '#d9c9a8') + '" stroke="#2b2433" stroke-width="1.3"/><rect x="40" y="12" width="62" height="100" fill="' + dc + '" stroke="#2b2433" stroke-width="1.2"/><rect x="47" y="20" width="48" height="34" fill="none" stroke="#2b2433" stroke-width=".9" opacity=".5"/><rect x="47" y="62" width="48" height="40" fill="none" stroke="#2b2433" stroke-width=".9" opacity=".5"/><circle cx="94" cy="64" r="2.6" fill="#e8c34a" stroke="#2b2433" stroke-width=".8"/><path d="M128 22v6" stroke="#2b2433" stroke-width="1.4"/><path d="M128 28q0 5 4 5" fill="none" stroke="#7a828c" stroke-width="2"/>') +
         (set.key === 'shed' ? '<path d="M136 92v22" stroke="#2b2433" stroke-width="3.6"/><path d="M136 92v22" stroke="#8a5a34" stroke-width="2"/><rect x="116" y="74" width="40" height="20" rx="2" fill="#fbf6e6" stroke="#2b2433" stroke-width="1"/><text x="136" y="82" text-anchor="middle" font-family="Lilita One,sans-serif" font-size="7" fill="#b02a2a">WET</text><text x="136" y="90" text-anchor="middle" font-family="Lilita One,sans-serif" font-size="7" fill="#b02a2a">PAINT</text>' : '')));
       where = cup ? { hair: 'cupboard handle', fabric: 'cupboard hinge', shoe: 'on the floor' } : { hair: 'coat hook', fabric: 'nail on the door frame', shoe: set.key === 'bakery' ? 'in the spilt flour' : 'in the mud by the door' };
-      if (K.indexOf('hair') >= 0) it.push(['strand', { id: 'ev-hair', x: cup ? 98 : 131, y: cup ? 64 : 44, color: HAIRC[A.hairCol], len: A.hairLen, curly: A.hairCurly }]);
+      if (K.indexOf('hair') >= 0) it.push(['strand', { id: 'ev-hair', x: cup ? 98 : 131, y: cup ? 64 : 32, color: HAIRC[A.hairCol], len: A.hairLen, curly: A.hairCurly }]);
       if (K.indexOf('fabric') >= 0) it.push(cup ? ['scrap', { id: 'ev-scrap', x: 116, y: 28, color: CLOTH[A.fabCol], pat: A.fabPat === 'plain' ? null : A.fabPat, pc: patPc(A.fabCol), r: -14 }] : ['scrap', { id: 'ev-scrap', x: 22, y: 60, color: CLOTH[A.fabCol], pat: A.fabPat === 'plain' ? null : A.fabPat, pc: patPc(A.fabCol), r: 16 }]);
       if (set.key === 'bakery') it.push(sv('<path d="M96 140Q92 124 112 118Q140 112 160 118V140Z" fill="#fbfaf5" stroke="#d8d0c0" stroke-width="1"/><path d="M134 116l8 -10 14 2 4 10z" fill="#e8dcc0" stroke="#2b2433" stroke-width="1"/><text x="148" y="114" font-family="sans-serif" font-size="4.5" text-anchor="middle" fill="#7a5a3a">FLOUR</text>'));
       if (K.indexOf('shoe') >= 0) it.push(['print', { id: 'ev-print', x: set.key === 'bakery' ? 126 : 70, y: 127, r: 80, kind: A.shoe === 'heel' ? 'heel' : 'shoe', tread: 'zigzag', size: 24, col: set.key === 'bakery' ? '#6a5a4a' : '#3a2414' }]);
@@ -437,7 +438,7 @@
         tip: { lv: 'em', vals: ['L', 'R'], say: function (v) { return 'a hat that flops to the ' + lr(v); } },
         shovel: { lv: 'e', vals: ['R', 'L'], say: function (v) { return 'a spade on the ' + lr(v); } }
       },
-      decoys: [['snail', 'a snail'], ['moss', 'some moss'], ['leaf', 'a leaf']], decoyNote: 'Moss, snails and leaves don’t count: they aren’t part of the mould.', decoyAfter: 'just garden visitors',
+      decoys: [['snail', 'a snail'], ['moss', 'some moss'], ['leaf', 'a leaf']], decoyNote: 'Moss, snails and leaves don’t count: they aren’t part of the mould.', decoyAfter: ['just a garden visitor', 'just garden visitors'],
       setup: ['{Owner}’s {n} garden gnomes all came out of the same mould, so they are exactly alike. Last night a prankster swapped one of them for a look-alike from the garden shop.', 'Every gnome in {poss} garden was cast from one mould, so they should be identical. This morning {his} neighbour admitted swapping one for a copy, as a joke.'],
       q: ['Which gnome is the fake?', 'Which gnome was swapped?'], titles: ['The Gnome Swap', 'Gnome Sweet Gnome', 'A Gnome of a Different Mould', 'The Garden Prankster'] },
     cupcake: { kind: 'cupcake', one: 'cupcake', label: 'Cupcake', fake: 'the odd one out',
@@ -447,9 +448,9 @@
         sprinkles: { lv: 'h', vals: [4, 3, 5], part: 'icing', say: function (v) { return numw(v) + ' sprinkles'; } },
         swirl: { lv: 'mh', vals: ['R', 'L'], part: 'icing', say: function (v) { return 'an icing swirl that curls to the ' + lr(v); } }
       },
-      decoys: [['flag', 'a flag'], ['fly', 'a fly'], ['ptag', 'a price tag']], decoyNote: 'Flags, price tags and flies don’t count.', decoyAfter: 'added after baking',
+      decoys: [['flag', 'a flag'], ['fly', 'a fly'], ['ptag', 'a price tag']], decoyNote: 'Flags, price tags and flies don’t count.', decoyAfter: ['added after baking', 'added after baking'],
       setup: ['{Owner} piped a tray of cupcakes for the bakery window, every one exactly the same. When {he} wasn’t looking, {his} apprentice swapped one for a cupcake from the shop across the road.', 'The cupcakes in {poss} bakery window are all made to one recipe, so they look identical. One of them is from somewhere else.'],
-      q: ['Which cupcake is the odd one out?', 'Which cupcake was swapped?'], titles: ['The Cupcake Copycat', 'Something Fishy at the Bakery', 'One of These Cupcakes', 'Icing on the Case'] },
+      q: ['Which cupcake is the odd one out?', 'Which cupcake was swapped?'], titles: ['The Cupcake Copycat', 'Fishy Business', 'One of These Cupcakes', 'Icing on the Case'] },
     teacup: { kind: 'teacup', one: 'cup', label: 'Cup', fake: 'the copy', rows: 2,
       feats: {
         handle: { lv: 'e', vals: ['R', 'L'], part: 'handle', say: function (v) { return 'the handle on the ' + lr(v); } },
@@ -457,7 +458,7 @@
         dots: { lv: 'mh', vals: [3, 4, 2], part: 'dots', say: function (v) { return numw(v) + ' spots'; } },
         rim: { lv: 'mh', vals: [true, false], part: 'rim', say: function (v) { return v ? 'a gold rim' : 'no gold rim'; } }
       },
-      decoys: [['steam', 'steam'], ['spoon', 'a spoon'], ['sugar', 'a sugar cube']], decoyNote: 'Tea, spoons and sugar don’t count.', decoyAfter: 'nothing to do with the cups',
+      decoys: [['steam', 'steam'], ['spoon', 'a spoon'], ['sugar', 'a sugar cube']], decoyNote: 'Tea, spoons and sugar don’t count.', decoyAfter: ['nothing to do with the cup', 'nothing to do with the cups'],
       setup: ['Great-aunt {First}’s tea set came with six cups, all exactly alike. One broke years ago, and she replaced it with a copy from a market stall.', '{Owner} collects old tea sets. This set should have six identical cups, but the seller admitted one of them is a copy.'],
       q: ['Which cup is the copy?', 'Which cup doesn’t belong to the set?'], titles: ['A Storm in a Teacup', 'The Copied Cup', 'Not My Cup of Tea', 'The Odd Teacup'] },
     nutcracker: { kind: 'nutcracker', one: 'soldier', label: 'Soldier', fake: 'the fake',
@@ -467,7 +468,7 @@
         buttons: { lv: 'mh', vals: [3, 2, 4], part: 'buttons', say: function (v) { return numw(v) + ' buttons'; } },
         sash: { lv: 'mh', vals: ['R', 'L'], part: 'sash', say: function (v) { return 'a sash going down to the ' + lr(v); } }
       },
-      decoys: [['ribbon', 'a red price ribbon'], ['dust', 'dust on the hat']], decoyNote: 'Price ribbons and dust don’t count.', decoyAfter: 'just from the shop',
+      decoys: [['ribbon', 'a red price ribbon'], ['dust', 'dust on the hat']], decoyNote: 'Price ribbons and dust don’t count.', decoyAfter: ['just from the shop', 'just from the shop'],
       setup: ['The toy soldiers in {poss} shop are carved from one pattern, so they’re all the same. Somebody slipped in a cheap copy, hoping nobody would notice.', '{Owner} carves toy soldiers, every one exactly alike. A rival shop has put a copy in the row to sell as one of {his}.'],
       q: ['Which soldier is the fake?', 'Which soldier is the copy?'], titles: ['The Toy Soldier', 'Stand to Attention!', 'One Soldier Out of Line', 'The Copycat Carver'] },
     birdhouse: { kind: 'birdhouse', one: 'birdhouse', label: 'Birdhouse', fake: 'the different one',
@@ -478,9 +479,9 @@
         chimney: { lv: 'mh', vals: ['R', 'L'], part: 'chimney', say: function (v) { return 'the chimney on the ' + lr(v); } },
         flowers: { lv: 'h', vals: [3, 2, 4], part: 'flowers', say: function (v) { return numw(v) + ' painted flowers'; } }
       },
-      decoys: [['bird', 'a bird'], ['leaf', 'a leaf']], decoyNote: 'Birds and leaves don’t count.', decoyAfter: 'just visitors',
+      decoys: [['bird', 'a bird'], ['leaf', 'a leaf']], decoyNote: 'Birds and leaves don’t count.', decoyAfter: ['just a visitor', 'just visitors'],
       setup: ['{Owner} built a row of birdhouses from one plan, all exactly the same. {His} grandson made one more to join the row, but didn’t follow the plan exactly.', 'The birdhouses along {poss} fence were all made from one kit. One was built from a different kit.'],
-      q: ['Which birdhouse is different?', 'Which birdhouse wasn’t built from the plan?'], titles: ['Birdhouse Row', 'Home Tweet Home', 'The Odd Birdhouse', 'A Different Nest'] }
+      q: ['Which birdhouse is different?', 'Which birdhouse is the odd one out?'], titles: ['Birdhouse Row', 'Home Tweet Home', 'The Odd Birdhouse', 'A Different Nest'] }
   };
   var ODD_KEYS = ['gnome', 'cupcake', 'teacup', 'nutcracker', 'birdhouse', 'clock'];
   function plLabel(F, list) { return (list.length > 1 ? F.label + 's ' : F.label + ' ') + andList(list.map(String)); }
@@ -547,10 +548,10 @@
     function mk(k, val) { return Fi.part && (val || val === 0) && !(f === 'perch' && !val) ? { p: 'o' + k + '.' + Fi.part, pad: 2 } : { id: 'o' + k, pad: 1 }; } for (var j = 0; j < N; j++) if (j !== odd) others.push(j + 1);
     var dList = Object.keys(deco).map(function (i) { return deco[i][1] + ' on ' + F.one + ' ' + (+i + 1); });
     var steps = [
-      { text: plLabel(F, others) + ' all have ' + Fi.say(base[f]) + '.' + (dList.length ? ' ' + cap(andList(dList)) + (dList.length > 1 ? ' are ' : ' is ') + F.decoyAfter + '.' : ''), marks: others.slice(0, 2).map(function (k) { return mk(k, base[f]); }) },
+      { text: plLabel(F, others) + ' all have ' + Fi.say(base[f]) + '.' + (dList.length ? ' ' + cap(andList(dList)) + (dList.length > 1 ? ' are ' + F.decoyAfter[1] : ' is ' + F.decoyAfter[0]) + '.' : ''), marks: others.slice(0, 2).map(function (k) { return mk(k, base[f]); }) },
       { text: F.label + ' ' + (odd + 1) + ' has ' + Fi.say(oddV) + '.', marks: [mk(odd + 1, oddV)] }
     ];
-    var hintAt = others[0], areaWord = { buttons: 'buttons', buckle: 'belt', tip: 'hat', shovel: 'hands', cherry: 'top', stripes: 'wrapper', sprinkles: 'icing', swirl: 'icing', handle: 'handle', motif: 'pattern', dots: 'pattern', rim: 'rim', plume: 'hat', sword: 'side', sash: 'sash', hole: 'front', roof: 'roof', perch: 'front', chimney: 'roof', flowers: 'flowers' }[f];
+    var hintAt = others[0], areaWord = { buttons: 'buttons', buckle: 'belt', tip: 'hat', shovel: 'hands', cherry: 'top', stripes: 'wrapper', sprinkles: 'icing', swirl: 'icing', handle: 'handle', motif: 'pattern', dots: 'pattern', rim: 'rim', plume: 'hat', sword: 'belt and hands', sash: 'sash', hole: 'front', roof: 'roof', perch: 'front', chimney: 'roof', flowers: 'flowers' }[f];
     var hints = [
       { text: nd ? F.decoyNote + ' Compare the ' + F.one + 's themselves, one detail at a time.' : 'Pick one detail and check it on every ' + F.one + ', then move on to the next detail.' },
       { text: 'Look closely at each ' + F.one + '’s ' + areaWord + '. Are they really all the same?', at: mk(hintAt, base[f]) }
@@ -583,7 +584,6 @@
     var frames = r.shuffle(['#5a3a22', '#c9a227', '#2f5a46', '#7a2e3a', '#3a3a46', '#8a5a34', '#b0413e']), faces = ['#fbf6e6', '#fdfaf0', '#f4ead0', '#eef3f7'];
     items.push(['svg', { svg: '<rect x="0" y="262" width="400" height="38" fill="#7a5233"/><path d="M0 262h400" stroke="#2b2433" stroke-width="1.2"/>' }], ['sign', { x: 150, y: 30, w: 100, h: 22, text: 'CLOCKS', size: 12, post: false, color: '#3a3a46', ink: '#f4efe4' }]);
     var pos = N === 5 ? [[70, 100], [200, 96], [330, 100], [130, 196], [270, 196]] : [[70, 100], [200, 96], [330, 100], [70, 200], [200, 204], [330, 200]];
-    pos = r.shuffle(pos);
     for (var i = 0; i < N; i++) {
       var id = 'c' + (i + 1); ids.push(id);
       var rr = level === 'hard' ? r.int(26, 30) : r.int(22, 28);
@@ -844,9 +844,10 @@
     var steps = [];
     var decDesc = andList(trails.map(function (t) { return t.d[2]; }).filter(function (v, i, a) { return a.indexOf(v) === i; }));
     steps.push({ text: cap(TK.desc) + ' are the ones to follow. The ' + decDesc + ' belong to somebody else.', marks: [{ id: 'start', pad: 3 }] });
+    var saidLm = {};
     var groups = legs.length <= 2 ? [legs] : [legs.slice(0, Math.ceil(legs.length / 2)), legs.slice(Math.ceil(legs.length / 2))];
     groups.forEach(function (gl, gi) {
-      var words = gl.map(function (lg, li) { var p2 = past(route[lg.from], route[lg.to]); return (li ? 'then ' : '') + lg.d + (p2 && r.chance(0.7) ? ' past ' + p2 : ''); });
+      var words = gl.map(function (lg, li) { var p2 = past(route[lg.from], route[lg.to]), say2 = p2 && !saidLm[p2] && r.chance(0.7); if (say2) saidLm[p2] = 1; return (li ? 'then ' : '') + lg.d + (say2 ? ' past ' + p2 : ''); });
       var a = gl[0].from, b = gl[gl.length - 1].to, last = gi === groups.length - 1;
       var tx = (gi === 0 ? sayStart + ', the prints head ' : r.pick(['At the next crossing they turn ', 'From there they go ', 'Then the prints go '])) + words.join(', ') + (last ? ', and out through Gate ' + G + '.' : '.');
       if (TK.kind === 'bike') tx = tx.replace('the prints head', 'the zigzag tracks head').replace('Then the prints go', 'Then the tracks go');
@@ -915,18 +916,22 @@
     var o4 = { Owner: owner, poss: poss(owner), his: pr.his, he: pr.he, n: numw(N), lock: lock };
     items.unshift(['imprint', { id: 'imp', x: 100, y: 150, s: 1.45, mat: set.mat, key: { head: A.head, teeth: A.teeth }, kr: kr, r: r.int(-4, 4) }]);
     if (set.mat === 'paper') items.unshift(['svg', { svg: '<rect x="20" y="100" width="160" height="104" fill="#fbf8ee" opacity="0"/>' }]);
-    if (set.mat === 'soap') items.push(['svg', { svg: '<ellipse cx="100" cy="262" rx="70" ry="14" fill="#fff" stroke="#2b2433" stroke-width="1.2" opacity=".9"/><circle cx="60" cy="230" r="4" fill="#fff" opacity=".7" stroke="#9fc4d6"/><circle cx="148" cy="222" r="3" fill="#fff" opacity=".7" stroke="#9fc4d6"/>' }]);
+    if (set.mat === 'soap') items.push(['svg', { svg: '<circle cx="60" cy="226" r="5" fill="#fff" opacity=".7" stroke="#9fc4d6"/><circle cx="76" cy="240" r="3" fill="#fff" opacity=".7" stroke="#9fc4d6"/><circle cx="148" cy="222" r="4" fill="#fff" opacity=".7" stroke="#9fc4d6"/><circle cx="40" cy="96" r="3" fill="#fff" opacity=".7" stroke="#9fc4d6"/>' }]);
     if (set.mat === 'wax') items.push(['candle', { x: 52, y: 270, len: 30, holder: 8, drips: 3, seed: r.int(1, 9) }]);
     if (set.mat === 'paper') items.push(['held', { kind: 'brush', x: 170, y: 250, r: 70, brushc: '#2b2433' }]);
-    function tw(t) { return t.map(function (v) { return ['short', 'medium', 'tall', 'tallest'][v - 1]; }).join(', '); }
-    var steps = [{ text: 'The print has ' + (A.head === 'oval' ? 'an oval' : 'a ' + A.head) + ' head, and its teeth go: ' + tw(A.teeth) + (kr > 90 ? ' (it was pressed in upside down, so read it from the head)' : '') + '.', marks: [{ p: 'imp.print', pad: 2 }] }];
+    var TW = ['short', 'medium', 'tall', 'tallest'], ORD = ['first', 'second', 'third', 'fourth'];
+    function tw(t) { return t.map(function (v) { return TW[v - 1]; }).join(', '); }
+    var pressed = set.mat === 'paper' ? 'drawn round' : 'pressed in';
+    var steps = [{ text: 'The print has ' + (A.head === 'oval' ? 'an oval' : 'a ' + A.head) + ' head, and its teeth go: ' + tw(A.teeth) + (kr > 90 ? ' (it was ' + pressed + ' upside down, so read it from the head)' : '') + '.', marks: [{ p: 'imp.print', pad: 2 }] }];
     var byHead = keys.map(function (k, i) { return i; }).filter(function (i) { return keys[i].head !== A.head; });
     if (byHead.length) steps.push({ text: (byHead.length > 1 ? 'Keys ' + andList(byHead.map(function (i) { return L[i]; })) + ' have the wrong head' : 'Key ' + L[byHead[0]] + ' has the wrong head') + ': ' + andList(byHead.map(function (i) { return keys[i].head === 'oval' ? 'oval' : keys[i].head; })) + '.', marks: byHead.map(function (i) { return { id: 'k' + L[i] }; }) });
     var byT = keys.map(function (k, i) { return i; }).filter(function (i) { return keys[i].head === A.head && !keys[i].ans; });
-    if (byT.length) steps.push({ text: (byT.length > 1 ? 'Keys ' + andList(byT.map(function (i) { return L[i]; })) + ' have the right head, but their teeth don’t match' : 'Key ' + L[byT[0]] + ' has the right head, but its teeth don’t match') + (level === 'hard' ? ': check them one tooth at a time.' : '.'), marks: byT.map(function (i) { return { id: 'k' + L[i] }; }) });
+    // the first tooth that gives each wrong key away
+    function wrongTooth(k) { for (var q = 0; q < k.teeth.length; q++) if (k.teeth[q] !== A.teeth[q]) return 'key ' + L[keys.indexOf(k)] + '’s ' + ORD[q] + ' tooth is ' + TW[k.teeth[q] - 1] + ', not ' + TW[A.teeth[q] - 1]; return ''; }
+    if (byT.length) steps.push({ text: (byT.length > 1 ? 'Keys ' + andList(byT.map(function (i) { return L[i]; })) + ' have the right head, but not the right teeth: ' : 'Key ' + L[byT[0]] + ' has the right head, but not the right teeth: ') + (function (l) { return l.length > 1 ? l.slice(0, -1).join('; ') + '; and ' + l[l.length - 1] : l[0]; })(byT.map(function (i) { return wrongTooth(keys[i]); })) + '.', marks: byT.map(function (i) { return { id: 'k' + L[i] }; }) });
     steps.push({ text: 'Key ' + L[ans] + ' matches the print exactly.', marks: [{ id: 'k' + L[ans] }] });
     return {
-      type: 'Which key', title: r.pick(set.title), setup: fill(set.setup, o4) + (kr > 90 ? ' The key was pressed in the other way up.' : ''), q: fill(set.q, o4), size: [400, 300], tap: true,
+      type: 'Which key', title: r.pick(set.title), setup: fill(set.setup, o4) + (kr > 90 ? ' The key was ' + (set.mat === 'paper' ? 'drawn round' : 'pressed in') + ' the other way up.' : ''), q: fill(set.q, o4), size: [400, 300], tap: true,
       choices: keys.map(function (k, i) { return { id: 'k' + L[i], label: 'Key ' + L[i] }; }), answer: 'k' + L[ans],
       scene: { bg: set.bg, items: items },
       hints: [{ text: 'Check the shape of the key’s head in the print first.' }, { text: kr > 90 ? 'The print is upside down. Start from the head and compare the teeth one by one.' : 'Then compare the teeth one by one, starting from the head.', at: { p: 'imp.print', pad: 3 } }],
@@ -1116,6 +1121,9 @@
       if (K.indexOf('sugar') < 0 && r.chance(0.25)) s.sugar = 1;
       if (K.indexOf('peas') < 0 && r.chance(0.2)) s.peas = 1;
     });
+    // things hung on a chair must stand out against it
+    var CH = ['#c9a24a', '#e8e0c8', '#3a8ad8', '#c0392b', '#9b59b6', '#3a8a4a', '#e8862a'];
+    seats.forEach(function (s) { ['hat', 'scarf', 'bag'].forEach(function (k2) { if (s[k2] && cdist(s[k2], set.chair) < 90) s[k2] = CH.filter(function (c4) { return cdist(c4, set.chair) >= 90; })[0]; }); });
     // safety: the target is the only seat that fits every habit
     var fitsAll = seats.map(function (s) { return K.every(function (h) { return HABITS[h].test(s); }); });
     var items = [];
@@ -1134,7 +1142,7 @@
       var H = HABITS[h], fit = [], out = [];
       seats.forEach(function (s, i4) { if (!alive[i4]) return; if (H.test(s)) fit.push(i4); else { out.push(i4); alive[i4] = false; } });
       var nos = out.map(function (i4) { return i4 + 1; });
-      var t = cap(H.yesS) + ' at seat' + (fit.length > 1 ? 's ' : ' ') + andList(fit.map(function (i4) { return String(i4 + 1); })) + (out.length ? '. Seat' + (nos.length > 1 ? 's ' : ' ') + andList(nos.map(String)) + (nos.length > 1 ? ' have ' : ' has ') + H.noS + '.' : '.');
+      var t = 'Seat' + (fit.length > 1 ? 's ' : ' ') + andList(fit.map(function (i4) { return String(i4 + 1); })) + (fit.length > 1 ? ' have ' : ' has ') + H.yesS + (out.length ? '. Seat' + (nos.length > 1 ? 's ' : ' ') + andList(nos.map(String)) + (nos.length > 1 ? ' have ' : ' has ') + H.noS + '.' : '.');
       if (h === 'lefty') t = (fit.length > 1 ? 'Seats ' : 'Seat ') + andList(fit.map(function (i4) { return String(i4 + 1); })) + (fit.length > 1 ? ' have' : ' has') + ' the knife and fork swapped' + (out.length ? '; the others have the fork on the left.' : '.');
       steps.push({ text: t, marks: fit.slice(0, 4).map(function (i4) { return { p: 'seat' + (i4 + 1) + '.' + H.part, pad: 2 }; }) });
     });
@@ -1143,7 +1151,7 @@
       type: 'Seating', title: r.pick(['Where Did ' + who + ' Sit?', poss(who) + ' Seat', 'The Empty Chair', 'Table Manners', 'Take a Seat']).replace(/^(.{27}).*$/, 'Take a Seat'), setup: setup, q: fill(set.q, tt), size: [400, 300], tap: false,
       choices: seats.map(function (s, i5) { return { id: 's' + (i5 + 1), label: 'Seat ' + (i5 + 1) }; }), answer: 's' + (pos + 1),
       scene: { bg: ['top', { color: set.floor, texture: false }], items: items },
-      hints: [{ text: 'Check every place at the table for each of the ' + numw(k) + ' things ' + who + ' always does.' }, { text: 'Start with ' + { lefty: 'the knives and forks: most people keep the fork on their left', black: 'the coffee cups: which coffee is black?', milk: 'the coffee cups: which coffee is milky?', hat: 'the chairs: which has a hat on it?', scarf: 'the chairs: which has a scarf?', lipstick: 'the cups: which has lipstick on the rim?', sugar: 'the saucers: which has a sugar lump?', peas: 'the plates: who left peas?', cane: 'the chairs: which has a cane?' }[K[0]] + '.' }],
+      hints: [{ text: 'Check every place at the table for each of the ' + numw(k) + ' things ' + who + ' always does.' }, { text: 'Start with ' + { lefty: 'the knives and forks: most people keep the fork on their left', black: 'the coffee cups: which coffee is black?', milk: 'the coffee cups: which coffee is milky?', hat: 'the chairs: which has a hat on it?', scarf: 'the chairs: which has a scarf?', lipstick: 'the cups: which has lipstick on the rim?', sugar: 'the saucers: which has a sugar lump?', peas: 'the plates: who left peas?', cane: 'the chairs: which has a cane?' }[K[0]].replace(/([^?])$/, '$1.') }],
       solution: { steps: steps, verdict: who + ' sat in seat ' + (pos + 1) + '.' },
       key: 'seating|' + K.join(',') + '|' + JSON.stringify(seats.map(function (s) { return [s.fork, s.cup, s.hat ? 1 : 0, s.scarf ? 1 : 0, s.bag ? 1 : 0, s.cane ? 1 : 0, s.lipstick, s.sugar ? 1 : 0, s.peas ? 1 : 0]; })) + '|' + pos,
       logic: { tpl: 'seating', habits: K, fits: fitsAll }
@@ -1179,7 +1187,7 @@
     var modes = level === 'easy' ? ['shape', 'color', 'mark'] : level === 'medium' ? ['color', 'mark'].concat(hasTilt ? ['tilt', 'tilt'] : ['shape']) : (hasTilt ? ['tilt', 'mark', 'tilt'] : ['mark', 'color']);
     var guard = 0;
     while (fakes.length < N - 1 && guard++ < 100) {
-      var f = JSON.parse(JSON.stringify(real)), m = modes[fakes.length % modes.length];
+      var f = JSON.parse(JSON.stringify(real)), m = modes[(fakes.length + guard) % modes.length];
       if (m === 'shape') f.shape = r.pick(shapes.filter(function (x) { return x !== real.shape; }));
       if (m === 'color') f.color = r.pick(LOGO_COL.filter(function (x) { return cdist(x, real.color) > 90; }));
       if (m === 'mark') f.mark = r.pick(marks.filter(function (x) { return x !== real.mark; }));
@@ -1200,7 +1208,7 @@
       items.push(['logo', { x: x0 + i * dx + 4 * sc, y: py - 74 * sc, r: 6.6, s: sc, logo: p.logo, p: 'w' + i + '.badge' }]);
     });
     var family = 'the ' + r.pick(SUR) + 's';
-    var setup = cap(family) + ' called ' + F.full + ' about ' + F.job + ', and the company’s van just parked outside. Then ' + numw(N) + ' people in work clothes knocked at the door, all saying they were from ' + F.full + '. ' + (N === 3 ? 'Two of them are' : 'Three of them are') + ' tricksters after a free lunch.';
+    var setup = cap(family) + ' called ' + F.full + ' about ' + F.job + ', and the company’s van just parked outside. Then ' + numw(people.length) + ' people in work clothes knocked at the door, all saying they were from ' + F.full + '. ' + cap(numw(people.length - 1)) + ' of them are tricksters after a free lunch.';
     function diff(f) {
       if (f.mode === 'shape') return 'the wrong shape';
       if (f.mode === 'color') return 'the wrong colour';

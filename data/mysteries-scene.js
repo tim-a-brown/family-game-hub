@@ -1158,7 +1158,7 @@
     s += rect(-2.5, -46, 5, 46, '#7a4a2a') + shadow(0, 0, 10, 2.4);
     s += rect(-15, -82, 30, 34, c);
     var cs = p.chimney === 'L' ? -1 : 1;
-    s += g(rect(cs * 6 - 3, -102, 6, 12, '#8a5a3a', { sw: 0.9 }), { p: id + '.chimney' });
+    s += g(rect(cs * 7 - 4.5, -104, 9, 15, '#8a5a3a', { sw: 0.9 }) + rect(cs * 7 - 5.5, -106, 11, 3.5, '#6a4126', { sw: 0.8 }), { p: id + '.chimney' });
     s += g(path('M-21 -80L0 -98L21 -80Z', rc), { p: id + '.roof' });
     var hole = p.hole === 'square' ? rect(-5, -72, 10, 10, '#2b2433', { st: 0, rx: 1 }) : p.hole === 'heart' ? path('M0 -61.5l-6 -6a3.4 3.4 0 0 1 6 -4a3.4 3.4 0 0 1 6 4z', '#2b2433', { st: 0 }) : circ(0, -67, 5, '#2b2433', { st: 0 });
     s += g(hole, { p: id + '.hole' });

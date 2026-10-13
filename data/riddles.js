@@ -1,4 +1,7 @@
-// Riddles: the riddle list and the answer checker (games/riddles.html; checked by scripts/riddles-check.js).
+// Riddles: the first 100 riddles, the answer checker and the daily schedule (games/riddles.html; checked by
+// scripts/riddles-check.js). More riddles come in packs, data/riddles-pack-1.js .. -4.js, each adding to
+// window.RIDDLES_MORE with ids like 'p3-...'. Every answer is unique across all of them, and no riddle accepts
+// another riddle's answer or alternates.
 //
 // Each riddle: {id, q, a, alt:[], hints:[h1, h2], d:'easy'|'medium'|'hard', why, from?}
 //   q      the riddle ("\n" breaks a verse into lines)
@@ -610,6 +613,46 @@
     return res;
   }
 
+  // ── The daily riddle (RiddleDaily.pick(all, day)) ──────────────────────────
+  // all = RIDDLES.concat(RIDDLES_MORE): these 100, then the packs in the order the page loads them.
+  // day = days since 1 Jan 2024 (local) + 1, the numbering daily.js uses.
+  //   Up to day 1017 (13 Oct 2026, the day the daily started, with these 100 riddles) the daily was a shuffle of
+  //   the first 100: all[OLD[(day - 1) % 100]]. Those days stay exactly as they were.
+  //   From day 1018 the dailies walk a frozen shuffled order of the first FROZEN riddles, so none repeats for
+  //   FROZEN days (1,133: to late 2029). Riddles already used as a daily (days LAUNCH..CUT) go to the back of it.
+  // FROZEN and the order never change, so a day's riddle never changes. To keep it that way:
+  //   - add new riddles only at the END of `all` (a new pack file loaded after the others, or the end of the last
+  //     pack), and never delete, move or reorder the first FROZEN riddles (fix their wording in place instead);
+  //   - don't raise FROZEN. New riddles show up in rounds straight away; to bring them into the daily, start a
+  //     new schedule from a future day (as CUT does here), leaving every earlier day alone.
+  // scripts/riddles-check.js pins the frozen riddles' ids and today's daily.
+  var CUT = 1017, LAUNCH = 1017, FROZEN = 1133, OLD_N = 100;
+  function shuffled(n, seed) {
+    var a = [], s = seed, i;
+    for (i = 0; i < n; i++) a.push(i);
+    function rnd() { s |= 0; s = s + 0x6D2B79F5 | 0; var t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+    for (i = n - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; }
+    return a;
+  }
+  var OLD = null, NEW = null, NEW_N = 0;
+  function oldIndex(day) { if (!OLD) OLD = shuffled(OLD_N, 20241013); return OLD[(day - 1) % OLD_N]; }
+  function newOrder(n) {
+    if (NEW && NEW_N === n) return NEW;
+    var a = shuffled(n, 20261014), used = {}, d;
+    for (d = LAUNCH; d <= CUT; d++) used[oldIndex(d)] = d;   // the last day each riddle was the daily
+    // never-used riddles first, then used ones, longest ago first
+    NEW = a.filter(function (k) { return !used[k]; }).concat(a.filter(function (k) { return used[k]; }).sort(function (x, y) { return used[x] - used[y]; }));
+    NEW_N = n;
+    return NEW;
+  }
+  // index into all of the daily riddle for day
+  function dailyIndex(all, day) {
+    if (day <= CUT) return oldIndex(day);
+    var o = newOrder(Math.min(FROZEN, all.length));
+    return o[(day - CUT - 1) % o.length];
+  }
+
   root.RIDDLES = R;
   root.RiddleCheck = { check: check, norm: norm, dist: dist, allow: allow, stem: stem, setDict: setDict, isWord: isWord };
+  root.RiddleDaily = { pick: function (all, day) { return all[dailyIndex(all, day)]; }, index: dailyIndex, CUT: CUT, LAUNCH: LAUNCH, FROZEN: FROZEN };
 })(typeof window !== 'undefined' ? window : this);
