@@ -461,4 +461,36 @@
       ['Biggest cascade', d.cs >= 2 ? d.cs + ' clears' : null], ['Jelly cleared', d.jl || null]]));
     return ui.wrap(out);
   });
+  // ── Riddles: each riddle of the round on a little stone, with its answer, stars and hints ──
+  HistView.css('hv-riddles', [
+    '.hv-rd{display:flex;flex-direction:column;gap:9px;}',
+    '.hv-rd .t{position:relative;text-align:left;padding:10px 13px 11px;border-radius:12px;color:#3d2810;background:linear-gradient(172deg,#ecdbb4,#d8bd8a);box-shadow:inset 0 1px 0 rgba(255,251,238,.7),0 2px 0 #9c7b4a,0 4px 10px rgba(0,0,0,.35);}',
+    '.hv-rd .t.g{background:linear-gradient(172deg,#dcd2bf,#bfb39c);}',
+    '.hv-rd .top{display:flex;align-items:center;gap:8px;font:700 .62rem/1 "Cinzel",Georgia,serif;letter-spacing:.14em;color:rgba(74,50,24,.7);}',
+    '.hv-rd .top .s{margin-left:auto;display:flex;gap:2px;}',
+    '.hv-rd .top .s .ico{width:15px;height:15px;color:rgba(92,58,20,.38);}',
+    '.hv-rd .top .s .on{color:#8d5e10;fill:#e3b04b;}',
+    '.hv-rd .rq{margin:7px 0 5px;font:italic 400 .92rem/1.32 "Pagella",Georgia,serif;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}',
+    '.hv-rd .a{font:700 1rem/1.2 "Cinzel",Georgia,serif;letter-spacing:.05em;text-transform:uppercase;color:#7a4e0c;}',
+    '.hv-rd .t.g .a{color:#5e4a30;}',
+    '.hv-rd .n{margin-top:3px;font:400 .8rem/1.2 Georgia,serif;color:rgba(74,50,24,.75);}'
+  ].join(''));
+  R('riddles', function (e, ui) {
+    var d = e.dt; if (!d || !d.r || !d.r.length) return null;
+    var LV = { easy: 'EASY', medium: 'MEDIUM', hard: 'HARD' }, box = ui.el('div', { class: 'hv-rd' });
+    d.r.forEach(function (x, i) {
+      var st = ui.el('span', { class: 's', 'aria-label': (x.g ? 0 : x.s) + ' stars' });
+      for (var k = 0; k < 3; k++) st.appendChild(ui.el('span', { html: ui.icon('star').replace('class="ico"', 'class="ico' + (!x.g && k < x.s ? ' on' : '') + '"') }));
+      var note = x.g ? 'Gave up' : (x.h ? x.h + (x.h === 1 ? ' hint' : ' hints') : 'No hints') + ' · ' + x.t + (x.t === 1 ? ' try' : ' tries');
+      box.appendChild(ui.el('div', { class: 't' + (x.g ? ' g' : '') }, [
+        ui.el('div', { class: 'top' }, [ui.el('span', { text: (d.r.length > 1 ? (i + 1) + ' · ' : '') + (LV[x.d] || '') }), st]),
+        ui.el('div', { class: 'rq', text: x.q }), ui.el('div', { class: 'a', text: x.a }), ui.el('div', { class: 'n', text: note })
+      ]));
+    });
+    var solved = d.r.filter(function (x) { return !x.g; }).length, hints = d.r.reduce(function (a, x) { return a + (x.h || 0); }, 0);
+    return ui.wrap([
+      d.r.length > 1 ? ui.stats([['Solved', solved + ' / ' + d.r.length], ['Points', e.pts != null ? e.pts : null], ['Hints', hints]]) : null,
+      ui.section(d.r.length > 1 ? 'The riddles' : 'The riddle', box)
+    ]);
+  });
 })();

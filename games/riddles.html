@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riddles</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../data/riddles.js"></script>
+<script src="../data/words-en.js" defer></script>
+<style>
+@font-face{font-family:"Cinzel";src:url("../fonts/cinzel-700.woff2") format("woff2");font-weight:700;font-display:swap;}
+@font-face{font-family:"Pagella";src:url("../fonts/pagella-400.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap;}
+@font-face{font-family:"Pagella";src:url("../fonts/pagella-400italic.woff2") format("woff2");font-weight:400;font-style:italic;font-display:swap;}
+@font-face{font-family:"Pagella";src:url("../fonts/pagella-700.woff2") format("woff2");font-weight:700;font-style:normal;font-display:swap;}
+:root{
+  --serif:"Pagella","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+  --caps:"Cinzel","Trajan Pro",var(--serif);
+  --stone-ink:#3d2810; --stone-ink-2:rgba(74,50,24,.72);
+  --gilt-a:#f6d77c; --gilt-b:#c48a1c; --gilt-c:#8d5e10;
+}
+
+/* ── The table ─────────────────────────────────────────────────────────── */
+.rd{display:flex;flex-direction:column;max-width:680px;margin:0 auto;padding:0 10px calc(var(--safe-b) + 12px + var(--corner-y));min-height:calc(100dvh - var(--safe-t) - 58px);}
+.rd-table{position:relative;flex:1;display:flex;flex-direction:column;gap:12px;border-radius:28px;padding:12px 12px 18px;}
+.rd-table.felt-in::before{background-position:center calc(100% - 36px);background-size:min(28%,120px) auto;}
+.rd-day{flex:1;min-width:0;font:italic 400 1rem/1.2 var(--serif);color:rgba(251,243,220,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rd-top{display:flex;align-items:center;gap:10px;min-height:34px;padding:0 4px;}
+.pips{display:flex;gap:6px;flex:1;min-width:0;flex-wrap:wrap;}
+.pip{position:relative;width:18px;height:18px;border-radius:50%;flex:none;
+  background:radial-gradient(circle at 35% 30%,#cdb58a,#9c7f52 70%,#7a6140);
+  box-shadow:inset 0 -2px 0 rgba(0,0,0,.25),0 2px 3px rgba(0,0,0,.45);opacity:.55;transition:transform .3s var(--spring),opacity .3s;}
+.pip.now{opacity:1;box-shadow:0 0 0 2px rgba(246,215,124,.9),0 0 12px rgba(246,215,124,.55),0 2px 3px rgba(0,0,0,.45);animation:pipPulse 1.8s ease-in-out infinite;}
+@keyframes pipPulse{50%{box-shadow:0 0 0 3px rgba(246,215,124,.6),0 0 18px rgba(246,215,124,.7),0 2px 3px rgba(0,0,0,.45);}}
+.pip.s3,.pip.s2,.pip.s1{opacity:1;background:radial-gradient(circle at 35% 30%,#fff3c4,var(--gilt-a) 35%,var(--gilt-b) 80%);}
+.pip.s2{filter:saturate(.75) brightness(.92);}
+.pip.s1{background:radial-gradient(circle at 35% 30%,#f3d1a6,#c98b4e 45%,#8f5a2a 85%);}
+.pip.s0{opacity:.9;background:radial-gradient(circle at 35% 30%,#7d7468,#4a443d 75%);}
+.pip.s0::after{content:"";position:absolute;inset:3px;background:linear-gradient(135deg,transparent 45%,rgba(20,14,8,.85) 47%,rgba(20,14,8,.85) 53%,transparent 55%);border-radius:50%;}
+.pip.land{animation:pipLand .55s var(--spring);}
+@keyframes pipLand{0%{transform:scale(1.9);}100%{transform:scale(1);}}
+.tally{display:flex;align-items:center;gap:8px;flex:none;}
+.chipv{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 11px;border-radius:999px;background:rgba(0,0,0,.28);box-shadow:inset 0 1px 2px rgba(0,0,0,.35);font-weight:900;font-size:.95rem;font-variant-numeric:tabular-nums;color:#fbf3dc;}
+.chipv .ico{width:15px;height:15px;}
+.chipv.streak .ico{color:#ffb347;}
+.chipv.streak.cold{color:rgba(251,243,220,.5);}.chipv.streak.cold .ico{color:rgba(255,179,71,.35);}
+.chipv.pts small{font-size:.66rem;font-weight:800;opacity:.65;letter-spacing:.06em;text-transform:uppercase;}
+.chipv.bump{animation:bump .5s var(--spring);}
+@keyframes bump{40%{transform:scale(1.22);}}
+
+/* ── The stone tablet ──────────────────────────────────────────────────── */
+.rd-stage{position:relative;perspective:1200px;}
+.slab{position:relative;color:var(--stone-ink);padding:18px 20px 22px;
+  border-radius:22px 26px 20px 24px/24px 20px 26px 22px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .21 0 0 0 0 .08 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .3 0 0 0 0 .12 0 0 0 .9 -.38'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E"),
+    radial-gradient(120% 70% at 30% 0%,rgba(255,249,228,.6),transparent 60%),
+    linear-gradient(172deg,#ecdbb4 0%,#dfc697 50%,#cdac76 100%);
+  box-shadow:inset 0 2px 0 rgba(255,251,238,.7),inset 0 -10px 22px rgba(110,70,25,.32),inset 0 0 0 1px rgba(120,80,30,.22),
+    0 3px 0 #b08d58,0 6px 0 #8c6b3d,0 26px 40px -12px rgba(0,0,0,.75);}
+.slab::before{content:"";position:absolute;inset:9px;border-radius:15px 18px 14px 17px;pointer-events:none;
+  box-shadow:inset 0 1px 1px rgba(92,58,20,.5),inset 0 -1px 0 rgba(255,246,222,.65),0 1px 0 rgba(255,246,222,.55),0 -1px 0 rgba(92,58,20,.18);}
+.slab-h{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:2px 4px 0;}
+.lvl{display:flex;align-items:center;gap:6px;font:700 .64rem/1 var(--caps);letter-spacing:.14em;color:var(--stone-ink-2);text-shadow:0 1px 0 rgba(255,246,222,.7);}
+.lvl i{width:7px;height:7px;transform:rotate(45deg);background:rgba(92,58,20,.55);box-shadow:inset 0 1px 1px rgba(40,20,0,.5),0 1px 0 rgba(255,246,222,.7);}
+.lvl i.off{background:transparent;box-shadow:inset 0 0 0 1px rgba(92,58,20,.35),0 1px 0 rgba(255,246,222,.5);}
+.num{font:700 1.02rem/1 var(--caps);letter-spacing:.2em;color:#5a3c18;text-shadow:0 1px 0 rgba(255,246,222,.8),0 -1px 0 rgba(70,40,10,.25);white-space:nowrap;}
+.stars{display:flex;justify-content:flex-end;gap:3px;}
+.star{position:relative;width:22px;height:22px;}
+.star .ico{position:absolute;inset:0;width:100%;height:100%;}
+.star .sock{color:rgba(92,58,20,.42);filter:drop-shadow(0 1px 0 rgba(255,246,222,.7));stroke-width:1.6;}
+.star .gold{color:#7a520e;fill:url(#rdGold);stroke-width:1.2;filter:drop-shadow(0 1px 1px rgba(60,30,0,.45));transition:opacity .3s;}
+.star.lost .gold{animation:starFall .9s cubic-bezier(.5,0,.8,.6) forwards;}
+.star.gone .gold{opacity:0;}
+@keyframes starFall{0%{transform:none;opacity:1;}15%{transform:translateY(-4px) rotate(-12deg);}100%{transform:translate(18px,70px) rotate(150deg) scale(.6);opacity:0;}}
+.slab.won .star:not(.gone) .gold{animation:starGlint .9s ease-out both;}
+.slab.won .star:nth-child(2) .gold{animation-delay:.12s;}.slab.won .star:nth-child(3) .gold{animation-delay:.24s;}
+@keyframes starGlint{0%{transform:scale(1);}35%{transform:scale(1.45) rotate(12deg);filter:drop-shadow(0 0 8px rgba(255,214,102,.95));}100%{transform:none;}}
+.meander{height:12px;margin:12px 6px 4px;opacity:.85;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='12'%3E%3Cpath d='M0 11.5H16M13 11.5V1.5H3V8.5H10V4.5H6' fill='none' stroke='%23fff6dc' stroke-opacity='.75' stroke-width='1.3' transform='translate(0 .9)'/%3E%3Cpath d='M0 11H16M13 11V1H3V8H10V4H6' fill='none' stroke='%235c3a14' stroke-opacity='.55' stroke-width='1.3'/%3E%3C/svg%3E") 0 0/16px 12px repeat-x;}
+.from{margin:6px 6px 0;text-align:center;font:italic 400 .86rem/1.3 var(--serif);color:var(--stone-ink-2);text-shadow:0 1px 0 rgba(255,246,222,.6);}
+.q{margin:14px 4px 6px;text-align:center;font:400 clamp(1.18rem,4.9vw,1.5rem)/1.42 var(--serif);color:var(--stone-ink);
+  text-shadow:0 1px 0 rgba(255,247,226,.8),0 -1px 0 rgba(80,48,14,.22);text-wrap:balance;}
+.q.verse{font-style:italic;white-space:pre-line;line-height:1.5;font-size:clamp(1.08rem,4.6vw,1.45rem);text-wrap:pretty;}
+
+/* Hints: papyrus slips that unroll */
+.slips{display:flex;flex-direction:column;gap:9px;margin:12px 2px 0;}
+.slip{position:relative;display:flex;gap:10px;align-items:baseline;padding:10px 14px 11px;border-radius:3px;color:#47300f;
+  font:italic 400 1.02rem/1.35 var(--serif);
+  background:
+    repeating-linear-gradient(90deg,rgba(140,100,40,.09) 0 1px,transparent 1px 6px),
+    repeating-linear-gradient(0deg,rgba(140,100,40,.07) 0 2px,transparent 2px 9px),
+    linear-gradient(180deg,#f7ecce,#ecdcae);
+  box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 4px 10px -2px rgba(60,35,8,.45);transform:rotate(-.5deg);}
+.slip:nth-child(2){transform:rotate(.45deg);}
+.slip b{flex:none;font:700 .62rem/1 var(--caps);letter-spacing:.14em;color:#9a6418;transform:translateY(-2px);}
+.slip.in{animation:unroll .55s cubic-bezier(.2,.8,.3,1) both;}
+@keyframes unroll{0%{clip-path:inset(0 100% 0 0);opacity:.4;}100%{clip-path:inset(0 0 0 0);opacity:1;}}
+
+/* The answer groove */
+.groove{position:relative;display:flex;gap:8px;margin:16px 0 0;}
+.groove input{flex:1;min-width:0;height:54px;border:0;border-radius:14px;padding:0 16px;outline:none;
+  font:400 1.2rem var(--serif);color:#2c1b06;caret-color:#9a5b12;
+  background:linear-gradient(180deg,rgba(92,58,20,.26),rgba(92,58,20,.13));
+  box-shadow:inset 0 3px 5px rgba(64,36,8,.5),inset 0 -1px 0 rgba(255,246,222,.45),0 1px 0 rgba(255,246,222,.7);transition:box-shadow .2s,background .2s;}
+.groove input::placeholder{color:rgba(74,50,24,.5);font-style:italic;}
+.groove input:focus{box-shadow:inset 0 3px 5px rgba(64,36,8,.5),0 1px 0 rgba(255,246,222,.7),0 0 0 2px rgba(196,138,28,.75);}
+.groove.bad input{background:linear-gradient(180deg,rgba(150,40,20,.3),rgba(150,40,20,.16));}
+.groove.near input{box-shadow:inset 0 3px 5px rgba(64,36,8,.5),0 0 0 3px rgba(240,180,41,.95),0 0 18px rgba(240,180,41,.5);}
+.groove.shake{animation:shake .4s;}
+.go{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:54px;padding:0 18px;border:0;border-radius:14px;
+  font:700 .82rem/1 var(--caps);letter-spacing:.12em;color:#3a2405;
+  background:linear-gradient(180deg,#f8dc86,#d9a33c 60%,#c48a1c);
+  box-shadow:inset 0 1px 0 rgba(255,250,220,.9),0 4px 0 #8d5e10,0 6px 10px rgba(60,30,0,.35);transition:transform .08s,box-shadow .08s;}
+.go:active{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,250,220,.9),0 1px 0 #8d5e10;}
+.go .ico{width:18px;height:18px;}
+.closeTag{position:absolute;right:10px;top:-15px;z-index:2;padding:5px 11px;border-radius:999px;font:700 .7rem/1 var(--caps);letter-spacing:.12em;color:#3a2405;
+  background:linear-gradient(180deg,#ffe08a,#f0b429);box-shadow:0 3px 8px rgba(60,30,0,.4);pointer-events:none;transform-origin:70% 100%;}
+.closeTag.in{animation:tagIn .5s var(--spring) both;}
+@keyframes tagIn{0%{transform:scale(.3) rotate(-8deg);opacity:0;}100%{transform:none;opacity:1;}}
+.tried{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;min-height:0;margin:10px 6px 0;font:italic 400 .95rem/1.2 var(--serif);color:rgba(74,50,24,.62);}
+.tried span{position:relative;}
+.tried span.x::after{content:"";position:absolute;left:-3px;right:-3px;top:54%;height:1.6px;background:rgba(122,34,18,.6);transform:rotate(-3deg);border-radius:2px;}
+.tried span.c{color:#9a6418;}
+.tried span.new{animation:rise .35s var(--ease) both;}
+
+/* The carved answer */
+.carve{margin:16px 2px 0;text-align:center;}
+.carve .rule{height:2px;margin:0 18% 14px;border-radius:2px;background:linear-gradient(90deg,transparent,rgba(92,58,20,.45),transparent);box-shadow:0 1px 0 rgba(255,246,222,.6);}
+.carve .lbl{font:700 .64rem/1 var(--caps);letter-spacing:.2em;color:var(--stone-ink-2);}
+.ans{margin:8px 0 2px;font:700 clamp(1.45rem,7vw,2.1rem)/1.15 var(--caps);letter-spacing:.06em;text-transform:uppercase;overflow-wrap:anywhere;}
+.ans span{display:inline-block;white-space:pre;}
+.ans.gold span{background:linear-gradient(180deg,#fff0b8 0%,var(--gilt-a) 30%,var(--gilt-b) 70%,var(--gilt-c) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 1px 0 rgba(255,246,222,.6)) drop-shadow(0 -1px 0 rgba(70,40,5,.45));}
+.ans.dull span{color:#6b5232;text-shadow:0 1px 0 rgba(255,246,222,.7),0 -1px 0 rgba(60,35,8,.35);}
+.ans span.cut{animation:chisel .42s cubic-bezier(.2,.9,.3,1.2) both;}
+@keyframes chisel{0%{transform:translateY(-10px) scale(1.5);opacity:0;filter:blur(3px);}60%{opacity:1;}100%{transform:none;opacity:1;}}
+.dust{position:absolute;width:4px;height:4px;border-radius:50%;background:#bfa171;pointer-events:none;animation:dust .7s ease-out forwards;}
+@keyframes dust{0%{transform:translate(0,0);opacity:.95;}100%{transform:translate(var(--dx),var(--dy));opacity:0;}}
+.verdict{margin:6px 0 0;font:italic 400 .92rem/1.3 var(--serif);color:var(--stone-ink-2);}
+.why{margin:12px 6px 0;font:400 1.02rem/1.45 var(--serif);color:#4a3218;text-shadow:0 1px 0 rgba(255,246,222,.55);}
+.why.in{animation:rise .6s var(--ease) .15s both;}
+.sheen{position:absolute;inset:0;border-radius:inherit;pointer-events:none;overflow:hidden;}
+.sheen::after{content:"";position:absolute;top:-20%;bottom:-20%;width:40%;left:-50%;transform:skewX(-18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,236,170,.55),transparent);animation:sheen 1.1s ease-out .1s forwards;}
+@keyframes sheen{to{left:130%;}}
+.plus{position:absolute;left:50%;top:40%;z-index:5;pointer-events:none;font:700 2rem/1 var(--caps);color:#ffe08a;
+  text-shadow:0 2px 0 #8d5e10,0 4px 14px rgba(0,0,0,.5);animation:plus 1.3s var(--ease) forwards;}
+@keyframes plus{0%{transform:translate(-50%,10px) scale(.6);opacity:0;}25%{transform:translate(-50%,-10px) scale(1.15);opacity:1;}100%{transform:translate(-50%,-70px) scale(1);opacity:0;}}
+
+/* Tablet arriving and leaving */
+.slab.enter{animation:slabIn .6s cubic-bezier(.2,.9,.3,1.1) both;}
+@keyframes slabIn{0%{transform:translateX(70%) rotate(6deg);opacity:0;}100%{transform:none;opacity:1;}}
+.slab.leave{animation:slabOut .35s cubic-bezier(.6,0,.9,.5) forwards;}
+@keyframes slabOut{to{transform:translateX(-75%) rotate(-7deg);opacity:0;}}
+.slab.bump{animation:slabBump .35s ease;}
+@keyframes slabBump{30%{transform:translateY(3px) rotate(-.4deg);}70%{transform:translateY(-1px) rotate(.3deg);}}
+
+/* Action stones under the tablet */
+.acts{display:flex;gap:9px;}
+.acts .btn{flex:1;min-width:0;min-height:52px;padding:0 8px;gap:6px;font-size:.98rem;white-space:nowrap;}
+.stone{--b:linear-gradient(180deg,#d8c39b,#bfa271);--b-ink:#3d2810;--b-lip:#7d6240;background:var(--b);color:var(--b-ink);text-shadow:0 1px 0 rgba(255,246,222,.55);}
+.stone .ico{width:18px;height:18px;}
+.stone .cost{display:inline-flex;align-items:center;margin-left:-2px;opacity:.75;}
+.stone .cost .ico{width:13px;height:13px;}
+.stone:disabled{opacity:.42;filter:saturate(.5);}
+.stone.used{opacity:.42;}
+.next{--b:linear-gradient(180deg,#f8dc86,#d9a33c 60%,#c48a1c);--b-ink:#3a2405;--b-lip:#8d5e10;background:var(--b);font-family:var(--caps);letter-spacing:.08em;}
+.acts.in{animation:rise .4s var(--ease) both;}
+.daynote{margin:2px 0 0;text-align:center;font:italic 400 .95rem/1.3 var(--serif);color:rgba(251,243,220,.75);}
+
+/* Win card: the round's answers */
+.rd-sum{display:flex;flex-direction:column;gap:6px;margin:4px 0 14px;text-align:left;}
+.rd-sum div{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:12px;background:var(--w05);}
+.rd-sum b{flex:1;min-width:0;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rd-sum .st{display:flex;gap:2px;flex:none;}
+.rd-sum .st .ico{width:15px;height:15px;color:var(--text-3);}
+.rd-sum .st .on{color:#f0b429;fill:#f0b429;}
+.rd-sum em{font-style:normal;font-size:.8rem;font-weight:800;color:var(--text-3);}
+
+/* Stats sheet */
+.rs-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 14px;}
+.rs-tiles div{padding:10px 4px;border-radius:14px;background:var(--w05);text-align:center;}
+.rs-tiles b{display:block;font-size:1.5rem;font-weight:900;}
+.rs-tiles span{font-size:.7rem;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;}
+.rs-bars{display:flex;flex-direction:column;gap:10px;}
+.rs-bar{display:grid;grid-template-columns:70px 1fr 112px;align-items:center;gap:10px;font-weight:800;font-size:.9rem;}
+.rs-bar i{height:12px;border-radius:6px;background:var(--w08);overflow:hidden;}
+.rs-bar i s{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#c48a1c,#f6d77c);text-decoration:none;}
+.rs-bar span{color:var(--text-2);font-variant-numeric:tabular-nums;text-align:right;font-size:.82rem;}
+
+@media (min-width:700px){
+  .rd-table{padding:18px 22px 24px;gap:16px;}
+  .slab{padding:24px 34px 30px;}
+  .slab::before{inset:12px;}
+  .q{font-size:1.65rem;margin-top:18px;}
+  .num{font-size:1.2rem;}
+  .lvl{font-size:.72rem;}
+  .star{width:26px;height:26px;}
+  .slip{font-size:1.12rem;}
+  .groove input,.go{height:60px;}
+  .groove input{font-size:1.32rem;}
+  .why{font-size:1.12rem;}
+  .acts .btn{min-height:58px;font-size:1.05rem;}
+}
+.rd-mid{flex:1;display:flex;flex-direction:column;gap:inherit;}
+@media (min-width:700px) and (min-height:900px){ .rd-mid{justify-content:center;padding-bottom:8vh;} }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="rdGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0b8"/><stop offset=".35" stop-color="#f6d77c"/><stop offset=".8" stop-color="#c48a1c"/><stop offset="1" stop-color="#8d5e10"/></linearGradient></defs></svg>
+<div id="app"></div>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var ALL = window.RIDDLES || [], BY = {};
+  ALL.forEach(function (r) { BY[r.id] = r; });
+  var LEVELS = ['easy', 'medium', 'hard'];
+  var LV = { easy: { name: 'Easy', base: 10, dots: 1 }, medium: { name: 'Medium', base: 20, dots: 2 }, hard: { name: 'Hard', base: 30, dots: 3 } };
+  var MODES = { mixed: 'Mixed', easy: 'Easy', medium: 'Medium', hard: 'Hard', daily: 'Daily riddle' };
+  var SKEY = 'riddles_state', SEEN = 'riddles_seen', STATS = 'riddles_stats', HKEY = 'riddles';
+  var ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+
+  function load(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
+  function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function stats() { var s = load(STATS, null) || {}; s.streak = s.streak || 0; s.best = s.best || 0; s.solved = s.solved || {}; s.pts = s.pts || 0; return s; }
+  // days since 1 Jan 2024 (local), +1: the same numbering as daily.js
+  function today() { return Math.floor((Date.now() - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }
+  // the daily riddle: every riddle once before any repeats, in a fixed shuffled order
+  var ORDER = (function () {
+    var a = ALL.map(function (r, i) { return i; }), s = 20241013;
+    function rnd() { s |= 0; s = s + 0x6D2B79F5 | 0; var t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+    for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; }
+    return a;
+  })();
+  function dailyRiddle(day) { return ALL[ORDER[(day - 1) % ALL.length]]; }
+  function dailyDone(day) { try { return GameHistory.load(HKEY).filter(function (e) { return e && e.daily === day; })[0] || null; } catch (e) { return null; } }
+
+  // Curly quotes for display
+  function pretty(s) {
+    return String(s).replace(/(^|[\s(\[—-])"/g, '$1“').replace(/"/g, '”')
+      .replace(/(^|[\s(\[“—-])'/g, '$1‘').replace(/'/g, '’');
+  }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many || one + 's'); }
+
+  Kit.init({
+    id: 'riddles',
+    theme: { felt: ['#21406f', '#152c52', '#0d1d39'] },
+    onNew: function () { showSetup(); },
+    menu: [
+      { icon: 'chart', label: 'Your riddles', onClick: function () { showStats(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Riddles: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Read the riddle and type what you think it is.</p>' +
+      '<h3>Answering</h3><ul><li>Type your answer and press <b>Enter</b>. Guess as many times as you like.</li>' +
+      '<li>Capitals, "a" and "the", plurals and small typos don\'t matter. <b>Close!</b> means you\'re nearly there: check the spelling, or try a nearby word.</li></ul>' +
+      '<h3>Stars and points</h3><ul><li>Every riddle starts with three stars. Each hint you use costs one.</li>' +
+      '<li>Points are stars times the level: Easy 10, Medium 20, Hard 30. A hard riddle with no hints is worth 90.</li>' +
+      '<li><b>Give up</b> shows the answer, for no points, and ends your streak.</li></ul>' +
+      '<h3>Streak</h3><p>Your streak counts riddles solved in a row, across rounds, until you give up on one.</p>' +
+      '<h3>Rounds</h3><p>Pick Easy, Medium, Hard or Mixed (easy to hard), and 5 or 10 riddles. You won\'t see the same riddle again until you\'ve seen every one in its level.</p>' +
+      '<h3>Daily riddle</h3><p>One riddle a day, the same for everyone.</p>'
+  });
+
+  // ── Picking riddles: no repeats until a level has been seen in full ─────────
+  function seenAll() { var s = load(SEEN, null) || {}; LEVELS.forEach(function (l) { if (!Array.isArray(s[l])) s[l] = []; }); return s; }
+  function markSeen(id) { var r = BY[id]; if (!r) return; var s = seenAll(); if (s[r.d].indexOf(id) < 0) s[r.d].push(id); store(SEEN, s); }
+  function pickFrom(level, taken, seen) {
+    var pool = ALL.filter(function (r) { return r.d === level && taken.indexOf(r.id) < 0 && seen[level].indexOf(r.id) < 0; });
+    if (!pool.length) { seen[level] = []; pool = ALL.filter(function (r) { return r.d === level && taken.indexOf(r.id) < 0; }); }
+    var r = pool[Math.floor(Math.random() * pool.length)];
+    seen[level].push(r.id);
+    return r.id;
+  }
+  function pickRound(mode, n) {
+    var seen = seenAll(), ids = [], plan;
+    if (mode === 'mixed') plan = n >= 10 ? ['easy', 'easy', 'easy', 'medium', 'medium', 'medium', 'medium', 'hard', 'hard', 'hard'] : ['easy', 'easy', 'medium', 'medium', 'hard'];
+    else { plan = []; for (var i = 0; i < n; i++) plan.push(mode); }
+    plan.forEach(function (l) { ids.push(pickFrom(l, ids, seen)); });
+    return ids;   // (seen is saved as each riddle is shown)
+  }
+
+  // ── State ───────────────────────────────────────────────────────────────────
+  // S: {mode, daily, ids, i, res:[{h, t:[[guess, close]], done, ok, g, s, p}], pts, over, started}
+  var S = null;
+  function save() {
+    store(SKEY, S);
+    if (S && !S.over) Kit.resume.set(S.daily ? 'Daily riddle' : MODES[S.mode] + ' · riddle ' + (S.i + 1) + ' of ' + S.ids.length);
+  }
+  function cur() { return BY[S.ids[S.i]]; }
+  function st() { return S.res[S.i]; }
+  function fresh() { return { h: 0, t: [], done: 0, ok: 0, g: 0, s: 0, p: 0 }; }
+
+  function startRound(mode, n) {
+    var ids = pickRound(mode, n);
+    S = { mode: mode, daily: 0, ids: ids, i: 0, res: ids.map(fresh), pts: 0, over: false, started: Date.now() };
+    Kit.gameStart(); markSeen(ids[0]); save(); play(true);
+  }
+  function startDaily() {
+    var day = today(), done = dailyDone(day);
+    if (done) { review(done); return; }
+    var saved = load(SKEY, null);
+    if (saved && saved.daily === day && !saved.over) { S = saved; play(true); return; }
+    var r = dailyRiddle(day);
+    S = { mode: 'daily', daily: day, ids: [r.id], i: 0, res: [fresh()], pts: 0, over: false, started: Date.now() };
+    Kit.gameStart(); markSeen(r.id); save(); play(true);
+  }
+
+  // ── Setup ──────────────────────────────────────────────────────────────────
+  function showSetup() {
+    Kit.titleSwitch(null);
+    var stt = stats(), day = today(), dd = dailyDone(day);
+    function prog(l) {
+      var n = ALL.filter(function (r) { return r.d === l; }), s = n.filter(function (r) { return stt.solved[r.id]; }).length;
+      return s ? s + ' of ' + n.length + ' solved' : n.length + ' riddles';
+    }
+    var solvedAll = Object.keys(stt.solved).filter(function (k) { return BY[k]; }).length;
+    app.className = '';
+    Kit.setup(app, {
+      intro: 'Old riddles and new ones. Fewer hints, more points.',
+      modes: [
+        { id: 'mixed', icon: 'shuffle', title: 'Mixed', desc: 'Easy to hard in every round' + (solvedAll ? ' · ' + solvedAll + ' of ' + ALL.length + ' solved' : '') },
+        { id: 'easy', icon: 'star', title: 'Easy', desc: prog('easy') },
+        { id: 'medium', icon: 'lightbulb', title: 'Medium', desc: prog('medium') },
+        { id: 'hard', icon: 'flame', title: 'Hard', desc: prog('hard') },
+        { id: 'daily', icon: 'calendar', title: 'Daily riddle', desc: dd ? (dd.solved ? 'Solved today. A new one tomorrow.' : 'Done for today. A new one tomorrow.') : 'One riddle, the same for everyone today' }
+      ],
+      mode: 'mixed',
+      options: [{ id: 'len', label: 'Round', value: 5, choices: [[5, '5 riddles'], [10, '10 riddles']], when: function (m) { return m !== 'daily'; } }],
+      start: 'Start',
+      onStart: function (cfg) {
+        if (cfg.mode === 'daily') startDaily();
+        else startRound(cfg.mode, +cfg.options.len || 5);
+      }
+    });
+  }
+
+  // ── The play view ───────────────────────────────────────────────────────────
+  var V = {};   // the live nodes
+  function play(enter) {
+    var r = cur(), s = st();
+    app.className = '';
+    app.innerHTML = '';
+    Kit.titleSwitch(S.daily ? 'Daily riddle' : MODES[S.mode], function () { leave(); }, 'Choose a level');
+    var rd = el('div', { class: 'rd' }), table = el('div', { class: 'rd-table felt-in' });
+    // top: one stone per riddle, streak, points
+    var pips = el('div', { class: 'pips', 'aria-label': 'Riddle ' + (S.i + 1) + ' of ' + S.ids.length });
+    S.res.forEach(function (x, i) { pips.appendChild(el('span', { class: 'pip' + pipCls(x, i) })); });
+    var stt = stats();
+    V.streak = el('span', { class: 'chipv streak' + (stt.streak ? '' : ' cold'), title: 'Solved in a row', html: Kit.icon('flame') + '<span>' + stt.streak + '</span>' });
+    V.pts = el('span', { class: 'chipv pts', title: 'Points this round', html: '<span>' + S.pts + '</span><small>pts</small>' });
+    var dayLbl = S.daily ? el('div', { class: 'rd-day', text: new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) }) : null;
+    table.appendChild(el('div', { class: 'rd-top' }, [dayLbl || pips, el('div', { class: 'tally' }, [V.streak, V.pts])]));
+    V.pips = pips;
+    // the tablet
+    var stage = el('div', { class: 'rd-stage' }), slab = slabFor(r, s, S.daily ? 'DAILY' : 'RIDDLE ' + ROMAN[S.i]);
+    if (enter) slab.classList.add('enter');
+    var mid = el('div', { class: 'rd-mid' });
+    stage.appendChild(slab); mid.appendChild(stage);
+    V.slab = slab;
+    V.acts = el('div', { class: 'acts' }); mid.appendChild(V.acts);
+    table.appendChild(mid);
+    rd.appendChild(table); app.appendChild(rd);
+    paintActs();
+    if (enter) { Kit.sfx('whoosh', 0.7); setTimeout(function () { slab.classList.remove('enter'); }, 650); }
+    if (!s.done) focusInput(enter ? 380 : 0);
+    else setTimeout(function () { var b = V.acts.querySelector('.next'); if (b) b.focus({ preventScroll: true }); }, 50);
+  }
+  function pipCls(x, i) { return x.done ? ' s' + (x.ok ? x.s : 0) : i === S.i ? ' now' : ''; }
+
+  // The tablet for a riddle in state s (hints shown, answer carved if done)
+  function slabFor(r, s, label) {
+    var slab = el('article', { class: 'slab', 'aria-live': 'polite' });
+    var lvl = el('div', { class: 'lvl', 'aria-label': LV[r.d].name });
+    for (var i = 1; i <= 3; i++) lvl.appendChild(el('i', { class: i <= LV[r.d].dots ? '' : 'off' }));
+    lvl.appendChild(el('span', { text: LV[r.d].name.toUpperCase() }));
+    var stars = el('div', { class: 'stars', 'aria-label': (3 - s.h) + ' stars left' });
+    var left = s.done ? (s.ok ? s.s : 0) : 3 - s.h;
+    for (i = 0; i < 3; i++) stars.appendChild(el('span', { class: 'star' + (i >= left ? ' gone' : ''), html: Kit.icon('star', 'sock') + Kit.icon('star', 'gold') }));
+    slab.appendChild(el('header', { class: 'slab-h' }, [lvl, el('div', { class: 'num', text: label }), stars]));
+    slab.appendChild(el('div', { class: 'meander', 'aria-hidden': 'true' }));
+    if (r.from) slab.appendChild(el('p', { class: 'from', text: r.from }));
+    slab.appendChild(el('div', { class: 'q' + (r.q.indexOf('\n') >= 0 ? ' verse' : ''), text: pretty(r.q) }));
+    var slips = el('div', { class: 'slips' });
+    for (i = 0; i < s.h; i++) slips.appendChild(slipFor(r, i));
+    slab.appendChild(slips);
+    V.slips = slips; V.stars = stars;
+    if (s.done) slab.appendChild(carveFor(r, s, false));
+    else {
+      var inp = el('input', { type: 'text', 'aria-label': 'Your answer', placeholder: 'Your answer', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'none', spellcheck: 'false', enterkeyhint: 'go', maxlength: '60' });
+      var go = el('button', { type: 'submit', class: 'go', html: '<span>Answer</span>' });
+      var form = el('form', { class: 'groove', novalidate: true, onsubmit: function (e) { e.preventDefault(); submit(); } }, [inp, go]);
+      inp.addEventListener('input', function () { form.classList.remove('bad', 'near'); var t = form.querySelector('.closeTag'); if (t) t.remove(); });
+      slab.appendChild(form);
+      V.form = form; V.input = inp;
+      V.tried = el('div', { class: 'tried', 'aria-label': 'Answers tried' });
+      s.t.forEach(function (g) { V.tried.appendChild(triedEl(g[0], g[1])); });
+      slab.appendChild(V.tried);
+    }
+    return slab;
+  }
+  function slipFor(r, i) { return el('div', { class: 'slip' }, [el('b', { text: 'HINT ' + ROMAN[i] }), el('span', { text: pretty(r.hints[i]) })]); }
+  function triedEl(g, close) { return el('span', { class: close ? 'c' : 'x', text: g }); }
+  // The answer, cut into the stone (animate: letter by letter), the verdict and the explanation
+  function carveFor(r, s, animate) {
+    var box = el('div', { class: 'carve' });
+    box.appendChild(el('div', { class: 'rule' }));
+    box.appendChild(el('div', { class: 'lbl', text: s.ok ? 'SOLVED' : 'THE ANSWER' }));
+    var ans = el('div', { class: 'ans ' + (s.ok ? 'gold' : 'dull'), 'aria-label': r.a });
+    var txt = r.a.replace(/^(a|an|the)\s+/i, function (m) { return m; });
+    txt.split('').forEach(function (c, i) {
+      var sp = el('span', { text: c, 'aria-hidden': 'true' });
+      if (animate) { sp.classList.add('cut'); sp.style.animationDelay = (i * 0.055) + 's'; }
+      ans.appendChild(sp);
+    });
+    box.appendChild(ans);
+    var verdict = s.ok ? (s.h ? 'with ' + plural(s.h, 'hint') : 'no hints') + ' · ' + plural(s.t.length, 'try', 'tries') + ' · +' + s.p + ' points' : 'Given up · no points';
+    box.appendChild(el('div', { class: 'verdict', text: verdict }));
+    box.appendChild(el('p', { class: 'why' + (animate ? ' in' : ''), text: pretty(r.why) }));
+    if (animate) box.querySelector('.why').style.animationDelay = Math.min(1.6, txt.length * 0.055 + 0.25) + 's';
+    return box;
+  }
+
+  function paintActs() {
+    var s = st(), a = V.acts; a.innerHTML = '';
+    if (s.done) {
+      var last = S.i >= S.ids.length - 1;
+      var b = el('button', { type: 'button', class: 'btn btn-lg next', html: (last ? (S.daily ? Kit.icon('check') + '<span>Done</span>' : Kit.icon('trophy') + '<span>See how you did</span>') : '<span>Next riddle</span>' + Kit.icon('right')), onclick: next });
+      a.appendChild(b);
+      return;
+    }
+    var cost = '<span class="cost">' + Kit.icon('minus') + Kit.icon('star') + '</span>';
+    [0, 1].forEach(function (i) {
+      a.appendChild(el('button', { type: 'button', class: 'btn stone' + (s.h > i ? ' used' : ''), disabled: s.h !== i ? true : null,
+        'aria-label': 'Hint ' + (i + 1) + ' (costs a star)', html: Kit.icon('lightbulb') + '<span>Hint</span>' + cost, onclick: hint }));
+    });
+    a.appendChild(el('button', { type: 'button', class: 'btn stone', html: Kit.icon('flag') + '<span>Give up</span>', onclick: giveUp }));
+  }
+  function focusInput(delay) {
+    setTimeout(function () { if (V.input && document.body.contains(V.input) && !document.querySelector('.k-scrim,.k-win')) try { V.input.focus({ preventScroll: true }); } catch (e) {} }, delay || 0);
+  }
+
+  // ── Moves ───────────────────────────────────────────────────────────────────
+  function submit() {
+    var s = st(), r = cur(); if (s.done) return;
+    var g = V.input.value.trim();
+    if (!g) { Kit.sfx('tap'); bounce(V.form, 'shake'); focusInput(); return; }
+    var res = RiddleCheck.check(r, g);
+    s.t.push([g.slice(0, 40), res.ok ? 0 : res.close ? 1 : 0]);
+    if (res.ok) { solve(); return; }
+    V.input.value = '';
+    var span = triedEl(g.slice(0, 40), res.close); span.classList.add('new');
+    V.tried.appendChild(span);
+    var old = V.form.querySelector('.closeTag'); if (old) old.remove();
+    if (res.close) {
+      V.form.classList.remove('bad'); V.form.classList.add('near');
+      V.form.appendChild(el('span', { class: 'closeTag in', text: 'CLOSE!' }));
+      Kit.sfx('pop'); Kit.haptic('medium');
+    } else {
+      V.form.classList.remove('near'); V.form.classList.add('bad');
+      bounce(V.form, 'shake'); Kit.sfx('bad'); Kit.haptic('error');
+    }
+    save(); focusInput();
+  }
+  function bounce(n, cls) { n.classList.remove(cls); void n.offsetWidth; n.classList.add(cls); }
+
+  function hint() {
+    var s = st(), r = cur(); if (s.done || s.h >= 2) return;
+    var i = s.h; s.h++;
+    var slip = slipFor(r, i); slip.classList.add('in'); V.slips.appendChild(slip);
+    var star = V.stars.children[2 - i];
+    if (star) { star.classList.add('lost'); setTimeout(function () { star.classList.add('gone'); star.classList.remove('lost'); }, 900); }
+    Kit.sfx('flip'); setTimeout(function () { Kit.sfx('tick'); }, 180); Kit.haptic('medium');
+    V.stars.setAttribute('aria-label', (3 - s.h) + ' stars left');
+    paintActs(); save(); focusInput(60);
+  }
+
+  function giveUp() {
+    if (st().done) return;
+    Kit.confirm('Show the answer?', { ok: 'Show it', body: 'No points for this one, and your streak starts over.' }).then(function (ok) {
+      if (!ok) return;
+      var s = st(); s.done = 1; s.g = 1; s.ok = 0; s.s = 0; s.p = 0;
+      var stt = stats(), had = stt.streak; stt.streak = 0; store(STATS, stt);
+      // the remaining stars crumble
+      Array.prototype.forEach.call(V.stars.children, function (c, k) { if (!c.classList.contains('gone')) setTimeout(function () { c.classList.add('lost'); }, k * 90); });
+      reveal(false);
+      Kit.sfx('whoosh'); Kit.haptic('heavy');
+      V.streak.classList.add('cold'); V.streak.querySelector('span').textContent = '0';
+      if (had >= 3) Kit.toast('Streak of ' + had + ' ended');
+      save();
+    });
+  }
+
+  function solve() {
+    var s = st(), r = cur();
+    s.done = 1; s.ok = 1; s.s = 3 - s.h; s.p = LV[r.d].base * s.s; S.pts += s.p;
+    var stt = stats();
+    stt.streak++; stt.best = Math.max(stt.best, stt.streak); stt.pts += s.p;
+    stt.solved[r.id] = Math.max(stt.solved[r.id] || 0, s.s);
+    store(STATS, stt);
+    V.slab.classList.add('won');
+    V.slab.appendChild(el('div', { class: 'sheen' }));
+    reveal(true);
+    Kit.sfx('good'); Kit.haptic('success');
+    setTimeout(function () { Kit.sfx('sparkle', 0.8); }, 260);
+    // points float up, then land on the tally
+    var plus = el('div', { class: 'plus', text: '+' + s.p }); V.slab.appendChild(plus);
+    setTimeout(function () { plus.remove(); V.pts.querySelector('span').textContent = S.pts; bounce(V.pts, 'bump'); }, 1200);
+    V.streak.classList.remove('cold'); V.streak.querySelector('span').textContent = stt.streak; bounce(V.streak, 'bump');
+    // the big moments
+    var milestone = stt.streak >= 3 && (stt.streak === 3 || stt.streak === 5 || stt.streak % 10 === 0);
+    setTimeout(function () {
+      if (milestone) { Kit.callout(stt.streak + ' in a row!'); Kit.confetti({ count: stt.streak >= 10 ? 200 : 110 }); Kit.sfx('win', 0.7); }
+      else if (!s.h && r.d === 'hard') { Kit.callout('Brilliant!'); Kit.confetti({ count: 90 }); }
+      else if (!s.h && s.t.length === 1) Kit.callout(r.d === 'easy' ? 'Got it!' : 'First try!');
+      else if (!s.h) Kit.callout('No hints!');
+      else Kit.callout('Solved!');
+    }, 420);
+    save();
+  }
+
+  // Swap the groove for the carved answer, mark the stone above
+  function reveal(won) {
+    var s = st(), r = cur();
+    if (V.form) V.form.remove(); if (V.tried) V.tried.remove(); V.form = V.input = V.tried = null;
+    var box = carveFor(r, s, true); V.slab.appendChild(box);
+    var spans = box.querySelectorAll('.ans span');
+    spans.forEach(function (sp, i) {
+      if (sp.textContent === ' ') return;
+      setTimeout(function () { if (i % 2 === 0) Kit.sfx('tick', 0.4); dustAt(sp); }, i * 55 + 120);
+    });
+    var pip = V.pips && V.pips.children[S.i]; if (pip && pip.isConnected) { pip.className = 'pip' + pipCls(s, S.i); bounce(pip, 'land'); }
+    V.acts.classList.remove('in'); paintActs(); void V.acts.offsetWidth; V.acts.classList.add('in');
+    setTimeout(function () { var b = V.acts.querySelector('.next'); if (b) b.focus({ preventScroll: true }); }, 60);
+    if (S.i >= S.ids.length - 1) finish();
+  }
+  function dustAt(sp) {
+    var host = V.slab; if (!host || !sp.isConnected) return;
+    var hr = host.getBoundingClientRect(), r = sp.getBoundingClientRect();
+    for (var k = 0; k < 3; k++) {
+      var d = el('i', { class: 'dust', style: { left: (r.left - hr.left + r.width / 2) + 'px', top: (r.top - hr.top + r.height * 0.7) + 'px', '--dx': (Math.random() * 36 - 18) + 'px', '--dy': (10 + Math.random() * 22) + 'px' } });
+      host.appendChild(d); setTimeout(function (n) { return function () { n.remove(); }; }(d), 750);
+    }
+  }
+
+  function next() {
+    if (!st().done) return;
+    if (S.i >= S.ids.length - 1) { results(); return; }
+    Kit.sfx('tap'); Kit.haptic('light');
+    var old = V.slab; old.classList.add('leave');
+    setTimeout(function () { S.i++; markSeen(S.ids[S.i]); save(); play(true); }, 280);
+  }
+
+  // ── End of round ─────────────────────────────────────────────────────────────
+  function finish() {
+    if (S.over) return;
+    S.over = true;
+    var n = S.ids.length, solved = S.res.filter(function (x) { return x.ok; }).length;
+    var hints = S.res.reduce(function (a, x) { return a + x.h; }, 0), gave = S.res.filter(function (x) { return x.g; }).length;
+    var stars = S.res.reduce(function (a, x) { return a + (x.ok ? x.s : 0); }, 0);
+    var hl = [];
+    S.res.forEach(function (x, i) { var r = BY[S.ids[i]]; if (x.ok && !x.h && r.d === 'hard') hl.push('Solved a hard one with no hints: ' + r.a); });
+    if (solved === n && !hints) hl.push('Every riddle, no hints');
+    var stt = stats(); if (stt.streak >= 3) hl.push('Streak: ' + stt.streak + ' in a row');
+    if (gave) hl.push('Gave up on ' + plural(gave, 'riddle'));
+    var me = (function () { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } })() || 'You';
+    Kit.record(HKEY, {
+      started: S.started, mode: S.daily ? 'Daily riddle #' + S.daily : MODES[S.mode] + ' · ' + n + ' riddles',
+      players: [{ name: me, score: S.pts }], winner: null,
+      summary: S.daily ? (solved ? 'Solved' + (S.res[0].h ? ' with ' + plural(S.res[0].h, 'hint') : ', no hints') : 'Gave up') + ' · ' + BY[S.ids[0]].a
+        : solved + ' of ' + n + ' solved · ' + S.pts + ' points',
+      badge: S.daily ? (solved ? stars + '/3' : 'X') : solved + '/' + n,
+      highlights: hl,
+      meta: { daily: S.daily || 0, level: S.mode, n: n, solved: solved, stars: stars, pts: S.pts, hints: hints, gaveUp: gave },
+      detail: { lv: S.mode, r: S.res.map(function (x, i) { var r = BY[S.ids[i]]; return { id: r.id, d: r.d, q: r.q.replace(/\n/g, ' / ').slice(0, 170), a: r.a, s: x.ok ? x.s : 0, h: x.h, g: x.g ? 1 : 0, t: x.t.length }; }) }
+    });
+    Kit.resume.clear();
+    store(SKEY, S);
+  }
+  function results() {
+    var n = S.ids.length, solved = S.res.filter(function (x) { return x.ok; }).length;
+    var hints = S.res.reduce(function (a, x) { return a + x.h; }, 0);
+    if (S.daily) {
+      Kit.sfx('pop');
+      Kit.win({
+        icon: solved ? 'star' : 'meh', lose: !solved,
+        title: solved ? (S.res[0].h ? 'Solved!' : 'Solved, no hints!') : 'Tomorrow, then',
+        sub: 'Daily riddle #' + S.daily + (solved ? ' · ' + S.pts + ' points' : '') + '. A new one tomorrow.',
+        againLabel: 'Play a round', again: showSetup, closeLabel: 'Back to games'
+      });
+      return;
+    }
+    var title = solved === n && !hints ? 'Flawless!' : solved === n ? 'Every riddle solved!' : solved >= n / 2 ? 'Well riddled!' : 'The riddles won this round';
+    var w = Kit.win({
+      icon: solved === n ? 'trophy' : 'star', lose: solved < n / 2,
+      title: title, sub: solved + ' of ' + n + ' solved · ' + S.pts + ' points',
+      againLabel: 'Another round', again: function () { startRound(S.mode, n); },
+      extra: [{ label: 'Choose a level', onClick: showSetup }]
+    });
+    var card = document.querySelector('.k-win .card'), sub = card && card.querySelector('.sub');
+    if (sub) {
+      var list = el('div', { class: 'rd-sum' });
+      S.res.forEach(function (x, i) {
+        var r = BY[S.ids[i]], stars = el('span', { class: 'st', 'aria-label': (x.ok ? x.s : 0) + ' stars' });
+        for (var k = 0; k < 3; k++) stars.appendChild(el('span', { html: Kit.icon('star', x.ok && k < x.s ? 'on' : '') }));
+        list.appendChild(el('div', null, [el('b', { text: pretty(r.a.charAt(0).toUpperCase() + r.a.slice(1)) }), x.g ? el('em', { text: 'gave up' }) : null, stars]));
+      });
+      sub.after(list);
+    }
+    return w;
+  }
+
+  // Today's daily riddle is already done: show how it went
+  function review(e) {
+    var dt = e.dt && e.dt.r && e.dt.r[0], r = dt && BY[dt.id] || dailyRiddle(today());
+    S = { mode: 'daily', daily: today(), ids: [r.id], i: 0, res: [{ h: dt ? dt.h : 0, t: [], done: 1, ok: dt ? (dt.g ? 0 : 1) : 1, g: dt && dt.g ? 1 : 0, s: dt ? dt.s : 0, p: e.pts || 0 }], pts: e.pts || 0, over: true, started: Date.now(), review: true };
+    S.res[0].t = new Array(dt ? dt.t : 1);
+    play(true);
+    V.acts.innerHTML = '';
+    V.acts.appendChild(el('button', { type: 'button', class: 'btn btn-lg next', html: '<span>Play a round</span>' + Kit.icon('right'), onclick: showSetup }));
+    V.acts.after(el('p', { class: 'daynote', text: 'A new riddle tomorrow.' }));
+  }
+
+  function leave() {
+    if (S && !S.over && S.res.some(function (x) { return x.done || x.t.length || x.h; })) {
+      Kit.confirm('Choose another level?', { ok: 'Choose', body: 'This round will be dropped.' }).then(function (ok) { if (ok) { Kit.resume.clear(); store(SKEY, null); showSetup(); } });
+    } else { if (S && !S.over) { Kit.resume.clear(); store(SKEY, null); } showSetup(); }
+  }
+
+  // ── Your riddles (stats) ────────────────────────────────────────────────────
+  function showStats() {
+    var stt = stats(), box = el('div');
+    var solvedN = Object.keys(stt.solved).filter(function (k) { return BY[k]; }).length;
+    box.appendChild(el('div', { class: 'rs-tiles', html: '<div><b>' + solvedN + '</b><span>Solved</span></div><div><b>' + stt.streak + '</b><span>Streak</span></div><div><b>' + stt.best + '</b><span>Best streak</span></div>' }));
+    var bars = el('div', { class: 'rs-bars' });
+    LEVELS.forEach(function (l) {
+      var all = ALL.filter(function (r) { return r.d === l; }), n = all.filter(function (r) { return stt.solved[r.id]; }).length;
+      var clean = all.filter(function (r) { return stt.solved[r.id] === 3; }).length;
+      bars.appendChild(el('div', { class: 'rs-bar' }, [el('b', { text: LV[l].name }), el('i', { html: '<s style="width:' + Math.round(n / all.length * 100) + '%"></s>' }), el('span', { text: n + ' / ' + all.length + (clean ? ' · ' + clean + ' clean' : '') })]));
+    });
+    box.appendChild(bars);
+    box.appendChild(el('p', { class: 'dim', style: { 'font-size': '.8rem', margin: '12px 2px 0' }, text: '"Clean" means solved with no hints.' }));
+    Kit.sheet({ title: 'Your riddles', node: box, actions: [
+      { label: 'Close', cls: 'btn-soft' },
+      { label: 'Start my riddles over', cls: 'btn-ghost', onClick: function () {
+        Kit.confirm('Start your riddles over?', { ok: 'Start over', danger: true, body: 'Forgets which riddles you’ve solved and seen, and your streak. Past games stay.' }).then(function (ok) {
+          if (!ok) return; store(STATS, null); store(SEEN, null); Kit.toast('Every riddle is new again');
+        });
+      } }
+    ] });
+  }
+
+  // Enter moves on once a riddle is done (the Next button has focus too, this covers clicks elsewhere)
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || e.metaKey || e.ctrlKey || e.altKey || !S || document.querySelector('.k-scrim,.k-win')) return;
+    if (!app.querySelector('.rd')) return;
+    if (st().done && document.activeElement && !/^(BUTTON|INPUT)$/.test(document.activeElement.tagName)) { e.preventDefault(); if (S.review) showSetup(); else next(); }
+  });
+  // Warm the word list (for typo checks) once the page has settled
+  window.addEventListener('load', function () { setTimeout(function () { try { RiddleCheck.isWord('a'); } catch (e) {} }, 300); });
+
+  // ── Boot ────────────────────────────────────────────────────────────────────
+  var wantDaily = /[?&]daily=1/.test(location.search);
+  if (wantDaily) { try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])daily=1&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch (e) {} }
+  var saved = load(SKEY, null);
+  if (wantDaily) startDaily();
+  else if (saved && saved.ids && saved.ids.length && !saved.over && saved.ids.every(function (id) { return BY[id]; }) && (!saved.daily || saved.daily === today())) { S = saved; play(true); }
+  else showSetup();
+})();
+</script>
+</body>
+</html>

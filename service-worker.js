@@ -170,6 +170,7 @@ const PRECACHE_URLS = [
   '/games/othello.html',
   '/games/chinesecheckers.html',
   '/data/words-en.js',
+  '/data/riddles.js',
   '/games/marbles.html',
   '/games/codebreaker.html',
   '/games/slidepuzzle.html',

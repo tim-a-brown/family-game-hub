@@ -8,6 +8,7 @@
 //   Word Search   today(), DAILY_DIFF  (same as Sudoku)                   history daily
 //   Mazes         today()              ('YYYY-MM-DD' local)               history daily, solved
 //   Crossword     dayKey()             ('YYYY-MM-DD' local)               history daily, kind
+//   Riddles       today()              (days since 1 Jan 2024 local, +1) history daily; riddles_state.daily
 var Daily = window.Daily = (function () {
   var DAY = 86400000;
   function localDay() { return Math.floor((Date.now() - new Date(2024, 0, 1).getTime()) / DAY) + 1; }
@@ -60,6 +61,13 @@ var Daily = window.Daily = (function () {
       var s = state('mazes_state');
       if (s && s.daily === day && !s.done) return { id: 'mazes', what: 'Daily maze', status: 'going', note: s.ms ? clock(s.ms / 1000) : '' };
       return { id: 'mazes', what: 'Daily maze · small Monday, biggest Saturday', status: 'new' };
+    },
+    function riddles() {
+      var day = localDay(), e = hist('riddles').filter(function (x) { return x && x.daily === day; })[0];
+      if (e) return { id: 'riddles', what: 'Daily riddle', status: 'done', note: e.solved ? (e.stars === 3 ? 'No hints' : 'Solved') : 'Gave up' };
+      var s = state('riddles_state');
+      if (s && s.daily === day && !s.over && s.res && s.res[0] && (s.res[0].t.length || s.res[0].h)) return { id: 'riddles', what: 'Daily riddle', status: 'going', note: 'Keep thinking' };
+      return { id: 'riddles', what: 'Daily riddle · the same one for everyone', status: 'new' };
     }
   ];
   // Crossword: today's Mini and today's big Crossword (ids dm-/db-YYYY-MM-DD, as games/crossword.html makes them)
