@@ -188,15 +188,21 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 .groups{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;}
 .grow-row{display:flex;gap:6px;align-items:stretch;flex-wrap:wrap;}
 /* in a hand of property, cards fill each row left to right (in board order) before starting the next */
-.groups .grow-row{display:contents;}
-.mini{--gc:#888;position:relative;width:74px;min-height:56px;border:0;padding:0 0 4px;border-radius:5px;background:#fffdf6;color:#1d1d1b;text-align:center;overflow:hidden;
+/* each colour group is a stack of deeds, fanned down so every card's bar, rent and name show */
+.groups .grow-row{display:flex;flex-direction:column;flex-wrap:nowrap;gap:0;}
+.groups .grow-row .mini + .mini{margin-top:-16px;box-shadow:0 -1px 0 rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.25),0 -3px 6px rgba(0,0,0,.18);}
+.groups .grow-row .mini.full + .mini.full{box-shadow:0 0 0 2px var(--gc),0 -3px 6px rgba(0,0,0,.22);}
+.groups .grow-row .mini:active{z-index:2;}
+.mini{--gc:#888;--gi:#1d1d1b;position:relative;display:flex;flex-direction:column;justify-content:flex-start;width:74px;min-height:48px;border:0;padding:0 0 4px;border-radius:5px;background:#fffdf6;color:#1d1d1b;text-align:center;overflow:hidden;
   box-shadow:0 0 0 1px rgba(0,0,0,.25), 0 2px 4px rgba(0,0,0,.25);font-family:'Sofia Sans Condensed',sans-serif;transition:transform .15s;}
 .mini:active{transform:scale(.95);}
-.mini .mh{height:14px;background:var(--gc);border-bottom:1px solid rgba(0,0,0,.35);display:grid;place-items:center;}
-.mini .mh svg{width:13px;height:13px;}
-.mini .mn{display:block;padding:3px 3px 0;font-size:11px;font-weight:800;line-height:1.05;text-transform:uppercase;}
-.mini .hs{display:flex;justify-content:center;gap:1px;margin-top:2px;min-height:10px;} .mini .hs svg{width:12px;height:12px;}
-.mini.mortg{opacity:.55;} .mini.mortg::after{content:"MORTGAGED";position:absolute;left:0;right:0;bottom:2px;color:#c8102e;font-size:9px;font-weight:900;letter-spacing:.05em;}
+.mini .mh{flex:none;height:16px;background:var(--gc);color:var(--gi);border-bottom:1px solid rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:900;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+.mini .mh svg{width:12px;height:12px;flex:none;}
+.mini .mh .rt{white-space:nowrap;}
+.mini .mh .bh{display:inline-flex;gap:0;margin-left:1px;padding:0 2px;border-radius:3px;background:#fffdf6;box-shadow:0 0 0 1px rgba(0,0,0,.2);} .mini .mh .bh svg{width:9px;height:9px;} .mini .mh .bh.ht svg{width:13px;height:9px;}
+.mini .mn{display:block;padding:3px 3px 0;font-size:11px;font-weight:800;line-height:1.1;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mini .hs{display:none;}
+.mini.mortg .mn,.mini.mortg .mh svg{opacity:.5;} .mini.mortg .mh{background:repeating-linear-gradient(135deg,var(--gc) 0 5px,#b9b2a1 5px 10px);} .mini.mortg .mh .rt{color:#c8102e;background:#fffdf6;padding:0 3px;border-radius:3px;font-size:8.5px;}
 .mini.mortg .hs{display:none;}
 .mini.full{box-shadow:0 0 0 2px var(--gc), 0 2px 4px rgba(0,0,0,.25);}
 .empty{color:var(--text-3);font-weight:700;font-size:.9rem;}
@@ -925,16 +931,20 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       '<div class="rows"><div class="dr"><span>Price</span><b>' + money(s.p) + '</b></div><div class="dr"><span>Rent</span><b>' + (s.k === 'ut' ? '4× / 10× dice' : money(lo) + '–' + money(hi)) + '</b></div></div></div>' });
     return w;
   }
+  // dark ink on light colour bars, white on dark ones
+  function inkOn(hex) { var m = /^#?([0-9a-f]{6})$/i.exec(hex); if (!m) return '#1d1d1b'; var n = parseInt(m[1], 16), l = .299 * (n >> 16) + .587 * ((n >> 8) & 255) + .114 * (n & 255); return l > 150 ? '#1d1d1b' : '#fff'; }
   function miniCard(sq, o) {
     o = o || {}; var s = SQ[sq], hs = '';
     var n = S.hs[sq];
     if (n === 5) hs = '<svg viewBox="-19 -19 38 21">' + A.hotel(0, 0, 1) + '</svg>';
     else for (var k = 0; k < n; k++) hs += '<svg viewBox="-10 -18 20 20">' + A.house(0, 0, 1) + '</svg>';
-    var head = s.k === 'st' ? '' : '<span style="color:#1d1d1b">' + A.icon(s.k === 'rr' ? 'train' : sq === 12 ? 'bulb' : 'tap') + '</span>';
-    var full = s.k === 'st' && M.ownsGroup(S, S.own[sq], s.g);
-    return el('button', { type: 'button', class: 'mini' + (S.mort[sq] ? ' mortg' : '') + (full ? ' full' : ''), style: { '--gc': s.k === 'st' ? GROUPS[s.g].c : '#e9e4d6' }, 'aria-label': s.n + (S.mort[sq] ? ', mortgaged' : '') + (n ? ', ' + (n === 5 ? 'hotel' : n + ' houses') : ''),
-      onclick: function () { deedSheet(sq); } }, [el('span', { class: 'mh', html: head }), el('span', { class: 'mn', text: shortName(sq) }), el('span', { class: 'hs', html: hs })]);
+    var full = s.k === 'st' && M.ownsGroup(S, S.own[sq], s.g), gc = s.k === 'st' ? GROUPS[s.g].c : '#e9e4d6';
+    var rt = S.mort[sq] ? 'MORTGAGED' : s.k === 'ut' ? (M.rent(S, sq, 1) + '× roll') : money(M.rent(S, sq, 7));
+    var head = (s.k === 'st' ? '' : A.icon(s.k === 'rr' ? 'train' : sq === 12 ? 'bulb' : 'tap')) + '<span class="rt">' + rt + '</span>' + (hs ? '<span class="bh' + (n === 5 ? ' ht' : '') + '">' + hs + '</span>' : '');
+    return el('button', { type: 'button', class: 'mini' + (S.mort[sq] ? ' mortg' : '') + (full ? ' full' : ''), style: { '--gc': gc, '--gi': inkOn(gc) }, 'aria-label': s.n + (S.mort[sq] ? ', mortgaged' : ', rent ' + rt) + (n ? ', ' + (n === 5 ? 'hotel' : n + ' houses') : ''),
+      onclick: function () { deedSheet(sq); } }, [el('span', { class: 'mh', html: head }), el('span', { class: 'mn', text: cardName(sq) }), el('span', { class: 'hs', html: hs })]);
   }
+  function cardName(sq) { return shortName(sq).replace(/ Ave$/, '').replace(/^Penn\.$/, 'Pennsylvania').replace(/^St\. Charles Place$/, 'St. Charles Pl').replace(/^St\. James Place$/, 'St. James Pl').replace(/^Marvin Gardens$/, 'Marvin Gdns').replace(/^Electric Company$/, 'Electric Co.'); }
   function shortName(sq) { return SQ[sq].n.replace(/ Avenue$/, ' Ave').replace(/ Railroad$/, ' R.R.').replace(/^Pennsylvania R\.R\.$/, 'Penn. R.R.').replace(/North Carolina/, 'N. Carolina').replace(/^Pennsylvania Ave$/, 'Penn. Ave'); }
 
   // ── The action area: whose turn, what's happening, the buttons ──
