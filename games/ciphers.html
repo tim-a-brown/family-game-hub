@@ -235,6 +235,8 @@ body{overflow-x:hidden;}
 .cell{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:var(--cw2,24px);cursor:pointer;-webkit-user-select:none;user-select:none;}
 .cell .g{display:grid;place-items:center;height:22px;min-width:100%;font-family:var(--tw);font-weight:700;font-size:1rem;color:#5b4a2a;line-height:1;white-space:nowrap;}
 .cell .g svg{width:20px;height:20px;}
+.cell .g.big{height:32px;}
+.cell .g.big svg{width:30px;height:30px;}
 .cell .g.mo{font-size:.95rem;letter-spacing:.04em;font-family:var(--mono);font-weight:900;}
 .cell .g.sm{font-size:.82rem;}
 .cell .s{position:relative;display:grid;place-items:center;width:100%;height:30px;border-bottom:2px solid #2d2618;font-family:var(--tw);font-weight:700;font-size:1.32rem;color:var(--ink);line-height:1;}
@@ -1587,11 +1589,11 @@ body{overflow-x:hidden;}
       if (t.sp) { word = null; return; }
       if (!word) { word = el('div', { class: 'word' }); words.appendChild(word); }
       if (t.pu) { var pc = el('div', { class: 'cell pu' }, [el('span', { class: 'g' }), el('span', { class: 's', text: t.pu })]); word.appendChild(pc); cells[i] = null; return; }
-      var gl = String(t.g || ''), w = t.svg ? 26 : t.mo ? Math.max(24, gl.length * 10 + 4) : gl.length > 2 ? Math.max(24, gl.length * 9 + 6) : 24;
-      var g = el('span', { class: 'g' + (t.mo ? ' mo' : gl.length > 2 ? ' sm' : ''), html: t.svg ? t.svg : esc(gl) });
+      var big = c.cipher.t === 'semaphore' || c.cipher.tap, gl = String(t.g || ''), w = t.svg ? (big ? 32 : 26) : t.mo ? Math.max(24, gl.length * 10 + 4) : gl.length > 2 ? Math.max(24, gl.length * 9 + 6) : 24;
+      var g = el('span', { class: 'g' + (t.mo ? ' mo' : gl.length > 2 ? ' sm' : '') + (big ? ' big' : ''), html: t.svg ? t.svg : esc(gl) });
       var s = el('span', { class: 's' });
       var cell = el('div', { class: 'cell', style: { '--cw2': w + 'px', '--d': String(d++) }, role: 'button', 'aria-label': 'Letter ' + (i + 1) }, [g, s]);
-      cell.addEventListener('pointerdown', function (e) { e.preventDefault(); if (S.done) return; select(i); Kit.haptic('tick'); Kit.sfx('tap', 0.4); });
+      cell.addEventListener('pointerdown', function (e) { e.preventDefault(); var ae = document.activeElement; if (ae && /INPUT|TEXTAREA/.test(ae.tagName)) ae.blur(); if (S.done) return; select(i); Kit.haptic('tick'); Kit.sfx('tap', 0.4); });
       cells[i] = { el: cell, s: s, last: '' };
       if (lk && t.k) (keyCells[t.k] = keyCells[t.k] || []).push(i);
       word.appendChild(cell);

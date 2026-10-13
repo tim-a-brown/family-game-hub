@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Picture Mysteries: render every case's picture to PNG for review.
 //
-//   node scripts/mysteries-render.js [outDir] [caseId ...]
+//   node scripts/mysteries-render.js [outDir] [caseId ...]     (outDir defaults to <tmp>/mysteries-review)
 //
 // For each case it writes <id>.png (the picture as the player sees it) and
 // <id>-solution.png (the same picture with the solution's marks, hint circles
@@ -9,12 +9,12 @@
 // question, choices, hints and solution beside each picture.
 // Needs Playwright with Chromium (npm i -g playwright; npx playwright install chromium).
 'use strict';
-const http = require('http'), fs = require('fs'), path = require('path');
+const http = require('http'), fs = require('fs'), path = require('path'), os = require('os');
 let chromium;
 try { chromium = require('playwright').chromium; } catch (e) { console.error('Playwright is not installed: npm i -g playwright && npx playwright install chromium (and set NODE_PATH=$(npm root -g))'); process.exit(1); }
 
 const ROOT = path.resolve(__dirname, '..');
-const OUT = path.resolve(process.argv[2] || path.join(ROOT, 'mysteries-review'));
+const OUT = path.resolve(process.argv[2] || path.join(os.tmpdir(), 'mysteries-review'));
 const ONLY = process.argv.slice(3);
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json' };
 
