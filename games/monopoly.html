@@ -202,7 +202,8 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 .mini .mh .bh{display:inline-flex;gap:0;margin-left:1px;padding:0 2px;border-radius:3px;background:#fffdf6;box-shadow:0 0 0 1px rgba(0,0,0,.2);} .mini .mh .bh svg{width:9px;height:9px;} .mini .mh .bh.ht svg{width:13px;height:9px;}
 .mini .mn{display:block;padding:3px 3px 0;font-size:11px;font-weight:800;line-height:1.1;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mini .hs{display:none;}
-.mini.mortg .mn,.mini.mortg .mh svg{opacity:.5;} .mini.mortg .mh{background:repeating-linear-gradient(135deg,var(--gc) 0 5px,#b9b2a1 5px 10px);} .mini.mortg .mh .rt{color:#c8102e;background:#fffdf6;padding:0 3px;border-radius:3px;font-size:8.5px;}
+.mini.mortg .mn,.mini.mortg .mh svg{opacity:.5;} .mini.mortg .mh{background:repeating-linear-gradient(135deg,var(--gc) 0 5px,#b9b2a1 5px 10px);} .mini.mortg .mh .rt{color:#c8102e;background:#fffdf6;padding:0 3px;border-radius:3px;font-size:9px;letter-spacing:0;}
+.mini.mortg .mn::after{content:"Mortgaged";display:block;margin-top:1px;color:#c8102e;font-size:8.5px;letter-spacing:.06em;}
 .mini.mortg .hs{display:none;}
 .mini.full{box-shadow:0 0 0 2px var(--gc), 0 2px 4px rgba(0,0,0,.25);}
 .empty{color:var(--text-3);font-weight:700;font-size:.9rem;}
@@ -948,9 +949,9 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     if (n === 5) hs = '<svg viewBox="-19 -19 38 21">' + A.hotel(0, 0, 1) + '</svg>';
     else for (var k = 0; k < n; k++) hs += '<svg viewBox="-10 -18 20 20">' + A.house(0, 0, 1) + '</svg>';
     var full = s.k === 'st' && M.ownsGroup(S, S.own[sq], s.g), gc = s.k === 'st' ? GROUPS[s.g].c : '#e9e4d6';
-    var rt = S.mort[sq] ? 'MORTGAGED' : s.k === 'ut' ? (M.rent(S, sq, 1) + '× roll') : money(M.rent(S, sq, 7));
+    var rt = S.mort[sq] ? 'Unmortgage ' + money(M.unmortCost(S, sq)) : s.k === 'ut' ? (M.rent(S, sq, 1) + '× roll') : money(M.rent(S, sq, 7));
     var head = (s.k === 'st' ? '' : A.icon(s.k === 'rr' ? 'train' : sq === 12 ? 'bulb' : 'tap')) + '<span class="rt">' + rt + '</span>' + (hs ? '<span class="bh' + (n === 5 ? ' ht' : '') + '">' + hs + '</span>' : '');
-    return el('button', { type: 'button', class: 'mini' + (S.mort[sq] ? ' mortg' : '') + (full ? ' full' : ''), style: { '--gc': gc, '--gi': inkOn(gc) }, 'aria-label': s.n + (S.mort[sq] ? ', mortgaged' : ', rent ' + rt) + (n ? ', ' + (n === 5 ? 'hotel' : n + ' houses') : ''),
+    return el('button', { type: 'button', class: 'mini' + (S.mort[sq] ? ' mortg' : '') + (full ? ' full' : ''), style: { '--gc': gc, '--gi': inkOn(gc) }, 'aria-label': s.n + (S.mort[sq] ? ', mortgaged, ' + money(M.unmortCost(S, sq)) + ' to pay it off' : ', rent ' + rt) + (n ? ', ' + (n === 5 ? 'hotel' : n + ' houses') : ''),
       onclick: function () { deedSheet(sq); } }, [el('span', { class: 'mh', html: head }), el('span', { class: 'mn', text: cardName(sq) }), el('span', { class: 'hs', html: hs })]);
   }
   function cardName(sq) { return shortName(sq).replace(/ Ave$/, '').replace(/^Penn\.$/, 'Pennsylvania').replace(/^St\. Charles Place$/, 'St. Charles Pl').replace(/^St\. James Place$/, 'St. James Pl').replace(/^Marvin Gardens$/, 'Marvin Gdns').replace(/^Electric Company$/, 'Electric Co.'); }
