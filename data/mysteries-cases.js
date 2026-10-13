@@ -18,7 +18,7 @@
 
   add({
     id: 'cookie-jar', level: 'easy', no: 1, type: 'Who did it', title: 'The Cookie Jar Caper',
-    setup: 'Grandma baked a batch of chocolate-chip cookies and left them in the jar to cool. Ten minutes later the lid was off and the jar was nearly empty. The four grandkids in the kitchen all say: "Not me!"',
+    setup: 'Grandma baked a batch of chocolate-chip cookies and left them in the jar to cool. Ten minutes later the lid was off and the jar was nearly empty. The four grandkids in the kitchen all say: “Not me!”',
     q: 'Who took the cookies?',
     choices: [{ id: 'mia', label: 'Mia' }, { id: 'leo', label: 'Leo' }, { id: 'zoe', label: 'Zoe' }, { id: 'max', label: 'Max' }], answer: 'max', tap: true,
     scene: {
@@ -80,7 +80,7 @@
     ],
     solution: {
       steps: [
-        { text: 'The muddy prints have a zigzag pattern, and they are small.', marks: [{ x: 128, y: 170, r: 15 }] },
+        { text: 'The muddy prints have a zigzag pattern, and they are small.', marks: [{ x: 162, y: 172, r: 14 }] },
         { text: 'Dad’s boots have zigzags too, and mud, but they are much too big.', marks: [{ id: 'dad' }] },
         { text: 'Leo’s boots are small, have the same zigzag, and are still muddy.', marks: [{ id: 'leo' }] }
       ],
@@ -825,7 +825,7 @@
     scene: {
       bg: ['room', { wall: '#3d5a4c', paper: 'diamonds', floorY: 250, floor: '#6a4a32', rail: 160 }],
       items: [
-        ['frame', { id: 'portrait', x: 140, y: 14, w: 120, h: 112, color: '#c9a227', bg: '#7a5a3a', plate: 'LORD EDMUND', items: [
+        ['frame', { id: 'portrait', x: 140, y: 8, w: 120, h: 110, color: '#c9a227', bg: '#7a5a3a', plate: 'LORD EDMUND', items: [
           ['svg', { svg: '<rect width="120" height="112" fill="#6a4a36"/><circle cx="60" cy="40" r="50" fill="#8a6a46" opacity=".5"/>' }],
           ['person', { id: 'edmund', x: 60, y: 300, s: 2.2, skin: 0, hair: 'side', hc: '#5a3820', top: '#f4f0e6', coat: '#2f5a3a', stache: 1, acc: ['tie:#a8202e', 'mole:L:1', 'notchR:#6a4a36'], eyes: 'open', mouth: 'flat', blush: false }]
         ] }],
@@ -839,7 +839,7 @@
     },
     hints: [
       { text: 'Ignore anything a person could change in a year: clothes, hats, beards, haircuts.' },
-      { text: 'Compare the little marks on the face and ears with the portrait. Check which side each one is on.', at: { box: [140, 14, 120, 112] } }
+      { text: 'Compare the little marks on the face and ears with the portrait. Check which side each one is on.', at: { box: [140, 8, 120, 110] } }
     ],
     solution: {
       steps: [

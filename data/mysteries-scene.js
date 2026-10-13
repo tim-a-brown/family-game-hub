@@ -240,8 +240,12 @@
     var y = B.hy, r = B.hr, s = '', st = p.hair || 'short', acc = p.acc || [], mk = p.marks || [];
     s += rect(-3.6, y + r - 3, 7.2, 6, skin, { sw: 1 });
     s += circ(-r + 0.3, y + 1, 3, skin, { sw: 1 }) + circ(r - 0.3, y + 1, 3, skin, { sw: 1 });
-    if (has(acc, 'notchL')) s += g(path('M' + n(-r - 3.2) + ' ' + n(y - 1.2) + 'l2.6 1.7 -2.6 1.5z', arg(acc, 'notchL', 1, '#fff'), { st: 0 }), { p: P('earL') });
-    if (has(acc, 'notchR')) s += g(path('M' + n(r + 3.2) + ' ' + n(y - 1.2) + 'l-2.6 1.7 2.6 1.5z', arg(acc, 'notchR', 1, '#fff'), { st: 0 }), { p: P('earR') });
+    [['L', -1], ['R', 1]].forEach(function (q) {
+      if (!has(acc, 'notch' + q[0])) return;
+      var d = q[1], bg = arg(acc, 'notch' + q[0], 1, '#fff');
+      s += g(path('M' + n(d * (r + 3.8)) + ' ' + n(y - 2.6) + 'L' + n(d * (r + 0.4)) + ' ' + n(y - 0.4) + 'L' + n(d * (r + 3.8)) + ' ' + n(y + 1.4) + 'Z', bg, { st: 0 }) +
+        path('M' + n(d * (r + 2.7)) + ' ' + n(y - 1.9) + 'L' + n(d * (r + 0.4)) + ' ' + n(y - 0.4) + 'L' + n(d * (r + 2.8)) + ' ' + n(y + 0.9), 'none', { sw: 0.8 }), { p: P('ear' + q[0]) });
+    });
     if (has(acc, 'earrings')) s += circ(-r + 0.3, y + 4.5, 1.2, arg(acc, 'earrings', 1, '#e8c34a'), { sw: 0.5 }) + circ(r - 0.3, y + 4.5, 1.2, arg(acc, 'earrings', 1, '#e8c34a'), { sw: 0.5 });
     s += circ(0, y, r, skin);
     // face

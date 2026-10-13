@@ -274,7 +274,7 @@ window.CIPHER_DATA = {
       setup: 'The old bank vault has a four-number padlock. A safecracker left notes on six tries before giving up.',
       dev: { t: 'lock', n: 4 }, ans: '3916',
       mm: [{ g: '4695', a: 0, b: 2 }, { g: '9468', a: 0, b: 2 }, { g: '1783', a: 0, b: 2 }, { g: '6841', a: 0, b: 2 }, { g: '4096', a: 1, b: 1 }, { g: '7482', a: 0, b: 0 }],
-      scene: { bg: 'cork', items: [{ t: 'mm', x: 12, y: 6, w: 376 }] },
+      scene: { bg: 'dungeon', items: [{ t: 'mm', x: 12, y: 6, w: 376 }] },
       hints: ['7, 4, 8 and 2 are not in the code. Cross them out everywhere.', 'With 4 and 8 gone, 9468 says 9 and 6 are in the code, and 6841 says 6 and 1 are. 1783 says 1 and 3 are.'],
       explain: 'Taking out 7, 4, 8 and 2, 9468 says 9 and 6 are in, and 1783 says 1 and 3 are. So the code uses 3, 9, 1 and 6. 4096 needs one in place: the 9 can\'t be third (4695), so the 6 is last. The 9 isn\'t first (9468) or third, so it\'s second. The 1 isn\'t first (1783), so it\'s third, and the 3 goes first: 3-9-1-6.'
     },
@@ -469,7 +469,7 @@ window.CIPHER_DATA.cases = window.CIPHER_DATA.cases.concat([
     id: 'e14', lv: 'easy', title: 'The Arcade Locker', prize: 'A pocket full of tokens',
     setup: 'The arcade\'s prize locker has a three-number lock. A sticky note on the high score screen says what to do.',
     dev: { t: 'lock', n: 3 }, ans: '863',
-    scene: { bg: 'arcade', items: [{ t: 'scoreboard', x: 90, y: 20, rows: [['ACE', '8410'], ['JAX', '6950'], ['MIA', '3120']] }, { t: 'sticky', x: 280, y: 120, w: 108, h: 88, rot: 5, hand: ['First number', 'of each score,', 'top to bottom'] }] },
+    scene: { bg: 'arcade', items: [{ t: 'scoreboard', x: 90, y: 20, rows: [['ACE', '8410'], ['JAX', '6950'], ['MIA', '3120']] }, { t: 'sticky', x: 300, y: 140, w: 96, h: 88, rot: 5, hand: ['First number', 'of each', 'score'] }] },
     hints: ['Look at the high scores. Take the first number of each one.', 'The top score starts with 8.'],
     explain: '8410, 6950 and 3120 start with 8, 6 and 3: the code is 8-6-3.'
   },
@@ -573,7 +573,7 @@ window.CIPHER_DATA.cases = window.CIPHER_DATA.cases.concat([
     id: 'e27', lv: 'easy', title: 'The Stepping Stones', prize: 'The key to the cottage',
     setup: 'The cottage door has a keypad. Grandad says: "follow the stepping stones from the gate".',
     dev: { t: 'keypad', n: 4 }, ans: '2947',
-    scene: { bg: 'garden', items: [{ t: 'cottage', x: 270, y: 40 }, { t: 'gate', x: 6, y: 150 }, { t: 'stones', path: [[70, 205, 2], [140, 190, 9], [210, 200, 4], [270, 180, 7]], extra: [[120, 225, 5], [200, 160, 1], [330, 222, 3]] }] },
+    scene: { bg: 'garden', items: [{ t: 'cottage', x: 270, y: 40 }, { t: 'gate', x: 6, y: 150 }, { t: 'stones', path: [[70, 205, 2], [140, 190, 9], [210, 200, 4], [270, 180, 7]], extra: [[150, 150, 1], [330, 224, 3], [196, 236, 5]] }] },
     hints: ['Start at the gate and follow the path of stones to the door.', 'The first stone on the path says 2.'],
     explain: 'Along the path from the gate: 2, 9, 4, 7. The stones off the path don\'t count. The code is 2947.'
   },
@@ -665,7 +665,7 @@ window.CIPHER_DATA.cases = window.CIPHER_DATA.cases.concat([
     id: 'm18', lv: 'medium', title: 'The Greenhouse', prize: 'A prize-winning orchid',
     setup: 'The gardener\'s seed safe has three numbers. Her note: "the tallest plant, the one in flower, then add up the other two".',
     dev: { t: 'dial', n: 3, max: 40 }, ans: '17-8-10',
-    scene: { bg: 'greenhouse', items: [{ t: 'plants', x: 20, y: 30, list: [[70, 4, 0], [150, 17, 0], [90, 8, 1], [60, 6, 0]] }] },
+    scene: { bg: 'greenhouse', items: [{ t: 'plants', x: 10, y: 0, list: [[70, 4, 0], [150, 17, 0], [90, 8, 1], [60, 6, 0]] }] },
     hints: ['Each pot has a number on its label. Find the tallest plant and the one with a flower.', 'The tallest is 17 and the flowering one is 8. Add the other two labels.'],
     explain: 'The tallest plant is 17, the one in flower is 8, and the other two are 4 + 6 = 10: 17-8-10.'
   },
@@ -721,8 +721,8 @@ window.CIPHER_DATA.cases = window.CIPHER_DATA.cases.concat([
     id: 'm25', lv: 'medium', title: 'The Stable Note', prize: 'A ride on the fastest horse',
     setup: 'A note pinned in the stables is in three jumbled groups. On the back: "rows of three".',
     dev: { t: 'msg' }, cipher: { t: 'columns', k: 3 }, plain: 'THE HORSE IS IN STALL FOUR',
-    scene: { bg: 'barn', items: [{ t: 'card', x: 30, y: 40, w: 220, h: 100, rot: -2, pin: true, type: ['TOEIAFU', 'HRISLOR', 'ESNTLO'] }, { t: 'gridpad', x: 270, y: 30, cols: 3, rows: 7, label: 'rows of three' }] },
-    hints: ['The message was written in rows of 3 letters and read down each column. Write each group down a column.', 'Put TOEIAFU down the first column, HRISLOR down the second, ESNTLO down the third. Read across.'],
+    scene: { bg: 'barn', items: [{ t: 'card', x: 30, y: 40, w: 220, h: 100, rot: -2, pin: true, type: ['THSSSLO', 'HOEITLU', 'ERINAFR'] }, { t: 'gridpad', x: 276, y: 8, cols: 3, rows: 7, cell: 24, label: 'rows of 3' }] },
+    hints: ['The message was written in rows of 3 letters and read down each column. Write each group down a column.', 'Put THSSSLO down the first column, HOEITLU down the second, ERINAFR down the third. Read across.'],
     explain: 'A column jumble: written in rows of three, read out column by column. Writing the groups back as columns and reading across gives THE HORSE IS IN STALL FOUR.'
   },
   {
@@ -738,7 +738,7 @@ window.CIPHER_DATA.cases = window.CIPHER_DATA.cases.concat([
     setup: 'The toy shop\'s padlock has four numbers. The shopkeeper\'s nephew guessed six times and wrote down how close each was.',
     dev: { t: 'lock', n: 4 }, ans: '6193',
     mm: [{ g: '7521', a: 0, b: 1 }, { g: '3627', a: 0, b: 2 }, { g: '7390', a: 1, b: 1 }, { g: '8403', a: 1, b: 0 }, { g: '3590', a: 1, b: 1 }, { g: '5802', a: 0, b: 0 }],
-    scene: { bg: 'cork', items: [{ t: 'mm', x: 12, y: 6, w: 376 }] },
+    scene: { bg: 'party', items: [{ t: 'mm', x: 12, y: 6, w: 376 }] },
     hints: ['5, 8, 0 and 2 are out. That leaves 3 and 9 in 3590.', '7390 has only two right, so the 7 is out. 7521 then gives you the 1.'],
     explain: '5, 8, 0 and 2 are out. 3590 then has 3 and 9, and 7390 has only two right, so the 7 is out. 7521 gives the 1 and 3627 gives the 6. With 6, 1, 9 and 3, the 4 is out and 8403 puts the 3 last. 3590\'s one in place is the 9, third. 3627 says the 6 isn\'t second, so 6-1-9-3.'
   },
@@ -762,7 +762,7 @@ window.CIPHER_DATA.cases = window.CIPHER_DATA.cases.concat([
     id: 'm30', lv: 'medium', title: 'The Castaway\'s Wall', prize: 'The castaway\'s treasure map',
     setup: 'A shipwreck cabin has a keypad. The castaway scratched tally marks on the wall, and under them: "newest first".',
     dev: { t: 'keypad', n: 4 }, ans: '5381', kind: 'Tally marks',
-    scene: { bg: 'cabin', items: [{ t: 'tallies', x: 30, y: 50, groups: [1, 8, 3, 5] }, { t: 'text', x: 200, y: 200, s: 'newest first  >', size: 22, a: 'middle', c: '#f4e8c8' }] },
+    scene: { bg: 'cabin', items: [{ t: 'tallies', x: 24, y: 50, groups: [1, 8, 3, 5] }, { t: 'text', x: 200, y: 200, s: 'newest first  >', size: 22, a: 'middle', c: '#f4e8c8' }] },
     hints: ['Count each group of tally marks. A crossed bundle is 5.', 'The groups are 1, 8, 3 and 5 from left to right. The newest is on the right.'],
     explain: 'The tallies are 1, 8, 3 and 5. Newest first means read from the right: 5381.'
   },
@@ -788,7 +788,7 @@ window.CIPHER_DATA.cases = window.CIPHER_DATA.cases.concat([
     id: 'h13', lv: 'hard', title: 'The Poet\'s Desk', prize: 'An original handwritten poem',
     setup: 'A line of poetry in letter-swap code, found in a poet\'s desk drawer.',
     dev: { t: 'msg' }, cipher: { t: 'crypto', seed: 1914 }, plain: 'THE BEST WAY OUT IS ALWAYS THROUGH', by: 'Robert Frost', tool: 'crypto',
-    scene: { bg: 'desk', items: [{ t: 'quill', x: 250, y: 90 }, { t: 'card', x: 30, y: 30, w: 200, h: 150, rot: -3, lined: true, hand: ['', ''] }] },
+    scene: { bg: 'desk', items: [{ t: 'quill', x: 250, y: 90 }, { t: 'card', x: 30, y: 30, w: 200, h: 150, rot: -3, lined: true, hand: ['Draft No. 9', 'for the coded', 'line, see below'] }] },
     hints: ['THE is the most common three-letter word. Look for a three-letter word that starts the line.', 'The first word is THE and the last word is THROUGH.'],
     explain: 'A cryptogram. THE at the start, then the T and H in THROUGH, crack it open: THE BEST WAY OUT IS ALWAYS THROUGH (Robert Frost).'
   },
@@ -813,7 +813,7 @@ window.CIPHER_DATA.cases = window.CIPHER_DATA.cases.concat([
     id: 'h16', lv: 'hard', title: 'The Digit Safe', prize: 'The mathematician\'s notebook',
     setup: 'A mathematician\'s safe. She never wrote the numbers down, only three facts about them.',
     dev: { t: 'dial', n: 3, max: 40 }, ans: '19-28-37', kind: 'Logic',
-    scene: { bg: 'classroom', items: [{ t: 'board', x: 20, y: 20, w: 360, h: 190, chalk: ['All three are two-digit numbers under 40.', 'The digits of each one add up to 10.', 'Turn them from smallest to largest.'] }] },
+    scene: { bg: 'classroom', items: [{ t: 'board', x: 20, y: 20, w: 360, h: 190, chalk: ['Three two-digit numbers,', 'every one under 40.', 'The digits of each', 'one add up to 10.', 'Smallest first!'] }] },
     hints: ['List the two-digit numbers under 40 whose digits add to 10.', 'They start 19 (1 + 9 = 10).'],
     explain: 'Two-digit numbers under 40 with digits adding to 10 are 19, 28 and 37, and there are exactly three. Smallest first: 19-28-37.'
   },
@@ -838,8 +838,8 @@ window.CIPHER_DATA.cases = window.CIPHER_DATA.cases.concat([
     id: 'h19', lv: 'hard', title: 'The Zoo Keeper\'s Note', prize: 'A day as a zoo keeper',
     setup: 'A jumbled note in five groups. The keeper writes in rows under a key word, and reads the columns in alphabetical order of its letters. Her favourite animal is on the sign.',
     dev: { t: 'msg' }, cipher: { t: 'keycols', kw: 'ZEBRA' }, plain: 'HIDE BEHIND THE GIRAFFE',
-    scene: { bg: 'zoo', items: [{ t: 'sign', x: 30, y: 30, w: 160, h: 56, text: 'ZEBRA' }, { t: 'card', x: 40, y: 120, w: 170, h: 90, rot: -3, type: ['EIHR IBEF', 'DNIF HEDE', 'EHTA'] }, { t: 'gridpad', x: 240, y: 30, cols: 5, rows: 4, label: 'Z E B R A' }] },
-    hints: ['Write ZEBRA across 5 columns. Alphabetical order is A, B, E, R, Z: the first group goes under A, the second under B, and so on, each down its column.', 'Groups are 4 letters each: EIHR under A, IBEF under B, DNIF under E, HEDE under R, EHTA under Z. Read across the rows.'],
+    scene: { bg: 'zoo', items: [{ t: 'sign', x: 30, y: 30, w: 160, h: 56, text: 'ZEBRA' }, { t: 'card', x: 40, y: 120, w: 170, h: 90, rot: -3, type: ['BDIE DIEF', 'IHHA ENGF', 'HETR'] }, { t: 'gridpad', x: 236, y: 40, cols: 5, rows: 4, cell: 28, label: 'Z E B R A' }] },
+    hints: ['Write ZEBRA across 5 columns. Alphabetical order is A, B, E, R, Z: the first group goes under A, the second under B, and so on, each down its column.', 'Groups are 4 letters each: BDIE under A, DIEF under B, IHHA under E, ENGF under R, HETR under Z. Read across the rows.'],
     explain: 'A keyed column cipher: the message was written in rows under ZEBRA and the columns read in the order A, B, E, R, Z. Rebuilt, it reads HIDE BEHIND THE GIRAFFE.'
   },
   {
