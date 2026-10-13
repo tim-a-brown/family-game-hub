@@ -36,8 +36,32 @@ body{overflow-x:hidden;}
 .sb-found .cnt{flex:none;font-weight:900;font-size:.9rem;}
 .sb-found .strip{font-family:Georgia,"Times New Roman",serif;flex:1;min-width:0;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,#000 80%,transparent);mask-image:linear-gradient(90deg,#000 80%,transparent);color:var(--text-2);font-weight:700;font-size:.92rem;text-transform:capitalize;}
 .sb-found .strip span{margin-right:10px;}
-.sb-found .strip span.pg{color:#ffd166;font-weight:900;}
+.sb-found .strip span.pg,.wl .pg span{color:var(--text);font-weight:900;
+  padding:1px 5px;margin:-1px -5px;border-radius:5px;background:color-mix(in srgb,var(--honey) 38%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--honey) 55%,transparent);}
+.sb-found .strip span.pg{margin:0 15px 0 0;}
+.sb-found .chev{display:grid;transition:transform .3s var(--ease);}
 .sb-found .chev .ico{width:18px;height:18px;color:var(--text-3);}
+.sb-found{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+/* Open: the found list drops down in place and the board shrinks to make room */
+.sb.open{height:calc(100dvh - var(--safe-t) - 58px);min-height:0;}
+.sb.open .sb-found{flex:1 1 auto;min-height:110px;flex-direction:column;align-items:stretch;gap:0;padding:0;overflow:hidden;}
+.sb-found .hd{flex:none;display:flex;align-items:center;gap:10px;min-height:46px;padding:0 12px 0 14px;}
+.sb-found .hd .cnt{flex:1;}
+.sb.open .sb-found .chev{transform:rotate(180deg);}
+.sb-found .fl{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;margin:0 14px 10px;padding-top:2px;border-top:1px solid var(--w07);animation:flIn .3s var(--ease);}
+@keyframes flIn{from{opacity:0;transform:translateY(-6px);}}
+.sb-found .fl.wl{columns:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:max-content;align-content:start;column-gap:16px;margin-top:0;}
+.sb-found .fl.wl div{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sb-found .fl.wl div{padding:5px 1px;font-size:.95rem;}
+.sb-found .fl.wl div.new span{animation:flNew 1.4s var(--ease);}
+@keyframes flNew{0%,30%{color:var(--honey-2);}}
+.sb.open .sb-board{flex:none;}
+.sb.open .sb-felt{padding:4px 8px 10px;}
+.sb.open .sb-entry{height:56px;}
+.sb.open .hive{--W:min(80px,20vw);margin:0 auto 8px;}
+.sb.open .sb-ctrls .btn{min-height:44px;}
+.sb.open .sb-ctrls .btn.ic{width:44px;}
+@property --W{syntax:'<length>';inherits:true;initial-value:112px;}
 
 /* The board: a wooden frame round a dark honeycomb */
 .sb-board{border-radius:26px;padding:8px;flex:1;display:flex;max-height:620px;}
@@ -61,7 +85,7 @@ body{overflow-x:hidden;}
 @keyframes fly{to{transform:translateY(-18px);opacity:0;}}
 
 /* Hive: flat-top hexagons, beeswax and honey */
-.hive{--W:min(112px,27vw);--H:calc(var(--W) * .866);--g:calc(var(--W) * .06);position:relative;width:calc(var(--W) * 2.5 + var(--g) * 2.4);height:calc(var(--H) * 3 + var(--g) * 2.6);margin:6px auto 14px;
+.hive{transition:--W .35s var(--ease),margin .35s var(--ease);--W:min(112px,27vw);--H:calc(var(--W) * .866);--g:calc(var(--W) * .06);position:relative;width:calc(var(--W) * 2.5 + var(--g) * 2.4);height:calc(var(--H) * 3 + var(--g) * 2.6);margin:6px auto 14px;
   filter:drop-shadow(0 5px 0 rgba(0,0,0,.28)) drop-shadow(0 10px 14px rgba(0,0,0,.35));}
 .hx{position:absolute;left:50%;top:50%;width:var(--W);height:var(--H);border:0;padding:0;background:none;
   transform:translate(-50%,-50%) translate(var(--x),var(--y));transition:transform .14s var(--spring);touch-action:manipulation;-webkit-user-select:none;user-select:none;}
@@ -87,9 +111,8 @@ body{overflow-x:hidden;}
 /* Sheets */
 .wl{columns:2;column-gap:18px;margin-top:6px;}
 .wl div{font-family:Georgia,"Times New Roman",serif;break-inside:avoid;padding:6px 2px;border-bottom:1px solid var(--w07);font-weight:700;text-transform:capitalize;color:var(--text);}
-.wl div.pg{color:#ffd166;font-weight:900;}
 .wl div.miss{color:var(--text-3);font-weight:600;}
-.wl div.miss.pg{color:#b8964a;}
+.wl div.miss.pg span{color:var(--text-3);background:color-mix(in srgb,var(--honey) 16%,transparent);box-shadow:none;}
 .sumline{display:flex;gap:8px;margin:6px 0 4px;}
 .sumline div{flex:1;text-align:center;padding:10px 4px;border-radius:14px;background:var(--w05);}
 .sumline b{display:block;font-size:1.4rem;font-weight:900;}
@@ -106,6 +129,7 @@ body{overflow-x:hidden;}
 .twol{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;font-weight:800;color:var(--text-2);text-transform:uppercase;font-size:.92rem;}
 .twol span.z{opacity:.3;text-decoration:line-through;}
 @media (max-height:700px){.sb-entry{height:70px;}.hive{--W:min(92px,24vw);}}
+@media (max-height:700px){.sb.open .sb-entry{height:46px;}.sb.open .hive{--W:min(64px,17vw);margin-bottom:6px;}.sb.open .sb-ctrls .btn{min-height:40px;}.sb.open .sb-ctrls .btn.ic{width:40px;}}
 @media (min-width:700px){.sb{padding-top:6px;}}
 /* Tablet portrait: a bigger hive on a bigger board */
 @media (min-width:700px) and (min-height:900px){
@@ -116,6 +140,8 @@ body{overflow-x:hidden;}
   .sb-word{font-size:2.6rem;}
   .sb-ctrls .btn{min-height:58px;padding:0 28px;font-size:1.1rem;}
   .sb-ctrls .btn.ic{width:58px;}
+  .sb.open .hive{--W:112px;}
+  .sb-found .fl.wl{grid-template-columns:repeat(4,minmax(0,1fr));}
 }
 /* Tablet / desktop landscape: word list beside the board */
 @media (orientation:landscape) and (min-width:1000px) and (min-height:600px){
@@ -129,6 +155,10 @@ body{overflow-x:hidden;}
   .sb-found .cnt{flex:1;}
   .sb-found .strip{order:3;flex:0 0 100%;white-space:normal;columns:2;column-gap:14px;margin-top:8px;-webkit-mask-image:linear-gradient(180deg,#000 85%,transparent);mask-image:linear-gradient(180deg,#000 85%,transparent);max-height:100%;}
   .sb-found .strip span{display:block;margin:0;padding:4px 0;border-bottom:1px solid var(--w06);}
+  .sb-found .strip span.pg{display:table;margin:0;padding:4px 2px;}
+  .sb-found .strip{overflow:auto;-webkit-mask-image:none;mask-image:none;}
+  .sb-found{cursor:default;}
+  .sb-found .chev{display:none;}
   .hive{--W:min(124px,calc((100dvh - 330px) / 3));}
 }
 </style>
@@ -137,7 +167,7 @@ body{overflow-x:hidden;}
 <main class="sb" id="app">
   <div class="sb-modes"><div class="seg" id="modes"></div></div>
   <button type="button" class="sb-rank" id="rank" aria-label="Rankings"></button>
-  <button type="button" class="sb-found" id="found"></button>
+  <div class="sb-found" id="found" role="button" tabindex="0" aria-expanded="false" aria-label="Your words"></div>
   <section class="sb-board wood">
     <div class="felt-in sb-felt">
       <div class="sb-entry"><div class="sb-msg" id="msg"></div><div class="sb-word" id="word" aria-live="polite"></div></div>
@@ -350,7 +380,14 @@ body{overflow-x:hidden;}
   $('enter').addEventListener('click', submit);
   $('shuffle').addEventListener('click', shuffle);
   $('rank').addEventListener('click', showRanks);
-  $('found').addEventListener('click', showFound);
+  // the found list opens in place (no sheet): tap the strip to drop it down, tap its header to fold it away
+  var listOpen = false;
+  $('found').addEventListener('click', function (e) {
+    if (WIDE.matches || (listOpen && e.target.closest('.fl'))) return;
+    listOpen = !listOpen; Kit.sfx('pop'); Kit.haptic('light');
+    $('app').classList.toggle('open', listOpen); $('found').setAttribute('aria-expanded', listOpen);
+    paintFound();
+  });
 
   function shuffleArr(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   function shuffle() {
@@ -416,10 +453,17 @@ body{overflow-x:hidden;}
   function paintFound(newest) {
     var f = $('found'); f.innerHTML = '';
     var n = S.found.length;
+    if (listOpen && !WIDE.matches) {
+      f.appendChild(el('div', { class: 'hd' }, [el('span', { class: 'cnt', text: n ? 'You have found ' + n + (n === 1 ? ' word' : ' words') : 'No words yet' }), el('span', { class: 'chev', html: Kit.icon('down') })]));
+      var fl = wordList(S.found); fl.classList.add('fl');
+      if (!n) fl.appendChild(el('div', { class: 'miss', text: 'Every word uses the center letter.' }));
+      if (newest) Array.prototype.forEach.call(fl.children, function (d) { if (d.textContent === newest) d.classList.add('new'); });
+      f.appendChild(fl); return;
+    }
     f.appendChild(el('span', { class: 'cnt', text: n ? n + (n === 1 ? ' word' : ' words') : 'Your words' }));
     var strip = el('span', { class: 'strip' });
     if (!n) { strip.textContent = 'Tap letters to spell a word'; strip.style.textTransform = 'none'; }
-    S.found.slice().reverse().slice(0, WIDE.matches ? 60 : 12).forEach(function (w) { strip.appendChild(el('span', { class: isPan(w, S.letters) ? 'pg' : '', text: w })); strip.appendChild(document.createTextNode(' ')); });
+    S.found.slice().reverse().slice(0, WIDE.matches ? 999 : 12).forEach(function (w) { strip.appendChild(el('span', { class: isPan(w, S.letters) ? 'pg' : '', text: w })); strip.appendChild(document.createTextNode(' ')); });
     f.appendChild(strip);
     f.appendChild(el('span', { class: 'chev', html: Kit.icon('down') }));
   }
@@ -429,16 +473,9 @@ body{overflow-x:hidden;}
     var box = el('div', { class: 'wl' });
     (all || words).slice().sort().forEach(function (w) {
       var miss = all && S.found.indexOf(w) < 0;
-      box.appendChild(el('div', { class: (isPan(w, S.letters) ? 'pg' : '') + (miss ? ' miss' : ''), text: w }));
+      box.appendChild(el('div', { class: (isPan(w, S.letters) ? 'pg' : '') + (miss ? ' miss' : '') }, [el('span', { text: w })]));
     });
     return box;
-  }
-  function showFound() {
-    Kit.sfx('pop');
-    var box = el('div');
-    box.appendChild(el('p', { class: 'muted', text: S.found.length ? 'You have found ' + S.found.length + ' of ' + P.answers.length + ' words. Pangrams are in gold.' : 'No words yet. Every word needs the gold center letter.' }));
-    if (S.found.length) box.appendChild(wordList(S.found));
-    Kit.sheet({ title: 'Your words', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
   function showRanks() {
     Kit.sfx('pop');
