@@ -118,13 +118,33 @@ body{overflow:hidden;}
   });
 
   // ── Puzzle selection (same daily numbering as before) ─────────────────────
-  function today() {
-    var day = Math.floor((Date.now() - new Date('2024-01-01').getTime()) / 86400000);
+  // The daily word. Up to day 1017 (13 Oct 2026) it was a hashed pick, which can repeat. From day 1018 the words
+  // come in a fixed shuffled order of the first 1,727 answers, so none repeats for 1,727 days (to mid-2031); words
+  // not yet used by a daily come first, then the ones used longest ago. Append new answers only at the end of WORDLE_ANSWERS: this order is frozen.
+  var CUT = 1017, FROZEN = 1727;
+  function oldPick(day) {
     var h = day * 1664525 + 1013904223;
     h = ((h ^ (h >>> 16)) * 2246822507) >>> 0;
     h = ((h ^ (h >>> 13)) * 3266489909) >>> 0;
     h = (h ^ (h >>> 16)) >>> 0;
-    return { word: ANSWERS[h % ANSWERS.length], day: day + 1 };
+    return h % ANSWERS.length;
+  }
+  var ORDER = null;
+  function order() {
+    if (ORDER) return ORDER;
+    var n = Math.min(FROZEN, ANSWERS.length), used = {}, a = [], i, s = 20261014;
+    for (i = 0; i < CUT; i++) used[oldPick(i) % n] = i + 1;   // last day each word was used
+    for (i = 0; i < n; i++) a.push(i);
+    function rnd() { s |= 0; s = s + 0x6D2B79F5 | 0; var t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+    for (i = n - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; }
+    // never-used words first, then used ones, longest-ago first (so a recent word is the last to come back)
+    ORDER = a.filter(function (k) { return !used[k]; }).concat(a.filter(function (k) { return used[k]; }).sort(function (x, y) { return used[x] - used[y]; }));
+    return ORDER;
+  }
+  function today() {
+    var day = Math.floor((Date.now() - new Date('2024-01-01').getTime()) / 86400000);
+    var k = day < CUT ? oldPick(day) : order()[(day - CUT) % order().length];
+    return { word: ANSWERS[k], day: day + 1 };
   }
   function playedToday() {
     var d = today().day;

@@ -1121,8 +1121,16 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
 
   document.addEventListener('fghsync:updated', function () { render(); });
-  window.addEventListener('pageshow', function (e) { if (e.persisted) render(); });
+  window.addEventListener('pageshow', function (e) { if (e.persisted) render(); openDailyIfAsked(); });
   render();
+  // a daily puzzle's win screen sends players back here with "Daily puzzles": reopen the list
+  function openDailyIfAsked() {
+    var go = false; try { go = sessionStorage.getItem('fgh_open_daily') === '1'; sessionStorage.removeItem('fgh_open_daily'); } catch (e) {}
+    if (location.hash === '#daily') { go = true; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+    try { sessionStorage.removeItem('fgh_from_daily'); } catch (e) {}
+    if (go && window.Daily) setTimeout(function () { Daily.open(); }, 60);
+  }
+  openDailyIfAsked();
 })();
 </script>
 </body>

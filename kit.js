@@ -610,6 +610,18 @@
 
   // ── Game bar ──────────────────────────────────────────────────────────────
   var opts = {};
+  // Opened from the Daily puzzles list (its link, or ?daily=1): win screens offer the way back to that list
+  function fromDaily() {
+    if (/[?&]daily=1/.test(location.search)) return true;
+    try { return sessionStorage.getItem('fgh_from_daily') === '1'; } catch (e) { return false; }
+  }
+  function toDaily() {
+    sfx('tap');
+    try { sessionStorage.setItem('fgh_open_daily', '1'); } catch (e) {}
+    var ref = doc.referrer;
+    try { var u = new URL(ref); if (u.origin === location.origin && /^\/(index\.html)?$/.test(u.pathname) && history.length > 1) { history.back(); return; } } catch (e) {}
+    location.href = '../index.html#daily';
+  }
   function goHome() {
     sfx('tap');
     // A game can take over the bar's back button for a screen of its own (Kit.onBack returns true when it handled it)
@@ -1372,6 +1384,7 @@
     function close() { ov.classList.remove('show'); setTimeout(function () { ov.remove(); }, 300); }
     if (o.again !== false) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: o.againLabel || 'Play again', onclick: function () { sfx('pop'); close(); o.again && o.again(); } }));
     (o.extra || []).forEach(function (x) { acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', text: x.label, onclick: function () { close(); x.onClick && x.onClick(); } })); });
+    if (fromDaily()) acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: icon('calendar') + '<span>Daily puzzles</span>', onclick: function () { close(); toDaily(); } }));
     acts.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: o.closeLabel || 'Back to games', onclick: o.onClose ? function () { close(); o.onClose(); } : goHome }));
     card.appendChild(acts);
     doc.body.appendChild(ov);

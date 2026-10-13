@@ -151,7 +151,7 @@ var Daily = window.Daily = (function () {
       var right = x.status === 'done' ? el('span', { class: 'dly-st done', html: Kit.icon('check') + '<span>' + Kit.esc(x.note || 'Done') + '</span>' })
         : x.status === 'going' ? el('span', { class: 'dly-st going', text: x.note ? x.note : 'Keep going' })
         : el('span', { class: 'dly-st new', text: 'Play' });
-      box.appendChild(el('a', { class: 'dly-row' + (x.status === 'done' ? ' is-done' : ''), href: 'games/' + x.file, onclick: function () { Kit.sfx('pop'); } }, [
+      box.appendChild(el('a', { class: 'dly-row' + (x.status === 'done' ? ' is-done' : ''), href: 'games/' + x.file, onclick: function () { Kit.sfx('pop'); try { sessionStorage.setItem('fgh_from_daily', '1'); } catch (e) {} } }, [
         el('span', { class: 'gi', html: typeof GameIcon === 'function' ? GameIcon(x.id) : '' }),
         el('span', { class: 'tx' }, [el('b', { text: x.name }), el('small', { text: x.what })]),
         right
