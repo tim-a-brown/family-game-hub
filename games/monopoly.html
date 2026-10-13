@@ -245,12 +245,14 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 .bplan .brow.dn{background:linear-gradient(90deg,color-mix(in srgb,var(--red) 14%,transparent),transparent 85%);box-shadow:inset 3px 0 0 var(--red);}
 .bplan .brow:last-child{border-radius:0 0 14px 14px;}
 .bplan .brow .nm small s{opacity:.7;} .bplan .brow .nm small b{color:var(--text);}
-.bplan .hs{min-width:86px;align-items:flex-end;height:22px;}
+.bplan .bgrp h4{margin:0 0 4px;}
+.bplan .bgrp .bnote{font-size:.8rem;font-weight:800;color:var(--accent);margin:-2px 0 4px;}
+.bplan .hs{min-width:92px;align-items:flex-end;height:24px;gap:2px;}
 .bplan .hs .none{color:var(--text-3);font-weight:800;align-self:center;}
-.pc{width:15px;height:15px;flex:none;overflow:visible;}
-.pc.t{width:30px;height:16px;}
-.pc.new{opacity:.62;filter:drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 1px var(--accent));}
-.pc.gone{opacity:.22;filter:grayscale(1);}
+.pc{width:17px;height:17px;flex:none;overflow:visible;}
+.pc.t{width:31px;height:18px;}
+.pc.new{opacity:.6;filter:drop-shadow(0 0 .6px var(--text)) drop-shadow(0 0 .6px var(--text)) drop-shadow(0 0 3px var(--accent));}
+.pc.gone{opacity:.25;filter:grayscale(1);}
 .pc.fx.new,.pc.fx.solid{animation:pcIn .42s var(--spring) both;}
 .pc.fx.gone{animation:pcOut .38s ease-out both;}
 .pc.vanish{animation:pcGone .26s ease-in forwards;}
@@ -1479,7 +1481,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     }
     return o || '<small class="none">none</small>';
   }
-  function bCount(h, t) { var b = []; if (h) b.push(h + ' house' + (h === 1 ? '' : 's')); if (t) b.push(t + ' hotel' + (t === 1 ? '' : 's')); return b.join(' · '); }
+  function bCount(h, t, hotelsFirst) { var b = []; if (h) b.push(h + ' house' + (h === 1 ? '' : 's')); if (t) b[hotelsFirst ? 'unshift' : 'push'](t + ' hotel' + (t === 1 ? '' : 's')); return b.join(' · '); }
   function buildSheet(v) {
     var node = el('div', { class: 'bplan' }), T = {}, was = {}, base = S.hs.slice(), bump = '';
     function lvl(sq, P) { P = P || T; return sq in P ? P[sq] : S.hs[sq]; }
@@ -1515,6 +1517,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       gs.forEach(function (g) {
         var box = el('div', { class: 'bgrp', style: { '--gc': GROUPS[g].c } }, [el('h4', null, [el('i'), el('span', { text: GROUPS[g].n }), el('small', { class: 'muted', style: { 'margin-left': 'auto', 'font-weight': '700' }, text: money(SQ[M.GSQ[g][0]].h) + ' each' })])]);
         if (M.GSQ[g].some(function (s) { return S.mort[s]; })) box.appendChild(el('p', { class: 'muted', style: { 'font-size': '.85rem' }, text: 'Pay off the mortgages in this group to build.' }));
+        if (plan.steps.some(function (a) { return a.t === 'sellDown' && a.g === g; })) box.appendChild(el('p', { class: 'bnote', text: 'The bank has only ' + S.bankH + ' house' + (S.bankH === 1 ? '' : 's') + ' to give back, so these hotels come down together' }));
         M.GSQ[g].forEach(function (sq) {
           var c = S.hs[sq], t = lvl(sq), w = lvl(sq, was);
           var up = t < 5 ? planOf(withLvl(sq, t + 1)) : { err: 'It already has a hotel' };
@@ -1524,10 +1527,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
           box.appendChild(el('div', { class: 'brow' + (t > c ? ' up' : t < c ? ' dn' : '') }, [
             el('div', { class: 'nm' }, [el('span', { text: SQ[sq].n }), el('small', { html: 'Rent ' + (r1 === r0 ? money(r0) : '<s>' + money(r0) + '</s> <b>' + money(r1) + '</b>') })]),
             el('button', { type: 'button', class: 'btn btn-soft sq-btn', 'aria-label': 'Plan to sell from ' + SQ[sq].n, title: dn.ok ? '' : dn.err || '', html: Kit.icon('minus'), disabled: !dn.ok || null, onclick: function () {
-              Kit.haptic('light');
-              var multi = M.GSQ[g].filter(function (s) { return lvl(s, dnP) !== lvl(s); }).length > 1;
-              setPlan(dnP, 'dn');
-              if (multi) Kit.toast('The bank is short of houses, so the ' + GROUPS[g].n + ' hotels come down together');
+              Kit.haptic('light'); setPlan(dnP, 'dn');
             } }),
             el('span', { class: 'hs', html: planPieces(c, t, w) }),
             el('button', { type: 'button', class: 'btn btn-primary sq-btn', 'aria-label': 'Plan to build on ' + SQ[sq].n, title: up.ok ? '' : up.err || '', html: Kit.icon('plus'), disabled: !up.ok || null, onclick: function () { Kit.haptic('light'); setPlan(withLvl(sq, t + 1), 'up'); } })
@@ -1540,7 +1540,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       if (!empty) {
         var tally = el('div', { class: 'btally' });
         if (plan.cost) tally.appendChild(el('div', { class: 'tl' }, [el('span', { text: 'Build ' + bCount(plan.buyH, plan.buyT) }), el('b', { class: 'neg', text: '−' + money(plan.cost) })]));
-        if (plan.refund) tally.appendChild(el('div', { class: 'tl' }, [el('span', { text: 'Sell ' + bCount(plan.sellH, plan.sellT) + ' at half price' }), el('b', { class: 'pos', text: '+' + money(plan.refund) })]));
+        if (plan.refund) tally.appendChild(el('div', { class: 'tl' }, [el('span', { text: 'Sell ' + bCount(plan.sellH, plan.sellT, true) + (plan.sellH && plan.sellT ? '' : ' at half price') }), el('b', { class: 'pos', text: '+' + money(plan.refund) })]));
         var short = plan.cash < 0;
         tally.appendChild(el('div', { class: 'tl tot' + (bump ? ' bump' : '') }, [el('span', { html: 'Cash ' + money(x.cash) + ' ' + Kit.icon('right') }), el('b', { class: short ? 'neg' : '', text: (short ? '−' : '') + money(Math.abs(plan.cash)) })]));
         foot.appendChild(tally);
