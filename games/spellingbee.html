@@ -71,6 +71,9 @@ body{overflow-x:hidden;}
 .sb-entry{position:relative;height:84px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:4px;}
 .sb-msg{position:absolute;top:2px;left:50%;transform:translateX(-50%) scale(.85);opacity:0;padding:6px 14px;border-radius:999px;background:#fff8e6;color:#3a2600;font-weight:900;font-size:.9rem;white-space:nowrap;box-shadow:0 3px 0 rgba(0,0,0,.25);transition:opacity .2s,transform .3s var(--spring);pointer-events:none;}
 .sb-msg.show{opacity:1;transform:translateX(-50%) scale(1);}
+.sb-entry.compact .sb-msg{top:auto;bottom:10px;}
+.sb-word{transition:opacity .12s;}
+.sb-entry.msging .sb-word{opacity:0;}
 .sb-msg.bad{background:#3b2a12;color:#ffd9a0;}
 .sb-msg.pan{background:linear-gradient(160deg,#ffe08a,var(--honey));color:#3a2000;}
 .sb-word{display:flex;align-items:center;justify-content:center;min-height:46px;max-width:100%;overflow:hidden;font-family:var(--display);font-size:2.1rem;letter-spacing:.06em;text-transform:uppercase;color:#fff7e0;text-shadow:0 2px 0 rgba(0,0,0,.35);}
@@ -324,6 +327,7 @@ body{overflow-x:hidden;}
   function type(ch) {
     if (S.done) return;
     if (typed.length >= 19) return;
+    if ($('msg').parentNode.classList.contains('compact')) hideMsg();
     typed += ch; Kit.sfx('tap'); Kit.haptic('tick'); paintWord();
     var hx = document.querySelector('.hx[data-l="' + ch + '"]');
     if (hx) { hx.classList.remove('press'); void hx.offsetWidth; hx.classList.add('press'); setTimeout(function () { hx.classList.remove('press'); }, 130); }
@@ -364,11 +368,20 @@ body{overflow-x:hidden;}
     Kit.win({ icon: 'trophy', title: 'Queen Bee!', sub: 'You found all ' + P.answers.length + ' words for ' + P.max + ' points.',
       againLabel: 'New practice hive', again: function () { newRandom(); }, closeLabel: 'Admire the hive', onClose: function () {} });
   }
-  var msgT = null;
+  var msgT = null, msgD = null, SHORT = window.matchMedia('(max-height:700px)');
+  // When the entry strip is short (list open, or a short screen) the message takes the word's place instead of
+  // sitting above it: a rejected word shakes first, then the message replaces it; typing again clears it.
   function msg(text, kind) {
-    var m = $('msg'); m.textContent = text; m.className = 'sb-msg show' + (kind ? ' ' + kind : '');
-    clearTimeout(msgT); msgT = setTimeout(function () { m.classList.remove('show'); }, 1400);
+    var m = $('msg'), e = m.parentNode, c = $('app').classList.contains('open') || SHORT.matches;
+    clearTimeout(msgT); clearTimeout(msgD);
+    e.classList.toggle('compact', c);
+    function show() {
+      m.textContent = text; m.className = 'sb-msg show' + (kind ? ' ' + kind : ''); e.classList.toggle('msging', c);
+      msgT = setTimeout(hideMsg, 1400);
+    }
+    if (c && kind === 'bad') msgD = setTimeout(show, 400); else show();
   }
+  function hideMsg() { clearTimeout(msgT); clearTimeout(msgD); $('msg').classList.remove('show'); $('msg').parentNode.classList.remove('msging'); }
   document.addEventListener('keydown', function (e) {
     if (e.metaKey || e.ctrlKey || e.altKey || document.querySelector('.k-scrim,.k-win')) return;
     if (e.key === 'Enter') { e.preventDefault(); submit(); }
