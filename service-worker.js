@@ -109,6 +109,7 @@ const PRECACHE_URLS = [
   '/img/monopoly-logo.webp',
   '/img/monopoly-man.webp',
   '/img/monopoly-jailfree.webp',
+  '/img/monopoly-jailfree-cc.webp',
   '/games/battleship.html',
   '/games/bingo.html',
   '/games/blackjack.html',
