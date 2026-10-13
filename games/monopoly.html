@@ -209,6 +209,9 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 .goojf{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:8px;background:linear-gradient(160deg,#ffb054,#f3901d);color:#1d1d1b;font-family:'Sofia Sans Condensed',sans-serif;font-weight:900;font-size:.8rem;box-shadow:0 1px 3px rgba(0,0,0,.3);}
 .goojf.cc{background:linear-gradient(160deg,#fff7c4,#f8e88a);}
 .goojf svg{width:18px;height:18px;}
+.goojf .jfi{width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px #1d1d1b;object-fit:cover;flex:none;}
+.goojf.sm .jfi{width:18px;height:18px;}
+.ccard .cjf{width:24%;aspect-ratio:1;border-radius:50%;background:#fff;box-shadow:0 0 0 2px #1d1d1b,0 3px 8px rgba(0,0,0,.25);object-fit:cover;}
 .goojf.sm{gap:4px;padding:2px 7px 2px 3px;border-radius:6px;font-size:.72rem;letter-spacing:.02em;text-transform:none;animation:jfin .5s var(--spring) both;} .goojf.sm svg{width:14px;height:14px;}
 @keyframes jfin{0%{transform:translateY(-8px) rotate(-8deg);opacity:0;}100%{transform:none;opacity:1;}}
 
@@ -933,6 +936,8 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       '<div class="rows"><div class="dr"><span>Price</span><b>' + money(s.p) + '</b></div><div class="dr"><span>Rent</span><b>' + (s.k === 'ut' ? '4× / 10× dice' : money(lo) + '–' + money(hi)) + '</b></div></div></div>' });
     return w;
   }
+  // Get Out of Jail Free: Chance's card shows the jumping prisoner, Community Chest's the padlock
+  function jfIcon(k) { return k && k.slice(0, 2) === 'ch' ? '<img class="jfi" src="../img/monopoly-jailfree.webp" alt="">' : A.icon('lock'); }
   // dark ink on light colour bars, white on dark ones
   function inkOn(hex) { var m = /^#?([0-9a-f]{6})$/i.exec(hex); if (!m) return '#1d1d1b'; var n = parseInt(m[1], 16), l = .299 * (n >> 16) + .587 * ((n >> 8) & 255) + .114 * (n & 255); return l > 150 ? '#1d1d1b' : '#fff'; }
   function miniCard(sq, o) {
@@ -1099,7 +1104,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     if (!x) return;
     var who = mode === 'pass' || mode === 'online' ? x.name : x.name === 'You' ? 'Your money and property' : x.name;
     // Get Out of Jail Free cards ride next to the name, like a card tucked by your seat
-    var jf = x.cards.map(function (k) { return el('span', { class: 'goojf sm' + (k.slice(0, 2) === 'cc' ? ' cc' : ''), title: 'Get Out of Jail Free', html: A.icon('lock') + '<span>Jail Free</span>' }); });
+    var jf = x.cards.map(function (k) { return el('span', { class: 'goojf sm' + (k.slice(0, 2) === 'cc' ? ' cc' : ''), title: 'Get Out of Jail Free', html: jfIcon(k) + '<span>Jail Free</span>' }); });
     box.appendChild(el('h3', null, [el('span', { text: mode === 'cpu' ? 'Your money and property' : who })].concat(jf, [el('span', { class: 'grow' }), el('span', { text: 'Worth ' + money(M.worth(S, v)) })])));
     var bills = el('div', { class: 'bills' }); billsFor(shownCash(v)).forEach(function (b) { bills.appendChild(billEl(b[0], b[1])); });
     box.appendChild(el('div', { class: 'wallet' }, [el('span', { class: 'big', text: x.out ? 'Bankrupt' : money(shownCash(v)) }), bills]));
@@ -1342,7 +1347,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   function showCard(e) {
     var isCh = e.d === 'ch';
     var card = el('div', { class: 'mcard', role: 'dialog', 'aria-label': (isCh ? 'Chance' : 'Community Chest') + ': ' + e.t, style: { '--fx': (isCh ? 35 : -35) + '%', '--fy': (isCh ? 70 : -70) + '%' } }, [
-      el('div', { class: 'ccard ' + e.d }, [el('div', { class: 'ct', text: isCh ? 'CHANCE' : 'COMMUNITY CHEST' }), el('div', { class: 'cx', text: e.t }), el('div', { class: 'ci', html: isCh ? '' : A.icon('chest') })])
+      el('div', { class: 'ccard ' + e.d }, [el('div', { class: 'ct', text: isCh ? 'CHANCE' : 'COMMUNITY CHEST' }), isCh && /^Get Out of Jail Free/.test(e.t) ? el('img', { class: 'cjf', src: '../img/monopoly-jailfree.webp', alt: '' }) : null, el('div', { class: 'cx', text: e.t }), el('div', { class: 'ci', html: isCh ? '' : A.icon('chest') })])
     ]);
     Kit.sfx('flip'); Kit.haptic('light');
     view.board.appendChild(card);
@@ -1518,7 +1523,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     var groups = el('div', { class: 'groups' }), any = false;
     var order = []; for (var g = 0; g < 8; g++) order.push(M.GSQ[g]); order.push(M.RRS); order.push(M.UTS);
     order.forEach(function (list) { var row = el('div', { class: 'grow-row' }); list.forEach(function (sq) { if (S.own[sq] === i) { row.appendChild(miniCard(sq)); any = true; } }); if (row.children.length) groups.appendChild(row); });
-    if (p.cards.length) groups.appendChild(el('div', { class: 'grow-row' }, p.cards.map(function (k) { return el('span', { class: 'goojf' + (k.slice(0, 2) === 'cc' ? ' cc' : ''), html: A.icon('lock') + '<span>Get Out of Jail Free</span>' }); })));
+    if (p.cards.length) groups.appendChild(el('div', { class: 'grow-row' }, p.cards.map(function (k) { return el('span', { class: 'goojf' + (k.slice(0, 2) === 'cc' ? ' cc' : ''), html: jfIcon(k) + '<span>Get Out of Jail Free</span>' }); })));
     node.appendChild(any || p.cards.length ? groups : el('p', { class: 'muted', text: 'No property.' }));
     openSheet({ title: p.name + ' · ' + A.TOK_NAME[p.tok], node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
