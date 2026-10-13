@@ -313,6 +313,9 @@ var GameIcon = (function () {
     players: function (c) { return circ(8, 7.5, 3.6, K) + path('M1.5 21c0-4 2.9-7 6.5-7s6.5 3 6.5 7z', K) + circ(16.5, 9, 3.2, c) + path('M10.5 21.5c.3-3.6 2.8-6 6-6s5.8 2.4 6 6z', c); }
   };
 
+  // Games whose tile shows a picture instead of a drawn base and mark (the picture fills the tile)
+  var PIC = { monopoly: '/img/monopoly-man.webp' };
+
   function lighten(hex, amt) {
     var m = /^#?([0-9a-f]{6})$/i.exec(hex); if (!m) return hex;
     var n = parseInt(m[1], 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
@@ -326,6 +329,8 @@ var GameIcon = (function () {
     var c = g.color, gid = 'gi' + (++uid);
     var base = (BASE[g.base || g.cat] || BASE.tools)(c);
     var mark = MARK[g.id] ? MARK[g.id](c) : txt(g.name.charAt(0), 18, c, 12.5);
+    // On a coloured tile the picture fills it; on the home screen (bare) it sits on the category's white card like the other marks
+    if (PIC[g.id]) { var pb = opts.bare ? [9, 30] : [3, 42]; mark = '<image href="' + PIC[g.id] + '" x="' + pb[0] + '" y="' + pb[0] + '" width="' + pb[1] + '" height="' + pb[1] + '" preserveAspectRatio="xMidYMid meet"/>'; base = [opts.bare ? base[0] : '', '']; }
     return '<svg class="gicon' + (opts.cls ? ' ' + opts.cls : '') + '" viewBox="0 0 48 48" role="img" aria-label="' + g.name + '">' +
       '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + lighten(c, .18) + '"/><stop offset="1" stop-color="' + lighten(c, -.18) + '"/></linearGradient></defs>' +
       (opts.bare ? '' : '<rect width="48" height="48" rx="13" fill="url(#' + gid + ')"/>' +
