@@ -78,26 +78,36 @@ export class Display {
       if (!changed && this.shownKey === key) return;
       this.shownKey = key;
       this.og.putImageData(this.img, 0, 0);
-      x.imageSmoothingEnabled = false; x.drawImage(this.o, 0, 0, W, H); x.imageSmoothingEnabled = true;
+      const f = this.field(W, H);
+      x.imageSmoothingEnabled = false; x.drawImage(this.o, f.x, f.y, f.w, f.h); x.imageSmoothingEnabled = true;
       x.drawImage(this.dotMask(W, H), 0, 0);
     } else {
-      x.imageSmoothingEnabled = true; x.fillStyle = '#000'; x.fillRect(0, 0, W, H); x.drawImage(this.c, 0, 0, W, H);
+      const f = this.field(W, H);
+      x.imageSmoothingEnabled = true; x.fillStyle = '#000'; x.fillRect(0, 0, W, H); x.drawImage(this.c, f.x, f.y, f.w, f.h);
       x.drawImage(this.dotMask(W, H), 0, 0);
     }
+  }
+  // the lit area sits inside a dark glass margin (a dot top and bottom, more at the sides), so nothing on the
+  // display runs into the rounded bezel
+  field(w, h) {
+    const dot = w / this.W, p = Math.min((w - dot * 4) / this.W, (h - dot * 2) / this.H);
+    const fw = p * this.W, fh = p * this.H;
+    return { x: Math.round((w - fw) / 2), y: Math.round((h - fh) / 2), w: fw, h: fh, p };
   }
   dotMask(w, h) {
     const key = w + 'x' + h; if (this.maskKey === key) return this.mask;
     const m = document.createElement('canvas'); m.width = w; m.height = h;
-    const g = m.getContext('2d'), p = w / this.W;
+    const g = m.getContext('2d'), f = this.field(w, h), p = f.p, ox = f.x, oy = f.y;
     if (this.type === 'dmd') {
       g.fillStyle = '#060302'; g.fillRect(0, 0, w, h);
       g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000';
-      for (let y = 0; y < this.H; y++) for (let xx = 0; xx < this.W; xx++) { g.beginPath(); g.arc((xx + 0.5) * p, (y + 0.5) * p, p * 0.41, 0, TAU); g.fill(); }
+      for (let y = 0; y < this.H; y++) for (let xx = 0; xx < this.W; xx++) { g.beginPath(); g.arc(ox + (xx + 0.5) * p, oy + (y + 0.5) * p, p * 0.41, 0, TAU); g.fill(); }
       g.globalCompositeOperation = 'source-over';
     } else {
+      g.fillStyle = '#050505'; g.fillRect(0, 0, w, oy); g.fillRect(0, oy + f.h, w, h - oy - f.h); g.fillRect(0, oy, ox, f.h); g.fillRect(ox + f.w, oy, w - ox - f.w, f.h);
       g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = Math.max(1, p * 0.18);
-      for (let y = 0; y <= this.H; y++) { g.beginPath(); g.moveTo(0, y * p); g.lineTo(w, y * p); g.stroke(); }
-      for (let xx = 0; xx <= this.W; xx++) { g.beginPath(); g.moveTo(xx * p, 0); g.lineTo(xx * p, h); g.stroke(); }
+      for (let y = 0; y <= this.H; y++) { g.beginPath(); g.moveTo(ox, oy + y * p); g.lineTo(ox + f.w, oy + y * p); g.stroke(); }
+      for (let xx = 0; xx <= this.W; xx++) { g.beginPath(); g.moveTo(ox + xx * p, oy); g.lineTo(ox + xx * p, oy + f.h); g.stroke(); }
     }
     const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,.06)'); gr.addColorStop(0.5, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
     this.mask = m; this.maskKey = key; return m;
