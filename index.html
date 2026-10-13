@@ -84,6 +84,25 @@ document.addEventListener('visibilitychange', function () {
 .surprise:active .d{transform:rotate(180deg);}
 @media (max-width:360px){.surprise .lbl{display:none;}}
 
+/* Search + Surprise on top; the category chips, with the Daily puzzles button beside them under Surprise */
+.filters{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:start;}
+.filters .srow{display:contents;}
+.filters .search{grid-column:1;grid-row:1;}
+.filters .surprise{grid-column:2;grid-row:1;}
+.filters .chips{grid-column:1;grid-row:2;}
+.dlbtn{grid-column:2;grid-row:2;align-self:stretch;margin-top:10px;margin-bottom:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:74px;padding:8px 10px;
+  border:0;border-radius:20px;cursor:pointer;color:var(--text);font:inherit;text-align:center;
+  background:color-mix(in srgb,var(--blue,#3b82f6) 13%,var(--bg));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--blue,#3b82f6) 40%,transparent),0 3px 0 color-mix(in srgb,var(--blue,#3b82f6) 30%,transparent);transition:transform .12s var(--spring);}
+.dlbtn:active{transform:translateY(2px) scale(.98);}
+.dlbtn .ico{width:24px;height:24px;color:var(--blue,#3b82f6);}
+.dlbtn b{font-weight:900;font-size:.95rem;line-height:1.1;}
+.dlbtn .ct{font-weight:800;font-size:.78rem;color:var(--text-2);font-variant-numeric:tabular-nums;}
+.dlbtn .bar{width:80%;height:6px;border-radius:3px;background:color-mix(in srgb,var(--blue,#3b82f6) 18%,transparent);overflow:hidden;}
+.dlbtn .bar i{display:block;height:100%;border-radius:3px;background:var(--blue,#3b82f6);transition:width .5s var(--spring);}
+.dlbtn.all-done{background:color-mix(in srgb,var(--green) 15%,var(--bg));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--green) 45%,transparent),0 3px 0 color-mix(in srgb,var(--green) 30%,transparent);}
+.dlbtn.all-done .ico,.dlbtn.all-done .bar i{color:var(--green);background-color:var(--green);}
+.dlbtn.all-done .ico{background:none;}
+
 /* Search + filters (sticky) */
 .filters{position:sticky;top:0;z-index:20;margin:calc(10px - var(--safe-t)) -16px 0;pointer-events:none;padding:calc(var(--safe-t) + 8px) 16px 10px;background:transparent;transition:background-color .2s, box-shadow .2s;}
 @media (min-width:1272px){.filters{border-radius:0 0 20px 20px;}}
@@ -110,6 +129,14 @@ document.addEventListener('visibilitychange', function () {
 .chips .chip.fav.on{color:#2b1a00;}
 .chips .chip.fav.on .ico{color:#2b1a00;}
 .chips .chip.who{--cc:var(--blue);}
+/* Phones: a narrower right column and compact chips, so two or three chips still fit on a row */
+@media (max-width:520px){
+  .surprise{padding:0 12px;font-size:.95rem;gap:6px;}
+  .dlbtn{padding:8px 6px;}
+  .chips{gap:5px;}
+  .chips .chip{min-height:30px;padding:0 8px 0 7px;gap:4px;font-size:.78rem;}
+  .chips .chip .ico{width:13px;height:13px;}
+}
 .chips::-webkit-scrollbar{display:none;}
 .chip .ico{width:16px;height:16px;}
 .chip.who{background:color-mix(in srgb,var(--blue) 22%,transparent);color:var(--text);}
@@ -351,6 +378,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       <button class="btn btn-yellow surprise" id="surprise" type="button" aria-label="Surprise me: spin a wheel to pick a game"><span class="d" id="surprise-ic"></span><span class="lbl">Surprise</span></button>
     </div>
     <div class="chips" id="chips" role="tablist" aria-label="Categories"></div>
+    <button class="dlbtn" id="dlbtn" type="button" hidden></button>
   </div>
 
   <section class="sec" id="cont-sec" hidden>
@@ -487,7 +515,18 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
+  // Daily puzzles: under Surprise, as tall as the chips, with how many of today's are done
+  function renderDaily() {
+    var b = $('dlbtn'); if (!b) return;
+    if (!window.Daily) { b.hidden = true; return; }
+    var c = Daily.count(), pct = c.total ? Math.round(100 * c.done / c.total) : 0;
+    b.hidden = false; b.classList.toggle('all-done', c.total > 0 && c.done >= c.total);
+    b.setAttribute('aria-label', 'Daily puzzles: ' + c.done + ' of ' + c.total + ' done today');
+    b.innerHTML = Kit.icon(c.total && c.done >= c.total ? 'check' : 'calendar') + '<b>Daily<br>puzzles</b><span class="ct">' + c.done + ' of ' + c.total + ' done</span><span class="bar"><i style="width:' + pct + '%"></i></span>';
+    b.onclick = function () { Kit.sfx('tap'); Daily.open(); };
+  }
   function renderChips() {
+    renderDaily();
     var vis = visibleGames(), favCount = vis.filter(isFav).length;
     var items = [{ id: 'all', label: 'All', n: vis.length, ic: 'tiles', cls: 'all' }];
     if (favCount) items.push({ id: 'fav', label: 'Favorites', n: favCount, ic: 'star', cls: 'fav' });
