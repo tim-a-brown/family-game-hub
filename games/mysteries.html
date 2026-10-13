@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Picture Mysteries</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../data/mysteries-scene.js"></script>
+<script src="../data/mysteries-cases.js"></script>
+<style>
+/* TeX Gyre Pagella (GUST font licence, fonts/pagella-LICENSE.txt): case files are typed in it */
+@font-face{font-family:'Pagella';src:url('../fonts/pagella-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap;}
+@font-face{font-family:'Pagella';src:url('../fonts/pagella-400italic.woff2') format('woff2');font-weight:400;font-style:italic;font-display:swap;}
+@font-face{font-family:'Pagella';src:url('../fonts/pagella-700.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap;}
+:root{--manila-a:#f0dfb0;--manila-b:#dcc286;--manila-ink:#3a2a14;--serif:'Pagella',Georgia,'Times New Roman',serif;--stamp:#c0192b;}
+body{overflow-x:hidden;}
+.ms{max-width:1180px;margin:0 auto;padding:2px 12px calc(var(--safe-b) + 18px);}
+
+/* ── Daily case card on the setup screen ── */
+.ms-daily{display:flex;align-items:center;gap:12px;padding:12px 12px 12px 10px;border-radius:var(--r);background:var(--w07);}
+.ms-daily .cal{flex:none;width:50px;height:54px;border-radius:8px;overflow:hidden;background:#fbf6e6;color:#2b2433;display:flex;flex-direction:column;align-items:center;box-shadow:0 3px 0 rgba(0,0,0,.3);}
+.ms-daily .cal small{display:block;width:100%;text-align:center;background:var(--stamp);color:#fff;font:900 .62rem/1.6 var(--font);letter-spacing:.08em;}
+.ms-daily .cal b{font:400 1.6rem/1.25 var(--display);}
+.ms-daily .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.ms-daily .tx b{font-weight:900;}
+.ms-daily .tx small{color:var(--text-2);font-size:.82rem;line-height:1.3;}
+.ms-daily .tx .st{display:flex;align-items:center;gap:5px;color:var(--green);font-weight:800;}
+.ms-daily .tx .st .ico{width:15px;height:15px;}
+
+/* ── Case board: a cork board in a wooden frame ── */
+.ms-board{position:relative;margin-top:4px;border-radius:20px;padding:10px;}
+.ms-tabs{position:relative;z-index:2;display:flex;gap:6px;padding:0 8px;}
+.ms-tab{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:58px;padding:9px 6px 8px;border:0;border-radius:12px 12px 0 0;
+  background:linear-gradient(180deg,#d9c391,#c9ad74);color:#5a3d16;box-shadow:inset 0 1px 0 rgba(255,255,255,.4);transform:translateY(4px);transition:transform .2s var(--spring),background .2s;}
+.ms-tab b{font:400 1.08rem/1 var(--display);letter-spacing:.03em;}
+.ms-tab small{font-weight:900;font-size:.72rem;color:#7a5a2a;font-variant-numeric:tabular-nums;}
+.ms-tab i{display:block;width:76%;max-width:120px;height:4px;border-radius:2px;background:rgba(90,61,22,.2);overflow:hidden;}
+.ms-tab i::after{content:"";display:block;height:100%;width:var(--p,0%);background:#1d7a46;border-radius:2px;transition:width .6s var(--ease);}
+.ms-tab.on{background:linear-gradient(180deg,#f5e6bd,#eedaa6);transform:none;color:#3a2410;}
+.ms-tab:active{transform:translateY(2px);}
+.ms-cork{position:relative;border-radius:10px;padding:22px 12px 20px;min-height:300px;
+  background:
+    radial-gradient(rgba(70,40,10,.28) 1px,transparent 1.6px) 0 0/7px 7px,
+    radial-gradient(rgba(255,240,200,.18) 1px,transparent 1.4px) 3px 4px/9px 9px,
+    radial-gradient(120% 90% at 40% 20%,#c99a64,#b2814c 70%,#9c6c3c);
+  box-shadow:inset 0 4px 14px rgba(0,0,0,.5),inset 0 0 0 2px rgba(0,0,0,.25);}
+.ms-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 6px 14px;color:#fbf2dc;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.ms-head b{font:400 1.25rem var(--display);letter-spacing:.02em;}
+.ms-head span{font-family:var(--hand);font-size:1.15rem;}
+.ms-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 14px;}
+@media (min-width:620px){.ms-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media (min-width:880px){.ms-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:26px 20px;}}
+.ms-card{position:relative;display:flex;flex-direction:column;gap:2px;padding:8px 8px 10px;border:0;border-radius:3px;text-align:left;color:#2b2433;
+  background:linear-gradient(180deg,#fffdf6,#f3ead6);box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 8px 14px rgba(0,0,0,.38);transform:rotate(var(--rot,0deg));
+  transition:transform .25s var(--spring),box-shadow .25s;animation:card-in .5s var(--spring) both;animation-delay:var(--d,0ms);}
+@keyframes card-in{from{opacity:0;transform:translateY(-18px) rotate(calc(var(--rot,0deg) * 3)) scale(.9);}}
+.ms-card:active{transform:rotate(0deg) scale(.97);}
+@media (hover:hover){.ms-card:hover{transform:rotate(0deg) translateY(-3px);box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 14px 22px rgba(0,0,0,.42);}}
+.ms-card .pin{position:absolute;top:-8px;left:50%;z-index:3;width:17px;height:17px;margin-left:-8px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff9a9a,#d0192b 55%,#7a0d18);box-shadow:0 4px 3px rgba(0,0,0,.4);}
+.ms-card .th{position:relative;aspect-ratio:4/3;overflow:hidden;border:1px solid rgba(0,0,0,.18);background:#ddd;}
+.ms-card .th svg{position:absolute;inset:0;width:100%;height:100%;}
+.ms-card .no{margin-top:6px;font:700 .64rem/1 var(--mono);letter-spacing:.16em;color:#8a6a35;}
+.ms-card .tt{font:400 1rem/1.12 var(--display);color:#3a2410;letter-spacing:.01em;}
+.ms-card .ty{font-size:.66rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#8a7a62;}
+.ms-card .rs{display:flex;align-items:center;gap:6px;margin-top:2px;font-family:var(--hand);font-size:1.02rem;line-height:1.1;color:#1d6a3e;}
+.ms-card .rs .ico{width:15px;height:15px;}
+.ms-card .rs.go{color:#9a5a10;}
+.ms-card .rs.shown{color:#6a6070;}
+.ms-card .stamp{position:absolute;left:50%;top:38%;z-index:2;transform:translate(-50%,-50%) rotate(-13deg);padding:1px 8px;border:3px double rgba(192,25,43,.85);border-radius:4px;
+  font:400 1.3rem/1.1 var(--display);letter-spacing:.14em;color:rgba(192,25,43,.9);background:rgba(255,250,240,.3);mix-blend-mode:multiply;pointer-events:none;}
+.ms-card .stamp.closed{border-color:rgba(70,70,90,.8);color:rgba(70,70,90,.85);}
+.ms-card .seal{position:absolute;right:4px;top:4px;z-index:3;width:30px;height:30px;}
+.ms-card.next{box-shadow:0 0 0 3px #ffd34d,0 10px 20px rgba(0,0,0,.45);}
+.ms-card.next .no::after{content:" · NEXT";color:#c0192b;}
+.ms-yarn{position:absolute;inset:0;pointer-events:none;z-index:1;}
+
+/* ── The case: a manila file and a photo on a wooden desk ── */
+.ms-desk{border-radius:20px;padding:12px;margin-top:4px;}
+.ms-case{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;}
+.ms-file{position:relative;margin-top:14px;padding:14px 14px 12px;border-radius:3px 12px 12px 12px;color:var(--manila-ink);
+  background:radial-gradient(120% 60% at 20% 0%,rgba(255,255,255,.35),transparent 60%),repeating-linear-gradient(0deg,rgba(120,80,20,.035) 0 2px,transparent 2px 5px),linear-gradient(170deg,var(--manila-a),var(--manila-b));
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 -2px 0 rgba(0,0,0,.08) inset,0 12px 24px rgba(0,0,0,.45);animation:file-in .55s var(--ease) both;}
+.ms-file .tab{position:absolute;left:14px;top:-17px;height:20px;padding:4px 14px 0;border-radius:8px 8px 0 0;background:var(--manila-a);font:700 .7rem/1.2 var(--mono);letter-spacing:.16em;color:#7a5a2a;box-shadow:0 -1px 0 rgba(255,255,255,.4) inset;}
+@keyframes file-in{from{opacity:0;transform:translateY(-24px) rotate(-2deg);}}
+.ms-fh{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.ms-fh h2{font-family:var(--display);font-weight:400;font-size:1.42rem;line-height:1.08;color:#4a2d10;letter-spacing:.01em;}
+.ms-clock{flex:none;display:flex;align-items:center;gap:5px;font-family:var(--hand);font-size:1.25rem;color:var(--ink);font-variant-numeric:tabular-nums;}
+.ms-clock .ico{width:16px;height:16px;color:#8a6a35;}
+.ms-setup{margin-top:6px;font-family:var(--serif);font-size:1rem;line-height:1.42;color:#2b2116;}
+.ms-q{margin-top:8px;display:flex;align-items:flex-start;gap:7px;font-family:var(--hand);font-size:1.38rem;line-height:1.15;color:var(--ink);}
+.ms-q .ico{flex:none;width:21px;height:21px;margin-top:2px;color:#a33a2a;}
+.ms-misses{display:flex;align-items:center;gap:2px;min-height:0;margin-top:2px;color:#b3202e;font-family:var(--hand);font-size:1rem;}
+.ms-misses .ico{width:15px;height:15px;stroke-width:3;}
+.ms-misses:empty{display:none;}
+.ms-notes{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+.ms-note{position:relative;display:flex;gap:8px;align-items:flex-start;padding:8px 12px 9px;border-radius:2px;background:linear-gradient(180deg,#fff3a6,#ffe678);color:#3a3000;font-family:var(--hand);font-size:1.12rem;line-height:1.22;
+  box-shadow:0 6px 12px rgba(0,0,0,.28);transform:rotate(var(--rot,-.8deg));}
+.ms-note .ico{flex:none;width:19px;height:19px;color:#7a6200;margin-top:1px;}
+.ms-note b{font-family:var(--font);font-weight:900;font-size:.68rem;letter-spacing:.12em;color:#8a7000;display:block;}
+.ms-note.new{animation:note-in .5s var(--spring) both;}
+@keyframes note-in{from{opacity:0;transform:translateY(-26px) rotate(-10deg) scale(.85);}}
+.ms-wrong{position:absolute;right:10px;top:46px;z-index:4;padding:5px 12px;border-radius:3px;background:#ffd9d2;color:#7a0d18;font-family:var(--hand);font-size:1.15rem;box-shadow:0 6px 12px rgba(0,0,0,.3);transform:rotate(2deg);animation:wrong 2.4s ease both;pointer-events:none;}
+@keyframes wrong{0%{opacity:0;transform:translateY(-10px) rotate(8deg);}10%{opacity:1;transform:rotate(2deg);}80%{opacity:1;}100%{opacity:0;transform:rotate(2deg) translateY(-6px);}}
+
+/* the photo */
+.ms-photo{position:relative;justify-self:center;width:100%;padding:8px;border-radius:2px;background:linear-gradient(180deg,#fdfcf7,#f1ede2);box-shadow:0 14px 26px rgba(0,0,0,.5);transform:rotate(.4deg);animation:photo-in .6s .08s var(--spring) both;}
+@keyframes photo-in{from{opacity:0;transform:translateY(30px) rotate(5deg) scale(.94);}}
+.ms-photo.shake{animation:shake .4s ease;}
+@keyframes shake{20%{transform:translateX(-6px) rotate(-.6deg);}40%{transform:translateX(5px) rotate(.8deg);}60%{transform:translateX(-3px);}80%{transform:translateX(2px);}}
+.ms-photo.thud{animation:thud .45s var(--ease);}
+@keyframes thud{30%{transform:scale(.985) rotate(.4deg);}}
+.ms-clip{position:absolute;left:22px;top:-14px;z-index:4;width:20px;height:46px;border:3px solid #a9b1bb;border-radius:12px;box-shadow:1px 2px 2px rgba(0,0,0,.35);pointer-events:none;}
+.ms-clip::after{content:"";position:absolute;left:3px;top:6px;width:8px;height:28px;border:3px solid #c9ced4;border-radius:8px;}
+.ms-view{position:relative;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:zoom-in;background:#ddd;}
+.ms-view.zoomed{cursor:grab;}
+.ms-view svg.ms-svg{display:block;width:100%;height:auto;}
+.ms-zoombar{position:absolute;right:16px;bottom:16px;z-index:3;display:flex;gap:6px;}
+.ms-zb{display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:50%;background:rgba(24,18,34,.62);color:#fff;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 2px 6px rgba(0,0,0,.3);transition:transform .15s var(--spring),opacity .2s;}
+.ms-zb .ico{width:20px;height:20px;}
+.ms-zb:active{transform:scale(.9);}
+.ms-zb[hidden]{display:none;}
+.ms-zl{position:absolute;left:16px;bottom:16px;z-index:3;padding:4px 9px;border-radius:999px;background:rgba(24,18,34,.62);color:#fff;font-weight:900;font-size:.78rem;font-variant-numeric:tabular-nums;opacity:0;transition:opacity .3s;pointer-events:none;}
+.ms-zl.on{opacity:1;}
+/* a ghost magnifying glass that glides over the photo once, to show it can be looked at closely */
+.ms-coach{position:absolute;left:0;top:0;z-index:3;width:84px;height:84px;pointer-events:none;animation:coach 2.6s .9s var(--ease) both;}
+.ms-coach svg{width:100%;height:100%;filter:drop-shadow(0 6px 8px rgba(0,0,0,.4));}
+@keyframes coach{0%{opacity:0;transform:translate(10%,60%) scale(.7);}15%{opacity:1;}55%{transform:translate(170%,25%) scale(1);}80%{opacity:1;transform:translate(260%,55%);}100%{opacity:0;transform:translate(300%,55%);}}
+/* the rubber stamp */
+.ms-stamp{position:absolute;left:50%;top:46%;z-index:5;pointer-events:none;transform:translate(-50%,-50%) rotate(-12deg);padding:6px 20px 4px;border:6px double var(--stamp);border-radius:10px;
+  font:400 clamp(2.2rem,11vw,4.4rem)/1 var(--display);letter-spacing:.16em;color:var(--stamp);background:rgba(255,250,240,.18);mix-blend-mode:multiply;
+  -webkit-mask:radial-gradient(circle at 30% 40%,#000 0 60%,rgba(0,0,0,.75) 61%) ,linear-gradient(#000,#000);mask:radial-gradient(circle at 30% 40%,#000 0 60%,rgba(0,0,0,.75) 61%),linear-gradient(#000,#000);animation:stamp .42s cubic-bezier(.2,1.5,.4,1) both;}
+.ms-stamp.closed{--stamp:#4a4a66;}
+.ms-stamp small{display:block;margin-top:2px;font:900 .8rem/1.2 var(--font);letter-spacing:.2em;text-align:center;}
+@keyframes stamp{0%{opacity:0;transform:translate(-50%,-50%) rotate(-24deg) scale(2.6);}70%{opacity:1;transform:translate(-50%,-50%) rotate(-11deg) scale(.94);}100%{opacity:1;transform:translate(-50%,-50%) rotate(-12deg) scale(1);}}
+.ms-seal{position:absolute;right:6%;top:8%;z-index:6;width:clamp(56px,16vw,92px);height:clamp(56px,16vw,92px);pointer-events:none;animation:seal .55s .35s var(--spring) both;}
+@keyframes seal{from{opacity:0;transform:scale(2.4) rotate(-60deg);}}
+
+/* marks drawn on the picture */
+.ms-draw{stroke-dasharray:1 1;stroke-dashoffset:1;animation:msdraw .75s var(--ease) forwards;}
+.ms-mk.static .ms-draw{animation:none;stroke-dashoffset:0;}
+.ms-hintmk .ms-draw{stroke-dashoffset:0;animation:fadein .5s ease both;}
+@keyframes msdraw{to{stroke-dashoffset:0;}}
+@keyframes fadein{from{opacity:0;}}
+.ms-pop{transform-box:fill-box;transform-origin:center;animation:mspop .35s .55s var(--spring) both;}
+.ms-mk.static .ms-pop{animation:none;}
+@keyframes mspop{from{opacity:0;transform:scale(.2);}}
+.ms-sel{fill:none;stroke:var(--accent);stroke-width:2.2;stroke-dasharray:5 4;stroke-linecap:round;animation:selspin 1.2s linear infinite,fadein .2s ease;}
+.ms-sel2{fill:none;stroke:#fff;stroke-width:4.6;opacity:.7;}
+@keyframes selspin{to{stroke-dashoffset:-18;}}
+.ms-shim{fill:none;stroke:#fff;stroke-width:2.4;opacity:0;animation:shim 1.1s ease both;}
+@keyframes shim{30%{opacity:.85;}100%{opacity:0;}}
+
+/* answer tags: paper luggage tags on strings */
+.ms-tags{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 8px;padding:2px 0;}
+.ms-tag{position:relative;display:inline-flex;align-items:center;min-height:46px;padding:6px 16px 6px 30px;border:0;color:#3a2410;font:400 1.08rem/1.05 var(--display);letter-spacing:.02em;
+  background:linear-gradient(180deg,#fbf3dc,#ecdcb4);clip-path:polygon(16px 0,100% 0,100% 100%,16px 100%,0 50%);filter:drop-shadow(0 3px 0 rgba(0,0,0,.28));
+  transform:rotate(var(--rot,0deg));transition:transform .2s var(--spring),background .15s,color .15s,opacity .2s;}
+.ms-tag::before{content:"";position:absolute;left:12px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:#7a5a3a;box-shadow:inset 0 1px 2px rgba(0,0,0,.6);}
+.ms-tag:active:not(:disabled){transform:scale(.95);}
+.ms-tag.on{background:linear-gradient(180deg,#ffe28a,#ffc83d);transform:translateY(-4px) rotate(-1.5deg);color:#2b1a00;}
+.ms-tag.x{opacity:.62;cursor:default;}
+.ms-tag.x span{position:relative;}
+.ms-tag.x span::after{content:"";position:absolute;left:-6px;right:-6px;top:50%;height:3px;margin-top:-1px;border-radius:2px;background:#c0192b;transform:rotate(-6deg);animation:strike .35s var(--ease) both;}
+@keyframes strike{from{transform:rotate(-6deg) scaleX(0);transform-origin:left;}}
+.ms-tags.done .ms-tag:not(.right){opacity:.5;}
+.ms-tag.right{background:linear-gradient(180deg,#bff0cf,#7fd9a0);color:#0b3a1e;transform:translateY(-4px) rotate(-1deg);}
+
+.ms-dock{display:flex;gap:10px;}
+.ms-dock .btn{min-height:56px;}
+.ms-dock .hint{flex:none;flex-direction:column;gap:0;padding:0 16px;min-width:86px;font-size:.88rem;line-height:1.1;}
+.ms-dock .hint .ico{width:22px;height:22px;}
+.ms-dock .hint small{font-size:.7rem;font-weight:800;opacity:.75;}
+.ms-dock .go{flex:1;min-width:0;}
+.ms-dock .go span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* the solution, typed into the file */
+.ms-sol{margin-top:10px;padding:10px 12px 12px;border-radius:3px;background:repeating-linear-gradient(180deg,transparent 0 25px,rgba(70,110,200,.16) 25px 26px) 0 6px/100% 100% no-repeat,linear-gradient(180deg,#fffdf7,#f4eddc);box-shadow:0 8px 16px rgba(0,0,0,.25);animation:note-in .5s var(--ease) both;}
+.ms-sol h3{display:flex;align-items:center;justify-content:space-between;font:800 .7rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#8f1414;margin-bottom:6px;}
+.ms-sol h3 button{border:0;background:none;color:#8f1414;font:800 .7rem/1 var(--mono);letter-spacing:.1em;padding:4px 0;text-decoration:underline;}
+.ms-sol ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.ms-sol li{display:grid;grid-template-columns:22px 1fr;gap:6px;font-family:var(--hand);font-size:1.13rem;line-height:1.22;color:#22264a;opacity:.32;transition:opacity .3s,transform .3s var(--ease);}
+.ms-sol li.on{opacity:1;}
+.ms-sol li.cur{transform:translateX(3px);}
+.ms-sol li i{display:grid;place-items:center;width:20px;height:20px;margin-top:1px;border-radius:50%;background:var(--stamp);color:#fff;font:900 .72rem/1 var(--font);font-style:normal;}
+.ms-sol .verdict{margin-top:10px;font-family:var(--hand);font-size:1.4rem;line-height:1.15;color:#1d6a3e;opacity:0;transition:opacity .4s;}
+.ms-sol .verdict.on{opacity:1;}
+.ms-sol .verdict.closed{color:#4a4a66;}
+
+/* the magnifying glass that follows a finger */
+.ms-loupe{position:fixed;left:0;top:0;z-index:60;width:var(--ld,150px);height:var(--ld,150px);border-radius:50%;pointer-events:none;opacity:0;transform:scale(.6);transition:opacity .14s,transform .18s var(--spring);will-change:left,top;}
+.ms-loupe.on{opacity:1;transform:none;}
+.ms-loupe .glass{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:#eee;box-shadow:inset 0 0 0 1px rgba(0,0,0,.4),inset 0 0 18px rgba(0,0,0,.35);}
+.ms-loupe .glass svg{display:block;width:100%;height:100%;}
+.ms-loupe .glass::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(55% 38% at 30% 22%,rgba(255,255,255,.5),transparent 70%),radial-gradient(80% 80% at 70% 80%,rgba(0,0,0,.12),transparent 60%);}
+.ms-loupe .rim{position:absolute;inset:-9px;border-radius:50%;border:9px solid #c9a227;background:none;box-shadow:inset 0 0 0 1px #6e5410,0 0 0 1px #6e5410,0 10px 22px rgba(0,0,0,.5);
+  border-color:#e7c35a #a07c1a #8a6a14 #d6b04a;}
+.ms-loupe .handle{position:absolute;left:84%;top:84%;width:16px;height:calc(var(--ld,150px) * .55);border-radius:6px;background:linear-gradient(90deg,#4a2a16,#8a5a34 45%,#5a3620);transform-origin:50% 0;transform:rotate(-45deg);box-shadow:0 6px 10px rgba(0,0,0,.4);}
+.ms-loupe .handle::before{content:"";position:absolute;left:-3px;right:-3px;top:-6px;height:14px;border-radius:4px;background:linear-gradient(90deg,#8a6a14,#e7c35a,#8a6a14);}
+.ms-loupe .x{position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;pointer-events:none;}
+.ms-loupe .x::before,.ms-loupe .x::after{content:"";position:absolute;background:rgba(192,25,43,.55);}
+.ms-loupe .x::before{left:6px;top:0;width:2px;height:14px;}
+.ms-loupe .x::after{top:6px;left:0;height:2px;width:14px;}
+
+/* Larger screens */
+@media (min-width:700px){
+  .ms-desk{padding:18px;}
+  .ms-fh h2{font-size:1.7rem;}
+  .ms-setup{font-size:1.1rem;}
+  .ms-q{font-size:1.55rem;}
+  .ms-tag{font-size:1.2rem;min-height:52px;}
+  .ms-photo{padding:10px;}
+}
+/* Landscape tablets and desktops: the photo on the left, the file and answers beside it */
+@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
+  .ms-case{grid-template-columns:minmax(0,1fr) minmax(300px,380px);grid-template-areas:"photo file" "photo tags" "photo dock";grid-template-rows:auto auto 1fr;column-gap:22px;align-items:start;}
+  .ms-photo{grid-area:photo;align-self:center;width:min(100%,calc((100dvh - var(--safe-t) - var(--safe-b) - 130px) * var(--ar,1.333)));}
+  .ms-file{grid-area:file;margin-top:16px;}
+  .ms-tags{grid-area:tags;justify-content:flex-start;}
+  .ms-dock{grid-area:dock;align-self:start;}
+}
+@media (prefers-reduced-motion:reduce){.ms-card,.ms-file,.ms-photo,.ms-note.new,.ms-coach{animation:none!important;}}
+</style>
+</head>
+<body>
+<main class="ms" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var CASES = window.MYSTERY_CASES || [], BY = {};
+  CASES.forEach(function (c) { BY[c.id] = c; });
+  var LV = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+  var LV_DESC = { easy: 'Clear clues, one or two steps', medium: 'A few clues to put together', hard: 'Tiny details and careful logic' };
+  var LV_ICON = { easy: 'search', medium: 'eye', hard: 'flame' };
+  var SAVE = 'mysteries_state', BOOK = 'mysteries_book', HKEY = 'mysteries', NAME = 'mysteries_name', COACH = 'mysteries_coach';
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function fmt(t) { t = Math.max(0, t | 0); var m = Math.floor(t / 60), s = ('0' + t % 60).slice(-2); return m >= 60 ? Math.floor(m / 60) + ':' + ('0' + m % 60).slice(-2) + ':' + s : m + ':' + s; }
+  function byLevel(l) { return CASES.filter(function (c) { return c.level === l; }).sort(function (a, b) { return a.no - b.no; }); }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many || one + 's'); }
+
+  // ── Daily case: the bank in a fixed mixed order, one per day ─────────────
+  function today() { return Math.floor((Date.now() - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }
+  var ORDER = (function () { var e = byLevel('easy'), m = byLevel('medium'), h = byLevel('hard'), out = []; for (var i = 0; i < Math.max(e.length, m.length, h.length); i++) [e[i], m[i], h[i]].forEach(function (c) { if (c) out.push(c.id); }); return out; })();
+  function dailyCase(day) { return BY[ORDER[(day - 1) % ORDER.length]]; }
+  function hist() { try { return GameHistory.load(HKEY) || []; } catch (e) { return []; } }
+  function dailyDone(day) { return hist().filter(function (e) { return e && e.daily === day; })[0] || null; }
+
+  // ── The casebook: which cases are solved (kept on this device, topped up from the synced history) ──
+  function book() {
+    var b = {}; try { b = JSON.parse(lsGet(BOOK, '{}')) || {}; } catch (e) {}
+    hist().forEach(function (e) {
+      if (!e || !e.cid || !BY[e.cid]) return;
+      var r = b[e.cid] = b[e.cid] || {};
+      if (e.solved) { r.s = 1; if (!r.t || e.secs < r.t) r.t = e.secs; if (r.h == null || e.hints < r.h) r.h = e.hints; if (r.m == null || e.misses < r.m) r.m = e.misses; }
+      else if (e.revealed && !r.s) r.r = 1;
+    });
+    return b;
+  }
+  function bookSave(b) { lsSet(BOOK, JSON.stringify(b)); }
+  function solvedIn(l, b) { b = b || book(); return byLevel(l).filter(function (c) { return b[c.id] && b[c.id].s; }).length; }
+  function nextCase(l, b) { b = b || book(); var list = byLevel(l); return list.filter(function (c) { return !(b[c.id] && (b[c.id].s || b[c.id].r)); })[0] || list.filter(function (c) { return !(b[c.id] && b[c.id].s); })[0] || null; }
+  function detective() { var n = lsGet(NAME, '').trim(); return n || lsGet('my_name', '').trim() || 'You'; }
+
+  // ── State ───────────────────────────────────────────────────────────────
+  // S: {id, secs, hints, misses, crossed[], sel, done, solved, revealed, daily, started, name, perfect}
+  var S = null, view = 'setup', tick = null, cur = null;
+  function save() {
+    if (!S) return;
+    if (S.done) { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); return; }
+    lsSet(SAVE, JSON.stringify(S));
+    var c = BY[S.id]; if (c) Kit.resume.set((S.daily ? 'Daily · ' : '') + 'Case ' + c.no + ' · ' + c.title);
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+
+  Kit.init({
+    id: 'mysteries',
+    theme: { wood: ['#6a4428', '#3e2717'] },
+    onNew: function () { showSetup(); },
+    confirmNew: false,
+    menu: [
+      { icon: 'tiles', label: 'Case board', onClick: function () { showBoard(S ? BY[S.id].level : null); } },
+      { icon: 'lightbulb', label: 'Hint', when: function () { return view === 'case' && S && !S.done && S.hints < 2; }, onClick: function () { hint(); } },
+      { icon: 'eye', label: 'Show the solution', when: function () { return view === 'case' && S && !S.done; }, onClick: function () { giveUp(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Picture Mysteries: past cases' }); } }
+    ],
+    rules:
+      '<p class="goal">Each case is a little mystery with a picture. Study the picture, find the clues, and work out the answer. Everything you need is in the picture and the case file.</p>' +
+      '<h3>Looking closely</h3><ul><li><b>Touch and hold</b> the photo to look through a magnifying glass. Slide your finger to move it.</li>' +
+      '<li><b>Pinch</b> or <b>double-tap</b> to zoom in, and drag to look around. Double-tap again (or use the buttons) to zoom out.</li>' +
+      '<li>Small things matter: shoes, hands, shadows, dust, which side something is on.</li></ul>' +
+      '<h3>Answering</h3><ul><li>Tap an answer tag, or tap a suspect or object in the photo, then press the big button to make your accusation.</li>' +
+      '<li>A wrong answer gets crossed out and counted as a miss. Keep looking and try again.</li></ul>' +
+      '<h3>Hints</h3><p>Each case has two hints. The first says what to think about; the second points at where to look. After both, you can ask to see the solution.</p>' +
+      '<h3>Solving</h3><p>Crack the case and it gets stamped <b>Solved</b>, with the clues circled on the photo. Solve it with no hints and no misses for a gold seal. Your time, hints and misses are saved in Past games.</p>' +
+      '<h3>Levels and the daily case</h3><ul><li><b>Easy:</b> one or two clear clues.</li><li><b>Medium:</b> a few clues to put together.</li><li><b>Hard:</b> tiny details and careful logic.</li></ul><p>There is a new <b>Daily case</b> every day, the same for everyone.</p>'
+  });
+  Kit.onBack = function () { if (view === 'case') { showBoard(BY[S.id].level); return true; } return false; };
+
+  // ── Setup ───────────────────────────────────────────────────────────────
+  var boardLevel = 'easy';
+  function showSetup() {
+    leaveCase(); view = 'setup'; Kit.titleSwitch(null); app.className = 'ms';
+    var b = book();
+    function desc(l) { var n = solvedIn(l, b), t = byLevel(l).length; return LV_DESC[l] + ' · ' + (n >= t ? 'all ' + t + ' solved!' : n + ' of ' + t + ' solved'); }
+    var st = Kit.setup(app, {
+      intro: 'Study the scene, crack the case',
+      modes: ['easy', 'medium', 'hard'].map(function (l) { return { id: l, icon: LV_ICON[l], title: LV[l], desc: desc(l) }; }),
+      mode: 'easy',
+      players: { min: 1, max: 1, names: true, label: 'Who is the detective?' },
+      start: 'Open the case board',
+      onStart: function (cfg) {
+        var nm = cfg.players[0] && cfg.players[0].name;
+        if (!nm || /^Player \d+$/.test(nm)) nm = lsGet('my_name', '').trim() || 'You';
+        lsSet(NAME, nm);
+        showBoard(cfg.mode);
+      }
+    });
+    var day = today(), dc = dailyCase(day), done = dailyDone(day);
+    if (!dc || !st || !st.el) return;
+    var card = el('div', { class: 'ms-daily' }, [
+      el('div', { class: 'cal', 'aria-hidden': 'true' }, [el('small', { text: new Date().toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase() }), el('b', { text: String(new Date().getDate()) })]),
+      el('div', { class: 'tx' }, [
+        el('b', { text: 'Daily case' }),
+        el('small', { text: 'Case ' + dc.no + ' · ' + LV[dc.level] + ' · a new mystery every day' }),
+        done ? el('small', { class: 'st', html: Kit.icon(done.solved ? 'check' : 'eye') + '<span>' + (done.solved ? 'Solved in ' + fmt(done.secs) : 'Solution seen') + '</span>' }) : null
+      ]),
+      el('button', { type: 'button', class: 'btn ' + (done ? 'btn-soft' : 'btn-primary') + ' btn-sm', text: done ? 'Again' : 'Play', onclick: function () { Kit.sfx('pop'); startDaily(); } })
+    ]);
+    var seats = st.el.querySelector('.k-seats');
+    if (seats && seats.nextSibling) st.el.insertBefore(card, seats.nextSibling); else st.el.appendChild(card);
+  }
+  function startDaily() {
+    var day = today(), dc = dailyCase(day);
+    if (S && !S.done && S.daily === day) { buildCase(false); return; }
+    openCase(dc.id, { daily: day });
+  }
+
+  // ── The case board ──────────────────────────────────────────────────────
+  function showBoard(level) {
+    leaveCase(); view = 'board'; Kit.titleSwitch(null);
+    boardLevel = level || boardLevel || 'easy';
+    var b = book(), live = null; try { live = JSON.parse(lsGet(SAVE, 'null')); } catch (e) {}
+    app.className = 'ms'; app.innerHTML = '';
+    var wrap = el('div', { class: 'ms-board wood' });
+    var tabs = el('div', { class: 'ms-tabs', role: 'tablist' });
+    ['easy', 'medium', 'hard'].forEach(function (l) {
+      var n = solvedIn(l, b), t = byLevel(l).length;
+      tabs.appendChild(el('button', { type: 'button', role: 'tab', 'aria-selected': String(l === boardLevel), class: 'ms-tab' + (l === boardLevel ? ' on' : ''), style: { '--p': Math.round(n / Math.max(1, t) * 100) + '%' },
+        onclick: function () { if (l === boardLevel) return; Kit.sfx('flip'); Kit.haptic('light'); showBoard(l); } },
+        [el('b', { text: LV[l] }), el('small', { text: n + ' / ' + t + ' solved' }), el('i')]));
+    });
+    wrap.appendChild(tabs);
+    var cork = el('div', { class: 'ms-cork' });
+    var nx = nextCase(boardLevel, b), list = byLevel(boardLevel);
+    var solvedN = solvedIn(boardLevel, b);
+    cork.appendChild(el('div', { class: 'ms-head' }, [el('b', { text: LV[boardLevel] + ' cases' }), el('span', { text: solvedN >= list.length ? 'Every case closed. Well done, detective!' : 'Detective ' + detective() })]));
+    var grid = el('div', { class: 'ms-grid' });
+    list.forEach(function (c, i) {
+      var r = b[c.id] || {}, going = live && live.id === c.id && !live.done;
+      var rot = [-2.2, 1.6, -1, 2.4, -1.8, 1.2, 2, -2.6][i % 8];
+      var card = el('button', { type: 'button', class: 'ms-card' + (nx && nx.id === c.id && !going && solvedN < list.length ? ' next' : ''), style: { '--rot': rot + 'deg', '--d': (i * 45) + 'ms' }, 'aria-label': 'Case ' + c.no + ': ' + c.title + (r.s ? ', solved' : ''),
+        onclick: function () { Kit.sfx('flip'); Kit.haptic('light'); if (going) { S = live; buildCase(false); } else openCase(c.id); } });
+      card.appendChild(el('i', { class: 'pin' }));
+      var th = el('div', { class: 'th', html: thumb(c) });
+      if (r.s) th.appendChild(el('div', { class: 'stamp', text: 'SOLVED' }));
+      else if (r.r) th.appendChild(el('div', { class: 'stamp closed', text: 'CLOSED' }));
+      card.appendChild(th);
+      if (r.s && !r.h && !r.m) card.appendChild(el('span', { class: 'seal', html: sealSvg() }));
+      card.appendChild(el('div', { class: 'no', text: 'CASE ' + ('0' + c.no).slice(-2) }));
+      card.appendChild(el('div', { class: 'tt', text: c.title }));
+      card.appendChild(el('div', { class: 'ty', text: c.type }));
+      if (going) card.appendChild(el('div', { class: 'rs go', html: Kit.icon('pencil') + '<span>In progress · ' + fmt(live.secs) + '</span>' }));
+      else if (r.s) card.appendChild(el('div', { class: 'rs', html: Kit.icon('check') + '<span>' + fmt(r.t) + (r.h ? ' · ' + plural(r.h, 'hint') : '') + '</span>' }));
+      else if (r.r) card.appendChild(el('div', { class: 'rs shown', html: Kit.icon('eye') + '<span>Solution seen</span>' }));
+      grid.appendChild(card);
+    });
+    cork.appendChild(grid);
+    wrap.appendChild(cork);
+    app.appendChild(wrap);
+    window.scrollTo(0, 0);
+  }
+  var thumbs = {};
+  function thumb(c) { return thumbs[c.id] || (thumbs[c.id] = MysteryScene.render(c, 'th-' + c.id).replace('class="ms-svg"', 'class="ms-svg" preserveAspectRatio="xMidYMid slice"')); }
+  function sealSvg() {
+    var pts = []; for (var i = 0; i < 24; i++) { var a = i * Math.PI / 12, r = i % 2 ? 44 : 50; pts.push((50 + Math.cos(a) * r).toFixed(1) + ' ' + (50 + Math.sin(a) * r).toFixed(1)); }
+    return '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M' + pts.join('L') + 'Z" fill="#e8b82a" stroke="#8a6410" stroke-width="2"/><circle cx="50" cy="50" r="34" fill="#f4cc4a" stroke="#a87a14" stroke-width="2"/><path d="M50 27l6.8 13.8 15.2 2.2-11 10.7 2.6 15.1L50 61.6 36.4 68.8 39 53.7 28 43l15.2-2.2z" fill="#fff6c8" stroke="#a87a14" stroke-width="2" stroke-linejoin="round"/></svg>';
+  }
+
+  // ── Opening a case ──────────────────────────────────────────────────────
+  function openCase(id, o) {
+    var c = BY[id]; if (!c) return;
+    o = o || {};
+    S = { id: id, secs: 0, hints: 0, misses: 0, crossed: [], sel: null, done: false, solved: false, revealed: false, daily: o.daily || 0, started: Date.now(), name: detective() };
+    Kit.gameStart(); save(); buildCase(true);
+  }
+  function leaveCase() { stopClock(); hideLoupe(); cur = null; }
+
+  function buildCase(fresh) {
+    leaveCase();
+    var c = BY[S.id]; view = 'case';
+    var sz = MysteryScene.size(c), W = sz[0], H = sz[1];
+    Kit.titleSwitch((S.daily ? 'Daily · ' : '') + 'Case ' + c.no + ' · ' + LV[c.level], function () { showBoard(c.level); }, 'Back to the case board');
+    app.className = 'ms'; app.innerHTML = '';
+    var desk = el('div', { class: 'ms-desk wood' }), box = el('div', { class: 'ms-case' });
+    // the file
+    var file = el('section', { class: 'ms-file' });
+    file.appendChild(el('div', { class: 'tab', text: 'CASE ' + ('0' + c.no).slice(-2) + ' · ' + LV[c.level].toUpperCase() }));
+    var clock = el('span', { class: 'ms-clock', html: Kit.icon('history') + '<span>' + fmt(S.secs) + '</span>' });
+    file.appendChild(el('div', { class: 'ms-fh' }, [el('h2', { text: c.title }), clock]));
+    file.appendChild(el('p', { class: 'ms-setup', text: c.setup }));
+    file.appendChild(el('p', { class: 'ms-q', html: Kit.icon('search') + '<span>' + Kit.esc(c.q) + '</span>' }));
+    var misses = el('div', { class: 'ms-misses', 'aria-live': 'polite' });
+    file.appendChild(misses);
+    var notes = el('div', { class: 'ms-notes' });
+    file.appendChild(notes);
+    // the photo
+    var photo = el('section', { class: 'ms-photo', style: { '--ar': (W / H).toFixed(4) } });
+    photo.appendChild(el('i', { class: 'ms-clip', 'aria-hidden': 'true' }));
+    var vw = el('div', { class: 'ms-view', role: 'img', 'aria-label': 'The picture for this case. Touch and hold to use the magnifying glass; pinch or double-tap to zoom.' });
+    vw.innerHTML = MysteryScene.render(c, 'sc-' + c.id);
+    photo.appendChild(vw);
+    var zbar = el('div', { class: 'ms-zoombar' });
+    var zOut = el('button', { type: 'button', class: 'ms-zb', 'aria-label': 'Zoom out', html: Kit.icon('minus'), onclick: function () { zoomBy(1 / 1.8); } });
+    var zIn = el('button', { type: 'button', class: 'ms-zb', 'aria-label': 'Zoom in', html: Kit.icon('plus'), onclick: function () { zoomBy(1.8); } });
+    zbar.appendChild(zOut); zbar.appendChild(zIn);
+    photo.appendChild(zbar);
+    var zl = el('div', { class: 'ms-zl' });
+    photo.appendChild(zl);
+    // the answers
+    var tags = el('div', { class: 'ms-tags', role: 'group', 'aria-label': 'Answers' });
+    var tagEls = {};
+    c.choices.forEach(function (ch, i) {
+      var t = el('button', { type: 'button', class: 'ms-tag', style: { '--rot': [-1.5, 1, -0.6, 1.6, -1.2, 0.8][i % 6] + 'deg' }, html: '<span>' + Kit.esc(ch.label) + '</span>', onclick: function () { pick(ch.id, true); } });
+      tagEls[ch.id] = t; tags.appendChild(t);
+    });
+    var dock = el('div', { class: 'ms-dock' });
+    box.appendChild(file); box.appendChild(photo); box.appendChild(tags); box.appendChild(dock);
+    desk.appendChild(box); app.appendChild(desk);
+
+    var svg = vw.querySelector('svg');
+    var layer = document.createElementNS('http://www.w3.org/2000/svg', 'g'); layer.setAttribute('class', 'ms-layer');
+    svg.appendChild(layer);
+    var selG = document.createElementNS('http://www.w3.org/2000/svg', 'g'), hintG = document.createElementNS('http://www.w3.org/2000/svg', 'g'), markG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    layer.appendChild(hintG); layer.appendChild(markG); layer.appendChild(selG);
+    cur = { c: c, W: W, H: H, svg: svg, vw: vw, photo: photo, file: file, clock: clock, misses: misses, notes: notes, tags: tags, tagEls: tagEls, dock: dock, selG: selG, hintG: hintG, markG: markG, zl: zl, zIn: zIn, zOut: zOut,
+      v: { x: 0, y: 0, w: W, h: H }, boxes: {}, worldId: 'sc-' + c.id + '-world' };
+    // where each tappable answer is in the picture
+    if (c.tap) c.choices.forEach(function (ch) { var bb = MysteryScene.box(svg, { id: ch.id }); if (bb) cur.boxes[ch.id] = bb; });
+    gestures(vw);
+    paintMisses(); paintDock(); paintTags();
+    for (var i = 0; i < S.hints; i++) addNote(i, false);
+    if (S.hints >= 2) hintMark(false);
+    if (S.sel && !S.done) selRing();
+    if (S.done) { showSolution(false); }
+    else {
+      startClock();
+      if (fresh) {
+        Kit.sfx('deal');
+        setTimeout(shimmer, 700);
+        var seen = +lsGet(COACH, '0') || 0;
+        if (seen < 3) { lsSet(COACH, String(seen + 1)); photo.appendChild(el('div', { class: 'ms-coach', html: '<svg viewBox="0 0 84 84"><circle cx="34" cy="34" r="24" fill="rgba(220,240,255,.35)" stroke="#e7c35a" stroke-width="7"/><path d="M52 52l22 22" stroke="#6a4428" stroke-width="10" stroke-linecap="round"/></svg>' })); }
+      }
+    }
+    save();
+    window.scrollTo(0, 0);
+  }
+
+  // ── Picking an answer ────────────────────────────────────────────────────
+  function pick(id, fromTag) {
+    if (!S || S.done || !cur) return;
+    if (S.crossed.indexOf(id) >= 0) { Kit.haptic('light'); return; }
+    S.sel = S.sel === id && fromTag ? null : id;
+    Kit.sfx('tap'); Kit.haptic('light');
+    paintTags(); paintDock(); selRing(); save();
+  }
+  function paintTags() {
+    if (!cur) return;
+    Object.keys(cur.tagEls).forEach(function (id) {
+      var t = cur.tagEls[id], x = S.crossed.indexOf(id) >= 0;
+      t.classList.toggle('on', S.sel === id && !S.done);
+      t.classList.toggle('x', x);
+      t.classList.toggle('right', S.done && id === cur.c.answer);
+      t.disabled = x || S.done;
+      t.setAttribute('aria-pressed', String(S.sel === id));
+    });
+    cur.tags.classList.toggle('done', !!S.done);
+  }
+  function selRing() {
+    if (!cur) return;
+    cur.selG.innerHTML = '';
+    var bb = S.sel && cur.boxes[S.sel]; if (!bb || S.done) return;
+    var cx = bb.x + bb.w / 2, cy = bb.y + bb.h / 2, rx = bb.w / 2 + 7, ry = bb.h / 2 + 7;
+    cur.selG.innerHTML = '<ellipse class="ms-sel2" cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry + '"/><ellipse class="ms-sel" cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry + '"/>';
+  }
+  // at the start, a quick white glint around everything you can tap in the picture
+  function shimmer() {
+    if (!cur || S.done) return;
+    var ids = Object.keys(cur.boxes), s = '';
+    ids.forEach(function (id, i) { var bb = cur.boxes[id]; s += '<ellipse class="ms-shim" style="animation-delay:' + (i * 90) + 'ms" cx="' + (bb.x + bb.w / 2) + '" cy="' + (bb.y + bb.h / 2) + '" rx="' + (bb.w / 2 + 6) + '" ry="' + (bb.h / 2 + 6) + '"/>'; });
+    if (!s) return;
+    var g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.innerHTML = s; cur.selG.parentNode.insertBefore(g, cur.selG);
+    setTimeout(function () { g.remove(); }, 2200);
+  }
+  function verb() { var c = cur.c; if (c.verb) return c.verb; var t = cur.svg.querySelector('[data-id="' + c.answer + '"]'); return t && t.getAttribute('data-kind') === 'person' ? 'Accuse' : 'Choose'; }
+  function label(id) { var ch = cur.c.choices.filter(function (x) { return x.id === id; })[0]; return ch ? ch.label : ''; }
+  function paintDock() {
+    if (!cur) return;
+    var d = cur.dock; d.innerHTML = '';
+    if (S.done) {
+      var c = cur.c, b = book(), nx = nextCase(c.level, b);
+      d.appendChild(el('button', { type: 'button', class: 'btn btn-soft hint', html: Kit.icon('tiles') + '<span>Board</span>', onclick: function () { Kit.sfx('tap'); showBoard(c.level); } }));
+      d.appendChild(el('button', { type: 'button', class: 'btn btn-primary go', html: '<span>' + (nx ? 'Next case' : 'Case board') + '</span>' + Kit.icon('right'), onclick: function () { Kit.sfx('pop'); if (nx) openCase(nx.id); else showBoard(c.level); } }));
+      return;
+    }
+    var left = 2 - S.hints;
+    d.appendChild(el('button', { type: 'button', class: 'btn btn-soft hint', 'aria-label': left ? 'Hint (' + left + ' left)' : 'Show the solution', html: Kit.icon(left ? 'lightbulb' : 'eye') + '<span>' + (left ? 'Hint' : 'Solution') + '</span><small>' + (left ? left + ' left' : 'give up') + '</small>', onclick: function () { if (left) hint(); else giveUp(); } }));
+    var go = el('button', { type: 'button', class: 'btn btn-primary go', disabled: !S.sel, html: '<span>' + (S.sel ? verb() + ' ' + Kit.esc(label(S.sel)) : 'Pick an answer') + '</span>', onclick: accuse });
+    d.appendChild(go);
+  }
+  function paintMisses() {
+    if (!cur) return;
+    cur.misses.innerHTML = S.misses ? '<span>Misses:</span>' + new Array(S.misses + 1).join(Kit.icon('close')) : '';
+  }
+
+  function accuse() {
+    if (!S || S.done || !S.sel || !cur) return;
+    var id = S.sel;
+    if (id === cur.c.answer) { solved(); return; }
+    S.misses++; S.crossed.push(id); S.sel = null;
+    Kit.sfx('bad'); Kit.haptic('error');
+    cur.photo.classList.remove('shake'); void cur.photo.offsetWidth; cur.photo.classList.add('shake');
+    var w = el('div', { class: 'ms-wrong', text: ['Not quite. Look again!', 'No, that doesn’t fit the clues.', 'Hmm, not that one.'][S.misses % 3] });
+    cur.file.appendChild(w); setTimeout(function () { w.remove(); }, 2500);
+    paintTags(); paintDock(); paintMisses(); selRing(); save();
+  }
+
+  // ── Hints ───────────────────────────────────────────────────────────────
+  function hint() {
+    if (!S || S.done || !cur || S.hints >= 2) return;
+    S.hints++;
+    Kit.sfx('pop'); Kit.haptic('light');
+    addNote(S.hints - 1, true);
+    if (S.hints === 2) hintMark(true);
+    paintDock(); save();
+  }
+  function addNote(i, anim) {
+    var h = cur.c.hints[i]; if (!h) return;
+    var n = el('div', { class: 'ms-note' + (anim ? ' new' : ''), style: { '--rot': (i ? 0.9 : -0.8) + 'deg' }, html: Kit.icon('lightbulb') + '<div><b>HINT ' + (i + 1) + '</b>' + Kit.esc(h.text) + '</div>' });
+    cur.notes.appendChild(n);
+    if (anim) setTimeout(function () { try { n.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }, 120);
+  }
+  function hintMark(anim) {
+    var h = cur.c.hints[1]; if (!h || !h.at) return;
+    cur.hintG.innerHTML = MysteryScene.markSvg(cur.svg, Object.assign({ hint: true }, h.at), 0);
+    if (anim) { var bb = MysteryScene.box(cur.svg, h.at); if (bb) setTimeout(function () { camTo(fitBox(bb, 2.2), 650); }, 250); }
+  }
+  function giveUp() {
+    if (!S || S.done) return;
+    Kit.confirm('Show the solution?', { ok: 'Show me', body: 'This case will be marked as closed, not solved. You can play it again later.' }).then(function (ok) {
+      if (!ok || !S || S.done) return;
+      S.done = true; S.revealed = true; S.sel = null;
+      finish();
+    });
+  }
+
+  // ── Solved! ─────────────────────────────────────────────────────────────
+  function solved() {
+    S.done = true; S.solved = true; S.perfect = !S.hints && !S.misses;
+    finish();
+  }
+  function finish() {
+    stopClock(); hideLoupe();
+    var c = cur.c, b = book(), r = b[c.id] = b[c.id] || {};
+    if (S.solved) { r.s = 1; delete r.r; if (!r.t || S.secs < r.t) r.t = S.secs; if (r.h == null || S.hints < r.h) r.h = S.hints; if (r.m == null || S.misses < r.m) r.m = S.misses; r.by = S.name; }
+    else if (!r.s) r.r = 1;
+    r.n = (r.n || 0) + 1;
+    bookSave(b);
+    record();
+    clearSave();
+    paintTags(); paintDock(); paintMisses(); selRing();
+    camTo({ x: 0, y: 0, w: cur.W, h: cur.H }, 350);
+    if (S.solved) { Kit.sfx('good'); Kit.haptic('success'); }
+    setTimeout(function () { stamp(true); }, 380);
+    setTimeout(function () { showSolution(true); }, 1250);
+  }
+  function stamp(anim) {
+    if (!cur) return;
+    var st = el('div', { class: 'ms-stamp' + (S.solved ? '' : ' closed') + (anim ? '' : ' still'), html: (S.solved ? 'SOLVED' : 'CLOSED') + '<small>' + (S.solved ? fmt(S.secs) + (S.hints ? ' · ' + plural(S.hints, 'hint') : '') : 'SOLUTION SEEN') + '</small>' });
+    if (!anim) st.style.animation = 'none';
+    cur.photo.appendChild(st);
+    if (S.solved && S.perfect) cur.photo.appendChild(el('div', { class: 'ms-seal', html: sealSvg(), style: anim ? {} : { animation: 'none' } }));
+    if (anim) {
+      Kit.sfx('boom', 0.7); Kit.haptic('heavy');
+      cur.photo.classList.remove('thud'); void cur.photo.offsetWidth; cur.photo.classList.add('thud');
+      if (S.solved && S.perfect) setTimeout(function () { Kit.sfx('sparkle'); }, 420);
+    }
+  }
+  // the solution: typed into the file, one step at a time, while the camera visits each clue
+  var tourT = [];
+  function showSolution(anim) {
+    if (!cur) return;
+    var c = cur.c, sol = c.solution;
+    if (!anim) stamp(false);
+    var box = el('div', { class: 'ms-sol' });
+    var replay = el('button', { type: 'button', text: anim ? 'Skip' : 'Replay', onclick: function () { if (replay.textContent === 'Skip') endTour(); else { Kit.sfx('tap'); tour(); } } });
+    box.appendChild(el('h3', {}, [el('span', { text: 'How it was solved' }), replay]));
+    var ol = el('ol');
+    sol.steps.forEach(function (st, i) { ol.appendChild(el('li', { class: anim ? '' : 'on', html: '<i>' + (i + 1) + '</i><span>' + Kit.esc(st.text) + '</span>' })); });
+    box.appendChild(ol);
+    var vd = el('div', { class: 'verdict' + (anim ? '' : ' on') + (S.solved ? '' : ' closed'), text: sol.verdict });
+    box.appendChild(vd);
+    cur.notes.appendChild(box);
+    cur.sol = { box: box, ol: ol, vd: vd, replay: replay };
+    if (anim) tour(); else drawMarks(-1, true);
+  }
+  function drawMarks(upto, still) {
+    var c = cur.c, s = '';
+    c.solution.steps.forEach(function (st, i) { if (upto >= 0 && i > upto) return; (st.marks || []).forEach(function (m) { s += MysteryScene.markSvg(cur.svg, m, i + 1); }); });
+    cur.markG.innerHTML = s;
+    if (still) Array.prototype.forEach.call(cur.markG.querySelectorAll('.ms-mk'), function (g) { g.classList.add('static'); });
+  }
+  function tour() {
+    endTourTimers();
+    var c = cur.c, steps = c.solution.steps, lis = cur.sol.ol.children, t = 0;
+    cur.markG.innerHTML = ''; cur.hintG.innerHTML = '';
+    cur.sol.replay.textContent = 'Skip';
+    cur.sol.vd.classList.remove('on');
+    Array.prototype.forEach.call(lis, function (li) { li.classList.remove('on', 'cur'); });
+    try { cur.sol.box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
+    steps.forEach(function (st, i) {
+      tourT.push(setTimeout(function () {
+        if (!cur) return;
+        Array.prototype.forEach.call(lis, function (li, j) { li.classList.toggle('on', j <= i); li.classList.toggle('cur', j === i); });
+        var u = null;
+        (st.marks || []).forEach(function (m) { var bb = MysteryScene.box(cur.svg, m); if (bb) u = u ? union(u, bb) : bb; });
+        camTo(u ? fitBox(u, 1.8) : { x: 0, y: 0, w: cur.W, h: cur.H }, 600);
+        Kit.sfx('whoosh', 0.6);
+        // add this step's marks (earlier ones stay)
+        var s = ''; (st.marks || []).forEach(function (m) { s += MysteryScene.markSvg(cur.svg, m, i + 1); });
+        var g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.innerHTML = s;
+        tourT.push(setTimeout(function () { if (cur) { cur.markG.appendChild(g); if (s) Kit.sfx('tick'); } }, 450));
+      }, t));
+      t += 1300 + Math.min(2200, st.text.length * 22);
+    });
+    tourT.push(setTimeout(function () { endTour(true); }, t));
+  }
+  function endTourTimers() { tourT.forEach(clearTimeout); tourT = []; }
+  function endTour(natural) {
+    endTourTimers();
+    if (!cur || !cur.sol) return;
+    Array.prototype.forEach.call(cur.sol.ol.children, function (li) { li.classList.add('on'); li.classList.remove('cur'); });
+    drawMarks(-1, !natural);
+    cur.sol.vd.classList.add('on'); cur.sol.replay.textContent = 'Replay';
+    camTo({ x: 0, y: 0, w: cur.W, h: cur.H }, 600);
+    if (!cur.celebrated) {
+      cur.celebrated = true;
+      if (S.solved) setTimeout(celebrate, natural ? 700 : 250);
+    }
+  }
+  function celebrate() {
+    if (!cur || view !== 'case') return;
+    var c = cur.c, b = book(), nx = nextCase(c.level, b);
+    var sub = c.title + ' · ' + fmt(S.secs) + (S.hints ? ' · ' + plural(S.hints, 'hint') : ' · no hints') + (S.misses ? ' · ' + plural(S.misses, 'miss', 'misses') : '');
+    Kit.win({
+      icon: S.perfect ? 'star' : 'trophy',
+      title: S.perfect ? 'Perfect deduction!' : 'Case closed!',
+      sub: sub,
+      againLabel: nx ? 'Next case' : 'Back to the case board',
+      again: function () { if (nx) openCase(nx.id); else showBoard(c.level); },
+      extra: [{ label: 'Look at the solution', onClick: function () {} }, { label: 'Case board', onClick: function () { showBoard(c.level); } }]
+    });
+  }
+  function record() {
+    var c = cur.c, hl = [];
+    hl.push(S.solved ? 'Cracked “' + c.title + '” in ' + fmt(S.secs) : 'Saw the solution to “' + c.title + '” after ' + fmt(S.secs));
+    if (S.solved) hl.push(S.hints ? plural(S.hints, 'hint') + ' used' : 'No hints needed');
+    hl.push(S.misses ? plural(S.misses, 'wrong guess', 'wrong guesses') + ': ' + S.crossed.map(function (id) { return label(id); }).join(', ') : S.solved ? 'Right on the first try' : 'No guesses made');
+    if (S.solved && S.perfect) hl.push('Perfect deduction: gold seal');
+    if (S.daily) hl.push('Daily case for ' + new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }));
+    hl.push(c.solution.verdict);
+    Kit.record(HKEY, {
+      started: S.started, mode: (S.daily ? 'Daily · ' : '') + LV[c.level] + ' · Case ' + c.no,
+      players: [{ name: S.name }], winner: S.solved ? S.name : null,
+      summary: c.title + (S.solved ? ' · solved in ' + fmt(S.secs) : ' · solution seen'), badge: S.solved ? fmt(S.secs) : 'Seen',
+      highlights: hl,
+      meta: { cid: c.id, level: c.level, no: c.no, secs: S.secs, hints: S.hints, misses: S.misses, solved: !!S.solved, revealed: !!S.revealed, daily: S.daily || 0, perfect: !!S.perfect },
+      detail: { c: c.id, t: c.title, lv: c.level, n: c.no, s: S.secs, h: S.hints, m: S.misses, ok: S.solved ? 1 : 0, x: S.crossed.map(label) }
+    });
+  }
+
+  // ── Clock ───────────────────────────────────────────────────────────────
+  function startClock() {
+    stopClock();
+    tick = setInterval(function () {
+      if (!S || S.done || document.hidden || view !== 'case' || document.querySelector('.k-scrim')) return;
+      S.secs++;
+      if (cur) cur.clock.lastChild.textContent = fmt(S.secs);
+      if (S.secs % 5 === 0) save();
+    }, 1000);
+  }
+  function stopClock() { if (tick) clearInterval(tick); tick = null; endTourTimers(); }
+  document.addEventListener('visibilitychange', function () { if (document.hidden && S && !S.done && view === 'case') save(); });
+
+  // ── Camera: zoom and pan by moving the picture's viewBox ────────────────
+  var camRaf = 0;
+  function clampV(v) {
+    var W = cur.W, H = cur.H, w = Math.max(W / 5, Math.min(W, v.w)), h = w * H / W;
+    return { x: Math.max(0, Math.min(W - w, v.x)), y: Math.max(0, Math.min(H - h, v.y)), w: w, h: h };
+  }
+  function setV(v) {
+    if (!cur) return;
+    cur.v = clampV(v);
+    cur.svg.setAttribute('viewBox', cur.v.x.toFixed(2) + ' ' + cur.v.y.toFixed(2) + ' ' + cur.v.w.toFixed(2) + ' ' + cur.v.h.toFixed(2));
+    var z = cur.W / cur.v.w;
+    cur.vw.classList.toggle('zoomed', z > 1.02);
+    cur.zOut.hidden = z <= 1.02;
+    cur.zIn.disabled = z >= 4.95;
+    cur.zl.textContent = '×' + (Math.round(z * 10) / 10);
+    cur.zl.classList.toggle('on', z > 1.02);
+  }
+  function camTo(v, ms) {
+    if (!cur) return;
+    cancelAnimationFrame(camRaf);
+    var a = cur.v, b = clampV(v), t0 = performance.now();
+    if (!ms) { setV(b); return; }
+    (function step(t) {
+      if (!cur) return;
+      var k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3);
+      setV({ x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e, w: a.w + (b.w - a.w) * e, h: a.h + (b.h - a.h) * e });
+      if (k < 1) camRaf = requestAnimationFrame(step);
+    })(t0);
+  }
+  function fitBox(bb, pad) {
+    var W = cur.W, H = cur.H, cx = bb.x + bb.w / 2, cy = bb.y + bb.h / 2;
+    var w = Math.max(bb.w * pad, bb.h * pad * W / H, W / 3.2);
+    w = Math.min(W, w);
+    return { x: cx - w / 2, y: cy - w * H / W / 2, w: w, h: w * H / W };
+  }
+  function union(a, b) { var x = Math.min(a.x, b.x), y = Math.min(a.y, b.y); return { x: x, y: y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y }; }
+  function zoomBy(f, cx, cy) {
+    if (!cur) return;
+    var v = cur.v, w = v.w / f;
+    if (cx == null) { cx = v.x + v.w / 2; cy = v.y + v.h / 2; }
+    var fx = (cx - v.x) / v.w, fy = (cy - v.y) / v.h, h = w * cur.H / cur.W;
+    camTo({ x: cx - fx * w, y: cy - fy * h, w: w, h: h }, 260);
+    Kit.sfx('tap', 0.6);
+  }
+  // client point → picture point
+  function toScene(x, y) { var r = cur.svg.getBoundingClientRect(), v = cur.v; return { x: v.x + (x - r.left) / r.width * v.w, y: v.y + (y - r.top) / r.height * v.h, r: r }; }
+
+  // ── Gestures on the photo: tap, hold for the magnifier, drag, pinch, double-tap, wheel ──
+  function gestures(vw) {
+    var pts = {}, g = null, lastTap = null, holdT = 0;
+    function count() { return Object.keys(pts).length; }
+    vw.addEventListener('pointerdown', function (e) {
+      if (!cur) return;
+      if (e.button > 0) return;
+      try { vw.setPointerCapture(e.pointerId); } catch (x) {}
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+      if (count() === 2) {
+        clearTimeout(holdT); hideLoupe();
+        var ids = Object.keys(pts), a = pts[ids[0]], b = pts[ids[1]];
+        g = { mode: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, v0: cur.v, m: toScene((a.x + b.x) / 2, (a.y + b.y) / 2) };
+        return;
+      }
+      if (count() > 2) return;
+      g = { mode: 'press', x0: e.clientX, y0: e.clientY, t0: performance.now(), v0: cur.v, id: e.pointerId, mouse: e.pointerType === 'mouse' };
+      clearTimeout(holdT);
+      holdT = setTimeout(function () { if (g && g.mode === 'press') { g.mode = 'loupe'; showLoupe(g.x0, g.y0); Kit.sfx('tick'); Kit.haptic('light'); } }, 200);
+    });
+    vw.addEventListener('pointermove', function (e) {
+      if (!g || !pts[e.pointerId]) return;
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+      if (g.mode === 'pinch') {
+        var ids = Object.keys(pts); if (ids.length < 2) return;
+        var a = pts[ids[0]], b = pts[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y) || 1, w = g.v0.w * g.d0 / d;
+        w = Math.max(cur.W / 5, Math.min(cur.W, w));
+        var r = cur.svg.getBoundingClientRect(), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, h = w * cur.H / cur.W;
+        setV({ x: g.m.x - (mx - r.left) / r.width * w, y: g.m.y - (my - r.top) / r.height * h, w: w, h: h });
+        return;
+      }
+      if (e.pointerId !== g.id) return;
+      var dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+      if (g.mode === 'press' && Math.hypot(dx, dy) > 7) {
+        clearTimeout(holdT);
+        var zoomed = cur.W / cur.v.w > 1.02;
+        if (zoomed && !(g.mouse && e.shiftKey)) g.mode = 'pan';
+        else { g.mode = 'loupe'; Kit.sfx('tick'); Kit.haptic('light'); }
+      }
+      if (g.mode === 'pan') {
+        var r2 = cur.svg.getBoundingClientRect();
+        setV({ x: g.v0.x - dx / r2.width * g.v0.w, y: g.v0.y - dy / r2.height * g.v0.h, w: g.v0.w, h: g.v0.h });
+      } else if (g.mode === 'loupe') showLoupe(e.clientX, e.clientY);
+    });
+    function up(e) {
+      if (!pts[e.pointerId]) return;
+      delete pts[e.pointerId];
+      clearTimeout(holdT);
+      if (!g) return;
+      if (g.mode === 'pinch') { if (!count()) g = null; else g = { mode: 'idle' }; return; }
+      if (e.pointerId !== g.id) return;
+      var was = g; g = null;
+      if (was.mode === 'loupe') { hideLoupe(); return; }
+      if (was.mode !== 'press' || e.type === 'pointercancel') return;
+      // a tap: double-tap zooms; a single tap picks whatever answer is there
+      var now = performance.now(), p = toScene(e.clientX, e.clientY);
+      if (lastTap && now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 34) {
+        lastTap = null;
+        var z = cur.W / cur.v.w;
+        if (z > 1.5) camTo({ x: 0, y: 0, w: cur.W, h: cur.H }, 300);
+        else { var w = cur.W / 2.6, h = w * cur.H / cur.W; camTo({ x: p.x - w / 2, y: p.y - h / 2, w: w, h: h }, 300); }
+        Kit.sfx('tap', 0.6); Kit.haptic('tick');
+        return;
+      }
+      lastTap = { t: now, x: e.clientX, y: e.clientY };
+      tapAt(p);
+    }
+    vw.addEventListener('pointerup', up);
+    vw.addEventListener('pointercancel', up);
+    vw.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    vw.addEventListener('wheel', function (e) {
+      if (!cur) return;
+      e.preventDefault();
+      var p = toScene(e.clientX, e.clientY), f = Math.exp(-e.deltaY * 0.0022);
+      var v = cur.v, w = Math.max(cur.W / 5, Math.min(cur.W, v.w / f)), h = w * cur.H / cur.W;
+      setV({ x: p.x - (p.x - v.x) / v.w * w, y: p.y - (p.y - v.y) / v.h * h, w: w, h: h });
+    }, { passive: false });
+  }
+  function tapAt(p) {
+    if (!cur || S.done || !cur.c.tap) return;
+    var best = null, bestA = Infinity, near = null, nearD = Infinity, tol = 14 * cur.v.w / cur.W + 4;
+    Object.keys(cur.boxes).forEach(function (id) {
+      if (S.crossed.indexOf(id) >= 0) return;
+      var b = cur.boxes[id];
+      if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) { var a = b.w * b.h; if (a < bestA) { bestA = a; best = id; } }
+      else { var dx = Math.max(b.x - p.x, 0, p.x - b.x - b.w), dy = Math.max(b.y - p.y, 0, p.y - b.y - b.h), d = Math.hypot(dx, dy); if (d < nearD) { nearD = d; near = id; } }
+    });
+    var id = best || (nearD <= tol ? near : null);
+    if (id) pick(id, false);
+  }
+
+  // ── The magnifying glass ────────────────────────────────────────────────
+  var loupe = null;
+  function showLoupe(x, y) {
+    if (!cur) return;
+    var big = Math.min(innerWidth, innerHeight) >= 700, D = big ? 210 : 150;
+    if (!loupe) {
+      loupe = el('div', { class: 'ms-loupe', 'aria-hidden': 'true' }, [el('div', { class: 'handle' }), el('div', { class: 'glass' }), el('div', { class: 'rim' }), el('i', { class: 'x' })]);
+      document.body.appendChild(loupe);
+    }
+    if (loupe._world !== cur.worldId) {
+      loupe._world = cur.worldId;
+      loupe.querySelector('.glass').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg"><use href="#' + cur.worldId + '"/></svg>';
+    }
+    loupe.style.setProperty('--ld', D + 'px');
+    var p = toScene(x, y), scale = p.r.width / cur.v.w, mag = 2.6, w = D / (scale * mag);
+    loupe.querySelector('.glass svg').setAttribute('viewBox', (p.x - w / 2).toFixed(2) + ' ' + (p.y - w / 2).toFixed(2) + ' ' + w.toFixed(2) + ' ' + w.toFixed(2));
+    // above the finger, so the finger doesn't cover it; to the side near the top of the screen
+    var lx = x - D / 2, ly = y - D - 46;
+    if (ly < 8) { ly = Math.max(8, y - D / 2); lx = x + (x < innerWidth / 2 ? 46 : -D - 46); }
+    lx = Math.max(8, Math.min(innerWidth - D - 8, lx));
+    loupe.style.left = lx + 'px'; loupe.style.top = ly + 'px';
+    loupe.classList.add('on');
+  }
+  function hideLoupe() { if (loupe) loupe.classList.remove('on'); }
+
+  // ── Keyboard: arrows choose, Enter accuses, H hint, +/- zoom ─────────────
+  document.addEventListener('keydown', function (e) {
+    if (view !== 'case' || !cur || !S || S.done || document.querySelector('.k-scrim,.k-win')) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var ids = cur.c.choices.map(function (c) { return c.id; }).filter(function (id) { return S.crossed.indexOf(id) < 0; });
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); var i = ids.indexOf(S.sel); i = i < 0 ? 0 : (i + (e.key === 'ArrowRight' ? 1 : ids.length - 1)) % ids.length; pick(ids[i], false); }
+    else if (e.key === 'Enter' && S.sel && !(e.target && e.target.closest && e.target.closest('button'))) { e.preventDefault(); accuse(); }
+    else if (e.key === 'h' || e.key === 'H') hint();
+    else if (e.key === '+' || e.key === '=') zoomBy(1.8);
+    else if (e.key === '-' || e.key === '_') zoomBy(1 / 1.8);
+    else if (e.key === '0') camTo({ x: 0, y: 0, w: cur.W, h: cur.H }, 260);
+  });
+
+  // Test hook
+  window.__ms = { get: function () { return S; }, cur: function () { return cur; }, open: openCase, board: showBoard, setup: showSetup, cases: CASES, daily: dailyCase, today: today,
+    answer: function () { if (cur) { S.sel = cur.c.answer; accuse(); } }, wrong: function () { if (cur) { var w = cur.c.choices.filter(function (ch) { return ch.id !== cur.c.answer && S.crossed.indexOf(ch.id) < 0; })[0]; if (w) { S.sel = w.id; accuse(); } } },
+    hint: hint, loupe: showLoupe, hideLoupe: hideLoupe, zoom: zoomBy, skip: function () { endTour(); } };
+
+  // ── Boot ────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(lsGet(SAVE, 'null')); } catch (e) {}
+  var going = saved && saved.id && BY[saved.id] && !saved.done;
+  if (/[?&]daily=1/.test(location.search)) {
+    try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])daily=1&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch (e) {}
+    var day = today();
+    if (going && saved.daily === day) { S = saved; buildCase(false); }
+    else if (dailyDone(day)) showSetup();
+    else if (going && saved.secs > 10) Kit.confirm('Start today’s daily case?', { ok: 'Daily case', cancel: 'Keep going', body: 'The case you have open will be put back on the board.' }).then(function (ok) { if (ok) startDaily(); else { S = saved; buildCase(false); } });
+    else startDaily();
+  } else if (going) { S = saved; buildCase(false); }
+  else showSetup();
+})();
+</script>
+</body>
+</html>
