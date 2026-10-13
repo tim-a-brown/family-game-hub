@@ -663,5 +663,371 @@
     }
   });
 
+  // ───────────────────────────── HARD ─────────────────────────────
+
+  add({
+    id: 'mirror-clock', level: 'hard', no: 1, type: 'Timeline', title: 'The Bakery Selfie',
+    setup: 'Mrs. Finch says she was buying bread at Rosie’s Bakery at half past three, just when the museum alarm went off across town. She shows you her selfie as proof. The bakery’s only clock hangs on the wall behind the camera, so it only shows up in the big mirror.',
+    q: 'What time does the bakery clock really say?',
+    choices: [{ id: '330', label: '3:30' }, { id: '830', label: '8:30' }, { id: '930', label: '9:30' }, { id: '230', label: '2:30' }], answer: '830',
+    scene: {
+      bg: ['room', { wall: '#f4e2d0', paper: 'tiles', floorY: 214, floor: '#e7d8c4', floorKind: 'tile' }],
+      items: [
+        ['mirror', { id: 'mirror', x: 104, y: 24, w: 220, h: 128, color: '#c9a227', bg: '#e3eef0', items: [
+          ['svg', { svg: '<rect x="0" y="0" width="220" height="128" fill="#f1e2d2"/><rect x="0" y="104" width="220" height="24" fill="#d8c8b2"/>' }],
+          ['window', { x: 128, y: 30, w: 64, h: 62, sky: '#cfe8f6', frame: '#fff' }],
+          ['svg', { svg: '<rect x="140" y="56" width="40" height="15" rx="2" fill="#c0392b" stroke="#2b2433" stroke-width="1"/><text x="160" y="67" font-family="Lilita One,sans-serif" font-size="10" text-anchor="middle" fill="#fff">OPEN</text>' }],
+          ['svg', { id: 'msign', svg: '<rect x="100" y="8" width="112" height="18" rx="3" fill="#7a3b4a" stroke="#2b2433" stroke-width="1"/><text x="156" y="21.5" font-family="Lilita One,sans-serif" font-size="11.5" text-anchor="middle" fill="#ffe9c8" letter-spacing="1">ROSIE’S BAKERY</text>' }],
+          ['clock', { id: 'mclock', x: 52, y: 56, r: 24, h: 8, m: 30, nums: 1, color: '#5a3a22' }],
+          ['svg', { svg: '<path d="M0 100h220" stroke="#b9a68a" stroke-width="1"/>' }]
+        ] }],
+        ['person', { x: 336, y: 222, s: 0.82, skin: 2, hair: 'bun', hc: '#3a2a1a', top: '#f4f0e6', apron: '#e0607a', hat: 'chef', armL: 'chest' }],
+        ['counter', { x: 70, y: 268, w: 290, h: 64, color: '#b0573a', top: '#f4ece0' }],
+        ['svg', { svg: [[112, 196], [146, 194], [300, 196]].map(function (q, i) { return '<g transform="translate(' + q[0] + ' ' + q[1] + ')"><ellipse cx="0" cy="0" rx="15" ry="7.5" fill="' + ['#d9a35a', '#c98a3a', '#e3b56a'][i] + '" stroke="#2b2433" stroke-width="1.1"/><path d="M-8 -3l3 4M-2 -5l3 4M4 -4l3 4" stroke="#a8743f" stroke-width="1.2"/></g>'; }).join('') }],
+        ['cake', { x: 220, y: 204, color: '#f6b3c8', candles: 0 }],
+        ['person', { id: 'finch', x: 116, y: 300, s: 1.18, skin: 0, hair: 'bob', hc: '#a9a5a0', top: '#5a8ac2', pat: 'dots', pc: '#dfe9f6', coat: '#2f4a6a', acc: ['necklace:#f4f0e6', 'earrings:#f4f0e6'], glasses: 'round', mouth: 'grin', armR: 'up', holdR: 'phone', armL: 'hip', tagY: -400 }]
+      ]
+    },
+    hints: [
+      { text: 'A mirror flips everything from left to right. Look at the writing in the mirror.' },
+      { text: 'Imagine the clock flipped back the right way round. Where would the hour hand point?', at: { id: 'mclock', pad: 4 } }
+    ],
+    solution: {
+      steps: [
+        { text: 'The bakery sign and the OPEN sign are backwards in the mirror, so the clock is backwards too.', marks: [{ id: 'msign' }] },
+        { text: 'In the mirror, the hour hand points to the lower right, just past the backwards 9. The minute hand points straight down.', marks: [{ id: 'mclock' }] },
+        { text: 'Flip it back and the hour hand points between 8 and 9, with the minute hand on 6.', marks: [] }
+      ],
+      verdict: 'The clock really says 8:30. The selfie doesn’t prove Mrs. Finch was there at half past three.'
+    }
+  });
+
+  (function () {
+    var INK = '#1f3a8a';
+    // handwritten digits as strokes, h tall, at x (left), y (baseline)
+    function digit(d, style, x, y, h, p) {
+      var w = h * 0.62, s = '', st = ' fill="none" stroke="' + INK + '" stroke-width="' + (h * 0.11).toFixed(2) + '" stroke-linecap="round" stroke-linejoin="round"';
+      var X = function (v) { return (x + v * w).toFixed(1); }, Y = function (v) { return (y - v * h).toFixed(1); };
+      if (d === '1') s = '<path d="M' + X(0.15) + ' ' + Y(0.8) + 'L' + X(0.45) + ' ' + Y(1) + 'L' + X(0.45) + ' ' + Y(0) + '"' + st + '/>';
+      else if (d === '4') s = style.four === 'open' ? '<path d="M' + X(0.15) + ' ' + Y(1) + 'L' + X(0.1) + ' ' + Y(0.42) + 'L' + X(0.95) + ' ' + Y(0.42) + 'M' + X(0.7) + ' ' + Y(0.95) + 'L' + X(0.7) + ' ' + Y(0) + '"' + st + '/>'
+        : '<path d="M' + X(0.7) + ' ' + Y(0) + 'L' + X(0.7) + ' ' + Y(1) + 'L' + X(0.05) + ' ' + Y(0.38) + 'L' + X(0.95) + ' ' + Y(0.38) + '"' + st + '/>';
+      else if (d === '7') s = '<path d="M' + X(0.05) + ' ' + Y(1) + 'L' + X(0.95) + ' ' + Y(1) + 'L' + X(0.35) + ' ' + Y(0) + (style.seven === 'crossed' ? 'M' + X(0.18) + ' ' + Y(0.5) + 'L' + X(0.95) + ' ' + Y(0.5) : '') + '"' + st + '/>';
+      return p ? '<g data-p="' + p + '">' + s + '</g>' : s;
+    }
+    function num(str, style, x, y, h, p) { var out = ''; str.split('').forEach(function (c, i) { out += digit(c, style, x + i * h * 0.66, y, h, p && (c === '7' || c === '4') ? p + '.' + c : null); }); return out; }
+    var KIDS = [
+      { id: 'amy', name: 'Amy', seven: 'crossed', four: 'closed', paper: '#fffdf6' },
+      { id: 'ben', name: 'Ben', seven: 'plain', four: 'open', paper: '#fdfbf2' },
+      { id: 'cara', name: 'Cara', seven: 'crossed', four: 'open', paper: '#fffdf6' },
+      { id: 'dan', name: 'Dan', seven: 'plain', four: 'closed', paper: '#fdfbf2' }
+    ];
+    var SUMS = [['3 + 4 =', '7'], ['9 + 8 =', '17'], ['2 + 2 =', '4'], ['7 + 7 =', '14']];
+    var items = [];
+    // the ransom note, in Cara's hand
+    var note = '<rect x="0" y="0" width="210" height="96" fill="#fbf3e2" stroke="#2b2433" stroke-width="1"/><path d="M0 0l8 6 -6 7 8 6 -7 8 7 8 -8 6 6 9 -8 7 7 8 -7 9 8 6 -6 6" fill="#6e4a2e" opacity=".0"/>' +
+      '<text x="105" y="24" font-family="Patrick Hand,cursive" font-size="17" text-anchor="middle" fill="' + INK + '">I have Mr. Whiskers!</text>' +
+      '<text x="82" y="52" font-family="Patrick Hand,cursive" font-size="17" text-anchor="end" fill="' + INK + '">Leave</text>' + num('7', KIDS[2], 88, 51, 14, 'note') + '<text x="104" y="52" font-family="Patrick Hand,cursive" font-size="17" text-anchor="start" fill="' + INK + '">cookies by</text>' +
+      '<text x="124" y="80" font-family="Patrick Hand,cursive" font-size="17" text-anchor="end" fill="' + INK + '">the swings at</text>' + num('4', KIDS[2], 130, 79, 14, 'note') + '<text x="146" y="80" font-family="Patrick Hand,cursive" font-size="17" text-anchor="start" fill="' + INK + '">o’clock.</text>';
+    items.push(['svg', { id: 'note', x: 95, y: 10, r: -2, svg: '<rect x="2" y="3" width="210" height="96" fill="#000" opacity=".18"/>' + note }]);
+    items.push(['svg', { x: 200, y: 8, svg: '<rect x="-12" y="-4" width="24" height="9" fill="rgba(240,230,190,.85)" transform="rotate(4)"/>' }]);
+    KIDS.forEach(function (k, i) {
+      var x = 8 + i * 98, body = '';
+      body += '<text x="8" y="16" font-family="system-ui,sans-serif" font-size="7" font-weight="700" fill="#777">Name:</text><text x="34" y="17" font-family="Patrick Hand,cursive" font-size="13" fill="' + INK + '">' + k.name + '</text><path d="M30 19h52" stroke="#bbb" stroke-width=".6"/>';
+      SUMS.forEach(function (q, j) {
+        var y = 44 + j * 28;
+        body += '<text x="8" y="' + y + '" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#33333d">' + q[0] + '</text>' + num(q[1], k, 56, y + 1, 13, k.id + '.' + j) + '<path d="M54 ' + (y + 4) + 'h28" stroke="#ccc" stroke-width=".6"/>';
+      });
+      body += '<path d="M62 150l5 6 12 -14" fill="none" stroke="#c0392b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+      items.push(['paper', { id: k.id, x: x, y: 130, w: 88, h: 164, color: k.paper, head: '', body: body, r: [-2, 1.5, -1, 2][i] }]);
+    });
+    add({
+      id: 'ransom-note', level: 'hard', no: 2, type: 'Odd one out', title: 'The Hamster Ransom Note',
+      setup: 'Mr. Whiskers, the class hamster, is missing from his cage, and someone left a note in his place. Ms. Okafor collected the maths sheets of the four kids who stayed inside at break. Everyone has little habits in how they write.',
+      q: 'Who wrote the ransom note?',
+      choices: KIDS.map(function (k) { return { id: k.id, label: k.name }; }), answer: 'cara', tap: true,
+      scene: { bg: ['desk', { color: '#7a5233' }], items: items },
+      hints: [
+        { text: 'The words are hard to compare, but numbers are a giveaway. Look at how the 7 and the 4 are written on the note.' },
+        { text: 'Check every 7 and every 4 on the four worksheets.', at: { id: 'note', pad: 2 } }
+      ],
+      solution: {
+        steps: [
+          { text: 'On the note, the 7 has a line through its middle, and the 4 is open at the top.', marks: [{ p: 'note.7', pad: 3 }, { p: 'note.4', pad: 3 }] },
+          { text: 'Ben and Dan write plain 7s. Amy crosses her 7s, but her 4s are closed at the top.', marks: [{ p: 'ben.0.7', pad: 2 }, { p: 'amy.2.4', pad: 2 }] },
+          { text: 'Only Cara writes both: a crossed 7 and an open 4.', marks: [{ p: 'cara.0.7', pad: 2 }, { p: 'cara.2.4', pad: 2 }] }
+        ],
+        verdict: 'Cara wrote the ransom note.'
+      }
+    });
+  })();
+
+  (function () {
+    var STONE = '#d9d4ca', CARPET = '#9a3a4a', WALL = '#3b3346', TH = '#c9a27a';
+    var rooms = [[110, 20, 180, 80, CARPET], [150, 100, 100, 100, STONE], [250, 110, 130, 80, STONE], [20, 110, 130, 90, STONE], [110, 200, 180, 80, CARPET]];
+    var svg = '';
+    rooms.forEach(function (r) { svg += '<rect x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" fill="' + r[4] + '"/>'; });
+    // stone tiles and carpet weave
+    rooms.forEach(function (r) {
+      if (r[4] === STONE) { for (var x = r[0]; x < r[0] + r[2]; x += 14) svg += '<path d="M' + x + ' ' + r[1] + 'v' + r[3] + '" stroke="#c4bdb0" stroke-width=".7"/>'; for (var y = r[1]; y < r[1] + r[3]; y += 14) svg += '<path d="M' + r[0] + ' ' + y + 'h' + r[2] + '" stroke="#c4bdb0" stroke-width=".7"/>'; }
+      else svg += '<rect x="' + (r[0] + 6) + '" y="' + (r[1] + 6) + '" width="' + (r[2] - 12) + '" height="' + (r[3] - 12) + '" fill="none" stroke="#c9a227" stroke-width="1.2" opacity=".6"/>';
+    });
+    rooms.forEach(function (r) { svg += '<rect x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" fill="none" stroke="' + WALL + '" stroke-width="5"/>'; });
+    // doorways between rooms (wall gaps)
+    [[192, 97, 16, 6], [247, 142, 6, 16], [147, 142, 6, 16], [192, 197, 16, 6], [124, 197, 22, 6]].forEach(function (d) { svg += '<rect x="' + d[0] + '" y="' + d[1] + '" width="' + d[2] + '" height="' + d[3] + '" fill="' + TH + '"/>'; });
+    var labels = [['North Gallery', 200, 48], ['Gem Room', 200, 114], ['East Hall', 315, 124], ['West Lobby', 85, 124], ['South Corridor', 216, 246]];
+    labels.forEach(function (l) { svg += '<text x="' + l[1] + '" y="' + l[2] + '" font-family="system-ui,sans-serif" font-size="7.5" font-weight="800" letter-spacing=".6" text-anchor="middle" fill="' + (l[0].indexOf('Corridor') > 0 || l[0].indexOf('North') === 0 ? '#f4dfe2' : '#6a6070') + '">' + l[0].toUpperCase() + '</text>'; });
+    add({
+      id: 'museum-route', level: 'hard', no: 3, type: 'Which way', title: 'The Starlight Diamond',
+      setup: 'Overnight, the Starlight Diamond vanished from the Gem Room. It rained all evening, so the thief came in with wet shoes. Wet shoes leave prints on stone floors, but not on carpet. The museum has four outside doors.',
+      q: 'Which door did the thief come in by?',
+      choices: [{ id: 'A', label: 'Door A' }, { id: 'B', label: 'Door B' }, { id: 'C', label: 'Door C' }, { id: 'D', label: 'Door D' }], answer: 'C', tap: true,
+      scene: {
+        bg: ['top', { color: '#7aa862' }],
+        items: [
+          ['svg', { svg: svg }],
+          ['svg', { svg: '<path d="M0 290 Q100 284 200 292 T400 288" stroke="#5a8a4a" stroke-width="3" fill="none"/>' }],
+          ['tcase', { id: 'case', x: 200, y: 156, empty: 1 }],
+          ['tcase', { x: 168, y: 126, gem: '#3a8ad8' }], ['tcase', { x: 232, y: 126, gem: '#e04a6a' }], ['tcase', { x: 168, y: 184, gem: '#3aa65a' }], ['tcase', { x: 232, y: 184, gem: '#e8c34a' }],
+          ['trail', { id: 'wet1', pts: [[196, 200], [196, 168]], kind: 'shoe', size: 9, col: '#3a7ab8', gap: 8, side: 2.6 }],
+          ['trail', { id: 'wet2', pts: [[205, 168], [205, 200]], kind: 'shoe', size: 9, col: '#3a7ab8', gap: 8, side: 2.6, start: 4 }],
+          ['svg', { svg: [[290, 150], [340, 150], [315, 170]].map(function (q) { return '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="8" fill="#eceae4" stroke="#2b2433" stroke-width="1"/><circle cx="' + q[0] + '" cy="' + q[1] + '" r="3.5" fill="#cfcac0"/>'; }).join('') }],
+          ['svg', { svg: '<rect x="44" y="150" width="34" height="18" rx="2" fill="#8a5a34" stroke="#2b2433" stroke-width="1"/><circle cx="61" cy="176" r="6" fill="#3a3a46" stroke="#2b2433" stroke-width="1"/>' }],
+          ['rope', { pts: [[140, 60], [180, 60], [220, 60], [260, 60]] }],
+          ['svg', { svg: [150, 200, 250].map(function (x) { return '<rect x="' + (x - 14) + '" y="' + 23 + '" width="28" height="6" fill="#c9a227" stroke="#2b2433" stroke-width=".8"/>'; }).join('') }],
+          ['svg', { id: 'mat', svg: '<rect x="148" y="264" width="24" height="12" rx="2" fill="#5a4a3a" stroke="#2b2433" stroke-width="1"/><g transform="translate(160 270) rotate(0)"><ellipse cx="0" cy="0" rx="2.6" ry="4.4" fill="#3a7ab8" opacity=".75"/></g>' }],
+          ['tdoor', { id: 'A', x: 200, y: 20, tape: 1, text: 'A', lx: 28, ly: -8 }],
+          ['tdoor', { id: 'B', x: 380, y: 150, r: 90, text: 'B', ly: -26, lx: 2 }],
+          ['tdoor', { id: 'C', x: 160, y: 280, text: 'C', lx: 28, ly: 10 }],
+          ['tdoor', { id: 'D', x: 20, y: 155, r: 90, text: 'D', ly: -26, lx: -2 }]
+        ]
+      },
+      hints: [
+        { text: 'Start at the empty case. Which way do the wet footprints go?' },
+        { text: 'A stone floor with no wet prints on it means nobody walked across it last night.' }
+      ],
+      solution: {
+        steps: [
+          { text: 'The wet prints go between the empty case and the south doorway, into the carpeted South Corridor.', marks: [{ id: 'wet1', pad: 3 }] },
+          { text: 'The corridor leads to Door C and to the West Lobby. But the lobby’s stone floor has no prints, so the thief didn’t come from Door D.', marks: [{ box: [24, 114, 122, 82] }] },
+          { text: 'Door A is still taped shut and the East Hall is dry. There’s even a wet print on the mat inside Door C.', marks: [{ id: 'A' }, { id: 'mat', pad: 2 }] }
+        ],
+        verdict: 'The thief came in by Door C.'
+      }
+    });
+  })();
+
+  add({
+    id: 'lost-lord', level: 'hard', no: 4, type: 'Impostor', title: 'The Long-Lost Lord',
+    setup: 'Three men have arrived at Blackwood Manor, each saying he is Lord Edmund, who sailed away a year ago. The butler compares them with Edmund’s portrait, painted just before he left. Clothes, hair and beards can change in a year, but some things can’t.',
+    q: 'Which one is the real Lord Edmund?',
+    choices: [{ id: 'ash', label: 'Mr. Ash' }, { id: 'birch', label: 'Mr. Birch' }, { id: 'cole', label: 'Mr. Cole' }], answer: 'cole', tap: true,
+    size: [400, 320],
+    scene: {
+      bg: ['room', { wall: '#3d5a4c', paper: 'diamonds', floorY: 250, floor: '#6a4a32', rail: 160 }],
+      items: [
+        ['frame', { id: 'portrait', x: 140, y: 14, w: 120, h: 112, color: '#c9a227', bg: '#7a5a3a', plate: 'LORD EDMUND', items: [
+          ['svg', { svg: '<rect width="120" height="112" fill="#6a4a36"/><circle cx="60" cy="40" r="50" fill="#8a6a46" opacity=".5"/>' }],
+          ['person', { id: 'edmund', x: 60, y: 300, s: 2.2, skin: 0, hair: 'side', hc: '#5a3820', top: '#f4f0e6', coat: '#2f5a3a', stache: 1, acc: ['tie:#a8202e', 'mole:L:1', 'notchR:#6a4a36'], eyes: 'open', mouth: 'flat', blush: false }]
+        ] }],
+        ['lamp', { x: 40, y: 250, color: '#e8c34a', on: 1 }],
+        ['plant', { x: 370, y: 250, s: 1.2, pot: '#7a3b2a' }],
+        ['rug', { x: 200, y: 288, w: 340, color: '#7a2e3a' }],
+        ['person', { id: 'ash', x: 82, y: 294, s: 1.3, skin: 0, hair: 'side', hc: '#5a3820', top: '#f4f0e6', coat: '#2f5a3a', stache: 1, acc: ['tie:#a8202e', 'mole:R:1', 'notchL:#3d5a4c'], mouth: 'smile', name: 'Mr. Ash', tagY: 12 }],
+        ['person', { id: 'birch', x: 200, y: 298, s: 1.3, skin: 0, hair: 'side', hc: '#5a3820', top: '#f4f0e6', coat: '#2f5a3a', stache: 1, acc: ['tie:#a8202e', 'mole:L:1'], mouth: 'smile', armR: 'hip', name: 'Mr. Birch', tagY: 12 }],
+        ['person', { id: 'cole', x: 318, y: 294, s: 1.3, skin: 0, hair: 'short', hc: '#5a3820', top: '#e6e9f0', pat: 'stripes', pc: '#3a5a8a', coat: '#2b3a5a', coatBtn: '#e8c34a', beard: 1, acc: ['mole:L:1', 'notchR:#3d5a4c'], mouth: 'flat', armL: 'hold', holdL: 'bag', bagc: '#a0703f', name: 'Mr. Cole', tagY: 12 }]
+      ]
+    },
+    hints: [
+      { text: 'Ignore anything a person could change in a year: clothes, hats, beards, haircuts.' },
+      { text: 'Compare the little marks on the face and ears with the portrait. Check which side each one is on.', at: { box: [140, 14, 120, 112] } }
+    ],
+    solution: {
+      steps: [
+        { text: 'In the portrait, Edmund has a mole on his right cheek and a nick in his left ear. (His right is on your left.)', marks: [{ p: 'edmund.mole', pad: 3 }, { p: 'edmund.earR', pad: 3 }] },
+        { text: 'Mr. Ash has both marks on the wrong sides, as if he copied them from a mirror.', marks: [{ p: 'ash.mole', pad: 3 }, { p: 'ash.earL', pad: 3 }] },
+        { text: 'Mr. Birch has the mole, but no nick in his ear.', marks: [{ p: 'birch.head', pad: -6 }] },
+        { text: 'Mr. Cole has grown a beard and changed his clothes, but the mole and the nicked ear are exactly where they should be.', marks: [{ p: 'cole.mole', pad: 3 }, { p: 'cole.earR', pad: 3 }] }
+      ],
+      verdict: 'Mr. Cole is the real Lord Edmund.'
+    }
+  });
+
+  add({
+    id: 'pie-thief', level: 'hard', no: 5, type: 'Who did it', title: 'The Blueberry Pie Thief',
+    setup: 'Someone reached in through Mrs. Ortiz’s kitchen window and took the blueberry pie cooling on the sill, while everyone was at the garden party next door. The thief left three clues at the window. Five guests slipped away from the party for a few minutes.',
+    q: 'Who took the pie?',
+    choices: [{ id: 'ivy', label: 'Ivy' }, { id: 'jade', label: 'Jade' }, { id: 'kate', label: 'Kate' }, { id: 'lou', label: 'Lou' }, { id: 'max', label: 'Max' }], answer: 'kate', tap: true,
+    scene: {
+      bg: ['outside', { groundY: 168, ground: '#79b85a', hills: '#9fcf7a' }],
+      items: [
+        ['svg', { svg: '<path d="M160 22 Q220 40 280 22 Q340 40 400 22" fill="none" stroke="#7a5a3a" stroke-width="1.4"/>' + [0, 1, 2, 3, 4, 5].map(function (i) { return '<path d="M' + (172 + i * 38) + ' 30l6 11h-12z" fill="' + ['#e0384a', '#3a8ad8', '#f2c230', '#3aa65a', '#9b59b6', '#ff8a3d'][i] + '" stroke="#2b2433" stroke-width=".9"/>'; }).join('') }],
+        ['table', { x: 300, y: 196, w: 90, h: 40, cloth: '#fbf6e6' }],
+        ['svg', { svg: '<rect x="312" y="140" width="10" height="12" fill="#f2c230" stroke="#2b2433" stroke-width=".9"/><rect x="332" y="138" width="10" height="14" fill="#e0607a" stroke="#2b2433" stroke-width=".9"/><ellipse cx="368" cy="149" rx="14" ry="4" fill="#fff" stroke="#2b2433" stroke-width="1"/>' }],
+        ['photo', { x: 8, y: 10, w: 140, h: 168, caption: 'The kitchen window', r: -1.5, bg: ['room', { wall: '#e8d0b0', floorY: 400 }], items: [
+          ['svg', { svg: '<rect x="0" y="0" width="140" height="168" fill="#d8b890"/><rect x="14" y="10" width="112" height="112" fill="#f4efe4" stroke="#2b2433" stroke-width="1.4"/><rect x="22" y="18" width="96" height="96" fill="#bfe0f2" stroke="#2b2433" stroke-width="1.2"/><path d="M70 18v96M22 66h96" stroke="#f4efe4" stroke-width="5"/><path d="M8 122h124l-6 18H14z" fill="#f4efe4" stroke="#2b2433" stroke-width="1.4"/>' }],
+          ['svg', { id: 'latch', svg: '<rect x="64" y="58" width="12" height="9" rx="1.5" fill="#c9a227" stroke="#2b2433" stroke-width="1"/><path d="M76 61h10" stroke="#2b2433" stroke-width="2"/>' }],
+          ['svg', { id: 'hair', svg: '<path d="M80 62c4 4 -3 6 1 10s-4 6 0 10s-3 5 1 9s-3 6 0 10" fill="none" stroke="#c0441a" stroke-width="1.3" stroke-linecap="round"/>' }],
+          ['svg', { svg: '<ellipse cx="42" cy="129" rx="19" ry="4.6" fill="#c9c2b0" stroke="#2b2433" stroke-width="1"/><ellipse cx="42" cy="128" rx="15" ry="3" fill="#d9d2c2"/><circle cx="35" cy="127.5" r="1" fill="#7a3b8a"/><circle cx="47" cy="128.6" r="1" fill="#7a3b8a"/><path d="M30 134q2 6 0 10" stroke="#7a3b8a" stroke-width="2" fill="none" stroke-linecap="round"/>' }],
+          ['print', { id: 'heelprint', x: 80, y: 131, r: 84, kind: 'heel', size: 21, col: '#5e3f22' }],
+          ['svg', { id: 'button', svg: '<circle cx="110" cy="130" r="3.4" fill="#3aa65a" stroke="#2b2433" stroke-width="1"/><circle cx="109" cy="129.4" r=".55" fill="#2b2433"/><circle cx="111" cy="130.6" r=".55" fill="#2b2433"/><path d="M113 130q3 1 4 4" stroke="#2f6a3a" stroke-width=".6" fill="none"/>' }]
+        ] }],
+        ['person', { id: 'ivy', x: 180, y: 268, s: 0.86, skin: 0, hair: 'longcurly', hc: '#c0441a', top: '#f4f0e6', coat: '#3a6ea5', coatBtn: '#f4f0e6', legs: 'skirt', lc: '#2b3a5a', shoe: 'heel', shoes: '#2b2433', name: 'Ivy' }],
+        ['person', { id: 'jade', x: 224, y: 272, s: 0.86, skin: 1, hair: 'longcurly', hc: '#c0441a', top: '#f4f0e6', coat: '#3a8a4a', coatBtn: '#3aa65a', coatMiss: 1, legs: 'pants', lc: '#3b4a6b', shoe: 'sneaker', shoes: '#e0384a', name: 'Jade' }],
+        ['person', { id: 'kate', x: 268, y: 268, s: 0.86, skin: 0, hair: 'longcurly', hc: '#c0441a', top: '#f4f0e6', coat: '#3a8a4a', coatBtn: '#3aa65a', coatMiss: 0, legs: 'skirt', lc: '#7a3b4a', shoe: 'heel', shoes: '#7a3b4a', armR: 'hip', name: 'Kate' }],
+        ['person', { id: 'lou', x: 312, y: 272, s: 0.86, skin: 3, hair: 'longcurly', hc: '#1f1a1a', top: '#f4f0e6', coat: '#3a8a4a', coatBtn: '#3aa65a', coatMiss: 2, legs: 'skirt', lc: '#2b2b33', shoe: 'heel', shoes: '#c0392b', name: 'Lou' }],
+        ['person', { id: 'max', x: 358, y: 268, s: 0.86, skin: 0, hair: 'short', hc: '#c0441a', top: '#f4f0e6', coat: '#3a8a4a', coatBtn: '#3aa65a', legs: 'pants', lc: '#5a4a3a', shoe: 'boot', shoes: '#6a4126', stache: 1, name: 'Max' }]
+      ]
+    },
+    hints: [
+      { text: 'There are three clues at the window: one on the latch and two on the sill. Find all three.' },
+      { text: 'Use one clue at a time to cross guests off the list: hair first, then shoes, then coats.' }
+    ],
+    solution: {
+      steps: [
+        { text: 'A long, curly red hair is caught on the window latch. That rules out Lou (black hair) and Max (short, straight hair).', marks: [{ id: 'hair', pad: 2 }] },
+        { text: 'The muddy print on the sill was made by a high heel. Jade is in sneakers.', marks: [{ id: 'heelprint', pad: 2 }] },
+        { text: 'A green coat button was torn off. Ivy’s coat is blue. Kate’s green coat is missing its top button.', marks: [{ id: 'button', pad: 2 }, { p: 'kate.buttons', pad: 2 }] }
+      ],
+      verdict: 'Kate took the pie.'
+    }
+  });
+
+  (function () {
+    // the parlour from above: mirror on the north wall; chairs N, E, S, W around a card table
+    function chairTop(x, y, rot, extra, id) {
+      return '<g transform="translate(' + x + ' ' + y + ') rotate(' + rot + ')"' + (id ? ' data-id="' + id + '"' : '') + '><rect x="-15" y="-13" width="30" height="26" rx="5" fill="#7a2e3a" stroke="#2b2433" stroke-width="1.2"/><rect x="-15" y="9" width="30" height="8" rx="2" fill="#5a1e28" stroke="#2b2433" stroke-width="1.2"/>' + (extra || '') + '</g>';
+    }
+    var hat = '<g data-p="chairW.hat"><circle cx="0" cy="-1" r="10" fill="#5a3a22" stroke="#2b2433" stroke-width="1"/><circle cx="0" cy="-1" r="6.4" fill="#4a2e1a" stroke="#2b2433" stroke-width=".8"/></g>';
+    var glove = '<g data-p="chairS.glove" transform="rotate(-20)"><path d="M-7 -6h12v8q0 6 -6 6q-6 0 -6 -6z" fill="#7a3b2a" stroke="#2b2433" stroke-width="1"/><path d="M-6 -6v-6M-2 -6v-7M2 -6v-7M5 -6v-5" stroke="#7a3b2a" stroke-width="3" stroke-linecap="round"/></g>';
+    var room = '<rect x="10" y="8" width="380" height="196" fill="#b88a5e" stroke="#3b3346" stroke-width="6"/>' + [0, 1, 2, 3, 4, 5, 6].map(function (i) { return '<path d="M13 ' + (24 + i * 28) + 'H387" stroke="#a07448" stroke-width="1"/>'; }).join('') +
+      '<rect x="20" y="20" width="360" height="176" rx="12" fill="#2f5a4a" opacity=".5"/>';
+    var mirror = '<g data-id="mirrorwall"><rect x="130" y="6" width="140" height="10" fill="#cfe3ea" stroke="#2b2433" stroke-width="1.2"/><path d="M150 7l8 8M168 7l8 8M222 7l8 8M240 7l8 8" stroke="#fff" stroke-width="1.6"/></g>';
+    var win = '<rect x="384" y="70" width="10" height="70" fill="#bfe0f2" stroke="#2b2433" stroke-width="1.2"/><path d="M384 105h10" stroke="#2b2433" stroke-width="1"/>';
+    var art = '<rect x="6" y="80" width="8" height="54" fill="#c9a227" stroke="#2b2433" stroke-width="1"/>';
+    var table = '<rect x="160" y="70" width="80" height="80" rx="4" fill="#2f7a4a" stroke="#5a3a22" stroke-width="5"/>' +
+      [[-12, -6, -8], [6, 4, 12], [-2, 14, 4]].map(function (c) { return '<rect x="' + (200 + c[0] - 6) + '" y="' + (110 + c[1] - 8) + '" width="12" height="17" rx="1.5" fill="#fff" stroke="#2b2433" stroke-width=".8" transform="rotate(' + c[2] + ' ' + (200 + c[0]) + ' ' + (110 + c[1]) + ')"/>'; }).join('') +
+      '<g data-p="chairN.cup" transform="translate(200 80)"><circle r="5.5" fill="#fff" stroke="#2b2433" stroke-width="1"/><circle r="4" fill="#c8a27a"/><path d="M-4 -3.6q2 -1.8 4.4 -1.4" stroke="#d0304a" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M5.5 0h3" stroke="#2b2433" stroke-width="1.6"/></g>';
+    var dog = '<g data-p="chairE.dog" transform="translate(286 128) rotate(80)"><ellipse cx="0" cy="0" rx="9" ry="16" fill="#d9b77a" stroke="#2b2433" stroke-width="1.1"/><circle cx="0" cy="-17" r="7.5" fill="#d9b77a" stroke="#2b2433" stroke-width="1.1"/><path d="M-6 -20q-4 4 -2 8M6 -20q4 4 2 8" stroke="#a8844a" stroke-width="3" stroke-linecap="round" fill="none"/><path d="M0 16q8 6 6 12" stroke="#d9b77a" stroke-width="3" fill="none" stroke-linecap="round"/></g>';
+    var svg = room + mirror + win + art + chairTop(200, 50, 180, '', 'chairN') + chairTop(260, 110, 270, '', 'chairE') + chairTop(200, 170, 0, glove, 'chairS') + chairTop(140, 110, 90, hat, 'chairW') + table + dog;
+    add({
+      id: 'card-cheat', level: 'hard', no: 6, type: 'Seating', title: 'The Card Sharp',
+      setup: 'Four friends played cards in the parlour. One of them kept winning by peeking at the others’ cards in the big mirror on the north wall. Only the player facing that mirror could see it. Nobody remembers who sat where, but each player left something behind.',
+      q: 'Who was cheating?',
+      choices: [{ id: 'lee', label: 'Mrs. Lee' }, { id: 'oak', label: 'Mr. Oak' }, { id: 'pim', label: 'Ms. Pim' }, { id: 'vance', label: 'Mr. Vance' }], answer: 'oak', tap: true,
+      size: [400, 360],
+      scene: {
+        bg: ['plain', { color: '#2a2433' }],
+        items: [
+          ['svg', { svg: svg }],
+          ['tag', { x: 300, y: 24, text: 'MIRROR', size: 8, s: 0.9 }],
+          ['svg', { svg: '<path d="M282 22 Q274 16 272 12" fill="none" stroke="#fbf6e6" stroke-width="1.2"/>' }],
+          ['caption', { x: 200, y: 222, text: 'After the game', size: 11, fill: '#e9e1d2' }],
+          ['svg', { svg: '<rect x="0" y="228" width="400" height="132" fill="#e9dcc0"/><rect x="0" y="330" width="400" height="30" fill="#8a5a34"/><path d="M0 330H400" stroke="#2b2433" stroke-width="1.2"/>' }],
+          ['person', { id: 'lee', x: 60, y: 340, s: 0.92, skin: 1, hair: 'bun', hc: '#1f1a1a', top: '#e0607a', legs: 'skirt', lc: '#5a3a5a', lips: '#d0304a', acc: ['earrings:#e8c34a', 'necklace:#f4f0e6'], shoe: 'heel', shoes: '#5a3a5a', name: 'Mrs. Lee', tagY: 11 }],
+          ['person', { id: 'oak', x: 154, y: 340, s: 0.92, skin: 0, hair: 'bald', hc: '#a9a5a0', top: '#f4f0e6', coat: '#5a6a3a', acc: ['bowtie:#3a6ea5'], legs: 'pants', lc: '#3a3a46', glasses: 'round', marks: ['glove:L:#7a3b2a'], mouth: 'smirk', name: 'Mr. Oak', tagY: 11 }],
+          ['person', { id: 'pim', x: 248, y: 340, s: 0.92, skin: 3, hair: 'long', hc: '#3a2414', top: '#3aa69a', legs: 'pants', lc: '#2b3a5a', armR: 'low', holdR: 'leash', leashc: '#c0392b', name: 'Ms. Pim', tagY: 11 }],
+          ['person', { id: 'vance', x: 342, y: 340, s: 0.92, skin: 2, hair: 'short', hc: '#2b1d14', top: '#f4f0e6', coat: '#5a3a22', acc: ['tie:#c0392b'], legs: 'pants', lc: '#5a3a22', stache: 1, name: 'Mr. Vance', tagY: 11 }]
+        ]
+      },
+      hints: [
+        { text: 'A chair faces away from its back. Which chair faces the mirror?' },
+        { text: 'Match what was left at that chair to one of the four players.', at: { id: 'chairS', pad: 3 } }
+      ],
+      solution: {
+        steps: [
+          { text: 'The mirror is on the north wall. Only the south chair faces it, with its back to the room.', marks: [{ id: 'mirrorwall' }, { id: 'chairS' }] },
+          { text: 'On the south chair lies a single brown glove.', marks: [{ p: 'chairS.glove', pad: 2 }] },
+          { text: 'Mr. Oak wears one brown glove. His other hand is bare.', marks: [{ p: 'oak.handL', pad: 3 }, { p: 'oak.handR', pad: 3 }] }
+        ],
+        verdict: 'Mr. Oak was cheating.'
+      }
+    });
+  })();
+
+  add({
+    id: 'locked-room', level: 'hard', no: 7, type: 'What happened', title: 'The Locked Study',
+    setup: 'Grandpa’s study was locked from the inside all night, and nobody had the key. In the morning his prize stamp album was gone from the desk. The thief got in somehow, and left a clue that shows how.',
+    q: 'How did the thief get into the study?',
+    choices: [{ id: 'door', label: 'Through the door' }, { id: 'window', label: 'Through the window' }, { id: 'vent', label: 'Through the air vent' }, { id: 'chimney', label: 'Down the chimney' }], answer: 'chimney', tap: true,
+    scene: {
+      bg: ['room', { wall: '#b98e5e', paper: 'stripes', floorY: 206, floor: '#6a4a32', rail: 120 }],
+      items: [
+        ['door', { id: 'door', x: 14, y: 206, w: 60, h: 132, color: '#6a3a22', bolt: 1, keyIn: 1 }],
+        ['window', { id: 'window', x: 104, y: 34, w: 70, h: 76, latch: 'closed', web: [35, 31, 16], sky: '#c9dce8', curtains: '#3a5a4a', sill: 1 }],
+        ['svg', { id: 'vent', svg: '<rect x="214" y="30" width="40" height="24" rx="2" fill="#9aa3ad" stroke="#2b2433" stroke-width="1.2"/>' + [0, 1, 2, 3, 4].map(function (i) { return '<path d="M219 ' + (35 + i * 3.6) + 'h30" stroke="#5a6068" stroke-width="1.6"/>'; }).join('') + [[217.5, 33], [250.5, 33], [217.5, 51], [250.5, 51]].map(function (q) { return '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="1.6" fill="#c9ced4" stroke="#2b2433" stroke-width=".6"/><circle cx="' + q[0] + '" cy="' + (q[1] - 0.6) + '" r="2" fill="#d8d2c4" opacity=".9"/>'; }).join('') + '<path d="M214 54q8 -2 10 6M254 40q-6 4 -2 12" stroke="#fff" stroke-width=".5" fill="none" opacity=".9"/><path d="M214 54l6 -6M214 50l4 4" stroke="#fff" stroke-width=".4" opacity=".9"/>' }],
+        ['frame', { x: 200, y: 74, w: 52, h: 38, art: 'boat', bg: '#d8eef8' }],
+        ['fireplace', { id: 'chimney', x: 276, y: 206, w: 112, h: 98, ash: 1, color: '#8a6a5a' }],
+        ['svg', { x: 300, y: 200, svg: '<ellipse cx="0" cy="0" rx="6" ry="2" fill="#2a2a2e" opacity=".55"/><ellipse cx="14" cy="-2" rx="5" ry="2" fill="#2a2a2e" opacity=".45"/>' }],
+        ['rug', { x: 200, y: 252, w: 300, color: '#7a2e3a' }],
+        ['table', { id: 'desk', x: 96, y: 262, w: 120, h: 50, color: '#5a3a22' }],
+        ['svg', { svg: '<rect x="110" y="200" width="44" height="10" rx="1.5" fill="#3a6ea5" stroke="#2b2433" stroke-width="1.1" opacity=".0"/><rect x="112" y="204" width="40" height="3" fill="#4a2e1a" opacity=".5"/><rect x="164" y="198" width="28" height="12" rx="1" fill="#f4efe4" stroke="#2b2433" stroke-width="1"/><path d="M168 202h20M168 205h14" stroke="#aaa" stroke-width=".8"/>' }],
+        ['held', { kind: 'magnifier', x: 196, y: 210, s: 0.9 }],
+        ['svg', { id: 'dustspot', svg: '<rect x="111" y="203" width="42" height="5" fill="none" stroke="#d8d2c4" stroke-width="1" stroke-dasharray="2 1.5"/>' }],
+        ['trail', { id: 'soot', pts: [[330, 214], [290, 236], [236, 256], [190, 266]], kind: 'shoe', size: 12, tread: 'zigzag', col: '#26262c', gap: 16, side: 4, op: 1 }],
+        ['armchair', { x: 304, y: 296, color: '#3a5a4a' }],
+        ['cat', { x: 40, y: 286, color: '#9a9aa6', dir: 'R' }]
+      ]
+    },
+    hints: [
+      { text: 'Check each way in. Is there any sign it was opened, or was it untouched all night?' },
+      { text: 'Look at the rug between the fireplace and the desk.', at: { box: [180, 210, 160, 64] } }
+    ],
+    solution: {
+      steps: [
+        { text: 'The door is bolted from the inside, with the key still in the lock.', marks: [{ p: 'door.bolt', pad: 2 }, { p: 'door.key', pad: 3 }] },
+        { text: 'A spider’s web stretches across the window latch, unbroken. The window hasn’t been opened.', marks: [{ p: 'window.web', pad: 1 }] },
+        { text: 'The air vent’s screws are still furry with dust and cobwebs.', marks: [{ id: 'vent', pad: 2 }] },
+        { text: 'Sooty footprints lead out of the fireplace, across the rug, to the desk.', marks: [{ t: 'path', pts: [[330, 214], [290, 236], [236, 256], [190, 266]] }] }
+      ],
+      verdict: 'The thief came down the chimney.'
+    }
+  });
+
+  (function () {
+    // a library shelf seen from the front; lettered books have library stickers
+    var R = (function (seed) { var a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })(77);
+    var cols = ['#7a2e3a', '#2f4a6a', '#4f6a3a', '#8a5a2a', '#5a3a6a', '#a0703f', '#2f5a5a', '#6a2a2a', '#3a3a5a'];
+    var shelves = [92, 186, 280], items = [], special = {
+      0: [[5, { id: 'A', label: 'A', h: 66, w: 16, color: '#2f5a5a' }], [14, { id: 'B', label: 'B', h: 70, w: 18, color: '#6a2a2a', ribbon: '#e8c34a' }]],
+      1: [[3, { id: 'C', label: 'C', h: 64, w: 15, color: '#3a3a5a', upside: 1 }], [10, { id: 'D', label: 'D', h: 68, w: 17, color: '#4f6a3a', clean: 1 }], [17, { id: 'E', label: 'E', h: 60, w: 14, color: '#8a5a2a' }]],
+      2: [[7, { id: 'F', label: 'F', h: 70, w: 17, color: '#5a3a6a' }]]
+    };
+    items.push(['svg', { svg: '<rect x="10" y="6" width="380" height="290" fill="#3a2418" stroke="#2b2433" stroke-width="1.4"/><rect x="10" y="6" width="380" height="8" fill="#5a3a22"/><rect x="10" y="6" width="10" height="290" fill="#5a3a22"/><rect x="380" y="6" width="10" height="290" fill="#5a3a22"/>' }]);
+    shelves.forEach(function (sy, si) {
+      var x = 24, idx = 0, sp = special[si].slice();
+      items.push(['svg', { svg: '<rect x="20" y="' + sy + '" width="360" height="8" fill="#6a4426" stroke="#2b2433" stroke-width="1"/><rect x="20" y="' + (sy - 2.2) + '" width="360" height="2.2" fill="#cfc8ba"/>' }]);
+      while (x < 366) {
+        var sb = sp.length && sp[0][0] === idx ? sp.shift()[1] : null;
+        var w = sb ? sb.w : 8 + Math.floor(R() * 8), h = sb ? sb.h : 54 + Math.floor(R() * 20);
+        if (x + w > 376) break;
+        var c = sb ? sb.color : cols[Math.floor(R() * cols.length)];
+        if (!sb && R() < 0.06) { x += 6; idx++; continue; }
+        items.push(['book', { id: sb && sb.id, x: x, y: sy, w: w, h: h, color: c, label: sb && sb.label, dust: !(sb && sb.clean), ribbon: sb && sb.ribbon, title: sb && sb.upside ? 'ATLAS' : null, upside: sb && sb.upside }]);
+        if (sb && sb.clean) items.push(['svg', { id: 'fingers', svg: '<rect x="' + (x - 3) + '" y="' + (sy - 2.4) + '" width="' + (w + 6) + '" height="2.6" fill="#6a4426"/>' + [0, 1, 2, 3].map(function (k) { return '<ellipse cx="' + (x - 1 + k * (w + 2) / 3) + '" cy="' + (sy + 3.5) + '" rx="2" ry="1.2" fill="#3a2a1e" opacity=".55"/>'; }).join('') }]);
+        x += w + 0.5; idx++;
+      }
+    });
+    items.push(['svg', { svg: '<path d="M20 6L380 6" stroke="#2b2433" stroke-width="1"/>' }]);
+    add({
+      id: 'dusty-shelf', level: 'hard', no: 8, type: 'Where is it', title: 'The Dusty Library',
+      setup: 'A thief hid a stolen gold coin inside one of the lettered books in Lady Pemberton’s library, then ran. Nobody else has touched these shelves for months.',
+      q: 'Which book is the coin hidden in?',
+      choices: ['A', 'B', 'C', 'D', 'E', 'F'].map(function (l) { return { id: l, label: 'Book ' + l }; }), answer: 'D', tap: true,
+      scene: { bg: ['plain', { color: '#2a1e16' }], items: items },
+      hints: [
+        { text: 'Anything touched in the last few months would look different from everything around it.' },
+        { text: 'Look at the very top of each lettered book, and at the shelf just in front of it.' }
+      ],
+      solution: {
+        steps: [
+          { text: 'After months untouched, a grey layer of dust covers the tops of the books and the front edge of each shelf.', marks: [{ id: 'A', pad: 1 }] },
+          { text: 'The ribbon in B and upside-down C are dusty too. They have been like that a long time.', marks: [{ id: 'B', pad: 1 }, { id: 'C', pad: 1 }] },
+          { text: 'Book D’s top is clean, and there are finger marks wiped through the dust on the shelf in front of it.', marks: [{ id: 'D', pad: 2 }, { id: 'fingers', pad: 2 }] }
+        ],
+        verdict: 'The coin is hidden in book D.'
+      }
+    });
+  })();
+
   window.MYSTERY_CASES = C;
 })();

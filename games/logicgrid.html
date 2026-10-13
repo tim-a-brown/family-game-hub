@@ -85,10 +85,9 @@ body.playing .lg{flex:1;min-height:0;display:flex;flex-direction:column;}
 @keyframes hop{40%{transform:translateY(-22%) scale(1.25);}}
 
 /* Hint note: a sticky note on the page */
-.note{position:absolute;left:4px;right:4px;bottom:6px;z-index:8;display:none;align-items:flex-start;gap:9px;padding:9px 12px;border-radius:3px;background:linear-gradient(180deg,#fff3a6,#ffe678);color:#3a3000;font-family:var(--hand);font-size:1.08rem;line-height:1.22;box-shadow:0 8px 16px rgba(0,0,0,.35);transform:rotate(-.5deg);cursor:pointer;}
+.note{position:absolute;left:8px;right:8px;bottom:8px;z-index:8;display:none;align-items:flex-start;gap:9px;padding:9px 12px;border-radius:3px;background:linear-gradient(180deg,#fff3a6,#ffe678);color:#3a3000;font-family:var(--hand);font-size:1.08rem;line-height:1.22;box-shadow:0 8px 16px rgba(0,0,0,.35);transform:rotate(-.5deg);cursor:pointer;}
 .note.show{display:flex;animation:noteIn .35s var(--spring) both;}
 @keyframes noteIn{from{transform:translateY(14px) rotate(2deg);opacity:0;}to{transform:rotate(-.5deg);opacity:1;}}
-.note.float{position:fixed;left:auto;right:calc(16px + var(--corner-x));bottom:calc(var(--safe-b) + 14px);width:min(440px,calc(50vw - 50px));}
 .note .ico{flex:none;width:21px;height:21px;color:#7a6200;margin-top:1px;}
 .note.bad{background:linear-gradient(180deg,#ffd9d2,#ffc2b6);color:#5a0e0e;}.note.bad .ico{color:#a8202e;}
 
@@ -107,7 +106,7 @@ body.playing .lg{flex:1;min-height:0;display:flex;flex-direction:column;}
 .tool.mode.m1,.tool.mode.m2{background:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--text);}
 
 /* Clues and answers: a second sheet */
-.panel{flex:1;min-height:0;display:flex;flex-direction:column;border-radius:6px;color:var(--pp-ink);
+.panel{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;border-radius:6px;color:var(--pp-ink);
   background:linear-gradient(180deg,#fffdf6,var(--pp));box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 10px 26px rgba(0,0,0,.42);overflow:hidden;}
 .tabs{flex:none;display:flex;border-bottom:1.5px solid var(--pp-ink);margin:0 10px;}
 .tabs button{flex:1;border:0;background:none;padding:9px 4px 7px;font:700 .82rem var(--np-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--pp-dim);position:relative;}
@@ -1280,7 +1279,7 @@ var LG = (function () {
   function note(msg, bad) {
     var n = document.getElementById('note'); if (!n) return;
     n.innerHTML = Kit.icon(bad ? 'close' : 'lightbulb') + '<span>' + Kit.esc(msg) + '</span>';
-    n.className = 'note show' + (bad ? ' bad' : '') + (gview && gview.clientHeight < 300 && isWide() ? ' float' : '');
+    n.className = 'note show' + (bad ? ' bad' : '');
     clearTimeout(noteT); noteT = setTimeout(hideNote, Math.max(5000, msg.length * 75));
   }
   function hideNote() { var n = document.getElementById('note'); if (n) n.className = 'note'; clearTimeout(noteT); }
@@ -1289,7 +1288,7 @@ var LG = (function () {
     clueEls.forEach(function (x) { x.classList.remove('hl'); });
     li.classList.add('hl'); setTab('c');
     var body = document.getElementById('pbody');
-    if (body) { var r = li.getBoundingClientRect(), br = body.getBoundingClientRect(); if (r.top < br.top || r.bottom > br.bottom) body.scrollTo({ top: body.scrollTop + r.top - br.top - 40, behavior: 'smooth' }); }
+    if (body) { var r = li.getBoundingClientRect(), br = body.getBoundingClientRect(); if (r.top < br.top || r.bottom > br.bottom - 110) body.scrollTo({ top: body.scrollTop + r.top - br.top - 12, behavior: 'smooth' }); }
     setTimeout(function () { li.classList.remove('hl'); }, 9000);
   }
 
@@ -1360,7 +1359,6 @@ var LG = (function () {
     });
     gview.appendChild(gridEl);
     gwrap.appendChild(gview);
-    gwrap.appendChild(el('div', { class: 'note', id: 'note', onclick: hideNote }));
     page.appendChild(gwrap);
     play.appendChild(page);
     // tools
@@ -1403,6 +1401,7 @@ var LG = (function () {
     secA.appendChild(el('div', { class: 'ansbox' }, [tbl, el('div', { class: 'stamp', id: 'stamp', html: 'Solved<small id="stampT"></small>' })]));
     body.appendChild(secC); body.appendChild(secA);
     panel.appendChild(body);
+    panel.appendChild(el('div', { class: 'note', id: 'note', onclick: hideNote }));
     play.appendChild(panel);
     app.appendChild(play);
     wire();
@@ -1522,7 +1521,7 @@ var LG = (function () {
     var r = ref.el.getBoundingClientRect(), v = gview.getBoundingClientRect();
     var fx = parseFloat(gridEl.style.getPropertyValue('--lg-cw')) + parseFloat(gridEl.style.getPropertyValue('--lg-lw'));
     var fy = parseFloat(gridEl.style.getPropertyValue('--lg-ch')) + parseFloat(gridEl.style.getPropertyValue('--lg-lh'));
-    if (r.left < v.left + fx || r.right > v.right || r.top < v.top + fy || r.bottom > v.bottom - 70) centerOn(ref, true);
+    if (r.left < v.left + fx || r.right > v.right || r.top < v.top + fy || r.bottom > v.bottom) centerOn(ref, true);
   }
   function cellRef(a, i, b, j) { return cellAt[key(a, i, b, j)] || null; }
 
@@ -1680,6 +1679,7 @@ var LG = (function () {
   }
   function solved() {
     S.done = true; stopClock(); hideNote();
+    if (zoomCs) setZoom(0);   // step back to see the whole page fill in
     var prev = bestTime(S.lv), clean = !S.hints, best = clean && (!prev || S.time < prev);
     // fill every square with the answer, in a wave from the top left
     var k = P.k, n = P.n;

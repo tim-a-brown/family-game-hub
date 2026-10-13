@@ -444,7 +444,9 @@
     }
     if (kind === 'bird') return pline([[0, L * 0.3], [0, -L * 0.25]], col, L * 0.08) + pline([[0, -L * 0.05], [-L * 0.28, -L * 0.42]], col, L * 0.08) + pline([[0, -L * 0.05], [L * 0.28, -L * 0.42]], col, L * 0.08);
     if (kind === 'heel') {
-      s += path('M0 ' + n(-L * 0.5) + 'Q' + n(Wd * 0.7) + ' ' + n(-L * 0.45) + ' ' + n(Wd * 0.55) + ' ' + n(-L * 0.05) + 'Q' + n(Wd * 0.3) + ' ' + n(L * 0.05) + ' ' + n(-Wd * 0.4) + ' ' + n(L * 0.02) + 'Q' + n(-Wd * 0.7) + ' ' + n(-L * 0.4) + ' 0 ' + n(-L * 0.5) + 'Z', col, { st: 0 }) + circ(0, L * 0.4, L * 0.09, col, { st: 0 });
+      // a high-heel print: the front of the sole, a gap, then one small square heel
+      s += path('M0 ' + n(-L * 0.5) + 'Q' + n(Wd * 0.62) + ' ' + n(-L * 0.48) + ' ' + n(Wd * 0.52) + ' ' + n(-L * 0.12) + 'Q' + n(Wd * 0.4) + ' ' + n(L * 0.06) + ' ' + n(Wd * 0.22) + ' ' + n(L * 0.08) + 'L' + n(-Wd * 0.22) + ' ' + n(L * 0.08) + 'Q' + n(-Wd * 0.4) + ' ' + n(L * 0.06) + ' ' + n(-Wd * 0.52) + ' ' + n(-L * 0.12) + 'Q' + n(-Wd * 0.62) + ' ' + n(-L * 0.48) + ' 0 ' + n(-L * 0.5) + 'Z', col, { st: 0 });
+      s += rect(-L * 0.08, L * 0.32, L * 0.16, L * 0.16, col, { st: 0, rx: L * 0.03 });
       return g(s, { op: op });
     }
     // shoe/boot outline (toe up)
@@ -967,7 +969,7 @@
   function tcase(p) { var s = rect(-14, -10, 28, 20, 'rgba(200,230,250,.55)', { sw: 1.2 }) + rect(-14, -10, 28, 20, 'none', { st: '#7a828c', sw: 1.6 }); if (p.empty) s += rect(-5, -5, 10, 10, 'none', { st: '#a33', sw: 0.8, a: 'stroke-dasharray="1.6 1.6"' }); else if (p.gem) s += path('M-4 0L0 -5L4 0L0 5Z', p.gem, { sw: 0.6 }); return g(s, { x: p.x, y: p.y, r: p.r, id: p.id }); }
   function laser(p) { return g(pline(p.pts, '#ff3a4a', 1.4, { op: 0.85 }) + p.pts.map(function (q) { return circ(q[0], q[1], 2.2, '#5a5a66', { sw: 0.6 }); }).join(''), { id: p.id }); }
   function rope(p) { return g(pline(p.pts, '#b0273a', 2.2) + p.pts.map(function (q) { return circ(q[0], q[1], 2.6, '#c9a227', { sw: 0.6 }); }).join(''), { id: p.id }); }
-  function tdoor(p) { var s = rect(-12, -3, 24, 6, p.color || '#c98a3a', { sw: 0.9 }); if (p.tape) s += line(-12, -3, 12, 3, '#e8c32a', 2.2) + line(-12, 3, 12, -3, '#e8c32a', 2.2); if (p.paint) s += rect(-12, -3, 24, 6, '#3aa65a', { sw: 0.9 }); return g(s + (p.text ? g(tag({ text: p.text, x: 0, y: p.ly || 0, s: 0.85 }), {}) : ''), { x: p.x, y: p.y, r: p.r, id: p.id }); }
+  function tdoor(p) { var s = rect(-12, -3.5, 24, 7, p.color || '#c98a3a', { sw: 0.9 }); if (p.tape) s += line(-13, -5, 13, 5, '#e8c32a', 2.6) + line(-13, 5, 13, -5, '#e8c32a', 2.6); if (p.paint) s += rect(-12, -3, 24, 6, '#3aa65a', { sw: 0.9 }); return g(g(s, { r: p.r }) + (p.text ? tag({ text: p.text, x: p.lx || 0, y: p.ly || 0, s: 0.85 }) : ''), { x: p.x, y: p.y, id: p.id }); }
   function tsign(p) { return g(path('M-8 6L0 -8L8 6Z', '#f2c230', { sw: 0.9 }) + text(0, 4, '!', { size: 9, font: 'sans', weight: 900 }), { x: p.x, y: p.y, id: p.id }); }
   function tcar(p) { var c = p.color || '#d33a3a'; return g(rect(-12, -22, 24, 44, c, { rx: 6 }) + rect(-9, -12, 18, 10, '#bfe0f2', { sw: 0.8 }) + rect(-9, 6, 18, 8, '#bfe0f2', { sw: 0.8 }) + (p.snow ? rect(-10, -4, 20, 12, '#fff', { sw: 0.6, rx: 3 }) : ''), { x: p.x, y: p.y, r: p.r, id: p.id }); }
   function tsnowman(p) { return g(circ(3, 4, 15, '#9aa7b8', { st: 0, op: 0.35 }) + line(-12, 2, -26, 8, '#6a4126', 1.8) + line(12, -1, 26, -8, '#6a4126', 1.8) + circ(0, 0, 14, '#fbfbff') + circ(0, 0, 9, '#fbfbff') + (p.hat ? circ(0, 0, 6.5, p.hat, { sw: 0.9 }) + circ(0, 0, 4.4, shade(p.hat, 0.12), { sw: 0.6 }) : circ(0, 0, 4, '#fbfbff', { sw: 0.6 })) + path('M5 6l6 3-5 -0.5z', '#f08a2a', { sw: 0.6 }), { x: p.x, y: p.y, id: p.id }); }
