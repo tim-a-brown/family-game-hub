@@ -677,9 +677,567 @@
   };
 
   // ═════════════════════════════════════════════════════════════════════════
+  // WHICH WAY: a park from above; follow one set of prints to the gate they leave by
+  // ═════════════════════════════════════════════════════════════════════════
+  var TRACKERS = {
+    puppy: { lv: 'em', who: ['Biscuit', 'Pepper', 'Noodle', 'Muffin', 'Pip', 'Bramble', 'Toffee', 'Scout'], kind: 'paw', size: 11, gap: 9, side: 2.4, col: '#4a3018',
+      desc: 'the tiniest paw prints', start: 'collar',
+      setup: '{W} the puppy slipped out of {his} collar in {Park} and ran off. The muddy paths are covered in tracks, but {W} is tiny, so {his} paw prints are the smallest of all.', q: 'Which gate did {W} leave by?', verdict: '{W} left by Gate {G}.',
+      decoys: [['bigpaw', 17, 'big dog paw prints'], ['shoe:lines', 13, 'shoe prints'], ['bike', 0, 'bike tracks'], ['bird', 12, 'bird tracks']] },
+    hen: { lv: 'em', who: ['Henrietta', 'Mabel', 'Clucky', 'Dolly', 'Ginger', 'Peggy'], kind: 'bird', size: 13, gap: 10, side: 2.6, col: '#4a3018',
+      desc: 'the three-toed bird prints', start: 'feathers',
+      setup: '{W} the hen escaped from the petting farm in {Park}, leaving a few feathers by {his} crate. Hens leave little three-toed prints in the mud.', q: 'Which gate did {W} wander out of?', verdict: '{W} went out by Gate {G}.',
+      decoys: [['paw', 12, 'small paw prints'], ['bigpaw', 17, 'big dog paw prints'], ['shoe:dots', 13, 'shoe prints'], ['bike', 0, 'bike tracks']] },
+    bike: { lv: 'mh', who: ['Mr. Grant', 'Mrs. Okafor', 'Dr. Penn', 'Ms. Rossi'], kind: 'bike', tread: 'zigzag', col: '#3a2414', desc: 'the bike tracks with the zigzag tread',
+      start: 'rack', setup: 'Someone borrowed {poss} new bike from the rack in {Park} and rode off. Its new tyres leave a zigzag pattern; the park’s other bikes have smooth tyres.', q: 'Which gate did the bike go out of?', verdict: 'The bike left by Gate {G}.',
+      decoys: [['bike:plain', 0, 'smooth bike tracks'], ['bike:plain', 0, 'smooth bike tracks'], ['bigpaw', 17, 'dog prints'], ['shoe:lines', 13, 'shoe prints']] },
+    notch: { lv: 'h', who: ['the thief'], kind: 'shoe', tread: 'zigzag', notch: true, size: 16, gap: 17, side: 4.2, col: '#3a2414', desc: 'the zigzag boot prints with a notch cut out of the heel',
+      start: 'bag', setup: 'A thief snatched a bag at the bandstand in {Park}, dropped it by the path and ran. The thief’s boots have a zigzag tread, with a notch cut out of one heel.', q: 'Which gate did the thief escape through?', verdict: 'The thief escaped through Gate {G}.',
+      decoys: [['shoe:zigzag', 16, 'zigzag boot prints with whole heels'], ['shoe:zigzag', 16, 'zigzag boot prints with whole heels'], ['shoe:dots', 15, 'dotted shoe prints'], ['bigpaw', 17, 'dog prints']] },
+    chevron: { lv: 'h', who: ['the thief'], kind: 'shoe', tread: 'chevron', size: 16, gap: 17, side: 4.2, col: '#3a2414', desc: 'the prints with arrow-shaped tread',
+      start: 'bag', setup: 'A thief grabbed a purse in {Park}, dropped it as they ran, and escaped through one of the gates. The thief’s trainers have a tread of little arrows.', q: 'Which gate did the thief escape through?', verdict: 'The thief escaped through Gate {G}.',
+      decoys: [['shoe:zigzag', 16, 'zigzag prints'], ['shoe:zigzag', 16, 'zigzag prints'], ['shoe:lines', 15, 'striped prints'], ['bigpaw', 17, 'dog prints']] }
+  };
+  var PARKS = ['Maple Park', 'Willow Park', 'Oak Hill Park', 'Riverside Park', 'Bluebell Park', 'Elm Green', 'Kingfisher Park', 'Hazel Common'];
+  T.tracks = function (r, level) {
+    var lvc = level.charAt(0), tk = r.pick(Object.keys(TRACKERS).filter(function (k) { return TRACKERS[k].lv.indexOf(lvc) >= 0; })), TK = TRACKERS[tk];
+    // the paths: a 3 x 3 grid of crossings (jittered), a few links removed, four gates
+    var X = [70 + r.int(-12, 12), 200 + r.int(-14, 14), 330 + r.int(-12, 12)], Y = [72 + r.int(-10, 10), 152 + r.int(-10, 10), 230 + r.int(-10, 10)];
+    var nodes = [], edges = [], adj = {};
+    for (var rr = 0; rr < 3; rr++) for (var cc = 0; cc < 3; cc++) nodes.push([X[cc] + r.int(-10, 10), Y[rr] + r.int(-8, 8)]);
+    function addE(a, b) { edges.push([a, b]); }
+    for (rr = 0; rr < 3; rr++) for (cc = 0; cc < 2; cc++) addE(rr * 3 + cc, rr * 3 + cc + 1);
+    for (rr = 0; rr < 2; rr++) for (cc = 0; cc < 3; cc++) addE(rr * 3 + cc, rr * 3 + cc + 3);
+    // gates: N (top), E (right), S (bottom), W (left); nodes 9..12
+    var gN = r.int(0, 2), gE = r.int(0, 2), gS = r.int(0, 2), gW = r.int(0, 2);
+    nodes.push([nodes[gN][0], 0], [400, nodes[gE * 3 + 2][1]], [nodes[6 + gS][0], 300], [0, nodes[gW * 3][1]]);
+    addE(gN, 9); addE(gE * 3 + 2, 10); addE(6 + gS, 11); addE(gW * 3, 12);
+    // drop some inner links, keeping everything connected
+    var drop = r.shuffle(edges.slice(0, 12)), removed = 0, want = level === 'hard' ? 2 : 3;
+    function connected(es) { var seen = { 0: 1 }, st = [0], A2 = {}; es.forEach(function (e) { (A2[e[0]] = A2[e[0]] || []).push(e[1]); (A2[e[1]] = A2[e[1]] || []).push(e[0]); }); while (st.length) { var x = st.pop(); (A2[x] || []).forEach(function (y) { if (!seen[y]) { seen[y] = 1; st.push(y); } }); } return Object.keys(seen).length === nodes.length; }
+    drop.forEach(function (e) { if (removed >= want) return; var rest = edges.filter(function (x) { return x !== e; }); if (connected(rest)) { edges = rest; removed++; } });
+    edges.forEach(function (e) { (adj[e[0]] = adj[e[0]] || []).push(e[1]); (adj[e[1]] = adj[e[1]] || []).push(e[0]); });
+    var gates = [9, 10, 11, 12], letters = r.shuffle(['A', 'B', 'C', 'D']);
+    // all simple paths from a to any gate (gates are dead ends)
+    function walks(a, minL, maxL, toGate) {
+      var out = [];
+      (function go(path) {
+        var x = path[path.length - 1];
+        if (path.length > 1 && gates.indexOf(x) >= 0) { if (path.length - 1 >= minL && (!toGate || toGate.indexOf(x) >= 0)) out.push(path.slice()); return; }
+        if (path.length - 1 >= maxL) return;
+        (adj[x] || []).forEach(function (y) { if (path.indexOf(y) < 0) { path.push(y); go(path); path.pop(); } });
+      })([a]);
+      return out;
+    }
+    var L = level === 'easy' ? [3, 4] : level === 'medium' ? [4, 6] : [5, 8];
+    var starts = r.shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8]), route = null, start;
+    for (var si = 0; si < starts.length && !route; si++) { var ws = walks(starts[si], L[0], L[1]); if (ws.length) { route = r.pick(ws); start = starts[si]; } }
+    if (!route) { start = 4; route = walks(4, 2, 9)[0]; }
+    var endGate = route[route.length - 1];
+    // other trails: gate to gate, using some of the same paths
+    var nDec = level === 'easy' ? 2 : level === 'medium' ? 3 : 4, load = {}, trails = [];
+    function ek(a, b) { return a < b ? a + '-' + b : b + '-' + a; }
+    function useLoad(p, d) { for (var i = 1; i < p.length; i++) load[ek(p[i - 1], p[i])] = (load[ek(p[i - 1], p[i])] || 0) + d; }
+    useLoad(route, 1);
+    var dk = r.shuffle(TK.decoys).slice(0, nDec), overlapNeeded = level !== 'easy';
+    dk.forEach(function (d, j) {
+      var g0 = r.pick(gates), cand = walks(g0, 2, 7).filter(function (p) { for (var i = 1; i < p.length; i++) if ((load[ek(p[i - 1], p[i])] || 0) >= 3) return false; return true; });
+      // prefer trails that share a stretch with the route and pass through its start
+      cand.sort(function (a, b) { return score(b) - score(a); });
+      function score(p) { var s = 0; for (var i = 1; i < p.length; i++) if (load[ek(p[i - 1], p[i])]) s += 2; if (p.indexOf(start) >= 0 && j === 0) s += 5; return s + r.f(); }
+      var p = cand[Math.min(cand.length - 1, r.int(0, 2))];
+      if (p) { useLoad(p, 1); trails.push({ path: p, d: d }); }
+    });
+    // lanes: each trail gets its own lane on a shared path
+    var laneUse = {};
+    function lanePts(path, me) {
+      var pts = [];
+      for (var i = 0; i < path.length; i++) {
+        var a = nodes[path[i]];
+        // offset at this node: average of the normals of the edges in and out
+        var off = [0, 0], k = 0;
+        [[path[i - 1], path[i]], [path[i], path[i + 1]]].forEach(function (e) {
+          if (e[0] == null || e[1] == null) return;
+          var key = ek(e[0], e[1]), lo = Math.min(e[0], e[1]), hi = Math.max(e[0], e[1]);
+          var users = laneUse[key], idx = users.indexOf(me), nU = users.length, o = (idx - (nU - 1) / 2) * 8;
+          var dx = nodes[hi][0] - nodes[lo][0], dy = nodes[hi][1] - nodes[lo][1], len = Math.sqrt(dx * dx + dy * dy) || 1;
+          off[0] += -dy / len * o; off[1] += dx / len * o; k++;
+        });
+        pts.push([R1(a[0] + off[0] / k), R1(a[1] + off[1] / k)]);
+      }
+      return pts;
+    }
+    var all = [{ path: route, d: null, me: 'T' }].concat(trails.map(function (t, i) { t.me = 'D' + i; return t; }));
+    all.forEach(function (t) { for (var i = 1; i < t.path.length; i++) { var key = ek(t.path[i - 1], t.path[i]); (laneUse[key] = laneUse[key] || []).push(t.me); } });
+    // ── the picture ──
+    var items = [];
+    items.push(['tpaths', { paths: edges.map(function (e) { return { pts: [nodes[e[0]], nodes[e[1]]], w: 30 }; }) }]);
+    // things in the open spaces between paths
+    var cells = [[0, 1, 3, 4], [1, 2, 4, 5], [3, 4, 6, 7], [4, 5, 7, 8]].map(function (q) { var x = 0, y = 0; q.forEach(function (n2) { x += nodes[n2][0]; y += nodes[n2][1]; }); return [R1(x / 4), R1(y / 4)]; });
+    var lm = r.shuffle(['pond', 'bandstand', 'sandpit', 'trees']), names2 = {};
+    cells.forEach(function (c, i) {
+      var k = lm[i]; names2[i] = { pond: 'the pond', bandstand: 'the bandstand', sandpit: 'the sandpit', trees: 'the trees' }[k];
+      if (k === 'pond') items.push(['tpond', { x: c[0], y: c[1], rx: 34, ry: 20 }]);
+      else if (k === 'bandstand') items.push(sv('<circle cx="' + c[0] + '" cy="' + c[1] + '" r="22" fill="#f4efe4" stroke="#2b2433" stroke-width="1.4"/><circle cx="' + c[0] + '" cy="' + c[1] + '" r="16" fill="#c0392b" stroke="#2b2433" stroke-width="1.2"/><path d="M' + (c[0] - 16) + ' ' + c[1] + 'h32M' + c[0] + ' ' + (c[1] - 16) + 'v32" stroke="#8a2a20" stroke-width="1.2"/>'));
+      else if (k === 'sandpit') items.push(sv('<rect x="' + (c[0] - 26) + '" y="' + (c[1] - 16) + '" width="52" height="32" rx="6" fill="#e9d38f" stroke="#8a5a34" stroke-width="3"/><circle cx="' + (c[0] - 8) + '" cy="' + (c[1] + 2) + '" r="4" fill="#e0384a" stroke="#2b2433" stroke-width=".8"/><path d="M' + (c[0] + 6) + ' ' + (c[1] - 6) + 'l8 8" stroke="#3a6ea5" stroke-width="2.4"/>'));
+      else items.push(['ttree', { x: c[0] - 14, y: c[1] - 6, r: 17 }], ['ttree', { x: c[0] + 16, y: c[1] + 8, r: 14, color: '#3f8a3a' }]);
+    });
+    [[24, 24], [376, 24], [24, 276], [376, 276], [140, 290], [270, 12]].forEach(function (q) { if (!nodes.some(function (nn) { return Math.abs(nn[0] - q[0]) < 30 && Math.abs(nn[1] - q[1]) < 30; })) items.push(['ttree', { x: q[0], y: q[1], r: r.int(12, 18), color: r.pick(['#4f9a4a', '#3f8a3a']) }]); });
+    // the trails
+    function trailItem(kind, size, pts, id, extra) {
+      var k = kind.split(':'), o = { id: id, pts: pts, col: '#4a3018' };
+      if (k[0] === 'bike') { o.kind = 'bike'; o.w = 2.8; o.tread = k[1] === 'plain' ? null : 'zigzag'; }
+      else { o.kind = k[0]; o.size = size; o.tread = k[1] || (k[0] === 'shoe' ? 'lines' : null); o.gap = size * 1.05; o.side = k[0].indexOf('paw') >= 0 ? size * 0.22 : size * 0.26; }
+      for (var e in (extra || {})) o[e] = extra[e];
+      return ['trail', o];
+    }
+    trails.forEach(function (t, i) { items.push(trailItem(t.d[0], t.d[1], lanePts(t.path, t.me), 'tr' + i)); });
+    var rp = lanePts(route, 'T');
+    items.push(trailItem(TK.kind + (TK.tread ? ':' + TK.tread : ''), TK.size || 0, rp, 'route', TK.kind === 'bike' ? { tread: 'zigzag' } : { gap: TK.gap, side: TK.side, notch: TK.notch ? '#86c66a' : null }));
+    // where it started
+    var sp = nodes[start], startSvg = TK.start === 'collar' ? '<path d="M-7 -3 a7 4 0 1 0 14 0 a7 4 0 1 0 -14 0" fill="none" stroke="#e0384a" stroke-width="2.6"/><circle cx="0" cy="2" r="2" fill="#e8c34a" stroke="#2b2433" stroke-width=".6"/>'
+      : TK.start === 'feathers' ? '<rect x="-12" y="-9" width="22" height="16" rx="2" fill="#c98a3a" stroke="#2b2433" stroke-width="1"/><path d="M-12 -3h22M-12 2h22" stroke="#8a5a34" stroke-width="1"/><path d="M14 -2q6 -6 9 0q-4 2 -9 0zM12 6q5 -2 7 3q-4 1 -7 -3z" fill="#f4efe4" stroke="#2b2433" stroke-width=".7"/>'
+      : TK.start === 'rack' ? '<rect x="-16" y="-6" width="32" height="12" rx="2" fill="#9aa3ad" stroke="#2b2433" stroke-width="1"/><path d="M-10 -6v12M-2 -6v12M6 -6v12" stroke="#5a5a66" stroke-width="1.6"/>'
+      : '<rect x="-8" y="-6" width="16" height="12" rx="2" fill="#7a3b8a" stroke="#2b2433" stroke-width="1"/><path d="M-4 -6q4 -6 8 0" fill="none" stroke="#2b2433" stroke-width="1.2"/>';
+    items.push(['svg', { id: 'start', x: R1(sp[0] + (route[1] != null && nodes[route[1]][0] > sp[0] ? -18 : 18)), y: R1(sp[1] + (nodes[route[1]][1] > sp[1] ? -16 : 16)), svg: startSvg }]);
+    gates.forEach(function (gn, i) {
+      var p = nodes[gn], rot = i === 1 || i === 3 ? 90 : 0;
+      var lx = i === 0 ? 30 : i === 2 ? 30 : i === 1 ? -6 : 6, ly = i === 0 ? 4 : i === 2 ? -6 : -30;
+      items.push(['tgate', { id: letters[i], x: R1(p[0] + (i === 1 ? -6 : i === 3 ? 6 : 0)), y: R1(p[1] + (i === 0 ? 6 : i === 2 ? -6 : 0)), r: rot, text: letters[i], lx: lx, ly: ly }]);
+    });
+    // ── words ──
+    var who = r.pick(TK.who), wgd = /^(Mrs|Ms)\./.test(who) || ['Henrietta', 'Mabel', 'Dolly', 'Peggy', 'Biscuit', 'Pepper', 'Muffin', 'Toffee'].indexOf(who) >= 0 ? 'f' : 'm', wp = pron(wgd);
+    var park = r.pick(PARKS), G = letters[gates.indexOf(endGate)];
+    var o3 = { W: who, his: wp.his, poss: poss(who), Park: park, G: G };
+    // narrate the route by compass direction, past landmarks
+    function dir(a, b) { var dx = nodes[b][0] - nodes[a][0], dy = nodes[b][1] - nodes[a][1]; return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy > 0 ? 'south' : 'north'); }
+    function past(a, b) {
+      var mx = (nodes[a][0] + nodes[b][0]) / 2, my = (nodes[a][1] + nodes[b][1]) / 2, best = null, bd = 1e9;
+      cells.forEach(function (c, i) { var d = Math.abs(c[0] - mx) + Math.abs(c[1] - my); if (d < bd) { bd = d; best = i; } });
+      return bd < 90 ? names2[best] : null;
+    }
+    var legs = []; for (var i = 1; i < route.length; i++) { var d0 = dir(route[i - 1], route[i]); if (legs.length && legs[legs.length - 1].d === d0) legs[legs.length - 1].to = i; else legs.push({ d: d0, from: i - 1, to: i }); }
+    var sayStart = { collar: 'From ' + poss(who) + ' collar', feathers: 'From the crate', rack: 'From the bike rack', bag: 'From the dropped bag' }[TK.start];
+    var steps = [];
+    var decDesc = andList(trails.map(function (t) { return t.d[2]; }).filter(function (v, i, a) { return a.indexOf(v) === i; }));
+    steps.push({ text: cap(TK.desc) + ' are the ones to follow. The ' + decDesc + ' belong to somebody else.', marks: [{ id: 'start', pad: 3 }] });
+    var groups = legs.length <= 2 ? [legs] : [legs.slice(0, Math.ceil(legs.length / 2)), legs.slice(Math.ceil(legs.length / 2))];
+    groups.forEach(function (gl, gi) {
+      var words = gl.map(function (lg, li) { var p2 = past(route[lg.from], route[lg.to]); return (li ? 'then ' : '') + lg.d + (p2 && r.chance(0.7) ? ' past ' + p2 : ''); });
+      var a = gl[0].from, b = gl[gl.length - 1].to, last = gi === groups.length - 1;
+      var tx = (gi === 0 ? sayStart + ', the prints head ' : r.pick(['At the next crossing they turn ', 'From there they go ', 'Then the prints go '])) + words.join(', ') + (last ? ', and out through Gate ' + G + '.' : '.');
+      if (TK.kind === 'bike') tx = tx.replace('the prints head', 'the zigzag tracks head').replace('Then the prints go', 'Then the tracks go');
+      steps.push({ text: tx, marks: [{ t: 'path', pts: rp.slice(a, b + 1) }].concat(last ? [{ id: G }] : []) });
+    });
+    // a crossing where another trail goes a different way
+    var turnAt = route[Math.min(route.length - 2, 1 + r.int(0, Math.max(0, route.length - 3)))];
+    var hints = [
+      { text: 'Start at ' + { collar: 'the red collar', feathers: 'the crate and the feathers', rack: 'the bike rack', bag: 'the dropped bag' }[TK.start] + '. Follow only ' + TK.desc + '.' },
+      { text: 'Where paths cross, other tracks go other ways. Check which way ' + TK.desc + ' go.', at: { x: nodes[turnAt][0], y: nodes[turnAt][1], r: 22 } }
+    ];
+    return {
+      type: 'Which way', title: fill(r.pick(tk === 'puppy' ? ['Where Did {W} Go?', 'Puppy on the Loose', 'Follow the Paw Prints'] : tk === 'hen' ? ['The Great Hen Escape', 'Where Did {W} Go?', 'Which Way, {W}?'] : tk === 'bike' ? ['The Borrowed Bike', 'Tyre Tracks', 'On Your Bike'] : ['The Bag Snatcher', 'Follow That Thief!', 'Footprints in the Park']), o3),
+      setup: fill(TK.setup, o3), q: fill(TK.q, o3), size: [400, 300], tap: true,
+      choices: ['A', 'B', 'C', 'D'].map(function (l) { return { id: l, label: 'Gate ' + l }; }), answer: G,
+      scene: { bg: ['top', { color: '#86c66a' }], items: items }, hints: hints,
+      solution: { steps: steps, verdict: fill(TK.verdict, o3) },
+      key: 'tracks|' + tk + '|' + JSON.stringify(nodes) + '|' + JSON.stringify(edges) + '|' + route.join('-') + '|' + trails.map(function (t) { return t.d[0] + ':' + t.path.join('-'); }).join(';') + '|' + letters.join(''),
+      logic: { tpl: 'tracks', route: route, gateOf: gates.map(function (gn, i) { return [gn, letters[i]]; }), target: TK.kind + (TK.tread ? ':' + TK.tread : '') + (TK.notch ? ':notch' : ''), others: trails.map(function (t) { return t.d[0]; }) }
+    };
+  };
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // WHICH KEY: match a key to the print it left
+  // ═════════════════════════════════════════════════════════════════════════
+  var KEY_SETS = [
+    { mat: 'soap', bg: ['room', { wall: '#dbe9ee', paper: 'tiles', floorY: 400 }], setup: '{Owner} lost the only key to {his} {lock}. Luckily, {he} once pressed it into a bar of soap so a locksmith could copy it. The locksmith brought {n} keys that look almost the same.', q: 'Which key will open the {lock}?', title: ['The Key in the Soap', 'Soap Opera', 'Locked Out'] },
+    { mat: 'clay', bg: ['desk', { color: '#7a5233' }], setup: 'Someone pressed one of the school’s keys into modelling clay to make a copy, then hung it back on the board. {Owner} found the lump of clay in the art room.', q: 'Which key was copied?', title: ['Caught in Clay', 'The Copied Key', 'Mischief in the Art Room'] },
+    { mat: 'wax', bg: ['desk', { color: '#5e4030' }], setup: 'A burglar pressed one of {poss} keys into candle wax to copy it, then put it back on the hook. The wax was left behind on the hall table.', q: 'Which key did the burglar copy?', title: ['Waxing Lyrical', 'The Key in the Wax', 'Copycat Burglar'] },
+    { mat: 'paper', bg: ['desk', { color: '#8a5a34' }], setup: 'Before {Owner} went away, {he} drew round the key to the {lock} on a notepad, so {his} neighbour could find it on the key board. Only one key is an exact match.', q: 'Which key opens the {lock}?', title: ['Drawn to the Key', 'The Key Tracing', 'Which Key?'] }
+  ];
+  T.keys = function (r, level, occ) {
+    var set = KEY_SETS[(occ + hstr('keys')) % KEY_SETS.length]; if (r.chance(0.3)) set = r.pick(KEY_SETS);
+    var N = level === 'easy' ? 4 : 5, heads = ['round', 'square', 'clover', 'oval', 'diamond'], nT = level === 'easy' ? 3 : 4;
+    var A = { head: r.pick(heads), teeth: [] };
+    for (var i = 0; i < nT; i++) A.teeth.push(r.int(1, 4));
+    if (A.teeth.every(function (t) { return t === A.teeth[0]; })) A.teeth[1] = (A.teeth[1] % 4) + 1;
+    var keys = [{ head: A.head, teeth: A.teeth.slice(), ans: true, why: null }], sig = {};
+    sig[A.head + A.teeth.join('')] = 1;
+    var guard = 0;
+    while (keys.length < N && guard++ < 500) {
+      var k = { head: A.head, teeth: A.teeth.slice(), why: '' }, mode;
+      var j = keys.length;
+      if (level === 'easy') mode = j <= 1 ? 'head' : 'teeth2';
+      else if (level === 'medium') mode = j === 1 ? 'head' : r.pick(['teeth1big', 'swap', 'teeth2']);
+      else mode = r.pick(['teeth1', 'teeth1', 'swap']);
+      if (mode === 'head') { k.head = r.pick(heads.filter(function (h) { return h !== A.head; })); if (level === 'easy') k.teeth = A.teeth.map(function (t) { return r.int(1, 4); }); k.why = 'head'; }
+      else if (mode === 'swap') { var a = r.int(0, nT - 2); if (k.teeth[a] === k.teeth[a + 1]) continue; var t0 = k.teeth[a]; k.teeth[a] = k.teeth[a + 1]; k.teeth[a + 1] = t0; k.why = 'teeth'; }
+      else if (mode === 'teeth1' || mode === 'teeth1big') { var b = r.int(0, nT - 1), dlt = mode === 'teeth1' ? 1 : 2; var nv = k.teeth[b] + (r.chance(0.5) ? dlt : -dlt); if (nv < 1 || nv > 4) nv = k.teeth[b] + (nv < 1 ? dlt : -dlt); if (nv < 1 || nv > 4) continue; k.teeth[b] = nv; k.why = 'teeth'; }
+      else { var c1 = r.sample([0, 1, 2, 3].slice(0, nT), 2); c1.forEach(function (c) { var opts = [1, 2, 3, 4].filter(function (v) { return Math.abs(v - k.teeth[c]) >= 2; }); if (opts.length) k.teeth[c] = r.pick(opts); }); k.why = 'teeth'; }
+      var sg = k.head + k.teeth.join('');
+      if (sig[sg]) continue;
+      sig[sg] = 1; keys.push(k);
+    }
+    keys = r.shuffle(keys);
+    var ans = keys.map(function (k) { return !!k.ans; }).indexOf(true), L = ['A', 'B', 'C', 'D', 'E'];
+    var kr = level === 'easy' ? 0 : level === 'medium' ? r.pick([-12, 10, 14, -8]) : r.pick([180, 172, 188]);
+    var items = [];
+    items.push(['svg', { svg: '<rect x="198" y="10" width="194" height="282" rx="4" fill="#c9a77a" stroke="#2b2433" stroke-width="1.4"/><rect x="204" y="16" width="182" height="270" fill="#d9bf92"/>' + Array.apply(null, Array(N)).map(function (_, i) { var y = 34 + i * (N === 5 ? 54 : 66); return '<circle cx="218" cy="' + y + '" r="3" fill="#7a828c" stroke="#2b2433" stroke-width=".8"/>'; }).join('') }]);
+    keys.forEach(function (k, i) {
+      var y = 34 + i * (N === 5 ? 54 : 66);
+      items.push(['key', { id: 'k' + L[i], x: 230, y: y, s: 1.4, head: k.head, teeth: k.teeth, col: r.pick(['#d8b64a', '#c9a227', '#cfae4a', '#bfc6cc', '#c98a5a']) }]);
+      items.push(['tag', { x: 364, y: y + 4, text: L[i] }]);
+    });
+    var gd = r.pick(['f', 'm']), owner = (gd === 'f' ? r.pick(['Mrs.', 'Ms.', 'Dr.']) : r.pick(['Mr.', 'Dr.'])) + ' ' + r.pick(SUR), pr = pron(gd), lock = r.pick(['shed', 'garden gate', 'attic', 'boathouse', 'old piano', 'treasure chest', 'cellar']);
+    var o4 = { Owner: owner, poss: poss(owner), his: pr.his, he: pr.he, n: numw(N), lock: lock };
+    items.unshift(['imprint', { id: 'imp', x: 100, y: 150, s: 1.45, mat: set.mat, key: { head: A.head, teeth: A.teeth }, kr: kr, r: r.int(-4, 4) }]);
+    if (set.mat === 'paper') items.unshift(['svg', { svg: '<rect x="20" y="100" width="160" height="104" fill="#fbf8ee" opacity="0"/>' }]);
+    if (set.mat === 'soap') items.push(['svg', { svg: '<ellipse cx="100" cy="262" rx="70" ry="14" fill="#fff" stroke="#2b2433" stroke-width="1.2" opacity=".9"/><circle cx="60" cy="230" r="4" fill="#fff" opacity=".7" stroke="#9fc4d6"/><circle cx="148" cy="222" r="3" fill="#fff" opacity=".7" stroke="#9fc4d6"/>' }]);
+    if (set.mat === 'wax') items.push(['candle', { x: 52, y: 270, len: 30, holder: 8, drips: 3, seed: r.int(1, 9) }]);
+    if (set.mat === 'paper') items.push(['held', { kind: 'brush', x: 170, y: 250, r: 70, brushc: '#2b2433' }]);
+    function tw(t) { return t.map(function (v) { return ['short', 'medium', 'tall', 'tallest'][v - 1]; }).join(', '); }
+    var steps = [{ text: 'The print has ' + (A.head === 'oval' ? 'an oval' : 'a ' + A.head) + ' head, and its teeth go: ' + tw(A.teeth) + (kr > 90 ? ' (it was pressed in upside down, so read it from the head)' : '') + '.', marks: [{ p: 'imp.print', pad: 2 }] }];
+    var byHead = keys.map(function (k, i) { return i; }).filter(function (i) { return keys[i].head !== A.head; });
+    if (byHead.length) steps.push({ text: (byHead.length > 1 ? 'Keys ' + andList(byHead.map(function (i) { return L[i]; })) + ' have the wrong head' : 'Key ' + L[byHead[0]] + ' has the wrong head') + ': ' + andList(byHead.map(function (i) { return keys[i].head === 'oval' ? 'oval' : keys[i].head; })) + '.', marks: byHead.map(function (i) { return { id: 'k' + L[i] }; }) });
+    var byT = keys.map(function (k, i) { return i; }).filter(function (i) { return keys[i].head === A.head && !keys[i].ans; });
+    if (byT.length) steps.push({ text: (byT.length > 1 ? 'Keys ' + andList(byT.map(function (i) { return L[i]; })) + ' have the right head, but their teeth don’t match' : 'Key ' + L[byT[0]] + ' has the right head, but its teeth don’t match') + (level === 'hard' ? ': check them one tooth at a time.' : '.'), marks: byT.map(function (i) { return { id: 'k' + L[i] }; }) });
+    steps.push({ text: 'Key ' + L[ans] + ' matches the print exactly.', marks: [{ id: 'k' + L[ans] }] });
+    return {
+      type: 'Which key', title: r.pick(set.title), setup: fill(set.setup, o4) + (kr > 90 ? ' The key was pressed in the other way up.' : ''), q: fill(set.q, o4), size: [400, 300], tap: true,
+      choices: keys.map(function (k, i) { return { id: 'k' + L[i], label: 'Key ' + L[i] }; }), answer: 'k' + L[ans],
+      scene: { bg: set.bg, items: items },
+      hints: [{ text: 'Check the shape of the key’s head in the print first.' }, { text: kr > 90 ? 'The print is upside down. Start from the head and compare the teeth one by one.' : 'Then compare the teeth one by one, starting from the head.', at: { p: 'imp.print', pad: 3 } }],
+      solution: { steps: steps, verdict: 'Key ' + L[ans] + (set.mat === 'soap' || set.mat === 'paper' ? ' opens the ' + lock + '.' : ' was copied.') },
+      key: 'keys|' + set.mat + '|' + JSON.stringify(A) + '|' + keys.map(function (k) { return k.head + k.teeth.join(''); }).join(',') + '|' + kr,
+      logic: { tpl: 'keys', print: A, keys: keys.map(function (k) { return { head: k.head, teeth: k.teeth }; }) }
+    };
+  };
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // TIMELINE: candles burning down, ice melting, shadows that don't fit
+  // ═════════════════════════════════════════════════════════════════════════
+  T.timeline = function (r, level, occ) {
+    var v = ['candles', 'ice', 'shadows'][(occ + hstr('timeline')) % 3];
+    if (r.chance(0.3)) v = r.pick(['candles', 'ice', 'shadows']);
+    return v === 'shadows' ? shadowAlibi(r, level) : burnOrMelt(r, level, v);
+  };
+  function burnOrMelt(r, level, v) {
+    var N = level === 'easy' ? 4 : 5, gds = []; for (var i = 0; i < N; i++) gds.push(r.pick(['f', 'm']));
+    var nm = names(r, gds, false), ask = level === 'hard' ? r.pick(['first', 'last', 'second']) : r.pick(['first', 'last']);
+    // amounts left: distinct, with a gap that suits the level
+    var amt = [], items = [], ids = nm.map(function (n2, i) { return 'p' + (i + 1); });
+    if (v === 'candles') {
+      var gap = level === 'easy' ? 9 : level === 'medium' ? 7 : 5, full = 56, lens = [];
+      var pool = []; for (var L = 10; L <= 50; L += gap) pool.push(L);
+      lens = r.sample(pool, N);
+      var holders = lens.map(function () { return r.pick([6, 8, 12, 20, 30, 40]); });
+      if (level !== 'easy') { var order = lens.map(function (l, i) { return i; }).sort(function (a, b) { return lens[a] - lens[b]; }); holders[order[0]] = 40; holders[order[N - 1]] = 6; }
+      amt = lens;
+      items.push(['window', { x: 16, y: 34, w: 60, h: 74, night: 1, frame: '#c9b48a', curtains: '#7a2e3a' }], ['frame', { x: 296, y: 22, w: 70, h: 44, art: r.pick(['mountain', 'boat']), bg: '#2a3a5a' }],
+        ['fireplace', { x: 100, y: 248, w: 200, h: 96, logs: 1, fire: 1, color: '#9a6a4a' }], ['svg', { svg: '<rect x="88" y="140" width="224" height="12" rx="2" fill="#6a4126" stroke="#2b2433" stroke-width="1.2"/>' }]);
+      var x0 = N === 5 ? 110 : 120, dx = N === 5 ? 45 : 54;
+      lens.forEach(function (l, i) { items.push(['candle', { id: ids[i], x: x0 + i * dx, y: 140, len: l, holder: holders[i], drips: r.int(0, 3), seed: r.int(1, 30), holderc: r.pick(['#c9a227', '#b8862a', '#9aa3ad', '#c98a5a']) }]); items.push(['label', { x: x0 + i * dx, y: 162, text: nm[i], s: 0.78 }]); });
+      items.push(['table', { x: 322, y: 282, w: 70, h: 46, color: '#8a5a34' }], ['candle', { id: 'ref', x: 356, y: 236, len: full, holder: 6, lit: false, holderc: '#9aa3ad' }], ['label', { x: 356, y: 250, text: 'New', s: 0.72 }], ['rug', { x: 200, y: 280, w: 200, color: '#7a2e3a' }]);
+      if (r.chance(0.6)) items.push(['cat', { x: 54, y: 280, color: r.pick(['#3a3a46', '#e3a35a', '#9a9aa6']), whiteChest: 1, dir: 'R' }]);
+    } else {
+      // glasses of lemonade with ice: everyone got four cubes when they arrived
+      var cubes = r.sample([0, 1, 2, 3, 4], N);
+      if (level === 'easy') cubes = r.sample([0, 1, 2, 3, 4], N);
+      amt = cubes;
+      items.push(sv(bunting(0, 400, 14, r.shuffle(FLAGS))), ['table', { x: 22, y: 250, w: 356, h: 50, cloth: r.pick(['#fbf6e6', '#e8f2fb']), clothPat: 'check', clothPc: r.pick(['#3a8ad8', '#e0607a', '#3aa65a']) }]);
+      var gx0 = N === 5 ? 60 : 72, gdx = N === 5 ? 58 : 70;
+      cubes.forEach(function (c, i) { items.push(['glass', { id: ids[i], x: gx0 + i * gdx, y: 196, s: 1.7, level: r.pick([0.45, 0.6, 0.75, 0.9]), ice: c, color: r.pick(['#f2d34a', '#f6e27a']), straw: r.pick(['#e0384a', '#3a8ad8', '#3aa65a', '#f2c230']) }]); items.push(['label', { x: gx0 + i * gdx, y: 214, text: nm[i], s: 0.78 }]); });
+      items.push(['svg', { svg: '<rect x="296" y="40" width="96" height="76" rx="4" fill="#fbf6e6" stroke="#2b2433" stroke-width="1.2"/>' }], ['glass', { id: 'ref', x: 344, y: 104, s: 1.7, level: 0.9, ice: 4, color: '#f2d34a' }], ['caption', { x: 344, y: 54, text: 'Just poured', size: 10, font: 'sans', weight: 700, fill: '#7a6a52' }]);
+      items.push(['sun', { x: 40, y: 50, r: 14 }]);
+    }
+    // order of arrival: more burnt / more melted = arrived earlier
+    var order = ids.map(function (id, i) { return i; }).sort(function (a, b) { return amt[a] - amt[b]; });
+    var ansI = ask === 'first' ? order[0] : ask === 'last' ? order[N - 1] : order[1];
+    var host = r.pick(['Grandma', 'Grandpa', 'Aunt Rose', 'Uncle Joe', 'Mum', 'Dad']);
+    var setup, q, steps = [], hints;
+    if (v === 'candles') {
+      setup = r.pick(['At the lake cabin, each cousin lit a brand-new candle on the mantel the moment they arrived.', 'On the night of the power cut, each of the cousins lit a new candle on the mantelpiece as soon as they got in.', 'At ' + poss(host) + ' cottage, every guest lights a new candle on the mantel when they arrive.']) + ' All the candles came from the same box and burn at the same speed. None has been blown out yet.';
+      q = 'Who got there ' + ask + '?';
+      steps.push({ text: 'A new candle from the box is this long, and every candle on the mantel started out the same.', marks: [{ id: 'ref', pad: 2 }] });
+      if (level !== 'easy') steps.push({ text: 'The holders are different heights, so the flames are no help. Only the wax counts: the shorter the candle, the longer it has burned.', marks: [] });
+      steps.push({ text: ask === 'first' ? poss(nm[ansI]) + ' candle is the shortest of all, so it has been burning the longest.' : ask === 'last' ? poss(nm[ansI]) + ' candle is the longest, so it was lit most recently.' : poss(nm[order[0]]) + ' candle is the shortest, and ' + poss(nm[ansI]) + ' is the next shortest.', marks: [{ id: ids[ansI], pad: -1 }].concat(ask === 'second' ? [{ id: ids[order[0]], pad: -1 }] : []) });
+      hints = [{ text: 'A candle gets shorter the longer it burns. Look at the wax, not the holders.' }, { text: 'Compare each candle with the new one on the side table.', at: { id: 'ref', pad: 4 } }];
+    } else {
+      setup = r.pick(['At ' + poss(host) + ' garden party, everyone got a glass of lemonade with four ice cubes the moment they arrived.', 'It was a scorching day. As each friend arrived at the picnic, ' + host + ' handed them a lemonade with four ice cubes in it.']) + ' The ice melts at the same speed in every glass. How much lemonade they have drunk doesn’t matter.';
+      q = 'Who arrived ' + ask + '?';
+      steps.push({ text: 'A freshly poured glass has four ice cubes. The longer a glass has been standing, the more ice has melted.', marks: [{ id: 'ref', pad: 2 }] });
+      steps.push({ text: ask === 'first' ? poss(nm[ansI]) + ' glass has the fewest ice cubes left' + (amt[ansI] === 0 ? ': they’ve all melted' : '') + ', so it has been standing the longest.' : ask === 'last' ? poss(nm[ansI]) + ' glass has the most ice left, so it was poured most recently.' : poss(nm[order[0]]) + ' glass has the fewest cubes, and ' + poss(nm[ansI]) + ' has the next fewest.', marks: [{ id: ids[ansI], pad: 2 }].concat(ask === 'second' ? [{ id: ids[order[0]], pad: 2 }] : []) });
+      hints = [{ text: 'Ice melts the longer it sits. Ignore how full the glasses are.' }, { text: 'Count the ice cubes in each glass.', at: { id: ids[order[1]], pad: 4 } }];
+    }
+    return {
+      type: 'Timeline', title: v === 'candles' ? r.pick(['Home Before Dark', 'Burning the Candle', 'Wax Works', 'Candlelight']) : r.pick(['On the Rocks', 'Melting Moments', 'Ice to Meet You', 'The Lemonade Clue']),
+      setup: setup, q: q, size: [400, 300], tap: true,
+      choices: ids.map(function (id, i) { return { id: id, label: nm[i] }; }), answer: ids[ansI],
+      scene: { bg: v === 'candles' ? ['room', { wall: '#2f3a52', paper: 'stripes', floorY: 248, floor: '#7a5233' }] : ['outside', { groundY: 210, ground: '#79b85a', hills: '#9fcf7a' }], items: items },
+      hints: hints, solution: { steps: steps, verdict: nm[ansI] + ' arrived ' + ask + '.' },
+      key: 'timeline|' + v + '|' + ask + '|' + amt.join(','),
+      logic: { tpl: 'timeline', v: v, ask: ask, amounts: amt }
+    };
+  }
+  function shadowAlibi(r, level) {
+    var N = 4, gds = []; for (var i = 0; i < N; i++) gds.push(r.pick(['f', 'm']));
+    var nm = names(r, gds, false), fake = r.int(0, N - 1), dirR = r.chance(0.5) ? 1 : -1, hour = r.pick([9, 10, 4, 5]);
+    var mode = level === 'easy' ? 'short' : level === 'medium' ? r.pick(['short', 'dir']) : 'dir';
+    var props = r.shuffle(['tree', 'pond', 'hay', 'sign']);
+    var farm = r.pick(['Clover Farm', 'Hill Top Farm', 'Meadow Farm', 'Brook Farm', 'Apple Tree Farm']);
+    function snap(i) {
+      var long = !(i === fake && mode === 'short'), d = i === fake && mode === 'dir' ? -dirR : dirR, items = [], len = long ? 46 : 4, prop = props[i], px = 64;
+      if (prop === 'tree') items.push(['castShadow', { x: px, y: 98, w: 6, len: long ? 24 : 3, th: 14, back: 0, head: false, op: 0.36, dir: d }], ['tree', { x: px, y: 98, size: 0.3 }]);
+      if (prop === 'pond') items.push(sv('<ellipse cx="66" cy="104" rx="20" ry="5" fill="#7cc0e8" stroke="#4a8ac2" stroke-width="1"/>'));
+      if (prop === 'hay') items.push(['castShadow', { x: px, y: 98, w: 20, len: long ? 22 : 3, head: false, op: 0.36, dir: d }], sv('<rect x="54" y="84" width="20" height="14" rx="3" fill="#e3c27a" stroke="#2b2433" stroke-width="1"/><path d="M56 89h16M56 93h16" stroke="#c9a24a" stroke-width="1"/>'));
+      if (prop === 'sign') items.push(['castShadow', { x: px, y: 98, w: 4, len: long ? 12 : 3, th: 5, back: 0, head: false, op: 0.36, dir: d }], ['sign', { x: 54, y: 78, w: 22, h: 12, text: 'EGGS', size: 6, post: 20, ink: '#7a4a2a' }]);
+      var cx = d > 0 ? 24 : 44;
+      if (prop === 'tree' || prop === 'hay' || prop === 'sign') cx = d > 0 ? 18 : 30;
+      items.push(['castShadow', { id: 'sh' + i, x: cx, y: 98, w: 12, len: len, th: 12, back: 0.02, op: 0.5, dir: d }]);
+      var L0 = look(r, gds[i], true); L0.armR = 'wave';
+      items.push(personItem(L0, 'kid' + i, cx, 98, 0.42, null));
+      if (mode === 'dir' && level === 'hard' && r.chance(0.4)) items.push(['cloud', { x: 60, y: 22, s: 0.5 }]);
+      else if (!long) items.push(['sun', { x: 46, y: 16, r: 6 }]);
+      return items;
+    }
+    var items = [], ref = [];
+    ref.push(['sun', { x: dirR > 0 ? 22 : 354, y: 30, r: 12 }], ['barn', { x: 60, y: 116, w: 120, h: 72 }], ['clock', { id: 'clk', x: 120, y: 32, r: 11, h: hour, m: 0, nums: 1 }]);
+    [214, 254, 294].forEach(function (x, k) { ref.push(['castShadow', { id: k ? null : 'postsh', x: x, y: 124, w: 6, len: 46, th: 9, back: 0.04, head: false, op: 0.48, dir: dirR }], ['post', { x: x, y: 124, h: 34 }]); });
+    ref.push(sv('<path d="M208 104h96M208 114h96" stroke="#8a5a34" stroke-width="2.4"/>'));
+    var skyA = hour < 12 ? '#bfe0f2' : '#f4c98a', skyB = hour < 12 ? '#eaf6fb' : '#fde9c8';
+    items.push(['photo', { x: 12, y: 10, w: 376, h: 150, caption: poss(r.pick(['Farmer Jo', 'Farmer Sam', 'Farmer Ruth', 'Farmer Ali'])) + ' photo at ' + hour + ' o’clock', r: -0.5, bg: ['outside', { groundY: 112, ground: '#86c66a', sky: skyA, sky2: skyB }], items: ref }]);
+    for (i = 0; i < N; i++) items.push(['photo', { id: 'ph' + i, x: 14 + i * 96, y: 196, w: 84, h: 112, caption: nm[i], r: [-3, 2, -1.5, 3][i], bg: ['outside', { groundY: 72, ground: '#86c66a', sky: skyA, sky2: skyB }], items: snap(i) }]);
+    var others = []; for (i = 0; i < N; i++) if (i !== fake) others.push(i);
+    var side = dirR > 0 ? 'right' : 'left', oside = dirR > 0 ? 'left' : 'right';
+    var steps = [{ text: 'In the farmer’s photo, taken at ' + hour + ' o’clock, the fence posts cast long shadows pointing to the ' + side + '.', marks: [{ id: 'clk' }, { id: 'postsh', pad: 2 }] },
+      { text: andList(others.map(function (k) { return nm[k]; })) + ' all have long shadows pointing ' + side + ' too, so their photos fit.', marks: others.map(function (k) { return { id: 'sh' + k, pad: 1 }; }) },
+      { text: mode === 'short' ? poss(nm[fake]) + ' shadow is just a little spot under ' + pron(gds[fake]).his + ' feet. The sun was high in the sky: that photo was taken around midday.' : poss(nm[fake]) + ' shadow points to the ' + oside + ', so the sun was on the other side of the sky. That photo was taken at a different time of day.', marks: [{ id: 'sh' + fake, pad: 4 }] }];
+    return {
+      type: 'Timeline', title: r.pick(['Shadows at ' + farm, 'The Shadow Knows', 'A Shady Alibi', 'Picture Perfect?']), size: [400, 340], tap: true,
+      setup: 'Someone left the gate of the goat pen open at ' + farm + ' at ' + hour + ' o’clock. Four helpers each showed the farmer a photo of themselves, taken at ' + hour + ' o’clock somewhere else on the farm. The farmer took a photo of the barn at exactly ' + hour + ' o’clock too. One alibi photo is a fake.',
+      q: r.pick(['Whose photo was NOT taken at ' + hour + ' o’clock?', 'Whose alibi photo is the fake?']),
+      choices: nm.map(function (n2, i) { return { id: 'ph' + i, label: n2 }; }), answer: 'ph' + fake,
+      scene: { bg: ['desk', { color: r.pick(['#7a5233', '#6e4a2e']) }], items: items },
+      hints: [{ text: 'The farmer’s photo shows how long the shadows were at ' + hour + ' o’clock, and which way they pointed.' }, { text: mode === 'short' ? 'Compare each helper’s shadow with the fence posts’ shadows.' : 'Check which way every shadow points.', at: { id: 'postsh', pad: 6 } }],
+      solution: { steps: steps, verdict: poss(nm[fake]) + ' photo is a fake. ' + nm[fake] + ' left the gate open.' },
+      key: 'timeline|shadows|' + mode + '|' + dirR + '|' + hour + '|' + fake + '|' + props.join(','),
+      logic: { tpl: 'timeline', v: 'shadows', mode: mode, fake: fake }
+    };
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // SEATING: a round table from above; find someone's place from their habits
+  // ═════════════════════════════════════════════════════════════════════════
+  // a habit: what it says, how to test a seat, and how to make a seat fit it or not
+  var HABITS = {
+    lefty: { say: ['{N} is left-handed, so {he} always swaps {his} knife and fork.', '{N} eats left-handed: {his} fork goes on the right.'], test: function (s) { return s.fork === 'R'; }, yes: function (s) { s.fork = 'R'; }, no: function (s) { s.fork = 'L'; }, part: 'fork', noS: 'fork on the left', yesS: 'knife and fork swapped', lv: 'emh' },
+    black: { say: ['{He} drinks {his} coffee black.', '{He} never takes milk in {his} coffee.'], test: function (s) { return s.cup === '#3a2414'; }, yes: function (s) { s.cup = '#3a2414'; }, no: function (s) { s.cup = '#c8a27a'; }, part: 'cup', noS: 'milky coffee', yesS: 'black coffee', lv: 'emh' },
+    milk: { say: ['{He} always has lots of milk in {his} coffee.', '{He} likes {his} coffee milky.'], test: function (s) { return s.cup === '#c8a27a'; }, yes: function (s) { s.cup = '#c8a27a'; }, no: function (s) { s.cup = '#3a2414'; }, part: 'cup', noS: 'black coffee', yesS: 'milky coffee', lv: 'emh' },
+    hat: { say: ['{He} hangs {his} hat on the back of {his} chair.', '{He} came in a hat and hung it on {his} chair.'], test: function (s) { return !!s.hat; }, yes: function (s, r) { s.hat = r.pick(['#3a4a6a', '#7a3b2a', '#2f3a2f']); s.scarf = null; s.bag = null; }, no: function (s, r) { s.hat = null; if (r.chance(0.5)) s[r.pick(['scarf', 'bag'])] = r.pick(['#c0392b', '#9b59b6', '#3a8a4a']); }, part: 'hat', noS: 'no hat', yesS: 'a hat', lv: 'emh', chair: 1 },
+    scarf: { say: ['{He} left {his} scarf on {his} chair.', '{He} hung {his} scarf over {his} chair.'], test: function (s) { return !!s.scarf; }, yes: function (s, r) { s.scarf = r.pick(['#c0392b', '#3a8a4a', '#e8862a']); s.hat = null; s.bag = null; }, no: function (s, r) { s.scarf = null; if (r.chance(0.5)) s[r.pick(['hat', 'bag'])] = r.pick(['#3a4a6a', '#9b59b6', '#7a3b2a']); }, part: 'scarf', noS: 'no scarf', yesS: 'a scarf', lv: 'mh', chair: 1 },
+    lipstick: { say: ['{He} wears bright red lipstick.', '{He} always wears red lipstick.'], test: function (s) { return !!s.lipstick; }, yes: function (s) { s.lipstick = 1; }, no: function (s) { s.lipstick = 0; }, part: 'cup', noS: 'no lipstick on the cup', yesS: 'lipstick on the cup', lv: 'mh', f: 1 },
+    sugar: { say: ['{He} takes a sugar lump with {his} coffee, but never eats it.', '{He} always asks for a sugar lump, then leaves it on the saucer.'], test: function (s) { return !!s.sugar; }, yes: function (s) { s.sugar = 1; }, no: function (s) { s.sugar = 0; }, part: 'cup', noS: 'no sugar lump', yesS: 'a sugar lump', lv: 'mh' },
+    peas: { say: ['{He} can’t stand peas and always leaves them.', '{He} never eats {his} peas.'], test: function (s) { return !!s.peas; }, yes: function (s) { s.peas = 1; }, no: function (s) { s.peas = 0; }, part: 'fork', noS: 'no peas left', yesS: 'peas left over', lv: 'h', plate: 1 },
+    cane: { say: ['{He} walks with a cane and props it against {his} chair.', '{He} leans {his} walking stick on {his} chair.'], test: function (s) { return !!s.cane; }, yes: function (s) { s.cane = 1; }, no: function (s) { s.cane = 0; }, part: 'cane', noS: 'no cane', yesS: 'a cane', lv: 'emh', chair: 1 }
+  };
+  var SEAT_SETS = [
+    { key: 'reunion', cloth: '#f7f2e6', chair: '#8a5a34', floor: '#b88a5e', setup: 'At the family reunion dinner, a gust of wind blew every place card off the table. {N} left {his} wallet behind, and {Host} wants to know where {he} sat.', q: 'Which seat was {N}’s?' },
+    { key: 'cafe', cloth: '#e8f2fb', chair: '#3a3a46', floor: '#c9a77a', setup: 'The book club met at the café, and somebody left a library book under the table. It’s {N}’s, but nobody remembers where {he} sat.', q: 'Where did {N} sit?' },
+    { key: 'birthday', cloth: '#fbe8ef', chair: '#c98a3a', floor: '#a8784a', setup: 'After {Host}’s birthday lunch, {N} phoned: {he} left {his} glasses case on {his} chair. Everyone has gone home, and the waiter needs to find the right seat.', q: 'Which seat was {N}’s?' },
+    { key: 'captain', cloth: '#f4efe4', chair: '#2f5a8a', floor: '#6a8aa8', setup: 'On the cruise ship, the captain’s dinner guests have all gone up on deck. {N} lost an earring at the table and wants to know which seat {he} had.', q: 'Which seat did {N} have?' }
+  ];
+  T.seating = function (r, level, occ) {
+    var set = SEAT_SETS[(occ + hstr('seat')) % SEAT_SETS.length]; if (r.chance(0.3)) set = r.pick(SEAT_SETS);
+    var N = level === 'easy' ? 5 : level === 'medium' ? 6 : r.pick([6, 7]), k = level === 'easy' ? 2 : level === 'medium' ? 3 : 4;
+    var gd = r.pick(['f', 'm']), lvc = level.charAt(0);
+    var pool = Object.keys(HABITS).filter(function (h) { return HABITS[h].lv.indexOf(lvc) >= 0 && (!HABITS[h].f || gd === 'f'); });
+    // never two habits about the same thing (cup colour, chair)
+    var K = [], usedCup = false, usedChair = false;
+    r.shuffle(pool).forEach(function (h) {
+      if (K.length >= k) return;
+      var H = HABITS[h];
+      if ((h === 'black' || h === 'milk') && usedCup) return;
+      if (H.chair && usedChair) return;
+      if (h === 'black' || h === 'milk') usedCup = true;
+      if (H.chair) usedChair = true;
+      K.push(h);
+    });
+    function blank() { return { food: r.pick(['#d98a3a', '#c9a24a', '#b8643a']), fork: r.chance(0.75) ? 'L' : 'R', cup: r.pick(['#3a2414', '#c8a27a']), cupSide: 'R' }; }
+    var seats = [], target = blank();
+    K.forEach(function (h) { HABITS[h].yes(target, r); });
+    // decoys: the first k each break exactly one habit; the rest break one or two
+    for (var i = 0; i < N - 1; i++) {
+      var s = JSON.parse(JSON.stringify(target)), br = i < k ? [K[i]] : r.sample(K, r.pick([1, 2]));
+      // a little extra variety on things that aren't clues
+      if (K.indexOf('lefty') < 0 && r.chance(0.3)) s.fork = r.pick(['L', 'R']);
+      if (K.indexOf('black') < 0 && K.indexOf('milk') < 0) s.cup = r.pick(['#3a2414', '#c8a27a']);
+      br.forEach(function (h) { HABITS[h].no(s, r); });
+      s.breaks = br;
+      seats.push(s);
+    }
+    target.breaks = [];
+    var pos = r.int(0, N - 1); seats.splice(pos, 0, target);
+    // things nobody's habits mention, so they can't help or hurt
+    seats.forEach(function (s) {
+      if (K.indexOf('hat') < 0 && K.indexOf('scarf') < 0 && !s.hat && !s.scarf && !s.bag && r.chance(0.3)) s.bag = r.pick(['#9b59b6', '#c0392b', '#3a6ea5']);
+      if (K.indexOf('lipstick') < 0) s.lipstick = gd === 'm' && r.chance(0.25) ? 1 : 0;
+      if (K.indexOf('sugar') < 0 && r.chance(0.25)) s.sugar = 1;
+      if (K.indexOf('peas') < 0 && r.chance(0.2)) s.peas = 1;
+    });
+    // safety: the target is the only seat that fits every habit
+    var fitsAll = seats.map(function (s) { return K.every(function (h) { return HABITS[h].test(s); }); });
+    var items = [];
+    items.push(['svg', { svg: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (i2) { return '<path d="M0 ' + (i2 * 32 + 14) + 'H400" stroke="' + MysteryScene_shade(set.floor) + '" stroke-width="1.2"/>'; }).join('') }]);
+    items.push(['svg', { svg: '<rect x="20" y="16" width="360" height="268" rx="16" fill="#7a2e3a" opacity=".5"/>' }]);
+    items.push(['troundtable', { x: 200, y: 150, r: 86, ss: 1.35, cs: 1.2, tagR: 34, tagDx: 34, cloth: set.cloth, chair: set.chair, seats: seats.map(function (s) { return { food: s.food, fork: s.fork, cup: s.cup, cupSide: 'R', hat: s.hat, scarf: s.scarf, bag: s.bag, cane: s.cane, lipstick: s.lipstick, sugar: s.sugar, peas: s.peas }; }) }]);
+    items.push(sv('<circle cx="200" cy="150" r="15" fill="#fff" stroke="#2b2433" stroke-width="1"/>' + [0, 1, 2, 3, 4].map(function (i3) { var a = i3 * 1.256; return '<circle cx="' + R1(200 + Math.cos(a) * 6) + '" cy="' + R1(150 + Math.sin(a) * 6) + '" r="3" fill="' + r.pick(['#e04a6a', '#f2c230', '#9b59b6']) + '" stroke="#2b2433" stroke-width=".6"/>'; }).join('')));
+    var nmT = names(r, [gd], false)[0], hostG = r.pick(['f', 'm']), host = hostG === 'f' ? r.pick(['Aunt Jen', 'Grandma', 'Aunt Mo', 'Mrs. ' + r.pick(SUR)]) : r.pick(['Uncle Al', 'Grandpa', 'Mr. ' + r.pick(SUR)]);
+    var titled = gd === 'f' ? r.pick(['Aunt ', 'Great-aunt ', '', 'Cousin ']) : r.pick(['Uncle ', 'Great-uncle ', '', 'Cousin ']), who = titled + nmT, pr = pron(gd);
+    var tt = { N: who, he: pr.he, He: pr.He, his: pr.his, Host: host };
+    var habitsText = K.map(function (h, j) { var t = r.pick(HABITS[h].say); if (j === 0) t = t.replace('{He}', '{N}'); return fill(t.replace(/^\{N\}/, j === 0 ? '{N}' : '{He}'), tt); }).join(' ');
+    var setup = fill(set.setup, tt) + ' ' + habitsText;
+    // solution: one habit at a time
+    var alive = seats.map(function () { return true; }), steps = [];
+    K.forEach(function (h) {
+      var H = HABITS[h], fit = [], out = [];
+      seats.forEach(function (s, i4) { if (!alive[i4]) return; if (H.test(s)) fit.push(i4); else { out.push(i4); alive[i4] = false; } });
+      var nos = out.map(function (i4) { return i4 + 1; });
+      var t = cap(H.yesS) + ' at seat' + (fit.length > 1 ? 's ' : ' ') + andList(fit.map(function (i4) { return String(i4 + 1); })) + (out.length ? '. Seat' + (nos.length > 1 ? 's ' : ' ') + andList(nos.map(String)) + (nos.length > 1 ? ' have ' : ' has ') + H.noS + '.' : '.');
+      if (h === 'lefty') t = (fit.length > 1 ? 'Seats ' : 'Seat ') + andList(fit.map(function (i4) { return String(i4 + 1); })) + (fit.length > 1 ? ' have' : ' has') + ' the knife and fork swapped' + (out.length ? '; the others have the fork on the left.' : '.');
+      steps.push({ text: t, marks: fit.slice(0, 4).map(function (i4) { return { p: 'seat' + (i4 + 1) + '.' + H.part, pad: 2 }; }) });
+    });
+    var last = steps[steps.length - 1]; last.text += ' Only seat ' + (pos + 1) + ' fits everything.';
+    return {
+      type: 'Seating', title: r.pick(['Where Did ' + who + ' Sit?', poss(who) + ' Seat', 'The Empty Chair', 'Table Manners', 'Take a Seat']).replace(/^(.{27}).*$/, 'Take a Seat'), setup: setup, q: fill(set.q, tt), size: [400, 300], tap: false,
+      choices: seats.map(function (s, i5) { return { id: 's' + (i5 + 1), label: 'Seat ' + (i5 + 1) }; }), answer: 's' + (pos + 1),
+      scene: { bg: ['top', { color: set.floor, texture: false }], items: items },
+      hints: [{ text: 'Check every place at the table for each of the ' + numw(k) + ' things ' + who + ' always does.' }, { text: 'Start with ' + { lefty: 'the knives and forks: most people keep the fork on their left', black: 'the coffee cups: which coffee is black?', milk: 'the coffee cups: which coffee is milky?', hat: 'the chairs: which has a hat on it?', scarf: 'the chairs: which has a scarf?', lipstick: 'the cups: which has lipstick on the rim?', sugar: 'the saucers: which has a sugar lump?', peas: 'the plates: who left peas?', cane: 'the chairs: which has a cane?' }[K[0]] + '.' }],
+      solution: { steps: steps, verdict: who + ' sat in seat ' + (pos + 1) + '.' },
+      key: 'seating|' + K.join(',') + '|' + JSON.stringify(seats.map(function (s) { return [s.fork, s.cup, s.hat ? 1 : 0, s.scarf ? 1 : 0, s.bag ? 1 : 0, s.cane ? 1 : 0, s.lipstick, s.sugar ? 1 : 0, s.peas ? 1 : 0]; })) + '|' + pos,
+      logic: { tpl: 'seating', habits: K, fits: fitsAll }
+    };
+  };
+  function MysteryScene_shade(c) { var x = rgb(c); return '#' + x.map(function (v) { return ('0' + Math.round(v * 0.85).toString(16)).slice(-2); }).join(''); }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // IMPOSTOR: a company logo on the van vs everyone's badge, or a portrait vs claimants
+  // ═════════════════════════════════════════════════════════════════════════
+  var FIRMS = [
+    { name: 'DRIP-FIX', sub: 'Plumbing', full: 'Drip-Fix Plumbing', job: 'a leaky sink', logo: { shape: 'drop', mark: 'wrench', color: '#2f8fd6' }, uni: '#1a9a9a', van: '#f4f4f4', stripe: '#1a9a9a', ink: '#16707a' },
+    { name: 'BRIGHT SPARK', sub: 'Electricians', full: 'Bright Spark Electricians', job: 'a broken light', logo: { shape: 'circle', mark: 'bolt', color: '#e8862a' }, uni: '#2b3a5a', van: '#f4f0e6', stripe: '#e8862a', ink: '#2b3a5a' },
+    { name: 'GREEN THUMB', sub: 'Gardeners', full: 'Green Thumb Gardeners', job: 'an overgrown hedge', logo: { shape: 'leaf', mark: 'bar', color: '#3a8a4a' }, uni: '#3a8a4a', van: '#f4f4f4', stripe: '#3a8a4a', ink: '#2a6a3a' },
+    { name: 'SAFE-LOCK', sub: 'Locksmiths', full: 'Safe-Lock Locksmiths', job: 'a stuck front-door lock', logo: { shape: 'shield', mark: 'dot', color: '#8a4aa0' }, uni: '#3a3a46', van: '#f4f0e6', stripe: '#8a4aa0', ink: '#5a2a6a' },
+    { name: 'HOMEFIX', sub: 'Builders', full: 'HomeFix Builders', job: 'a wobbly wall', logo: { shape: 'house', mark: 'bar', color: '#c0392b' }, uni: '#e8b830', van: '#f4f4f4', stripe: '#c0392b', ink: '#8a2a20' },
+    { name: 'STAR SHINE', sub: 'Window cleaners', full: 'Star Shine Window Cleaners', job: 'some very dirty windows', logo: { shape: 'star', mark: 'dot', color: '#e8b830' }, uni: '#3a6ea5', van: '#f4f4f4', stripe: '#3a6ea5', ink: '#2a4a7a' }
+  ];
+  T.impostor = function (r, level, occ) {
+    if (level === 'hard' && r.chance(0.6)) return portrait(r, level);
+    var F = FIRMS[(occ + hstr('firm')) % FIRMS.length]; if (r.chance(0.3)) F = r.pick(FIRMS);
+    var N = level === 'easy' ? 3 : 4, real = JSON.parse(JSON.stringify(F.logo));
+    var shapes = ['drop', 'circle', 'shield', 'star', 'house', 'leaf'], marks = ['wrench', 'bolt', 'bar', 'dot'], cols = ['#2f8fd6', '#e8862a', '#3a8a4a', '#8a4aa0', '#c0392b', '#e8b830'];
+    var hasTilt = real.mark === 'wrench' || real.mark === 'bolt' || real.mark === 'bar';
+    var fakes = [], sigs = {}; sigs[JSON.stringify(real)] = 1;
+    var modes = level === 'easy' ? ['shape', 'color', 'mark'] : level === 'medium' ? ['color', 'mark'].concat(hasTilt ? ['tilt', 'tilt'] : ['shape']) : (hasTilt ? ['tilt', 'mark', 'tilt'] : ['mark', 'color']);
+    var guard = 0;
+    while (fakes.length < N - 1 && guard++ < 100) {
+      var f = JSON.parse(JSON.stringify(real)), m = modes[fakes.length % modes.length];
+      if (m === 'shape') f.shape = r.pick(shapes.filter(function (x) { return x !== real.shape; }));
+      if (m === 'color') f.color = r.pick(cols.filter(function (x) { return cdist(x, real.color) > 90; }));
+      if (m === 'mark') f.mark = r.pick(marks.filter(function (x) { return x !== real.mark; }));
+      if (m === 'tilt') f.tilt = real.tilt === 'L' ? 'R' : 'L';
+      var sg = JSON.stringify(f); if (sigs[sg]) continue; sigs[sg] = 1; f.mode = m; fakes.push(f);
+    }
+    var people = r.shuffle([{ logo: real, real: true }].concat(fakes.map(function (f) { return { logo: f }; })));
+    var gds = people.map(function () { return r.pick(['f', 'm']); }), nm = names(r, gds, false), ans = people.map(function (p) { return !!p.real; }).indexOf(true);
+    var items = [['cloud', { x: 60, y: 34 }], ['house', { x: 236, y: 196, w: 156, h: 136, color: r.pick(['#e9d7b9', '#d8e2ea', '#f0d8c8']), roof: r.pick(['#4a5a6a', '#7a3a2a', '#3a4a3a']), door: r.pick(['#2f6a5a', '#7a2e3a', '#3a6ea5']) }], ['bush', { x: 386, y: 200, w: 30, flowers: '#e04a6a' }]];
+    items.push(['van', { id: 'van', x: 104, y: 214, s: 1.24, color: F.van, stripe: F.stripe, logo: real, name: F.name, sub: F.sub, ink: F.ink }]);
+    var sc = 0.98, x0 = N === 3 ? 232 : 196, dx = N === 3 ? 66 : 62;
+    people.forEach(function (p, i) {
+      var L0 = look(r, gds[i], false); L0.top = F.uni; L0.pat = 'plain'; L0.lc = F.uni === '#e8b830' ? '#3a3a46' : F.uni; L0.legs = 'pants'; L0.shoe = r.pick(['boot', 'sneaker']); L0.acc = []; if (r.chance(0.5)) { L0.armR = 'hold'; L0.holdR = 'toolbox'; }
+      var pi = personItem(L0, 'w' + i, x0 + i * dx, 290 - (i % 2) * 4, sc, nm[i], { tagY: 12, belt: '#2b2b33', tbc: r.pick(['#c0392b', '#3a6ea5', '#3a3a46']) });
+      pi[1].top = F.uni;
+      items.push(pi);
+      items.push(['logo', { x: x0 + i * dx + 7.5 * sc, y: 290 - (i % 2) * 4 - 77 * sc, r: 5.4, s: sc, logo: p.logo, p: 'w' + i + '.badge' }]);
+    });
+    var family = 'the ' + r.pick(SUR) + 's';
+    var setup = cap(family) + ' called ' + F.full + ' about ' + F.job + ', and the company’s van just parked outside. Then ' + numw(N) + ' people in work clothes knocked at the door, all saying they were from ' + F.full + '. ' + (N === 3 ? 'Two of them are' : 'Three of them are') + ' tricksters after a free lunch.';
+    function diff(f) {
+      if (f.mode === 'shape') return 'the wrong shape';
+      if (f.mode === 'color') return 'the wrong colour';
+      if (f.mode === 'mark') return 'a different sign inside';
+      return 'the sign inside facing the wrong way, like a copy made in a mirror';
+    }
+    var steps = [{ text: 'The real ' + F.full + ' logo is on the van. Look at its shape, its colour and the sign inside it' + (hasTilt ? ', and which way that sign leans' : '') + '.', marks: [{ p: 'van.logo', pad: 2 }] }];
+    people.forEach(function (p, i) { if (!p.real) steps.push({ text: poss(nm[i]) + ' badge has ' + diff(p.logo) + '.', marks: [{ p: 'w' + i + '.badge', pad: 3 }] }); });
+    steps.push({ text: poss(nm[ans]) + ' badge matches the van exactly.', marks: [{ p: 'w' + ans + '.badge', pad: 3 }] });
+    return {
+      type: 'Impostor', title: r.pick(['Who’s the Real ' + F.sub.replace(/s$/, '').replace('Window cleaner', 'Window Cleaner') + '?', 'Badge of Honour', 'The Copycat Workers', 'Spot the Fake']), setup: setup,
+      q: 'Who really works for ' + F.full + '?', size: [400, 300], tap: true,
+      choices: nm.map(function (n2, i) { return { id: 'w' + i, label: n2 }; }), answer: 'w' + ans,
+      scene: { bg: ['outside', { groundY: 186, ground: '#79b85a', walk: [196, 104], walkColor: '#d6cfc0' }], items: items },
+      hints: [{ text: 'Anyone can buy a work outfit. Compare everyone’s badge with the logo on the van.' }, { text: level === 'easy' ? 'Check the shape, the colour and the sign inside each badge.' : 'Look closely at the sign inside each badge, and which way it faces.', at: { p: 'van.logo', pad: 3 } }],
+      solution: { steps: steps, verdict: nm[ans] + ' is the real one.' },
+      key: 'impostor|logo|' + F.name + '|' + people.map(function (p) { return JSON.stringify(p.logo); }).join(';'),
+      logic: { tpl: 'impostor', v: 'logo', real: real, badges: people.map(function (p) { return p.logo; }) }
+    };
+  };
+  function portrait(r, level) {
+    var gd = r.pick(['f', 'm']), N = r.pick([3, 4]);
+    // permanent marks: mole (side), nicked ear (side), scar (side)
+    var kinds = r.sample(['mole', 'ear', 'scar'], level === 'hard' ? 3 : 2), A = {};
+    kinds.forEach(function (k) { A[k] = r.pick(['L', 'R']); });
+    var claim = [{ m: JSON.parse(JSON.stringify(A)), real: true }], sigs = {}; sigs[JSON.stringify(A)] = 1;
+    var modes = r.shuffle(['mirror', 'missing', 'oneside']), guard = 0;
+    while (claim.length < N && guard++ < 50) {
+      var m = JSON.parse(JSON.stringify(A)), md = modes[(claim.length - 1) % modes.length], why;
+      if (md === 'mirror') { kinds.forEach(function (k) { m[k] = A[k] === 'L' ? 'R' : 'L'; }); why = 'has the marks on the wrong sides, as if copied from a mirror'; }
+      else if (md === 'missing') { var k0 = r.pick(kinds); delete m[k0]; why = 'has no ' + { mole: 'mole', ear: 'nick in the ear', scar: 'scar' }[k0]; }
+      else { var k1 = r.pick(kinds); m[k1] = A[k1] === 'L' ? 'R' : 'L'; why = 'has the ' + { mole: 'mole', ear: 'nicked ear', scar: 'scar' }[k1] + ' on the wrong side'; }
+      var sg = JSON.stringify(m); if (sigs[sg]) continue; sigs[sg] = 1;
+      claim.push({ m: m, why: why });
+    }
+    claim = r.shuffle(claim);
+    var ans = claim.map(function (c) { return !!c.real; }).indexOf(true);
+    var title0 = gd === 'f' ? r.pick(['Lady', 'Duchess', 'Great-aunt']) : r.pick(['Lord', 'Sir', 'Great-uncle']), first = r.pick(gd === 'f' ? ['Ada', 'Beatrice', 'Clara', 'Edith', 'Florence', 'Harriet'] : ['Edmund', 'Albert', 'Cecil', 'Rupert', 'Hugo', 'Percy']), who = title0 + ' ' + first;
+    var manor = r.pick(['Blackwood Manor', 'Hollyhock Hall', 'Raven Court', 'Thornbury House', 'Ashcombe Hall']);
+    function acc(m, wall) { var a = []; if (m.mole) a.push('mole:' + m.mole + ':1.5'); if (m.ear) a.push('notch' + m.ear + ':' + wall); if (m.scar) a.push('scar:' + m.scar); return a; }
+    var wall = r.pick(['#3d5a4c', '#5a3d4c', '#3d4c5a']), skin = r.int(0, 5), hcN = r.pick(['black', 'brown', 'ginger', 'blond']);
+    var pItem = ['person', { id: 'sitter', x: 60, y: 300, s: 2.2, skin: skin, hair: gd === 'f' ? 'bun' : 'side', hc: HAIRC[hcN], top: '#f4f0e6', coat: r.pick(['#2f5a3a', '#5a2a3a', '#2b3a5a']), acc: acc(A, '#6a4a36').concat(gd === 'm' ? ['tie:#a8202e'] : ['necklace:#e8c34a']), stache: gd === 'm' && r.chance(0.5) ? 1 : 0, mouth: 'flat', blush: false }];
+    var items = [['frame', { id: 'portrait', x: 140, y: 8, w: 120, h: 110, color: '#c9a227', bg: '#7a5a3a', plate: who.toUpperCase(), items: [['svg', { svg: '<rect width="120" height="112" fill="#6a4a36"/><circle cx="60" cy="40" r="50" fill="#8a6a46" opacity=".5"/>' }], pItem] }],
+      ['lamp', { x: 36, y: 250, color: '#e8c34a', on: 1 }], ['plant', { x: 372, y: 250, s: 1.1, pot: '#7a3b2a' }], ['rug', { x: 200, y: 288, w: 340, color: '#7a2e3a' }]];
+    var xs = N === 3 ? [82, 200, 318] : [62, 152, 248, 338], gds = claim.map(function () { return gd; }), nm = names(r, gds, true);
+    claim.forEach(function (c, i) {
+      var L0 = look(r, gd, false); L0.skin = skin; L0.hcName = hcN; L0.hair = gd === 'f' ? r.pick(['bun', 'long', 'bob', 'pony', 'short']) : r.pick(['side', 'short', 'curly', 'spiky']);
+      L0.acc = acc(c.m, wall); if (gd === 'm' && r.chance(0.5)) L0.stache = 1; L0.glasses = null; L0.mouth = r.pick(['smile', 'flat', 'smirk']);
+      var it = personItem(L0, 'c' + i, xs[i], 294 + (i % 2) * 4, N === 3 ? 1.3 : 1.22, nm[i], { tagY: 12 });
+      if (gd === 'm' && r.chance(0.4)) it[1].beard = 1;
+      if (r.chance(0.5)) it[1].coat = r.pick(['#2b3a5a', '#5a3a22', '#2f5a3a', '#7a2e3a']);
+      items.push(it);
+    });
+    var markWords = { mole: 'a mole on the {s} cheek', ear: 'a nick in the {s} ear', scar: 'a little scar over the {s} eye' };
+    function partOf(k, side) { return k === 'mole' ? 'mole' : k === 'ear' ? 'ear' + side : 'scar'; }
+    // L/R in the picture are the viewer's; the sitter's own right is on our left
+    var desc = kinds.map(function (k) { return markWords[k].replace('{s}', A[k] === 'L' ? 'right' : 'left'); });
+    var steps = [{ text: 'In the portrait, ' + first + ' has ' + andList(desc) + '. (' + (gd === 'f' ? 'Her' : 'His') + ' right is on your left.)', marks: kinds.map(function (k) { return { p: 'sitter.' + partOf(k, A[k]), pad: 3 }; }) }];
+    claim.forEach(function (c, i) { if (!c.real) steps.push({ text: nm[i] + ' ' + c.why + '.', marks: [{ p: 'c' + i + '.head', pad: -4 }] }); });
+    steps.push({ text: nm[ans] + ' has changed ' + (gd === 'f' ? 'her' : 'his') + ' clothes and hair, but every mark is exactly where it should be.', marks: kinds.map(function (k) { return { p: 'c' + ans + '.' + partOf(k, A[k]), pad: 3 }; }) });
+    return {
+      type: 'Impostor', title: r.pick(['The Long-Lost ' + title0, 'The Return of ' + who, 'Who Is ' + who + '?', 'Portrait of a Fake']).replace(/^(.{28}).*$/, 'Portrait of a Fake'),
+      setup: numw(N).charAt(0).toUpperCase() + numw(N).slice(1) + ' people have arrived at ' + manor + ', each saying they are ' + who + ', who sailed away years ago. The butler compares them with ' + first + '’s portrait. Clothes, hair and beards can change, but some things can’t.',
+      q: 'Which one is the real ' + who + '?', size: [400, 320], tap: true,
+      choices: nm.map(function (n2, i) { return { id: 'c' + i, label: n2 }; }), answer: 'c' + ans,
+      scene: { bg: ['room', { wall: wall, paper: 'diamonds', floorY: 250, floor: '#6a4a32', rail: 160 }], items: items },
+      hints: [{ text: 'Ignore anything a person could change: clothes, hats, beards, haircuts.' }, { text: 'Compare the little marks on the face and ears with the portrait. Check which side each one is on.', at: { box: [140, 8, 120, 110] } }],
+      solution: { steps: steps, verdict: nm[ans] + ' is the real ' + who + '.' },
+      key: 'impostor|portrait|' + gd + '|' + JSON.stringify(A) + '|' + claim.map(function (c) { return JSON.stringify(c.m); }).join(';'),
+      logic: { tpl: 'impostor', v: 'portrait', real: A, claims: claim.map(function (c) { return c.m; }) }
+    };
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
   // Putting it together
   // ═════════════════════════════════════════════════════════════════════════
-  var TPL = ['culprit'];
+  var TPL = ['culprit', 'oddone', 'missing', 'tracks', 'keys', 'timeline', 'seating', 'impostor'];
   var DAILY_LV = ['hard', 'easy', 'easy', 'medium', 'medium', 'hard', 'hard']; // Sun..Sat, like the other dailies
   function levelFor(day) { return DAILY_LV[((day % 7) + 7) % 7]; } // day 1 (1 Jan 2024) was a Monday
   function blockPerm(b) { return RNG(hstr('mysteries-week-' + b)).shuffle(TPL); }
