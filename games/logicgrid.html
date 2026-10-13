@@ -1,0 +1,1792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logic Grids</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<style>
+:root{--pp:#fbf6e9;--pp-2:#f1e8d2;--pp-ink:#1d1b22;--pp-dim:#6b6455;--rule:rgba(29,27,34,.28);--graphite:#3a3a44;--lead:#8b8778;--ink-blue:#1f3a8a;--hint-ink:#1d7a46;--hl:#ffe36b;
+  --np-serif:Georgia,"Times New Roman",serif;--np-sans:"Helvetica Neue",Helvetica,Arial,sans-serif;}
+body.playing{height:100dvh;overflow:hidden;display:flex;flex-direction:column;}
+.lg{max-width:560px;margin:0 auto;padding:0 10px calc(var(--safe-b) + 10px);width:100%;}
+body.playing .lg{flex:1;min-height:0;display:flex;flex-direction:column;}
+.play{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;}
+.loading{min-height:60vh;display:grid;place-items:center;text-align:center;font-family:var(--hand);font-size:1.5rem;color:var(--text-2);}
+.loading .pc{display:block;width:64px;height:64px;margin:0 auto 10px;color:var(--text-2);animation:scrib 1s ease-in-out infinite;}
+@keyframes scrib{0%,100%{transform:translate(-8px,0) rotate(-8deg);}50%{transform:translate(8px,-4px) rotate(4deg);}}
+
+/* ── The puzzle-book page ─────────────────────────────────────────────── */
+.page{position:relative;flex:none;align-self:center;max-width:100%;border-radius:4px 4px 8px 8px;padding:8px 8px 6px;color:var(--pp-ink);
+  background:radial-gradient(rgba(120,90,40,.05) 1px, transparent 1.2px) 0 0/5px 5px,radial-gradient(140% 90% at 50% 0%,#fffdf6 0%,var(--pp) 65%,var(--pp-2) 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 2px 0 #e2d6b8,0 4px 0 #d8caa6,0 16px 34px rgba(0,0,0,.5);animation:pageIn .5s var(--ease) both;}
+@keyframes pageIn{from{transform:translateY(18px) rotate(-1deg);opacity:0;}to{transform:none;opacity:1;}}
+.ph{display:grid;grid-template-columns:1fr auto;align-items:end;column-gap:8px;padding:0 2px 5px;border-bottom:1.5px solid var(--pp-ink);margin-bottom:6px;font-family:var(--np-serif);min-width:0;}
+.ph .t{font-weight:700;font-size:.95rem;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;line-height:1.2;}
+.ph .no{grid-column:1;grid-row:2;font-style:italic;font-size:.78rem;color:var(--pp-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ph .tm{grid-column:2;grid-row:1/3;align-self:center;font-family:var(--hand);font-size:1.35rem;color:var(--ink);font-variant-numeric:tabular-nums;min-width:3em;text-align:right;}
+.page.roomy .ph{grid-template-columns:auto 1fr auto;align-items:baseline;}
+.page.roomy .ph .no{grid-column:2;grid-row:1;}
+.page.roomy .ph .tm{grid-column:3;grid-row:1;}
+.story.short{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;}
+.story.short::first-letter{font-size:1em;float:none;margin:0;font-weight:700;}
+.gwrap{position:relative;}
+.gview{position:relative;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-x pan-y;max-width:100%;scrollbar-width:thin;}
+.gview::-webkit-scrollbar{width:4px;height:4px;}.gview::-webkit-scrollbar-thumb{background:rgba(0,0,0,.25);border-radius:2px;}
+.grid{--lg-cs:28px;display:grid;width:max-content;position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;font-family:var(--np-sans);}
+.corner{grid-row:1/3;grid-column:1/3;position:sticky;top:0;left:0;z-index:6;background:var(--pp);display:flex;align-items:flex-end;justify-content:flex-end;padding:0 6px 6px 0;}
+.corner .zoom{display:none;align-items:center;gap:4px;border:0;border-radius:999px;padding:5px 9px 5px 7px;background:var(--pp-ink);color:var(--pp);font:800 .7rem var(--np-sans);letter-spacing:.04em;white-space:nowrap;box-shadow:0 2px 0 rgba(0,0,0,.25);}
+.corner .zoom:active{transform:scale(.94);}
+.corner .zoom .ico{width:15px;height:15px;}
+.grid.zoomed .corner .zoom,.grid.canzoom .corner .zoom{display:inline-flex;}
+.tc,.lc{display:flex;align-items:center;justify-content:center;background:var(--pp-ink);color:var(--pp);font:800 calc(var(--lg-lf) - 2px)/1 var(--np-sans);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;overflow:hidden;z-index:4;}
+.tc{position:sticky;top:0;grid-row:1;border-right:2px solid var(--pp);}
+.lc{position:sticky;left:0;grid-column:1;writing-mode:vertical-rl;transform:rotate(180deg);border-top:2px solid var(--pp);}
+.tl,.ll{background:var(--pp);color:var(--pp-ink);font:600 var(--lg-lf2,var(--lg-lf))/1.05 var(--np-sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:3;transition:background .15s,color .15s;}
+.tl{position:sticky;top:var(--lg-ch);grid-row:2;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:flex-start;padding:5px 0;border-left:1px solid var(--rule);}
+.ll{position:sticky;left:var(--lg-cw);grid-column:2;display:flex;align-items:center;justify-content:flex-end;padding:0 6px 0 4px;border-top:1px solid var(--rule);}
+.tl.e0{border-left:0;}.ll.e0{border-top:0;}
+.tl.hl,.ll.hl{background:var(--hl);color:#000;}
+.c{position:relative;background:#fffdf7;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);cursor:pointer;touch-action:manipulation;}
+.c.bl{border-left:2px solid var(--pp-ink);}.c.bt{border-top:2px solid var(--pp-ink);}
+.c.br{border-right:2px solid var(--pp-ink);}.c.bb{border-bottom:2px solid var(--pp-ink);}
+.c::before{content:"";position:absolute;inset:0;pointer-events:none;transition:background .15s;}
+.c.xr::before{background:rgba(255,214,60,.16);}
+.c.f::before{background:rgba(255,200,40,.42);}
+.c svg{position:absolute;inset:14%;width:72%;height:72%;overflow:visible;pointer-events:none;}
+.c svg path{fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.c .x path{stroke:var(--graphite);stroke-width:2.1;opacity:.88;}
+.c .x path.g{stroke-width:.9;opacity:.35;}
+.c.auto .x path{stroke:var(--lead);stroke-width:1.5;opacity:.65;}
+.c.auto .x path.g{display:none;}
+.c .ck path{stroke:var(--ink-blue);stroke-width:2.8;}
+.c .ck path.g{stroke-width:1.1;opacity:.4;}
+.c.hint .x path,.c.hint .ck path{stroke:var(--hint-ink);}
+.c.new path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw .16s ease-out forwards;}
+.c.new path:nth-child(3),.c.new path:nth-child(4){animation-delay:.09s;}
+.c.auto.new path{animation-duration:.12s;animation-delay:var(--dl,0s);}
+@keyframes draw{to{stroke-dashoffset:0;}}
+.c.erase::after{content:"";position:absolute;inset:18%;border-radius:40%;background:rgba(255,190,190,.0);animation:rub .3s ease-out;pointer-events:none;}
+@keyframes rub{0%{background:rgba(214,170,170,.55);transform:scale(.6);}100%{background:rgba(214,170,170,0);transform:scale(1.1);}}
+.c.bad::after{content:"";position:absolute;inset:6%;border:2px solid #d01b2a;border-radius:50%;animation:badpop .4s var(--spring) both;pointer-events:none;}
+@keyframes badpop{from{transform:scale(1.8);opacity:0;}to{transform:none;opacity:1;}}
+.c.ht::after{content:"";position:absolute;inset:-2px;border:3px solid var(--hint-ink);border-radius:5px;animation:ping 1.2s ease-out 2;pointer-events:none;z-index:2;}
+.c.src::after{content:"";position:absolute;inset:1px;border:2px dashed var(--hint-ink);border-radius:4px;pointer-events:none;}
+@keyframes ping{0%{transform:scale(1.5);opacity:0;}30%{transform:none;opacity:1;}100%{opacity:.85;}}
+.grid.won .c.solve svg{animation:pop .5s var(--spring) both;animation-delay:var(--wd,0s);}
+@keyframes pop{0%{transform:scale(.2);opacity:0;}100%{transform:none;opacity:1;}}
+.grid.won .c.mck svg{animation:hop .6s ease both;animation-delay:var(--wd,0s);}
+@keyframes hop{40%{transform:translateY(-22%) scale(1.25);}}
+
+/* Hint note: a sticky note on the page */
+.note{position:absolute;left:4px;right:4px;bottom:6px;z-index:8;display:none;align-items:flex-start;gap:9px;padding:9px 12px;border-radius:3px;background:linear-gradient(180deg,#fff3a6,#ffe678);color:#3a3000;font-family:var(--hand);font-size:1.08rem;line-height:1.22;box-shadow:0 8px 16px rgba(0,0,0,.35);transform:rotate(-.5deg);cursor:pointer;}
+.note.show{display:flex;animation:noteIn .35s var(--spring) both;}
+@keyframes noteIn{from{transform:translateY(14px) rotate(2deg);opacity:0;}to{transform:rotate(-.5deg);opacity:1;}}
+.note .ico{flex:none;width:21px;height:21px;color:#7a6200;margin-top:1px;}
+.note.bad{background:linear-gradient(180deg,#ffd9d2,#ffc2b6);color:#5a0e0e;}.note.bad .ico{color:#a8202e;}
+
+/* Tools: clean chrome */
+.tools{flex:none;display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.tool{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:52px;border:0;border-radius:14px;background:var(--w07);color:var(--text-2);font-weight:800;font-size:.72rem;white-space:nowrap;transition:transform .12s var(--spring),background .15s;}
+.tool .ico{width:22px;height:22px;}
+.tool:active{transform:scale(.93);background:var(--w14);}
+.tool:disabled{opacity:.35;}
+.tool.redo .ico{transform:scaleX(-1);}
+.tool.mode .mk{display:flex;align-items:center;gap:3px;height:22px;}
+.tool.mode .mk svg{width:18px;height:18px;transition:opacity .2s,transform .2s var(--spring);}
+.tool.mode .mk svg path{fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.tool.mode .mk .a{width:9px;height:9px;opacity:.6;}
+.tool.mode .mk .off{opacity:.22;transform:scale(.8);}
+.tool.mode.m1,.tool.mode.m2{background:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--text);}
+
+/* Clues and answers: a second sheet */
+.panel{flex:1;min-height:0;display:flex;flex-direction:column;border-radius:6px;color:var(--pp-ink);
+  background:linear-gradient(180deg,#fffdf6,var(--pp));box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 10px 26px rgba(0,0,0,.42);overflow:hidden;}
+.tabs{flex:none;display:flex;border-bottom:1.5px solid var(--pp-ink);margin:0 10px;}
+.tabs button{flex:1;border:0;background:none;padding:9px 4px 7px;font:700 .82rem var(--np-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--pp-dim);position:relative;}
+.tabs button.on{color:var(--pp-ink);}
+.tabs button.on::after{content:"";position:absolute;left:18%;right:18%;bottom:-1.5px;height:4px;background:var(--pp-ink);}
+.tabs b{display:inline-block;min-width:1.6em;margin-left:4px;padding:1px 5px;border-radius:999px;background:rgba(0,0,0,.08);font:700 .72rem var(--np-sans);letter-spacing:0;}
+.tabs b.bump{animation:bump .4s var(--spring);}
+@keyframes bump{40%{transform:scale(1.4);background:var(--hl);}}
+.pbody::-webkit-scrollbar{width:4px;}.pbody::-webkit-scrollbar-track{background:transparent;}.pbody::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:2px;}
+.pbody{scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.18) transparent;flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:10px 14px 14px;}
+.sec[hidden]{display:none;}
+.story{font-family:var(--np-serif);font-style:italic;font-size:.95rem;line-height:1.4;color:#3b372e;margin:0 0 10px;}
+.story::first-letter{float:left;font-style:normal;font-weight:700;font-size:2.6em;line-height:.85;margin:3px 6px 0 0;color:var(--pp-ink);}
+.sh{font:700 .74rem var(--np-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--pp-dim);margin:4px 0 6px;display:flex;align-items:center;gap:8px;}
+.sh::after{content:"";flex:1;height:1px;background:var(--rule);}
+.clues{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;}
+.cl{display:flex;gap:8px;padding:6px 6px;border-radius:6px;font-family:var(--np-serif);font-size:.98rem;line-height:1.36;cursor:pointer;-webkit-user-select:none;user-select:none;transition:background .15s;}
+.cl:active{background:rgba(0,0,0,.05);}
+.cl b{flex:none;min-width:1.4em;text-align:right;font-weight:700;}
+.cl .tx{background:linear-gradient(var(--graphite),var(--graphite)) no-repeat 0 55%/0% 1.6px;-webkit-box-decoration-break:clone;box-decoration-break:clone;transition:background-size .35s ease-out,color .3s;}
+.cl.done .tx{background-size:100% 1.6px;color:#8d877a;}
+.cl.done b{color:#a39d90;}
+.cl.hl .tx{background:linear-gradient(transparent 12%,rgba(255,226,80,.9) 12%,rgba(255,226,80,.9) 88%,transparent 88%) no-repeat 0 0/100% 100%;animation:marker .5s ease-out;}
+@keyframes marker{from{background-size:0% 100%;}}
+.ans{width:100%;border-collapse:collapse;font-family:var(--np-sans);font-size:.86rem;margin-top:2px;}
+.ans th{font:800 .66rem var(--np-sans);letter-spacing:.1em;text-transform:uppercase;color:var(--pp-dim);text-align:left;padding:4px 6px;border-bottom:1.5px solid var(--pp-ink);}
+.ans td,.ans tbody th{padding:6px 6px;border-bottom:1px solid var(--rule);text-align:left;}
+.ans tbody th{font:700 .9rem var(--np-serif);color:var(--pp-ink);letter-spacing:0;text-transform:none;white-space:nowrap;}
+.ans td span{font-family:var(--hand);font-size:1.12rem;color:var(--ink-blue);display:inline-block;line-height:1;}
+.ans td span.inf{color:var(--lead);}
+.ans td span.wr{animation:writeIn .35s ease-out;}
+@keyframes writeIn{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
+.ans tr.row-on td,.ans tr.row-on th{background:rgba(61,180,110,.16);transition:background .3s;}
+.ansbox{position:relative;}
+.stamp{position:absolute;right:4px;top:50%;z-index:2;padding:4px 12px;border:3px solid #c3182b;border-radius:6px;color:#c3182b;font:900 1.35rem var(--np-sans);letter-spacing:.14em;text-transform:uppercase;transform:translateY(-50%) rotate(-12deg);opacity:0;pointer-events:none;mix-blend-mode:multiply;}
+.stamp small{display:block;font:800 .62rem var(--np-sans);letter-spacing:.1em;text-align:center;}
+.stamp.on{animation:stamp .45s cubic-bezier(.2,1.6,.4,1) forwards;}
+@keyframes stamp{0%{opacity:0;transform:translateY(-50%) rotate(-12deg) scale(2.4);}60%{opacity:.95;transform:translateY(-50%) rotate(-12deg) scale(.94);}100%{opacity:.9;transform:translateY(-50%) rotate(-12deg) scale(1);}}
+
+/* Wide screens: page on the left, clues beside it */
+.lg.wide{max-width:1320px;}
+.lg.wide .play{display:grid;grid-template-columns:minmax(0,max-content) minmax(300px,400px);justify-content:center;grid-template-rows:auto auto 1fr;column-gap:22px;row-gap:12px;align-items:start;}
+.lg.wide .page{grid-column:1;grid-row:1;justify-self:center;}
+.lg.wide .tools{grid-column:1;grid-row:2;width:100%;max-width:460px;justify-self:center;}
+.lg.wide .panel{grid-column:2;grid-row:1/4;align-self:stretch;}
+.lg.wide .tabs{display:none;}
+.lg.wide .sec[hidden]{display:block;}
+.lg.wide #secA{margin-top:14px;}
+@media (min-width:700px){ .tool{min-height:58px;font-size:.78rem;} .cl{font-size:1.04rem;} .story{font-size:1rem;} }
+.mini-best td,.mini-best th{padding:6px 8px;}
+.numin{width:100%;min-height:52px;border-radius:14px;border:0;background:var(--w08);color:var(--text);font:800 1.4rem var(--font);text-align:center;}
+</style>
+</head>
+<body>
+<main class="lg" id="app"></main>
+<script>
+// ==ENGINE==
+// Logic grid engine: themes, a generator that only prints puzzles with one answer, a solver that
+// works the way people do (and grades by the hardest step it needed), clue wording and hints.
+var LG = (function () {
+  'use strict';
+  // ── Seeded random ──────────────────────────────────────────────────────
+  function rng(seed) {
+    var a = seed >>> 0;
+    return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  function hash(s) { s = String(s); var h = 2166136261 >>> 0; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
+  function ri(R, n) { return Math.floor(R() * n); }
+  function pick(a, R) { return a[ri(R, a.length)]; }
+  function shuffle(a, R) { for (var i = a.length - 1; i > 0; i--) { var j = ri(R, i + 1), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function range(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
+  var NUMW = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  function words(d, one, many) { return (d <= 10 ? NUMW[d] : String(d)) + ' ' + (d === 1 ? one : many); }
+
+  // ── Formatters for ordered categories ──────────────────────────────────
+  function clock(m) { var h = Math.floor(m / 60) % 12 || 12, mm = m % 60; return h + ':' + (mm < 10 ? '0' : '') + mm; }
+  function mins(d) { return d === 60 ? 'an hour' : d === 120 ? 'two hours' : d === 90 ? 'an hour and a half' : d === 30 ? 'half an hour' : d === 180 ? 'three hours' : d + ' minutes'; }
+  function money(c) { return '$' + (c % 100 ? (c / 100).toFixed(2) : String(c / 100)); }
+  function moneyD(c) { return c < 100 ? c + ' cents' : money(c); }
+  function nth(n) { var s = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th'; return n + s; }
+  var DAYS = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  var MONTHS = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  // ── Category builders ──────────────────────────────────────────────────
+  // A category: n (grid heading), s/sp (noun, plural), items (pool), and phrase templates where
+  // {x} is the item and {ax} is the item with "a"/"an":
+  //   np: the person described by it ("the dog owner"), is / no: said of someone ("owns the dog")
+  //   st: the story line ("adopted a different pet")
+  // Ordered categories add o: {vals, steps, exact, fmt, g (grid label), df (difference words),
+  //   gt, lt, gtd, ltd (comparisons, {d} = difference), nx (next to), noD (no exact differences)}
+  function C(id, n, s, items, np, is, no, st, x) {
+    var c = { id: id, n: n, s: s, sp: s + 's', items: items, np: np, is: is, no: no, st: st };
+    if (x) for (var k in x) c[k] = x[k];
+    return c;
+  }
+  function O(id, n, s, o, np, is, no, st, x) { var c = C(id, n, s, null, np, is, no, st, x); c.o = o; return c; }
+  function AGE(lo, hi, x) {
+    return O('age', 'Age', 'age', { vals: range(hi - lo + 1).map(function (i) { return lo + i; }), steps: [1, 2], fmt: String, df: function (d) { return words(d, 'year', 'years'); },
+      gt: 'is older than', lt: 'is younger than', gtd: 'is {d} older than', ltd: 'is {d} younger than' },
+      'the {x}-year-old', 'is {x}', "isn't {x}", 'is a different age', x);
+  }
+  function TIME(id, n, lo, hi, steps, verb, o) {
+    // verb: {is:'arrived at', no:"didn't arrive at", np:'the {x} arrival', gt:'arrived later than', lt:'arrived earlier than', gtd:'arrived {d} after', ltd:'arrived {d} before', st}
+    var v = []; for (var m = lo; m <= hi; m += 15) v.push(m);
+    return O(id, n, 'time', { vals: v, steps: steps, fmt: clock, df: mins, gt: verb.gt, lt: verb.lt, gtd: verb.gtd, ltd: verb.ltd, base: 15 }, verb.np, verb.is, verb.no, verb.st, o);
+  }
+  function PLACE(np, is, no, st, gt, lt, gtd, ltd, x) {
+    return O('place', 'Place', 'place', { vals: [1, 2, 3, 4, 5], exact: true, steps: [1], fmt: nth, df: function (d) { return words(d, 'place', 'places'); }, gt: gt, lt: lt, gtd: gtd, ltd: ltd },
+      np, is, no, st, x);
+  }
+  function WEEKDAY(id, n, verb) {
+    return O(id, n, 'day', { vals: [1, 2, 3, 4, 5, 6, 7], steps: [1], fmt: function (v) { return DAYS[v]; }, g: function (v) { return DAYS[v].slice(0, 3); }, df: function (d) { return words(d, 'day', 'days'); },
+      gt: verb.gt, lt: verb.lt, gtd: verb.gtd, ltd: verb.ltd, nx: verb.nx }, verb.np, verb.is, verb.no, verb.st);
+  }
+  function MONTH(verb) {
+    return O('month', 'Month', 'month', { vals: range(12).map(function (i) { return i + 1; }), steps: [1, 2], fmt: function (v) { return MONTHS[v]; }, g: function (v) { return MONTHS[v].slice(0, 3); }, df: function (d) { return words(d, 'month', 'months'); },
+      gt: verb.gt, lt: verb.lt, gtd: verb.gtd, ltd: verb.ltd }, verb.np, verb.is, verb.no, verb.st);
+  }
+  function NUM(id, n, s, lo, hi, base, steps, fmt, g, df, ph, x) {
+    var v = []; for (var m = lo; m <= hi; m += base) v.push(m);
+    return O(id, n, s, { vals: v, steps: steps, base: base, fmt: fmt, g: g, df: df, gt: ph.gt, lt: ph.lt, gtd: ph.gtd, ltd: ph.ltd, nx: ph.nx, noD: ph.noD }, ph.np, ph.is, ph.no, ph.st, x);
+  }
+  var COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'white', 'black', 'gray'];
+  var TOWNS = ['Oakley', 'Fairview', 'Millbrook', 'Riverton', 'Pinehurst', 'Elmwood', 'Lakeside', 'Ashford', 'Brookdale'];
+  function TOWN(np) { return C('town', 'Town', 'town', TOWNS, np || 'the one from {x}', 'is from {x}', "isn't from {x}", 'comes from a different town'); }
+
+  var NAMES = ['Ann', 'Ben', 'Cara', 'Dev', 'Ella', 'Finn', 'Gus', 'Hana', 'Ivy', 'Jack', 'Kai', 'Lena', 'Milo', 'Nora', 'Owen', 'Pia', 'Quinn', 'Rosa', 'Sam', 'Tess', 'Uma', 'Vic', 'Wes', 'Yara', 'Zoe',
+    'Abby', 'Cole', 'Dina', 'Eli', 'Faye', 'Gina', 'Hugo', 'Iris', 'Joel', 'Kira', 'Leo', 'Maya', 'Nick', 'Opal', 'Pete', 'Ruth', 'Seth', 'Tara', 'Vera', 'Will', 'Zack', 'Bea', 'Cal', 'Dot', 'Eve',
+    'Gil', 'Hal', 'June', 'Kim', 'Lou', 'Ned', 'Olga', 'Ray', 'Sue', 'Ted', 'Val', 'Amir', 'Bo', 'Chen', 'Dara', 'Emil', 'Femi', 'Ines', 'Jai', 'Luz', 'Mei', 'Nia', 'Omar', 'Ravi', 'Sana', 'Tomas', 'Yuki'];
+  var DOGS = ['Biscuit', 'Duke', 'Luna', 'Rosie', 'Ziggy', 'Pepper', 'Bandit', 'Coco', 'Scout', 'Maple', 'Otis', 'Hazel', 'Gizmo', 'Juno', 'Tucker', 'Willow', 'Kona', 'Rocky'];
+  var PEOPLE = { one: 'person', many: 'people', n: 'Name', s: 'person', sp: 'people' };
+
+  // ── Themes ─────────────────────────────────────────────────────────────
+  // intro: the first line of the story ({N} = "Four", {n} = "four"); who: what the people are called
+  var THEMES = [
+    { id: 'adopt', title: 'Adoption Day', who: { one: 'friend', many: 'friends' }, intro: '{N} friends each took home a new pet from the Maple Street shelter on open day.', cats: [
+      C('pet', 'Pet', 'pet', ['dog', 'cat', 'rabbit', 'parrot', 'hamster', 'turtle', 'ferret', 'goldfish', 'lizard'], 'the {x} owner', 'adopted the {x}', "didn't adopt the {x}", 'adopted a different animal'),
+      C('pname', 'Pet name', 'pet name', ['Biscuit', 'Pepper', 'Ziggy', 'Mochi', 'Rocket', 'Waffles', 'Noodle', 'Pickles', 'Bean'], "{x}'s owner", 'named the new pet {x}', "didn't name the pet {x}", 'chose a different name'),
+      C('collar', 'Collar', 'collar', COLORS.slice(0, 7), 'the one with the {x} collar', 'bought the {x} collar', "didn't buy the {x} collar", 'bought a different color collar'),
+      TIME('time', 'Time', 600, 780, [15, 30], { np: 'the {x} visitor', is: 'arrived at {x}', no: "didn't arrive at {x}", gt: 'arrived later than', lt: 'arrived earlier than', gtd: 'arrived {d} after', ltd: 'arrived {d} before', st: 'arrived at a different time' })
+    ] },
+    { id: 'pies', title: 'County Fair Pies', who: { one: 'baker', many: 'bakers' }, intro: '{N} bakers entered the pie contest at the county fair this summer.', cats: [
+      C('pie', 'Pie', 'pie', ['apple', 'cherry', 'peach', 'pecan', 'pumpkin', 'lemon', 'berry', 'rhubarb', 'plum'], 'the {x} pie baker', 'baked the {x} pie', "didn't bake the {x} pie", 'baked a different pie'),
+      C('secret', 'Secret', 'secret ingredient', ['cinnamon', 'nutmeg', 'honey', 'ginger', 'vanilla', 'maple', 'cardamom', 'orange zest'], 'the one who used {x}', 'used {x}', "didn't use {x}", 'added a different secret ingredient'),
+      PLACE('the {x}-place baker', 'placed {x}', "didn't place {x}", 'finished in a different place', 'finished behind', 'finished ahead of', 'finished {d} behind', 'finished {d} ahead of'),
+      TOWN('the baker from {x}'),
+      AGE(30, 70, { o2: 1 })
+    ] },
+    { id: 'camp', title: 'Camp Willow Creek', who: { one: 'camper', many: 'campers' }, intro: '{N} campers spent a week at Camp Willow Creek.', cats: [
+      C('cabin', 'Cabin', 'cabin', ['Bear', 'Eagle', 'Fox', 'Otter', 'Wolf', 'Hawk', 'Moose', 'Heron'], 'the camper in {x} Cabin', 'stayed in {x} Cabin', "didn't stay in {x} Cabin", 'stayed in a different cabin'),
+      C('activity', 'Activity', 'activity', ['archery', 'canoeing', 'crafts', 'hiking', 'swimming', 'drama', 'fishing', 'climbing'], 'the one who loved {x}', 'loved {x} most', "didn't pick {x}", 'loved a different activity', { sp: 'activities' }),
+      AGE(8, 13),
+      C('snack', 'Snack', 'snack', ["s'mores", 'popcorn', 'trail mix', 'apples', 'granola', 'pretzels', 'cookies'], 'the one who packed {x}', 'packed {x}', "didn't pack {x}", 'packed a different snack')
+    ] },
+    { id: 'bakesale', title: 'The Bake Sale', who: { one: 'neighbor', many: 'neighbors' }, intro: '{N} neighbors ran tables at the school bake sale on Saturday.', cats: [
+      C('treat', 'Treat', 'treat', ['brownies', 'cookies', 'cupcakes', 'muffins', 'scones', 'fudge', 'donuts', 'pie'], 'the one who made {x}', 'made {x}', "didn't make {x}", 'made a different treat'),
+      NUM('price', 'Price', 'price', 100, 400, 25, [25, 50], money, money, moneyD, { np: 'the one charging {x}', is: 'charged {x}', no: "didn't charge {x}", gt: 'charged more than', lt: 'charged less than', gtd: 'charged {d} more than', ltd: 'charged {d} less than', st: 'charged a different price' }),
+      C('cloth', 'Tablecloth', 'tablecloth', ['red', 'blue', 'green', 'yellow', 'white', 'purple', 'plaid'], 'the one with the {x} tablecloth', 'used the {x} tablecloth', "didn't use the {x} tablecloth", 'brought a different tablecloth'),
+      TIME('soldout', 'Sold out', 600, 840, [30, 60], { np: 'the one who sold out at {x}', is: 'sold out at {x}', no: "didn't sell out at {x}", gt: 'sold out later than', lt: 'sold out earlier than', gtd: 'sold out {d} after', ltd: 'sold out {d} before', st: 'sold out at a different time' })
+    ] },
+    { id: 'funrun', title: 'Charity Fun Run', who: { one: 'runner', many: 'runners' }, intro: '{N} runners took part in the charity fun run around the lake.', cats: [
+      PLACE('the {x}-place runner', 'finished {x}', "didn't finish {x}", 'finished in a different place', 'finished behind', 'finished ahead of', 'finished {d} behind', 'finished {d} ahead of'),
+      C('shirt', 'Shirt', 'shirt', COLORS.slice(0, 8), 'the runner in {x}', 'wore {x}', "didn't wear {x}", 'wore a different color shirt'),
+      C('cause', 'Cause', 'cause', ['zoo', 'library', 'hospital', 'food bank', 'park', 'school', 'museum'], 'the {x} fundraiser', 'ran for the {x}', "didn't run for the {x}", 'ran for a different cause'),
+      TOWN('the runner from {x}'),
+      AGE(20, 60)
+    ] },
+    { id: 'books', title: 'Book Club', who: { one: 'member', many: 'members' }, intro: '{N} members of the Tuesday book club each read something new this month.', cats: [
+      C('genre', 'Genre', 'genre', ['mystery', 'sci-fi', 'romance', 'history', 'poetry', 'fantasy', 'travel', 'cooking'], 'the {x} reader', 'read a {x} book', "didn't read a {x} book", 'read a different kind of book'),
+      NUM('pages', 'Pages', 'page count', 200, 600, 50, [50, 100], String, String, function (d) { return String(d); }, { np: 'the one who read {x} pages', is: 'read {x} pages', no: "didn't read {x} pages", gt: 'read more pages than', lt: 'read fewer pages than', gtd: 'read {d} more pages than', ltd: 'read {d} fewer pages than', st: 'read a book of a different length' }),
+      C('drink', 'Drink', 'drink', ['tea', 'coffee', 'cocoa', 'lemonade', 'cider', 'juice'], 'the {x} drinker', 'drank {x}', "didn't drink {x}", 'sipped a different drink'),
+      C('chair', 'Chair', 'chair', ['armchair', 'sofa', 'rocker', 'beanbag', 'stool', 'bench', 'recliner'], 'the one who took the {x}', 'took the {x}', "didn't take the {x}", 'took a different seat')
+    ] },
+    { id: 'science', title: 'Science Fair', who: { one: 'student', many: 'students' }, intro: '{N} students showed off their projects at the school science fair.', cats: [
+      C('project', 'Project', 'project', ['volcano', 'robot', 'rocket', 'crystal', 'magnet', 'battery', 'windmill', 'telescope'], 'the {x} maker', 'built the {x}', "didn't build the {x}", 'built a different project'),
+      NUM('score', 'Score', 'score', 70, 100, 1, [2, 3, 5], String, String, function (d) { return words(d, 'point', 'points'); }, { np: 'the one who scored {x}', is: 'scored {x}', no: "didn't score {x}", gt: 'scored higher than', lt: 'scored lower than', gtd: 'scored {d} more than', ltd: 'scored {d} less than', st: 'got a different score' }),
+      NUM('grade', 'Grade', 'grade', 3, 8, 1, [1], nth, nth, function (d) { return words(d, 'grade', 'grades'); }, { np: 'the {x} grader', is: 'is in {x} grade', no: "isn't in {x} grade", gt: 'is in a higher grade than', lt: 'is in a lower grade than', gtd: 'is {d} above', ltd: 'is {d} below', st: 'is in a different grade' }),
+      C('poster', 'Poster', 'poster', COLORS.slice(0, 7), 'the one with the {x} poster', 'made {ax} poster', "didn't make {ax} poster", 'made a different color poster')
+    ] },
+    { id: 'garden', title: 'Community Garden', who: { one: 'gardener', many: 'gardeners' }, intro: '{N} gardeners share a row of plots in the community garden.', cats: [
+      C('veg', 'Crop', 'crop', ['tomatoes', 'beans', 'carrots', 'peppers', 'squash', 'lettuce', 'corn', 'peas', 'onions'], 'the one growing {x}', 'grows {x}', "doesn't grow {x}", 'grows a different crop'),
+      NUM('plot', 'Plot', 'plot', 1, 5, 1, [1], function (v) { return 'plot ' + v; }, String, function (d) { return words(d, 'plot', 'plots'); }, { np: 'the gardener in {x}', is: 'has {x}', no: "doesn't have {x}", gt: 'has a higher-numbered plot than', lt: 'has a lower-numbered plot than', gtd: 'is {d} farther along the row than', ltd: 'is {d} nearer the gate than', nx: 'has the plot right next to', st: 'has a different plot' }, { exact: true }),
+      C('flower', 'Flower', 'flower', ['sunflowers', 'roses', 'tulips', 'daisies', 'lilies', 'marigolds', 'poppies', 'irises'], 'the one who planted {x}', 'planted {x}', "didn't plant {x}", 'planted a different flower'),
+      WEEKDAY('day', 'Day', { np: 'the one who waters on {x}', is: 'waters on {x}', no: "doesn't water on {x}", gt: 'waters later in the week than', lt: 'waters earlier in the week than', gtd: 'waters {d} after', ltd: 'waters {d} before', nx: 'waters the day before or after', st: 'waters on a different day' })
+    ] },
+    { id: 'talent', title: 'Talent Show', who: { one: 'student', many: 'students' }, intro: '{N} students took the stage at the spring talent show.', cats: [
+      C('act', 'Act', 'act', ['juggler', 'magician', 'singer', 'dancer', 'comedian', 'pianist', 'drummer', 'poet'], 'the {x}', 'was the {x}', "wasn't the {x}", 'had a different act'),
+      O('order', 'Order', 'spot in the lineup', { vals: [1, 2, 3, 4, 5], exact: true, steps: [1], fmt: nth, df: function (d) { return words(d, 'act', 'acts'); }, gt: 'went on later than', lt: 'went on earlier than', gtd: 'went on {d} after', ltd: 'went on {d} before', nx: 'went on right before or after' },
+        'the {x} act', 'went on {x}', "didn't go on {x}", 'went on at a different point in the show', { sp: 'spots' }),
+      C('outfit', 'Outfit', 'outfit', ['gold', 'silver', 'red', 'black', 'white', 'blue', 'green'], 'the one in {x}', 'wore {x}', "didn't wear {x}", 'wore a different color'),
+      NUM('grade', 'Grade', 'grade', 3, 8, 1, [1], nth, nth, function (d) { return words(d, 'grade', 'grades'); }, { np: 'the {x} grader', is: 'is in {x} grade', no: "isn't in {x} grade", gt: 'is in a higher grade than', lt: 'is in a lower grade than', gtd: 'is {d} above', ltd: 'is {d} below', st: 'is in a different grade' })
+    ] },
+    { id: 'icecream', title: 'Ice Cream Social', who: { one: 'friend', many: 'friends' }, intro: '{N} friends stopped at the Scoop Shack after the parade.', cats: [
+      C('flavor', 'Flavor', 'flavor', ['vanilla', 'chocolate', 'mint', 'strawberry', 'pistachio', 'mango', 'coffee', 'cherry'], 'the {x} fan', 'chose {x}', "didn't choose {x}", 'picked a different flavor'),
+      C('topping', 'Topping', 'topping', ['sprinkles', 'fudge', 'nuts', 'caramel', 'cherries', 'marshmallow', 'cookie bits'], 'the one who added {x}', 'added {x}', "didn't add {x}", 'added a different topping'),
+      C('holder', 'Served in', 'serving', ['cone', 'cup', 'waffle', 'bowl', 'sundae', 'shake'], 'the one with the {x}', 'got a {x}', "didn't get a {x}", 'had it served a different way'),
+      NUM('price', 'Price', 'price', 200, 500, 25, [25, 50], money, money, moneyD, { np: 'the one who paid {x}', is: 'paid {x}', no: "didn't pay {x}", gt: 'paid more than', lt: 'paid less than', gtd: 'paid {d} more than', ltd: 'paid {d} less than', st: 'paid a different price' })
+    ] },
+    { id: 'trips', title: 'Summer Trips', who: { one: 'traveler', many: 'travelers' }, intro: '{N} coworkers each took a big trip this year.', cats: [
+      C('city', 'City', 'city', ['Paris', 'Rome', 'Tokyo', 'Cairo', 'Lima', 'Oslo', 'Sydney', 'Dublin', 'Lisbon'], 'the one who went to {x}', 'went to {x}', "didn't go to {x}", 'visited a different city', { sp: 'cities' }),
+      C('transport', 'Travel', 'way to travel', ['train', 'plane', 'ship', 'bus', 'car', 'ferry'], 'the one who went by {x}', 'traveled by {x}', "didn't travel by {x}", 'traveled a different way', { sp: 'ways to travel' }),
+      MONTH({ np: 'the one who left in {x}', is: 'left in {x}', no: "didn't leave in {x}", gt: 'left later in the year than', lt: 'left earlier in the year than', gtd: 'left {d} after', ltd: 'left {d} before', st: 'left in a different month' }),
+      C('souvenir', 'Souvenir', 'souvenir', ['hat', 'mug', 'scarf', 'postcard', 'magnet', 'T-shirt', 'keychain', 'snow globe'], 'the one who brought back a {x}', 'brought back a {x}', "didn't bring back a {x}", 'brought home a different souvenir')
+    ] },
+    { id: 'birthdays', title: 'Birthday Club', who: { one: 'kid', many: 'kids' }, intro: '{N} kids in Ms. Reed\'s class are planning their birthday parties.', cats: [
+      MONTH({ np: 'the one born in {x}', is: 'was born in {x}', no: "wasn't born in {x}", gt: 'has a later birthday than', lt: 'has an earlier birthday than', gtd: 'has a birthday {d} after', ltd: 'has a birthday {d} before', st: 'was born in a different month' }),
+      C('cake', 'Cake', 'cake', ['chocolate', 'carrot', 'lemon', 'marble', 'coconut', 'banana', 'vanilla'], 'the one who wants {x} cake', 'wants {x} cake', "doesn't want {x} cake", 'wants a different cake'),
+      C('gift', 'Gift', 'gift', ['bike', 'book', 'puzzle', 'kite', 'camera', 'guitar', 'skates', 'telescope'], 'the one who asked for a {x}', 'asked for a {x}', "didn't ask for a {x}", 'asked for a different gift'),
+      O('age', 'Turning', 'age', { vals: [6, 7, 8, 9, 10, 11, 12], steps: [1], fmt: String, df: function (d) { return words(d, 'year', 'years'); }, gt: 'is turning older than', lt: 'is turning younger than', gtd: 'is turning {d} older than', ltd: 'is turning {d} younger than' }, 'the one turning {x}', 'is turning {x}', "isn't turning {x}", 'is turning a different age')
+    ] },
+    { id: 'fishing', title: 'Fishing Derby', who: { one: 'angler', many: 'anglers' }, intro: '{N} anglers each landed one big fish at the spring fishing derby.', cats: [
+      C('fish', 'Fish', 'fish', ['bass', 'trout', 'perch', 'catfish', 'pike', 'carp', 'walleye', 'salmon'], 'the one who caught the {x}', 'caught the {x}', "didn't catch the {x}", 'caught a different fish', { sp: 'fish' }),
+      NUM('weight', 'Weight', 'weight', 2, 14, 1, [1, 2], function (v) { return v + ' lb'; }, function (v) { return v + ' lb'; }, function (d) { return words(d, 'pound', 'pounds'); }, { np: 'the one with the {x} fish', is: 'landed {ax} fish', no: "didn't land {ax} fish", gt: 'landed a heavier fish than', lt: 'landed a lighter fish than', gtd: 'landed a fish {d} heavier than', ltd: 'landed a fish {d} lighter than', st: 'landed a fish of a different weight' }),
+      C('lake', 'Lake', 'lake', ['Mirror', 'Pine', 'Clear', 'Deer', 'Silver', 'Long', 'Echo', 'Loon'], 'the one at {x} Lake', 'fished at {x} Lake', "didn't fish at {x} Lake", 'fished a different lake'),
+      C('bait', 'Bait', 'bait', ['worms', 'minnows', 'crickets', 'corn', 'spinners', 'flies', 'shrimp'], 'the one using {x}', 'used {x}', "didn't use {x}", 'used different bait', { sp: 'baits' })
+    ] },
+    { id: 'music', title: 'Music Lessons', who: { one: 'student', many: 'students' }, intro: '{N} students take lessons at the Harmony Music School.', cats: [
+      C('instr', 'Instrument', 'instrument', ['piano', 'violin', 'guitar', 'drums', 'flute', 'cello', 'trumpet', 'harp'], 'the {x} student', 'plays the {x}', "doesn't play the {x}", 'plays a different instrument'),
+      WEEKDAY('day', 'Day', { np: 'the one with lessons on {x}', is: 'has lessons on {x}', no: "doesn't have lessons on {x}", gt: 'has lessons later in the week than', lt: 'has lessons earlier in the week than', gtd: 'has lessons {d} after', ltd: 'has lessons {d} before', nx: 'has lessons the day before or after', st: 'has lessons on a different day' }),
+      C('teacher', 'Teacher', 'teacher', ['Mr. Hale', 'Ms. Ortiz', 'Mrs. Kemp', 'Mr. Duval', 'Ms. Price', 'Mr. Lund', 'Ms. Akers'], "{x}'s student", 'studies with {x}', "doesn't study with {x}", 'studies with a different teacher'),
+      NUM('years', 'Years', 'years of playing', 1, 8, 1, [1], function (v) { return v === 1 ? 'one year' : words(v, 'year', 'years'); }, String, function (d) { return words(d, 'year', 'years'); }, { np: 'the one who has played for {x}', is: 'has played for {x}', no: "hasn't played for {x}", gt: 'has played longer than', lt: 'has played for less time than', gtd: 'has played {d} longer than', ltd: 'has played {d} less than', st: 'has played for a different number of years' })
+    ] },
+    { id: 'elm', title: 'Elm Street', who: { one: 'neighbor', many: 'neighbors' }, intro: '{N} neighbors live side by side on the short stretch of Elm Street.', cats: [
+      NUM('house', 'House', 'house', 2, 10, 2, [2], function (v) { return 'No. ' + v; }, String, function (d) { return words(d / 2, 'house', 'houses'); }, { np: 'the one at {x}', is: 'lives at {x}', no: "doesn't live at {x}", gt: 'lives at a higher number than', lt: 'lives at a lower number than', nx: 'lives next door to', noD: true, st: 'lives at a different house' }, { exact: true }),
+      C('door', 'Door', 'door', ['red', 'blue', 'green', 'yellow', 'black', 'white', 'teal'], 'the one with the {x} door', 'has {ax} door', "doesn't have {ax} door", 'painted the front door a different color'),
+      C('pet', 'Pet', 'pet', ['dog', 'cat', 'rabbit', 'parrot', 'hamster', 'turtle', 'goldfish'], 'the {x} owner', 'has a {x}', "doesn't have a {x}", 'keeps a different pet'),
+      C('job', 'Job', 'job', ['baker', 'nurse', 'pilot', 'teacher', 'plumber', 'chef', 'artist', 'dentist'], 'the {x}', 'is {ax}', "isn't {ax}", 'has a different job'),
+      C('car', 'Car', 'car', ['sedan', 'pickup', 'van', 'coupe', 'wagon', 'jeep', 'hatchback'], 'the {x} driver', 'drives {ax}', "doesn't drive {ax}", 'drives a different car')
+    ] },
+    { id: 'league', title: 'Rec League', who: { one: 'player', many: 'players' }, intro: '{N} friends signed up for the town rec league this fall.', cats: [
+      C('sport', 'Sport', 'sport', ['soccer', 'tennis', 'hockey', 'baseball', 'golf', 'volleyball', 'lacrosse'], 'the {x} player', 'plays {x}', "doesn't play {x}", 'plays a different sport'),
+      NUM('number', 'Number', 'jersey number', 2, 24, 1, [1, 2, 3], function (v) { return 'number ' + v; }, String, String, { np: 'the one wearing {x}', is: 'wears {x}', no: "doesn't wear {x}", gt: 'wears a higher number than', lt: 'wears a lower number than', gtd: "wears a number that's {d} higher than", ltd: "wears a number that's {d} lower than", st: 'wears a different number' }),
+      C('team', 'Team', 'team', ['Tigers', 'Hawks', 'Sharks', 'Bears', 'Comets', 'Rockets', 'Owls'], 'the {x} player', 'plays for the {x}', "doesn't play for the {x}", 'plays for a different team'),
+      WEEKDAY('day', 'Practice', { np: 'the one who practices on {x}', is: 'practices on {x}', no: "doesn't practice on {x}", gt: 'practices later in the week than', lt: 'practices earlier in the week than', gtd: 'practices {d} after', ltd: 'practices {d} before', nx: 'practices the day before or after', st: 'practices on a different day' })
+    ] },
+    { id: 'cafe', title: 'The Corner Cafe', who: { one: 'regular', many: 'regulars' }, intro: '{N} regulars came into the Corner Cafe one rainy morning.', cats: [
+      C('drink', 'Drink', 'drink', ['latte', 'mocha', 'espresso', 'chai', 'cocoa', 'tea', 'cortado'], 'the {x} drinker', 'ordered {ax}', "didn't order {ax}", 'ordered a different drink'),
+      C('pastry', 'Pastry', 'pastry', ['croissant', 'muffin', 'bagel', 'scone', 'danish', 'cookie', 'donut'], 'the one with the {x}', 'got {ax}', "didn't get {ax}", 'got a different pastry', { sp: 'pastries' }),
+      TIME('time', 'Arrived', 420, 600, [15, 30], { np: 'the {x} arrival', is: 'came in at {x}', no: "didn't come in at {x}", gt: 'came in later than', lt: 'came in earlier than', gtd: 'came in {d} after', ltd: 'came in {d} before', st: 'came in at a different time' }),
+      C('paper', 'Reading', 'page', ['sports', 'comics', 'news', 'puzzle', 'travel', 'weather', 'food'], 'the {x} page reader', 'read the {x} page', "didn't read the {x} page", 'read a different page of the paper')
+    ] },
+    { id: 'art', title: 'Art Class Sale', who: { one: 'artist', many: 'artists' }, intro: '{N} artists from the Thursday night class sold one piece each at the gallery show.', cats: [
+      C('medium', 'Medium', 'medium', ['watercolor', 'oils', 'charcoal', 'clay', 'pastels', 'ink', 'collage'], 'the one who worked in {x}', 'worked in {x}', "didn't work in {x}", 'worked in a different medium', { sp: 'mediums' }),
+      C('subject', 'Subject', 'subject', ['lighthouse', 'horse', 'sunset', 'fruit bowl', 'city', 'garden', 'owl'], 'the {x} artist', 'made the {x} piece', "didn't make the {x} piece", 'chose a different subject'),
+      NUM('price', 'Price', 'price', 2000, 9000, 500, [500, 1000], money, money, moneyD, { np: 'the one whose piece sold for {x}', is: 'sold a piece for {x}', no: "didn't sell for {x}", gt: 'sold for more than', lt: 'sold for less than', gtd: 'sold for {d} more than', ltd: 'sold for {d} less than', st: 'sold for a different price' }),
+      C('frame', 'Frame', 'frame', ['gold', 'silver', 'black', 'white', 'oak', 'walnut', 'blue'], 'the one with the {x} frame', 'chose {ax} frame', "didn't choose {ax} frame", 'chose a different frame')
+    ] },
+    { id: 'dogshow', title: 'Dog Show', anchor: { n: 'Dog', s: 'dog', sp: 'dogs', items: DOGS }, who: { one: 'dog', many: 'dogs' }, intro: '{N} dogs competed for Best in Show at the Riverside Dog Show.', cats: [
+      C('breed', 'Breed', 'breed', ['poodle', 'beagle', 'boxer', 'collie', 'terrier', 'pug', 'corgi', 'husky'], 'the {x}', 'is {ax}', "isn't {ax}", 'is a different breed'),
+      C('owner', 'Owner', 'owner', ['Ann', 'Ben', 'Cara', 'Dev', 'Ella', 'Gus', 'Hana', 'Ivy', 'Nora', 'Sam'], "{x}'s dog", 'belongs to {x}', "doesn't belong to {x}", 'has a different owner'),
+      PLACE('the {x}-place dog', 'placed {x}', "didn't place {x}", 'placed differently', 'placed behind', 'placed ahead of', 'placed {d} behind', 'placed {d} ahead of'),
+      C('trick', 'Trick', 'trick', ['roll over', 'sit up', 'spin', 'fetch', 'high-five', 'play dead', 'bow'], 'the dog that can {x}', 'can {x}', "can't {x}", 'knows a different trick'),
+      O('age', 'Age', 'age', { vals: [1, 2, 3, 4, 5, 6, 7, 8, 9], steps: [1], fmt: String, df: function (d) { return words(d, 'year', 'years'); }, gt: 'is older than', lt: 'is younger than', gtd: 'is {d} older than', ltd: 'is {d} younger than' }, 'the {x}-year-old', 'is {x}', "isn't {x}", 'is a different age')
+    ] },
+    { id: 'mystery', title: 'Mystery Dinner', who: { one: 'guest', many: 'guests' }, intro: '{N} guests came in costume to a murder mystery dinner at the old manor.', cats: [
+      C('costume', 'Costume', 'costume', ['pirate', 'wizard', 'detective', 'astronaut', 'knight', 'chef', 'cowboy', 'pilot'], 'the {x}', 'dressed as {ax}', "didn't dress as {ax}", 'came as a different character'),
+      C('dessert', 'Dessert', 'dessert', ['pie', 'cake', 'trifle', 'cookies', 'tart', 'pudding', 'brownies'], 'the one who brought the {x}', 'brought the {x}', "didn't bring the {x}", 'brought a different dessert'),
+      TIME('time', 'Arrived', 1080, 1260, [15, 30], { np: 'the {x} arrival', is: 'arrived at {x}', no: "didn't arrive at {x}", gt: 'arrived later than', lt: 'arrived earlier than', gtd: 'arrived {d} after', ltd: 'arrived {d} before', st: 'arrived at a different time' }),
+      C('drink', 'Drink', 'drink', ['punch', 'lemonade', 'cider', 'soda', 'tea', 'water'], 'the {x} drinker', 'drank {x}', "didn't drink {x}", 'drank something different')
+    ] },
+    { id: 'trains', title: 'Morning Trains', who: { one: 'traveler', many: 'travelers' }, intro: '{N} travelers were waiting at Union Station early on Monday morning.', cats: [
+      C('dest', 'Going to', 'destination', ['Boston', 'Denver', 'Austin', 'Seattle', 'Chicago', 'Miami', 'Phoenix', 'Albany'], 'the traveler to {x}', 'was going to {x}', "wasn't going to {x}", 'was heading somewhere different'),
+      NUM('platform', 'Platform', 'platform', 1, 9, 1, [1, 2], function (v) { return 'platform ' + v; }, String, function (d) { return words(d, 'platform', 'platforms'); }, { np: 'the one on {x}', is: 'waited on {x}', no: "didn't wait on {x}", gt: 'waited on a higher platform than', lt: 'waited on a lower platform than', gtd: 'waited {d} farther down than', ltd: 'waited {d} closer in than', st: 'waited on a different platform' }),
+      TIME('time', 'Departs', 360, 540, [15, 30], { np: 'the one on the {x} train', is: 'caught the {x} train', no: "didn't catch the {x} train", gt: 'left later than', lt: 'left earlier than', gtd: 'left {d} after', ltd: 'left {d} before', st: 'caught a different train' }),
+      C('snack', 'Snack', 'snack', ['bagel', 'apple', 'muffin', 'yogurt', 'banana', 'granola bar', 'pretzel'], 'the one with the {x}', 'bought {ax}', "didn't buy {ax}", 'bought a different snack')
+    ] },
+    { id: 'market', title: 'Farmers Market', who: { one: 'farmer', many: 'farmers' }, intro: '{N} farmers set up stalls in a row at the Saturday farmers market.', cats: [
+      C('goods', 'Selling', 'product', ['honey', 'apples', 'cheese', 'bread', 'flowers', 'eggs', 'jam', 'pickles'], 'the {x} seller', 'sells {x}', "doesn't sell {x}", 'sells something different'),
+      NUM('stall', 'Stall', 'stall', 1, 5, 1, [1], function (v) { return 'stall ' + v; }, String, function (d) { return words(d, 'stall', 'stalls'); }, { np: 'the farmer at {x}', is: 'has {x}', no: "doesn't have {x}", gt: 'is farther from the gate than', lt: 'is closer to the gate than', gtd: 'is {d} farther from the gate than', ltd: 'is {d} closer to the gate than', nx: 'is right next to', st: 'has a different stall' }, { exact: true }),
+      TOWN('the farmer from {x}'),
+      C('awning', 'Awning', 'awning', ['red', 'blue', 'green', 'striped', 'yellow', 'white', 'orange'], 'the one with the {x} awning', 'has {ax} awning', "doesn't have {ax} awning", 'put up a different awning')
+    ] },
+    { id: 'gamenight', title: 'Game Night', who: { one: 'player', many: 'players' }, intro: '{N} friends met for their monthly game night tournament.', cats: [
+      C('game', 'Game', 'game', ['chess', 'checkers', 'dominoes', 'mahjong', 'cribbage', 'rummy', 'Go'], 'the {x} champ', 'won at {x}', "didn't win at {x}", 'won a different game'),
+      NUM('points', 'Points', 'score', 10, 90, 5, [5, 10], String, String, String, { np: 'the one with {x} points', is: 'scored {x} points', no: "didn't score {x} points", gt: 'scored more points than', lt: 'scored fewer points than', gtd: 'scored {d} more points than', ltd: 'scored {d} fewer points than', st: 'scored a different number of points' }),
+      C('snack', 'Snack', 'snack', ['pretzels', 'popcorn', 'nachos', 'grapes', 'cookies', 'chips', 'cheese'], 'the one who brought {x}', 'brought {x}', "didn't bring {x}", 'brought a different snack'),
+      C('shirt', 'Shirt', 'shirt', COLORS.slice(0, 8), 'the one in {x}', 'wore {x}', "didn't wear {x}", 'wore a different color')
+    ] },
+    { id: 'halloween', title: 'Trick or Treat', who: { one: 'kid', many: 'kids' }, intro: '{N} kids went trick-or-treating together on Halloween night.', cats: [
+      C('costume', 'Costume', 'costume', ['ghost', 'pirate', 'witch', 'robot', 'vampire', 'astronaut', 'dragon', 'mummy'], 'the {x}', 'dressed as {ax}', "didn't dress as {ax}", 'wore a different costume'),
+      NUM('candy', 'Candy', 'haul', 20, 90, 5, [5, 10], String, String, String, { np: 'the one with {x} pieces', is: 'collected {x} pieces', no: "didn't collect {x} pieces", gt: 'collected more candy than', lt: 'collected less candy than', gtd: 'collected {d} more pieces than', ltd: 'collected {d} fewer pieces than', st: 'collected a different amount of candy' }),
+      C('street', 'Street', 'street', ['Oak', 'Maple', 'Birch', 'Cedar', 'Willow', 'Aspen', 'Hickory'], 'the one from {x} Street', 'lives on {x} Street', "doesn't live on {x} Street", 'lives on a different street'),
+      C('fav', 'Favorite', 'favorite candy', ['lollipops', 'toffee', 'gummies', 'caramels', 'licorice', 'mints', 'taffy'], 'the {x} fan', 'loves {x} most', "doesn't love {x} most", 'has a different favorite candy', { sp: 'candies' })
+    ] },
+    { id: 'campout', title: 'Lakeside Campout', who: { one: 'camper', many: 'campers' }, intro: '{N} friends spent a long week camping by Loon Lake.', cats: [
+      C('tent', 'Tent', 'tent', ['red', 'blue', 'green', 'orange', 'yellow', 'gray', 'purple'], 'the one in the {x} tent', 'slept in the {x} tent', "didn't sleep in the {x} tent", 'slept in a different tent'),
+      C('chore', 'Chore', 'chore', ['cooking', 'firewood', 'water', 'dishes', 'maps', 'first aid', 'fishing'], 'the one on {x} duty', 'was on {x} duty', "wasn't on {x} duty", 'had a different chore'),
+      NUM('site', 'Site', 'campsite', 1, 5, 1, [1], function (v) { return 'site ' + v; }, String, function (d) { return words(d, 'site', 'sites'); }, { np: 'the camper at {x}', is: 'camped at {x}', no: "didn't camp at {x}", gt: 'camped farther from the lake than', lt: 'camped closer to the lake than', gtd: 'camped {d} farther from the lake than', ltd: 'camped {d} closer to the lake than', nx: 'camped right next to', st: 'camped at a different site' }, { exact: true }),
+      WEEKDAY('night', 'Story night', { np: 'the {x} storyteller', is: 'told a story on {x}', no: "didn't tell a story on {x}", gt: 'told a story later in the week than', lt: 'told a story earlier in the week than', gtd: 'told a story {d} after', ltd: 'told a story {d} before', nx: 'told a story the night before or after', st: 'told a campfire story on a different night' })
+    ] },
+    { id: 'kites', title: 'Kite Festival', who: { one: 'flyer', many: 'flyers' }, intro: '{N} kite flyers showed up for the windy spring kite festival.', cats: [
+      C('shape', 'Kite', 'kite', ['diamond', 'box', 'dragon', 'delta', 'bird', 'star', 'fish', 'octopus'], 'the one with the {x} kite', 'flew the {x} kite', "didn't fly the {x} kite", 'flew a different kite'),
+      C('tail', 'Tail', 'tail', ['red', 'blue', 'gold', 'green', 'purple', 'orange', 'rainbow'], 'the one with the {x} tail', 'tied on {ax} tail', "didn't tie on {ax} tail", 'tied on a different tail'),
+      NUM('height', 'Height', 'height', 50, 300, 25, [25, 50], function (v) { return v + ' feet'; }, function (v) { return v + ' ft'; }, function (d) { return d + ' feet'; }, { np: 'the one who reached {x}', is: 'reached {x}', no: "didn't reach {x}", gt: 'flew higher than', lt: 'flew lower than', gtd: 'flew {d} higher than', ltd: 'flew {d} lower than', st: 'reached a different height' }),
+      C('park', 'Park', 'park', ['Riverside', 'Hilltop', 'Harbor', 'Meadow', 'Bayview', 'Ridge', 'Elm'], 'the one at {x} Park', 'flew at {x} Park', "didn't fly at {x} Park", 'flew at a different park')
+    ] },
+    { id: 'cookies', title: 'Cookie Swap', who: { one: 'baker', many: 'bakers' }, intro: '{N} bakers met at the library for the holiday cookie swap.', cats: [
+      C('cookie', 'Cookie', 'cookie', ['sugar', 'ginger', 'oatmeal', 'shortbread', 'lemon', 'almond', 'peanut', 'mint'], 'the {x} cookie baker', 'baked {x} cookies', "didn't bake {x} cookies", 'baked a different cookie'),
+      NUM('dozen', 'Dozens', 'batch', 2, 9, 1, [1], function (v) { return words(v, 'dozen', 'dozen'); }, String, function (d) { return words(d, 'dozen', 'dozen'); }, { np: 'the one who brought {x}', is: 'brought {x}', no: "didn't bring {x}", gt: 'brought more cookies than', lt: 'brought fewer cookies than', gtd: 'brought {d} more than', ltd: 'brought {d} fewer than', st: 'brought a different number of dozens' }),
+      C('tin', 'Tin', 'tin', ['red', 'blue', 'green', 'gold', 'silver', 'plaid', 'striped'], 'the one with the {x} tin', 'used {ax} tin', "didn't use {ax} tin", 'packed them in a different tin'),
+      C('topping', 'Topping', 'topping', ['sprinkles', 'icing', 'nuts', 'sugar', 'drizzle', 'jam', 'cocoa'], 'the one who used {x}', 'topped them with {x}', "didn't use {x}", 'used a different topping')
+    ] },
+    { id: 'stars', title: 'Star Party', who: { one: 'stargazer', many: 'stargazers' }, intro: '{N} members of the astronomy club met in a dark field for a star party.', cats: [
+      C('planet', 'Spotted', 'planet', ['Mars', 'Venus', 'Jupiter', 'Saturn', 'Mercury', 'Neptune', 'Uranus'], 'the one who spotted {x}', 'spotted {x}', "didn't spot {x}", 'spotted a different planet'),
+      NUM('scope', 'Telescope', 'telescope', 3, 12, 1, [1, 2], function (v) { return v + '-inch'; }, function (v) { return v + ' in'; }, function (d) { return words(d, 'inch', 'inches'); }, { np: 'the one with the {x} telescope', is: 'brought {ax} telescope', no: "didn't bring {ax} telescope", gt: 'brought a bigger telescope than', lt: 'brought a smaller telescope than', gtd: 'brought a telescope {d} bigger than', ltd: 'brought a telescope {d} smaller than', st: 'brought a different size telescope' }),
+      C('drink', 'Drink', 'drink', ['cocoa', 'tea', 'coffee', 'cider', 'soup', 'chai'], 'the {x} drinker', 'drank {x}', "didn't drink {x}", 'kept warm with a different drink'),
+      TIME('time', 'Arrived', 1200, 1350, [15, 30], { np: 'the {x} arrival', is: 'arrived at {x}', no: "didn't arrive at {x}", gt: 'arrived later than', lt: 'arrived earlier than', gtd: 'arrived {d} after', ltd: 'arrived {d} before', st: 'arrived at a different time' })
+    ] }
+  ];
+  var THEME = {}; THEMES.forEach(function (t) { THEME[t.id] = t; t.byId = {}; t.cats.forEach(function (c) { t.byId[c.id] = c; }); });
+
+  // ── Levels ─────────────────────────────────────────────────────────────
+  // w: clue-type weights; cap: hardest step allowed (1 grid basics, 2 chaining across grids, 3 elimination
+  // across grids and clue-plus-grid reasoning); want: what makes a good puzzle at the level
+  var LEVELS = {
+    easy:   { k: 3, n: 4, cap: 2, w: { not: 3, is: 1, neither: 2, either: 2, gt: 3 }, ordP: 0.85 },
+    medium: { k: 4, n: 4, cap: 3, w: { not: 2, is: 0.6, neither: 2, either: 2, gt: 2.6, gtd: 1.2, next: 0.6, pair: 1.4, and: 1 }, ordP: 1, minHard: 1 },
+    hard:   { k: 4, n: 5, cap: 3, w: { not: 1.4, is: 0.25, neither: 2, either: 2.4, gt: 2.4, gtd: 1.6, next: 1, pair: 2, diff: 0.8, and: 2 }, ordP: 1, minHard: 3 },
+    hard5:  { k: 5, n: 5, cap: 3, w: { not: 1.4, is: 0.25, neither: 2, either: 2.4, gt: 2.4, gtd: 1.6, next: 1, pair: 2, diff: 0.8, and: 2 }, ordP: 1, minHard: 3 }
+  };
+
+  // ── Puzzle model ───────────────────────────────────────────────────────
+  // P (saved as is): {th, lv, k, n, no, cats:[{id, items:[labels], vals:[numbers]|null}], ent:[[entity of each item]], clues:[...]}
+  // Category 0 is the anchor (usually names); an entity is the index of its anchor item.
+  // A clue: {t, r:[[cat,item],...], o: ordered cat or -1, parts:[{t, x:[ref indexes], d}], lt: phrase as "less", sub (compound bits)}
+  function catDef(P, c) {
+    var t = THEME[P.th];
+    if (c === 0) return P._anchor || (P._anchor = anchorDef(t));
+    return t.byId[P.cats[c].id];
+  }
+  function anchorDef(t) {
+    var a = t.anchor || PEOPLE;
+    return { id: 'anchor', n: a.n, s: a.s || t.who.one, sp: a.sp || t.who.many, np: '{x}', is: 'is {x}', no: "isn't {x}", anchor: true };
+  }
+  // grid label and words for an item
+  function label(P, c, i) { var d = catDef(P, c), cc = P.cats[c]; return d.o ? (d.o.g || d.o.fmt)(cc.vals[i]) : cc.items[i]; }
+  function word(P, c, i) { var d = catDef(P, c), cc = P.cats[c]; return d.o ? d.o.fmt(cc.vals[i]) : cc.items[i]; }
+  function an(w) { return ((/^[aeiou]/i.test(w) && !/^(uni|one|eu)/i.test(w)) || /^(8|11|18)(\D|$)|^8\d/.test(w) ? 'an ' : 'a ') + w; }
+  function fill(tpl, w) { return tpl.replace('{ax}', an(w)).replace('{x}', w); }
+  function np(P, r) { return fill(catDef(P, r[0]).np, word(P, r[0], r[1])); }
+  function vp(P, r) { return fill(catDef(P, r[0]).is, word(P, r[0], r[1])); }
+  function vn(P, r) { return fill(catDef(P, r[0]).no, word(P, r[0], r[1])); }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function lcStart(s) { return /^(The|Neither|Of|Either) /.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s; }
+  // "Ann owns the dog" / "the dog owner doesn't wear red" (names first, never "... is Ann")
+  function fact(P, A, B, yes) {
+    if (B[0] === 0 || (A[0] !== 0 && catDef(P, A[0]).o && !catDef(P, B[0]).o)) { var t = A; A = B; B = t; }
+    return cap(np(P, A)) + ' ' + (yes ? vp(P, B) : vn(P, B));
+  }
+  function list(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  function cmpPhrase(P, o, d, less) {
+    var od = catDef(P, o).o;
+    if (d === 'next') return od.nx;
+    if (!d) return less ? od.lt : od.gt;
+    var step = P.cats[o].step || 1;
+    return (less ? od.ltd : od.gtd).replace('{d}', od.df(d * step));
+  }
+  function partText(P, cl, p, subj) {
+    var R = cl.r, X = p.x.map(function (i) { return R[i]; });
+    switch (p.t) {
+      case 'is': return subj ? vp(P, X[1]) : fact(P, X[0], X[1], true);
+      case 'not': return subj ? vn(P, X[1]) : fact(P, X[0], X[1], false);
+      case 'gt': {
+        var less = !!p.lt, A = less ? X[1] : X[0], B = less ? X[0] : X[1];
+        return (subj ? '' : cap(np(P, A)) + ' ') + cmpPhrase(P, cl.o, p.d, less) + ' ' + np(P, B);
+      }
+      case 'next': return (subj ? '' : cap(np(P, X[0])) + ' ') + cmpPhrase(P, cl.o, 'next') + ' ' + np(P, X[1]);
+      case 'either': return (subj ? '' : cap(np(P, X[0])) + ' ') + 'is either ' + np(P, X[1]) + ' or ' + np(P, X[2]);
+    }
+    return '';
+  }
+  function clueText(P, cl) {
+    if (cl.text) return cl.text;
+    var R = cl.r, p = cl.parts[0], X = p.x.map(function (i) { return R[i]; }), s;
+    switch (cl.t) {
+      case 'is': case 'not': case 'gt': case 'gtd': case 'next': case 'either': s = partText(P, cl, p); break;
+      case 'neither':
+        s = X[2][0] === 0 || cl.flip ? cap(np(P, X[2])) + ' is neither ' + np(P, X[0]) + ' nor ' + np(P, X[1]) : 'Neither ' + np(P, X[0]) + ' nor ' + np(P, X[1]) + ' ' + vp(P, X[2]);
+        break;
+      case 'pair': s = 'Of ' + np(P, X[0]) + ' and ' + np(P, X[1]) + ', one ' + vp(P, X[2]) + ' and the other ' + vp(P, X[3]); break;
+      case 'diff': s = cap(list(X.map(function (r) { return np(P, r); }))) + ' are ' + NUMW[X.length] + ' different ' + (THEME[P.th].who.many); break;
+      case 'and': {
+        var a = cl.parts[0], b = cl.parts[1], S = R[a.x[0]], Q = R[a.x[1]];
+        // "Opal, the piano student, ..." reads better than "The piano student, who is Opal, ..."
+        if (a.t === 'is' && Q[0] === 0) s = cap(np(P, Q)) + ', ' + np(P, S) + ', ' + partText(P, cl, b, true);
+        else s = cap(np(P, S)) + ', who ' + (a.t === 'is' ? vp(P, Q) : vn(P, Q)) + ', ' + partText(P, cl, b, true);
+        break;
+      }
+    }
+    return cl.text = s + '.';
+  }
+  function story(P) {
+    var t = THEME[P.th], N = NUMW[P.n];
+    var sts = []; for (var c = 1; c < P.k; c++) sts.push(catDef(P, c).st);
+    var cats = []; for (c = 1; c < P.k; c++) cats.push(catDef(P, c).s);
+    return t.intro.replace('{N}', cap(N)).replace('{n}', N) + ' Each one ' + list(sts) + '. Use the clues to match every ' + t.who.one + ' with their ' + list(cats) + '.';
+  }
+
+  // ── The grid: G[((a*k+b)*n+i)*n+j] = 1 yes, -1 no, 0 not known (both halves kept in step) ──
+  function blank(P) {
+    var k = P.k, n = P.n, G = new Int8Array(k * k * n * n);
+    for (var c = 0; c < k; c++) for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) G[((c * k + c) * n + i) * n + j] = i === j ? 1 : -1;
+    return G;
+  }
+  function gi(P, a, i, b, j) { return ((a * P.k + b) * P.n + i) * P.n + j; }
+  function get(P, G, a, i, b, j) { return G[((a * P.k + b) * P.n + i) * P.n + j]; }
+  function put(P, G, a, i, b, j, v) { G[((a * P.k + b) * P.n + i) * P.n + j] = v; G[((b * P.k + a) * P.n + j) * P.n + i] = v; }
+  function known(P, G) { var n = 0; for (var i = 0; i < G.length; i++) if (G[i]) n++; return n; }
+  function solvedGrid(P, G) { for (var i = 0; i < G.length; i++) if (!G[i]) return false; return true; }
+  function truth(P, a, i, b, j) { return P.ent[a][i] === P.ent[b][j] ? 1 : -1; }
+
+  // ── Clue tests ─────────────────────────────────────────────────────────
+  function partOk(p, pers, vals) {
+    var x = p.x;
+    switch (p.t) {
+      case 'is': return pers[x[0]] === pers[x[1]];
+      case 'not': return pers[x[0]] !== pers[x[1]];
+      case 'neither': return pers[x[2]] !== pers[x[0]] && pers[x[2]] !== pers[x[1]];
+      case 'either': return (pers[x[0]] === pers[x[1]]) !== (pers[x[0]] === pers[x[2]]);
+      case 'gt': return p.d ? vals[x[0]] - vals[x[1]] === p.d : vals[x[0]] > vals[x[1]];
+      case 'next': return Math.abs(vals[x[0]] - vals[x[1]]) === 1;
+      case 'pair': var a = pers[x[0]], b = pers[x[1]], c = pers[x[2]], d = pers[x[3]]; return a !== b && c !== d && ((a === c && b === d) || (a === d && b === c));
+      case 'diff': for (var i = 0; i < x.length; i++) for (var j = i + 1; j < x.length; j++) if (pers[x[i]] === pers[x[j]]) return false; return true;
+    }
+    return false;
+  }
+  function clueOk(cl, pers, vals) { for (var i = 0; i < cl.parts.length; i++) if (!partOk(cl.parts[i], pers, vals)) return false; return true; }
+  function valued(cl) { // ref indexes whose ordered value the clue reads
+    if (cl._v) return cl._v;
+    var v = {}; cl.parts.forEach(function (p) { if (p.t === 'gt' || p.t === 'next') p.x.forEach(function (i) { v[i] = 1; }); });
+    return cl._v = Object.keys(v).map(Number);
+  }
+
+  // Everything the clue still allows, given the grid: for each of its people, the anchor items, values and
+  // pairings that appear in at least one way of making the clue true. Returns deductions, or null if impossible.
+  function gac(P, cl, G) {
+    var k = P.k, n = P.n, R = cl.r, m = R.length, O = cl.o, vIdx = valued(cl), isV = [];
+    for (var q = 0; q < m; q++) isV[q] = vIdx.indexOf(q) >= 0;
+    var cand = R.map(function (r) {
+      if (r[0] === 0) return [r[1]];
+      var a = []; for (var p = 0; p < n; p++) if (G[((r[0] * k) * n + r[1]) * n + p] !== -1) a.push(p);
+      return a;
+    });
+    var supP = new Array(m).fill(0), supS = new Array(m * m).fill(0), supV = new Array(m).fill(0), supO = new Array(m * k).fill(0);
+    var cats = []; R.forEach(function (r) { if (cats.indexOf(r[0]) < 0) cats.push(r[0]); });
+    var pers = new Array(m), vals = new Array(m), any = false, ALLV = (1 << n) - 1;
+    function record() {
+      any = true;
+      for (var r = 0; r < m; r++) {
+        supP[r] |= 1 << pers[r];
+        for (var q = 0; q < r; q++) if (R[q][0] !== R[r][0]) supS[q * m + r] |= pers[q] === pers[r] ? 1 : 2;
+        if (O >= 0) supV[r] |= vals[r] >= 0 ? 1 << vals[r] : ALLV;
+        for (var ci = 0; ci < cats.length; ci++) {
+          var c = cats[ci]; if (c === R[r][0]) continue;
+          var hit = -1; for (q = 0; q < m; q++) if (R[q][0] === c && pers[q] === pers[r]) { hit = R[q][1]; break; }
+          supO[r * k + c] |= hit >= 0 ? 1 << hit : 1 << n;
+        }
+      }
+    }
+    // ordered values for the people the clue compares
+    function values() {
+      var ps = [], doms = [];
+      for (var r = 0; r < m; r++) { vals[r] = -1; if (isV[r] && ps.indexOf(pers[r]) < 0) ps.push(pers[r]); }
+      if (!ps.length) { if (clueOk(cl, pers, vals)) record(); return; }
+      for (var i = 0; i < ps.length; i++) {
+        var p = ps[i], dom = [];
+        for (var v = 0; v < n; v++) {
+          if (G[((0 * k + O) * n + p) * n + v] === -1) continue;
+          var ok = true;
+          for (r = 0; r < m && ok; r++) if (pers[r] === p) ok = R[r][0] === O ? R[r][1] === v : G[((R[r][0] * k + O) * n + R[r][1]) * n + v] !== -1;
+          if (ok) dom.push(v);
+        }
+        if (!dom.length) return;
+        doms.push(dom);
+      }
+      var pv = new Array(ps.length), used = 0;
+      (function go(i) {
+        if (i === ps.length) {
+          for (var r = 0; r < m; r++) { var w = ps.indexOf(pers[r]); vals[r] = w >= 0 ? pv[w] : -1; }
+          if (clueOk(cl, pers, vals)) record();
+          return;
+        }
+        for (var t = 0; t < doms[i].length; t++) { var v = doms[i][t]; if (used & (1 << v)) continue; used |= 1 << v; pv[i] = v; go(i + 1); used &= ~(1 << v); }
+      })(0);
+    }
+    (function assign(r) {
+      if (r === m) { if (O >= 0) values(); else if (clueOk(cl, pers, vals)) record(); return; }
+      var cs = cand[r];
+      for (var t = 0; t < cs.length; t++) {
+        var p = cs[t], ok = true;
+        for (var q = 0; q < r && ok; q++) {
+          if (R[q][0] === R[r][0]) ok = pers[q] !== p;
+          else { var g = G[((R[q][0] * k + R[r][0]) * n + R[q][1]) * n + R[r][1]]; ok = pers[q] === p ? g !== -1 : g !== 1; }
+        }
+        if (!ok) continue;
+        pers[r] = p; assign(r + 1);
+      }
+    })(0);
+    if (!any) return null;
+    var out = [];
+    out.yesFirst = true;
+    function add(a, i, b, j, v) { if (G[((a * k + b) * n + i) * n + j] === 0) out.push([a, i, b, j, v]); }
+    for (var r = 0; r < m; r++) {
+      var A = R[r];
+      if (A[0] !== 0) for (var p = 0; p < n; p++) if (!(supP[r] >> p & 1)) add(A[0], A[1], 0, p, -1);
+      for (var q = 0; q < r; q++) if (R[q][0] !== A[0]) { var s = supS[q * m + r]; if (s === 1) add(R[q][0], R[q][1], A[0], A[1], 1); else if (s === 2) add(R[q][0], R[q][1], A[0], A[1], -1); }
+      if (O >= 0 && A[0] !== O) for (var v = 0; v < n; v++) if (!(supV[r] >> v & 1)) add(A[0], A[1], O, v, -1);
+      for (var ci = 0; ci < cats.length; ci++) {
+        var c = cats[ci]; if (c === A[0] || c === 0) continue;
+        var mk = supO[r * k + c]; if (mk >> n & 1) continue;
+        for (var x = 0; x < n; x++) if (!(mk >> x & 1)) add(A[0], A[1], c, x, -1);
+      }
+    }
+    return out.sort(function (x, y) { return y[4] - x[4]; });
+  }
+  // Which clue types count as harder when they need the grid as well
+  var EASYCLUE = { is: 1, not: 1, neither: 1, either: 1, gt: 1 };
+  function clueTier(cl) { return EASYCLUE[cl.t] && !(cl.t === 'gt' && cl.parts[0].d) ? 2 : 3; }
+
+  // ── Solver steps ───────────────────────────────────────────────────────
+  // Each finder adds deductions {a,i,b,j,v, rule, tier, ...why} to out; out.first stops at the first one.
+  function Out(first) { return { list: [], seen: {}, first: !!first, bad: false, stop: false }; }
+  function emit(P, out, d) {
+    if (out.stop) return;
+    var key = d.a < d.b ? gi(P, d.a, d.i, d.b, d.j) : gi(P, d.b, d.j, d.a, d.i);
+    if (out.seen[key] != null) { if (out.seen[key] !== d.v) out.bad = true; return; }
+    out.seen[key] = d.v; out.list.push(d);
+    if (out.first) out.stop = true;
+  }
+  // 1: a check rules out the rest of its row and column in that box
+  function fExcl(P, G, out) {
+    var k = P.k, n = P.n;
+    for (var a = 0; a < k; a++) for (var b = a + 1; b < k; b++) for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
+      if (get(P, G, a, i, b, j) !== 1) continue;
+      for (var t = 0; t < n; t++) {
+        if (t !== j && get(P, G, a, i, b, t) === 0) emit(P, out, { a: a, i: i, b: b, j: t, v: -1, rule: 'excl', tier: 1, ya: a, yi: i, yb: b, yj: j });
+        if (t !== i && get(P, G, a, t, b, j) === 0) emit(P, out, { a: a, i: t, b: b, j: j, v: -1, rule: 'excl', tier: 1, ya: a, yi: i, yb: b, yj: j });
+        if (out.stop) return;
+      }
+    }
+  }
+  // 1: the only square left in a row or column of a box
+  function fLast(P, G, out) {
+    var k = P.k, n = P.n;
+    for (var a = 0; a < k; a++) for (var b = 0; b < k; b++) {
+      if (a === b) continue;
+      for (var i = 0; i < n; i++) {
+        var open = -1, cnt = 0, yes = false;
+        for (var j = 0; j < n; j++) { var g = get(P, G, a, i, b, j); if (g === 1) { yes = true; break; } if (g === 0) { cnt++; open = j; } }
+        if (yes) continue;
+        if (!cnt) { out.bad = true; return; }
+        if (cnt === 1) { emit(P, out, { a: a, i: i, b: b, j: open, v: 1, rule: 'last', tier: 1 }); if (out.stop) return; }
+      }
+    }
+  }
+  // 2: chain through a check in another box (A is B and B is / isn't C)
+  function fTrans(P, G, out) {
+    var k = P.k, n = P.n;
+    for (var a = 0; a < k; a++) for (var b = 0; b < k; b++) {
+      if (a === b) continue;
+      for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
+        if (get(P, G, a, i, b, j) !== 1) continue;
+        for (var c = 0; c < k; c++) {
+          if (c === a || c === b) continue;
+          for (var x = 0; x < n; x++) {
+            var v = get(P, G, b, j, c, x);
+            if (!v) continue;
+            var cur = get(P, G, a, i, c, x);
+            if (cur === 0) { emit(P, out, { a: a, i: i, b: c, j: x, v: v, rule: 'trans', tier: 2, via: [b, j] }); if (out.stop) return; }
+            else if (cur !== v) { out.bad = true; return; }
+          }
+        }
+      }
+    }
+  }
+  // 3: two things can't go together if every option left for one is crossed out for the other
+  function fCross(P, G, out) {
+    var k = P.k, n = P.n;
+    for (var a = 0; a < k; a++) for (var c = a + 1; c < k; c++) for (var i = 0; i < n; i++) for (var x = 0; x < n; x++) {
+      if (get(P, G, a, i, c, x) !== 0) continue;
+      for (var b = 0; b < k; b++) {
+        if (b === a || b === c) continue;
+        var share = false;
+        for (var j = 0; j < n && !share; j++) if (get(P, G, a, i, b, j) !== -1 && get(P, G, c, x, b, j) !== -1) share = true;
+        if (!share) { emit(P, out, { a: a, i: i, b: c, j: x, v: -1, rule: 'cross', tier: 3, by: b }); if (out.stop) return; break; }
+      }
+    }
+  }
+  function directOf(P, cl) {
+    if (!cl._dir) cl._dir = gac(P, cl, P._blank || (P._blank = blank(P))) || [];
+    return cl._dir;
+  }
+  function fDirect(P, G, out, clues) {
+    for (var c = 0; c < clues.length; c++) {
+      var L = directOf(P, clues[c]);
+      for (var t = 0; t < L.length; t++) {
+        var d = L[t], cur = get(P, G, d[0], d[1], d[2], d[3]);
+        if (cur === 0) { emit(P, out, { a: d[0], i: d[1], b: d[2], j: d[3], v: d[4], rule: 'clue', direct: true, tier: 1, cl: c }); if (out.stop) return; }
+        else if (cur !== d[4]) { out.bad = true; return; }
+      }
+    }
+  }
+  function fClue(P, G, out, clues, tier) {
+    for (var c = 0; c < clues.length; c++) {
+      if (clueTier(clues[c]) !== tier) continue;
+      var L = gac(P, clues[c], G);
+      if (!L) { out.bad = true; out.badClue = c; return; }
+      for (var t = 0; t < L.length; t++) { var d = L[t]; emit(P, out, { a: d[0], i: d[1], b: d[2], j: d[3], v: d[4], rule: 'clue', tier: tier, cl: c }); if (out.stop) return; }
+    }
+  }
+  function findTier(P, G, clues, tier, out, o) {
+    o = o || {};
+    if (tier === 1) {
+      if (!o.noExcl) fExcl(P, G, out); if (out.stop || out.bad) return out;
+      fLast(P, G, out); if (out.stop || out.bad) return out;
+      fDirect(P, G, out, clues);
+    } else if (tier === 2) {
+      fTrans(P, G, out); if (out.stop || out.bad) return out;
+      fClue(P, G, out, clues, 2);
+    } else {
+      fCross(P, G, out); if (out.stop || out.bad) return out;
+      fClue(P, G, out, clues, 3);
+    }
+    return out;
+  }
+  function apply(P, G, list) {
+    for (var t = 0; t < list.length; t++) {
+      var d = list[t], cur = get(P, G, d.a, d.i, d.b, d.j);
+      if (cur && cur !== d.v) return false;
+      put(P, G, d.a, d.i, d.b, d.j, d.v);
+    }
+    return true;
+  }
+  // Solve with steps no harder than cap. Always uses the easiest kind of step available (so the
+  // counts say what the puzzle needs). fast: take every tier's finds each pass (same result, quicker).
+  function solve(P, clues, cap, o) {
+    o = o || {};
+    var G = o.G ? new Int8Array(o.G) : blank(P), st = { t1: 0, t2: 0, t3: 0, passes: 0 };
+    for (var guard = 0; guard < 400; guard++) {
+      var moved = false;
+      for (var tier = 1; tier <= cap; tier++) {
+        var out = findTier(P, G, clues, tier, Out(false));
+        if (out.bad || !apply(P, G, out.list)) return { ok: false, bad: true, G: G, st: st };
+        if (out.list.length) { st['t' + tier]++; st.passes++; moved = true; if (!o.fast) break; }
+      }
+      if (!moved) break;
+    }
+    return { ok: solvedGrid(P, G), G: G, st: st, known: known(P, G) };
+  }
+  // The next step for a hint: the easiest deduction from the grid as it stands
+  // (a check's own row and column first, then anything that places a check, then the rest in clue order)
+  function step(P, G, o) {
+    o = o || {};
+    for (var tier = 1; tier <= 3; tier++) {
+      var out = findTier(P, G, P.clues, tier, Out(false), o);
+      if (out.bad) return { bad: true, clue: out.badClue };
+      if (!out.list.length) continue;
+      var L = out.list;
+      return L.filter(function (d) { return d.rule === 'excl'; })[0] || L.filter(function (d) { return d.v === 1; })[0] || L[0];
+    }
+    return null;
+  }
+  // Count answers (up to limit) by trying both ways on a square when logic runs out
+  function count(P, clues, limit) {
+    limit = limit || 2;
+    var n = 0;
+    (function go(G) {
+      if (n >= limit) return;
+      var s = solve(P, clues, 3, { G: G, fast: true });
+      if (s.bad) return;
+      if (s.ok) { n++; return; }
+      var G2 = s.G, at = -1;
+      for (var c = 1; c < P.k && at < 0; c++) for (var p = 0; p < P.n && at < 0; p++) for (var x = 0; x < P.n; x++) if (get(P, G2, 0, p, c, x) === 0) { at = [c, p, x]; break; }
+      if (at < 0) return;
+      var Y = new Int8Array(G2); put(P, Y, 0, at[1], at[0], at[2], 1); go(Y);
+      var N = new Int8Array(G2); put(P, N, 0, at[1], at[0], at[2], -1); go(N);
+    })(blank(P));
+    return n;
+  }
+
+  // ── Making a puzzle ────────────────────────────────────────────────────
+  function build(lvName, seed, R) {
+    var L = LEVELS[lvName], k = L.k, n = L.n;
+    var t = pick(THEMES, R);
+    var defs = t.cats.slice(), ords = defs.filter(function (c) { return c.o; }), plain = defs.filter(function (c) { return !c.o; });
+    var chosen = [];
+    // at most two ordered categories; usually one
+    shuffle(ords, R); shuffle(plain, R);
+    var nOrd = ords.length && R() < L.ordP ? (k >= 5 && ords.length > 1 && R() < 0.5 ? 2 : 1) : 0;
+    chosen = ords.slice(0, nOrd).concat(plain.slice(0, k - 1 - nOrd));
+    if (chosen.length < k - 1) chosen = chosen.concat(ords.slice(nOrd, nOrd + k - 1 - chosen.length));
+    shuffle(chosen, R);
+    var P = { v: 1, th: t.id, lv: lvName, k: k, n: n, cats: [], ent: [] };
+    // anchor items: different first letters
+    var pool = shuffle(((t.anchor && t.anchor.items) || NAMES).slice(), R), names = [], init = {};
+    for (var i = 0; i < pool.length && names.length < n; i++) { var ch = pool[i].charAt(0); if (!init[ch]) { init[ch] = 1; names.push(pool[i]); } }
+    names.sort();
+    P.cats.push({ id: 'anchor', items: names, vals: null });
+    chosen.forEach(function (d) {
+      if (d.o) {
+        var o = d.o, vals, s;
+        if (d.exact || o.exact) { vals = o.vals.slice(0, n); s = vals[1] - vals[0]; }
+        else {
+          var base = o.base || 1, lo = o.vals[0], hi = o.vals[o.vals.length - 1];
+          var steps = o.steps.filter(function (st) { return hi - lo >= (n - 1) * st; });
+          s = pick(steps, R);
+          var choices = []; for (var v = lo; v + (n - 1) * s <= hi; v += base) choices.push(v);
+          var v0 = pick(choices, R);
+          vals = range(n).map(function (i) { return v0 + i * s; });
+        }
+        P.cats.push({ id: d.id, items: null, vals: vals, step: s });
+      } else {
+        // skip items that read the same as an item already chosen (two "red"s in one puzzle)
+        var taken = {}; P.cats.forEach(function (c) { (c.items || []).forEach(function (w) { taken[w.toLowerCase()] = 1; }); });
+        var it = shuffle(d.items.slice(), R).filter(function (w) { return !taken[w.toLowerCase()]; }).slice(0, n).sort(function (x, y) { return x.toLowerCase() < y.toLowerCase() ? -1 : 1; });
+        P.cats.push({ id: d.id, items: it, vals: null });
+      }
+    });
+    if (P.cats.some(function (c) { return (c.items || c.vals).length < n; })) return null;
+    // the answer
+    P.ent.push(range(n));
+    for (var c = 1; c < k; c++) P.ent.push(shuffle(range(n), R));
+    P.itemOf = P.ent.map(function (e) { var a = []; e.forEach(function (p, i) { a[p] = i; }); return a; });
+    return P;
+  }
+  function ordCats(P) { var a = []; for (var c = 1; c < P.k; c++) if (catDef(P, c).o) a.push(c); return a; }
+  // One true clue of the given type, or null
+  function makeClue(P, type, R) {
+    var k = P.k, n = P.n, I = P.itemOf;
+    function ref(c, e) { return [c, I[c][e]]; }
+    function anyCat(not) { var a = []; for (var c = 0; c < k; c++) if (!not || not.indexOf(c) < 0) a.push(c); return a.length ? (a.indexOf(0) >= 0 && R() < 0.35 ? 0 : pick(a, R)) : -1; }
+    function ents(m) { return shuffle(range(n), R).slice(0, m); }
+    function same(a, b) { return a[0] === b[0] && a[1] === b[1]; }
+    function distinct(rs) { for (var i = 0; i < rs.length; i++) for (var j = i + 1; j < rs.length; j++) if (same(rs[i], rs[j])) return false; return true; }
+    var e = ents(n), cl = null, a, b, c, O, ords = ordCats(P);
+    var valIdx = function (O, ent) { return I[O][ent]; };
+    switch (type) {
+      case 'is': a = anyCat(); b = anyCat([a]); cl = { t: 'is', r: [ref(a, e[0]), ref(b, e[0])], parts: [{ t: 'is', x: [0, 1] }] }; break;
+      case 'not': a = anyCat(); b = anyCat([a]); cl = { t: 'not', r: [ref(a, e[0]), ref(b, e[1])], parts: [{ t: 'not', x: [0, 1] }] }; break;
+      case 'neither':
+        c = anyCat(); a = anyCat([c]); b = R() < 0.5 ? a : anyCat([c]);
+        cl = { t: 'neither', r: [ref(a, e[1]), ref(b, e[2]), ref(c, e[0])], parts: [{ t: 'neither', x: [0, 1, 2] }], flip: R() < 0.3 };
+        break;
+      case 'either':
+        var x = anyCat(); a = anyCat([x]); b = R() < 0.5 ? a : anyCat([x]);
+        var T = ref(a, e[0]), F = ref(b, e[1]);
+        cl = { t: 'either', r: R() < 0.5 ? [ref(x, e[0]), T, F] : [ref(x, e[0]), F, T], parts: [{ t: 'either', x: [0, 1, 2] }] };
+        break;
+      case 'gt': case 'gtd': case 'next':
+        if (!ords.length) return null;
+        O = pick(ords, R);
+        var od = catDef(P, O).o;
+        if (type === 'next' && !od.nx) return null;
+        if (type === 'gtd' && od.noD) return null;
+        var e1 = e[0], e2 = e[1];
+        if (type === 'next') { var found = false; for (var u = 0; u < n && !found; u++) for (var w = 0; w < n; w++) if (Math.abs(valIdx(O, e[u]) - valIdx(O, e[w])) === 1) { e1 = e[u]; e2 = e[w]; found = true; break; } }
+        if (valIdx(O, e1) < valIdx(O, e2)) { var tt = e1; e1 = e2; e2 = tt; }
+        a = R() < 0.12 ? O : anyCat([O]); b = R() < 0.12 && a !== O ? O : anyCat([O]);
+        var A = ref(a, e1), B = ref(b, e2), dd = valIdx(O, e1) - valIdx(O, e2);
+        if (type === 'next') cl = { t: 'next', r: [A, B], o: O, parts: [{ t: 'next', x: [0, 1] }] };
+        else cl = { t: type, r: [A, B], o: O, parts: [{ t: 'gt', x: [0, 1], d: type === 'gtd' ? dd : 0, lt: R() < 0.5 }] };
+        break;
+      case 'pair':
+        a = anyCat(); b = R() < 0.4 ? a : anyCat(); c = anyCat([a, b]);
+        if (c < 0) return null;
+        var X1 = ref(c, e[0]), Y1 = ref(c, e[1]);
+        cl = { t: 'pair', r: [ref(a, e[0]), ref(b, e[1])].concat(R() < 0.5 ? [X1, Y1] : [Y1, X1]), parts: [{ t: 'pair', x: [0, 1, 2, 3] }] };
+        if (R() < 0.5) { var r0 = cl.r[0]; cl.r[0] = cl.r[1]; cl.r[1] = r0; }
+        break;
+      case 'diff':
+        var m = n >= 5 && R() < 0.5 ? 5 : 4; if (m > n) m = n;
+        var used = {}, rs = e.slice(0, m).map(function (ent) {
+          var cc = anyCat(); for (var g = 0; g < 4 && used[cc]; g++) cc = anyCat();
+          used[cc] = (used[cc] || 0) + 1; return ref(cc, ent);
+        });
+        if (Object.keys(used).length < Math.min(k, m) - 1) return null;
+        cl = { t: 'diff', r: rs, parts: [{ t: 'diff', x: range(m) }] };
+        break;
+      case 'and':
+        var s = anyCat(), S = ref(s, e[0]), relIs = R() < 0.3, rc = anyCat([s]), Rr = ref(rc, relIs ? e[0] : e[1]);
+        var main = ords.length && R() < 0.65 ? 'gt' : relIs && R() < 0.5 ? 'not' : 'is', M;
+        if (main === 'gt') {
+          O = pick(ords, R); var bc = anyCat([O]); if (bc < 0) return null;
+          var other = e[2], less = valIdx(O, e[0]) < valIdx(O, other);
+          M = ref(bc, other);
+          var dd2 = Math.abs(valIdx(O, e[0]) - valIdx(O, other)), useD = !catDef(P, O).o.noD && R() < 0.4;
+          cl = { t: 'and', r: [S, Rr, M], o: O, parts: [{ t: relIs ? 'is' : 'not', x: [0, 1] }, less ? { t: 'gt', x: [2, 0], d: useD ? dd2 : 0, lt: true } : { t: 'gt', x: [0, 2], d: useD ? dd2 : 0, lt: false }] };
+          if (rc === O) return null;
+        } else {
+          var mc = anyCat([s, rc]); if (mc < 0) return null;
+          M = ref(mc, main === 'is' ? e[0] : e[2]);
+          cl = { t: 'and', r: [S, Rr, M], o: -1, parts: [{ t: relIs ? 'is' : 'not', x: [0, 1] }, { t: main, x: [0, 2] }] };
+        }
+        break;
+    }
+    if (!cl) return null;
+    if (cl.o == null) cl.o = -1;
+    if (!distinct(cl.r)) return null;
+    // a part that names one thing twice, or two things from one category as the same person, is no use
+    for (var pi = 0; pi < cl.parts.length; pi++) {
+      var p = cl.parts[pi];
+      if ((p.t === 'is') && cl.r[p.x[0]][0] === cl.r[p.x[1]][0]) return null;
+      if (p.t === 'gt' || p.t === 'next') { if (cl.r[p.x[0]][0] === cl.o && cl.r[p.x[1]][0] === cl.o) return null; }
+    }
+    // must be true of the answer
+    var pers = cl.r.map(function (r) { return P.ent[r[0]][r[1]]; }), vals = cl.r.map(function (r) { return cl.o >= 0 ? I[cl.o][P.ent[r[0]][r[1]]] : -1; });
+    if (!clueOk(cl, pers, vals)) return null;
+    return cl;
+  }
+  function pickType(w, R) {
+    var tot = 0, k; for (k in w) tot += w[k];
+    var x = R() * tot; for (k in w) { x -= w[k]; if (x <= 0) return k; }
+    return 'not';
+  }
+  function attempt(lvName, seed, R) {
+    var L = LEVELS[lvName], P = build(lvName, seed, R);
+    if (!P) return null;
+    var clues = [], cur = solve(P, clues, L.cap, { fast: true }), tries = 0;
+    // add clues that teach something new until the grid can be finished by logic alone
+    while (!cur.ok && tries++ < 900) {
+      var cl = makeClue(P, pickType(L.w, R), R);
+      if (!cl) continue;
+      var next = solve(P, clues.concat([cl]), L.cap, { fast: true, G: cur.G });
+      if (next.bad) continue;
+      if (next.known > cur.known) { clues.push(cl); cur = next; }
+    }
+    if (!cur.ok) return null;
+    // then take away any clue the puzzle can do without
+    var order = shuffle(range(clues.length), R), keep = clues.slice();
+    for (var t = 0; t < order.length; t++) {
+      var cand = keep.filter(function (c) { return c !== clues[order[t]]; });
+      if (solve(P, cand, L.cap, { fast: true }).ok) keep = cand;
+    }
+    shuffle(keep, R);
+    var g = solve(P, keep, L.cap);
+    P.clues = keep;
+    P.st = g.st;
+    var isN = keep.filter(function (c) { return c.t === 'is'; }).length;
+    // how good a fit for the level: hard steps wanted, not too many give-away clues
+    var hardSteps = g.st.t3 + (L.cap === 2 ? g.st.t2 : 0);
+    P.score = L.minHard ? Math.min(hardSteps, L.minHard + 3) * 2 - isN * 1.5 - Math.max(0, keep.length - (P.k * P.n * 0.9)) * 0.5 : 10 - isN * 2 - Math.abs(keep.length - 7);
+    P.fit = L.minHard ? hardSteps >= L.minHard && isN <= 1 : isN <= 2;
+    return P;
+  }
+  function generate(lvName, no, kind) {
+    var seed = hash((kind || 'free') + ':' + lvName + ':' + no), R = rng(seed), best = null;
+    for (var a = 0; a < 40; a++) {
+      var P = attempt(lvName, seed, R);
+      if (!P) continue;
+      if (!best || P.score > best.score) best = P;
+      if (P.fit || (best && a >= 9)) break;
+    }
+    best.no = no; best.kind = kind || 'free';
+    return strip(best);
+  }
+  // what gets saved: data only
+  function strip(P) {
+    return { v: 1, th: P.th, lv: P.lv, k: P.k, n: P.n, no: P.no, kind: P.kind, cats: P.cats.map(function (c) { var o = { id: c.id, items: c.items, vals: c.vals }; if (c.step) o.step = c.step; return o; }), ent: P.ent,
+      clues: P.clues.map(function (c) { var o = { t: c.t, r: c.r, o: c.o, parts: c.parts }; if (c.flip) o.flip = true; return o; }), st: P.st };
+  }
+  function hydrate(P) {
+    if (!THEME[P.th]) return null;
+    P.itemOf = P.ent.map(function (e) { var a = []; e.forEach(function (p, i) { a[p] = i; }); return a; });
+    P.clues.forEach(function (c) { if (!c.parts) c.parts = []; });
+    return P;
+  }
+
+  // ── Hints in plain words ────────────────────────────────────────────────
+  function noDot(t) { return t.replace(/\.$/, ''); }
+  function explain(P, d, G) {
+    var A = [d.a, d.i], B = [d.b, d.j], f = fact(P, A, B, d.v === 1), lf = lcStart(f);
+    if (d.rule === 'excl') return fact(P, [d.ya, d.yi], [d.yb, d.yj], true) + ', so ' + lf + '.';
+    if (d.rule === 'last') return 'Every other ' + catDef(P, d.b).s + ' is ruled out for ' + np(P, A) + ', so ' + lf + '.';
+    if (d.rule === 'trans') { var V = d.via; return fact(P, A, V, true) + ' and ' + lcStart(fact(P, V, B, get(P, G, V[0], V[1], d.b, d.j) === 1)) + ', so ' + lf + '.'; }
+    if (d.rule === 'cross') {
+      var by = d.by, S = [], T = [];
+      for (var x = 0; x < P.n; x++) { if (get(P, G, d.b, d.j, by, x) !== -1) S.push(word(P, by, x)); if (get(P, G, d.a, d.i, by, x) !== -1) T.push(word(P, by, x)); }
+      var one = A, two = B;
+      if (T.length < S.length) { var t = S; S = T; T = t; one = B; two = A; }
+      var bd = catDef(P, by);
+      if (S.length === 1) return 'The only ' + bd.s + ' left for ' + np(P, two) + ' is ' + S[0] + ', and that is ruled out for ' + np(P, one) + ', so ' + lf + '.';
+      return 'The ' + bd.sp + ' left for ' + np(P, two) + ' (' + list(S).replace(' and ', ' or ') + ') are all ruled out for ' + np(P, one) + ', so ' + lf + '.';
+    }
+    if (d.rule === 'clue') {
+      var cl = P.clues[d.cl], num = d.cl + 1, ct = noDot(clueText(P, cl));
+      var same = function (r, x) { return r[0] === x[0] && r[1] === x[1]; };
+      var plain = cl.parts.some(function (pt) { return (pt.t === 'is' || pt.t === 'not') && ((same(cl.r[pt.x[0]], A) && same(cl.r[pt.x[1]], B)) || (same(cl.r[pt.x[0]], B) && same(cl.r[pt.x[1]], A))); });
+      if (plain) return 'Clue ' + num + ' says it straight out: ' + lf + '.';
+      if (d.direct) return 'Clue ' + num + ' says ' + lcStart(ct) + ', so ' + lf + '.';
+      if (G && cl.t === 'either' && d.v === 1) {
+        var R = cl.r, X = R[0], other = null;
+        if (A[0] === X[0] && A[1] === X[1]) other = (B[0] === R[1][0] && B[1] === R[1][1]) ? R[2] : R[1];
+        else if (B[0] === X[0] && B[1] === X[1]) other = (A[0] === R[1][0] && A[1] === R[1][1]) ? R[2] : R[1];
+        if (other && get(P, G, X[0], X[1], other[0], other[1]) === -1) return 'Clue ' + num + ' says ' + lcStart(ct) + '. ' + fact(P, X, other, false) + ', so ' + lf + '.';
+      }
+      if (G && (cl.t === 'gt' || cl.t === 'gtd') && d.v === -1 && (d.b === cl.o || d.a === cl.o)) {
+        var p = cl.parts[0], hi = cl.r[p.x[0]], lo = cl.r[p.x[1]], who = d.b === cl.o ? A : B, v = d.b === cl.o ? d.j : d.i;
+        var range = function (r) { var a = []; for (var x = 0; x < P.n; x++) if (r[0] === cl.o ? r[1] === x : get(P, G, r[0], r[1], cl.o, x) !== -1) a.push(x); return a; };
+        if (!p.d && who[0] === hi[0] && who[1] === hi[1]) { var lr = range(lo); if (lr.length && v <= lr[0]) return 'Clue ' + num + ' says ' + lcStart(ct) + ', and the lowest ' + catDef(P, cl.o).s + ' left for ' + np(P, lo) + ' is ' + word(P, cl.o, lr[0]) + ', so ' + lf + '.'; }
+        if (!p.d && who[0] === lo[0] && who[1] === lo[1]) { var hr = range(hi); if (hr.length && v >= hr[hr.length - 1]) return 'Clue ' + num + ' says ' + lcStart(ct) + ', and the highest ' + catDef(P, cl.o).s + ' left for ' + np(P, hi) + ' is ' + word(P, cl.o, hr[hr.length - 1]) + ', so ' + lf + '.'; }
+      }
+      return 'Clue ' + num + ' says ' + lcStart(ct) + '. With what is already marked, that means ' + lf + '.';
+    }
+    return f + '.';
+  }
+
+  return {
+    explain: explain,
+    THEMES: THEMES, LEVELS: LEVELS, NUMW: NUMW, rng: rng, hash: hash,
+    generate: generate, hydrate: hydrate, solve: solve, step: step, count: count, gac: gac, blank: blank,
+    get: get, put: put, truth: truth, catDef: catDef, label: label, word: word, np: np, vp: vp, vn: vn, fact: fact, cap: cap, lcStart: lcStart, list: list,
+    clueText: clueText, story: story, theme: function (P) { return THEME[P.th]; }, cmpPhrase: cmpPhrase
+  };
+})();
+// ==/ENGINE==
+</script>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'logicgrid_state', OPTS = 'logicgrid_opts', HKEY = 'logicgrid';
+  var LV = { easy: 'Easy', medium: 'Medium', hard: 'Hard', hard5: 'Hard' };
+  var SIZE = { easy: '3×4', medium: '4×4', hard: '4×5', hard5: '5×5' };
+  var DAILY_LV = ['hard5', 'easy', 'easy', 'medium', 'medium', 'hard', 'hard5']; // Sun..Sat
+  function lvName(lv) { return LV[lv] + ' ' + SIZE[lv]; }
+
+  Kit.init({
+    id: 'logicgrid',
+    onNew: function () { showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'lightbulb', label: 'Hint', onClick: function () { hint(); } },
+      { icon: 'eye', label: 'Check for mistakes', onClick: function () { check(); } },
+      { icon: 'sync', label: 'Restart this puzzle', onClick: function () { restart(); } },
+      { icon: 'search', label: 'Play a puzzle by number', onClick: function () { byNumber(); } },
+      { icon: 'chart', label: 'Best times', onClick: function () { showBests(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Logic Grids: past games' }); } },
+      { icon: 'close', label: 'Auto-cross', sub: 'A check crosses out the rest of its row and column', toggle: function () { return opts.auto; }, onClick: function () { opts.auto = !opts.auto; saveOpts(); if (S) { render(); save(); } } }
+    ],
+    rules:
+      '<p class="goal">Each puzzle tells a short story. Every person goes with exactly <b>one</b> thing from each group, and no two people share. Use the clues to work out who goes with what.</p>' +
+      '<h3>The grid</h3><ul><li>Each box of squares pairs two groups. A square is where one thing from each group meets.</li>' +
+      '<li>Tap a square once for an <b>X</b> (these two don\'t go together), twice for a <b>check</b> (they do), a third time to clear it.</li>' +
+      '<li>Hold a square to put a check straight in. The mark button under the grid switches taps to X only or check only.</li>' +
+      '<li>With <b>Auto-cross</b> on (in the menu), a check crosses out the rest of its row and column in that box, because each thing goes with only one other.</li></ul>' +
+      '<h3>The clues</h3><ul><li>Tap a clue to cross it off when you have used it.</li>' +
+      '<li><b>Either / or</b> means exactly one of the two is true.</li>' +
+      '<li><b>Neither / nor</b> means both are false.</li>' +
+      '<li>"Of A and B, one is X and the other is Y" means A and B are two different people, and between them they are X and Y.</li>' +
+      '<li>Names in one clue are different people unless the clue says they are the same.</li></ul>' +
+      '<h3>Thinking across boxes</h3><p>If Ann has the dog and the dog owner wears red, then Ann wears red. If Ann has the dog and the dog owner does not wear red, neither does Ann. Carry what you learn from box to box.</p>' +
+      '<h3>The answers</h3><p>The answer table fills in as you place checks. Fill it in correctly to solve the puzzle.</p>' +
+      '<h3>Help</h3><ul><li><b>Hint</b> marks the next square you can work out and says why, pointing at the clue it comes from.</li>' +
+      '<li><b>Check</b> circles any marks that are wrong.</li><li><b>Undo</b> and <b>Redo</b> step through your marks.</li></ul>' +
+      '<h3>Levels</h3><ul><li><b>Easy:</b> three groups of four. Clues mostly say things straight out.</li>' +
+      '<li><b>Medium:</b> four groups of four, with paired and ordering clues.</li>' +
+      '<li><b>Hard:</b> four or five groups of five. You will need to reason across boxes.</li></ul>' +
+      '<p>Every puzzle has exactly one answer, reached by logic alone.</p>' +
+      '<h3>Daily puzzle</h3><p>A new puzzle every day, the same on every device. Easy early in the week, Hard at the weekend.</p>'
+  });
+
+  // ── Options & state ───────────────────────────────────────────────────────
+  var opts = { auto: true, mode: 0 };
+  try { var o0 = JSON.parse(localStorage.getItem(OPTS)); if (o0) { opts.auto = o0.auto !== false; opts.mode = o0.mode | 0; } } catch (e) {}
+  function saveOpts() { try { localStorage.setItem(OPTS, JSON.stringify(opts)); } catch (e) {} }
+  // S: {P, lv, daily, m (marks string: one digit per square, 0 blank 1 X 2 check), hd (hinted squares), st (struck clues), time, hints, checks, wrong, started, done}
+  var S = null, P = null, U = [], R = [], tick = null;
+  function today() { return Math.floor((Date.now() - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }
+  function fmt(t) { t = t | 0; var h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = ('0' + t % 60).slice(-2); return h ? h + ':' + ('0' + m).slice(-2) + ':' + s : m + ':' + s; }
+  function label() { return (S.daily ? 'Daily · ' : '') + lvName(S.lv); }
+  function hist() { try { return GameHistory.load(HKEY); } catch (e) { return []; } }
+  function bestTime(lv) { var b = 0; hist().forEach(function (e) { if (e && e.lv === lv && e.seconds > 0 && !e.hints && (!b || e.seconds < b)) b = e.seconds; }); return b; }
+  function dailyDone() { var d = today(); return hist().filter(function (e) { return e && e.daily === d; })[0] || null; }
+  function save() {
+    if (!S || S.done) return;
+    try { localStorage.setItem(SAVE, JSON.stringify({ S: S, U: U.slice(-120), R: R.slice(-120) })); } catch (e) {}
+    if (/[12]/.test(S.m)) Kit.resume.set(label() + ' · ' + fmt(S.time)); else Kit.resume.clear();
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+
+  // ── Pencil sounds: a soft scratch of graphite on paper ────────────────────
+  var actx = null, nbuf = null;
+  function pencil(kind) {
+    try { if (localStorage.getItem('gn_sound') === '0') return; } catch (e) {}
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      actx = actx || new AC();
+      if (actx.state === 'suspended') actx.resume();
+      if (!nbuf) { nbuf = actx.createBuffer(1, Math.floor(actx.sampleRate * 0.5), actx.sampleRate); var d = nbuf.getChannelData(0), last = 0; for (var i = 0; i < d.length; i++) { var w = Math.random() * 2 - 1; last = last * 0.4 + w * 0.6; d[i] = last * (0.6 + 0.4 * Math.random()); } }
+      var t = actx.currentTime + 0.005;
+      var stroke = function (t0, dur, f0, f1, vol) {
+        var s = actx.createBufferSource(), bp = actx.createBiquadFilter(), g = actx.createGain();
+        s.buffer = nbuf; bp.type = 'bandpass'; bp.Q.value = 0.8;
+        bp.frequency.setValueAtTime(f0, t0); bp.frequency.linearRampToValueAtTime(f1, t0 + dur);
+        g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + 0.01); g.gain.setValueAtTime(vol * 0.9, t0 + dur * 0.7); g.gain.linearRampToValueAtTime(0, t0 + dur);
+        s.connect(bp); bp.connect(g); g.connect(actx.destination); s.start(t0, Math.random() * 0.3, dur + 0.03);
+      };
+      if (kind === 'x') { stroke(t, 0.05, 3400, 2700, 0.16); stroke(t + 0.075, 0.05, 3100, 2500, 0.14); }
+      else if (kind === 'c') { stroke(t, 0.03, 2600, 3000, 0.12); stroke(t + 0.035, 0.085, 3500, 2300, 0.17); }
+      else if (kind === 'erase') { stroke(t, 0.09, 1500, 1200, 0.12); stroke(t + 0.1, 0.08, 1400, 1100, 0.1); }
+      else if (kind === 'strike') stroke(t, 0.22, 2900, 2200, 0.1);
+      else if (kind === 'soft') stroke(t, 0.03, 3600, 3200, 0.05);
+    } catch (e) {}
+  }
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    stopClock(); document.body.classList.remove('playing'); app.className = 'lg';
+    var dl = DAILY_LV[new Date().getDay()], done = dailyDone();
+    function bt(lv) { var b = bestTime(lv); return b ? ' · best ' + fmt(b) : ''; }
+    Kit.setup(app, {
+      intro: 'A short story, a page of clues and a grid to work it out on',
+      modes: [
+        { id: 'daily', icon: 'calendar', title: 'Daily puzzle', desc: done ? 'Done today in ' + fmt(done.seconds) + '. Play it again?' : "Today's is " + lvName(dl) + '. Same puzzle everywhere.' },
+        { id: 'easy', icon: 'star', title: 'Easy', desc: 'Three groups of four' + bt('easy') },
+        { id: 'medium', icon: 'pencil', title: 'Medium', desc: 'Four groups of four' + bt('medium') },
+        { id: 'hard', icon: 'lightbulb', title: 'Hard', desc: 'Four or five groups of five' + bt('hard') + bt('hard5') }
+      ],
+      options: [{ id: 'size', label: 'Grid', value: '4', when: function (m) { return m === 'hard'; }, choices: [['4', '4 groups of 5'], ['5', '5 groups of 5']] }],
+      mode: 'easy', start: 'Start puzzle',
+      onStart: function (cfg) {
+        if (cfg.mode === 'daily') newPuzzle(DAILY_LV[new Date().getDay()], today(), true);
+        else newPuzzle(cfg.mode === 'hard' && String(cfg.options.size) === '5' ? 'hard5' : cfg.mode, 0, false);
+      }
+    });
+  }
+  function newPuzzle(lv, no, daily) {
+    if (!no) no = 1 + Math.floor(Math.random() * 99999);
+    document.body.classList.add('playing');
+    app.className = 'lg'; app.innerHTML = '<div class="loading"><div><span class="pc">' + Kit.icon('pencil') + '</span>Printing your puzzle…</div></div>';
+    setTimeout(function () {
+      var p = LG.generate(lv, no, daily ? 'daily' : 'free');
+      U = []; R = [];
+      S = { P: p, lv: lv, daily: daily ? no : 0, no: no, m: blankMarks(p), hd: {}, st: p.clues.map(function () { return 0; }).join(''), time: 0, hints: 0, checks: 0, wrong: 0, started: Date.now(), done: false };
+      P = LG.hydrate(S.P);
+      Kit.gameStart(); build(); save(); Kit.sfx('flip');
+    }, 80);
+  }
+  function blankMarks(p) { return new Array(p.k * p.k * p.n * p.n + 1).join('0'); }
+  function restart() {
+    if (!S || S.done) return;
+    Kit.confirm('Start this puzzle over?', { ok: 'Restart', body: 'Your marks are rubbed out. The clock keeps running.' }).then(function (ok) {
+      if (!ok) return;
+      snap(); S.m = blankMarks(P); S.hd = {}; S.st = S.st.replace(/1/g, '0'); focus = null;
+      render(true); renderClues(); save(); pencil('erase'); Kit.sfx('whoosh');
+    });
+  }
+  function byNumber() {
+    var lv = S ? S.lv : 'easy';
+    var inp = el('input', { class: 'numin', type: 'number', inputmode: 'numeric', min: '1', max: '99999', placeholder: 'e.g. 4821', 'aria-label': 'Puzzle number' });
+    var seg = el('div', { class: 'seg', style: { 'margin-top': '10px' } });
+    function paint() { seg.innerHTML = ''; ['easy', 'medium', 'hard', 'hard5'].forEach(function (l) { seg.appendChild(el('button', { type: 'button', class: l === lv ? 'on' : '', text: SIZE[l], onclick: function () { lv = l; Kit.sfx('tap'); paint(); } })); }); }
+    paint();
+    var box = el('div', null, [el('p', { class: 'muted', style: { 'margin-bottom': '10px' }, text: 'Every puzzle has a number in its corner. Enter one to play it again, or to try the same puzzle as a friend.' }), inp, seg]);
+    Kit.sheet({ title: 'Play a puzzle by number', node: box, actions: [{ label: 'Play it', primary: true, onClick: function () { var n = parseInt(inp.value, 10); if (n > 0) newPuzzle(lv, Math.min(99999, n), false); } }, { label: 'Cancel', cls: 'btn-ghost' }] });
+    setTimeout(function () { try { inp.focus(); } catch (e) {} }, 350);
+  }
+
+  // ── Marks ─────────────────────────────────────────────────────────────────
+  // squares are keyed with the lower category first: key(a,i,b,j) = ((a*k+b)*n+i)*n+j with a < b
+  function key(a, i, b, j) { if (a > b) { var t = a; a = b; b = t; t = i; i = j; j = t; } return ((a * P.k + b) * P.n + i) * P.n + j; }
+  function mk(a, i, b, j) { return +S.m.charAt(key(a, i, b, j)); }
+  function setMk(a, i, b, j, v) { var x = key(a, i, b, j); S.m = S.m.slice(0, x) + v + S.m.slice(x + 1); }
+  // the grid as the solver sees it: your checks and Xs, plus auto-crosses
+  function effective() {
+    var G = LG.blank(P), k = P.k, n = P.n;
+    for (var a = 0; a < k; a++) for (var b = a + 1; b < k; b++) for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
+      var v = mk(a, i, b, j); if (v) LG.put(P, G, a, i, b, j, v === 2 ? 1 : -1);
+    }
+    if (opts.auto) for (a = 0; a < k; a++) for (b = a + 1; b < k; b++) for (i = 0; i < n; i++) for (j = 0; j < n; j++) {
+      if (mk(a, i, b, j) !== 2) continue;
+      for (var t = 0; t < n; t++) { if (t !== j && !mk(a, i, b, t)) LG.put(P, G, a, i, b, t, -1); if (t !== i && !mk(a, t, b, j)) LG.put(P, G, a, t, b, j, -1); }
+    }
+    return G;
+  }
+  // which check (if any) auto-crosses this square
+  function autoBy(a, i, b, j) {
+    if (!opts.auto || mk(a, i, b, j)) return null;
+    for (var t = 0; t < P.n; t++) { if (t !== j && mk(a, i, b, t) === 2) return [i, t]; if (t !== i && mk(a, t, b, j) === 2) return [t, j]; }
+    return null;
+  }
+  function snap() { U.push({ m: S.m, st: S.st, hd: JSON.stringify(S.hd) }); if (U.length > 400) U.shift(); R = []; }
+  function restoreSnap(x) { S.m = x.m; S.st = x.st; S.hd = JSON.parse(x.hd || '{}'); }
+  function undo() {
+    if (!S || S.done) return;
+    if (!U.length) { Kit.toast('Nothing to undo'); return; }
+    R.push({ m: S.m, st: S.st, hd: JSON.stringify(S.hd) }); restoreSnap(U.pop());
+    pencil('erase'); Kit.haptic('light'); clearFlags(); render(); renderClues(); save();
+  }
+  function redo() {
+    if (!S || S.done || !R.length) return;
+    U.push({ m: S.m, st: S.st, hd: JSON.stringify(S.hd) }); restoreSnap(R.pop());
+    pencil('soft'); Kit.haptic('light'); clearFlags(); render(); renderClues(); save();
+  }
+  var fresh = {}, badSet = {}, hintAt = null, srcAt = [], solveX = {};
+  function clearFlags() { badSet = {}; hintAt = null; srcAt = []; }
+  // tap a square: 'cycle' (blank, X, check), 'x', 'check'
+  function mark(c, how) {
+    if (!S || S.done) return;
+    var a = c.a, i = c.i, b = c.b, j = c.j, cur = mk(a, i, b, j), shown = cur || (autoBy(a, i, b, j) ? 1 : 0), nv;
+    if (how === 'check') nv = cur === 2 ? 0 : 2;
+    else if (how === 'x') nv = cur === 1 ? 0 : 1;
+    else nv = shown === 0 ? 1 : shown === 1 ? 2 : 0;
+    if (nv === cur && !(how === 'cycle' && shown === 1 && !cur)) return;
+    snap();
+    setMk(a, i, b, j, nv); delete S.hd[key(a, i, b, j)];
+    clearFlags(); focus = c; fresh = {}; fresh[key(a, i, b, j)] = 1;
+    if (nv === 2) { pencil('c'); Kit.haptic('medium'); }
+    else if (nv === 1) { pencil('x'); Kit.haptic('light'); }
+    else { pencil('erase'); Kit.haptic('tick'); }
+    hideNote();
+    render(); save();
+    shortStory();
+    if (nv === 2) afterCheck(a, i, b, j);
+    checkSolved();
+  }
+  function shortStory() { var st = document.getElementById('story'); if (st && !st._done && !isWide()) { st._done = true; st.classList.add('short'); } }
+  function afterCheck(a, i, b, j) {
+    // a check in the answer table gets written in
+    if (a === 0 || b === 0) { var tb = document.getElementById('ansN'); if (tb) { tb.classList.remove('bump'); void tb.offsetWidth; tb.classList.add('bump'); } }
+  }
+
+  // ── Hints and checking ────────────────────────────────────────────────────
+  function wrongMarks() {
+    var out = [], k = P.k, n = P.n;
+    for (var a = 0; a < k; a++) for (var b = a + 1; b < k; b++) for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
+      var v = mk(a, i, b, j); if (!v) continue;
+      var t = LG.truth(P, a, i, b, j);
+      if ((v === 2 && t !== 1) || (v === 1 && t !== -1)) out.push({ a: a, i: i, b: b, j: j, v: v });
+    }
+    return out.sort(function (x, y) { return y.v - x.v; });
+  }
+  function check() {
+    if (!S || S.done) return;
+    var w = wrongMarks(); S.checks++;
+    clearFlags(); w.forEach(function (x) { badSet[key(x.a, x.i, x.b, x.j)] = 1; });
+    if (w.length) { S.wrong += w.length; Kit.sfx('bad'); Kit.haptic('error'); note(w.length === 1 ? 'One mark is wrong. It is circled in red.' : w.length + ' marks are wrong. They are circled in red.', true); showCell(w[0]); }
+    else { Kit.sfx('good'); Kit.haptic('success'); note('No mistakes so far. Keep going!'); }
+    render(); save();
+  }
+  function hint() {
+    if (!S || S.done) return;
+    hideNote();
+    var w = wrongMarks();
+    if (w.length) {
+      clearFlags(); badSet[key(w[0].a, w[0].i, w[0].b, w[0].j)] = 1; focus = cellRef(w[0].a, w[0].i, w[0].b, w[0].j);
+      S.hints++; render(); showCell(w[0]);
+      note((w[0].v === 2 ? 'This check' : 'This X') + " isn't right. Clear it and think again.", true); Kit.sfx('bad'); save(); return;
+    }
+    var G = effective(), d = LG.step(P, G, { noExcl: opts.auto });
+    if (!d || d.bad) { note('Every square that can be worked out is marked. Fill in any you have left.'); return; }
+    snap();
+    var v = d.v === 1 ? 2 : 1;
+    setMk(d.a, d.i, d.b, d.j, v); S.hd[key(d.a, d.i, d.b, d.j)] = 1; S.hints++;
+    clearFlags(); fresh = {}; fresh[key(d.a, d.i, d.b, d.j)] = 1;
+    hintAt = key(d.a, d.i, d.b, d.j); focus = cellRef(d.a, d.i, d.b, d.j);
+    if (d.rule === 'trans') srcAt = [key(d.a, d.i, d.via[0], d.via[1]), key(d.via[0], d.via[1], d.b, d.j)];
+    if (d.rule === 'excl') srcAt = [key(d.ya, d.yi, d.yb, d.yj)];
+    render(); save();
+    pencil(v === 2 ? 'c' : 'x'); Kit.sfx('sparkle', 0.5); Kit.haptic('light');
+    showCell(d);
+    var text = LG.explain(P, d, G);
+    note(text);
+    if (d.rule === 'clue') hlClue(d.cl);
+    if (v === 2) afterCheck(d.a, d.i, d.b, d.j);
+    checkSolved();
+  }
+  var noteT = null;
+  function note(msg, bad) {
+    var n = document.getElementById('note'); if (!n) return;
+    n.innerHTML = Kit.icon(bad ? 'close' : 'lightbulb') + '<span>' + Kit.esc(msg) + '</span>';
+    n.className = 'note show' + (bad ? ' bad' : '');
+    clearTimeout(noteT); noteT = setTimeout(hideNote, Math.max(5000, msg.length * 75));
+  }
+  function hideNote() { var n = document.getElementById('note'); if (n) n.className = 'note'; clearTimeout(noteT); }
+  function hlClue(ci) {
+    var li = clueEls[ci]; if (!li) return;
+    clueEls.forEach(function (x) { x.classList.remove('hl'); });
+    li.classList.add('hl'); setTab('c');
+    var body = document.getElementById('pbody');
+    if (body) { var r = li.getBoundingClientRect(), br = body.getBoundingClientRect(); if (r.top < br.top || r.bottom > br.bottom) body.scrollTo({ top: body.scrollTop + r.top - br.top - 40, behavior: 'smooth' }); }
+    setTimeout(function () { li.classList.remove('hl'); }, 9000);
+  }
+
+  // ── Clock ─────────────────────────────────────────────────────────────────
+  function startClock() {
+    stopClock();
+    tick = setInterval(function () {
+      if (!S || S.done || document.hidden) return;
+      S.time++; var t = document.getElementById('tm'); if (t) t.textContent = fmt(S.time);
+      if (S.time % 10 === 0) save();
+    }, 1000);
+  }
+  function stopClock() { if (tick) clearInterval(tick); tick = null; }
+  document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
+
+  // ── Building the page ─────────────────────────────────────────────────────
+  // The classic staircase: across the top every group but the first; down the side the first, then the
+  // rest from the last back to the third. Box (row r, column c) is there when r + c <= k - 2.
+  var topCats = [], leftCats = [], cells = [], cellAt = {}, tlEls = [], llEls = [], clueEls = [], gridEl = null, gview = null, focus = null;
+  var zoomCs = 0, fitCs = 28, curCs = 28;
+  function build() {
+    app.className = 'lg'; app.innerHTML = '';
+    P = LG.hydrate(S.P); focus = null; clearFlags(); fresh = {}; solveX = {}; ansPrev = {}; zoomCs = 0; warned = false;
+    var k = P.k, n = P.n, C = (k - 1) * n;
+    topCats = []; leftCats = [0];
+    for (var c = 1; c < k; c++) topCats.push(c);
+    for (c = k - 1; c >= 2; c--) leftCats.push(c);
+    var play = el('div', { class: 'play' });
+    var page = el('div', { class: 'page', id: 'page' });
+    var th = LG.theme(P);
+    page.appendChild(el('div', { class: 'ph' }, [el('span', { class: 't', text: th.title }), el('span', { class: 'no', text: 'No. ' + S.no + ' · ' + (S.daily ? 'Daily ' : '') + LV[S.lv] }), el('span', { class: 'tm', id: 'tm', text: fmt(S.time) })]));
+    var gwrap = el('div', { class: 'gwrap' });
+    gview = el('div', { class: 'gview', id: 'gview' });
+    gridEl = el('div', { class: 'grid', id: 'grid', role: 'grid', 'aria-label': 'Logic grid' });
+    gridEl.style.gridTemplateColumns = 'var(--lg-cw) var(--lg-lw) repeat(' + C + ', var(--lg-cs))';
+    gridEl.style.gridTemplateRows = 'var(--lg-ch) var(--lg-lh) repeat(' + C + ', var(--lg-cs))';
+    var corner = el('div', { class: 'corner' }, [el('button', { type: 'button', class: 'zoom', 'aria-label': 'Zoom', html: Kit.icon('search') + '<span>Zoom</span>', onclick: function () { toggleZoom(); } })]);
+    gridEl.appendChild(corner);
+    tlEls = []; llEls = []; cells = []; cellAt = {};
+    topCats.forEach(function (tc, cb) {
+      gridEl.appendChild(el('div', { class: 'tc', text: LG.catDef(P, tc).n, style: { 'grid-column': (3 + cb * n) + ' / span ' + n } }));
+      for (var j = 0; j < n; j++) {
+        var t = el('div', { class: 'tl' + (j === 0 && cb === 0 ? ' e0' : ''), text: LG.label(P, tc, j), style: { 'grid-column': String(3 + cb * n + j) } });
+        t.style.borderLeft = j === 0 ? '2px solid var(--pp-ink)' : ''; if (cb === k - 2 && j === n - 1) t.style.borderRight = '2px solid var(--pp-ink)';
+        tlEls.push({ c: tc, j: j, el: t }); gridEl.appendChild(t);
+      }
+    });
+    leftCats.forEach(function (lc, rb) {
+      gridEl.appendChild(el('div', { class: 'lc', text: LG.catDef(P, lc).n, style: { 'grid-row': (3 + rb * n) + ' / span ' + n } }));
+      for (var i = 0; i < n; i++) {
+        var t = el('div', { class: 'll', text: LG.label(P, lc, i), style: { 'grid-row': String(3 + rb * n + i) } });
+        t.style.borderTop = i === 0 ? '2px solid var(--pp-ink)' : '';
+        if (rb === k - 2 && i === n - 1) t.style.borderBottom = '2px solid var(--pp-ink)';
+        llEls.push({ c: lc, i: i, el: t }); gridEl.appendChild(t);
+      }
+    });
+    leftCats.forEach(function (a, rb) {
+      topCats.forEach(function (b, cb) {
+        if (rb + cb > k - 2) return;
+        for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
+          var cls = 'c' + (j === 0 ? ' bl' : '') + (i === 0 ? ' bt' : '') + (j === n - 1 ? ' br' : '') + (i === n - 1 ? ' bb' : '');
+          var d = el('div', { class: cls, role: 'gridcell', style: { 'grid-row': String(3 + rb * n + i), 'grid-column': String(3 + cb * n + j) } });
+          var ref = { a: a, i: i, b: b, j: j, el: d, rb: rb, cb: cb, r: rb * n + i, col: cb * n + j, k: key(a, i, b, j) };
+          d._ref = ref; cells.push(ref); cellAt[ref.k] = ref;
+          gridEl.appendChild(d);
+        }
+      });
+    });
+    gview.appendChild(gridEl);
+    gwrap.appendChild(gview);
+    gwrap.appendChild(el('div', { class: 'note', id: 'note', onclick: hideNote }));
+    page.appendChild(gwrap);
+    play.appendChild(page);
+    // tools
+    var tools = el('div', { class: 'tools', id: 'tools' });
+    toolEls = {};
+    [['undo', 'undo', 'Undo', undo], ['redo', 'undo', 'Redo', redo], ['mode', '', 'Tap marks', cycleMode], ['hint', 'lightbulb', 'Hint', hint], ['check', 'eye', 'Check', check]].forEach(function (t) {
+      var b = el('button', { type: 'button', class: 'tool ' + t[0], 'aria-label': t[2], onclick: t[3] });
+      b.innerHTML = (t[0] === 'mode' ? '<span class="mk"></span>' : Kit.icon(t[1])) + '<span class="lb">' + t[2] + '</span>';
+      toolEls[t[0]] = b; tools.appendChild(b);
+    });
+    play.appendChild(tools);
+    // clues & answers
+    var panel = el('div', { class: 'panel' });
+    panel.appendChild(el('div', { class: 'tabs' }, [
+      el('button', { type: 'button', id: 'tabC', class: 'on', html: 'Clues', onclick: function () { setTab('c'); Kit.sfx('tap'); } }),
+      el('button', { type: 'button', id: 'tabA', html: 'Answers<b id="ansN">0</b>', onclick: function () { setTab('a'); Kit.sfx('tap'); } })
+    ]));
+    var body = el('div', { class: 'pbody', id: 'pbody' });
+    var secC = el('div', { class: 'sec', id: 'secC' });
+    secC.appendChild(el('p', { class: 'story' + (/[12]/.test(S.m) ? ' short' : ''), id: 'story', text: LG.story(P), onclick: function () { this.classList.toggle('short'); Kit.sfx('tap'); } }));
+    secC.appendChild(el('div', { class: 'sh', text: 'Clues' }));
+    var ol = el('ol', { class: 'clues' }); clueEls = [];
+    P.clues.forEach(function (cl, ci) {
+      var li = el('li', { class: 'cl', onclick: function () { strike(ci); } }, [el('b', { text: (ci + 1) + '.' }), el('div', null, [el('span', { class: 'tx', text: LG.clueText(P, cl) })])]);
+      clueEls.push(li); ol.appendChild(li);
+    });
+    secC.appendChild(ol);
+    var secA = el('div', { class: 'sec', id: 'secA', hidden: true });
+    secA.appendChild(el('div', { class: 'sh', text: 'Answers' }));
+    var tbl = el('table', { class: 'ans', id: 'ans' }), hr = el('tr', null, [el('th', { text: LG.catDef(P, 0).n })]);
+    for (c = 1; c < k; c++) hr.appendChild(el('th', { text: LG.catDef(P, c).n }));
+    tbl.appendChild(el('thead', null, [hr]));
+    var tb = el('tbody'); ansCells = [];
+    for (var p = 0; p < n; p++) {
+      var tr = el('tr', null, [el('th', { text: LG.label(P, 0, p) })]), row = [];
+      for (c = 1; c < k; c++) { var td = el('td'); row.push(td); tr.appendChild(td); }
+      ansCells.push({ tr: tr, td: row }); tb.appendChild(tr);
+    }
+    tbl.appendChild(tb);
+    secA.appendChild(el('div', { class: 'ansbox' }, [tbl, el('div', { class: 'stamp', id: 'stamp', html: 'Solved<small id="stampT"></small>' })]));
+    body.appendChild(secC); body.appendChild(secA);
+    panel.appendChild(body);
+    play.appendChild(panel);
+    app.appendChild(play);
+    wire();
+    layout();
+    render(true); renderClues(); startClock();
+    requestAnimationFrame(layout);
+  }
+  var toolEls = {}, ansCells = [];
+  function setTab(t) {
+    var a = document.getElementById('secA'), c = document.getElementById('secC'); if (!a) return;
+    a.hidden = t !== 'a'; c.hidden = t === 'a';
+    document.getElementById('tabA').classList.toggle('on', t === 'a'); document.getElementById('tabC').classList.toggle('on', t !== 'a');
+  }
+  function strike(ci) {
+    if (!S || S.done) return;
+    snap();
+    var on = S.st.charAt(ci) === '1';
+    S.st = S.st.slice(0, ci) + (on ? '0' : '1') + S.st.slice(ci + 1);
+    pencil(on ? 'erase' : 'strike'); Kit.haptic('light');
+    renderClues(); save();
+  }
+  function renderClues() { clueEls.forEach(function (li, ci) { li.classList.toggle('done', S.st.charAt(ci) === '1'); }); }
+  function cycleMode() {
+    opts.mode = (opts.mode + 1) % 3; saveOpts(); Kit.sfx('tap'); Kit.haptic('light'); paintMode();
+    Kit.toast(['Tap: X, then check, then clear', 'Tap: X only', 'Tap: check only'][opts.mode]);
+  }
+  var SVGX = '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2.6"/></svg>';
+  var SVGC = '<svg viewBox="0 0 20 20"><path d="M4 10.5l4 4L16 5" stroke="currentColor" stroke-width="2.8"/></svg>';
+  function paintMode() {
+    var b = toolEls.mode; if (!b) return;
+    var m = opts.mode;
+    b.querySelector('.mk').innerHTML = SVGX.replace('<svg', '<svg class="' + (m === 2 ? 'off' : '') + '"') +
+      (m === 0 ? '<svg class="a" viewBox="0 0 10 10"><path d="M2 5h6M6 3l2 2-2 2" stroke="currentColor" stroke-width="1.6"/></svg>' : '') +
+      SVGC.replace('<svg', '<svg class="' + (m === 1 ? 'off' : '') + '"');
+    b.className = 'tool mode m' + m;
+    b.querySelector('.lb').textContent = ['X then check', 'X only', 'Check only'][m];
+  }
+
+  // ── Layout: fit the grid, or zoom in where it would be too small to tap ───
+  var measureCtx = null;
+  function textW(s, px) {
+    measureCtx = measureCtx || document.createElement('canvas').getContext('2d');
+    measureCtx.font = '600 ' + px + 'px "Helvetica Neue",Helvetica,Arial,sans-serif';
+    return measureCtx.measureText(s).width;
+  }
+  function isWide() { return window.innerWidth > window.innerHeight && window.innerWidth >= 700; }
+  function touchy() { try { return matchMedia('(pointer:coarse)').matches; } catch (e) { return false; } }
+  var minTap = 24;
+  function layout() {
+    if (!gridEl || !S) return;
+    var wide = isWide();
+    app.classList.toggle('wide', wide);
+    if (wide) { document.getElementById('secA').hidden = false; document.getElementById('secC').hidden = false; }
+    var k = P.k, n = P.n, C = (k - 1) * n;
+    var page = document.getElementById('page'), tools = document.getElementById('tools');
+    var availW = (wide ? page.parentNode.clientWidth - Math.min(400, Math.max(300, page.parentNode.clientWidth * 0.34)) - 22 : app.clientWidth - 20) - 16;
+    var lf = availW > 640 && innerHeight > 700 ? 14 : availW > 480 ? 13 : 12;
+    var lw = 0, lh = 0;
+    for (var c = 0; c < k; c++) for (var i = 0; i < n; i++) {
+      var w = Math.ceil(textW(LG.label(P, c, i), lf));
+      if (c === 0 || c >= 2) lw = Math.max(lw, w);
+      if (c >= 1) lh = Math.max(lh, w);
+    }
+    lw = Math.min(lw + 10, 120); lh = Math.min(lh + 10, 110);
+    var cw = lf + 6, ch = lf + 7;
+    var top = gview.getBoundingClientRect().top - document.body.getBoundingClientRect().top;
+    var safeB = parseFloat(getComputedStyle(app).paddingBottom) || 10;
+    var hcap = window.innerHeight - top - tools.offsetHeight - 10 - 6 - safeB - (wide ? 0 : Math.max(220, window.innerHeight * (window.innerHeight > 1000 ? 0.24 : 0.3)) + 10);
+    hcap = Math.max(160, hcap);
+    fitCs = Math.floor(Math.min((availW - cw - lw - 4) / C, (hcap - ch - lh - 4) / C));
+    fitCs = Math.max(10, Math.min(wide ? 46 : 44, fitCs));
+    minTap = touchy() ? 21 : 15;
+    if (zoomCs && zoomCs <= fitCs + 1) zoomCs = 0;
+    curCs = zoomCs || fitCs;
+    var st = gridEl.style;
+    st.setProperty('--lg-cs', curCs + 'px'); st.setProperty('--lg-cw', cw + 'px'); st.setProperty('--lg-ch', ch + 'px');
+    st.setProperty('--lg-lw', lw + 'px'); st.setProperty('--lg-lh', lh + 'px'); st.setProperty('--lg-lf', lf + 'px');
+    st.setProperty('--lg-lf2', Math.max(9, Math.min(lf, Math.floor(curCs * 0.8))) + 'px');
+    var gw = cw + lw + C * curCs, gh = ch + lh + C * curCs;
+    gview.style.width = Math.min(availW, gw) + 'px';
+    page.classList.toggle('roomy', Math.min(availW, gw) > 520);
+    gview.style.height = Math.min(hcap, gh) + 'px';
+    gridEl.classList.toggle('zoomed', !!zoomCs);
+    gridEl.classList.toggle('canzoom', fitCs < 30);
+    gridEl.querySelector('.zoom').innerHTML = Kit.icon(zoomCs ? 'tiles' : 'search') + '<span>' + (zoomCs ? 'Fit' : 'Zoom') + '</span>';
+  }
+  function setZoom(cs, cx, cy) {
+    // keep the point under (cx, cy) (viewport coords inside gview) still while the squares change size
+    var r = gview.getBoundingClientRect(), fx = (gridEl.style.getPropertyValue('--lg-cw') ? parseFloat(gridEl.style.getPropertyValue('--lg-cw')) + parseFloat(gridEl.style.getPropertyValue('--lg-lw')) : 0);
+    var fy = parseFloat(gridEl.style.getPropertyValue('--lg-ch')) + parseFloat(gridEl.style.getPropertyValue('--lg-lh'));
+    if (cx == null) { cx = r.width / 2; cy = r.height / 2; }
+    var ux = (gview.scrollLeft + cx - fx) / curCs, uy = (gview.scrollTop + cy - fy) / curCs;
+    zoomCs = cs > fitCs + 1 ? cs : 0;
+    layout();
+    gview.scrollLeft = ux * curCs + fx - cx; gview.scrollTop = uy * curCs + fy - cy;
+  }
+  function toggleZoom() {
+    Kit.sfx('tap'); Kit.haptic('light');
+    if (zoomCs) { setZoom(0); return; }
+    var target = Math.max(34, Math.round(fitCs * 1.6));
+    if (focus) zoomToCell(focus, target); else setZoom(target);
+  }
+  function zoomToCell(ref, cs) {
+    zoomCs = cs; layout();
+    centerOn(ref, false);
+  }
+  function centerOn(ref, smooth) {
+    var fx = parseFloat(gridEl.style.getPropertyValue('--lg-cw')) + parseFloat(gridEl.style.getPropertyValue('--lg-lw'));
+    var fy = parseFloat(gridEl.style.getPropertyValue('--lg-ch')) + parseFloat(gridEl.style.getPropertyValue('--lg-lh'));
+    var x = fx + (ref.col + 0.5) * curCs, y = fy + (ref.r + 0.5) * curCs;
+    var vw = gview.clientWidth, vh = gview.clientHeight;
+    var L = x - fx - (vw - fx) / 2, T = y - fy - (vh - fy) / 2;
+    gview.scrollTo({ left: Math.max(0, L), top: Math.max(0, T), behavior: smooth ? 'smooth' : 'auto' });
+  }
+  function showCell(d) {
+    var ref = cellRef(d.a, d.i, d.b, d.j); if (!ref) return;
+    var r = ref.el.getBoundingClientRect(), v = gview.getBoundingClientRect();
+    var fx = parseFloat(gridEl.style.getPropertyValue('--lg-cw')) + parseFloat(gridEl.style.getPropertyValue('--lg-lw'));
+    var fy = parseFloat(gridEl.style.getPropertyValue('--lg-ch')) + parseFloat(gridEl.style.getPropertyValue('--lg-lh'));
+    if (r.left < v.left + fx || r.right > v.right || r.top < v.top + fy || r.bottom > v.bottom - 70) centerOn(ref, true);
+  }
+  function cellRef(a, i, b, j) { return cellAt[key(a, i, b, j)] || null; }
+
+  // ── Touch: tap marks, hold places a check, pinch zooms, drag scrolls ──────
+  function wire() {
+    var press = null, longT = 0, longFired = false;
+    gridEl.addEventListener('pointerdown', function (e) {
+      var c = e.target.closest && e.target.closest('.c'); if (!c || !S || S.done) return;
+      press = { x: e.clientX, y: e.clientY, ref: c._ref };
+      longFired = false; clearTimeout(longT);
+      longT = setTimeout(function () {
+        if (!press) return;
+        if (curCs < minTap && !zoomCs) return;
+        longFired = true; Kit.haptic('heavy'); mark(press.ref, 'check'); press = null;
+      }, 430);
+    });
+    gridEl.addEventListener('pointermove', function (e) { if (press && Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y) > 10) { press = null; clearTimeout(longT); } });
+    gridEl.addEventListener('pointerup', function () { clearTimeout(longT); });
+    gridEl.addEventListener('pointercancel', function () { press = null; clearTimeout(longT); });
+    gview.addEventListener('scroll', function () { press = null; clearTimeout(longT); }, { passive: true });
+    gridEl.addEventListener('contextmenu', function (e) {
+      var c = e.target.closest && e.target.closest('.c'); e.preventDefault();
+      if (c && !longFired && S && !S.done && e.pointerType !== 'touch' && !('ontouchstart' in window)) mark(c._ref, 'check');
+    });
+    gridEl.addEventListener('click', function (e) {
+      var c = e.target.closest && e.target.closest('.c'); if (!c) return;
+      if (longFired) { longFired = false; return; }
+      press = null;
+      // too small to aim at: the first tap zooms in on that spot
+      if (curCs < minTap && !zoomCs) { focus = c._ref; Kit.sfx('whoosh', 0.6); zoomToCell(c._ref, Math.max(34, minTap + 10)); render(); return; }
+      mark(c._ref, ['cycle', 'x', 'check'][opts.mode]);
+    });
+    // pinch to zoom
+    var pinch = null;
+    gview.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 2) return;
+      var a = e.touches[0], b = e.touches[1], r = gview.getBoundingClientRect();
+      pinch = { d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), cs: curCs, cx: (a.clientX + b.clientX) / 2 - r.left, cy: (a.clientY + b.clientY) / 2 - r.top };
+      press = null; clearTimeout(longT);
+    }, { passive: true });
+    gview.addEventListener('touchmove', function (e) {
+      if (!pinch || e.touches.length !== 2) return;
+      e.preventDefault();
+      var a = e.touches[0], b = e.touches[1], d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      var cs = Math.max(fitCs, Math.min(52, Math.round(pinch.cs * d / pinch.d)));
+      if (cs !== curCs) setZoom(cs, pinch.cx, pinch.cy);
+    }, { passive: false });
+    gview.addEventListener('touchend', function (e) { if (e.touches.length < 2) pinch = null; });
+    // ctrl/cmd + wheel zooms on a computer
+    gview.addEventListener('wheel', function (e) {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      var r = gview.getBoundingClientRect();
+      setZoom(Math.max(fitCs, Math.min(52, Math.round(curCs * (e.deltaY < 0 ? 1.12 : 0.89)))), e.clientX - r.left, e.clientY - r.top);
+    }, { passive: false });
+    paintMode();
+  }
+  var resizeT = 0;
+  window.addEventListener('resize', function () { clearTimeout(resizeT); resizeT = setTimeout(function () { if (gridEl && S && document.body.contains(gridEl)) layout(); }, 80); });
+
+  // ── Drawing ───────────────────────────────────────────────────────────────
+  // pencil strokes: a few hand-drawn variants, picked per square so the page doesn't look stamped
+  function jit(seed, s) { var x = Math.sin(seed * 12.9898 + s * 78.233) * 43758.5453; return (x - Math.floor(x)) - 0.5; }
+  function xSvg(seed) {
+    var j = function (s, amt) { return (jit(seed, s) * amt).toFixed(2); };
+    var p1 = 'M' + (4 + +j(1, 1.6)) + ' ' + (4.5 + +j(2, 1.6)) + 'Q10 ' + (10 + +j(3, 1.8)) + ' ' + (15.5 + +j(4, 1.4)) + ' ' + (15.2 + +j(5, 1.4));
+    var p2 = 'M' + (15.6 + +j(6, 1.4)) + ' ' + (4.4 + +j(7, 1.6)) + 'Q' + (10 + +j(8, 1.8)) + ' 10 ' + (4.4 + +j(9, 1.4)) + ' ' + (15.6 + +j(10, 1.4));
+    return '<svg class="x" viewBox="0 0 20 20"><path pathLength="1" d="' + p1 + '"/><path pathLength="1" class="g" d="' + p1 + '" transform="translate(.5 .3)"/><path pathLength="1" d="' + p2 + '"/><path pathLength="1" class="g" d="' + p2 + '" transform="translate(-.4 .4)"/></svg>';
+  }
+  function cSvg(seed) {
+    var j = function (s, amt) { return (jit(seed, s) * amt).toFixed(2); };
+    var p = 'M' + (3.4 + +j(1, 1)) + ' ' + (10.6 + +j(2, 1.2)) + 'Q6 ' + (12.6 + +j(3, .8)) + ' 8 ' + (15.4 + +j(4, .8)) + 'Q11.5 ' + (8 + +j(5, 1.4)) + ' ' + (16.8 + +j(6, 1)) + ' ' + (3.6 + +j(7, 1.2));
+    return '<svg class="ck" viewBox="0 0 20 20"><path pathLength="1" d="' + p + '"/><path pathLength="1" class="g" d="' + p + '" transform="translate(.5 .4)"/></svg>';
+  }
+  function render(all) {
+    if (!S || !cells.length) return;
+    var fr = focus;
+    cells.forEach(function (ref) {
+      var v = mk(ref.a, ref.i, ref.b, ref.j), auto = !v && autoBy(ref.a, ref.i, ref.b, ref.j);
+      var show = v === 2 ? 'c' : v === 1 ? (solveX[ref.k] ? 'a' : 'x') : auto ? 'a' : '';
+      var cls = 'c' + (ref.j === 0 ? ' bl' : '') + (ref.i === 0 ? ' bt' : '') + (ref.j === P.n - 1 ? ' br' : '') + (ref.i === P.n - 1 ? ' bb' : '');
+      if (show === 'a') cls += ' auto';
+      if (S.hd[ref.k] && v) cls += ' hint';
+      if (fr && !S.done) {
+        if (ref === fr) cls += ' f';
+        else if ((ref.a === fr.a && ref.i === fr.i && ref.rb === fr.rb) || (ref.b === fr.b && ref.j === fr.j && ref.cb === fr.cb)) cls += ' xr';
+      }
+      if (badSet[ref.k]) cls += ' bad';
+      if (hintAt === ref.k) cls += ' ht';
+      if (srcAt.indexOf(ref.k) >= 0) cls += ' src';
+      var isNew = fresh[ref.k] || (show === 'a' && ref.el._k !== 'a' && !all);
+      if (isNew && show) cls += ' new';
+      if (show === 'a' && isNew && fr) { var dist = Math.abs(ref.i - fr.i) + Math.abs(ref.j - fr.j); ref.el.style.setProperty('--dl', (dist * 0.045).toFixed(3) + 's'); }
+      ref.el.className = cls;
+      if (ref.el._k !== show || fresh[ref.k]) {
+        ref.el._k = show;
+        if (show === 'c') ref.el.innerHTML = cSvg(ref.k);
+        else if (show) ref.el.innerHTML = xSvg(ref.k);
+        else { if (ref.el.innerHTML && !all) { ref.el.classList.add('erase'); } ref.el.innerHTML = ''; }
+      }
+      ref.el.setAttribute('aria-label', LG.word(P, ref.a, ref.i) + ' and ' + LG.word(P, ref.b, ref.j) + (show === 'c' ? ': check' : show ? ': X' : ''));
+    });
+    fresh = {};
+    // labels for the square in focus
+    tlEls.forEach(function (t) { t.el.classList.toggle('hl', !!fr && !S.done && t.c === fr.b && t.j === fr.j); });
+    llEls.forEach(function (t) { t.el.classList.toggle('hl', !!fr && !S.done && t.c === fr.a && t.i === fr.i); });
+    renderAnswers(all);
+    if (toolEls.undo) { toolEls.undo.disabled = !U.length || S.done; toolEls.redo.disabled = !R.length || S.done; toolEls.hint.disabled = toolEls.check.disabled = S.done; }
+  }
+  // the answer table: your checks against the first group, and what they give through other boxes (lighter)
+  function answerOf(p, c) {
+    var n = P.n, x;
+    for (x = 0; x < n; x++) if (mk(0, p, c, x) === 2) return { x: x, d: true };
+    for (var b = 1; b < P.k; b++) {
+      if (b === c) continue;
+      for (var j = 0; j < n; j++) if (mk(0, p, b, j) === 2) for (x = 0; x < n; x++) if (mk(b, j, c, x) === 2) return { x: x, d: false };
+    }
+    return null;
+  }
+  var ansPrev = {};
+  function renderAnswers(all) {
+    var cnt = 0, tot = 0;
+    ansCells.forEach(function (row, p) {
+      row.td.forEach(function (td, ci) {
+        var c = ci + 1, a = S.done ? { x: P.itemOf[c][p], d: true } : answerOf(p, c), kk = p + ':' + c, sig = a ? a.x + (a.d ? 'd' : 'i') : '';
+        tot++; if (a && a.d) cnt++;
+        if (ansPrev[kk] === sig && !all) return;
+        var was = ansPrev[kk]; ansPrev[kk] = sig;
+        td.innerHTML = a ? '<span class="' + (a.d ? '' : 'inf') + (all || was === sig ? '' : ' wr') + '">' + Kit.esc(LG.label(P, c, a.x)) + '</span>' : '';
+      });
+    });
+    var nEl = document.getElementById('ansN'); if (nEl) nEl.textContent = cnt + '/' + tot;
+  }
+
+  // ── Finishing ─────────────────────────────────────────────────────────────
+  function answerFull() {
+    var k = P.k, n = P.n, G = effective(), ok = true, full = true;
+    for (var c = 1; c < k; c++) for (var p = 0; p < n; p++) {
+      var yes = -1, open = 0;
+      for (var x = 0; x < n; x++) { var g = LG.get(P, G, 0, p, c, x); if (g === 1) yes = x; if (g === 0) { open++; if (yes < 0) yes = yes; } }
+      var pickX = yes;
+      if (pickX < 0 && open === 1) for (x = 0; x < n; x++) if (LG.get(P, G, 0, p, c, x) === 0) pickX = x;
+      if (pickX < 0) { full = false; continue; }
+      if (P.itemOf[c][p] !== pickX) ok = false;
+    }
+    return { full: full, ok: ok };
+  }
+  var warned = false;
+  function checkSolved() {
+    if (!S || S.done) return;
+    var r = answerFull();
+    if (r.full && r.ok) solved();
+    else if (r.full && !warned) { warned = true; Kit.sfx('bad'); note('The answer table is full, but something in it is wrong. Tap Check to see which marks.', true); }
+    else if (!r.full) warned = false;
+  }
+  function solved() {
+    S.done = true; stopClock(); hideNote();
+    var prev = bestTime(S.lv), clean = !S.hints, best = clean && (!prev || S.time < prev);
+    // fill every square with the answer, in a wave from the top left
+    var k = P.k, n = P.n;
+    var newM = S.m.split('');
+    cells.forEach(function (ref) {
+      var t = LG.truth(P, ref.a, ref.i, ref.b, ref.j), x = key(ref.a, ref.i, ref.b, ref.j);
+      var cur = +S.m.charAt(x);
+      ref.el.style.setProperty('--wd', ((ref.r + ref.col) * 0.022).toFixed(3) + 's');
+      if (t === 1 && cur !== 2) { newM[x] = '2'; ref.solve = true; }
+      else if (t === -1 && cur !== 1 && !autoBy(ref.a, ref.i, ref.b, ref.j)) { newM[x] = '1'; ref.solve = true; solveX[x] = 1; }
+    });
+    S.m = newM.join('');
+    focus = null; clearFlags();
+    render(true);
+    cells.forEach(function (ref) { if (ref.solve) ref.el.classList.add('solve'); if (mk(ref.a, ref.i, ref.b, ref.j) === 2) ref.el.classList.add('mck'); });
+    gridEl.classList.add('won');
+    Kit.sfx('sparkle'); Kit.haptic('success');
+    var lvn = lvName(S.lv), hl = [];
+    hl.push('Solved ' + (S.daily ? 'the daily ' : 'a ') + lvn + ' logic grid in ' + fmt(S.time) + (S.hints ? ' with ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ' with no hints'));
+    hl.push(LG.theme(P).title + ', puzzle No. ' + S.no);
+    if (best && prev) hl.push('New best ' + lvn + ' time (old best ' + fmt(prev) + ')');
+    else if (best) hl.push('First ' + lvn + ' puzzle solved without hints');
+    if (S.checks) hl.push('Checked for mistakes ' + (S.checks === 1 ? 'once' : S.checks + ' times'));
+    Kit.record(HKEY, {
+      started: S.started, mode: label(), players: [{ name: 'You' }], winner: 'You',
+      summary: lvn + ' · solved in ' + fmt(S.time), badge: fmt(S.time), highlights: hl.slice(0, 6),
+      meta: { lv: S.lv, seconds: S.time, hints: S.hints, checks: S.checks, wrong: S.wrong, daily: S.daily, no: S.no, th: P.th },
+      detail: histDetail()
+    });
+    clearSave(); save();
+    // the answers fill in row by row, then the stamp
+    setTimeout(function () {
+      if (!isWide()) setTab('a');
+      ansPrev = {}; renderAnswers(false);
+      ansCells.forEach(function (row, p) { setTimeout(function () { row.tr.classList.add('row-on'); pencil('soft'); Kit.sfx('tick', 0.6); }, 160 * p); });
+      setTimeout(function () {
+        var st = document.getElementById('stamp'), stT = document.getElementById('stampT');
+        if (stT) stT.textContent = fmt(S.time);
+        if (st) st.classList.add('on');
+        Kit.sfx('boom', 0.5); Kit.haptic('heavy');
+        Kit.callout(best ? 'New best!' : 'Solved!');
+      }, 160 * n + 250);
+      setTimeout(function () {
+        var lv = S.lv;
+        Kit.win({
+          title: 'Solved!', sub: lvn + (S.daily ? ' daily' : '') + ' in ' + fmt(S.time) + (best && prev ? ' · new best time' : '') + (S.hints ? ' · ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ''),
+          againLabel: 'Another ' + LV[lv] + ' puzzle', again: function () { newPuzzle(lv, 0, false); },
+          extra: [{ label: 'Look at the grid', onClick: function () {} }, { label: 'Choose a level', onClick: showSetup }]
+        });
+      }, 160 * n + 1700);
+    }, 700);
+  }
+  function histDetail() {
+    var rows = [];
+    for (var p = 0; p < P.n; p++) { var r = [LG.label(P, 0, p)]; for (var c = 1; c < P.k; c++) r.push(LG.label(P, c, P.itemOf[c][p])); rows.push(r.join('|')); }
+    var cats = []; for (var c2 = 0; c2 < P.k; c2++) cats.push(LG.catDef(P, c2).n);
+    return { t: LG.theme(P).title, lv: S.lv, no: S.no, d: S.daily || 0, h: cats.join('|'), a: rows, cl: P.clues.length, hi: S.hints, ck: S.checks, w: S.wrong };
+  }
+  function showBests() {
+    var rows = ['easy', 'medium', 'hard', 'hard5'].map(function (l) {
+      var all = hist().filter(function (e) { return e && e.lv === l; }), b = bestTime(l);
+      return '<tr><td>' + lvName(l) + '</td><td>' + all.length + '</td><td>' + (b ? fmt(b) : '–') + '</td></tr>';
+    }).join('');
+    Kit.sheet({ title: 'Best times', html: '<p class="muted" style="margin-bottom:10px">Fastest solves without hints, from your past games.</p><table style="width:100%;border-collapse:collapse;font-weight:800" class="k-hd-rounds mini-best"><tr><th>Level</th><th>Solved</th><th>Best</th></tr>' + rows + '</table>', actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+
+  // ── Keyboard ──────────────────────────────────────────────────────────────
+  document.addEventListener('keydown', function (e) {
+    if (!S || S.done || document.querySelector('.k-scrim,.k-win') || !cells.length) return;
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var kk = e.key.toLowerCase();
+    if (kk === 'h') { hint(); return; }
+    if (!focus) { if (/^arrow/.test(kk)) { focus = cells[0]; render(); e.preventDefault(); } return; }
+    if (kk === 'x' || kk === ' ') { e.preventDefault(); mark(focus, 'x'); return; }
+    if (kk === 'c' || kk === 'enter' || kk === 'v') { e.preventDefault(); mark(focus, 'check'); return; }
+    if (kk === 'backspace' || kk === 'delete') { var v = mk(focus.a, focus.i, focus.b, focus.j); if (v) mark(focus, v === 2 ? 'check' : 'x'); return; }
+    var d = { arrowup: [-1, 0], arrowdown: [1, 0], arrowleft: [0, -1], arrowright: [0, 1] }[kk];
+    if (d) {
+      e.preventDefault();
+      var r = focus.r + d[0], c = focus.col + d[1];
+      var nx = cells.filter(function (x) { return x.r === r && x.col === c; })[0];
+      if (nx) { focus = nx; render(); showCell(nx); }
+    }
+  });
+
+  // Test hook
+  window.__lg = { get: function () { return S; }, P: function () { return P; }, LG: LG,
+    solveTo: function (leave) { // fill the answer, leaving `leave` anchor checks off
+      var n = 0;
+      for (var c = 1; c < P.k; c++) for (var p = 0; p < P.n; p++) { if (n++ < (leave || 0)) continue; setMk(0, p, c, P.itemOf[c][p], 2); }
+      render(true); save();
+    },
+    finish: function () { for (var c = 1; c < P.k; c++) for (var p = 0; p < P.n; p++) if (mk(0, p, c, P.itemOf[c][p]) !== 2) { mark(cellRef(0, p, c, P.itemOf[c][p]), 'check'); return true; } return false; },
+    mark: function (a, i, b, j, how) { mark(cellRef(a, i, b, j), how || 'cycle'); }, layout: layout, zoom: function (cs) { setZoom(cs); } };
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  var going = saved && saved.S && saved.S.P && typeof saved.S.m === 'string' && !saved.S.done && LG.theme(saved.S.P);
+  function resumeSaved() { S = saved.S; U = saved.U || []; R = saved.R || []; document.body.classList.add('playing'); build(); }
+  if (/[?&]daily=1/.test(location.search)) {
+    try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])daily=1&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch (e) {}
+    if (going && saved.S.daily === today()) resumeSaved();
+    else if (dailyDone()) showSetup();
+    else if (going && saved.S.time > 5) Kit.confirm("Start today's daily?", { ok: 'Start daily', cancel: 'Keep playing', body: 'The ' + lvName(saved.S.lv) + ' puzzle you have going will be dropped.' }).then(function (ok) { if (ok) newPuzzle(DAILY_LV[new Date().getDay()], today(), true); else resumeSaved(); });
+    else newPuzzle(DAILY_LV[new Date().getDay()], today(), true);
+  } else if (going) resumeSaved();
+  else showSetup();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Truth or Lies</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<style>
+/* TeX Gyre Pagella (GUST font licence, fonts/pagella-LICENSE.txt): the playbill's printed type */
+@font-face{font-family:'Pagella';src:url('../fonts/pagella-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap;}
+@font-face{font-family:'Pagella';src:url('../fonts/pagella-400italic.woff2') format('woff2');font-weight:400;font-style:italic;font-display:swap;}
+@font-face{font-family:'Pagella';src:url('../fonts/pagella-700.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap;}
+body{overflow-x:hidden;}
+.tl{max-width:560px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 14px);}
+.tl .play{position:relative;display:flex;flex-direction:column;justify-content:center;gap:12px;min-height:calc(100dvh - var(--safe-t) - var(--safe-b) - 74px);padding-bottom:2vh;}
+.loading{min-height:60vh;display:grid;place-items:center;text-align:center;font-family:var(--hand);font-size:1.5rem;color:var(--text-2);}
+
+/* ── The playbill: what's on tonight and the house rules ── */
+.bill{position:relative;padding:9px 14px 10px;border-radius:3px;color:#2b2118;font-family:'Pagella',Georgia,serif;
+  background:radial-gradient(rgba(120,90,40,.06) 1px,transparent 1.2px) 0 0/5px 5px,radial-gradient(140% 100% at 50% 0%,#fffaf0 0%,#f5ead2 75%,#ecdcbb 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 2px 0 #dccaa3,0 12px 26px rgba(0,0,0,.45);}
+.bill::before,.bill::after{content:"";position:absolute;top:7px;width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f3d27a,#9a6b12);box-shadow:0 1px 2px rgba(0,0,0,.4);}
+.bill::before{left:7px;}.bill::after{right:7px;}
+.bill .top{display:flex;align-items:baseline;gap:8px;padding:0 8px 4px;border-bottom:1.5px solid #2b2118;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;}
+.bill .top .lv{font-weight:700;}
+.bill .top .no{font-style:italic;text-transform:none;letter-spacing:0;color:#6d5f49;font-size:.85rem;}
+.bill .top .tm{margin-left:auto;font-family:var(--hand);font-size:1.15rem;letter-spacing:0;text-transform:none;color:var(--ink);font-variant-numeric:tabular-nums;}
+.bill h2{margin:6px 0 2px;font-family:'Pagella',Georgia,serif;font-weight:700;font-size:1.3rem;line-height:1.1;text-align:center;letter-spacing:.01em;}
+.bill .rule{margin:0;text-align:center;font-style:italic;font-size:.98rem;line-height:1.3;color:#3d3125;}
+.bill .rule b{font-style:normal;font-weight:700;color:#2b2118;}
+.bill .rule.flash{animation:ruleFlash 1.6s ease;}
+@keyframes ruleFlash{0%,60%{background:rgba(255,190,40,.45);}100%{background:transparent;}}
+.bill .rule .tw{font-style:normal;font-weight:700;padding:0 2px;border-radius:3px;}
+.bill .rule .tw.t{color:#1d7a46;}.bill .rule .tw.l{color:#b3202f;}.bill .rule .tw.s{color:#6a3fb0;}
+
+/* ── The theatre: wooden proscenium, painted backdrop, velvet curtains, a wooden stage ── */
+.thr{position:relative;padding:6px;border-radius:16px;--drape:14px;--fh:118px;--tok:34px;}
+.stg{position:relative;overflow:hidden;border-radius:11px;isolation:isolate;min-height:200px;background:#1b1420;
+  box-shadow:inset 0 0 0 2px rgba(0,0,0,.45),inset 0 10px 30px rgba(0,0,0,.6);}
+.backdrop{position:absolute;inset:0;z-index:0;pointer-events:none;}
+.backdrop svg{position:absolute;inset:0;width:100%;height:100%;display:block;}
+.backdrop::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 70%,transparent 30%,rgba(10,6,14,.55) 100%),linear-gradient(180deg,rgba(10,6,14,.15),rgba(10,6,14,.0) 40%,rgba(10,6,14,.35));}
+/* stage floor: boards seen from the stalls, footlights along the front */
+.boards{position:absolute;left:0;right:0;bottom:0;height:calc(var(--tok) + 50px);z-index:1;pointer-events:none;
+  background:repeating-linear-gradient(90deg,rgba(0,0,0,.18) 0 1.5px,transparent 1.5px 46px),repeating-linear-gradient(92deg,rgba(255,255,255,.05) 0 2px,transparent 2px 9px),linear-gradient(180deg,#7d4d2b,#5a3219 60%,#3f220f);
+  box-shadow:inset 0 3px 0 rgba(255,220,170,.25),inset 0 6px 10px rgba(0,0,0,.35);}
+.boards::before{content:"";position:absolute;left:0;right:0;top:-10px;height:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.35));}
+.boards::after{content:"";position:absolute;left:0;right:0;bottom:3px;height:8px;
+  background:radial-gradient(circle,#fff3c4 0 2px,rgba(255,206,110,.6) 3px,transparent 7px) 0 50%/34px 8px repeat-x;filter:blur(.2px);opacity:.9;}
+.glow{position:absolute;left:0;right:0;bottom:0;height:70%;z-index:1;pointer-events:none;background:radial-gradient(80% 60% at 50% 100%,rgba(255,200,120,.22),transparent 70%);}
+/* curtains */
+.valance{position:absolute;left:0;right:0;top:0;height:20px;z-index:6;pointer-events:none;
+  background:radial-gradient(circle at 50% 0,#a3203a 0 13px,transparent 14px) 0 0/26px 20px repeat-x,linear-gradient(180deg,#7a1028,#9c1c36);
+  -webkit-mask:linear-gradient(#000 0 9px,transparent 9px),radial-gradient(circle at 50% 0,#000 0 13px,transparent 13.5px) 0 0/26px 20px repeat-x;
+  mask:linear-gradient(#000 0 9px,transparent 9px),radial-gradient(circle at 50% 0,#000 0 13px,transparent 13.5px) 0 0/26px 20px repeat-x;
+  filter:drop-shadow(0 4px 4px rgba(0,0,0,.5));}
+.valance::after{content:"";position:absolute;left:0;right:0;top:7px;height:2px;background:linear-gradient(90deg,#c99a2e,#f3d27a,#c99a2e);}
+.drape{position:absolute;top:0;bottom:0;width:51%;z-index:5;pointer-events:none;transition:width 1s cubic-bezier(.6,.05,.25,1);
+  background:repeating-linear-gradient(90deg,#5e0a1d 0,#9c1c36 9px,#c0304d 13px,#8a1530 19px,#5e0a1d 26px);box-shadow:0 0 18px rgba(0,0,0,.6);}
+.drape.l{left:0;border-radius:0 0 30% 0;}
+.drape.r{right:0;border-radius:0 0 0 30%;}
+.stg.open .drape{width:var(--drape);}
+.stg.open .drape.l{border-radius:0 0 10px 0;}.stg.open .drape.r{border-radius:0 0 0 10px;}
+
+/* the cast and what they say: one grid, two arrangements */
+.scene{position:relative;z-index:3;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));column-gap:4px;row-gap:7px;
+  padding:28px calc(var(--drape) + 6px) 8px;}
+.scene.stack .bub{grid-column:1 / -1;grid-row:var(--row);justify-self:start;width:var(--bw,88%);margin-left:var(--ml,0);}
+.scene.stack .actor{grid-row:calc(var(--n) + 1);grid-column:var(--col);}
+.scene.cols{column-gap:10px;}
+.scene.cols .bub{grid-row:1;grid-column:var(--col);align-self:end;margin-bottom:6px;}
+.scene.cols .actor{grid-row:2;grid-column:var(--col);}
+.scene.cols .bub .who{display:none;}
+
+/* speech bubbles: paper balloons, comic lettering */
+.bub{position:relative;padding:7px 12px 8px;border-radius:16px;background:#fffdf6;color:#20202a;
+  box-shadow:0 0 0 2px #2a2230,0 5px 0 -1px rgba(0,0,0,.3),0 10px 18px -6px rgba(0,0,0,.55);
+  font-family:var(--hand);font-size:1.08rem;line-height:1.22;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transform-origin:var(--tx,50%) 100%;transition:background .4s,box-shadow .3s,transform .25s var(--spring);}
+.bub::after{content:"";position:absolute;bottom:-11px;left:var(--tx,50%);width:16px;height:13px;margin-left:-8px;background:#fffdf6;
+  clip-path:polygon(0 0,100% 0,30% 100%);filter:drop-shadow(0 2px 0 #2a2230);transition:background .4s;}
+.bub::before{content:"";position:absolute;bottom:-13.5px;left:var(--tx,50%);width:20px;height:16px;margin-left:-10px;background:#2a2230;clip-path:polygon(0 0,100% 0,30% 100%);}
+.bub .who{float:left;display:flex;align-items:center;gap:5px;margin:1px 7px 0 -3px;padding-right:7px;border-right:1.5px solid rgba(0,0,0,.12);font-family:var(--font);font-weight:900;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb,var(--c) 70%,#222);}
+.bub .who .mh{width:26px;height:26px;margin:-4px 0 -4px -4px;border-radius:50%;background:color-mix(in srgb,var(--c) 22%,#fff);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c) 60%,#000);overflow:hidden;flex:none;}
+.bub .who .mh svg{width:100%;height:100%;display:block;}
+.bub .say{margin:0;padding-right:14px;}
+.bub,.actor{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.nmx{white-space:nowrap;box-shadow:inset 0 -.36em 0 color-mix(in srgb,var(--c) 38%,transparent);border-radius:2px;padding:0 1px;}
+.bub .tv{position:absolute;top:-9px;right:-7px;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;color:#fff;
+  box-shadow:0 2px 0 rgba(0,0,0,.3),0 0 0 2px #fffdf6;transform:scale(0);transition:transform .3s var(--spring),background .2s;}
+.bub .tv .ico{width:16px;height:16px;stroke-width:3;}
+.bub .tv.on{transform:scale(1);}
+.bub .tv.t{background:#1f9a55;}.bub .tv.f{background:#d0283c;}.bub .tv.q{background:#7a52c7;}
+.bub .exp{display:none;margin:5px 0 0;padding-top:5px;border-top:1.5px dashed rgba(0,0,0,.18);font-family:var(--font);font-size:.8rem;font-weight:700;line-height:1.3;color:#3a3a46;}
+.bub.lit{animation:lit .5s var(--spring);}
+@keyframes lit{40%{transform:scale(1.04);}}
+.bub.hint{box-shadow:0 0 0 2px #2a2230,0 0 0 6px rgba(255,200,61,.9),0 0 26px 6px rgba(255,200,61,.55);animation:hintPulse 1.4s ease-in-out 3;}
+@keyframes hintPulse{50%{box-shadow:0 0 0 2px #2a2230,0 0 0 9px rgba(255,200,61,.5),0 0 34px 10px rgba(255,200,61,.35);}}
+.bub.bad{box-shadow:0 0 0 2px #2a2230,0 0 0 5px #ff4d5e,0 10px 18px -6px rgba(0,0,0,.55);animation:wob .5s;}
+@keyframes wob{20%{transform:rotate(-2deg);}40%{transform:rotate(2deg);}60%{transform:rotate(-1.4deg);}80%{transform:rotate(1deg);}}
+.bub.would{background:#ffe9ea;}.bub.would::after{background:#ffe9ea;}
+.bub.rv .exp{display:block;animation:rise .45s var(--ease) both;}
+.bub.rv-t{background:#e7f7ea;}.bub.rv-t::after{background:#e7f7ea;}
+.bub.rv-f{background:#fde6e6;}.bub.rv-f::after{background:#fde6e6;}
+.bub .stamp{position:absolute;right:26px;top:7px;padding:1px 6px;border:2.5px solid currentColor;border-radius:5px;font-family:var(--font);font-weight:900;font-size:.68rem;letter-spacing:.14em;opacity:0;transform:rotate(-9deg) scale(1.8);pointer-events:none;}
+.bub.rv .stamp{opacity:.85;transform:rotate(-9deg) scale(1);transition:transform .35s cubic-bezier(.2,1.6,.4,1),opacity .2s;}
+.bub.rv-t .stamp{color:#1d7a46;}.bub.rv-f .stamp{color:#b3202f;}
+.scene.cols .bub.rv .say{padding-top:24px;}
+
+/* the cast: paper-cut puppets on little wooden stands */
+.actor{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0;padding:0;border:0;background:none;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.actor .fig{position:relative;height:var(--fh);width:100%;display:flex;justify-content:center;align-items:flex-end;transform-origin:50% 100%;animation:sway 5s ease-in-out infinite alternate;animation-delay:calc(var(--col) * -1.3s);}
+@keyframes sway{from{transform:rotate(-1.2deg);}to{transform:rotate(1.2deg);}}
+.actor .fig svg{height:100%;width:auto;max-width:118%;display:block;overflow:visible;
+  filter:drop-shadow(1.5px 0 0 #fff6e2) drop-shadow(-1.5px 0 0 #fff6e2) drop-shadow(0 1.5px 0 #fff6e2) drop-shadow(0 -1.5px 0 #fff6e2) drop-shadow(0 4px 3px rgba(0,0,0,.55));}
+.actor .hop{transition:transform .32s var(--spring);height:var(--fh);width:100%;display:flex;justify-content:center;align-items:flex-end;}
+.actor.jump .hop{animation:hop .45s var(--ease);}
+@keyframes hop{30%{transform:translateY(-14%) scale(1.03,.97);}60%{transform:translateY(0) scale(.98,1.03);}}
+.actor .base{position:relative;height:calc(var(--tok) + 46px);width:100%;display:flex;flex-direction:column;align-items:center;}
+.actor .stand{position:absolute;top:-5px;width:58%;max-width:60px;height:8px;border-radius:3px;background:linear-gradient(180deg,#a8723f,#6b3f1c);box-shadow:0 3px 4px rgba(0,0,0,.45);}
+.tok{position:relative;margin-top:7px;width:var(--tok);height:var(--tok);border-radius:50%;display:grid;place-items:center;flex:none;
+  background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.08),transparent 60%);box-shadow:inset 0 0 0 2px rgba(255,236,200,.35);transition:transform .35s var(--spring);}
+.tok::before{content:"?";font-family:var(--display);font-size:calc(var(--tok) * .5);color:rgba(255,236,200,.4);}
+.tok .ico{width:58%;height:58%;stroke-width:3.2;color:#fff;filter:drop-shadow(0 1px 0 rgba(0,0,0,.35));}
+.tok.m0,.tok.m1,.tok.m2{box-shadow:inset 0 -3px 0 rgba(0,0,0,.25),inset 0 2px 1px rgba(255,255,255,.4),0 3px 0 rgba(0,0,0,.35),0 5px 8px rgba(0,0,0,.4);}
+.tok.m0::before,.tok.m1::before,.tok.m2::before{content:none;}
+.tok.m0{background:radial-gradient(circle at 35% 28%,#5fd38a,#1f9a55 55%,#147040);}
+.tok.m1{background:radial-gradient(circle at 35% 28%,#ff7d8a,#d0283c 55%,#9a1426);}
+.tok.m2{background:radial-gradient(circle at 35% 28%,#b48cf0,#7a52c7 55%,#563394);}
+.tok.flip{animation:coin .45s var(--ease);}
+@keyframes coin{0%{transform:rotateY(90deg) translateY(-12px);}60%{transform:rotateY(-15deg) translateY(2px);}100%{transform:none;}}
+.actor .nmp{margin-top:3px;max-width:100%;padding:1px 7px 2px;border-radius:4px;background:#f6edd8;color:#2b2118;font-family:var(--font);font-weight:900;font-size:.74rem;line-height:1.1;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  box-shadow:0 2px 0 #b89f74,0 3px 5px rgba(0,0,0,.35),inset 0 -2px 0 color-mix(in srgb,var(--c) 70%,#000);}
+.actor .nmp small{display:block;font-weight:800;font-size:.62rem;letter-spacing:.02em;color:#7a6a52;line-height:1.05;white-space:normal;}
+.actor .nmp small:empty{display:none;}
+.actor:focus-visible{outline:none;}
+.actor:focus-visible .nmp{box-shadow:0 0 0 3px var(--yellow);}
+.actor.lit .fig svg{filter:drop-shadow(1.5px 0 0 #fff6e2) drop-shadow(-1.5px 0 0 #fff6e2) drop-shadow(0 1.5px 0 #fff6e2) drop-shadow(0 -1.5px 0 #fff6e2) drop-shadow(0 0 10px rgba(255,214,110,.95));}
+.actor.bad .tok{animation:shake .4s;}
+/* faces: the figure shows one mouth at a time */
+.fg .mo{display:none;}
+.fg.f-n .mo.n,.fg.f-s .mo.s,.fg.f-k .mo.k,.fg.f-o .mo.o{display:inline;}
+.fg .eye{transform-box:fill-box;transform-origin:50% 50%;animation:blink 6s infinite;animation-delay:var(--bd,0s);}
+@keyframes blink{0%,94%,100%{transform:scaleY(1);}96%{transform:scaleY(.1);}}
+.fg.f-k .brow.r{transform:translateY(-2px) rotate(-8deg);transform-box:fill-box;transform-origin:50% 50%;}
+.fg.f-o .brow{transform:translateY(-3px);}
+/* verdicts at the end */
+.actor.v0 .fig::after,.actor.v1 .fig::after,.actor.v2 .fig::after{content:"";position:absolute;left:50%;bottom:-6px;width:80%;height:22px;margin-left:-40%;border-radius:50%;z-index:-1;filter:blur(6px);}
+.actor.v0 .fig::after{background:rgba(80,230,140,.6);}.actor.v1 .fig::after{background:rgba(255,80,100,.55);}.actor.v2 .fig::after{background:rgba(170,120,255,.6);}
+.actor.bow .hop{animation:bow .7s var(--ease);}
+@keyframes bow{40%{transform:rotate(-10deg) translateY(4%);}}
+
+/* accusing: the house lights drop and a spotlight waits for you */
+.stg .dim{position:absolute;inset:0;z-index:2;background:rgba(6,3,12,.62);opacity:0;pointer-events:none;transition:opacity .35s;}
+.stg.accuse .dim{opacity:1;}
+.stg.accuse .bub{opacity:.45;}
+.stg.accuse .actor .nmp{box-shadow:0 0 0 2px #ffd36b,0 0 14px rgba(255,211,107,.6);}
+.stg.accuse .actor .fig{animation:none;}
+.stg.accuse .actor:hover .fig svg,.stg.accuse .actor.pick .fig svg{filter:drop-shadow(1.5px 0 0 #fff6e2) drop-shadow(-1.5px 0 0 #fff6e2) drop-shadow(0 1.5px 0 #fff6e2) drop-shadow(0 -1.5px 0 #fff6e2) drop-shadow(0 0 14px rgba(255,236,170,1));}
+.beam{position:absolute;z-index:2;top:0;width:150px;margin-left:-75px;pointer-events:none;opacity:0;transition:opacity .3s,left .35s var(--ease);
+  background:linear-gradient(180deg,rgba(255,244,200,.0),rgba(255,240,190,.28) 70%,rgba(255,240,190,.4));clip-path:polygon(42% 0,58% 0,100% 100%,0 100%);}
+.beam.on{opacity:1;}
+.cue{position:absolute;left:50%;top:26px;z-index:7;transform:translateX(-50%);padding:5px 14px;border-radius:999px;background:rgba(20,14,30,.85);color:#ffe7a6;font-weight:900;font-size:.85rem;white-space:nowrap;box-shadow:0 0 0 1.5px rgba(255,211,107,.6);opacity:0;transition:opacity .3s;pointer-events:none;}
+.stg.accuse .cue{opacity:1;}
+/* caught: the evidence turns up in their hand */
+.prop{position:absolute;z-index:4;width:calc(var(--fh) * .3);left:calc(50% + var(--fh) * .16);bottom:calc(var(--fh) * .1);opacity:0;transform:translateY(20px) rotate(-20deg) scale(.4);transition:all .55s cubic-bezier(.2,1.5,.4,1);pointer-events:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));}
+.actor.caught .prop{opacity:1;transform:none;}
+.guilty{position:absolute;left:50%;top:38%;z-index:5;padding:2px 8px;border:3px solid #e8344a;border-radius:6px;color:#e8344a;background:rgba(255,250,240,.9);font-family:var(--font);font-weight:900;font-size:.8rem;letter-spacing:.14em;white-space:nowrap;opacity:0;transform:translateX(-50%) rotate(-12deg) scale(2.2);pointer-events:none;}
+.actor.caught .guilty{opacity:1;transform:translateX(-50%) rotate(-12deg) scale(1);transition:transform .4s cubic-bezier(.2,1.6,.4,1) .5s,opacity .2s .5s;}
+
+/* entrances */
+.stg.open .actor .hop{animation:enter .7s cubic-bezier(.2,1.4,.4,1) both;animation-delay:calc(.35s + var(--col) * .09s);}
+@keyframes enter{from{transform:translateY(70%);}to{transform:none;}}
+.stg.open .bub{animation:bubIn .5s cubic-bezier(.2,1.5,.4,1) both;animation-delay:calc(.8s + var(--row) * .14s);}
+@keyframes bubIn{from{transform:scale(.2);opacity:0;}to{transform:none;opacity:1;}}
+.stg.settled .actor .hop,.stg.settled .bub{animation-delay:0s;}
+.stg.settled .bub{animation:none;}
+.stg.settled .bub.lit{animation:lit .5s var(--spring);}
+.stg.settled .bub.bad{animation:wob .5s;}
+.stg.settled .bub.hint{animation:hintPulse 1.4s ease-in-out 3;}
+.stg.settled .actor .hop{animation:none;}
+.stg.settled .actor.jump .hop{animation:hop .45s var(--ease);}
+.stg.settled .actor.bow .hop{animation:bow .7s var(--ease);}
+
+/* ── Tray: clean chrome ── */
+.tray{position:relative;display:grid;grid-template-columns:62px 62px 1fr;gap:8px;align-items:stretch;}
+.tool{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;border:0;border-radius:14px;background:var(--w07);color:var(--text-2);font-weight:800;font-size:.7rem;transition:transform .12s var(--spring),background .15s;}
+.tool .ico{width:22px;height:22px;}
+.tool:active{transform:scale(.93);background:var(--w14);}
+.tool:disabled{opacity:.35;}
+.tool .pips{display:flex;gap:3px;height:6px;}
+.tool .pips i{width:6px;height:6px;border-radius:50%;background:var(--yellow);}
+.tool .pips i.used{background:var(--w14);}
+.go{display:flex;align-items:center;justify-content:center;gap:10px;min-height:58px;font-size:1.15rem;}
+.go .ico{width:22px;height:22px;}
+.go .dots{display:flex;gap:4px;}
+.go .dots i{width:8px;height:8px;border-radius:50%;background:color-mix(in srgb,var(--accent-ink) 30%,transparent);}
+.go .dots i.on{background:var(--accent-ink);}
+.go:disabled{filter:saturate(.5);opacity:.6;}
+.go.cancel{--b:var(--w12);--b-ink:var(--text);}
+.tray.done{grid-template-columns:1fr 1fr;}
+.tray.done .go{font-size:1.02rem;white-space:nowrap;gap:8px;padding:0 10px;}
+.note{position:fixed;left:max(12px,calc(50% - 268px));right:max(12px,calc(50% - 268px));top:calc(var(--safe-t) + 66px);z-index:40;min-height:60px;display:none;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:3px;background:linear-gradient(180deg,#fff3a6,#ffe678);color:#3a3000;font-family:var(--hand);font-size:1.1rem;line-height:1.25;box-shadow:0 8px 16px rgba(0,0,0,.35);transform:rotate(-.5deg);}
+.note.show{display:flex;animation:rise .3s var(--ease) both;}
+.note .ico{flex:none;width:22px;height:22px;margin-top:1px;color:#7a6200;}
+.note.bad{background:linear-gradient(180deg,#ffd9d2,#ffc2b6);color:#5a0e0e;}
+.note.bad .ico{color:#a8202e;}
+.note .x{margin-left:auto;flex:none;border:0;background:none;color:inherit;opacity:.5;padding:0 0 0 6px;}
+.note .x .ico{width:18px;height:18px;color:inherit;}
+.note .nmx{box-shadow:inset 0 -.36em 0 color-mix(in srgb,var(--c) 45%,transparent);}
+
+/* step-by-step sheet */
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;counter-reset:s;}
+.steps li{position:relative;padding:10px 12px 10px 40px;border-radius:12px;background:var(--surface-2);line-height:1.35;}
+.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:10px;top:10px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-weight:900;font-size:.8rem;}
+.steps .nmx{box-shadow:inset 0 -.36em 0 color-mix(in srgb,var(--c) 45%,transparent);font-weight:800;}
+.steps .end{background:color-mix(in srgb,var(--green) 16%,var(--surface-2));}
+
+/* ── Larger screens ── */
+@media (min-width:700px){
+  .tl{max-width:900px;}
+  .thr{--drape:22px;--fh:176px;--tok:44px;padding:9px;}
+  .bill{padding:12px 20px 12px;}
+  .bill h2{font-size:1.65rem;}
+  .bill .rule{font-size:1.1rem;}
+  .bub{font-size:1.22rem;padding:9px 14px 10px;}
+  .bub .exp{font-size:.88rem;}
+  .actor .nmp{font-size:.9rem;padding:2px 10px 3px;}
+  .actor .nmp small{font-size:.7rem;}
+  .scene{padding-top:34px;}
+  .tray{grid-template-columns:76px 76px 1fr;max-width:620px;width:100%;margin:0 auto;}
+  .tray.done{grid-template-columns:1fr 1fr;}
+  .tool{min-height:64px;font-size:.78rem;}
+  .go{min-height:64px;font-size:1.25rem;}
+}
+@media (min-width:1000px) and (min-height:700px){ .thr{--fh:200px;} }
+@media (min-width:700px) and (min-height:1000px){ .thr{--fh:250px;--tok:52px;} .bub{font-size:1.38rem;} .bub .exp{font-size:.95rem;} .bill h2{font-size:1.9rem;} .bill .rule{font-size:1.2rem;} .scene{row-gap:12px;padding-top:44px;} .actor .nmp{font-size:1rem;} }
+@media (max-height:720px) and (max-width:699px){ .thr{--fh:100px;--tok:30px;} .bub{font-size:1rem;} .bill h2{font-size:1.15rem;} .bill .rule{font-size:.9rem;} }
+</style>
+</head>
+<body>
+<main class="tl" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  // ==ENGINE==
+  // Truth or Lies engine: puzzles, brute-force solver, deduction steps, words. No DOM in here
+  // (scripts/check-truthlies.js runs this block in Node to check every level and the classics).
+  //
+  // A puzzle: {fam:'kk'|'wd', set, n, names[], spy:0|1 (kk), rule:'one'|'onet'|'two'|'thief' (wd),
+  //            st:[{k, a:[args], v:text variant, f:flavour}, ...] one per character, sol:{t:[...], c}}
+  // A world: {t:[type per character], c:culprit (-1 for kk)}. Types: 0 tells the truth, 1 lies, 2 spy (says anything).
+  var TL = (function () {
+    function rng(seed) {
+      var a = seed >>> 0;
+      return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    }
+    function hash(s) { var h = 2166136261; s = String(s); for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+    function pick(a, R) { return a[Math.floor(R() * a.length)]; }
+    function shuffle(a, R) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(R() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+    function wpick(list, R) { var s = 0, i; for (i = 0; i < list.length; i++) s += list[i][1]; var x = R() * s; for (i = 0; i < list.length; i++) { x -= list[i][1]; if (x <= 0) return list[i][0]; } return list[list.length - 1][0]; }
+    function combos(n, k) {
+      var out = [];
+      (function go(s, cur) { if (cur.length === k) { out.push(cur.slice()); return; } for (var i = s; i < n; i++) { cur.push(i); go(i + 1, cur); cur.pop(); } })(0, []);
+      return out;
+    }
+    function cnt(t, v) { var n = 0; for (var i = 0; i < t.length; i++) if (t[i] === v) n++; return n; }
+
+    // ── Settings: who is on stage, what they are called, what happened ──
+    var SETS = {
+      island:   { fam: 'kk', title: 'Island of Knights and Knaves', T: 'knight', L: 'knave', Ts: 'knights', Ls: 'knaves', look: 'island' },
+      castle:   { fam: 'kk', title: 'The Castle Gate', T: 'truth-teller', L: 'liar', Ts: 'truth-tellers', Ls: 'liars', look: 'castle' },
+      woods:    { fam: 'kk', title: 'The Crossroads', T: 'sage', L: 'trickster', Ts: 'sages', Ls: 'tricksters', look: 'woods' },
+      market:   { fam: 'kk', title: 'Market Day', T: 'straight talker', L: 'swindler', Ts: 'straight talkers', Ls: 'swindlers', look: 'market' },
+      bakeoff:  { fam: 'wd', title: 'The Bake-off', what: 'Someone ate the prize cake.', P: 'ate the cake', B: 'eat the cake', Q: 'Who ate the cake?', look: 'bakeoff' },
+      museum:   { fam: 'wd', title: 'The Museum', what: 'Someone moved the golden mask.', P: 'moved the mask', B: 'move the mask', Q: 'Who moved the mask?', look: 'museum' },
+      ship:     { fam: 'wd', title: 'Aboard the Gull', what: "Someone took the captain's map.", P: 'took the map', B: 'take the map', Q: 'Who took the map?', look: 'ship' },
+      library:  { fam: 'wd', title: 'The Library', what: 'Someone spilled cocoa on the rare book.', P: 'spilled the cocoa', B: 'spill the cocoa', Q: 'Who spilled the cocoa?', look: 'library' },
+      train:    { fam: 'wd', title: 'The Night Train', what: 'Someone pulled the emergency cord.', P: 'pulled the cord', B: 'pull the cord', Q: 'Who pulled the cord?', look: 'train' }
+    };
+    var KK_SETS = ['island', 'castle', 'woods', 'market'], WD_SETS = ['bakeoff', 'museum', 'ship', 'library', 'train'];
+    var NAMES = ['Ada', 'Ben', 'Cleo', 'Dev', 'Edie', 'Finn', 'Gia', 'Hugo', 'Iris', 'Jack', 'Kai', 'Lena', 'Milo', 'Nell', 'Otto', 'Pia', 'Quinn', 'Rosa', 'Sam', 'Tess', 'Uma', 'Vic', 'Wren', 'Yara', 'Zack',
+      'Abe', 'Bea', 'Cal', 'Dora', 'Eli', 'Fay', 'Gus', 'Hana', 'Ivo', 'Juno', 'Kit', 'Lou', 'Mae', 'Nico', 'Omar', 'Pip', 'Raj', 'Sol', 'Theo', 'Vera', 'Wes', 'Zoe', 'Ari', 'Bo', 'Cy', 'Dot', 'Emil', 'Flo', 'Hal', 'Ida', 'Jo', 'Lev', 'Mira', 'Ned', 'Ora', 'Ray', 'Ski', 'Tam'];
+    // pick n names with different first letters
+    function names(n, R) {
+      var pool = shuffle(NAMES.slice(), R), out = [], used = {};
+      for (var i = 0; i < pool.length && out.length < n; i++) { var c = pool[i][0]; if (!used[c]) { used[c] = 1; out.push(pool[i]); } }
+      return out;
+    }
+    var RULES = {
+      one: 'Exactly one of them is lying.',
+      onet: 'Only one of them is telling the truth.',
+      two: 'Exactly two of them are lying.',
+      thief: 'Whoever did it is lying. Everyone else tells the truth.'
+    };
+
+    // ── Statements ──
+    function ev(s, w) {
+      var a = s.a, t = w.t, c = w.c;
+      switch (s.k) {
+        case 'T': return t[a[0]] === 0;
+        case 'L': return t[a[0]] === 1;
+        case 'S': return t[a[0]] === 2;
+        case 'nS': return t[a[0]] !== 2;
+        case 'bL': return t[a[0]] === 1 && t[a[1]] === 1;
+        case 'bT': return t[a[0]] === 0 && t[a[1]] === 0;
+        case 'same': return t[a[0]] === t[a[1]];
+        case 'diff': return t[a[0]] !== t[a[1]];
+        case 'oL': return t[a[0]] === 1 || t[a[1]] === 1;
+        case 'oT': return t[a[0]] === 0 || t[a[1]] === 0;
+        case 'nL': return cnt(t, 1) === a[0];
+        case 'aL': return cnt(t, 1) >= a[0];
+        case 'more': return cnt(t, 1) > cnt(t, 0);
+        case 'allT': return cnt(t, 0) === t.length;
+        case 'one': return (t[a[0]] === 0 ? 1 : 0) + (t[a[1]] === 0 ? 1 : 0) + (t[a[2]] === 0 ? 1 : 0) === 1;
+        case 'if': return t[a[0]] !== a[1] || t[a[2]] === a[3];
+        case 'would': return (t[a[0]] === 0) === (t[a[1]] === a[2]);
+        case 'did': return c === a[0];
+        case 'not': return c !== a[0];
+        case 'or': return c === a[0] || c === a[1];
+        case 'nei': return c !== a[0] && c !== a[1];
+        case 'lie': return t[a[0]] === 1;
+        case 'tru': return t[a[0]] === 0;
+      }
+      return false;
+    }
+    // can character i say statement i in world w?
+    function fits(p, w, i) { var ty = w.t[i]; if (ty === 2) return true; return ev(p.st[i], w) === (ty === 0); }
+    function consistent(p, w) { for (var i = 0; i < p.n; i++) if (!fits(p, w, i)) return false; return true; }
+    // every world the rules allow, before anyone speaks
+    function worlds(p) {
+      var out = [], n = p.n, m, i, t;
+      if (p.fam === 'kk') {
+        for (m = 0; m < (1 << n); m++) {
+          t = []; for (i = 0; i < n; i++) t.push((m >> i) & 1);
+          if (!p.spy) out.push({ t: t, c: -1 });
+          else for (var s = 0; s < n; s++) { var u = t.slice(); u[s] = 2; if (!out.some(function (w) { return w.t.join() === u.join(); })) out.push({ t: u, c: -1 }); }
+        }
+      } else {
+        for (var c = 0; c < n; c++) for (m = 0; m < (1 << n); m++) {
+          t = []; for (i = 0; i < n; i++) t.push((m >> i) & 1);
+          var L = cnt(t, 1);
+          if (p.rule === 'one' && L !== 1) continue;
+          if (p.rule === 'onet' && n - L !== 1) continue;
+          if (p.rule === 'two' && L !== 2) continue;
+          if (p.rule === 'thief' && !t.every(function (x, j) { return x === (j === c ? 1 : 0); })) continue;
+          out.push({ t: t, c: c });
+        }
+      }
+      return out;
+    }
+    function solve(p) { return worlds(p).filter(function (w) { return consistent(p, w); }); }
+
+    // ── Facts ("atoms") the solver tracks: each character's type, and who did it ──
+    function atoms(p) {
+      var out = [], i, v;
+      if (p.fam === 'kk') { for (i = 0; i < p.n; i++) for (v = 0; v < (p.spy ? 3 : 2); v++) out.push({ id: 't' + i + '=' + v, i: i, v: v, f: function (i, v) { return function (w) { return w.t[i] === v; }; }(i, v) }); }
+      else {
+        for (i = 0; i < p.n; i++) out.push({ id: 'c=' + i, c: i, f: function (i) { return function (w) { return w.c === i; }; }(i) });
+        for (i = 0; i < p.n; i++) out.push({ id: 't' + i + '=1', i: i, v: 1, f: function (i) { return function (w) { return w.t[i] === 1; }; }(i) });
+      }
+      return out;
+    }
+    function done(p, known) {
+      if (p.fam === 'wd') { for (var x = 0; x < p.n; x++) if (known['c=' + x] === true) return true; return false; }
+      for (var i = 0; i < p.n; i++) if (typeOf(p, known, i) < 0) return false;
+      return true;
+    }
+    // a character's type if the known facts pin it down, else -1
+    function typeOf(p, known, i) {
+      if (p.fam === 'wd') return known['t' + i + '=1'] === true ? 1 : known['t' + i + '=1'] === false ? 0 : -1;
+      for (var v = 0; v < (p.spy ? 3 : 2); v++) if (known['t' + i + '=' + v] === true) return v;
+      return -1;
+    }
+    function atomMap(A) { var m = {}; A.forEach(function (a) { m[a.id] = a; }); return m; }
+    function within(base, AM, known, S, p, extra) {
+      var ids = Object.keys(known);
+      return base.filter(function (w) {
+        for (var q = 0; q < ids.length; q++) if (AM[ids[q]].f(w) !== known[ids[q]]) return false;
+        if (extra && !extra(w)) return false;
+        for (var j = 0; j < S.length; j++) if (!fits(p, w, S[j])) return false;
+        return true;
+      });
+    }
+    // two whodunit statements that can't both be true (rule 'one') or both false (rule 'onet'), whoever did it
+    function clash(p, a, b) {
+      if (p.fam !== 'wd' || (p.rule !== 'one' && p.rule !== 'onet')) return false;
+      var canT = false, canF = false;
+      for (var c = 0; c < p.n; c++) for (var m = 0; m < (1 << p.n); m++) {
+        var t = []; for (var q = 0; q < p.n; q++) t.push((m >> q) & 1);
+        var w = { t: t, c: c }, ea = ev(p.st[a], w), eb = ev(p.st[b], w);
+        if (ea && eb) canT = true; if (!ea && !eb) canF = true;
+      }
+      return p.rule === 'one' ? !canT : !canF;
+    }
+    // The chain of deductions a person could make: each step uses the fewest statements possible.
+    // Returns [{S:[speakers used], facts:[[atomId, bool]], before:{known facts before this step}}]
+    function chain(p) {
+      if (p._chain) return p._chain;
+      var base = worlds(p), A = atoms(p), AM = atomMap(A), known = {}, steps = [], guard = 0;
+      while (!done(p, known) && guard++ < 40) {
+        var best = null;
+        for (var k = 0; k <= p.n && !best; k++) {
+          combos(p.n, k).forEach(function (S) {
+            var W = within(base, AM, known, S, p);
+            if (!W.length) return;
+            var facts = [];
+            A.forEach(function (a) { if (a.id in known) return; var v0 = a.f(W[0]); if (W.every(function (w) { return a.f(w) === v0; })) facts.push([a.id, v0]); });
+            if (!facts.length) return;
+            // score: characters (or the culprit) fully pinned down, then facts learned; whodunits like a clean clash
+            var kn2 = Object.assign({}, known); facts.forEach(function (f) { kn2[f[0]] = f[1]; });
+            var pinned = 0; for (var i = 0; i < p.n; i++) if (typeOf(p, known, i) < 0 && typeOf(p, kn2, i) >= 0) pinned++;
+            if (p.fam === 'wd' && done(p, kn2)) pinned += 5;
+            var sc = pinned * 10 + facts.length;
+            if (S.length === 1 && typeOf(p, known, S[0]) >= 0) sc += 4;   // reading a known speaker is the easiest move
+            if (S.length === 2 && clash(p, S[0], S[1])) sc += 100;
+            if (!best || sc > best.sc) best = { S: S, facts: facts, sc: sc };
+          });
+        }
+        if (!best) break;
+        best.before = Object.assign({}, known);
+        best.facts.forEach(function (f) { known[f[0]] = f[1]; });
+        delete best.sc;
+        steps.push(best);
+      }
+      p._chain = steps;
+      return steps;
+    }
+    function grade(p) { var st = chain(p), m = 0; st.forEach(function (s) { m = Math.max(m, s.S.length); }); return { k: m, steps: st.length }; }
+
+    // ── Making puzzles ──
+    var LV = {
+      easy:   { kk: [2, 3], wd: [3, 3], wdRules: [['thief', 1], ['one', 1.4]] },
+      medium: { kk: [3, 4], wd: [3, 4], wdRules: [['one', 1], ['onet', 1]] },
+      hard:   { kk: [4, 5], wd: [4, 5], wdRules: [['onet', 1.6], ['two', 0.7], ['one', 0.9]] }
+    };
+    var KK_POOL = {
+      easy:   [['L', 3], ['T', 1.5], ['bL', 2], ['bT', 1], ['same', 2], ['diff', 2], ['oL', 1.2], ['nL', 0.8]],
+      medium: [['L', 1.5], ['T', 1], ['bL', 1.5], ['bT', 0.6], ['same', 2], ['diff', 2], ['oL', 1.5], ['oT', 0.8], ['nL', 2], ['aL', 0.8], ['if', 2], ['allT', 0.3]],
+      hard:   [['L', 0.8], ['T', 0.5], ['bL', 1], ['same', 1.2], ['diff', 1.2], ['oL', 1], ['oT', 0.8], ['nL', 2], ['aL', 1], ['more', 1.4], ['one', 1.6], ['if', 2], ['would', 2.2]],
+      spy:    [['L', 1], ['T', 1], ['bL', 0.8], ['bT', 0.6], ['oL', 0.8], ['oT', 0.6], ['nL', 1.2], ['if', 1.4], ['S', 1.6], ['nS', 2.4], ['one', 0.8]]
+    };
+    var WD_POOL = {
+      easy:   [['did', 2], ['not', 3.2], ['or', 1]],
+      medium: [['did', 2], ['not', 3], ['or', 2], ['nei', 2], ['lie', 0.6]],
+      hard:   [['did', 1.4], ['not', 2], ['or', 2], ['nei', 2], ['lie', 1.6], ['tru', 0.8]]
+    };
+    var NV = { T: 3, L: 3, S: 2, nS: 2, bL: 2, bT: 1, same: 2, diff: 2, oL: 2, oT: 1, nL: 2, aL: 1, more: 2, allT: 2, one: 1, 'if': 1, would: 2, did: 3, not: 3, or: 2, nei: 2, lie: 2, tru: 2 };
+    // a random statement of kind k for speaker s (null when it makes no sense here)
+    function make(k, s, n, R, spy) {
+      var others = []; for (var i = 0; i < n; i++) if (i !== s) others.push(i);
+      var o = pick(others, R), o2 = pick(others.filter(function (x) { return x !== o; }), R);
+      var any = R() < 0.55 ? s : o2;   // pairs that include the speaker are the classic ones
+      var a;
+      switch (k) {
+        case 'T': case 'L': a = [o]; break;
+        case 'S': a = [R() < 0.25 ? s : o]; break;
+        case 'nS': a = [R() < 0.4 ? s : o]; break;
+        case 'bL': case 'bT': case 'same': case 'diff': case 'oL': case 'oT': a = any === s ? [s, o] : [o, o2].sort(); if (o2 == null && any !== s) return null; break;
+        case 'nL': a = [1 + Math.floor(R() * (n - 1))]; break;
+        case 'aL': a = [2 + Math.floor(R() * (n - 2))]; if (n < 3) return null; break;
+        case 'more': case 'allT': a = []; break;
+        case 'one': if (n < 3) return null; var tri = shuffle(others.slice(), R).slice(0, R() < 0.5 ? 2 : 3); if (tri.length === 2) tri.push(s); tri = tri.slice(0, 3).sort(); a = tri; break;
+        case 'if': var x = R() < 0.6 ? s : o, y = x === s ? o : (R() < 0.5 ? s : o2); if (y == null) return null; a = [x, R() < 0.75 ? 0 : 1, y, R() < 0.6 ? 1 : 0]; break;
+        case 'would': if (n < 3) return null; a = [o, R() < 0.35 ? s : o2, R() < 0.6 ? 1 : 0]; if (a[1] == null) return null; break;
+        case 'did': a = [R() < 0.12 ? s : o]; break;
+        case 'not': a = [R() < 0.6 ? s : o]; break;
+        case 'or': if (o2 == null) return null; a = [o, o2].sort(); break;
+        case 'nei': a = R() < 0.5 ? [s, o] : [o, o2].sort(); if (a[1] == null) return null; break;
+        case 'lie': case 'tru': a = [o]; break;
+      }
+      if (spy && k === 'would') return null;
+      return { k: k, a: a, v: Math.floor(R() * (NV[k] || 1)), f: R() < 0.22 ? 1 + Math.floor(R() * 6) : 0 };
+    }
+    function same(x, y) { return x.k === y.k && x.a.join() === y.a.join(); }
+    function genOne(level, fam, R) {
+      var L = LV[level], n, p, set;
+      if (fam === 'kk') {
+        n = L.kk[0] + Math.floor(R() * (L.kk[1] - L.kk[0] + 1));
+        var spy = level === 'hard' && R() < 0.4 ? 1 : 0;
+        set = pick(KK_SETS, R);
+        p = { fam: 'kk', set: set, n: n, spy: spy, names: names(n, R), st: [] };
+        var t;
+        do { t = []; for (var i = 0; i < n; i++) t.push(R() < 0.5 ? 0 : 1); } while (cnt(t, 0) === 0 || cnt(t, 1) === 0 && !spy);
+        if (spy) { t[Math.floor(R() * n)] = 2; if (!cnt(t, 0) && !cnt(t, 1)) return null; }
+        p.sol = { t: t, c: -1 };
+        var pool = spy ? KK_POOL.spy : KK_POOL[level];
+      } else {
+        n = L.wd[0] + Math.floor(R() * (L.wd[1] - L.wd[0] + 1));
+        set = pick(WD_SETS, R);
+        var rule = wpick(L.wdRules, R), c = Math.floor(R() * n), tt = [];
+        for (var j = 0; j < n; j++) tt.push(rule === 'onet' ? 1 : 0);
+        if (rule === 'one') tt[Math.floor(R() * n)] = 1;
+        if (rule === 'onet') tt[Math.floor(R() * n)] = 0;
+        if (rule === 'two') { var ix = shuffle(Array.from({ length: n }, function (_, q) { return q; }), R); tt[ix[0]] = 1; tt[ix[1]] = 1; }
+        if (rule === 'thief') tt[c] = 1;
+        p = { fam: 'wd', set: set, n: n, rule: rule, names: names(n, R), st: [], sol: { t: tt, c: c } };
+        pool = WD_POOL[level];
+      }
+      // one statement each, true for truth-tellers and false for liars
+      function sayFor(i) {
+        for (var g = 0; g < 60; g++) {
+          var s = make(wpick(pool, R), i, p.n, R, p.spy);
+          if (!s) continue;
+          var tv = ev(s, p.sol), ty = p.sol.t[i];
+          if (ty !== 2 && tv !== (ty === 0)) continue;
+          if (p.st.some(function (x, j) { return j !== i && x && same(x, s); })) continue;
+          return s;
+        }
+        return null;
+      }
+      for (var q = 0; q < n; q++) { p.st[q] = sayFor(q); if (!p.st[q]) return null; }
+      // nudge statements until exactly one answer is left
+      for (var it = 0; it < 40; it++) {
+        var sols = solve(p);
+        if (sols.length === 1) return p;
+        var r = Math.floor(R() * n), s2 = sayFor(r); if (s2) p.st[r] = s2;
+      }
+      return null;
+    }
+    function fitsLevel(p, level) {
+      var g = grade(p);
+      if (p.fam === 'kk') {
+        if (level === 'easy') return g.k <= 1;
+        if (level === 'medium') return g.k === 2 || (g.k === 1 && p.n === 4 && g.steps >= 3);
+        return g.k >= 2 && g.steps >= 2;
+      }
+      if (level === 'easy') return g.k <= 2;
+      if (level === 'medium') return g.k === 2 && g.steps >= 2 || g.k === 3;
+      return g.k >= 2 && (g.k >= 3 || g.steps >= 3);
+    }
+    // seed -> the same puzzle on every device
+    function generate(level, seed, fam) {
+      var R = rng(seed);
+      fam = fam || (R() < (level === 'hard' ? 0.62 : 0.5) ? 'kk' : 'wd');
+      var keep = null;
+      for (var tries = 0; tries < 900; tries++) {
+        var p = genOne(level, fam, R);
+        if (!p) continue;
+        if (fitsLevel(p, level)) { p.level = level; p.tries = tries + 1; return p; }
+        if (!keep) keep = p;
+      }
+      keep.level = level; keep.tries = 900; return keep;
+    }
+    // a puzzle saved as plain data (no cached chain)
+    function plain(p) { var o = {}; for (var k in p) if (k[0] !== '_') o[k] = p[k]; return JSON.parse(JSON.stringify(o)); }
+
+    // ── Words ──
+    var NUM = ['no', 'one', 'two', 'three', 'four', 'five'];
+    function an(w) { return (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w; }
+    function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+    function nouns(p) { var S = SETS[p.set] || SETS.island; return { T: S.T, L: S.L, Ts: S.Ts, Ls: S.Ls, aT: an(S.T), aL: an(S.L), S: 'spy', aS: 'the spy', P: S.P, B: S.B }; }
+    function typeWord(N, v) { return v === 0 ? N.aT : v === 1 ? N.aL : N.aS; }
+    // [[i]] marks a name; the page colours it
+    function nm(i) { return '[[' + i + ']]'; }
+    var FLAV = ['', 'Honestly, ', 'Listen: ', 'Trust me, ', 'Ha! ', 'Well, ', 'Between you and me, '];
+    function say(p, i) {
+      var s = p.st[i], a = s.a, N = nouns(p), v = s.v || 0, n = p.n;
+      function X(j) { return j === i ? 'I' : nm(j); }
+      function O(j) { return j === i ? 'me' : nm(j); }
+      function is(j) { return j === i ? 'am' : 'is'; }
+      var other = a.length > 1 ? (a[0] === i ? a[1] : a[0]) : -1, self = a.indexOf(i) >= 0;
+      var r;
+      switch (s.k) {
+        case 'T': r = [X(a[0]) + ' is ' + N.aT + '.', X(a[0]) + ' always tells the truth.', 'You can believe every word ' + X(a[0]) + ' says.'][v % 3]; break;
+        case 'L': r = [X(a[0]) + ' is ' + N.aL + '.', X(a[0]) + ' never tells the truth.', "Don't believe a word " + X(a[0]) + ' says.'][v % 3]; break;
+        case 'S': r = a[0] === i ? 'I am the spy.' : [nm(a[0]) + ' is the spy.', nm(a[0]) + ' is our spy.'][v % 2]; break;
+        case 'nS': r = a[0] === i ? ['I am not the spy.', "I'm no spy."][v % 2] : [nm(a[0]) + ' is not the spy.', nm(a[0]) + " isn't the spy."][v % 2]; break;
+        case 'bL': r = self ? [nm(other) + ' and I are both ' + N.Ls + '.', "We're both " + N.Ls + ', ' + nm(other) + ' and I.'][v % 2] : nm(a[0]) + ' and ' + nm(a[1]) + ' are both ' + N.Ls + '.'; break;
+        case 'bT': r = self ? nm(other) + ' and I are both ' + N.Ts + '.' : nm(a[0]) + ' and ' + nm(a[1]) + ' are both ' + N.Ts + '.'; break;
+        case 'same': r = self ? [nm(other) + ' and I are the same kind.', nm(other) + ' and I are both ' + N.Ts + ', or both ' + N.Ls + '.'][v % 2] : [nm(a[0]) + ' and ' + nm(a[1]) + ' are the same kind.', nm(a[0]) + ' and ' + nm(a[1]) + ' are both ' + N.Ts + ', or both ' + N.Ls + '.'][v % 2]; break;
+        case 'diff': r = self ? [nm(other) + ' and I are different kinds.', 'One of ' + nm(other) + ' and me is ' + N.aT + ', the other is ' + N.aL + '.'][v % 2] : [nm(a[0]) + ' and ' + nm(a[1]) + ' are different kinds.', 'One of ' + nm(a[0]) + ' and ' + nm(a[1]) + ' is ' + N.aT + ', the other is ' + N.aL + '.'][v % 2]; break;
+        case 'oL': r = self ? 'At least one of ' + nm(other) + ' and me is ' + N.aL + '.' : ['At least one of ' + nm(a[0]) + ' and ' + nm(a[1]) + ' is ' + N.aL + '.', nm(a[0]) + ' or ' + nm(a[1]) + ' is ' + N.aL + ', maybe both.'][v % 2]; break;
+        case 'oT': r = self ? 'At least one of ' + nm(other) + ' and me is ' + N.aT + '.' : 'At least one of ' + nm(a[0]) + ' and ' + nm(a[1]) + ' is ' + N.aT + '.'; break;
+        case 'nL': r = ['Exactly ' + NUM[a[0]] + ' of us ' + NUM[n] + (a[0] === 1 ? ' is ' + N.aL : ' are ' + N.Ls) + '.', 'Of the ' + NUM[n] + ' of us, exactly ' + NUM[a[0]] + (a[0] === 1 ? ' is ' + N.aL : ' are ' + N.Ls) + '.'][v % 2]; break;
+        case 'aL': r = 'At least ' + NUM[a[0]] + ' of us ' + NUM[n] + ' are ' + N.Ls + '.'; break;
+        case 'more': r = ['There are more ' + N.Ls + ' than ' + N.Ts + ' among us.', cap(N.Ls) + ' outnumber ' + N.Ts + ' here.'][v % 2]; break;
+        case 'allT': r = ['We are all ' + N.Ts + '.', 'Every one of us is ' + N.aT + '.'][v % 2]; break;
+        case 'one': var L3 = a.map(O); if (a[0] === i || a[1] === i) { var me = L3.splice(a.indexOf(i), 1); L3.push(me[0]); } r = 'Exactly one of ' + L3[0] + ', ' + L3[1] + ' and ' + L3[2] + ' is ' + N.aT + '.'; break;
+        case 'if': r = 'If ' + X(a[0]) + ' ' + is(a[0]) + ' ' + typeWord(N, a[1]) + ', then ' + X(a[2]) + ' ' + is(a[2]) + ' ' + typeWord(N, a[3]) + '.'; break;
+        case 'would': r = [nm(a[0]) + ' would tell you that ' + X(a[1]) + ' ' + is(a[1]) + ' ' + typeWord(N, a[2]) + '.', 'Ask ' + nm(a[0]) + ', and ' + nm(a[0]) + ' will say ' + X(a[1]) + ' ' + is(a[1]) + ' ' + typeWord(N, a[2]) + '.'][v % 2]; break;
+        case 'did': r = a[0] === i ? ['I ' + N.P + '. There, I said it.', 'Fine. I ' + N.P + '.', 'Yes, I ' + N.P + '.'][v % 3] : [nm(a[0]) + ' ' + N.P + '.', 'It was ' + nm(a[0]) + '!', 'I saw ' + nm(a[0]) + ' do it.'][v % 3]; break;
+        case 'not': r = a[0] === i ? ["I didn't " + N.B + '.', "It wasn't me!", 'I had nothing to do with it.'][v % 3] : [nm(a[0]) + " didn't " + N.B + '.', "It wasn't " + nm(a[0]) + '.', nm(a[0]) + ' is innocent.'][v % 3]; break;
+        case 'or': r = ['It was ' + nm(a[0]) + ' or ' + nm(a[1]) + '.', 'Either ' + nm(a[0]) + ' or ' + nm(a[1]) + ' ' + N.P + '.'][v % 2]; break;
+        case 'nei': r = self ? ["It wasn't me, and it wasn't " + nm(other) + '.', 'Neither ' + nm(other) + ' nor I ' + N.P + '.'][v % 2] : ['Neither ' + nm(a[0]) + ' nor ' + nm(a[1]) + ' ' + N.P + '.', "It wasn't " + nm(a[0]) + ", and it wasn't " + nm(a[1]) + '.'][v % 2]; break;
+        case 'lie': r = [nm(a[0]) + ' is lying.', "Don't listen to " + nm(a[0]) + '. ' + nm(a[0]) + ' is lying.'][v % 2]; break;
+        case 'tru': r = [nm(a[0]) + ' is telling the truth.', nm(a[0]) + ' is right.'][v % 2]; break;
+        default: r = '…';
+      }
+      var f = FLAV[s.f || 0] || '';
+      if (f && !/^(Fine|Yes|It was \[)/.test(r)) {
+        if (/[,:] $/.test(f) && !/^(\[\[|I |I'm )/.test(r)) r = r.charAt(0).toLowerCase() + r.slice(1);
+        r = f + r;
+      }
+      return r;
+    }
+    function plainText(str, names) { return String(str).replace(/\[\[(\d+)\]\]/g, function (_, i) { return names[+i] || '?'; }); }
+    function listAnd(a) { return a.length <= 1 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+    function listOr(a) { return a.length <= 1 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' or ' + a[a.length - 1]; }
+
+    // what a set of facts says, in words (whodunits: once the culprit is known, just that)
+    function factWords(p, facts, S) {
+      var N = nouns(p), out = [], byI = {}, notC = [], culprit = -1;
+      facts.forEach(function (f) { if (/^c=/.test(f[0]) && f[1]) culprit = +f[0].slice(2); });
+      facts.forEach(function (f) {
+        var m = /^t(\d+)=(\d)$/.exec(f[0]);
+        if (m) { var i = +m[1], v = +m[2]; (byI[i] = byI[i] || []).push([v, f[1]]); }
+        else { var c = +f[0].slice(2); if (f[1]) out.push(nm(c) + ' ' + N.P); else if (culprit < 0) notC.push(nm(c)); }
+      });
+      if (notC.length) out.push("it wasn't " + listOr(notC));
+      var grp = {}, order = [];
+      function put(key, i) { if (!grp[key]) { grp[key] = []; order.push(key); } grp[key].push(i); }
+      Object.keys(byI).forEach(function (k) {
+        var i = +k, L = byI[k], yes = L.filter(function (x) { return x[1]; })[0];
+        if (p.fam === 'wd') { if (culprit < 0 || (S && S.indexOf(i) >= 0)) put(L[0][1] ? 'lie' : 'tru', i); return; }
+        if (yes) put('is' + yes[0], i);
+        else L.forEach(function (x) { out.push(nm(i) + ' is not ' + typeWord(N, x[0])); });
+      });
+      order.forEach(function (key) {
+        var L = grp[key], one = L.length === 1, who = listAnd(L.map(nm));
+        if (key === 'lie') out.push(who + (one ? ' is' : ' are') + ' lying');
+        else if (key === 'tru') out.push(who + (one ? ' is' : ' are') + ' telling the truth');
+        else { var v = +key.slice(2); out.push(who + (one ? ' is ' + typeWord(N, v) : ' are ' + (v === 0 ? N.Ts : v === 1 ? N.Ls : 'spies'))); }
+      });
+      return out.some(function (x) { return / and /.test(x); }) && out.length > 1 ? out.slice(0, -1).join(', ') + ', and ' + out[out.length - 1] : listAnd(out);
+    }
+    // the first few words of a hint: which statements to look at
+    function stepLead(p, step) {
+      var S = step.S, N = nouns(p);
+      if (!S.length) return p.fam === 'wd' ? 'Think about the rule: ' + RULES[p.rule].toLowerCase().replace(/\.$/, '') + '.' : 'Think about the spy: there is only one.';
+      if (S.length === 1) {
+        var i = S[0], ty = typeOf(p, step.before, i);
+        if (ty === 0) return 'Look at ' + nm(i) + "'s words. You already know " + nm(i) + (p.fam === 'wd' ? ' is telling the truth.' : ' is ' + N.aT + '.');
+        if (ty === 1) return 'Look at ' + nm(i) + "'s words. You already know " + nm(i) + (p.fam === 'wd' ? ' is lying.' : ' is ' + N.aL + '.');
+        return 'Start with ' + nm(i) + "'s words. Could " + nm(i) + (p.fam === 'wd' ? ' be telling the truth?' : ' be ' + N.aT + '?');
+      }
+      if (S.length === 2) return (clash(p, S[0], S[1]) ? 'Compare ' + nm(S[0]) + "'s and " + nm(S[1]) + "'s stories. Can they both be " + (p.rule === 'one' ? 'true?' : 'false?') : 'Put ' + nm(S[0]) + "'s and " + nm(S[1]) + "'s words side by side.");
+      return 'Put ' + listAnd(S.map(function (i) { return nm(i) + "'s"; })) + ' words together.';
+    }
+    // why a step works, in a sentence or two
+    function stepWhy(p, step) {
+      var S = step.S, N = nouns(p), facts = step.facts, F = factWords(p, facts, S), base = worlds(p), AM = atomMap(atoms(p)), wd = p.fam === 'wd';
+      var known = step.before;
+      if (!S.length) return (wd ? RULES[p.rule].replace(/\.$/, '') : 'There is only one spy') + ', so ' + F + '.';
+      if (S.length === 1) {
+        var i = S[0], ty = typeOf(p, known, i);
+        if (wd && (ty === 0 || ty === 1)) {
+          var gc = facts.filter(function (f) { return /^c=/.test(f[0]) && f[1]; })[0], outs = facts.filter(function (f) { return /^c=/.test(f[0]) && !f[1]; }).map(function (f) { return nm(+f[0].slice(2)); });
+          var only = 0; for (var c0 = 0; c0 < p.n; c0++) if (ev(p.st[i], { t: p.sol.t, c: c0 }) === (ty === 0)) only++;
+          if (gc && outs.length && only > 1) {
+            var lead = nm(i) + (ty === 0 ? ' is telling the truth' : ' is lying') + ', so ' + (ty === 0 ? nm(i) + "'s words are true" : 'the opposite of ' + nm(i) + "'s words is true");
+            return lead + ": it wasn't " + listOr(outs) + '. That leaves ' + nm(+gc[0].slice(2)) + ', who ' + N.P + '.';
+          }
+        }
+        if (ty === 0) return nm(i) + (wd ? ' is telling the truth' : ' is ' + N.aT) + ', so ' + nm(i) + "'s words are true" + (direct(p, i, step) ? ': ' : ', which means ') + F + '.';
+        if (ty === 1) return nm(i) + (wd ? ' is lying' : ' is ' + N.aL) + ', so ' + (direct(p, i, step) ? 'the opposite of ' + nm(i) + "'s words is true: " : nm(i) + "'s words are false, which means ") + F + '.';
+        if (wd && p.st[i].k === 'lie' && p.rule === 'onet') return nm(i) + ' says ' + nm(p.st[i].a[0]) + ' is lying, so one of those two is telling the truth. Only one person is, so ' + F + '.';
+        if (wd && p.st[i].k === 'lie' && p.rule === 'one') return nm(i) + ' says ' + nm(p.st[i].a[0]) + ' is lying, so one of those two is the liar. Only one person is lying, so ' + F + '.';
+        // the words can already be checked against what is known
+        var Wk = within(base, AM, known, [], p), v0 = Wk.length ? ev(p.st[i], Wk[0]) : null;
+        if (Wk.length && Wk.every(function (w) { return ev(p.st[i], w) === v0; }) && Object.keys(known).length)
+          return 'You know enough to check ' + nm(i) + "'s words: they are " + (v0 ? 'true' : 'false') + '. So ' + F + '.';
+        if (wd && p.rule === 'thief') {
+          var ft = facts.filter(function (f) { return f[0] === 't' + i + '=1'; })[0];
+          var Fo = factWords(p, facts.filter(function (f) { return f[0] !== 't' + i + '=1'; }), []);
+          var asC = { t: p.sol.t.map(function (_, j) { return j === i ? 1 : 0; }), c: i };
+          if (ft && !ft[1] && ev(p.st[i], asC)) return 'If ' + nm(i) + ' were lying, ' + nm(i) + ' would be the one who did it, and then these words would be true. So ' + nm(i) + ' is telling the truth' + (Fo ? ', and ' + Fo : '') + '.';
+          if (ft && ft[1]) return nm(i) + "'s words could only be true if " + nm(i) + ' did it, and whoever did it is lying. So ' + F + '.';
+        }
+        var mine = facts.filter(function (f) { return f[0].indexOf('t' + i + '=') === 0; });
+        var full = mine.filter(function (f) { return f[1]; })[0];
+        if (!wd && full && !p.spy) {
+          var v = +full[0].split('=')[1], alone = within(base, AM, {}, [i], p).every(function (w) { return w.t[i] === v; });
+          var tail = alone ? '' : ', given what you know';
+          if (v === 1) return nm(i) + " can't be " + N.aT + ': if these words were true, ' + nm(i) + ' would be ' + N.aL + ' after all' + tail + '. So ' + F + '.';
+          return nm(i) + " can't be " + N.aL + ': if these words were a lie, ' + nm(i) + ' would be ' + N.aT + ' after all' + tail + '. So ' + F + '.';
+        }
+        if (!wd && mine.length && !full) {
+          var no = +mine[0][0].split('=')[1];
+          return nm(i) + " can't be " + typeWord(N, no) + ': these words can\'t be ' + (no === 0 ? 'true' : 'false') + '. So ' + F + '.';
+        }
+        if (!mine.length) return 'Try it both ways. Whether ' + nm(i) + (wd ? ' is honest or lying' : ' is ' + N.aT + ' or ' + N.aL) + ', ' + F + '.';
+      }
+      if (S.length === 2 && clash(p, S[0], S[1])) {
+        var a = S[0], b = S[1];
+        if (p.rule === 'one') return nm(a) + ' and ' + nm(b) + " can't both be telling the truth, so one of them is the liar. Only one person is lying, so " + F + '.';
+        return nm(a) + ' and ' + nm(b) + " can't both be lying: one of them has to be right. Only one person tells the truth, so " + F + '.';
+      }
+      if (wd) { var t = wdCase(p, step); if (t) return t; }
+      // try the other way round and watch it break
+      var key = facts.filter(function (f) { return /^c=/.test(f[0]) && f[1]; })[0] || facts.filter(function (f) { return f[1]; })[0] || facts[0];
+      var alt, m = /^t(\d+)=(\d)$/.exec(key[0]);
+      if (m) {
+        var who = +m[1], vv = +m[2];
+        if (wd) alt = nm(who) + (key[1] ? ' were telling the truth' : ' were lying');
+        else if (key[1]) alt = p.spy ? nm(who) + ' were not ' + typeWord(N, vv) : nm(who) + ' were ' + typeWord(N, 1 - vv);
+        else alt = nm(who) + ' were ' + typeWord(N, vv);
+      } else { var cc = +key[0].slice(2); alt = key[1] ? 'it was not ' + nm(cc) : nm(cc) + ' ' + N.P; }
+      return 'Suppose ' + alt + '. Then ' + listAnd(S.map(function (j) { return nm(j) + "'s"; })) + ' words can\'t ' + (S.length === 2 ? 'both' : 'all') + ' hold up. So ' + F + '.';
+    }
+    // do the speaker's words alone (true or false) give this step's facts, without what was already known?
+    function direct(p, i, step) {
+      var AM = atomMap(atoms(p)), ty = typeOf(p, step.before, i), kn = {}; kn[p.fam === 'wd' ? 't' + i + '=1' : 't' + i + '=' + ty] = p.fam === 'wd' ? ty === 1 : true;
+      var W = within(worlds(p), AM, kn, [i], p);
+      return step.facts.every(function (f) { return W.every(function (w) { return AM[f[0]].f(w) === f[1]; }); });
+    }
+    // a whodunit step told as "suppose X did it": who would be lying, and why that can't be
+    function wdCase(p, step) {
+      var N = nouns(p), S = step.S, known = step.before, facts = step.facts;
+      var guilty = facts.filter(function (f) { return /^c=/.test(f[0]) && f[1]; })[0];
+      var outs = facts.filter(function (f) { return /^c=/.test(f[0]) && !f[1]; }).map(function (f) { return +f[0].slice(2); });
+      if (guilty || !outs.length) return null;
+      if (S.some(function (j) { return p.st[j].k === 'lie' || p.st[j].k === 'tru'; })) return null;
+      var x = outs[0], lying = [], honest = [];
+      S.forEach(function (j) { (ev(p.st[j], { t: p.sol.t, c: x }) ? honest : lying).push(j); });
+      var why = '';
+      var kl = []; for (var i = 0; i < p.n; i++) if (known['t' + i + '=1'] === true && lying.indexOf(i) < 0) kl.push(i);
+      var badH = lying.filter(function (j) { return known['t' + j + '=1'] === false; })[0], badL = honest.filter(function (j) { return known['t' + j + '=1'] === true; })[0];
+      if (badH != null) why = nm(badH) + ' would be lying, but ' + nm(badH) + ' tells the truth';
+      else if (badL != null) why = nm(badL) + ' would be telling the truth, but ' + nm(badL) + ' is the liar';
+      else if (p.rule === 'thief') {
+        var o = lying.filter(function (j) { return j !== x; })[0];
+        if (o != null) why = nm(o) + ' would be lying too, but only the one who did it lies';
+        else if (honest.indexOf(x) >= 0) why = nm(x) + "'s own words would be true, but whoever did it is lying";
+      } else {
+        var allL = lying.concat(kl), want = p.rule === 'one' ? 1 : p.rule === 'two' ? 2 : p.n - 1;
+        var allH = honest.concat(Object.keys(known).filter(function (id) { return /^t\d+=1$/.test(id) && known[id] === false; }).map(function (id) { return +id.slice(1, -2); }).filter(function (j) { return honest.indexOf(j) < 0; }));
+        if (allL.length > want) why = listAnd(allL.map(nm)) + ' would all be lying, but only ' + NUM[want] + (want === 1 ? ' person is' : ' people are');
+        else if (p.rule === 'onet' && allH.length > 1) why = listAnd(allH.map(nm)) + ' would all be telling the truth, but only one person is';
+        why = why.replace(/^(\S+ and \S+) would all/, '$1 would both');
+      }
+      if (!why) return null;
+      return 'Suppose ' + nm(x) + ' ' + N.P + '. Then ' + why + '. So ' + factWords(p, facts, S) + '.';
+    }
+
+    // one line under each bubble at the end: true or false, and why
+    function why(p, i) {
+      var s = p.st[i], a = s.a, w = p.sol, N = nouns(p), t = w.t, val = ev(s, w);
+      function ty(j) { return nm(j) + ' is ' + typeWord(N, t[j]); }
+      function tys(js) {
+        var g = {}; js.forEach(function (j) { (g[t[j]] = g[t[j]] || []).push(j); });
+        return Object.keys(g).map(function (v) { var L = g[v]; return L.length === 1 ? ty(L[0]) : listAnd(L.map(nm)) + ' are ' + (+v === 0 ? N.Ts : +v === 1 ? N.Ls : 'spies'); }).join('; ');
+      }
+      var r;
+      switch (s.k) {
+        case 'T': case 'L': case 'S': case 'nS': r = ty(a[0]); break;
+        case 'bL': case 'bT': case 'same': case 'diff': case 'oL': case 'oT': r = tys([a[0], a[1]]); break;
+        case 'one': r = tys(a); break;
+        case 'if': r = a[0] === a[2] ? ty(a[0]) : tys([a[0], a[2]]); break;
+        case 'nL': case 'aL': case 'more': case 'allT':
+          var Ls = [], Ts = []; t.forEach(function (x, j) { if (x === 1) Ls.push(j); if (x === 0) Ts.push(j); });
+          r = Ls.length ? 'the ' + (Ls.length === 1 ? N.L + ' is ' : N.Ls + ' are ') + listAnd(Ls.map(nm)) : 'there are no ' + N.Ls;
+          if (s.k === 'more') r += ' (' + NUM[Ls.length] + ' against ' + NUM[Ts.length] + ')';
+          break;
+        case 'would': r = ty(a[1]) + ', and ' + nm(a[0]) + (t[a[0]] === 0 ? ' always tells the truth' : ' would lie about it'); break;
+        case 'did': case 'not': case 'or': case 'nei': r = nm(w.c) + ' ' + N.P; break;
+        case 'lie': case 'tru': r = nm(a[0]) + (t[a[0]] === 1 ? ' is lying' : ' is telling the truth'); break;
+        default: r = '';
+      }
+      return { val: val, text: (val ? 'True: ' : 'False: ') + r + '.' };
+    }
+
+    // ── Checking an answer ──
+    // kk: marks[] (0/1/2, -1 blank). Returns null when right, else {i, need:true|false} (statement i can't be what the marks say) or {spy:n}
+    function checkKK(p, marks) {
+      if (marks.join() === p.sol.t.join()) return null;
+      if (p.spy && cnt(marks, 2) !== 1) return { spy: cnt(marks, 2) };
+      var w = { t: marks, c: -1 };
+      for (var i = 0; i < p.n; i++) {
+        if (marks[i] === 2) continue;
+        if (ev(p.st[i], w) !== (marks[i] === 0)) return { i: i, need: marks[i] === 0 };
+      }
+      return { i: -1 };
+    }
+    // wd: accused c. Returns null when right, else {liars:[...]} the people who would have to be lying (closest to the rule), or {paradox:true}
+    function checkWD(p, c) {
+      if (c === p.sol.c) return null;
+      var best = null, want = p.rule === 'one' ? 1 : p.rule === 'two' ? 2 : p.rule === 'onet' ? p.n - 1 : 1;
+      for (var m = 0; m < (1 << p.n); m++) {
+        var t = []; for (var i = 0; i < p.n; i++) t.push((m >> i) & 1);
+        if (!consistent(p, { t: t, c: c })) continue;
+        var L = cnt(t, 1), d = Math.abs(L - want);
+        if (!best || d < best.d) best = { d: d, t: t };
+      }
+      if (!best) return { paradox: true };
+      var liars = []; best.t.forEach(function (x, j) { if (x) liars.push(j); });
+      return { liars: liars };
+    }
+
+    return { SETS: SETS, KK_SETS: KK_SETS, WD_SETS: WD_SETS, RULES: RULES, rng: rng, hash: hash, ev: ev, fits: fits, worlds: worlds, solve: solve, chain: chain, grade: grade,
+      generate: generate, plain: plain, say: say, plainText: plainText, nouns: nouns, typeWord: typeWord, an: an, cap: cap, factWords: factWords, stepLead: stepLead, stepWhy: stepWhy,
+      why: why, checkKK: checkKK, checkWD: checkWD, typeOf: typeOf, listAnd: listAnd, NUM: NUM };
+  })();
+  // ==/ENGINE==
+  // ── Art: paper puppets, painted backdrops, the evidence ──────────────────
+  var Art = (function () {
+    function hex(c) { c = c.replace('#', ''); return [parseInt(c.substr(0, 2), 16), parseInt(c.substr(2, 2), 16), parseInt(c.substr(4, 2), 16)]; }
+    function shade(c, k) { var r = hex(c); return '#' + r.map(function (v) { v = k < 0 ? v * (1 + k) : v + (255 - v) * k; return ('0' + Math.round(Math.max(0, Math.min(255, v))).toString(16)).slice(-2); }).join(''); }
+    var SKIN = ['#f7d7bb', '#efc3a0', '#dca47c', '#bf8158', '#93603f', '#64402a'];
+    var HAIRC = ['#2b1d16', '#4a2f1d', '#7a4a26', '#b5652e', '#d8b05e', '#9c9c9c', '#17171d', '#e6e1d6', '#5a2a1a'];
+    var OUT = ['#34508f', '#d9a62e', '#2a9d8f', '#8a4f9e', '#e07a5f', '#4f9fd6', '#7d8a3a', '#c95c8a', '#5b6b7d'];
+    var PANTS = ['#2f3446', '#3d3027', '#41464f', '#2c3a2f', '#4a3b5c'];
+    var STYLES = ['short', 'part', 'long', 'bob', 'curly', 'bun', 'pony', 'bald', 'spiky', 'afro'];
+    // each character's look, the same every time for the same puzzle
+    function looks(p) {
+      var R = TL.rng(TL.hash(p.set + ':' + p.names.join(','))), out = [];
+      var outs = OUT.slice(), styles = STYLES.slice();
+      for (var i = outs.length - 1; i > 0; i--) { var j = Math.floor(R() * (i + 1)), t = outs[i]; outs[i] = outs[j]; outs[j] = t; }
+      for (i = styles.length - 1; i > 0; i--) { j = Math.floor(R() * (i + 1)); t = styles[i]; styles[i] = styles[j]; styles[j] = t; }
+      var hats = 0;
+      for (i = 0; i < p.n; i++) {
+        var st = styles[i % styles.length], sk = SKIN[Math.floor(R() * SKIN.length)];
+        var hc = st === 'afro' || st === 'curly' ? pick(['#17171d', '#2b1d16', '#4a2f1d', '#7a4a26'], R) : HAIRC[Math.floor(R() * HAIRC.length)];
+        var L = { skin: sk, style: st, hair: hc, out: outs[i], pants: PANTS[Math.floor(R() * PANTS.length)], set: p.set,
+          glasses: R() < (p.set === 'library' ? 0.55 : 0.2), beard: R() < 0.16 && st !== 'long' && st !== 'bun' && st !== 'pony', moust: R() < 0.12, freckles: R() < 0.2, hat: '', bd: (R() * 6).toFixed(2) + 's' };
+        if (L.beard) L.moust = false;
+        // hats by setting
+        var r = R();
+        if (p.set === 'castle') L.hat = 'helmet';
+        else if (p.set === 'bakeoff') L.hat = 'toque';
+        else if (p.set === 'island' && r < 0.45) L.hat = 'straw';
+        else if (p.set === 'market' && r < 0.4) L.hat = r < 0.2 ? 'scarf' : 'flatcap';
+        else if (p.set === 'museum' && r < 0.3) L.hat = 'peaked';
+        else if (p.set === 'ship') L.hat = r < 0.5 ? 'bandana' : r < 0.68 && !hats++ ? 'tricorn' : '';
+        else if (p.set === 'train' && r < 0.35) L.hat = r < 0.2 ? 'bowler' : 'cloche';
+        else if (p.set === 'woods') L.hat = 'hood';
+        out.push(L);
+      }
+      return out;
+    }
+    function pick(a, R) { return a[Math.floor(R() * a.length)]; }
+
+    var TORSO = 'M27 106 C27 94 37 89 49 88 L71 88 C83 89 93 94 93 106 L96 160 C78 167 42 167 24 160 Z';
+    // A whole figure (viewBox 0 0 120 190). uid keeps clip ids apart.
+    function figure(L, uid) {
+      var s = [], sk = L.skin, skd = shade(sk, -0.14), hc = L.hair, hcd = shade(hc, -0.25), o = L.out, od = shade(o, -0.22), ol = shade(o, 0.25);
+      var costume = { island: 'shirt', castle: 'guard', woods: 'cloak', market: 'apron', bakeoff: 'chef', museum: 'blazer', ship: 'sailor', library: 'cardigan', train: 'coat' }[L.set] || 'shirt';
+      var cid = 'tc' + uid;
+      s.push('<defs><clipPath id="' + cid + '"><path d="' + TORSO + '"/></clipPath></defs>');
+      // hood or long hair behind
+      if (L.hat === 'hood') s.push('<path d="M31 96 C24 70 38 40 60 40 C82 40 96 70 89 96 Z" fill="' + od + '"/>');
+      if (L.style === 'long' && L.hat !== 'helmet') s.push('<path d="M36 50 C35 30 48 25 60 25 C73 25 86 31 84 52 L88 98 C80 102 72 98 70 96 L50 96 C46 100 38 102 32 98 Z" fill="' + hc + '"/>');
+      if (L.style === 'bob' && L.hat !== 'helmet' && L.hat !== 'toque') s.push('<path d="M35 52 C34 30 48 26 60 26 C73 26 87 31 85 54 L86 78 C80 82 74 80 72 78 L48 78 C46 80 40 82 34 78 Z" fill="' + hc + '"/>');
+      if (L.style === 'pony' && L.hat !== 'helmet' && L.hat !== 'toque') s.push('<path d="M78 40 C96 42 98 62 92 80 C90 70 86 60 78 54 Z" fill="' + hc + '"/>');
+      if (L.style === 'afro' && !/helmet|toque|hood/.test(L.hat)) s.push('<circle cx="60" cy="46" r="31" fill="' + hc + '"/>');
+      // legs and shoes
+      s.push('<rect x="43" y="150" width="14" height="30" rx="4" fill="' + L.pants + '"/><rect x="63" y="150" width="14" height="30" rx="4" fill="' + L.pants + '"/>');
+      s.push('<ellipse cx="49" cy="182" rx="11" ry="5.5" fill="#24181a"/><ellipse cx="71" cy="182" rx="11" ry="5.5" fill="#24181a"/>');
+      // neck
+      s.push('<rect x="52" y="74" width="16" height="18" rx="5" fill="' + skd + '"/>');
+      // body
+      var sleeve = o;
+      if (costume === 'guard') {
+        s.push('<path d="' + TORSO + '" fill="#717a86"/>');
+        s.push('<g clip-path="url(#' + cid + ')" stroke="#565e69" stroke-width="1.2" fill="none">' + rows(function (y) { return '<path d="M20 ' + y + ' q3 3 6 0 q3 3 6 0 q3 3 6 0 q3 3 6 0 q3 3 6 0 q3 3 6 0 q3 3 6 0 q3 3 6 0 q3 3 6 0 q3 3 6 0 q3 3 6 0 q3 3 6 0 q3 3 6 0 q3 3 6 0"/>'; }, 92, 164, 5) + '</g>');
+        s.push('<path d="M43 90 L77 90 L80 163 L40 163 Z" fill="' + o + '"/><path d="M43 90 L77 90 L77 96 L43 96 Z" fill="' + od + '"/>');
+        s.push('<path d="M60 108 L67 118 L60 128 L53 118 Z" fill="#f2cf63" stroke="' + od + '" stroke-width="1"/>');
+        s.push('<rect x="40" y="139" width="40" height="5" fill="#5a3a1c"/><rect x="57" y="138" width="6" height="7" rx="1" fill="#d9b04a"/>');
+        sleeve = '#717a86';
+      } else if (costume === 'chef') {
+        s.push('<path d="' + TORSO + '" fill="#f6f3ea"/>');
+        s.push('<path d="M36 128 L84 128 L88 162 C76 166 44 166 32 162 Z" fill="' + o + '"/><path d="M36 128 L84 128 L84 132 L36 132 Z" fill="' + od + '"/>');
+        [100, 110, 120].forEach(function (y) { s.push('<circle cx="53" cy="' + y + '" r="1.8" fill="#b9b2a2"/><circle cx="67" cy="' + y + '" r="1.8" fill="#b9b2a2"/>'); });
+        s.push('<path d="M48 87 L72 87 L60 101 Z" fill="' + o + '"/><path d="M54 88 L66 88 L60 95 Z" fill="' + od + '"/>');
+        sleeve = '#f6f3ea';
+      } else if (costume === 'sailor') {
+        s.push('<path d="' + TORSO + '" fill="#f4efe4"/>');
+        s.push('<g clip-path="url(#' + cid + ')">' + rows(function (y) { return '<rect x="18" y="' + y + '" width="84" height="5" fill="' + o + '"/>'; }, 96, 164, 11) + '</g>');
+        s.push('<path d="M50 87 L70 87 L60 98 Z" fill="' + sk + '"/>');
+        s.push('<rect x="36" y="146" width="48" height="6" fill="#5a3a1c"/>');
+        sleeve = o;
+      } else if (costume === 'blazer') {
+        s.push('<path d="' + TORSO + '" fill="' + o + '"/>');
+        s.push('<path d="M49 88 L60 120 L71 88 Z" fill="#f4f1ea"/><path d="M58 96 L62 96 L63 118 L60 122 L57 118 Z" fill="' + od + '"/>');
+        s.push('<path d="M49 88 L60 120 L52 126 L43 96 Z" fill="' + od + '"/><path d="M71 88 L60 120 L68 126 L77 96 Z" fill="' + od + '"/>');
+        s.push('<path d="M54 90 L66 132" stroke="#c23b3b" stroke-width="1.6" fill="none"/><rect x="61" y="130" width="13" height="16" rx="2" fill="#fbfbf6" stroke="#9aa0a6" stroke-width=".8"/><rect x="61" y="130" width="13" height="4" rx="1" fill="' + ol + '"/>');
+      } else if (costume === 'cardigan') {
+        s.push('<path d="' + TORSO + '" fill="' + o + '"/>');
+        s.push('<path d="M52 88 L68 88 L66 164 L54 164 Z" fill="#efe6d4"/><path d="M52 88 L60 98 L68 88 Z" fill="' + sk + '"/>');
+        [108, 122, 136, 150].forEach(function (y) { s.push('<circle cx="51" cy="' + y + '" r="1.9" fill="' + ol + '"/>'); });
+        s.push('<path d="M38 132 L48 132 L48 142 L38 142 Z" fill="' + od + '" opacity=".6"/>');
+      } else if (costume === 'apron') {
+        s.push('<path d="' + TORSO + '" fill="' + o + '"/>');
+        s.push('<path d="M50 87 L70 87 L60 97 Z" fill="' + sk + '"/>');
+        s.push('<path d="M47 104 L73 104 L73 120 L82 122 L85 163 C72 167 48 167 35 163 L38 122 L47 120 Z" fill="#f1e7d2"/>');
+        s.push('<path d="M47 104 L42 90 M73 104 L78 90" stroke="#e2d5bb" stroke-width="2.6"/><rect x="52" y="134" width="16" height="11" rx="2" fill="none" stroke="#cdbf9f" stroke-width="1.4"/>');
+      } else if (costume === 'cloak') {
+        s.push('<path d="' + TORSO + '" fill="' + o + '"/>');
+        s.push('<path d="M53 92 L67 92 L70 164 L50 164 Z" fill="' + shade(o, 0.45) + '"/><path d="M50 140 L70 140 L70 145 L50 145 Z" fill="#5a3a1c"/>');
+        s.push('<circle cx="60" cy="94" r="4" fill="#e9c35a" stroke="#9a7520" stroke-width="1"/>');
+      } else if (costume === 'coat') {
+        s.push('<path d="M27 106 C27 94 37 89 49 88 L71 88 C83 89 93 94 93 106 L97 168 C78 172 42 172 23 168 Z" fill="' + o + '"/>');
+        s.push('<path d="M60 96 L60 168" stroke="' + od + '" stroke-width="1.6"/><path d="M48 88 L60 112 L72 88 Z" fill="#f0ece2"/>');
+        s.push('<path d="M47 88 L60 112 L52 116 L42 96 Z" fill="' + od + '"/><path d="M73 88 L60 112 L68 116 L78 96 Z" fill="' + od + '"/>');
+        [124, 138].forEach(function (y) { s.push('<circle cx="55" cy="' + y + '" r="2" fill="' + ol + '"/><circle cx="65" cy="' + y + '" r="2" fill="' + ol + '"/>'); });
+        s.push('<path d="M47 84 C54 92 66 92 73 84 L74 90 C66 98 54 98 46 90 Z" fill="' + (L.out === '#c95c8a' ? '#d9a62e' : '#c95c8a') + '"/>');
+      } else {
+        // island shirt with a print
+        s.push('<path d="' + TORSO + '" fill="' + o + '"/>');
+        s.push('<g clip-path="url(#' + cid + ')" fill="' + ol + '" opacity=".75">' + [[36, 104], [80, 100], [48, 126], [72, 122], [38, 148], [62, 146], [84, 144], [56, 106]].map(function (q, k) { return '<ellipse cx="' + q[0] + '" cy="' + q[1] + '" rx="5" ry="2.4" transform="rotate(' + (k * 47 % 180) + ' ' + q[0] + ' ' + q[1] + ')"/>'; }).join('') + '</g>');
+        s.push('<path d="M50 87 L70 87 L60 102 Z" fill="' + sk + '"/><path d="M50 87 L60 102 L54 104 L45 90 Z M70 87 L60 102 L66 104 L75 90 Z" fill="' + shade(o, 0.15) + '"/>');
+      }
+      // arms and hands
+      s.push('<path d="M31 99 C24 114 22 130 23 146" stroke="' + sleeve + '" stroke-width="13" stroke-linecap="round" fill="none"/>');
+      s.push('<path d="M89 99 C96 114 98 130 97 146" stroke="' + sleeve + '" stroke-width="13" stroke-linecap="round" fill="none"/>');
+      s.push('<path d="M31 99 C24 114 22 130 23 146" stroke="rgba(0,0,0,.12)" stroke-width="2" fill="none" transform="translate(5 0)"/>');
+      s.push('<circle cx="23" cy="150" r="6.5" fill="' + sk + '"/><circle cx="97" cy="150" r="6.5" fill="' + sk + '"/>');
+      // head
+      s.push('<ellipse cx="39" cy="58" rx="4.5" ry="6.5" fill="' + skd + '"/><ellipse cx="81" cy="58" rx="4.5" ry="6.5" fill="' + skd + '"/>');
+      s.push('<ellipse cx="60" cy="56" rx="21.5" ry="24" fill="' + sk + '"/>');
+      if (L.freckles) s.push('<g fill="' + shade(sk, -0.3) + '" opacity=".5"><circle cx="50" cy="66" r=".9"/><circle cx="53" cy="68" r=".9"/><circle cx="48" cy="69" r=".9"/><circle cx="67" cy="66" r=".9"/><circle cx="70" cy="68" r=".9"/><circle cx="72" cy="65" r=".9"/></g>');
+      s.push('<circle cx="48" cy="66" r="4" fill="#ff8f8f" opacity=".28"/><circle cx="72" cy="66" r="4" fill="#ff8f8f" opacity=".28"/>');
+      // face
+      s.push('<path class="brow l" d="M47 50 q5 -3 9 0" stroke="' + hcd + '" stroke-width="2.2" stroke-linecap="round" fill="none"/><path class="brow r" d="M64 50 q5 -3 9 0" stroke="' + hcd + '" stroke-width="2.2" stroke-linecap="round" fill="none"/>');
+      s.push('<g style="--bd:' + L.bd + '"><ellipse class="eye" cx="52" cy="57.5" rx="2.5" ry="3.1" fill="#241a1e"/><ellipse class="eye" cx="68" cy="57.5" rx="2.5" ry="3.1" fill="#241a1e"/></g>');
+      s.push('<circle cx="52.9" cy="56.4" r=".8" fill="#fff"/><circle cx="68.9" cy="56.4" r=".8" fill="#fff"/>');
+      s.push('<path d="M60 59 q-2.6 6 .8 7" stroke="' + shade(sk, -0.3) + '" stroke-width="1.6" stroke-linecap="round" fill="none"/>');
+      s.push('<path class="mo n" d="M54 70.5 q6 2.6 12 0" stroke="#7a3b3b" stroke-width="2.2" stroke-linecap="round" fill="none"/>');
+      s.push('<path class="mo s" d="M52.5 68.5 q7.5 9 15 0 z" fill="#7a2e33"/>');
+      s.push('<path class="mo k" d="M54 71 q7 2 13.5 -4" stroke="#7a3b3b" stroke-width="2.3" stroke-linecap="round" fill="none"/>');
+      s.push('<ellipse class="mo o" cx="60" cy="71.5" rx="3.4" ry="4" fill="#7a2e33"/>');
+      if (L.beard) s.push('<path d="M38.5 58 C40 82 52 88 60 88 C68 88 80 82 81.5 58 C78 70 72 75 66 74 C62 72 58 72 54 74 C48 75 42 70 38.5 58 Z" fill="' + hc + '"/><path class="mo n" d="M55 71.5 q5 2 10 0" stroke="#3a2222" stroke-width="2" stroke-linecap="round" fill="none"/>');
+      if (L.moust) s.push('<path d="M52 67.5 C55 64.5 58 65.5 60 67 C62 65.5 65 64.5 68 67.5 C64 69.5 61 68.5 60 68 C59 68.5 56 69.5 52 67.5 Z" fill="' + hc + '"/>');
+      // hair on top
+      var cap = /helmet|toque|bandana|tricorn|peaked|bowler|cloche|scarf|flatcap/.test(L.hat);
+      var H = {
+        short: 'M38 54 C36 32 50 27 60 27 C72 27 85 33 82 54 C80 45 74 39 62 39 C52 39 44 43 38 54 Z',
+        part: 'M38 56 C35 32 50 26 62 27 C75 28 86 36 82 56 C80 46 76 41 70 39 C62 44 50 44 38 56 Z',
+        long: 'M38 58 C35 32 50 26 61 26 C73 26 86 33 82 58 C80 46 72 38 60 40 C52 41 42 46 38 58 Z',
+        bob: 'M37 58 C35 32 49 26 61 26 C73 26 87 33 83 58 C80 44 66 44 58 36 C54 44 44 46 37 58 Z',
+        curly: '',
+        bun: 'M38 54 C36 32 50 27 60 27 C72 27 85 33 82 54 C80 45 74 40 62 40 C52 40 44 43 38 54 Z',
+        pony: 'M38 54 C36 32 50 27 60 27 C72 27 85 33 82 54 C80 45 74 40 62 40 C52 40 44 43 38 54 Z',
+        bald: '',
+        spiky: 'M38 52 L36 36 L44 40 L46 26 L53 36 L58 22 L63 35 L70 24 L72 37 L80 30 L80 42 L85 44 L82 54 C78 44 70 40 60 40 C50 40 43 44 38 52 Z',
+        afro: ''
+      };
+      if (!cap || L.hat === 'peaked' || L.hat === 'bandana' || L.hat === 'flatcap' || L.hat === 'bowler' || L.hat === 'cloche' || L.hat === 'scarf') {
+        if (L.style === 'curly' && !cap) s.push('<g fill="' + hc + '">' + [[42, 44, 8], [50, 35, 8.5], [60, 32, 9], [70, 35, 8.5], [78, 44, 8], [39, 53, 5.5], [81, 53, 5.5]].map(function (c) { return '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + c[2] + '"/>'; }).join('') + '</g>');
+        else if (L.style === 'afro' && !cap) s.push('<path d="M38 52 C42 40 52 38 60 38 C70 38 78 42 82 52 C84 40 74 30 60 30 C46 30 36 40 38 52 Z" fill="' + hcd + '" opacity=".35"/>');
+        else if (L.style === 'bald') s.push('<path d="M38.5 56 C38 49 40 46 42 45 L42 60 Z M81.5 56 C82 49 80 46 78 45 L78 60 Z" fill="' + hc + '"/>');
+        else if (H[L.style] && !cap) s.push('<path d="' + H[L.style] + '" fill="' + hc + '"/>');
+        else if (cap && L.style !== 'bald') s.push('<path d="M38.5 60 C38 48 41 44 44 42 L44 60 Z M81.5 60 C82 48 79 44 76 42 L76 60 Z" fill="' + hc + '"/>');
+        if (L.style === 'bun' && !cap) s.push('<circle cx="60" cy="22" r="9" fill="' + hc + '"/><circle cx="57" cy="19" r="2.5" fill="' + shade(hc, 0.25) + '" opacity=".6"/>');
+      }
+      if (L.hat === 'hood' && !/bald/.test(L.style) && H[L.style]) s.push('<path d="' + H[L.style] + '" fill="' + hc + '"/>');
+      if (L.hat === 'hood' && (L.style === 'curly' || L.style === 'afro')) s.push('<g fill="' + hc + '"><circle cx="46" cy="38" r="8"/><circle cx="60" cy="33" r="9"/><circle cx="74" cy="38" r="8"/></g>');
+      // glasses
+      if (L.glasses) s.push('<g stroke="#2a2230" stroke-width="1.8" fill="rgba(200,230,255,.22)"><circle cx="52" cy="58" r="6"/><circle cx="68" cy="58" r="6"/></g><path d="M58 58 q2 -2 4 0 M46 57 L40 55 M74 57 L80 55" stroke="#2a2230" stroke-width="1.6" fill="none"/>');
+      // hats
+      if (L.hat === 'helmet') s.push('<path d="M36 46 C36 20 84 20 84 46 Z" fill="#aab2bc"/><path d="M45 30 C50 24 58 23 62 23" stroke="#e8edf2" stroke-width="2.5" stroke-linecap="round" fill="none" opacity=".8"/><path d="M27 46 C40 39 80 39 93 46 C80 53 40 53 27 46 Z" fill="#8a929c"/><circle cx="60" cy="27" r="2" fill="#6c737c"/>' + (L.style === 'bald' ? '' : '<path d="M39 50 L39 62 L43 60 L43 50 Z M81 50 L81 62 L77 60 L77 50 Z" fill="' + hc + '"/>'));
+      if (L.hat === 'toque') s.push('<path d="M40 42 L42 22 C33 19 36 4 49 8 C53 -1 67 -1 71 8 C84 4 87 19 78 22 L80 42 Z" fill="#fbfaf5"/><path d="M47 22 L48 38 M60 18 L60 38 M73 22 L72 38" stroke="#e5e0d3" stroke-width="1.6"/><path d="M39 36 L81 36 L81 44 L39 44 Z" fill="#ece7da"/>');
+      if (L.hat === 'straw') s.push('<ellipse cx="60" cy="38" rx="34" ry="8" fill="#d8b56a"/><path d="M42 38 C42 20 78 20 78 38 Z" fill="#e6c77f"/><path d="M42.5 34 L77.5 34 L78 38 L42 38 Z" fill="' + o + '"/><ellipse cx="60" cy="38" rx="34" ry="8" fill="none" stroke="#b8944a" stroke-width="1"/>');
+      if (L.hat === 'flatcap') s.push('<path d="M37 44 C37 28 70 25 82 36 C88 39 90 43 84 45 L37 46 Z" fill="' + od + '"/><path d="M60 44 C70 42 84 42 92 46 C84 50 70 50 60 48 Z" fill="' + shade(od, -0.2) + '"/>');
+      if (L.hat === 'scarf') s.push('<path d="M36 52 C33 24 87 24 84 52 C80 40 70 34 60 34 C50 34 40 40 36 52 Z" fill="' + ol + '"/><circle cx="44" cy="40" r="1.6" fill="#fff" opacity=".7"/><circle cx="56" cy="31" r="1.6" fill="#fff" opacity=".7"/><circle cx="70" cy="33" r="1.6" fill="#fff" opacity=".7"/>');
+      if (L.hat === 'peaked') s.push('<path d="M39 42 C38 24 82 24 81 42 Z" fill="#2b3550"/><path d="M38 41 L82 41 L82 46 L38 46 Z" fill="#1d2438"/><path d="M50 46 C58 52 76 52 82 46 Z" fill="#141a2a"/><circle cx="60" cy="34" r="3" fill="#e2c15a"/>');
+      if (L.hat === 'bandana') s.push('<path d="M37 48 C35 26 85 26 83 48 C76 42 44 42 37 48 Z" fill="' + o + '"/><path d="M82 42 L94 48 L88 52 Z M82 42 L92 38 L90 46 Z" fill="' + od + '"/><circle cx="50" cy="36" r="1.5" fill="#fff" opacity=".8"/><circle cx="62" cy="32" r="1.5" fill="#fff" opacity=".8"/><circle cx="72" cy="37" r="1.5" fill="#fff" opacity=".8"/>');
+      if (L.hat === 'tricorn') s.push('<path d="M26 40 C40 44 50 18 60 18 C70 18 80 44 94 40 C90 50 76 48 60 48 C44 48 30 50 26 40 Z" fill="#26201f"/><path d="M30 42 C44 46 76 46 90 42" stroke="#d9b04a" stroke-width="2" fill="none"/>');
+      if (L.hat === 'bowler') s.push('<path d="M41 40 C40 20 80 20 79 40 Z" fill="#2a2426"/><ellipse cx="60" cy="41" rx="25" ry="5" fill="#1f1a1c"/><path d="M41.5 35 L78.5 35 L79 39 L41 39 Z" fill="#6a4a3a"/>');
+      if (L.hat === 'cloche') s.push('<path d="M36 48 C34 22 86 22 84 48 C76 42 44 42 36 48 Z" fill="' + od + '"/><path d="M38 40 L82 40" stroke="' + ol + '" stroke-width="3"/><circle cx="74" cy="38" r="3.5" fill="' + ol + '"/>');
+      return '<svg class="fg f-n" viewBox="0 0 120 190" aria-hidden="true">' + s.join('') + '</svg>';
+    }
+    function rows(fn, from, to, step) { var o = ''; for (var y = from; y <= to; y += step) o += fn(y); return o; }
+    function head(L, uid) { return figure(L, uid).replace('viewBox="0 0 120 190"', 'viewBox="28 14 64 64"'); }
+
+    // ── Painted backdrops (viewBox 0 0 400 220) ──
+    function bd(inner, sky) { return '<svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMax slice" aria-hidden="true">' + (sky || '') + inner + '</svg>'; }
+    function grad(id, a, b) { return '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + a + '"/><stop offset="1" stop-color="' + b + '"/></linearGradient></defs>'; }
+    var BACK = {
+      island: function () {
+        return bd('<rect width="400" height="220" fill="url(#bgi)"/><circle cx="300" cy="96" r="30" fill="#f6c97a" opacity=".85"/><rect y="120" width="400" height="100" fill="#2d6f86"/>' +
+          '<path d="M0 124 Q50 118 100 124 T200 124 T300 124 T400 124 V130 H0Z" fill="#3f8aa0" opacity=".7"/><path d="M0 170 Q120 150 230 166 T400 160 V220 H0Z" fill="#c9a86a"/>' +
+          palm(64, 170, 1) + palm(352, 172, -0.85) + '<path d="M180 120 l14 -10 l14 10 z" fill="#5b4a3a" opacity=".5"/>', grad('bgi', '#5f8fb3', '#e9b48a'));
+      },
+      castle: function () {
+        var b = ''; for (var y = 0; y < 220; y += 22) for (var x = (y / 22) % 2 ? -20 : 0; x < 400; x += 40) b += '<rect x="' + (x + 1) + '" y="' + (y + 1) + '" width="38" height="20" rx="2" fill="#6f6a72"/>';
+        return bd('<rect width="400" height="220" fill="#4f4a55"/>' + b + '<path d="M150 220 V110 C150 70 250 70 250 110 V220Z" fill="#1d1820"/>' +
+          '<g stroke="#4a4048" stroke-width="5">' + [165, 185, 205, 225].map(function (x) { return '<path d="M' + (x + 3) + ' 82 V220"/>'; }).join('') + '<path d="M150 120 H250 M150 150 H250 M150 180 H250"/></g>' +
+          banner(70, '#8f1d2c') + banner(310, '#8f1d2c'));
+      },
+      woods: function () {
+        return bd('<rect width="400" height="220" fill="url(#bgw)"/>' + trees('#2f4a3a', 0.9, 40, 70) + trees('#243a2e', 1.1, 10, 95) +
+          '<rect x="252" y="96" width="7" height="90" fill="#5a3e26"/><path d="M226 104 H300 L310 112 L300 120 H226 Z" fill="#8a6440"/><path d="M286 128 H212 L202 136 L212 144 H286 Z" fill="#7a5636"/>' +
+          '<path d="M0 180 Q200 160 400 182 V220 H0Z" fill="#2c3d2a"/>', grad('bgw', '#3e5f6b', '#9fb38a'));
+      },
+      market: function () {
+        var aw = function (x, c) { var s = ''; for (var i = 0; i < 6; i++) s += '<path d="M' + (x + i * 14) + ' 92 h14 v16 a7 7 0 0 1 -14 0 z" fill="' + (i % 2 ? '#f4ead2' : c) + '"/>'; return s; };
+        return bd('<rect width="400" height="220" fill="url(#bgm)"/><path d="M0 120 V60 L30 40 L60 60 V120Z M60 120 V50 L95 28 L130 50 V120Z" fill="#b58a63"/><path d="M270 120 V48 L305 26 L340 48 V120Z M340 120 V60 L370 42 L400 60 V120Z" fill="#a77d58"/>' +
+          '<g fill="#5a3f2a" opacity=".55"><rect x="20" y="70" width="14" height="16"/><rect x="85" y="62" width="16" height="18"/><rect x="295" y="60" width="16" height="18"/><rect x="360" y="74" width="14" height="16"/></g>' +
+          aw(130, '#b8423a') + '<rect x="134" y="108" width="4" height="70" fill="#5a3f2a"/><rect x="208" y="108" width="4" height="70" fill="#5a3f2a"/>' + aw(222, '#3d7a8a') + '<rect x="226" y="108" width="4" height="70" fill="#5a3f2a"/><rect x="300" y="108" width="4" height="70" fill="#5a3f2a"/>' +
+          '<path d="M0 170 H400 V220 H0Z" fill="#8a7357"/>', grad('bgm', '#9ec1d4', '#f1d7a8'));
+      },
+      bakeoff: function () {
+        var t = ''; for (var y = 0; y < 150; y += 20) for (var x = 0; x < 400; x += 20) t += '<rect x="' + (x + 1) + '" y="' + (y + 1) + '" width="18" height="18" rx="2" fill="' + ((x + y) / 20 % 2 ? '#e9efe9' : '#dfe7e2') + '"/>';
+        var bunt = ''; for (var i = 0; i < 12; i++) bunt += '<path d="M' + (i * 34) + ' 18 l17 0 l-8.5 16 z" fill="' + ['#d96a6a', '#e8c45a', '#6aa6d9', '#7cc38a'][i % 4] + '"/>';
+        return bd('<rect width="400" height="220" fill="#cfd8d2"/>' + t + '<path d="M0 18 Q200 30 400 18" stroke="#7a6a5a" stroke-width="1.5" fill="none"/>' + bunt +
+          '<rect y="148" width="400" height="72" fill="#9a7b5c"/><rect y="146" width="400" height="6" fill="#b89470"/>' +
+          '<rect x="296" y="122" width="40" height="5" rx="2" fill="#c9c2b6"/><rect x="313" y="127" width="6" height="20" fill="#c9c2b6"/><ellipse cx="316" cy="148" rx="16" ry="3" fill="#c9c2b6"/>' +
+          '<path d="M300 122 V100 C300 96 332 96 332 100 V122 Z" fill="#f2d6e0"/><path d="M300 100 C300 96 332 96 332 100 C332 104 300 104 300 100 Z" fill="#fff4f7"/><path d="M316 100 L332 100 L332 122 L316 122 Z" fill="#7a4a3a"/><path d="M316 100 L332 100 C332 104 316 104 316 100 Z" fill="#9a6a52"/><circle cx="308" cy="95" r="3" fill="#d93a4a"/>' +
+          '<rect x="40" y="96" width="70" height="52" rx="4" fill="#4a4f55"/><rect x="48" y="104" width="54" height="30" rx="3" fill="#2a2e33"/><rect x="52" y="108" width="46" height="22" rx="2" fill="#e88a3a" opacity=".35"/>');
+      },
+      museum: function () {
+        return bd('<rect width="400" height="220" fill="#3f2a34"/><rect y="0" width="400" height="14" fill="#2c1d24"/><rect y="150" width="400" height="70" fill="#2a2024"/>' +
+          frame(30, 50, 80, 60, '#5d7a8c') + frame(290, 40, 70, 84, '#8c6a4a') + frame(130, 46, 40, 50, '#6a8c5d') +
+          '<rect x="186" y="98" width="40" height="52" fill="#d8cfc0"/><rect x="182" y="94" width="48" height="6" fill="#efe8dc"/><path d="M188 52 H224 V94 H188 Z" fill="rgba(200,230,255,.12)" stroke="rgba(220,240,255,.45)" stroke-width="1.5"/>' +
+          '<rect x="194" y="86" width="24" height="8" fill="#6a2a3a"/>');
+      },
+      ship: function () {
+        return bd('<rect width="400" height="220" fill="url(#bgs)"/><rect y="132" width="400" height="88" fill="#22506a"/><path d="M0 136 Q60 128 120 136 T240 136 T400 134" stroke="#5b93ad" stroke-width="2" fill="none" opacity=".6"/>' +
+          '<rect x="196" y="0" width="9" height="170" fill="#5a3a22"/><path d="M205 18 C262 30 270 90 205 112 Z" fill="#efe4c8"/><path d="M196 22 C150 36 144 92 196 108 Z" fill="#e4d6b2"/><path d="M205 18 L205 112" stroke="#c7b38a" stroke-width="1"/>' +
+          '<path d="M205 8 L248 14 L205 22 Z" fill="#2a2a2a"/><path d="M0 40 L196 120 M400 50 L205 120" stroke="#3a2a1a" stroke-width="1.5" opacity=".5"/>' +
+          '<path d="M0 158 H400 V220 H0Z" fill="#6b4a2c"/><path d="M0 158 H400 V164 H0Z" fill="#8a603a"/>', grad('bgs', '#5d84a6', '#d9c3a0'));
+      },
+      library: function () {
+        var s = '', cols = ['#7a2e2e', '#2e4a7a', '#3e6a3e', '#8a6a2e', '#5a3e6a', '#2e6a6a', '#9a4a2e'];
+        for (var sh = 0; sh < 4; sh++) {
+          var y = 20 + sh * 34, x = 6, k = sh * 3;
+          while (x < 394) { var w = 6 + ((k * 7) % 6), h = 22 + ((k * 5) % 8); s += '<rect x="' + x + '" y="' + (y + 28 - h) + '" width="' + w + '" height="' + h + '" fill="' + cols[k % cols.length] + '" opacity=".85"/>'; x += w + 1; k++; if (k % 9 === 0) x += 10; }
+          s += '<rect x="0" y="' + (y + 28) + '" width="400" height="6" fill="#4a301c"/>';
+        }
+        return bd('<rect width="400" height="220" fill="#3a2618"/>' + s + '<rect y="160" width="400" height="60" fill="#5a3a22"/>');
+      },
+      train: function () {
+        var win = function (x) { return '<rect x="' + x + '" y="40" width="110" height="70" rx="12" fill="#c9a26a"/><rect x="' + (x + 6) + '" y="46" width="98" height="58" rx="9" fill="url(#bgt)"/><circle cx="' + (x + 76) + '" cy="64" r="8" fill="#f3e6b0"/><circle cx="' + (x + 80) + '" cy="62" r="7" fill="#1f2a4a"/><circle cx="' + (x + 24) + '" cy="58" r="1" fill="#fff"/><circle cx="' + (x + 44) + '" cy="72" r="1" fill="#fff"/><circle cx="' + (x + 60) + '" cy="54" r="1" fill="#fff"/><path d="M' + (x + 6) + ' 96 L' + (x + 40) + ' 84 L' + (x + 70) + ' 92 L' + (x + 104) + ' 82 V104 H' + (x + 6) + 'Z" fill="#141a2e"/>'; };
+        return bd('<rect width="400" height="220" fill="#6a3a24"/><path d="M0 0 H400 V30 H0Z" fill="#4a2616"/><rect y="118" width="400" height="102" fill="#5a3020"/><path d="M0 118 H400" stroke="#c9a26a" stroke-width="3"/>' +
+          win(40) + win(250) + '<rect x="0" y="14" width="400" height="5" fill="#c9a26a" opacity=".7"/><rect x="170" y="44" width="60" height="30" rx="4" fill="#8a5a3a"/><rect x="176" y="48" width="48" height="22" rx="3" fill="#4a6a5a"/>', grad('bgt', '#1f2a4a', '#3a3a6a'));
+      }
+    };
+    function palm(x, y, k) { return '<g transform="translate(' + x + ' ' + y + ') scale(' + k + ' ' + Math.abs(k) + ')"><path d="M0 0 C4 -30 10 -60 20 -84" stroke="#3b2d22" stroke-width="7" fill="none" stroke-linecap="round"/>' +
+      ['M20 -84 C0 -96 -24 -92 -36 -78 C-18 -84 0 -84 20 -84Z', 'M20 -84 C34 -100 60 -98 70 -84 C52 -88 36 -86 20 -84Z', 'M20 -84 C12 -104 20 -120 34 -126 C26 -110 24 -98 20 -84Z', 'M20 -84 C44 -82 62 -66 64 -50 C50 -66 36 -76 20 -84Z', 'M20 -84 C0 -80 -14 -64 -14 -48 C-4 -64 8 -76 20 -84Z'].map(function (d) { return '<path d="' + d + '" fill="#2f5a3a"/>'; }).join('') + '</g>'; }
+    function banner(x, c) { return '<path d="M' + (x - 16) + ' 10 H' + (x + 16) + ' V96 L' + x + ' 84 L' + (x - 16) + ' 96 Z" fill="' + c + '"/><path d="M' + x + ' 34 l8 12 l-8 12 l-8 -12 z" fill="#e2c15a"/><rect x="' + (x - 20) + '" y="6" width="40" height="5" rx="2" fill="#5a3a1c"/>'; }
+    function trees(c, k, off, base) { var s = ''; for (var x = -off; x < 420; x += 46 * k) s += '<path d="M' + x + ' ' + (base + 90) + ' L' + (x + 22 * k) + ' ' + (base - 30 * k) + ' L' + (x + 44 * k) + ' ' + (base + 90) + ' Z" fill="' + c + '"/>'; return s; }
+    function frame(x, y, w, h, c) { return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="#b8913c"/><rect x="' + (x + 5) + '" y="' + (y + 5) + '" width="' + (w - 10) + '" height="' + (h - 10) + '" fill="' + c + '"/><path d="M' + (x + 5) + ' ' + (y + h - 5) + ' L' + (x + w * 0.4) + ' ' + (y + h * 0.5) + ' L' + (x + w * 0.6) + ' ' + (y + h * 0.7) + ' L' + (x + w - 5) + ' ' + (y + h * 0.4) + ' V' + (y + h - 5) + 'Z" fill="rgba(0,0,0,.25)"/>'; }
+
+    // ── The evidence, found on whoever did it ──
+    var PROP = {
+      bakeoff: '<svg viewBox="0 0 60 50"><path d="M6 40 L54 40 L54 26 L6 18 Z" fill="#7a4a3a"/><path d="M6 18 L54 26 L54 22 L6 13 Z" fill="#fff4f7"/><path d="M6 30 L54 34 L54 31 L6 27 Z" fill="#f2d6e0"/><circle cx="20" cy="13" r="4" fill="#d93a4a"/><path d="M4 42 H56" stroke="#c9c2b6" stroke-width="3" stroke-linecap="round"/></svg>',
+      museum: '<svg viewBox="0 0 60 60"><path d="M8 8 C20 2 40 2 52 8 C54 30 46 50 30 56 C14 50 6 30 8 8 Z" fill="#e7b93a" stroke="#9a7116" stroke-width="2"/><path d="M16 22 C20 18 26 20 27 24 C23 27 18 26 16 22 Z M44 22 C40 18 34 20 33 24 C37 27 42 26 44 22 Z" fill="#3a2a10"/><path d="M24 40 Q30 44 36 40" stroke="#9a7116" stroke-width="2.4" fill="none"/><path d="M30 26 L28 34 L32 34 Z" fill="#c9971f"/></svg>',
+      ship: '<svg viewBox="0 0 60 50"><rect x="8" y="8" width="44" height="34" rx="2" fill="#efdcae" stroke="#a5864e" stroke-width="2"/><ellipse cx="8" cy="25" rx="5" ry="17" fill="#d8c08a"/><ellipse cx="52" cy="25" rx="5" ry="17" fill="#d8c08a"/><path d="M16 32 C22 20 30 34 38 18" stroke="#8a5a2a" stroke-width="2" stroke-dasharray="3 3" fill="none"/><path d="M36 14 l6 6 M42 14 l-6 6" stroke="#c0283a" stroke-width="2.6" stroke-linecap="round"/></svg>',
+      library: '<svg viewBox="0 0 60 56"><path d="M12 14 H44 V44 C44 50 38 52 28 52 C18 52 12 50 12 44 Z" fill="#f4efe6" stroke="#b8a98e" stroke-width="2"/><path d="M44 20 C56 20 56 38 44 38" stroke="#b8a98e" stroke-width="4" fill="none"/><ellipse cx="28" cy="16" rx="15" ry="4" fill="#6a3a22"/><path d="M22 8 C20 4 26 2 24 -2 M32 8 C30 4 36 2 34 -2" stroke="#ccc" stroke-width="2" fill="none" opacity=".7"/></svg>',
+      train: '<svg viewBox="0 0 60 56"><path d="M30 4 V30" stroke="#8a8f96" stroke-width="3"/><path d="M14 30 H46 C48 30 50 32 50 34 V40 C50 42 48 44 46 44 H14 C12 44 10 42 10 40 V34 C10 32 12 30 14 30 Z" fill="#d0283c"/><rect x="18" y="34" width="24" height="5" rx="2" fill="#fbd2d6" opacity=".6"/></svg>'
+    };
+    return { looks: looks, figure: figure, head: head, backdrop: function (set) { return (BACK[set] || BACK.island)(); }, prop: function (set) { return PROP[set] || ''; }, shade: shade };
+  })();
+
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'truthlies_state', HKEY = 'truthlies', NOKEY = 'truthlies_no', CLSKEY = 'truthlies_cls';
+  var LVN = { easy: 'Easy', medium: 'Medium', hard: 'Hard', classic: 'Classic' };
+  var DAILY_LV = ['hard', 'easy', 'easy', 'medium', 'medium', 'hard', 'hard'];   // Sun..Sat
+
+  Kit.init({
+    id: 'truthlies',
+    theme: { wood: ['#7a4a2a', '#4a2a14'] },
+    onNew: function () { showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'lightbulb', label: 'Hint', onClick: function () { hint(); }, when: function () { return S && !S.done; } },
+      { icon: 'rows', label: 'Step by step', onClick: function () { steps(); }, when: function () { return S && S.done; } },
+      { icon: 'sync', label: 'Take back all tokens', onClick: function () { clearAll(); }, when: function () { return S && !S.done; } },
+      { icon: 'eye', label: 'Show the answer', onClick: function () { giveUp(); }, when: function () { return S && !S.done; } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Truth or Lies: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Everyone on stage says one thing. Some always tell the truth and some always lie. Work out who is who, or who did it.</p>' +
+      '<h3>Playing</h3><ul>' +
+      '<li>Tap a character to put a token at their feet: <b>green</b> for truth, <b>red</b> for lies (and <b>purple</b> for a spy, who can say anything). Tap again to change it.</li>' +
+      '<li>Each speech bubble then shows a tick or a cross: a truth-teller\'s words must be true, a liar\'s must be false. When the ticks and crosses all fit, you have it.</li>' +
+      '<li><b>Who is who</b> puzzles: when everyone has a token, press <b>Check</b>.</li>' +
+      '<li><b>Whodunits</b>: someone did it, and the playbill says how many are lying. Tokens are your notes. Press <b>Accuse</b>, then tap the one who did it.</li></ul>' +
+      '<h3>Help</h3><ul><li><b>Hint</b>, two per puzzle: the first shows which words to look at, the second says what they prove.</li>' +
+      '<li>A wrong answer points at the words that can\'t be right, without giving the answer away.</li>' +
+      '<li>When you solve it, every bubble lights up true or false and says why. <b>Step by step</b> walks through the whole chain of reasoning.</li></ul>' +
+      '<h3>Levels</h3><ul><li><b>Easy:</b> two or three people. Each statement can be cracked on its own.</li>' +
+      '<li><b>Medium:</b> three or four people. You\'ll need to put two statements together.</li>' +
+      '<li><b>Hard:</b> four or five people, with counting, "if… then", "would tell you", spies and two liars.</li>' +
+      '<li><b>Classics:</b> hand-picked puzzles in the old style.</li></ul>' +
+      '<h3>Daily puzzle</h3><p>A new one every day, the same on every device. Easy early in the week, harder by the weekend.</p>'
+  });
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  // S: {p (puzzle), mode, lvl, daily, no, cls, marks[], time, hints, hintAt, wrong, started, done, gave}
+  var S = null, P = null, U = [], tick = null, accusing = false, looks = [];
+  function hydrate(p) { var q = JSON.parse(JSON.stringify(p)); return q; }
+  function save() {
+    if (!S || S.done) return;
+    try { localStorage.setItem(SAVE, JSON.stringify({ S: S, U: U.slice(-60) })); } catch (e) {}
+    if (S.marks.some(function (m) { return m >= 0; }) || S.time > 20) Kit.resume.set(label() + ' · ' + fmt(S.time)); else Kit.resume.clear();
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function fmt(t) { t = t | 0; var m = Math.floor(t / 60), s = ('0' + t % 60).slice(-2); return m + ':' + s; }
+  function today() { return Math.floor((Date.now() - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }
+  function label() { return S.daily ? 'Daily · ' + LVN[S.lvl] : S.cls >= 0 ? 'Classic ' + (S.cls + 1) : LVN[S.lvl]; }
+  function hist() { try { return GameHistory.load(HKEY); } catch (e) { return []; } }
+  function dailyDone() { var d = today(); return hist().filter(function (e) { return e && e.daily === d && e.solved; })[0] || null; }
+  function jget(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
+  function jset(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function N() { return TL.nouns(P); }
+  function nameHTML(str) {
+    return Kit.esc(str).replace(/\[\[(\d+)\]\]/g, function (_, i) { var L = looks[+i]; return '<span class="nmx" style="--c:' + (L ? L.out : '#888') + '">' + Kit.esc(P.names[+i]) + '</span>'; });
+  }
+  function plain(str) { return TL.plainText(str, P.names); }
+  function typeName(v) { return P.fam === 'wd' ? (v === 0 ? 'honest' : v === 1 ? 'lying' : '') : v === 0 ? N().T : v === 1 ? N().L : v === 2 ? 'spy' : ''; }
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    stopClock(); accusing = false; app.className = 'tl';
+    var dl = DAILY_LV[new Date().getDay()], done = dailyDone(), nos = jget(NOKEY, {}), cls = jget(CLSKEY, []);
+    function solvedN(lv) { var n = hist().filter(function (e) { return e && e.lvl === lv && e.solved; }).length; return n ? ' · ' + n + ' solved' : ''; }
+    var modes = [
+      { id: 'daily', icon: 'calendar', title: 'Daily puzzle', desc: done ? 'Solved today in ' + fmt(done.seconds) + '. Play it again?' : "Today's is " + LVN[dl] + '. Same puzzle everywhere.' },
+      { id: 'easy', icon: 'star', title: 'Easy', desc: 'Two or three on stage' + solvedN('easy') },
+      { id: 'medium', icon: 'pencil', title: 'Medium', desc: 'Three or four, and two clues together' + solvedN('medium') },
+      { id: 'hard', icon: 'flame', title: 'Hard', desc: 'Four or five, spies, counting, two liars' + solvedN('hard') }
+    ];
+    if (CLASSICS.length) modes.push({ id: 'classic', icon: 'book', title: 'Classics', desc: cls.length >= CLASSICS.length ? 'All ' + CLASSICS.length + ' solved. Play them again?' : cls.length + ' of ' + CLASSICS.length + ' solved' });
+    void nos;
+    Kit.setup(app, {
+      intro: 'Someone is lying. Who?',
+      modes: modes, mode: 'easy', start: 'Raise the curtain',
+      onStart: function (cfg) { newPuzzle(cfg.mode); }
+    });
+  }
+  function newPuzzle(mode, opts) {
+    opts = opts || {};
+    var daily = mode === 'daily', lvl = daily ? DAILY_LV[new Date().getDay()] : mode, no = 0, cls = -1, seed;
+    if (mode === 'classic') {
+      var done = jget(CLSKEY, []);
+      cls = opts.cls != null ? opts.cls : (function () { for (var i = 0; i < CLASSICS.length; i++) if (done.indexOf(i) < 0) return i; return Math.floor(Math.random() * CLASSICS.length); })();
+    } else if (daily) { no = today(); seed = TL.hash('truthlies-daily-' + no); }
+    else { var nos = jget(NOKEY, {}); no = opts.no || (nos[lvl] || 0) + 1; if (!opts.no) { nos[lvl] = no; jset(NOKEY, nos); } seed = TL.hash('truthlies-' + lvl + '-' + no); }
+    app.className = 'tl'; app.innerHTML = '<div class="loading">Setting the stage…</div>';
+    setTimeout(function () {
+      var p = cls >= 0 ? classic(cls) : TL.plain(TL.generate(lvl, seed));
+      if (cls >= 0) lvl = p.level;
+      U = []; accusing = false;
+      S = { p: p, mode: mode, lvl: lvl, daily: daily ? today() : 0, no: no, cls: cls, marks: p.names.map(function () { return -1; }),
+        time: 0, hints: 0, hintAt: -1, wrong: 0, started: Date.now(), done: false, gave: false };
+      Kit.gameStart(); build(true); save();
+    }, 60);
+  }
+
+  // ── Moves ─────────────────────────────────────────────────────────────────
+  function snap() { U.push(S.marks.slice()); if (U.length > 200) U.shift(); }
+  function cycle(i) {
+    if (!S || S.done) return;
+    if (accusing) { pick(i); return; }
+    snap();
+    var max = P.fam === 'kk' && P.spy ? 2 : 1, m = S.marks[i];
+    S.marks[i] = m >= max ? -1 : m + 1;
+    var a = actorEls[i]; a.classList.remove('jump'); void a.offsetWidth; a.classList.add('jump');
+    if (S.marks[i] >= 0) { Kit.sfx('chip', 0.7); Kit.haptic('light'); } else { Kit.sfx('tap'); Kit.haptic('tick'); }
+    render(i); save();
+  }
+  function undo() {
+    if (!S || S.done) return;
+    if (!U.length) { Kit.toast('Nothing to undo'); return; }
+    var was = S.marks.slice(); S.marks = U.pop();
+    var ch = -1; was.forEach(function (m, i) { if (m !== S.marks[i]) ch = i; });
+    Kit.sfx('tap'); render(ch); save();
+  }
+  function clearAll() {
+    if (!S || S.done || !S.marks.some(function (m) { return m >= 0; })) return;
+    snap(); S.marks = S.marks.map(function () { return -1; }); Kit.sfx('whoosh'); render(); save();
+  }
+
+  // ── Hints: first where to look, then what it proves ──────────────────────
+  function stepDone(st) {
+    var any = false, ok = st.facts.every(function (f) {
+      var m = /^t(\d+)=(\d)$/.exec(f[0]); if (!m) return false;
+      any = true; var mk = S.marks[+m[1]], v = +m[2];
+      if (P.fam === 'wd') return f[1] ? mk === 1 : mk === 0;
+      return f[1] ? mk === v : mk >= 0 && mk !== v;
+    });
+    return any && ok;
+  }
+  function nextStep() { var ch = TL.chain(P); for (var k = 0; k < ch.length; k++) if (!stepDone(ch[k])) return k; return ch.length - 1; }
+  var lastHint = '';
+  function hint() {
+    if (!S || S.done) return;
+    if (accusing) setAccuse(false);
+    var ch = TL.chain(P);
+    if (S.hints >= 2) { if (lastHint) { showHint(lastHint.k, lastHint.text); } else Kit.toast('No hints left'); return; }
+    var k = nextStep(), st = ch[k], text = S.hints === 0 ? TL.stepLead(P, st) : TL.stepWhy(P, st);
+    S.hints++; S.hintAt = k; lastHint = { k: k, text: text };
+    Kit.sfx('sparkle'); Kit.haptic('light');
+    showHint(k, text); render(); save();
+  }
+  function showHint(k, text) {
+    var st = TL.chain(P)[k];
+    bubbleEls.forEach(function (b) { b.classList.remove('hint', 'bad', 'would'); });
+    (st.S.length ? st.S : []).forEach(function (i) { var b = bubbleEls[i]; void b.offsetWidth; b.classList.add('hint'); });
+    if (!st.S.length) flashRule();
+    note(text, false, 9000);
+  }
+  function flashRule() { var r = document.getElementById('rule'); if (r) { r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash'); } }
+
+  // ── Checking ──────────────────────────────────────────────────────────────
+  function check() {
+    if (!S || S.done) return;
+    if (P.fam === 'wd') { setAccuse(!accusing); return; }
+    if (S.marks.some(function (m) { return m < 0; })) { Kit.toast('Give everyone a token first'); return; }
+    var r = TL.checkKK(P, S.marks);
+    if (!r) { solved(); return; }
+    S.wrong++; Kit.sfx('bad'); Kit.haptic('error');
+    clearMarksUI();
+    var Nn = N();
+    if (r.spy != null) { flashRule(); note('There is exactly one spy on stage. You have ' + (r.spy ? TL.NUM[r.spy] : 'none') + '.', true); }
+    else if (r.i >= 0) {
+      var i = r.i, b = bubbleEls[i], a = actorEls[i];
+      void b.offsetWidth; b.classList.add('bad'); a.classList.add('bad');
+      setTimeout(function () { a.classList.remove('bad'); }, 500);
+      note(r.need ? 'You have [[' + i + ']] as ' + Nn.aT + ', so [[' + i + "]]'s words must be true. With your tokens, they're false."
+        : 'You have [[' + i + ']] as ' + Nn.aL + ', so [[' + i + "]]'s words must be false. With your tokens, they're true.", true);
+    } else note("Something doesn't add up. Look again.", true);
+    render(); save();
+  }
+  function setAccuse(on) {
+    accusing = !!on;
+    stage.classList.toggle('accuse', accusing);
+    beam.classList.remove('on');
+    actorEls.forEach(function (a) { a.classList.remove('pick'); });
+    if (accusing) { Kit.sfx('whoosh'); Kit.haptic('light'); hideNote(); clearMarksUI(); }
+    render();
+  }
+  function aimBeam(i) {
+    var a = actorEls[i]; if (!a) return;
+    var sr = stage.getBoundingClientRect(), ar = a.getBoundingClientRect();
+    beam.style.left = (ar.left - sr.left + ar.width / 2) + 'px';
+    beam.style.height = (ar.top - sr.top + ar.height * 0.82) + 'px';
+    beam.style.width = Math.max(110, ar.width * 1.6) + 'px'; beam.style.marginLeft = -Math.max(110, ar.width * 1.6) / 2 + 'px';
+    beam.classList.add('on');
+  }
+  function pick(i) {
+    accusing = false; stage.classList.remove('accuse');
+    aimBeam(i); actorEls[i].classList.add('pick');
+    Kit.sfx('roll'); Kit.haptic('medium');
+    busy = true; render();
+    setTimeout(function () {
+      busy = false;
+      var r = TL.checkWD(P, i);
+      if (!r) { S.acc = i; solved(); return; }
+      beam.classList.remove('on'); actorEls[i].classList.remove('pick');
+      S.wrong++; Kit.sfx('bad'); Kit.haptic('error');
+      var a = actorEls[i]; a.classList.add('bad'); setTimeout(function () { a.classList.remove('bad'); }, 500);
+      var Nn = N(), x = '[[' + i + ']]', msg;
+      if (r.paradox) msg = 'If ' + x + ' ' + Nn.P + ', the stories could not be sorted into true and false.';
+      else {
+        r.liars.forEach(function (j) { var b = bubbleEls[j]; void b.offsetWidth; b.classList.add('would', 'bad'); });
+        var L = r.liars.map(function (j) { return '[[' + j + ']]'; }), H = [];
+        for (var j = 0; j < P.n; j++) if (r.liars.indexOf(j) < 0) H.push('[[' + j + ']]');
+        var who = function (list, verb) { return list.length === 1 ? list[0] + ' would be ' + verb : TL.listAnd(list) + ' would ' + (list.length === 2 ? 'both' : 'all') + ' be ' + verb; };
+        if (P.rule === 'thief') msg = 'If ' + x + ' ' + Nn.P + ', ' + (r.liars.length ? who(L, 'lying') : 'everyone would be telling the truth') + '. But only the one who did it lies.';
+        else if (P.rule === 'onet') msg = 'If ' + x + ' ' + Nn.P + ', ' + (H.length ? who(H, 'telling the truth') : 'everyone would be lying') + '. But only one of them tells the truth.';
+        else msg = 'If ' + x + ' ' + Nn.P + ', ' + (r.liars.length ? who(L, 'lying') : 'everyone would be telling the truth') + '. But ' + (P.rule === 'two' ? 'exactly two of them are lying.' : 'only one of them is lying.');
+      }
+      note(msg, true); render(); save();
+    }, 1100);
+  }
+  var busy = false;
+
+  // ── The end: every bubble lights up, then the curtain call ───────────────
+  function revealOrder() {
+    var seen = {}, out = [];
+    TL.chain(P).forEach(function (st) { st.S.forEach(function (i) { if (!seen[i]) { seen[i] = 1; out.push(i); } }); });
+    for (var i = 0; i < P.n; i++) if (!seen[i]) out.push(i);
+    return out;
+  }
+  function reveal(fast, then) {
+    var ord = revealOrder(), gap = fast ? 0 : 620;
+    stage.classList.remove('accuse');
+    hideNote(); clearMarksUI();
+    ord.forEach(function (i, k) {
+      setTimeout(function () {
+        var w = TL.why(P, i), b = bubbleEls[i], a = actorEls[i], ty = P.sol.t[i];
+        b.querySelector('.exp').innerHTML = nameHTML(w.text);
+        b.querySelector('.stamp').textContent = w.val ? 'TRUE' : 'FALSE';
+        b.classList.add('rv', w.val ? 'rv-t' : 'rv-f');
+        if (S.marks[i] !== ty) { S.marks[i] = ty; render(i); }
+        a.classList.add('v' + ty);
+        face(i, ty === 0 ? 's' : 'k');
+        if (!fast) { Kit.sfx(w.val ? 'pop' : 'flip', 0.8); Kit.haptic('tick'); }
+      }, 250 + k * gap);
+    });
+    setTimeout(function () {
+      if (P.fam === 'wd') {
+        var c = P.sol.c, a = actorEls[c];
+        aimBeam(c); a.classList.add('caught'); face(c, 'o');
+        if (!fast) { Kit.sfx('boom'); Kit.haptic('heavy'); }
+      } else if (!fast) actorEls.forEach(function (a, k) { setTimeout(function () { a.classList.add('bow'); }, k * 120); });
+      if (then) setTimeout(then, fast ? 0 : 700);
+    }, 250 + ord.length * gap + (fast ? 0 : 200));
+  }
+  function face(i, f) { var svg = actorEls[i] && actorEls[i].querySelector('.fg'); if (svg) svg.setAttribute('class', 'fg f-' + f); }
+  function finish(gave) {
+    S.done = true; S.gave = !!gave; stopClock(); accusing = false;
+    var name = LVN[S.lvl], hl = [], who = P.fam === 'wd' ? P.names[P.sol.c] + ' ' + N().P : '';
+    if (gave) hl.push('Showed the answer' + (P.fam === 'wd' ? ': ' + who : ''));
+    else hl.push('Solved ' + (S.cls >= 0 ? 'Classic ' + (S.cls + 1) : (S.lvl === 'easy' ? 'an ' : 'a ') + name + ' puzzle') + ' in ' + fmt(S.time) + (S.hints ? ' with ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ' with no hints'));
+    if (S.daily) hl.push('Daily puzzle for ' + new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }));
+    if (!gave) hl.push(S.wrong ? S.wrong + (S.wrong === 1 ? ' wrong guess' : ' wrong guesses') + ' first' : 'Right first time');
+    if (P.fam === 'wd' && !gave) hl.push(who + '. Case closed.');
+    if (P.fam === 'kk') { var Ls = P.sol.t.map(function (t, i) { return t === 1 ? P.names[i] : null; }).filter(Boolean); hl.push((Ls.length === 1 ? 'The ' + N().L + ' was ' : 'The ' + N().Ls + ' were ') + TL.listAnd(Ls)); }
+    Kit.record(HKEY, {
+      started: S.started, mode: label(), players: [{ name: 'You' }], winner: gave ? null : 'You',
+      summary: (gave ? 'Answer shown' : 'Solved') + ' · ' + label() + (gave ? '' : ' in ' + fmt(S.time)), badge: gave ? '' : fmt(S.time), highlights: hl,
+      meta: { lvl: S.lvl, daily: S.daily, no: S.no, cls: S.cls, seconds: S.time, hints: S.hints, wrong: S.wrong, solved: !gave, fam: P.fam },
+      detail: { set: P.set, fam: P.fam, nm: P.names.join(','), t: P.sol.t.join(''), c: P.sol.c, rule: P.rule || '', spy: P.spy ? 1 : 0, st: P.st.map(function (_, i) { return plain(TL.say(P, i)); }), tv: P.st.map(function (_, i) { return TL.ev(P.st[i], P.sol) ? 1 : 0; }).join(''), lv: S.lvl, no: S.no, h: S.hints, w: S.wrong, g: gave ? 1 : 0 }
+    });
+    if (S.cls >= 0 && !gave) { var cd = jget(CLSKEY, []); if (cd.indexOf(S.cls) < 0) { cd.push(S.cls); jset(CLSKEY, cd); } }
+    clearSave();
+  }
+  function solved() {
+    finish(false); render();
+    Kit.sfx('good'); Kit.haptic('success');
+    reveal(false, function () {
+      Kit.callout(P.fam === 'wd' ? 'Caught!' : 'Solved!');
+      setTimeout(winCard, 1300);
+    });
+  }
+  function winCard(quiet) {
+    var lv = S.lvl, mode = S.mode, cls = S.cls;
+    Kit.win({
+      quiet: !!quiet,
+      icon: P.fam === 'wd' ? 'search' : 'trophy',
+      title: S.gave ? 'The answer' : P.fam === 'wd' ? 'Case closed!' : 'Solved!',
+      sub: S.gave ? (P.fam === 'wd' ? P.names[P.sol.c] + ' ' + N().P + '.' : 'Every bubble now says why.') : label() + ' in ' + fmt(S.time) + (S.hints ? ' · ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ' · no hints') + (S.wrong ? ' · ' + S.wrong + ' wrong' : ''),
+      againLabel: mode === 'daily' ? 'Play ' + LVN[lv] : cls >= 0 ? 'Next classic' : 'Next puzzle',
+      again: function () { newPuzzle(mode === 'daily' ? lv : mode); },
+      extra: [{ label: 'See why', onClick: function () { } }, { label: 'Choose a level', onClick: showSetup }],
+      closeLabel: 'Back to games'
+    });
+  }
+  function giveUp() {
+    if (!S || S.done) return;
+    Kit.confirm('Show the answer?', { ok: 'Show it', body: 'The puzzle ends and goes in your past games as not solved.' }).then(function (ok) {
+      if (!ok) return;
+      finish(true); render(); Kit.sfx('whoosh');
+      reveal(false, function () { setTimeout(function () { winCard(true); }, 900); });
+    });
+  }
+  function steps() {
+    var ch = TL.chain(P), ol = el('ol', { class: 'steps' });
+    ch.forEach(function (st) { ol.appendChild(el('li', { html: nameHTML(TL.stepWhy(P, st)) })); });
+    var end = P.fam === 'wd' ? '[[' + P.sol.c + ']] ' + N().P + '.' : P.names.map(function (_, i) { return '[[' + i + ']] is ' + TL.typeWord(N(), P.sol.t[i]); }).join(', ') + '.';
+    ol.appendChild(el('li', { class: 'end', html: nameHTML(end) }));
+    Kit.sheet({ title: 'Step by step', node: ol, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+
+  // ── Notes (the sticky note above the tray) ────────────────────────────────
+  var noteT = null;
+  function note(msg, bad, ms) {
+    var n = document.getElementById('note'); if (!n) return;
+    n.innerHTML = Kit.icon(bad ? 'close' : 'lightbulb') + '<span>' + nameHTML(msg) + '</span>';
+    n.appendChild(el('button', { type: 'button', class: 'x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: hideNote }));
+    n.className = 'note show' + (bad ? ' bad' : '');
+    clearTimeout(noteT); noteT = setTimeout(hideNote, ms || 7000);
+  }
+  function hideNote() { var n = document.getElementById('note'); if (n) n.className = 'note'; clearTimeout(noteT); }
+  function clearMarksUI() { bubbleEls.forEach(function (b) { b.classList.remove('bad', 'would', 'hint'); }); }
+
+  // ── Clock ─────────────────────────────────────────────────────────────────
+  function startClock() {
+    stopClock();
+    tick = setInterval(function () {
+      if (!S || S.done || document.hidden) return;
+      S.time++; var t = document.getElementById('tm'); if (t) t.textContent = fmt(S.time);
+      if (S.time % 10 === 0) save();
+    }, 1000);
+  }
+  function stopClock() { if (tick) clearInterval(tick); tick = null; }
+  document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
+
+  // ── Drawing ───────────────────────────────────────────────────────────────
+  var stage, scene, beam, actorEls = [], bubbleEls = [], goBtn, hintBtn, undoBtn, tray;
+  function ruleHTML() {
+    var Nn = N();
+    if (P.fam === 'wd') return Kit.esc(TL.SETS[P.set].what) + ' <b>' + Kit.esc(TL.RULES[P.rule]) + '</b>';
+    return '<span class="tw t">' + Kit.esc(TL.cap(Nn.Ts)) + '</span> always tell the truth. <span class="tw l">' + Kit.esc(TL.cap(Nn.Ls)) + '</span> always lie.' +
+      (P.spy ? ' <b>One of them is a <span class="tw s">spy</span>, who can say anything.</b>' : '');
+  }
+  function build(fresh) {
+    P = S.p; looks = Art.looks(P);
+    app.className = 'tl'; app.innerHTML = '';
+    var play = el('div', { class: 'play' });
+    var set = TL.SETS[P.set];
+    // playbill
+    play.appendChild(el('div', { class: 'bill' }, [
+      el('div', { class: 'top' }, [el('span', { class: 'lv', text: S.daily ? 'Daily' : S.cls >= 0 ? 'Classic' : LVN[S.lvl] }),
+        el('span', { class: 'no', text: S.daily ? new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ' · ' + LVN[S.lvl] : S.cls >= 0 ? 'No. ' + (S.cls + 1) + ' of ' + CLASSICS.length : 'No. ' + S.no }),
+        el('span', { class: 'tm', id: 'tm', text: fmt(S.time) })]),
+      el('h2', { text: set.title }),
+      el('p', { class: 'rule', id: 'rule', html: ruleHTML() + (P.fam === 'wd' ? ' <b>' + Kit.esc(set.Q) + '</b>' : '') })
+    ]));
+    // theatre
+    var thr = el('div', { class: 'thr wood' });
+    stage = el('div', { class: 'stg' + (fresh ? '' : ' open settled') });
+    stage.appendChild(el('div', { class: 'backdrop', html: Art.backdrop(P.set) }));
+    stage.appendChild(el('div', { class: 'glow' }));
+    stage.appendChild(el('div', { class: 'boards' }));
+    stage.appendChild(el('div', { class: 'dim' }));
+    beam = el('div', { class: 'beam' }); stage.appendChild(beam);
+    scene = el('div', { class: 'scene stack', style: { '--n': P.n } });
+    actorEls = []; bubbleEls = [];
+    for (var i = 0; i < P.n; i++) (function (i) {
+      var L = looks[i];
+      var b = el('div', { class: 'bub', style: { '--c': L.out, '--col': i + 1, '--row': i + 1 }, role: 'note', 'aria-label': P.names[i] + ' says: ' + plain(TL.say(P, i)) }, [
+        el('div', { class: 'who', html: '<span class="mh">' + Art.head(L, 'h' + i) + '</span><span>' + Kit.esc(P.names[i]) + '</span>' }),
+        el('p', { class: 'say', html: nameHTML(TL.say(P, i)) }),
+        el('span', { class: 'tv' }),
+        el('p', { class: 'exp' }),
+        el('span', { class: 'stamp' })
+      ]);
+      b.addEventListener('click', function (e) {
+        var t = e.target.closest && e.target.closest('.nmx');
+        var who = t ? P.names.indexOf(t.textContent) : i;
+        if (who < 0) who = i;
+        Kit.sfx('tick'); bump(who); if (!t) { b.classList.remove('lit'); void b.offsetWidth; b.classList.add('lit'); }
+      });
+      var a = el('button', { type: 'button', class: 'actor', style: { '--c': L.out, '--col': i + 1 }, 'aria-label': P.names[i] }, [
+        el('div', { class: 'hop' }, [el('div', { class: 'fig', html: Art.figure(L, 'f' + i + '_' + (S.no || S.cls)) }), el('div', { class: 'prop', html: P.fam === 'wd' ? Art.prop(P.set) : '' }), el('span', { class: 'guilty', text: 'GUILTY' })]),
+        el('div', { class: 'base' }, [el('span', { class: 'stand' }), el('span', { class: 'tok' }), el('span', { class: 'nmp', html: Kit.esc(P.names[i]) + '<small></small>' })])
+      ]);
+      a.addEventListener('click', function () { if (busy) return; cycle(i); });
+      a.addEventListener('pointerenter', function () { if (accusing) aimBeam(i); });
+      bubbleEls.push(b); actorEls.push(a);
+    })(i);
+    bubbleEls.forEach(function (b) { scene.appendChild(b); });
+    actorEls.forEach(function (a) { scene.appendChild(a); });
+    stage.appendChild(scene);
+    stage.appendChild(el('div', { class: 'cue', text: (P.fam === 'wd' ? set.Q : 'Who is it?') + ' Tap them.' }));
+    stage.appendChild(el('div', { class: 'valance' }));
+    stage.appendChild(el('div', { class: 'drape l' })); stage.appendChild(el('div', { class: 'drape r' }));
+    thr.appendChild(stage);
+    play.appendChild(thr);
+    // tray
+    tray = el('div', { class: 'tray' });
+    play.appendChild(tray);
+    play.appendChild(el('div', { class: 'note', id: 'note' }));
+    app.appendChild(play);
+    buildTray();
+    layout(); render();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+    if (fresh) {
+      requestAnimationFrame(function () { requestAnimationFrame(function () { stage.classList.add('open'); Kit.sfx('whoosh'); }); });
+      setTimeout(function () { stage.classList.add('settled'); }, 2200);
+    }
+    if (S.done) { reveal(true); } else startClock();
+  }
+  function buildTray() {
+    tray.innerHTML = '';
+    tray.className = 'tray' + (S.done ? ' done' : '');
+    if (S.done) {
+      tray.appendChild(el('button', { type: 'button', class: 'btn btn-soft go', html: Kit.icon('rows') + '<span>Step by step</span>', onclick: function () { Kit.sfx('pop'); steps(); } }));
+      tray.appendChild(el('button', { type: 'button', class: 'btn btn-primary go', html: Kit.icon('sparkle') + '<span>' + (S.cls >= 0 ? 'Next classic' : 'Next puzzle') + '</span>', onclick: function () { Kit.sfx('pop'); newPuzzle(S.mode === 'daily' ? S.lvl : S.mode); } }));
+      goBtn = hintBtn = undoBtn = null; return;
+    }
+    undoBtn = el('button', { type: 'button', class: 'tool', 'aria-label': 'Undo', html: Kit.icon('undo') + '<span>Undo</span>', onclick: undo });
+    hintBtn = el('button', { type: 'button', class: 'tool', 'aria-label': 'Hint', html: Kit.icon('lightbulb') + '<span class="pips"><i></i><i></i></span>', onclick: hint });
+    goBtn = el('button', { type: 'button', class: 'btn btn-primary go', onclick: check });
+    tray.appendChild(undoBtn); tray.appendChild(hintBtn); tray.appendChild(goBtn);
+  }
+  function bump(i) { var a = actorEls[i]; if (!a) return; a.classList.remove('jump'); void a.offsetWidth; a.classList.add('jump'); }
+  function render(changed) {
+    if (!S || !actorEls.length) return;
+    var Nn = N();
+    for (var i = 0; i < P.n; i++) {
+      var m = S.marks[i], a = actorEls[i], tok = a.querySelector('.tok'), b = bubbleEls[i], tv = b.querySelector('.tv');
+      var key = String(m);
+      if (tok._k !== key) {
+        tok._k = key; tok.className = 'tok' + (m >= 0 ? ' m' + m : '');
+        tok.innerHTML = m === 0 ? Kit.icon('check') : m === 1 ? Kit.icon('close') : m === 2 ? Kit.icon('eye') : '';
+        if (changed === i && m >= 0) { void tok.offsetWidth; tok.classList.add('flip'); }
+        a.querySelector('.nmp small').textContent = m >= 0 ? typeName(m) : '';
+        tv.className = 'tv' + (m === 0 ? ' on t' : m === 1 ? ' on f' : m === 2 ? ' on q' : '');
+        tv.innerHTML = m === 0 ? Kit.icon('check') : m === 1 ? Kit.icon('close') : m === 2 ? '<b style="font-family:var(--display);font-size:.95rem">?</b>' : '';
+      }
+      a.setAttribute('aria-label', P.names[i] + (m >= 0 ? ', marked ' + typeName(m) : ', no token') + (S.done ? '' : '. Tap to change.'));
+    }
+    if (S.done) { if (tray && !tray.classList.contains('done')) buildTray(); return; }
+    if (undoBtn) undoBtn.disabled = !U.length || busy;
+    if (hintBtn) {
+      hintBtn.disabled = busy;
+      Array.prototype.forEach.call(hintBtn.querySelectorAll('.pips i'), function (p, k) { p.classList.toggle('used', k < S.hints); });
+    }
+    if (goBtn) {
+      if (P.fam === 'wd') {
+        goBtn.className = 'btn go ' + (accusing ? 'btn-soft cancel' : 'btn-primary');
+        goBtn.innerHTML = accusing ? Kit.icon('close') + '<span>Cancel</span>' : Kit.icon('target') + '<span>Accuse</span>';
+        goBtn.disabled = busy;
+      } else {
+        var n = S.marks.filter(function (x) { return x >= 0; }).length;
+        goBtn.className = 'btn btn-primary go';
+        goBtn.innerHTML = Kit.icon('check') + '<span>Check</span><span class="dots">' + S.marks.map(function (x) { return '<i class="' + (x >= 0 ? 'on' : '') + '"></i>'; }).join('') + '</span>';
+        goBtn.disabled = n < P.n || busy;
+      }
+    }
+  }
+  // Wide enough for a column each: bubbles stand over their speakers. Otherwise they stack, each nudged
+  // toward its speaker with the tail pointing down at them.
+  function layout() {
+    if (!scene || !scene.isConnected) return;
+    var cs = getComputedStyle(scene), pl = parseFloat(cs.paddingLeft), W = scene.clientWidth - pl - parseFloat(cs.paddingRight);
+    var cols = W / P.n >= 128;
+    scene.classList.toggle('cols', cols); scene.classList.toggle('stack', !cols);
+    bubbleEls.forEach(function (b) { b.style.removeProperty('--ml'); b.style.removeProperty('--tx'); b.style.maxWidth = cols ? '' : Math.round(W * 0.92) + 'px'; b.style.minWidth = cols ? '' : Math.round(Math.min(W * 0.55, 240)) + 'px'; b.style.width = cols ? '' : 'max-content'; });
+    if (cols) return;
+    actorEls.forEach(function (a, i) {
+      var cx = a.offsetLeft + a.offsetWidth / 2 - pl, b = bubbleEls[i], bw = b.offsetWidth;
+      var ml = Math.max(0, Math.min(W - bw, cx - bw * (0.25 + 0.5 * i / Math.max(1, P.n - 1))));
+      b.style.setProperty('--ml', ml + 'px');
+      b.style.setProperty('--tx', Math.max(18, Math.min(bw - 18, cx - ml)) + 'px');
+    });
+  }
+  var lt = 0;
+  window.addEventListener('resize', function () { clearTimeout(lt); lt = setTimeout(layout, 80); });
+
+  // ── Keyboard ──────────────────────────────────────────────────────────────
+  document.addEventListener('keydown', function (e) {
+    if (!S || document.querySelector('.k-scrim,.k-win') || !actorEls.length) return;
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+    if (e.metaKey || e.ctrlKey || e.altKey || S.done) return;
+    if (/^[1-5]$/.test(e.key) && +e.key <= P.n) { cycle(+e.key - 1); return; }
+    if (e.key === 'Enter') { check(); return; }
+    if (e.key === 'h' || e.key === 'H') hint();
+    if (e.key === 'Escape' && accusing) setAccuse(false);
+  });
+
+  // ── Classics: hand-written puzzles in the old style (each checked by the solver: one answer) ──
+  // [set, level, names, statements (kind, args...), extra {spy, rule, v:[text variants]}]
+  // ==CLASSICS==
+  var CLASSICS = [
+    ['island', 'easy', ['Ada', 'Ben'], [['bL', 0, 1], ['L', 0]]],
+    ['island', 'easy', ['Cleo', 'Dev'], [['oL', 0, 1], ['L', 0]]],
+    ['bakeoff', 'easy', ['Ada', 'Ben', 'Cleo'], [['not', 0], ['did', 0], ['not', 1]], { rule: 'thief' }],
+    ['castle', 'easy', ['Hugo', 'Iris'], [['same', 0, 1], ['L', 0]], { v: [0, 1] }],
+    ['woods', 'easy', ['Juno', 'Kai'], [['diff', 0, 1], ['T', 0]]],
+    ['museum', 'easy', ['Dev', 'Edie', 'Finn'], [['did', 1], ['not', 1], ['not', 2]], { rule: 'onet' }],
+    ['market', 'easy', ['Lena', 'Milo', 'Nell'], [['L', 1], ['same', 0, 2], ['bL', 0, 2]]],
+    ['island', 'easy', ['Otto', 'Pia', 'Quinn'], [['nL', 2], ['same', 0, 1], ['T', 1]], { v: [0, 0, 1] }],
+    ['ship', 'easy', ['Gia', 'Hugo', 'Iris'], [['did', 1], ['did', 2], ['lie', 1]], { rule: 'one', v: [1, 0, 0] }],
+    ['woods', 'easy', ['Uma', 'Vic', 'Wren'], [['L', 2], ['bL', 0, 2], ['diff', 0, 2]]],
+    ['market', 'easy', ['Abe', 'Bea', 'Cal'], [['oL', 1, 2], ['diff', 0, 1], ['would', 1, 0, 1]]],
+    ['castle', 'medium', ['Rosa', 'Sam', 'Tess'], [['allT'], ['L', 0], ['L', 1]]],
+    ['island', 'medium', ['Dora', 'Eli', 'Fay', 'Gus'], [['nL', 1], ['nL', 2], ['nL', 3], ['nL', 4]]],
+    ['library', 'medium', ['Jack', 'Kai', 'Lena', 'Milo'], [['did', 1], ['did', 3], ['not', 2], ['lie', 1]], { rule: 'one' }],
+    ['castle', 'medium', ['Hana', 'Ivo', 'Jack', 'Kit'], [['L', 1], ['L', 2], ['L', 3], ['bL', 0, 3]], { v: [0, 1, 2, 0] }],
+    ['woods', 'medium', ['Lou', 'Mae', 'Nico', 'Omar'], [['same', 1, 2], ['if', 0, 0, 3, 1], ['L', 0], ['L', 1]]],
+    ['train', 'medium', ['Nell', 'Otto', 'Pia', 'Quinn'], [['did', 1], ['did', 3], ['not', 2], ['lie', 1]], { rule: 'onet' }],
+    ['bakeoff', 'medium', ['Rosa', 'Sam', 'Tess', 'Uma'], [['nei', 0, 1], ['or', 2, 3], ['did', 0], ['not', 3]], { rule: 'one' }],
+    ['museum', 'medium', ['Vic', 'Wren', 'Yara', 'Zack'], [['not', 0], ['did', 2], ['did', 3], ['not', 3]], { rule: 'onet' }],
+    ['library', 'medium', ['Fay', 'Gus', 'Hana', 'Ivo', 'Juno'], [['not', 0], ['tru', 3], ['nei', 2, 3], ['did', 4], ['lie', 3]], { rule: 'one' }],
+    ['market', 'hard', ['Pip', 'Raj', 'Sol', 'Theo', 'Vera'], [['more'], ['aL', 3], ['would', 0, 4, 0], ['one', 0, 1, 4], ['nL', 2]]],
+    ['island', 'hard', ['Wes', 'Yara', 'Zoe', 'Ari'], [['would', 1, 2, 1], ['diff', 0, 2], ['oL', 0, 3], ['if', 1, 0, 2, 0]]],
+    ['ship', 'hard', ['Abe', 'Bea', 'Cal', 'Dora', 'Eli'], [['did', 1], ['not', 2], ['or', 3, 4], ['lie', 0], ['not', 0]], { rule: 'two' }],
+    ['castle', 'hard', ['Bo', 'Cy', 'Dot', 'Emil', 'Flo'], [['nL', 1], ['nL', 2], ['nL', 3], ['nL', 4], ['nL', 5]]],
+    ['island', 'hard', ['Gia', 'Hal', 'Ida'], [['if', 0, 0, 1, 0], ['S', 0], ['nS', 2]], { spy: 1 }],
+    ['train', 'hard', ['Kit', 'Lou', 'Mae', 'Nico'], [['did', 2], ['did', 0], ['tru', 1], ['not', 3]], { rule: 'onet' }],
+    ['castle', 'hard', ['Jo', 'Lev', 'Mira'], [['oL', 0, 2], ['S', 0], ['T', 0]], { spy: 1 }],
+    ['woods', 'hard', ['Ned', 'Ora', 'Ray', 'Ski'], [['nS', 0], ['if', 1, 0, 2, 0], ['S', 1], ['bL', 0, 1]], { spy: 1 }],
+    ['bakeoff', 'hard', ['Omar', 'Pip', 'Raj', 'Sol', 'Theo'], [['or', 1, 2], ['or', 0, 2], ['did', 3], ['lie', 2], ['nei', 0, 4]], { rule: 'two' }],
+    ['market', 'hard', ['Tam', 'Uma', 'Vic', 'Wren'], [['S', 1], ['T', 0], ['nL', 1], ['if', 1, 1, 3, 1]], { spy: 1 }]
+  ];
+  // ==/CLASSICS==
+  function classic(i) {
+    var c = CLASSICS[i], ex = c[4] || {};
+    var p = { fam: TL.SETS[c[0]].fam, set: c[0], n: c[2].length, names: c[2].slice(), spy: ex.spy ? 1 : 0, rule: ex.rule || undefined,
+      st: c[3].map(function (s, k) { return { k: s[0], a: s.slice(1), v: (ex.v && ex.v[k]) || 0, f: (ex.f && ex.f[k]) || 0 }; }) };
+    if (p.fam === 'kk') delete p.rule; else delete p.spy;
+    p.sol = TL.solve(p)[0]; p.level = c[1];
+    return p;
+  }
+
+  // Test hook
+  window.__tl = { get: function () { return S; }, TL: TL, Art: Art, classics: CLASSICS, classic: classic,
+    answer: function () { return P ? (P.fam === 'wd' ? P.sol.c : P.sol.t.slice()) : null; },
+    mark: function (arr) { S.marks = arr.slice(); render(); save(); }, layout: function () { layout(); } };
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  var going = saved && saved.S && saved.S.p && Array.isArray(saved.S.marks) && !saved.S.done;
+  function resumeSaved() { S = saved.S; U = saved.U || []; build(false); }
+  if (/[?&]daily=1/.test(location.search)) {
+    try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])daily=1&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch (e) {}
+    if (going && saved.S.daily === today()) resumeSaved();
+    else if (dailyDone()) showSetup();
+    else if (going && saved.S.time > 5) Kit.confirm("Start today's daily?", { ok: 'Start daily', cancel: 'Keep playing', body: 'The ' + LVN[saved.S.lvl] + ' puzzle you have going will be dropped.' }).then(function (ok) { if (ok) newPuzzle('daily'); else resumeSaved(); });
+    else newPuzzle('daily');
+  } else if (going) resumeSaved();
+  else showSetup();
+})();
+</script>
+</body>
+</html>
