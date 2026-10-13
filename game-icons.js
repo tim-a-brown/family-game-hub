@@ -330,7 +330,7 @@ var GameIcon = (function () {
     var base = (BASE[g.base || g.cat] || BASE.tools)(c);
     var mark = MARK[g.id] ? MARK[g.id](c) : txt(g.name.charAt(0), 18, c, 12.5);
     // On a coloured tile the picture fills it; on the home screen (bare) it sits on the category's white card like the other marks
-    if (PIC[g.id]) { var pb = opts.bare ? [9, 30] : [3, 42]; mark = '<image href="' + PIC[g.id] + '" x="' + pb[0] + '" y="' + pb[0] + '" width="' + pb[1] + '" height="' + pb[1] + '" preserveAspectRatio="xMidYMid meet"/>'; base = [opts.bare ? base[0] : '', '']; }
+    if (PIC[g.id]) { var pb = opts.bare ? [13.5, 21] : [9.3, 29.4]; mark = '<image href="' + PIC[g.id] + '" x="' + pb[0] + '" y="' + pb[0] + '" width="' + pb[1] + '" height="' + pb[1] + '" preserveAspectRatio="xMidYMid meet"/>'; base = [opts.bare ? base[0] : '', '']; }
     return '<svg class="gicon' + (opts.cls ? ' ' + opts.cls : '') + '" viewBox="0 0 48 48" role="img" aria-label="' + g.name + '">' +
       '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + lighten(c, .18) + '"/><stop offset="1" stop-color="' + lighten(c, -.18) + '"/></linearGradient></defs>' +
       (opts.bare ? '' : '<rect width="48" height="48" rx="13" fill="url(#' + gid + ')"/>' +
