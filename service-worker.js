@@ -166,6 +166,7 @@ const PRECACHE_URLS = [
   '/games/mysteries.html',
   '/data/mysteries-scene.js',
   '/data/mysteries-cases.js',
+  '/data/mysteries-gen.js',
   '/games/logicgrid.html',
   '/games/truthlies.html',
   '/games/ciphers.html',

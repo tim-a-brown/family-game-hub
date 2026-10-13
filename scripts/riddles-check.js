@@ -1,18 +1,24 @@
 #!/usr/bin/env node
-// Checks data/riddles.js: the schema, the counts per level, duplicates, hints that give the answer away, and the
-// answer checker (RiddleCheck) against a table of cases plus generated ones. Exits 1 on any failure.
+// Checks the riddles: data/riddles.js (the first 100, the answer checker, the daily schedule) and the packs
+// data/riddles-pack-1.js .. -4.js. The schema, the counts per level, duplicates, hints that give the answer away,
+// the answer checker (RiddleCheck) against a table of cases plus generated ones, that no riddle accepts another
+// riddle's answers, and the daily schedule. Exits 1 on any failure.
 //   node scripts/riddles-check.js          (add -v to list every case)
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 const VERBOSE = process.argv.includes('-v');
+const PACKS = [1, 2, 3, 4].map(n => 'data/riddles-pack-' + n + '.js');
 
 const ctx = { console };
 ctx.window = ctx;
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'data/words-en.js'), 'utf8'), ctx);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'data/riddles.js'), 'utf8'), ctx);
-const R = ctx.RIDDLES, C = ctx.RiddleCheck;
+const R = ctx.RIDDLES.slice(), C = ctx.RiddleCheck;   // R: the first 100
+PACKS.forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx));
+const MORE = ctx.RIDDLES_MORE || [], ALL = R.concat(MORE);   // the same order as games/riddles.html
+const BASE = new Set(R);
 
 let fails = 0, passes = 0;
 const warn = [];
@@ -24,10 +30,11 @@ function section(t) { console.log('\n' + t); }
 section('Schema');
 const KEYS = new Set(['id', 'q', 'a', 'alt', 'hints', 'd', 'why', 'from']);
 const ids = new Set();
-R.forEach((r, i) => {
+ALL.forEach((r, i) => {
   const at = '#' + i + ' ' + (r.id || '?');
   Object.keys(r).forEach(k => { if (!KEYS.has(k)) fail(at + ': unknown field ' + k); });
-  if (typeof r.id !== 'string' || !/^[a-z0-9]+$/.test(r.id)) fail(at + ': id must be lowercase letters/digits');
+  // the first 100: letters/digits; packs: p<N>-name (more hyphens allowed: p3-letter-b)
+  if (typeof r.id !== 'string' || !(BASE.has(r) ? /^[a-z0-9]+$/ : /^p[1-9][0-9]*(-[a-z0-9]+)+$/).test(r.id)) fail(at + ': bad id (want lowercase letters/digits, packs p<N>-name)');
   if (ids.has(r.id)) fail(at + ': duplicate id'); ids.add(r.id);
   ['q', 'a', 'why'].forEach(k => { if (typeof r[k] !== 'string' || !r[k].trim()) fail(at + ': ' + k + ' missing'); });
   if (r.from != null && (typeof r.from !== 'string' || !r.from.trim())) fail(at + ': from must be text');
@@ -46,28 +53,38 @@ ok('fields checked');
 section('Counts');
 const by = { easy: 0, medium: 0, hard: 0 };
 R.forEach(r => { by[r.d] = (by[r.d] || 0) + 1; });
-console.log('  ' + R.length + ' riddles: ' + by.easy + ' easy, ' + by.medium + ' medium, ' + by.hard + ' hard; ' + R.filter(r => r.from).length + ' classics with a source');
-if (R.length !== 100) fail('expected exactly 100 riddles, have ' + R.length);
+console.log('  first ' + R.length + ': ' + by.easy + ' easy, ' + by.medium + ' medium, ' + by.hard + ' hard; ' + R.filter(r => r.from).length + ' classics with a source');
+if (R.length !== 100) fail('expected exactly 100 riddles in data/riddles.js, have ' + R.length);
 if (by.easy < 30 || by.easy > 40 || by.medium < 30 || by.medium > 40 || by.hard < 25 || by.hard > 35) fail('levels are lopsided (want about 35/35/30)');
+const byAll = { easy: 0, medium: 0, hard: 0 };
+ALL.forEach(r => { byAll[r.d] = (byAll[r.d] || 0) + 1; });
+console.log('  all ' + ALL.length + ': ' + byAll.easy + ' easy, ' + byAll.medium + ' medium, ' + byAll.hard + ' hard (' + MORE.length + ' from ' + PACKS.length + ' packs)');
+if (ALL.length < 1095) fail('want at least 1,095 riddles (three years of dailies), have ' + ALL.length);
+['easy', 'medium', 'hard'].forEach(l => { if (byAll[l] < ALL.length * 0.25) fail('too few ' + l + ' riddles overall: ' + byAll[l]); });
 
 // ── Duplicates ────────────────────────────────────────────────────────────
 section('Duplicates');
 const key = s => C.norm(s).toks.join(' ');
 const seenQ = {}, seenA = {};
-R.forEach(r => {
+ALL.forEach(r => {
   const q = key(r.q), a = key(r.a);
   if (seenQ[q]) fail('same question: ' + r.id + ' and ' + seenQ[q]); else seenQ[q] = r.id;
   if (seenA[a]) fail('same answer "' + r.a + '": ' + r.id + ' and ' + seenA[a]); else seenA[a] = r.id;
 });
-// the same plain alternate in two riddles is allowed (steps: stairs and footsteps) but listed
+// the same plain alternate in two of the first 100 is allowed (steps: stairs and footsteps) but listed;
+// anywhere else it's a failure (see Cross answers)
 const altOwner = {};
-R.forEach(r => [r.a].concat(r.alt).filter(x => x[0] !== '+').forEach(x => { const k = key(x); (altOwner[k] = altOwner[k] || new Set()).add(r.id); }));
-Object.keys(altOwner).forEach(k => { if (altOwner[k].size > 1) warn.push('"' + k + '" is accepted by ' + [...altOwner[k]].join(' and ')); });
+ALL.forEach(r => [r.a].concat(r.alt).filter(x => x[0] !== '+').forEach(x => { const k = key(x); (altOwner[k] = altOwner[k] || new Set()).add(r); }));
+Object.keys(altOwner).forEach(k => {
+  const rs = [...altOwner[k]]; if (rs.length < 2) return;
+  const msg = '"' + k + '" is accepted by ' + rs.map(r => r.id).join(' and ');
+  if (rs.every(r => BASE.has(r))) warn.push(msg); else fail(msg);
+});
 ok('duplicates checked');
 
 // ── Hints mustn't give the answer away ────────────────────────────────────
 section('Hints');
-R.forEach(r => {
+ALL.forEach(r => {
   const ans = ' ' + key(r.a) + ' ';
   r.hints.forEach((h, i) => { if ((' ' + key(h) + ' ').includes(ans)) fail(r.id + ': hint ' + (i + 1) + ' contains the answer: ' + h); });
 });
@@ -81,7 +98,7 @@ function expect(r, guess, want, why) {
   const label = (r.id || r.a) + ' <- "' + guess + '"' + (why ? '  (' + why + ')' : '');
   if (got === want || (want === 'not-ok' && got !== 'ok')) ok(label + ' -> ' + got); else fail(label + ': expected ' + want + ', got ' + got);
 }
-R.forEach(r => {
+ALL.forEach(r => {
   expect(r, r.a, 'ok', 'canonical');
   expect(r, r.a.toUpperCase(), 'ok', 'upper case');
   expect(r, '  ' + r.a + '?! ', 'ok', 'punctuation and spaces');
@@ -96,7 +113,7 @@ R.forEach(r => {
 // a real word (then it must be "Close!", not accepted).
 section('Generated typos');
 let typoN = 0;
-R.forEach(r => {
+ALL.forEach(r => {
   const raw = C.norm(r.a).raw; if (!raw.length) return;
   const w = raw.slice().sort((a, b) => b.length - a.length)[0];
   if (w.length < 5) return;
@@ -113,16 +130,81 @@ console.log('  ' + typoN + ' riddles with generated typos');
 
 // ── No riddle accepts another riddle's answer ─────────────────────────────
 section('Cross answers');
-R.forEach(r => R.forEach(o => {
-  if (r === o) return;
-  if (C.check(r, o.a).ok) fail(r.id + ' accepts the answer to ' + o.id + ' ("' + o.a + '")');
-}));
-let crossAlt = 0;
-R.forEach(r => R.forEach(o => {
-  if (r === o) return;
-  o.alt.filter(x => x[0] !== '+').forEach(x => { if (C.check(r, x).ok && !(altOwner[key(x)] && altOwner[key(x)].has(r.id))) { crossAlt++; warn.push(r.id + ' accepts "' + x + '" (an alternate for ' + o.id + ')'); } });
-}));
+// Every riddle against every other riddle's answer and plain alternates: none may be accepted. (Between two of the
+// first 100 an alternate is only listed, as before.) That's about 7 million checks, so each guess first skips
+// the riddles that can't possibly accept it: check() only says ok on an exact match (join or word bag), a word set
+// whose every word is near some guessed word, or a typo, and a typo of at most k edits leaves the two words the
+// same length give or take k, sharing all but k letters. Words are compared on those bounds before checking.
+{
+  const t0 = Date.now();
+  const cnt = new Map();
+  const counts = w => { let c = cnt.get(w); if (!c) { c = new Uint8Array(36); for (let i = 0; i < w.length; i++) { const k = w.charCodeAt(i); c[k >= 97 ? k - 97 : k - 48 + 26]++; } cnt.set(w, c); } return c; };
+  // could a and b be within k edits? (normalised words are a-z and 0-9 only)
+  const near = (a, b, k) => {
+    if (a === b) return true;
+    if (Math.abs(a.length - b.length) > k) return false;
+    const ca = counts(a), cb = counts(b); let sh = 0;
+    for (let i = 0; i < 36; i++) sh += ca[i] < cb[i] ? ca[i] : cb[i];
+    return sh >= Math.max(a.length, b.length) - k;
+  };
+  const prep = r => [r.a].concat(r.alt).map(x => {
+    if (x[0] === '+') { const m = C.norm(x.slice(1)); return { pat: m.toks, praw: m.raw }; }
+    const n = C.norm(x); return { toks: n.toks, raw: n.raw, join: n.toks.join(''), bag: n.toks.filter(w => w !== 'and').slice().sort().join(' ') };
+  });
+  const F = ALL.map(prep);
+  const wordNear = (gs, gr, ts, tr) => gs === ts || gr === tr || near(gs, ts, C.allow(ts.length)) || near(gr, tr, C.allow(tr.length));
+  const maybe = (forms, g) => forms.some(f => {
+    if (f.pat) return f.pat.every((t, k) => g.toks.some((gs, j) => wordNear(gs, g.raw[j], t, f.praw[k])));
+    if (f.join === g.join || f.bag === g.bag) return true;
+    if (f.toks.length === g.toks.length) return f.toks.every((t, k) => wordNear(g.toks[k], g.raw[k], t, f.raw[k]));
+    return near(g.join, f.join, C.allow(f.join.length));
+  });
+  let checked = 0, crossAlt = 0;
+  ALL.forEach((o, oi) => {
+    [o.a].concat(o.alt).filter(x => x[0] !== '+').forEach(x => {
+      const n = C.norm(x), g = { toks: n.toks, raw: n.raw, join: n.toks.join(''), bag: n.toks.filter(w => w !== 'and').slice().sort().join(' ') };
+      if (!g.toks.length) return;
+      ALL.forEach((r, ri) => {
+        if (ri === oi || !maybe(F[ri], g)) return;
+        checked++;
+        if (!C.check(r, x).ok) return;
+        const what = x === o.a ? 'the answer to ' + o.id + ' ("' + x + '")' : '"' + x + '" (an alternate for ' + o.id + ')';
+        if (x !== o.a && BASE.has(r) && BASE.has(o)) { crossAlt++; if (!(altOwner[key(x)] && altOwner[key(x)].has(r))) warn.push(r.id + ' accepts ' + what); }
+        else fail(r.id + ' accepts ' + what);
+      });
+    });
+  });
+  console.log('  ' + ALL.length + ' riddles, ' + checked + ' close pairs checked in full (' + ((Date.now() - t0) / 1000).toFixed(1) + 's)');
+}
 ok('cross checked');
+
+// ── The daily riddle ──────────────────────────────────────────────────────
+section('Daily riddle');
+{
+  const D = ctx.RiddleDaily;
+  // the schedule before the packs (games/riddles.html up to day 1017): a shuffle of the first 100
+  const oldOrder = (() => {
+    const a = R.map((r, i) => i); let s = 20241013;
+    const rnd = () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; }
+    return a;
+  })();
+  const pick = d => D.pick(ALL, d);
+  for (let d = 1; d <= D.CUT; d++) if (pick(d) !== R[oldOrder[(d - 1) % 100]]) { fail('day ' + d + ' changed: ' + pick(d).id); break; }
+  // pinned: these days must never change (add riddles only at the end, never move the first FROZEN)
+  const PIN = { 1016: 'cake', 1017: 'fire', 1018: 'p2-crab', 1019: 'p4-train', 1100: 'p4-lighthouse', 1500: 'p1-chair', 2000: 'p3-february', 2117: 'p1-waffle', 2150: 'fire' };
+  Object.keys(PIN).forEach(d => { const r = pick(+d); if (!r || r.id !== PIN[d]) fail('daily for day ' + d + ' is ' + (r && r.id) + ', was ' + PIN[d]); });
+  // the frozen riddles, in order (fingerprint of their ids)
+  if (D.FROZEN > ALL.length) fail('FROZEN (' + D.FROZEN + ') is more than the ' + ALL.length + ' riddles');
+  let h = 0x811c9dc5; ALL.slice(0, D.FROZEN).map(r => r.id).join(',').split('').forEach(c => { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0; });
+  const FP = '885fd20a';
+  if (h.toString(16) !== FP) fail('the first ' + D.FROZEN + ' riddles were changed or reordered (fingerprint ' + h.toString(16) + ', want ' + FP + '): add new riddles only at the end');
+  // three years with no repeats, starting today
+  const seen = {}; let rep = 0;
+  for (let d = 1017; d <= 2117; d++) { const r = pick(d); if (seen[r.id]) { rep++; if (rep < 4) fail('daily repeats: ' + r.id + ' on days ' + seen[r.id] + ' and ' + d); } seen[r.id] = d; }
+  console.log('  day 1017: ' + pick(1017).id + '; days 1017-2117: ' + Object.keys(seen).length + ' different riddles; no repeats until day ' + (() => { const s2 = {}; for (let d = 1017; ; d++) { const id = pick(d).id; if (s2[id]) return d; s2[id] = 1; } })());
+}
+ok('daily checked');
 
 // ── The matching rules, case by case ──────────────────────────────────────
 section('Matching cases');
