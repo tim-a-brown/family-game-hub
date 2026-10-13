@@ -106,6 +106,7 @@ const PRECACHE_URLS = [
   '/games/monopoly.html',
   '/games/monopoly/engine.js',
   '/games/monopoly/art.js',
+  '/games/monopoly/music.js',
   '/img/monopoly-logo.webp',
   '/img/monopoly-man.webp',
   '/img/monopoly-jailfree.webp',

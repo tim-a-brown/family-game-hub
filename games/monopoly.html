@@ -14,6 +14,7 @@
 <script src="../online.js"></script>
 <script src="monopoly/engine.js"></script>
 <script src="monopoly/art.js"></script>
+<script src="monopoly/music.js"></script>
 <style>
 @font-face{font-family:'Sofia Sans Condensed';src:url('../fonts/sofia-sans-condensed.woff2') format('woff2');font-weight:100 900;font-display:swap;}
 #app.mono{max-width:none;padding:2px 12px calc(var(--safe-b) + 20px);}
@@ -435,6 +436,8 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     return lastHuman >= 0 ? lastHuman : 0;
   }
   var lastHuman = -1;
+  // quiet ragtime piano while a game is on the table (monopoly/music.js)
+  var music = MonoMusic.create({ key: 'monopoly_music', active: function () { return !!(S && view && mode && S.phase !== 'over'); } });
 
   Kit.init({
     id: 'monopoly',
@@ -444,7 +447,8 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Monopoly: past games' }); } },
       { icon: 'globe', label: 'Play online', sub: '2 to 8 players, each on their own device', when: function () { return mode !== 'online'; }, onClick: function () { stopAll(); goLobby(); } },
       { icon: 'logout', label: 'Leave the online game', when: function () { return mode === 'online'; }, onClick: function () { leaveOnline(); showSetup(); } },
-      { icon: 'rocket', label: 'Fast computer players', sub: 'Robots move and decide quicker', toggle: function () { return speed === 'fast'; }, onClick: function () { speed = speed === 'fast' ? 'normal' : 'fast'; lsSet('mono_speed', speed); } }
+      { icon: 'rocket', label: 'Fast computer players', sub: 'Robots move and decide quicker', toggle: function () { return speed === 'fast'; }, onClick: function () { speed = speed === 'fast' ? 'normal' : 'fast'; lsSet('mono_speed', speed); } },
+      music.menuItem
     ],
     rules:
       '<p class="goal">Buy property, charge rent, build houses and hotels, and be the <b>last player standing</b> when everyone else has gone bankrupt.</p>' +

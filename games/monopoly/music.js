@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Monopoly music: quiet ragtime piano under the game, cycling through six Scott Joplin rags.
+// Monopoly music: quiet ragtime piano under the game, cycling through six Scott Joplin pieces:
+// The Entertainer, Maple Leaf Rag, The Easy Winners, Elite Syncopations, Peacherine Rag and Solace.
 //
 //   var music = MonoMusic.create({
 //     key: 'monopoly_music',               // localStorage on/off switch (unset: follows gn_music, default on)
@@ -7,7 +8,8 @@
 //   });
 //   music.menuItem   // { icon, label, sub, toggle, onClick } for Kit.init({ menu }): a Music switch
 //   music.debug()    // what the player is doing (for tests)
-//   MonoMusic.render(i, sampleRate)   // a whole tune as an AudioBuffer (Promise), for listening tests
+//   MonoMusic.render(i, sampleRate)   // a whole tune as a Float32Array, for listening tests
+//   MonoMusic.piece(i, from, sampleRate) // eight bars of it (what the player renders at a time)
 //
 // Plays only while active() is true, the site's Sound switch (gn_sound) is on, this game's Music switch is on
 // and the page has had a tap or key press. It fades out at game over or when switched off, and pauses with the
@@ -18,12 +20,13 @@
 // its intro (if any) and the first two strains as Joplin wrote them: Intro A A B B A. Between tunes there is a
 // short rest; the next one is picked at random, never the one that just played.
 //
-// How it plays: the music is rendered ahead in eight-bar pieces with an OfflineAudioContext (off the main
-// thread) and each piece is queued on the live context about ten seconds early. A busy main thread can't make
-// it stutter, and the live context only ever runs a buffer player or two.
+// How it plays: the piano is synthesized in plain JavaScript, eight bars at a time, in 5 ms slices between
+// frames (well under 1% of a phone's CPU), and each piece is queued on the live context about ten seconds
+// early as one buffer. A busy main thread can't make it stutter, and the audio thread only ever plays a buffer or two.
 //
-// The notes come from the Mutopia Project's public-domain editions of the original sheet music (Joplin's
-// rags are themselves in the public domain): every note of both hands, bar for bar.
+// The notes come from the Mutopia Project's editions of the original sheet music (mutopiaproject.org, each
+// released into the public domain by its typesetter; Joplin's music is itself public domain): every note of
+// both hands, bar for bar.
 // Data format, one tune: seq lists the bars in playing order as indexes into bars (repeated strains are
 // stored once). A bar is "right hand<space>left hand"; each note is three characters from ALPHA:
 // onset within the 2/4 bar in 1/24 beats (0–47), length in 1/8 beats, MIDI note number − 21.
@@ -31,7 +34,6 @@
 (function () {
   'use strict';
   var AC = window.AudioContext || window.webkitAudioContext;
-  var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
 
   var TUNES = [
     { name: "The Entertainer", year: 1902, bpm: 80, form: "Intro A A B B A",
@@ -265,7 +267,7 @@
   var BARS_PER_PIECE = 8;   // render size
   var AHEAD = 10;           // seconds of music queued ahead of the play head
   var GAP = 3.2;            // rest between tunes, seconds
-  var VOL = 0.5;            // live output level: well under Kit.sfx (see the levels note at the bottom)
+  var VOL = 0.28;           // live output level: well under Kit.sfx (see the levels note at the bottom)
   var FADE_IN = 2.2, FADE_OUT = 0.9;
 
   // ── Notes ──────────────────────────────────────────────────────────────────
@@ -303,68 +305,110 @@
   }
 
   // ── The piano ──────────────────────────────────────────────────────────────
-  // Two strings a few cents apart per note (the honky-tonk shimmer), a harmonic-rich wave that fades fast
-  // after the hammer hits, and a short metallic tick for the tack. Low notes ring longer than high ones.
-  var HARM = [0, 1, 0.52, 0.3, 0.2, 0.12, 0.08, 0.05, 0.03, 0.02];
+  // Synthesized in plain JavaScript into a Float32Array (a few milliseconds per eight bars, no audio nodes):
+  // two strings a few cents apart per note (the honky-tonk shimmer), a harmonic-rich tone that drops fast after
+  // the hammer hits and then fades (low notes ring longer), a short metallic tick for the tack, the damper when
+  // the key is let go, then a gentle low-pass and a small room.
+  var HARM = [1, 0.52, 0.3, 0.2, 0.12, 0.08, 0.05, 0.03, 0.02], TBL = 2048, tables = [];
+  function table(nh) {   // one cycle with the first nh harmonics (fewer for high notes, so nothing aliases)
+    nh = Math.max(1, Math.min(HARM.length, nh));
+    if (tables[nh]) return tables[nh];
+    var t = new Float32Array(TBL + 1), pk = 0, i, k;
+    for (i = 0; i < TBL; i++) { var x = 0; for (k = 0; k < nh; k++) x += HARM[k] * Math.sin(2 * Math.PI * (k + 1) * i / TBL); t[i] = x; pk = Math.max(pk, Math.abs(x)); }
+    for (i = 0; i < TBL; i++) t[i] /= pk;
+    t[TBL] = t[0];
+    return (tables[nh] = t);
+  }
   function rng(seed) { var x = seed >>> 0 || 1; return function () { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
-  function roomIR(c, sr, len) {
-    var n = Math.floor(sr * len), b = c.createBuffer(1, n, sr), d = b.getChannelData(0), r = rng(7);
-    for (var i = 0; i < n; i++) { var e = Math.pow(1 - i / n, 3.2); d[i] = (r() * 2 - 1) * e * (i < sr * 0.012 ? i / (sr * 0.012) : 1); }
-    return b;
-  }
-  // Renders notes (from notes()) into a mono AudioBuffer at sample rate sr. Promise.
-  function renderNotes(list, sr, seed) {
-    var end = 0.5;
-    list.forEach(function (n) { end = Math.max(end, n.t + n.d + 0.35); });
-    var len = Math.ceil((end + 1.3) * sr), c;
-    try { c = new OAC(1, len, sr); } catch (e) { sr = 44100; len = Math.ceil((end + 1.3) * sr); c = new OAC(1, len, sr); }
-    var real = new Float32Array(HARM.length), imag = new Float32Array(HARM);
-    var wave = c.createPeriodicWave(real, imag);
-    var sum = c.createGain(), hp = c.createBiquadFilter(), lp = c.createBiquadFilter(), dry = c.createGain(), wet = c.createGain(), rv = c.createConvolver();
-    hp.type = 'highpass'; hp.frequency.value = 75; hp.Q.value = 0.5;
-    lp.type = 'lowpass'; lp.frequency.value = 2900; lp.Q.value = 0.4;
-    rv.normalize = true; rv.buffer = roomIR(c, sr, 1.1);
-    dry.gain.value = 0.85; wet.gain.value = 0.2;
-    sum.connect(hp); hp.connect(lp); lp.connect(dry); lp.connect(rv); rv.connect(wet); dry.connect(c.destination); wet.connect(c.destination);
-    var r = rng(seed || 1);
-    list.forEach(function (n) {
+  var TAIL = 1.2;   // seconds of room after the last note
+  var now = window.performance && performance.now ? function () { return performance.now(); } : Date.now;
+  // notes (from notes()) -> mono Float32Array at sample rate sr, as a job done a slice at a time:
+  // job.step(ms) works for about ms milliseconds (0: to the end) and returns true when job.out is finished
+  function synthJob(list, sr, seed) {
+    var end = 0.5, r = rng(seed || 1);
+    list.forEach(function (n) { end = Math.max(end, n.t + n.d + 0.3); });
+    var len = Math.ceil((end + TAIL) * sr), out = new Float32Array(len), sine = table(1);
+    var att = Math.max(1, Math.floor(0.004 * sr));
+    var mF = Math.exp(-1 / (0.07 * sr)), mR = Math.exp(-1 / (0.045 * sr)), mK = Math.exp(-1 / (0.009 * sr));
+    function note(n) {
       var f = 440 * Math.pow(2, (n.m - 69) / 12);
-      var t = n.t + (r() - 0.5) * 0.008 + (n.h ? 0.004 : 0);
-      if (t < 0) t = 0;
-      var te = t + Math.max(0.06, n.d * 0.92);
-      var lvl = Math.max(0.55, Math.min(1.2, 1.15 - (n.m - 60) * 0.012));
+      var t = n.t + (r() - 0.5) * 0.008 + (n.h ? 0.004 : 0); if (t < 0) t = 0;
+      var te = Math.max(0.06, n.d * 0.92);                                   // key held (s)
+      var lvl = Math.max(0.55, Math.min(1.2, 1.15 - (n.m - 60) * 0.012));    // high notes a little softer
       var v = 0.16 * n.v * lvl * (0.92 + r() * 0.16);
-      var tau = Math.max(0.28, Math.min(1.1, 1.1 - (n.m - 40) * 0.018));
-      var g = c.createGain(), gg = g.gain;
-      gg.setValueAtTime(0, t);
-      gg.linearRampToValueAtTime(v, t + 0.004);
-      gg.setTargetAtTime(v * 0.4, t + 0.004, 0.07);
-      if (te > t + 0.16) gg.setTargetAtTime(0, t + 0.16, tau);
-      gg.setTargetAtTime(0, te, 0.045);
-      g.connect(sum);
-      var spread = 3 + r() * 3;
-      for (var s = -1; s <= 1; s += 2) {
-        var o = c.createOscillator();
-        o.setPeriodicWave(wave); o.frequency.value = f; o.detune.value = s * spread;
-        o.connect(g); o.start(t); o.stop(te + 0.3);
+      var tau = Math.max(0.28, Math.min(1.1, 1.1 - (n.m - 40) * 0.018));      // natural fade
+      var tb = table(Math.floor(0.45 * sr / f)), cents = (3 + r() * 3) / 1200;
+      var d1 = f * Math.pow(2, cents) / sr * TBL, d2 = f * Math.pow(2, -cents) / sr * TBL, dk = Math.min(f * 4.2, 4800) / sr * TBL;
+      var p1 = r() * TBL, p2 = r() * TBL, pk = 0;
+      var i0 = Math.floor(t * sr), rel = i0 + Math.floor(te * sr);
+      var iEnd = Math.min(len, rel + Math.floor(0.2 * sr), i0 + Math.floor(Math.min(3, tau * 4.5 + 0.2) * sr));
+      var mS = Math.exp(-1 / (tau * sr)), F = 1, S = 0.5 * v, K = 0.1 * v, i, a, b, x;
+      // two strings
+      for (i = i0; i < iEnd; i++) {
+        a = p1 | 0; b = p2 | 0;
+        x = tb[a] + (tb[a + 1] - tb[a]) * (p1 - a) + tb[b] + (tb[b + 1] - tb[b]) * (p2 - b);
+        out[i] += x * (0.4 + 0.6 * F) * (i - i0 < att ? (i - i0) / att : 1) * S;
+        p1 += d1; if (p1 >= TBL) p1 -= TBL;
+        p2 += d2; if (p2 >= TBL) p2 -= TBL;
+        F *= mF; S *= i >= rel ? mS * mR : mS;
       }
-      // the tack: a quick bright tick above the note
-      var k = c.createOscillator(), kg = c.createGain();
-      k.type = 'square'; k.frequency.value = Math.min(f * 4.01, 5200);
-      kg.gain.setValueAtTime(0, t); kg.gain.linearRampToValueAtTime(v * 0.1, t + 0.002); kg.gain.setTargetAtTime(0, t + 0.002, 0.009);
-      k.connect(kg); kg.connect(sum); k.start(t); k.stop(t + 0.08);
-    });
-    return new Promise(function (res, rej) {
-      c.oncomplete = function (e) { res(e.renderedBuffer); };
-      var p; try { p = c.startRendering(); } catch (e) { rej(e); return; }
-      if (p && p.then) p.then(res, rej);
-    });
+      // the tack
+      for (i = i0, iEnd = Math.min(len, i0 + Math.floor(0.045 * sr)); i < iEnd; i++) {
+        a = pk | 0;
+        out[i] += K * (sine[a] + (sine[a + 1] - sine[a]) * (pk - a)) * (i - i0 < att ? (i - i0) / att : 1);
+        pk += dk; if (pk >= TBL) pk -= TBL;
+        K *= mK;
+      }
+    }
+    // high-pass ~75 Hz (one pole), low-pass ~2.9 kHz (biquad)
+    var hpA = Math.exp(-2 * Math.PI * 75 / sr), hx = 0, hy = 0;
+    var w = 2 * Math.PI * 2900 / sr, al = Math.sin(w) / (2 * 0.6), cw = Math.cos(w), a0 = 1 + al;
+    var b0 = (1 - cw) / 2 / a0, b1 = (1 - cw) / a0, b2 = b0, a1 = -2 * cw / a0, a2 = (1 - al) / a0, x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    function filt(from, to) {
+      for (var i = from; i < to; i++) {
+        var x = out[i], y; hy = hpA * (hy + x - hx); hx = x;
+        y = b0 * hy + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2; x2 = x1; x1 = hy; y2 = y1; y1 = y; out[i] = y;
+      }
+    }
+    // the room: four damped combs and two all-passes (Schroeder), mixed in quietly
+    var sc = sr / 44100, CB = [1116, 1188, 1277, 1356].map(function (d) { return new Float32Array(Math.floor(d * sc)); });
+    var AP = [556, 441].map(function (d) { return new Float32Array(Math.floor(d * sc)); });
+    var CI = [0, 0, 0, 0], CS = [0, 0, 0, 0], AI = [0, 0];
+    function room(from, to) {
+      for (var i = from; i < to; i++) {
+        var x = out[i] * 0.25, y = 0, j, buf, o, k;
+        for (j = 0; j < 4; j++) {
+          buf = CB[j]; k = CI[j]; o = buf[k];
+          CS[j] = o * 0.6 + CS[j] * 0.4; buf[k] = x + CS[j] * 0.74; CI[j] = k + 1 < buf.length ? k + 1 : 0; y += o;
+        }
+        for (j = 0; j < 2; j++) {
+          buf = AP[j]; k = AI[j]; o = buf[k];
+          buf[k] = y + o * 0.5; y = o - y * 0.5; AI[j] = k + 1 < buf.length ? k + 1 : 0;
+        }
+        out[i] = out[i] * 0.9 + y * 0.32;
+      }
+    }
+    var ni = 0, stage = 0, pos = 0;
+    return {
+      out: out,
+      step: function (ms) {
+        var t0 = ms ? now() : 0;
+        for (;;) {
+          if (stage === 0) { if (ni < list.length) note(list[ni++]); else stage = 1; }
+          else {
+            var e = Math.min(len, pos + 4096);
+            (stage === 1 ? filt : room)(pos, e); pos = e;
+            if (pos >= len) { if (stage === 2) return true; stage = 2; pos = 0; }
+          }
+          if (ms && now() - t0 >= ms) return false;
+        }
+      }
+    };
   }
+  function synth(list, sr, seed) { var j = synthJob(list, sr, seed); j.step(0); return j.out; }
   // a piece of tune i: bars [from, from + BARS_PER_PIECE) of its seq
-  function renderPiece(i, from, sr) {
-    var T = TUNES[i];
-    return renderNotes(notes(T, from, from + BARS_PER_PIECE), sr, i * 1000 + from + 1);
-  }
+  function pieceJob(i, from, sr) { return synthJob(notes(TUNES[i], from, from + BARS_PER_PIECE), sr, i * 1000 + from + 1); }
+  function renderPiece(i, from, sr) { var j = pieceJob(i, from, sr); j.step(0); return j.out; }
   function pieceLen(i) { return BARS_PER_PIECE * 2 * 60 / TUNES[i].bpm; }
   function tuneLen(i) { return TUNES[i].seq.length * 2 * 60 / TUNES[i].bpm; }
 
@@ -377,14 +421,16 @@
   // ── The player ─────────────────────────────────────────────────────────────
   function create(o) {
     var st = {
-      ac: null, bus: null, on: false, sess: 0, tune: -1, cur: -1, last: -1, bag: [], piece: 0, at: 0, busy: false,
-      srcs: [], gest: false, played: 0, pieces: 0, why: ''
+      ac: null, sr: 22050, bus: null, on: false, job: null, tune: -1, cur: -1, last: -1, bag: [], piece: 0, at: 0,
+      srcs: [], gest: false, played: 0, pieces: 0, ms: 0, why: ''
     };
-    var SR = 22050;
     function hasGesture() { return st.gest || !!(navigator.userActivation && navigator.userActivation.hasBeenActive); }
-    function want() { return !!(AC && OAC && musicOn(o.key) && soundOn() && o.active()); }
+    function want() { return !!(AC && musicOn(o.key) && soundOn() && o.active()); }
     function ctx() {
-      if (!st.ac) { try { st.ac = new AC(); } catch (e) { st.ac = null; return null; } }
+      if (!st.ac) {
+        try { st.ac = new AC(); } catch (e) { st.ac = null; return null; }
+        try { st.ac.createBuffer(1, 1, st.sr); } catch (e) { st.sr = st.ac.sampleRate; }   // 22 kHz is plenty under a 2.9 kHz low-pass
+      }
       return st.ac;
     }
     function nextTune() {
@@ -400,7 +446,7 @@
     function start() {
       var a = ctx(); if (!a) return;
       if (a.state === 'suspended' && !document.hidden) { try { a.resume().catch(function () {}); } catch (e) {} }
-      st.on = true; st.sess++;
+      st.on = true;
       st.bus = a.createGain(); st.bus.gain.value = 0; st.bus.connect(a.destination);
       st.bus.gain.setTargetAtTime(VOL, a.currentTime + 0.05, FADE_IN / 4);
       st.tune = nextTune(); st.cur = -1; st.piece = 0; st.at = 0; st.played++;
@@ -408,9 +454,9 @@
     }
     function stop(why) {
       if (!st.on) return;
-      st.on = false; st.sess++; st.why = why || '';
+      st.on = false; st.why = why || '';
       var a = st.ac, bus = st.bus, srcs = st.srcs;
-      st.bus = null; st.srcs = []; st.busy = false;
+      st.bus = null; st.srcs = []; st.job = null;
       if (!a || !bus) return;
       var now = a.currentTime;
       try { bus.gain.cancelScheduledValues(now); bus.gain.setValueAtTime(bus.gain.value, now); bus.gain.setTargetAtTime(0, now, FADE_OUT / 4); } catch (e) {}
@@ -419,32 +465,43 @@
         try { bus.disconnect(); } catch (e) {}
       }, FADE_OUT * 1000 + 400);
     }
-    // keep about AHEAD seconds queued: render the next piece and line it up after the last
+    // keep about AHEAD seconds queued: render the next piece, a few milliseconds at a time between frames,
+    // and line it up after the last one
     function pump() {
-      if (!st.on || st.busy || !st.ac) return;
-      var a = st.ac, now = a.currentTime;
-      if (st.at && st.at > now + AHEAD) return;
-      var sess = st.sess, i = st.tune, from = st.piece * BARS_PER_PIECE;
-      st.busy = true;
-      renderPiece(i, from, SR).then(function (buf) {
-        if (sess !== st.sess || !st.on) return;
-        st.busy = false;
-        var now = a.currentTime, when = st.at && st.at > now + 0.05 ? st.at : now + 0.12;
-        var s = a.createBufferSource();
-        s.buffer = buf; s.connect(st.bus); s.start(when);
-        st.srcs.push(s); st.pieces++;
-        s.onended = function () { var k = st.srcs.indexOf(s); if (k >= 0) st.srcs.splice(k, 1); try { s.disconnect(); } catch (e) {} };
-        st.cur = i;
-        var n = TUNES[i].seq.length;
-        if (from + BARS_PER_PIECE >= n) {
-          // tune over: a short rest, then another tune
-          st.at = when + (n - from) * 2 * 60 / TUNES[i].bpm + GAP;
-          st.tune = nextTune(); st.piece = 0; st.played++;
-        } else {
-          st.at = when + pieceLen(i); st.piece++;
-        }
+      if (!st.on || !st.ac || st.job) return;
+      var a = st.ac;
+      if (st.at && st.at > a.currentTime + AHEAD) return;
+      var i = st.tune, from = st.piece * BARS_PER_PIECE, job = st.job = pieceJob(i, from, st.sr), work = 0;
+      (function run() {
+        if (st.job !== job) return;              // stopped meanwhile
+        var t0 = now(), done;
+        try { done = job.step(5); } catch (e) { if (window.console) console.warn('music', e); stop('error'); return; }
+        work += now() - t0;
+        if (!done) { setTimeout(run, 0); return; }
+        st.job = null; st.ms = Math.round(work);
+        queue(job.out, i, from);
         pump();
-      }).catch(function (e) { st.busy = false; if (window.console) console.warn('music', e); });
+      })();
+    }
+    function queue(data, i, from) {
+      var a = st.ac, buf, t = a.currentTime;
+      try {
+        buf = a.createBuffer(1, data.length, st.sr);
+        if (buf.copyToChannel) buf.copyToChannel(data, 0); else buf.getChannelData(0).set(data);
+      } catch (e) { if (window.console) console.warn('music', e); stop('error'); return; }
+      var when = st.at && st.at > t + 0.05 ? st.at : t + 0.12;
+      var s = a.createBufferSource();
+      s.buffer = buf; s.connect(st.bus); s.start(when);
+      st.srcs.push(s); st.pieces++; st.cur = i;
+      s.onended = function () { var k = st.srcs.indexOf(s); if (k >= 0) st.srcs.splice(k, 1); try { s.disconnect(); } catch (e) {} };
+      var n = TUNES[i].seq.length;
+      if (from + BARS_PER_PIECE >= n) {
+        // tune over: a short rest, then another tune
+        st.at = when + (n - from) * 2 * 60 / TUNES[i].bpm + GAP;
+        st.tune = nextTune(); st.piece = 0; st.played++;
+      } else {
+        st.at = when + pieceLen(i); st.piece++;
+      }
     }
     function tick() {
       if (document.hidden) return;              // hidden: the context is suspended, so the music just waits
@@ -486,7 +543,7 @@
       },
       debug: function () {
         return { playing: st.on, tune: st.cur >= 0 ? TUNES[st.cur].name : null, next: st.tune >= 0 ? TUNES[st.tune].name : null,
-          ctx: st.ac ? st.ac.state : 'none', time: st.ac ? st.ac.currentTime : 0, queued: st.srcs.length, pieces: st.pieces, tunesStarted: st.played,
+          ctx: st.ac ? st.ac.state : 'none', time: st.ac ? st.ac.currentTime : 0, queued: st.srcs.length, pieces: st.pieces, tunesStarted: st.played, renderMs: st.ms,
           gain: st.bus ? st.bus.gain.value : 0, why: st.why, want: want(), gesture: hasGesture() };
       }
     };
@@ -494,10 +551,11 @@
     return api;
   }
 
+  // a whole tune, as one Float32Array (for listening tests; play it at MonoMusic.VOL to hear it as in the game)
   function render(i, sr) {
     var T = TUNES[i];
-    return renderNotes(notes(T, 0, T.seq.length), sr || 22050, i * 1000 + 1);
+    return synth(notes(T, 0, T.seq.length), sr || 22050, i * 1000 + 1);
   }
 
-  window.MonoMusic = { create: create, render: render, VOL: VOL, tunes: TUNES.map(function (t) { return { name: t.name, year: t.year, bpm: t.bpm, form: t.form, seconds: Math.round(tuneLen(TUNES.indexOf(t))) }; }) };
+  window.MonoMusic = { create: create, render: render, piece: renderPiece, VOL: VOL, tunes: TUNES.map(function (t) { return { name: t.name, year: t.year, bpm: t.bpm, form: t.form, seconds: Math.round(tuneLen(TUNES.indexOf(t))) }; }) };
 })();
