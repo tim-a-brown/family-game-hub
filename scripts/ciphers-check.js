@@ -2,6 +2,8 @@
 // Checks the Cipher Cases data (data/ciphers-cases.js) against the game's own cipher code (games/ciphers.html,
 // between the // ==ENGINE== markers): every guess-note lock has exactly one answer, every answer fits its lock,
 // the pictures that hold codes agree with the answers, and every phrase can be used for endless codes.
+// It also runs the daily code (between the // ==DAILY== markers) for today and the next 1100 days: no phrase
+// repeats, every code decodes back to its phrase, and appending phrases never moves a daily.
 // Run: node scripts/ciphers-check.js
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -138,13 +140,65 @@ const seenA = {}, seenS = {};
 D.cases.forEach(c => { const a = c.ans || c.plain, sc = JSON.stringify(c.scene) + JSON.stringify(c.mm || ''); if (seenA[a]) fail(c.id, 'same answer as ' + seenA[a]); seenA[a] = c.id; if (seenS[sc]) fail(c.id, 'same picture as ' + seenS[sc]); seenS[sc] = c.id; });
 const semSeen = {}; Object.keys(E.SEM).forEach(k => { const key = E.SEM[k].split(' ').sort().join(' '); if (semSeen[key]) fail('semaphore', k + ' and ' + semSeen[key] + ' look the same'); semSeen[key] = k; });
 
-// Endless phrases: letters only (plus a little punctuation), and enough of them for each level
-const lens = { easy: 0, medium: 0, hard: 0 };
-D.phrases.forEach(p => {
+// Phrases (endless codes and the daily code): letters only (plus a little punctuation), each fits a level,
+// no two the same once case and punctuation are ignored, quotes are credited, and every level has plenty
+const MIN_PHRASES = 1450, MIN_PER_LEVEL = 450, DAYS_AHEAD = 1100;
+const lens = { easy: 0, medium: 0, hard: 0 }, kinds = {}, seenP = {};
+D.phrases.forEach((p, i) => {
   if (!/^[A-Z ,'.!?-]+$/.test(p.t)) fail('phrase', p.t);
-  const n = E.letters(p.t).length;
+  if (!/^[pqfs]$/.test(p.k)) fail('phrase', 'kind should be p, q, f or s: ' + p.t);
+  if (p.k === 'q' && !p.by) fail('phrase', 'quote with no credit: ' + p.t);
+  kinds[p.k] = (kinds[p.k] || 0) + 1;
+  const n = E.letters(p.t).length, key = E.letters(p.t);
+  if (seenP[key] !== undefined) fail('phrase', 'repeat of no. ' + seenP[key] + ': ' + p.t); seenP[key] = i;
+  if (n < 8 || n > 80) fail('phrase', n + ' letters fits no level: ' + p.t);
   if (n >= 8 && n <= 24) lens.easy++; if (n >= 16 && n <= 36) lens.medium++; if (n >= 26 && n <= 80) lens.hard++;
 });
-console.log('\ncases per level', perLv, '· phrases', D.phrases.length, 'per level', lens);
+if (D.phrases.length < MIN_PHRASES) fail('phrases', 'only ' + D.phrases.length + ', want ' + MIN_PHRASES);
+Object.keys(lens).forEach(lv => { if (lens[lv] < MIN_PER_LEVEL) fail('phrases', lv + ' has only ' + lens[lv] + ', want ' + MIN_PER_LEVEL); });
+
+// The daily code, run through the game's own code (between the // ==DAILY== markers)
+const daily = html.slice(html.indexOf('// ==DAILY=='), html.indexOf('// ==/DAILY=='));
+function game(phrases) { return vm.runInNewContext(eng + daily + '; ({ makeGen, dailyIndex, DAILY, DAILY_PLAN, DAILY_OLD_TO, LIM, fits, a1z26, tokens, codeText, codeAlpha, ABC, letters })', { DATA: { cases: [], phrases } }); }
+const G = game(D.phrases);
+const today = Math.floor((Date.now() - new Date(2024, 0, 1).getTime()) / 86400000) + 1;
+const gen = (g, d) => { const t = g.DAILY[d % 7]; return g.makeGen(t[0], t[1], d * 7919 + 31, d); };
+// Phrases already shown or scheduled: these must never change (day 1017 is the last day of the first version's
+// random pick; from day 1018 the schedule starts). A failure here means the list or the schedule was edited, not appended.
+const PINNED = { 1010: 'KNOWLEDGE IS POWER', 1016: 'OUT OF SIGHT, OUT OF MIND', 1017: 'LIGHTNING NEVER STRIKES TWICE', 1018: 'MANNERS MAKETH MAN',
+  1022: 'FLYING FISH CAN GLIDE ABOVE THE WAVES FOR LONG DISTANCES', 1100: 'I HEAR AMERICA SINGING', 1500: 'THE SNOWMAN MELTED BY LUNCHTIME', 2117: 'ONE SWALLOW DOES NOT MAKE A SUMMER' };
+Object.keys(PINNED).forEach(d => { const c = gen(G, +d); if (c.plain !== PINNED[d]) fail('daily ' + d, 'was ' + PINNED[d] + ', now ' + c.plain); });
+// Decode a daily's coded text back to letters, the way a player would
+function decode(g, ci, text) {
+  const alpha = g.codeAlpha(ci);
+  if (alpha) return g.letters(text.replace(/[A-Z]/g, ch => g.ABC[alpha.indexOf(ch)]));
+  if (ci.t === 'a1z26') { const back = {}; for (let i = 0; i < 26; i++) back[g.a1z26(ci, i)] = g.ABC[i]; return text.split(/[^0-9]+/).filter(Boolean).map(n => back[n] || '?').join(''); }
+  return '?';
+}
+const from = Math.max(today, G.DAILY_OLD_TO), usedOn = {};
+let checked = 0;
+for (let d = from; d <= today + DAYS_AHEAD; d++) {
+  const c = gen(G, d), id = 'daily ' + d, ci = c.cipher, code = G.codeText(ci, c.plain);
+  if (!G.fits({ t: c.plain }, c.lv)) fail(id, 'phrase does not fit ' + c.lv + ': ' + c.plain);
+  if (usedOn[c.plain]) fail(id, 'repeats day ' + usedOn[c.plain] + ': ' + c.plain); usedOn[c.plain] = d;
+  if (d > G.DAILY_OLD_TO && c.plain !== D.phrases[G.dailyIndex(d)].t) fail(id, 'not the scheduled phrase');
+  const k2p = {}, p2k = {};
+  G.tokens(ci, c.plain).forEach(x => { if (!x.k) return; if (k2p[x.k] && k2p[x.k] !== x.p) fail(id, 'code ' + x.k + ' means two letters'); if (p2k[x.p] && p2k[x.p] !== x.k) fail(id, 'letter ' + x.p + ' has two codes'); k2p[x.k] = x.p; p2k[x.p] = x.k; });
+  if (ci.t === 'crypto' && G.codeAlpha(ci).split('').some((ch, i) => ch === G.ABC[i])) fail(id, 'cryptogram keeps a letter');
+  if (ci.t === 'caesar' && !(ci.k > 0 && ci.k < 26)) fail(id, 'bad shift ' + ci.k);
+  if (decode(G, ci, code) !== G.letters(c.plain)) fail(id, 'does not decode: ' + code);
+  if (c.give && c.give.split('').some(ch => c.plain.indexOf(ch) < 0)) fail(id, 'gives away a letter not in the message');
+  checked++;
+}
+// Appending phrases later must not move any daily code
+const G2 = game(D.phrases.concat(Array.from({ length: 300 }, (_, i) => ({ t: 'EXTRA PHRASE NUMBER ' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[i % 26] + ' TEST', k: 's' }))));
+for (let d = G.DAILY_OLD_TO - 30; d <= today + DAYS_AHEAD; d++) if (gen(G2, d).plain !== gen(G, d).plain) { fail('daily ' + d, 'changes when phrases are added at the end'); break; }
+// How long until the schedule repeats a phrase (when this gets close to 1100 days, add a DAILY_PLAN block)
+let runs = 0; const firstUse = {};
+for (let d = G.DAILY_OLD_TO + 1; d < G.DAILY_OLD_TO + 20000; d++) { const k = G.dailyIndex(d); if (firstUse[k]) break; firstUse[k] = d; runs++; }
+const until = new Date(2024, 0, G.DAILY_OLD_TO + runs);
+console.log('\ncases per level', perLv, '· phrases', D.phrases.length, kinds, 'per level', lens);
+console.log('daily codes checked: days ' + from + '..' + (today + DAYS_AHEAD) + ' (' + checked + '), today is day ' + today + ': ' + gen(G, today).plain);
+console.log('the schedule runs ' + runs + ' days without repeating a phrase, to ' + until.toDateString());
 if (bad) { console.log(bad + ' problem(s)'); process.exit(1); }
 console.log('all good');

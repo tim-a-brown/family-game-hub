@@ -538,13 +538,63 @@ body{overflow-x:hidden;}
   function casesOf(lv) { return DATA.cases.filter(function (c) { return c.lv === lv; }); }
   function caseNo(c) { return c.gen ? c.no : (c.lv[0].toUpperCase() + c.n); }
 
+  // ==DAILY== (scripts/ciphers-check.js runs this part: keep the markers)
   // ── Endless codes: made from the phrase list ──────────────────────────────
   var GTYPES = { caesar: 'Caesar shift', a1z26: 'Letter numbers', crypto: 'Cryptogram' };
   var DAILY = [['crypto', 'hard'], ['caesar', 'easy'], ['a1z26', 'medium'], ['caesar', 'medium'], ['crypto', 'easy'], ['caesar', 'hard'], ['crypto', 'medium']];   // Sun..Sat
-  function pickPhrase(R, lv) {
-    var lim = { easy: [8, 24], medium: [16, 36], hard: [26, 80] }[lv];
-    var ok = DATA.phrases.filter(function (p) { var n = letters(p.t).length; return n >= lim[0] && n <= lim[1]; });
-    return ok[Math.floor(R() * ok.length)] || DATA.phrases[0];
+  var LIM = { easy: [8, 24], medium: [16, 36], hard: [26, 80] };   // letters in a phrase, per level
+  function fits(p, lv) { var n = letters(p.t).length; return n >= LIM[lv][0] && n <= LIM[lv][1]; }
+  function pickFrom(list, R, lv) { var ok = list.filter(function (p) { return fits(p, lv); }); return ok[Math.floor(R() * ok.length)] || list[0]; }
+  // Endless codes: any phrase that fits the level, at random
+  function pickPhrase(R, lv) { return pickFrom(DATA.phrases, R, lv); }
+
+  // Today's code: a fixed schedule, the same on every device, that doesn't repeat a phrase for years.
+  // Day numbers count from 1 Jan 2024 (day 1, a Monday), so day d falls on weekday d % 7 of DAILY.
+  //  - Up to DAILY_OLD_TO, days keep the first version's pick: a seeded random pick from the first 155 phrases.
+  //  - After that, each day takes the next unused phrase that fits its level, walking one fixed shuffle of
+  //    the first n phrases of its DAILY_PLAN block. The 91 old-style days before the switch count as used.
+  //    If every phrase of a level gets used up, the schedule starts again from the top of the shuffle.
+  // Adding phrases: only ever append to the END of the list (data/ciphers-cases.js). New ones join endless
+  // codes at once and never change a daily. When the schedule starts to run low (the check script warns),
+  // add a block such as {from: <a day still in the future>, n: <new list length>, seed: <any number>}:
+  // days from then on walk a new shuffle that includes the new phrases, still skipping every phrase used before.
+  // Never edit, reorder or delete a block once its days have started.
+  var DAILY_OLD_TO = 1017, DAILY_OLD_N = 155;
+  var DAILY_PLAN = [{ from: 1018, n: 1828, seed: 1828 }];
+  var dailyMemo = null;
+  function dailyLv(d) { return DAILY[d % 7][1]; }
+  function oldDaily(d, lv, R) { return pickFrom(DATA.phrases.slice(0, DAILY_OLD_N), R || rng(d * 7919 + 31), lv); }
+  function shuffled(n, seed) {
+    var R = rng(seed), a = [], i, j, t;
+    for (i = 0; i < n; i++) a.push(i);
+    for (i = n - 1; i > 0; i--) { j = Math.floor(R() * (i + 1)); t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  }
+  // Phrase number for scheduled day d (d > DAILY_OLD_TO). Works forward from the first block and remembers.
+  function dailyIndex(d) {
+    var m = dailyMemo, x;
+    if (!m) {
+      m = dailyMemo = { day: DAILY_PLAN[0].from - 1, used: {}, got: {}, b: -1 };
+      for (x = DAILY_OLD_TO - 90; x <= DAILY_OLD_TO; x++) m.used[DATA.phrases.indexOf(oldDaily(x, dailyLv(x)))] = 1;
+    }
+    while (m.day < d) {
+      var day = ++m.day, b = m.b, lv = dailyLv(day), k = -1, i, P, laps = 0;
+      while (b + 1 < DAILY_PLAN.length && DAILY_PLAN[b + 1].from <= day) b++;
+      if (b !== m.b) { m.b = b; m.perm = shuffled(Math.min(DAILY_PLAN[b].n, DATA.phrases.length), DAILY_PLAN[b].seed); m.at = {}; }
+      P = m.perm; i = m.at[lv] || 0;
+      while (k < 0) {
+        if (i >= P.length) { if (laps++) { k = P[0]; break; } m.used = {}; m.at = {}; i = 0; }   // all used up: start again
+        x = P[i++];
+        if (!m.used[x] && fits(DATA.phrases[x], lv)) k = x;
+      }
+      m.at[lv] = i; m.used[k] = 1; m.got[day] = k;
+    }
+    return m.got[d];
+  }
+  function dailyPick(d, lv, R) {
+    if (d <= DAILY_OLD_TO) return oldDaily(d, lv, R);
+    R();   // the old pick took one roll; keep the rolls after it (shift, opener) where they were
+    return lv === dailyLv(d) ? DATA.phrases[dailyIndex(d)] : pickPhrase(rng(d), lv);
   }
   var OPENERS = {
     caesar: ['A note turned up in the lost property box, written in a shifted alphabet.', 'A pigeon landed on the windowsill with a tiny scroll tied to its leg.', 'Someone chalked this on the school noticeboard overnight.', 'This was folded inside a library book that came back late.'],
@@ -552,7 +602,7 @@ body{overflow-x:hidden;}
     crypto: ['Every letter in this note stands for a different one.', 'A coded line from a spy\'s notebook. Each letter has been swapped for another.', 'The newspaper puzzle page printed this in letter-swap code.', 'A letter-swap message, slipped under the front door.']
   };
   function makeGen(type, lv, seed, daily) {
-    var R = rng(seed), ph = pickPhrase(R, lv), plain = ph.t, L = letters(plain), no = daily ? 'Daily ' + daily : 'No. ' + (100 + seed % 9000);
+    var R = rng(seed), ph = daily ? dailyPick(daily, lv, R) : pickPhrase(R, lv), plain = ph.t, L = letters(plain), no = daily ? 'Daily ' + daily : 'No. ' + (100 + seed % 9000);
     var c = { gen: true, type: type, lv: lv, seed: seed, daily: daily || 0, no: no, id: 'g-' + type + '-' + lv + '-' + seed, dev: { t: 'msg' }, plain: plain, by: ph.by, fact: ph.k === 'f',
       setup: OPENERS[type][Math.floor(R() * OPENERS[type].length)], scene: { bg: 'desk', items: [] } };
     var items = c.scene.items, decor = [{ t: 'pencil', x: 300, y: 198, rot: -14 }, { t: 'mug', x: 318, y: 40 }, { t: 'magnifier', x: 226, y: 150 }];
@@ -593,6 +643,7 @@ body{overflow-x:hidden;}
     }
     return c;
   }
+  // ==/DAILY==
   function genFromSave(g) { return makeGen(g.type, g.lv, g.seed, g.daily); }
   window.__ccGen = makeGen;
 
