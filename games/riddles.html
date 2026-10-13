@@ -133,11 +133,12 @@
 .carve{margin:16px 2px 0;text-align:center;}
 .carve .rule{height:2px;margin:0 18% 14px;border-radius:2px;background:linear-gradient(90deg,transparent,rgba(92,58,20,.45),transparent);box-shadow:0 1px 0 rgba(255,246,222,.6);}
 .carve .lbl{font:700 .64rem/1 var(--caps);letter-spacing:.2em;color:var(--stone-ink-2);}
-.ans{margin:8px 0 2px;font:700 clamp(1.45rem,7vw,2.1rem)/1.15 var(--caps);letter-spacing:.06em;text-transform:uppercase;overflow-wrap:anywhere;}
+.ans{margin:8px 0 2px;font:700 clamp(1.45rem,7vw,2.1rem)/1.15 var(--caps);letter-spacing:.06em;text-transform:uppercase;text-wrap:balance;}
 .ans span{display:inline-block;white-space:pre;}
-.ans.gold span{background:linear-gradient(180deg,#fff0b8 0%,var(--gilt-a) 30%,var(--gilt-b) 70%,var(--gilt-c) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+.ans .w{white-space:nowrap;} .ans .gap{display:inline;white-space:normal;}
+.ans.gold .w span{background:linear-gradient(180deg,#fff0b8 0%,var(--gilt-a) 30%,var(--gilt-b) 70%,var(--gilt-c) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 1px 0 rgba(255,246,222,.6)) drop-shadow(0 -1px 0 rgba(70,40,5,.45));}
-.ans.dull span{color:#6b5232;text-shadow:0 1px 0 rgba(255,246,222,.7),0 -1px 0 rgba(60,35,8,.35);}
+.ans.dull .w span{color:#6b5232;text-shadow:0 1px 0 rgba(255,246,222,.7),0 -1px 0 rgba(60,35,8,.35);}
 .ans span.cut{animation:chisel .42s cubic-bezier(.2,.9,.3,1.2) both;}
 @keyframes chisel{0%{transform:translateY(-10px) scale(1.5);opacity:0;filter:blur(3px);}60%{opacity:1;}100%{transform:none;opacity:1;}}
 .dust{position:absolute;width:4px;height:4px;border-radius:50%;background:#bfa171;pointer-events:none;animation:dust .7s ease-out forwards;}
@@ -415,11 +416,21 @@
     box.appendChild(el('div', { class: 'lbl', text: s.ok ? 'SOLVED' : 'THE ANSWER' }));
     var ans = el('div', { class: 'ans ' + (s.ok ? 'gold' : 'dull'), 'aria-label': r.a });
     var txt = r.a.replace(/^(a|an|the)\s+/i, function (m) { return m; });
-    txt.split('').forEach(function (c, i) {
-      var sp = el('span', { text: c, 'aria-hidden': 'true' });
-      if (animate) { sp.classList.add('cut'); sp.style.animationDelay = (i * 0.055) + 's'; }
-      ans.appendChild(sp);
+    // letters are grouped by word, so a long answer wraps between words, never inside one
+    var i = 0;
+    txt.split(' ').forEach(function (word, wi) {
+      if (wi) { var gap = el('span', { class: 'gap', text: ' ', 'aria-hidden': 'true' }); ans.appendChild(gap); i++; }
+      var w = el('span', { class: 'w', 'aria-hidden': 'true' });
+      word.split('').forEach(function (c) {
+        var sp = el('span', { text: c });
+        if (animate) { sp.classList.add('cut'); sp.style.animationDelay = (i * 0.055) + 's'; }
+        w.appendChild(sp); i++;
+      });
+      ans.appendChild(w);
     });
+    // a long single word shrinks to fit the tablet instead of breaking
+    var longest = txt.split(' ').reduce(function (m, w) { return Math.max(m, w.length); }, 0);
+    if (longest > 9) ans.style.fontSize = 'min(' + (2.1 * 9 / longest).toFixed(2) + 'rem, ' + (7 * 9 / longest).toFixed(2) + 'vw)';
     box.appendChild(ans);
     var verdict = s.ok ? (s.h ? 'with ' + plural(s.h, 'hint') : 'no hints') + ' · ' + plural(s.t.length, 'try', 'tries') + ' · +' + s.p + ' points' : 'Given up · no points';
     box.appendChild(el('div', { class: 'verdict', text: verdict }));
@@ -531,7 +542,7 @@
     var s = st(), r = cur();
     if (V.form) V.form.remove(); if (V.tried) V.tried.remove(); V.form = V.input = V.tried = null;
     var box = carveFor(r, s, true); V.slab.appendChild(box);
-    var spans = box.querySelectorAll('.ans span');
+    var spans = box.querySelectorAll('.ans .w span, .ans .gap');
     spans.forEach(function (sp, i) {
       if (sp.textContent === ' ') return;
       setTimeout(function () { if (i % 2 === 0) Kit.sfx('tick', 0.4); dustAt(sp); }, i * 55 + 120);
