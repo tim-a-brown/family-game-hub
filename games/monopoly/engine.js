@@ -10,7 +10,8 @@
 // The whole game is one plain JSON object, so it saves, undoes and goes over the network as is.
 // Actions (p = the player doing it):
 //   roll · payJail · useCard · buy · decline · bid {amt} · pass · endTurn · pay (a debt) · bankrupt
-//   build {sq} · sell {sq} · sellAll {g} · mort {sq} · unmort {sq}
+//   build {sq} · sell {sq} · sellAll {g} · sellDown {g, to:[levels]} · mort {sq} · unmort {sq}
+//   (M.planBuild(S, p, {sq: level}) turns a whole build sheet plan into these, in a legal order)
 //   propose {to, give:{cash, props, cards}, get:{...}} · answer {ok} · cancel (a proposed trade)
 // Events (for the animations): dice · move · pay · card · jail · free · buy · build · sell · mort · unmort
 //   auction · bid · won · trade · bankrupt · over · say
@@ -487,6 +488,91 @@
     if (sqGroupBuilt(S, sq)) return 'Sell the buildings on the ' + GROUPS[s.g].n + ' group first';
     return null;
   }
+  // Selling a group's buildings down to lower, even levels in one go. This is how a hotel is broken down when
+  // the bank can't hand back the 4 houses it's worth: the group drops to whatever the bank's houses allow.
+  function canSellDown(S, p, g, to) {
+    var G = GSQ[g];
+    if (!G || !to || to.length !== G.length || !G.every(function (x) { return S.own[x] === p; })) return 'Nothing to sell there';
+    var dh = 0, dt = 0, any = false;
+    for (var i = 0; i < G.length; i++) {
+      var c = S.hs[G[i]], t = to[i];
+      if (t !== Math.floor(t) || t < 0 || t > c) return 'You can only sell buildings there';
+      if (t < c) any = true;
+      dh += (c < 5 ? c : 0) - (t < 5 ? t : 0); dt += (c === 5 ? 1 : 0) - (t === 5 ? 1 : 0);
+    }
+    if (!any) return 'Nothing to sell there';
+    if (Math.max.apply(null, to) - Math.min.apply(null, to) > 1) return 'Sell evenly: the group has to stay level';
+    if (S.bankH + dh < 0) return 'The bank only has ' + S.bankH + ' house' + (S.bankH === 1 ? '' : 's') + ' to give back';
+    if (S.bankT + dt < 0) return 'The bank is out of hotels';
+    return null;
+  }
+
+  // ── A build sheet plan: several builds and sales at once ──
+  // target {sq: level} (0-4 houses, 5 a hotel) for p's streets; anything left out stays as it is. Works out the
+  // build/sell/sellDown actions that get there in a legal order (sales first, evenly) by trying each step with
+  // act() on a copy, so every rule above applies. free: ignore cash (to check the rest while still planning).
+  // -> {ok, err, steps, cost, refund, net (cost - refund), cash (after), buyH, buyT, sellH, sellT, bankH, bankT}
+  function planCopy(S) {
+    var C = {}; for (var k in S) C[k] = S[k];
+    C.players = S.players.map(function (x) { var y = {}; for (var j in x) y[j] = x[j]; return y; });
+    C.st = S.st.map(function (x) { var y = {}; for (var j in x) y[j] = x[j]; return y; });
+    C.hs = S.hs.slice(); C.log = [];
+    return C;
+  }
+  function planBuild(S, p, target, free) {
+    var want = S.hs.slice(), out = { ok: false, err: null, steps: [], cost: 0, refund: 0, net: 0, buyH: 0, buyT: 0, sellH: 0, sellT: 0 };
+    for (var k in target) {
+      var sq = +k, t = target[k];
+      if (!SQ[sq] || SQ[sq].k !== 'st' || S.own[sq] !== p || t !== Math.floor(t) || t < 0 || t > 5) { out.err = 'Only your streets can have houses'; return out; }
+      want[sq] = t;
+    }
+    // what it costs: every level up is a building bought at full price, every level down one sold for half
+    var bh = 0, bt = 0;
+    for (var i = 0; i < 40; i++) {
+      var c = S.hs[i], w = want[i], h = SQ[i].h;
+      for (var n = c + 1; n <= w; n++) { out.cost += h; if (n === 5) out.buyT++; else out.buyH++; }
+      for (var m = c; m > w; m--) { out.refund += h / 2; if (m === 5) out.sellT++; else out.sellH++; }
+      bh += (c < 5 ? c : 0) - (w < 5 ? w : 0); bt += (c === 5 ? 1 : 0) - (w === 5 ? 1 : 0);
+    }
+    out.bankH = S.bankH + bh; out.bankT = S.bankT + bt;
+    out.net = out.cost - out.refund;
+    out.cash = S.players[p].cash - out.net;
+    var C = planCopy(S); if (free) C.players[p].cash = 1e9;
+    for (var g = 0; g < 8; g++) {
+      var lv = GSQ[g].map(function (x) { return want[x]; });
+      if (Math.max.apply(null, lv) - Math.min.apply(null, lv) > 1) { out.err = 'Build evenly: no street can be more than one house ahead of the rest of its group'; return out; }
+    }
+    if (out.bankH < 0) { out.err = 'The bank is out of houses'; return out; }
+    if (out.bankT < 0) { out.err = 'The bank is out of hotels'; return out; }
+    if (!free && out.cash < 0) { out.err = 'Not enough cash (' + money(-out.cash) + ' short)'; return out; }
+    // a step at a time: house sales first (they free houses and cash), then hotels built (each hands 4 houses
+    // back), then hotels sold, then houses built. When nothing can move, a group with hotels may need breaking down.
+    for (var guard = 0; guard < 400; guard++) {
+      var cand = [];
+      for (var q = 0; q < 40; q++) {
+        if (C.hs[q] === want[q]) continue;
+        var cn = C.hs[q];
+        if (cn > want[q]) cand.push({ a: { t: 'sell', p: p, sq: q }, pr: cn === 5 ? 2 : 0 });
+        else cand.push({ a: { t: 'build', p: p, sq: q }, pr: cn === 4 ? 1 : 3 });
+      }
+      if (!cand.length) break;
+      cand.sort(function (x, y) { return x.pr - y.pr; });
+      var moved = false, firstErr = null;
+      for (var j = 0; j < cand.length && !moved; j++) {
+        var r = act(C, cand[j].a);
+        if (r.ok) { out.steps.push(cand[j].a); moved = true; } else if (!firstErr) firstErr = r.err;
+      }
+      for (var g2 = 0; g2 < 8 && !moved; g2++) {
+        var G = GSQ[g2];
+        if (!G.some(function (x) { return C.hs[x] === 5 && want[x] < 5; }) || G.some(function (x) { return want[x] > C.hs[x]; })) continue;
+        var sd = { t: 'sellDown', p: p, g: g2, to: G.map(function (x) { return want[x]; }) };
+        if (act(C, sd).ok) { out.steps.push(sd); moved = true; }
+      }
+      if (!moved) { out.err = firstErr || 'That can’t be done'; out.steps = []; return out; }
+    }
+    out.ok = true;
+    return out;
+  }
 
   // ── Who acts now ──
   function needs(S) {
@@ -646,6 +732,19 @@
         GSQ[g].forEach(function (x) { var n5 = S.hs[x]; if (!n5) return; got += n5 * SQ[x].h / 2; if (n5 === 5) S.bankT++; else S.bankH += n5; S.hs[x] = 0; ev.push({ e: 'sell', p: p, sq: x, n: 0 }); });
         me.cash += got; ev.push({ e: 'pay', f: BANK, t: p, a: got, w: 'sell' });
         say(S, me.name + ' sells all the buildings on the ' + GROUPS[g].n + ' group for ' + money(got) + '.', p);
+        break;
+      }
+      case 'sellDown': {
+        err = canSellDown(S, p, a.g, a.to); if (err) break;
+        var got2 = 0, G6 = GSQ[a.g];
+        G6.forEach(function (x, i) {
+          var c6 = S.hs[x], t6 = a.to[i]; if (t6 === c6) return;
+          got2 += (c6 - t6) * SQ[x].h / 2;
+          S.bankH += (c6 < 5 ? c6 : 0) - (t6 < 5 ? t6 : 0); S.bankT += (c6 === 5 ? 1 : 0) - (t6 === 5 ? 1 : 0);
+          S.hs[x] = t6; ev.push({ e: 'sell', p: p, sq: x, n: t6 });
+        });
+        me.cash += got2; ev.push({ e: 'pay', f: BANK, t: p, a: got2, w: 'sell' });
+        say(S, me.name + ' breaks down the buildings on the ' + GROUPS[a.g].n + ' group for ' + money(got2) + ' (the bank was short of houses).', p);
         break;
       }
       case 'mort': {
@@ -909,7 +1008,7 @@
   var api = {
     SQ: SQ, GROUPS: GROUPS, GSQ: GSQ, RRS: RRS, UTS: UTS, OWNABLE: OWNABLE, CHANCE: CHANCE, CHEST: CHEST, TOKENS: TOKENS, BANK: BANK,
     newGame: newGame, act: act, needs: needs, bot: bot, rent: rent, worth: worth, liquid: liquid, unmortCost: unmortCost, interest: interest,
-    canBuild: canBuild, canSell: canSell, canMort: canMort, tradeErr: tradeErr, tradeText: tradeText, sideText: sideText, ownsGroup: ownsGroup,
+    canBuild: canBuild, canSell: canSell, canSellDown: canSellDown, planBuild: planBuild, canMort: canMort, tradeErr: tradeErr, tradeText: tradeText, sideText: sideText, ownsGroup: ownsGroup,
     countOwned: countOwned, houses: houses, evalP: evalP, money: money, active: active, richest: richest, limitHit: limitHit,
     setRandom: function (f) { rand = f || Math.random; }, forceDice: function (list) { forced = forced.concat(list); }, clearDice: function () { forced = []; }
   };
