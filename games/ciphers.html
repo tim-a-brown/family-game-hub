@@ -26,19 +26,22 @@ body{overflow-x:hidden;}
 .cb-tabs button.on small{color:color-mix(in srgb,var(--accent-ink) 70%,transparent);}
 .cb-tabs button:active{transform:scale(.96);}
 .cb-grid{display:flex;flex-direction:column;gap:10px;padding:2px 2px 6px;}
-.cb-grp{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:.8rem;font-weight:900;color:var(--text-2);}
-.cb-grp b{white-space:nowrap;letter-spacing:.02em;}
-.cb-grp .bar{flex:1;height:8px;border-radius:4px;background:var(--w08);overflow:hidden;}
-.cb-grp .bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#c22a2a,#e8743a);transition:width .4s var(--ease);}
-.cb-grp small{font-weight:800;color:var(--text-3);font-variant-numeric:tabular-nums;}
-.cb-sub{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px;padding-top:10px;}
+.cb-grps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.cb-grp{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:8px 10px 7px;border:2px solid transparent;border-radius:12px;background:var(--w06);color:var(--text-2);font-size:.82rem;font-weight:900;text-align:left;transition:transform .12s var(--spring),border-color .15s;}
+.cb-grp.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--text);}
+.cb-grp:active{transform:scale(.96);}
+.cb-grp .bar{height:6px;border-radius:3px;background:var(--w1);overflow:hidden;}
+.cb-grp .bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#c22a2a,#e8743a);}
+.cb-grp small{font-size:.7rem;font-weight:800;color:var(--text-3);font-variant-numeric:tabular-nums;}
+.cb-sub{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 10px;padding-top:12px;}
 @media (min-width:640px){.cb-sub{grid-template-columns:repeat(5,1fr);gap:18px 10px;}}
-.fold{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:96px;padding:11px 8px 8px;border:0;border-radius:3px 10px 10px 10px;text-align:left;color:var(--manila-ink);
+@media (min-width:400px) and (max-width:639px){.cb-sub{grid-template-columns:repeat(2,1fr);}}
+.fold{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:88px;padding:11px 10px 8px;border:0;border-radius:3px 10px 10px 10px;text-align:left;color:var(--manila-ink);
   background:radial-gradient(rgba(120,90,30,.07) 1px,transparent 1.2px) 0 0/4px 4px,linear-gradient(170deg,var(--manila),var(--manila-2));
   box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 0 #b99c5e,0 8px 16px rgba(0,0,0,.35);transition:transform .18s var(--spring),box-shadow .18s;}
 .fold::before{content:"";position:absolute;left:0;top:-8px;width:46%;height:10px;border-radius:7px 7px 0 0;background:linear-gradient(180deg,#f1e0b4,var(--manila));box-shadow:0 -1px 0 rgba(255,255,255,.4) inset;}
 .fold .no{font-family:var(--tw);font-size:.64rem;font-weight:700;letter-spacing:.14em;color:#7a6234;}
-.fold b{font-family:var(--tw);font-size:.8rem;line-height:1.12;font-weight:700;overflow-wrap:anywhere;}
+.fold b{font-family:var(--tw);font-size:.88rem;padding-right:16px;line-height:1.12;font-weight:700;overflow-wrap:anywhere;}
 .fold .dv{position:absolute;right:6px;top:7px;width:18px;height:18px;color:#7a6234;opacity:.8;}
 .fold .dv svg{width:100%;height:100%;}
 .fold .st{margin-top:auto;font-size:.62rem;line-height:1.15;font-weight:800;color:#7a6234;font-variant-numeric:tabular-nums;}
@@ -1861,9 +1864,11 @@ body{overflow-x:hidden;}
     if (c.kind) return c.kind;
     if (c.mm) return 'Guess notes';
     var t = c.cipher && c.cipher.t;
-    var K = { caesar: 'Caesar shift', atbash: 'Mirror alphabet', keyword: 'Keyword cipher', crypto: 'Cryptogram', a1z26: 'Letter numbers', morse: 'Morse code', multitap: 'Phone texting', pigpen: 'Pigpen', glyph: 'Symbol swap', reverse: 'Backwards writing', rail: 'Rail fence', columns: 'Column jumble' };
+    var K = { caesar: 'Caesar shift', atbash: 'Mirror alphabet', keyword: 'Keyword cipher', crypto: 'Cryptogram', a1z26: 'Letter numbers', morse: 'Morse code', multitap: 'Phone texting', pigpen: 'Pigpen', glyph: 'Symbol swap', reverse: 'Backwards writing', rail: 'Rail fence', columns: 'Column jumble', wordrev: 'Backwards words', polybius: 'Number grid', semaphore: 'Flag semaphore', book: 'Book code', vigenere: 'Vigenère', keycols: 'Keyed columns', revcaesar: 'Two-step code', qwerty: 'Keyboard shift' };
+    if (t === 'polybius' && c.cipher.tap) return 'Tap code';
+    if (t === 'morse' && c.cipher.swap) return 'Upside-down Morse';
     if (t) return K[t];
-    return { a1z26: 'Letter numbers', morse: 'Morse code', phone: 'Phone keys' }[c.tool] || 'Hidden numbers';
+    return { a1z26: 'Letter numbers', morse: 'Morse code', phone: 'Phone keys', semaphore: 'Flag semaphore' }[c.tool] || 'Hidden numbers';
   }
   function answerText(c) { return c.dev.t === 'msg' ? c.plain : c.ans; }
   function hist() { try { return GameHistory.load(HKEY) || []; } catch (e) { return []; } }
@@ -2045,8 +2050,10 @@ body{overflow-x:hidden;}
     var prev = C.gen ? null : solvedMap()[C.id];
     record(false);
     clearSave();
-    setTimeout(function () { Kit.callout(C.dev.t === 'msg' ? 'Decoded!' : 'Open!'); showSolved(true); }, 900);
+    var mine = S;
+    setTimeout(function () { if (S !== mine || view !== 'play') return; Kit.callout(C.dev.t === 'msg' ? 'Decoded!' : 'Open!'); showSolved(true); }, 900);
     setTimeout(function () {
+      if (S !== mine || view !== 'play') return;
       var nx = nextUp();
       Kit.win({
         icon: C.dev.t === 'msg' ? 'pencil' : 'key', title: C.gen ? 'Code cracked!' : 'Case closed!',
@@ -2061,10 +2068,11 @@ body{overflow-x:hidden;}
   function reveal() {
     if (!S || S.done) return;
     S.done = true; S.revealed = true; stopClock();
-    D.show(); setTimeout(function () { D.open(true); }, C.dev.t === 'msg' ? 0 : 900);
+    var dv = D; D.show(); setTimeout(function () { if (D === dv) dv.open(true); }, C.dev.t === 'msg' ? 0 : 900);
     paintTools(); record(true); clearSave();
     Kit.sfx('flip');
-    setTimeout(function () { showSolved(true); }, C.dev.t === 'msg' ? 200 : 1400);
+    var mine = S;
+    setTimeout(function () { if (S === mine && view === 'play') showSolved(true); }, C.dev.t === 'msg' ? 200 : 1400);
   }
   function sentence(p) { var s = String(p).toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1).replace(/\bi\b/g, 'I'); }
   function nextUp() {
@@ -2167,15 +2175,17 @@ body{overflow-x:hidden;}
         } }));
       });
       grid.innerHTML = '';
-      var list = casesOf(lvSel), sub = null;
-      list.forEach(function (c, i) {
-        if (i % 10 === 0) {
-          var part = list.slice(i, i + 10), got = part.filter(function (x) { return sm[x.id]; }).length;
-          grid.appendChild(el('div', { class: 'cb-grp' }, [el('b', { text: 'Cases ' + (i + 1) + '–' + (i + part.length) }), el('span', { class: 'bar', html: '<i style="width:' + Math.round(100 * got / part.length) + '%"></i>' }), el('small', { text: got + ' / ' + part.length })]));
-          sub = el('div', { class: 'cb-sub' }); grid.appendChild(sub);
-        }
+      var list = casesOf(lvSel), gi = Math.max(0, Math.floor(list.indexOf(BYID[sel]) / 10)), chips = el('div', { class: 'cb-grps' }), sub = el('div', { class: 'cb-sub' });
+      for (var g = 0; g * 10 < list.length; g++) (function (g) {
+        var part = list.slice(g * 10, g * 10 + 10), got = part.filter(function (x) { return sm[x.id]; }).length;
+        chips.appendChild(el('button', { type: 'button', class: 'cb-grp' + (g === gi ? ' on' : ''), 'aria-pressed': String(g === gi), onclick: function () {
+          if (g === gi) return; var fo = part.filter(function (x) { return !sm[x.id]; })[0]; sel = (fo || part[0]).id; ui({ sel: sel }); Kit.sfx('flip'); Kit.haptic('light'); paintBoard(); upd();
+        } }, [el('b', { text: (g * 10 + 1) + '–' + (g * 10 + part.length) }), el('span', { class: 'bar', html: '<i style="width:' + Math.round(100 * got / part.length) + '%"></i>' }), el('small', { text: got + ' / ' + part.length })]));
+      })(g);
+      grid.appendChild(chips); grid.appendChild(sub);
+      list.slice(gi * 10, gi * 10 + 10).forEach(function (c, i) {
         var best = sm[c.id], op = om[c.id];
-        var f = el('button', { type: 'button', class: 'fold' + (c.id === sel ? ' on' : '') + (best ? ' done' : ''), style: { animation: 'drop .4s var(--ease) backwards', 'animation-delay': (i % 10 * 25) + 'ms' }, 'aria-label': 'Case ' + caseNo(c) + ': ' + c.title + (best ? ', solved' : '') }, [
+        var f = el('button', { type: 'button', class: 'fold' + (c.id === sel ? ' on' : '') + (best ? ' done' : ''), style: { animation: 'drop .4s var(--ease) backwards', 'animation-delay': (i * 25) + 'ms' }, 'aria-label': 'Case ' + caseNo(c) + ': ' + c.title + (best ? ', solved' : '') }, [
           el('span', { class: 'no', text: 'CASE ' + caseNo(c) }), el('b', { text: c.title }), el('span', { class: 'dv', html: DEVICON[c.dev.t] || DEVICON.lock }),
           el('span', { class: 'st', text: best ? 'Best ' + fmt(best.secs) : op ? 'Answer shown' : kindOf(c) }),
           best ? el('span', { class: 'stamp', text: 'SOLVED' }) : op ? el('span', { class: 'stamp grey', text: 'OPENED' }) : null
@@ -2247,7 +2257,10 @@ body{overflow-x:hidden;}
       '<li><b>Letter numbers:</b> A = 1, B = 2 and so on to Z = 26.</li><li><b>Morse:</b> dots and dashes for each letter or number.</li>' +
       '<li><b>Pigpen:</b> each letter is drawn as the bit of grid around it.</li><li><b>Phone keys:</b> the letters printed on a phone\'s number keys.</li>' +
       '<li><b>Backwards, rail fence and columns:</b> the right letters, moved around.</li><li><b>Keyword:</b> a key word starts the code alphabet.</li>' +
-      '<li><b>Cryptogram:</b> every letter swapped for another one.</li></ul>' +
+      '<li><b>Cryptogram:</b> every letter swapped for another one.</li>' +
+      '<li><b>Number grid (Polybius):</b> each letter is its row and column in a 5 × 5 alphabet grid. Knocks on a wall work the same way.</li>' +
+      '<li><b>Flag semaphore:</b> each letter is a pair of flag positions.</li><li><b>Book code:</b> numbers point to a line, a word and sometimes a letter on a page.</li>' +
+      '<li><b>Vigenère:</b> a key word sets a different Caesar shift for each letter in turn. The key word is always hidden somewhere in the picture.</li></ul>' +
       '<h3>Endless codes and today\'s code</h3><p><b>Endless codes</b> makes new Caesar, letter-number and cryptogram puzzles from sayings, famous lines and true facts. <b>Today\'s code</b> is the same for everyone and changes each day.</p>'
   });
 
