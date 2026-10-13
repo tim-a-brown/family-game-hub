@@ -202,7 +202,7 @@
       var s = '';
       if (a[3] === 'stripes') for (var si = -1; si <= 1; si++) s += rect(pt[0] - 4.5, pt[1] - 1.1 + si * 3.4, 9, 1.8, col, { st: 0, rx: 0.8 });
       else if (a[3] === 'vstripes') for (var sv = -1; sv <= 1; sv++) s += rect(pt[0] - 1 + sv * 3.6, pt[1] - 4.5, 2.1, 9, col, { st: 0, rx: 0.8 });
-      else s += path('M' + n(pt[0] - 3) + ' ' + n(pt[1] - 2) + 'q3 -2 5 0q2 3 -1 4q-3 2 -4 -1z', col, { st: 0 });
+      else s += g(path('M-3 -2q3 -2 5 0q2 3 -1 4q-3 2 -4 -1z', col, { st: 0 }) + (a[4] ? circ(3.6, 2.8, 0.9, col, { st: 0 }) : ''), { x: pt[0], y: pt[1], s: +(a[4] || 1) });
       mb += g(s, { p: P('paint') });
     });
     if (has(mk, 'crumbs')) { var R1 = rng(7); var cs = ''; for (var ci = 0; ci < 7; ci++) cs += circ(-6 + R1() * 12, B.sh + 8 + R1() * 16, 0.9 + R1() * 0.5, '#b07a3a', { st: 0 }); mb += g(cs, { p: P('crumbs') }); }
@@ -514,7 +514,7 @@
     var tpts = '';
     for (var i = teeth.length - 1; i >= 0; i--) { var tx = x0 + i * 8; tpts += 'L' + n(tx + 8) + ' 3.5L' + n(tx + 6) + ' ' + n(3.5 + teeth[i] * 2.4) + 'L' + n(tx + 2) + ' ' + n(3.5 + teeth[i] * 2.4) + 'L' + n(tx) + ' 3.5'; }
     s += path(tp + tpts + 'L8 3.5Z', c);
-    s += line(12, 0, 50, 0, shade(c, -0.3), 0.7);
+    if (c !== 'none') s += line(12, 0, 50, 0, shade(c, -0.3), 0.7);
     if (k.tag) s += path('M-10 2q-8 8 -4 16', 'none', { st: '#888', sw: 0.8 }) + rect(-22, 16, 18, 10, k.tag, { rx: 2 });
     return g(s, { x: x || 0, y: y || 0, s: sc || 1, r: rot });
   }
@@ -856,7 +856,7 @@
     s += path('M30 -58L36 -58L46 -38L30 -38Z', '#bfe0f2', { sw: 0.9 });
     s += circ(-36, -8, 10, '#2b2b33') + circ(-36, -8, 4.5, '#9aa3ad') + circ(38, -8, 10, '#2b2b33') + circ(38, -8, 4.5, '#9aa3ad');
     if (p.stripe) s += rect(-60, -30, 108, 6, p.stripe, { st: 0 });
-    if (p.logo) s += g(logoMark(p.logo, 11), { x: -44, y: -44, p: (p.id || 'van') + '.logo' }) + text(-29, -45, p.name || '', { size: 10, font: 'sign', fill: p.ink || '#1f4a7a', anchor: 'start' }) + text(-29, -36.5, p.sub || '', { size: 5.6, font: 'sans', fill: p.ink || '#1f4a7a', anchor: 'start' });
+    if (p.logo) s += g(typeof p.logo === 'object' ? logoArt(p.logo, 11) : logoMark(p.logo, 11), { x: -44, y: -44, p: (p.id || 'van') + '.logo' }) + text(-29, -45, p.name || '', { size: 10, font: 'sign', fill: p.ink || '#1f4a7a', anchor: 'start' }) + text(-29, -36.5, p.sub || '', { size: 5.6, font: 'sans', fill: p.ink || '#1f4a7a', anchor: 'start' });
     return g(s, { x: p.x, y: p.y, s: p.s, id: p.id });
   }
   function lamppost(p) { var s = shadow(0, 0, 10, 2.4) + rect(-2.4, -120, 4.8, 120, '#3a3a46') + rect(-6, -6, 12, 6, '#3a3a46') + path('M-9 -120L9 -120L6 -134L-6 -134Z', '#3a3a46') + rect(-6, -132, 12, 10, '#ffe9a0', { sw: 0.8 }); return g(s, { x: p.x, y: p.y, id: p.id }); }
@@ -1032,7 +1032,151 @@
     return s;
   }
 
+  // ── Evidence pieces (used by the case generator, data/mysteries-gen.js) ──
+  // a single hair caught on something, hanging down from (x, y): len 'long'|'short', curly
+  function strand(p) {
+    var c = p.color || '#5a3820', long = p.len !== 'short', d = '';
+    if (p.curly) {
+      var L = long ? 40 : 15, turns = long ? 6 : 2.5, a = L / (turns * 2 * Math.PI), rr = long ? 3.4 : 2.6, pts = [];
+      for (var t = 0; t <= turns * 2 * Math.PI + 0.01; t += 0.25) pts.push([rr * Math.sin(t), a * t + rr * 0.75 * (1 - Math.cos(t))]);
+      d = 'M' + pts.map(function (q) { return n(q[0]) + ' ' + n(q[1]); }).join('L');
+    } else d = long ? 'M0 0C7 10 -7 22 2 30S-2 40 1 44' : 'M0 0C3 4 -3 9 1 14';
+    var s = '<path d="' + d + '" fill="none" stroke="' + OL + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="' + d + '" fill="none" stroke="' + c + '" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>';
+    return g(s, { x: p.x, y: p.y, r: p.r, s: p.s, id: p.id });
+  }
+  // a torn scrap of cloth, in the same fabric (colour + pattern) as a top
+  function scrap(p) {
+    var fill = patFill({ pat: p.pat, pc: p.pc }, p.color || '#3a6ea5');
+    var s = poly([[-13, -9], [-2, -12], [4, -8], [13, -11], [11, -2], [15, 5], [6, 7], [3, 13], [-6, 9], [-14, 11], [-10, 1]], fill, { sw: 1.1 });
+    s += path('M15 5q4 1 6 5M13 -11q3 -3 6 -2', 'none', { st: shade(p.color || '#3a6ea5', -0.35), sw: 0.8 });
+    return g(s, { x: p.x, y: p.y, r: p.r, s: p.s, id: p.id });
+  }
+  // one glove, lying flat
+  function glove1(p) {
+    var c = p.color || '#7a3b2a', s = '';
+    s += limb('M-5 -6L-7 -15M-1.6 -7L-2 -17M1.8 -7L2.6 -17M5 -6L6.6 -14M-7 0L-12 -5', c, 3.2);
+    s += path('M-8 -7h16v9q0 8 -8 8q-8 0 -8 -8z', c) + rect(-8.5, 7, 17, 5, shade(c, -0.2), { rx: 2 });
+    return g(s, { x: p.x, y: p.y, r: p.r, s: p.s, id: p.id });
+  }
+  // a key pressed into something soft (soap, clay, wax) or traced round on paper; key: {head, teeth}, kr: key rotation
+  function imprint(p) {
+    var mat = p.mat || 'soap', w = p.w || 112, h = p.h || 56, s = '', col = { soap: '#f4e6d0', clay: '#5aa0c8', wax: '#ecd27a', paper: '#fbf8ee' }[mat] || '#f4e6d0';
+    if (mat === 'clay') s += path('M' + n(-w / 2) + ' ' + n(-h * 0.2) + 'Q' + n(-w / 2 - 4) + ' ' + n(-h / 2 - 2) + ' ' + n(-w * 0.2) + ' ' + n(-h / 2) + 'Q' + n(w * 0.1) + ' ' + n(-h / 2 - 6) + ' ' + n(w * 0.36) + ' ' + n(-h / 2 + 1) + 'Q' + n(w / 2 + 6) + ' ' + n(-h * 0.3) + ' ' + n(w / 2) + ' ' + n(h * 0.15) + 'Q' + n(w / 2 + 2) + ' ' + n(h / 2 + 4) + ' ' + n(w * 0.1) + ' ' + n(h / 2) + 'Q' + n(-w * 0.3) + ' ' + n(h / 2 + 5) + ' ' + n(-w / 2 + 2) + ' ' + n(h * 0.3) + 'Z', col) + path('M' + n(-w * 0.36) + ' ' + n(-h * 0.36) + 'q8 -3 16 0', 'none', { st: shade(col, 0.35), sw: 1.4 });
+    else if (mat === 'paper') s += rect(-w / 2, -h / 2, w, h, col, { sw: 0.9 }) + rect(-w / 2 + 8, -h / 2 - 4, 22, 8, 'rgba(240,230,190,.85)', { st: 0, a: 'transform="rotate(-8 ' + n(-w / 2 + 19) + ' ' + n(-h / 2) + ')"' }) + rect(w / 2 - 30, h / 2 - 4, 22, 8, 'rgba(240,230,190,.85)', { st: 0, a: 'transform="rotate(-8 ' + n(w / 2 - 19) + ' ' + n(h / 2) + ')"' });
+    else s += rect(-w / 2, -h / 2, w, h, col, { rx: mat === 'wax' ? 6 : 12 }) + rect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 'none', { st: shade(col, -0.08), sw: 1.2, rx: mat === 'wax' ? 4 : 9 }) + (mat === 'wax' ? path('M' + n(-w * 0.3) + ' ' + n(h / 2) + 'v6a2 2 0 0 0 4 0v-6M' + n(w * 0.2) + ' ' + n(h / 2) + 'v9a2 2 0 0 0 4 0v-9', shade(col, -0.04), { sw: 1 }) : '');
+    var k = p.key || {}, ks = p.ks || 1, kr = p.kr || 0;
+    var kx = -27 * ks, inner = mat === 'paper' ? '<g opacity=".8">' + keyShape({ teeth: k.teeth, head: k.head, col: 'none', hole: 'none' }, 1, 0, 0) + '</g>' : '<g opacity=".55">' + keyShape({ teeth: k.teeth, head: k.head, col: shade(col, -0.32), hole: shade(col, -0.06) }, 1, 0, 0) + '</g>';
+    s += g(g(inner, { x: kx, y: 0, s: ks }), { r: kr, p: (p.id || 'imprint') + '.print' });
+    return g(s, { x: p.x, y: p.y, r: p.r, s: p.s, id: p.id });
+  }
+  // a company logo: {shape: 'drop'|'circle'|'shield'|'star'|'house'|'leaf', mark: 'wrench'|'bolt'|'bar'|'dot', tilt: 'L'|'R', color}
+  function logoArt(sp, r) {
+    sp = sp || {}; r = r || 6;
+    var c = sp.color || '#2f8fd6', sh = sp.shape || 'circle', s = '', sw = r * 0.12;
+    if (sh === 'drop') s += path('M0 ' + n(-r) + 'Q' + n(r * 0.9) + ' ' + n(-r * 0.1) + ' ' + n(r * 0.75) + ' ' + n(r * 0.4) + 'A' + n(r * 0.78) + ' ' + n(r * 0.78) + ' 0 0 1 ' + n(-r * 0.75) + ' ' + n(r * 0.4) + 'Q' + n(-r * 0.9) + ' ' + n(-r * 0.1) + ' 0 ' + n(-r) + 'Z', c, { sw: sw });
+    else if (sh === 'shield') s += path('M' + n(-r * 0.85) + ' ' + n(-r * 0.85) + 'L' + n(r * 0.85) + ' ' + n(-r * 0.85) + 'L' + n(r * 0.85) + ' ' + n(r * 0.1) + 'Q' + n(r * 0.8) + ' ' + n(r * 0.75) + ' 0 ' + n(r) + 'Q' + n(-r * 0.8) + ' ' + n(r * 0.75) + ' ' + n(-r * 0.85) + ' ' + n(r * 0.1) + 'Z', c, { sw: sw });
+    else if (sh === 'star') s += path('M0 ' + n(-r) + 'L' + n(r * 0.3) + ' ' + n(-r * 0.32) + 'L' + n(r) + ' ' + n(-r * 0.3) + 'L' + n(r * 0.47) + ' ' + n(r * 0.17) + 'L' + n(r * 0.65) + ' ' + n(r) + 'L0 ' + n(r * 0.58) + 'L' + n(-r * 0.65) + ' ' + n(r) + 'L' + n(-r * 0.47) + ' ' + n(r * 0.17) + 'L' + n(-r) + ' ' + n(-r * 0.3) + 'L' + n(-r * 0.3) + ' ' + n(-r * 0.32) + 'Z', c, { sw: sw });
+    else if (sh === 'house') s += path('M0 ' + n(-r) + 'L' + n(r) + ' ' + n(-r * 0.05) + 'L' + n(r * 0.72) + ' ' + n(-r * 0.05) + 'L' + n(r * 0.72) + ' ' + n(r * 0.9) + 'L' + n(-r * 0.72) + ' ' + n(r * 0.9) + 'L' + n(-r * 0.72) + ' ' + n(-r * 0.05) + 'L' + n(-r) + ' ' + n(-r * 0.05) + 'Z', c, { sw: sw });
+    else if (sh === 'leaf') s += path('M' + n(-r * 0.9) + ' ' + n(r * 0.9) + 'Q' + n(-r * 1.1) + ' ' + n(-r * 0.9) + ' ' + n(r * 0.9) + ' ' + n(-r * 0.9) + 'Q' + n(r * 1.1) + ' ' + n(r * 0.9) + ' ' + n(-r * 0.9) + ' ' + n(r * 0.9) + 'Z', c, { sw: sw });
+    else s += circ(0, 0, r, c, { sw: sw });
+    var mk = '', w = r * 0.22, wc = '#fff';
+    if (sp.mark === 'wrench') mk = line(-r * 0.36, r * 0.5, r * 0.3, -r * 0.25, wc, w) + circ(r * 0.36, -r * 0.33, r * 0.2, 'none', { st: wc, sw: w * 0.8 });
+    else if (sp.mark === 'bolt') mk = path('M' + n(r * 0.12) + ' ' + n(-r * 0.62) + 'L' + n(-r * 0.32) + ' ' + n(r * 0.08) + 'L' + n(r * 0.02) + ' ' + n(r * 0.08) + 'L' + n(-r * 0.14) + ' ' + n(r * 0.62) + 'L' + n(r * 0.34) + ' ' + n(-r * 0.12) + 'L' + n(r * 0.02) + ' ' + n(-r * 0.12) + 'Z', wc, { st: 0 });
+    else if (sp.mark === 'bar') mk = line(-r * 0.45, r * 0.3, r * 0.45, -r * 0.3, wc, w * 1.2);
+    else if (sp.mark === 'dot') mk = circ(r * 0.22, -r * 0.18, r * 0.26, wc, { st: 0 });
+    if (mk) s += sp.tilt === 'L' ? '<g transform="scale(-1 1)">' + mk + '</g>' : mk;
+    return s;
+  }
+  // a name badge / patch with a logo on it, to pin on a person's chest
+  function logoBadge(p) { var r = p.r || 4, s = rect(-r * 1.35, -r * 1.2, r * 2.7, r * 2.4, p.bg || '#fff', { rx: r * 0.3, sw: 0.8 }) + logoArt(p.logo, r * 0.95); return g(s, { x: p.x, y: p.y, s: p.s, id: p.id, p: p.p }); }
+
+  // ── More objects for shelves, shops and odd-one-out rows ─────────────────
+  function cupcake(p) {
+    var w = p.wrap || '#e0607a', ic = p.icing || '#fbe3ec', s = shadow(0, 0, 15, 3), st = p.stripes == null ? 5 : p.stripes, id = p.id || 'cupcake';
+    var wr = path('M-14 -20L14 -20L10 0L-10 0Z', w);
+    for (var i = 1; i < st; i++) wr += line(-14 + 28 * i / st, -19.4, -10 + 20 * i / st, -0.6, shade(w, -0.32), 1.1);
+    s += g(wr, { p: id + '.wrap' });
+    var dir = p.swirl === 'L' ? -1 : 1;
+    s += g(path('M-16 -20Q-19 -29 -9 -30Q-11 -39 0 -40Q11 -39 9 -30Q19 -29 16 -20Q0 -16 -16 -20Z', ic) + path('M-9 -30Q0 -27 9 -30', 'none', { st: shade(ic, -0.18), sw: 1 }) + path('M' + n(-3 * dir) + ' -39.6Q' + n(2 * dir) + ' -44 ' + n(7 * dir) + ' -45Q' + n(5 * dir) + ' -41 ' + n(4 * dir) + ' -38.6', ic, { sw: 1 }), { p: id + '.icing' });
+    var SP = [[-10, -24, 30], [-3, -33, -40], [6, -25, 70], [11, -22, -20], [-6, -26, 10], [3, -35, 50]], spc = ['#3a8ad8', '#f2c230', '#3aa65a', '#9b59b6', '#e8662a', '#e0384a'], sp = '';
+    for (var j = 0; j < (p.sprinkles || 0); j++) sp += rect(SP[j][0] - 2, SP[j][1] - 0.8, 4.4, 1.8, spc[j], { st: 0, rx: 0.8, a: 'transform="rotate(' + SP[j][2] + ' ' + SP[j][0] + ' ' + SP[j][1] + ')"' });
+    if (sp) s += g(sp, { p: id + '.sprinkles' });
+    if (p.cherry) s += g(path('M1 -47q2 -7 7 -9', 'none', { st: '#3f7a3a', sw: 1.1 }) + circ(0, -45, 4.6, typeof p.cherry === 'string' ? p.cherry : '#d0192b') + circ(-1.4, -46.4, 1.2, '#fff', { st: 0, op: 0.6 }), { p: id + '.cherry' });
+    if (p.flag) s += line(-12, -22, -16, -50, '#c9a46a', 1.2) + path('M-16 -50L-5 -47L-15 -43Z', p.flag, { sw: 0.8 });
+    if (p.fly) s += g(ell(0, 0, 2.4, 1.6, '#2b2433', { st: 0 }) + ell(-1.4, -1.8, 2, 1.2, '#cfe3ff', { sw: 0.4, op: 0.85 }) + ell(1.4, -1.8, 2, 1.2, '#cfe3ff', { sw: 0.4, op: 0.85 }), { x: 6, y: -9 });
+    if (p.ptag) s += g(rect(-6, -4, 12, 8, '#fbf6e6', { sw: 0.7, rx: 1 }) + text(0, 2.4, p.ptag, { size: 6, font: 'sans', weight: 700 }), { x: 0, y: 8 });
+    return g(s, { x: p.x, y: p.y, s: p.s, id: p.id });
+  }
+  function teacup(p) {
+    var c = p.color || '#fbfaf5', pc = p.pc || '#3a6ea5', id = p.id || 'cup', s = '';
+    s += shadow(0, 0, 22, 3) + ell(0, -1, 22, 5, p.saucer || c) + ell(0, -1.6, 14, 2.8, 'none', { st: shade(p.saucer || c, -0.15), sw: 0.9 });
+    if (p.band) s += ell(0, -1, 19.5, 3.8, 'none', { st: p.band, sw: 1.6 });
+    var hs = p.handle === 'L' ? -1 : 1;
+    s += g(path('M' + n(hs * 13) + ' -20q' + n(hs * 9) + ' 0 ' + n(hs * 9) + ' 6q0 6 ' + n(-hs * 10) + ' 7', 'none', { st: OL, sw: 4.4 }) + path('M' + n(hs * 13) + ' -20q' + n(hs * 9) + ' 0 ' + n(hs * 9) + ' 6q0 6 ' + n(-hs * 10) + ' 7', 'none', { st: c, sw: 2.4 }), { p: id + '.handle' });
+    s += path('M-16 -26L16 -26Q16 -6 6 -3L-6 -3Q-16 -6 -16 -26Z', c);
+    var dt = '', nd = p.dots == null ? 3 : p.dots;
+    for (var i = 0; i < nd; i++) { var x = nd === 1 ? 0 : -9 + 18 * i / (nd - 1); dt += p.motif === 'heart' ? path('M' + n(x) + ' -11.5l-3 -3a1.8 1.8 0 0 1 3 -2a1.8 1.8 0 0 1 3 2z', pc, { sw: 0.5 }) : circ(x, -14, 2.2, pc, { sw: 0.5 }); }
+    s += g(dt, { p: id + '.dots' });
+    s += ell(0, -26, 16, 2.6, shade(c, -0.06), { sw: 1 });
+    if (p.rim) s += g(ell(0, -26, 16, 2.6, 'none', { st: p.rim, sw: 2.2 }), { p: id + '.rim' });
+    if (p.tea) s += ell(0, -26, 13.5, 1.8, p.tea, { st: 0 });
+    if (p.steam) s += path('M-4 -30q-3 -4 0 -8q3 -4 0 -8M4 -30q-3 -4 0 -8', 'none', { st: '#b8bcc8', sw: 1, op: 0.8 });
+    if (p.spoon) s += line(10, -2, 24, -9, '#aab2bc', 1.6) + ell(26, -10, 3, 1.8, '#aab2bc', { sw: 0.6 });
+    if (p.sugar) s += rect(-26, -8, 6, 6, '#fff', { sw: 0.7 });
+    return g(s, { x: p.x, y: p.y, s: p.s, id: p.id });
+  }
+  function nutcracker(p) {
+    var id = p.id || 'nc', jk = p.jacket || '#c0392b', s = shadow(0, 0, 13, 3);
+    s += rect(-9, -10, 7.5, 10, p.boots || '#1d1d26', { rx: 1.5 }) + rect(1.5, -10, 7.5, 10, p.boots || '#1d1d26', { rx: 1.5 });
+    s += rect(-9, -26, 18, 17, p.trousers || '#f4f0e6');
+    s += g(rect(-11, -50, 22, 25, jk, { rx: 2 }), { p: id + '.jacket' });
+    s += rect(-11, -29, 22, 4, '#1d1d26', { sw: 0.8 }) + rect(-2.4, -29.4, 4.8, 4.8, '#e8c34a', { sw: 0.6 });
+    var sd = p.sash === 'L' ? -1 : 1;
+    s += g(path('M' + n(-10 * sd) + ' -50L' + n(-5 * sd) + ' -50L' + n(10 * sd) + ' -31L' + n(5 * sd) + ' -31Z', p.sashc || '#f2c230', { sw: 0.8 }), { p: id + '.sash' });
+    var bt = ''; for (var i = 0; i < (p.buttons == null ? 3 : p.buttons); i++) bt += circ(sd * -5.5, -45 + i * 5, 1.5, '#e8c34a', { sw: 0.5 });
+    s += g(bt, { p: id + '.buttons' });
+    s += limb('M-12 -47L-15 -30', jk, 5.6) + limb('M12 -47L15 -30', jk, 5.6) + circ(-15, -29, 2.6, '#fbfaf5') + circ(15, -29, 2.6, '#fbfaf5');
+    var sw = p.sword === 'L' ? -1 : 1;
+    if (p.sword) s += g(line(sw * 15, -29, sw * 17, -2, '#c9ced4', 1.8) + rect(sw * 15 - 3, -31, 6, 2, '#e8c34a', { sw: 0.5 }), { p: id + '.sword' });
+    s += rect(-7, -64, 14, 15, '#f6d4b4') + circ(-3, -58, 1, OL, { st: 0 }) + circ(3, -58, 1, OL, { st: 0 }) + rect(-5, -53.5, 10, 3.6, '#fbfaf5', { sw: 0.7 }) + circ(-4.6, -55.4, 1.4, '#ff8a8a', { st: 0, op: 0.5 }) + circ(4.6, -55.4, 1.4, '#ff8a8a', { st: 0, op: 0.5 });
+    s += path('M-6 -54q6 -3 12 0', 'none', { st: '#fbfaf5', sw: 2 });
+    s += rect(-8.5, -82, 17, 19, p.hat || '#1d1d26', { rx: 1.5 }) + rect(-9.5, -66, 19, 3, '#e8c34a', { sw: 0.6 });
+    s += g(path('M0 -82Q-3 -92 3 -97Q2 -90 4 -84Z', p.plume || '#3a8ad8', { sw: 0.8 }), { p: id + '.plume' });
+    if (p.ribbon) s += path('M-11 -40l-6 4 6 2z', p.ribbon, { sw: 0.6 });
+    if (p.dust) s += rect(-8.5, -83.5, 17, 1.8, '#d8d2c4', { st: 0 });
+    return g(s, { x: p.x, y: p.y, s: p.s, id: p.id });
+  }
+  function birdhouse(p) {
+    var id = p.id || 'bh', c = p.color || '#e0b351', rc = p.roof || '#b0413e', s = '';
+    s += rect(-2.5, -46, 5, 46, '#7a4a2a') + shadow(0, 0, 10, 2.4);
+    s += rect(-15, -82, 30, 34, c);
+    var cs = p.chimney === 'L' ? -1 : 1;
+    s += g(rect(cs * 6 - 3, -102, 6, 12, '#8a5a3a', { sw: 0.9 }), { p: id + '.chimney' });
+    s += g(path('M-21 -80L0 -98L21 -80Z', rc), { p: id + '.roof' });
+    var hole = p.hole === 'square' ? rect(-5, -72, 10, 10, '#2b2433', { st: 0, rx: 1 }) : p.hole === 'heart' ? path('M0 -61.5l-6 -6a3.4 3.4 0 0 1 6 -4a3.4 3.4 0 0 1 6 4z', '#2b2433', { st: 0 }) : circ(0, -67, 5, '#2b2433', { st: 0 });
+    s += g(hole, { p: id + '.hole' });
+    if (p.perch) s += g(line(0, -57, 0, -52, '#7a4a2a', 2.2) + circ(0, -51.5, 1.4, '#7a4a2a', { sw: 0.5 }), { p: id + '.perch' });
+    var fl = ''; for (var i = 0; i < (p.flowers || 0); i++) fl += g(flowerHead(p.flc || '#e04a6a', 1.6), { x: -10 + i * 6.6, y: -52 });
+    if (fl) s += g(fl, { p: id + '.flowers' });
+    if (p.bird) s += g(ell(0, 0, 5, 3.6, p.bird) + circ(4, -3, 2.6, p.bird) + path('M6.4 -3.4l2.6 0.6-2.4 1z', '#f2a23a', { sw: 0.4 }) + circ(4.6, -3.6, 0.5, OL, { st: 0 }), { x: -8, y: -96 });
+    if (p.leaf) s += path('M8 -48q6 -4 9 2q-5 3 -9 -2z', '#d9822a', { sw: 0.6 });
+    if (p.snow) s += path('M-21 -80L0 -98L21 -80L18 -82Q0 -93 -18 -82Z', '#fbfdff', { sw: 0.7 });
+    return g(s, { x: p.x, y: p.y, s: p.s, id: p.id });
+  }
+  function piggy(p) { var c = p.color || '#f4a6b8', s = shadow(0, 0, 16, 3) + rect(-11, -7, 5, 7, shade(c, -0.1), { rx: 1.5 }) + rect(6, -7, 5, 7, shade(c, -0.1), { rx: 1.5 }) + ell(0, -14, 17, 12, c) + path('M-8 -25l-3 -6 7 3z', c, { sw: 0.9 }) + ell(16, -14, 4, 5, shade(c, -0.06)) + circ(15.2, -15.6, 0.8, OL, { st: 0 }) + circ(15.2, -12.4, 0.8, OL, { st: 0 }) + circ(8, -19, 1.3, OL, { st: 0 }) + rect(-5, -26.4, 9, 2, '#5a3a3a', { st: 0, rx: 1 }) + path('M-17 -14q-5 -2 -4 -6q2 3 -1 4', 'none', { sw: 1 }); return g(s, { x: p.x, y: p.y, s: p.s, id: p.id }); }
+  function snowglobe(p) { var s = shadow(0, 0, 14, 2.6) + path('M-14 0L14 0L11 -9L-11 -9Z', p.base || '#8a5a34') + circ(0, -22, 14, 'rgba(210,235,255,.55)') + path('M-10 -12Q0 -9 10 -12L10 -10Q0 -8 -10 -10Z', '#fff', { st: 0 }) + poly([[-2, -11], [5, -11], [1.5, -27]], '#3f7a4a', { sw: 0.8 }) + circ(-6, -27, 1, '#fff', { st: 0 }) + circ(6, -20, 1, '#fff', { st: 0 }) + circ(-3, -32, 1, '#fff', { st: 0 }) + circ(7, -30, 0.9, '#fff', { st: 0 }) + path('M-8 -32a10 10 0 0 1 6 -4', 'none', { st: '#fff', sw: 1.6, op: 0.8 }); return g(s, { x: p.x, y: p.y, s: p.s, id: p.id }); }
+  function hourglass(p) { var c = p.sand || '#e3c27a', s = shadow(0, 0, 11, 2.4) + rect(-12, -4, 24, 4, '#7a4a2a', { rx: 1 }) + rect(-12, -38, 24, 4, '#7a4a2a', { rx: 1 }) + path('M-9 -34L9 -34Q9 -24 1.4 -19Q9 -14 9 -4L-9 -4Q-9 -14 -1.4 -19Q-9 -24 -9 -34Z', 'rgba(220,240,250,.6)') + path('M-5 -29L5 -29Q4 -24 0 -21Q-4 -24 -5 -29Z', c, { st: 0 }) + path('M-8 -4L8 -4Q6 -10 0 -12Q-6 -10 -8 -4Z', c, { st: 0 }) + line(0, -19, 0, -12, c, 0.8) + rect(-11, -34, 2.4, 30, '#7a4a2a', { sw: 0.6 }) + rect(8.6, -34, 2.4, 30, '#7a4a2a', { sw: 0.6 }); return g(s, { x: p.x, y: p.y, s: p.s, id: p.id }); }
+  function duck(p) { var c = p.color || '#f6d23a', s = shadow(0, 0, 14, 2.6) + path('M-14 -10Q-16 0 0 0Q14 0 14 -9Q10 -14 2 -12Q-4 -16 -14 -10Z', c) + circ(7, -19, 7.5, c) + path('M13 -19Q20 -19 20 -16Q16 -14 12 -16Z', '#f08a2a', { sw: 0.9 }) + circ(9, -21, 1.1, OL, { st: 0 }) + path('M-8 -8q5 -4 10 0', 'none', { st: shade(c, -0.2), sw: 1.2 }); return g(s, { x: p.x, y: p.y, s: p.s, id: p.id }); }
+  function robot(p) { var c = p.color || '#9aa3ad', s = shadow(0, 0, 13, 2.6) + rect(-8, -8, 6, 8, shade(c, -0.15)) + rect(2, -8, 6, 8, shade(c, -0.15)) + rect(-11, -26, 22, 19, c, { rx: 2 }) + rect(-6, -22, 12, 7, '#2b2433', { rx: 1 }) + circ(-3, -18.5, 1.2, '#7fe0a0', { st: 0 }) + circ(1, -18.5, 1.2, '#f2c230', { st: 0 }) + circ(4, -18.5, 1.2, '#e0384a', { st: 0 }) + limb('M-11 -22L-15 -12', c, 3.4) + limb('M11 -22L15 -12', c, 3.4) + rect(-8, -40, 16, 13, c, { rx: 2.5 }) + circ(-3.5, -34, 2, '#fff', { sw: 0.7 }) + circ(3.5, -34, 2, '#fff', { sw: 0.7 }) + line(0, -40, 0, -45, OL, 1) + circ(0, -46, 1.8, '#e0384a', { sw: 0.6 }); return g(s, { x: p.x, y: p.y, s: p.s, id: p.id }); }
+  function rocket(p) { var c = p.color || '#e0384a', s = shadow(0, 0, 12, 2.4) + path('M-6 -10L-13 0L-5 -2Z', c) + path('M6 -10L13 0L5 -2Z', c) + path('M-6 -2L-6 -26Q0 -40 6 -26L6 -2Z', '#f4f0e6') + path('M-6 -26Q0 -40 6 -26Z', c) + circ(0, -17, 3, '#6fb6e8', { sw: 1 }) + rect(-6, -6, 12, 4, c, { sw: 0.8 }); return g(s, { x: p.x, y: p.y, s: p.s, id: p.id }); }
+  function shell(p) { var c = p.color || '#f2c6a0', s = shadow(0, 0, 14, 2.4) + path('M-15 -2Q-16 -24 0 -26Q16 -24 15 -2Q0 2 -15 -2Z', c); for (var i = -2; i <= 2; i++) s += line(i * 3, -25, i * 6.4, -1, shade(c, -0.25), 0.9); s += rect(-5, -3, 10, 4, shade(c, -0.08), { rx: 1.5 }); return g(s, { x: p.x, y: p.y, s: p.s, id: p.id }); }
+  function musicbox(p) { var c = p.color || '#7a3b8a', s = shadow(0, 0, 16, 2.6) + rect(-15, -18, 30, 18, c, { rx: 1.5 }) + path('M-15 -18L-12 -26L18 -26L15 -18Z', shade(c, 0.15)) + rect(-15, -12, 30, 3, '#e8c34a', { st: 0 }) + line(15, -10, 21, -10, OL, 1.6) + path('M21 -13v6', 'none', { sw: 2 }) + text(-4, -21, '♪', { size: 8, fill: '#e8c34a', font: 'sans' }); return g(s, { x: p.x, y: p.y, s: p.s, id: p.id }); }
+  function radio(p) { var c = p.color || '#b0413e', s = shadow(0, 0, 17, 2.6) + rect(-17, -22, 34, 22, c, { rx: 4 }) + circ(-7, -11, 6.5, '#e9dcc0', { sw: 0.9 }); for (var i = -1; i <= 1; i++) s += line(-12, -11 + i * 3, -2, -11 + i * 3, '#9a8a6a', 0.8); s += rect(3, -17, 10, 5, '#fbf6e6', { sw: 0.7 }) + circ(5.5, -6, 2, '#e8c34a', { sw: 0.6 }) + circ(10.5, -6, 2, '#e8c34a', { sw: 0.6 }) + line(12, -22, 18, -34, OL, 1); return g(s, { x: p.x, y: p.y, s: p.s, id: p.id }); }
+  function lantern(p) { var c = p.color || '#3a3a46', s = shadow(0, 0, 10, 2.4) + rect(-10, -4, 20, 4, c, { rx: 1 }) + rect(-8, -26, 16, 22, 'rgba(255,230,150,.65)') + line(0, -26, 0, -4, c, 1.4) + path('M-11 -26L11 -26L6 -32L-6 -32Z', c) + path('M-5 -32q5 -8 10 0', 'none', { st: c, sw: 1.6 }) + path('M0 -10q-3 -4 0 -9q3 5 0 9z', '#ffb43a', { sw: 0.6 }); return g(s, { x: p.x, y: p.y, s: p.s, id: p.id }); }
+
   var KINDS = {
+    strand: strand, scrap: scrap, glove1: glove1, imprint: imprint, logo: logoBadge, cupcake: cupcake, teacup: teacup, nutcracker: nutcracker, birdhouse: birdhouse,
+    piggy: piggy, snowglobe: snowglobe, hourglass: hourglass, duck: duck, robot: robot, rocket: rocket, shell: shell, musicbox: musicbox, radio: radio, lantern: lantern,
     person: person, dog: dog, cat: cat, door: door, window: windowItem, curtain: curtain, counter: counter, table: table, chair: chair, sofa: sofa, armchair: armchair,
     shelf: shelf, bookcase: bookcase, book: book, rug: rug, lamp: lamp, plant: plant, vase: vase, clock: clock, candle: candle, fireplace: fireplace, frame: frame, mirror: mirror,
     coatrack: coatrack, umbrellas: umbrellaStand, toybox: toybox, jar: jar, puddle: puddle, crumbs: crumbs, trail: trail, soles: bootSoles, print: function (p) { return g(printShape(p.kind || 'shoe', p.size || 10, p.tread, p.col || '#6b4a2a', p.notch, p.foot, p.op), { x: p.x, y: p.y, r: p.r, id: p.id }); },
