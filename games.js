@@ -106,6 +106,13 @@ var GAMES = [
   { id: 'mathpuzzles', name: 'Math Puzzles', color: '#0891b2', cat: 'puzzle', min: 1, max: 1, tag: 'Patterns, sequences and brain teasers', play: 'mathpuzzles' },
   { id: 'mazes',       name: 'Mazes',        color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Draw your way out, or tilt a steel ball', play: 'mazes' },
 
+  // ── Logic and riddles (in Puzzles & Words) ──────────────────────────────
+  { id: 'mysteries',   name: 'Picture Mysteries', color: '#b45309', cat: 'puzzle', min: 1, max: 1, tag: 'Study the scene, crack the case', play: 'mysteries' },
+  { id: 'logicgrid',   name: 'Logic Grids',  color: '#0f766e', cat: 'puzzle', min: 1, max: 1, tag: 'Read the clues, fill the grid', play: 'logicgrid' },
+  { id: 'truthlies',   name: 'Truth or Lies', color: '#7c3aed', cat: 'puzzle', min: 1, max: 1, tag: 'Someone is lying. Who?', play: 'truthlies' },
+  { id: 'ciphers',     name: 'Cipher Cases', color: '#1e3a8a', cat: 'puzzle', min: 1, max: 1, tag: 'Crack the code, open the lock', play: 'ciphers' },
+  { id: 'riddles',     name: 'Riddles',      color: '#a16207', cat: 'puzzle', min: 1, max: 1, tag: 'Classic riddles and new ones', play: 'riddles' },
+
   // ── Words (in Puzzles & Words) ──────────────────────────────────────────
   { id: 'wordle',      name: 'Wordle',       color: '#22c55e', cat: 'puzzle', min: 1, max: 1, tag: 'Guess the word in six tries', play: 'wordle' },
   { id: 'spellingbee', name: 'Spelling Bee', color: '#facc15', cat: 'puzzle', min: 1, max: 1, tag: 'Make words from seven letters', play: 'spellingbee' },
