@@ -249,6 +249,90 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 .pass-cover .bn{--c:var(--p1);padding:12px 22px;border-radius:18px;background:rgba(20,16,41,.86);color:#fff;font-family:var(--display);font-size:calc(var(--bs) * .06);box-shadow:0 0 0 3px var(--c), 0 10px 30px rgba(0,0,0,.5);animation:bn 1.8s var(--ease) forwards;text-align:center;}
 @keyframes bn{0%{opacity:0;transform:scale(.6);}15%{opacity:1;transform:scale(1.05);}25%{transform:none;}80%{opacity:1;}100%{opacity:0;}}
 
+/* ── Choosing pieces: the token tray from the box ── */
+.pick{max-width:660px;margin:0 auto;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:0 0 calc(var(--safe-b) + 16px);min-height:calc(100svh - var(--safe-t) - 150px);}
+.pk-head{text-align:center;min-height:2.7rem;display:grid;place-items:center;}
+.pk-head b{--c:var(--text);display:block;font-family:var(--display);font-weight:400;font-size:clamp(1.7rem,7.4vw,2.5rem);line-height:1.1;color:var(--c);}
+html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{color:color-mix(in srgb,var(--c) 55%,var(--text));}
+.pk-head b.in{animation:pkIn .5s var(--spring) both;}
+@keyframes pkIn{from{opacity:0;transform:translateY(12px) scale(.9);}}
+.pk-seats{--cols:4;display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:16px 8px;padding-top:16px;}
+@media (min-width:640px){.pk-seat .pk-nm{font-size:1.02rem;} .pk-seat .pk-tn{font-size:.8rem;}}
+.pk-seat{--c:var(--p1);position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px 8px;border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);
+  transition:transform .4s var(--spring), box-shadow .3s, opacity .3s;min-width:0;}
+.pk-seat.now{transform:translateY(-6px);box-shadow:var(--shadow-sm), inset 0 0 0 2.5px var(--c), 0 0 26px -4px var(--c);}
+.pk-seat .pk-ptr{position:absolute;left:50%;top:-22px;width:22px;height:22px;margin-left:-11px;color:var(--c);opacity:0;transform:translateY(-6px);transition:opacity .25s, transform .25s;pointer-events:none;filter:drop-shadow(0 0 6px var(--c));}
+.pk-seat .pk-ptr svg{width:100%;height:100%;stroke-width:3.2;}
+.pk-seat.now .pk-ptr{opacity:1;transform:none;animation:pkPtr 1s ease-in-out infinite;}
+@keyframes pkPtr{50%{transform:translateY(5px);}}
+.pk-sock{position:relative;width:min(96px,16vw,100%);aspect-ratio:1;border-radius:50%;border:0;padding:0;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--c) 18%,transparent);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 70%,transparent);color:inherit;-webkit-tap-highlight-color:transparent;}
+.pk-sock::before{content:"";position:absolute;inset:7px;border-radius:50%;border:2px dashed color-mix(in srgb,var(--c) 60%,transparent);}
+.pk-seat.now .pk-sock::before{animation:pkSpin 9s linear infinite;}
+@keyframes pkSpin{to{transform:rotate(360deg);}}
+.pk-sock.has{cursor:pointer;background:radial-gradient(circle at 35% 30%, color-mix(in srgb,var(--c) 70%,#fff), var(--c) 60%, color-mix(in srgb,var(--c) 70%,#000));box-shadow:inset 0 -3px 5px rgba(0,0,0,.3), 0 2px 4px rgba(0,0,0,.35);}
+.pk-sock.has::before{display:none;}
+.pk-sock svg.tok-svg{width:88%;height:88%;filter:drop-shadow(0 2px 1.5px rgba(0,0,0,.55));}
+.pk-sock.has:active{transform:scale(.94);}
+.pk-sock.land{animation:pkLand .5s var(--spring);}
+@keyframes pkLand{0%{transform:scale(1.18);}40%{transform:scale(.92);}100%{transform:none;}}
+.pk-sock .pk-bot{position:absolute;right:-4px;top:-4px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--surface-3);color:var(--text-2);box-shadow:0 1px 2px rgba(0,0,0,.4);}
+.pk-sock .pk-bot svg{width:13px;height:13px;}
+.pk-seat .pk-nm{max-width:100%;font-weight:800;font-size:.86rem;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pk-seat .pk-tn{font-size:.7rem;font-weight:700;color:var(--text-3);line-height:1;min-height:.7rem;white-space:nowrap;}
+/* the box: a wooden frame with a velvet tray and a moulded well for each piece */
+.pk-box{padding:10px;border-radius:24px;--wood-a:#6b4126;--wood-b:#412614;}
+.pk-tray{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:10px;border-radius:16px;overflow:hidden;
+  --felt-a:#a31d3a;--felt-b:#6c1026;--felt-c:#470a19;--felt-mark:none;--c:#ffd27a;}
+.pk-tray::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(115deg,transparent 25%,rgba(255,255,255,.07) 45%,transparent 62%);}
+.pk-tray.lit{box-shadow:inset 0 6px 18px rgba(0,0,0,.55), inset 0 0 0 2px var(--c);transition:box-shadow .4s;}
+.pk-well{--c:#ffd27a;position:relative;aspect-ratio:.84;border:0;padding:6% 0 8%;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;cursor:pointer;color:#f3dfa6;
+  background:radial-gradient(90% 75% at 50% 42%, rgba(0,0,0,.34), rgba(0,0,0,.14) 72%, rgba(0,0,0,.06));
+  box-shadow:inset 0 6px 12px rgba(0,0,0,.62), inset 0 -2px 0 rgba(255,255,255,.07), 0 1px 0 rgba(255,255,255,.09);-webkit-tap-highlight-color:transparent;transition:box-shadow .3s;}
+.pk-well .pk-mould,.pk-well .pk-pc{position:relative;width:80%;aspect-ratio:1;flex:none;}
+.pk-well .pk-mould{position:absolute;left:10%;top:6%;filter:brightness(0) blur(.4px);opacity:.38;}
+.pk-well .pk-pc{transition:transform .3s var(--spring), filter .3s, opacity .3s;}
+.pk-well svg.tok-svg{width:100%;height:100%;display:block;}
+.pk-well .pk-pc svg.tok-svg{filter:drop-shadow(0 4px 3px rgba(0,0,0,.6));}
+.pk-well .pk-tn{position:relative;font-family:'Sofia Sans Condensed',sans-serif;font-weight:800;font-size:clamp(.66rem,2.7vw,.92rem);letter-spacing:.06em;text-transform:uppercase;line-height:1;white-space:nowrap;
+  text-shadow:0 1px 0 rgba(0,0,0,.6);transition:opacity .3s;}
+@media (hover:hover){.pk-well:not(.gone):not(.taken):hover .pk-pc{transform:translateY(-5px) scale(1.06) rotate(-3deg);}}
+.pk-well:not(.gone):not(.taken):active .pk-pc{transform:translateY(-3px) scale(.97);}
+.pk-well:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+.pk-well.gone{cursor:default;} .pk-well.gone .pk-pc{opacity:0;transform:translateY(-14px) scale(1.1);} .pk-well.gone .pk-tn{opacity:.4;}
+.pk-well.last,.pk-well.hov,.pk-well.mine{box-shadow:inset 0 6px 12px rgba(0,0,0,.62), inset 0 0 0 2.5px var(--c), 0 0 18px -2px var(--c);}
+.pk-well.last .pk-pc{animation:pkBob 1.6s ease-in-out infinite;}
+@keyframes pkBob{50%{transform:translateY(-5px);}}
+.pk-well.hov .pk-pc{transform:translateY(-8px) scale(1.08);}
+.pk-well.taken{cursor:not-allowed;} .pk-well.taken .pk-pc{filter:grayscale(1) brightness(.7);opacity:.42;} .pk-well.taken .pk-tn{opacity:.45;}
+.pk-well.wait .pk-pc{animation:pkWait .7s ease-in-out infinite;}
+@keyframes pkWait{50%{transform:translateY(-10px) scale(1.08);}}
+.pk-well .pk-own{position:absolute;right:5px;top:5px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--oc);color:#fff;font-weight:900;font-size:.68rem;box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 0 0 1.5px rgba(255,255,255,.5);animation:pkLand .45s var(--spring);}
+.pk-well.shake{animation:pkShake .42s;}
+@keyframes pkShake{20%{transform:translateX(-6px) rotate(-2deg);}40%{transform:translateX(5px) rotate(1.5deg);}60%{transform:translateX(-3px);}80%{transform:translateX(2px);}}
+.pk-acts{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.pk-acts .pk-go{min-width:min(100%,320px);}
+.pk-acts .pk-go.ready{animation:pkReady 1.4s ease-in-out infinite;}
+@keyframes pkReady{50%{transform:scale(1.035);box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 25%,transparent);}}
+.pk-acts .btn-ghost{font-size:.92rem;min-height:40px;color:var(--text-2);}
+.pk-acts .btn-ghost svg{width:18px;height:18px;}
+.pk-acts .btn-ghost[hidden]{display:inline-flex;visibility:hidden;}
+.pk-fly{position:fixed;z-index:500;pointer-events:none;will-change:transform;}
+.pk-fly svg.tok-svg{width:100%;height:100%;display:block;filter:drop-shadow(0 10px 6px rgba(0,0,0,.45));}
+/* the online wait room: a smaller tray, and each player's piece beside their name */
+.pk-ol{display:flex;flex-direction:column;gap:8px;}
+.pk-ol .pk-box{padding:8px;border-radius:20px;}
+.pk-ol .pk-tray{gap:6px;padding:8px;}
+.pk-ol .pk-well .pk-tn{font-size:clamp(.6rem,2.4vw,.8rem);}
+.pk-badge{--c:var(--p1);flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;position:relative;
+  background:color-mix(in srgb,var(--c) 18%,transparent);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 60%,transparent);}
+.pk-badge::before{content:"";position:absolute;inset:6px;border-radius:50%;border:2px dashed color-mix(in srgb,var(--c) 55%,transparent);}
+.pk-badge.has{background:radial-gradient(circle at 35% 30%, color-mix(in srgb,var(--c) 70%,#fff), var(--c) 60%, color-mix(in srgb,var(--c) 70%,#000));box-shadow:inset 0 -2px 4px rgba(0,0,0,.3), 0 1px 3px rgba(0,0,0,.35);}
+.pk-badge.has::before{display:none;}
+.pk-badge svg.tok-svg{width:86%;height:86%;filter:drop-shadow(0 1.5px 1px rgba(0,0,0,.55));}
+.pk-badge.land{animation:pkLand .5s var(--spring);}
+@media (prefers-reduced-motion:reduce){.pk-seat.now .pk-ptr,.pk-well.last .pk-pc,.pk-well.wait .pk-pc,.pk-seat.now .pk-sock::before,.pk-acts .pk-go.ready{animation:none;}}
+
 /* ── Wide screens: board on the left, everything else beside it ── */
 @media (orientation:landscape) and (min-width:900px){
   #app.mono{padding-top:4px;}
@@ -346,7 +430,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 
   // ═══ Setup ══════════════════════════════════════════════════════════════
   function showSetup() {
-    S = null; mode = null; view = null; app.className = 'stage'; app.innerHTML = '';
+    pickStop(); S = null; mode = null; view = null; app.className = 'stage'; app.innerHTML = '';
     Kit.setup(app, {
       modes: [
         { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against 1 to 7 computer players' },
@@ -366,20 +450,239 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
         if (cfg.mode === 'cpu') { speed = o.speed === 'fast' ? 'fast' : 'normal'; lsSet('mono_speed', speed); }
         var opts = { len: o.len, noAuction: o.auction === 'off', fp: o.fp === 'on', go400: o.go400 === 'on' };
         if (cfg.mode === 'online') { var me = lsGet(NETME, {}) || {}; me.name = cfg.players[0] && cfg.players[0].name !== 'You' ? cfg.players[0].name : me.name; me.opts = opts; lsSet(NETME, me); goLobby(); return; }
-        start(cfg.mode, cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), opts);
+        showPicker(cfg.mode, cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), opts);
       }
     });
   }
-  function start(m, players, opts) {
-    stopAll(); mode = m;
+  function fixNames(players) {
     var my = (function () { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } })();
     players.forEach(function (p, i) { if (p.name === 'You' || !p.name) p.name = i === 0 && my ? my : 'Player ' + (i + 1); });
+    return players;
+  }
+  function start(m, players, opts) {
+    stopAll(); pickStop(); mode = m;
+    fixNames(players);
+    // every player gets a different piece: keep the ones chosen, deal the rest from what's left
+    var used = {}; players.forEach(function (p) { if (p.tok && M.TOKENS.indexOf(p.tok) >= 0 && !used[p.tok]) used[p.tok] = 1; else p.tok = null; });
+    var left = shuffled(M.TOKENS.filter(function (t) { return !used[t]; }));
+    players.forEach(function (p) { if (!p.tok) p.tok = left.shift(); });
+    rememberToks(players);
     S = M.newGame(players, opts);
     Kit.gameStart(); S.started = Date.now();
     lastHuman = -1; lastTurnSeen = -1;
     build(); save(); render();
     setTimeout(function () { Kit.callout(S.players[0].name === 'You' ? 'You go first' : S.players[0].name + ' goes first'); Kit.sfx('whoosh'); }, 400);
     afterChange();
+  }
+
+  // ═══ Choosing pieces ════════════════════════════════════════════════════
+  // After setup, the box opens: the eight metal pieces sit in a velvet tray and each player takes one, in seat
+  // order (people first, then the computer players take from what's left). A piece in a seat goes back to the
+  // tray with a tap, or with Undo. Each name's last piece is remembered and offered to them next time.
+  var TOKMEM = 'mono_toks', pick = null;
+  function shuffled(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function memKey(n) { return String(n || '').trim().toLowerCase(); }
+  function lastTok(name) { var m = lsGet(TOKMEM, {}) || {}; var t = m[memKey(name)]; return M.TOKENS.indexOf(t) >= 0 ? t : null; }
+  function rememberToks(players) {
+    var m = lsGet(TOKMEM, {}) || {};
+    players.forEach(function (p) { if (p.tok && p.name && !/^Player \d+$/.test(p.name)) m[memKey(p.name)] = p.tok; });
+    lsSet(TOKMEM, m);
+  }
+  function pickStop() { if (pick) clearTimeout(pick.t); pick = null; }
+  function pickPoss(n) { return n === 'You' ? 'Your' : n + '’s'; }
+  // a metal piece flying from one place to another: lifts, turns once, lands (a Promise)
+  function flyTok(tok, from, to, back) {
+    var a = from.getBoundingClientRect(), b = to.getBoundingClientRect(), d = T(back ? 420 : 640);
+    if (!d || !a.width || !b.width) return Promise.resolve();
+    var w = Math.min(a.width, a.height), f = el('div', { class: 'pk-fly', html: A.token(tok), style: { left: (a.left + a.width / 2 - w / 2) + 'px', top: (a.top + a.height / 2 - w / 2) + 'px', width: w + 'px', height: w + 'px' } });
+    document.body.appendChild(f);
+    var dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2), s = Math.min(b.width, b.height) * 0.88 / w;
+    var lift = back ? -10 : -26, arc = Math.min(-30, -Math.abs(dx) * 0.15 - 20);
+    var fr = [
+      { transform: 'perspective(500px) translate(0,0) scale(1) rotateY(0deg) rotate(0deg)' },
+      { offset: 0.24, transform: 'perspective(500px) translate(0,' + lift + 'px) scale(' + (back ? 1.05 : 1.25) + ') rotateY(0deg) rotate(-10deg)' },
+      { offset: 0.72, transform: 'perspective(500px) translate(' + dx * 0.82 + 'px,' + (dy * 0.82 + arc) + 'px) scale(' + ((1.2 + s) / 2) + ') rotateY(' + (back ? -250 : 290) + 'deg) rotate(4deg)' },
+      { transform: 'perspective(500px) translate(' + dx + 'px,' + dy + 'px) scale(' + s + ') rotateY(' + (back ? -360 : 360) + 'deg) rotate(0deg)' }
+    ];
+    return new Promise(function (res) {
+      var an; try { an = f.animate(fr, { duration: d, easing: 'cubic-bezier(.3,.6,.3,1)', fill: 'forwards' }); } catch (e) { an = null; }
+      function done() { f.remove(); res(); }
+      if (an) an.onfinish = done; else setTimeout(done, d);
+    });
+  }
+  function showPicker(m, players, opts) {
+    stopAll(); pickStop(); S = null; mode = null; view = null;
+    fixNames(players);
+    pick = { m: m, players: players, opts: opts, toks: players.map(function () { return null; }), hist: [], anim: 0, no: {}, t: 0, head: '' };
+    app.className = 'stage'; app.innerHTML = '';
+    var root = el('div', { class: 'pick' });
+    pick.headEl = el('div', { class: 'pk-head', 'aria-live': 'polite' });
+    pick.seatsEl = el('div', { class: 'pk-seats', style: { '--n': players.length, '--cols': players.length <= 4 ? players.length : Math.ceil(players.length / 2) } });
+    pick.seats = players.map(function (p, i) {
+      var sock = el('button', { type: 'button', class: 'pk-sock', 'aria-label': p.name + ': no piece yet', onclick: function () { putBack(i); } });
+      var s = el('div', { class: 'pk-seat', style: { '--c': pcolor(i) } }, [el('i', { class: 'pk-ptr', html: Kit.icon('down') }), sock, el('div', { class: 'pk-nm', text: p.name }), el('div', { class: 'pk-tn' })]);
+      pick.seatsEl.appendChild(s);
+      return { el: s, sock: sock, tn: s.querySelector('.pk-tn') };
+    });
+    var tray = trayEl(function (tok) { tapWell(tok); });
+    pick.tray = tray;
+    pick.rand = el('button', { type: 'button', class: 'btn btn-ghost', onclick: randomRest });
+    pick.go = el('button', { type: 'button', class: 'btn btn-soft btn-lg pk-go', html: Kit.icon('play') + '<span>Start</span>', onclick: pickGo });
+    root.appendChild(pick.headEl); root.appendChild(pick.seatsEl);
+    root.appendChild(el('div', { class: 'pk-box wood' }, [tray.el]));
+    root.appendChild(el('div', { class: 'pk-acts' }, [pick.go, pick.rand]));
+    app.appendChild(root);
+    window.scrollTo(0, 0);
+    Kit.sfx('flip'); Kit.haptic('light');
+    // the pieces settle into the tray as the box opens
+    M.TOKENS.forEach(function (t, k) { var pc = tray.wells[t].querySelector('.pk-pc'); if (pc.animate && !TEST.instant) pc.animate([{ opacity: 0, transform: 'translateY(-26px) scale(1.15)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 60 + k * 45, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'backwards' }); });
+    paintPick();
+  }
+  // the tray: one moulded well per piece. Returns {el, wells: {tok: button}}
+  function trayEl(onTap) {
+    var tray = el('div', { class: 'pk-tray felt-in', role: 'group', 'aria-label': 'Pieces' }), wells = {};
+    M.TOKENS.forEach(function (t) {
+      var w = el('button', { type: 'button', class: 'pk-well', 'data-tok': t, 'aria-label': A.TOK_NAME[t], onclick: function () { onTap(t); } }, [
+        el('span', { class: 'pk-mould', 'aria-hidden': 'true', html: A.token(t) }),
+        el('span', { class: 'pk-pc', html: A.token(t) }),
+        el('span', { class: 'pk-tn', text: A.TOK_NAME[t] })
+      ]);
+      wells[t] = w; tray.appendChild(w);
+    });
+    return { el: tray, wells: wells };
+  }
+  // who chooses now: people in seat order, then the computer players
+  function chooser() {
+    if (!pick) return -1;
+    var P = pick.players, i;
+    for (i = 0; i < P.length; i++) if (!P[i].cpu && !pick.toks[i]) return i;
+    for (i = 0; i < P.length; i++) if (P[i].cpu && !pick.toks[i]) return i;
+    return -1;
+  }
+  function freeToks() { return M.TOKENS.filter(function (t) { return pick.toks.indexOf(t) < 0; }); }
+  function paintPick() {
+    if (!pick) return;
+    var c = chooser(), P = pick.players, free = freeToks(), last = c >= 0 && !P[c].cpu ? lastTok(P[c].name) : null;
+    if (last && free.indexOf(last) < 0) last = null;
+    var head = c < 0 ? 'Ready to play' : pickPoss(P[c].name) + ' pick';
+    if (head !== pick.head) {
+      pick.head = head; pick.headEl.innerHTML = '';
+      pick.headEl.appendChild(el('b', { class: 'in', text: head, style: { '--c': c < 0 ? 'var(--text)' : pcolor(c) } }));
+    }
+    pick.seats.forEach(function (s, i) {
+      var t = pick.toks[i], has = !!t && !s.flying;
+      s.el.classList.toggle('now', i === c);
+      s.sock.classList.toggle('has', has);
+      s.sock.innerHTML = (has ? A.token(t) : '') + (P[i].cpu ? '<i class="pk-bot">' + Kit.icon('bot') + '</i>' : '');
+      s.sock.setAttribute('aria-label', P[i].name + ': ' + (t ? A.TOK_NAME[t] + '. Tap to put it back' : 'no piece yet'));
+      s.sock.disabled = !t;
+      s.tn.textContent = has ? A.TOK_NAME[t] : '';
+    });
+    M.TOKENS.forEach(function (t) {
+      var w = pick.tray.wells[t], gone = pick.toks.indexOf(t) >= 0 || !!(pick.back && pick.back[t]);
+      w.classList.toggle('gone', gone); w.disabled = gone;
+      w.classList.toggle('last', t === last);
+      w.classList.toggle('hov', t === pick.hov);
+      w.style.setProperty('--c', c >= 0 ? pcolor(c) : '#ffd27a');
+      w.setAttribute('aria-label', A.TOK_NAME[t] + (gone ? ' (taken)' : ''));
+    });
+    pick.tray.el.classList.toggle('lit', c >= 0);
+    pick.tray.el.style.setProperty('--c', c >= 0 ? pcolor(c) : '#ffd27a');
+    var none = pick.toks.every(function (t) { return !t; });
+    pick.rand.hidden = c < 0;
+    pick.rand.innerHTML = Kit.icon('shuffle') + '<span>' + (none ? 'Random for everyone' : 'Random for the rest') + '</span>';
+    pick.go.classList.toggle('ready', c < 0); pick.go.classList.toggle('btn-primary', c < 0); pick.go.classList.toggle('btn-soft', c >= 0);
+    // a computer player's turn: it looks over what's left, then takes one
+    clearTimeout(pick.t);
+    if (c >= 0 && P[c].cpu && !pick.anim) {
+      pick.t = setTimeout(function () {
+        if (!pick || pick.anim || chooser() !== c) return;
+        var left = freeToks().filter(function (t) { return t !== pick.no[c]; }); if (!left.length) left = freeToks();
+        var want = lastTok(P[c].name), t = want && left.indexOf(want) >= 0 ? want : left[Math.floor(Math.random() * left.length)];
+        pick.hov = t; paintPick();
+        pick.t = setTimeout(function () { if (!pick || chooser() !== c) return; pick.hov = null; take(c, t); }, T(320));
+      }, T(380));
+    }
+  }
+  function tapWell(tok) {
+    if (!pick || pick.anim) return;
+    var c = chooser();
+    if (c < 0 || pick.toks.indexOf(tok) >= 0) { shakeWell(pick.tray.wells[tok]); return; }
+    if (pick.players[c].cpu) return;   // the computer is choosing
+    take(c, tok);
+  }
+  function shakeWell(w) { if (!w) return; w.classList.remove('shake'); void w.offsetWidth; w.classList.add('shake'); Kit.sfx('bad'); Kit.haptic('error'); }
+  // seat i takes tok: the piece lifts out of its well and flies to the seat
+  function take(i, tok, quick) {
+    var P = pick;
+    if (!P || P.toks[i] || P.toks.indexOf(tok) >= 0) return Promise.resolve();
+    var s = P.seats[i], from = P.tray.wells[tok].querySelector('.pk-pc');
+    P.toks[i] = tok; P.hist.push(i); delete P.no[i];
+    s.flying = true; P.anim++;
+    Kit.sfx('pop', quick ? 0.6 : 1); Kit.haptic('light');
+    var fl = flyTok(tok, from, s.sock);
+    paintPick();
+    return fl.then(function () {
+      if (pick !== P) return;
+      s.flying = false; P.anim--;
+      Kit.sfx('chip'); Kit.haptic('medium');
+      paintPick();
+      s.sock.classList.remove('land'); void s.sock.offsetWidth; s.sock.classList.add('land');
+      if (chooser() < 0 && !P.anim) { Kit.sfx('sparkle'); Kit.haptic('success'); }
+    });
+  }
+  // a piece goes back to its well
+  // o: {undo: true (from Undo: a computer player may take the same piece again), delay: ms before it flies}
+  function putBack(i, o) {
+    o = o || {};
+    if (!pick || (pick.anim && !o.undo) || !pick.toks[i]) return;
+    var P = pick, tok = P.toks[i], s = P.seats[i], w = P.tray.wells[tok];
+    P.toks[i] = null; P.hist = P.hist.filter(function (x) { return x !== i; });
+    if (P.players[i].cpu && !o.undo) P.no[i] = tok;   // a computer player you took a piece from picks something else
+    P.back = P.back || {}; P.back[tok] = 1; P.anim++;
+    clearTimeout(P.t); P.hov = null;
+    paintPick();
+    wait(o.delay || 0).then(function () {
+      if (pick !== P) return;
+      if (!o.delay || o.delay < 50) { Kit.sfx('deal'); Kit.haptic('light'); }
+      return flyTok(tok, s.sock, w.querySelector('.pk-pc'), true);
+    }).then(function () {
+      if (pick !== P) return;
+      delete P.back[tok]; P.anim--;
+      Kit.sfx('tick', 0.7);
+      paintPick();
+    });
+  }
+  function pickUndo() {
+    if (!pick || pick.anim) return;
+    if (!pick.hist.length) { Kit.toast('Nothing to undo'); return; }
+    // back to the last person's pick, with any computer picks made after it
+    var back = [], h = pick.hist.slice();
+    while (h.length) { var i = h.pop(); back.push(i); if (!pick.players[i].cpu) break; }
+    back.forEach(function (i, k) { putBack(i, { undo: true, delay: k * 90 }); });
+  }
+  // deal the pieces left to everyone without one, one after another
+  function dealRest() {
+    var left = shuffled(freeToks()), seats = [];
+    pick.players.forEach(function (p, i) { if (!pick.toks[i]) seats.push(i); });
+    if (!seats.length) return Promise.resolve();
+    clearTimeout(pick.t); pick.hov = null;
+    Kit.sfx('whoosh');
+    return Promise.all(seats.map(function (i, k) { return wait(k * 110).then(function () { return take(i, left[k], true); }); }));
+  }
+  function randomRest() { if (!pick || pick.anim) return; dealRest(); }
+  function pickGo() {
+    if (!pick || pick.go.disabled) return;
+    var P = pick;
+    function go() {
+      if (pick !== P) return;
+      var players = P.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, tok: P.toks[i] }; });
+      start(P.m, players, P.opts);
+    }
+    if (P.anim) return;
+    if (chooser() < 0) { go(); return; }
+    P.go.disabled = true;
+    dealRest().then(function () { return wait(350); }).then(go);
   }
 
   // ═══ Building the screen ════════════════════════════════════════════════
@@ -855,6 +1158,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
     Kit.sfx('pop'); Kit.haptic('medium');
   }
   function undo() {
+    if (pick) return pickUndo();
     if (mode === 'online') return Kit.toast('No undo in online games');
     if (busy || !undoStack.length) return Kit.toast('Nothing to undo');
     clearTimeout(botT);
@@ -1227,7 +1531,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
       againLabel: mode === 'online' ? 'Back to the table' : 'Play again',
       again: function () {
         if (mode === 'online') { backToTable(); return; }
-        start(mode, P.map(function (p) { return { name: p.name, cpu: p.cpu }; }), S.opts);
+        start(mode, P.map(function (p) { return { name: p.name, cpu: p.cpu, tok: p.tok }; }), S.opts);
       },
       extra: [{ label: 'Look at the board', onClick: function () { render(); } }, { label: 'Change players', onClick: function () { if (mode === 'online') leaveOnline(); showSetup(); } }]
     });
@@ -1268,7 +1572,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
   var net = { role: null, table: null, peer: null, seat: 0, roster: [], wait: null, lobby: null, pidN: 0 };
   function meName() { var m = lsGet(NETME, {}) || {}; return m.name || (function () { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } })() || ''; }
   function goLobby() {
-    leaveOnline(); S = null; view = null; mode = null; app.className = 'stage'; app.innerHTML = '';
+    pickStop(); leaveOnline(); S = null; view = null; mode = null; app.className = 'stage'; app.innerHTML = '';
     net.lobby = Online.lobby(app, {
       game: 'monopoly', title: 'Play Online', max: 8,
       intro: 'Two to eight players, each on their own device. One opens a table, the others join.',
@@ -1288,7 +1592,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
     if (net.table) { try { net.table.close(); } catch (e) {} }
     if (net.peer) { try { net.peer.close('left'); } catch (e) {} }
     closeLobby();
-    net.role = null; net.table = null; net.peer = null; net.roster = []; net.wait = null;
+    net.role = null; net.table = null; net.peer = null; net.roster = []; net.wait = null; net.ol = null;
     if (mode === 'online') { mode = null; }
   }
   function hostTable(name) {
@@ -1296,11 +1600,12 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
     return Online.host({ game: 'monopoly', name: name, max: 8, accept: function () { return S && mode === 'online' && S.phase !== 'over' ? 'That game has already started' : true; } }).then(function (table) {
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(); goLobby(); });
       net.role = 'host'; net.table = table; net.seat = 0; net.pidN = 1;
-      net.roster = [{ pid: 1, name: name, host: true }];
+      net.roster = [{ pid: 1, name: name, host: true, tok: null }];
       table.on('peer', function (peer) {
         if (S && mode === 'online' && S.phase !== 'over') { peer.send({ t: 'full' }, true); setTimeout(function () { peer.close('host'); }, 300); return; }
         peer._pid = ++net.pidN;
-        net.roster.push({ pid: peer._pid, name: uniqueName(peer.name), peer: peer });
+        net.roster.push({ pid: peer._pid, name: uniqueName(peer.name), peer: peer, tok: null });
+        peer.send({ t: 'you', pid: peer._pid }, true);
         sendRoster(); Kit.toast(peerName(peer) + ' joined'); Kit.sfx('pop');
       });
       table.on('leave', function (peer) {
@@ -1313,6 +1618,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
         } else if (r) Kit.toast(r.name + ' left');
       });
       table.on('msg', function (peer, m) {
+        if (m.t === 'tok') { var rr = net.roster.filter(function (x) { return x.peer === peer; })[0]; if (rr) claimTok(rr, m.tok, peer); return; }
         if (m.t !== 'act' || !S || mode !== 'online') return;
         var r = net.roster.filter(function (x) { return x.peer === peer; })[0];
         if (!r || r.seat == null || !m.a || m.a.p !== r.seat) { peer.send({ t: 'err', msg: 'That isn’t yours to do' }, true); return; }
@@ -1325,28 +1631,113 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
   function peerName(peer) { var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; return r ? r.name : peer.name; }
   function uniqueName(n) { var base = n || 'Player', k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
   function sendRoster() {
-    var ro = net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host }; });
+    var ro = net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host, tok: r.tok || null }; });
     if (net.table) net.table.broadcast({ t: 'ro', ro: ro }, true);
-    if (net.wait) net.wait.update(waitPlayers(ro, 1));
+    if (net.wait) { net.wait.update(waitPlayers(ro, 1)); olPaint(ro, 1); }
   }
-  function waitPlayers(ro, mePid) { return ro.map(function (r, i) { return { name: r.name, host: !!r.host, me: r.pid === mePid, color: Kit.color(i) }; }); }
+  function waitPlayers(ro, mePid) { return ro.map(function (r, i) { return { name: r.name, host: !!r.host, me: r.pid === mePid, color: Kit.color(i), tok: r.tok || null }; }); }
   function showWait() {
     S = null; view = null; app.className = 'stage';
     if (net.role === 'host') {
       net.table.setStatus('open', '');
-      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 8, players: waitPlayers(net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host }; }), 1),
+      var ro = net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host, tok: r.tok || null }; });
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 8, players: waitPlayers(ro, 1),
         onStart: hostStart, onLeave: function () { leaveOnline(); goLobby(); }, note: 'Everyone starts with $1,500. House rules come from your setup screen.' });
+      olMount(); olPaint(ro, 1);
     } else {
-      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 8, players: waitPlayers(net.ro || [], net.myPid), onLeave: function () { leaveOnline(); goLobby(); } });
+      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 8, players: guestPlayers(net.ro || []), onLeave: function () { leaveOnline(); goLobby(); } });
+      olMount(); olPaint(net.ro || [], net.myPid);
     }
     window.scrollTo(0, 0);
+  }
+  // ── Pieces in the wait room. The host's roster holds who has which piece: first come, first served.
+  function claimTok(r, tok, peer) {
+    if (S && mode === 'online' && S.phase !== 'over') return;
+    tok = tok || null;
+    if (tok && M.TOKENS.indexOf(tok) < 0) return;
+    if (tok && net.roster.some(function (x) { return x !== r && x.tok === tok; })) {
+      if (peer) peer.send({ t: 'tokno', tok: tok }, true); else if (net.ol) shakeWell(net.ol.tray.wells[tok]);
+      return;
+    }
+    r.tok = tok; sendRoster();
+  }
+  function guestPid(ro) { if (net.myPid) return net.myPid; var me = ro.filter(function (r) { return r.name === meName(); })[0]; return me ? me.pid : -1; }
+  function guestPlayers(ro) { return waitPlayers(ro, guestPid(ro)); }
+  function olRo() { return net.role === 'host' ? net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host, tok: r.tok || null }; }) : (net.ro || []); }
+  function olMe() { return net.role === 'host' ? 1 : guestPid(net.ro || []); }
+  // the tray goes under the list of players
+  function olMount() {
+    var wrap = app.querySelector('.ol'), list = wrap && wrap.querySelector('.stack');
+    if (!wrap || !list) { net.ol = null; return; }
+    var tray = trayEl(olTap);
+    var box = el('div', { class: 'pk-ol' }, [el('div', { class: 'ol-h', text: 'Your piece' }), el('div', { class: 'pk-box wood' }, [tray.el])]);
+    list.parentNode.insertBefore(box, list.nextSibling);
+    net.ol = { el: box, tray: tray, pending: null, prev: null };
+  }
+  function olTap(tok) {
+    if (!net.ol) return;
+    var ro = olRo(), me = olMe(), owner = ro.filter(function (r) { return r.tok === tok; })[0], mine = ro.filter(function (r) { return r.pid === me; })[0];
+    if (owner && owner.pid !== me) { shakeWell(net.ol.tray.wells[tok]); return; }
+    if (net.ol.pending) return;
+    var want = owner ? null : tok;   // tap your own piece to put it back
+    if (owner) { Kit.sfx('deal'); Kit.haptic('light'); }
+    if (net.role === 'host') { var r = net.roster.filter(function (x) { return x.pid === 1; })[0]; if (r) claimTok(r, want, null); return; }
+    if (!mine) return;
+    if (want) { net.ol.pending = want; Kit.sfx('pop'); Kit.haptic('light'); olPaint(ro, me); var P = net.ol; setTimeout(function () { if (net.ol === P && P.pending === want) { P.pending = null; olPaint(olRo(), olMe()); } }, 5000); }
+    netSend({ t: 'tok', tok: want });
+  }
+  function olPaint(ro, me) {
+    var O = net.ol; if (!O) return;
+    var mi = -1; ro.forEach(function (r, i) { if (r.pid === me) mi = i; });
+    var my = mi >= 0 ? ro[mi] : null, myTok = my && my.tok, mc = mi >= 0 ? pcolor(mi) : '#ffd27a';
+    if (O.pending && (myTok === O.pending || ro.some(function (r) { return r.tok === O.pending; }))) O.pending = null;
+    var last = !myTok && my ? lastTok(my.name) : null;
+    O.tray.el.style.setProperty('--c', mc);
+    M.TOKENS.forEach(function (t) {
+      var w = O.tray.wells[t], oi = -1; ro.forEach(function (r, i) { if (r.tok === t) oi = i; });
+      var own = oi >= 0 ? ro[oi] : null, isMine = own && own.pid === me;
+      w.style.setProperty('--c', mc);
+      w.classList.toggle('taken', !!own && !isMine);
+      w.classList.toggle('mine', !!isMine);
+      w.classList.toggle('wait', t === O.pending);
+      w.classList.toggle('last', t === last && !own && !O.pending);
+      w.setAttribute('aria-label', A.TOK_NAME[t] + (isMine ? ' (yours, tap to put it back)' : own ? ' (' + own.name + '’s)' : ''));
+      var disc = w.querySelector('.pk-own'), key = own && !isMine ? own.pid + ':' + oi : '';
+      if ((disc ? disc.getAttribute('data-k') : '') !== key) {
+        if (disc) disc.remove();
+        if (key) w.appendChild(el('i', { class: 'pk-own', 'data-k': key, style: { '--oc': pcolor(oi) }, text: (own.name || '?').charAt(0).toUpperCase() }));
+      }
+    });
+    // each player's piece beside their name
+    var rows = app.querySelectorAll('.ol .stack .ol-seat'), badges = {};
+    ro.forEach(function (r, i) {
+      var row = rows[i]; if (!row) return;
+      var old = row.querySelector('.pk-badge'); if (old) old.remove();
+      var b = el('span', { class: 'pk-badge' + (r.tok ? ' has' : ''), style: { '--c': pcolor(i) }, title: r.tok ? A.TOK_NAME[r.tok] : '', html: r.tok ? A.token(r.tok) : '' });
+      row.appendChild(b); badges[r.pid] = b;
+    });
+    // what changed since last time: your piece flies to your name; others' pieces pop in beside theirs
+    var prev = O.prev; O.prev = {}; ro.forEach(function (r) { O.prev[r.pid] = r.tok || null; });
+    if (!prev) return;
+    ro.forEach(function (r) {
+      var was = prev[r.pid], b = badges[r.pid];
+      if (!r.tok || r.tok === was || !b) return;
+      if (r.pid === me) {
+        b.style.visibility = 'hidden';
+        flyTok(r.tok, O.tray.wells[r.tok].querySelector('.pk-pc'), b).then(function () { b.style.visibility = ''; b.classList.add('land'); Kit.sfx('chip'); Kit.haptic('medium'); });
+      } else { b.classList.add('land'); Kit.sfx('chip', 0.6); }
+    });
   }
   function hostStart() {
     if (net.roster.length < 2) { Kit.toast('Wait for at least one more player'); return; }
     var opts = (lsGet(NETME, {}) || {}).opts || { len: 'all' };
     net.roster.forEach(function (r, i) { r.seat = i; });
-    net.wait = null; mode = 'online';
-    S = M.newGame(net.roster.map(function (r) { return { name: r.name, cpu: false }; }), opts);
+    // anyone who didn't pick a piece gets one of those left
+    var left = shuffled(M.TOKENS.filter(function (t) { return !net.roster.some(function (r) { return r.tok === t; }); }));
+    net.roster.forEach(function (r) { if (!r.tok) r.tok = left.shift(); });
+    net.wait = null; net.ol = null; mode = 'online';
+    S = M.newGame(net.roster.map(function (r) { return { name: r.name, cpu: false, tok: r.tok }; }), opts);
+    rememberToks([S.players[0]]);
     Kit.gameStart(); S.started = Date.now(); undoStack = [];
     net.roster.forEach(function (r) { if (r.peer) r.peer.send({ t: 'seat', seat: r.seat }, true); });
     net.table.setStatus('playing', 'Round 1');
@@ -1365,7 +1756,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
   function joinTable(code, name) {
     closeLobby(); busyScreen('Connecting to the table…');
     return Online.join(code, { game: 'monopoly', name: name }).then(function (peer) {
-      net.role = 'guest'; net.peer = peer; net.hostName = peer.name; net.ro = []; net.seat = -1;
+      net.role = 'guest'; net.peer = peer; net.hostName = peer.name; net.ro = []; net.seat = -1; net.myPid = null;
       peer.on('msg', guestMsg);
       peer.on('close', function (why) {
         if (net.peer !== peer) return;
@@ -1382,14 +1773,17 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
     });
   }
   function guestMsg(m) {
-    if (m.t === 'ro') { net.ro = m.ro; if (net.wait) net.wait.update(waitPlayers(m.ro, -1).map(function (p) { p.me = p.name === meName(); return p; })); return; }
+    if (m.t === 'ro') { net.ro = m.ro; if (net.wait) { net.wait.update(guestPlayers(m.ro)); olPaint(m.ro, guestPid(m.ro)); } return; }
+    if (m.t === 'you') { net.myPid = m.pid; return; }
+    if (m.t === 'tokno') { if (net.ol) { net.ol.pending = null; olPaint(net.ro || [], guestPid(net.ro || [])); shakeWell(net.ol.tray.wells[m.tok]); } return; }
     if (m.t === 'full') { Kit.toast('That game has already started'); return; }
     if (m.t === 'seat') { net.seat = m.seat; return; }
     if (m.t === 'err') { Kit.toast(m.msg || 'Not now'); Kit.sfx('bad'); return; }
     if (m.t === 'st') {
       var fresh = !S || mode !== 'online';
       if (fresh) {
-        mode = 'online'; net.wait = null; S = m.s; build(); render(); Kit.gameStart();
+        mode = 'online'; net.wait = null; net.ol = null; S = m.s; build(); render(); Kit.gameStart();
+        if (S.players[net.seat]) rememberToks([S.players[net.seat]]);
         setTimeout(function () { Kit.callout(S.players[S.cur].name + ' goes first'); }, 400);
         return;
       }
@@ -1421,7 +1815,8 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
   window.__mono = {
     S: function () { return S; }, M: M, act: function (a) { return doAct(a); }, mode: function () { return mode; }, busy: function () { return busy; },
     instant: function (on) { TEST.instant = on !== false; }, speed: function (v) { speed = v; }, seat: function () { return net.seat; }, role: function () { return net.role; },
-    setState: function (s) { S = s; build(); render(); afterChange(); }, render: function () { render(); }, deed: deedSheet, build: buildSheet, mortgage: mortSheet, trade: tradeSheet
+    setState: function (s) { S = s; build(); render(); afterChange(); },
+    pick: function () { return pick ? { toks: pick.toks.slice(), chooser: chooser(), anim: pick.anim } : null; }, roster: function () { return net.role === 'host' ? olRo() : net.ro; }, render: function () { render(); }, deed: deedSheet, build: buildSheet, mortgage: mortSheet, trade: tradeSheet
   };
 
   // ═══ Start ══════════════════════════════════════════════════════════════
