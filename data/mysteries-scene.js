@@ -135,7 +135,8 @@
       } else s += limb(d, col, w);
       if (pose !== 'back') {
         var hm = 'hand' + side;
-        s += g(circ(a.h[0], a.h[1], 4.1 * B.k, has(p.marks, 'gloves') ? arg(p.marks, 'gloves', 1, '#7a3b2a') : skin), { p: P(hm) });
+        var glv = argsAll(p.marks, 'glove').filter(function (q) { return q[1] === side; })[0];
+        s += g(glv ? path('M' + n(a.h[0] - 4.4 * B.k) + ' ' + n(a.h[1] - 4) + 'h' + n(8.8 * B.k) + 'v4.4q0 4.4 -4.4 4.4q-4.4 0 -4.4 -4.4z', glv[2] || '#7a3b2a') : circ(a.h[0], a.h[1], 4.1 * B.k, has(p.marks, 'gloves') ? arg(p.marks, 'gloves', 1, '#7a3b2a') : skin), { p: P(hm) });
         if (has(acc, 'watch' + side) || (side === 'L' && has(acc, 'watch')) ) {
           var wx = a.e[0] + (a.h[0] - a.e[0]) * 0.72, wy = a.e[1] + (a.h[1] - a.e[1]) * 0.72;
           s += g(circ(wx, wy, 2.6 * B.k, arg(acc, 'watch' + side, 1, '#d8c06a'), { sw: 0.9 }) + circ(wx, wy, 1.3 * B.k, '#fff', { sw: 0.5 }), { p: P('watch' + side) });
@@ -226,7 +227,7 @@
   function hairLayer(p, B, hc, layer) {
     var st = p.hair || 'short', y = B.hy, r = B.hr, s = '';
     if (layer === 'back') {
-      if (st === 'long') s = path('M' + n(-r - 1.5) + ' ' + n(y - 3) + 'Q' + n(-r - 3) + ' ' + n(y + 26) + ' ' + n(-r + 2) + ' ' + n(y + 30) + 'L' + n(r - 2) + ' ' + n(y + 30) + 'Q' + n(r + 3) + ' ' + n(y + 26) + ' ' + n(r + 1.5) + ' ' + n(y - 3) + 'Z', hc);
+      if (st === 'long' || st === 'longcurly') s = path('M' + n(-r - 1.5) + ' ' + n(y - 3) + 'Q' + n(-r - 3) + ' ' + n(y + 26) + ' ' + n(-r + 2) + ' ' + n(y + 30) + 'L' + n(r - 2) + ' ' + n(y + 30) + 'Q' + n(r + 3) + ' ' + n(y + 26) + ' ' + n(r + 1.5) + ' ' + n(y - 3) + 'Z', hc);
       else if (st === 'bob') s = path('M' + n(-r - 2) + ' ' + n(y - 3) + 'Q' + n(-r - 3) + ' ' + n(y + 12) + ' ' + n(-r + 1) + ' ' + n(y + 14) + 'L' + n(r - 1) + ' ' + n(y + 14) + 'Q' + n(r + 3) + ' ' + n(y + 12) + ' ' + n(r + 2) + ' ' + n(y - 3) + 'Z', hc);
       else if (st === 'pony') s = path('M' + n(r - 2) + ' ' + n(y - 8) + 'Q' + n(r + 12) + ' ' + n(y - 6) + ' ' + n(r + 9) + ' ' + n(y + 16) + 'Q' + n(r + 4) + ' ' + n(y + 6) + ' ' + n(r - 2) + ' ' + n(y - 2) + 'Z', hc) + circ(r - 1, y - 7, 2.2, p.bow || '#e04a6a', { sw: 0.8 });
       else if (st === 'afro') s = circ(0, y - 3, r + 7, hc);
@@ -254,7 +255,8 @@
     f += path('M' + n(-ex - 2.2) + ' ' + n(ey - 4) + 'q2.2 -1.4 4.4 0M' + n(ex - 2.2) + ' ' + n(ey - 4) + 'q2.2 -1.4 4.4 0', 'none', { st: shade(hc, -0.2), sw: 1.1 });
     f += path('M-0.6 ' + n(y + 1) + 'q1.6 2 0 3', 'none', { st: shade(skin, -0.35), sw: 0.9 });
     var my = y + 6.5, m = p.mouth || 'smile';
-    if (m === 'smile') f += path('M-3.4 ' + n(my - 0.6) + 'q3.4 3 6.8 0', 'none', { sw: 1.1 });
+    if (p.lips) f += g(path('M-3.6 ' + n(my - 0.4) + 'q1.8 -1.6 3.6 -0.4q1.8 -1.2 3.6 0.4q-1.6 2.6 -3.6 2.6q-2 0 -3.6 -2.6z', p.lips, { sw: 0.7 }), { p: P('lips') });
+    else if (m === 'smile') f += path('M-3.4 ' + n(my - 0.6) + 'q3.4 3 6.8 0', 'none', { sw: 1.1 });
     else if (m === 'grin') f += path('M-4 ' + n(my - 1) + 'q4 5.5 8 0z', '#fff', { sw: 1 });
     else if (m === 'o') f += ell(0, my + 0.5, 1.8, 2.2, '#5a2a2a', { sw: 0.8 });
     else if (m === 'frown') f += path('M-3.2 ' + n(my + 1.4) + 'q3.2 -2.6 6.4 0', 'none', { sw: 1.1 });
@@ -297,9 +299,10 @@
     var cap = 'M' + n(-r - 0.6) + ' ' + n(y + 1) + 'Q' + n(-r - 1) + ' ' + n(y - r - 2) + ' 0 ' + n(y - r - 1.6) + 'Q' + n(r + 1) + ' ' + n(y - r - 2) + ' ' + n(r + 0.6) + ' ' + n(y + 1);
     if (st === 'bald') return path('M' + n(-r - 0.4) + ' ' + n(y + 1) + 'Q' + n(-r - 1) + ' ' + n(y - 6) + ' ' + n(-r + 4) + ' ' + n(y - 8) + 'L' + n(-r + 3) + ' ' + n(y - 1) + 'Z', hc, { sw: 0.9 }) + path('M' + n(r + 0.4) + ' ' + n(y + 1) + 'Q' + n(r + 1) + ' ' + n(y - 6) + ' ' + n(r - 4) + ' ' + n(y - 8) + 'L' + n(r - 3) + ' ' + n(y - 1) + 'Z', hc, { sw: 0.9 });
     if (st === 'spiky') return path('M' + n(-r - 0.6) + ' ' + n(y - 1) + 'L' + n(-r + 1) + ' ' + n(y - r - 2) + 'L-6 ' + n(y - r + 1) + 'L-3 ' + n(y - r - 5) + 'L0 ' + n(y - r) + 'L3 ' + n(y - r - 5) + 'L6 ' + n(y - r + 1) + 'L' + n(r - 1) + ' ' + n(y - r - 2) + 'L' + n(r + 0.6) + ' ' + n(y - 1) + 'Q' + n(r - 3) + ' ' + n(y - 8) + ' 0 ' + n(y - 7) + 'Q' + n(-r + 3) + ' ' + n(y - 8) + ' ' + n(-r - 0.6) + ' ' + n(y - 1) + 'Z', hc);
-    if (st === 'curly' || st === 'afro') {
+    if (st === 'curly' || st === 'afro' || st === 'longcurly') {
       var cs = '', R2 = rng(3);
       for (var a = -170; a <= -10; a += 22) { var t = a * Math.PI / 180; cs += circ(Math.cos(t) * (r - 0.5), y + Math.sin(t) * (r - 0.5) - 1, 4.4 + R2() * 0.8, hc); }
+      if (st === 'longcurly') [[-r - 1, y + 6], [-r, y + 13], [-r - 1.5, y + 20], [r + 1, y + 6], [r, y + 13], [r + 1.5, y + 20]].forEach(function (q) { cs += circ(q[0], q[1], 3.8, hc); });
       return cs;
     }
     // a cap of hair with a fringe; long/bob/pony/bun/pigtails/braids/short/side all start here
@@ -536,7 +539,7 @@
     if (p.night) s += rect(0, 0, w, h, '#1b2448', { st: 0, op: 0.85 }) + circ(w * 0.72, h * 0.3, 6, '#f6f0c8', { st: 0 });
     s += line(w / 2, 0, w / 2, h, fr, 3.5) + line(0, h / 2, w, h / 2, fr, 3.5) + rect(0, 0, w, h, 'none', { sw: 1.4 });
     if (p.latch) s += g(rect(w / 2 - 3, h / 2 - 7, 6, 5, p.latch === 'open' ? '#9aa3ad' : '#c9a227', { sw: 0.7 }) + (p.latch === 'open' ? line(w / 2 + 3, h / 2 - 5, w / 2 + 9, h / 2 - 11, OL, 1.4) : line(w / 2 - 3, h / 2 - 4.5, w / 2 + 6, h / 2 - 4.5, OL, 1.6)), { p: (p.id || 'window') + '.latch' });
-    if (p.web) s += g(webSvg(w * 0.82, h * 0.18, 13), { p: (p.id || 'window') + '.web' });
+    if (p.web) s += g(webSvg(p.web[0] != null ? p.web[0] : w * 0.82, p.web[1] != null ? p.web[1] : h * 0.18, p.web[2] || 13), { p: (p.id || 'window') + '.web' });
     if (p.sill) s += rect(-9, h + 4, w + 18, 6, fr);
     if (p.curtains) { var cc = p.curtains; s += path('M-8 -10Q' + n(w * 0.12) + ' ' + n(h * 0.4) + ' -2 ' + n(h + 12) + 'L-14 ' + n(h + 12) + 'L-14 -10Z', cc) + path('M' + n(w + 8) + ' -10Q' + n(w * 0.88) + ' ' + n(h * 0.4) + ' ' + n(w + 2) + ' ' + n(h + 12) + 'L' + n(w + 14) + ' ' + n(h + 12) + 'L' + n(w + 14) + ' -10Z', cc) + rect(-18, -14, w + 36, 4, '#7a5a3a', { rx: 2 }); }
     return g(s, { x: p.x, y: p.y, id: p.id });
@@ -967,7 +970,7 @@
   function tdoor(p) { var s = rect(-12, -3, 24, 6, p.color || '#c98a3a', { sw: 0.9 }); if (p.tape) s += line(-12, -3, 12, 3, '#e8c32a', 2.2) + line(-12, 3, 12, -3, '#e8c32a', 2.2); if (p.paint) s += rect(-12, -3, 24, 6, '#3aa65a', { sw: 0.9 }); return g(s + (p.text ? g(tag({ text: p.text, x: 0, y: p.ly || 0, s: 0.85 }), {}) : ''), { x: p.x, y: p.y, r: p.r, id: p.id }); }
   function tsign(p) { return g(path('M-8 6L0 -8L8 6Z', '#f2c230', { sw: 0.9 }) + text(0, 4, '!', { size: 9, font: 'sans', weight: 900 }), { x: p.x, y: p.y, id: p.id }); }
   function tcar(p) { var c = p.color || '#d33a3a'; return g(rect(-12, -22, 24, 44, c, { rx: 6 }) + rect(-9, -12, 18, 10, '#bfe0f2', { sw: 0.8 }) + rect(-9, 6, 18, 8, '#bfe0f2', { sw: 0.8 }) + (p.snow ? rect(-10, -4, 20, 12, '#fff', { sw: 0.6, rx: 3 }) : ''), { x: p.x, y: p.y, r: p.r, id: p.id }); }
-  function tsnowman(p) { return g(circ(0, 0, 14, '#fbfbff') + circ(0, 0, 9, '#fbfbff') + (p.hat ? circ(0, 0, 5, p.hat, { sw: 0.9 }) : circ(0, 0, 4, '#fbfbff', { sw: 0.6 })), { x: p.x, y: p.y, id: p.id }); }
+  function tsnowman(p) { return g(circ(3, 4, 15, '#9aa7b8', { st: 0, op: 0.35 }) + line(-12, 2, -26, 8, '#6a4126', 1.8) + line(12, -1, 26, -8, '#6a4126', 1.8) + circ(0, 0, 14, '#fbfbff') + circ(0, 0, 9, '#fbfbff') + (p.hat ? circ(0, 0, 6.5, p.hat, { sw: 0.9 }) + circ(0, 0, 4.4, shade(p.hat, 0.12), { sw: 0.6 }) : circ(0, 0, 4, '#fbfbff', { sw: 0.6 })) + path('M5 6l6 3-5 -0.5z', '#f08a2a', { sw: 0.6 }), { x: p.x, y: p.y, id: p.id }); }
   function tporch(p) { return g(rect(0, 0, p.w || 120, p.h || 30, '#c8a27a', { sw: 1.2 }) + line(0, (p.h || 30) / 2, p.w || 120, (p.h || 30) / 2, '#a8825a', 0.8), { x: p.x, y: p.y, id: p.id }); }
   function trect(p) { return g(rect(0, 0, p.w, p.h, p.color || '#ccc', { st: p.st === 0 ? 0 : p.stc || OL, sw: p.sw || 1.2, rx: p.rx }), { x: p.x, y: p.y, id: p.id, op: p.op }); }
 

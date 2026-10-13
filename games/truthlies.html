@@ -71,7 +71,7 @@ body{overflow-x:hidden;}
 /* the cast and what they say: one grid, two arrangements */
 .scene{position:relative;z-index:3;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));column-gap:4px;row-gap:7px;
   padding:28px calc(var(--drape) + 6px) 8px;}
-.scene.stack .bub{grid-column:1 / -1;grid-row:var(--row);justify-self:start;width:var(--bw,88%);margin-left:var(--ml,0);}
+.scene.stack .bub{grid-column:1 / -1;grid-row:var(--row);justify-self:start;width:max-content;min-width:min(55%,240px);max-width:min(var(--bmax,92%),calc(100% - var(--ml,0px) - 10px));margin-left:var(--ml,0px);transition:background .4s,box-shadow .3s,transform .25s var(--spring),margin-left .35s var(--ease);}
 .scene.stack .actor{grid-row:calc(var(--n) + 1);grid-column:var(--col);}
 .scene.cols{column-gap:10px;}
 .scene.cols .bub{grid-row:1;grid-column:var(--col);align-self:end;margin-bottom:6px;}
@@ -108,10 +108,10 @@ body{overflow-x:hidden;}
 .bub.rv .exp{display:block;animation:rise .45s var(--ease) both;}
 .bub.rv-t{background:#e7f7ea;}.bub.rv-t::after{background:#e7f7ea;}
 .bub.rv-f{background:#fde6e6;}.bub.rv-f::after{background:#fde6e6;}
-.bub .stamp{position:absolute;right:26px;top:7px;padding:1px 6px;border:2.5px solid currentColor;border-radius:5px;font-family:var(--font);font-weight:900;font-size:.68rem;letter-spacing:.14em;opacity:0;transform:rotate(-9deg) scale(1.8);pointer-events:none;}
+.bub .stamp{position:absolute;right:9px;bottom:8px;padding:1px 6px;border:2.5px solid currentColor;border-radius:5px;font-family:var(--font);font-weight:900;font-size:.68rem;letter-spacing:.14em;opacity:0;transform:rotate(-9deg) scale(1.8);pointer-events:none;}
 .bub.rv .stamp{opacity:.85;transform:rotate(-9deg) scale(1);transition:transform .35s cubic-bezier(.2,1.6,.4,1),opacity .2s;}
 .bub.rv-t .stamp{color:#1d7a46;}.bub.rv-f .stamp{color:#b3202f;}
-.scene.cols .bub.rv .say{padding-top:24px;}
+.bub.rv .exp{padding-right:62px;min-height:1.6em;}
 
 /* the cast: paper-cut puppets on little wooden stands */
 .actor{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0;padding:0;border:0;background:none;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
@@ -1281,6 +1281,7 @@ body{overflow-x:hidden;}
         b.querySelector('.exp').innerHTML = nameHTML(w.text);
         b.querySelector('.stamp').textContent = w.val ? 'TRUE' : 'FALSE';
         b.classList.add('rv', w.val ? 'rv-t' : 'rv-f');
+        layout();   // the bubble grew: keep it on the stage and its tail on its speaker
         if (S.marks[i] !== ty) { S.marks[i] = ty; render(i); }
         a.classList.add('v' + ty);
         face(i, ty === 0 ? 's' : 'k');
@@ -1508,14 +1509,15 @@ body{overflow-x:hidden;}
     var cs = getComputedStyle(scene), pl = parseFloat(cs.paddingLeft), W = scene.clientWidth - pl - parseFloat(cs.paddingRight);
     var cols = W / P.n >= 128;
     scene.classList.toggle('cols', cols); scene.classList.toggle('stack', !cols);
-    bubbleEls.forEach(function (b) { b.style.removeProperty('--ml'); b.style.removeProperty('--tx'); b.style.maxWidth = cols ? '' : Math.round(W * 0.92) + 'px'; b.style.minWidth = cols ? '' : Math.round(Math.min(W * 0.55, 240)) + 'px'; b.style.width = cols ? '' : 'max-content'; });
+    // the badge in each bubble's corner hangs 7px past its edge: keep 10px clear of the stage's right side
+    bubbleEls.forEach(function (b) { b.style.removeProperty('--ml'); b.style.removeProperty('--tx'); b.style.setProperty('--bmax', Math.round(W * 0.92) + 'px'); });
     if (cols) return;
-    actorEls.forEach(function (a, i) {
-      var cx = a.offsetLeft + a.offsetWidth / 2 - pl, b = bubbleEls[i], bw = b.offsetWidth;
-      var ml = Math.max(0, Math.min(W - bw, cx - bw * (0.25 + 0.5 * i / Math.max(1, P.n - 1))));
-      b.style.setProperty('--ml', ml + 'px');
-      b.style.setProperty('--tx', Math.max(18, Math.min(bw - 18, cx - ml)) + 'px');
+    var ml = bubbleEls.map(function (b, i) {
+      var a = actorEls[i], cx = a.offsetLeft + a.offsetWidth / 2 - pl, bw = b.offsetWidth;
+      var m = Math.max(0, Math.min(W - bw - 10, cx - bw * (0.25 + 0.5 * i / Math.max(1, P.n - 1))));
+      return { m: m, tx: Math.max(18, Math.min(bw - 18, cx - m)) };
     });
+    bubbleEls.forEach(function (b, i) { b.style.setProperty('--ml', ml[i].m + 'px'); b.style.setProperty('--tx', ml[i].tx + 'px'); });
   }
   var lt = 0;
   window.addEventListener('resize', function () { clearTimeout(lt); lt = setTimeout(layout, 80); });

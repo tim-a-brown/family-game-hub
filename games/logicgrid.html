@@ -25,7 +25,7 @@ body.playing .lg{flex:1;min-height:0;display:flex;flex-direction:column;}
 /* ── The puzzle-book page ─────────────────────────────────────────────── */
 .page{position:relative;flex:none;align-self:center;max-width:100%;border-radius:4px 4px 8px 8px;padding:8px 8px 6px;color:var(--pp-ink);
   background:radial-gradient(rgba(120,90,40,.05) 1px, transparent 1.2px) 0 0/5px 5px,radial-gradient(140% 90% at 50% 0%,#fffdf6 0%,var(--pp) 65%,var(--pp-2) 100%);
-  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 2px 0 #e2d6b8,0 4px 0 #d8caa6,0 16px 34px rgba(0,0,0,.5);animation:pageIn .5s var(--ease) both;}
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 2px 0 #e2d6b8,0 4px 0 #d8caa6,0 16px 34px rgba(0,0,0,.5);animation:pageIn .5s var(--ease) backwards;}
 @keyframes pageIn{from{transform:translateY(18px) rotate(-1deg);opacity:0;}to{transform:none;opacity:1;}}
 .ph{display:grid;grid-template-columns:1fr auto;align-items:end;column-gap:8px;padding:0 2px 5px;border-bottom:1.5px solid var(--pp-ink);margin-bottom:6px;font-family:var(--np-serif);min-width:0;}
 .ph .t{font-weight:700;font-size:.95rem;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;line-height:1.2;}
@@ -88,6 +88,7 @@ body.playing .lg{flex:1;min-height:0;display:flex;flex-direction:column;}
 .note{position:absolute;left:4px;right:4px;bottom:6px;z-index:8;display:none;align-items:flex-start;gap:9px;padding:9px 12px;border-radius:3px;background:linear-gradient(180deg,#fff3a6,#ffe678);color:#3a3000;font-family:var(--hand);font-size:1.08rem;line-height:1.22;box-shadow:0 8px 16px rgba(0,0,0,.35);transform:rotate(-.5deg);cursor:pointer;}
 .note.show{display:flex;animation:noteIn .35s var(--spring) both;}
 @keyframes noteIn{from{transform:translateY(14px) rotate(2deg);opacity:0;}to{transform:rotate(-.5deg);opacity:1;}}
+.note.float{position:fixed;left:auto;right:calc(16px + var(--corner-x));bottom:calc(var(--safe-b) + 14px);width:min(440px,calc(50vw - 50px));}
 .note .ico{flex:none;width:21px;height:21px;color:#7a6200;margin-top:1px;}
 .note.bad{background:linear-gradient(180deg,#ffd9d2,#ffc2b6);color:#5a0e0e;}.note.bad .ico{color:#a8202e;}
 
@@ -1256,6 +1257,7 @@ var LG = (function () {
       S.hints++; render(); showCell(w[0]);
       note((w[0].v === 2 ? 'This check' : 'This X') + " isn't right. Clear it and think again.", true); Kit.sfx('bad'); save(); return;
     }
+    clueEls.forEach(function (x) { x.classList.remove('hl'); });
     var G = effective(), d = LG.step(P, G, { noExcl: opts.auto });
     if (!d || d.bad) { note('Every square that can be worked out is marked. Fill in any you have left.'); return; }
     snap();
@@ -1278,7 +1280,7 @@ var LG = (function () {
   function note(msg, bad) {
     var n = document.getElementById('note'); if (!n) return;
     n.innerHTML = Kit.icon(bad ? 'close' : 'lightbulb') + '<span>' + Kit.esc(msg) + '</span>';
-    n.className = 'note show' + (bad ? ' bad' : '');
+    n.className = 'note show' + (bad ? ' bad' : '') + (gview && gview.clientHeight < 300 && isWide() ? ' float' : '');
     clearTimeout(noteT); noteT = setTimeout(hideNote, Math.max(5000, msg.length * 75));
   }
   function hideNote() { var n = document.getElementById('note'); if (n) n.className = 'note'; clearTimeout(noteT); }

@@ -501,9 +501,9 @@
   });
 
   (function () {
-    var nora1 = [[34, 296], [96, 232], [190, 186], [270, 160]], nora2 = [[300, 172], [326, 226], [352, 296]];
-    var omar1 = [[146, 296], [152, 190], [150, 64]], omar2 = [[166, 64], [182, 180], [204, 296]];
-    var pia1 = [[246, 296], [190, 200], [104, 66]], pia2 = [[118, 64], [200, 104], [282, 142]], pia3 = [[316, 162], [362, 214], [392, 296]];
+    var nora1 = [[136, 296], [196, 222], [272, 170]], nora2 = [[290, 178], [300, 236], [306, 296]];
+    var omar1 = [[50, 296], [62, 180], [70, 66]], omar2 = [[86, 66], [92, 180], [98, 296]];
+    var pia1 = [[228, 296], [204, 180], [192, 66]], pia2 = [[206, 66], [246, 104], [280, 140]], pia3 = [[314, 158], [358, 212], [380, 296]];
     var T = function (pts, tread, id) { return ['trail', { id: id, pts: pts, kind: 'shoe', size: 13, tread: tread, col: '#8a9ab0', gap: 14, side: 4.5 }]; };
     add({
       id: 'snowman-hat', level: 'medium', no: 5, type: 'Footprints', title: 'The Snowman’s Top Hat',
@@ -516,14 +516,14 @@
           ['trect', { x: 0, y: 0, w: 250, h: 28, color: '#8a3a2a' }],
           ['svg', { svg: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(function (i) { return '<path d="M' + (i * 22) + ' 0v28" stroke="#6e2a1e" stroke-width="1"/>'; }).join('') }],
           ['tporch', { x: 22, y: 28, w: 200, h: 34 }],
-          ['svg', { id: 'paper', x: 160, y: 46, svg: '<rect x="-9" y="-3.5" width="18" height="7" rx="3" fill="#e9e3d2" stroke="#2b2433" stroke-width="1"/><path d="M-4 -3.5v7M3 -3.5v7" stroke="#c0392b" stroke-width="1"/>' }],
-          ['trect', { x: 0, y: 270, w: 400, h: 30, color: '#b9bec8', st: 0 }],
-          ['svg', { svg: '<path d="M0 270H400" stroke="#8a909c" stroke-width="1.4"/>' + [0, 1, 2, 3, 4, 5, 6, 7].map(function (i) { return '<path d="M' + (i * 56 + 20) + ' 270v30" stroke="#a0a6b0" stroke-width="1"/>'; }).join('') }],
+          ['svg', { id: 'paper', x: 78, y: 46, svg: '<rect x="-9" y="-3.5" width="18" height="7" rx="3" fill="#e9e3d2" stroke="#2b2433" stroke-width="1"/><path d="M-4 -3.5v7M3 -3.5v7" stroke="#c0392b" stroke-width="1"/>' }],
           ['ttree', { x: 380, y: 130, r: 16, color: '#3f7a4a' }], ['ttree', { x: 26, y: 160, r: 18, color: '#3f7a4a' }],
           T(nora1, 'zigzag', 'tr-nora'), T(nora2, 'zigzag'),
           T(omar1, 'dots', 'tr-omar'), T(omar2, 'dots'),
           T(pia1, 'lines', 'tr-pia'), T(pia2, 'lines', 'tr-pia2'), T(pia3, 'lines'),
           ['tsnowman', { id: 'snowman', x: 292, y: 156, hat: '#1d1d26' }],
+          ['trect', { x: 0, y: 270, w: 400, h: 30, color: '#b9bec8', st: 0 }],
+          ['svg', { svg: '<path d="M0 270H400" stroke="#8a909c" stroke-width="1.4"/>' + [0, 1, 2, 3, 4, 5, 6, 7].map(function (i) { return '<path d="M' + (i * 56 + 20) + ' 270v30" stroke="#a0a6b0" stroke-width="1"/>'; }).join('') }],
           ['note', { x: 268, y: 6, w: 126, h: 92, color: '#fbf6e6' }],
           ['caption', { x: 331, y: 18, text: 'BOOT SOLES', size: 8, font: 'sans', weight: 800, fill: '#7a6a52' }],
           ['print', { id: 'nora', x: 292, y: 50, kind: 'shoe', size: 30, tread: 'zigzag', col: '#4a5568' }],
@@ -534,7 +534,7 @@
       },
       hints: [
         { text: 'Use the boot soles in the corner to work out whose trail is whose.' },
-        { text: 'Find the one trail that goes from the porch straight to the snowman.', at: { box: [100, 60, 190, 90] } }
+        { text: 'Find the one trail that goes from the porch straight to the snowman.', at: { box: [196, 66, 90, 84] } }
       ],
       solution: {
         steps: [
@@ -563,11 +563,11 @@
         ['curtain', { id: 'curtain', x: 80, y: 202, w: 64, h: 176, color: '#4f7aa8', gap: 9, bulge: 1 }],
         ['frame', { x: 286, y: 40, w: 64, h: 44, art: 'boat', bg: '#d8eef8' }],
         ['lamp', { x: 170, y: 202, color: '#f2c230' }],
-        ['svg', { id: 'sock', svg: '<path d="M352 214Q352 208 359 208Q370 209 371 213Q371 218 362 218Q352 218 352 214Z" fill="#f29bb8" stroke="#2b2433" stroke-width="1.1"/><circle cx="358" cy="212" r="1.2" fill="#fff"/><circle cx="364" cy="214.5" r="1.2" fill="#fff"/><circle cx="367" cy="211" r="1" fill="#fff"/>' }],
+        ['svg', { id: 'sock', svg: '<path d="M366 232Q366 225 374 225Q386 226 388 230Q388 236 377 236Q366 236 366 232Z" fill="#f29bb8" stroke="#2b2433" stroke-width="1.1"/><circle cx="372" cy="230" r="1.3" fill="#fff"/><circle cx="379" cy="232.5" r="1.3" fill="#fff"/><circle cx="383" cy="228.5" r="1.1" fill="#fff"/>' }],
         ['sofa', { id: 'sofa', x: 228, y: 252, w: 126, color: '#8a6ab0', cushion: '#f2c230' }],
         ['cat', { x: 270, y: 218, color: '#e3a35a', stripes: '#b8742a' }],
         ['table', { id: 'table', x: 152, y: 284, w: 96, h: 50, cloth: '#f4efe4', long: 1, clothPat: 'check', clothPc: '#d9534f' }],
-        ['svg', { id: 'tablepeek', svg: '<path d="M162 282 L176 278" stroke="#2b2433" stroke-width="7.6" stroke-linecap="round"/><path d="M162 282 L176 278" stroke="#3a6ea5" stroke-width="5.2" stroke-linecap="round"/><circle cx="159" cy="283" r="3.6" fill="#cf9465" stroke="#2b2433" stroke-width="1.1"/><path d="M232 288Q232 282 238 282Q246 282 246 288Z" fill="#3aa65a" stroke="#2b2433" stroke-width="1.1"/>' }],
+        ['svg', { id: 'tablepeek', svg: '<path d="M212 288Q212 281 219 281Q228 281 229 288Z" fill="#3aa65a" stroke="#2b2433" stroke-width="1.1"/><path d="M232 288Q232 282 238 282Q246 282 247 288Z" fill="#3aa65a" stroke="#2b2433" stroke-width="1.1"/><path d="M213 287h15M233 287h13" stroke="#fff" stroke-width="1.2"/>' }],
         ['toybox', { id: 'toybox', x: 40, y: 292, w: 70, color: '#e0b351', open: 1, peek: '<path d="M44 -36Q46 -42 52 -42Q60 -41 60 -36Z" fill="#f2c230" stroke="#2b2433" stroke-width="1.1"/><path d="M45 -37h14" stroke="#fff" stroke-width="1.2"/>' }],
         ['held', { kind: 'ball', x: 290, y: 292, s: 1.4 }]
       ]
@@ -579,7 +579,7 @@
     solution: {
       steps: [
         { text: 'Mila’s pink shoes are by the door, so she’s hiding in her socks.', marks: [{ id: 'shoes', pad: 2 }] },
-        { text: 'Red sneakers stick out under the curtain, a green sneaker peeks from under the table, and a yellow one pokes out of the toy box.', marks: [{ id: 'curtainfeet' }, { id: 'tablepeek' }, { box: [82, 248, 22, 12] }] },
+        { text: 'Red sneakers stick out under the curtain, green sneakers peek out from under the tablecloth, and a yellow one pokes out of the toy box.', marks: [{ id: 'curtainfeet' }, { id: 'tablepeek' }, { box: [82, 248, 22, 12] }] },
         { text: 'Only behind the sofa is there a foot in just a sock, a pink spotty one.', marks: [{ id: 'sock', pad: 2 }] }
       ],
       verdict: 'Mila is hiding behind the sofa.'
@@ -595,15 +595,15 @@
       { id: 'E', head: 'square', teeth: [2, 4, 1, 3] }
     ];
     var items = [
-      ['svg', { svg: '<rect x="14" y="18" width="150" height="262" rx="4" fill="#e9dcc0" opacity=".35"/>' }],
-      ['note', { x: 26, y: 26, w: 120, h: 58, color: '#fff3a6', text: ['Grandpa’s shed key.', 'I pressed it in the', 'soap. Don’t lose it!'], size: 10, lh: 14, align: 'left', ink: '#1f2a6b', r: -3 }],
-      ['soap', { id: 'soap', x: 86, y: 160, s: 1.389, r: -3, key: { head: 'square', teeth: [3, 1, 4, 2] } }],
+      ['svg', { svg: '<rect x="8" y="12" width="182" height="276" rx="4" fill="#e9dcc0" opacity=".3"/>' }],
+      ['note', { x: 24, y: 24, w: 128, h: 58, color: '#fff3a6', text: ['Grandpa’s shed key.', 'I pressed it in the', 'soap. Don’t lose it!'], size: 10.5, lh: 14, align: 'left', ink: '#1f2a6b', r: -3 }],
+      ['soap', { id: 'soap', x: 96, y: 168, s: 2.014, r: -3, key: { head: 'square', teeth: [3, 1, 4, 2] } }],
       ['svg', { svg: '<path d="M30 250L120 236" stroke="#2b2433" stroke-width="7" stroke-linecap="round"/><path d="M30 250L120 236" stroke="#f2c230" stroke-width="5" stroke-linecap="round"/><path d="M120 236l10 -1.6-9 4z" fill="#e9c89a" stroke="#2b2433" stroke-width="1"/>' }]
     ];
     keys.forEach(function (k, i) {
-      var y = 34 + i * 56;
-      items.push(['key', { id: k.id, x: 214, y: y, s: 1, head: k.head, teeth: k.teeth, col: ['#d8b64a', '#c9a227', '#d8b64a', '#bfa04a', '#cfae4a'][i] }]);
-      items.push(['tag', { x: 300, y: y + 4, text: k.id }]);
+      var y = 32 + i * 58;
+      items.push(['key', { id: k.id, x: 218, y: y, s: 1.45, head: k.head, teeth: k.teeth, col: ['#d8b64a', '#c9a227', '#d8b64a', '#bfa04a', '#cfae4a'][i] }]);
+      items.push(['tag', { x: 360, y: y + 4, text: k.id }]);
     });
     add({
       id: 'soap-key', level: 'medium', no: 7, type: 'Which key', title: 'The Key in the Soap',
