@@ -163,6 +163,7 @@ const PRECACHE_URLS = [
   '/games/logicgrid.html',
   '/games/truthlies.html',
   '/games/ciphers.html',
+  '/data/ciphers-cases.js',
   '/games/riddles.html',
   '/games/memorymatch.html',
   '/games/minesweeper.html',

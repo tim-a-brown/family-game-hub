@@ -493,4 +493,70 @@
       ui.section(d.r.length > 1 ? 'The riddles' : 'The riddle', box)
     ]);
   });
+  // ── Truth or Lies: the cast, what each one said, and who was lying ──
+  HistView.css('hv-truthlies', [
+    '.hvtl{align-self:center;width:100%;max-width:380px;border-radius:4px;padding:10px 12px 12px;color:#2b2118;background:linear-gradient(180deg,#fffaf0,#f1e4c6);box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 10px 22px -8px rgba(0,0,0,.6);font-family:Georgia,"Times New Roman",serif;}',
+    '.hvtl h5{margin:0 0 2px;text-align:center;font-size:1rem;font-weight:700;}',
+    '.hvtl .r{margin:0 0 8px;padding-bottom:6px;border-bottom:1.5px solid #2b2118;text-align:center;font-style:italic;font-size:.78rem;color:#5a4a36;}',
+    '.hvtl ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}',
+    '.hvtl li{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:start;font-size:.84rem;line-height:1.3;}',
+    '.hvtl .who{min-width:54px;padding:1px 6px;border-radius:5px;color:#fff;font-family:var(--font,system-ui);font-weight:900;font-size:.72rem;text-align:center;}',
+    '.hvtl .who small{display:block;font-weight:800;font-size:.6rem;opacity:.85;}',
+    '.hvtl .w0{background:#1f9a55;}.hvtl .w1{background:#d0283c;}.hvtl .w2{background:#7a52c7;}',
+    '.hvtl .say{font-family:"Patrick Hand","Bradley Hand",cursive;font-size:.98rem;}',
+    '.hvtl .tf{font-family:var(--font,system-ui);font-weight:900;font-size:.62rem;letter-spacing:.1em;padding:1px 4px;border:1.5px solid currentColor;border-radius:4px;transform:rotate(-6deg);}',
+    '.hvtl .tf.t{color:#1d7a46;}.hvtl .tf.f{color:#b3202f;}',
+    '.hvtl .end{margin:8px 0 0;text-align:center;font-weight:700;font-size:.86rem;}',
+    '.hvtl .end.g{color:#8a6a3a;font-weight:400;font-style:italic;}'
+  ].join(''));
+  R('truthlies', function (e, ui) {
+    var d = e.dt; if (!d || !d.nm || !d.st) return null;
+    var names = String(d.nm).split(','), t = String(d.t || ''), tv = String(d.tv || '');
+    var SETS = { island: ['Island of Knights and Knaves', 'knight', 'knave'], castle: ['The Castle Gate', 'truth-teller', 'liar'], woods: ['The Crossroads', 'sage', 'trickster'], market: ['Market Day', 'straight talker', 'swindler'],
+      bakeoff: ['The Bake-off', 'ate the cake'], museum: ['The Museum', 'moved the mask'], ship: ['Aboard the Gull', 'took the map'], library: ['The Library', 'spilled the cocoa'], train: ['The Night Train', 'pulled the cord'] };
+    var RULES = { one: 'Exactly one of them is lying.', onet: 'Only one of them is telling the truth.', two: 'Exactly two of them are lying.', thief: 'Whoever did it is lying.' };
+    var S = SETS[d.set] || ['Truth or Lies', 'truth-teller', 'liar'], wd = d.fam === 'wd';
+    var box = ui.el('div', { class: 'hvtl' }, [
+      ui.el('h5', { text: S[0] }),
+      ui.el('p', { class: 'r', text: wd ? (RULES[d.rule] || '') : 'Truth-tellers and liars' + (d.spy ? ', and one spy' : '') + '.' })
+    ]);
+    var ul = ui.el('ul');
+    [].concat(d.st).forEach(function (s, i) {
+      var ty = +t.charAt(i), kind = wd ? (ty ? 'lying' : 'honest') : ty === 2 ? 'spy' : S[ty ? 2 : 1];
+      ul.appendChild(ui.el('li', null, [
+        ui.el('span', { class: 'who w' + ty, html: ui.esc(names[i] || '') + '<small>' + ui.esc(kind) + '</small>' }),
+        ui.el('span', { class: 'say', text: s }),
+        tv ? ui.el('span', { class: 'tf ' + (tv.charAt(i) === '1' ? 't' : 'f'), text: tv.charAt(i) === '1' ? 'TRUE' : 'FALSE' }) : null
+      ]));
+    });
+    box.appendChild(ul);
+    if (wd && d.c >= 0) box.appendChild(ui.el('p', { class: 'end', text: (names[d.c] || '') + ' ' + S[1] + '.' }));
+    if (d.g) box.appendChild(ui.el('p', { class: 'end g', text: 'Answer shown' }));
+    return ui.wrap([box, ui.stats([['Time', d.g ? '' : ui.time(e.seconds || 0)], ['Hints', d.h], ['Wrong guesses', d.w]])]);
+  });
+  // ── Cipher Cases: the case file with its code, the answer and the wrong tries ──
+  HistView.css('hv-ciphers', '.hv-cc{position:relative;align-self:center;width:100%;max-width:380px;box-sizing:border-box;border-radius:3px 10px 10px 10px;padding:12px 14px;color:#3a2c14;background:linear-gradient(175deg,#ecd9a8,#dcc28a);box-shadow:0 3px 0 #b99c5e,0 10px 20px rgba(0,0,0,.4);font-family:"American Typewriter","Courier New",monospace;}' +
+    '.hv-cc .n{font-size:.68rem;letter-spacing:.14em;font-weight:700;color:#7a6234;padding-right:80px;}' +
+    '.hv-cc b{display:block;font-family:var(--display);font-weight:400;font-size:1.3rem;margin:2px 0 8px;color:#2a1f0c;}' +
+    '.hv-cc .c{padding:6px 8px;border:1.5px dashed rgba(60,40,10,.35);border-radius:4px;font-weight:700;letter-spacing:.1em;font-size:.82rem;word-break:break-word;}' +
+    '.hv-cc .a{margin-top:6px;font-family:var(--hand);font-size:1.35rem;color:#1f2a6b;line-height:1.15;}' +
+    '.hv-cc .by{font-style:italic;font-size:.78rem;color:#6b5a3a;}' +
+    '.hv-cc .st{position:absolute;right:10px;top:10px;padding:1px 8px;border:2.5px solid #c22a2a;border-radius:5px;color:#c22a2a;font-weight:700;font-size:.78rem;letter-spacing:.14em;transform:rotate(-10deg);}' +
+    '.hv-cc .st.g{border-color:#6e6250;color:#6e6250;}');
+  R('ciphers', function (e, ui) {
+    var d = e.dt; if (!d || !d.t) return null;
+    var LV = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+    function sentence(s) { s = String(s || ''); return /[a-z]/.test(s) || !/[A-Z]{2}/.test(s) ? s : s.charAt(0) + s.slice(1).toLowerCase().replace(/\bi\b/g, 'I'); }
+    var card = ui.el('div', { class: 'hv-cc' }, [
+      ui.el('span', { class: 'st' + (d.rv ? ' g' : ''), text: d.rv ? 'OPENED' : 'SOLVED' }),
+      ui.el('div', { class: 'n', text: [d.no, LV[d.lv], d.k].filter(Boolean).join(' · ').toUpperCase() }),
+      ui.el('b', { text: d.t }),
+      d.c ? ui.el('div', { class: 'c', text: d.c }) : null,
+      ui.el('div', { class: 'a', text: d.d === 'msg' ? sentence(d.a) : d.a }),
+      d.by ? ui.el('div', { class: 'by', text: '— ' + d.by }) : null
+    ]);
+    var out = [ui.section('The case', card), ui.stats([['Time', ui.time(e.secs)], ['Wrong tries', e.tries || 0], ['Hints', e.hints || 0]])];
+    if (d.tr && d.tr.length) out.push(ui.section('Wrong tries', ui.chips(d.tr.map(function (t) { return { t: t, off: true }; }))));
+    return ui.wrap(out);
+  });
 })();

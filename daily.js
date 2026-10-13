@@ -8,6 +8,8 @@
 //   Word Search   today(), DAILY_DIFF  (same as Sudoku)                   history daily
 //   Mazes         today()              ('YYYY-MM-DD' local)               history daily, solved
 //   Crossword     dayKey()             ('YYYY-MM-DD' local)               history daily, kind
+//   Truth or Lies today(), DAILY_LV    (days since 1 Jan 2024 local, +1) history daily, solved
+//   Cipher Cases  today(), DAILY       (days since 1 Jan 2024 local, +1) history daily, secs, revealed; ciphers_state S.g.daily
 //   Riddles       today()              (days since 1 Jan 2024 local, +1) history daily; riddles_state.daily
 var Daily = window.Daily = (function () {
   var DAY = 86400000;
@@ -68,6 +70,16 @@ var Daily = window.Daily = (function () {
       var s = state('riddles_state');
       if (s && s.daily === day && !s.over && s.res && s.res[0] && (s.res[0].t.length || s.res[0].h)) return { id: 'riddles', what: 'Daily riddle', status: 'going', note: 'Keep thinking' };
       return { id: 'riddles', what: 'Daily riddle · the same one for everyone', status: 'new' };
+    },
+    function ciphers() {
+      var day = localDay(), T = { caesar: 'Caesar shift', a1z26: 'Letter numbers', crypto: 'Cryptogram' };
+      var d = [['crypto', 'Hard'], ['caesar', 'Easy'], ['a1z26', 'Medium'], ['caesar', 'Medium'], ['crypto', 'Easy'], ['caesar', 'Hard'], ['crypto', 'Medium']][WD];
+      var what = 'Daily code · ' + T[d[0]] + ' · ' + d[1];
+      var e = hist('ciphers').filter(function (x) { return x && x.daily === day; })[0];
+      if (e) return { id: 'ciphers', what: what, status: 'done', note: e.revealed ? 'Answer shown' : clock(e.secs) };
+      var s = state('ciphers_state'); s = s && s.S;
+      if (s && s.g && s.g.daily === day && !s.done) return { id: 'ciphers', what: what, status: 'going', note: clock(s.time) };
+      return { id: 'ciphers', what: what, status: 'new' };
     }
   ];
   // Crossword: today's Mini and today's big Crossword (ids dm-/db-YYYY-MM-DD, as games/crossword.html makes them)
@@ -85,6 +97,15 @@ var Daily = window.Daily = (function () {
     };
   }
   games.push(xwDaily('mini'), xwDaily('big'));
+  var TRUTHLIES = ['Hard', 'Easy', 'Easy', 'Medium', 'Medium', 'Hard', 'Hard'];   // Sun..Sat
+  games.push(function truthlies() {
+    var day = localDay(), best = null;
+    hist('truthlies').forEach(function (e) { if (e && e.daily === day && e.solved && (!best || e.seconds < best.seconds)) best = e; });
+    if (best) return { id: 'truthlies', what: 'Daily · ' + TRUTHLIES[WD], status: 'done', note: clock(best.seconds) };
+    var s = state('truthlies_state'); s = s && s.S;
+    if (s && s.daily === day && !s.done) return { id: 'truthlies', what: 'Daily · ' + TRUTHLIES[WD], status: 'going', note: clock(s.time) };
+    return { id: 'truthlies', what: 'Daily · ' + TRUTHLIES[WD] + ' · who is lying?', status: 'new' };
+  });
   // Other games add their own (the crossword adds its mini and big) with Daily.add(fn)
   function add(fn) { games.push(fn); }
 
