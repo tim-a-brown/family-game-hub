@@ -11,6 +11,7 @@
 //   Truth or Lies today(), DAILY_LV    (days since 1 Jan 2024 local, +1) history daily, solved
 //   Cipher Cases  today(), DAILY       (days since 1 Jan 2024 local, +1) history daily, secs, revealed; ciphers_state S.g.daily
 //   Logic Grids   today(), DAILY_LV  (days since 1 Jan 2024 local, +1) history daily, logicgrid_state.S.daily
+//   Picture Mysteries  today()  (days since 1 Jan 2024 local, +1)   history daily, solved/revealed
 //   Riddles       today()              (days since 1 Jan 2024 local, +1) history daily; riddles_state.daily
 var Daily = window.Daily = (function () {
   var DAY = 86400000;
@@ -73,6 +74,13 @@ var Daily = window.Daily = (function () {
       var s = state('logicgrid_state'); s = s && s.S;
       if (s && s.daily === day && !s.done) return { id: 'logicgrid', what: 'Daily · ' + LOGIC[WD], status: 'going', note: clock(s.time) };
       return { id: 'logicgrid', what: 'Daily · ' + LOGIC[WD] + ' today', status: 'new' };
+    },
+    function mysteries() {
+      var day = localDay(), e = hist('mysteries').filter(function (x) { return x && x.daily === day; })[0];
+      if (e) return { id: 'mysteries', what: 'Daily case', status: 'done', note: e.solved ? clock(e.secs) : 'Solution seen' };
+      var s = state('mysteries_state');
+      if (s && s.daily === day && !s.done) return { id: 'mysteries', what: 'Daily case', status: 'going', note: clock(s.secs) };
+      return { id: 'mysteries', what: 'Daily case · a new picture mystery every day', status: 'new' };
     },
     function riddles() {
       var day = localDay(), e = hist('riddles').filter(function (x) { return x && x.daily === day; })[0];

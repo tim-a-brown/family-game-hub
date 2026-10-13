@@ -585,4 +585,13 @@
       ui.facts([['Puzzle', (d.no ? 'No. ' + d.no : '') + (e.daily ? ' (daily)' : '')], ['Clues', d.cl || ''], ['Wrong marks found', d.w || '']])
     ]);
   });
+  // ── Picture Mysteries: the case, how long, hints and misses ──
+  R('mysteries', function (e, ui) {
+    var d = e.dt || {};
+    if (!d.t) return null;
+    var out = [];
+    out.push(ui.stats([['Time', sec(d.s)], ['Hints', d.h || 0], ['Misses', d.m || 0], ['Result', d.ok ? 'Solved' : 'Solution seen']]));
+    out.push(ui.facts([['Case', (d.lv ? d.lv.charAt(0).toUpperCase() + d.lv.slice(1) + ' · ' : '') + 'No. ' + d.n + ' · ' + d.t], ['Wrong guesses', (d.x || []).join(', ')]]));
+    return ui.wrap(out);
+  });
 })();
