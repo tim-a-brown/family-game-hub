@@ -300,7 +300,9 @@
         var i = list[0], w = why(K0, P[i]);
         return r.pick(['That rules out ' + nm[i] + ' (' + w[0] + ').', 'So it can’t be ' + nm[i] + ': ' + w[1] + '.', nm[i] + ' is in the clear: ' + w[1] + '.']);
       }
-      return r.pick(['That rules out ', 'That clears ']) + andList(list.map(function (i) { return nm[i] + ' (' + why(K0, P[i])[0] + ')'; })) + '.';
+      var ws = list.map(function (i) { return why(K0, P[i])[0]; });
+      if (ws.every(function (w) { return w === ws[0]; })) return r.pick(['That rules out both ', 'That clears both ']).replace('both', list.length > 2 ? 'all of' : 'both') + andList(list.map(function (i) { return nm[i]; })) + ' (' + ws[0] + ').';
+      return r.pick(['That rules out ', 'That clears ']) + andList(list.map(function (i, j) { return nm[i] + ' (' + ws[j] + ')'; })) + '.';
     }
     var K0 = null;
     function part(c, i) { var L = P[i]; return c === 'hair' ? { p: ids[i] + '.head', pad: 1 } : c === 'fabric' ? { p: ids[i] + '.body' } : c === 'shoe' ? { p: ids[i] + '.shoes', pad: 2 } : c === 'glove' ? { p: ids[i] + '.hand' + (L.gloveSide || 'L'), pad: 3 } : { p: ids[i] + '.' + M.part, pad: 3 }; }
@@ -315,16 +317,17 @@
     var L0 = P[ans], pr0 = pron(L0.gd);
     var fits = K.map(function (c) {
       if (c === 'hair') return 'has ' + A.hairLen + ', ' + (A.hairCurly ? 'curly' : 'straight') + ' ' + A.hairCol + ' hair';
-      if (c === 'fabric') return 'is wearing a ' + (A.fabPat === 'plain' ? 'plain' : PAT_ADJ[A.fabPat]) + ' ' + A.fabCol + ' ' + (L0.legs === 'dress' ? 'dress' : 'shirt');
-      if (c === 'shoe') return A.shoe === 'heel' ? 'is in high heels' : 'is wearing flat ' + (L0.shoe === 'boot' ? 'boots' : 'sneakers');
-      if (c === 'glove') return 'is wearing the other ' + A.glove + ' glove';
+      if (c === 'fabric') return 'wears a ' + (A.fabPat === 'plain' ? 'plain' : PAT_ADJ[A.fabPat]) + ' ' + A.fabCol + ' ' + (L0.legs === 'dress' ? 'dress' : 'shirt');
+      if (c === 'shoe') return A.shoe === 'heel' ? 'is in high heels' : 'is in flat ' + (L0.shoe === 'boot' ? 'boots' : 'sneakers');
+      if (c === 'glove') return 'still has the other ' + A.glove + ' glove on';
       return fill(M.vp, { his: pr0.his });
     });
     steps.push({ text: 'Only ' + nm[ans] + ' fits every clue: ' + pr0.he + ' ' + andList(fits) + '.', marks: K.map(function (c) { return part(c, ans); }) });
-    var hard1 = K.slice().sort(function (a, b) { return ({ glove: 0, mark: 1, fabric: 2, hair: 3, shoe: 2 })[b] - ({ glove: 0, mark: 1, fabric: 2, hair: 3, shoe: 2 })[a]; })[0];
+    var subtle = K.filter(function (c) { return people.some(function (p) { var v = p.v; return p.fails.length === 1 && p.fails[0] === c && ((c === 'hair' && v.hairCol === A.hairCol) || (c === 'fabric' && v.fabCol === A.fabCol) || (c === 'glove' && v.glove === 'pair') || (c === 'mark' && v.mark === 'other')); }); });
+    var hard1 = subtle.length ? r.pick(subtle) : K[K.length - 1];
     var hints = [
       { text: level === 'easy' ? 'Check the ' + numw(k) + ' clues in the photo against everyone in the line-up.' : r.pick(['There are ' + numw(k) + ' clues in the photo. Each one rules somebody out.', 'Find all ' + numw(k) + ' clues in the photo, then use them one at a time to cross people off.']) },
-      { text: { hair: 'Look closely at the hair: its colour, its length and whether it’s curly all matter.', fabric: 'Match the scrap of cloth exactly: the colour and the pattern.', glove: 'One glove was dropped. Who is wearing only one glove, in that colour?', mark: 'The thief would have ' + M.what + ' on them. Check everyone carefully.', shoe: 'Look at the print, then at everyone’s shoes.' }[hard1], at: { id: ev[hard1], pad: 8 } }
+      { text: { hair: 'Look closely at the hair: its colour, its length and whether it’s curly all matter.', fabric: 'Match the scrap of cloth exactly: the colour and the pattern.', glove: 'One glove was dropped. Who is wearing just one glove, in that colour?', mark: 'The thief would have ' + M.what + ' on them. Check everyone carefully.', shoe: 'Is the print from a high heel or a flat shoe? Then check everyone’s feet.' }[hard1], at: { id: ev[hard1], pad: 8 } }
     ];
     var verdict = nm[ans] + ' ' + (set.key === 'camp' ? 'raided the tent.' : 'took the ' + thing[0] + '.');
     // essential content: the clue values and every suspect's clue-relevant looks, in order
@@ -359,7 +362,7 @@
         sv(bunting(184, 400, 6, r.shuffle(FLAGS))), ['globe', { x: 220, y: 206, s: 0.9 }], ['table', { x: 250, y: 206, w: 120, h: 40, color: '#c98a3a' }], ['books', { x: 300, y: 160, colors: ['#3a6ea5', '#e0b351', '#b0413e'] }]);
     } else if (set.key === 'camp') {
       var tent = function (x, c) { return '<path d="M' + (x - 40) + ' 206L' + x + ' 140L' + (x + 40) + ' 206Z" fill="' + c + '" stroke="#2b2433" stroke-width="1.3"/><path d="M' + x + ' 140L' + (x - 8) + ' 206H' + (x + 8) + 'Z" fill="#2b2433" opacity=".5"/>'; };
-      it.push(['tree', { x: 196, y: 206, size: 0.9, kind: 'pine', color: '#3f7a4a' }], ['tree', { x: 388, y: 206, size: 1, kind: 'pine', color: '#3a6a44' }], sv(tent(262, '#e8862a') + tent(338, '#3a8a7a')), sv('<path d="M286 214l10 -6M300 216l-12 -5" stroke="#6a4126" stroke-width="4" stroke-linecap="round"/><path d="M293 210q-6 -10 0 -18q2 8 6 4q2 8 -6 14z" fill="#ffb43a" stroke="#e8662a" stroke-width="1"/>'));
+      it.push(['tree', { x: 196, y: 206, size: 0.9, kind: 'pine', color: '#3f7a4a' }], ['tree', { x: 388, y: 206, size: 1, kind: 'pine', color: '#3a6a44' }], sv(tent(262, '#e8862a') + tent(338, '#3a8a7a')));
     }
     return it;
   }
@@ -382,7 +385,7 @@
       it.push(sv('<rect width="160" height="140" fill="' + (set.key === 'shed' ? '#9fd3f2' : set.key === 'bakery' ? '#f3e2c4' : '#e6efe6') + '"/><rect x="0" y="112" width="160" height="28" fill="' + floor + '"/><path d="M0 112h160" stroke="#2b2433" stroke-width="1"/>' +
         (cup ? '<rect x="30" y="8" width="96" height="104" fill="#8a5a34" stroke="#2b2433" stroke-width="1.3"/><rect x="36" y="14" width="84" height="96" fill="#5a3a22"/><path d="M36 50h84M36 82h84" stroke="#8a5a34" stroke-width="3"/><path d="M78 14L102 20V104L78 110Z" fill="' + dc + '" stroke="#2b2433" stroke-width="1.2"/><rect x="40" y="36" width="12" height="14" fill="#e0b351" stroke="#2b2433" stroke-width=".8"/><rect x="56" y="38" width="10" height="12" fill="#3a6ea5" stroke="#2b2433" stroke-width=".8"/><rect x="96" y="56" width="5" height="10" rx="2" fill="#c9a227" stroke="#2b2433" stroke-width=".8"/>'
           : '<rect x="34" y="6" width="74" height="106" fill="' + (set.key === 'shed' ? '#8a5a34' : '#d9c9a8') + '" stroke="#2b2433" stroke-width="1.3"/><rect x="40" y="12" width="62" height="100" fill="' + dc + '" stroke="#2b2433" stroke-width="1.2"/><rect x="47" y="20" width="48" height="34" fill="none" stroke="#2b2433" stroke-width=".9" opacity=".5"/><rect x="47" y="62" width="48" height="40" fill="none" stroke="#2b2433" stroke-width=".9" opacity=".5"/><circle cx="94" cy="64" r="2.6" fill="#e8c34a" stroke="#2b2433" stroke-width=".8"/><path d="M128 34v6" stroke="#2b2433" stroke-width="1.4"/><path d="M128 40q0 5 4 5" fill="none" stroke="#7a828c" stroke-width="2"/>') +
-        (set.key === 'shed' ? '<rect x="112" y="28" width="40" height="20" rx="2" fill="#fbf6e6" stroke="#2b2433" stroke-width="1"/><text x="132" y="36" text-anchor="middle" font-family="Lilita One,sans-serif" font-size="7" fill="#b02a2a">WET</text><text x="132" y="44" text-anchor="middle" font-family="Lilita One,sans-serif" font-size="7" fill="#b02a2a">PAINT</text><path d="M132 48v20" stroke="#8a5a34" stroke-width="2"/>' : '')));
+        (set.key === 'shed' ? '<path d="M136 92v22" stroke="#2b2433" stroke-width="3.6"/><path d="M136 92v22" stroke="#8a5a34" stroke-width="2"/><rect x="116" y="74" width="40" height="20" rx="2" fill="#fbf6e6" stroke="#2b2433" stroke-width="1"/><text x="136" y="82" text-anchor="middle" font-family="Lilita One,sans-serif" font-size="7" fill="#b02a2a">WET</text><text x="136" y="90" text-anchor="middle" font-family="Lilita One,sans-serif" font-size="7" fill="#b02a2a">PAINT</text>' : '')));
       where = cup ? { hair: 'cupboard handle', fabric: 'cupboard hinge', shoe: 'on the floor' } : { hair: 'coat hook', fabric: 'nail on the door frame', shoe: set.key === 'bakery' ? 'in the spilt flour' : 'in the mud by the door' };
       if (K.indexOf('hair') >= 0) it.push(['strand', { id: 'ev-hair', x: cup ? 98 : 131, y: cup ? 64 : 44, color: HAIRC[A.hairCol], len: A.hairLen, curly: A.hairCurly }]);
       if (K.indexOf('fabric') >= 0) it.push(cup ? ['scrap', { id: 'ev-scrap', x: 116, y: 28, color: CLOTH[A.fabCol], pat: A.fabPat === 'plain' ? null : A.fabPat, pc: patPc(A.fabCol), r: -14 }] : ['scrap', { id: 'ev-scrap', x: 22, y: 60, color: CLOTH[A.fabCol], pat: A.fabPat === 'plain' ? null : A.fabPat, pc: patPc(A.fabCol), r: 16 }]);
@@ -391,7 +394,7 @@
       if (K.indexOf('glove') >= 0) it.push(['glove1', { id: 'ev-glove', x: 18, y: 126, color: GLOVEC[A.glove], r: 70 }]);
       if (K.indexOf('mark') >= 0) {
         if (set.key === 'bakery') it.push(['svg', { id: 'ev-mark', svg: '<path d="M100 124q8 -6 18 -2q6 4 -2 8q-8 4 -16 -6z" fill="#fff" stroke="#c9c2b0" stroke-width=".8"/><circle cx="96" cy="118" r="2.2" fill="#fff" stroke="#c9c2b0" stroke-width=".6"/>' }]);
-        else if (set.key === 'shed') it.push(['svg', { id: 'ev-mark', svg: '<path d="M54 76q10 -6 22 -1q3 7 -3 11q-10 4 -18 -1q-4 -4 -1 -9z" fill="' + M.col + '" opacity=".65"/><path d="M57 79h16M58 83h15" stroke="#fff" stroke-width="1" opacity=".7"/>' }]);
+        else if (set.key === 'shed') it.push(['svg', { id: 'ev-mark', svg: '<path d="M52 70q12 -7 24 -1q4 8 -3 13q-11 5 -19 -1q-5 -5 -2 -11z" fill="#000" opacity=".12"/><path d="M57 70v14M63 69v16M69 70v14" stroke="#b08a5a" stroke-width="2.6" stroke-linecap="round"/>' }]);
         else it.push(['svg', { id: 'ev-mark', svg: '<path d="M70 132q-10 -2 -8 -8q6 -6 16 -2q6 4 0 9z" fill="' + M.col + '" stroke="#2b2433" stroke-width=".8"/><rect x="72" y="118" width="10" height="11" rx="1" fill="#fbfaf5" stroke="#2b2433" stroke-width="1" transform="rotate(60 77 123)"/><path d="M84 112q4 0 6 4 3 4 0 6-3 2-5 -2" fill="' + M.col + '" stroke="#2b2433" stroke-width=".8"/>' }]);
       }
       return { bg: ['plain', { color: bgc }], items: it, where: where };
