@@ -785,7 +785,7 @@ function paintBackglass(g, w, h) {
   for (let i = 0; i < 9; i++) { const t = i / 8, y = (hz + 12 + t * t * 240) * v, amp = (1.5 + t * 9) * v, len = (26 + t * 40) * u; swell(y, amp, len, 'rgba(' + Math.round(10 + 20 * (1 - t)) + ',' + Math.round(50 + 40 * (1 - t)) + ',' + Math.round(60 + 44 * (1 - t)) + ',' + (0.55 + t * 0.4) + ')', 'rgba(210,240,250,' + (0.12 + t * 0.3) + ')', (0.8 + t * 1.8) * u); }
   for (let i = 0; i < 90; i++) { const y = (hz + 6 + r() * 250) * v, x = r() * w, t = (y / v - hz) / 250, near = Math.abs(x - mx) < (40 + 150 * t) * u; g.fillStyle = 'rgba(220,240,255,' + ((near ? 0.45 : 0.12) * (0.4 + r() * 0.6)) + ')'; g.fillRect(x, y, (4 + r() * 18) * u * (0.5 + t), 1.2 * v); }
   // ── the galleon, broadside on the swell, stern lit ──
-  g.save(); g.translate(640 * u, 470 * v); g.rotate(-0.04); g.scale(u * 1.02, v * 1.02);
+  g.save(); g.translate(650 * u, 500 * v); g.rotate(-0.04); g.scale(u * 1.04, v * 1.04);
   const hullG = g.createLinearGradient(0, -40, 0, 40); hullG.addColorStop(0, '#3a2412'); hullG.addColorStop(0.5, '#24160a'); hullG.addColorStop(1, '#0e0804'); g.fillStyle = hullG;
   g.beginPath(); g.moveTo(-150, -22); g.quadraticCurveTo(-140, 30, -100, 34); g.lineTo(120, 34); g.quadraticCurveTo(172, 28, 184, -40); g.lineTo(160, -44); g.lineTo(156, -8); g.lineTo(140, -6); g.quadraticCurveTo(100, -10, 40, -10); g.lineTo(-120, -10); g.closePath(); g.fill();
   g.strokeStyle = 'rgba(226,180,90,.75)'; g.lineWidth = 2; g.beginPath(); g.moveTo(-134, 6); g.quadraticCurveTo(0, 10, 150, 4); g.stroke(); g.strokeStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.moveTo(-128, 18); g.quadraticCurveTo(0, 22, 140, 16); g.stroke();
@@ -793,14 +793,14 @@ function paintBackglass(g, w, h) {
   g.save(); g.shadowColor = '#ffb45a'; g.shadowBlur = 14; g.fillStyle = '#ffd890'; for (let i = 0; i < 3; i++) g.fillRect(150 + i * 9, -32 + i * 1, 5, 9); for (let i = 0; i < 4; i++) g.fillRect(118 + i * 10, -4, 5, 7); g.restore();   // stern windows
   g.strokeStyle = '#1a1008'; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(-150, -22); g.lineTo(-236, -58); g.stroke();   // bowsprit
   g.fillStyle = 'rgba(230,220,200,.9)'; g.beginPath(); g.moveTo(-150, -26); g.lineTo(-224, -56); g.lineTo(-160, -58); g.closePath(); g.fill();   // jib
-  const sail = (x, yTop, hw, hh, bulge) => { const sg = g.createLinearGradient(x - hw, 0, x + hw, 0); sg.addColorStop(0, '#6a6a68'); sg.addColorStop(0.35, '#d8d4c8'); sg.addColorStop(0.7, '#f4f0e4'); sg.addColorStop(1, '#8a8880'); g.fillStyle = sg; g.beginPath(); g.moveTo(x - hw, yTop); g.quadraticCurveTo(x, yTop + bulge * 0.4, x + hw, yTop); g.lineTo(x + hw * 1.1, yTop + hh); g.quadraticCurveTo(x, yTop + hh + bulge, x - hw * 1.1, yTop + hh); g.closePath(); g.fill(); g.strokeStyle = 'rgba(40,30,20,.5)'; g.lineWidth = 1; g.stroke(); g.strokeStyle = '#1a1008'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(x - hw - 6, yTop); g.lineTo(x + hw + 6, yTop); g.stroke(); };
+  const sail = (x, yTop, hw, hh, bulge) => { const sg = g.createLinearGradient(x - hw, 0, x + hw, 0); sg.addColorStop(0, '#5e5c58'); sg.addColorStop(0.3, '#b8b2a2'); sg.addColorStop(0.62, '#e6dfcc'); sg.addColorStop(0.8, '#cfc7b4'); sg.addColorStop(1, '#7c7870'); g.fillStyle = sg; g.beginPath(); g.moveTo(x - hw, yTop); g.quadraticCurveTo(x, yTop + bulge * 0.4, x + hw, yTop); g.lineTo(x + hw * 1.1, yTop + hh); g.quadraticCurveTo(x, yTop + hh + bulge, x - hw * 1.1, yTop + hh); g.closePath(); g.fill(); g.strokeStyle = 'rgba(40,30,20,.5)'; g.lineWidth = 1; g.stroke(); g.strokeStyle = 'rgba(60,50,40,.35)'; g.lineWidth = 0.8; for (let k = 1; k < 4; k++) { const yy = yTop + hh * k / 4; g.beginPath(); g.moveTo(x - hw * (1 + 0.1 * k / 4), yy + bulge * 0.2 * k / 4); g.quadraticCurveTo(x, yy + bulge * (0.4 + 0.5 * k / 4), x + hw * (1 + 0.1 * k / 4), yy + bulge * 0.2 * k / 4); g.stroke(); } g.strokeStyle = '#1a1008'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(x - hw - 6, yTop); g.lineTo(x + hw + 6, yTop); g.stroke(); };
   const mast = (x, hgt, top) => { g.strokeStyle = '#1a1008'; g.lineWidth = 4; g.beginPath(); g.moveTo(x, -10); g.lineTo(x, -hgt); g.stroke(); if (top) { g.fillStyle = '#1a1008'; g.fillRect(x - 8, -hgt + 30, 16, 6); } };
-  mast(-80, 190, true); mast(20, 236, true); mast(110, 160, false);
-  sail(-80, -176, 34, 44, 10); sail(-80, -122, 44, 58, 14); sail(20, -222, 40, 50, 12); sail(20, -160, 54, 66, 18); sail(20, -84, 60, 60, 14); sail(110, -148, 30, 40, 8); sail(110, -98, 40, 54, 12);
+  mast(-80, 162, true); mast(20, 204, true); mast(110, 138, false);
+  sail(-80, -150, 32, 40, 10); sail(-80, -102, 44, 54, 14); sail(20, -192, 38, 46, 12); sail(20, -138, 54, 58, 16); sail(20, -72, 60, 50, 12); sail(110, -128, 28, 36, 8); sail(110, -86, 38, 46, 10);
   // rigging
-  g.strokeStyle = 'rgba(30,20,10,.75)'; g.lineWidth = 1; for (const [x0, y0, x1, y1] of [[-80, -190, -236, -58], [20, -236, -80, -190], [20, -236, 110, -160], [110, -160, 184, -40], [-80, -190, -150, -22], [20, -236, -60, -10], [20, -236, 100, -10], [110, -160, 160, -8], [-80, -190, -30, -10]]) { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
+  g.strokeStyle = 'rgba(30,20,10,.75)'; g.lineWidth = 1; for (const [x0, y0, x1, y1] of [[-80, -162, -236, -58], [20, -204, -80, -162], [20, -204, 110, -138], [110, -138, 184, -40], [-80, -162, -150, -22], [20, -204, -60, -10], [20, -204, 100, -10], [110, -138, 160, -8], [-80, -162, -30, -10]]) { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
   // flag: black with a skull, streaming aft
-  g.fillStyle = '#0a0806'; g.beginPath(); g.moveTo(20, -236); g.lineTo(62, -230); g.lineTo(56, -222); g.lineTo(64, -214); g.lineTo(20, -210); g.closePath(); g.fill(); g.fillStyle = '#f4ecd8'; g.beginPath(); g.arc(40, -223, 4, 0, TAU); g.fill();
+  g.fillStyle = '#0a0806'; g.beginPath(); g.moveTo(20, -204); g.lineTo(62, -198); g.lineTo(56, -190); g.lineTo(64, -182); g.lineTo(20, -178); g.closePath(); g.fill(); g.fillStyle = '#f4ecd8'; g.beginPath(); g.arc(40, -191, 4, 0, TAU); g.fill();
   glowAt(g, 164, -36, 18, '#ffb45a', 0.8); glowAt(g, -60, -14, 12, '#ffb45a', 0.6);   // stern lantern, deck lantern
   // the hull's reflection
   g.globalAlpha = 0.28; g.fillStyle = '#1a1008'; g.beginPath(); g.moveTo(-150, 34); g.lineTo(184, 34); g.quadraticCurveTo(170, 70, 120, 72); g.lineTo(-100, 72); g.quadraticCurveTo(-140, 66, -150, 34); g.fill(); g.globalAlpha = 1;
@@ -819,7 +819,7 @@ function paintBackglass(g, w, h) {
   g.fillStyle = '#c8352e'; g.beginPath(); g.ellipse(-22, -24, 6, 4, 0.2, 0, TAU); g.fill(); g.fillStyle = '#5fe0a0'; g.beginPath(); g.ellipse(26, -22, 5, 3.5, -0.3, 0, TAU); g.fill();   // jewels
   g.restore();
   // ── the skull and crossed cutlasses over the title ──
-  g.save(); g.translate(512 * u, 134 * v); g.scale(u, v);
+  g.save(); g.translate(512 * u, 112 * v); g.scale(u, v);
   const cutlass = (flip) => { g.save(); g.scale(flip, 1); g.rotate(-0.62); const bl = g.createLinearGradient(0, -6, 0, 6); bl.addColorStop(0, '#f4f6f8'); bl.addColorStop(0.5, '#9aa4b0'); bl.addColorStop(1, '#5a6470'); g.fillStyle = bl; g.beginPath(); g.moveTo(-120, 0); g.quadraticCurveTo(-40, -22, 120, -26); g.quadraticCurveTo(100, -8, 130, 2); g.quadraticCurveTo(-40, 14, -120, 10); g.closePath(); g.fill(); g.strokeStyle = 'rgba(30,30,40,.6)'; g.lineWidth = 1.2; g.stroke(); const hg = g.createLinearGradient(-150, 0, -120, 0); hg.addColorStop(0, '#8a5a14'); hg.addColorStop(1, '#f2c14e'); g.fillStyle = hg; g.fillRect(-156, -4, 38, 14); g.beginPath(); g.moveTo(-120, -14); g.quadraticCurveTo(-150, 20, -118, 34); g.lineTo(-110, 28); g.quadraticCurveTo(-136, 18, -112, -8); g.closePath(); g.fill(); g.restore(); };
   cutlass(1); cutlass(-1);
   g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 12; g.shadowOffsetY = 4;
@@ -831,7 +831,7 @@ function paintBackglass(g, w, h) {
   g.strokeStyle = 'rgba(80,60,30,.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-10, -50); g.lineTo(-4, -30); g.lineTo(-12, -16); g.stroke();
   g.restore();
   // ── the title on a chart ribbon ──
-  g.save(); g.translate(512 * u, 272 * v); g.scale(u, v);
+  g.save(); g.translate(512 * u, 250 * v); g.scale(u, v);
   g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 14; g.shadowOffsetY = 6;
   const parch = g.createLinearGradient(0, -46, 0, 46); parch.addColorStop(0, '#f1e3c0'); parch.addColorStop(0.5, '#e4cf9f'); parch.addColorStop(1, '#c6a86e'); g.fillStyle = parch;
   g.beginPath(); g.moveTo(-370, -40); g.quadraticCurveTo(0, -56, 370, -40); g.lineTo(400, -8); g.lineTo(372, 44); g.quadraticCurveTo(0, 60, -372, 44); g.lineTo(-400, -8); g.closePath(); g.fill();
@@ -842,7 +842,7 @@ function paintBackglass(g, w, h) {
   g.strokeStyle = 'rgba(110,80,40,.25)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(-300, 20); g.bezierCurveTo(-200, -20, -100, 30, 0, -10); g.bezierCurveTo(100, -40, 200, 20, 300, -14); g.stroke();   // a coastline on the chart
   g.restore();
   const goldF = (x0, y0, x1, y1) => { const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, '#fff6c8'); q.addColorStop(0.45, '#f2c14e'); q.addColorStop(0.55, '#b8821e'); q.addColorStop(1, '#f6d77a'); return q; };
-  textLogo(g, "PIRATE'S COVE", 512 * u, 276 * v, { font: '700 ' + (74 * v) + 'px Cinzel, Georgia, serif', spacing: 3 * u, shadow: { dx: 3 * u, dy: 4 * v, color: 'rgba(60,30,8,.8)' }, outline: { color: '#3a2008', w: 5.5 * u }, fill: goldF, inline: { color: 'rgba(120,70,10,.5)', w: 1 * u }, top: { color: 'rgba(255,255,240,.35)', frac: 0.4 } });
+  textLogo(g, "PIRATE'S COVE", 512 * u, 254 * v, { font: '700 ' + (74 * v) + 'px Cinzel, Georgia, serif', spacing: 3 * u, shadow: { dx: 3 * u, dy: 4 * v, color: 'rgba(60,30,8,.8)' }, outline: { color: '#3a2008', w: 5.5 * u }, fill: goldF, inline: { color: 'rgba(120,70,10,.5)', w: 1 * u }, top: { color: 'rgba(255,255,240,.35)', frac: 0.4 } });
   grain(g, w, h, 2400, 0.05, 83);
 }
 function paintApron(g, w, h) {

@@ -213,7 +213,10 @@ brightness. `env` and `gi` colours give each table its own light.
 
 **Views.** The player picks first person (angled, default) or top-down in the game menu or the picker; the
 page stores it in `pinball_view` and passes `view` to `createGame`. Both fits are computed from `W`/`L` and
-`fit` (`topPhi`, default 82, is the top-down tilt), so a table needs nothing extra. In the top-down view
+`fit` (`topPhi`, default 82, is the top-down tilt; `fov`, `phi`, `phiMax` override the first-person search), so a
+table needs nothing extra. Both fits include the top of the backbox, so the backglass is never cut by the display
+band; the first-person angle is the one (26..58 degrees) that shows the most playfield with the head in frame,
+which on most screens is the steep end. In the top-down view
 the key light moves over the player's left shoulder (`RC.keyPos`) so flat chrome doesn't mirror it into
 the camera; billboards (hologram, pop text) face whichever camera is active. Check new tables in both
 views (`__pin.view('top')`).
@@ -232,9 +235,29 @@ water, metal with grain, gradients, shadows, scuffs), never flat fills with outl
 engine after `playfield` (and before `T.art(fn, 'over')`). Contact shadows under every wall/post/toy are baked
 automatically.
 
-`art.backglass(g, w, h)` (512x512, lit from behind), `art.apron(g, w, h)` (1024x256), `art.sides(g, w, h)`
-(1024x128, the inside of the cabinet), `art.backboard(g, w, h)` (1024x300, the wall behind the playfield),
-`art.sling(g, w, h, side)` (the printed plastic over each slingshot). These are plain canvases (y down).
+`art.backglass(g, w, h)` (the translite: 1024 px wide at the glass's aspect, currently 1024x662; see Backglass),
+`art.apron(g, w, h)` (1024x256), `art.sides(g, w, h)` (1024x128, the inside of the cabinet), `art.backboard(g, w, h)`
+(1024x300, the wall behind the playfield), `art.sling(g, w, h, side)` (the printed plastic over each slingshot).
+These are plain canvases (y down).
+
+### Backglass
+
+The backbox is a short head (`BACKBOX` in `engine.js`: 400 mm tall, sitting on the backboard, its face just behind the
+back wall) with a translite of 532 x 344 mm in a trim frame. It is the first thing a player sees, so paint it like a
+real 80s/90s backglass: a full scene in the table's theme with the title as logo lettering (built in layers, not one
+`fillText`), fully inside the glass and well clear of the top and bottom edges. Lay the art out in design units
+(`u = w / 1024`, `v = h / 662`) so it survives a size change. Keep it procedural (gradients, bezier silhouettes,
+`shadowBlur` for airbrush and glow) and under ~70 ms to paint. The engine then runs `glassFinish` over it (the look
+of bulbs behind the glass: brighter in the middle, darker corners, a faint sheen) and lights it with
+`emissiveIntensity` `BACKBOX.lit`; `G.flash` and lightning brighten the whole glass, so big moments flash the head
+too (`RC.backglass` has the mesh, canvas, texture and material). Helpers in `gfx.js`: `textLogo(g, str, x, y, {font,
+glow, shadow, outline, fill, inline, top, spacing})` for the lettering (fill may be a gradient function of the text
+box), `glowAt(g, x, y, r, color, k)` for soft light, `grain(g, w, h, n, a)` for print grain. The six tables are the
+references: Haunted Manor (gothic silhouette and a glowing title), Midway Mayhem (a bulb marquee), Nebula Run
+(chrome), Neon Nights (neon tubes), Pirate's Cove (gold on a chart ribbon), Jungle Temple (carved stone).
+
+The camera fits keep the whole head in frame (`RC.backbox`), so the backbox height is paid for in playfield size,
+most of all on a phone: do not make it taller.
 
 ## Models (`T.model(fn)`, component `model`/`toy` callbacks)
 

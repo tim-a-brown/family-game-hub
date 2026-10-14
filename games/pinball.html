@@ -335,6 +335,10 @@ function startGame(id, balls, who) {
   requestAnimationFrame(() => setTimeout(async () => {
     if (view !== 'game') return;
     sizeDmd();
+    // the backglass, apron and display art are painted on canvases with the page's fonts: have them ready first
+    // (on a cold cache the first table used to paint its titles in the fallback fonts)
+    if (document.fonts && document.fonts.load) { try { await Promise.all([document.fonts.load('20px Bungee'), document.fonts.load('700 20px Cinzel')]); } catch (e) {} }
+    if (view !== 'game') return;
     // the table is built one phase per frame; the text and bar show the real phase
     // the camera keeps the button row clear: the apron ends above it and the buttons sit on the cabinet front
     // (while looking around the buttons are hidden and have no position: keep the last measure)

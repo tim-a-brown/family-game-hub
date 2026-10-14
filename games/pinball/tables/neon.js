@@ -675,15 +675,15 @@ function paintBackglass(g, w, h) {
   // thin horizontal cloud bars catching the sun
   for (const [x, y, cw, ch, a] of [[260, 190, 220, 5, 0.5], [700, 150, 260, 6, 0.45], [520, 250, 180, 4, 0.4], [860, 300, 200, 5, 0.5]]) { const cg = g.createLinearGradient((x - cw) * u, 0, (x + cw) * u, 0); cg.addColorStop(0, 'rgba(255,160,200,0)'); cg.addColorStop(0.5, 'rgba(255,190,220,' + a + ')'); cg.addColorStop(1, 'rgba(255,160,200,0)'); g.fillStyle = cg; g.beginPath(); g.ellipse(x * u, y * v, cw * u, ch * v, 0, 0, TAU); g.fill(); }
   // ── the sun: striped, half down behind the skyline ──
-  const sx = 512 * u, sy = 352 * v, sr = 168 * v;
+  const sx = 512 * u, sy = 332 * v, sr = 168 * v;
   glowAt(g, sx, sy, sr * 2.6, '#ff6a3d', 0.5); glowAt(g, sx, sy, sr * 1.4, '#ffb060', 0.45);
   g.save(); g.beginPath(); g.arc(sx, sy, sr, 0, TAU); g.clip();
   const sg = g.createLinearGradient(0, sy - sr, 0, sy + sr); sg.addColorStop(0, '#fff3a0'); sg.addColorStop(0.35, '#ffb347'); sg.addColorStop(0.7, '#ff5f7a'); sg.addColorStop(1, '#ff2d95'); g.fillStyle = sg; g.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
-  g.fillStyle = '#2a0c3e'; for (let i = 0; i < 9; i++) { const y = sy + sr * 0.02 + i * 16 * v + i * i * 1.6 * v, th = (2 + i * 1.6) * v; g.fillRect(sx - sr, y, sr * 2, th); }
+  g.fillStyle = '#2a0c3e'; for (let i = 0; i < 9; i++) { const y = sy - sr * 0.3 + i * 15 * v + i * i * 1.8 * v, th = (1.6 + i * 1.7) * v; g.fillRect(sx - sr, y, sr * 2, th); }
   g.restore();
   // ── skyline in silhouette along the horizon, windows lit, a few towers edged in neon ──
   g.fillStyle = '#0a0518'; let x = -10 * u; const bl = [];
-  while (x < w + 10 * u) { const bw = (14 + r() * 34) * u, bh = (24 + r() * 120 + (Math.abs(x - sx) < 160 * u ? 40 : 0)) * v; bl.push([x, bw, bh]); g.fillRect(x, hz * v - bh, bw, bh + 6 * v); if (r() < 0.25) { g.fillRect(x + bw / 2 - 1 * u, hz * v - bh - 22 * v, 2 * u, 22 * v); } x += bw + 3 * u; }
+  while (x < w + 10 * u) { const bw = (14 + r() * 34) * u, bh = (22 + r() * (Math.abs(x - sx) < 200 * u ? 70 : 118)) * v; bl.push([x, bw, bh]); g.fillRect(x, hz * v - bh, bw, bh + 6 * v); if (r() < 0.25) { g.fillRect(x + bw / 2 - 1 * u, hz * v - bh - 22 * v, 2 * u, 22 * v); } x += bw + 3 * u; }
   for (const [bx, bw, bh] of bl) { const n = Math.floor(bh / (9 * v)); for (let i = 0; i < n; i++) for (let k = 0; k < Math.floor(bw / (7 * u)); k++) if (r() < 0.32) { g.fillStyle = r() < 0.7 ? 'rgba(255,209,102,.85)' : 'rgba(126,240,255,.8)'; g.fillRect(bx + 2 * u + k * 7 * u, hz * v - bh + 4 * v + i * 9 * v, 2.6 * u, 3.4 * v); } }
   for (const [bx, bw, bh] of bl) if (bh > 100 * v && r() < 0.5) { g.save(); g.shadowColor = r() < 0.5 ? C.pink : C.cyan; g.shadowBlur = 10 * u; g.strokeStyle = g.shadowColor; g.lineWidth = 1.6 * u; g.beginPath(); g.moveTo(bx, hz * v - bh); g.lineTo(bx + bw, hz * v - bh); g.lineTo(bx + bw, hz * v - bh * 0.5); g.stroke(); g.restore(); }
   // ── the grid floor ──
