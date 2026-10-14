@@ -1349,7 +1349,8 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     }
     return { pos: camera.position.clone(), look: look.clone(), fov, phi, area };
   }
-  function fitCamera(aspect, padBottom) {
+  // o.backbox === false leaves the head out of the fit (the picker thumbnails: a playfield picture)
+  function fitCamera(aspect, padBottom, o = {}) {
     camera.aspect = aspect;
     RC.padBottom = padBottom != null ? padBottom : (RC.padBottom || 0);
     const h = renderer.domElement.clientHeight || renderer.domElement.height || 1, yMin = -0.985 + 2 * RC.padBottom / h;
@@ -1357,7 +1358,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     const add = (arr, x, y, z) => arr.push(new THREE.Vector3(x, y, z).applyMatrix4(root.matrixWorld));
     // first person: the playfield, the apron front and the glass height, from a low angle, plus the top of the
     // backbox (the whole backglass stays in frame under the page's display band, with a little cabinet over it)
-    const pts = [], top = fit.top != null ? fit.top : 60, bot = fit.bottom != null ? fit.bottom : -40, bx = RC.backbox;
+    const pts = [], top = fit.top != null ? fit.top : 60, bot = fit.bottom != null ? fit.bottom : -40, bx = o.backbox === false ? null : RC.backbox;
     add(pts, -12, bot, 0); add(pts, W + 12, bot, 0); add(pts, W + 12, L + top * 0.2, 0); add(pts, -12, L + top * 0.2, 0); add(pts, W / 2, L + 4, top); add(pts, -12, bot - 10, 105); add(pts, W + 12, bot - 10, 105);
     const core = pts.slice(0, 4);
     if (bx) { add(pts, bx.x0, bx.y, bx.z1 + 8); add(pts, bx.x1, bx.y, bx.z1 + 8); }
@@ -1833,8 +1834,8 @@ export function renderThumb(def, renderer, out, o = {}) {
   renderer.setPixelRatio(1); renderer.setSize(w, h, false);
   const G = createGame(def, { thumb: true, hq: !!o.hq, renderer, quality: o.hq ? 2 : 1, fixedQuality: true });
   const RC = G.T.R;
-  RC.fitCamera(w / h);
-  if (o.hq) { RC.resize(); RC.fitCamera(w / h); }
+  RC.fitCamera(w / h, 0, { backbox: false });
+  if (o.hq) { RC.resize(); RC.fitCamera(w / h, 0, { backbox: false }); }
   G.time = 0.5;
   for (const lp of G.lampList) lp.level = lp.on ? 1 : 0;
   RC.render(1 / 60); if (o.hq) RC.render(1 / 60);
