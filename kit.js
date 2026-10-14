@@ -461,6 +461,7 @@
       setTimeout(function () { scrim.remove(); }, 300);
       if (fromCancel === true && o.onCancel) o.onCancel();
       if (o.onClose) o.onClose();
+      try { window.dispatchEvent(new CustomEvent('kit-sheet-closed')); } catch (e) {}
     }
     function onKey(e) { if (e.key === 'Escape') close(true); }
     if (o.actions && o.actions.length) {

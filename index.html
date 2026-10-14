@@ -61,6 +61,15 @@ document.addEventListener('visibilitychange', function () {
 .acct-name::placeholder{color:var(--text-3);}
 .acct-d{display:flex;align-items:center;gap:6px;margin-top:6px;color:var(--text-2);font-size:.86rem;}
 .acct-d span{min-width:0;}
+/* a link request waiting: gold dot on your avatar, banner under the header */
+.me.attn::before{content:"";position:absolute;left:-3px;top:-3px;width:16px;height:16px;border-radius:50%;background:var(--yellow);border:2px solid var(--bg);box-shadow:0 0 0 0 color-mix(in srgb,var(--yellow) 60%,transparent);animation:attn 1.6s ease-out infinite;z-index:2;}
+@keyframes attn{70%{box-shadow:0 0 0 9px color-mix(in srgb,var(--yellow) 0%,transparent);}100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--yellow) 0%,transparent);}}
+.lk-banner{display:flex;align-items:center;gap:12px;width:100%;margin:0 0 12px;padding:9px 10px 9px 12px;border:0;border-radius:16px;text-align:left;color:var(--text);
+  background:color-mix(in srgb,var(--yellow) 16%,var(--surface));box-shadow:inset 0 0 0 2px var(--yellow);}
+.lk-banner .grow{flex:1;min-width:0;display:flex;flex-direction:column;}
+.lk-banner b{font-weight:900;font-size:.98rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lk-banner small{font-size:.8rem;font-weight:700;color:var(--text-2);}
+.lk-banner .lk-rev{flex:none;padding:8px 14px;border-radius:999px;background:var(--yellow);color:#1a1200;font-weight:900;font-size:.86rem;}
 .syncdot{position:relative;}
 .syncdot::after{content:"";position:absolute;right:1px;top:1px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);background:var(--text-3);}
 .syncdot.s-synced::after{background:var(--green);}
@@ -1028,12 +1037,28 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     } else {
       me.textContent = mode === 'pin' ? initials(lbl) : 'G'; me.classList.remove('has-av'); me.style.background = ''; me.style.color = '';
     }
+    renderReqBanner();
+  }
+  // Someone wants to link with you: a gold dot on your avatar and a banner under the header until you answer
+  function linkReqs() { try { return window.FGHSync && FGHSync.linkReqs ? FGHSync.linkReqs() : []; } catch (e) { return []; } }
+  function renderReqBanner() {
+    var reqs = linkReqs(), me = $('me'), old = document.querySelector('.lk-banner');
+    me.classList.toggle('attn', !!reqs.length);
+    if (!reqs.length) { if (old) old.remove(); return; }
+    var r = reqs[0], el = Kit.el;
+    var b = el('button', { type: 'button', class: 'lk-banner', onclick: function () { Kit.sfx('pop'); Kit.links.request(r.id, refreshWho); } }, [
+      Kit.avatar.el(r.name, null, 'var(--surface-3)'),
+      el('span', { class: 'grow' }, [el('b', { text: r.name + ' wants to link with you' }), el('small', { text: reqs.length > 1 ? reqs.length + ' requests waiting' : 'Tap to accept or decline' })]),
+      el('span', { class: 'lk-rev', text: 'Review' })
+    ]);
+    if (old) old.replaceWith(b); else { var top = document.querySelector('.top'); top.parentNode.insertBefore(b, top.nextSibling); }
   }
   window.addEventListener('kit-avatar', refreshWho);
   // games someone recorded with you, waiting for your OK: a one-time nudge per visit
   var pendNoted = false;
   window.addEventListener('fghlinks', function (e) {
     var n = e.detail && e.detail.pending || 0, lk = e.detail && e.detail.linked || [];
+    renderReqBanner();
     if (lk.length) linkedMoment();
     deniedNote();
     if (e.detail && e.detail.requests) linkRequestSheet();
@@ -1048,12 +1073,15 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
   // Someone linked you from their phone: ask before linking them back (one sheet per request, each visit)
   var reqShown = {};
+  var reqWaiting = false;
   function linkRequestSheet() {
-    if (!window.FGHSync || !FGHSync.linkReqs || document.querySelector('.k-scrim,.lkm')) return;
+    if (!window.FGHSync || !FGHSync.linkReqs) return;
     var r = FGHSync.linkReqs().filter(function (x) { return !reqShown[x.id]; })[0]; if (!r) return;
-    reqShown[r.id] = 1;
-    Kit.links.request(r.id, function () { setTimeout(linkRequestSheet, 400); });
+    if (document.querySelector('.k-scrim,.lkm')) { reqWaiting = true; return; }   // another sheet is up: right after it closes
+    reqWaiting = false; reqShown[r.id] = 1;
+    Kit.links.request(r.id, function () { renderReqBanner(); setTimeout(linkRequestSheet, 400); });
   }
+  window.addEventListener('kit-sheet-closed', function () { if (reqWaiting) setTimeout(linkRequestSheet, 350); });
   // Someone linked you from their phone and you linked back: a full-screen moment, both avatars joined by a link
   function linkedMoment() {
     var names; try { names = JSON.parse(localStorage.getItem('fgh_link_new') || '[]'); } catch (e) { names = []; }
@@ -1082,7 +1110,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (FGHSync.onReady) FGHSync.onReady(watch); else watch();
     document.addEventListener('visibilitychange', watch);
     window.addEventListener('pagehide', function () { FGHSync.linkWatch(false); });
-    setInterval(function () { if (document.visibilityState === 'visible' && FGHSync.linkPoll) FGHSync.linkPoll(); }, 45000);
+    setInterval(function () { if (document.visibilityState === 'visible' && FGHSync.linkPoll) FGHSync.linkPoll(); }, 30000);
   }
   // opened from someone's profile link (QR code or a tapped link): offer to link them
   setTimeout(function () { try { Kit.links.fromUrl(); } catch (e) {} }, 700);
@@ -1157,6 +1185,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     ]));
     var list = el('div', { class: 'k-list', style: { 'margin-top': '14px' } });
     function item(ic, t, fn, cls, extra) { list.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); fn(); } }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('span', { text: t }), extra || null])); }
+    var reqs = linkReqs();
+    if (reqs.length) item('link', reqs[0].name + ' wants to link with you', function () { Kit.links.request(reqs[0].id, refreshWho); }, 'hl');
     var nPend = window.FGHSync && FGHSync.linkPending ? FGHSync.linkPending().length : 0;
     if (nPend) item('inbox', nPend + (nPend === 1 ? ' game' : ' games') + ' to review', function () { Kit.links.review(refreshWho); }, 'hl');
     item('history', 'Game history', function () { location.href = 'games/history.html'; });
