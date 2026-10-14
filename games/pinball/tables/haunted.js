@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import * as THREE from 'three';
 import { BR, spline, deg } from '../physics.js';
-import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, offsetLine, glowAt, grain, textLogo } from '../gfx.js';
+import { canvas, rng, shade, rgba, hexRgb, latheGeo, cylGeo, tubeGeo, boxGeo, offsetLine, glowAt, grain, textLogo, bgPuff, bgCloud, bgStars, bgRays, bgHaze, bgTexture, bgVignette } from '../gfx.js';
 
 const PI = Math.PI, TAU = PI * 2;
 const PAL = { night: '#0b0918', plum: '#2a1838', moss: '#7fd4a4', spirit: '#9fffd0', candle: '#ffb45a', blood: '#c0283a', violet: '#b48cff', bone: '#efe6cf', gold: '#e8c070' };
@@ -558,100 +558,192 @@ function paintAttic(P, box) {
   P.text('W-I-L', 136, 884, { size: 6, color: 'rgba(232,192,112,.8)' });
 }
 function paintBackglass(g, w, h) {
-  // A translite: the manor on its hill under a huge moon, lightning over the roofs, bats, two ghosts drifting
-  // over the graveyard in the fog, cobwebs in the corners, and the title in glowing green over the sky at left.
-  const r = rng(13), u = w / 1024, v = h / 662;   // u/v: design units (the art is laid out on 1024x662)
-  // ── sky ──
-  const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#04030d'); sky.addColorStop(0.45, '#15103a'); sky.addColorStop(0.78, '#2a1b4e'); sky.addColorStop(1, '#1a1232'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 260; i++) { const x = r() * w, y = r() * h * 0.7, s = r(); g.fillStyle = 'rgba(' + (s < 0.85 ? '225,225,255' : '255,235,200') + ',' + (0.2 + r() * 0.7) + ')'; g.fillRect(x, y, s < 0.9 ? 1.2 * u : 2 * u, s < 0.9 ? 1.2 * u : 2 * u); }
-  // ── moon and its halo ──
-  const mx = 806 * u, my = 178 * v, mr = 118 * v;
-  glowAt(g, mx, my, mr * 3.1, '#b9b0ff', 0.32); glowAt(g, mx, my, mr * 1.6, '#f4efff', 0.22);
-  const md = g.createRadialGradient(mx - mr * 0.35, my - mr * 0.35, mr * 0.1, mx, my, mr); md.addColorStop(0, '#fffdf2'); md.addColorStop(0.6, '#efe8cf'); md.addColorStop(1, '#c9bf9e'); g.fillStyle = md; g.beginPath(); g.arc(mx, my, mr, 0, TAU); g.fill();
+  // A translite painted like a matte: the camera low at the graveyard gate, the manor on its hill under the moon,
+  // lightning tearing the storm bank over the dead oak, fog rolling between tilted headstones, a wraith of green
+  // light drifting through the stones, the manor's windows spilling warm light into the mist.
+  const r = rng(13), u = w / 1024, v = h / 662, W = 1024, H = 662;
+  g.save(); g.scale(u, v);
+  // ── sky: storm night, a touch of violet at the horizon, stars behind the clouds ──
+  const sky = g.createLinearGradient(0, 0, 0, 450); sky.addColorStop(0, '#04030c'); sky.addColorStop(0.5, '#100c2a'); sky.addColorStop(0.85, '#241c4a'); sky.addColorStop(1, '#2f2a58'); g.fillStyle = sky; g.fillRect(0, 0, W, 460);
+  bgStars(g, W, H, 320, 5, { yMax: 400, a: 0.85 });
+  // ── the moon, upper right, with its halo ──
+  const mx = 752, my = 160, mr = 86;
+  glowAt(g, mx, my, mr * 4.2, '#8e86d8', 0.26); glowAt(g, mx, my, mr * 1.9, '#e6e2ff', 0.3);
+  const md = g.createRadialGradient(mx - mr * 0.4, my - mr * 0.4, mr * 0.05, mx, my, mr); md.addColorStop(0, '#fffef6'); md.addColorStop(0.55, '#efe9d2'); md.addColorStop(0.92, '#cfc5a8'); md.addColorStop(1, '#b8ad92'); g.fillStyle = md; g.beginPath(); g.arc(mx, my, mr, 0, TAU); g.fill();
   g.save(); g.beginPath(); g.arc(mx, my, mr, 0, TAU); g.clip();
-  [[-0.35, -0.2, 0.2, 0.15], [0.25, -0.4, 0.14, 0.11], [0.3, 0.3, 0.26, 0.2], [-0.2, 0.45, 0.16, 0.1], [-0.55, 0.15, 0.1, 0.08], [0.6, -0.05, 0.1, 0.09], [0, 0.05, 0.08, 0.06]].forEach(([cx, cy, rx, ry]) => { g.fillStyle = 'rgba(150,140,118,.13)'; g.beginPath(); g.ellipse(mx + cx * mr, my + cy * mr, rx * mr, ry * mr, 0.3, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,255,245,.14)'; g.lineWidth = 1.2 * u; g.beginPath(); g.ellipse(mx + cx * mr - 2 * u, my + cy * mr - 2 * v, rx * mr, ry * mr, 0.3, PI * 1.1, PI * 1.9); g.stroke(); });
+  [[-0.32, -0.18, 0.2, 0.16], [0.28, -0.42, 0.13, 0.1], [0.3, 0.3, 0.24, 0.2], [-0.22, 0.46, 0.15, 0.1], [-0.56, 0.12, 0.09, 0.08], [0.6, -0.02, 0.09, 0.08]].forEach(([cx, cy, rx, ry]) => { bgPuff(g, mx + cx * mr, my + cy * mr, rx * mr * 1.3, ry * mr * 1.3, '#9a8f74', 0.3, 0.3, 0.7); g.strokeStyle = 'rgba(255,255,245,.18)'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(mx + cx * mr - 1.5, my + cy * mr - 1.5, rx * mr, ry * mr, 0.3, PI * 1.05, PI * 1.95); g.stroke(); });
+  bgTexture(g, mx - mr, my - mr, mr * 2, mr * 2, 0.18, { seed: 3, lo: 150, hi: 255 });
   g.restore();
-  // ── clouds: dark masses with moonlit rims ──
-  const cloud = (x, y, s, a) => { for (let i = 0; i < 5; i++) { const dx = (i - 2) * s * 0.55, dy = Math.abs(i - 2) * s * 0.12, rr = s * (0.45 + ((i * 7) % 3) * 0.12); const cg = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, rr); cg.addColorStop(0, 'rgba(26,18,52,' + a + ')'); cg.addColorStop(0.7, 'rgba(26,18,52,' + a * 0.75 + ')'); cg.addColorStop(1, 'rgba(26,18,52,0)'); g.fillStyle = cg; g.fillRect(x + dx - rr, y + dy - rr, rr * 2, rr * 2); } const rim = g.createRadialGradient(x, y - s * 0.3, 0, x, y - s * 0.3, s * 1.6); rim.addColorStop(0, 'rgba(190,180,240,.16)'); rim.addColorStop(1, 'rgba(190,180,240,0)'); g.fillStyle = rim; g.fillRect(x - s * 1.6, y - s * 1.9, s * 3.2, s * 1.9); };
-  cloud(150 * u, 60 * v, 90 * u, 0.9); cloud(430 * u, 40 * v, 70 * u, 0.8); cloud(700 * u, 250 * v, 80 * u, 0.85); cloud(960 * u, 120 * v, 60 * u, 0.7);
-  // ── lightning: a jagged bolt out of the cloud between the title and the roofs, forked, with a cold flash ──
-  glowAt(g, 500 * u, 150 * v, 240 * u, '#9fc4ff', 0.22);
+  // ── clouds: a storm bank across the top, moonlit in the middle, lit cold by the lightning on the right ──
+  bgCloud(g, 130, 50, 120, { body: '#0a0818', a: 0.95, seed: 2, n: 9, mid: 0.5, lit: '#6f78c8', litA: 0.12, lx: 470, ly: 60 });
+  bgCloud(g, 420, 30, 100, { body: '#0d0a1e', a: 0.92, seed: 4, n: 9, mid: 0.5, lit: '#8f8fd8', litA: 0.2, lx: mx, ly: my });
+  bgCloud(g, 640, 40, 80, { body: '#0c0a1c', a: 0.9, seed: 6, n: 6, lit: '#c9c2f4', litA: 0.3, lx: mx, ly: my });
+  bgCloud(g, 960, 90, 110, { body: '#0b0918', a: 0.92, seed: 8, n: 7, lit: '#bcd0ff', litA: 0.4, lx: 905, ly: 160 });
+  // a shred of cloud drifting across the moon's lower half, glowing where the moon is behind it
+  bgPuff(g, 720, 218, 80, 14, '#f2eeff', 0.16, 0.05, 0.6); bgCloud(g, 725, 222, 44, { body: '#1a1638', a: 0.85, seed: 9, n: 7, spread: 1.6, flat: 0.5, lit: '#fbf8ff', litA: 0.42, lx: mx, ly: my });
+  // ── lightning: a forked bolt out of the right-hand bank, striking behind the oak, and its flash on the clouds ──
+  bgPuff(g, 905, 150, 200, 170, '#7f9fff', 0.24, 0, 0.5);
   const jag = (x0, y0, x1, y1, n, amp) => { const pts = [[x0, y0]]; for (let i = 1; i < n; i++) { const t = i / n; pts.push([x0 + (x1 - x0) * t + (r() - 0.5) * amp * (i % 2 ? 1.6 : 0.6), y0 + (y1 - y0) * t + (r() - 0.5) * amp * 0.3]); } pts.push([x1, y1]); return pts; };
-  const bolt = (pts, wd, col, blur) => { g.save(); g.strokeStyle = col; g.lineWidth = wd; g.lineCap = 'round'; g.lineJoin = 'round'; g.shadowColor = '#bcd6ff'; g.shadowBlur = blur; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0] * u, p[1] * v) : g.moveTo(p[0] * u, p[1] * v)); g.stroke(); g.restore(); };
-  const main = jag(470, 40, 528, 340, 14, 34), fork = jag(main[5][0], main[5][1], main[5][0] - 46, main[5][1] + 70, 5, 18), fork2 = jag(main[9][0], main[9][1], main[9][0] + 40, main[9][1] + 56, 4, 14);
-  bolt(main, 8 * u, 'rgba(150,190,255,.38)', 28 * u); bolt(fork, 4 * u, 'rgba(150,190,255,.35)', 18 * u); bolt(fork2, 3 * u, 'rgba(150,190,255,.35)', 14 * u);
-  bolt(main, 2.4 * u, '#f6faff', 10 * u); bolt(fork, 1.4 * u, '#eaf2ff', 8 * u); bolt(fork2, 1.2 * u, '#eaf2ff', 6 * u);
-  // a pale band of night haze above the hill so the ridge reads against the sky
-  const hz = g.createLinearGradient(0, 330 * v, 0, 470 * v); hz.addColorStop(0, 'rgba(120,110,180,0)'); hz.addColorStop(0.7, 'rgba(130,120,190,.22)'); hz.addColorStop(1, 'rgba(130,120,190,.3)'); g.fillStyle = hz; g.fillRect(0, 330 * v, w, 160 * v);
-  // ── the hill ──
-  g.fillStyle = '#0a0816'; g.beginPath(); g.moveTo(0, h); g.lineTo(0, 520 * v); g.bezierCurveTo(140 * u, 505 * v, 300 * u, 470 * v, 470 * u, 412 * v); g.bezierCurveTo(600 * u, 372 * v, 760 * u, 376 * v, 900 * u, 420 * v); g.bezierCurveTo(960 * u, 440 * v, 1000 * u, 470 * v, w, 490 * v); g.lineTo(w, h); g.fill();
-  g.strokeStyle = 'rgba(190,180,240,.22)'; g.lineWidth = 2 * u; g.beginPath(); g.moveTo(470 * u, 412 * v); g.bezierCurveTo(600 * u, 372 * v, 760 * u, 376 * v, 900 * u, 420 * v); g.stroke();
-  // ── the manor: silhouette with moonlit right edges and lit windows ──
-  const dark = '#06050f', face = '#0d0a1b', rimC = 'rgba(205,195,245,.42)';
-  const block = (x, y, bw, bh) => { g.fillStyle = face; g.fillRect(x * u, (y - bh) * v, bw * u, bh * v); g.fillStyle = dark; g.fillRect(x * u, (y - bh) * v, bw * 0.55 * u, bh * v); g.strokeStyle = rimC; g.lineWidth = 1.6 * u; g.beginPath(); g.moveTo((x + bw) * u, (y - bh) * v); g.lineTo((x + bw) * u, y * v); g.stroke(); };
-  const roof = (x, y, bw, rh, over = 10) => { g.fillStyle = dark; g.beginPath(); g.moveTo((x - over) * u, y * v); g.lineTo((x + bw / 2) * u, (y - rh) * v); g.lineTo((x + bw + over) * u, y * v); g.closePath(); g.fill(); g.strokeStyle = rimC; g.lineWidth = 1.6 * u; g.beginPath(); g.moveTo((x + bw / 2) * u, (y - rh) * v); g.lineTo((x + bw + over) * u, y * v); g.stroke(); };
-  const cone = (x, y, rad, ch) => { g.fillStyle = dark; g.beginPath(); g.moveTo((x - rad - 4) * u, y * v); g.lineTo(x * u, (y - ch) * v); g.lineTo((x + rad + 4) * u, y * v); g.closePath(); g.fill(); g.strokeStyle = rimC; g.lineWidth = 1.6 * u; g.beginPath(); g.moveTo(x * u, (y - ch) * v); g.lineTo((x + rad + 4) * u, y * v); g.stroke(); };
-  const finial = (x, y, hh) => { g.strokeStyle = dark; g.lineWidth = 2.4 * u; g.beginPath(); g.moveTo(x * u, y * v); g.lineTo(x * u, (y - hh) * v); g.stroke(); g.fillStyle = dark; g.beginPath(); g.arc(x * u, (y - hh) * v, 2.6 * u, 0, TAU); g.fill(); };
-  const base = 408;   // ground line of the house (design y)
-  // wings and main block
-  block(430, base + 6, 110, 92); roof(430, base - 86, 110, 42);
-  block(735, base + 10, 118, 102); roof(735, base - 92, 118, 46);
-  block(530, base, 210, 128); roof(530, base - 128, 210, 48, 12);
-  // tower, spire; turret with a cone
-  block(612, base, 60, 232); g.fillStyle = dark; g.fillRect(606 * u, (base - 236) * v, 72 * u, 10 * v);
-  g.fillStyle = dark; g.beginPath(); g.moveTo(600 * u, (base - 240) * v); g.lineTo(642 * u, (base - 352) * v); g.lineTo(684 * u, (base - 240) * v); g.closePath(); g.fill();
-  g.strokeStyle = rimC; g.lineWidth = 1.6 * u; g.beginPath(); g.moveTo(642 * u, (base - 352) * v); g.lineTo(684 * u, (base - 240) * v); g.stroke(); finial(642, base - 352, 22);
-  g.fillStyle = face; g.fillRect(832 * u, (base - 160) * v, 46 * u, 170 * v); g.fillStyle = dark; g.fillRect(832 * u, (base - 160) * v, 24 * u, 170 * v); cone(855, base - 160, 23, 70); finial(855, base - 230, 14);
-  // chimneys and roof finials
-  g.fillStyle = dark; g.fillRect(470 * u, (base - 150) * v, 16 * u, 46 * v); g.fillRect(466 * u, (base - 154) * v, 24 * u, 6 * v); g.fillRect(790 * u, (base - 160) * v, 14 * u, 44 * v); g.fillRect(786 * u, (base - 164) * v, 22 * u, 6 * v);
-  finial(485, base - 86 - 42, 12); finial(794, base - 92 - 46, 12);
-  // windows: warm lamplight, one floor haunted green
-  const win = (x, y, ww, wh, col, arch) => { g.save(); g.shadowColor = col; g.shadowBlur = 14 * u; const wg = g.createLinearGradient(0, (y - wh) * v, 0, y * v); wg.addColorStop(0, '#fff3d0'); wg.addColorStop(1, col); g.fillStyle = col === '#9fffd0' ? g.createLinearGradient(0, 0, 0, 1) && (() => { const q = g.createLinearGradient(0, (y - wh) * v, 0, y * v); q.addColorStop(0, '#e8fff2'); q.addColorStop(1, '#5fd4a0'); return q; })() : wg; g.beginPath(); if (arch) { g.moveTo(x * u, y * v); g.lineTo(x * u, (y - wh + ww / 2) * v); g.quadraticCurveTo((x + ww / 2) * u, (y - wh - ww * 0.3) * v, (x + ww) * u, (y - wh + ww / 2) * v); g.lineTo((x + ww) * u, y * v); g.closePath(); } else g.rect(x * u, (y - wh) * v, ww * u, wh * v); g.fill(); g.restore(); g.fillStyle = 'rgba(6,5,15,.9)'; g.fillRect((x + ww / 2 - 0.7) * u, (y - wh) * v, 1.4 * u, wh * v); g.fillRect(x * u, (y - wh * 0.55) * v, ww * u, 1.4 * v); };
-  const amber = '#ffcf7a', green = '#9fffd0';
-  win(452, base - 20, 12, 20, amber); win(488, base - 20, 12, 20, amber); win(470, base - 56, 12, 18, green);
-  win(556, base - 18, 14, 26, amber); win(594, base - 18, 14, 26, amber); win(690, base - 18, 14, 26, amber); win(716, base - 18, 14, 26, amber);
-  win(556, base - 66, 14, 24, amber); win(716, base - 66, 14, 24, green);
-  win(560, base - 108, 10, 14, amber); win(706, base - 108, 10, 14, amber);
-  win(632, base - 90, 20, 46, amber, true); win(634, base - 165, 16, 34, green, true);
-  win(758, base - 24, 12, 22, amber); win(800, base - 24, 12, 22, amber); win(778, base - 68, 12, 18, amber);
-  win(846, base - 60, 10, 20, amber, true); win(846, base - 118, 10, 20, green, true);
-  // lamplight spilling onto the walls round the windows
-  [[458, base - 30], [563, base - 30], [697, base - 30], [764, base - 36], [642, base - 112]].forEach(([x, y]) => glowAt(g, x * u, y * v, 34 * u, '#ffb45a', 0.1));
-  // the door and its glow spilling down the steps
-  g.save(); g.shadowColor = '#ffb45a'; g.shadowBlur = 22 * u; g.fillStyle = '#ffd9a0'; g.beginPath(); g.moveTo(632 * u, base * v); g.lineTo(632 * u, (base - 26) * v); g.quadraticCurveTo(642 * u, (base - 40) * v, 652 * u, (base - 26) * v); g.lineTo(652 * u, base * v); g.closePath(); g.fill(); g.restore();
-  const dg = g.createLinearGradient(0, base * v, 0, (base + 34) * v); dg.addColorStop(0, 'rgba(255,180,90,.5)'); dg.addColorStop(1, 'rgba(255,180,90,0)'); g.fillStyle = dg; g.beginPath(); g.moveTo(630 * u, base * v); g.lineTo(654 * u, base * v); g.lineTo(690 * u, (base + 34) * v); g.lineTo(594 * u, (base + 34) * v); g.closePath(); g.fill();
-  // iron fence along the ridge, a few posts leaning
-  g.strokeStyle = '#05040c'; g.lineWidth = 2.2 * u; g.beginPath(); g.moveTo(300 * u, 468 * v); g.lineTo(560 * u, 404 * v); g.stroke();
-  for (let i = 0; i < 12; i++) { const t = i / 11, x = 300 + t * 260, y = 468 - t * 64, lean = (r() - 0.5) * 6; g.beginPath(); g.moveTo(x * u, (y + 4) * v); g.lineTo((x + lean) * u, (y - 26) * v); g.stroke(); g.fillStyle = '#05040c'; g.beginPath(); g.moveTo((x + lean - 3) * u, (y - 24) * v); g.lineTo((x + lean) * u, (y - 34) * v); g.lineTo((x + lean + 3) * u, (y - 24) * v); g.fill(); }
-  // a dead tree at the left, its branches clawing at the sky
-  const branch = (x, y, len, ang, wd, depth) => { const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len; g.strokeStyle = '#040309'; g.lineWidth = wd * u; g.lineCap = 'round'; g.beginPath(); g.moveTo(x * u, y * v); g.quadraticCurveTo((x + x2) / 2 * u + (r() - 0.5) * 8 * u, (y + y2) / 2 * v, x2 * u, y2 * v); g.stroke(); if (depth > 0) { branch(x2, y2, len * (0.6 + r() * 0.15), ang - 0.35 - r() * 0.3, wd * 0.62, depth - 1); branch(x2, y2, len * (0.55 + r() * 0.2), ang + 0.3 + r() * 0.35, wd * 0.62, depth - 1); if (r() < 0.4) branch(x2, y2, len * 0.45, ang + (r() - 0.5) * 0.3, wd * 0.5, depth - 2); } };
-  branch(132, 520, 90, -PI / 2 + 0.1, 11, 5);
-  // ── graveyard: headstones growing towards the front, fog, two ghosts ──
-  const stone = (x, y, sw, sh, tilt, cross, rip) => { g.save(); g.translate(x * u, y * v); g.rotate(tilt); const sg = g.createLinearGradient(-sw * u, 0, sw * u, 0); sg.addColorStop(0, '#1c1829'); sg.addColorStop(0.55, '#38334a'); sg.addColorStop(1, '#4a4460'); g.fillStyle = sg; g.beginPath(); if (cross) { g.rect(-sw * 0.3 * u, -sh * v, sw * 0.6 * u, sh * v); g.rect(-sw * u, -sh * 0.78 * v, sw * 2 * u, sh * 0.26 * v); } else { g.moveTo(-sw * u, 0); g.lineTo(-sw * u, -sh * 0.6 * v); g.arc(0, -sh * 0.6 * v, sw * u, PI, 0); g.lineTo(sw * u, 0); g.closePath(); } g.fill(); g.strokeStyle = 'rgba(205,195,245,.35)'; g.lineWidth = 1.4 * u; g.stroke(); if (rip) { g.fillStyle = 'rgba(10,8,18,.8)'; g.font = '700 ' + (sw * 0.7 * u) + 'px Cinzel, Georgia, serif'; g.textAlign = 'center'; g.fillText('R I P', 0, -sh * 0.5 * v); } g.restore(); };
-  stone(70, 596, 16, 44, 0.12, false, false); stone(150, 612, 22, 58, -0.08, true, false); stone(232, 598, 14, 40, 0.05, false, false); stone(320, 630, 30, 74, -0.14, false, true); stone(420, 604, 16, 42, 0.18, true, false);
-  stone(905, 600, 20, 52, -0.06, false, false); stone(980, 626, 26, 66, 0.1, true, false);
-  // fog: wide soft bands, lit by the windows in the middle
-  for (let i = 0; i < 7; i++) { const x = (i * 170 + 40) * u, y = (560 + (i % 3) * 30) * v, rx = 240 * u, ry = 48 * v; g.save(); g.translate(x, y); g.scale(1, ry / rx); const fg = g.createRadialGradient(0, 0, 0, 0, 0, rx); fg.addColorStop(0, 'rgba(180,190,230,.26)'); fg.addColorStop(1, 'rgba(180,190,230,0)'); g.fillStyle = fg; g.fillRect(-rx, -rx, rx * 2, rx * 2); g.restore(); }
-  glowAt(g, 640 * u, 560 * v, 170 * u, '#ffb45a', 0.14);
-  const ghost = (x, y, s, dir) => { g.save(); g.translate(x * u, y * v); g.scale(dir * s * u / 60, s * v / 60);
-    for (let k = 3; k >= 1; k--) { g.save(); g.globalAlpha = 0.09 * k; g.translate(-k * 9, k * 6); g.shadowColor = '#7fffc0'; g.shadowBlur = 30; g.fillStyle = 'rgba(160,255,215,.5)'; wraith(g); g.fill(); g.restore(); }   // the trail of where it has been
-    g.shadowColor = '#7fffc0'; g.shadowBlur = 40;
-    const gg = g.createRadialGradient(0, -22, 4, 0, 10, 80); gg.addColorStop(0, 'rgba(240,255,248,.96)'); gg.addColorStop(0.45, 'rgba(196,255,228,.74)'); gg.addColorStop(1, 'rgba(140,255,200,.06)'); g.fillStyle = gg; wraith(g); g.fill();
-    g.shadowBlur = 0; g.fillStyle = 'rgba(8,16,14,.9)'; g.beginPath(); g.ellipse(-10, -24, 5.5, 9, 0.25, 0, TAU); g.ellipse(10, -26, 5.5, 9, -0.25, 0, TAU); g.fill();
-    g.fillStyle = 'rgba(8,16,14,.6)'; g.beginPath(); g.ellipse(1, -4, 4, 9, 0, 0, TAU); g.fill(); g.restore(); };
-  const wraith = (g) => { g.beginPath(); g.moveTo(-26, 30); g.quadraticCurveTo(-42, -16, -16, -46); g.quadraticCurveTo(0, -60, 18, -44); g.quadraticCurveTo(40, -16, 30, 34); g.bezierCurveTo(34, 60, 54, 70, 60, 92); g.bezierCurveTo(44, 78, 30, 70, 20, 56); g.bezierCurveTo(14, 72, 6, 84, -6, 96); g.bezierCurveTo(-6, 80, -12, 66, -20, 54); g.bezierCurveTo(-30, 64, -46, 70, -62, 72); g.bezierCurveTo(-46, 60, -34, 46, -26, 30); g.closePath(); };
-  ghost(372, 545, 58, 1); ghost(835, 565, 42, -1);
-  // bats: a flock crossing the moon, smaller as they go
-  const bat = (x, y, s) => { g.fillStyle = '#05040a'; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x - s * 0.55, y - s * 0.5, x - s, y + s * 0.1); g.quadraticCurveTo(x - s * 0.5, y - s * 0.05, x, y + s * 0.25); g.quadraticCurveTo(x + s * 0.5, y - s * 0.05, x + s, y + s * 0.1); g.quadraticCurveTo(x + s * 0.55, y - s * 0.5, x, y); g.fill(); };
-  [[690, 120, 22], [740, 90, 16], [765, 150, 12], [820, 60, 11], [860, 240, 20], [905, 95, 9], [930, 190, 13], [640, 62, 9], [990, 300, 8], [560, 128, 7], [880, 320, 15]].forEach(([x, y, s]) => bat(x * u, y * v, s * u));
-  // cobwebs in the top corners
-  web(g, 0, 0, 180 * u, 1); web(g, w, 0, 180 * u, -1);
-  g.strokeStyle = 'rgba(230,230,240,.35)'; g.lineWidth = 1 * u; g.beginPath(); g.moveTo(w - 92 * u, 0); g.lineTo(w - 92 * u, 130 * v); g.stroke(); g.fillStyle = '#0a0812'; g.beginPath(); g.ellipse(w - 92 * u, 134 * v, 4 * u, 6 * v, 0, 0, TAU); g.fill(); g.lineWidth = 1.2 * u; g.strokeStyle = '#0a0812'; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(w - 92 * u, 134 * v); g.lineTo(w - (92 + (i < 2 ? 1 : -1) * 9) * u, (126 + (i % 2) * 14) * v); g.stroke(); }
-  // ── title: glowing green over the sky, left of the moon ──
-  const tf = (x0, y0, x1, y1) => { const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, '#f4fff8'); q.addColorStop(0.45, '#b4f2d0'); q.addColorStop(0.55, '#7fd4a4'); q.addColorStop(1, '#2d8a5c'); return q; };
-  textLogo(g, 'HAUNTED', 340 * u, 150 * v, { font: '700 ' + (112 * v) + 'px Cinzel, Georgia, serif', glow: { color: '#3aff9a', blur: 30 * u, alpha: 0.7, twice: true }, shadow: { dx: 5 * u, dy: 7 * v, color: 'rgba(0,0,0,.78)' }, outline: { color: '#06140c', w: 7 * u }, fill: tf, top: { color: 'rgba(255,255,255,.28)', frac: 0.42 } });
-  textLogo(g, 'MANOR', 340 * u, 262 * v, { font: '700 ' + (82 * v) + 'px Cinzel, Georgia, serif', spacing: 16 * u, glow: { color: '#3aff9a', blur: 26 * u, alpha: 0.65, twice: true }, shadow: { dx: 4 * u, dy: 6 * v, color: 'rgba(0,0,0,.78)' }, outline: { color: '#06140c', w: 6 * u }, fill: tf, top: { color: 'rgba(255,255,255,.28)', frac: 0.42 } });
+  const bolt = (pts, wd, col, blur) => { g.save(); g.strokeStyle = col; g.lineWidth = wd; g.lineCap = 'round'; g.lineJoin = 'round'; if (blur) { g.shadowColor = '#a9c4ff'; g.shadowBlur = blur; } g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke(); g.restore(); };
+  const main = jag(892, 60, 948, 372, 14, 36), fork = jag(main[5][0], main[5][1], main[5][0] - 54, main[5][1] + 86, 5, 20), fork2 = jag(main[9][0], main[9][1], main[9][0] + 40, main[9][1] + 60, 4, 14);
+  bolt(main, 10, 'rgba(120,160,255,.28)', 30); bolt(fork, 5, 'rgba(120,160,255,.25)', 18); bolt(fork2, 4, 'rgba(120,160,255,.25)', 14);
+  bolt(main, 2.6, '#f4f8ff', 8); bolt(fork, 1.5, '#e6efff', 6); bolt(fork2, 1.2, '#e6efff', 5);
+  // ── far ridges fading into haze, moon rays slanting down through the gap in the clouds ──
+  const ridge = (y0, amp, col, seed, f) => { const rr = rng(seed); g.fillStyle = col; g.beginPath(); g.moveTo(0, H); g.lineTo(0, y0); for (let x = 0; x <= W; x += 16) g.lineTo(x, y0 + Math.sin(x * f + seed) * amp + Math.sin(x * f * 2.7 + seed * 3) * amp * 0.4 + (rr() - 0.5) * 3); g.lineTo(W, H); g.closePath(); g.fill(); };
+  ridge(372, 16, '#1b1740', 3, 0.006); ridge(400, 12, '#141134', 7, 0.009);
+  bgHaze(g, W, 340, 460, '#7f7ac0', 0, 0.26);
+  bgRays(g, mx, my, 560, PI * 0.56, PI * 0.9, 7, '#b4acff', 0.1, 11, { width: 0.035, r0: 100 });
+  // ── the manor's hill: a dark mass with a moonlit crest and a path winding down to the gate ──
+  const hill = () => { g.beginPath(); g.moveTo(0, 540); g.bezierCurveTo(160, 520, 330, 470, 470, 410); g.bezierCurveTo(560, 376, 700, 372, 800, 396); g.bezierCurveTo(900, 420, 980, 460, W, 490); g.lineTo(W, H); g.lineTo(0, H); g.closePath(); };
+  const hg = g.createLinearGradient(0, 380, 0, 600); hg.addColorStop(0, '#171336'); hg.addColorStop(0.35, '#0c0a1e'); hg.addColorStop(1, '#06050e'); g.fillStyle = hg; hill(); g.fill();
+  g.save(); hill(); g.clip();
+  bgPuff(g, 820, 440, 260, 70, '#5a56a8', 0.2, 0.25, 0.5);   // moonlight on the right slope
+  bgTexture(g, 0, 380, W, 300, 0.25, { seed: 5, lo: 120, hi: 255 });
+  const pth = g.createLinearGradient(0, 400, 0, 662); pth.addColorStop(0, 'rgba(120,112,170,.55)'); pth.addColorStop(1, 'rgba(110,104,160,.2)'); g.fillStyle = pth; g.beginPath(); g.moveTo(638, 402); g.lineTo(650, 402); g.bezierCurveTo(660, 470, 560, 540, 590, 662); g.lineTo(430, 662); g.bezierCurveTo(470, 560, 600, 480, 638, 402); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(8,6,16,.55)'; g.lineWidth = 1.2; for (let i = 0; i < 14; i++) { const t = i / 14, y = 410 + t * t * 240, x = 644 - t * 40 + Math.sin(t * 6) * 18 * t, hw = 7 + t * 60; g.beginPath(); g.moveTo(x - hw, y); g.lineTo(x + hw, y); g.stroke(); }
+  g.restore();
+  g.strokeStyle = 'rgba(200,192,255,.3)'; g.lineWidth = 2; g.beginPath(); g.moveTo(470, 410); g.bezierCurveTo(560, 376, 700, 372, 800, 396); g.bezierCurveTo(900, 420, 980, 460, W, 490); g.stroke();
+  // ── the manor, moonlit from the right, every window lit; the oak clawing at the moon; bats ──
+  bgManor(g, r);
+  const branch = (x, y, len, ang, wd, depth) => { const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len; g.strokeStyle = '#030208'; g.lineWidth = wd; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo((x + x2) / 2 + (r() - 0.5) * 10, (y + y2) / 2, x2, y2); g.stroke(); if (depth > 0) { branch(x2, y2, len * (0.62 + r() * 0.14), ang - 0.32 - r() * 0.3, wd * 0.6, depth - 1); branch(x2, y2, len * (0.55 + r() * 0.2), ang + 0.3 + r() * 0.35, wd * 0.6, depth - 1); if (r() < 0.45) branch(x2, y2, len * 0.45, ang + (r() - 0.5) * 0.4, wd * 0.5, depth - 2); } };
+  branch(912, 476, 100, -PI / 2 - 0.3, 16, 6);
+  const bat = (x, y, s, f) => { g.fillStyle = '#05040a'; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x - s * 0.55, y - s * 0.5 * f, x - s, y + s * 0.1); g.quadraticCurveTo(x - s * 0.5, y - s * 0.05, x, y + s * 0.25); g.quadraticCurveTo(x + s * 0.5, y - s * 0.05, x + s, y + s * 0.1); g.quadraticCurveTo(x + s * 0.55, y - s * 0.5 * f, x, y); g.fill(); };
+  [[690, 112, 15, 1], [722, 88, 11, 0.6], [742, 140, 9, 1.2], [800, 64, 9, 0.8], [836, 236, 13, 1], [870, 104, 7, 1], [660, 74, 7, 1], [606, 124, 6, 1], [820, 300, 10, 1], [700, 250, 7, 0.7]].forEach(a => bat(...a));
+  // ── fog rolling in behind the graveyard, warmed by the house ──
+  for (let i = 0; i < 8; i++) bgPuff(g, 80 + i * 140, 500 + (i % 3) * 22, 180, 36, '#8c90c8', 0.17, 0, 0.5);
+  bgPuff(g, 640, 470, 220, 60, '#ffb45a', 0.1, 0, 0.5);
+  bgPuff(g, 700, 580, 420, 60, '#4a4680', 0.3, 0, 0.5); bgPuff(g, 160, 600, 220, 40, '#3e3a6a', 0.25, 0, 0.5);   // moonlight pooling on the grass
+  // ── headstones: back rows small and pale in the mist, the front ones big and close ──
+  for (const s of [[150, 528, 14, 30, 0.1, 0], [238, 522, 10, 24, -0.06, 1], [330, 532, 12, 28, 0.04, 0], [720, 524, 12, 26, -0.1, 0], [820, 536, 16, 34, 0.12, 1],
+    [96, 588, 30, 66, -0.12, 0], [250, 596, 36, 80, 0.06, 2], [410, 584, 26, 58, -0.05, 1], [700, 592, 30, 68, 0.14, 0], [880, 604, 34, 80, -0.08, 1]]) bgHeadstone(g, r, s[0], s[1], s[2], s[3], s[4], s[5], 0.95 - (600 - s[1]) / 130);
+  for (let i = 0; i < 7; i++) bgPuff(g, 60 + i * 160, 585 + (i % 2) * 18, 200, 30, '#a0a6d8', 0.16, 0, 0.5);
+  bgPuff(g, 330, 600, 200, 50, '#5fe0a0', 0.14, 0, 0.5);
+  // ── the wraith: a column of cold green light with a face half-formed in it, trailing into the fog ──
+  bgWraith(g, r, 330, 575, 1.35);
+  bgHeadstone(g, r, 176, 676, 54, 150, -0.07, 2, 1); bgHeadstone(g, r, 850, 684, 50, 140, 0.1, 0, 1);
+  // ── the gate: stone pillars at both edges with urns on top, iron bars swung open towards us ──
+  bgPillar(g, r, 44, 296, 60, 1); bgPillar(g, r, 982, 296, 60, -1);
+  bgGateBars(g, 108, 330, 1); bgGateBars(g, 918, 330, -1);
+  // ground fog lapping over everything at the bottom, and grass tufts in it
+  bgHaze(g, W, 590, 662, '#9aa0d0', 0, 0.3);
+  g.strokeStyle = 'rgba(4,3,10,.9)'; g.lineWidth = 2.4; g.lineCap = 'round'; for (let i = 0; i < 48; i++) { const x = r() * W, y = 648 + r() * 20, hh = 10 + r() * 24, lean = (r() - 0.5) * 14; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + lean * 0.4, y - hh * 0.6, x + lean, y - hh); g.stroke(); }
+  // ── title: spectral green lettering over the storm, its light on the clouds behind ──
+  bgPuff(g, 320, 190, 380, 150, '#2fe08a', 0.13, 0, 0.5);
+  const tf = (x0, y0, x1, y1) => { const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, '#f6fff9'); q.addColorStop(0.42, '#c2f5d8'); q.addColorStop(0.52, '#6fcf9a'); q.addColorStop(0.8, '#2f8f5e'); q.addColorStop(1, '#1b5c3d'); return q; };
+  textLogo(g, 'HAUNTED', 320, 148, { font: '700 104px Cinzel, Georgia, serif', glow: { color: '#3aff9a', blur: 34, alpha: 0.75, twice: true }, shadow: { dx: 6, dy: 8, color: 'rgba(0,0,0,.8)' }, outline: { color: '#06140c', w: 8 }, fill: tf, inline: { color: 'rgba(10,60,35,.45)', w: 1.2 }, top: { color: 'rgba(255,255,255,.3)', frac: 0.4 } });
+  textLogo(g, 'MANOR', 320, 256, { font: '700 78px Cinzel, Georgia, serif', spacing: 16, glow: { color: '#3aff9a', blur: 28, alpha: 0.7, twice: true }, shadow: { dx: 5, dy: 7, color: 'rgba(0,0,0,.8)' }, outline: { color: '#06140c', w: 7 }, fill: tf, inline: { color: 'rgba(10,60,35,.45)', w: 1.2 }, top: { color: 'rgba(255,255,255,.3)', frac: 0.4 } });
+  bgVignette(g, W, H, 0.42, '#030208');
+  g.restore();
   grain(g, w, h, 2600, 0.05, 17);
+}
+// The manor on its crest (design units): walls lit from the moon on the right, warm windows, the door's light
+// spilling down the steps. Ground line y 392.
+function bgManor(g, r) {
+  const base = 392, dark = '#07060f', face = '#0e0b1f', lit = '#1c1840', rim = 'rgba(205,195,245,.5)';
+  const wall = (x, y, bw, bh) => { const q = g.createLinearGradient(x, 0, x + bw, 0); q.addColorStop(0, dark); q.addColorStop(0.6, face); q.addColorStop(1, lit); g.fillStyle = q; g.fillRect(x, y - bh, bw, bh); g.strokeStyle = rim; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + bw - 0.5, y - bh); g.lineTo(x + bw - 0.5, y); g.stroke(); };
+  const gable = (x, y, bw, rh, over = 8) => { g.fillStyle = dark; g.beginPath(); g.moveTo(x - over, y); g.lineTo(x + bw / 2, y - rh); g.lineTo(x + bw + over, y); g.closePath(); g.fill(); g.fillStyle = 'rgba(60,54,110,.5)'; g.beginPath(); g.moveTo(x + bw / 2, y - rh); g.lineTo(x + bw + over, y); g.lineTo(x + bw + over - 14, y); g.closePath(); g.fill(); g.strokeStyle = rim; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + bw / 2, y - rh); g.lineTo(x + bw + over, y); g.stroke(); };
+  const cone = (x, y, rad, ch) => { g.fillStyle = dark; g.beginPath(); g.moveTo(x - rad - 3, y); g.lineTo(x, y - ch); g.lineTo(x + rad + 3, y); g.closePath(); g.fill(); g.fillStyle = 'rgba(60,54,110,.45)'; g.beginPath(); g.moveTo(x, y - ch); g.lineTo(x + rad + 3, y); g.lineTo(x + rad * 0.3, y); g.closePath(); g.fill(); g.strokeStyle = rim; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x, y - ch); g.lineTo(x + rad + 3, y); g.stroke(); };
+  const finial = (x, y, hh) => { g.strokeStyle = dark; g.lineWidth = 2.2; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - hh); g.stroke(); g.fillStyle = dark; g.beginPath(); g.arc(x, y - hh, 2.4, 0, TAU); g.fill(); };
+  // the light of the house in the air round it
+  bgPuff(g, 650, 330, 200, 110, '#ffb45a', 0.08, 0, 0.5);
+  // wings, main block, tower, turret
+  wall(498, base + 6, 72, 76); gable(498, base - 70, 72, 34);
+  wall(740, base + 8, 78, 86); gable(740, base - 78, 78, 38);
+  wall(566, base, 180, 112); gable(566, base - 112, 180, 42, 10);
+  wall(636, base, 50, 206); g.fillStyle = dark; g.fillRect(631, base - 210, 60, 8);
+  g.fillStyle = dark; g.beginPath(); g.moveTo(626, base - 214); g.lineTo(661, base - 318); g.lineTo(696, base - 214); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(60,54,110,.45)'; g.beginPath(); g.moveTo(661, base - 318); g.lineTo(696, base - 214); g.lineTo(672, base - 214); g.closePath(); g.fill();
+  g.strokeStyle = rim; g.lineWidth = 1.5; g.beginPath(); g.moveTo(661, base - 318); g.lineTo(696, base - 214); g.stroke(); finial(661, base - 318, 20);
+  wall(806, base + 4, 34, 136); cone(823, base - 132, 18, 58); finial(823, base - 190, 12);
+  g.fillStyle = dark; g.fillRect(596, base - 150, 13, 42); g.fillRect(592, base - 154, 21, 5); g.fillRect(708, base - 150, 12, 40); g.fillRect(704, base - 154, 20, 5);
+  finial(534, base - 104, 10); finial(779, base - 116, 10);
+  // windows: warm lamplight, a floor of them haunted green, their light spilling on the stone round them
+  const win = (x, y, ww, wh, green, arch) => {
+    bgPuff(g, x + ww / 2, y - wh / 2, ww * 2.8, wh * 2, green ? '#5fd4a0' : '#ffb45a', 0.3, 0, 0.5);
+    g.save(); const q = g.createLinearGradient(0, y - wh, 0, y); q.addColorStop(0, green ? '#eafff4' : '#fff6dc'); q.addColorStop(1, green ? '#5fd4a0' : '#ffb45a'); g.fillStyle = q;
+    g.beginPath(); if (arch) { g.moveTo(x, y); g.lineTo(x, y - wh + ww / 2); g.quadraticCurveTo(x + ww / 2, y - wh - ww * 0.3, x + ww, y - wh + ww / 2); g.lineTo(x + ww, y); g.closePath(); } else g.rect(x, y - wh, ww, wh); g.fill(); g.restore();
+    g.fillStyle = 'rgba(6,5,15,.85)'; g.fillRect(x + ww / 2 - 0.6, y - wh, 1.2, wh); g.fillRect(x, y - wh * 0.55, ww, 1.2);
+  };
+  win(512, base - 18, 10, 18); win(542, base - 18, 10, 18); win(527, base - 50, 10, 16, true);
+  win(586, base - 16, 12, 24); win(618, base - 16, 12, 24); win(696, base - 16, 12, 24); win(722, base - 16, 12, 24);
+  win(586, base - 60, 12, 22); win(722, base - 60, 12, 22, true);
+  win(590, base - 96, 9, 12); win(714, base - 96, 9, 12);
+  win(652, base - 84, 18, 40, false, true); win(654, base - 150, 14, 30, true, true); win(656, base - 236, 10, 20, true, true);
+  win(752, base - 22, 10, 20); win(788, base - 22, 10, 20); win(770, base - 60, 10, 16);
+  win(818, base - 52, 9, 18, false, true); win(818, base - 104, 9, 18, true, true);
+  // the door, and its light pouring down the steps
+  g.save(); g.shadowColor = '#ffb45a'; g.shadowBlur = 20; g.fillStyle = '#ffdca6'; g.beginPath(); g.moveTo(652, base); g.lineTo(652, base - 24); g.quadraticCurveTo(661, base - 38, 670, base - 24); g.lineTo(670, base); g.closePath(); g.fill(); g.restore();
+  const dg = g.createLinearGradient(0, base, 0, base + 40); dg.addColorStop(0, 'rgba(255,190,110,.55)'); dg.addColorStop(1, 'rgba(255,180,90,0)'); g.fillStyle = dg; g.beginPath(); g.moveTo(650, base); g.lineTo(672, base); g.lineTo(700, base + 40); g.lineTo(612, base + 40); g.closePath(); g.fill();
+  // iron fence along the crest to the left of the house, posts leaning
+  g.strokeStyle = '#05040c'; g.lineWidth = 2; g.beginPath(); g.moveTo(330, 466); g.lineTo(500, 404); g.stroke();
+  for (let i = 0; i < 10; i++) { const t = i / 9, x = 330 + t * 170, y = 466 - t * 62, lean = (r() - 0.5) * 5; g.beginPath(); g.moveTo(x, y + 4); g.lineTo(x + lean, y - 22); g.stroke(); g.fillStyle = '#05040c'; g.beginPath(); g.moveTo(x + lean - 2.5, y - 20); g.lineTo(x + lean, y - 29); g.lineTo(x + lean + 2.5, y - 20); g.fill(); }
+}
+// A headstone at (x, yBase), half-width hw, height hh, tilted; type 0 round-top, 1 cross, 2 tall with R I P.
+// k: how near it is (1 = front row: full contrast and texture; small = far, dissolved in the mist).
+function bgHeadstone(g, r, x, yBase, hw, hh, tilt, type, k) {
+  k = Math.max(0.25, Math.min(1, k));
+  const mix = (c, f) => { const a = hexRgb(c), b = hexRgb('#8c90c8'); return 'rgb(' + a.map((v, i) => Math.round(v * f + b[i] * (1 - f))).join(',') + ')'; };
+  bgPuff(g, x - hw * 0.9, yBase + 2, hw * 1.8, hw * 0.45, '#000000', 0.45 * k, 0, 0.6);   // cast shadow, the moon at the right
+  g.save(); g.translate(x, yBase); g.rotate(tilt);
+  const shape = () => { g.beginPath(); if (type === 1) { const a = hw * 0.34; g.moveTo(-a, 0); g.lineTo(-a, -hh * 0.62); g.lineTo(-hw, -hh * 0.62); g.lineTo(-hw, -hh * 0.78); g.lineTo(-a, -hh * 0.78); g.lineTo(-a, -hh); g.lineTo(a, -hh); g.lineTo(a, -hh * 0.78); g.lineTo(hw, -hh * 0.78); g.lineTo(hw, -hh * 0.62); g.lineTo(a, -hh * 0.62); g.lineTo(a, 0); g.closePath(); } else if (type === 2) { g.moveTo(-hw, 0); g.lineTo(-hw, -hh * 0.72); g.lineTo(-hw * 0.6, -hh * 0.82); g.lineTo(-hw * 0.6, -hh * 0.9); g.lineTo(hw * 0.6, -hh * 0.9); g.lineTo(hw * 0.6, -hh * 0.82); g.lineTo(hw, -hh * 0.72); g.lineTo(hw, 0); g.closePath(); g.rect(-hw * 0.5, -hh, hw, hh * 0.1); } else { g.moveTo(-hw, 0); g.lineTo(-hw, -hh + hw); g.arc(0, -hh + hw, hw, PI, 0); g.lineTo(hw, 0); g.closePath(); } };
+  const q = g.createLinearGradient(-hw, 0, hw, 0); q.addColorStop(0, mix('#1a1630', k)); q.addColorStop(0.5, mix('#38335a', k)); q.addColorStop(0.85, mix('#6a6492', k)); q.addColorStop(1, mix('#7d76a8', k)); g.fillStyle = q; shape(); g.fill();
+  g.save(); shape(); g.clip();
+  bgTexture(g, -hw - 2, -hh - 2, hw * 2 + 4, hh + 4, 0.4 * k, { seed: 9, lo: 110, hi: 255 });
+  bgPuff(g, hw * 0.3, -hh * 0.85, hw * 1.1, hh * 0.35, '#c8c0f4', 0.35 * k, 0, 0.5);   // moonlight on the top
+  bgPuff(g, -hw * 0.3, -hh * 0.12, hw * 1.1, hh * 0.25, '#3f7a3a', 0.5 * k, 0, 0.6);   // moss at the foot
+  if (k > 0.6) { g.strokeStyle = 'rgba(8,6,16,' + 0.6 * k + ')'; g.lineWidth = 1.1; g.beginPath(); g.moveTo(-hw * 0.6, -hh * 0.55); g.lineTo(-hw * 0.2, -hh * 0.42); g.lineTo(-hw * 0.3, -hh * 0.3); g.lineTo(0, -hh * 0.2); g.stroke(); }
+  if (type === 2 && k > 0.5) { g.fillStyle = 'rgba(8,6,16,' + 0.7 * k + ')'; g.font = '700 ' + hw * 0.55 + 'px Cinzel, Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('R I P', 0, -hh * 0.6); g.fillRect(-hw * 0.55, -hh * 0.48, hw * 1.1, 1); g.fillRect(-hw * 0.4, -hh * 0.4, hw * 0.8, 1); }
+  g.restore();
+  g.strokeStyle = 'rgba(215,208,255,' + 0.5 * k + ')'; g.lineWidth = 1.4; g.beginPath(); if (type === 0) g.arc(0, -hh + hw, hw - 0.7, -PI * 0.5, -0.05); else { g.moveTo(hw - 0.7, -hh * 0.72); g.lineTo(hw - 0.7, 0); } g.stroke();
+  g.strokeStyle = 'rgba(4,3,10,' + 0.5 * k + ')'; g.beginPath(); g.moveTo(-hw + 0.7, 0); g.lineTo(-hw + 0.7, -hh * 0.6); g.stroke();
+  g.restore();
+}
+// The wraith: no sheet, no outline, a body of light. Its base is at (x, yBase); it leans and trails left.
+function bgWraith(g, r, x0, yBase0, s = 1) {
+  g.save(); g.translate(x0, yBase0); g.scale(s, s); const x = 0, yBase = 0;
+  g.save(); g.globalCompositeOperation = 'lighter';
+  bgPuff(g, x, yBase - 80, 110, 150, '#2fa070', 0.16, 0, 0.45);
+  bgPuff(g, x, yBase - 85, 40, 92, '#5fe0a0', 0.55, 0.06, 0.5);
+  bgPuff(g, x + 2, yBase - 95, 22, 64, '#c8ffe6', 0.75, 0.06, 0.5);
+  bgPuff(g, x + 6, yBase - 142, 23, 27, '#e8fff4', 0.9, 0, 0.5);
+  bgPuff(g, x - 10, yBase - 118, 36, 14, '#9fffd0', 0.3, 0.5, 0.5); bgPuff(g, x + 26, yBase - 110, 30, 12, '#9fffd0', 0.3, -0.4, 0.5);   // arms raised in the light
+  for (let i = 0; i < 6; i++) bgPuff(g, x - 24 - i * 22, yBase - 36 + i * 8, 24 - i * 2.5, 13 - i, '#7fffc0', 0.28 - i * 0.04, 0.2, 0.5);   // the trail
+  g.restore();
+  // the face: hollows in the light
+  bgPuff(g, x - 1, yBase - 146, 5, 6, '#031a10', 0.6, 0.3, 0.6); bgPuff(g, x + 14, yBase - 148, 4.5, 6.5, '#031a10', 0.55, -0.1, 0.6); bgPuff(g, x + 7, yBase - 128, 4, 7, '#031a10', 0.45, 0.1, 0.6);
+  bgPuff(g, x, yBase + 6, 130, 26, '#5fe0a0', 0.22, 0, 0.5);   // its light on the fog at its feet
+  g.restore();
+}
+// A gate pillar at x (centre), from yTop to the bottom of the glass: stone blocks, a cap and an urn, moss, ivy.
+// lit: +1 when the moon is to the right of it, -1 to the left.
+function bgPillar(g, r, x, yTop, hw, lit) {
+  const q = g.createLinearGradient(x - hw, 0, x + hw, 0);
+  if (lit > 0) { q.addColorStop(0, '#0a0914'); q.addColorStop(0.55, '#221f36'); q.addColorStop(0.92, '#4c4768'); q.addColorStop(1, '#2a2640'); } else { q.addColorStop(0, '#2a2640'); q.addColorStop(0.08, '#4c4768'); q.addColorStop(0.45, '#221f36'); q.addColorStop(1, '#0a0914'); }
+  g.fillStyle = q; g.fillRect(x - hw, yTop, hw * 2, 662 - yTop);
+  g.save(); g.beginPath(); g.rect(x - hw, yTop, hw * 2, 662 - yTop); g.clip();
+  bgTexture(g, x - hw, yTop, hw * 2, 662 - yTop, 0.45, { seed: 4, lo: 100, hi: 255 });
+  g.strokeStyle = 'rgba(5,4,10,.6)'; g.lineWidth = 1.6; for (let y = yTop + 34; y < 662; y += 36) { g.beginPath(); g.moveTo(x - hw, y + (r() - 0.5) * 2); g.lineTo(x + hw, y + (r() - 0.5) * 2); g.stroke(); if (((y / 36) | 0) % 2) { g.beginPath(); g.moveTo(x + lit * hw * 0.2, y); g.lineTo(x + lit * hw * 0.2, y + 36); g.stroke(); } }
+  g.strokeStyle = 'rgba(200,195,240,.16)'; g.lineWidth = 1; for (let y = yTop + 35; y < 662; y += 36) { g.beginPath(); g.moveTo(x - hw, y + 1.5); g.lineTo(x + hw, y + 1.5); g.stroke(); }
+  bgPuff(g, x - lit * hw * 0.4, 640, hw * 1.4, 60, '#2f6a32', 0.55, 0, 0.6);   // moss and damp at the foot
+  for (let i = 0; i < 26; i++) { const ix = x - lit * hw * 0.55 + (r() - 0.5) * hw * 0.8, iy = 662 - i * 11 - r() * 8; g.fillStyle = 'rgba(8,16,10,' + (0.55 + r() * 0.35) + ')'; g.beginPath(); g.ellipse(ix, iy, 5 + r() * 4, 3.5 + r() * 2, r() * PI, 0, TAU); g.fill(); }   // ivy
+  g.restore();
+  // cap and urn
+  const cap = g.createLinearGradient(0, yTop - 12, 0, yTop + 4); cap.addColorStop(0, '#5a5578'); cap.addColorStop(1, '#1e1b30'); g.fillStyle = cap; g.fillRect(x - hw - 8, yTop - 12, hw * 2 + 16, 14);
+  g.fillStyle = 'rgba(220,214,255,.35)'; g.fillRect(x - hw - 8, yTop - 12, hw * 2 + 16, 2);
+  g.save(); g.translate(x, yTop - 12);
+  const ug = g.createLinearGradient(-hw * 0.6, 0, hw * 0.6, 0); if (lit > 0) { ug.addColorStop(0, '#0e0c1a'); ug.addColorStop(0.6, '#2a2742'); ug.addColorStop(0.9, '#56507a'); ug.addColorStop(1, '#2c2944'); } else { ug.addColorStop(0, '#2c2944'); ug.addColorStop(0.1, '#56507a'); ug.addColorStop(0.4, '#2a2742'); ug.addColorStop(1, '#0e0c1a'); }
+  g.fillStyle = ug; g.beginPath(); g.moveTo(-hw * 0.5, 0); g.lineTo(-hw * 0.4, -10); g.bezierCurveTo(-hw * 0.9, -30, -hw * 0.8, -62, -hw * 0.3, -70); g.lineTo(-hw * 0.4, -80); g.lineTo(hw * 0.4, -80); g.lineTo(hw * 0.3, -70); g.bezierCurveTo(hw * 0.8, -62, hw * 0.9, -30, hw * 0.4, -10); g.lineTo(hw * 0.5, 0); g.closePath(); g.fill();
+  g.fillStyle = ug; g.beginPath(); g.ellipse(0, -84, hw * 0.3, 6, 0, 0, TAU); g.fill(); g.beginPath(); g.arc(0, -94, 7, 0, TAU); g.fill();
+  g.strokeStyle = 'rgba(220,214,255,.4)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(lit * hw * 0.28, -70); g.bezierCurveTo(lit * hw * 0.78, -62, lit * hw * 0.86, -30, lit * hw * 0.38, -10); g.stroke();
+  g.restore();
+}
+// An iron gate leaf standing open along its pillar (hinge at x, dir +1 opens rightwards): thick bars with spikes,
+// two rails, a moonlit edge on each bar.
+function bgGateBars(g, x, yTop, dir) {
+  g.lineCap = 'round';
+  for (let i = 0; i < 3; i++) { const bx = x + dir * (12 + i * 30), top = yTop + 26 - i * 14, wd = 5.5 + i * 1.2; g.strokeStyle = '#08070f'; g.lineWidth = wd; g.beginPath(); g.moveTo(bx, top); g.lineTo(bx, 662); g.stroke(); g.strokeStyle = 'rgba(190,185,235,.3)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(bx + dir * wd * 0.3, top + 14); g.lineTo(bx + dir * wd * 0.3, 662); g.stroke(); g.fillStyle = '#08070f'; g.beginPath(); g.moveTo(bx - wd * 0.9, top + 2); g.lineTo(bx, top - 16); g.lineTo(bx + wd * 0.9, top + 2); g.closePath(); g.fill(); }
+  g.strokeStyle = '#08070f'; g.lineWidth = 5; for (const dy of [44, 190]) { g.beginPath(); g.moveTo(x, yTop + dy); g.lineTo(x + dir * 80, yTop + dy - 20); g.stroke(); }
+  g.strokeStyle = 'rgba(190,185,235,.3)'; g.lineWidth = 1.2; for (const dy of [42, 188]) { g.beginPath(); g.moveTo(x, yTop + dy); g.lineTo(x + dir * 80, yTop + dy - 20); g.stroke(); }
 }
 function paintApron(g, w, h) {
   const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#2a1838'); gr.addColorStop(1, '#0e0814'); g.fillStyle = gr; g.fillRect(0, 0, w, h);

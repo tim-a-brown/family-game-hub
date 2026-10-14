@@ -13,7 +13,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import * as THREE from 'three';
 import { BR, spline, deg } from '../physics.js';
-import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, torusGeo, sphereGeo, offsetLine, wallGeo, slabGeo, glowAt, grain, textLogo } from '../gfx.js';
+import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, torusGeo, sphereGeo, offsetLine, wallGeo, slabGeo, glowAt, grain, textLogo, bgPuff, bgCloud, bgStars, bgHaze, bgTexture, bgReflect, bgGlint, bgBulb, bgVignette } from '../gfx.js';
 import { Comp, drawPath, mergeGeo } from '../components.js';
 import { audio } from '../engine.js';
 import { smallText, smallW } from '../display.js';
@@ -662,93 +662,158 @@ function paintOverlay(P) {
   });
 }
 function paintBackglass(g, w, h) {
-  // A translite: the fairground at night, the big wheel lit on the left, the big top on the right, bulb strings
-  // swooping between them, booths with striped awnings and the barker out front, the title on a bulb marquee.
-  const r = rng(4), u = w / 1024, v = h / 662;
-  // ── night sky with the glow of the fair on the horizon ──
-  const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#070b24'); sky.addColorStop(0.45, '#1a1850'); sky.addColorStop(0.72, '#5a2a62'); sky.addColorStop(0.8, '#a84a60'); sky.addColorStop(0.86, '#2a1424'); sky.addColorStop(1, '#110a12'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 160; i++) { g.fillStyle = 'rgba(255,245,225,' + (0.25 + r() * 0.6) + ')'; const s = r() < 0.9 ? 1.2 : 2.2; g.fillRect(r() * w, r() * h * 0.5, s * u, s * u); }
-  glowAt(g, 700 * u, 540 * v, 420 * u, '#ff9a60', 0.22); glowAt(g, 260 * u, 560 * v, 320 * u, '#ffd080', 0.16);
-  const ground = 540;   // the midway (design y)
-  // distant tents and rides in silhouette on the horizon
-  g.fillStyle = '#1a0d1c'; for (const [x, tw, th] of [[60, 70, 44], [160, 50, 30], [430, 60, 36], [560, 90, 60], [930, 70, 46], [990, 50, 30]]) { g.beginPath(); g.moveTo((x - tw / 2) * u, ground * v); g.lineTo(x * u, (ground - th) * v); g.lineTo((x + tw / 2) * u, ground * v); g.fill(); g.fillStyle = '#ffd27a'; g.fillRect((x - 3) * u, (ground - 10) * v, 6 * u, 10 * v); g.fillStyle = '#1a0d1c'; }
-  const bulb = (x, y, rad, col, glow) => { if (glow) glowAt(g, x, y, rad * 4.5, col, 0.5); const bg = g.createRadialGradient(x - rad * 0.3, y - rad * 0.3, 0, x, y, rad); bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.45, col); bg.addColorStop(1, rgba(col, 0.6)); g.fillStyle = bg; g.beginPath(); g.arc(x, y, rad, 0, TAU); g.fill(); };
-  const warm = '#ffe29a', white = '#fff8e8', red = '#ff6a5a', teal = '#7ff0ff', pink = '#ff9ad0';
-  // ── the big wheel ──
-  const wx = 258 * u, wy = 352 * v, wr = 176 * v, spokes = 16;
-  glowAt(g, wx, wy, wr * 1.5, '#ffd080', 0.18);
-  // legs and base
-  g.strokeStyle = '#1c0e18'; g.lineWidth = 9 * u; g.lineCap = 'round'; g.beginPath(); g.moveTo(wx - 92 * u, ground * v); g.lineTo(wx, wy); g.lineTo(wx + 92 * u, ground * v); g.moveTo(wx - 50 * u, (ground - 90) * v); g.lineTo(wx + 50 * u, (ground - 90) * v); g.stroke();
-  g.lineWidth = 2.4 * u; g.strokeStyle = '#2a1424';
-  for (let i = 0; i < spokes; i++) { const a = i / spokes * TAU; g.beginPath(); g.moveTo(wx, wy); g.lineTo(wx + Math.cos(a) * wr, wy + Math.sin(a) * wr); g.stroke(); }
-  g.lineWidth = 7 * u; g.beginPath(); g.arc(wx, wy, wr, 0, TAU); g.stroke(); g.lineWidth = 3 * u; g.beginPath(); g.arc(wx, wy, wr * 0.82, 0, TAU); g.stroke();
-  for (let i = 0; i < spokes; i++) for (let k = 1; k <= 3; k++) { const a = i / spokes * TAU, d = wr * k / 4; bulb(wx + Math.cos(a) * d, wy + Math.sin(a) * d, 2.2 * u, k === 2 ? teal : warm, false); }
-  for (let i = 0; i < 48; i++) { const a = i / 48 * TAU; bulb(wx + Math.cos(a) * wr, wy + Math.sin(a) * wr, 3 * u, i % 4 === 0 ? red : i % 2 ? warm : white, i % 2 === 0); }
-  for (let i = 0; i < spokes; i++) { const a = i / spokes * TAU, x = wx + Math.cos(a) * wr, y = wy + Math.sin(a) * wr + 10 * v; const col = ['#e8463c', '#ffcc3a', '#2a9ca0', '#f3e6c4'][i % 4]; g.fillStyle = '#1c0e18'; g.fillRect(x - 1.2 * u, y - 10 * v, 2.4 * u, 8 * v); const gg = g.createLinearGradient(0, y, 0, y + 16 * v); gg.addColorStop(0, shade(col, 0.15)); gg.addColorStop(1, shade(col, -0.35)); g.fillStyle = gg; g.beginPath(); g.moveTo(x - 9 * u, y); g.lineTo(x + 9 * u, y); g.lineTo(x + 7 * u, y + 16 * v); g.lineTo(x - 7 * u, y + 16 * v); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(x - 6 * u, y + 3 * v, 12 * u, 3 * v); }
-  glowAt(g, wx, wy, 26 * u, '#ffffff', 0.9); bulb(wx, wy, 8 * u, white, true);
-  // ── the big top ──
-  const tx = 740 * u, tb = ground * v, tw2 = 230 * u, th = 236 * v, peak = tb - th;
-  const tentGrad = g.createLinearGradient(tx - tw2, 0, tx + tw2, 0); tentGrad.addColorStop(0, '#5a1210'); tentGrad.addColorStop(0.5, '#c8302c'); tentGrad.addColorStop(1, '#4a0e0c');
-  g.fillStyle = tentGrad; g.beginPath(); g.moveTo(tx - tw2, tb + 2 * v); g.lineTo(tx - tw2 + 10 * u, tb - 60 * v); g.quadraticCurveTo(tx - tw2 * 0.6, peak + 60 * v, tx, peak); g.quadraticCurveTo(tx + tw2 * 0.6, peak + 60 * v, tx + tw2 - 10 * u, tb - 60 * v); g.lineTo(tx + tw2, tb + 2 * v); g.closePath(); g.fill();
-  g.save(); g.beginPath(); g.moveTo(tx - tw2, tb + 2 * v); g.lineTo(tx - tw2 + 10 * u, tb - 60 * v); g.quadraticCurveTo(tx - tw2 * 0.6, peak + 60 * v, tx, peak); g.quadraticCurveTo(tx + tw2 * 0.6, peak + 60 * v, tx + tw2 - 10 * u, tb - 60 * v); g.lineTo(tx + tw2, tb + 2 * v); g.closePath(); g.clip();
-  for (let i = -7; i <= 7; i += 2) { g.fillStyle = 'rgba(248,241,220,.9)'; g.beginPath(); g.moveTo(tx, peak); g.lineTo(tx + i * 32 * u, tb + 4 * v); g.lineTo(tx + (i + 1) * 32 * u, tb + 4 * v); g.closePath(); g.fill(); }
-  const tsh = g.createLinearGradient(tx - tw2, 0, tx + tw2, 0); tsh.addColorStop(0, 'rgba(0,0,0,.55)'); tsh.addColorStop(0.45, 'rgba(0,0,0,0)'); tsh.addColorStop(0.7, 'rgba(0,0,0,.1)'); tsh.addColorStop(1, 'rgba(0,0,0,.6)'); g.fillStyle = tsh; g.fillRect(tx - tw2, peak, tw2 * 2, th + 4 * v);
-  // the lit entrance
-  g.save(); g.shadowColor = '#ffc060'; g.shadowBlur = 28 * u; const ent = g.createLinearGradient(0, tb - 70 * v, 0, tb); ent.addColorStop(0, '#fff2c8'); ent.addColorStop(1, '#ffb050'); g.fillStyle = ent; g.beginPath(); g.moveTo(tx - 26 * u, tb + 2 * v); g.lineTo(tx - 26 * u, tb - 50 * v); g.quadraticCurveTo(tx, tb - 84 * v, tx + 26 * u, tb - 50 * v); g.lineTo(tx + 26 * u, tb + 2 * v); g.fill(); g.restore();
+  // A translite painted like a matte: standing on the midway at night, the strings of bulbs running away in
+  // perspective to the big top, the big wheel turning over the booths on the left, a popcorn stand blazing at
+  // the right, fireworks over everything, and all of it mirrored in the wet ground. Title on a bulb marquee.
+  const r = rng(4), u = w / 1024, v = h / 662, W = 1024, H = 662, VX = 512, VY = 404;   // the vanishing point
+  g.save(); g.scale(u, v);
+  // ── sky: night blue over the fairground's own glow, stars, fireworks ──
+  const sky = g.createLinearGradient(0, 0, 0, VY + 30); sky.addColorStop(0, '#050822'); sky.addColorStop(0.5, '#141448'); sky.addColorStop(0.85, '#3a2256'); sky.addColorStop(1, '#5a3050'); g.fillStyle = sky; g.fillRect(0, 0, W, VY + 40);
+  bgStars(g, W, H, 220, 3, { yMax: 360, a: 0.8 });
+  bgPuff(g, VX, VY, 520, 150, '#ff9a60', 0.3, 0, 0.5);
+  bgFirework(g, r, 176, 150, 92, '#ffd36a', '#ff8a3a', 30); bgFirework(g, r, 846, 128, 110, '#7ff0ff', '#4aa8ff', 36); bgFirework(g, r, 690, 70, 60, '#ff6a8a', '#ff3a5a', 24);
+  bgCloud(g, 300, 250, 60, { body: '#2a1c3c', a: 0.5, seed: 5, n: 6, mid: 0.5 }); bgCloud(g, 760, 290, 70, { body: '#2a1c3c', a: 0.5, seed: 8, n: 6, mid: 0.5 });   // smoke drifting from the bursts
+  // ── the far fairground on the horizon: tents and rides in silhouette, pricked with lights ──
+  g.fillStyle = '#1a0e20'; for (const [x, tw, th] of [[60, 70, 44], [160, 50, 30], [330, 40, 26], [430, 60, 36], [600, 50, 30], [930, 70, 46], [990, 50, 30]]) { g.beginPath(); g.moveTo(x - tw / 2, VY + 6); g.lineTo(x, VY + 6 - th); g.lineTo(x + tw / 2, VY + 6); g.closePath(); g.fill(); }
+  for (let i = 0; i < 60; i++) { const x = r() * W, y = VY - 20 + r() * 24; g.fillStyle = ['#ffe29a', '#ff6a5a', '#7ff0ff', '#fff8e8'][i % 4]; g.fillRect(x, y, 1.6, 1.6); }
+  bgHaze(g, W, VY - 60, VY + 30, '#c08a90', 0, 0.22);
+  // ── the big top at the end of the midway ──
+  bgBigTop(g, r, VX, VY + 36, 1);
+  // ── the big wheel over the booths on the left ──
+  bgWheel(g, r, 214, 262, 148);
+  // ── the midway floor: wet asphalt mirroring everything above, then the perspective of the ground ──
+  g.restore(); bgReflect(g, (VY + 36) * v, 330 * v, (H - VY - 36) * v, { alpha: 0.42, ripple: 1.6 * u, slices: 36, seed: 4 }); g.save(); g.scale(u, v);
+  const fl = g.createLinearGradient(0, VY + 36, 0, H); fl.addColorStop(0, 'rgba(60,40,56,.55)'); fl.addColorStop(0.4, 'rgba(26,18,28,.6)'); fl.addColorStop(1, 'rgba(10,6,12,.8)'); g.fillStyle = fl; g.fillRect(0, VY + 36, W, H - VY - 36);
+  for (let i = 0; i < 70; i++) { const t = r(), y = VY + 40 + t * t * 220, x = r() * W; g.fillStyle = 'rgba(255,230,190,' + (0.04 + r() * 0.1) + ')'; g.fillRect(x, y, 1.6 + t * 2, (8 + r() * 30) * (0.3 + t)); }   // the lights' streaks in the puddles
+  // the midway's edges (kerbs) running to the vanishing point, and the crowd barrier posts along them
+  for (const sd of [-1, 1]) { const q = g.createLinearGradient(0, VY + 40, 0, H); q.addColorStop(0, 'rgba(255,220,170,0)'); q.addColorStop(1, 'rgba(255,220,170,.35)'); g.strokeStyle = q; g.lineWidth = 3; g.beginPath(); g.moveTo(VX + sd * 28, VY + 40); g.lineTo(VX + sd * 420, H); g.stroke(); }
+  // ── strings of bulbs on poles down both sides of the midway, sagging across it ──
+  const warm = '#ffe29a', white = '#fff8e8', red = '#ff6a5a', teal = '#7ff0ff', pink = '#ff9ad0', cols = [warm, red, teal, warm, pink, white];
+  const depths = [0.09, 0.16, 0.26, 0.4, 0.6, 0.9];   // 0 = at the horizon, 1 = the front edge
+  const poleAt = (sd, t) => [VX + sd * (28 + 392 * t), VY + 40 + (H - VY - 40) * t];
+  for (let k = depths.length - 1; k >= 0; k--) {
+    const t = depths[k], s = 0.2 + t * 1.5, [lx, ly] = poleAt(-1, t), [rx, ry] = poleAt(1, t), ph = (90 + 150 * t);
+    for (const [px, py] of [[lx, ly], [rx, ry]]) { g.strokeStyle = '#120a10'; g.lineWidth = 2 + 6 * t; g.lineCap = 'round'; g.beginPath(); g.moveTo(px, py); g.lineTo(px, py - ph); g.stroke(); g.strokeStyle = 'rgba(255,220,160,.35)'; g.lineWidth = 1 + 2 * t; g.beginPath(); g.moveTo(px + 1 + 2 * t, py - ph + 6); g.lineTo(px + 1 + 2 * t, py); g.stroke(); bgBulb(g, px, py - ph - 4 * s, 3.5 * s, warm, 1); }
+    const n = 9 + Math.round(t * 6), sag = 22 + 70 * t;
+    g.strokeStyle = 'rgba(20,10,20,.9)'; g.lineWidth = 0.8 + 1.4 * t; g.beginPath(); g.moveTo(lx, ly - ph); g.quadraticCurveTo(VX, ly - ph + sag * 2, rx, ry - ph); g.stroke();
+    for (let i = 1; i < n; i++) { const q = i / n, x = lx + (rx - lx) * q, y = (ly - ph) + sag * 4 * q * (1 - q) * 0.5 + 2.4 * s; bgBulb(g, x, y, 2.6 * s, cols[(i + k) % cols.length], 0.8 + t * 0.6); }
+  }
+  // ── the booths: a popcorn stand close on the right, a ring-toss gallery on the left, in perspective ──
+  bgBoothRow(g, r, 'L', VX, VY); bgBoothRow(g, r, 'R', VX, VY);
+  // ── the crowd: silhouettes on the midway, smaller as they go, rim-lit by the lights ──
+  const figure = (x, yFoot, s, hat, balloon) => { g.save(); g.translate(x, yFoot); g.scale(s, s); g.fillStyle = '#0c0810'; g.beginPath(); g.moveTo(-12, 0); g.lineTo(-10, -44); g.quadraticCurveTo(-14, -62, 0, -66); g.quadraticCurveTo(14, -62, 10, -44); g.lineTo(12, 0); g.closePath(); g.fill(); g.beginPath(); g.arc(0, -76, 9, 0, TAU); g.fill(); if (hat) g.fillRect(-11, -84, 22, 3); g.strokeStyle = 'rgba(255,210,150,.5)'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(10, -44); g.lineTo(12, -2); g.moveTo(6, -82); g.lineTo(8, -72); g.stroke(); if (balloon) { g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(10, -50); g.lineTo(22, -100); g.stroke(); const bq = g.createRadialGradient(18, -110, 1, 22, -106, 10); bq.addColorStop(0, '#ffb0c8'); bq.addColorStop(1, balloon); g.fillStyle = bq; g.beginPath(); g.ellipse(22, -106, 9, 11, 0, 0, TAU); g.fill(); } g.restore(); };
+  for (const [t, dx, hat, bal] of [[0.14, -10, 0, 0], [0.18, 60, 1, 0], [0.22, -70, 0, '#ff3a5a'], [0.3, 110, 0, 0], [0.36, -150, 1, 0], [0.5, 40, 0, '#2a9ca0'], [0.62, -230, 0, 0], [0.74, 200, 1, 0], [1.02, -300, 0, '#ffcc3a'], [1.06, 330, 1, 0]]) { const [, y] = poleAt(1, t); figure(VX + dx * (0.3 + t), y, 0.25 + t * 1.05, hat, bal); }
+  // haze: the air full of light down the midway
+  g.save(); g.globalCompositeOperation = 'lighter'; bgPuff(g, VX, VY + 10, 260, 90, '#ff9a60', 0.2, 0, 0.5); bgPuff(g, 214, 262, 190, 170, '#ffd080', 0.12, 0, 0.5); g.restore();
+  // ── the marquee with the title, hung over the midway on the bulb strings ──
+  bgMarquee(g, r);
+  bgVignette(g, W, H, 0.42, '#06040c');
   g.restore();
-  // scalloped valance along the tent's foot and bulbs along the roof edge
-  for (let x = tx - tw2 + 8 * u; x < tx + tw2 - 4 * u; x += 18 * u) { g.fillStyle = '#f8f1dc'; g.beginPath(); g.arc(x + 9 * u, tb - 60 * v, 9 * u, 0, PI); g.fill(); }
-  for (let i = 0; i <= 12; i++) { const t = i / 12; for (const s of [-1, 1]) { const x = tx + s * tw2 * 0.92 * t, y = peak + (tb - 62 * v - peak) * (1 - Math.pow(1 - t, 1.6)) - (t === 0 ? 0 : 0); bulb(x, y - 4 * v, 2.6 * u, i % 2 ? warm : white, i % 3 === 0); if (s < 0 && i === 0) break; } }
-  // flag and finial
-  g.strokeStyle = '#1c0e18'; g.lineWidth = 2.5 * u; g.beginPath(); g.moveTo(tx, peak); g.lineTo(tx, peak - 44 * v); g.stroke(); g.fillStyle = '#ffcc3a'; g.beginPath(); g.moveTo(tx, peak - 44 * v); g.lineTo(tx + 40 * u, peak - 34 * v); g.lineTo(tx, peak - 24 * v); g.closePath(); g.fill(); bulb(tx, peak - 46 * v, 4 * u, white, true);
-  // ── strings of bulbs swooping across the sky ──
-  const string = (x0, y0, x1, y1, sag, n, cols) => { g.strokeStyle = 'rgba(20,10,20,.9)'; g.lineWidth = 1.4 * u; g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + sag, x1, y1); g.stroke(); for (let i = 0; i <= n; i++) { const t = i / n, mt = 1 - t, x = mt * mt * x0 + 2 * mt * t * (x0 + x1) / 2 + t * t * x1, y = mt * mt * y0 + 2 * mt * t * ((y0 + y1) / 2 + sag) + t * t * y1; g.fillStyle = '#1a0d1c'; g.fillRect(x - 1 * u, y, 2 * u, 5 * v); bulb(x, y + 8 * v, 3.4 * u, cols[i % cols.length], true); } };
-  string(0, 150 * v, wx + 20 * u, wy - wr - 28 * v, 90 * v, 9, [warm, red, teal, warm, pink]);
-  string(wx + 20 * u, wy - wr - 28 * v, tx, peak - 48 * v, 150 * v, 15, [white, warm, red, warm, teal, pink]);
-  string(tx, peak - 48 * v, w, 190 * v, 80 * v, 8, [warm, pink, warm, red]);
-  // ── the midway: boardwalk, two booths with striped awnings, the barker ──
-  const bw = g.createLinearGradient(0, ground * v, 0, h); bw.addColorStop(0, '#3a2a28'); bw.addColorStop(0.3, '#2a1a1a'); bw.addColorStop(1, '#120a0c'); g.fillStyle = bw; g.fillRect(0, ground * v, w, h - ground * v);
-  g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1 * u; for (let i = 0; i < 9; i++) { const y = ground + 8 + i * i * 1.9; g.beginPath(); g.moveTo(0, y * v); g.lineTo(w, y * v); g.stroke(); }
-  // light pooling on the boards
-  const pool = g.createLinearGradient(0, ground * v, 0, h); pool.addColorStop(0, 'rgba(255,190,110,.35)'); pool.addColorStop(1, 'rgba(255,190,110,0)'); g.fillStyle = pool; g.fillRect(0, ground * v, w, h - ground * v);
-  for (let i = 0; i < 40; i++) { const x = r() * w, y = (ground + 4 + r() * 110) * v; g.fillStyle = 'rgba(255,230,170,' + (0.08 + r() * 0.14) + ')'; g.fillRect(x, y, 2 * u, (8 + r() * 26) * v); }
-  const booth = (x, y, bw2, bh, c1, c2, label) => {
-    g.fillStyle = '#2a1414'; g.fillRect((x - bw2 / 2) * u, (y - bh) * v, bw2 * u, bh * v);
-    g.fillStyle = '#f6ecd0'; g.fillRect((x - bw2 / 2 + 6) * u, (y - bh + 34) * v, (bw2 - 12) * u, (bh - 70) * v);
-    glowAt(g, x * u, (y - bh / 2) * v, bw2 * 0.6 * u, '#ffd080', 0.35);
-    g.fillStyle = '#4a2a1a'; g.fillRect((x - bw2 / 2) * u, (y - 36) * v, bw2 * u, 36 * v); g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect((x - bw2 / 2) * u, (y - 36) * v, bw2 * u, 3 * v);
-    // awning: stripes and a scalloped edge
-    const aw = bw2 + 24, ah = 30, ay = y - bh - 4;
-    for (let i = 0; i < 9; i++) { g.fillStyle = i % 2 ? c1 : c2; g.beginPath(); g.moveTo((x - aw / 2 + i * aw / 9) * u, (ay + ah) * v); g.lineTo((x - aw / 2 + (i + 1) * aw / 9) * u, (ay + ah) * v); g.lineTo((x - bw2 / 2 + (i + 1) * bw2 / 9) * u, ay * v); g.lineTo((x - bw2 / 2 + i * bw2 / 9) * u, ay * v); g.closePath(); g.fill(); }
-    for (let i = 0; i < 9; i++) { g.fillStyle = i % 2 ? c1 : c2; g.beginPath(); g.arc((x - aw / 2 + (i + 0.5) * aw / 9) * u, (ay + ah) * v, aw / 18 * u, 0, PI); g.fill(); }
-    g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect((x - aw / 2) * u, (ay + ah - 3) * v, aw * u, 3 * v);
-    for (let i = 0; i <= 6; i++) bulb((x - bw2 / 2 + i * bw2 / 6) * u, (ay - 6) * v, 3 * u, i % 2 ? warm : white, i % 2 === 0);
-    g.fillStyle = '#c8302c'; g.font = '400 ' + (15 * v) + 'px ' + BUNGEE; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(label, x * u, (y - 18) * v);
-  };
-  booth(110, 640, 170, 150, '#c8302c', '#f8f1dc', 'RING TOSS'); booth(930, 650, 150, 140, '#1d4e9a', '#f8f1dc', 'PRIZES');
-  // prizes hanging in the booths
-  for (let i = 0; i < 5; i++) { g.fillStyle = ['#ff7aa8', '#ffcc3a', '#2a9ca0', '#e8463c', '#f3e6c4'][i]; g.beginPath(); g.arc((50 + i * 30) * u, (552 + (i % 2) * 10) * v, 9 * u, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,.4)'; g.beginPath(); g.arc((47 + i * 30) * u, (549 + (i % 2) * 10) * v, 3 * u, 0, TAU); g.fill(); }
-  for (let i = 0; i < 4; i++) { g.fillStyle = ['#ffcc3a', '#ff7aa8', '#7ff0ff', '#e8463c'][i]; g.beginPath(); g.moveTo((880 + i * 30) * u, 578 * v); g.lineTo((892 + i * 30) * u, 548 * v); g.lineTo((904 + i * 30) * u, 578 * v); g.closePath(); g.fill(); }
-  // the barker: a silhouette in a top hat, cane raised, megaphone up, rim-lit by the booth behind him
-  const bk = (x, y, s) => { g.save(); g.translate(x * u, y * v); g.scale(s * u, s * v); g.fillStyle = '#120a10'; g.strokeStyle = '#120a10'; g.lineCap = 'round'; g.lineJoin = 'round';
-    g.beginPath(); g.moveTo(-26, 0); g.lineTo(-20, -70); g.quadraticCurveTo(0, -84, 20, -70); g.lineTo(26, 0); g.closePath(); g.fill();   // coat
-    g.beginPath(); g.moveTo(-12, -80); g.quadraticCurveTo(-6, -96, 0, -98); g.quadraticCurveTo(6, -96, 12, -80); g.quadraticCurveTo(0, -74, -12, -80); g.fill();   // head
-    g.fillRect(-19, -103, 38, 4); g.fillRect(-13, -128, 26, 26);   // top hat
-    g.lineWidth = 8; g.beginPath(); g.moveTo(16, -62); g.lineTo(44, -92); g.stroke(); g.lineWidth = 3; g.beginPath(); g.moveTo(44, -92); g.lineTo(52, -130); g.stroke();   // arm, cane
-    g.lineWidth = 8; g.beginPath(); g.moveTo(-16, -62); g.lineTo(-36, -74); g.stroke(); g.beginPath(); g.moveTo(-34, -78); g.lineTo(-62, -92); g.lineTo(-62, -64); g.closePath(); g.fill();   // megaphone
-    g.fillStyle = '#f3e6c4'; g.beginPath(); g.moveTo(-4, -70); g.lineTo(4, -70); g.lineTo(6, -20); g.lineTo(-6, -20); g.closePath(); g.fill(); g.fillStyle = '#c8302c'; g.beginPath(); g.moveTo(-3, -64); g.lineTo(3, -64); g.lineTo(1, -40); g.lineTo(-1, -40); g.closePath(); g.fill();   // shirt, tie
-    g.strokeStyle = 'rgba(255,200,120,.55)'; g.lineWidth = 2; g.beginPath(); g.moveTo(20, -70); g.lineTo(26, 0); g.moveTo(12, -80); g.lineTo(13, -102); g.stroke();   // rim light
-    g.restore(); };
-  bk(600, 664, 1.25);
-  // ── the marquee with the title ──
-  const mx0 = 90 * u, my0 = 44 * v, mw = w - 180 * u, mh = 134 * v, rad = 18 * u;
-  const rr2 = (x, y, ww, hh, rd) => { g.beginPath(); g.moveTo(x + rd, y); g.lineTo(x + ww - rd, y); g.quadraticCurveTo(x + ww, y, x + ww, y + rd); g.lineTo(x + ww, y + hh - rd); g.quadraticCurveTo(x + ww, y + hh, x + ww - rd, y + hh); g.lineTo(x + rd, y + hh); g.quadraticCurveTo(x, y + hh, x, y + hh - rd); g.lineTo(x, y + rd); g.quadraticCurveTo(x, y, x + rd, y); g.closePath(); };
-  g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 16 * u; g.shadowOffsetY = 6 * v; const mg = g.createLinearGradient(0, my0, 0, my0 + mh); mg.addColorStop(0, '#9a1c18'); mg.addColorStop(0.5, '#c8302c'); mg.addColorStop(1, '#6e1210'); g.fillStyle = mg; rr2(mx0, my0, mw, mh, rad); g.fill(); g.restore();
-  g.strokeStyle = '#e0a63a'; g.lineWidth = 5 * u; rr2(mx0 + 8 * u, my0 + 8 * v, mw - 16 * u, mh - 16 * v, rad * 0.7); g.stroke(); g.strokeStyle = 'rgba(255,240,200,.5)'; g.lineWidth = 1.5 * u; rr2(mx0 + 14 * u, my0 + 14 * v, mw - 28 * u, mh - 28 * v, rad * 0.5); g.stroke();
-  const nb = 30; for (let i = 0; i < nb; i++) { const x = mx0 + 12 * u + (mw - 24 * u) * i / (nb - 1); bulb(x, my0, 4 * u, i % 2 ? warm : white, true); bulb(x, my0 + mh, 4 * u, i % 2 ? white : warm, true); } for (let i = 1; i < 5; i++) { const y = my0 + mh * i / 5; bulb(mx0, y, 4 * u, i % 2 ? warm : white, true); bulb(mx0 + mw, y, 4 * u, i % 2 ? white : warm, true); }
-  const cream = (x0, y0, x1, y1) => { const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, '#fffaf0'); q.addColorStop(0.5, '#ffe6a0'); q.addColorStop(0.52, '#f6c94a'); q.addColorStop(1, '#f3e6c4'); return q; };
-  textLogo(g, 'MIDWAY MAYHEM', w / 2, my0 + mh * 0.5 + 2 * v, { font: '400 ' + (76 * v) + 'px ' + BUNGEE, spacing: 2 * u, glow: { color: '#ffe29a', blur: 20 * u, alpha: 0.5 }, shadow: { dx: 4 * u, dy: 6 * v, color: 'rgba(40,10,8,.85)' }, outline: { color: '#4a0e0c', w: 8 * u }, fill: cream, inline: { color: '#c8302c', w: 1.6 * u }, top: { color: 'rgba(255,255,255,.35)', frac: 0.4 } });
   grain(g, w, h, 2400, 0.045, 41);
+}
+// A firework burst: streaks fading out from the centre, each tipped with a glint, a soft glow in the middle.
+function bgFirework(g, r, x, y, rad, c1, c2, n) {
+  g.save(); g.globalCompositeOperation = 'lighter';
+  bgPuff(g, x, y, rad * 1.3, rad * 1.3, c2, 0.22, 0, 0.5);
+  for (let i = 0; i < n; i++) { const a = i / n * TAU + (r() - 0.5) * 0.2, len = rad * (0.7 + r() * 0.3), ex = x + Math.cos(a) * len, ey = y + Math.sin(a) * len + len * 0.12; const q = g.createLinearGradient(x, y, ex, ey); q.addColorStop(0, rgba(c2, 0)); q.addColorStop(0.5, rgba(c2, 0.5)); q.addColorStop(1, rgba(c1, 0.95)); g.strokeStyle = q; g.lineWidth = 1.2 + r() * 0.8; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a) * len * 0.5, y + Math.sin(a) * len * 0.5, ex, ey); g.stroke(); g.fillStyle = rgba('#ffffff', 0.9); g.beginPath(); g.arc(ex, ey, 1.4 + r() * 1.2, 0, TAU); g.fill(); if (i % 3 === 0) glowAt(g, ex, ey, 7, c1, 0.6); }
+  glowAt(g, x, y, rad * 0.4, c1, 0.5);
+  g.restore();
+}
+// The big top at the end of the midway: red and cream stripes shaded round the tent, bulbs on every edge,
+// the entrance a blaze of warm light, flags on the peak.
+function bgBigTop(g, r, cx, base, s) {
+  g.save(); g.translate(cx, base); g.scale(s, s);
+  const hw = 230, th = 236, peak = -th, wallT = -62;
+  const outline = () => { g.beginPath(); g.moveTo(-hw, 2); g.lineTo(-hw + 10, wallT); g.quadraticCurveTo(-hw * 0.6, peak + 60, 0, peak); g.quadraticCurveTo(hw * 0.6, peak + 60, hw - 10, wallT); g.lineTo(hw, 2); g.closePath(); };
+  const tq = g.createLinearGradient(-hw, 0, hw, 0); tq.addColorStop(0, '#3a0c0a'); tq.addColorStop(0.3, '#b82a26'); tq.addColorStop(0.5, '#d8403a'); tq.addColorStop(0.7, '#b82a26'); tq.addColorStop(1, '#3a0c0a'); g.fillStyle = tq; outline(); g.fill();
+  g.save(); outline(); g.clip();
+  for (let i = -7; i <= 7; i += 2) { const q = g.createLinearGradient(0, peak, 0, 0); q.addColorStop(0, '#fff3d8'); q.addColorStop(1, '#e8d8b0'); g.fillStyle = q; g.beginPath(); g.moveTo(0, peak); g.lineTo(i * 32, 4); g.lineTo((i + 1) * 32, 4); g.closePath(); g.fill(); }
+  const sh = g.createLinearGradient(-hw, 0, hw, 0); sh.addColorStop(0, 'rgba(0,0,0,.7)'); sh.addColorStop(0.42, 'rgba(0,0,0,0)'); sh.addColorStop(0.6, 'rgba(0,0,0,.05)'); sh.addColorStop(1, 'rgba(0,0,0,.72)'); g.fillStyle = sh; g.fillRect(-hw, peak, hw * 2, th + 4);
+  const sh2 = g.createLinearGradient(0, peak, 0, 0); sh2.addColorStop(0, 'rgba(0,0,0,.35)'); sh2.addColorStop(0.5, 'rgba(0,0,0,0)'); sh2.addColorStop(1, 'rgba(255,200,120,.2)'); g.fillStyle = sh2; g.fillRect(-hw, peak, hw * 2, th + 4);
+  bgTexture(g, -hw, peak, hw * 2, th + 4, 0.18, { seed: 6, lo: 150, hi: 255 });
+  // the wall band below the roof, scalloped valance, the entrance
+  g.fillStyle = 'rgba(40,8,8,.5)'; g.fillRect(-hw, wallT, hw * 2, 66);
+  for (let x = -hw + 8; x < hw - 4; x += 18) { g.fillStyle = '#f0e4c4'; g.beginPath(); g.arc(x + 9, wallT + 1, 9, 0, PI); g.fill(); }
+  glowAt(g, 0, -20, 120, '#ffb050', 0.6); const ent = g.createLinearGradient(0, -60, 0, 2); ent.addColorStop(0, '#fff4d0'); ent.addColorStop(1, '#ffb050'); g.fillStyle = ent; g.beginPath(); g.moveTo(-34, 2); g.lineTo(-34, -40); g.quadraticCurveTo(0, -72, 34, -40); g.lineTo(34, 2); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(80,20,10,.55)'; g.beginPath(); g.moveTo(-34, -40); g.quadraticCurveTo(-20, -10, -12, 2); g.lineTo(-34, 2); g.closePath(); g.moveTo(34, -40); g.quadraticCurveTo(20, -10, 12, 2); g.lineTo(34, 2); g.closePath(); g.fill();   // the tied-back flaps
+  g.restore();
+  // bulbs along both roof edges and the valance, the peak and its flags
+  for (let i = 0; i <= 12; i++) { const t = i / 12; for (const sd of [-1, 1]) { const x = sd * (hw - 10) * t, y = peak + (wallT - peak) * (1 - Math.pow(1 - t, 1.7)); bgBulb(g, x, y - 3, 2.6, i % 2 ? '#ffe29a' : '#fff8e8', 0.9); } }
+  for (let x = -hw + 8; x < hw; x += 36) bgBulb(g, x, wallT + 12, 2.2, '#ffe29a', 0.6);
+  g.strokeStyle = '#1c0e18'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(0, peak); g.lineTo(0, peak - 44); g.stroke(); g.fillStyle = '#ffcc3a'; g.beginPath(); g.moveTo(0, peak - 44); g.lineTo(30, peak - 36); g.lineTo(0, peak - 28); g.closePath(); g.fill(); bgBulb(g, 0, peak - 2, 4, '#ffffff', 1.2);
+  for (const sd of [-1, 1]) { g.strokeStyle = '#1c0e18'; g.lineWidth = 2; g.beginPath(); g.moveTo(sd * (hw - 12), wallT); g.lineTo(sd * (hw - 12), wallT - 30); g.stroke(); g.fillStyle = sd < 0 ? '#2a9ca0' : '#e8463c'; g.beginPath(); g.moveTo(sd * (hw - 12), wallT - 30); g.lineTo(sd * (hw - 12) + sd * 18, wallT - 25); g.lineTo(sd * (hw - 12), wallT - 20); g.closePath(); g.fill(); }
+  g.restore();
+}
+// The big wheel: a lit rim of bulbs, spokes with bulbs, gondolas in fairground colours, a blazing hub, its
+// light on the air round it.
+function bgWheel(g, r, wx, wy, wr) {
+  glowAt(g, wx, wy, wr * 1.6, '#ffd080', 0.2);
+  g.strokeStyle = '#1c0e18'; g.lineWidth = 9; g.lineCap = 'round'; g.beginPath(); g.moveTo(wx - 90, wy + wr + 60); g.lineTo(wx, wy); g.lineTo(wx + 90, wy + wr + 60); g.moveTo(wx - 48, wy + wr); g.lineTo(wx + 48, wy + wr); g.stroke();
+  g.strokeStyle = '#2a1424'; g.lineWidth = 2.2; for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; g.beginPath(); g.moveTo(wx, wy); g.lineTo(wx + Math.cos(a) * wr, wy + Math.sin(a) * wr); g.stroke(); }
+  g.lineWidth = 6; g.beginPath(); g.arc(wx, wy, wr, 0, TAU); g.stroke(); g.lineWidth = 3; g.beginPath(); g.arc(wx, wy, wr * 0.84, 0, TAU); g.stroke();
+  g.strokeStyle = 'rgba(255,220,160,.35)'; g.lineWidth = 1.2; g.beginPath(); g.arc(wx, wy, wr - 2.5, 0, TAU); g.stroke();
+  for (let i = 0; i < 16; i++) for (let k = 1; k <= 3; k++) { const a = i / 16 * TAU, d = wr * k / 4; bgBulb(g, wx + Math.cos(a) * d, wy + Math.sin(a) * d, 2, k === 2 ? '#7ff0ff' : '#ffe29a', 0.5); }
+  for (let i = 0; i < 48; i++) { const a = i / 48 * TAU; bgBulb(g, wx + Math.cos(a) * wr, wy + Math.sin(a) * wr, 3, i % 4 === 0 ? '#ff6a5a' : i % 2 ? '#ffe29a' : '#fff8e8', 1); }
+  for (let i = 0; i < 16; i++) { const a = i / 16 * TAU, x = wx + Math.cos(a) * wr, y = wy + Math.sin(a) * wr + 12, col = ['#e8463c', '#ffcc3a', '#2a9ca0', '#f3e6c4'][i % 4]; g.strokeStyle = '#1c0e18'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y - 12); g.lineTo(x, y - 4); g.stroke(); const q = g.createLinearGradient(x - 9, 0, x + 9, 0); q.addColorStop(0, shade(col, -0.5)); q.addColorStop(0.45, col); q.addColorStop(1, shade(col, -0.35)); g.fillStyle = q; g.beginPath(); g.moveTo(x - 9, y - 4); g.lineTo(x + 9, y - 4); g.lineTo(x + 7, y + 14); g.quadraticCurveTo(x, y + 18, x - 7, y + 14); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,240,200,.75)'; g.fillRect(x - 5, y, 10, 4); }
+  glowAt(g, wx, wy, 30, '#ffffff', 0.9); bgBulb(g, wx, wy, 8, '#fff8e8', 1.4);
+}
+// A row of booths down one side of the midway (side 'L' or 'R'), their fronts facing the midway and receding
+// to the vanishing point: counters, lit interiors, striped awnings with scalloped edges and bulbs, sign boards,
+// and on the nearest booth its wares (plush prizes on the left, the popcorn machine on the right).
+function bgBoothRow(g, r, side, VX, VY) {
+  const x0 = side === 'L' ? -40 : 1064, sd = side === 'L' ? -1 : 1;
+  const P = (y, t) => [x0 + (VX - x0) * t, y + (VY - y) * t];   // a point at height y (at the near end) t of the way to the vanishing point
+  const quad = (ya, yb, t0, t1) => { const [ax, ay] = P(ya, t0), [bx, by] = P(yb, t0), [cx, cy] = P(yb, t1), [dx, dy] = P(ya, t1); g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.lineTo(cx, cy); g.lineTo(dx, dy); g.closePath(); };
+  const cols = side === 'L' ? ['#c8302c', '#1d4e9a', '#e0a63a', '#c8302c', '#2a9ca0', '#c8302c'] : ['#1d4e9a', '#c8302c', '#2a9ca0', '#e0a63a', '#c8302c', '#1d4e9a'];
+  const bounds = [0, 0.2, 0.37, 0.52, 0.64, 0.74, 0.82];
+  for (let i = bounds.length - 2; i >= 0; i--) {
+    const t0 = bounds[i], t1 = bounds[i + 1], sc = 1 - t0, col = cols[i];
+    // counter front: painted boards, the top edge lit
+    const [fx] = P(600, t0), [gx] = P(600, t1); const cq = g.createLinearGradient(fx, 0, gx, 0); cq.addColorStop(0, '#5a3a22'); cq.addColorStop(1, '#2a1a10'); g.fillStyle = cq; quad(600, 470, t0, t1); g.fill(); g.fillStyle = col; quad(492, 470, t0, t1); g.fill();
+    g.save(); quad(600, 470, t0, t1); g.clip(); for (let k = 1; k < 5; k++) { const [ax, ay] = P(470 + k * 26, t0), [bx, by] = P(470 + k * 26, t1); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke(); } const lq = g.createLinearGradient(0, 470, 0, 600); lq.addColorStop(0, 'rgba(255,210,150,.18)'); lq.addColorStop(0.25, 'rgba(0,0,0,.1)'); lq.addColorStop(1, 'rgba(0,0,0,.65)'); g.fillStyle = lq; g.fillRect(0, 300, 1024, 400); bgTexture(g, 0, 470, 1024, 130, 0.25 * sc, { seed: 12, lo: 120, hi: 255 }); g.restore();
+    // the lit interior behind the counter
+    const iq = g.createLinearGradient(0, 380, 0, 470); iq.addColorStop(0, '#ffe8b8'); iq.addColorStop(1, '#ffb860'); g.fillStyle = iq; quad(470, 380, t0, t1); g.fill();
+    const [mx, my] = P(425, (t0 + t1) / 2); glowAt(g, mx, my, 90 * sc, '#ffc070', 0.4);
+    g.fillStyle = 'rgba(60,30,14,.55)'; quad(470, 440, t0, t1); g.fill(); for (let k = 0; k < 5; k++) { const u = t0 + (t1 - t0) * (k + 0.5) / 5, [bx, by] = P(430, u); g.fillStyle = ['#e8463c', '#2a9ca0', '#ffcc3a', '#ff7aa8', '#9b5cff'][(k + i) % 5]; g.fillRect(bx - 4 * (1 - u), by - 8 * (1 - u), 8 * (1 - u), 8 * (1 - u)); }
+    // awning: stripes converging on the vanishing point, scalloped edge, bulbs
+    g.save(); quad(380, 330, t0, t1); g.clip();
+    const n = 6; for (let k = 0; k < n; k++) { const u0 = t0 + (t1 - t0) * k / n, u1 = t0 + (t1 - t0) * (k + 1) / n; g.fillStyle = k % 2 ? col : '#f6ecd0'; quad(380, 330, u0, u1); g.fill(); }
+    const aq = g.createLinearGradient(0, 330, 0, 380); aq.addColorStop(0, 'rgba(255,255,255,.2)'); aq.addColorStop(1, 'rgba(0,0,0,.4)'); g.fillStyle = aq; g.fillRect(0, 300, 1024, 100); g.restore();
+    for (let k = 0; k < n; k++) { const u = t0 + (t1 - t0) * (k + 0.5) / n, [px, py] = P(381, u), rr = 7 * (1 - u); g.fillStyle = k % 2 ? col : '#f6ecd0'; g.beginPath(); g.arc(px, py, rr, 0, PI); g.fill(); if (k % 2 === 0) bgBulb(g, px, py - rr * 0.4, 2.8 * (1 - u), '#ffe29a', 0.9 * sc); }
+    // post at the near corner of the booth
+    const [qx, qy] = P(600, t0), [ux, uy] = P(326, t0); g.strokeStyle = '#2a1410'; g.lineWidth = 6 * sc; g.lineCap = 'round'; g.beginPath(); g.moveTo(qx, qy); g.lineTo(ux, uy); g.stroke(); g.strokeStyle = 'rgba(255,220,170,.4)'; g.lineWidth = 1.5 * sc; g.beginPath(); g.moveTo(qx - sd * 2 * sc, qy); g.lineTo(ux - sd * 2 * sc, uy); g.stroke();
+    // counter top edge
+    const [cx, cy] = P(470, t0), [dx, dy] = P(470, t1); g.strokeStyle = 'rgba(255,235,200,.85)'; g.lineWidth = 2.5 * sc; g.beginPath(); g.moveTo(cx, cy); g.lineTo(dx, dy); g.stroke();
+    // sign boards on every other booth
+    if (i % 2 === 1 && i < 4) { const u0 = t0 + (t1 - t0) * 0.1, u1 = t1 - (t1 - t0) * 0.08; const sq = g.createLinearGradient(P(300, u0)[0], 0, P(300, u1)[0], 0); sq.addColorStop(0, '#f4ecd8'); sq.addColorStop(1, '#c8b890'); g.fillStyle = sq; quad(326, 290, u0, u1); g.fill(); g.strokeStyle = col; g.lineWidth = 2.5 * sc; g.stroke();
+      const [sx0, sy0] = P(308, u0), [sx1, sy1] = P(308, u1); g.save(); g.translate((sx0 + sx1) / 2, (sy0 + sy1) / 2); g.rotate(Math.atan2(sy1 - sy0, sx1 - sx0)); g.fillStyle = col; g.font = '400 ' + (22 * (1 - u0)) + 'px "Bungee", Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(i === 1 ? (side === 'L' ? 'RING TOSS' : 'POPCORN') : (side === 'L' ? 'DUCKS' : 'PRIZES'), 0, 0); g.restore();
+      bgBulb(g, sx0, sy0 - 18 * sc, 3.5 * sc, '#ffe29a', 1); bgBulb(g, sx1, sy1 - 18 * (1 - u1), 3.5 * (1 - u1), '#ffe29a', 1); }
+  }
+  // the nearest booth's wares
+  if (side === 'L') {
+    for (let i = 0; i < 6; i++) { const [px, py] = P(392, 0.03 + i * 0.03), sc = 1 - (0.03 + i * 0.03), col = ['#ff7aa8', '#ffcc3a', '#2a9ca0', '#e8463c', '#f3e6c4', '#9b5cff'][i]; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 1; g.beginPath(); g.moveTo(px, py - 12 * sc); g.lineTo(px, py); g.stroke(); const q = g.createRadialGradient(px - 5 * sc, py + 4 * sc, 1, px, py + 10 * sc, 13 * sc); q.addColorStop(0, shade(col, 0.4)); q.addColorStop(0.7, col); q.addColorStop(1, shade(col, -0.45)); g.fillStyle = q; g.beginPath(); g.arc(px, py + 10 * sc, 12 * sc, 0, TAU); g.fill(); g.beginPath(); g.arc(px - 8 * sc, py - 1 * sc, 4.5 * sc, 0, TAU); g.arc(px + 8 * sc, py - 1 * sc, 4.5 * sc, 0, TAU); g.fill(); g.fillStyle = 'rgba(0,0,0,.7)'; g.beginPath(); g.arc(px - 4 * sc, py + 7 * sc, 1.5 * sc, 0, TAU); g.arc(px + 4 * sc, py + 7 * sc, 1.5 * sc, 0, TAU); g.fill(); }
+    for (let i = 0; i < 5; i++) { const [px, py] = P(470, 0.03 + i * 0.03), sc = 1 - (0.03 + i * 0.03); g.fillStyle = '#5a3a1a'; g.fillRect(px - 2.5 * sc, py - 24 * sc, 5 * sc, 24 * sc); if (i % 2 === 0) { g.strokeStyle = '#ff6a5a'; g.lineWidth = 3 * sc; g.beginPath(); g.ellipse(px, py - 7 * sc, 10 * sc, 4 * sc, 0, 0, TAU); g.stroke(); } }
+  } else {
+    const [mx, my] = P(470, 0.07), sc = 0.93; g.save(); g.translate(mx, my); g.scale(sc, sc);
+    glowAt(g, 0, -44, 80, '#ffd040', 0.65); g.fillStyle = '#2a1410'; g.fillRect(-32, -8, 64, 8); g.fillStyle = 'rgba(255,232,130,.8)'; g.fillRect(-28, -84, 56, 76); g.fillStyle = '#c8302c'; g.fillRect(-32, -94, 64, 10); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(-26, -82, 8, 72);
+    for (let i = 0; i < 30; i++) { const x = -22 + r() * 44, y = -14 - r() * 38; g.fillStyle = r() < 0.5 ? '#fff6d8' : '#ffe6a0'; g.beginPath(); g.arc(x, y, 3 + r() * 2.5, 0, TAU); g.fill(); }
+    g.strokeStyle = '#2a1410'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(-28, -80); g.lineTo(28, -80); g.moveTo(-28, -46); g.lineTo(28, -46); g.stroke(); g.fillStyle = '#f0e0c0'; g.font = '400 9px "Bungee", Impact, sans-serif'; g.textAlign = 'center'; g.fillText('HOT', 0, -86); g.restore();
+    for (let i = 0; i < 4; i++) { const [px, py] = P(470, 0.16 + i * 0.03), sc = 1 - (0.16 + i * 0.03); g.fillStyle = ['#ff7aa8', '#7ff0ff', '#ffcc3a', '#e8463c'][i]; g.beginPath(); g.moveTo(px - 7 * sc, py); g.lineTo(px, py - 26 * sc); g.lineTo(px + 7 * sc, py); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.ellipse(px, py - 22 * sc, 5 * sc, 3 * sc, 0, 0, TAU); g.fill(); }   // candy floss
+  }
+}
+// The marquee: a lacquered red board edged in brass and ringed with bulbs, the title in cream and gold.
+function bgMarquee(g, r) {
+  const mx0 = 112, my0 = 36, mw = 800, mh = 126, rad = 16;
+  const rr2 = (x, y, ww, hh, rd) => { g.beginPath(); g.moveTo(x + rd, y); g.lineTo(x + ww - rd, y); g.quadraticCurveTo(x + ww, y, x + ww, y + rd); g.lineTo(x + ww, y + hh - rd); g.quadraticCurveTo(x + ww, y + hh, x + ww - rd, y + hh); g.lineTo(x + rd, y + hh); g.quadraticCurveTo(x, y + hh, x, y + hh - rd); g.lineTo(x, y + rd); g.quadraticCurveTo(x, y, x + rd, y); g.closePath(); };
+  // chains up out of frame
+  g.strokeStyle = '#2a1a18'; g.lineWidth = 3; for (const x of [mx0 + 60, mx0 + mw - 60]) { g.beginPath(); g.moveTo(x, my0); g.lineTo(x - 10, 0); g.stroke(); }
+  g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 18; g.shadowOffsetY = 8; const mg = g.createLinearGradient(0, my0, 0, my0 + mh); mg.addColorStop(0, '#8e1a16'); mg.addColorStop(0.45, '#c8302c'); mg.addColorStop(0.5, '#a82420'); mg.addColorStop(1, '#5e100e'); g.fillStyle = mg; rr2(mx0, my0, mw, mh, rad); g.fill(); g.restore();
+  g.save(); rr2(mx0, my0, mw, mh, rad); g.clip(); bgTexture(g, mx0, my0, mw, mh, 0.14, { seed: 8, lo: 160, hi: 255 }); const sheen = g.createLinearGradient(mx0, my0, mx0 + mw * 0.5, my0 + mh); sheen.addColorStop(0, 'rgba(255,255,255,0)'); sheen.addColorStop(0.45, 'rgba(255,255,255,.1)'); sheen.addColorStop(0.5, 'rgba(255,255,255,.02)'); sheen.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = sheen; g.fillRect(mx0, my0, mw, mh); g.restore();
+  const brass = g.createLinearGradient(0, my0, 0, my0 + mh); brass.addColorStop(0, '#fff0b0'); brass.addColorStop(0.5, '#c08a2a'); brass.addColorStop(1, '#f6d77a'); g.strokeStyle = brass; g.lineWidth = 6; rr2(mx0 + 10, my0 + 10, mw - 20, mh - 20, rad * 0.7); g.stroke(); g.strokeStyle = 'rgba(60,20,10,.6)'; g.lineWidth = 1.5; rr2(mx0 + 14, my0 + 14, mw - 28, mh - 28, rad * 0.5); g.stroke(); g.strokeStyle = 'rgba(255,240,200,.45)'; g.lineWidth = 1; rr2(mx0 + 6, my0 + 6, mw - 12, mh - 12, rad * 0.8); g.stroke();
+  const nb = 30; for (let i = 0; i < nb; i++) { const x = mx0 + 12 + (mw - 24) * i / (nb - 1); bgBulb(g, x, my0, 4.2, i % 2 ? '#ffe29a' : '#fff8e8', 1.1); bgBulb(g, x, my0 + mh, 4.2, i % 2 ? '#fff8e8' : '#ffe29a', 1.1); } for (let i = 1; i < 5; i++) { const y = my0 + mh * i / 5; bgBulb(g, mx0, y, 4.2, i % 2 ? '#ffe29a' : '#fff8e8', 1.1); bgBulb(g, mx0 + mw, y, 4.2, i % 2 ? '#fff8e8' : '#ffe29a', 1.1); }
+  const cream = (x0, y0, x1, y1) => { const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, '#fffaf0'); q.addColorStop(0.48, '#ffe6a0'); q.addColorStop(0.52, '#f2c14e'); q.addColorStop(0.8, '#ffd36a'); q.addColorStop(1, '#f3e6c4'); return q; };
+  textLogo(g, 'MIDWAY MAYHEM', 512, my0 + mh * 0.5 + 3, { font: '400 74px "Bungee", Impact, "Arial Black", sans-serif', spacing: 2, glow: { color: '#ffe29a', blur: 22, alpha: 0.55 }, shadow: { dx: 5, dy: 7, color: 'rgba(40,10,8,.85)' }, outline: { color: '#4a0e0c', w: 9 }, fill: cream, inline: { color: '#c8302c', w: 1.8 }, top: { color: 'rgba(255,255,255,.4)', frac: 0.42 } });
+  bgGlint(g, mx0 + 58, my0 + 40, 5, '#ffffff', 0.9);
 }
 function paintApron(g, w, h) {
   for (let i = 0; i < w / 40; i++) { g.fillStyle = i % 2 ? '#c8302c' : '#f3e6c4'; g.fillRect(i * 40, 0, 40, h); }

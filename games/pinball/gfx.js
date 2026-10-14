@@ -328,3 +328,108 @@ export function painter(ctx, W, L, pxPerMM) {
   };
   return P;
 }
+
+// ── Backglass painting (translite art) ───────────────────────────────────
+// A translite is painted the way a matte painter works: big shapes back to front, then light, then atmosphere,
+// then detail, then grain. These are the brushes, all in canvas px on a plain 2D context: soft puffs (fog, cloud,
+// haze, light pools), cloud banks with lit rims, star fields, light rays, glints, lens flares, surface texture,
+// water reflections, bulbs and a vignette. Colours are hex strings (rgba() parses them).
+// A soft-edged ellipse of colour: alpha a at the centre fading to nothing at the edge. rot in radians; mid is
+// where the fall-off reaches half (0.45 = a soft airbrush dab, 0.7 = a denser puff).
+export function bgPuff(g, x, y, rx, ry, color, a, rot = 0, mid = 0.45) {
+  if (rx <= 0 || ry <= 0 || a <= 0) return;
+  g.save(); g.translate(x, y); if (rot) g.rotate(rot); g.scale(1, ry / rx);
+  const q = g.createRadialGradient(0, 0, 0, 0, 0, rx); q.addColorStop(0, rgba(color, a)); q.addColorStop(mid, rgba(color, a * 0.5)); q.addColorStop(1, rgba(color, 0));
+  g.fillStyle = q; g.fillRect(-rx, -rx, rx * 2, rx * 2); g.restore();
+}
+// A cloud bank centred at (x, y), size s: a row of overlapping puffs in the body colour, their edges towards a
+// light at (lx, ly) picked out in the lit colour (litA alpha). spread widens the bank; n is the number of puffs.
+export function bgCloud(g, x, y, s, o = {}) {
+  const r = rng(o.seed || 1), n = o.n || 7, body = o.body || '#101020', a = o.a != null ? o.a : 0.9, spread = o.spread || 1.2, flat = o.flat || 0.72;
+  const parts = [];
+  for (let i = 0; i < n; i++) { const t = n > 1 ? (i / (n - 1)) * 2 - 1 : 0; parts.push([x + t * s * spread + (r() - 0.5) * s * 0.3, y + Math.abs(t) * s * 0.22 + (r() - 0.5) * s * 0.25, s * (0.5 + r() * 0.3) * (1 - Math.abs(t) * 0.4)]); }
+  for (const [px, py, pr] of parts) bgPuff(g, px, py, pr, pr * flat, body, a, 0, o.mid || 0.62);
+  if (o.lit) {
+    const lx = o.lx != null ? o.lx : x, ly = o.ly != null ? o.ly : y - s * 4;
+    for (const [px, py, pr] of parts) { const dx = lx - px, dy = ly - py, d = Math.hypot(dx, dy) || 1; bgPuff(g, px + dx / d * pr * 0.62, py + dy / d * pr * 0.62 * flat, pr * 0.62, pr * 0.3, o.lit, o.litA != null ? o.litA : 0.3, Math.atan2(dy, dx) + PI / 2, 0.5); }
+  }
+}
+// A field of n stars over w x yMax (seeded): mostly faint white, a few bigger and warmer.
+export function bgStars(g, w, h, n, seed = 1, o = {}) {
+  const r = rng(seed), yMax = o.yMax || h, k = o.a || 1;
+  for (let i = 0; i < n; i++) {
+    const x = r() * w, y = r() * yMax, b = r(), s = b > 0.965 ? 2.4 : b > 0.82 ? 1.6 : 1.1, c = r();
+    g.fillStyle = 'rgba(' + (c < 0.78 ? '226,232,255' : c < 0.9 ? '255,238,205' : '190,225,255') + ',' + ((0.22 + r() * 0.7) * k).toFixed(2) + ')';
+    g.fillRect(x, y, s, s);
+  }
+}
+// A star glint: a core, a soft glow and diffraction arms (horizontal longest), drawn additively.
+export function bgGlint(g, x, y, r, color, a = 1, o = {}) {
+  glowAt(g, x, y, r * (o.glowR || 4), color, a * 0.5);
+  g.save(); g.globalCompositeOperation = 'lighter';
+  const arm = (len, wd, ang) => { g.save(); g.translate(x, y); g.rotate(ang); const q = g.createLinearGradient(-len, 0, len, 0); q.addColorStop(0, rgba(color, 0)); q.addColorStop(0.5, rgba(color, a)); q.addColorStop(1, rgba(color, 0)); g.fillStyle = q; g.beginPath(); g.moveTo(-len, 0); g.lineTo(0, -wd); g.lineTo(len, 0); g.lineTo(0, wd); g.closePath(); g.fill(); g.restore(); };
+  arm(r * (o.armX || 5), r * 0.45, 0); arm(r * (o.armY || 3.5), r * 0.45, PI / 2);
+  if (o.diag) { arm(r * 2.2, r * 0.3, PI / 4); arm(r * 2.2, r * 0.3, -PI / 4); }
+  g.fillStyle = rgba('#ffffff', Math.min(1, a)); g.beginPath(); g.arc(x, y, r * 0.55, 0, TAU); g.fill(); g.restore();
+}
+// Rays of light from (x, y): n wedges between angles a0..a1 (radians), length len, fading out along their length
+// and additive, so they read as light in haze. width is the half-angle of a ray; r0 keeps the source clear.
+export function bgRays(g, x, y, len, a0, a1, n, color, a, seed = 1, o = {}) {
+  const r = rng(seed); g.save(); g.globalCompositeOperation = o.mode || 'lighter';
+  const q = g.createRadialGradient(x, y, o.r0 || 0, x, y, len); q.addColorStop(0, rgba(color, a)); q.addColorStop(0.45, rgba(color, a * 0.4)); q.addColorStop(1, rgba(color, 0)); g.fillStyle = q;
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n, ang = a0 + (a1 - a0) * t + (r() - 0.5) * (a1 - a0) / n, wd = (o.width || 0.03) * (0.4 + r() * 1.2);
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(ang - wd) * len, y + Math.sin(ang - wd) * len); g.lineTo(x + Math.cos(ang + wd) * len, y + Math.sin(ang + wd) * len); g.closePath(); g.fill();
+  }
+  g.restore();
+}
+// A band of haze across the full width, alpha a0 at y0 to a1 at y1 (atmospheric perspective, ground mist).
+export function bgHaze(g, w, y0, y1, color, a0, a1) {
+  const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, rgba(color, a0)); q.addColorStop(1, rgba(color, a1)); g.fillStyle = q; g.fillRect(0, Math.min(y0, y1), w, Math.abs(y1 - y0));
+}
+// Surface texture over a rectangle (clip to a shape first): a tile of seeded noise multiplied in at strength a.
+// scale enlarges the grain; mode 'overlay' or 'screen' for lighter materials.
+const _bgNoise = {};
+export function bgTexture(g, x, y, w, h, a = 0.3, o = {}) {
+  const key = (o.seed || 1) + ':' + (o.lo || 0) + ':' + (o.hi || 0), c = _bgNoise[key] || (_bgNoise[key] = noiseCanvas(96, 96, o.lo != null ? o.lo : 110, o.hi != null ? o.hi : 255, o.seed || 1));
+  const s = o.scale || 1;
+  g.save(); g.globalCompositeOperation = o.mode || 'multiply'; g.globalAlpha = a; g.beginPath(); g.rect(x, y, w, h); g.clip();
+  g.translate(x, y); g.scale(s, s); g.fillStyle = g.createPattern(c, 'repeat'); g.fillRect(0, 0, w / s + 1, h / s + 1); g.restore();
+}
+// Water reflection: the painting above the waterline y0 (sh px of it) mirrored below it over dh px, in slices
+// offset sideways by a ripple that grows towards the viewer. Paint the water's own colour over it afterwards.
+// Works in canvas px (reset any transform first); the source rows must already be painted.
+export function bgReflect(g, y0, sh, dh, o = {}) {
+  const w = g.canvas.width, r = rng(o.seed || 1), n = o.slices || 44, a = o.alpha != null ? o.alpha : 0.5, rip = o.ripple != null ? o.ripple : 3;
+  // one copy of the band above the waterline (drawing a canvas onto itself snapshots it every call)
+  const top = Math.max(0, y0 - sh), bh = Math.ceil(y0 - top), band = canvas(w, bh); band.getContext('2d').drawImage(g.canvas, 0, top, w, bh, 0, 0, w, bh);
+  g.save(); g.globalAlpha = a; g.beginPath(); g.rect(0, y0, w, dh); g.clip();
+  const ssh = bh / n, dsh = dh / n;
+  for (let i = 0; i < n; i++) {
+    const t = i / n, sy = bh - (i + 1) * ssh, dy = y0 + i * dsh, off = Math.sin(i * 1.7 + r() * 0.8) * rip * (0.2 + t * 1.2);
+    g.drawImage(band, 0, sy, w, ssh, off, dy, w, dsh + 1);
+  }
+  g.restore();
+}
+// Lens flare for a bright light at (x, y) seen through a lens centred on (cx, cy): ghosts along the axis through
+// the centre, and a thin anamorphic streak across the light.
+export function bgFlare(g, x, y, cx, cy, color, k = 1, o = {}) {
+  g.save(); g.globalCompositeOperation = 'lighter';
+  for (const [t, rad, a] of (o.ghosts || [[0.22, 12, 0.16], [0.4, 26, 0.09], [0.55, 7, 0.22], [0.8, 40, 0.07], [1.25, 16, 0.12], [1.55, 58, 0.05]])) {
+    const gx = x + (cx - x) * 2 * t, gy = y + (cy - y) * 2 * t;
+    g.fillStyle = rgba(color, a * k); g.beginPath(); g.arc(gx, gy, rad, 0, TAU); g.fill(); g.strokeStyle = rgba(color, a * 1.5 * k); g.lineWidth = 1.4; g.stroke();
+  }
+  const len = o.streak || 420, s = g.createLinearGradient(x - len, y, x + len, y); s.addColorStop(0, rgba(color, 0)); s.addColorStop(0.5, rgba('#ffffff', 0.55 * k)); s.addColorStop(1, rgba(color, 0)); g.fillStyle = s; g.fillRect(x - len, y - 1.6, len * 2, 3.2);
+  const s2 = g.createLinearGradient(x - len * 0.6, y, x + len * 0.6, y); s2.addColorStop(0, rgba(color, 0)); s2.addColorStop(0.5, rgba(color, 0.35 * k)); s2.addColorStop(1, rgba(color, 0)); g.fillStyle = s2; g.fillRect(x - len * 0.6, y - 5, len * 1.2, 10);
+  g.restore();
+}
+// Darkened corners (alpha a at the very edge), the way a backlit translite falls off and a painting is framed.
+export function bgVignette(g, w, h, a = 0.4, color = '#000000') {
+  const q = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.hypot(w, h) * 0.58); q.addColorStop(0, rgba(color, 0)); q.addColorStop(1, rgba(color, a));
+  g.fillStyle = q; g.fillRect(0, 0, w, h);
+}
+// A bulb: a point light with its bloom (k scales the glow) and a bright core with a highlight.
+export function bgBulb(g, x, y, r, color, k = 1) {
+  if (k > 0.05) glowAt(g, x, y, r * 6, color, 0.55 * k);
+  const q = g.createRadialGradient(x - r * 0.3, y - r * 0.3, 0, x, y, r); q.addColorStop(0, '#ffffff'); q.addColorStop(0.45, rgba(color, 1)); q.addColorStop(1, rgba(color, 0.35)); g.fillStyle = q; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+}
