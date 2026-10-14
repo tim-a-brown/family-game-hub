@@ -1854,7 +1854,7 @@
   }
   function linksOn() { return !!(window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.linkAdd); }
   // Link a frequent player to their own profile (their share code), or see / undo the link
-  function linkSheet(name, onDone) {
+  function linkSheet(name, onDone, scanned) {
     var node = el('div', { class: 'lk' }), s;
     if (!linksOn()) {
       node.appendChild(el('p', { class: 'muted', text: 'Sign in with a PIN to link players. Linking lets ' + name + '’s avatar come from their own phone, and saves the games you play together to their history too.' }));
@@ -1877,6 +1877,12 @@
     }
     node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code. On their phone: tap their avatar at the top of the home screen, then Share my profile. The games you’ve already played with ' + name + ' go to their history too, once they accept on their phone.' }));
     var inp = el('input', { class: 'input lk-code', maxlength: 7, placeholder: 'ABC123', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      node.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: icon('camera') + '<span>Scan their QR code</span>', onclick: function () {
+        scanSheet(name, function (code) { setTimeout(function () { linkSheet(name, onDone, code); }, 340); });
+      } }));
+      node.appendChild(el('div', { class: 'lk-or', text: 'or type their code' }));
+    }
     node.appendChild(inp);
     var msg = el('p', { class: 'lk-msg' }); node.appendChild(msg);
     function go() {
@@ -1887,7 +1893,8 @@
     }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
     s = sheet({ title: 'Link ' + name, node: node, actions: [{ label: 'Link', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
-    setTimeout(function () { inp.focus(); }, 300);
+    if (scanned) { inp.value = scanned; setTimeout(go, 350); }   // back from the scanner: link straight away
+    else setTimeout(function () { inp.focus(); }, 300);
   }
   // ── Game defaults: each game's own setup, set ahead of time ──
   // The list (profile menu) opens a game's page with ?defaults=1: its normal setup screen, saving instead of
@@ -2002,12 +2009,55 @@
   // A link that carries your code: scanned from the QR code or tapped in a message, it opens the home page,
   // which asks who you are in their players and links you (linkFromUrl)
   function linkUrl(code, name) { return location.origin + '/?link=' + code + '&from=' + encodeURIComponent(String(name || '').slice(0, 40)); }
-  var _qrP = null;
-  function loadQr() {
-    if (window.qrcode) return Promise.resolve();
-    return _qrP || (_qrP = new Promise(function (res, rej) {
-      var sc = doc.createElement('script'); sc.src = (location.pathname.indexOf('/games/') >= 0 ? '../' : '') + 'qr.js'; sc.onload = res; sc.onerror = function () { _qrP = null; rej(new Error('qr')); }; doc.head.appendChild(sc);
+  var _libs = {};
+  function loadLib(file, global) {
+    if (window[global]) return Promise.resolve();
+    return _libs[file] || (_libs[file] = new Promise(function (res, rej) {
+      var sc = doc.createElement('script'); sc.src = (location.pathname.indexOf('/games/') >= 0 ? '../' : '') + file; sc.onload = res; sc.onerror = function () { delete _libs[file]; rej(new Error(file)); }; doc.head.appendChild(sc);
     }));
+  }
+  function loadQr() { return loadLib('qr.js', 'qrcode'); }
+  // a scanned QR code or a pasted link: the profile code in it
+  function codeFromScan(text) {
+    text = String(text || '').trim();
+    var m = /[?&]link=([A-Za-z0-9]{6})(?:&|#|$)/.exec(text) || /^([A-Za-z0-9]{3})\s?([A-Za-z0-9]{3})$/.exec(text);
+    return m ? (m[1] + (m[2] || '')).toUpperCase() : null;
+  }
+  // Scan someone's QR code with the camera, in the app. BarcodeDetector where the browser has it, jsQR otherwise.
+  function scanSheet(name, onCode) {
+    var node = el('div', { class: 'lk' }), s, stream = null, raf = 0, stopped = false, det = null;
+    var video = el('video', { playsinline: 'true', muted: 'true', autoplay: 'true' }), box = el('div', { class: 'lk-scan' }, [video, el('i')]);
+    var msg = el('p', { class: 'lk-msg', text: 'Point at the QR code on ' + poss(name) + ' Share my profile screen.' });
+    node.appendChild(box); node.appendChild(msg);
+    var cv = doc.createElement('canvas'), g = cv.getContext('2d', { willReadFrequently: true });
+    function stop() { stopped = true; cancelAnimationFrame(raf); if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    function found(text) {
+      var code = codeFromScan(text); if (!code) return false;
+      stop(); sfx('good'); haptic('success'); s.close(); onCode(code); return true;
+    }
+    function tick() {
+      if (stopped) return;
+      if (video.readyState >= 2 && video.videoWidth) {
+        if (det) det.detect(video).then(function (codes) { if (codes.some(function (c) { return found(c.rawValue); })) return; raf = requestAnimationFrame(tick); }).catch(function () { raf = requestAnimationFrame(tick); });
+        else {
+          var sz = 480, sc = Math.max(video.videoWidth, video.videoHeight) / sz;
+          cv.width = Math.round(video.videoWidth / sc); cv.height = Math.round(video.videoHeight / sc);
+          g.drawImage(video, 0, 0, cv.width, cv.height);
+          var r = window.jsQR(g.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height, { inversionAttempts: 'dontInvert' });
+          if (r && found(r.data)) return;
+          setTimeout(function () { raf = requestAnimationFrame(tick); }, 90);
+        }
+      } else raf = requestAnimationFrame(tick);
+    }
+    s = sheet({ title: 'Scan ' + poss(name) + ' code', node: node, actions: [{ label: 'Cancel', cls: 'btn-ghost' }], onClose: stop });
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { msg.textContent = 'This browser can’t use the camera here. Type the code instead.'; return; }
+    var ready = ('BarcodeDetector' in window) ? BarcodeDetector.getSupportedFormats().then(function (f) { if (f.indexOf('qr_code') >= 0) det = new BarcodeDetector({ formats: ['qr_code'] }); else return loadLib('qr-scan.js', 'jsQR'); }).catch(function () { return loadLib('qr-scan.js', 'jsQR'); }) : loadLib('qr-scan.js', 'jsQR');
+    Promise.all([ready, navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 1280 } }, audio: false })]).then(function (r) {
+      if (stopped) { r[1].getTracks().forEach(function (t) { t.stop(); }); return; }
+      stream = r[1]; video.srcObject = stream; video.play().catch(function () {}); box.classList.add('live'); tick();
+    }).catch(function (e) {
+      msg.textContent = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError') ? 'Camera access was turned down. Allow it in Settings, or type the code instead.' : 'Couldn’t start the camera. Type the code instead.';
+    });
   }
   function qrSvg(text) {
     var q = window.qrcode(0, 'M'); q.addData(text); q.make();
@@ -2074,7 +2124,7 @@
       '<h3>Your PIN</h3><p>Your PIN is your account. Sign in with it on any phone or tablet and your games, high scores and Lorcana decks are all there. You’ll need one to link players or to play Chess or Lorcana online. Playing as a guest works fine, but nothing leaves that device.</p>' +
       '<h3>Linking players</h3><ul>' +
         '<li>Your code is on this screen, with a QR code of it. Point the other phone’s camera at the QR code, tap <b>Share</b> to send the code, or just read it out.</li>' +
-        '<li>To link someone from a code, open <b>Frequent players</b> from any game’s menu, tap the link button next to their name, and enter it.</li>' +
+        '<li>To link someone, open <b>Frequent players</b> from any game’s menu, tap the link button next to their name, then scan their QR code or type their code.</li>' +
         '<li>After that, their avatar comes from their own phone, games you play together show up in both histories, and you each see the other’s best arcade scores.</li>' +
         '<li>One code is enough: when you link someone, their phone asks them first. Once they accept, it works both ways; if they decline, nothing is linked.</li></ul>' +
       '<h3>Playing on one phone</h3><p>Just pass the phone around. Pick everyone at the start, and when the game ends it’s saved here, with a copy sent to anyone you’ve linked. If someone has <b>Ask before adding games</b> turned on, they get to look it over first, and can tap <b>Not me</b> if it wasn’t them.</p>' +
