@@ -568,7 +568,7 @@
   function lobby(root, o) {
     css(); root.innerHTML = '';
     var me = o.me || { name: myName() }, alive = true, off = null, last = [];
-    var wrap = E('div', { class: 'ol' });
+    var wrap = E('div', { class: 'ol ol-lobby' });
     root.appendChild(wrap);
     wrap.appendChild(E('h1', { text: o.title || 'Play Online' }));
     if (o.intro) wrap.appendChild(E('p', { class: 'ol-note', style: { 'text-align': 'center' }, text: o.intro }));
@@ -700,13 +700,31 @@
     '.olt-h > .avatar{animation:oltIn .55s cubic-bezier(.3,1.5,.5,1) both;}' +
     '.olt-ph{display:grid;place-items:center;border-radius:50%;color:var(--text-3);}.olt-ph svg{width:46%;height:46%;}' +
     '.olt-p.anon .olt-ph{background:var(--surface-3,#2a2546);}' +
-    '.olt-p.host .olt-h > .avatar{box-shadow:0 0 0 2.5px #fff,0 0 0 5px #ffd36b,0 5px 12px rgba(0,0,0,.35);}' +
+    '.olt-p.host .olt-h > .avatar{box-shadow:0 0 0 2.5px #fff,0 0 0 5.5px #ffd36b,0 0 18px 4px rgba(255,211,107,.55),0 5px 12px rgba(0,0,0,.35);}' +
+    '.olt-p.host circle{filter:drop-shadow(0 0 5px rgba(255,211,107,.75));}' +
+    '.olt-crown{position:absolute;left:50%;bottom:calc(100% - 4px);width:calc(var(--hs) * .62);height:calc(var(--hs) * .62);margin-left:calc(var(--hs) * -.31);display:grid;place-items:center;color:#ffd36b;filter:drop-shadow(0 2px 2px rgba(0,0,0,.55));animation:oltCrown 2.4s ease-in-out infinite;}' +
+    '.olt-crown svg{width:100%;height:100%;fill:#ffd36b;stroke:#b8860b;}' +
+    '@keyframes oltCrown{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-2px) rotate(6deg)}}' +
+    '.olt-side .ol-row.is-host .avatar{box-shadow:0 0 0 2px #ffd36b,0 0 10px rgba(255,211,107,.6);}.olt-side .ol-row.is-host small{color:#ffd36b;}' +
     '.olt-p.coming circle{opacity:.7;}' +
     '.olt-h .olt-ring{position:absolute;inset:-5px;border-radius:50%;border:3px solid transparent;border-top-color:var(--accent);animation:olspin .9s linear infinite;}' +
     '.olt-badge{position:relative;display:grid;place-items:center;width:100%;height:100%;border-radius:28%;background:linear-gradient(180deg,#171530,#0b0a1c);box-shadow:0 0 0 2px rgba(255,255,255,.15),0 5px 12px rgba(0,0,0,.4);}' +
     '.olt-badge svg{position:absolute;inset:6%;width:88%;height:88%;opacity:.55;}' +
     '.olt-badge b{position:relative;font-family:var(--display);font-weight:400;font-size:calc(var(--hs) * .38);color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);}' +
     '.olt-p.in svg{animation:oltFade .5s both;}.olt-p.out{opacity:0;}' +
+    '.olt-go{position:fixed;inset:0;z-index:900;display:grid;place-items:center;pointer-events:none;background:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--bg,#14112a) 70%,transparent),var(--bg,#14112a) 70%);animation:oltGoBg 1.9s ease-in forwards;}' +
+    '.olt-go-hold{position:relative;}.olt-go .olt-tbl{margin:0;animation:oltSpin 1.9s cubic-bezier(.55,0,.35,1) forwards;}' +
+    '.olt-go .olt-p circle{transition:none;}' +
+    '.olt-go .olt-h > *{animation:oltCounter 1.9s cubic-bezier(.55,0,.35,1) forwards;}' +
+    '@keyframes oltCounter{0%{transform:rotate(0)}18%{transform:rotate(14deg)}70%{transform:rotate(-540deg)}100%{transform:rotate(-900deg)}}' +
+    '.olt-go .olt-mid{animation:oltGoMid 1.9s ease-in-out forwards;}' +
+    '.olt-go .olt-go-t{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-size:calc(var(--tw,300px) * .13);color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.3);opacity:0;animation:oltGoT 1.9s ease-out forwards;}' +
+    '.olt-go .olt-flash{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#fff 0%,rgba(255,255,255,0) 60%);opacity:0;animation:oltFlash 1.9s ease-out forwards;}' +
+    '@keyframes oltSpin{0%{transform:rotate(0) scale(1)}18%{transform:rotate(-14deg) scale(1.04)}70%{transform:rotate(540deg) scale(1.12)}100%{transform:rotate(900deg) scale(.08);opacity:.2}}' +
+    '@keyframes oltGoMid{0%,15%{opacity:1}30%,100%{opacity:0}}' +
+    '@keyframes oltGoT{0%,25%{opacity:0;transform:scale(.6)}40%,70%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.6)}}' +
+    '@keyframes oltFlash{0%,72%{opacity:0;transform:scale(.3)}82%{opacity:.9;transform:scale(1.1)}100%{opacity:0;transform:scale(1.8)}}' +
+    '@keyframes oltGoBg{0%,80%{opacity:1}100%{opacity:0}}' +
     '@keyframes oltFade{from{opacity:0}to{opacity:1}}' +
     '@keyframes oltIn{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}' +
     '@keyframes oltPulse{50%{transform:scale(.92);opacity:.35}}' +
@@ -800,6 +818,7 @@
     }
     function paintSeats() {
       var people = S.players.map(function (p) { return { name: p.name, me: p.me, host: p.host }; });
+      people.sort(function (a, b) { return (b.host ? 1 : 0) - (a.host ? 1 : 0); });   // the host sits at the top
       if (!people.length && S.room) {   // still connecting: the host, the others already there, and you on the way
         people.push({ name: S.hostName, host: true });
         for (var q = 1; q < (S.room.n || 1); q++) people.push({ name: '', anon: true });
@@ -828,12 +847,13 @@
         h.style.width = h.style.height = hpx + 'px'; h.style.marginLeft = (-hpx / 2) + 'px';
         h.style.top = ((100 - RH) / 2) + '%'; h.style.marginTop = (-hpx / 2) + 'px';
         h.style.transform = 'rotate(' + (-th) + 'deg)';
-        var sig = [p.need, p.anon, p.coming, p.badge, p.name, extra, i].join('|');
+        var sig = [p.need, p.anon, p.coming, p.badge, p.name, p.host, extra, i].join('|');
         if (f.sig !== sig) {
           f.sig = sig; h.innerHTML = '';
           if (p.badge) { h.style.transform += ' scale(1.25)'; h.appendChild(E('span', { class: 'olt-badge', html: LOGO + '<b>+' + extra + '</b>' })); }
           else if (p.anon) h.appendChild(E('span', { class: 'olt-ph', html: Kit.icon('user') }));
           else if (!p.need) h.appendChild(av(p.name, col));
+          if (p.host && !p.need) h.appendChild(E('i', { class: 'olt-crown', html: Kit.icon('crown') }));
           if (p.coming) h.appendChild(E('i', { class: 'olt-ring' }));
         }
       });
@@ -873,7 +893,7 @@
       list.innerHTML = '';
       S.players.forEach(function (p, i) {
         var a = av(p.name, PAL[i % PAL.length]); a.style.setProperty('--c', PAL[i % PAL.length]);
-        list.appendChild(E('div', { class: 'ol-row ol-seat' }, [a, E('div', { class: 'grow' }, [E('b', { text: p.name, 'data-you': p.me ? '1' : null }), E('small', { text: p.host ? 'Host' : p.me ? 'You' : 'Player' })])]));
+        list.appendChild(E('div', { class: 'ol-row ol-seat' + (p.host ? ' is-host' : '') }, [a, E('div', { class: 'grow' }, [E('b', { text: p.name, 'data-you': p.me ? '1' : null }), E('small', { text: p.host ? 'Host' : p.me ? 'You' : 'Player' })])]));
       });
       paintComing();
     }
@@ -903,6 +923,29 @@
       S.coming = S.coming.filter(function (c) { return !S.players.some(function (p) { return p.name === c.name; }); });
       paint(); paintList();
       if (before && S.players.length > before) { try { Kit.sfx('pop'); Kit.haptic('light'); } catch (e) {} }
+    }
+    // The game starting: the page swaps the table screen for the game (host and joiners alike). The circle spins up
+    // and pulls into the middle over the new screen, so everyone sees the table "go". Leaving, a dropped table or
+    // the lobby coming back doesn't count: only when the screen goes and no lobby takes its place.
+    var leaving = false;
+    leaveBtn.addEventListener('click', function () { leaving = true; }, true);
+    var mo = new MutationObserver(function () {
+      if (document.body.contains(wrap)) return;
+      mo.disconnect();
+      if (leaving || !S.players.length || root.querySelector('.ol-lobby')) return;
+      goAnim();
+    });
+    mo.observe(root, { childList: true });
+    function goAnim() {
+      var w = tbl.clientWidth || 260, ov = E('div', { class: 'olt-go', 'aria-hidden': 'true' });
+      tbl.style.width = w + 'px'; tbl.style.setProperty('--tw', w + 'px');
+      var hold = E('div', { class: 'olt-go-hold', style: { width: w + 'px', height: w + 'px', '--tw': w + 'px' } }, [tbl, E('div', { class: 'olt-flash' }), E('div', { class: 'olt-go-t', text: 'Let’s play!' })]);
+      ov.appendChild(hold); document.body.appendChild(ov);
+      var back = new MutationObserver(function () { if (root.querySelector('.ol-lobby')) { back.disconnect(); ov.remove(); } });
+      back.observe(root, { childList: true, subtree: true });
+      setTimeout(function () { back.disconnect(); }, 2000);
+      try { Kit.sfx('whoosh'); setTimeout(function () { Kit.sfx('win'); Kit.haptic('success'); }, 1350); } catch (e) {}
+      setTimeout(function () { ov.remove(); }, 2000);
     }
     me = root._olStage = {
       el: wrap, step: step, update: update,
