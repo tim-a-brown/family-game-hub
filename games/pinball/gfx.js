@@ -67,6 +67,43 @@ export function glowCanvas(size = 128, stops) {
   g.fillStyle = gr; g.fillRect(0, 0, size, size); return c;
 }
 
+// Soft radial glow at a point (alpha k at the centre, fading to nothing at r)
+export function glowAt(g, x, y, r, color, k = 1) {
+  const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, rgba(color, k)); gr.addColorStop(0.4, rgba(color, k * 0.35)); gr.addColorStop(1, rgba(color, 0));
+  g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+}
+// Fine print grain over a canvas (an airbrushed translite is never perfectly flat): n flecks, alpha a
+export function grain(g, w, h, n, a, seed = 5) {
+  const r = rng(seed); g.save();
+  for (let i = 0; i < n; i++) { g.fillStyle = 'rgba(' + (r() < 0.5 ? '0,0,0' : '255,255,255') + ',' + (a * (0.4 + r() * 0.6)).toFixed(3) + ')'; const s = 0.6 + r() * 1.4; g.fillRect(r() * w, r() * h, s, s); }
+  g.restore();
+}
+// Logo lettering built in layers, the way a backglass title is: an outer glow, a hard drop shadow, a thick
+// outline, the face (a colour, or a function (x0, y0, x1, y1) of the text box returning a gradient), an inline
+// stroke, and a highlight over the top part of the letters (a bevel or chrome catch-light).
+//   textLogo(g, 'TITLE', x, y, { font, align, base, spacing, glow: {color, blur, alpha}, shadow: {dx, dy, color, blur},
+//                                outline: {color, w}, fill, inline: {color, w}, top: {color, frac}, scaleX })
+// Returns the text box {x0, y0, x1, y1}.
+export function textLogo(g, str, x, y, o = {}) {
+  g.save();
+  g.font = o.font; g.textAlign = o.align || 'center'; g.textBaseline = o.base || 'middle'; g.lineJoin = 'round'; g.lineCap = 'round';
+  if (o.spacing) try { g.letterSpacing = o.spacing + 'px'; } catch (e) {}
+  if (o.scaleX && o.scaleX !== 1) { g.translate(x, y); g.scale(o.scaleX, 1); g.translate(-x, -y); }
+  const m = g.measureText(str), asc = m.actualBoundingBoxAscent || m.fontBoundingBoxAscent || 0, desc = m.actualBoundingBoxDescent || 0;
+  const half = m.width / 2, x0 = g.textAlign === 'left' ? x : g.textAlign === 'right' ? x - m.width : x - half, x1 = x0 + m.width;
+  const y0 = y - (g.textBaseline === 'middle' ? asc : g.textBaseline === 'alphabetic' ? asc : asc), y1 = y + desc;
+  const box = { x0, y0, x1, y1 };
+  if (o.glow) { g.save(); g.shadowColor = o.glow.color; g.shadowBlur = o.glow.blur || 24; g.fillStyle = rgba(o.glow.color, o.glow.alpha != null ? o.glow.alpha : 0.9); g.fillText(str, x, y); if (o.glow.twice) g.fillText(str, x, y); g.restore(); }
+  if (o.shadow) { g.save(); if (o.shadow.blur) { g.shadowColor = o.shadow.color; g.shadowBlur = o.shadow.blur; g.shadowOffsetX = o.shadow.dx; g.shadowOffsetY = o.shadow.dy; g.fillStyle = '#000'; } else g.fillStyle = o.shadow.color; g.fillText(str, x + (o.shadow.blur ? 0 : o.shadow.dx), y + (o.shadow.blur ? 0 : o.shadow.dy)); if (o.outline && !o.shadow.blur) { g.strokeStyle = o.shadow.color; g.lineWidth = o.outline.w; g.strokeText(str, x + o.shadow.dx, y + o.shadow.dy); } g.restore(); }
+  if (o.outline) { g.strokeStyle = o.outline.color; g.lineWidth = o.outline.w; g.strokeText(str, x, y); }
+  const fill = typeof o.fill === 'function' ? o.fill(x0, y0, x1, y1) : o.fill || '#fff';
+  g.fillStyle = fill; g.fillText(str, x, y);
+  if (o.inline) { g.strokeStyle = o.inline.color; g.lineWidth = o.inline.w; g.strokeText(str, x, y); }
+  if (o.top) { g.save(); g.beginPath(); g.rect(x0 - 10, y0 - 10, x1 - x0 + 20, (y1 - y0) * (o.top.frac || 0.45) + 10); g.clip(); g.fillStyle = o.top.color; g.fillText(str, x, y); g.restore(); }
+  g.restore();
+  return box;
+}
+
 // ── Materials ────────────────────────────────────────────────────────────
 // One shared library per game. Colours come from the table theme.
 export class Materials {

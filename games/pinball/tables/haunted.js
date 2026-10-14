@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import * as THREE from 'three';
 import { BR, spline, deg } from '../physics.js';
-import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, offsetLine } from '../gfx.js';
+import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, offsetLine, glowAt, grain, textLogo } from '../gfx.js';
 
 const PI = Math.PI, TAU = PI * 2;
 const PAL = { night: '#0b0918', plum: '#2a1838', moss: '#7fd4a4', spirit: '#9fffd0', candle: '#ffb45a', blood: '#c0283a', violet: '#b48cff', bone: '#efe6cf', gold: '#e8c070' };
