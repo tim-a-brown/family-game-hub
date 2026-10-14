@@ -1317,8 +1317,10 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
   RC.view = opts.view === 'top' ? 'top' : 'first'; RC.cams = {}; RC.tween = null;
   const tmp = new THREE.Vector3();
   // centre: slide the camera sideways so the points sit in the middle of the free area (above the button
-  // row) instead of around the look point, then fit again; the table then fills the view
-  function fitAt(phi, pts, look, yMin, fov, centre) {
+  // row) instead of around the look point, then fit again; the table then fills the view.
+  // core: the points whose projected area is the fit's score (the playfield corners: the backbox is fitted
+  // but must not decide the angle, or the search picks the flattest view, which makes the box tallest).
+  function fitAt(phi, pts, look, yMin, fov, centre, core) {
     look = look.clone();
     camera.fov = fov; camera.updateProjectionMatrix();
     const pr = phi * PI / 180, dir = new THREE.Vector3(0, Math.sin(pr), Math.cos(pr));
@@ -1340,7 +1342,9 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
         look.addScaledVector(right, dx * th * camera.aspect).addScaledVector(up, dy * th);
       }
     }
-    return { pos: camera.position.clone(), look: look.clone(), fov, phi, area: (x1 - x0) * (y1 - y0) };
+    let area = (x1 - x0) * (y1 - y0);
+    if (core) { let a0 = 9, a1 = -9, b0 = 9, b1 = -9; for (const p of core) { tmp.copy(p).project(camera); a0 = Math.min(a0, tmp.x); a1 = Math.max(a1, tmp.x); b0 = Math.min(b0, tmp.y); b1 = Math.max(b1, tmp.y); } area = (a1 - a0) * (b1 - b0); }
+    return { pos: camera.position.clone(), look: look.clone(), fov, phi, area };
   }
   function fitCamera(aspect, padBottom) {
     camera.aspect = aspect;
@@ -1352,12 +1356,13 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     // backbox (the whole backglass stays in frame under the page's display band, with a little cabinet over it)
     const pts = [], top = fit.top != null ? fit.top : 60, bot = fit.bottom != null ? fit.bottom : -40, bx = RC.backbox;
     add(pts, -12, bot, 0); add(pts, W + 12, bot, 0); add(pts, -12, L + top * 0.2, 0); add(pts, W + 12, L + top * 0.2, 0); add(pts, W / 2, L + 4, top); add(pts, -12, bot - 10, 105); add(pts, W + 12, bot - 10, 105);
+    const core = pts.slice(0, 4);
     if (bx) { add(pts, bx.x0, bx.y, bx.z1 + 8); add(pts, bx.x1, bx.y, bx.z1 + 8); }
     const look = new THREE.Vector3(W / 2, L * (fit.lookY || 0.47), 0).applyMatrix4(root.matrixWorld);
     const fovF = portrait ? 36 : 30, phiMax = fit.phiMax || (portrait ? 58 : 50);
     let best = null;
     for (let phi = 26; phi <= phiMax; phi += 2) {
-      const r = fitAt(phi, pts, look, yMin, fovF), score = r.area * (1 - (phi - 26) * (portrait ? 0.004 : 0.008));
+      const r = fitAt(phi, pts, look, yMin, fovF, false, core), score = r.area * (1 - (phi - 26) * (portrait ? 0.004 : 0.008));
       if (!best || score > best.score) best = { score, phi };
     }
     RC.cams.first = fitAt(fit.phi || best.phi, pts, look, yMin, fovF);
