@@ -1450,7 +1450,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   function hostTable(name) {
     closeLobby(); busy('Opening your table…');
     var need = net.cfg && net.cfg.deck === 'cah' ? cahData() : a2aData();
-    return need.then(function () { return a2aData(); }).then(function () { return Online.host({ game: KEY, name: name, max: 24 }); }).then(function (table) {
+    return need.then(function () { return a2aData(); }).then(function () { return Online.host({ game: KEY, name: name, max: 24, min: (net.cfg && net.cfg.ghost === 'on' ? 2 : 3), screen: app }); }).then(function (table) {
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); goLobby(); });
       if (!net.cfg) { var r = savedRules(); net.cfg = { deck: cahOn() ? 'cah' : 'a2a', packs: cahOn() ? savedCahPacks() : savedPacks(), rules: r, target: 'auto', ghost: 'auto' }; }
       net.mode = 'host'; net.table = table; net.myName = name; net.nextPid = 1;
@@ -1489,10 +1489,10 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     window.scrollTo(0, 0);
     if (net.mode === 'host') {
       net.table.setStatus('open', '');
-      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 24, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 24, min: (net.cfg && net.cfg.ghost === 'on' ? 2 : 3), table: net.table, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
         note: 'Three or more players. People can join while you play.' });
     } else if (net.mode === 'guest') {
-      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 24, players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); } });
+      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 24, min: (net.cfg && net.cfg.ghost === 'on' ? 2 : 3), players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); } });
     }
   }
   function hostStart() {
@@ -1521,7 +1521,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   }
   function joinTable(code, name) {
     closeLobby(); busy('Connecting to the table…');
-    return Online.join(code, { game: KEY, name: name }).then(function (peer) {
+    return Online.join(code, { game: KEY, name: name, min: (net.cfg && net.cfg.ghost === 'on' ? 2 : 3), screen: app }).then(function (peer) {
       net.mode = 'guest'; net.peer = peer; net.hostName = peer.name; net.myName = name; net.roster = []; net.myPid = null; net.view = null; ui.ord = {};
       peer.on('msg', guestMsg);
       peer.on('close', function (why) {

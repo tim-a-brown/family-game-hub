@@ -1726,7 +1726,7 @@
   function waitPlayers(ro, me) { return ro.map(function (r, i) { return { name: r.name, host: !!r.host, me: i === me, color: col(i) }; }); }
   function hostTable(name) {
     closeLobby(); busyScreen('Opening your table…');
-    return Online.host({ game: 'scrabble', name: name, max: 4, accept: function () { return S && S.mode === 'online' && !S.over ? 'That game has already started' : true; } }).then(function (table) {
+    return Online.host({ game: 'scrabble', name: name, max: 4, min: 2, screen: app, accept: function () { return S && S.mode === 'online' && !S.over ? 'That game has already started' : true; } }).then(function (table) {
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); goLobby(); });
       net.mode = 'host'; net.table = table; net.seat = 0;
       net.roster = [{ name: name, dev: Online.dev(), host: true }];
@@ -1753,9 +1753,9 @@
     teardownView(); closeLobby(); app.className = 'stage';
     if (net.mode === 'host') {
       net.table.setStatus('open', '');
-      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 4, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); }, note: 'Everyone plays on their own device and only sees their own tiles.' });
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 4, min: 2, table: net.table, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); }, note: 'Everyone plays on their own device and only sees their own tiles.' });
     } else {
-      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 4, players: waitPlayers(net.roster, net.seat), onLeave: function () { leaveOnline(false); goLobby(); } });
+      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 4, min: 2, players: waitPlayers(net.roster, net.seat), onLeave: function () { leaveOnline(false); goLobby(); } });
     }
     window.scrollTo(0, 0);
   }
@@ -1790,7 +1790,7 @@
   }
   function joinTable(code, name) {
     closeLobby(); busyScreen('Connecting to the table…');
-    return Online.join(code, { game: 'scrabble', name: name }).then(function (peer) {
+    return Online.join(code, { game: 'scrabble', name: name, min: 2, screen: app }).then(function (peer) {
       net.mode = 'guest'; net.peer = peer; net.hostName = peer.name; net.roster = []; net.seat = -1;
       peer.on('msg', guestMsg);
       peer.on('close', function (why) {

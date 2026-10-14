@@ -1869,7 +1869,7 @@ body{overflow-x:hidden;}
   function waitPlayers(ro, me) { return ro.filter(function (r) { return !r.gone; }).map(function (r) { return { name: r.name, host: !!r.host, me: r.pid === me, color: pcol(r.pid) }; }); }
   function hostTable(name) {
     closeLobby(); busyScreen('Opening your table…');
-    return Online.host({ game: 'trivia', name: name, max: 24, info: tableInfo() }).then(function (table) {
+    return Online.host({ game: 'trivia', name: name, max: 24, min: 2, screen: app, info: tableInfo() }).then(function (table) {
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); goLobby(); });
       net.mode = 'host'; net.table = table; net.me = name; net.pidN = 1; net.myPid = 1; net.hostName = name;
       net.roster = [{ pid: 1, name: name, dev: Online.dev(), host: true }];
@@ -1906,10 +1906,10 @@ body{overflow-x:hidden;}
     var cf = netCfg();
     if (net.mode === 'host') {
       net.table.setStatus('open', tableInfo());
-      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 24, players: waitPlayers(roList(), net.myPid), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 24, min: 2, table: net.table, players: waitPlayers(roList(), net.myPid), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
         note: 'Countdown · ' + LEVELS[cf.level] + ' · ' + cf.count + ' questions · ' + catLabel(cf.cats) + '. Everyone answers on their own screen: the faster you pick the right answer, the more points you get. Others can join while you play.' });
     } else {
-      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 24, players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); },
+      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 24, min: 2, players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); },
         note: 'Everyone answers on their own screen. The faster you pick the right answer, the more points you get.' });
     }
     window.scrollTo(0, 0);
@@ -1924,7 +1924,7 @@ body{overflow-x:hidden;}
   }
   function joinTable(code, name) {
     closeLobby(); busyScreen('Connecting to the table…');
-    return Online.join(code, { game: 'trivia', name: name }).then(function (peer) {
+    return Online.join(code, { game: 'trivia', name: name, min: 2, screen: app }).then(function (peer) {
       net.mode = 'guest'; net.peer = peer; net.hostName = peer.name; net.me = name; net.roster = []; net.myPid = null;
       peer.on('msg', guestMsg);
       peer.on('close', function (why) {

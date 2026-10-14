@@ -2081,7 +2081,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   }
   function hostTable(name) {
     closeLobby(); busyScreen('Opening your table…');
-    return Online.host({ game: 'monopoly', name: name, max: 8, accept: function () { return S && mode === 'online' && S.phase !== 'over' ? 'That game has already started' : true; } }).then(function (table) {
+    return Online.host({ game: 'monopoly', name: name, max: 8, min: 2, screen: app, accept: function () { return S && mode === 'online' && S.phase !== 'over' ? 'That game has already started' : true; } }).then(function (table) {
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(); goLobby(); });
       net.role = 'host'; net.table = table; net.seat = 0; net.pidN = 1;
       net.roster = [{ pid: 1, name: name, host: true, tok: null }];
@@ -2125,11 +2125,11 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     if (net.role === 'host') {
       net.table.setStatus('open', '');
       var ro = net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host, tok: r.tok || null }; });
-      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 8, players: waitPlayers(ro, 1),
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 8, min: 2, table: net.table, players: waitPlayers(ro, 1),
         onStart: hostStart, onLeave: function () { leaveOnline(); goLobby(); }, note: 'Everyone starts with $1,500. House rules come from your setup screen.' });
       olMount(); olPaint(ro, 1);
     } else {
-      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 8, players: guestPlayers(net.ro || []), onLeave: function () { leaveOnline(); goLobby(); } });
+      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 8, min: 2, players: guestPlayers(net.ro || []), onLeave: function () { leaveOnline(); goLobby(); } });
       olMount(); olPaint(net.ro || [], net.myPid);
     }
     window.scrollTo(0, 0);
@@ -2239,7 +2239,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   function netSend(m) { if (net.peer && !net.peer.closed) net.peer.send(m, true); else Kit.toast('Not connected to the table'); }
   function joinTable(code, name) {
     closeLobby(); busyScreen('Connecting to the table…');
-    return Online.join(code, { game: 'monopoly', name: name }).then(function (peer) {
+    return Online.join(code, { game: 'monopoly', name: name, min: 2, screen: app }).then(function (peer) {
       net.role = 'guest'; net.peer = peer; net.hostName = peer.name; net.ro = []; net.seat = -1; net.myPid = null;
       peer.on('msg', guestMsg);
       peer.on('close', function (why) {

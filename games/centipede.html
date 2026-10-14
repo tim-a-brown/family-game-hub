@@ -2214,7 +2214,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // ── Hosting ──
   function hostTable(name) {
     closeLobby(); busy('Opening your table…');
-    Online.host({ game: 'centipede', name: name, max: 3 }).then(function (table) {
+    Online.host({ game: 'centipede', name: name, max: 3, min: 1, screen: app }).then(function (table) {
       // the server refused the new table: back to the lobby instead of a waiting room nobody can find
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + (Online.errText ? Online.errText(e) : '')); leaveOnline(false); goLobby(); });
       net.mode = 'host'; net.table = table; net.me = name; net.pidN = 1;
@@ -2258,10 +2258,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     leaveView(); closeLobby(); screen = 'wait'; app.className = 'stage'; root.classList.remove('ar-on');
     if (net.mode === 'host') {
       net.table.setStatus('open', '');
-      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 3, players: waitPlayers(net.roster, 1), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 3, min: 1, table: net.table, players: waitPlayers(net.roster, 1), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
         note: 'Everyone shares the team score and keeps their own score too.' });
     } else {
-      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 3, players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); } });
+      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 3, min: 1, players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); } });
     }
     window.scrollTo(0, 0);
   }
@@ -2315,7 +2315,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // ── Joining ──
   function joinTable(code, name) {
     closeLobby(); busy('Connecting to the table…');
-    Online.join(code, { game: 'centipede', name: name }).then(function (peer) {
+    Online.join(code, { game: 'centipede', name: name, min: 1, screen: app }).then(function (peer) {
       net.mode = 'guest'; net.peer = peer; net.hostName = peer.name; net.me = name; net.roster = []; net.myPid = null;
       peer.on('msg', guestMsg);
       peer.on('close', function (why) {

@@ -247,7 +247,7 @@
   function host(opts) {
     if (noRtc()) return Promise.reject(new Error('This browser can’t play online.'));
     var t = T(), me = dev(), max = opts.max || 2;
-    var table = { code: null, peers: {}, status: 'open', closed: false }, ls = { peer: [], leave: [], msg: [], fail: [] }, offs = [], beat = 0, pending = {};
+    var table = { code: null, peers: {}, status: 'open', closed: false, max: max }, ls = { peer: [], leave: [], msg: [], fail: [], joining: [], joinfail: [] }, offs = [], beat = 0, pending = {};
     function fire(k, a, b) { ls[k].forEach(function (f) { try { f(a, b); } catch (e) { console.error(e); } }); }
     table.on = function (k, f) { ls[k].push(f); return table; };
     table.count = function () { return Object.keys(table.peers).length; };
@@ -281,8 +281,8 @@
       if (pending[from]) try { pending[from].close(); } catch (e) {}
       var pc = newPc(), peer = new Peer(pc, from, String(o.name || 'Player').slice(0, 20));
       peer.link = o.lk || null; peer.info = o;
-      pending[from] = pc;
-      var to = setTimeout(function () { if (!peer.open) { delete pending[from]; peer.close('timeout'); } }, config.connectMs + 5000);
+      pending[from] = pc; fire('joining', { dev: from, name: peer.name });
+      var to = setTimeout(function () { if (!peer.open) { delete pending[from]; peer.close('timeout'); fire('joinfail', { dev: from, name: peer.name }); } }, config.connectMs + 5000);
       peer.on('open', function () {
         log('host: channel open with', from);
         clearTimeout(to); delete pending[from];
@@ -297,7 +297,7 @@
         .then(function (a) { return pc.setLocalDescription(a); })
         .then(function () { return gathered(pc); })
         .then(function () { log('host: answer ready'); return t.send(table.code, { id: rid(), to: from, from: me, k: 'answer', d: JSON.stringify({ sdp: pc.localDescription.sdp, sid: o.sid || '' }), at: Date.now() }); })
-        .catch(function (e) { console.warn('[online] answer failed', e); peer.close('failed'); });
+        .catch(function (e) { console.warn('[online] answer failed', e); peer.close('failed'); fire('joinfail', { dev: from, name: peer.name }); });
     }
     // the link tag and the check that the code is free run side by side (nothing waits on the other)
     var tagP = myTag(), tries = 0;
@@ -319,12 +319,17 @@
         return code;
       }, function (e) { if (e && e.message === TAKEN && ++tries < 6) return attempt(); throw e; });
     }
-    return attempt().then(function (code) {
+    var scr = opts.screen ? stage(opts.screen, { host: true, max: max, min: opts.min, hostName: opts.name, onLeave: function () { table.close(); scrCancel(); } }) : null, scrCancel = function () {};
+    if (scr) scr.step('open', 'run', 'Getting a table code');
+    var opened = attempt().then(function (code) {
       table.code = code;
+      if (scr) { scr.setCode(code); scr.step('open', 'done', 'Code ' + code); scr.table(table); }
       offs.push(t.inbox(code, me, answer, function (e) { console.warn('[online] inbox', e); }));
       beat = setInterval(function () { table.setStatus(null, null, true); }, BEAT);
       return table;
     });
+    if (!scr) return opened;
+    return new Promise(function (res, rej) { scrCancel = function () { rej(new Error('Cancelled')); }; opened.then(res, rej); });
   }
 
   // ── Join a table ────────────────────────────────────────────────────────
@@ -335,17 +340,27 @@
     if (!/^[A-Z]{4}$/.test(code)) return Promise.reject(new Error('Table codes are 4 letters'));
     var t = T(), me = dev();
     var tagP = myTag();
+    lastCode = code;
+    var scr = opts.screen ? stage(opts.screen, { host: false, code: code, max: opts.max || 0, min: opts.min, onLeave: function () { if (cancel) cancel(); } }) : null, cancel = null;
+    if (scr) { scr.step('find', 'run', 'Looking for table ' + code); scr.step('connect', 'wait'); scr.step('seat', 'wait'); scr.step('start', 'wait'); }
     return t.get(code).then(function (room) {
       if (!room || room.game !== opts.game) throw new Error('No open table with code ' + code);
       if (room.host && room.host.dev === me) throw new Error('That’s your own table. Join it from another device.');
       if (room.status !== 'open' && room.status !== 'playing' || Date.now() - (room.at || 0) > STALE * 3) throw new Error('That table has closed');
       if ((room.n || 1) >= (room.max || 2)) throw new Error('That table is full');
+      if (scr) {
+        scr.room(room);
+        scr.step('find', 'done', (room.host && room.host.name || 'The host') + '’s table · ' + code);
+        scr.step('connect', 'run', 'Asking ' + (room.host && room.host.name || 'the host') + '’s device to let you in');
+      }
       return tagP.then(function (lk) {
         return new Promise(function (resolve, reject) {
           var pc = newPc(), peer = new Peer(pc, room.host.dev, room.host.name), offs = [], done = false, answered = false, sid = Math.random().toString(36).slice(2, 10);
           peer.room = room; peer.code = code;
+          cancel = function () { finish(new Error('Cancelled')); };
           function finish(err) {
             if (done) return; done = true; clearTimeout(to);
+            if (scr && !err) { scr.step('connect', 'done', 'Connected to ' + (room.host && room.host.name || 'the host')); scr.step('seat', 'run', 'Taking your seat'); }
             offs.forEach(function (o) { try { o(); } catch (e) {} });
             if (err) { peer.close('failed'); reject(err); } else resolve(peer);
           }
@@ -364,7 +379,7 @@
             var a; try { a = JSON.parse(m.d); } catch (e) { return; }
             if (!a || a.sid !== sid) return;   // an answer to an earlier try
             if (m.k === 'no') finish(new Error(a.why || 'The table didn’t let you in'));
-            else if (m.k === 'answer' && !answered) { answered = true; pc.setRemoteDescription({ type: 'answer', sdp: a.sdp }).catch(function (e) { finish(e); }); }
+            else if (m.k === 'answer' && !answered) { answered = true; if (scr) scr.step('connect', 'run', 'Let in · linking the two devices'); pc.setRemoteDescription({ type: 'answer', sdp: a.sdp }).catch(function (e) { finish(e); }); }
           }, function (e) { finish(e); }));
           pc.createOffer()
             .then(function (o) { return pc.setLocalDescription(o); })
@@ -526,36 +541,210 @@
   }
 
   // Online.waitRoom(root, {code, host: bool, hostName, players: [{name, color, me, host}], max, onStart, onLeave, note})
-  function waitRoom(root, o) {
-    css(); root.innerHTML = '';
-    var wrap = E('div', { class: 'ol' }), list = E('div', { class: 'stack' }), startBtn = null;
-    wrap.appendChild(E('h1', { text: o.host ? 'Your Table Is Open' : (o.hostName || 'The host') + '’s Table' }));
-    if (o.code) { wrap.appendChild(E('p', { class: 'ol-note', style: { 'text-align': 'center' }, text: 'Table code' })); wrap.appendChild(E('p', { class: 'ol-code', text: o.code })); }
-    wrap.appendChild(E('div', { class: 'ol-h', text: 'Players' }));
-    wrap.appendChild(list);
-    var status = E('div', { class: 'ol-row' }, [E('i', { class: 'ol-spin' }), E('div', { class: 'grow' }, [E('b', { text: '' }), E('small', { text: '' })])]);
-    wrap.appendChild(status);
-    var one = oneAtATime();   // Start and Close/Leave: one of them, once
-    if (o.host) { startBtn = E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>Start the game</span>', onclick: function (e) { one(e.currentTarget, 'Starting…', function () { return o.onStart(); }); } }); wrap.appendChild(startBtn); }
-    wrap.appendChild(E('button', { type: 'button', class: 'btn btn-ghost btn-block', text: o.host ? 'Close the table' : 'Leave the table', onclick: function (e) { one(e.currentTarget, o.host ? 'Closing…' : 'Leaving…', function () { return o.onLeave(); }); } }));
-    if (o.note) wrap.appendChild(E('p', { class: 'ol-note', text: o.note }));
+
+  // ── The table screen: from the first tap to the game starting, host and joiners ──
+  // A felt table with a chair for every seat (filled, on the way in, or open), how many are here and how many
+  // more are needed, and the steps left before the game begins, each ticking off as it happens.
+  var CSS2 = '.olt h1{margin-bottom:2px;}' +
+    '.olt-tbl{position:relative;width:min(100%,440px);aspect-ratio:1.42;margin:6px auto 0;}' +
+    '.olt-rim{position:absolute;inset:19% 19%;border-radius:999px;padding:9px;}' +
+    '.olt-felt{position:relative;width:100%;height:100%;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}' +
+    '.olt-felt small{font-size:.66rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;opacity:.7;}' +
+    '.olt-code{font-family:var(--display);font-size:clamp(1.9rem,8vw,2.6rem);letter-spacing:.22em;margin-right:-.22em;line-height:1.05;color:#ffe08a;text-shadow:0 2px 0 rgba(0,0,0,.35);}' +
+    '.olt-code.pend{opacity:.35;letter-spacing:.3em;}' +
+    '.olt-seat{position:absolute;width:62px;margin:-31px 0 0 -31px;display:flex;flex-direction:column;align-items:center;gap:3px;transition:transform .45s var(--spring,cubic-bezier(.3,1.5,.5,1));}' +
+    '.olt-seat .avatar,.olt-chair{width:46px;height:46px;font-size:1.15rem;box-shadow:0 0 0 3px var(--bg,#14112a),0 6px 14px rgba(0,0,0,.35);}' +
+    '.olt-chair{display:grid;place-items:center;border-radius:50%;border:2px dashed color-mix(in srgb,var(--text-3) 70%,transparent);background:color-mix(in srgb,var(--surface) 70%,transparent);color:var(--text-3);font-weight:900;font-size:.8rem;box-shadow:none;}' +
+    '.olt-seat em{font-style:normal;font-size:.72rem;font-weight:800;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-2);}' +
+    '.olt-seat.need .olt-chair{border-color:#ffd36b;background:color-mix(in srgb,#ffd36b 14%,transparent);animation:oltPulse 1.6s ease-in-out infinite;}.olt-seat.need em{color:#ffd36b;}' +
+    '.olt-seat.up{flex-direction:column-reverse;}.olt-seat.me em{color:var(--accent);}.olt-seat.host .avatar{box-shadow:0 0 0 3px var(--bg,#14112a),0 0 0 5px #ffd36b,0 6px 14px rgba(0,0,0,.35);}' +
+    '.olt-seat.in{animation:oltIn .5s var(--spring,cubic-bezier(.3,1.5,.5,1));}' +
+    '.olt-seat.coming .avatar,.olt-seat.coming .olt-chair{opacity:.55;animation:oltPulse 1.2s ease-in-out infinite;}' +
+    '.olt-seat .olt-ring{position:absolute;top:-4px;left:50%;}.olt-seat.up .olt-ring{top:auto;bottom:-4px;}.olt-seat .olt-ring{width:54px;height:54px;margin-left:-27px;border-radius:50%;border:3px solid transparent;border-top-color:var(--accent);animation:olspin .9s linear infinite;}' +
+    '@keyframes oltIn{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}' +
+    '@keyframes oltPulse{50%{transform:scale(.92);opacity:.35}}' +
+    '.olt-count{text-align:center;margin:2px 0 0;}.olt-count b{display:block;font-family:var(--display);font-weight:400;font-size:1.5rem;}' +
+    '.olt-count small{display:block;color:var(--text-3);font-weight:800;font-size:.86rem;}.olt-count.ready small{color:#3fb56b;}' +
+    '.olt-steps{list-style:none;margin:4px 0 0;padding:6px 14px;border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);}' +
+    '.olt-steps li{display:flex;align-items:center;gap:12px;padding:9px 0;}.olt-steps li + li{border-top:1px solid var(--w06,rgba(255,255,255,.06));}' +
+    '.olt-steps li > i{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:2px solid color-mix(in srgb,var(--text-3) 55%,transparent);}' +
+    '.olt-steps li > i svg{width:14px;height:14px;}' +
+    '.olt-steps li.run > i{border-color:transparent;border-top-color:var(--accent);border-right-color:var(--accent);animation:olspin .9s linear infinite;}' +
+    '.olt-steps li.done > i{background:#3fb56b;border-color:#3fb56b;color:#fff;animation:oltIn .4s var(--spring,cubic-bezier(.3,1.5,.5,1));}' +
+    '.olt-steps li.now > i{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#1b1400);}' +
+    '.olt-steps li .grow{flex:1;min-width:0;}.olt-steps b{display:block;font-weight:800;}.olt-steps small{display:block;color:var(--text-3);font-weight:700;font-size:.8rem;}' +
+    '.olt-steps li.wait{opacity:.55;}' +
+    '.olt .ol-seat.coming{opacity:.6;}';
+  var STEPS = {
+    host: [['open', 'Open the table'], ['join', 'Players join'], ['start', 'Start the game']],
+    guest: [['find', 'Find the table'], ['connect', 'Connect'], ['seat', 'Take your seat'], ['start', 'Game starts']]
+  };
+  function stage(root, o) {
+    css();
+    if (!document.getElementById('olt-css')) { var st0 = document.createElement('style'); st0.id = 'olt-css'; st0.textContent = CSS2; document.head.appendChild(st0); }
+    var me = root._olStage;
+    if (me && root.contains(me.el)) { me.opts(o); return me; }   // connecting → waiting: the same table carries on
+    root.innerHTML = '';
+    o = o || {};
+    var S = { host: !!o.host, max: o.max || 2, min: o.min || 2, code: o.code || '', hostName: o.hostName || '', players: [], coming: [], room: null, onStart: o.onStart, onLeave: o.onLeave, note: o.note, ticks: {} };
+    var wrap = E('div', { class: 'ol olt' }), h1 = E('h1'), tbl = E('div', { class: 'olt-tbl' });
+    var mid = E('div', { class: 'olt-felt felt-in' }), codeEl = E('div', { class: 'olt-code' });
+    mid.appendChild(E('small', { text: 'Table code' })); mid.appendChild(codeEl);
+    tbl.appendChild(E('div', { class: 'olt-rim wood' }, [mid]));
+    var seatsBox = E('div'); tbl.appendChild(seatsBox);
+    var count = E('div', { class: 'olt-count' }, [E('b'), E('small')]);
+    var steps = E('ol', { class: 'olt-steps' }), rows = {};
+    (S.host ? STEPS.host : STEPS.guest).forEach(function (x) {
+      var li = E('li', { class: 'wait' }, [E('i'), E('div', { class: 'grow' }, [E('b', { text: x[1] }), E('small')])]);
+      rows[x[0]] = li; steps.appendChild(li);
+    });
+    var listH = E('div', { class: 'ol-h', text: 'Players' }), list = E('div', { class: 'stack' }), comingBox = E('div', { class: 'stack' });
+    var one = oneAtATime(), startBtn = null, leaveBtn, noteEl = E('p', { class: 'ol-note' });
+    if (S.host) startBtn = E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>Start the game</span>', onclick: function (e) { if (S.onStart) one(e.currentTarget, 'Starting…', function () { return S.onStart(); }); } });
+    leaveBtn = E('button', { type: 'button', class: 'btn btn-ghost btn-block', onclick: function (e) { if (S.onLeave) one(e.currentTarget, S.host ? 'Closing…' : 'Leaving…', function () { return S.onLeave(); }); } });
+    [h1, tbl, count, steps, listH, list, comingBox].concat(startBtn ? [startBtn] : []).concat([leaveBtn, noteEl]).forEach(function (n) { wrap.appendChild(n); });
     root.appendChild(wrap);
-    function update(players) {
+
+    function hostLabel() { return S.host ? 'You' : (S.hostName || 'The host'); }
+    function paintHead() {
+      h1.textContent = S.host ? 'Your table' : (S.hostName ? S.hostName + '’s table' : 'Joining a table');
+      codeEl.textContent = S.code || '····'; codeEl.classList.toggle('pend', !S.code);
+      rows.start.querySelector('b').textContent = S.host ? 'Start the game' : (S.hostName || 'The host') + ' starts the game';
+      leaveBtn.textContent = S.players.length ? (S.host ? 'Close the table' : 'Leave the table') : 'Cancel';
+      noteEl.textContent = S.note || ''; noteEl.hidden = !S.note;
+      listH.hidden = !S.players.length; list.hidden = !S.players.length;
+    }
+    function step(id, state, detail) {
+      var li = rows[id]; if (!li) return;
+      if (state && li.className !== state) {
+        li.className = state;
+        li.firstChild.innerHTML = state === 'done' ? Kit.icon('check') : state === 'now' ? Kit.icon('play') : '';
+        if (state === 'done' && !S.ticks[id]) { S.ticks[id] = 1; try { Kit.sfx('tap'); } catch (e) {} }
+      }
+      if (detail != null) li.querySelector('small').textContent = detail;
+    }
+    // chairs round the table: everyone here, anyone on the way in, then open seats (big tables show a few + the rest)
+    var known = {};
+    function paintSeats() {
+      var people = S.players.map(function (p) { return { name: p.name, color: p.color, me: p.me, host: p.host }; });
+      if (!people.length && S.room) {   // still connecting: the host, the others already there, and you on the way
+        people.push({ name: S.hostName, host: true });
+        for (var q = 1; q < (S.room.n || 1); q++) people.push({ name: '', anon: true });
+      }
+      S.coming.forEach(function (c) { people.push({ name: c.name, coming: true }); });
+      if (!S.host && !S.players.length) people.push({ name: 'You', me: true, coming: true });
+      // every seat up to 8; a big table (Trivia, Apples: 24) shows six chairs, the last one standing for the rest
+      var n = S.max <= 8 ? S.max : Math.min(12, Math.max(6, people.length + 1));
+      seatsBox.innerHTML = '';
+      for (var i = 0; i < n; i++) {
+        var a = -Math.PI / 2 + i * 2 * Math.PI / n, x = 50 + 41 * Math.cos(a), y = 50 + 37 * Math.sin(a);
+        var p = people[i], seat = E('div', { class: 'olt-seat' + (y < 30 ? ' up' : ''), style: { left: x + '%', top: y + '%' } });
+        if (p) {
+          var key = (p.coming ? 'c:' : '') + (p.name || '?') + i;
+          if (!known[key]) { known[key] = 1; seat.classList.add('in'); }
+          if (p.coming) seat.classList.add('coming');
+          if (p.me) seat.classList.add('me');
+          if (p.host) seat.classList.add('host');
+          seat.appendChild(p.anon ? E('span', { class: 'olt-chair', html: Kit.icon('user') }) : av(p.name, p.color));
+          if (p.coming) seat.appendChild(E('i', { class: 'olt-ring' }));
+          seat.appendChild(E('em', { text: p.anon ? 'Player' : p.me && !S.players.length ? 'You' : p.name + (p.me ? ' (you)' : '') }));
+        } else {
+          // chairs still needed before the game can start look different from the optional ones
+          var last = i === n - 1 && S.max > n, needed = i < S.min;
+          if (needed) seat.classList.add('need');
+          seat.appendChild(E('span', { class: 'olt-chair', text: last ? '+' + (S.max - n + 1) : '' }));
+          seat.appendChild(E('em', { text: needed ? 'Needed' : last ? 'more' : 'Open' }));
+        }
+        seatsBox.appendChild(seat);
+      }
+    }
+    function paintCount() {
+      var here = S.players.length || (S.room ? (S.room.n || 1) : 0), need = Math.max(0, S.min - here), b = count.firstChild, sm = count.lastChild;
+      if (!here) { b.textContent = S.host ? 'Opening your table' : 'Finding the table'; sm.textContent = ''; count.classList.remove('ready'); return; }
+      b.textContent = S.max <= 8 ? here + ' of ' + S.max + ' seats taken' : here + (here === 1 ? ' player' : ' players') + ' at the table';
+      count.classList.toggle('ready', !need);
+      sm.textContent = need ? 'Waiting for ' + need + ' more ' + (need === 1 ? 'player' : 'players') + ' to start' :
+        here >= S.max ? 'The table is full · ready to start' : 'Ready to start' + (S.max - here > 0 ? ' · ' + (S.max - here) + ' more can join' : '');
+    }
+    function paintSteps() {
+      if (!S.players.length) return;
+      var here = S.players.length, need = Math.max(0, S.min - here);
+      if (S.host) {
+        step('open', 'done', S.code ? 'Code ' + S.code + ' · share it, or they find you under Play online' : null);
+        step('join', need ? 'run' : 'done', need ? 'Waiting for ' + need + ' more' + (S.coming.length ? ' · ' + S.coming.map(function (c) { return c.name; }).join(', ') + ' joining now' : '') : here + ' at the table' + (here < S.max ? ' · more can still join' : ''));
+        step('start', need ? 'wait' : 'now', need ? 'You can start once ' + S.min + ' are here' : 'Tap Start when everyone’s in');
+        if (startBtn) {
+          startBtn.disabled = !!need || one.busy;
+          if (!one.busy) startBtn.innerHTML = Kit.icon('play') + '<span>' + (need ? 'Need ' + need + ' more ' + (need === 1 ? 'player' : 'players') : 'Start the game') + '</span>';
+        }
+      } else {
+        step('find', 'done'); step('connect', 'done');
+        var mine = S.players.filter(function (p) { return p.me; })[0], k = S.players.indexOf(mine);
+        step('seat', 'done', mine ? 'Seat ' + (k + 1) + ' of ' + S.max : 'You’re in');
+        step('start', 'run', need ? 'Waiting for ' + need + ' more ' + (need === 1 ? 'player' : 'players') : 'Everyone’s ready · waiting for ' + hostLabel() + ' to start');
+      }
+    }
+    // the players as rows too: names in full, who hosts, who's you (games add to these rows, e.g. Monopoly's pieces)
+    function paintList() {
       list.innerHTML = '';
-      players.forEach(function (p) {
+      S.players.forEach(function (p) {
         list.appendChild(E('div', { class: 'ol-row ol-seat' }, [av(p.name, p.color), E('div', { class: 'grow' }, [E('b', { text: p.name + (p.me ? ' (you)' : '') }), E('small', { text: p.host ? 'Host' : 'Player' })])]));
       });
-      var full = players.length >= (o.max || 2), b = status.querySelector('b'), s = status.querySelector('small');
-      if (o.host) { b.textContent = full ? 'The table is full' : players.length > 1 ? 'More can still join' : 'Waiting for players'; s.textContent = 'On their device: open this game, then Play online. Your table shows up there, or they can type the code. You can also start now and others can join in.'; }
-      else { b.textContent = 'Waiting for ' + (o.hostName || 'the host') + ' to start'; s.textContent = 'The game starts on everyone’s screen at once.'; }
+      paintComing();
     }
-    update(o.players || []);
-    return { update: update, close: function () { root.innerHTML = ''; } };
+    // people on their way in: their own rows under the list, so the player rows (and anything a game added) stay put
+    function paintComing() {
+      comingBox.innerHTML = '';
+      S.coming.forEach(function (c) {
+        comingBox.appendChild(E('div', { class: 'ol-row coming' }, [av(c.name), E('div', { class: 'grow' }, [E('b', { text: c.name }), E('small', { text: 'Joining…' })]), E('i', { class: 'ol-spin' })]));
+      });
+    }
+    function paint() { paintHead(); paintSeats(); paintCount(); paintSteps(); }
+    function update(players) {
+      var before = S.players.length;
+      S.players = (players || []).slice();
+      S.coming = S.coming.filter(function (c) { return !S.players.some(function (p) { return p.name === c.name; }); });
+      paint(); paintList();
+      if (before && S.players.length > before) { try { Kit.sfx('pop'); Kit.haptic('light'); } catch (e) {} }
+    }
+    me = root._olStage = {
+      el: wrap, step: step, update: update,
+      setCode: function (c) { S.code = c; paint(); },
+      room: function (r) { S.room = r; S.max = r.max || S.max; if (r.host && r.host.name) S.hostName = r.host.name; paint(); },
+      table: function (t) {
+        if (!t || !t.on) return;
+        t.on('joining', function (c) { if (!S.coming.some(function (x) { return x.dev === c.dev; })) S.coming.push(c); paint(); paintComing(); });
+        t.on('joinfail', function (c) { S.coming = S.coming.filter(function (x) { return x.dev !== c.dev; }); paint(); paintComing(); });
+        t.on('peer', function (pe) { S.coming = S.coming.filter(function (x) { return x.dev !== pe.id; }); paint(); paintComing(); });
+      },
+      opts: function (n) {
+        n = n || {};
+        ['max', 'min', 'onStart', 'onLeave', 'note'].forEach(function (k) { if (n[k] != null) S[k] = n[k]; });
+        if (n.code) S.code = n.code; if (n.hostName) S.hostName = n.hostName;
+        paint();
+      },
+      close: function () { root._olStage = null; root.innerHTML = ''; }
+    };
+    paint();
+    return me;
+  }
+
+  // The waiting room: the same table screen, picking up where connecting left off.
+  // o: {host, code, hostName, max, min (players needed to start), players, onStart, onLeave, note, table}
+  var lastCode = '';   // the table this device last joined: its code stays on the guest's table too
+  function waitRoom(root, o) {
+    if (!o.host && !o.code && lastCode) o = Object.assign({}, o, { code: lastCode });
+    var st = stage(root, o);
+    st.opts(o);
+    if (o.host && o.code) st.setCode(o.code);
+    if (o.table) st.table(o.table);
+    st.update(o.players || []);
+    return { update: st.update, close: st.close };
   }
 
   window.Online = {
     config: config, dev: dev, errText: errText, linkTag: linkTag, people: people, whose: whose, myTag: myTag,
-    lobby: lobby, waitRoom: waitRoom, host: host, join: join, NAT_MSG: NAT_MSG, busy: busyBtn,
+    lobby: lobby, waitRoom: waitRoom, stage: stage, host: host, join: join, NAT_MSG: NAT_MSG, busy: busyBtn,
     useTransport: function (t) { transport = t; }, transport: T, localTransport: localTransport, fsTransport: fsTransport,
     _setDev: function (d) { devId = d; }
   };
