@@ -2,7 +2,9 @@
 // Fresh TURN logins for online games. A TURN server passes a game's traffic between two devices that can't
 // reach each other directly (phone data, Wi-Fi that keeps devices apart). Cloudflare runs the server; its
 // logins expire, so the turn-credentials Action asks for new ones every few hours and saves them to Firebase
-// Storage at online/ice.json (public: every player's browser needs them, and they expire within a day).
+// Storage at online/ice.js (public: every player's browser needs them, and they expire within a day). A script, not
+// JSON: the bucket sends no CORS headers (and the service account may not change that), and a page can load a
+// script from anywhere.
 //   CF_TURN_KEY_ID=... CF_TURN_API_TOKEN=... FIREBASE_SERVICE_ACCOUNT='{...}' node scripts/turn-credentials.js
 // online.js reads the file before connecting; without it, games fall back to direct links and the relay.
 const crypto = require('crypto');
@@ -38,12 +40,12 @@ async function token(key) {
   // browsers can't use port 53 (it just times out), so leave those addresses out
   servers = servers.map((s) => Object.assign({}, s, { urls: [].concat(s.urls).filter((u) => !/:53(\?|$)/.test(u)) })).filter((s) => s.urls.length);
   const now = Date.now();
-  const out = JSON.stringify({ iceServers: servers, at: now, exp: now + TTL * 1000 });
+  const out = 'window.__fghIce && window.__fghIce(' + JSON.stringify({ iceServers: servers, at: now, exp: now + TTL * 1000 }) + ');';
 
   const auth = { Authorization: 'Bearer ' + (await token(key)) };
   const bd = 'b' + crypto.randomBytes(8).toString('hex');
-  const meta = JSON.stringify({ name: 'online/ice.json', contentType: 'application/json', cacheControl: 'no-cache, max-age=0' });
-  const body = '--' + bd + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta + '\r\n--' + bd + '\r\nContent-Type: application/json\r\n\r\n' + out + '\r\n--' + bd + '--';
+  const meta = JSON.stringify({ name: 'online/ice.js', contentType: 'text/javascript', cacheControl: 'no-cache, max-age=0' });
+  const body = '--' + bd + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta + '\r\n--' + bd + '\r\nContent-Type: text/javascript\r\n\r\n' + out + '\r\n--' + bd + '--';
   await json('https://storage.googleapis.com/upload/storage/v1/b/' + BUCKET + '/o?uploadType=multipart&fields=name', { method: 'POST', headers: Object.assign({ 'Content-Type': 'multipart/related; boundary=' + bd }, auth), body });
-  console.log('Saved online/ice.json: ' + servers.reduce((n, s) => n + s.urls.length, 0) + ' server addresses, good until ' + new Date(now + TTL * 1000).toISOString());
+  console.log('Saved online/ice.js: ' + servers.reduce((n, s) => n + s.urls.length, 0) + ' server addresses, good until ' + new Date(now + TTL * 1000).toISOString());
 })().catch((e) => { console.error(e.message || e); process.exit(1); });

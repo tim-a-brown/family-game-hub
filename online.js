@@ -254,19 +254,23 @@
     });
   }
   // The TURN logins (with Cloudflare's STUN): the copy on this device while it has an hour or more left, else
-  // a fresh read (3 seconds at most; without them, plain STUN)
-  var ICE_URL = 'https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/online%2Fice.json?alt=media';
+  // a fresh one (4 seconds at most; without them, plain STUN). The file is a script that hands them over
+  // (Storage sends no CORS headers, so a fetch can't read it; a script tag can load from anywhere).
+  var ICE_URL = 'https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/online%2Fice.js?alt=media';
   var iceNow = null, iceP = null;
   function iceOk(j) { return !!(j && Array.isArray(j.iceServers) && j.iceServers.length && (j.exp || 0) - Date.now() > 3600e3); }
   function ice() {
     var c = lsGet('online_ice', null);
     if (iceOk(c)) return Promise.resolve(iceNow = c.iceServers);
     if (!iceP) iceP = new Promise(function (res) {
-      var t = setTimeout(function () { res(null); }, 3000);
-      fetch(ICE_URL, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-        clearTimeout(t);
+      var done = false, s = document.createElement('script'), t = setTimeout(function () { end(null); }, 4000);
+      function end(j) {
+        if (done) return; done = true; clearTimeout(t); window.__fghIce = null; if (s.parentNode) s.parentNode.removeChild(s);
         if (iceOk(j)) { lsSet('online_ice', j); iceNow = j.iceServers; res(iceNow); } else res(null);
-      }).catch(function () { clearTimeout(t); res(null); });
+      }
+      window.__fghIce = end;
+      s.async = true; s.src = ICE_URL + '&t=' + Date.now(); s.onerror = function () { end(null); };
+      document.head.appendChild(s);
     }).then(function (x) { iceP = null; return x; });
     return iceP;
   }
@@ -520,9 +524,16 @@
             resolve(got);
           }
           // No direct link in time (phone data, strict Wi-Fi): play through the relay instead
+          // what was tried, for the "couldn't connect" message: TURN on or off, each side's ways in, how far it got
+          function diag() {
+            function kinds(sdp) { var o = {}; String(sdp || '').replace(/ typ (\w+)/g, function (_, k) { o[k] = (o[k] || 0) + 1; }); return Object.keys(o).map(function (k) { return k + ' ' + o[k]; }).join(', ') || 'none'; }
+            var l = '', r = '';
+            try { l = kinds(pc.localDescription && pc.localDescription.sdp); r = answered ? kinds(pc.remoteDescription && pc.remoteDescription.sdp) : 'no answer'; } catch (er) {}
+            return 'TURN ' + (iceNow ? 'on' : 'off') + ' · this device: ' + l + ' · host: ' + r + ' · ' + (pc.iceConnectionState || '?');
+          }
           function fallBack() {
             if (done || relayAsked) return;
-            if (opts.relay === false) { var e = new Error(NAT_MSG); e.nat = true; finish(e); return; }
+            if (opts.relay === false) { var e = new Error(NAT_MSG); e.nat = true; e.diag = diag(); finish(e); return; }
             relayAsked = true;
             log('guest: no direct link, asking for the relay');
             try { pc.close(); } catch (er) {}
