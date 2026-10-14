@@ -1047,7 +1047,7 @@
           el('button', { type: 'button', class: 'av-btn', 'aria-label': 'Change ' + poss(n) + ' avatar', title: 'Change avatar', onclick: function () { avatarEdit(n, paint); } }, [avEl(n, null, 'var(--surface-3)')]),
           el('span', { class: 'grow' }, [el('span', { text: n }), p ? el('small', { class: 'k-plays', text: p + (p === 1 ? ' game' : ' games') }) : null]),
           // the signed-in person is already themselves: no link button for them
-          whoMark(n) === 'me' ? el('span', { class: 'k-you', text: 'You' }) : el('button', { type: 'button', class: 'icon-btn' + (window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(n) ? ' lk-on' : ''), 'aria-label': 'Link ' + n + ' to their profile', title: 'Link to their profile', html: icon('link'), onclick: function () { linkSheet(n, paint); } }),
+          whoMark(n) === 'me' ? el('span', { class: 'k-you', text: 'You' }) : el('button', { type: 'button', class: 'icon-btn' + (function () { var r = window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(n); return r ? (r.hs ? ' lk-on' : ' lk-wait') : ''; })(), 'aria-label': 'Link ' + n + ' to their profile', title: 'Link to their profile', html: icon('link'), onclick: function () { linkSheet(n, paint); } }),
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Rename ' + n, html: icon('pencil'), onclick: function () {
             var inp = el('input', { class: 'input', maxlength: 14, value: n, autocomplete: 'off' }), s2;
             function go() {
@@ -1705,13 +1705,13 @@
     var k = avKey(n); if (!k) return null;
     var me = avKey(lsGet('my_name', '')) || (window.FGHSync && FGHSync.label ? avKey(FGHSync.label()) : '');
     if (me && k === me) return 'me';
-    try { if (window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(k)) return 'link'; } catch (e) {}
+    try { var r = window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(k); if (r) return r.hs ? 'link' : 'wait'; } catch (e) {}
     return null;
   }
   // their avatar with a small tag for you / linked (plain avatar otherwise)
   function avMarked(n, color) {
     var m = whoMark(n), a = avEl(n, null, color);
-    if (!m) return a;
+    if (!m || m === 'wait') return a;
     return el('span', { class: 'seat-av', title: m === 'me' ? 'You' : 'Linked to ' + poss(n) + ' profile' }, [a, el('span', { class: 'seat-tag ' + m, html: icon(m === 'me' ? 'user' : 'link') })]);
   }
   function avRefresh() { Array.prototype.forEach.call(doc.querySelectorAll('[data-av]'), function (n) { if (n._avFb) avFill(n, n.getAttribute('data-av')); }); try { window.dispatchEvent(new CustomEvent('kit-avatar')); } catch (e) {} }
@@ -1862,27 +1862,27 @@
     }
     var r = FGHSync.linkOf(name);
     node.appendChild(el('div', { class: 'lk-top' }, [avEl(name, 'lg', 'var(--surface-3)'), el('div', null, [el('b', { text: name }),
-      el('small', { text: r ? 'Linked to ' + (r.them || name) + '’s profile · ' + r.code : 'Not linked yet' })])]));
+      el('small', { text: r ? (r.hs ? 'Linked to ' : 'Waiting for ' + (r.them || name) + ' to accept · ') + (r.them || name) + '’s profile · ' + r.code : 'Not linked yet' })])]));
     if (r && r.gone) {
       node.appendChild(el('p', { class: 'muted', text: 'That code doesn’t work anymore (' + name + ' made a new one). Unlink, then link again with their new code.' }));
       s = sheet({ title: name, node: node, actions: [{ label: 'Unlink ' + name, primary: true, onClick: function () { FGHSync.linkRemove(name); avRefresh(); if (onDone) onDone(); linkSheet(name, onDone); } }, { label: 'Close', cls: 'btn-ghost' }] });
       return;
     }
     if (r) {
-      node.appendChild(el('p', { class: 'muted', text: 'Their avatar comes from their own phone, and games you play with ' + name + ' are saved to their history too. They can remove any game that wasn’t them.' }));
+      node.appendChild(el('p', { class: 'muted', text: r.hs ? 'Their avatar comes from their own phone, and games you play with ' + name + ' are saved to their history too. They can remove any game that wasn’t them.' : name + ' gets asked on their phone. Once they accept, their avatar comes from their phone, and the games you play together go to both histories.' }));
       s = sheet({ title: name, node: node, actions: [
         { label: 'Done', primary: true },
         { label: 'Unlink ' + name, cls: 'btn-ghost', onClick: function () { setTimeout(function () { unlinkAsk(name, onDone); }, 320); } }] });
       return;
     }
-    node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code. On their phone: tap their avatar at the top of the home screen, then Share my profile. The games you’ve already played with ' + name + ' go to their history too, and their phone asks them to link you back.' }));
+    node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code. On their phone: tap their avatar at the top of the home screen, then Share my profile. The games you’ve already played with ' + name + ' go to their history too, once they accept on their phone.' }));
     var inp = el('input', { class: 'input lk-code', maxlength: 7, placeholder: 'ABC123', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
     node.appendChild(inp);
     var msg = el('p', { class: 'lk-msg' }); node.appendChild(msg);
     function go() {
       msg.textContent = 'Checking…';
       FGHSync.linkAdd(name, inp.value).then(function (d) {
-        s.close(); sfx('good'); toast('Linked to ' + (d.name || name) + (d._sent ? ' · ' + d._sent + ' past ' + (d._sent === 1 ? 'game' : 'games') + ' sent to them' : '')); avRefresh(); if (onDone) onDone();
+        s.close(); sfx('good'); toast('Asked ' + (d.name || name) + ' to link · waiting for them to accept'); avRefresh(); if (onDone) onDone();
       }).catch(function (e) { msg.textContent = linkErr(e); sfx('bad'); });
     }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
@@ -2060,7 +2060,7 @@
       msg.textContent = 'Linking…';
       FGHSync.linkAdd(name, ask.code).then(function (d) {
         done(); s.close(); sfx('good'); haptic('success'); unhide(name, true);
-        toast('Linked ' + name + (d._sent ? ' · ' + d._sent + ' past ' + (d._sent === 1 ? 'game' : 'games') + ' sent' : '')); avRefresh();
+        toast('Asked ' + name + ' to link · waiting for them to accept'); avRefresh();
       }).catch(function (e) { msg.textContent = linkErr(e); sfx('bad'); });
     }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
@@ -2076,7 +2076,7 @@
         '<li>Your code is on this screen, with a QR code of it. Point the other phone’s camera at the QR code, tap <b>Share</b> to send the code, or just read it out.</li>' +
         '<li>To link someone from a code, open <b>Frequent players</b> from any game’s menu, tap the link button next to their name, and enter it.</li>' +
         '<li>After that, their avatar comes from their own phone, games you play together show up in both histories, and you each see the other’s best arcade scores.</li>' +
-        '<li>One code is enough: when you link someone, their phone asks them to link you back. Once they accept, it works both ways.</li></ul>' +
+        '<li>One code is enough: when you link someone, their phone asks them first. Once they accept, it works both ways; if they decline, nothing is linked.</li></ul>' +
       '<h3>Playing on one phone</h3><p>Just pass the phone around. Pick everyone at the start, and when the game ends it’s saved here, with a copy sent to anyone you’ve linked. If someone has <b>Ask before adding games</b> turned on, they get to look it over first, and can tap <b>Not me</b> if it wasn’t them.</p>' +
       '<h3>Playing on separate phones</h3><ul>' +
         '<li><b>Chess</b> and <b>Lorcana</b>: each of you signs in with your own PIN on your own device. One opens a table, and the other joins from the list or types in its 4-letter code.</li>' +
@@ -2214,7 +2214,7 @@
         box.appendChild(el('div', { class: 'lk-person' }, [
           el('button', { type: 'button', class: 'lk-who', onclick: function () { linkSheet(r.name, function () { paint(); if (onChange) onChange(); }); } }, [
             avEl(r.name, null, 'var(--surface-3)'),
-            el('span', { class: 'grow' }, [el('b', { text: r.name }), el('small', { text: r.gone ? 'Their code stopped working' : (r.them && avKey(r.them) !== avKey(r.name) ? 'Their profile: ' + r.them : 'Linked') })])
+            el('span', { class: 'grow' }, [el('b', { text: r.name }), el('small', { text: r.gone ? 'Their code stopped working' : !r.hs ? 'Waiting for them to accept' : (r.them && avKey(r.them) !== avKey(r.name) ? 'Their profile: ' + r.them : 'Linked') })])
           ]),
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Remove ' + r.name, title: 'Remove', html: icon('close'), onclick: function () { unlinkAsk(r.name, function () { paint(); if (onChange) onChange(); }); } })
         ]));

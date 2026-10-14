@@ -1035,9 +1035,17 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   window.addEventListener('fghlinks', function (e) {
     var n = e.detail && e.detail.pending || 0, lk = e.detail && e.detail.linked || [];
     if (lk.length) linkedMoment();
+    deniedNote();
     if (e.detail && e.detail.requests) linkRequestSheet();
     if (n && !pendNoted) { pendNoted = true; Kit.toast(n + (n === 1 ? ' game' : ' games') + ' to review. Tap your avatar.'); }
   });
+  // Someone declined your link: say so once
+  function deniedNote() {
+    var d; try { d = JSON.parse(localStorage.getItem('fgh_link_denied') || '[]'); } catch (e) { d = []; }
+    if (!Array.isArray(d) || !d.length) return;
+    try { localStorage.removeItem('fgh_link_denied'); } catch (e) {}
+    Kit.toast(d.join(' and ') + ' declined the link'); refreshWho();
+  }
   // Someone linked you from their phone: ask before linking them back (one sheet per request, each visit)
   var reqShown = {};
   function linkRequestSheet() {
@@ -1048,7 +1056,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var av = Kit.avatar.el(name, 'lg', 'var(--surface-3)');
     var node = el('div', { class: 'lk' }, [
       el('div', { class: 'lk-top' }, [av, el('div', null, [el('b', { text: name }), el('small', { text: 'linked you from their phone' })])]),
-      el('p', { class: 'muted', text: 'Accept to link back. Their avatar and best scores show here, and the games you play together go to both histories. Decline and only they see the games you record together.' })
+      el('p', { class: 'muted', text: 'Accept and their avatar and best scores show here, and the games you play together go to both histories. Decline and nothing is linked, on either phone.' })
     ]);
     var inp = el('input', { class: 'input', maxlength: 14, value: name, autocomplete: 'off', enterkeyhint: 'done', 'aria-label': 'Their name here' });
     var hint = el('p', { class: 'lk-msg' });
@@ -1096,7 +1104,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     setTimeout(function () { Kit.sfx('win'); Kit.haptic('success'); }, 520);
     setTimeout(function () { Kit.confetti({ count: 90 }); }, 600);
   }
-  if (mode === 'pin') setTimeout(function () { linkedMoment(); linkRequestSheet(); }, 900);
+  if (mode === 'pin') setTimeout(function () { deniedNote(); linkedMoment(); linkRequestSheet(); }, 900);
   // opened from someone's profile link (QR code or a tapped link): offer to link them
   setTimeout(function () { try { Kit.links.fromUrl(); } catch (e) {} }, 700);
   document.addEventListener('fghsync:updated', function () { setTimeout(function () { try { Kit.links.fromUrl(); } catch (e) {} }, 300); });

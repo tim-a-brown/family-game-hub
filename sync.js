@@ -1088,7 +1088,7 @@
   function linkHi(key){
     var c = lsJSON(LHI) || {}, l = linksGet(), out = [];
     Object.keys(c).forEach(function(k){
-      var r = l.others[k], x = c[k]; if(!r || r.off || !r.code || r.code !== x.code) return;
+      var r = l.others[k], x = c[k]; if(!r || r.off || !r.code || !r.hs || r.code !== x.code) return;
       ((x.hi || {})[key] || []).forEach(function(e){ out.push({ who: r.name, ini: x.ini || '', score: Number(e.s) || 0, date: e.d || '' }); });
     });
     return out;
@@ -1158,8 +1158,7 @@
         if(!d.exists) throw new Error('No profile has that code');
         var data = d.data() || {};
         l.others[lk(name)] = { name: String(name).trim(), code: code, them: data.name || '', at: Date.now() };
-        linksSet(l); applyAvatar(name, code, data);
-        data._sent = linkBackfill(name, code, { rejected: data.rejected || [] });
+        linksSet(l); linkNotes();   // pending until they accept: their avatar and your past games wait for that
         return data;
       });
     });
@@ -1171,6 +1170,14 @@
     if(had && all[k] && all[k].linked){ all[k] = { name: all[k].name, cur: null, photos: [], at: Date.now() }; writeAvatars(all); }
   }
   function linkOf(name){ var r = linksGet().others[lk(name)]; return r && !r.off && r.code ? r : null; }
+  // accepted by both sides: the only kind games are sent to and profiles read from
+  function linkOk(name){ var r = linkOf(name); return r && r.hs ? r : null; }
+  function setHs(code){
+    var L = linksGet(), hit = [];
+    Object.keys(L.others).forEach(function(k){ var r = L.others[k]; if(r && !r.off && r.code === code && !r.hs){ r.hs = 1; r.at = Date.now(); hit.push(r.name); } });
+    if(hit.length) linksSet(L);
+    return hit;
+  }
   function writeAvatars(all){
     try{ LS.setItem('fgh_avatars', JSON.stringify(all)); }catch(e){}
     noteWrite('fgh_avatars');
@@ -1191,7 +1198,7 @@
   function linkMark(e){
     (e && Array.isArray(e.players) ? e.players : []).forEach(function(p){
       if(!p || typeof p !== 'object' || p.cpu) return;
-      var r = linkOf(p.name); if(r) p.link = r.code;
+      var r = linkOk(p.name); if(r) p.link = r.code;
     });
   }
   function outbox(){ var o = lsJSON(OUTBOX); return Array.isArray(o) ? o : []; }
@@ -1357,12 +1364,14 @@
     noteWrite(LEDGER);
     return true;
   }
-  // Links go both ways from one code: when you link someone, your app drops a note in their inbox ("link:" + your
-  // code, from your name). Their app shows it as a request; accepting links you back under that name (or one they
-  // choose) and answers "ack:" + its code, so your app stops sending the note. Declining answers too, so the
-  // link stays one way. The note sits in their inbox until they answer, so any of their devices can. Notes are
-  // plain strings (not JSON), so an older app that can't read them just clears them, and the note goes again
-  // later (every 12 hours until it's answered).
+  // Linking takes both sides. Linking someone (their code) drops a note in their inbox ("link:" + your code, from
+  // your name); until they accept, the link is pending (no hs): no games go across and nothing is read from their
+  // profile. Their app shows the note as a request. Accepting links you back under that name (or one they choose)
+  // and answers "ack:" + its code: both sides are on (hs), and past games go across. Declining answers "deny:",
+  // which unlinks you from them. The note sits in their inbox until they answer, so any of their devices can.
+  // Notes are plain strings (not JSON), so an older app that can't read them just clears them, and the note
+  // goes again later (every 12 hours until it's answered). Two people who each entered the other's code are
+  // accepted on their own at the next check.
   var LINK_NOTE_MS = 12 * 3600e3;
   function noteId(kind, code){ return (kind === 'ack' ? 'zack' : 'zlink') + String(code).toLowerCase(); }
   function sendNote(toCode, kind, own){
@@ -1395,27 +1404,36 @@
   }
   // A note in your inbox. Returns true when it's dealt with (delete it); a link request stays until answered.
   function readNote(own, x, id, reqs){
-    var m = /^(link|ack):([A-HJ-NP-Z2-9]{6})$/.exec(String(x.entry || '')); if(!m || m[2] === own.code) return true;
+    var m = /^(link|ack|deny):([A-HJ-NP-Z2-9]{6})$/.exec(String(x.entry || '')); if(!m || m[2] === own.code) return true;
     var code = m[2], L = linksGet(), keys = Object.keys(L.others);
-    if(m[1] === 'ack'){
-      var hit = false;
-      keys.forEach(function(k){ var r = L.others[k]; if(r && r.code === code && !r.hs){ r.hs = 1; hit = true; } });
-      if(hit) try{ LS.setItem('fgh_links', JSON.stringify(L)); }catch(e){}
+    if(m[1] === 'ack'){ accepted(code); return true; }
+    if(m[1] === 'deny'){
+      var gone = [];
+      keys.forEach(function(k){ var r = L.others[k]; if(r && !r.off && r.code === code) gone.push(r.name); });
+      gone.forEach(function(n){ linkRemove(n); });
+      if(gone.length){ var dl = lsJSON('fgh_link_denied'); dl = Array.isArray(dl) ? dl : []; gone.forEach(function(n){ if(dl.indexOf(n) < 0) dl.push(n); }); try{ LS.setItem('fgh_link_denied', JSON.stringify(dl)); }catch(e){} }
       return true;
     }
-    // already linked to that profile: answer so they stop asking
-    if(keys.some(function(k){ var r = L.others[k]; return r && !r.off && r.code === code; })){ sendNote(code, 'ack', own).catch(function(e){ console.warn('[links] ack failed', e); }); return true; }
+    // you entered their code too: that's both sides, no need to ask
+    if(keys.some(function(k){ var r = L.others[k]; return r && !r.off && r.code === code; })){ accepted(code); sendNote(code, 'ack', own).catch(function(e){ console.warn('[links] ack failed', e); }); return true; }
     var name = String(x.by || x.from || '').trim().slice(0, 40); if(!name || lk(name) === lk(myName())) return true;
     reqs.push({ id: id, code: code, name: name, at: Number(x.at) || 0 });
     return false;
+  }
+  // They accepted (or you both had each other's code): the link is on, and every past game with them goes across
+  function accepted(code){
+    var names = setHs(code);
+    names.forEach(function(n){ var L = linksGet(), r = L.others[lk(n)]; if(r){ r.bf = 1; try{ LS.setItem('fgh_links', JSON.stringify(L)); }catch(e){} } linkBackfill(n, code, { all: true }); });
+    if(names.length) setTimeout(function(){ linkPoll(true); }, 300);   // their avatar and scores
+    return names;
   }
   // Link requests waiting for your answer
   function linkReqs(){ return _reqs.slice(); }
   // Their profile (name, avatar) for the request screen
   function linkReqInfo(code){ return ensureFirebase().then(function(){ return linkCol().doc(code).get(); }).then(function(d){ return d.exists ? (d.data() || {}) : null; }); }
-  function answerNote(r){
+  function answerNote(r, kind){
     var l = linksGet();
-    return ensureFirebase().then(function(){ return l.own && l.own.code ? sendNote(r.code, 'ack', l.own) : null; })
+    return ensureFirebase().then(function(){ return l.own && l.own.code ? sendNote(r.code, kind || 'ack', l.own) : null; })
       .then(function(){ return l.own && l.own.code ? linkCol().doc(l.own.code).collection('inbox').doc(r.id).delete() : null; });
   }
   // Accept: link them back under that name (yours for them), then tell the home screen
@@ -1425,8 +1443,8 @@
     if(!name || lk(name) === lk(myName())) return Promise.reject(new Error('That’s your own name'));
     var L = linksGet(), k = lk(name), cur = L.others[k];
     if(cur && !cur.off && cur.code && cur.code !== r.code) return Promise.reject(new Error(name + ' is already linked to someone else. Use another name.'));
-    L.others[k] = { name: name, code: r.code, them: r.name, at: Date.now(), hs: 1 };
-    linksSet(L); addPlayer(name);
+    L.others[k] = { name: name, code: r.code, them: r.name, at: Date.now(), hs: 1, bf: 1 };
+    linksSet(L); addPlayer(name); linkBackfill(name, r.code, { all: true });
     _reqs = _reqs.filter(function(x){ return x.id !== id; });
     return answerNote(r).catch(function(e){ console.warn('[links] accept', e); }).then(function(){
       return linkPoll(true);   // their avatar and scores, and the games you've had together go to them
@@ -1436,11 +1454,11 @@
       linkEvent([name]);
     });
   }
-  // Decline: the link stays one way (they still see games you record together); they stop being asked
+  // Decline: nothing is linked, and their phone unlinks you too
   function linkReqDecline(id){
     var r = _reqs.filter(function(x){ return x.id === id; })[0]; if(!r) return Promise.resolve();
     _reqs = _reqs.filter(function(x){ return x.id !== id; }); linkEvent();
-    return answerNote(r).catch(function(e){ console.warn('[links] decline', e); });
+    return answerNote(r, 'deny').catch(function(e){ console.warn('[links] decline', e); });
   }
   // Check your inbox, your linked people's avatars and rejections, and send anything waiting
   function linkPoll(force){
@@ -1455,7 +1473,7 @@
           var pend = [], reqs = [];
           return Promise.all(q.docs.map(function(d){
             var x0 = d.data() || {};
-            if(x0.key === '_link' || x0.key === '_ack'){ return readNote(own, x0, d.id, reqs) ? d.ref.delete() : null; }
+            if(x0.key === '_link' || x0.key === '_ack' || x0.key === '_deny'){ return readNote(own, x0, d.id, reqs) ? d.ref.delete() : null; }
             var it = received(own, d); if(!it || haveGame(it.key, it.entry._id || it.id)) return d.ref.delete();
             if(own.ask){ pend.push(it); return null; }
             if(!window.GameHistory) return null;   // filed by a page that keeps history
@@ -1469,7 +1487,7 @@
           // their code no longer works (they made a new one): say so on the link
           var L2 = linksGet(), cur = L2.others[k];
           if(cur && !!cur.gone !== !d.exists){ if(d.exists) delete cur.gone; else cur.gone = true; try{ LS.setItem('fgh_links', JSON.stringify(L2)); }catch(e){} }
-          if(!d.exists) return;
+          if(!d.exists || !r.hs) return;   // pending: wait for them to accept
           var data = d.data() || {};
           applyAvatar(r.name, r.code, data);
           var c = lsJSON(LHI) || {};
