@@ -1075,7 +1075,11 @@
         var p = playsOf(n);
         list.appendChild(el('div', { class: 'k-name' }, [
           el('button', { type: 'button', class: 'av-btn', 'aria-label': 'Change ' + poss(n) + ' avatar', title: 'Change avatar', onclick: function () { avatarEdit(n, paint); } }, [avEl(n, null, 'var(--surface-3)')]),
-          el('span', { class: 'grow' }, [el('span', { text: n }), p ? el('small', { class: 'k-plays', text: p + (p === 1 ? ' game' : ' games') }) : null]),
+          el('span', { class: 'grow' }, [el('span', { text: n }), (function () {
+            var r = window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(n);
+            if (r && !r.hs && !r.gone) return el('small', { class: 'k-plays k-wait', text: 'Waiting for ' + n + ' to accept' });
+            return p ? el('small', { class: 'k-plays', text: p + (p === 1 ? ' game' : ' games') }) : null;
+          })()]),
           // the signed-in person is already themselves: no link button for them
           whoMark(n) === 'me' ? el('span', { class: 'k-you', text: 'You' }) : el('button', { type: 'button', class: 'icon-btn' + (function () { var r = window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(n); return r ? (r.hs ? ' lk-on' : ' lk-wait') : ''; })(), 'aria-label': 'Link ' + n + ' to their profile', title: 'Link to their profile', html: icon('link'), onclick: function () { linkSheet(n, paint); } }),
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Rename ' + n, html: icon('pencil'), onclick: function () {
@@ -1918,13 +1922,29 @@
     function go() {
       msg.textContent = 'Checking…';
       FGHSync.linkAdd(name, inp.value).then(function (d) {
-        s.close(); sfx('good'); toast('Asked ' + (d.name || name) + ' to link · waiting for them to accept'); avRefresh(); if (onDone) onDone();
+        s.close(); avRefresh(); if (onDone) onDone();
+        setTimeout(function () { sentSheet(name, d.name); }, 330);
       }).catch(function (e) { msg.textContent = linkErr(e); sfx('bad'); });
     }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
     s = sheet({ title: 'Link ' + name, node: node, actions: [{ label: 'Link', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
     if (scanned) { inp.value = scanned; setTimeout(go, 350); }   // back from the scanner: link straight away
     else setTimeout(function () { inp.focus(); }, 300);
+  }
+  // The request went out: you and them with a dotted link between, waiting for their answer
+  function sentSheet(name, them) {
+    var me = lsGet('my_name', '').trim() || 'You';
+    var node = el('div', { class: 'lk lk-sent' }, [
+      el('div', { class: 'lk-sent-pair' }, [
+        avEl(me, 'lg', 'var(--surface-3)'),
+        el('span', { class: 'lk-sent-line' }, [el('i'), el('b', { html: icon('link') })]),
+        el('span', { class: 'lk-sent-them' }, [avEl(name, 'lg', 'var(--surface-3)'), el('em', { text: '?' })])
+      ]),
+      el('p', { class: 'lk-sent-t', html: 'Asked <b>' + esc(name) + '</b> to link' }),
+      el('p', { class: 'muted', text: 'Waiting for ' + name + ' to accept on their phone' + (them && them.toLowerCase() !== name.toLowerCase() ? ' (their profile says ' + them + ')' : '') + '. Once they do, you’ll get a “Linked with ' + name + '” moment here, their avatar will come from their phone, and the games you play together will go to both histories.' })
+    ]);
+    sfx('good'); haptic('success');
+    sheet({ title: 'Request sent', node: node, actions: [{ label: 'Done', primary: true }] });
   }
   // ── Game defaults: each game's own setup, set ahead of time ──
   // The list (profile menu) opens a game's page with ?defaults=1: its normal setup screen, saving instead of
@@ -2143,8 +2163,8 @@
       var name = (picked || '').trim(); if (!name) { inp.focus(); return; }
       msg.textContent = 'Linking…';
       FGHSync.linkAdd(name, ask.code).then(function (d) {
-        done(); s.close(); sfx('good'); haptic('success'); unhide(name, true);
-        toast('Asked ' + name + ' to link · waiting for them to accept'); avRefresh();
+        done(); s.close(); unhide(name, true); avRefresh();
+        setTimeout(function () { sentSheet(name, d.name); }, 330);
       }).catch(function (e) { msg.textContent = linkErr(e); sfx('bad'); });
     }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
