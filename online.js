@@ -684,7 +684,7 @@
     '.olt-sheetlist .ol-row .avatar{width:34px;height:34px;font-size:.85rem;flex:none;}' +
     '.olt-side .ol-row{padding:6px 8px;gap:8px;border-radius:14px;}' +
     '.olt-side .ol-row .avatar{width:30px;height:30px;font-size:.8rem;flex:none;box-shadow:0 0 0 2px var(--c,transparent);}' +
-    '.olt-side .ol-row b[data-you]::after{content:" (you)";}.olt-side .ol-row b{font-size:.86rem;}.olt-side .ol-row small{font-size:.68rem;}' +
+    '.olt-side .ol-row b{font-size:.86rem;}.olt-side .ol-row small{font-size:.68rem;}' +
     '.olt-tbl{position:relative;flex:none;width:min(100%,300px);aspect-ratio:1;margin:0 auto;}' +
     '.olt-top.side .olt-tbl{width:min(56%,300px);}' +
     '.olt-mid{position:absolute;inset:30%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}' +
@@ -701,7 +701,7 @@
     '.olt-ph{display:grid;place-items:center;border-radius:50%;color:var(--text-3);}.olt-ph svg{width:46%;height:46%;}' +
     '.olt-p.anon .olt-ph{background:var(--surface-3,#2a2546);}' +
     '.olt-p.host .olt-h > .avatar{box-shadow:0 0 0 2.5px #fff,0 0 0 5px #ffd36b,0 5px 12px rgba(0,0,0,.35);}' +
-    '.olt-p.coming .olt-h > .avatar{opacity:.55;}.olt-p.coming circle{opacity:.45;}' +
+    '.olt-p.coming circle{opacity:.7;}' +
     '.olt-h .olt-ring{position:absolute;inset:-5px;border-radius:50%;border:3px solid transparent;border-top-color:var(--accent);animation:olspin .9s linear infinite;}' +
     '.olt-badge{position:relative;display:grid;place-items:center;width:100%;height:100%;border-radius:28%;background:linear-gradient(180deg,#171530,#0b0a1c);box-shadow:0 0 0 2px rgba(255,255,255,.15),0 5px 12px rgba(0,0,0,.4);}' +
     '.olt-badge svg{position:absolute;inset:6%;width:88%;height:88%;opacity:.55;}' +
@@ -819,7 +819,8 @@
         f.el.style.transform = 'rotate(' + th + 'deg)';
         // the shoulders: a dash of a full circle (pathLength 360 = degrees), centred on this seat
         f.arc.style.stroke = p.anon ? 'var(--text-3)' : col;
-        f.arc.style.strokeWidth = p.badge ? 0 : p.need ? 2.5 : sw;
+        // an empty seat and someone still connecting: a thin line; it fills out once they're in
+        f.arc.style.strokeWidth = p.badge ? 0 : p.need || p.coming ? 2.5 : sw;
         f.arc.style.strokeDasharray = span + ' 360';
         f.arc.style.transform = 'rotate(' + (-90 - span / 2) + 'deg)';
         // the head: the player's avatar, kept upright while the circle turns
