@@ -354,6 +354,29 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 .acct .avatar{--c:var(--yellow);}
 .acct .t{font-weight:900;font-size:1.15rem;}
 .acct .d{color:var(--text-2);font-size:.9rem;}
+
+/* Linked with someone: full-screen moment */
+.lkm{position:fixed;inset:0;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px 24px calc(var(--safe-b) + 24px);text-align:center;
+  background:radial-gradient(120% 80% at 50% 38%,color-mix(in srgb,var(--accent) 30%,var(--bg)) 0%,var(--bg) 70%);opacity:0;transition:opacity .3s;}
+.lkm.show{opacity:1;}
+.lkm-pair{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.lkm-them{display:flex;}
+.lkm-them .lkm-av + .lkm-av{margin-left:-26px;}
+.lkm .lkm-av{width:108px;height:108px;font-size:2.6rem;color:#fff;border:4px solid var(--bg);box-shadow:0 10px 30px rgba(0,0,0,.35);transition:transform .55s var(--spring);}
+.lkm .lkm-me{transform:translateX(-46px) rotate(-8deg);}
+.lkm .lkm-them{transform:translateX(46px) rotate(8deg);transition:transform .55s var(--spring);}
+.lkm.show .lkm-me,.lkm.show .lkm-them{transform:none;}
+.lkm-link{position:relative;z-index:1;display:grid;place-items:center;width:54px;height:54px;margin:0 -18px;border-radius:50%;background:#ffc83d;color:#2a1d00;
+  box-shadow:0 0 0 5px var(--bg),0 8px 18px rgba(0,0,0,.3);transform:scale(0) rotate(-90deg);transition:transform .45s var(--spring) .45s;}
+.lkm.show .lkm-link{transform:none;animation:lkmRing 1.4s ease-out .9s 2;}
+.lkm-link .ico{width:28px;height:28px;stroke-width:2.6;}
+@keyframes lkmRing{0%{box-shadow:0 0 0 5px var(--bg),0 0 0 5px color-mix(in srgb,var(--yellow) 70%,transparent);}100%{box-shadow:0 0 0 5px var(--bg),0 0 0 34px color-mix(in srgb,var(--yellow) 0%,transparent);}}
+.lkm-t{font-size:1.5rem;font-weight:800;line-height:1.15;color:var(--text-2);opacity:0;transform:translateY(12px);transition:opacity .4s .55s,transform .5s var(--spring) .55s;}
+.lkm-t b{display:block;font-family:var(--display);font-weight:400;font-size:2.8rem;color:var(--text);margin-top:4px;}
+.lkm-s{max-width:300px;color:var(--text-2);font-weight:700;opacity:0;transition:opacity .4s .8s;}
+.lkm-ok{min-width:180px;margin-top:10px;opacity:0;transition:opacity .4s 1s;}
+.lkm.show .lkm-t,.lkm.show .lkm-s,.lkm.show .lkm-ok{opacity:1;transform:none;}
+@media (prefers-reduced-motion:reduce){.lkm *{transition-duration:.01ms!important;animation:none!important;}}
 </style>
 </head>
 <body>
@@ -1011,9 +1034,31 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   var pendNoted = false;
   window.addEventListener('fghlinks', function (e) {
     var n = e.detail && e.detail.pending || 0, lk = e.detail && e.detail.linked || [];
-    if (lk.length) { Kit.toast('Linked with ' + lk.join(' and ')); Kit.sfx('good'); refreshWho(); }
+    if (lk.length) linkedMoment();
     if (n && !pendNoted) { pendNoted = true; Kit.toast(n + (n === 1 ? ' game' : ' games') + ' to review. Tap your avatar.'); }
   });
+  // Someone linked you from their phone and yours linked back: a full-screen moment, both avatars joined by a link
+  function linkedMoment() {
+    var names; try { names = JSON.parse(localStorage.getItem('fgh_link_new') || '[]'); } catch (e) { names = []; }
+    if (!Array.isArray(names) || !names.length || document.querySelector('.lkm')) return;
+    try { localStorage.removeItem('fgh_link_new'); } catch (e) {}
+    refreshWho();
+    var me = (localStorage.getItem('my_name') || '').trim() || 'You', who = names.join(' and '), el = Kit.el;
+    var them = el('div', { class: 'lkm-them' }, names.slice(0, 3).map(function (n) { return Kit.avatar.el(n, 'lkm-av', '#e2557f'); }));
+    var box = el('div', { class: 'lkm', role: 'dialog', 'aria-label': 'Linked with ' + who }, [
+      el('div', { class: 'lkm-pair' }, [Kit.avatar.el(me, 'lkm-av lkm-me', '#3f86e0'), el('span', { class: 'lkm-link', html: Kit.icon('link') }), them]),
+      el('h2', { class: 'lkm-t', html: 'Linked with<br><b>' + Kit.esc(who) + '</b>' }),
+      el('p', { class: 'lkm-s', text: 'High scores and the games you play together now show up on both phones.' }),
+      el('button', { type: 'button', class: 'btn btn-primary lkm-ok', text: 'Nice', onclick: close })
+    ]);
+    function close() { box.classList.remove('show'); setTimeout(function () { box.remove(); }, 300); }
+    box.addEventListener('click', function (e) { if (e.target === box) close(); });
+    document.body.appendChild(box);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { box.classList.add('show'); }); });
+    setTimeout(function () { Kit.sfx('win'); Kit.haptic('success'); }, 520);
+    setTimeout(function () { Kit.confetti({ count: 90 }); }, 600);
+  }
+  if (mode === 'pin') setTimeout(linkedMoment, 900);
   refreshWho();
   // back from setting a game's defaults: show the list again
   if (location.hash === '#game-defaults') {

@@ -1460,9 +1460,15 @@
       if(l.own && l.own.code && LS.getItem('fgh_link_pub') !== pubSig()) jobs.push(linkPublish());
       return Promise.all(jobs);
     }).catch(function(e){ console.warn('[links] poll failed', e); }).then(function(){
-      _linkBusy = false; linkEvent(newLinks);
-      // linked back just now: read their profile (avatar, scores) and send them the games you've had together
-      if(newLinks.length) setTimeout(function(){ linkPoll(true); }, 400);
+      _linkBusy = false; linkEvent();
+      // linked back just now: read their profile (avatar, scores) and send them the games you've had together,
+      // then tell the home screen (fgh_link_new waits there for the next visit when this happens in a game)
+      if(newLinks.length) setTimeout(function(){ linkPoll(true).then(function(){
+        var was = lsJSON('fgh_link_new'); was = Array.isArray(was) ? was : [];
+        newLinks.forEach(function(n){ if(was.indexOf(n) < 0) was.push(n); });
+        try{ LS.setItem('fgh_link_new', JSON.stringify(was)); }catch(e){}
+        linkEvent(newLinks);
+      }); }, 400);
     });
   }
   // Someone said "Not me" to a game you recorded: it stays in your history, just no longer linked to them
