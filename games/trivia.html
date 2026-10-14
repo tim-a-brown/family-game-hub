@@ -1975,7 +1975,7 @@ body{overflow-x:hidden;}
       return;
     }
     if (net.table) net.table.close();
-    if (net.peer) { var p = net.peer; net.peer = null; p.close('left'); }
+    if (net.peer) { var p = net.peer; net.peer = null; p.close(); }  // no arg: we're the one leaving, so the bye goes out
     net.mode = null; net.table = null; net.wait = null; net.roster = []; net.myPid = 1;
     if (E && !E.solo) { E = null; clearInterval(eTimer); clearTimeout(eNextT); }
     if (VW && !VW.solo) { cdStop(); VW = null; }
@@ -2017,7 +2017,9 @@ body{overflow-x:hidden;}
     });
   }
   var q = 0; function soon() { if (q) return; q = requestAnimationFrame(function () { q = 0; all(); }); }
-  new MutationObserver(function (ms) { for (var i = 0; i < ms.length; i++) if (ms[i].addedNodes.length) { soon(); return; } }).observe(document.body, { childList: true, subtree: true });
+  // tiles are only built when a question screen replaces #app's children (vBuild), so watch that alone:
+  // the points clock rewrites its text ~45x a second and a page-wide observer would refit on every frame
+  new MutationObserver(function (ms) { for (var i = 0; i < ms.length; i++) if (ms[i].addedNodes.length) { soon(); return; } }).observe(document.getElementById('app'), { childList: true });
   window.addEventListener('resize', soon);
 })();
 </script>

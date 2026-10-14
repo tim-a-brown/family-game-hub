@@ -827,9 +827,12 @@
   }
   function syncStatus(){ return _syncStatus; }
 
-  // Force a manual sync. Returns a Promise.
-  function syncNow(){
+  // Force a manual sync. Returns a Promise. {soft:true} (coming back to the app): nothing to do when this session
+  // synced under a minute ago and nothing was saved since, and the push only goes when the merged data changed.
+  function syncNow(opts){
+    opts = opts || {};
     if(!isPin()){ setStatus('idle'); return Promise.resolve({ ok:true, reason:'guest' }); }
+    if(opts.soft && pulledRecently() && !dirtySinceLastPush()) return Promise.resolve({ ok:true, reason:'recent' });
     if(typeof navigator !== 'undefined' && navigator.onLine === false){
       setStatus('offline');
       return Promise.resolve({ ok:false, reason:'offline' });
@@ -844,12 +847,12 @@
         var local  = scanLocal();
         var merged = mergeSnapshots(local, remote);
         writeSnapshotToLocal(merged); reconcileName();
-        return pushNow({ force: true }).then(function(r){ ssSet(PULL_KEY, String(Date.now())); return r; });
+        return pushNow({ force: !opts.soft }).then(function(r){ ssSet(PULL_KEY, String(Date.now())); return r; });
       })
       .then(function(){
         setStatus('synced');
         try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
-        linkPoll(true);
+        linkPoll(!opts.soft);
         return { ok: true };
       })
       .catch(function(err){
@@ -1268,9 +1271,11 @@
   function applyAvatar(name, code, data){
     var all = lsJSON('fgh_avatars') || {}, k = lk(name), cur = all[k], av = data.avatar;
     var stamp = Number(data.at) || 0;
-    if(cur && cur.linked === code && cur.at === stamp) return;
-    if(!av || !av.cur){ if(cur && cur.linked){ all[k] = { name: name, cur: null, photos: [], linked: code, at: stamp }; writeAvatars(all); } return; }
-    var rec = { name: String(name).trim(), linked: code, at: stamp, photos: [] };
+    // their profile's time moves with every score or bankroll change: rewrite (and sync) only when the avatar itself changed
+    var sig = av && av.cur ? [av.cur.k, av.cur.i || '', av.cur.c || '', av.d ? av.d.length + ':' + av.d.slice(-48) : ''].join('|') : 'none';
+    if(cur && cur.linked === code && (cur.sig === sig || cur.at === stamp)) return;
+    if(!av || !av.cur){ if(cur && cur.linked){ all[k] = { name: name, cur: null, photos: [], linked: code, at: stamp, sig: sig }; writeAvatars(all); } return; }
+    var rec = { name: String(name).trim(), linked: code, at: stamp, photos: [], sig: sig };
     if(av.cur.k === 'photo' && av.d){ rec.photos = [{ id: 'link', d: av.d, at: stamp }]; rec.cur = { k: 'photo', id: 'link' }; }
     else rec.cur = { k: av.cur.k, i: av.cur.i, c: av.cur.c };
     all[k] = rec; writeAvatars(all);
@@ -1518,7 +1523,9 @@
   // instead of at the next app open. Stops when the page is hidden; restarts if your code changes.
   // Any page also listens while a request you sent is waiting, so their answer can pop in mid-game.
   var _watch = null, _watchCode = null, _watchOn = false, _homeWant = false;
-  function waitingOut(){ var o = linksGet().others; return Object.keys(o).some(function(k){ var r = o[k]; return r && !r.off && r.code && !r.gone && !r.hs; }); }
+  // a request you sent in the last 15 minutes and still waiting (after that, the regular checks pick up the answer)
+  function waitingOut(){ var o = linksGet().others, now = Date.now(); return Object.keys(o).some(function(k){ var r = o[k]; return r && !r.off && r.code && !r.gone && !r.hs && now - (Number(r.at) || 0) < 15 * 60000; }); }
+  var _watchWait = 5000;
   function pendWatch(){
     var vis = typeof document === 'undefined' || document.visibilityState !== 'hidden';
     var on = _homeWant || (vis && isPin() && waitingOut());
@@ -1536,20 +1543,23 @@
     ensureFirebase().then(function(){
       if(!_watchOn || _watchCode !== code || _watch) return;
       _watch = linkCol().doc(code).collection('inbox').limit(100).onSnapshot(function(q){
+        _watchWait = 5000;
         if(q && !q.empty) linkPoll(true);   // if a check is already running, it runs once more right after
       }, function(e){
         console.warn('[links] watch', e); _watch = null; _watchCode = null;
-        setTimeout(function(){ if(_watchOn) watchApply(true); }, 5000);   // dropped connection: listen again
+        if(e && e.code === 'permission-denied') return;   // won't fix itself: the regular checks carry on
+        // dropped connection: listen again, waiting longer each time it fails (up to 5 minutes)
+        setTimeout(function(){ if(_watchOn) watchApply(true); }, _watchWait); _watchWait = Math.min(_watchWait * 2, 300000);
       });
     }).catch(function(e){ console.warn('[links] watch', e); });
   }
   // A quick look at just your inbox (one small read): anything new runs the full check.
   // Used while your code is on screen, when a request is most likely to land, in case the live listener lags.
   function linkPeek(){
-    if(!isPin() || _linkBusy) return Promise.resolve();
+    if(!isPin() || _linkBusy || _watch) return Promise.resolve();   // the live listener already covers it
     var l = linksGet(), code = l.own && l.own.code; if(!code) return Promise.resolve();
     return ensureFirebase().then(function(){ return linkCol().doc(code).collection('inbox').limit(100).get(); }).then(function(q){
-      var known = {}; _reqs.forEach(function(r){ known[r.id] = 1; });
+      var known = {}; _reqs.concat(_pending).forEach(function(r){ if(r && r.id) known[r.id] = 1; });
       if(q.docs.some(function(d){ return !known[d.id]; })) return linkPoll(true);
     }).catch(function(e){ console.warn('[links] peek', e); });
   }

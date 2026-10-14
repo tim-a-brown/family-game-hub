@@ -1365,11 +1365,20 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function loop() {
     raf = 0;
     frame(true);
-    if (!paused && !document.hidden && screen === 'game' && !(G && G.ended && !GV)) raf = requestAnimationFrame(loop);
+    // stops once the game is over (a guest's after its end animation, as the host's); buildView's wake() restarts it
+    if (!paused && !document.hidden && screen === 'game' && !(G && G.ended && !GV) && !(GV && GV.ended && GV.phaseT > 2.2)) raf = requestAnimationFrame(loop);
   }
   // A host keeps the game going for everyone even when this browser holds back animation frames
   // (a covered window, a busy phone): a timer steps it instead, without drawing.
-  setInterval(function () { if (net.mode === 'host' && screen === 'game' && G && !G.ended && performance.now() - frameAt > 90) frame(false); }, 30);
+  // Runs only while hosting a game (hostStart); stops itself at game over, and leaveOnline stops it.
+  var hostT = 0;
+  function hostTimer(on) {
+    clearInterval(hostT); hostT = 0;
+    if (on) hostT = setInterval(function () {
+      if (net.mode !== 'host' || !G || G.ended) { hostTimer(false); return; }
+      if (screen === 'game' && performance.now() - frameAt > 90) frame(false);
+    }, 30);
+  }
   function frame(drawIt) {
     var t = performance.now();
     var dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 0; lastT = t; frameAt = t;
@@ -2275,6 +2284,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     net.gridDirty = false;
     net.table.setStatus('playing', 'Wave 1');
     cssW = 0; fit();
+    hostTimer(true);
   }
   function gridStr() { var s = ''; for (var i = 0; i < G.grid.length; i++) s += String.fromCharCode(48 + G.grid[i] + (G.pois[i] ? 4 : 0)); return s; }
   function sendInit(peer) {
@@ -2458,7 +2468,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       return;
     }
     if (net.table) net.table.close();
-    if (net.peer) { var p = net.peer; net.peer = null; p.close('left'); }
+    if (net.peer) { var p = net.peer; net.peer = null; p.close(); }  // no arg: we're the one leaving, so the bye goes out
+    hostTimer(false);
     net.mode = null; net.table = null; net.wait = null; net.roster = [];
     if (!quiet) { GV = null; if (G && G.mode === 'host') G = null; }
     closeLobby();

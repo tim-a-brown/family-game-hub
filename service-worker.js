@@ -327,7 +327,8 @@ function isArt(url) {
     (url.hostname === 'firebasestorage.googleapis.com' && url.pathname.indexOf('/o/lorcana') >= 0);
 }
 function trimArt(cache, force) {
-  if (!force && ++artPuts % 25) return Promise.resolve();
+  // the worker is stopped when idle, so the count restarts often: trim on the first save after each start too
+  if (!force && ++artPuts % 25 !== 1) return Promise.resolve();
   return cache.keys().then((keys) => Promise.all(keys.slice(0, Math.max(0, keys.length - ART_MAX)).map((k) => cache.delete(k))));
 }
 function artFetch(req) {
@@ -429,6 +430,16 @@ self.addEventListener('fetch', (event) => {
         return resp;
       }))
     );
+    return;
+  }
+
+  // Sounds, pictures, fonts and bundled libraries: from the device once saved. Each release starts a fresh cache,
+  // so a changed file still arrives with the next release (no re-checking ~40 sound files on every page).
+  if (url.origin === self.location.origin && (/^\/(sounds|img|vendor)\//.test(url.pathname) || /\.(mp3|ogg|wav|png|jpe?g|webp|gif|svg|woff2?|glb|gltf|ktx2|hdr)$/i.test(url.pathname))) {
+    event.respondWith(caches.open(CACHE_NAME).then((cache) => cache.match(req).then((hit) => hit || fetch(req).then((resp) => {
+      if (resp && resp.status === 200) cache.put(req, resp.clone()).catch(() => {});
+      return resp;
+    }))));
     return;
   }
 

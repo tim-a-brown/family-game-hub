@@ -105,6 +105,9 @@ const FrequentPlayers = (function(){
     }
 
     function render(){
+      // the picker's input has left the page (a setup screen rebuilt): stop listening, so old pickers don't pile up
+      if(!input.isConnected && row._fpShown){ document.removeEventListener('fp:update', render); document.removeEventListener('frequentplayers:changed', render); return; }
+      if(input.isConnected) row._fpShown = true;
       const used = new Set(siblingValues());
       const names = list().filter(n => !used.has(n.toLowerCase()));
       row.innerHTML = '';
@@ -375,6 +378,7 @@ const FrequentPlayers = (function(){
     addBtn.addEventListener('click', attemptAdd);
 
     function closeManager(){
+      document.removeEventListener('keydown', onEscMgr);
       overlay.classList.remove('show');
       setTimeout(() => {
         overlay.remove();
@@ -391,12 +395,8 @@ const FrequentPlayers = (function(){
     overlay.addEventListener('click', function(e){
       if(e.target === overlay) closeManager();
     });
-    document.addEventListener('keydown', function onEsc(e){
-      if(e.key === 'Escape'){
-        closeManager();
-        document.removeEventListener('keydown', onEsc);
-      }
-    });
+    function onEscMgr(e){ if(e.key === 'Escape') closeManager(); }   // closeManager drops this listener
+    document.addEventListener('keydown', onEscMgr);
 
     renderList();
     setTimeout(() => addInput.focus(), 100);

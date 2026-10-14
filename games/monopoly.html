@@ -561,7 +561,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
 
   Kit.init({
     id: 'monopoly',
-    onNew: function () { stopAll(); clearSave(); if (mode === 'online') leaveOnline(); showSetup(); },
+    onNew: function () { stopAll(); clearSave(); leaveOnline(); showSetup(); },  // also from the lobby or waiting room (mode not 'online' yet)
     undo: function () { undo(); },
     menu: [
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Monopoly: past games' }); } },
@@ -2078,11 +2078,13 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   function busyScreen(text) { app.innerHTML = ''; app.appendChild(el('div', { class: 'ol' }, [el('div', { class: 'ol-row' }, [el('i', { class: 'ol-spin' }), el('div', { class: 'grow' }, [el('b', { text: text })])])])); }
   function leaveOnline() {
     if (net.table) { try { net.table.close(); } catch (e) {} }
-    if (net.peer) { try { net.peer.close('left'); } catch (e) {} }
+    // drop our peer before closing it so its close handler ignores it; no arg: we're leaving, so the bye goes out
+    if (net.peer) { var p = net.peer; net.peer = null; try { p.close(); } catch (e) {} }
     closeLobby();
     net.role = null; net.table = null; net.peer = null; net.roster = []; net.wait = null; net.ol = null;
     if (mode === 'online') { mode = null; }
   }
+  window.addEventListener('pagehide', function () { if (net.role) leaveOnline(); });
   function hostTable(name) {
     closeLobby(); busyScreen('Opening your table…');
     return Online.host({ game: 'monopoly', name: name, max: 8, min: 2, screen: app, accept: function () { return S && mode === 'online' && S.phase !== 'over' ? 'That game has already started' : true; } }).then(function (table) {

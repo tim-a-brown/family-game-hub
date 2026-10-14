@@ -247,7 +247,7 @@ const ArcadeHi = (function(){
       </div>`;
     document.body.style.overflow = 'hidden';
     // Always release the scroll lock however the overlay is dismissed
-    { const _rm = overlay.remove.bind(overlay); overlay.remove = () => { document.body.style.overflow = ''; _rm(); }; }
+    { const _rm = overlay.remove.bind(overlay); overlay.remove = () => { document.body.style.overflow = ''; document.removeEventListener('keydown', onEsc); _rm(); }; }
     document.body.appendChild(overlay);
 
     // Detect mobile
@@ -472,7 +472,7 @@ const ArcadeHi = (function(){
       </div>`;
     document.body.style.overflow = 'hidden';
     // Always release the scroll lock however the overlay is dismissed
-    { const _rm = overlay.remove.bind(overlay); overlay.remove = () => { document.body.style.overflow = ''; _rm(); }; }
+    { const _rm = overlay.remove.bind(overlay); overlay.remove = () => { document.body.style.overflow = ''; document.removeEventListener('keydown', onEsc); _rm(); }; }
     document.body.appendChild(overlay);
 
     // Close on backdrop click
@@ -504,9 +504,8 @@ const ArcadeHi = (function(){
     }
 
     // Close on Escape
-    function onEsc(e){ if(e.key==='Escape'){overlay.remove();document.removeEventListener('keydown',onEsc);} }
+    function onEsc(e){ if(e.key==='Escape') overlay.remove(); }   // overlay.remove() also drops this listener
     document.addEventListener('keydown', onEsc);
-    overlay.addEventListener('remove', () => document.removeEventListener('keydown', onEsc));
   }
 
   const PAGE = /^(ast|breakout|flappy|flappywild|flappy_classic|pac|peggle|peggle_l\d+|peggle_run|paddleball|cubehopper|snake|tetris|crossyroad|willycrash|crazytower|centipede|centipede_chaos|invaders|invaders_frenzy|pinball_[a-z]+)$/;
