@@ -671,28 +671,37 @@
   var CSS2 = '.olt h1{margin-bottom:2px;}' +
     // The people: like the Game Night logo, each one a coloured arc (shoulders) with their avatar as the head,
     // round an empty circle with the table code in the middle. The circle makes room as people join.
-    '.olt-tbl{position:relative;width:min(100%,330px);aspect-ratio:1;margin:6px auto 0;}' +
-    '.olt-mid{position:absolute;inset:31%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}' +
-    '.olt-mid small{font-size:.62rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);}' +
-    '.olt-code{font-family:var(--display);font-size:clamp(1.6rem,7vw,2.2rem);letter-spacing:.2em;margin-right:-.2em;line-height:1.05;color:var(--accent);}' +
-    '.olt-code.pend{opacity:.35;letter-spacing:.3em;}' +
+    '.olt-top{display:flex;align-items:flex-start;gap:12px;margin-top:4px;}' +
+    '.olt-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}.olt-side:empty{display:none;}' +
+    '.olt-side .ol-h{margin:0 2px 2px;}' +
+    '.olt-side .stack{display:grid;gap:6px;grid-auto-flow:column;grid-template-rows:repeat(var(--rows,99),auto);grid-auto-columns:minmax(0,1fr);}' +
+    '.olt-side .stack:empty{display:none;}' +
+    '.olt-side.cols .ol-row{flex-direction:column;justify-content:center;gap:3px;padding:6px 3px;min-height:56px;text-align:center;}.olt-side.cols .ol-row .grow{width:100%;}.olt-side.cols .ol-row small{display:none;}.olt-side.cols .ol-row .avatar{width:28px;height:28px;font-size:.72rem;}.olt-side.cols .ol-row b{font-size:.7rem;line-height:1.15;}' +
+    '.olt-side .ol-row{padding:6px 8px;gap:8px;border-radius:14px;}' +
+    '.olt-side .ol-row .avatar{width:30px;height:30px;font-size:.8rem;flex:none;box-shadow:0 0 0 2px var(--c,transparent);}' +
+    '.olt-side .ol-row b[data-you]::after{content:" (you)";}.olt-side.cols .ol-row b[data-you]::after{content:"";}.olt-side .ol-row b{font-size:.86rem;}.olt-side .ol-row small{font-size:.68rem;}' +
+    '.olt-tbl{position:relative;flex:none;width:min(100%,300px);aspect-ratio:1;margin:0 auto;}' +
+    '.olt-top.side .olt-tbl{width:min(56%,300px);}' +
+    '.olt-mid{position:absolute;inset:30%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}' +
+    '.olt-mid small{font-size:calc(var(--tw,300px) * .034);font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;}' +
+    '.olt-code{font-family:var(--display);font-size:calc(var(--tw,300px) * .1);letter-spacing:.18em;margin-right:-.18em;line-height:1.05;color:var(--accent);}' +
+    '.olt-code.pend{opacity:.35;}' +
     '.olt-p{position:absolute;inset:0;pointer-events:none;transition:transform .8s cubic-bezier(.3,1.25,.5,1),opacity .4s;}' +
     '.olt-p svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}' +
-    '.olt-p circle{fill:none;stroke-linecap:round;transition:stroke-dasharray .8s cubic-bezier(.3,1.25,.5,1),transform .8s cubic-bezier(.3,1.25,.5,1),stroke .3s;}' +
+    '.olt-p circle{fill:none;stroke-linecap:round;transition:stroke-dasharray .8s cubic-bezier(.3,1.25,.5,1),transform .8s cubic-bezier(.3,1.25,.5,1),stroke-width .6s cubic-bezier(.3,1.5,.5,1),stroke .3s,opacity .3s;}' +
+    '.olt-p.need circle{opacity:.5;}' +
     '.olt-h{position:absolute;left:50%;transition:transform .8s cubic-bezier(.3,1.25,.5,1),width .6s,height .6s,margin .6s;}' +
-    '.olt-h > .avatar,.olt-h > .olt-ph{width:100%;height:100%;font-size:calc(var(--hs) * .42);box-shadow:0 0 0 3px #fff,0 6px 14px rgba(0,0,0,.35);}' +
-    '.olt-ph{display:grid;place-items:center;border-radius:50%;color:var(--text-3);}' +
-    '.olt-ph svg{width:46%;height:46%;}' +
-    '.olt-p.need .olt-ph{border:2.5px dashed #ffd36b;box-shadow:none;background:color-mix(in srgb,#ffd36b 10%,transparent);animation:oltPulse 1.6s ease-in-out infinite;}' +
+    '.olt-h > .avatar,.olt-h > .olt-ph{width:100%;height:100%;font-size:calc(var(--hs) * .42);box-shadow:0 0 0 2.5px #fff,0 5px 12px rgba(0,0,0,.35);}' +
+    '.olt-h > .avatar{animation:oltIn .55s cubic-bezier(.3,1.5,.5,1) both;}' +
+    '.olt-ph{display:grid;place-items:center;border-radius:50%;color:var(--text-3);}.olt-ph svg{width:46%;height:46%;}' +
     '.olt-p.anon .olt-ph{background:var(--surface-3,#2a2546);}' +
-    '.olt-h em{position:absolute;left:50%;transform:translateX(-50%);top:calc(100% + 4px);font-style:normal;font-size:.72rem;font-weight:800;white-space:nowrap;max-width:84px;overflow:hidden;text-overflow:ellipsis;color:var(--text-2);}' +
-    '.olt-h.up em{top:auto;bottom:calc(100% + 4px);}' +
-    '.olt-p.me em{color:var(--accent);}.olt-p.need em{color:#ffd36b;}' +
-    '.olt-p.host .olt-h > .avatar{box-shadow:0 0 0 3px #fff,0 0 0 6px #ffd36b,0 6px 14px rgba(0,0,0,.35);}' +
+    '.olt-p.host .olt-h > .avatar{box-shadow:0 0 0 2.5px #fff,0 0 0 5px #ffd36b,0 5px 12px rgba(0,0,0,.35);}' +
     '.olt-p.coming .olt-h > .avatar{opacity:.55;}.olt-p.coming circle{opacity:.45;}' +
-    '.olt-h .olt-ring{position:absolute;inset:-6px;border-radius:50%;border:3px solid transparent;border-top-color:var(--accent);animation:olspin .9s linear infinite;}' +
-    '.olt-p.in .olt-h{animation:oltIn .55s cubic-bezier(.3,1.5,.5,1) both;}.olt-p.in svg{animation:oltFade .5s both;}' +
-    '.olt-p.out{opacity:0;}' +
+    '.olt-h .olt-ring{position:absolute;inset:-5px;border-radius:50%;border:3px solid transparent;border-top-color:var(--accent);animation:olspin .9s linear infinite;}' +
+    '.olt-badge{position:relative;display:grid;place-items:center;width:100%;height:100%;border-radius:28%;background:linear-gradient(180deg,#171530,#0b0a1c);box-shadow:0 0 0 2px rgba(255,255,255,.15),0 5px 12px rgba(0,0,0,.4);}' +
+    '.olt-badge svg{position:absolute;inset:6%;width:88%;height:88%;opacity:.55;}' +
+    '.olt-badge b{position:relative;font-family:var(--display);font-weight:400;font-size:calc(var(--hs) * .38);color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);}' +
+    '.olt-p.in svg{animation:oltFade .5s both;}.olt-p.out{opacity:0;}' +
     '@keyframes oltFade{from{opacity:0}to{opacity:1}}' +
     '@keyframes oltIn{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}' +
     '@keyframes oltPulse{50%{transform:scale(.92);opacity:.35}}' +
@@ -720,7 +729,7 @@
     root.innerHTML = '';
     o = o || {};
     var S = { host: !!o.host, max: o.max || 2, min: o.min || 2, code: o.code || '', hostName: o.hostName || '', players: [], coming: [], room: null, onStart: o.onStart, onLeave: o.onLeave, note: o.note, ticks: {} };
-    var wrap = E('div', { class: 'ol olt' }), h1 = E('h1'), tbl = E('div', { class: 'olt-tbl' });
+    var wrap = E('div', { class: 'ol olt' }), h1 = E('h1'), tbl = E('div', { class: 'olt-tbl' }), side = E('div', { class: 'olt-side' }), top = E('div', { class: 'olt-top' }, [side, tbl]);
     var mid = E('div', { class: 'olt-mid' }), codeEl = E('div', { class: 'olt-code' });
     mid.appendChild(E('small', { text: 'Table code' })); mid.appendChild(codeEl);
     tbl.appendChild(mid);
@@ -735,7 +744,8 @@
     var one = oneAtATime(), startBtn = null, leaveBtn, noteEl = E('p', { class: 'ol-note' });
     if (S.host) startBtn = E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>Start the game</span>', onclick: function (e) { if (S.onStart) one(e.currentTarget, 'Starting…', function () { return S.onStart(); }); } });
     leaveBtn = E('button', { type: 'button', class: 'btn btn-ghost btn-block', onclick: function (e) { if (S.onLeave) one(e.currentTarget, S.host ? 'Closing…' : 'Leaving…', function () { return S.onLeave(); }); } });
-    [h1, tbl, count, steps, listH, list, comingBox].concat(startBtn ? [startBtn] : []).concat([leaveBtn, noteEl]).forEach(function (n) { wrap.appendChild(n); });
+    side.appendChild(listH); side.appendChild(list); side.appendChild(comingBox);
+    [h1, top, count, steps].concat(startBtn ? [startBtn] : []).concat([leaveBtn, noteEl]).forEach(function (n) { wrap.appendChild(n); });
     root.appendChild(wrap);
 
     function hostLabel() { return S.host ? 'You' : (S.hostName || 'The host'); }
@@ -746,6 +756,8 @@
       leaveBtn.textContent = S.players.length ? (S.host ? 'Close the table' : 'Leave the table') : 'Cancel';
       noteEl.textContent = S.note || ''; noteEl.hidden = !S.note;
       listH.hidden = !S.players.length; list.hidden = !S.players.length;
+      top.classList.toggle('side', !!(S.players.length || S.coming.length));
+      if (!S.players.length && !S.coming.length) { side.style.display = 'none'; } else side.style.display = '';
     }
     function step(id, state, detail) {
       var li = rows[id]; if (!li) return;
@@ -756,9 +768,12 @@
       }
       if (detail != null) li.querySelector('small').textContent = detail;
     }
-    // the circle of people: everyone here, anyone on the way in, then a dotted figure for each seat still needed
-    // to start. Each figure keeps its element, so when someone joins the others slide round to make room.
-    var PAL = ['#ffd166', '#ff7a8a', '#4fd1c5', '#8b7cff', '#5b8cff', '#3fb56b', '#f59e0b', '#ec4899'];
+    // The circle of people, like the Game Night logo: each seat a coloured arc (shoulders) with the player's avatar
+    // as the head. The logo's four colours go to the first four. Seats still needed to start are a thin line in
+    // their colour, which fills out to a full arc (and gets a head) when someone sits there. Up to 12 in the circle;
+    // more than that, a small Game Night badge with +N takes the 13th place.
+    var PAL = ['#ffd166', '#ff7a8a', '#4fd1c5', '#8b7cff', '#5b8cff', '#3fb56b', '#f59e0b', '#ec4899', '#14b8a6', '#a3e635', '#f97316', '#c084fc'];
+    var LOGO = '<svg viewBox="40 40 176 176" aria-hidden="true"><g fill="none" stroke-width="18" stroke-linecap="round"><path d="M148 72A58 58 0 0 1 184 108" stroke="#ffd166"/><path d="M184 148A58 58 0 0 1 148 184" stroke="#ff7a8a"/><path d="M108 184A58 58 0 0 1 72 148" stroke="#4fd1c5"/><path d="M72 108A58 58 0 0 1 108 72" stroke="#8b7cff"/></g><g fill="#fff"><circle cx="79" cy="79" r="16"/><circle cx="177" cy="79" r="16"/><circle cx="177" cy="177" r="16"/><circle cx="79" cy="177" r="16"/></g></svg>';
     var figs = {}, NS = 'http://www.w3.org/2000/svg', RA = 60, RH = 77;
     function figure(key) {
       if (figs[key]) return figs[key];
@@ -771,47 +786,41 @@
       return (figs[key] = { el: el, arc: c, head: h, sig: '' });
     }
     function paintSeats() {
-      var people = S.players.map(function (p, i) { return { key: 'p:' + p.name, name: p.name, color: p.color, me: p.me, host: p.host }; });
+      var people = S.players.map(function (p) { return { name: p.name, me: p.me, host: p.host }; });
       if (!people.length && S.room) {   // still connecting: the host, the others already there, and you on the way
-        people.push({ key: 'p:' + S.hostName, name: S.hostName, host: true });
-        for (var q = 1; q < (S.room.n || 1); q++) people.push({ key: 'anon' + q, name: '', anon: true });
+        people.push({ name: S.hostName, host: true });
+        for (var q = 1; q < (S.room.n || 1); q++) people.push({ name: '', anon: true });
       }
-      S.coming.forEach(function (c) { people.push({ key: 'p:' + c.name, name: c.name, coming: true }); });
-      if (!S.host && !S.players.length) people.push({ key: 'p:' + (o.myName || 'You'), name: 'You', me: true, coming: true });
-      var need = Math.max(0, S.min - people.length);
-      for (var k = 0; k < need; k++) people.push({ key: 'need' + k, need: true });
+      S.coming.forEach(function (c) { people.push({ name: c.name, coming: true }); });
+      if (!S.host && !S.players.length) people.push({ name: o.myName || 'You', me: true, coming: true });
+      var extra = 0;
+      if (people.length > 12) { extra = people.length - 12; people = people.slice(0, 12); people.push({ badge: true }); }
+      for (var k = people.length; k < S.min; k++) people.push({ need: true });
       var n = Math.max(people.length, 1), span = Math.min(50, 360 / n * .56);
-      var hs = Math.min(27, 2 * Math.PI * RH / n * .62), px = tbl.clientWidth || 330, hpx = hs / 200 * px;
+      var px = tbl.clientWidth || 300, hs = Math.min(n <= 4 ? 34 : 29, 2 * Math.PI * RH / n * .6), hpx = hs / 200 * px, sw = Math.max(7, Math.min(17, hs * .62));
+      tbl.style.setProperty('--tw', px + 'px');
       var keep = {};
       people.forEach(function (p, i) {
-        var f = figure(p.key), th = i * 360 / n; keep[p.key] = 1;
-        f.el.className = 'olt-p' + (f.el.classList.contains('in') ? ' in' : '') + (p.need ? ' need' : '') + (p.anon ? ' anon' : '') + (p.coming ? ' coming' : '') + (p.me ? ' me' : '') + (p.host ? ' host' : '');
+        var key = 'seat' + i, f = figure(key), th = i * 360 / n, col = PAL[i % PAL.length]; keep[key] = 1;
+        f.el.className = 'olt-p' + (f.el.classList.contains('in') ? ' in' : '') + (p.need ? ' need' : '') + (p.anon ? ' anon' : '') + (p.coming ? ' coming' : '') + (p.me ? ' me' : '') + (p.host ? ' host' : '') + (p.badge ? ' badge' : '');
         f.el.style.transform = 'rotate(' + th + 'deg)';
-        // the shoulders: an arc centred on this person, drawn as a dash of a full circle (pathLength 360 = degrees)
-        var col = p.need ? '#ffd36b' : p.anon ? 'var(--text-3)' : (p.color || PAL[i % PAL.length]);
-        f.arc.style.stroke = col; f.arc.style.strokeWidth = Math.max(7, Math.min(17, hs * .62));
+        // the shoulders: a dash of a full circle (pathLength 360 = degrees), centred on this seat
+        f.arc.style.stroke = p.anon ? 'var(--text-3)' : col;
+        f.arc.style.strokeWidth = p.badge ? 0 : p.need ? 2.5 : sw;
         f.arc.style.strokeDasharray = span + ' 360';
-        if (p.need) {   // an empty seat: a row of small dots where the shoulders go
-          var dots = 8, gap = span / (dots - 1), pat = [];
-          for (var d = 0; d < dots - 1; d++) pat.push('0.01', gap);
-          pat.push('0.01', 360);
-          f.arc.style.strokeDasharray = pat.join(' '); f.arc.style.strokeWidth = Math.max(4, Math.min(7, hs * .26));
-        }
         f.arc.style.transform = 'rotate(' + (-90 - span / 2) + 'deg)';
-        // the head: their avatar, kept upright while the figure turns
+        // the head: the player's avatar, kept upright while the circle turns
         var h = f.head; h.style.setProperty('--hs', hpx + 'px');
         h.style.width = h.style.height = hpx + 'px'; h.style.marginLeft = (-hpx / 2) + 'px';
         h.style.top = ((100 - RH) / 2) + '%'; h.style.marginTop = (-hpx / 2) + 'px';
         h.style.transform = 'rotate(' + (-th) + 'deg)';
-        var up = Math.cos(th * Math.PI / 180) > .35;
-        h.classList.toggle('up', up);
-        var label = n > 8 ? '' : p.need ? 'Needed' : p.anon ? '' : p.me && !S.players.length ? 'You' : p.name + (p.me ? ' (you)' : '');
-        var sig = [p.need, p.anon, p.coming, p.name, p.color, label].join('|');
+        var sig = [p.need, p.anon, p.coming, p.badge, p.name, extra, i].join('|');
         if (f.sig !== sig) {
           f.sig = sig; h.innerHTML = '';
-          h.appendChild(p.need ? E('span', { class: 'olt-ph' }) : p.anon ? E('span', { class: 'olt-ph', html: Kit.icon('user') }) : av(p.name, p.color || PAL[i % PAL.length]));
+          if (p.badge) { h.style.transform += ' scale(1.25)'; h.appendChild(E('span', { class: 'olt-badge', html: LOGO + '<b>+' + extra + '</b>' })); }
+          else if (p.anon) h.appendChild(E('span', { class: 'olt-ph', html: Kit.icon('user') }));
+          else if (!p.need) h.appendChild(av(p.name, col));
           if (p.coming) h.appendChild(E('i', { class: 'olt-ring' }));
-          if (label) h.appendChild(E('em', { text: label }));
         }
       });
       Object.keys(figs).forEach(function (key) {
@@ -848,8 +857,9 @@
     // the players as rows too: names in full, who hosts, who's you (games add to these rows, e.g. Monopoly's pieces)
     function paintList() {
       list.innerHTML = '';
-      S.players.forEach(function (p) {
-        list.appendChild(E('div', { class: 'ol-row ol-seat' }, [av(p.name, p.color), E('div', { class: 'grow' }, [E('b', { text: p.name + (p.me ? ' (you)' : '') }), E('small', { text: p.host ? 'Host' : 'Player' })])]));
+      S.players.forEach(function (p, i) {
+        var a = av(p.name, PAL[i % PAL.length]); a.style.setProperty('--c', PAL[i % PAL.length]);
+        list.appendChild(E('div', { class: 'ol-row ol-seat' }, [a, E('div', { class: 'grow' }, [E('b', { text: p.name, 'data-you': p.me ? '1' : null }), E('small', { text: p.host ? 'Host' : p.me ? 'You' : 'Player' })])]));
       });
       paintComing();
     }
@@ -857,10 +867,23 @@
     function paintComing() {
       comingBox.innerHTML = '';
       S.coming.forEach(function (c) {
-        comingBox.appendChild(E('div', { class: 'ol-row coming' }, [av(c.name), E('div', { class: 'grow' }, [E('b', { text: c.name }), E('small', { text: 'Joining…' })]), E('i', { class: 'ol-spin' })]));
+        comingBox.appendChild(E('div', { class: 'ol-row coming' }, [av(c.name), E('div', { class: 'grow' }, [E('b', { text: c.name }), E('small', { text: 'Joining…' })])]));
       });
     }
-    function paint() { paintHead(); paintSeats(); paintCount(); paintSteps(); }
+    function paintCols() {
+      var n = S.players.length + S.coming.length, h = tbl.clientHeight || 300, rows = Math.max(3, Math.floor((h - 16) / 46));
+      var cols = Math.max(1, Math.ceil(n / rows));
+      if (cols > 1) {   // tiles: name under the avatar, as many columns as fit beside the circle (then the list runs longer)
+        var fit = Math.max(2, Math.floor(((side.clientWidth || 150) + 6) / 66));
+        rows = Math.max(2, Math.floor((h - 16) / 62)); cols = Math.min(fit, Math.ceil(n / rows)); rows = Math.ceil(n / cols);
+      }
+      side.classList.toggle('cols', cols > 1);
+      // the joined and the joining share the column flow: one grid, rows counted together
+      list.style.setProperty('--rows', Math.min(rows, Math.max(1, S.players.length)));
+      comingBox.style.setProperty('--rows', Math.max(1, S.coming.length));
+      if (cols > 1) { list.style.setProperty('--rows', rows); }
+    }
+    function paint() { paintHead(); paintSeats(); paintCount(); paintSteps(); paintCols(); }
     function update(players) {
       var before = S.players.length;
       S.players = (players || []).slice();
