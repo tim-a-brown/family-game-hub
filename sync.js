@@ -1107,7 +1107,7 @@
           if(d.exists){ if(++tries > 5) throw new Error('Try again'); return attempt(); }
           var own = { code: code, name: myName(), ask: false, at: Date.now() };
           return linkCol().doc(code).set({ name: own.name, avatar: myAvatar(), ask: false, rejected: [], at: own.at })
-            .then(function(){ l.own = own; linksSet(l); return linkPublish().then(function(){ return own; }); });
+            .then(function(){ l.own = own; linksSet(l); if(_watchOn) linkWatch(true); return linkPublish().then(function(){ return own; }); });
         });
       }
       return attempt();
@@ -1426,6 +1426,22 @@
     if(names.length) setTimeout(function(){ linkPoll(true); }, 300);   // their avatar and scores
     return names;
   }
+  // Live: the home screen watches your inbox, so a link request or a game sent to you shows up within seconds
+  // instead of at the next app open. Stops when the page is hidden; restarts if your code changes.
+  var _watch = null, _watchCode = null, _watchOn = false;
+  function linkWatch(on){
+    _watchOn = !!on;
+    if(!on){ if(_watch){ try{ _watch(); }catch(e){} _watch = null; _watchCode = null; } return; }
+    if(!isPin()) return;
+    var l = linksGet(), code = l.own && l.own.code; if(!code) return;
+    if(_watch && _watchCode === code) return;
+    if(_watch){ try{ _watch(); }catch(e){} _watch = null; }
+    _watchCode = code;
+    ensureFirebase().then(function(){
+      if(!_watchOn || _watchCode !== code || _watch) return;
+      _watch = linkCol().doc(code).collection('inbox').limit(100).onSnapshot(function(q){ if(q && !q.empty) linkPoll(true); }, function(e){ console.warn('[links] watch', e); _watch = null; _watchCode = null; });
+    }).catch(function(e){ console.warn('[links] watch', e); });
+  }
   // Link requests waiting for your answer
   function linkReqs(){ return _reqs.slice(); }
   // Their profile (name, avatar) for the request screen
@@ -1568,7 +1584,7 @@
     initials: myInitials, setInitials: setInitials, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
     linkMark: linkMark, linkSend: linkSend, linkBackfill: linkBackfill, linkPoll: linkPoll,
     linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,
-    linkReqs: linkReqs, linkReqInfo: linkReqInfo, linkReqAccept: linkReqAccept, linkReqDecline: linkReqDecline,
+    linkReqs: linkReqs, linkReqInfo: linkReqInfo, linkReqAccept: linkReqAccept, linkReqDecline: linkReqDecline, linkWatch: linkWatch,
     linkBank: linkBank, bankRemote: bankRemote, _fileGame: fileGame,
     _scanLocal: scanLocal, _myHi: myHi, _mergeHi: mergeHi, _hiFromFirestore: hiFromFirestore
   };
