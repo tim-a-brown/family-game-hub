@@ -1013,7 +1013,7 @@
   function genCode(){ var c = ''; for(var i = 0; i < 6; i++) c += CODE_AB.charAt(Math.floor(Math.random() * CODE_AB.length)); return c; }
   function linksGet(){ var l = lsJSON('fgh_links') || {}, o = { own: l.own || null, others: l.others || {} }; if(l.ini) o.ini = l.ini; return o; }
   function linksSet(l){ try{ LS.setItem('fgh_links', JSON.stringify(l)); }catch(e){} noteWrite('fgh_links'); linkEvent(); }
-  function linkEvent(){ try{ window.dispatchEvent(new CustomEvent('fghlinks', { detail: { pending: _pending.length } })); }catch(e){} }
+  function linkEvent(linked){ try{ window.dispatchEvent(new CustomEvent('fghlinks', { detail: { pending: _pending.length, linked: linked || [] } })); }catch(e){} }
   function myName(){ return (LS.getItem('my_name') || '').trim(); }
   function lk(n){ return String(n || '').trim().toLowerCase(); }
   function linkCol(){ return _fb.db.collection('links'); }
@@ -1106,7 +1106,7 @@
           if(d.exists){ if(++tries > 5) throw new Error('Try again'); return attempt(); }
           var own = { code: code, name: myName(), ask: false, at: Date.now() };
           return linkCol().doc(code).set({ name: own.name, avatar: myAvatar(), ask: false, rejected: [], at: own.at })
-            .then(function(){ l.own = own; linksSet(l); return own; });
+            .then(function(){ l.own = own; linksSet(l); return linkPublish().then(function(){ return own; }); });
         });
       }
       return attempt();
@@ -1356,11 +1356,66 @@
     noteWrite(LEDGER);
     return true;
   }
+  // Links go both ways from one code: when you link someone, your app drops a note in their inbox ("link:" + your
+  // code, from your name), and their app links you back under that name and answers "ack:" + its code, so your
+  // app stops sending the note. Notes are plain strings (not JSON), so an older app that can't read them just
+  // clears them, and the note goes again later (every 12 hours until it's answered).
+  var LINK_NOTE_MS = 12 * 3600e3;
+  function noteId(kind, code){ return (kind === 'ack' ? 'zack' : 'zlink') + String(code).toLowerCase(); }
+  function sendNote(toCode, kind, own){
+    return linkCol().doc(toCode).collection('inbox').doc(noteId(kind, own.code))
+      .set({ key: '_' + kind, entry: kind + ':' + own.code, from: label() || myName() || own.name || 'Someone', by: myName() || own.name || '', at: Date.now() });
+  }
+  function linkNotes(){
+    var l = linksGet(), now = Date.now();
+    var due = Object.keys(l.others).filter(function(k){ var r = l.others[k]; return r && !r.off && r.code && !r.gone && !r.hs && (!r.hsAt || now - r.hsAt > LINK_NOTE_MS); });
+    if(!due.length || !myName()) return Promise.resolve();
+    return (l.own && l.own.code ? Promise.resolve(l.own) : linkShare()).then(function(own){
+      return Promise.all(due.map(function(k){
+        var code = l.others[k].code;
+        return sendNote(code, 'link', own).then(function(){
+          var L = linksGet(); if(L.others[k] && L.others[k].code === code){ L.others[k].hsAt = Date.now(); try{ LS.setItem('fgh_links', JSON.stringify(L)); }catch(e){} }
+        }).catch(function(e){ console.warn('[links] note failed', code, e); });
+      }));
+    }).catch(function(e){ console.warn('[links] notes', e); });
+  }
+  // Someone you play with, added on purpose so every device lists them
+  function addPlayer(n){
+    try{
+      var k = lk(n), fp = lsJSON('frequent_players'); if(!Array.isArray(fp)) fp = [];
+      if(!fp.some(function(x){ return lk(x) === k; })){ fp.push(n); LS.setItem('frequent_players', JSON.stringify(fp)); }
+      var h = lsJSON('gn_hidden_names');
+      if(Array.isArray(h)){ var h2 = h.filter(function(x){ return lk(x) !== k; }); if(h2.length !== h.length) LS.setItem('gn_hidden_names', JSON.stringify(h2)); }
+      var m = lsJSON('fgh_players_at') || {};
+      if(!m[k] || m[k].h){ m[k] = { n: n, t: Date.now(), h: 0 }; LS.setItem('fgh_players_at', JSON.stringify(m)); noteWrite('fgh_players_at'); }
+    }catch(e){}
+  }
+  // A note in your inbox: returns the name linked back, if any
+  function readNote(own, x){
+    var m = /^(link|ack):([A-HJ-NP-Z2-9]{6})$/.exec(String(x.entry || '')); if(!m || m[2] === own.code) return null;
+    var code = m[2], L = linksGet(), keys = Object.keys(L.others);
+    if(m[1] === 'ack'){
+      var hit = false;
+      keys.forEach(function(k){ var r = L.others[k]; if(r && r.code === code && !r.hs){ r.hs = 1; hit = true; } });
+      if(hit) try{ LS.setItem('fgh_links', JSON.stringify(L)); }catch(e){}
+      return null;
+    }
+    sendNote(code, 'ack', own).catch(function(e){ console.warn('[links] ack failed', e); });
+    if(keys.some(function(k){ var r = L.others[k]; return r && !r.off && r.code === code; })) return null;   // already linked
+    var name = String(x.by || x.from || '').trim().slice(0, 40); if(!name || lk(name) === lk(myName())) return null;
+    var k = lk(name), cur = L.others[k];
+    if(cur && !cur.off && cur.code) return null;                          // that name is linked to someone else
+    if(cur && cur.off && (cur.at || 0) > (Number(x.at) || 0)) return null;   // you unlinked them since
+    L.others[k] = { name: name, code: code, them: name, at: Date.now(), hs: 1 };
+    linksSet(L); addPlayer(name);
+    return name;
+  }
   // Check your inbox, your linked people's avatars and rejections, and send anything waiting
   function linkPoll(force){
     if(!isPin() || _linkBusy) return Promise.resolve();
     if(!force && Date.now() - _lastPoll < 20000) return Promise.resolve();
     _linkBusy = true; _lastPoll = Date.now();
+    var newLinks = [];
     return ensureFirebase().then(function(){
       var l = linksGet(), jobs = [];
       if(l.own && l.own.code){
@@ -1368,6 +1423,8 @@
         jobs.push(linkCol().doc(own.code).collection('inbox').limit(100).get().then(function(q){
           var pend = [];
           return Promise.all(q.docs.map(function(d){
+            var x0 = d.data() || {};
+            if(x0.key === '_link' || x0.key === '_ack'){ var nm = readNote(own, x0); if(nm){ newLinks.push(nm); } return d.ref.delete(); }
             var it = received(own, d); if(!it || haveGame(it.key, it.entry._id || it.id)) return d.ref.delete();
             if(own.ask){ pend.push(it); return null; }
             if(!window.GameHistory) return null;   // filed by a page that keeps history
@@ -1398,10 +1455,15 @@
         }).catch(function(e){ console.warn('[links] read failed', r.code, e); }));
       });
       jobs.push(flushOutbox());
+      jobs.push(linkNotes());
       // scores that reached this device from your other devices: publish them too
       if(l.own && l.own.code && LS.getItem('fgh_link_pub') !== pubSig()) jobs.push(linkPublish());
       return Promise.all(jobs);
-    }).catch(function(e){ console.warn('[links] poll failed', e); }).then(function(){ _linkBusy = false; linkEvent(); });
+    }).catch(function(e){ console.warn('[links] poll failed', e); }).then(function(){
+      _linkBusy = false; linkEvent(newLinks);
+      // linked back just now: read their profile (avatar, scores) and send them the games you've had together
+      if(newLinks.length) setTimeout(function(){ linkPoll(true); }, 400);
+    });
   }
   // Someone said "Not me" to a game you recorded: it stays in your history, just no longer linked to them
   function unmarkRejected(code, rejected){

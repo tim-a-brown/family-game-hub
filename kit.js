@@ -1875,7 +1875,7 @@
         { label: 'Unlink ' + name, cls: 'btn-ghost', onClick: function () { setTimeout(function () { unlinkAsk(name, onDone); }, 320); } }] });
       return;
     }
-    node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code. On their phone: tap their avatar at the top of the home screen, then Share my profile. The games you’ve already played with ' + name + ' go to their history too.' }));
+    node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code. On their phone: tap their avatar at the top of the home screen, then Share my profile. The games you’ve already played with ' + name + ' go to their history too, and their phone links back to you on its own.' }));
     var inp = el('input', { class: 'input lk-code', maxlength: 7, placeholder: 'ABC123', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
     node.appendChild(inp);
     var msg = el('p', { class: 'lk-msg' }); node.appendChild(msg);
