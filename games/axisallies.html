@@ -25,7 +25,7 @@ html.aa-play #app{flex:1;min-height:0;max-width:none;width:100%;margin:0;padding
 html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 
 /* Phase bar: whose turn, which phase, how much money */
-.aa-top{display:flex;align-items:center;gap:8px;padding:4px calc(10px + var(--corner-x)) 6px;min-height:46px;}
+.aa-top{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:4px calc(10px + var(--corner-x)) 4px;min-height:46px;}
 .aa-top .rnd{width:30px;height:30px;flex:none;}
 .aa-top .who{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15;}
 .aa-top .who b{font-family:var(--display);font-weight:400;font-size:1.15rem;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -34,10 +34,33 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .aa-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:var(--w07);font-weight:900;font-size:.88rem;white-space:nowrap;font-variant-numeric:tabular-nums;}
 .aa-pill.ipc{background:linear-gradient(180deg,#f3d27a,#d8a93e);color:#3a2a05;box-shadow:inset 0 -2px 0 rgba(0,0,0,.18);}
 .aa-pill.ipc i{font-style:normal;font-size:.68rem;font-weight:900;opacity:.75;}
-.aa-steps{display:flex;gap:3px;padding:0 calc(10px + var(--corner-x)) 6px;}
-.aa-steps span{flex:1;height:22px;border-radius:6px;display:grid;place-items:center;font-size:.62rem;font-weight:900;text-transform:uppercase;letter-spacing:.03em;color:var(--text-3);background:var(--w05);white-space:nowrap;overflow:hidden;}
-.aa-steps span.on{background:var(--pc,var(--accent));color:var(--pci,#fff);}
-.aa-steps span.done{color:var(--text-2);}
+/* The six steps of a turn (standard rule names). Tap one for "what do I do now" */
+.aa-steps{display:flex;gap:3px;flex:1 1 100%;order:9;min-width:0;padding:0 0 2px;}
+.aa-steps button{flex:1;min-width:0;height:22px;border:0;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:3px;padding:0 4px;font-family:inherit;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.03em;color:var(--text-3);background:var(--w05);white-space:nowrap;overflow:hidden;}
+.aa-steps button i{font-style:normal;opacity:.55;font-size:.56rem;}
+.aa-steps button.on{background:var(--pc,var(--accent));color:var(--pci,#fff);box-shadow:0 0 0 1.5px rgba(255,255,255,.35);}
+.aa-steps button.on i{opacity:.85;}
+.aa-steps button.done{color:var(--text-2);background:var(--w09);}
+.aa-steps button.done i{display:none;}
+.aa-steps button.done::before{content:'';width:5px;height:8px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px);opacity:.7;flex:none;}
+@media (orientation:landscape) and (max-width:900px){
+  .aa-steps button{font-size:.56rem;letter-spacing:.01em;padding:0 3px;gap:2px;}
+  .aa-steps button:not(.on) i{display:none;}
+  .aa-steps button.on{flex:1.4;}
+}
+/* Narrow phones in landscape: numbers for the other steps, the name only on the current one */
+@media (orientation:landscape) and (max-width:760px){
+  .aa-steps button:not(.on){flex:0 0 24px;padding:0;}
+  .aa-steps button:not(.on) i{display:inline;font-size:.62rem;}
+  .aa-steps button:not(.on).done i{display:none;}
+  .aa-steps button:not(.on) span{display:none;}
+  .aa-steps button.on{flex:1 1 auto;}
+}
+@media (orientation:landscape) and (min-width:640px){
+  .aa-top{flex-wrap:nowrap;}
+  .aa-top .who{flex:0 1 auto;max-width:30%;min-width:96px;}
+  .aa-steps{flex:1 1 200px;order:0;padding:0;margin:0 4px;}
+}
 
 .aa-main{flex:1;min-height:0;display:flex;flex-direction:column;}
 /* The map sits in a wooden frame like a board on the table */
@@ -62,7 +85,11 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .t-hl.go{stroke:#ffe066;stroke-dasharray:6 4;animation:march 1s linear infinite;}
 .t-hl.atk{stroke:#ff5a4a;stroke-dasharray:6 4;animation:march 1s linear infinite;}
 .t-hl.bat{stroke:#ff5a4a;}
+/* Places that can act in this step pulse before anything is tapped */
+.t-hl.can{stroke:#fff;animation:canPulse 1.7s ease-in-out infinite;}
+.t-hl.can.gold{stroke:#ffe066;}
 @keyframes march{to{stroke-dashoffset:-20;}}
+@keyframes canPulse{0%,100%{stroke-opacity:.3;stroke-width:2;}50%{stroke-opacity:1;stroke-width:4.2;}}
 .lbl{pointer-events:none;}
 .lbl text{font-family:var(--font);font-weight:800;paint-order:stroke;stroke-linejoin:round;}
 .lbl .nm{font-size:8.5px;fill:#fff;stroke:rgba(0,0,0,.7);stroke-width:2.4px;letter-spacing:.02em;}
@@ -85,8 +112,33 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .aa-ph .icon-btn,.aa-iconbtn{width:38px;height:38px;border-radius:11px;border:0;background:var(--w07);color:var(--text);display:grid;place-items:center;flex:none;}
 .aa-ph .icon-btn .ico,.aa-iconbtn .ico{width:19px;height:19px;}
 .aa-ph .icon-btn:disabled{opacity:.3;}
-.aa-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:2px 12px 8px;}
-.aa-foot{display:flex;gap:8px;padding:6px 12px 10px;}
+.aa-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:2px 12px 12px;}
+.aa-foot{display:flex;gap:8px;padding:6px 12px 10px;position:relative;z-index:1;transition:box-shadow .2s;}
+.aa-side.more .aa-foot{box-shadow:0 -16px 16px -12px rgba(0,0,0,.7);}
+/* What to do now: one line that follows the player's progress through the step */
+.aa-now{display:flex;align-items:center;gap:8px;margin:0 12px 6px;padding:7px 10px;border-radius:12px;background:color-mix(in srgb,var(--pc,#ffc83d) 20%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--pc,#ffc83d) 60%,transparent);font-size:.84rem;font-weight:800;line-height:1.2;}
+.aa-now .ico{width:18px;height:18px;flex:none;}
+.aa-now.calm{background:var(--w05);box-shadow:none;color:var(--text-2);}
+.aa-now.flash{animation:nowFlash .5s ease-out;}
+@keyframes nowFlash{0%{transform:scale(.96);filter:brightness(1.6);}100%{transform:none;filter:none;}}
+/* Guided first turn: one pointer per step */
+.aa-tip{display:flex;align-items:flex-start;gap:8px;margin:2px 0 8px;padding:8px 6px 8px 10px;border-radius:12px;background:#fff7e0;color:#2a2a3a;font-size:.82rem;font-weight:700;line-height:1.3;}
+.aa-tip .ico{width:20px;height:20px;flex:none;color:#b8860b;margin-top:1px;}
+.aa-tip span{flex:1;}
+.aa-tip button{width:32px;height:32px;border:0;border-radius:8px;background:rgba(0,0,0,.06);color:#2a2a3a;display:grid;place-items:center;flex:none;margin:-4px 0;}
+.aa-tip button .ico{width:16px;height:16px;color:inherit;margin:0;}
+/* Unit card (tap any unit) */
+.ucard{display:flex;align-items:center;gap:12px;}
+.ucard .big{width:86px;height:62px;border-radius:14px;background:var(--pc,#5a5f5c);color:var(--pci,#fff);display:grid;place-items:center;flex:none;}
+.ucard .big svg{width:66px;height:44px;}
+.ucard .cost{font-size:1rem;}
+.ucard p{color:var(--text-2);font-weight:700;font-size:.9rem;margin:2px 0 0;}
+.ustats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0 8px;}
+.ustats div{background:var(--w06);border-radius:12px;padding:8px 4px;text-align:center;}
+.ustats b{display:block;font-family:var(--display);font-weight:400;font-size:1.5rem;line-height:1.1;}
+.ustats small{display:block;font-size:.66rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);}
+.ustats em{display:block;font-style:normal;font-size:.7rem;color:var(--text-2);font-weight:700;margin-top:2px;}
+.urow .uic{cursor:pointer;}
 .aa-foot .btn{flex:1;min-height:50px;}
 .aa-foot .btn.sm{flex:0 0 auto;}
 .aa-p{font-size:.86rem;color:var(--text-2);font-weight:600;margin:2px 0 8px;}
@@ -150,6 +202,24 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .aa-banner h2{font-family:var(--display);font-weight:400;font-size:1.9rem;color:var(--pc);text-shadow:0 1px 0 rgba(255,255,255,.6);}
 .aa-banner p{font-weight:800;margin:4px 0 2px;}
 .aa-banner small{display:block;color:#6b604c;font-weight:700;font-size:.82rem;margin-bottom:14px;}
+.aa-banner .step1{display:inline-flex;align-items:center;gap:6px;margin:0 auto 12px;padding:5px 11px;border-radius:999px;background:rgba(0,0,0,.07);color:#3a3326;font-size:.78rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;}
+/* Collect income: the last step of a turn, on its own card */
+.aa-banner .card.inc{max-height:calc(100dvh - 24px);display:flex;flex-direction:column;padding:14px 16px 14px;text-align:left;}
+.card.inc .ih{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.card.inc .ih .rnd{width:40px;height:40px;margin:0;}
+.card.inc .ih h2{font-size:1.45rem;line-height:1.05;}
+.card.inc .ih small{display:block;margin:0;font-size:.78rem;}
+.card.inc .why{font-size:.78rem;color:#6b604c;font-weight:700;margin:2px 0 8px;line-height:1.3;}
+.aa-inc{flex:1;min-height:0;overflow:auto;border-radius:12px;background:rgba(0,0,0,.05);padding:2px 10px;font-size:.84rem;font-weight:700;color:#3a3326;overscroll-behavior:contain;}
+.aa-inc div{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,.07);}
+.aa-inc div:last-child{border-bottom:0;}
+.aa-inc div span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.aa-inc b{font-variant-numeric:tabular-nums;color:#5a4210;}
+.aa-sum{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:10px 0 10px;font-weight:900;}
+.aa-sum b{font-family:var(--display);font-weight:400;font-size:1.7rem;color:var(--pc);}
+.aa-sum small{display:inline;margin:0;font-size:.8rem;}
+.aa-sum .bank{text-align:right;line-height:1.15;}
+.aa-sum .bank b{font-size:1.3rem;color:#2a2a3a;}
 
 /* Battle board */
 .bt{position:fixed;inset:0;z-index:320;display:flex;align-items:flex-end;justify-content:center;background:rgba(8,6,20,.55);opacity:0;transition:opacity .2s;}
@@ -186,12 +256,32 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .drow .die.hit{box-shadow:0 0 0 3px #ffc83d,0 0 12px rgba(255,200,61,.75),0 3px 4px rgba(0,0,0,.4);}
 .drow .die.miss{opacity:.55;filter:saturate(.3);}
 .bmsg{color:#fff;font-weight:800;font-size:.92rem;text-align:center;padding:8px 4px 2px;}
-.bcas{margin-top:8px;border-radius:12px;background:#fffaf0;color:#2a2a3a;padding:8px 10px;}
-.bcas h4{margin:0 0 6px;font-size:.92rem;font-weight:900;}
+.bcas{margin-top:8px;border-radius:12px;background:#fffaf0;color:#2a2a3a;padding:8px 10px;box-shadow:0 0 0 3px #ffc83d,0 6px 18px rgba(0,0,0,.35);}
+.bcas h4{margin:0 0 2px;font-size:1rem;font-weight:900;display:flex;align-items:center;gap:7px;}
+.bcas h4 .ico{width:20px;height:20px;flex:none;color:#b8860b;}
+.bcas .lead{font-size:.78rem;color:#6b604c;font-weight:700;margin:0 0 8px;line-height:1.3;}
+.bcas .groups{display:flex;flex-wrap:wrap;gap:6px 18px;}
+.bcas .pk{margin:0 0 4px;flex:0 1 auto;max-width:100%;}
+.bcas .pk:has(.urow){flex:1 1 100%;}
+.bcas .pk .pl{font-size:.74rem;font-weight:900;color:#6b604c;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;display:flex;justify-content:space-between;}
+.bcas .pieces{display:flex;flex-wrap:wrap;gap:6px;}
+.bcas .pc{position:relative;width:48px;height:42px;border:0;border-radius:10px;background:var(--pc);color:var(--pci);display:grid;place-items:center;box-shadow:0 2px 0 rgba(0,0,0,.25);transition:transform .15s,opacity .15s;}
+.bcas .pc svg{width:34px;height:24px;}
+.bcas .pc:active{transform:scale(.92);}
+.bcas .pc.x{opacity:.55;box-shadow:inset 0 0 0 3px #ff5a4a;transform:scale(.94);}
+.bcas .pc.x::after{content:'';position:absolute;inset:4px;background:linear-gradient(45deg,transparent 44%,#ff5a4a 44%,#ff5a4a 56%,transparent 56%),linear-gradient(-45deg,transparent 44%,#ff5a4a 44%,#ff5a4a 56%,transparent 56%);border-radius:6px;}
+.bcas .pc.hurt{box-shadow:inset 0 0 0 3px #ffb340;}
 .bcas .urow{background:rgba(0,0,0,.05);}
 .bcas .urow .un small{color:#6b604c;}
 .bcas .step button{background:rgba(0,0,0,.08);color:#2a2a3a;}
 .bcas .note{font-size:.76rem;color:#6b604c;font-weight:700;margin-top:6px;}
+.bt.cas .bodds{display:none;}
+.bt.cas .tray{padding:4px 8px 4px;min-height:0;}
+.bt.cas .drow{flex-direction:row;align-items:center;gap:6px;margin:3px 0;}
+.bt.cas .drow .die{--ds:22px;padding:2px;}
+.bt.cas .drow .dl{flex:0 0 auto;max-width:46%;}
+.bacts .wait{flex:1;display:flex;align-items:center;gap:8px;color:#fff;font-weight:800;font-size:.9rem;padding:6px 4px;}
+.bacts .wait .rnd{width:22px;height:22px;flex:none;}
 .bacts{display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px 10px;}
 .bacts .btn{flex:1 1 140px;min-height:50px;}
 .subsw{display:flex;align-items:center;gap:8px;margin-top:8px;color:#fff;font-weight:800;font-size:.84rem;}
@@ -205,12 +295,24 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .rules table.ut{width:100%;border-collapse:collapse;font-size:.82rem;margin:6px 0;}
 .rules table.ut th,.rules table.ut td{padding:3px 4px;text-align:center;border-bottom:1px solid var(--w08);}
 .rules table.ut th:first-child,.rules table.ut td:first-child{text-align:left;}
+.rules .now{border-radius:14px;padding:10px 12px 4px;background:color-mix(in srgb,var(--accent) 14%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--accent) 50%,transparent);margin:0 0 14px;}
+.rules .now h3{margin:0 0 4px;}
+.rules .now .ph{font-size:.74rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin:0 0 4px;}
+.rules .now ol{margin:4px 0 8px;}
+.rules details{margin:6px 0;border-radius:12px;background:var(--w05);padding:0 12px;}
+.rules details[open]{padding-bottom:8px;}
+.rules summary{font-weight:900;padding:11px 0;cursor:pointer;color:var(--accent);list-style:none;display:flex;align-items:center;gap:8px;}
+.rules summary::-webkit-details-marker{display:none;}
+.rules summary::before{content:'';width:7px;height:7px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(-45deg);flex:none;margin-left:2px;transition:transform .15s;}
+.rules details[open] summary::before{transform:rotate(45deg);}
+.rules details h3{display:none;}
+.rules details > ul,.rules details > ol,.rules details > p{margin-top:0;}
 
 /* iPad portrait: roomier panel */
 @media (min-width:700px) and (orientation:portrait){
   :root{--aa-panel-h:clamp(260px,33dvh,380px);}
   .aa-top .who b{font-size:1.3rem;}
-  .aa-steps span{font-size:.7rem;height:24px;}
+  .aa-steps button{font-size:.7rem;height:24px;}
 }
 /* Landscape with room: map left, panel right */
 @media (orientation:landscape) and (min-width:820px){
@@ -219,8 +321,8 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
   .aa-side{height:auto;width:340px;margin:0 calc(8px + var(--corner-x)) 8px 0;}
 }
 @media (orientation:landscape) and (max-height:500px){
-  .aa-steps{display:none;}
   .aa-top{min-height:38px;padding-bottom:2px;}
+  .aa-steps button{height:20px;}
   :root{--aa-panel-h:auto;}
   .aa-main{flex-direction:row;}
   .aa-side{height:auto;width:300px;margin:0 calc(6px + var(--corner-x)) 4px 0;}
@@ -716,8 +818,32 @@ function doMove(ids, dest, opt) {
 }
 
 // ── Phases ─────────────────────────────────────────────────────────────────
-var PHASES = [['buy', 'Buy'], ['cm', 'Attack'], ['bat', 'Battles'], ['ncm', 'Move'], ['mob', 'Place'], ['inc', 'Income']];
-var PH_TITLE = { buy: 'Purchase units', cm: 'Combat move', bat: 'Conduct combat', ncm: 'Noncombat move', mob: 'Mobilize new units' };
+// One vocabulary everywhere (strip, panel, rules, banners): the standard rule names for the six steps
+var PHASES = [['buy', 'Purchase'], ['cm', 'Combat move'], ['bat', 'Combat'], ['ncm', 'Noncombat'], ['mob', 'Mobilize'], ['inc', 'Income']];
+var PH_TITLE = { buy: 'Purchase units', cm: 'Combat move', bat: 'Conduct combat', ncm: 'Noncombat move', mob: 'Mobilize new units', inc: 'Collect income' };
+function phaseIdx(ph) { for (var i = 0; i < PHASES.length; i++) if (PHASES[i][0] === ph) return i; return 0; }
+// Short, plain stats for a unit ("Attack 1 · Defend 2 · Move 1") and its special rule
+function adm(k, full) {
+  var x = U[k];
+  if (k === 'ic') return full ? 'Builds new units where it stands' : 'Builds units';
+  if (k === 'aa') return full ? 'No attack · Shoots at planes · Move 1' : 'Shoots planes · Move 1';
+  return (full ? 'Attack ' : 'Att ') + x.a + (full ? ' · Defend ' : ' · Def ') + x.d + ' · Move ' + x.m;
+}
+var UNIT_NOTE = {
+  inf: 'Cheap and steady. The backbone of every army: good on defence, better on attack when artillery is with it.',
+  art: 'Each artillery lets one infantry attack on 2 instead of 1.',
+  arm: 'Moves 2. Can blitz through an empty enemy territory and keep going.',
+  aa: 'When planes attack its territory it fires once at up to 3 of them before the battle; a 1 hits. Can’t move in a combat move.',
+  ftr: 'Flies 4. Must land where you held at the start of the turn, or on an aircraft carrier.',
+  bmb: 'Flies 6. Can bomb an enemy factory instead of fighting (each surviving bomber rolls a die of damage).',
+  sub: 'Fires first in a sea battle unless an enemy destroyer is there. Can dive instead of fighting. Can’t hit planes.',
+  tra: 'Carries 2 infantry, or 1 infantry plus 1 other land unit. No attack or defence; lost when left alone with enemy warships.',
+  dd: 'Cancels every submarine trick: no surprise strike, no diving, and your planes can hit subs.',
+  ca: 'A solid warship. Can bombard the beach once when your troops land from its sea zone.',
+  cv: 'Carries 2 fighters. Fighters can land on it at sea.',
+  bb: 'Takes 2 hits to sink and is repaired at the end of every turn. Can bombard a beach when troops land from its sea zone.',
+  ic: 'Costs 15. Build it on a territory worth 1 or more that you held all turn. Places up to the territory’s value in units each turn.'
+};
 function buyCost() {
   var n = 0; for (var k in S.buy) n += S.buy[k] * U[k].c;
   for (var t in S.rep) n += S.rep[t];
@@ -808,18 +934,56 @@ function endNcm(force) {
   S.units.forEach(function (u) { u.dv = 0; });
   setPhase('mob');
 }
+// Collect income: the sixth step. The money lands at once; the screen that shows where it came from
+// is dismissed before the next power's turn begins (a reload during it just moves on).
 function endMob() {
-  var p = cur(), inc = income(p);
+  var p = cur(), inc = income(p), before = S.ipc[p];
   S.ipc[p] += inc;
   stat(p, 'income', inc);
-  if (inc) Kit.callout('+' + inc + ' IPCs', PW[p].col);
-  if (!holdsCapital(p) && capitalOf(p) != null) Kit.toast(pname(p) + ' can’t collect income while its capital is held');
   // Battleships are repaired at the end of every turn
   S.units.forEach(function (u) { if (u.h) u.h = 0; });
   S.incomeHist = S.incomeHist || [];
-  nextTurn();
+  S.phase = 'inc'; S.B = null; S.bl = [];
+  ui.sel = -1; ui.pick = {}; ui.preview = null; ui.bankSel = null;
+  save();
+  renderAll();
+  showIncome(p, inc, before, function () { if (S && S.phase === 'inc' && cur() === p) nextTurn(); });
+}
+function incomeRows(p) {
+  var rows = [];
+  for (var t = 0; t < NT; t++) if (M.on[t] && S.own[t] === p && ipcOf(t) > 0) rows.push({ name: tname(t), n: ipcOf(t) });
+  rows.sort(function (a, b) { return b.n - a.n || (a.name < b.name ? -1 : 1); });
+  if (S.mode === 'skirm' && p === 'uk') rows.push({ name: 'Empire overseas', n: 10 });
+  return rows;
+}
+function showIncome(p, inc, before, done) {
+  var seat = seatOf(p), human = !seat.cpu, lost = !holdsCapital(p) && capitalOf(p) != null;
+  closeBanner();
+  var list = el('div', { class: 'aa-inc' });
+  if (lost) list.appendChild(el('div', { html: '<span>Capital in enemy hands: no income</span><b>0</b>' }));
+  else incomeRows(p).forEach(function (r) { list.appendChild(el('div', { html: '<span>' + esc(r.name) + '</span><b>' + r.n + '</b>' })); });
+  var card = el('div', { class: 'card paper inc', style: { '--pc': p === 'de' ? '#3d423f' : PW[p].col } }, [
+    el('div', { class: 'ih' }, [el('span', { html: roundelSvg(p) }).firstChild, el('div', null, [el('h2', { text: 'Collect income' }), el('small', { text: pname(p) + ' · step 6 of 6' })])]),
+    el('p', { class: 'why', text: lost ? pname(p) + ' can’t collect while an enemy holds its capital.' : 'IPCs are the money of the game. Every territory pays its value at the end of its owner’s turn.' }),
+    list,
+    el('div', { class: 'aa-sum' }, [el('span', { html: '<b>+' + inc + '</b> <small>IPCs</small>' }), el('span', { class: 'bank', html: '<small>' + before + ' → </small><b>' + (before + inc) + '</b><br><small>to spend next turn</small>' })])
+  ]);
+  var closed = false;
+  function finish() { if (closed) return; closed = true; closeBanner(); done(); }
+  if (human) card.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Done · next power', onclick: function () { Kit.sfx('chip'); Kit.haptic('light'); finish(); } }));
+  bannerEl = el('div', { class: 'aa-banner' }, [card]);
+  document.body.appendChild(bannerEl);
+  requestAnimationFrame(function () { bannerEl && bannerEl.classList.add('show'); });
+  if (inc) Kit.sfx('chip');
+  if (!human) setTimeout(finish, spd(S.opt.speed === 'fast' ? 900 : 1500));
 }
 function nextTurn() {
+  // The guided first turn ends once every player at the table has had a turn; later games start without it
+  if (S.opt.guide && !isCpu(cur())) {
+    S.guideDone = S.guideDone || {}; S.guideDone[S.ctl[cur()]] = 1;
+    if (S.seats.every(function (s, i) { return s.cpu || S.guideDone[i]; })) S.opt.guide = false;
+    try { localStorage.setItem('aa_guide_seen', '1'); var gs = JSON.parse(localStorage.getItem('gn_setup_' + KEY) || '{}'); gs.options = gs.options || {}; gs.options.guide = 'off'; localStorage.setItem('gn_setup_' + KEY, JSON.stringify(gs)); } catch (e) {}
+  }
   S.pi++;
   if (S.pi >= S.powers.length) {
     S.pi = 0;
@@ -1313,7 +1477,7 @@ function buildBoard() {
   R.hint = el('div', { class: 'aa-hint' }, [el('span')]);
   var wrap = el('div', { class: 'aa-mapwrap wood' }, [R.map, R.zoom, R.hint]);
   R.side = el('div', { class: 'aa-side' });
-  app.appendChild(R.top); app.appendChild(R.steps);
+  app.appendChild(R.top);
   app.appendChild(el('div', { class: 'aa-main' }, [wrap, R.side]));
   // SVG layers
   var s = '<svg xmlns="' + SVGNS + '"><g id="aaWorld">';
@@ -1495,6 +1659,11 @@ function paintMap() {
     var t = +k, hostile = S.phase === 'cm' && !tg[k].board && (enemiesAt(t, p).length || (!isSea(t) && foe(S.own[t], p)));
     if (GEO[t]) h += '<path class="t-hl ' + (tg[k].place ? 'go' : hostile ? 'atk' : 'go') + '" d="' + GEO[t] + '"/>';
   }
+  // Before a tap: every place that can act pulses (quiet once units are picked and targets show)
+  if (!Object.keys(tg).length && !ui.preview) {
+    var can = actPlaces(), gold = S.phase === 'buy' || S.phase === 'mob';
+    for (var c in can) { c = +c; if (c !== sel && GEO[c]) h += '<path class="t-hl can' + (gold ? ' gold' : '') + '" d="' + GEO[c] + '"/>'; }
+  }
   if (sel >= 0 && GEO[sel]) h += '<path class="t-hl sel" d="' + GEO[sel] + '"/>';
   R.gHl.innerHTML = h;
   paintLabels();
@@ -1597,8 +1766,8 @@ function setHint(msg) {
     var p = cur();
     if (!S || S.over) s = '';
     else if (isCpu(p) || ui.preview) s = '';
-    else if (S.phase === 'mob' && ui.bankSel) s = 'Tap a glowing place to put a ' + U[ui.bankSel].n.toLowerCase() + ' there';
-    else if ((S.phase === 'cm' || S.phase === 'ncm') && Object.keys(currentTargets()).length) s = 'Tap where they should go';
+    else if (S.phase === 'mob' && ui.bankSel) s = 'Tap a gold place for the next ' + U[ui.bankSel].n.toLowerCase();
+    else if ((S.phase === 'cm' || S.phase === 'ncm') && Object.keys(currentTargets()).length) s = S.phase === 'cm' ? 'Tap a red place to attack it' : 'Tap a gold place to move there';
     else s = '';
   }
   R.hint.firstChild.textContent = s;
@@ -1607,7 +1776,7 @@ function setHint(msg) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Phase bar and action panel
 // ═══════════════════════════════════════════════════════════════════════════
-function renderAll() { if (!S || !R.top) return; renderTop(); paintMap(); renderPanel(); }
+function renderAll() { if (!S || !R.top) return; defaultBankSel(); renderTop(); paintMap(); renderPanel(); }
 function renderTop() {
   var p = cur(), seat = seatOf(p);
   R.top.innerHTML = '';
@@ -1618,15 +1787,113 @@ function renderTop() {
     el('small', { html: (seat.cpu ? Kit.icon('bot') + ' ' : '') + esc(seat.name) + ' · Round ' + S.round })
   ]));
   R.top.appendChild(el('span', { class: 'aa-pill', title: 'Victory cities: Axis – Allies', html: '<svg viewBox="0 0 24 24" width="15" height="15"><use href="#vc-star" width="24" height="24"/></svg>' + vcCount('X') + '–' + vcCount('A') }));
-  R.top.appendChild(el('span', { class: 'aa-pill ipc', html: '<i>IPC</i>' + (S.ipc[p] - (S.phase === 'buy' ? buyCost() : 0)) }));
+  R.top.appendChild(el('span', { class: 'aa-pill ipc', title: 'IPCs: your money', 'aria-label': 'IPCs, your money', html: '<i>IPC</i>' + (S.ipc[p] - (S.phase === 'buy' ? buyCost() : 0)) }));
   R.steps.innerHTML = '';
   R.steps.style.setProperty('--pc', PW[p].col); R.steps.style.setProperty('--pci', PW[p].ink);
-  var idx = PHASES.map(function (x) { return x[0]; }).indexOf(S.phase);
-  PHASES.forEach(function (ph, i) { R.steps.appendChild(el('span', { class: i === idx ? 'on' : i < idx ? 'done' : '', text: ph[1] })); });
+  var idx = phaseIdx(S.phase);
+  PHASES.forEach(function (ph, i) {
+    R.steps.appendChild(el('button', { type: 'button', class: i === idx ? 'on' : i < idx ? 'done' : '', 'aria-label': 'Step ' + (i + 1) + ' of 6: ' + PH_TITLE[ph[0]] + (i === idx ? ' (now)' : ''), title: PH_TITLE[ph[0]],
+      html: '<i>' + (i + 1) + '</i><span>' + esc(ph[1]) + '</span>', onclick: function () { Kit.sfx('tap'); Kit.rules(); } }));
+  });
+  R.top.appendChild(R.steps);
+  document.documentElement.setAttribute('data-aa-ph', S.phase);
+}
+// Places that can act in this step, before anything is tapped (cached per state version)
+var canCache = { v: null, r: {} };
+function actPlaces() {
+  if (!S || S.over || isCpu(cur())) return {};
+  var key = S.v + ':' + S.phase;
+  if (canCache.v === key) return canCache.r;
+  var out = {}, p = cur(), t;
+  if (S.phase === 'cm' || S.phase === 'ncm') {
+    for (t = 0; t < NT; t++) {
+      if (!M.on[t]) continue;
+      var gs = moveGroups(t);
+      for (var i = 0; i < gs.length; i++) if (Object.keys(groupTargets(gs[i].ids.slice(0, 1), S.phase)).length) { out[t] = 1; break; }
+    }
+  } else if (S.phase === 'mob') {
+    for (var k in S.bank[p]) if (S.bank[p][k]) { var sp = placeSpots(k); for (var s in sp) out[s] = 1; }
+  } else if (S.phase === 'buy') {
+    myFactories(p).forEach(function (f) { if (factoryCap(f) > 0) out[f] = 1; });
+  }
+  canCache.v = key; canCache.r = out;
+  return out;
+}
+function canActCount() { return Object.keys(actPlaces()).length; }
+// Has the player done anything in this step yet? (every action pushes an undo entry)
+function acted() { return undoStack.length > 0; }
+// Mobilize: pick the first unit that can be placed so the map glows on the first draw
+function defaultBankSel() {
+  if (!S || S.phase !== 'mob' || isCpu(cur())) return;
+  var bank = S.bank[cur()];
+  if (ui.bankSel && !bank[ui.bankSel]) ui.bankSel = null;
+  if (!ui.bankSel) ui.bankSel = BUYABLE.filter(function (k) { return bank[k] && Object.keys(placeSpots(k)).length; })[0] || null;
+}
+// What to do now: one short line under the panel title that follows the player through the step.
+// Design first: it names the thing that glows on the map, not the rule behind it.
+var lastNow = '';
+function nowLine() {
+  var p = cur(), ph = S.phase, n = canActCount(), picked = pickedIds().length, tg = Object.keys(currentTargets()).length;
+  var t = '', calm = false, ic = 'hand';
+  if (ph === 'buy') {
+    if (S.ipc[p] < 3 && !Object.keys(S.dmg).some(function (d) { return S.own[+d] === p; })) { t = 'Not enough IPCs to buy anything. Move on'; calm = true; ic = 'coins'; }
+    else if (!buyCost()) { t = 'Tap + to buy units for your glowing factories'; ic = 'coins'; }
+    else { t = 'Buy more, or confirm the order'; ic = 'coins'; }
+  } else if (ph === 'cm') {
+    if (ui.preview) t = 'Confirm the attack, or cancel';
+    else if (ui.sel >= 0 && moveGroups(ui.sel).length) {
+      if (!picked) t = 'Pick the units to send';
+      else if (tg) t = 'Tap a red place to attack it';
+      else t = 'These units can’t reach a fight from here';
+    } else if (!n && !battlePlaces().length) { t = 'No units can attack this turn. Move on'; calm = true; }
+    else if (battlePlaces().length) { t = 'Plan more attacks, or go fight them'; }
+    else t = 'Tap a glowing place to attack from it';
+  } else if (ph === 'bat') {
+    var left = S.bl.filter(function (b) { return !b.done; }).length;
+    if (!left) { t = 'All battles fought. Move on'; calm = true; }
+    else t = left === 1 ? 'Fight the battle: tap it' : 'Fight each battle in turn: tap the next one';
+    ic = 'dice';
+  } else if (ph === 'ncm') {
+    var st = strandedAir(p).length;
+    if (ui.sel >= 0 && moveGroups(ui.sel).length) {
+      if (!picked) t = 'Pick the units to move';
+      else if (tg) t = 'Tap a gold place to move them there';
+      else t = 'Nowhere for these units to go together';
+    } else if (st) t = st + (st === 1 ? ' plane has' : ' planes have') + ' to land: tap it';
+    else if (!n) { t = 'Nothing left to move. Move on'; calm = true; }
+    else if (acted()) t = 'Move more, or finish the step';
+    else t = 'Tap a glowing place to move units from it';
+  } else if (ph === 'mob') {
+    if (!bankLeft(p)) { t = 'Nothing to place. Collect your income'; calm = true; ic = 'coins'; }
+    else if (!n) { t = 'No room to place more this turn. Collect your income'; calm = true; ic = 'coins'; }
+    else if (ui.bankSel) t = 'Tap a gold place for the next ' + U[ui.bankSel].n.toLowerCase();
+    else t = 'Choose a unit, then tap a gold place';
+  } else if (ph === 'inc') { t = 'Collecting income'; calm = true; ic = 'coins'; }
+  var node = el('div', { class: 'aa-now' + (calm ? ' calm' : '') + (t !== lastNow ? ' flash' : ''), role: 'status', html: Kit.icon(ic) + '<span>' + esc(t) + '</span>' });
+  lastNow = t;
+  return node;
+}
+// Guided first turn: one pointer per step the first time through, dismissed with a tap
+var GUIDE = {
+  buy: 'A turn has six steps, and it starts with shopping. Whatever you buy now arrives at your factories at step 5.',
+  cm: 'Attacks come first. Only move the units you want to fight with; everything else moves in step 4.',
+  bat: 'Each attack is a battle. Every unit rolls one die; a roll at or under its number is a hit.',
+  ncm: 'Now move the units that didn’t fight, and land your planes in territories you held at the start of the turn.',
+  mob: 'Your purchases arrive. A factory places up to its territory’s value in units; ships go in the sea next to it.'
+};
+function guideOn() { return !!(S && S.opt.guide && !isCpu(cur())); }
+function tipFor(ph) {
+  if (!guideOn() || !GUIDE[ph]) return null;
+  S.guide = S.guide || {};
+  var gk = S.ctl[cur()] + ':' + ph;
+  if (S.guide[gk]) return null;
+  return el('div', { class: 'aa-tip', role: 'note' }, [el('span', { html: Kit.icon('lightbulb') }).firstChild, el('span', { text: GUIDE[ph] }),
+    el('button', { type: 'button', 'aria-label': 'Got it', html: Kit.icon('close'), onclick: function (e) { e.stopPropagation(); S.guide[gk] = 1; Kit.sfx('tap'); save(); renderPanel(); } })]);
 }
 function panelShell(title, opts) {
   opts = opts || {};
   R.side.innerHTML = '';
+  R.side.style.setProperty('--pc', PW[cur()].col); R.side.style.setProperty('--pci', PW[cur()].ink);
   var head = el('div', { class: 'aa-ph' }, [el('h2', { text: title })]);
   if (opts.undo !== false) {
     var ub = el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Undo', html: Kit.icon('undo'), onclick: function () { undo(); } });
@@ -1635,9 +1902,18 @@ function panelShell(title, opts) {
   }
   head.appendChild(el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'How to play', html: Kit.icon('help'), onclick: function () { Kit.rules(); } }));
   var body = el('div', { class: 'aa-body' }), foot = el('div', { class: 'aa-foot' });
-  R.side.appendChild(head); R.side.appendChild(body); R.side.appendChild(foot);
+  R.side.appendChild(head);
+  if (opts.now !== false && !isCpu(cur())) R.side.appendChild(nowLine());
+  R.side.appendChild(body); R.side.appendChild(foot);
+  var tip = opts.tip !== false ? tipFor(S.phase) : null;
+  if (tip) body.appendChild(tip);
+  // A shadow over the button says "more below" while the list scrolls under it
+  function more() { R.side.classList.toggle('more', body.scrollHeight - body.scrollTop - body.clientHeight > 4); }
+  body.addEventListener('scroll', more, { passive: true });
+  requestAnimationFrame(more);
   return { body: body, foot: foot };
 }
+// The step's main button: quiet until the player has acted, or when there is nothing to do here
 function primary(foot, label, fn, o) {
   o = o || {};
   var b = el('button', { type: 'button', class: 'btn ' + (o.cls || 'btn-primary'), html: label, onclick: function () { if (busy) return; Kit.sfx('tap'); Kit.haptic('light'); fn(); } });
@@ -1645,11 +1921,13 @@ function primary(foot, label, fn, o) {
   foot.appendChild(b);
   return b;
 }
+function stepBtn(foot, label, fn, loud) { return primary(foot, label, fn, { cls: loud ? 'btn-primary' : 'btn-soft' }); }
 function renderPanel() {
   if (!S || !R.side) return;
   var p = cur();
   if (S.over) { var sh = panelShell('Game over', { undo: false }); sh.body.appendChild(el('p', { class: 'aa-p', text: S.overMsg || '' })); primary(sh.foot, 'New game', function () { showSetup(); }); return; }
   if (isCpu(p)) return cpuPanel();
+  if (S.phase === 'inc') { var si = panelShell(PH_TITLE.inc, { undo: false, tip: false }); si.body.appendChild(el('p', { class: 'aa-p', text: 'Every territory you hold pays its value.' })); return; }
   if (S.phase === 'buy') return buyPanel();
   if (S.phase === 'cm' || S.phase === 'ncm') return movePanel();
   if (S.phase === 'bat') return battlePanel();
@@ -1679,13 +1957,31 @@ function tinfoCard(t) {
     !isSea(t) && T[2] ? el('span', { class: 'ipcv', text: String(T[2]) }) : null
   ]);
 }
+// Tap any unit anywhere for its card: name, cost and what its numbers mean in plain words
+function unitCard(k, o) {
+  var x = U[k], p = (o && o.p) || cur();
+  Kit.sfx('pop');
+  var node = el('div', null, [
+    el('div', { class: 'ucard', style: { '--pc': PW[p].col, '--pci': PW[p].ink } }, [
+      el('span', { class: 'big', html: unitSvg(k) }),
+      el('div', null, [el('span', { class: 'cost', text: 'Costs ' + x.c + ' IPCs' }), el('p', { text: k === 'ic' ? 'A factory. Not a unit that moves or fights.' : (x.dom === 'L' ? 'Land unit' : x.dom === 'A' ? 'Aircraft' : 'Ship') + (k === 'bb' ? ' · takes 2 hits' : k === 'cv' ? ' · holds 2 fighters' : k === 'tra' ? ' · carries 2' : '') })])
+    ]),
+    k === 'ic' ? el('p', { class: 'aa-p', text: 'Places up to the territory’s value in new units each turn. Can be bombed; damage lowers that until repaired.' }) : el('div', { class: 'ustats' }, [
+      el('div', { html: '<b>' + (k === 'aa' ? '–' : x.a) + '</b><small>Attack</small><em>' + (k === 'aa' ? 'can’t attack' : x.a ? 'hits on ' + x.a + (x.a > 1 ? ' or less' : '') : 'can’t hit') + '</em>' }),
+      el('div', { html: '<b>' + (k === 'aa' ? '–' : x.d) + '</b><small>Defend</small><em>' + (k === 'aa' ? 'shoots planes' : x.d ? 'hits on ' + x.d + (x.d > 1 ? ' or less' : '') : 'can’t hit') + '</em>' }),
+      el('div', { html: '<b>' + x.m + '</b><small>Move</small><em>' + (x.m === 1 ? 'one space' : x.m + ' spaces') + '</em>' })
+    ]),
+    el('p', { class: 'aa-p', text: UNIT_NOTE[k] || '' })
+  ]);
+  Kit.sheet({ title: x.n, node: node, actions: [{ label: 'Got it', cls: 'btn-soft' }] });
+}
 function unitList(t, filter) {
   var box = el('div', { class: 'urows' });
   stackGroups(t).forEach(function (g) {
     if (filter && !filter(g)) return;
-    box.appendChild(el('div', { class: 'urow', style: { '--pc': PW[g.o].col } }, [
+    box.appendChild(el('div', { class: 'urow', style: { '--pc': PW[g.o].col }, onclick: function () { unitCard(g.k, { p: g.o }); } }, [
       el('span', { class: 'uic', style: { background: PW[g.o].col, color: PW[g.o].ink }, html: unitSvg(g.k) }),
-      el('span', { class: 'un' }, [el('b', { text: (g.n > 1 ? U[g.k].p : U[g.k].n) }), el('small', { text: PW[g.o].short + (g.cargo ? ' · on a transport' : '') + (g.hurt ? ' · damaged' : '') + ' · A' + U[g.k].a + ' D' + U[g.k].d + ' M' + U[g.k].m })]),
+      el('span', { class: 'un' }, [el('b', { text: (g.n > 1 ? U[g.k].p : U[g.k].n) }), el('small', { text: PW[g.o].short + (g.cargo ? ' · on a transport' : '') + (g.hurt ? ' · damaged' : '') + ' · ' + adm(g.k) })]),
       el('span', { class: 'cnt', text: '×' + g.n })
     ]));
   });
@@ -1706,12 +2002,12 @@ function icSites(p) {
   return out;
 }
 function buyPanel() {
-  var p = cur(), sh = panelShell('Buy units');
+  var p = cur(), sh = panelShell(PH_TITLE.buy);
   var left = S.ipc[p] - buyCost(), cap = placeCapacity(p);
   var bought = 0; for (var k in S.buy) if (k !== 'ic') bought += S.buy[k];
   var banked = 0; for (var b in S.bank[p]) if (b !== 'ic') banked += S.bank[p][b];
   if (ui.sel >= 0) { sh.body.appendChild(tinfoCard(ui.sel)); sh.body.appendChild(unitList(ui.sel)); sh.body.appendChild(el('div', { class: 'aa-sec', text: 'Shop' })); }
-  sh.body.appendChild(el('p', { class: 'aa-p', html: '<b>' + left + '</b> IPCs left to spend. Your factories can place <b>' + cap + '</b> units this turn' + (banked ? ' (plus ' + banked + ' waiting from before)' : '') + '.' + (bought + banked > cap ? ' <b style="color:#ffb3a8">Extra units will wait for next turn.</b>' : '') }));
+  sh.body.appendChild(el('p', { class: 'aa-p', html: '<b>' + left + '</b> IPCs (your money) to spend. Your factories can place <b>' + cap + '</b> units this turn' + (banked ? ' (plus ' + banked + ' waiting from before)' : '') + '.' + (bought + banked > cap ? ' <b style="color:#ffb3a8">Extra units will wait for next turn.</b>' : '') }));
   if (!holdsCapital(p) && capitalOf(p) != null) sh.body.appendChild(el('p', { class: 'aa-p', html: '<b style="color:#ffb3a8">Your capital is in enemy hands.</b> You get no income until it is freed.' }));
   // Repairs
   Object.keys(S.dmg).forEach(function (t) {
@@ -1726,7 +2022,7 @@ function buyPanel() {
     var navalOk = k === 'ic' || U[k].dom !== 'S' || myFactories(p).some(function (f) { return coastal(f); });
     if (!navalOk) return;
     var n = S.buy[k] || 0, x = U[k];
-    var sub = k === 'ic' ? 'Builds units where you place it' : 'A' + x.a + ' D' + x.d + ' M' + x.m + (k === 'bb' ? ' · 2 hits' : k === 'cv' ? ' · holds 2 fighters' : k === 'tra' ? ' · carries 2' : k === 'aa' ? ' · shoots planes' : '');
+    var sub = k === 'ic' ? 'Builds units where you place it' : adm(k) + (k === 'bb' ? ' · 2 hits' : k === 'cv' ? ' · holds 2 fighters' : k === 'tra' ? ' · carries 2' : '');
     rows.appendChild(shopRow(k, x.n, sub, x.c, n, function (d) {
       var v = Math.max(0, n + d);
       if (k === 'ic') v = Math.min(v, icSites(p).length);
@@ -1735,16 +2031,18 @@ function buyPanel() {
   });
   sh.body.appendChild(rows);
   if (bought) sh.body.appendChild(el('div', { class: 'qbtns' }, [el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Clear order', onclick: function () { pushUndo(); S.buy = {}; save(); renderAll(); } })]));
-  primary(sh.foot, bought || Object.keys(S.rep).length ? 'Buy · ' + buyCost() + ' IPCs' : 'Buy nothing', function () { pushUndo(); endBuy(); Kit.sfx('chip'); afterPhase(); });
+  var spending = bought || Object.keys(S.rep).length > 0, broke = S.ipc[p] < 3 && !Object.keys(S.dmg).some(function (d) { return S.own[+d] === p && S.dmg[d]; });
+  stepBtn(sh.foot, spending ? 'Buy · ' + buyCost() + ' IPCs' : 'Buy nothing', function () { pushUndo(); endBuy(); Kit.sfx('chip'); afterPhase(); }, spending || broke);
 }
 function shopRow(k, name, sub, cost, n, change, canAdd) {
   var p = cur();
   var minus = el('button', { type: 'button', 'aria-label': 'Less', text: '−', onclick: function () { pushUndo(); change(-1); Kit.sfx('tap'); save(); renderAll(); } });
   var plus = el('button', { type: 'button', 'aria-label': 'More', text: '+', onclick: function () { pushUndo(); change(1); Kit.sfx('chip'); Kit.haptic('light'); save(); renderAll(); } });
   minus.disabled = !n; plus.disabled = !canAdd;
+  var open = function (e) { e.stopPropagation(); unitCard(k); };
   return el('div', { class: 'urow' + (n ? ' on' : ''), style: { '--pc': PW[p].col } }, [
-    el('span', { class: 'uic', style: { background: PW[p].col, color: PW[p].ink }, html: unitSvg(k) }),
-    el('span', { class: 'un' }, [el('b', { text: name }), el('small', { text: sub })]),
+    el('span', { class: 'uic', role: 'button', 'aria-label': 'About ' + name, style: { background: PW[p].col, color: PW[p].ink }, html: unitSvg(k), onclick: open }),
+    el('span', { class: 'un', onclick: open }, [el('b', { text: name }), el('small', { text: sub })]),
     el('span', { class: 'cost', text: cost + '' }),
     el('span', { class: 'step' }, [minus, el('output', { text: String(n) }), plus])
   ]);
@@ -1797,7 +2095,7 @@ function currentTargets() {
 }
 function movePanel() {
   var p = cur(), ph = S.phase;
-  var sh = panelShell(ph === 'cm' ? 'Combat move' : 'Noncombat move');
+  var sh = panelShell(PH_TITLE[ph]);
   var b = sh.body;
   if (ui.preview) return previewCard(sh);
   if (ui.sel >= 0) {
@@ -1811,7 +2109,7 @@ function movePanel() {
         var plus = el('button', { type: 'button', 'aria-label': 'More', text: '+', onclick: function (e) { e.stopPropagation(); ui.pick[g.key] = Math.min(g.ids.length, n + 1); Kit.sfx('tap'); renderAll(); } });
         minus.disabled = !n; plus.disabled = n >= g.ids.length;
         rows.appendChild(el('div', { class: 'urow' + (n ? ' on' : ''), style: { '--pc': PW[p].col }, onclick: function () { ui.pick[g.key] = n ? 0 : g.ids.length; Kit.sfx('tap'); renderAll(); } }, [
-          el('span', { class: 'uic', style: { background: PW[p].col, color: PW[p].ink }, html: unitSvg(g.k) }),
+          el('span', { class: 'uic', role: 'button', 'aria-label': 'About ' + U[g.k].n, style: { background: PW[p].col, color: PW[p].ink }, html: unitSvg(g.k), onclick: function (e) { e.stopPropagation(); unitCard(g.k); } }),
           el('span', { class: 'un' }, [el('b', { text: (g.ids.length > 1 ? U[g.k].p : U[g.k].n) + ' (' + g.ids.length + ')' }), el('small', { text: g.sub })]),
           el('span', { class: 'step' }, [minus, el('output', { text: String(n) }), plus])
         ]));
@@ -1830,7 +2128,7 @@ function movePanel() {
       if (ph === 'ncm' && stackGroups(ui.sel).some(function (g) { return g.o === p; })) b.appendChild(el('p', { class: 'aa-p', style: { marginTop: '8px' }, text: 'Units that moved to attack or fought this turn stay put. Planes can still fly home.' }));
     }
   } else {
-    b.appendChild(el('p', { class: 'aa-p', html: ph === 'cm' ? 'Tap a place with your units, choose units, then tap a <b style="color:#ff8a7a">red</b> place to attack it. Ships can also move to load or support a landing.' : 'Move units that didn’t fight into your own territories, and land your planes.' }));
+    b.appendChild(el('p', { class: 'aa-p', html: ph === 'cm' ? 'Ships can also move to load troops or support a landing.' : 'Units that attacked stay put. Planes must land where you held at the start of the turn.' }));
     if (ph === 'cm') {
       var bp = battlePlaces();
       if (bp.length) {
@@ -1849,12 +2147,17 @@ function movePanel() {
       }
     }
   }
-  if (ph === 'cm') primary(sh.foot, battlePlaces().length ? 'Done · to battles' : 'Done attacking', function () { pushUndo(); setPhase('bat'); afterPhase(); });
-  else primary(sh.foot, 'Done moving', function () {
-    var st2 = strandedAir(p);
-    if (st2.length) Kit.confirm(st2.length + (st2.length === 1 ? ' plane has' : ' planes have') + ' nowhere to land', { ok: 'End anyway', danger: true, body: 'Planes must end in a territory you held at the start of your turn (or fighters on a carrier). These will be lost.' }).then(function (ok) { if (ok) { endNcm(); afterPhase(); } });
-    else { endNcm(); afterPhase(); }
-  });
+  if (ph === 'cm') {
+    var planned = battlePlaces().length, none = !canActCount() && !planned;
+    stepBtn(sh.foot, planned ? 'Fight ' + (planned === 1 ? 'the battle' : planned + ' battles') : none ? 'Continue' : 'Skip attacks', function () { pushUndo(); setPhase('bat'); afterPhase(); }, planned > 0 || none);
+  } else {
+    var noneN = !canActCount() && !strandedAir(p).length;
+    stepBtn(sh.foot, noneN ? 'Continue' : 'Done moving', function () {
+      var st2 = strandedAir(p);
+      if (st2.length) Kit.confirm(st2.length + (st2.length === 1 ? ' plane has' : ' planes have') + ' nowhere to land', { ok: 'End anyway', danger: true, body: 'Planes must end in a territory you held at the start of your turn (or fighters on a carrier). These will be lost.' }).then(function (ok) { if (ok) { endNcm(); afterPhase(); } });
+      else { endNcm(); afterPhase(); }
+    }, acted() || noneN);
+  }
 }
 function battleRow(b, onclick, status) {
   var odds = b.k === 'sbr' ? null : battleOdds(b.t);
@@ -1904,10 +2207,10 @@ function previewCard(sh) {
 
 // ── Battles list ────────────────────────────────────────────────────────────
 function battlePanel() {
-  var sh = panelShell('Battles', { undo: false });
+  var sh = panelShell(PH_TITLE.bat, { undo: false });
   if (!S.bl.length) sh.body.appendChild(el('p', { class: 'aa-p', text: 'No battles this turn.' }));
   else {
-    sh.body.appendChild(el('p', { class: 'aa-p', text: 'Fight each battle. Bombing raids go first, then sea battles (they clear the way for landings), then land battles.' }));
+    sh.body.appendChild(el('p', { class: 'aa-p', text: 'Bombing raids go first, then sea battles (they clear the way for landings), then land battles.' }));
     var list = el('div', { class: 'blist' });
     S.bl.forEach(function (b) {
       var st = b.done ? 'done' : battleLocked(b) ? 'lock' : '';
@@ -1916,8 +2219,8 @@ function battlePanel() {
     sh.body.appendChild(list);
   }
   var next = S.bl.filter(function (b) { return !b.done && !battleLocked(b); })[0];
-  if (next) primary(sh.foot, 'Fight: ' + tname(next.t), function () { startBattle(next); });
-  else primary(sh.foot, 'Continue · noncombat move', function () { setPhase('ncm'); afterPhase(); });
+  if (next) primary(sh.foot, Kit.icon('dice') + '<span>Fight: ' + esc(tname(next.t)) + '</span>', function () { startBattle(next); });
+  else primary(sh.foot, 'Continue · ' + PH_TITLE.ncm.toLowerCase(), function () { setPhase('ncm'); afterPhase(); });
 }
 
 // ── Mobilize ───────────────────────────────────────────────────────────────
@@ -1943,18 +2246,17 @@ function placeUnit(k, spot) {
 }
 function bankLeft(p) { var n = 0; for (var k in S.bank[p]) n += S.bank[p][k]; return n; }
 function mobPanel() {
-  var p = cur(), sh = panelShell('Place new units');
+  var p = cur(), sh = panelShell(PH_TITLE.mob);
   var bank = S.bank[p], kinds = BUYABLE.filter(function (k) { return bank[k]; });
-  if (!kinds.length) sh.body.appendChild(el('p', { class: 'aa-p', text: 'Nothing to place. Collect your income to end the turn.' }));
+  if (!kinds.length) sh.body.appendChild(el('p', { class: 'aa-p', text: Object.keys(S.placed).length ? 'All new units are on the map.' : 'Nothing to place this turn. Units you buy arrive here at the end of the turn you buy them.' }));
   else {
-    if (ui.bankSel && !bank[ui.bankSel]) ui.bankSel = null;
-    if (!ui.bankSel) ui.bankSel = kinds.filter(function (k) { return Object.keys(placeSpots(k)).length; })[0] || null;
-    sh.body.appendChild(el('p', { class: 'aa-p', text: 'Choose a unit, then tap a glowing factory (or the sea next to it for ships).' }));
+    defaultBankSel();
+    sh.body.appendChild(el('p', { class: 'aa-p', text: 'New units go to your factories (ships in the sea beside one).' }));
     var rows = el('div', { class: 'urows' });
     kinds.forEach(function (k) {
       var can = Object.keys(placeSpots(k)).length > 0;
       rows.appendChild(el('div', { class: 'urow' + (ui.bankSel === k ? ' on' : '') + (can ? '' : ' dim'), style: { '--pc': PW[p].col }, onclick: function () { if (!can) { Kit.toast('No room left to place that'); return; } ui.bankSel = k; Kit.sfx('tap'); renderAll(); } }, [
-        el('span', { class: 'uic', style: { background: PW[p].col, color: PW[p].ink }, html: unitSvg(k) }),
+        el('span', { class: 'uic', role: 'button', 'aria-label': 'About ' + U[k].n, style: { background: PW[p].col, color: PW[p].ink }, html: unitSvg(k), onclick: function (e) { e.stopPropagation(); unitCard(k); } }),
         el('span', { class: 'un' }, [el('b', { text: U[k].n }), el('small', { text: can ? (U[k].dom === 'S' ? 'Goes in a sea zone next to a factory' : k === 'ic' ? 'Any territory you held at the start of the turn' : 'Goes in a factory territory') : 'No room left this turn' })]),
         el('span', { class: 'cnt', text: '×' + bank[k] })
       ]));
@@ -1964,12 +2266,13 @@ function mobPanel() {
     if (caps.length) sh.body.appendChild(el('p', { class: 'aa-p', style: { marginTop: '8px' }, text: 'Room left: ' + caps.join(', ') }));
     sh.body.appendChild(el('div', { class: 'qbtns' }, [el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Place the rest for me', onclick: function () { pushUndo(); aiPlace(p); save(); renderAll(); } })]));
   }
-  primary(sh.foot, 'Done · collect ' + income(p) + ' IPCs', function () {
+  var roomLeft = kinds.some(function (k) { return Object.keys(placeSpots(k)).length; });
+  stepBtn(sh.foot, Kit.icon('coins') + '<span>Collect ' + income(p) + ' IPCs</span>', function () {
     var n = bankLeft(p);
     var go = function () { pushUndo(); endMob(); };
-    if (n && kinds.some(function (k) { return Object.keys(placeSpots(k)).length; })) Kit.confirm(n + ' new ' + (n === 1 ? 'unit is' : 'units are') + ' not placed', { ok: 'Keep them for next turn', body: 'Units you don’t place now wait until your next turn.' }).then(function (ok) { if (ok) go(); });
+    if (n && roomLeft) Kit.confirm(n + ' new ' + (n === 1 ? 'unit is' : 'units are') + ' not placed', { ok: 'Keep them for next turn', body: 'Units you don’t place now wait until your next turn.' }).then(function (ok) { if (ok) go(); });
     else go();
-  });
+  }, acted() || !kinds.length || !roomLeft);
 }
 
 // ── Taps on the map ────────────────────────────────────────────────────────
@@ -2021,7 +2324,7 @@ function afterPhase() {
   if (S.over) return;
   save();
   renderAll();
-  if (S.phase === 'bat' && !S.bl.length) { Kit.toast('No battles this turn'); setPhase('ncm'); renderAll(); }
+  if (S.phase === 'bat' && !S.bl.length) { Kit.toast('No battles to fight: on to ' + PH_TITLE.ncm.toLowerCase()); setPhase('ncm'); renderAll(); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2245,20 +2548,29 @@ function renderBattle(B, anim) {
       sc.appendChild(el('div', { class: 'subsw' }, [el('span', { text: PW[pw].short + ' submarines:' }), seg]));
     });
   }
-  // Casualty picker
-  if (B.step === 'cas') sc.appendChild(casPicker(B));
+  // Casualty picker: the player's own choice, laid out as pieces, with the confirm button pinned below
+  var cp = null;
+  R.bt.classList.toggle('cas', B.step === 'cas');
+  if (B.step === 'cas') { cp = casPicker(B); sc.appendChild(cp.node); requestAnimationFrame(function () { try { cp.node.scrollIntoView({ block: 'nearest' }); } catch (e) {} }); }
   // Actions
   var acts = el('div', { class: 'bacts' });
   var attHuman = humanPower(B.att);
-  if ((B.step === 'pre' || B.step === 'decide') && attHuman) {
+  if (cp) {
+    if (humanPower(cp.chooser)) {
+      var cb = el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('check') + '<span>' + (cp.ok ? 'Lose ' + (cp.need === 1 ? 'this one' : 'these ' + cp.need) : 'Pick ' + cp.need + ' the dice can hit') + '</span>', onclick: function () { if (!cp.ok) return; Kit.sfx('bad'); Kit.haptic('medium'); var c2 = cp.cas; ui.casCounts = null; giveInput(c2); } });
+      cb.disabled = !cp.ok;
+      acts.appendChild(cb);
+    } else acts.appendChild(el('div', { class: 'wait', html: roundelSvg(cp.chooser) + '<span class="think">' + esc(seatOf(cp.chooser).name) + ' is choosing losses…</span>' }));
+  } else if ((B.step === 'pre' || B.step === 'decide') && attHuman) {
     if (B.step === 'decide') retreatOpts(B).slice(0, 3).forEach(function (r) {
       acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: r === 'air' ? 'Planes break off' : 'Retreat to ' + tname(r), onclick: function () { Kit.sfx('whoosh'); giveInput({ retreat: r }); } }));
     });
     acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('dice') + '<span>' + (B.k === 'sbr' ? 'Drop the bombs' : B.step === 'pre' ? 'Roll the dice' : 'Roll again') + '</span>', onclick: function () { giveInput('roll'); } }));
   } else if (B.step === 'end' && attHuman) {
     acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Done', onclick: function () { Kit.sfx('tap'); giveInput('ok'); } }));
-  } else if (B.step !== 'cas') {
-    acts.appendChild(el('div', { class: 'bmsg', style: { flex: 1 }, html: '<span class="think">' + (B.step === 'end' ? '' : B.step === 'cas' ? 'Waiting for ' + esc(seatOf(B.def).name) + '\u2026' : 'Rolling\u2026') + '</span>' }));
+  } else if (B.step !== 'end') {
+    var roller = B.step === 'pre' || B.step === 'decide' ? B.att : (B.vols[B.vi] && B.vols[B.vi].side === 'd' ? B.def : B.att);
+    acts.appendChild(el('div', { class: 'wait', html: roundelSvg(roller || B.att) + '<span class="think">' + esc(seatOf(roller || B.att).name) + (B.step === 'pre' || B.step === 'decide' ? ' is deciding\u2026' : ' rolls\u2026') + '</span>' }));
   }
   if (acts.childNodes.length) felt.appendChild(acts);
 }
@@ -2278,31 +2590,46 @@ function casPicker(B) {
   if (!ui.casCounts) { ui.casCounts = {}; auto.forEach(function (c) { var u = byId(c.id); ui.casCounts[u.k] = (ui.casCounts[u.k] || 0) + 1; }); }
   var counts = ui.casCounts;
   var cas = casFromCounts(targets, counts), ok = casValid(targets, v.hits, cas, need);
-  var box = el('div', { class: 'bcas' }, [el('h4', { text: PW[chooser].name + ': choose ' + need + (need === 1 ? ' loss' : ' losses') })]);
-  var rows = el('div', { class: 'urows' });
+  var human = humanPower(chooser), seat = seatOf(chooser);
+  var shooter = v.side === 'a' ? B.att : B.def, picked = 0; for (var kk in counts) picked += counts[kk];
+  var box = el('div', { class: 'bcas', style: { '--pc': PW[chooser].col, '--pci': PW[chooser].ink } }, [
+    el('h4', { html: Kit.icon('hand') + '<span>' + (human ? (seat.name === 'You' ? 'Your choice' : esc(seat.name) + '’s choice') + ': ' + PW[chooser].short + ' loses ' + need : esc(seat.name) + ' chooses ' + need + ' to lose') + '</span>' }),
+    el('p', { class: 'lead', text: PW[shooter].short + ' scored ' + need + (need === 1 ? ' hit' : ' hits') + '. ' + (human ? 'Tap the pieces to lose (the cheapest are picked for you).' : '') })
+  ]);
+  var groups = el('div', { class: 'groups' });
   KINDS.forEach(function (k) {
     if (!slots[k]) return;
-    var n = counts[k] || 0;
-    var minus = el('button', { type: 'button', 'aria-label': 'Fewer', text: '−', onclick: function () { counts[k] = Math.max(0, n - 1); renderBattle(B); } });
-    var plus = el('button', { type: 'button', 'aria-label': 'More', text: '+', onclick: function () { counts[k] = Math.min(slots[k], n + 1); renderBattle(B); } });
-    minus.disabled = !n; plus.disabled = n >= slots[k];
-    var have = targets.filter(function (u) { return u.k === k; }).length;
-    rows.appendChild(el('div', { class: 'urow' + (n ? ' on' : ''), style: { '--pc': PW[chooser].col } }, [
-      el('span', { class: 'uic', style: { background: PW[chooser].col, color: PW[chooser].ink }, html: unitSvg(k) }),
-      el('span', { class: 'un' }, [el('b', { text: U[k].n + ' (' + have + ')' }), el('small', { text: k === 'bb' ? 'First hit only damages it' : 'Cost ' + U[k].c })]),
-      el('span', { class: 'step' }, [minus, el('output', { text: String(n) }), plus])
-    ]));
+    var n = counts[k] || 0, us = targets.filter(function (u) { return u.k === k; });
+    var pk = el('div', { class: 'pk' }, [el('div', { class: 'pl', html: '<span>' + esc(us.length > 1 ? U[k].p : U[k].n) + ' · ' + U[k].c + ' IPCs each</span>' + (k === 'bb' ? '<span>first hit only damages</span>' : '') })]);
+    if (k === 'bb') {
+      // Battleships take two hits: a stepper counts the hits (first damages a healthy ship, then it sinks)
+      var minus = el('button', { type: 'button', 'aria-label': 'Fewer', text: '−', onclick: function () { counts[k] = Math.max(0, n - 1); Kit.sfx('tap'); renderBattle(B); } });
+      var plus = el('button', { type: 'button', 'aria-label': 'More', text: '+', onclick: function () { counts[k] = Math.min(slots[k], n + 1); Kit.sfx('tap'); renderBattle(B); } });
+      minus.disabled = !n || !human; plus.disabled = n >= slots[k] || !human;
+      pk.appendChild(el('div', { class: 'urow' + (n ? ' on' : '') }, [
+        el('span', { class: 'uic', style: { background: PW[chooser].col, color: PW[chooser].ink }, html: unitSvg(k) }),
+        el('span', { class: 'un' }, [el('b', { text: 'Hits on battleships' }), el('small', { text: us.length + (us.length === 1 ? ' ship' : ' ships') + (us.some(function (u) { return u.h; }) ? ' · one already damaged' : '') })]),
+        el('span', { class: 'step' }, [minus, el('output', { text: String(n) }), plus])
+      ]));
+    } else {
+      var pieces = el('div', { class: 'pieces' });
+      us.forEach(function (u, i) {
+        var lost = i < n;
+        pieces.appendChild(el('button', { type: 'button', class: 'pc' + (lost ? ' x' : ''), 'aria-pressed': String(lost), 'aria-label': U[k].n + (lost ? ' (lost)' : ''), html: unitSvg(k),
+          onclick: function () { if (!human) return; counts[k] = lost ? i : i + 1; Kit.sfx(lost ? 'tap' : 'pop'); Kit.haptic('light'); renderBattle(B); } }));
+      });
+      pk.appendChild(pieces);
+    }
+    groups.appendChild(pk);
   });
-  box.appendChild(rows);
+  box.appendChild(groups);
   var notes = [];
   if (v.hits.s) notes.push('Submarine hits can’t hit planes.');
   if (v.hits.a) notes.push('Planes can’t hit submarines without a destroyer.');
   if (targets.some(function (u) { return u.k === 'tra'; })) notes.push('Transports go last.');
+  if (picked !== need) notes.unshift(picked < need ? 'Pick ' + (need - picked) + ' more.' : 'That’s ' + (picked - need) + ' too many.');
   if (notes.length) box.appendChild(el('div', { class: 'note', text: notes.join(' ') }));
-  var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', style: { marginTop: '8px' }, text: ok ? 'Remove these' : 'Pick ' + need + ' that the dice can hit', onclick: function () { if (!ok) return; Kit.sfx('tap'); var c2 = cas; ui.casCounts = null; giveInput(c2); } });
-  btn.disabled = !ok;
-  box.appendChild(btn);
-  return box;
+  return { node: box, ok: ok, cas: cas, need: need, chooser: chooser };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2736,7 +3063,7 @@ function newGame(cfg) {
   buildMap(cfg.map);
   var powers = cfg.map === 'skirm' ? ['su', 'de', 'uk'] : ORDERS[cfg.order === 'su' ? 'su' : 'de'].slice();
   if (cfg.map === 'skirm' && cfg.order !== 'su') powers = ['de', 'su', 'uk'];
-  S = { v: 1, mode: cfg.map, opt: { vc: cfg.vc, cas: cfg.cas, speed: cfg.speed, limit: cfg.map === 'skirm' && !+cfg.limit ? 10 : +cfg.limit || 0, order: cfg.order },
+  S = { v: 1, mode: cfg.map, opt: { vc: cfg.vc, cas: cfg.cas, speed: cfg.speed, limit: cfg.map === 'skirm' && !+cfg.limit ? 10 : +cfg.limit || 0, order: cfg.order, guide: !!cfg.guide && cfg.seats.some(function (s) { return !s.cpu; }) },
     seats: cfg.seats, ctl: {}, powers: powers, round: 1, pi: 0, phase: 'buy', own: [], turnOwn: [], ic: {}, dmg: {},
     units: [], nid: 1, ipc: {}, buy: {}, rep: {}, bank: {}, placed: {}, capt: [], bl: [], B: null, hl: [], stats: {}, log: [], cityTaken: {},
     started: Date.now(), over: null };
@@ -2776,6 +3103,7 @@ function beginTurnUI(first) {
     el('h2', { text: pname(p) }),
     el('p', { text: (seat.name === 'You' ? 'Your' : seat.name + '’s') + ' turn' }),
     el('small', { text: 'Round ' + S.round + ' · ' + S.ipc[p] + ' IPCs to spend' + (holdsCapital(p) || capitalOf(p) == null ? '' : ' · capital lost!') }),
+    el('div', null, [el('span', { class: 'step1', html: '<span>Step 1 of 6</span><span>·</span><span>' + PH_TITLE.buy + '</span>' })]),
     el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Start turn', onclick: function () { Kit.sfx('pop'); closeBanner(); } })
   ]);
   bannerEl = el('div', { class: 'aa-banner' }, [card]);
@@ -2845,16 +3173,32 @@ function unitTable() {
   KINDS.concat(['ic']).forEach(function (k) { var x = U[k]; h += '<tr><td>' + x.n + '</td><td>' + x.c + '</td><td>' + (k === 'ic' || k === 'aa' ? '–' : x.a) + '</td><td>' + (k === 'ic' ? '–' : k === 'aa' ? 'special' : x.d) + '</td><td>' + (k === 'ic' ? '–' : x.m) + '</td></tr>'; });
   return h + '</table>';
 }
+// "What do I do now?": the current step's guidance, built when the sheet opens
+var NOW_STEPS = {
+  buy: ['Use <b>+</b> to add units to your order. The gold <b>IPC</b> number at the top is your money.', 'New units appear at your <b>glowing factories</b> at step 5, so buy what those places need.', 'Tap <b>Buy</b>. Infantry are cheap defenders; tanks and planes hit hard.'],
+  cm: ['Tap a <b>glowing place</b> with your units.', 'Pick units with <b>+</b> (tap a row to take them all).', 'Tap a <b>red place</b> to attack it. You see your chance to win before you commit.', 'Plan more attacks, or tap the button to fight them.'],
+  bat: ['Tap a battle (or the button) to open it.', '<b>Roll</b>: every unit rolls one die; a roll at or under its number is a hit.', 'When you are hit, tap the pieces you lose.', 'After each round: roll again, or retreat.'],
+  ncm: ['Tap a <b>glowing place</b>, pick units, then tap a <b>gold place</b>.', 'Units that attacked stay put. Planes must land somewhere you held at the start of the turn (or on a carrier).', 'Tap <b>Done moving</b>.'],
+  mob: ['Choose a unit from your purchases.', 'Tap a <b>gold factory</b> to put it there (the sea beside it for ships). A factory holds up to its territory’s value.', 'Tap <b>Collect income</b>.'],
+  inc: ['Every territory you hold pays its value in IPCs. That money is yours to spend next turn.']
+};
+function nowGuide() {
+  if (!S || S.over || !R.top) return '';
+  var p = cur(), ph = S.phase;
+  var head = '<div class="ph">Step ' + (phaseIdx(ph) + 1) + ' of 6 · ' + esc(PH_TITLE[ph]) + ' · Round ' + S.round + '</div><h3>What do I do now?</h3>';
+  if (isCpu(p)) return '<div class="now">' + head + '<p>' + esc(seatOf(p).name) + ' is playing ' + esc(pname(p)) + '. Watch the map; when it attacks you, you choose which of your units are lost.</p></div>';
+  return '<div class="now">' + head + '<ol>' + (NOW_STEPS[ph] || []).map(function (s) { return '<li>' + s + '</li>'; }).join('') + '</ol></div>';
+}
 var RULES =
   '<p class="goal">It’s spring 1942. The <b>Axis</b> (Germany and Japan) fight the <b>Allies</b> (Soviet Union, United Kingdom and United States). Hold enough <b>victory cities</b> (gold stars on the map) at the end of a round to win.</p>' +
-  '<h3>A turn</h3><p>Powers take turns in order: <b>Soviet Union, Germany, United Kingdom, Japan, United States</b>, the official order (setup can switch to Germany going first). Each turn has six steps:</p><ol>' +
-  '<li><b>Buy</b> units with IPCs (your money). You can also repair bomb damage on your factories (1 IPC per point).</li>' +
-  '<li><b>Attack moves.</b> Move units into enemy territories or sea zones you want to fight. Land units stop when they enter enemy land. Tanks can roll through an empty enemy territory (a blitz) and keep going.</li>' +
-  '<li><b>Battles.</b> Every place you moved into with enemies is a battle. Roll dice!</li>' +
-  '<li><b>Other moves.</b> Units that didn’t fight can move to friendly places. Planes must land.</li>' +
-  '<li><b>Place</b> your new units at your factories (ships go in the sea next to a factory). A factory places as many units as its territory’s IPC value, minus any damage.</li>' +
+  '<h3>A turn: six steps</h3><p>Powers take turns in order: <b>Soviet Union, Germany, United Kingdom, Japan, United States</b>, the official order (setup can switch to Germany going first). Each turn has six steps, shown in the strip at the top:</p><ol>' +
+  '<li><b>Purchase units</b> with IPCs (your money). You can also repair bomb damage on your factories (1 IPC per point).</li>' +
+  '<li><b>Combat move.</b> Move units into enemy territories or sea zones you want to fight. Land units stop when they enter enemy land. Tanks can roll through an empty enemy territory (a blitz) and keep going.</li>' +
+  '<li><b>Conduct combat.</b> Every place you moved into with enemies is a battle. Roll dice!</li>' +
+  '<li><b>Noncombat move.</b> Units that didn’t fight can move to friendly places. Planes must land.</li>' +
+  '<li><b>Mobilize new units:</b> put the units you bought at your factories (ships go in the sea next to a factory). A factory places as many units as its territory’s IPC value, minus any damage.</li>' +
   '<li><b>Collect income:</b> the IPC value of every territory you control. No income while an enemy holds your capital.</li></ol>' +
-  '<h3>How to move on this map</h3><ul><li>Pinch or scroll to zoom, drag to pan. Tap a place to see what’s there.</li><li>Tap your territory, pick units with + and − (tap a row to take them all), then tap a glowing destination. Red outlines are attacks; before each attack you see your <b>chance to win</b>.</li><li><b>Transports:</b> pick land units and tap a sea zone with your transport to board. Then move the transport. To land, tap the sea zone, pick the troops aboard, and tap the coast.</li><li><b>Undo</b> takes back moves and buys in the current step (not dice rolls).</li></ul>' +
+  '<h3>How to move on this map</h3><ul><li>Pinch or scroll to zoom, drag to pan. Tap a place to see what’s there; tap any unit for its card.</li><li>Places that can act <b>glow</b> at the start of a step. Tap one, pick units with + and − (tap a row to take them all), then tap a glowing destination. Red outlines are attacks; before each attack you see your <b>chance to win</b>.</li><li><b>Transports:</b> pick land units and tap a sea zone with your transport to board. Then move the transport. To land, tap the sea zone, pick the troops aboard, and tap the coast.</li><li><b>Undo</b> takes back moves and buys in the current step (not dice rolls).</li></ul>' +
   '<h3>Battles</h3><ul><li>Each unit rolls one die. A roll <b>at or under</b> its attack (or defense) number is a hit. "Tanks hit on 3 or less" means a 1, 2 or 3 hits.</li>' +
   '<li>Both sides fire, then each side chooses its own losses (cheapest are picked for you; you can change them).</li>' +
   '<li>After each round the attacker can keep fighting or <b>retreat</b> to a place the attackers came from. Troops landed from the sea can’t retreat.</li>' +
@@ -2875,17 +3219,28 @@ var RULES =
   '<h3>Left out</h3><p>Optional rules aren’t included: national objectives, research and technology, and the starting bid. Units can’t ride on an ally’s transport. Fighters fly on their own (they don’t ride a moving carrier). AA hits on planes are taken from the cheapest planes first.</p>' +
   '<h3>Who plays what</h3><p>2 players: Axis against Allies. 3: Germany + Japan; Soviet Union + United States; United Kingdom. 4: Germany; Soviet Union + United States; Japan; United Kingdom. 5: one power each. Any seat can be a computer general.</p>';
 
-Kit.init({ orient: 'landscape', orientTablets: true,
+// The sheet: "What do I do now?" first, then the full rules in sections that open on a tap
+function rulesHtml() {
+  var parts = RULES.split('<h3>'), intro = parts.shift();
+  var secs = parts.map(function (s, i) {
+    var j = s.indexOf('</h3>');
+    return '<details' + (i === 0 && !(S && !S.over) ? ' open' : '') + '><summary>' + s.slice(0, j) + '</summary>' + s.slice(j + 5) + '</details>';
+  });
+  return nowGuide() + intro + secs.join('');
+}
+var KIT_OPTS = { orient: 'landscape', orientTablets: true,
   id: KEY,
   theme: { wood: ['#7a5a3a', '#4e3620'] },
   onNew: function () { clearSave(); showSetup(); },
   undo: function () { undo(); },
-  rules: RULES,
   menu: [
     { icon: 'tiles', label: 'Show whole map', onClick: function () { if (S && R.map) fitView(true); } },
     { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Axis & Allies: past games', keys: ['axisallies-score'] }); } }
   ]
-});
+};
+// Kit reads opts.rules each time the sheet opens, so a getter keeps "what do I do now" current
+Object.defineProperty(KIT_OPTS, 'rules', { get: rulesHtml, enumerable: true });
+Kit.init(KIT_OPTS);
 
 // ── Setup screen ───────────────────────────────────────────────────────────
 var setupObs = null;
@@ -2912,7 +3267,8 @@ function showSetup() {
       { id: 'limit', label: 'Round limit', value: '0', help: 'Stop after this many rounds. Whoever holds more victory cities then wins.', choices: [['0', 'None', 'Play until someone meets the victory goal (Skirmish stops after 10).'], ['6', '6 rounds', 'A game that fits an evening.'], ['10', '10 rounds', 'A longer game with a sure end.']] },
       { id: 'order', label: 'Turn order', value: 'su', help: 'Who moves first each round.', choices: [['su', 'Official', 'Soviet Union, Germany, United Kingdom, Japan, United States: the order printed in the 1942 Second Edition rules.'], ['de', 'Germany first', 'Germany, Soviet Union, Japan, United Kingdom, United States. Gives Germany a stronger opening.']] },
       { id: 'cas', label: 'Your losses', value: 'ask', help: 'Who picks which of your units are lost in battle.', choices: [['ask', 'I choose', 'The cheapest units are picked for you; you can change them before they go.'], ['auto', 'Automatic', 'Always lose the cheapest units first. Faster.']] },
-      { id: 'speed', label: 'Computer speed', value: 'normal', help: 'How fast computer generals move and roll.', choices: [['normal', 'Normal', 'Easy to follow along.'], ['fast', 'Fast', 'Quick moves and dice.']] }
+      { id: 'speed', label: 'Computer speed', value: 'normal', help: 'How fast computer generals move and roll.', choices: [['normal', 'Normal', 'Easy to follow along.'], ['fast', 'Fast', 'Quick moves and dice.']] },
+      { id: 'guide', label: 'First turn', value: (function () { try { return localStorage.getItem('aa_guide_seen') ? 'off' : 'on'; } catch (e) { return 'on'; } })(), help: 'Short pointers through the six steps of your first turn. They switch off by themselves once you have played a turn.', choices: [['on', 'Guided', 'One pointer per step, the first time through.'], ['off', 'No pointers', 'You know the game.']] }
     ],
     players: { range: function () { return [2, 5]; }, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
     start: 'Start the war',
@@ -2931,7 +3287,7 @@ function showSetup() {
         if (blank) return { name: bots[blanks++] || 'Computer', cpu: true, powers: g };
         return { name: p.name, cpu: !!p.cpu, powers: g };
       });
-      newGame({ map: map, vc: o.vc || 'std', cas: o.cas || 'ask', speed: o.speed || 'normal', limit: o.limit || '0', order: o.order || 'de', seats: seats });
+      newGame({ map: map, vc: o.vc || 'std', cas: o.cas || 'ask', speed: o.speed || 'normal', limit: o.limit || '0', order: o.order || 'de', guide: o.guide === 'on', seats: seats });
     }
   });
   function captions() {
@@ -2965,6 +3321,7 @@ function showSetup() {
     measure();
     if (!restoreView()) { fitView(); var c = capitalOf(cur()); if (c != null && S.mode !== 'skirm') focusOn(c, Math.max(fitScale() * 1.6, Math.min(1.1, V.W / 600))); }
     renderAll();
+    if (S.phase === 'inc') { nextTurn(); return; }   // income was already collected; move on
     if (isCpu(cur())) setTimeout(function () { runCpu(); }, 400);
     else if (S.B) runBattle().catch(function () {});
   });
