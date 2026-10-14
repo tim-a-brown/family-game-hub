@@ -101,6 +101,10 @@ const ArcadeHi = (function(){
   function myIni(){ try{ return (typeof FGHSync!=='undefined' && FGHSync.initials && FGHSync.isPin && FGHSync.isPin()) ? FGHSync.initials() : ''; }catch(e){ return ''; } }
   function linked(key){ try{ return (typeof FGHSync!=='undefined' && FGHSync.linkHi) ? FGHSync.linkHi(key) : []; }catch(e){ return []; } }
   function myName(){ try{ return (localStorage.getItem('my_name')||'').trim(); }catch(e){ return ''; } }
+  // Who's playing and their initials (Kit knows both: the player picked on the setup screen, their saved initials)
+  function curWho(opts){ if(opts && opts.who) return String(opts.who); try{ return window.Kit && Kit.player ? Kit.player() : ''; }catch(e){ return ''; } }
+  function iniOf(who){ try{ return who && window.Kit && Kit.initials ? Kit.initials.of(who) : ''; }catch(e){ return ''; } }
+  function iniSave(who, v){ try{ if(who && window.Kit && Kit.initials) Kit.initials.set(who, v); }catch(e){} }
   // This device's board plus linked people's best scores (theirs not already on it), top MAX
   function merged(key){
     const own = load(key).map(e=>Object.assign({}, e, { mine: !!myIni() && e.name.trim().toUpperCase()===myIni() }));
@@ -161,6 +165,12 @@ const ArcadeHi = (function(){
 .ahi-score-lbl{font-size:.72rem;color:rgba(255,255,255,.4);margin-top:2px;}
 .ahi-also{font-size:.78rem;color:rgba(255,255,255,.6);margin-top:8px;}
 .ahi-also b{color:#f5c842;font-weight:900;}
+.ahi-plate{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px auto 0;padding:10px 18px;width:max-content;max-width:100%;border-radius:999px;background:rgba(245,200,66,.1);box-shadow:inset 0 0 0 1.5px rgba(245,200,66,.5);animation:ahi-plate .55s cubic-bezier(.3,1.6,.5,1) .15s backwards;}
+.ahi-plate .avatar{width:34px;height:34px;font-size:.9rem;flex:none;}
+.ahi-plate-ini{font-family:var(--display);font-size:1.7rem;font-weight:900;letter-spacing:.18em;color:#f5c842;text-shadow:0 0 14px rgba(245,200,66,.5);}
+.ahi-plate small{font-size:.8rem;font-weight:800;color:rgba(255,255,255,.6);}
+.ahi-change{display:block;margin:0 auto;padding:6px 10px;border:0;background:none;color:rgba(255,255,255,.5);font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;}
+@keyframes ahi-plate{from{transform:scale(.6);opacity:0;}to{transform:scale(1);opacity:1;}}
 /* Leaderboard table */
 .ahi-table{width:100%;border-collapse:collapse;font-size:.82rem;}
 .ahi-table th{color:rgba(255,255,255,.4);font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1);}
@@ -193,12 +203,15 @@ const ArcadeHi = (function(){
 
   // ── Name entry screen ─────────────────────────────────────────────────────
   const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  function showEntry(key, score, onDone, also){
+  function showEntry(key, score, onDone, also, who){
     also = also || [];
     injectCSS();
-    const mine = myIni();
-    const letters = mine ? (mine+'AAA').slice(0,3).split('') : ['A','A','A'];
-    let focusIdx = mine ? Math.min(mine.length, 2) : 0;
+    const forMe = !who || (myName() && who.trim().toLowerCase() === myName().toLowerCase());
+    const mine = forMe ? myIni() : '';
+    // someone without initials yet: start from their name (Cam → CAM), one tap to keep it
+    const guess = mine || (who ? String(who).toUpperCase().replace(/[^A-Z]/g,'').slice(0,3) : '');
+    const letters = guess.length >= 2 ? (guess+'AAA').slice(0,3).split('') : ['A','A','A'];
+    let focusIdx = guess.length >= 2 ? Math.min(guess.length, 2) : 0;
 
     const overlay = document.createElement('div');
     overlay.className = 'ahi-overlay';
@@ -207,7 +220,7 @@ const ArcadeHi = (function(){
     overlay.innerHTML = `
       <div class="ahi-box">
         <div class="ahi-title">${ttl}</div>
-        <div class="ahi-sub">You made the top ${MAX}. Enter your initials.</div>
+        <div class="ahi-sub">${who && !forMe ? esc(who) + ' made the top ' + MAX + '. Their initials?' : 'You made the top ' + MAX + '. Enter your initials.'}</div>
         <div class="ahi-score-disp">
           <div class="ahi-score-val">${esc(fmt(key, score))}</div>
           <div class="ahi-score-lbl">${lbl}${unitName(key).toUpperCase()}</div>
@@ -347,6 +360,7 @@ const ArcadeHi = (function(){
           return;
         }
         const name = letters.join('').trim()||'???';
+        if(who) iniSave(who, name);   // next time their scores file under these without asking
         insert(key, name, score);
         also.forEach(a=>insert(a.key, name, a.score));
       }
@@ -356,6 +370,44 @@ const ArcadeHi = (function(){
 
     document.getElementById('ahi-submit').addEventListener('click',()=>dismiss(true));
     document.getElementById('ahi-skip').addEventListener('click',()=>dismiss(false));
+  }
+
+  // Known player: the score files under their initials straight away; a short moment shows it (tap to go on)
+  function showFiled(key, score, ini, who, also, onDone){
+    injectCSS();
+    insert(key, ini, score);
+    also.forEach(a=>insert(a.key, ini, a.score));
+    const c = conf(key), lbl = c.label ? esc(c.label).toUpperCase() + ' · ' : '';
+    const ttl = c.unit === 'time' ? 'FAST TIME!' : c.low ? 'TOP ' + MAX + '!' : 'HIGH SCORE!';
+    const rank = load(key).findIndex(e=>e.name.trim()===ini && e.score===score) + 1;
+    const overlay = document.createElement('div');
+    overlay.className = 'ahi-overlay ahi-filed';
+    overlay.innerHTML = `
+      <div class="ahi-box">
+        <div class="ahi-title">${ttl}</div>
+        <div class="ahi-score-disp">
+          <div class="ahi-score-val">${esc(fmt(key, score))}</div>
+          <div class="ahi-score-lbl">${lbl}${unitName(key).toUpperCase()}${rank ? ' · #' + rank : ''}</div>
+          ${also.map(a=>`<div class="ahi-also">Also on ${esc(conf(a.key).label || boardTitle(a.key) || a.key)}: <b>${esc(fmt(a.key, a.score))}</b></div>`).join('')}
+        </div>
+        <div class="ahi-plate">${avHTML(who || ini, 'sm')}<span class="ahi-plate-ini">${esc(ini)}</span><small>${esc(who || '')}</small></div>
+        <button class="btn btn-gold btn-block" id="ahi-go" style="max-width:240px;margin:14px auto 6px;display:block;">Continue</button>
+        <button class="ahi-change" id="ahi-change" type="button">Not ${esc(ini)}? Change</button>
+      </div>`;
+    document.body.style.overflow = 'hidden';
+    document.body.appendChild(overlay);
+    let done = false;
+    function close(){ if(done) return; done = true; clearTimeout(t); overlay.remove(); document.body.style.overflow = ''; onDone && onDone(); }
+    const t = setTimeout(close, 4200);
+    overlay.querySelector('#ahi-go').addEventListener('click', close);
+    overlay.querySelector('#ahi-change').addEventListener('click', ()=>{
+      if(done) return; done = true; clearTimeout(t);
+      // take it back off the boards, then ask
+      [{ key, score }].concat(also).forEach(a=>{ const l = load(a.key), i = l.findIndex(e=>e.name.trim()===ini && e.score===a.score); if(i >= 0){ l.splice(i, 1); save(a.key, l); } });
+      overlay.remove(); document.body.style.overflow = '';
+      showEntry(key, score, onDone, also, who);
+    });
+    try{ if(window.Kit){ Kit.sfx && Kit.sfx('good'); Kit.haptic && Kit.haptic('success'); } }catch(e){}
   }
 
   // ── Leaderboard display ───────────────────────────────────────────────────
@@ -466,18 +518,18 @@ const ArcadeHi = (function(){
     qualifies(key, score){ return score > 0 && qualifies(key, score); },
     marbles(left, offCenter, sec){ return marblesCode(left, offCenter, sec); },
     readMarbles(v){ return marblesRead(v); },
+    // opts.who: the player (default: the one picked on the setup screen). Their saved initials file the score
+    // without asking; a player with none types them once and they're kept for next time.
     check(key, score, onDone, opts){
       const also = ((opts && opts.also) || []).filter(a=>a && a.key && a.score>0 && qualifies(a.key, a.score));
-      if(score>0 && qualifies(key, score)){
-        showEntry(key, score, ()=>{
-          onDone && onDone();
-        }, also);
-      } else if(also.length){
-        const a = also.shift();
-        showEntry(a.key, a.score, ()=>{ onDone && onDone(); }, also);
-      } else {
-        onDone && onDone();
+      const who = curWho(opts), ini = iniOf(who);
+      let k = key, sc = score;
+      if(!(score>0 && qualifies(key, score))){
+        if(!also.length){ onDone && onDone(); return; }
+        const a = also.shift(); k = a.key; sc = a.score;
       }
+      if(ini) showFiled(k, sc, ini, who, also, ()=>{ onDone && onDone(); });
+      else showEntry(k, sc, ()=>{ onDone && onDone(); }, also, who);
     },
     // Games on the High Scores cabinet page open it with their board selected (the others keep the pop-up board)
     show(key, title){

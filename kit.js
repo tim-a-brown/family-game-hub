@@ -1078,14 +1078,23 @@
           el('span', { class: 'grow' }, [el('span', { text: n }), (function () {
             var r = window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(n);
             if (r && !r.hs && !r.gone) return el('small', { class: 'k-plays k-wait', text: 'Waiting to accept' });
-            return p ? el('small', { class: 'k-plays', text: p + (p === 1 ? ' game' : ' games') }) : null;
+            var ini = iniOf(n), bits = [];
+            if (ini) bits.push(ini);
+            if (p) bits.push(p + (p === 1 ? ' game' : ' games'));
+            return bits.length ? el('small', { class: 'k-plays', text: bits.join(' · ') }) : null;
           })()]),
           // the signed-in person is already themselves: no link button for them
           whoMark(n) === 'me' ? el('span', { class: 'k-you', text: 'You' }) : el('button', { type: 'button', class: 'icon-btn' + (function () { var r = window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(n); return r ? (r.hs ? ' lk-on' : ' lk-wait') : ''; })(), 'aria-label': 'Link ' + n + ' to their profile', title: 'Link to their profile', html: icon('link'), onclick: function () { linkSheet(n, paint); } }),
-          el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Rename ' + n, html: icon('pencil'), onclick: function () {
+          el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Edit ' + n, html: icon('pencil'), onclick: function () {
             var inp = el('input', { class: 'input', maxlength: 14, value: n, autocomplete: 'off' }), s2;
+            var ini0 = iniOf(n), iin = el('input', { class: 'input k-ini-in', maxlength: 3, value: ini0, placeholder: 'ABC', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
+            iin.addEventListener('input', function () { var c = iniClean(iin.value); if (c !== iin.value) iin.value = c; });
+            var form = el('div', { class: 'k-edit' }, [el('div', { class: 'label', text: 'Name' }), inp, el('div', { class: 'label', text: 'Arcade initials' }), iin]);
             function go() {
-              var v = inp.value.trim(); s2.close(); if (!v || v === n) return;
+              var v = inp.value.trim(), iv = iniClean(iin.value); s2.close();
+              if (iv !== ini0 && (iv.length >= 2 || !iv)) iniSet(v && v !== n ? v : n, iv);
+              if (!v || v === n) { paint(); return; }
+              if (ini0 && iv === ini0) { iniSet(v, ini0); iniSet(n, ''); }   // the initials go with the new name
               var fp = fpRead().map(function (x) { return x.toLowerCase() === n.toLowerCase() ? v : x; });
               fpWrite(fp);
               var c = nameCounts(), ok = n.toLowerCase(), nk = v.toLowerCase();
@@ -1094,7 +1103,8 @@
               sfx('good'); paint();
             }
             inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
-            s2 = sheet({ title: 'Rename ' + n, node: inp, actions: [{ label: 'Save', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
+            iin.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+            s2 = sheet({ title: 'Edit ' + n, node: form, actions: [{ label: 'Save', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
             setTimeout(function () { inp.focus(); inp.select(); }, 350);
           } }),
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Remove ' + n, html: icon('close'), onclick: function () {
@@ -1368,6 +1378,19 @@
       type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: o.start || "Let's play!",
       onclick: function () {
         var cpu = cpuFor(), players = [], picked = [];
+        // arcade games: every person playing is someone you can pick (their high scores file under their initials)
+        if (P && P.names !== false && game && game.cat === 'arcade') {
+          var ins = seatsBox.querySelectorAll('input');
+          for (var j = 0; j < state.count; j++) {
+            var cj = cpu === 'seats' ? j > 0 : (cpu && j > 0);
+            if (cj || isPersonName(ins[j] ? ins[j].value : '')) continue;
+            (function (j) {
+              pickName(function (n) { names[j] = n; renderSeats(); setTimeout(function () { startBtn.click(); }, 260); },
+                { taken: names.slice(0, state.count).filter(function (x, q) { return q !== j; }), title: state.count > 1 && !cpu ? 'Player ' + (j + 1) : 'Who’s playing?' });
+            })(j);
+            return;
+          }
+        }
         if (P) {
           var inputs = seatsBox.querySelectorAll('input');
           for (var i = 0; i < state.count; i++) {
@@ -1378,6 +1401,7 @@
           }
         }
         if (picked.length) countPlays(picked);
+        curPlayers = players.filter(function (p) { return !p.cpu; }).map(function (p) { return p.name; });
         saveSetup();
         sfx('pop'); haptic('medium');
         o.onStart && o.onStart({ mode: state.mode, players: players, options: state.options });
@@ -1703,6 +1727,30 @@
     'umbrella', 'tree', 'fish', 'bird', 'bike', 'car', 'plane', 'pizza', 'cake', 'headphones', 'wand', 'palette', 'glasses', 'bug'];
   var AV_COLORS = ['#ffc83d', '#ff7a59', '#ff5d8f', '#b583ff', '#5b8cff', '#3cc8e8', '#3ddc97', '#9ad94a', '#f2f4f8', '#2a2440'];
   function avKey(n) { return String(n || '').trim().toLowerCase(); }
+  // ── Arcade initials, per player ──
+  // Yours live with your PIN (FGHSync); everyone else's in gn_ini {name: 'ABC'} (a synced setting); a linked
+  // person's come from their own profile. A high score files under them without asking.
+  function iniMap() { try { return JSON.parse(lsGet('gn_ini', '{}')) || {}; } catch (e) { return {}; } }
+  function iniClean(v) { return String(v || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3); }
+  function isMe(n) { var me = avKey(lsGet('my_name', '')); return !!me && avKey(n) === me; }
+  function iniOf(n) {
+    n = String(n || '').trim(); if (!isPersonName(n)) return '';
+    var k = avKey(n), v = '';
+    if (isMe(n)) { try { v = window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.initials ? FGHSync.initials() : ''; } catch (e) {} }
+    if (!v) v = iniMap()[k] || '';
+    if (!v) { try { var lh = JSON.parse(lsGet('fgh_link_hi', '{}')) || {}; v = lh[k] && lh[k].ini || ''; } catch (e) {} }
+    v = iniClean(v); return v.length >= 2 ? v : '';
+  }
+  function iniSet(n, v) {
+    n = String(n || '').trim(); v = iniClean(v); if (!isPersonName(n)) return '';
+    var m = iniMap(), k = avKey(n);
+    if (v) m[k] = v; else delete m[k];
+    lsSet('gn_ini', JSON.stringify(m));
+    if (isMe(n)) { try { if (window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.setInitials) FGHSync.setInitials(v); } catch (e) {} }
+    return v;
+  }
+  // who's playing (the people seated at the last Kit.setup start, computer seats left out)
+  var curPlayers = [];
   function avAll() { try { var v = JSON.parse(lsGet(AV_KEY, '{}')); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
   function avRec(name) { var r = avAll()[avKey(name)]; return r && r.cur ? r : null; }
   function avPut(name, rec) {
@@ -2546,6 +2594,7 @@
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: defaultsSheet, cats: catsOrdered,
+    initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },

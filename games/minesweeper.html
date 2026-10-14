@@ -225,6 +225,7 @@ body{overflow-x:hidden;}
         { id: 'expert', icon: 'flame', title: 'Expert', desc: d('expert') }
       ],
       mode: 'beginner', start: 'Start',
+      players: { min: 1, max: 1, count: 1, label: 'Player' },
       onStart: function (cfg) { start(cfg.mode); }
     });
   }
@@ -359,7 +360,7 @@ body{overflow-x:hidden;}
     if (good) hl.push('Found ' + good + ' of ' + L().mines + ' mines with flags');
     if (S.chords >= 5) hl.push('Quick-cleared ' + S.chords + ' times');
     Kit.record(HKEY, {
-      started: S.started, mode: L().name, players: [{ name: 'You' }], winner: null,
+      started: S.started, mode: L().name, players: [{ name: Kit.player() || 'You' }], winner: null,
       summary: 'Boom · ' + pct + '% cleared', badge: pct + '%', highlights: hl,
       meta: { diff: S.diff, won: false, ms: S.ms, pct: pct, undos: S.undos },
       detail: histDetail()
@@ -394,7 +395,7 @@ body{overflow-x:hidden;}
     if (S.chords >= 5) hl.push('Quick-cleared ' + S.chords + ' times');
     if (S.undos) hl.push('Took back ' + S.undos + (S.undos === 1 ? ' move' : ' moves') + ' (best times need none)');
     Kit.record(HKEY, {
-      started: S.started, mode: L().name, players: [{ name: 'You', score: undefined }], winner: 'You',
+      started: S.started, mode: L().name, players: [{ name: Kit.player() || 'You', score: undefined }], winner: Kit.player() || 'You',
       summary: 'Cleared in ' + fmt(S.ms), badge: fmt(S.ms), highlights: hl.slice(0, 6),
       meta: { diff: S.diff, won: true, ms: S.ms, undos: S.undos, flags: S.flagsPlanted, chords: S.chords },
       detail: histDetail()
