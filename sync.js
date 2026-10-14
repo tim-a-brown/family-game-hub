@@ -85,10 +85,12 @@
     });
   }
 
+  var _fbP = null;
   function ensureFirebase(){
     if(_fb) return Promise.resolve(_fb);
+    if(_fbP) return _fbP;   // one load at a time: a second caller waits for the first
     var V = '10.12.2';
-    return loadScript('https://www.gstatic.com/firebasejs/'+V+'/firebase-app-compat.js')
+    return _fbP = loadScript('https://www.gstatic.com/firebasejs/'+V+'/firebase-app-compat.js')
       .then(function(){ return loadScript('https://www.gstatic.com/firebasejs/'+V+'/firebase-firestore-compat.js'); })
       .then(function(){
         var app = firebase.initializeApp(firebaseConfig);
@@ -97,7 +99,7 @@
         try{ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && LS.getItem('fgh_emu')) db.useEmulator('localhost', 8080); }catch(e){}
         _fb = { app: app, db: db };
         return _fb;
-      });
+      }, function(e){ _fbP = null; throw e; });
   }
 
   // ── Scan localStorage ─────────────────────────────────────────────────

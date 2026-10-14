@@ -113,6 +113,25 @@
   function fsTransport() {
     function db() { return window.FGHSync && FGHSync.db ? FGHSync.db() : Promise.reject(new Error('Sync isn’t loaded')); }
     function ref(d, code) { return d.collection(COL).doc(code); }
+    // A read that hangs (the phone switched networks and Firestore's connection didn't notice): after a few
+    // seconds, reconnect and read again; whichever answers first wins. Gives up after 25 seconds.
+    function getK(d, r) {
+      return new Promise(function (res, rej) {
+        var done = false, tries = 0, fails = 0, last = null;
+        function end(ok, v) { if (done) return; done = true; clearTimeout(k); clearTimeout(g); (ok ? res : rej)(v); }
+        function go() {
+          tries++;
+          r.get().then(function (sn) { end(true, sn); }, function (e) {
+            last = e;
+            if (e && e.code && e.code !== 'unavailable') { end(false, e); return; }
+            if (++fails >= tries && tries > 1) end(false, e);
+          });
+        }
+        var k = setTimeout(function () { if (done) return; log('firestore slow: reconnecting'); d.disableNetwork().then(function () { return d.enableNetwork(); }).catch(function () {}).then(function () { if (!done) go(); }); }, 5000);
+        var g = setTimeout(function () { end(false, last || new Error('Couldn’t reach the server. Check the connection and try again.')); }, 25000);
+        go();
+      });
+    }
     function live(start) { var off = null, dead = false; start(function (o) { if (dead) o(); else off = o; }); return function () { dead = true; if (off) off(); }; }
     return {
       kind: 'firestore',
@@ -124,14 +143,14 @@
       create: function (code, data) {
         return db().then(function (d) {
           var r = ref(d, code);
-          return Promise.all([r.get(), data]).then(function (x) {
+          return Promise.all([getK(d, r), data]).then(function (x) {
             var sn = x[0];
             if (sn.exists && Date.now() - (sn.data().at || 0) < 6 * 3600e3) throw new Error(TAKEN);
             return { saved: r.set(x[1]) };
           });
         });
       },
-      get: function (code) { return db().then(function (d) { return ref(d, code).get(); }).then(function (sn) { return sn.exists ? sn.data() : null; }); },
+      get: function (code) { return db().then(function (d) { return getK(d, ref(d, code)); }).then(function (sn) { return sn.exists ? sn.data() : null; }); },
       update: function (code, patch) { return db().then(function (d) { return ref(d, code).update(patch); }); },
       remove: function (code) { return db().then(function (d) { return ref(d, code).delete(); }); },
       watch: function (code, cb, err) { return live(function (set) { db().then(function (d) { set(ref(d, code).onSnapshot(function (sn) { cb(sn.exists ? sn.data() : null); }, err)); }).catch(err); }); },
@@ -446,7 +465,8 @@
     lastCode = code;
     var scr = opts.screen ? stage(opts.screen, { host: false, code: code, max: opts.max || 0, min: opts.min, myName: opts.name, onLeave: function () { if (cancel) cancel(); } }) : null, cancel = null;
     if (scr) { scr.step('find', 'run', 'Looking for table ' + code); scr.step('connect', 'wait'); scr.step('seat', 'wait'); scr.step('start', 'wait'); }
-    return t.get(code).then(function (room) {
+    var slowFind = scr ? setTimeout(function () { scr.step('find', null, 'Taking a while · reconnecting to the server'); }, 5000) : 0;
+    return t.get(code).then(function (r) { clearTimeout(slowFind); return r; }, function (e) { clearTimeout(slowFind); throw e; }).then(function (room) {
       if (!room || room.game !== opts.game) throw new Error('No open table with code ' + code);
       if (room.host && room.host.dev === me) throw new Error('That’s your own table. Join it from another device.');
       if (room.status !== 'open' && room.status !== 'playing' || Date.now() - (room.at || 0) > STALE * 3) throw new Error('That table has closed');
@@ -464,7 +484,7 @@
           cancel = function () { finish(new Error('Cancelled')); };
           function hello() { var d = { name: String(opts.name || 'Player').slice(0, 20), v: V, sid: sid }; if (lk) d.lk = lk; if (opts.extra) d.x = opts.extra; return d; }
           function finish(err, via) {
-            if (done) return; done = true; clearTimeout(to); clearTimeout(relayTo);
+            if (done) return; done = true; clearTimeout(to); clearTimeout(relayTo); clearTimeout(slowT);
             var got = via || peer;
             if (scr && !err) { scr.step('connect', 'done', got.relay ? 'Connected to ' + hostName + ' through the relay' : 'Connected to ' + hostName); scr.step('seat', 'run', 'Taking your seat'); }
             offs.forEach(function (o) { try { o(); } catch (e) {} });
@@ -489,7 +509,9 @@
             t.send(code, { id: rid(), to: room.host.dev, from: me, k: 'relay', d: JSON.stringify(hello()), at: Date.now() }).catch(function (er) { finish(er); });
             relayTo = setTimeout(function () { var e = new Error(NAT_MSG); e.nat = true; finish(e); }, 20000);
           }
-          var to = setTimeout(fallBack, config.directMs);
+          // a game that can't use the relay gets the whole time to link up directly (phones can take a while)
+          var to = setTimeout(fallBack, opts.relay === false ? config.connectMs : config.directMs);
+          var slowT = opts.relay === false && scr ? setTimeout(function () { if (!done) scr.step('connect', 'run', 'Still linking the two devices · this can take a few more seconds'); }, config.directMs) : 0;
           pc.addEventListener('connectionstatechange', function () { if (pc.connectionState === 'failed') fallBack(); });
           peer.on('open', function () { if (relayAsked) return; log('guest: channel open'); finish(null); });
           offs.push(t.inbox(code, me, function (m) {
@@ -674,7 +696,7 @@
     '.olt-top{display:flex;align-items:flex-start;gap:12px;margin-top:4px;}' +
     '.olt-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}.olt-side:empty{display:none;}' +
     '.olt-side .ol-h{margin:0 2px 2px;}' +
-    '.olt-side .stack{display:grid;gap:6px;grid-auto-flow:column;grid-template-rows:repeat(var(--rows,99),auto);grid-auto-columns:minmax(0,1fr);}' +
+    '.olt-side .stack{display:flex;flex-direction:column;gap:6px;}' +
     '.olt-side .stack:empty{display:none;}' +
     '.olt-many{display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;padding:12px;border:0;border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);color:var(--text);font:inherit;text-align:left;cursor:pointer;}' +
     '.olt-many .olt-stackav{display:flex;padding-left:8px;}.olt-many .olt-stackav .avatar{width:32px;height:32px;font-size:.8rem;margin-left:-8px;box-shadow:0 0 0 2.5px var(--surface);}' +
@@ -871,7 +893,7 @@
         here >= S.max ? 'The table is full · ready to start' : 'Ready to start' + (S.max - here > 0 ? ' · ' + (S.max - here) + ' more can join' : '');
     }
     function paintSteps() {
-      if (!S.players.length) return;
+      if (!S.players.length) { if (startBtn && !one.busy) startBtn.disabled = true; return; }
       var here = S.players.length, need = Math.max(0, S.min - here);
       if (S.host) {
         step('open', 'done', S.code ? 'Code ' + S.code + ' · share it, or they find you under Play online' : null);
@@ -907,7 +929,6 @@
     function paintCols() {
       var n = S.players.length + S.coming.length, isMany = S.players.length > 6;
       side.classList.toggle('many', isMany);
-      list.style.setProperty('--rows', 99); comingBox.style.setProperty('--rows', 99);
       if (!isMany) return;
       many.innerHTML = '';
       var faces = E('span', { class: 'olt-stackav' });
