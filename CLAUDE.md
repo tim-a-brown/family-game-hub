@@ -85,7 +85,10 @@ Underlying principles for everything:
   separately with the service account
   (`npx firebase-tools deploy --only firestore:rules --project familygames-da3e5`)
   and tell Tim.
-- **`storage.rules` changed**: same, `--only storage`. Firebase Storage holds only the
-  Lorcana card-art backup (`lorcana/`), filled by `scripts/mirror-lorcana-art.js` in deploy.yml.
+- **`storage.rules` changed**: deploy with `node scripts/deploy-storage-rules.js` (the CLI's `--only storage`
+  is refused for the service account) and tell Tim. Firebase Storage holds the Lorcana card-art backup
+  (`lorcana/`, filled by `scripts/mirror-lorcana-art.js` in deploy.yml) and the TURN logins for online games
+  (`online/ice.json`, refreshed every six hours by `turn-credentials.yml` from Cloudflare; secrets
+  `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN`).
 - Files that must not be public go in Firebase's `hosting.ignore` (`firebase.json`).
 - Never print or commit `FIREBASE_SERVICE_ACCOUNT` or any Dropbox secret.

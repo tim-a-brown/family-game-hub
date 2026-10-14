@@ -29,7 +29,10 @@
 //                                        (create(code, data): data may be a Promise; it may resolve before
 //                                        the server confirms, with {saved: Promise} for the confirmation)
 //                                        (localTransport: two tabs of one browser, for testing)
-//   Online.config.iceServers             STUN (and TURN, if one is ever added) for WebRTC
+//   Online.config.iceServers             STUN for WebRTC, used when the TURN logins can't be had
+//   TURN: Cloudflare's TURN server carries a link the two devices can't make directly (phone data, Wi-Fi that keeps
+//   devices apart). Its logins expire, so an Action (scripts/turn-credentials.js) saves fresh ones to Firebase
+//   Storage every few hours; ice() reads them before connecting and keeps a copy on the device.
 //
 // Peer: send(obj, reliable), on('msg'|'close', fn), close(), rtt, id, name.
 // Two channels per connection: 'r' (reliable, in order) for events, 'u' (unreliable, unordered) for
@@ -250,7 +253,24 @@
       pc.addEventListener('icecandidate', function (e) { if (!e.candidate) { clearTimeout(t); res(); } });
     });
   }
-  function newPc() { return new RTCPeerConnection({ iceServers: config.iceServers }); }
+  // The TURN logins (with Cloudflare's STUN): the copy on this device while it has an hour or more left, else
+  // a fresh read (3 seconds at most; without them, plain STUN)
+  var ICE_URL = 'https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/online%2Fice.json?alt=media';
+  var iceNow = null, iceP = null;
+  function iceOk(j) { return !!(j && Array.isArray(j.iceServers) && j.iceServers.length && (j.exp || 0) - Date.now() > 3600e3); }
+  function ice() {
+    var c = lsGet('online_ice', null);
+    if (iceOk(c)) return Promise.resolve(iceNow = c.iceServers);
+    if (!iceP) iceP = new Promise(function (res) {
+      var t = setTimeout(function () { res(null); }, 3000);
+      fetch(ICE_URL, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+        clearTimeout(t);
+        if (iceOk(j)) { lsSet('online_ice', j); iceNow = j.iceServers; res(iceNow); } else res(null);
+      }).catch(function () { clearTimeout(t); res(null); });
+    }).then(function (x) { iceP = null; return x; });
+    return iceP;
+  }
+  function newPc() { log('ice', iceNow ? 'turn' : 'stun only'); return new RTCPeerConnection({ iceServers: iceNow || config.iceServers }); }
   function noRtc() { return typeof RTCPeerConnection === 'undefined'; }
   // Plain words for what went wrong
   function errText(e) {
@@ -266,6 +286,7 @@
   function host(opts) {
     if (noRtc()) return Promise.reject(new Error('This browser can’t play online.'));
     var t = T(), me = dev(), max = opts.max || 2;
+    ice();   // ready by the time someone asks to join
     var table = { code: null, peers: {}, status: 'open', closed: false, max: max }, ls = { peer: [], leave: [], msg: [], fail: [], joining: [], joinfail: [] }, offs = [], beat = 0, pending = {};
     function fire(k, a, b) { ls[k].forEach(function (f) { try { f(a, b); } catch (e) { console.error(e); } }); }
     table.on = function (k, f) { ls[k].push(f); return table; };
@@ -476,7 +497,8 @@
         scr.step('find', 'done', (room.host && room.host.name || 'The host') + '’s table · ' + code);
         scr.step('connect', 'run', 'Asking ' + (room.host && room.host.name || 'the host') + '’s device to let you in');
       }
-      return tagP.then(function (lk) {
+      return Promise.all([tagP, ice()]).then(function (x) {
+        var lk = x[0];
         return new Promise(function (resolve, reject) {
           var pc = newPc(), peer = new Peer(pc, room.host.dev, room.host.name), offs = [], done = false, answered = false, sid = Math.random().toString(36).slice(2, 10);
           var hostName = room.host && room.host.name || 'the host', relay = null, relayAsked = false, relayTo = 0;
@@ -588,7 +610,7 @@
   //   opts: {game, title, intro, me: {name}, onName(name), onHost(), onJoin(code, room), onSolo(), solo: label,
   //          sub(room) -> text for a table's second line, max}
   function lobby(root, o) {
-    css(); root.innerHTML = '';
+    css(); root.innerHTML = ''; ice();   // the TURN logins, ready before anyone taps
     var me = o.me || { name: myName() }, alive = true, off = null, last = [];
     var wrap = E('div', { class: 'ol ol-lobby' });
     root.appendChild(wrap);
@@ -1005,7 +1027,7 @@
 
   window.Online = {
     config: config, dev: dev, errText: errText, linkTag: linkTag, people: people, whose: whose, myTag: myTag,
-    lobby: lobby, waitRoom: waitRoom, stage: stage, host: host, join: join, NAT_MSG: NAT_MSG, busy: busyBtn,
+    lobby: lobby, waitRoom: waitRoom, stage: stage, host: host, join: join, NAT_MSG: NAT_MSG, busy: busyBtn, ice: ice,
     useTransport: function (t) { transport = t; }, transport: T, localTransport: localTransport, fsTransport: fsTransport,
     _setDev: function (d) { devId = d; }
   };
