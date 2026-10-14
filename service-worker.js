@@ -44,6 +44,7 @@ const PRECACHE_URLS = [
   '/fonts/pagella-700italic.woff2',
   '/app.js',
   '/sync.js',
+  '/qr.js',
   '/hist.js',
   '/players.js',
   '/casino.js', '/daily.js',

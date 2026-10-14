@@ -1979,7 +1979,11 @@
       node.innerHTML = '';
       node.appendChild(el('div', { class: 'lk-top' }, [avEl(me, 'lg', 'var(--surface-3)'), el('div', null, [el('b', { text: me }), el('small', { text: 'People who link you see your avatar, and games they play with you are saved to your history.' })])]));
       node.appendChild(el('div', { class: 'lk-big', text: own.code.slice(0, 3) + ' ' + own.code.slice(3), 'aria-label': 'Your code ' + own.code.split('').join(' ') }));
-      var txt = 'Link me in Game Night: ' + own.code;
+      // the same link as a QR code: the other phone's camera opens it and links you in one tap
+      var url = linkUrl(own.code, me), qr = el('div', { class: 'lk-qr' }, [el('div', { class: 'lk-qr-box' }), el('small', { text: 'Or point the other phone’s camera at this' })]);
+      node.appendChild(qr);
+      loadQr().then(function () { qr.firstChild.appendChild(qrSvg(url)); }).catch(function () { qr.remove(); });
+      var txt = 'Link me in Game Night: ' + own.code + '\n' + url;
       node.appendChild(el('div', { class: 'row', style: { gap: '8px' } }, [
         el('button', { type: 'button', class: 'btn btn-soft grow', html: icon('share') + '<span>Share</span>', onclick: function () { if (navigator.share) navigator.share({ text: txt }).catch(function () {}); else copy(); } }),
         el('button', { type: 'button', class: 'btn btn-soft grow', text: 'Copy', onclick: copy })]));
@@ -1995,16 +1999,84 @@
       } }));
     }
   }
+  // A link that carries your code: scanned from the QR code or tapped in a message, it opens the home page,
+  // which asks who you are in their players and links you (linkFromUrl)
+  function linkUrl(code, name) { return location.origin + '/?link=' + code + '&from=' + encodeURIComponent(String(name || '').slice(0, 40)); }
+  var _qrP = null;
+  function loadQr() {
+    if (window.qrcode) return Promise.resolve();
+    return _qrP || (_qrP = new Promise(function (res, rej) {
+      var sc = doc.createElement('script'); sc.src = (location.pathname.indexOf('/games/') >= 0 ? '../' : '') + 'qr.js'; sc.onload = res; sc.onerror = function () { _qrP = null; rej(new Error('qr')); }; doc.head.appendChild(sc);
+    }));
+  }
+  function qrSvg(text) {
+    var q = window.qrcode(0, 'M'); q.addData(text); q.make();
+    var n = q.getModuleCount(), d = '';
+    for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (q.isDark(r, c)) d += 'M' + c + ' ' + r + 'h1v1h-1z';
+    var svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + n + ' ' + n); svg.setAttribute('shape-rendering', 'crispEdges'); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', 'QR code of your profile link');
+    var path = doc.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', d); path.setAttribute('fill', '#111');
+    svg.appendChild(path); return svg;
+  }
+  // Opened the app from someone's link (?link=CODE&from=NAME): link them, as one of your players or a new one.
+  // The ask waits (sessionStorage) until you're signed in with a PIN, and the URL is cleaned up straight away.
+  var LINK_ASK = 'fgh_link_ask';
+  function linkFromUrl() {
+    var m = /[?&]link=([A-Za-z0-9]{6})(?:&|$)/.exec(location.search), ask = null;
+    if (m) {
+      var f = /[?&]from=([^&]*)/.exec(location.search), from = '';
+      try { from = decodeURIComponent((f && f[1] || '').replace(/\+/g, ' ')).trim().slice(0, 40); } catch (e) {}
+      ask = { code: m[1].toUpperCase(), from: from };
+      try { sessionStorage.setItem(LINK_ASK, JSON.stringify(ask)); } catch (e) {}
+      try { window.history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+    } else { try { ask = JSON.parse(sessionStorage.getItem(LINK_ASK) || 'null'); } catch (e) {} }
+    if (!ask || !ask.code || doc.querySelector('.k-scrim')) return false;
+    var done = function () { try { sessionStorage.removeItem(LINK_ASK); } catch (e) {} };
+    if (!linksOn()) {
+      sheet({ title: 'Link ' + (ask.from || 'a player'), html: '<p class="muted">' + esc(ask.from || 'Someone') + ' shared their profile with you. Sign in with a PIN first, then it links on its own.</p>', actions: [{ label: 'OK', cls: 'btn-soft' }] });
+      return true;
+    }
+    var own = FGHSync.links().own;
+    if (own && own.code === ask.code) { done(); toast('That’s your own code'); return true; }
+    var from = ask.from || '', node = el('div', { class: 'lk' }), s, picked = from;
+    node.appendChild(el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: (from || 'Someone') + ' shared their profile with you. Which of your players is this?' }));
+    var names = knownNames(), have = names.some(function (n) { return n.toLowerCase() === from.toLowerCase(); });
+    if (from && !have) names.unshift(from);
+    var list = el('div', { class: 'k-names lk-pick' }), btns = [];
+    names.slice(0, 12).forEach(function (n) {
+      var lk = FGHSync.linkOf(n), b = el('button', { type: 'button', class: 'k-name' + (lk ? ' used' : ''), disabled: !!lk, onclick: function () { picked = n; inp.value = ''; mark(); } }, [
+        avMarked(n, 'var(--surface-3)'), el('span', { class: 'grow', text: n }), lk ? el('small', { class: 'k-plays', text: 'already linked' }) : (n === from && !have ? el('small', { class: 'k-plays', text: 'new' }) : null)]);
+      btns.push([b, n]); list.appendChild(b);
+    });
+    node.appendChild(list);
+    var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'Or type another name', autocomplete: 'off', enterkeyhint: 'done', style: { marginTop: '10px' } });
+    inp.addEventListener('input', function () { picked = inp.value.trim(); mark(); });
+    node.appendChild(inp);
+    var msg = el('p', { class: 'lk-msg' }); node.appendChild(msg);
+    function mark() { btns.forEach(function (x) { x[0].classList.toggle('on', !!picked && x[1].toLowerCase() === picked.toLowerCase()); }); }
+    mark();
+    function go() {
+      var name = (picked || '').trim(); if (!name) { inp.focus(); return; }
+      msg.textContent = 'Linking…';
+      FGHSync.linkAdd(name, ask.code).then(function (d) {
+        done(); s.close(); sfx('good'); haptic('success'); unhide(name, true);
+        toast('Linked ' + name + (d._sent ? ' · ' + d._sent + ' past ' + (d._sent === 1 ? 'game' : 'games') + ' sent' : '')); avRefresh();
+      }).catch(function (e) { msg.textContent = linkErr(e); sfx('bad'); });
+    }
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    s = sheet({ title: 'Link ' + (from || 'a player'), node: node, actions: [{ label: 'Link', primary: true, keep: true, onClick: go }, { label: 'Not now', cls: 'btn-ghost', onClick: done }] });
+    return true;
+  }
   // How the ways of playing together fit: PINs, linking, one shared phone, each on their own device
   function togetherSheet() {
     sheet({ title: 'Playing together', html: '<div class="rules">' +
       '<p class="goal">There are a few ways to play with other people here. Here’s how they fit together.</p>' +
       '<h3>Your PIN</h3><p>Your PIN is your account. Sign in with it on any phone or tablet and your games, high scores and Lorcana decks are all there. You’ll need one to link players or to play Chess or Lorcana online. Playing as a guest works fine, but nothing leaves that device.</p>' +
       '<h3>Linking players</h3><ul>' +
-        '<li>Your code is on this screen. Tap <b>Share</b> to send it, or just read it out.</li>' +
-        '<li>To link someone, open <b>Frequent players</b> from any game’s menu, tap the link button next to their name, and enter their code.</li>' +
-        '<li>After that, their avatar comes from their own phone, games you play together show up in their history too, and you’ll see their best arcade scores.</li>' +
-        '<li>Links go one way. If they want the games they record to show up in your history, they need to link you back.</li></ul>' +
+        '<li>Your code is on this screen, with a QR code of it. Point the other phone’s camera at the QR code, tap <b>Share</b> to send the code, or just read it out.</li>' +
+        '<li>To link someone from a code, open <b>Frequent players</b> from any game’s menu, tap the link button next to their name, and enter it.</li>' +
+        '<li>After that, their avatar comes from their own phone, games you play together show up in both histories, and you each see the other’s best arcade scores.</li>' +
+        '<li>One code is enough: when you link someone, their phone links you back on its own.</li></ul>' +
       '<h3>Playing on one phone</h3><p>Just pass the phone around. Pick everyone at the start, and when the game ends it’s saved here, with a copy sent to anyone you’ve linked. If someone has <b>Ask before adding games</b> turned on, they get to look it over first, and can tap <b>Not me</b> if it wasn’t them.</p>' +
       '<h3>Playing on separate phones</h3><ul>' +
         '<li><b>Chess</b> and <b>Lorcana</b>: each of you signs in with your own PIN on your own device. One opens a table, and the other joins from the list or types in its 4-letter code.</li>' +
@@ -2273,7 +2345,7 @@
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: defaultsSheet, cats: catsOrdered,
-    links: { link: linkSheet, profile: profileSheet, review: reviewSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
+    links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
