@@ -1938,6 +1938,29 @@
     if (scanned) { inp.value = scanned; setTimeout(go, 350); }   // back from the scanner: link straight away
     else setTimeout(function () { inp.focus(); }, 300);
   }
+  // They accepted your link: a small banner drops in from the top, on any screen (mid-game too), then slides away
+  function acceptedBanner() {
+    var names; try { names = JSON.parse(lsGet('fgh_link_acc', '[]')); } catch (e) { names = []; }
+    if (!Array.isArray(names) || !names.length || !doc.body) return;
+    try { localStorage.removeItem('fgh_link_acc'); } catch (e) {}
+    var who = names.join(' and '), me = lsGet('my_name', '').trim() || 'You';
+    var old = doc.querySelector('.k-note'); if (old) old.remove();
+    var b = el('button', { type: 'button', class: 'k-note', role: 'status', 'aria-label': who + ' accepted · you’re linked' }, [
+      el('span', { class: 'k-note-pair' }, [avEl(me, null, '#3f86e0'), el('i', { html: icon('link') }), avEl(names[0], null, '#e2557f')]),
+      el('span', { class: 'grow' }, [el('b', { text: who + ' accepted' }), el('small', { text: 'You’re linked' })]),
+      el('span', { class: 'k-note-ok', html: icon('check') })
+    ]);
+    function hide() { b.classList.remove('show'); setTimeout(function () { b.remove(); }, 400); }
+    b.addEventListener('click', hide);
+    doc.body.appendChild(b);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { b.classList.add('show'); }); });
+    setTimeout(function () { sfx('good'); haptic('success'); }, 200);
+    setTimeout(hide, 5000);
+    avRefresh();
+  }
+  window.addEventListener('fghlinks', function (e) { if (e.detail && e.detail.accepted && e.detail.accepted.length) acceptedBanner(); });
+  // accepted while no page could show it (the app was closed): on the next page
+  window.addEventListener('load', function () { setTimeout(acceptedBanner, 1200); });
   // The request went out: you and them with a dotted link between, waiting for their answer
   function sentSheet(name, them) {
     var me = lsGet('my_name', '').trim() || 'You';
@@ -1953,7 +1976,7 @@
     sfx('good'); haptic('success');
     // they accept while this is open: the question mark turns into a check and the link closes
     function onLinks(e) {
-      var lk = (e.detail && e.detail.linked) || [];
+      var lk = (e.detail && e.detail.accepted) || [];
       if (!lk.some(function (n) { return String(n).toLowerCase() === name.toLowerCase(); })) return;
       node.classList.add('done');
       node.querySelector('.lk-sent-them em').innerHTML = icon('check');

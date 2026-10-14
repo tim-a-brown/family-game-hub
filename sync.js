@@ -1013,8 +1013,8 @@
   var _pending = [], _reqs = [], _linkBusy = false, _lastPoll = 0, _pollAgain = false;
   function genCode(){ var c = ''; for(var i = 0; i < 6; i++) c += CODE_AB.charAt(Math.floor(Math.random() * CODE_AB.length)); return c; }
   function linksGet(){ var l = lsJSON('fgh_links') || {}, o = { own: l.own || null, others: l.others || {} }; if(l.ini) o.ini = l.ini; return o; }
-  function linksSet(l){ try{ LS.setItem('fgh_links', JSON.stringify(l)); }catch(e){} noteWrite('fgh_links'); linkEvent(); }
-  function linkEvent(linked){ try{ window.dispatchEvent(new CustomEvent('fghlinks', { detail: { pending: _pending.length, linked: linked || [], requests: _reqs.length } })); }catch(e){} }
+  function linksSet(l){ try{ LS.setItem('fgh_links', JSON.stringify(l)); }catch(e){} noteWrite('fgh_links'); linkEvent(); setTimeout(pendWatch, 0); }
+  function linkEvent(linked, acc){ try{ window.dispatchEvent(new CustomEvent('fghlinks', { detail: { pending: _pending.length, linked: linked || [], accepted: acc || [], requests: _reqs.length } })); }catch(e){} }
   function myName(){ return (LS.getItem('my_name') || '').trim(); }
   function lk(n){ return String(n || '').trim().toLowerCase(); }
   function linkCol(){ return _fb.db.collection('links'); }
@@ -1107,7 +1107,7 @@
           if(d.exists){ if(++tries > 5) throw new Error('Try again'); return attempt(); }
           var own = { code: code, name: myName(), ask: false, at: Date.now() };
           return linkCol().doc(code).set({ name: own.name, avatar: myAvatar(), ask: false, rejected: [], at: own.at })
-            .then(function(){ l.own = own; linksSet(l); if(_watchOn) linkWatch(true); return linkPublish().then(function(){ return own; }); });
+            .then(function(){ l.own = own; linksSet(l); if(_watchOn) watchApply(true); return linkPublish().then(function(){ return own; }); });
         });
       }
       return attempt();
@@ -1432,19 +1432,27 @@
     var names = setHs(code);
     names.forEach(function(n){ var L = linksGet(), r = L.others[lk(n)]; if(r){ r.bf = 1; try{ LS.setItem('fgh_links', JSON.stringify(L)); }catch(e){} } linkBackfill(n, code, { all: true }); });
     if(names.length){
-      // the person who asked gets the "Linked with ..." moment too
-      var was = lsJSON('fgh_link_new'); was = Array.isArray(was) ? was : [];
+      // the person who asked gets a banner, on whatever screen they're on (kept until a page shows it)
+      var was = lsJSON('fgh_link_acc'); was = Array.isArray(was) ? was : [];
       names.forEach(function(n){ if(was.indexOf(n) < 0) was.push(n); });
-      try{ LS.setItem('fgh_link_new', JSON.stringify(was)); }catch(e){}
-      setTimeout(function(){ linkEvent(names); }, 0);
+      try{ LS.setItem('fgh_link_acc', JSON.stringify(was)); }catch(e){}
+      setTimeout(function(){ linkEvent([], names); }, 0);
       setTimeout(function(){ linkPoll(true); }, 300);   // their avatar and scores
     }
     return names;
   }
   // Live: the home screen watches your inbox, so a link request or a game sent to you shows up within seconds
   // instead of at the next app open. Stops when the page is hidden; restarts if your code changes.
-  var _watch = null, _watchCode = null, _watchOn = false;
-  function linkWatch(on){
+  // Any page also listens while a request you sent is waiting, so their answer can pop in mid-game.
+  var _watch = null, _watchCode = null, _watchOn = false, _homeWant = false;
+  function waitingOut(){ var o = linksGet().others; return Object.keys(o).some(function(k){ var r = o[k]; return r && !r.off && r.code && !r.gone && !r.hs; }); }
+  function pendWatch(){
+    var vis = typeof document === 'undefined' || document.visibilityState !== 'hidden';
+    var on = _homeWant || (vis && isPin() && waitingOut());
+    if(on !== _watchOn || (on && !_watch)) watchApply(on);
+  }
+  function linkWatch(on){ _homeWant = !!on; pendWatch(); }
+  function watchApply(on){
     _watchOn = !!on;
     if(!on){ if(_watch){ try{ _watch(); }catch(e){} _watch = null; _watchCode = null; } return; }
     if(!isPin()) return;
@@ -1458,7 +1466,7 @@
         if(q && !q.empty) linkPoll(true);   // if a check is already running, it runs once more right after
       }, function(e){
         console.warn('[links] watch', e); _watch = null; _watchCode = null;
-        setTimeout(function(){ if(_watchOn) linkWatch(true); }, 5000);   // dropped connection: listen again
+        setTimeout(function(){ if(_watchOn) watchApply(true); }, 5000);   // dropped connection: listen again
       });
     }).catch(function(e){ console.warn('[links] watch', e); });
   }
@@ -1555,7 +1563,7 @@
       if(l.own && l.own.code && LS.getItem('fgh_link_pub') !== pubSig()) jobs.push(linkPublish());
       return Promise.all(jobs);
     }).catch(function(e){ console.warn('[links] poll failed', e); }).then(function(){
-      _linkBusy = false; linkEvent();
+      _linkBusy = false; linkEvent(); pendWatch();
       if(_pollAgain){ _pollAgain = false; return linkPoll(true); }
     });
   }
@@ -1594,7 +1602,7 @@
     try{ tableBank(e, true); }catch(err){ console.warn('[links] bankroll', err); }   // a bankroll change from it is taken back
     return e && e._id ? rejectId(e._id).catch(function(err){ console.warn('[links] not me', err); }) : Promise.resolve();
   }
-  if(typeof document !== 'undefined') document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') linkPoll(); });
+  if(typeof document !== 'undefined') document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') linkPoll(); pendWatch(); });
 
   window.FGHSync = {
     mode: mode, pin: pin, label: label, isPin: isPin,
