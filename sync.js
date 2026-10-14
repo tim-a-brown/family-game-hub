@@ -1169,6 +1169,14 @@
     var all = lsJSON('fgh_avatars') || {};
     if(had && all[k] && all[k].linked){ all[k] = { name: all[k].name, cur: null, photos: [], at: Date.now() }; writeAvatars(all); }
   }
+  // Take back a request they haven't answered: it leaves their inbox, and nothing is linked
+  function linkCancel(name){
+    var r = linkOf(name), own = linksGet().own;
+    linkRemove(name);
+    if(!r || r.hs || !own || !own.code) return Promise.resolve();
+    return ensureFirebase().then(function(){ return linkCol().doc(r.code).collection('inbox').doc(noteId('ask', own.code)).delete(); })
+      .catch(function(e){ console.warn('[links] cancel', e); });
+  }
   function linkOf(name){ var r = linksGet().others[lk(name)]; return r && !r.off && r.code ? r : null; }
   // accepted by both sides: the only kind games are sent to and profiles read from
   function linkOk(name){ var r = linkOf(name); return r && r.hs ? r : null; }
@@ -1599,7 +1607,7 @@
     forceOverwriteCloud: forceOverwriteCloud,
     // player links
     linkShare: linkShare, linkNewCode: linkNewCode, linkSetAsk: linkSetAsk, linkPublish: linkPublishSoon,
-    linkAdd: linkAdd, linkRemove: linkRemove, linkOf: linkOf, links: linksGet,
+    linkAdd: linkAdd, linkRemove: linkRemove, linkCancel: linkCancel, linkOf: linkOf, links: linksGet,
     initials: myInitials, setInitials: setInitials, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
     linkMark: linkMark, linkSend: linkSend, linkBackfill: linkBackfill, linkPoll: linkPoll,
     linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,

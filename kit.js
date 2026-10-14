@@ -1896,14 +1896,21 @@
     }
     var r = FGHSync.linkOf(name);
     node.appendChild(el('div', { class: 'lk-top' }, [avEl(name, 'lg', 'var(--surface-3)'), el('div', null, [el('b', { text: name }),
-      el('small', { text: r ? (r.hs ? 'Linked to ' : 'Waiting for ' + (r.them || name) + ' to accept · ') + (r.them || name) + '’s profile · ' + r.code : 'Not linked yet' })])]));
+      el('small', { class: r && !r.hs ? 'k-wait' : '', text: r ? (r.hs ? 'Linked to ' + (r.them || name) + '’s profile · ' + r.code : 'Waiting to accept') : 'Not linked yet' })])]));
     if (r && r.gone) {
       node.appendChild(el('p', { class: 'muted', text: 'That code doesn’t work anymore (' + name + ' made a new one). Unlink, then link again with their new code.' }));
       s = sheet({ title: name, node: node, actions: [{ label: 'Unlink ' + name, primary: true, onClick: function () { FGHSync.linkRemove(name); avRefresh(); if (onDone) onDone(); linkSheet(name, onDone); } }, { label: 'Close', cls: 'btn-ghost' }] });
       return;
     }
+    if (r && !r.hs) {
+      // still waiting: the request can be taken back
+      s = sheet({ title: name, node: node, actions: [
+        { label: 'Done', primary: true },
+        { label: 'Cancel request', cls: 'btn-ghost', onClick: function () { FGHSync.linkCancel(name); sfx('tap'); toast('Request to ' + name + ' cancelled'); avRefresh(); if (onDone) onDone(); } }] });
+      return;
+    }
     if (r) {
-      node.appendChild(el('p', { class: 'muted', text: r.hs ? 'Their avatar comes from their own phone, and games you play with ' + name + ' are saved to their history too. They can remove any game that wasn’t them.' : name + ' gets asked on their phone. Once they accept, their avatar comes from their phone, and the games you play together go to both histories.' }));
+      node.appendChild(el('p', { class: 'muted', text: 'Their avatar comes from their own phone, and games you play with ' + name + ' are saved to their history too. They can remove any game that wasn’t them.' }));
       s = sheet({ title: name, node: node, actions: [
         { label: 'Done', primary: true },
         { label: 'Unlink ' + name, cls: 'btn-ghost', onClick: function () { setTimeout(function () { unlinkAsk(name, onDone); }, 320); } }] });
