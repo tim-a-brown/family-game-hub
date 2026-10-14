@@ -992,7 +992,7 @@ window.dispatchEvent(new Event('cab3d-ready'));
   var Scene = (function () {
     var root = null, kind = null, W = 0, H = 0, FW = 0, FH = 0, MG = 30, dpr = 1;
     var layers = [], lightCv = null, lx = null, lights = [], neons = [], lanterns = [], twinkles = [], extra = null;
-    var raf = 0, lastDraw = 0, flashUntil = 0, flashCol = '#fff', dimOn = false, hidden = false;
+    var raf = 0, lastDraw = 0, lastMove = 0, flashUntil = 0, flashCol = '#fff', dimOn = false, hidden = false;
     var tilt = { x: 0, y: 0, tx: 0, ty: 0, src: 'idle', t0: 0 }, onTilt = null;
     var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     var AMB = {
@@ -1308,12 +1308,12 @@ window.dispatchEvent(new Event('cab3d-ready'));
       document.addEventListener('visibilitychange', function () { hidden = document.visibilityState === 'hidden'; if (!hidden) loop(); });
       window.addEventListener('resize', function () { clearTimeout(ensureRoot.rt); ensureRoot.rt = setTimeout(function () { if (kind && (Math.abs(innerWidth - W) > 40 || Math.abs(innerHeight - H) > 120)) build(kind); }, 250); });
       window.addEventListener('pointermove', function (e) { if (e.pointerType === 'touch') return; tilt.src = 'ptr'; tilt.tx = Math.max(-1, Math.min(1, (e.clientX / innerWidth - 0.5) * 2)); tilt.ty = Math.max(-1, Math.min(1, (e.clientY / innerHeight - 0.5) * 2)); tilt.t0 = performance.now(); }, { passive: true });
-      window.addEventListener('deviceorientation', function (e) {
-        if (e.gamma == null) return;
-        if (tilt.b0 == null) tilt.b0 = e.beta;
-        tilt.b0 += (e.beta - tilt.b0) * 0.01;   // slowly re-centre on how the device is held
-        tilt.src = 'dev'; tilt.tx = Math.max(-1, Math.min(1, e.gamma / 25)); tilt.ty = Math.max(-1, Math.min(1, (e.beta - tilt.b0) / 25)); tilt.t0 = performance.now();
-      }, { passive: true });
+    }
+    function orient(e) {
+      if (e.gamma == null) return;
+      if (tilt.b0 == null) tilt.b0 = e.beta;
+      tilt.b0 += (e.beta - tilt.b0) * 0.01;   // slowly re-centre on how the device is held
+      tilt.src = 'dev'; tilt.tx = Math.max(-1, Math.min(1, e.gamma / 25)); tilt.ty = Math.max(-1, Math.min(1, (e.beta - tilt.b0) / 25)); tilt.t0 = performance.now();
     }
     function build(k) {
       ensureRoot();
@@ -1399,6 +1399,8 @@ window.dispatchEvent(new Event('cab3d-ready'));
         if (hidden || !kind) return;
         // tilt: ease toward the target; idle drift when nothing moves it
         if (performance.now() - tilt.t0 > 4000 || tilt.src === 'idle') { tilt.src = 'idle'; tilt.tx = reduce ? 0 : Math.sin(t / 5200) * 0.5; tilt.ty = reduce ? 0 : Math.sin(t / 7300) * 0.2; }
+        if (tilt.src === 'idle' && t - lastMove < 30) { raf = requestAnimationFrame(frame); return; }   // slow idle drift: 30fps is plenty
+        lastMove = t;
         tilt.x += (tilt.tx - tilt.x) * 0.06; tilt.y += (tilt.ty - tilt.y) * 0.06;
         layers.forEach(function (l) { l.el.style.transform = 'translate3d(' + (-tilt.x * MG * l.depth).toFixed(2) + 'px,' + (-tilt.y * MG * l.depth * 0.6).toFixed(2) + 'px,0)'; });
         if (onTilt) onTilt(tilt.x, tilt.y, tilt.src);
@@ -1407,8 +1409,8 @@ window.dispatchEvent(new Event('cab3d-ready'));
       });
     }
     return {
-      show: function (k) { if (k !== kind || !root || !layers.length) build(k); else { document.body.classList.add('in-scene'); root.style.display = ''; loop(); } },
-      hide: function () { kind = null; if (root) { root.innerHTML = ''; layers = []; } document.body.classList.remove('in-scene'); },
+      show: function (k) { window.addEventListener('deviceorientation', orient, { passive: true }); if (k !== kind || !root || !layers.length) build(k); else { document.body.classList.add('in-scene'); root.style.display = ''; loop(); } },
+      hide: function () { window.removeEventListener('deviceorientation', orient, { passive: true }); kind = null; if (root) { root.innerHTML = ''; layers = []; } document.body.classList.remove('in-scene'); },
       flash: function (col, ms) { flashCol = col || '#fff3c0'; flashUntil = performance.now() + (ms || 2400); if (root) { var f = root.querySelector('.flash'); if (f) { f.style.setProperty('--fc', flashCol); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); } } },
       dim: function (on) { dimOn = !!on; if (root) root.classList.toggle('dimmed', dimOn); },
       onTilt: function (fn) { onTilt = fn; },
@@ -2432,7 +2434,7 @@ window.dispatchEvent(new Event('cab3d-ready'));
   };
 
   // The cabinet turns a few degrees with the device or pointer (the room's layers shift too)
-  Scene.onTilt(function (x, y, src) { if (cab) cab.setTilt(src === 'idle' ? 0 : x, src === 'idle' ? 0 : y); });
+  Scene.onTilt(function (x, y, src) { if (cab) cab.setTilt(src === 'idle' ? 0 : Math.round(x * 500) / 500, src === 'idle' ? 0 : Math.round(y * 500) / 500); });   // rounded so sensor jitter doesn't re-render
   app.addEventListener('pointerdown', function () { Scene.askMotion(); }, { passive: true });
   // ── The pull handle (Diamond Sevens): an invisible grip over the rendered arm ──
   function buildHandle() {

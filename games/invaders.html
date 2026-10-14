@@ -1385,14 +1385,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (frozen) return;
     var dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 0; lastT = t;
     if (view !== 'game' || !G) { ufoSoundOff(); return; }
+    var n = 0;
     if (!paused && !G.ended) {
       acc += dt;
-      var n = 0;
       while (acc >= TICK && n++ < 6) { acc -= TICK; update(); if (G.ended) break; }
       if (n >= 6) acc = 0;
       if (G.phase === 'play' || G.phase === 'clear') MUS.tick(); else MUS.stop();
     }
-    draw();
+    if (n || !dt || paused || G.ended) draw();   // 120Hz screens: no step this frame, nothing new to draw
     if (!paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
   }
   function wake() { if (!raf && !frozen && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }

@@ -1007,8 +1007,10 @@ const MOVING = { ready: 1, play: 1, fall: 1, jackpot: 1, review: 1 };
 function wantFrames() { return live && glOk && !document.hidden && (!paused || countdown > 0) && !!MOVING[state]; }
 function loop(ts) {
   raf = 0;
-  const dt = last ? Math.min(.05, (ts - last) / 1000) : 0; last = ts;
   if (!live) { Mus.stop(true); return; }
+  // 120Hz screens: draw about 60 times a second; dt below is the real time since the last drawn frame
+  if (last && ts - last < 12) { raf = requestAnimationFrame(loop); return; }
+  const dt = last ? Math.min(.05, (ts - last) / 1000) : 0; last = ts;
   if (!paused) update(dt);
   if (state === 'play' || state === 'ready') watchFrame(dt);
   if (state === 'play' && !paused && !countdown && !document.hidden) Mus.tick(); else Mus.stop(state !== 'play');

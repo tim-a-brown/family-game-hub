@@ -1024,15 +1024,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (!last) last = t;
     acc += Math.min(100, t - last); last = t;
     Snd.poll();
+    var n = 0;
     while (acc >= DT) {
-      acc -= DT;
+      acc -= DT; n++;
       if (!G || phase === 'idle') { frame++; continue; }
       if (paused) continue;
       if (phase === 'over') { frame++; continue; }
       step();
     }
     if (G && !paused) padShow();
-    if (G) render();
+    if (G && (n || paused || overDone)) render();   // 120Hz screens: no step this frame, nothing new to draw
     // Battery: no frames on the setup screen, while paused, once the results card is up or with the page hidden (kick() restarts)
     if (G && phase !== 'idle' && !paused && !overDone && !document.hidden) raf = requestAnimationFrame(loop);
   }

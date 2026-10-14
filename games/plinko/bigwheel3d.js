@@ -749,7 +749,9 @@ export function BigWheel3D(host, hooks, api) {
     window.addEventListener('deviceorientation', function (e) {
       if (e.gamma == null || e.beta == null) return;
       if (base == null) base = [e.gamma, e.beta];
-      par.tx = Math.max(-1, Math.min(1, (e.gamma - base[0]) / 25)); par.ty = Math.max(-1, Math.min(1, -(e.beta - base[1]) / 25)); kick();
+      const tx = Math.max(-1, Math.min(1, (e.gamma - base[0]) / 25)), ty = Math.max(-1, Math.min(1, -(e.beta - base[1]) / 25));
+      if (Math.abs(tx - par.tx) < 0.01 && Math.abs(ty - par.ty) < 0.01) return;   // dead-zone: sensor jitter shouldn't keep the loop at full rate
+      par.tx = tx; par.ty = ty; kick();
     }, sig);
   }
 
@@ -779,6 +781,7 @@ export function BigWheel3D(host, hooks, api) {
       dyn.forEach(m => { if (m.geometry) m.geometry.dispose(); if (m.isInstancedMesh) m.dispose(); }); dmesh.forEach(m => m.geometry.dispose());
       if (atlas) atlas.tex.dispose(); if (dollar) { dollar.alpha.dispose(); dollar.normal.dispose(); } if (readTex) readTex.dispose();
       Object.keys(M).forEach(k => { if (M[k]) M[k].dispose(); });
+      composer.passes.forEach(p => p.dispose());   // composer.dispose() skips the passes' own targets (bloom, trail)
       composer.dispose(); rt.dispose(); refl.rt.dispose(); key.shadow.dispose();
       if (cv.parentNode) cv.parentNode.removeChild(cv);
       // the shared renderer stays for the next wheel; leave the canvas tidy

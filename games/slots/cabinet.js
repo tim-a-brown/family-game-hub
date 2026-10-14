@@ -481,7 +481,8 @@ export class Cabinet {
     this.cam0 = { d: d, E: Math.max(0.5, E), ox: 0.26 };
     this.camera.updateProjectionMatrix(); this.camDirty = true; this.invalidate();
   }
-  setTilt(x, y) { if (x === this.tilt.tx && y === this.tilt.ty) return; this.tilt.tx = x; this.tilt.ty = y; this.anim('tilt', () => { const t = this.tilt; t.x += (t.tx - t.x) * 0.12; t.y += (t.ty - t.y) * 0.12; this.camDirty = true; return Math.abs(t.tx - t.x) > 0.002 || Math.abs(t.ty - t.y) > 0.002; }); }
+  // dead-zone: sensor jitter shouldn't re-render the cabinet every frame (a move back to rest always counts)
+  setTilt(x, y) { const t = this.tilt; if (Math.abs(x - t.tx) < 0.003 && Math.abs(y - t.ty) < 0.003 && (x || y || !(t.tx || t.ty))) return; this.tilt.tx = x; this.tilt.ty = y; this.anim('tilt', () => { const t = this.tilt; t.x += (t.tx - t.x) * 0.12; t.y += (t.ty - t.y) * 0.12; this.camDirty = true; return Math.abs(t.tx - t.x) > 0.002 || Math.abs(t.ty - t.y) > 0.002; }); }
   placeCamera() {
     const c = this.cam0; if (!c) return;
     const ox = c.ox + this.tilt.x * 0.22, oy = this.tilt.y * 0.07;

@@ -506,8 +506,8 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
   var pxCache = {};
   function pixelAvatar(name) {
     var N = 12, cv = el('canvas', { width: N, height: N, role: 'img', 'aria-label': name, title: name }), g = cv.getContext('2d');
-    function finish(src) {
-      var key = name + '|' + src.length; if (pxCache[key]) { g.putImageData(pxCache[key], 0, 0); return; }
+    function finish(src, key) {
+      key = key || name + '|' + src.length; if (pxCache[key]) { g.putImageData(pxCache[key], 0, 0); return; }
       var im = new Image();
       im.onload = function () {
         g.clearRect(0, 0, N, N); g.imageSmoothingEnabled = true; g.drawImage(im, 0, 0, N, N);
@@ -526,9 +526,11 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     })();
     var photo = html && /<img[^>]+src="([^"]+)"/.exec(html);
     if (photo) {
-      // a photo: cropped into a circle first, then pixelated
+      // a photo: cropped into a circle first, then pixelated (cached by the photo, so repaints skip the crop)
+      var pk = name + '|p' + photo[1].length + photo[1].slice(-24);
+      if (pxCache[pk]) { g.putImageData(pxCache[pk], 0, 0); return cv; }
       var im0 = new Image();
-      im0.onload = function () { var c2 = document.createElement('canvas'); c2.width = c2.height = 96; var x = c2.getContext('2d'); x.beginPath(); x.arc(48, 48, 48, 0, Math.PI * 2); x.clip(); x.drawImage(im0, 0, 0, 96, 96); finish(c2.toDataURL()); };
+      im0.onload = function () { var c2 = document.createElement('canvas'); c2.width = c2.height = 96; var x = c2.getContext('2d'); x.beginPath(); x.arc(48, 48, 48, 0, Math.PI * 2); x.clip(); x.drawImage(im0, 0, 0, 96, 96); finish(c2.toDataURL(), pk); };
       im0.src = photo[1];
       return cv;
     }
@@ -656,11 +658,9 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
   })();
 
   // a little 8-bit blip when the game changes (sound setting respected)
-  var AC = null;
   function blip(dir) {
-    try { if (localStorage.getItem('gn_sound') === '0') return; } catch (e) {}
     try {
-      AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+      if (!ac()) return;   // the music's context: made once, with its master gain (sound setting respected)
       var t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
       o.type = 'square'; o.frequency.setValueAtTime(dir > 0 ? 660 : 880, t); o.frequency.setValueAtTime(dir > 0 ? 990 : 587, t + 0.05);
       g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);

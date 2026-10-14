@@ -404,6 +404,8 @@ let raf = 0, last = 0, frame = 0;
 function loop(ts) {
   raf = 0;
   if (view !== 'game' || !G || paused || ended || manual) return;
+  // 120Hz screens: draw about 60 times a second; dt below is the real time since the last drawn frame
+  if (last && ts - last < 12) { raf = requestAnimationFrame(loop); return; }
   const dt = last ? Math.min(0.1, (ts - last) / 1000) : 0; last = ts;
   if (countdown > 0) { countdown -= dt; showCount(); scene.render(G, 0); raf = requestAnimationFrame(loop); return; }
   advance(dt);

@@ -1191,7 +1191,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var w = Math.round(CW * s), h = Math.round(CH * s);
     if (w === cssW && canvas.width) return;
     cssW = w;
-    DPR = Math.min(window.devicePixelRatio || 1, 3);
+    DPR = Math.min(window.devicePixelRatio || 1, 2);   // 3x phones: 2x looks the same and fills far fewer pixels
     canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
     canvas.width = Math.round(w * DPR); canvas.height = Math.round(h * DPR);
     S = canvas.width / CW;
@@ -1819,6 +1819,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function frame(now) {
     raf = 0;
     if (view !== 'game' || !L) { lastFrame = 0; Mus.stop(true); return; }
+    // 120Hz screens: draw about 60 times a second; rdt below is the real time since the last drawn frame
+    if (lastFrame && now - lastFrame < 12) { raf = requestAnimationFrame(frame); return; }
     var rdt = lastFrame ? Math.min(0.05, (now - lastFrame) / 1000) : 0; lastFrame = now;
     var blocked = paused || !!document.querySelector('.k-scrim');
     if (!blocked) {
@@ -1842,8 +1844,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     }
     // calm music under the aiming and bouncing; it drops out for the slow-motion drum roll, Extreme Fever and the result
     if (!blocked && !document.hidden && !L.done && !L.fever && !zoom.on && (state === 'aim' || state === 'fly' || state === 'clear')) Mus.tick(); else Mus.stop(paused || L.fever);
-    render();
-    syncHud();
+    if (!blocked || paused) { render(); syncHud(); }   // a menu sheet over the game: the table is frozen, nothing to redraw
     // Battery: no frames while paused, once the level's result card is up (nothing left to run) or with the page hidden (kick() restarts)
     if (!paused && !(L.done && !fx.later.length) && !document.hidden) raf = requestAnimationFrame(frame);
   }
