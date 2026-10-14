@@ -860,7 +860,8 @@
     if (opts.theme) { THEMES._custom = opts.theme; applyTheme('_custom'); }
 
     var bar = el('header', { class: 'gbar' }, [
-      el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'All games', html: ICON.back, onclick: goHome }),
+      // back to the home screen: a pill that says so (the title's own arrow is for the game's modes)
+      el('button', { class: 'k-home', type: 'button', 'aria-label': 'Game Night home', html: ICON.back + '<span class="k-home-l">Game Night</span><span class="k-home-s">Home</span>', onclick: goHome }),
       el('div', { class: 'ttl' + (game && window.GameIcon ? ' has-ic' : '') }, [
         game && window.GameIcon ? el('span', { class: 'gi', html: GameIcon(game.id) }) : null,
         el('span', { text: opts.title || (game && game.name) || doc.title })
@@ -870,6 +871,19 @@
     ]);
     doc.body.insertBefore(bar, doc.body.firstChild);
     gbarEl = bar;
+    requestAnimationFrame(fitBar);
+    window.addEventListener('resize', function () { clearTimeout(fitBar.t); fitBar.t = setTimeout(fitBar, 120); });
+    // games with modes, options or players to pick again: the title gets a down arrow that goes back to that
+    // choice (games with their own picker call Kit.titleSwitch and take the arrow over)
+    // while the setup screen is showing there's nothing to go back to: the arrow hides (html.k-in-setup)
+    var setupChk = function () { var st = doc.querySelector('.setup .k-start'); root.classList.toggle('k-in-setup', !!(st && st.offsetParent !== null)); };
+    try { var mo = new MutationObserver(function () { if (setupChk.t) return; setupChk.t = requestAnimationFrame(function () { setupChk.t = 0; setupChk(); }); }); mo.observe(doc.body, { childList: true, subtree: true }); } catch (e) {}
+    setTimeout(setupChk, 0);
+    if (opts.onNew) titleSwitch(opts.title || (game && game.name) || doc.title, function () {
+      if (root.classList.contains('k-in-setup')) return;
+      if (opts.confirmNew === false) return opts.onNew();
+      confirmSheet('Change the game setup?', { ok: 'Change', body: 'The current game will be lost.' }).then(function (ok) { if (ok) opts.onNew(); });
+    }, 'Change the game setup');
     return bar;
   }
 
@@ -878,6 +892,14 @@
   // tapping it goes back to the game's own picker instead of all the way home.
   // Kit.titleSwitch(null) puts the plain game name back (use it while the picker is showing).
   var gbarEl = null, tsw = null;
+  // The home pill keeps its label while the title fits; when a long title would be cut off, the pill drops to
+  // the arrow alone (gbar.k-tight) so the name wins
+  function fitBar() {
+    if (!gbarEl) return;
+    gbarEl.classList.remove('k-tight');
+    var t = gbarEl.querySelector('.ttl > span:not(.gi):not(.k-chev)');
+    if (t && t.scrollWidth > t.clientWidth + 1) gbarEl.classList.add('k-tight');
+  }
   function titleSwitch(text, onClick, label) {
     var ttl = gbarEl && gbarEl.querySelector('.ttl'); if (!ttl) return;
     var txt = ttl.lastElementChild && ttl.lastElementChild.classList.contains('k-chev') ? ttl.lastElementChild.previousElementSibling : ttl.lastElementChild;
@@ -896,6 +918,7 @@
       if (tsw.chev.parentNode) tsw.chev.remove();
       ttl.classList.remove('k-switch'); ttl.removeAttribute('role'); ttl.removeAttribute('tabindex'); ttl.removeAttribute('aria-label');
     }
+    requestAnimationFrame(fitBar);
   }
   // Home screen sections in the order you set in Preferences (gn_cat_order: [cat ids]); new sections go at the end
   function catsOrdered() {
