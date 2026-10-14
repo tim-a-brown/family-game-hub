@@ -835,6 +835,8 @@
     if (doc.body) orCheck(); else doc.addEventListener('DOMContentLoaded', orCheck);
   }
 
+  // the Game Night mark (the home screen's logo), on the bar's home pill
+  var HOME_LOGO = '<svg viewBox="40 40 176 176" aria-hidden="true"><g fill="none" stroke-width="18" stroke-linecap="round"><path d="M148 72A58 58 0 0 1 184 108" stroke="#ffd166"/><path d="M184 148A58 58 0 0 1 148 184" stroke="#ff7a8a"/><path d="M108 184A58 58 0 0 1 72 148" stroke="#4fd1c5"/><path d="M72 108A58 58 0 0 1 108 72" stroke="#8b7cff"/></g><g fill="#fff"><circle cx="79" cy="79" r="16"/><circle cx="177" cy="79" r="16"/><circle cx="177" cy="177" r="16"/><circle cx="79" cy="177" r="16"/></g></svg>';
   function init(o) {
     // opened as "#new" (home: New game while one is going): start over once the page has restored its saved game
     if (location.hash === '#new' && o && o.onNew) {
@@ -861,7 +863,7 @@
 
     var bar = el('header', { class: 'gbar' }, [
       // back to the home screen: a pill that says so (the title's own arrow is for the game's modes)
-      el('button', { class: 'k-home', type: 'button', 'aria-label': 'Game Night home', html: ICON.back + '<span class="k-home-l">Game Night</span><span class="k-home-s">Home</span>', onclick: goHome }),
+      el('button', { class: 'k-home', type: 'button', 'aria-label': 'Game Night home', html: ICON.back + '<span class="k-home-logo">' + HOME_LOGO + '</span>', onclick: goHome }),
       el('div', { class: 'ttl' + (game && window.GameIcon ? ' has-ic' : '') }, [
         game && window.GameIcon ? el('span', { class: 'gi', html: GameIcon(game.id) }) : null,
         el('span', { text: opts.title || (game && game.name) || doc.title })
