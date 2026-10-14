@@ -2030,7 +2030,12 @@
       return;
     }
     node.appendChild(el('p', { class: 'muted', text: 'Making your code…' }));
-    s = sheet({ title: 'Share my profile', node: node, help: togetherSheet, helpLabel: 'How playing together works', actions: [{ label: 'Done', cls: 'btn-soft' }] });
+    // while your code is showing, someone is probably about to link you: look for their request every 3 seconds
+    var peek = setInterval(function () {
+      if (!document.body.contains(node)) { clearInterval(peek); return; }
+      if (document.visibilityState === 'visible' && FGHSync.linkPeek) FGHSync.linkPeek();
+    }, 3000);
+    s = sheet({ title: 'Share my profile', node: node, help: togetherSheet, helpLabel: 'How playing together works', actions: [{ label: 'Done', cls: 'btn-soft' }], onClose: function () { clearInterval(peek); } });
     FGHSync.linkShare().then(paint).catch(function (e) { node.innerHTML = ''; node.appendChild(el('p', { class: 'muted', text: linkErr(e) })); });
     function paint(own) {
       node.innerHTML = '';

@@ -1447,6 +1447,16 @@
       });
     }).catch(function(e){ console.warn('[links] watch', e); });
   }
+  // A quick look at just your inbox (one small read): anything new runs the full check.
+  // Used while your code is on screen, when a request is most likely to land, in case the live listener lags.
+  function linkPeek(){
+    if(!isPin() || _linkBusy) return Promise.resolve();
+    var l = linksGet(), code = l.own && l.own.code; if(!code) return Promise.resolve();
+    return ensureFirebase().then(function(){ return linkCol().doc(code).collection('inbox').limit(100).get(); }).then(function(q){
+      var known = {}; _reqs.forEach(function(r){ known[r.id] = 1; });
+      if(q.docs.some(function(d){ return !known[d.id]; })) return linkPoll(true);
+    }).catch(function(e){ console.warn('[links] peek', e); });
+  }
   // Link requests waiting for your answer
   function linkReqs(){ return _reqs.slice(); }
   // Their profile (name, avatar) for the request screen
@@ -1593,7 +1603,7 @@
     initials: myInitials, setInitials: setInitials, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
     linkMark: linkMark, linkSend: linkSend, linkBackfill: linkBackfill, linkPoll: linkPoll,
     linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,
-    linkReqs: linkReqs, linkReqInfo: linkReqInfo, linkReqAccept: linkReqAccept, linkReqDecline: linkReqDecline, linkWatch: linkWatch,
+    linkReqs: linkReqs, linkReqInfo: linkReqInfo, linkReqAccept: linkReqAccept, linkReqDecline: linkReqDecline, linkWatch: linkWatch, linkPeek: linkPeek,
     linkBank: linkBank, bankRemote: bankRemote, _fileGame: fileGame,
     _scanLocal: scanLocal, _myHi: myHi, _mergeHi: mergeHi, _hiFromFirestore: hiFromFirestore
   };

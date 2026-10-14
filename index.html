@@ -23,9 +23,22 @@
 <script src="spin.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
+  var swReg = null, hadSW = !!navigator.serviceWorker.controller, swReload = false;
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('/service-worker.js').then(function (r) { try { r.update(); } catch (e) {} }).catch(function () {});
+    navigator.serviceWorker.register('/service-worker.js').then(function (r) { swReg = r; try { r.update(); } catch (e) {} }).catch(function () {});
   });
+  // An app left open in the background keeps running the old code after a release. Coming back to it checks for
+  // a new version, and a new one reloads the home screen (once nothing is open), so the fixes actually arrive.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && swReg) { try { swReg.update(); } catch (e) {} }
+  });
+  var swIdle = function () { return !document.querySelector('.k-scrim, .lkm') && !(document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)); };
+  var swGo = function () { if (!swReload) return; if (swIdle()) { swReload = false; location.reload(); } };
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    if (!hadSW) { hadSW = true; return; }   // first install: nothing old is running
+    swReload = true; swGo();
+  });
+  window.addEventListener('kit-sheet-closed', function () { setTimeout(swGo, 400); });
 }
 // Not signed in yet (no PIN, no guest choice): send to the gate first.
 if (typeof FGHSync !== 'undefined' && !FGHSync.mode()) location.replace('./gate.html');
