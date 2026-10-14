@@ -300,14 +300,41 @@ loads slower.
 ## Performance budget
 
 60 fps on a recent iPhone: < 200 draw calls, < 400k triangles, textures under ~40 MB total. Use `RC.batch` for
-static geometry; one material per look; `cylGeo` segment counts 10-20; avoid per-frame geometry rebuilding;
-canvas textures at most 1024 px for decals. The render target is capped at 1.5 megapixels (a phone's play view
-at 2x); bigger screens such as an iPad render at a lower pixel ratio and are CSS-scaled. The bloom chain works at
-one pixel per CSS pixel. Adaptive quality watches the real time between frames (GPU-bound frames show up there,
-not in the frame's own time); ~0.35 s of sustained missed vsyncs steps down one level: render scale 0.85, bloom
-off, shadow map 1024, shadows off, render scale 0.7. The display redraws at most ~30 times a second and only
-presents when its dots change. Check `__pin.get().render` (calls, tris, level) and `.frame` (ms, slow in
-headless swiftshader); `G.T.R.rtInfo()` gives the render target, bloom and shadow sizes.
+static geometry; one material per look (`mats.satin` for posts, target faces, buttons, gondolas and other small
+parts: a clearcoat's second highlight never shows on them; `mats.plastic` for flippers, bumper bodies and big
+toys); `cylGeo` segment counts 10-20; avoid per-frame geometry rebuilding; canvas textures at most 1024 px for
+decals. The bloom chain works at one pixel per CSS pixel. The display redraws at most ~30 times a second and only
+presents when its dots change. Check `__pin.get().render` (calls, tris, tier) and `.frame` (ms, slow in headless
+swiftshader); `G.T.R.rtInfo()` gives the tier, render target, bloom, shadow and light settings.
+
+### Quality tiers
+
+Everything that costs GPU time is decided ONCE per game, before the ball is served, and never changes while it
+plays (`QUALITY` in `engine.js`; `RC.tier`, `RC.Q`). The old adaptive ladder stepped down during play, and its
+steps recompiled every shader (a multi-second freeze on an iPad) or rebuilt the composer: that was the stutter.
+Nothing in the engine may now change a shader program or reallocate a render target mid-game: no `needsUpdate`
+on materials, no `shadowMap.enabled` flips, no light added or hidden (dim it with `intensity`), no composer
+rebuild (a resize to the same size rebuilds nothing). Uniform-only changes (light intensities, bloom strength,
+exposure) are fine.
+
+| Tier | Render budget | Composer MSAA | Shadow map | Bloom | Lights |
+|---|---|---|---|---|---|
+| `high` (fine pointer: desktop) | 1.5 MP, ratio up to 2 | 4x | 2048, PCF soft | on | all GI lights, two flasher + two ball lamps |
+| `balanced` (touch screens above ~1.2 MP: every phone and iPad) | 1.05 MP, ratio up to 2 (~1.23 on an iPad mini) | 2x | 1024, PCF | on | GI capped at 4, one shared pair for flashers and the lights-out ball lamps |
+| `smooth` | 1.05 MP, ratio 1 | none, no composer | 1024, PCF | off | as balanced |
+
+The page picks the tier (`pickQuality()`): the player's choice from the game menu's Graphics entry
+(`pinball_quality`: `auto`, `high`, `balanced`, `smooth`; synced with the PIN), or on `auto` the device heuristic
+above plus a remembered step down (`pinball_qauto`, per screen size) from a game that stayed slow for ~10 s of
+missed vsyncs. A change applies from the next game. The canvas has no multisampling of its own (only the output
+quad is ever drawn to it). Everything the first seconds of play need is compiled at build (`RC.precompile`:
+the ball, a mist ball on tables with one, the pop-text pool, the sparks), so the program count must not rise
+after the first serve; the sound bank and the music decode start as the table builds.
+
+The loop idles at ~30 fps while a game is on and nothing moves (lamps fade, toys breathe), at ~12 fps at game
+over. A component whose part turns all the time reports `busy()` (the wheels, the spinning disc); a table whose
+toys never stop (a marquee chase, a windmill) sets `RC.animBusy = true` in a model and then runs at full rate
+all game.
 
 ## Camera views and look-around
 
@@ -372,8 +399,8 @@ ring, halo and ping in the table colour, drawn over everything; moving parts kee
 
 `createGame` records the time of each build phase in `G.marks` (paint, pmrem, statics, components, batch, compile,
 firstFrame, audioCtx). Painted playfields and the reflection environment are cached for the session, the sound bank
-renders in the background after the first frames, and the loop idles at ~12 fps when nothing moves (`G.busy()`;
-a component can report `busy()` if it animates something that must run at full rate). Keep `art.playfield` cheap:
+renders in the background while the table builds, and the loop idles when nothing moves (`G.busy()`; see Quality
+tiers for the idle rates, `busy()` and `RC.animBusy`). Keep `art.playfield` cheap:
 it is the biggest honest cost (canvas painting is CPU work); avoid large `shadowBlur` fills and huge gradients in
 loops.
 

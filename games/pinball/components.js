@@ -160,7 +160,7 @@ class Slingshot extends Comp {
     const geo = slabGeo(poly, z + 34, 3, { bevel: 0.8, uvBox: box });
     const m = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ map: t, roughness: 0.25, clearcoat: 1, transparent: true, opacity: 0.92, emissiveMap: t, emissive: '#ffffff', emissiveIntensity: 0.0 }));
     m.castShadow = true; RC.root.add(m); this.plMat = m.material;
-    [A, B, C].forEach(p => { RC.batch.add(RC.mats.plastic(RC.theme.postColor || '#f2efe6'), cylGeo(p[0], p[1], 4.5, z, z + 34, 14)); RC.batch.add(RC.mats.chrome(), cylGeo(p[0], p[1], 2.2, z + 37, z + 41, 8)); });
+    [A, B, C].forEach(p => { RC.batch.add(RC.mats.satin(RC.theme.postColor || '#f2efe6'), cylGeo(p[0], p[1], 4.5, z, z + 34, 14)); RC.batch.add(RC.mats.chrome(), cylGeo(p[0], p[1], 2.2, z + 37, z + 41, 8)); });
     // kicker arm behind the rubber face
     const dx = C[0] - A[0], dy = C[1] - A[1], l = Math.hypot(dx, dy), mx = (A[0] + C[0]) / 2, my = (A[1] + C[1]) / 2;
     let nx = dy / l, ny = -dx / l; if (nx * (mx - cx) + ny * (my - cy) < 0) { nx = -nx; ny = -ny; }
@@ -219,7 +219,8 @@ class DropTargetBank extends Comp {
         g.fillStyle = this.o.color || '#e8e0c8'; g.fillRect(0, 0, w, h);
         if (this.o.art) this.o.art(g, w, h, t.i); else if (t.label) { g.fillStyle = this.o.ink || '#1a1020'; g.font = '900 86px "Arial Narrow",Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t.label, w / 2, h / 2 + 4); }
       });
-      const m = new THREE.Mesh(new THREE.BoxGeometry(this.w - 1, 4, 30), [RC.mats.plastic(this.o.color || '#e8e0c8'), RC.mats.plastic(this.o.color || '#e8e0c8'), RC.mats.plastic(this.o.color || '#e8e0c8'), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4 }), RC.mats.plastic(this.o.color || '#e8e0c8'), RC.mats.plastic(this.o.color || '#e8e0c8')]);
+      const side = RC.mats.satin(this.o.color || '#e8e0c8');
+      const m = new THREE.Mesh(new THREE.BoxGeometry(this.w - 1, 4, 30), [side, side, side, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4 }), side, side]);
       m.rotation.z = fa + PI / 2; m.position.set(t.x, t.y, z + 15); m.castShadow = true; RC.root.add(m); return m;
     });
   }
@@ -251,7 +252,8 @@ class StandupTarget extends Comp {
       else { g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16); if (this.o.label) { g.fillStyle = 'rgba(0,0,0,.85)'; g.font = '900 64px "Arial Narrow",Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(this.o.label, w / 2, h / 2 + 3); } }
     });
     const g = grp(this.o.x - this.f[0] * 3, this.o.y - this.f[1] * 3, z);
-    const face = new THREE.Mesh(new THREE.BoxGeometry(this.w, 3, 24), [RC.mats.plastic(this.o.color || '#f0c040'), RC.mats.plastic(this.o.color || '#f0c040'), RC.mats.plastic(this.o.color || '#f0c040'), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4 }), RC.mats.plastic('#222'), RC.mats.plastic('#222')]);
+    const side = RC.mats.satin(this.o.color || '#f0c040'), back = RC.mats.satin('#222');
+    const face = new THREE.Mesh(new THREE.BoxGeometry(this.w, 3, 24), [side, side, side, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4 }), back, back]);
     face.position.z = 16; face.castShadow = true; g.add(face);
     RC.batch.add(RC.mats.plastic('#18181a'), boxGeo(this.o.x - this.f[0] * 7, this.o.y - this.f[1] * 7, z + 3, 6, 6, 6, fa));
     g.rotation.z = fa + PI / 2; RC.root.add(g); this.g = g; this.face = face;
@@ -277,7 +279,7 @@ class RolloverLane extends Comp {
       this.m = new THREE.Mesh(geo, RC.mats.chrome()); RC.root.add(this.m);
       RC.T && 0;
     } else {
-      this.m = new THREE.Mesh(latheGeo(x, y, [[0, 0], [7, 0], [6, 3], [0, 4]], 12), RC.mats.plastic(this.o.buttonColor || '#f4e9c8')); this.m.position.z = z; RC.root.add(this.m);
+      this.m = new THREE.Mesh(latheGeo(x, y, [[0, 0], [7, 0], [6, 3], [0, 4]], 12), RC.mats.satin(this.o.buttonColor || '#f4e9c8')); this.m.position.z = z; RC.root.add(this.m);
     }
   }
   update(dt) { this.press = Math.max(0, this.press - dt * 6); }
@@ -1072,12 +1074,13 @@ class FerrisWheel extends Comp {
     const rim = new THREE.Mesh(new THREE.TorusGeometry(this.r, 2.5, 8, 48), RC.mats.chrome()); rim.rotation.y = PI / 2; wheel.add(rim);
     for (let i = 0; i < this.n; i++) {
       const a = i / this.n * TAU; const sp = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, this.r, 6), RC.mats.steel()); sp.position.set(0, Math.cos(a) * this.r / 2, Math.sin(a) * this.r / 2); sp.rotation.x = a - PI / 2 + PI / 2; wheel.add(sp);
-      const bk = new THREE.Mesh(new THREE.CylinderGeometry(11, 9, 12, 14, 1, true), RC.mats.plastic(this.o.color || '#e33', { side: THREE.DoubleSide })); bk.position.set(0, Math.cos(a) * this.r, Math.sin(a) * this.r); bk.rotation.z = PI / 2; wheel.add(bk);
+      const bk = new THREE.Mesh(new THREE.CylinderGeometry(11, 9, 12, 14, 1, true), RC.mats.satin(this.o.color || '#e33', { side: THREE.DoubleSide })); bk.position.set(0, Math.cos(a) * this.r, Math.sin(a) * this.r); bk.rotation.z = PI / 2; wheel.add(bk);
     }
     if (this.o.plane === 'x') g.rotation.z = PI / 2;
     [-1, 1].forEach(k => { const leg = new THREE.Mesh(new THREE.CylinderGeometry(2, 3, this.r + 14, 8), RC.mats.steel()); leg.position.set(k * 8, 0, -(this.r + 10) / 2); leg.rotation.x = PI / 2; g.add(leg); });
     RC.root.add(g); this.wheel = wheel;
   }
+  busy() { return this.w !== 0; }   // it turns all the time: the loop never idles while it is on screen
   render() { if (this.wheel) this.wheel.rotation.x = this.a; }
 }
 
@@ -1123,6 +1126,7 @@ class SpinningDisc extends Comp {
     b.vx += (svx - b.vx) * k; b.vy += (svy - b.vy) * k;
   }
   step(dt) { if (this.on) this.a += this.w * dt; }
+  busy() { return this.on && this.w !== 0; }   // a turning disc judders at the idle rate
   trigger() { this.on = !this.on; }
   mesh(RC) {
     const tex = decalTex(RC, 256, 256, (g, w, h) => { g.fillStyle = this.o.color || '#c8c8d0'; g.beginPath(); g.arc(w / 2, h / 2, w / 2, 0, TAU); g.fill(); if (this.o.art) this.o.art(g, w, h); else { g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 8; for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(w / 2, h / 2); g.arc(w / 2, h / 2, w / 2 - 6, i * PI / 3, i * PI / 3 + 0.4); g.stroke(); } } });
@@ -1201,7 +1205,7 @@ class PopUpTargets extends Comp {
   down(i) { (i == null ? this.ts : [this.ts[i]]).forEach(t => { if (!t) return; t.up = false; t.c.on = false; }); }
   onContact(b, c, imp) { const t = this.ts.find(t => t.c === c); if (!t || imp < 50) return; t.up = false; t.c.on = false; this.sfx('drop'); this.emit('popupHit', b, { i: t.i }); }
   trigger() { this.up(); }
-  mesh(RC) { this.ms = this.ts.map(t => { const m = new THREE.Mesh(new THREE.BoxGeometry(t.w - 1, 5, 28), RC.mats.plastic(this.o.color || '#7c4')); m.rotation.z = t.fa + PI / 2; m.position.set(t.x, t.y, this.z0 - 14); m.castShadow = true; RC.root.add(m); return m; }); }
+  mesh(RC) { this.ms = this.ts.map(t => { const m = new THREE.Mesh(new THREE.BoxGeometry(t.w - 1, 5, 28), RC.mats.satin(this.o.color || '#7c4')); m.rotation.z = t.fa + PI / 2; m.position.set(t.x, t.y, this.z0 - 14); m.castShadow = true; RC.root.add(m); return m; }); }
   render(dt) { if (!this.ms) return; this.ts.forEach((t, i) => { t.h += ((t.up ? 1 : 0) - t.h) * Math.min(1, dt * 14); this.ms[i].position.z = this.z0 - 15 + t.h * 29; this.ms[i].visible = t.h > 0.03; }); }
 }
 

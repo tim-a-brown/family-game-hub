@@ -133,6 +133,12 @@ export class Materials {
   plastic(color = '#f2f2f2', o = {}) {
     return this.get('pl' + color + JSON.stringify(o), () => new THREE.MeshPhysicalMaterial(Object.assign({ color, roughness: 0.32, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.15 }, o)));
   }
+  // satin plastic without the clearcoat: the same colour and sheen, half the shading. For posts, target faces,
+  // buttons, gondolas and other small parts where a clearcoat's second highlight never shows (keep `plastic` for
+  // the playfield-sized things: flippers, bumper bodies, big toys).
+  satin(color = '#f2f2f2', o = {}) {
+    return this.get('sa' + color + JSON.stringify(o), () => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.3, metalness: 0 }, o)));
+  }
   // translucent coloured plastic (ramps, skirts, caps)
   clear(color = '#ffffff', opacity = 0.4, o = {}) {
     return this.get('cl' + color + opacity + JSON.stringify(o), () => new THREE.MeshPhysicalMaterial(Object.assign({

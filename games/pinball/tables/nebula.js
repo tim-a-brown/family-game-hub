@@ -325,7 +325,8 @@ function saucerModel(RC, toy) {
   const legs = []; for (let i = 0; i < 3; i++) { const a = i / 3 * TAU + 0.5; legs.push(cylGeo(Math.cos(a) * 24, Math.sin(a) * 24, 1.2, 0, 8, 8)); legs.push(cylGeo(Math.cos(a) * 24, Math.sin(a) * 24, 4, 0, 1.2, 10)); }
   g.add(mesh(mergeGeos(legs), RC.mats.steel()));
   g.userData = { lights, glow, dome, t: 0 };
-  // hover: it bobs gently, lifts when hit, lights chase faster when angry
+  // hover: it bobs gently and turns all game long (the loop never idles under it), lifts when hit, lights chase faster when angry
+  RC.animBusy = true;
   RC.anim.push((dt, t) => {
     const u = g.userData, B = RC.G.b || {}, wob = toy.wob, angry = B.saucerMode ? 1 : 0;
     g.position.z = toy.z0 + Math.sin(t * 1.3) * 1.5 + wob * 14 + angry * 4;

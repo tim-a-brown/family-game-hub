@@ -1027,7 +1027,8 @@ function galleonModel(RC) {
   const anc = [cylGeo(436, 836, 1.2, 2, 16, 6), new THREE.TorusGeometry(5, 1, 6, 12).translate(436, 836, 4)]; B.add(iron, mergeGeos(anc.map(g => g.index ? g.toNonIndexed() : g)));
   B.add(brass, boxGeo(338, 668, DECK_Z + 30, 7, 7, 10)); B.add(RC.mats.clear('#ffd090', 0.35), boxGeo(338, 668, DECK_Z + 30, 5.6, 5.6, 8));
   B.add(brass, cylGeo(338, 668, 1, DECK_Z + 9, DECK_Z + 25, 6));
-  // the wheel turns slowly, the sails breathe, the flags flutter
+  // the wheel turns slowly, the sails breathe, the flags flutter (all game long: the loop never idles under them)
+  RC.animBusy = true;
   RC.anim.push((dt, t) => {
     const G = RC.G, stormy = G.b ? G.b.rain : 0;
     wm.rotation.z = Math.sin(t * 0.5) * 0.4 + (stormy ? Math.sin(t * 6) * 0.3 : 0);

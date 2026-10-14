@@ -867,6 +867,7 @@ class Wheel extends Comp {
     this.sfx('clank', { vol: 0.7 }); this.emit('wheelOut', b, { route });
   }
   step(dt) { this.a += this.w * dt; }
+  busy() { return this.w !== 0 || this.jolt > 0.01; }   // the wheel turns all game long: never let the loop idle under it
   update(dt) { this.wait = this.wait.filter(b => !b.removed); for (const k in this.occ) if (this.occ[k].removed) delete this.occ[k]; this.riders = this.riders.filter(b => !b.removed); this.jolt *= Math.exp(-dt * 3); }
   trigger() { const b = this.world.addBall(this.o.x, this.o.y - 30, { vy: 400 }); this.onSensor(b); }
   mesh(RC) {
@@ -941,7 +942,8 @@ function mesh(geo, mat, cast = true) { const m = new THREE.Mesh(geo, mat); m.cas
 function stripeTex(RC, n, c1, c2, w = 256, h = 64) { const c = canvas(w, h), g = c.getContext('2d'); for (let i = 0; i < n; i++) { g.fillStyle = i % 2 ? c1 : c2; g.fillRect(i * w / n, 0, w / n + 1, h); } return RC.tex(c); }
 // vertex-coloured materials (one draw call for a multi-coloured toy)
 const VC = {
-  get plastic() { return this._p || (this._p = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.4, clearcoat: 0.5, clearcoatRoughness: 0.2 })); },
+  // satin plastic (no clearcoat: on gondolas, horses, the clown and the puck its second highlight never showed)
+  get plastic() { return this._p || (this._p = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.36 })); },
   get matte() { return this._m || (this._m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 })); },
   get metal() { return this._x || (this._x = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.9 })); }
 };
@@ -1181,6 +1183,7 @@ function marqueeModel(RC) {
   for (const [a, b] of strings) { const pts = []; for (let i = 0; i <= 14; i++) { const k = i / 14; pts.push([a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k - 26 * Math.sin(k * PI)]); } B.add(M.iron(), tubeGeo(pts, 0.7, 20, 5)); for (let i = 1; i < 14; i++) { const s = new THREE.SphereGeometry(2.2, 8, 6); s.translate(pts[i][0], pts[i][1], pts[i][2] - 2.5); bulbG.push(s); } }
   const bulbs = new THREE.Mesh(mergeGeo(bulbG), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffe29a').multiplyScalar(2.2), toneMapped: false })); RC.root.add(bulbs);
   RC.anim.push((dt, t) => { bulbs.material.color.set('#ffe29a').multiplyScalar(1.8 + 0.5 * Math.sin(t * 3)); });
+  RC.animBusy = true;   // the marquee pulses, the monkey sways, the carousel and the wheel turn: full rate all game
   return null;
 }
 

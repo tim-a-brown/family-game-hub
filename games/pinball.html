@@ -146,7 +146,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 <main class="stage" id="app"></main>
 <script type="module">
 import * as THREE from 'three';
-import { createGame, renderThumb, fmt, audio } from './pinball/engine.js';
+import { createGame, renderThumb, fmt, audio, pickQuality, qualityPref, autoTier } from './pinball/engine.js';
 import { smallText, smallW } from './pinball/display.js';
 import { stubTable } from './pinball/tables/stub.js';
 
@@ -174,7 +174,10 @@ const NOTHUMBS = /[?&]nothumbs=1/.test(location.search);
 function getRenderer() {
   if (renderer) return renderer;
   glCanvas = document.createElement('canvas'); glCanvas.className = 'pb-gl';
-  try { renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: 'high-performance', alpha: false, stencil: false }); }
+  // no canvas multisampling: the picture is composed off screen (the composer's own target carries the MSAA on
+  // the 'high' tier) and only a full-screen quad is ever drawn to the canvas, so canvas MSAA was a resolve of
+  // every frame for nothing
+  try { renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: false, powerPreference: 'high-performance', alpha: false, stencil: false }); }
   catch (e) { renderer = null; }
   return renderer;
 }
@@ -191,7 +194,8 @@ Kit.init({ orient: 'portrait', orientTablets: true,
     { icon: 'trophy', label: 'High scores', onClick: showHigh },
     { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Pinball: past games' }) },
     { icon: 'eye', label: 'Top-down view', sub: 'Straight down on the playfield. Off: first person, angled like standing at the machine.', toggle: () => viewMode() === 'top', onClick: () => setViewMode(viewMode() === 'top' ? 'first' : 'top') },
-    { icon: 'gamepad', label: 'On-screen buttons', sub: 'Big flipper buttons in the corners. Off: tap the left or right half of the table instead.', toggle: () => btnsOn(), onClick: () => { lsSet('pinball_btns', btnsOn() ? '0' : '1'); if (viewEl) viewEl.classList.toggle('no-flipbtns', !btnsOn()); if (G) { G.resize(); layoutPlunger(); } } }
+    { icon: 'gamepad', label: 'On-screen buttons', sub: 'Big flipper buttons in the corners. Off: tap the left or right half of the table instead.', toggle: () => btnsOn(), onClick: () => { lsSet('pinball_btns', btnsOn() ? '0' : '1'); if (viewEl) viewEl.classList.toggle('no-flipbtns', !btnsOn()); if (G) { G.resize(); layoutPlunger(); } } },
+    { icon: 'sparkle', label: () => 'Graphics: ' + qualityLabel(), section: 'Settings', sub: 'Best, Balanced or Smooth. A change applies from the next game.', onClick: graphicsPick }
   ],
   rules:
     '<p class="goal">Keep the ball in play as long as you can and score as many points as you can. A game is 3 or 5 balls.</p>' +
@@ -209,6 +213,21 @@ Kit.init({ orient: 'portrait', orientTablets: true,
     '<li><b>Skill shot:</b> a soft, well-judged launch scores a skill shot on most tables.</li></ul>' +
     IDS.map(id => TABLES[id].rulesHtml ? '<h3>' + TABLES[id].name + '</h3>' + TABLES[id].rulesHtml : '').join('')
 });
+
+// ═══ Graphics quality ══════════════════════════════════════════════════════════
+// The tier (engine QUALITY) is chosen once per game, before the ball is served, so a change here is for the next
+// game: nothing is ever rebuilt or recompiled while a ball is in play. Stored in pinball_quality (synced with the PIN).
+const QTIERS = [['auto', 'Auto', 'Picks for this device'], ['high', 'Best', 'Soft shadows, full resolution, smoothest bloom'], ['balanced', 'Balanced', 'The same look, built for a phone or iPad'], ['smooth', 'Smooth', 'No glow, one pixel per screen pixel: for older devices']];
+const QNAME = { high: 'Best', balanced: 'Balanced', smooth: 'Smooth' };
+function qualityLabel() { const p = qualityPref(); return p === 'auto' ? 'Auto (' + QNAME[autoTier()] + ')' : QNAME[p]; }
+function graphicsPick() {
+  let cur = qualityPref();
+  const seg = el('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Graphics quality' }), help = el('p', { class: 'muted', style: { marginTop: '12px' } });
+  const mark = () => { Array.prototype.forEach.call(seg.children, b => { const on = b._id === cur; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); }); const t = QTIERS.find(x => x[0] === cur); help.textContent = t[2] + (cur === 'auto' ? ': ' + QNAME[autoTier()] + '.' : '.') + (G && G.state !== 'over' ? ' Takes effect from the next game.' : ''); };
+  QTIERS.forEach(([id, name]) => { const b = el('button', { type: 'button', role: 'radio', text: name, onclick: () => { cur = id; lsSet('pinball_quality', id); Kit.sfx('tap'); Kit.haptic('light'); mark(); } }); b._id = id; seg.appendChild(b); });
+  mark();
+  Kit.sheet({ title: 'Graphics', node: el('div', null, [seg, help]), actions: [{ label: 'Done', cls: 'btn-soft' }] });
+}
 
 // ═══ Setup: table select ═══════════════════════════════════════════════════════
 const thumbs = {};
@@ -287,6 +306,9 @@ function startGame(id, balls, who) {
   const r = getRenderer();
   if (!r) { app.className = 'stage'; app.innerHTML = ''; app.appendChild(el('div', { class: 'pb-nogl', text: 'This device can\'t show the 3D tables (WebGL is off or unavailable).' })); return; }
   const def = TABLES[id];
+  // the sound bank synthesises and the music decodes now, in the background behind the table build, instead of
+  // in the first seconds of play
+  try { const A = audio(); A.ensureBank(); if (ambPref && def.music && def.music.url && A.ctx()) A.musicLoad(def.id, def.music.url); } catch (e) {}
   Kit.titleSwitch(def.name, () => showSetup(), 'Choose another table');   // the table's name; tap it for the table picker
   app.className = 'stage'; app.innerHTML = '';
   root.classList.add('pb-on');
@@ -348,7 +370,8 @@ function startGame(id, balls, who) {
       const v = viewEl.getBoundingClientRect(), b = flipBtn.L.getBoundingClientRect();
       return (padLast = Math.max(0, v.bottom - (btnsOn() ? b.top : magCtl.getBoundingClientRect().top) + 6));
     };
-    const g = createGame(def, { renderer: r, dmdCanvas: dmdEl, balls, who, amb: ambPref, audio: audio(), onOver: finish, padBottom, view: viewMode(),
+    const q = pickQuality();   // the quality tier, decided here and fixed for the whole game
+    const g = createGame(def, { renderer: r, dmdCanvas: dmdEl, balls, who, amb: ambPref, audio: audio(), onOver: finish, padBottom, view: viewMode(), tier: q.tier, pref: q.pref,
       progress: (label, frac) => { loadTxt.textContent = label + '…'; loadBar.style.width = Math.round(frac * 100) + '%'; } });
     await g.ready;
     if (view !== 'game' || g.destroyed) { g.destroy(); return; }
@@ -381,20 +404,24 @@ function tickUI() {
   if (look && !lookOK()) exitLook();
   plungerState();
   if (G.state !== 'over' && document.querySelector('.k-scrim')) { pauseGame(); return; }
+  // past the table's record the readout follows this game's score, redrawn at most twice a second
   const bv = Math.max(bestBase, G.score || 0);
-  if (bestEl && bv !== shownBest) { shownBest = bv; drawBest(bv); }
+  if (bestEl && bv !== shownBest && performance.now() - bestAt > 500) { shownBest = bv; drawBest(bv); }
   uiRaf = setTimeout(tickUI, 200);
 }
 // The best score in dots, in the display's own colour and 5x7 font: "BEST" dim, the number lit
 const bestDots = document.createElement('canvas');
+let bestAt = 0;
 function drawBest(v) {
   if (!bestEl) return;
+  bestAt = performance.now();
   const txt = 'BEST ' + fmt(v), cols = smallW(txt), lab = smallW('BEST');
   const pitch = 1.75, dpr = Math.min(window.devicePixelRatio || 1, 3), w = Math.ceil(cols * pitch) + 2, h = Math.ceil(7 * pitch) + 2;
-  bestDots.width = cols; bestDots.height = 7;
+  if (bestDots.width !== cols || bestDots.height !== 7) { bestDots.width = cols; bestDots.height = 7; }
   const o = bestDots.getContext('2d', { willReadFrequently: true }); o.clearRect(0, 0, cols, 7); o.fillStyle = '#fff'; smallText(o, txt, 0, 0);
   const px = o.getImageData(0, 0, cols, 7).data;
-  bestEl.style.width = w + 'px'; bestEl.style.height = h + 'px'; bestEl.width = Math.round(w * dpr); bestEl.height = Math.round(h * dpr);
+  const bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+  if (bestEl.width !== bw || bestEl.height !== bh) { bestEl.style.width = w + 'px'; bestEl.style.height = h + 'px'; bestEl.width = bw; bestEl.height = bh; }   // a resize clears and relayouts: only when the width changes
   const g = bestEl.getContext('2d'), ink = bestEl.dataset.ink || '#ff8a1e';
   g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
   g.fillStyle = ink; g.shadowColor = ink; g.shadowBlur = 2.5 * dpr;

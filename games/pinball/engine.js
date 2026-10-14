@@ -26,6 +26,39 @@ export function audio() { return sharedAudio || (sharedAudio = new Audio()); }
 // table opened a second time (or two tables with the same lighting) skips the expensive parts.
 const PAINT_CACHE = new Map(), ENV_CACHE = new Map();
 
+// ── Quality tiers ───────────────────────────────────────────────────────────
+// Everything that costs GPU time is decided ONCE per game, before the ball is served, and never changes while it
+// plays: a change of shadow map, bloom pass, render target or light count mid-game meant a recompile of every
+// shader program (a multi-second freeze on an iPad) or a reallocation of the whole composer. The tier comes from
+// the player's choice (localStorage pinball_quality: 'auto' | 'high' | 'balanced' | 'smooth', synced with the
+// PIN) or, on 'auto', from the device: a fine pointer (desktop) gets 'high'; a touch screen above ~1.2 million
+// device pixels (every modern phone and iPad) gets 'balanced'. A game that stayed slow on 'auto' remembers one
+// tier lower for the next one (pinball_qauto, per screen size); it is never applied mid-game.
+//   budget: render-target pixel budget; maxDpr: pixel-ratio cap; samples: composer MSAA; shadow: map size and
+//   PCF soft/hard; bloom: the pass exists at all; lights 'lean': GI capped at 4 and one shared pair of point
+//   lights for flashers and the lights-out ball lamps (instead of two pairs); composer false: straight to the canvas
+export const QUALITY = {
+  high: { budget: 1.5e6, maxDpr: 2, samples: 4, shadow: 2048, soft: true, bloom: true, lights: 'full', composer: true },
+  balanced: { budget: 1.05e6, maxDpr: 2, samples: 2, shadow: 1024, soft: false, bloom: true, lights: 'lean', composer: true },
+  smooth: { budget: 1.05e6, maxDpr: 1, samples: 0, shadow: 1024, soft: false, bloom: false, lights: 'lean', composer: false }
+};
+const TIERS = ['high', 'balanced', 'smooth'];
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+export function screenPixels() { const d = window.devicePixelRatio || 1; return Math.round(innerWidth * innerHeight * d * d); }
+export function qualityPref() { const v = lsGet('pinball_quality'); return TIERS.indexOf(v) >= 0 ? v : 'auto'; }
+// what 'auto' picks on this device: the heuristic, then a remembered step down from a slow game on this screen size
+export function autoTier() {
+  const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+  const px = screenPixels(), cores = navigator.hardwareConcurrency || 4;
+  let tier = !coarse ? 'high' : px > 1.2e6 ? 'balanced' : 'high';
+  if (coarse && cores <= 2) tier = 'smooth';
+  let mem = null; try { mem = JSON.parse(lsGet('pinball_qauto') || 'null'); } catch (e) {}
+  if (mem && mem.px === px && TIERS.indexOf(mem.tier) > TIERS.indexOf(tier)) tier = mem.tier;
+  return tier;
+}
+export function pickQuality() { const p = qualityPref(); return { pref: p, tier: p === 'auto' ? autoTier() : p }; }
+
 // ── Lamp states ─────────────────────────────────────────────────────────────
 // A rules lamps() hook returns { id: state } every frame. state: 0/false off,
 // 1/true on, 'blink' (2.5 Hz), 'fast' (8 Hz), 'slow' (1 Hz), 'pulse' (soft),
@@ -747,12 +780,16 @@ export function createGame(def, opts = {}) {
   // ── Main loop ─────────────────────────────────────────────────────────────
   let acc = 0, raf = 0, last = 0, speedMul = 1, idleTimer = 0;
   G.stats.frames = 0; G.stats.rafReq = 0; G.stats.idleFrames = 0;
-  // Something to animate at full rate? Otherwise the loop idles at ~12 fps (lamps, the display scroller).
+  // Something to animate at full rate? Otherwise the loop idles: at ~30 fps while a ball is in play or waits in
+  // the lane (lamps, toys that breathe, the display scroller), at ~12 fps at game over and in the attract state.
+  // A table whose toys move all the time (a turning wheel, a marquee chase) says so with RC.animBusy, and then
+  // never idles while a game is on.
   function busyWhy() {
     if (G.dm) return 'message'; if (G.show) return 'lightshow'; if (G.bonus) return 'bonus';
     if (G.shakeA > 0.01 || G.flashA > 0.01 || G.lightning > 0.01) return 'fx';
     if (G.pulling || G.input.L || G.input.R || G.input.magna) return 'input';
     if (G.state !== 'play' && G.state !== 'serve') return '';
+    if (RC && RC.animBusy) return 'anim';
     for (const f of world.flips) if (f.w !== 0) return 'flipper';
     for (const b of world.balls) {
       if (b.mode === 'air' || b.mode === 'path') return 'ball:' + b.mode;
@@ -770,6 +807,7 @@ export function createGame(def, opts = {}) {
     if (G.pulling || G.input.L || G.input.R || G.input.magna) return true;
     if (G.plunger && G.plunger.busy && G.plunger.busy()) return true;
     if (G.state !== 'play' && G.state !== 'serve') return false;
+    if (RC && RC.animBusy) return true;
     for (const f of world.flips) if (f.w !== 0) return true;
     for (const b of world.balls) {
       if (b.mode === 'air' || b.mode === 'path') return true;
@@ -822,7 +860,12 @@ export function createGame(def, opts = {}) {
     if (G.finished) return;
     let bz = true; try { bz = busy(); } catch (e) { oops('busy', e); }
     if (bz) { G.stats.rafReq++; chained = true; raf = requestAnimationFrame(frame); }
-    else { G.stats.idleFrames++; chained = false; idleTimer = setTimeout(() => { idleTimer = 0; if (!raf && !G.paused && !G.destroyed) { G.stats.rafReq++; raf = requestAnimationFrame(frame); } }, 83); }
+    else {
+      // idle: ~30 fps while a game is on (a ball in the lane or at rest still has lamps fading and toys breathing
+      // around it), ~12 fps at game over
+      const live = G.state === 'play' || G.state === 'serve';
+      G.stats.idleFrames++; chained = false; idleTimer = setTimeout(() => { idleTimer = 0; if (!raf && !G.paused && !G.destroyed) { G.stats.rafReq++; raf = requestAnimationFrame(frame); } }, live ? 22 : 83);
+    }
   }
   let chained = false, dmdT = 0;
   const rollArg = { v: 0, rv: 0, rs: '' }, dmdFn = (g, w, h) => dmdScene(g, w, h);
@@ -928,8 +971,12 @@ export function createGame(def, opts = {}) {
   G.start = function () {
     G.time = 0; R('init');
     for (const c of G.compList) if (c.reset) c.reset();
-    if (RC) { markT = performance.now(); RC.renderer.compile(RC.scene, RC.camera); mark('compile'); RC.render(1 / 60); mark('firstFrame'); }
-    if (AU) { markT = performance.now(); AU.ctx(); mark('audioCtx'); setTimeout(() => { if (!G.destroyed) AU.ensureBank(); }, 350); }
+    // every program the first seconds of play will need is compiled here (the ball, the score pops, the sparks are
+    // all in the scene for it), so the first serve never stalls on a shader
+    if (RC) { markT = performance.now(); RC.precompile(); mark('compile'); RC.render(1 / 60); mark('firstFrame'); }
+    // the sound bank renders in the background (the page starts it as the table builds; this is the fallback) and
+    // the music decodes now, while the ball waits in the lane, not on the first frames of play
+    if (AU) { markT = performance.now(); AU.ctx(); mark('audioCtx'); AU.ensureBank(); if (def.music && def.music.url && G.amb) AU.musicLoad(def.id, def.music.url); }
     G.sfx('start', { vol: 0.7 });
     G.msg(def.name.toUpperCase(), def.intro || 'BALL 1 OF ' + G.balls0, { style: 'zoom', dur: 2.4 });
     startBall();
@@ -1079,6 +1126,9 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
   RC.tex = tex;
   const thumb = !!opts.thumb, hq = !!opts.hq, quality = opts.quality != null ? opts.quality : 2;
   RC.quality = quality;
+  // the quality tier (see QUALITY): fixed for the life of this scene
+  const tier = QUALITY[opts.tier] ? opts.tier : 'high', Q = QUALITY[tier];
+  RC.tier = tier; RC.Q = Q; RC.animBusy = false;
 
   // ── Environment for reflections: a dark arcade with a few warm and coloured light panels ──
   yield BUILD_PHASES[0];
@@ -1211,18 +1261,23 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
   // moves over the player's left shoulder for that view (the camera tween slides it across)
   RC.keyPos = { first: key.position.clone(), top: toWorld(W * 0.3 - 700, L * 0.1 - 600, 1500) }; // fitCamera applies the current one
   if (!thumb || hq) {
-    key.castShadow = true; key.shadow.mapSize.set(quality >= 2 ? 2048 : 1024, quality >= 2 ? 2048 : 1024);
+    const sm = quality >= 2 ? Q.shadow : 1024;
+    key.castShadow = true; key.shadow.mapSize.set(sm, sm);
     const sc = key.shadow.camera; sc.left = -0.5; sc.right = 0.5; sc.top = 0.85; sc.bottom = -0.85; sc.near = 0.2; sc.far = 3.2;
     key.shadow.bias = -0.0004; key.shadow.normalBias = 0.0015; key.shadow.radius = 3;
   }
   RC.lights = { hemi, key };
-  // general illumination: warm point lights along the sides
-  const giPos = theme.giPos || [[30, 260], [W - 70, 260], [40, 700], [W - 60, 700]];
+  // general illumination: warm point lights along the sides (the lean tiers keep the four side lamps: every point
+  // light is evaluated for every pixel of the table). The light count never changes once the scene is built: a
+  // light is dimmed with its intensity, never hidden (a change in the light count recompiles every program).
+  const giAll = theme.giPos || [[30, 260], [W - 70, 260], [40, 700], [W - 60, 700]];
+  const giPos = Q.lights === 'lean' ? giAll.slice(0, 4) : giAll;
   RC.lights.gi = giPos.map((p, i) => { const l = new THREE.PointLight(theme.gi[i % theme.gi.length], 0.02, 0.7, 2); l.position.set(p[0], p[1], p[2] || 150); root.add(l); l.userData.base = 0.02 * theme.giLevel * (p[3] || 1); return l; });
-  // flasher pool
+  // flasher pool and the lights-out ball lamps: two pairs of point lights, or on the lean tiers one shared pair
+  // (a ball lamp wins while the table is dark; flashers rarely fire then)
   RC.lights.flash = [0, 1].map(() => { const l = new THREE.PointLight('#fff', 0, 0.5, 2); root.add(l); return l; });
-  // lights-out ball lamps
-  RC.lights.ball = [0, 1].map(() => { const l = new THREE.PointLight(theme.darkLight || '#fff2d8', 0, 0.22, 2); root.add(l); return l; });
+  RC.lights.ball = Q.lights === 'lean' ? RC.lights.flash : [0, 1].map(() => { const l = new THREE.PointLight(theme.darkLight || '#fff2d8', 0, 0.22, 2); root.add(l); return l; });
+  RC.lights.shared = Q.lights === 'lean';
   // lightning: a cold directional flash
   const bolt = new THREE.DirectionalLight('#cfe0ff', 0); bolt.position.copy(toWorld(W * 0.2, L * 0.9, 700)); bolt.target.position.copy(toWorld(W / 2, L / 2, 0)); scene.add(bolt); scene.add(bolt.target);
   RC.lights.bolt = bolt;
@@ -1230,20 +1285,25 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
   // ── Balls ──
   const ballGeo = new THREE.SphereGeometry(BR, 32, 20);
   const shadowMat = new THREE.MeshBasicMaterial({ map: tex(glowCanvas(64, [[0, 'rgba(0,0,0,.75)'], [0.5, 'rgba(0,0,0,.35)'], [1, 'rgba(0,0,0,0)']])), transparent: true, depthWrite: false, toneMapped: false });
-  const ballMeshes = new Map();
+  const ballMeshes = new Map(), ballShGeo = new THREE.PlaneGeometry(BR * 3.2, BR * 3.2), mistGlowGeo = new THREE.PlaneGeometry(BR * 6, BR * 6);
+  let mistMat = null, mistGlowMat = null;   // shared by every mist ball (one program, compiled up front)
   RC.ballMesh = function (b) {
     let m = ballMeshes.get(b);
     if (!m) {
       const mesh = new THREE.Mesh(ballGeo, mats.ball(b.power)); mesh.castShadow = true;
-      const sh = new THREE.Mesh(new THREE.PlaneGeometry(BR * 3.2, BR * 3.2), shadowMat); sh.renderOrder = 1;
+      const sh = new THREE.Mesh(ballShGeo, shadowMat); sh.renderOrder = 1;
       root.add(mesh); root.add(sh);
       m = { mesh, sh, q: new THREE.Quaternion() };
-      if (b.mist) { mesh.material = new THREE.MeshStandardMaterial({ color: '#cfffe8', emissive: '#7dffc0', emissiveIntensity: 1.6, transparent: true, opacity: 0.85, roughness: 0.2 }); const glow = new THREE.Mesh(new THREE.PlaneGeometry(BR * 6, BR * 6), mats.glow('#8dffc8')); glow.renderOrder = 3; mesh.add(glow); m.glow = glow; }
+      if (b.mist) {
+        if (!mistMat) { mistMat = new THREE.MeshStandardMaterial({ color: '#cfffe8', emissive: '#7dffc0', emissiveIntensity: 1.6, transparent: true, opacity: 0.85, roughness: 0.2 }); mistGlowMat = mats.glow('#8dffc8'); RC.disposables.push(mistMat, mistGlowMat); }
+        mesh.material = mistMat;
+        const glow = new THREE.Mesh(mistGlowGeo, mistGlowMat); glow.renderOrder = 3; mesh.add(glow); m.glow = glow;
+      }
       ballMeshes.set(b, m);
     }
     return m;
   };
-  RC.dropBall = function (b) { const m = ballMeshes.get(b); if (!m) return; root.remove(m.mesh); root.remove(m.sh); if (m.glow) m.glow.material.dispose(); ballMeshes.delete(b); };
+  RC.dropBall = function (b) { const m = ballMeshes.get(b); if (!m) return; root.remove(m.mesh); root.remove(m.sh); ballMeshes.delete(b); };
   const axis = new THREE.Vector3(), dq = new THREE.Quaternion();
   let ballStamp = 0;
   function updateBalls(dt) {
@@ -1262,7 +1322,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
       m.sh.position.set(b.x + 2, b.y - 3, floor + 0.4);
       const hgt = Math.max(0, b.z - floor);
       m.sh.material.opacity = 1; m.sh.scale.setScalar(1 + hgt / 60);
-      if (b.mist && m.glow) { m.glow.quaternion.copy(m.q).invert(); m.mesh.material.opacity = 0.6 + 0.3 * Math.sin(G.time * 6); }
+      if (b.mist && m.glow) { m.glow.quaternion.copy(m.q).invert(); mistMat.opacity = 0.6 + 0.3 * Math.sin(G.time * 6); }
     }
     if (ballMeshes.size > world.balls.length) for (const [b, m] of ballMeshes) if (m.stamp !== stamp) RC.dropBall(b);   // deleting while iterating a Map is safe
   }
@@ -1278,15 +1338,27 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
   }
 
   // ── Floating score text, sparks ──
-  const pops = [];
+  // A pool of eight pop texts, each a canvas, a texture and a mesh made once (every pop used to build and upload
+  // a new texture and compile its program on the first one); a pop repaints its canvas and re-uploads. The pool
+  // sits in the scene from the start so its program is compiled with everything else.
+  const POPN = thumb ? 0 : 8, pops = [], popGeo = new THREE.PlaneGeometry(64, 16);
+  for (let i = 0; i < POPN; i++) {
+    const c = canvas(256, 64), t = canvasTex(c); RC.disposables.push(t);
+    const m = new THREE.Mesh(popGeo, new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, depthTest: false, toneMapped: false }));
+    m.renderOrder = 20; m.visible = false; m.frustumCulled = false; root.add(m);
+    pops.push({ m, t, c, life: 0 });
+  }
+  let popI = 0;
   RC.popText = function (text, x, y, z, color) {
-    if (thumb || pops.length > 8) return;
-    const c = canvas(256, 64), g = c.getContext('2d');
+    if (!POPN) return;
+    let p = null;
+    for (let i = 0; i < POPN; i++) { const q = pops[(popI + i) % POPN]; if (q.life <= 0) { p = q; popI = (popI + i + 1) % POPN; break; } }
+    if (!p) return;   // eight already in the air: this one is not worth a frame
+    const g = p.c.getContext('2d'); g.clearRect(0, 0, 256, 64);
     g.font = '900 40px "Arial Narrow", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,.7)'; g.strokeText(text, 128, 32); g.fillStyle = color || '#fff6d8'; g.fillText(text, 128, 32);
-    const t = canvasTex(c); const m = new THREE.Mesh(new THREE.PlaneGeometry(64, 16), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, depthTest: false, toneMapped: false }));
-    m.position.set(x, y, z || 30); m.renderOrder = 20; root.add(m);
-    pops.push({ m, t, life: 1.1 });
+    p.t.needsUpdate = true;
+    p.m.position.set(x, y, z || 30); p.m.material.opacity = 1; p.m.visible = true; p.life = 1.1;
   };
   const sparkGeo = new THREE.BufferGeometry(), SPN = 160, sp = new Float32Array(SPN * 3), sv = [];
   sparkGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
@@ -1302,7 +1374,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     for (let i = 0; i < n; i++) { const s = sv[spI = (spI + 1) % SPN], a = Math.random() * TAU, v = speed * (0.4 + Math.random() * 0.8); s.x = x; s.y = y; s.z = z; s.vx = Math.cos(a) * v; s.vy = Math.sin(a) * v; s.vz = 150 + Math.random() * 300; s.life = 0.3 + Math.random() * 0.35; }
   };
   function updateFx(dt) {
-    for (let i = pops.length - 1; i >= 0; i--) { const p = pops[i]; p.life -= dt; p.m.position.z += dt * 28; p.m.material.opacity = Math.min(1, p.life * 2); p.m.quaternion.copy(root.quaternion).invert().multiply(camera.quaternion); if (p.life <= 0) { root.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); p.t.dispose(); pops.splice(i, 1); } }
+    for (const p of pops) { if (p.life <= 0) continue; p.life -= dt; p.m.position.z += dt * 28; p.m.material.opacity = Math.min(1, p.life * 2); p.m.quaternion.copy(root.quaternion).invert().multiply(camera.quaternion); if (p.life <= 0) p.m.visible = false; }
     for (let i = 0; i < SPN; i++) { const s = sv[i]; if (s.life <= 0) { sp[i * 3] = FAR; sp[i * 3 + 2] = FAR; continue; } s.life -= dt; s.vz -= 1800 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.z = Math.max(1, s.z + s.vz * dt); sp[i * 3] = s.life > 0 ? s.x : FAR; sp[i * 3 + 1] = s.y; sp[i * 3 + 2] = s.life > 0 ? s.z : FAR; }
     sparkGeo.attributes.position.needsUpdate = true;
   }
@@ -1490,27 +1562,33 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
   }
   function makeComposer(w, h) {
     dropComposer();
-    if ((thumb && !hq) || quality < 1) return;
-    const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: quality >= 2 ? 4 : 0 });
+    if ((thumb && !hq) || quality < 1 || !Q.composer) return;
+    const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: quality >= 2 ? Q.samples : 0 });
     composer = new EffectComposer(renderer, rt);
+    // The composer clones that target for its second buffer, which this chain never draws into (the scene goes
+    // to the first, the bloom blends onto it, the output pass reads it), so with MSAA on that was a second
+    // multisampled half-float target of the full size sitting idle: swap it for a plain one.
+    if (rt.samples > 0) { composer.renderTarget2.dispose(); composer.renderTarget2 = composer.readBuffer = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType }); composer.renderTarget2.texture.name = 'EffectComposer.rt2'; }
     composer.addPass(new RenderPass(scene, camera));
-    bloom = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), theme.bloom, 0.35, theme.bloomThreshold || 1.12);
-    composer.addPass(bloom);
-    // EffectComposer built on our own target takes its size in device pixels and multiplies by the pixel ratio
-    // again, so addPass sized the bloom chain at full device resolution on a 2x screen (4x the pixels). Size it
-    // here: on high-density screens the bright pass runs at one pixel per CSS pixel (the glow looks the same on a
-    // phone and on an iPad rendering at a lower ratio); on 1x screens and the picker pictures at half resolution,
-    // as it always was there.
-    { const r = RC.dpr || 1, k = r > 1.2 ? 1 / r : 0.5; bloom.setSize(2 * Math.round(w * k), 2 * Math.round(h * k)); }
-    if (RC.qLevel >= 2) bloom.enabled = false;   // adaptive quality already dropped it
+    if (Q.bloom) {
+      bloom = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), theme.bloom, 0.35, theme.bloomThreshold || 1.12);
+      composer.addPass(bloom);
+      // EffectComposer built on our own target takes its size in device pixels and multiplies by the pixel ratio
+      // again, so addPass sized the bloom chain at full device resolution on a 2x screen (4x the pixels). Size it
+      // here: on high-density screens the bright pass runs at one pixel per CSS pixel (the glow looks the same on a
+      // phone and on an iPad rendering at a lower ratio); on 1x screens and the picker pictures at half resolution,
+      // as it always was there.
+      const r = RC.dpr || 1, k = r > 1.2 ? 1 / r : 0.5; bloom.setSize(2 * Math.round(w * k), 2 * Math.round(h * k));
+    }
     outPass = new OutputPass(); composer.addPass(outPass);
   }
   // The render target is capped by its total pixel count, not only by the device pixel ratio: a phone at 2x
   // and an iPad at 2x differ ~2.4x in pixels (and the bloom chain, MSAA resolve and soft-shadow lookups all scale
-  // with them). PX_BUDGET matches a recent iPhone's play view; bigger screens render at a lower ratio and the
-  // canvas is CSS-scaled up. RC.scale (adaptive quality) shrinks the budget further when frames run long.
-  const PX_BUDGET = opts.pxBudget || 1.5e6;
-  RC.scale = 1; RC.qLevel = 0;
+  // with them). The budget (QUALITY[tier].budget) matches a recent iPhone's play view on 'high'; bigger screens
+  // render at a lower ratio and the canvas is CSS-scaled up.
+  const PX_BUDGET = opts.pxBudget || Q.budget;
+  RC.scale = 1; RC.qLevel = 0; RC.maxDpr = Q.maxDpr;
+  let sized = null;   // the last size the composer was built for: a resize to the same size rebuilds nothing
   RC.resize = function () {
     const c = renderer.domElement, w = c.clientWidth || c.width, h = c.clientHeight || c.height;
     if (!w || !h) return;
@@ -1518,39 +1596,51 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     const budget = thumb ? Infinity : PX_BUDGET * RC.scale * RC.scale;
     const dpr = Math.max(0.5, Math.min(window.devicePixelRatio || 1, RC.maxDpr || 2, Math.sqrt(budget / (w * h))));
     RC.dpr = dpr;
-    renderer.setPixelRatio(dpr); renderer.setSize(w, h, false);
+    const bw = Math.round(w * dpr), bh = Math.round(h * dpr), same = sized && sized[0] === bw && sized[1] === bh && sized[2] === w && sized[3] === h;
+    if (!same) { renderer.setPixelRatio(dpr); renderer.setSize(w, h, false); }
     fitCamera(w / h, opts.padBottom ? opts.padBottom() : 0);
-    makeComposer(Math.round(w * dpr), Math.round(h * dpr));
+    if (!same) { makeComposer(bw, bh); sized = [bw, bh, w, h]; }
   };
-  RC.rtInfo = () => ({ dpr: +(RC.dpr || 0).toFixed(3), buffer: [renderer.domElement.width, renderer.domElement.height], composer: composer ? [composer.renderTarget1.width, composer.renderTarget1.height, composer.renderTarget1.samples] : null, bloomBright: bloom && bloom.renderTargetBright ? [bloom.renderTargetBright.width, bloom.renderTargetBright.height] : null, shadow: RC.lights.key.shadow.mapSize.x, scale: RC.scale });
+  RC.rtInfo = () => ({ tier, dpr: +(RC.dpr || 0).toFixed(3), buffer: [renderer.domElement.width, renderer.domElement.height], composer: composer ? [composer.renderTarget1.width, composer.renderTarget1.height, composer.renderTarget1.samples] : null, rt2: composer ? composer.renderTarget2.samples : null, bloomBright: bloom && bloom.renderTargetBright ? [bloom.renderTargetBright.width, bloom.renderTargetBright.height] : null, shadow: RC.lights.key.shadow.mapSize.x, soft: renderer.shadowMap.type === THREE.PCFSoftShadowMap, lights: { gi: RC.lights.gi.length, shared: !!RC.lights.shared }, scale: RC.scale });
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = theme.exposure;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = !thumb || hq; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = !thumb || hq; renderer.shadowMap.type = Q.soft || (thumb && hq) ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   RC.resize();
 
-  // ── Adaptive quality ──
-  // The signal is the real time between drawn frames while the loop runs at full rate (a GPU-bound frame
-  // costs little main-thread time but shows up as a missed vsync), or the frame's own time otherwise. It is
-  // smoothed, and ~0.35 s of sustained slow frames (vs a full second before) steps down one small level;
-  // each step then gets a short settling time so its own hitch doesn't count. Small steps first:
-  // 1 render scale 0.85 · 2 bloom off · 3 shadow map 1024 · 4 shadows off · 5 render scale 0.7.
-  let slowT = 0, ema = 16.7, settle = 1.2;   // the first second is shader warm-up: ignored
+  // ── Frame-time watch ──
+  // Nothing changes mid-game any more (the old ladder recompiled every shader or rebuilt the composer during
+  // play, which was the stutter it was meant to cure). What is watched is the real time between drawn frames
+  // while the loop runs at full rate (a GPU-bound frame costs little main-thread time but shows up as a missed
+  // vsync). A game on 'auto' that stays slow for a long while (about ten seconds of sustained missed vsyncs,
+  // after the warm-up) remembers one tier lower for the NEXT game on this screen size; RC.slowStat() reports it.
+  let slowT = 0, ema = 16.7, settle = 1.5, slowTot = 0, remembered = null;
   const SLOW_MS = 21.5;                                  // a 60 Hz frame that missed its vsync
   RC.adapt = function (ms, interval) {
-    if (thumb || opts.fixedQuality || window.__pinFixedQ || RC.qLevel >= 5) return;
+    if (thumb || opts.fixedQuality || window.__pinFixedQ) return;
     const sig = interval > 0 ? Math.max(ms, Math.min(interval, 100)) : ms, dt = Math.min(sig, 100) / 1000;
     if (settle > 0) { settle -= dt; ema = 16.7; return; }
     ema += (sig - ema) * 0.2;
-    slowT = ema > SLOW_MS ? slowT + dt : Math.max(0, slowT - dt * 0.5);
-    if (slowT < 0.35) return;
-    slowT = 0; const level = ++RC.qLevel; settle = 0.6;
-    if (level === 1) { RC.scale = 0.85; RC.resize(); }
-    else if (level === 2) { if (bloom) bloom.enabled = false; }
-    else if (level === 3) { const sh = RC.lights.key.shadow; sh.mapSize.set(1024, 1024); if (sh.map) { sh.map.dispose(); sh.map = null; } }
-    else if (level === 4) { renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
-    else if (level === 5) { RC.scale = 0.7; RC.resize(); }
+    if (ema > SLOW_MS) { slowT += dt; slowTot += dt; } else slowT = Math.max(0, slowT - dt * 0.5);
+    if (slowT < 10 || remembered || opts.pref !== 'auto') return;
+    const lower = TIERS[Math.min(TIERS.length - 1, TIERS.indexOf(tier) + 1)];
+    if (lower !== tier) { remembered = lower; lsSet('pinball_qauto', JSON.stringify({ tier: lower, px: screenPixels(), at: Date.now() })); }
   };
-  RC.info = () => ({ calls: RC.stats ? RC.stats.calls : 0, tris: RC.stats ? RC.stats.tris : 0, geos: renderer.info.memory.geometries, texs: renderer.info.memory.textures, level: RC.qLevel, phi: RC.phi, bloom: !!(bloom && bloom.enabled) });
+  RC.slowStat = () => ({ ema: +ema.toFixed(1), slowT: +slowT.toFixed(2), slowTot: +slowTot.toFixed(2), remembered });
+  RC.info = () => ({ calls: RC.stats ? RC.stats.calls : 0, tris: RC.stats ? RC.stats.tris : 0, geos: renderer.info.memory.geometries, texs: renderer.info.memory.textures, level: RC.qLevel, tier, phi: RC.phi, bloom: !!(bloom && bloom.enabled) });
+  // Compile every program the first seconds of play will need, with the ball (and a mist ball on tables that
+  // have one), the score pops and the sparks in the scene, so the first serve never stalls on a shader. The
+  // first drawn frame right after it compiles the shadow-pass depth programs.
+  RC.precompile = function () {
+    const dummies = [{ x: W / 2, y: L / 2, z: 0, vx: 0, vy: 0, mode: 'free', lvl: 'main' }, { x: W / 2, y: L / 2, z: 0, vx: 0, vy: 0, mode: 'free', lvl: 'main', power: true }];
+    if (G.compList.some(c => c.type === 'mistMagnet')) dummies.push({ x: W / 2, y: L / 2, z: 0, vx: 0, vy: 0, mode: 'free', lvl: 'main', mist: true });
+    dummies.forEach(b => RC.ballMesh(b));
+    // a program is keyed on where it draws (tone mapping and colour space are applied in-shader on the canvas,
+    // by the output pass when drawing into the composer's target): compile for the target the scene is drawn to,
+    // or the whole set is compiled a second time on the first real frame
+    try { if (composer) renderer.setRenderTarget(composer.renderTarget1); renderer.compile(scene, camera); } catch (e) { G.oops('compile', e); }
+    renderer.setRenderTarget(null);
+    dummies.forEach(b => RC.dropBall(b));
+  };
 
   // ── Per-frame render ──
   const flashPool = RC.lights.flash; let flashI = 0;
@@ -1584,9 +1674,10 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     RC.lights.hemi.intensity = theme.ambient * (1 - dark * 0.92);
     RC.lights.bolt.intensity = light * 4.5;
     RC.lampU.lampGain.value = theme.lampGain * (1 - dark * 0.6);
-    { let i = 0; const bl = RC.lights.ball;   // lights-out ball lamps follow the first visible balls (no per-frame arrays)
-      for (const b of world.balls) { if (i >= bl.length) break; if (b.hidden) continue; if (dark > 0.02) { bl[i].position.set(b.x, b.y - 10, b.z + 70); bl[i].intensity = dark * 0.09; } else bl[i].intensity = 0; i++; }
-      for (; i < bl.length; i++) bl[i].intensity = 0; }
+    { let i = 0; const bl = RC.lights.ball, shared = RC.lights.shared;   // lights-out ball lamps follow the first visible balls (no per-frame arrays)
+      // (on the lean tiers these are the flasher lights: in the dark the ball lamp takes one over)
+      for (const b of world.balls) { if (i >= bl.length) break; if (b.hidden) continue; if (dark > 0.02) { bl[i].position.set(b.x, b.y - 10, b.z + 70); bl[i].intensity = dark * 0.09; if (shared) { bl[i].color.set(theme.darkLight || '#fff2d8'); bl[i].userData.k = 0; } } else if (!shared) bl[i].intensity = 0; i++; }
+      if (!shared) for (; i < bl.length; i++) bl[i].intensity = 0; }
     renderer.toneMappingExposure = theme.exposure * (thumb ? 1.35 : 1) * (1 - dark * 0.35) + light * 0.6;
     if (RC.backglass) RC.backglass.mat.emissiveIntensity = RC.backglass.lit * (1 - dark * 0.6) + G.flashA * 0.5 + light * 0.45;   // the backglass flashes with the table
     updateBalls(dt); updateFx(dt);
@@ -1605,7 +1696,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     if (G.shakeA > 0.01) { shakeV.set((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)).multiplyScalar(G.shakeA * 0.0035); camera.position.add(shakeV); }
     camera.lookAt(camBase.look);
     renderer.info.autoReset = false; renderer.info.reset();
-    if (composer && (!bloom || bloom.enabled)) composer.render(dt); else renderer.render(scene, camera);
+    if (composer) composer.render(dt); else renderer.render(scene, camera);
     RC.stats = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
   };
   RC.dispose = function () {
@@ -1783,17 +1874,17 @@ function buildStatic(RC, s) {
       const h = s.h || (s.style === 'peg' ? 18 : 26);
       if (s.style === 'metal') { batch.add(railMat, cylGeo(s.x, s.y, s.r, z0, z0 + h, 16)); batch.add(railMat, sphereGeo(s.x, s.y, z0 + h, s.r * 0.9, 12)); }
       else if (s.style === 'peg') { batch.add(railMat, cylGeo(s.x, s.y, s.r, z0, z0 + h, 12)); }
-      else if (s.style === 'star') { batch.add(mats.plastic(s.color || theme.postColor || '#e8d080'), cylGeo(s.x, s.y, s.r + 2, z0, z0 + 22, 10)); batch.add(railMat, cylGeo(s.x, s.y, 2, z0 + 22, z0 + 32, 8)); }
-      else {   // rubber post: plastic post with a rubber ring
-        batch.add(mats.plastic(s.color || theme.postColor || '#f2efe6'), cylGeo(s.x, s.y, s.r - 2.5, z0, z0 + 30, 14));
-        batch.add(mats.plastic(s.color || theme.postColor || '#f2efe6'), cylGeo(s.x, s.y, s.r - 0.5, z0 + 22, z0 + 30, 14));
+      else if (s.style === 'star') { batch.add(mats.satin(s.color || theme.postColor || '#e8d080'), cylGeo(s.x, s.y, s.r + 2, z0, z0 + 22, 10)); batch.add(railMat, cylGeo(s.x, s.y, 2, z0 + 22, z0 + 32, 8)); }
+      else {   // rubber post: plastic post with a rubber ring (satin: a clearcoat is invisible on a 5 mm post)
+        batch.add(mats.satin(s.color || theme.postColor || '#f2efe6'), cylGeo(s.x, s.y, s.r - 2.5, z0, z0 + 30, 14));
+        batch.add(mats.satin(s.color || theme.postColor || '#f2efe6'), cylGeo(s.x, s.y, s.r - 0.5, z0 + 22, z0 + 30, 14));
         batch.add(railMat, cylGeo(s.x, s.y, 2.2, z0 + 30, z0 + 35, 8));
         batch.add(mats.rubber(theme.postRubber || theme.rubber), torusGeo(s.x, s.y, z0 + 11, s.r - 1.5, 2.6, 22));
       }
       break;
     }
     case 'rubber': {
-      const pm = mats.plastic(theme.postColor || '#f2efe6');
+      const pm = mats.satin(theme.postColor || '#f2efe6');
       s.posts.forEach(p => { batch.add(pm, cylGeo(p[0], p[1], s.pr - 1, z0, z0 + 30, 14)); batch.add(railMat, cylGeo(p[0], p[1], 2.2, z0 + 30, z0 + 35, 8)); });
       const circles = s.posts.map(p => [p[0], p[1], s.pr]);
       import_band(batch, mats.rubber(s.color || theme.rubber), circles, s.th, z0 + 7, 9);
