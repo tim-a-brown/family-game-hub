@@ -1431,7 +1431,14 @@
   function accepted(code){
     var names = setHs(code);
     names.forEach(function(n){ var L = linksGet(), r = L.others[lk(n)]; if(r){ r.bf = 1; try{ LS.setItem('fgh_links', JSON.stringify(L)); }catch(e){} } linkBackfill(n, code, { all: true }); });
-    if(names.length) setTimeout(function(){ linkPoll(true); }, 300);   // their avatar and scores
+    if(names.length){
+      // the person who asked gets the "Linked with ..." moment too
+      var was = lsJSON('fgh_link_new'); was = Array.isArray(was) ? was : [];
+      names.forEach(function(n){ if(was.indexOf(n) < 0) was.push(n); });
+      try{ LS.setItem('fgh_link_new', JSON.stringify(was)); }catch(e){}
+      setTimeout(function(){ linkEvent(names); }, 0);
+      setTimeout(function(){ linkPoll(true); }, 300);   // their avatar and scores
+    }
     return names;
   }
   // Live: the home screen watches your inbox, so a link request or a game sent to you shows up within seconds

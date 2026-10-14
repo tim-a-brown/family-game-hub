@@ -1951,7 +1951,21 @@
       el('p', { class: 'muted', text: 'Once they accept, you’re linked.' })
     ]);
     sfx('good'); haptic('success');
-    sheet({ title: 'Request sent', node: node, actions: [{ label: 'Done', primary: true }] });
+    // they accept while this is open: the question mark turns into a check and the link closes
+    function onLinks(e) {
+      var lk = (e.detail && e.detail.linked) || [];
+      if (!lk.some(function (n) { return String(n).toLowerCase() === name.toLowerCase(); })) return;
+      node.classList.add('done');
+      node.querySelector('.lk-sent-them em').innerHTML = icon('check');
+      node.querySelector('.lk-sent-t').innerHTML = 'Linked with <b>' + esc(name) + '</b>';
+      node.querySelector('.muted').textContent = 'You’re all set.';
+      var h = node.closest('.k-sheet') && node.closest('.k-sheet').querySelector('h2'); if (h) h.textContent = 'Linked';
+      sfx('win'); haptic('success');
+    }
+    window.addEventListener('fghlinks', onLinks);
+    // on a game page there's no live listener: look for their answer every 3 seconds while this is open
+    var peek = setInterval(function () { if (document.visibilityState === 'visible' && FGHSync.linkPeek) FGHSync.linkPeek(); }, 3000);
+    sheet({ title: 'Request sent', node: node, actions: [{ label: 'Done', primary: true }], onClose: function () { clearInterval(peek); window.removeEventListener('fghlinks', onLinks); } });
   }
   // ── Game defaults: each game's own setup, set ahead of time ──
   // The list (profile menu) opens a game's page with ?defaults=1: its normal setup screen, saving instead of
