@@ -246,6 +246,11 @@
   function mergeHi(a, b, key){
     var all = asArray(a).concat(asArray(b));
     var seen = {}, low = hiIsLow(key);
+    // a row whose initials were changed (was: 'CAM' or 'CAM,CJB') replaces the copy still under the old ones
+    all.forEach(function(row){
+      if(!row || Array.isArray(row) || typeof row !== 'object' || !row.was) return;
+      String(row.was).split(',').forEach(function(w){ w = w.trim(); if(w) seen[w + '|' + hiScore(row) + '|' + (hiDate(row) || '')] = 1; });
+    });
     all = all.filter(function(row){
       if(Array.isArray(row)){ if(row.length < 2 || row[1] == null) return false; }
       else if(!row || typeof row !== 'object' || row.score == null) return false;
@@ -1029,8 +1034,45 @@
   function myInitials(){ var l = linksGet(); return l.ini && /^[A-Z]{1,3}$/.test(l.ini.v || '') ? l.ini.v : ''; }
   function setInitials(v){
     v = String(v || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
-    var l = linksGet(); l.ini = { v: v, at: Date.now() }; linksSet(l); linkPublishSoon();
+    var was = myInitials();
+    var l = linksGet(); l.ini = { v: v, at: Date.now() }; linksSet(l);
+    if(was && v && was !== v) renameIni(was, v, lk(myName()));
+    linkPublishSoon();
     return v;
+  }
+  // Someone's initials changed: their scores on this device's leaderboards follow. A row tagged with who it
+  // belongs to (p) moves only for that person; an older untagged row moves when nobody else uses those initials.
+  // The row keeps the old initials in `was`, so a copy still under them (another device, the cloud) is dropped
+  // when boards merge instead of coming back as a duplicate.
+  function iniClean(v){ return String(v || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3); }
+  function iniTakenBy(ini, who){
+    if(!ini) return false;
+    var me = lk(myName());
+    if(me && me !== who && myInitials() === ini) return true;
+    var m = lsJSON('gn_ini') || {}, c = lsJSON(LHI) || {};
+    return Object.keys(m).some(function(k){ return k !== who && iniClean(m[k]) === ini; }) ||
+      Object.keys(c).some(function(k){ return k !== who && c[k] && iniClean(c[k].ini) === ini; });
+  }
+  function renameIni(from, to, who){
+    from = iniClean(from); to = iniClean(to); who = lk(who);
+    if(!from || !to || from === to || to.length < 2) return 0;
+    var shared = iniTakenBy(from, who), n = 0;
+    for(var i = 0; i < LS.length; i++){
+      var k = LS.key(i); if(!k || k.indexOf('hi_') !== 0) continue;
+      var list = lsJSON(k); if(!Array.isArray(list)) continue;
+      var ch = false;
+      list.forEach(function(row){
+        if(!row || Array.isArray(row) || typeof row !== 'object') return;
+        if(String(row.name || '').trim().toUpperCase() !== from) return;
+        if(row.p ? row.p !== who : (shared || !who)) return;
+        row.was = row.was ? row.was + ',' + from : from;
+        row.name = (to + '   ').slice(0, 3); if(who) row.p = who;
+        ch = true; n++;
+      });
+      if(ch){ try{ LS.setItem(k, JSON.stringify(list)); }catch(e){} noteWrite(k); }
+    }
+    if(n) try{ window.dispatchEvent(new CustomEvent('fghinitials', { detail: { from: from, to: to, who: who, n: n } })); }catch(e){}
+    return n;
   }
   // Your best arcade scores (entries under your initials), top 5 per game, for the people who link you.
   // Boards where lower is better (puzzle times and moves, HI_BOARDS in games.js) publish your lowest 5.
@@ -1547,7 +1589,13 @@
           var c = lsJSON(LHI) || {};
           var bk = typeof data.bank === 'number' && isFinite(data.bank) ? Math.max(0, Math.round(data.bank)) : null;
           if(data.ini || data.hi || bk !== null){
+            var newIni = iniClean(data.ini), prevIni = (c[k] && iniClean(c[k].ini)) || iniClean((lsJSON('gn_ini') || {})[k]);
             c[k] = { code: r.code, ini: String(data.ini || '').slice(0, 3), hi: data.hi && typeof data.hi === 'object' ? data.hi : {} };
+            if(newIni.length >= 2 && prevIni && prevIni !== newIni){
+              try{ LS.setItem(LHI, JSON.stringify(c)); }catch(e){}
+              renameIni(prevIni, newIni, k);
+              var gm = lsJSON('gn_ini'); if(gm && gm[k] && gm[k] !== newIni){ gm[k] = newIni; try{ LS.setItem('gn_ini', JSON.stringify(gm)); }catch(e){} noteWrite('gn_ini'); }
+            }
             if(bk !== null){ c[k].bank = bk; c[k].bankAt = Number(data.at) || Date.now(); bankPendingDrop(r.code, c[k].bankAt); }
           }
           else delete c[k];
@@ -1623,7 +1671,7 @@
     // player links
     linkShare: linkShare, linkNewCode: linkNewCode, linkSetAsk: linkSetAsk, linkPublish: linkPublishSoon,
     linkAdd: linkAdd, linkRemove: linkRemove, linkCancel: linkCancel, linkOf: linkOf, links: linksGet,
-    initials: myInitials, setInitials: setInitials, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
+    initials: myInitials, setInitials: setInitials, renameIni: renameIni, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
     linkMark: linkMark, linkSend: linkSend, linkBackfill: linkBackfill, linkPoll: linkPoll,
     linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,
     linkReqs: linkReqs, linkReqInfo: linkReqInfo, linkReqAccept: linkReqAccept, linkReqDecline: linkReqDecline, linkWatch: linkWatch, linkPeek: linkPeek,

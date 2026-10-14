@@ -124,12 +124,15 @@ const ArcadeHi = (function(){
     return better(key, score, list[list.length-1].score);
   }
 
-  function insert(key, name, score){
+  // who: the player's name; the row remembers them (p) so it follows if they change their initials later
+  function insert(key, name, score, who){
     const list = load(key);
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});   // e.g. 'Oct 9, 2026'
     const timeStr = now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    list.push({name: name.toUpperCase().slice(0,3).padEnd(3,' '), score, date: dateStr+' '+timeStr});
+    const row = {name: name.toUpperCase().slice(0,3).padEnd(3,' '), score, date: dateStr+' '+timeStr};
+    const pk = String(who||'').trim().toLowerCase(); if(pk && !/^player \d+$/.test(pk)) row.p = pk;
+    list.push(row);
     list.sort(order(key));
     if(list.length > MAX) list.length = MAX;
     save(key, list);
@@ -361,8 +364,8 @@ const ArcadeHi = (function(){
         }
         const name = letters.join('').trim()||'???';
         if(who) iniSave(who, name);   // next time their scores file under these without asking
-        insert(key, name, score);
-        also.forEach(a=>insert(a.key, name, a.score));
+        insert(key, name, score, who);
+        also.forEach(a=>insert(a.key, name, a.score, who));
       }
       overlay.remove();
       onDone && onDone();
@@ -375,8 +378,8 @@ const ArcadeHi = (function(){
   // Known player: the score files under their initials straight away; a short moment shows it (tap to go on)
   function showFiled(key, score, ini, who, also, onDone){
     injectCSS();
-    insert(key, ini, score);
-    also.forEach(a=>insert(a.key, ini, a.score));
+    insert(key, ini, score, who);
+    also.forEach(a=>insert(a.key, ini, a.score, who));
     const c = conf(key), lbl = c.label ? esc(c.label).toUpperCase() + ' · ' : '';
     const ttl = c.unit === 'time' ? 'FAST TIME!' : c.low ? 'TOP ' + MAX + '!' : 'HIGH SCORE!';
     const rank = load(key).findIndex(e=>e.name.trim()===ini && e.score===score) + 1;

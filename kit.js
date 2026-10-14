@@ -1737,16 +1737,19 @@
     n = String(n || '').trim(); if (!isPersonName(n)) return '';
     var k = avKey(n), v = '';
     if (isMe(n)) { try { v = window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.initials ? FGHSync.initials() : ''; } catch (e) {} }
+    // someone linked: the initials on their own profile win
+    if (!v) { try { var lh = JSON.parse(lsGet('fgh_link_hi', '{}')) || {}, lr = window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(n); if (lr && lr.hs && lh[k] && iniClean(lh[k].ini).length >= 2) v = lh[k].ini; } catch (e) {} }
     if (!v) v = iniMap()[k] || '';
-    if (!v) { try { var lh = JSON.parse(lsGet('fgh_link_hi', '{}')) || {}; v = lh[k] && lh[k].ini || ''; } catch (e) {} }
     v = iniClean(v); return v.length >= 2 ? v : '';
   }
   function iniSet(n, v) {
     n = String(n || '').trim(); v = iniClean(v); if (!isPersonName(n)) return '';
-    var m = iniMap(), k = avKey(n);
+    var was = iniOf(n), m = iniMap(), k = avKey(n), viaPin = false;
     if (v) m[k] = v; else delete m[k];
     lsSet('gn_ini', JSON.stringify(m));
-    if (isMe(n)) { try { if (window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.setInitials) FGHSync.setInitials(v); } catch (e) {} }
+    if (isMe(n)) { try { if (window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.setInitials) { FGHSync.setInitials(v); viaPin = true; } } catch (e) {} }
+    // their scores already on the boards move to the new initials (setInitials does that for yours)
+    if (!viaPin && was && v && was !== v) { try { if (window.FGHSync && FGHSync.renameIni) FGHSync.renameIni(was, v, k); } catch (e) {} }
     return v;
   }
   // who's playing (the people seated at the last Kit.setup start, computer seats left out)
