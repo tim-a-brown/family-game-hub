@@ -1669,11 +1669,11 @@ function drawInsert(lp, ag, gg, ig, P) {
 // ── Cabinet ────────────────────────────────────────────────────────────────
 // The backbox: height and depth (mm), the painted bezel round the glass (sides, top, bottom) and how strongly the
 // glass glows from behind (emissive gain on its art; flashes and lightning add to it in RC.render).
-const BACKBOX = { h: 400, d: 170, bez: 24, bezT: 26, bezB: 30, lit: 0.78 };
+export const BACKBOX = { h: 400, d: 170, bez: 24, bezT: 26, bezB: 30, lit: 0.78 };
 // The finishing pass every backglass gets after its art: the look of a translite lit by a row of bulbs behind it
 // (brighter in the middle, falling off into the corners), a faint sheen where the room reflects in the glass,
 // and a thin dark edge where it meets the trim. Cheap (three gradients), so tables paint only their art.
-function glassFinish(g, w, h) {
+export function glassFinish(g, w, h) {
   g.save();
   g.globalCompositeOperation = 'multiply';
   const v = g.createRadialGradient(w * 0.5, h * 0.46, h * 0.25, w * 0.5, h * 0.5, w * 0.72);
