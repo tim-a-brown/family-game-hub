@@ -345,17 +345,20 @@
       '<path d="M-11-6h3M-5-6h3M1-6h3M7-6h3" stroke="rgba(255,255,255,.55)" stroke-width="1.6"/></g>';
   }
   // where the buildings go on square i (in the colour bar)
-  function buildings(i, n, popK) {
-    var r = rectOf(i), o = '', side = r.side;
-    var bar = side === 'b' ? { x: r.x + r.w / 2, y: r.y + BAR / 2 + 7, dx: 1, dy: 0 } : side === 't' ? { x: r.x + r.w / 2, y: r.y + r.h - BAR / 2 + 7, dx: 1, dy: 0 } :
-      side === 'l' ? { x: r.x + r.w - BAR / 2, y: r.y + r.h / 2 + 7, dx: 0, dy: 1 } : { x: r.x + BAR / 2, y: r.y + r.h / 2 + 7, dx: 0, dy: 1 };
-    if (n === 5) return hotel(bar.x - 1, bar.y, side === 'l' || side === 'r' ? 0.7 : 1, popK != null ? 'pop' : '');
-    var step = side === 'l' || side === 'r' ? 18.5 : 18.5;
+  // o (build planning): {ghost: k} draws pieces from the k-th on as ghosts (not built yet), {gone: k} fades them (to be sold)
+  function buildings(i, n, popK, o) {
+    var r = rectOf(i), out = '', side = r.side, v = side === 'l' || side === 'r';
+    var bar = side === 'b' ? { x: r.x + r.w / 2, y: r.y + BAR / 2 + 10, dx: 1, dy: 0 } : side === 't' ? { x: r.x + r.w / 2, y: r.y + r.h - BAR / 2 + 10, dx: 1, dy: 0 } :
+      side === 'l' ? { x: r.x + r.w - BAR / 2, y: r.y + r.h / 2 + 10, dx: 0, dy: 1 } : { x: r.x + BAR / 2, y: r.y + r.h / 2 + 10, dx: 0, dy: 1 };
+    function mark(k) { return !o ? '' : o.ghost != null && k >= o.ghost ? 'ghost' : o.gone != null && k >= o.gone ? 'gone' : ''; }
+    if (n === 5) return hotel(bar.x - 1, bar.y, v ? 0.9 : 1.35, popK != null ? 'pop' : mark(0));
+    // big enough to count at a glance: a row of four overlaps a little, like houses on a street
+    var step = v ? 19 : 18.5, sc = 1.45;
     for (var k = 0; k < n; k++) {
       var off = (k - (n - 1) / 2) * step;
-      o += house(bar.x + off * bar.dx, bar.y + off * bar.dy, 0.95, popK === k ? 'pop' : '');
+      out += house(bar.x + off * bar.dx, bar.y + off * bar.dy, sc, popK === k ? 'pop' : mark(k));
     }
-    return o;
+    return out;
   }
 
   // ── Metal tokens (64 × 64, base at the bottom) ──
