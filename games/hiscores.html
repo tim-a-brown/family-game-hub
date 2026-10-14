@@ -114,6 +114,12 @@ html[data-theme="light"] body.hs .gbar,html[data-theme="parchment"] body.hs .gba
 .go .ico{flex:none;width:14px;height:14px;fill:currentColor;stroke:none;}
 .go:active{transform:translateY(3px);box-shadow:0 1px 0 color-mix(in srgb,var(--bcol) 55%,#000);}
 .go:hover{filter:brightness(1.06);}
+/* a game with modes to step through: a plain PLAY on the left, the modes beside it */
+.cp.has-modes .go{order:-1;flex:none;padding:0 18px;}
+.cp.has-modes .modes{flex:1;min-width:0;}
+.cp.has-modes .modes:not(.cyc) button{flex:1;}
+.cp.has-modes .modes.cyc{justify-content:space-between;}
+.cp.has-modes .modes.cyc b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .att{flex:none;display:grid;place-items:center;width:48px;min-height:48px;border:0;border-radius:12px;cursor:pointer;background:rgba(0,0,0,.45);color:var(--bcol);box-shadow:inset 0 0 0 1px var(--w08);transition:background .15s,color .15s;}
 .att .ico{width:20px;height:20px;}
 .att.on{background:var(--bcol);color:var(--bink);}
@@ -483,9 +489,10 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
       modes.appendChild(el('button', { type: 'button', role: 'radio', 'aria-checked': String(i === cur), class: i === cur ? 'on' : '', text: BOARDS[i].mode || BOARDS[i].title,
         onclick: function () { if (i !== cur) show(i, 1); } }));
     });
-    // a long puzzle name next to the board switch: just PLAY rather than a cut-off name
+    // with modes to step through: just PLAY, on the left, the modes beside it (and a long puzzle name: just PLAY too)
     var sp = st.querySelector('span');
-    if (b.puzzle && sp.scrollWidth > sp.clientWidth + 1) sp.textContent = 'PLAY';
+    cp.classList.toggle('has-modes', g.idx.length > 1);
+    if (g.idx.length > 1 || (b.puzzle && sp.scrollWidth > sp.clientWidth + 1)) sp.textContent = 'PLAY';
   }
   // Attract mode on demand: steps through every game of the section, a few seconds each, until you touch anything
   var attBtn = el('button', { type: 'button', class: 'att', onclick: function () { if (attractRun) stopAttract(); else { Kit.sfx('pop'); startAttract(); } } });
