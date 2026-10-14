@@ -1077,7 +1077,7 @@
           el('button', { type: 'button', class: 'av-btn', 'aria-label': 'Change ' + poss(n) + ' avatar', title: 'Change avatar', onclick: function () { avatarEdit(n, paint); } }, [avEl(n, null, 'var(--surface-3)')]),
           el('span', { class: 'grow' }, [el('span', { text: n }), (function () {
             var r = window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(n);
-            if (r && !r.hs && !r.gone) return el('small', { class: 'k-plays k-wait', text: 'Waiting for ' + n + ' to accept' });
+            if (r && !r.hs && !r.gone) return el('small', { class: 'k-plays k-wait', text: 'Waiting to accept' });
             return p ? el('small', { class: 'k-plays', text: p + (p === 1 ? ' game' : ' games') }) : null;
           })()]),
           // the signed-in person is already themselves: no link button for them
@@ -1941,7 +1941,7 @@
         el('span', { class: 'lk-sent-them' }, [avEl(name, 'lg', 'var(--surface-3)'), el('em', { text: '?' })])
       ]),
       el('p', { class: 'lk-sent-t', html: 'Asked <b>' + esc(name) + '</b> to link' }),
-      el('p', { class: 'muted', text: 'Waiting for ' + name + ' to accept on their phone' + (them && them.toLowerCase() !== name.toLowerCase() ? ' (their profile says ' + them + ')' : '') + '. Once they do, you’ll get a “Linked with ' + name + '” moment here, their avatar will come from their phone, and the games you play together will go to both histories.' })
+      el('p', { class: 'muted', text: 'Once they accept, you’re linked.' })
     ]);
     sfx('good'); haptic('success');
     sheet({ title: 'Request sent', node: node, actions: [{ label: 'Done', primary: true }] });
