@@ -106,8 +106,18 @@ const ArcadeHi = (function(){
   function iniOf(who){ try{ return who && window.Kit && Kit.initials ? Kit.initials.of(who) : ''; }catch(e){ return ''; } }
   function iniSave(who, v){ try{ if(who && window.Kit && Kit.initials) Kit.initials.set(who, v); }catch(e){} }
   // This device's board plus linked people's best scores (theirs not already on it), top MAX
+  // A score that remembers its player (p) shows that person, whatever initials others share;
+  // older scores without one count as yours when they carry your initials
+  function personName(k){
+    try{ const n = window.Kit && Kit.knownNames ? Kit.knownNames().filter(x=>String(x).trim().toLowerCase()===k)[0] : ''; if(n) return n; }catch(e){}
+    return k.replace(/\b[a-z]/g, c=>c.toUpperCase());
+  }
   function merged(key){
-    const own = load(key).map(e=>Object.assign({}, e, { mine: !!myIni() && e.name.trim().toUpperCase()===myIni() }));
+    const me = myName().toLowerCase();
+    const own = load(key).map(e=>{
+      if(e.p){ const mine = !!me && e.p === me; return Object.assign({}, e, { mine, by: mine ? '' : personName(e.p) }); }
+      return Object.assign({}, e, { mine: !!myIni() && e.name.trim().toUpperCase()===myIni() });
+    });
     const seen = {}; own.forEach(e=>{ seen[e.name.trim().toUpperCase()+'|'+e.score] = 1; });
     const theirs = linked(key).filter(e=>!seen[String(e.ini).toUpperCase()+'|'+e.score]).map(e=>({ name: e.ini || '???', score: e.score, date: e.date, who: e.who }));
     return own.concat(theirs).sort(order(key)).slice(0, MAX);
@@ -434,7 +444,8 @@ const ArcadeHi = (function(){
         const isTop = i===0;
         const medal = i<3 ? `<span style="display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-weight:900;font-size:.75rem;color:#2b1a00;background:${['#ffc83d','#cfd6e4','#d9925a'][i]}">${i+1}</span>` : '';
         const nm = e.who ? `<div class="ahi-who">${avHTML(e.who)}<div>${esc(e.name)}<small>${esc(e.who)}</small></div></div>`
-          : e.mine ? `<div class="ahi-who">${avHTML(myName()||e.name)}<div>${esc(e.name)}<small>You</small></div></div>` : esc(e.name);
+          : e.mine ? `<div class="ahi-who">${avHTML(myName()||e.name)}<div>${esc(e.name)}<small>You</small></div></div>`
+          : e.by ? `<div class="ahi-who">${avHTML(e.by)}<div>${esc(e.name)}<small>${esc(e.by)}</small></div></div>` : esc(e.name);
         rows += `<tr class="${isNew?'ahi-new':''}${e.who?' ahi-them':''}">
           <td class="ahi-rank">${medal||i+1}</td>
           <td class="ahi-name">${nm}</td>
@@ -505,7 +516,7 @@ const ArcadeHi = (function(){
   return {
     // The cleaned-up board (real scores only, highest first) and the top score
     list(key){ return load(key); },
-    // this device's board plus linked players' best scores: [{name, score, date, mine, who}]
+    // this device's board plus linked players' best scores: [{name, score, date, mine, who, by}] (by: the player a score here belongs to)
     board(key){ return merged(key); },
     max: MAX,
     best(key){ const l = load(key); return l.length ? l[0].score : 0; },

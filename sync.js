@@ -1077,12 +1077,12 @@
   // Your best arcade scores (entries under your initials), top 5 per game, for the people who link you.
   // Boards where lower is better (puzzle times and moves, HI_BOARDS in games.js) publish your lowest 5.
   function myHi(){
-    var ini = myInitials(), out = {}; if(!ini) return out;
+    var ini = myInitials(), me = lk(myName()), out = {}; if(!ini) return out;
     for(var i = 0; i < LS.length; i++){
       var k = LS.key(i); if(!k || k.indexOf('hi_') !== 0) continue;
       var list = lsJSON(k); if(!Array.isArray(list)) continue;
       var low = hiIsLow(k.slice(3));
-      var mine = list.filter(function(e){ return e && String(e.name || '').trim().toUpperCase() === ini && isFinite(Number(e.score)) && e.score !== null && e.score !== ''; })
+      var mine = list.filter(function(e){ return e && (e.p ? e.p === me : String(e.name || '').trim().toUpperCase() === ini) && isFinite(Number(e.score)) && e.score !== null && e.score !== ''; })
         .map(function(e){ return { s: Number(e.score), d: String(e.date || '').slice(0, 24) }; })
         .sort(function(a, b){ return low ? a.s - b.s : b.s - a.s; }).slice(0, 5);
       if(mine.length) out[k.slice(3)] = mine;

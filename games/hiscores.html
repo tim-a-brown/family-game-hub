@@ -513,7 +513,10 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
       };
       im.src = src;
     }
-    var html = Kit.avatar && Kit.avatar.html ? Kit.avatar.html(name) : null, col = (Kit.avatar && Kit.avatar.color && Kit.avatar.color(name)) || '#5b8cff';
+    var html = Kit.avatar && Kit.avatar.html ? Kit.avatar.html(name) : null, col = (Kit.avatar && Kit.avatar.color && Kit.avatar.color(name)) || (function () {   // no colour of their own: one per name, so two people never look alike
+      var h = 0, n = String(name || '').toLowerCase(); for (var q = 0; q < n.length; q++) h = (h * 31 + n.charCodeAt(q)) >>> 0;
+      return ['#5b8cff', '#e2557f', '#3fb56b', '#f59e0b', '#a855f7', '#14b8a6', '#ef4444', '#0ea5e9'][h % 8];
+    })();
     var photo = html && /<img[^>]+src="([^"]+)"/.exec(html);
     if (photo) {
       // a photo: cropped into a circle first, then pixelated
@@ -562,7 +565,7 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
 
   function paintScores(b) {
     var rows = (typeof ArcadeHi !== 'undefined' && ArcadeHi.board ? ArcadeHi.board(b.key) : []).slice(0, 50);
-    var unit = b.unit || 'SCORE', wide = rows.some(function (r) { return r.who || r.mine; });
+    var unit = b.unit || 'SCORE', wide = rows.some(function (r) { return r.who || r.mine || r.by; });
     // puzzle boards read their own way (4:05, 42, 1 CENTER 0:32); the heading says what the number is
     var val = function (s) { return b.puzzle ? ArcadeHi.fmt(b.key, s, true).toUpperCase() : fmt(s); };
     // one set of column widths for every row (and the headings): sized for the longest score on this board,
@@ -585,15 +588,15 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     var pal = b.c.rows.filter(function (c) { var n = parseInt(c.slice(1), 16), R = n >> 16, G = (n >> 8) & 255, B = n & 255; return !(R > 200 && G > 170 && B < 140); });
     if (!pal.length) pal = ['#ffffff'];
     rows.forEach(function (r, i) {
-      var who = r.who || (r.mine ? (localStorage.getItem('my_name') || '') : '');
+      var who = r.who || r.by || (r.mine ? (localStorage.getItem('my_name') || '') : '');
       var li = el('li', { class: (i === 0 ? 'top' : '') + (r.mine ? ' me' : ''), style: { '--rc': pal[Math.floor(i / (i < 5 ? 1 : 5)) % pal.length] },
-        'aria-label': ord(i + 1) + ', ' + (b.puzzle ? ArcadeHi.fmt(b.key, r.score) : fmt(r.score)) + ', ' + String(r.name).trim() + (r.who ? ' (' + r.who + ')' : r.mine ? ' (you)' : '') + (r.date ? ', ' + r.date : '') }, [
+        'aria-label': ord(i + 1) + ', ' + (b.puzzle ? ArcadeHi.fmt(b.key, r.score) : fmt(r.score)) + ', ' + String(r.name).trim() + (r.who || r.by ? ' (' + (r.who || r.by) + ')' : r.mine ? ' (you)' : '') + (r.date ? ', ' + r.date : '') }, [
         el('span', { class: 'rk', text: ord(i + 1) }),
         el('span', { class: 'sc', text: val(r.score) }),
         el('span', { class: 'nm', text: String(r.name || '???').trim().slice(0, 3) || '???' }),
         el('span', { class: 'dt', text: shortDate(r.date) })
       ].concat(wide ? [el('span', { class: 'wh' }, [who ? pixelAvatar(who) : null])] : []));
-      if (r.who) li.title = r.who;
+      if (r.who || r.by) li.title = r.who || r.by;
       list.appendChild(li);
     });
     sb.appendChild(list);
