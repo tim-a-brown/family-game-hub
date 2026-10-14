@@ -2214,7 +2214,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // ── Hosting ──
   function hostTable(name) {
     closeLobby(); busy('Opening your table…');
-    Online.host({ game: 'centipede', name: name, max: 3, min: 1, screen: app }).then(function (table) {
+    Online.host({ game: 'centipede', name: name, max: 3, min: 1, screen: app, relay: false }).then(function (table) {
       // the server refused the new table: back to the lobby instead of a waiting room nobody can find
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + (Online.errText ? Online.errText(e) : '')); leaveOnline(false); goLobby(); });
       net.mode = 'host'; net.table = table; net.me = name; net.pidN = 1;
@@ -2315,7 +2315,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // ── Joining ──
   function joinTable(code, name) {
     closeLobby(); busy('Connecting to the table…');
-    Online.join(code, { game: 'centipede', name: name, min: 1, screen: app }).then(function (peer) {
+    Online.join(code, { game: 'centipede', name: name, min: 1, screen: app, relay: false }).then(function (peer) {
       net.mode = 'guest'; net.peer = peer; net.hostName = peer.name; net.me = name; net.roster = []; net.myPid = null;
       peer.on('msg', guestMsg);
       peer.on('close', function (why) {

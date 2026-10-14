@@ -48,7 +48,7 @@
   function lsGet(k, d) { try { var v = LS.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
   function lsSet(k, v) { try { LS.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function log() { if (config.debug) try { console.log.apply(console, ['[online ' + (performance.now() / 1000).toFixed(2) + ']'].concat([].slice.call(arguments))); } catch (e) {} }
-  var config = { debug: false, iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }], connectMs: 20000, gatherMs: 2500 };
+  var config = { debug: false, iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }], connectMs: 20000, directMs: 9000, gatherMs: 2500 };
 
   // ── This device ─────────────────────────────────────────────────────────
   var devId = null;
@@ -269,9 +269,12 @@
       Object.keys(pending).forEach(function (k) { try { pending[k].close(); } catch (e) {} });
       if (table.code) { GONE[table.code] = Date.now(); t.remove(table.code).catch(function () {}); }
     };
+    var relays = {};
     function answer(m) {
       log('host got', m.k, 'from', m.from);
+      if (isRelayKind(m.k)) { if (relays[m.from]) relays[m.from].take(m); else t.ack(table.code, m.id).catch(function () {}); return; }
       t.ack(table.code, m.id).catch(function () {});
+      if (m.k === 'relay') { relayIn(m); return; }
       if (m.k !== 'offer' || table.closed) return;
       var o; try { o = JSON.parse(m.d); } catch (e) { return; }
       if (Date.now() - (m.at || 0) > 60000) return;   // left over from an earlier try
@@ -299,6 +302,26 @@
         .then(function () { log('host: answer ready'); return t.send(table.code, { id: rid(), to: from, from: me, k: 'answer', d: JSON.stringify({ sdp: pc.localDescription.sdp, sid: o.sid || '' }), at: Date.now() }); })
         .catch(function (e) { console.warn('[online] answer failed', e); peer.close('failed'); fire('joinfail', { dev: from, name: peer.name }); });
     }
+    // A guest who couldn't link up directly asks to play through the relay
+    function relayIn(m) {
+      if (table.closed) return;
+      var o; try { o = JSON.parse(m.d); } catch (e) { return; }
+      if (Date.now() - (m.at || 0) > 60000) return;
+      var from = m.from, ok = table.peers[from] && !table.peers[from].relay ? true : table.count() + 1 >= max && !table.peers[from] ? 'That table is full' : opts.accept ? opts.accept(o) : true;
+      if (opts.relay === false) ok = 'This game needs a direct connection';
+      if (ok !== true) { t.send(table.code, { id: rid(), to: from, from: me, k: 'no', d: JSON.stringify({ why: String(ok), sid: o.sid || '' }), at: Date.now() }).catch(function () {}); return; }
+      if (pending[from]) { try { pending[from].close(); } catch (e) {} delete pending[from]; }
+      if (table.peers[from]) table.peers[from].close('rejoin');
+      if (relays[from]) relays[from].close('rejoin');
+      var peer = new RelayPeer(t, table.code, me, from, String(o.name || 'Player').slice(0, 20), o.sid || '');
+      peer.link = o.lk || null; peer.info = o; relays[from] = peer;
+      t.send(table.code, { id: rid(), to: from, from: me, k: 'relayok', d: JSON.stringify({ sid: o.sid || '' }), at: Date.now() }).catch(function () {});
+      log('host: relay with', from);
+      table.peers[from] = peer;
+      peer.on('msg', function (msg) { fire('msg', peer, msg); });
+      peer.on('close', function (why) { if (relays[from] === peer) delete relays[from]; if (table.peers[from] === peer) { delete table.peers[from]; fire('leave', peer, why); table.setStatus(); } });
+      fire('peer', peer); table.setStatus();
+    }
     // the link tag and the check that the code is free run side by side (nothing waits on the other)
     var tagP = myTag(), tries = 0;
     function attempt() {
@@ -325,12 +348,92 @@
       table.code = code;
       if (scr) { scr.setCode(code); scr.step('open', 'done', 'Code ' + code); scr.table(table); }
       offs.push(t.inbox(code, me, answer, function (e) { console.warn('[online] inbox', e); }));
+      // tables this device opened before and couldn't close (the page went away first): gone now
+      try {
+        var swept = false, offR = t.rooms(opts.game, function (l) {
+          if (swept) return; swept = true; setTimeout(function () { try { offR(); } catch (e) {} }, 0);
+          (l || []).forEach(function (r) { if (r && r.code !== code && r.host && r.host.dev === me) { GONE[r.code] = Date.now(); t.remove(r.code).catch(function () {}); } });
+        }, function () {});
+      } catch (e) {}
       beat = setInterval(function () { table.setStatus(null, null, true); }, BEAT);
       return table;
     });
     if (!scr) return opened;
     return new Promise(function (res, rej) { scrCancel = function () { rej(new Error('Cancelled')); }; opened.then(res, rej); });
   }
+
+
+  // ── Relay: when two devices can't reach each other directly ─────────────
+  // Phone data and some Wi-Fi block direct links between devices. Then the game's messages go through the
+  // table's signalling inbox instead (the same Firestore docs the handshake uses: no extra setup or rules).
+  // Slower (about a quarter to half a second a message), fine for turn-based games; arcade games opt out.
+  // Same API as Peer: send(obj, reliable), on('msg'|'close'|'open'), close(), rtt, id, name, relay: true.
+  // Messages carry a sequence number so they're handed over in order; big ones are sent in parts.
+  var RELAY_PART = 11000, RELAY_PING = 5000, RELAY_DEAD = 30000;
+  function pad9(n) { return ('000000000' + n).slice(-9); }
+  function RelayPeer(t, code, me, other, name, sid) {
+    var p = this, ls = { msg: [], close: [], open: [] };
+    p.id = other; p.name = name || ''; p.rtt = 0; p.open = true; p.closed = false; p.heard = Date.now(); p.relay = true;
+    p._t = t; p._code = code; p._me = me; p._sid = sid; p._q = 0; p._uq = 0; p._seen = {}; p._next = 0; p._buf = {}; p._parts = {}; p._uLast = 0; p._uPend = null; p._uT = 0;
+    p.on = function (k, f) { ls[k].push(f); return p; };
+    p._fire = function (k, a) { ls[k].forEach(function (f) { try { f(a); } catch (er) { console.error(er); } }); };
+    p._deliver = function (s) {
+      p.heard = Date.now();
+      var m; try { m = JSON.parse(s); } catch (er) { return; }
+      if (m._ === 'p') { p._raw({ _: 'q', t: m.t }, true); return; }
+      if (m._ === 'q') { p.rtt = Date.now() - m.t; return; }
+      if (m._ === 'bye') { p.close('left'); return; }
+      p._fire('msg', m);
+    };
+    p.beat = setInterval(function () {
+      if (Date.now() - p.heard > RELAY_DEAD) { p.close('timeout'); return; }
+      p._raw({ _: 'p', t: Date.now() }, true);
+    }, RELAY_PING);
+  }
+  // one message in from the inbox (it may come twice: the join's listener and this one's)
+  RelayPeer.prototype.take = function (m) {
+    var p = this;
+    if (p._seen[m.id]) return; p._seen[m.id] = 1;
+    p._t.ack(p._code, m.id).catch(function () {});
+    var a; try { a = JSON.parse(m.d); } catch (e) { return; }
+    if (!a || a.sid !== p._sid) return;
+    p.heard = Date.now();
+    if (m.k === 'mu') { if (a.q > p._uLast) { p._uLast = a.q; p._deliver(a.s); } return; }
+    if (m.k === 'mp') {   // a part of a big message
+      var bucket = p._parts[a.q] || (p._parts[a.q] = []); bucket[a.i] = a.s;
+      if (bucket.filter(function (x) { return x != null; }).length < a.n) return;
+      delete p._parts[a.q]; a = { q: a.q, s: bucket.join('') };
+    }
+    p._buf[a.q] = a.s;
+    while (p._buf[p._next] != null) { var s = p._buf[p._next]; delete p._buf[p._next]; p._next++; p._deliver(s); }
+  };
+  RelayPeer.prototype._raw = function (obj, reliable) {
+    var p = this; if (p.closed && !(obj && obj._ === 'bye')) return false;
+    var s = typeof obj === 'string' ? obj : JSON.stringify(obj);
+    function put(k, id, d) { return p._t.send(p._code, { id: id, to: p.id, from: p._me, k: k, d: JSON.stringify(d), at: Date.now() }).catch(function (e) { console.warn('[online] relay send', e); }); }
+    if (!reliable) {
+      // the fast lane: only the newest update matters, so send at most about three a second
+      p._uPend = s;
+      if (p._uT) return true;
+      var go = function () { p._uT = 0; if (p._uPend == null || p.closed) return; var x = p._uPend; p._uPend = null; var q = ++p._uq; put('mu', 'u_' + p._me + '_' + pad9(q), { sid: p._sid, q: q, s: x }); p._uT = setTimeout(go, 330); };
+      go(); return true;
+    }
+    var q = p._q++;
+    if (s.length <= RELAY_PART) { put('m', 'm_' + p._me + '_' + pad9(q), { sid: p._sid, q: q, s: s }); return true; }
+    var n = Math.ceil(s.length / RELAY_PART);
+    for (var i = 0; i < n; i++) put('mp', 'm_' + p._me + '_' + pad9(q) + '_' + i, { sid: p._sid, q: q, i: i, n: n, s: s.slice(i * RELAY_PART, (i + 1) * RELAY_PART) });
+    return true;
+  };
+  RelayPeer.prototype.send = function (obj, reliable) { return this._raw(obj, !!reliable); };
+  RelayPeer.prototype.sendRaw = function (ch, obj) { return this._raw(obj, true); };
+  RelayPeer.prototype.close = function (why) {
+    if (this.closed) return;
+    if (why !== 'left') this._raw({ _: 'bye' }, true);
+    this.closed = true; clearInterval(this.beat); clearTimeout(this._uT);
+    if (this._off) try { this._off(); } catch (e) {}
+    this._fire('close', why || 'closed');
+  };
+  function isRelayKind(k) { return k === 'm' || k === 'mp' || k === 'mu'; }
 
   // ── Join a table ────────────────────────────────────────────────────────
   // opts: {game, name, extra}. Resolves with a Peer (the host) once connected; peer.room = the table doc.
@@ -356,42 +459,60 @@
       return tagP.then(function (lk) {
         return new Promise(function (resolve, reject) {
           var pc = newPc(), peer = new Peer(pc, room.host.dev, room.host.name), offs = [], done = false, answered = false, sid = Math.random().toString(36).slice(2, 10);
+          var hostName = room.host && room.host.name || 'the host', relay = null, relayAsked = false, relayTo = 0;
           peer.room = room; peer.code = code;
           cancel = function () { finish(new Error('Cancelled')); };
-          function finish(err) {
-            if (done) return; done = true; clearTimeout(to);
-            if (scr && !err) { scr.step('connect', 'done', 'Connected to ' + (room.host && room.host.name || 'the host')); scr.step('seat', 'run', 'Taking your seat'); }
+          function hello() { var d = { name: String(opts.name || 'Player').slice(0, 20), v: V, sid: sid }; if (lk) d.lk = lk; if (opts.extra) d.x = opts.extra; return d; }
+          function finish(err, via) {
+            if (done) return; done = true; clearTimeout(to); clearTimeout(relayTo);
+            var got = via || peer;
+            if (scr && !err) { scr.step('connect', 'done', got.relay ? 'Connected to ' + hostName + ' through the relay' : 'Connected to ' + hostName); scr.step('seat', 'run', 'Taking your seat'); }
             offs.forEach(function (o) { try { o(); } catch (e) {} });
-            if (err) { peer.close('failed'); reject(err); } else resolve(peer);
-          }
-          var to = setTimeout(function () { var e = new Error(NAT_MSG); e.nat = true; finish(e); }, config.connectMs);
-          peer.on('open', function () {
-            log('guest: channel open');
-            finish(null);
+            if (err) { peer.close('failed'); if (relay) relay.close('failed'); reject(err); return; }
+            if (got !== peer) { try { pc.close(); } catch (e) {} }
             // the host closing the table (or the page) ends the game here too
-            var off = t.watch(code, function (r) { if (!r && !peer.closed) peer.close('host'); }, function () {});
-            peer.on('close', function () { try { off(); } catch (e) {} });
-          });
+            var off = t.watch(code, function (r) { if (!r && !got.closed) got.close('host'); }, function () {});
+            got.on('close', function () { try { off(); } catch (e) {} });
+            if (got.relay) got._off = t.inbox(code, me, function (m) { if (isRelayKind(m.k) && m.from === room.host.dev) got.take(m); }, function () {});
+            got.room = room; got.code = code;
+            resolve(got);
+          }
+          // No direct link in time (phone data, strict Wi-Fi): play through the relay instead
+          function fallBack() {
+            if (done || relayAsked) return;
+            if (opts.relay === false) { var e = new Error(NAT_MSG); e.nat = true; finish(e); return; }
+            relayAsked = true;
+            log('guest: no direct link, asking for the relay');
+            try { pc.close(); } catch (er) {}
+            if (scr) scr.step('connect', 'run', 'This network blocks a direct link · connecting through the relay');
+            relay = new RelayPeer(t, code, me, room.host.dev, room.host.name, sid);
+            t.send(code, { id: rid(), to: room.host.dev, from: me, k: 'relay', d: JSON.stringify(hello()), at: Date.now() }).catch(function (er) { finish(er); });
+            relayTo = setTimeout(function () { var e = new Error(NAT_MSG); e.nat = true; finish(e); }, 20000);
+          }
+          var to = setTimeout(fallBack, config.directMs);
+          pc.addEventListener('connectionstatechange', function () { if (pc.connectionState === 'failed') fallBack(); });
+          peer.on('open', function () { if (relayAsked) return; log('guest: channel open'); finish(null); });
           offs.push(t.inbox(code, me, function (m) {
+            if (m.from !== room.host.dev) { t.ack(code, m.id).catch(function () {}); return; }
+            if (isRelayKind(m.k)) { if (relay) relay.take(m); else t.ack(code, m.id).catch(function () {}); return; }
             t.ack(code, m.id).catch(function () {});
             log('guest got', m.k);
-            if (m.from !== room.host.dev) return;
             var a; try { a = JSON.parse(m.d); } catch (e) { return; }
             if (!a || a.sid !== sid) return;   // an answer to an earlier try
             if (m.k === 'no') finish(new Error(a.why || 'The table didn’t let you in'));
-            else if (m.k === 'answer' && !answered) { answered = true; if (scr) scr.step('connect', 'run', 'Let in · linking the two devices'); pc.setRemoteDescription({ type: 'answer', sdp: a.sdp }).catch(function (e) { finish(e); }); }
+            else if (m.k === 'relayok' && relay) finish(null, relay);
+            else if (m.k === 'answer' && !answered && !relayAsked) { answered = true; if (scr) scr.step('connect', 'run', 'Let in · linking the two devices'); pc.setRemoteDescription({ type: 'answer', sdp: a.sdp }).catch(function () { fallBack(); }); }
           }, function (e) { finish(e); }));
           pc.createOffer()
             .then(function (o) { return pc.setLocalDescription(o); })
             .then(function () { return gathered(pc); })
             .then(function () {
+              if (relayAsked) return;
               log('guest: offer ready', pc.iceGatheringState);
-              var d = { sdp: pc.localDescription.sdp, name: String(opts.name || 'Player').slice(0, 20), v: V, sid: sid };
-              if (lk) d.lk = lk;
-              if (opts.extra) d.x = opts.extra;
+              var d = hello(); d.sdp = pc.localDescription.sdp;
               return t.send(code, { id: rid(), to: room.host.dev, from: me, k: 'offer', d: JSON.stringify(d), at: Date.now() });
             })
-            .catch(function (e) { finish(e); });
+            .catch(function () { fallBack(); });
         });
       });
     });
@@ -511,7 +632,9 @@
       var now = Date.now(), d = dev();
       // only tables still taking players: not yours, not closed here, open or playing (any other status is over),
       // not full, and heard from lately
-      var list = all.filter(function (r) { return r && r.host && r.host.dev !== d && !gone(r.code) && (r.status === 'open' || r.status === 'playing') && (r.n || 1) < (r.max || 2) && now - (r.at || 0) < STALE; });
+      var newest = {};   // a device hosts one table at a time: an older one from the same device was left behind
+      all.forEach(function (r) { if (r && r.host && (!newest[r.host.dev] || (r.at || 0) > (newest[r.host.dev].at || 0))) newest[r.host.dev] = r; });
+      var list = all.filter(function (r) { return r && r.host && newest[r.host.dev] === r && r.host.dev !== d && !gone(r.code) && (r.status === 'open' || r.status === 'playing') && (r.n || 1) < (r.max || 2) && now - (r.at || 0) < STALE; });
       list.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
       sweep(all, now);
       var sig = list.map(function (r) { return [r.code, r.status, r.n, r.info, r.host.name, r.host.lk].join('|'); }).join(',');
