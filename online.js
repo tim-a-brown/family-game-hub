@@ -444,7 +444,7 @@
     var t = T(), me = dev();
     var tagP = myTag();
     lastCode = code;
-    var scr = opts.screen ? stage(opts.screen, { host: false, code: code, max: opts.max || 0, min: opts.min, onLeave: function () { if (cancel) cancel(); } }) : null, cancel = null;
+    var scr = opts.screen ? stage(opts.screen, { host: false, code: code, max: opts.max || 0, min: opts.min, myName: opts.name, onLeave: function () { if (cancel) cancel(); } }) : null, cancel = null;
     if (scr) { scr.step('find', 'run', 'Looking for table ' + code); scr.step('connect', 'wait'); scr.step('seat', 'wait'); scr.step('start', 'wait'); }
     return t.get(code).then(function (room) {
       if (!room || room.game !== opts.game) throw new Error('No open table with code ' + code);
@@ -669,21 +669,31 @@
   // A felt table with a chair for every seat (filled, on the way in, or open), how many are here and how many
   // more are needed, and the steps left before the game begins, each ticking off as it happens.
   var CSS2 = '.olt h1{margin-bottom:2px;}' +
-    '.olt-tbl{position:relative;width:min(100%,440px);aspect-ratio:1.42;margin:6px auto 0;}' +
-    '.olt-rim{position:absolute;inset:19% 19%;border-radius:999px;padding:9px;}' +
-    '.olt-felt{position:relative;width:100%;height:100%;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}' +
-    '.olt-felt small{font-size:.66rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;opacity:.7;}' +
-    '.olt-code{font-family:var(--display);font-size:clamp(1.9rem,8vw,2.6rem);letter-spacing:.22em;margin-right:-.22em;line-height:1.05;color:#ffe08a;text-shadow:0 2px 0 rgba(0,0,0,.35);}' +
+    // The people: like the Game Night logo, each one a coloured arc (shoulders) with their avatar as the head,
+    // round an empty circle with the table code in the middle. The circle makes room as people join.
+    '.olt-tbl{position:relative;width:min(100%,330px);aspect-ratio:1;margin:6px auto 0;}' +
+    '.olt-mid{position:absolute;inset:31%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}' +
+    '.olt-mid small{font-size:.62rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);}' +
+    '.olt-code{font-family:var(--display);font-size:clamp(1.6rem,7vw,2.2rem);letter-spacing:.2em;margin-right:-.2em;line-height:1.05;color:var(--accent);}' +
     '.olt-code.pend{opacity:.35;letter-spacing:.3em;}' +
-    '.olt-seat{position:absolute;width:62px;margin:-31px 0 0 -31px;display:flex;flex-direction:column;align-items:center;gap:3px;transition:transform .45s var(--spring,cubic-bezier(.3,1.5,.5,1));}' +
-    '.olt-seat .avatar,.olt-chair{width:46px;height:46px;font-size:1.15rem;box-shadow:0 0 0 3px var(--bg,#14112a),0 6px 14px rgba(0,0,0,.35);}' +
-    '.olt-chair{display:grid;place-items:center;border-radius:50%;border:2px dashed color-mix(in srgb,var(--text-3) 70%,transparent);background:color-mix(in srgb,var(--surface) 70%,transparent);color:var(--text-3);font-weight:900;font-size:.8rem;box-shadow:none;}' +
-    '.olt-seat em{font-style:normal;font-size:.72rem;font-weight:800;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-2);}' +
-    '.olt-seat.need .olt-chair{border-color:#ffd36b;background:color-mix(in srgb,#ffd36b 14%,transparent);animation:oltPulse 1.6s ease-in-out infinite;}.olt-seat.need em{color:#ffd36b;}' +
-    '.olt-seat.up{flex-direction:column-reverse;}.olt-seat.me em{color:var(--accent);}.olt-seat.host .avatar{box-shadow:0 0 0 3px var(--bg,#14112a),0 0 0 5px #ffd36b,0 6px 14px rgba(0,0,0,.35);}' +
-    '.olt-seat.in{animation:oltIn .5s var(--spring,cubic-bezier(.3,1.5,.5,1));}' +
-    '.olt-seat.coming .avatar,.olt-seat.coming .olt-chair{opacity:.55;animation:oltPulse 1.2s ease-in-out infinite;}' +
-    '.olt-seat .olt-ring{position:absolute;top:-4px;left:50%;}.olt-seat.up .olt-ring{top:auto;bottom:-4px;}.olt-seat .olt-ring{width:54px;height:54px;margin-left:-27px;border-radius:50%;border:3px solid transparent;border-top-color:var(--accent);animation:olspin .9s linear infinite;}' +
+    '.olt-p{position:absolute;inset:0;pointer-events:none;transition:transform .8s cubic-bezier(.3,1.25,.5,1),opacity .4s;}' +
+    '.olt-p svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}' +
+    '.olt-p circle{fill:none;stroke-linecap:round;transition:stroke-dasharray .8s cubic-bezier(.3,1.25,.5,1),transform .8s cubic-bezier(.3,1.25,.5,1),stroke .3s;}' +
+    '.olt-h{position:absolute;left:50%;transition:transform .8s cubic-bezier(.3,1.25,.5,1),width .6s,height .6s,margin .6s;}' +
+    '.olt-h > .avatar,.olt-h > .olt-ph{width:100%;height:100%;font-size:calc(var(--hs) * .42);box-shadow:0 0 0 3px #fff,0 6px 14px rgba(0,0,0,.35);}' +
+    '.olt-ph{display:grid;place-items:center;border-radius:50%;color:var(--text-3);}' +
+    '.olt-ph svg{width:46%;height:46%;}' +
+    '.olt-p.need .olt-ph{border:2.5px dashed #ffd36b;box-shadow:none;background:color-mix(in srgb,#ffd36b 10%,transparent);animation:oltPulse 1.6s ease-in-out infinite;}' +
+    '.olt-p.anon .olt-ph{background:var(--surface-3,#2a2546);}' +
+    '.olt-h em{position:absolute;left:50%;transform:translateX(-50%);top:calc(100% + 4px);font-style:normal;font-size:.72rem;font-weight:800;white-space:nowrap;max-width:84px;overflow:hidden;text-overflow:ellipsis;color:var(--text-2);}' +
+    '.olt-h.up em{top:auto;bottom:calc(100% + 4px);}' +
+    '.olt-p.me em{color:var(--accent);}.olt-p.need em{color:#ffd36b;}' +
+    '.olt-p.host .olt-h > .avatar{box-shadow:0 0 0 3px #fff,0 0 0 6px #ffd36b,0 6px 14px rgba(0,0,0,.35);}' +
+    '.olt-p.coming .olt-h > .avatar{opacity:.55;}.olt-p.coming circle{opacity:.45;}' +
+    '.olt-h .olt-ring{position:absolute;inset:-6px;border-radius:50%;border:3px solid transparent;border-top-color:var(--accent);animation:olspin .9s linear infinite;}' +
+    '.olt-p.in .olt-h{animation:oltIn .55s cubic-bezier(.3,1.5,.5,1) both;}.olt-p.in svg{animation:oltFade .5s both;}' +
+    '.olt-p.out{opacity:0;}' +
+    '@keyframes oltFade{from{opacity:0}to{opacity:1}}' +
     '@keyframes oltIn{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}' +
     '@keyframes oltPulse{50%{transform:scale(.92);opacity:.35}}' +
     '.olt-count{text-align:center;margin:2px 0 0;}.olt-count b{display:block;font-family:var(--display);font-weight:400;font-size:1.5rem;}' +
@@ -711,10 +721,10 @@
     o = o || {};
     var S = { host: !!o.host, max: o.max || 2, min: o.min || 2, code: o.code || '', hostName: o.hostName || '', players: [], coming: [], room: null, onStart: o.onStart, onLeave: o.onLeave, note: o.note, ticks: {} };
     var wrap = E('div', { class: 'ol olt' }), h1 = E('h1'), tbl = E('div', { class: 'olt-tbl' });
-    var mid = E('div', { class: 'olt-felt felt-in' }), codeEl = E('div', { class: 'olt-code' });
+    var mid = E('div', { class: 'olt-mid' }), codeEl = E('div', { class: 'olt-code' });
     mid.appendChild(E('small', { text: 'Table code' })); mid.appendChild(codeEl);
-    tbl.appendChild(E('div', { class: 'olt-rim wood' }, [mid]));
-    var seatsBox = E('div'); tbl.appendChild(seatsBox);
+    tbl.appendChild(mid);
+    var seatsBox = tbl;
     var count = E('div', { class: 'olt-count' }, [E('b'), E('small')]);
     var steps = E('ol', { class: 'olt-steps' }), rows = {};
     (S.host ? STEPS.host : STEPS.guest).forEach(function (x) {
@@ -746,40 +756,68 @@
       }
       if (detail != null) li.querySelector('small').textContent = detail;
     }
-    // chairs round the table: everyone here, anyone on the way in, then open seats (big tables show a few + the rest)
-    var known = {};
+    // the circle of people: everyone here, anyone on the way in, then a dotted figure for each seat still needed
+    // to start. Each figure keeps its element, so when someone joins the others slide round to make room.
+    var PAL = ['#ffd166', '#ff7a8a', '#4fd1c5', '#8b7cff', '#5b8cff', '#3fb56b', '#f59e0b', '#ec4899'];
+    var figs = {}, NS = 'http://www.w3.org/2000/svg', RA = 60, RH = 77;
+    function figure(key) {
+      if (figs[key]) return figs[key];
+      var el = E('div', { class: 'olt-p in' }), svg = document.createElementNS(NS, 'svg'), c = document.createElementNS(NS, 'circle');
+      svg.setAttribute('viewBox', '-100 -100 200 200'); c.setAttribute('r', RA); c.setAttribute('pathLength', '360');
+      svg.appendChild(c); el.appendChild(svg);
+      var h = E('div', { class: 'olt-h' }); el.appendChild(h);
+      seatsBox.appendChild(el);
+      setTimeout(function () { el.classList.remove('in'); }, 700);
+      return (figs[key] = { el: el, arc: c, head: h, sig: '' });
+    }
     function paintSeats() {
-      var people = S.players.map(function (p) { return { name: p.name, color: p.color, me: p.me, host: p.host }; });
+      var people = S.players.map(function (p, i) { return { key: 'p:' + p.name, name: p.name, color: p.color, me: p.me, host: p.host }; });
       if (!people.length && S.room) {   // still connecting: the host, the others already there, and you on the way
-        people.push({ name: S.hostName, host: true });
-        for (var q = 1; q < (S.room.n || 1); q++) people.push({ name: '', anon: true });
+        people.push({ key: 'p:' + S.hostName, name: S.hostName, host: true });
+        for (var q = 1; q < (S.room.n || 1); q++) people.push({ key: 'anon' + q, name: '', anon: true });
       }
-      S.coming.forEach(function (c) { people.push({ name: c.name, coming: true }); });
-      if (!S.host && !S.players.length) people.push({ name: 'You', me: true, coming: true });
-      // every seat up to 8; a big table (Trivia, Apples: 24) shows six chairs, the last one standing for the rest
-      var n = S.max <= 8 ? S.max : Math.min(12, Math.max(6, people.length + 1));
-      seatsBox.innerHTML = '';
-      for (var i = 0; i < n; i++) {
-        var a = -Math.PI / 2 + i * 2 * Math.PI / n, x = 50 + 41 * Math.cos(a), y = 50 + 37 * Math.sin(a);
-        var p = people[i], seat = E('div', { class: 'olt-seat' + (y < 30 ? ' up' : ''), style: { left: x + '%', top: y + '%' } });
-        if (p) {
-          var key = (p.coming ? 'c:' : '') + (p.name || '?') + i;
-          if (!known[key]) { known[key] = 1; seat.classList.add('in'); }
-          if (p.coming) seat.classList.add('coming');
-          if (p.me) seat.classList.add('me');
-          if (p.host) seat.classList.add('host');
-          seat.appendChild(p.anon ? E('span', { class: 'olt-chair', html: Kit.icon('user') }) : av(p.name, p.color));
-          if (p.coming) seat.appendChild(E('i', { class: 'olt-ring' }));
-          seat.appendChild(E('em', { text: p.anon ? 'Player' : p.me && !S.players.length ? 'You' : p.name + (p.me ? ' (you)' : '') }));
-        } else {
-          // chairs still needed before the game can start look different from the optional ones
-          var last = i === n - 1 && S.max > n, needed = i < S.min;
-          if (needed) seat.classList.add('need');
-          seat.appendChild(E('span', { class: 'olt-chair', text: last ? '+' + (S.max - n + 1) : '' }));
-          seat.appendChild(E('em', { text: needed ? 'Needed' : last ? 'more' : 'Open' }));
+      S.coming.forEach(function (c) { people.push({ key: 'p:' + c.name, name: c.name, coming: true }); });
+      if (!S.host && !S.players.length) people.push({ key: 'p:' + (o.myName || 'You'), name: 'You', me: true, coming: true });
+      var need = Math.max(0, S.min - people.length);
+      for (var k = 0; k < need; k++) people.push({ key: 'need' + k, need: true });
+      var n = Math.max(people.length, 1), span = Math.min(50, 360 / n * .56);
+      var hs = Math.min(27, 2 * Math.PI * RH / n * .62), px = tbl.clientWidth || 330, hpx = hs / 200 * px;
+      var keep = {};
+      people.forEach(function (p, i) {
+        var f = figure(p.key), th = i * 360 / n; keep[p.key] = 1;
+        f.el.className = 'olt-p' + (f.el.classList.contains('in') ? ' in' : '') + (p.need ? ' need' : '') + (p.anon ? ' anon' : '') + (p.coming ? ' coming' : '') + (p.me ? ' me' : '') + (p.host ? ' host' : '');
+        f.el.style.transform = 'rotate(' + th + 'deg)';
+        // the shoulders: an arc centred on this person, drawn as a dash of a full circle (pathLength 360 = degrees)
+        var col = p.need ? '#ffd36b' : p.anon ? 'var(--text-3)' : (p.color || PAL[i % PAL.length]);
+        f.arc.style.stroke = col; f.arc.style.strokeWidth = Math.max(7, Math.min(17, hs * .62));
+        f.arc.style.strokeDasharray = span + ' 360';
+        if (p.need) {   // an empty seat: a row of small dots where the shoulders go
+          var dots = 8, gap = span / (dots - 1), pat = [];
+          for (var d = 0; d < dots - 1; d++) pat.push('0.01', gap);
+          pat.push('0.01', 360);
+          f.arc.style.strokeDasharray = pat.join(' '); f.arc.style.strokeWidth = Math.max(4, Math.min(7, hs * .26));
         }
-        seatsBox.appendChild(seat);
-      }
+        f.arc.style.transform = 'rotate(' + (-90 - span / 2) + 'deg)';
+        // the head: their avatar, kept upright while the figure turns
+        var h = f.head; h.style.setProperty('--hs', hpx + 'px');
+        h.style.width = h.style.height = hpx + 'px'; h.style.marginLeft = (-hpx / 2) + 'px';
+        h.style.top = ((100 - RH) / 2) + '%'; h.style.marginTop = (-hpx / 2) + 'px';
+        h.style.transform = 'rotate(' + (-th) + 'deg)';
+        var up = Math.cos(th * Math.PI / 180) > .35;
+        h.classList.toggle('up', up);
+        var label = n > 8 ? '' : p.need ? 'Needed' : p.anon ? '' : p.me && !S.players.length ? 'You' : p.name + (p.me ? ' (you)' : '');
+        var sig = [p.need, p.anon, p.coming, p.name, p.color, label].join('|');
+        if (f.sig !== sig) {
+          f.sig = sig; h.innerHTML = '';
+          h.appendChild(p.need ? E('span', { class: 'olt-ph' }) : p.anon ? E('span', { class: 'olt-ph', html: Kit.icon('user') }) : av(p.name, p.color || PAL[i % PAL.length]));
+          if (p.coming) h.appendChild(E('i', { class: 'olt-ring' }));
+          if (label) h.appendChild(E('em', { text: label }));
+        }
+      });
+      Object.keys(figs).forEach(function (key) {
+        if (keep[key]) return;
+        var f = figs[key]; delete figs[key]; f.el.classList.add('out'); setTimeout(function () { f.el.remove(); }, 450);
+      });
     }
     function paintCount() {
       var here = S.players.length || (S.room ? (S.room.n || 1) : 0), need = Math.max(0, S.min - here), b = count.firstChild, sm = count.lastChild;
