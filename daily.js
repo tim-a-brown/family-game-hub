@@ -2,7 +2,7 @@
 // ── Daily puzzles: today's puzzle in each game that has one, and how far you've got ─────────────
 // Used by the "Daily puzzles" button on the home screen (Puzzles & Words). Each game opens its daily
 // straight away with ?daily=1. The day numbers and "done" checks here must match each game's own:
-//   Wordle        today().day          (days since 2024-01-01 UTC, +1)   history dayNum, randomMode
+//   Wordle        today().day          (days since 1 Jan 2024 local, +1) history dayNum, randomMode
 //   Spelling Bee  dayNum()             (days since 1 Jan 2024 local, +1) spellingbee_state.daily
 //   Sudoku        today(), DAILY_DIFF  (days since 1 Jan 2024 local, +1) history daily
 //   Word Search   today(), DAILY_DIFF  (same as Sudoku)                   history daily
@@ -15,7 +15,7 @@
 //   Riddles       today()              (days since 1 Jan 2024 local, +1) history daily; riddles_state.daily
 var Daily = window.Daily = (function () {
   var DAY = 86400000;
-  function localDay() { return Math.floor((Date.now() - new Date(2024, 0, 1).getTime()) / DAY) + 1; }
+  function localDay() { return Math.round((new Date().setHours(0, 0, 0, 0) - new Date(2024, 0, 1).getTime()) / DAY) + 1; }   // local calendar day, steady across DST
   function isoDay() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function hist(k) { try { return (window.GameHistory && GameHistory.load(k)) || []; } catch (e) { return []; } }
   function state(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
@@ -28,7 +28,7 @@ var Daily = window.Daily = (function () {
   // each: {id (catalog), name, what, status: 'done'|'going'|'new', note}
   var games = [
     function wordle() {
-      var day = Math.floor((Date.now() - new Date('2024-01-01').getTime()) / DAY) + 1;
+      var day = localDay();
       var e = hist('wordle').filter(function (x) { return x && x.dayNum === day && !x.randomMode; })[0];
       if (e) {
         var n = Array.isArray(e.guesses) ? e.guesses.length : e.guesses && typeof e.guesses === 'object' ? Object.keys(e.guesses).length : 0;

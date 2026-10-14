@@ -172,7 +172,7 @@
 
   // ── Daily puzzle: one a day, the same for everyone. Easy Monday and Tuesday, Medium midweek, Hard Friday to Sunday ──
   var DAILY_DIFF = ['hard', 'easy', 'easy', 'medium', 'medium', 'hard', 'hard'];   // Sun..Sat
-  function today() { return Math.floor((Date.now() - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }
+  function today() { return Math.round((new Date().setHours(0, 0, 0, 0) - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }   // local calendar day, steady across DST
   function dailyOf(day) { var r = seeded(day * 2654435761 >>> 0); r(); return { day: day, diff: DAILY_DIFF[new Date().getDay()], cat: CATS[Math.floor(r() * CATS.length)], seed: (r() * 4294967296) >>> 0 }; }
   function dailyDone(day) { var b = null; try { GameHistory.load(KEY).forEach(function (e) { if (e && e.daily === day && !e.gaveUp && (!b || e.seconds < b.seconds)) b = e; }); } catch (x) {} return b; }
   function myName() { try { return (localStorage.getItem('my_name') || '').trim() || 'You'; } catch (e) { return 'You'; } }

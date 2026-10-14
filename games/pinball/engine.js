@@ -1348,9 +1348,11 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     const h = renderer.domElement.clientHeight || renderer.domElement.height || 1, yMin = -0.985 + 2 * RC.padBottom / h;
     const portrait = aspect < 0.8, fit = def.fit || {};
     const add = (arr, x, y, z) => arr.push(new THREE.Vector3(x, y, z).applyMatrix4(root.matrixWorld));
-    // first person: the playfield, the apron front and the glass height, from a low angle
-    const pts = [], top = fit.top != null ? fit.top : 60, bot = fit.bottom != null ? fit.bottom : -40;
+    // first person: the playfield, the apron front and the glass height, from a low angle, plus the top of the
+    // backbox (the whole backglass stays in frame under the page's display band, with a little cabinet over it)
+    const pts = [], top = fit.top != null ? fit.top : 60, bot = fit.bottom != null ? fit.bottom : -40, bx = RC.backbox;
     add(pts, -12, bot, 0); add(pts, W + 12, bot, 0); add(pts, -12, L + top * 0.2, 0); add(pts, W + 12, L + top * 0.2, 0); add(pts, W / 2, L + 4, top); add(pts, -12, bot - 10, 105); add(pts, W + 12, bot - 10, 105);
+    if (bx) { add(pts, bx.x0, bx.y, bx.z1 + 8); add(pts, bx.x1, bx.y, bx.z1 + 8); }
     const look = new THREE.Vector3(W / 2, L * (fit.lookY || 0.47), 0).applyMatrix4(root.matrixWorld);
     const fovF = portrait ? 36 : 30, phiMax = fit.phiMax || (portrait ? 58 : 50);
     let best = null;
@@ -1361,6 +1363,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     RC.cams.first = fitAt(fit.phi || best.phi, pts, look, yMin, fovF);
     // top-down: the whole table with a thin cabinet frame, nearly straight down (a little tilt keeps the ball round)
     const tp = []; add(tp, -26, -70, 0); add(tp, W + 26, -70, 0); add(tp, -26, L + 14, 0); add(tp, W + 26, L + 14, 0); add(tp, W / 2, L + 14, 60);
+    if (bx) { add(tp, bx.x0, bx.y, bx.z1 + 8); add(tp, bx.x1, bx.y, bx.z1 + 8); }
     const lookT = new THREE.Vector3(W / 2, (L - 56) / 2, 0).applyMatrix4(root.matrixWorld);
     RC.cams.top = fitAt(fit.topPhi || 82, tp, lookT, yMin, portrait ? 30 : 26, true);
     const c = RC.cams[RC.view];
@@ -1692,6 +1695,7 @@ function buildCabinet(RC) {
   const bgl = new THREE.Mesh(new THREE.PlaneGeometry(bxW - 50, bxH - 140), glassM);
   bgl.rotation.x = PI / 2; bgl.position.set(W / 2, L + 39, bbH + 10 + 70 + (bxH - 140) / 2); bx.add(bgl);
   RC.backglass = { mesh: bgl, canvas: bgC, tex: bgT, mat: glassM };
+  RC.backbox = { x0: W / 2 - bxW / 2, x1: W / 2 + bxW / 2, y: L + 40, z0: bbH + 10, z1: bbH + 10 + bxH };   // fitCamera keeps its top in frame
   root.add(bx);
   // apron
   const ap = def.apron || { y: 108 };
