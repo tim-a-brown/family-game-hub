@@ -1317,8 +1317,10 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
   RC.view = opts.view === 'top' ? 'top' : 'first'; RC.cams = {}; RC.tween = null;
   const tmp = new THREE.Vector3();
   // centre: slide the camera sideways so the points sit in the middle of the free area (above the button
-  // row) instead of around the look point, then fit again; the table then fills the view
-  function fitAt(phi, pts, look, yMin, fov, centre) {
+  // row) instead of around the look point, then fit again; the table then fills the view.
+  // core: the points whose projected area is the fit's score (the playfield corners: the backbox is fitted
+  // but must not decide the angle, or the search picks the flattest view, which makes the box tallest).
+  function fitAt(phi, pts, look, yMin, fov, centre, core) {
     look = look.clone();
     camera.fov = fov; camera.updateProjectionMatrix();
     const pr = phi * PI / 180, dir = new THREE.Vector3(0, Math.sin(pr), Math.cos(pr));
@@ -1340,7 +1342,12 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
         look.addScaledVector(right, dx * th * camera.aspect).addScaledVector(up, dy * th);
       }
     }
-    return { pos: camera.position.clone(), look: look.clone(), fov, phi, area: (x1 - x0) * (y1 - y0) };
+    let area = (x1 - x0) * (y1 - y0);
+    if (core) {   // the playfield's own projected area (shoelace over its corners, given in ring order)
+      const q = core.map(p => { tmp.copy(p).project(camera); return [tmp.x * camera.aspect, tmp.y]; });
+      area = 0; for (let i = 0; i < q.length; i++) { const a = q[i], b = q[(i + 1) % q.length]; area += a[0] * b[1] - b[0] * a[1]; } area = Math.abs(area) / 2;
+    }
+    return { pos: camera.position.clone(), look: look.clone(), fov, phi, area };
   }
   function fitCamera(aspect, padBottom) {
     camera.aspect = aspect;
@@ -1348,19 +1355,25 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     const h = renderer.domElement.clientHeight || renderer.domElement.height || 1, yMin = -0.985 + 2 * RC.padBottom / h;
     const portrait = aspect < 0.8, fit = def.fit || {};
     const add = (arr, x, y, z) => arr.push(new THREE.Vector3(x, y, z).applyMatrix4(root.matrixWorld));
-    // first person: the playfield, the apron front and the glass height, from a low angle
-    const pts = [], top = fit.top != null ? fit.top : 60, bot = fit.bottom != null ? fit.bottom : -40;
-    add(pts, -12, bot, 0); add(pts, W + 12, bot, 0); add(pts, -12, L + top * 0.2, 0); add(pts, W + 12, L + top * 0.2, 0); add(pts, W / 2, L + 4, top); add(pts, -12, bot - 10, 105); add(pts, W + 12, bot - 10, 105);
+    // first person: the playfield, the apron front and the glass height, from a low angle, plus the top of the
+    // backbox (the whole backglass stays in frame under the page's display band, with a little cabinet over it)
+    const pts = [], top = fit.top != null ? fit.top : 60, bot = fit.bottom != null ? fit.bottom : -40, bx = RC.backbox;
+    add(pts, -12, bot, 0); add(pts, W + 12, bot, 0); add(pts, W + 12, L + top * 0.2, 0); add(pts, -12, L + top * 0.2, 0); add(pts, W / 2, L + 4, top); add(pts, -12, bot - 10, 105); add(pts, W + 12, bot - 10, 105);
+    const core = pts.slice(0, 4);
+    if (bx) { add(pts, bx.x0, bx.y, bx.z1 + 8); add(pts, bx.x1, bx.y, bx.z1 + 8); }
     const look = new THREE.Vector3(W / 2, L * (fit.lookY || 0.47), 0).applyMatrix4(root.matrixWorld);
-    const fovF = portrait ? 36 : 30, phiMax = fit.phiMax || (portrait ? 58 : 50);
+    const fovF = fit.fov || (portrait ? 36 : 30), phiMax = fit.phiMax || 58;
+    // the angle that shows the most playfield, with a slight preference for the lower, more "standing at the
+    // machine" angles when they are close (the backbox in frame makes the steeper angles win on most screens)
     let best = null;
     for (let phi = 26; phi <= phiMax; phi += 2) {
-      const r = fitAt(phi, pts, look, yMin, fovF), score = r.area * (1 - (phi - 26) * (portrait ? 0.004 : 0.008));
+      const r = fitAt(phi, pts, look, yMin, fovF, false, core), score = r.area * (1 - (phi - 26) * (portrait ? 0.002 : 0.004));
       if (!best || score > best.score) best = { score, phi };
     }
     RC.cams.first = fitAt(fit.phi || best.phi, pts, look, yMin, fovF);
     // top-down: the whole table with a thin cabinet frame, nearly straight down (a little tilt keeps the ball round)
     const tp = []; add(tp, -26, -70, 0); add(tp, W + 26, -70, 0); add(tp, -26, L + 14, 0); add(tp, W + 26, L + 14, 0); add(tp, W / 2, L + 14, 60);
+    if (bx) { add(tp, bx.x0, bx.y, bx.z1 + 8); add(tp, bx.x1, bx.y, bx.z1 + 8); }
     const lookT = new THREE.Vector3(W / 2, (L - 56) / 2, 0).applyMatrix4(root.matrixWorld);
     RC.cams.top = fitAt(fit.topPhi || 82, tp, lookT, yMin, portrait ? 30 : 26, true);
     const c = RC.cams[RC.view];
@@ -1574,6 +1587,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
       for (const b of world.balls) { if (i >= bl.length) break; if (b.hidden) continue; if (dark > 0.02) { bl[i].position.set(b.x, b.y - 10, b.z + 70); bl[i].intensity = dark * 0.09; } else bl[i].intensity = 0; i++; }
       for (; i < bl.length; i++) bl[i].intensity = 0; }
     renderer.toneMappingExposure = theme.exposure * (thumb ? 1.35 : 1) * (1 - dark * 0.35) + light * 0.6;
+    if (RC.backglass) RC.backglass.mat.emissiveIntensity = RC.backglass.lit * (1 - dark * 0.6) + G.flashA * 0.5 + light * 0.45;   // the backglass flashes with the table
     updateBalls(dt); updateFx(dt);
     for (const c of G.compList) if (c.render) c.render(dt, RC);
     for (const a of RC.anim) a(dt, t);
@@ -1653,6 +1667,25 @@ function drawInsert(lp, ag, gg, ig, P) {
 }
 
 // ── Cabinet ────────────────────────────────────────────────────────────────
+// The backbox: height and depth (mm), the painted bezel round the glass (sides, top, bottom) and how strongly the
+// glass glows from behind (emissive gain on its art; flashes and lightning add to it in RC.render).
+const BACKBOX = { h: 400, d: 170, bez: 24, bezT: 26, bezB: 30, lit: 0.78 };
+// The finishing pass every backglass gets after its art: the look of a translite lit by a row of bulbs behind it
+// (brighter in the middle, falling off into the corners), a faint sheen where the room reflects in the glass,
+// and a thin dark edge where it meets the trim. Cheap (three gradients), so tables paint only their art.
+function glassFinish(g, w, h) {
+  g.save();
+  g.globalCompositeOperation = 'multiply';
+  const v = g.createRadialGradient(w * 0.5, h * 0.46, h * 0.25, w * 0.5, h * 0.5, w * 0.72);
+  v.addColorStop(0, 'rgb(255,255,255)'); v.addColorStop(0.55, 'rgb(236,236,236)'); v.addColorStop(1, 'rgb(150,150,150)');
+  g.fillStyle = v; g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = 'source-over';
+  const sh = g.createLinearGradient(0, 0, w * 0.55, h);
+  sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.38, 'rgba(255,255,255,0)'); sh.addColorStop(0.47, 'rgba(255,255,255,.06)'); sh.addColorStop(0.53, 'rgba(255,255,255,.015)'); sh.addColorStop(0.6, 'rgba(255,255,255,0)');
+  g.fillStyle = sh; g.fillRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 6; g.strokeRect(0, 0, w, h);
+  g.restore();
+}
 function buildCabinet(RC) {
   const { root, mats, theme, W, L, G, T, batch } = RC, def = G.def, art = def.art || {};
   // side boards (inside faces have art)
@@ -1681,17 +1714,30 @@ function buildCabinet(RC) {
   if (art.backboard) art.backboard(bg, 1024, 300); else { bg.fillStyle = shade(theme.cabinet, -0.2); bg.fillRect(0, 0, 1024, 300); }
   const bb = new THREE.Mesh(new THREE.PlaneGeometry(W, bbH), new THREE.MeshStandardMaterial({ map: RC.tex(bbC), roughness: 0.5 }));
   bb.rotation.x = PI / 2; bb.position.set(W / 2, L + 0.5, bbH / 2 - 2); root.add(bb); bb.receiveShadow = true;
-  // backbox: a cabinet head with the lit backglass
-  const bxW = W + 60, bxH = 560, bxD = 200, bx = new THREE.Group();
+  // backbox: the cabinet head with the lit backglass (translite). It sits on the backboard, its face just behind
+  // the back wall, so nothing of the glass hides behind the wall from any view, and it is kept short (the page's
+  // display band is the speaker panel): fitCamera keeps its top in frame, and every mm of height here costs
+  // playfield size on a phone.
+  const bxW = W + 60, bxH = BACKBOX.h, bxD = BACKBOX.d, bx = new THREE.Group(), bxY = L + 2, bxZ0 = bbH;
   const box = new THREE.Mesh(new THREE.BoxGeometry(bxW, bxD, bxH), mats.paint(theme.cabinet, { roughness: 0.5 }));
-  box.position.set(W / 2, L + 40 + bxD / 2, bbH + bxH / 2 + 10); bx.add(box);
-  const bgC = canvas(512, 512), bgg = bgC.getContext('2d');
-  if (art.backglass) art.backglass(bgg, 512, 512); else { bgg.fillStyle = '#222'; bgg.fillRect(0, 0, 512, 512); bgg.fillStyle = '#fff'; bgg.font = '900 60px sans-serif'; bgg.textAlign = 'center'; bgg.fillText(def.name, 256, 256); }
+  box.position.set(W / 2, bxY + bxD / 2, bxZ0 + bxH / 2); bx.add(box);
+  const gw = bxW - 2 * BACKBOX.bez, gh = bxH - BACKBOX.bezT - BACKBOX.bezB, gz = bxZ0 + BACKBOX.bezB + gh / 2;
+  const bgW = 1024, bgH = Math.round(bgW * gh / gw), bgC = canvas(bgW, bgH), bgg = bgC.getContext('2d');
+  if (art.backglass) art.backglass(bgg, bgW, bgH); else { bgg.fillStyle = '#222'; bgg.fillRect(0, 0, bgW, bgH); bgg.fillStyle = '#fff'; bgg.font = '900 110px sans-serif'; bgg.textAlign = 'center'; bgg.textBaseline = 'middle'; bgg.fillText(def.name, bgW / 2, bgH / 2); }
+  glassFinish(bgg, bgW, bgH);
   const bgT = RC.tex(bgC);
-  const glassM = new THREE.MeshStandardMaterial({ map: bgT, emissiveMap: bgT, emissive: '#ffffff', emissiveIntensity: 0.9, roughness: 0.15 });
-  const bgl = new THREE.Mesh(new THREE.PlaneGeometry(bxW - 50, bxH - 140), glassM);
-  bgl.rotation.x = PI / 2; bgl.position.set(W / 2, L + 39, bbH + 10 + 70 + (bxH - 140) / 2); bx.add(bgl);
-  RC.backglass = { mesh: bgl, canvas: bgC, tex: bgT, mat: glassM };
+  const glassM = new THREE.MeshStandardMaterial({ map: bgT, emissiveMap: bgT, emissive: '#ffffff', emissiveIntensity: BACKBOX.lit, roughness: 0.12, metalness: 0.05 });
+  const bgl = new THREE.Mesh(new THREE.PlaneGeometry(gw, gh), glassM);
+  bgl.rotation.x = PI / 2; bgl.position.set(W / 2, bxY - 1, gz); bx.add(bgl);
+  // trim round the glass (chrome, brass or black like the rails) and a lip along the head's top edge
+  const trimM = theme.rails === 'black' ? mats.plastic('#1a1a1c', { roughness: 0.3 }) : theme.rails === 'gold' ? mats.brass() : mats.chrome();
+  const tw = 7, td = 5, ty = bxY - 2;
+  batch.add(trimM, boxGeo(W / 2, ty, gz + gh / 2 + tw / 2, gw + tw * 2, td, tw));
+  batch.add(trimM, boxGeo(W / 2, ty, gz - gh / 2 - tw / 2, gw + tw * 2, td, tw));
+  batch.add(trimM, boxGeo(W / 2 - gw / 2 - tw / 2, ty, gz, tw, td, gh));
+  batch.add(trimM, boxGeo(W / 2 + gw / 2 + tw / 2, ty, gz, tw, td, gh));
+  RC.backglass = { mesh: bgl, canvas: bgC, tex: bgT, mat: glassM, lit: BACKBOX.lit };
+  RC.backbox = { x0: W / 2 - bxW / 2, x1: W / 2 + bxW / 2, y: bxY, z0: bxZ0, z1: bxZ0 + bxH };   // fitCamera keeps its top in frame
   root.add(bx);
   // apron
   const ap = def.apron || { y: 108 };
