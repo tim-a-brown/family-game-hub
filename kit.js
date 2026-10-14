@@ -1875,7 +1875,7 @@
         { label: 'Unlink ' + name, cls: 'btn-ghost', onClick: function () { setTimeout(function () { unlinkAsk(name, onDone); }, 320); } }] });
       return;
     }
-    node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code. On their phone: tap their avatar at the top of the home screen, then Share my profile. The games you’ve already played with ' + name + ' go to their history too, and their phone links back to you on its own.' }));
+    node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code. On their phone: tap their avatar at the top of the home screen, then Share my profile. The games you’ve already played with ' + name + ' go to their history too, and their phone asks them to link you back.' }));
     var inp = el('input', { class: 'input lk-code', maxlength: 7, placeholder: 'ABC123', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
     node.appendChild(inp);
     var msg = el('p', { class: 'lk-msg' }); node.appendChild(msg);
@@ -2076,7 +2076,7 @@
         '<li>Your code is on this screen, with a QR code of it. Point the other phone’s camera at the QR code, tap <b>Share</b> to send the code, or just read it out.</li>' +
         '<li>To link someone from a code, open <b>Frequent players</b> from any game’s menu, tap the link button next to their name, and enter it.</li>' +
         '<li>After that, their avatar comes from their own phone, games you play together show up in both histories, and you each see the other’s best arcade scores.</li>' +
-        '<li>One code is enough: when you link someone, their phone links you back on its own.</li></ul>' +
+        '<li>One code is enough: when you link someone, their phone asks them to link you back. Once they accept, it works both ways.</li></ul>' +
       '<h3>Playing on one phone</h3><p>Just pass the phone around. Pick everyone at the start, and when the game ends it’s saved here, with a copy sent to anyone you’ve linked. If someone has <b>Ask before adding games</b> turned on, they get to look it over first, and can tap <b>Not me</b> if it wasn’t them.</p>' +
       '<h3>Playing on separate phones</h3><ul>' +
         '<li><b>Chess</b> and <b>Lorcana</b>: each of you signs in with your own PIN on your own device. One opens a table, and the other joins from the list or types in its 4-letter code.</li>' +

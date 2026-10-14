@@ -1010,11 +1010,11 @@
   // rejected list, which the sender's app reads to stop counting it as yours.
   var CODE_AB = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
   var OUTBOX = 'fgh_link_outbox';   // games waiting to be sent (this device only)
-  var _pending = [], _linkBusy = false, _lastPoll = 0;
+  var _pending = [], _reqs = [], _linkBusy = false, _lastPoll = 0;
   function genCode(){ var c = ''; for(var i = 0; i < 6; i++) c += CODE_AB.charAt(Math.floor(Math.random() * CODE_AB.length)); return c; }
   function linksGet(){ var l = lsJSON('fgh_links') || {}, o = { own: l.own || null, others: l.others || {} }; if(l.ini) o.ini = l.ini; return o; }
   function linksSet(l){ try{ LS.setItem('fgh_links', JSON.stringify(l)); }catch(e){} noteWrite('fgh_links'); linkEvent(); }
-  function linkEvent(linked){ try{ window.dispatchEvent(new CustomEvent('fghlinks', { detail: { pending: _pending.length, linked: linked || [] } })); }catch(e){} }
+  function linkEvent(linked){ try{ window.dispatchEvent(new CustomEvent('fghlinks', { detail: { pending: _pending.length, linked: linked || [], requests: _reqs.length } })); }catch(e){} }
   function myName(){ return (LS.getItem('my_name') || '').trim(); }
   function lk(n){ return String(n || '').trim().toLowerCase(); }
   function linkCol(){ return _fb.db.collection('links'); }
@@ -1358,9 +1358,11 @@
     return true;
   }
   // Links go both ways from one code: when you link someone, your app drops a note in their inbox ("link:" + your
-  // code, from your name), and their app links you back under that name and answers "ack:" + its code, so your
-  // app stops sending the note. Notes are plain strings (not JSON), so an older app that can't read them just
-  // clears them, and the note goes again later (every 12 hours until it's answered).
+  // code, from your name). Their app shows it as a request; accepting links you back under that name (or one they
+  // choose) and answers "ack:" + its code, so your app stops sending the note. Declining answers too, so the
+  // link stays one way. The note sits in their inbox until they answer, so any of their devices can. Notes are
+  // plain strings (not JSON), so an older app that can't read them just clears them, and the note goes again
+  // later (every 12 hours until it's answered).
   var LINK_NOTE_MS = 12 * 3600e3;
   function noteId(kind, code){ return (kind === 'ack' ? 'zack' : 'zlink') + String(code).toLowerCase(); }
   function sendNote(toCode, kind, own){
@@ -1391,48 +1393,76 @@
       if(!m[k] || m[k].h){ m[k] = { n: n, t: Date.now(), h: 0 }; LS.setItem('fgh_players_at', JSON.stringify(m)); noteWrite('fgh_players_at'); }
     }catch(e){}
   }
-  // A note in your inbox: returns the name linked back, if any
-  function readNote(own, x){
-    var m = /^(link|ack):([A-HJ-NP-Z2-9]{6})$/.exec(String(x.entry || '')); if(!m || m[2] === own.code) return null;
+  // A note in your inbox. Returns true when it's dealt with (delete it); a link request stays until answered.
+  function readNote(own, x, id, reqs){
+    var m = /^(link|ack):([A-HJ-NP-Z2-9]{6})$/.exec(String(x.entry || '')); if(!m || m[2] === own.code) return true;
     var code = m[2], L = linksGet(), keys = Object.keys(L.others);
     if(m[1] === 'ack'){
       var hit = false;
       keys.forEach(function(k){ var r = L.others[k]; if(r && r.code === code && !r.hs){ r.hs = 1; hit = true; } });
       if(hit) try{ LS.setItem('fgh_links', JSON.stringify(L)); }catch(e){}
-      return null;
+      return true;
     }
-    sendNote(code, 'ack', own).catch(function(e){ console.warn('[links] ack failed', e); });
-    if(keys.some(function(k){ var r = L.others[k]; return r && !r.off && r.code === code; })) return null;   // already linked
-    var name = String(x.by || x.from || '').trim().slice(0, 40); if(!name || lk(name) === lk(myName())) return null;
-    var k = lk(name), cur = L.others[k];
-    if(cur && !cur.off && cur.code) return null;                          // that name is linked to someone else
-    if(cur && cur.off && (cur.at || 0) > (Number(x.at) || 0)) return null;   // you unlinked them since
-    L.others[k] = { name: name, code: code, them: name, at: Date.now(), hs: 1 };
+    // already linked to that profile: answer so they stop asking
+    if(keys.some(function(k){ var r = L.others[k]; return r && !r.off && r.code === code; })){ sendNote(code, 'ack', own).catch(function(e){ console.warn('[links] ack failed', e); }); return true; }
+    var name = String(x.by || x.from || '').trim().slice(0, 40); if(!name || lk(name) === lk(myName())) return true;
+    reqs.push({ id: id, code: code, name: name, at: Number(x.at) || 0 });
+    return false;
+  }
+  // Link requests waiting for your answer
+  function linkReqs(){ return _reqs.slice(); }
+  // Their profile (name, avatar) for the request screen
+  function linkReqInfo(code){ return ensureFirebase().then(function(){ return linkCol().doc(code).get(); }).then(function(d){ return d.exists ? (d.data() || {}) : null; }); }
+  function answerNote(r){
+    var l = linksGet();
+    return ensureFirebase().then(function(){ return l.own && l.own.code ? sendNote(r.code, 'ack', l.own) : null; })
+      .then(function(){ return l.own && l.own.code ? linkCol().doc(l.own.code).collection('inbox').doc(r.id).delete() : null; });
+  }
+  // Accept: link them back under that name (yours for them), then tell the home screen
+  function linkReqAccept(id, name){
+    var r = _reqs.filter(function(x){ return x.id === id; })[0]; if(!r) return Promise.resolve();
+    name = String(name || r.name).trim().slice(0, 40);
+    if(!name || lk(name) === lk(myName())) return Promise.reject(new Error('That’s your own name'));
+    var L = linksGet(), k = lk(name), cur = L.others[k];
+    if(cur && !cur.off && cur.code && cur.code !== r.code) return Promise.reject(new Error(name + ' is already linked to someone else. Use another name.'));
+    L.others[k] = { name: name, code: r.code, them: r.name, at: Date.now(), hs: 1 };
     linksSet(L); addPlayer(name);
-    return name;
+    _reqs = _reqs.filter(function(x){ return x.id !== id; });
+    return answerNote(r).catch(function(e){ console.warn('[links] accept', e); }).then(function(){
+      return linkPoll(true);   // their avatar and scores, and the games you've had together go to them
+    }).then(function(){
+      var was = lsJSON('fgh_link_new'); was = Array.isArray(was) ? was : []; if(was.indexOf(name) < 0) was.push(name);
+      try{ LS.setItem('fgh_link_new', JSON.stringify(was)); }catch(e){}
+      linkEvent([name]);
+    });
+  }
+  // Decline: the link stays one way (they still see games you record together); they stop being asked
+  function linkReqDecline(id){
+    var r = _reqs.filter(function(x){ return x.id === id; })[0]; if(!r) return Promise.resolve();
+    _reqs = _reqs.filter(function(x){ return x.id !== id; }); linkEvent();
+    return answerNote(r).catch(function(e){ console.warn('[links] decline', e); });
   }
   // Check your inbox, your linked people's avatars and rejections, and send anything waiting
   function linkPoll(force){
     if(!isPin() || _linkBusy) return Promise.resolve();
     if(!force && Date.now() - _lastPoll < 20000) return Promise.resolve();
     _linkBusy = true; _lastPoll = Date.now();
-    var newLinks = [];
     return ensureFirebase().then(function(){
       var l = linksGet(), jobs = [];
       if(l.own && l.own.code){
         var own = l.own;
         jobs.push(linkCol().doc(own.code).collection('inbox').limit(100).get().then(function(q){
-          var pend = [];
+          var pend = [], reqs = [];
           return Promise.all(q.docs.map(function(d){
             var x0 = d.data() || {};
-            if(x0.key === '_link' || x0.key === '_ack'){ var nm = readNote(own, x0); if(nm){ newLinks.push(nm); } return d.ref.delete(); }
+            if(x0.key === '_link' || x0.key === '_ack'){ return readNote(own, x0, d.id, reqs) ? d.ref.delete() : null; }
             var it = received(own, d); if(!it || haveGame(it.key, it.entry._id || it.id)) return d.ref.delete();
             if(own.ask){ pend.push(it); return null; }
             if(!window.GameHistory) return null;   // filed by a page that keeps history
             fileGame(it); return d.ref.delete();
-          })).then(function(){ _pending = pend.sort(function(a, b){ return (b.at || 0) - (a.at || 0); }); });
+          })).then(function(){ _pending = pend.sort(function(a, b){ return (b.at || 0) - (a.at || 0); }); _reqs = reqs.sort(function(a, b){ return (b.at || 0) - (a.at || 0); }); });
         }));
-      } else _pending = [];
+      } else { _pending = []; _reqs = []; }
       Object.keys(l.others).forEach(function(k){
         var r = l.others[k]; if(!r || r.off || !r.code) return;
         jobs.push(linkCol().doc(r.code).get().then(function(d){
@@ -1460,17 +1490,7 @@
       // scores that reached this device from your other devices: publish them too
       if(l.own && l.own.code && LS.getItem('fgh_link_pub') !== pubSig()) jobs.push(linkPublish());
       return Promise.all(jobs);
-    }).catch(function(e){ console.warn('[links] poll failed', e); }).then(function(){
-      _linkBusy = false; linkEvent();
-      // linked back just now: read their profile (avatar, scores) and send them the games you've had together,
-      // then tell the home screen (fgh_link_new waits there for the next visit when this happens in a game)
-      if(newLinks.length) setTimeout(function(){ linkPoll(true).then(function(){
-        var was = lsJSON('fgh_link_new'); was = Array.isArray(was) ? was : [];
-        newLinks.forEach(function(n){ if(was.indexOf(n) < 0) was.push(n); });
-        try{ LS.setItem('fgh_link_new', JSON.stringify(was)); }catch(e){}
-        linkEvent(newLinks);
-      }); }, 400);
-    });
+    }).catch(function(e){ console.warn('[links] poll failed', e); }).then(function(){ _linkBusy = false; linkEvent(); });
   }
   // Someone said "Not me" to a game you recorded: it stays in your history, just no longer linked to them
   function unmarkRejected(code, rejected){
@@ -1531,6 +1551,7 @@
     initials: myInitials, setInitials: setInitials, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
     linkMark: linkMark, linkSend: linkSend, linkBackfill: linkBackfill, linkPoll: linkPoll,
     linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,
+    linkReqs: linkReqs, linkReqInfo: linkReqInfo, linkReqAccept: linkReqAccept, linkReqDecline: linkReqDecline,
     linkBank: linkBank, bankRemote: bankRemote, _fileGame: fileGame,
     _scanLocal: scanLocal, _myHi: myHi, _mergeHi: mergeHi, _hiFromFirestore: hiFromFirestore
   };
