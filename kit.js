@@ -698,7 +698,8 @@
     item('Settings', 'palette', 'Theme', function () { themePick(); }, '', themeRec(themeGet()).name);
     var M = 'More';
     if (opts.rules) item(M, 'book', 'How to play', rules);
-    item(M, 'users', 'Frequent players', function () { managePlayers(); });
+    var nReq = linkReqs().length;
+    item(M, 'users', 'Frequent players', function () { managePlayers(); }, nReq ? 'k-attn' : '', nReq ? (nReq === 1 ? '1 link request to review' : nReq + ' link requests to review') : null);
     if (game) item(M, 'star', isFav() ? 'Remove from favorites' : 'Add to favorites', function () {
       var on = toggleFav(); toast(on ? 'Added to favorites' : 'Removed from favorites'); haptic('success');
     });
@@ -1061,11 +1062,20 @@
   // Frequent players editor: add, rename, remove. Used in a sheet (game menu,
   // home menu, name picker) and full-page on games/players.html.
   function playersPanel() {
-    var wrap = el('div'), list = el('div', { class: 'k-names' });
+    var wrap = el('div'), list = el('div', { class: 'k-names', 'data-live': '1' });
+    list._paint = function () { paint(); };
     function paint() {
       list.innerHTML = '';
+      // people who linked you from their phone, waiting for your answer
+      linkReqs().forEach(function (r) {
+        list.appendChild(el('button', { type: 'button', class: 'k-name k-req', onclick: function () { sfx('pop'); requestSheet(r.id, paint); } }, [
+          avEl(r.name, null, 'var(--surface-3)'),
+          el('span', { class: 'grow' }, [el('span', { text: r.name }), el('small', { class: 'k-plays', text: 'wants to link with you' })]),
+          el('span', { class: 'k-rev', text: 'Review' })
+        ]));
+      });
       var names = knownNames();
-      if (!names.length) list.appendChild(el('p', { class: 'muted', text: 'No frequent players yet. Add the people you play with.' }));
+      if (!names.length && !linkReqs().length) list.appendChild(el('p', { class: 'muted', text: 'No frequent players yet. Add the people you play with.' }));
       names.forEach(function (n) {
         var p = playsOf(n);
         list.appendChild(el('div', { class: 'k-name' }, [
@@ -2177,6 +2187,43 @@
     setTimeout(function () { inp.focus(); inp.select(); }, 300);
   }
 
+  // Someone linked you from their phone: accept (link back, under the name you choose) or decline.
+  // Opened by the home screen when a request arrives, and from the row in Frequent players.
+  function requestSheet(id, onDone) {
+    if (!window.FGHSync || !FGHSync.linkReqs) return false;
+    var r = FGHSync.linkReqs().filter(function (x) { return !id || x.id === id; })[0]; if (!r) return false;
+    var s, name = r.name, av = avEl(name, 'lg', 'var(--surface-3)');
+    var node = el('div', { class: 'lk' }, [
+      el('div', { class: 'lk-top' }, [av, el('div', null, [el('b', { text: name }), el('small', { text: 'linked you from their phone' })])]),
+      el('p', { class: 'muted', text: 'Accept and their avatar and best scores show here, and the games you play together go to both histories. Decline and nothing is linked, on either phone.' })
+    ]);
+    var inp = el('input', { class: 'input', maxlength: 14, value: name, autocomplete: 'off', enterkeyhint: 'done', 'aria-label': 'Their name here' });
+    var hint = el('p', { class: 'lk-msg' });
+    function check() {
+      var v = inp.value.trim(), have = knownNames().some(function (n) { return n.toLowerCase() === v.toLowerCase(); }), lk = v && FGHSync.linkOf(v);
+      hint.textContent = !v ? '' : lk && lk.code !== r.code ? 'You already have a ' + v + ' linked to someone else. Use another name.' : have ? 'Links your player ' + v : 'Adds ' + v + ' to your players';
+    }
+    inp.addEventListener('input', check); check();
+    node.appendChild(el('label', { class: 'label', style: { display: 'block', margin: '12px 2px 4px' }, text: 'Their name here' }));
+    node.appendChild(inp); node.appendChild(hint);
+    // their avatar from their profile, once it loads
+    FGHSync.linkReqInfo(r.code).then(function (d) {
+      if (!d || !d.avatar || !d.avatar.cur) return;
+      if (d.avatar.cur.k === 'photo' && d.avatar.d) { av.innerHTML = ''; av.style.background = 'none'; av.appendChild(el('img', { src: d.avatar.d, alt: '', style: { width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' } })); }
+    }).catch(function () {});
+    function accept() {
+      var v = inp.value.trim(); if (!v) { inp.focus(); return; }
+      hint.textContent = 'Linking…';
+      FGHSync.linkReqAccept(r.id, v).then(function () { s.close(); sfx('good'); avRefresh(); }).catch(function (e) { hint.textContent = (e && e.message) || 'Couldn’t link'; sfx('bad'); });
+    }
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') accept(); });
+    s = sheet({ title: 'Link ' + name + '?', node: node, actions: [
+      { label: 'Accept', primary: true, keep: true, onClick: accept },
+      { label: 'Decline', cls: 'btn-ghost', onClick: function () { FGHSync.linkReqDecline(r.id); sfx('tap'); } }],
+      onClose: function () { if (onDone) onDone(); } });
+    return true;
+  }
+  function linkReqs() { try { return window.FGHSync && FGHSync.linkReqs ? FGHSync.linkReqs() : []; } catch (e) { return []; } }
   // Linked players: everyone you've linked to their own profile
   function linkedList() {
     if (!window.FGHSync || !FGHSync.links) return [];
@@ -2298,6 +2345,7 @@
     paint();
     return box;
   }
+  window.addEventListener('fghlinks', function () { Array.prototype.forEach.call(doc.querySelectorAll('.k-names[data-live]'), function (n) { if (n._paint) n._paint(); }); });
   // Games others recorded with you, waiting for your OK
   function reviewSheet(onDone) {
     var list = window.FGHSync && FGHSync.linkPending ? FGHSync.linkPending() : [], box = el('div', { class: 'lk-rev' }), s;
@@ -2420,7 +2468,7 @@
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: defaultsSheet, cats: catsOrdered,
-    links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
+    links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },

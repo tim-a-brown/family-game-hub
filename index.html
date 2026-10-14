@@ -1052,36 +1052,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (!window.FGHSync || !FGHSync.linkReqs || document.querySelector('.k-scrim,.lkm')) return;
     var r = FGHSync.linkReqs().filter(function (x) { return !reqShown[x.id]; })[0]; if (!r) return;
     reqShown[r.id] = 1;
-    var el = Kit.el, s, name = r.name;
-    var av = Kit.avatar.el(name, 'lg', 'var(--surface-3)');
-    var node = el('div', { class: 'lk' }, [
-      el('div', { class: 'lk-top' }, [av, el('div', null, [el('b', { text: name }), el('small', { text: 'linked you from their phone' })])]),
-      el('p', { class: 'muted', text: 'Accept and their avatar and best scores show here, and the games you play together go to both histories. Decline and nothing is linked, on either phone.' })
-    ]);
-    var inp = el('input', { class: 'input', maxlength: 14, value: name, autocomplete: 'off', enterkeyhint: 'done', 'aria-label': 'Their name here' });
-    var hint = el('p', { class: 'lk-msg' });
-    function check() {
-      var v = inp.value.trim(), have = Kit.knownNames().some(function (n) { return n.toLowerCase() === v.toLowerCase(); }), lk = v && FGHSync.linkOf(v);
-      hint.textContent = !v ? '' : lk && lk.code !== r.code ? 'You already have a ' + v + ' linked to someone else. Use another name.' : have ? 'Links your player ' + v : 'Adds ' + v + ' to your players';
-    }
-    inp.addEventListener('input', check); check();
-    node.appendChild(el('label', { class: 'label', style: { display: 'block', margin: '12px 2px 4px' }, text: 'Their name here' }));
-    node.appendChild(inp); node.appendChild(hint);
-    // their avatar from their profile, once it loads
-    FGHSync.linkReqInfo(r.code).then(function (d) {
-      if (!d || !d.avatar || !d.avatar.cur) return;
-      if (d.avatar.cur.k === 'photo' && d.avatar.d) { av.innerHTML = ''; av.style.background = 'none'; av.appendChild(el('img', { src: d.avatar.d, alt: '', style: { width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' } })); }
-    }).catch(function () {});
-    function accept() {
-      var v = inp.value.trim(); if (!v) { inp.focus(); return; }
-      hint.textContent = 'Linking…';
-      FGHSync.linkReqAccept(r.id, v).then(function () { s.close(); Kit.sfx('good'); }).catch(function (e) { hint.textContent = (e && e.message) || 'Couldn’t link'; Kit.sfx('bad'); });
-    }
-    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') accept(); });
-    s = Kit.sheet({ title: 'Link ' + name + '?', node: node, actions: [
-      { label: 'Accept', primary: true, keep: true, onClick: accept },
-      { label: 'Decline', cls: 'btn-ghost', onClick: function () { FGHSync.linkReqDecline(r.id); Kit.sfx('tap'); } }],
-      onClose: function () { setTimeout(linkRequestSheet, 400); } });
+    Kit.links.request(r.id, function () { setTimeout(linkRequestSheet, 400); });
   }
   // Someone linked you from their phone and you linked back: a full-screen moment, both avatars joined by a link
   function linkedMoment() {
