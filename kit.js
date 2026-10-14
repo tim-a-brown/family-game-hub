@@ -1068,13 +1068,7 @@
     function paint() {
       list.innerHTML = '';
       // people who linked you from their phone, waiting for your answer
-      linkReqs().forEach(function (r) {
-        list.appendChild(el('button', { type: 'button', class: 'k-name k-req', onclick: function () { sfx('pop'); requestSheet(r.id, paint); } }, [
-          avEl(r.name, null, 'var(--surface-3)'),
-          el('span', { class: 'grow' }, [el('span', { text: r.name }), el('small', { class: 'k-plays', text: 'wants to link with you' })]),
-          el('span', { class: 'k-rev', text: 'Review' })
-        ]));
-      });
+      reqRows(paint).forEach(function (row) { list.appendChild(row); });
       var names = knownNames();
       if (!names.length && !linkReqs().length) list.appendChild(el('p', { class: 'muted', text: 'No frequent players yet. Add the people you play with.' }));
       names.forEach(function (n) {
@@ -2020,6 +2014,10 @@
     FGHSync.linkShare().then(paint).catch(function (e) { node.innerHTML = ''; node.appendChild(el('p', { class: 'muted', text: linkErr(e) })); });
     function paint(own) {
       node.innerHTML = '';
+      // someone scanned your code: their request shows up here as it arrives
+      var rb = el('div', { class: 'k-names lk-reqs', 'data-live': '1' });
+      rb._paint = function () { rb.innerHTML = ''; reqRows(rb._paint).forEach(function (row) { rb.appendChild(row); }); rb.style.display = rb.children.length ? '' : 'none'; };
+      rb._paint(); node.appendChild(rb);
       node.appendChild(el('div', { class: 'lk-top' }, [avEl(me, 'lg', 'var(--surface-3)'), el('div', null, [el('b', { text: me }), el('small', { text: 'People who link you see your avatar, and games they play with you are saved to your history.' })])]));
       node.appendChild(el('div', { class: 'lk-big', text: own.code.slice(0, 3) + ' ' + own.code.slice(3), 'aria-label': 'Your code ' + own.code.split('').join(' ') }));
       // the same link as a QR code: the other phone's camera opens it and links you in one tap
@@ -2220,11 +2218,21 @@
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') accept(); });
     s = sheet({ title: 'Link ' + name + '?', node: node, actions: [
       { label: 'Accept', primary: true, keep: true, onClick: accept },
-      { label: 'Decline', cls: 'btn-ghost', onClick: function () { FGHSync.linkReqDecline(r.id); sfx('tap'); } }],
+      { label: 'Decline', cls: 'btn-ghost', onClick: function () { FGHSync.linkReqDecline(r.id).then(function () { if (onDone) onDone(); }); sfx('tap'); } }],
       onClose: function () { if (onDone) onDone(); } });
     return true;
   }
   function linkReqs() { try { return window.FGHSync && FGHSync.linkReqs ? FGHSync.linkReqs() : []; } catch (e) { return []; } }
+  // rows for the requests waiting: in Frequent players and on the Share my profile screen
+  function reqRows(onDone) {
+    return linkReqs().map(function (r) {
+      return el('button', { type: 'button', class: 'k-name k-req', onclick: function () { sfx('pop'); requestSheet(r.id, onDone); } }, [
+        avEl(r.name, null, 'var(--surface-3)'),
+        el('span', { class: 'grow' }, [el('span', { text: r.name }), el('small', { class: 'k-plays', text: 'wants to link with you' })]),
+        el('span', { class: 'k-rev', text: 'Review' })
+      ]);
+    });
+  }
   // Linked players: everyone you've linked to their own profile
   function linkedList() {
     if (!window.FGHSync || !FGHSync.links) return [];

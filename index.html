@@ -1077,7 +1077,9 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   function linkRequestSheet() {
     if (!window.FGHSync || !FGHSync.linkReqs) return;
     var r = FGHSync.linkReqs().filter(function (x) { return !reqShown[x.id]; })[0]; if (!r) return;
-    if (document.querySelector('.k-scrim,.lkm')) { reqWaiting = true; return; }   // another sheet is up: right after it closes
+    // the full-screen moment, typing, or a sheet that already shows the request: right after that instead
+    var typing = document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+    if (document.querySelector('.lkm') || typing || document.querySelector('.k-scrim .k-req')) { reqWaiting = true; return; }
     reqWaiting = false; reqShown[r.id] = 1;
     Kit.links.request(r.id, function () { renderReqBanner(); setTimeout(linkRequestSheet, 400); });
   }
