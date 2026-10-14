@@ -957,6 +957,7 @@
         // Synced moments ago on another page of this session and nothing saved since: no round trip needed
         console.log('[sync] boot: synced under a minute ago, nothing new; skipping the round trip');
         setStatus('synced');
+        try{ tagOldScores(); }catch(e){}
         notifyReady();
         linkPoll(true);   // games and link notes sent to you still get picked up on this page
         return;
@@ -971,6 +972,7 @@
           var local  = scanLocal();
           var merged = mergeSnapshots(local, remote);
           writeSnapshotToLocal(merged); reconcileName();
+          try{ tagOldScores(); }catch(e){}
           return pushNow();
         })
         .then(function(){
@@ -986,6 +988,7 @@
           notifyReady();
         });
     } else {
+      try{ tagOldScores(); }catch(e){}   // guests too: their own boards
       setStatus('idle');
       notifyReady();
     }
@@ -1037,6 +1040,7 @@
     var was = myInitials();
     var l = linksGet(); l.ini = { v: v, at: Date.now() }; linksSet(l);
     if(was && v && was !== v) renameIni(was, v, lk(myName()));
+    try{ tagOldScores(); }catch(e){}
     linkPublishSoon();
     return v;
   }
@@ -1052,6 +1056,31 @@
     var m = lsJSON('gn_ini') || {}, c = lsJSON(LHI) || {};
     return Object.keys(m).some(function(k){ return k !== who && iniClean(m[k]) === ini; }) ||
       Object.keys(c).some(function(k){ return k !== who && c[k] && iniClean(c[k].ini) === ini; });
+  }
+  // Old scores (saved before scores remembered their player): give each one its player when exactly one person
+  // uses those initials (you, someone linked, or a frequent player with saved initials). Shared or unknown
+  // initials stay as they are. Runs on every sync and whenever initials change, so more match as initials fill in.
+  function tagOldScores(){
+    var who = {}, me = lk(myName());
+    function add(ini, k){ ini = iniClean(ini); if(ini.length < 2 || !k) return; (who[ini] = who[ini] || {})[k] = 1; }
+    if(me) add(myInitials(), me);
+    var m = lsJSON('gn_ini') || {}, c = lsJSON(LHI) || {}, L = linksGet().others || {};
+    Object.keys(m).forEach(function(k){ add(m[k], k); });
+    Object.keys(c).forEach(function(k){ var r = L[k]; if(r && !r.off && r.hs) add(c[k] && c[k].ini, k); });
+    var n = 0;
+    for(var i = 0; i < LS.length; i++){
+      var key = LS.key(i); if(!key || key.indexOf('hi_') !== 0) continue;
+      var list = lsJSON(key); if(!Array.isArray(list)) continue;
+      var ch = false;
+      list.forEach(function(row){
+        if(!row || Array.isArray(row) || typeof row !== 'object' || row.p) return;
+        var ks = who[iniClean(row.name)]; if(!ks) return;
+        var only = Object.keys(ks); if(only.length !== 1) return;
+        row.p = only[0]; ch = true; n++;
+      });
+      if(ch){ try{ LS.setItem(key, JSON.stringify(list)); }catch(e){} noteWrite(key); }
+    }
+    return n;
   }
   function renameIni(from, to, who){
     from = iniClean(from); to = iniClean(to); who = lk(who);
@@ -1591,6 +1620,7 @@
           if(data.ini || data.hi || bk !== null){
             var newIni = iniClean(data.ini), prevIni = (c[k] && iniClean(c[k].ini)) || iniClean((lsJSON('gn_ini') || {})[k]);
             c[k] = { code: r.code, ini: String(data.ini || '').slice(0, 3), hi: data.hi && typeof data.hi === 'object' ? data.hi : {} };
+            if(newIni.length >= 2 && newIni !== prevIni) setTimeout(function(){ try{ tagOldScores(); }catch(e){} }, 0);
             if(newIni.length >= 2 && prevIni && prevIni !== newIni){
               try{ LS.setItem(LHI, JSON.stringify(c)); }catch(e){}
               renameIni(prevIni, newIni, k);
@@ -1671,7 +1701,7 @@
     // player links
     linkShare: linkShare, linkNewCode: linkNewCode, linkSetAsk: linkSetAsk, linkPublish: linkPublishSoon,
     linkAdd: linkAdd, linkRemove: linkRemove, linkCancel: linkCancel, linkOf: linkOf, links: linksGet,
-    initials: myInitials, setInitials: setInitials, renameIni: renameIni, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
+    initials: myInitials, setInitials: setInitials, renameIni: renameIni, tagOldScores: tagOldScores, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
     linkMark: linkMark, linkSend: linkSend, linkBackfill: linkBackfill, linkPoll: linkPoll,
     linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,
     linkReqs: linkReqs, linkReqInfo: linkReqInfo, linkReqAccept: linkReqAccept, linkReqDecline: linkReqDecline, linkWatch: linkWatch, linkPeek: linkPeek,

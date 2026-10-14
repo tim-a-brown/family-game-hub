@@ -1750,6 +1750,7 @@
     if (isMe(n)) { try { if (window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.setInitials) { FGHSync.setInitials(v); viaPin = true; } } catch (e) {} }
     // their scores already on the boards move to the new initials (setInitials does that for yours)
     if (!viaPin && was && v && was !== v) { try { if (window.FGHSync && FGHSync.renameIni) FGHSync.renameIni(was, v, k); } catch (e) {} }
+    try { if (window.FGHSync && FGHSync.tagOldScores) FGHSync.tagOldScores(); } catch (e) {}   // old scores under these initials may now be theirs
     return v;
   }
   // who's playing (the people seated at the last Kit.setup start, computer seats left out)
