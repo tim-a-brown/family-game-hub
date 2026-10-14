@@ -13,7 +13,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import * as THREE from 'three';
 import { BR, spline, deg, G_ROLL } from '../physics.js';
-import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, wallGeo, slabGeo, offsetLine, planarUV } from '../gfx.js';
+import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, wallGeo, slabGeo, offsetLine, planarUV, glowAt, grain, textLogo } from '../gfx.js';
 import { audio } from '../engine.js';
 
 const PI = Math.PI, TAU = PI * 2;
@@ -648,31 +648,94 @@ function paintPlayfield(P) {
   for (let i = 0; i < 8; i++) { g.strokeStyle = 'rgba(40,28,16,.5)'; g.lineWidth = 2 + r() * 2; g.beginPath(); const x = 200 + r() * 230, y = 790 + r() * 150; g.moveTo(x, y); g.quadraticCurveTo(x + 20 - r() * 40, y + 20, x + 40 - r() * 80, y + 10 - r() * 20); g.stroke(); }
 }
 function paintBackglass(g, w, h) {
-  // sunset over the canopy, a stepped temple, and the gold idol's face
-  const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#2a1240'); sky.addColorStop(0.35, '#b0402a'); sky.addColorStop(0.55, '#f2a040'); sky.addColorStop(0.7, '#2a3a20'); sky.addColorStop(1, '#06100a'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
-  const sun = g.createRadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, 120); sun.addColorStop(0, 'rgba(255,240,200,1)'); sun.addColorStop(0.3, 'rgba(255,200,120,.9)'); sun.addColorStop(1, 'rgba(255,160,80,0)'); g.fillStyle = sun; g.fillRect(0, 0, w, h);
-  // canopy layers
-  const r = rng(23);
-  for (let L = 0; L < 3; L++) { g.fillStyle = ['#1e3a22', '#132a18', '#0a1a0e'][L]; g.beginPath(); g.moveTo(0, h); for (let x = 0; x <= w; x += 18) g.lineTo(x, h * (0.56 + L * 0.1) + Math.sin(x * 0.05 + L) * 14 + r() * 10); g.lineTo(w, h); g.fill(); }
-  // the temple: stepped pyramid with a glowing doorway
-  g.fillStyle = '#2a2a24'; const cx = w / 2, b = h * 0.78;
-  for (let i = 0; i < 5; i++) { const ww = 300 - i * 52, hh = 26; g.fillStyle = i % 2 ? '#3a3a30' : '#2c2c24'; g.fillRect(cx - ww / 2, b - (i + 1) * hh, ww, hh); g.fillStyle = 'rgba(255,200,120,.12)'; g.fillRect(cx - ww / 2, b - (i + 1) * hh, ww, 3); }
-  g.fillStyle = '#6a5a3a'; for (let i = 0; i < 9; i++) g.fillRect(cx - 22, b - i * 14 - 14, 44, 3);
-  const dg = g.createRadialGradient(cx, b - 150, 0, cx, b - 150, 40); dg.addColorStop(0, 'rgba(255,220,140,1)'); dg.addColorStop(1, 'rgba(255,160,60,0)'); g.fillStyle = dg; g.fillRect(cx - 40, b - 190, 80, 80);
-  // the idol's face in gold, big, over the sun
-  g.save(); g.translate(cx, h * 0.3); g.shadowColor = '#ffd27a'; g.shadowBlur = 30;
-  const gold = g.createLinearGradient(-80, -90, 80, 90); gold.addColorStop(0, '#fff0b0'); gold.addColorStop(0.5, '#f2c14e'); gold.addColorStop(1, '#9a6a1a'); g.fillStyle = gold;
-  g.beginPath(); g.moveTo(-70, 80); g.lineTo(-60, -40); g.lineTo(-30, -90); g.lineTo(30, -90); g.lineTo(60, -40); g.lineTo(70, 80); g.closePath(); g.fill();
-  g.shadowBlur = 0; g.fillStyle = '#3a2a10'; g.beginPath(); g.ellipse(-26, -10, 16, 9, 0, 0, TAU); g.ellipse(26, -10, 16, 9, 0, 0, TAU); g.fill();
-  g.fillStyle = '#ff4040'; g.beginPath(); g.arc(-26, -10, 6, 0, TAU); g.arc(26, -10, 6, 0, TAU); g.fill();
-  g.fillStyle = '#3a2a10'; g.fillRect(-34, 40, 68, 8); for (let i = 0; i < 6; i++) g.fillRect(-30 + i * 11, 40, 4, 16); g.fillRect(-6, 10, 12, 20);
-  for (let i = 0; i < 7; i++) { g.fillStyle = '#5fe0a0'; g.beginPath(); g.arc(-54 + i * 18, -70, 4, 0, TAU); g.fill(); }
+  // A translite: sunset behind a ruined step temple deep in the canopy, the gold idol blazing over its stair,
+  // torches, a river carrying the light down to the player, fronds and vines framing it, carved-stone title.
+  const r = rng(23), u = w / 1024, v = h / 662;
+  // ── sky and sun ──
+  const sky = g.createLinearGradient(0, 0, 0, h * 0.62); sky.addColorStop(0, '#1b0d3c'); sky.addColorStop(0.3, '#5a2448'); sky.addColorStop(0.62, '#c2503a'); sky.addColorStop(0.85, '#f09a46'); sky.addColorStop(1, '#ffd27a'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 90; i++) { g.fillStyle = 'rgba(255,240,220,' + (0.2 + r() * 0.5) + ')'; g.fillRect(r() * w, r() * h * 0.22, 1.3 * u, 1.3 * u); }
+  const sx = 512 * u, sy = 330 * v, sr = 112 * v;
+  glowAt(g, sx, sy, sr * 3.4, '#ffb060', 0.5); glowAt(g, sx, sy, sr * 1.7, '#fff0c0', 0.5);
+  const sun = g.createRadialGradient(sx, sy - sr * 0.3, sr * 0.1, sx, sy, sr); sun.addColorStop(0, '#fffbe8'); sun.addColorStop(0.7, '#ffe6a0'); sun.addColorStop(1, '#ffc060'); g.fillStyle = sun; g.beginPath(); g.arc(sx, sy, sr, 0, TAU); g.fill();
+  // thin cloud bars across the sun
+  g.fillStyle = 'rgba(120,40,70,.45)'; [[300, 232, 300, 7], [560, 270, 240, 5], [420, 300, 180, 4]].forEach(([x, y, cw, ch]) => { g.beginPath(); g.ellipse(x * u, y * v, cw * u, ch * v, 0, 0, TAU); g.fill(); });
+  // ── misty ranges and canopy, four layers back to front ──
+  const layer = (y0, amp, col, seed, step) => { const rr = rng(seed); g.fillStyle = col; g.beginPath(); g.moveTo(0, h); g.lineTo(0, y0 * v); for (let x = 0; x <= w + step; x += step) { const y = y0 * v + (Math.sin(x * 0.011 + seed) * amp + Math.sin(x * 0.037 + seed * 2) * amp * 0.5 + (rr() - 0.5) * amp * 0.6) * v; g.lineTo(x, y); } g.lineTo(w, h); g.closePath(); g.fill(); };
+  layer(372, 16, 'rgba(90,70,120,.55)', 2, 22); layer(400, 18, 'rgba(60,70,90,.7)', 5, 18);
+  const mist = g.createLinearGradient(0, 380 * v, 0, 470 * v); mist.addColorStop(0, 'rgba(255,180,110,0)'); mist.addColorStop(0.6, 'rgba(255,190,130,.28)'); mist.addColorStop(1, 'rgba(255,190,130,0)'); g.fillStyle = mist; g.fillRect(0, 380 * v, w, 100 * v);
+  layer(432, 22, '#1d3a24', 9, 14); layer(468, 26, '#122a18', 11, 12);
+  // ── the temple: a silhouette against the sun, stone picked out by the fire inside it ──
+  const cx = 512, base = 532, tiers = 6, tier = 26, bw = 520;
+  const stoneGrad = (y0, y1) => { const q = g.createLinearGradient(0, y0 * v, 0, y1 * v); q.addColorStop(0, '#4a4636'); q.addColorStop(1, '#262418'); return q; };
+  for (let i = 0; i < tiers; i++) {
+    const ww = bw - i * 74, y1 = base - i * tier, y0 = y1 - tier, x0 = cx - ww / 2;
+    g.fillStyle = stoneGrad(y0, y1); g.fillRect(x0 * u, y0 * v, ww * u, tier * v);
+    g.fillStyle = 'rgba(255,200,120,.22)'; g.fillRect(x0 * u, y0 * v, ww * u, 2.5 * v);   // sun on the top edge
+    g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x0 * u, (y1 - 4) * v, ww * u, 4 * v);
+    // block joints
+    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1 * u; for (let x = x0 + 18 + (i % 2) * 14; x < x0 + ww; x += 30) { g.beginPath(); g.moveTo(x * u, (y0 + 3) * v); g.lineTo((x + (r() - 0.5) * 3) * u, (y1 - 4) * v); g.stroke(); }
+    g.beginPath(); g.moveTo(x0 * u, (y0 + tier * 0.5) * v); g.lineTo((x0 + ww) * u, (y0 + tier * 0.5) * v); g.stroke();
+    // carved glyph band on the third tier
+    if (i === 2) { const rr = rng(4); for (let x = x0 + 12; x < x0 + ww - 12; x += 22) { if (Math.abs(x - cx) < 36) continue; g.strokeStyle = 'rgba(242,193,78,' + (0.25 + rr() * 0.3) + ')'; g.lineWidth = 1.4 * u; g.beginPath(); const k = Math.floor(rr() * 3); if (k === 0) g.rect((x + 3) * u, (y0 + 7) * v, 10 * u, 11 * v); else if (k === 1) { g.moveTo(x * u, (y1 - 6) * v); g.lineTo((x + 8) * u, (y0 + 6) * v); g.lineTo((x + 16) * u, (y1 - 6) * v); } else g.arc((x + 8) * u, (y0 + 13) * v, 5 * u, 0, TAU); g.stroke(); } }
+  }
+  // the top shrine with the doorway, blazing
+  const topY = base - tiers * tier, shrineW = 86, shrineH = 54;
+  g.fillStyle = stoneGrad(topY - shrineH, topY); g.fillRect((cx - shrineW / 2) * u, (topY - shrineH) * v, shrineW * u, shrineH * v);
+  g.fillStyle = '#2a2818'; g.fillRect((cx - shrineW / 2 - 8) * u, (topY - shrineH - 10) * v, (shrineW + 16) * u, 10 * v); g.fillStyle = 'rgba(255,200,120,.3)'; g.fillRect((cx - shrineW / 2 - 8) * u, (topY - shrineH - 10) * v, (shrineW + 16) * u, 2 * v);
+  g.save(); g.shadowColor = '#ffb040'; g.shadowBlur = 30 * u; const door = g.createLinearGradient(0, (topY - 40) * v, 0, topY * v); door.addColorStop(0, '#fff2c0'); door.addColorStop(1, '#ffa030'); g.fillStyle = door; g.beginPath(); g.moveTo((cx - 14) * u, topY * v); g.lineTo((cx - 14) * u, (topY - 30) * v); g.lineTo((cx - 8) * u, (topY - 40) * v); g.lineTo((cx + 8) * u, (topY - 40) * v); g.lineTo((cx + 14) * u, (topY - 30) * v); g.lineTo((cx + 14) * u, topY * v); g.closePath(); g.fill(); g.restore();
+  // the great stair, lit from the doorway
+  const stair = g.createLinearGradient(0, topY * v, 0, base * v); stair.addColorStop(0, 'rgba(255,190,100,.85)'); stair.addColorStop(0.5, 'rgba(255,170,80,.35)'); stair.addColorStop(1, 'rgba(255,170,80,.06)'); g.fillStyle = stair; g.beginPath(); g.moveTo((cx - 16) * u, topY * v); g.lineTo((cx + 16) * u, topY * v); g.lineTo((cx + 40) * u, base * v); g.lineTo((cx - 40) * u, base * v); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(40,30,10,.55)'; g.lineWidth = 1.2 * u; for (let y = topY + 8; y < base; y += 8) { const t = (y - topY) / (base - topY), hw = 16 + 24 * t; g.beginPath(); g.moveTo((cx - hw) * u, y * v); g.lineTo((cx + hw) * u, y * v); g.stroke(); }
+  // torches on the tiers
+  const torch = (x, y, s) => { g.strokeStyle = '#1a160c'; g.lineWidth = 3 * s * u; g.beginPath(); g.moveTo(x * u, y * v); g.lineTo(x * u, (y - 22 * s) * v); g.stroke(); glowAt(g, x * u, (y - 30 * s) * v, 46 * s * u, '#ffa040', 0.55); g.save(); g.shadowColor = '#ffc060'; g.shadowBlur = 14 * u; const fg = g.createRadialGradient(x * u, (y - 26 * s) * v, 0, x * u, (y - 30 * s) * v, 12 * s * u); fg.addColorStop(0, '#fff6d0'); fg.addColorStop(0.5, '#ffb040'); fg.addColorStop(1, 'rgba(255,100,30,0)'); g.fillStyle = fg; g.beginPath(); g.moveTo(x * u, (y - 44 * s) * v); g.quadraticCurveTo((x + 9 * s) * u, (y - 30 * s) * v, x * u, (y - 20 * s) * v); g.quadraticCurveTo((x - 9 * s) * u, (y - 30 * s) * v, x * u, (y - 44 * s) * v); g.fill(); g.restore(); };
+  torch(cx - 118, base - 2 * tier, 1); torch(cx + 118, base - 2 * tier, 1); torch(cx - 62, base - 4 * tier, 0.8); torch(cx + 62, base - 4 * tier, 0.8);
+  // ── the gold idol over the shrine: a faceted mask against the sun, jade eyes, a fan of plates for a crown ──
+  const ix = cx, iy = topY - shrineH - 88;
+  g.save(); g.translate(ix * u, iy * v); g.scale(u, v);
+  for (let i = 0; i < 24; i++) { const a = i / 24 * TAU + 0.06, len = i % 2 ? 190 : 130; const rg = g.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len); rg.addColorStop(0, 'rgba(255,230,150,.32)'); rg.addColorStop(1, 'rgba(255,200,100,0)'); g.strokeStyle = rg; g.lineWidth = i % 2 ? 5 : 9; g.beginPath(); g.moveTo(Math.cos(a) * 70, Math.sin(a) * 70); g.lineTo(Math.cos(a) * len, Math.sin(a) * len); g.stroke(); }
+  // the crown: carved plates fanning out, darker the further from the centre
+  for (let i = -4; i <= 4; i++) { const a = i * 0.26, len = 92 - Math.abs(i) * 9; g.save(); g.rotate(a); const pg = g.createLinearGradient(0, -40, 0, -40 - len); pg.addColorStop(0, '#9a6a14'); pg.addColorStop(0.5, '#f2c14e'); pg.addColorStop(1, '#fff0b0'); g.fillStyle = pg; g.beginPath(); g.moveTo(-13, -42); g.lineTo(-7, -42 - len); g.lineTo(0, -52 - len); g.lineTo(7, -42 - len); g.lineTo(13, -42); g.closePath(); g.fill(); g.strokeStyle = 'rgba(80,50,10,.55)'; g.lineWidth = 1.2; g.stroke(); g.fillStyle = '#5fe0a0'; g.beginPath(); g.arc(0, -52 - len * 0.72, 3.2, 0, TAU); g.fill(); g.restore(); }
+  g.shadowColor = '#ffd27a'; g.shadowBlur = 34;
+  const facet = (pts, c0, c1) => { const q = g.createLinearGradient(pts[0][0], pts[0][1], pts[2][0], pts[2][1]); q.addColorStop(0, c0); q.addColorStop(1, c1); g.fillStyle = q; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.fill(); };
+  // the mask: wide cheekbones, square jaw, planes catching the light from the left
+  facet([[-62, -40], [62, -40], [70, 10], [-70, 10]], '#fff0b0', '#d8a030');       // brow and upper face
+  facet([[-70, 10], [70, 10], [48, 66], [-48, 66]], '#f2c14e', '#a06e18');          // cheeks to jaw
+  facet([[-48, 66], [48, 66], [30, 84], [-30, 84]], '#c8901e', '#6a4610');          // chin
+  facet([[-62, -40], [-70, 10], [-84, 2], [-78, -30]], '#b08020', '#6a4610');      // left ear plate
+  facet([[62, -40], [78, -30], [84, 2], [70, 10]], '#fff0b0', '#c8901e');           // right ear plate
+  g.shadowBlur = 0;
+  g.strokeStyle = 'rgba(70,45,10,.7)'; g.lineWidth = 2; g.beginPath(); g.moveTo(-70, 10); g.lineTo(70, 10); g.moveTo(-48, 66); g.lineTo(48, 66); g.stroke();
+  // brow ridge, eye sockets with jade eyes, nose, the grin of teeth
+  g.fillStyle = 'rgba(70,45,10,.9)'; g.beginPath(); g.moveTo(-54, -12); g.quadraticCurveTo(-30, -34, -8, -14); g.quadraticCurveTo(-30, -2, -54, -12); g.moveTo(54, -12); g.quadraticCurveTo(30, -34, 8, -14); g.quadraticCurveTo(30, -2, 54, -12); g.fill();
+  g.save(); g.shadowColor = '#5fe0a0'; g.shadowBlur = 18; g.fillStyle = '#8affc8'; g.beginPath(); g.ellipse(-30, -14, 11, 5.5, 0, 0, TAU); g.ellipse(30, -14, 11, 5.5, 0, 0, TAU); g.fill(); g.restore();
+  g.fillStyle = 'rgba(70,45,10,.85)'; g.beginPath(); g.moveTo(0, -4); g.lineTo(-12, 30); g.lineTo(12, 30); g.closePath(); g.fill();
+  g.fillRect(-36, 42, 72, 6); g.fillStyle = '#fff6d8'; for (let i = 0; i < 8; i++) g.fillRect(-34 + i * 9, 48, 6, 11); g.fillStyle = 'rgba(70,45,10,.85)'; g.fillRect(-36, 58, 72, 3);
+  g.strokeStyle = 'rgba(255,245,200,.55)'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-60, -40); g.lineTo(60, -40); g.stroke();
   g.restore();
-  // vines and leaves in the corners
-  g.save(); g.scale(1, 1); leaves(g, 30, 40, 90, 1, 7, 31); leaves(g, w - 30, 50, 90, -1, 7, 32); leaves(g, 20, h - 60, 70, 1, 5, 33); leaves(g, w - 20, h - 60, 70, -1, 5, 34); g.restore();
-  // title
-  g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 60px Cinzel, Georgia, serif';
-  g.shadowColor = '#ffb45a'; g.shadowBlur = 22; g.fillStyle = '#ffe6a8'; g.fillText('JUNGLE', w / 2, h * 0.86); g.font = '700 44px Cinzel, Georgia, serif'; g.fillText('TEMPLE', w / 2, h * 0.95); g.restore();
+  // ── the river: out of the temple's foot, bending down to the right, carrying the sunset ──
+  g.save(); g.beginPath(); g.moveTo((cx - 40) * u, base * v); g.lineTo((cx + 60) * u, base * v); g.bezierCurveTo(700 * u, 560 * v, 860 * u, 580 * v, 1000 * u, 640 * v); g.lineTo(w, 662 * v); g.lineTo(760 * u, 662 * v); g.bezierCurveTo(700 * u, 610 * v, 560 * u, 580 * v, (cx - 40) * u, base * v); g.closePath(); g.clip();
+  const riv = g.createLinearGradient(0, base * v, 0, h); riv.addColorStop(0, '#ffb860'); riv.addColorStop(0.35, '#4a6a52'); riv.addColorStop(1, '#0c1a12'); g.fillStyle = riv; g.fillRect(0, base * v, w, h - base * v);
+  for (let i = 0; i < 70; i++) { const y = base + r() * (662 - base), x = 440 + r() * 560, t = (y - base) / (662 - base); g.fillStyle = 'rgba(255,220,160,' + (0.5 * (1 - t) + 0.05) + ')'; g.fillRect(x * u, y * v, (6 + r() * 26) * u, 1.3 * v); }
+  g.restore();
+  // ── jungle floor and fronds framing the glass ──
+  const ground = g.createLinearGradient(0, base * v, 0, h); ground.addColorStop(0, '#102416'); ground.addColorStop(1, '#060e08'); g.fillStyle = ground;
+  g.beginPath(); g.moveTo(0, (base + 4) * v); g.lineTo((cx - 40) * u, (base + 4) * v); g.bezierCurveTo(560 * u, 580 * v, 700 * u, 610 * v, 760 * u, h); g.lineTo(0, h); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo((cx + 60) * u, (base + 4) * v); g.lineTo(w, (base + 4) * v); g.lineTo(w, 640 * v); g.bezierCurveTo(860 * u, 580 * v, 700 * u, 560 * v, (cx + 60) * u, (base + 4) * v); g.closePath(); g.fill();
+  const frond = (x, y, len, ang, dir, col) => { g.save(); g.translate(x, y); g.rotate(ang); g.fillStyle = col; g.strokeStyle = col; g.lineWidth = 3 * u; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(len * 0.5, -len * 0.08 * dir, len, -len * 0.2 * dir); g.stroke(); for (let i = 1; i < 11; i++) { const t = i / 11, px = len * t, py = -len * 0.2 * dir * t * t, ll = len * 0.34 * (1 - Math.abs(t - 0.45)); for (const s of [-1, 1]) { g.beginPath(); g.moveTo(px, py); g.quadraticCurveTo(px + ll * 0.5, py + s * ll * 0.9, px + ll * 0.95, py + s * ll * 0.6); g.quadraticCurveTo(px + ll * 0.5, py + s * ll * 0.35, px, py); g.fill(); } } g.restore(); };
+  const leafC = '#071a0c', leafL = '#0f2e18';
+  frond(-10 * u, 600 * v, 260 * u, -0.95, 1, leafL); frond(10 * u, 662 * v, 300 * u, -1.3, 1, leafC);
+  frond(w + 10 * u, 580 * v, 260 * u, PI + 1.0, -1, leafL); frond(w, 662 * v, 300 * u, PI + 1.3, -1, leafC);
+  frond(60 * u, 30 * v, 250 * u, 1.1, -1, leafC); frond(w - 50 * u, 20 * v, 240 * u, PI - 1.15, 1, leafC);
+  // vines from the top corners with leaves
+  for (const [x0, x1] of [[150, 170], [w / u - 170, w / u - 150]]) { g.strokeStyle = '#1b3a1c'; g.lineWidth = 2.6 * u; g.lineCap = 'round'; g.beginPath(); g.moveTo(x0 * u, 0); g.bezierCurveTo((x0 + 20) * u, 90 * v, (x1 - 30) * u, 140 * v, x1 * u, 230 * v); g.stroke(); for (let i = 1; i < 6; i++) { const t = i / 6, mt = 1 - t, x = (mt * mt * mt * x0 + 3 * mt * mt * t * (x0 + 20) + 3 * mt * t * t * (x1 - 30) + t * t * t * x1) * u, y = (3 * mt * mt * t * 90 + 3 * mt * t * t * 140 + t * t * t * 230) * v; g.fillStyle = i % 2 ? '#1f4a22' : '#173a1c'; g.beginPath(); g.ellipse(x + (i % 2 ? 9 : -9) * u, y, 11 * u, 5 * v, i % 2 ? 0.6 : -0.6, 0, TAU); g.fill(); } }
+  // fireflies in the dark
+  for (let i = 0; i < 26; i++) { const x = r() * w, y = (430 + r() * 220) * v; if (Math.abs(x - cx * u) < 260 * u && y < 560 * v) continue; glowAt(g, x, y, 7 * u, '#d4ff8a', 0.7); }
+  // ── title: carved from the stone, one line across the sky ──
+  const stone = (x0, y0, x1, y1) => { const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, '#f1ead2'); q.addColorStop(0.5, '#c9bd9a'); q.addColorStop(0.52, '#a79b78'); q.addColorStop(1, '#6a5f46'); return q; };
+  textLogo(g, 'JUNGLE TEMPLE', w / 2, 112 * v, { font: '700 ' + (84 * v) + 'px Cinzel, Georgia, serif', spacing: 5 * u, glow: { color: '#ffb45a', blur: 26 * u, alpha: 0.45 }, shadow: { dx: 5 * u, dy: 7 * v, color: 'rgba(30,18,6,.8)' }, outline: { color: '#2b2214', w: 6 * u }, fill: stone, inline: { color: 'rgba(60,45,20,.35)', w: 1.2 * u }, top: { color: 'rgba(255,255,240,.3)', frac: 0.4 } });
+  // moss creeping over the tops of the letters
+  g.save(); g.beginPath(); g.rect(60 * u, 60 * v, w - 120 * u, 34 * v); g.clip(); textLogo(g, 'JUNGLE TEMPLE', w / 2, 112 * v, { font: '700 ' + (84 * v) + 'px Cinzel, Georgia, serif', spacing: 5 * u, fill: 'rgba(95,180,110,.45)' }); g.restore();
+  grain(g, w, h, 2400, 0.05, 29);
 }
 function paintApron(g, w, h) {
   const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#5a5648'); gr.addColorStop(0.5, '#3e3a30'); gr.addColorStop(1, '#22201a'); g.fillStyle = gr; g.fillRect(0, 0, w, h);

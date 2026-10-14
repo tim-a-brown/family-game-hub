@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import * as THREE from 'three';
 import { BR, spline, deg } from '../physics.js';
-import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, torusGeo, sphereGeo, offsetLine } from '../gfx.js';
+import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, torusGeo, sphereGeo, offsetLine, glowAt, grain, textLogo } from '../gfx.js';
 import { drawPath } from '../components.js';
 import { audio } from '../engine.js';
 
@@ -742,26 +742,75 @@ function spaceBg(g, w, h, seed) {
   stars(g, w, h, Math.round(w * h / 900), seed + 1, 1);
 }
 function paintBackglass(g, w, h) {
-  spaceBg(g, w, h, 7);
-  // a ringed gas giant rising on the right, a sun-flare on the left horizon
-  const r = rng(3);
-  const px = w * 0.72, py = h * 0.4, R = 120;
-  const pg = g.createRadialGradient(px - 40, py - 40, 10, px, py, R); pg.addColorStop(0, '#9fd0ff'); pg.addColorStop(0.5, '#3a6fc0'); pg.addColorStop(1, '#0a1a3c'); g.fillStyle = pg; g.beginPath(); g.arc(px, py, R, 0, TAU); g.fill();
-  g.save(); g.beginPath(); g.arc(px, py, R, 0, TAU); g.clip(); g.globalAlpha = 0.3; g.strokeStyle = '#061030'; for (let i = 0; i < 12; i++) { g.lineWidth = 2 + r() * 6; g.beginPath(); g.moveTo(px - R, py - R + i * 20); g.bezierCurveTo(px - 40, py - R + i * 20 - 12, px + 40, py - R + i * 20 + 14, px + R, py - R + i * 20); g.stroke(); } g.restore();
-  g.save(); g.translate(px, py); g.rotate(-0.3); g.strokeStyle = 'rgba(230,220,190,.7)'; g.lineWidth = 5; g.beginPath(); g.ellipse(0, 0, R * 1.8, R * 0.4, 0, 0, TAU); g.stroke(); g.strokeStyle = 'rgba(230,220,190,.3)'; g.lineWidth = 14; g.beginPath(); g.ellipse(0, 0, R * 1.55, R * 0.34, 0, 0, TAU); g.stroke(); g.restore();
-  const sg = g.createRadialGradient(w * 0.12, h * 0.62, 0, w * 0.12, h * 0.62, 180); sg.addColorStop(0, 'rgba(255,245,220,.95)'); sg.addColorStop(0.08, 'rgba(255,200,140,.7)'); sg.addColorStop(0.3, 'rgba(120,200,255,.18)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = sg; g.fillRect(0, 0, w, h);
-  // the ship: a sleek chrome dart crossing the glass, with an engine trail
-  g.save(); g.translate(w * 0.42, h * 0.56); g.rotate(-0.28);
-  const tg = g.createLinearGradient(-90, 0, 90, 0); tg.addColorStop(0, 'rgba(34,211,238,0)'); tg.addColorStop(1, 'rgba(34,211,238,.9)'); g.fillStyle = tg; g.beginPath(); g.moveTo(-230, -4); g.lineTo(-40, -9); g.lineTo(-40, 9); g.lineTo(-230, 4); g.fill();
-  const hg = g.createLinearGradient(0, -20, 0, 20); hg.addColorStop(0, '#ffffff'); hg.addColorStop(0.45, '#c8d4e6'); hg.addColorStop(0.5, '#6a7a94'); hg.addColorStop(1, '#2a3448'); g.fillStyle = hg;
-  g.beginPath(); g.moveTo(100, 0); g.lineTo(-40, -22); g.lineTo(-60, -8); g.lineTo(-48, 0); g.lineTo(-60, 8); g.lineTo(-40, 22); g.closePath(); g.fill();
-  g.fillStyle = '#0a1a3c'; g.beginPath(); g.ellipse(40, -2, 22, 7, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(160,230,255,.6)'; g.beginPath(); g.ellipse(44, -4, 12, 3, 0, 0, TAU); g.fill();
+  // A translite: deep space, a nebula boiling behind a ringed giant, a star low on the left flaring the lens,
+  // the starfighter tearing across the middle with its engines lit, and the title in 80s chrome.
+  const r = rng(7), u = w / 1024, v = h / 662;
+  const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#02030c'); sky.addColorStop(0.6, '#070c28'); sky.addColorStop(1, '#03040f'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
+  // ── the nebula: additive clouds of cyan, violet and magenta with dark dust lanes through them ──
+  g.save(); g.globalCompositeOperation = 'lighter';
+  const puff = (x, y, rad, col, a) => { const q = g.createRadialGradient(x, y, 0, x, y, rad); q.addColorStop(0, rgba(col, a)); q.addColorStop(0.5, rgba(col, a * 0.35)); q.addColorStop(1, rgba(col, 0)); g.fillStyle = q; g.fillRect(x - rad, y - rad, rad * 2, rad * 2); };
+  [[300, 300, 260, PAL.violet, 0.6], [470, 240, 220, PAL.magenta, 0.5], [560, 360, 240, PAL.cyan, 0.42], [180, 420, 200, PAL.violet, 0.45], [700, 200, 180, PAL.magenta, 0.3], [420, 440, 180, '#ff8a5a', 0.2], [880, 520, 220, PAL.cyan, 0.18], [400, 330, 110, '#ffffff', 0.16]].forEach(([x, y, rad, c, a]) => puff(x * u, y * v, rad * u, c, a));
+  for (let i = 0; i < 14; i++) { const x = (120 + r() * 700) * u, y = (120 + r() * 400) * v; puff(x, y, (30 + r() * 70) * u, [PAL.cyan, PAL.magenta, PAL.violet, '#ffffff'][i % 4], 0.08 + r() * 0.12); }
   g.restore();
-  // title
-  g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '400 92px "Bungee", Impact, sans-serif';
-  g.shadowColor = PAL.cyan; g.shadowBlur = 30; g.fillStyle = '#eafcff'; g.fillText('NEBULA', w / 2, h * 0.2);
-  g.font = '400 54px "Bungee", Impact, sans-serif'; g.fillStyle = PAL.cyan; g.shadowBlur = 18; g.fillText('RUN', w / 2, h * 0.33);
-  g.shadowBlur = 0; g.font = '700 18px "Arial Narrow", Arial'; g.fillStyle = 'rgba(220,240,255,.8)'; g.fillText('A  DEEP  SPACE  PINBALL  ADVENTURE', w / 2, h * 0.92); g.restore();
+  // wisps and dust lanes
+  g.save(); g.lineCap = 'round';
+  for (let i = 0; i < 9; i++) { const x0 = (100 + r() * 600) * u, y0 = (120 + r() * 400) * v; g.strokeStyle = i % 3 ? 'rgba(4,4,20,.55)' : 'rgba(200,230,255,.08)'; g.lineWidth = (10 + r() * 30) * u; g.shadowColor = '#000'; g.shadowBlur = 30 * u; g.beginPath(); g.moveTo(x0, y0); g.bezierCurveTo(x0 + 120 * u, y0 - 80 * v + r() * 60 * v, x0 + 220 * u, y0 + 60 * v, x0 + 360 * u, y0 - 20 * v + r() * 80 * v); g.stroke(); }
+  g.restore();
+  // ── stars: a dense faint field, then bright ones with glints ──
+  stars(g, w, h, Math.round(w * h / 700), 8, 0.9);
+  const glint = (x, y, s, col) => { glowAt(g, x, y, s * 4, col, 0.6); g.save(); g.strokeStyle = rgba(col, 0.85); g.lineWidth = 1.2 * u; g.beginPath(); g.moveTo(x - s * 3, y); g.lineTo(x + s * 3, y); g.moveTo(x, y - s * 2); g.lineTo(x, y + s * 2); g.stroke(); g.restore(); g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, s * 0.7, 0, TAU); g.fill(); };
+  for (let i = 0; i < 22; i++) glint((r() * w), (r() * h), (1.5 + r() * 2.5) * u, r() < 0.7 ? '#dff4ff' : r() < 0.5 ? PAL.cyan : '#ffd9b0');
+  // ── the ringed giant on the right, lit from the low star on the left ──
+  const px = 790 * u, py = 300 * v, R = 128 * v;
+  const ring = (front) => { g.save(); g.translate(px, py); g.rotate(-0.42); g.beginPath(); if (front) g.rect(-R * 2.4, 0, R * 4.8, R * 2.4); else g.rect(-R * 2.4, -R * 2.4, R * 4.8, R * 2.4); g.clip(); for (const [rx, lw, a] of [[2.05, 20, 0.5], [1.78, 9, 0.75], [1.56, 14, 0.4], [1.36, 6, 0.6]]) { g.strokeStyle = 'rgba(224,214,190,' + a + ')'; g.lineWidth = lw * u; g.beginPath(); g.ellipse(0, 0, R * rx, R * rx * 0.24, 0, 0, TAU); g.stroke(); } g.restore(); };
+  ring(false);
+  glowAt(g, px, py, R * 1.9, '#7fb8ff', 0.22);
+  const pg = g.createRadialGradient(px - R * 0.6, py + R * 0.1, R * 0.05, px, py, R); pg.addColorStop(0, '#dff0ff'); pg.addColorStop(0.3, '#79b0f0'); pg.addColorStop(0.65, '#2d5bb0'); pg.addColorStop(1, '#0a1a44'); g.fillStyle = pg; g.beginPath(); g.arc(px, py, R, 0, TAU); g.fill();
+  g.save(); g.beginPath(); g.arc(px, py, R, 0, TAU); g.clip();
+  for (let i = 0; i < 16; i++) { const yy = py - R + i * R * 0.13, lw = (4 + r() * 14) * v; g.strokeStyle = i % 3 ? 'rgba(10,25,80,' + (0.25 + r() * 0.25) + ')' : 'rgba(220,240,255,' + (0.1 + r() * 0.15) + ')'; g.lineWidth = lw; g.beginPath(); g.moveTo(px - R * 1.1, yy); g.bezierCurveTo(px - R * 0.4, yy - 10 * v + r() * 20 * v, px + R * 0.4, yy + 10 * v - r() * 20 * v, px + R * 1.1, yy + (r() - 0.5) * 16 * v); g.stroke(); }
+  g.fillStyle = 'rgba(255,230,200,.35)'; g.beginPath(); g.ellipse(px + R * 0.2, py + R * 0.25, R * 0.26, R * 0.11, -0.2, 0, TAU); g.fill();   // a storm
+  const term = g.createRadialGradient(px - R * 0.5, py, R * 0.4, px + R * 0.15, py, R * 1.1); term.addColorStop(0, 'rgba(0,0,10,0)'); term.addColorStop(0.75, 'rgba(0,0,12,.55)'); term.addColorStop(1, 'rgba(0,0,12,.92)'); g.fillStyle = term; g.fillRect(px - R, py - R, R * 2, R * 2);
+  g.restore();
+  g.save(); g.beginPath(); g.ellipse(px, py, R * 2.1, R * 2.1 * 0.24, -0.42, 0, TAU); g.clip(); g.fillStyle = 'rgba(0,0,10,.5)'; g.beginPath(); g.arc(px, py, R, 0, TAU); g.fill(); g.restore();   // the planet's shadow on the rings
+  ring(true);
+  // a small moon
+  const mg = g.createRadialGradient(560 * u, 110 * v, 2, 572 * u, 118 * v, 26 * v); mg.addColorStop(0, '#f4f6ff'); mg.addColorStop(0.6, '#8a94b0'); mg.addColorStop(1, '#2a3050'); g.fillStyle = mg; g.beginPath(); g.arc(572 * u, 118 * v, 26 * v, 0, TAU); g.fill();
+  // ── the low star and its lens flare ──
+  const fx = 118 * u, fy = 452 * v;
+  glowAt(g, fx, fy, 300 * u, '#ffd8a8', 0.3); glowAt(g, fx, fy, 120 * u, '#fff4e0', 0.75); glowAt(g, fx, fy, 40 * u, '#ffffff', 1);
+  g.save(); g.globalCompositeOperation = 'lighter';
+  const streak = g.createLinearGradient(0, fy, w, fy); streak.addColorStop(0, 'rgba(120,200,255,0)'); streak.addColorStop(0.1, 'rgba(140,210,255,.55)'); streak.addColorStop(0.3, 'rgba(140,210,255,.1)'); streak.addColorStop(1, 'rgba(140,210,255,0)'); g.fillStyle = streak; g.fillRect(0, fy - 2 * v, w, 4 * v);
+  const streak2 = g.createLinearGradient(0, fy, w * 0.5, fy); streak2.addColorStop(0, 'rgba(255,255,255,.5)'); streak2.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = streak2; g.fillRect(0, fy - 0.8 * v, w * 0.5, 1.6 * v);
+  for (const [t, rad, col, a] of [[0.2, 10, PAL.cyan, 0.25], [0.34, 20, PAL.violet, 0.12], [0.5, 6, '#ffffff', 0.25]]) { const x = fx + (w / 2 - fx) * 2 * t, y = fy + (h / 2 - fy) * 2 * t; g.fillStyle = rgba(col, a); g.beginPath(); g.arc(x, y, rad * u, 0, TAU); g.fill(); g.strokeStyle = rgba(col, a * 1.5); g.lineWidth = 1.5 * u; g.stroke(); }
+  g.restore();
+  // ── the starfighter, climbing out of the glare to the upper right ──
+  g.save(); g.translate(430 * u, 420 * v); g.rotate(-0.36); g.scale(u, u);
+  g.globalCompositeOperation = 'lighter';
+  for (const [dy, ww] of [[-16, 8], [16, 8], [0, 12]]) { const tg = g.createLinearGradient(-520, 0, -60, 0); tg.addColorStop(0, 'rgba(34,211,238,0)'); tg.addColorStop(0.6, 'rgba(34,211,238,.35)'); tg.addColorStop(1, 'rgba(180,250,255,.95)'); g.fillStyle = tg; g.beginPath(); g.moveTo(-520, dy - 1); g.lineTo(-60, dy - ww / 2); g.lineTo(-60, dy + ww / 2); g.lineTo(-520, dy + 1); g.fill(); glowAt(g, -62, dy, 28, '#9ff6ff', 0.9); }
+  g.globalCompositeOperation = 'source-over';
+  g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 12; g.shadowOffsetY = 6;
+  const hull = g.createLinearGradient(0, -36, 0, 36); hull.addColorStop(0, '#ffffff'); hull.addColorStop(0.42, '#cfd9e8'); hull.addColorStop(0.5, '#5a6a86'); hull.addColorStop(0.7, '#8794ad'); hull.addColorStop(1, '#232c40'); g.fillStyle = hull;
+  g.beginPath(); g.moveTo(190, 0); g.lineTo(60, -18); g.lineTo(-30, -24); g.lineTo(-62, -14); g.lineTo(-70, 0); g.lineTo(-62, 14); g.lineTo(-30, 24); g.lineTo(60, 18); g.closePath(); g.fill();
+  // wings swept back, with red stripes
+  const wing = g.createLinearGradient(0, -90, 0, 90); wing.addColorStop(0, '#e8eef8'); wing.addColorStop(0.5, '#6a7a96'); wing.addColorStop(1, '#2c3650'); g.fillStyle = wing;
+  g.beginPath(); g.moveTo(40, -16); g.lineTo(-60, -92); g.lineTo(-96, -88); g.lineTo(-54, -22); g.closePath(); g.fill(); g.beginPath(); g.moveTo(40, 16); g.lineTo(-60, 92); g.lineTo(-96, 88); g.lineTo(-54, 22); g.closePath(); g.fill();
+  g.fillStyle = PAL.red; g.beginPath(); g.moveTo(-10, -30); g.lineTo(-58, -70); g.lineTo(-68, -66); g.lineTo(-24, -32); g.closePath(); g.fill(); g.beginPath(); g.moveTo(-10, 30); g.lineTo(-58, 70); g.lineTo(-68, 66); g.lineTo(-24, 32); g.closePath(); g.fill();
+  g.shadowBlur = 0; g.shadowOffsetY = 0;
+  // engines, canopy, panel lines
+  for (const dy of [-16, 16]) { g.fillStyle = '#3a4660'; g.beginPath(); g.ellipse(-62, dy, 9, 7, 0, 0, TAU); g.fill(); g.fillStyle = '#bff6ff'; g.beginPath(); g.ellipse(-64, dy, 6, 4.5, 0, 0, TAU); g.fill(); }
+  g.fillStyle = '#0a1a3c'; g.beginPath(); g.ellipse(70, -2, 42, 9, 0, 0, TAU); g.fill(); const cg = g.createLinearGradient(30, -10, 110, 6); cg.addColorStop(0, 'rgba(160,230,255,.85)'); cg.addColorStop(0.5, 'rgba(255,255,255,.3)'); cg.addColorStop(1, 'rgba(34,211,238,.4)'); g.fillStyle = cg; g.beginPath(); g.ellipse(74, -5, 30, 4.5, 0, 0, TAU); g.fill();
+  g.strokeStyle = 'rgba(20,28,50,.6)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(120, -8); g.lineTo(-30, -14); g.moveTo(120, 8); g.lineTo(-30, 14); g.moveTo(-10, -22); g.lineTo(-10, 22); g.stroke();
+  glowAt(g, 190, 0, 14, '#ffffff', 0.9);
+  g.restore();
+  // ── the title: chrome with a horizon line through it, a glint on the first letter ──
+  const chrome = (x0, y0, x1, y1) => { const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, '#f4fbff'); q.addColorStop(0.3, '#8fd0ff'); q.addColorStop(0.5, '#1a3f7a'); q.addColorStop(0.52, '#0b1e44'); q.addColorStop(0.7, '#3d7fd0'); q.addColorStop(0.88, '#dff3ff'); q.addColorStop(1, '#7fb0e0'); return q; };
+  const bx = textLogo(g, 'NEBULA', w / 2, 118 * v, { font: '400 ' + (118 * v) + 'px ' + '"Bungee", Impact, sans-serif', spacing: 4 * u, glow: { color: PAL.cyan, blur: 36 * u, alpha: 0.55, twice: true }, shadow: { dx: 6 * u, dy: 8 * v, color: 'rgba(0,4,20,.85)' }, outline: { color: '#061230', w: 7 * u }, fill: chrome, inline: { color: 'rgba(255,255,255,.35)', w: 1 * u }, top: { color: 'rgba(255,255,255,.22)', frac: 0.3 } });
+  const chrome2 = (x0, y0, x1, y1) => { const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, '#eafcff'); q.addColorStop(0.5, '#22d3ee'); q.addColorStop(0.52, '#0e7c92'); q.addColorStop(1, '#bff6ff'); return q; };
+  textLogo(g, 'RUN', w / 2 + 2 * u, 226 * v, { font: '400 ' + (74 * v) + 'px ' + '"Bungee", Impact, sans-serif', spacing: 26 * u, glow: { color: PAL.cyan, blur: 28 * u, alpha: 0.6, twice: true }, shadow: { dx: 4 * u, dy: 6 * v, color: 'rgba(0,4,20,.85)' }, outline: { color: '#061230', w: 6 * u }, fill: chrome2, top: { color: 'rgba(255,255,255,.3)', frac: 0.35 } });
+  // speed lines either side of RUN
+  g.save(); g.globalCompositeOperation = 'lighter'; for (const s of [-1, 1]) { const sl = g.createLinearGradient(w / 2 + s * 120 * u, 0, w / 2 + s * 420 * u, 0); sl.addColorStop(0, 'rgba(34,211,238,.9)'); sl.addColorStop(1, 'rgba(34,211,238,0)'); g.fillStyle = sl; g.fillRect(Math.min(w / 2 + s * 120 * u, w / 2 + s * 420 * u), 224 * v, 300 * u, 3 * v); g.fillRect(Math.min(w / 2 + s * 150 * u, w / 2 + s * 380 * u), 236 * v, 230 * u, 1.5 * v); } g.restore();
+  glint(bx.x0 + 14 * u, bx.y0 + 14 * v, 6 * u, '#ffffff');
+  grain(g, w, h, 2200, 0.04, 61);
 }
 function paintApron(g, w, h) {
   spaceBg(g, w, h, 11);

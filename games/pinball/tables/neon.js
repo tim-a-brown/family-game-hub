@@ -14,7 +14,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import * as THREE from 'three';
 import { BR, spline, deg } from '../physics.js';
-import { canvas, rng, shade, rgba, cylGeo, tubeGeo, boxGeo, torusGeo, offsetLine } from '../gfx.js';
+import { canvas, rng, shade, rgba, cylGeo, tubeGeo, boxGeo, torusGeo, offsetLine, glowAt, grain, textLogo } from '../gfx.js';
 import { Comp, drawPath } from '../components.js';
 import { audio } from '../engine.js';
 
@@ -666,27 +666,66 @@ function paintRoof(P, box) {
   g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(236, 934, 148, 6);
 }
 function paintBackglass(g, w, h) {
-  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#0a0620'); gr.addColorStop(0.5, '#3a0f4a'); gr.addColorStop(0.72, '#ff3f8a'); gr.addColorStop(1, '#120a22'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  // sun
-  const sx = w / 2, sy = h * 0.5, sr = 130;
-  g.save(); g.shadowColor = '#ff6a3d'; g.shadowBlur = 60; g.fillStyle = '#ff7a3d'; g.beginPath(); g.arc(sx, sy, sr, 0, TAU); g.fill(); g.restore();
+  // A translite: a synthwave sunset, the striped sun sinking behind the skyline, a chrome grid running to the
+  // horizon, palms at the edges, a car heading in, and the title in neon tubes with its glow on the sky.
+  const r = rng(3), u = w / 1024, v = h / 662, hz = 430;   // horizon (design y)
+  // ── sky ──
+  const sky = g.createLinearGradient(0, 0, 0, hz * v); sky.addColorStop(0, '#07041a'); sky.addColorStop(0.3, '#2a0c4e'); sky.addColorStop(0.62, '#7a1660'); sky.addColorStop(0.85, '#e0307a'); sky.addColorStop(1, '#ff7a4a'); g.fillStyle = sky; g.fillRect(0, 0, w, hz * v);
+  for (let i = 0; i < 140; i++) { g.fillStyle = 'rgba(255,230,250,' + (0.15 + r() * 0.5) + ')'; g.fillRect(r() * w, r() * h * 0.4, 1.3 * u, 1.3 * u); }
+  // thin horizontal cloud bars catching the sun
+  for (const [x, y, cw, ch, a] of [[260, 190, 220, 5, 0.5], [700, 150, 260, 6, 0.45], [520, 250, 180, 4, 0.4], [860, 300, 200, 5, 0.5]]) { const cg = g.createLinearGradient((x - cw) * u, 0, (x + cw) * u, 0); cg.addColorStop(0, 'rgba(255,160,200,0)'); cg.addColorStop(0.5, 'rgba(255,190,220,' + a + ')'); cg.addColorStop(1, 'rgba(255,160,200,0)'); g.fillStyle = cg; g.beginPath(); g.ellipse(x * u, y * v, cw * u, ch * v, 0, 0, TAU); g.fill(); }
+  // ── the sun: striped, half down behind the skyline ──
+  const sx = 512 * u, sy = 352 * v, sr = 168 * v;
+  glowAt(g, sx, sy, sr * 2.6, '#ff6a3d', 0.5); glowAt(g, sx, sy, sr * 1.4, '#ffb060', 0.45);
   g.save(); g.beginPath(); g.arc(sx, sy, sr, 0, TAU); g.clip();
-  const sg = g.createLinearGradient(0, sy - sr, 0, sy + sr); sg.addColorStop(0, '#ffe08a'); sg.addColorStop(0.5, '#ff7a3d'); sg.addColorStop(1, '#ff2d95'); g.fillStyle = sg; g.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
-  g.fillStyle = '#2a0f3a'; for (let i = 0; i < 8; i++) { const y = sy + 6 + i * 14 + i * i * 0.5; g.fillRect(sx - sr, y, sr * 2, 3 + i * 1.4); } g.restore();
-  // grid floor
-  g.strokeStyle = 'rgba(46,230,255,.75)'; g.lineWidth = 1.5; const hz = h * 0.72;
-  for (let i = -10; i <= 10; i++) { g.beginPath(); g.moveTo(sx + i * 8, hz); g.lineTo(sx + i * 90, h); g.stroke(); }
-  for (let k = 0; k < 7; k++) { const f = k / 7, y = hz + (h - hz) * f * f; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
-  // city skyline and palms
-  g.fillStyle = '#07040f'; const r = rng(3); let x = 0; while (x < w) { const bw = 12 + r() * 30, bh = 30 + r() * 110; g.fillRect(x, hz - bh, bw, bh + 4); x += bw + 3; }
-  g.fillStyle = '#ffd166'; for (let i = 0; i < 160; i++) { const xx = r() * w, yy = hz - r() * 110; g.fillRect(xx, yy, 2, 3); }
-  [[40, h * 0.74, 1], [w - 40, h * 0.74, -1]].forEach(([px, py, d]) => { g.save(); g.translate(px, py); g.scale(1, -1); g.strokeStyle = '#07040f'; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(d * 14, 70, d * 6, 120); g.stroke(); g.lineWidth = 4; for (let i = 0; i < 7; i++) { const a = -0.3 + i * 0.5; g.beginPath(); g.moveTo(d * 6, 120); g.quadraticCurveTo(d * 6 + Math.cos(a) * 30, 136, d * 6 + Math.cos(a) * 54, 112 + Math.sin(a) * 26); g.stroke(); } g.restore(); });
-  // a car on the road, tail lights
-  g.fillStyle = '#0a0612'; g.beginPath(); g.moveTo(sx - 70, h * 0.9); g.lineTo(sx - 50, h * 0.8); g.lineTo(sx + 50, h * 0.8); g.lineTo(sx + 70, h * 0.9); g.closePath(); g.fill();
-  g.save(); g.shadowColor = '#ff2040'; g.shadowBlur = 16; g.fillStyle = '#ff3050'; g.fillRect(sx - 60, h * 0.84, 24, 6); g.fillRect(sx + 36, h * 0.84, 24, 6); g.restore();
-  // title
-  g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '400 86px Bungee, Impact, sans-serif';
-  g.shadowColor = C.pink; g.shadowBlur = 30; g.fillStyle = '#ffd9f0'; g.fillText('NEON', w / 2, h * 0.2); g.font = '400 60px Bungee, Impact, sans-serif'; g.shadowColor = C.cyan; g.fillStyle = '#d2f8ff'; g.fillText('NIGHTS', w / 2, h * 0.34); g.restore();
+  const sg = g.createLinearGradient(0, sy - sr, 0, sy + sr); sg.addColorStop(0, '#fff3a0'); sg.addColorStop(0.35, '#ffb347'); sg.addColorStop(0.7, '#ff5f7a'); sg.addColorStop(1, '#ff2d95'); g.fillStyle = sg; g.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
+  g.fillStyle = '#2a0c3e'; for (let i = 0; i < 9; i++) { const y = sy + sr * 0.02 + i * 16 * v + i * i * 1.6 * v, th = (2 + i * 1.6) * v; g.fillRect(sx - sr, y, sr * 2, th); }
+  g.restore();
+  // ── skyline in silhouette along the horizon, windows lit, a few towers edged in neon ──
+  g.fillStyle = '#0a0518'; let x = -10 * u; const bl = [];
+  while (x < w + 10 * u) { const bw = (14 + r() * 34) * u, bh = (24 + r() * 120 + (Math.abs(x - sx) < 160 * u ? 40 : 0)) * v; bl.push([x, bw, bh]); g.fillRect(x, hz * v - bh, bw, bh + 6 * v); if (r() < 0.25) { g.fillRect(x + bw / 2 - 1 * u, hz * v - bh - 22 * v, 2 * u, 22 * v); } x += bw + 3 * u; }
+  for (const [bx, bw, bh] of bl) { const n = Math.floor(bh / (9 * v)); for (let i = 0; i < n; i++) for (let k = 0; k < Math.floor(bw / (7 * u)); k++) if (r() < 0.32) { g.fillStyle = r() < 0.7 ? 'rgba(255,209,102,.85)' : 'rgba(126,240,255,.8)'; g.fillRect(bx + 2 * u + k * 7 * u, hz * v - bh + 4 * v + i * 9 * v, 2.6 * u, 3.4 * v); } }
+  for (const [bx, bw, bh] of bl) if (bh > 100 * v && r() < 0.5) { g.save(); g.shadowColor = r() < 0.5 ? C.pink : C.cyan; g.shadowBlur = 10 * u; g.strokeStyle = g.shadowColor; g.lineWidth = 1.6 * u; g.beginPath(); g.moveTo(bx, hz * v - bh); g.lineTo(bx + bw, hz * v - bh); g.lineTo(bx + bw, hz * v - bh * 0.5); g.stroke(); g.restore(); }
+  // ── the grid floor ──
+  const fl = g.createLinearGradient(0, hz * v, 0, h); fl.addColorStop(0, '#2a0b3e'); fl.addColorStop(0.3, '#160826'); fl.addColorStop(1, '#07040f'); g.fillStyle = fl; g.fillRect(0, hz * v, w, h - hz * v);
+  glowAt(g, sx, hz * v + 10 * v, 260 * u, '#ff5f7a', 0.35);   // the sun on the wet floor
+  g.save(); g.shadowColor = C.cyan; g.shadowBlur = 8 * u; g.strokeStyle = 'rgba(80,235,255,.85)'; g.lineWidth = 1.6 * u;
+  for (let i = -14; i <= 14; i++) { g.beginPath(); g.moveTo(sx + i * 10 * u, hz * v); g.lineTo(sx + i * 125 * u, h + 40 * v); g.stroke(); }
+  for (let k = 0; k < 9; k++) { const f = k / 9, y = hz * v + (h - hz * v) * f * f * 1.1; g.lineWidth = (1 + f * 1.6) * u; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+  g.restore();
+  g.save(); g.strokeStyle = 'rgba(255,63,164,.55)'; g.lineWidth = 3 * u; g.shadowColor = C.pink; g.shadowBlur = 14 * u; g.beginPath(); g.moveTo(0, hz * v); g.lineTo(w, hz * v); g.stroke(); g.restore();
+  // the sun's reflection streak down the floor
+  const refl = g.createLinearGradient(0, hz * v, 0, h); refl.addColorStop(0, 'rgba(255,120,160,.45)'); refl.addColorStop(0.5, 'rgba(255,90,140,.12)'); refl.addColorStop(1, 'rgba(255,90,140,0)'); g.fillStyle = refl; g.beginPath(); g.moveTo(sx - 60 * u, hz * v); g.lineTo(sx + 60 * u, hz * v); g.lineTo(sx + 240 * u, h); g.lineTo(sx - 240 * u, h); g.closePath(); g.fill();
+  // ── a car on the road, tail lights streaking ──
+  g.save(); g.translate(sx, 578 * v); g.scale(u, v);
+  g.fillStyle = 'rgba(255,40,80,.25)'; g.beginPath(); g.moveTo(-70, 10); g.lineTo(70, 10); g.lineTo(140, 90); g.lineTo(-140, 90); g.closePath(); g.fill();
+  const car = g.createLinearGradient(0, -40, 0, 12); car.addColorStop(0, '#2a1a3c'); car.addColorStop(1, '#08050f'); g.fillStyle = car;
+  g.beginPath(); g.moveTo(-74, 10); g.lineTo(-70, -12); g.lineTo(-48, -16); g.lineTo(-34, -38); g.lineTo(36, -38); g.lineTo(50, -16); g.lineTo(72, -12); g.lineTo(76, 10); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(126,240,255,.25)'; g.beginPath(); g.moveTo(-30, -34); g.lineTo(32, -34); g.lineTo(44, -17); g.lineTo(-44, -17); g.closePath(); g.fill();
+  g.shadowColor = '#ff2040'; g.shadowBlur = 22; g.fillStyle = '#ff4060'; g.fillRect(-66, -6, 40, 7); g.fillRect(26, -6, 40, 7); g.shadowBlur = 0;
+  g.fillStyle = '#ffd166'; g.fillRect(-10, -4, 20, 4); g.fillStyle = '#05030a'; g.fillRect(-62, 8, 24, 8); g.fillRect(38, 8, 24, 8);
+  g.strokeStyle = 'rgba(255,120,200,.7)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(-70, -12); g.lineTo(72, -12); g.stroke();
+  g.restore();
+  // ── palms at both edges, lit pink from behind ──
+  const palm = (x0, y0, lean, s) => { g.save(); g.translate(x0, y0); g.scale(s * u, s * v); g.strokeStyle = '#06030c'; g.lineWidth = 11; g.lineCap = 'round'; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(lean * 40, -140, lean * 70, -260); g.stroke(); g.strokeStyle = 'rgba(255,100,180,.45)'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(lean * 3, 0); g.quadraticCurveTo(lean * 43, -140, lean * 73, -260); g.stroke(); const tx = lean * 70, ty = -260; for (let i = 0; i < 9; i++) { const a = -PI * 0.95 + i / 8 * PI * 0.9, len = 90 + (i % 2) * 24; g.strokeStyle = '#06030c'; g.lineWidth = 6; g.beginPath(); g.moveTo(tx, ty); g.quadraticCurveTo(tx + Math.cos(a) * len * 0.6, ty + Math.sin(a) * len * 0.6 - 24, tx + Math.cos(a) * len, ty + Math.sin(a) * len + 36); g.stroke(); for (let k = 1; k < 7; k++) { const t = k / 7, px = tx + Math.cos(a) * len * t, py = ty + Math.sin(a) * len * t - 24 * (1 - t) * t * 4 + 36 * t * t; g.lineWidth = 2.6; g.beginPath(); g.moveTo(px, py); g.lineTo(px + Math.cos(a + 1.3) * 22 * (1 - t * 0.5), py + Math.sin(a + 1.3) * 22 * (1 - t * 0.5) + 14); g.moveTo(px, py); g.lineTo(px + Math.cos(a - 1.3) * 18 * (1 - t * 0.5), py + Math.sin(a - 1.3) * 18 * (1 - t * 0.5) + 14); g.stroke(); } } g.fillStyle = '#06030c'; g.beginPath(); g.arc(tx, ty, 12, 0, TAU); g.fill(); g.restore(); };
+  palm(70 * u, 662 * v, 1, 1.15); palm(w - 60 * u, 662 * v, -1, 1.2); palm(-30 * u, 662 * v, 1, 0.8);
+  // ── the title in neon: hollow tube letters, pink then cyan, glowing on everything behind them ──
+  const tube = (str, x, y, size, col, core, spacing) => {
+    g.save(); g.font = '400 ' + size + 'px Bungee, Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.lineCap = 'round'; try { g.letterSpacing = spacing + 'px'; } catch (e) {}
+    g.shadowColor = col; g.shadowBlur = 42 * u; g.strokeStyle = rgba(col, 0.9); g.lineWidth = 9 * u; g.strokeText(str, x, y); g.strokeText(str, x, y);
+    g.shadowBlur = 16 * u; g.strokeStyle = col; g.lineWidth = 7 * u; g.strokeText(str, x, y);
+    g.shadowBlur = 0; g.strokeStyle = core; g.lineWidth = 3 * u; g.strokeText(str, x, y);
+    g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 1.2 * u; g.strokeText(str, x, y);
+    // the tube's dark tint inside the letter (glass behind the tube), faint
+    g.globalCompositeOperation = 'multiply'; g.fillStyle = rgba(col, 0.18); g.fillText(str, x, y); g.restore();
+  };
+  // a soft wash of the title's light on the sky behind it
+  glowAt(g, 512 * u, 128 * v, 360 * u, C.pink, 0.22); glowAt(g, 512 * u, 236 * v, 330 * u, C.cyan, 0.16);
+  tube('NEON', 512 * u, 118 * v, 128 * v, C.pink, '#ffd1ee', 10 * u);
+  tube('NIGHTS', 512 * u, 236 * v, 92 * v, C.cyan, '#dafcff', 8 * u);
+  // the tube letters reflected in the floor as a faint smear under the horizon
+  g.save(); g.globalAlpha = 0.14; g.translate(0, (hz + 30) * v); g.scale(1, -0.22); g.filter = 'blur(2px)'; tube('NEON', 512 * u, 0, 128 * v, C.pink, '#ffd1ee', 10 * u); g.restore();
+  grain(g, w, h, 2200, 0.045, 71);
 }
 function paintApron(g, w, h) {
   const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#16102a'); gr.addColorStop(1, '#07050e'); g.fillStyle = gr; g.fillRect(0, 0, w, h);

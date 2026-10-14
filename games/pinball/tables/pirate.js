@@ -12,7 +12,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import * as THREE from 'three';
 import { BR, spline, deg } from '../physics.js';
-import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, offsetLine, wallGeo, slabGeo } from '../gfx.js';
+import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, offsetLine, wallGeo, slabGeo, glowAt, grain, textLogo } from '../gfx.js';
 import { audio } from '../engine.js';
 
 const PI = Math.PI, TAU = PI * 2;
@@ -761,23 +761,89 @@ function paintDeck(P, box) {
   P.text('THE GALLEON', 378, 845, { size: 6, color: 'rgba(255,230,190,.8)' });
 }
 function paintBackglass(g, w, h) {
-  // sunset over the sea, a galleon in silhouette, the title in brass
-  const sky = g.createLinearGradient(0, 0, 0, h * 0.62); sky.addColorStop(0, '#2a1240'); sky.addColorStop(0.35, '#8a3050'); sky.addColorStop(0.7, '#ff8a3a'); sky.addColorStop(1, '#ffd080'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
-  const sun = g.createRadialGradient(w * 0.62, h * 0.56, 0, w * 0.62, h * 0.56, 110); sun.addColorStop(0, 'rgba(255,250,220,1)'); sun.addColorStop(0.3, 'rgba(255,220,150,.9)'); sun.addColorStop(1, 'rgba(255,160,80,0)'); g.fillStyle = sun; g.fillRect(0, 0, w, h);
-  // clouds
-  g.fillStyle = 'rgba(90,30,60,.55)'; [[80, 90, 120, 14], [300, 120, 180, 16], [160, 170, 90, 10], [360, 200, 140, 12]].forEach(([x, y, cw, ch]) => { g.beginPath(); g.ellipse(x, y, cw, ch, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,170,120,.35)'; g.beginPath(); g.ellipse(x, y + ch * 0.9, cw * 0.9, ch * 0.4, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(90,30,60,.55)'; });
-  // sea
-  const sea = g.createLinearGradient(0, h * 0.6, 0, h); sea.addColorStop(0, '#ff9a60'); sea.addColorStop(0.15, '#2a8a94'); sea.addColorStop(1, '#0b2a36'); g.fillStyle = sea; g.fillRect(0, h * 0.6, w, h * 0.4);
-  const rr = rng(4); for (let i = 0; i < 160; i++) { const y = h * 0.6 + rr() * h * 0.4, x = rr() * w; g.fillStyle = 'rgba(255,220,170,' + (0.1 + rr() * 0.35 * (1 - (y - h * 0.6) / (h * 0.4))) + ')'; g.fillRect(x, y, 4 + rr() * 14, 1.2); }
-  // galleon silhouette
-  g.fillStyle = '#1a0c10'; g.save(); g.translate(w * 0.32, h * 0.6);
-  g.beginPath(); g.moveTo(-70, 0); g.quadraticCurveTo(-60, 22, -30, 24); g.lineTo(60, 24); g.quadraticCurveTo(84, 18, 90, -6); g.lineTo(60, 0); g.closePath(); g.fill();
-  [[-20, 1.0], [25, 1.15], [60, 0.8]].forEach(([x, k]) => { g.fillRect(x - 1.5, -80 * k, 3, 82 * k); g.beginPath(); g.moveTo(x - 22 * k, -70 * k); g.quadraticCurveTo(x, -40 * k, x - 22 * k, -16 * k); g.lineTo(x + 22 * k, -16 * k); g.quadraticCurveTo(x, -40 * k, x + 22 * k, -70 * k); g.closePath(); g.fill(); });
-  g.beginPath(); g.moveTo(-70, -2); g.lineTo(-110, -14); g.lineTo(-74, 2); g.fill(); g.restore();
-  // a parrot's feather flourish and the title
-  g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 64px Cinzel, Georgia, serif';
-  g.shadowColor = '#ff9a4a'; g.shadowBlur = 22; g.fillStyle = '#ffe2a0'; g.fillText("PIRATE'S", w / 2, h * 0.8); g.font = '700 50px Cinzel, Georgia, serif'; g.fillText('COVE', w / 2, h * 0.92);
-  g.shadowBlur = 0; g.strokeStyle = 'rgba(80,40,10,.8)'; g.lineWidth = 1.5; g.font = '700 64px Cinzel, Georgia, serif'; g.strokeText("PIRATE'S", w / 2, h * 0.8); g.font = '700 50px Cinzel, Georgia, serif'; g.strokeText('COVE', w / 2, h * 0.92); g.restore();
+  // A translite: a galleon running before the wind on moonlit swells, the skull and crossed cutlasses over the
+  // title on an old chart ribbon, a chest spilling gold on the rocks of the cove, storm clouds with silver edges.
+  const r = rng(4), u = w / 1024, v = h / 662, hz = 400;   // horizon (design y)
+  // ── sky ──
+  const sky = g.createLinearGradient(0, 0, 0, hz * v); sky.addColorStop(0, '#05070f'); sky.addColorStop(0.5, '#0f1f36'); sky.addColorStop(0.85, '#1f4458'); sky.addColorStop(1, '#2d5c66'); g.fillStyle = sky; g.fillRect(0, 0, w, hz * v);
+  for (let i = 0; i < 200; i++) { g.fillStyle = 'rgba(230,240,255,' + (0.2 + r() * 0.6) + ')'; const s = r() < 0.92 ? 1.2 : 2; g.fillRect(r() * w, r() * hz * 0.8 * v, s * u, s * u); }
+  // the moon, high on the left, behind a veil
+  const mx = 236 * u, my = 128 * v, mr = 56 * v;
+  glowAt(g, mx, my, mr * 4.2, '#9fd8ff', 0.3); glowAt(g, mx, my, mr * 1.9, '#eaf6ff', 0.3);
+  const md = g.createRadialGradient(mx - mr * 0.3, my - mr * 0.3, mr * 0.1, mx, my, mr); md.addColorStop(0, '#ffffff'); md.addColorStop(0.7, '#e6f0f6'); md.addColorStop(1, '#b8c8d4'); g.fillStyle = md; g.beginPath(); g.arc(mx, my, mr, 0, TAU); g.fill();
+  g.fillStyle = 'rgba(120,140,160,.18)'; [[-0.3, -0.2, 0.18], [0.3, 0.2, 0.22], [0.1, -0.45, 0.12], [-0.4, 0.4, 0.1]].forEach(([cx, cy, rr]) => { g.beginPath(); g.arc(mx + cx * mr, my + cy * mr, rr * mr, 0, TAU); g.fill(); });
+  // storm clouds, silver-edged by the moon
+  const cloud = (x, y, s, a) => { for (let i = 0; i < 6; i++) { const dx = (i - 2.5) * s * 0.5, dy = Math.abs(i - 2.5) * s * 0.1, rr = s * (0.42 + ((i * 5) % 3) * 0.1); const cg = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, rr); cg.addColorStop(0, 'rgba(14,22,40,' + a + ')'); cg.addColorStop(0.7, 'rgba(14,22,40,' + a * 0.8 + ')'); cg.addColorStop(1, 'rgba(14,22,40,0)'); g.fillStyle = cg; g.fillRect(x + dx - rr, y + dy - rr, rr * 2, rr * 2); } const rim = g.createRadialGradient(x, y - s * 0.3, 0, x, y - s * 0.3, s * 1.7); rim.addColorStop(0, 'rgba(200,225,255,.22)'); rim.addColorStop(1, 'rgba(200,225,255,0)'); g.fillStyle = rim; g.fillRect(x - s * 1.7, y - s * 2, s * 3.4, s * 2); };
+  cloud(110 * u, 70 * v, 70 * u, 0.9); cloud(420 * u, 60 * v, 60 * u, 0.7); cloud(300 * u, 170 * v, 90 * u, 0.85); cloud(880 * u, 110 * v, 90 * u, 0.9); cloud(700 * u, 230 * v, 60 * u, 0.6);
+  // distant headland of the cove on the right
+  g.fillStyle = '#081018'; g.beginPath(); g.moveTo(760 * u, hz * v); g.bezierCurveTo(820 * u, 372 * v, 900 * u, 360 * v, 960 * u, 340 * v); g.bezierCurveTo(990 * u, 330 * v, 1010 * u, 350 * v, w, 344 * v); g.lineTo(w, hz * v); g.fill();
+  glowAt(g, 972 * u, 338 * v, 14 * u, '#ffc060', 0.9); g.fillStyle = '#ffe0a0'; g.fillRect(970 * u, 332 * v, 4 * u, 4 * v);   // a lamp on the point
+  // ── the sea: swells in rows, foam on their crests, the moon's path shivering across ──
+  const sea = g.createLinearGradient(0, hz * v, 0, h); sea.addColorStop(0, '#1f6a74'); sea.addColorStop(0.3, '#12424c'); sea.addColorStop(1, '#071a20'); g.fillStyle = sea; g.fillRect(0, hz * v, w, h - hz * v);
+  const path = g.createLinearGradient(0, hz * v, 0, h); path.addColorStop(0, 'rgba(200,235,255,.5)'); path.addColorStop(0.6, 'rgba(200,235,255,.12)'); path.addColorStop(1, 'rgba(200,235,255,0)'); g.fillStyle = path; g.beginPath(); g.moveTo(mx - 30 * u, hz * v); g.lineTo(mx + 30 * u, hz * v); g.lineTo(mx + 190 * u, h); g.lineTo(mx - 190 * u, h); g.closePath(); g.fill();
+  const swell = (y, amp, len, col, foam, lw) => { g.beginPath(); g.moveTo(-20 * u, y); for (let x = -20; x <= 1044; x += 8) g.lineTo(x * u, y + Math.sin(x / len + y) * amp); g.lineTo(w + 20 * u, h); g.lineTo(-20 * u, h); g.closePath(); g.fillStyle = col; g.fill(); if (foam) { g.strokeStyle = foam; g.lineWidth = lw; g.beginPath(); for (let x = -20; x <= 1044; x += 8) { const yy = y + Math.sin(x / len + y) * amp; x === -20 ? g.moveTo(x * u, yy) : g.lineTo(x * u, yy); } g.stroke(); } };
+  for (let i = 0; i < 9; i++) { const t = i / 8, y = (hz + 12 + t * t * 240) * v, amp = (1.5 + t * 9) * v, len = (26 + t * 40) * u; swell(y, amp, len, 'rgba(' + Math.round(10 + 20 * (1 - t)) + ',' + Math.round(50 + 40 * (1 - t)) + ',' + Math.round(60 + 44 * (1 - t)) + ',' + (0.55 + t * 0.4) + ')', 'rgba(210,240,250,' + (0.12 + t * 0.3) + ')', (0.8 + t * 1.8) * u); }
+  for (let i = 0; i < 90; i++) { const y = (hz + 6 + r() * 250) * v, x = r() * w, t = (y / v - hz) / 250, near = Math.abs(x - mx) < (40 + 150 * t) * u; g.fillStyle = 'rgba(220,240,255,' + ((near ? 0.45 : 0.12) * (0.4 + r() * 0.6)) + ')'; g.fillRect(x, y, (4 + r() * 18) * u * (0.5 + t), 1.2 * v); }
+  // ── the galleon, broadside on the swell, stern lit ──
+  g.save(); g.translate(640 * u, 470 * v); g.rotate(-0.04); g.scale(u * 1.02, v * 1.02);
+  const hullG = g.createLinearGradient(0, -40, 0, 40); hullG.addColorStop(0, '#3a2412'); hullG.addColorStop(0.5, '#24160a'); hullG.addColorStop(1, '#0e0804'); g.fillStyle = hullG;
+  g.beginPath(); g.moveTo(-150, -22); g.quadraticCurveTo(-140, 30, -100, 34); g.lineTo(120, 34); g.quadraticCurveTo(172, 28, 184, -40); g.lineTo(160, -44); g.lineTo(156, -8); g.lineTo(140, -6); g.quadraticCurveTo(100, -10, 40, -10); g.lineTo(-120, -10); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(226,180,90,.75)'; g.lineWidth = 2; g.beginPath(); g.moveTo(-134, 6); g.quadraticCurveTo(0, 10, 150, 4); g.stroke(); g.strokeStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.moveTo(-128, 18); g.quadraticCurveTo(0, 22, 140, 16); g.stroke();
+  for (let i = 0; i < 7; i++) { g.fillStyle = '#05030a'; g.beginPath(); g.arc(-96 + i * 32, 18, 3.6, 0, TAU); g.fill(); }   // gun ports
+  g.save(); g.shadowColor = '#ffb45a'; g.shadowBlur = 14; g.fillStyle = '#ffd890'; for (let i = 0; i < 3; i++) g.fillRect(150 + i * 9, -32 + i * 1, 5, 9); for (let i = 0; i < 4; i++) g.fillRect(118 + i * 10, -4, 5, 7); g.restore();   // stern windows
+  g.strokeStyle = '#1a1008'; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(-150, -22); g.lineTo(-236, -58); g.stroke();   // bowsprit
+  g.fillStyle = 'rgba(230,220,200,.9)'; g.beginPath(); g.moveTo(-150, -26); g.lineTo(-224, -56); g.lineTo(-160, -58); g.closePath(); g.fill();   // jib
+  const sail = (x, yTop, hw, hh, bulge) => { const sg = g.createLinearGradient(x - hw, 0, x + hw, 0); sg.addColorStop(0, '#6a6a68'); sg.addColorStop(0.35, '#d8d4c8'); sg.addColorStop(0.7, '#f4f0e4'); sg.addColorStop(1, '#8a8880'); g.fillStyle = sg; g.beginPath(); g.moveTo(x - hw, yTop); g.quadraticCurveTo(x, yTop + bulge * 0.4, x + hw, yTop); g.lineTo(x + hw * 1.1, yTop + hh); g.quadraticCurveTo(x, yTop + hh + bulge, x - hw * 1.1, yTop + hh); g.closePath(); g.fill(); g.strokeStyle = 'rgba(40,30,20,.5)'; g.lineWidth = 1; g.stroke(); g.strokeStyle = '#1a1008'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(x - hw - 6, yTop); g.lineTo(x + hw + 6, yTop); g.stroke(); };
+  const mast = (x, hgt, top) => { g.strokeStyle = '#1a1008'; g.lineWidth = 4; g.beginPath(); g.moveTo(x, -10); g.lineTo(x, -hgt); g.stroke(); if (top) { g.fillStyle = '#1a1008'; g.fillRect(x - 8, -hgt + 30, 16, 6); } };
+  mast(-80, 190, true); mast(20, 236, true); mast(110, 160, false);
+  sail(-80, -176, 34, 44, 10); sail(-80, -122, 44, 58, 14); sail(20, -222, 40, 50, 12); sail(20, -160, 54, 66, 18); sail(20, -84, 60, 60, 14); sail(110, -148, 30, 40, 8); sail(110, -98, 40, 54, 12);
+  // rigging
+  g.strokeStyle = 'rgba(30,20,10,.75)'; g.lineWidth = 1; for (const [x0, y0, x1, y1] of [[-80, -190, -236, -58], [20, -236, -80, -190], [20, -236, 110, -160], [110, -160, 184, -40], [-80, -190, -150, -22], [20, -236, -60, -10], [20, -236, 100, -10], [110, -160, 160, -8], [-80, -190, -30, -10]]) { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
+  // flag: black with a skull, streaming aft
+  g.fillStyle = '#0a0806'; g.beginPath(); g.moveTo(20, -236); g.lineTo(62, -230); g.lineTo(56, -222); g.lineTo(64, -214); g.lineTo(20, -210); g.closePath(); g.fill(); g.fillStyle = '#f4ecd8'; g.beginPath(); g.arc(40, -223, 4, 0, TAU); g.fill();
+  glowAt(g, 164, -36, 18, '#ffb45a', 0.8); glowAt(g, -60, -14, 12, '#ffb45a', 0.6);   // stern lantern, deck lantern
+  // the hull's reflection
+  g.globalAlpha = 0.28; g.fillStyle = '#1a1008'; g.beginPath(); g.moveTo(-150, 34); g.lineTo(184, 34); g.quadraticCurveTo(170, 70, 120, 72); g.lineTo(-100, 72); g.quadraticCurveTo(-140, 66, -150, 34); g.fill(); g.globalAlpha = 1;
+  g.restore();
+  // ── the cove's rocks and the chest, front left ──
+  const rock = (pts, c0, c1) => { const q = g.createLinearGradient(0, pts[0][1] * v, 0, h); q.addColorStop(0, c0); q.addColorStop(1, c1); g.fillStyle = q; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0] * u, p[1] * v) : g.moveTo(p[0] * u, p[1] * v)); g.closePath(); g.fill(); g.strokeStyle = 'rgba(200,225,255,.3)'; g.lineWidth = 1.6 * u; g.beginPath(); pts.slice(0, Math.ceil(pts.length / 2)).forEach((p, i) => i ? g.lineTo(p[0] * u, p[1] * v) : g.moveTo(p[0] * u, p[1] * v)); g.stroke(); };
+  rock([[0, 560], [60, 520], [150, 530], [230, 570], [290, 610], [330, 662], [0, 662]], '#2a2a30', '#0a0a10');
+  rock([[0, 600], [40, 580], [120, 590], [180, 630], [200, 662], [0, 662]], '#1c1c22', '#06060a');
+  g.save(); g.translate(150 * u, 560 * v); g.scale(u, v); g.rotate(-0.08);
+  glowAt(g, 0, -20, 110, '#ffd166', 0.5);
+  const wood = g.createLinearGradient(0, -30, 0, 30); wood.addColorStop(0, '#7a4a22'); wood.addColorStop(1, '#3a2210'); g.fillStyle = wood; g.fillRect(-56, -14, 112, 50);
+  g.fillStyle = '#5a3618'; g.beginPath(); g.moveTo(-58, -14); g.lineTo(-54, -62); g.quadraticCurveTo(0, -84, 54, -62); g.lineTo(58, -14); g.quadraticCurveTo(0, -30, -58, -14); g.closePath(); g.fill();   // the open lid
+  g.strokeStyle = '#e2b45a'; g.lineWidth = 3; for (const x of [-38, 0, 38]) { g.beginPath(); g.moveTo(x, -14); g.lineTo(x, 36); g.stroke(); g.beginPath(); g.moveTo(x - 4, -14); g.quadraticCurveTo(x, -60 - (x ? 0 : 6), x + 4, -14); g.stroke(); } g.strokeRect(-56, -14, 112, 50);
+  g.save(); g.shadowColor = '#ffd166'; g.shadowBlur = 18; for (let i = 0; i < 60; i++) { const a = r() * PI, d = r() * 50, x = Math.cos(a) * d, y = -16 - Math.abs(Math.sin(a)) * d * 0.5 + r() * 8; const cg = g.createRadialGradient(x - 1, y - 1, 0, x, y, 4.5); cg.addColorStop(0, '#fff6c0'); cg.addColorStop(0.6, '#f2c14e'); cg.addColorStop(1, '#a87818'); g.fillStyle = cg; g.beginPath(); g.ellipse(x, y, 4.5, 2.6, r() * 0.6, 0, TAU); g.fill(); } g.restore();
+  for (let i = 0; i < 9; i++) { const x = -40 + i * 11, y = 40 + (i % 3) * 7; g.fillStyle = i % 2 ? '#f2c14e' : '#fff0b0'; g.beginPath(); g.ellipse(x + 20, y, 4, 2.3, 0.3, 0, TAU); g.fill(); }   // coins spilling over the rock
+  g.fillStyle = '#c8352e'; g.beginPath(); g.ellipse(-22, -24, 6, 4, 0.2, 0, TAU); g.fill(); g.fillStyle = '#5fe0a0'; g.beginPath(); g.ellipse(26, -22, 5, 3.5, -0.3, 0, TAU); g.fill();   // jewels
+  g.restore();
+  // ── the skull and crossed cutlasses over the title ──
+  g.save(); g.translate(512 * u, 134 * v); g.scale(u, v);
+  const cutlass = (flip) => { g.save(); g.scale(flip, 1); g.rotate(-0.62); const bl = g.createLinearGradient(0, -6, 0, 6); bl.addColorStop(0, '#f4f6f8'); bl.addColorStop(0.5, '#9aa4b0'); bl.addColorStop(1, '#5a6470'); g.fillStyle = bl; g.beginPath(); g.moveTo(-120, 0); g.quadraticCurveTo(-40, -22, 120, -26); g.quadraticCurveTo(100, -8, 130, 2); g.quadraticCurveTo(-40, 14, -120, 10); g.closePath(); g.fill(); g.strokeStyle = 'rgba(30,30,40,.6)'; g.lineWidth = 1.2; g.stroke(); const hg = g.createLinearGradient(-150, 0, -120, 0); hg.addColorStop(0, '#8a5a14'); hg.addColorStop(1, '#f2c14e'); g.fillStyle = hg; g.fillRect(-156, -4, 38, 14); g.beginPath(); g.moveTo(-120, -14); g.quadraticCurveTo(-150, 20, -118, 34); g.lineTo(-110, 28); g.quadraticCurveTo(-136, 18, -112, -8); g.closePath(); g.fill(); g.restore(); };
+  cutlass(1); cutlass(-1);
+  g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 12; g.shadowOffsetY = 4;
+  const bone = g.createRadialGradient(-14, -28, 6, 0, -10, 60); bone.addColorStop(0, '#fffaf0'); bone.addColorStop(0.6, '#e9dfc4'); bone.addColorStop(1, '#a89a78'); g.fillStyle = bone;
+  g.beginPath(); g.moveTo(-46, -8); g.bezierCurveTo(-56, -60, 56, -60, 46, -8); g.bezierCurveTo(44, 10, 36, 14, 30, 16); g.lineTo(30, 38); g.lineTo(-30, 38); g.lineTo(-30, 16); g.bezierCurveTo(-36, 14, -44, 10, -46, -8); g.closePath(); g.fill();
+  g.shadowBlur = 0; g.shadowOffsetY = 0;
+  g.fillStyle = '#0c0a10'; g.beginPath(); g.ellipse(-18, -8, 11, 13, 0.2, 0, TAU); g.ellipse(18, -8, 11, 13, -0.2, 0, TAU); g.fill(); g.beginPath(); g.moveTo(0, 2); g.lineTo(-6, 18); g.lineTo(6, 18); g.closePath(); g.fill();
+  g.strokeStyle = '#0c0a10'; g.lineWidth = 1.6; for (let i = -3; i <= 3; i++) { g.beginPath(); g.moveTo(i * 8, 24); g.lineTo(i * 8, 38); g.stroke(); } g.beginPath(); g.moveTo(-30, 26); g.lineTo(30, 26); g.stroke();
+  g.strokeStyle = 'rgba(80,60,30,.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-10, -50); g.lineTo(-4, -30); g.lineTo(-12, -16); g.stroke();
+  g.restore();
+  // ── the title on a chart ribbon ──
+  g.save(); g.translate(512 * u, 272 * v); g.scale(u, v);
+  g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 14; g.shadowOffsetY = 6;
+  const parch = g.createLinearGradient(0, -46, 0, 46); parch.addColorStop(0, '#f1e3c0'); parch.addColorStop(0.5, '#e4cf9f'); parch.addColorStop(1, '#c6a86e'); g.fillStyle = parch;
+  g.beginPath(); g.moveTo(-370, -40); g.quadraticCurveTo(0, -56, 370, -40); g.lineTo(400, -8); g.lineTo(372, 44); g.quadraticCurveTo(0, 60, -372, 44); g.lineTo(-400, -8); g.closePath(); g.fill();
+  g.shadowBlur = 0; g.shadowOffsetY = 0;
+  g.fillStyle = '#a8864a'; g.beginPath(); g.moveTo(-370, -40); g.lineTo(-400, -8); g.lineTo(-372, 44); g.lineTo(-348, 26); g.lineTo(-362, -8); g.lineTo(-344, -28); g.closePath(); g.fill(); g.beginPath(); g.moveTo(370, -40); g.lineTo(400, -8); g.lineTo(372, 44); g.lineTo(348, 26); g.lineTo(362, -8); g.lineTo(344, -28); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(110,80,40,.6)'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-370, -40); g.quadraticCurveTo(0, -56, 370, -40); g.moveTo(-372, 44); g.quadraticCurveTo(0, 60, 372, 44); g.stroke();
+  for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(120,90,40,' + (0.04 + r() * 0.08) + ')'; g.beginPath(); g.ellipse(-340 + r() * 680, -36 + r() * 76, 6 + r() * 30, 3 + r() * 8, r() * PI, 0, TAU); g.fill(); }   // foxing and stains
+  g.strokeStyle = 'rgba(110,80,40,.25)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(-300, 20); g.bezierCurveTo(-200, -20, -100, 30, 0, -10); g.bezierCurveTo(100, -40, 200, 20, 300, -14); g.stroke();   // a coastline on the chart
+  g.restore();
+  const goldF = (x0, y0, x1, y1) => { const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, '#fff6c8'); q.addColorStop(0.45, '#f2c14e'); q.addColorStop(0.55, '#b8821e'); q.addColorStop(1, '#f6d77a'); return q; };
+  textLogo(g, "PIRATE'S COVE", 512 * u, 276 * v, { font: '700 ' + (74 * v) + 'px Cinzel, Georgia, serif', spacing: 3 * u, shadow: { dx: 3 * u, dy: 4 * v, color: 'rgba(60,30,8,.8)' }, outline: { color: '#3a2008', w: 5.5 * u }, fill: goldF, inline: { color: 'rgba(120,70,10,.5)', w: 1 * u }, top: { color: 'rgba(255,255,240,.35)', frac: 0.4 } });
+  grain(g, w, h, 2400, 0.05, 83);
 }
 function paintApron(g, w, h) {
   planks(g, 0, 0, w, h, 34, '#5a3a1e', 13, false);

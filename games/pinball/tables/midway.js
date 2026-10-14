@@ -13,7 +13,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import * as THREE from 'three';
 import { BR, spline, deg } from '../physics.js';
-import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, torusGeo, sphereGeo, offsetLine, wallGeo, slabGeo } from '../gfx.js';
+import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, torusGeo, sphereGeo, offsetLine, wallGeo, slabGeo, glowAt, grain, textLogo } from '../gfx.js';
 import { Comp, drawPath, mergeGeo } from '../components.js';
 import { audio } from '../engine.js';
 import { smallText, smallW } from '../display.js';
@@ -662,30 +662,93 @@ function paintOverlay(P) {
   });
 }
 function paintBackglass(g, w, h) {
-  // a boardwalk at dusk: sunset sky, the wheel and the coaster in silhouette with their bulbs lit, poster lettering
-  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#141a44'); gr.addColorStop(0.42, '#6a3a7a'); gr.addColorStop(0.62, '#f06a5a'); gr.addColorStop(0.74, '#ffb060'); gr.addColorStop(0.78, '#2a1a24'); gr.addColorStop(1, '#120a12'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  const r = rng(4); for (let i = 0; i < 90; i++) { g.fillStyle = 'rgba(255,245,220,' + (0.3 + r() * 0.6) + ')'; g.beginPath(); g.arc(r() * w, r() * h * 0.4, 0.6 + r() * 1.2, 0, TAU); g.fill(); }
-  const sun = g.createRadialGradient(w * 0.5, h * 0.72, 0, w * 0.5, h * 0.72, 150); sun.addColorStop(0, 'rgba(255,240,180,.9)'); sun.addColorStop(0.25, 'rgba(255,200,120,.5)'); sun.addColorStop(1, 'rgba(255,160,80,0)'); g.fillStyle = sun; g.fillRect(0, 0, w, h);
-  // the wheel
-  const wx = w * 0.27, wy = h * 0.5, wr = 96;
-  g.strokeStyle = '#1a0c14'; g.lineWidth = 5; g.beginPath(); g.arc(wx, wy, wr, 0, TAU); g.stroke(); g.lineWidth = 2.2; for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; g.beginPath(); g.moveTo(wx, wy); g.lineTo(wx + Math.cos(a) * wr, wy + Math.sin(a) * wr); g.stroke(); }
-  g.beginPath(); g.moveTo(wx - 40, h * 0.78); g.lineTo(wx, wy); g.lineTo(wx + 40, h * 0.78); g.stroke();
-  for (let i = 0; i < 12; i++) { const a = i / 12 * TAU, x = wx + Math.cos(a) * wr, y = wy + Math.sin(a) * wr; g.fillStyle = i % 2 ? '#e8463c' : '#ffcc3a'; g.fillRect(x - 6, y, 12, 9); g.fillStyle = '#1a0c14'; g.fillRect(x - 1, y - 6, 2, 7); }
-  for (let i = 0; i < 36; i++) { const a = i / 36 * TAU, x = wx + Math.cos(a) * (wr + 7), y = wy + Math.sin(a) * (wr + 7); g.fillStyle = i % 3 ? 'rgba(255,230,160,.9)' : '#fff'; g.shadowColor = '#ffd080'; g.shadowBlur = 8; g.beginPath(); g.arc(x, y, 2.2, 0, TAU); g.fill(); } g.shadowBlur = 0;
-  // the coaster
-  g.strokeStyle = '#1a0c14'; g.lineWidth = 4; g.beginPath(); for (let x = w * 0.42; x <= w; x += 6) { const y = h * 0.6 - 60 * Math.pow(Math.sin((x - w * 0.42) / 90), 2) + 14 * Math.sin(x / 23); x === w * 0.42 ? g.moveTo(x, y) : g.lineTo(x, y); } g.stroke();
-  g.lineWidth = 1.5; for (let x = w * 0.42; x <= w; x += 14) { const y = h * 0.6 - 60 * Math.pow(Math.sin((x - w * 0.42) / 90), 2) + 14 * Math.sin(x / 23); g.beginPath(); g.moveTo(x, y); g.lineTo(x, h * 0.78); g.stroke(); }
-  // boardwalk and tents
-  g.fillStyle = '#1a0c14'; g.fillRect(0, h * 0.78, w, h * 0.22);
-  for (const [x, ww, hh] of [[w * 0.5, 60, 46], [w * 0.62, 80, 60], [w * 0.8, 56, 40]]) { g.fillStyle = '#2a1018'; g.beginPath(); g.moveTo(x - ww / 2, h * 0.78); g.lineTo(x, h * 0.78 - hh); g.lineTo(x + ww / 2, h * 0.78); g.fill(); g.fillStyle = '#ffd27a'; g.fillRect(x - 5, h * 0.78 - 14, 10, 14); }
-  // title in carnival poster lettering
-  g.save(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
-  const title = (s, y, size) => { g.font = '400 ' + size + 'px ' + BUNGEE; g.lineWidth = 12; g.strokeStyle = '#1a0c14'; g.strokeText(s, w / 2 + 3, y + 5); g.lineWidth = 9; g.strokeStyle = '#f8f1dc'; g.strokeText(s, w / 2, y); g.fillStyle = '#e8463c'; g.fillText(s, w / 2, y); g.lineWidth = 1.5; g.strokeStyle = '#ffcc3a'; g.strokeText(s, w / 2, y); };
-  title('MIDWAY', h * 0.19, 86); title('MAYHEM', h * 0.36, 86);
-  g.font = '700 22px ' + SERIF; g.fillStyle = '#ffe6a0'; g.shadowColor = '#000'; g.shadowBlur = 6; g.fillText('STEP RIGHT UP', w / 2, h * 0.47); g.restore();
-  // bulb border
-  for (let i = 0; i < 44; i++) { const t = i / 44, p = t * 4, s = Math.floor(p), f = p - s; let x, y; if (s === 0) { x = f * w; y = 8; } else if (s === 1) { x = w - 8; y = f * h; } else if (s === 2) { x = w - f * w; y = h - 8; } else { x = 8; y = h - f * h; } g.fillStyle = i % 2 ? '#fff6d0' : '#ffcc3a'; g.shadowColor = '#ffd080'; g.shadowBlur = 10; g.beginPath(); g.arc(x, y, 4, 0, TAU); g.fill(); }
-  g.shadowBlur = 0;
+  // A translite: the fairground at night, the big wheel lit on the left, the big top on the right, bulb strings
+  // swooping between them, booths with striped awnings and the barker out front, the title on a bulb marquee.
+  const r = rng(4), u = w / 1024, v = h / 662;
+  // ── night sky with the glow of the fair on the horizon ──
+  const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#070b24'); sky.addColorStop(0.45, '#1a1850'); sky.addColorStop(0.72, '#5a2a62'); sky.addColorStop(0.8, '#a84a60'); sky.addColorStop(0.86, '#2a1424'); sky.addColorStop(1, '#110a12'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 160; i++) { g.fillStyle = 'rgba(255,245,225,' + (0.25 + r() * 0.6) + ')'; const s = r() < 0.9 ? 1.2 : 2.2; g.fillRect(r() * w, r() * h * 0.5, s * u, s * u); }
+  glowAt(g, 700 * u, 540 * v, 420 * u, '#ff9a60', 0.22); glowAt(g, 260 * u, 560 * v, 320 * u, '#ffd080', 0.16);
+  const ground = 540;   // the midway (design y)
+  // distant tents and rides in silhouette on the horizon
+  g.fillStyle = '#1a0d1c'; for (const [x, tw, th] of [[60, 70, 44], [160, 50, 30], [430, 60, 36], [560, 90, 60], [930, 70, 46], [990, 50, 30]]) { g.beginPath(); g.moveTo((x - tw / 2) * u, ground * v); g.lineTo(x * u, (ground - th) * v); g.lineTo((x + tw / 2) * u, ground * v); g.fill(); g.fillStyle = '#ffd27a'; g.fillRect((x - 3) * u, (ground - 10) * v, 6 * u, 10 * v); g.fillStyle = '#1a0d1c'; }
+  const bulb = (x, y, rad, col, glow) => { if (glow) glowAt(g, x, y, rad * 4.5, col, 0.5); const bg = g.createRadialGradient(x - rad * 0.3, y - rad * 0.3, 0, x, y, rad); bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.45, col); bg.addColorStop(1, rgba(col, 0.6)); g.fillStyle = bg; g.beginPath(); g.arc(x, y, rad, 0, TAU); g.fill(); };
+  const warm = '#ffe29a', white = '#fff8e8', red = '#ff6a5a', teal = '#7ff0ff', pink = '#ff9ad0';
+  // ── the big wheel ──
+  const wx = 258 * u, wy = 352 * v, wr = 176 * v, spokes = 16;
+  glowAt(g, wx, wy, wr * 1.5, '#ffd080', 0.18);
+  // legs and base
+  g.strokeStyle = '#1c0e18'; g.lineWidth = 9 * u; g.lineCap = 'round'; g.beginPath(); g.moveTo(wx - 92 * u, ground * v); g.lineTo(wx, wy); g.lineTo(wx + 92 * u, ground * v); g.moveTo(wx - 50 * u, (ground - 90) * v); g.lineTo(wx + 50 * u, (ground - 90) * v); g.stroke();
+  g.lineWidth = 2.4 * u; g.strokeStyle = '#2a1424';
+  for (let i = 0; i < spokes; i++) { const a = i / spokes * TAU; g.beginPath(); g.moveTo(wx, wy); g.lineTo(wx + Math.cos(a) * wr, wy + Math.sin(a) * wr); g.stroke(); }
+  g.lineWidth = 7 * u; g.beginPath(); g.arc(wx, wy, wr, 0, TAU); g.stroke(); g.lineWidth = 3 * u; g.beginPath(); g.arc(wx, wy, wr * 0.82, 0, TAU); g.stroke();
+  for (let i = 0; i < spokes; i++) for (let k = 1; k <= 3; k++) { const a = i / spokes * TAU, d = wr * k / 4; bulb(wx + Math.cos(a) * d, wy + Math.sin(a) * d, 2.2 * u, k === 2 ? teal : warm, false); }
+  for (let i = 0; i < 48; i++) { const a = i / 48 * TAU; bulb(wx + Math.cos(a) * wr, wy + Math.sin(a) * wr, 3 * u, i % 4 === 0 ? red : i % 2 ? warm : white, i % 2 === 0); }
+  for (let i = 0; i < spokes; i++) { const a = i / spokes * TAU, x = wx + Math.cos(a) * wr, y = wy + Math.sin(a) * wr + 10 * v; const col = ['#e8463c', '#ffcc3a', '#2a9ca0', '#f3e6c4'][i % 4]; g.fillStyle = '#1c0e18'; g.fillRect(x - 1.2 * u, y - 10 * v, 2.4 * u, 8 * v); const gg = g.createLinearGradient(0, y, 0, y + 16 * v); gg.addColorStop(0, shade(col, 0.15)); gg.addColorStop(1, shade(col, -0.35)); g.fillStyle = gg; g.beginPath(); g.moveTo(x - 9 * u, y); g.lineTo(x + 9 * u, y); g.lineTo(x + 7 * u, y + 16 * v); g.lineTo(x - 7 * u, y + 16 * v); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(x - 6 * u, y + 3 * v, 12 * u, 3 * v); }
+  glowAt(g, wx, wy, 26 * u, '#ffffff', 0.9); bulb(wx, wy, 8 * u, white, true);
+  // ── the big top ──
+  const tx = 740 * u, tb = ground * v, tw2 = 230 * u, th = 236 * v, peak = tb - th;
+  const tentGrad = g.createLinearGradient(tx - tw2, 0, tx + tw2, 0); tentGrad.addColorStop(0, '#5a1210'); tentGrad.addColorStop(0.5, '#c8302c'); tentGrad.addColorStop(1, '#4a0e0c');
+  g.fillStyle = tentGrad; g.beginPath(); g.moveTo(tx - tw2, tb + 2 * v); g.lineTo(tx - tw2 + 10 * u, tb - 60 * v); g.quadraticCurveTo(tx - tw2 * 0.6, peak + 60 * v, tx, peak); g.quadraticCurveTo(tx + tw2 * 0.6, peak + 60 * v, tx + tw2 - 10 * u, tb - 60 * v); g.lineTo(tx + tw2, tb + 2 * v); g.closePath(); g.fill();
+  g.save(); g.beginPath(); g.moveTo(tx - tw2, tb + 2 * v); g.lineTo(tx - tw2 + 10 * u, tb - 60 * v); g.quadraticCurveTo(tx - tw2 * 0.6, peak + 60 * v, tx, peak); g.quadraticCurveTo(tx + tw2 * 0.6, peak + 60 * v, tx + tw2 - 10 * u, tb - 60 * v); g.lineTo(tx + tw2, tb + 2 * v); g.closePath(); g.clip();
+  for (let i = -7; i <= 7; i += 2) { g.fillStyle = 'rgba(248,241,220,.9)'; g.beginPath(); g.moveTo(tx, peak); g.lineTo(tx + i * 32 * u, tb + 4 * v); g.lineTo(tx + (i + 1) * 32 * u, tb + 4 * v); g.closePath(); g.fill(); }
+  const tsh = g.createLinearGradient(tx - tw2, 0, tx + tw2, 0); tsh.addColorStop(0, 'rgba(0,0,0,.55)'); tsh.addColorStop(0.45, 'rgba(0,0,0,0)'); tsh.addColorStop(0.7, 'rgba(0,0,0,.1)'); tsh.addColorStop(1, 'rgba(0,0,0,.6)'); g.fillStyle = tsh; g.fillRect(tx - tw2, peak, tw2 * 2, th + 4 * v);
+  // the lit entrance
+  g.save(); g.shadowColor = '#ffc060'; g.shadowBlur = 28 * u; const ent = g.createLinearGradient(0, tb - 70 * v, 0, tb); ent.addColorStop(0, '#fff2c8'); ent.addColorStop(1, '#ffb050'); g.fillStyle = ent; g.beginPath(); g.moveTo(tx - 26 * u, tb + 2 * v); g.lineTo(tx - 26 * u, tb - 50 * v); g.quadraticCurveTo(tx, tb - 84 * v, tx + 26 * u, tb - 50 * v); g.lineTo(tx + 26 * u, tb + 2 * v); g.fill(); g.restore();
+  g.restore();
+  // scalloped valance along the tent's foot and bulbs along the roof edge
+  for (let x = tx - tw2 + 8 * u; x < tx + tw2 - 4 * u; x += 18 * u) { g.fillStyle = '#f8f1dc'; g.beginPath(); g.arc(x + 9 * u, tb - 60 * v, 9 * u, 0, PI); g.fill(); }
+  for (let i = 0; i <= 12; i++) { const t = i / 12; for (const s of [-1, 1]) { const x = tx + s * tw2 * 0.92 * t, y = peak + (tb - 62 * v - peak) * (1 - Math.pow(1 - t, 1.6)) - (t === 0 ? 0 : 0); bulb(x, y - 4 * v, 2.6 * u, i % 2 ? warm : white, i % 3 === 0); if (s < 0 && i === 0) break; } }
+  // flag and finial
+  g.strokeStyle = '#1c0e18'; g.lineWidth = 2.5 * u; g.beginPath(); g.moveTo(tx, peak); g.lineTo(tx, peak - 44 * v); g.stroke(); g.fillStyle = '#ffcc3a'; g.beginPath(); g.moveTo(tx, peak - 44 * v); g.lineTo(tx + 40 * u, peak - 34 * v); g.lineTo(tx, peak - 24 * v); g.closePath(); g.fill(); bulb(tx, peak - 46 * v, 4 * u, white, true);
+  // ── strings of bulbs swooping across the sky ──
+  const string = (x0, y0, x1, y1, sag, n, cols) => { g.strokeStyle = 'rgba(20,10,20,.9)'; g.lineWidth = 1.4 * u; g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + sag, x1, y1); g.stroke(); for (let i = 0; i <= n; i++) { const t = i / n, mt = 1 - t, x = mt * mt * x0 + 2 * mt * t * (x0 + x1) / 2 + t * t * x1, y = mt * mt * y0 + 2 * mt * t * ((y0 + y1) / 2 + sag) + t * t * y1; g.fillStyle = '#1a0d1c'; g.fillRect(x - 1 * u, y, 2 * u, 5 * v); bulb(x, y + 8 * v, 3.4 * u, cols[i % cols.length], true); } };
+  string(0, 150 * v, wx + 20 * u, wy - wr - 28 * v, 90 * v, 9, [warm, red, teal, warm, pink]);
+  string(wx + 20 * u, wy - wr - 28 * v, tx, peak - 48 * v, 150 * v, 15, [white, warm, red, warm, teal, pink]);
+  string(tx, peak - 48 * v, w, 190 * v, 80 * v, 8, [warm, pink, warm, red]);
+  // ── the midway: boardwalk, two booths with striped awnings, the barker ──
+  const bw = g.createLinearGradient(0, ground * v, 0, h); bw.addColorStop(0, '#3a2a28'); bw.addColorStop(0.3, '#2a1a1a'); bw.addColorStop(1, '#120a0c'); g.fillStyle = bw; g.fillRect(0, ground * v, w, h - ground * v);
+  g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1 * u; for (let i = 0; i < 9; i++) { const y = ground + 8 + i * i * 1.9; g.beginPath(); g.moveTo(0, y * v); g.lineTo(w, y * v); g.stroke(); }
+  // light pooling on the boards
+  const pool = g.createLinearGradient(0, ground * v, 0, h); pool.addColorStop(0, 'rgba(255,190,110,.35)'); pool.addColorStop(1, 'rgba(255,190,110,0)'); g.fillStyle = pool; g.fillRect(0, ground * v, w, h - ground * v);
+  for (let i = 0; i < 40; i++) { const x = r() * w, y = (ground + 4 + r() * 110) * v; g.fillStyle = 'rgba(255,230,170,' + (0.08 + r() * 0.14) + ')'; g.fillRect(x, y, 2 * u, (8 + r() * 26) * v); }
+  const booth = (x, y, bw2, bh, c1, c2, label) => {
+    g.fillStyle = '#2a1414'; g.fillRect((x - bw2 / 2) * u, (y - bh) * v, bw2 * u, bh * v);
+    g.fillStyle = '#f6ecd0'; g.fillRect((x - bw2 / 2 + 6) * u, (y - bh + 34) * v, (bw2 - 12) * u, (bh - 70) * v);
+    glowAt(g, x * u, (y - bh / 2) * v, bw2 * 0.6 * u, '#ffd080', 0.35);
+    g.fillStyle = '#4a2a1a'; g.fillRect((x - bw2 / 2) * u, (y - 36) * v, bw2 * u, 36 * v); g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect((x - bw2 / 2) * u, (y - 36) * v, bw2 * u, 3 * v);
+    // awning: stripes and a scalloped edge
+    const aw = bw2 + 24, ah = 30, ay = y - bh - 4;
+    for (let i = 0; i < 9; i++) { g.fillStyle = i % 2 ? c1 : c2; g.beginPath(); g.moveTo((x - aw / 2 + i * aw / 9) * u, (ay + ah) * v); g.lineTo((x - aw / 2 + (i + 1) * aw / 9) * u, (ay + ah) * v); g.lineTo((x - bw2 / 2 + (i + 1) * bw2 / 9) * u, ay * v); g.lineTo((x - bw2 / 2 + i * bw2 / 9) * u, ay * v); g.closePath(); g.fill(); }
+    for (let i = 0; i < 9; i++) { g.fillStyle = i % 2 ? c1 : c2; g.beginPath(); g.arc((x - aw / 2 + (i + 0.5) * aw / 9) * u, (ay + ah) * v, aw / 18 * u, 0, PI); g.fill(); }
+    g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect((x - aw / 2) * u, (ay + ah - 3) * v, aw * u, 3 * v);
+    for (let i = 0; i <= 6; i++) bulb((x - bw2 / 2 + i * bw2 / 6) * u, (ay - 6) * v, 3 * u, i % 2 ? warm : white, i % 2 === 0);
+    g.fillStyle = '#c8302c'; g.font = '400 ' + (15 * v) + 'px ' + BUNGEE; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(label, x * u, (y - 18) * v);
+  };
+  booth(110, 640, 170, 150, '#c8302c', '#f8f1dc', 'RING TOSS'); booth(930, 650, 150, 140, '#1d4e9a', '#f8f1dc', 'PRIZES');
+  // prizes hanging in the booths
+  for (let i = 0; i < 5; i++) { g.fillStyle = ['#ff7aa8', '#ffcc3a', '#2a9ca0', '#e8463c', '#f3e6c4'][i]; g.beginPath(); g.arc((50 + i * 30) * u, (552 + (i % 2) * 10) * v, 9 * u, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,.4)'; g.beginPath(); g.arc((47 + i * 30) * u, (549 + (i % 2) * 10) * v, 3 * u, 0, TAU); g.fill(); }
+  for (let i = 0; i < 4; i++) { g.fillStyle = ['#ffcc3a', '#ff7aa8', '#7ff0ff', '#e8463c'][i]; g.beginPath(); g.moveTo((880 + i * 30) * u, 578 * v); g.lineTo((892 + i * 30) * u, 548 * v); g.lineTo((904 + i * 30) * u, 578 * v); g.closePath(); g.fill(); }
+  // the barker: a silhouette in a top hat, cane raised, megaphone up, rim-lit by the booth behind him
+  const bk = (x, y, s) => { g.save(); g.translate(x * u, y * v); g.scale(s * u, s * v); g.fillStyle = '#120a10'; g.strokeStyle = '#120a10'; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(-26, 0); g.lineTo(-20, -70); g.quadraticCurveTo(0, -84, 20, -70); g.lineTo(26, 0); g.closePath(); g.fill();   // coat
+    g.beginPath(); g.moveTo(-12, -80); g.quadraticCurveTo(-6, -96, 0, -98); g.quadraticCurveTo(6, -96, 12, -80); g.quadraticCurveTo(0, -74, -12, -80); g.fill();   // head
+    g.fillRect(-19, -103, 38, 4); g.fillRect(-13, -128, 26, 26);   // top hat
+    g.lineWidth = 8; g.beginPath(); g.moveTo(16, -62); g.lineTo(44, -92); g.stroke(); g.lineWidth = 3; g.beginPath(); g.moveTo(44, -92); g.lineTo(52, -130); g.stroke();   // arm, cane
+    g.lineWidth = 8; g.beginPath(); g.moveTo(-16, -62); g.lineTo(-36, -74); g.stroke(); g.beginPath(); g.moveTo(-34, -78); g.lineTo(-62, -92); g.lineTo(-62, -64); g.closePath(); g.fill();   // megaphone
+    g.fillStyle = '#f3e6c4'; g.beginPath(); g.moveTo(-4, -70); g.lineTo(4, -70); g.lineTo(6, -20); g.lineTo(-6, -20); g.closePath(); g.fill(); g.fillStyle = '#c8302c'; g.beginPath(); g.moveTo(-3, -64); g.lineTo(3, -64); g.lineTo(1, -40); g.lineTo(-1, -40); g.closePath(); g.fill();   // shirt, tie
+    g.strokeStyle = 'rgba(255,200,120,.55)'; g.lineWidth = 2; g.beginPath(); g.moveTo(20, -70); g.lineTo(26, 0); g.moveTo(12, -80); g.lineTo(13, -102); g.stroke();   // rim light
+    g.restore(); };
+  bk(600, 664, 1.25);
+  // ── the marquee with the title ──
+  const mx0 = 90 * u, my0 = 44 * v, mw = w - 180 * u, mh = 134 * v, rad = 18 * u;
+  const rr2 = (x, y, ww, hh, rd) => { g.beginPath(); g.moveTo(x + rd, y); g.lineTo(x + ww - rd, y); g.quadraticCurveTo(x + ww, y, x + ww, y + rd); g.lineTo(x + ww, y + hh - rd); g.quadraticCurveTo(x + ww, y + hh, x + ww - rd, y + hh); g.lineTo(x + rd, y + hh); g.quadraticCurveTo(x, y + hh, x, y + hh - rd); g.lineTo(x, y + rd); g.quadraticCurveTo(x, y, x + rd, y); g.closePath(); };
+  g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 16 * u; g.shadowOffsetY = 6 * v; const mg = g.createLinearGradient(0, my0, 0, my0 + mh); mg.addColorStop(0, '#9a1c18'); mg.addColorStop(0.5, '#c8302c'); mg.addColorStop(1, '#6e1210'); g.fillStyle = mg; rr2(mx0, my0, mw, mh, rad); g.fill(); g.restore();
+  g.strokeStyle = '#e0a63a'; g.lineWidth = 5 * u; rr2(mx0 + 8 * u, my0 + 8 * v, mw - 16 * u, mh - 16 * v, rad * 0.7); g.stroke(); g.strokeStyle = 'rgba(255,240,200,.5)'; g.lineWidth = 1.5 * u; rr2(mx0 + 14 * u, my0 + 14 * v, mw - 28 * u, mh - 28 * v, rad * 0.5); g.stroke();
+  const nb = 30; for (let i = 0; i < nb; i++) { const x = mx0 + 12 * u + (mw - 24 * u) * i / (nb - 1); bulb(x, my0, 4 * u, i % 2 ? warm : white, true); bulb(x, my0 + mh, 4 * u, i % 2 ? white : warm, true); } for (let i = 1; i < 5; i++) { const y = my0 + mh * i / 5; bulb(mx0, y, 4 * u, i % 2 ? warm : white, true); bulb(mx0 + mw, y, 4 * u, i % 2 ? white : warm, true); }
+  const cream = (x0, y0, x1, y1) => { const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, '#fffaf0'); q.addColorStop(0.5, '#ffe6a0'); q.addColorStop(0.52, '#f6c94a'); q.addColorStop(1, '#f3e6c4'); return q; };
+  textLogo(g, 'MIDWAY MAYHEM', w / 2, my0 + mh * 0.5 + 2 * v, { font: '400 ' + (76 * v) + 'px ' + BUNGEE, spacing: 2 * u, glow: { color: '#ffe29a', blur: 20 * u, alpha: 0.5 }, shadow: { dx: 4 * u, dy: 6 * v, color: 'rgba(40,10,8,.85)' }, outline: { color: '#4a0e0c', w: 8 * u }, fill: cream, inline: { color: '#c8302c', w: 1.6 * u }, top: { color: 'rgba(255,255,255,.35)', frac: 0.4 } });
+  grain(g, w, h, 2400, 0.045, 41);
 }
 function paintApron(g, w, h) {
   for (let i = 0; i < w / 40; i++) { g.fillStyle = i % 2 ? '#c8302c' : '#f3e6c4'; g.fillRect(i * 40, 0, 40, h); }
