@@ -16,7 +16,7 @@ export function stubTable(meta) {
       },
       backglass(g, w, h) {
         const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, th.pf0 || '#1a1830'); gr.addColorStop(1, th.accent || '#ff8a1e'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
-        g.fillStyle = '#fff'; g.font = '400 54px "Bungee", Impact'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(meta.name.toUpperCase(), w / 2, h / 2, w - 30);
+        g.fillStyle = '#fff'; g.font = '400 ' + Math.round(h * 0.17) + 'px "Bungee", Impact'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(meta.name.toUpperCase(), w / 2, h / 2, w - 60);
       }
     },
     build(T) {
