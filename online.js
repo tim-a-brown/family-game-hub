@@ -676,10 +676,15 @@
     '.olt-side .ol-h{margin:0 2px 2px;}' +
     '.olt-side .stack{display:grid;gap:6px;grid-auto-flow:column;grid-template-rows:repeat(var(--rows,99),auto);grid-auto-columns:minmax(0,1fr);}' +
     '.olt-side .stack:empty{display:none;}' +
-    '.olt-side.cols .ol-row{flex-direction:column;justify-content:center;gap:3px;padding:6px 3px;min-height:56px;text-align:center;}.olt-side.cols .ol-row .grow{width:100%;}.olt-side.cols .ol-row small{display:none;}.olt-side.cols .ol-row .avatar{width:28px;height:28px;font-size:.72rem;}.olt-side.cols .ol-row b{font-size:.7rem;line-height:1.15;}' +
+    '.olt-many{display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;padding:12px;border:0;border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);color:var(--text);font:inherit;text-align:left;cursor:pointer;}' +
+    '.olt-many .olt-stackav{display:flex;padding-left:8px;}.olt-many .olt-stackav .avatar{width:32px;height:32px;font-size:.8rem;margin-left:-8px;box-shadow:0 0 0 2.5px var(--surface);}' +
+    '.olt-many b{font-family:var(--display);font-weight:400;font-size:1.25rem;line-height:1.1;}.olt-many small{display:flex;align-items:center;gap:4px;color:var(--text-3);font-weight:800;font-size:.78rem;}.olt-many small svg{width:14px;height:14px;}' +
+    '.olt-side.many > .ol-h,.olt-side.many > .stack{display:none;}.olt-side:not(.many) > .olt-many{display:none;}' +
+    '.olt-sheetlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;}' +
+    '.olt-sheetlist .ol-row .avatar{width:34px;height:34px;font-size:.85rem;flex:none;}' +
     '.olt-side .ol-row{padding:6px 8px;gap:8px;border-radius:14px;}' +
     '.olt-side .ol-row .avatar{width:30px;height:30px;font-size:.8rem;flex:none;box-shadow:0 0 0 2px var(--c,transparent);}' +
-    '.olt-side .ol-row b[data-you]::after{content:" (you)";}.olt-side.cols .ol-row b[data-you]::after{content:"";}.olt-side .ol-row b{font-size:.86rem;}.olt-side .ol-row small{font-size:.68rem;}' +
+    '.olt-side .ol-row b[data-you]::after{content:" (you)";}.olt-side .ol-row b{font-size:.86rem;}.olt-side .ol-row small{font-size:.68rem;}' +
     '.olt-tbl{position:relative;flex:none;width:min(100%,300px);aspect-ratio:1;margin:0 auto;}' +
     '.olt-top.side .olt-tbl{width:min(56%,300px);}' +
     '.olt-mid{position:absolute;inset:30%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}' +
@@ -744,7 +749,15 @@
     var one = oneAtATime(), startBtn = null, leaveBtn, noteEl = E('p', { class: 'ol-note' });
     if (S.host) startBtn = E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>Start the game</span>', onclick: function (e) { if (S.onStart) one(e.currentTarget, 'Starting…', function () { return S.onStart(); }); } });
     leaveBtn = E('button', { type: 'button', class: 'btn btn-ghost btn-block', onclick: function (e) { if (S.onLeave) one(e.currentTarget, S.host ? 'Closing…' : 'Leaving…', function () { return S.onLeave(); }); } });
-    side.appendChild(listH); side.appendChild(list); side.appendChild(comingBox);
+    // more than six: one tile with their faces and the count; tapping it lists everyone
+    var many = E('button', { type: 'button', class: 'olt-many', onclick: function () {
+      var box = E('div', { class: 'stack olt-sheetlist' });
+      Array.prototype.forEach.call(list.children, function (r) { box.appendChild(r.cloneNode(true)); });
+      Array.prototype.forEach.call(comingBox.children, function (r) { box.appendChild(r.cloneNode(true)); });
+      Kit.sheet({ title: manyLabel(), node: box, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+    } });
+    function manyLabel() { return S.players.length + ' players at the table'; }
+    side.appendChild(listH); side.appendChild(list); side.appendChild(comingBox); side.appendChild(many);
     [h1, top, count, steps].concat(startBtn ? [startBtn] : []).concat([leaveBtn, noteEl]).forEach(function (n) { wrap.appendChild(n); });
     root.appendChild(wrap);
 
@@ -871,17 +884,16 @@
       });
     }
     function paintCols() {
-      var n = S.players.length + S.coming.length, h = tbl.clientHeight || 300, rows = Math.max(3, Math.floor((h - 16) / 46));
-      var cols = Math.max(1, Math.ceil(n / rows));
-      if (cols > 1) {   // tiles: name under the avatar, as many columns as fit beside the circle (then the list runs longer)
-        var fit = Math.max(2, Math.floor(((side.clientWidth || 150) + 6) / 66));
-        rows = Math.max(2, Math.floor((h - 16) / 62)); cols = Math.min(fit, Math.ceil(n / rows)); rows = Math.ceil(n / cols);
-      }
-      side.classList.toggle('cols', cols > 1);
-      // the joined and the joining share the column flow: one grid, rows counted together
-      list.style.setProperty('--rows', Math.min(rows, Math.max(1, S.players.length)));
-      comingBox.style.setProperty('--rows', Math.max(1, S.coming.length));
-      if (cols > 1) { list.style.setProperty('--rows', rows); }
+      var n = S.players.length + S.coming.length, isMany = S.players.length > 6;
+      side.classList.toggle('many', isMany);
+      list.style.setProperty('--rows', 99); comingBox.style.setProperty('--rows', 99);
+      if (!isMany) return;
+      many.innerHTML = '';
+      var faces = E('span', { class: 'olt-stackav' });
+      S.players.slice(0, 5).forEach(function (p, i) { faces.appendChild(av(p.name, PAL[i % PAL.length])); });
+      many.appendChild(faces);
+      many.appendChild(E('b', { text: S.players.length + ' players' }));
+      many.appendChild(E('small', { html: (S.coming.length ? S.coming.length + ' joining · ' : '') + 'See who’s here' + Kit.icon('right') }));
     }
     function paint() { paintHead(); paintSeats(); paintCount(); paintSteps(); paintCols(); }
     function update(players) {
