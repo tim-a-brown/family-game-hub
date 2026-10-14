@@ -1364,16 +1364,15 @@
     noteWrite(LEDGER);
     return true;
   }
-  // Linking takes both sides. Linking someone (their code) drops a note in their inbox ("link:" + your code, from
+  // Linking takes both sides. Linking someone (their code) drops a note in their inbox ("ask:" + your code, from
   // your name); until they accept, the link is pending (no hs): no games go across and nothing is read from their
-  // profile. Their app shows the note as a request. Accepting links you back under that name (or one they choose)
-  // and answers "ack:" + its code: both sides are on (hs), and past games go across. Declining answers "deny:",
-  // which unlinks you from them. The note sits in their inbox until they answer, so any of their devices can.
-  // Notes are plain strings (not JSON), so an older app that can't read them just clears them, and the note
-  // goes again later (every 12 hours until it's answered). Two people who each entered the other's code are
-  // accepted on their own at the next check.
+  // profile. Their app shows the note as a request, always, even if they had entered your code too. Accepting
+  // links you back under that name (or one they choose) and answers "ack:" + its code: both sides are on (hs),
+  // and past games go across. Declining answers "deny:", which unlinks you from them. The note sits in their
+  // inbox until they answer, so any of their devices can. Notes are plain strings (not JSON), so an older app
+  // that can't read them just clears them, and the note goes again later (every 12 hours until it's answered).
   var LINK_NOTE_MS = 12 * 3600e3;
-  function noteId(kind, code){ return (kind === 'ack' ? 'zack' : 'zlink') + String(code).toLowerCase(); }
+  function noteId(kind, code){ return 'z' + kind + String(code).toLowerCase(); }
   function sendNote(toCode, kind, own){
     return linkCol().doc(toCode).collection('inbox').doc(noteId(kind, own.code))
       .set({ key: '_' + kind, entry: kind + ':' + own.code, from: label() || myName() || own.name || 'Someone', by: myName() || own.name || '', at: Date.now() });
@@ -1385,7 +1384,7 @@
     return (l.own && l.own.code ? Promise.resolve(l.own) : linkShare()).then(function(own){
       return Promise.all(due.map(function(k){
         var code = l.others[k].code;
-        return sendNote(code, 'link', own).then(function(){
+        return sendNote(code, 'ask', own).then(function(){
           var L = linksGet(); if(L.others[k] && L.others[k].code === code){ L.others[k].hsAt = Date.now(); try{ LS.setItem('fgh_links', JSON.stringify(L)); }catch(e){} }
         }).catch(function(e){ console.warn('[links] note failed', code, e); });
       }));
@@ -1404,7 +1403,7 @@
   }
   // A note in your inbox. Returns true when it's dealt with (delete it); a link request stays until answered.
   function readNote(own, x, id, reqs){
-    var m = /^(link|ack|deny):([A-HJ-NP-Z2-9]{6})$/.exec(String(x.entry || '')); if(!m || m[2] === own.code) return true;
+    var m = /^(ask|ack|deny):([A-HJ-NP-Z2-9]{6})$/.exec(String(x.entry || '')); if(!m || m[2] === own.code) return true;
     var code = m[2], L = linksGet(), keys = Object.keys(L.others);
     if(m[1] === 'ack'){ accepted(code); return true; }
     if(m[1] === 'deny'){
@@ -1414,8 +1413,8 @@
       if(gone.length){ var dl = lsJSON('fgh_link_denied'); dl = Array.isArray(dl) ? dl : []; gone.forEach(function(n){ if(dl.indexOf(n) < 0) dl.push(n); }); try{ LS.setItem('fgh_link_denied', JSON.stringify(dl)); }catch(e){} }
       return true;
     }
-    // you entered their code too: that's both sides, no need to ask
-    if(keys.some(function(k){ var r = L.others[k]; return r && !r.off && r.code === code; })){ accepted(code); sendNote(code, 'ack', own).catch(function(e){ console.warn('[links] ack failed', e); }); return true; }
+    // already on (accepted on another of your devices, or they asked again): just answer
+    if(keys.some(function(k){ var r = L.others[k]; return r && !r.off && r.hs && r.code === code; })){ sendNote(code, 'ack', own).catch(function(e){ console.warn('[links] ack failed', e); }); return true; }
     var name = String(x.by || x.from || '').trim().slice(0, 40); if(!name || lk(name) === lk(myName())) return true;
     reqs.push({ id: id, code: code, name: name, at: Number(x.at) || 0 });
     return false;
@@ -1473,7 +1472,7 @@
           var pend = [], reqs = [];
           return Promise.all(q.docs.map(function(d){
             var x0 = d.data() || {};
-            if(x0.key === '_link' || x0.key === '_ack' || x0.key === '_deny'){ return readNote(own, x0, d.id, reqs) ? d.ref.delete() : null; }
+            if(x0.key === '_ask' || x0.key === '_ack' || x0.key === '_deny'){ return readNote(own, x0, d.id, reqs) ? d.ref.delete() : null; }
             var it = received(own, d); if(!it || haveGame(it.key, it.entry._id || it.id)) return d.ref.delete();
             if(own.ask){ pend.push(it); return null; }
             if(!window.GameHistory) return null;   // filed by a page that keeps history
