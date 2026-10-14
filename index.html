@@ -1108,11 +1108,15 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   if (mode === 'pin') setTimeout(function () { deniedNote(); linkedMoment(); linkRequestSheet(); }, 900);
   // on the home screen, link requests and games sent to you arrive live (and a check every so often as a fallback)
   if (mode === 'pin' && window.FGHSync && FGHSync.linkWatch) {
-    var watch = function () { FGHSync.linkWatch(document.visibilityState === 'visible'); };
+    var watch = function () {
+      var vis = document.visibilityState === 'visible';
+      FGHSync.linkWatch(vis);
+      if (vis && FGHSync.linkPoll) FGHSync.linkPoll(true);   // back from the background: catch up now, not at the next check
+    };
     if (FGHSync.onReady) FGHSync.onReady(watch); else watch();
     document.addEventListener('visibilitychange', watch);
     window.addEventListener('pagehide', function () { FGHSync.linkWatch(false); });
-    setInterval(function () { if (document.visibilityState === 'visible' && FGHSync.linkPoll) FGHSync.linkPoll(); }, 30000);
+    setInterval(function () { if (document.visibilityState === 'visible' && FGHSync.linkPoll) FGHSync.linkPoll(true); }, 12000);
   }
   // opened from someone's profile link (QR code or a tapped link): offer to link them
   setTimeout(function () { try { Kit.links.fromUrl(); } catch (e) {} }, 700);

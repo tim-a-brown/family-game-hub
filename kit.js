@@ -1909,7 +1909,7 @@
     var inp = el('input', { class: 'input lk-code', maxlength: 7, placeholder: 'ABC123', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       node.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: icon('camera') + '<span>Scan their QR code</span>', onclick: function () {
-        scanSheet(name, function (code) { setTimeout(function () { linkSheet(name, onDone, code); }, 340); });
+        scanSheet(name, function (code) { inp.value = code; setTimeout(go, 200); });   // scanned: link straight away, in this sheet
       } }));
       node.appendChild(el('div', { class: 'lk-or', text: 'or type their code' }));
     }

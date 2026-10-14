@@ -1010,7 +1010,7 @@
   // rejected list, which the sender's app reads to stop counting it as yours.
   var CODE_AB = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
   var OUTBOX = 'fgh_link_outbox';   // games waiting to be sent (this device only)
-  var _pending = [], _reqs = [], _linkBusy = false, _lastPoll = 0;
+  var _pending = [], _reqs = [], _linkBusy = false, _lastPoll = 0, _pollAgain = false;
   function genCode(){ var c = ''; for(var i = 0; i < 6; i++) c += CODE_AB.charAt(Math.floor(Math.random() * CODE_AB.length)); return c; }
   function linksGet(){ var l = lsJSON('fgh_links') || {}, o = { own: l.own || null, others: l.others || {} }; if(l.ini) o.ini = l.ini; return o; }
   function linksSet(l){ try{ LS.setItem('fgh_links', JSON.stringify(l)); }catch(e){} noteWrite('fgh_links'); linkEvent(); }
@@ -1439,7 +1439,12 @@
     _watchCode = code;
     ensureFirebase().then(function(){
       if(!_watchOn || _watchCode !== code || _watch) return;
-      _watch = linkCol().doc(code).collection('inbox').limit(100).onSnapshot(function(q){ if(q && !q.empty) linkPoll(true); }, function(e){ console.warn('[links] watch', e); _watch = null; _watchCode = null; });
+      _watch = linkCol().doc(code).collection('inbox').limit(100).onSnapshot(function(q){
+        if(q && !q.empty) linkPoll(true);   // if a check is already running, it runs once more right after
+      }, function(e){
+        console.warn('[links] watch', e); _watch = null; _watchCode = null;
+        setTimeout(function(){ if(_watchOn) linkWatch(true); }, 5000);   // dropped connection: listen again
+      });
     }).catch(function(e){ console.warn('[links] watch', e); });
   }
   // Link requests waiting for your answer
@@ -1477,7 +1482,8 @@
   }
   // Check your inbox, your linked people's avatars and rejections, and send anything waiting
   function linkPoll(force){
-    if(!isPin() || _linkBusy) return Promise.resolve();
+    if(!isPin()) return Promise.resolve();
+    if(_linkBusy){ if(force) _pollAgain = true; return Promise.resolve(); }   // something arrived mid-check: check again right after
     if(!force && Date.now() - _lastPoll < 20000) return Promise.resolve();
     _linkBusy = true; _lastPoll = Date.now();
     return ensureFirebase().then(function(){
@@ -1523,7 +1529,10 @@
       // scores that reached this device from your other devices: publish them too
       if(l.own && l.own.code && LS.getItem('fgh_link_pub') !== pubSig()) jobs.push(linkPublish());
       return Promise.all(jobs);
-    }).catch(function(e){ console.warn('[links] poll failed', e); }).then(function(){ _linkBusy = false; linkEvent(); });
+    }).catch(function(e){ console.warn('[links] poll failed', e); }).then(function(){
+      _linkBusy = false; linkEvent();
+      if(_pollAgain){ _pollAgain = false; return linkPoll(true); }
+    });
   }
   // Someone said "Not me" to a game you recorded: it stays in your history, just no longer linked to them
   function unmarkRejected(code, rejected){
