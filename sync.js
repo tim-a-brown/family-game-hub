@@ -953,6 +953,7 @@
         console.log('[sync] boot: synced under a minute ago, nothing new; skipping the round trip');
         setStatus('synced');
         notifyReady();
+        linkPoll(true);   // games and link notes sent to you still get picked up on this page
         return;
       }
       setStatus('syncing');
