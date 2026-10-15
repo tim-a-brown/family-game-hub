@@ -462,6 +462,25 @@ body{overflow-x:hidden;}
     tr.appendChild(q);
   }
   var WIDE = window.matchMedia('(orientation:landscape) and (min-width:1000px) and (min-height:600px)');
+  // The hive fits the screen: phones' fonts and bars differ, so measure. If the page runs past the bottom (it would
+  // scroll), the hive shrinks just enough to fit; with room to spare it stays at its usual size.
+  var hiveT = 0;
+  function fitHive() {
+    var hv = document.querySelector('.hive'); if (!hv) return;
+    hv.style.transition = 'none'; hv.style.removeProperty('--W');
+    if (!WIDE.matches) {
+      var se = document.scrollingElement || document.documentElement;
+      for (var k = 0; k < 4; k++) {   // measure again after each step: fonts and zoom don't scale one to one
+        var over = se.scrollHeight - window.innerHeight, W = parseFloat(getComputedStyle(hv).getPropertyValue('--W')) || 100;
+        if (over <= 0 || W <= 56) break;
+        hv.style.setProperty('--W', Math.max(56, W - (over + 4) / 2.75) + 'px');
+      }
+    }
+    requestAnimationFrame(function () { hv.style.transition = ''; });
+  }
+  function queueHive() { clearTimeout(hiveT); hiveT = setTimeout(fitHive, 60); }
+  window.addEventListener('resize', queueHive);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueHive);
   if (WIDE.addEventListener) WIDE.addEventListener('change', function () { if (S) paintFound(); });
   function paintFound(newest) {
     var f = $('found'); f.innerHTML = '';
@@ -471,7 +490,7 @@ body{overflow-x:hidden;}
       var fl = wordList(S.found); fl.classList.add('fl');
       if (!n) fl.appendChild(el('div', { class: 'miss', text: 'Every word uses the center letter.' }));
       if (newest) Array.prototype.forEach.call(fl.children, function (d) { if (d.textContent === newest) d.classList.add('new'); });
-      f.appendChild(fl); return;
+      f.appendChild(fl); queueHive(); return;
     }
     f.appendChild(el('span', { class: 'cnt', text: n ? n + (n === 1 ? ' word' : ' words') : 'Your words' }));
     var strip = el('span', { class: 'strip' });
@@ -479,7 +498,9 @@ body{overflow-x:hidden;}
     S.found.slice().reverse().slice(0, WIDE.matches ? 999 : 12).forEach(function (w) { strip.appendChild(el('span', { class: isPan(w, S.letters) ? 'pg' : '', text: w })); strip.appendChild(document.createTextNode(' ')); });
     f.appendChild(strip);
     f.appendChild(el('span', { class: 'chev', html: Kit.icon('down') }));
+    queueHive();
   }
+
 
   // ── Sheets ────────────────────────────────────────────────────────────────
   function wordList(words, all) {
