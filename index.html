@@ -344,19 +344,17 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .cont .d{font-size:.75rem;color:var(--text-2);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cont-net{box-shadow:inset 3px 0 0 var(--c), inset 0 0 0 1.5px color-mix(in srgb,var(--yellow) 70%,transparent);}
 .cont-net .d{color:var(--yellow);}
-/* A linked friend's open table: their avatar on the game's icon, a live dot, tap to join */
+/* A linked friend's open table: the game's icon, then who's hosting on the right (their avatar, ringed in green, with a live dot) */
 .cont-live .d b{color:#4ade80;font-weight:900;}
-.cont-live .tx{margin-left:4px;}
-.ft-ic .avatar{outline:1.5px solid rgba(74,222,128,.85);outline-offset:1px;}
+.ft-who{position:relative;flex:none;display:grid;place-items:center;width:30px;height:30px;}
+.ft-who .avatar{width:28px;height:28px;padding:0;font-size:.75rem;box-shadow:0 0 0 1.5px var(--surface),0 0 0 3px rgba(74,222,128,.8);}
+.ft-who .avatar .ico{width:60%;height:60%;}
+.live-dot{position:absolute;right:-2px;top:-2px;width:9px;height:9px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 2px var(--surface);animation:livePulse 1.6s ease-out infinite;}
+@keyframes livePulse{0%{box-shadow:0 0 0 2px var(--surface),0 0 0 2px rgba(74,222,128,.6)}70%,100%{box-shadow:0 0 0 2px var(--surface),0 0 0 8px rgba(74,222,128,0)}}
 /* arriving: slides in with one soft glow, then sits like the other tiles */
 .cont-live.arrive{animation:ftIn .5s var(--spring) both, ftGlow 1.6s ease-out .35s both;}
 @keyframes ftIn{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes ftGlow{0%{box-shadow:inset 3px 0 0 var(--c), 0 0 0 0 rgba(74,222,128,.55)}60%{box-shadow:inset 3px 0 0 var(--c), 0 0 0 6px rgba(74,222,128,0)}100%{box-shadow:inset 3px 0 0 var(--c)}}
-.ft-ic{position:relative;flex:none;width:34px;height:34px;}
-.ft-ic .avatar{position:absolute;right:-7px;bottom:-7px;width:22px;height:22px;font-size:.6rem;box-shadow:0 0 0 2px var(--surface);}
-.cont .a.live{display:flex;align-items:center;gap:5px;color:#4ade80;}
-.live-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:livePulse 1.6s ease-out infinite;}
-@keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(74,222,128,.65)}70%,100%{box-shadow:0 0 0 7px rgba(74,222,128,0)}}
 @media (prefers-reduced-motion:reduce){.live-dot,.cont-live.arrive{animation:none;}}
 /* Edit: every tile shows its trash, plus Clear all */
 .sec-h .cont-edit{margin-left:auto;min-height:34px;padding:0 15px;border:0;border-radius:999px;background:var(--w08);color:var(--text);font:inherit;font-weight:800;font-size:.86rem;cursor:pointer;}
@@ -1026,10 +1024,11 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       var f = x.f;
       var isNew = !ftShown[f.code]; ftShown[f.code] = 1;
       rail.appendChild(el('div', { class: 'cont-w' }, [el('a', { class: 'cont cont-live' + (isNew ? ' arrive' : ''), href: f.href, style: { '--c': x.g.color }, title: f.who + ' has a ' + x.g.name + ' table open' }, [
-        el('span', { class: 'ft-ic' }, [el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }), Kit.avatar.el(f.who)]),
+        el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
         el('span', { class: 'tx' }, [
-          el('div', { class: 'r1' }, [el('div', { class: 't', text: x.g.name }), f.live ? el('span', { class: 'a live', title: 'Open now' }, [el('i', { class: 'live-dot' })]) : el('span', { class: 'a', text: ago(f.at, true) })]),
-          el('div', { class: 'd' }, [el('b', { text: 'Join' }), document.createTextNode(' ' + f.who + (f.live ? ' · ' + f.n + '/' + f.max : ''))])])
+          el('div', { class: 'r1' }, [el('div', { class: 't', text: x.g.name }), f.live ? null : el('span', { class: 'a', text: ago(f.at, true) })]),
+          el('div', { class: 'd' }, [el('b', { text: 'Join' }), document.createTextNode(' ' + f.who)])]),
+        el('span', { class: 'ft-who', title: f.live ? f.who + ' is at the table now' : f.who + '’s table' }, [Kit.avatar.el(f.who), f.live ? el('i', { class: 'live-dot' }) : null])
       ])]));
     });
     nets.forEach(function (x) {
