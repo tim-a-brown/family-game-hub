@@ -31,6 +31,15 @@ jobs:
         timeout-minutes: 30
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      # Fresh TURN logins for online games (also every six hours in turn-credentials.yml). Never blocks the deploy.
+      - name: Refresh TURN logins
+        run: node scripts/turn-credentials.js
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          CF_TURN_KEY_ID: ${{ secrets.CF_TURN_KEY_ID }}
+          CF_TURN_API_TOKEN: ${{ secrets.CF_TURN_API_TOKEN }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

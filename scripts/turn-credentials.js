@@ -9,7 +9,9 @@
 // online.js reads the file before connecting; without it, games fall back to direct links and the relay.
 const crypto = require('crypto');
 const BUCKET = process.env.ART_BUCKET || 'familygames-da3e5.firebasestorage.app';
-const TTL = 86400;   // a day; the Action refreshes every six hours, so a login always has 18 hours or more left
+// Two days when Cloudflare allows it (a day otherwise). The Action runs every six hours and on every deploy, so a few
+// missed runs (GitHub sometimes skips scheduled ones) still leave the games a good login.
+const TTLS = [172800, 86400];
 
 async function json(url, opt) {
   const r = await fetch(url, opt);
@@ -31,9 +33,15 @@ async function token(key) {
   const key = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || 'null');
   if (!key) throw new Error('no service account');
 
-  const r = await json('https://rtc.live.cloudflare.com/v1/turn/keys/' + encodeURIComponent(id) + '/credentials/generate-ice-servers', {
-    method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl: TTL })
-  });
+  let r = null, TTL = 0;
+  for (const ttl of TTLS) {
+    try {
+      r = await json('https://rtc.live.cloudflare.com/v1/turn/keys/' + encodeURIComponent(id) + '/credentials/generate-ice-servers', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl: ttl })
+      });
+      TTL = ttl; break;
+    } catch (e) { if (ttl === TTLS[TTLS.length - 1]) throw e; console.log('Cloudflare refused a ' + ttl + ' s login; trying shorter'); }
+  }
   let servers = r.iceServers;
   if (servers && !Array.isArray(servers)) servers = [servers];
   if (!servers || !servers.length) throw new Error('Cloudflare sent no servers');
