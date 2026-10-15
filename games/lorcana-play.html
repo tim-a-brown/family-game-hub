@@ -8424,12 +8424,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   document.addEventListener('keydown', function (e) { var ov = $$('.lz').filter(function (z) { return z._keys; }).pop(); if (ov) ov._keys(e); });
   document.addEventListener('keyup', function (e) { if (lastFlow && lastFlow.onKeyUp) lastFlow.onKeyUp(e); });
   window.addEventListener('blur', function () { if (lastFlow && lastFlow.holding) lastFlow.release(); });
-  function closeZoom() { flowChain = null; $$('.lz').forEach(function (z) { z.remove(); }); filtersOnExit(); }
+  function closeZoom() { flowChain = null; $$('.lz').forEach(function (z) { z.remove(); }); filtersOnExit(); pickBack(); }
+  // A choice an ability is waiting on (cardPick) can't be lost: if any other card view replaced it, it comes back as soon
+  // as that view closes, and tapping a card meanwhile brings the choice back instead
+  function pickBack() { setTimeout(function () { var cp = ui.cp; if (cp && !cp.fin && !$('.lz') && S && ui.screen === 'game') cp.show(); }, 0); }
   // Leaving the card view (not just moving to the next card) puts the hand and table filters back to All
   function filtersOnExit() {
     setTimeout(function () { if ($('.lz')) return; ui.bf = null; if (S && hvGet().f !== 'all') hvSet({ f: 'all' }); }, 80);
   }
-  function closeOverlays() { closeZoom(); $$('.k-scrim').forEach(function (s) { s.remove(); }); endPill(); ui.pick = null; ui.modal = 0; }
+  function closeOverlays() { ui.cp = null; closeZoom(); $$('.k-scrim').forEach(function (s) { s.remove(); }); endPill(); ui.pick = null; ui.modal = 0; }
   // Card text. A named ability ("TIME TO MOVE IT!") gets its own small line with
   // the instructions under it; the set and card number sit right-aligned on the
   // first of those lines.
@@ -9351,6 +9354,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // A card's details panel, as the card view shows it (used to measure how tall it will be)
   function infoOf(x) { var dx = DD(x), zx = zoneOf(x); return headHTML(dx) + defMeta(dx, x) + statusHTML(x, zx) + '<div class="rtext">' + rulesHTML(dx) + kwHelpHTML(dx, zx && zx.z === 'board' ? x : null) + '</div>'; }
   function openZoom(u, dir) {
+    if (ui.cp && !ui.cp.fin) { Kit.sfx('tap'); ui.cp.show(); return; }
     var d = DD(u), z = zoneOf(u), acts = [], whys = [];
     var info = headHTML(d) + defMeta(d, u) + statusHTML(u, z) +
       '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, z && z.z === 'board' ? u : null) + '</div>';
@@ -9929,10 +9933,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function cardPick(o) {
     var sel = o.sel || [], n = o.n || 1, min = o.min != null ? o.min : n, fin = false, single = n === 1 && min <= 1 && !o.acts;
-    var can = o.can || function () { return true; };
-    function finish(x) { if (fin) return; fin = true; closeZoom(); Kit.sfx('pop'); o.done(x); }
-    function stop() { if (fin) return; fin = true; closeZoom(); if (o.cancel) o.cancel(); }
+    var can = o.can || function () { return true; }, cp = ui.cp = { fin: false, i: 0, show: function () { show(cp.i, 0); } };
+    function finish(x) { if (fin) return; fin = cp.fin = true; if (ui.cp === cp) ui.cp = null; closeZoom(); Kit.sfx('pop'); o.done(x); }
+    function stop() { if (fin) return; fin = cp.fin = true; if (ui.cp === cp) ui.cp = null; closeZoom(); if (o.cancel) o.cancel(); }
     function show(i, dir) {
+      if (fin) return; ui.cp = cp; cp.i = i;
       var u = o.uids[i], d = DD(u), on = sel.indexOf(u) >= 0, ok = can(u), acts = [], whys = [];
       if (ok && single) acts.push({ label: o.label ? o.label(u) : (o.verb || 'Choose') + ' ' + d.n, primary: true, full: true, go: function () { finish([u]); } });
       else if (ok) acts.push({ icon: on && o.place ? '<b class="ai-n">' + (sel.indexOf(u) + 1) + '</b>' : null, label: on ? (o.place ? deckPlace(o.place, sel.indexOf(u)) + ' · undo' : 'Chosen · tap to undo') : (o.verb || 'Choose') + ' this card' + (o.place && sel.length < n ? ' · becomes ' + (sel.length ? '' : 'the ') + deckPlace(o.place, sel.length, true) : ''), primary: !on, full: true, go: function () {
