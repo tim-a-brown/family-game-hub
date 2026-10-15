@@ -8762,16 +8762,23 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     tiltT.raf = moving && !document.hidden ? requestAnimationFrame(tiltFrame) : 0;
   }
   function wakeTilt() { if (!tiltT.raf && tiltT.ov && tiltT.ov.isConnected) tiltT.raf = requestAnimationFrame(tiltFrame); }
-  // Phones: tap the big card to fold the details away so the card fills the screen; tap again to bring them back
+  // Phones: double-tap the big card to fold the details away so the card fills the screen; again to bring them back
   function phoneZoom() { return !(window.matchMedia && matchMedia('(min-width:900px) and (orientation:landscape)').matches); }
-  // Press and hold a card (not a tap) to roll the details away for a bigger look, and again to bring them back
+  // Double-tap a card to roll the details away for a bigger look, and again to bring them back. A tap is a quick press
+  // that barely moves (a swipe through the hand is not one); two within a beat, close together, make a double tap.
   function holdRoll(elm, getOv, ok) {
-    var t = 0, x0 = 0, y0 = 0;
-    elm.addEventListener('pointerdown', function (e) { if (e.button > 0 || !phoneZoom() || (ok && !ok())) return; x0 = e.clientX; y0 = e.clientY;
-      t = setTimeout(function () { t = 0; var ov = getOv(); if (!ov) return; elm._held = Date.now(); Kit.haptic('medium'); toggleLzMin(ov); }, 450); });
-    elm.addEventListener('pointermove', function (e) { if (t && (Math.abs(e.clientX - x0) > 10 || Math.abs(e.clientY - y0) > 10)) { clearTimeout(t); t = 0; } });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (k) { elm.addEventListener(k, function () { if (t) { clearTimeout(t); t = 0; } }); });
-    elm.addEventListener('contextmenu', function (e) { if (phoneZoom()) e.preventDefault(); });
+    var x0 = 0, y0 = 0, t0 = 0, last = null;
+    elm.addEventListener('pointerdown', function (e) { if (e.button > 0) return; x0 = e.clientX; y0 = e.clientY; t0 = Date.now(); });
+    elm.addEventListener('pointerup', function (e) {
+      if (!t0 || !phoneZoom() || (ok && !ok())) { last = null; return; }
+      var now = Date.now(), tap = now - t0 < 350 && Math.abs(e.clientX - x0) < 12 && Math.abs(e.clientY - y0) < 12; t0 = 0;
+      if (!tap) { last = null; return; }
+      if (last && now - last.t < 360 && Math.abs(e.clientX - last.x) < 40 && Math.abs(e.clientY - last.y) < 40) {
+        last = null; var ov = getOv(); if (!ov) return; elm._held = now; Kit.haptic('medium'); toggleLzMin(ov);
+      } else last = { t: now, x: e.clientX, y: e.clientY };
+    });
+    elm.addEventListener('pointercancel', function () { t0 = 0; last = null; });
+    elm.addEventListener('dblclick', function (e) { e.preventDefault(); });
   }
   function toggleLzMin(ov) {
     if (ov._rolling) return;
