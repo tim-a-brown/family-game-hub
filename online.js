@@ -244,6 +244,13 @@
     var pc = this.pc; setTimeout(function () { try { pc.close(); } catch (e) {} }, 60);
     this._fire('close', why || 'closed');
   };
+  // A way in found after the offer or answer went (the TURN relay can take longer than gatherMs), sent on its own
+  function sendCand(t, code, from, to, sid, c) {
+    var j = c.toJSON ? c.toJSON() : { candidate: c.candidate, sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex };
+    if (!j || !j.candidate) return;
+    log('late candidate', / typ (\w+)/.exec(j.candidate) ? / typ (\w+)/.exec(j.candidate)[1] : '?');
+    t.send(code, { id: rid(), to: to, from: from, k: 'cand', d: JSON.stringify({ sid: sid, c: j }), at: Date.now() }).catch(function () {});
+  }
   function gathered(pc) {
     return new Promise(function (res) {
       if (pc.iceGatheringState === 'complete') return res();
@@ -313,12 +320,20 @@
       Object.keys(pending).forEach(function (k) { try { pending[k].close(); } catch (e) {} });
       if (table.code) { GONE[table.code] = Date.now(); t.remove(table.code).catch(function () {}); }
     };
-    var relays = {};
+    var relays = {}, late = {};
+    function lateIn(m) {
+      var a; try { a = JSON.parse(m.d); } catch (e) { return; }
+      if (!a || !a.c) return;
+      var lc = late[m.from];
+      if (!lc || lc.sid !== (a.sid || '')) { lc = late[m.from] = { pc: null, sid: a.sid || '', ready: false, buf: (lc && lc.sid === (a.sid || '') ? lc.buf : []), sent: false }; }   // came before the offer
+      if (lc.ready && lc.pc) lc.pc.addIceCandidate(a.c).catch(function () {}); else lc.buf.push(a.c);
+    }
     function answer(m) {
       log('host got', m.k, 'from', m.from);
       if (isRelayKind(m.k)) { if (relays[m.from]) relays[m.from].take(m); else t.ack(table.code, m.id).catch(function () {}); return; }
       t.ack(table.code, m.id).catch(function () {});
       if (m.k === 'relay') { relayIn(m); return; }
+      if (m.k === 'cand') { lateIn(m); return; }
       if (m.k !== 'offer' || table.closed) return;
       var o; try { o = JSON.parse(m.d); } catch (e) { return; }
       if (Date.now() - (m.at || 0) > 60000) return;   // left over from an earlier try
@@ -328,6 +343,10 @@
       if (pending[from]) try { pending[from].close(); } catch (e) {}
       var pc = newPc(), peer = new Peer(pc, from, String(o.name || 'Player').slice(0, 20));
       peer.link = o.lk || null; peer.info = o;
+      // ways in this device finds after the answer has gone (a slow TURN relay, often the only way through on a
+      // Wi-Fi that keeps devices apart) follow on their own; the guest's late ones come in through lateIn
+      var lc = late[from] = { pc: pc, sid: o.sid || '', ready: false, buf: (late[from] && late[from].sid === (o.sid || '') && late[from].buf) || [], sent: false };
+      pc.addEventListener('icecandidate', function (e) { if (e.candidate && lc.sent && !peer.open && !table.closed) sendCand(t, table.code, me, from, lc.sid, e.candidate); });
       pending[from] = pc; fire('joining', { dev: from, name: peer.name });
       var to = setTimeout(function () { if (!peer.open) { delete pending[from]; peer.close('timeout'); fire('joinfail', { dev: from, name: peer.name }); } }, config.connectMs + 5000);
       peer.on('open', function () {
@@ -340,10 +359,10 @@
         fire('peer', peer); table.setStatus();
       });
       pc.setRemoteDescription({ type: 'offer', sdp: o.sdp })
-        .then(function () { return pc.createAnswer(); })
+        .then(function () { lc.ready = true; lc.buf.splice(0).forEach(function (c) { pc.addIceCandidate(c).catch(function () {}); }); return pc.createAnswer(); })
         .then(function (a) { return pc.setLocalDescription(a); })
         .then(function () { return gathered(pc); })
-        .then(function () { log('host: answer ready'); return t.send(table.code, { id: rid(), to: from, from: me, k: 'answer', d: JSON.stringify({ sdp: pc.localDescription.sdp, sid: o.sid || '' }), at: Date.now() }); })
+        .then(function () { log('host: answer ready'); var sdp = pc.localDescription.sdp; lc.sent = true; return t.send(table.code, { id: rid(), to: from, from: me, k: 'answer', d: JSON.stringify({ sdp: sdp, sid: o.sid || '' }), at: Date.now() }); })
         .catch(function (e) { console.warn('[online] answer failed', e); peer.close('failed'); fire('joinfail', { dev: from, name: peer.name }); });
     }
     // A guest who couldn't link up directly asks to play through the relay
@@ -519,6 +538,9 @@
           if (cancelled) { reject(new Error('Cancelled')); return; }
           var pc = newPc(), peer = new Peer(pc, room.host.dev, room.host.name), offs = [], done = false, answered = false, sid = Math.random().toString(36).slice(2, 10);
           var hostName = room.host && room.host.name || 'the host', relay = null, relayAsked = false, relayTo = 0;
+          // ways in found after the offer has gone follow on their own; the host's late ones wait for its answer
+          var offerSent = false, remoteSet = false, lateBuf = [];
+          pc.addEventListener('icecandidate', function (e) { if (e.candidate && offerSent && !done && !relayAsked) sendCand(t, code, me, room.host.dev, sid, e.candidate); });
           peer.room = room; peer.code = code;
           cancel = function () { cancelled = true; finish(new Error('Cancelled')); if (outerRej) outerRej(new Error('Cancelled')); };
           function hello() { var d = { name: String(opts.name || 'Player').slice(0, 20), v: V, sid: sid }; if (lk) d.lk = lk; if (opts.extra) d.x = opts.extra; return d; }
@@ -567,9 +589,10 @@
             log('guest got', m.k);
             var a; try { a = JSON.parse(m.d); } catch (e) { return; }
             if (!a || a.sid !== sid) return;   // an answer to an earlier try
+            if (m.k === 'cand') { if (a.c && !done) { if (remoteSet) pc.addIceCandidate(a.c).catch(function () {}); else lateBuf.push(a.c); } return; }
             if (m.k === 'no') finish(new Error(a.why || 'The table didn’t let you in'));
             else if (m.k === 'relayok' && relay) finish(null, relay);
-            else if (m.k === 'answer' && !answered && !relayAsked) { answered = true; if (scr) scr.step('connect', 'run', 'Let in · linking the two devices'); pc.setRemoteDescription({ type: 'answer', sdp: a.sdp }).catch(function () { fallBack(); }); }
+            else if (m.k === 'answer' && !answered && !relayAsked) { answered = true; if (scr) scr.step('connect', 'run', 'Let in · linking the two devices'); pc.setRemoteDescription({ type: 'answer', sdp: a.sdp }).then(function () { remoteSet = true; lateBuf.splice(0).forEach(function (c) { pc.addIceCandidate(c).catch(function () {}); }); }).catch(function () { fallBack(); }); }
           }, function (e) { finish(e); }));
           pc.createOffer()
             .then(function (o) { return pc.setLocalDescription(o); })
@@ -577,7 +600,7 @@
             .then(function () {
               if (relayAsked) return;
               log('guest: offer ready', pc.iceGatheringState);
-              var d = hello(); d.sdp = pc.localDescription.sdp;
+              var d = hello(); d.sdp = pc.localDescription.sdp; offerSent = true;
               return t.send(code, { id: rid(), to: room.host.dev, from: me, k: 'offer', d: JSON.stringify(d), at: Date.now() });
             })
             .catch(function () { fallBack(); });

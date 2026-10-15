@@ -206,7 +206,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 
   // ═══ World constants ════════════════════════════════════════════════════
   var G = 600;                         // gravity, world units / s²
-  var VMIN = 260, VMAX = 1360;         // "Aim yourself": launch speed at 0% and 100% plunger
+  var VMIN = 260, VMAX = 1170;         // "Aim yourself": launch speed at 0% and 100% plunger (full power on the flattest
+                                       // angle clears the last roof and splashes down just off the pier)
   var VFIX = 1040;                     // arcade: every shot leaves the cannon at the same speed; only the angle changes (a touch
                                        // faster than 1000 since the gaps widened, so the sweep still reaches the same roofs)
   var ARC_LO = 69, ARC_HI = 87;        // arcade: the cannon sweeps between these angles
@@ -282,9 +283,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       x += sp[0] + GAP;
     });
     var cityX1 = x - GAP;
-    SEA_X = cityX1 + 380; WORLD_END = SEA_X + 560;
+    // a short promenade past the last building, then the bay: even the longest shot splashes down just off the pier
+    SEA_X = cityX1 + 210; WORLD_END = SEA_X + 240;
     // street furniture: lamps in the open street and some gaps, a car each side of the city, trash cans in gaps
-    [CITY_X0 - 90, cityX1 + 70, cityX1 + 250].forEach(function (lx) { lamps.push(mkLamp(lx)); if (R() < .5) perches.push({ x: lx + 12, y: -88 }); });
+    [CITY_X0 - 90, cityX1 + 72].forEach(function (lx) { lamps.push(mkLamp(lx)); if (R() < .5) perches.push({ x: lx + 12, y: -88 }); });
     // street-level clutter in every gap (a different mix each city), all of it low and wreckable, so it
     // changes how he lands but can never pen him in: anything tall either breaks away or stands in the open street
     var combos = [['cart'], ['crates', 'cone'], ['cafe'], ['hyd', 'mail'], ['dump'], ['barrier', 'cone'], ['stand', 'hyd'], ['can', 'crates'], ['mail', 'cone', 'cone']];
@@ -298,11 +300,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     }
     // the open street either side of the row: a phone booth, a hydrant, a cafe table, a dumpster, crates, and a dog
     addStreetProp('booth', CITY_X0 - 75, R); addStreetProp('hyd', CITY_X0 - 30, R);
-    addStreetProp('cafe', cityX1 + 104, R); addStreetProp('booth', cityX1 + 214, R); addStreetProp('dump', cityX1 + 278, R);
-    addStreetProp('crates', cityX1 + 330, R); addStreetProp('cone', cityX1 + 356, R);
+    addStreetProp('cafe', cityX1 + 34, R); addStreetProp('cone', cityX1 + 190, R);
     dogs.push({ x: CITY_X0 - 125, home: CITY_X0 - 125, st: 0, vx: 0, f: 1, ph: 0, c: '#b0703a' });
-    dogs.push({ x: cityX1 + 165, home: cityX1 + 165, st: 0, vx: 0, f: -1, ph: 0, c: '#e8d2a8' });
-    [CITY_X0 - 210, cityX1 + 130].forEach(function (cx) { var car = { x: cx, c: CARC[(R() * CARC.length) | 0], alarm: 0, bob: 0, flip: R() < .5, dent: 0, crack: 0 }; cars.push(car); COL.push({ x0: cx, x1: cx + 60, y0: -25, y1: -8, k: 'car', car: car }); });
+    dogs.push({ x: cityX1 + 168, home: cityX1 + 168, st: 0, vx: 0, f: -1, ph: 0, c: '#e8d2a8' });
+    [CITY_X0 - 210, cityX1 + 92].forEach(function (cx) { var car = { x: cx, c: CARC[(R() * CARC.length) | 0], alarm: 0, bob: 0, flip: R() < .5, dent: 0, crack: 0 }; cars.push(car); COL.push({ x0: cx, x1: cx + 60, y0: -25, y1: -8, k: 'car', car: car }); });
     COL.push({ x0: -3000, x1: SEA_X, y0: 0, y1: 4000, k: 'ground' });
     COL.push({ x0: -3000, x1: -70, y0: -4000, y1: 4000, k: 'ground' });
     COL.forEach(function (c, i) { c.id = i; c.cool = 0; c.wob = c.wob || 0; c.dent = 0; c.rest = 0; c.dead = 0; c.lean = 0; });
