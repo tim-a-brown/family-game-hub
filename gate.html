@@ -18,9 +18,9 @@
 <style>
 body{display:flex;min-height:100dvh;}
 .gate{margin:auto;width:100%;max-width:400px;padding:calc(var(--safe-t) + 24px) 20px calc(var(--safe-b) + 24px);display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;}
-.logo{display:grid;place-items:center;width:84px;height:84px;border-radius:26px;color:#2b1a00;margin-bottom:10px;
-  background:linear-gradient(135deg,var(--yellow),var(--orange));box-shadow:inset 0 -6px 0 rgba(0,0,0,.18), 0 14px 30px rgba(255,138,61,.35);transform:rotate(-6deg);animation:float 3.2s ease-in-out infinite;}
-.logo .ico{width:46px;height:46px;}
+.logo{display:grid;place-items:center;width:84px;height:84px;border-radius:26px;margin-bottom:10px;overflow:hidden;
+  background:linear-gradient(180deg,#171530,#0b0a1c);box-shadow:inset 0 0 0 1px var(--w08), 0 14px 30px rgba(20,16,41,.55);transform:rotate(-6deg);animation:float 3.2s ease-in-out infinite;}
+.logo svg{width:84px;height:84px;display:block;}
 @keyframes float{50%{transform:translateY(-6px) rotate(-2deg);}}
 h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
 .sub{color:var(--text-2);margin-bottom:18px;}
@@ -38,25 +38,23 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
 .key.ghost{background:transparent;box-shadow:none;color:var(--text-3);font-size:.95rem;}
 .key .ico{width:24px;height:24px;}
 .hint{color:var(--text-3);font-size:.85rem;font-weight:700;max-width:300px;margin-top:4px;}
-/* Signed in: the keypad fades away and a hello zooms in (your avatar, your name, a burst of sparks), then home */
+/* Signed in: the keypad fades away, and the Game Night mark builds itself: the four dots fly in from the corners of
+   the screen, the four arcs swirl in and lock into a ring, the ring flashes, and you pop into the middle of it */
 .gate{transition:opacity .35s ease,transform .45s cubic-bezier(.5,0,.75,0),filter .35s;}
 .gate.out{opacity:0;transform:scale(.94);filter:blur(3px);pointer-events:none;}
-.hello{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;pointer-events:none;transition:opacity .4s ease,transform .45s ease;}
-.hello.bye{opacity:0;transform:scale(1.06);}
-.hello .hav{position:relative;display:grid;place-items:center;width:132px;height:132px;animation:hiPop .7s cubic-bezier(.2,1.5,.4,1) both;}
-.hello .hav .avatar{width:132px;height:132px;font-size:3.4rem;box-shadow:0 0 0 5px rgba(255,255,255,.9),0 18px 44px rgba(0,0,0,.5);}
-.hello .ring{position:absolute;inset:-6px;border-radius:50%;border:3px solid var(--yellow);opacity:0;animation:hiRing 1s cubic-bezier(.2,.7,.3,1) .25s both;}
-.hello .ring.r2{border-color:var(--pink,#ff7a8a);animation-delay:.4s;}
-.hello .sp{position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px;border-radius:3px;background:var(--c);opacity:0;box-shadow:0 0 10px var(--c);
-  animation:hiSpark .9s cubic-bezier(.15,.7,.3,1) var(--d) both;}
-.hello h2{font-family:var(--display);font-weight:400;font-size:clamp(2.4rem,9vw,3.4rem);line-height:1;text-align:center;padding:0 20px;animation:hiName .6s cubic-bezier(.2,1.4,.4,1) .18s both;}
-.hello p{color:var(--text-2);font-weight:800;animation:hiFade .5s ease .45s both;}
-@keyframes hiPop{0%{opacity:0;transform:scale(.25) rotate(-14deg);}60%{opacity:1;}100%{transform:none;}}
-@keyframes hiRing{0%{opacity:.9;transform:scale(.8);}100%{opacity:0;transform:scale(1.9);}}
-@keyframes hiSpark{0%{opacity:0;transform:rotate(var(--a)) translateY(-60px) rotate(45deg) scale(.6);}15%{opacity:1;}100%{opacity:0;transform:rotate(var(--a)) translateY(calc(-1 * var(--r))) rotate(225deg) scale(.4);}}
-@keyframes hiName{0%{opacity:0;transform:scale(.6) translateY(14px);}100%{opacity:1;transform:none;}}
-@keyframes hiFade{0%{opacity:0;transform:translateY(6px);}100%{opacity:1;transform:none;}}
-@media (prefers-reduced-motion:reduce){.hello *{animation-duration:.01s!important;animation-delay:0s!important;}}
+.hello{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;pointer-events:none;overflow:hidden;transition:opacity .35s ease,transform .45s cubic-bezier(.5,0,.75,0);}
+.hello.bye{opacity:0;transform:scale(1.25);}
+.hello .mk{position:relative;width:min(270px,64vw);aspect-ratio:1;}
+.hello .mk svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.hello .mk path,.hello .mk circle{transform-box:view-box;transform-origin:50% 50%;}
+.hello .mk path{filter:drop-shadow(0 0 6px currentColor);}
+.hello .flash{position:absolute;left:50%;top:50%;width:62%;aspect-ratio:1;margin:-31% 0 0 -31%;border-radius:50%;opacity:0;
+  background:radial-gradient(circle,rgba(255,255,255,.95) 0 30%,rgba(255,220,140,.45) 45%,rgba(255,220,140,0) 70%);}
+.hello .hav{position:absolute;left:50%;top:50%;width:40%;aspect-ratio:1;transform:translate(-50%,-50%) scale(0);}
+.hello .hav .avatar{width:100%;height:100%;font-size:clamp(2rem,10vw,3rem);box-shadow:0 0 0 4px rgba(255,255,255,.92),0 14px 34px rgba(0,0,0,.55);}
+.hello .sp{position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px;border-radius:3px;background:var(--c);opacity:0;box-shadow:0 0 10px var(--c);}
+.hello h2{font-family:var(--display);font-weight:400;font-size:clamp(2.4rem,9vw,3.4rem);line-height:1;text-align:center;padding:0 20px;margin-top:6px;opacity:0;}
+.hello p{color:var(--text-2);font-weight:800;opacity:0;}
 </style>
 </head>
 <body>
@@ -76,7 +74,7 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
   var m = FGHSync.mode();
   if (m === 'pin' || m === 'guest') { location.replace('./index.html'); return; }
   var $ = function (id) { return document.getElementById(id); };
-  $('logo').innerHTML = Kit.icon('dice');
+  $('logo').innerHTML = '<svg viewBox="40 40 176 176" aria-hidden="true"><g fill="none" stroke-width="18" stroke-linecap="round"><path d="M148 72A58 58 0 0 1 184 108" stroke="#ffd166"/><path d="M184 148A58 58 0 0 1 148 184" stroke="#ff7a8a"/><path d="M108 184A58 58 0 0 1 72 148" stroke="#4fd1c5"/><path d="M72 108A58 58 0 0 1 108 72" stroke="#8b7cff"/></g><g fill="#fff"><circle cx="79" cy="79" r="16"/><circle cx="177" cy="79" r="16"/><circle cx="177" cy="177" r="16"/><circle cx="79" cy="177" r="16"/></g></svg>';
 
   var pin = '', busy = false, slots = $('slots').children;
   ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'back'].forEach(function (k) {
@@ -145,20 +143,63 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
     });
     setTimeout(function () { inp.focus(); }, 350);
   }
-  // Signed in: fade the keypad away, then a hello for a beat and a half, then home
+  // Signed in: fade the keypad away, build the Game Night mark around your avatar, say hello, then home
+  var MARK_ARCS = [['M148 72A58 58 0 0 1 184 108', '#ffd166'], ['M184 148A58 58 0 0 1 148 184', '#ff7a8a'], ['M108 184A58 58 0 0 1 72 148', '#4fd1c5'], ['M72 108A58 58 0 0 1 108 72', '#8b7cff']];
+  var MARK_DOTS = [[79, 79], [177, 79], [177, 177], [79, 177]];
   function hello(back) {
     var name = '';
     try { name = (localStorage.getItem('my_name') || (FGHSync.label && FGHSync.label()) || '').trim(); } catch (e) {}
     $('logo').style.animation = 'none';
     document.querySelector('.gate').classList.add('out');
-    var hav = Kit.el('div', { class: 'hav' }, [Kit.el('i', { class: 'ring' }), Kit.el('i', { class: 'ring r2' })]);
-    hav.appendChild(name ? Kit.avatar.el(name, 'xl') : Kit.el('span', { class: 'avatar xl', html: Kit.icon('dice') }));
-    var cols = ['#ffd166', '#ff7a8a', '#4fd1c5', '#8b7cff'];
-    for (var i = 0; i < 14; i++) hav.appendChild(Kit.el('i', { class: 'sp', style: { '--a': (i * 360 / 14 + (i % 2) * 9) + 'deg', '--r': (130 + (i % 3) * 30) + 'px', '--d': (0.22 + (i % 4) * 0.03) + 's', '--c': cols[i % 4] } }));
-    var box = Kit.el('div', { class: 'hello', role: 'status' }, [hav, Kit.el('h2', { text: name ? 'Hi, ' + name + '!' : 'Welcome!' }), Kit.el('p', { text: back ? 'Good to see you again' : 'Let’s play' })]);
-    setTimeout(function () { document.body.appendChild(box); Kit.sfx('good'); Kit.haptic('success'); }, 260);
-    setTimeout(function () { box.classList.add('bye'); }, 2050);
-    setTimeout(function () { location.replace('./index.html'); }, 2400);
+    var NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '40 40 176 176'); svg.setAttribute('aria-hidden', 'true');
+    var arcs = MARK_ARCS.map(function (a) { var p = document.createElementNS(NS, 'path'); p.setAttribute('d', a[0]); p.setAttribute('fill', 'none'); p.setAttribute('stroke', a[1]); p.setAttribute('stroke-width', '18'); p.setAttribute('stroke-linecap', 'round'); p.style.color = a[1]; p.style.opacity = '0'; svg.appendChild(p); return p; });
+    var dots = MARK_DOTS.map(function (d) { var c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', d[0]); c.setAttribute('cy', d[1]); c.setAttribute('r', '16'); c.setAttribute('fill', '#fff'); c.style.opacity = '0'; svg.appendChild(c); return c; });
+    var flash = Kit.el('i', { class: 'flash' });
+    var hav = Kit.el('div', { class: 'hav' }, [name ? Kit.avatar.el(name, 'xl') : Kit.el('span', { class: 'avatar xl', html: Kit.icon('dice') })]);
+    var mk = Kit.el('div', { class: 'mk' }, [flash, svg, hav]);
+    var cols = ['#ffd166', '#ff7a8a', '#4fd1c5', '#8b7cff'], sparks = [];
+    for (var i = 0; i < 16; i++) { var sp = Kit.el('i', { class: 'sp', style: { '--c': cols[i % 4] } }); sparks.push(sp); mk.appendChild(sp); }
+    var h2 = Kit.el('h2', { text: name ? 'Hi, ' + name + '!' : 'Welcome!' }), sub = Kit.el('p', { text: back ? 'Good to see you again' : 'Let’s play' });
+    var box = Kit.el('div', { class: 'hello', role: 'status', 'aria-label': h2.textContent }, [mk, h2, sub]);
+    var still = window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
+    var A = function (n, k, o) { return n.animate ? n.animate(k, Object.assign({ fill: 'both' }, o)) : null; };
+    setTimeout(function () {
+      document.body.appendChild(box);
+      if (still) { arcs.concat(dots, [h2, sub]).forEach(function (n) { n.style.opacity = '1'; }); hav.style.transform = 'translate(-50%,-50%)'; Kit.sfx('good'); return; }
+      // the dots: each flies in from its own corner of the screen, overshoots toward the middle and settles
+      dots.forEach(function (c, k) {
+        var dx = MARK_DOTS[k][0] < 128 ? -1 : 1, dy = MARK_DOTS[k][1] < 128 ? -1 : 1;
+        A(c, [{ opacity: 0, transform: 'translate(' + dx * 330 + 'px,' + dy * 420 + 'px) scale(.5)' },
+              { opacity: 1, transform: 'translate(' + dx * -10 + 'px,' + dy * -10 + 'px) scale(1.25)', offset: .62 },
+              { opacity: 1, transform: 'translate(' + dx * 3 + 'px,' + dy * 3 + 'px) scale(.92)', offset: .82 },
+              { opacity: 1, transform: 'none' }], { duration: 620, delay: k * 80, easing: 'cubic-bezier(.3,.7,.4,1)' });
+      });
+      // the arcs: each swirls in from a wide spin, drawing itself as it closes into the ring
+      arcs.forEach(function (p, k) {
+        var L = p.getTotalLength ? p.getTotalLength() : 60; p.style.strokeDasharray = L;
+        A(p, [{ opacity: 0, strokeDashoffset: L, transform: 'rotate(-' + (240 + k * 30) + 'deg) scale(2.2)' },
+              { opacity: 1, strokeDashoffset: 0, transform: 'rotate(14deg) scale(.94)', offset: .78 },
+              { opacity: 1, strokeDashoffset: 0, transform: 'none' }], { duration: 760, delay: 140 + k * 90, easing: 'cubic-bezier(.22,.8,.3,1)' });
+      });
+      Kit.sfx('whoosh');
+    }, 260);
+    // locked: the mark pulses, a flash and a burst of sparks, and you pop into the middle
+    setTimeout(function () {
+      if (still) return;
+      Kit.sfx('good'); Kit.haptic('success');
+      A(svg, [{ transform: 'none' }, { transform: 'scale(1.1) rotate(-4deg)', offset: .35 }, { transform: 'none' }], { duration: 420, easing: 'ease-out' });
+      A(flash, [{ opacity: .95, transform: 'scale(.4)' }, { opacity: 0, transform: 'scale(2.3)' }], { duration: 650, easing: 'ease-out' });
+      sparks.forEach(function (sp, k) {
+        var a = k * 360 / sparks.length + (k % 2) * 8, r = 150 + (k % 3) * 40;
+        A(sp, [{ opacity: 1, transform: 'rotate(' + a + 'deg) translateY(-70px) rotate(45deg) scale(.8)' }, { opacity: 0, transform: 'rotate(' + a + 'deg) translateY(-' + r + 'px) rotate(225deg) scale(.3)' }], { duration: 850, delay: (k % 4) * 25, easing: 'cubic-bezier(.15,.7,.3,1)' });
+      });
+      A(hav, [{ transform: 'translate(-50%,-50%) scale(0) rotate(-20deg)' }, { transform: 'translate(-50%,-50%) scale(1.14) rotate(4deg)', offset: .6 }, { transform: 'translate(-50%,-50%) scale(1)' }], { duration: 560, delay: 60, easing: 'cubic-bezier(.2,.9,.3,1.2)' });
+      A(h2, [{ opacity: 0, transform: 'scale(.6) translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: 520, delay: 220, easing: 'cubic-bezier(.2,1.4,.4,1)' });
+      A(sub, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 420, easing: 'ease' });
+    }, 260 + 1000);
+    setTimeout(function () { box.classList.add('bye'); }, 2750);
+    setTimeout(function () { location.replace('./index.html'); }, 3150);
   }
   render();
   // Signed out because this account's PIN was changed on another device

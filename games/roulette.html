@@ -84,6 +84,12 @@
 .cell.zero.eu{border-radius:50% 50% 0 0 / 70% 70% 0 0;}
 .cell.zero.l{border-radius:60% 0 0 0 / 80% 0 0 0;}
 .cell.zero.r{border-radius:0 60% 0 0 / 0 80% 0 0;}
+/* the table on its side (wide screens): the zero rounds off to the left, the dozens read straight across */
+.lay.rot .cell.zero.eu{border-radius:70% 0 0 70% / 50% 0 0 50%;}
+.lay.rot .cell.zero.l{border-radius:0 0 0 80% / 0 0 0 60%;}
+.lay.rot .cell.zero.r{border-radius:80% 0 0 0 / 60% 0 0 0;}
+.lay.rot .cell.fx.dz span{transform:none;font-size:.95rem;}
+.lay.rot .cell.fx{font-size:.9rem;}
 .cell.fx{background:transparent;font-family:var(--font);font-weight:900;font-size:.8rem;letter-spacing:.04em;color:#f3ecd6;text-transform:uppercase;}
 .cell.fx.dz span{transform:rotate(-90deg);white-space:nowrap;font-size:.86rem;}
 .cell.strip{background:rgba(0,0,0,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);}
@@ -151,17 +157,16 @@
   .rail{padding-top:6px;} .acts .icon-btn{width:46px;height:46px;} .acts .btn{min-height:46px;}
 }
 
-/* ── Wide landscape (iPad, laptop): wheel and board on the left, betting layout on the right ── */
+/* ── Wide landscape (iPad, laptop): wheel, last numbers and bankroll along the top; the table on its side across the screen ── */
 @media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .stage.rl:has(> .tbl){max-width:1080px;padding-bottom:calc(var(--rail,150px) + 2px);display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;column-gap:24px;align-items:start;}
-  .stage.rl > .head,.stage.rl > .bank,.stage.rl > .msg{grid-column:1;}
-  .stage.rl > .tbl{grid-column:2;grid-row:1 / span 4;width:100%;margin:0 auto;}
-  .stage.rl > .head{flex-direction:column;align-items:center;}
-  .stage.rl .mini{width:168px;height:168px;margin:6px 0 2px;}
-  .stage.rl .hcol{align-self:stretch;}
-  .stage.rl .board{align-self:stretch;min-height:118px;}
-  .stage.rl > .msg{margin-top:4px;}
-  .stage.rl > .bg-row{grid-column:1;}
+  .stage.rl:has(> .tbl){max-width:1180px;padding-bottom:calc(var(--rail,150px) + 2px);display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,1fr);grid-template-rows:auto auto auto 1fr;column-gap:18px;align-items:start;}
+  .stage.rl > .head{grid-column:1;grid-row:1 / span 3;margin-bottom:8px;}
+  .stage.rl > .bank{grid-column:2;grid-row:1;margin-bottom:6px;}
+  .stage.rl > .msg{grid-column:2;grid-row:2;margin:4px 0 4px;}
+  .stage.rl > .bg-row{grid-column:2;grid-row:3;}
+  .stage.rl > .tbl{grid-column:1 / span 2;grid-row:4;width:100%;margin:0 auto;}
+  .stage.rl .mini{width:110px;height:110px;}
+  .stage.rl .board{min-height:0;}
   .rail-in{max-width:640px;}
 }
 </style>
@@ -319,26 +324,33 @@
   // ── Layout geometry (portrait: 0 on top, 12 rows of 3, columns at the bottom) ──
   // Layout height is about 14.4 row heights (zero 1.3 + 12 rows + columns 1.1)
   var ROWS_H = 14.4;
-  function geom(W, RH) {
+  // rot (wide screens): the same layout turned on its side, like a real table: 0 on the left, the numbers in three rows
+  // of twelve, the dozens and even-money bets along the bottom, 2 to 1 at the right. Bets, spots and taps all work in
+  // the upright layout's units; scr() and logi() turn those into screen positions and back.
+  function geom(W, RH, rot) {
     var OW = Math.round(W * 0.15), DW = Math.round(W * 0.12), SW = Math.round(W * 0.07);
     var SX = OW + DW, GX = SX + SW, CW = (W - GX) / 3;
     var ZH = Math.round(RH * 1.3), COLH = Math.round(RH * 1.1);
-    var GY = ZH;
-    return { W: W, OW: OW, DW: DW, SW: SW, SX: SX, GX: GX, CW: CW, RH: RH, ZH: ZH, COLH: COLH, GY: GY, GB: GY + 12 * RH, H: GY + 12 * RH + COLH,
-      cs: Math.round(Math.min(27, RH * 0.8, CW * 0.34)) };
+    var GY = ZH, H = GY + 12 * RH + COLH;
+    return { W: W, OW: OW, DW: DW, SW: SW, SX: SX, GX: GX, CW: CW, RH: RH, ZH: ZH, COLH: COLH, GY: GY, GB: GY + 12 * RH, H: H,
+      rot: !!rot, sw: rot ? H : W, sh: rot ? W : H,
+      cs: Math.round(Math.min(rot ? 32 : 27, RH * 0.8, CW * 0.34)) };
   }
+  function scr(p) { return !p || !G.rot ? p : { x: p.y, y: G.W - p.x }; }
+  function logi(x, y) { return G.rot ? { x: G.W - y, y: x } : { x: x, y: y }; }
+  function sspot(id) { return scr(spot(id)); }
   function num(r, c) { return r * 3 + c + 1; }
   // Chip anchor point for each bet
   function spot(id) {
     var g = G, b = BETS[id]; if (!b) return null;
     var cx = function (c) { return g.GX + (c + 0.5) * g.CW; }, ry = function (r) { return g.GY + (r + 0.5) * g.RH; };
     var mid = g.GX + 1.5 * g.CW, m;
+    if (id === 'n00') return { x: g.GX + 2.25 * g.CW, y: g.ZH * 0.55 };   // (before the number match: '00' reads as 0)
     if ((m = /^n(\d+)$/.exec(id))) {
       var n = +m[1];
       if (n === 0) return { x: S.wheel === 'us' ? g.GX + 0.75 * g.CW : mid, y: g.ZH * 0.55 };
       return { x: cx((n - 1) % 3), y: ry(Math.floor((n - 1) / 3)) };
     }
-    if (id === 'n00') return { x: g.GX + 2.25 * g.CW, y: g.ZH * 0.55 };
     if ((m = /^sh(\d+)$/.exec(id))) { var a = +m[1]; return { x: g.GX + (((a - 1) % 3) + 1) * g.CW, y: ry(Math.floor((a - 1) / 3)) }; }
     if ((m = /^sv(\d+)$/.exec(id))) { a = +m[1]; return { x: cx((a - 1) % 3), y: g.GY + (Math.floor((a - 1) / 3) + 1) * g.RH }; }
     if ((m = /^co(\d+)$/.exec(id))) { a = +m[1]; return { x: g.GX + (((a - 1) % 3) + 1) * g.CW, y: g.GY + (Math.floor((a - 1) / 3) + 1) * g.RH }; }
@@ -468,16 +480,20 @@
     var maxRH = (window.innerHeight - top - below) / ROWS_H;
     var RH = Math.floor(Math.max(18, Math.min(side ? 44 : 48, side ? 1e9 : W * 0.115, maxRH, capRH || 99)));
     if (side) {
-      // Side-by-side (wide landscape): keep the layout's proportions
-      W = Math.min(W, Math.round(RH / 0.082));
-      tbl.style.maxWidth = (W + padX + tPadX) + 'px';
-    }
-    G = geom(W, RH);
+      // Wide screens: the table on its side, across the screen; the numbers a little taller than wide
+      var availH = Math.max(150, window.innerHeight - top - below);
+      RH = Math.floor(Math.max(24, Math.min(W / ROWS_H, availH / 5.3, 78, capRH || 99)));
+      var LW = Math.floor(Math.min(availH, RH * 6.8));
+      G = geom(LW, RH, true);
+      tbl.style.maxWidth = (G.sw + padX + tPadX) + 'px';
+    } else G = geom(W, RH);
     var g = G, L = R.lay, us = S.wheel === 'us';
-    L.innerHTML = ''; L.style.width = g.W + 'px'; L.style.height = g.H + 'px'; L.style.setProperty('--rh', g.RH + 'px');
+    L.innerHTML = ''; L.style.width = g.sw + 'px'; L.style.height = g.sh + 'px'; L.style.setProperty('--rh', g.RH + 'px');
+    L.classList.toggle('rot', g.rot);
     R.ring = null;
     R.cells = {};
     function cell(cls, x, y, w, h, html, key) {
+      if (g.rot) { var t = x; x = y; y = g.W - t - w; t = w; w = h; h = t; }   // on its side
       var c = el('div', { class: 'cell ' + cls, html: html, style: { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' } });
       L.appendChild(c); if (key != null) R.cells[key] = c; return c;
     }
@@ -501,7 +517,7 @@
     R.stacks = {};
     // Safety net: if anything still overflows the screen, shrink the rows to fit
     var over = document.documentElement.scrollHeight - window.innerHeight;
-    if (over > 0 && RH > 18 && !capRH) layout(RH - Math.ceil(over / ROWS_H));
+    if (over > 0 && RH > 18 && !capRH) layout(RH - Math.ceil(over / (g.rot ? 5.3 : ROWS_H)));
   }
   function cellsFor(id) {
     var b = BETS[id], out = [];
@@ -519,7 +535,7 @@
     if (!R.lay) return;
     Object.keys(R.stacks || {}).forEach(function (id) { if (!S.bets[id]) { R.stacks[id].remove(); delete R.stacks[id]; } });
     Object.keys(S.bets).forEach(function (id) {
-      var p = spot(id); if (!p) return;
+      var p = sspot(id); if (!p) return;
       var old = R.stacks[id];
       if (old && old.dataset.a === String(S.bets[id])) return;
       if (old) old.remove();
@@ -568,8 +584,7 @@
   }
   function onTableTap(e) {
     if (busy || !G || (R.rack && R.rack.justDragged())) return;
-    var r = R.lay.getBoundingClientRect();
-    var id = hit((e.clientX - r.left) * G.W / r.width, (e.clientY - r.top) * G.H / r.height);
+    var p = layPt(e.clientX, e.clientY), id = hit(p.x, p.y);
     if (!id || !BETS[id]) return;
     placeChip(id, chipV);
   }
@@ -612,7 +627,8 @@
   // Drag a chip from the rack onto the table; the bet it would make lights up.
   // Bets on the table can be dragged to another spot, or off the table to take
   // them back. A quick tap on a rack chip selects it for tap-to-bet.
-  function layPt(cx, cy) { var r = R.lay.getBoundingClientRect(); return { x: (cx - r.left) * G.W / r.width, y: (cy - r.top) * G.H / r.height }; }
+  function layPt(cx, cy) { var r = R.lay.getBoundingClientRect(); return logi((cx - r.left) * G.sw / r.width, (cy - r.top) * G.sh / r.height); }
+  function scrPt(cx, cy) { var r = R.lay.getBoundingClientRect(); return { x: (cx - r.left) * G.sw / r.width, y: (cy - r.top) * G.sh / r.height }; }
   function chipRack() {
     return Casino.rack({
       value: chipV,
@@ -641,9 +657,9 @@
       // Pick a bet up off the table
       pick: function (cx, cy, type) {
         if (!G || !R.lay) return null;
-        var p = layPt(cx, cy), best = null, bd = 1e9;
+        var p = scrPt(cx, cy), best = null, bd = 1e9;
         Object.keys(S.bets).forEach(function (id) {
-          var s = spot(id); if (!s) return;
+          var s = sspot(id); if (!s) return;
           var d = Math.max(Math.abs(s.x - p.x), Math.abs(s.y + G.cs * 0.12 - p.y));   // stacks rise a little above their spot
           if (d < bd) { bd = d; best = id; }
         });
@@ -685,7 +701,7 @@
     if (R.ring) { R.ring.remove(); R.ring = null; }
     if (!id) return;
     cellsFor(id).forEach(function (c) { c.classList.add('tgt'); });
-    var p = spot(id);
+    var p = sspot(id);
     if (p) {
       R.ring = el('div', { class: 'tring', style: { left: p.x + 'px', top: p.y + 'px', '--cs': Math.round(G.cs * 1.2) + 'px' } });
       R.lay.appendChild(R.ring);
@@ -770,7 +786,7 @@
     R.stacks = {};
     var topW = sp.winners.slice().sort(function (a, b) { return b.pay - a.pay; })[0];
     Object.keys(sp.bets).forEach(function (id) {
-      var p = spot(id); if (!p) return;
+      var p = sspot(id); if (!p) return;
       var s = stackEl(sp.bets[id], G.cs); s.style.left = p.x + 'px'; s.style.top = p.y + 'px';
       R.lay.appendChild(s); R.stacks[id] = s;
       var w = sp.winners.filter(function (x) { return x.id === id; })[0];
@@ -780,9 +796,10 @@
     var c = R.cells[n];
     if (c) {
       c.classList.add('hitn');
-      var p = n === DZ ? spot('n00') : spot('n' + n);
-      var dx = n === 0 || n === DZ ? G.CW * 0.45 : G.CW * 0.3;
-      R.dolly = el('div', { class: 'dolly' }); R.dolly.style.left = (p.x - dx) + 'px'; R.dolly.style.top = (p.y + G.RH * 0.32) + 'px';
+      var p = n === DZ ? sspot('n00') : sspot('n' + n);
+      var cw = G.rot ? G.RH : G.CW, chh = G.rot ? G.CW : G.RH;   // the number's box on screen
+      var dx = n === 0 || n === DZ ? (G.rot ? G.ZH * 0.3 : G.CW * 0.45) : cw * 0.3;
+      R.dolly = el('div', { class: 'dolly' }); R.dolly.style.left = (p.x - dx) + 'px'; R.dolly.style.top = (p.y + chh * 0.32) + 'px';
       R.lay.appendChild(R.dolly);
     }
     // Winning bets come back to the player after a moment
