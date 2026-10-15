@@ -5153,7 +5153,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       case 'search': return 'Search your deck for ' + (e.type ? (e.cls ? e.cls + ' ' : '') + e.type.replace('|', ' or ') + ' card' : 'a card');
       case 'can': return tg.charAt(0).toUpperCase() + tg.slice(1) + ' can challenge ready characters' + durText(e.dur);
       case 'inkTop': return 'Put the top card of your deck into your inkwell';
-      case 'toInk': return 'Put ' + tg + ' into its player’s inkwell';
+      case 'toInk': return 'Put ' + tg + ' into ' + (/\b(of yours|your)\b/i.test(tg) ? 'your' : /\b(opponent|their)\b/i.test(tg) ? 'their' : 'its player’s') + ' inkwell';
       case 'tuck': return 'Shuffle ' + tg + ' into its player’s deck';
       case 'costLess': return 'Next ' + (e.type || 'card') + ' you play this turn costs ' + e.n + ' less';
       case 'playFree': return 'Play ' + (e.cls ? e.cls + ' ' : '') + e.type + (e.maxC != null ? ' with cost ' + e.maxC + ' or less' : '') + (e.from === 'discard' ? ' from your discard' : '') + ' for free';
@@ -7720,7 +7720,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function controlsHTML(vertical) {
     var my = canAct(), cpuT = S.phase === 'play' && S.P[S.cur].cpu;
-    var endLabel = S.phase === 'mull' ? 'Opening hands' : S.phase === 'over' ? 'Game over' : cpuT ? S.P[S.cur].name + ' is playing' : my ? 'End turn' : S.mode === 'online' && NET.pend ? 'Waiting for ' + S.P[opp(NET.seat)].name : S.mode === 'online' && S.cur !== NET.seat ? S.P[S.cur].name + '’s turn' : S.step === 'begin' ? 'Next turn…' : 'Waiting';
+    // while you're choosing a card for an effect, the button says so (not "Waiting", which reads as waiting on someone else)
+    var endLabel = S.phase === 'mull' ? 'Opening hands' : S.phase === 'over' ? 'Game over' : ui.pick && !cpuT ? 'Tap a highlighted card' : cpuT ? S.P[S.cur].name + ' is playing' : my ? 'End turn' : S.mode === 'online' && NET.pend ? 'Waiting for ' + S.P[opp(NET.seat)].name : S.mode === 'online' && S.cur !== NET.seat ? S.P[S.cur].name + '’s turn' : S.step === 'begin' ? 'Next turn…' : 'Waiting';
     var idle = my && !S.P[S.cur].board.some(function (u) { return canQuest(u) || (canChallenger(u) && defenders(u).length); }) && !S.P[S.cur].hand.some(function (u) { return canPlay(S.cur, u) || canInk(S.cur, u) || canShift(u) || canSing(u); });
     var fxb = '';
     var over = S.phase === 'over' && !!ui.results;   // looking at the final table: this button brings the results back
