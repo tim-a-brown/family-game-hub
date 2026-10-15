@@ -8800,8 +8800,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var snap = function (on) { ov.classList.toggle('lz-min', on); remeasure(); var c = cardOf(); return c && c.getBoundingClientRect(); };
     // (both measured in one go, before anything paints; then the open layout stays for the roll to run over)
     var rollAt = function () { var rl = ov.querySelector('.lz-roll'), q = rl && rl.getBoundingClientRect(); return q && q.width ? { x: (q.left + q.right) / 2, y: (q.top + q.bottom) / 2 } : null; };
-    var actsEl = ov.querySelector('.lz-acts.out'), actsAt = function () { var q = actsEl && actsEl.getBoundingClientRect(); return q && q.height ? q.top : null; };
-    var st = ov.scrollTop, open = snap(false), actsOpen = actsAt(), shut = snap(true), rollEnd = rollAt(), actsShut = actsAt();
+    // the hand's filter bar and the action buttons sit under the card: they ride with its bottom edge
+    var riders = [].slice.call(ov.querySelectorAll('.lz-in > .lz-hf, .lz-acts.out')), ridersAt = function () { return riders.map(function (r) { var q = r.getBoundingClientRect(); return q.height ? q.top : null; }); };
+    var st = ov.scrollTop, open = snap(false), actsOpen = ridersAt(), shut = snap(true), rollEnd = rollAt(), actsShut = ridersAt();
     snap(false); ov.scrollTop = st;
     // The details panel drifts as it rolls so the roller comes to rest exactly where the rolled scroll lies: no second move
     var drift = null, ir0 = info.getBoundingClientRect();
@@ -8816,13 +8817,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var tf = 'translate(' + (shut.left - open.left).toFixed(1) + 'px,' + (shut.top - open.top).toFixed(1) + 'px) scale(' + (shut.width / open.width).toFixed(4) + ')';
       grow = flow.animate(min ? [{ transform: 'none' }, { transform: tf }] : [{ transform: tf }, { transform: 'none' }], { duration: 750, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'forwards' });
     }
-    // the action buttons ride down (or up) with the card's bottom edge, on the same ease
-    var glide = null;
-    if (actsEl && actsOpen != null && actsShut != null && Math.abs(actsShut - actsOpen) > 1) {
-      var ta = 'translateY(' + (actsShut - actsOpen).toFixed(1) + 'px)';
-      glide = actsEl.animate(min ? [{ transform: 'none' }, { transform: ta }] : [{ transform: ta }, { transform: 'none' }], { duration: 750, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'forwards' });
-    }
-    var settle = function () { if (grow) { grow.cancel(); flow.style.transformOrigin = ''; } if (drift) drift.cancel(); if (glide) glide.cancel(); };
+    // the filter bar and action buttons ride down (or up) with the card's bottom edge, on the same ease
+    var glide = riders.map(function (r, i) {
+      var a = actsOpen[i], b = actsShut[i]; if (a == null || b == null || Math.abs(b - a) <= 1) return null;
+      var ta = 'translateY(' + (b - a).toFixed(1) + 'px)';
+      return r.animate(min ? [{ transform: 'none' }, { transform: ta }] : [{ transform: ta }, { transform: 'none' }], { duration: 750, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'forwards' });
+    });
+    var settle = function () { if (grow) { grow.cancel(); flow.style.transformOrigin = ''; } if (drift) drift.cancel(); glide.forEach(function (g) { if (g) g.cancel(); }); };
     if (min) {
       after('lz-rolling', function () {
         var roll = ov.querySelector('.lz-roll'); if (roll) roll.style.animation = 'none';
