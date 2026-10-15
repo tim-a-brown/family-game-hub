@@ -463,7 +463,7 @@
       if (o.onClose) o.onClose();
       try { window.dispatchEvent(new CustomEvent('kit-sheet-closed')); } catch (e) {}
     }
-    function onKey(e) { if (e.key === 'Escape') close(true); }
+    function onKey(e) { if (e.key === 'Escape' && o.dismissible !== false) close(true); }   // (a sheet that needs an answer stays up)
     if (o.actions && o.actions.length) {
       var acts = el('div', { class: 'k-acts' });
       o.actions.forEach(function (a) {

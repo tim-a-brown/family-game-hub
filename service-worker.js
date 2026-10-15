@@ -362,10 +362,11 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       // Best-effort parallel precache. A single 404 won't block install.
-      // (cache: 'reload' skips the browser's own cache, so this release's cache holds this release's files)
+      // (cache: 'no-cache' checks each file with the server, a quick "not modified" when it hasn't changed, so this
+      // release's cache holds this release's files without downloading everything again)
       return Promise.allSettled(
         PRECACHE_URLS.map((url) =>
-          cache.add(new Request(url, { cache: 'reload' })).catch((err) => {
+          cache.add(new Request(url, { cache: 'no-cache' })).catch((err) => {
             console.warn('[sw] precache failed for', url, err && err.message);
           })
         )

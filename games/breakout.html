@@ -451,6 +451,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   function plate(label, cls) { var b = el('b', { text: '0' }); var p = el('div', { class: 'ar-plate ' + (cls || '') }, [el('small', { text: label }), b]); p._b = b; return p; }
   function buildView() {
+    shown = { s: -1, l: -1, v: -1 };   // a fresh scoreboard: paint every number again
+    sideEl = null;   // a fresh side panel for the fresh scoreboard (the old one still holds the last game's)
     app.className = 'stage'; app.innerHTML = '';
     root.classList.add('ar-on');
     levelEl = plate('Level'); scoreEl = plate('Score', 'sc');
@@ -485,6 +487,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     wrapEl.classList.toggle('side', side);
     if (side) { sideEl = sideEl || el('div', { class: 'ar-side' }); sideEl.appendChild(hudEl); sideEl.appendChild(hintEl); wrapEl.insertBefore(sideEl, cabEl); }
     else { wrapEl.insertBefore(hudEl, cabEl); app.appendChild(hintEl); if (sideEl) sideEl.remove(); hudEl.style.maxWidth = ''; }
+    cssW = 0;
   }
   function fit() {
     if (!wrapEl) return;

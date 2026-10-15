@@ -469,7 +469,7 @@
   }
   // Size the betting layout so everything (head, layout, chip rail) fits the
   // screen with no scrolling. innerHeight tracks the dynamic viewport (dvh).
-  function layout(capRH) {
+  function layout(capRH, cutH) {
     var felt = R.lay.parentElement, tbl = felt.parentElement, side = SIDE.matches;
     tbl.style.maxWidth = '';
     var fs = getComputedStyle(felt), ts = getComputedStyle(tbl), px = function (v) { return parseFloat(v) || 0; };
@@ -481,7 +481,7 @@
     var RH = Math.floor(Math.max(18, Math.min(side ? 44 : 48, side ? 1e9 : W * 0.115, maxRH, capRH || 99)));
     if (side) {
       // Wide screens: the table on its side, across the screen; the numbers a little taller than wide
-      var availH = Math.max(150, window.innerHeight - top - below);
+      var availH = Math.max(150, window.innerHeight - top - below - (cutH || 0));
       RH = Math.floor(Math.max(24, Math.min(W / ROWS_H, availH / 5.3, 78, capRH || 99)));
       var LW = Math.floor(Math.min(availH, RH * 6.8));
       G = geom(LW, RH, true);
@@ -517,7 +517,7 @@
     R.stacks = {};
     // Safety net: if anything still overflows the screen, shrink the rows to fit
     var over = document.documentElement.scrollHeight - window.innerHeight;
-    if (over > 0 && RH > 18 && !capRH) layout(RH - Math.ceil(over / (g.rot ? 5.3 : ROWS_H)));
+    if (over > 0 && RH > 18 && !capRH) layout(RH - Math.ceil(over / (g.rot ? 5.3 : ROWS_H)), g.rot ? over : 0);
   }
   function cellsFor(id) {
     var b = BETS[id], out = [];
@@ -777,6 +777,7 @@
   function finishSpin(instant) {
     var sp = S.spin; if (!sp) return;
     busy = false;
+    if (fitLater) { fitLater = false; arrange(); layout(); drawMini(); }   // the device turned during the spin
     S.bets = {}; S.undo = []; S.spin = null;
     save();
     var n = sp.n, col = colorOf(n), net = sp.ret - sp.stake;
@@ -1154,10 +1155,12 @@
   // Re-fit the table when the screen size or orientation changes (or the
   // iOS toolbars come and go)
   var rz = null;
+  var fitLater = false;
   function refit() {
     clearTimeout(rz); rz = setTimeout(function () {
-      if (!S || !R.lay || !document.body.contains(R.lay) || busy || (R.rack && R.rack.dragging())) return;
-      arrange(); layout(); R.stacks = {}; paintStacks(); drawMini();
+      if (!S || !R.lay || !document.body.contains(R.lay)) return;
+      if (busy || (R.rack && R.rack.dragging())) { fitLater = true; return; }   // turned mid-spin: refit when it lands
+      fitLater = false; arrange(); layout(); R.stacks = {}; paintStacks(); drawMini();
     }, 120);
   }
   window.addEventListener('resize', refit);
