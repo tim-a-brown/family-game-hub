@@ -56,19 +56,16 @@ document.addEventListener('visibilitychange', function () {
   transform:rotate(-6deg);transition:transform .4s var(--spring);}
 .logo svg{width:48px;height:48px;display:block;}
 .logo:active{transform:rotate(20deg) scale(.9);}
-/* Arriving home: the tile bounces in, the mark spins once, and a little glint catches it */
+/* Arriving home: the tile bounces in, the mark spins once (with a little motion blur), and a glint catches it */
 .logo-wrap{position:relative;flex:none;display:grid;}
-.logo.spin svg{animation:logoSpin .95s cubic-bezier(.3,1.35,.45,1) both;}
-.logo-wrap.bounce{animation:logoBounce .9s both;transform-origin:50% 100%;}
-@keyframes logoBounce{
-  0%{transform:translateY(-34px) scale(.7);opacity:0;filter:blur(.8px);animation-timing-function:cubic-bezier(.5,0,.9,.6)}
-  22%{filter:blur(1px)}
-  30%{transform:translateY(0) scale(1.12,.86);opacity:1;filter:blur(0);animation-timing-function:cubic-bezier(.2,.7,.4,1)}
-  50%{transform:translateY(-12px) scale(.95,1.06);animation-timing-function:cubic-bezier(.5,0,.9,.6)}
-  68%{transform:translateY(0) scale(1.05,.95);animation-timing-function:cubic-bezier(.2,.7,.4,1)}
-  82%{transform:translateY(-3px) scale(.99,1.01)}
-  100%{transform:none;opacity:1;filter:none}}
-@keyframes logoSpin{0%{transform:rotate(-90deg) scale(.55);filter:blur(.8px)}22%{filter:blur(1.5px)}48%{filter:blur(.9px)}65%{transform:rotate(375deg) scale(1.07);filter:blur(0)}100%{transform:rotate(360deg) scale(1);filter:none}}
+.logo-wrap > *{grid-area:1 / 1;}
+.logo-mover{display:grid;position:relative;z-index:1;transform-origin:50% 100%;}
+/* motion blur: faint copies that follow the same path a moment behind, so the smear trails the movement */
+.lg-gt{display:grid;pointer-events:none;transform-origin:50% 100%;opacity:0;}
+.lg-gt .logo{box-shadow:none;}
+.lg-gs{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:0;}
+.lg-gs svg,.lg-gt{filter:blur(.6px);}   /* softens the copies into one streak */
+.logo > svg{position:relative;z-index:1;}
 .logo{position:relative;}
 /* the glint: a soft streak of light across the tile as it settles, and one tiny star winking at its corner */
 .logo::after{content:"";position:absolute;inset:-20%;pointer-events:none;opacity:0;
@@ -79,7 +76,7 @@ document.addEventListener('visibilitychange', function () {
 .logo-fx svg{width:100%;height:100%;display:block;fill:currentColor;}
 .logo-fx.on{animation:logoWink .6s ease-out .85s both;}
 @keyframes logoWink{0%{opacity:0;transform:scale(0) rotate(0)}40%{opacity:1;transform:scale(1.1) rotate(45deg)}100%{opacity:0;transform:scale(0) rotate(90deg)}}
-@media (prefers-reduced-motion:reduce){.logo.spin svg,.logo.spin::after,.logo-fx.on,.logo-wrap.bounce{animation:none;}.logo-fx{display:none;}}
+@media (prefers-reduced-motion:reduce){.logo.spin::after,.logo-fx.on{animation:none;}.logo-fx,.lg-gt,.lg-gs{display:none;}}
 .top .who{flex:1;min-width:0;}
 .top .hi{font-size:.9rem;font-weight:800;color:var(--yellow);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .top h1{font-size:1.75rem;font-weight:900;}
@@ -1058,18 +1055,47 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   $('logo').innerHTML = '<svg viewBox="40 40 176 176" aria-hidden="true"><g fill="none" stroke-width="18" stroke-linecap="round"><path d="M148 72A58 58 0 0 1 184 108" stroke="#ffd166"/><path d="M184 148A58 58 0 0 1 148 184" stroke="#ff7a8a"/><path d="M108 184A58 58 0 0 1 72 148" stroke="#4fd1c5"/><path d="M72 108A58 58 0 0 1 108 72" stroke="#8b7cff"/></g><g fill="#fff"><circle cx="79" cy="79" r="16"/><circle cx="177" cy="79" r="16"/><circle cx="177" cy="177" r="16"/><circle cx="79" cy="177" r="16"/></g></svg>';
   $('surprise-ic').innerHTML = Kit.icon('shuffle');
   $('logo').addEventListener('click', function () { Kit.sfx('pop'); Kit.confetti({ count: 60 }); });
-  // Every time home opens (and coming back to it): the tile bounces in, the mark spins once and a glint catches it
+  // Every time home opens (and coming back to it): the tile bounces in, the mark spins once and a glint catches it.
+  // Motion blur: faint copies follow the same path a moment behind, so the smear trails the movement (up while it
+  // drops in, round the circle while it spins) and disappears as it slows to a stop.
   (function () {
-    var logo = $('logo'), wrap = document.createElement('span'), fx = document.createElement('span');
-    wrap.className = 'logo-wrap'; fx.className = 'logo-fx'; fx.setAttribute('aria-hidden', 'true');
-    logo.parentNode.insertBefore(wrap, logo); wrap.appendChild(logo); wrap.appendChild(fx);
+    var logo = $('logo'), wrap = document.createElement('span'), mover = document.createElement('span'), fx = document.createElement('span');
+    wrap.className = 'logo-wrap'; mover.className = 'logo-mover'; fx.className = 'logo-fx'; fx.setAttribute('aria-hidden', 'true');
+    logo.parentNode.insertBefore(wrap, logo); mover.appendChild(logo);
     fx.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 0C13 7 17 11 24 12C17 13 13 17 12 24C11 17 7 13 0 12C7 11 11 7 12 0Z"/></svg>';
+    var mark = logo.querySelector('svg'), LAG = [8, 16, 24, 32, 40, 48, 56, 64], ALPHA = [.2, .16, .13, .1, .08, .06, .04, .03];
+    var tiles = LAG.map(function () {
+      var g = document.createElement('span'), t = logo.cloneNode(true);
+      g.className = 'lg-gt'; g.setAttribute('aria-hidden', 'true'); t.removeAttribute('id'); t.tabIndex = -1; t.disabled = true; g.appendChild(t);
+      wrap.appendChild(g); return g;
+    });
+    wrap.appendChild(mover); wrap.appendChild(fx);
+    var marks = LAG.map(function () { var g = document.createElement('span'); g.className = 'lg-gs'; g.appendChild(mark.cloneNode(true)); logo.insertBefore(g, mark); return g; });
+    var SE = 'cubic-bezier(.3,1.35,.45,1)';
+    var SPIN = [{ transform: 'rotate(-90deg) scale(.55)', easing: SE }, { transform: 'rotate(375deg) scale(1.07)', offset: .65, easing: SE }, { transform: 'rotate(360deg) scale(1)' }];
+    var BOUNCE = [
+      { transform: 'translateY(-34px) scale(.7)', opacity: 0, easing: 'cubic-bezier(.5,0,.9,.6)' },
+      { transform: 'translateY(0) scale(1.12,.86)', opacity: 1, offset: .3, easing: 'cubic-bezier(.2,.7,.4,1)' },
+      { transform: 'translateY(-12px) scale(.95,1.06)', opacity: 1, offset: .5, easing: 'cubic-bezier(.5,0,.9,.6)' },
+      { transform: 'translateY(0) scale(1.05,.95)', opacity: 1, offset: .68, easing: 'cubic-bezier(.2,.7,.4,1)' },
+      { transform: 'translateY(-3px) scale(.99,1.01)', opacity: 1, offset: .82 },
+      { transform: 'none', opacity: 1 }];
+    function fade(a, until) { return [{ opacity: a }, { opacity: a, offset: until * .55 }, { opacity: 0, offset: until }, { opacity: 0 }]; }
     function play() {
       if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      [logo, wrap, fx].forEach(function (n) { n.classList.remove('spin', 'bounce', 'on'); });
-      void logo.offsetWidth;
-      logo.classList.add('spin'); wrap.classList.add('bounce'); fx.classList.add('on');
-      setTimeout(function () { logo.classList.remove('spin'); wrap.classList.remove('bounce'); fx.classList.remove('on'); }, 1700);
+      if (!mover.animate) return;
+      logo.classList.remove('spin'); fx.classList.remove('on'); void logo.offsetWidth;
+      logo.classList.add('spin'); fx.classList.add('on');   // the glint and the corner wink (CSS)
+      mover.animate(BOUNCE, { duration: 900, fill: 'both' });
+      mark.animate(SPIN, { duration: 950, fill: 'both' });
+      LAG.forEach(function (d, i) {
+        tiles[i].animate(BOUNCE, { duration: 900, delay: d, fill: 'both' });
+        tiles[i].animate(fade(ALPHA[i], .5), { duration: 900, fill: 'both' });   // the drop's trail: gone once it lands and hops
+        tiles[i].firstChild.querySelector('svg').animate(SPIN, { duration: 950, delay: d, fill: 'both' });
+        marks[i].firstChild.animate(SPIN, { duration: 950, delay: d, fill: 'both' });
+        marks[i].animate(fade(ALPHA[i], .68), { duration: 950, fill: 'both' });   // the spin's trail: gone as it slows
+      });
+      setTimeout(function () { logo.classList.remove('spin'); fx.classList.remove('on'); }, 1700);
     }
     requestAnimationFrame(play);
     window.addEventListener('pageshow', function (e) { if (e.persisted) play(); });   // back to home from a game
