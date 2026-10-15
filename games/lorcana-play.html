@@ -8780,6 +8780,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     elm.addEventListener('pointercancel', function () { t0 = 0; last = null; });
     elm.addEventListener('dblclick', function (e) { e.preventDefault(); });
   }
+  // CSS cubic-bezier(x1,y1,x2,y2) at time t (0..1): how far along the eased motion is
+  function bezEase(x1, y1, x2, y2, t) {
+    var bz = function (a, b, u) { return 3 * a * u * (1 - u) * (1 - u) + 3 * b * u * u * (1 - u) + u * u * u; }, lo = 0, hi = 1, u = t;
+    for (var i = 0; i < 30; i++) { u = (lo + hi) / 2; if (bz(x1, x2, u) < t) lo = u; else hi = u; }
+    return bz(y1, y2, u);
+  }
   function toggleLzMin(ov) {
     if (ov._rolling) return;
     var min = !ov.classList.contains('lz-min'), info = ov.querySelector('.lz-in > .lz-info');
@@ -8809,7 +8815,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var rollAt = function () { var rl = ov.querySelector('.lz-roll'), q = rl && rl.getBoundingClientRect(); return q && q.width ? { x: (q.left + q.right) / 2, y: (q.top + q.bottom) / 2 } : null; };
     // the hand's filter bar and the action buttons sit under the card: they ride with its bottom edge
     var riders = [].slice.call(ov.querySelectorAll('.lz-in > .lz-hf, .lz-acts.out')), ridersAt = function () { return riders.map(function (r) { var q = r.getBoundingClientRect(); return q.height ? q.top : null; }); };
-    var st = ov.scrollTop, open = snap(false), actsOpen = ridersAt(), shut = snap(true), rollEnd = rollAt(), actsShut = ridersAt();
+    // the thumbnail strip (or the "3 of 10" tag) hangs under the card inside its frame
+    var posEl = ov.querySelector('.lz-flow .lz-pos'), posAt = function () { var q = posEl && posEl.getBoundingClientRect(); return q && q.width ? q : null; };
+    var st = ov.scrollTop, open = snap(false), actsOpen = ridersAt(), posOpen = posAt(), shut = snap(true), rollEnd = rollAt(), actsShut = ridersAt(), posShut = posAt();
     snap(false); ov.scrollTop = st;
     // The details panel drifts as it rolls so the roller comes to rest exactly where the rolled scroll lies: no second move
     var drift = null, ir0 = info.getBoundingClientRect();
@@ -8824,13 +8832,27 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var tf = 'translate(' + (shut.left - open.left).toFixed(1) + 'px,' + (shut.top - open.top).toFixed(1) + 'px) scale(' + (shut.width / open.width).toFixed(4) + ')';
       grow = flow.animate(min ? [{ transform: 'none' }, { transform: tf }] : [{ transform: tf }, { transform: 'none' }], { duration: 750, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'forwards' });
     }
+    // The strip sits inside the growing frame, so it would swell with the card and then snap back small. Undo the frame's
+    // scale frame by frame (on the same ease) so the thumbnails keep their size and glide along under the card's edge.
+    var keep = null;
+    if (grow && posOpen && posShut) {
+      var k = shut.width / open.width, cs = getComputedStyle(posEl).transform, base = cs && cs !== 'none' ? cs + ' ' : '', fr2 = [];
+      for (var i = 0; i <= 24; i++) {
+        var f = i / 24, e = bezEase(.45, 0, .55, 1, f), p = min ? e : 1 - e, sc = 1 + (k - 1) * p;
+        var tx = (posOpen.left + (posShut.left - posOpen.left) * p - open.left - (shut.left - open.left) * p) / sc + open.left - posOpen.left;
+        var ty = (posOpen.top + (posShut.top - posOpen.top) * p - open.top - (shut.top - open.top) * p) / sc + open.top - posOpen.top;
+        fr2.push({ offset: f, transform: base + 'translate(' + tx.toFixed(2) + 'px,' + ty.toFixed(2) + 'px) scale(' + (1 / sc).toFixed(5) + ')' });
+      }
+      posEl.style.transformOrigin = '0 0';
+      keep = posEl.animate(fr2, { duration: 750, easing: 'linear', fill: 'forwards' });
+    }
     // the filter bar and action buttons ride down (or up) with the card's bottom edge, on the same ease
     var glide = riders.map(function (r, i) {
       var a = actsOpen[i], b = actsShut[i]; if (a == null || b == null || Math.abs(b - a) <= 1) return null;
       var ta = 'translateY(' + (b - a).toFixed(1) + 'px)';
       return r.animate(min ? [{ transform: 'none' }, { transform: ta }] : [{ transform: ta }, { transform: 'none' }], { duration: 750, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'forwards' });
     });
-    var settle = function () { if (grow) { grow.cancel(); flow.style.transformOrigin = ''; } if (drift) drift.cancel(); glide.forEach(function (g) { if (g) g.cancel(); }); };
+    var settle = function () { if (grow) { grow.cancel(); flow.style.transformOrigin = ''; } if (keep) { keep.cancel(); posEl.style.transformOrigin = ''; } if (drift) drift.cancel(); glide.forEach(function (g) { if (g) g.cancel(); }); };
     if (min) {
       after('lz-rolling', function () {
         var roll = ov.querySelector('.lz-roll'); if (roll) roll.style.animation = 'none';
