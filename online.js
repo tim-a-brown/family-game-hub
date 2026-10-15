@@ -715,6 +715,23 @@
       }
       last = list;
       whose(list).then(function () { if (last === list) { shownSig = sig; paint(list); } });
+      autoJoin(list);
+    }
+    // Opened from home's "a friend has a table open" (?join=CODE): straight into that table once it's listed
+    var joinWant = (function () { var m = /[?&]join=([A-Za-z]{4})\b/.exec(location.search); return m ? m[1].toUpperCase() : null; })();
+    function dropJoin() {
+      joinWant = null;
+      try { history.replaceState(null, '', location.pathname + location.search.replace(/[?&]join=[A-Za-z]{4}\b/, '').replace(/^&/, '?') + location.hash); } catch (e) {}
+    }
+    // the first list can come from this device's cache: give the server a few seconds to show the table
+    if (joinWant) setTimeout(function () { if (joinWant && alive) { dropJoin(); if (window.Kit) Kit.toast('That table has closed or filled up'); } }, 6000);
+    function autoJoin(list) {
+      if (!joinWant || !alive) return;
+      var want = joinWant, hit = list.filter(function (r) { return r.code === want; })[0];
+      if (!hit) return;
+      dropJoin();
+      if (!me.name) return;   // they pick a name first; the table is right there in the list
+      setTimeout(function () { if (alive) o.onJoin(hit.code, hit, me); }, 0);
     }
     // Tables whose page closed before it could delete them stay in the store: clear out long-dead ones so the
     // list query (30 at most) keeps finding the live ones

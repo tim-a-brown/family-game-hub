@@ -344,6 +344,15 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .cont .d{font-size:.75rem;color:var(--text-2);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cont-net{box-shadow:inset 3px 0 0 var(--c), inset 0 0 0 1.5px color-mix(in srgb,var(--yellow) 70%,transparent);}
 .cont-net .d{color:var(--yellow);}
+/* A linked friend's open table: their avatar on the game's icon, a live dot, tap to join */
+.cont-live{box-shadow:inset 3px 0 0 var(--c), inset 0 0 0 1.5px rgba(74,222,128,.7);}
+.cont-live .d{color:#4ade80;}
+.ft-ic{position:relative;flex:none;width:34px;height:34px;}
+.ft-ic .avatar{position:absolute;right:-7px;bottom:-7px;width:22px;height:22px;font-size:.6rem;box-shadow:0 0 0 2px var(--surface);}
+.cont .a.live{display:flex;align-items:center;gap:5px;color:#4ade80;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:livePulse 1.6s ease-out infinite;}
+@keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(74,222,128,.65)}70%,100%{box-shadow:0 0 0 7px rgba(74,222,128,0)}}
+@media (prefers-reduced-motion:reduce){.live-dot{animation:none;}}
 /* Edit: every tile shows its trash, plus Clear all */
 .sec-h .cont-edit{margin-left:auto;min-height:34px;padding:0 15px;border:0;border-radius:999px;background:var(--w08);color:var(--text);font:inherit;font-weight:800;font-size:.86rem;cursor:pointer;}
 .sec-h .cont-edit.on{background:var(--yellow-fill,var(--yellow));color:#16102e;}
@@ -924,6 +933,75 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadNetTurns(); });
 
+  // ── A linked friend has a table open ─────────────────────────────────────
+  // Every online game marks its tables with a one-way tag of the host's link code (never the code itself). The tags
+  // of the people you're linked to are worked out here (the same tag, cached with the games'), and a few small
+  // queries find their open tables. While home is on screen it looks again every 45 seconds.
+  var friendTables = [], ftAt = 0, LKT = {};
+  function linkTag(code) {
+    code = String(code || ''); var c = window.crypto && window.crypto.subtle;
+    if (!code || !c || typeof TextEncoder === 'undefined') return Promise.resolve(null);
+    var saved = {}; try { saved = JSON.parse(get('lorc_lktag', '{}')) || {}; } catch (e) {}
+    if (saved[code]) return Promise.resolve(saved[code]);
+    if (LKT[code]) return LKT[code];
+    var enc = new TextEncoder();
+    return (LKT[code] = c.importKey('raw', enc.encode(code), 'PBKDF2', false, ['deriveBits']).then(function (k) {
+      return c.deriveBits({ name: 'PBKDF2', salt: enc.encode('fgh-lorcana-table'), iterations: 100000, hash: 'SHA-256' }, k, 64);
+    }).then(function (b) {
+      var t = Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+      var m = {}; try { m = JSON.parse(get('lorc_lktag', '{}')) || {}; } catch (e) {} m[code] = t; set('lorc_lktag', JSON.stringify(m));
+      return t;
+    }).catch(function () { return null; }));
+  }
+  function loadFriendTables(force) {
+    if (!window.FGHSync || !FGHSync.isPin || !FGHSync.isPin() || !FGHSync.db || !FGHSync.links) return;
+    if (document.visibilityState === 'hidden' || (!force && Date.now() - ftAt < 40000)) return;
+    ftAt = Date.now();
+    var L = FGHSync.links() || {}, others = L.others || {};
+    var ppl = Object.keys(others).map(function (k) { return others[k]; }).filter(function (r) { return r && !r.off && !r.gone && r.code && r.hs; });
+    if (!ppl.length) { if (friendTables.length) { friendTables = []; renderRail(); } return; }
+    var myDev = null; try { myDev = JSON.parse(get('online_dev', 'null')); } catch (e) {}
+    Promise.all(ppl.map(function (p) { return linkTag(p.code); })).then(function (tags) {
+      var who = {}; tags.forEach(function (t, i) { if (t) who[t] = ppl[i]; });
+      var keys = Object.keys(who).slice(0, 10); if (!keys.length) return;
+      return FGHSync.db().then(function (db) {
+        function q(col) {
+          return db.collection(col).where('host.lk', 'in', keys).limit(20).get()
+            .then(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data(), col: col }); }); return l; })
+            .catch(function (e) { console.warn('[home] friends\' tables', col, e); return []; });
+        }
+        return Promise.all([q('arcadeRooms'), q('chessRooms'), q('lorcanaRooms')]);
+      }).then(function (r) {
+        if (!r) return;
+        var now = Date.now(), out = [], newest = {};
+        r[0].forEach(function (x) {   // the online games: live tables, heard from in the last 90 seconds, a seat free
+          var d = x.d, h = d.host || {};
+          if (d.status !== 'open' || h.dev === myDev || (d.n || 1) >= (d.max || 2) || now - (d.at || 0) > 90000 || !who[h.lk]) return;
+          if (newest[h.dev] && newest[h.dev].at >= (d.at || 0)) return;
+          newest[h.dev] = { at: d.at || 0, item: { id: d.game, code: x.code, at: d.at || 0, live: true, n: d.n || 1, max: d.max || 2, who: who[h.lk].name, href: 'games/' + ((findGame(d.game) || {}).play || d.game) + '.html?online=1&join=' + x.code } };
+        });
+        Object.keys(newest).forEach(function (k) { out.push(newest[k].item); });
+        [[r[1], 'chess'], [r[2], 'lorcana']].forEach(function (z) {   // Chess and Lorcana tables wait for an opponent (days, even)
+          z[0].forEach(function (x) {
+            var d = x.d, h = d.host || {};
+            if (d.status !== 'waiting' || d.guest || h.dev === myDev || !who[h.lk] || now - (d.at || 0) > 30 * 864e5) return;
+            out.push({ id: z[1], code: x.code, at: d.at || 0, live: false, who: who[h.lk].name, href: 'games/' + (z[1] === 'chess' ? 'chess' : 'lorcana-play') + '.html?online=1' });
+          });
+        });
+        out.sort(function (a, b) { return (b.live ? 1 : 0) - (a.live ? 1 : 0) || b.at - a.at; });
+        var sig = JSON.stringify(out.map(function (x) { return [x.code, x.n, x.who]; })), was = JSON.stringify(friendTables.map(function (x) { return [x.code, x.n, x.who]; }));
+        var fresh = out.filter(function (x) { return !friendTables.some(function (y) { return y.code === x.code; }); });
+        friendTables = out.slice(0, 4);
+        if (sig !== was) {
+          renderRail();
+          if (fresh.some(function (x) { return x.live; })) { try { Kit.sfx('pop'); Kit.haptic('light'); } catch (e) {} }
+        }
+      });
+    }).catch(function (e) { console.warn('[home] friends\' tables', e); });
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadFriendTables(true); });
+  setInterval(function () { loadFriendTables(); }, 45000);
+
   var railAll = false;
   function currentItems() {
     try { resumeMap = JSON.parse(get('gn_resume', '{}')) || {}; } catch (e) {}
@@ -938,6 +1016,16 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var rail = $('rail'); rail.innerHTML = ''; rail.classList.toggle('editing', editing);
     var eb = $('cont-edit'); eb.hidden = !items.length; eb.textContent = editing ? 'Done' : 'Edit'; eb.classList.toggle('on', editing);
     var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g; });
+    var fts = friendTables.map(function (x) { return { g: findGame(x.id), f: x }; }).filter(function (x) { return x.g; });
+    fts.forEach(function (x) {
+      var f = x.f;
+      rail.appendChild(el('div', { class: 'cont-w' }, [el('a', { class: 'cont cont-live', href: f.href, style: { '--c': x.g.color }, title: f.who + ' has a ' + x.g.name + ' table open' }, [
+        el('span', { class: 'ft-ic' }, [el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }), Kit.avatar.el(f.who)]),
+        el('span', { class: 'tx' }, [
+          el('div', { class: 'r1' }, [el('div', { class: 't', text: x.g.name }), f.live ? el('span', { class: 'a live', title: 'Open now' }, [el('i', { class: 'live-dot' })]) : el('span', { class: 'a', text: ago(f.at, true) })]),
+          el('div', { class: 'd', text: 'Join ' + f.who + (f.live ? ' · ' + f.n + '/' + f.max : '') })])
+      ])]));
+    });
     nets.forEach(function (x) {
       rail.appendChild(el('div', { class: 'cont-w' }, [el('a', { class: 'cont cont-net', href: x.n.href, style: { '--c': x.g.color }, title: x.g.name + ': your move' }, [
         el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
@@ -956,7 +1044,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       more.addEventListener('click', function () { railAll = true; renderRail(); });
       rail.appendChild(more);
     }
-    var nAll = items.length + nets.length;
+    var nAll = items.length + nets.length + fts.length;
     $('cont-n').textContent = nAll > 1 ? nAll + ' going' : '';
     $('cont-sec').hidden = (!nAll && !undoList) || !!state.q || state.cat !== 'all';
     renderFoot(items.length);
@@ -1218,6 +1306,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (FGHSync.onStatusChange) FGHSync.onStatusChange(function (s) { var hv = $('me').classList.contains('has-av'); $('me').className = 'me syncdot s-' + s.state + (hv ? ' has-av' : ''); });
     if (FGHSync.onReady) FGHSync.onReady(function () { refreshWho(); render(); });
     setTimeout(loadNetTurns, 1200);   // online games where it's your move, once the screen is up
+    setTimeout(function () { loadFriendTables(true); }, 1500);   // and linked friends with a table open
   }
   // Change PIN: everything moves to the new PIN; other devices on the old one get signed out.
   // forced = this device is on a PIN that is now too easy to guess (no "later", but signing out is allowed).
