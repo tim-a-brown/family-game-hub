@@ -337,6 +337,16 @@ var GameIcon = (function () {
       '<rect x="1" y="1" width="46" height="46" rx="12" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1"/>') +
       base[0] + '<g transform="' + base[1] + '">' + mark + '</g></svg>';
   }
+  // Just the game's own mark, large, on a plain white tile (no category shape): small places where the mark has to
+  // read at a glance (High Scores)
+  render.solo = function (id) {
+    var g = (typeof findGame === 'function' && findGame(id)) || { id: id, cat: 'tools', color: '#8b55ff', name: id };
+    var c = g.color, mark = MARK[g.id] ? MARK[g.id](c) : txt(g.name.charAt(0), 18, c, 12.5);
+    if (PIC[g.id]) mark = '<image href="' + PIC[g.id] + '" x="0" y="0" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>';
+    return '<svg class="gicon solo" viewBox="0 0 48 48" role="img" aria-label="' + g.name + '"><rect width="48" height="48" rx="12" fill="#fff"/>' +
+      '<rect x=".75" y=".75" width="46.5" height="46.5" rx="11.3" fill="none" stroke="' + lighten(c, -.2) + '" stroke-opacity=".35" stroke-width="1.5"/>' +
+      '<g transform="translate(5 5) scale(1.583)">' + mark + '</g></svg>';
+  };
   // Just the game's mark, as a standalone 24×24 SVG (used as a faint
   // silhouette in the middle of the game table).
   render.mark = function (id) {

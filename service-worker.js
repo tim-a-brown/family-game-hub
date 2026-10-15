@@ -11,6 +11,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CACHE_VERSION = 'v533-2026-10-15-lorcana-thumbs';
+// Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
+const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -360,9 +362,10 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       // Best-effort parallel precache. A single 404 won't block install.
+      // (cache: 'reload' skips the browser's own cache, so this release's cache holds this release's files)
       return Promise.allSettled(
         PRECACHE_URLS.map((url) =>
-          cache.add(url).catch((err) => {
+          cache.add(new Request(url, { cache: 'reload' })).catch((err) => {
             console.warn('[sw] precache failed for', url, err && err.message);
           })
         )
@@ -443,9 +446,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Our own pages and code: network first so releases show up immediately,
-  // falling back to the cached copy when offline or the network is slow.
+  // Our own pages and code: straight from this release's cache, saved when the release installed. Waiting on the
+  // network first (up to 3.5 s on a slow connection) made going home or opening a game take seconds on the iPad.
+  // A new release still arrives: it installs its own cache, takes over, and the home screen reloads onto it.
+  // Files the release didn't save (or a cache that lost them) come from the network, falling back to any copy.
+  // (preview channels and local testing change files without a new release number: they stay network first)
+  if (PREVIEW) { event.respondWith(netFirst(req)); return; }
   event.respondWith(
+    caches.open(CACHE_NAME).then((cache) => cache.match(req, { ignoreSearch: true })).then((hit) => hit || netFirst(req))
+  );
+});
+
+function netFirst(req) {
+  return (
     new Promise((resolve) => {
       let settled = false;
       const fromCache = () => caches.match(req, { ignoreSearch: true }).then((c) => c);
@@ -469,7 +482,7 @@ self.addEventListener('fetch', (event) => {
         });
     })
   );
-});
+}
 
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();

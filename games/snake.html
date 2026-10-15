@@ -59,6 +59,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   .ar-key{border-radius:22px;}
   .ar-key .ico{width:32px;height:32px;}
 }
+/* Wide screens (iPad sideways, computers): the board stands at the right; scores (and the d-pad) get the room on the left */
+.ar-wrap.side{flex-direction:row;align-items:center;justify-content:flex-end;gap:clamp(24px,4vw,64px);padding-right:clamp(8px,4vw,64px);}
+.ar-side{flex:1;min-width:0;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:14px;padding:8px 0 4px;}
+.ar-side .ar-hud{flex-direction:column;gap:12px;width:min(300px,100%);max-width:none!important;margin:auto 0;}
+.ar-side .ar-plate{flex:none;padding:12px 16px;align-items:flex-start;}
+.ar-side .ar-plate small{font-size:.78rem;}
+.ar-side .ar-plate b{font-size:2.3rem;}
+.ar-side .ar-plate.sc b{font-size:3rem;}
+.ar-side .ar-pad{position:static;width:min(300px,100%);}
+.ar-side .ar-hint{max-width:300px;font-size:.9rem;}
 </style>
 </head>
 <body>
@@ -266,7 +276,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.body && s.body.length ? s : null; } catch (e) { return null; } }
 
   // ═══ Kit shell ═══════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait', orientTablets: true,
+  Kit.init({ orient: 'portrait',
     id: 'snake',
     theme: { wood: ['#7a5232', '#4a2f1a'] },
     onNew: function () { clearSave(); showSetup(); },
@@ -343,9 +353,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (ro) { ro.disconnect(); ro = null; }
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
   }
+  // Wide screens: the scores (and the d-pad) move into a panel on the left and the board stands at the right, full height
+  var sideEl = null;
+  function sideLayout() {
+    var side = innerWidth >= 900 && innerWidth > innerHeight * 1.25;
+    if (side === wrapEl.classList.contains('side')) return;
+    wrapEl.classList.toggle('side', side);
+    var hint = app.querySelector('.ar-hint') || (sideEl && sideEl.querySelector('.ar-hint'));
+    if (side) { sideEl = sideEl || el('div', { class: 'ar-side' }); sideEl.appendChild(hudEl); if (hint) sideEl.appendChild(hint); sideEl.appendChild(padEl); wrapEl.insertBefore(sideEl, cabEl); }
+    else { wrapEl.insertBefore(hudEl, cabEl); app.appendChild(padEl); if (hint) app.appendChild(hint); if (sideEl) sideEl.remove(); }
+  }
   function fit() {
     if (!wrapEl) return;
-    var aw = wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14 - hudEl.offsetHeight - 8;
+    sideLayout();
+    var side = wrapEl.classList.contains('side');
+    var aw = side ? wrapEl.clientWidth * 0.62 - 14 : wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14 - (side ? 0 : hudEl.offsetHeight + 8);
     var c = Math.min(aw / COLS, ah / ROWS, 44); c = Math.max(8, Math.floor(c * 2) / 2);
     var w = Math.round(c * COLS), h = Math.round(c * ROWS);
     if (w === cssW && cv.width) return;
@@ -353,7 +375,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     DPR = Math.min(window.devicePixelRatio || 1, 3);
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
     cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
-    hudEl.style.maxWidth = Math.min(wrapEl.clientWidth, w + 14) + 'px';
+    hudEl.style.maxWidth = side ? '' : Math.min(wrapEl.clientWidth, w + 14) + 'px';
     bgCanvas = null;
     draw();
   }
@@ -375,7 +397,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var gest = null;
   function bindGestures() {
     wrapEl.addEventListener('pointerdown', function (e) {
-      if (e.target.closest('.ar-ov')) return;
+      if (e.target.closest('.ar-ov, .ar-pad')) return;   // (the d-pad sits in here on wide screens)
       e.preventDefault(); ac();
       try { wrapEl.setPointerCapture(e.pointerId); } catch (er) {}
       gest = { id: e.pointerId, ax: e.clientX, ay: e.clientY };

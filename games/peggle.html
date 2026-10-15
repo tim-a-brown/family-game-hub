@@ -97,6 +97,18 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   .pg-nudge + .pg-fire + .pg-nudge{order:2;}
   .pg-fire{order:3;margin-left:auto;flex:none;width:200px;max-width:none;height:84px;border-radius:42px;font-size:1.9rem;}
 }
+/* Wide screens (iPad sideways, computers): the board stands at the right; scores, aim and FIRE get the room on the left */
+html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto;column-gap:clamp(24px,4vw,64px);padding-right:clamp(8px,4vw,64px);align-items:center;}
+#app.side .pg-hud{grid-column:1;grid-row:1;align-self:center;justify-self:center;flex-direction:column;flex-wrap:nowrap;gap:12px;width:min(320px,100%);margin:0;}
+#app.side .pg-plate{flex:none;padding:12px 16px;text-align:left;align-items:flex-start;}
+#app.side .pg-plate small{font-size:.78rem;}
+#app.side .pg-lv b,#app.side .pg-sc b{font-size:2.6rem;}
+#app.side .pg-best b{font-size:1.5rem;}
+#app.side .pg-pw{flex-direction:row;align-items:center;justify-content:flex-start;} #app.side .pg-pw b{font-size:1rem;}
+#app.side .pg-run{flex:none;font-size:.78rem;}
+#app.side .pg-wrap{grid-column:2;grid-row:1 / span 2;}
+#app.side .pg-ctl{position:static;grid-column:1;grid-row:2;justify-self:center;justify-content:center;width:min(360px,100%)!important;padding:0 0 10px;pointer-events:auto;}
+#app.side .pg-nudge{order:1;} #app.side .pg-fire{order:2;margin-left:0;flex:1;width:auto;} #app.side .pg-nudge + .pg-fire + .pg-nudge{order:3;}
 .pg-pause{position:absolute;inset:5px;border-radius:14px;display:none;align-items:center;justify-content:center;z-index:4;
   background:rgba(8,6,20,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
 .pg-pause.show{display:flex;}
@@ -1008,7 +1020,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.n >= 1 && s.n <= NL ? s : null; } catch (e) { return null; } }
 
   // ═══ Kit shell ═══════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait', orientTablets: true,
+  Kit.init({ orient: 'portrait',
     id: 'peggle',
     onNew: function () { clearSave(); showSetup(); },
     menu: [
@@ -1184,9 +1196,13 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function fit() {
     if (!wrapEl) return;
+    // wide screens: the scores and buttons stand in a panel on the left, the board at the right, full height
+    var side = innerWidth >= 900 && innerWidth > innerHeight * 1.25;
+    if (side !== app.classList.contains('side')) { app.classList.toggle('side', side); cssW = 0; if (side) { hudEl.style.width = ''; ctlEl.style.width = ''; } }
     var cs = getComputedStyle(app), aw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-    var ctlH = getComputedStyle(ctlEl).position === 'absolute' ? 0 : ctlEl.offsetHeight;
-    var ah = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - hudEl.offsetHeight - 6 - ctlH;
+    var ctlH = side || getComputedStyle(ctlEl).position === 'absolute' ? 0 : ctlEl.offsetHeight;
+    if (side) aw = aw * 0.62;
+    var ah = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (side ? 0 : hudEl.offsetHeight + 6) - ctlH;
     var s = Math.min((aw - 10) / CW, (ah - 10) / CH, 1.75); s = Math.max(0.3, s);
     var w = Math.round(CW * s), h = Math.round(CH * s);
     if (w === cssW && canvas.width) return;
@@ -1195,7 +1211,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
     canvas.width = Math.round(w * DPR); canvas.height = Math.round(h * DPR);
     S = canvas.width / CW;
-    hudEl.style.width = (w + 10) + 'px'; ctlEl.style.width = (w + 10) + 'px'; wrapEl.style.height = (h + 10) + 'px';
+    if (!side) { hudEl.style.width = (w + 10) + 'px'; ctlEl.style.width = (w + 10) + 'px'; }
+    wrapEl.style.height = (h + 10) + 'px';
     sprites = {}; bgCanvas = null; railCanvas = null;
     render();
   }

@@ -38,6 +38,25 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
 .key.ghost{background:transparent;box-shadow:none;color:var(--text-3);font-size:.95rem;}
 .key .ico{width:24px;height:24px;}
 .hint{color:var(--text-3);font-size:.85rem;font-weight:700;max-width:300px;margin-top:4px;}
+/* Signed in: the keypad fades away and a hello zooms in (your avatar, your name, a burst of sparks), then home */
+.gate{transition:opacity .35s ease,transform .45s cubic-bezier(.5,0,.75,0),filter .35s;}
+.gate.out{opacity:0;transform:scale(.94);filter:blur(3px);pointer-events:none;}
+.hello{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;pointer-events:none;transition:opacity .4s ease,transform .45s ease;}
+.hello.bye{opacity:0;transform:scale(1.06);}
+.hello .hav{position:relative;display:grid;place-items:center;width:132px;height:132px;animation:hiPop .7s cubic-bezier(.2,1.5,.4,1) both;}
+.hello .hav .avatar{width:132px;height:132px;font-size:3.4rem;box-shadow:0 0 0 5px rgba(255,255,255,.9),0 18px 44px rgba(0,0,0,.5);}
+.hello .ring{position:absolute;inset:-6px;border-radius:50%;border:3px solid var(--yellow);opacity:0;animation:hiRing 1s cubic-bezier(.2,.7,.3,1) .25s both;}
+.hello .ring.r2{border-color:var(--pink,#ff7a8a);animation-delay:.4s;}
+.hello .sp{position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px;border-radius:3px;background:var(--c);opacity:0;box-shadow:0 0 10px var(--c);
+  animation:hiSpark .9s cubic-bezier(.15,.7,.3,1) var(--d) both;}
+.hello h2{font-family:var(--display);font-weight:400;font-size:clamp(2.4rem,9vw,3.4rem);line-height:1;text-align:center;padding:0 20px;animation:hiName .6s cubic-bezier(.2,1.4,.4,1) .18s both;}
+.hello p{color:var(--text-2);font-weight:800;animation:hiFade .5s ease .45s both;}
+@keyframes hiPop{0%{opacity:0;transform:scale(.25) rotate(-14deg);}60%{opacity:1;}100%{transform:none;}}
+@keyframes hiRing{0%{opacity:.9;transform:scale(.8);}100%{opacity:0;transform:scale(1.9);}}
+@keyframes hiSpark{0%{opacity:0;transform:rotate(var(--a)) translateY(-60px) rotate(45deg) scale(.6);}15%{opacity:1;}100%{opacity:0;transform:rotate(var(--a)) translateY(calc(-1 * var(--r))) rotate(225deg) scale(.4);}}
+@keyframes hiName{0%{opacity:0;transform:scale(.6) translateY(14px);}100%{opacity:1;transform:none;}}
+@keyframes hiFade{0%{opacity:0;transform:translateY(6px);}100%{opacity:1;transform:none;}}
+@media (prefers-reduced-motion:reduce){.hello *{animation-duration:.01s!important;animation-delay:0s!important;}}
 </style>
 </head>
 <body>
@@ -101,7 +120,7 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
     setBusy(true); status('Signing in…');
     FGHSync.signInWithPin(pin).then(function (r) {
       if (r && r.isNew) { status(''); askName(); }
-      else { status('Welcome back!'); Kit.sfx('good'); location.replace('./index.html'); }
+      else { status(''); hello(true); }
     }).catch(function (e) {
       setBusy(false); Kit.haptic('error'); Kit.sfx('bad');
       $('slots').classList.remove('shake'); void $('slots').offsetWidth; $('slots').classList.add('shake');
@@ -116,14 +135,30 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
   function askName() {
     var inp = Kit.el('input', { class: 'input', maxlength: 14, placeholder: 'e.g. Tim', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', enterkeyhint: 'done' });
     // a PIN is one person's account: its name is your name in every game
-    function go() { var v = inp.value.trim(); if (v) { FGHSync.setLabel(v); try { localStorage.setItem('my_name', v); } catch (e) {} } location.replace('./index.html'); }
+    function go() { var v = inp.value.trim(); if (v) { FGHSync.setLabel(v); try { localStorage.setItem('my_name', v); } catch (e) {} } closeSheet(); hello(false); }
+    function closeSheet() { document.querySelectorAll('.k-scrim').forEach(function (x) { x.remove(); }); }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
     Kit.sheet({
       title: 'New PIN! What’s your name?', node: Kit.el('div', null, [Kit.el('p', { class: 'muted', style: { 'margin-bottom': '12px' }, text: 'This PIN is your account: your name, avatar and games on every device you sign in on. Everyone in the family gets their own PIN.' }), inp]),
       dismissible: false,
-      actions: [{ label: 'Save and continue', primary: true, onClick: go }, { label: 'Skip for now', cls: 'btn-ghost', onClick: function () { location.replace('./index.html'); } }]
+      actions: [{ label: 'Save and continue', primary: true, onClick: go }, { label: 'Skip for now', cls: 'btn-ghost', onClick: function () { closeSheet(); hello(false); } }]
     });
     setTimeout(function () { inp.focus(); }, 350);
+  }
+  // Signed in: fade the keypad away, then a hello for a beat and a half, then home
+  function hello(back) {
+    var name = '';
+    try { name = (localStorage.getItem('my_name') || (FGHSync.label && FGHSync.label()) || '').trim(); } catch (e) {}
+    $('logo').style.animation = 'none';
+    document.querySelector('.gate').classList.add('out');
+    var hav = Kit.el('div', { class: 'hav' }, [Kit.el('i', { class: 'ring' }), Kit.el('i', { class: 'ring r2' })]);
+    hav.appendChild(name ? Kit.avatar.el(name, 'xl') : Kit.el('span', { class: 'avatar xl', html: Kit.icon('dice') }));
+    var cols = ['#ffd166', '#ff7a8a', '#4fd1c5', '#8b7cff'];
+    for (var i = 0; i < 14; i++) hav.appendChild(Kit.el('i', { class: 'sp', style: { '--a': (i * 360 / 14 + (i % 2) * 9) + 'deg', '--r': (130 + (i % 3) * 30) + 'px', '--d': (0.22 + (i % 4) * 0.03) + 's', '--c': cols[i % 4] } }));
+    var box = Kit.el('div', { class: 'hello', role: 'status' }, [hav, Kit.el('h2', { text: name ? 'Hi, ' + name + '!' : 'Welcome!' }), Kit.el('p', { text: back ? 'Good to see you again' : 'Let’s play' })]);
+    setTimeout(function () { document.body.appendChild(box); Kit.sfx('good'); Kit.haptic('success'); }, 260);
+    setTimeout(function () { box.classList.add('bye'); }, 2050);
+    setTimeout(function () { location.replace('./index.html'); }, 2400);
   }
   render();
   // Signed out because this account's PIN was changed on another device

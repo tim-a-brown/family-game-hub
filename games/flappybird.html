@@ -95,6 +95,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 .count{font-family:var(--display);font-size:5rem;color:#fff;-webkit-text-stroke:3px #3a2410;paint-order:stroke fill;text-shadow:0 5px 0 #3a2410;animation:pop .45s var(--spring);}
 .hint{flex:none;font-size:.82rem;font-weight:700;color:var(--text-3);text-align:center;}
 @media (hover:none),(pointer:coarse){ .hint{display:none;} }
+/* Wide screens (iPad sideways, computers): the screen stands at the right; the scores get the room on the left */
+@media (min-width:900px) and (min-aspect-ratio:5/4){
+  html.ar-on #app{max-width:none;}
+  .fb-view{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto;column-gap:clamp(24px,4vw,64px);padding-right:clamp(8px,4vw,64px);}
+  .hud{grid-column:1;grid-row:1;align-self:center;justify-self:center;flex-direction:column;gap:12px;width:min(300px,100%);max-width:none!important;}
+  .plate{flex:none;padding:12px 16px;align-items:flex-start;}
+  .plate small{font-size:.78rem;}
+  .plate b{font-size:2.6rem;}
+  .pbtn{width:100%;height:56px;}
+  .cab{grid-column:2;grid-row:1 / span 2;width:min(58vw,calc((100dvh - 70px) * 1.1));height:100%;}
+  .hint{grid-column:1;grid-row:2;padding-bottom:6px;}
+}
 </style>
 </head>
 <body>
@@ -180,7 +192,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     scr.style.width = w + 'px'; scr.style.height = h + 'px';
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
     cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR); SC = cv.width / W;
-    $('view').querySelector('.hud').style.maxWidth = Math.max(w + 14, 300) + 'px';   // HUD lines up with the screen
+    $('view').querySelector('.hud').style.maxWidth = Math.max(w + 14, 300) + 'px';   // HUD lines up with the screen (on wide screens it stands to the left: see CSS)
     buildLayers();
     if (bird && state === 'ready') bird.y = H * .42;
     render();
@@ -558,7 +570,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function kick() { if (!raf && live && bird && state !== 'over' && !paused && !document.hidden) { last = 0; raf = requestAnimationFrame(loop); } }
 
   // ═══ Kit shell ══════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait', orientTablets: true,
+  Kit.init({ orient: 'portrait',
     id: 'flappybird',
     theme: { wood: ['#4a7f3a', '#2c5222'] },
     onNew: showSetup, confirmNew: false,
