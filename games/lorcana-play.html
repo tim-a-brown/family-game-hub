@@ -9412,10 +9412,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           : hasKw(u, 'reckless') ? { ico: 'chain', note: 'Reckless', tip: 'Reckless characters can’t quest.' } : cant(u, 'quest') ? { ico: 'chain', note: 'Can’t now', tip: 'Something stops it questing right now.' } : null;
         add('Quest · +' + LORE(u) + ' lore' + (qTax ? ' · pay ' + qTax + ' ink' : ''), canQuest(u), '', function () { runAction({ k: 'quest', u: u }); }, { primary: true, off: qOff });
         var ds = canChallenger(u) ? defenders(u) : [];
-        // nothing to challenge: say why under the buttons (only exerted characters can be challenged)
-        var oo = S.P[opp(pi)], noTgt = !canChallenger(u) || ds.length ? '' : oo.board.some(function (x) { return isChar(x) && C(x).ex; }) ? 'Nothing ' + d.n + ' can challenge right now.'
-          : oo.board.some(isChar) ? 'No challenge: ' + oo.name + '’s characters are all ready. Only exerted characters can be challenged.' : 'No challenge: ' + oo.name + ' has no characters in play.';
-        add('Challenge' + (cTax ? ' · pay ' + cTax + ' ink' : ''), canChallenger(u) && ds.length > 0, noTgt, function () { humanChallenge(u); });
+        // Able to challenge but nothing to challenge: the button stays, greyed, saying why (only exerted characters can be
+        // challenged, unless a card says otherwise)
+        var oo = S.P[opp(pi)], exd = oo.board.filter(function (x) { return isChar(x) && C(x).ex; }), noTgt = null;
+        if (canChallenger(u) && !ds.length) noTgt = exd.length ? { note: 'No targets', tip: blockedReason(u, exd[0]) || 'Nothing ' + d.n + ' can challenge right now.' }
+          : oo.board.some(isChar) ? { note: 'No exerted characters', tip: 'Only exerted characters can be challenged. ' + oo.name + '’s are all ready.' }
+          : { note: 'Nothing to challenge', tip: oo.name + ' has no characters in play.' };
+        if (noTgt) acts.push({ label: 'Challenge', off: noTgt });
+        else add('Challenge' + (cTax ? ' · pay ' + cTax + ' ink' : ''), canChallenger(u) && ds.length > 0, '', function () { humanChallenge(u); });
         if (cTax && inkReady(pi) < cTax && !c.ex && c.dry) acts.push({ label: 'Challenge', off: { ink: cTax, have: inkReady(pi), tip: 'Needs ' + cTax + ' ink to challenge.' } });
         if (S.P[pi].board.some(isLoc)) add('Move to a location', S.P[pi].board.some(function (l) { return canMove(u, l); }), '', function () { humanMove(u); });
         if (d.K.boost) add('Boost · ' + d.K.boost + ' ink', canBoost(u), '', function () { runAction({ k: 'boost', u: u }); });
