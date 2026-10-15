@@ -247,7 +247,7 @@ const ArcadeHi = (function(){
       </div>`;
     document.body.style.overflow = 'hidden';
     // Always release the scroll lock however the overlay is dismissed
-    { const _rm = overlay.remove.bind(overlay); overlay.remove = () => { document.body.style.overflow = ''; document.removeEventListener('keydown', onEsc); _rm(); }; }
+    { const _rm = overlay.remove.bind(overlay); overlay.remove = () => { document.body.style.overflow = ''; _rm(); }; }
     document.body.appendChild(overlay);
 
     // Detect mobile
