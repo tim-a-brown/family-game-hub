@@ -1474,6 +1474,7 @@ function defsOnce() {
   d.innerHTML = h;
 }
 function buildBoard() {
+  Music.start();
   defsOnce();
   document.documentElement.classList.add('aa-play');
   app.className = 'aa-app';
@@ -3283,6 +3284,50 @@ function rulesHtml() {
   });
   return nowGuide() + intro + secs.join('');
 }
+// ── Background music: wartime marches and orchestral pieces (public domain recordings, listed in MUSIC_TRACKS),
+// shuffled, quietly under the game while the map is up. Its own on/off switch in the menu; unset, it follows
+// the Game defaults music switch, and nothing plays with sound off.
+var MUSIC_TRACKS = [];
+var Music = (function () {
+  var a = null, order = [], want = false, fadeT = 0;
+  function on() { try { if (localStorage.getItem('gn_sound') === '0') return false; var v = localStorage.getItem('axisallies_music'); return v == null ? localStorage.getItem('gn_music') !== '0' : v !== '0'; } catch (e) { return true; } }
+  function next() {
+    if (!MUSIC_TRACKS.length) return;
+    if (!order.length) { order = MUSIC_TRACKS.map(function (t, i) { return i; }); for (var i = order.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), x = order[i]; order[i] = order[j]; order[j] = x; } }
+    var t = MUSIC_TRACKS[order.shift()];
+    a.src = '../music/axisallies/' + t.f; a.volume = 0;
+    var pr = a.play(); if (pr && pr.catch) pr.catch(function () {});
+    fade(0.32);
+  }
+  function fade(to, done) {
+    clearInterval(fadeT);
+    fadeT = setInterval(function () {
+      if (!a) return clearInterval(fadeT);
+      var v = a.volume + (to > a.volume ? 0.02 : -0.03);
+      if ((to > a.volume && v >= to) || (to <= a.volume && v <= to)) { a.volume = Math.max(0, Math.min(1, to)); clearInterval(fadeT); if (done) done(); return; }
+      a.volume = Math.max(0, Math.min(1, v));
+    }, 50);
+  }
+  function start() {
+    want = true;
+    if (!on() || !MUSIC_TRACKS.length) return;
+    if (!a) { a = new Audio(); a.preload = 'auto'; a.addEventListener('ended', function () { if (want) next(); }); a.addEventListener('error', function () { if (want) setTimeout(next, 800); }); }
+    if (a.src && !a.ended && a.paused) { var pr = a.play(); if (pr && pr.catch) pr.catch(function () {}); fade(0.32); return; }
+    if (!a.src || a.ended) next();
+  }
+  function stop() { want = false; if (a && !a.paused) fade(0, function () { if (!want && a) a.pause(); }); }
+  // phones only let sound start from a tap: the first tap on the board starts it
+  document.addEventListener('pointerdown', function () { if (want && on() && (!a || a.paused)) start(); }, true);
+  document.addEventListener('visibilitychange', function () { if (!a) return; if (document.hidden) a.pause(); else if (want && on()) { var pr = a.play(); if (pr && pr.catch) pr.catch(function () {}); } });
+  return {
+    start: start, stop: stop,
+    menuItem: { icon: 'music', label: 'Music on / off', onClick: function () {
+      var now = !on(); try { localStorage.setItem('axisallies_music', now ? '1' : '0'); } catch (e) {}
+      if (now) { if (want || (S && !S.over)) start(); } else if (a) { a.pause(); }
+      Kit.toast(now ? 'Music on' : 'Music off');
+    } }
+  };
+})();
 var KIT_OPTS = { orient: 'landscape', orientTablets: true,
   id: KEY,
   theme: { wood: ['#7a5a3a', '#4e3620'] },
@@ -3290,6 +3335,7 @@ var KIT_OPTS = { orient: 'landscape', orientTablets: true,
   undo: function () { undo(); },
   menu: [
     { icon: 'tiles', label: 'Show whole map', onClick: function () { if (S && R.map) fitView(true); } },
+    Music.menuItem,
     { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Axis & Allies: past games', keys: ['axisallies-score'] }); } }
   ]
 };
@@ -3300,6 +3346,7 @@ Kit.init(KIT_OPTS);
 // ── Setup screen ───────────────────────────────────────────────────────────
 var setupObs = null;
 function showSetup() {
+  Music.stop();
   tok++; S = null; busy = 0; cpuRunning = false; hideBattle(); closeBanner();
   document.documentElement.classList.remove('aa-play');
   app.className = 'stage'; app.innerHTML = ''; R = {};

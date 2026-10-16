@@ -2319,10 +2319,27 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
   function font(px) { return '400 ' + px + 'px "Lilita One", ui-rounded, system-ui, sans-serif'; }
   function outlined(t, x0, y0, px, col, lw) { g.font = font(px); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.lineWidth = lw || px * 0.22; g.strokeStyle = 'rgba(0,0,0,.8)'; g.strokeText(t, x0, y0); g.fillStyle = col; g.fillText(t, x0, y0); }
+  // a glowing streak in the player's colour follows the ship as it moves (like the cabinet's), fading fast
+  var shipTrail = {};
+  function drawTrail(x, id, px, py, col) {
+    var tr = shipTrail[id] || (shipTrail[id] = []), last = tr[tr.length - 1];
+    if (!last || Math.hypot(px - last.x, py - last.y) > 0.6) tr.push({ x: px, y: py, t: drawT });
+    while (tr.length && drawT - tr[0].t > 0.32) tr.shift();
+    if (tr.length < 2) return;
+    x.globalCompositeOperation = 'lighter'; x.lineCap = 'round'; x.lineJoin = 'round';
+    for (var i = 1; i < tr.length; i++) {
+      var k = 1 - (drawT - tr[i].t) / 0.32; if (k <= 0) continue;
+      x.strokeStyle = hexA(col, 0.22 * k); x.lineWidth = 9 * k + 2; x.beginPath(); x.moveTo(tr[i - 1].x, tr[i - 1].y + 3); x.lineTo(tr[i].x, tr[i].y + 3); x.stroke();
+      x.strokeStyle = hexA(col, 0.75 * k); x.lineWidth = 3.4 * k + 0.6; x.stroke();
+      x.strokeStyle = 'rgba(255,255,255,' + (0.55 * k).toFixed(3) + ')'; x.lineWidth = 1.2 * k; x.stroke();
+    }
+    x.globalCompositeOperation = 'source-over';
+  }
   function drawShip(x, p, me, fxOnly) {
     var px = p.x, py = p.y;
     if (GV && p.id === me && GV.pred.alive) { px = GV.pred.x; py = GV.pred.y; }
-    if (!p.alive) return;
+    if (!p.alive) { delete shipTrail[p.id]; return; }
+    drawTrail(x, p.id, px, py, PCOL[p.ci % 3]);
     var blink = p.inv > 0 && Math.floor(drawT * 12) % 2, col = PCOL[p.ci % 3], a = blink ? 0.35 : 1;
     x.globalCompositeOperation = 'lighter';
     glow(x, px, py, 22, col, 0.32 * a);
