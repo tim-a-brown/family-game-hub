@@ -4281,6 +4281,36 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function roundIx() { return Math.floor((S.turn - 1) / 2); }
   // why: { u: the card it came from, r: what happened } (an ability that's running fills it in by itself)
   var abNow = null;
+  // What set off a triggered ability, for the lore ledger: "when HAL 9000's Rabbit quested"
+  function trigWhy(ab, x, src) {
+    x = x || {};
+    function who(u) { return u && S.cards[u] ? S.P[C(u).o].name + '’s ' + DD(u).n : 'a card'; }
+    var self = S.cards[src] ? DD(src).n : 'it';
+    switch (ab.kind) {
+      case 'quest': return 'when ' + self + ' quested';
+      case 'anyQuest': case 'hereQuest': return 'when ' + who(x.quester) + ' quested';
+      case 'challenge': case 'anyChallenge': case 'challenged': case 'anyChallenged': return x.att ? 'when ' + who(x.att) + ' challenged ' + who(x.def) : '';
+      case 'kills': case 'anyKills': return x.att ? 'when ' + who(x.att) + ' banished ' + who(x.def) + ' in a challenge' : '';
+      case 'banishedChal': return 'when ' + self + ' was banished in a challenge';
+      case 'banished': case 'leave': case 'anyBanished': return 'when ' + (x.gone ? who(x.gone) : self) + ' was banished';
+      case 'bounced': return 'when ' + who(x.gone) + ' was returned to hand';
+      case 'play': return 'when ' + self + ' was played';
+      case 'playCard': case 'anyPlayed': case 'oppPlay': case 'fromDisc': case 'enteredEx': case 'shiftOn': return x.played ? 'when ' + who(x.played) + ' was played' : '';
+      case 'sings': return x.song && S.cards[x.song] ? 'when ' + DD(x.song).n + ' was sung' : '';
+      case 'turnStart': return 'at the start of the turn';
+      case 'turnEnd': return 'at the end of the turn';
+      case 'healed': return 'when damage was removed from ' + who(x.healed);
+      case 'damaged': return 'when ' + who(x.hurt) + ' was dealt damage';
+      case 'exerted': return 'when ' + who(x.exd) + ' was exerted';
+      case 'movedHere': return 'when ' + who(x.mover) + ' moved here';
+      case 'supported': return 'when ' + who(x.target) + ' got Support';
+      case 'drew': return 'when a card was drawn';
+      case 'inked': return 'when a card went into the inkwell';
+      case 'discarded': case 'discardedCard': return 'when a card was discarded';
+      case 'act': return 'used';
+    }
+    return '';
+  }
   function gainLore(pi, n, why) {
     if (n < 0 && S && S.P && boardOp(pi, 'noLoseLore')) return 0;
     if (n > 0 && S && S.P && boardOp(opp(pi), 'oppNoLoreUnlessChal') && !(TT().chal[pi] > 0)) return 0;
@@ -4290,10 +4320,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (d && S.turn > 0) { var r = roundIx(); while (S.rl.length <= r) S.rl.push([0, 0]); S.rl[r][pi] += d; }
     // the lore ledger (tap a lore counter): every change, the turn, the card and why
     if (d && S.cards) {
-      why = why || (abNow && S.cards[abNow.src] ? { u: abNow.src, r: abNow.name } : {});
+      why = why || (abNow && S.cards[abNow.src] ? { u: abNow.src, r: abNow.name, w: abNow.why } : {});
       var wu = why.u && S.cards[why.u] ? why.u : null;
       S.ll = S.ll || [];
-      S.ll.push({ p: pi, d: d, t: S.turn, i: wu ? C(wu).id : null, n: wu ? DD(wu).full : why.n || '', o: wu ? C(wu).o : null, r: why.r || '' });
+      S.ll.push({ p: pi, d: d, t: S.turn, i: wu ? C(wu).id : null, n: wu ? DD(wu).full : why.n || '', o: wu ? C(wu).o : null, r: why.r || '', w: why.w || '' });
       if (S.ll.length > 400) S.ll.splice(0, S.ll.length - 400);
     }
     if (d > 0) fx.lore(pi, d);
@@ -5187,7 +5217,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var cx = it.ctx || {}, pv = cx.gone || cx.played || cx.quester || cx.healed || cx.hurt || cx.mover || cx.exd || cx.target || cx.host || null;
     var st = { src: src, pi: pi, ab: ab, ctx: cx, prev: cx.prevList ? cx.prevList.filter(function (u) { return !!S.cards[u]; }) : pv && S.cards[pv] ? [pv] : null, did: true, said: [], last: cx.n || 0 };
     fx.flare(src, abTitle(src, ab));
-    var abWas = abNow; abNow = { src: src, name: ab.name ? titleCase(ab.name) : DD(src).song ? 'Song' : DD(src).t === 'action' ? 'Action' : 'Ability' };
+    var abWas = abNow; abNow = { src: src, name: ab.name ? titleCase(ab.name) : DD(src).song ? 'Song' : DD(src).t === 'action' ? 'Action' : 'Ability', why: trigWhy(ab, cx, src) };
     // An optional ability with no choices on the table: ask first
     var first = ab.fx[0];
     if (first.may && !(first.t && first.t.sel === 'chosen') && ctlHuman(pi) && ['look', 'playFree', 'fromDiscard', 'modal', 'discard', 'discMove', 'search', 'handInk', 'choose'].indexOf(first.op) < 0) {
@@ -10428,7 +10458,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var d = x.i ? D(x.i) : null, theirs = x.o != null && x.o !== w;
         list.appendChild(el('div', { class: 'll-row' + (x.d < 0 ? ' neg' : ''), role: d ? 'button' : null, onclick: d ? function (dd) { return function () { zoomDef(dd); }; }(d) : null }, [
           el('span', { class: 'll-art', html: d ? miniArt(d) : '' }),
-          el('div', { class: 'grow' }, [el('b', { text: x.n || (x.d > 0 ? 'Lore' : 'Lore lost') }), el('small', { text: x.r + (theirs ? ' · ' + S.P[x.o].name + '’s card' : '') })]),
+          el('div', { class: 'grow' }, [el('b', { text: x.n || (x.d > 0 ? 'Lore' : 'Lore lost') }), el('small', { text: x.r + (x.w ? ' · ' + x.w : '') + (theirs && !(x.w && x.w.indexOf(S.P[x.o].name + '’s') >= 0) ? ' · ' + S.P[x.o].name + '’s card' : '') })]),
           el('span', { class: 'll-d', text: (x.d > 0 ? '+' : '−') + Math.abs(x.d) })]));
       }
       if (early > 0) list.appendChild(el('div', { class: 'll-row early' }, [el('span', { class: 'll-art' }), el('div', { class: 'grow' }, [el('b', { text: 'Earlier in the game' }), el('small', { text: 'Before this game kept a ledger' })]), el('span', { class: 'll-d', text: '+' + early })]));
