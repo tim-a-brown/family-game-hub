@@ -1395,6 +1395,34 @@ html.lorc .k-sheet .lp-li.cl-row.on{box-shadow:inset 0 0 0 2px var(--gilt),0 0 1
 .cp-head b{display:block;font-weight:800;font-size:.88rem;line-height:1.2;}
 .cp-head small{display:block;font-size:.72rem;color:rgba(255,243,208,.7);}
 .cp-head.has-plan{flex-wrap:wrap;}
+/* Lore ledger */
+.ll-who{display:flex;gap:6px;margin:0 0 10px;}
+.ll-tab{flex:1;min-width:0;display:flex;align-items:center;gap:7px;padding:8px 10px;border:0;border-radius:12px;background:var(--w05);color:var(--text-2);font:inherit;font-weight:800;font-size:.85rem;}
+.ll-tab span{flex:1;min-width:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ll-tab .dot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none;}
+.ll-tab b{font-variant-numeric:tabular-nums;}
+.ll-tab.on{color:var(--text);background:color-mix(in srgb,var(--c) 18%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c) 70%,transparent);}
+.ll-sum{display:flex;align-items:center;gap:14px;margin:0 0 12px;padding:10px 14px;border-radius:14px;background:linear-gradient(180deg,rgba(60,44,12,.55),rgba(30,22,8,.55));box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.45);}
+.ll-big{display:flex;flex-direction:column;align-items:center;line-height:1;}
+.ll-big b{font-family:var(--display);font-weight:400;font-size:2.2rem;color:#ffd970;}
+.ll-big small{font-size:.68rem;font-weight:800;color:rgba(255,243,208,.7);margin-top:2px;}
+.ll-parts{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.82rem;font-weight:800;color:#fff3d0;}
+.ll-parts .neg{color:#ff9a9a;}
+.ll-list{display:flex;flex-direction:column;gap:4px;}
+.ll-turn{display:flex;justify-content:space-between;align-items:baseline;margin:8px 2px 2px;font-size:.7rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
+.ll-turn b{font-size:.8rem;color:var(--text-2);letter-spacing:0;font-variant-numeric:tabular-nums;}
+.ll-turn b::before{content:'Total ';font-size:.62rem;font-weight:800;text-transform:uppercase;color:var(--text-3);letter-spacing:.06em;}
+.ll-row{display:flex;align-items:center;gap:10px;padding:6px 10px 6px 6px;border-radius:12px;background:var(--w05);}
+.ll-row[role=button]{cursor:pointer;}
+.ll-row .grow{flex:1;min-width:0;line-height:1.2;}
+.ll-row b{display:block;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ll-row small{display:block;font-size:.72rem;color:var(--text-3);font-weight:700;}
+.ll-art{flex:none;width:28px;height:39px;border-radius:4px;overflow:hidden;background:var(--w05);}
+.ll-art .mini{display:block;width:100%;height:100%;background-size:cover;background-position:center;}
+.ll-d{flex:none;font-family:var(--display);font-weight:400;font-size:1.25rem;color:#ffd970;font-variant-numeric:tabular-nums;}
+.ll-row.neg .ll-d{color:#ff8a8a;}
+.ll-row.early{opacity:.7;}
+.ll-none{text-align:center;margin:16px 0;}
 .cp-plan{flex-basis:100%;list-style:none;margin:2px 0 0;padding:7px 0 0;border-top:1px solid rgba(227,189,98,.3);display:flex;flex-direction:column;gap:3px;counter-reset:st;}
 .cp-plan li{display:flex;align-items:flex-start;gap:8px;font-size:.78rem;font-weight:700;line-height:1.25;color:rgba(255,243,208,.55);}
 .cp-plan li i{flex:none;width:17px;height:17px;margin-top:-1px;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.45);display:grid;place-items:center;}
@@ -4251,13 +4279,23 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function log(t, pi, priv) { S.log.push({ t: youFix(t), p: pi == null ? -1 : pi, priv: priv ? youFix(priv) : undefined }); if (S.log.length > 120) S.log.splice(0, S.log.length - 120); }
   function roundIx() { return Math.floor((S.turn - 1) / 2); }
-  function gainLore(pi, n) {
+  // why: { u: the card it came from, r: what happened } (an ability that's running fills it in by itself)
+  var abNow = null;
+  function gainLore(pi, n, why) {
     if (n < 0 && S && S.P && boardOp(pi, 'noLoseLore')) return 0;
     if (n > 0 && S && S.P && boardOp(opp(pi), 'oppNoLoreUnlessChal') && !(TT().chal[pi] > 0)) return 0;
     var p = S.P[pi], before = p.lore;
     p.lore = Math.max(0, p.lore + n);
     var d = p.lore - before;
     if (d && S.turn > 0) { var r = roundIx(); while (S.rl.length <= r) S.rl.push([0, 0]); S.rl[r][pi] += d; }
+    // the lore ledger (tap a lore counter): every change, the turn, the card and why
+    if (d && S.cards) {
+      why = why || (abNow && S.cards[abNow.src] ? { u: abNow.src, r: abNow.name } : {});
+      var wu = why.u && S.cards[why.u] ? why.u : null;
+      S.ll = S.ll || [];
+      S.ll.push({ p: pi, d: d, t: S.turn, i: wu ? C(wu).id : null, n: wu ? DD(wu).full : why.n || '', o: wu ? C(wu).o : null, r: why.r || '' });
+      if (S.ll.length > 400) S.ll.splice(0, S.ll.length - 400);
+    }
     if (d > 0) fx.lore(pi, d);
     return d;
   }
@@ -4478,7 +4516,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       C(u).ex = true; exertEv(u);
       var n = LORE(u), st = S.st[pi];
       log(S.P[pi].name + ' quested with ' + nm(u) + ' for ' + n + ' lore', pi);
-      gainLore(pi, n);
+      gainLore(pi, n, { u: u, r: 'Quested' });
       st.q++; st.ql += n; TT().quest[pi].push(u);
       if (!st.big || n > st.big.n) st.big = { n: n, name: DD(u).full };
       return n;
@@ -4527,8 +4565,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     toReady.forEach(function (u) { C(u).ex = false; });
     p.ink.forEach(function (u) { C(u).ex = false; });
     p.board.forEach(function (u) { if (isChar(u)) { if (!C(u).dry) fx.dried(u); C(u).dry = true; } });
-    var locL = 0, locN = []; p.board.forEach(function (u) { if (isLoc(u) && LORE(u) > 0) { locL += LORE(u); locN.push(DD(u).n); } });
-    if (locL) { gainLore(pi, locL); S.st[pi].loc += locL; log(p.name + ' gained ' + locL + ' lore from ' + (locN.length > 1 ? locN.slice(0, -1).join(', ') + ' and ' + locN[locN.length - 1] : locN[0]), pi); }
+    var locL = 0, locN = []; p.board.forEach(function (u) { if (isLoc(u) && LORE(u) > 0) { locL += gainLore(pi, LORE(u), { u: u, r: 'Location, start of turn' }); locN.push(DD(u).n); } });
+    if (locL) { S.st[pi].loc += locL; log(p.name + ' gained ' + locL + ' lore from ' + (locN.length > 1 ? locN.slice(0, -1).join(', ') + ' and ' + locN[locN.length - 1] : locN[0]), pi); }
     if (p.lore >= needLore(pi)) return;
     if (boardOp(pi, 'skipDraw')) { log(p.name + ' skips the draw', pi); return; }
     if (S.turn === 1 && pi === S.first) { log(p.name + ' goes first and skips the first draw', pi); return; }
@@ -5149,12 +5187,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var cx = it.ctx || {}, pv = cx.gone || cx.played || cx.quester || cx.healed || cx.hurt || cx.mover || cx.exd || cx.target || cx.host || null;
     var st = { src: src, pi: pi, ab: ab, ctx: cx, prev: cx.prevList ? cx.prevList.filter(function (u) { return !!S.cards[u]; }) : pv && S.cards[pv] ? [pv] : null, did: true, said: [], last: cx.n || 0 };
     fx.flare(src, abTitle(src, ab));
+    var abWas = abNow; abNow = { src: src, name: ab.name ? titleCase(ab.name) : DD(src).song ? 'Song' : DD(src).t === 'action' ? 'Action' : 'Ability' };
     // An optional ability with no choices on the table: ask first
     var first = ab.fx[0];
     if (first.may && !(first.t && first.t.sel === 'chosen') && ctlHuman(pi) && ['look', 'playFree', 'fromDiscard', 'modal', 'discard', 'discMove', 'search', 'handInk', 'choose'].indexOf(first.op) < 0) {
       return afterFx(function () {
         askUse(src, ab, pi, function (yes) {
-          if (!yes) { log(S.P[pi].name + ' chose not to use ' + abTitle(src, ab), pi); return done(); }
+          if (!yes) { abNow = abWas; log(S.P[pi].name + ' chose not to use ' + abTitle(src, ab), pi); return done(); }
           first = null; st.asked = true; runFx(ab.fx, 0, st, finish);
         });
       }, 300);
@@ -5162,6 +5201,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     afterFx(function () { runFx(ab.fx, 0, st, finish); }, 520);
     function finish() {
       if (PLAN === st.plan) PLAN = null;
+      abNow = abWas;
       if (st.said.length) log(DD(src).n + (ab.name ? ' · ' + abTitle(src, ab) : '') + ': ' + st.said.join('. '), pi);
       // what the computer's abilities did, so nothing slips by
       if (st.said.length && (S.mode === 'online' || (!ctlHuman(pi) && humans() > 0))) oppTick(pi, abTitle(src, ab), st.said.join(' · ').replace(/^\w/, function (c) { return c.toUpperCase(); }));
@@ -8452,7 +8492,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     else if (k === 'disc') showDiscard(pi);
     else if (k === 'deck') { if (S.P[pi].deckL.length && topFaceUp(pi)) zoomDef(DD(S.P[pi].deckL[0])); else Kit.toast(S.P[pi].name + ': ' + plural(S.P[pi].deckL.length, 'card') + ' left in deck'); }
     else if (k === 'ink') Kit.toast(S.P[pi].name + ': ' + wellReady(pi) + ' of ' + S.P[pi].ink.length + ' ink ready' + (dropsOf(pi) ? ' + ' + plural(dropsOf(pi), 'ink drop') : '') + (canAct() && pi === S.cur ? (S.P[pi].inked ? '. You already inked this turn.' : '. Drag a card here to ink it.') : ''));
-    else if (k === 'lore') Kit.toast(S.P[pi].name + ' has ' + S.P[pi].lore + ' of ' + needLore(pi) + ' lore');
+    else if (k === 'lore') loreLedger(pi);
   }
   function onDown(e) {
     if (e.button != null && e.button > 0) return;
@@ -10141,7 +10181,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           else { Kit.toast(name(who) + ' drew ' + plural(got, 'card')); again(); }
           return;
         }
-        case 'lore': close(); doIt(function () { var d = gainLore(who, v.n); note(name(who) + (d >= 0 ? ' gained ' : ' lost ') + Math.abs(d) + ' lore'); }); again(); return;
+        case 'lore': close(); doIt(function () { var d = gainLore(who, v.n, { r: 'Changed by hand' }); note(name(who) + (d >= 0 ? ' gained ' : ' lost ') + Math.abs(d) + ' lore'); }); again(); return;
         case 'dmg': pickCard('Deal ' + v.n + ' damage to which card?', t.tgt, true, function (x) { var dd = 0; doIt(function () { dd = dealDamage(x, v.n); note(nm(x) + ' took ' + dd + ' damage'); checkBanish(); }); if (dd < v.n) Kit.toast('Resist reduced it to ' + dd); again(); }); return;
         case 'heal': pickCard('Remove ' + v.n + ' damage from which card?', t.tgt, false, function (x) { doIt(function () { C(x).dmg = Math.max(0, C(x).dmg - v.n); note('removed damage from ' + nm(x)); }); again(); }); return;
         case 'banish': pickCard('Banish which card?', t.tgt, true, function (x) { doIt(function () { note('banished ' + nm(x)); banishCard(x, {}); }); Kit.sfx('bad'); if (!o.done) pumpQ(); again(); }); return;
@@ -10334,6 +10374,46 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var P = S.P[pi], pre = snapshot();
     act(function () { P.discard.splice(P.discard.indexOf(u), 1); resetCard(u); P.ink.push(u); P.inked = true; var Ti = TT(); Ti.handInk = Ti.handInk || [0, 0]; Ti.handInk[pi]++; S.st[pi].inked++; log(P.name + ' put ' + DD(u).full + ' into the inkwell from the discard', pi); leftDisc(pi, u, false); inked(pi); });
     pushUndo(pre); Kit.sfx('flip'); fx.ink(pi, inkColor(u)); render(); pumpQ();
+  }
+  // Lore ledger: how each player got their lore, turn by turn (newest first), and any they lost
+  function loreLedger(pi) {
+    if (!S) return;
+    var node = el('div', { class: 'll' }), s;
+    function paint(w) {
+      var P = S.P[w], rows = (S.ll || []).filter(function (x) { return x.p === w; });
+      var gain = 0, lost = 0, by = { q: 0, a: 0, l: 0 };
+      rows.forEach(function (x) { if (x.d > 0) { gain += x.d; if (x.r === 'Quested') by.q += x.d; else if (/^Location/.test(x.r)) by.l += x.d; else by.a += x.d; } else lost -= x.d; });
+      var early = P.lore - (gain - lost);   // from before the ledger started (a game begun on an older version)
+      node.innerHTML = '';
+      // whose: the two players as tabs, in their colours
+      node.appendChild(el('div', { class: 'll-who' }, S.P.map(function (q, j) {
+        return el('button', { type: 'button', class: 'll-tab' + (j === w ? ' on' : ''), style: { '--c': q.color }, 'aria-pressed': String(j === w), onclick: function () { if (j !== w) { Kit.sfx('tap'); paint(j); } } },
+          [el('i', { class: 'dot' }), el('span', { text: q.name }), el('b', { text: String(q.lore) })]);
+      })));
+      // where it came from, at a glance
+      var parts = [['Quests', by.q], ['Abilities', by.a], ['Locations', by.l]].filter(function (x) { return x[1]; });
+      node.appendChild(el('div', { class: 'll-sum' }, [
+        el('div', { class: 'll-big', html: '<b>' + P.lore + '</b><small>of ' + needLore(w) + ' lore</small>' }),
+        el('div', { class: 'll-parts', html: parts.map(function (x) { return '<span>+' + x[1] + ' ' + x[0].toLowerCase() + '</span>'; }).join('') + (lost ? '<span class="neg">−' + lost + ' lost</span>' : '') })
+      ]));
+      if (!rows.length && !early) { node.appendChild(el('p', { class: 'muted ll-none', text: 'No lore yet.' })); return; }
+      // newest first, in turns; the running total after each turn on the right
+      var list = el('div', { class: 'll-list' }), run = early, totals = rows.map(function (x) { run += x.d; return run; });
+      var lastT = null;
+      for (var i = rows.length - 1; i >= 0; i--) {
+        var x = rows[i];
+        if (x.t !== lastT) { lastT = x.t; list.appendChild(el('div', { class: 'll-turn', html: '<span>Turn ' + x.t + (x.t === S.turn ? ' · now' : '') + '</span><b>' + totals[i] + '</b>' })); }
+        var d = x.i ? D(x.i) : null, theirs = x.o != null && x.o !== w;
+        list.appendChild(el('div', { class: 'll-row' + (x.d < 0 ? ' neg' : ''), role: d ? 'button' : null, onclick: d ? function (dd) { return function () { zoomDef(dd); }; }(d) : null }, [
+          el('span', { class: 'll-art', html: d ? miniArt(d) : '' }),
+          el('div', { class: 'grow' }, [el('b', { text: x.n || (x.d > 0 ? 'Lore' : 'Lore lost') }), el('small', { text: x.r + (theirs ? ' · ' + S.P[x.o].name + '’s card' : '') })]),
+          el('span', { class: 'll-d', text: (x.d > 0 ? '+' : '−') + Math.abs(x.d) })]));
+      }
+      if (early > 0) list.appendChild(el('div', { class: 'll-row early' }, [el('span', { class: 'll-art' }), el('div', { class: 'grow' }, [el('b', { text: 'Earlier in the game' }), el('small', { text: 'Before this game kept a ledger' })]), el('span', { class: 'll-d', text: '+' + early })]));
+      node.appendChild(list);
+    }
+    paint(pi);
+    s = Kit.sheet({ title: 'Lore', node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
   function showLog() {
     if (!S) return;
