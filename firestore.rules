@@ -20,7 +20,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /pins/{pinId} {
-      allow read: if pinId.matches('^[0-9]{4}$');
+      // Looked up one PIN at a time only: never listed, so nobody can pull every account in one query
+      allow get: if pinId.matches('^[0-9]{4}$');
 
       // A PIN whose account moved to a new PIN (Change PIN) holds only {moved, updatedAt} and takes no more
       // writes, so a device still signed in with the old PIN can't fill it up again.
