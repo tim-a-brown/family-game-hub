@@ -94,10 +94,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // ellipse: half-width, half-height); bonus: flat points for beating it; hy: where it hovers, as a share of
   // the way down to the players' area.
   var BOSS = {
-    wasp: { name: 'Killer Wasp', hp: 120, bonus: 10000, vu: 2.0, r: [30, 22], c: '#ffe23d', hy: 0.44 },
-    firefly: { name: 'Night Flyer', hp: 105, bonus: 10000, vu: 2.0, r: [36, 22], c: '#b98cff', hy: 0.34 },
-    beetle: { name: 'Blast Beetle', hp: 330, bonus: 10000, vu: 1.9, r: [30, 27], c: '#ff4a7a', hy: 0.3 },
-    mega: { name: 'Mega Spider', hp: 230, bonus: 100000, vu: 1.6, r: [42, 29], c: '#ff2d8a', hy: 0.34 }
+    wasp: { name: 'Killer Wasp', hp: 46, bonus: 10000, vu: 2.0, r: [30, 22], c: '#ffe23d', hy: 0.44 },
+    firefly: { name: 'Night Flyer', hp: 80, bonus: 10000, vu: 2.0, r: [36, 22], c: '#b98cff', hy: 0.34 },
+    beetle: { name: 'Blast Beetle', hp: 66, bonus: 10000, vu: 1.9, r: [30, 27], c: '#ff4a7a', hy: 0.3 },
+    mega: { name: 'Mega Spider', hp: 72, bonus: 100000, vu: 1.6, r: [42, 29], c: '#ff2d8a', hy: 0.34 }
   };
   // Ten waves, like the cabinet: short scripted waves (see SCRIPT) between four bosses; after wave 10 the loop
   // starts again, faster each time (endless). Each wave number has its own colours. lay: its mushroom layout
@@ -146,13 +146,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   };
   var POWK = ['scatter', 'shock', 'beam', 'bomb'], POW_T = 1, BOMB_R = 38, CAP_LIFE = 14;
   var AMMO = { scatter: 30, shock: 50, beam: 4.2, bomb: 10 };
-  // Damage to a boss from each kind of hit (where its armour lets it through)
-  var BDMG = { laser: 1, scatter: 0.4, shock: 1, beam: 0.75, bomb: 8, blast: 6 };
+  // Damage to a boss from each kind of hit (a plain shot is 1)
+  var BDMG = { laser: 1, scatter: 0.4, shock: 1, beam: 0.45, bomb: 4, blast: 3 };
   var BOSS_NP = 1;        // each extra online player adds 100% to a boss's health
-  var BST = ['enter', 'fly', 'warn', 'dive', 'rise', 'slam', 'back', 'die', 'track', 'loop', 'exit', 'rest', 'glide', 'crawl', 'perch', 'leap', 'ground', 'lunge', 'climb'];
+  var BST = ['enter', 'fly', 'warn', 'dive', 'rise', 'slam', 'back', 'die', 'track', 'loop', 'exit', 'rest', 'glide', 'crawl', 'perch', 'leap', 'ground', 'lunge', 'climb', 'circle', 'hold', 'pulse', 'patrol', 'pause', 'walk', 'wind', 'sweep', 'ret', 'flee'];
   var DIFF = { relaxed: { lives: 5, spd: 0.85, boss: 0.8, name: 'Relaxed' }, arcade: { lives: 3, spd: 1, boss: 1, name: 'Arcade' } };
   var DRAG = { slow: 1.2, normal: 1.7, fast: 2.4 };
-  var FT = ['spider', 'flea', 'scorp', 'ball', 'wasp', 'bwasp', 'ant', 'ffly', 'beetle', 'mini'], KT = ['sting', 'spark', 'venom', 'ember', 'fire'], BT = ['wasp', 'firefly', 'beetle', 'mega'], BK = ['laser', 'scatter', 'shock', 'bomb'];
+  var FT = ['spider', 'flea', 'scorp', 'ball', 'wasp', 'bwasp', 'ant', 'ffly', 'beetle', 'mini'], KT = ['sting', 'spark', 'venom', 'ember', 'fire', 'web'], BT = ['wasp', 'firefly', 'beetle', 'mega'], BK = ['laser', 'scatter', 'shock', 'bomb'];
   var PH = ['intro', 'play', 'clear', 'dead', 'over', 'won'];
   // ═══ Sound: small WebAudio synth that follows the kit's sound setting ═══
   var AC = null, master = null, nbuf = null;
@@ -282,13 +282,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       '<li>Those three use ammo only as they fire: with nothing to shoot, turn auto-fire off to save it.</li>' +
       '<li><b>Beam</b>: a laser straight up that goes through everything in its path. It burns out about 4 seconds after you first fire it, whether you keep firing or not.</li></ul>' +
       '<h3>Combos</h3><p>Hit bugs quickly, one after another. Every 5 in a row is a combo bonus: x5 is <b>100</b>, x10 is <b>200</b>, x15 is <b>300</b> and so on.</p>' +
-      '<h3>Bosses</h3><p>Each boss is armoured: your shots bounce off except at its weak spot or in its weak moment. The bar at the top shows its health, and it gets angrier at two thirds and one third.</p><ul>' +
-      '<li><b>Killer Wasp</b> (wave 3): follows you along the top, locks on, loops and dives straight at you. Dodge sideways, then get under it: only while it climbs back up, thorax glowing, can it be hurt. It sends ordinary wasps too.</li>' +
-      '<li><b>Night Flyer</b> (wave 6): sweeps corner to corner, lighting up circles on the ground as it goes (the sides are the worst place to be), and brings fireflies. Between sweeps it rests at the top with its glowing core open: only the core takes damage.</li>' +
-      '<li><b>Blast Beetle</b> (wave 9): crawls across lane by lane, lobbing fireballs that roll across the mushrooms and go off. Only straight shots on its head plate hurt it (Scatter bounces off). Shoot a fireball down near it and the blast hurts it too. It sends blast beetles.</li>' +
-      '<li><b>Mega Spider</b> (wave 10): crawls along the top firing venom, spins web walls of mushrooms and sends baby spiders, then leaps over you and pounds the ground (move away from its shadow). It can only be hurt properly while it\'s down on the ground; up top only Beam and Shock get through, a little. <b>One life:</b> if you\'re hit during this fight, it\'s over (for you, online).</li></ul>' +
-      '<p>Beating the Killer Wasp, the Night Flyer or the Blast Beetle is worth <b>10,000</b>. The Mega Spider is worth <b>100,000</b>. Every hit on a boss is <b>5</b>.</p>' +
-      '<h3>Endless</h3><p>After wave 10 the waves start again from the first stage, with the wave number still counting up. Each time round everything is faster, the waves are longer, the bosses are tougher, and their bonuses go up.</p>' +
+      '<h3>Bosses</h3><p>Every hit on a boss counts: the bar at the top drains as you keep firing, and the trick is staying out of the way of its attacks while you do. Each one gets angrier at two thirds and one third health.</p><ul>' +
+      '<li><b>Killer Wasp</b> (wave 3): flies big circles and sends small wasps. When it holds back with a red target on you, move: it either dives at you in a streak of fire or fires stings at the target (or it\'s bluffing).</li>' +
+      '<li><b>Night Flyer</b> (wave 6): moves between six spots and pulses a ring of green poison out around it. Stay clear of the ring as it spreads. It may stay and pulse again. Fireflies come in with it.</li>' +
+      '<li><b>Blast Beetle</b> (wave 9): patrols along the top dropping fireballs where you are (they burst when they land; shoot them down). When it stops and shakes, it\'s about to lunge down at you. It sends bomb beetles.</li>' +
+      '<li><b>Mega Spider</b> (wave 10, Wave X): you have one chance. It walks along the top shooting webs straight down and on the diagonals. Below two thirds it pulls back and lunges at you; below one third it lunges with no warning and sweeps along the bottom. If it hits you, the bonus round is over (no life lost) and the game goes on.</li></ul>' +
+      '<p>Beating the Killer Wasp, the Night Flyer or the Blast Beetle is worth <b>10,000</b>. The Mega Spider is worth <b>100,000</b> and wins the round. Every hit on a boss is <b>5</b>.</p>' +
+      '<h3>Endless</h3><p>After wave 10 (win or lose the bonus) the waves start again from the first stage, with the wave number still counting up. Each time round everything is faster and busier, the bosses are tougher, and their bonuses go up.</p>' +
       '<h3>Lives</h3><p>Touching a bug, a boss, a boss\'s shot or a flashing circle costs a life. You\'re back a moment later, with 5 seconds of safety (the ring of dots). You get an extra life every <b>20,000</b> points. Arcade starts with 3 lives. Relaxed starts with 5, with slower bugs and weaker, slower bosses.</p>' +
       '<h3>Play online</h3><p>Two or three players, each on their own phone or tablet, play the same field together, like the three-player cabinet. Each player has their own coloured ship (blue, yellow, purple), score and lives. One opens a table; the others join it from the list (tables opened by people you\'ve linked show up first) or with the 4-letter code. Everyone shares the team score and also has their own. Each extra player brings more bugs, another centipede and more power-ups, and the bosses get tougher. Extra lives come from the team score and go to everyone. If you lose your last life, you\'re back in at the start of the next wave, or sooner if the team earns an extra life. The game ends when everyone is out at once. Players can join a game already going. An online game can\'t be paused, and it ends for everyone if the host leaves.</p>' +
       '<p>If your score makes the board, enter your initials for the high scores.</p>'
@@ -346,6 +346,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       case 'r': fx.exps.push({ x: a[1], y: a[2], c: a[4], r: a[3], ring: true, life: 0.6, max: 0.6 }); break;
       case 'z': if (fx.arcs.length < 24) fx.arcs.push({ x1: a[1], y1: a[2], x2: a[3], y2: a[4], c: a[5] || '#bff8ff', life: 0.22 }); break;
       case 'h': if (a[1] === myPid()) Kit.haptic(a[2]); break;
+      case 'w': try { Kit.confetti && Kit.confetti(); } catch (e) {} break;
     }
   }
   // a broken-off cube (or, glow: a spark) flying out, popping up off the floor and dropping back
@@ -688,7 +689,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     sound('die'); shake(0.8); flash('#ff3d5a', 0.45); buzz(P.id, 'error');
     G.bullets = G.bullets.filter(function (b) { return b.o !== P.id; });
     // the Mega Spider's one-life rule: no coming back during the fight
-    if (G.oneLife) { P.benched = true; P.respawn = 0; if (G.mode !== 'solo') popup(P.x, P.y - 12, P.name + ' is out', P.color, true); }
+    // Wave X: one chance at the bonus. A hit costs no life, but it's out of the fight
+    if (G.oneLife) { P.lives++; P.benched = true; P.respawn = 0; if (G.mode !== 'solo') popup(P.x, P.y - 12, P.name + ' is out', P.color, true); }
     else if (P.lives > 0) P.respawn = 2.0;
     else if (G.mode !== 'solo') popup(P.x, P.y - 12, P.name + ' is out', P.color, true);
   }
@@ -719,14 +721,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     collide();
     spawnStep(dt);
     if (G.phase === 'play' && !G.chains.length && !G.boss && !G.trainsLeft) { G.phase = 'clear'; G.phaseT = 0; waveBonus(); }
-    if (G.phase === 'clear' && G.phaseT > 2.2) startWave(G.wave + 1);
-    if (G.phase !== 'over' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); })) { G.phase = 'over'; G.phaseT = 0; sound('over'); }
+    if (G.phase === 'clear' && G.phaseT > 2.2) { G.lostBonus = false; startWave(G.wave + 1); }
+    if (G.oneLife && G.phase === 'play' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); })) bonusLost();
+    if (G.phase !== 'over' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); }) && !(G.phase === 'clear' && G.lostBonus)) { G.phase = 'over'; G.phaseT = 0; sound('over'); }
   }
   function waveBonus() {
     var b = 250 * G.wave, bw = isBossWave(G.wave), mega = bw && waveDef(G.wave).boss === 'mega';
     G.players.forEach(function (p) { if (p.alive) p.score += b; });
     G.score += b;
-    banner(mega ? 'Garden saved!' : bw ? 'Boss defeated!' : 'Wave clear', mega ? 'Endless mode next' : '+' + fmt(b) + ' bonus', '#ffd23d');
+    if (mega) { card('You win!', 'Mega bonus', '#ff2d8a', 'The loop starts again, faster'); ev(['w']); }
+    else banner(bw ? 'Boss battle complete' : 'Wave complete', '+' + fmt(b) + ' bonus', '#ffd23d');
     sound('clear');
     G.foes = G.foes.filter(function (f) { return f.type !== 'ball'; }); G.shots = []; G.zones = [];
     if (mega) shake(0.6);
@@ -1007,12 +1011,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
 
   // ── Ground shockwaves (fireflies, the Night Flyer, the Mega Spider's landing) ──
   // A zone shows a faint warning ring for `warn` seconds, then flares: anyone inside it then loses a life.
-  var ZC = ['#d4ff3d', '#b98cff', '#ff2d8a'];     // shockwave colours: firefly, Night Flyer, Mega Spider
+  var ZC = ['#d4ff3d', '#b98cff', '#ff2d8a', '#5dff7a'];     // shockwave colours: firefly, Night Flyer, Mega Spider; the Flyer's poison ring
   function zone(x, y, R, warn, ci) { G.zones.push({ id: newId(), x: x, y: y, R: R, t: -warn, ci: ci || 0 }); if (warn > 0) snd('charge'); }
   var ZONE_ON = 0.35;
+  function ringK(t) { var k = clamp(t / RING_EXP, 0, 1); return 1 - (1 - k) * (1 - k); }
   function zonesStep(dt) {
     for (var i = G.zones.length - 1; i >= 0; i--) {
       var z = G.zones[i], was = z.t; z.t += dt;
+      if (z.ci === 3) { if (z.t > RING_EXP + RING_HOLD) G.zones.splice(i, 1); continue; }
       if (was < 0 && z.t >= 0) { sound('pulse'); shake(0.15); }
       if (z.t > ZONE_ON + 0.2) G.zones.splice(i, 1);
     }
@@ -1021,10 +1027,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // ── Enemy shots and power-up rings ──
   function fireShot(x, y, ang, sp, k, extra) { var s = { id: newId(), x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, k: k, z: 0 }; if (extra) for (var q in extra) s[q] = extra[q]; G.shots.push(s); return s; }
   function target() { var a = alivePlayers(); return a.length ? pick(a) : { x: W / 2, y: H - 15, alive: false }; }
-  // a fireball lobbed by the Blast Beetle: flies in an arc, lands, rolls across the mushrooms, then goes off
-  function lobFire(B, tx, ty) {
-    var x = B.x, y = B.y + BOSS.beetle.r[1] * 0.7, ft = 1.15;
-    fireShot(x, y, 0, 0, 'fire', { vx: (tx - x) / ft, vy: (ty - y) / ft, z: 8, vz: 300 * ft / 2, st: 'air', roll: 3 });
+  // a fireball dropped by the Blast Beetle at where you are: it bursts when it gets there (or when it's shot)
+  function dropFire(B, tx, ty) {
+    var x = B.x, y = B.y + BOSS.beetle.r[1] * 0.7, a = Math.atan2(ty - y, tx - x), v = 125 * rageOf(B);
+    fireShot(x, y, a, v, 'fire', { tx: tx, ty: ty, st: 'drop' });
     sound('lob');
   }
   function fireBoom(f, P, shot) {
@@ -1041,6 +1047,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function shotsStep(dt) {
     for (var i = G.shots.length - 1; i >= 0; i--) {
       var s = G.shots[i];
+      if (s.k === 'fire' && s.st === 'drop') {
+        var rem = Math.hypot(s.tx - s.x, s.ty - s.y), st2 = Math.hypot(s.vx, s.vy) * dt;
+        if (rem <= st2) { s.x = s.tx; s.y = s.ty; fireBoom(s, null, false); continue; }
+        s.x += s.vx * dt; s.y += s.vy * dt; continue;
+      }
       if (s.k === 'fire') {
         s.x += s.vx * dt; s.y += s.vy * dt; s.vz -= 300 * dt; s.z += s.vz * dt;
         if (s.st === 'air' && s.z <= 0) { s.st = 'roll'; s.z = 0; s.vz = 70; var T = target(); s.vx = (T.x > s.x ? 1 : -1) * 58; s.vy = 0; }
@@ -1076,7 +1087,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
         var hit = o.k === 'fire' ? o.z < 7 && Math.abs(o.x - P.x) < 6 && Math.abs(o.y - P.y) < 6 : Math.abs(o.x - P.x) < 4.5 && Math.abs(o.y - P.y) < 5.5;
         if (hit) dead = o.k;
       }
-      for (i = 0; i < G.zones.length && !dead; i++) { var z = G.zones[i]; if (z.t >= 0 && z.t < ZONE_ON && Math.hypot(z.x - P.x, z.y - P.y) < z.R - 2) dead = 'shockwave'; }
+      for (i = 0; i < G.zones.length && !dead; i++) {
+        var z = G.zones[i];
+        if (z.ci === 3) { if (z.t < RING_EXP) { var rr = z.R * ringK(z.t), dd = Math.hypot(z.x - P.x, (z.y - P.y) * 1.6); if (Math.abs(dd - rr) < 6 && rr > 8) dead = 'poison ring'; } continue; }
+        if (z.t >= 0 && z.t < ZONE_ON && Math.hypot(z.x - P.x, z.y - P.y) < z.R - 2) dead = 'shockwave';
+      }
       if (!dead && G.boss && bossTouch(G.boss, P.x, P.y)) dead = G.boss.type;
       // test mode (god): note what would have hit, instead of losing a life
       if (dead && G.noDie) { if (G.threats) G.threats.push({ pid: P.id, by: dead, t: Math.round(G.t * 100) / 100 }); return; }
@@ -1085,26 +1100,25 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
 
   // ═══ Bosses ═════════════════════════════════════════════════════════════
-  // Each boss is armoured: shots bounce off except at its weak spot or in its weak moment, so a fight is about
-  // timing and position rather than holding the fire button. Each gets angrier at two thirds and one third
-  // health (faster, more attacks). Positions scale with the field.
-  //   Killer Wasp (wave 3): follows you along the top, locks on, does a loop and dives straight at you. Only
-  //     while it pulls back up out of the dive (its thorax glows) can it be hurt. Sends ordinary wasps.
-  //   Night Flyer (wave 6): sweeps corner to corner on long diagonals, raining shockwaves on the ground (worst at
-  //     the sides), and fills the arena with fireflies. Between sweeps it rests at the top with its core open:
-  //     only the core takes damage.
-  //   Blast Beetle (wave 9): crawls across lane by lane and lobs fireballs that roll across the mushrooms and go
-  //     off. Its armour stops everything but straight shots on the head plate (Scatter bounces off). A fireball
-  //     shot down near it goes off against it. Sends blast beetles.
-  //   Mega Spider (wave 10): crawls along the top firing venom, lays web barriers of mushrooms, sends baby
-  //     spiders, then leaps over you and pounds the ground. Only on the ground (and lunging) is it open; up top only
-  //     Beam and Shock get through, a little. One life: nobody comes back during this fight.
+  // As on the cabinet, every hit counts (no armour): the bar at the top drains steadily while you keep firing,
+  // and the fight is about staying out of the way of its attacks while you do. Each gets angrier at two thirds
+  // and one third health (faster, more attacks). Positions scale with the field.
+  //   Killer Wasp (wave 3): flies big circles over the upper field, sending small wasps. Now and then it holds
+  //     back over you with a red target on you: then either dives at you in a streak of fire, or fires stings at
+  //     the target (and sometimes it's only bluffing).
+  //   Night Flyer (wave 6): a giant moth that moves between six spots and pulses: a green ring of poison spreads
+  //     out from it (slip through the gap or stay clear). It may stay put and pulse again. Fireflies come with it.
+  //   Blast Beetle (wave 9): patrols side to side dropping fireballs where you are (they burst when they land,
+  //     and can be shot down). When it stops firing and shakes, it's about to lunge down at you. Sends bomb beetles.
+  //   Mega Spider (wave 10, "Wave X"): one chance. It walks along the top shooting webs straight down and on
+  //     the diagonals. Below two thirds it lunges down at you after pulling back; below one third it lunges with
+  //     no warning and sweeps sideways at the bottom. A hit ends the bonus (no life is lost).
   function makeBoss(type) {
     var np = Math.max(1, G.players.length), loop = waveDef(G.wave).loop || 0, D = BOSS[type];
     var hp = Math.round(D.hp * bossScale(np) * DIFF[G.diff].boss * (1 + 0.4 * loop));
-    var hy = Math.max(D.r[1] + 12, PZY * D.hy);
+    var hy = Math.max(D.r[1] + 12, H * 0.24);
     G.boss = { id: newId(), type: type, x: W / 2, y: -70, hy: hy, hy0: hy, hp: hp, max: hp, t: 0, st: 'enter', stT: 0, flash: 0, ph: 0, np: np,
-      tA: 2, tB: 5, tC: 6, tE: 5, vx: 26, dirY: 1, vul: false, z: 0, last: null, legs: [], drop: 0, lane: null };
+      tA: 2, tB: 5, tC: 6, tE: 4, vx: 1, dirY: 1, vul: true, z: 0, last: null, ang: -PI / 2, tx: 0, ty: 0, spot: 1 };
     shake(0.4);
   }
   function bossScale(np) { return 1 + BOSS_NP * (np - 1); }
@@ -1113,41 +1127,39 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var B = G.boss, np = Math.max(1, G.players.length); if (!B || B.st === 'die' || np <= B.np) return;
     var k = bossScale(np) / bossScale(B.np); B.hp *= k; B.max *= k; B.np = np;
   }
-  function rageOf(B) { return (1 + 0.22 * B.ph) * (G.diff === 'relaxed' ? 0.82 : 1) * (1 + 0.08 * (waveDef(G.wave).loop || 0)); }
-  // Where a shot meets a boss: 0 missed it, 1 armour (the shot bounces off), 2 its weak spot, 3 a glancing hit
+  function rageOf(B) { return (1 + 0.2 * B.ph) * (G.diff === 'relaxed' ? 0.82 : 1) * (1 + 0.08 * (waveDef(G.wave).loop || 0)); }
+  // Where a shot meets a boss: 0 missed it, 2 a hit (1 armour, 3 glancing: no longer used)
   function bossHit(B, x, y, k) {
-    if (B.st === 'die') return 0;
+    if (B.st === 'die' || B.st === 'flee') return 0;
     var R = BOSS[B.type].r, dx = (x - B.x) / R[0], dy = (y - (B.y - (B.z || 0))) / R[1], inside = dx * dx + dy * dy < 1;
-    if (B.st === 'enter') return inside ? 1 : 0;
-    if (B.type === 'wasp') return inside ? (B.st === 'exit' ? 2 : 1) : 0;
-    // the Night Flyer: its glowing core runs down the middle of its body; the wings around it are armour
-    if (B.type === 'firefly') { var core = Math.abs(x - B.x) < 8 && Math.abs(y - B.y) < R[1]; if (core && B.st === 'rest') return 2; return inside || core ? 1 : 0; }
-    if (B.type === 'beetle') { if (!inside) return 0; var head = y > B.y + R[1] * 0.3 && Math.abs(x - B.x) < R[0] * 0.5; return head && k !== 'scatter' ? 2 : 1; }
-    if (!inside || B.st === 'leap') return 0;
-    if (B.st === 'ground' || B.st === 'lunge') return 2;
-    return k === 'beam' || k === 'shock' ? 3 : 1;
+    if (!inside) return 0;
+    return B.st === 'enter' ? 1 : 2;
   }
   function bossTouch(B, x, y) {
-    if (B.st === 'die' || B.st === 'enter' || (B.type === 'mega' && B.st === 'leap' && B.z > 14)) return false;
+    if (B.st === 'die' || B.st === 'enter' || B.st === 'flee') return false;
     var R = BOSS[B.type].r, dx = (x - B.x) / (R[0] * 0.8), dy = (y - B.y) / (R[1] * 0.8);
     return dx * dx + dy * dy < 1;
   }
   function hitBoss(P, dmg, x, y, k) {
-    var B = G.boss; if (!B || B.st === 'die' || B.st === 'enter') return;
+    var B = G.boss; if (!B || B.st === 'die' || B.st === 'enter' || B.st === 'flee') return;
     B.hp -= dmg; B.flash = 0.08; B.last = P;
     if (P) { P.score += 5; G.score += 5; }
     if (k !== 'beam' || Math.random() < 0.4) { burst(x, y, '#fff', 2, 0.7); burst(x, y, BOSS[B.type].c, 2, 0.9); }
-    sound('bhit'); shake(0.1);
+    sound('bhit'); shake(0.06);
     var f = B.hp / B.max, ph = f < 0.34 ? 2 : f < 0.67 ? 1 : 0;
-    if (ph > B.ph && B.hp > 0) { B.ph = ph; flash(BOSS[B.type].c, 0.35); shake(0.6); sound('warn'); popup(B.x, B.y - BOSS[B.type].r[1] - 8, ph === 2 ? 'Furious!' : 'Angry!', BOSS[B.type].c, true); }
+    if (ph > B.ph && B.hp > 0) { B.ph = ph; flash(BOSS[B.type].c, 0.3); shake(0.5); sound('warn'); popup(B.x, B.y - BOSS[B.type].r[1] - 8, ph === 2 ? 'Furious!' : 'Angry!', BOSS[B.type].c, true); }
     if (B.hp <= 0) { B.hp = 0; B.st = 'die'; B.stT = 0; G.shots = []; G.zones = []; sound('kill'); buzz(P && P.id, 'success'); }
   }
   function approach(B, tx, ty, k, dt) { var f = Math.min(1, dt * k); B.x += (tx - B.x) * f; B.y += (ty - B.y) * f; }
+  // move straight toward a point at a speed; true once there
+  function moveTo(B, tx, ty, v, dt) { var dx = tx - B.x, dy = ty - B.y, d = Math.hypot(dx, dy); if (d <= v * dt) { B.x = tx; B.y = ty; return true; } B.x += dx / d * v * dt; B.y += dy / d * v * dt; return false; }
   function nearest(x, y) { var a = alivePlayers(); if (!a.length) return { x: W / 2, y: H - 15, alive: false }; return a.reduce(function (m, p) { return Math.hypot(p.x - x, p.y - y) < Math.hypot(m.x - x, m.y - y) ? p : m; }); }
+  function setSt(B, st) { B.st = st; B.stT = 0; }
   function bossStep(B, dt) {
     B.t += dt; B.stT += dt; if (B.flash > 0) B.flash -= dt;
     var D = BOSS[B.type], R = D.r, rage = rageOf(B);
-    if (B.st === 'enter') { approach(B, W / 2, B.hy, 1.6, dt); if (G.phase === 'play') { B.st = { wasp: 'track', firefly: 'rest', beetle: 'crawl', mega: 'perch' }[B.type]; B.stT = 0; } return; }
+    if (B.st === 'enter') { approach(B, W / 2, B.hy, 1.6, dt); if (G.phase === 'play') setSt(B, { wasp: 'circle', firefly: 'fly', beetle: 'patrol', mega: 'walk' }[B.type]); return; }
+    if (B.st === 'flee') { B.y -= 160 * dt; if (B.y < -R[1] * 2) G.boss = null; return; }
     if (B.st === 'die') {
       if (Math.random() < dt * 14) { var ex = B.x + rnd(-R[0], R[0]), ey = B.y + rnd(-R[1], R[1]), ec = pick([D.c, '#fff', '#ffb13d']); boom(ex, ey, ec, true); burst(ex, ey, ec, 6, 1.2); snd('kill'); shake(0.35); }
       if (B.stT > 1.6) {
@@ -1166,110 +1178,120 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     else if (B.type === 'beetle') beetleStep(B, dt, rage, R);
     else megaStep(B, dt, rage, R);
   }
+
   function waspStep(B, dt, rage, R) {
-    var ph = B.ph;
-    if (B.st === 'track') {
-      if (!B.tgt || !B.tgt.alive) B.tgt = target();
-      approach(B, clamp(B.tgt.x, R[0], W - R[0]), B.hy + Math.sin(B.t * 2.2) * 6, 1.3 * rage, dt);
-      B.tA -= dt * rage;
-      if (B.tA <= 0) { B.tA = ph >= 2 ? 2.3 : 3.0; var a = Math.atan2(B.tgt.y - B.y, B.tgt.x - B.x), n = (G.diff === 'relaxed' ? 1 : 3) + (ph >= 2 ? 2 : 0); for (var v = 0; v < n; v++) fireShot(B.x, B.y + R[1] * 0.6, a + (v - (n - 1) / 2) * 0.24, 104 * rage, 'sting'); sound('shoot'); }
+    var ph = B.ph, cxp = W / 2, cyp = H * 0.3, rx = W / 2 - R[0] - 6, ry = H * 0.16;
+    if (B.st === 'circle') {
+      // big loops over the upper field
+      B.ang += dt * (1.05 + 0.25 * ph) * rage;
+      approach(B, cxp + Math.cos(B.ang) * rx, cyp + Math.sin(B.ang) * ry, 4, dt);
       B.tE -= dt * rage;
-      if (B.tE <= 0) { B.tE = 8 - ph * 1.5; if (count('wasp') < 2 + ph) spawnWasps(1 + (ph ? 1 : 0), false); }
-      if (B.stT > (3.6 - ph * 0.7) / Math.sqrt(rage)) lockLoop(B);
-    } else if (B.st === 'loop') {
-      // a theatrical loop over its target, then the dive
-      B.la += dt * TAU / (1.05 - 0.12 * ph);
-      B.x = B.lcx + Math.sin(B.la) * 20; B.y = B.lcy + Math.cos(B.la) * 20;
-      if (B.la >= TAU) {
-        B.st = 'dive'; B.stT = 0;
-        var dx = B.lx - B.x, dy = B.ly - B.y, n2 = Math.max(1, Math.hypot(dx, dy)), v2 = (240 + 30 * ph) * Math.sqrt(rage);
-        B.vx = dx / n2 * v2; B.vy = Math.max(70, dy / n2 * v2); sound('dive');
+      if (B.tE <= 0) { B.tE = 5.5 - ph; if (count('wasp') < 2 + ph) spawnWasps(1 + (ph >= 2 ? 1 : 0), false); }
+      if (B.stT > (4.2 - 0.6 * ph) / Math.sqrt(rage)) { var T = target(); B.tx = T.x; B.ty = T.y; B.tgt = T; setSt(B, 'hold'); sound('warn'); }
+    } else if (B.st === 'hold') {
+      // holds back over its target, the red reticle tracking the ship
+      if (B.tgt && B.tgt.alive) { B.tx += (B.tgt.x - B.tx) * Math.min(1, dt * 3); B.ty += (B.tgt.y - B.ty) * Math.min(1, dt * 3); }
+      approach(B, clamp(B.tx, R[0], W - R[0]), Math.max(R[1] + 6, H * 0.18), 2.4, dt);
+      B.x += Math.sin(B.t * 30) * 0.4;
+      if (B.stT > 1.05 / Math.sqrt(rage)) {
+        var roll = Math.random();
+        if (roll < 0.55) { setSt(B, 'dive'); var dx = B.tx - B.x, dy = B.ty - B.y, n = Math.max(1, Math.hypot(dx, dy)), v = (250 + 30 * ph) * Math.sqrt(rage); B.vx = dx / n * v; B.vy = Math.max(90, dy / n * v); sound('dive'); }
+        else if (roll < 0.85) { var a = Math.atan2(B.ty - B.y, B.tx - B.x), k = 3 + (ph >= 2 ? 2 : 0); for (var i = 0; i < k; i++) fireShot(B.x, B.y + R[1] * 0.6, a + (i - (k - 1) / 2) * 0.16, 130 * rage, 'sting'); sound('shoot'); setSt(B, 'circle'); }
+        else setSt(B, 'circle');      // a bluff
       }
     } else if (B.st === 'dive') {
       B.x += B.vx * dt; B.y += B.vy * dt;
-      if (B.y >= H - 24 || B.x < R[0] * 0.6 || B.x > W - R[0] * 0.6) { B.x = clamp(B.x, R[0] * 0.6, W - R[0] * 0.6); B.y = Math.min(B.y, H - 24); B.st = 'exit'; B.stT = 0; shake(0.4); sound('slam'); }
-    } else if (B.st === 'exit') {
-      // pulling up out of the dive, slowly: thorax glowing, open to fire from below
-      B.y -= (56 - 4 * ph) * dt; B.x += Math.sin(B.t * 3) * 10 * dt;
-      if (B.y <= B.hy) { B.y = B.hy; if (ph >= 2 && Math.random() < 0.4) lockLoop(B); else { B.st = 'track'; B.stT = 0; } }
+      if (B.y >= H - 18 || B.x < R[0] * 0.5 || B.x > W - R[0] * 0.5) { B.x = clamp(B.x, R[0] * 0.5, W - R[0] * 0.5); B.y = Math.min(B.y, H - 18); setSt(B, 'ret'); shake(0.4); sound('slam'); }
+    } else if (B.st === 'ret') {
+      if (moveTo(B, B.x, cyp, 110 + 20 * ph, dt) || B.stT > 2.5) { B.ang = Math.atan2(B.y - cyp, B.x - cxp); setSt(B, 'circle'); }
     }
-    B.vul = B.st === 'exit';
   }
-  function lockLoop(B) { B.tgt = target(); B.st = 'loop'; B.stT = 0; B.lx = B.tgt.x; B.ly = B.tgt.y; B.la = 0; B.lcx = B.x; B.lcy = B.y - 20; sound('warn'); }
+
+  // The Night Flyer's six spots (two rows of three over the upper two thirds) and its rings of poison
+  var FLY_SPOTS = [[0.2, 0.2], [0.5, 0.2], [0.8, 0.2], [0.2, 0.46], [0.5, 0.46], [0.8, 0.46]];
+  var RING_EXP = 0.75, RING_HOLD = 0.6;
   function flyerStep(B, dt, rage, R) {
-    var ph = B.ph;
-    if (B.st === 'rest') {
-      approach(B, W / 2, B.hy, 2.5, dt);
-      if (!B.volley && B.stT > 0.5 && ph >= 1) { B.volley = true; var n = 10 + 2 * ph; for (var q = 0; q < n; q++) fireShot(B.x, B.y, q / n * TAU + B.t, 70 * rage, 'spark'); sound('shoot'); }
-      if (B.stT > 3.0 - 0.45 * ph) {
-        // a sweep: long diagonals from side to side, alternately low (into the players' area) and high
-        B.st = 'glide'; B.stT = 0; B.volley = false; B.legs = []; B.drop = 0.3;
-        var right = Math.random() < 0.5, legs = 2 + (ph >= 1 ? 1 : 0) + (ph >= 2 ? 1 : 0);
-        for (var i = 0; i < legs; i++) { var onRight = (i % 2 === 0) === right; B.legs.push({ x: onRight ? W - R[0] * 0.7 : R[0] * 0.7, y: i % 2 === 0 ? PZY * 0.92 : PZY * 0.2 }); }
-        for (var f = 0; f < 1 + ph; f++) if (count('ffly') < 3 + ph) spawnFirefly(Math.random() < 0.5 ? -10 : W + 10, rnd(0.05, 0.3) * PZY);
-        sound('warn');
+    var ph = B.ph, sp = FLY_SPOTS[B.spot];
+    if (B.st === 'fly') {
+      if (moveTo(B, sp[0] * W, sp[1] * H, (120 + 20 * ph) * rage, dt)) setSt(B, 'pulse');
+    } else if (B.st === 'pulse') {
+      // gathers itself (its glow builds), then lets the ring go
+      B.x = sp[0] * W + Math.sin(B.t * 9) * 1.5;
+      if (B.stT > 0.55 / Math.sqrt(rage) && !B.fired) { B.fired = true; G.zones.push({ id: newId(), x: B.x, y: B.y, R: Math.round(W * (0.3 + 0.03 * ph)), t: 0, ci: 3 }); sound('pulse'); shake(0.2); }
+      if (B.stT > (0.55 + RING_EXP + 0.35) / Math.sqrt(rage)) {
+        B.fired = false;
+        if (Math.random() < 0.3 + 0.1 * ph) setSt(B, 'pulse');          // stays and pulses again
+        else { var nx; do { nx = ri(0, FLY_SPOTS.length - 1); } while (nx === B.spot); B.spot = nx; setSt(B, 'fly'); }
       }
-    } else if (B.st === 'glide') {
-      var L = B.legs[0]; if (!L) { B.st = 'rest'; B.stT = 0; return; }
-      var dx = L.x - B.x, dy = L.y - B.y, d = Math.hypot(dx, dy), v = (145 + 25 * ph) * rage * dt;
-      // its light comes down behind it as it sweeps: small shockwaves across the players' area
-      B.drop -= dt; if (B.drop <= 0) { B.drop = (0.85 - 0.1 * ph) * (G.diff === 'relaxed' ? 1.3 : 1); zone(clamp(B.x + rnd(-12, 12), 12, W - 12), rnd(PZY + 14, H - 14), 22, 0.85, 1); }
-      if (d <= v) {
-        B.x = L.x; B.y = L.y; B.legs.shift();
-        // at a low corner: a wide shockwave down that side of the arena
-        if (L.y > PZY * 0.5) zone(L.x < W / 2 ? 36 : W - 36, H - 36, 52, 1.0, 1);
-        if (!B.legs.length) { B.st = 'rest'; B.stT = 0; }
-      } else { B.x += dx / d * v; B.y += dy / d * v; }
-    }
-    B.vul = B.st === 'rest';
-  }
-  function beetleStep(B, dt, rage, R) {
-    var ph = B.ph;
-    // a slow crawl across its lane; at each side it moves to another lane (down, then back up)
-    B.x += B.vx * (1 + 0.25 * ph) * rage * dt;
-    if (B.x < R[0] * 0.7 || B.x > W - R[0] * 0.7) { B.x = clamp(B.x, R[0] * 0.7, W - R[0] * 0.7); B.vx = -B.vx; B.hy += PZY * 0.12 * B.dirY; if (B.hy > PZY * 0.62) B.dirY = -1; if (B.hy < PZY * 0.22) B.dirY = 1; }
-    B.y += (B.hy - B.y) * Math.min(1, dt * 2);
-    B.tA -= dt * rage;
-    if (B.tA <= 0) {
-      B.tA = 2.7 - 0.5 * ph;
-      var T = target(), n = ph >= 2 ? 2 : 1;
-      for (var i = 0; i < n; i++) lobFire(B, clamp(T.x + (i ? rnd(-70, 70) : rnd(-15, 15)), 10, W - 10), clamp(T.y + rnd(-25, 5), PZY + 8, H - 12));
     }
     B.tE -= dt * rage;
-    if (B.tE <= 0) { B.tE = 8 - ph * 1.2; for (var k = 0; k < 1 + (ph >= 2 ? 1 : 0); k++) if (count('beetle') < 2 + ph) spawnBeetle(clamp(B.x + (k ? R[0] : -R[0]), 10, W - 10), B.y); }
-    B.vul = true;
+    if (B.tE <= 0) { B.tE = 6.5 - ph; for (var f = 0; f < 2; f++) if (count('ffly') < 2 + 2 * ph) spawnFirefly(f ? W + 10 : -10, rnd(0.04, 0.2) * H); }
   }
-  function megaStep(B, dt, rage, R) {
-    var ph = B.ph, sw = Math.max(20, W / 2 - R[0] - 8);
-    if (B.st === 'perch') {
-      approach(B, W / 2 + Math.sin(B.t * 0.7) * sw * 0.8, B.hy + Math.sin(B.t * 1.3) * 5, 2.2, dt); B.z = 0;
+
+  function beetleStep(B, dt, rage, R) {
+    var ph = B.ph;
+    if (B.st === 'patrol') {
+      // side to side along the top, dropping fireballs on you
+      B.x += B.vx * (55 + 12 * ph) * rage * dt;
+      if (B.x < R[0] * 0.7 || B.x > W - R[0] * 0.7) { B.x = clamp(B.x, R[0] * 0.7, W - R[0] * 0.7); B.vx = -B.vx; }
+      B.y += (B.hy + Math.sin(B.t * 1.6) * 8 - B.y) * Math.min(1, dt * 2);
       B.tA -= dt * rage;
-      if (B.tA <= 0) { B.tA = 2.5 - 0.3 * ph; var T = target(), a = Math.atan2(T.y - B.y, T.x - B.x), n = (G.diff === 'relaxed' ? 3 : 5) + ph; for (var v = 0; v < n; v++) fireShot(B.x, B.y + R[1] * 0.6, a + (v - (n - 1) / 2) * 0.18, 96 * rage, 'venom'); sound('shoot'); }
-      B.tB -= dt * rage; if (B.tB <= 0) { B.tB = 8 - ph; webWall(B); }
-      B.tC -= dt * rage; if (B.tC <= 0) { B.tC = 9 - 1.5 * ph; minis(B, 3 + ph); }
-      if (B.stT > (4.8 - 0.8 * ph) / Math.sqrt(rage)) { var T2 = target(); B.st = 'leap'; B.stT = 0; B.sx = B.x; B.sy = B.y; B.lx = clamp(T2.x, R[0], W - R[0]); B.ly = PZY - R[1] * 0.35; sound('warn'); }
-    } else if (B.st === 'leap') {
-      // bounds across to land over its target (its shadow shows where), then pounds the ground
-      var k = Math.min(1, B.stT / 0.95); B.x = B.sx + (B.lx - B.sx) * k; B.y = B.sy + (B.ly - B.sy) * k; B.z = Math.sin(k * PI) * 46;
-      if (k >= 1) {
-        B.z = 0; B.st = 'ground'; B.stT = 0; zone(B.x, B.y + R[1] * 0.4, (G.diff === 'relaxed' ? 36 : 44) + 6 * ph, 0, 2); shake(0.8); sound('slam');
-        var mc = Math.floor(B.x / CELL), mr = Math.floor(B.y / CELL);
-        for (var dc = -4; dc <= 4; dc++) for (var dr = -2; dr <= 3; dr++) if (mush(mc + dc, mr + dr)) setMush(mc + dc, mr + dr, 0);
-        if (ph >= 1) minis(B, 2 + ph);
+      if (B.tA <= 0 && count0('fire') < 4) { B.tA = 1.15 - 0.2 * ph; var T = target(); dropFire(B, clamp(T.x + rnd(-14, 14), 8, W - 8), clamp(T.y + rnd(-10, 6), H * 0.45, H - 8)); }
+      B.tE -= dt * rage;
+      if (B.tE <= 0) { B.tE = 7.5 - ph; for (var k = 0; k < 1 + (ph >= 2 ? 1 : 0); k++) if (count('beetle') < 2 + ph) { if (Math.random() < 0.5) spawnBeetle(clamp(B.x + (k ? R[0] : -R[0]), 10, W - 10), B.y); else spawnBeetle(Math.random() < 0.5 ? 6 : W - 6, rnd(0.3, 0.6) * H); } }
+      if (B.stT > (6.5 - ph) / Math.sqrt(rage)) { setSt(B, 'pause'); sound('charge'); }
+    } else if (B.st === 'pause') {
+      // stops firing and shakes: the lunge is coming
+      B.x += Math.sin(B.t * 40) * 0.8;
+      if (B.stT > 0.9 / Math.sqrt(rage)) { var T2 = target(); B.tx = clamp(T2.x, R[0], W - R[0]); B.ty = Math.min(H * 0.72, Math.max(T2.y - 6, H * 0.5)); setSt(B, 'lunge'); sound('dive'); }
+    } else if (B.st === 'lunge') {
+      if (moveTo(B, B.tx, B.ty, 290 * Math.sqrt(rage), dt)) { shake(0.5); sound('slam'); blast(null, B.x, B.y + R[1] * 0.5, 26, 0); setSt(B, 'ret'); }
+    } else if (B.st === 'ret') {
+      if (moveTo(B, B.x, B.hy, 120, dt)) setSt(B, 'patrol');
+    }
+  }
+  function count0(k) { var n = 0; G.shots.forEach(function (s) { if (s.k === k) n++; }); return n; }
+
+  function megaStep(B, dt, rage, R) {
+    var ph = B.ph;
+    if (B.st === 'walk') {
+      // along the top, side to side, webs going down
+      B.x += B.vx * (42 + 14 * ph) * rage * dt;
+      if (B.x < R[0] * 0.8 || B.x > W - R[0] * 0.8) { B.x = clamp(B.x, R[0] * 0.8, W - R[0] * 0.8); B.vx = -B.vx; }
+      B.y += (B.hy + Math.sin(B.t * 2) * 4 - B.y) * Math.min(1, dt * 2.5);
+      B.tA -= dt * rage;
+      if (B.tA <= 0) {
+        B.tA = (1.35 - 0.2 * ph) * rnd(0.85, 1.15);
+        var dirs = [-0.5, 0, 0.5].filter(function () { return Math.random() < 0.5 + 0.12 * ph; }); if (!dirs.length) dirs = [pick([-0.5, 0, 0.5])];
+        dirs.forEach(function (a) { fireShot(B.x + a * 14, B.y + R[1] * 0.6, PI / 2 + a, 112 * rage, 'web'); });
+        sound('web');
       }
-    } else if (B.st === 'ground') { if (B.stT > 2.6 - 0.3 * ph) { B.st = 'lunge'; B.stT = 0; B.sy = B.y; } }
-    else if (B.st === 'lunge') { var k2 = Math.min(1, B.stT / 0.7); B.y = B.sy + Math.sin(k2 * PI) * 16; if (k2 >= 1) { B.st = 'climb'; B.stT = 0; } }
-    else if (B.st === 'climb') { approach(B, B.x, B.hy, 2.6, dt); if (B.stT > 1.1) { B.st = 'perch'; B.stT = 0; } }
-    B.vul = B.st === 'ground' || B.st === 'lunge';
+      if (ph >= 1 && B.stT > (4.4 - 0.6 * ph) / Math.sqrt(rage)) { var T = target(); B.tx = clamp(T.x, R[0], W - R[0]); B.ty = Math.min(H * 0.7, Math.max(T.y - 10, H * 0.5)); if (ph >= 2) { setSt(B, 'lunge'); sound('dive'); } else { setSt(B, 'wind'); sound('warn'); } }
+    } else if (B.st === 'wind') {
+      // pulls back before the lunge (plenty of warning)
+      B.y -= 22 * dt; B.x += Math.sin(B.t * 30) * 0.6;
+      if (B.stT > 0.8) { setSt(B, 'lunge'); sound('dive'); }
+    } else if (B.st === 'lunge') {
+      if (moveTo(B, B.tx, B.ty, 300 * Math.sqrt(rage), dt)) {
+        shake(0.6); sound('slam'); blast(null, B.x, B.y + R[1] * 0.4, 30, 0);
+        if (ph >= 2) { B.sw = Math.random() < 0.5 ? -1 : 1; if (B.x < W * 0.25) B.sw = 1; if (B.x > W * 0.75) B.sw = -1; setSt(B, 'sweep'); } else setSt(B, 'ret');
+      }
+    } else if (B.st === 'sweep') {
+      // furious: after a lunge it sweeps sideways along the bottom (left or right, 50/50)
+      B.x += B.sw * 170 * dt;
+      if (B.stT > 1.2 || B.x < R[0] * 0.7 || B.x > W - R[0] * 0.7) { B.x = clamp(B.x, R[0] * 0.7, W - R[0] * 0.7); setSt(B, 'ret'); }
+    } else if (B.st === 'ret') {
+      if (moveTo(B, B.x, B.hy, 130, dt)) setSt(B, 'walk');
+    }
   }
-  // a web shot across the field that sets into a barrier of mushrooms
-  function webWall(B) {
-    var r = ri(Math.max(3, PZ - 7), PZ - 1), len = ri(8, 14), c0 = clamp(Math.round(B.x / CELL) - (len >> 1) + ri(-6, 6), 0, COLS - len);
-    for (var c = c0; c < c0 + len; c++) if (Math.random() < 0.85) setMush(c, r, MUSH_HP, 0);
-    for (var k = 0; k < 3; k++) arc(B.x, B.y, cx(c0 + (k === 0 ? 0 : k === 1 ? len - 1 : len >> 1)), cx(r), '#ff7ac8');
-    sound('web');
+  // the Wave X bonus is lost (everyone hit): the spider leaves, and the game goes on
+  function bonusLost() {
+    G.oneLife = false;
+    var B = G.boss; if (B) { setSt(B, 'flee'); sound('dive'); }
+    G.shots = []; G.zones = [];
+    card('Bonus lost', 'The Mega Spider got away', '#ff2d8a', 'The game goes on');
+    G.phase = 'clear'; G.phaseT = -1.6; G.lostBonus = true;
   }
-  function minis(B, n) { for (var i = 0; i < n && count('mini') < 8; i++) spawnSpider(true, clamp(B.x + rnd(-BOSS.mega.r[0] * 0.5, BOSS.mega.r[0] * 0.5), 10, W - 10), B.y + BOSS.mega.r[1] * 0.5); snd('spider'); }
 
   // ═══ Input ══════════════════════════════════════════════════════════════
   var ctl = { steer: null, dx: 0, dy: 0, abs: false, ax: 0, ay: 0, touches: {}, nt: 0, mouse: false, auto: true, keys: {}, drag: 1.7 };
@@ -1974,6 +1996,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var ht = txt('PICK UP POWER-UPS!', '#ffffff', 1); drawTxtAt(x, ht, cp.x, cp.y - 30, Math.min(1, 120 / ht.w));
     });
     R.players.forEach(function (p) { drawShip(x, p, me); });
+    if (R.boss) drawReticle(x, R.boss);
     // explosions, sparks and flying cubes
     x.globalCompositeOperation = 'lighter';
     fx.exps.forEach(function (e) { drawBoom(x, e); });
@@ -2061,6 +2084,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     x.globalCompositeOperation = 'lighter';
     zs.forEach(function (z) {
       var col = ZC[z.ci || 0];
+      if (z.ci === 3) {
+        // a ring of green poison spreading out (an ellipse: the floor is seen at an angle), then fading
+        var rr = z.R * ringK(z.t), fade = z.t < RING_EXP ? 1 : Math.max(0, 1 - (z.t - RING_EXP) / RING_HOLD);
+        x.globalAlpha = 0.18 * fade; x.fillStyle = col; x.beginPath(); x.ellipse(z.x, z.y, rr, rr / 1.6, 0, 0, TAU); x.fill();
+        x.globalAlpha = fade; x.strokeStyle = col; x.lineWidth = z.t < RING_EXP ? 4 : 2; x.beginPath(); x.ellipse(z.x, z.y, rr, rr / 1.6, 0, 0, TAU); x.stroke();
+        x.globalAlpha = 0.6 * fade; x.strokeStyle = '#eaffef'; x.lineWidth = 1.2; x.stroke(); x.globalAlpha = 1;
+        return;
+      }
       if (z.t < 0) {
         var on = Math.floor(drawT * (z.t > -0.3 ? 16 : 8)) % 2;
         x.globalAlpha = on ? 0.9 : 0.45; x.strokeStyle = col; x.lineWidth = 1.2; x.setLineDash([4, 3]); x.lineDashOffset = -drawT * 20;
@@ -2092,6 +2123,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       x.globalAlpha = 0.45; x.fillStyle = '#000'; x.beginPath(); x.ellipse(s.x + 1, s.y + 2, 4.5, 2.2, 0, 0, TAU); x.fill(); x.globalAlpha = 1;
       x.globalCompositeOperation = 'lighter'; glow(x, s.x, s.y - z, 12, '#ff7a1f', 0.85); glow(x, s.x, s.y - z, 5, '#fff0a0', on ? 1 : 0.7); x.globalCompositeOperation = 'source-over';
       drawSpr(x, cubeSpr(on ? '#ffb02e' : '#ff5a1f'), s.x, s.y - z, 2.2);
+      return;
+    }
+    if (s.k === 'web') {
+      var n = Math.max(1, Math.hypot(s.vx || 0, s.vy || 1)), ux = (s.vx || 0) / n, uy = (s.vy || 1) / n;
+      x.strokeStyle = 'rgba(255,90,140,.8)'; x.lineWidth = 0.9; x.beginPath(); x.moveTo(s.x - ux * 26, s.y - uy * 26); x.lineTo(s.x, s.y); x.stroke();
+      x.globalCompositeOperation = 'lighter'; glow(x, s.x, s.y, 7, '#ff2d8a', 0.6); x.globalCompositeOperation = 'source-over';
+      x.fillStyle = '#2a0614'; x.beginPath(); x.arc(s.x, s.y, 2.6, 0, TAU); x.fill();
+      x.strokeStyle = '#ff5a8a'; x.lineWidth = 0.8; for (var lg = 0; lg < 4; lg++) { var la = lg * 0.8 - 1.2; x.beginPath(); x.moveTo(s.x - 2, s.y); x.lineTo(s.x - 4.5, s.y + la * 2.5); x.moveTo(s.x + 2, s.y); x.lineTo(s.x + 4.5, s.y + la * 2.5); x.stroke(); }
       return;
     }
     var col = s.k === 'sting' ? '#ffd23d' : s.k === 'spark' ? '#c8a0ff' : s.k === 'venom' ? '#ff5ab0' : '#ff9a2a';
@@ -2127,12 +2166,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var D = BOSS[B.type], fr = Math.floor(drawT * (B.type === 'mega' || B.type === 'beetle' ? 6 : 14)) % 2, sp = bossSpr(B, fr), px = B.x, py = B.y - (B.z || 0);
     if (B.st === 'die') { if (Math.floor(drawT * 20) % 2) return; px += rnd(-1.5, 1.5); py += rnd(-1.5, 1.5); }
     // the Killer Wasp leaves a yellow streak behind it as it loops and dives
-    if (B.type === 'wasp' && (B.st === 'loop' || B.st === 'dive')) fx.trail.push({ x: px, y: py, life: 0.35 });
-    if (fx.trail.length) { x.globalCompositeOperation = 'lighter'; fx.trail.forEach(function (t) { glow(x, t.x, t.y, 14 * t.life / 0.35 + 4, '#ffe23d', t.life * 1.6); }); x.globalCompositeOperation = 'source-over'; }
+    if ((B.type === 'wasp' && B.st === 'dive') || ((B.type === 'beetle' || B.type === 'mega') && B.st === 'lunge')) fx.trail.push({ x: px, y: py, life: 0.35 });
+    if (fx.trail.length) { x.globalCompositeOperation = 'lighter'; fx.trail.forEach(function (t) { glow(x, t.x, t.y, 14 * t.life / 0.35 + 4, B.type === 'wasp' ? '#ff9a2a' : D.c, t.life * 1.6); }); x.globalCompositeOperation = 'source-over'; }
     // the Mega Spider in the air: its shadow on the ground shows where it will land
     if (B.type === 'mega' && B.z > 1) { x.globalAlpha = 0.5; x.fillStyle = '#000'; x.beginPath(); x.ellipse(B.x, B.y + D.r[1] * 0.4, D.r[0] * (1 - B.z / 120), D.r[1] * 0.5 * (1 - B.z / 120), 0, 0, TAU); x.fill(); x.globalAlpha = 1; }
     x.globalCompositeOperation = 'lighter';
-    var gl = B.type === 'firefly' ? (B.vul ? 0.55 : 0.28) : B.vul && B.type !== 'beetle' ? 0.4 : 0.2;
+    var gl = B.type === 'firefly' ? (B.st === 'pulse' ? 0.3 + 0.4 * clamp(B.stT / 0.55, 0, 1) : 0.3) : 0.25;
     glow(x, px, py, D.r[0] * 2.2, D.c, gl);
     // the Night Flyer's light sweeping down as it glides
     if (B.type === 'firefly' && B.st === 'glide') {
@@ -2144,16 +2183,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (B.type === 'firefly') { x.globalAlpha = 0.62; drawSpr(x, flyerWings(fr), px, py - 2); x.globalAlpha = 1; }
     drawSpr(x, sp, px, py);
     if (B.flash > 0 || B.hitf) { if (Math.floor(drawT * 30) % 2) drawSprImg(x, sp, sp.w || (sp.w = tintCanvas(sp.c, '#ffffff', 0.6)), px, py); }
-    // weak spots, glowing: the Wasp's thorax (open), the Flyer's core (open), the Beetle's head plate, the Spider on the ground
-    x.globalCompositeOperation = 'lighter';
-    var pulse = 0.55 + 0.45 * Math.sin(drawT * 10);
-    if (B.vul) {
-      if (B.type === 'wasp') { glow(x, px, py - 6, 16, '#ff6ab8', 0.7 * pulse); glow(x, px, py - 6, 7, '#ffe23d', 0.8 * pulse); }
-      else if (B.type === 'firefly') { glow(x, px, py - 16, 18, '#5ef0ff', 0.8 * pulse); glow(x, px, py - 16, 7, '#ffffff', 0.9); }
-      else if (B.type === 'beetle') glow(x, px, py + D.r[1] * 0.55, 12, '#ff8ab0', 0.35 + 0.25 * pulse);
-      else glow(x, px, py + 4, 26, '#ff2d8a', 0.45 * pulse);
-    }
-    x.globalCompositeOperation = 'source-over';
+  }
+  // the Killer Wasp's red target on the ship it's about to go for (over the ship, so it can't be missed)
+  function drawReticle(x, B) {
+    if (B.type !== 'wasp' || B.st !== 'hold' || !B.tx) return;
+    var rp = 0.65 + 0.35 * Math.sin(drawT * 14), sc = 1 + 0.12 * Math.sin(drawT * 7);
+    x.globalCompositeOperation = 'lighter'; glow(x, B.tx, B.ty, 20, '#ff2838', 0.35 * rp); x.globalCompositeOperation = 'source-over';
+    x.strokeStyle = 'rgba(255,48,64,' + rp + ')'; x.lineWidth = 2;
+    x.beginPath(); x.arc(B.tx, B.ty, 15 * sc, 0, TAU); x.stroke(); x.beginPath(); x.arc(B.tx, B.ty, 9 * sc, 0, TAU); x.stroke();
+    x.beginPath(); x.moveTo(B.tx - 20, B.ty); x.lineTo(B.tx - 11, B.ty); x.moveTo(B.tx + 11, B.ty); x.lineTo(B.tx + 20, B.ty); x.moveTo(B.tx, B.ty - 20); x.lineTo(B.tx, B.ty - 11); x.moveTo(B.tx, B.ty + 11); x.lineTo(B.tx, B.ty + 20); x.stroke();
   }
   // A boss's entrance: its name in neon between two lit lines, with its bonus underneath (like the cabinet)
   function drawCard(x, L) {
@@ -2429,7 +2467,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     G.bullets.forEach(function (b) { s.u.push(b.id, b.o, q4(b.x), q4(b.y), BK.indexOf(b.k), ang(b.vx, b.vy)); });
     G.caps.forEach(function (c) { s.cp.push(c.id, POWK.indexOf(c.k) + (c.tut ? 10 : 0), q4(c.x), q4(c.y), Math.round(c.t * 10)); });
     G.players.forEach(function (p) { s.p.push([p.id, q4(p.x), q4(p.y), (p.alive ? 1 : 0) | (p.inv > 0 ? 2 : 0) | (p.beaming ? 4 : 0), p.lives, p.score, p.power ? POWK.indexOf(p.power) + 1 : 0, Math.round(p.powerT * 100), p.ci, p.name]); });
-    if (G.boss) { var B = G.boss; s.b = [B.id, BT.indexOf(B.type), q4(B.x), q4(B.y), Math.round(B.hp * 10) / 10, Math.round(B.max * 10) / 10, BST.indexOf(B.st), Math.round(B.z || 0), B.flash > 0 ? 1 : 0, B.ph, -1, B.vul ? 1 : 0]; }
+    if (G.boss) { var B = G.boss; s.b = [B.id, BT.indexOf(B.type), q4(B.x), q4(B.y), Math.round(B.hp * 10) / 10, Math.round(B.max * 10) / 10, BST.indexOf(B.st), Math.round(B.z || 0), B.flash > 0 ? 1 : 0, B.ph, B.st === 'hold' ? Math.round(B.tx) * 1000 + Math.round(B.ty) : -1, B.vul ? 1 : 0]; }
     t.broadcast(s, false);
   }
   function netOver(R) {
@@ -2535,7 +2573,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
         if (Math.abs(bb[2] - ab[2]) > 400 || Math.abs(bb[3] - ab[3]) > 400) ab = bb;   // a jump (the Wasp back in at the top, the Firefly moving in the dark): don't slide across
         var bx = ab[2] / 4 + (bb[2] - ab[2]) / 4 * a, by = ab[3] / 4 + (bb[3] - ab[3]) / 4 * a;
         if (!V.boss || V.boss.id !== bb[0]) V.boss = { id: bb[0] };
-        var VB = V.boss; VB.type = BT[bb[1]]; VB.x = bx; VB.y = by; VB.hp = bb[4]; VB.max = bb[5]; VB.st = BST[bb[6]]; VB.z = bb[7] || 0; VB.hitf = !!bb[8]; VB.flash = 0; VB.ph = bb[9] || 0; VB.vul = !!bb[11];
+        var VB = V.boss; VB.type = BT[bb[1]]; VB.x = bx; VB.y = by; VB.hp = bb[4]; VB.max = bb[5]; VB.st = BST[bb[6]]; VB.z = bb[7] || 0; VB.hitf = !!bb[8]; VB.flash = 0; VB.ph = bb[9] || 0; VB.vul = !!bb[11]; if (bb[10] >= 0) { VB.tx = Math.floor(bb[10] / 1000); VB.ty = bb[10] % 1000; } else VB.tx = 0;
       } else V.boss = null;
       var pm = {}; (A.p || []).forEach(function (p) { pm[p[0]] = p; });
       var wasAlive = V.pred.alive;
@@ -2618,7 +2656,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     cap: function (k, x, y) { G.caps.push({ id: newId(), x: x, y: y, y0: y, k: k, t: 0 }); },
     spawn: function (type, x, y) { return type === 'wasp' || type === 'bwasp' ? spawnWasps(1, type === 'bwasp') : type === 'ant' ? spawnAnts() : type === 'ffly' ? spawnFirefly(x, y) : type === 'beetle' ? spawnBeetle(x, y) : type === 'flea' ? spawnFlea() : type === 'mini' ? spawnSpider(true, x, y) : spawnSpider(false); },
     zone: function (x, y, R, warn, ci) { zone(x, y, R, warn, ci); },
-    bossSet: function (st, ph) { var B = G.boss; if (!B) return; if (ph != null) { B.ph = ph; B.hp = B.max * (ph === 2 ? 0.3 : ph === 1 ? 0.6 : 1); } if (st === 'loop') lockLoop(B); else if (st) { B.st = st; B.stT = 0; } },
+    bossSet: function (st, ph) { var B = G.boss; if (!B) return; if (ph != null) { B.ph = ph; B.hp = B.max * (ph === 2 ? 0.3 : ph === 1 ? 0.6 : 1); } if (st === 'hold') { var T = target(); B.tx = T.x; B.ty = T.y; B.tgt = T; } if (st) { B.st = st; B.stT = 0; } },
     move: function (x, y) { var P = G.players[0]; P.x = x; P.y = y; },
     fire: function (on) { ctl.keys[' '] = !!on; },
     auto: function (on) { ctl.auto = !!on; },
