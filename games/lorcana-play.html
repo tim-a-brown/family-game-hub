@@ -7120,7 +7120,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function layoutVars() {
     var bar = $('.gbar'), top = bar ? Math.max(0, bar.getBoundingClientRect().bottom) : 60;
-    var H = Math.max(320, window.innerHeight - top), W = window.innerWidth, land = W >= 900 && W > window.innerHeight;
+    // the screen's own size (iPhone shrinks innerHeight while you pinch-zoom, which left the table short)
+    var VH = document.documentElement.clientHeight || window.innerHeight, VW = document.documentElement.clientWidth || window.innerWidth;
+    var H = Math.max(320, VH - top), W = VW, land = W >= 900 && W > VH;
     document.documentElement.style.setProperty('--avail', Math.floor(H) + 'px');
     var hh = land ? Math.max(110, Math.min(165, H * 0.2)) : Math.max(100, Math.min(185, H * 0.145));
     var lp = $('.lp'); if (lp) lp.style.setProperty('--hh', Math.round(hh) + 'px');
@@ -8431,7 +8433,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   document.addEventListener('keydown', function (e) { var ov = $$('.lz').filter(function (z) { return z._keys; }).pop(); if (ov) ov._keys(e); });
   document.addEventListener('keyup', function (e) { if (lastFlow && lastFlow.onKeyUp) lastFlow.onKeyUp(e); });
   window.addEventListener('blur', function () { if (lastFlow && lastFlow.holding) lastFlow.release(); });
-  function closeZoom() { flowChain = null; $$('.lz').forEach(function (z) { z.remove(); }); filtersOnExit(); pickBack(); }
+  function closeZoom() { flowChain = null; $$('.lz').forEach(function (z) { z.remove(); }); filtersOnExit(); pickBack(); layoutVars(); }
   // A choice an ability is waiting on (cardPick) can't be lost: if any other card view replaced it, it comes back as soon
   // as that view closes, and tapping a card meanwhile brings the choice back instead
   function pickBack() { setTimeout(function () { var cp = ui.cp; if (cp && !cp.fin && !$('.lz') && S && ui.screen === 'game') cp.show(); }, 0); }
@@ -12133,10 +12135,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     afterBegin();
   }
   var rz = 0;
-  window.addEventListener('resize', function () {
+  function onResize() {
     if (rz) return;
     rz = requestAnimationFrame(function () { rz = 0; if (S && ui.screen === 'game') render(); else layoutVars(); });
-  });
+  }
+  window.addEventListener('resize', onResize);
+  if (window.visualViewport) visualViewport.addEventListener('resize', onResize);   // pinch-zoom ending
   DB.load();
   if (saverOn()) applySaver();
   // Motion for the card sheen: ask as soon as Lorcana opens. iPhone only allows the prompt from a tap,
