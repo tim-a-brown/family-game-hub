@@ -401,8 +401,12 @@ self.addEventListener('fetch', (event) => {
   // home screen; a cached or failed copy would leave a plain letter icon)
   if (url.origin === self.location.origin && /^\/(apple-touch-icon[^/]*|icon-\d+\.png|img\/home-icon-\d+\.png|favicon\.png|manifest\.json)$/.test(url.pathname)) return;
 
-  // Background music streams straight from the network (audio asks for byte ranges, which the cache can't answer)
-  if (url.origin === self.location.origin && url.pathname.startsWith('/music/')) return;
+  // Background music: from the device once "Offline" in the menu has saved it (audio asks for byte ranges, so
+  // those are cut from the saved file here), otherwise straight from the network
+  if (url.origin === self.location.origin && url.pathname.startsWith('/music/')) {
+    event.respondWith(caches.open(OFFLINE_CACHE).then((c) => c.match(url.pathname)).then((hit) => hit ? withRange(hit, req) : fetch(req)));
+    return;
+  }
 
   // Lorcana card art: from the device when we have it
   if (isArt(url)) { event.respondWith(artFetch(req)); return; }
@@ -456,8 +460,8 @@ self.addEventListener('fetch', (event) => {
   // Sounds, pictures, fonts and bundled libraries: from the device once saved. Each release starts a fresh cache,
   // so a changed file still arrives with the next release (no re-checking ~40 sound files on every page).
   if (url.origin === self.location.origin && (/^\/(sounds|img|vendor)\//.test(url.pathname) || /\.(mp3|ogg|wav|png|jpe?g|webp|gif|svg|woff2?|glb|gltf|ktx2|hdr)$/i.test(url.pathname))) {
-    event.respondWith(caches.open(CACHE_NAME).then((cache) => cache.match(req).then((hit) => hit || fetch(req).then((resp) => {
-      if (resp && resp.status === 200) cache.put(req, resp.clone()).catch(() => {});
+    event.respondWith(caches.open(CACHE_NAME).then((cache) => cache.match(req).then((hit) => hit || offlineHit(req)).then((hit) => hit || fetch(req).then((resp) => {
+      if (resp && resp.status === 200) caches.open(CACHE_NAME).then((cache) => cache.put(req, resp.clone())).catch(() => {});
       return resp;
     }))));
     return;
@@ -500,6 +504,65 @@ function netFirst(req) {
     })
   );
 }
+
+// ── Ready for offline ("Offline" in the menu, before a flight) ─────────────────────────────────────────
+// Every release already saves the app itself. This also saves everything else the site serves that a game can use
+// (offline-files.json: music, crossword puzzles, the Sandlot stats, the 3D library...) in its own cache, which
+// stays through updates; running it again refreshes it. It reports progress back over the message port.
+const OFFLINE_CACHE = 'gn-offline';
+function offlineHit(req) { return caches.open(OFFLINE_CACHE).then((c) => c.match(req, { ignoreSearch: true })); }
+async function withRange(resp, req) {
+  const range = req.headers.get('range');
+  if (!range) return resp;
+  const buf = await resp.arrayBuffer(), len = buf.byteLength, m = /bytes=(\d*)-(\d*)/.exec(range) || [];
+  let start = m[1] ? +m[1] : 0, end = m[2] ? +m[2] : len - 1;
+  if (!m[1] && m[2]) { start = Math.max(0, len - +m[2]); end = len - 1; }
+  end = Math.min(end, len - 1);
+  if (start > end) return new Response(null, { status: 416, headers: { 'Content-Range': 'bytes */' + len } });
+  return new Response(buf.slice(start, end + 1), { status: 206, headers: {
+    'Content-Type': resp.headers.get('Content-Type') || 'audio/mpeg', 'Content-Length': String(end - start + 1),
+    'Content-Range': 'bytes ' + start + '-' + end + '/' + len, 'Accept-Ranges': 'bytes' } });
+}
+async function offlineStatus() {
+  const c = await caches.open(OFFLINE_CACHE), m = await c.match('/__offline-meta');
+  return { meta: m ? await m.json() : null, version: CACHE_VERSION };
+}
+async function offlinePrep(say) {
+  const rel = await caches.open(CACHE_NAME), off = await caches.open(OFFLINE_CACHE);
+  const lr = await fetch('/offline-files.json', { cache: 'no-cache' });
+  if (!lr.ok) throw new Error('offline list ' + lr.status);
+  const list = await lr.json(), jobs = [];
+  // anything of this release's own that didn't save when it installed, then the rest
+  for (const u of PRECACHE_URLS) if (!(await rel.match(u, { ignoreSearch: true }))) jobs.push({ u, c: rel, s: 0 });
+  list.files.forEach((f) => jobs.push({ u: f[0], c: off, s: f[1] }));
+  let i = 0, n = 0, bytes = 0, failed = 0;
+  const all = jobs.reduce((t, j) => t + j.s, 0);
+  async function worker() {
+    while (i < jobs.length) {
+      const j = jobs[i++];
+      try {
+        const r = await fetch(new Request(j.u, { cache: 'no-cache' }));
+        if (!r.ok) throw new Error(r.status);
+        await j.c.put(j.u, r); bytes += j.s;
+      } catch (e) { failed++; }
+      n++; say({ n, total: jobs.length, bytes, all });
+    }
+  }
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  // files the app no longer has
+  const keep = new Set(list.files.map((f) => f[0]).concat(['/__offline-meta']));
+  for (const k of await off.keys()) if (!keep.has(new URL(k.url).pathname)) await off.delete(k);
+  const meta = { at: Date.now(), files: list.files.length, bytes, failed, version: CACHE_VERSION };
+  await off.put('/__offline-meta', new Response(JSON.stringify(meta), { headers: { 'Content-Type': 'application/json' } }));
+  return { meta, version: CACHE_VERSION };
+}
+self.addEventListener('message', (event) => {
+  const d = event.data || {}, port = event.ports && event.ports[0];
+  if (!port) return;
+  if (d.type === 'offline-status') event.waitUntil(offlineStatus().then((r) => port.postMessage(r)));
+  if (d.type === 'offline-prep') event.waitUntil(offlinePrep((p) => port.postMessage(p)).then(
+    (r) => port.postMessage(Object.assign({ done: true }, r)), (e) => port.postMessage({ error: String((e && e.message) || e) })));
+});
 
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();

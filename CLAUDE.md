@@ -91,4 +91,7 @@ Underlying principles for everything:
   (`online/ice.json`, refreshed every six hours by `turn-credentials.yml` from Cloudflare; secrets
   `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN`).
 - Files that must not be public go in Firebase's `hosting.ignore` (`firebase.json`).
+- **Offline** (menu): saves the app plus every other public file (`offline-files.json`, built by
+  `scripts/build-offline-list.py`; deploy.yml rebuilds it each release) into the `gn-offline` cache. Run the script
+  after adding assets so previews have them too.
 - Never print or commit `FIREBASE_SERVICE_ACCOUNT` or any Dropbox secret.

@@ -929,7 +929,7 @@
   // unpacks only that PIN's own stash before syncing with its cloud copy. So nothing from one PIN is ever merged
   // into another. Only the phone's motion-permission answers and test flags stay with the device.
   var SPACE_KEY = 'fgh_space', STASH = 'fgh_space_';
-  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|emu|space(_.*)?|diag_log|sync_last)|online_transport|eightball_motion|lorc_tilt(_asked)?|firebase.*)$/;
+  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|emu|space(_.*)?|diag_log|sync_last|offline_at)|online_transport|eightball_motion|lorc_tilt(_asked)?|firebase.*)$/;
   function spaceOf(p){ var h = 5381; p = String(p || ''); for(var i = 0; i < p.length; i++) h = ((h << 5) + h + p.charCodeAt(i)) | 0; return 'p' + (h >>> 0).toString(36); }
   function curSpace(){ return LS.getItem(SPACE_KEY) || (isPin() ? spaceOf(pin()) : 'g'); }
   function switchSpace(to){

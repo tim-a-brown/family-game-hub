@@ -24,6 +24,7 @@
 //   Kit.resume.set(label, {keys}) / .clear()           "Continue" rail on home
 //   Kit.rules()                                open the rules sheet
 //   Kit.music({search})                        the Music sheet (your Spotify: a playlist per game, search); Kit.spotifyOwns(id)
+//   Kit.offline()                              save everything on this device for offline (a flight); Kit.offlineTag()
 //   Kit.musicMini(slot, close)                 the Spotify player for the top of a menu (once something plays)
 //   Kit.theme.pick() / .get() / .set(id)       app colour theme (localStorage fgh_theme)
 //   Kit.init({orient:'landscape'|'portrait'})  phones only (orientTablets:true adds iPads): lock or show a turn-your-device cover; 'kit:orient' event
@@ -664,6 +665,70 @@
     sheet({ title: 'How to play', html: '<div class="rules">' + opts.rules + '</div>', actions: [{ label: 'Got it', primary: true }] });
   }
   // Theme picker: a swatch per theme, tap to switch at once
+  // ── Offline: save everything on this device before a flight ─────────────────────────────────────────────
+  // The service worker does the saving (see "Ready for offline" there) and reports progress over a message port.
+  function swAsk(msg, onMsg) {
+    return new Promise(function (ok, no) {
+      var sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+      if (!sw || !window.MessageChannel) return no(new Error('nosw'));
+      var ch = new MessageChannel();
+      ch.port1.onmessage = function (e) { var d = e.data || {}; if (d.error) no(new Error(d.error)); else if (d.n != null && !d.done && onMsg) onMsg(d); else ok(d); };
+      sw.postMessage(msg, [ch.port2]);
+    });
+  }
+  function mb(b) { return b >= 1e6 ? Math.round(b / 1e6) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB'; }
+  function offDate(t) { return new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' }); }
+  function offlineTag() { var t = +lsGet('fgh_offline_at', '0'); return t ? 'Ready · saved ' + offDate(t) : 'Save everything for a flight'; }
+  function offlineSheet() {
+    sfx('pop');
+    var ring = el('div', { class: 'k-off-ring', html: icon('plane') });
+    var head = el('b', { text: 'Checking…' }), sub = el('small', { text: '' });
+    var bar = el('i'), barBox = el('div', { class: 'k-off-bar' }, [bar]); barBox.hidden = true;
+    function li(ic, t) { return el('li', {}, [el('span', { html: icon(ic) }), el('span', { text: t })]); }
+    var body = el('div', { class: 'k-off' }, [
+      el('div', { class: 'k-off-top' }, [ring, el('div', { class: 'k-off-st' }, [head, sub])]), barBox,
+      el('div', { class: 'k-off-cols' }, [
+        el('div', {}, [el('h3', { text: 'Works offline' }), el('ul', { class: 'k-off-ok' }, [
+          li('check', 'Every game against the computer or pass-and-play'), li('check', 'Arcade, casino, puzzles and dailies'),
+          li('check', 'Crosswords, Sandlot stats, Axis & Allies marches'), li('check', 'Scores and history (they sync when you’re back)')])]),
+        el('div', {}, [el('h3', { text: 'Needs internet' }), el('ul', { class: 'k-off-no' }, [
+          li('cloud', 'Online play and open tables'), li('cloud', 'Signing in and syncing'),
+          li('cloud', 'Spotify controls (play your downloads in the Spotify app)'), li('cloud', 'Lorcana cards you haven’t seen yet, mini golf course search')])])
+      ])
+    ]);
+    var s, busy = false, go;
+    function show(r) {
+      var m = r && r.meta, cur = m && m.version === r.version;
+      ring.classList.toggle('ok', !!cur); ring.innerHTML = icon(cur ? 'check' : 'plane');
+      if (m) lsSet('fgh_offline_at', String(m.at));
+      head.textContent = !m ? 'Not saved yet' : cur ? 'Ready for offline' : 'Saved before the latest update';
+      sub.textContent = !m ? 'Saves about ' + mb(45e6) + ' on this device' : 'Saved ' + offDate(m.at) + ' · ' + mb(m.bytes) + (cur ? '' : ' · save again to top up') + (m.failed ? ' · ' + m.failed + ' files didn’t save' : '');
+      go.textContent = !m ? 'Save everything' : cur ? 'Save again' : 'Top up';
+      go.disabled = !navigator.onLine;
+      if (!navigator.onLine) sub.textContent += (sub.textContent ? ' · ' : '') + 'connect to the internet to save';
+    }
+    function run() {
+      if (busy) return; busy = true; go.disabled = true; go.textContent = 'Saving…';
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+      barBox.hidden = false; bar.style.width = '0'; ring.classList.add('spin'); head.textContent = 'Saving for offline';
+      swAsk({ type: 'offline-prep' }, function (p) {
+        bar.style.width = Math.round(p.n / p.total * 100) + '%';
+        sub.textContent = p.n + ' of ' + p.total + ' files · ' + mb(p.bytes) + ' of ' + mb(p.all);
+      }).then(function (r) {
+        busy = false; ring.classList.remove('spin'); bar.style.width = '100%';
+        setTimeout(function () { barBox.hidden = true; }, 700);
+        show(r); haptic('success'); sfx('good');
+      }, function (e) {
+        busy = false; ring.classList.remove('spin'); barBox.hidden = true; go.disabled = false; go.textContent = 'Try again';
+        head.textContent = 'Couldn’t save everything'; sub.textContent = e.message === 'nosw' ? 'This browser can’t save the app. Open it from the home screen icon.' : 'Check the connection and try again.';
+        haptic('error');
+      });
+    }
+    s = sheet({ title: 'Offline', node: body, actions: [{ label: 'Save everything', primary: true, keep: true, onClick: run }, { label: 'Done', cls: 'btn-soft' }] });
+    go = s.el.querySelector('.k-acts .btn');
+    swAsk({ type: 'offline-status' }).then(show, function () { head.textContent = 'Not available here'; sub.textContent = 'Open the app from its home screen icon to save it for offline.'; go.disabled = true; });
+  }
+
   function themePick(onDone) {
     sfx('pop');
     var grid = el('div', { class: 'k-themes' }), cur = themeGet(), s;
@@ -732,6 +797,7 @@
     if (game) item(M, 'star', isFav() ? 'Remove from favorites' : 'Add to favorites', function () {
       var on = toggleFav(); toast(on ? 'Added to favorites' : 'Removed from favorites'); haptic('success');
     });
+    item(M, 'plane', 'Offline', offlineSheet, '', offlineTag());
     item(M, 'home', 'All games', goHome);
     if (top.length) list.appendChild(el('div', { class: 'k-tiles' }, top));
     groups.forEach(function (g) {
@@ -2632,7 +2698,7 @@
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
-    spotifyOwns: spotifyOwns, music: spotifySheet, musicMini: spotifyMini,
+    spotifyOwns: spotifyOwns, music: spotifySheet, musicMini: spotifyMini, offline: offlineSheet, offlineTag: offlineTag,
     titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
