@@ -716,7 +716,11 @@
         var local   = scanLocal();
         var merged  = mergeSnapshots(local, remote);
         writeSnapshotToLocal(merged); reconcileName();
-        return pushNow({ force: true }).then(function(){ ssSet(PULL_KEY, String(Date.now())); return {isNew: remote.isNew}; });
+        // Signed in once the cloud copy is merged in. The upload of this device's copy carries on in the background
+        // instead of holding the sign-in (a slow first write took sign-in to half a minute); if it doesn't finish
+        // before the page changes, the next page's sync sends it (the pull mark is only set once it lands).
+        pushNow({ force: true }).then(function(){ ssSet(PULL_KEY, String(Date.now())); }, function(err){ console.warn('[sync] sign-in upload failed; the next page retries', err); });
+        return {isNew: remote.isNew};
       })
       .then(function(result){ notifyReady(); return result; },
             function(err){ if(isPin() && pin() === p) signOut(); throw err; });   // not signed in after all: pack it away again
@@ -1698,6 +1702,7 @@
     mode: mode, pin: pin, label: label, isPin: isPin,
     // Firestore handle for features beyond the PIN doc (Lorcana online tables)
     db: function(){ return ensureFirebase().then(function(f){ return f.db; }); },
+    warm: function(){ return ensureFirebase().then(function(){ return true; }, function(){ return false; }); },   // load the cloud code early (the sign-in page)
     signInWithPin: signInWithPin, changePin: changePin, weakPin: weakPin,
     setLabel: setLabel,
     signOut: signOut,

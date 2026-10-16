@@ -73,6 +73,7 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
   'use strict';
   var m = FGHSync.mode();
   if (m === 'pin' || m === 'guest') { location.replace('./index.html'); return; }
+  if (FGHSync.warm) setTimeout(FGHSync.warm, 0);   // fetch the cloud code while the PIN is typed, not after
   var $ = function (id) { return document.getElementById(id); };
   $('logo').innerHTML = '<svg viewBox="40 40 176 176" aria-hidden="true"><g fill="none" stroke-width="18" stroke-linecap="round"><path d="M148 72A58 58 0 0 1 184 108" stroke="#ffd166"/><path d="M184 148A58 58 0 0 1 148 184" stroke="#ff7a8a"/><path d="M108 184A58 58 0 0 1 72 148" stroke="#4fd1c5"/><path d="M72 108A58 58 0 0 1 108 72" stroke="#8b7cff"/></g><g fill="#fff"><circle cx="79" cy="79" r="16"/><circle cx="177" cy="79" r="16"/><circle cx="177" cy="177" r="16"/><circle cx="79" cy="177" r="16"/></g></svg>';
 
@@ -116,11 +117,13 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
   function signIn() {
     if (pin.length !== 4 || busy) return;
     setBusy(true); status('Signing in…');
+    var slow = setTimeout(function () { if (busy) status('Still signing in…'); }, 7000);
     FGHSync.signInWithPin(pin).then(function (r) {
+      clearTimeout(slow);
       if (r && r.isNew) { status(''); askName(); }
       else { status(''); hello(true); }
     }).catch(function (e) {
-      setBusy(false); Kit.haptic('error'); Kit.sfx('bad');
+      clearTimeout(slow); setBusy(false); Kit.haptic('error'); Kit.sfx('bad');
       $('slots').classList.remove('shake'); void $('slots').offsetWidth; $('slots').classList.add('shake');
       if (e && e.code === 'weak') status('That PIN is too easy to guess. Pick a less common one. If it was your PIN, change it on a device that is still signed in: tap your avatar, then Change PIN.', true);
       else if (e && e.code === 'moved') status('That PIN was changed. Sign in with the new one.', true);

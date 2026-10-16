@@ -401,6 +401,16 @@ self.addEventListener('fetch', (event) => {
   // Lorcana card art: from the device when we have it
   if (isArt(url)) { event.respondWith(artFetch(req)); return; }
 
+  // The Firebase code itself: a fixed version that never changes, so from the device once saved (sign-in
+  // otherwise waits on downloading it again whenever the phone has cleared its browser cache)
+  if (url.hostname === 'www.gstatic.com' && url.pathname.startsWith('/firebasejs/')) {
+    event.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((resp) => {
+      if (resp && (resp.status === 200 || resp.type === 'opaque')) { const c = resp.clone(); caches.open(CACHE_NAME).then((cache) => cache.put(req, c).catch(() => {})); }
+      return resp;
+    })));
+    return;
+  }
+
   // Skip Firebase/Firestore/Google APIs — need fresh data
   if (
     url.hostname.includes('firebase') ||

@@ -2378,12 +2378,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var b = GV.buf; if (b.length && s.q <= b[b.length - 1].q) return;
     b.push(s); if (b.length > 14) b.shift();
   }
-  function lerpArr(A, B, stride, a, build) {
-    var out = [], map = {};
+  // xo: where x sits in each entry (y follows it); 2 for most lists ([id, kind, x, y, …]), 1 for segments ([id, x, y, flags])
+  function lerpArr(A, B, stride, a, build, xo) {
+    var out = [], map = {}, X = xo || 2, Y = X + 1;
     if (A) for (var i = 0; i < A.length; i += stride) map[A[i]] = i;
     for (var j = 0; j < B.length; j += stride) {
-      var k = map[B[j]], x = B[j + 2] / 4, y = B[j + 3] / 4;
-      if (k != null && A) { x = A[k + 2] / 4 + (x - A[k + 2] / 4) * a; y = A[k + 3] / 4 + (y - A[k + 3] / 4) * a; }
+      var k = map[B[j]], x = B[j + X] / 4, y = B[j + Y] / 4;
+      if (k != null && A) { x = A[k + X] / 4 + (x - A[k + X] / 4) * a; y = A[k + Y] / 4 + (y - A[k + Y] / 4) * a; }
       out.push(build(B, j, x, y));
     }
     return out;
@@ -2401,7 +2402,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       if (V.wave !== B.w) V.wave = B.w;
       var ph = PH[B.ph]; if (!V.ended && ph !== V.phase) { V.phase = ph; V.phaseT = B.pt / 10; }
       V.score = B.sc;
-      V.segs = lerpArr(A.c, B.c, 4, a, function (r, j, x, y) { return { id: r[j], x: x, y: y, head: !!(r[j + 3] & 1), dx: r[j + 3] & 2 ? -1 : 1, frz: !!(r[j + 3] & 4) }; });
+      V.segs = lerpArr(A.c, B.c, 4, a, function (r, j, x, y) { return { id: r[j], x: x, y: y, head: !!(r[j + 3] & 1), dx: r[j + 3] & 2 ? -1 : 1, frz: !!(r[j + 3] & 4) }; }, 1);
       V.foes = lerpArr(A.f, B.f, 6, a, function (r, j, x, y) { return { id: r[j], type: FT[r[j + 1]], x: x, y: y, hp: r[j + 4], vx: r[j + 5] & 1 ? -1 : 1, hurt: r[j + 5] & 2 ? 1 : 0, glow: r[j + 5] & 4 ? 1 : 0 }; });
       V.shots = lerpArr(A.k, B.k, 6, a, function (r, j, x, y) { var an = r[j + 4] / 100; return { id: r[j], k: KT[r[j + 1]], x: x, y: y, vx: Math.cos(an), vy: Math.sin(an), z: r[j + 5] / 4 }; });
       V.zones = []; for (var zi = 0; zi + 5 < (B.zn || []).length; zi += 6) V.zones.push({ id: B.zn[zi], x: B.zn[zi + 1] / 4, y: B.zn[zi + 2] / 4, R: B.zn[zi + 3], t: B.zn[zi + 4] / 100, ci: B.zn[zi + 5] });
