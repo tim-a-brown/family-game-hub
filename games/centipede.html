@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Centipede</title>
 <link rel="stylesheet" href="../kit.css">
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js","three/addons/":"../vendor/three/addons/"}}</script>
 <script src="../sync.js"></script>
 <script src="../games.js"></script>
 <script src="../game-icons.js"></script>
@@ -282,12 +283,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       '<li>Those three use ammo only as they fire: with nothing to shoot, turn auto-fire off to save it.</li>' +
       '<li><b>Beam</b>: a laser straight up that goes through everything in its path. It burns out about 4 seconds after you first fire it, whether you keep firing or not.</li></ul>' +
       '<h3>Combos</h3><p>Hit bugs quickly, one after another. Every 5 in a row is a combo bonus: x5 is <b>100</b>, x10 is <b>200</b>, x15 is <b>300</b> and so on.</p>' +
-      '<h3>Bosses</h3><p>Every hit on a boss counts: the bar at the top drains as you keep firing, and the trick is staying out of the way of its attacks while you do. Each one gets angrier at two thirds and one third health.</p><ul>' +
-      '<li><b>Killer Wasp</b> (wave 3): flies big circles and sends small wasps. When it holds back with a red target on you, move: it either dives at you in a streak of fire or fires stings at the target (or it\'s bluffing).</li>' +
-      '<li><b>Night Flyer</b> (wave 6): moves between six spots and pulses a ring of green poison out around it. Stay clear of the ring as it spreads. It may stay and pulse again. Fireflies come in with it.</li>' +
-      '<li><b>Blast Beetle</b> (wave 9): patrols along the top dropping fireballs where you are (they burst when they land; shoot them down). When it stops and shakes, it\'s about to lunge down at you. It sends bomb beetles.</li>' +
-      '<li><b>Mega Spider</b> (wave 10, Wave X): you have one chance. It walks along the top shooting webs straight down and on the diagonals. Below two thirds it pulls back and lunges at you; below one third it lunges with no warning and sweeps along the bottom. If it hits you, the bonus round is over (no life lost) and the game goes on.</li></ul>' +
-      '<p>Beating the Killer Wasp, the Night Flyer or the Blast Beetle is worth <b>10,000</b>. The Mega Spider is worth <b>100,000</b> and wins the round. Every hit on a boss is <b>5</b>.</p>' +
+      '<h3>Bosses</h3><p>Every hit on a boss counts, in every move it makes: keep firing and stay out of its way. Watch for the moment it stops and gets ready: that\'s when it attacks, and when it\'s easiest to hit.</p><ul>' +
+      '<li><b>Killer Wasp</b> (wave 3): flies little circles at the middle, then the right, then the left. When it pulls back to the top and glows white, look out: it may dive straight down in a streak of fire (or it\'s bluffing). Small wasps come in from the top corners.</li>' +
+      '<li><b>Night Flyer</b> (wave 6): flies between six spots. At each one it folds its wings up and lets go a ring of green poison on the floor under it: stay out of the ring while it spreads. Fireflies dive in when it comes to the middle.</li>' +
+      '<li><b>Blast Beetle</b> (wave 9): roams the top dropping fireballs straight down its lanes (you can\'t shoot them). When it stops and rears back, it lunges straight down to the floor a second later. Bomb beetles come in from the top.</li>' +
+      '<li><b>Mega Spider</b> (wave 10, Wave X): you have one chance. It walks the top spitting webs straight down or on a slant. Lower down its health it rears up over you and drops to your row; near the end it drops on you with no warning and slides sideways. If it hits you, the bonus round is over (no life lost) and the game goes on.</li></ul>' +
+      '<p>Beating the Killer Wasp, the Night Flyer or the Blast Beetle is worth <b>10,000</b>. The Mega Spider is worth <b>100,000</b> and wins the round.</p>' +
       '<h3>Endless</h3><p>After wave 10 (win or lose the bonus) the waves start again from the first stage, with the wave number still counting up. Each time round everything is faster and busier, the bosses are tougher, and their bonuses go up.</p>' +
       '<h3>Lives</h3><p>Touching a bug, a boss, a boss\'s shot or a flashing circle costs a life. You\'re back a moment later, with 5 seconds of safety (the ring of dots). You get an extra life every <b>20,000</b> points. Arcade starts with 3 lives. Relaxed starts with 5, with slower bugs and weaker, slower bosses.</p>' +
       '<h3>Play online</h3><p>Two or three players, each on their own phone or tablet, play the same field together, like the three-player cabinet. Each player has their own coloured ship (blue, yellow, purple), score and lives. One opens a table; the others join it from the list (tables opened by people you\'ve linked show up first) or with the 4-letter code. Everyone shares the team score and also has their own. Each extra player brings more bugs, another centipede and more power-ups, and the bosses get tougher. Extra lives come from the team score and go to everyone. If you lose your last life, you\'re back in at the start of the next wave, or sooner if the team earns an extra life. The game ends when everyone is out at once. Players can join a game already going. An online game can\'t be paused, and it ends for everyone if the host leaves.</p>' +
@@ -1116,19 +1117,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
 
   // ═══ Bosses ═════════════════════════════════════════════════════════════
-  // As on the cabinet, every hit counts (no armour): the bar at the top drains steadily while you keep firing,
-  // and the fight is about staying out of the way of its attacks while you do. Each gets angrier at two thirds
-  // and one third health (faster, more attacks). Positions scale with the field.
-  //   Killer Wasp (wave 3): flies big circles over the upper field, sending small wasps. Now and then it holds
-  //     back over you with a red target on you: then either dives at you in a streak of fire, or fires stings at
-  //     the target (and sometimes it's only bluffing).
-  //   Night Flyer (wave 6): a giant moth that moves between six spots and pulses: a green ring of poison spreads
-  //     out from it (slip through the gap or stay clear). It may stay put and pulse again. Fireflies come with it.
-  //   Blast Beetle (wave 9): patrols side to side dropping fireballs where you are (they burst when they land,
-  //     and can be shot down). When it stops firing and shakes, it's about to lunge down at you. Sends bomb beetles.
-  //   Mega Spider (wave 10, "Wave X"): one chance. It walks along the top shooting webs straight down and on
-  //     the diagonals. Below two thirds it lunges down at you after pulling back; below one third it lunges with
-  //     no warning and sweeps sideways at the bottom. A hit ends the bonus (no life is lost).
+  // As on the cabinet, every hit counts (no armour, no flinch): the bar drains steadily while you keep firing,
+  // and the fight is about staying out of the way of its attacks while you do. Each one follows the pattern
+  // seen on the cabinet (see its step function below); only the Mega Spider changes as its health drops.
   function makeBoss(type) {
     var np = Math.max(1, G.players.length), loop = waveDef(G.wave).loop || 0, D = BOSS[type];
     var hp = Math.round(D.hp * bossScale(np) * DIFF[G.diff].boss * (1 + 0.4 * loop));
@@ -1513,6 +1504,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
 
   // ═══ Play view ══════════════════════════════════════════════════════════
   var floorCv = null, floorKey = '', cv, g, wrapEl, cabEl, ovEl, fireBtn = null, pauseBtn = null, ro = null;
+  // The 3D view (centipede-3d.js: the mushrooms, centipedes and bosses as real models under the cabinet's camera)
+  // draws underneath; this page's canvas on top keeps the light effects, text and HUD. Without WebGL the flat
+  // drawing here is used instead.
+  var glCv = null, C3 = null, C3wait = false;
+  function load3d() {
+    if (C3 || C3wait || lsGet('centi_2d', false)) return;
+    C3wait = true;
+    glCv = document.createElement('canvas'); glCv.className = 'cc-floor'; glCv.setAttribute('aria-hidden', 'true'); glCv.style.display = 'none';
+    if (cabEl && floorCv && floorCv.parentNode === cabEl) cabEl.insertBefore(glCv, floorCv.nextSibling);
+    import('./centipede-3d.js').then(function (m) {
+      try { C3 = m.create(glCv, { W: W, H: H, HB: HB, CELL: CELL, COLS: COLS, ROWS: ROWS }); } catch (e) { C3 = null; }
+      cssW = 0; fit();
+    }).catch(function () { C3 = null; });
+  }
+  load3d();
   var DPR = 1, S = 1, cssW = 0, hudDirty = true;
   var SVG_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg>';
   // a pause button in the game bar, next to the rules (solo games only)
@@ -1531,7 +1537,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     cv = el('canvas', { 'aria-label': 'Centipede field' }); g = cv.getContext('2d');
     ovEl = el('div', { class: 'ar-ov' });
     floorCv = el('canvas', { class: 'cc-floor', 'aria-hidden': 'true' }); floorKey = '';
-    cabEl = el('div', { class: 'cc-cab' }, [floorCv, el('div', { class: 'cc-sweep' }), cv, ovEl]);
+    cabEl = el('div', { class: 'cc-cab' }, glCv ? [floorCv, glCv, el('div', { class: 'cc-sweep' }), cv, ovEl] : [floorCv, el('div', { class: 'cc-sweep' }), cv, ovEl]);
     wrapEl = el('div', { class: 'cc-wrap' }, [cabEl]);
     app.appendChild(wrapEl);
     app.appendChild(el('div', { class: 'ar-hint ar-desk', text: 'Mouse, arrow keys or WASD to fly · F auto-fire' + (online ? '' : ' · P pauses') }));
@@ -1565,6 +1571,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
     cv.width = dw; cv.height = Math.round(h * DPR);
     floorCv.style.width = w + 'px'; floorCv.style.height = h + 'px'; floorKey = '';
+    if (glCv) { glCv.style.width = w + 'px'; glCv.style.height = h + 'px'; }
     S = cv.width / W;
     SPX = {}; TXT = {}; TXTN = 0;
     draw();
@@ -2233,11 +2240,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var sx = 0, sy = 0;
     if (fx.shake > 0) { var m = fx.shake * fx.shake * 5 * S; sx = (Math.random() - 0.5) * m; sy = (Math.random() - 0.5) * m; }
     // the floor is its own canvas underneath, painted only when the stage or the size changes
+    var use3 = !!(C3 && glCv && glCv.parentNode === cabEl);
+    if (glCv) glCv.style.display = use3 ? '' : 'none';
+    floorCv.style.display = use3 ? 'none' : '';
+    if (use3) {
+      var ships = R.players.map(function (p) { var px = p.x, py = p.y; if (GV && p.id === me && GV.pred.alive) { px = GV.pred.x; py = GV.pred.y; } return { x: px, y: py, ci: p.ci, alive: p.alive, a: p.inv > 0 && Math.floor(drawT * 12) % 2 ? 0 : 1 }; });
+      C3.frame(R, { cw: cv.width, ch: cv.height, S: S, tk: tk, THEMES: THEMES, PCOL: PCOL, ships: ships, t: drawT, sx: Math.round(sx), sy: Math.round(sy) });
+    }
     var fk = tk + COLS + 'x' + ROWS + ':' + cv.width + 'x' + cv.height;
-    if (floorKey !== fk) { floorKey = fk; floorCv.width = cv.width; floorCv.height = cv.height; floorCv.getContext('2d').drawImage(bgSpr(tk), 0, 0); }
+    if (!use3 && floorKey !== fk) { floorKey = fk; floorCv.width = cv.width; floorCv.height = cv.height; floorCv.getContext('2d').drawImage(bgSpr(tk), 0, 0); }
     x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
     x.clearRect(0, 0, cv.width, cv.height);
-    warm(R, wv);
+    if (!use3) warm(R, wv);
     var L = hudLayout(R);
     drawLives(x, R, L);                      // the lives plates sit on the floor, under everything
     var oy = HB * S;
@@ -2245,11 +2259,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var fr = Math.floor(drawT * 8) % 2;
     // mushrooms, row by row so a lower one sits in front
     var grid = R.grid, pois = R.pois;
-    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) { var hp = grid[r * COLS + c]; if (hp) drawSpr(x, mushSpr(tk, Math.min(MUSH_HP, hp), pois[r * COLS + c] ? 1 : 0), cx(c), cx(r) - 0.5); }
+    if (!use3) for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) { var hp = grid[r * COLS + c]; if (hp) drawSpr(x, mushSpr(tk, Math.min(MUSH_HP, hp), pois[r * COLS + c] ? 1 : 0), cx(c), cx(r) - 0.5); }
     drawZones(x, R.zones || []);
-    R.segs.forEach(function (s) { if (s.y > -8) { var f2 = (fr + (s.id & 1)) % 2; drawSpr(x, segSpr(tk, s.head, f2, s.dx < 0, s.frz), s.x, s.y + Math.sin(drawT * 12 + s.id) * 0.4); } });
-    R.foes.forEach(function (o) { drawFoe(x, o, tk, fr); });
-    if (R.boss) drawBoss(x, R.boss);
+    if (!use3) R.segs.forEach(function (s) { if (s.y > -8) { var f2 = (fr + (s.id & 1)) % 2; drawSpr(x, segSpr(tk, s.head, f2, s.dx < 0, s.frz), s.x, s.y + Math.sin(drawT * 12 + s.id) * 0.4); } });
+    R.foes.forEach(function (o) { drawFoe(x, o, tk, fr, use3 && o.type !== 'scorp' && o.type !== 'ball'); });
+    if (R.boss) drawBoss(x, R.boss, use3);
     // light: power-up halos, lasers, beams, lightning
     x.globalCompositeOperation = 'lighter';
     R.caps.forEach(function (cp) { var fade = cp.t > CAP_LIFE - 3 && Math.floor(drawT * 8) % 2 ? 0.2 : 1; glow(x, cp.x, cp.y, 22, POW[cp.k].c, (0.5 + 0.2 * Math.sin(drawT * 6 + cp.id)) * fade); });
@@ -2270,7 +2284,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       });
       var ht = txt('PICK UP POWER-UPS!', '#ffffff', 1); drawTxtAt(x, ht, cp.x, cp.y - 30, Math.min(1, 120 / ht.w));
     });
-    R.players.forEach(function (p) { drawShip(x, p, me); });
+    R.players.forEach(function (p) { drawShip(x, p, me, use3); });
     // explosions, sparks and flying cubes
     x.globalCompositeOperation = 'lighter';
     fx.exps.forEach(function (e) { drawBoom(x, e); });
@@ -2305,7 +2319,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
   function font(px) { return '400 ' + px + 'px "Lilita One", ui-rounded, system-ui, sans-serif'; }
   function outlined(t, x0, y0, px, col, lw) { g.font = font(px); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.lineWidth = lw || px * 0.22; g.strokeStyle = 'rgba(0,0,0,.8)'; g.strokeText(t, x0, y0); g.fillStyle = col; g.fillText(t, x0, y0); }
-  function drawShip(x, p, me) {
+  function drawShip(x, p, me, fxOnly) {
     var px = p.x, py = p.y;
     if (GV && p.id === me && GV.pred.alive) { px = GV.pred.x; py = GV.pred.y; }
     if (!p.alive) return;
@@ -2317,7 +2331,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     x.globalAlpha = a;
     x.save(); x.translate(px, py); x.rotate(drawT * 1.3); drawSpr(x, ringSpr(p.ci), 0, 0); x.restore();
     x.globalAlpha = a;
-    drawSpr(x, shipSpr(p.ci), px, py - 1);
+    if (!fxOnly) drawSpr(x, shipSpr(p.ci), px, py - 1);
     x.lineCap = 'round';
     // time left on a weapon: an arc round the ring
     x.globalAlpha = 1;
@@ -2486,9 +2500,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     x.fillStyle = 'rgba(10,4,14,.8)'; x.beginPath(); x.arc(s.x, s.y, 2.9, 0, TAU); x.fill();
     x.fillStyle = on ? '#ffffff' : shade(col, 0.5); x.beginPath(); x.arc(s.x, s.y, 2, 0, TAU); x.fill();
   }
-  function drawFoe(x, o, tk, fr) {
+  function drawFoe(x, o, tk, fr, fxOnly) {
     var f2 = (fr + (o.id & 1)) % 2, fast = Math.floor(drawT * 22 + o.id) % 2, s, hurt = o.hurt > 0 ? 1 : 0;
-    if (o.type === 'spider') s = spiderSpr(tk, f2);
+    if (fxOnly) s = null;
+    else if (o.type === 'spider') s = spiderSpr(tk, f2);
     else if (o.type === 'mini') s = miniSpr(tk, fast);
     else if (o.type === 'flea') s = fleaSpr(f2, o.hp < 2 ? 1 : 0);
     else if (o.type === 'wasp' || o.type === 'bwasp') s = waspSpr(fast, o.type === 'bwasp');
@@ -2506,10 +2521,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       x.beginPath(); x.arc(o.x, o.y, 10 + 6 * ph, 0, TAU); x.stroke();
       x.beginPath(); x.arc(o.x, o.y, 16 + 6 * ph, 0, TAU); x.globalAlpha = 0.6; x.stroke(); x.globalAlpha = 1;
     }
-    drawSpr(x, s, o.x, o.y);
+    if (!fxOnly) drawSpr(x, s, o.x, o.y);
   }
-  function drawBoss(x, B) {
-    var D = BOSS[B.type], fr = Math.floor(drawT * (B.type === 'mega' || B.type === 'beetle' ? 6 : B.type === 'firefly' ? 5.5 : 14)) % 2, sp = bossSpr(B, fr), px = B.x, py = B.y - (B.z || 0);
+  // fxOnly: the 3D view draws the boss itself; just its light effects here
+  function drawBoss(x, B, fxOnly) {
+    var D = BOSS[B.type], fr = Math.floor(drawT * (B.type === 'mega' || B.type === 'beetle' ? 6 : B.type === 'firefly' ? 5.5 : 14)) % 2, sp = fxOnly ? null : bossSpr(B, fr), px = B.x, py = B.y - (B.z || 0);
     if (B.st === 'die') { px += rnd(-1, 1); py += rnd(-1, 1); }
     // the Killer Wasp leaves a yellow streak behind it as it loops and dives
     if (B.type === 'wasp' && B.st === 'dive') fx.trail.push({ x: px, y: py, life: 0.35 });
@@ -2539,6 +2555,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     } else glow(x, px, py, D.r[0] * 2.2, D.c, 0.25);
     x.globalCompositeOperation = 'source-over';
     var rot = B.type === 'firefly' && B.yaw ? B.yaw : 0;
+    if (!fxOnly) {
     if (rot) { x.save(); x.translate(px, py); x.rotate(rot); x.translate(-px, -py); }
     if (B.type === 'firefly') {
       // wings: fluttering, then folded into a V and clamped shut as it charges, snapping open white as it lets go
@@ -2558,6 +2575,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     }
     if (B.st === 'die') { x.globalAlpha = 0.35 + 0.35 * Math.sin(drawT * 30); drawSprImg(x, sp, sp.w || (sp.w = tintCanvas(sp.c, '#ffffff', 0.7)), px, py); x.globalAlpha = 1; }
     if (rot) x.restore();
+    }
     x.globalAlpha = 1;
     // the Blast Beetle's mouth: an orb grows between its pincers as it drops each fireball, and goes dark when it stops to lunge
     if (B.type === 'beetle' && B.st === 'patrol') { x.globalCompositeOperation = 'lighter'; glow(x, px, py + 20, 5 + 6 * Math.max(0, B.orb || 0) / 0.25, '#ffd060', 0.9); x.globalCompositeOperation = 'source-over'; }
