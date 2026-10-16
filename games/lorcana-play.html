@@ -383,9 +383,21 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 @media (prefers-reduced-motion:reduce){.slot.dry .lc::after,.drips i,.drips i::before,.drips i::after{animation:none;}.lp-board.shake{animation:none;}}
 .slot.sel .lc{box-shadow:0 0 0 3px var(--gilt-2),0 0 18px rgba(246,225,168,.8);}
 .slot.can .lc{box-shadow:0 0 0 2px rgba(246,225,168,.75),0 4px 10px rgba(0,0,0,.45);}
-.slot.tgt .lc{box-shadow:0 0 0 3px #ff6b6b,0 0 16px rgba(255,107,107,.85);animation:tgt 1s ease-in-out infinite;}
-.slot.tgt-ok .lc{box-shadow:0 0 0 3px #7fe0a0,0 0 16px rgba(127,224,160,.8);animation:tgt 1s ease-in-out infinite;}
-@keyframes tgt{50%{filter:brightness(1.15);}}
+/* Something to choose: a ring of light that breathes, the same on every card (light or dark art, still-wet ink or
+   dry), drawn on top of the card's own layers so the drying sheen and drips run underneath it */
+.slot.tgt .lc{--tg:255,107,107;animation:tgtGlow 1.1s ease-in-out infinite;}
+.slot.tgt-ok .lc{--tg:127,224,160;animation:tgtGlow 1.1s ease-in-out infinite;}
+.slot.tgt .lc::before,.slot.tgt-ok .lc::before{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;
+  box-shadow:inset 0 0 0 2.5px rgb(var(--tg)),inset 0 0 calc(var(--cu) * .12) rgba(var(--tg),.55);animation:tgtRing 1.1s ease-in-out infinite;}
+@keyframes tgtGlow{0%,100%{box-shadow:0 0 0 2px rgba(var(--tg),.9),0 0 8px rgba(var(--tg),.45);}50%{box-shadow:0 0 0 3px rgb(var(--tg)),0 0 22px 4px rgba(var(--tg),.9);}}
+@keyframes tgtRing{0%,100%{opacity:.55;}50%{opacity:1;}}
+/* the one you've picked (multi-choice, or a challenge target being previewed): steady gold */
+.slot.sel.tgt .lc,.slot.sel.tgt-ok .lc{animation:none;box-shadow:0 0 0 3px var(--gilt-2),0 0 18px rgba(246,225,168,.8);}
+.slot.sel.tgt .lc::before,.slot.sel.tgt-ok .lc::before{--tg:246,225,168;animation:none;opacity:1;}
+/* the table's moving shine stays off the cards you can choose, so it doesn't read as a second signal */
+.picking .slot.tgt .lc > .bsh,.picking .slot.tgt-ok .lc > .bsh{opacity:0;}
+@media (prefers-reduced-motion:reduce){.slot.tgt .lc,.slot.tgt-ok .lc,.slot.tgt .lc::before,.slot.tgt-ok .lc::before{animation:none;}
+  .slot.tgt .lc,.slot.tgt-ok .lc{box-shadow:0 0 0 3px rgb(var(--tg)),0 0 16px rgba(var(--tg),.8);}}
 .picking .slot:not(.tgt):not(.tgt-ok) .lc{filter:brightness(.55) saturate(.6);}
 .slot.drag-src{opacity:.35;}
 .slot.hover-drop .lc{transform:rotate(var(--rot,0deg)) scale(1.08);box-shadow:0 0 0 3px #fff,0 0 22px rgba(127,224,160,.95);}
