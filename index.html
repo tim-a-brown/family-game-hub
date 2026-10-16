@@ -1533,6 +1533,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       el('button', { type: 'button', class: 'av-btn', 'aria-label': 'Change your avatar', onclick: editMine }, [Kit.avatar.el(mn || '?', 'lg', 'var(--surface-3)')]),
       el('div', { class: 'grow', style: { 'min-width': '0' } }, [el('label', { class: 'acct-nm' }, [myIn, el('span', { class: 'acct-pen', 'aria-hidden': 'true', html: Kit.icon('pencil') })]), acct])
     ]));
+    // what's playing on Spotify, with its controls
+    if (Kit.musicMini) { var spSlot = el('div', { style: { 'margin-top': '12px' } }); node.appendChild(spSlot); Kit.musicMini(spSlot, function () { s.close(); }); }
     var list = el('div', { class: 'k-list', style: { 'margin-top': '14px' } });
     function item(ic, t, fn, cls, extra) { list.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); fn(); } }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('span', { text: t }), extra || null])); }
     var reqs = linkReqs();
@@ -1555,6 +1557,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       list = el('div', { class: 'k-list', style: { 'margin-top': '14px' } });
     }
     item('palette', 'Theme', function () { Kit.theme.pick(); }, '', el('span', { class: 'k-ini', text: Kit.theme.name() }));
+    if (Kit.music) item('headphones', 'Music', function () { Kit.music(); }, '', el('span', { class: 'k-ini', text: get('spotify_auth', '') ? 'Spotify' : 'Connect' }));
     item(get('gn_sound', '1') === '1' ? 'sound' : 'mute', 'Sound: ' + (get('gn_sound', '1') === '1' ? 'on' : 'off'), function () {
       set('gn_sound', get('gn_sound', '1') === '1' ? '0' : '1'); Kit.sfx('good');
     });

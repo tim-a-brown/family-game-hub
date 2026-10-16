@@ -23,7 +23,8 @@
 //   Kit.color(i)                               player colour for seat i
 //   Kit.resume.set(label, {keys}) / .clear()           "Continue" rail on home
 //   Kit.rules()                                open the rules sheet
-//   Kit.music()                                the Music sheet (your Spotify: a playlist per game); Kit.spotifyOwns(id)
+//   Kit.music({search})                        the Music sheet (your Spotify: a playlist per game, search); Kit.spotifyOwns(id)
+//   Kit.musicMini(slot, close)                 the Spotify player for the top of a menu (once something plays)
 //   Kit.theme.pick() / .get() / .set(id)       app colour theme (localStorage fgh_theme)
 //   Kit.init({orient:'landscape'|'portrait'})  phones only (orientTablets:true adds iPads): lock or show a turn-your-device cover; 'kit:orient' event
 //   Kit.orient('landscape'|'portrait'|null, tablets?)  same gate, set or lifted later (per mode); Kit.orientOk() -> bool
@@ -582,7 +583,14 @@
   function spotifyOn() { return !!lsGet('spotify_auth', ''); }
   // true when Spotify plays for this game (the game keeps its own music quiet)
   function spotifyOwns(id) { var p = spotifyPick(id || (game && game.id)); return spotifyOn() && !!(p && p.u && p.u !== 'off'); }
-  function spotifySheet() { spotifyLoad().then(function (Sp) { Sp.sheet(game ? { id: game.id, name: game.name } : {}); }, function () { toast('Couldn’t load Spotify. Check the connection.'); }); }
+  function spotifySheet(o) { spotifyLoad().then(function (Sp) { Sp.sheet(game ? { id: game.id, name: game.name } : {}, o); }, function () { toast('Couldn’t load Spotify. Check the connection.'); }); }
+  // the player at the top of a menu (shows once something is playing); close: shuts that menu first
+  function spotifyMini(slot, close) {
+    if (!spotifyOn()) return;
+    spotifyLoad().then(function (Sp) {
+      Sp.mini(slot, { onOpen: function () { close(); spotifySheet(); }, onSearch: function () { close(); spotifySheet({ search: true }); } });
+    }, function () {});
+  }
   function pageKey() { return location.pathname.replace(/^.*\//, '').replace(/\.html$/, ''); }
   function playerColor(i) {
     return getComputedStyle(root).getPropertyValue('--p' + ((i % 8) + 1)).trim() || '#ffc83d';
@@ -693,6 +701,8 @@
       group(g).push(b);
     }
     var G = 'Game', top = [];
+    // what's playing on Spotify, with its controls, right at the top
+    if (spotifyOn()) { var spSlot = el('div'); list.appendChild(spSlot); spotifyMini(spSlot, function () { s.close(); }); }
     // New game, Undo and Past games sit side by side across the top
     function tile(ic, label, fn) {
       top.push(el('button', { type: 'button', class: 'k-tile', onclick: function () { sfx('tap'); s.close(); fn(); } },
@@ -714,7 +724,7 @@
     toggle('Settings', 'sound', 'Sound', '', soundOn, function () { lsSet('gn_sound', soundOn() ? '0' : '1'); sfx('good'); });
     item('Settings', 'palette', 'Theme', function () { themePick(); }, '', themeRec(themeGet()).name);
     var spP = game && spotifyPick(game.id);
-    item('Settings', 'headphones', 'Music', spotifySheet, '', !spotifyOn() ? 'Play your Spotify' : spP && spP.u !== 'off' ? spP.n || 'Spotify' : 'Spotify: none');
+    item('Settings', 'headphones', 'Music', spotifySheet, '', !spotifyOn() ? 'Play your Spotify' : spP && spP.u !== 'off' ? spP.n || 'Spotify' : spP ? 'Spotify off in this game' : 'Search or pick a playlist');
     var M = 'More';
     if (opts.rules) item(M, 'book', 'How to play', rules);
     var nReq = linkReqs().length;
@@ -2622,7 +2632,7 @@
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
-    spotifyOwns: spotifyOwns, music: spotifySheet,
+    spotifyOwns: spotifyOwns, music: spotifySheet, musicMini: spotifyMini,
     titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
