@@ -208,26 +208,30 @@ function bugModel(type, fr, T, M, lit) {
   }
   return V.build(M);
 }
-// The player's ship: a long crystal gem pointing up the screen (the cabinet's): a narrow nose, widest a little
-// past the middle, a short tail; stepped glowing edges, a white-hot core inside a darker diamond
-function shipW(z) {
-  if (z < -12) return 0.7; if (z < -9) return 1.2;
-  if (z < 1) return 1.4 + (z + 9) / 10 * 3.8;
-  if (z < 5) return 5.2 - (z - 1) / 4 * 3.2;
-  return z < 7 ? 1.3 : 0;
-}
+// The player's ship, the cabinet's glowing gem built of cubes (the same rows as the page's flat drawing): a raised
+// glowing rim, a sunken band of dark glass inside it, then a glowing inner deck with a white-hot core standing
+// up near the nose, two sunken arched windows either side of a bright middle column, and a lit tail block
+const SHIP_HW = [1, 1, 0, 0, 1, 1, 2, 3, 3, 4, 5, 5, 6, 7, 7, 7, 7, 6, 6, 5, 4, 4, 3, 3, 3, 3, 3, 3, 3, 4];
 function shipModel(col, M) {
-  const V = new Vox(0.6), c = hex(col), hi = shadeHex(col, 0.55), dk = shadeHex(col, -0.45);
-  V.fill(-6, 0, -14, 6, 6, 8, (x, y, z) => { const w = shipW(z); return w > 0 && Math.abs(x) <= w && Math.abs(y - 3) <= Math.max(0.6, w * 0.6); },
-    (x, y, z) => {
-      const w = shipW(z), d = Math.abs(x) / 2.6 + Math.abs(z + 1) / 5.2;
-      if (Math.abs(x) > w - 0.9) return c;                     // the glowing stepped edge
-      if (y > 3.4 && d < 1) return 0xffffff;                   // the core
-      if (y > 3.4 && d < 1.3) return dk;                       // its dark diamond outline
-      return hi;
-    },
-    (x, y, z, cc) => cc === 0xffffff || cc === c);
-  return V.build(M);
+  const v = 0.6, R = SHIP_HW.length, V = new Vox(v), c = hex(col);
+  const out = (q, r) => r >= 0 && r < R && Math.abs(q) <= SHIP_HW[r];
+  const ero = (f) => (q, r) => { for (let dr = -1; dr <= 1; dr++) for (let dq = -1; dq <= 1; dq++) if (!f(q + dq, r + dr)) return false; return true; };
+  const in1 = ero(out), in2 = ero(in1), in3 = ero(in2);
+  for (let r = 0; r < R; r++) for (let q = -8; q <= 8; q++) {
+    if (!out(q, r)) continue;
+    const k = r, ax = Math.abs(q);
+    const col3 = (h, cc, em) => { for (let j = 0; j < h; j++) V.set(q, j, k, cc, em); };
+    if (!in1(q, r)) { col3(3, c, true); continue; }                               // the glowing rim
+    if (!in2(q, r)) { col3(1, shadeHex(col, -0.78), false); continue; }        // the dark glass band
+    if (!in3(q, r) && r < 23) { col3(2, shadeHex(col, 0.25), true); continue; }      // the inner outline
+    if (r >= 23) { col3(2, ax === 0 ? shadeHex(col, 0.5) : shadeHex(col, -0.15), true); continue; }   // tail block
+    const hot = 1 - Math.sqrt((q / 3.4) ** 2 + ((r - 8.5) / 4.5) ** 2);
+    if (ax >= 2 && ax <= 4 && r >= 10 && r <= 17 && (r > 10 || ax === 3)) { col3(1, shadeHex(col, -0.8 + (r - 10) * 0.04), false); continue; }  // windows
+    if (hot > 0) { col3(2 + Math.round(hot * 2), hot > 0.5 ? 0xffffff : shadeHex(col, 0.1 + hot), true); continue; }  // white-hot core
+    col3(1, ax === 0 ? shadeHex(col, 0.45) : shadeHex(col, -0.1), true);                                // the deck and its bright middle column
+  }
+  // centred on the middle column; the rows sit where the page's drawing puts them (a unit above the ship's point)
+  return V.build(M, [0.5 * v, 0, R / 2 * v + 1]);
 }
 
 // ── Bosses: rigs of parts that move ──
@@ -545,6 +549,13 @@ export function create(canvas, F) {
     for (const im of P.list) im.setMatrixAt(P.n, dummy.matrix);
     P.n++;
   }
+  // the same with a pitch as well (the ships)
+  function placeTilt(key, make, cap, p, rx, rz) {
+    place(key, make, cap, p, 0, rz, 1);
+    const P = ipools[key]; dummy.rotation.set(rx, 0, rz); dummy.updateMatrix();
+    for (const im of P.list) im.setMatrixAt(P.n - 1, dummy.matrix);
+  }
+  const shipPrev = new Map(), shipMats = { lit: new THREE.MeshLambertMaterial({ vertexColors: true }), glow: new THREE.MeshBasicMaterial({ vertexColors: true }) };   // (no seams: its cubes are tiny)
   // soft shadows on the floor, all in one go too
   const shadowIM = new THREE.InstancedMesh(SHADOW_GEO, SHADOW_MAT, 1600); shadowIM.frustumCulled = false; shadowIM.renderOrder = 1; shadowIM.count = 0; scene.add(shadowIM);
   let shN = 0;
@@ -612,10 +623,17 @@ export function create(canvas, F) {
       place(key, () => bugModel(f.type, fr, T, M0, lit), 60, pos, -yaw);
     });
     // ships
-    (o.ships || []).forEach(sp => {
-      if (!sp.alive || sp.a < 0.5) return;
-      // (the ship itself is a glowing hologram the page draws on top: here just its shadow on the floor)
+    (o.ships || []).forEach((sp, n) => {
+      if (!sp.alive) { shipPrev.delete(n); return; }
+      // it banks into a turn and leans forward when it climbs
+      const pv = shipPrev.get(n) || { x: sp.x, y: sp.y, rz: 0, rx: 0 }, vx = sp.x - pv.x, vy = sp.y - pv.y;
+      const rz = pv.rz + (clamp(-vx * 0.09, -0.5, 0.5) - pv.rz) * 0.25, rx = pv.rx + (clamp(vy * 0.05, -0.3, 0.3) - pv.rx) * 0.25;
+      shipPrev.set(n, { x: sp.x, y: sp.y, rz, rx });
       at(sp.x, sp.y, pos); shadow(pos, 5);
+      if (sp.a < 0.5) return;
+      pos.y = 2 + Math.sin(o.t * 4 + n) * 0.35;
+      const ci = (sp.ci || 0) % 3;
+      placeTilt('ship' + ci, () => shipModel(o.PCOL[ci], shipMats), 4, pos, rx, rz);
     });
     segPrev.forEach((v, k) => { if (!seen.has(k)) segPrev.delete(k); });
     // the boss
@@ -644,4 +662,4 @@ export function create(canvas, F) {
   return { frame, at, ok: true, renderer };
 }
 // for the model viewer used while tuning the art
-export const _test = { waspRig, flyerRig, beetleRig, megaRig, mats, mushModel, segModel };
+export const _test = { waspRig, flyerRig, beetleRig, megaRig, mats, mushModel, segModel, shipModel };
