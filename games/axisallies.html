@@ -1494,15 +1494,19 @@ function buildBoard() {
   app.appendChild(el('div', { class: 'aa-main' }, [wrap, R.side]));
   // SVG layers
   WRAP = M.view[0] === 0 && M.view[2] === 1750 ? 1750 : 0;
-  var s = '<svg xmlns="' + SVGNS + '"><g id="aaWorld"><g id="aaTile">';
+  // the map is drawn three times side by side when it wraps round: first every copy's land and sea, then every
+  // copy's names, highlights and units on top (otherwise a copy's land covers names on the seam next to it)
+  var s = '<svg xmlns="' + SVGNS + '"><g id="aaWorld"><g id="aaTerr">';
   var sea = '', land = '', hit = '';
   for (var t = 0; t < NT; t++) {
     if (!M.on[t] || !GEO[t]) continue;
     if (isSea(t)) sea += '<path class="t-sea" data-t="' + t + '" d="' + GEO[t] + '"/>';
     else land += '<path class="t-land' + (imp(t) ? ' imp' : '') + '" data-t="' + t + '" id="tp' + t + '" d="' + GEO[t] + '"/>';
   }
-  s += '<g id="gSea">' + sea + '</g><g id="gLand">' + land + '</g><g id="gHit"></g><g id="gHl"></g><g id="gLbl"></g><g id="gStk"></g><g id="gFx"></g></g>';
-  if (WRAP) s += '<use href="#aaTile" x="' + -WRAP + '"/><use href="#aaTile" x="' + WRAP + '"/>';
+  s += '<g id="gSea">' + sea + '</g><g id="gLand">' + land + '</g></g>';
+  if (WRAP) s += '<use href="#aaTerr" x="' + -WRAP + '"/><use href="#aaTerr" x="' + WRAP + '"/>';
+  s += '<g id="aaTop"><g id="gHit"></g><g id="gHl"></g><g id="gLbl"></g><g id="gStk"></g><g id="gFx"></g></g>';
+  if (WRAP) s += '<use href="#aaTop" x="' + -WRAP + '"/><use href="#aaTop" x="' + WRAP + '"/>';
   s += '</g></svg>';
   R.map.innerHTML = s;
   R.svg = R.map.firstChild; R.world = R.svg.querySelector('#aaWorld');
