@@ -2046,38 +2046,46 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // the player's ship: a glowing crystal
   // The player's ship, like the cabinet's: a glowing hologram of a gem, two stepped outlines one inside the other
   // (cube steps, a little box at the nose), a white-hot core with a cockpit in it; its exhaust is drawn live
-  var SHIP_HW = [1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 7, 7, 8, 8, 7, 7, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 2, 2];
+  // rows of the ship, top to bottom, as half-widths in cubes either side of a middle column: the box on the
+  // nose and its stalk, the gem (widest a little above the middle), then the straight tail with its two feet
+  var SHIP_HW = [1, 1, 0, 0, 1, 1, 2, 3, 3, 4, 5, 5, 6, 7, 7, 7, 7, 6, 6, 5, 4, 4, 3, 3, 3, 3, 3, 3, 3, 4];
   function shipSpr(ci) {
     return vec('ship' + ci, 44, function (x, u) {
-      var col = SHIPC[ci % 3], c = 0.62, R = SHIP_HW.length, top = -R * c * 0.56, k = Math.max(1 / u, c * 0.22);
-      function inS(q, r, inset) { if (r < inset || r >= R - inset) return false; var hw = SHIP_HW[r] - inset; return hw > 0 && Math.abs(q + 0.5) <= hw; }
-      function edge(q, r, inset) { return inS(q, r, inset) && (!inS(q - 1, r, inset) || !inS(q + 1, r, inset) || !inS(q, r - 1, inset) || !inS(q, r + 1, inset)); }
-      function cell(q, r, f) { x.fillStyle = f; x.fillRect(q * c, top + r * c, c + 0.02, c + 0.02); }
-      for (var r = 0; r < R; r++) for (var q = -9; q < 9; q++) {
-        if (!inS(q, r, 0)) continue;
-        var d = Math.abs(q + 0.5) / Math.max(1, SHIP_HW[r]), core = inS(q, r, 3);
-        // between the outlines: a see-through tint; inside: white-hot at the top of the core, the colour at its edges
-        if (core) cell(q, r, r < 21 ? (d < 0.45 ? '#ffffff' : shade(col, 0.75)) : shade(col, 0.45));
-        else cell(q, r, hexA(col, 0.22));
+      // the cabinet's ship: a stepped gem filled with glowing colour, a band of darker glass between two stepped
+      // outlines, white-hot up near the nose, two arched windows either side of a bright middle column, then a
+      // straight lit tail block
+      var col = SHIPC[ci % 3], c = 0.6, R = SHIP_HW.length, top = -R * c * 0.5, k = Math.max(1 / u, c * 0.28);
+      function outer(q, r) { return r >= 0 && r < R && Math.abs(q) <= SHIP_HW[r]; }
+      function inner(q, r) { for (var dr = -1; dr <= 1; dr++) for (var dq = -1; dq <= 1; dq++) if (!outer(q + dq, r + dr)) return false; return true; }
+      function cell(q, r, f) { x.fillStyle = f; x.fillRect((q - 0.5) * c, top + r * c, c + 0.02, c + 0.02); }
+      var band = hexA(shade(col, -0.3), 0.7), bright = shade(col, 0.7);
+      for (var r = 0; r < R; r++) for (var q = -8; q <= 8; q++) {
+        if (!outer(q, r)) continue;
+        if (!inner(q, r)) { cell(q, r, band); continue; }
+        var ax = Math.abs(q), f = col;
+        if (r >= 23) f = ax === 0 ? shade(col, 0.65) : shade(col, 0.25);          // the tail block, lit up
+        else {
+          if (ax === 0 && r > 6) f = shade(col, 0.5);                              // the bright middle column
+          var hot = 1 - Math.sqrt(Math.pow(q / 3.4, 2) + Math.pow((r - 8.5) / 4.5, 2));
+          if (hot > 0) f = shade(col, Math.min(1, 0.4 + hot * 0.9));               // white-hot near the nose
+          if (ax >= 2 && ax <= 4 && r >= 10 && r <= 17 && (r > 10 || ax === 3))    // two arched windows
+            f = shade(col, -0.45 + (r - 10) * 0.05);
+        }
+        cell(q, r, f);
       }
-      // the cockpit: two upright marks and a bar under them
-      x.fillStyle = hexA(shade(col, -0.25), 0.85);
-      x.fillRect(-1.5 * c, top + 12 * c, c * 0.45, c * 6); x.fillRect(1.05 * c, top + 12 * c, c * 0.45, c * 6); x.fillRect(-2 * c, top + 20 * c, c * 4, c * 0.45);
-      // the two stepped outlines (lines along the cube steps)
-      [[0, col], [2, shade(col, 0.35)]].forEach(function (L) {
-        x.fillStyle = L[1];
-        for (var r = 0; r < R; r++) for (var q = -9; q < 9; q++) {
-          if (!inS(q, r, L[0])) continue;
-          var X0 = q * c, Y0 = top + r * c;
-          if (!inS(q - 1, r, L[0])) x.fillRect(X0, Y0, k, c + k);
-          if (!inS(q + 1, r, L[0])) x.fillRect(X0 + c - k, Y0, k, c + k);
-          if (!inS(q, r - 1, L[0])) x.fillRect(X0, Y0, c + k, k);
-          if (!inS(q, r + 1, L[0])) x.fillRect(X0, Y0 + c - k, c + k, k);
+      // the two stepped outlines, on the cube edges
+      [[outer, bright], [inner, shade(col, 0.35)]].forEach(function (L) {
+        var inS = L[0]; x.fillStyle = L[1];
+        for (var r = 0; r < R; r++) for (var q = -8; q <= 8; q++) {
+          if (!inS(q, r)) continue;
+          var X0 = (q - 0.5) * c, Y0 = top + r * c;
+          if (!inS(q - 1, r)) x.fillRect(X0, Y0, k, c + k);
+          if (!inS(q + 1, r)) x.fillRect(X0 + c - k, Y0, k, c + k);
+          if (!inS(q, r - 1)) x.fillRect(X0, Y0, c + k, k);
+          if (!inS(q, r + 1)) x.fillRect(X0, Y0 + c - k, c + k, k);
         }
       });
-      // the box at the nose
-      x.strokeStyle = shade(col, 0.5); x.lineWidth = k; x.strokeRect(-1.5 * c, top - 2.6 * c, 3 * c, 2.4 * c);
-      addGlow(x.canvas, col, 6 * u, 1);
+      addGlow(x.canvas, col, 8 * u, 1);
     });
   }
   function ringSpr(ci) {
@@ -2435,11 +2443,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var blink = p.inv > 0 && Math.floor(drawT * 12) % 2, col = SHIPC[p.ci % 3], a = blink ? 0.35 : 1;
     x.globalCompositeOperation = 'lighter';
     glow(x, px, py, 22, col, 0.32 * a);
-    // the exhaust: a bright beam out of the tail, white-hot at the ship and fading into its colour
-    var ey = py + 8, el = 13 + Math.random() * 3, pl = x.createLinearGradient(px, ey, px, ey + el);
-    pl.addColorStop(0, 'rgba(255,255,255,' + (0.95 * a) + ')'); pl.addColorStop(0.35, hexA(shade(col, 0.4), 0.8 * a)); pl.addColorStop(1, hexA(col, 0));
-    x.fillStyle = pl; x.beginPath(); x.moveTo(px - 1.9, ey); x.lineTo(px + 1.9, ey); x.lineTo(px + 1.2, ey + el); x.lineTo(px - 1.2, ey + el); x.closePath(); x.fill();
-    glow(x, px, ey + 2, 6, col, 0.5 * a);
+    // the exhaust: a broad pale beam as wide as the tail block, fading out below it
+    var ey = py + 8, el = 15 + Math.random() * 3, pl = x.createLinearGradient(px, ey, px, ey + el);
+    pl.addColorStop(0, hexA(shade(col, 0.55), 0.95 * a)); pl.addColorStop(0.4, hexA(shade(TRAILC[p.ci % 3], 0.3), 0.6 * a)); pl.addColorStop(1, hexA(TRAILC[p.ci % 3], 0));
+    x.fillStyle = pl; x.fillRect(px - 2, ey, 4, el);
+    glow(x, px, ey + 3, 7, col, 0.45 * a);
     x.globalCompositeOperation = 'source-over';
     x.globalAlpha = a;
     // the dotted shield ring only while it can't be hurt (just after coming back)
