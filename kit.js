@@ -446,6 +446,13 @@
   }
 
   // ── Sheets ────────────────────────────────────────────────────────────────
+  // A full-screen layer (sheet, win screen) must cover the screen. iPhone can place one off it (scrolled with the
+  // page, or after the keyboard closes): measure it once it's up and shift it back if it isn't at the top.
+  function pinFixed(n, blur) {
+    if (blur) try { var a = doc.activeElement; if (a && a !== doc.body && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) a.blur(); } catch (e) {}
+    function fix() { if (!n.isConnected) return; n.style.transform = ''; var t = n.getBoundingClientRect().top; if (Math.abs(t) > 1) n.style.transform = 'translateY(' + (-t) + 'px)'; }
+    requestAnimationFrame(fix); setTimeout(fix, 350); setTimeout(fix, 900);
+  }
   function sheet(o) {
     o = o || {};
     var body = el('div', { class: 'k-sheet' + (o.help ? ' k-sh-has-help' : ''), role: 'dialog', 'aria-modal': 'true' });
@@ -481,7 +488,7 @@
     scrim.addEventListener('click', function (e) { if (e.target === scrim && o.dismissible !== false) close(true); });
     if (o.dismissible !== false) sheetDrag(body, close);
     doc.addEventListener('keydown', onKey);
-    doc.body.appendChild(scrim);
+    doc.body.appendChild(scrim); pinFixed(scrim);
     requestAnimationFrame(function () { requestAnimationFrame(function () { scrim.classList.add('show'); }); });
     return { close: close, el: body };
   }
@@ -874,6 +881,11 @@
     window.addEventListener('orientationchange', function () { setTimeout(queueFit, 250); });
     if (window.ResizeObserver) new ResizeObserver(queueFit).observe(doc.body);
     if (window.MutationObserver) new MutationObserver(queueFit).observe(doc.body, { childList: true, subtree: true });
+    // A page that fits the screen never stays shifted: iPhone can leave it scrolled or offset after a double tap
+    function unshift() { if (!fitLock) return; var vv = window.visualViewport; if (window.scrollY || (vv && vv.scale < 1.02 && vv.offsetTop > 0.5)) window.scrollTo(0, 0); }
+    window.addEventListener('scroll', unshift, { passive: true });
+    if (window.visualViewport) { visualViewport.addEventListener('scroll', unshift); visualViewport.addEventListener('resize', unshift); }
+    doc.addEventListener('touchend', function () { setTimeout(unshift, 350); }, { passive: true });
     doc.addEventListener('touchmove', function (e) {
       if (!fitLock || e.touches.length > 1) return;   // pinch-zoom still works
       if (scrollerFor(e.target)) return;
@@ -1540,7 +1552,7 @@
     if (fromDaily()) acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: icon('calendar') + '<span>Daily puzzles</span>', onclick: function () { close(); toDaily(); } }));
     acts.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: o.closeLabel || 'Back to games', onclick: o.onClose ? function () { close(); o.onClose(); } : goHome }));
     card.appendChild(acts);
-    doc.body.appendChild(ov);
+    doc.body.appendChild(ov); pinFixed(ov, true);
     requestAnimationFrame(function () { requestAnimationFrame(function () { ov.classList.add('show'); }); });
     resume.clear();
     if (o.quiet) {}   // shown again (after looking at the board): no fanfare

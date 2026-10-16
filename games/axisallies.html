@@ -2610,7 +2610,11 @@ function renderBattle(B, anim) {
   var attHuman = humanPower(B.att);
   if (cp) {
     if (humanPower(cp.chooser)) {
-      var cb = el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('check') + '<span>' + (cp.ok ? 'Lose ' + (cp.need === 1 ? 'this one' : 'these ' + cp.need) : 'Pick ' + cp.need + ' the dice can hit') + '</span>', onclick: function () { if (!cp.ok) return; Kit.sfx('bad'); Kit.haptic('medium'); var c2 = cp.cas; ui.casCounts = null; giveInput(c2); } });
+      // says what will happen: pieces lost, battleships only damaged, or both
+      var lbl = !cp.ok ? 'Pick ' + cp.need + ' the dice can hit'
+        : !cp.lost ? 'Damage the battleship' + (cp.dmg > 1 ? 's' : '')
+        : 'Lose ' + (cp.lost === 1 && !cp.dmg ? 'this one' : cp.dmg ? cp.lost : 'these ' + cp.lost) + (cp.dmg ? ', damage ' + cp.dmg + (cp.dmg === 1 ? ' battleship' : ' battleships') : '');
+      var cb = el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('check') + '<span>' + lbl + '</span>', onclick: function () { if (!cp.ok) return; Kit.sfx('bad'); Kit.haptic('medium'); var c2 = cp.cas; ui.casCounts = null; giveInput(c2); } });
       cb.disabled = !cp.ok;
       acts.appendChild(cb);
     } else acts.appendChild(el('div', { class: 'wait', html: roundelSvg(cp.chooser) + '<span class="think">' + esc(seatOf(cp.chooser).name) + ' is choosing losses…</span>' }));
@@ -2646,8 +2650,8 @@ function casPicker(B) {
   var human = humanPower(chooser), seat = seatOf(chooser);
   var shooter = v.side === 'a' ? B.att : B.def, picked = 0; for (var kk in counts) picked += counts[kk];
   var box = el('div', { class: 'bcas', style: { '--pc': PW[chooser].col, '--pci': PW[chooser].ink } }, [
-    el('h4', { html: Kit.icon('hand') + '<span>' + (human ? (seat.name === 'You' ? 'Your choice' : esc(seat.name) + '’s choice') + ': ' + PW[chooser].short + ' loses ' + need : esc(seat.name) + ' chooses ' + need + ' to lose') + '</span>' }),
-    el('p', { class: 'lead', text: PW[shooter].short + ' scored ' + need + (need === 1 ? ' hit' : ' hits') + '. ' + (human ? 'Tap the pieces to lose (the cheapest are picked for you).' : '') })
+    el('h4', { html: Kit.icon('hand') + '<span>' + (human ? (seat.name === 'You' ? 'Your choice' : esc(seat.name) + '’s choice') + ': ' + PW[chooser].short + ' takes ' + need + (need === 1 ? ' hit' : ' hits') : esc(seat.name) + ' chooses where ' + need + (need === 1 ? ' hit lands' : ' hits land')) + '</span>' }),
+    el('p', { class: 'lead', text: PW[shooter].short + ' scored ' + need + (need === 1 ? ' hit' : ' hits') + '. ' + (human ? 'Tap the pieces that take them (the cheapest are picked for you).' : '') })
   ]);
   var groups = el('div', { class: 'groups' });
   KINDS.forEach(function (k) {
@@ -2682,7 +2686,11 @@ function casPicker(B) {
   if (targets.some(function (u) { return u.k === 'tra'; })) notes.push('Transports go last.');
   if (picked !== need) notes.unshift(picked < need ? 'Pick ' + (need - picked) + ' more.' : 'That’s ' + (picked - need) + ' too many.');
   if (notes.length) box.appendChild(el('div', { class: 'note', text: notes.join(' ') }));
-  return { node: box, ok: ok, cas: cas, need: need, chooser: chooser };
+  // what those hits do: a hit on a healthy battleship only damages it; one on a damaged battleship sinks it
+  // (hits past the healthy ships' first ones each sink a ship: an already damaged one first, then a newly damaged one)
+  var bbs = targets.filter(function (u) { return u.k === 'bb'; }), bbN = counts.bb || 0, healthy = bbs.filter(function (u) { return !u.h; }).length;
+  var sunk = Math.max(0, bbN - healthy), dmg = Math.min(bbN, healthy) - Math.max(0, sunk - (bbs.length - healthy)), lost = picked - bbN + sunk;
+  return { node: box, ok: ok, cas: cas, need: need, chooser: chooser, lost: lost, dmg: dmg };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
