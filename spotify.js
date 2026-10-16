@@ -26,7 +26,7 @@
   'use strict';
   if (window.Spotify) return;
   // The app registered at developer.spotify.com (a Client ID is public: PKCE needs no secret)
-  var CLIENT_ID = '';
+  var CLIENT_ID = '932858d1cd9c4eb89f1d3a37d3095b9c';
   var AUTH = 'spotify_auth', PKCE = 'spotify_pkce', PICKS = 'gn_spotify';
   var SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative';
   var API = 'https://api.spotify.com/v1';
