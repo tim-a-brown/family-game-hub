@@ -614,8 +614,8 @@ export function create(canvas, F) {
     // ships
     (o.ships || []).forEach(sp => {
       if (!sp.alive || sp.a < 0.5) return;
-      at(sp.x, sp.y, pos); shadow(pos, 5); pos.y = 2 + Math.sin(o.t * 3 + sp.ci) * 0.6;
-      place('ship' + sp.ci, () => shipModel(o.PCOL[sp.ci % 3], M0), 4, pos, 0);
+      // (the ship itself is a glowing hologram the page draws on top: here just its shadow on the floor)
+      at(sp.x, sp.y, pos); shadow(pos, 5);
     });
     segPrev.forEach((v, k) => { if (!seen.has(k)) segPrev.delete(k); });
     // the boss

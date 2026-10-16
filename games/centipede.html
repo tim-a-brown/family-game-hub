@@ -2041,20 +2041,40 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     return spx(key, function () { var u = S, sz = Math.ceil(size * u), c = mk(sz, sz), x = c.getContext('2d'); x.translate(sz / 2, sz / 2); x.scale(u, u); fn(x, u); return { c: c, f: 1 / u, ox: sz / 2, oy: sz / 2 }; });
   }
   // the player's ship: a glowing crystal
+  // The player's ship, like the cabinet's: a glowing hologram of a gem, two stepped outlines one inside the other
+  // (cube steps, a little box at the nose), a white-hot core with a cockpit in it; its exhaust is drawn live
+  var SHIP_HW = [1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 7, 7, 8, 8, 7, 7, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 2, 2];
   function shipSpr(ci) {
-    return vec('ship' + ci, 40, function (x, u) {
-      // the cabinet's ship: a long gem, a narrow nose, widest a little past the middle, a short tail, with a
-      // white core inside a darker diamond
-      var col = SHIPC[ci % 3];
-      var G = [[0, -13], [0.7, -12], [1.2, -9], [5.2, 1], [2, 5], [1.3, 7], [-1.3, 7], [-2, 5], [-5.2, 1], [-1.2, -9], [-0.7, -12]];
-      function poly(pts, fill) { x.beginPath(); pts.forEach(function (p, i) { x[i ? 'lineTo' : 'moveTo'](p[0], p[1]); }); x.closePath(); x.fillStyle = fill; x.fill(); }
-      poly(G, shade(col, 0.45));
-      poly([[0, -13], [0.7, -12], [1.2, -9], [5.2, 1], [2, 5], [0, 5.5]], shade(col, 0.15));
-      poly([[0, -6.2], [2.6, -1], [0, 4.2], [-2.6, -1]], shade(col, -0.45));
-      poly([[0, -5], [1.9, -1], [0, 3], [-1.9, -1]], '#ffffff');
-      x.strokeStyle = col; x.lineWidth = 0.9; x.lineJoin = 'miter';
-      x.beginPath(); G.forEach(function (p, i) { x[i ? 'lineTo' : 'moveTo'](p[0], p[1]); }); x.closePath(); x.stroke();
-      addGlow(x.canvas, col, 8 * u);
+    return vec('ship' + ci, 44, function (x, u) {
+      var col = SHIPC[ci % 3], c = 0.62, R = SHIP_HW.length, top = -R * c * 0.56, k = Math.max(1 / u, c * 0.22);
+      function inS(q, r, inset) { if (r < inset || r >= R - inset) return false; var hw = SHIP_HW[r] - inset; return hw > 0 && Math.abs(q + 0.5) <= hw; }
+      function edge(q, r, inset) { return inS(q, r, inset) && (!inS(q - 1, r, inset) || !inS(q + 1, r, inset) || !inS(q, r - 1, inset) || !inS(q, r + 1, inset)); }
+      function cell(q, r, f) { x.fillStyle = f; x.fillRect(q * c, top + r * c, c + 0.02, c + 0.02); }
+      for (var r = 0; r < R; r++) for (var q = -9; q < 9; q++) {
+        if (!inS(q, r, 0)) continue;
+        var d = Math.abs(q + 0.5) / Math.max(1, SHIP_HW[r]), core = inS(q, r, 3);
+        // between the outlines: a see-through tint; inside: white-hot at the top of the core, the colour at its edges
+        if (core) cell(q, r, r < 21 ? (d < 0.45 ? '#ffffff' : shade(col, 0.75)) : shade(col, 0.45));
+        else cell(q, r, hexA(col, 0.22));
+      }
+      // the cockpit: two upright marks and a bar under them
+      x.fillStyle = hexA(shade(col, -0.25), 0.85);
+      x.fillRect(-1.5 * c, top + 12 * c, c * 0.45, c * 6); x.fillRect(1.05 * c, top + 12 * c, c * 0.45, c * 6); x.fillRect(-2 * c, top + 20 * c, c * 4, c * 0.45);
+      // the two stepped outlines (lines along the cube steps)
+      [[0, col], [2, shade(col, 0.35)]].forEach(function (L) {
+        x.fillStyle = L[1];
+        for (var r = 0; r < R; r++) for (var q = -9; q < 9; q++) {
+          if (!inS(q, r, L[0])) continue;
+          var X0 = q * c, Y0 = top + r * c;
+          if (!inS(q - 1, r, L[0])) x.fillRect(X0, Y0, k, c + k);
+          if (!inS(q + 1, r, L[0])) x.fillRect(X0 + c - k, Y0, k, c + k);
+          if (!inS(q, r - 1, L[0])) x.fillRect(X0, Y0, c + k, k);
+          if (!inS(q, r + 1, L[0])) x.fillRect(X0, Y0 + c - k, c + k, k);
+        }
+      });
+      // the box at the nose
+      x.strokeStyle = shade(col, 0.5); x.lineWidth = k; x.strokeRect(-1.5 * c, top - 2.6 * c, 3 * c, 2.4 * c);
+      addGlow(x.canvas, col, 6 * u, 1);
     });
   }
   function ringSpr(ci) {
@@ -2349,16 +2369,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var blink = p.inv > 0 && Math.floor(drawT * 12) % 2, col = SHIPC[p.ci % 3], a = blink ? 0.35 : 1;
     x.globalCompositeOperation = 'lighter';
     glow(x, px, py, 22, col, 0.32 * a);
-    // the exhaust: a short glowing plume out of the tail
-    var pl = x.createLinearGradient(px, py + 5, px, py + 17); pl.addColorStop(0, hexA(shade(col, 0.6), 0.9 * a)); pl.addColorStop(1, hexA(col, 0));
-    x.fillStyle = pl; x.beginPath(); x.moveTo(px - 2.2, py + 5); x.lineTo(px + 2.2, py + 5); x.lineTo(px + 0.6 + Math.random() * 0.6, py + 15 + Math.random() * 3); x.lineTo(px - 0.6 - Math.random() * 0.6, py + 15 + Math.random() * 3); x.closePath(); x.fill();
-    glow(x, px, py + 6, 3 + Math.random() * 2, '#ffffff', 0.55 * a);
+    // the exhaust: a bright beam out of the tail, white-hot at the ship and fading into its colour
+    var ey = py + 8, el = 13 + Math.random() * 3, pl = x.createLinearGradient(px, ey, px, ey + el);
+    pl.addColorStop(0, 'rgba(255,255,255,' + (0.95 * a) + ')'); pl.addColorStop(0.35, hexA(shade(col, 0.4), 0.8 * a)); pl.addColorStop(1, hexA(col, 0));
+    x.fillStyle = pl; x.beginPath(); x.moveTo(px - 1.9, ey); x.lineTo(px + 1.9, ey); x.lineTo(px + 1.2, ey + el); x.lineTo(px - 1.2, ey + el); x.closePath(); x.fill();
+    glow(x, px, ey + 2, 6, col, 0.5 * a);
     x.globalCompositeOperation = 'source-over';
     x.globalAlpha = a;
     // the dotted shield ring only while it can't be hurt (just after coming back)
     if (p.inv > 0) { x.save(); x.translate(px, py); x.rotate(drawT * 1.3); drawSpr(x, ringSpr(p.ci), 0, 0); x.restore(); }
     x.globalAlpha = a;
-    if (!fxOnly) drawSpr(x, shipSpr(p.ci), px, py - 1);
+    drawSpr(x, shipSpr(p.ci), px, py - 1);
     x.lineCap = 'round';
     // time left on a weapon: an arc round the ring
     x.globalAlpha = 1;
