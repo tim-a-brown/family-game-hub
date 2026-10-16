@@ -1,7 +1,8 @@
 """Mirror the repo's tracked files into a Dropbox folder.
 
 Uploads files whose content differs (compared via Dropbox's content_hash) and
-removes files/folders in the Dropbox folder that are no longer in the repo.
+removes files/folders in the Dropbox folder that are no longer in the repo (except the
+folders in KEEP).
 Deleted files stay recoverable from Dropbox's "Deleted files" for 30+ days.
 
 Env:
@@ -19,6 +20,10 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+
+# Top-level Dropbox folders that aren't part of the repo and are never deleted (reference material Tim keeps
+# beside the code, like gameplay videos)
+KEEP = {"gameplayvids"}
 
 BLOCK = 4 * 1024 * 1024
 
@@ -84,7 +89,7 @@ def main():
     while True:
         for entry in page["entries"]:
             rel = entry["path_lower"][len(root):].lstrip("/")
-            if not rel:
+            if not rel or rel.split("/")[0] in KEEP:
                 continue
             if entry[".tag"] == "file":
                 remote_files[rel] = entry["content_hash"]
