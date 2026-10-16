@@ -125,9 +125,16 @@
       lob: function (x) { tn({ type: 'sine', f: 220, to: 560, dur: 0.28, vol: 0.06, x: x }); },
       dive: function (x) { tn({ type: 'sawtooth', f: 1100, to: 180, dur: 0.5, vol: 0.05, lp: 2400, x: x, rv: 0.2 }); nz({ bp: 2000, sweep: 400, dur: 0.5, vol: 0.05, x: x }); },
       slam: function (x) { boomL(0, 0.45, x, 0.6); crack(0, 0.15, x, 1200); },
+      // the wave-end ripple: each mushroom goes with a bubbly pop, climbing a scale as the ripple spreads
+      mpop: function (x) {
+        var now = performance.now(); mstep = now - mlast < 260 ? mstep + 1 : 0; mlast = now;
+        var m = 72 + [0, 2, 4, 7, 9][mstep % 5] + 12 * Math.min(2, Math.floor(mstep / 5) % 3);
+        tn({ type: 'sine', f: mtof(m - 12), to: mtof(m), dur: 0.07, vol: 0.09, x: x }); nz({ bp: 2400, q: 2, dur: 0.03, vol: 0.06, x: x });
+        tn({ t: 0.02, type: 'triangle', f: mtof(m + 12), dur: 0.12, vol: 0.025, x: x, rv: 0.45 });
+      },
       web: function (x) { nz({ bp: 3200, sweep: 900, q: 2, dur: 0.28, vol: 0.07, x: x }); }
     };
-    var last = {};
+    var last = {}, mstep = 0, mlast = 0;
     function play(name, x) {
       var now = performance.now(); if (last[name] && now - last[name] < 35) return; last[name] = now;
       if (!FX[name] || !ctx()) return;

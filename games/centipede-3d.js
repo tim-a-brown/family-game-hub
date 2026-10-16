@@ -134,12 +134,12 @@ function shadowMesh() { const m = new THREE.Mesh(SHADOW_GEO, SHADOW_MAT); m.rend
 
 // ═══ The models ══════════════════════════════════════════════════════════════
 // Mushroom: a dome with blocky white patches; damaged ones are smaller, bitten clumps
-function mushModel(cap, spot, hp, po, M) {
+function mushModel(cap, spot, hp, po, M, hot) {
   const V = new Vox(0.8), k = hp >= 3 ? 1 : hp === 2 ? 0.8 : 0.58, rx = 5.2 * k, ry = 6.2 * k;
   V.fill(-rx, 0, -rx, rx, ry, rx, (x, y, z) => (x * x + z * z) / (rx * rx) + (y * y) / (ry * ry) <= 1 &&
     !(hp < 3 && hash2(Math.floor(x / 2.4) + 40, Math.floor(z / 2.4) + hp * 17 + Math.floor(y / 2.4) * 7) < (hp === 2 ? 0.2 : 0.3) && (x * x + z * z) > rx * rx * 0.3),
     (x, y, z, i, j, kk) => hash2(Math.floor((i + 20) / 3) * 7 + Math.floor((j + 1) / 3) * 13, Math.floor((kk + 21) / 3) * 5 + 3) < 0.42 ? spot : cap,
-    (x, y, z, c) => po && hex(c) === hex(spot));
+    (x, y, z, c) => hot || po && hex(c) === hex(spot));
   return V.build(M, [0, 0, 0]);
 }
 // Centipede segment: a ball with stubby legs front and back (two steps); the head adds a face and antennae
@@ -614,7 +614,10 @@ export function create(canvas, F) {
       const hp = grid[r * F.COLS + c]; if (!hp) continue;
       const po = pois && pois[r * F.COLS + c] ? 1 : 0, h = Math.min(3, hp), key = 'm' + o.tk + h + po;
       at(c * F.CELL + F.CELL / 2, r * F.CELL + F.CELL / 2 + 2, pos);
-      place(key, () => mushModel(po ? 0xa34dff : T.mush[0], po ? 0x7dff5a : T.mush[1], h, po, M0), F.COLS * F.ROWS, pos, (hash2(c, r) - 0.5) * 0.6);
+      // the wave-end ripple: a mushroom swells and burns white-hot just before it pops
+      const g = o.mglow ? o.mglow(c, r) : 0, cap = po ? 0xa34dff : hex(T.mush[0]);
+      if (g > 0.5) place(key + 'h', () => mushModel(shadeHex(cap, 0.55), 0xffffff, h, po, M0, true), F.COLS * F.ROWS, pos, (hash2(c, r) - 0.5) * 0.6, 0, 1 + 0.35 * g);
+      else place(key, () => mushModel(po ? 0xa34dff : T.mush[0], po ? 0x7dff5a : T.mush[1], h, po, M0), F.COLS * F.ROWS, pos, (hash2(c, r) - 0.5) * 0.6, 0, 1 + 0.35 * g);
       shadow(pos, 5.5);
     }
     // centipede: each segment faces the way it's going

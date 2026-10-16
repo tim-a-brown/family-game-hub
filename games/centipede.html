@@ -264,6 +264,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function flash(c, a) { ev(['f', c, a]); }
   function banner(t, sub, c) { ev(['n', t, sub || '', c || '#ffffff']); }
   function ring(x, y, r, c) { ev(['r', r1(x), r1(y), r, c]); }
+  function ripple(x, y, v) { ev(['g', r1(x), r1(y), Math.round(v)]); }
   function arc(x1, y1, x2, y2, c) { ev(['z', r1(x1), r1(y1), r1(x2), r1(y2), c || '#bff8ff']); }
   function card(title, sub, c, sub2) { ev(['c', title, sub, c, sub2 || '']); }
   function buzz(pid, kind) { ev(['h', pid, kind]); }
@@ -289,12 +290,19 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       case 'h': if (a[1] === myPid()) Kit.haptic(a[2]); break;
       case 'w': try { Kit.confetti && Kit.confetti(); } catch (e) {} break;
       case 'm': fx.slow = Math.max(fx.slow || 0, a[1]); break;
+      case 'g': fx.rip = { x: a[1], y: a[2], v: a[3], t: 0 }; break;
     }
   }
   // a broken-off cube (or, glow: a spark) flying out, popping up off the floor and dropping back
   function part(x, y, vx, vy, c, life, s, glow) {
     if (fx.parts.length >= 340) fx.parts.shift();
     fx.parts.push({ x: x, y: y, vx: vx, vy: vy, z: 0, vz: 40 + Math.random() * 90, c: c, life: life, max: life, s: s, glow: !!glow });
+  }
+  // how lit a mushroom is in the wave-end ripple: all of them warm up, then each flares just before it pops
+  function ripGlow(c, r) {
+    var R = fx.rip; if (!R) return 0;
+    var due = RIP_LEAD + Math.hypot(cx(c) - R.x, cx(r) - R.y) / R.v;
+    return Math.max(Math.min(1, R.t / 0.2) * 0.3, clamp(1 - (due - R.t) / 0.22, 0, 1));
   }
   function myPid() { return GV ? GV.me : G ? (G.players.filter(function (p) { return p.local; })[0] || {}).id : null; }
 
@@ -543,6 +551,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var pts = head ? 100 : 25, T = themeOf(G);
     award(P, pts, sg.x, sg.y, head);
     G.stats.segs++; if (head) G.stats.heads++;
+    G.lastKill = { x: sg.x, y: sg.y };
     noteKill(P);
     boom(sg.x, sg.y, head ? T.centi[2] : T.centi[0], false); burst(sg.x, sg.y, T.centi[0], head ? 9 : 6, 0.9);
     sound(head ? 'head' : 'seg', sg.x);
@@ -666,6 +675,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     spawnStep(dt);
     // (after a boss falls, a beat to watch it shatter before the wave-complete banner)
     if (G.phase === 'play' && !G.chains.length && !G.boss && !G.trainsLeft && !(G.bossFell && G.t - G.bossFell < 1.1)) { G.phase = 'clear'; G.phaseT = 0; waveBonus(); }
+    if (G.phase === 'clear') popStep();
     if (G.phase === 'clear' && G.phaseT > 2.2) { G.lostBonus = false; startWave(G.wave + 1); }
     if (G.oneLife && G.phase === 'play' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); })) bonusLost();
     if (G.phase !== 'over' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); }) && !(G.phase === 'clear' && G.lostBonus)) { G.phase = 'over'; G.phaseT = 0; sound('over'); announce('Game over', 2); }
@@ -680,6 +690,33 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     G.foes = G.foes.filter(function (f) { return f.type !== 'ball'; }); G.shots = []; G.zones = [];
     if (mega) shake(0.6);
     while (G.score >= G.nextLife) award(null, 0, 0, 0, false);
+    popAll();
+  }
+  // The cabinet's wave end: every mushroom left lights up and pops, in a ripple out from the last kill
+  var RIP_LEAD = 0.25;
+  function popAll() {
+    var o = G.lastKill || { x: W / 2, y: H * 0.4 }, list = [], far = 0;
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) if (G.grid[idx(c, r)]) {
+      var d = Math.hypot(cx(c) - o.x, cx(r) - o.y); far = Math.max(far, d); list.push({ c: c, r: r, d: d });
+    }
+    G.popQ = [];
+    if (!list.length) return;
+    var v = Math.max(160, far / 0.85);
+    list.forEach(function (m) { m.t = RIP_LEAD + m.d / v; });
+    list.sort(function (a, b) { return a.t - b.t; });
+    G.popQ = list;
+    ripple(o.x, o.y, v);
+  }
+  function popStep() {
+    var T = themeOf(G), q = G.popQ || [];
+    while (q.length && q[0].t <= G.phaseT) {
+      var m = q.shift(), i = idx(m.c, m.r);
+      if (!G.grid[i]) continue;
+      var po = G.pois[i], X = cx(m.c), Y = cx(m.r);
+      setMush(m.c, m.r, 0, 0);
+      burst(X, Y, po ? '#b04dff' : T.mush[0], 7, 0.9, 1.15); burst(X, Y, '#ffffff', 3, 0.6);
+      sound('mpop', X);
+    }
   }
 
   // ── Players ──
@@ -1143,7 +1180,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
         if (B.type === 'mega') { G.stats.saved = true; G.oneLife = false; }
         G.players.forEach(function (p) { buzz(p.id, 'success'); });
         G.foes.forEach(function (o) { burst(o.x, o.y, '#ffffff', 4, 0.8); });
-        G.boss = null; G.bossFell = G.t; G.foes = []; G.shots = []; G.zones = [];
+        G.lastKill = { x: B.x, y: B.y }; G.boss = null; G.bossFell = G.t; G.foes = []; G.shots = []; G.zones = [];
       }
       return;
     }
@@ -1492,7 +1529,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (ro) ro.disconnect();
     ro = new ResizeObserver(fit); ro.observe(app); ro.observe(wrapEl);
     cssW = 0; fit(); hudDirty = true; shownTheme = null;
-    fx.parts = []; fx.pops = []; fx.exps = []; fx.arcs = []; fx.trail = []; fx.slow = 0; fx.shake = 0; fx.flash = 0; fx.banner = null; fx.card = null;
+    fx.parts = []; fx.pops = []; fx.exps = []; fx.arcs = []; fx.trail = []; fx.slow = 0; fx.rip = null; fx.shake = 0; fx.flash = 0; fx.banner = null; fx.card = null;
     ctl.touches = {}; ctl.nt = 0; ctl.steer = null; ctl.dx = ctl.dy = 0; ctl.mouse = false; ctl.keys = {};
     barPause(!online);
     // the game plays sideways: phones and iPads held upright get the kit's "turn your phone" cover (and the
@@ -1616,6 +1653,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     fx.arcs = fx.arcs.filter(function (a) { a.life -= dt; return a.life > 0; });
     fx.trail = fx.trail.filter(function (t) { t.life -= dt; return t.life > 0; });
     if (fx.card) { fx.card.life -= dt; if (fx.card.life <= 0) fx.card = null; }
+    if (fx.rip) { fx.rip.t += dt; if (fx.rip.t > 3) fx.rip = null; }
     if (fx.banner) { fx.banner.life -= dt; if (fx.banner.life <= 0) fx.banner = null; }
     fx.shake = Math.max(0, fx.shake - dt * 2.2); fx.flash = Math.max(0, fx.flash - dt * 3);
   }
@@ -2279,7 +2317,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     floorCv.style.display = use3 ? 'none' : '';
     if (use3) {
       var ships = R.players.map(function (p) { var px = p.x, py = p.y; if (GV && p.id === me && GV.pred.alive) { px = GV.pred.x; py = GV.pred.y; } return { x: px, y: py, ci: p.ci, alive: p.alive, a: p.inv > 0 && Math.floor(drawT * 12) % 2 ? 0 : 1 }; });
-      C3.frame(R, { cw: cv.width, ch: cv.height, S: S, tk: tk, THEMES: THEMES, PCOL: SHIPC, ships: ships, t: drawT, sx: Math.round(sx), sy: Math.round(sy), parts: fx.parts });
+      C3.frame(R, { cw: cv.width, ch: cv.height, S: S, tk: tk, THEMES: THEMES, PCOL: SHIPC, ships: ships, t: drawT, sx: Math.round(sx), sy: Math.round(sy), parts: fx.parts, mglow: fx.rip ? ripGlow : null });
     }
     var fk = tk + COLS + 'x' + ROWS + ':' + cv.width + 'x' + cv.height;
     if (!use3 && floorKey !== fk) { floorKey = fk; floorCv.width = cv.width; floorCv.height = cv.height; floorCv.getContext('2d').drawImage(bgSpr(tk), 0, 0); }
@@ -2293,7 +2331,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var fr = Math.floor(drawT * 8) % 2;
     // mushrooms, row by row so a lower one sits in front
     var grid = R.grid, pois = R.pois;
-    if (!use3) for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) { var hp = grid[r * COLS + c]; if (hp) drawSpr(x, mushSpr(tk, Math.min(MUSH_HP, hp), pois[r * COLS + c] ? 1 : 0), cx(c), cx(r) - 0.5); }
+    if (!use3) for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      var hp = grid[r * COLS + c]; if (!hp) continue;
+      var ms = mushSpr(tk, Math.min(MUSH_HP, hp), pois[r * COLS + c] ? 1 : 0), mg = fx.rip ? ripGlow(c, r) : 0;
+      drawSpr(x, ms, cx(c), cx(r) - 0.5, 1 + 0.3 * mg);
+      if (mg > 0) { x.globalCompositeOperation = 'lighter'; x.globalAlpha = mg * 0.8; drawSpr(x, ms, cx(c), cx(r) - 0.5, 1 + 0.3 * mg); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; }
+    }
+    if (fx.rip) for (var r2 = 0; r2 < ROWS; r2++) for (var c2 = 0; c2 < COLS; c2++) if (grid[r2 * COLS + c2]) { var g2 = ripGlow(c2, r2); if (g2 > 0.35) glow(x, cx(c2), cx(r2) - (use3 ? 4 : 1), 10 + 6 * g2, pois[r2 * COLS + c2] ? '#d08cff' : THEMES[tk].mush[0], (g2 - 0.35) * 1.2); }
     drawZones(x, R.zones || []);
     if (!use3) R.segs.forEach(function (s) { if (s.y > -8) { var f2 = (fr + (s.id & 1)) % 2; drawSpr(x, segSpr(tk, s.head, f2, s.dx < 0, s.frz), s.x, s.y + Math.sin(drawT * 12 + s.id) * 0.4); } });
     R.foes.forEach(function (o) { drawFoe(x, o, tk, fr, use3 && o.type !== 'scorp' && o.type !== 'ball'); });
