@@ -1225,6 +1225,33 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .rv-mk b{position:relative;font-family:var(--display);font-size:.9em;font-weight:400;font-style:normal;line-height:1;color:#fff;}
 .rv-lore{width:1.45em;height:2.05em;margin:-.4em .1em -.4em .15em;}
 .rv-lore b{font-size:.9em;}
+/* Your card played from the hand travels glowing gold */
+.slot.fly-gold{box-shadow:0 0 0 1.5px rgba(246,214,140,.6),0 0 26px 6px rgba(245,195,85,.55);border-radius:6px;}
+.rv-ghost.ink-flip .rv-front{box-shadow:0 6px 16px rgba(0,0,0,.5),0 0 18px 4px rgba(80,160,255,.45);}
+/* A challenge reveal: the challenger and the card it challenged, side by side */
+.lz.reveal.vs .lz-flow{display:flex;align-items:center;justify-content:center;gap:min(3vw,18px);}
+.lz.reveal.vs .lz-card{--cu:min(34vh,46vw,420px);}
+.lz.reveal.vs .lz-card.loc{--cu:min(26vh,34vw,320px);}
+.rv-defw{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;animation:rvDefIn .45s .35s cubic-bezier(.2,1.2,.4,1) both;}
+@keyframes rvDefIn{from{opacity:0;transform:translateX(30px) scale(.9)}to{opacity:1;transform:none}}
+.rv-own{display:flex;align-items:center;gap:6px;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-2);}
+.rv-own .dot{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c);}
+.lz.reveal.vs .rv-def{box-shadow:0 14px 40px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.12);}
+.rv-swords{flex:none;width:34px;height:34px;color:#f6d47a;filter:drop-shadow(0 0 8px rgba(246,196,80,.6));animation:rvSw .5s .3s cubic-bezier(.2,1.4,.4,1) both;}
+.rv-swords svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+@keyframes rvSw{from{opacity:0;transform:scale(.3) rotate(-30deg)}to{opacity:1;transform:none}}
+.lz-card.rv-hit{animation:rvHit .45s ease-out;}
+.lz-card.rv-hit::after{content:'';position:absolute;inset:0;z-index:7;border-radius:inherit;pointer-events:none;background:rgba(255,40,40,.45);animation:rvFlash .5s ease-out forwards;}
+@keyframes rvHit{0%,100%{translate:0 0}20%{translate:-7px 0}40%{translate:6px 0}60%{translate:-4px 0}80%{translate:2px 0}}
+@keyframes rvFlash{from{opacity:1}to{opacity:0}}
+.rv-dmg{position:absolute;left:50%;top:38%;z-index:8;font-family:var(--display);font-weight:400;font-size:2.4rem;color:#ff5d5d;-webkit-text-stroke:1.5px #3a0000;text-shadow:0 3px 0 rgba(0,0,0,.5);pointer-events:none;animation:rvDmg 1.3s ease-out forwards;}
+@keyframes rvDmg{0%{opacity:0;transform:translate(-50%,10px) scale(.6)}20%{opacity:1;transform:translate(-50%,-6px) scale(1.15)}100%{opacity:0;transform:translate(-50%,-50px) scale(1)}}
+.lz-card.rv-gone{filter:grayscale(1) brightness(.62);translate:0 4%;rotate:-7deg;transition:filter .5s,translate .5s cubic-bezier(.4,0,.2,1),rotate .5s cubic-bezier(.4,0,.2,1);}
+.lz-card.exerted.rv-gone{rotate:83deg;}
+.rv-stamp{position:absolute;left:50%;top:50%;z-index:9;padding:.18em .5em;border:3px solid #ff4a4a;border-radius:8px;color:#ff5a5a;background:rgba(40,0,0,.35);
+  font-family:var(--display);font-weight:400;font-size:calc(var(--cu) * .085);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;
+  transform:translate(-50%,-50%) rotate(-14deg);box-shadow:0 0 18px rgba(255,60,60,.45);animation:rvStamp .35s cubic-bezier(.2,1.6,.4,1) both;}
+@keyframes rvStamp{from{opacity:0;transform:translate(-50%,-50%) rotate(-14deg) scale(2.2)}to{opacity:1;transform:translate(-50%,-50%) rotate(-14deg) scale(1)}}
 /* Leaving a reveal: the view fades while a stand-in for the card flies to where it went */
 .lz.reveal.rv-leaving{transition:opacity .22s ease,background-color .22s;opacity:0;}
 .rv-ghost{position:fixed;z-index:700;pointer-events:none;transform-origin:50% 50%;transform-style:preserve-3d;}
@@ -6960,7 +6987,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if ((byCpu && humans() > 0) || S.mode === 'online') {
       if (a.k === 'play') oppShow(a.u, a.o && a.o.sing ? 'Sung' : a.o && a.o.shift ? 'Shifted' : 'Played', a.o && a.o.sing ? 'Sung by ' + a.o.sing.map(nm).join(' and ') : a.o && a.o.shift ? 'Shifted onto ' + DD(a.o.shift).full : '', a.o && a.o.free ? 'Free' : paid ? 'Paid ' + paid + ' ink' : a.o && a.o.sing ? 'No ink paid' : 'Free');
       else if (a.k === 'quest') oppShow(a.u, 'Quested', '', '+' + (S.P[pi].lore - lore0) + ' lore · ' + S.P[pi].name + ' has ' + S.P[pi].lore);
-      else if (a.k === 'chal' && res) oppShow(a.u, 'Challenged', 'Challenged ' + DD(a.t).full, (isLoc(a.t) ? 'Dealt ' + res.dt + ' damage to ' + nm(a.t) : 'Dealt ' + res.dt + ' · took ' + res.da) + (res.banished.length ? ' · Banished ' + res.banished.map(nm).join(' and ') : ''));
+      else if (a.k === 'chal' && res) oppShow(a.u, 'Challenged', 'Challenged ' + DD(a.t).full, (isLoc(a.t) ? 'Dealt ' + res.dt + ' damage to ' + nm(a.t) : 'Dealt ' + res.dt + ' · took ' + res.da) + (res.banished.length ? ' · Banished ' + res.banished.map(nm).join(' and ') : ''), { t: a.t, dt: res.dt, da: res.da, ban: res.banished.slice() });
       else if (a.k === 'move') oppShow(a.u, 'Moved', '', 'To ' + DD(a.t).n);
       else if (a.k === 'boost') oppShow(a.u, 'Boosted', '', 'Put a card under ' + nm(a.u));
       // inking is shown to the other player (the card's inkwell mark proves it can be inked), then it goes in facedown
@@ -8187,9 +8214,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       n.style.transition = 'none';
       n.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ')' + spin;
       n.style.zIndex = 20;
+      // played from the hand: it travels glowing gold and settles where it lands (like the other player's cards)
+      var played = /^hand-/.test(bz) && n.classList.contains('slot') && !calm();
+      if (played) n.classList.add('fly-gold');
       requestAnimationFrame(function () { requestAnimationFrame(function () {
         n.style.transition = 'transform .42s cubic-bezier(.2,.8,.25,1)'; n.style.transform = '';
-        setTimeout(function () { n.style.zIndex = ''; n.style.transition = ''; }, 460);
+        setTimeout(function () { n.style.zIndex = ''; n.style.transition = ''; if (played) { n.classList.remove('fly-gold'); pulse(n, 'rv-land', 700); } }, 460);
       }); });
     });
     // Cards that went somewhere hidden (inkwell, deck, a hidden hand, discard)
@@ -8208,6 +8238,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (/^deck-/.test(bz2)) { tossTo(b, tr, millN++ * 70, true); setTimeout(function () { millN = 0; }, 600); return; }
         tossTo(b, tr, 0, false); return;
       }
+      // inked from the hand: it flips face down as it lifts, then drops into the inkwell (like the other player's)
+      if (/^ink-/.test(zk) && /^hand-/.test(bz2) && !calm() && document.body.animate) { inkFlip(b, tr, inkColor(u)); return; }
       var g = b.n.cloneNode(true); g.className = b.n.className + ' flyer'; g.removeAttribute('data-uid');
       g.style.cssText = 'position:fixed;left:' + b.r.left + 'px;top:' + b.r.top + 'px;width:' + b.r.width + 'px;height:' + b.r.height + 'px;margin:0;transition:transform .45s cubic-bezier(.4,0,.2,1),opacity .45s;z-index:250;' + (b.n.style.getPropertyValue('--cu') ? '' : '');
       var cu = b.cu || getComputedStyle(b.n).getPropertyValue('--cu'); if (cu) g.style.setProperty('--cu', cu);
@@ -8221,6 +8253,24 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // ── Card moves with character ──
   var millN = 0;
+  // A card going into the inkwell from the hand: lifts and turns face down, then drops in with a ripple
+  function inkFlip(b, tr, col) {
+    var w = el('div', { class: 'rv-ghost to-ink ink-flip' });
+    w.style.cssText = 'left:' + b.r.left + 'px;top:' + b.r.top + 'px;width:' + b.r.width + 'px;height:' + b.r.height + 'px;';
+    var cu = b.cu || getComputedStyle(b.n).getPropertyValue('--cu'); if (cu) w.style.setProperty('--cu', cu);
+    var f = b.n.cloneNode(true); f.removeAttribute('data-uid'); f.className = b.n.className + ' rv-front'; f.style.cssText = 'position:absolute;inset:0;margin:0;width:100%;height:100%;';
+    w.appendChild(f); w.appendChild(el('div', { class: 'lback rv-back' }));
+    document.body.appendChild(w);
+    var dx = (tr.left + tr.width / 2) - (b.r.left + b.r.width / 2), dy = (tr.top + tr.height / 2) - (b.r.top + b.r.height / 2);
+    var sc = Math.max(0.2, Math.min(tr.width, tr.height) / b.r.width);
+    w.animate([
+      { transform: 'translate(0,0) rotateY(0) scale(1)' },
+      { transform: 'translate(' + dx * 0.15 + 'px,' + (Math.min(0, dy) * 0.15 - 34) + 'px) rotateY(180deg) scale(1.12)', offset: 0.42 },
+      { transform: 'translate(' + dx + 'px,' + dy + 'px) rotateY(180deg) scale(' + sc + ')' }
+    ], { duration: 600, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'forwards' }).onfinish = function () {
+      inkRipple(tr, col); w.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: 'forwards' }).onfinish = function () { w.remove(); };
+    };
+  }
   function ghostOf(b, z) {
     var g = b.n.cloneNode(true); g.className = b.n.className + ' flyer'; g.removeAttribute('data-uid');
     g.style.cssText = 'position:fixed;left:' + b.r.left + 'px;top:' + b.r.top + 'px;width:' + b.r.width + 'px;height:' + b.r.height + 'px;margin:0;z-index:' + (z || 250) + ';';
@@ -9677,11 +9727,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
   }
   function quickMoves() { return !!lsGet(FAST, false) || (S && S.skipTurn === S.turn); }
-  function cpuShow(u, verb, how, effect) {
+  function cpuShow(u, verb, how, effect, vs) {
     if (!S || !S.cards[u]) return;
     if (feedTime() && $('.lz:not(.reveal)')) return ticker(S.P[C(u).o], verb, DD(u).n + (effect ? ' · ' + effect : ''));   // don't pull them out of their own cards
     if (quickMoves()) return ticker(S.P[C(u).o], verb, DD(u).n + (effect ? ' · ' + effect : ''));
-    showReveal(u, how, verb, effect);
+    showReveal(u, how, verb, effect, vs);
   }
   // Looking through your cards while it's the other player's turn: a status panel above the cards keeps the game in
   // view (whose turn, the lore, their latest moves) without interrupting what you're looking at
@@ -9755,7 +9805,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       .replace(/( has )(\d+)$/, function (m, w, n) { return w + markHTML('rv-lore', LOREMARK, n, 'lore'); });
     return h;
   }
-  function showReveal(u, how, verb, effect) {
+  function showReveal(u, how, verb, effect, vs) {
     var d = DD(u), p = S.P[C(u).o];
     verb = verb || (/^Used/.test(how || '') ? 'Ability' : /^Sung/.test(how || '') ? 'Sung' : /^Shifted/.test(how || '') ? 'Shifted' : 'Played');
     var goesTo = verb === 'Inked' ? 'ink' : /^(Played|Sung|Shifted)$/.test(verb) ? 'play' : null;
@@ -9763,6 +9813,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       (how ? '<p class="lz-sub">' + esc(how) + '</p>' : '') + '<div class="rtext">' + rulesHTML(d) + '</div>', [], null, null,
       { tapClose: true, exit: goesTo ? function (o, done) { revealExit(u, goesTo, o, done); } : null });
     ov.classList.add('reveal');
+    // a challenge: the card it challenged comes in beside it, takes its damage, and is banished if it was
+    if (vs && vs.t && S.cards[vs.t]) revealVs(ov, u, vs);
     // inked rather than played: the ink-blue version, saying where it went and how much ink that makes
     if (verb === 'Inked') { ov.classList.add('inked'); if (!effect) effect = 'Into the inkwell · ' + p.ink.length + ' ink'; }
     var also = $$('.rv-tick:not(.out)').map(function (t) { t.remove(); return '<span class="rv-also">' + t.innerHTML.replace(/<i class="dot"[^>]*><\/i>/, '') + '</span>'; }).join('');
@@ -9782,6 +9834,30 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (!card || !ov.isConnected || !S || !S.cards[u] || !C(u).ex || (verb === 'Ability' && wasEx)) return;
       card.classList.add('exerted'); Kit.haptic('light');
     }, 500);
+  }
+  // The challenged card beside the challenger: whose it is, crossed swords between them, the hit landing on it
+  // (a shake, a red flash, the damage popping off), then, if it was banished, it greys, tips over and is stamped
+  // Banished; it stays in view so it's clear which card was lost. The challenger is marked the same if it fell too.
+  function revealVs(ov, u, vs) {
+    var flow = $('.lz-flow', ov), att = $('.lz-card', ov); if (!flow || !att) return;
+    var dt = DD(vs.t), owner = S.P[C(vs.t).o];
+    ov.classList.add('vs');
+    var dc = el('div', { class: 'lz-card rv-def' + (dt.t === 'location' ? ' loc' : ''), 'data-r': rarKey(artOf(dt)) }, [artEl(dt, true)]);
+    var wrap = el('div', { class: 'rv-defw' }, [el('span', { class: 'rv-own', html: '<i class="dot" style="--c:' + owner.color + '"></i>' + esc(owner.name === 'You' ? 'Yours' : owner.name + '’s') }), dc]);
+    flow.appendChild(el('div', { class: 'rv-swords', 'aria-hidden': 'true', html: '<svg viewBox="0 0 24 24"><path d="M4 3l9.5 9.5M3 4l2-1M13.5 12.5l-2 2M11 10l-2.5 2.5M8.6 18.4l-2 2-3-3 2-2M20 3l-9.5 9.5M21 4l-2-1M10.5 12.5l2 2M13 10l2.5 2.5M15.4 18.4l2 2 3-3-2-2"/></svg>' }));
+    flow.appendChild(wrap);
+    function mark(card, banned, n) {
+      if (!card.isConnected) return;
+      if (n) { var pop = el('b', { class: 'rv-dmg', text: '−' + n }); card.parentNode.appendChild(pop); setTimeout(function () { pop.remove(); }, 1400); }
+      card.classList.add('rv-hit'); Kit.haptic('medium');
+      if (banned) setTimeout(function () {
+        if (!card.isConnected) return;
+        card.classList.add('rv-gone'); card.appendChild(el('div', { class: 'rv-stamp', text: 'Banished' })); Kit.sfx('bad');
+      }, 520);
+    }
+    var tBan = vs.ban.indexOf(vs.t) >= 0, aBan = vs.ban.indexOf(u) >= 0;
+    setTimeout(function () { mark(dc, tBan, vs.dt); }, 900);
+    if (aBan) setTimeout(function () { mark(att, true, vs.da); }, 1250);
   }
   // Leaving a reveal, the card goes where it went: a played card glides down to its place on the table (or the
   // discard pile, for an action) with a golden trail and settles; an inked card flips face down and drops into the
@@ -11593,10 +11669,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // What happened, for the other device to show (the card played, an ability's result)
   function netFeed(k, a) { NET.feedMax = Math.max(NET.feedMax, S.feedN || 0) + 1; S.feedN = NET.feedMax; S.feed = (S.feed || []).concat([{ n: S.feedN, k: k, a: a }]).slice(-10); }
-  function oppShow(u, verb, how, eff) {
-    if (S.mode !== 'online') return cpuShow(u, verb, how, eff);
-    netFeed('s', [u, verb, how || '', eff || '']);
-    if (S.cards[u] && C(u).o !== NET.seat) cpuShow(u, verb, how, eff);   // their card, played during my turn
+  function oppShow(u, verb, how, eff, vs) {
+    if (S.mode !== 'online') return cpuShow(u, verb, how, eff, vs);
+    netFeed('s', [u, verb, how || '', eff || '', vs || null]);
+    if (S.cards[u] && C(u).o !== NET.seat) cpuShow(u, verb, how, eff, vs);   // their card, played during my turn
   }
   function oppTick(pi, verb, text) {
     if (S.mode !== 'online') return ticker(S.P[pi], verb, text);
@@ -11608,7 +11684,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (f.k === 's') {
       if (!S.cards[a[0]]) return;
       if (C(a[0]).o === NET.seat || $('.lz.reveal') || $('.k-scrim') || ui.pick) ticker(S.P[C(a[0]).o], a[1], DD(a[0]).n + (a[3] ? ' · ' + a[3] : ''));
-      else cpuShow(a[0], a[1], a[2], a[3]);
+      else cpuShow(a[0], a[1], a[2], a[3], a[4] || null);
     } else if (f.k === 't') ticker(S.P[a[0]], a[1], a[2]);
   }
   // Ask the other device; cb(answer) runs here when it comes back
@@ -12281,7 +12357,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Test hooks (used by the automated checks; harmless otherwise)
   window.__storyOf = storyOf;
   window.__lorcana = {
-    reveal: function (u, how, verb, fx) { showReveal(u, how, verb, fx); },
+    reveal: function (u, how, verb, fx, vs) { showReveal(u, how, verb, fx, vs); },
     state: function () { return S; }, db: DB, D: D, DD: DD, C: C, parseKw: function (o) { return prep(o).K; }, fromLorcast: fromLorcast, prep: prep,
     quickDeck: quickDeck, deckProblems: deckProblems, winner: winner,
     load: function (st) { tok++; resetQ(); closeOverlays(); Kit.handoff.close(); S = st; DEF = {}; S.hist = S.hist || []; resumeFlow(); },
