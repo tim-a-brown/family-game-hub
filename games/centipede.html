@@ -2269,7 +2269,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     floorCv.style.display = use3 ? 'none' : '';
     if (use3) {
       var ships = R.players.map(function (p) { var px = p.x, py = p.y; if (GV && p.id === me && GV.pred.alive) { px = GV.pred.x; py = GV.pred.y; } return { x: px, y: py, ci: p.ci, alive: p.alive, a: p.inv > 0 && Math.floor(drawT * 12) % 2 ? 0 : 1 }; });
-      C3.frame(R, { cw: cv.width, ch: cv.height, S: S, tk: tk, THEMES: THEMES, PCOL: SHIPC, ships: ships, t: drawT, sx: Math.round(sx), sy: Math.round(sy) });
+      C3.frame(R, { cw: cv.width, ch: cv.height, S: S, tk: tk, THEMES: THEMES, PCOL: SHIPC, ships: ships, t: drawT, sx: Math.round(sx), sy: Math.round(sy), parts: fx.parts });
     }
     var fk = tk + COLS + 'x' + ROWS + ':' + cv.width + 'x' + cv.height;
     if (!use3 && floorKey !== fk) { floorKey = fk; floorCv.width = cv.width; floorCv.height = cv.height; floorCv.getContext('2d').drawImage(bgSpr(tk), 0, 0); }
@@ -2312,9 +2312,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     // explosions, sparks and flying cubes
     x.globalCompositeOperation = 'lighter';
     fx.exps.forEach(function (e) { drawBoom(x, e); });
-    fx.parts.forEach(function (p) { if (p.glow) glow(x, p.x, p.y - p.z, 3.2 * p.s, p.c, p.life / p.max); });
+    // (in 3D the cubes and sparks are real cubes in the scene; the sparks keep a soft halo here)
+    fx.parts.forEach(function (p) { if (p.glow) glow(x, p.x, p.y - p.z * (use3 ? 0.9 : 1), (use3 ? 2.4 : 3.2) * p.s, p.c, (use3 ? 0.6 : 1) * p.life / p.max); });
     x.globalCompositeOperation = 'source-over';
-    fx.parts.forEach(function (p) { if (!p.glow) { var k2 = p.life / p.max; x.globalAlpha = k2 > 0.3 ? 1 : k2 / 0.3; drawSpr(x, cubeSpr(p.c), p.x, p.y - p.z, p.s * (0.55 + 0.45 * k2)); } });
+    if (!use3) fx.parts.forEach(function (p) { if (!p.glow) { var k2 = p.life / p.max; x.globalAlpha = k2 > 0.3 ? 1 : k2 / 0.3; drawSpr(x, cubeSpr(p.c), p.x, p.y - p.z, p.s * (0.55 + 0.45 * k2)); } });
     x.globalAlpha = 1;
     // names under the ships online
     if (R.players.length > 1) R.players.forEach(function (p) {

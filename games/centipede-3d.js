@@ -569,6 +569,28 @@ export function create(canvas, F) {
     shadowIM.count = shN; shadowIM.instanceMatrix.needsUpdate = true;
   }
   const pos = new THREE.Vector3();
+  // ── Debris and sparks: real cubes tumbling out and bouncing on the floor (the page simulates them; their height
+  // is p.z). Broken bits are lit, sparks glow (bright enough for the bloom). One draw for each kind.
+  const PCAP = 420, partGeo = new THREE.BoxGeometry(1, 1, 1), pcol = new THREE.Color();
+  const partLit = new THREE.InstancedMesh(partGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), PCAP);
+  const partGlow = new THREE.InstancedMesh(partGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }), PCAP);
+  [partLit, partGlow].forEach(m => { m.frustumCulled = false; m.count = 0; m.setColorAt(0, pcol.set(0xffffff)); scene.add(m); });
+  function drawParts(list, t) {
+    let nl = 0, ng = 0;
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i], k = p.life / p.max, glowing = p.glow, M = glowing ? partGlow : partLit, n = glowing ? ng : nl;
+      if (n >= PCAP) continue;
+      at(p.x, p.y, pos); pos.y = p.z * 0.9 + 0.6;
+      const sz = 1.8 * (p.s || 1) * (glowing ? 0.55 + 0.45 * k : 0.55 + 0.45 * Math.min(1, k * 2.5));
+      dummy.position.copy(pos); dummy.rotation.set(t * 7 + i, t * 5.3 + i * 2.1, t * 3.1 + i * 0.7); dummy.scale.setScalar(Math.max(0.05, sz)); dummy.updateMatrix();
+      M.setMatrixAt(n, dummy.matrix);
+      pcol.set(p.c); if (glowing) pcol.multiplyScalar(1.6);
+      M.setColorAt(n, pcol);
+      if (glowing) ng++; else { nl++; if (p.z > 1) shadow(pos, sz * 0.6); }
+    }
+    partLit.count = nl; partGlow.count = ng;
+    [partLit, partGlow].forEach(m => { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; });
+  }
 
   // ── bosses ──
   let rig = null, rigType = null, rigSt = null, rigT0 = 0;
@@ -635,6 +657,7 @@ export function create(canvas, F) {
       const ci = (sp.ci || 0) % 3;
       placeTilt('ship' + ci, () => shipModel(o.PCOL[ci], shipMats), 4, pos, rx, rz);
     });
+    if (o.parts) drawParts(o.parts, o.t);
     segPrev.forEach((v, k) => { if (!seen.has(k)) segPrev.delete(k); });
     // the boss
     const B = R.boss;
