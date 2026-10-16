@@ -141,7 +141,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // from its first shot. AMMO: volleys, shots, seconds, bombs. A new one replaces the one you have, and what's
   // left goes at the end of the wave. powerT is the share of ammo left (0 to 1).
   var POW = {
-    scatter: { c: '#ffb02e', name: 'Scatter' }, shock: { c: '#5ef0ff', name: 'Shock' }, beam: { c: '#ff4fd8', name: 'Beam' },
+    scatter: { c: '#ffb02e', name: 'Scatter' }, shock: { c: '#5ef0ff', name: 'Shock' }, beam: { c: '#3fb4ff', name: 'Beam' },
     bomb: { c: '#ff4a3d', name: 'Bomb' }
   };
   var POWK = ['scatter', 'shock', 'beam', 'bomb'], POW_T = 1, BOMB_R = 38, CAP_LIFE = 14;
@@ -212,8 +212,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     over: function () { [67, 66, 65, 64].forEach(function (m, i) { osc('square', mtof(m), 0.2 + i * 0.22, i === 3 ? 0.7 : 0.2, 0.06, { lp: 1800 }); osc('triangle', mtof(m - 12), 0.2 + i * 0.22, i === 3 ? 0.7 : 0.2, 0.09); }); },
     shoot: function () { osc('sawtooth', 900, 0, 0.12, 0.04, { to: 400, lp: 2400 }); },
     scatter: function () { osc('square', 1500, 0, 0.05, 0.016, { to: 700, lp: 4000 }); noise(0, 0.03, 0.03, 'highpass', 3000); },
-    beam: function () { osc('sawtooth', 260 + Math.random() * 40, 0, 0.07, 0.022, { lp: 1900 }); },
-    zap: function () { noise(0, 0.08, 0.12, 'highpass', 4000); osc('square', 1200, 0, 0.06, 0.035, { to: 3000, lp: 6000 }); },
+    beam: function () { osc('sawtooth', 110 + Math.random() * 8, 0, 0.09, 0.07, { lp: 1400 }); osc('square', 220 + Math.random() * 16, 0, 0.09, 0.03, { lp: 2600 }); noise(0, 0.09, 0.07, 'bandpass', 5200 + Math.random() * 1500, { q: 1.2 }); },
+    zap: function () { noise(0, 0.22, 0.3, 'highpass', 2600); noise(0.03, 0.12, 0.18, 'bandpass', 6000, { q: 2 }); [0, 0.035, 0.07].forEach(function (t, i) { osc('square', 2400 - i * 500, t, 0.05, 0.05, { to: 700, lp: 7000 }); }); osc('sawtooth', 90, 0, 0.18, 0.08, { lp: 900 }); },
     tink: function () { osc('triangle', 2400 + Math.random() * 600, 0, 0.04, 0.02); },
     capin: function () { [84, 88, 91].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.06, 0.18, 0.04); }); },
     charge: function () { osc('sine', 300, 0, 0.5, 0.025, { to: 900 }); },
@@ -336,6 +336,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       case 'b': for (var i = 0; i < a[4]; i++) { var an = Math.random() * TAU, v = (35 + Math.random() * 120) * a[5]; part(a[1], a[2], Math.cos(an) * v, Math.sin(an) * v, a[3], 0.45 + Math.random() * 0.5, 0.7 + Math.random() * 0.9, i % 3 === 0); } break;
       case 'p': if (a[5] && /^Combo/.test(a[3])) fx.pops = fx.pops.filter(function (q) { return !/^Combo/.test(q.text); });
         if (a[5]) fx.pops.forEach(function (q) { if (q.big && q.max - q.life < 0.6 && Math.abs(q.x - a[1]) < 70 && Math.abs(q.y - a[2]) < 14) q.y -= 11; });
+        // a small score right on top of one that just went up (a burst of kills) is left out
+        if (!a[5] && fx.pops.some(function (q) { return !q.big && q.max - q.life < 0.25 && Math.abs(q.x - a[1]) < 16 && Math.abs(q.y - a[2]) < 9; })) break;
         fx.pops.push({ x: a[1], y: a[2], text: a[3], c: a[4], big: !!a[5], life: a[5] ? 1.3 : 0.9, max: a[5] ? 1.3 : 0.9 }); if (fx.pops.length > 24) fx.pops.shift(); break;
       case 's': snd(a[1]); break;
       case 'k': fx.shake = Math.min(1.2, Math.max(fx.shake, a[1])); break;
@@ -344,7 +346,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       case 'c': fx.card = { title: a[1], sub: a[2], c: a[3], sub2: a[4], life: 3.6, max: 3.6 }; fx.banner = null; break;
       case 'x': fx.exps.push({ x: a[1], y: a[2], c: a[3], r: a[4] ? 22 : 11, life: a[4] ? 0.5 : 0.32, max: a[4] ? 0.5 : 0.32 }); break;
       case 'r': fx.exps.push({ x: a[1], y: a[2], c: a[4], r: a[3], ring: true, life: 0.6, max: 0.6 }); break;
-      case 'z': if (fx.arcs.length < 24) fx.arcs.push({ x1: a[1], y1: a[2], x2: a[3], y2: a[4], c: a[5] || '#bff8ff', life: 0.22 }); break;
+      case 'z': if (fx.arcs.length < 40) fx.arcs.push({ x1: a[1], y1: a[2], x2: a[3], y2: a[4], c: a[5] || '#bff8ff', life: 0.32, max: 0.32 }); if (a[5] === '#bff8ff') for (var q2 = 0; q2 < 3; q2++) part(a[3], a[4], rnd(-70, 70), rnd(-70, 70), '#bff8ff', rnd(0.15, 0.3), 0.6, true); break;
       case 'h': if (a[1] === myPid()) Kit.haptic(a[2]); break;
       case 'w': try { Kit.confetti && Kit.confetti(); } catch (e) {} break;
     }
@@ -406,7 +408,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var D = BOSS[w.boss];
       card(D.name, 'Boss bonus: ' + fmt(bossBonus(w.boss)), D.c, w.boss === 'mega' ? 'One life: no extra lives in this fight' : '');
       sound('warn');
-    } else { script(n, w); banner('Wave ' + n, n > LAST ? w.stage + ' - endless' : w.stage, THEMES[w.theme].hi); sound('wave'); }
+    } else { script(n, w); banner('Wave ' + n, n > LAST ? w.stage + ' - endless' : w.stage, '#ffffff'); sound('wave'); }
     if (G.mode === 'host') { G.md = []; net.gridDirty = true; if (net.table) net.table.setStatus('playing', 'Wave ' + n); }
   }
   function bossBonus(type) { return BOSS[type].bonus * (1 + (waveDef(G.wave).loop || 0)); }
@@ -730,7 +732,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     G.players.forEach(function (p) { if (p.alive) p.score += b; });
     G.score += b;
     if (mega) { card('You win!', 'Mega bonus', '#ff2d8a', 'The loop starts again, faster'); ev(['w']); }
-    else banner(bw ? 'Boss battle complete' : 'Wave complete', '+' + fmt(b) + ' bonus', '#ffd23d');
+    else banner(bw ? 'Boss battle complete' : 'Wave complete', '+' + fmt(b) + ' bonus', bw ? '#ff3d4a' : '#ffd23d');
     sound('clear');
     G.foes = G.foes.filter(function (f) { return f.type !== 'ball'; }); G.shots = []; G.zones = [];
     if (mega) shake(0.6);
@@ -768,7 +770,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   var BSPD = { laser: 640, scatter: 540, shock: 640, bomb: 340 };
   function shoot(P, x, a, k) {
     var v = BSPD[k];
-    G.bullets.push({ id: newId(), o: P.id, x: x, y: P.y - 9, vx: Math.sin(a) * v, vy: -Math.cos(a) * v, k: k, P: P });
+    G.bullets.push({ id: newId(), o: P.id, x: x, y: P.y - 9, y0: P.y - 9, vx: Math.sin(a) * v, vy: -Math.cos(a) * v, k: k, P: P });
   }
 
   // ── Bullets ──
@@ -818,31 +820,43 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (!hp) { G.stats.mush++; burst(cx(c), cx(r), po ? '#b04dff' : themeOf(G).mush[0], 5, 0.7); snd('pop'); }
     else snd('mush');
   }
-  // Shock: each hit throws lightning on to the nearest bugs (up to three, close by)
+  // Shock: each hit sets off chain lightning: it jumps to the nearest bug, from that one to the next, and so on
+  // (up to five jumps), and forks once or twice on the way
+  var SHOCK_HOP = 60, SHOCK_N = 5;
   function shock(P, x, y, skip) {
-    var c = [];
-    G.segs.forEach(function (s) { var d = Math.hypot(s.x - x, s.y - y); if (d > 2 && d < 60) c.push({ d: d, s: s.id, x: s.x, y: s.y }); });
-    G.foes.forEach(function (o) { if (o === skip) return; var d = Math.hypot(o.x - x, o.y - y); if (d < 64) c.push({ d: d, o: o, x: o.x, y: o.y }); });
-    c.sort(function (a, b) { return a.d - b.d; });
-    c.slice(0, 3).forEach(function (t) {
-      arc(x, y, t.x, t.y);
+    var used = [], hits = 0, from = [{ x: x, y: y }];
+    function nearest(px, py) {
+      // it leaps: the closest target at least a couple of cells away (a neighbour only if nothing's further)
+      var best = null, bd = 1e9, near = null, nd = 1e9;
+      function cand(t, d) { if (d > SHOCK_HOP) return; if (d >= 16 && d < bd) { bd = d; best = t; } else if (d < 16 && d < nd) { nd = d; near = t; } }
+      G.segs.forEach(function (s) { if (used.indexOf('s' + s.id) >= 0) return; var d = Math.hypot(s.x - px, s.y - py); if (d > 2) cand({ k: 's' + s.id, s: s.id, x: s.x, y: s.y }, d); });
+      G.foes.forEach(function (o) { if (o === skip || used.indexOf(o) >= 0) return; cand({ k: o, o: o, x: o.x, y: o.y }, Math.hypot(o.x - px, o.y - py) - 6); });
+      return best || near;
+    }
+    for (var n = 0; n < SHOCK_N && from.length; n++) {
+      var f = from.shift(), t = nearest(f.x, f.y); if (!t) continue;
+      used.push(t.k); arc(f.x, f.y, t.x, t.y); hits++;
       if (t.s) { var s = segById(t.s); if (s) hitSeg(s, P); } else if (G.foes.indexOf(t.o) >= 0) hitFoe(t.o, P, 1);
-    });
-    if (c.length) sound('zap');
+      from.push({ x: t.x, y: t.y });
+      if (n === 0 || n === 2) from.push({ x: t.x, y: t.y });     // a fork
+    }
+    // a few loose sparks when nothing is near enough
+    if (!hits) for (var i = 0; i < 2; i++) { var an = rnd(0, TAU), r = rnd(14, 24); arc(x, y, x + Math.cos(an) * r, y + Math.sin(an) * r * 0.7); }
+    sound('zap');
   }
   // Beam: a piercing laser straight up from the ship, burning everything in its column several times a second
   function beamTick(P) {
     P.beamN = (P.beamN || 0) + 1;
     var x = P.x, top = P.y - 8;
-    G.segs.filter(function (s) { return Math.abs(s.x - x) < 6 && s.y < top; }).slice(0, 3).map(function (s) { return s.id; }).forEach(function (id) { var s = segById(id); if (s) hitSeg(s, P); });
+    G.segs.filter(function (s) { return Math.abs(s.x - x) < 6.5 && s.y < top; }).map(function (s) { return s.id; }).forEach(function (id) { var s = segById(id); if (s) hitSeg(s, P); });
     G.foes.slice().forEach(function (o) { if (o.y < top && foeTest(o, x, o.y, 2)) hitFoe(o, P, 1); });
     G.caps.slice().forEach(function (cp) { if (cp.y < top && Math.abs(cp.x - x) < 9) givePower(P, cp); });
     G.shots.slice().forEach(function (f) { if (f.k === 'fire' && f.y < top && Math.abs(f.x - x) < 7) fireBoom(f, P, true); });
     var B = G.boss;
     if (B && B.y < top) { var bh = bossHit(B, x, B.y + (B.type === 'beetle' ? BOSS.beetle.r[1] * 0.6 : 0), 'beam'); if (bh >= 2) hitBoss(P, BDMG.beam * (bh === 3 ? 0.35 : 1), x, B.y, 'beam'); }
-    if (P.beamN % 2) return;           // mushrooms in the column burn at half the rate
-    var c = Math.floor(x / CELL);
-    for (var r = Math.floor(top / CELL); r >= 0; r--) if (mush(c, r)) hitMush(c, r, P, 1);
+    // mushrooms in its column (and the next one, where the beam's edge crosses into it) burn away
+    var c = Math.floor(x / CELL), c2 = x - c * CELL < 3 ? c - 1 : x - c * CELL > CELL - 3 ? c + 1 : -1;
+    for (var r = Math.floor(top / CELL); r >= 0; r--) { if (mush(c, r)) hitMush(c, r, P, 1); if (c2 >= 0 && c2 < COLS && mush(c2, r)) hitMush(c2, r, P, 1); }
   }
 
   // ── The bugs ──
@@ -1580,37 +1594,106 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
   function hash2(i, j) { var h = (i * 374761393 + j * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
   function litRGB(r, gg, b, a) { function f(v) { return Math.round(a > 0 ? v + (255 - v) * a : v * (1 + a)); } return 'rgb(' + f(r) + ',' + f(gg) + ',' + f(b) + ')'; }
-  // o: {emit: [colours that glow (no shading)], ext: side depth in cubes, shadow: floor shadow strength, ay: anchor row}
+  // ── Voxel models: real little 3D grids of cubes, like the cabinet's art ──
+  // A model is a grid of cubes (x across, y down the screen, z up). It's seen from above at a tilt, like the
+  // cabinet's camera: each cube shows its top, and its front where nothing stands in front of it. Every face is
+  // lit by the direction the model's surface faces there (so a ball of cubes reads round, lit from the upper
+  // left), and carries a thin dark seam and a lighter top edge. Drawn once per screen size at whole screen pixels.
+  var VY = 0.8, VZ = 0.56, LX = -0.42, LY = -0.5, LZ = 0.76;
+  function vmodel(nx, ny, nz) { var n = nx * ny * nz, v = new Int32Array(n); v.fill(-1); return { nx: nx, ny: ny, nz: nz, v: v, e: new Uint8Array(n) }; }
+  function vset(M, x, y, z, col, em) {
+    x = Math.round(x); y = Math.round(y); z = Math.round(z);
+    if (x < 0 || y < 0 || z < 0 || x >= M.nx || y >= M.ny || z >= M.nz) return;
+    var i = (z * M.ny + y) * M.nx + x; M.v[i] = typeof col === 'string' ? parseInt(col.slice(1), 16) : col; M.e[i] = em ? 1 : 0;
+  }
+  function vat(M, x, y, z) { return x < 0 || y < 0 || z < 0 || x >= M.nx || y >= M.ny || z >= M.nz ? -1 : M.v[(z * M.ny + y) * M.nx + x]; }
+  function vcol(c, br) {
+    var r = c >> 16, gg = (c >> 8) & 255, b = c & 255;
+    function f(v) { var o = v * Math.min(br, 1); if (br > 1) o += (255 - o) * (br - 1) * 0.9; return Math.max(0, Math.min(255, Math.round(o))); }
+    return 'rgb(' + f(r) + ',' + f(gg) + ',' + f(b) + ')';
+  }
+  // o: {ax, ay, az: the anchor (the point drawn at the sprite's position), in cubes; shadow: floor shadow strength}
+  function vrender(M, vu, o) {
+    o = o || {};
+    var P = vu * S, nx = M.nx, ny = M.ny, nz = M.nz, pad = Math.ceil(P * 2.6) + 2;
+    var cw = Math.ceil(nx * P + pad * 2), ch = Math.ceil(ny * P * VY + nz * P * VZ + pad * 2);
+    var body = mk(cw, ch), x = body.getContext('2d'), z0 = pad + nz * P * VZ;
+    function SX(a) { return Math.round(pad + a * P); }
+    function SY(b, z) { return Math.round(z0 + b * P * VY - z * P * VZ); }
+    var rad = nx * ny * nz > 9000 ? 1 : 2, seam = P >= 2.6;
+    for (var y = 0; y < ny; y++) for (var z = 0; z < nz; z++) for (var xx = 0; xx < nx; xx++) {
+      var c = vat(M, xx, y, z); if (c < 0) continue;
+      var top = vat(M, xx, y, z + 1) < 0, front = vat(M, xx, y + 1, z) < 0;
+      if (!top && !front) continue;
+      var br;
+      if (M.e[(z * ny + y) * nx + xx]) br = 1.08 + (hash2(xx + z * 7, y) - 0.5) * 0.08;
+      else {
+        // the surface's direction here: away from where the cubes are
+        var gx = 0, gy = 0, gz = 0;
+        for (var k = -rad; k <= rad; k++) for (var j = -rad; j <= rad; j++) for (var i = -rad; i <= rad; i++) if ((i || j || k) && vat(M, xx + i, y + j, z + k) >= 0) { gx -= i; gy -= j; gz -= k; }
+        var n = Math.hypot(gx, gy, gz); if (n < 0.01) { gx = 0; gy = 0; gz = 1; n = 1; }
+        var lam = (gx * LX + gy * LY + gz * LZ) / n;
+        var pale = (c >> 16) + ((c >> 8) & 255) + (c & 255) > 600;
+        br = (pale ? 0.78 : 0.56) + (pale ? 0.32 : 0.58) * Math.max(0, lam) + (hash2(xx + z * 7, y) - 0.5) * 0.07;
+      }
+      var X0 = SX(xx), X1 = SX(xx + 1), w = X1 - X0;
+      if (top) {
+        var T0 = SY(y, z + 1), T1 = SY(y + 1, z + 1);
+        x.fillStyle = vcol(c, br + 0.06); x.fillRect(X0, T0, w, T1 - T0);
+        if (seam) { x.fillStyle = 'rgba(255,255,255,.16)'; x.fillRect(X0, T0, w, 1); x.fillStyle = 'rgba(0,0,0,.26)'; x.fillRect(X1 - 1, T0, 1, T1 - T0); x.fillRect(X0, T1 - 1, w, 1); }
+      }
+      if (front) {
+        var F0 = SY(y + 1, z + 1), F1 = SY(y + 1, z);
+        x.fillStyle = vcol(c, br * 0.62); x.fillRect(X0, F0, w, F1 - F0);
+        if (seam) { x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(X0, F1 - 1, w, 1); x.fillRect(X1 - 1, F0, 1, F1 - F0); }
+      }
+    }
+    // a soft shadow on the floor, down and to the right
+    var c2 = mk(cw, ch), x2 = c2.getContext('2d'), sh = o.shadow != null ? o.shadow : 0.45;
+    if (sh > 0) { x2.imageSmoothingEnabled = true; x2.drawImage(blurred(body, 'rgba(0,0,0,' + sh + ')', P * 2.2), Math.round(P * 0.9), Math.round(P * 1.6), cw, ch); }
+    x2.drawImage(body, 0, 0);
+    var ax = o.ax != null ? o.ax : nx / 2, ay = o.ay != null ? o.ay : ny / 2, az = o.az != null ? o.az : nz * 0.55;
+    return { c: c2, f: 1 / S, ox: pad + ax * P, oy: z0 + ay * P * VY - az * P * VZ };
+  }
+  // pixel art doubled with soft corners (Scale2x), so a sprite gets twice the cubes and rounder outlines
+  function scale2x(src) {
+    var w = src.width, h = src.height, d = src.getContext('2d').getImageData(0, 0, w, h).data, px = new Int32Array(w * h), out = mk(w * 2, h * 2), ox = out.getContext('2d'), im = ox.createImageData(w * 2, h * 2), od = im.data;
+    for (var i = 0; i < w * h; i++) px[i] = d[i * 4 + 3] > 127 ? (d[i * 4] << 16) | (d[i * 4 + 1] << 8) | d[i * 4 + 2] : -1;
+    function at(a, b) { return a < 0 || b < 0 || a >= w || b >= h ? -1 : px[b * w + a]; }
+    function put(a, b, v) { if (v < 0) return; var k = (b * w * 2 + a) * 4; od[k] = v >> 16; od[k + 1] = (v >> 8) & 255; od[k + 2] = v & 255; od[k + 3] = 255; }
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+      var P = at(x, y), A = at(x, y - 1), B = at(x + 1, y), C = at(x - 1, y), D = at(x, y + 1), e0 = P, e1 = P, e2 = P, e3 = P;
+      if (C === A && C !== D && A !== B) e0 = A;
+      if (A === B && A !== C && B !== D) e1 = B;
+      if (D === C && D !== B && C !== A) e2 = C;
+      if (B === D && B !== A && D !== C) e3 = D;
+      put(x * 2, y * 2, e0); put(x * 2 + 1, y * 2, e1); put(x * 2, y * 2 + 1, e2); put(x * 2 + 1, y * 2 + 1, e3);
+    }
+    ox.putImageData(im, 0, 0);
+    return out;
+  }
+  // Flat pixel art (seen from above) made into a model: doubled, then raised into a rounded lump (taller away
+  // from its edges). o: {emit: [colours that glow], ext: how tall (about 1), shadow, ax/ay: anchor in art pixels}
   function voxelize(src, vu, o) {
     o = o || {};
-    var pi = Math.max(2, Math.round(vu * S)), w = src.width, h = src.height, n = w * h;
-    var d = src.getContext('2d').getImageData(0, 0, w, h).data, on = new Uint8Array(n), ht = new Float32Array(n), i, j, q, k;
+    var s2 = scale2x(src), w = s2.width, h = s2.height, d = s2.getContext('2d').getImageData(0, 0, w, h).data, n = w * h, i, j, q;
     var emit = {}; (o.emit || []).forEach(function (hx) { emit[parseInt(hx.slice(1), 16)] = 1; });
-    for (i = 0; i < n; i++) on[i] = d[i * 4 + 3] > 127 ? 1 : 0;
-    function filled(a, b) { return a >= 0 && b >= 0 && a < w && b < h && on[b * w + a]; }
-    // height: how far in from the outline (so a blob reads as a rounded lump of cubes)
+    var on = new Uint8Array(n); for (i = 0; i < n; i++) on[i] = d[i * 4 + 3] > 127 ? 1 : 0;
+    var hmax = Math.max(1, Math.round(4 * (o.ext != null ? o.ext / 0.7 : 1))), dist = new Uint8Array(n);
     for (j = 0; j < h; j++) for (i = 0; i < w; i++) if (on[j * w + i]) {
-      var dist = 3;
-      for (q = 1; q <= 2 && dist === 3; q++) for (var bb = -q; bb <= q && dist === 3; bb++) for (var aa = -q; aa <= q; aa++) if ((Math.abs(aa) === q || Math.abs(bb) === q) && !filled(i + aa, j + bb)) { dist = q; break; }
-      ht[j * w + i] = dist / 3;
-    }
-    function HT(a, b) { return a < 0 || b < 0 || a >= w || b >= h ? 0 : ht[b * w + a]; }
-    var ext = Math.max(1, Math.round(pi * (o.ext != null ? o.ext : 0.7))), pad = Math.ceil(pi * 2.4) + 2;
-    var cw = w * pi + pad * 2, ch = h * pi + pad * 2 + ext, c = mk(cw, ch), x = c.getContext('2d'), side = mk(cw, ch), sx = side.getContext('2d');
-    var half = Math.round(pi * 0.5);
-    for (j = 0; j < h; j++) for (i = 0; i < w; i++) if (on[k = j * w + i]) { sx.fillStyle = litRGB(d[k * 4], d[k * 4 + 1], d[k * 4 + 2], -0.58); sx.fillRect(pad + i * pi, pad + j * pi + half, pi, pi - half + ext); }
-    x.imageSmoothingEnabled = true; x.drawImage(blurred(side, 'rgba(0,0,0,' + (o.shadow != null ? o.shadow : 0.5) + ')', pi * 1.8), pi * 0.7, pi * 1.5, cw, ch); x.drawImage(side, 0, 0);
-    for (j = 0; j < h; j++) for (i = 0; i < w; i++) if (on[k = j * w + i]) {
-      var r = d[k * 4], gg = d[k * 4 + 1], b = d[k * 4 + 2], px = pad + i * pi, py = pad + j * pi, a;
-      if (emit[(r << 16) | (gg << 8) | b]) a = 0.06 + (hash2(i, j) - 0.5) * 0.06;
-      else {
-        var gx = HT(i + 1, j) - HT(i - 1, j), gy = HT(i, j + 1) - HT(i, j - 1);
-        a = clamp(0.3 * (gx + gy), -0.4, 0.32) + (HT(i, j - 1) === 0 ? 0.15 : 0) - (HT(i, j + 1) === 0 ? 0.12 : 0) + (hash2(i, j) - 0.5) * 0.09 + (ht[k] - 0.5) * 0.08;
+      var dd = hmax;
+      for (q = 1; q < hmax && dd === hmax; q++) for (var bb = -q; bb <= q && dd === hmax; bb++) for (var aa = -q; aa <= q; aa++) {
+        if (Math.abs(aa) !== q && Math.abs(bb) !== q) continue;
+        var a2 = i + aa, b2 = j + bb; if (a2 < 0 || b2 < 0 || a2 >= w || b2 >= h || !on[b2 * w + a2]) { dd = q; break; }
       }
-      x.fillStyle = litRGB(r, gg, b, a); x.fillRect(px, py, pi, pi);
-      if (pi >= 4) { x.fillStyle = 'rgba(0,0,0,.17)'; x.fillRect(px, py + pi - 1, pi, 1); x.fillRect(px + pi - 1, py, 1, pi - 1); x.fillStyle = 'rgba(255,255,255,.12)'; x.fillRect(px, py, pi - 1, 1); }
+      dist[j * w + i] = dd;
     }
-    return { c: c, f: vu / pi, ox: pad + (o.ax != null ? o.ax : w / 2) * pi, oy: pad + (o.ay != null ? o.ay : h / 2) * pi };
+    var M = vmodel(w, h, hmax + 1);
+    for (j = 0; j < h; j++) for (i = 0; i < w; i++) if (on[j * w + i]) {
+      var k = j * w + i, col = (d[k * 4] << 16) | (d[k * 4 + 1] << 8) | d[k * 4 + 2], em = emit[col], ht = em ? Math.max(2, dist[k]) : dist[k];
+      for (var z = 0; z < ht; z++) vset(M, i, j, z, col, em);
+    }
+    return vrender(M, vu / 2, { shadow: o.shadow, ax: o.ax != null ? o.ax * 2 : w / 2, ay: o.ay != null ? o.ay * 2 : h / 2, az: hmax * 0.5 });
   }
   // Soft glows and shadows without the canvas's own blur (slow on phones): the shape is shrunk, filled with
   // the colour, and stretched back up smoothly.
@@ -1625,8 +1708,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'destination-over'; x.globalAlpha = alpha == null ? 1 : alpha; x.imageSmoothingEnabled = true;
     x.drawImage(b, 0, 0, c.width, c.height); x.drawImage(b, 0, 0, c.width, c.height); x.restore();
   }
-  function drawSpr(x, s, X, Y, sc) { var f = s.f * (sc || 1); x.drawImage(s.c, X - s.ox * f, Y - s.oy * f, s.c.width * f, s.c.height * f); }
-  function drawSprImg(x, s, img, X, Y) { var f = s.f; x.drawImage(img, X - s.ox * f, Y - s.oy * f, s.c.width * f, s.c.height * f); }
+  // Sprites are made at screen resolution, so at their own size they're copied pixel for pixel onto whole
+  // pixels (never resampled, which smears them); scaled or turned ones are drawn smoothly.
+  function drawSpr(x, s, X, Y, sc) { drawSprImg(x, s, s.c, X, Y, sc); }
+  function drawSprImg(x, s, img, X, Y, sc) {
+    var f = s.f * (sc || 1), m = x.getTransform();
+    if (m.b === 0 && m.c === 0 && Math.abs(m.a * f - 1) < 0.03 && Math.abs(m.d * f - 1) < 0.03) {
+      x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(img, Math.round(m.a * X + m.e - s.ox), Math.round(m.d * Y + m.f - s.oy)); x.setTransform(m);
+      return;
+    }
+    x.drawImage(img, X - s.ox * f, Y - s.oy * f, img.width * f, img.height * f);
+  }
   function tintCanvas(src, col, a) { var c = mk(src.width, src.height), x = c.getContext('2d'); x.drawImage(src, 0, 0); x.globalCompositeOperation = 'source-atop'; x.globalAlpha = a; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height); return c; }
 
   // ── The bugs, as pixel art ──
@@ -1642,17 +1734,48 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   var SCORP = [['..TTTT..........', '.T....T.........', '.S.....T........', '.......TOOOO..CC', '......OOOOOOOOC.', '......OOOOOKOOC.', '.....L.L.L.L.CC.', '....L.L.L.L.....'],
                ['..TTTT..........', '.T....T.........', '.S.....T........', '.......TOOOO..CC', '......OOOOOOOOC.', '......OOOOOKOOC.', '......L.L.L.LCC.', '.....L.L.L.L....']];
   var ROCK = ['..RRRR..', '.RRDRRR.', 'RRRRRRDR', 'RDRRRRRR', 'RRRRDRRR', 'RRDRRRRR', '.RRRRDR.', '..RRRR..'];
+  // Mushroom: a dome of cubes with blocky white patches; shot, it crumbles to a smaller and smaller clump
   function mushSpr(tk, hp, po) {
     return spx('m' + tk + hp + po, function () {
       var T = THEMES[tk], cap = po ? '#a34dff' : T.mush[0], spot = po ? '#7dff5a' : T.mush[1];
-      var rows = MUSH.map(function (row, j) { return row.split('').map(function (ch, i) { if (hp === 2 && i + j >= 12) return '.'; if (hp === 1 && (i + j >= 9 || j >= 5)) return '.'; return ch; }).join(''); });
-      return voxelize(gspr(rows, { C: cap, S: spot, T: T.mush[2] }), 1.05, po ? { emit: [spot] } : null);
+      var M = vmodel(13, 13, 9), k = hp >= 3 ? 1 : hp === 2 ? 0.8 : 0.58, rx = 6.3 * k, rz = 7.6 * k, cy0 = 6 + (1 - k) * 3;
+      for (var z = 0; z < 9; z++) for (var y = 0; y < 13; y++) for (var x = 0; x < 13; x++) {
+        var dx = x - 6, dy = y - cy0, dz = z + 0.5;
+        if ((dx * dx + dy * dy) / (rx * rx) + dz * dz / (rz * rz) > 1) continue;
+        // bites taken out of a shot one
+        if (hp < 3 && hash2(Math.floor((x + 1) / 3) + z * 31, Math.floor((y + 2) / 3) + hp * 17) < (hp === 2 ? 0.2 : 0.3) && (dx * dx + dy * dy) > rx * rx * 0.3) continue;
+        var pat = hash2(Math.floor((x + (z >> 1)) / 3) * 7 + Math.floor(z / 3) * 13, Math.floor((y + 1) / 3) * 5 + 3) < 0.36;
+        vset(M, x, y, z, pat ? spot : cap, po && pat);
+      }
+      return vrender(M, 0.82, { az: 3.5 * k });
     });
   }
+  // A centipede segment: a ball of cubes with stubby legs out the front and back that step in turn;
+  // the head adds a glowing face, eyes and two long antennae on the side it's heading for
   function segSpr(tk, head, fr, flip, frz) {
     return spx('s' + tk + (head ? 1 : 0) + fr + (flip ? 1 : 0) + (frz ? 1 : 0), function () {
       var T = THEMES[tk], body = frz ? '#8fe8ff' : T.centi[0], legs = frz ? '#e0fbff' : T.centi[1], face = frz ? '#c8f8ff' : T.centi[2];
-      return voxelize(gspr(head ? HEAD[fr] : SEG[fr], { B: body, D: shade(body, -0.32), L: legs, A: legs, M: legs, F: face, K: '#120a0a' }, flip), 1.05, { emit: ['#120a0a'] });
+      var nx = head ? 19 : 13, M = vmodel(nx, 14, 11), bx = 6, by = 6.5, r = 5.7, low = shade(body, -0.35), x, y, z;
+      function put(a, b, c, col, em) { vset(M, flip ? nx - 1 - a : a, b, c, col, em); }
+      for (z = 0; z < 11; z++) for (y = 0; y < 14; y++) for (x = 0; x < 13; x++) {
+        var dx = x - bx, dy = y - by, dz = z - 5;
+        if (dx * dx + dy * dy + dz * dz * 1.1 > r * r) continue;
+        var col = z < 3 ? low : body;
+        if (head && dx > 2.6 && z > 2) col = face;
+        put(x, y, z, col);
+      }
+      // legs: three pairs, front and back, alternately forward and back with the step
+      [2.5, 6, 9.5].forEach(function (lx, i) {
+        var sh = (i + fr) % 2 ? 1 : -1;
+        put(lx, 1, 2, legs); put(lx, 12, 2, legs); put(lx + sh, 0, 1, legs); put(lx + sh, 13, 1, legs);
+      });
+      if (head) {
+        // eyes and mandibles at the front, antennae sweeping forward
+        put(11, 4, 7, '#120a0a'); put(11, 9, 7, '#120a0a'); put(11, 4, 8, '#ffffff', 1); put(11, 9, 8, '#ffffff', 1);
+        put(12, 5, 3, legs); put(12, 8, 3, legs); put(13, 5, 3, legs); put(13, 8, 3, legs);
+        for (var t = 0; t < 7; t++) { var ay = fr ? 0 : 1; put(11 + t, 4 - Math.floor(t / 2) + ay * (t > 3 ? 1 : 0), 9 + (t < 2 ? 1 : 0), legs); put(11 + t, 9 + Math.floor(t / 2) - ay * (t > 3 ? 1 : 0), 9 + (t < 2 ? 1 : 0), legs); }
+      }
+      return vrender(M, 0.8, { ax: flip ? nx - 1 - bx + 0.5 : bx + 0.5, ay: 7, az: 5 });
     });
   }
   function spiderSpr(tk, fr) { return spx('sp' + tk + fr, function () { var T = THEMES[tk]; return voxelize(gspr(SPIDER[fr], { P: T.spider[0], Y: T.spider[1], R: '#ff2a2a' }), 1.45, { emit: ['#ff2a2a'] }); }); }
@@ -1852,16 +1975,26 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (++TXTN > 200) { TXT = {}; TXTN = 1; }
     var ol = Math.max(1, Math.round(fp * 0.6)), pad = ol + (glowC ? fp * 3 : 0) + 1, w = ptW(s) * fp + pad * 2, h = 7 * fp + pad * 2 + ol;
     var c = mk(w, h), x = c.getContext('2d'), f = mk(w, h), fx2 = f.getContext('2d');
-    x.fillStyle = '#07040f';
-    glyphs(s, function (px, py) { x.fillRect(pad + px * fp - ol, pad + py * fp - ol, fp + ol * 2, fp + ol * 3); });
     var gr = fx2.createLinearGradient(0, pad, 0, pad + 7 * fp); gr.addColorStop(0, shade(col, 0.65)); gr.addColorStop(0.45, col); gr.addColorStop(1, shade(col, -0.2));
     fx2.fillStyle = gr;
     glyphs(s, function (px, py) { fx2.fillRect(pad + px * fp, pad + py * fp, fp, fp); });
-    if (glowC) { x.imageSmoothingEnabled = true; var gb = blurred(f, glowC, fp * 3); x.drawImage(gb, 0, 0, w, h); x.drawImage(gb, 0, 0, w, h); }
+    // the glow goes underneath, then the dark outline, then the letters, so the edges stay sharp
+    if (glowC) { x.imageSmoothingEnabled = true; var gb = blurred(f, glowC, fp * 3); x.globalAlpha = 0.85; x.drawImage(gb, 0, 0, w, h); x.globalAlpha = 1; }
+    x.fillStyle = '#07040f';
+    glyphs(s, function (px, py) { x.fillRect(pad + px * fp - ol, pad + py * fp - ol, fp + ol * 2, fp + ol * 3); });
     x.drawImage(f, 0, 0);
-    return (TXT[key] = { c: c, w: w, h: h });
+    return (TXT[key] = { c: c, w: w, h: h, s: s, col: col, fp: fp, gl: glowC });
   }
-  function drawTxtAt(x, t, cxp, cyp, sc) { sc = sc || 1; x.drawImage(t.c, Math.round(cxp - t.w * sc / 2), Math.round(cyp - t.h * sc / 2), t.w * sc, t.h * sc); }
+  // Pixel text is never resampled (that smears it): drawn at its own size on whole pixels; asked to shrink, it's
+  // redrawn at the next smaller pixel size that fits; grown (a pop-in), its pixels are just made bigger.
+  function drawTxtAt(x, t, cxp, cyp, sc) {
+    sc = sc || 1;
+    if (sc < 0.99 && t.fp > 1) { var fp2 = Math.max(1, Math.floor(t.fp * sc + 0.001)); t = txt(t.s, t.col, fp2, t.gl); sc = 1; }
+    var sm = x.imageSmoothingEnabled; x.imageSmoothingEnabled = false;
+    if (Math.abs(sc - 1) < 0.01) x.drawImage(t.c, Math.round(cxp - t.w / 2), Math.round(cyp - t.h / 2));
+    else x.drawImage(t.c, Math.round(cxp - t.w * sc / 2), Math.round(cyp - t.h * sc / 2), Math.round(t.w * sc), Math.round(t.h * sc));
+    x.imageSmoothingEnabled = sm;
+  }
 
   // ── The stage floor: drawn once per stage and screen size ──
   function hexPath(x, x0, y0, r) { x.beginPath(); for (var i = 0; i < 6; i++) { var a = PI / 6 + i * PI / 3; x[i ? 'lineTo' : 'moveTo'](x0 + Math.cos(a) * r, y0 + Math.sin(a) * r); } x.closePath(); }
@@ -2050,32 +2183,70 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
   function drawBullet(x, b, col) {
     if (b.k === 'scatter') { glow(x, b.x, b.y, 5, POW.scatter.c, 0.6); drawBoltAt(x, b.x, b.y, b.vx, b.vy, POW.scatter.c, 8, 2.6); }
-    else if (b.k === 'shock') { glow(x, b.x, b.y, 7, POW.shock.c, 0.7); drawBoltAt(x, b.x, b.y, 0, -1, POW.shock.c, 14, 2.6); }
+    else if (b.k === 'shock') {
+      var L2 = Math.min(70, (b.y0 || b.y + 40) - b.y);
+      bolt(x, b.x, b.y, b.x + rnd(-2, 2), b.y + L2, POW.shock.c, 0.85, 1, 0);
+      glow(x, b.x, b.y, 12, POW.shock.c, 0.9); glow(x, b.x, b.y, 4.5, '#ffffff', 1);
+    }
     else if (b.k === 'bomb') { glow(x, b.x, b.y, 9, POW.bomb.c, 0.75); x.fillStyle = '#2a1018'; x.beginPath(); x.arc(b.x, b.y, 3.6, 0, TAU); x.fill(); x.strokeStyle = POW.bomb.c; x.lineWidth = 1.2; x.beginPath(); x.ellipse(b.x, b.y, 5.5, 2.2, drawT * 6, 0, TAU); x.stroke(); }
     else drawBoltAt(x, b.x, b.y, b.vx || 0, b.vy || -1, col, 16, 2.4);
   }
   // Beam: a piercing laser from the ship straight to the top of the field (each device draws its own)
+  // A laser from the ship's nose to the top of the field: a white-hot core in an electric-blue body with a
+  // flickering, wavy edge, light boiling off it in little squares, a flare at the ship and where it burns
+  // (each device draws its own)
   function drawBeams(x, R, me) {
     R.players.forEach(function (p) {
       var px = p.x, py = p.y, on = p.beaming;
       if (GV && p.id === me) { on = GV.beamLocal; px = GV.pred.x; py = GV.pred.y; }
       if (!on || !p.alive) return;
-      var top = -HB, len = py - 8 - top, fl = 0.75 + Math.random() * 0.25, c = POW.beam.c;
-      x.globalAlpha = 0.28 * fl; x.fillStyle = c; x.fillRect(px - 5, top, 10, len);
-      x.globalAlpha = 0.6 * fl; x.fillRect(px - 2.2, top, 4.4, len);
-      x.globalAlpha = 0.95; x.fillStyle = '#ffffff'; x.fillRect(px - 0.9, top, 1.8, len);
+      var top = -HB, bot = py - 9, len = bot - top, fl = 0.8 + Math.random() * 0.2, c = POW.beam.c, i;
+      x.globalAlpha = 0.16 * fl; x.fillStyle = c; x.fillRect(px - 9, top, 18, len);
+      x.globalAlpha = 0.3 * fl; x.fillRect(px - 4.5, top, 9, len);
+      // the wavy body
+      x.globalAlpha = 0.85; x.fillStyle = '#4fc4ff'; x.beginPath(); x.moveTo(px - 2.6, bot);
+      for (i = 0; i <= 12; i++) x.lineTo(px - 2.2 - Math.abs(Math.sin(drawT * 40 + i * 1.7)) * 1.1, bot - len * i / 12);
+      for (i = 12; i >= 0; i--) x.lineTo(px + 2.2 + Math.abs(Math.sin(drawT * 37 + i * 2.1)) * 1.1, bot - len * i / 12);
+      x.closePath(); x.fill();
+      x.globalAlpha = 1; x.fillStyle = '#ffffff'; x.fillRect(px - 0.9, top, 1.8, len);
+      // light boiling off it
+      x.fillStyle = '#9ae6ff';
+      for (i = 0; i < 14; i++) { var yy = bot - ((drawT * 160 + i * 37.3 + p.ci * 11) % len), side = i % 2 ? 1 : -1, d = 3 + ((i * 7.7 + drawT * 30) % 9), sz = 0.9 + (i % 3) * 0.5; x.globalAlpha = 0.5 + (i % 3) * 0.2; x.fillRect(px + side * d - sz / 2, yy, sz, sz); }
       x.globalAlpha = 1;
-      glow(x, px, py - 10, 9, '#ffffff', 0.8); glow(x, px, py - 10, 16, c, 0.6);
+      glow(x, px, bot, 7, '#ffffff', 0.95); glow(x, px, bot, 18, c, 0.75);
+      // where it burns: whatever's in its way flares
+      var hitY = null;
+      R.segs.forEach(function (s) { if (Math.abs(s.x - px) < 6.5 && s.y < bot && (hitY == null || s.y > hitY)) hitY = s.y; });
+      if (hitY != null) { glow(x, px, hitY, 12 + Math.random() * 5, '#ffffff', 0.8); glow(x, px, hitY, 22, c, 0.6); }
     });
   }
-  // lightning (Shock) and web threads (the Mega Spider): a jagged bright line
+  // a jagged bolt of lightning from (x1, y1) to (x2, y2), new every frame, with a white core in a coloured glow;
+  // fork: how many little side branches
+  function bolt(x, x1, y1, x2, y2, col, a, wide, fork) {
+    var d = Math.hypot(x2 - x1, y2 - y1); if (d < 1) return;
+    var n = Math.max(3, Math.round(d / 5)), nx = -(y2 - y1) / d, ny = (x2 - x1) / d, pts = [[x1, y1]], j = Math.min(4, d * 0.12);
+    for (var i = 1; i < n; i++) { var t = i / n, o = rnd(-j, j); pts.push([x1 + (x2 - x1) * t + nx * o, y1 + (y2 - y1) * t + ny * o]); }
+    pts.push([x2, y2]);
+    function path(ps) { x.beginPath(); ps.forEach(function (q, k) { x[k ? 'lineTo' : 'moveTo'](q[0], q[1]); }); x.stroke(); }
+    x.lineJoin = 'round'; x.lineCap = 'round';
+    x.globalAlpha = 0.35 * a; x.strokeStyle = col; x.lineWidth = 4.5 * wide; path(pts);
+    x.globalAlpha = 0.9 * a; x.lineWidth = 1.8 * wide; path(pts);
+    x.globalAlpha = a; x.strokeStyle = '#ffffff'; x.lineWidth = 0.8 * wide; path(pts);
+    for (var f = 0; f < (fork || 0); f++) {
+      var b = pts[1 + Math.floor(Math.random() * (pts.length - 2))], an = Math.atan2(y2 - y1, x2 - x1) + rnd(-1.1, 1.1), L = rnd(6, 14);
+      var q = [b, [b[0] + Math.cos(an) * L * 0.5 + rnd(-2, 2), b[1] + Math.sin(an) * L * 0.5 + rnd(-2, 2)], [b[0] + Math.cos(an) * L, b[1] + Math.sin(an) * L]];
+      x.globalAlpha = 0.7 * a; x.strokeStyle = col; x.lineWidth = 1.3 * wide; path(q);
+      x.globalAlpha = 0.9 * a; x.strokeStyle = '#ffffff'; x.lineWidth = 0.5 * wide; path(q);
+    }
+    x.globalAlpha = 1;
+  }
+  // chain lightning (Shock) and web threads (the Mega Spider): flickering bolts
   function drawArcs(x) {
     fx.arcs.forEach(function (a) {
-      var n = 6, x0 = a.x1, y0 = a.y1;
-      x.strokeStyle = a.c; x.lineWidth = 1.4; x.globalAlpha = Math.min(1, a.life / 0.12); x.beginPath(); x.moveTo(x0, y0);
-      for (var i = 1; i <= n; i++) { var t = i / n, xx = a.x1 + (a.x2 - a.x1) * t + (i < n ? rnd(-3, 3) : 0), yy = a.y1 + (a.y2 - a.y1) * t + (i < n ? rnd(-3, 3) : 0); x.lineTo(xx, yy); }
-      x.stroke(); x.globalAlpha = 1;
-      glow(x, a.x2, a.y2, 6, a.c, 0.7);
+      if (Math.random() < 0.15) return;      // it flickers
+      var k = Math.min(1, a.life / (a.max || 0.3) * 1.6);
+      bolt(x, a.x1, a.y1, a.x2, a.y2, a.c === '#bff8ff' ? POW.shock.c : a.c, k, 1, 2);
+      glow(x, a.x2, a.y2, 10, a.c, 0.8 * k); glow(x, a.x2, a.y2, 3.5, '#ffffff', k);
     });
   }
   // ground shockwaves: a dashed warning circle that blinks faster as it comes, then a bright flare
@@ -2246,20 +2417,47 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var y = L.ch - L.m - L.lh, fp = Math.max(1, L.fp - (L.fp > 3 ? 1 : 0));
     L.ps.forEach(function (p, i) {
       var n = L.slots.length, X = i === 0 ? L.m : i === n - 1 ? L.cw - L.m - L.lw : Math.round((L.cw - L.lw) / 2), col = PCOL[p.ci % 3];
+      // holding a weapon: a bigger plate in its colour takes the lives plate's place, with its icon, its name and
+      // a thick bar of what's left draining as it's used (blinking when nearly out); the lives come back after
+      if (p.alive && p.power && p.powerT > 0) { drawPowerPlate(x, L, p, i, n, fp); return; }
       var pl = plateSpr(L.lw, L.lh, col, true);
       x.globalAlpha = 0.9; x.drawImage(pl.c, X - pl.pad, y - pl.pad); x.globalAlpha = 1;
-      // holding a weapon: its name over its ammo bar take the plate's place (the lives come back when it's empty)
-      if (p.alive && p.power && p.powerT > 0) {
-        var nm = txt(POW[p.power].name.toUpperCase(), '#ffffff', Math.max(1, fp - 1)), bh2 = Math.max(2, Math.round(L.lh * 0.16));
-        drawTxtAt(x, nm, X + L.lw / 2, y + L.lh * 0.34, Math.min(1, (L.lw * 0.86) / nm.w));
-        meter(x, X + L.lw * 0.1, y + L.lh * 0.62, L.lw * 0.8, bh2, POW[p.power].c, clamp(p.powerT, 0, 1));
-        return;
-      }
       var t = txt('x' + Math.max(0, p.lives), '#ffffff', fp), s = L.lh * 0.36, gx = X + L.lw / 2 - (t.w + s * 1.4) / 2 + s * 0.5;
       gem(x, gx, y + L.lh / 2, s, col);
       drawTxtAt(x, t, gx + s * 0.9 + t.w / 2, y + L.lh / 2);
     });
   }
+  var powHud = {};
+  function powIcon(k, sz) {
+    return spx('pwi' + k + sz, function () { var c = mk(sz, sz), x = c.getContext('2d'); x.translate(sz / 2, sz / 2); x.scale(sz / 12, sz / 12); capIcon(x, k); return c; });
+  }
+  function drawPowerPlate(x, L, p, i, n, fp) {
+    var D = POW[p.power], f = clamp(p.powerT, 0, 1), w = Math.round(Math.min(L.lw * 2.4, (L.cw - L.m * 2) / Math.max(1, n) - L.m)), h = Math.round(L.lh * 1.6);
+    var X = i === 0 ? L.m : i === n - 1 ? L.cw - L.m - w : Math.round((L.cw - w) / 2), y = L.ch - L.m - h;
+    // a new pick-up (or a different one) makes the plate flash and pop
+    var st = powHud[p.id]; if (!st || st.k !== p.power || f > st.f + 0.05) st = powHud[p.id] = { k: p.power, t: drawT, f: f }; st.f = f;
+    var pop = clamp(1 - (drawT - st.t) / 0.45, 0, 1), low = f < 0.22 && Math.floor(drawT * 6) % 2;
+    var pl = plateSpr(w, h, D.c, false);
+    x.drawImage(pl.c, X - pl.pad, y - pl.pad);
+    var ic = Math.round(h * 0.62), icX = X + Math.round(h * 0.25), icY = y + Math.round((h - ic) / 2);
+    x.globalCompositeOperation = 'lighter'; glowAt(x, icX + ic / 2, icY + ic / 2, ic * 0.9, D.c, 0.55); x.globalCompositeOperation = 'source-over';
+    x.drawImage(powIcon(p.power, ic), icX, icY);
+    var tx0 = icX + ic + Math.round(h * 0.2), tw = X + w - Math.round(h * 0.28) - tx0;
+    var nm = txt(D.name.toUpperCase(), low ? '#ff5a5a' : '#ffffff', Math.max(1, fp));
+    drawTxtAt(x, nm, tx0 + Math.min(tw, nm.w) / 2, y + h * 0.33, Math.min(1, tw / nm.w));
+    // the bar: twelve cells, the last one draining smoothly
+    var by = Math.round(y + h * 0.56), bh = Math.max(4, Math.round(h * 0.26)), cells = 12, gap = Math.max(1, Math.round(bh * 0.18)), cw2 = (tw - gap * (cells - 1)) / cells;
+    x.fillStyle = 'rgba(2,4,16,.9)'; x.fillRect(tx0 - gap, by - gap, tw + gap * 2, bh + gap * 2);
+    for (var q = 0; q < cells; q++) {
+      var cx0 = Math.round(tx0 + q * (cw2 + gap)), fill = clamp(f * cells - q, 0, 1), cwq = Math.round(cw2);
+      x.fillStyle = hexA(D.c, 0.16); x.fillRect(cx0, by, cwq, bh);
+      if (fill <= 0) continue;
+      var gr = x.createLinearGradient(0, by, 0, by + bh); gr.addColorStop(0, shade(low ? '#ff4a4a' : D.c, 0.6)); gr.addColorStop(1, low ? '#ff4a4a' : D.c);
+      x.fillStyle = gr; x.fillRect(cx0, by, Math.max(1, Math.round(cwq * fill)), bh);
+    }
+    if (pop > 0) { x.globalAlpha = pop * 0.6; x.fillStyle = '#ffffff'; x.fillRect(X, y, w, h); x.globalAlpha = 1; }
+  }
+  function glowAt(x, X, Y, r, col, a) { x.globalAlpha = a; x.drawImage(glowSpr(col), X - r, Y - r, r * 2, r * 2); x.globalAlpha = 1; }
   function drawHud(x, R, L) {
     var fp = L.fp, y = L.m;
     L.ps.forEach(function (p, i) {
@@ -2290,13 +2488,49 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var wt = txt(R.wave > LAST ? 'Wave ' + R.wave : 'Wave ' + R.wave + '/' + LAST, '#ffffff', fpL); drawTxtAt(x, wt, midX, labY, Math.min(1, room / wt.w));
     }
   }
+  // Big 3D block letters for the wave titles, like the cabinet's: each pixel of the letter is a bevelled block
+  // with its depth showing down and to the right. p: screen pixels per block.
+  function blockLetter(ch, col, p) {
+    return spx('BL' + ch + col + p, function () {
+      var gl = F5[ch] || F5['?'], d = Math.max(2, Math.round(p * 0.55)), o = Math.max(1, Math.round(p * 0.18)), pad = o + 1;
+      var c = mk(5 * p + d + pad * 2, 7 * p + d + pad * 2), x = c.getContext('2d'), side = shade(col === '#ffffff' ? '#8a9ccf' : col, -0.45);
+      function each(fn) { for (var r = 0; r < 7; r++) for (var q = 0; q < 5; q++) if ((gl[r] >> (4 - q)) & 1) fn(pad + q * p, pad + r * p, r); }
+      x.fillStyle = '#05030c'; each(function (X, Y) { x.fillRect(X - o, Y - o, p + o * 2 + d, p + o * 2 + d); });
+      for (var k = d; k >= 1; k--) { x.fillStyle = k === d ? shade(side, -0.4) : side; each(function (X, Y) { x.fillRect(X + k, Y + k, p, p); }); }
+      each(function (X, Y, r) {
+        x.fillStyle = shade(col, r < 2 ? 0.55 : r < 4 ? 0.2 : -0.08); x.fillRect(X, Y, p, p);
+        if (p >= 5) { x.fillStyle = 'rgba(255,255,255,.55)'; x.fillRect(X, Y, p, 1); x.fillRect(X, Y, 1, p); x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(X, Y + p - 1, p, 1); x.fillRect(X + p - 1, Y, 1, p); }
+      });
+      return { c: c, pad: pad };
+    });
+  }
+  // A wave title: its block letters drop in one after another, hold, then burst into cubes
   function drawBanner(x, L) {
-    var bn = fx.banner, k = 1 - bn.life / bn.max, a = k < 0.08 ? k / 0.08 : bn.life < 0.4 ? bn.life / 0.4 : 1;
-    if (k < 0.15 && Math.floor(drawT * 16) % 2) return;
-    var big = txt(bn.text, bn.c, Math.round(L.fp * 2.2), bn.c), fit2 = Math.min(1, L.cw * 0.92 / big.w), sc = (k < 0.1 ? 1.5 - k * 5 : 1) * fit2, cy = L.ch * 0.42;
-    x.globalAlpha = a; drawTxtAt(x, big, L.cw / 2, cy, sc);
-    if (bn.sub) { var st = txt(bn.sub, '#ffffff', L.fp); drawTxtAt(x, st, L.cw / 2, cy + big.h * fit2 * 0.5 + st.h * 0.6, Math.min(1, L.cw * 0.9 / st.w)); }
-    x.globalAlpha = 1;
+    var bn = fx.banner, el = bn.max - bn.life, a = bn.life < 0.4 ? bn.life / 0.4 : 1;
+    var text = String(bn.text).toUpperCase(), n = text.length, wU = ptW(text);
+    var p = Math.max(2, Math.floor(Math.min(L.fp * 3.6, L.cw * 0.86 / wU, L.ch * 0.16 / 7))), tw = wU * p, X0 = Math.round((L.cw - tw) / 2), cy = Math.round(L.ch * 0.4), Y0 = cy - Math.round(3.5 * p);
+    var gone = bn.life < 0.55, oy = HB * S;
+    if (gone && !bn.burst) {
+      bn.burst = true;
+      for (var i = 0; i < n; i++) { var gl = F5[text.charAt(i)] || F5['?']; for (var r = 0; r < 7; r++) for (var q = 0; q < 5; q++) if ((gl[r] >> (4 - q)) & 1 && (r + q + i) % 2 === 0) {
+        var wx = (X0 + (i * 6 + q + 0.5) * p) / S, wy = (Y0 + (r + 0.5) * p - oy) / S, an = Math.atan2(wy - (cy - oy) / S, wx - L.cw / 2 / S) + rnd(-0.6, 0.6), v = rnd(60, 190);
+        part(wx, wy, Math.cos(an) * v, Math.sin(an) * v * 0.7, bn.c, rnd(0.5, 0.95), rnd(0.9, 1.6), (r + q) % 5 === 0);
+      } }
+    }
+    if (!gone) {
+      // a soft glow behind the word
+      x.globalCompositeOperation = 'lighter'; x.globalAlpha = 0.35 * Math.min(1, el / 0.4);
+      x.drawImage(glowSpr(bn.c === '#ffffff' ? '#8fd6ff' : bn.c), X0 - p * 4, Y0 - p * 4, tw + p * 8, p * 15);
+      x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
+      for (var j = 0; j < n; j++) {
+        var ch = text.charAt(j); if (ch === ' ') continue;
+        var t0 = j * 0.045, k = clamp((el - t0) / 0.28, 0, 1); if (k <= 0) continue;
+        // falls in from above with a little bounce
+        var e = k < 1 ? 1 - Math.pow(1 - k, 3) * Math.cos(k * 7) : 1, dy = Math.round((1 - e) * -p * 9), sp = blockLetter(ch, bn.c, p);
+        x.globalAlpha = Math.min(1, k * 3); x.drawImage(sp.c, X0 + j * 6 * p - sp.pad, Y0 + dy - sp.pad); x.globalAlpha = 1;
+      }
+    }
+    if (bn.sub && el > 0.3) { var st = txt(bn.sub, '#ffffff', L.fp); x.globalAlpha = a * Math.min(1, (el - 0.3) / 0.2); drawTxtAt(x, st, L.cw / 2, Y0 + 7 * p + Math.round(p * 0.6) + st.h * 0.7, Math.min(1, L.cw * 0.9 / st.w)); x.globalAlpha = 1; }
   }
 
   // ═══ End of a game ══════════════════════════════════════════════════════
