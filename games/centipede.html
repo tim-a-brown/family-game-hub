@@ -666,7 +666,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (!P) return;
     var k = cap.k, c = POW[k].c;
     G.stats.powers++;
-    burst(cap.x, cap.y, c, 12, 1.2); ring(cap.x, cap.y, 26, c); buzz(P.id, 'success');
+    // like the cabinet: a red double ring bursts round the ship, and a spray of coloured confetti
+    ring(P.x, P.y, 36, '#ff2a3a'); ring(P.x, P.y, 20, '#ff4a5a');
+    ['#3dff6a', '#3de8ff', '#ff3dc8', '#ffe23d', '#ff8a1f'].forEach(function (cc) { burst(cap.x, cap.y, cc, 4, 1.4); });
+    buzz(P.id, 'success');
     sound('power');
     P.power = k; P.powerT = 1; P.beamOn = false; P.cool = Math.min(P.cool, 0.05);
     popup(P.x, P.y - 18, POW[k].name, c, true);
@@ -2105,6 +2108,61 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       addGlow(x.canvas, col, 6 * u);
     });
   }
+  // Power-ups, like the cabinet's: a big black glyph with a thick outline in a colour that keeps cycling
+  // round the rainbow, a comet swooshing round it inside a faint bubble, a white glow on the floor under it,
+  // coloured pixel confetti floating about (its name goes over it, drawn with the HUD)
+  var CAPC = ['#3dff6a', '#3de8ff', '#3d7aff', '#b64dff', '#ff3dc8', '#ff8a1f', '#ffe23d'];
+  function capCol(cp) { return CAPC[(Math.floor(drawT / 0.3) + cp.id) % CAPC.length]; }
+  function drawCapGlow(x, cp) {
+    var col = capCol(cp), y = cp.y + 7;
+    x.save(); x.translate(cp.x, y); x.scale(1, 0.38);
+    var g = x.createRadialGradient(0, 0, 0, 0, 0, 13); g.addColorStop(0, 'rgba(255,255,255,.75)'); g.addColorStop(0.6, 'rgba(255,255,255,.3)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g; x.beginPath(); x.arc(0, 0, 13, 0, TAU); x.fill(); x.restore();
+    glow(x, cp.x, cp.y, 18, col, 0.35);
+    // confetti
+    for (var i = 0; i < 9; i++) {
+      var a = hash2(cp.id, i) * TAU, rr = 10 + hash2(i, cp.id) * 10, up = ((drawT * 0.35 + hash2(cp.id + 7, i)) % 1);
+      var qx = cp.x + Math.cos(a + drawT * 0.4) * rr, qy = cp.y + Math.sin(a + drawT * 0.4) * rr * 0.7 - up * 8, sz = 1.4 + hash2(i + 3, cp.id) * 1.2;
+      x.globalAlpha = (1 - up) * 0.9; x.fillStyle = CAPC[(i + cp.id) % CAPC.length]; x.fillRect(qx - sz / 2, qy - sz / 2, sz, sz);
+    }
+    x.globalAlpha = 1;
+  }
+  function capGlyph(x, k) {
+    x.beginPath();
+    if (k === 'shock') { x.moveTo(1.8, -6.5); x.lineTo(-3.6, 0.4); x.lineTo(0.2, 0.4); x.lineTo(-2.2, 6.5); x.lineTo(3.8, -1.2); x.lineTo(-0.1, -1.2); x.lineTo(1.8, -6.5); }
+    else if (k === 'scatter') {
+      // a three-pronged claw fanning upward
+      x.moveTo(-1.2, 6); x.lineTo(1.2, 6); x.lineTo(1.2, 1.6); x.lineTo(4.6, -4.8); x.lineTo(5.6, -6.2); x.lineTo(3, -4.4); x.lineTo(0.9, -0.4); x.lineTo(0.9, -6.6); x.lineTo(0, -7.6); x.lineTo(-0.9, -6.6);
+      x.lineTo(-0.9, -0.4); x.lineTo(-3, -4.4); x.lineTo(-5.6, -6.2); x.lineTo(-4.6, -4.8); x.lineTo(-1.2, 1.6); x.closePath();
+    } else if (k === 'beam') {
+      // a beam bar: -|-|-
+      x.rect(-7, -0.9, 14, 1.8); x.rect(-3.3, -4.6, 1.8, 9.2); x.rect(1.5, -4.6, 1.8, 9.2); x.moveTo(-7.5, 0); x.lineTo(-5.5, -1.6); x.lineTo(-5.5, 1.6); x.closePath(); x.moveTo(7.5, 0); x.lineTo(5.5, -1.6); x.lineTo(5.5, 1.6); x.closePath();
+    } else {
+      // a round bomb with its fuse
+      x.arc(-0.6, 1.2, 4.6, 0, TAU); x.rect(-1.9, -4.6, 2.6, 2.2);
+    }
+  }
+  function drawCap(x, cp) {
+    var col = capCol(cp), bob = Math.sin(drawT * 2.4 + cp.id) * 1.2, cy = cp.y + bob;
+    // the bubble
+    x.fillStyle = hexA(col, 0.1); x.beginPath(); x.arc(cp.x, cy, 10.5, 0, TAU); x.fill();
+    x.strokeStyle = hexA(col, 0.35); x.lineWidth = 0.7; x.stroke();
+    // the comet, swooshing round on a tilted orbit (behind and in front)
+    var a0 = drawT * 4.2 + cp.id;
+    x.lineCap = 'round';
+    for (var i = 0; i < 14; i++) {
+      var a = a0 - i * 0.16, k = 1 - i / 14;
+      x.strokeStyle = hexA(col, 0.9 * k); x.lineWidth = 2.6 * k + 0.3;
+      x.beginPath(); x.moveTo(cp.x + Math.cos(a) * 12, cy + Math.sin(a) * 7 - Math.cos(a) * 3); x.lineTo(cp.x + Math.cos(a - 0.17) * 12, cy + Math.sin(a - 0.17) * 7 - Math.cos(a - 0.17) * 3); x.stroke();
+    }
+    // the glyph: black with a thick outline in the colour, tilting as it floats
+    x.save(); x.translate(cp.x, cy); x.rotate(Math.sin(drawT * 1.7 + cp.id) * 0.18); x.scale(1.08, 1.08);
+    x.lineJoin = 'round'; capGlyph(x, cp.k);
+    x.strokeStyle = col; x.lineWidth = cp.k === 'beam' ? 1.6 : 2.6; x.stroke();
+    x.fillStyle = '#0a0a10'; x.fill();
+    if (cp.k === 'bomb') { x.strokeStyle = col; x.lineWidth = 0.9; x.beginPath(); x.moveTo(0.2, -4.6); x.quadraticCurveTo(1.4, -7.4, 3.6, -7); x.stroke(); x.fillStyle = '#fff3a0'; x.beginPath(); x.arc(3.8, -7, 1 + Math.random() * 0.5, 0, TAU); x.fill(); }
+    x.restore();
+  }
   // a laser bolt pointing up, its head at the anchor, fading out along the tail
   function boltSpr(col, len, wid) {
     return spx('bt' + col + len + wid, function () {
@@ -2140,11 +2198,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     for (var i = 0; i < s.length; i++) { var gl = F5[s.charAt(i)] || F5['?']; for (var r = 0; r < 7; r++) for (var q = 0; q < 5; q++) if ((gl[r] >> (4 - q)) & 1) fn(i * 6 + q, r); }
   }
   // text as a finished picture: white-hot top fading to its colour, a dark outline, an optional glow
-  function txt(s, col, fp, glowC) {
+  // oc: an outline colour (round a thin dark edge) instead of the plain dark outline
+  function txt(s, col, fp, glowC, oc) {
     s = String(s).toUpperCase().replace(/[…]/g, '.').replace(/[·–—]/g, '-').replace(/[’]/g, "'");
-    var key = s + '|' + col + '|' + fp + '|' + (glowC || ''), t = TXT[key]; if (t) return t;
+    var key = s + '|' + col + '|' + fp + '|' + (glowC || '') + '|' + (oc || ''), t = TXT[key]; if (t) return t;
     if (++TXTN > 200) { TXT = {}; TXTN = 1; }
-    var ol = Math.max(1, Math.round(fp * 0.6)), pad = ol + (glowC ? fp * 3 : 0) + 1, w = ptW(s) * fp + pad * 2, h = 7 * fp + pad * 2 + ol;
+    var ol = Math.max(1, Math.round(fp * (oc ? 0.75 : 0.6))) + (oc ? Math.max(1, Math.round(fp * 0.3)) : 0), pad = ol + (glowC ? fp * 3 : 0) + 1, w = ptW(s) * fp + pad * 2, h = 7 * fp + pad * 2 + ol;
     var c = mk(w, h), x = c.getContext('2d'), f = mk(w, h), fx2 = f.getContext('2d');
     var gr = fx2.createLinearGradient(0, pad, 0, pad + 7 * fp); gr.addColorStop(0, shade(col, 0.65)); gr.addColorStop(0.45, col); gr.addColorStop(1, shade(col, -0.2));
     fx2.fillStyle = gr;
@@ -2153,6 +2212,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (glowC) { x.imageSmoothingEnabled = true; var gb = blurred(f, glowC, fp * 3); x.globalAlpha = 0.85; x.drawImage(gb, 0, 0, w, h); x.globalAlpha = 1; }
     x.fillStyle = '#07040f';
     glyphs(s, function (px, py) { x.fillRect(pad + px * fp - ol, pad + py * fp - ol, fp + ol * 2, fp + ol * 3); });
+    if (oc) { var oi = ol - Math.max(1, Math.round(fp * 0.3)); x.fillStyle = oc; glyphs(s, function (px, py) { x.fillRect(pad + px * fp - oi, pad + py * fp - oi, fp + oi * 2, fp + oi * 2); }); }
     x.drawImage(f, 0, 0);
     return (TXT[key] = { c: c, w: w, h: h, s: s, col: col, fp: fp, gl: glowC });
   }
@@ -2288,14 +2348,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (R.boss) drawBoss(x, R.boss, use3);
     // light: power-up halos, lasers, beams, lightning
     x.globalCompositeOperation = 'lighter';
-    R.caps.forEach(function (cp) { var fade = cp.t > CAP_LIFE - 3 && Math.floor(drawT * 8) % 2 ? 0.2 : 1; glow(x, cp.x, cp.y, 22, POW[cp.k].c, (0.5 + 0.2 * Math.sin(drawT * 6 + cp.id)) * fade); });
+    R.caps.forEach(function (cp) { if (!(cp.t > CAP_LIFE - 3 && Math.floor(drawT * 8) % 2)) drawCapGlow(x, cp); });
     R.bullets.forEach(function (b) { if (GV && b.o === me) return; drawBullet(x, b, colOf(R, b.o)); });
     if (GV) GV.lb.forEach(function (b) { drawBullet(x, b, PCOL[GV.ci % 3]); });
     drawBeams(x, R, me);
     drawArcs(x);
     x.globalCompositeOperation = 'source-over';
     R.shots.forEach(function (s) { drawShot(x, s); });
-    R.caps.forEach(function (cp) { if (cp.t > CAP_LIFE - 3 && Math.floor(drawT * 8) % 2) return; drawSpr(x, capSpr(cp.k), cp.x, cp.y, 1.1 + 0.08 * Math.sin(drawT * 5 + cp.id)); });
+    R.caps.forEach(function (cp) { if (cp.t > CAP_LIFE - 3 && Math.floor(drawT * 8) % 2) return; drawCap(x, cp); });
     // the game's first power-up: two arrows point at it, with the hint over it
     R.caps.forEach(function (cp) {
       if (!cp.tut) return;
@@ -2323,6 +2383,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     // screen-space: score pop-ups, HUD, banners
     x.setTransform(1, 0, 0, 1, 0, 0);
     var fpS = Math.max(1, Math.round(L.fp * 0.75));
+    // the power-ups' names over them, white with an outline in the colour they're flashing
+    R.caps.forEach(function (cp) {
+      if (cp.t > CAP_LIFE - 3 && Math.floor(drawT * 8) % 2) return;
+      var lt = txt(POW[cp.k].name, '#ffffff', Math.max(1, Math.round(S * 0.75)), null, capCol(cp));
+      drawTxtAt(x, lt, cp.x * S + sx, (cp.y - 17 + Math.sin(drawT * 2.4 + cp.id) * 1.2) * S + sy + oy);
+    });
     fx.pops.forEach(function (p) {
       var k3 = p.life / p.max; if (k3 < 0.2 && Math.floor(drawT * 20) % 2) return;
       var t = p.big ? txt(p.text, p.c, L.fp, p.c) : txt(p.text, p.c, fpS);
