@@ -6539,8 +6539,30 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function sv(k, name, html, dir) { return '<span class="sv' + (dir > 0 ? ' sv-up' : dir < 0 ? ' sv-dn' : '') + '">' + si(k, name) + html + '</span>'; }
   // "Whenever this character challenges another character with N {S} or less, banish that character" (no damage either way)
   function chalBanishes(a, t) { var cb = !isLoc(t) && staticOp(a, 'chalBanish'); return !!cb && STR(t) <= cb.maxS; }
+  // What a challenge would deal each way, worked out the way the challenge itself does it: abilities that kick in as it
+  // starts ("they gain Resist +2 during that challenge"), shields and "can't be dealt damage" included. Changes nothing.
+  function chalOutcome(a, t) {
+    var loc = isLoc(t), ma = (C(a).mods || []).slice(), mt = (C(t).mods || []).slice(), was = clashAt, r = { dA: 0, dD: 0 };
+    try {
+      clashAt = { a: a, t: t, shield: chalShields(a, t) };
+      chalBoosts(a, t);
+      var would = function (u, n) {
+        if (n <= 0) return 0;
+        if (u === a && cant(u, 'chalDmgAtt')) return 0;
+        if (cant(u, 'dmg') || cant(u, 'chalDmg') || clashAt.shield.indexOf(u) >= 0) return 0;
+        if ((C(u).mods || []).some(function (m) { return m.shield; })) return 0;
+        if (staticOp(u, 'firstShield') && (TT().fshield || []).indexOf(u) < 0) return 0;
+        if (isChar(u) && S.P[C(u).o].board.some(function (x) { return x !== u && !!staticOp(x, 'redirectDmg'); })) return 0;
+        return Math.max(0, n - kwN(u, 'resist'));
+      };
+      r.dA = would(t, hitPow(a, true)); r.dD = loc ? 0 : would(a, hitPow(t, false));
+    } catch (e) {
+      r.dA = Math.max(0, hitPow(a, true) - kwN(t, 'resist')); r.dD = loc ? 0 : Math.max(0, hitPow(t, false) - kwN(a, 'resist'));
+    } finally { clashAt = was; C(a).mods = ma; C(t).mods = mt; }
+    return r;
+  }
   function chalPreview(a, t) {
-    var loc = isLoc(t), dA = Math.max(0, hitPow(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, hitPow(t, false) - kwN(a, 'resist'));
+    var loc = isLoc(t), oc = chalOutcome(a, t), dA = oc.dA, dD = oc.dD;
     var lT = WP(t) - C(t).dmg, lA = WP(a) - C(a).dmg, killT = dA > 0 && dA >= lT, killA = dD > 0 && dD >= lA;
     if (chalBanishes(a, t)) { dA = dD = 0; killT = true; killA = false; }   // Boo: it's banished and no damage is dealt
     return { killT: killT, killA: killA,
@@ -6549,7 +6571,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       a: killA ? esc(nm(a)) + ' banished too' : dD ? esc(nm(a)) + ' ' + sv('w', 'Willpower', lA + '→' + (lA - dD), -1) : esc(nm(a)) + ' unhurt' };
   }
   function challengeScore(a, t) {
-    var loc = isLoc(t), dA = Math.max(0, hitPow(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, hitPow(t, false) - kwN(a, 'resist'));
+    var loc = isLoc(t), oc = chalOutcome(a, t), dA = oc.dA, dD = oc.dD;
     var killT = dA > 0 && C(t).dmg + dA >= WP(t), killA = dD > 0 && C(a).dmg + dD >= WP(a);
     if (chalBanishes(a, t)) { dA = dD = 0; killT = true; killA = false; }
     var vT = loc ? LORE(t) * 2.6 + 1 : cardValue(t), vA = cardValue(a);
@@ -12551,7 +12573,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     STR: STR, WP: WP, LORE: LORE, act: act, render: render, toolbox: openToolbox, speed: function (x) { SPD = x; }, ui: ui, zoom: openZoom, dropDeck: dropDeck, canonStory: canonStory, storyOf: storyOf, deEnt: deEnt, showLog: showLog,
     // tests: apply one ability effect to a card, as if from src
     // tests: queue one ability as if it had triggered, and run the queue
-    rulesHTML: rulesHTML,
+    rulesHTML: rulesHTML, chalOutcome: chalOutcome, chalPreview: chalPreview,
     fire: function (src, ab, pi, ctx) { Q.push({ src: src, ab: ab, pi: pi, ctx: ctx || {} }); pumpQ(); },
     rollHTML: rollHTML, fitRoll: fitRoll,
     hitFx: function (e, x, src) { var st = { pi: S.cur, src: src, ab: { name: 'Test' }, said: [] }; fx.beam(src, [x]); act(function () { hit(e, st, x); checkBanishAll(); }); }
