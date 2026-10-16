@@ -136,10 +136,10 @@ document.addEventListener('visibilitychange', function () {
 /* Search + Surprise on top; the category chips, with the Daily puzzles button beside them under Surprise */
 .filters{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:start;}
 .filters .srow{display:contents;}
-.filters .search{grid-column:1;grid-row:1;}
-.filters .surprise{grid-column:2;grid-row:1;}
-.filters .chips{grid-column:1;grid-row:2;}
-.dlbtn{grid-column:2;grid-row:2;align-self:stretch;margin-top:10px;margin-bottom:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:74px;padding:8px 10px;
+.filters .search{grid-column:1;grid-row:2;}
+.filters .surprise{grid-column:2;grid-row:2;}
+.filters .chips{grid-column:1;grid-row:3;}
+.dlbtn{grid-column:2;grid-row:3;align-self:stretch;margin-top:10px;margin-bottom:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:74px;padding:8px 10px;
   border:0;border-radius:20px;cursor:pointer;color:var(--text);font:inherit;text-align:center;
   background:color-mix(in srgb,var(--blue,#3b82f6) 13%,var(--bg));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--blue,#3b82f6) 40%,transparent),0 3px 0 color-mix(in srgb,var(--blue,#3b82f6) 30%,transparent);transition:transform .12s var(--spring);}
 .dlbtn:active{transform:translateY(2px) scale(.98);}
@@ -344,18 +344,53 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .cont .d{font-size:.75rem;color:var(--text-2);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cont-net{box-shadow:inset 3px 0 0 var(--c), inset 0 0 0 1.5px color-mix(in srgb,var(--yellow) 70%,transparent);}
 .cont-net .d{color:var(--yellow);}
-/* A linked friend's open table: the game's icon, then who's hosting on the right (their avatar, ringed in green, with a live dot) */
-.cont-live .d b{color:#4ade80;font-weight:900;}
-.ft-who{position:relative;flex:none;display:grid;place-items:center;width:30px;height:30px;}
-.ft-who .avatar{width:28px;height:28px;padding:0;font-size:.75rem;box-shadow:0 0 0 1.5px var(--surface),0 0 0 3px rgba(74,222,128,.8);}
-.ft-who .avatar .ico{width:60%;height:60%;}
+/* Open tables banner (above the search): linked friends hosting a table you can join */
+.otb{grid-column:1/-1;grid-row:1;display:flex;align-items:center;gap:12px;width:100%;min-height:58px;margin:0 0 10px;padding:8px 12px 8px 10px;border:0;border-radius:18px;cursor:pointer;
+  font:inherit;color:var(--text);text-align:left;background:color-mix(in srgb,#4ade80 13%,var(--bg));
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,#4ade80 50%,transparent),0 3px 0 color-mix(in srgb,#4ade80 28%,transparent);transition:transform .12s var(--spring);}
+.otb[hidden]{display:none;}
+.otb:active{transform:translateY(2px) scale(.99);}
+.otb-avs{position:relative;display:flex;flex:none;padding-right:2px;}
+.otb-avs .avatar{width:38px;height:38px;padding:0;font-size:.95rem;box-shadow:0 0 0 2.5px color-mix(in srgb,#4ade80 13%,var(--bg));}
+.otb-avs .avatar + .avatar{margin-left:-12px;}
+.otb-avs .avatar .ico{width:60%;height:60%;}
+.otb-avs .live-dot{right:-1px;top:-1px;width:11px;height:11px;box-shadow:0 0 0 2px var(--bg);}
+.otb-tx{flex:1;min-width:0;display:flex;flex-direction:column;}
+.otb-tx b{font-weight:900;font-size:1rem;line-height:1.2;}
+.otb-tx small{font-size:.8rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.otb-go{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#4ade80;color:#06240f;}
+.otb-go .ico{width:18px;height:18px;stroke-width:2.8;}
+.otb.in{animation:otbIn .55s var(--spring) both, otbGlow 1.8s ease-out .3s both;}
+.otb.ping{animation:otbPing .5s var(--spring), otbGlow 1.8s ease-out both;}
+.otb.out{animation:otbOut .26s ease-in both;}
+@keyframes otbIn{from{opacity:0;transform:translateY(-10px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes otbOut{to{opacity:0;transform:translateY(-6px) scale(.97)}}
+@keyframes otbPing{40%{transform:scale(1.025)}}
+@keyframes otbGlow{0%{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,#4ade80 50%,transparent),0 3px 0 color-mix(in srgb,#4ade80 28%,transparent),0 0 0 0 rgba(74,222,128,.55)}
+  70%,100%{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,#4ade80 50%,transparent),0 3px 0 color-mix(in srgb,#4ade80 28%,transparent),0 0 0 12px rgba(74,222,128,0)}}
 .live-dot{position:absolute;right:-2px;top:-2px;width:9px;height:9px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 2px var(--surface);animation:livePulse 1.6s ease-out infinite;}
-@keyframes livePulse{0%{box-shadow:0 0 0 2px var(--surface),0 0 0 2px rgba(74,222,128,.6)}70%,100%{box-shadow:0 0 0 2px var(--surface),0 0 0 8px rgba(74,222,128,0)}}
-/* arriving: slides in with one soft glow, then sits like the other tiles */
-.cont-live.arrive{animation:ftIn .5s var(--spring) both, ftGlow 1.6s ease-out .35s both;}
-@keyframes ftIn{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
-@keyframes ftGlow{0%{box-shadow:inset 3px 0 0 var(--c), 0 0 0 0 rgba(74,222,128,.55)}60%{box-shadow:inset 3px 0 0 var(--c), 0 0 0 6px rgba(74,222,128,0)}100%{box-shadow:inset 3px 0 0 var(--c)}}
-@media (prefers-reduced-motion:reduce){.live-dot,.cont-live.arrive{animation:none;}}
+@keyframes livePulse{0%{box-shadow:0 0 0 2px var(--bg),0 0 0 2px rgba(74,222,128,.6)}70%,100%{box-shadow:0 0 0 2px var(--bg),0 0 0 9px rgba(74,222,128,0)}}
+/* Open tables sheet: a group per friend, a row per table */
+.ots{display:flex;flex-direction:column;gap:16px;margin-top:6px;}
+.ots-g{display:flex;flex-direction:column;gap:8px;}
+.ots-h{display:flex;align-items:center;gap:10px;margin:0 2px;}
+.ots-h .avatar{width:32px;height:32px;padding:0;font-size:.85rem;}
+.ots-h .avatar .ico{width:60%;height:60%;}
+.ots-h b{font-weight:900;font-size:1.05rem;}
+.ots-on{margin-left:auto;font-size:.75rem;font-weight:900;color:#4ade80;}
+.ots-r{--c:#4ade80;display:flex;align-items:center;gap:12px;padding:10px 10px 10px 10px;border-radius:16px;background:var(--surface-2);color:var(--text);text-decoration:none;
+  box-shadow:inset 3px 0 0 var(--c);transition:transform .15s var(--spring);}
+.ots-r:active{transform:scale(.98);}
+.ots-r .gicon{width:44px;height:44px;flex:none;}
+.ots-r .tx{flex:1;min-width:0;display:flex;flex-direction:column;}
+.ots-r .tx b{font-weight:900;font-size:1rem;}
+.ots-r .tx small{font-size:.8rem;font-weight:700;color:var(--text-2);}
+.ots-r.live .tx small{color:#4ade80;}
+.ots-join{flex:none;min-height:36px;padding:0 16px;border-radius:999px;background:#4ade80;color:#06240f;font-weight:900;}
+.ots-r:not(.live) .ots-join{background:var(--w1);color:var(--text);}
+.ots-r.arrive{animation:otbIn .45s var(--spring) both;}
+.ots-none{text-align:center;padding:20px 0;}
+@media (prefers-reduced-motion:reduce){.live-dot,.otb,.ots-r{animation:none!important;}}
 /* Edit: every tile shows its trash, plus Clear all */
 .sec-h .cont-edit{margin-left:auto;min-height:34px;padding:0 15px;border:0;border-radius:999px;background:var(--w08);color:var(--text);font:inherit;font-weight:800;font-size:.86rem;cursor:pointer;}
 .sec-h .cont-edit.on{background:var(--yellow-fill,var(--yellow));color:#16102e;}
@@ -453,6 +488,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   </header>
 
   <div class="filters k-stick" id="filters">
+    <button class="otb" id="otb" type="button" hidden><span class="otb-avs" id="otb-avs"></span><span class="otb-tx"><b id="otb-t"></b><small id="otb-s"></small></span><span class="otb-go" id="otb-go"></span></button>
     <div class="srow">
       <div class="search" id="search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -936,11 +972,13 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadNetTurns(); });
 
-  // ── A linked friend has a table open ─────────────────────────────────────
+  // ── Open tables: linked friends with a table you can join ───────────────────
   // Every online game marks its tables with a one-way tag of the host's link code (never the code itself). The tags
-  // of the people you're linked to are worked out here (the same tag, cached with the games'), and a few small
-  // queries find their open tables. While home is on screen it looks again every 45 seconds.
-  var friendTables = [], ftAt = 0, LKT = {}, ftShown = {};   // ftShown: tiles already on screen (only a new one glows in)
+  // of the people you're linked to are worked out here (the same tag, cached with the games'), and a live listener on
+  // each kind of table brings a new one in the moment it opens (and drops it when it closes). The listener restarts
+  // whenever your links change (a sync that brought someone back, a new link), stops while home is hidden, and falls
+  // back to a check every 45 seconds if the cloud won't listen. Shown as the banner above the search.
+  var friendTables = [], LKT = {}, FT = { key: '', unsub: [], docs: {}, who: {}, poll: 0, at: 0 }, otbShown = {};
   function linkTag(code) {
     code = String(code || ''); var c = window.crypto && window.crypto.subtle;
     if (!code || !c || typeof TextEncoder === 'undefined') return Promise.resolve(null);
@@ -956,54 +994,127 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       return t;
     }).catch(function () { return null; }));
   }
-  function loadFriendTables(force) {
+  var FT_COLS = ['arcadeRooms', 'chessRooms', 'lorcanaRooms'];
+  function ftStop() { FT.unsub.forEach(function (u) { try { u(); } catch (e) {} }); FT.unsub = []; clearInterval(FT.poll); FT.poll = 0; FT.key = ''; }
+  // (re)start the listeners for the people linked right now; a no-op when they haven't changed
+  function watchFriendTables() {
     if (!window.FGHSync || !FGHSync.isPin || !FGHSync.isPin() || !FGHSync.db || !FGHSync.links) return;
-    if (document.visibilityState === 'hidden' || (!force && Date.now() - ftAt < 40000)) return;
-    ftAt = Date.now();
+    if (document.visibilityState === 'hidden') { ftStop(); return; }
     var L = FGHSync.links() || {}, others = L.others || {};
     var ppl = Object.keys(others).map(function (k) { return others[k]; }).filter(function (r) { return r && !r.off && !r.gone && r.code && r.hs; });
-    if (!ppl.length) { if (friendTables.length) { friendTables = []; renderRail(); } return; }
-    var myDev = null; try { myDev = JSON.parse(get('online_dev', 'null')); } catch (e) {}
+    var key = ppl.map(function (p) { return p.code + ':' + p.name; }).sort().join('|');
+    if (key === FT.key && (FT.unsub.length || FT.poll)) return;
+    ftStop(); FT.key = key; FT.docs = {};
+    if (!ppl.length) { ftSet([]); return; }
     Promise.all(ppl.map(function (p) { return linkTag(p.code); })).then(function (tags) {
+      if (FT.key !== key) return;   // links changed again meanwhile
       var who = {}; tags.forEach(function (t, i) { if (t) who[t] = ppl[i]; });
-      var keys = Object.keys(who).slice(0, 10); if (!keys.length) return;
+      FT.who = who;
+      var keys = Object.keys(who).slice(0, 10); if (!keys.length) { ftSet([]); return; }
       return FGHSync.db().then(function (db) {
-        function q(col) {
-          return db.collection(col).where('host.lk', 'in', keys).limit(20).get()
-            .then(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data(), col: col }); }); return l; })
-            .catch(function (e) { console.warn('[home] friends\' tables', col, e); return []; });
-        }
-        return Promise.all([q('arcadeRooms'), q('chessRooms'), q('lorcanaRooms')]);
-      }).then(function (r) {
-        if (!r) return;
-        var now = Date.now(), out = [], newest = {};
-        r[0].forEach(function (x) {   // the online games: live tables, heard from in the last 90 seconds, a seat free
-          var d = x.d, h = d.host || {};
-          if (d.status !== 'open' || h.dev === myDev || (d.n || 1) >= (d.max || 2) || now - (d.at || 0) > 90000 || !who[h.lk]) return;
-          if (newest[h.dev] && newest[h.dev].at >= (d.at || 0)) return;
-          newest[h.dev] = { at: d.at || 0, item: { id: d.game, code: x.code, at: d.at || 0, live: true, n: d.n || 1, max: d.max || 2, who: who[h.lk].name, href: 'games/' + ((findGame(d.game) || {}).play || d.game) + '.html?online=1&join=' + x.code } };
+        if (FT.key !== key) return;
+        var failed = false;
+        FT_COLS.forEach(function (col) {
+          var q = db.collection(col).where('host.lk', 'in', keys).limit(20);
+          FT.unsub.push(q.onSnapshot(function (qs) {
+            var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); FT.docs[col] = l; ftEval();
+          }, function (e) {
+            console.warn('[home] open tables: listening failed, checking every 45 s instead', col, e);
+            if (failed) return; failed = true;
+            ftStop(); FT.key = key;
+            var poll = function () {
+              if (document.visibilityState === 'hidden') return;
+              Promise.all(FT_COLS.map(function (c) { return db.collection(c).where('host.lk', 'in', keys).limit(20).get().then(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); FT.docs[c] = l; }).catch(function () {}); })).then(ftEval);
+            };
+            poll(); FT.poll = setInterval(poll, 45000);
+          }));
         });
-        Object.keys(newest).forEach(function (k) { out.push(newest[k].item); });
-        [[r[1], 'chess'], [r[2], 'lorcana']].forEach(function (z) {   // Chess and Lorcana tables wait for an opponent (days, even)
-          z[0].forEach(function (x) {
-            var d = x.d, h = d.host || {};
-            if (d.status !== 'waiting' || d.guest || h.dev === myDev || !who[h.lk] || now - (d.at || 0) > 30 * 864e5) return;
-            out.push({ id: z[1], code: x.code, at: d.at || 0, live: false, who: who[h.lk].name, href: 'games/' + (z[1] === 'chess' ? 'chess' : 'lorcana-play') + '.html?online=1' });
-          });
-        });
-        out.sort(function (a, b) { return (b.live ? 1 : 0) - (a.live ? 1 : 0) || b.at - a.at; });
-        var sig = JSON.stringify(out.map(function (x) { return [x.code, x.n, x.who]; })), was = JSON.stringify(friendTables.map(function (x) { return [x.code, x.n, x.who]; }));
-        var fresh = out.filter(function (x) { return !friendTables.some(function (y) { return y.code === x.code; }); });
-        friendTables = out.slice(0, 4);
-        if (sig !== was) {
-          renderRail();
-          if (fresh.some(function (x) { return x.live; })) { try { Kit.sfx('pop'); Kit.haptic('light'); } catch (e) {} }
-        }
       });
-    }).catch(function (e) { console.warn('[home] friends\' tables', e); });
+    }).catch(function (e) { console.warn('[home] open tables', e); });
   }
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadFriendTables(true); });
-  setInterval(function () { loadFriendTables(); }, 45000);
+  // what's joinable right now, from the latest copy of each list (a table not heard from in 90 seconds has closed)
+  function ftEval() {
+    var who = FT.who, now = Date.now(), out = [], newest = {}, myDev = null;
+    try { myDev = JSON.parse(get('online_dev', 'null')); } catch (e) {}
+    (FT.docs.arcadeRooms || []).forEach(function (x) {   // the online games: live tables with a seat free (some take players mid-game)
+      var d = x.d, h = d.host || {};
+      if ((d.status !== 'open' && d.status !== 'playing') || h.dev === myDev || (d.n || 1) >= (d.max || 2) || now - (d.at || 0) > 90000 || !who[h.lk]) return;
+      if (newest[h.dev] && newest[h.dev].at >= (d.at || 0)) return;
+      var g = findGame(d.game) || {};
+      newest[h.dev] = { at: d.at || 0, item: { id: d.game, code: x.code, at: d.at || 0, live: true, playing: d.status === 'playing', info: d.info || '', n: d.n || 1, max: d.max || 2, who: who[h.lk].name, href: 'games/' + (g.play || d.game) + '.html?online=1&join=' + x.code } };
+    });
+    Object.keys(newest).forEach(function (k) { out.push(newest[k].item); });
+    [['chessRooms', 'chess'], ['lorcanaRooms', 'lorcana']].forEach(function (z) {   // Chess and Lorcana tables wait for an opponent (days, even)
+      (FT.docs[z[0]] || []).forEach(function (x) {
+        var d = x.d, h = d.host || {};
+        if (d.status !== 'waiting' || d.guest || h.dev === myDev || !who[h.lk] || now - (d.at || 0) > 30 * 864e5) return;
+        out.push({ id: z[1], code: x.code, at: d.at || 0, live: false, who: who[h.lk].name, href: 'games/' + (z[1] === 'chess' ? 'chess' : 'lorcana-play') + '.html?online=1' });
+      });
+    });
+    out = out.filter(function (x) { return findGame(x.id); });
+    out.sort(function (a, b) { return (b.live ? 1 : 0) - (a.live ? 1 : 0) || b.at - a.at; });
+    ftSet(out);
+  }
+  function ftSet(out) {
+    var sig = function (l) { return JSON.stringify(l.map(function (x) { return [x.code, x.n, x.who, x.playing, x.info]; })); };
+    if (sig(out) === sig(friendTables)) return;
+    var fresh = out.filter(function (x) { return x.live && !friendTables.some(function (y) { return y.code === x.code; }); });
+    friendTables = out;
+    renderOtb(fresh.length > 0);
+    if (FT.sheet) FT.sheet.paint();
+  }
+  // a table's heartbeat stops when its page closes: look again every 15 s so it leaves on time
+  setInterval(function () { if (FT.unsub.length || FT.poll) ftEval(); }, 15000);
+  document.addEventListener('visibilitychange', watchFriendTables);
+  window.addEventListener('fghlinks', function () { setTimeout(watchFriendTables, 0); });
+  document.addEventListener('fghsync:updated', function () { setTimeout(watchFriendTables, 0); });
+  window.addEventListener('storage', function (e) { if (!e.key || e.key === 'fgh_links') watchFriendTables(); });
+  window.addEventListener('pagehide', ftStop);
+
+  // The banner: who's hosting, how many tables. Slides in (with a pop) when a new live table opens.
+  function hostsOf(list) { var seen = {}, out = []; list.forEach(function (x) { if (!seen[x.who]) { seen[x.who] = 1; out.push(x.who); } }); return out; }
+  function renderOtb(arrive) {
+    var b = $('otb'), n = friendTables.length;
+    if (!n) { if (!b.hidden) { b.classList.remove('in'); b.classList.add('out'); setTimeout(function () { if (!friendTables.length) { b.hidden = true; b.classList.remove('out'); } }, 260); } return; }
+    var wasHidden = b.hidden; b.hidden = false; b.classList.remove('out');
+    var hosts = hostsOf(friendTables), avs = $('otb-avs'); avs.innerHTML = '';
+    hosts.slice(0, 3).forEach(function (h) { avs.appendChild(Kit.avatar.el(h)); });
+    if (friendTables.some(function (x) { return x.live; })) avs.appendChild(el('i', { class: 'live-dot' }));
+    $('otb-t').textContent = n + ' open table' + (n === 1 ? '' : 's') + ' available';
+    var games = []; friendTables.forEach(function (x) { var g = findGame(x.id); if (g && games.indexOf(g.name) < 0) games.push(g.name); });
+    $('otb-s').textContent = (hosts.length === 1 ? hosts[0] : hosts.length === 2 ? hosts[0] + ' and ' + hosts[1] : hosts[0] + ', ' + hosts[1] + ' and ' + (hosts.length - 2) + ' more') + ' · ' + games.slice(0, 3).join(', ') + (games.length > 3 ? '…' : '');
+    if (wasHidden || arrive) {
+      b.classList.remove('in', 'ping'); void b.offsetWidth; b.classList.add(wasHidden ? 'in' : 'ping');
+      if (arrive) { try { Kit.sfx('pop'); Kit.haptic('light'); } catch (e) {} }
+    }
+  }
+  // The sheet: each friend with their tables, newest live table first; a table that just opened glows in
+  function openTablesSheet() {
+    var box = el('div', { class: 'ots' });
+    function paint() {
+      box.innerHTML = '';
+      if (!friendTables.length) { box.appendChild(el('p', { class: 'muted ots-none', text: 'Those tables have closed.' })); return; }
+      hostsOf(friendTables).forEach(function (h) {
+        var mine = friendTables.filter(function (x) { return x.who === h; });
+        var grp = el('div', { class: 'ots-g' }, [el('div', { class: 'ots-h' }, [Kit.avatar.el(h), el('b', { text: h }), mine.some(function (x) { return x.live; }) ? el('span', { class: 'ots-on', text: 'Online now' }) : null])]);
+        mine.forEach(function (x) {
+          var g = findGame(x.id), isNew = !otbShown[x.code]; otbShown[x.code] = 1;
+          var sub = x.live ? (x.playing ? (x.info || 'Playing') + ' · jump in' : 'Waiting to start') + ' · ' + x.n + ' of ' + x.max + ' seated' : 'Waiting for an opponent · opened ' + ago(x.at);
+          grp.appendChild(el('a', { class: 'ots-r' + (x.live ? ' live' : '') + (isNew ? ' arrive' : ''), href: x.href, style: { '--c': g.color } }, [
+            el('span', { html: GameIcon(g.id), style: { display: 'contents' } }),
+            el('span', { class: 'tx' }, [el('b', { text: g.name }), el('small', { text: sub })]),
+            el('span', { class: 'btn btn-sm ots-join', text: 'Join' })
+          ]));
+        });
+        box.appendChild(grp);
+      });
+    }
+    paint();
+    var s = Kit.sheet({ title: 'Open tables', node: box, onClose: function () { FT.sheet = null; }, actions: [{ label: 'Close', cls: 'btn-ghost' }] });
+    FT.sheet = { paint: paint, close: s.close };
+  }
+  $('otb').addEventListener('click', function () { Kit.sfx('tap'); Kit.haptic('light'); openTablesSheet(); });
+  $('otb-go').innerHTML = Kit.icon('right');
 
   var railAll = false;
   function currentItems() {
@@ -1014,26 +1125,14 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       .sort(function (a, b) { return b.r.ts - a.r.ts; });
   }
   function renderRail() {
-    // a category or a search narrows home to that: your own games in progress stay on All, but a linked friend's live
-    // table (and an online game waiting on your move) shows whatever you're looking at, since it won't wait
+    // a category or a search narrows home to that: your own games in progress stay on All, but an online game waiting
+    // on your move shows whatever you're looking at (friends' open tables are the banner above the search)
     var narrowed = !!state.q || state.cat !== 'all';
     var items = narrowed ? [] : currentItems();
     if (!items.length) editing = false;
     var rail = $('rail'); rail.innerHTML = ''; rail.classList.toggle('editing', editing);
     var eb = $('cont-edit'); eb.hidden = !items.length; eb.textContent = editing ? 'Done' : 'Edit'; eb.classList.toggle('on', editing);
     var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g; });
-    var fts = friendTables.map(function (x) { return { g: findGame(x.id), f: x }; }).filter(function (x) { return x.g; });
-    fts.forEach(function (x) {
-      var f = x.f;
-      var isNew = !ftShown[f.code]; ftShown[f.code] = 1;
-      rail.appendChild(el('div', { class: 'cont-w' }, [el('a', { class: 'cont cont-live' + (isNew ? ' arrive' : ''), href: f.href, style: { '--c': x.g.color }, title: f.who + ' has a ' + x.g.name + ' table open' }, [
-        el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
-        el('span', { class: 'tx' }, [
-          el('div', { class: 'r1' }, [el('div', { class: 't', text: x.g.name }), f.live ? null : el('span', { class: 'a', text: ago(f.at, true) })]),
-          el('div', { class: 'd' }, [el('b', { text: 'Join' }), document.createTextNode(' ' + f.who)])]),
-        el('span', { class: 'ft-who', title: f.live ? f.who + ' is at the table now' : f.who + '’s table' }, [Kit.avatar.el(f.who), f.live ? el('i', { class: 'live-dot' }) : null])
-      ])]));
-    });
     nets.forEach(function (x) {
       rail.appendChild(el('div', { class: 'cont-w' }, [el('a', { class: 'cont cont-net', href: x.n.href, style: { '--c': x.g.color }, title: x.g.name + ': your move' }, [
         el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
@@ -1052,9 +1151,9 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       more.addEventListener('click', function () { railAll = true; renderRail(); });
       rail.appendChild(more);
     }
-    var nAll = items.length + nets.length + fts.length;
+    var nAll = items.length + nets.length;
     $('cont-n').textContent = nAll > 1 ? nAll + ' going' : '';
-    $('cont-sec').hidden = narrowed ? !(nets.length + fts.length) : (!nAll && !undoList);
+    $('cont-sec').hidden = narrowed ? !nets.length : (!nAll && !undoList);
     renderFoot(items.length);
   }
   function ago(ts, short) {
@@ -1314,7 +1413,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (FGHSync.onStatusChange) FGHSync.onStatusChange(function (s) { var hv = $('me').classList.contains('has-av'); $('me').className = 'me syncdot s-' + s.state + (hv ? ' has-av' : ''); });
     if (FGHSync.onReady) FGHSync.onReady(function () { refreshWho(); render(); });
     setTimeout(loadNetTurns, 1200);   // online games where it's your move, once the screen is up
-    setTimeout(function () { loadFriendTables(true); }, 1500);   // and linked friends with a table open
+    watchFriendTables();   // and linked friends with a table open (live)
   }
   // Change PIN: everything moves to the new PIN; other devices on the old one get signed out.
   // forced = this device is on a PIN that is now too easy to guess (no "later", but signing out is allowed).
