@@ -1225,6 +1225,15 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .rv-mk b{position:relative;font-family:var(--display);font-size:.9em;font-weight:400;font-style:normal;line-height:1;color:#fff;}
 .rv-lore{width:1.45em;height:2.05em;margin:-.4em .1em -.4em .15em;}
 .rv-lore b{font-size:.9em;}
+/* Leaving a reveal: the view fades while a stand-in for the card flies to where it went */
+.lz.reveal.rv-leaving{transition:opacity .22s ease,background-color .22s;opacity:0;}
+.rv-ghost{position:fixed;z-index:700;pointer-events:none;transform-origin:50% 50%;transform-style:preserve-3d;}
+.rv-ghost .rv-front{position:absolute;inset:0;width:100%;height:100%;transform:none;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  box-shadow:0 10px 30px rgba(0,0,0,.55),0 0 34px 8px rgba(245,195,85,.55),0 0 90px 24px rgba(240,175,55,.22);}
+.rv-ghost.to-ink .rv-front{box-shadow:0 10px 30px rgba(0,0,0,.55),0 0 34px 8px rgba(80,160,255,.45);}
+.rv-ghost .rv-back{position:absolute;inset:0;border-radius:calc(var(--cu) * .045);transform:rotateY(180deg);backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 0 30px 6px rgba(80,160,255,.45);}
+.slot.rv-land,.pile.rv-land{animation:rvLand .65s ease-out;}
+@keyframes rvLand{0%{box-shadow:0 0 0 0 rgba(246,206,110,.9);transform:scale(1.06);}60%{box-shadow:0 0 22px 8px rgba(246,206,110,.45);transform:scale(1);}100%{box-shadow:0 0 0 0 rgba(246,206,110,0);}}
 /* The card a player shows: a warm golden glow behind it (inked cards get a cool ink-blue one instead) */
 .lz.reveal .lz-card{box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 0 1.5px rgba(246,214,140,.5),0 0 40px 8px rgba(245,195,85,.5),0 0 130px 40px rgba(240,175,55,.24);}
 .lz.reveal.inked .lz-card{box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 0 1px rgba(150,205,255,.3),0 0 46px 6px rgba(80,160,255,.32),0 0 120px 30px rgba(60,130,240,.14);}
@@ -9075,13 +9084,23 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (opt.modal) ov.classList.add('modal');
     // a prompt the game opens (ability, choose a card) arrives: the card and its details glide in from the middle
     if (opt.modal && !swapping && !keep) { ov.classList.add('arrive'); setTimeout(function () { ov.classList.remove('arrive'); }, 900); }
-    if (opt.tapClose) ov.addEventListener('click', function () { ov.remove(); filtersOnExit(); if (opt.onClose) opt.onClose(); });
+    // closing: opt.exit (a revealed card heading off to where it went) runs first, then the view goes
+    function shut() { ov.remove(); filtersOnExit(); if (opt.onClose) opt.onClose(); }
+    function tapShut() {
+      if (ov._exiting) return;
+      if (!opt.exit) return shut();
+      ov._exiting = true; ov.style.pointerEvents = 'none';
+      var once = false, fin = function () { if (once) return; once = true; shut(); };
+      setTimeout(fin, 1500);   // never stuck
+      try { opt.exit(ov, fin); } catch (e) { fin(); }
+    }
+    if (opt.tapClose) ov.addEventListener('click', tapShut);
     else if (!opt.modal) ov.addEventListener('click', function (e) { if (e.target === ov || e.target === inner) closeZoom(); });
     function step(k) { if (F) F.settle(nav.i + k); else { var j = nav.i + k; if (j >= 0 && j < nav.n) nav.go(k); } }
     ov._keys = function esck(e) {
       if (!ov.isConnected) return;
       if (opt.modal) return;
-      if (e.key === 'Escape' || (opt.tapClose && (e.key === 'Enter' || e.key === ' '))) { ov.remove(); filtersOnExit(); if (opt.onClose) opt.onClose(); }
+      if (e.key === 'Escape' || (opt.tapClose && (e.key === 'Enter' || e.key === ' '))) { if (opt.tapClose) tapShut(); else shut(); }
       else if (nav && nav.n > 1 && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
         e.preventDefault();
         if (F) { if (!e.repeat || !F.holding) F.hold(e.key === 'ArrowRight' ? 1 : -1); }
@@ -9739,8 +9758,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function showReveal(u, how, verb, effect) {
     var d = DD(u), p = S.P[C(u).o];
     verb = verb || (/^Used/.test(how || '') ? 'Ability' : /^Sung/.test(how || '') ? 'Sung' : /^Shifted/.test(how || '') ? 'Shifted' : 'Played');
+    var goesTo = verb === 'Inked' ? 'ink' : /^(Played|Sung|Shifted)$/.test(verb) ? 'play' : null;
     var ov = zoomShell(d, headHTML(d) + defMeta(d, u) +
-      (how ? '<p class="lz-sub">' + esc(how) + '</p>' : '') + '<div class="rtext">' + rulesHTML(d) + '</div>', [], null, null, { tapClose: true });
+      (how ? '<p class="lz-sub">' + esc(how) + '</p>' : '') + '<div class="rtext">' + rulesHTML(d) + '</div>', [], null, null,
+      { tapClose: true, exit: goesTo ? function (o, done) { revealExit(u, goesTo, o, done); } : null });
     ov.classList.add('reveal');
     // inked rather than played: the ink-blue version, saying where it went and how much ink that makes
     if (verb === 'Inked') { ov.classList.add('inked'); if (!effect) effect = 'Into the inkwell · ' + p.ink.length + ' ink'; }
@@ -9761,6 +9782,58 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (!card || !ov.isConnected || !S || !S.cards[u] || !C(u).ex || (verb === 'Ability' && wasEx)) return;
       card.classList.add('exerted'); Kit.haptic('light');
     }, 500);
+  }
+  // Leaving a reveal, the card goes where it went: a played card glides down to its place on the table (or the
+  // discard pile, for an action) with a golden trail and settles; an inked card flips face down and drops into the
+  // inkwell with an ink ripple. About half a second; skipped in Fast mode, after Next turn, or with reduced motion.
+  function revealExit(u, where, ov, done) {
+    var card = $('.lz-card', ov);
+    if (!card || !S || !S.cards[u] || quickMoves() || calm() || !document.body.animate) return done();
+    var pi = C(u).o, r0 = card.getBoundingClientRect();
+    var tgt = where === 'ink' ? $('.lp [data-z="ink-' + pi + '"]') : slotEl(u) || $('.lp [data-z="disc-' + pi + '"]');
+    if (!tgt || !r0.width) return done();
+    var r1 = tgt.getBoundingClientRect();
+    // a stand-in for the card, outside the view, so the view can fade while it flies
+    var g = el('div', { class: 'rv-ghost' + (where === 'ink' ? ' to-ink' : '') });
+    g.style.cssText = 'left:' + r0.left + 'px;top:' + r0.top + 'px;width:' + r0.width + 'px;height:' + r0.height + 'px;--cu:' + r0.height + 'px;';
+    var front = card.cloneNode(true); front.removeAttribute('style'); front.className = 'lz-card rv-front'; front.style.setProperty('--cu', r0.height + 'px');
+    g.appendChild(front);
+    if (where === 'ink') g.appendChild(el('div', { class: 'lback rv-back' }));
+    document.body.appendChild(g);
+    ov.classList.add('rv-leaving');
+    var c0 = mid(r0), c1 = mid(r1), dx = c1.x - c0.x, dy = c1.y - c0.y;
+    var anim;
+    if (where === 'ink') {
+      // flip face down where it is, then drop into the inkwell, shrinking
+      var s1 = Math.max(0.12, Math.min(r1.width, r1.height) / r0.width);
+      anim = g.animate([
+        { transform: 'translate(0,0) rotateY(0) scale(1)', offset: 0 },
+        { transform: 'translate(0,-2%) rotateY(180deg) scale(.82)', offset: 0.45 },
+        { transform: 'translate(' + dx + 'px,' + dy + 'px) rotateY(180deg) scale(' + s1 + ')', offset: 1 }   // (no fading mid-flip: it would flatten the turn and show the face mirrored)
+      ], { duration: 620, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'forwards' });
+    } else {
+      // glide down in an arc to its place, shrinking to its size there
+      var s2 = Math.max(0.1, r1.width / r0.width), lift = Math.min(60, Math.abs(dy) * 0.15);
+      anim = g.animate([
+        { transform: 'translate(0,0) scale(1)', offset: 0 },
+        { transform: 'translate(' + dx * 0.45 + 'px,' + (dy * 0.4 - lift) + 'px) scale(' + (0.6 + s2 * 0.4) + ') rotate(' + (dx > 0 ? 4 : -4) + 'deg)', offset: 0.5 },
+        { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + s2 + ') rotate(0)', offset: 1 }
+      ], { duration: 560, easing: 'cubic-bezier(.45,0,.25,1)', fill: 'forwards' });
+    }
+    anim.onfinish = function () {
+      // landing: the inkwell ripples / the card's place glows gold and settles
+      if (where === 'ink') {
+        var col = INKC[inkOf(DD(u))[0]] || '#7cc4ff', P = mid(tgt.getBoundingClientRect());
+        tgt.style.setProperty('--ic', col); tgt.classList.remove('inked'); void tgt.offsetWidth; tgt.classList.add('inked'); setTimeout(function () { tgt.classList.remove('inked'); }, 720);
+        var rp = el('div', { class: 'inksplash' }); rp.style.setProperty('--ic', col); rp.style.left = P.x + 'px'; rp.style.top = P.y + 'px'; document.body.appendChild(rp); setTimeout(function () { rp.remove(); }, 620);
+        Kit.sfx('flip');
+      } else {
+        tgt.classList.remove('rv-land'); void tgt.offsetWidth; tgt.classList.add('rv-land'); setTimeout(function () { tgt.classList.remove('rv-land'); }, 700);
+        Kit.haptic('light');
+      }
+      g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, fill: 'forwards' }).onfinish = function () { g.remove(); };
+      done();
+    };
   }
   // Press and hold a button to see what it does; the tap that ends the hold doesn't press it
   function holdTip(btn, text, tap, isHtml) {
