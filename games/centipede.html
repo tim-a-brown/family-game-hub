@@ -910,6 +910,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     sound('flea');
     return addFoe({ type: black ? 'bwasp' : 'wasp', st: Math.random() < 0.4 ? 'loop' : 'in', x: left ? -10 : W + 10, y: rnd(0.12, 0.5) * H, dir: left ? 1 : -1, vx: (left ? 1 : -1) * 70, vy: 0, v: 70, hp: black ? 2 : 1, ang: 0, bounces: 0, rt: 0 });
   }
+  // the Killer Wasp's little ones: in from a top corner, gliding at the ship (no speeding up)
+  function spawnMinion() {
+    var left = Math.random() < 0.5; sound('flea');
+    return addFoe({ type: 'wasp', minion: true, st: 'home', x: left ? 15 : W - 15, y: -6, dir: left ? 1 : -1, vx: left ? 0.5 : -0.5, vy: 1, v: 70, hp: 1, ang: 0, bounces: 0, rt: 0 });
+  }
   function spawnWasps(n, black) { for (var i = 0; i < n; i++) spawnWasp(black); }
   // ants: a pair marching in from each side at the same height, then a column down from the top a moment later
   function spawnAnts(n) {
@@ -957,7 +962,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
         if (fr !== o.row) { o.row = fr; if (fr >= 2 && fr < PZ + 2 && !mush(fc, fr) && Math.random() < 0.3 && !nearPlayer(cx(fc), cx(fr))) setMush(fc, fr, MUSH_HP, 0); }
         if (o.y > H + 8) gone = true;
       } else if (o.type === 'wasp' || o.type === 'bwasp') {
-        var black = o.type === 'bwasp', vmax = (black ? 270 : 200) * sp;
+        var black = o.type === 'bwasp', vmax = (o.minion ? 125 : black ? 270 : 200) * sp;
         if (o.st === 'in' || o.st === 'loop') {
           // swoop in from the side; a looping one circles once first
           o.x += o.dir * 80 * d; o.y += Math.sin(o.t * 5) * 30 * d;
@@ -1158,13 +1163,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var B = G.boss; if (!B || B.st === 'die' || B.st === 'enter' || B.st === 'flee') return;
     // like the cabinet: no flinch and no points per hit (the bonus comes at the end), just a spark where it hits;
     // the Night Flyer blushes pink
-    B.hp -= dmg; B.last = P; if (B.type === 'firefly') B.flash = 0.08;
+    B.hp -= dmg; B.last = P; if (B.type === 'firefly') B.flash = 0.08; else if (B.type === 'wasp') B.flash = 0.05;
     if (k !== 'beam' || Math.random() < 0.35) { ev(['q', r1(x), r1(y)]); burst(x, y, BOSS[B.type].c, 2, 0.8); }
     sound('bhit');
     // the Mega Spider changes how it fights at two thirds and one third (nothing shows it but what it does)
     var f = B.hp / B.max, ph = B.type !== 'mega' ? 0 : f < 1 / 3 ? 2 : f < 2 / 3 ? 1 : 0;
     if (ph > B.ph && B.hp > 0) B.ph = ph;
-    if (B.hp <= 0) { B.hp = 0; B.st = 'die'; B.stT = 0; B.dx0 = B.x; B.dy0 = B.y; G.zones = []; G.shots = G.shots.filter(function (s) { return s.k === 'fire' || s.k === 'web'; }); sound('kill'); buzz(P && P.id, 'success'); }
+    if (B.hp <= 0) { B.hp = 0; B.st = 'die'; B.stT = 0; B.dx0 = B.x; B.dy0 = B.y; if (B.type === 'wasp') G.foes = G.foes.filter(function (o) { if (o.minion) burst(o.x, o.y, '#ffd23d', 6, 0.8); return !o.minion; }); G.zones = []; G.shots = G.shots.filter(function (s) { return s.k === 'fire' || s.k === 'web'; }); sound('kill'); buzz(P && P.id, 'success'); }
   }
   function approach(B, tx, ty, k, dt) { var f = Math.min(1, dt * k); B.x += (tx - B.x) * f; B.y += (ty - B.y) * f; }
   // move straight toward a point at a speed; true once there
@@ -1179,7 +1184,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       if (G.phase === 'play') {
         // the Night Flyer starts at the middle spot, charging at once, with its first fireflies
         if (B.type === 'firefly') { B.spot = 4; B.yaw = 0; setSt(B, 'charge'); flyerEscort(); B.ffq = G.t + 1; sound('charge'); }
-        else setSt(B, { wasp: 'circle', beetle: 'patrol', mega: 'walk' }[B.type]);
+        else if (B.type === 'wasp') { B.stn = 0; B.tE = 2; waspLapStart(B, ri(2, 4)); }
+        else setSt(B, { beetle: 'patrol', mega: 'walk' }[B.type]);
       }
       return;
     }
@@ -1188,7 +1194,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       // it drifts to the middle of the screen, bursting, then goes up in one big explosion
       var dk = clamp(B.stT / 1.5, 0, 1), de = dk * dk * (3 - 2 * dk), dyT = B.type === 'beetle' ? H * 0.55 : H * 0.38;
       B.x = (B.dx0 != null ? B.dx0 : B.x) + (W / 2 - (B.dx0 != null ? B.dx0 : B.x)) * de; B.y = (B.dy0 != null ? B.dy0 : B.y) + (dyT - (B.dy0 != null ? B.dy0 : B.y)) * de;
-      var dc = B.type === 'firefly' ? '#40ff80' : B.type === 'beetle' ? '#ffb13d' : D.c;
+      var dc = B.type === 'firefly' ? '#40ff80' : B.type === 'beetle' ? '#ffb13d' : B.type === 'wasp' ? '#ff2a3a' : D.c;
       if (B.type === 'firefly' && B.stT >= 0.7 && B.stT - dt < 0.7) flyerRing(B, true);      // one last (harmless) ring
       if (Math.random() < dt * 5) { var ex = B.x + rnd(-R[0], R[0]) * 0.7, ey = B.y + rnd(-R[1], R[1]) * 0.7, ec = pick([dc, '#fff']); boom(ex, ey, ec, false); burst(ex, ey, ec, 8, 1.2); snd('kill'); shake(0.2); }
       if (B.stT > 1.6) {
@@ -1208,32 +1214,52 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     else megaStep(B, dt, rage, R);
   }
 
+  // The Killer Wasp works three stations in turn (middle, right, left), flying small laps at each. After a few
+  // laps it pulls back up under the top edge and glows, pulsing white (taking every hit), and then either drops
+  // straight down to the ships' row in a streak of fire, pauses, and swoops up to the next station, or (now and
+  // then) it was bluffing and goes back to its laps. Small wasps come in from the top corners, one at a time.
+  var WASP_ST = [[200, 73], [290, 73], [106, 73]], WASP_R = 30;
+  function waspStation(B) { var st = WASP_ST[B.stn || 0]; return { x: st[0] * W / 400, y: st[1] * H / 220 }; }
+  function waspLapStart(B, laps) { B.lapA = -PI / 2; B.laps = laps; B.lapT = rnd(1.1, 1.7); B.dirL = Math.random() < 0.65 ? -1 : 1; setSt(B, 'circle'); }
   function waspStep(B, dt, rage, R) {
-    var ph = B.ph, cxp = W / 2, cyp = H * 0.3, rx = W / 2 - R[0] - 6, ry = H * 0.16;
+    var c = waspStation(B);
     if (B.st === 'circle') {
-      // big loops over the upper field
-      B.ang += dt * (1.05 + 0.25 * ph) * rage;
-      approach(B, cxp + Math.cos(B.ang) * rx, cyp + Math.sin(B.ang) * ry, 4, dt);
-      B.tE -= dt * rage;
-      if (B.tE <= 0) { B.tE = 5.5 - ph; if (count('wasp') < 2 + ph) spawnWasps(1 + (ph >= 2 ? 1 : 0), false); }
-      if (B.stT > (4.2 - 0.6 * ph) / Math.sqrt(rage)) { var T = target(); B.tx = T.x; B.ty = T.y; B.tgt = T; setSt(B, 'hold'); sound('warn'); }
-    } else if (B.st === 'hold') {
-      // holds back over its target, the red reticle tracking the ship
-      if (B.tgt && B.tgt.alive) { B.tx += (B.tgt.x - B.tx) * Math.min(1, dt * 3); B.ty += (B.tgt.y - B.ty) * Math.min(1, dt * 3); }
-      approach(B, clamp(B.tx, R[0], W - R[0]), Math.max(R[1] + 6, H * 0.18), 2.4, dt);
-      B.x += Math.sin(B.t * 30) * 0.4;
-      if (B.stT > 1.05 / Math.sqrt(rage)) {
-        var roll = Math.random();
-        if (roll < 0.55) { setSt(B, 'dive'); var dx = B.tx - B.x, dy = B.ty - B.y, n = Math.max(1, Math.hypot(dx, dy)), v = (250 + 30 * ph) * Math.sqrt(rage); B.vx = dx / n * v; B.vy = Math.max(90, dy / n * v); sound('dive'); }
-        else if (roll < 0.85) { var a = Math.atan2(B.ty - B.y, B.tx - B.x), k = 3 + (ph >= 2 ? 2 : 0); for (var i = 0; i < k; i++) fireShot(B.x, B.y + R[1] * 0.6, a + (i - (k - 1) / 2) * 0.16, 130 * rage, 'sting'); sound('shoot'); setSt(B, 'circle'); }
-        else setSt(B, 'circle');      // a bluff
+      // laps of about 30 units, about 1.4 s each, from the top point (it picks its way round again each lap)
+      var w = TAU / B.lapT, a0 = B.lapA;
+      B.lapA += B.dirL * w * dt;
+      if (Math.abs(B.lapA - (-PI / 2)) >= TAU) {
+        B.laps--; B.lapA = -PI / 2; B.lapT = rnd(1.1, 1.7); B.dirL = Math.random() < 0.65 ? -1 : 1;
+        if (B.laps <= 0) { B.lunge = Math.random() < 0.6; B.hy0 = B.y; setSt(B, 'hold'); sound('charge'); }
       }
+      approach(B, c.x + Math.cos(B.lapA) * WASP_R, c.y + Math.sin(B.lapA) * WASP_R, 12, dt);
+    } else if (B.st === 'hold') {
+      // pulls back up under the top edge, glowing (only its head and wings show), still taking hits
+      B.x += (c.x - B.x) * Math.min(1, dt * 8);
+      if (B.stT < 0.2) B.y += (28 - B.y) * Math.min(1, dt * 10); else B.y = Math.max(10, B.y - 20 * dt);
+      if (B.stT > (B.lunge ? 1.12 : 1.5)) {
+        if (B.lunge) { setSt(B, 'wind'); }
+        else { B.ry0 = B.y; setSt(B, 'back'); }
+      }
+    } else if (B.st === 'back') {
+      // a bluff: back down to its laps at the same station
+      var kb = clamp(B.stT / 0.3, 0, 1); B.y = B.ry0 + (c.y - WASP_R - B.ry0) * kb;
+      if (kb >= 1) waspLapStart(B, ri(1, 2));
+    } else if (B.st === 'wind') {
+      if (B.stT > 0.12) { B.vy = 500; B.vx = (B.stn === 1 ? 1 : B.stn === 2 ? -1 : 0) * 25 * 500 / 175; setSt(B, 'dive'); sound('dive'); }
     } else if (B.st === 'dive') {
+      // straight down (not aimed), a little drift outward at the side stations
       B.x += B.vx * dt; B.y += B.vy * dt;
-      if (B.y >= H - 18 || B.x < R[0] * 0.5 || B.x > W - R[0] * 0.5) { B.x = clamp(B.x, R[0] * 0.5, W - R[0] * 0.5); B.y = Math.min(B.y, H - 18); setSt(B, 'ret'); shake(0.4); sound('slam'); }
+      if (B.y >= 175) { B.y = 175; shake(0.4); sound('slam'); setSt(B, 'ground'); }
+    } else if (B.st === 'ground') {
+      if (B.stT > 0.22) { B.stn = ((B.stn || 0) + 1) % 3; B.rx0 = B.x; B.ry0 = B.y; setSt(B, 'ret'); }
     } else if (B.st === 'ret') {
-      if (moveTo(B, B.x, cyp, 110 + 20 * ph, dt) || B.stT > 2.5) { B.ang = Math.atan2(B.y - cyp, B.x - cxp); setSt(B, 'circle'); }
+      // swoops up to the next station: climbing first, then bending over to it
+      var n2 = waspStation(B), k = clamp(B.stT / 1.0, 0, 1), ex = 1 - Math.pow(1 - k, 2.2), ey = 1 - Math.pow(1 - k, 1.4);
+      B.x = B.rx0 + (n2.x - B.rx0) * ex; B.y = B.ry0 + (n2.y - WASP_R - B.ry0) * ey;
+      if (k >= 1) waspLapStart(B, ri(2, 4));
     }
+    // one little wasp at a time, from a top corner (the first one 2 s in)
+    if (!count('wasp')) { B.tE -= dt; if (B.tE <= 0) { B.tE = rnd(1, 3); spawnMinion(); } }
   }
 
   // The Night Flyer flies (eased, turning toward where it's going) between six spots, two rows of three. At each
@@ -2245,7 +2271,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var ht = txt('PICK UP POWER-UPS!', '#ffffff', 1); drawTxtAt(x, ht, cp.x, cp.y - 30, Math.min(1, 120 / ht.w));
     });
     R.players.forEach(function (p) { drawShip(x, p, me); });
-    if (R.boss) drawReticle(x, R.boss);
     // explosions, sparks and flying cubes
     x.globalCompositeOperation = 'lighter';
     fx.exps.forEach(function (e) { drawBoom(x, e); });
@@ -2525,6 +2550,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     drawSpr(x, sp, px, py);
     // the Night Flyer blushes pink when hit; any boss glows white-hot as it dies
     if (B.type === 'firefly' && (B.flash > 0 || B.hitf)) { x.globalAlpha = 0.7; drawSprImg(x, sp, sp.pk || (sp.pk = tintCanvas(sp.c, '#ff8ccf', 0.55)), px, py); x.globalAlpha = 1; }
+    if (B.type === 'wasp') {
+      // white when hit; pulsing white as it holds back; red as it winds up to dive
+      var wa = B.flash > 0 || B.hitf ? 0.9 : B.st === 'hold' && B.stT > 0.3 ? 0.85 * (0.5 - 0.5 * Math.cos(TAU * 5 * (B.stT - 0.3))) : 0;
+      if (wa > 0) { x.globalAlpha = wa; drawSprImg(x, sp, sp.w || (sp.w = tintCanvas(sp.c, '#ffffff', 0.7)), px, py); x.globalAlpha = 1; }
+      if (B.st === 'wind') { x.globalAlpha = 0.8; drawSprImg(x, sp, sp.rd || (sp.rd = tintCanvas(sp.c, '#ff3a1a', 0.6)), px, py); x.globalAlpha = 1; }
+    }
     if (B.st === 'die') { x.globalAlpha = 0.35 + 0.35 * Math.sin(drawT * 30); drawSprImg(x, sp, sp.w || (sp.w = tintCanvas(sp.c, '#ffffff', 0.7)), px, py); x.globalAlpha = 1; }
     if (rot) x.restore();
     x.globalAlpha = 1;
@@ -2532,15 +2563,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (B.type === 'beetle' && B.st === 'patrol') { x.globalCompositeOperation = 'lighter'; glow(x, px, py + 20, 5 + 6 * Math.max(0, B.orb || 0) / 0.25, '#ffd060', 0.9); x.globalCompositeOperation = 'source-over'; }
     // the Mega Spider's mouth flashes as it spits
     if (B.type === 'mega' && B.spit > 0) { x.globalCompositeOperation = 'lighter'; glow(x, px, py + 30, 18, '#ff3d8a', B.spit / 0.18); glow(x, px, py + 30, 7, '#ffffff', B.spit / 0.18); x.globalCompositeOperation = 'source-over'; }
-  }
-  // the Killer Wasp's red target on the ship it's about to go for (over the ship, so it can't be missed)
-  function drawReticle(x, B) {
-    if (B.type !== 'wasp' || B.st !== 'hold' || !B.tx) return;
-    var rp = 0.65 + 0.35 * Math.sin(drawT * 14), sc = 1 + 0.12 * Math.sin(drawT * 7);
-    x.globalCompositeOperation = 'lighter'; glow(x, B.tx, B.ty, 20, '#ff2838', 0.35 * rp); x.globalCompositeOperation = 'source-over';
-    x.strokeStyle = 'rgba(255,48,64,' + rp + ')'; x.lineWidth = 2;
-    x.beginPath(); x.arc(B.tx, B.ty, 15 * sc, 0, TAU); x.stroke(); x.beginPath(); x.arc(B.tx, B.ty, 9 * sc, 0, TAU); x.stroke();
-    x.beginPath(); x.moveTo(B.tx - 20, B.ty); x.lineTo(B.tx - 11, B.ty); x.moveTo(B.tx + 11, B.ty); x.lineTo(B.tx + 20, B.ty); x.moveTo(B.tx, B.ty - 20); x.lineTo(B.tx, B.ty - 11); x.moveTo(B.tx, B.ty + 11); x.lineTo(B.tx, B.ty + 20); x.stroke();
   }
   // A boss's entrance: its name in neon between two lit lines, with its bonus underneath (like the cabinet)
   function drawCard(x, L) {
