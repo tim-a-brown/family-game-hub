@@ -255,7 +255,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // ═══ Effects (also sent to the other devices online) ════════════════════
   function ev(a) { applyFx(a); if (G && G.mode === 'host') net.evq.push(a); }
   function r1(v) { return Math.round(v * 10) / 10; }
-  function burst(x, y, c, n, sp) { ev(['b', r1(x), r1(y), c, n, sp || 1]); }
+  function burst(x, y, c, n, sp, sz) { ev(sz ? ['b', r1(x), r1(y), c, n, sp || 1, sz] : ['b', r1(x), r1(y), c, n, sp || 1]); }
   function boom(x, y, c, big) { ev(['x', r1(x), r1(y), c, big ? 1 : 0]); }
   function popup(x, y, t, c, big) { ev(['p', r1(x), r1(y), String(t), c || '#fff', big ? 1 : 0]); }
   function sound(n, x) { ev(x == null ? ['s', n] : ['s', n, r1(x)]); }
@@ -269,7 +269,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function buzz(pid, kind) { ev(['h', pid, kind]); }
   function applyFx(a) {
     switch (a[0]) {
-      case 'b': for (var i = 0; i < a[4]; i++) { var an = Math.random() * TAU, v = (35 + Math.random() * 120) * a[5]; part(a[1], a[2], Math.cos(an) * v, Math.sin(an) * v, a[3], 0.45 + Math.random() * 0.5, 0.7 + Math.random() * 0.9, i % 3 === 0); } break;
+      case 'b': for (var i = 0; i < a[4]; i++) { var an = Math.random() * TAU, v = (35 + Math.random() * 120) * a[5]; part(a[1], a[2], Math.cos(an) * v, Math.sin(an) * v, a[3], 0.45 + Math.random() * 0.5 * (a[6] || 1), (0.7 + Math.random() * 0.9) * (a[6] || 1), i % 3 === 0); } break;
       case 'p': if (a[5] && /^Combo/.test(a[3])) fx.pops = fx.pops.filter(function (q) { return !/^Combo/.test(q.text); });
         if (a[5]) fx.pops.forEach(function (q) { if (q.big && q.max - q.life < 0.6 && Math.abs(q.x - a[1]) < 70 && Math.abs(q.y - a[2]) < 14) q.y -= 11; });
         // a small score right on top of one that just went up (a burst of kills) is left out
@@ -288,6 +288,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       case 'y': fx.exps.push({ x: a[1], y: a[2], c: '#ff3d2a', r: 18, crater: true, life: 0.8, max: 0.8 }); break;
       case 'h': if (a[1] === myPid()) Kit.haptic(a[2]); break;
       case 'w': try { Kit.confetti && Kit.confetti(); } catch (e) {} break;
+      case 'm': fx.slow = Math.max(fx.slow || 0, a[1]); break;
     }
   }
   // a broken-off cube (or, glow: a spark) flying out, popping up off the floor and dropping back
@@ -663,7 +664,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     bulletsStep(dt);
     collide();
     spawnStep(dt);
-    if (G.phase === 'play' && !G.chains.length && !G.boss && !G.trainsLeft) { G.phase = 'clear'; G.phaseT = 0; waveBonus(); }
+    // (after a boss falls, a beat to watch it shatter before the wave-complete banner)
+    if (G.phase === 'play' && !G.chains.length && !G.boss && !G.trainsLeft && !(G.bossFell && G.t - G.bossFell < 1.1)) { G.phase = 'clear'; G.phaseT = 0; waveBonus(); }
     if (G.phase === 'clear' && G.phaseT > 2.2) { G.lostBonus = false; startWave(G.wave + 1); }
     if (G.oneLife && G.phase === 'play' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); })) bonusLost();
     if (G.phase !== 'over' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); }) && !(G.phase === 'clear' && G.lostBonus)) { G.phase = 'over'; G.phaseT = 0; sound('over'); announce('Game over', 2); }
@@ -1112,6 +1114,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (B.st === 'enter') {
       approach(B, W / 2, B.hy, 1.6, dt);
       if (G.phase === 'play') {
+        // it arrives with weight: rings out across the floor, a spray of its colour, the screen shakes
+        ring(B.x, B.y, Math.max(R[0], R[1]) * 2.2, D.c); ring(B.x, B.y, Math.max(R[0], R[1]) * 1.3, '#ffffff');
+        burst(B.x, B.y, D.c, 26, 1.8, 1.6); burst(B.x, B.y, '#ffffff', 10, 1.2); shake(0.7); flash(D.c, 0.25); sound('slam', B.x);
         // the Night Flyer starts at the middle spot, charging at once, with its first fireflies
         if (B.type === 'firefly') { B.spot = 4; B.yaw = 0; setSt(B, 'charge'); flyerEscort(); B.ffq = G.t + 1; sound('charge'); }
         else if (B.type === 'wasp') { B.stn = 0; B.tE = 2; waspLapStart(B, ri(2, 4)); }
@@ -1126,15 +1131,19 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       B.x = (B.dx0 != null ? B.dx0 : B.x) + (W / 2 - (B.dx0 != null ? B.dx0 : B.x)) * de; B.y = (B.dy0 != null ? B.dy0 : B.y) + (dyT - (B.dy0 != null ? B.dy0 : B.y)) * de;
       var dc = B.type === 'firefly' ? '#40ff80' : B.type === 'beetle' ? '#ffb13d' : B.type === 'wasp' ? '#ff2a3a' : D.c;
       if (B.type === 'firefly' && B.stT >= 0.7 && B.stT - dt < 0.7) flyerRing(B, true);      // one last (harmless) ring
-      if (Math.random() < dt * 5) { var ex = B.x + rnd(-R[0], R[0]) * 0.7, ey = B.y + rnd(-R[1], R[1]) * 0.7, ec = pick([dc, '#fff']); boom(ex, ey, ec, false); burst(ex, ey, ec, 8, 1.2); snd('kill'); shake(0.2); }
+      var drate = 4 + B.stT * 9;   // the bursts come faster and harder as it goes
+      if (Math.random() < dt * drate) { var ex = B.x + rnd(-R[0], R[0]) * 0.7, ey = B.y + rnd(-R[1], R[1]) * 0.7, ec = pick([dc, '#fff']); boom(ex, ey, ec, B.stT > 1); burst(ex, ey, ec, 8, 1.2); snd('kill', ex); shake(0.15 + B.stT * 0.2); }
+      if (B.stT >= 1.2 && B.stT - dt < 1.2) { flash('#ffffff', 0.35); ring(B.x, B.y, 60, '#ffffff'); }
       if (B.stT > 1.6) {
-        burst(B.x, B.y, dc, 40, 2.2); burst(B.x, B.y, '#fff', 20, 1.5); boom(B.x, B.y, '#ffffff', true); ring(B.x, B.y, 90, dc);
+        // it shatters: a storm of cubes in its colours, rings racing out, a moment of slow motion
+        burst(B.x, B.y, dc, 60, 2.4, 2.6); burst(B.x, B.y, D.c, 40, 1.8, 2.2); burst(B.x, B.y, '#fff', 30, 1.5, 1.4); boom(B.x, B.y, '#ffffff', true);
+        ring(B.x, B.y, 140, dc); ring(B.x, B.y, 90, '#ffffff'); ring(B.x, B.y, 50, D.c); ev(['m', 0.6]);
         sound('bdie', B.x); announce(BOSS[B.type].name + ' destroyed!', 2); shake(1.2); flash('#fff', 0.7);
         award(B.last, bossBonus(B.type), B.x, B.y, true); G.stats.bosses++;
         if (B.type === 'mega') { G.stats.saved = true; G.oneLife = false; }
         G.players.forEach(function (p) { buzz(p.id, 'success'); });
         G.foes.forEach(function (o) { burst(o.x, o.y, '#ffffff', 4, 0.8); });
-        G.boss = null; G.foes = []; G.shots = []; G.zones = [];
+        G.boss = null; G.bossFell = G.t; G.foes = []; G.shots = []; G.zones = [];
       }
       return;
     }
@@ -1483,7 +1492,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (ro) ro.disconnect();
     ro = new ResizeObserver(fit); ro.observe(app); ro.observe(wrapEl);
     cssW = 0; fit(); hudDirty = true; shownTheme = null;
-    fx.parts = []; fx.pops = []; fx.exps = []; fx.arcs = []; fx.trail = []; fx.shake = 0; fx.flash = 0; fx.banner = null; fx.card = null;
+    fx.parts = []; fx.pops = []; fx.exps = []; fx.arcs = []; fx.trail = []; fx.slow = 0; fx.shake = 0; fx.flash = 0; fx.banner = null; fx.card = null;
     ctl.touches = {}; ctl.nt = 0; ctl.steer = null; ctl.dx = ctl.dy = 0; ctl.mouse = false; ctl.keys = {};
     barPause(!online);
     // the game plays sideways: phones and iPads held upright get the kit's "turn your phone" cover (and the
@@ -1582,7 +1591,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (screen !== 'game') return;
     if (GV) guestFrame(dt);
     else if (G && !paused && !hold) {
-      acc += dt; var n = 0;
+      acc += dt * (fx.slow > 0 ? 0.3 : 1); var n = 0;
+      if (fx.slow > 0) fx.slow -= dt;
       while (acc >= STEP && n++ < 6) { acc -= STEP; sim(STEP); }
       if (n >= 6) acc = 0;
       if (G.mode === 'host') netHostTick();
