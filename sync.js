@@ -581,9 +581,54 @@
     return _fb.db.collection('pins').doc(pin());
   }
 
+  // Reading your account: one plain web request first. The Firebase library reads through a live connection that on
+  // iPhone Safari sometimes stalls until its 30-second timeout (sign-in took half a minute); a plain request doesn't.
+  // Anything wrong with it (offline, a refusal, 12 seconds without an answer) falls back to the library's read.
+  function fromRest(v){
+    if(!v || typeof v !== 'object') return null;
+    if('stringValue' in v) return v.stringValue;
+    if('integerValue' in v) return Number(v.integerValue);
+    if('doubleValue' in v) return Number(v.doubleValue);
+    if('booleanValue' in v) return !!v.booleanValue;
+    if('nullValue' in v) return null;
+    if('timestampValue' in v) return v.timestampValue;
+    if('mapValue' in v){ var o = {}, f = (v.mapValue && v.mapValue.fields) || {}; Object.keys(f).forEach(function(k){ o[k] = fromRest(f[k]); }); return o; }
+    if('arrayValue' in v) return ((v.arrayValue && v.arrayValue.values) || []).map(fromRest);
+    return null;
+  }
+  function restGetPin(p){
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null, to = ctl ? setTimeout(function(){ ctl.abort(); }, 12000) : 0;
+    var url = 'https://firestore.googleapis.com/v1/projects/' + firebaseConfig.projectId + '/databases/(default)/documents/pins/' + p + '?key=' + firebaseConfig.apiKey;
+    return fetch(url, { cache: 'no-store', signal: ctl ? ctl.signal : undefined }).then(function(r){
+      if(r.status === 404) return { exists: false, data: function(){ return null; } };
+      if(!r.ok) throw new Error('read refused (' + r.status + ')');
+      return r.json().then(function(j){ var d = fromRest({ mapValue: { fields: j.fields || {} } }); return { exists: true, data: function(){ return d; } }; });
+    }).then(function(x){ clearTimeout(to); return x; }, function(e){ clearTimeout(to); throw e; });
+  }
+  // A query as one plain web request (see restGetPin): [{ id, data }]. Used where waiting on the live connection
+  // would be slow, like friends' open tables on the home screen.
+  function restQuery(col, field, values, limit){
+    var url = 'https://firestore.googleapis.com/v1/projects/' + firebaseConfig.projectId + '/databases/(default)/documents:runQuery?key=' + firebaseConfig.apiKey;
+    var body = { structuredQuery: { from: [{ collectionId: col }], where: { fieldFilter: { field: { fieldPath: field }, op: 'IN', value: { arrayValue: { values: values.map(function(v){ return { stringValue: String(v) }; }) } } } }, limit: limit || 20 } };
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null, to = ctl ? setTimeout(function(){ ctl.abort(); }, 8000) : 0;
+    return fetch(url, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined }).then(function(r){
+      if(!r.ok) throw new Error('query refused (' + r.status + ')');
+      return r.json();
+    }).then(function(rows){
+      clearTimeout(to);
+      return (rows || []).filter(function(x){ return x && x.document; }).map(function(x){ return { id: x.document.name.split('/').pop(), data: fromRest({ mapValue: { fields: x.document.fields || {} } }) }; });
+    }, function(e){ clearTimeout(to); throw e; });
+  }
+  function getPinDoc(ref){
+    return restGetPin(pin()).catch(function(e){
+      dlog('warn', 'Quick read failed (' + ((e && e.name === 'AbortError') ? 'no answer in 12 s' : (e && e.message) || e) + '); reading through Firebase instead');
+      return ref.get();
+    });
+  }
+
   function pullCloud(){
     var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, ghDel:null, links:null, isNew:false});
-    return ref.get().then(function(doc){
+    return getPinDoc(ref).then(function(doc){
       if(!doc.exists){
         console.log('[sync] pull: cloud doc empty (first sync)');
         return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, ghDel:null, links:null, isNew:true};
@@ -1805,6 +1850,7 @@
     logGet: function(){ try{ var a = JSON.parse(LS.getItem(DLOG) || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; } },
     lastSync: function(){ try{ return JSON.parse(LS.getItem(DLAST) || 'null'); }catch(e){ return null; } },
     logClear: function(){ try{ LS.removeItem(DLOG); }catch(e){} },
+    restQuery: restQuery,
     warm: function(){ return ensureFirebase().then(function(){ return true; }, function(){ return false; }); },   // load the cloud code early (the sign-in page)
     signInWithPin: signInWithPin, changePin: changePin, weakPin: weakPin, randomPin: randomPin,
     setLabel: setLabel,

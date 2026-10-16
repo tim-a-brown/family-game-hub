@@ -1032,7 +1032,28 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     }).catch(function () { return null; }));
   }
   var FT_COLS = ['arcadeRooms', 'chessRooms', 'lorcanaRooms'];
-  function ftStop() { FT.unsub.forEach(function (u) { try { u(); } catch (e) {} }); FT.unsub = []; clearInterval(FT.poll); FT.poll = 0; FT.key = ''; }
+  function ftStop() { FT.unsub.forEach(function (u) { try { u(); } catch (e) {} }); FT.unsub = []; clearInterval(FT.poll); FT.poll = 0; clearTimeout(FT.quick); FT.quick = 0; FT.key = ''; FT.keys = null; }
+  // Two ways the lists arrive: the live listener, and quick direct reads (one when home opens, then the live tables
+  // every 2 seconds while you're using home: the listener on iPhone can lag 15 to 30 seconds). A quick read under
+  // 10 seconds old wins, so a late listener update can't take a table back off the screen.
+  FT.rest = {}; FT.live = {};
+  function ftDocs(col) { var r = FT.rest[col]; return r && Date.now() - r.at < 10000 ? r.l : (FT.live[col] || (r && r.l) || []); }
+  var ftActAt = Date.now();
+  ['pointerdown', 'keydown', 'scroll', 'wheel'].forEach(function (ev) { window.addEventListener(ev, function () { var idle = Date.now() - ftActAt > 15 * 60000; ftActAt = Date.now(); if (idle && FT.keys) ftQuick(FT.key, ['arcadeRooms']); }, { passive: true, capture: true }); });
+  function ftQuick(key, cols) {
+    clearTimeout(FT.quick); FT.quick = 0;
+    if (FT.key !== key || !FT.keys || document.visibilityState === 'hidden' || FT.qBusy) return;
+    var t0 = Date.now(); FT.qBusy = true;
+    Promise.all(cols.map(function (col) {
+      return FGHSync.restQuery(col, 'host.lk', FT.keys, 20).then(function (l) { FT.rest[col] = { at: Date.now(), l: l.map(function (x) { return { code: x.id, d: x.data }; }) }; }, function (e) { FT.qFail = (FT.qFail || 0) + 1; if (FT.qFail === 1) console.warn('[home] open tables: quick check failed', (e && e.message) || e); });
+    })).then(function () {
+      FT.qBusy = false;
+      if (FT.key !== key) return;
+      ftEval();
+      // again in 2 s while home is being used (paused after 15 idle minutes; a touch starts it again)
+      if (Date.now() - ftActAt < 15 * 60000) FT.quick = setTimeout(function () { ftQuick(key, ['arcadeRooms']); }, Math.max(500, 2000 - (Date.now() - t0)));
+    });
+  }
   // (re)start the listeners for the people linked right now; a no-op when they haven't changed
   function watchFriendTables() {
     if (!window.FGHSync || !FGHSync.isPin || !FGHSync.isPin() || !FGHSync.db || !FGHSync.links) return;
@@ -1040,8 +1061,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var L = FGHSync.links() || {}, others = L.others || {};
     var ppl = Object.keys(others).map(function (k) { return others[k]; }).filter(function (r) { return r && !r.off && !r.gone && r.code && r.hs; });
     var key = ppl.map(function (p) { return p.code + ':' + p.name; }).sort().join('|');
-    if (key === FT.key && (FT.unsub.length || FT.poll || !ppl.length)) return;   // nothing changed (log only changes)
-    ftStop(); FT.key = key; FT.docs = {};
+    if (key === FT.key && (FT.unsub.length || FT.poll || FT.keys || !ppl.length)) { if (FT.keys && !FT.quick) ftQuick(key, FT_COLS); return; }   // nothing changed (log only changes); coming back: look at once
+    ftStop(); FT.key = key; FT.keys = null;
     if (FGHSync.log) FGHSync.log('tables', ppl.length ? 'Watching for open tables from ' + ppl.map(function (p) { return p.name; }).join(', ') : 'No linked players to watch for open tables');
     if (!ppl.length) { ftSet([]); return; }
     Promise.all(ppl.map(function (p) { return linkTag(p.code); })).then(function (tags) {
@@ -1049,20 +1070,22 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       var who = {}; tags.forEach(function (t, i) { if (t) who[t] = ppl[i]; });
       FT.who = who;
       var keys = Object.keys(who).slice(0, 10); if (!keys.length) { ftSet([]); return; }
+      FT.keys = keys; FT.rest = {}; FT.live = {};
+      if (FGHSync.restQuery) ftQuick(key, FT_COLS);
       return FGHSync.db().then(function (db) {
         if (FT.key !== key) return;
         var failed = false;
         FT_COLS.forEach(function (col) {
           var q = db.collection(col).where('host.lk', 'in', keys).limit(20);
           FT.unsub.push(q.onSnapshot(function (qs) {
-            var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); FT.docs[col] = l; ftEval();
+            var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); FT.live[col] = l; ftEval();
           }, function (e) {
             console.warn('[home] open tables: listening failed, checking every 45 s instead', col, e);
             if (failed) return; failed = true;
-            ftStop(); FT.key = key;
+            FT.unsub.forEach(function (u) { try { u(); } catch (er) {} }); FT.unsub = [];
             var poll = function () {
               if (document.visibilityState === 'hidden') return;
-              Promise.all(FT_COLS.map(function (c) { return db.collection(c).where('host.lk', 'in', keys).limit(20).get().then(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); FT.docs[c] = l; }).catch(function () {}); })).then(ftEval);
+              Promise.all(FT_COLS.map(function (c) { return db.collection(c).where('host.lk', 'in', keys).limit(20).get().then(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); FT.live[c] = l; }).catch(function () {}); })).then(ftEval);
             };
             poll(); FT.poll = setInterval(poll, 45000);
           }));
@@ -1074,7 +1097,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   function ftEval() {
     var who = FT.who, now = Date.now(), out = [], newest = {}, myDev = null;
     try { myDev = JSON.parse(get('online_dev', 'null')); } catch (e) {}
-    (FT.docs.arcadeRooms || []).forEach(function (x) {   // the online games: live tables with a seat free (some take players mid-game)
+    ftDocs('arcadeRooms').forEach(function (x) {   // the online games: live tables with a seat free (some take players mid-game)
       var d = x.d, h = d.host || {};
       if ((d.status !== 'open' && d.status !== 'playing') || h.dev === myDev || (d.n || 1) >= (d.max || 2) || now - (d.at || 0) > 90000 || !who[h.lk]) return;
       if (newest[h.dev] && newest[h.dev].at >= (d.at || 0)) return;
@@ -1083,7 +1106,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     });
     Object.keys(newest).forEach(function (k) { out.push(newest[k].item); });
     [['chessRooms', 'chess'], ['lorcanaRooms', 'lorcana']].forEach(function (z) {   // Chess and Lorcana tables wait for an opponent (days, even)
-      (FT.docs[z[0]] || []).forEach(function (x) {
+      ftDocs(z[0]).forEach(function (x) {
         var d = x.d, h = d.host || {};
         if (d.status !== 'waiting' || d.guest || h.dev === myDev || !who[h.lk] || now - (d.at || 0) > 30 * 864e5) return;
         out.push({ id: z[1], code: x.code, at: d.at || 0, live: false, who: who[h.lk].name, href: 'games/' + (z[1] === 'chess' ? 'chess' : 'lorcana-play') + '.html?online=1' });
@@ -1103,7 +1126,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (FT.sheet) FT.sheet.paint();
   }
   // a table's heartbeat stops when its page closes: look again every 15 s so it leaves on time
-  setInterval(function () { if (FT.unsub.length || FT.poll) ftEval(); }, 15000);
+  setInterval(function () { if (FT.keys) ftEval(); }, 15000);
   document.addEventListener('visibilitychange', watchFriendTables);
   window.addEventListener('fghlinks', function () { setTimeout(watchFriendTables, 0); });
   document.addEventListener('fghsync:updated', function () { setTimeout(watchFriendTables, 0); });
