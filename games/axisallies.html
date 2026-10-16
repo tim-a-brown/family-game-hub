@@ -24,43 +24,38 @@ html.aa-play body{display:flex;flex-direction:column;height:100vh;height:100dvh;
 html.aa-play #app{flex:1;min-height:0;max-width:none;width:100%;margin:0;padding:0 0 calc(var(--safe-b)) 0;display:flex;flex-direction:column;}
 html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 
-/* Phase bar: whose turn, which phase, how much money */
-.aa-top{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:4px calc(10px + var(--corner-x)) 4px;min-height:46px;}
-.aa-top .rnd{width:30px;height:30px;flex:none;}
-.aa-top .who{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15;}
-.aa-top .who b{font-family:var(--display);font-weight:400;font-size:1.15rem;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.aa-top .who small{font-size:.74rem;font-weight:800;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.aa-top .who small .ico{width:13px;height:13px;vertical-align:-2px;}
-.aa-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:var(--w07);font-weight:900;font-size:.88rem;white-space:nowrap;font-variant-numeric:tabular-nums;}
+/* Phase bar: whose turn, which phase, how much money. Small banners laid over the top of the map, so the map
+   and the panel both get the full height */
+.aa-top{position:absolute;left:12px;top:12px;right:62px;z-index:3;display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;pointer-events:none;}
+.aa-top > *{pointer-events:auto;}
+.aa-ban,.aa-steps{background:rgba(12,16,28,.8);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.4),inset 0 0 0 1px rgba(255,255,255,.08);color:#fff;}
+.aa-ban{display:flex;align-items:center;gap:7px;padding:4px 5px 4px 4px;min-width:0;max-width:100%;}
+.aa-ban .rnd{width:28px;height:28px;flex:none;}
+.aa-ban .who{min-width:0;display:flex;flex-direction:column;line-height:1.1;}
+.aa-ban .who b{font-family:var(--display);font-weight:400;font-size:1rem;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.aa-ban .who small{font-size:.66rem;font-weight:800;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.aa-ban .who small .ico{width:12px;height:12px;vertical-align:-2px;}
+.aa-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.1);font-weight:900;font-size:.8rem;white-space:nowrap;font-variant-numeric:tabular-nums;flex:none;}
 .aa-pill.ipc{background:linear-gradient(180deg,#f3d27a,#d8a93e);color:#3a2a05;box-shadow:inset 0 -2px 0 rgba(0,0,0,.18);}
-.aa-pill.ipc i{font-style:normal;font-size:.68rem;font-weight:900;opacity:.75;}
-/* The six steps of a turn (standard rule names). Tap one for "what do I do now" */
-.aa-steps{display:flex;gap:3px;flex:1 1 100%;order:9;min-width:0;padding:0 0 2px;}
-.aa-steps button{flex:1;min-width:0;height:22px;border:0;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:3px;padding:0 4px;font-family:inherit;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.03em;color:var(--text-3);background:var(--w05);white-space:nowrap;overflow:hidden;}
-.aa-steps button i{font-style:normal;opacity:.55;font-size:.56rem;}
-.aa-steps button.on{background:var(--pc,var(--accent));color:var(--pci,#fff);box-shadow:0 0 0 1.5px rgba(255,255,255,.35);}
-.aa-steps button.on i{opacity:.85;}
-.aa-steps button.done{color:var(--text-2);background:var(--w09);}
+.aa-pill.ipc i{font-style:normal;font-size:.62rem;font-weight:900;opacity:.75;}
+/* The six steps of a turn (standard rule names): the current one by name, the rest by number (all named when
+   there's room). Tap one for "what do I do now" */
+.aa-steps{display:flex;gap:2px;padding:3px;min-width:0;}
+.aa-steps button{flex:none;min-width:24px;height:28px;border:0;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 6px;font-family:inherit;font-size:.62rem;font-weight:900;text-transform:uppercase;letter-spacing:.03em;color:rgba(255,255,255,.55);background:transparent;white-space:nowrap;}
+.aa-steps button i{font-style:normal;font-size:.68rem;}
+.aa-steps button:not(.on) span{display:none;}
+.aa-steps button.on{background:var(--pc,var(--accent));color:var(--pci,#fff);box-shadow:0 0 0 1.5px rgba(255,255,255,.35);padding:0 9px;}
+.aa-steps button.on i{opacity:.8;}
+.aa-steps button.done{color:rgba(255,255,255,.8);}
 .aa-steps button.done i{display:none;}
-.aa-steps button.done::before{content:'';width:5px;height:8px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px);opacity:.7;flex:none;}
-@media (orientation:landscape) and (max-width:900px){
-  .aa-steps button{font-size:.56rem;letter-spacing:.01em;padding:0 3px;gap:2px;}
-  .aa-steps button:not(.on) i{display:none;}
-  .aa-steps button.on{flex:1.4;}
+.aa-steps button.done::before{content:'';width:5px;height:9px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px);opacity:.75;flex:none;}
+@media (min-width:1300px){ .aa-steps button:not(.on) span{display:inline;} .aa-steps button:not(.on) i{opacity:.55;} }
+@media (max-height:500px){
+  .aa-ph{padding:6px 10px 2px;} .aa-ph .icon-btn{width:32px;height:32px;} .aa-body{padding:2px 10px 10px;} .shop-top{margin:0 -10px 4px;padding:0 10px 4px;}
+  .tray{margin-top:4px;padding:4px;} .btile{padding:7px 2px 5px;} .btile .pic{width:57px;height:40px;} .btile .pic svg{width:50px;height:33px;}
+  .btile .qty{top:26px;} .aa-foot{padding:4px 10px 8px;} .aa-foot .btn{min-height:44px;}
 }
-/* Narrow phones in landscape: numbers for the other steps, the name only on the current one */
-@media (orientation:landscape) and (max-width:760px){
-  .aa-steps button:not(.on){flex:0 0 24px;padding:0;}
-  .aa-steps button:not(.on) i{display:inline;font-size:.62rem;}
-  .aa-steps button:not(.on).done i{display:none;}
-  .aa-steps button:not(.on) span{display:none;}
-  .aa-steps button.on{flex:1 1 auto;}
-}
-@media (orientation:landscape) and (min-width:640px){
-  .aa-top{flex-wrap:nowrap;}
-  .aa-top .who{flex:0 1 auto;max-width:30%;min-width:96px;}
-  .aa-steps{flex:1 1 200px;order:0;padding:0;margin:0 4px;}
-}
+@media (max-height:500px){ .aa-top{left:8px;top:8px;right:54px;gap:4px;} .aa-ban .rnd{width:24px;height:24px;} .aa-ban .who b{font-size:.9rem;} .aa-steps button{height:24px;} }
 
 .aa-main{flex:1;min-height:0;display:flex;flex-direction:column;}
 /* The map sits in a wooden frame like a board on the table */
@@ -171,6 +166,42 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .qbtns{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px;}
 .qbtns .btn{min-height:38px;}
 .cost{font-weight:900;color:#f4dd96;font-variant-numeric:tabular-nums;font-size:.86rem;flex:none;}
+
+/* Shop: unit tiles (tap to buy one), stats as icons, the order so far pinned at the top */
+.shop-top{position:sticky;top:-2px;z-index:2;margin:0 -12px 6px;padding:2px 12px 6px;background:var(--bg-2);}
+.money{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.78rem;font-weight:800;color:var(--text-2);}
+.money .aa-pill.ipc{font-size:.9rem;padding:4px 10px;}
+.money .room{display:inline-flex;align-items:center;gap:4px;}
+.money .room svg{width:20px;height:13px;opacity:.8;}
+.money .warn{color:#ffb3a8;flex-basis:100%;}
+.tray{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:6px;padding:5px;border-radius:12px;background:color-mix(in srgb,var(--pc,#ffc83d) 16%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--pc,#ffc83d) 50%,transparent);}
+.tray .tc{position:relative;display:flex;align-items:center;gap:3px;padding:2px 6px 2px 2px;border:0;border-radius:8px;background:rgba(0,0,0,.25);color:var(--text);font:inherit;font-weight:900;font-size:.8rem;font-variant-numeric:tabular-nums;cursor:pointer;}
+.tray .tc .pic{width:28px;height:19px;border-radius:5px;display:grid;place-items:center;background:var(--pc);color:var(--pci,#fff);}
+.tray .tc .pic svg{width:26px;height:17px;}
+.tray .tc.bump{animation:tcBump .35s ease-out;}
+.tray .clr{margin-left:auto;border:0;background:var(--w1);color:var(--text);border-radius:8px;height:26px;padding:0 8px;font:inherit;font-size:.72rem;font-weight:900;}
+@keyframes tcBump{0%{transform:scale(1.25);}100%{transform:none;}}
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;}
+.btile{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 3px 6px;border-radius:14px;border:0;background:var(--w05);color:var(--text);font:inherit;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none;transition:transform .1s;}
+.btile:active{transform:scale(.95);}
+.btile.on{background:color-mix(in srgb,var(--pc,#ffc83d) 22%,transparent);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--pc,#ffc83d) 75%,transparent);}
+.btile.off{opacity:.38;cursor:default;}
+.btile.off:active{transform:none;}
+.btile .pic{width:63px;height:45px;border-radius:10px;display:grid;place-items:center;background:var(--pc);color:var(--pci,#fff);box-shadow:inset 0 -3px 0 rgba(0,0,0,.2);}
+.btile .pic svg{width:54px;height:36px;}
+.btile .nm{max-width:100%;font-size:.74rem;font-weight:900;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.btile .nt{font-size:.6rem;font-weight:800;color:var(--text-3);line-height:1.1;}
+.btile .cost{position:absolute;top:4px;right:5px;font-size:.74rem;padding:0 5px;border-radius:6px;background:rgba(0,0,0,.35);}
+.btile .qty{position:absolute;top:30px;right:calc(50% - 40px);min-width:24px;height:24px;padding:0 5px;border-radius:12px;display:grid;place-items:center;background:#fff;color:#1a1a26;font-weight:900;font-size:.85rem;box-shadow:0 2px 6px rgba(0,0,0,.45);font-variant-numeric:tabular-nums;}
+.btile.bump .qty{animation:tcBump .3s ease-out;}
+.btile.bump .pic{animation:picPop .3s ease-out;}
+@keyframes picPop{0%{transform:scale(.88);}60%{transform:scale(1.08);}100%{transform:none;}}
+.btile .less{position:absolute;top:3px;left:3px;width:30px;height:30px;border-radius:9px;border:0;background:rgba(0,0,0,.4);color:#fff;font-size:1.2rem;font-weight:900;line-height:1;display:grid;place-items:center;}
+.stats{display:flex;justify-content:center;gap:5px;font-size:.78rem;font-weight:900;font-variant-numeric:tabular-nums;}
+.stats span{display:inline-flex;align-items:center;gap:2px;}
+.stats svg{width:12px;height:12px;flex:none;}
+.stats .a svg{color:#ff8f80;} .stats .d svg{color:#8fc8ff;} .stats .m svg{color:#a8e894;}
+.stats .z{opacity:.4;}
 
 /* Battle list */
 .blist{display:flex;flex-direction:column;gap:6px;}
@@ -319,8 +350,6 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 /* iPad portrait: roomier panel */
 @media (min-width:700px) and (orientation:portrait){
   :root{--aa-panel-h:clamp(260px,33dvh,380px);}
-  .aa-top .who b{font-size:1.3rem;}
-  .aa-steps button{font-size:.7rem;height:24px;}
 }
 /* Landscape with room: map left, panel right */
 @media (orientation:landscape) and (min-width:820px){
@@ -329,8 +358,6 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
   .aa-side{height:auto;width:340px;margin:0 calc(8px + var(--corner-x)) 8px 0;}
 }
 @media (orientation:landscape) and (max-height:500px){
-  .aa-top{min-height:38px;padding-bottom:2px;}
-  .aa-steps button{height:20px;}
   :root{--aa-panel-h:auto;}
   .aa-main{flex-direction:row;}
   .aa-side{height:auto;width:300px;margin:0 calc(6px + var(--corner-x)) 4px 0;}
@@ -421,6 +448,8 @@ var ROUNDEL = {
   us: '<circle r="11" fill="#1c3f94" stroke="#0d214f" stroke-width="1"/><path d="M0-8.2l1.9 5.7h6L3.1 1.1l1.8 5.7L0 3.3l-4.9 3.5 1.8-5.7-4.8-3.6h6z" fill="#fff"/>'
 };
 function roundelSvg(p, cls) { return '<svg class="rnd ' + (cls || '') + '" viewBox="-12 -12 24 24" aria-hidden="true">' + (ROUNDEL[p] || '<circle r="11" fill="#cdbb8f"/>') + '</svg>'; }
+// a power's colour lifted towards white (its name on the dark map banner)
+function shade(h, a) { var n = parseInt(h.slice(1), 16), f = function (v) { return Math.round(v + (255 - v) * a); }; return 'rgb(' + f(n >> 16) + ',' + f((n >> 8) & 255) + ',' + f(n & 255) + ')'; }
 function unitSvg(k) { return '<svg viewBox="0 0 24 16" fill="currentColor" aria-hidden="true">' + ICON[k] + '</svg>'; }
 
 // ── Map in play (full board or skirmish subset) ────────────────────────────
@@ -1488,9 +1517,8 @@ function buildBoard() {
     el('button', { type: 'button', 'aria-label': 'Show whole map', html: Kit.icon('tiles'), onclick: function () { fitView(true); } })
   ]);
   R.hint = el('div', { class: 'aa-hint' }, [el('span')]);
-  var wrap = el('div', { class: 'aa-mapwrap wood' }, [R.map, R.zoom, R.hint]);
+  var wrap = el('div', { class: 'aa-mapwrap wood' }, [R.map, R.top, R.zoom, R.hint]);
   R.side = el('div', { class: 'aa-side' });
-  app.appendChild(R.top);
   app.appendChild(el('div', { class: 'aa-main' }, [wrap, R.side]));
   // SVG layers
   WRAP = M.view[0] === 0 && M.view[2] === 1750 ? 1750 : 0;
@@ -1834,13 +1862,15 @@ function renderTop() {
   var p = cur(), seat = seatOf(p);
   R.top.innerHTML = '';
   R.top.style.setProperty('--pc', PW[p].col);
-  R.top.appendChild(el('span', { html: roundelSvg(p) }).firstChild);
-  R.top.appendChild(el('div', { class: 'who' }, [
-    el('b', { text: pname(p), style: { color: p === 'de' ? '#c9cfcb' : PW[p].col } }),
-    el('small', { html: (seat.cpu ? Kit.icon('bot') + ' ' : '') + esc(seat.name) + ' · Round ' + S.round })
+  R.top.appendChild(el('div', { class: 'aa-ban' }, [
+    el('span', { html: roundelSvg(p) }).firstChild,
+    el('div', { class: 'who' }, [
+      el('b', { text: pname(p), style: { color: p === 'de' ? '#c9cfcb' : shade(PW[p].col, 0.4) } }),
+      el('small', { html: (seat.cpu ? Kit.icon('bot') + ' ' : '') + esc(seat.name) + ' · Round ' + S.round })
+    ]),
+    el('span', { class: 'aa-pill', title: 'Victory cities: Axis – Allies', html: '<svg viewBox="0 0 24 24" width="14" height="14"><use href="#vc-star" width="24" height="24"/></svg>' + vcCount('X') + '–' + vcCount('A') }),
+    el('span', { class: 'aa-pill ipc', title: 'IPCs: your money', 'aria-label': 'IPCs, your money', html: '<i>IPC</i>' + (S.ipc[p] - (S.phase === 'buy' ? buyCost() : 0)) })
   ]));
-  R.top.appendChild(el('span', { class: 'aa-pill', title: 'Victory cities: Axis – Allies', html: '<svg viewBox="0 0 24 24" width="15" height="15"><use href="#vc-star" width="24" height="24"/></svg>' + vcCount('X') + '–' + vcCount('A') }));
-  R.top.appendChild(el('span', { class: 'aa-pill ipc', title: 'IPCs: your money', 'aria-label': 'IPCs, your money', html: '<i>IPC</i>' + (S.ipc[p] - (S.phase === 'buy' ? buyCost() : 0)) }));
   R.steps.innerHTML = '';
   R.steps.style.setProperty('--pc', PW[p].col); R.steps.style.setProperty('--pci', PW[p].ink);
   var idx = phaseIdx(S.phase);
@@ -2054,14 +2084,46 @@ function icSites(p) {
   for (var t = 0; t < NT; t++) if (M.on[t] && !isSea(t) && S.own[t] === p && S.turnOwn[t] === p && ipcOf(t) >= 1 && !S.ic[t]) out.push(t);
   return out;
 }
+// Attack, defence and move as small icons (a sword, a shield, an arrow)
+var STAT_SVG = {
+  a: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3.5 12.5L13 3M13 3h-3M13 3v3M3 9l4 4M2.5 13.5l1.5-1.5"/></svg>',
+  d: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5l5.5 2.1v4.1c0 3.3-2.3 5.8-5.5 6.8-3.2-1-5.5-3.5-5.5-6.8V3.6z"/></svg>',
+  m: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8h10M9 4l4 4-4 4"/></svg>'
+};
+function statIcons(k) {
+  var x = U[k];
+  return el('div', { class: 'stats', 'aria-label': 'Attack ' + x.a + ', defence ' + x.d + ', move ' + x.m, html: ['a', 'd', 'm'].map(function (s) {
+    return '<span class="' + s + (x[s] ? '' : ' z') + '">' + STAT_SVG[s] + x[s] + '</span>';
+  }).join('') });
+}
+var BUY_NOTE = { aa: 'Shoots planes', tra: 'Carries 2', cv: 'Holds 2 fighters', bb: 'Takes 2 hits', ic: 'Builds units here' };
 function buyPanel() {
-  var p = cur(), sh = panelShell(PH_TITLE.buy);
-  var left = S.ipc[p] - buyCost(), cap = placeCapacity(p);
+  var p = cur(), sh = panelShell(PH_TITLE.buy, { now: false });
+  var left = S.ipc[p] - buyCost(), cap = placeCapacity(p), bump = ui.bump; ui.bump = null;
   var bought = 0; for (var k in S.buy) if (k !== 'ic') bought += S.buy[k];
   var banked = 0; for (var b in S.bank[p]) if (b !== 'ic') banked += S.bank[p][b];
   if (ui.sel >= 0) { sh.body.appendChild(tinfoCard(ui.sel)); sh.body.appendChild(unitList(ui.sel)); sh.body.appendChild(el('div', { class: 'aa-sec', text: 'Shop' })); }
-  sh.body.appendChild(el('p', { class: 'aa-p', html: '<b>' + left + '</b> IPCs (your money) to spend. Your factories can place <b>' + cap + '</b> units this turn' + (banked ? ' (plus ' + banked + ' waiting from before)' : '') + '.' + (bought + banked > cap ? ' <b style="color:#ffb3a8">Extra units will wait for next turn.</b>' : '') }));
-  if (!holdsCapital(p) && capitalOf(p) != null) sh.body.appendChild(el('p', { class: 'aa-p', html: '<b style="color:#ffb3a8">Your capital is in enemy hands.</b> You get no income until it is freed.' }));
+  function act(fn, add) { pushUndo(); fn(); if (add) { Kit.sfx('chip'); Kit.haptic('light'); } else Kit.sfx('tap'); save(); renderAll(); }
+  // money and room, with the order so far underneath: stays in view while the tiles scroll
+  var top = el('div', { class: 'shop-top' });
+  var broke = S.ipc[p] < 3;
+  top.appendChild(el('div', { class: 'money' }, [
+    el('span', { class: 'aa-pill ipc', html: '<i>IPC</i>' + left }),
+    el('span', { text: broke && !buyCost() ? 'Not enough to buy anything' : 'to spend' }),
+    el('span', { class: 'room', title: 'Your factories can place this many units this turn', html: '· ' + unitSvg('ic') + 'Room for <b>' + cap + '</b>' + (banked ? ' (' + banked + ' waiting)' : '') })
+  ].concat(bought + banked > cap ? [el('span', { class: 'warn', text: 'Extra units wait for next turn' })] : [])));
+  if (!holdsCapital(p) && capitalOf(p) != null) top.appendChild(el('p', { class: 'aa-p', html: '<b style="color:#ffb3a8">Your capital is in enemy hands.</b> You get no income until it is freed.' }));
+  var order = BUYABLE.filter(function (k) { return S.buy[k]; });
+  if (order.length) {
+    var tray = el('div', { class: 'tray', 'aria-label': 'Your order' });
+    order.forEach(function (k) {
+      tray.appendChild(el('button', { type: 'button', class: 'tc' + (bump === k ? ' bump' : ''), 'aria-label': 'Remove one ' + U[k].n, title: 'Tap to remove one',
+        html: '<span class="pic">' + unitSvg(k) + '</span>×' + S.buy[k], onclick: function () { act(function () { S.buy[k] = Math.max(0, S.buy[k] - 1); }); } }));
+    });
+    tray.appendChild(el('button', { type: 'button', class: 'clr', text: 'Clear', onclick: function () { act(function () { S.buy = {}; }); } }));
+    top.appendChild(tray);
+  }
+  sh.body.appendChild(top);
   // Repairs
   Object.keys(S.dmg).forEach(function (t) {
     t = +t; if (S.own[t] !== p || !S.dmg[t]) return;
@@ -2069,23 +2131,37 @@ function buyPanel() {
     sh.body.appendChild(shopRow('ic', 'Repair ' + tname(t), S.dmg[t] + ' damage · 1 IPC each', 1, n,
       function (d) { var v = Math.max(0, Math.min(S.dmg[t], n + d)); if (d > 0 && left < 1) return; S.rep[t] = v; }, n < S.dmg[t] && left >= 1));
   });
-  var rows = el('div', { class: 'urows' });
+  var grid = el('div', { class: 'bgrid' });
   BUYABLE.forEach(function (k) {
     if (k === 'ic' && !icSites(p).length) return;
     var navalOk = k === 'ic' || U[k].dom !== 'S' || myFactories(p).some(function (f) { return coastal(f); });
     if (!navalOk) return;
-    var n = S.buy[k] || 0, x = U[k];
-    var sub = k === 'ic' ? 'Builds units where you place it' : adm(k) + (k === 'bb' ? ' · 2 hits' : k === 'cv' ? ' · holds 2 fighters' : k === 'tra' ? ' · carries 2' : '');
-    rows.appendChild(shopRow(k, x.n, sub, x.c, n, function (d) {
-      var v = Math.max(0, n + d);
-      if (k === 'ic') v = Math.min(v, icSites(p).length);
-      S.buy[k] = v;
-    }, left >= x.c && (k !== 'ic' || n < icSites(p).length)));
+    var n = S.buy[k] || 0, x = U[k], can = left >= x.c && (k !== 'ic' || n < icSites(p).length);
+    grid.appendChild(buyTile(k, n, can, bump === k, function () { act(function () { S.buy[k] = n + 1; ui.bump = k; }, true); },
+      function () { act(function () { S.buy[k] = Math.max(0, n - 1); }); }));
   });
-  sh.body.appendChild(rows);
-  if (bought) sh.body.appendChild(el('div', { class: 'qbtns' }, [el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Clear order', onclick: function () { pushUndo(); S.buy = {}; save(); renderAll(); } })]));
-  var spending = bought || Object.keys(S.rep).length > 0, broke = S.ipc[p] < 3 && !Object.keys(S.dmg).some(function (d) { return S.own[+d] === p && S.dmg[d]; });
-  stepBtn(sh.foot, spending ? 'Buy · ' + buyCost() + ' IPCs' : 'Buy nothing', function () { pushUndo(); endBuy(); Kit.sfx('chip'); afterPhase(); }, spending || broke);
+  sh.body.appendChild(grid);
+  var spending = bought || (S.buy.ic || 0) || Object.keys(S.rep).length > 0, none = broke && !Object.keys(S.dmg).some(function (d) { return S.own[+d] === p && S.dmg[d]; });
+  stepBtn(sh.foot, spending ? 'Buy · ' + buyCost() + ' IPCs' : 'Buy nothing', function () { pushUndo(); endBuy(); Kit.sfx('chip'); afterPhase(); }, spending || none);
+}
+// One unit in the shop: tap it to buy one, the corner button takes one back; press and hold for its card
+function buyTile(k, n, can, bump, add, less) {
+  var p = cur(), x = U[k], held = false, timer = 0;
+  var t = el('div', { class: 'btile' + (n ? ' on' : '') + (can ? '' : ' off') + (bump ? ' bump' : ''), role: 'button', tabindex: '0', 'aria-label': 'Buy a ' + x.n + ', ' + x.c + ' IPCs' + (n ? ', ' + n + ' in your order' : ''),
+    style: { '--pc': PW[p].col, '--pci': PW[p].ink } }, [
+    el('span', { class: 'cost', text: String(x.c) }),
+    el('span', { class: 'pic', html: unitSvg(k) }),
+    el('span', { class: 'nm', text: k === 'ic' ? 'Factory' : k === 'cv' ? 'Carrier' : x.n }),
+    k === 'ic' ? el('span', { class: 'nt', text: BUY_NOTE.ic }) : statIcons(k)
+  ].concat(BUY_NOTE[k] && k !== 'ic' ? [el('span', { class: 'nt', text: BUY_NOTE[k] })] : [])
+   .concat(n ? [el('span', { class: 'qty', text: String(n) })] : []));
+  if (n) t.appendChild(el('button', { type: 'button', class: 'less', 'aria-label': 'One less ' + x.n, text: '−', onclick: function (e) { e.stopPropagation(); less(); } }));
+  t.addEventListener('pointerdown', function (e) { if (e.target.closest('.less')) return; held = false; clearTimeout(timer); timer = setTimeout(function () { held = true; Kit.haptic('medium'); unitCard(k); }, 480); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { t.addEventListener(ev, function () { clearTimeout(timer); }); });
+  t.addEventListener('contextmenu', function (e) { e.preventDefault(); clearTimeout(timer); if (!held) unitCard(k); held = true; });
+  t.addEventListener('click', function () { if (held) { held = false; return; } if (can) add(); else Kit.sfx('tap'); });
+  t.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && can) { e.preventDefault(); add(); } });
+  return t;
 }
 function shopRow(k, name, sub, cost, n, change, canAdd) {
   var p = cur();
