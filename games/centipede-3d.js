@@ -208,11 +208,24 @@ function bugModel(type, fr, T, M, lit) {
   }
   return V.build(M);
 }
-// The player's ship: a glowing crystal of cubes pointing up the screen, its colour the player's
+// The player's ship: a long crystal gem pointing up the screen (the cabinet's): a narrow nose, widest a little
+// past the middle, a short tail; stepped glowing edges, a white-hot core inside a darker diamond
+function shipW(z) {
+  if (z < -12) return 0.7; if (z < -9) return 1.2;
+  if (z < 1) return 1.4 + (z + 9) / 10 * 3.8;
+  if (z < 5) return 5.2 - (z - 1) / 4 * 3.2;
+  return z < 7 ? 1.3 : 0;
+}
 function shipModel(col, M) {
-  const V = new Vox(0.6), c = hex(col), hi = shadeHex(col, 0.65);
-  V.fill(-5, 0, -11, 5, 6, 8, (x, y, z) => { const w = z < -2 ? (z + 11) / 9 * 4.6 : (8 - z) / 10 * 4.6; return Math.abs(x) <= w && Math.abs(y - 3) <= Math.max(0.6, w * 0.55); },
-    (x, y, z) => { const w = z < -2 ? (z + 11) / 9 * 4.6 : (8 - z) / 10 * 4.6, edge = Math.abs(x) > w - 1.1; return Math.abs(x) < 1 && z > -5 && z < 1 && y > 3 ? 0xffffff : edge ? c : (y > 3.5 ? hi : shadeHex(col, 0.25)); },
+  const V = new Vox(0.6), c = hex(col), hi = shadeHex(col, 0.55), dk = shadeHex(col, -0.45);
+  V.fill(-6, 0, -14, 6, 6, 8, (x, y, z) => { const w = shipW(z); return w > 0 && Math.abs(x) <= w && Math.abs(y - 3) <= Math.max(0.6, w * 0.6); },
+    (x, y, z) => {
+      const w = shipW(z), d = Math.abs(x) / 2.6 + Math.abs(z + 1) / 5.2;
+      if (Math.abs(x) > w - 0.9) return c;                     // the glowing stepped edge
+      if (y > 3.4 && d < 1) return 0xffffff;                   // the core
+      if (y > 3.4 && d < 1.3) return dk;                       // its dark diamond outline
+      return hi;
+    },
     (x, y, z, cc) => cc === 0xffffff || cc === c);
   return V.build(M);
 }

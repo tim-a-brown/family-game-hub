@@ -136,7 +136,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     crimson: { kind: 'hex', base: '#3e0a22', deep: '#100208', line: '#ff3d6a', line2: '#ff9a2a', hi: '#ffc0d0', mush: ['#ffcf2e', '#ffffff', '#fff1cc'], centi: ['#3ddc4a', '#ff9a1f', '#ff4a2a'], spider: ['#a15cff', '#ffd23d'] },
     web: { kind: 'web', base: '#320c5a', deep: '#0a0220', line: '#ff2d8a', line2: '#8a5cff', hi: '#ffb0e0', mush: ['#ffcf2e', '#ffffff', '#fff1cc'], centi: ['#3ddc4a', '#ff9a1f', '#ff4a2a'], spider: ['#ff5c9a', '#ffd23d'] }
   };
-  var PCOL = ['#3fa9ff', '#ffd23d', '#c46bff'];   // player ships: blue, yellow, purple, like the cabinet's three seats
+  var PCOL = ['#3fa9ff', '#ffd23d', '#c46bff'];   // players' plates and names: blue, yellow, purple, like the cabinet's three seats
+  var SHIPC = ['#4ae1e9', '#eaed3a', '#d84af0'];  // their ships: cyan, yellow, magenta
+  var TRAILC = ['#2a9fd8', '#d8c020', '#b030d0']; // and the light streak a moving ship leaves (a deeper shade)
   // Power-ups, the Chaos set: weapons with ammo (the bar replaces your lives plate while you have one). Scatter,
   // Shock and Bomb use it up shot by shot, so holding fire with nothing to hit wastes it; Beam drains steadily
   // from its first shot. AMMO: volleys, shots, seconds, bombs. A new one replaces the one you have, and what's
@@ -2040,18 +2042,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
   // the player's ship: a glowing crystal
   function shipSpr(ci) {
-    return vec('ship' + ci, 36, function (x, u) {
-      var col = PCOL[ci % 3];
+    return vec('ship' + ci, 40, function (x, u) {
+      // the cabinet's ship: a long gem, a narrow nose, widest a little past the middle, a short tail, with a
+      // white core inside a darker diamond
+      var col = SHIPC[ci % 3];
+      var G = [[0, -13], [0.7, -12], [1.2, -9], [5.2, 1], [2, 5], [1.3, 7], [-1.3, 7], [-2, 5], [-5.2, 1], [-1.2, -9], [-0.7, -12]];
       function poly(pts, fill) { x.beginPath(); pts.forEach(function (p, i) { x[i ? 'lineTo' : 'moveTo'](p[0], p[1]); }); x.closePath(); x.fillStyle = fill; x.fill(); }
-      poly([[0, -10], [4.6, -1.6], [0, 7.5], [-4.6, -1.6]], col);
-      poly([[0, -10], [-4.6, -1.6], [0, -3]], shade(col, 0.72));
-      poly([[0, -10], [4.6, -1.6], [0, -3]], shade(col, 0.35));
-      poly([[-4.6, -1.6], [0, -3], [0, 7.5]], shade(col, 0.15));
-      poly([[4.6, -1.6], [0, -3], [0, 7.5]], shade(col, -0.25));
-      var gr = x.createRadialGradient(0, -2.5, 0, 0, -2.5, 3.2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-      x.fillStyle = gr; x.beginPath(); x.arc(0, -2.5, 3.2, 0, TAU); x.fill();
-      x.strokeStyle = shade(col, 0.8); x.lineWidth = 0.6; x.lineJoin = 'round';
-      x.beginPath(); x.moveTo(0, -10); x.lineTo(4.6, -1.6); x.lineTo(0, 7.5); x.lineTo(-4.6, -1.6); x.closePath(); x.stroke();
+      poly(G, shade(col, 0.45));
+      poly([[0, -13], [0.7, -12], [1.2, -9], [5.2, 1], [2, 5], [0, 5.5]], shade(col, 0.15));
+      poly([[0, -6.2], [2.6, -1], [0, 4.2], [-2.6, -1]], shade(col, -0.45));
+      poly([[0, -5], [1.9, -1], [0, 3], [-1.9, -1]], '#ffffff');
+      x.strokeStyle = col; x.lineWidth = 0.9; x.lineJoin = 'miter';
+      x.beginPath(); G.forEach(function (p, i) { x[i ? 'lineTo' : 'moveTo'](p[0], p[1]); }); x.closePath(); x.stroke();
       addGlow(x.canvas, col, 8 * u);
     });
   }
@@ -2245,7 +2247,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     floorCv.style.display = use3 ? 'none' : '';
     if (use3) {
       var ships = R.players.map(function (p) { var px = p.x, py = p.y; if (GV && p.id === me && GV.pred.alive) { px = GV.pred.x; py = GV.pred.y; } return { x: px, y: py, ci: p.ci, alive: p.alive, a: p.inv > 0 && Math.floor(drawT * 12) % 2 ? 0 : 1 }; });
-      C3.frame(R, { cw: cv.width, ch: cv.height, S: S, tk: tk, THEMES: THEMES, PCOL: PCOL, ships: ships, t: drawT, sx: Math.round(sx), sy: Math.round(sy) });
+      C3.frame(R, { cw: cv.width, ch: cv.height, S: S, tk: tk, THEMES: THEMES, PCOL: SHIPC, ships: ships, t: drawT, sx: Math.round(sx), sy: Math.round(sy) });
     }
     var fk = tk + COLS + 'x' + ROWS + ':' + cv.width + 'x' + cv.height;
     if (!use3 && floorKey !== fk) { floorKey = fk; floorCv.width = cv.width; floorCv.height = cv.height; floorCv.getContext('2d').drawImage(bgSpr(tk), 0, 0); }
@@ -2323,30 +2325,38 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   var shipTrail = {};
   function drawTrail(x, id, px, py, col) {
     var tr = shipTrail[id] || (shipTrail[id] = []), last = tr[tr.length - 1];
-    if (!last || Math.hypot(px - last.x, py - last.y) > 0.6) tr.push({ x: px, y: py, t: drawT });
-    while (tr.length && drawT - tr[0].t > 0.32) tr.shift();
+    if (!last || Math.hypot(px - last.x, py - last.y) > 0.8) tr.push({ x: px, y: py, t: drawT });
+    else last.t = drawT;
+    while (tr.length > 1 && drawT - tr[0].t > 0.3) tr.shift();
     if (tr.length < 2) return;
-    x.globalCompositeOperation = 'lighter'; x.lineCap = 'round'; x.lineJoin = 'round';
-    for (var i = 1; i < tr.length; i++) {
-      var k = 1 - (drawT - tr[i].t) / 0.32; if (k <= 0) continue;
-      x.strokeStyle = hexA(col, 0.22 * k); x.lineWidth = 9 * k + 2; x.beginPath(); x.moveTo(tr[i - 1].x, tr[i - 1].y + 3); x.lineTo(tr[i].x, tr[i].y + 3); x.stroke();
-      x.strokeStyle = hexA(col, 0.75 * k); x.lineWidth = 3.4 * k + 0.6; x.stroke();
-      x.strokeStyle = 'rgba(255,255,255,' + (0.55 * k).toFixed(3) + ')'; x.lineWidth = 1.2 * k; x.stroke();
-    }
+    // a flat ribbon of colour the same width all along, soft at the edges, fading out toward its tail
+    var hx = tr[tr.length - 1].x, hy = tr[tr.length - 1].y + 3, tx0 = tr[0].x, ty0 = tr[0].y + 3;
+    if (Math.hypot(hx - tx0, hy - ty0) < 3) return;
+    var age = (drawT - tr[0].t) / 0.3, gr = x.createLinearGradient(hx, hy, tx0, ty0);
+    gr.addColorStop(0, hexA(col, 0.9)); gr.addColorStop(0.55, hexA(col, 0.55)); gr.addColorStop(1, hexA(col, 0));
+    var gw = x.createLinearGradient(hx, hy, tx0, ty0); gw.addColorStop(0, hexA(col, 0.3)); gw.addColorStop(1, hexA(col, 0));
+    x.globalCompositeOperation = 'lighter'; x.lineCap = 'butt'; x.lineJoin = 'round';
+    x.beginPath(); tr.forEach(function (q, i) { x[i ? 'lineTo' : 'moveTo'](q.x, q.y + 3); });
+    x.strokeStyle = gw; x.lineWidth = 12; x.stroke();
+    x.strokeStyle = gr; x.lineWidth = 6.5; x.stroke();
     x.globalCompositeOperation = 'source-over';
   }
   function drawShip(x, p, me, fxOnly) {
     var px = p.x, py = p.y;
     if (GV && p.id === me && GV.pred.alive) { px = GV.pred.x; py = GV.pred.y; }
     if (!p.alive) { delete shipTrail[p.id]; return; }
-    drawTrail(x, p.id, px, py, PCOL[p.ci % 3]);
-    var blink = p.inv > 0 && Math.floor(drawT * 12) % 2, col = PCOL[p.ci % 3], a = blink ? 0.35 : 1;
+    drawTrail(x, p.id, px, py, TRAILC[p.ci % 3]);
+    var blink = p.inv > 0 && Math.floor(drawT * 12) % 2, col = SHIPC[p.ci % 3], a = blink ? 0.35 : 1;
     x.globalCompositeOperation = 'lighter';
     glow(x, px, py, 22, col, 0.32 * a);
-    glow(x, px, py + 8.5, 4 + Math.random() * 2.5, '#ffffff', 0.6 * a);
+    // the exhaust: a short glowing plume out of the tail
+    var pl = x.createLinearGradient(px, py + 5, px, py + 17); pl.addColorStop(0, hexA(shade(col, 0.6), 0.9 * a)); pl.addColorStop(1, hexA(col, 0));
+    x.fillStyle = pl; x.beginPath(); x.moveTo(px - 2.2, py + 5); x.lineTo(px + 2.2, py + 5); x.lineTo(px + 0.6 + Math.random() * 0.6, py + 15 + Math.random() * 3); x.lineTo(px - 0.6 - Math.random() * 0.6, py + 15 + Math.random() * 3); x.closePath(); x.fill();
+    glow(x, px, py + 6, 3 + Math.random() * 2, '#ffffff', 0.55 * a);
     x.globalCompositeOperation = 'source-over';
     x.globalAlpha = a;
-    x.save(); x.translate(px, py); x.rotate(drawT * 1.3); drawSpr(x, ringSpr(p.ci), 0, 0); x.restore();
+    // the dotted shield ring only while it can't be hurt (just after coming back)
+    if (p.inv > 0) { x.save(); x.translate(px, py); x.rotate(drawT * 1.3); drawSpr(x, ringSpr(p.ci), 0, 0); x.restore(); }
     x.globalAlpha = a;
     if (!fxOnly) drawSpr(x, shipSpr(p.ci), px, py - 1);
     x.lineCap = 'round';
