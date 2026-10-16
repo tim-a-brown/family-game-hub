@@ -1225,6 +1225,20 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .rv-mk b{position:relative;font-family:var(--display);font-size:.9em;font-weight:400;font-style:normal;line-height:1;color:#fff;}
 .rv-lore{width:1.45em;height:2.05em;margin:-.4em .1em -.4em .15em;}
 .rv-lore b{font-size:.9em;}
+/* Inked (not played): the same splash in ink blue, the card dipping back as ink washes up over it, into the inkwell */
+.lz.reveal.inked .rv-verb{background:linear-gradient(180deg,#eef8ff,#8fd0ff 45%,#2f7fd6);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 2px 0 rgba(8,32,80,.7)) drop-shadow(0 0 16px rgba(96,180,255,.45));}
+.lz.reveal.inked .rv-verb::before,.lz.reveal.inked .rv-verb::after{background:linear-gradient(90deg,rgba(120,190,255,0),#7cc4ff);}
+.lz.reveal.inked .rv-fx{background:rgba(70,150,240,.14);box-shadow:inset 0 0 0 1px rgba(120,190,255,.45);color:#e4f3ff;}
+.lz.reveal.inked .lz-card{transform-origin:50% 100%;animation:rvDip 1.1s .25s cubic-bezier(.3,.7,.3,1) both;}
+.lz.reveal.inked .lz-card::after{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(0deg,rgba(18,70,170,.82) 0%,rgba(40,120,230,.55) 30%,rgba(90,170,255,.18) 52%,rgba(90,170,255,0) 64%);
+  mix-blend-mode:multiply;transform-origin:50% 100%;animation:rvInk 1.1s .25s cubic-bezier(.3,.7,.3,1) both;}
+.lz.reveal.inked .lz-card::before{content:'';position:absolute;left:-10%;right:-10%;bottom:-6%;height:46%;z-index:6;pointer-events:none;
+  background:radial-gradient(60% 40% at 50% 100%,rgba(140,205,255,.5),rgba(140,205,255,0) 70%);mix-blend-mode:screen;animation:rvGlow 1.1s .25s ease-out both;}
+@keyframes rvInk{from{transform:scaleY(0);opacity:.2}to{transform:scaleY(1);opacity:1}}
+@keyframes rvGlow{from{opacity:0}50%{opacity:1}to{opacity:.55}}
+@keyframes rvDip{from{transform:none}to{transform:perspective(900px) rotateX(9deg) translateY(2%) scale(.97)}}
+@media (prefers-reduced-motion:reduce){.lz.reveal.inked .lz-card,.lz.reveal.inked .lz-card::after,.lz.reveal.inked .lz-card::before{animation-duration:.01s;}}
 .rv-fx{margin-top:6px;padding:4px 14px;border-radius:999px;background:rgba(227,189,98,.12);box-shadow:inset 0 0 0 1px rgba(227,189,98,.35);color:#fff3d0;font-weight:800;font-size:.95rem;text-align:center;}
 .rv-bar{flex:none;position:sticky;bottom:0;z-index:300;display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;padding:14px 16px calc(var(--safe-b) + 10px);background:linear-gradient(180deg,rgba(6,5,18,0),rgba(6,5,18,.92) 30%);}
 .rv-row{display:flex;gap:10px;width:min(520px,100%);}
@@ -9725,6 +9739,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var ov = zoomShell(d, headHTML(d) + defMeta(d, u) +
       (how ? '<p class="lz-sub">' + esc(how) + '</p>' : '') + '<div class="rtext">' + rulesHTML(d) + '</div>', [], null, null, { tapClose: true });
     ov.classList.add('reveal');
+    // inked rather than played: the ink-blue version, saying where it went and how much ink that makes
+    if (verb === 'Inked') { ov.classList.add('inked'); if (!effect) effect = 'Into the inkwell · ' + p.ink.length + ' ink'; }
     var also = $$('.rv-tick:not(.out)').map(function (t) { t.remove(); return '<span class="rv-also">' + t.innerHTML.replace(/<i class="dot"[^>]*><\/i>/, '') + '</span>'; }).join('');
     ov.insertBefore(el('div', { class: 'rv-head', html: also + '<span class="rv-who"><i class="dot" style="--c:' + p.color + '"></i>' + esc(p.name) + '</span><b class="rv-verb">' + esc(verb) + '</b>' + (effect ? '<span class="rv-fx">' + fxHTML(effect) + '</span>' : '') }), ov.firstChild);
     var row = el('div', { class: 'rv-row' }, [
@@ -12189,6 +12205,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Test hooks (used by the automated checks; harmless otherwise)
   window.__storyOf = storyOf;
   window.__lorcana = {
+    reveal: function (u, how, verb, fx) { showReveal(u, how, verb, fx); },
     state: function () { return S; }, db: DB, D: D, DD: DD, C: C, parseKw: function (o) { return prep(o).K; }, fromLorcast: fromLorcast, prep: prep,
     quickDeck: quickDeck, deckProblems: deckProblems, winner: winner,
     load: function (st) { tok++; resetQ(); closeOverlays(); Kit.handoff.close(); S = st; DEF = {}; S.hist = S.hist || []; resumeFlow(); },
