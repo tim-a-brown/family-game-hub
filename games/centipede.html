@@ -13,7 +13,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
-<script src="../arcade-music.js"></script>
+<script src="centipede-audio.js"></script>
 <script src="../online.js"></script>
 <style>
 /* ── Play view: the arcade screen fills the page, no page scroll ─────────── */
@@ -173,78 +173,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (AC.state === 'suspended' && !paused) { try { AC.resume(); } catch (e) {} }
     return AC;
   }
-  function osc(type, f, t0, dur, vol, o) {
-    var a = ac(); if (!a) return; o = o || {};
-    var t = a.currentTime + t0, n = a.createOscillator(), gn = a.createGain(), out = n;
-    n.type = type; n.frequency.setValueAtTime(f, t);
-    if (o.to) n.frequency.exponentialRampToValueAtTime(o.to, t + dur);
-    gn.gain.setValueAtTime(0.0001, t); gn.gain.exponentialRampToValueAtTime(vol, t + 0.005); gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    if (o.lp) { var f2 = a.createBiquadFilter(); f2.type = 'lowpass'; f2.frequency.value = o.lp; n.connect(f2); out = f2; }
-    out.connect(gn); gn.connect(master); n.start(t); n.stop(t + dur + 0.05);
-  }
-  function noise(t0, dur, vol, type, freq, o) {
-    var a = ac(); if (!a) return; o = o || {};
-    var s = a.createBufferSource(), f = a.createBiquadFilter(), gn = a.createGain(), t = a.currentTime + t0;
-    s.buffer = nbuf; f.type = type || 'bandpass'; f.frequency.setValueAtTime(freq || 1000, t);
-    if (o.to) f.frequency.exponentialRampToValueAtTime(o.to, t + dur);
-    if (o.q) f.Q.value = o.q;
-    gn.gain.setValueAtTime(0.0001, t); gn.gain.exponentialRampToValueAtTime(vol, t + 0.004); gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f); f.connect(gn); gn.connect(master); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
-  }
-  function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
-  var SND = {
-    shot: function () { osc('square', 1700, 0, 0.04, 0.018, { to: 800, lp: 4200 }); },
-    mush: function () { noise(0, 0.03, 0.06, 'bandpass', 2400, { q: 3 }); },
-    pop: function () { noise(0, 0.05, 0.09, 'bandpass', 1500, { q: 2 }); },
-    seg: function () { osc('square', 520, 0, 0.07, 0.06, { to: 160, lp: 2600 }); noise(0, 0.04, 0.09, 'bandpass', 1800, { q: 2 }); },
-    head: function () { osc('square', 880, 0, 0.1, 0.07, { to: 220, lp: 3000 }); osc('triangle', 1320, 0.03, 0.12, 0.05); noise(0, 0.07, 0.12, 'bandpass', 1200, { q: 1.5 }); },
-    spider: function () { [0, 1, 2].forEach(function (i) { osc('square', 700 + i * 260, i * 0.05, 0.08, 0.05, { lp: 3500 }); }); noise(0, 0.12, 0.1, 'bandpass', 900); },
-    flea: function () { osc('sine', 1400, 0, 0.5, 0.04, { to: 300 }); },
-    scorp: function () { osc('sawtooth', 160, 0, 0.35, 0.05, { to: 320, lp: 900 }); },
-    kill: function () { noise(0, 0.25, 0.22, 'lowpass', 1600, { to: 200 }); osc('square', 330, 0, 0.2, 0.06, { to: 110, lp: 1600 }); },
-    die: function () { noise(0, 0.7, 0.5, 'lowpass', 1200, { to: 90 }); osc('sawtooth', 300, 0, 0.7, 0.12, { to: 40, lp: 1200 }); osc('sine', 120, 0, 0.6, 0.3, { to: 35 }); },
-    power: function () { [72, 76, 79, 84, 88].forEach(function (m, i) { osc('square', mtof(m), i * 0.045, 0.09, 0.05, { lp: 4200 }); osc('triangle', mtof(m + 12), i * 0.045, 0.14, 0.05); }); },
-    bomb: function () { noise(0, 1.0, 0.6, 'lowpass', 1800, { to: 60 }); osc('sine', 110, 0, 0.8, 0.45, { to: 30 }); osc('square', 220, 0, 0.3, 0.07, { to: 55, lp: 900 }); },
-    combo: function () { [79, 83, 86].forEach(function (m, i) { osc('square', mtof(m), i * 0.05, 0.08, 0.04, { lp: 5000 }); }); },
-    bhit: function () { osc('square', 180, 0, 0.07, 0.07, { to: 80, lp: 1400 }); noise(0, 0.05, 0.1, 'bandpass', 700, { q: 2 }); },
-    bdie: function () { noise(0, 1.2, 0.6, 'lowpass', 2000, { to: 60 }); osc('sine', 90, 0, 1.0, 0.4, { to: 30 }); [60, 64, 67, 72, 76, 79, 84].forEach(function (m, i) { osc('square', mtof(m), 0.5 + i * 0.07, 0.14, 0.06, { lp: 4000 }); }); },
-    wave: function () { [60, 64, 67, 72].forEach(function (m, i) { osc('square', mtof(m), i * 0.08, 0.12, 0.06, { lp: 3500 }); }); osc('triangle', mtof(84), 0.32, 0.35, 0.09); },
-    clear: function () { [72, 71, 72, 76, 79, 84].forEach(function (m, i) { osc('square', mtof(m), i * 0.07, 0.11, 0.06, { lp: 3600 }); osc('triangle', mtof(m - 12), i * 0.07, 0.15, 0.06); }); },
-    extra: function () { [79, 83, 86, 91].forEach(function (m, i) { osc('square', mtof(m), i * 0.06, 0.1, 0.05, { lp: 5000 }); }); osc('triangle', mtof(95), 0.24, 0.3, 0.07); },
-    warn: function () { [0, 0.22].forEach(function (t) { osc('sawtooth', 440, t, 0.18, 0.06, { to: 880, lp: 2000 }); }); },
-    over: function () { [67, 66, 65, 64].forEach(function (m, i) { osc('square', mtof(m), 0.2 + i * 0.22, i === 3 ? 0.7 : 0.2, 0.06, { lp: 1800 }); osc('triangle', mtof(m - 12), 0.2 + i * 0.22, i === 3 ? 0.7 : 0.2, 0.09); }); },
-    shoot: function () { osc('sawtooth', 900, 0, 0.12, 0.04, { to: 400, lp: 2400 }); },
-    scatter: function () { osc('square', 1500, 0, 0.05, 0.016, { to: 700, lp: 4000 }); noise(0, 0.03, 0.03, 'highpass', 3000); },
-    beam: function () { osc('sawtooth', 110 + Math.random() * 8, 0, 0.09, 0.07, { lp: 1400 }); osc('square', 220 + Math.random() * 16, 0, 0.09, 0.03, { lp: 2600 }); noise(0, 0.09, 0.07, 'bandpass', 5200 + Math.random() * 1500, { q: 1.2 }); },
-    zap: function () { noise(0, 0.22, 0.3, 'highpass', 2600); noise(0.03, 0.12, 0.18, 'bandpass', 6000, { q: 2 }); [0, 0.035, 0.07].forEach(function (t, i) { osc('square', 2400 - i * 500, t, 0.05, 0.05, { to: 700, lp: 7000 }); }); osc('sawtooth', 90, 0, 0.18, 0.08, { lp: 900 }); },
-    tink: function () { osc('triangle', 2400 + Math.random() * 600, 0, 0.04, 0.02); },
-    capin: function () { [84, 88, 91].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.06, 0.18, 0.04); }); },
-    charge: function () { osc('sine', 300, 0, 0.5, 0.025, { to: 900 }); },
-    pulse: function () { noise(0, 0.3, 0.12, 'lowpass', 900, { to: 120 }); osc('sine', 160, 0, 0.3, 0.12, { to: 50 }); },
-    lob: function () { osc('sine', 220, 0, 0.25, 0.06, { to: 520 }); },
-    dive: function () { osc('sawtooth', 900, 0, 0.45, 0.05, { to: 200, lp: 2200 }); },
-    slam: function () { noise(0, 0.45, 0.4, 'lowpass', 900, { to: 60 }); osc('sine', 90, 0, 0.4, 0.3, { to: 30 }); },
-    web: function () { noise(0, 0.25, 0.06, 'bandpass', 3000, { to: 900, q: 2 }); }
-  };
-  var sLast = {};
-  function snd(name) {
-    var now = performance.now(); if (sLast[name] && now - sLast[name] < 35) return; sLast[name] = now;
-    if (SND[name]) try { SND[name](); } catch (e) {}
-  }
-
-  // ═══ Music: an original creepy-crawly chiptune (A minor: Am F Dm E). Tempo rises with the waves ═══
-  function rep(a, n) { var o = []; for (var i = 0; i < n; i++) o = o.concat(a); return o; }
-  var SONG = {
-    eighth: 0.15, leadVol: 0.035, leadLp: 2800, bassVol: 0.1, drumVol: 0.8, echo: 0.22,
-    lead: [69, 0, 72, 76, 75, 76, 72, 0, 69, 0, 72, 76, 79, 76, 72, 71,
-           65, 0, 69, 72, 71, 72, 69, 0, 65, 0, 69, 72, 76, 72, 69, 68,
-           62, 0, 65, 69, 68, 69, 65, 0, 62, 0, 65, 69, 74, 72, 69, 65,
-           64, 0, 68, 71, 70, 71, 68, 0, 76, 0, 74, 72, 71, 68, 64, 0],
-    bass: [].concat(rep([45, 0, 57, 45, 0, 45, 57, 0], 2), rep([41, 0, 53, 41, 0, 41, 53, 0], 2), rep([38, 0, 50, 38, 0, 38, 50, 0], 2), rep([40, 0, 52, 40, 0, 40, 52, 44], 2)),
-    drums: 'k.hsk.hs'
-  };
-  var Mus = ArcadeMusic.create({ key: 'centipede_music', song: SONG, ctx: ac, out: function () { return master; },
-    tempo: function () { var R = view(); return R ? 1 + Math.min(0.25, (R.wave - 1) * 0.025) + (R.boss ? 0.06 : 0) : 1; } });
+  // The sounds, the soundtrack and the announcer: centipede-audio.js (all synthesized here, nothing recorded)
+  var CA = CentiAudio.create({ ctx: ac, out: function () { return master; }, view: function () { return view(); }, width: 400 });
+  function snd(name, x) { CA.play(name, x); }
+  var Mus = CA.music;
 
   // ═══ Shell ══════════════════════════════════════════════════════════════
   var inCat = typeof findGame === 'function' && !!findGame('centipede');
@@ -254,7 +186,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     menu: [
       { icon: 'trophy', label: 'High scores', onClick: function () { pauseGame(); ArcadeHi.show(HI, 'Centipede'); } },
       { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Centipede: past games' }); } },
-      Mus.menuItem,
+      Mus.menuItem, CA.voiceItem,
       { icon: 'bolt', label: 'Auto-fire on or off', when: function () { return screen === 'game'; }, onClick: function () { setAuto(!ctl.auto); } },
       { icon: 'users', label: 'Play online', sub: '2 or 3 players, each on their own device', when: function () { return !net.mode && screen !== 'lobby'; }, onClick: function () { goLobby(); } },
       { icon: 'user', label: 'Play solo', when: function () { return screen === 'lobby'; }, onClick: function () { showSetup(); } },
@@ -326,7 +258,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function burst(x, y, c, n, sp) { ev(['b', r1(x), r1(y), c, n, sp || 1]); }
   function boom(x, y, c, big) { ev(['x', r1(x), r1(y), c, big ? 1 : 0]); }
   function popup(x, y, t, c, big) { ev(['p', r1(x), r1(y), String(t), c || '#fff', big ? 1 : 0]); }
-  function sound(n) { ev(['s', n]); }
+  function sound(n, x) { ev(x == null ? ['s', n] : ['s', n, r1(x)]); }
+  function announce(t, prio) { ev(['v', t, prio || 1]); }
   function shake(a) { ev(['k', a]); }
   function flash(c, a) { ev(['f', c, a]); }
   function banner(t, sub, c) { ev(['n', t, sub || '', c || '#ffffff']); }
@@ -342,7 +275,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
         // a small score right on top of one that just went up (a burst of kills) is left out
         if (!a[5] && fx.pops.some(function (q) { return !q.big && q.max - q.life < 0.25 && Math.abs(q.x - a[1]) < 16 && Math.abs(q.y - a[2]) < 9; })) break;
         fx.pops.push({ x: a[1], y: a[2], text: a[3], c: a[4], big: !!a[5], life: a[5] ? 1.3 : 0.9, max: a[5] ? 1.3 : 0.9 }); if (fx.pops.length > 24) fx.pops.shift(); break;
-      case 's': snd(a[1]); break;
+      case 's': snd(a[1], a[2]); break;
+      case 'v': CA.say(a[1], a[2]); break;
       case 'k': fx.shake = Math.min(1.2, Math.max(fx.shake, a[1])); break;
       case 'f': fx.flash = Math.max(fx.flash, a[2]); fx.flashC = a[1]; break;
       case 'n': fx.banner = { text: a[1], sub: a[2], c: a[3], life: 2.2, max: 2.2 }; break;
@@ -412,8 +346,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       makeBoss(w.boss);
       var D = BOSS[w.boss];
       card(D.name, 'Boss bonus: ' + fmt(bossBonus(w.boss)), D.c, w.boss === 'mega' ? 'One life: no extra lives in this fight' : '');
-      sound('warn');
-    } else { script(n, w); banner('Wave ' + n, n > LAST ? w.stage + ' - endless' : w.stage, '#ffffff'); sound('wave'); }
+      sound('warn'); announce('Boss battle! ' + D.name + '!', 2);
+    } else { script(n, w); banner('Wave ' + n, n > LAST ? w.stage + ' - endless' : w.stage, '#ffffff'); sound('wave'); announce('Wave ' + n, 2); }
     if (G.mode === 'host') { G.md = []; net.gridDirty = true; if (net.table) net.table.setStatus('playing', 'Wave ' + n); }
   }
   function bossBonus(type) { return BOSS[type].bonus * (1 + (waveDef(G.wave).loop || 0)); }
@@ -610,7 +544,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     G.stats.segs++; if (head) G.stats.heads++;
     noteKill(P);
     boom(sg.x, sg.y, head ? T.centi[2] : T.centi[0], false); burst(sg.x, sg.y, T.centi[0], head ? 9 : 6, 0.9);
-    sound(head ? 'head' : 'seg');
+    sound(head ? 'head' : 'seg', sg.x);
     if (head) buzz(P && P.id, 'light');
     // the segment becomes a mushroom where it was
     var c = Math.floor(sg.x / CELL), r = Math.floor(sg.y / CELL);
@@ -632,11 +566,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     G.score += pts;
     if (show) popup(x, y - 6, fmt(pts), P ? P.color : '#fff', pts >= 5000);
     // passing your best score (solo): a moment to celebrate, once a game
-    if (G.mode === 'solo' && !G.beatBest && G.best0 > 0 && G.score > G.best0) { G.beatBest = true; banner('New high score!', '', '#ffd23d'); sound('extra'); buzz(P && P.id, 'success'); }
+    if (G.mode === 'solo' && !G.beatBest && G.best0 > 0 && G.score > G.best0) { G.beatBest = true; banner('New high score!', '', '#ffd23d'); sound('extra'); announce('New high score!', 1); buzz(P && P.id, 'success'); }
     while (G.score >= G.nextLife) {
       G.nextLife += LIFE_EVERY;
       G.players.forEach(function (p) { p.lives++; if (!p.alive && !p.benched && p.lives === 1 && p.respawn <= 0) p.respawn = 0.8; });
-      sound('extra'); popup(W / 2, PZY - 14, 'Extra life', '#7dffb0', true);
+      sound('extra'); announce('Extra life!', 1); popup(W / 2, PZY - 14, 'Extra life', '#7dffb0', true);
       G.players.forEach(function (p) { buzz(p.id, 'success'); });
     }
   }
@@ -670,7 +604,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     ring(P.x, P.y, 36, '#ff2a3a'); ring(P.x, P.y, 20, '#ff4a5a');
     ['#3dff6a', '#3de8ff', '#ff3dc8', '#ffe23d', '#ff8a1f'].forEach(function (cc) { burst(cap.x, cap.y, cc, 4, 1.4); });
     buzz(P.id, 'success');
-    sound('power');
+    sound('power', P.x); announce(POW[k].name + '!', 1);
     P.power = k; P.powerT = 1; P.beamOn = false; P.cool = Math.min(P.cool, 0.05);
     popup(P.x, P.y - 18, POW[k].name, c, true);
   }
@@ -732,14 +666,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (G.phase === 'play' && !G.chains.length && !G.boss && !G.trainsLeft) { G.phase = 'clear'; G.phaseT = 0; waveBonus(); }
     if (G.phase === 'clear' && G.phaseT > 2.2) { G.lostBonus = false; startWave(G.wave + 1); }
     if (G.oneLife && G.phase === 'play' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); })) bonusLost();
-    if (G.phase !== 'over' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); }) && !(G.phase === 'clear' && G.lostBonus)) { G.phase = 'over'; G.phaseT = 0; sound('over'); }
+    if (G.phase !== 'over' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); }) && !(G.phase === 'clear' && G.lostBonus)) { G.phase = 'over'; G.phaseT = 0; sound('over'); announce('Game over', 2); }
   }
   function waveBonus() {
     var b = 250 * G.wave, bw = isBossWave(G.wave), mega = bw && waveDef(G.wave).boss === 'mega';
     G.players.forEach(function (p) { if (p.alive) p.score += b; });
     G.score += b;
-    if (mega) { card('You win!', 'Mega bonus', '#ff2d8a', 'The loop starts again, faster'); ev(['w']); }
-    else banner(bw ? 'Boss battle complete' : 'Wave complete', '+' + fmt(b) + ' bonus', bw ? '#ff3d4a' : '#ffd23d');
+    if (mega) { card('You win!', 'Mega bonus', '#ff2d8a', 'The loop starts again, faster'); ev(['w']); announce('You win! Mega bonus!', 2); }
+    else { banner(bw ? 'Boss battle complete' : 'Wave complete', '+' + fmt(b) + ' bonus', bw ? '#ff3d4a' : '#ffd23d'); announce(bw ? 'Boss battle complete!' : 'Wave complete', 1); }
     sound('clear');
     G.foes = G.foes.filter(function (f) { return f.type !== 'ball'; }); G.shots = []; G.zones = [];
     if (mega) shake(0.6);
@@ -770,9 +704,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (pw === 'beam') { P.beamOn = true; P.beaming = true; P.beamT -= dt; if (P.beamT <= 0) { P.beamT = 0.07; beamTick(P); if (P.local) snd('beam'); } return; }
     if (P.cool > 0) return;
     if (pw === 'scatter') { [-0.19, 0, 0.19].forEach(function (a) { shoot(P, P.x, a, 'scatter'); }); P.cool = 0.2; useAmmo(P, 1 / AMMO.scatter); if (P.local) snd('scatter'); }
-    else if (pw === 'shock') { shoot(P, P.x, 0, 'shock'); P.cool = 0.12; useAmmo(P, 1 / AMMO.shock); if (P.local) snd('shot'); }
+    else if (pw === 'shock') { shoot(P, P.x, 0, 'shock'); P.cool = 0.12; useAmmo(P, 1 / AMMO.shock); if (P.local) snd('shot', P.x); }
     else if (pw === 'bomb') { shoot(P, P.x, 0, 'bomb'); P.cool = 0.42; useAmmo(P, 1 / AMMO.bomb); if (P.local) snd('shoot'); }
-    else { shoot(P, P.x, 0, 'laser'); P.cool = 0.12; if (P.local) snd('shot'); }
+    else { shoot(P, P.x, 0, 'laser'); P.cool = 0.12; if (P.local) snd('shot', P.x); }
   }
   var BSPD = { laser: 640, scatter: 540, shock: 640, bomb: 340 };
   function shoot(P, x, a, k) {
@@ -821,8 +755,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var po = G.pois[idx(c, r)];
     setMush(c, r, hp);
     // mushrooms are worth nothing (as on the cabinet): they're in the way
-    if (!hp) { G.stats.mush++; burst(cx(c), cx(r), po ? '#b04dff' : themeOf(G).mush[0], 5, 0.7); snd('pop'); }
-    else snd('mush');
+    if (!hp) { G.stats.mush++; burst(cx(c), cx(r), po ? '#b04dff' : themeOf(G).mush[0], 5, 0.7); snd('pop', cx(c)); }
+    else snd('mush', cx(c));
   }
   // Shock: each hit sets off chain lightning: it jumps to the nearest bug, from that one to the next, and so on
   // (up to five jumps), and forks once or twice on the way
@@ -883,7 +817,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function hitFoe(o, P, dmg) {
     if (G.foes.indexOf(o) < 0) return;
     o.hp -= dmg;
-    if (o.hp > 0) { o.hurt = 0.12; burst(o.x, o.y, (FOE[o.type] || FOE.ant).c, 4); snd('mush'); if (o.type === 'flea') o.vy *= 1.6; return; }
+    if (o.hp > 0) { o.hurt = 0.12; burst(o.x, o.y, (FOE[o.type] || FOE.ant).c, 4); snd('mush', o.x); if (o.type === 'flea') o.vy *= 1.6; return; }
     G.foes.splice(G.foes.indexOf(o), 1);
     var f = FOE[o.type] || FOE.ant, pts = f.pts, col = o.type === 'spider' ? themeOf(G).spider[0] : f.c;
     if (o.type === 'spider') { var near = P ? Math.abs(P.y - o.y) : 99; pts = near < 25 ? 900 : near < 55 ? 600 : 300; G.stats.spiders++; }
@@ -892,7 +826,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     award(P, pts, o.x, o.y, o.type !== 'ant' && o.type !== 'mini');
     if (o.type !== 'ball') noteKill(P);
     boom(o.x, o.y, col, o.type !== 'ball' && o.type !== 'ant'); burst(o.x, o.y, col, o.type === 'ant' ? 5 : 11, 1.1);
-    sound(o.type === 'spider' ? 'spider' : o.type === 'beetle' ? 'bomb' : 'kill');
+    sound(o.type === 'spider' ? 'spider' : o.type === 'beetle' ? 'bomb' : 'kill', o.x);
     // a blast beetle goes off: mushrooms and bugs around it go too (a boss shrugs it off)
     if (o.type === 'beetle') beetleBlast(o, P);
     if (pts >= 600) buzz(P && P.id, 'light');
@@ -1161,7 +1095,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     // the Night Flyer blushes pink
     B.hp -= dmg; B.last = P; if (B.type === 'firefly') B.flash = 0.08; else if (B.type === 'wasp') B.flash = 0.05;
     if (k !== 'beam' || Math.random() < 0.35) { ev(['q', r1(x), r1(y)]); burst(x, y, BOSS[B.type].c, 2, 0.8); }
-    sound('bhit');
+    sound('bhit', x);
     // the Mega Spider changes how it fights at two thirds and one third (nothing shows it but what it does)
     var f = B.hp / B.max, ph = B.type !== 'mega' ? 0 : f < 1 / 3 ? 2 : f < 2 / 3 ? 1 : 0;
     if (ph > B.ph && B.hp > 0) B.ph = ph;
@@ -1195,7 +1129,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       if (Math.random() < dt * 5) { var ex = B.x + rnd(-R[0], R[0]) * 0.7, ey = B.y + rnd(-R[1], R[1]) * 0.7, ec = pick([dc, '#fff']); boom(ex, ey, ec, false); burst(ex, ey, ec, 8, 1.2); snd('kill'); shake(0.2); }
       if (B.stT > 1.6) {
         burst(B.x, B.y, dc, 40, 2.2); burst(B.x, B.y, '#fff', 20, 1.5); boom(B.x, B.y, '#ffffff', true); ring(B.x, B.y, 90, dc);
-        sound('bdie'); shake(1.2); flash('#fff', 0.7);
+        sound('bdie', B.x); announce(BOSS[B.type].name + ' destroyed!', 2); shake(1.2); flash('#fff', 0.7);
         award(B.last, bossBonus(B.type), B.x, B.y, true); G.stats.bosses++;
         if (B.type === 'mega') { G.stats.saved = true; G.oneLife = false; }
         G.players.forEach(function (p) { buzz(p.id, 'success'); });

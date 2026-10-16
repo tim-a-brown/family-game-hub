@@ -140,6 +140,7 @@ const PRECACHE_URLS = [
   '/games/crazytower.html',
   '/games/centipede.html',
   '/games/centipede-3d.js',
+  '/games/centipede-audio.js',
   '/games/invaders.html',
   '/games/pressyourluck.html',
   '/games/pressyourluck/art.js',
