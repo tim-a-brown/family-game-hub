@@ -22,8 +22,8 @@ import urllib.parse
 import urllib.request
 
 # Top-level Dropbox folders that aren't part of the repo and are never deleted (reference material Tim keeps
-# beside the code, like gameplay videos)
-KEEP = {"gameplayvids"}
+# beside the code, like gameplay videos and the console ROMs)
+KEEP = {"gameplayvids", "roms"}
 
 BLOCK = 4 * 1024 * 1024
 
