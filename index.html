@@ -1015,7 +1015,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // each kind of table brings a new one in the moment it opens (and drops it when it closes). The listener restarts
   // whenever your links change (a sync that brought someone back, a new link), stops while home is hidden, and falls
   // back to a check every 45 seconds if the cloud won't listen. Shown as the banner above the search.
-  var friendTables = [], LKT = {}, FT = { key: '', unsub: [], docs: {}, who: {}, poll: 0, at: 0 }, otbShown = {};
+  var friendTables = [], LKT = {}, FT = { key: null, unsub: [], docs: {}, who: {}, poll: 0, at: 0 }, otbShown = {};
   function linkTag(code) {
     code = String(code || ''); var c = window.crypto && window.crypto.subtle;
     if (!code || !c || typeof TextEncoder === 'undefined') return Promise.resolve(null);
@@ -1040,7 +1040,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var L = FGHSync.links() || {}, others = L.others || {};
     var ppl = Object.keys(others).map(function (k) { return others[k]; }).filter(function (r) { return r && !r.off && !r.gone && r.code && r.hs; });
     var key = ppl.map(function (p) { return p.code + ':' + p.name; }).sort().join('|');
-    if (key === FT.key && (FT.unsub.length || FT.poll)) return;
+    if (key === FT.key && (FT.unsub.length || FT.poll || !ppl.length)) return;   // nothing changed (log only changes)
     ftStop(); FT.key = key; FT.docs = {};
     if (FGHSync.log) FGHSync.log('tables', ppl.length ? 'Watching for open tables from ' + ppl.map(function (p) { return p.name; }).join(', ') : 'No linked players to watch for open tables');
     if (!ppl.length) { ftSet([]); return; }

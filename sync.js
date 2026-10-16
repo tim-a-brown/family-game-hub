@@ -452,12 +452,15 @@
     return out;
   }
   // Links: your own profile and each linked person go by their own timestamps (an unlink is a dated tombstone)
+  var LINK_KEYS = ['name', 'code', 'them', 'at', 'hs', 'bf', 'hsAt', 'off', 'gone'];
   function mergeLinks(a, b){
     if(!a && !b) return null;
     a = a || {}; b = b || {};
     var own = (a.own && b.own) ? ((a.own.at || 0) >= (b.own.at || 0) ? a.own : b.own) : (a.own || b.own || null);
     var others = {};
-    [a.others || {}, b.others || {}].forEach(function(src){ Object.keys(src).forEach(function(k){ var r = src[k]; if(r && (!others[k] || (r.at || 0) > (others[k].at || 0))) others[k] = r; }); });
+    // the newer wins; at the same moment a link beats an unlink (an unlink always gets its own, later time, so a tie
+    // is an old 'off' left behind on a link, which older versions could leave in the cloud)
+    [a.others || {}, b.others || {}].forEach(function(src){ Object.keys(src).forEach(function(k){ var r = src[k], o = others[k]; if(r && (!o || (r.at || 0) > (o.at || 0) || ((r.at || 0) === (o.at || 0) && o.off && !r.off && r.code))) others[k] = r; }); });
     var ini = (a.ini && b.ini) ? ((a.ini.at || 0) >= (b.ini.at || 0) ? a.ini : b.ini) : (a.ini || b.ini || null);
     var out = { own: own, others: others }; if(ini) out.ini = ini;
     return out;
@@ -710,6 +713,13 @@
     // This prevents the race where device A has empty local for some field
     // and pushes before device B's newly-saved data lands — merge:false
     // would wipe the cloud field entirely.
+    // Each linked person's entry goes up as a whole: the save merges into the cloud copy field by field, so a field
+    // this device no longer has (an unlink's 'off' after linking again, a 'gone' that cleared) is removed outright
+    // instead of lingering and turning the link back off on every device that loads from the cloud
+    if(doc.links && doc.links.others) Object.keys(doc.links.others).forEach(function(k){
+      var r = doc.links.others[k]; if(!r || typeof r !== 'object') return;
+      LINK_KEYS.forEach(function(f){ if(!(f in r)) r[f] = firebase.firestore.FieldValue.delete(); });
+    });
     return ref.set(doc, { merge: true }).catch(function(err){
       // Rules that don't allow `prefs` yet: save everything else
       if(doc.prefs && err && err.code === 'permission-denied'){ console.warn('[sync] cloud refused prefs; saving the rest'); delete doc.prefs; return ref.set(doc, { merge: true }); }
