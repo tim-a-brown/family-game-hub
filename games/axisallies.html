@@ -197,6 +197,14 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 /* Turn banner */
 .aa-banner{position:fixed;inset:0;z-index:300;display:grid;place-items:center;background:rgba(8,6,20,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);opacity:0;transition:opacity .25s;padding:20px;}
 .aa-banner.show{opacity:1;}
+/* the round's turn order on the turn card: whose go it is now, which powers are the same player's */
+.aa-order{display:flex;align-items:center;justify-content:center;gap:4px;margin:2px 0 10px;}
+.aa-order .op{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.03em;color:#5a5a6a;opacity:.45;}
+.aa-order .op .rnd{width:28px;height:28px;margin:0;filter:none;}
+.aa-order .op.mine{opacity:.85;}
+.aa-order .op.now{opacity:1;color:#2a2a3a;}
+.aa-order .op.now .rnd{width:36px;height:36px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3));}
+.aa-order .ar{color:#8a8a9a;font-weight:900;font-size:.8rem;margin-top:-12px;}
 .aa-banner .card{width:min(360px,100%);border-radius:22px;padding:22px 20px 18px;text-align:center;color:#2a2a3a;}
 .aa-banner .rnd{width:74px;height:74px;margin:0 auto 10px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.35));}
 .aa-banner h2{font-family:var(--display);font-weight:400;font-size:1.9rem;color:var(--pc);text-shadow:0 1px 0 rgba(255,255,255,.6);}
@@ -390,7 +398,8 @@ var BUYABLE = ['inf', 'art', 'arm', 'aa', 'ftr', 'bmb', 'sub', 'tra', 'dd', 'ca'
 var KINDS = ['inf', 'art', 'arm', 'aa', 'ftr', 'bmb', 'sub', 'tra', 'dd', 'ca', 'cv', 'bb'];
 // Unit silhouettes (24×16, filled with currentColor)
 var ICON = {
-  inf: '<circle cx="10.6" cy="3" r="2.3"/><path d="M8.2 6h4.9l1.2 4.4-1.5.4-.7-2.1V16h-1.7v-4.6h-.5V16H8.2V8.6l-1 2.1-1.5-.6z"/><path d="M14.3 2.1l1-.6 4.6 9.8-1 .5z"/>',
+  // a soldier advancing: helmet, pack, rifle with bayonet
+  inf: '<path d="M8.3 3.3C8.3 1.1 10 .2 11.5.2s3.2.9 3.2 3.1l.9.2v.7H7.4v-.7z"/><circle cx="12.3" cy="4.8" r="1.2"/><path d="M9.1 5.1h4.2l-.4 5.4H9.8z"/><path d="M7.6 5.8l2-.4.2 3.7-2 .2z"/><path d="M11.7 10l1.6.1 2.6 4.4 1.1 1.3h-2.4l-.4-.9zM9.7 10l1.8.4-2.4 4.4.3 1.1H7l.6-1.3z"/><path d="M7 10.1 21.4 3.7l.4.9L7.4 11zM6.3 10.3l3-1.3.5 1.2-3 1.3zM21.5 3.9l2.3-.7-2 1.3z"/><path d="M12.2 5.4l4.2 2-.4 1.1-4.2-1.9zM9.7 6.1l1.2-.4 2.1 3.4-1 .5z"/>',
   art: '<path d="M7 9.6 21.4 3.1l.8 1.7L8.6 12.2z"/><circle cx="8.4" cy="11.8" r="3.6"/><path d="M1.5 14.6h9.5v1.3H1.5z"/>',
   arm: '<path d="M2.3 9.4h19.4l-1.9 5.2H4.2z"/><path d="M6.8 5.3h8.8l1.6 4.1H5.8z"/><path d="M15.4 6.3H23v1.5h-7.6z"/>',
   aa:  '<path d="M4.6 15.6h14.8l-2.2-4.2H6.8z"/><path d="M9.6 11.6 15.2 1.8l1.3.7-5.2 9.1zM12.4 11.6l5.9-8.4 1.2.8-5.3 7.6z"/>',
@@ -1450,6 +1459,9 @@ function battleOdds(t, extraIds) {
 // ═══════════════════════════════════════════════════════════════════════════
 var SVGNS = 'http://www.w3.org/2000/svg';
 var V = { s: 1, tx: 0, ty: 0, W: 300, H: 300, k: 1 };
+// The full board wraps round like the real one (the Pacific joins its two ends: Western US sits on the right
+// edge, Eastern US on the left), so the map pans sideways without end: a copy of it sits on each side.
+var WRAP = 0;
 var R = {};   // DOM refs
 function defsOnce() {
   var d = document.getElementById('aaDefs');
@@ -1480,14 +1492,17 @@ function buildBoard() {
   app.appendChild(R.top);
   app.appendChild(el('div', { class: 'aa-main' }, [wrap, R.side]));
   // SVG layers
-  var s = '<svg xmlns="' + SVGNS + '"><g id="aaWorld">';
+  WRAP = M.view[0] === 0 && M.view[2] === 1750 ? 1750 : 0;
+  var s = '<svg xmlns="' + SVGNS + '"><g id="aaWorld"><g id="aaTile">';
   var sea = '', land = '', hit = '';
   for (var t = 0; t < NT; t++) {
     if (!M.on[t] || !GEO[t]) continue;
     if (isSea(t)) sea += '<path class="t-sea" data-t="' + t + '" d="' + GEO[t] + '"/>';
     else land += '<path class="t-land' + (imp(t) ? ' imp' : '') + '" data-t="' + t + '" id="tp' + t + '" d="' + GEO[t] + '"/>';
   }
-  s += '<g id="gSea">' + sea + '</g><g id="gLand">' + land + '</g><g id="gHit"></g><g id="gHl"></g><g id="gLbl"></g><g id="gStk"></g><g id="gFx"></g></g></svg>';
+  s += '<g id="gSea">' + sea + '</g><g id="gLand">' + land + '</g><g id="gHit"></g><g id="gHl"></g><g id="gLbl"></g><g id="gStk"></g><g id="gFx"></g></g>';
+  if (WRAP) s += '<use href="#aaTile" x="' + -WRAP + '"/><use href="#aaTile" x="' + WRAP + '"/>';
+  s += '</g></svg>';
   R.map.innerHTML = s;
   R.svg = R.map.firstChild; R.world = R.svg.querySelector('#aaWorld');
   ['gSea', 'gLand', 'gHit', 'gHl', 'gLbl', 'gStk', 'gFx'].forEach(function (id) { R[id] = R.svg.querySelector('#' + id); });
@@ -1521,6 +1536,8 @@ function focusOn(t, s, anim) {
 // Pan only if the place is off screen (keeps the map calm during computer turns)
 function peek(t) {
   var x = TER[t][5] * V.s + V.tx, y = TER[t][6] * V.s + V.ty, m = 30;
+  // on the wrapping map it may be in view on the copy to either side
+  if (WRAP) [-1, 1].forEach(function (k) { var x2 = x + k * WRAP * V.s; if (x2 >= m && x2 <= V.W - m) x = x2; });
   if (x < m || y < m || x > V.W - m || y > V.H - m) focusOn(t, V.s, true);
 }
 var animRaf = 0;
@@ -1530,16 +1547,28 @@ function setView(s, tx, ty, anim) {
   // keep the middle of the screen over the map
   // Keep the map filling the window (or centered when it is smaller)
   var mw = v[2] * s, mh = v[3] * s;
-  if (mw >= V.W) tx = Math.max(V.W - (v[0] + v[2]) * s, Math.min(-v[0] * s, tx)); else tx = (V.W - mw) / 2 - v[0] * s;
+  if (WRAP) tx = wrapTx(tx, s);
+  else if (mw >= V.W) tx = Math.max(V.W - (v[0] + v[2]) * s, Math.min(-v[0] * s, tx)); else tx = (V.W - mw) / 2 - v[0] * s;
   if (mh >= V.H) ty = Math.max(V.H - (v[1] + v[3]) * s, Math.min(-v[1] * s, ty)); else ty = (V.H - mh) / 2 - v[1] * s;
   cancelAnimationFrame(animRaf);
   if (!anim) { V.s = s; V.tx = tx; V.ty = ty; applyView(); return; }
+  // gliding on the wrapping map: go the short way round
+  if (WRAP) { var x0w = (V.W / 2 - V.tx) / V.s, x1w = (V.W / 2 - tx) / s, dw = x1w - x0w; if (dw > WRAP / 2) tx += WRAP * s; else if (dw < -WRAP / 2) tx -= WRAP * s; }
   var s0 = V.s, x0 = V.tx, y0 = V.ty, t0 = performance.now(), D = 380;
   (function step(now) {
     var f = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - f, 3);
-    V.s = s0 + (s - s0) * e; V.tx = x0 + (tx - x0) * e; V.ty = y0 + (ty - y0) * e; applyView();
+    V.s = s0 + (s - s0) * e; V.tx = x0 + (tx - x0) * e; V.ty = y0 + (ty - y0) * e;
+    if (f >= 1 && WRAP) V.tx = wrapTx(V.tx, V.s);
+    applyView();
     if (f < 1) animRaf = requestAnimationFrame(step);
   })(t0);
+}
+// keep the middle of the screen over the main copy of the map (the copies on each side fill in round it)
+function wrapTx(tx, s) {
+  var cx = (V.W / 2 - tx) / s;
+  while (cx < 0) { cx += WRAP; tx -= WRAP * s; }
+  while (cx >= WRAP) { cx -= WRAP; tx += WRAP * s; }
+  return tx;
 }
 function zoomAt(x, y, f) {
   var s = Math.max(fitScale() * 0.85, Math.min(4.5, V.s * f)), mx = (x - V.tx) / V.s, my = (y - V.ty) / V.s;
@@ -1573,18 +1602,23 @@ function restoreView() {
 function bindMap() {
   var ptrs = {}, g = null, map = R.map;
   function pts() { return Object.keys(ptrs).map(function (k) { return ptrs[k]; }); }
+  // One finger drags the map. Two fingers pinch to zoom and, together, drag it at the same time (the spot
+  // between them stays under them). Lifting a finger carries on the drag with the other.
+  function startPinch(P) {
+    var d = Math.hypot(P[0].x - P[1].x, P[0].y - P[1].y) || 1, mx = (P[0].x + P[1].x) / 2, my = (P[0].y + P[1].y) / 2;
+    g = { mode: 'pinch', d0: d, s0: V.s, mx: (mx - V.tx) / V.s, my: (my - V.ty) / V.s, moved: true };
+  }
   map.addEventListener('pointerdown', function (e) {
     if (e.button && e.button !== 0) return;
+    // a new first touch: forget any finger whose lift went missing (it would turn the next drag into a zoom)
+    if (e.isPrimary) { ptrs = {}; g = null; }
     try { map.setPointerCapture(e.pointerId); } catch (er) {}
     var r = map.getBoundingClientRect();
     if (Math.abs(r.width - V.W) > 0.5 || Math.abs(r.height - V.H) > 0.5) refit();
     ptrs[e.pointerId] = { x: e.clientX - r.left, y: e.clientY - r.top };
     var P = pts();
     if (P.length === 1) g = { mode: 'pan', x0: P[0].x, y0: P[0].y, tx: V.tx, ty: V.ty, moved: false, t0: Date.now() };
-    else if (P.length === 2) {
-      var d = Math.hypot(P[0].x - P[1].x, P[0].y - P[1].y) || 1, mx = (P[0].x + P[1].x) / 2, my = (P[0].y + P[1].y) / 2;
-      g = { mode: 'pinch', d0: d, s0: V.s, mx: (mx - V.tx) / V.s, my: (my - V.ty) / V.s, moved: true };
-    }
+    else startPinch(P);
   });
   map.addEventListener('pointermove', function (e) {
     if (!ptrs[e.pointerId] || !g) return;
@@ -1594,13 +1628,16 @@ function bindMap() {
     if (g.mode === 'pan' && P.length === 1) {
       var dx = P[0].x - g.x0, dy = P[0].y - g.y0;
       if (!g.moved && Math.hypot(dx, dy) > 7) { g.moved = true; map.classList.add('drag'); }
-      if (g.moved) setView(V.s, g.tx + dx, g.ty + dy);
+      // (if the map wrapped round under the finger, carry on from the new spot)
+      if (g.moved) { var want = g.tx + dx; setView(V.s, want, g.ty + dy); if (WRAP && Math.abs(V.tx - want) > 1) g.tx = V.tx - dx; }
     } else if (g.mode === 'pinch' && P.length >= 2) {
       var d = Math.hypot(P[0].x - P[1].x, P[0].y - P[1].y) || 1, mx = (P[0].x + P[1].x) / 2, my = (P[0].y + P[1].y) / 2;
-      var s = Math.max(fitScale() * 0.85, Math.min(4.5, g.s0 * d / g.d0));
-      setView(s, mx - g.mx * s, my - g.my * s);
+      var s = Math.max(fitScale() * 0.85, Math.min(4.5, g.s0 * d / g.d0)), want2 = mx - g.mx * s;
+      setView(s, want2, my - g.my * s);
+      if (WRAP && Math.abs(V.tx - want2) > 1) g.mx = (mx - V.tx) / s;
     }
   });
+  map.addEventListener('lostpointercapture', function (e) { if (ptrs[e.pointerId]) up(e); });
   function up(e) {
     if (!ptrs[e.pointerId]) return;
     delete ptrs[e.pointerId];
@@ -1608,6 +1645,7 @@ function bindMap() {
     if (g && g.mode === 'pan' && !g.moved && !P.length && Date.now() - g.t0 < 700) tapAt(e.clientX, e.clientY);
     if (!P.length) { g = null; map.classList.remove('drag'); }
     else if (P.length === 1) g = { mode: 'pan', x0: P[0].x, y0: P[0].y, tx: V.tx, ty: V.ty, moved: true, t0: 0 };
+    else startPinch(P);
   }
   map.addEventListener('pointerup', up);
   map.addEventListener('pointercancel', function (e) { delete ptrs[e.pointerId]; g = null; map.classList.remove('drag'); });
@@ -1633,8 +1671,18 @@ function bindMap() {
 function tapAt(x, y) {
   var n = document.elementFromPoint(x, y);
   var hitEl = n && n.closest ? n.closest('[data-t]') : null;
-  if (!hitEl) return;
-  onTap(+hitEl.getAttribute('data-t'));
+  if (hitEl) { onTap(+hitEl.getAttribute('data-t')); return; }
+  // a tap on one of the copies of the map either side: find the place by its shape on the main map
+  if (!WRAP || !n || !n.closest || !n.closest('use')) return;
+  var r = R.map.getBoundingClientRect(), wx = (x - r.left - V.tx) / V.s, wy = (y - r.top - V.ty) / V.s;
+  wx = ((wx % WRAP) + WRAP) % WRAP;
+  var pt = R.svg.createSVGPoint(); pt.x = wx; pt.y = wy;
+  var circ = R.gHit.querySelectorAll('circle');
+  for (var i = 0; i < circ.length; i++) { var c = circ[i]; if (Math.hypot(wx - +c.getAttribute('cx'), wy - +c.getAttribute('cy')) <= +c.getAttribute('r')) { onTap(+c.getAttribute('data-t')); return; } }
+  var paths = R.gLand.querySelectorAll('path[data-t]');
+  for (i = 0; i < paths.length; i++) if (paths[i].isPointInFill(pt)) { onTap(+paths[i].getAttribute('data-t')); return; }
+  paths = R.gSea.querySelectorAll('path[data-t]');
+  for (i = 0; i < paths.length; i++) if (paths[i].isPointInFill(pt)) { onTap(+paths[i].getAttribute('data-t')); return; }
 }
 
 // ── Painting ───────────────────────────────────────────────────────────────
@@ -3102,6 +3150,13 @@ function beginTurnUI(first) {
     el('div', { html: roundelSvg(p) }).firstChild,
     el('h2', { text: pname(p) }),
     el('p', { text: (seat.name === 'You' ? 'Your' : seat.name + '’s') + ' turn' }),
+    // the round's order: this power now, and the others the same player commands marked
+    el('div', { class: 'aa-order', 'aria-label': 'Turn order' }, S.powers.reduce(function (a, q, i) {
+      if (i) a.push(el('span', { class: 'ar', text: '›' }));
+      var mine = seatOf(q) === seat;
+      a.push(el('span', { class: 'op' + (q === p ? ' now' : mine ? ' mine' : ''), html: roundelSvg(q) + '<span>' + (q === p ? 'Now' : mine ? (seat.name === 'You' ? 'You' : 'Same') : '') + '</span>' }));
+      return a;
+    }, [])),
     el('small', { text: 'Round ' + S.round + ' · ' + S.ipc[p] + ' IPCs to spend' + (holdsCapital(p) || capitalOf(p) == null ? '' : ' · capital lost!') }),
     el('div', null, [el('span', { class: 'step1', html: '<span>Step 1 of 6</span><span>·</span><span>' + PH_TITLE.buy + '</span>' })]),
     el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Start turn', onclick: function () { Kit.sfx('pop'); closeBanner(); } })
