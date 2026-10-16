@@ -132,6 +132,8 @@
         tn({ type: 'sine', f: mtof(m - 12), to: mtof(m), dur: 0.07, vol: 0.09, x: x }); nz({ bp: 2400, q: 2, dur: 0.03, vol: 0.06, x: x });
         tn({ t: 0.02, type: 'triangle', f: mtof(m + 12), dur: 0.12, vol: 0.025, x: x, rv: 0.45 });
       },
+      // the progress map's X stamped onto a beaten boss: a heavy thud with a metal ring
+      stamp: function () { boomL(0, 0.55, null, 0.9); crack(0, 0.22, null, 900); sub(0, 70, 0.5, 0.35); tn({ t: 0.01, type: 'triangle', f: 220, dur: 0.6, vol: 0.05, rv: 0.5 }); tn({ t: 0.01, type: 'triangle', f: 331, dur: 0.5, vol: 0.03, rv: 0.5 }); },
       web: function (x) { nz({ bp: 3200, sweep: 900, q: 2, dur: 0.28, vol: 0.07, x: x }); }
     };
     var last = {}, mstep = 0, mlast = 0;

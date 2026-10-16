@@ -94,6 +94,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // Bosses (see the boss section for how each one fights). vu: size of one of its cubes; r: its body (an
   // ellipse: half-width, half-height); bonus: flat points for beating it; hy: where it hovers, as a share of
   // the way down to the players' area.
+  var PROG_T = 4.2, BOSS_ORDER = ['wasp', 'firefly', 'beetle', 'mega'];
   var BOSS = {
     wasp: { name: 'Killer Wasp', hp: 46, bonus: 10000, vu: 2.0, r: [30, 22], c: '#ffe23d', hy: 0.44 },
     firefly: { name: 'Night Flyer', hp: 60, bonus: 10000, vu: 1.7, r: [40, 30], c: '#b98cff', hy: 0.34 },
@@ -262,7 +263,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function announce(t, prio) { ev(['v', t, prio || 1]); }
   function shake(a) { ev(['k', a]); }
   function flash(c, a) { ev(['f', c, a]); }
-  function banner(t, sub, c) { ev(['n', t, sub || '', c || '#ffffff']); }
+  function banner(t, sub, c, life) { ev(life ? ['n', t, sub || '', c || '#ffffff', life] : ['n', t, sub || '', c || '#ffffff']); }
   function ring(x, y, r, c) { ev(['r', r1(x), r1(y), r, c]); }
   function ripple(x, y, v) { ev(['g', r1(x), r1(y), Math.round(v)]); }
   function arc(x1, y1, x2, y2, c) { ev(['z', r1(x1), r1(y1), r1(x2), r1(y2), c || '#bff8ff']); }
@@ -280,7 +281,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       case 'v': CA.say(a[1], a[2]); break;
       case 'k': fx.shake = Math.min(1.2, Math.max(fx.shake, a[1])); break;
       case 'f': fx.flash = Math.max(fx.flash, a[2]); fx.flashC = a[1]; break;
-      case 'n': fx.banner = { text: a[1], sub: a[2], c: a[3], life: 2.2, max: 2.2 }; break;
+      case 'n': fx.banner = { text: a[1], sub: a[2], c: a[3], life: a[4] || 2.2, max: a[4] || 2.2 }; break;
+      case 'P': fx.prog = { k: a[1], life: PROG_T, max: PROG_T, stamped: false }; break;
       case 'c': fx.card = { title: a[1], sub: a[2], c: a[3], sub2: a[4], life: 3.6, max: 3.6 }; fx.banner = null; break;
       case 'x': fx.exps.push({ x: a[1], y: a[2], c: a[3], r: a[4] ? 22 : 11, life: a[4] ? 0.5 : 0.32, max: a[4] ? 0.5 : 0.32 }); break;
       case 'r': fx.exps.push({ x: a[1], y: a[2], c: a[4], r: a[3], ring: true, life: 0.6, max: 0.6 }); break;
@@ -676,7 +678,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     // (after a boss falls, a beat to watch it shatter before the wave-complete banner)
     if (G.phase === 'play' && !G.chains.length && !G.boss && !G.trainsLeft && !(G.bossFell && G.t - G.bossFell < 1.1)) { G.phase = 'clear'; G.phaseT = 0; waveBonus(); }
     if (G.phase === 'clear') popStep();
-    if (G.phase === 'clear' && G.phaseT > 2.2) { G.lostBonus = false; startWave(G.wave + 1); }
+    if (G.phase === 'clear' && G.phaseT > (G.progWave === G.wave ? PROG_T + 0.5 : 2.2)) { G.lostBonus = false; startWave(G.wave + 1); }
     if (G.oneLife && G.phase === 'play' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); })) bonusLost();
     if (G.phase !== 'over' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); }) && !(G.phase === 'clear' && G.lostBonus)) { G.phase = 'over'; G.phaseT = 0; sound('over'); announce('Game over', 2); }
   }
@@ -685,7 +687,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     G.players.forEach(function (p) { if (p.alive) p.score += b; });
     G.score += b;
     if (mega) { card('You win!', 'Mega bonus', '#ff2d8a', 'The loop starts again, faster'); ev(['w']); announce('You win! Mega bonus!', 2); }
-    else { banner(bw ? 'Boss battle complete' : 'Wave complete', '+' + fmt(b) + ' bonus', bw ? '#ff3d4a' : '#ffd23d'); announce(bw ? 'Boss battle complete!' : 'Wave complete', 1); }
+    else if (bw) {
+      // the cabinet's progress map: the four bosses in a row, a red X stamped on each one beaten
+      banner('Boss battle complete', '+' + fmt(b) + ' bonus', '#ff3d4a', PROG_T); announce('Boss battle complete!', 1);
+      G.progWave = G.wave; ev(['P', BOSS_ORDER.indexOf(waveDef(G.wave).boss)]);
+    }
+    else { banner('Wave complete', '+' + fmt(b) + ' bonus', '#ffd23d'); announce('Wave complete', 1); }
     sound('clear');
     G.foes = G.foes.filter(function (f) { return f.type !== 'ball'; }); G.shots = []; G.zones = [];
     if (mega) shake(0.6);
@@ -1529,7 +1536,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (ro) ro.disconnect();
     ro = new ResizeObserver(fit); ro.observe(app); ro.observe(wrapEl);
     cssW = 0; fit(); hudDirty = true; shownTheme = null;
-    fx.parts = []; fx.pops = []; fx.exps = []; fx.arcs = []; fx.trail = []; fx.slow = 0; fx.rip = null; fx.shake = 0; fx.flash = 0; fx.banner = null; fx.card = null;
+    fx.parts = []; fx.pops = []; fx.exps = []; fx.arcs = []; fx.trail = []; fx.slow = 0; fx.rip = null; fx.prog = null; fx.shake = 0; fx.flash = 0; fx.banner = null; fx.card = null;
     ctl.touches = {}; ctl.nt = 0; ctl.steer = null; ctl.dx = ctl.dy = 0; ctl.mouse = false; ctl.keys = {};
     barPause(!online);
     // the game plays sideways: phones and iPads held upright get the kit's "turn your phone" cover (and the
@@ -1654,6 +1661,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     fx.trail = fx.trail.filter(function (t) { t.life -= dt; return t.life > 0; });
     if (fx.card) { fx.card.life -= dt; if (fx.card.life <= 0) fx.card = null; }
     if (fx.rip) { fx.rip.t += dt; if (fx.rip.t > 3) fx.rip = null; }
+    if (fx.prog) { fx.prog.life -= dt; if (fx.prog.life <= 0) fx.prog = null; }
     if (fx.banner) { fx.banner.life -= dt; if (fx.banner.life <= 0) fx.banner = null; }
     fx.shake = Math.max(0, fx.shake - dt * 2.2); fx.flash = Math.max(0, fx.flash - dt * 3);
   }
@@ -2395,6 +2403,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (fx.flash > 0) { x.globalAlpha = fx.flash * 0.28; x.fillStyle = fx.flashC; x.fillRect(0, 0, cv.width, cv.height); x.globalAlpha = 1; }
     if (fx.card) drawCard(x, L);
     else if (fx.banner) drawBanner(x, L);
+    if (fx.prog) drawProg(x, L);
     if (R.phase === 'over' || R.phase === 'won') {
       var ov = clamp((R.phaseT || 0) / 0.4, 0, 1);
       x.globalAlpha = ov * 0.55; x.fillStyle = '#02030a'; x.fillRect(0, 0, cv.width, cv.height); x.globalAlpha = 1;
@@ -2709,6 +2718,59 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var st = txt(cd.sub, '#e8e4f4', L.fp); drawTxtAt(x, st, L.cw / 2, cy + t.h * sc * 0.55 + st.h * 0.6, Math.min(1, L.cw * 0.9 / st.w));
     if (cd.sub2) { var s2 = txt(cd.sub2, '#ff6a8a', Math.max(1, L.fp - 1)); drawTxtAt(x, s2, L.cw / 2, cy + t.h * sc * 0.55 + st.h * 1.4 + s2.h * 0.4, Math.min(1, L.cw * 0.9 / s2.w)); }
     x.globalAlpha = 1;
+  }
+
+  // After a boss: the four bosses on plates, left to right, each beaten one crossed out with a red X. The one you
+  // just beat gets its X stamped on with a thud a beat after the row comes in; the next one waits, lit and pulsing.
+  var PROG_IN = 0.45, PROG_STAMP = 1.35;
+  function drawProg(x, L) {
+    var pg = fx.prog, el = pg.max - pg.life, kin = clamp((el - PROG_IN) / 0.35, 0, 1); if (kin <= 0) return;
+    var a = Math.min(1, pg.life / 0.45), n = BOSS_ORDER.length, gap = 0.42;
+    var ph = Math.round(Math.min(L.ch * 0.2, L.cw * 0.8 / (n + (n - 1) * gap) )), pw = ph, tw = n * pw + (n - 1) * gap * pw;
+    var X0 = Math.round((L.cw - tw) / 2), cy = Math.round(L.ch * 0.7), Y0 = cy - ph / 2, oy = HB * S;
+    var stampK = clamp((el - PROG_STAMP) / 0.16, 0, 1);
+    if (stampK > 0 && !pg.stamped) {
+      pg.stamped = true; snd('stamp'); fx.shake = Math.max(fx.shake, 0.55); Kit.haptic('heavy');
+      var sxp = X0 + pg.k * pw * (1 + gap) + pw / 2;
+      for (var q = 0; q < 26; q++) { var an = Math.random() * TAU, v = rnd(80, 220); part(sxp / S, (cy - oy) / S, Math.cos(an) * v, Math.sin(an) * v * 0.7, q % 3 ? '#ff3d4a' : '#ffffff', rnd(0.4, 0.8), rnd(0.8, 1.5), q % 4 === 0); }
+    }
+    var slide = (1 - Math.pow(1 - kin, 3)) * 1;
+    for (var i = 0; i < n; i++) {
+      var type = BOSS_ORDER[i], D = BOSS[type], beaten = i < pg.k || i === pg.k && stampK > 0, next = i === pg.k + 1;
+      var k = clamp((el - PROG_IN - i * 0.07) / 0.3, 0, 1); if (k <= 0) continue;
+      var px = X0 + i * pw * (1 + gap), py = Y0 + Math.round((1 - (1 - Math.pow(1 - k, 3))) * ph * 0.5);
+      x.globalAlpha = a * k;
+      // the plate: dark glass with a rim in the boss's colour (the next one pulses)
+      var rim = next ? 0.55 + 0.45 * Math.sin(drawT * 6) : beaten ? 0.35 : 0.6, lw = Math.max(2, Math.round(L.fp * 0.8));
+      x.fillStyle = 'rgba(6,4,20,.78)'; x.strokeStyle = hexA(D.c, rim); x.lineWidth = lw;
+      x.beginPath(); if (x.roundRect) x.roundRect(px, py, pw, ph, ph * 0.14); else x.rect(px, py, pw, ph); x.fill(); x.stroke();
+      if (next) { x.globalCompositeOperation = 'lighter'; x.globalAlpha = a * k * 0.3 * rim; x.drawImage(glowSpr(D.c), px - pw * 0.3, py - ph * 0.3, pw * 1.6, ph * 1.6); x.globalCompositeOperation = 'source-over'; }
+      // the boss itself
+      var sp = bossSpr({ type: type, vul: 0, ph: 0 }, 0), f = ph * 0.72 / Math.max(sp.c.width, sp.c.height);
+      x.globalAlpha = a * k * (beaten ? 0.45 : i > pg.k + 1 ? 0.6 : 1);
+      x.drawImage(sp.c, px + pw / 2 - sp.c.width * f / 2, py + ph * 0.46 - sp.c.height * f / 2, sp.c.width * f, sp.c.height * f);
+      x.globalAlpha = a * k;
+      // its name under the plate
+      var nt = txt(D.name, beaten ? '#9a90b8' : '#ffffff', Math.max(1, Math.round(L.fp * 0.6)));
+      drawTxtAt(x, nt, px + pw / 2, py + ph + nt.h * 0.75, Math.min(1, pw * (1 + gap * 0.9) / nt.w));
+      // the X: already there for earlier bosses, stamped in big for this one
+      if (beaten) {
+        var sk = i === pg.k ? 1 + (1 - stampK) * 1.6 : 1, xr = pw * 0.36 * sk, xc = px + pw / 2, yc = py + ph / 2;
+        x.globalAlpha = a * (i === pg.k ? stampK : k);
+        x.lineCap = 'round';
+        [[Math.round(pw * 0.17 * sk), '#5a0612'], [Math.round(pw * 0.12 * sk), '#ff2a3a'], [Math.round(pw * 0.04 * sk), '#ff9aa4']].forEach(function (st, j) {
+          x.strokeStyle = st[1]; x.lineWidth = st[0]; var o2 = j === 0 ? Math.round(pw * 0.02) : 0;
+          x.beginPath(); x.moveTo(xc - xr + o2, yc - xr + o2); x.lineTo(xc + xr + o2, yc + xr + o2); x.moveTo(xc + xr + o2, yc - xr + o2); x.lineTo(xc - xr + o2, yc + xr + o2); x.stroke();
+        });
+        x.lineCap = 'butt';
+      }
+      // a chevron to the next plate
+      if (i < n - 1) {
+        var chx = px + pw + gap * pw / 2, chs = gap * pw * 0.16; x.globalAlpha = a * k * 0.6; x.strokeStyle = '#ffffff'; x.lineWidth = Math.max(2, Math.round(L.fp * 0.7)); x.lineJoin = 'round';
+        x.beginPath(); x.moveTo(chx - chs, py + ph / 2 - chs * 1.6); x.lineTo(chx + chs, py + ph / 2); x.lineTo(chx - chs, py + ph / 2 + chs * 1.6); x.stroke(); x.lineJoin = 'miter';
+      }
+      x.globalAlpha = 1;
+    }
   }
 
   // ── HUD: the cabinet's coloured plates, drawn into the screen ──
