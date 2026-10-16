@@ -51,6 +51,31 @@
   }
   var MOVED_FLAG = 'fgh_pin_moved';
 
+  // A random PIN nobody has: not on the too-easy list, and no account under it. Each try asks the cloud whether that
+  // PIN's account exists, by name only (the mask leaves every field out, so nobody's games come back with the answer).
+  function pinTaken(p){
+    var url = 'https://firestore.googleapis.com/v1/projects/' + firebaseConfig.projectId + '/databases/(default)/documents/pins/' + p + '?mask.fieldPaths=nofield&key=' + firebaseConfig.apiKey;
+    return fetch(url, { cache: 'no-store' }).then(function(r){ if(r.status === 404) return false; if(r.ok) return true; throw new Error('PIN check failed (' + r.status + ')'); });
+  }
+  function randomPin(){
+    var tried = {};
+    function pick(){
+      var a = new Uint16Array(1), p;
+      for(var i = 0; i < 500; i++){
+        if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(a); else a[0] = Math.floor(Math.random() * 65536);
+        p = ('000' + (a[0] % 10000)).slice(-4);
+        if(!weakPin(p) && !tried[p]) return p;
+      }
+      return null;
+    }
+    function next(n){
+      var p = pick(); if(!p || n >= 12) return Promise.reject(new Error('Couldn’t find a free PIN. Try again.'));
+      tried[p] = 1;
+      return pinTaken(p).then(function(taken){ return taken ? next(n + 1) : p; });
+    }
+    return next(0);
+  }
+
   var firebaseConfig = {
     apiKey: "AIzaSyDmZ4AXZz1MJLiQi1sygbvigrpR5JcWkrQ",
     authDomain: "familygames-da3e5.firebaseapp.com",
@@ -1771,7 +1796,7 @@
     lastSync: function(){ try{ return JSON.parse(LS.getItem(DLAST) || 'null'); }catch(e){ return null; } },
     logClear: function(){ try{ LS.removeItem(DLOG); }catch(e){} },
     warm: function(){ return ensureFirebase().then(function(){ return true; }, function(){ return false; }); },   // load the cloud code early (the sign-in page)
-    signInWithPin: signInWithPin, changePin: changePin, weakPin: weakPin,
+    signInWithPin: signInWithPin, changePin: changePin, weakPin: weakPin, randomPin: randomPin,
     setLabel: setLabel,
     signOut: signOut,
     continueAsGuest: continueAsGuest,

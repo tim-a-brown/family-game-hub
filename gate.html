@@ -38,6 +38,35 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
 .key.ghost{background:transparent;box-shadow:none;color:var(--text-3);font-size:.95rem;}
 .key .ico{width:24px;height:24px;}
 .hint{color:var(--text-3);font-size:.85rem;font-weight:700;max-width:300px;margin-top:4px;}
+/* The three parts: title, keypad, and the rest (random PIN, guest, hint). Stacked on phones; on a tablet held
+   sideways the keypad takes the right and the rest sits beside it on the left, so nothing needs a scroll */
+.g-head,.g-pad,.g-more{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;}
+.g-more{gap:8px;}
+/* Assign me a random PIN: the slots spin and land on a free PIN; signing in is still your tap */
+.rnd{display:flex;flex-direction:column;align-items:center;width:100%;max-width:330px;}
+.rnd-go{width:100%;min-height:48px;gap:8px;}
+.rnd-go .ico,.rnd-again .ico{width:20px;height:20px;}
+.rnd-offer{display:flex;gap:8px;width:100%;animation:rndIn .35s var(--spring) both;}
+.rnd-offer[hidden]{display:none;}
+.rnd-in{flex:1;min-height:50px;font-size:1.05rem;}
+.rnd-in b{font-family:var(--display);font-weight:400;letter-spacing:.12em;margin-left:4px;}
+.rnd-again{flex:none;width:56px;min-height:50px;padding:0;}
+.rnd-go.spin .ico,.rnd-again.spin .ico{animation:rndSpin .6s linear infinite;}
+@keyframes rndSpin{to{transform:rotate(360deg)}}
+@keyframes rndIn{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+.slots.rolling .slot{box-shadow:inset 0 0 0 2px rgba(74,222,128,.45);color:var(--text-2);}
+.slots.offer .slot{box-shadow:inset 0 0 0 2.5px #4ade80, 0 0 18px rgba(74,222,128,.35);color:#eafff1;}
+.slot.land{animation:pop .3s var(--spring);}
+@media (prefers-reduced-motion:reduce){.rnd-offer,.slot.land{animation:none;}}
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  .gate{max-width:860px;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"head pad" "more pad";column-gap:56px;row-gap:22px;align-items:center;text-align:left;}
+  .g-head{grid-area:head;align-self:end;}
+  .g-pad{grid-area:pad;}
+  .g-more{grid-area:more;align-self:start;}
+  .g-head .sub{margin-bottom:0;text-align:center;}
+  .g-more .hint{text-align:center;}
+  .pad{margin-bottom:0;}
+}
 /* Signed in: the keypad fades away, and the Game Night mark builds itself: the four dots fly in from the corners of
    the screen, the four arcs swirl in and lock into a ring, the ring flashes, and you pop into the middle of it */
 .gate{transition:opacity .35s ease,transform .45s cubic-bezier(.5,0,.75,0),filter .35s;}
@@ -59,14 +88,27 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
 </head>
 <body>
 <div class="gate">
-  <div class="logo" id="logo"></div>
-  <h1>Game Night</h1>
-  <p class="sub">Enter your PIN to sync scores across your devices.</p>
-  <div class="slots" id="slots"><div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div></div>
-  <div class="status" id="status" role="status"></div>
-  <div class="pad" id="keypad"></div>
-  <button class="btn btn-ghost" id="guest" type="button">Play as a guest on this device</button>
-  <p class="hint">New PIN? Pick any 4 digits that aren't easy to guess (no 1234, 0000 or 2580). The same PIN on another phone shares your scores and history.</p>
+  <div class="g-head">
+    <div class="logo" id="logo"></div>
+    <h1>Game Night</h1>
+    <p class="sub">Enter your PIN to sync scores across your devices.</p>
+  </div>
+  <div class="g-pad">
+    <div class="slots" id="slots"><div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div></div>
+    <div class="status" id="status" role="status"></div>
+    <div class="pad" id="keypad"></div>
+  </div>
+  <div class="g-more">
+    <div class="rnd" id="rnd">
+      <button class="btn btn-soft rnd-go" id="rnd-go" type="button"></button>
+      <div class="rnd-offer" id="rnd-offer" hidden>
+        <button class="btn btn-primary rnd-in" id="rnd-in" type="button"></button>
+        <button class="btn btn-soft rnd-again" id="rnd-again" type="button" aria-label="Give me another PIN"></button>
+      </div>
+    </div>
+    <button class="btn btn-ghost" id="guest" type="button">Play as a guest on this device</button>
+    <p class="hint">New PIN? Pick any 4 digits that aren't easy to guess (no 1234, 0000 or 2580). The same PIN on another phone shares your scores and history.</p>
+  </div>
 </div>
 <script>
 (function () {
@@ -93,10 +135,68 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
     }
   }
   function status(msg, err) { $('status').textContent = msg || ''; $('status').classList.toggle('err', !!err); }
-  function setBusy(b) { busy = b; $('slots').classList.toggle('busy', b); keys.forEach(function (k) { k.disabled = b; }); render(); }
+  function setBusy(b) { busy = b; $('slots').classList.toggle('busy', b); keys.forEach(function (k) { k.disabled = b; }); ['rnd-go', 'rnd-in', 'rnd-again'].forEach(function (id) { $(id).disabled = b; }); render(); }
+
+  // ── Assign me a random PIN ──
+  // The slots spin while a free PIN is found, then land on it one at a time, ringed in green. Nothing signs in until
+  // you tap Sign in (time to write it down), and Another spins again. Typing on the keypad drops the offer.
+  var offer = null, rolling = 0;
+  function roll(on) {
+    clearInterval(rolling); rolling = 0;
+    $('slots').classList.toggle('rolling', !!on);
+    if (on) rolling = setInterval(function () { for (var i = 0; i < 4; i++) slots[i].textContent = Math.floor(Math.random() * 10); }, 60);
+  }
+  function showOffer(p) {
+    offer = p; pin = p;
+    var stopAt = [0, 170, 340, 510];
+    $('slots').classList.remove('rolling');
+    for (var i = 0; i < 4; i++) slots[i].classList.remove('filled', 'cursor', 'land');
+    stopAt.forEach(function (ms, i) {
+      setTimeout(function () {
+        if (offer !== p) return;
+        if (i === 3) clearInterval(rolling);
+        slots[i].textContent = p[i]; slots[i].classList.add('land'); Kit.sfx('tick'); Kit.haptic('tick');
+        if (i === 3) {
+          rolling = 0; $('slots').classList.add('offer'); Kit.sfx('good'); Kit.haptic('success');
+          $('rnd-in').innerHTML = 'Sign in with <b>' + p + '</b>';
+          $('rnd-go').hidden = true; $('rnd-offer').hidden = false;
+          status('Write down your new PIN.');
+        }
+      }, ms);
+    });
+    // keep the other slots spinning until each one lands
+    clearInterval(rolling);
+    rolling = setInterval(function () { for (var i = 0; i < 4; i++) if (!slots[i].classList.contains('land')) slots[i].textContent = Math.floor(Math.random() * 10); }, 60);
+  }
+  function dropOffer() {
+    offer = null; roll(false); $('slots').classList.remove('offer');
+    for (var i = 0; i < 4; i++) slots[i].classList.remove('land');
+    $('rnd-go').hidden = false; $('rnd-offer').hidden = true;
+    $('rnd-go').classList.remove('spin'); $('rnd-again').classList.remove('spin');
+  }
+  var finding = false;
+  function findPin(btn) {
+    if (busy || finding) return;
+    finding = true; Kit.sfx('tap');
+    offer = null; pin = ''; $('slots').classList.remove('offer'); for (var i = 0; i < 4; i++) slots[i].classList.remove('filled', 'cursor', 'land');
+    btn.classList.add('spin'); status('Finding a free PIN…'); roll(true);
+    var t0 = Date.now();
+    FGHSync.randomPin().then(function (p) {
+      setTimeout(function () { finding = false; btn.classList.remove('spin'); showOffer(p); }, Math.max(0, 450 - (Date.now() - t0)));   // a beat of spin even when the answer is instant
+    }, function (e) {
+      finding = false; dropOffer(); pin = ''; render();
+      status(navigator.onLine === false ? 'You’re offline. Connect to get a PIN.' : (e && e.message) || 'Couldn’t get a PIN. Try again.', true);
+    });
+  }
+  $('rnd-go').innerHTML = Kit.icon('dice') + '<span>Assign me a random PIN</span>';
+  $('rnd-again').innerHTML = Kit.icon('shuffle');
+  $('rnd-go').addEventListener('click', function () { findPin($('rnd-go')); });
+  $('rnd-again').addEventListener('click', function () { findPin($('rnd-again')); });
+  $('rnd-in').addEventListener('click', function () { if (offer && !busy) { Kit.sfx('tap'); signIn(); } });
 
   function press(k) {
-    if (busy) return;
+    if (busy || finding) return;
+    if (offer || rolling) { dropOffer(); pin = ''; status(''); if (k === 'clear' || k === 'back') { render(); return; } }
     if ($('status').classList.contains('err')) status('');
     if (k === 'clear') pin = '';
     else if (k === 'back') pin = pin.slice(0, -1);
@@ -123,7 +223,7 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
       if (r && r.isNew) { status(''); askName(); }
       else { status(''); hello(true); }
     }).catch(function (e) {
-      clearTimeout(slow); setBusy(false); Kit.haptic('error'); Kit.sfx('bad');
+      clearTimeout(slow); if (offer) dropOffer(); setBusy(false); Kit.haptic('error'); Kit.sfx('bad');
       $('slots').classList.remove('shake'); void $('slots').offsetWidth; $('slots').classList.add('shake');
       if (e && e.code === 'weak') status('That PIN is too easy to guess. Pick a less common one. If it was your PIN, change it on a device that is still signed in: tap your avatar, then Change PIN.', true);
       else if (e && e.code === 'moved') status('That PIN was changed. Sign in with the new one.', true);
