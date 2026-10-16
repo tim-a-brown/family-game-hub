@@ -76,6 +76,56 @@
   }
   function onReady(cb){ if(_ready) try{cb();}catch(e){} else _readyResolvers.push(cb); }
 
+  // ── Activity log ──────────────────────────────────────────────────────
+  // What this device did and how long it took: syncs (each step timed), sign-in, online tables, and any warning or
+  // error. Kept on this device only (never synced, kept across accounts), last 400 lines. Profile menu > Activity log
+  // shows it and shares it as text.
+  var DLOG = 'fgh_diag_log', DLAST = 'fgh_sync_last', DMAX = 400;
+  function pageName(){ try{ var m = /([^\/]+?)(?:\.html)?$/.exec(location.pathname); return (m && m[1] && m[1] !== 'index') ? m[1] : 'home'; }catch(e){ return '?'; } }
+  function dlog(tag, msg){
+    try{
+      var a = JSON.parse(LS.getItem(DLOG) || '[]'); if(!Array.isArray(a)) a = [];
+      a.push([Date.now(), pageName(), String(tag), String(msg).slice(0, 400)]);
+      if(a.length > DMAX) a = a.slice(-DMAX);
+      LS.setItem(DLOG, JSON.stringify(a));
+    }catch(e){}
+  }
+  function secs(ms){ return (ms / 1000).toFixed(ms < 10000 ? 1 : 0) + ' s'; }
+  function tnow(){ return (window.performance && performance.now) ? performance.now() : Date.now(); }
+  // a sync from start to finish: each step's time goes in its one log line
+  function runStart(what){ return { what: what, t0: tnow(), steps: [] }; }
+  function timed(R, name, fn){
+    var t = tnow();
+    return Promise.resolve().then(fn).then(function(v){ var ms = tnow() - t; if(ms >= 50 || name !== 'cloud code') R.steps.push(name + ' ' + secs(ms)); return v; },
+      function(e){ R.steps.push(name + ' failed after ' + secs(tnow() - t)); throw e; });
+  }
+  function runDone(R, err){
+    R.done = true;
+    var ms = tnow() - R.t0, em = err ? ((err && err.message) || String(err)) : '';
+    dlog(err ? 'error' : 'sync', R.what + (err ? ': failed after ' : ': ') + secs(ms) + (R.steps.length ? ' (' + R.steps.join(', ') + ')' : '') + (em ? ' · ' + em : ''));
+    try{ LS.setItem(DLAST, JSON.stringify({ at: Date.now(), ms: Math.round(ms), ok: !err, what: R.what, steps: R.steps, err: em || null })); }catch(e){}
+  }
+  // warnings and errors from any page land in the log too (ours start with a [tag])
+  (function(){
+    function fmt(args){ return [].slice.call(args).map(function(x){ if(x instanceof Error) return x.message || String(x); if(x && typeof x === 'object'){ try{ return (x.code ? x.code + ' ' : '') + (x.message || JSON.stringify(x)).slice(0, 160); }catch(e){ return '[object]'; } } return String(x); }).join(' '); }
+    ['warn', 'error'].forEach(function(k){
+      var orig = console[k]; if(!orig) return;
+      console[k] = function(){ try{ dlog(k, fmt(arguments)); }catch(e){} return orig.apply(console, arguments); };
+    });
+    window.addEventListener('error', function(e){ dlog('error', (e.message || 'Script error') + (e.filename ? ' @ ' + String(e.filename).split('/').pop() + ':' + e.lineno : '')); });
+    window.addEventListener('unhandledrejection', function(e){ var r = e.reason; dlog('error', 'Unhandled: ' + ((r && r.message) || String(r))); });
+    window.addEventListener('online', function(){ dlog('net', 'Back online'); });
+    window.addEventListener('offline', function(){ dlog('net', 'Went offline'); });
+    var hidAt = 0;
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'hidden'){ hidAt = Date.now(); return; }
+      if(hidAt && Date.now() - hidAt > 60000) dlog('page', 'Back to the app after ' + Math.round((Date.now() - hidAt) / 60000) + ' min');
+      hidAt = 0;
+    });
+    var ver = '';
+    try{ if(window.caches && caches.keys) caches.keys().then(function(k){ ver = (k.filter(function(n){ return n.indexOf('game-night-') === 0; })[0] || '').replace('game-night-', ''); dlog('page', 'Opened ' + pageName() + (ver ? ' · ' + ver : '')); }, function(){ dlog('page', 'Opened ' + pageName()); }); else dlog('page', 'Opened ' + pageName()); }catch(e){}
+  })();
+
   function loadScript(src){
     return new Promise(function(res, rej){
       var s = document.createElement('script');
@@ -90,6 +140,7 @@
     if(_fb) return Promise.resolve(_fb);
     if(_fbP) return _fbP;   // one load at a time: a second caller waits for the first
     var V = '10.12.2';
+    var t0 = tnow();
     return _fbP = loadScript('https://www.gstatic.com/firebasejs/'+V+'/firebase-app-compat.js')
       .then(function(){ return loadScript('https://www.gstatic.com/firebasejs/'+V+'/firebase-firestore-compat.js'); })
       .then(function(){
@@ -98,8 +149,9 @@
         // local testing only: talk to the Firestore emulator
         try{ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && LS.getItem('fgh_emu')) db.useEmulator('localhost', 8080); }catch(e){}
         _fb = { app: app, db: db };
+        dlog('sync', 'Cloud code ready in ' + secs(tnow() - t0));
         return _fb;
-      }, function(e){ _fbP = null; throw e; });
+      }, function(e){ _fbP = null; dlog('error', 'Cloud code didn’t load after ' + secs(tnow() - t0) + ': ' + ((e && e.message) || e)); throw e; });
   }
 
   // ── Scan localStorage ─────────────────────────────────────────────────
@@ -536,9 +588,11 @@
         return;
       }
       setStatus('syncing');
-      ensureFirebase().then(function(){ return pushNow(); })
-        .then(function(){ setStatus('synced'); })
+      var R = runStart('Saving changes');
+      timed(R, 'cloud code', ensureFirebase).then(function(){ return timed(R, 'upload', function(){ return pushNow(); }); })
+        .then(function(r){ if(r !== 'same') runDone(R); setStatus('synced'); })
         .catch(function(err){
+          runDone(R, err);
           console.warn('[sync] push failed', err);
           setStatus('error', { error: (err && err.message) || String(err) });
         });
@@ -703,8 +757,9 @@
     LS.setItem(MODE_KEY, 'pin');
     LS.setItem(PIN_KEY, p);
     ssSet(PULL_KEY, '0');
-    return ensureFirebase()
-      .then(pullCloud)
+    var R = runStart('Sign-in');
+    return timed(R, 'cloud code', ensureFirebase)
+      .then(function(){ return timed(R, 'download', pullCloud); })
       .then(function(remote){
         if(remote.moved){
           signOut(); LS.removeItem(STASH + spaceOf(p));
@@ -719,11 +774,13 @@
         // Signed in once the cloud copy is merged in. The upload of this device's copy carries on in the background
         // instead of holding the sign-in (a slow first write took sign-in to half a minute); if it doesn't finish
         // before the page changes, the next page's sync sends it (the pull mark is only set once it lands).
-        pushNow({ force: true }).then(function(){ ssSet(PULL_KEY, String(Date.now())); }, function(err){ console.warn('[sync] sign-in upload failed; the next page retries', err); });
+        runDone(R);
+        var U = runStart('Upload after sign-in');
+        timed(U, 'upload', function(){ return pushNow({ force: true }); }).then(function(){ runDone(U); ssSet(PULL_KEY, String(Date.now())); }, function(err){ runDone(U, err); console.warn('[sync] sign-in upload failed; the next page retries', err); });
         return {isNew: remote.isNew};
       })
       .then(function(result){ notifyReady(); return result; },
-            function(err){ if(isPin() && pin() === p) signOut(); throw err; });   // not signed in after all: pack it away again
+            function(err){ if(!R.done) runDone(R, err); if(isPin() && pin() === p) signOut(); throw err; });   // not signed in after all: pack it away again
   }
 
   // Another device changed this account's PIN: the old PIN is wiped and marked moved. Sign this device out
@@ -792,7 +849,7 @@
   // unpacks only that PIN's own stash before syncing with its cloud copy. So nothing from one PIN is ever merged
   // into another. Only the phone's motion-permission answers and test flags stay with the device.
   var SPACE_KEY = 'fgh_space', STASH = 'fgh_space_';
-  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|emu|space(_.*)?)|online_transport|eightball_motion|lorc_tilt(_asked)?|firebase.*)$/;
+  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|emu|space(_.*)?|diag_log|sync_last)|online_transport|eightball_motion|lorc_tilt(_asked)?|firebase.*)$/;
   function spaceOf(p){ var h = 5381; p = String(p || ''); for(var i = 0; i < p.length; i++) h = ((h << 5) + h + p.charCodeAt(i)) | 0; return 'p' + (h >>> 0).toString(36); }
   function curSpace(){ return LS.getItem(SPACE_KEY) || (isPin() ? spaceOf(pin()) : 'g'); }
   function switchSpace(to){
@@ -842,8 +899,9 @@
       return Promise.resolve({ ok:false, reason:'offline' });
     }
     setStatus('syncing');
-    return ensureFirebase()
-      .then(pullCloud)
+    var R = runStart(opts.soft ? 'Sync on coming back' : 'Sync now');
+    return timed(R, 'cloud code', ensureFirebase)
+      .then(function(){ return timed(R, 'download', pullCloud); })
       .then(function(remote){
         if(remote.moved){ movedOut(); throw Object.assign(new Error('PIN moved'), { code: 'moved' }); }
         takeLabel(remote);
@@ -851,15 +909,17 @@
         var local  = scanLocal();
         var merged = mergeSnapshots(local, remote);
         writeSnapshotToLocal(merged); reconcileName();
-        return pushNow({ force: !opts.soft }).then(function(r){ ssSet(PULL_KEY, String(Date.now())); return r; });
+        return timed(R, 'upload', function(){ return pushNow({ force: !opts.soft }); }).then(function(r){ ssSet(PULL_KEY, String(Date.now())); return r; });
       })
       .then(function(){
+        runDone(R);
         setStatus('synced');
         try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
         linkPoll(!opts.soft);
         return { ok: true };
       })
       .catch(function(err){
+        runDone(R, err);
         console.warn('[sync] syncNow failed', err);
         setStatus('error', { error: (err && err.message) || String(err) });
         return { ok: false, error: err };
@@ -972,8 +1032,9 @@
         return;
       }
       setStatus('syncing');
-      ensureFirebase()
-        .then(pullCloud)
+      var R = runStart('Sync on opening ' + pageName());
+      timed(R, 'cloud code', ensureFirebase)
+        .then(function(){ return timed(R, 'download', pullCloud); })
         .then(function(remote){
           if(remote.moved){ movedOut(); throw Object.assign(new Error('PIN moved'), { code: 'moved' }); }
           takeLabel(remote);
@@ -982,9 +1043,10 @@
           var merged = mergeSnapshots(local, remote);
           writeSnapshotToLocal(merged); reconcileName();
           try{ tagOldScores(); }catch(e){}
-          return pushNow();
+          return timed(R, 'upload', function(){ return pushNow(); });
         })
         .then(function(){
+          runDone(R);
           ssSet(PULL_KEY, String(Date.now()));   // only once the round trip finished; a failed one is retried on the next page
           setStatus('synced');
           try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
@@ -992,6 +1054,7 @@
           linkPoll(true);
         })
         .catch(function(err){
+          runDone(R, err);
           console.warn('[sync] boot failed; staying local', err);
           setStatus('error', { error: (err && err.message) || String(err) });
           notifyReady();
@@ -1702,6 +1765,11 @@
     mode: mode, pin: pin, label: label, isPin: isPin,
     // Firestore handle for features beyond the PIN doc (Lorcana online tables)
     db: function(){ return ensureFirebase().then(function(f){ return f.db; }); },
+    // activity log (this device only): add a line, read it, the last sync's timing, clear it
+    log: dlog,
+    logGet: function(){ try{ var a = JSON.parse(LS.getItem(DLOG) || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; } },
+    lastSync: function(){ try{ return JSON.parse(LS.getItem(DLAST) || 'null'); }catch(e){ return null; } },
+    logClear: function(){ try{ LS.removeItem(DLOG); }catch(e){} },
     warm: function(){ return ensureFirebase().then(function(){ return true; }, function(){ return false; }); },   // load the cloud code early (the sign-in page)
     signInWithPin: signInWithPin, changePin: changePin, weakPin: weakPin,
     setLabel: setLabel,

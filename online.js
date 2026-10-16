@@ -50,6 +50,8 @@
   var LS = (function () { try { return window.localStorage; } catch (e) { return null; } })();
   function lsGet(k, d) { try { var v = LS.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
   function lsSet(k, v) { try { LS.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  // the device's activity log (profile menu): tables opened and joined, how long the link took, why one failed
+  function dl(m) { try { if (window.FGHSync && FGHSync.log) FGHSync.log('online', m); } catch (e) {} }
   function log() { if (config.debug) try { console.log.apply(console, ['[online ' + (performance.now() / 1000).toFixed(2) + ']'].concat([].slice.call(arguments))); } catch (e) {} }
   var config = { debug: false, iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }], connectMs: 20000, directMs: 9000, gatherMs: 2500 };
 
@@ -356,7 +358,7 @@
         table.peers[from] = peer;
         peer.on('msg', function (msg) { fire('msg', peer, msg); });
         peer.on('close', function (why) { if (table.peers[from] === peer) { delete table.peers[from]; fire('leave', peer, why); table.setStatus(); } });
-        fire('peer', peer); table.setStatus();
+        dl((peer.name || 'Someone') + ' joined' + (peer.relay ? ' through the relay' : '')); fire('peer', peer); table.setStatus();
       });
       pc.setRemoteDescription({ type: 'offer', sdp: o.sdp })
         .then(function () { lc.ready = true; lc.buf.splice(0).forEach(function (c) { pc.addIceCandidate(c).catch(function () {}); }); return pc.createAnswer(); })
@@ -383,7 +385,7 @@
       table.peers[from] = peer;
       peer.on('msg', function (msg) { fire('msg', peer, msg); });
       peer.on('close', function (why) { if (relays[from] === peer) delete relays[from]; if (table.peers[from] === peer) { delete table.peers[from]; fire('leave', peer, why); table.setStatus(); } });
-      fire('peer', peer); table.setStatus();
+      dl((peer.name || 'Someone') + ' joined' + (peer.relay ? ' through the relay' : '')); fire('peer', peer); table.setStatus();
     }
     // the link tag and the check that the code is free run side by side (nothing waits on the other)
     var tagP = myTag(), tries = 0;
@@ -410,6 +412,7 @@
     var opened = attempt().then(function (code) {
       if (table.closed) { GONE[code] = Date.now(); t.remove(code).catch(function () {}); throw new Error('Cancelled'); }   // closed while it opened
       table.code = code;
+      dl('Opened a ' + opts.game + ' table · ' + code);
       if (scr) { scr.setCode(code); scr.step('open', 'done', 'Code ' + code); scr.table(table); }
       offs.push(t.inbox(code, me, answer, function (e) { console.warn('[online] inbox', e); }));
       // tables this device opened before and couldn't close (the page went away first): gone now
@@ -513,9 +516,10 @@
     if (noRtc()) return Promise.reject(new Error('This browser can’t play online.'));
     code = String(code || '').trim().toUpperCase();
     if (!/^[A-Z]{4}$/.test(code)) return Promise.reject(new Error('Table codes are 4 letters'));
-    var t = T(), me = dev();
+    var t = T(), me = dev(), jt0 = Date.now();
     var tagP = myTag();
     lastCode = code;
+    dl('Joining ' + opts.game + ' table ' + code + (opts.relay === false ? ' (direct only)' : ''));
     var scr = opts.screen ? stage(opts.screen, { host: false, code: code, max: opts.max || 0, min: opts.min, myName: opts.name, onLeave: function () { if (cancel) cancel(); } }) : null, cancel = null;
     if (scr) { scr.step('find', 'run', 'Looking for table ' + code); scr.step('connect', 'wait'); scr.step('seat', 'wait'); scr.step('start', 'wait'); }
     var slowFind = scr ? setTimeout(function () { scr.step('find', null, 'Taking a while · reconnecting to the server'); }, 5000) : 0;
@@ -575,7 +579,7 @@
             if (scr) scr.step('connect', 'run', 'This network blocks a direct link · connecting through the relay');
             relay = new RelayPeer(t, code, me, room.host.dev, room.host.name, sid);
             t.send(code, { id: rid(), to: room.host.dev, from: me, k: 'relay', d: JSON.stringify(hello()), at: Date.now() }).catch(function (er) { finish(er); });
-            relayTo = setTimeout(function () { var e = new Error(NAT_MSG); e.nat = true; finish(e); }, 20000);
+            relayTo = setTimeout(function () { var e = new Error(NAT_MSG); e.nat = true; e.diag = 'relay didn’t answer · ' + diag(); finish(e); }, 20000);
           }
           // a game that can't use the relay gets the whole time to link up directly (phones can take a while)
           var to = setTimeout(fallBack, opts.relay === false ? config.connectMs : config.directMs);
@@ -607,6 +611,8 @@
         });
       });
     });
+    main = main.then(function (p) { dl('Joined ' + ((p.room && p.room.host && p.room.host.name) || 'the host') + '’s table ' + code + ' in ' + ((Date.now() - jt0) / 1000).toFixed(1) + ' s' + (p.relay ? ' through the relay' : ' (direct)')); return p; },
+      function (e) { if (!(e && e.message === 'Cancelled')) dl('Couldn’t join ' + code + ' after ' + ((Date.now() - jt0) / 1000).toFixed(1) + ' s: ' + (e && e.nat ? 'no link between the devices' : (e && e.message) || e) + (e && e.diag ? ' · ' + e.diag : '')); throw e; });
     if (!scr) return main;
     return new Promise(function (res, rej) { outerRej = rej; main.then(res, rej); });
   }
