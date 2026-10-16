@@ -24,6 +24,8 @@ const PRECACHE_URLS = [
   '/gate.html',
   '/shared.css',
   '/kit.css',
+  '/spotify.js',
+  '/spotify.html',
   '/kit.js',
   '/spin.js',
   '/games.js',
@@ -398,6 +400,9 @@ self.addEventListener('fetch', (event) => {
   // App icons and the manifest always come straight from the network (iOS reads them when adding to the
   // home screen; a cached or failed copy would leave a plain letter icon)
   if (url.origin === self.location.origin && /^\/(apple-touch-icon[^/]*|icon-\d+\.png|img\/home-icon-\d+\.png|favicon\.png|manifest\.json)$/.test(url.pathname)) return;
+
+  // Background music streams straight from the network (audio asks for byte ranges, which the cache can't answer)
+  if (url.origin === self.location.origin && url.pathname.startsWith('/music/')) return;
 
   // Lorcana card art: from the device when we have it
   if (isArt(url)) { event.respondWith(artFetch(req)); return; }

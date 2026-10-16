@@ -3245,6 +3245,25 @@ function nowGuide() {
   if (isCpu(p)) return '<div class="now">' + head + '<p>' + esc(seatOf(p).name) + ' is playing ' + esc(pname(p)) + '. Watch the map; when it attacks you, you choose which of your units are lost.</p></div>';
   return '<div class="now">' + head + '<ol>' + (NOW_STEPS[ph] || []).map(function (s) { return '<li>' + s + '</li>'; }).join('') + '</ol></div>';
 }
+// the marching-band tracks (music/axisallies/), credited in the rules
+var MUSIC_TRACKS = [
+  { f: 'stars.mp3', t: 'The Stars and Stripes Forever', by: 'Sousa', band: 'US Marine Band' },
+  { f: 'semper.mp3', t: 'Semper Fidelis', by: 'Sousa', band: 'US Marine Band' },
+  { f: 'wpost.mp3', t: 'The Washington Post', by: 'Sousa', band: 'US Marine Band' },
+  { f: 'thunderer.mp3', t: 'The Thunderer', by: 'Sousa', band: 'US Marine Band' },
+  { f: 'liberty.mp3', t: 'The Liberty Bell', by: 'Sousa', band: 'US Marine Band' },
+  { f: 'eagle.mp3', t: 'The Invincible Eagle', by: 'Sousa', band: 'US Marine Band' },
+  { f: 'yankee.mp3', t: 'The Glory of the Yankee Navy', by: 'Sousa', band: 'US Marine Band' },
+  { f: 'panama.mp3', t: 'The Pathfinder of Panama', by: 'Sousa', band: 'US Marine Band' },
+  { f: 'hands.mp3', t: 'Hands Across the Sea', by: 'Sousa', band: 'US Marine Band' },
+  { f: 'artillery.mp3', t: 'U.S. Field Artillery', by: 'Sousa', band: 'US Marine Band' },
+  { f: 'anchorstar.mp3', t: 'Anchor and Star', by: 'Sousa', band: 'US Marine Band' },
+  { f: 'patrol.mp3', t: 'American Patrol', by: 'Meacham', band: 'US Marine Band' },
+  { f: 'emblem.mp3', t: 'National Emblem', by: 'Bagley', band: 'US Marine Band' },
+  { f: 'anchors.mp3', t: 'Anchors Aweigh', by: 'Zimmermann', band: 'US Navy Band' },
+  { f: 'bogey.mp3', t: 'Colonel Bogey', by: 'Alford', band: 'US Coast Guard Band' },
+  { f: 'slavianka.mp3', t: 'Farewell of Slavianka', by: 'Agapkin', band: 'US Coast Guard Band' }
+];
 var RULES =
   '<p class="goal">It’s spring 1942. The <b>Axis</b> (Germany and Japan) fight the <b>Allies</b> (Soviet Union, United Kingdom and United States). Hold enough <b>victory cities</b> (gold stars on the map) at the end of a round to win.</p>' +
   '<h3>A turn: six steps</h3><p>Powers take turns in order: <b>Soviet Union, Germany, United Kingdom, Japan, United States</b>, the official order (setup can switch to Germany going first). Each turn has six steps, shown in the strip at the top:</p><ol>' +
@@ -3273,6 +3292,7 @@ var RULES =
   '<h3>Winning</h3><ul><li><b>Standard:</b> at the end of a round the Axis need <b>9</b> of the 13 victory cities, or the Allies need <b>10</b>.</li><li><b>Quick:</b> 8 for the Axis, 9 for the Allies. <b>Total:</b> all 13. <b>Capitals:</b> the Allies win by holding Berlin and Tokyo; the Axis win by holding two of London, Moscow and Washington.</li><li>With a round limit, the side with more victory cities when time runs out wins (ties go to the bigger total income).</li></ul>' +
   '<h3>Skirmish</h3><p>A quicker game in Europe: Germany against the Soviet Union and the United Kingdom on 20 territories and 10 sea zones, with smaller armies. Same units, buying, moves, dice and income. Britain also collects 10 IPCs a turn from its empire off the map. You win by holding an enemy capital at the end of a round (Allies: Berlin; Germany: Moscow or London) or 5 of the 6 victory cities. After round 10 the side with more victory cities wins.</p>' +
   '<h3>Left out</h3><p>Optional rules aren’t included: national objectives, research and technology, and the starting bid. Units can’t ride on an ally’s transport. Fighters fly on their own (they don’t ride a moving carrier). AA hits on planes are taken from the cheapest planes first.</p>' +
+  '<h3>Music</h3><p>Marches played by US military bands, public domain recordings from the Internet Archive: ' + MUSIC_TRACKS.map(function (t) { return '<i>' + t.t + '</i> (' + t.by + ', ' + t.band + ')'; }).join(', ') + '. Switch them off with <b>Marching bands</b> in the menu, or play your own Spotify from <b>Music</b>.</p>' +
   '<h3>Who plays what</h3><p>2 players: Axis against Allies. 3: Germany + Japan; Soviet Union + United States; United Kingdom. 4: Germany; Soviet Union + United States; Japan; United Kingdom. 5: one power each. Any seat can be a computer general.</p>';
 
 // The sheet: "What do I do now?" first, then the full rules in sections that open on a tap
@@ -3284,13 +3304,13 @@ function rulesHtml() {
   });
   return nowGuide() + intro + secs.join('');
 }
-// ── Background music: wartime marches and orchestral pieces (public domain recordings, listed in MUSIC_TRACKS),
+// ── Background music: marches played by US military bands (their recordings are US government work, so public
+// domain; from the Internet Archive, the Marine Band's "Complete Marches of John Philip Sousa" among them),
 // shuffled, quietly under the game while the map is up. Its own on/off switch in the menu; unset, it follows
-// the Game defaults music switch, and nothing plays with sound off.
-var MUSIC_TRACKS = [];
+// the Game defaults music switch; nothing plays with sound off, or while Spotify plays for this game.
 var Music = (function () {
   var a = null, order = [], want = false, fadeT = 0;
-  function on() { try { if (localStorage.getItem('gn_sound') === '0') return false; var v = localStorage.getItem('axisallies_music'); return v == null ? localStorage.getItem('gn_music') !== '0' : v !== '0'; } catch (e) { return true; } }
+  function on() { try { if (localStorage.getItem('gn_sound') === '0' || (Kit.spotifyOwns && Kit.spotifyOwns(KEY))) return false; var v = localStorage.getItem('axisallies_music'); return v == null ? localStorage.getItem('gn_music') !== '0' : v !== '0'; } catch (e) { return true; } }
   function next() {
     if (!MUSIC_TRACKS.length) return;
     if (!order.length) { order = MUSIC_TRACKS.map(function (t, i) { return i; }); for (var i = order.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), x = order[i]; order[i] = order[j]; order[j] = x; } }
@@ -3321,10 +3341,9 @@ var Music = (function () {
   document.addEventListener('visibilitychange', function () { if (!a) return; if (document.hidden) a.pause(); else if (want && on()) { var pr = a.play(); if (pr && pr.catch) pr.catch(function () {}); } });
   return {
     start: start, stop: stop,
-    menuItem: { icon: 'music', label: 'Music on / off', onClick: function () {
+    menuItem: { icon: 'music', label: 'Marching bands', sub: 'The game’s own music', toggle: function () { return on(); }, onClick: function () {
       var now = !on(); try { localStorage.setItem('axisallies_music', now ? '1' : '0'); } catch (e) {}
       if (now) { if (want || (S && !S.over)) start(); } else if (a) { a.pause(); }
-      Kit.toast(now ? 'Music on' : 'Music off');
     } }
   };
 })();

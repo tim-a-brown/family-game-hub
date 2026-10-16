@@ -23,6 +23,7 @@
 //   Kit.color(i)                               player colour for seat i
 //   Kit.resume.set(label, {keys}) / .clear()           "Continue" rail on home
 //   Kit.rules()                                open the rules sheet
+//   Kit.music()                                the Music sheet (your Spotify: a playlist per game); Kit.spotifyOwns(id)
 //   Kit.theme.pick() / .get() / .set(id)       app colour theme (localStorage fgh_theme)
 //   Kit.init({orient:'landscape'|'portrait'})  phones only (orientTablets:true adds iPads): lock or show a turn-your-device cover; 'kit:orient' event
 //   Kit.orient('landscape'|'portrait'|null, tablets?)  same gate, set or lifted later (per mode); Kit.orientOk() -> bool
@@ -567,6 +568,21 @@
 
   // ── Catalog helpers ───────────────────────────────────────────────────────
   var game = null;
+  // ── Your own Spotify as background music (spotify.js, loaded only when it's wanted) ──
+  var KIT_BASE = ((doc.currentScript && doc.currentScript.src) || '').replace(/kit\.js(\?.*)?$/, '');
+  var spLoading = null;
+  function spotifyLoad() {
+    if (window.Spotify) return Promise.resolve(window.Spotify);
+    return spLoading || (spLoading = new Promise(function (ok, no) {
+      var s = doc.createElement('script'); s.src = KIT_BASE + 'spotify.js'; s.onload = function () { ok(window.Spotify); }; s.onerror = function () { spLoading = null; no(); };
+      doc.head.appendChild(s);
+    }));
+  }
+  function spotifyPick(id) { try { var all = JSON.parse(lsGet('gn_spotify', '{}')) || {}; return all[id] || all['*'] || null; } catch (e) { return null; } }
+  function spotifyOn() { return !!lsGet('spotify_auth', ''); }
+  // true when Spotify plays for this game (the game keeps its own music quiet)
+  function spotifyOwns(id) { var p = spotifyPick(id || (game && game.id)); return spotifyOn() && !!(p && p.u && p.u !== 'off'); }
+  function spotifySheet() { spotifyLoad().then(function (Sp) { Sp.sheet(game ? { id: game.id, name: game.name } : {}); }, function () { toast('Couldn’t load Spotify. Check the connection.'); }); }
   function pageKey() { return location.pathname.replace(/^.*\//, '').replace(/\.html$/, ''); }
   function playerColor(i) {
     return getComputedStyle(root).getPropertyValue('--p' + ((i % 8) + 1)).trim() || '#ffc83d';
@@ -697,6 +713,8 @@
     if (game && game.cat === 'casino' && window.Casino && Casino.showHistory) item(G, 'chart', 'Bankroll history', function () { Casino.showHistory(); });
     toggle('Settings', 'sound', 'Sound', '', soundOn, function () { lsSet('gn_sound', soundOn() ? '0' : '1'); sfx('good'); });
     item('Settings', 'palette', 'Theme', function () { themePick(); }, '', themeRec(themeGet()).name);
+    var spP = game && spotifyPick(game.id);
+    item('Settings', 'headphones', 'Music', spotifySheet, '', !spotifyOn() ? 'Play your Spotify' : spP && spP.u !== 'off' ? spP.n || 'Spotify' : 'Spotify: none');
     var M = 'More';
     if (opts.rules) item(M, 'book', 'How to play', rules);
     var nReq = linkReqs().length;
@@ -856,6 +874,7 @@
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-ink', inkFor(accent));
     if (game) { doc.title = game.name + ' · Game Night'; applyTheme(game.id); }
+    if (game && spotifyOn() && spotifyPick(game.id)) spotifyLoad().then(function (Sp) { Sp.gameStart(game.id); }, function () {});
     // Faint silhouette of the game's mark in the middle of the table
     if (game && window.GameIcon && GameIcon.mark && opts.mark !== false) {
       var mk = GameIcon.mark(game.id);
@@ -2603,6 +2622,7 @@
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
+    spotifyOwns: spotifyOwns, music: spotifySheet,
     titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };

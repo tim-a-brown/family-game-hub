@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#141029">
+<title>Spotify · Game Night</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  /* Spotify sends you back here after you sign in: finish connecting, then straight back to the game */
+  body{min-height:100vh;margin:0;display:grid;place-items:center;background:var(--page-bg);color:var(--text);font-family:inherit}
+  .sp-done{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:24px 16px;max-width:420px}
+  .sp-ring{width:64px;height:64px;border-radius:50%;border:5px solid var(--w1);border-top-color:var(--accent);animation:spin .9s linear infinite}
+  .sp-ring.ok{animation:none;border-color:var(--accent);display:grid;place-items:center;color:var(--accent)}
+  .sp-ring.bad{animation:none;border-color:var(--w2)}
+  h1{margin:0;font-size:1.4rem}
+  p{margin:0;color:var(--text-2)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<main class="sp-done">
+  <div class="sp-ring" id="ring"></div>
+  <h1 id="t">Connecting Spotify</h1>
+  <p id="m"></p>
+  <a id="b" class="btn btn-primary" href="/" hidden>Back to games</a>
+</main>
+<script src="spotify.js"></script>
+<script>
+(function () {
+  var t = document.getElementById('t'), m = document.getElementById('m'), b = document.getElementById('b'), ring = document.getElementById('ring');
+  Spotify.finish().then(function (back) {
+    ring.className = 'sp-ring ok'; t.textContent = 'Spotify connected';
+    setTimeout(function () { location.replace(back); }, 500);
+  }, function (e) {
+    ring.className = 'sp-ring bad'; t.textContent = 'Spotify isn’t connected';
+    m.textContent = (e && e.message) || 'Something went wrong. Try again from the game’s menu.';
+    b.hidden = false;
+  });
+})();
+</script>
+</body>
+</html>
