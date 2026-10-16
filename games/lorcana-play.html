@@ -216,6 +216,7 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .inkz .ct{display:flex;flex-direction:column;align-items:flex-start;}
 .lp-pick{position:absolute;inset:0;z-index:6;display:flex;align-items:center;gap:8px;padding:2px 6px 2px 10px;background:linear-gradient(90deg,#3a2a00,#6b4b0a);color:#fff3cf;font-weight:900;font-size:.85rem;}
 .lp-pick span{flex:1;min-width:0;line-height:1.15;}
+.lp-pick .pk-step{flex:none;font-style:normal;font-size:.7rem;font-weight:900;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.3);color:#ffd970;font-variant-numeric:tabular-nums;}
 .lp-pick .btn{min-height:30px;padding:0 12px;font-size:.82rem;}
 
 /* ── Cards ─────────────────────────────────────────────────────────────── */
@@ -1385,6 +1386,20 @@ html.lorc .k-sheet .lp-li.cl-row.on{box-shadow:inset 0 0 0 2px var(--gilt),0 0 1
 .cp-head .cp-src .mini{display:block;width:100%;height:100%;background-size:cover;background-position:center;}
 .cp-head b{display:block;font-weight:800;font-size:.88rem;line-height:1.2;}
 .cp-head small{display:block;font-size:.72rem;color:rgba(255,243,208,.7);}
+.cp-head.has-plan{flex-wrap:wrap;}
+.cp-plan{flex-basis:100%;list-style:none;margin:2px 0 0;padding:7px 0 0;border-top:1px solid rgba(227,189,98,.3);display:flex;flex-direction:column;gap:3px;counter-reset:st;}
+.cp-plan li{display:flex;align-items:flex-start;gap:8px;font-size:.78rem;font-weight:700;line-height:1.25;color:rgba(255,243,208,.55);}
+.cp-plan li i{flex:none;width:17px;height:17px;margin-top:-1px;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.45);display:grid;place-items:center;}
+.cp-plan li i svg{width:12px;height:12px;}
+.cp-plan li.done{color:rgba(255,243,208,.7);}
+.cp-plan li.done i{background:#e3bd62;color:#2a1d02;box-shadow:none;}
+.cp-plan li.now{color:#fff;font-weight:900;}
+.cp-plan li.now i{box-shadow:inset 0 0 0 2px #ffd970,0 0 8px rgba(255,217,112,.7);animation:planNow 1.2s ease-in-out infinite;}
+.cp-plan li.now i::after{content:'';width:7px;height:7px;border-radius:50%;background:#ffd970;}
+.cp-plan li.skip span{text-decoration:line-through;opacity:.6;}
+.cp-plan li em{font-style:normal;color:#ffd970;margin-left:6px;}
+.cp-plan li em::before{content:'· ';color:rgba(255,243,208,.45);}
+@keyframes planNow{50%{box-shadow:inset 0 0 0 2px #ffd970,0 0 14px rgba(255,217,112,.95);}}
 .pk-chal.pk-prev .pk-x{flex:none;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.25);color:#fff3cf;}
 .pk-chal.pk-prev .pk-x svg{width:16px;height:16px;}
 .pk-chal.pk-prev > :first-child{margin-left:0!important;}
@@ -5138,6 +5153,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     afterFx(function () { runFx(ab.fx, 0, st, finish); }, 520);
     function finish() {
+      if (PLAN === st.plan) PLAN = null;
       if (st.said.length) log(DD(src).n + (ab.name ? ' · ' + abTitle(src, ab) : '') + ': ' + st.said.join('. '), pi);
       // what the computer's abilities did, so nothing slips by
       if (st.said.length && (S.mode === 'online' || (!ctlHuman(pi) && humans() > 0))) oppTick(pi, abTitle(src, ab), st.said.join(' · ').replace(/^\w/, function (c) { return c.toUpperCase(); }));
@@ -5145,14 +5161,54 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
   }
   var fxSrc = null;   // the card whose ability is running (its picture heads any card choice it asks for)
+  // The ability's steps as a checklist on its choice screens (only when it has more than one): what's done (with
+  // the card that went there), what you're choosing now, what comes after
+  var PLAN = null;
+  function lookPickText(pk) {
+    var n = pk.n > 1 ? (pk.may ? 'up to ' : '') + pk.n : pk.may ? 'up to 1' : '1';
+    if (pk.to === 'ink') return 'Put ' + n + ' into your inkwell, facedown and exerted';
+    var what = pk.type ? ' ' + pk.type.replace('|', ' or ') + (pk.n > 1 ? 's' : '') : '';
+    if (pk.play) return 'Play ' + n + what + (pk.paid ? '' : ' for free');
+    return 'Put ' + (pk.all ? 'every' : n) + what + ' into your hand';
+  }
+  var REST_TEXT = { top: 'Put the rest back on top of your deck', bottom: 'Put the rest on the bottom of your deck', choose: 'Put the rest on the top or bottom of your deck',
+    discard: 'Put the rest into your discard', ink: 'Put the rest into your inkwell, facedown and exerted', hand: 'Put the rest into your hand', topdisc: 'Put each on top of your deck or into your discard' };
+  function planOf(list, st) {
+    var steps = [];
+    list.forEach(function (e, i) {
+      var t; try { t = effText(e); } catch (er) { t = ''; }
+      if (!t) return;
+      if (e.op === 'look' && (e.pick || e.rest)) {
+        steps.push({ i: i, k: 'look', t: t });
+        if (e.pick) steps.push({ i: i, k: 'pick', t: lookPickText(e.pick) });
+        if (e.rest === 'split') { steps.push({ i: i, k: 'top', t: 'Put 1 on top of your deck' }); steps.push({ i: i, k: 'bottom', t: 'Put the last 1 on the bottom of your deck' }); }
+        else if (REST_TEXT[e.rest]) steps.push({ i: i, k: 'rest', t: REST_TEXT[e.rest] });
+        return;
+      }
+      steps.push({ i: i, t: (e.dep ? 'If you do: ' : e.ndep ? 'If you don’t: ' : '') + t.replace(/^If you do: /, '') });
+    });
+    return { src: st.src, steps: steps, cur: [0, 0], skip: {} };
+  }
+  // the steps for effect i; a look effect narrows it to its own parts (k: 'pick', 'top' …)
+  function planAt(st, i, ks) {
+    var P = st.plan; if (!P) return;
+    var ix = []; P.steps.forEach(function (sp, j) { if (sp.i === i && (!ks || ks.indexOf(sp.k) >= 0)) ix.push(j); });
+    if (ix.length) P.cur = [ix[0], ix[ix.length - 1]];
+  }
+  function planGot(st, k, u) { var P = st.plan; if (!P || !u) return; P.steps.forEach(function (sp) { if (sp.k === k && !sp.got) sp.got = DD(u).n; }); }
+  function planSkip(st, i) { var P = st.plan; if (P) P.steps.forEach(function (sp, j) { if (sp.i === i) P.skip[j] = 1; }); }
   function runFx(list, i, st, done) {
     if (st && st.src) fxSrc = st.src;
+    if (st && !st.plan && i === 0) st.plan = planOf(list, st);
+    if (st && st.plan && st.plan.list == null) st.plan.list = list;
+    if (st && st.plan) PLAN = st.plan;
     if (!S || S.phase !== 'play' || finishing) return done();
     if (i >= list.length) return done();
-    var e = list[i];
-    if (e.dep && !st.did) return runFx(list, i + 1, st, done);
-    if (e.ndep && st.did) return runFx(list, i + 1, st, done);
-    if (e.cond && !condOK(e.cond, st.src, st.pi, Object.assign({ st: st }, st.ctx))) { st.did = false; return runFx(list, i + 1, st, done); }
+    var e = list[i], own = st && st.plan && st.plan.list === list;
+    if (own) planAt(st, i);
+    if (e.dep && !st.did) { if (own) planSkip(st, i); return runFx(list, i + 1, st, done); }
+    if (e.ndep && st.did) { if (own) planSkip(st, i); return runFx(list, i + 1, st, done); }
+    if (e.cond && !condOK(e.cond, st.src, st.pi, Object.assign({ st: st }, st.ctx))) { if (own) planSkip(st, i); st.did = false; return runFx(list, i + 1, st, done); }
     var t = tok;
     doEff(e, st, i === 0 && st.asked, function (did) {
       if (t !== tok) return;
@@ -5994,12 +6050,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     if (e.rest === 'split') {
       // one card goes into the inkwell, then one of the other two on top and the last on the bottom
+      planAt(st, st.plan && st.plan.list ? st.plan.list.indexOf(e) : -1, ['pick']);
       return privately(pi, function (back) { lookSheet(st, top, pk, ok, null, function (take) {
+        planGot(st, 'pick', take[0]);
         var left = top.filter(function (u) { return take.indexOf(u) < 0; });
         if (left.length < 2) return back(function () { fin(take, { top: left, bottom: [] }); });
-        chooseFromList(abTitle(st.src, st.ab) + ': which card goes on top of your deck? The other goes on the bottom.', left, 1, function (sel) { var tp = sel[0] || left[0]; back(function () { fin(take, { top: [tp], bottom: left.filter(function (u) { return u !== tp; }) }); }); }, { must: true });
+        planAt(st, st.plan && st.plan.list ? st.plan.list.indexOf(e) : -1, ['top', 'bottom']);
+        chooseFromList(abTitle(st.src, st.ab) + ': which card goes on top of your deck? The other goes on the bottom.', left, 1, function (sel) { var tp = sel[0] || left[0]; back(function () { fin(take, { top: [tp], bottom: left.filter(function (u) { return u !== tp; }) }); }); }, { must: true, label: function (u) { return 'Put ' + DD(u).n + ' on top'; } });
       }); });
     }
+    planAt(st, st.plan && st.plan.list ? st.plan.list.indexOf(e) : -1, ['pick', 'rest']);
     privately(pi, function (back) { lookSheet(st, top, pk, ok, e.rest, function (take, order) { back(function () { fin(take, order); }); }); });
   }
   // Look at the top cards: take what the card allows, the rest goes where it says
@@ -6007,8 +6067,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (netWho() != null) return netAsk('look', { src: st.src, ab: abMin(st.ab), top: top, pk: pk || null, ok: top.filter(ok), rest: rest || null }, function (v) { done(v.take || [], v.order || null); });
     var dest = {}, takeSel = []; top.forEach(function (u) { dest[u] = 'top'; });
     var rt = { bottom: 'the rest go on the bottom', top: 'the rest go back on top', discard: 'the rest go to your discard', ink: 'the rest go into your inkwell', choose: 'top or bottom for each', topdisc: 'top or discard for each' }[rest] || '';
-    var title = abTitle(st.src, st.ab) + ': ' + (pk ? (pk.play ? 'play ' : 'take ') + (pk.n > 1 ? 'up to ' + pk.n : 'one') + (pk.type ? ' ' + pk.type : '') + (pk.maxC != null ? ' (cost ' + pk.maxC + ' or less)' : '') : (top.length === 1 ? 'the top card' : 'the top ' + plural(top.length, 'card'))) + (rt ? '; ' + (top.length === 1 ? rt.replace(/ for each$/, '') : rt) : '');
-    cardPick({ title: title, src: st.src, uids: top, sel: takeSel, n: pk ? pk.n || 1 : 0, min: 0, verb: pk && pk.play ? 'Play' : 'Take',
+    var inkIt = pk && pk.to === 'ink';
+    // "put one into your hand" (any card, no "may"): one has to be taken
+    var must = inkIt || !!(pk && !pk.may && !pk.type && !pk.any && !pk.named && !pk.kw && pk.maxC == null && !pk.play && top.length && top.every(ok));
+    var title = abTitle(st.src, st.ab) + ': ' + (inkIt ? 'put one into your inkwell' : pk ? (pk.play ? 'play ' : 'take ') + (pk.n > 1 ? 'up to ' + pk.n : 'one') + (pk.type ? ' ' + pk.type : '') + (pk.maxC != null ? ' (cost ' + pk.maxC + ' or less)' : '') : (top.length === 1 ? 'the top card' : 'the top ' + plural(top.length, 'card'))) + (rt ? '; ' + (top.length === 1 ? rt.replace(/ for each$/, '') : rt) : '');
+    cardPick({ title: title, src: st.src, uids: top, sel: takeSel, n: pk ? pk.n || 1 : 0, min: must ? 1 : 0, verb: inkIt ? 'Ink' : pk && pk.play ? 'Play' : 'Take',
+      label: inkIt ? function (u) { return 'Put ' + DD(u).n + ' into your inkwell'; } : null,
       can: function (u) { return !!pk && ok(u); }, why: function () { return pk ? 'This one can’t be taken.' : ''; },
       acts: rest === 'choose' || rest === 'topdisc' ? function (u) { var other = rest === 'topdisc' ? 'discard' : 'bottom', lab = { top: 'top of the deck', bottom: 'bottom of the deck', discard: 'discard' };
         var grp = top.filter(function (x) { return dest[x] === dest[u] && takeSel.indexOf(x) < 0; }), j = grp.indexOf(u);
@@ -7762,7 +7826,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var h = cu ? '<div class="lp-pick pk-chal" aria-label="' + esc(pk.title) + '">' + art +
           '<span class="pk-st"><i class="' + vsBase(sv, DD(cu).s || 0) + '" title="Strength">' + PK_STAR + '<b>' + sv + '</b></i><i class="' + vsBase(wl, DD(cu).w || 0) + '" title="Willpower left">' + PK_SHIELD + '<b>' + wl + '</b></i></span>' +
           '<span class="pk-tx"><small>' + esc(nm(cu)) + (hintsOn() ? ' · tap a target to preview' : '') + '</small><b>Pick a target</b></span>'
-        : '<div class="lp-pick">' + art + '<span>' + esc(pk.title) + '</span>';
+        : '<div class="lp-pick">' + art + (PLAN && PLAN.steps.length > 1 ? '<i class="pk-step" title="Step ' + (PLAN.cur[0] + 1) + ' of ' + PLAN.steps.length + '">' + (PLAN.cur[0] + 1) + '/' + PLAN.steps.length + '</i>' : '') + '<span>' + esc(pk.title) + '</span>';
       if (pk.multi) h += '<button type="button" class="btn btn-primary btn-sm" data-act="pick-go"' + (pk.multi.need(pk.sel) ? '' : ' disabled') + '>' + esc(pk.multi.label(pk.sel)) + '</button>';
       if (pk.skip) h += '<button type="button" class="btn btn-soft btn-sm" data-act="pick-skip">' + esc(pk.skip) + '</button>';
       else if (!pk.must) h += '<button type="button" class="btn btn-soft btn-sm" data-act="pick-cancel">Cancel</button>';
@@ -10138,16 +10202,25 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       // what's asking, pinned above the cards
       var head = el('div', { class: 'cp-head' }, [el('span', { class: 'cp-src', html: o.src && S.cards[o.src] ? miniArt(DD(o.src)) : '' }),
         el('div', { class: 'grow' }, [el('b', { text: o.title }), el('small', { text: o.n === 0 ? (o.uids.length > 1 ? 'Swipe through them and choose where each goes' : 'Choose where it goes') : !single ? sel.length + ' of ' + n + ' chosen' + (min < n ? ' (up to ' + n + ')' : '') + (o.place === 'top' ? ' · 1st chosen is the top card' : o.place === 'bottom' ? ' · 1st chosen is the bottom card' : '') : 'Swipe to look through them' })])]);
+      // with the steps listed underneath, the header just names the card
+      var pl = planHTML(); if (pl) { head.classList.add('has-plan'); var hb = $('b', head); if (hb) hb.textContent = o.title.split(': ')[0]; head.insertAdjacentHTML('beforeend', pl); }
       var lin = ov && $('.lz-in', ov); if (lin) lin.insertBefore(head, lin.firstChild);
       addPeek(ov);   // hold the eye to look at the table while you choose
     }
     var first = o.uids.map(can).indexOf(true); show(first >= 0 ? first : 0, 0);
   }
+  function planHTML() {
+    var P = PLAN; if (!P || !P.steps || P.steps.length < 2) return '';
+    return '<ol class="cp-plan" aria-label="What this card does">' + P.steps.map(function (sp, j) {
+      var stt = P.skip[j] ? 'skip' : j < P.cur[0] ? 'done' : j <= P.cur[1] ? 'now' : 'todo';
+      return '<li class="' + stt + '"><i aria-hidden="true">' + (stt === 'done' ? Kit.icon('check') : '') + '</i><span>' + esc(sp.t) + (sp.got && stt === 'done' ? '<em>' + esc(sp.got) + '</em>' : '') + '</span></li>';
+    }).join('') + '</ol>';
+  }
   function chooseFromList(title, uids, n, cb, o) {
     o = o || {};
     if (netWho(o.dec) != null) return netAsk('list', { title: title, uids: uids, n: n, min: o.min || null, must: !!o.must, skip: !!o.skip, place: o.place || null }, function (v) { if (v.c) { if (o.cancel) o.cancel(); return; } cb(v.sel || []); });
     var src = o.src || (fxSrc && S.cards[fxSrc] ? fxSrc : null);
-    cardPick({ title: title, src: src, uids: uids, n: n, min: o.min || n, place: n > 1 ? o.place : null, done: cb, cancel: o.must ? null : function () { if (o.cancel) o.cancel(); }, skip: !o.must && !!o.skip });
+    cardPick({ title: title, src: src, uids: uids, n: n, min: o.min || n, place: n > 1 ? o.place : null, done: cb, label: o.label || null, cancel: o.must ? null : function () { if (o.cancel) o.cancel(); }, skip: !o.must && !!o.skip });
   }
   function lookTop(who, n, note, after) {
     var P = S.P[who], top = P.deckL.slice(0, n);
@@ -11699,7 +11772,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var id = NET.dev + '.' + Date.now().toString(36) + '.' + (++NET.pn), cp = NET.cp || {};
     NET.pend = { id: id, cb: cb, f: f };
     render();
-    netPush(true, { pr: { id: id, seat: opp(NET.seat), k: k, d: dj, f: f, cp: cp.st || null, go: cp.go || null, ans: NET.ans.slice() }, an: null });
+    var pl = PLAN && PLAN.steps.length > 1 ? JSON.stringify({ steps: PLAN.steps.map(function (sp) { return { t: sp.t, got: sp.got || null }; }), cur: PLAN.cur, skip: PLAN.skip }) : null;
+    netPush(true, { pr: { id: id, seat: opp(NET.seat), k: k, d: dj, f: f, cp: cp.st || null, go: cp.go || null, ans: NET.ans.slice(), plan: pl }, an: null });
   }
   function netAskPick(o) {
     var all = Object.keys(S.cards), okL = all.filter(function (x) { try { return !!o.ok(x); } catch (e) { return false; } }), bad = {};
@@ -11721,7 +11795,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if ($('.lz.reveal')) { setTimeout(function () { if (NET.pr && NET.pr.id === pr.id) netPrompt(pr); }, 400); return; }
     NET.showing = pr.id;
     var d = JSON.parse(pr.d), ref = NET.ref;
+    try { PLAN = pr.plan ? JSON.parse(pr.plan) : null; } catch (e) { PLAN = null; }
     function ans(v) {
+      PLAN = null;
       if (NET.answered[pr.id] || !ref) return;
       NET.answered[pr.id] = 1; NET.showing = null;
       ref.update({ an: { id: pr.id, v: JSON.stringify(v) } }).catch(netErr);
