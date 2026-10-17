@@ -892,7 +892,7 @@
     NET = net; ME = net.seat >= 0 ? PS[net.seat] : 0;
     if (info.fresh || info.again) { NQ = []; NGEN++; busy = false; netCloseOver(); }
     NQ.push({ st: JSON.parse(JSON.stringify(net.state)), prev: info.prev ? JSON.parse(JSON.stringify(info.prev)) : null, mv: info.mv, info: info });
-    if (NQ.length > 6) NQ = NQ.slice(-1).map(function (x) { x.skip = true; return x; });   // far behind: jump to now
+    if (NQ.length > 6) { console.log('[spdbg] skip'); NQ = NQ.slice(-1).map(function (x) { x.skip = true; return x; }); }   // far behind: jump to now
     if (!busy) netPump();
   }
   function netPump() {
@@ -928,7 +928,7 @@
     }
     // a card: check it follows from what's on screen, otherwise just draw the table as it is now
     var ok = mv.k === 'play' && prev.phase === 'play' && prev.turn === mv.p && find(prev.hands[mv.p], mv.c.id) >= 0 && (mv.w == null ? prev.trick.length < 3 : prev.trick.length === 3);
-    if (!ok) { S = netView(st); render(); done(); return; }
+    if (!ok) { console.log('[spdbg] notok ' + JSON.stringify(mv)); S = netView(st); render(); done(); return; }
     var fromRect = null;
     if (p === 0 && handEl) { var hn = handEl.querySelector('[data-id="' + mv.c.id + '"]'); if (hn) fromRect = hn.getBoundingClientRect(); }
     function fly(node) {

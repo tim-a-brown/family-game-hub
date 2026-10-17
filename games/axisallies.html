@@ -3593,10 +3593,440 @@ function showSetup() {
   captions();
 }
 
-// ── Start ──────────────────────────────────────────────────────────────────
-(function boot() {
+// ═══════════════════════════════════════════════════════════════════════════
+// Online (turnnet.js): each general on their own device, at their own pace.
+// The table's state is S (compacted). Seats are people in the order they sat down, then computer generals; each
+// seat commands one group of powers, shared out as on the setup screen (SPLITS). turn() is the seat that must act:
+// the current power's general, or during a battle the general choosing losses ('cas') or whether defending
+// submarines dive ('dive').
+// A step (purchase, combat move, noncombat move, mobilize) is worked out on this device with undo (a draft,
+// kept in localStorage in case the app closes) and sent as one move when it's done. Battles go step by step:
+// every roll is its own move (the dice are rolled inside it), so every device watches the same dice.
+// Computer generals play one step per move, worked out headless with the game's own AI.
+// ═══════════════════════════════════════════════════════════════════════════
+var NETREC = 'axisallies_netrec', NETDRAFT = 'axisallies_netdraft', NETOPTS = null;
+var netN = 0, netTimers = [], lastRollSig = '', lastEndSig = '', lastCasSig = '', lastDecSig = '', btHide = null, lastTurnKey = '';
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+// Work out a move on a copy of the state: S is that copy while fn runs (nothing saved, no toasts), then put back
+function calc(st, fn) {
+  var s0 = S, u0 = undoStack, ui0 = Object.assign({}, ui), m0 = M.mode;
+  QUIET++;
+  try { S = st; if (S && S.mode !== M.mode) buildMap(S.mode); return fn(); }
+  finally { QUIET--; S = s0; undoStack = u0; Object.assign(ui, ui0); if (m0 && M.mode !== m0) buildMap(m0); }
+}
+// The same for a computer general's step: its AI is async (it animates locally), but headless nothing in it waits on
+// a timer, so the whole step runs in one go before anything else on the page can
+function calcAsync(st, fn) {
+  var s0 = S, u0 = undoStack, ui0 = Object.assign({}, ui), m0 = M.mode;
+  QUIET++; HEADLESS++;
+  function done() { QUIET--; HEADLESS--; S = s0; undoStack = u0; Object.assign(ui, ui0); if (m0 && M.mode !== m0) buildMap(m0); }
+  var p;
+  try { S = st; if (S.mode !== M.mode) buildMap(S.mode); p = fn(); } catch (e) { done(); return Promise.reject(e); }
+  return Promise.resolve(p).then(function (r) { done(); return r; }, function (e) { done(); throw e; });
+}
+// Smaller table: unit flags that are off are left out (the rules read a missing flag as off)
+function compact(st) {
+  st.units.forEach(function (u) {
+    ['h', 'c', 'f', 'ul', 'amphF', 'dv'].forEach(function (k) { if (!u[k]) delete u[k]; });
+    ['on', 'fr', 'ulT', 'sbr', 'amph'].forEach(function (k) { if (u[k] == null) delete u[k]; });
+  });
+  return st;
+}
+// Is this power played by the computer at the table? (a person who leaves is replaced by a computer general)
+function botPow(p) {
+  var i = S.ctl[p];
+  if (NET) { var s = NET.seats[i]; return !s || !!s.bot; }
+  return !!(S.seats[i] && S.seats[i].cpu);
+}
+function strHash(s) { var h = 5381; for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36) + ':' + s.length; }
+function later(ms, fn) { var n = netN; netTimers.push(setTimeout(function () { if (n === netN && NET) fn(); }, ms)); }
+// The host's choices, from this game's own setup screen (its number of players is how many generals there are)
+function netOptsNow() {
+  var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_' + KEY) || '{}') || {}; } catch (e) {}
+  var o = g.options || {};
+  NETOPTS = { map: o.map === 'skirm' ? 'skirm' : 'full', vc: o.vc || 'std', limit: o.limit || '0', order: o.order || 'su', cas: o.cas || 'ask', speed: o.speed || 'normal', gen: Math.max(2, Math.min(5, +g.count || 2)) };
+  return NETOPTS;
+}
+function tableOpts() {
+  try { var d = TurnNet._t.d; if (d && d.opts) return JSON.parse(d.opts) || {}; } catch (e) {}
+  return NETOPTS || {};
+}
+function netSeats(n) { var o = tableOpts(), cap = o.map === 'skirm' ? 3 : 5; return Math.max(n, Math.min(cap, +o.gen || 2)); }
+function netStart(players, opts, last) {
+  return calc(null, function () {
+    var map = opts.map === 'skirm' ? 'skirm' : 'full', n = players.length, nG = Math.min(map === 'skirm' ? 3 : 5, n);
+    var groups = splitFor(map, nG, 'mix');
+    // a rematch at the same table hands the powers round, so the generals swap sides
+    var rot = last ? ((last.rot || 0) + 1) % nG : 0;
+    var seats = players.map(function (p, i) { return { name: p.name, cpu: !!p.bot, powers: i < nG ? groups[(i + rot) % nG].slice() : [] }; });
+    initGame({ map: map, vc: opts.vc || 'std', cas: opts.cas === 'auto' ? 'auto' : 'ask', speed: opts.speed === 'fast' ? 'fast' : 'normal', limit: opts.limit || '0', order: opts.order || 'su', guide: false, seats: seats });
+    S.rot = rot;
+    return compact(S);
+  });
+}
+function netTurn(st) {
+  if (!st || st.over) return [];
+  var B = st.B;
+  if (B && B.step === 'cas') { var v = B.vols[B.vi]; return [st.ctl[v && v.side === 'a' ? B.def : B.att]]; }
+  if (B && B.step === 'dive') return [st.ctl[B.def]];
+  return [st.ctl[st.powers[st.pi]]];
+}
+function netOver(st) {
+  if (!st || !st.over) return null;
+  var win = []; st.seats.forEach(function (s, i) { if (s.powers.length && PW[s.powers[0]].side === st.over) win.push(i); });
+  return { win: win, text: st.overMsg || SIDE[st.over] + ' win' };
+}
+// The end of a power's turn and the start of the next (pure: the turn banner and income card are each device's own)
+function netNextTurn() {
+  S.pi++;
+  if (S.pi >= S.powers.length) { S.pi = 0; if (endRound()) return; S.round++; }
+  var guard = 0;
+  while (!alive(cur()) && guard++ < 6) { S.pi = (S.pi + 1) % S.powers.length; if (S.pi === 0) { if (endRound()) return; S.round++; } }
+  startTurn();
+}
+function buyLog(p) {
+  var b = KINDS.concat(['ic']).filter(function (k) { return S.buy[k]; }).map(function (k) { return S.buy[k] + ' ' + (S.buy[k] > 1 ? U[k].p : U[k].n).toLowerCase(); });
+  logLine(pname(p) + (b.length ? ' buys ' + b.join(', ') : ' buys nothing'));
+}
+
+// ── Battles, one step at a time ──
+// inp: {roll, dive} or {retreat} (the attacker), {dive} (the defender's submarines), {cas} (losses), {done},
+// or null: the next step that needs nobody. Computer generals decide for themselves. Stops after each roll (so every
+// device watches the dice land), when a general must decide, and when the battle ends. Returns true if anything changed.
+function bRun(inp) {
+  var B = S.B, did = false, g = 0;
+  while (B && S.B === B && g++ < 80) {
+    var st = B.step;
+    if (st === 'pre' || st === 'decide') {
+      var choice = null, opts = retreatOpts(B);
+      if (botPow(B.att)) {
+        choice = { roll: 1 };
+        if (st === 'decide' && opts.length) { var o = liveOdds(B); if (o && o.win < 0.3 && !(B.k === 'land' && isCapitalOf(B.t))) choice = { retreat: opts[0] }; }
+      } else if (inp && (inp.roll || (inp.retreat != null && st === 'decide' && opts.indexOf(inp.retreat) >= 0))) { choice = inp; inp = null; }
+      else return did;
+      did = true;
+      if (choice.retreat != null) { doRetreat(B, choice.retreat); return true; }
+      B.dva = subChoice(B, 'a') && (botPow(B.att) ? cpuDive(B, 'a') : !!choice.dive) ? 1 : 0;
+      if (subChoice(B, 'd') && !botPow(B.def)) { B.step = 'dive'; return true; }
+      B.dvd = subChoice(B, 'd') && cpuDive(B, 'd') ? 1 : 0;
+      bNewRound(B);
+      continue;
+    }
+    if (st === 'dive') {
+      if (botPow(B.def)) B.dvd = cpuDive(B, 'd') ? 1 : 0;
+      else if (inp && inp.dive != null) { B.dvd = inp.dive ? 1 : 0; inp = null; }
+      else return did;
+      did = true;
+      bNewRound(B);
+      continue;
+    }
+    if (st === 'vol' || st === 'cas') {
+      var v = B.vols[B.vi];
+      if (!v) {
+        endOfRound(B);
+        if (battleOutcome(B)) finishBattle(B); else { B.round++; B.step = 'decide'; }
+        did = true; continue;
+      }
+      if (!v.rolled) {
+        rollVolley(B); did = true;
+        if (!v.groups.length) { v.done = 1; B.vi++; continue; }
+        return true;
+      }
+      if (v.done) { B.vi++; B.step = 'vol'; did = true; continue; }
+      var targets = targetsFor(B, v), total = hitTotal(v.hits);
+      if (!total || !targets.length) { v.done = 1; B.vi++; B.step = 'vol'; did = true; continue; }
+      var auto = autoCas(targets, v.hits), chooser = v.side === 'a' ? B.def : B.att;
+      var kinds = {}; targets.forEach(function (u) { kinds[u.k] = 1; });
+      var matters = Object.keys(kinds).length > 1 || kinds.bb;
+      var cas = auto;
+      if (!botPow(chooser) && S.opt.cas !== 'auto' && matters && auto.length < targets.length + (kinds.bb ? 1 : 0)) {
+        if (st !== 'cas') { B.step = 'cas'; return true; }
+        if (!inp || !inp.cas) return did;
+        var pick = inp.cas, ids = {}; inp = null;
+        var fine = Array.isArray(pick) && pick.every(function (c) { var ok = c && !ids[c.id + ':' + (c.dmg ? 1 : 0)] && targets.some(function (u) { return u.i === c.id; }); if (c) ids[c.id + ':' + (c.dmg ? 1 : 0)] = 1; return ok; });
+        if (!fine || !casValid(targets, v.hits, pick, auto.length)) return did;
+        cas = pick.map(function (c) { return { id: c.id, dmg: c.dmg ? 1 : 0 }; });
+      }
+      applyCas(B, v, cas); B.vi++; B.step = 'vol'; did = true;
+      continue;
+    }
+    if (st === 'end') {
+      if (did) return true;   // everyone sees how it ended before the board closes
+      if (!botPow(B.att) && !(inp && inp.done)) return false;
+      closeBattle();
+      return true;
+    }
+    return did;
+  }
+  return did;
+}
+function bNewRound(B) {
+  if (B.dva) bSide(B, 'a').forEach(function (u) { if (u.k === 'sub') u.dv = 1; });
+  if (B.dvd) bSide(B, 'd').forEach(function (u) { if (u.k === 'sub') u.dv = 1; });
+  delete B.dva; delete B.dvd;
+  if (battleOutcome(B)) { finishBattle(B); return; }
+  B.vols = planRound(B); B.vi = 0; B.step = 'vol';
+}
+
+// ── Moves from this device ──
+// The step worked out here goes to the table as one move (only if the table is still where the step began)
+function netPush(state, mv) {
+  var base = DRAFT && DRAFT.base, out = JSON.stringify(compact(clone(state)));
+  netUnstash();
+  return NET.act(function (st) { if (base && JSON.stringify(st) !== base) return null; return { state: JSON.parse(out), mv: mv }; });
+}
+// A step is done (afterPhase): send it
+function netCommit() {
+  if (!NET || !NET.myTurn() || !DRAFT || S.B) return;
+  var p = cur();
+  if (S.phase === 'bat' && !S.bl.length) { Kit.toast('No battles to fight: on to ' + PH_TITLE.ncm.toLowerCase()); setPhase('ncm'); }
+  if (S.phase === 'cm') buyLog(p);
+  netPush(S, { k: 'ph', p: p, ph: S.phase });
+}
+// Collect income: the turn ends and the next power's begins, in one move
+function netEndTurn() {
+  if (!NET || !NET.myTurn()) return;
+  var r = null, fin = calc(clone(S), function () { r = endMobState(); netNextTurn(); return S; });
+  netPush(fin, { k: 'inc', p: r.p, inc: r.inc, before: r.before });
+}
+function netOpenBattle(b) {
+  if (!NET.myTurn()) { Kit.haptic('error'); return; }
+  NET.act(function (st) {
+    return calc(st, function () {
+      if (S.B || S.phase !== 'bat') return null;
+      var x = S.bl.filter(function (y) { return y.t === b.t && y.k === b.k && !y.done; })[0];
+      if (!x || battleLocked(x)) return null;
+      openBattle(x);
+      return { state: compact(S), mv: { k: 'bo', t: x.t } };
+    });
+  });
+}
+var netTries = 0;
+function netBattle(inp) {
+  if (!NET) return Promise.resolve(false);
+  var n0 = netN;
+  return NET.act(function (st) {
+    return calc(st, function () {
+      if (!S.B) return null;
+      var t = S.B.t;
+      if (!bRun(inp)) return null;
+      return { state: compact(S), mv: { k: 'b', t: t } };
+    });
+  }).then(function (ok) {
+    // the step that needs nobody: try again shortly if this device's last move was still on its way
+    if (!ok && inp == null && netN === n0 && netTries++ < 4) later(700, netAuto);
+    return ok;
+  });
+}
+function netAuto() { if (NET && NET.myTurn() && S && S.B && S.B.step === 'vol') netBattle(null); }
+// what the battle board's buttons send (renderBattle calls giveInput)
+function netGive(v) {
+  if (!NET || !S || !S.B) return;
+  if (v === 'roll') v = { roll: 1, dive: !!(ui.dive && ui.dive.a) };
+  else if (v === 'ok') v = { done: 1 };
+  else if (Array.isArray(v)) v = { cas: v };
+  netBattle(v);
+}
+
+// ── A computer general's step ──
+function netBot(st, seat) {
+  return calcAsync(st, async function () {
+    if (S.over) return null;
+    var p = cur(), mv = { k: 'cpu', p: p, ph: S.phase }, r;
+    try {
+      if (S.B) { var t = S.B.t; if (!bRun(null)) { S.B.step = 'end'; closeBattle(); } mv = { k: 'b', t: t }; }
+      else if (S.ctl[p] !== seat) return null;
+      else if (S.phase === 'buy') { try { aiBuy(p); } catch (e) { console.warn(e); S.buy = {}; S.rep = {}; } endBuy(); buyLog(p); }
+      else if (S.phase === 'cm') { try { await aiCombat(p); } catch (e) { console.warn(e); } setPhase('bat'); if (!S.bl.length) setPhase('ncm'); }
+      else if (S.phase === 'bat') {
+        var b = S.bl.filter(function (x) { return !x.done && !battleLocked(x); })[0];
+        if (b) { openBattle(b); mv = { k: 'bo', t: b.t }; }
+        else { S.bl.forEach(function (x) { x.done = 1; }); setPhase('ncm'); }
+      }
+      else if (S.phase === 'ncm') { try { await aiNoncombat(p); } catch (e) { console.warn(e); } endNcm(); }
+      else { try { aiPlace(p); } catch (e) { console.warn(e); } r = endMobState(); netNextTurn(); mv = { k: 'inc', p: r.p, inc: r.inc, before: r.before }; }
+    } catch (e) {
+      // never stall: skip whatever broke and finish the turn
+      console.warn(e);
+      if (cur() === p && !S.over) { S.B = null; S.bl = []; S.phase = 'mob'; r = endMobState(); netNextTurn(); mv = { k: 'inc', p: r.p, inc: r.inc, before: r.before }; }
+    }
+    return { state: compact(S), mv: mv };
+  });
+}
+
+// ── Drawing the table ──
+function netStash() {
+  if (!NET || !DRAFT || !NET.myTurn()) return;
+  try { localStorage.setItem(NETDRAFT, JSON.stringify({ c: NET.code, h: DRAFT.h, s: S })); } catch (e) {}
+}
+function netUnstash() { try { localStorage.removeItem(NETDRAFT); } catch (e) {} }
+function netUnstashed() {
+  try { var d = JSON.parse(localStorage.getItem(NETDRAFT) || 'null'); if (d && d.c === NET.code && d.h === DRAFT.h && d.s && d.s.units) return d.s; } catch (e) {}
+  netUnstash(); return null;
+}
+function netShow(net, info) {
+  var first = !NET || !!info.fresh || !!info.again || !R.map;
+  NET = net; netN++; netTries = 0;
+  netTimers.forEach(clearTimeout); netTimers = [];
+  var st = net.state; if (!st) return;
+  if (first) {
+    // whatever was on this device (a local game, its computer turn, its battle) stops where it is: it's saved
+    tok++; busy = 0; cpuRunning = false; inputWait = null; hideBattle(); closeBanner();
+    if (setupObs) { setupObs.disconnect(); setupObs = null; }
+    lastRollSig = lastEndSig = lastCasSig = lastDecSig = lastTurnKey = ''; btHide = null; DRAFT = null;
+  }
+  var base = JSON.stringify(st), mine = net.myTurn(), was = S, restored = false;
+  // the same table as the step being worked out here (someone only sat down or left): keep working on it
+  var keep = !first && DRAFT && DRAFT.code === net.code && DRAFT.base === base && mine && !st.B && !st.over && S;
+  if (!keep) {
+    S = clone(st); undoStack = [];
+    DRAFT = { code: net.code, base: base, h: strHash(base) };
+    if (mine && !S.B && !S.over) { var d = netUnstashed(); if (d) { S = d; restored = true; } } else netUnstash();
+    ui.preview = null; ui.pick = {}; ui.casCounts = null;
+    if (!was || was.pi !== S.pi || was.phase !== S.phase || was.round !== S.round) { ui.sel = -1; ui.bankSel = null; }
+  }
+  net.seats.forEach(function (s, i) { if (S.seats[i]) S.seats[i].cpu = !!s.bot; });
+  canCache.v = null; tgCache.v = null;
+  if (first || M.mode !== S.mode) {
+    buildMap(S.mode); buildBoard();
+    var myP = S.powers.filter(function (q) { return S.ctl[q] === net.seat; })[0];
+    requestAnimationFrame(function () {
+      if (!NET || !S) return;
+      measure(); fitView();
+      var c = capitalOf(myP || cur());
+      if (c != null && S.mode !== 'skirm') focusOn(c, Math.max(fitScale() * 1.6, Math.min(1.1, V.W / 600)));
+      renderAll(); netBattleView(true);
+    });
+  }
+  renderAll();
+  var mv = info.mv;
+  if (!first && info.prev) netAnimate(info.prev, S, mv, !!info.mine);
+  if (!first) netBattleView(false);
+  if (info.again) { Kit.sfx('deal'); }
+  if (S.over) {
+    if (!first && mv && mv.k === 'inc') showIncome(mv.p, mv.inc, mv.before, function () { netEnd(); });
+    else later(first ? 300 : 900, netEnd);
+    return;
+  }
+  // a power's turn ended: its income card, then this device's own turn banner if it's next
+  var tk = S.round + ':' + S.pi, newTurn = tk !== lastTurnKey;
+  lastTurnKey = tk;
+  var banner = newTurn && mine && !S.B && S.phase === 'buy' && !restored && !buyCost();
+  if (!first && mv && mv.k === 'inc' && newTurn) showIncome(mv.p, mv.inc, mv.before, function () { if (banner && NET) beginTurnUI(); });
+  else if (banner) later(first ? 500 : 250, beginTurnUI);
+  else if (!first && newTurn && !mine) Kit.sfx('deal');
+  if (!first && mine && !info.mine && !newTurn && !S.B) Kit.haptic('light');
+}
+// The battle board: shown while a battle is on (unless put away), dice rolling when a new volley comes in
+function netBattleView(first) {
+  var B = S && S.B;
+  if (!B) { if (R.bt) { var gone = R.bt; later(lastEndSig ? 0 : 400, function () { if (R.bt === gone && !(S && S.B)) hideBattle(); }); } lastRollSig = ''; return; }
+  var mine = NET.myTurn(), key = B.t + ':' + B.k + ':' + S.round + ':' + S.pi;
+  if (mine) btHide = null;
+  if (btHide === key) { renderPanel(); return; }
+  var v = B.vols[B.vi], rolled = v && v.rolled && (B.step === 'vol' || B.step === 'cas');
+  var sig = key + ':' + B.round + ':' + B.vi + ':' + (rolled ? 1 : 0);
+  var anim = !first && rolled && sig !== lastRollSig;
+  lastRollSig = sig;
+  if (B.step === 'cas') { var cs = sig + ':cas'; if (cs !== lastCasSig) { lastCasSig = cs; ui.casCounts = null; } }
+  if (B.step === 'pre' || B.step === 'decide') { var ds = key + ':' + B.round + ':' + B.step; if (ds !== lastDecSig) { lastDecSig = ds; ui.dive = { a: false, d: false }; } }
+  ui.dive = ui.dive || { a: false, d: false };
+  inputWait = netGive;
+  showBattle(B);
+  var wait0 = 450;
+  if (anim) {
+    // the dice land first (the losses picker after them), as on one device
+    renderBattle(Object.assign({}, B, { step: 'vol' }), true);
+    Kit.sfx('roll'); Kit.haptic('medium');
+    var tot = hitTotal(v.hits || { s: 0, a: 0, g: 0 });
+    later(spd(950), function () {
+      markDice();
+      if (v.kind === 'sbr') { Kit.callout(v.sbrDmg + ' damage', '#ffc83d'); Kit.sfx(v.sbrDmg ? 'bad' : 'tap'); }
+      else if (tot) { Kit.callout(tot + (tot === 1 ? ' hit!' : ' hits!'), v.side === 'a' ? '#ffc83d' : '#ff8a7a'); Kit.sfx('good'); }
+    });
+    wait0 = spd(950) + spd(tot ? 700 : 450);
+    later(wait0, function () { if (S && S.B === B) { inputWait = netGive; renderBattle(B); } });
+  } else renderBattle(B);
+  if (B.step === 'end') {
+    var es = key + ':end';
+    if (es !== lastEndSig) {
+      lastEndSig = es;
+      var mySide = (S.seats[NET.seat] && S.seats[NET.seat].powers[0]) ? sideOf(S.seats[NET.seat].powers[0]) : '';
+      var attWon = B.res === 'att', defWon = B.res === 'def';
+      if (mySide && (attWon || defWon)) { var won = (mySide === sideOf(B.att)) === attWon; Kit.sfx(won ? 'win' : 'lose'); if (won) Kit.haptic('success'); }
+    }
+  } else lastEndSig = '';
+  // the step that needs nobody is this device's to make (the attacker's, or whoever's turn it is)
+  if (mine && B.step === 'vol') later(wait0, netAuto);
+}
+function netHideBattle() { if (S && S.B) btHide = S.B.t + ':' + S.B.k + ':' + S.round + ':' + S.pi; hideBattle(); renderPanel(); }
+function netWatchBattle() { btHide = null; netBattleView(true); renderPanel(); }
+// Someone else's move, drawn: arrows for every group of units that moved, rings where land changed hands or new units
+// arrived, and the fall of a capital
+function fxPing(t, col) {
+  if (!R.gFx || !GEO[t]) return;
+  var c = document.createElementNS(SVGNS, 'circle');
+  c.setAttribute('cx', TER[t][5]); c.setAttribute('cy', TER[t][6]); c.setAttribute('r', 18);
+  c.setAttribute('class', 'fx-ping'); c.setAttribute('stroke', col);
+  R.gFx.appendChild(c);
+  setTimeout(function () { c.remove(); }, 1300);
+}
+function netAnimate(a, b, mv, mine) {
+  if (!a || !b || a.mode !== b.mode || !a.units) return;
+  var at = {}; a.units.forEach(function (u) { at[u.i] = u; });
+  var pairs = [], seen = {}, born = {}, n = 0;
+  if (!mine) b.units.forEach(function (u) {
+    var o = at[u.i];
+    if (!o) { if (!born[u.t]) born[u.t] = u.o; return; }
+    if (o.t === u.t) return;
+    var k = o.t + '>' + u.t; if (seen[k]) return; seen[k] = 1;
+    var hot = (!isSea(u.t) && foe(a.own[u.t], u.o)) || a.units.some(function (x) { return x.t === u.t && foe(x.o, u.o); });
+    pairs.push([o.t, u.t, hot ? '#ff6b5a' : PW[u.o].col === '#5a5f5c' ? '#e6e6e6' : PW[u.o].col]);
+  });
+  pairs.slice(0, 40).forEach(function (pr, i) { later(i * 110, function () { fxArrow(pr[0], pr[1], pr[2]); }); });
+  if (pairs.length) { peek(pairs[0][1]); Kit.sfx('whoosh'); }
+  for (var t in born) if (!mine) { (function (t, o) { later(200 + (n++) * 80, function () { fxPing(+t, '#ffc83d'); }); })(t, born[t]); }
+  if (n && !pairs.length) Kit.sfx('pop');
+  for (var x = 0; x < NT; x++) {
+    if (!M.on[x] || a.own[x] === b.own[x] || !b.own[x]) continue;
+    if (!mine) fxPing(x, PW[b.own[x]].col === '#5a5f5c' ? '#e6e6e6' : PW[b.own[x]].col);
+    // a capital falling is everyone's big moment (the mover saw their own map moves happen as they made them)
+    if ((TER[x][4] & 4) && TER[x][7] && foe(a.own[x], b.own[x]) && (!mine || (mv && (mv.k === 'b' || mv.k === 'bo')))) Kit.callout(TER[x][7] + ' falls!', PW[b.own[x]].col);
+  }
+}
+function netRecorded(key) {
+  var l = []; try { l = JSON.parse(localStorage.getItem(NETREC) || '[]') || []; } catch (e) {}
+  if (l.indexOf(key) >= 0) return true;
+  l.push(key); try { localStorage.setItem(NETREC, JSON.stringify(l.slice(-20))); } catch (e) {}
+  return false;
+}
+function netEnd() {
+  if (!NET || !S || !S.over) return;
+  hideBattle(); closeBanner();
+  var side = S.over, why = S.overWhy || '', key = NET.code + ':' + S.started;
+  if (!netRecorded(key)) aaRecord(side, why, 'Online', ['Online game · table ' + NET.code + ' · ' + (S.mode === 'skirm' ? 'Skirmish' : '1942 Second Edition')]);
+  var me = S.seats[NET.seat], mySide = me && me.powers.length ? sideOf(me.powers[0]) : '';
+  var res = NET.result, left = !!(res && res.left != null);
+  Kit.win({
+    icon: 'trophy', lose: !!mySide && mySide !== side,
+    title: mySide === side ? 'You win!' : SIDE[side] + ' win!',
+    sub: (why ? why + ' · ' : '') + 'round ' + S.round,
+    rank: aaRank(side),
+    againLabel: left ? 'Back to the lobby' : 'Play again',
+    again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else if (NET) NET.again(); },
+    extra: [{ label: 'Look at the map', onClick: function () {} }]
+  });
+}
+// Back to playing on this device: the local game is where it was left
+function netLeave() {
+  NET = null; DRAFT = null; netUnstash();
+  netTimers.forEach(clearTimeout); netTimers = []; netN++;
+  tok++; busy = 0; cpuRunning = false; inputWait = null; hideBattle(); closeBanner();
+  undoStack = []; ui.sel = -1; ui.pick = {}; ui.preview = null; ui.bankSel = null;
   var saved = load();
-  if (!saved) { showSetup(); return; }
+  if (saved) resumeLocal(saved); else showSetup();
+}
+function resumeLocal(saved) {
   S = saved;
   buildMap(S.mode);
   buildBoard();

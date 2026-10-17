@@ -1623,7 +1623,7 @@
     card.appendChild(acts);
     doc.body.appendChild(ov); pinFixed(ov, true);
     requestAnimationFrame(function () { requestAnimationFrame(function () { ov.classList.add('show'); }); });
-    resume.clear();
+    if (!(window.TurnNet && TurnNet.on())) resume.clear();   // (an online game ending leaves this device's own saved game in Keep playing)
     if (o.quiet) {}   // shown again (after looking at the board): no fanfare
     else if (o.lose) { sfx('lose'); haptic('error'); }
     else { sfx('win'); haptic('success'); confetti(); }
