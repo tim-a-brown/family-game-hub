@@ -57,8 +57,12 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lp-bar{grid-area:bar;display:flex;gap:8px;align-items:center;padding:0 var(--corner-x);}
 .lp-panel{display:none;}
 @media (min-width:900px) and (orientation:landscape){
-  .lp{grid-template-columns:minmax(0,1fr) 230px;grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"table panel" "hand panel";}
-  .lp-bar{display:none;}
+  /* Sideways: the game log down the left (details on the left), the table on the right, and End turn beside your
+     hand at the bottom right, under the right thumb */
+  .lp{grid-template-columns:230px minmax(0,1fr) 150px;grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"panel table table" "panel hand bar";}
+  .lp-bar{flex-direction:column;align-items:stretch;padding:0 var(--corner-x) 0 0;}
+  .lp-bar [data-act="log"]{display:none;}
+  .lp-bar .btn-end{flex:1 1 auto;min-height:0;padding:6px 10px;white-space:normal;font-size:1.15rem;line-height:1.1;}
   .lp-panel{grid-area:panel;display:flex;flex-direction:column;gap:8px;min-height:0;padding-bottom:2px;}
 }
 
@@ -616,8 +620,8 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 /* the log's cards: links to see them big; the whole line opens all of its cards */
 .logbox p.lg-has{cursor:pointer;border-radius:6px;transition:background .15s;}
 .logbox p.lg-has:hover{background:rgba(255,255,255,.05);}
-.logbox .lg-c{color:#ffd98a;font-weight:800;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,217,138,.45);text-decoration-thickness:1.5px;text-underline-offset:2px;}
-.logbox .lg-c:hover{color:#fff;text-decoration-color:#ffd98a;}
+.logbox .lg-c{color:#ffd98a;font-weight:800;cursor:pointer;transition:color .15s;}
+.logbox .lg-c:hover{color:#fff;}
 .lp-panel h3{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:2px 2px 0;}
 
 /* Drag ghost */
@@ -8297,7 +8301,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     bar.innerHTML = controlsHTML(false);
     var lme = S.mode === 'cpu' ? humanIx() : S.viewer, n0 = S.log.length;
     var logH = S.log.slice(-40).reverse().map(function (l, k) { return logHTML(Object.assign({}, l, { priv: null }), n0 - 1 - k, lme, 6); }).join('');
-    panel.innerHTML = '<h3>Game log</h3><div class="logbox">' + logH + '</div>' + controlsHTML(true);
+    panel.innerHTML = '<h3>Game log</h3><div class="logbox">' + logH + '</div>';   // (End turn is in the bar: sideways, it sits beside the hand)
   }
   function renderMull() {
     var host = $('.mull-host'); host.innerHTML = '';
