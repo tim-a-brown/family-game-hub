@@ -100,10 +100,10 @@ Underlying principles for everything:
   `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN`).
 - Files that must not be public go in Firebase's `hosting.ignore` (`firebase.json`).
 - **Firebase Storage CORS**: the app reads files from Storage with `fetch` (console game lists and game files), which
-  needs the bucket's CORS setting from `scripts/storage-cors.json`. The deploy service account can't change bucket
-  settings; Tim applies it in Google Cloud Shell:
-  `gcloud storage buckets update gs://familygames-da3e5.firebasestorage.app --cors-file=storage-cors.json`.
-  Check: `curl -sI -H "Origin: https://games.timbrown.xyz" "<a Storage file URL>?alt=media"` shows `access-control-allow-origin`.
+  needs the bucket's CORS setting from `scripts/storage-cors.json` (applied 2026-10-17). The deploy service account
+  has Storage Admin on the bucket, so it can re-apply it: PATCH the bucket's `cors` field through the Cloud Storage
+  JSON API. Check: `curl -sI -H "Origin: https://games.timbrown.xyz" "<a Storage file URL>?alt=media"` shows
+  `access-control-allow-origin`.
 - **Offline** (menu): saves the app plus every other public file (`offline-files.json`, built by
   `scripts/build-offline-list.py`; deploy.yml rebuilds it each release) into the `gn-offline` cache. Run the script
   after adding assets so previews have them too.
