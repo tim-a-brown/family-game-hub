@@ -392,11 +392,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function topScore() { var l = hiList(), old = 0; try { old = parseInt(localStorage.getItem('dkHi'), 10) || 0; } catch (e) {} return Math.max(old, l.length ? l[0].score : 0); }
   var hiAtStart = 0;
 
-  var WALK = .85, CLIMB = .62, JV = 1.5, GRAV = .0805, JX = .95, FALLMAX = 19;
+  // measured on the cabinet (frame by frame from its memory): walk 2 px per 3 frames, climb 24 px in 57 frames,
+  // a jump 14 px high and 42 frames long that drifts 1 px every 2 frames, and 4 frames stuck on landing
+  var WALK = .667, CLIMB = .42, JV = 1.333, GRAV = .0635, JX = .5, FALLMAX = 19, LAND = 4;
+  // the cabinet's difficulty, 1 to 5: the level, rising as the stage drags on
+  function difficulty() { return Math.min(5, G.level + Math.floor(ST.t / 1800)); }
+  var THROW = 97;
   function bonusStart(lv) { return Math.min(8000, 4000 + 1000 * lv); }
   function itemPts(lv) { return lv <= 1 ? 300 : lv === 2 ? 500 : 800; }
 
   function newGame(cfg, saved) {
+    ST = null;   // the last game's stage would otherwise be drawn with no Jumpman in it
     G = {
       who: cfg.who || 'Player', startLives: cfg.lives || 3, score: 0, lives: cfg.lives || 3, level: 1, si: 0, extra: false, started: Date.now(),
       stats: { jumped: 0, smashed: 0, rivets: 0, items: 0, stages: 0, deaths: [], best: 0, bestStage: '', heights: [] }
@@ -457,6 +463,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (m.ham > 0) { m.ham--; m.hamT++; if (m.ham === 0) Snd.loop(bgm()); }
     if (m.st === 'ground') {
       var p = m.p;
+      if (m.land > 0) { m.land--; dx = 0; jp = false; U = D = false; }
       if (p.kind === 'elev') m.y = p.ys[0];
       if (p.conv) m.x += p.conv;
       if (jp && !m.ham) { m.st = 'jump'; m.vy = -JV; m.vx = dx * JX; if (dx) m.dir = dx; m.apex = m.y; m.over = []; Snd.play('jump'); return; }
@@ -468,7 +475,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       p.holes.forEach(function (h) { if (h[2] && (m.x < h[0] - 6 || m.x > h[1] + 6)) h[2] = false; });
       var s = surf(p, m.x, true);
       if (s == null || Math.abs(s - m.y) > 4) {
-        var np = standAt(m.x, m.y, 4);
+        // (an elevator car can be stepped onto a little above or below the floor)
+        var np = standAt(m.x, m.y, 4), ne = np ? null : standAt(m.x, m.y, 7); if (ne && ne.kind === 'elev') np = ne;
         if (np) { m.p = np; m.y = surf(np, m.x); }
         else { m.st = 'fall'; m.vy = 0; m.vx = 0; m.apex = m.y; }
       } else m.y = s;
@@ -491,7 +499,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
           var sy = surf(lp, m.x);
           m.y = sy; m.p = lp;
           if (sy - m.apex > FALLMAX) return die('fall');
-          m.st = 'ground'; m.vy = 0;
+          m.st = 'ground'; m.vy = 0; m.land = LAND;
           if (m.over.length) { var n = m.over.length, pts = n === 1 ? 100 : n === 2 ? 300 : 800; G.stats.jumped += n; add(pts, m.x, m.y - 20); Snd.play('prize'); m.over = []; }
         }
       }
@@ -541,7 +549,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if (ST.firstDrop) {
         // the first barrel of each life: held overhead, then dropped straight down the left side to light the oil drum
         if (ST.dkT > 30) ST.dkPose = 'holdB';
-        else if (ST.dkT <= 0) { ST.firstDrop = false; ST.barrels.push({ x: 24, y: 70, st: 'drop', vy: 0, blue: true, fr: 0 }); ST.dkPose = 'front'; ST.dkT = 120; }
+        else if (ST.dkT <= 0) { ST.firstDrop = false; ST.barrels.push({ x: 24, y: 70, st: 'drop', vy: 0, blue: true, fr: 0 }); ST.dkPose = 'front'; ST.dkT = THROW; }
         return;
       }
       // reach for the pile, lift a barrel, set it rolling
@@ -554,7 +562,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         if (wild) ST.barrels.push({ x: 60, y: 84, st: 'wild', vx: (G.m.x > 60 ? 1 : -1) * .6, vy: -1, blue: true, fr: 0, bounces: 0, lastP: ST.plats[5] });
         else ST.barrels.push({ x: 72, y: 84, p: ST.plats[5], st: 'roll', dir: 1, blue: blue, fr: 0 });
         ST.dkPose = 'front';
-        ST.dkT = Math.max(70, 160 - G.level * 16) + Math.floor(rnd(0, 50));
+        // a barrel every 97 frames, at every level, with a 1 in 32 chance he takes an extra half second
+        ST.dkT = THROW + (Math.random() < 1 / 32 ? 30 : 0);
       } else if (ST.dkT > 60 && ST.dkT % 40 < 20) ST.dkPose = ST.dkT % 80 < 40 ? 'grin' : 'grinR';
       else if (ST.dkT > 44) ST.dkPose = 'front';
     } else if (dk.mode === 'walk') {
@@ -573,11 +582,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 
   // ── Barrels ──
   function stepBarrels() {
-    var spd = .9 + Math.min(.6, (G.level - 1) * .12);
+    var spd = 1;   // 1 px a frame on the girders and down the ladders, as on the cabinet
     for (var i = ST.barrels.length - 1; i >= 0; i--) {
       var b = ST.barrels[i]; b.fr += b.st === 'roll' ? spd * .18 : .1;
       if (b.st === 'drop') {
-        b.vy = Math.min(3, b.vy + .12); b.y += b.vy;
+        // straight down the left side, checked by each girder it crashes through
+        var dy0 = b.y; b.vy = Math.min(3, b.vy + .12); b.y += b.vy;
+        var dl = landOn(b.x, dy0, b.y); if (dl && dl !== b.lastP && b.y < 240) { b.lastP = dl; b.vy = .3; }
         if (b.y >= 248) { b.y = 248; ST.barrels.splice(i, 1); oilHit(true); }
         continue;
       }
@@ -592,13 +603,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
           var l = ST.lads[k];
           if (l.deco || l.up !== b.p || Math.abs(l.x - b.x) > spd * .6 || b.skip === l) continue;
           b.skip = l;
-          var mBelow = G.m.y > b.y + 8, pr = .18 + .03 * G.level + (mBelow && Math.abs(G.m.x - l.x) < 48 ? .3 : 0) + (ctl.d ? .12 : 0);
-          if (Math.random() < Math.min(.75, pr)) { b.st = 'ladder'; b.x = l.x; b.lad = l; }
+          // the cabinet's rule: before the oil drum is lit every barrel takes the ladder; never when it is already
+          // level with or below Jumpman, nor down the ladder he is on; otherwise a chance that grows with difficulty
+          var M = G.m, take;
+          if (ST.oil && !ST.oil.lit) take = true;
+          else if (b.y >= M.y - 4 || (M.st === 'climb' && M.lad === l)) take = false;
+          else take = Math.random() < (Math.floor(difficulty() / 2) + 1) / 4 + (ctl.d ? .1 : 0);
+          if (take) { b.st = 'ladder'; b.x = l.x; b.lad = l; }
           break;
         }
         void y0;
       } else if (b.st === 'ladder') {
-        b.y += .8;
+        b.y += 1;
         if (b.y >= b.lad.yBot) { b.y = b.lad.yBot; b.p = b.lad.lo; b.st = 'roll'; b.dir = b.p.down || (b.x < 112 ? 1 : -1); b.skip = null; }
       } else if (b.st === 'fall') {
         var yy = b.y; b.vy += .14; b.x += b.vx; b.y += b.vy;
@@ -634,7 +650,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     return f;
   }
   function stepFires() {
-    var m = G.m, spd = .38 + Math.min(.35, G.level * .05), scared = m.ham > 0;
+    var m = G.m, spd = .5 + Math.min(.25, (difficulty() - 1) * .06), scared = m.ham > 0;   // .5 px a frame on level 1, as measured
     ST.fires.forEach(function (f) {
       f.fr += .08;
       if (f.st === 'hop') {
@@ -753,7 +769,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (hit(mb, dkBox())) return die('dk');
   }
   function stepBonus() {
-    var every = Math.max(84, 132 - (G.level - 1) * 12);
+    var every = Math.max(84, 128 - (G.level - 1) * 11);   // 128 frames per 100 on level 1, as measured
     if (++ST.bonusT >= every) {
       ST.bonusT = 0; ST.bonus = Math.max(0, ST.bonus - 100);
       if (ST.bonus <= 1000) Snd.loop(bgm());
@@ -765,20 +781,20 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function die(why) {
     if (phase !== 'play' || G.god) return;
     G.m.st = 'dead'; G.stats.deaths.push({ by: why, lvl: G.level, h: heightNow() });
-    Snd.loop(null); Snd.hush(); Snd.play('die'); Kit.haptic('error'); setPhase('die', 200);
+    Snd.loop(null); Snd.hush(); Snd.play('die'); Kit.haptic('error'); setPhase('die', DIE_T);
   }
   function stageClear() {
     if (phase !== 'play') return;
     var b = ST.bonus; G.stats.stages++;
     if (heightNow() > G.stats.best || G.level > (G.stats.bestL || 0)) { G.stats.best = heightNow(); G.stats.bestL = G.level; }
     G.stats.heights.push({ l: G.level, h: heightNow(), k: ST.kind, b: b });
-    add(b);
+    add(b); if (ST.kind === 4) ST.bonus = 0;   // paid out: the box reads 000 through the ending
     Snd.loop(null); Snd.hush();
     if (ST.kind === 4) { Snd.play('last'); setPhase('win', WIN_T); Kit.haptic('success'); }
     else { Snd.play('clear'); setPhase('clear', 230); Kit.haptic('success'); ST.barrels = []; ST.fires = []; ST.springs = []; ST.pies = []; }
   }
   // the rivets stage ending, timed to the cabinet's tunes
-  var WIN_T = 740, WIN_FALL = 168, WIN_LAND = 258;
+  var WIN_T = 740, WIN_FALL = 168, WIN_LAND = 258, DIE_T = 200;
   function nextStage() {
     G.si++;
     if (G.si >= stageList(G.level).length) { G.si = 0; G.level++; Kit.callout('Level ' + G.level, '#ff6b6b'); }
@@ -800,7 +816,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       }
       return;
     }
-    if (phase === 'win') { var wt = WIN_T - pt; if (wt === WIN_FALL) Snd.play('fall'); if (wt === WIN_LAND) { Snd.play('boom'); ST.shake = 6; } if (wt === WIN_LAND + 66) Snd.play('win'); }
+    if (phase === 'win') { var wt = WIN_T - pt; if (wt === WIN_FALL) Snd.play('fall'); if (wt === WIN_LAND) { Snd.play('boom'); ST.shake = 6; ST.pauline.x = 112; ST.pauline.y = 88; G.m.x = 144; G.m.y = 88; G.m.dir = -1; G.m.st = 'ground'; G.m.ham = 0; } if (wt === WIN_LAND + 66) Snd.play('win'); }
     if (phase === 'clear' || phase === 'win') { ST.t++; if (--pt <= 0) nextStage(); return; }
     if (phase !== 'play') return;
     ST.t++;
@@ -878,14 +894,29 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     }
   }
   // 100 m, built from the cabinet's own girder and ladder pieces
+  // Once the last rivet is out (as on the cabinet): the middle of every floor drops into a pile at the bottom,
+  // leaving the ends and their ladders; Pauline's girder hangs on two poles over Kong. When he lands, her girder
+  // is down at his old floor, whole, and Jumpman is there with her.
   function draw100() {
+    var win = phase === 'win' ? WIN_T - pt : -1, down = win >= WIN_LAND;
     ST.plats.forEach(function (p) {
+      if (win >= 0 && p.id === 'top') return;
       for (var i = 0; i < p.ys.length; i++) spr(SPR.g100, p.x0 + i * 16, p.ys[i]);
-      p.holes.forEach(function (h) { px.fillStyle = '#000'; px.fillRect(h[0], p.ys[0], h[1] - h[0], 8); });
+      px.fillStyle = '#000';
+      if (win < 0) p.holes.forEach(function (h) { px.fillRect(h[0], p.ys[0], h[1] - h[0], 8); });
+      else if (p.ys[0] < 248 && !(down && p.id === 'dk')) px.fillRect(56, p.ys[0], 112, 8);
     });
-    if (!ST.noLads) ST.lads.forEach(function (l) {
+    ST.lads.forEach(function (l) {
+      if (win >= 0 && l.x > 56 && l.x < 168) return;
       for (var y = l.yTop + 8; y < l.yBot; y += 8) px.drawImage(SPR.l100, 0, 0, 8, Math.min(8, l.yBot - y), l.x - 4, y, 8, Math.min(8, l.yBot - y));
     });
+    if (win >= 0) {
+      for (var r = 0; r < 4; r++) for (var x = 64; x < 160; x += 16) spr(SPR.g100, x, 216 + r * 8);
+      if (!down) {
+        for (x = 56; x < 168; x += 16) spr(SPR.g100, x, 48);
+        px.fillStyle = CYAN; px.fillRect(72, 56, 1, 32); px.fillRect(151, 56, 1, 32);
+      } else if (win > WIN_LAND + 66) spr(SPR.heart, 121, 62);
+    }
     ST.rivets.forEach(function (r) { if (r.on) spr(SPR.rivet, r.x, r.y); });
     spr(SPR.bonus100, 168, 32);
   }
@@ -893,10 +924,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var m = G.m, L = m.dir < 0 ? 'L' : '', img;
     if (m.st === 'dead') {
       // he spins, then lies still
-      var t = 170 - pt, c = SPR.jm_stand; px.save(); px.translate(Math.round(m.x), Math.round(m.y - 8));
-      if (t < 70) px.rotate(Math.floor(t / 6) * PI / 2); else px.rotate(PI / 2);
+      // (the spin lasts the death sound's warble, he lies still for its closing notes)
+      var t = DIE_T - pt, c = SPR.jm_stand; px.save(); px.translate(Math.round(m.x), Math.round(m.y - 8));
+      if (t < 104) px.rotate(Math.floor(t / 6) * PI / 2); else px.rotate(PI / 2);
       px.drawImage(c, -8, -8); px.restore();
-      if (t >= 70) { px.fillStyle = '#fab900'; for (var a = 0; a < 8; a++) px.fillRect(Math.round(m.x + 6 + Math.cos(a * PI / 4) * 6), Math.round(m.y - 18 + Math.sin(a * PI / 4) * 2), 1, 1); }
+      if (t >= 104) { px.fillStyle = '#fab900'; for (var a = 0; a < 8; a++) px.fillRect(Math.round(m.x + 6 + Math.cos(a * PI / 4) * 6), Math.round(m.y - 18 + Math.sin(a * PI / 4) * 2), 1, 1); }
       return;
     }
     if (m.st === 'climb') {
@@ -919,7 +951,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (phase === 'win') {
       // the rivets are out: he rages at the top, then tumbles down head first
       if (WIN_T - pt < WIN_FALL) { sprAt(Math.floor(frame / 8) % 2 ? 'dk_grin' : 'dk_grinR', dx, dy); return; }
-      var t = WIN_T - pt - WIN_FALL, fy = Math.min(248, 88 + t * t * .02);
+      var t = WIN_T - pt - WIN_FALL, fy = Math.min(216, 88 + t * t * .0158);
       spr(SPR.dk_fall, POS.dk_front[0] + dx, fy - 32);
       return;
     }
@@ -953,7 +985,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function drawObjects() {
     var o = ST.oil;
     if (o && o.lit) { if (o.flare > 0) o.flare--; spr(SPR[o.flare > 0 ? 'oilB' + (Math.floor(frame / 4) % 2) : 'oil' + (Math.floor(frame / 8) % 2)], o.fx, o.fy); }
-    if (ST.noLads) return;
+    if (phase === 'win') return;
     ST.hammers.forEach(function (h) { if (h.on) spr(SPR.hammer, h.x - 5, h.y); });
     ST.items.forEach(function (it) { if (it.on) { var c = SPR[it.kind]; spr(c, it.x - (c.width >> 1), it.y - c.height); } });
     ST.pies.forEach(function (q) { spr(SPR.pie, q.x - 8, q.y - 8); });
@@ -993,16 +1025,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     px.setTransform(1, 0, 0, 1, 0, sh);
     if (phase === 'howhigh') { drawHowHigh(); }
     else {
-      var hideRivetFloors = phase === 'win' && (WIN_T - pt) > 20;
-      if (hideRivetFloors) { var keep = ST.plats.slice(); ST.plats = [ST.plats[0], ST.plats[5]]; ST.noLads = true; drawStage(); ST.plats = keep; } else drawStage();
-      drawObjects(); ST.noLads = false; drawPauline(); drawDK();
+      drawStage();
+      drawObjects(); drawPauline(); drawDK();
       if (phase !== 'intro' || G.m.x > -20) drawMario();
       if (phase === 'clear') drawClear();
-      if (phase === 'win') {
-        var ct = WIN_T - pt, hx = ST.pauline.x + 10, hy = ST.pauline.y - 34;
-        if (ct > WIN_LAND) spr(SPR.heart, hx - 7, hy);
-        if (ct > WIN_LAND + 40) { G.m.x = ST.pauline.x + 26; G.m.y = ST.pauline.y; G.m.dir = -1; }
-      }
       drawHUD(phase === 'intro');
       if (phase === 'ready') text('READY', W / 2, 140, WHITE, true);
       if (phase === 'intro') text('TAP TO SKIP', W / 2, 16, CYAN, true);
