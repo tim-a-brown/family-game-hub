@@ -494,7 +494,7 @@
     window.EJS_player = '#ejs';
     window.EJS_core = SYS.core;
     window.EJS_gameUrl = new File([c.data], c.file);
-    window.EJS_gameName = c.id;
+    window.EJS_gameName = c.net || NET.mode === 'guest' ? 'net-' + c.id : c.id;   // a joiner's own battery saves stay out of the host's game
     window.EJS_pathtodata = '../emu/';
     window.EJS_startOnLoaded = true;
     window.EJS_disableAutoLang = false;
@@ -509,6 +509,9 @@
       started = true; msg('');
       glassEl.classList.remove('loading');
       try { emu().gameManager.setFastForwardRatio(3); } catch (e) {}
+      ConsoleNet.install(emu());
+      if (NET.mode === 'guest') { if (NET.peer) NET.peer.send({ t: 'ready' }, true); return; }
+      if (NET.pick) { var nm = NET.pick; NET.pick = null; root.classList.remove('net-pick'); netHost(nm); return; }
       getState(c.id, 'auto').then(function (st) { if (st) offerResume(st); });
     };
     var s = document.createElement('script'); s.src = '../emu/loader.js'; document.body.appendChild(s);
@@ -556,7 +559,11 @@
     var data; try { data = E.gameManager.getState(); } catch (e) { return Promise.resolve(false); }
     return snap().then(function (img) { return putState({ key: cur.id + ':' + slot, id: cur.id, slot: slot, at: Date.now(), img: img, data: data }); }).then(function () { return true; });
   }
-  function loadState(st) { var E = emu(); if (!E || !st) return; try { E.gameManager.loadState(st.data); } catch (e) { Kit.toast('That save doesn’t fit this game'); } }
+  function loadState(st) {
+    var E = emu(); if (!E || !st) return;
+    if (ConsoleNet.on()) { ConsoleNet.load(st.data); return; }   // online: on both devices
+    try { E.gameManager.loadState(st.data); } catch (e) { Kit.toast('That save doesn’t fit this game'); }
+  }
   function ago(t) { var m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : new Date(t).toLocaleDateString(); }
   function slotsSheet(saving) {
     if (!cur || !started) return;
@@ -582,15 +589,17 @@
   }
   function toShelf() {
     var go = function () { location.replace(location.pathname); };
-    if (started) saveState('auto').then(go, go); else go();
+    netQuit();
+    if (started && !cur.netGame) saveState('auto').then(go, go); else go();
   }
   // leaving or switching away keeps your place
-  document.addEventListener('visibilitychange', function () { if (document.hidden && started) saveState('auto'); });
+  document.addEventListener('visibilitychange', function () { if (document.hidden && started && !cur.netGame) saveState('auto'); });   // (a joiner's game is the host's)
   window.addEventListener('pagehide', function () { if (started) { try { emu().gameManager.saveSaveFiles(); } catch (e) {} } });
   // the game waits while a menu or sheet is open
   new MutationObserver(function () {
     var E = emu(); if (!E || !started || resumeEl) return;
     var open = !!document.querySelector('.k-scrim');
+    if (ConsoleNet.on()) { ConsoleNet.pause(open); return; }   // online: held a frame at a time, both devices together
     if (open && !E.paused) { E.pause(); E._kitPaused = true; } else if (!open && E._kitPaused) { E._kitPaused = false; E.play(); }
   }).observe(document.body, { childList: true });
 
@@ -628,7 +637,7 @@
     }
   };
   var MID = { nes: [['SELECT', 2], ['START', 3]], snes: [['SELECT', 2], ['START', 3]], genesis: [['START', 3]], atari2600: [['SELECT', 2], ['RESET', 3]] };
-  var ctls = [];
+  var ctls = [], ffOn = false;
   // the Atari joystick: a square black base, its rubber boot and the stick, which leans the way you push
   function svgStick() {
     return '<svg viewBox="0 0 100 100" overflow="visible"><defs><radialGradient id="jk" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#5a5654"/><stop offset=".55" stop-color="#1f1d1c"/><stop offset="1" stop-color="#080707"/></radialGradient>' +
@@ -774,7 +783,7 @@
   }
   // Fingers press, slide from button to button, and a touch between two face buttons presses both (B+A on a NES)
   function wireSkin(sk) {
-    var touches = {}, held = {}, ffOn = false;
+    var touches = {}, held = {};
     function mark(i, on) {
       ctls.forEach(function (c) { if (c.i === i && c.k !== 'dp') c.el.classList.toggle('on', on); });
       var d = { 4: 'u', 5: 'd', 6: 'l', 7: 'r' }[i];
@@ -831,6 +840,7 @@
       if (t) {
         Kit.haptic('light'); t.el.classList.add('on'); setTimeout(function () { t.el.classList.remove('on'); }, 120);
         if (t.t === 'menu') { var b = document.querySelector('.gbar button[aria-label="Menu"]'); if (b) b.click(); }
+        else if (ConsoleNet.on()) Kit.toast('Fast-forward is off while you play online');   // (both devices run at the same speed)
         else { ffOn = !ffOn; t.el.classList.toggle('lit', ffOn); var E = emu(); if (E) try { E.gameManager.toggleFastForward(ffOn ? 1 : 0); } catch (er) {} }
         return;
       }
@@ -1012,6 +1022,207 @@
     s = Kit.sheet({ title: 'Controller buttons · ' + SYS.name, node: box, onClose: function () { mapper = null; } });
   }
 
+  // ═══ Online: two players, each on their own device ════════════════════════
+  // A table (online.js) for the game being played: the host is player 1, whoever joins is player 2. The joiner's
+  // device gets the cartridge (from the family's games, or straight from the host's device), loads it, then takes
+  // the host's exact moment; from there both run in lockstep (console-net.js). Tables are per console (game: the
+  // console's id), so home's "open tables" link brings a friend to the right shelf (?online=1&join=CODE).
+  var NET = { mode: null, table: null, peer: null, ov: null, lobby: null, wait: null, me: '', other: '', ready: false, want: false, live: false, pick: null, paused: false };
+  function netName() { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } }
+  // the table screens sit over everything (the game waits underneath)
+  function netOv() {
+    if (NET.ov) return NET.ov.firstChild;
+    var E = emu(); if (E && started && !E.paused && !ConsoleNet.on()) { E.pause(); NET.paused = true; }
+    NET.ov = el('div', { class: 'net-ov' }, [el('div', { class: 'stage net-in' })]);
+    document.body.appendChild(NET.ov);
+    return NET.ov.firstChild;
+  }
+  function netOvClose(go) {
+    if (NET.lobby) { NET.lobby.close(); NET.lobby = null; }
+    NET.wait = null;
+    if (go && NET.ov) NET.ov.firstChild.innerHTML = '';   // the table screen leaving for the game: its "Let's play" spin (online.js)
+    if (NET.ov) { var ov = NET.ov; NET.ov = null; if (go) setTimeout(function () { ov.remove(); }, 30); else ov.remove(); }
+    if (NET.paused) { NET.paused = false; var E = emu(); if (E) E.play(); }
+  }
+  function goOnline() {
+    if (NET.mode) { netShowWait(); return; }
+    NET.lobby = Online.lobby(netOv(), {
+      game: SYS_ID, title: 'Play online', max: 2,
+      intro: cur ? 'Play ' + cur.name + ' together, each on your own device. Open a table and you’re player 1; whoever joins is player 2.'
+        : 'Two players, each on their own device. Join a table, or open one and pick the game.',
+      me: { name: netName() },
+      onHost: function (me) { return netHost(me.name); },
+      onJoin: function (code, room, me) { return netJoin(code, me.name); },
+      onSolo: netOvClose, solo: cur ? 'Back to the game' : 'Not now',
+      sub: function (r) { return (r.info || SYS.name) + (r.status === 'playing' ? ' · playing, join in' : ' · needs player 2'); },
+      note: 'Fast-paced games play best with both devices on good Wi-Fi.'
+    });
+  }
+  function netPlayers() {
+    var host = NET.mode === 'host', l = [{ name: host ? NET.me : NET.other, host: true, me: host }];
+    if (!host || NET.peer) l.push({ name: host ? NET.other : NET.me, me: !host });
+    return l;
+  }
+  function netStep(detail) { if (NET.ov && NET.wait) try { Online.stage(NET.ov.firstChild).step('start', NET.mode === 'host' ? 'now' : 'run', detail); } catch (e) {} }
+  function netShowWait() {
+    var r = netOv();
+    NET.wait = Online.waitRoom(r, NET.mode === 'host'
+      ? { code: NET.table.code, host: true, max: 2, min: 2, table: NET.table, players: netPlayers(), onStart: netStart, onLeave: function () { netQuit(); },
+          note: 'You’re player 1 on ' + cur.name + '. Whoever joins plays as player 2 on their own device.' }
+      : { host: false, hostName: NET.other, max: 2, min: 2, players: netPlayers(), onLeave: function () { netQuit(); },
+          note: 'You’re player 2. ' + NET.other + ' starts the game.' });
+    netHostSteps();
+  }
+  function netHostSteps() {
+    if (NET.mode !== 'host' || !NET.peer) return;
+    if (!NET.ready) netStep('Loading the game on ' + NET.other + '’s device…');
+    else netStep(NET.want ? 'Starting…' : 'Tap Start when you’re both ready');
+  }
+
+  // ── Host ──
+  function netHost(name) {
+    NET.me = name;
+    if (!cur || !started) { NET.pick = name; netOvClose(); root.classList.add('net-pick'); Kit.toast('Pick the game to play online'); return Promise.resolve(); }   // (the cartridges glow until one's picked)
+    if (NET.lobby) { NET.lobby.close(); NET.lobby = null; }
+    return Online.host({ game: SYS_ID, name: name, max: 2, min: 2, info: cur.name, screen: netOv(), relay: false }).then(function (table) {
+      NET.mode = 'host'; NET.table = table;
+      table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); netQuit(); });
+      table.on('peer', function (peer) {
+        NET.peer = peer; NET.other = peer.name || 'Player 2'; NET.ready = false;
+        ConsoleNet.listen(peer);
+        peer.on('msg', netHostMsg);
+        peer.send({ t: 'cart', id: cur.id, name: cur.name, file: cur.file, p1: NET.me }, true);
+        if (NET.wait) { NET.wait.update(netPlayers()); netHostSteps(); }
+        else { Kit.toast(NET.other + ' is joining'); Kit.sfx('pop'); }
+      });
+      table.on('leave', function (peer) {
+        if (peer !== NET.peer) return;
+        NET.peer = null; NET.ready = false;
+        if (ConsoleNet.on()) ConsoleNet.end('left');
+        else if (NET.wait) NET.wait.update(netPlayers());
+        table.setStatus(NET.want ? 'playing' : 'open', cur.name);
+      });
+      netShowWait();
+    }).catch(function (e) { if (e && e.message === 'Cancelled') return; Kit.toast('Couldn’t open a table. ' + Online.errText(e)); netQuit(); });
+  }
+  function netHostMsg(m) {
+    if (!m || !m.t || NET.mode !== 'host') return;
+    if (m.t === 'need') {   // not on their shelf: the cartridge comes from this device
+      var p = NET.peer; cur.data.arrayBuffer().then(function (b) { return ConsoleNet.sendBytes(p, 'nrom', new Uint8Array(b), {}); }).catch(function (e) { console.warn(e); });
+    } else if (m.t === 'ready') { NET.ready = true; Kit.sfx('tap'); netHostSteps(); netGo(); }
+  }
+  // Start: as soon as player 2's game is loaded (straight away when they join a game already under way)
+  function netStart() { NET.want = true; netHostSteps(); return new Promise(function (ok) { NET.started = ok; netGo(); }); }
+  function netGo() {
+    if (!NET.want || !NET.ready || !NET.peer || !started || ConsoleNet.on()) return;
+    var E = emu(), S; try { S = E.gameManager.getState(); } catch (e) { Kit.toast('Couldn’t start online'); return; }
+    // the button delay: enough frames for a message to get there, plus a little slack
+    var rtt = Math.max(NET.peer.rtt || 0, 20), D = Math.max(2, Math.min(9, Math.ceil((rtt / 2 + 8) / 16.64) + 1));
+    ffOff();
+    ConsoleNet.begin({ peer: NET.peer, seat: 0, delay: D, state: S, onEnd: netEnded });
+    ConsoleNet.sendBytes(NET.peer, 'nstart', S, { delay: D, p1: NET.me, p2: NET.other });
+    NET.live = true; NET.table.setStatus('playing', cur.name);
+    if (NET.started) { NET.started(); NET.started = null; }
+    netOvClose(true); netLive();
+  }
+
+  // ── Guest ──
+  function netJoin(code, name) {
+    NET.me = name;
+    // one game per page load: a fresh page joins
+    if (booted) { location.replace(location.pathname + '?online=1&join=' + code); return new Promise(function () {}); }
+    if (NET.lobby) { NET.lobby.close(); NET.lobby = null; }
+    return Online.join(code, { game: SYS_ID, name: name, min: 2, max: 2, screen: netOv(), relay: false }).then(function (peer) {
+      NET.mode = 'guest'; NET.peer = peer; NET.other = peer.name || 'Player 1';
+      ConsoleNet.listen(peer);
+      peer.on('msg', netGuestMsg);
+      peer.on('close', function () {
+        if (NET.peer !== peer) return;
+        NET.peer = null;
+        if (ConsoleNet.on()) ConsoleNet.end('left');
+        else { Kit.toast(NET.other + ' closed the table'); netQuit(); }
+      });
+      netShowWait();
+    }).catch(function (e) {
+      if (e && e.nat) Kit.sheet({ title: 'Couldn’t connect', html: '<p>' + Kit.esc(Online.NAT_MSG) + '</p>' }); else Kit.toast(Online.errText(e));
+      netOvClose(); goOnline();
+    });
+  }
+  function netGuestMsg(m) {
+    if (!m || m.t !== 'cart' || NET.mode !== 'guest' || NET.cart) return;
+    NET.cart = m; NET.other = m.p1 || NET.other;
+    var c = carts.filter(function (x) { return x.id === m.id; })[0];
+    netStep('Getting ' + m.name + ' ready');
+    (c ? (c.data ? Promise.resolve(c) : L.file(c, function (f) { netStep('Getting ' + m.name + ' · ' + Math.round(f * 100) + '%'); }).then(function (full) { c.data = full.data; return c; })) : Promise.reject())
+      .catch(function () {   // not on this shelf: straight from the host's device
+        return new Promise(function (ok) {
+          NET.romWant = function (b) { ok({ id: m.id, sys: SYS_ID, name: m.name, file: m.file, size: b.length, data: new Blob([b]), net: true }); };
+          if (NET.peer) NET.peer.send({ t: 'need' }, true);
+        });
+      })
+      .then(function (c) { netStep('Loading ' + c.name); c.netGame = true; ConsoleNet.hold(); play(c); });
+  }
+  ConsoleNet.onBytes(function (k, bytes, meta) {
+    if (k === 'nrom' && NET.romWant) { var f = NET.romWant; NET.romWant = null; f(bytes); }
+    else if (k === 'nstart' && NET.mode === 'guest' && NET.peer) {
+      ConsoleNet.begin({ peer: NET.peer, seat: 1, delay: meta.delay || 3, state: bytes, onEnd: netEnded });
+      NET.live = true; if (meta.p1) NET.other = meta.p1;
+      netOvClose(true); netLive();
+    }
+  });
+  ConsoleNet.onProgress(function (k, frac) { if (k === 'nrom') netStep('Getting the cartridge from ' + NET.other + ' · ' + Math.round(frac * 100) + '%'); });
+
+  // ── Leaving, and the other player leaving ──
+  function netEnded(why) {
+    NET.live = false; netLiveOff();
+    if (why === 'left') { Kit.toast(NET.other + ' left · you’re playing on your own'); Kit.haptic('warning'); }
+    if (NET.mode === 'guest') { NET.mode = null; NET.peer = null; NET.cart = null; }
+  }
+  function netQuit() {
+    var was = NET.mode, live = NET.live, table = NET.table, peer = NET.peer;
+    ConsoleNet.end('quit');
+    if (table) table.close();
+    if (peer) peer.close('left');
+    NET.mode = null; NET.table = null; NET.peer = null; NET.cart = null; NET.ready = false; NET.want = false; NET.live = false;
+    netOvClose(); netLiveOff();
+    // a joiner leaving before the game began: the game loading underneath was the host's, back to the shelf
+    if (was === 'guest' && !live && booted) location.replace(location.pathname);
+    return Promise.resolve();
+  }
+  window.addEventListener('pagehide', function () { if (NET.table) NET.table.close(); if (NET.peer) NET.peer.close('left'); });
+
+  // ── Playing online: who's who, and a word when the game waits for the other device ──
+  var netHud = null, netT = 0;
+  function netLive() {
+    netLiveOff();
+    var p1 = NET.mode === 'host' ? NET.me : NET.other, p2 = NET.mode === 'host' ? NET.other : NET.me, mine = NET.mode === 'host' ? 1 : 2;
+    var seats = el('div', { class: 'net-seats' }, [1, 2].map(function (n) {
+      return el('span', { class: 'p' + n + (n === mine ? ' me' : '') }, [el('b', { text: 'P' + n }), el('span', { text: n === 1 ? p1 : p2 })]);
+    }));
+    var veil = el('div', { class: 'net-veil' }, [el('i', { class: 'net-spin' }), el('i', { class: 'net-pz', html: Kit.icon('pause') }), el('b'), el('small')]);
+    netHud = { seats: seats, veil: veil };
+    glassEl.appendChild(veil); glassEl.appendChild(seats);
+    // after the table's "Let's play" spin: which player you are, and the names over the picture for a few seconds
+    setTimeout(function () {
+      if (!netHud || netHud.seats !== seats) return;
+      seats.classList.add('on'); Kit.callout && Kit.callout('Player ' + mine); Kit.haptic('success');
+      setTimeout(function () { if (netHud && netHud.seats === seats && !veil.classList.contains('on')) seats.classList.remove('on'); }, 4500);
+    }, 1900);
+    netT = setInterval(netTick, 120);
+  }
+  function netLiveOff() { clearInterval(netT); if (netHud) { netHud.seats.remove(); netHud.veil.remove(); netHud = null; } }
+  function netTick() {
+    if (!netHud) return;
+    var st = ConsoleNet.status(), on = st.on && (st.paused || st.wait > 350);
+    if (on) {
+      netHud.veil.classList.toggle('pz', !!st.paused);
+      netHud.veil.children[2].textContent = st.paused ? NET.other + ' paused the game' : 'Waiting for ' + NET.other;
+      netHud.veil.children[3].textContent = st.paused ? 'It carries on when they close the menu' : st.wait > 4000 ? 'Their connection is slow or dropped out' : '';
+    }
+    if (on !== netHud.veil.classList.contains('on')) { netHud.veil.classList.toggle('on', on); netHud.seats.classList.toggle('on', on); }
+  }
+  function ffOff() { if (!ffOn) return; ffOn = false; try { emu().gameManager.toggleFastForward(0); } catch (e) {} ctls.forEach(function (c) { if (c.t === 'ff') c.el.classList.remove('lit'); }); }
+
   // ═══ Kit shell ════════════════════════════════════════════════════════════
   function controls() {
     Kit.sheet({ title: 'Controls', html:
@@ -1019,15 +1230,25 @@
       '<p>The <b>Menu</b> button on the controller opens this menu; <b>»</b> runs the game at triple speed until you tap it again.</p>' +
       '<p><b>Keyboard:</b> ' + SYS.keys + '.</p>' +
       '<p><b>A real controller</b> (Bluetooth or USB) works too: connect it and press a button. The drawn one steps aside and the game fills the screen. <b>Home</b>, or <b>Select and Start</b> together, opens this menu. <b>Controller buttons</b> remaps it; each controller keeps its own layout for each console.</p>' +
-      '<p><b>Two players:</b> connect a second controller and press a button on it; it becomes player 2. <b>Controller buttons</b> shows who’s who and can swap them.</p>' });
+      '<p><b>Two players:</b> connect a second controller and press a button on it; it becomes player 2. <b>Controller buttons</b> shows who’s who and can swap them.</p>' +
+      '<p><b>Online:</b> each of you plays with your own device’s controls (drawn, keyboard or a real controller); the host is player 1.</p>' });
   }
   var playing = function () { return !!cur; };
+  var hostOrSolo = function () { return !!cur && !(NET.live && NET.mode === 'guest'); };   // online, the host's console has the Reset button
   Kit.init({
     id: SYS_ID,
     menu: [
       { icon: 'bookmark', label: 'Save state', sub: 'Keep this exact moment', when: playing, onClick: function () { slotsSheet(true); } },
-      { icon: 'history', label: 'Load state', sub: 'Go back to a saved moment', when: playing, onClick: function () { slotsSheet(false); } },
-      { icon: 'sync', label: 'Reset', sub: 'Like the console’s Reset button', when: playing, onClick: function () { var E = emu(); if (E) { E.gameManager.restart(); Kit.haptic('medium'); } } },
+      { icon: 'history', label: 'Load state', sub: 'Go back to a saved moment', when: hostOrSolo, onClick: function () { slotsSheet(false); } },
+      { icon: 'globe', label: 'Play online', sub: 'Two players, each on their own device', when: function () { return !NET.mode; }, onClick: goOnline },
+      { icon: 'users', label: 'Your online table', sub: 'Who’s here, and Start', when: function () { return NET.mode === 'host' && !NET.live; }, onClick: netShowWait },
+      { icon: 'logout', label: 'Leave the online game', sub: 'Keep playing on your own', when: function () { return !!NET.mode; }, onClick: function () { netQuit(); } },
+      { icon: 'sync', label: 'Reset', sub: 'Like the console’s Reset button', when: hostOrSolo, onClick: function () {
+        var E = emu(); if (!E) return;
+        Kit.haptic('medium');
+        if (ConsoleNet.on()) ConsoleNet.reset();   // online: both consoles, at the same frame
+        else E.gameManager.restart();
+      } },
       { icon: 'swap', label: 'Change cartridge', sub: 'Back to the ' + SYS.name + ' shelf', when: playing, onClick: toShelf },
       { icon: 'gamepad', label: 'Controller buttons', sub: 'Remap a Bluetooth or USB controller', onClick: padSheet },
       { icon: 'help', label: 'Controls', onClick: controls }
@@ -1041,7 +1262,11 @@
       '<li>Tap a cartridge to play it. Press and hold one to rename it, hide its tile, or take it off the shelf.</li></ul>' +
       '<h3>Playing</h3><ul><li>Use the controller drawn on the screen, a keyboard (' + SYS.keys + '), or a real Bluetooth or USB controller.</li>' +
       '<li>Games that save on their own (battery saves) keep them on this device.</li>' +
-      '<li><b>Save state</b> and <b>Load state</b> in the menu keep and return to an exact moment, three slots per game. When you leave, your place is kept and you can carry on next time.</li></ul>'
+      '<li><b>Save state</b> and <b>Load state</b> in the menu keep and return to an exact moment, three slots per game. When you leave, your place is kept and you can carry on next time.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table for the game you’re playing and the other person joins it on their own device. You’re player 1, they’re player 2.</li>' +
+      '<li>Their device gets the game from the family’s games, or straight from yours, and starts from exactly where you are.</li>' +
+      '<li>Both devices play the same game frame by frame. If one has to wait for the other, the picture says who it’s waiting for. Opening the menu pauses the game for both.</li>' +
+      '<li>Reset and Load state on player 1’s device happen on both. Fast-forward is off while you play online.</li></ul>'
   });
 
   // ═══ Start ════════════════════════════════════════════════════════════════
@@ -1052,11 +1277,12 @@
       carts = list || [];
       var c = want && carts.filter(function (x) { return x.id === want; })[0];
       if (c) play(c); else drawShelf();
+      if (/[?&]online=1/.test(location.search)) goOnline();   // from home's "open tables", or a joiner's fresh page
     }).catch(function (e) { console.warn(e); view.innerHTML = ''; view.appendChild(el('p', { class: 'empty-note', text: 'This browser can’t keep game files (private browsing blocks it).' })); });
   }
   // signed in: wait for the account's settings (the library key) before listing
   if (window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.onReady) { var go = false; FGHSync.onReady(function () { if (!go) { go = true; start(); } }); setTimeout(function () { if (!go) { go = true; start(); } }, 4000); }
   else start();
 
-  window.__cs = { carts: function () { return carts; }, emu: emu, started: function () { return started; }, press: press, saveState: saveState, getState: getState, ctls: function () { return ctls; } };
+  window.__cs = { net: { go: goOnline, state: function () { return NET; }, quit: netQuit }, carts: function () { return carts; }, emu: emu, started: function () { return started; }, press: press, saveState: saveState, getState: getState, ctls: function () { return ctls; } };
 })();

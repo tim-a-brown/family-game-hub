@@ -169,10 +169,10 @@ var GAMES = [
 
   // ── Consoles: your own cartridges. The consoles' shelves have no tiles (Edit on the home screen opens them);
   // each game gets its own tile (addConsoleGames below) ──
-  { id: 'nes',         name: 'NES',            color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own NES games on a shelf of cartridges', play: 'nes', shelf: true, hidden: true },
-  { id: 'snes',        name: 'Super Nintendo', color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own Super Nintendo games', play: 'snes', shelf: true, hidden: true },
-  { id: 'genesis',     name: 'Sega Genesis',   color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own Genesis games', play: 'genesis', shelf: true, hidden: true },
-  { id: 'atari2600',   name: 'Atari 2600',     color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own Atari 2600 games', play: 'atari2600', shelf: true, hidden: true },
+  { id: 'nes',         name: 'NES',            color: '#000', cat: 'console', min: 1, max: 2, tag: 'Your own NES games on a shelf of cartridges', play: 'nes', shelf: true, hidden: true },
+  { id: 'snes',        name: 'Super Nintendo', color: '#000', cat: 'console', min: 1, max: 2, tag: 'Your own Super Nintendo games', play: 'snes', shelf: true, hidden: true },
+  { id: 'genesis',     name: 'Sega Genesis',   color: '#000', cat: 'console', min: 1, max: 2, tag: 'Your own Genesis games', play: 'genesis', shelf: true, hidden: true },
+  { id: 'atari2600',   name: 'Atari 2600',     color: '#000', cat: 'console', min: 1, max: 2, tag: 'Your own Atari 2600 games', play: 'atari2600', shelf: true, hidden: true },
 
   // ── Tools ────────────────────────────────────────────────────────────────
   { id: 'scorecard',   name: 'Scorecard',    color: '#0ea5e9', cat: 'tools', min: 1, max: 8, tag: 'Keep score for any game', play: 'scorecard' },
