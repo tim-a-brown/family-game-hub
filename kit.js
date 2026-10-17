@@ -489,9 +489,40 @@
     scrim.addEventListener('click', function (e) { if (e.target === scrim && o.dismissible !== false) close(true); });
     if (o.dismissible !== false) sheetDrag(body, close);
     doc.addEventListener('keydown', onKey);
+    trapScroll(scrim);
     doc.body.appendChild(scrim); pinFixed(scrim);
     requestAnimationFrame(function () { requestAnimationFrame(function () { scrim.classList.add('show'); }); });
     return { close: close, el: body };
+  }
+  // While a sheet is up the page behind stays still: a drag (or wheel) moves only something in the sheet that can
+  // scroll that way, and stops at its ends instead of carrying on into the page. Sliders and typing fields are left
+  // to themselves; sideways rows (chips) still scroll sideways.
+  function trapScroll(scrim) {
+    var x0 = 0, y0 = 0, axis = null;
+    function scroller(t, dir) {
+      for (var n = t; n && n !== scrim; n = n.parentElement) {
+        var cs = getComputedStyle(n), ov = dir === 'x' ? cs.overflowX : cs.overflowY;
+        if ((ov === 'auto' || ov === 'scroll') && (dir === 'x' ? n.scrollWidth > n.clientWidth + 1 : n.scrollHeight > n.clientHeight + 1)) return n;
+      }
+      return null;
+    }
+    function atEnd(s, d, dir) {
+      if (dir === 'x') return (d > 0 && s.scrollLeft <= 0) || (d < 0 && s.scrollLeft + s.clientWidth >= s.scrollWidth - 1);
+      return (d > 0 && s.scrollTop <= 0) || (d < 0 && s.scrollTop + s.clientHeight >= s.scrollHeight - 1);
+    }
+    scrim.addEventListener('touchstart', function (e) { if (e.touches.length === 1) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; axis = null; } }, { passive: true });
+    scrim.addEventListener('touchmove', function (e) {
+      if (e.touches.length > 1 || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+      var dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+      if (!axis) { if (Math.abs(dx) + Math.abs(dy) < 4) return; axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'; }
+      var s = scroller(e.target, axis);
+      if (!s || atEnd(s, axis === 'x' ? dx : dy, axis)) { if (e.cancelable) e.preventDefault(); }
+      else { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }   // (measured from here on, so its ends are caught as they come)
+    }, { passive: false });
+    scrim.addEventListener('wheel', function (e) {
+      var s = scroller(e.target, 'y');
+      if (!s || atEnd(s, -e.deltaY, 'y')) e.preventDefault();
+    }, { passive: false });
   }
   // Pull a sheet down by its handle or title to close it (the rest of the sheet scrolls as usual)
   function sheetDrag(body, close) {
