@@ -194,7 +194,7 @@
       // (with the console's logo where its cartridges carry it: under the art on NES, SNES and Genesis, at the top of Atari's paper label)
       var top = SYS_ID === 'atari2600';
       b.appendChild(c.art ? el('span', { class: 'lab art sys-' + SYS_ID + ' ' + (top ? 'brand-top' : 'brand-bottom') }, [el('img', { class: 'pic', src: c.art, alt: '', loading: 'lazy', decoding: 'async' }),
-        el('span', { class: 'brand' }, [el('img', { src: '../img/consoles/' + SYS_ID + '.svg', alt: '' })]), top ? el('span', { class: 'title', text: n }) : null, el('b', { text: n })]) : el('span', { class: 'lab' }, [el('b', { text: n })]));
+        el('span', { class: 'brand' }, [el('img', { src: '../img/consoles/' + SYS_ID + '.svg', alt: '' })]), top ? el('span', { class: 'title' }, [el('span', { text: n })]) : null, el('b', { text: n })]) : el('span', { class: 'lab' }, [el('b', { text: n })]));
       if (!c.local && !c.house) b.appendChild(el('span', { class: 'cloud', html: Kit.icon('cloud') }));
     }
     return b;
