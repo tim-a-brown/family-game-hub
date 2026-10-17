@@ -1,12 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Consoles: NES, Super Nintendo and Sega Genesis, played from your own game files.
+// Consoles: NES, Super Nintendo, Sega Genesis and Atari 2600, played from your own game files.
 //
-// The page (games/nes.html, snes.html, genesis.html) sets window.CONSOLE to 'nes' | 'snes' | 'genesis'.
+// The page (games/nes.html, snes.html, genesis.html, atari2600.html) sets window.CONSOLE to 'nes' | 'snes' |
+// 'genesis' | 'atari2600'.
 // The shelf shows the console on its stand and your games as cartridges. Tap one: it slides into the console
 // and the game takes over the whole display, like Delta: the picture at the top (or in the middle, sideways)
 // and the system's own controller drawn round it, with Menu and Fast-forward buttons. ?play=<id> (a game's
 // tile on the home screen) goes straight to the game. EmulatorJS (../emu/, the RetroArch cores fceumm,
-// snes9x and genesis_plus_gx) runs it; its own menus and on-screen pad are hidden.
+// snes9x, genesis_plus_gx and stella2014) runs it; its own menus and on-screen pad are hidden.
 //
 // Your games: console-lib.js (this device, and the cloud when signed in with a PIN). Save states stay on the
 // device (IndexedDB gn_console, store states: {key 'id:slot', id, slot ('auto' | 1..3), at, img, data}); the game's
@@ -28,6 +29,10 @@
     genesis: {
       name: 'Sega Genesis', core: 'segaMD', exts: ['md', 'gen', 'smd', 'bin'], cw: 100, room: ['#26262c', '#0a0a0d'], wood: ['#6e5038', '#422c1b'], skin: ['#1d1d21', '#0c0c0e'],
       keys: 'Arrow keys move · S is A · X is B · Z is C · Enter is Start'
+    },
+    atari2600: {
+      name: 'Atari 2600', core: 'atari2600', exts: ['a26', 'bin'], cw: 92, room: ['#2b2420', '#0d0a08'], wood: ['#7a5534', '#46301b'], skin: ['#1d1b1a', '#0b0a09'],
+      keys: 'Arrow keys move the joystick · X fires · Enter is Game Reset · V is Game Select'
     }
   };
   var SYS = SYSTEMS[SYS_ID], L = ConsoleLib;
@@ -65,9 +70,10 @@
     var m = n.match(/^(.*), (The|A|An)( - .*)?$/i); if (m) n = m[2] + ' ' + m[1] + (m[3] || '');
     return n || file;
   }
-  function sysOfFile(name) {
+  function sysOfFile(name, size) {
     var ext = (name.split('.').pop() || '').toLowerCase();
-    for (var k in SYSTEMS) if (SYSTEMS[k].exts.indexOf(ext) >= 0 && !(k === 'genesis' && ext === 'bin' && SYS_ID !== 'genesis')) return k;
+    if (ext === 'bin') return size < 65536 ? 'atari2600' : 'genesis';   // both use .bin: Atari games are tiny (4 to 32 KB)
+    for (var k in SYSTEMS) if (SYSTEMS[k].exts.indexOf(ext) >= 0) return k;
     return ext === 'zip' || ext === '7z' ? SYS_ID : null;
   }
 
@@ -114,7 +120,21 @@
       '<rect x="36" y="100" width="40" height="12" rx="3" fill="#3a3a40"/><rect x="244" y="100" width="40" height="12" rx="3" fill="#3a3a40"/>' +
       '<circle cx="90" cy="106" r="3.2" fill="#4a1414" class="led"/>' +
       '<text x="56" y="124" font-size="7" fill="#8a8a94" text-anchor="middle" font-family="sans-serif" font-weight="700">POWER</text>' +
-      '<text x="264" y="124" font-size="7" fill="#8a8a94" text-anchor="middle" font-family="sans-serif" font-weight="700">RESET</text>' }
+      '<text x="264" y="124" font-size="7" fill="#8a8a94" text-anchor="middle" font-family="sans-serif" font-weight="700">RESET</text>' },
+    // the four-switch VCS: ribbed black top, the cartridge slot behind, a woodgrain front with its silver switches
+    atari2600: { vb: [0, 0, 320, 136], slot: [116, 8, 88, 22], svg:
+      '<defs><linearGradient id="u1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d2a28"/><stop offset="1" stop-color="#121110"/></linearGradient>' +
+      '<linearGradient id="u2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6b4424"/><stop offset=".3" stop-color="#8a5c33"/><stop offset=".55" stop-color="#704727"/><stop offset=".8" stop-color="#93653a"/><stop offset="1" stop-color="#6a4323"/></linearGradient>' +
+      '<linearGradient id="u3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9e6df"/><stop offset="1" stop-color="#8f8b84"/></linearGradient></defs>' +
+      '<path d="M22 30 Q24 20 36 20 H284 Q296 20 298 30 L312 92 H8 Z" fill="url(#u1)"/>' +
+      (function () { var r = ''; for (var i = 0; i < 7; i++) r += '<path d="M' + (30 + i * 2) + ' ' + (36 + i * 7) + ' H' + (290 - i * 2) + '" stroke="#000" stroke-opacity=".5" stroke-width="2.4"/><path d="M' + (30 + i * 2) + ' ' + (38 + i * 7) + ' H' + (290 - i * 2) + '" stroke="#fff" stroke-opacity=".05" stroke-width="1"/>'; return r; })() +
+      '<path d="M104 20 Q104 4 120 4 H200 Q216 4 216 20 Z" fill="#1b1918"/>' +
+      '<rect x="116" y="8" width="88" height="22" rx="2" fill="#050505" class="slot"/>' +
+      '<path d="M8 92 H312 V122 Q312 132 302 132 H18 Q8 132 8 122 Z" fill="url(#u2)"/>' +
+      '<path d="M8 99 Q120 95 312 101 M8 108 Q160 112 312 106 M8 118 Q90 114 312 120 M8 126 Q200 129 312 125" stroke="#3b2412" stroke-opacity=".35" stroke-width="1.2" fill="none"/>' +
+      [52, 106, 214, 268].map(function (x, i) { return '<rect x="' + (x - 8) + '" y="98" width="16" height="26" rx="3" fill="#151312"/><rect x="' + (x - 5) + '" y="' + (i % 2 ? 106 : 100) + '" width="10" height="10" rx="2" fill="url(#u3)"/>'; }).join('') +
+      '<circle cx="80" cy="112" r="3.2" fill="#4a1414" class="led"/>' +
+      '<text x="160" y="116" font-size="10" fill="#e8c890" text-anchor="middle" font-family="sans-serif" font-weight="900" letter-spacing="2">ATARI</text>' }
   };
   // cartridges: shell drawing and where the paper label sits (as fractions of the drawing)
   var CARTS = {
@@ -132,6 +152,12 @@
       var r = ''; for (var i = 0; i < 5; i++) r += '<rect x="16" y="' + (96 + i * 6) + '" width="92" height="2.6" rx="1.3" fill="#2a2a2e"/>';
       return '<path d="M4 16 Q4 4 18 4 H106 Q120 4 120 16 V124 Q120 128 116 128 H8 Q4 128 4 124 Z" fill="#141416"/>' +
         '<path d="M4 84 H120 V90 H4 Z" fill="#202024"/>' + r;
+    } },
+    // the black Atari cartridge: a ribbed grip along the top, the big label below it
+    atari2600: { vb: [112, 128], lab: [.1, .3, .8, .62], svg: function () {
+      var r = ''; for (var i = 0; i < 5; i++) r += '<rect x="10" y="' + (8 + i * 5.4) + '" width="92" height="2.6" rx="1.3" fill="#2c2a29"/>';
+      return '<path d="M6 4 H106 Q110 4 110 8 V120 Q110 126 104 126 H8 Q2 126 2 120 V8 Q2 4 6 4 Z" fill="#141312"/>' +
+        '<path d="M2 34 H110 V36 H2 Z" fill="#0a0909"/>' + r;
     } }
   };
   var LABELS = [['#f4d94a', '#17130b'], ['#e2403c', '#fff8ec'], ['#1f3f74', '#fff8ec'], ['#2a9d8f', '#fff8ec'], ['#f3efe4', '#1a1a22'],
@@ -232,7 +258,7 @@
     if (L.signedIn()) Kit.toast(files.length === 1 ? 'Adding to your games' : 'Adding ' + files.length + ' games');
     files.reduce(function (p, f) {
       return p.then(function () {
-        var sys = sysOfFile(f.name); if (!sys) { skipped.push(f.name); return; }
+        var sys = sysOfFile(f.name, f.size); if (!sys) { skipped.push(f.name); return; }
         return f.arrayBuffer().then(function (buf) {
           return sha1(buf).then(function (id) {
             var old = carts.filter(function (x) { return x.id === id; })[0];
@@ -358,6 +384,8 @@
       gamepad: false, cheat: false, volume: false, saveSavFiles: false, loadSavFiles: false, quickSave: false, quickLoad: false, screenshot: false, cacheManager: false,
       exitEmulation: false, netplay: false, diskButton: false, contextMenu: false, rightClick: false };
     window.EJS_defaultOptions = { 'virtual-gamepad': 'disabled', 'save-state-location': 'browser' };
+    // European Genesis carts run at the American 60 frames a second, as the games were meant to feel
+    if (SYS_ID === 'genesis') window.EJS_defaultOptions.genesis_plus_gx_region_detect = 'ntsc-u';
     window.EJS_onGameStart = function () {
       started = true; msg('');
       glassEl.classList.remove('loading');
@@ -456,7 +484,8 @@
   var FACE = {
     nes: { at: [.75, .44], size: 76, b: [['B', 0, -42, 14, '#d42a2f'], ['A', 8, 42, -14, '#d42a2f']] },
     snes: { at: [.76, .48], size: 58, b: [['X', 9, 0, -56, '#3a6fd4'], ['Y', 1, -56, 0, '#2ea253'], ['A', 8, 56, 0, '#d93641'], ['B', 0, 0, 56, '#ecbf22']] },
-    genesis: { at: [.68, .5], size: 62, b: [['A', 1, -64, 24, '#2c2c31'], ['B', 0, 0, 0, '#2c2c31'], ['C', 8, 64, -24, '#2c2c31']] }
+    genesis: { at: [.68, .5], size: 62, b: [['A', 1, -64, 24, '#2c2c31'], ['B', 0, 0, 0, '#2c2c31'], ['C', 8, 64, -24, '#2c2c31']] },
+    atari2600: { at: [.74, .46], size: 96, b: [['', 0, 0, 0, '#c9271d']] }
   };
   // drawn behind the controls in portrait, stretched to the controller area (viewBox 400 x 330)
   var DECOR = {
@@ -464,11 +493,26 @@
       '<rect x="130" y="222" width="140" height="7" rx="3.5" fill="#000" opacity=".35"/><rect x="130" y="236" width="140" height="7" rx="3.5" fill="#000" opacity=".35"/>' +
       '<rect x="130" y="250" width="140" height="7" rx="3.5" fill="#000" opacity=".35"/></svg>',
     snes: '<svg viewBox="0 0 400 330" preserveAspectRatio="none"><circle cx="304" cy="158" r="96" fill="#8f86ad" opacity=".28"/><circle cx="100" cy="152" r="88" fill="#8f86ad" opacity=".14"/></svg>',
-    genesis: '<svg viewBox="0 0 400 330" preserveAspectRatio="none"><path d="M190 214 Q300 210 392 110 L392 250 Q300 300 190 300 Z" fill="#fff" opacity=".035"/><circle cx="100" cy="152" r="86" fill="#fff" opacity=".03"/></svg>'
+    genesis: '<svg viewBox="0 0 400 330" preserveAspectRatio="none"><path d="M190 214 Q300 210 392 110 L392 250 Q300 300 190 300 Z" fill="#fff" opacity=".035"/><circle cx="100" cy="152" r="86" fill="#fff" opacity=".03"/></svg>',
+    atari2600: '<svg viewBox="0 0 400 330" preserveAspectRatio="none"><rect x="0" y="252" width="400" height="78" fill="#7a5130" opacity=".22"/>' +
+      '<path d="M0 266 Q120 260 400 270 M0 286 Q200 292 400 282 M0 306 Q140 300 400 310" stroke="#2a180b" stroke-opacity=".3" stroke-width="2" fill="none"/></svg>'
   };
-  var MID = { nes: [['SELECT', 2], ['START', 3]], snes: [['SELECT', 2], ['START', 3]], genesis: [['START', 3]] };
+  var MID = { nes: [['SELECT', 2], ['START', 3]], snes: [['SELECT', 2], ['START', 3]], genesis: [['START', 3]], atari2600: [['SELECT', 2], ['RESET', 3]] };
   var ctls = [];
+  // the Atari joystick: a square black base, its rubber boot and the stick, which leans the way you push
+  function svgStick() {
+    return '<svg viewBox="0 0 100 100" overflow="visible"><defs><radialGradient id="jk" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#5a5654"/><stop offset=".55" stop-color="#1f1d1c"/><stop offset="1" stop-color="#080707"/></radialGradient>' +
+      '<radialGradient id="jb" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#2a2827"/><stop offset="1" stop-color="#0c0b0b"/></radialGradient></defs>' +
+      '<rect x="3" y="5" width="94" height="94" rx="14" fill="#000" opacity=".45"/>' +
+      '<rect x="2" y="2" width="96" height="94" rx="14" fill="#1a1918" stroke="#3a3735" stroke-width="1.2"/>' +
+      '<rect x="8" y="8" width="84" height="82" rx="10" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="1.5"/>' +
+      '<path d="M50 14 l4 6 h-8z M50 84 l4 -6 h-8z M14 49 l6 -4 v8z M86 49 l-6 -4 v8z" fill="#d7a25a" opacity=".55"/>' +
+      '<circle cx="50" cy="49" r="24" fill="url(#jb)" stroke="#000" stroke-opacity=".6" stroke-width="1.5"/>' +
+      '<g class="stick"><path class="shaft" d="M46 49 L54 49 L54 49 L46 49 Z" fill="#3b3836"/>' +
+      '<circle class="knob" cx="50" cy="49" r="15" fill="url(#jk)"/><ellipse class="knob-hi" cx="45" cy="43" rx="6" ry="3.6" fill="#fff" opacity=".18"/></g></svg>';
+  }
   function svgDpad() {
+    if (SYS_ID === 'atari2600') return svgStick();
     var arm = SYS_ID === 'snes' ? '#3b3a40' : SYS_ID === 'genesis' ? '#34343a' : '#151417', well = SYS_ID === 'snes' ? '#bdb8c6' : SYS_ID === 'genesis' ? '#2a2a2f' : '#cfcbc4';
     return '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="' + well + '" opacity="' + (SYS_ID === 'nes' ? .35 : .8) + '"/>' +
       '<circle cx="50" cy="50" r="49" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="1"/>' +
@@ -480,6 +524,7 @@
       '<path d="M36 9h28a3 3 0 0 1 3 3v2H33v-2a3 3 0 0 1 3-3z" fill="#fff" opacity=".12"/></g></svg>';
   }
   function svgBtn(label, col) {
+    if (SYS_ID === 'atari2600') col = '#c9271d';
     var light = col === '#ecbf22' || col === '#cfcbc4', ink = SYS_ID === 'genesis' ? '#d8d8e0' : light ? '#3a2a00' : '#ffffff';
     var gid = 'sh' + label + SYS_ID;
     return '<svg viewBox="0 0 100 100"><defs><radialGradient id="' + gid + '" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></radialGradient></defs>' +
@@ -489,7 +534,8 @@
       '<text x="50" y="62" font-size="36" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" fill="' + ink + '" opacity=".9">' + label + '</text></g></svg>';
   }
   function svgPill(label) {
-    var dark = SYS_ID !== 'snes', fill = SYS_ID === 'genesis' ? '#3a3a40' : '#3b3a3f', ink = SYS_ID === 'nes' ? '#d0262b' : dark ? '#9a9aa5' : '#5d5867';
+    var dark = SYS_ID !== 'snes', fill = SYS_ID === 'genesis' ? '#3a3a40' : SYS_ID === 'atari2600' ? '#a8a39a' : '#3b3a3f',
+      ink = SYS_ID === 'nes' ? '#d0262b' : SYS_ID === 'atari2600' ? '#e1ad66' : dark ? '#9a9aa5' : '#5d5867';
     return '<svg viewBox="0 0 100 56"><g class="face"><rect x="14" y="6" width="72" height="24" rx="12" fill="' + fill + '"/><rect x="18" y="8" width="64" height="7" rx="3.5" fill="#fff" opacity=".12"/></g>' +
       '<text x="50" y="50" font-size="15" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" letter-spacing="1" fill="' + ink + '">' + label + '</text></svg>';
   }
@@ -572,7 +618,17 @@
     function mark(i, on) {
       ctls.forEach(function (c) { if (c.i === i && c.k !== 'dp') c.el.classList.toggle('on', on); });
       var d = { 4: 'u', 5: 'd', 6: 'l', 7: 'r' }[i];
-      if (d) { var dp = ctls[0].el, a = dp.querySelector('.arm[data-d="' + d + '"]'); if (a) a.setAttribute('fill', on ? 'rgba(255,255,255,.28)' : 'transparent'); }
+      if (d && SYS_ID === 'atari2600') lean();
+      else if (d) { var dp = ctls[0].el, a = dp.querySelector('.arm[data-d="' + d + '"]'); if (a) a.setAttribute('fill', on ? 'rgba(255,255,255,.28)' : 'transparent'); }
+    }
+    // the joystick leans toward the held directions, its shaft showing below the knob
+    function lean() {
+      var x = (held[7] ? 1 : 0) - (held[6] ? 1 : 0), y = (held[5] ? 1 : 0) - (held[4] ? 1 : 0), k = (x && y) ? 10 : 13, st = ctls[0].el;
+      var g = st.querySelector('.knob'), h = st.querySelector('.knob-hi'), sh = st.querySelector('.shaft');
+      var cx = 50 + x * k, cy = 49 + y * k;
+      g.setAttribute('cx', cx); g.setAttribute('cy', cy); h.setAttribute('cx', cx - 5); h.setAttribute('cy', cy - 6);
+      var px = -y * 4, py = x * 4;   // the shaft: a band from the boot's centre to the knob
+      sh.setAttribute('d', 'M' + (50 + px) + ' ' + (49 + py) + ' L' + (50 - px) + ' ' + (49 - py) + ' L' + (cx - px) + ' ' + (cy - py) + ' L' + (cx + px) + ' ' + (cy + py) + ' Z');
     }
     function setHeld(next) {
       for (var k in held) if (!next[k]) { press(+k, 0); delete held[k]; mark(+k, false); }
@@ -648,7 +704,7 @@
       '<p class="goal">Play your own ' + SYS.name + ' games. Add the game files you own and they line up on the shelf as cartridges.</p>' +
       '<h3>Your games</h3><ul><li>Tap the empty cartridge to add game files (you can pick several at once).</li>' +
       '<li>Signed in with a PIN, they’re kept in your account, so every device you sign in on has them (a cloud badge means it comes down the first time you play it there). As a guest they stay on this device.</li>' +
-      '<li>Each game gets its own tile in Consoles on the home screen, which starts it straight away. <b>Choose</b> there (or press and hold a cartridge) picks what shows.</li>' +
+      '<li>Each game gets its own tile in Consoles on the home screen, which starts it straight away. <b>Edit</b> there (or press and hold a cartridge) turns tiles on and off.</li>' +
       '<li>Tap a cartridge to play it. Press and hold one to rename it, hide its tile, or take it off the shelf.</li></ul>' +
       '<h3>Playing</h3><ul><li>Use the controller drawn on the screen, a keyboard (' + SYS.keys + '), or a real Bluetooth or USB controller.</li>' +
       '<li>Games that save on their own (battery saves) keep them on this device.</li>' +

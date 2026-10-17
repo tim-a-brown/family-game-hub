@@ -167,10 +167,12 @@ var GAMES = [
   { id: 'minesweeper', name: 'Minesweeper',  color: '#64748b', cat: 'arcade', min: 1, max: 1, tag: 'Clear the field without a boom', play: 'minesweeper' },
   { id: 'candymatch',  name: 'Candy Match',  color: '#ff4f9a', cat: 'arcade', min: 1, max: 1, tag: 'Swap candies, match three, beat the level', play: 'candymatch' },
 
-  // ── Consoles: your own cartridges (game files you own, kept on the device) ──
-  { id: 'nes',         name: 'NES',            color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own NES games on a shelf of cartridges', play: 'nes' },
-  { id: 'snes',        name: 'Super Nintendo', color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own Super Nintendo games', play: 'snes' },
-  { id: 'genesis',     name: 'Sega Genesis',   color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own Genesis games', play: 'genesis' },
+  // ── Consoles: your own cartridges. The consoles' shelves have no tiles (Edit on the home screen opens them);
+  // each game gets its own tile (addConsoleGames below) ──
+  { id: 'nes',         name: 'NES',            color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own NES games on a shelf of cartridges', play: 'nes', shelf: true, hidden: true },
+  { id: 'snes',        name: 'Super Nintendo', color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own Super Nintendo games', play: 'snes', shelf: true, hidden: true },
+  { id: 'genesis',     name: 'Sega Genesis',   color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own Genesis games', play: 'genesis', shelf: true, hidden: true },
+  { id: 'atari2600',   name: 'Atari 2600',     color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own Atari 2600 games', play: 'atari2600', shelf: true, hidden: true },
 
   // ── Tools ────────────────────────────────────────────────────────────────
   { id: 'scorecard',   name: 'Scorecard',    color: '#0ea5e9', cat: 'tools', min: 1, max: 8, tag: 'Keep score for any game', play: 'scorecard' },
@@ -184,17 +186,16 @@ var GAMES = [
 ];
 
 // Console games: each game file you've added (console-lib.js keeps the list in gn_console_idx) gets its own tile,
-// opening straight into its console. gn_console_vis {id: 0} hides a game, or a whole console, from the home screen.
+// opening straight into its console. gn_console_vis {id: 0} hides a game from the home screen.
 function addConsoleGames() {
   for (var i = GAMES.length - 1; i >= 0; i--) if (GAMES[i].cart) GAMES.splice(i, 1);
-  var idx = [], vis = {}, SYS = { nes: 'NES', snes: 'Super Nintendo', genesis: 'Sega Genesis' };
+  var idx = [], vis = {}, SYS = { nes: 'NES', snes: 'Super Nintendo', genesis: 'Sega Genesis', atari2600: 'Atari 2600' };
   try { idx = JSON.parse(localStorage.getItem('gn_console_idx') || '[]') || []; vis = JSON.parse(localStorage.getItem('gn_console_vis') || '{}') || {}; } catch (e) {}
   idx.forEach(function (c) {
     if (!c || !SYS[c.sys] || !/^[0-9a-f]+$/.test(c.id)) return;
     GAMES.push({ id: 'cart-' + c.id.slice(0, 16), name: c.name, color: '#000', cat: 'console', min: 1, max: 1, tag: SYS[c.sys] + ' game', play: c.sys + '.html?play=' + c.id,
-      mark: c.sys, cart: c.id, sys: c.sys, hidden: vis[c.id] === 0 || vis[c.sys + ':all'] === 0 });
+      mark: c.sys, cart: c.id, sys: c.sys, hidden: vis[c.id] === 0 });
   });
-  GAMES.forEach(function (g) { if (g.cat === 'console' && !g.cart) g.hidden = vis[g.id] === 0; });
 }
 addConsoleGames();
 

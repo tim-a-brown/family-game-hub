@@ -295,6 +295,10 @@ var GameIcon = (function () {
       return path('M2 9h20v6a7 7 0 0 1-7 6H9a7 7 0 0 1-7-6z', '#141416') + circ(7, 15.5, 2.6, '#3a3a40') + circ(12, 13.5, 2.6, '#3a3a40') + circ(17, 11.5, 2.6, '#3a3a40') +
         txt('A', 3.2, '#cfcfd8', 15.6, 7) + txt('B', 3.2, '#cfcfd8', 13.6, 12) + txt('C', 3.2, '#cfcfd8', 11.6, 17);
     },
+    atari2600: function () {   // the joystick: square black base, the stick, and the red fire button in its corner
+      return rect(3, 9, 18, 13, 2.4, '#1c1a19') + rect(4.2, 10.2, 15.6, 10.6, 1.6, '#2a2726') + circ(14, 15.6, 3.6, '#121110') +
+        rect(13.1, 4, 1.8, 11.6, .9, '#0c0b0b') + circ(14, 4.2, 2.3, '#262423') + circ(7.4, 13, 2.2, '#c9271d') + circ(6.9, 12.4, .7, '#ff8f80');
+    },
     pacman: function () { return path('M12 12 20 7.5A9 9 0 1 0 20 16.5z', Y, ' transform="translate(-4 0)"') + circ(18, 12, 1.4, W) + circ(22.5, 12, 1.4, W); },
     breakout: function () { return rect(1, 2, 7, 3, .8, R) + rect(8.5, 2, 7, 3, .8, O) + rect(16, 2, 7, 3, .8, Y) + rect(1, 6, 7, 3, .8, O) + rect(16, 6, 7, 3, .8, '#3ddc84') + circ(13, 14, 1.8, W) + rect(7, 20, 10, 2.4, 1.2, '#7aa8ff'); },
     flappybird: function () { return rect(17, 0, 5, 7, 1, '#3ddc84') + rect(17, 15, 5, 9, 1, '#3ddc84') + circ(9, 12, 5.5, Y) + circ(11, 10.4, 1.6, W) + circ(11.5, 10.4, .8, K) + path('M13.5 12.5h4l-2 2z', O) + '<ellipse cx="7" cy="13.5" rx="3" ry="1.8" fill="#ffe08a"/>'; },

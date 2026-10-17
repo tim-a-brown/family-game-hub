@@ -202,6 +202,15 @@ document.addEventListener('visibilitychange', function () {
 .sec-h .hs-link{margin-left:auto;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 13px;border:0;border-radius:999px;background:rgba(255,200,61,.14);color:var(--yellow);font:inherit;font-weight:800;font-size:.84rem;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(255,200,61,.3);}
 .sec-h .hs-link .ico{width:16px;height:16px;color:var(--yellow);}
 .sec-h .hs-link:active{transform:scale(.96);}
+.cs-edit .cs-h{display:flex;align-items:center;gap:8px;margin:10px 4px 6px;}
+.cs-edit .cs-h h3{margin:0 !important;flex:1;}
+.cs-edit .cs-n{white-space:nowrap;font-size:.78rem;font-weight:700;color:var(--text-3);font-variant-numeric:tabular-nums;}
+.cs-edit .k-grp button.cs-all,.cs-edit .k-grp button.cs-shelf{width:auto;min-height:32px;padding:0 12px;border:0;border-radius:999px !important;background:var(--w08,rgba(255,255,255,.08));color:var(--text);font:inherit;font-size:.8rem;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:none;cursor:pointer;}
+.cs-edit .k-grp button.cs-all{min-width:58px;}
+.cs-edit .k-grp button.cs-all[hidden]{display:none;}
+.cs-edit .k-grp button.cs-shelf .ico{width:15px;height:15px;}
+.cs-edit .cs-h + button{border-top-left-radius:var(--r);border-top-right-radius:var(--r);}
+.cs-edit .cs-none{margin:0 6px 4px;font-size:.88rem;color:var(--text-3);}
 .sec-h .dl-link{background:color-mix(in srgb,var(--blue,#3b82f6) 16%,transparent);color:var(--text);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blue,#3b82f6) 45%,transparent);}
 .sec-h .dl-link .ico{color:var(--blue,#3b82f6);}
 .sec-h .dl-link{white-space:nowrap;flex:none;}
@@ -817,26 +826,41 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
   // Arcade: the high scores cabinet (every arcade game's top 50 on one screen)
   function secExtra(id) { return id === 'casino' ? bankBadge() : id === 'arcade' ? hiLink() : id === 'puzzle' && window.Daily ? dailyLink() : id === 'console' ? consoleLink() : null; }
-  // Consoles: choose which consoles and which of your games show here (switches; games stay on their shelves)
+  // Consoles: Edit turns each of your games' tiles on or off, console by console; each console's shelf (adding,
+  // renaming and removing games) is a button beside its name
   function consoleLink() {
-    return el('button', { type: 'button', class: 'hs-link', html: Kit.icon('sliders') + '<span>Choose</span>', onclick: consoleChoose });
+    return el('button', { type: 'button', class: 'hs-link', html: Kit.icon('pencil') + '<span>Edit</span>', onclick: consoleEdit });
   }
-  function consoleChoose() {
+  var CONSOLES = [['nes', 'NES'], ['snes', 'Super Nintendo'], ['genesis', 'Sega Genesis'], ['atari2600', 'Atari 2600']];
+  function consoleEdit() {
     Kit.sfx('pop');
-    var box = el('div', { class: 'k-list' }), SYS = [['nes', 'NES'], ['snes', 'Super Nintendo'], ['genesis', 'Sega Genesis']];
-    function sw(label, sub, id) {
-      var b = el('button', { type: 'button', class: 'tg', role: 'switch', 'aria-checked': String(ConsoleLib.shown(id)) },
-        [el('span', { class: 'lbl' }, [el('span', { text: label })].concat(sub ? [el('small', { text: sub })] : [])), el('i', { class: 'sw' })]);
-      b.onclick = function () { var on = !ConsoleLib.shown(id); ConsoleLib.show(id, on); b.setAttribute('aria-checked', String(on)); Kit.haptic('light'); };
-      return b;
-    }
-    SYS.forEach(function (s) {
+    var box = el('div', { class: 'k-list cs-edit' });
+    CONSOLES.forEach(function (s) {
       var games = GAMES.filter(function (g) { return g.cart && g.sys === s[0]; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
-      box.appendChild(el('div', { class: 'k-grp' }, [el('h3', { text: s[1] }), sw(s[1] + ' shelf', 'Where you add and manage ' + s[1] + ' games', s[0])]
-        .concat(games.map(function (g) { return sw(g.name, null, g.cart); }))));
+      var sws = [], all = el('button', { type: 'button', class: 'cs-all' }), n = el('span', { class: 'cs-n' });
+      function count() {
+        var on = games.filter(function (g) { return ConsoleLib.shown(g.cart); }).length;
+        n.textContent = games.length ? on + ' of ' + games.length : '';
+        all.textContent = on === games.length ? 'None' : 'All'; all.hidden = !games.length;
+      }
+      function sw(g) {
+        var b = el('button', { type: 'button', class: 'tg', role: 'switch', 'aria-checked': String(ConsoleLib.shown(g.cart)) }, [el('span', { class: 'lbl' }, [el('span', { text: g.name })]), el('i', { class: 'sw' })]);
+        b.onclick = function () { var on = !ConsoleLib.shown(g.cart); ConsoleLib.show(g.cart, on); b.setAttribute('aria-checked', String(on)); Kit.haptic('light'); count(); };
+        sws.push([g, b]); return b;
+      }
+      all.onclick = function () {
+        var on = all.textContent === 'All';
+        sws.forEach(function (x) { ConsoleLib.show(x[0].cart, on); x[1].setAttribute('aria-checked', String(on)); });
+        Kit.haptic('medium'); count();
+      };
+      var shelf = el('button', { type: 'button', class: 'cs-shelf', html: Kit.icon('console') + '<span>Shelf</span>', onclick: function () { go(s[0]); } });
+      var head = el('div', { class: 'cs-h' }, [el('h3', { text: s[1] }), n, all, shelf]);
+      var rows = games.map(sw);
+      if (!rows.length) rows.push(el('p', { class: 'cs-none', text: 'No games yet. Add them on the shelf.' }));
+      box.appendChild(el('div', { class: 'k-grp' }, [head].concat(rows)));
+      count();
     });
-    if (!GAMES.some(function (g) { return g.cart; })) box.appendChild(el('p', { class: 'muted', text: 'Games you add on a console’s shelf show up here too, each with its own tile.' }));
-    Kit.sheet({ title: 'Consoles on the home screen', node: box, onClose: function () { addConsoleGames(); render(); } });
+    Kit.sheet({ title: 'Console games', node: box, onClose: function () { addConsoleGames(); render(); } });
   }
   function hiLink() {
     return el('button', { type: 'button', class: 'hs-link', html: Kit.icon('trophy') + '<span>High scores</span>', onclick: function () { go('hiscores'); } });
@@ -1259,7 +1283,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       if (favs.length && !state.q) list.appendChild(section('Favorites', 'star', favs, null, true));
       Kit.cats().forEach(function (c) {
         var gs = vis.filter(function (g) { return g.cat === c.id; });
-        // Consoles stays even with everything hidden, so its Choose button can bring things back
+        // Consoles stays even with everything hidden, so its Edit button can bring things back
         if (gs.length || (c.id === 'console' && !state.q)) list.appendChild(section(c.name, c.id, gs, secExtra(c.id)));
       });
     } else if (state.cat === 'fav') {
@@ -1489,6 +1513,13 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   setTimeout(function () { try { Kit.links.fromUrl(); } catch (e) {} }, 700);
   document.addEventListener('fghsync:updated', function () { setTimeout(function () { try { Kit.links.fromUrl(); } catch (e) {} }, 300); });
   refreshWho();
+  // a link to a console library (#games=<key>): its games join your account once you're signed in
+  var gamesLink = /^#games=([0-9a-f]{32})$/.exec(location.hash);
+  if (gamesLink && window.ConsoleLib) {
+    ConsoleLib.link(gamesLink[1]);
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    if (mode !== 'pin') setTimeout(function () { Kit.toast('Sign in with your PIN to add these console games'); }, 600);
+  }
   // back from setting a game's defaults: show the list again
   if (location.hash === '#game-defaults') {
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
@@ -1500,6 +1531,20 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (FGHSync.onReady) FGHSync.onReady(function () { refreshWho(); addConsoleGames(); render(); refreshConsoles(); });
     // console games added or removed on another device: the account's list, then redraw if it changed
     function refreshConsoles() {
+      if (window.ConsoleLib && ConsoleLib.pending()) {
+        ConsoleLib.claim().then(function (n) {
+          if (n) {
+            Kit.haptic('success'); Kit.sfx('chip');
+            Kit.callout && Kit.callout(n + ' console games added');
+          }
+          if (ConsoleLib.cloud()) ConsoleLib.list().then(function () {
+            addConsoleGames(); render();
+            var h = [].slice.call(document.querySelectorAll('.sec-h h2')).filter(function (x) { return x.textContent === 'Consoles'; })[0];
+            if (n && h) h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+        }).catch(function (e) { console.warn('[home] console games link', e); Kit.toast('Couldn’t add those games. Try the link again.'); });
+        return;
+      }
       if (!window.ConsoleLib || !ConsoleLib.cloud()) return;
       var before = localStorage.getItem('gn_console_idx');
       ConsoleLib.list().then(function () { if (localStorage.getItem('gn_console_idx') !== before) { addConsoleGames(); render(); } }).catch(function () {});

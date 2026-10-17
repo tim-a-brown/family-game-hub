@@ -1,17 +1,20 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Console game library: your own NES / Super Nintendo / Genesis game files, shared by the home screen (one tile
-// per game) and the console pages (games/nes.html, snes.html, genesis.html).
+// Console game library: your own NES / Super Nintendo / Genesis / Atari 2600 game files, shared by the home screen
+// (one tile per game) and the console pages (games/nes.html, snes.html, genesis.html, atari2600.html).
 //
 // On this device the files live in IndexedDB (gn_console: carts, states). Signed in with a PIN, they're also kept
 // in the cloud (Firebase Storage) so every device signed in to the account has them:
 //   roms/<lib>/<id>       the game file (id = SHA-1 of the file)
-//   roms/<lib>/index.json {v, carts: {id: {sys, name, file, size, added}}, del: {id: at}}
+//   roms/<lib>/index.json {v, carts: {id: {sys, name, file, size, added, lib?}}, del: {id: at}}
+// (lib: the game file lives in another library, one linked to this account; its file is never deleted from here)
 // <lib> is a random 32-hex library key made the first time a game is added, kept as a synced setting
 // (gn_console_lib), so only devices signed in to the account know where the games are. The storage rules allow
 // reading and writing at exact paths only and never listing, so nobody can browse anyone's games.
 // localStorage gn_console_idx caches the list ([{id, sys, name}]) so games.js can put a tile on the home screen
 // for each game before anything loads; gn_console_vis {id: 0} holds what you've hidden from the home screen
-// (a game id or a console: nes, snes, genesis), synced as a setting too.
+// (by game id), synced as a setting too.
+// A link to a library (index.html#games=<lib>, opened once while signed in) adds its games to the account: the
+// account takes that library as its own if it has none yet, or lists its games alongside its own.
 // ═══════════════════════════════════════════════════════════════════════════
 var ConsoleLib = (function () {
   'use strict';
@@ -79,8 +82,8 @@ var ConsoleLib = (function () {
     return fetch(UP + '?uploadType=media&name=' + encodeURIComponent('roms/' + k + '/' + c.id), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: c.data })
       .then(function (r) { if (!r.ok) throw new Error('upload ' + r.status); return true; });
   }
-  function download(id, onProgress) {
-    var k = lib(false); if (!k) return Promise.reject(new Error('not signed in'));
+  function download(id, onProgress, from) {
+    var k = from || lib(false); if (!k) return Promise.reject(new Error('not signed in'));
     return fetch(url(k, id, true)).then(function (r) {
       if (!r.ok) throw new Error('download ' + r.status);
       var total = +r.headers.get('content-length') || 0;
@@ -95,7 +98,7 @@ var ConsoleLib = (function () {
   }
 
   // ── The list everyone sees: this device's games plus the account's ──
-  function meta(c) { return { sys: c.sys, name: c.name, file: c.file, size: c.size, added: c.added }; }
+  function meta(c) { var m = { sys: c.sys, name: c.name, file: c.file, size: c.size, added: c.added }; if (c.lib) m.lib = c.lib; return m; }
   function cache(list) {
     var l = list.map(function (c) { return { id: c.id, sys: c.sys, name: c.name }; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
     var s = JSON.stringify(l); if (get('gn_console_idx') !== s) { try { LS.setItem('gn_console_idx', s); } catch (e) {} return true; }
@@ -108,7 +111,7 @@ var ConsoleLib = (function () {
       var loc = r[0], ix = r[1], by = {}, out = [], push = [];
       loc.forEach(function (c) { by[c.id] = c; c.local = true; });
       if (ix) {
-        Object.keys(ix.carts).forEach(function (id) { if (!by[id]) { var m = ix.carts[id]; by[id] = { id: id, sys: m.sys, name: m.name, file: m.file, size: m.size, added: m.added, played: 0, local: false }; } else if (ix.carts[id].name) by[id].name = ix.carts[id].name; });
+        Object.keys(ix.carts).forEach(function (id) { if (!by[id]) { var m = ix.carts[id]; by[id] = { id: id, sys: m.sys, name: m.name, file: m.file, size: m.size, added: m.added, lib: m.lib, played: 0, local: false }; } else if (ix.carts[id].name) by[id].name = ix.carts[id].name; });
         loc.forEach(function (c) {
           if (ix.del[c.id] && ix.del[c.id] > (c.added || 0)) { delete by[c.id]; tx('carts', 'readwrite', function (s) { s.delete(c.id); }); }
           else if (!ix.carts[c.id]) push.push(c);
@@ -139,7 +142,9 @@ var ConsoleLib = (function () {
       return tx('states', 'readwrite', function (s) { var r = s.index('id').openCursor(IDBKeyRange.only(id)); r.onsuccess = function () { var c = r.result; if (c) { c.delete(); c.continue(); } }; });
     }).then(function () {
       if (!signedIn()) return;
-      return remove(id).then(function () { return editIndex(function (x) { delete x.carts[id]; x.del[id] = Date.now(); }); }).catch(function () {});
+      var linked = false;
+      return editIndex(function (x) { linked = !!(x.carts[id] && x.carts[id].lib); delete x.carts[id]; x.del[id] = Date.now(); })
+        .then(function () { if (!linked) return remove(id); }).catch(function () {});
     });
   }
   // a game file for playing: from this device, or fetched from the account (and kept here)
@@ -148,11 +153,29 @@ var ConsoleLib = (function () {
       if (c && c.data) return c;
       return fetchIndex().then(function (ix) {
         var m = ix && ix.carts[id]; if (!m) throw new Error('not found');
-        return download(id, onProgress).then(function (blob) {
-          var rec = { id: id, sys: m.sys, name: m.name, file: m.file, size: m.size, added: m.added, played: 0, data: blob };
+        return download(id, onProgress, m.lib).then(function (blob) {
+          var rec = { id: id, sys: m.sys, name: m.name, file: m.file, size: m.size, added: m.added, lib: m.lib, played: 0, data: blob };
           return tx('carts', 'readwrite', function (s) { s.put(rec); }).then(function () { return rec; });
         });
       });
+    });
+  }
+
+  // ── A linked library: index.html#games=<lib> ──
+  // kept on this device until you're signed in, then added to the account; resolves to how many games it added
+  var PEND = 'gn_console_add';
+  function link(k) { if (/^[0-9a-f]{32}$/.test(k)) try { LS.setItem(PEND, k); } catch (e) {} }
+  function claim() {
+    var k = get(PEND); if (!k || !signedIn()) return Promise.resolve(0);
+    var own = lib(false);
+    var done = function (n) { try { LS.removeItem(PEND); } catch (e) {} return n; };
+    return fetch(url(k, 'index.json', true), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('library ' + r.status); return r.json(); }).then(function (theirs) {
+      var ids = Object.keys((theirs && theirs.carts) || {});
+      if (!own || own === k) { if (!own) set('gn_console_lib', k); return done(own === k ? 0 : ids.length); }
+      var n = 0;
+      return editIndex(function (x) {
+        ids.forEach(function (id) { if (x.carts[id]) return; var m = theirs.carts[id]; x.carts[id] = { sys: m.sys, name: m.name, file: m.file, size: m.size, added: m.added, lib: m.lib || k }; delete x.del[id]; n++; });
+      }).then(function () { return done(n); });
     });
   }
 
@@ -162,5 +185,5 @@ var ConsoleLib = (function () {
   function show(id, on) { var v = vis(); if (on) delete v[id]; else v[id] = 0; set('gn_console_vis', JSON.stringify(v)); }
 
   return { db: db, tx: tx, list: list, save: save, rename: rename, drop: drop, file: file, cache: cache, cloud: function () { return !!lib(false); },
-    signedIn: signedIn, shown: shown, show: show, vis: vis };
+    signedIn: signedIn, shown: shown, show: show, vis: vis, link: link, claim: claim, pending: function () { return !!get(PEND); } };
 })();
