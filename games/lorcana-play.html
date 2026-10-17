@@ -1251,6 +1251,18 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
   .lz-in:has(.lz-hf) > .lz-hf .hf-chips{flex:0 1 auto;}
   .lz-in:has(.lz-hf) > .lz-info{grid-column:1;grid-row:1 / span 2;align-self:center;}
   .lz-in:has(.lz-hf) .lz-flow.strip{--cu:min(calc(100vh - 170px),calc((98vw - 440px) / 1.45),900px);}
+  /* The card's actions (Play, Ink it, Quest…) under the cards on the right: the side you act on */
+  .lz-in:has(> .lz-acts.side){display:grid;grid-template-columns:380px auto;grid-template-rows:auto auto auto;column-gap:20px;row-gap:6px;justify-content:center;align-content:center;}
+  .lz-in:has(> .lz-acts.side) > *{grid-column:1 / -1;}
+  .lz-in:has(> .lz-acts.side) > .lz-flow{grid-column:2;grid-row:1;justify-self:center;}
+  .lz-in:has(> .lz-acts.side) > .lz-hf{grid-column:2;grid-row:2;}
+  .lz-in:has(> .lz-acts.side) > .lz-acts.side{grid-column:2;grid-row:3;justify-self:center;width:min(440px,100%);margin:0;}
+  .lz-in:has(> .lz-acts.side) > .lz-info{grid-column:1;grid-row:1 / span 3;align-self:center;}
+  .lz-in:has(> .lz-acts.side) .lz-flow,.lz-in:has(> .lz-acts.side) .lz-card{--cu:min(calc(100vh - 230px),520px);}
+  .lz-in:has(> .lz-acts.side) .lz-flow.strip{--cu:min(calc(100vh - 270px),calc((98vw - 440px) / 1.45),900px);}
+  .lz.lz-min .lz-in:has(> .lz-acts.side){grid-template-columns:auto;}
+  .lz.lz-min .lz-in:has(> .lz-acts.side) > .lz-flow,.lz.lz-min .lz-in:has(> .lz-acts.side) > .lz-hf,.lz.lz-min .lz-in:has(> .lz-acts.side) > .lz-acts.side{grid-column:1;}
+  .lz-acts.side .why{margin-top:6px;}
   .lz.lz-min .lz-in:has(.lz-hf){grid-template-columns:auto;}   /* details rolled away: the cards take the middle */
   .lz.lz-min .lz-in:has(.lz-hf) > .lz-flow,.lz.lz-min .lz-in:has(.lz-hf) > .lz-hf{grid-column:1;}
 }
@@ -9415,7 +9427,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // (both measured in one go, before anything paints; then the open layout stays for the roll to run over)
     var rollAt = function () { var rl = ov.querySelector('.lz-roll'), q = rl && rl.getBoundingClientRect(); return q && q.width ? { x: (q.left + q.right) / 2, y: (q.top + q.bottom) / 2 } : null; };
     // the hand's filter bar and the action buttons sit under the card: they ride with its bottom edge
-    var riders = [].slice.call(ov.querySelectorAll('.lz-in > .lz-hf, .lz-acts.out')), ridersAt = function () { return riders.map(function (r) { var q = r.getBoundingClientRect(); return q.height ? q.top : null; }); };
+    var riders = [].slice.call(ov.querySelectorAll('.lz-in > .lz-hf, .lz-acts.out, .lz-acts.side')), ridersAt = function () { return riders.map(function (r) { var q = r.getBoundingClientRect(); return q.height ? q.top : null; }); };
     // the thumbnail strip (or the "3 of 10" tag) hangs under the card inside its frame
     var posEl = ov.querySelector('.lz-flow .lz-pos'), posAt = function () { var q = posEl && posEl.getBoundingClientRect(); return q && q.width ? q : null; };
     var st = ov.scrollTop, open = snap(false), actsOpen = ridersAt(), posOpen = posAt(), shut = snap(true), rollEnd = rollAt(), actsShut = ridersAt(), posShut = posAt();
@@ -9604,10 +9616,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       // (phones keep the line under the buttons even when it's empty, so every card sits at the same height)
       if ((whys && whys.length) || phoneZoom()) g.appendChild(el('div', { class: 'why', text: (whys || []).join(' ') }));
       // Phones: the actions sit between the card and its details (in reach, and the card a little shorter to make room)
+      // Sideways: under the cards on the right, where you act (the details stay on the left)
       if (phoneZoom()) { g.classList.add('out'); ov.classList.add('has-acts'); }
-      else info.appendChild(g);
+      else g.classList.add('side');
     }
-    if (g && g.classList.contains('out')) inner.appendChild(g);
+    if (g && (g.classList.contains('out') || g.classList.contains('side'))) inner.appendChild(g);
     inner.appendChild(info);
     // Phones: the details rolled up into a scroll under the card, the card's name written along it; tap to unroll
     info.setAttribute('data-title', d.n || d.full);
