@@ -146,21 +146,27 @@
         '<rect x="7" y="4" width="20" height="13" fill="#6a686b"/><path d="M7 17 H27" stroke="#b9b7ba" stroke-width="1"/>' + r +
         '<path d="M70 112 L76 112 L73 116 Z" fill="#6f6d70"/>';
     } },
-    snes: { vb: [160, 108], lab: [.17, .2, .66, .56], svg: function () {
-      return '<path d="M10 14 Q10 4 22 4 H138 Q150 4 150 14 V100 Q150 104 146 104 H14 Q10 104 10 100 Z" fill="#9c99a1"/>' +
-        '<path d="M2 18 Q2 10 10 10 V104 H6 Q2 104 2 100 Z M158 18 Q158 10 150 10 V104 H154 Q158 104 158 100 Z" fill="#87848c"/>' +
-        '<rect x="18" y="86" width="124" height="3" rx="1.5" fill="#86838b"/><rect x="18" y="92" width="124" height="3" rx="1.5" fill="#86838b"/>';
+    // the US Super Nintendo cartridge: squared, segmented grip blocks down both sides with a screw at the bottom of
+    // each, the label up top and the long groove under it
+    snes: { vb: [160, 124], lab: [.19, .05, .62, .69], svg: function () {
+      var r = '';
+      [4, 136].forEach(function (x) {
+        for (var i = 0; i < 6; i++) r += '<rect x="' + x + '" y="' + (4 + i * 19.6) + '" width="20" height="18.6" rx="1.5" fill="#a5a2ab"/><rect x="' + x + '" y="' + (4 + i * 19.6) + '" width="20" height="1" fill="#c9c6cf"/>';
+        r += '<circle cx="' + (x + 10) + '" cy="111" r="2.4" fill="#d3d0d8"/><circle cx="' + (x + 10) + '" cy="111" r="1.4" fill="#57555c"/>';
+      });
+      return '<rect x="4" y="4" width="152" height="117" rx="3" fill="#9c99a2"/>' + r +
+        '<path d="M24 4 H136 V121 H24 Z" fill="#a9a6af"/><path d="M24 4 H136 V6 H24 Z" fill="#c4c1ca"/>' +
+        '<rect x="40" y="103" width="80" height="7" rx="3.5" fill="#86838c"/><path d="M71 103 V110 M89 103 V110" stroke="#76737c" stroke-width="1"/><path d="M42 110.5 H118" stroke="#c4c1ca" stroke-width="1"/>';
     } },
-    genesis: { vb: [124, 132], lab: [.1, .08, .8, .58], svg: function () {
-      var r = ''; for (var i = 0; i < 5; i++) r += '<rect x="16" y="' + (96 + i * 6) + '" width="92" height="2.6" rx="1.3" fill="#2a2a2e"/>';
-      return '<path d="M4 16 Q4 4 18 4 H106 Q120 4 120 16 V124 Q120 128 116 128 H8 Q4 128 4 124 Z" fill="#141416"/>' +
-        '<path d="M4 84 H120 V90 H4 Z" fill="#202024"/>' + r;
+    // the Genesis cartridge: black with thick side rails, the label across nearly the whole front
+    genesis: { vb: [124, 116], lab: [.11, .05, .78, .74], svg: function () {
+      return '<path d="M4 16 Q4 4 18 4 H106 Q120 4 120 16 V106 Q120 112 114 112 H10 Q4 112 4 106 Z" fill="#161618"/>' +
+        '<path d="M4 16 Q4 4 18 4 H24 V112 H10 Q4 112 4 106 Z M120 16 Q120 4 106 4 H100 V112 H114 Q120 112 120 106 Z" fill="#0c0c0d"/>' +
+        '<path d="M18 4 H106 V6 H18 Z" fill="#2c2c31"/>';
     } },
-    // the black Atari cartridge: a ribbed grip along the top, the big label below it
-    atari2600: { vb: [112, 128], lab: [.1, .3, .8, .62], svg: function () {
-      var r = ''; for (var i = 0; i < 5; i++) r += '<rect x="10" y="' + (8 + i * 5.4) + '" width="92" height="2.6" rx="1.3" fill="#2c2a29"/>';
-      return '<path d="M6 4 H106 Q110 4 110 8 V120 Q110 126 104 126 H8 Q2 126 2 120 V8 Q2 4 6 4 Z" fill="#141312"/>' +
-        '<path d="M2 34 H110 V36 H2 Z" fill="#0a0909"/>' + r;
+    // the Atari cartridge: black, nearly all paper label (logo, red title band, picture, fine print)
+    atari2600: { vb: [112, 128], lab: [.07, .05, .86, .84], svg: function () {
+      return '<path d="M6 4 H106 Q110 4 110 8 V120 Q110 126 104 126 H8 Q2 126 2 120 V8 Q2 4 6 4 Z" fill="#141312"/><path d="M6 4 H106 V6 H6 Z" fill="#2a2827"/>';
     } }
   };
   var LABELS = [['#f4d94a', '#17130b'], ['#e2403c', '#fff8ec'], ['#1f3f74', '#fff8ec'], ['#2a9d8f', '#fff8ec'], ['#f3efe4', '#1a1a22'],
@@ -185,10 +191,10 @@
       fs = Math.min(fs, across / (longest * .56));
       b.style.setProperty('--fs', Math.round(fs * w / 100) + 'px');
       // the label: the game's own art and logo when it has them, else its name on coloured paper
-      // (with the console's logo where its cartridges carry it: across the top on Genesis and Atari, under the art on NES and SNES)
-      var top = SYS_ID === 'genesis' || SYS_ID === 'atari2600';
-      b.appendChild(c.art ? el('span', { class: 'lab art ' + (top ? 'brand-top' : 'brand-bottom') }, [el('img', { class: 'pic', src: c.art, alt: '', loading: 'lazy', decoding: 'async' }),
-        el('span', { class: 'brand' }, [el('img', { src: '../img/consoles/' + SYS_ID + '.svg', alt: '' })]), el('b', { text: n })]) : el('span', { class: 'lab' }, [el('b', { text: n })]));
+      // (with the console's logo where its cartridges carry it: under the art on NES, SNES and Genesis, at the top of Atari's paper label)
+      var top = SYS_ID === 'atari2600';
+      b.appendChild(c.art ? el('span', { class: 'lab art sys-' + SYS_ID + ' ' + (top ? 'brand-top' : 'brand-bottom') }, [el('img', { class: 'pic', src: c.art, alt: '', loading: 'lazy', decoding: 'async' }),
+        el('span', { class: 'brand' }, [el('img', { src: '../img/consoles/' + SYS_ID + '.svg', alt: '' })]), top ? el('span', { class: 'title', text: n }) : null, el('b', { text: n })]) : el('span', { class: 'lab' }, [el('b', { text: n })]));
       if (!c.local && !c.house) b.appendChild(el('span', { class: 'cloud', html: Kit.icon('cloud') }));
     }
     return b;
