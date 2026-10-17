@@ -474,7 +474,11 @@
   // Turning the device: iOS can tell the page before its new size has settled (and the notch insets move too), so the
   // game lays itself out again a few times over the next second, and whenever its screen really changes size
   var rlT = [];
-  function relayout() { if (!playEl) return; layout(); rlT.forEach(clearTimeout); rlT = [60, 200, 450, 900].map(function (ms) { return setTimeout(function () { if (playEl) layout(); }, ms); }); }
+  var relWH = '';
+  function relayout() {
+    if (!playEl) return;
+    var wh = innerWidth + 'x' + innerHeight; if (wh !== relWH) { relWH = wh; if (skinRelease) skinRelease(); }   // (turned: let go of what was held)
+    layout(); rlT.forEach(clearTimeout); rlT = [60, 200, 450, 900].map(function (ms) { return setTimeout(function () { if (playEl) layout(); }, ms); }); }
   window.addEventListener('orientationchange', relayout);
   if (window.visualViewport) visualViewport.addEventListener('resize', function () { if (playEl) relayout(); });
 
@@ -644,7 +648,7 @@
     }
   };
   var MID = { nes: [['SELECT', 2], ['START', 3]], snes: [['SELECT', 2], ['START', 3]], genesis: [['START', 3]], atari2600: [['SELECT', 2], ['RESET', 3]] };
-  var ctls = [], ffOn = false;
+  var ctls = [], ffOn = false, skinRelease = null;
   // the Atari joystick: a square black base, its rubber boot and the stick, which leans the way you push
   function svgStick() {
     return '<svg viewBox="0 0 100 100" overflow="visible"><defs><radialGradient id="jk" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#5a5654"/><stop offset=".55" stop-color="#1f1d1c"/><stop offset="1" stop-color="#080707"/></radialGradient>' +
@@ -824,17 +828,21 @@
             if (ang > -67.5 && ang < 67.5) out.push(7);
           }
         } else if (c.k === 'btn') {
+          // generous: they can't be felt, so a thumb a little off still counts (and anywhere near, the closest one)
           var rb = c.w / 2, db = Math.sqrt(dx * dx + dy * dy);
-          if (db < rb * 1.12) out.push(c.i); else if (db < rb * 1.6 && db < bd) { bd = db; best = c.i; }
+          if (db < rb * 1.3) out.push(c.i); else if (db < rb * 2.1 && db < bd) { bd = db; best = c.i; }
         } else if (c.k === 'pill' || c.k === 'sh') {
           if (Math.abs(dx) < c.w * .55 && Math.abs(dy) < c.h * .7) out.push(c.i);
         }
       });
-      // between two face buttons: both (B+A on a NES; any neighbouring pair on the others)
+      // between two face buttons: both, along a wide strip joining them (B+A on a NES; any neighbouring pair on the
+      // others), so a thumb rolled from one onto the other presses both on the way, like on the real pad
       var bs = ctls.filter(function (c) { return c.k === 'btn'; });
       for (var m = 0; m < bs.length; m++) for (var n = m + 1; n < bs.length; n++) {
-        var p = bs[m], q = bs[n], gap = Math.hypot(p.cx - q.cx, p.cy - q.cy);
-        if (gap < p.w * 1.6 && Math.hypot(x - (p.cx + q.cx) / 2, y - (p.cy + q.cy) / 2) < p.w * .24) { if (out.indexOf(p.i) < 0) out.push(p.i); if (out.indexOf(q.i) < 0) out.push(q.i); }
+        var p = bs[m], q = bs[n], vx = q.cx - p.cx, vy = q.cy - p.cy, gap = Math.hypot(vx, vy);
+        if (gap > p.w * 1.6) continue;
+        var tt = ((x - p.cx) * vx + (y - p.cy) * vy) / (gap * gap), off = Math.abs((x - p.cx) * vy - (y - p.cy) * vx) / gap;
+        if (tt > .28 && tt < .72 && off < p.w * .42) { if (out.indexOf(p.i) < 0) out.push(p.i); if (out.indexOf(q.i) < 0) out.push(q.i); }
       }
       if (!out.length && best != null) out.push(best);
       return out;
@@ -857,6 +865,14 @@
     sk.addEventListener('pointermove', function (e) { if (!touches[e.pointerId]) return; touches[e.pointerId] = read(e.clientX, e.clientY); update(); });
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (k) { sk.addEventListener(k, function (e) { if (!touches[e.pointerId]) return; delete touches[e.pointerId]; update(); }); });
     sk.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    // A lift the controller never heard about (turning the device mid-press, a notification sliding in) mustn't
+    // leave a button held: with no finger on the glass, nothing is pressed
+    function releaseAll() { if (!Object.keys(touches).length) return; touches = {}; update(); }
+    ['pointerup', 'pointercancel'].forEach(function (k) { window.addEventListener(k, function (e) { if (touches[e.pointerId]) { delete touches[e.pointerId]; update(); } }); });
+    ['touchend', 'touchcancel'].forEach(function (k) { window.addEventListener(k, function (e) { if (!e.touches || !e.touches.length) releaseAll(); }, { passive: true }); });
+    window.addEventListener('blur', releaseAll);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) releaseAll(); });
+    skinRelease = releaseAll;
   }
 
   // ═══ A real controller (Bluetooth or USB) ═════════════════════════════════
