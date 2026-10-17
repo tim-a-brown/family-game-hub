@@ -4,8 +4,10 @@
 //
 // Two kinds of games, both in Firebase Storage under a library key (32 random hex digits):
 //   roms/<lib>/<id>               the game file (id = SHA-1 of the file)
-//   roms/<lib>/label-<id>[-<v>].webp  its cartridge label (box art and logo), when it has one (art: v)
-//   roms/<lib>/index.json         {v, carts: {id: {sys, name, file, size, added, art?}}, del: {id: at}}
+//   roms/<lib>/label-<id>[-<v>].webp  its cartridge label (box art and logo), when it has one (art: v); or
+//   roms/<lib>/label-<id>.jpg     a label the app made itself when the game was added (label: its file name)
+//   roms/<lib>/index.json         {v, carts: {id: {sys, name, file, size, added, art?, label?}}, del: {id: at}}
+// Games added in the app go to the house (Add for everyone) or to your own library (Just for me).
 // - The house games: everyone signed in with a PIN has them. Firestore house/consoles {lib} names their library;
 //   it's read only when signed in, and kept on the device in gn_console_house.
 // - Your own games, added on a console's shelf: on this device in IndexedDB (gn_console: carts, states), and when
@@ -83,18 +85,15 @@ var ConsoleLib = (function () {
       return r.json();
     }).then(function (ix) { ix.carts = ix.carts || {}; ix.del = ix.del || {}; return ix; });
   }
-  function putIndex(ix) {
-    var k = lib(true); if (!k) return Promise.resolve();
-    return fetch(UP + '?uploadType=media&name=' + encodeURIComponent('roms/' + k + '/index.json'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ix) })
-      .then(function (r) { if (!r.ok) throw new Error('save index ' + r.status); });
+  // a file into a library
+  function put(k, name, body, type) {
+    return fetch(UP + '?uploadType=media&name=' + encodeURIComponent('roms/' + k + '/' + name), { method: 'POST', headers: { 'Content-Type': type }, body: body })
+      .then(function (r) { if (!r.ok) throw new Error('upload ' + name + ' ' + r.status); return true; });
   }
-  // read, change and write back your own list (the newest edit of each game wins)
-  function editIndex(fn) { return fetchIndex(lib(false)).then(function (ix) { if (!ix) return null; fn(ix); return putIndex(ix).then(function () { return ix; }); }); }
-  function upload(c) {
-    var k = lib(true); if (!k) return Promise.resolve(false);
-    return fetch(UP + '?uploadType=media&name=' + encodeURIComponent('roms/' + k + '/' + c.id), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: c.data })
-      .then(function (r) { if (!r.ok) throw new Error('upload ' + r.status); return true; });
-  }
+  // read, change and write back a library's list (yours unless another is named; the newest edit of each game wins)
+  function editAt(k, fn) { if (!k) return Promise.resolve(null); return fetchIndex(k).then(function (ix) { fn(ix); return put(k, 'index.json', JSON.stringify(ix), 'application/json').then(function () { return ix; }); }); }
+  function editIndex(fn) { var k = lib(true); return k ? editAt(k, fn) : Promise.resolve(null); }
+  function upload(c) { var k = lib(true); return k ? put(k, c.id, c.data, 'application/octet-stream') : Promise.resolve(false); }
   function download(k, id, onProgress) {
     return fetch(url(k, id, true)).then(function (r) {
       if (!r.ok) throw new Error('download ' + r.status);
@@ -117,7 +116,8 @@ var ConsoleLib = (function () {
     return false;
   }
   function entry(id, m, k, isHouse) {
-    return { id: id, sys: m.sys, name: m.name, file: m.file, size: m.size, added: m.added, played: 0, local: false, lib: k, house: isHouse, art: m.art ? artUrl(k, id, m.art) : null };
+    return { id: id, sys: m.sys, name: m.name, file: m.file, size: m.size, added: m.added, played: 0, local: false, lib: k, house: isHouse,
+      art: m.label ? url(k, m.label, true) : m.art ? artUrl(k, id, m.art) : null };
   }
   // everything: [{id, sys, name, file, size, added, played, local (on this device), house, lib, art, data?}]; uploads
   // any game only this device has to your own library, and drops ones you deleted on another device
@@ -146,23 +146,42 @@ var ConsoleLib = (function () {
       return out;
     });
   }
-  function save(c) {
-    return tx('carts', 'readwrite', function (s) { s.put(c); }).then(function () {
+  // a new game: on this device, and when signed in in the house (opts.house: everyone has it) or your own library,
+  // with its label picture (opts.label, a JPEG) when it has one
+  function save(c, opts) {
+    opts = opts || {};
+    return tx('carts', 'readwrite', function (s) { s.put(strip(c)); }).then(function () {
       if (!signedIn()) return;
-      return upload(c).then(function () { return editIndex(function (x) { x.carts[c.id] = meta(c); delete x.del[c.id]; }); })
-        .catch(function (e) { console.warn('[consoles] cloud copy failed', e); });
+      var hk = houseKey(), k = opts.house && hk ? hk : lib(true), lab = 'label-' + c.id + '.jpg';
+      return put(k, c.id, c.data, 'application/octet-stream')
+        .then(function () { return opts.label ? put(k, lab, opts.label, 'image/jpeg') : null; })
+        .then(function () { return editAt(k, function (x) { var m = meta(c); if (opts.label) m.label = lab; x.carts[c.id] = m; delete x.del[c.id]; }); })
+        .then(function () { c.lib = k; c.house = k === hk; if (opts.label) c.art = url(k, lab, true); return true; });
     });
+  }
+  // a new label picture for a game already on the shelf (Find cartridge art), in whichever library has the game
+  function setLabel(c, blob) {
+    var k = c.lib || lib(true), lab = 'label-' + c.id + '-' + Date.now().toString(36) + '.jpg';
+    if (!k) return Promise.reject(new Error('not signed in'));
+    return put(k, lab, blob, 'image/jpeg')
+      .then(function () { return editAt(k, function (x) { if (!x.carts[c.id]) x.carts[c.id] = meta(c); x.carts[c.id].label = lab; }); })
+      .then(function () { c.lib = k; c.art = url(k, lab, true); return c.art; });
   }
   function rename(c) {
     return tx('carts', 'readwrite', function (s) { if (c.data) s.put(strip(c)); }).then(function () {
-      return editIndex(function (x) { if (x.carts[c.id]) x.carts[c.id].name = c.name; }).catch(function () {});
+      if (!signedIn()) return;   // (a house game is renamed for everyone)
+      return editAt(c.lib || lib(true), function (x) { if (x.carts[c.id]) x.carts[c.id].name = c.name; }).catch(function () {});
     });
   }
-  function drop(id) {
+  function drop(id, c) {
     return tx('carts', 'readwrite', function (s) { s.delete(id); }).then(function () {
       return tx('states', 'readwrite', function (s) { var r = s.index('id').openCursor(IDBKeyRange.only(id)); r.onsuccess = function () { var c = r.result; if (c) { c.delete(); c.continue(); } }; });
     }).then(function () {
       if (!signedIn()) return;
+      if (c && c.house) {   // a house game: gone for everyone
+        var hk = c.lib; return editAt(hk, function (x) { delete x.carts[id]; x.del[id] = Date.now(); })
+          .then(function () { return fetch(url(hk, id), { method: 'DELETE' }); }).catch(function () {});
+      }
       return remove(id).then(function () { return editIndex(function (x) { delete x.carts[id]; x.del[id] = Date.now(); }); }).catch(function () {});
     });
   }
@@ -185,6 +204,6 @@ var ConsoleLib = (function () {
   function shown(id) { return vis()[id] !== 0; }
   function show(id, on) { var v = vis(); if (on) delete v[id]; else v[id] = 0; set('gn_console_vis', JSON.stringify(v)); }
 
-  return { db: db, tx: tx, list: list, save: save, rename: rename, drop: drop, file: file, cache: cache, strip: strip,
+  return { db: db, tx: tx, list: list, save: save, setLabel: setLabel, rename: rename, drop: drop, file: file, cache: cache, strip: strip, houseKey: houseKey,
     cloud: function () { return !!(lib(false) || houseKey()); }, signedIn: signedIn, shown: shown, show: show, vis: vis };
 })();

@@ -242,55 +242,136 @@
     var s, home = el('button', { type: 'button', class: 'tg', role: 'switch', 'aria-checked': String(L.shown(c.id)) },
       [el('span', { class: 'ic', html: Kit.icon('home') }), el('span', { class: 'lbl' }, [el('span', { text: 'On the home screen' }), el('small', { text: 'Its own tile in Consoles' })]), el('i', { class: 'sw' })]);
     home.onclick = function () { var on = !L.shown(c.id); L.show(c.id, on); home.setAttribute('aria-checked', String(on)); Kit.haptic('light'); };
+    var cloud = L.signedIn();
     s = Kit.sheet({ title: c.name, node: el('div', { class: 'k-list' }, [
       item('play', 'Play', null, function () { s.close(); insert(c, null); }),
-      c.house ? null : item('pencil', 'Rename', null, function () { s.close(); renameCart(c); }),
+      item('pencil', 'Rename', c.house ? 'For everyone' : null, function () { s.close(); renameCart(c); }),
       home,
-      c.house ? null : item('trash', L.signedIn() ? 'Remove from your games' : 'Remove from this device', c.file + ' · ' + Math.round((c.size || 0) / 1024) + ' KB', function () {
+      cloud ? item('sparkle', c.art ? 'Find the cartridge art again' : 'Find cartridge art', 'Its logo and box art', function () { s.close(); findArt(c); }) : null,
+      cloud ? item('camera', 'Use my own picture', 'A photo of the cartridge or the box', function () { s.close(); askPhoto(function (b) { if (b) L.setLabel(c, b).then(function () { L.cache(carts); drawShelf([c.id]); Kit.toast('Label added'); }, function () { Kit.toast('Couldn’t save the picture'); }); }); }) : null,
+      item('trash', c.house ? 'Remove for everyone' : cloud ? 'Remove from your games' : 'Remove from this device', c.file + ' · ' + Math.round((c.size || 0) / 1024) + ' KB', function () {
         s.close();
-        Kit.confirm('Take ' + c.name + ' off the shelf?', { ok: 'Remove', danger: true, body: (L.signedIn() ? 'Its game file is deleted from your account and this device' : 'Its game file is deleted from this device') + ', along with its save states. Its battery saves stay, in case you add it again.' })
-          .then(function (ok) { if (!ok) return; L.drop(c.id).then(function () { carts = carts.filter(function (x) { return x.id !== c.id; }); L.cache(carts); drawShelf(); Kit.toast('Removed'); }); });
+        Kit.confirm('Take ' + c.name + ' off the shelf' + (c.house ? ' for everyone' : '') + '?', { ok: 'Remove', danger: true, body: (c.house ? 'It’s deleted from the family’s games, so nobody has it any more' : cloud ? 'Its game file is deleted from your account and this device' : 'Its game file is deleted from this device') + ', along with its save states here. Its battery saves stay, in case you add it again.' })
+          .then(function (ok) { if (!ok) return; L.drop(c.id, c).then(function () { carts = carts.filter(function (x) { return x.id !== c.id; }); L.cache(carts); drawShelf(); Kit.toast('Removed'); }); });
       })
     ]) });
   }
-  function renameCart(c) {
-    var inp = el('input', { type: 'text', value: c.name, maxlength: '48', class: 'k-input', style: { width: '100%' } });
-    Kit.sheet({ title: 'Rename', node: inp, actions: [
-      { label: 'Save', cls: 'btn-primary', onClick: function () { var v = inp.value.trim(); if (!v) return; c.name = v; L.rename(c).then(function () { L.cache(carts); drawShelf(); }); } },
-      { label: 'Cancel', cls: 'btn-soft' }] });
-    setTimeout(function () { inp.focus(); inp.select(); }, 120);
-  }
+  function renameCart(c) { askName(c.name, function (v) { c.name = v; L.rename(c).then(function () { L.cache(carts); drawShelf(); }); }); }
 
-  // ── Adding games: the file picker ──
+  // ── Adding games: the file picker, then a sheet that works each one out ──
+  // Every file: unzipped if need be, put on the right console's shelf by its type, identified against the list of
+  // every released game, given its label (logo and box art, ConsoleArt). Then Add for everyone (the house: every
+  // account signed in has it) or Just for me (your own library).
   var picker = el('input', { type: 'file', multiple: '', style: { display: 'none' } });
   document.body.appendChild(picker);
   function pickFiles() { Kit.sfx('tap'); picker.value = ''; picker.click(); }
-  picker.addEventListener('change', function () {
-    var files = Array.prototype.slice.call(picker.files || []); if (!files.length) return;
-    var fresh = [], elsewhere = {}, skipped = [];
-    if (L.signedIn()) Kit.toast(files.length === 1 ? 'Adding to your games' : 'Adding ' + files.length + ' games');
-    files.reduce(function (p, f) {
-      return p.then(function () {
-        var sys = sysOfFile(f.name, f.size); if (!sys) { skipped.push(f.name); return; }
-        return f.arrayBuffer().then(function (buf) {
-          return sha1(buf).then(function (id) {
-            var old = carts.filter(function (x) { return x.id === id; })[0];
-            var rec = { id: id, sys: sys, name: old ? old.name : cleanName(f.name), file: f.name, size: f.size, added: old ? old.added : Date.now(), played: old ? old.played : 0, data: new Blob([buf]) };
-            return L.save(rec).then(function () {
-              rec.local = true; carts = carts.filter(function (x) { return x.id !== id; }); carts.push(rec);
-              if (sys === SYS_ID) fresh.push(id); else elsewhere[sys] = (elsewhere[sys] || 0) + 1;
+  picker.addEventListener('change', function () { var files = Array.prototype.slice.call(picker.files || []); if (files.length) addGames(files); });
+  var urls = [];
+  function blobUrl(b) { var u = URL.createObjectURL(b); urls.push(u); return u; }
+  function addGames(files) {
+    var list = el('div', { class: 'k-list ag-list' }), foot = el('div', { class: 'ag-foot' }), items = [], s;
+    files.forEach(function (f) { var it = { f: f, state: 'wait', name: cleanName(f.name), row: el('button', { type: 'button', class: 'ag-row' }) }; it.row.onclick = function () { rowMenu(it); }; items.push(it); list.appendChild(it.row); drawRow(it); });
+    s = Kit.sheet({ title: files.length === 1 ? 'Adding a game' : 'Adding ' + files.length + ' games', node: el('div', { class: 'ag' }, [list, foot]),
+      onClose: function () { urls.forEach(function (u) { URL.revokeObjectURL(u); }); urls = []; } });
+    items.reduce(function (p, it) { return p.then(function () { return work(it); }); }, Promise.resolve()).then(function () { drawFoot(); });
+    function drawFoot() {
+      foot.innerHTML = '';
+      var ready = items.filter(function (it) { return it.state === 'ready'; });
+      if (!ready.length) { foot.appendChild(el('button', { type: 'button', class: 'btn btn-soft', onclick: function () { s.close(); } }, ['Close'])); return; }
+      function go(house) {
+        return function () {
+          var bs = foot.querySelectorAll('button'); Array.prototype.forEach.call(bs, function (b) { b.disabled = true; });
+          var n = 0, fresh = [], elsewhere = {};
+          ready.reduce(function (p, it) {
+            return p.then(function () {
+              n++; bs[0].textContent = 'Adding ' + n + ' of ' + ready.length + '…';
+              var rec = { id: it.id, sys: it.sys, name: it.name, file: it.file, size: it.bytes.length, added: Date.now(), played: 0, data: new Blob([it.bytes]) };
+              return L.save(rec, { house: house, label: it.label }).then(function () {
+                rec.local = true; carts = carts.filter(function (x) { return x.id !== rec.id; }); carts.push(rec);
+                if (it.sys === SYS_ID) fresh.push(rec.id); else elsewhere[it.sys] = (elsewhere[it.sys] || 0) + 1;
+              });
             });
+          }, Promise.resolve()).then(function () {
+            s.close(); L.cache(carts); Kit.sfx('chip'); Kit.haptic('success'); drawShelf(fresh);
+            Kit.toast(ready.length + (ready.length === 1 ? ' game' : ' games') + (house ? ' added for everyone' : L.signedIn() ? ' added to your games' : ' added to this device'));
+            Object.keys(elsewhere).forEach(function (k) { Kit.toast(elsewhere[k] + (elsewhere[k] === 1 ? ' game' : ' games') + ' put on the ' + SYSTEMS[k].name + ' shelf'); });
+          }).catch(function (e) { console.warn(e); Kit.toast('Couldn’t add them all. Check your connection and try again.'); Array.prototype.forEach.call(bs, function (b) { b.disabled = false; }); drawFoot(); });
+        };
+      }
+      if (L.signedIn() && L.houseKey()) {
+        foot.appendChild(el('button', { type: 'button', class: 'btn btn-primary', onclick: go(true) }, ['Add for everyone']));
+        foot.appendChild(el('button', { type: 'button', class: 'btn btn-soft', onclick: go(false) }, ['Just for me']));
+      } else foot.appendChild(el('button', { type: 'button', class: 'btn btn-primary', onclick: go(false) }, [L.signedIn() ? 'Add to my games' : 'Add to this device']));
+    }
+  }
+  function drawRow(it) {
+    var r = it.row; r.innerHTML = ''; r.className = 'ag-row ' + it.state;
+    var thumb = el('span', { class: 'ag-thumb' + (it.sys ? ' sys-' + it.sys : '') });
+    if (it.label) thumb.appendChild(el('img', { src: it.labelUrl || (it.labelUrl = blobUrl(it.label)), alt: '' }));
+    else if (it.state === 'ready') thumb.appendChild(el('b', { text: it.name }));
+    else if (it.state !== 'skip') thumb.appendChild(el('i', { class: 'ag-spin' }));
+    var what = { wait: 'Waiting', read: 'Reading the file', find: 'Looking it up', art: 'Finding its cartridge art', skip: '', ready: '' }[it.state];
+    var sub = [it.sys ? SYSTEMS[it.sys].name : '', what, it.note].filter(Boolean).join(' · ');
+    r.appendChild(thumb); r.appendChild(el('span', { class: 'lbl' }, [el('span', { text: it.name }), el('small', { text: sub })]));
+    if (it.state === 'ready') r.appendChild(el('span', { class: 'ag-edit', html: Kit.icon('pencil') }));
+  }
+  function work(it) {
+    it.state = 'read'; drawRow(it);
+    return ConsoleArt.unpack(it.f).then(function (u) {
+      it.file = u.name; it.bytes = u.bytes; it.sys = sysOfFile(u.name, u.bytes.length);
+      if (!it.sys) { it.state = 'skip'; it.note = 'Not a game file these consoles play'; return; }
+      return sha1(u.bytes.buffer.slice(u.bytes.byteOffset, u.bytes.byteOffset + u.bytes.byteLength)).then(function (id) {
+        it.id = id;
+        if (carts.some(function (c) { return c.id === id; })) { it.state = 'skip'; it.note = 'Already on the shelf'; return; }
+        it.state = 'find'; drawRow(it);
+        return ConsoleArt.identify(it.sys, u.bytes, u.name).then(function (gid) {
+          it.gid = gid; it.name = gid ? gid.title : cleanName(u.name);
+          if (gid && gid.europe) it.note = 'European version: it may run slower than the American one';
+          if (!gid) { it.state = 'ready'; it.note = it.note || 'Not in the game list, so a plain label (tap to add a picture)'; return; }
+          it.state = 'art'; drawRow(it);
+          return ConsoleArt.art(it.sys, gid).then(function (a) { return ConsoleArt.label(a.box, a.logo); }).then(function (blob) {
+            it.label = blob; it.state = 'ready'; if (!blob) it.note = it.note || 'No art found, so a plain label (tap to add a picture)';
           });
         });
       });
-    }, Promise.resolve()).then(function () {
-      L.cache(carts);
-      if (fresh.length) { Kit.sfx('chip'); Kit.haptic('success'); }
-      drawShelf(fresh);
-      Object.keys(elsewhere).forEach(function (k) { Kit.toast(elsewhere[k] + (elsewhere[k] === 1 ? ' game' : ' games') + ' put on the ' + SYSTEMS[k].name + ' shelf'); });
-      if (skipped.length) Kit.toast(skipped.length === 1 ? skipped[0] + ' isn’t a game file this console plays' : skipped.length + ' files aren’t game files this console plays');
-    }).catch(function (e) { console.warn(e); Kit.toast('Couldn’t read that file'); });
-  });
+    }).catch(function (e) { console.warn(e); it.state = 'skip'; it.note = 'Couldn’t read this file'; }).then(function () { drawRow(it); });
+  }
+  // a game's own picture: a photo of the cartridge or its box, filling the label
+  var photoPick = el('input', { type: 'file', accept: 'image/*', style: { display: 'none' } }), onPhoto = null;
+  document.body.appendChild(photoPick);
+  photoPick.addEventListener('change', function () { var f = photoPick.files && photoPick.files[0]; if (f && onPhoto) ConsoleArt.ownLabel(f).then(onPhoto); });
+  function askPhoto(fn) { onPhoto = fn; photoPick.value = ''; photoPick.click(); }
+  function rowMenu(it) {
+    if (it.state !== 'ready') return;
+    var s = Kit.sheet({ title: it.name, node: el('div', { class: 'k-list' }, [
+      item('pencil', 'Rename', null, function () { s.close(); askName(it.name, function (v) { it.name = v; drawRow(it); }); }),
+      item('camera', 'Use my own picture', 'A photo of the cartridge or the box', function () { s.close(); askPhoto(function (b) { if (b) { it.label = b; it.labelUrl = null; it.note = ''; drawRow(it); } }); })
+    ]) });
+  }
+  function askName(v0, done) {
+    var inp = el('input', { type: 'text', value: v0, maxlength: '48', class: 'k-input', style: { width: '100%' } });
+    Kit.sheet({ title: 'Rename', node: inp, actions: [
+      { label: 'Save', cls: 'btn-primary', onClick: function () { var v = inp.value.trim(); if (v) done(v); } },
+      { label: 'Cancel', cls: 'btn-soft' }] });
+    setTimeout(function () { inp.focus(); inp.select(); }, 120);
+  }
+  // Find cartridge art for a game already on the shelf (one added before, or one with a plain label)
+  function findArt(c) {
+    Kit.toast('Looking for ' + c.name + '…');
+    return L.file(c).then(function (full) {
+      var bytes = new Uint8Array(0);
+      return full.data.arrayBuffer().then(function (buf) {
+        bytes = new Uint8Array(buf);
+        return ConsoleArt.identify(c.sys, bytes, c.file || c.name);
+      }).then(function (gid) {
+        if (!gid) return null;
+        return ConsoleArt.art(c.sys, gid).then(function (a) { return ConsoleArt.label(a.box, a.logo); });
+      });
+    }).then(function (blob) {
+      if (!blob) { Kit.toast('No art found for ' + c.name + '. Use my own picture adds one.'); return; }
+      return L.setLabel(c, blob).then(function () { L.cache(carts); drawShelf([c.id]); Kit.sfx('chip'); Kit.toast('Label added'); });
+    }).catch(function (e) { console.warn(e); Kit.toast('Couldn’t get the art. Check your connection.'); });
+  }
 
   // ── Into the console: the cartridge flies to the slot, the light comes on, the game takes over ──
   var busy = false;
