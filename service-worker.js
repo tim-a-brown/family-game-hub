@@ -383,6 +383,20 @@ function warmArt(urls) {
     return Promise.all([one(), one(), one(), one()]).then(() => trimArt(cache, true));
   });
 }
+// Console cartridge labels: kept on the device (each new label gets a new name, so a saved one never goes stale), so
+// the shelves and home tiles show them offline. Its own cache, so releases don't clear it.
+const CART_CACHE = 'cart-art-1';
+function isCartArt(url) {
+  if (url.hostname !== 'firebasestorage.googleapis.com') return false;
+  let p = url.pathname; try { p = decodeURIComponent(p); } catch (e) {}
+  return /\/o\/roms\/[0-9a-f]{32}\/label-[^/]+$/.test(p);
+}
+function cartArtFetch(req) {
+  return caches.open(CART_CACHE).then((cache) => cache.match(req.url).then((hit) => hit || fetch(req).then((resp) => {
+    if (resp && (resp.ok || resp.type === 'opaque')) { const c = resp.clone(); cache.put(req.url, c).catch(() => {}); }
+    return resp;
+  })));
+}
 self.addEventListener('message', (event) => {
   const d = event.data || {};
   if (d.type === 'lorc-warm' && Array.isArray(d.urls)) event.waitUntil(warmArt(d.urls.filter((u) => { try { return isArt(new URL(u)); } catch (e) { return false; } })));
@@ -437,6 +451,7 @@ self.addEventListener('fetch', (event) => {
 
   // Lorcana card art: from the device when we have it
   if (isArt(url)) { event.respondWith(artFetch(req)); return; }
+  if (isCartArt(url)) { event.respondWith(cartArtFetch(req)); return; }
 
   // The Firebase code itself: a fixed version that never changes, so from the device once saved (sign-in
   // otherwise waits on downloading it again whenever the phone has cleared its browser cache)

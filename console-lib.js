@@ -127,12 +127,19 @@ var ConsoleLib = (function () {
       return Promise.all([localAll(), fetchIndex(own).catch(function () { return null; }), own === hk ? null : fetchIndex(hk).catch(function () { return null; }), hk]);
     }).then(function (r) {
       var loc = r[0], ix = r[1], hx = r[2], hk = r[3], own = lib(false), by = {}, out = [], push = [];
+      // (offline, or a list that didn't come: the games kept on this device still show, and the home screen's tiles stay as they were)
+      var reached = (!own || ix) && (!hk || own === hk || hx);
       if (own && own === hk) { hx = ix; ix = null; }   // (the house library's keeper: their own list is the house list)
       if (hx) Object.keys(hx.carts).forEach(function (id) { by[id] = entry(id, hx.carts[id], hk, true); });
       if (ix) Object.keys(ix.carts).forEach(function (id) { if (!by[id]) by[id] = entry(id, ix.carts[id], own, false); });
       loc.forEach(function (c) {
         var cloud = by[c.id];
-        if (cloud) { cloud.local = true; cloud.data = c.data; cloud.played = c.played || 0; return; }
+        if (cloud) {
+          cloud.local = true; cloud.data = c.data; cloud.played = c.played || 0;
+          if (cloud.art && c.art !== cloud.art) { c.art = cloud.art; tx('carts', 'readwrite', function (s) { s.put(c); }); }   // (its label, for offline)
+          return;
+        }
+        if (c.house && signedIn() && c.lib === hk && !reached) { c.local = true; by[c.id] = c; return; }
         if (c.house || (c.lib && !signedIn())) return;   // a house game kept here, from before signing out
         if (ix && ix.del[c.id] && ix.del[c.id] > (c.added || 0)) { tx('carts', 'readwrite', function (s) { s.delete(c.id); }); return; }
         c.local = true; by[c.id] = c;
@@ -142,7 +149,7 @@ var ConsoleLib = (function () {
         .then(function () { return editIndex(function (x) { push.forEach(function (c) { x.carts[c.id] = meta(c); delete x.del[c.id]; }); }); })
         .catch(function (e) { console.warn('[consoles] cloud copy failed', e); });
       Object.keys(by).forEach(function (id) { out.push(by[id]); });
-      cache(out);
+      if (reached) cache(out);
       return out;
     });
   }
@@ -185,8 +192,8 @@ var ConsoleLib = (function () {
       return remove(id).then(function () { return editIndex(function (x) { delete x.carts[id]; x.del[id] = Date.now(); }); }).catch(function () {});
     });
   }
-  // what goes in IndexedDB: the game, without the list's own bookkeeping
-  function strip(c) { var o = {}; for (var k in c) if (k !== 'local' && k !== 'art') o[k] = c[k]; return o; }
+  // what goes in IndexedDB: the game, without the list's own bookkeeping (its label's address stays, for offline)
+  function strip(c) { var o = {}; for (var k in c) if (k !== 'local') o[k] = c[k]; return o; }
   // a game file for playing: from this device, or fetched from its library (and kept here)
   function file(c, onProgress) {
     return tx('carts', 'readonly', function (s) { return s.get(c.id); }).then(function (have) {
@@ -199,11 +206,30 @@ var ConsoleLib = (function () {
     });
   }
 
+  // every game in the list that isn't on this device yet, one after another, with its label (the service worker
+  // keeps labels): onProgress({n (done so far), total, frac (of the one coming down), c, landed}); resolves to how
+  // many couldn't be fetched
+  function saveAll(games, onProgress) {
+    var todo = games.filter(function (c) { return !c.local && c.lib; }), failed = 0;
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+    return todo.reduce(function (p, c, i) {
+      return p.then(function () {
+        if (onProgress) onProgress({ n: i, total: todo.length, frac: 0, c: c });
+        return file(c, function (f) { if (onProgress) onProgress({ n: i, total: todo.length, frac: f, c: c }); })
+          .then(function () { c.local = true; return c.art ? fetch(c.art).catch(function () {}) : null; })
+          .then(function () { if (onProgress) onProgress({ n: i + 1, total: todo.length, frac: 1, c: c, landed: true }); })
+          .catch(function (e) { failed++; console.warn('[consoles] download failed', c.name, e); });
+      });
+    }, Promise.resolve()).then(function () { if (onProgress) onProgress({ n: todo.length, total: todo.length, frac: 1, done: true }); return failed; });
+  }
+  function mbOf(games) { return games.reduce(function (t, c) { return t + (c.local ? 0 : c.size || 0); }, 0); }
+
   // ── What the home screen shows ──
   function vis() { try { return JSON.parse(get('gn_console_vis') || '{}') || {}; } catch (e) { return {}; } }
   function shown(id) { return vis()[id] !== 0; }
-  function show(id, on) { var v = vis(); if (on) delete v[id]; else v[id] = 0; set('gn_console_vis', JSON.stringify(v)); }
+  function show(id, on) { showMany([id], on); }
+  function showMany(ids, on) { var v = vis(); ids.forEach(function (id) { if (on) delete v[id]; else v[id] = 0; }); set('gn_console_vis', JSON.stringify(v)); }
 
-  return { db: db, tx: tx, list: list, save: save, setLabel: setLabel, rename: rename, drop: drop, file: file, cache: cache, strip: strip, houseKey: houseKey,
-    cloud: function () { return !!(lib(false) || houseKey()); }, signedIn: signedIn, shown: shown, show: show, vis: vis };
+  return { db: db, tx: tx, list: list, save: save, saveAll: saveAll, toFetch: mbOf, setLabel: setLabel, rename: rename, drop: drop, file: file, cache: cache, strip: strip, houseKey: houseKey,
+    cloud: function () { return !!(lib(false) || houseKey()); }, signedIn: signedIn, shown: shown, show: show, showMany: showMany, vis: vis };
 })();

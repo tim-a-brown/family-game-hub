@@ -181,6 +181,7 @@
     minus: '<path d="M5 12h14"/>',
     bolt: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
     cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+    download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
     coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><path d="M6 2v2"/><path d="M10 2v2"/><path d="M14 2v2"/>',
     compass: '<circle cx="12" cy="12" r="10"/><path d="m16.2 7.8-1.8 5.4-5.4 1.8 1.8-5.4z"/>',
     gem: '<path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>',
@@ -729,7 +730,7 @@
       el('div', { class: 'k-off-cols' }, [
         el('div', {}, [el('h3', { text: 'Works offline' }), el('ul', { class: 'k-off-ok' }, [
           li('check', 'Every game against the computer or pass-and-play'), li('check', 'Arcade, casino, puzzles and dailies'),
-          li('check', 'Crosswords, Sandlot stats, Axis & Allies marches'), li('check', 'Scores and history (they sync when you’re back)')])]),
+          li('check', 'Crosswords, Sandlot stats, Axis & Allies marches'), li('check', 'Console games on this device'), li('check', 'Scores and history (they sync when you’re back)')])]),
         el('div', {}, [el('h3', { text: 'Needs internet' }), el('ul', { class: 'k-off-no' }, [
           li('cloud', 'Online play and open tables'), li('cloud', 'Signing in and syncing'),
           li('cloud', 'Spotify controls (play your downloads in the Spotify app)'), li('cloud', 'Lorcana cards you haven’t seen yet, mini golf course search')])])
@@ -763,9 +764,45 @@
         haptic('error');
       });
     }
+    consoleRow(body);
     s = sheet({ title: 'Offline', node: body, actions: [{ label: 'Save everything', primary: true, keep: true, onClick: run }, { label: 'Done', cls: 'btn-soft' }] });
     go = s.el.querySelector('.k-acts .btn');
     swAsk({ type: 'offline-status' }).then(show, function () { head.textContent = 'Not available here'; sub.textContent = 'Open the app from its home screen icon to save it for offline.'; go.disabled = true; });
+  }
+
+  // Signed in: the console games (the family's and your own) come down to this device separately, being bigger
+  // (console-lib.js, loaded here when the page doesn't have it)
+  function withConsoleLib(fn) {
+    if (window.ConsoleLib) return fn(window.ConsoleLib);
+    var sc = doc.createElement('script'); sc.src = KIT_BASE + 'console-lib.js';
+    sc.onload = function () { if (window.ConsoleLib) fn(window.ConsoleLib); }; doc.head.appendChild(sc);
+  }
+  function consoleRow(body) {
+    if (!(window.FGHSync && FGHSync.isPin && FGHSync.isPin())) return;
+    var b = el('b', { text: 'Console games' }), sm = el('small', { text: 'Checking…' }), bar = el('i'), barBox = el('div', { class: 'k-off-bar' }, [bar]);
+    var go = el('button', { type: 'button', class: 'btn btn-soft', disabled: '' }, ['Download all']);
+    var row = el('div', { class: 'k-off-cons' }, [el('span', { class: 'k-off-ci', html: icon('console') }), el('div', { class: 'k-off-st' }, [b, sm]), go]);
+    barBox.hidden = true;
+    body.insertBefore(barBox, body.lastChild); body.insertBefore(row, barBox);
+    withConsoleLib(function (CL) {
+      var games = [], busy = false;
+      function show() {
+        var away = games.filter(function (c) { return !c.local && c.lib; }), have = games.length - away.length;
+        sm.textContent = !games.length ? 'None on your shelves yet' : !away.length ? 'All ' + games.length + ' on this device' : have + ' of ' + games.length + ' on this device · ' + mb(CL.toFetch(away));
+        go.hidden = !away.length; go.disabled = busy || navigator.onLine === false;
+      }
+      CL.list().then(function (l) { games = l || []; show(); }, function () { sm.textContent = 'Couldn’t check them'; });
+      go.onclick = function () {
+        if (busy) return; busy = true; go.disabled = true; go.textContent = 'Downloading…'; barBox.hidden = false; bar.style.width = '0'; sfx('tap');
+        CL.saveAll(games, function (p) {
+          bar.style.width = Math.round((p.n + (p.landed ? 0 : p.frac)) / Math.max(1, p.total) * 100) + '%';
+          if (!p.done) sm.textContent = Math.min(p.n + 1, p.total) + ' of ' + p.total + (p.c ? ' · ' + p.c.name : '');
+        }).then(function (failed) {
+          busy = false; go.textContent = 'Download all'; setTimeout(function () { barBox.hidden = true; }, 700); show();
+          if (failed) { sm.textContent += ' · ' + failed + ' didn’t come down'; haptic('error'); } else { haptic('success'); sfx('good'); }
+        });
+      };
+    });
   }
 
   function themePick(onDone) {

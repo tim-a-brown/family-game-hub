@@ -185,6 +185,7 @@
       : '<svg viewBox="0 0 ' + C.vb[0] + ' ' + C.vb[1] + '">' + C.svg() + '</svg>';
     if (opts.add) b.appendChild(el('span', { class: 'plus', html: Kit.icon('plus') + '<span>Add games</span>' }));
     else {
+      b.appendChild(el('span', { class: 'pick', html: Kit.icon('check') }));   // (choosing home tiles: lit when it has one)
       var n = c.name, fs = n.length <= 8 ? 17 : n.length <= 14 ? 15 : n.length <= 24 ? 13 : 11.5;
       // the longest word has to fit across the label on one line
       var longest = n.split(/\s+/).reduce(function (m, x) { return Math.max(m, x.length); }, 1), across = C.lab[2] * 100 - 8;
@@ -202,22 +203,30 @@
 
   // ═══ The shelf ════════════════════════════════════════════════════════════
   var view = $('cs'), carts = [], unitEl = null;
+  // picking: choosing which games have a home screen tile (tap a cartridge to light or dim it); dl: Download all
+  // under way ({n done, total, frac of the current one, id}); cartBtns: each game's cartridge on the shelf now
+  var picking = false, dl = null, cartBtns = {}, barEl = null, scrollKeep = 0;
   function mine() { return carts.filter(function (c) { return c.sys === SYS_ID; }); }
   function drawShelf(freshIds) {
-    view.innerHTML = '';
-    var sv = el('div', { class: 'shelf-view' });
+    var old = view.querySelector('.shelf-view'); scrollKeep = old ? old.scrollTop : 0;
+    view.innerHTML = ''; cartBtns = {};
+    var sv = el('div', { class: 'shelf-view' + (picking ? ' picking' : '') });
     var U = UNITS[SYS_ID];
     unitEl = el('div', { class: 'unit', html: '<svg viewBox="' + U.vb.join(' ') + '">' + U.svg + '</svg>' });
     sv.appendChild(el('div', { class: 'stand' }, [unitEl, el('div', { class: 'top wood' }), el('div', { class: 'lip' })]));
+    var all = mine().sort(function (a, b) { return (b.played || b.added || 0) - (a.played || a.added || 0); });
+    barEl = el('div', { class: 'shelf-bar' }); if (all.length) sv.appendChild(barEl);
     var wrap = el('div', { class: 'shelves' }); sv.appendChild(wrap);
     view.appendChild(sv);
-    var all = mine().sort(function (a, b) { return (b.played || b.added || 0) - (a.played || a.added || 0); });
     var items = all.map(function (c) {
       var b = cartEl(c, { fresh: freshIds && freshIds.indexOf(c.id) >= 0 });
-      holdable(b, function () { cartMenu(c); }, function () { insert(c, b); });
+      cartBtns[c.id] = b; markPick(c);
+      if (dl && dl.id === c.id) { b.classList.add('dl'); b.style.setProperty('--dl', dl.frac); }
+      holdable(b, function () { if (!picking) cartMenu(c); }, function () { if (picking) togglePick(c); else insert(c, b); });
       return b;
     });
-    var add = cartEl(null, { add: true }); add.addEventListener('click', pickFiles); items.push(add);
+    drawBar();
+    var add = cartEl(null, { add: true }); add.addEventListener('click', pickFiles); if (!picking) items.push(add);
     // as many cartridges as fit across make one shelf
     var W = Math.min(window.innerWidth, window.innerWidth >= 700 ? 760 : 560) - 44, per = Math.max(2, Math.floor((W + 12) / (cartW() + 12)));
     for (var i = 0; i < items.length; i += per) {
@@ -225,6 +234,78 @@
     }
     if (!all.length) sv.appendChild(el('p', { class: 'empty-note', text: 'Add the ' + SYS.name + ' game files you own.' }));
     sv.appendChild(el('p', { class: 'shelf-note', text: L.signedIn() ? 'Games you add are kept in your account, so they’re on every device you sign in on.' : 'Games you add stay on this device. Sign in with a PIN for everyone’s games, and to have yours on all your devices.' }));
+    sv.scrollTop = scrollKeep;
+  }
+  // the strip under the console: Home tiles (choose them on the shelf) and Download all; while choosing, the count
+  // with All, None and Done
+  function mb(b) { return b >= 1e6 ? Math.round(b / 1e6) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB'; }
+  function sbBtn(ic, label, cls, fn) { return el('button', { type: 'button', class: 'sb-btn' + (cls ? ' ' + cls : ''), html: (ic ? Kit.icon(ic) : '') + '<span>' + label + '</span>', onclick: fn }); }
+  function drawBar() {
+    if (!barEl) return;
+    var all = mine(); barEl.innerHTML = '';
+    if (picking) {
+      var on = all.filter(function (c) { return L.shown(c.id); }).length;
+      barEl.appendChild(el('span', { class: 'sb-n' }, [el('span', {}, [el('b', { text: String(on) }), ' of ' + all.length]), el('small', { text: 'on the home screen' })]));
+      barEl.appendChild(el('span', { class: 'sb-r' }, [
+        sbBtn(null, 'All', on === all.length ? 'dim' : '', function () { pickAll(true); }),
+        sbBtn(null, 'None', on ? '' : 'dim', function () { pickAll(false); }),
+        sbBtn('check', 'Done', 'go', function () { picking = false; Kit.sfx('tap'); drawShelf(); })]));
+      return;
+    }
+    barEl.appendChild(sbBtn('home', 'Home tiles', '', function () { picking = true; Kit.sfx('pop'); Kit.haptic('light'); drawShelf(); }));
+    var away = all.filter(function (c) { return !c.local && c.lib; });
+    if (dl) {
+      var pr = el('span', { class: 'sb-prog' }, [el('i', { style: { width: Math.round((dl.n + dl.frac) / dl.total * 100) + '%' } }),
+        el('span', { html: Kit.icon('download') + '<span>' + (dl.n + 1 > dl.total ? dl.total : dl.n + 1) + ' of ' + dl.total + '</span>' })]);
+      barEl.appendChild(pr);
+    } else if (away.length) {
+      barEl.appendChild(sbBtn('download', 'Download all <small>' + away.length + ' · ' + mb(L.toFetch(away)) + '</small>', '', downloadAll));
+    } else if (all.some(function (c) { return c.lib; })) {
+      barEl.appendChild(el('span', { class: 'sb-done', html: Kit.icon('check') + '<span>All on this device</span>' }));
+    }
+  }
+  function markPick(c) { var b = cartBtns[c.id]; if (b) b.classList.toggle('off', !L.shown(c.id)); }
+  function bump(b) { if (!b) return; b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
+  function togglePick(c) {
+    var on = !L.shown(c.id); L.show(c.id, on); markPick(c); bump(cartBtns[c.id]);
+    Kit.haptic('light'); Kit.sfx(on ? 'pop' : 'tap'); drawBar();
+  }
+  function pickAll(on) {
+    var all = mine(), ch = all.filter(function (c) { return L.shown(c.id) !== on; });
+    if (!ch.length) return;
+    L.showMany(ch.map(function (c) { return c.id; }), on);
+    ch.forEach(function (c, i) { markPick(c); setTimeout(function () { bump(cartBtns[c.id]); }, Math.min(i, 24) * 22); });
+    Kit.haptic('medium'); Kit.sfx(on ? 'pop' : 'tap'); drawBar();
+  }
+  // every game on this shelf that isn't on this device yet comes down, one after another: each cartridge fills
+  // as it arrives and hops onto the shelf when it's in
+  function downloadAll() {
+    var away = mine().filter(function (c) { return !c.local && c.lib; });
+    if (!away.length || dl) return;
+    if (navigator.onLine === false) { Kit.toast('Connect to the internet to download them'); return; }
+    Kit.sfx('tap'); Kit.haptic('light');
+    dl = { n: 0, total: away.length, frac: 0, id: null };
+    L.saveAll(away, function (p) {
+      if (!dl) return;
+      var prev = dl.id && cartBtns[dl.id];
+      dl.n = p.n; dl.frac = p.landed ? 0 : p.frac;
+      if (p.c && !p.landed) {
+        if (prev && dl.id !== p.c.id) prev.classList.remove('dl');
+        dl.id = p.c.id; var b = cartBtns[p.c.id]; if (b) { b.classList.add('dl'); b.style.setProperty('--dl', p.frac); }
+      }
+      if (p.landed) {
+        var lb = cartBtns[p.c.id];
+        if (lb) { lb.classList.remove('dl', 'away'); var cl = lb.querySelector('.cloud'); if (cl) cl.remove(); lb.classList.remove('landed'); void lb.offsetWidth; lb.classList.add('landed'); }
+        Kit.sfx('chip'); dl.id = null;
+      }
+      var fill = barEl && barEl.querySelector('.sb-prog i'), txt = barEl && barEl.querySelector('.sb-prog span span');
+      if (fill) fill.style.width = Math.round((dl.n + dl.frac) / dl.total * 100) + '%'; else drawBar();
+      if (txt) txt.textContent = Math.min(dl.n + 1, dl.total) + ' of ' + dl.total;
+    }).then(function (failed) {
+      var total = dl.total; dl = null; drawShelf();
+      if (failed) { Kit.toast(failed + (failed === 1 ? ' game' : ' games') + ' didn’t come down. Try again on a better connection.'); Kit.haptic('error'); }
+      else { Kit.haptic('success'); Kit.sfx('good'); Kit.toast(total === 1 ? 'It’s on this device now' : 'All ' + total + ' are on this device now'); }
+    });
   }
   // tap plays it; press and hold for the cartridge's own menu
   function holdable(b, onHold, onTap) {
@@ -1311,7 +1392,8 @@
       '<h3>Your games</h3><ul><li>Signed in with a PIN, everyone has the family’s games on the shelf. A game comes down the first time you play it on a device.</li>' +
       '<li>Tap the empty cartridge to add game files of your own (you can pick several at once).</li>' +
       '<li>Signed in with a PIN, they’re kept in your account, so every device you sign in on has them (a cloud badge means it comes down the first time you play it there). As a guest they stay on this device.</li>' +
-      '<li>Each game gets its own tile in Consoles on the home screen, which starts it straight away. <b>Edit</b> there (or press and hold a cartridge) turns tiles on and off.</li>' +
+      '<li>Each game gets its own tile in Consoles on the home screen, which starts it straight away. <b>Home tiles</b> on the shelf (or <b>Edit</b> on the home screen) chooses which games have one.</li>' +
+      '<li><b>Download all</b> on the shelf puts every game there on this device, so they play offline. <b>Offline</b> in the home menu does every console at once.</li>' +
       '<li>Tap a cartridge to play it. Press and hold one to rename it, hide its tile, or take it off the shelf.</li></ul>' +
       '<h3>Playing</h3><ul><li>Use the controller drawn on the screen, a keyboard (' + SYS.keys + '), or a real Bluetooth or USB controller.</li>' +
       '<li>Games that save on their own (battery saves) keep them on this device.</li>' +

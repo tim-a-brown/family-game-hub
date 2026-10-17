@@ -251,3 +251,47 @@ html.cs-play body{background:var(--skin-a,#1d1c20);}
 .net-pick .plank .cart:not(.add){animation:net-pick 1.6s ease-in-out infinite;}
 .net-pick .plank .cart:not(.add):nth-child(2n){animation-delay:.2s;}
 @keyframes net-pick{50%{filter:drop-shadow(0 0 10px rgba(127,216,255,.85)) brightness(1.08);transform:translateY(-3px);}}
+
+/* ── The strip under the console: Home tiles and Download all; while choosing tiles, the count and All / None / Done ── */
+.shelf-bar{width:min(100%,560px);margin:12px auto 0;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:38px;}
+.sb-btn{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 14px;border:0;border-radius:999px;cursor:pointer;
+  background:rgba(255,236,210,.1);color:rgba(255,236,210,.92);font:inherit;font-weight:800;font-size:.84rem;white-space:nowrap;
+  box-shadow:inset 0 0 0 1px rgba(255,236,210,.12);transition:transform .15s,background .2s,opacity .2s;-webkit-tap-highlight-color:transparent;}
+.sb-btn:active{transform:scale(.95);}
+.sb-btn svg{width:16px;height:16px;flex:none;}
+.sb-btn small{font-weight:600;opacity:.6;margin-left:2px;}
+.sb-btn.dim{opacity:.4;}
+.sb-btn.go{background:#f2c14e;color:#1d1406;box-shadow:none;}
+.sb-r{display:flex;gap:6px;}
+.sb-n{display:flex;flex-direction:column;color:rgba(255,236,210,.8);font-size:.9rem;font-weight:700;line-height:1.15;white-space:nowrap;}
+.sb-n small{font-size:.72rem;font-weight:600;color:rgba(255,236,210,.55);}
+.sb-n b{color:#f2c14e;font-size:1rem;}
+.sb-done{display:inline-flex;align-items:center;gap:6px;color:rgba(255,236,210,.55);font-size:.82rem;font-weight:700;}
+.sb-done svg{width:15px;height:15px;color:#6fdc8c;}
+.sb-prog{position:relative;overflow:hidden;display:inline-flex;align-items:center;min-height:36px;min-width:132px;padding:0 14px;border-radius:999px;
+  background:rgba(255,236,210,.1);box-shadow:inset 0 0 0 1px rgba(255,236,210,.12);color:rgba(255,236,210,.95);font-weight:800;font-size:.84rem;}
+.sb-prog i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(242,193,78,.35),rgba(242,193,78,.6));transition:width .25s;}
+.sb-prog > span{position:relative;display:inline-flex;align-items:center;gap:7px;}
+.sb-prog svg{width:16px;height:16px;animation:sb-drop 1s ease-in-out infinite;}
+@keyframes sb-drop{0%,100%{transform:translateY(-2px);}50%{transform:translateY(2px);}}
+
+/* choosing home tiles: a gold check on the ones with a tile, the rest dimmed; the empty Add slot steps aside */
+.cart .pick{display:none;position:absolute;left:-5px;top:-7px;z-index:3;width:26px;height:26px;border-radius:50%;place-items:center;
+  background:rgba(20,13,9,.75);box-shadow:inset 0 0 0 2px rgba(255,236,210,.5),0 2px 6px rgba(0,0,0,.5);color:transparent;transition:background .2s,color .2s,transform .2s;}
+.cart .pick svg{width:15px;height:15px;filter:none;stroke-width:3;}
+.picking .cart .pick{display:grid;}
+.picking .cart:not(.off) .pick{background:#f2c14e;color:#1d1406;box-shadow:0 2px 8px rgba(0,0,0,.5),0 0 0 3px rgba(242,193,78,.25);}
+.picking .cart.off > svg,.picking .cart.off .lab{opacity:.35;filter:grayscale(.75);}
+.picking .cart > svg,.picking .cart .lab{transition:opacity .2s,filter .2s;}
+.picking .cart.add{display:none;}
+.cart.bump{animation:cart-bump .32s var(--spring,cubic-bezier(.3,1.4,.5,1));}
+@keyframes cart-bump{0%{transform:none;}40%{transform:translateY(-7px) scale(1.03);}100%{transform:none;}}
+
+/* Download all: the cartridge coming down fills from the bottom, then hops onto the shelf */
+.cart.dl::after{content:"";position:absolute;z-index:3;left:12%;right:12%;bottom:10%;height:7px;border-radius:4px;background:rgba(0,0,0,.7);box-shadow:0 0 0 1.5px rgba(255,236,210,.35);}
+.cart.dl::before{content:"";position:absolute;z-index:4;left:12%;bottom:10%;height:7px;border-radius:4px;width:calc(var(--dl,0) * 76%);background:#f2c14e;
+  box-shadow:0 0 10px rgba(242,193,78,.8);transition:width .2s;}
+.cart.dl > svg{animation:cart-pulse 1s ease-in-out infinite;}
+@keyframes cart-pulse{50%{opacity:.8;}}
+.cart.landed{animation:cart-land .5s var(--spring,cubic-bezier(.3,1.4,.5,1));}
+@keyframes cart-land{0%{transform:none;}35%{transform:translateY(-12px);}100%{transform:none;}}
