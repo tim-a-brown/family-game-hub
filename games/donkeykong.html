@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Donkey Kong</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
+<style>
+/* ── Arcade page shell: fills the screen, never scrolls ─────────────────── */
+html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
+html.ar-on body{display:flex;flex-direction:column;
+  background:radial-gradient(90% 45% at 50% 0%, rgba(255,70,80,.10) 0%, rgba(255,70,80,0) 70%),var(--bg);}
+html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;padding:0 8px calc(var(--safe-b) + 8px);display:flex;}
+.dk-view{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;touch-action:none;}
+.dk-view[hidden]{display:none;}
+.hud{flex:none;display:flex;align-items:stretch;gap:6px;width:100%;}
+.plate{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4px 8px;border-radius:14px;
+  background:linear-gradient(180deg,#22142a,#120a18);box-shadow:inset 0 0 0 1.5px rgba(255,120,110,.3),0 6px 14px rgba(0,0,0,.35);}
+.plate small{font-size:.6rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,180,170,.65);white-space:nowrap;}
+.plate b{font-family:var(--display);font-weight:400;font-size:1.4rem;line-height:1.05;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.plate.sc b{color:#ff6b6b;text-shadow:0 0 12px rgba(255,80,80,.45);}
+.plate.bump b{animation:bounce .4s var(--spring);}
+.pbtn{flex:none;width:48px;border:0;border-radius:14px;display:grid;place-items:center;color:#ffd0c8;
+  background:linear-gradient(180deg,#22142a,#120a18);box-shadow:inset 0 0 0 1.5px rgba(255,120,110,.3),0 6px 14px rgba(0,0,0,.35);}
+.pbtn:active{transform:scale(.94);}
+.pbtn svg{width:22px;height:22px;}
+/* Cabinet: a wooden bezel round a dark glass screen */
+.cab{flex:none;width:100%;display:flex;align-items:center;justify-content:center;}
+.bezel{position:relative;padding:7px;border-radius:20px;}
+.scr{position:relative;border-radius:13px;overflow:hidden;background:#000;box-shadow:inset 0 0 0 2px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.06);}
+.scr canvas{display:block;touch-action:none;image-rendering:pixelated;}
+.scr::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px),
+    radial-gradient(120% 100% at 50% 50%,transparent 62%,rgba(0,0,0,.45) 100%);}
+/* Overlay cards inside the screen */
+.ov{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;padding:14px;
+  background:rgba(8,2,10,.62);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
+.ov[hidden]{display:none;}
+.ov .card{width:100%;max-width:300px;text-align:center;animation:pop .35s var(--spring);}
+.ov h2{font-family:var(--display);font-weight:400;font-size:2.3rem;line-height:1;color:#ff6b6b;text-shadow:0 3px 0 rgba(0,0,0,.5),0 0 22px rgba(255,60,60,.35);}
+.ov .sub{color:var(--text-2);font-weight:700;font-size:.92rem;margin:6px 0 12px;line-height:1.35;}
+.ov .btn-lg{width:100%;}
+.ov .row2{display:flex;gap:8px;margin-top:10px;}
+.ov .row2 .btn{flex:1;min-height:42px;padding:0 10px;font-size:.9rem;}
+/* Controls: a 4-way stick on the left, a big jump button on the right (arcade cabinet layout) */
+.ctrls{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 6px;}
+.pad{position:relative;width:170px;height:170px;border-radius:50%;touch-action:none;-webkit-user-select:none;user-select:none;flex:none;
+  background:radial-gradient(circle at 50% 40%,#3a2340 0%,#22142a 60%,#140a18 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.1),inset 0 -6px 14px rgba(0,0,0,.45),0 0 0 6px rgba(0,0,0,.25),0 14px 28px rgba(0,0,0,.45);}
+.pad i{position:absolute;width:52px;height:52px;display:grid;place-items:center;color:rgba(255,200,190,.5);transition:color .1s,transform .1s;}
+.pad i svg{width:28px;height:28px;}
+.pad i.u{left:59px;top:6px;} .pad i.d{left:59px;bottom:6px;} .pad i.l{left:6px;top:59px;} .pad i.r{right:6px;top:59px;}
+.pad i.on{color:#ff8a7a;transform:scale(1.15);filter:drop-shadow(0 0 8px rgba(255,90,70,.7));}
+.pad .nub{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
+  background:radial-gradient(circle at 40% 32%,#ff9a8a,#e0302a 55%,#8a1010);box-shadow:0 4px 0 #5a0808,0 8px 16px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.55);
+  transition:transform .08s;}
+.jbtn{flex:none;width:118px;height:118px;border-radius:50%;border:0;touch-action:none;-webkit-user-select:none;user-select:none;
+  font-family:var(--display);font-weight:400;font-size:1.35rem;letter-spacing:.06em;color:#fff4d8;text-shadow:0 2px 0 rgba(0,0,0,.4);
+  background:radial-gradient(circle at 42% 34%,#ffe27a,#f2a81c 55%,#a8620a);box-shadow:0 7px 0 #6b3c04,0 12px 22px rgba(0,0,0,.5),inset 0 3px 0 rgba(255,255,255,.55);
+  transition:transform .06s,box-shadow .06s;}
+.jbtn.down{transform:translateY(5px);box-shadow:0 2px 0 #6b3c04,0 6px 12px rgba(0,0,0,.5),inset 0 3px 0 rgba(255,255,255,.4);}
+.hint{flex:none;font-size:.82rem;font-weight:700;color:var(--text-3);text-align:center;}
+@media (hover:hover) and (pointer:fine){ .ctrls{display:none;} }
+@media (hover:none),(pointer:coarse){ .hint{display:none;} }
+@media (max-height:720px){ .pad{width:140px;height:140px;} .pad i{width:44px;height:44px;} .pad i.u{left:48px;top:3px;} .pad i.d{left:48px;bottom:3px;} .pad i.l{left:3px;top:48px;} .pad i.r{right:3px;top:48px;}
+  .pad .nub{width:48px;height:48px;margin:-24px 0 0 -24px;} .jbtn{width:96px;height:96px;font-size:1.1rem;} }
+/* Tablet landscape: the screen takes the full height, the stick bottom-left and the button bottom-right, under the thumbs */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
+  html.ar-on #app{max-width:none;position:relative;}
+  .ctrls{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 22px);padding:0 26px;pointer-events:none;}
+  .ctrls > *{pointer-events:auto;}
+  .pad{width:200px;height:200px;} .pad i{width:60px;height:60px;} .pad i.u{left:70px;top:8px;} .pad i.d{left:70px;bottom:8px;} .pad i.l{left:8px;top:70px;} .pad i.r{right:8px;top:70px;}
+  .pad .nub{width:68px;height:68px;margin:-34px 0 0 -34px;} .jbtn{width:140px;height:140px;font-size:1.6rem;}
+}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<div class="dk-view" id="view" hidden>
+  <div class="hud">
+    <div class="plate sc" id="p-score"><small>Score</small><b id="h-score">0</b></div>
+    <div class="plate"><small>High score</small><b id="h-hi">0</b></div>
+    <button class="pbtn" id="btn-pause" type="button" aria-label="Pause"></button>
+  </div>
+  <div class="cab" id="cab">
+    <div class="bezel wood" id="bezel">
+      <div class="scr" id="scr">
+        <canvas id="cv"></canvas>
+        <div class="ov" id="ov" hidden><div class="card" id="ov-card"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="ctrls">
+    <div class="pad" id="pad" aria-label="Joystick">
+      <i class="u"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5 4 16h16z"/></svg></i>
+      <i class="l"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 12 16 4v16z"/></svg></i>
+      <i class="d"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 19 4 8h16z"/></svg></i>
+      <i class="r"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 12 8 4v16z"/></svg></i>
+      <span class="nub" id="nub"></span>
+    </div>
+    <button class="jbtn" id="jbtn" type="button" aria-label="Jump">JUMP</button>
+  </div>
+  <div class="hint">Arrow keys or WASD to move and climb · Space to jump · P to pause</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var KEY = 'donkeykong', HI = 'dk', SAVE = 'dk_state';
+  var TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
+  var $ = function (id) { return document.getElementById(id); };
+  var PI = Math.PI;
+  var W = 224, H = 256;           // the arcade screen, in its own pixels
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+  // ═══ Pixel art ══════════════════════════════════════════════════════════
+  // Everything is drawn into a 224 × 256 screen at one pixel per arcade pixel, then scaled up without smoothing.
+  function mk(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  function rows(rs, pal) {
+    var h = rs.length, w = rs[0].length, c = mk(w, h), x = c.getContext('2d');
+    for (var r = 0; r < h; r++) for (var q = 0; q < w; q++) { var ch = rs[r].charAt(q); if (ch !== '.' && pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(q, r, 1, 1); } }
+    return c;
+  }
+  function flipX(c) { var f = mk(c.width, c.height), x = f.getContext('2d'); x.translate(c.width, 0); x.scale(-1, 1); x.drawImage(c, 0, 0); return f; }
+  function flipY(c) { var f = mk(c.width, c.height), x = f.getContext('2d'); x.translate(0, c.height); x.scale(1, -1); x.drawImage(c, 0, 0); return f; }
+  // A pixel grid for the drawn (not typed-out) sprites: discs and boxes snapped to whole pixels
+  function grid(w, h) {
+    var a = []; for (var i = 0; i < h; i++) a.push(new Array(w).fill(null));
+    var g = {
+      px: function (x, y, c) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < w && y < h) a[y][x] = c; },
+      ell: function (cx, cy, rx, ry, c) {
+        rx = Math.max(.5, rx); ry = Math.max(.5, ry);
+        for (var y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (var x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+          var dx = (x - cx) / rx, dy = (y - cy) / ry; if (dx * dx + dy * dy <= 1.05) g.px(x, y, c);
+        }
+      },
+      box: function (x0, y0, ww, hh, c) { for (var y = y0; y < y0 + hh; y++) for (var x = x0; x < x0 + ww; x++) g.px(x, y, c); },
+      line: function (x0, y0, x1, y1, c) { var n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (var i = 0; i <= n; i++) g.px(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, c); },
+      get: function (x, y) { return a[y] && a[y][x]; },
+      canvas: function () { var c = mk(w, h), x = c.getContext('2d'); for (var y = 0; y < h; y++) for (var q = 0; q < w; q++) if (a[y][q]) { x.fillStyle = a[y][q]; x.fillRect(q, y, 1, 1); } return c; }
+    };
+    return g;
+  }
+
+  // ── Jumpman (16 × 16, facing right) ──
+  var MP = { R: '#e8332a', B: '#2f5bff', S: '#ffc896', H: '#7a3a10', K: '#140c0c', Y: '#ffe04a', W: '#ffffff' };
+  var M_TOP = [
+    '.....RRRRRR.....',
+    '....RRRRRRRRRR..',
+    '....HHSSSKSS....',
+    '...HSSSSSKSSSS..',
+    '...HSHSSSSSSSSS.',
+    '...HHSSSSHHHHH..',
+    '.....SSSSSSSS...'];
+  var M_STAND = M_TOP.concat([
+    '....BBBRRBBB....',
+    '...BBBBRRBBBBB..',
+    '..SSBBRRRRRBBSS.',
+    '..SSSRYRRYRRSSS.',
+    '...SSRRRRRRRRS..',
+    '....RRRRRRRRR...',
+    '....RRRR.RRRR...',
+    '...HHHH...HHHH..',
+    '..HHHHH...HHHHH.']);
+  var M_WALK1 = M_TOP.concat([
+    '....BBBRRBBB....',
+    '...BBBBRRBBBBB..',
+    '..SSBBRRRRRBBSS.',
+    '..SSSRYRRYRRSSS.',
+    '...SSRRRRRRRS...',
+    '....RRRRRRRRR...',
+    '...RRRR...RRRR..',
+    '..HHHH.....HHHH.',
+    '..HHH.......HHH.']);
+  var M_WALK2 = M_TOP.concat([
+    '....BBBRRBBB....',
+    '...BBBBRRBBBB...',
+    '...SBBRRRRRBS...',
+    '...SSRYRRYRSS...',
+    '....SRRRRRRS....',
+    '.....RRRRRRR....',
+    '.....RRR.RRR....',
+    '....HHHH.HHHH...',
+    '....HHHHHHHH....']);
+  var M_JUMP = M_TOP.slice(0, 6).concat([
+    '.S...SSSSSSS..S.',
+    '.SS.BBBRRBBB.SS.',
+    '..SBBBBRRBBBBS..',
+    '...BBBRRRRRBB...',
+    '....RRYRRYRR....',
+    '....RRRRRRRRR...',
+    '...RRRRRRRRRRR..',
+    '..HHRRR...RRRHH.',
+    '..HHH.......HHH.',
+    '................']);
+  var M_CLIMB = [
+    '......RRRR......',
+    '.....RRRRRR.....',
+    '.....HHHHHH.....',
+    '....HHHHHHHH....',
+    '....SHHHHHHS....',
+    '...SS.HHHH.SS...',
+    '..SS..SSSS..SS..',
+    '..B.BBRRRRBB.B..',
+    '....BBRRRRBB....',
+    '....BRRRRRRB....',
+    '....RRRRRRRR....',
+    '....RRR..RRR....',
+    '....RRR..RRR....',
+    '....HH....HH....',
+    '...HHH....HHH...',
+    '................'];
+  var M_CLIMB2 = [
+    '......RRRR......',
+    '.....RRRRRR.....',
+    '.....HHHHHH.....',
+    '....HHHHHHHH....',
+    '...SSHHHHHHSS...',
+    '..SS..HHHH..S...',
+    '.....SSSSSS.SS..',
+    '....BBRRRRBB.B..',
+    '..B.BBRRRRBB....',
+    '....BRRRRRRB....',
+    '....RRRRRRRR....',
+    '....RRR..RRR....',
+    '...RRR....RRR...',
+    '...HH......HH...',
+    '..HHH......HHH..',
+    '................'];
+  // life counter: a tiny Jumpman (7 × 8)
+  var M_LIFE = ['..RRR..', '.RRRRR.', '.HSSKS.', '..SSSS.', '.BRRRB.', 'SRYRYRS', '.RR.RR.', 'HH...HH'];
+
+  // ── Pauline (16 × 19) ──
+  var PP = { O: '#ff8a1e', S: '#ffc896', K: '#140c0c', R: '#e8332a', P: '#ff6ec7', W: '#ffffff', H: '#a83a7a' };
+  var P_BASE = [
+    '....OOOO........',
+    '...OOOOOOO......',
+    '..OOSSSSOOO.....',
+    '..OSKSSKSOO.....',
+    '..OSSSSSSOO.....',
+    '...SSRRSSOOO....',
+    '....SSSSOOOO....',
+    '...PPWWPPOOO....',
+    '..PPPWWPPPOO....',
+    '.SSPPPPPPPSS....',
+    '.SS.PPPPPP.SS...',
+    '....PPPPPP......',
+    '...PPPPPPPP.....',
+    '..PPPPPPPPPP....',
+    '..PPPPPPPPPP....',
+    '.PPPPPPPPPPPP...',
+    '.PWPPWPPWPPWP...',
+    '....SS..SS......',
+    '...HHH..HHH.....'];
+  var P_WAVE = P_BASE.slice(0, 5).concat([
+    'S..SSRRSSOOO....',
+    'SS..SSSSOOOO....',
+    '.S.PPWWPPOOO....',
+    '.SPPPWWPPPOO....',
+    '..PPPPPPPPSS....',
+    '....PPPPPP.SS...']).concat(P_BASE.slice(11));
+
+  // ── Donkey Kong (48 × 32), drawn from shapes ──
+  var DKC = { D: '#a8521e', d: '#6e2f0e', T: '#f7c48a', E: '#ffffff', K: '#140808', M: '#7a1010' };
+  function dkSprite(pose) {
+    var g = grid(48, 33), D = DKC.D, T = DKC.T, d = DKC.d;
+    var back = pose === 'back1' || pose === 'back2';
+    // arms first (they sit behind the body when raised)
+    function armDown(cx, side) { g.ell(cx, 20, 4.5, 9, D); g.ell(cx - side * .5, 29, 3.6, 2.6, T); }
+    function armUp(cx, side, top) { g.ell(cx, 9 + top, 4, 8, D); g.ell(cx + side * 2.5, 1.5 + top, 3, 2.4, T); }
+    if (pose === 'throw') { armUp(11, 1, 0); armUp(37, -1, 0); }
+    else if (pose === 'back1') { armUp(11, 1, 0); armDown(38, -1); }
+    else if (pose === 'back2') { armDown(10, 1); armUp(37, -1, 0); }
+    // legs and feet
+    g.ell(15, 28, 6, 4.2, D); g.ell(33, 28, 6, 4.2, D);
+    g.ell(11.5, 31.2, 4.2, 1.4, T); g.ell(36.5, 31.2, 4.2, 1.4, T);
+    // body, then the chest
+    g.ell(24, 19, 13, 10, D);
+    g.ell(24, 25, 11, 3, d);
+    if (!back) g.ell(24, 20.5, 7.5, 6.5, T);
+    else g.ell(24, 19, 9, 8, D);
+    // head
+    g.ell(24, 8, 8.5, 7.5, D);
+    if (!back) {
+      g.ell(15.5, 8, 2.2, 2.2, D); g.ell(15.5, 8, 1, 1, T); g.ell(32.5, 8, 2.2, 2.2, D); g.ell(32.5, 8, 1, 1, T);
+      g.ell(24, 10.2, 5.8, 4.4, T);
+      for (var x = 18; x <= 30; x++) g.px(x, 5, d);
+      g.px(20, 7, DKC.E); g.px(21, 7, DKC.E); g.px(21, 7, DKC.K); g.px(27, 7, DKC.E); g.px(28, 7, DKC.E); g.px(27, 7, DKC.K);
+      g.px(22, 9, DKC.K); g.px(26, 9, DKC.K);
+      for (x = 20; x <= 28; x++) g.px(x, 12, DKC.M);
+      g.px(21, 12, DKC.E); g.px(23, 12, DKC.E); g.px(25, 12, DKC.E); g.px(27, 12, DKC.E);
+      for (x = 21; x <= 27; x++) g.px(x, 13, DKC.M);
+    } else { g.ell(24, 6, 6, 3, d); }
+    // arms in front of the body
+    if (pose === 'idle') { armDown(9.5, 1); armDown(38.5, -1); }
+    else if (pose === 'beatL') { g.ell(13, 15, 4.2, 5.5, D); g.ell(18, 18.5, 3.2, 3, T); armDown(38.5, -1); }
+    else if (pose === 'beatR') { armDown(9.5, 1); g.ell(35, 15, 4.2, 5.5, D); g.ell(30, 18.5, 3.2, 3, T); }
+    else if (pose === 'side') { g.ell(6, 18, 6.5, 3.6, D); g.ell(1.5, 18, 2.4, 3, T); armDown(38.5, -1); }
+    else if (pose === 'right') { armDown(9.5, 1); g.ell(42, 18, 6.5, 3.6, D); g.ell(46.5, 18, 2.4, 3, T); }
+    return g.canvas();
+  }
+
+  // ── Barrels: rolling (end on, 12 × 10) and going down a ladder (side on, 16 × 10) ──
+  function barrelRoll(fr, blue) {
+    var g = grid(12, 10), rim = blue ? '#1d3f9a' : '#6b3410', body = blue ? '#5fa8ff' : '#d8893c', hi = blue ? '#bfe0ff' : '#ffd08a';
+    g.ell(5.5, 4.5, 5.5, 4.5, rim); g.ell(5.5, 4.5, 4.4, 3.4, body);
+    var a = fr * PI / 4;
+    for (var t = -3.2; t <= 3.2; t += .5) { g.px(5.5 + Math.cos(a) * t, 4.5 + Math.sin(a) * t * .78, rim); g.px(5.5 + Math.cos(a + PI / 2) * t, 4.5 + Math.sin(a + PI / 2) * t * .78, rim); }
+    g.px(3, 2, hi); g.px(4, 1, hi);
+    return g.canvas();
+  }
+  function barrelSide(blue) {
+    var g = grid(16, 10), rim = blue ? '#1d3f9a' : '#6b3410', body = blue ? '#5fa8ff' : '#d8893c', hi = blue ? '#bfe0ff' : '#ffd08a';
+    g.box(2, 0, 12, 10, body); g.box(1, 1, 14, 8, body); g.box(0, 2, 16, 6, body);
+    for (var y = 0; y < 10; y++) { g.px(4, y, rim); g.px(11, y, rim); }
+    g.box(0, 2, 1, 6, rim); g.box(15, 2, 1, 6, rim);
+    for (var x = 5; x <= 10; x++) g.px(x, 2, hi);
+    return g.canvas();
+  }
+  // ── Fireball / firefox (16 × 16, two flicker frames) ──
+  function flame(fr, cool, fox) {
+    var g = grid(16, 16), O = cool ? '#3f7bff' : '#ff6a1a', R = cool ? '#1d2f9a' : '#d81f1f', Y = cool ? '#bfe6ff' : '#ffe64a';
+    g.ell(8, 10.5, 5.6, 5, R); g.ell(8, 10.5, 4.4, 3.9, O); g.ell(8, 11.5, 2.6, 2.4, Y);
+    var tips = fr ? [[4, 5], [8, 2], [12, 6]] : [[5, 4], [9, 3], [11, 5]];
+    tips.forEach(function (t) { g.line(t[0], t[1], 8 + (t[0] - 8) * .4, 8, R); g.line(t[0] + .5, t[1] + 1.5, 8 + (t[0] - 8) * .4, 9, O); });
+    if (fox) { g.px(5, 6, R); g.px(4, 5, R); g.px(11, 6, R); g.px(12, 5, R); }
+    g.px(6, 10, '#fff'); g.px(6, 11, '#140808'); g.px(10, 10, '#fff'); g.px(10, 11, '#140808');
+    return g.canvas();
+  }
+  // ── Hammer, oil drum, flames, items, heart, spring, cement pan, rivet ──
+  var HAMMER = rows([
+    '.HHHHHHHHHH.',
+    'HhhhhhhhhhhH',
+    'HhhhhhhhhhhH',
+    '.HHHHHHHHHH.',
+    '.....tt.....',
+    '.....tt.....',
+    '.....tt.....',
+    '.....tt.....',
+    '.....tt.....',
+    '.....tt.....'], { H: '#6b3410', h: '#c8752c', t: '#f2c68a' });
+  var OIL = rows([
+    '.WWWWWWWWWWWWWW.',
+    'BBBBBBBBBBBBBBBB',
+    'bbbbbbbbbbbbbbbb',
+    'BBBBBBBBBBBBBBBB',
+    'BBWWWBBWBBWBBBBB',
+    'BBWBWBBWBBWBBBBB',
+    'BBWBWBBWBBWBBBBB',
+    'BBWBWBBWBBWBBBBB',
+    'BBWWWBBWBBWWWBBB',
+    'BBBBBBBBBBBBBBBB',
+    'bbbbbbbbbbbbbbbb',
+    'BBBBBBBBBBBBBBBB',
+    'BBBBBBBBBBBBBBBB',
+    'bbbbbbbbbbbbbbbb',
+    'BBBBBBBBBBBBBBBB',
+    '.WWWWWWWWWWWWWW.'], { W: '#bcd2ff', B: '#2b5fd9', b: '#173a96' });
+  function fireTop(fr) {
+    var g = grid(16, 10), R = '#d81f1f', O = '#ff7a1a', Y = '#ffe64a';
+    var hs = fr ? [5, 8, 4, 9, 6, 7] : [7, 4, 9, 5, 8, 6];
+    for (var i = 0; i < 6; i++) { var x = 2 + i * 2.4; g.line(x, 10, x + (fr ? .5 : -.5), 10 - hs[i], R); g.line(x + .6, 10, x, 10 - hs[i] * .65, O); g.px(x + .4, 9, Y); }
+    return g.canvas();
+  }
+  var HAT = rows([
+    '.....PPPPPP.....',
+    '....PPPPPPPP....',
+    '....PPPPPPPP....',
+    '....WWWWWWWW....',
+    '..PPPPPPPPPPPP..',
+    'PPPPPPPPPPPPPPPP',
+    '.PPPPPPPPPPPPPP.'], { P: '#ff6ec7', W: '#ffffff' });
+  var PARASOL = rows([
+    '......PPPP......',
+    '....PPWWWWPP....',
+    '..PPWWPPPPWWPP..',
+    '.PWWPPPPPPPPWWP.',
+    'PWPPPPPPPPPPPPWP',
+    'P.P..P..P..P..P.',
+    '.......K........',
+    '.......K........',
+    '.......K........',
+    '.......K........',
+    '.......K........',
+    '....K..K........',
+    '.....KK.........'], { P: '#ff6ec7', W: '#ffffff', K: '#c88a3c' });
+  var PURSE = rows([
+    '....KKKKKK....',
+    '...K......K...',
+    '..K........K..',
+    '..PPPPYYPPPP..',
+    '.PPPPPYYPPPPP.',
+    'PPPPPPPPPPPPPP',
+    'PPWPPPPPPPPPPP',
+    'PPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPP',
+    '.PPPPPPPPPPPP.'], { P: '#ff6ec7', W: '#ffffff', K: '#c88a3c', Y: '#ffe04a' });
+  var HEART = rows([
+    '..RRR...RRR..',
+    '.RRRRR.RRRRR.',
+    'RRWRRRRRRRRRR',
+    'RWRRRRRRRRRRR',
+    'RRRRRRRRRRRRR',
+    '.RRRRRRRRRRR.',
+    '..RRRRRRRRR..',
+    '...RRRRRRR...',
+    '....RRRRR....',
+    '.....RRR.....',
+    '......R......'], { R: '#ff3a6a', W: '#ffd0e0' });
+  function springSpr(open) {
+    var g = grid(16, 14), P = '#d8e0f0', C = '#4fd3ff', h = open ? 14 : 10, y0 = 14 - h;
+    g.box(1, y0, 14, 2, P); g.box(1, 12, 14, 2, P);
+    var n = open ? 4 : 3, step = (h - 4) / n;
+    for (var i = 0; i < n; i++) { var ya = y0 + 2 + i * step, yb = ya + step / 2; g.line(3, ya, 12, yb, C); g.line(12, yb, 3, ya + step, C); }
+    return g.canvas();
+  }
+  var PIE = rows([
+    '....YYYYYYYY....',
+    '..YYyYYYYYyYYY..',
+    '.YYYYYYYYYYYYYY.',
+    'GGGGGGGGGGGGGGGG',
+    'gGGGGGGGGGGGGGGg',
+    '.gGGGGGGGGGGGGg.',
+    '..gggggggggggg..'], { Y: '#f2b45a', y: '#ffe0a0', G: '#a7b1c8', g: '#5d6680' });
+  var RIVET = rows([
+    'oYYYYYYo',
+    'YYYYYYYY',
+    'YYooooYY',
+    'YYoYYoYY',
+    'YYoYYoYY',
+    'YYooooYY',
+    'YYYYYYYY',
+    'oYYYYYYo'], { Y: '#ffd84a', o: '#a8780e' });
+
+  // girders: a steel beam with an X lattice, in each stage's colour
+  function girderSeg(col, dark) {
+    var g = grid(16, 8);
+    for (var x = 0; x < 16; x++) { g.px(x, 0, col); g.px(x, 7, col); g.px(x, 1, dark); }
+    for (var y = 2; y < 7; y++) for (x = 0; x < 16; x++) if ((x + y) % 6 === 1 || (x - y + 60) % 6 === 1) g.px(x, y, col);
+    return g.canvas();
+  }
+  function convSeg(col, off) {
+    var g = grid(16, 8);
+    for (var x = 0; x < 16; x++) { g.px(x, 0, col); g.px(x, 7, col); if ((x + off) % 4 < 2) { g.px(x, 2, '#ffd84a'); g.px(x, 5, '#ffd84a'); } }
+    return g.canvas();
+  }
+  function pulley(fr) {
+    var g = grid(8, 8); g.ell(3.5, 3.5, 3.6, 3.6, '#d81f1f'); g.ell(3.5, 3.5, 2.2, 2.2, '#ff8a6a');
+    var a = fr * PI / 4; g.line(3.5 - Math.cos(a) * 3, 3.5 - Math.sin(a) * 3, 3.5 + Math.cos(a) * 3, 3.5 + Math.sin(a) * 3, '#5a0808');
+    return g.canvas();
+  }
+
+  var SPR = {};
+  function buildSprites() {
+    function both(name, c) { SPR[name] = c; SPR[name + 'L'] = flipX(c); }
+    both('stand', rows(M_STAND, MP)); both('walk1', rows(M_WALK1, MP)); both('walk2', rows(M_WALK2, MP)); both('jump', rows(M_JUMP, MP));
+    SPR.climb1 = rows(M_CLIMB, MP); SPR.climb2 = rows(M_CLIMB2, MP); SPR.life = rows(M_LIFE, MP);
+    SPR.pauline = flipX(rows(P_BASE, PP)); SPR.paulineW = flipX(rows(P_WAVE, PP)); SPR.paulineR = rows(P_BASE, PP);
+    ['idle', 'beatL', 'beatR', 'throw', 'side', 'right', 'back1', 'back2'].forEach(function (p) { SPR['dk_' + p] = dkSprite(p); });
+    SPR.dk_fall = flipY(SPR.dk_idle);
+    for (var i = 0; i < 4; i++) { SPR['bar' + i] = barrelRoll(i, false); SPR['bbar' + i] = barrelRoll(i, true); }
+    SPR.barSide = barrelSide(false); SPR.bbarSide = barrelSide(true);
+    for (i = 0; i < 2; i++) { SPR['fire' + i] = flame(i, false); SPR['cool' + i] = flame(i, true); SPR['fox' + i] = flame(i, false, true); SPR['flame' + i] = fireTop(i); SPR['pulley' + i] = pulley(i * 2); SPR['pulleyB' + i] = pulley(i * 2 + 1); }
+    SPR.hammer = HAMMER; SPR.hammerSide = (function () { var c = mk(10, 12), x = c.getContext('2d'); x.translate(10, 0); x.rotate(PI / 2); x.drawImage(HAMMER, 0, 0); return c; })();
+    SPR.oil = OIL; SPR.hat = HAT; SPR.parasol = PARASOL; SPR.purse = PURSE; SPR.heart = HEART; SPR.rivet = RIVET; SPR.pie = PIE;
+    SPR.spring0 = springSpr(false); SPR.spring1 = springSpr(true);
+    var GC = { r: ['#ff3a5c', '#8a1428'], o: ['#ff8a3d', '#8a3a10'], b: ['#3f6bff', '#16247a'], y: ['#ffb02a', '#7a4a08'] };
+    for (var k in GC) { SPR['g' + k] = girderSeg(GC[k][0], GC[k][1]); for (var o = 0; o < 4; o++) SPR['c' + k + o] = convSeg(GC[k][0], o); }
+  }
+
+  // ── 5 × 7 pixel font ──
+  var FONT = {
+    '0': [14, 17, 19, 21, 25, 17, 14], '1': [4, 12, 4, 4, 4, 4, 14], '2': [14, 17, 1, 2, 4, 8, 31], '3': [31, 2, 4, 2, 1, 17, 14], '4': [2, 6, 10, 18, 31, 2, 2],
+    '5': [31, 16, 30, 1, 1, 17, 14], '6': [6, 8, 16, 30, 17, 17, 14], '7': [31, 1, 2, 4, 8, 8, 8], '8': [14, 17, 17, 14, 17, 17, 14], '9': [14, 17, 17, 15, 1, 2, 12],
+    A: [14, 17, 17, 31, 17, 17, 17], B: [30, 17, 17, 30, 17, 17, 30], C: [14, 17, 16, 16, 16, 17, 14], D: [28, 18, 17, 17, 17, 18, 28], E: [31, 16, 16, 30, 16, 16, 31],
+    F: [31, 16, 16, 30, 16, 16, 16], G: [14, 17, 16, 23, 17, 17, 15], H: [17, 17, 17, 31, 17, 17, 17], I: [14, 4, 4, 4, 4, 4, 14], J: [7, 2, 2, 2, 2, 18, 12],
+    K: [17, 18, 20, 24, 20, 18, 17], L: [16, 16, 16, 16, 16, 16, 31], M: [17, 27, 21, 21, 17, 17, 17], N: [17, 17, 25, 21, 19, 17, 17], O: [14, 17, 17, 17, 17, 17, 14],
+    P: [30, 17, 17, 30, 16, 16, 16], Q: [14, 17, 17, 17, 21, 18, 13], R: [30, 17, 17, 30, 20, 18, 17], S: [15, 16, 16, 14, 1, 1, 30], T: [31, 4, 4, 4, 4, 4, 4],
+    U: [17, 17, 17, 17, 17, 17, 14], V: [17, 17, 17, 17, 17, 10, 4], W: [17, 17, 17, 21, 21, 21, 10], X: [17, 17, 10, 4, 10, 17, 17], Y: [17, 17, 17, 10, 4, 4, 4],
+    Z: [31, 1, 2, 4, 8, 16, 31], '=': [0, 0, 31, 0, 31, 0, 0], '-': [0, 0, 0, 31, 0, 0, 0], '!': [4, 4, 4, 4, 4, 0, 4], '?': [14, 17, 1, 2, 4, 0, 4],
+    '.': [0, 0, 0, 0, 0, 0, 4], ':': [0, 4, 0, 0, 0, 4, 0], "'": [4, 4, 8, 0, 0, 0, 0], ',': [0, 0, 0, 0, 4, 4, 8], ' ': [0, 0, 0, 0, 0, 0, 0]
+  };
+  var TXT = {};
+  function txtC(s, col) {
+    s = String(s).toUpperCase(); var k = s + '|' + col; if (TXT[k]) return TXT[k];
+    var c = mk(Math.max(1, s.length * 6 - 1), 7), x = c.getContext('2d'); x.fillStyle = col;
+    for (var i = 0; i < s.length; i++) { var gl = FONT[s.charAt(i)] || FONT[' ']; for (var r = 0; r < 7; r++) for (var b = 0; b < 5; b++) if (gl[r] >> (4 - b) & 1) x.fillRect(i * 6 + b, r, 1, 1); }
+    return (TXT[k] = c);
+  }
+  function text(s, x, y, col, center) { var c = txtC(s, col || '#fff'); px.drawImage(c, Math.round(center ? x - c.width / 2 : x), Math.round(y)); }
+
+  // ═══ Sound: synthesised, in the spirit of the cabinet ═══════════════════
+  var Snd = (function () {
+    var ac = null, out = null, on = true, musGain = null, seq = null;
+    function ctx() {
+      if (ac) return ac;
+      try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+      out = ac.createGain(); out.gain.value = .5; out.connect(ac.destination);
+      musGain = ac.createGain(); musGain.gain.value = .55; musGain.connect(out);
+      return ac;
+    }
+    function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+    function tone(t, f, dur, type, vol, to, bus) {
+      var a = ctx(); if (!a || !on) return;
+      var o = a.createOscillator(), g = a.createGain(); o.type = type || 'square'; o.frequency.setValueAtTime(f, t);
+      if (to) o.frequency.exponentialRampToValueAtTime(Math.max(20, to), t + dur);
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol || .1, t + .006); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g); g.connect(bus || out); o.start(t); o.stop(t + dur + .02);
+    }
+    var nbuf = null;
+    function noise(t, dur, vol, lp) {
+      var a = ctx(); if (!a || !on) return;
+      if (!nbuf) { nbuf = a.createBuffer(1, a.sampleRate, a.sampleRate); var d = nbuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+      var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); s.buffer = nbuf; f.type = 'lowpass'; f.frequency.value = lp || 1200;
+      g.gain.setValueAtTime(vol || .2, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      s.connect(f); f.connect(g); g.connect(out); s.start(t, Math.random() * .5); s.stop(t + dur + .02);
+    }
+    function now() { var a = ctx(); return a ? a.currentTime + .01 : 0; }
+    // Background tunes, one per stage, plus the hammer's; each is a list of [midi or 0, beats] at a tempo
+    var TUNES = {
+      b25: { bpm: 168, wave: 'triangle', vol: .16, notes: [[36, 1], [0, 1], [43, 1], [0, 1], [45, 1], [0, 1], [43, 1], [0, 1], [36, 1], [0, 1], [43, 1], [0, 1], [41, 1], [40, 1], [38, 2]] },
+      b50: { bpm: 176, wave: 'square', vol: .07, notes: [[64, .5], [67, .5], [72, .5], [67, .5], [64, .5], [0, .5], [62, .5], [64, .5], [65, 1], [64, .5], [62, .5], [60, 1], [0, 1], [60, .5], [62, .5], [64, .5], [67, .5], [69, 1], [67, 1], [64, 1], [0, 1]] },
+      b75: { bpm: 184, wave: 'square', vol: .06, notes: [[72, .5], [0, .5], [72, .5], [74, .5], [76, 1], [72, .5], [0, .5], [71, .5], [0, .5], [71, .5], [72, .5], [74, 1], [71, .5], [0, .5], [69, .5], [71, .5], [72, .5], [69, .5], [67, 1], [64, 1], [67, 1], [0, 1]] },
+      b100: { bpm: 200, wave: 'square', vol: .06, notes: [[67, .5], [72, .5], [76, .5], [72, .5], [67, .5], [72, .5], [76, .5], [79, .5], [77, .5], [74, .5], [71, .5], [74, .5], [77, 1], [0, 1], [65, .5], [69, .5], [72, .5], [69, .5], [65, .5], [69, .5], [72, .5], [76, .5], [74, .5], [71, .5], [67, .5], [71, .5], [72, 1], [0, 1]] },
+      ham: { bpm: 300, wave: 'square', vol: .07, notes: [[72, 1], [76, 1], [79, 1], [76, 1], [77, 1], [81, 1], [84, 1], [81, 1], [79, 1], [76, 1], [72, 1], [76, 1], [74, 1], [77, 1], [71, 1], [74, 1]] }
+    };
+    function loop(name) {
+      if (seq && seq.name === name) return;
+      seq = name ? { name: name, i: 0, t: now() + .05, tune: TUNES[name] } : null;
+    }
+    function poll() {
+      var a = ac; if (!a || !seq || !on) return;
+      var tu = seq.tune, beat = 60 / tu.bpm;
+      while (seq.t < a.currentTime + .15) {
+        var n = tu.notes[seq.i % tu.notes.length], d = n[1] * beat;
+        if (n[0]) { tone(seq.t, mtof(n[0]), d * .85, tu.wave, tu.vol, null, musGain); if (seq.name === 'b25') tone(seq.t, mtof(n[0] + 12), d * .3, 'square', .025, null, musGain); }
+        seq.t += d; seq.i++;
+      }
+    }
+    var lastStep = 0;
+    return {
+      unlock: function () { var a = ctx(); if (a && a.state === 'suspended') try { a.resume(); } catch (e) {} },
+      loop: loop, poll: poll,
+      mute: function (v) { on = !v; if (!on) seq = null; },
+      walk: function () { var t = now(); if (t - lastStep < .1) return; lastStep = t; tone(t, 140, .05, 'square', .05, 90); },
+      climb: function () { var t = now(); if (t - lastStep < .12) return; lastStep = t; tone(t, 330, .04, 'square', .035, 260); },
+      jump: function () { var t = now(); tone(t, 400, .08, 'square', .07, 900); tone(t + .08, 900, .06, 'square', .04, 1200); },
+      score: function () { var t = now(); [76, 79, 84].forEach(function (m, i) { tone(t + i * .05, mtof(m), .08, 'square', .06); }); },
+      smash: function () { var t = now(); noise(t, .18, .3, 2400); tone(t, 300, .15, 'sawtooth', .07, 80); },
+      item: function () { var t = now(); [72, 76, 79, 84, 88].forEach(function (m, i) { tone(t + i * .04, mtof(m), .07, 'square', .05); }); },
+      rivet: function () { var t = now(); tone(t, 1200, .06, 'square', .06, 600); noise(t, .06, .15, 4000); },
+      thud: function () { var t = now(); tone(t, 90, .3, 'sine', .4, 40); noise(t, .25, .35, 400); },
+      barrel: function () { var t = now(); tone(t, 110, .08, 'triangle', .12, 70); },
+      spring: function () { var t = now(); tone(t, 300, .12, 'square', .04, 700); },
+      fire: function () { var t = now(); noise(t, .35, .2, 900); },
+      warn: function () { var t = now(); tone(t, 880, .06, 'square', .05); tone(t + .1, 880, .06, 'square', .05); },
+      tick: function () { var t = now(); tone(t, 1600, .02, 'square', .04); },
+      die: function () {
+        loop(null); var t = now();
+        for (var i = 0; i < 12; i++) tone(t + i * .055, mtof(84 - i * 2), .05, 'square', .07);
+        tone(t + .8, 220, .2, 'square', .08, 110); tone(t + 1.05, 165, .25, 'square', .08, 82); tone(t + 1.35, 110, .5, 'square', .09, 55);
+      },
+      clear: function () { loop(null); var t = now(); [[72, 0], [76, .12], [79, .24], [84, .36], [79, .6], [84, .72]].forEach(function (n) { tone(t + n[1], mtof(n[0]), .2, 'square', .08); tone(t + n[1], mtof(n[0] - 12), .2, 'triangle', .1); }); },
+      win: function () { loop(null); var t = now(); [72, 72, 76, 79, 84, 79, 84, 88].forEach(function (m, i) { tone(t + i * .14, mtof(m), .16, 'square', .08); tone(t + i * .14, mtof(m - 24), .16, 'triangle', .12); }); },
+      start: function () { var t = now(); [60, 64, 67, 72, 67, 72, 76].forEach(function (m, i) { tone(t + i * .11, mtof(m), .12, 'square', .07); }); },
+      stomp: function () { var t = now(); tone(t, 70, .35, 'sine', .5, 35); noise(t, .3, .4, 300); }
+    };
+  })();
+
+  // ═══ Stages ═════════════════════════════════════════════════════════════
+  // A platform is a run of 16-pixel girder pieces (each at its own height, so slopes step a pixel at a time),
+  // a conveyor (same, but it carries what's on it), or an elevator car (one piece, moving).
+  function plat(x0, ys, o) {
+    o = o || {};
+    var p = { x0: x0, x1: x0 + ys.length * 16, ys: ys.slice(), kind: o.kind || 'girder', conv: o.conv || 0, holes: [], id: o.id || '', col: o.col || 'r', solid: o.solid !== false };
+    p.down = ys[ys.length - 1] > ys[0] ? 1 : ys[ys.length - 1] < ys[0] ? -1 : 0;
+    return p;
+  }
+  function seq(a, n, d) { var r = []; for (var i = 0; i < n; i++) r.push(a + i * d); return r; }
+  function flat(y, n) { return seq(y, n, 0); }
+  // me: Jumpman, who can finish crossing a rivet hole he has just opened
+  function surf(p, x, me) {
+    if (x < p.x0 || x >= p.x1) return null;
+    for (var i = 0; i < p.holes.length; i++) { var h = p.holes[i]; if (me && h[2]) continue; if (x >= h[0] && x < h[1]) return null; }
+    return p.ys[Math.min(p.ys.length - 1, Math.floor((x - p.x0) / 16))];
+  }
+  function lad(S, x, lo, up, o) {
+    o = o || {}; var a = S.plats[lo], b = S.plats[up];
+    var l = { x: x, lo: a, up: b, yBot: surf(a, x), yTop: surf(b, x), broken: !!o.broken, deco: !!o.deco, retract: o.retract ? { ext: 1, st: 'up', t: rnd(120, 300) } : null };
+    l.stub = Math.round((l.yBot - l.yTop) * .42);
+    S.lads.push(l); return l;
+  }
+  // kinds: 1 = 25 m (girders and barrels), 2 = 50 m (conveyors), 3 = 75 m (elevators), 4 = 100 m (rivets)
+  var SEQS = [[1, 4], [1, 3, 4], [1, 2, 3, 4], [1, 2, 1, 3, 4], [1, 2, 1, 3, 1, 4]];
+  function stageList(level) { return SEQS[Math.min(level, 5) - 1]; }
+  function buildStage(kind) {
+    var S = { kind: kind, plats: [], lads: [], hammers: [], items: [], oil: null, dk: null, pauline: null, start: null, elev: null, rivets: [], goal: null };
+    var P = function (x0, ys, o) { S.plats.push(plat(x0, ys, o)); return S.plats.length - 1; };
+    if (kind === 1) {
+      var g0 = P(0, [248, 248, 248, 248, 248, 248, 248, 247, 246, 245, 244, 243, 242, 241], { col: 'r' });
+      var g1 = P(0, seq(208, 13, 1), { col: 'r' });
+      var g2 = P(16, seq(188, 13, -1), { col: 'r' });
+      var g3 = P(0, seq(142, 13, 1), { col: 'r' });
+      var g4 = P(16, seq(122, 13, -1), { col: 'r' });
+      var g5 = P(0, [84, 84, 84, 84, 84, 84, 84, 84, 84, 85, 86, 87, 88], { col: 'r', id: 'dk' });
+      var top = P(88, [56, 56, 56], { col: 'r', id: 'top' });
+      lad(S, 84, g0, g1, { broken: true }); lad(S, 188, g0, g1);
+      lad(S, 36, g1, g2); lad(S, 100, g1, g2);
+      lad(S, 68, g2, g3, { broken: true }); lad(S, 116, g2, g3); lad(S, 188, g2, g3);
+      lad(S, 36, g3, g4); lad(S, 84, g3, g4, { broken: true }); lad(S, 172, g3, g4);
+      lad(S, 76, g4, g5, { broken: true }); lad(S, 188, g4, g5);
+      lad(S, 124, g5, top);
+      S.decoLads = [{ x: 52, y0: 24, y1: 84 }, { x: 68, y0: 24, y1: 84 }];
+      S.hammers.push({ x: 168, y: surf(S.plats[g1], 168) - 26 }, { x: 28, y: surf(S.plats[g4], 28) - 26 });
+      S.oil = { x: 16, y: 248, lit: false };
+      S.dk = { x: 40, y: 84, mode: 'barrels' }; S.pauline = { x: 104, y: 56 };
+      S.start = { x: 56, p: g0 }; S.goal = S.plats[top];
+    } else if (kind === 2) {
+      var f0 = P(0, flat(248, 14), { col: 'o' });
+      var c1 = P(16, flat(208, 12), { kind: 'conv', conv: .5, col: 'o' });
+      var m2l = P(0, flat(168, 6), { kind: 'conv', conv: -.5, col: 'o' });
+      var m2c = P(96, flat(168, 2), { col: 'o' });
+      var m2r = P(128, flat(168, 6), { kind: 'conv', conv: .5, col: 'o' });
+      var p3 = P(0, flat(128, 14), { col: 'o' });
+      var c4 = P(0, flat(88, 14), { kind: 'conv', conv: -.5, col: 'o', id: 'top' });
+      var ptop = P(88, flat(56, 3), { col: 'o' });
+      lad(S, 32, f0, c1); lad(S, 112, f0, c1); lad(S, 192, f0, c1);
+      lad(S, 40, c1, m2l); lad(S, 184, c1, m2r);
+      lad(S, 24, m2l, p3); lad(S, 72, m2l, p3); lad(S, 152, m2r, p3); lad(S, 200, m2r, p3);
+      lad(S, 24, p3, c4, { retract: true }); lad(S, 200, p3, c4, { retract: true });
+      lad(S, 124, c4, ptop, { deco: true });
+      S.hammers.push({ x: 24, y: 168 - 26 }, { x: 200, y: 208 - 26 });
+      S.items.push({ kind: 'parasol', x: 56, y: 128 }, { kind: 'purse', x: 176, y: 128 }, { kind: 'hat', x: 200, y: 248 });
+      S.oil = { x: 112, y: 168, lit: true };
+      S.dk = { x: 112, y: 88, mode: 'walk' }; S.pauline = { x: 104, y: 56 };
+      S.start = { x: 48, p: f0 }; S.goal = S.plats[c4];
+      S.pieSpots = [{ p: c1 }, { p: m2l, from: 96 }, { p: m2r, from: 128 }];
+    } else if (kind === 3) {
+      var a0 = P(0, flat(248, 3), { col: 'o' });
+      var b0 = P(64, flat(248, 3), { col: 'o' });
+      var r0 = P(144, flat(248, 5), { col: 'o' });
+      var m1 = P(72, flat(208, 2), { col: 'o' });
+      var m2 = P(72, flat(168, 2), { col: 'o' });
+      var m3 = P(72, flat(128, 2), { col: 'o' });
+      var r1 = P(152, flat(208, 3), { col: 'o' });
+      var r2 = P(168, flat(168, 3), { col: 'o' });
+      var r3 = P(176, flat(128, 3), { col: 'o' });
+      var tg = P(0, flat(84, 14), { col: 'o' });
+      var pt = P(88, flat(56, 4), { col: 'o', id: 'top' });
+      lad(S, 88, b0, m1); lad(S, 80, m1, m2); lad(S, 96, m2, m3);
+      lad(S, 168, r0, r1); lad(S, 184, r1, r2); lad(S, 212, r2, r3); lad(S, 192, r3, tg);
+      lad(S, 144, tg, pt);
+      // two elevator shafts: the left one goes up, the right one goes down
+      S.elev = [{ x: 48, dir: -1, yTop: 100, yBot: 248, cars: [] }, { x: 120, dir: 1, yTop: 100, yBot: 248, cars: [] }];
+      S.elev.forEach(function (sh) { for (var y = sh.yTop + 12; y < sh.yBot; y += 44) addCar(S, sh, y); });
+      S.items.push({ kind: 'parasol', x: 88, y: 128 }, { kind: 'purse', x: 192, y: 168 }, { kind: 'hat', x: 208, y: 248 });
+      S.dk = { x: 40, y: 84, mode: 'springs' }; S.pauline = { x: 112, y: 56 };
+      S.start = { x: 16, p: a0 }; S.goal = S.plats[pt];
+    } else {
+      var q0 = P(0, flat(248, 14), { col: 'b' });
+      var q1 = P(8, flat(208, 13), { col: 'b' });
+      var q2 = P(16, flat(168, 12), { col: 'b' });
+      var q3 = P(24, flat(128, 11), { col: 'b' });
+      var q4 = P(32, flat(88, 10), { col: 'b', id: 'dk' });
+      P(88, flat(48, 3), { col: 'b', id: 'top' });
+      lad(S, 20, q0, q1); lad(S, 112, q0, q1); lad(S, 204, q0, q1);
+      lad(S, 28, q1, q2); lad(S, 88, q1, q2); lad(S, 136, q1, q2); lad(S, 196, q1, q2);
+      lad(S, 36, q2, q3); lad(S, 112, q2, q3); lad(S, 188, q2, q3);
+      lad(S, 44, q3, q4); lad(S, 180, q3, q4);
+      [q1, q2, q3, q4].forEach(function (pi) { [48, 168].forEach(function (rx) { S.rivets.push({ p: S.plats[pi], x: rx, y: S.plats[pi].ys[0], on: true }); }); });
+      S.hammers.push({ x: 24, y: 168 - 26 }, { x: 196, y: 128 - 26 });
+      S.items.push({ kind: 'hat', x: 120, y: 208 }, { kind: 'parasol', x: 72, y: 128 }, { kind: 'purse', x: 152, y: 168 });
+      S.dk = { x: 112, y: 88, mode: 'pace' }; S.pauline = { x: 104, y: 48 };
+      S.start = { x: 32, p: q0 };
+    }
+    S.hammers.forEach(function (h) { h.on = true; });
+    S.items.forEach(function (it) { it.on = true; });
+    return S;
+  }
+  function addCar(S, sh, y) { var p = plat(sh.x, [y], { kind: 'elev', col: 'o' }); p.sh = sh; sh.cars.push(p); S.plats.push(p); return p; }
+
+  // ═══ Game state ═════════════════════════════════════════════════════════
+  var G = null, ST = null, phase = 'idle', pt = 0, paused = false, frame = 0;
+  var cv = $('cv'), ctx = cv.getContext('2d');
+  var scr = mk(W, H), px = scr.getContext('2d');
+  function hiList() { return ArcadeHi.list(HI); }
+  function topScore() { var l = hiList(), old = 0; try { old = parseInt(localStorage.getItem('dkHi'), 10) || 0; } catch (e) {} return Math.max(old, l.length ? l[0].score : 0); }
+  var hiAtStart = 0;
+
+  var WALK = .85, CLIMB = .62, JV = 1.5, GRAV = .0805, JX = .95, FALLMAX = 19;
+  function bonusStart(lv) { return Math.min(8000, 4000 + 1000 * lv); }
+  function itemPts(lv) { return lv <= 1 ? 300 : lv === 2 ? 500 : 800; }
+
+  function newGame(cfg, saved) {
+    G = {
+      who: cfg.who || 'Player', startLives: cfg.lives || 3, score: 0, lives: cfg.lives || 3, level: 1, si: 0, extra: false, started: Date.now(),
+      stats: { jumped: 0, smashed: 0, rivets: 0, items: 0, stages: 0, deaths: [], best: 0, bestStage: '', heights: [] }
+    };
+    if (saved) { G.score = saved.score; G.lives = saved.lives; G.level = saved.level; G.si = saved.si; G.extra = !!saved.extra; G.started = saved.started || Date.now(); G.stats = saved.stats || G.stats; }
+    hiAtStart = topScore();
+    Kit.gameStart();
+  }
+  function kindNow() { return stageList(G.level)[G.si]; }
+  function heightNow() { return (G.si + 1) * 25; }
+  function startStage(fresh) {
+    ST = buildStage(kindNow());
+    ST.bonus = bonusStart(G.level); ST.bonusT = 0; ST.t = 0;
+    ST.barrels = []; ST.fires = []; ST.pies = []; ST.springs = []; ST.pops = []; ST.sparks = [];
+    ST.dkT = 90; ST.dkPose = 'idle'; ST.thrown = 0; ST.firstDrop = kindNow() === 1; ST.foxT = 120; ST.pieT = 60; ST.springT = 80; ST.shake = 0;
+    if (ST.kind === 3) for (var i = 0; i < 2; i++) ST.fires.push(newFire(i ? 196 : 88, i ? ST.plats[8] : ST.plats[4]));
+    if (ST.kind === 2) { ST.convT = rnd(240, 420); ST.topT = rnd(200, 360); }
+    var s = ST.start;
+    G.m = { x: s.x, y: surf(ST.plats[s.p], s.x), p: ST.plats[s.p], st: 'ground', dir: 1, vy: 0, vx: 0, apex: 0, anim: 0, ham: 0, hamT: 0, over: [], lad: null, walked: 0 };
+    hud(); save();
+    if (fresh) setPhase('howhigh', 150); else setPhase('ready', 70);
+  }
+  function setPhase(p, t) { phase = p; pt = t || 0; if (p === 'play') Snd.loop(['', 'b25', 'b50', 'b75', 'b100'][ST.kind]); }
+  function add(n, x, y) {
+    var before = G.score; G.score += n; hud(true);
+    if (x != null) ST.pops.push({ x: x, y: y, n: n, t: 50 });
+    if (!G.extra && before < 7000 && G.score >= 7000) { G.extra = true; G.lives++; Kit.callout('Extra life!', '#ff6b6b'); Kit.haptic('success'); Snd.item(); }
+  }
+
+  // ── Where things stand ──
+  function standAt(x, y, tol) {
+    var best = null, by = 1e9;
+    for (var i = 0; i < ST.plats.length; i++) { var p = ST.plats[i], s = surf(p, x); if (s == null) continue; if (Math.abs(s - y) <= tol && s < by) { best = p; by = s; } }
+    return best;
+  }
+  // the first platform a falling thing at x passes through between y0 and y1
+  function landOn(x, y0, y1) {
+    var best = null, by = 1e9;
+    for (var i = 0; i < ST.plats.length; i++) { var p = ST.plats[i], s = surf(p, x); if (s == null) continue; if (s >= y0 - .01 && s <= y1 + .01 && s < by) { best = p; by = s; } }
+    return best;
+  }
+  function ladAt(x, y, up) {
+    for (var i = 0; i < ST.lads.length; i++) {
+      var l = ST.lads[i]; if (l.deco || Math.abs(l.x - x) > 4) continue;
+      if (up && Math.abs(l.yBot - y) <= 3) return l;
+      if (!up && Math.abs(l.yTop - y) <= 3 && !l.broken && !(l.retract && l.retract.ext < 1)) return l;
+    }
+    return null;
+  }
+  function climbTop(l) { return l.broken || (l.retract && l.retract.ext < 1) ? l.yBot - l.stub : l.yTop; }
+
+  // ── Jumpman ──
+  function stepMario() {
+    var m = G.m, L = ctl.l, R = ctl.r, U = ctl.u, D = ctl.d, jp = ctl.jumpQ; ctl.jumpQ = false;
+    var dx = (R ? 1 : 0) - (L ? 1 : 0);
+    if (m.ham > 0) { m.ham--; m.hamT++; if (m.ham === 0) Snd.loop(['', 'b25', 'b50', 'b75', 'b100'][ST.kind]); }
+    if (m.st === 'ground') {
+      var p = m.p;
+      if (p.kind === 'elev') m.y = p.ys[0];
+      if (p.conv) m.x += p.conv;
+      if (jp && !m.ham) { m.st = 'jump'; m.vy = -JV; m.vx = dx * JX; if (dx) m.dir = dx; m.apex = m.y; m.over = []; Snd.jump(); return; }
+      var l = !m.ham && U ? ladAt(m.x, m.y, true) : !m.ham && D ? ladAt(m.x, m.y, false) : null;
+      if (l && !(U && climbTop(l) >= l.yBot - 1)) { m.st = 'climb'; m.lad = l; m.x = l.x; m.anim = 0; return; }
+      if (dx) { m.dir = dx; m.x += dx * WALK; m.anim += WALK; if (Math.floor(m.anim / 6) !== Math.floor((m.anim - WALK) / 6)) Snd.walk(); }
+      m.x = clamp(m.x, 5, W - 5);
+      p.holes.forEach(function (h) { if (h[2] && (m.x < h[0] - 6 || m.x > h[1] + 6)) h[2] = false; });
+      var s = surf(p, m.x, true);
+      if (s == null || Math.abs(s - m.y) > 4) {
+        var np = standAt(m.x, m.y, 4);
+        if (np) { m.p = np; m.y = surf(np, m.x); }
+        else { m.st = 'fall'; m.vy = 0; m.vx = 0; m.apex = m.y; }
+      } else m.y = s;
+      // carried to the top of the up shaft, or down into the pit
+      if (m.st === 'ground' && p.kind === 'elev' && p.sh.dir < 0 && m.y <= p.sh.yTop + 2) return die('elevator');
+    } else if (m.st === 'climb') {
+      var lc = m.lad, lim = climbTop(lc);
+      if (U) { m.y -= CLIMB; m.anim += CLIMB; Snd.climb(); if (m.y <= lim) { if (lim === lc.yTop) { m.y = lc.yTop; m.st = 'ground'; m.p = lc.up; m.lad = null; } else m.y = lim; } }
+      else if (D) { m.y += CLIMB; m.anim += CLIMB; Snd.climb(); if (m.y >= lc.yBot) { m.y = lc.yBot; m.st = 'ground'; m.p = lc.lo; m.lad = null; } }
+      // a retracting ladder pushes you down off its moving part
+      if (m.st === 'climb' && m.y < lim - .5) m.y = lim;
+    } else {
+      // jump or fall: a fixed arc you can't steer
+      m.x += m.vx; if (m.x < 5 || m.x > W - 5) { m.x = clamp(m.x, 5, W - 5); m.vx = -m.vx * .5; }
+      var y0 = m.y; m.vy += GRAV; m.y += m.vy; if (m.y < m.apex) m.apex = m.y;
+      if (m.st === 'jump') noteJumpOver(m);
+      if (m.vy > 0) {
+        var lp = landOn(m.x, y0, m.y);
+        if (lp) {
+          var sy = surf(lp, m.x);
+          m.y = sy; m.p = lp;
+          if (sy - m.apex > FALLMAX) return die('fall');
+          m.st = 'ground'; m.vy = 0;
+          if (m.over.length) { var n = m.over.length, pts = n === 1 ? 100 : n === 2 ? 300 : 800; G.stats.jumped += n; add(pts, m.x, m.y - 20); Snd.score(); m.over = []; }
+        }
+      }
+      if (m.y > H + 20) return die('fall');
+    }
+    // hammers: grab one with the top of your head (a jump up into it)
+    if (!m.ham) ST.hammers.forEach(function (h) {
+      if (h.on && Math.abs(h.x - m.x) < 8 && m.y - 16 < h.y + 6 && m.y - 4 > h.y) { h.on = false; m.ham = ST.kind === 4 ? 600 : 560; m.hamT = 0; Snd.loop('ham'); Kit.haptic('medium'); if (m.st === 'jump') m.vy = Math.max(m.vy, 0); }
+    });
+    ST.items.forEach(function (it) {
+      if (it.on && Math.abs(it.x - m.x) < 10 && Math.abs(it.y - 6 - (m.y - 8)) < 12) { it.on = false; var n = itemPts(G.level); add(n, it.x, it.y - 18); G.stats.items++; Snd.item(); Kit.haptic('light'); }
+    });
+    // rivets: walk (or jump) over one to pull it out
+    ST.rivets.forEach(function (r) {
+      if (!r.on) return;
+      var onIt = Math.abs(m.x - (r.x + 4)) < 3 && ((m.st === 'ground' && m.p === r.p) || (m.st === 'jump' && m.y < r.y && m.y > r.y - 26));
+      if (onIt) { r.on = false; r.p.holes.push([r.x, r.x + 8, m.st === 'ground']); add(100, r.x + 4, r.y - 16); G.stats.rivets++; Snd.rivet(); ST.shake = 4; Kit.haptic('light'); }
+    });
+    // made it to the top
+    if (m.st === 'ground' && ST.goal && m.p === ST.goal) return stageClear();
+    if (ST.kind === 4 && ST.rivets.every(function (r) { return !r.on; })) return stageClear();
+  }
+  // anything that passes under Jumpman during a jump scores when he lands
+  function noteJumpOver(m) {
+    function chk(o, h) {
+      if (m.over.indexOf(o) >= 0) return;
+      var dy = o.y - m.y;
+      if (Math.abs(o.x - m.x) < 6 && dy > 0 && dy < 26 && o.y - h > m.y - 4) m.over.push(o);
+    }
+    ST.barrels.forEach(function (b) { chk(b, 10); });
+    ST.fires.forEach(function (f) { chk(f, 12); });
+    ST.pies.forEach(function (q) { chk(q, 7); });
+  }
+  function marioBox() { var m = G.m; return { x0: m.x - 4, x1: m.x + 4, y0: m.y - 14, y1: m.y - 3 }; }
+  function hamBox() {
+    var m = G.m; if (!m.ham) return null;
+    var up = Math.floor(m.hamT / 9) % 2 === 0;
+    return up ? { x0: m.x - 6, x1: m.x + 6, y0: m.y - 28, y1: m.y - 14, up: true } : { x0: m.x + m.dir * 7 - 6, x1: m.x + m.dir * 7 + 6, y0: m.y - 12, y1: m.y - 1, up: false };
+  }
+  function hit(a, b) { return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0; }
+
+  // ── Donkey Kong ──
+  function stepDK() {
+    var dk = ST.dk;
+    if (dk.mode === 'barrels') {
+      ST.dkT--;
+      if (ST.firstDrop) {
+        // the first barrel of each life: held overhead, then dropped straight down the left side to light the oil drum
+        if (ST.dkT > 30) ST.dkPose = 'throw';
+        else if (ST.dkT <= 0) { ST.firstDrop = false; ST.barrels.push({ x: 22, y: 70, st: 'drop', vy: 0, blue: true, fr: 0 }); ST.dkPose = 'idle'; ST.dkT = 120; Snd.barrel(); }
+        return;
+      }
+      if (ST.dkT === 40) ST.dkPose = 'side';
+      else if (ST.dkT === 20) ST.dkPose = 'idle';
+      else if (ST.dkT === 8) ST.dkPose = 'right';
+      else if (ST.dkT <= 0) {
+        ST.thrown++;
+        var wild = G.level >= 2 && Math.random() < .12 + .02 * G.level, blue = !wild && ST.thrown % 7 === 0;
+        if (wild) ST.barrels.push({ x: 60, y: 84, st: 'wild', vx: (G.m.x > 60 ? 1 : -1) * .6, vy: -1, blue: true, fr: 0, bounces: 0, lastP: ST.plats[5] });
+        else ST.barrels.push({ x: 66, y: 84, p: ST.plats[5], st: 'roll', dir: 1, blue: blue, fr: 0 });
+        ST.dkPose = 'idle'; Snd.barrel();
+        ST.dkT = Math.max(70, 160 - G.level * 16) + Math.floor(rnd(0, 50));
+      } else if (ST.dkT > 60 && ST.dkT % 40 < 20) ST.dkPose = ST.dkT % 80 < 40 ? 'beatL' : 'beatR';
+      else if (ST.dkT > 40) ST.dkPose = 'idle';
+    } else if (dk.mode === 'walk') {
+      // 50 m: he walks the top conveyor, turning at either end of his patch
+      dk.vx = dk.vx || .4; dk.x += dk.vx; if (dk.x < 80 || dk.x > 144) dk.vx = -dk.vx;
+      ST.dkPose = Math.floor(frame / 20) % 2 ? 'beatL' : 'beatR';
+    } else if (dk.mode === 'springs') {
+      ST.springT--; ST.dkPose = ST.springT < 20 ? 'right' : Math.floor(frame / 24) % 2 ? 'beatL' : 'idle';
+      if (ST.springT <= 0) { ST.springs.push({ x: 60, y: 84, vx: rnd(1.1, 1.5), vy: -2.2, base: 84, st: 'hop', fr: 0 }); ST.springT = Math.max(70, 140 - G.level * 12) + Math.floor(rnd(0, 40)); Snd.spring(); }
+    } else if (dk.mode === 'pace') {
+      dk.vx = dk.vx || .35; dk.x += dk.vx; if (dk.x < 72 || dk.x > 152) dk.vx = -dk.vx;
+      ST.dkPose = Math.floor(frame / 30) % 3 === 0 ? 'beatL' : Math.floor(frame / 30) % 3 === 1 ? 'idle' : 'beatR';
+    }
+  }
+  function dkBox() { var dk = ST.dk; return { x0: dk.x - 18, x1: dk.x + 18, y0: dk.y - 30, y1: dk.y }; }
+
+  // ── Barrels ──
+  function stepBarrels() {
+    var spd = .9 + Math.min(.6, (G.level - 1) * .12);
+    for (var i = ST.barrels.length - 1; i >= 0; i--) {
+      var b = ST.barrels[i]; b.fr += b.st === 'roll' ? spd * .18 : .1;
+      if (b.st === 'drop') {
+        b.vy = Math.min(3, b.vy + .12); b.y += b.vy;
+        if (b.y >= 248) { b.y = 248; ST.barrels.splice(i, 1); oilHit(true); }
+        continue;
+      }
+      if (b.st === 'roll') {
+        var y0 = b.y; b.x += b.dir * spd; var s = surf(b.p, b.x);
+        if (s == null) { b.st = 'fall'; b.vx = b.dir * .55; b.vy = 0; b.bounced = false; continue; }
+        b.y = s;
+        // the oil drum at the bottom left swallows barrels (a blue one lights a fireball)
+        if (b.p === ST.plats[0] && b.x <= 26) { ST.barrels.splice(i, 1); oilHit(b.blue); continue; }
+        // at the top of a ladder: maybe roll down it (more likely when Jumpman is below that way)
+        for (var k = 0; k < ST.lads.length; k++) {
+          var l = ST.lads[k];
+          if (l.deco || l.up !== b.p || Math.abs(l.x - b.x) > spd * .6 || b.skip === l) continue;
+          b.skip = l;
+          var mBelow = G.m.y > b.y + 8, pr = .18 + .03 * G.level + (mBelow && Math.abs(G.m.x - l.x) < 48 ? .3 : 0) + (ctl.d ? .12 : 0);
+          if (Math.random() < Math.min(.75, pr)) { b.st = 'ladder'; b.x = l.x; b.lad = l; }
+          break;
+        }
+        void y0;
+      } else if (b.st === 'ladder') {
+        b.y += .8;
+        if (b.y >= b.lad.yBot) { b.y = b.lad.yBot; b.p = b.lad.lo; b.st = 'roll'; b.dir = b.p.down || (b.x < 112 ? 1 : -1); b.skip = null; }
+      } else if (b.st === 'fall') {
+        var yy = b.y; b.vy += .14; b.x += b.vx; b.y += b.vy;
+        var lp = landOn(b.x, yy, b.y);
+        if (lp) { b.y = surf(lp, b.x); b.p = lp; if (!b.bounced) { b.bounced = true; b.vy = -1.1; Snd.barrel(); } else { b.st = 'roll'; b.dir = lp.down || -Math.sign(b.vx) || -1; b.skip = null; } }
+        if (b.y > H + 16 || b.x < -16 || b.x > W + 16) ST.barrels.splice(i, 1);
+      } else if (b.st === 'wild') {
+        // a wild barrel crashes straight through the girders, bouncing toward Jumpman
+        var wy = b.y; b.vy += .1; b.x += b.vx; b.y += b.vy;
+        var wl = b.vy > 0 ? landOn(b.x, wy, b.y) : null;
+        if (wl && wl !== b.lastP && b.y > 100) {
+          b.y = surf(wl, b.x); b.bounces++; b.lastP = wl;
+          if (wl === ST.plats[0]) { b.st = 'roll'; b.p = wl; b.dir = -1; b.skip = null; }
+          else { b.vy = -1.5; b.vx = (G.m.x > b.x ? 1 : -1) * rnd(.4, .9); Snd.barrel(); }
+        }
+        if (b.x < 6 || b.x > W - 6) b.vx = -b.vx;
+        if (b.y > H + 16) ST.barrels.splice(i, 1);
+      }
+    }
+  }
+  function oilHit(blue) {
+    var o = ST.oil; if (!o) return;
+    if (!o.lit) { o.lit = true; Snd.fire(); }
+    if (blue && ST.fires.length < maxFires()) { ST.fires.push(newFire(o.x + 6, ST.plats[0], true)); Snd.fire(); }
+  }
+  function maxFires() { return ST.kind === 1 ? Math.min(5, 1 + G.level) : ST.kind === 2 ? Math.min(5, 2 + G.level) : ST.kind === 3 ? 2 : Math.min(5, 1 + G.level); }
+
+  // ── Fireballs (and the 100 m firefoxes) ──
+  function newFire(x, p, hop) {
+    var f = { x: x, y: surf(p, x) || p.ys[0], p: p, dir: Math.random() < .5 ? -1 : 1, st: 'walk', t: Math.floor(rnd(30, 90)), fr: 0 };
+    if (hop) { f.st = 'hop'; f.y = p.ys[0] - 18; f.vy = -1.2; f.vx = .6; f.dir = 1; }
+    return f;
+  }
+  function stepFires() {
+    var m = G.m, spd = .38 + Math.min(.35, G.level * .05), scared = m.ham > 0;
+    ST.fires.forEach(function (f) {
+      f.fr += .08;
+      if (f.st === 'hop') {
+        var fy = f.y; f.vy += .1; f.x += f.vx; f.y += f.vy;
+        var lp = f.vy > 0 ? landOn(f.x, fy, f.y) : null;
+        if (lp) { f.y = surf(lp, f.x); f.p = lp; f.st = 'walk'; }
+        return;
+      }
+      if (f.st === 'climb') {
+        f.y += f.cdir * spd * .8;
+        if (f.cdir < 0 && f.y <= f.lad.yTop) { f.y = f.lad.yTop; f.p = f.lad.up; f.st = 'walk'; f.t = 40; }
+        if (f.cdir > 0 && f.y >= f.lad.yBot) { f.y = f.lad.yBot; f.p = f.lad.lo; f.st = 'walk'; f.t = 40; }
+        return;
+      }
+      // walk: wander, lean toward Jumpman (away from him while he has a hammer)
+      if (--f.t <= 0) {
+        f.t = Math.floor(rnd(40, 120));
+        var toward = m.x > f.x ? 1 : -1;
+        f.dir = Math.random() < (scared ? .15 : .65) ? toward : -toward;
+      }
+      var nx = f.x + f.dir * spd, s = surf(f.p, nx);
+      if (s == null) { f.dir = -f.dir; return; }
+      f.x = nx; f.y = s;
+      for (var k = 0; k < ST.lads.length; k++) {
+        var l = ST.lads[k];
+        if (l.deco || l.broken || l.retract || Math.abs(l.x - f.x) > spd * .6 || f.skip === l) continue;
+        f.skip = l;
+        var mAbove = m.y < f.y - 10, mBelow = m.y > f.y + 10;
+        if (l.lo === f.p && Math.random() < (mAbove ? .55 : .12) * (scared ? .3 : 1)) { f.st = 'climb'; f.lad = l; f.cdir = -1; f.x = l.x; }
+        else if (l.up === f.p && Math.random() < (mBelow ? .55 : .12) * (scared ? .3 : 1)) { f.st = 'climb'; f.lad = l; f.cdir = 1; f.x = l.x; }
+        break;
+      }
+      if (f.skip && Math.abs(f.skip.x - f.x) > 3) f.skip = null;
+    });
+    // 50 m: fireballs come out of the burning drum in the middle; 100 m: firefoxes appear on the floors
+    if (ST.kind === 2 && ST.fires.length < maxFires() && --ST.foxT <= 0) { ST.foxT = Math.floor(rnd(240, 420)); var fb = newFire(112, ST.plats[3], true); fb.y = 150; fb.vx = Math.random() < .5 ? -.7 : .7; ST.fires.push(fb); Snd.fire(); }
+    if (ST.kind === 4 && ST.fires.length < maxFires() && --ST.foxT <= 0) {
+      ST.foxT = Math.floor(rnd(200, 360));
+      var fl = ST.plats[1 + Math.floor(Math.random() * 4)], fx = Math.random() < .5 ? fl.x0 + 8 : fl.x1 - 8;
+      if (Math.abs(fx - m.x) > 40) { var ff = newFire(fx, fl); ff.fox = true; ff.born = 30; ST.fires.push(ff); }
+    }
+  }
+
+  // ── 50 m: cement pans, conveyors, sliding ladders ──
+  function step50() {
+    if (--ST.convT <= 0) { ST.convT = rnd(260, 480); ST.plats[1].conv = -ST.plats[1].conv; }
+    if (--ST.topT <= 0) { ST.topT = rnd(220, 400); ST.plats[6].conv = -ST.plats[6].conv; }
+    if (--ST.pieT <= 0) {
+      ST.pieT = Math.max(50, 120 - G.level * 10) + rnd(0, 60);
+      var sp = ST.pieSpots[Math.floor(Math.random() * ST.pieSpots.length)], p = ST.plats[sp.p];
+      var x = sp.from != null ? sp.from : p.conv > 0 ? p.x0 + 2 : p.x1 - 2;
+      if (Math.abs(x - G.m.x) > 20 || G.m.p !== p) ST.pies.push({ x: x, y: p.ys[0], p: p, st: 'ride' });
+    }
+    for (var i = ST.pies.length - 1; i >= 0; i--) {
+      var q = ST.pies[i];
+      if (q.st === 'ride') { q.x += q.p.conv; if (surf(q.p, q.x) == null) { q.st = 'fall'; q.vy = 0; } }
+      else { q.vy += .15; q.y += q.vy; if (q.y > H + 10) ST.pies.splice(i, 1); }
+    }
+    ST.lads.forEach(function (l) {
+      var r = l.retract; if (!r) return;
+      if (--r.t <= 0) { r.st = r.st === 'up' ? 'down' : 'up'; r.t = rnd(150, 300); }
+      r.ext = clamp(r.ext + (r.st === 'up' ? .02 : -.02), 0, 1);
+    });
+  }
+  // ── 75 m: elevators and springs ──
+  function step75() {
+    ST.elev.forEach(function (sh) {
+      for (var i = sh.cars.length - 1; i >= 0; i--) {
+        var c = sh.cars[i]; c.ys[0] += sh.dir * .5;
+        if ((sh.dir < 0 && c.ys[0] < sh.yTop) || (sh.dir > 0 && c.ys[0] > sh.yBot)) {
+          sh.cars.splice(i, 1); ST.plats.splice(ST.plats.indexOf(c), 1);
+          if (G.m.st === 'ground' && G.m.p === c) { if (sh.dir > 0) { G.m.st = 'fall'; G.m.vy = 0; G.m.vx = 0; G.m.apex = G.m.y; } }
+        }
+      }
+      var last = sh.cars[sh.cars.length - 1];
+      if (!last || (sh.dir < 0 ? sh.yBot - last.ys[0] >= 44 : last.ys[0] - sh.yTop >= 44)) addCar(ST, sh, sh.dir < 0 ? sh.yBot : sh.yTop);
+    });
+    for (var j = ST.springs.length - 1; j >= 0; j--) {
+      var s = ST.springs[j]; s.fr++;
+      if (s.st === 'hop') {
+        s.x += s.vx; s.vy += .16; s.y += s.vy;
+        if (s.y >= s.base) { s.y = s.base; s.vy = -2.2; Snd.spring(); if (s.x > 176) { s.st = 'drop'; s.vx = 0; s.vy = -1.4; } }
+      } else { s.vy += .12; s.y += s.vy; }
+      if (s.y > H + 20) ST.springs.splice(j, 1);
+    }
+  }
+
+  // ── Collisions, the bonus clock ──
+  function collide() {
+    var m = G.m, mb = marioBox(), hb = hamBox();
+    function smash(list, i, o, pts) {
+      list.splice(i, 1); G.stats.smashed++; add(pts, o.x, o.y - 14); ST.sparks.push({ x: o.x, y: o.y - 6, t: 24 }); Snd.smash(); Kit.haptic('light');
+    }
+    for (var i = ST.barrels.length - 1; i >= 0; i--) {
+      var b = ST.barrels[i], bb = { x0: b.x - 5, x1: b.x + 5, y0: b.y - 9, y1: b.y };
+      if (hb && hit(hb, bb)) { smash(ST.barrels, i, b, b.blue ? (Math.random() < .5 ? 500 : 800) : 300); continue; }
+      if (hit(mb, { x0: bb.x0 + 1, x1: bb.x1 - 1, y0: bb.y0 + 1, y1: bb.y1 })) return die('barrel');
+    }
+    for (i = ST.fires.length - 1; i >= 0; i--) {
+      var f = ST.fires[i]; if (f.born > 0) { f.born--; continue; }
+      var fb = { x0: f.x - 5, x1: f.x + 5, y0: f.y - 11, y1: f.y };
+      if (hb && hit(hb, fb)) { smash(ST.fires, i, f, Math.random() < .5 ? 500 : 800); continue; }
+      if (hit(mb, { x0: fb.x0 + 1, x1: fb.x1 - 1, y0: fb.y0 + 2, y1: fb.y1 })) return die(f.fox ? 'firefox' : 'fireball');
+    }
+    for (i = ST.pies.length - 1; i >= 0; i--) {
+      var q = ST.pies[i], qb = { x0: q.x - 7, x1: q.x + 7, y0: q.y - 7, y1: q.y };
+      if (hb && hit(hb, qb)) { smash(ST.pies, i, q, 500); continue; }
+      if (hit(mb, { x0: qb.x0 + 2, x1: qb.x1 - 2, y0: qb.y0 + 1, y1: qb.y1 })) return die('pie');
+    }
+    for (i = 0; i < ST.springs.length; i++) { var s = ST.springs[i]; if (hit(mb, { x0: s.x - 6, x1: s.x + 6, y0: s.y - 12, y1: s.y })) return die('spring'); }
+    if (hit(mb, dkBox())) return die('dk');
+  }
+  function stepBonus() {
+    var every = Math.max(84, 132 - (G.level - 1) * 12);
+    if (++ST.bonusT >= every) {
+      ST.bonusT = 0; ST.bonus = Math.max(0, ST.bonus - 100);
+      if (ST.bonus <= 1000 && ST.bonus > 0) Snd.warn();
+      if (ST.bonus === 0) die('time');
+    }
+  }
+
+  // ── Dying, clearing a stage ──
+  function die(why) {
+    if (phase !== 'play' || G.god) return;
+    G.m.st = 'dead'; G.stats.deaths.push({ by: why, lvl: G.level, h: heightNow() });
+    Snd.die(); Kit.haptic('error'); setPhase('die', 170);
+  }
+  function stageClear() {
+    if (phase !== 'play') return;
+    var b = ST.bonus; G.stats.stages++;
+    if (heightNow() > G.stats.best || G.level > (G.stats.bestL || 0)) { G.stats.best = heightNow(); G.stats.bestL = G.level; }
+    G.stats.heights.push({ l: G.level, h: heightNow(), k: ST.kind, b: b });
+    add(b, G.m.x, G.m.y - 24);
+    if (ST.kind === 4) { Snd.win(); setPhase('win', 330); Kit.haptic('success'); }
+    else { Snd.clear(); setPhase('clear', 230); Kit.haptic('success'); }
+  }
+  function nextStage() {
+    G.si++;
+    if (G.si >= stageList(G.level).length) { G.si = 0; G.level++; Kit.callout('Level ' + G.level, '#ff6b6b'); }
+    startStage(true);
+  }
+
+  // ═══ One tick (60 Hz) ═══════════════════════════════════════════════════
+  function step() {
+    frame++;
+    if (ST && ST.shake > 0) ST.shake -= .5;
+    if (phase === 'intro') { pt--; introStep(); if (pt <= 0) startStage(true); return; }
+    if (phase === 'howhigh') { if (--pt <= 0) { setPhase('play'); Snd.start(); } return; }
+    if (phase === 'ready') { if (--pt <= 0) setPhase('play'); return; }
+    if (phase === 'die') {
+      if (--pt <= 0) {
+        G.lives--; drawLives = true;
+        if (G.lives <= 0) return gameOver();
+        startStage(false);
+      }
+      return;
+    }
+    if (phase === 'clear' || phase === 'win') { ST.t++; if (--pt <= 0) nextStage(); return; }
+    if (phase !== 'play') return;
+    ST.t++;
+    stepDK();
+    if (ST.kind === 2) step50();
+    if (ST.kind === 3) step75();
+    stepMario(); if (phase !== 'play') return;
+    stepBarrels(); stepFires();
+    ST.pops.forEach(function (p) { p.t--; p.y -= .25; }); ST.pops = ST.pops.filter(function (p) { return p.t > 0; });
+    ST.sparks.forEach(function (p) { p.t--; }); ST.sparks = ST.sparks.filter(function (p) { return p.t > 0; });
+    collide(); if (phase !== 'play') return;
+    stepBonus();
+    if (frame % 30 === 0) save();
+  }
+
+  // ── The opening: Kong carries Pauline up and stamps the girders crooked ──
+  var INTRO_T = 470;
+  function startIntro() {
+    ST = buildStage(1); ST.bonus = bonusStart(1); ST.barrels = []; ST.fires = []; ST.pies = []; ST.springs = []; ST.pops = []; ST.sparks = []; ST.shake = 0;
+    ST.final = ST.plats.map(function (p) { return p.ys.slice(); });
+    ST.bend = [0, 0, 0, 0, 0, 0, 1];
+    ST.plats.forEach(function (p, i) { var mid = p.ys[Math.floor(p.ys.length / 2)]; if (i < 6) p.ys = p.ys.map(function () { return mid; }); });
+    G.m = { x: -40, y: 248, st: 'ground', dir: 1, anim: 0, ham: 0, hamT: 0, over: [] };
+    ST.dk.x = 112; ST.dk.y = 248; ST.dkPose = 'back1'; ST.pauline.carried = true;
+    setPhase('intro', INTRO_T); Snd.loop(null);
+  }
+  function introStep() {
+    var t = INTRO_T - pt, dk = ST.dk;
+    if (t < 200) {
+      // climb up the middle with Pauline
+      dk.y = 248 - (248 - 84) * Math.min(1, t / 190); dk.x = 112; ST.dkPose = Math.floor(t / 10) % 2 ? 'back1' : 'back2';
+      if (t % 20 === 0) Snd.climb();
+    } else if (t < 230) {
+      // up to the top: Pauline set down on her girder
+      ST.pauline.carried = false; dk.y = 84; ST.dkPose = 'idle';
+    } else {
+      // five stomps leftward, each one bending a girder
+      var k = t - 230, hop = Math.floor(k / 44), f = (k % 44) / 44;
+      if (hop < 5) {
+        dk.x = 112 - (hop + f) * 14.4; dk.y = 84 - Math.sin(f * PI) * 14; ST.dkPose = f < .5 ? 'throw' : 'idle';
+        if (k % 44 === 43) { Snd.stomp(); ST.shake = 6; ST.bend[4 - hop] = 1; ST.bend[5] = Math.max(ST.bend[5], hop >= 4 ? 1 : 0); Kit.haptic('medium'); }
+      } else { dk.x = 40; dk.y = 84; ST.dkPose = Math.floor(k / 16) % 2 ? 'beatL' : 'beatR'; }
+    }
+    // girders ease into their crooked shapes
+    ST.plats.forEach(function (p, i) {
+      if (i > 5) return; var fin = ST.final[i], mid = fin[Math.floor(fin.length / 2)];
+      var cur = ST.bend[i] || (i === 5 && t > 400 ? 1 : 0);
+      p.ys = fin.map(function (y) { return Math.round(mid + (y - mid) * cur); });
+    });
+  }
+
+  // ═══ Drawing ════════════════════════════════════════════════════════════
+  function spr(c, x, y) { px.drawImage(c, Math.round(x), Math.round(y)); }
+  function drawStage() {
+    var colKey = ST.kind === 1 ? 'r' : ST.kind === 4 ? 'b' : 'o';
+    // ladders behind the girders
+    var lc = ST.kind === 1 ? '#3fd0e8' : ST.kind === 4 ? '#ffd84a' : '#ffd84a';
+    if (ST.decoLads) ST.decoLads.forEach(function (d) { ladder(d.x, d.y0, d.y1, lc); });
+    if (!ST.noLads) ST.lads.forEach(function (l) {
+      var yT = surf(l.up, l.x), yB = surf(l.lo, l.x); if (yT == null || yB == null) { yT = l.yTop; yB = l.yBot; }
+      if (l.broken) { ladder(l.x, yT, yT + 6, lc); ladder(l.x, yB - l.stub, yB, lc); }
+      else if (l.retract) { var len = yB - yT; ladder(l.x, yB - l.stub, yB, lc); ladder(l.x, yT + (len - l.stub) * (1 - l.retract.ext), yT + (len - l.stub) * (1 - l.retract.ext) + (len - l.stub), lc); }
+      else ladder(l.x, yT, yB, lc);
+    });
+    // elevator ropes and pulleys
+    if (ST.elev) ST.elev.forEach(function (sh) {
+      px.fillStyle = '#ffd84a'; px.fillRect(sh.x + 1, sh.yTop - 6, 1, sh.yBot - sh.yTop + 14); px.fillRect(sh.x + 14, sh.yTop - 6, 1, sh.yBot - sh.yTop + 14);
+      px.fillStyle = '#ff8a3d'; px.fillRect(sh.x - 1, sh.yTop - 10, 18, 4); px.fillRect(sh.x - 1, sh.yBot + 8, 18, 4);
+    });
+    var cf = Math.floor(frame / 6) % 4;
+    ST.plats.forEach(function (p) {
+      for (var i = 0; i < p.ys.length; i++) {
+        var x = p.x0 + i * 16, y = p.ys[i];
+        var img = p.kind === 'conv' ? SPR['c' + colKey + ((p.conv > 0 ? 4 - cf : cf) % 4)] : SPR['g' + (p.kind === 'elev' ? 'y' : colKey)];
+        spr(img, x, y);
+      }
+      if (p.kind === 'conv') { spr(SPR['pulley' + (Math.floor(frame / 8) % 2)], p.x0 - 4, p.ys[0]); spr(SPR['pulleyB' + (Math.floor(frame / 8) % 2)], p.x1 - 4, p.ys[0]); }
+      // holes where rivets came out
+      p.holes.forEach(function (h) { px.fillStyle = '#000'; px.fillRect(h[0], p.ys[0], h[1] - h[0], 8); });
+    });
+    ST.rivets.forEach(function (r) { if (r.on) spr(SPR.rivet, r.x, r.y); });
+  }
+  function ladder(x, y0, y1, col) {
+    if (y1 <= y0) return; px.fillStyle = col;
+    px.fillRect(Math.round(x - 4), Math.round(y0), 1, Math.round(y1 - y0)); px.fillRect(Math.round(x + 3), Math.round(y0), 1, Math.round(y1 - y0));
+    for (var y = Math.ceil(y0 / 4) * 4 + 2; y < y1; y += 4) px.fillRect(Math.round(x - 4), y, 8, 1);
+  }
+  function drawMario() {
+    var m = G.m, L = m.dir < 0 ? 'L' : '', img;
+    if (m.st === 'dead') {
+      var t = 170 - pt, c = SPR.stand; px.save(); px.translate(Math.round(m.x), Math.round(m.y - 8));
+      if (t < 70) px.rotate(Math.floor(t / 6) * PI / 2); else px.rotate(PI / 2);
+      px.drawImage(c, -8, -8); px.restore();
+      if (t >= 70) { px.strokeStyle = '#ffe04a'; px.beginPath(); px.ellipse(Math.round(m.x) + 6, Math.round(m.y) - 18, 6, 2, 0, 0, PI * 2); px.stroke(); }
+      return;
+    }
+    if (m.st === 'climb') img = Math.floor(m.anim / 5) % 2 ? SPR.climb2 : SPR.climb1;
+    else if (m.st === 'jump' || m.st === 'fall') img = SPR['jump' + L];
+    else if (m.ham) img = SPR['walk1' + L];
+    else { var moving = ctl.l || ctl.r; img = !moving ? SPR['stand' + L] : SPR[['walk1', 'stand', 'walk2', 'stand'][Math.floor(m.anim / 4) % 4] + L]; }
+    spr(img, m.x - 8, m.y - 16);
+    if (m.ham) {
+      var flash = m.ham < 120 && Math.floor(frame / 4) % 2, hb = hamBox();
+      if (!flash) { if (hb.up) spr(SPR.hammer, m.x - 6, m.y - 30); else spr(m.dir > 0 ? SPR.hammerSide : flipCache('hammerSide'), m.x + m.dir * 7 - 5, m.y - 13); }
+    }
+  }
+  var FLIPC = {};
+  function flipCache(k) { return FLIPC[k] || (FLIPC[k] = flipX(SPR[k])); }
+  function drawDK() {
+    var dk = ST.dk, img = SPR['dk_' + (ST.dkPose || 'idle')];
+    var y = dk.y - 33, x = dk.x - 24;
+    if (phase === 'win') {
+      // the rivets are out: he tumbles down head first
+      var t = 330 - pt, fy = Math.min(248, 88 + t * t * .02);
+      spr(SPR.dk_fall, x, fy - 33);
+      if (fy >= 248) { for (var i = 0; i < 3; i++) { var a = frame * .1 + i * 2.1; text('*', dk.x + Math.cos(a) * 16, fy - 40 + Math.sin(a) * 4, '#ffe04a', true); } }
+      return;
+    }
+    if (phase === 'clear') {
+      // he grabs Pauline and climbs off the top
+      var ct = 230 - pt; if (ct > 70) { y -= (ct - 70) * 1.3; img = Math.floor(ct / 8) % 2 ? SPR.dk_back1 : SPR.dk_back2; }
+    }
+    spr(img, x, y);
+    // the barrel stack beside him on 25 m, and the barrel he's holding
+    if (ST.kind === 1 && phase !== 'intro') { for (var b = 0; b < 4; b++) spr(SPR.barSide, b % 2 ? 0 : 2, 50 + b * 9 - (b > 1 ? 0 : 0)); }
+    if (ST.dkPose === 'throw' && ST.kind === 1 && phase === 'play') spr(SPR.bbarSide, dk.x - 8, y - 6);
+    if (ST.dkPose === 'side' && ST.kind === 1) spr(SPR.barSide, dk.x - 30, dk.y - 18);
+    if (ST.dkPose === 'right' && ST.kind === 1) spr(SPR.barSide, dk.x + 18, dk.y - 18);
+    if (ST.dkPose === 'right' && ST.kind === 3) spr(SPR.spring0, dk.x + 18, dk.y - 22);
+  }
+  function drawPauline() {
+    var p = ST.pauline; if (!p) return;
+    var px0 = p.x - 8, py = p.y - 19;
+    if (phase === 'intro' && p.carried) { px0 = ST.dk.x - 2; py = ST.dk.y - 46; }
+    if (phase === 'clear') { var ct = 230 - pt; if (ct > 70) { px0 = ST.dk.x + 8; py = ST.dk.y - 33 - (ct - 70) * 1.3 - 6; } }
+    var waving = phase === 'play' && Math.floor(frame / 40) % 3 === 0;
+    spr(waving ? SPR.paulineW : SPR.pauline, px0, py);
+    if (waving) text('HELP!', px0 + 18, py - 2, '#ffffff');
+  }
+  function drawObjects() {
+    if (ST.oil) {
+      spr(SPR.oil, ST.oil.x - 8, ST.oil.y - 16);
+      if (ST.oil.lit) spr(SPR['flame' + (Math.floor(frame / 6) % 2)], ST.oil.x - 8, ST.oil.y - 26);
+    }
+    if (ST.noLads) return;
+    ST.hammers.forEach(function (h) { if (h.on) spr(SPR.hammer, h.x - 6, h.y); });
+    ST.items.forEach(function (it) { if (it.on) { var c = SPR[it.kind]; spr(c, it.x - c.width / 2, it.y - c.height); } });
+    ST.pies.forEach(function (q) { spr(SPR.pie, q.x - 8, q.y - 7); });
+    ST.barrels.forEach(function (b) {
+      var c = b.st === 'ladder' || b.st === 'drop' || b.st === 'wild' ? SPR[b.blue ? 'bbarSide' : 'barSide'] : SPR[(b.blue ? 'bbar' : 'bar') + (Math.floor(b.fr) % 4 + 4) % 4];
+      spr(c, b.x - c.width / 2, b.y - c.height);
+    });
+    ST.fires.forEach(function (f) {
+      if (f.born > 0 && Math.floor(frame / 3) % 2) return;
+      var k = G.m.ham ? 'cool' : f.fox ? 'fox' : 'fire', c = SPR[k + (Math.floor(f.fr * 3) % 2)];
+      spr(c, f.x - 8, f.y - 15 + Math.round(Math.sin(f.fr * 4)));
+    });
+    ST.springs.forEach(function (s) { var c = s.vy < 0 ? SPR.spring1 : SPR.spring0; spr(c, s.x - 8, s.y - c.height); });
+    ST.sparks.forEach(function (s) {
+      px.fillStyle = s.t % 4 < 2 ? '#ffffff' : '#ffe04a';
+      for (var i = 0; i < 8; i++) { var a = i * PI / 4, r = (24 - s.t) * .6; px.fillRect(Math.round(s.x + Math.cos(a) * r), Math.round(s.y + Math.sin(a) * r), 2, 2); }
+    });
+    ST.pops.forEach(function (p) { text(String(p.n), p.x, p.y, '#ffffff', true); });
+  }
+  var drawLives = true;
+  function drawHUD() {
+    // lives, level, and the bonus box, as on the cabinet
+    for (var i = 0; i < Math.min(6, G.lives - (phase === 'play' || phase === 'ready' ? 1 : 0)); i++) spr(SPR.life, 6 + i * 9, 10);
+    text('L=' + (G.level < 10 ? '0' : '') + G.level, 150, 4, '#3f6bff');
+    var bx = 176, by = 2, low = ST.bonus <= 1000;
+    px.fillStyle = '#3f6bff'; px.fillRect(bx, by, 44, 1); px.fillRect(bx, by + 21, 44, 1); px.fillRect(bx, by, 1, 22); px.fillRect(bx + 43, by, 1, 22);
+    text('BONUS', bx + 22, by + 3, '#ff3a5c', true);
+    if (!(low && Math.floor(frame / 15) % 2)) text(String(ST.bonus), bx + 22, by + 12, low ? '#ff3a5c' : '#3fd0e8', true);
+  }
+  function render() {
+    if (!G || !ST) return;
+    px.setTransform(1, 0, 0, 1, 0, 0); px.imageSmoothingEnabled = false;
+    px.fillStyle = '#000'; px.fillRect(0, 0, W, H);
+    var sh = ST.shake > 0 ? Math.round((Math.random() - .5) * ST.shake) : 0;
+    px.setTransform(1, 0, 0, 1, 0, sh);
+    if (phase === 'howhigh') { drawHowHigh(); }
+    else {
+      var hideRivetFloors = phase === 'win' && (330 - pt) > 20;
+      if (hideRivetFloors) { var keep = ST.plats.slice(); ST.plats = [ST.plats[0], ST.plats[5]]; ST.noLads = true; drawStage(); ST.plats = keep; } else drawStage();
+      drawObjects(); ST.noLads = false; drawPauline(); drawDK();
+      if (phase !== 'intro' || G.m.x > -20) drawMario();
+      if (phase === 'clear' || phase === 'win') {
+        var ct = (phase === 'win' ? 330 : 230) - pt, broken = phase === 'clear' && ct > 70;
+        var hx = phase === 'win' ? ST.pauline.x + 10 : (G.m.x + ST.pauline.x) / 2, hy = ST.pauline.y - 34;
+        if (!broken) spr(SPR.heart, hx - 6, hy);
+        else { var d = Math.min(4, (ct - 70) * .2); px.drawImage(SPR.heart, 0, 0, 6, 11, Math.round(hx - 6 - d), hy, 6, 11); px.drawImage(SPR.heart, 6, 0, 7, 11, Math.round(hx + d), hy, 7, 11); }
+        if (phase === 'win' && ct > 120) { G.m.x = ST.pauline.x + 26; G.m.y = ST.pauline.y; G.m.dir = -1; }
+      }
+      if (phase !== 'intro') drawHUD();
+      if (phase === 'ready') text('READY', W / 2, 140, '#ffffff', true);
+      if (phase === 'intro') text('TAP TO SKIP', W / 2, 8, 'rgba(255,255,255,.6)', true);
+    }
+    // to the screen, pixels kept sharp
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(scr, 0, 0, cv.width, cv.height);
+  }
+  function drawHowHigh() {
+    var list = stageList(G.level), n = G.si + 1;
+    for (var i = 0; i < n; i++) {
+      var y = 200 - i * 36;
+      px.drawImage(SPR.dk_idle, 0, 0, 48, 33, 72, y - 12, 32, 22);
+      text((i + 1) * 25 + ' M', 132, y, '#ffffff');
+    }
+    text('HOW HIGH CAN YOU GET ?', W / 2, 228, '#ffffff', true);
+    text('LEVEL ' + G.level, W / 2, 30, '#ff3a5c', true);
+    void list;
+  }
+
+  // ═══ Game over, save, HUD ═══════════════════════════════════════════════
+  var lastResult = null, overDone = false;
+  function gameOver() {
+    Snd.loop(null); setPhase('over'); clearSave();
+    var newTop = G.score > 0 && G.score > hiAtStart, s = G.stats, who = G.who;
+    var hl = [], reached = 'level ' + G.level + ', ' + heightNow() + ' m';
+    hl.push('Reached ' + reached + (s.stages ? ' after clearing ' + s.stages + (s.stages === 1 ? ' stage' : ' stages') : ''));
+    if (newTop) hl.push('New high score: ' + G.score.toLocaleString() + (hiAtStart ? ' (old best ' + hiAtStart.toLocaleString() + ')' : ''));
+    if (s.jumped) hl.push('Jumped ' + s.jumped + (s.jumped === 1 ? ' barrel or fireball' : ' barrels and fireballs'));
+    if (s.smashed) hl.push('Smashed ' + s.smashed + ' with the hammer');
+    if (s.rivets) hl.push('Pulled ' + s.rivets + (s.rivets === 1 ? ' rivet' : ' rivets'));
+    if (s.items) hl.push('Picked up ' + s.items + " of Pauline's things");
+    var WHY = { barrel: 'a barrel', fireball: 'a fireball', firefox: 'a firefox', pie: 'a cement pan', spring: 'a spring', dk: 'Donkey Kong himself', fall: 'a fall', time: 'the bonus timer', elevator: 'the top of an elevator' };
+    var last = s.deaths[s.deaths.length - 1];
+    if (last) hl.push('Final life lost to ' + (WHY[last.by] || last.by) + ' at ' + last.h + ' m');
+    lastResult = { score: G.score, level: G.level, h: heightNow(), newTop: newTop };
+    var hiL = hiList();
+    try {
+      Kit.record(KEY, {
+        detail: { lv: G.level, h: heightNow(), k: kindNow(), st: s.stages, j: s.jumped, sm: s.smashed, rv: s.rivets, it: s.items, dd: s.deaths.slice(-8).map(function (d) { return { b: d.by, l: d.lvl, h: d.h }; }), lvs: G.startLives,
+          hr: G.score > 0 && (hiL.length < ArcadeHi.max || G.score > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= G.score; }).length + 1 : 0, hb: hiAtStart || 0 },
+        started: G.started, mode: G.startLives !== 3 ? G.startLives + ' lives' : '',
+        players: [{ name: who, score: G.score }], winner: null,
+        highlights: hl.slice(0, 6),
+        summary: G.score.toLocaleString() + ' points · level ' + G.level + ', ' + heightNow() + ' m', badge: G.score + ' pts',
+        meta: { score: G.score, level: G.level, height: heightNow(), result: 'gameover' }
+      });
+    } catch (e) {}
+    try { if (G.score > (+localStorage.getItem('dkHi') || 0)) localStorage.setItem('dkHi', String(G.score)); } catch (e) {}
+    var r = lastResult, cfg = { who: G.who, lives: G.startLives };
+    setTimeout(function () {
+      overDone = true;
+      ArcadeHi.check(HI, r.score, function () {
+        hud();
+        Kit.win({
+          lose: !r.newTop, icon: r.newTop ? 'trophy' : 'meh',
+          title: r.newTop ? 'New high score!' : 'Game over',
+          sub: r.score.toLocaleString() + ' points · reached level ' + r.level + ', ' + r.h + ' m',
+          again: function () { startGame(cfg); }, againLabel: 'Play again',
+          extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(HI, 'Donkey Kong'); showSetup(); } }, { label: 'Change settings', onClick: showSetup }]
+        });
+      });
+    }, 1400);
+  }
+  function save() {
+    if (!G || phase === 'over' || phase === 'idle' || phase === 'intro') return;
+    try { localStorage.setItem(SAVE, JSON.stringify({ v: 1, who: G.who, startLives: G.startLives, score: G.score, lives: G.lives, level: G.level, si: G.si, extra: G.extra, started: G.started, stats: G.stats })); } catch (e) {}
+    Kit.resume.set('Level ' + G.level + ', ' + heightNow() + ' m · ' + G.score.toLocaleString() + ' pts');
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.level >= 1 && s.lives > 0 ? s : null; } catch (e) { return null; } }
+  var shownScore = -1;
+  function hud(bump) {
+    var sc = G ? G.score : 0;
+    if (sc !== shownScore) { $('h-score').textContent = sc.toLocaleString(); shownScore = sc; if (bump) { var p = $('p-score'); p.classList.remove('bump'); void p.offsetWidth; p.classList.add('bump'); } }
+    $('h-hi').textContent = Math.max(topScore(), sc).toLocaleString();
+  }
+
+  // ═══ Fit the screen ═════════════════════════════════════════════════════
+  function fit() {
+    var v = $('view'); if (v.hidden) return;
+    var cab = $('cab'), hudH = v.querySelector('.hud').offsetHeight, ctr = v.querySelector('.ctrls'), hint = v.querySelector('.hint');
+    var land = TOUCH && innerWidth > innerHeight && innerWidth >= 900;
+    var ctrH = ctr && getComputedStyle(ctr).display !== 'none' && !land ? Math.max(150, ctr.querySelector('.pad').offsetHeight + 16) : 0;
+    var hintH = hint && getComputedStyle(hint).display !== 'none' ? hint.offsetHeight + 8 : 0;
+    var availH = v.clientHeight - hudH - ctrH - hintH - 30, availW = Math.min(v.clientWidth, 640) - 14;
+    var sc = Math.max(1, Math.min(availW / W, availH / H));
+    var cw = Math.floor(W * sc), ch = Math.floor(H * sc), dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
+    cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+    void cab;
+    render();
+  }
+
+  // ═══ Pause card, setup, start ═══════════════════════════════════════════
+  var PAUSE_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg>';
+  var PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>';
+  var welcome = false;
+  function syncOverlay() {
+    $('btn-pause').innerHTML = paused ? PLAY_SVG : PAUSE_SVG;
+    $('btn-pause').style.visibility = G && phase !== 'over' && phase !== 'idle' ? 'visible' : 'hidden';
+    var ov = $('ov'), card = $('ov-card'), h = '';
+    if (paused && G && phase !== 'over') {
+      h = '<h2>' + (welcome ? 'Welcome back' : 'Paused') + '</h2><div class="sub">Level ' + G.level + ', ' + heightNow() + ' m · ' + G.score.toLocaleString() + ' points</div>' +
+        '<button class="btn btn-primary btn-lg" id="ov-resume" type="button">' + Kit.icon('play') + (welcome ? 'Continue' : 'Resume') + '</button>' +
+        '<div class="row2"><button class="btn btn-soft" id="ov-quit" type="button">New game</button><button class="btn btn-soft" id="ov-rules" type="button">' + Kit.icon('book') + 'Rules</button></div>';
+    }
+    if (!h) { ov.hidden = true; return; }
+    card.innerHTML = h; ov.hidden = false;
+    bind('ov-resume', function () { setPaused(false); });
+    bind('ov-quit', function () { Kit.confirm('Start a new game?', { ok: 'New game', body: 'This game will be lost.' }).then(function (ok) { if (ok) { clearSave(); showSetup(); } }); });
+    bind('ov-rules', function () { Kit.rules(); });
+  }
+  function bind(id, fn) { var b = $(id); if (b) b.addEventListener('click', function (e) { e.stopPropagation(); Kit.sfx('tap'); fn(); }); }
+  function showPast() { setPaused(true); Kit.history(KEY, { title: 'Donkey Kong: past games' }); }
+  function showSetup() {
+    leaveGame();
+    Kit.setup($('app'), {
+      intro: 'Climb to the top, jump the barrels, rescue Pauline',
+      options: [{ id: 'lives', label: 'Lives', help: 'How many tries you get before the game ends.',
+        choices: [[3, '3 lives', 'Same as the arcade game.'], [5, '5 lives', 'Two extra tries, good for learning the stages.']], value: 3 }],
+      players: { min: 1, max: 1, count: 1, label: 'Player' },
+      start: 'Play',
+      onStart: function (cfg) { var o = cfg.options || {}; startGame({ who: (cfg.players[0] && cfg.players[0].name) || 'Player', lives: +o.lives || 3 }); }
+    });
+    window.scrollTo(0, 0);
+  }
+  function leaveGame() {
+    Snd.loop(null); paused = false; welcome = false; G = null; ST = null; phase = 'idle';
+    document.documentElement.classList.remove('ar-on');
+    var v = $('view'); if (v.parentNode === $('app')) document.body.appendChild(v);
+    v.hidden = true;
+  }
+  function buildView() {
+    var app = $('app'), v = $('view');
+    app.className = ''; app.innerHTML = '';
+    document.documentElement.classList.add('ar-on');
+    v.hidden = false; app.appendChild(v);
+    fit();
+  }
+  function startGame(cfg, saved) {
+    paused = false; welcome = false; overDone = false;
+    newGame(cfg, saved);
+    buildView();
+    Snd.unlock();
+    if (saved) { startStage(false); welcome = true; paused = true; }
+    else startIntro();
+    hud(); syncOverlay(); kick();
+  }
+  function setPaused(v) {
+    if (!G || phase === 'over' || phase === 'idle') return;
+    if (paused === v) return;
+    paused = v; if (v) { Snd.loop(null); save(); } else { welcome = false; Snd.unlock(); if (phase === 'play') Snd.loop(G.m.ham ? 'ham' : ['', 'b25', 'b50', 'b75', 'b100'][ST.kind]); last = 0; acc = 0; kick(); }
+    syncOverlay();
+  }
+
+  // ═══ Input ══════════════════════════════════════════════════════════════
+  var ctl = { l: false, r: false, u: false, d: false, jumpQ: false };
+  var keyDir = { l: false, r: false, u: false, d: false }, padDir = { l: false, r: false, u: false, d: false };
+  function syncCtl() { ['l', 'r', 'u', 'd'].forEach(function (k) { ctl[k] = keyDir[k] || padDir[k]; }); }
+  var KEYS = { ArrowUp: 'u', KeyW: 'u', ArrowLeft: 'l', KeyA: 'l', ArrowDown: 'd', KeyS: 'd', ArrowRight: 'r', KeyD: 'r' };
+  function skipIntro() { if (phase === 'intro') { pt = 1; return true; } if (phase === 'howhigh' && pt > 20) { pt = 20; return true; } return false; }
+  document.addEventListener('keydown', function (e) {
+    if (!G || document.querySelector('.ahi-overlay, .k-scrim, .k-win')) return;
+    if (KEYS[e.code]) { e.preventDefault(); keyDir[KEYS[e.code]] = true; syncCtl(); if (paused) setPaused(false); return; }
+    if (e.code === 'KeyP' || e.code === 'Escape') { if (phase !== 'over') setPaused(!paused); return; }
+    if (e.code === 'Space' || e.code === 'KeyZ' || e.code === 'KeyX' || e.code === 'Enter') {
+      e.preventDefault(); if (e.repeat) return;
+      if (paused) { setPaused(false); return; }
+      if (skipIntro()) return;
+      ctl.jumpQ = true;
+    }
+  });
+  document.addEventListener('keyup', function (e) { if (KEYS[e.code]) { keyDir[KEYS[e.code]] = false; syncCtl(); } });
+  var pad = $('pad'), nub = $('nub'), padId = null, padIs = pad.querySelectorAll('i');
+  function padAt(e) {
+    var r = pad.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    var len = Math.hypot(dx, dy), lim = r.width * .2;
+    nub.style.transform = 'translate(' + (len > lim ? dx / len * lim : dx) + 'px,' + (len > lim ? dy / len * lim : dy) + 'px)';
+    var was = JSON.stringify(padDir);
+    padDir = { l: false, r: false, u: false, d: false };
+    if (len >= r.width * .1) { if (Math.abs(dx) > Math.abs(dy) * .8) padDir[dx > 0 ? 'r' : 'l'] = true; if (Math.abs(dy) > Math.abs(dx) * .8) padDir[dy > 0 ? 'd' : 'u'] = true; }
+    if (JSON.stringify(padDir) !== was) Kit.haptic('tick');
+    syncCtl(); padShow();
+  }
+  function padShow() { ['u', 'l', 'd', 'r'].forEach(function (k, i) { padIs[i].classList.toggle('on', !!ctl[k]); }); }
+  pad.addEventListener('pointerdown', function (e) { e.preventDefault(); if (paused) setPaused(false); if (skipIntro()) return; padId = e.pointerId; try { pad.setPointerCapture(e.pointerId); } catch (x) {} padAt(e); });
+  pad.addEventListener('pointermove', function (e) { if (e.pointerId === padId) padAt(e); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) { pad.addEventListener(t, function (e) { if (e.pointerId !== padId) return; padId = null; nub.style.transform = ''; padDir = { l: false, r: false, u: false, d: false }; syncCtl(); padShow(); }); });
+  var jb = $('jbtn');
+  jb.addEventListener('pointerdown', function (e) { e.preventDefault(); jb.classList.add('down'); Kit.haptic('tick'); if (paused) { setPaused(false); return; } if (skipIntro()) return; ctl.jumpQ = true; });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { jb.addEventListener(t, function () { jb.classList.remove('down'); }); });
+  $('scr').addEventListener('pointerdown', function () { skipIntro(); });
+  $('view').addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+  $('btn-pause').addEventListener('click', function () { Kit.sfx('tap'); setPaused(!paused); });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { setPaused(true); save(); } else kick(); });
+  document.addEventListener('kit:orient', function (e) { if (!e.detail.ok) { setPaused(true); save(); } });
+  window.addEventListener('blur', function () { setPaused(true); });
+  window.addEventListener('pagehide', save);
+
+  // ═══ Main loop (fixed 60 Hz) ════════════════════════════════════════════
+  var last = 0, acc = 0, DT = 1000 / 60, raf = 0, testHold = false;
+  function loop(t) {
+    raf = 0;
+    if (!last) last = t;
+    acc += Math.min(100, t - last); last = t;
+    Snd.poll();
+    var n = 0;
+    while (acc >= DT) { acc -= DT; n++; if (!G || phase === 'idle' || paused || phase === 'over' || testHold) continue; step(); }
+    if (G && (n || paused || overDone)) render();
+    if (G && phase !== 'idle' && !paused && !overDone && !document.hidden) raf = requestAnimationFrame(loop);
+  }
+  function kick() { if (!raf && G && phase !== 'idle' && !paused && !overDone && !document.hidden) { last = 0; acc = 0; raf = requestAnimationFrame(loop); } }
+
+  // ═══ Kit shell ══════════════════════════════════════════════════════════
+  buildSprites();
+  Kit.init({ orient: 'portrait',
+    id: 'donkeykong',
+    theme: { wood: ['#4a2a1a', '#2a160c'] },
+    onNew: function () { clearSave(); showSetup(); },
+    menu: [
+      { icon: 'trophy', label: 'High scores', onClick: function () { setPaused(true); ArcadeHi.show(HI, 'Donkey Kong'); } },
+      { icon: 'history', label: 'Past games', onClick: showPast }
+    ],
+    rules:
+      '<p class="goal">Donkey Kong has carried Pauline to the top of a building site. Climb up to her before the bonus timer runs out. Each level has a few different stages.</p>' +
+      '<h3>Moving</h3><ul><li>Use the <b>stick</b> to walk and to climb ladders (stand at the bottom or top of one and push up or down). The <b>Jump</b> button jumps.</li>' +
+      '<li>On a computer: <b>arrow keys</b> or <b>WASD</b>, <b>Space</b> to jump, <b>P</b> to pause.</li>' +
+      '<li>A jump goes the way you were walking and can’t be steered once you’re in the air.</li>' +
+      '<li>Broken ladders only go part of the way up.</li></ul>' +
+      '<h3>What costs a life</h3><ul><li>Touching a barrel, fireball, cement pan, spring or Donkey Kong.</li><li>Falling further than a short hop (walking off a girder, or into a hole).</li><li>Riding the left elevator to the very top.</li><li>The bonus timer reaching zero.</li></ul>' +
+      '<h3>The stages</h3><ul><li><b>Girders (25 m):</b> Donkey Kong rolls barrels down the slopes. Some roll down ladders; a blue one lights the oil drum and starts a fireball.</li>' +
+      '<li><b>Conveyors (50 m):</b> cement pans ride the belts, the top ladders slide in and out, and fireballs come out of the burning drum.</li>' +
+      '<li><b>Elevators (75 m):</b> ride the lifts up and down and dodge the bouncing springs near the top.</li>' +
+      '<li><b>Rivets (100 m):</b> walk or jump over all eight yellow rivets to bring Donkey Kong down.</li></ul>' +
+      '<h3>The hammer</h3><p>Jump up into a hammer to grab it. For about ten seconds you smash whatever touches it, but you can’t jump or climb. It flashes just before it runs out.</p>' +
+      '<h3>Points</h3><ul><li>Jump over a barrel, fireball or pan: <b>100</b> (two at once <b>300</b>, three or more <b>800</b>).</li>' +
+      '<li>Smash with the hammer: <b>300</b> for a barrel, <b>500</b> or <b>800</b> for anything else.</li>' +
+      '<li>Pauline’s hat, parasol and purse: <b>300</b> on level 1, <b>500</b> on level 2, <b>800</b> after that.</li>' +
+      '<li>Each rivet: <b>100</b>. Finishing a stage adds what’s left on the bonus timer.</li><li>One extra life at <b>7,000</b> points.</li></ul>'
+  });
+
+  // Testing hooks
+  window.__dk = {
+    G: function () { return G; }, ST: function () { return ST; }, phase: function () { return phase; },
+    stage: function (kind, level) { if (!G) return; G.level = level || G.level; var l = stageList(G.level), i = l.indexOf(kind); G.si = i >= 0 ? i : 0; if (i < 0) { G.level = 3; G.si = [1, 2, 3, 4].indexOf(kind); } startStage(false); pt = 1; },
+    god: function (v) { if (G) G.god = !!v; }, ctl: ctl, step: function (n) { for (var i = 0; i < (n || 1); i++) step(); render(); },
+    put: function (x, pi) { if (!G) return; var p = ST.plats[pi]; G.m.x = x; G.m.y = surf(p, x); G.m.p = p; G.m.st = 'ground'; },
+    render: render, surf: surf, phaseSet: function (p, t) { setPhase(p, t); },
+    start: function (cfg) { startGame(cfg || { who: 'Tim', lives: 3 }); },
+    hold: function (v) { testHold = !!v; }, pt: function () { return pt; }
+  };
+
+  new ResizeObserver(function () { fit(); }).observe($('view'));
+  var saved0 = loadSave();
+  if (saved0) startGame({ who: saved0.who, lives: saved0.startLives || 3 }, saved0);
+  else showSetup();
+})();
+</script>
+</body>
+</html>

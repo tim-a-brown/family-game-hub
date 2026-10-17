@@ -274,6 +274,12 @@ var GameIcon = (function () {
     // Arcade (screen base; bright marks)
     tetris: function () { var q = function (x, y, c) { return rect(x, y, 4.6, 4.6, 1, c); }; return q(4, 2, P) + q(9, 2, P) + q(14, 2, P) + q(9, 7, P) + q(4, 13, O) + q(4, 18, O) + q(9, 18, O) + q(14, 13, Y) + q(19, 13, Y) + q(14, 18, Y) + q(19, 18, Y); },
     snake: function () { return rect(2, 15, 4, 4, 1, '#3ddc84') + rect(6, 15, 4, 4, 1, '#3ddc84') + rect(10, 15, 4, 4, 1, '#3ddc84') + rect(10, 11, 4, 4, 1, '#3ddc84') + rect(10, 7, 4, 4, 1, '#3ddc84') + rect(14, 7, 4, 4, 1, '#7dffb3') + circ(19.5, 17, 2.4, R); },
+    donkeykong: function () {   // a barrel rolling down a red sloped girder, with a ladder beside it
+      var g = '#e5263f', h = '#7a1424';
+      return path('M1 15.5 23 12v3.4L1 19z', g) + path('M3 17.6l3-2.6M8 16.8l3-2.6M13 16l3-2.6M18 15.2l3-2.6', 'none', ' stroke="' + h + '" stroke-width=".9"') +
+        rect(16.6, 2, 1.1, 10.6, .4, '#3fd0e8') + rect(21.2, 2, 1.1, 10, .4, '#3fd0e8') + rect(16.6, 4.2, 5.7, .9, .3, '#3fd0e8') + rect(16.6, 7.2, 5.7, .9, .3, '#3fd0e8') + rect(16.6, 10.2, 5.7, .9, .3, '#3fd0e8') +
+        circ(8.5, 10.2, 4.6, '#c8752c') + circ(8.5, 10.2, 3.2, '#e8a050') + path('M5.5 8l6 4.4M11.5 8l-6 4.4', 'none', ' stroke="#6b3410" stroke-width="1.1"');
+    },
     pacman: function () { return path('M12 12 20 7.5A9 9 0 1 0 20 16.5z', Y, ' transform="translate(-4 0)"') + circ(18, 12, 1.4, W) + circ(22.5, 12, 1.4, W); },
     breakout: function () { return rect(1, 2, 7, 3, .8, R) + rect(8.5, 2, 7, 3, .8, O) + rect(16, 2, 7, 3, .8, Y) + rect(1, 6, 7, 3, .8, O) + rect(16, 6, 7, 3, .8, '#3ddc84') + circ(13, 14, 1.8, W) + rect(7, 20, 10, 2.4, 1.2, '#7aa8ff'); },
     flappybird: function () { return rect(17, 0, 5, 7, 1, '#3ddc84') + rect(17, 15, 5, 9, 1, '#3ddc84') + circ(9, 12, 5.5, Y) + circ(11, 10.4, 1.6, W) + circ(11.5, 10.4, .8, K) + path('M13.5 12.5h4l-2 2z', O) + '<ellipse cx="7" cy="13.5" rx="3" ry="1.8" fill="#ffe08a"/>'; },

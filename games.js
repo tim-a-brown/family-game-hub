@@ -146,6 +146,7 @@ var GAMES = [
   { id: 'tetris',      name: 'Tetris',       color: '#8b5cf6', cat: 'arcade', min: 1, max: 1, tag: 'Stack and clear lines', play: 'tetris' },
   { id: 'snake',       name: 'Snake',        color: '#22c55e', cat: 'arcade', min: 1, max: 1, tag: "Eat, grow, don't crash", play: 'snake' },
   { id: 'pacman',      name: 'Pac-Man',      color: '#facc15', cat: 'arcade', min: 1, max: 1, tag: 'Eat the dots, dodge the ghosts', play: 'pacman' },
+  { id: 'donkeykong',  name: 'Donkey Kong',  color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Climb the girders, jump the barrels, rescue Pauline', play: 'donkeykong' },
   { id: 'breakout',    name: 'Breakout',     color: '#f43f5e', cat: 'arcade', min: 1, max: 1, tag: 'Smash every brick', play: 'breakout' },
   { id: 'flappybird',  name: 'Flappy Bird',       color: '#38bdf8', cat: 'arcade', min: 1, max: 1, tag: 'Tap to fly through the pipes', play: 'flappybird' },
   { id: 'crossyroad',  name: 'Crossy Road',  color: '#84cc16', cat: 'arcade', min: 1, max: 1, tag: 'Hop across roads and rivers', play: 'crossyroad' },

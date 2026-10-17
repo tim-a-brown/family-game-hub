@@ -226,6 +226,7 @@ const PRECACHE_URLS = [
   '/games/jokerrun/ui.js',
   '/fonts/jersey-10.woff2',
   '/games/pacman.html',
+  '/games/donkeykong.html',
   '/games/paigow.html',
   '/games/peggle.html',
   '/games/pinball.html',
