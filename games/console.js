@@ -895,22 +895,32 @@
       for (var k in held) if (!next[k]) { press(+k, 0); delete held[k]; mark(+k, false); }
       for (var j in next) if (!held[j]) { press(+j, 1); held[j] = 1; mark(+j, true); Kit.haptic('light'); }
     }
-    function read(x, y) {
+    // the D-pad: eight ways, each direction covering 67.5 degrees so diagonals overlap; still in a small dead spot
+    // at its centre. A finger that's on it keeps it (own): it steers by its angle from the centre however far it
+    // slides, until it lifts, the way a thumb drifts off a real pad without letting go
+    function dpDirs(c, x, y, own) {
+      var r = c.w / 2, dx = x - c.cx, dy = y - c.cy, d2 = dx * dx + dy * dy, out = [];
+      if (d2 <= r * r * .02 || (!own && d2 >= r * r * 2.1)) return out;
+      var ang = Math.atan2(dy, dx) * 180 / Math.PI;
+      if (ang > -157.5 && ang < -22.5) out.push(4);
+      if (ang > 22.5 && ang < 157.5) out.push(5);
+      if (ang > 112.5 || ang < -112.5) out.push(6);
+      if (ang > -67.5 && ang < 67.5) out.push(7);
+      return out;
+    }
+    function onKeyAt(x, y) { return ctls.some(function (c) { return (c.k === 'pill' || c.k === 'sh') && Math.abs(x - c.cx) < c.w * .55 && Math.abs(y - c.cy) < c.h * .7; }); }
+    // the D-pad takes a finger that lands on or near it (the margin gives way to Start, Select and shoulders)
+    function dpTakes(x, y) { var c = ctls[0]; return !!(c && c.k === 'dp' && !onKeyAt(x, y) && Math.hypot(x - c.cx, y - c.cy) < c.w / 2 * 1.45); }
+    function read(x, y, own) {
+      if (own) return dpDirs(ctls[0], x, y, true);
       var out = [], best = null, bd = 1e9, bd2 = 1e9;
       var bs = ctls.filter(function (c) { return c.k === 'btn'; });
       // on Start/Select or a shoulder button (the SNES's R sits just over X): the face buttons' extra margin gives way
-      var onKey = ctls.some(function (c) { return (c.k === 'pill' || c.k === 'sh') && Math.abs(x - c.cx) < c.w * .55 && Math.abs(y - c.cy) < c.h * .7; });
+      var onKey = onKeyAt(x, y);
       ctls.forEach(function (c) {
         var dx = x - c.cx, dy = y - c.cy;
         if (c.k === 'dp') {
-          var r = c.w / 2, d2 = dx * dx + dy * dy;
-          if (d2 < r * r * 1.7 && d2 > r * r * .02) {   // eight ways: each direction covers 67.5 degrees, so diagonals overlap
-            var ang = Math.atan2(dy, dx) * 180 / Math.PI;
-            if (ang > -157.5 && ang < -22.5) out.push(4);
-            if (ang > 22.5 && ang < 157.5) out.push(5);
-            if (ang > 112.5 || ang < -112.5) out.push(6);
-            if (ang > -67.5 && ang < 67.5) out.push(7);
-          }
+          if (!onKey) dpDirs(c, x, y, false).forEach(function (i) { out.push(i); });
         } else if (c.k === 'btn') {
           // generous: they can't be felt, so a thumb a little off still counts, but never reaching into a neighbour's
           // half of the gap (the SNES diamond and the Genesis row stay one button per spot); near but off them all,
@@ -950,12 +960,16 @@
     // Touch: what's pressed is worked out afresh from every finger still on the controller, at every touch event,
     // so a lift iOS never reported (a system gesture taking over a touch at the screen's edge) can't leave a
     // button held while another thumb stays down
-    var toolIds = {};
+    var toolIds = {}, dpIds = {};   // (the fingers on a tool button, and the ones the D-pad has)
     function fromTouches(e) {
       if (e.cancelable) e.preventDefault();
       var next = {};
-      Array.prototype.forEach.call(e.targetTouches, function (t) { if (!toolIds[t.identifier]) read(t.clientX, t.clientY).forEach(function (i) { next[i] = 1; }); });
-      Array.prototype.forEach.call(e.changedTouches, function (t) { if (e.type === 'touchend' || e.type === 'touchcancel') delete toolIds[t.identifier]; });
+      Array.prototype.forEach.call(e.targetTouches, function (t) {
+        var id = t.identifier; if (toolIds[id]) return;
+        if (!dpIds[id] && dpTakes(t.clientX, t.clientY)) dpIds[id] = 1;   // (one sliding onto the pad from elsewhere too)
+        read(t.clientX, t.clientY, dpIds[id]).forEach(function (i) { next[i] = 1; });
+      });
+      Array.prototype.forEach.call(e.changedTouches, function (t) { if (e.type === 'touchend' || e.type === 'touchcancel') { delete toolIds[t.identifier]; delete dpIds[t.identifier]; } });
       setHeld(next);
     }
     sk.addEventListener('touchstart', function (e) {
@@ -971,14 +985,19 @@
       var t = toolAt(e.clientX, e.clientY);
       if (t) { useTool(t); return; }
       try { sk.setPointerCapture(e.pointerId); } catch (er) {}
-      touches[e.pointerId] = read(e.clientX, e.clientY); update();
+      if (dpTakes(e.clientX, e.clientY)) dpIds['p' + e.pointerId] = 1;
+      touches[e.pointerId] = read(e.clientX, e.clientY, dpIds['p' + e.pointerId]); update();
     });
-    sk.addEventListener('pointermove', function (e) { if (!touches[e.pointerId]) return; touches[e.pointerId] = read(e.clientX, e.clientY); update(); });
-    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (k) { sk.addEventListener(k, function (e) { if (!touches[e.pointerId]) return; delete touches[e.pointerId]; update(); }); });
+    sk.addEventListener('pointermove', function (e) {
+      if (!touches[e.pointerId]) return;
+      if (dpTakes(e.clientX, e.clientY)) dpIds['p' + e.pointerId] = 1;
+      touches[e.pointerId] = read(e.clientX, e.clientY, dpIds['p' + e.pointerId]); update();
+    });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (k) { sk.addEventListener(k, function (e) { delete dpIds['p' + e.pointerId]; if (!touches[e.pointerId]) return; delete touches[e.pointerId]; update(); }); });
     sk.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     // A lift the controller never heard about (turning the device mid-press, a notification sliding in) mustn't
     // leave a button held: with no finger on the glass, nothing is pressed
-    function releaseAll() { touches = {}; toolIds = {}; update(); }
+    function releaseAll() { touches = {}; toolIds = {}; dpIds = {}; update(); }
     ['pointerup', 'pointercancel'].forEach(function (k) { window.addEventListener(k, function (e) { if (touches[e.pointerId]) { delete touches[e.pointerId]; update(); } }); });
     ['touchend', 'touchcancel'].forEach(function (k) { window.addEventListener(k, function (e) { if (!e.touches || !e.touches.length) releaseAll(); }, { passive: true }); });
     window.addEventListener('blur', releaseAll);
@@ -1360,7 +1379,7 @@
   // ═══ Kit shell ════════════════════════════════════════════════════════════
   function controls() {
     Kit.sheet({ title: 'Controls', html:
-      '<p>On a phone or iPad the controller is drawn round the picture (turn sideways and it sits either side). Slide a finger from one button to the next, or touch between two face buttons to press both.</p>' +
+      '<p>On a phone or iPad the controller is drawn round the picture (turn sideways and it sits either side). Slide a finger from one button to the next, or touch between two face buttons to press both. A thumb on the D-pad keeps steering while it’s down, even if it drifts off the pad.</p>' +
       '<p>The <b>Menu</b> button on the controller opens this menu; <b>»</b> runs the game at triple speed until you tap it again.</p>' +
       '<p><b>Keyboard:</b> ' + SYS.keys + '.</p>' +
       '<p><b>A real controller</b> (Bluetooth or USB) works too: connect it and press a button. The drawn one steps aside and the game fills the screen. <b>Home</b>, or <b>Select and Start</b> together, opens this menu. <b>Controller buttons</b> remaps it; each controller keeps its own layout for each console.</p>' +
