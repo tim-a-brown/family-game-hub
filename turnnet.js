@@ -26,7 +26,7 @@
 //   TurnNet.setup(cfg)    once, from the game. cfg:
 //     game, title          catalog id and name
 //     min, max             people at the table (min to start)
-//     seats(n) -> number   seats in the game for n people (the rest are computer players); default n
+//     seats(n, opts) -> number   seats in the game for n people (the rest are computer players); default n
 //     opts() -> object     the table's settings, from the game's own setup (host, at Start)
 //     start(players, opts, last) -> state   a new game: players [{name, bot}] in seat order (last: the game just
 //                          finished at this table, for a rematch: series scores, who goes first)
@@ -37,7 +37,7 @@
 //                          fresh: first draw at this table, again: a new game at the same table})
 //     leave()              back to playing on this device
 //     resign(state, seat) -> state    optional: a person leaving mid-game (default: the computer takes their seat
-//                          when the game has computer seats, otherwise the game ends and the others win)
+//                          when the game has bot(), otherwise the game ends and the others win)
 //   TurnNet.open()        the lobby (menu: Play online)
 //   TurnNet.menu()        menu items for Kit.init: Play online, Your online game, Leave the online game
 //   TurnNet.on()          true while at an online table
@@ -342,9 +342,9 @@
     var code = T.code; if (!code) return Promise.resolve();
     return store().tx(code, function (d) {
       if (!d || d.status !== 'open') return null;
-      var hs = humans(d);
+      var hs = humans(d), o0 = {}; try { o0 = JSON.parse(d.opts || '{}'); } catch (e) {}
       if (hs.length < (d.min || 2)) throw new Error('Waiting for more players');
-      var n = G.seats ? G.seats(hs.length) : hs.length, seats = hs.slice(), names = hs.map(function (s) { return s.name; });
+      var n = G.seats ? G.seats(hs.length, o0) : hs.length, seats = hs.slice(), names = hs.map(function (s) { return s.name; });
       if (n > seats.length) (Kit.cpuNames ? Kit.cpuNames(n - seats.length, names, n >= 4 ? 8 : 0) : []).forEach(function (nm) { seats.push({ name: nm, bot: true }); });
       while (seats.length < n) seats.push({ name: 'Robot ' + seats.length, bot: true });
       var o = {}; try { o = JSON.parse(d.opts || '{}'); } catch (e) {}
@@ -389,7 +389,7 @@
       var st = JSON.parse(d.st), seats2 = d.seats.slice(), others = humans(d).length - 1, accts2 = (d.accts || []).filter(function (a) { return a !== tag; });
       if (!others) return { status: 'closed', accts: accts2, at: Date.now(), by: dev() };
       if (G.resign) { st = G.resign(st, s); seats2[s] = Object.assign({}, seats2[s], { left: true }); }
-      else if (G.bot && G.seats && G.seats(2) > 2 || G.botTakeover) { seats2[s] = { name: seats2[s].name, bot: true, left: true }; }
+      else if (G.bot || G.botTakeover) { seats2[s] = { name: seats2[s].name, bot: true, left: true }; }
       else {
         seats2[s] = Object.assign({}, seats2[s], { left: true });
         var win = []; seats2.forEach(function (x, i) { if (i !== s) win.push(i); });
@@ -550,8 +550,9 @@
     if (T.lobbyOff) { T.lobbyOff(); T.lobbyOff = null; }
     T.lobbyAlive = null;
     var players = d.seats.map(function (s, i) { return { name: s.name, me: i === T.seat, host: i === 0 }; });
-    var fill = G.seats ? G.seats(Math.max(d.min || 2, players.length)) : 0;
-    var note = fill > players.length ? 'Empty seats are played by the computer. Everyone takes their turn whenever they like: the home screen shows when it’s yours.' : 'Everyone takes their turn whenever they like: the home screen shows when it’s yours.';
+    var o0 = {}; try { o0 = JSON.parse(d.opts || '{}'); } catch (e) {}
+    var bots = (G.seats ? G.seats(players.length, o0) : players.length) - players.length;
+    var note = (bots > 0 ? (bots === 1 ? 'One seat goes' : bots + ' seats go') + ' to the computer. ' : '') + 'Everyone takes their turn whenever they like: the home screen shows when it’s yours.';
     var o = { host: T.seat === 0, code: T.code, hostName: d.seats[0].name, max: d.max || 2, min: d.min || 2, players: players, note: note,
       onStart: start, onLeave: function () { return leave(); } };
     if (window.Online && Online.waitRoom) {
@@ -605,7 +606,7 @@
       { icon: 'logout', label: 'Leave the online game', sub: 'Back to playing on this device', when: function () { return !!T.code; }, onClick: function () {
         var d = T.d, playing = d && d.status === 'playing';
         if (!playing) { leave(); return; }
-        var botsTake = !!(G.resign || G.botTakeover || (G.bot && G.seats && G.seats(2) > 2));
+        var botsTake = !!(G.resign || G.botTakeover || G.bot);
         Kit.confirm('Leave the online game?', { ok: 'Leave', danger: true, body: botsTake ? 'The computer takes your seat and the others play on.' : 'The game ends and the others win.' }).then(function (ok) { if (ok) leave(); });
       } }
     ];
