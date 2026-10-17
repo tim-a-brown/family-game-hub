@@ -259,6 +259,7 @@
     party: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/>',
     casino: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/>',
     arcade: '<rect x="2" y="6" width="20" height="12" rx="6"/><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 11h.01"/><path d="M18 13h.01"/>',
+    console: '<path d="M6 3h12v13a2 2 0 0 1-2 2h-1.5v3h-5v-3H8a2 2 0 0 1-2-2z"/><rect x="9" y="6" width="6" height="6" rx="1"/><path d="M9 15h6"/>',
     tools: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>'
   };
   function icon(name, cls) {

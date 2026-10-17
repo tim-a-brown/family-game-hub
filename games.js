@@ -24,6 +24,7 @@ var GAME_CATS = [
   { id: 'party',  name: 'Party',       hue: 322, sat: 68 },
   { id: 'casino', name: 'Casino',      hue: 142, sat: 62 },
   { id: 'arcade', name: 'Arcade',      hue: 252, sat: 72 },
+  { id: 'console', name: 'Consoles',   hue: 176, sat: 58 },
   { id: 'tools',  name: 'Tools',       hue: 228, sat: 32 }
 ];
 
@@ -165,6 +166,11 @@ var GAMES = [
   { id: 'pinball',     name: 'Pinball',      color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Six 3D tables: flip, ramp, lock, multiball', play: 'pinball' },
   { id: 'minesweeper', name: 'Minesweeper',  color: '#64748b', cat: 'arcade', min: 1, max: 1, tag: 'Clear the field without a boom', play: 'minesweeper' },
   { id: 'candymatch',  name: 'Candy Match',  color: '#ff4f9a', cat: 'arcade', min: 1, max: 1, tag: 'Swap candies, match three, beat the level', play: 'candymatch' },
+
+  // ── Consoles: your own cartridges (game files you own, kept on the device) ──
+  { id: 'nes',         name: 'NES',            color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own NES games on a shelf of cartridges', play: 'nes' },
+  { id: 'snes',        name: 'Super Nintendo', color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own Super Nintendo games', play: 'snes' },
+  { id: 'genesis',     name: 'Sega Genesis',   color: '#000', cat: 'console', min: 1, max: 1, tag: 'Your own Genesis games', play: 'genesis' },
 
   // ── Tools ────────────────────────────────────────────────────────────────
   { id: 'scorecard',   name: 'Scorecard',    color: '#0ea5e9', cat: 'tools', min: 1, max: 8, tag: 'Keep score for any game', play: 'scorecard' },

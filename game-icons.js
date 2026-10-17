@@ -56,6 +56,9 @@ var GameIcon = (function () {
     arcade: function () {
       return [rect(7, 8, 34, 28, 6, W) + rect(10, 11, 28, 22, 3, K) + rect(19, 36, 10, 4, 1.5, W), 'translate(14 12) scale(.83)'];
     },
+    console: function () {   // a cartridge: the shell, with a label for the mark
+      return [path('M10 7h28v28a3 3 0 0 1-3 3h-4v4H17v-4h-4a3 3 0 0 1-3-3z', W) + rect(13, 33, 22, 2, 1, K, ' opacity=".12"') + rect(13, 36, 22, 1.4, .7, K, ' opacity=".1"'), 'translate(13 9.5) scale(.92)'];
+    },
     tools: function () {
       return [rect(11, 10, 26, 31, 4, W) + rect(18, 7, 12, 6, 2, K, ' opacity=".55"'), 'translate(13 15.5) scale(.92)'];
     }
@@ -279,6 +282,18 @@ var GameIcon = (function () {
       return path('M1 15.5 23 12v3.4L1 19z', g) + path('M3 17.6l3-2.6M8 16.8l3-2.6M13 16l3-2.6M18 15.2l3-2.6', 'none', ' stroke="' + h + '" stroke-width=".9"') +
         rect(16.6, 2, 1.1, 10.6, .4, '#3fd0e8') + rect(21.2, 2, 1.1, 10, .4, '#3fd0e8') + rect(16.6, 4.2, 5.7, .9, .3, '#3fd0e8') + rect(16.6, 7.2, 5.7, .9, .3, '#3fd0e8') + rect(16.6, 10.2, 5.7, .9, .3, '#3fd0e8') +
         circ(8.5, 10.2, 4.6, '#c8752c') + circ(8.5, 10.2, 3.2, '#e8a050') + path('M5.5 8l6 4.4M11.5 8l-6 4.4', 'none', ' stroke="#6b3410" stroke-width="1.1"');
+    },
+    // Consoles (cartridge base; each system's own controller)
+    nes: function () {   // the NES pad: black D-pad, Select/Start, two red buttons
+      return rect(1, 6, 22, 12, 2, '#2b2a2e') + rect(9, 8, 6, 8, 1, '#d7d4cf') + path('M4 10.6h1.6V9h1.6v1.6h1.6v1.6H7.2v1.6H5.6v-1.6H4z', '#111') +
+        rect(9.8, 12.2, 1.8, .9, .4, '#3a393d') + rect(12.4, 12.2, 1.8, .9, .4, '#3a393d') + circ(17.2, 13, 1.6, '#d0262b') + circ(20.6, 11.4, 1.6, '#d0262b');
+    },
+    snes: function () {   // the four face buttons in their diamond
+      return circ(12, 5.5, 3.4, '#2f63c8') + circ(5.5, 12, 3.4, '#2b9b4b') + circ(18.5, 12, 3.4, '#d22a35') + circ(12, 18.5, 3.4, '#e7b81e');
+    },
+    genesis: function () {   // three big buttons, A B C, rising across the pad
+      return path('M2 9h20v6a7 7 0 0 1-7 6H9a7 7 0 0 1-7-6z', '#141416') + circ(7, 15.5, 2.6, '#3a3a40') + circ(12, 13.5, 2.6, '#3a3a40') + circ(17, 11.5, 2.6, '#3a3a40') +
+        txt('A', 3.2, '#cfcfd8', 15.6, 7) + txt('B', 3.2, '#cfcfd8', 13.6, 12) + txt('C', 3.2, '#cfcfd8', 11.6, 17);
     },
     pacman: function () { return path('M12 12 20 7.5A9 9 0 1 0 20 16.5z', Y, ' transform="translate(-4 0)"') + circ(18, 12, 1.4, W) + circ(22.5, 12, 1.4, W); },
     breakout: function () { return rect(1, 2, 7, 3, .8, R) + rect(8.5, 2, 7, 3, .8, O) + rect(16, 2, 7, 3, .8, Y) + rect(1, 6, 7, 3, .8, O) + rect(16, 6, 7, 3, .8, '#3ddc84') + circ(13, 14, 1.8, W) + rect(7, 20, 10, 2.4, 1.2, '#7aa8ff'); },
