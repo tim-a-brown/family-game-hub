@@ -815,7 +815,10 @@
       for (var j in next) if (!held[j]) { press(+j, 1); held[j] = 1; mark(+j, true); Kit.haptic('light'); }
     }
     function read(x, y) {
-      var out = [], best = null, bd = 1e9;
+      var out = [], best = null, bd = 1e9, bd2 = 1e9;
+      var bs = ctls.filter(function (c) { return c.k === 'btn'; });
+      // on Start/Select or a shoulder button (the SNES's R sits just over X): the face buttons' extra margin gives way
+      var onKey = ctls.some(function (c) { return (c.k === 'pill' || c.k === 'sh') && Math.abs(x - c.cx) < c.w * .55 && Math.abs(y - c.cy) < c.h * .7; });
       ctls.forEach(function (c) {
         var dx = x - c.cx, dy = y - c.cy;
         if (c.k === 'dp') {
@@ -828,23 +831,31 @@
             if (ang > -67.5 && ang < 67.5) out.push(7);
           }
         } else if (c.k === 'btn') {
-          // generous: they can't be felt, so a thumb a little off still counts (and anywhere near, the closest one)
-          var rb = c.w / 2, db = Math.sqrt(dx * dx + dy * dy);
-          if (db < rb * 1.3) out.push(c.i); else if (db < rb * 2.1 && db < bd) { bd = db; best = c.i; }
+          // generous: they can't be felt, so a thumb a little off still counts, but never reaching into a neighbour's
+          // half of the gap (the SNES diamond and the Genesis row stay one button per spot); near but off them all,
+          // the closest one, when it's clearly the closest
+          var rb = c.w / 2, db = Math.sqrt(dx * dx + dy * dy), nn = 1e9;
+          bs.forEach(function (o) { if (o !== c) nn = Math.min(nn, Math.hypot(o.cx - c.cx, o.cy - c.cy)); });
+          if (db < rb || (!onKey && db < Math.min(rb * 1.3, nn * .5))) out.push(c.i);
+          else if (!onKey && db < rb * 2.1) { if (db < bd) { bd2 = bd; bd = db; best = c.i; } else if (db < bd2) bd2 = db; }
         } else if (c.k === 'pill' || c.k === 'sh') {
           if (Math.abs(dx) < c.w * .55 && Math.abs(dy) < c.h * .7) out.push(c.i);
         }
       });
-      // between two face buttons: both, along a wide strip joining them (B+A on a NES; any neighbouring pair on the
-      // others), so a thumb rolled from one onto the other presses both on the way, like on the real pad
-      var bs = ctls.filter(function (c) { return c.k === 'btn'; });
+      // between two face buttons: both. The NES's two: a wide strip joining them, so a thumb rolled from B onto A
+      // presses both on the way (run, then jump), like on the real pad. Three or four buttons: just the spot
+      // midway between neighbours, kept out of the buttons themselves (the Genesis's nearly touch), so a thumb
+      // off-centre doesn't press two
       for (var m = 0; m < bs.length; m++) for (var n = m + 1; n < bs.length; n++) {
-        var p = bs[m], q = bs[n], vx = q.cx - p.cx, vy = q.cy - p.cy, gap = Math.hypot(vx, vy);
+        var p = bs[m], q = bs[n], vx = q.cx - p.cx, vy = q.cy - p.cy, gap = Math.hypot(vx, vy), both = false;
         if (gap > p.w * 1.6) continue;
-        var tt = ((x - p.cx) * vx + (y - p.cy) * vy) / (gap * gap), off = Math.abs((x - p.cx) * vy - (y - p.cy) * vx) / gap;
-        if (tt > .28 && tt < .72 && off < p.w * .42) { if (out.indexOf(p.i) < 0) out.push(p.i); if (out.indexOf(q.i) < 0) out.push(q.i); }
+        if (bs.length === 2) {
+          var tt = ((x - p.cx) * vx + (y - p.cy) * vy) / (gap * gap), off = Math.abs((x - p.cx) * vy - (y - p.cy) * vx) / gap;
+          both = tt > .28 && tt < .72 && off < p.w * .42;
+        } else both = Math.hypot(x - (p.cx + q.cx) / 2, y - (p.cy + q.cy) / 2) < Math.min(p.w * .24, Math.max(gap / 2 - p.w * .425, p.w * .1));
+        if (both) { if (out.indexOf(p.i) < 0) out.push(p.i); if (out.indexOf(q.i) < 0) out.push(q.i); }
       }
-      if (!out.length && best != null) out.push(best);
+      if (!out.length && best != null && (bs.length < 2 || bd2 - bd > (ctls.filter(function (c) { return c.i === best; })[0].w / 2) * .3)) out.push(best);
       return out;
     }
     function toolAt(x, y) { for (var n = 0; n < ctls.length; n++) { var c = ctls[n]; if (c.k === 'tool' && Math.hypot(x - c.cx, y - c.cy) < c.w * .8) return c; } return null; }
