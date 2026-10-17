@@ -1170,7 +1170,7 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .lz.arrive .lz-in > .lz-info{--ay:-6vh;animation-delay:.07s;}
 .lz.arrive .lz-in > .lz-acts{animation:lzArriveBtn .42s cubic-bezier(.2,.8,.25,1) .2s both;}
 @keyframes lzArriveBtn{from{opacity:0;scale:.94;}}
-@media (min-width:900px) and (orientation:landscape){.lz.arrive .lz-in > .lz-flow{--ay:0px;--ax:5vw;}.lz.arrive .lz-in > .lz-info{--ay:0px;--ax:-5vw;}}
+@media (min-width:900px) and (orientation:landscape){.lz.arrive .lz-in > .lz-flow{--ay:0px;--ax:-5vw;}.lz.arrive .lz-in > .lz-info{--ay:0px;--ax:5vw;}}
 @keyframes lzArrive{from{opacity:0;translate:var(--ax,0px) var(--ay,0px);}}
 @keyframes lzArriveFade{from{opacity:0;}}
 .lorc-saver .lz.arrive .lz-in > .lz-flow,.lorc-saver .lz.arrive .lz-in > .lz-info,.lorc-saver .lz.arrive .lz-in > .lz-acts{animation:lzArriveFade .25s ease-out both!important;}   /* battery saver: a plain fade */
@@ -1218,8 +1218,10 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .acts-row.many .act .ai{width:26px;height:26px;}
 .lz-acts .why{font-size:.82rem;color:var(--text-3);text-align:center;margin-top:8px;}
 .lz-x{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));top:calc(var(--safe-t) + 10px);z-index:2;}
+/* Sideways: the cards on the right, under the right hand (most players are right-handed), the details on the left.
+   The same rule for every game played sideways: the play on the right, the extra details on the left. */
 @media (min-width:900px) and (orientation:landscape){
-  .lz-in{max-width:1000px;flex-direction:row;align-items:flex-start;justify-content:center;padding-top:calc(var(--safe-t) + 30px);}
+  .lz-in{max-width:1000px;flex-direction:row-reverse;align-items:flex-start;justify-content:center;padding-top:calc(var(--safe-t) + 30px);}
   .lz-card{--cu:min(82vh,560px);}
   .lz-card.loc{--cu:min(60vw,70vh,620px);}
   .lz-info{max-width:430px;}
@@ -1238,13 +1240,14 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
   .lz-in:has(.lz-flow.strip) .lz-info{max-width:380px;flex:none;width:380px;max-height:calc(100vh - 60px);overflow-x:hidden;overflow-y:auto;}
   /* Your hand, with its Sort button and filter chips: those sit under the cards (not as a column of their own
      between the cards and the details, which pushed both off the screen) */
-  .lz-in:has(.lz-hf){display:grid;grid-template-columns:auto 380px;grid-template-rows:auto auto;column-gap:20px;row-gap:4px;justify-content:center;align-content:center;}
+  .lz-in:has(.lz-hf){display:grid;grid-template-columns:380px auto;grid-template-rows:auto auto;column-gap:20px;row-gap:4px;justify-content:center;align-content:center;}
   .lz-in:has(.lz-hf) > *{grid-column:1 / -1;}
-  .lz-in:has(.lz-hf) > .lz-flow{grid-column:1;grid-row:1;justify-self:center;}
-  .lz-in:has(.lz-hf) > .lz-hf{grid-column:1;grid-row:2;justify-self:center;width:min(560px,100%);margin:0;}
-  .lz-in:has(.lz-hf) > .lz-info{grid-column:2;grid-row:1 / span 2;align-self:center;}
+  .lz-in:has(.lz-hf) > .lz-flow{grid-column:2;grid-row:1;justify-self:center;}
+  .lz-in:has(.lz-hf) > .lz-hf{grid-column:2;grid-row:2;justify-self:center;width:min(560px,100%);margin:0;}
+  .lz-in:has(.lz-hf) > .lz-info{grid-column:1;grid-row:1 / span 2;align-self:center;}
   .lz-in:has(.lz-hf) .lz-flow.strip{--cu:min(calc(100vh - 170px),calc((98vw - 440px) / 1.45),900px);}
   .lz.lz-min .lz-in:has(.lz-hf){grid-template-columns:auto;}   /* details rolled away: the cards take the middle */
+  .lz.lz-min .lz-in:has(.lz-hf) > .lz-flow,.lz.lz-min .lz-in:has(.lz-hf) > .lz-hf{grid-column:1;}
 }
 
 /* Sheets used by this game */
@@ -2044,14 +2047,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   .fp-catch{display:block;position:fixed;inset:0;z-index:429;background:var(--shade);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;transition:opacity .25s;}
   .fp-catch.show{opacity:1;}
 }
-/* Desktop (wide screens): the filters slide in as a panel down the right edge and the card view moves over to make room */
+/* Desktop (wide screens): the filters slide in as a panel down the left edge (the details side; the cards stay on the right) and the card view moves over to make room */
 @media (min-width:900px) and (orientation:landscape){
-  .flowpanel{left:auto;right:0;top:0;bottom:0;width:min(440px,38vw);margin-left:0;max-height:none;border-radius:22px 0 0 22px;padding:calc(var(--safe-t) + 18px) 18px calc(var(--safe-b) + 18px);
-    transform:translateX(105%);box-shadow:-16px 0 36px rgba(0,0,0,.6),inset 1px 0 0 rgba(227,189,98,.45);}
+  .flowpanel{left:0;right:auto;top:0;bottom:0;width:min(440px,38vw);margin-left:0;max-height:none;border-radius:0 22px 22px 0;padding:calc(var(--safe-t) + 18px) 18px calc(var(--safe-b) + 18px);
+    transform:translateX(-105%);box-shadow:16px 0 36px rgba(0,0,0,.6),inset -1px 0 0 rgba(227,189,98,.45);}
   .flowpanel.show{transform:none;}
-  .flowfilt .lz{padding-bottom:0;padding-right:min(440px,38vw);transition:padding-right .3s var(--spring);}
+  .flowfilt .lz{padding-bottom:0;padding-left:min(440px,38vw);transition:padding-left .3s var(--spring);}
   .bld{transition:margin .3s var(--spring),max-width .3s var(--spring);}
-  .flowlib .bld{max-width:none;margin:0 min(440px,38vw) 0 0;}
+  .flowlib .bld{max-width:none;margin:0 0 0 min(440px,38vw);}
   /* the strip sizes itself from the screen width, so take the panel's width out of it too */
   .flowfilt .lz-flow.strip{--cu:min(calc(100vh - 90px),calc((98vw - 440px - min(440px,38vw)) / 1.45),900px);}
 }
