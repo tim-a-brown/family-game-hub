@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 :root{--red-disc:#ff4d5e;--yel-disc:#ffc83d;}
 .board-wrap{position:relative;margin:4px auto 0;max-width:460px;}
@@ -41,6 +43,8 @@
 .mini.r{background:var(--red-disc);} .mini.y{background:var(--yel-disc);}
 .series{text-align:center;color:var(--text-3);font-weight:800;font-size:.85rem;margin-top:16px;}
 .actions{display:flex;gap:10px;justify-content:center;margin-top:16px;}
+.turn.nudge{animation:c4nudge .4s;}
+@keyframes c4nudge{20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(3px);}}
 
 /* iPad / large screens: bigger board; landscape puts scores and status beside it */
 @media (min-width:700px) and (orientation:portrait){
@@ -76,18 +80,21 @@
 
   Kit.init({
     id: 'connectfour',
-    onNew: function () { clearSave(); showSetup(); },
-    undo: function () { undo(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history('c4', { title: 'Connect Four: past games' }); } }],
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history('c4', { title: 'Connect Four: past games' }); } }]),
     rules:
       '<p class="goal">Be the first to line up <b>four of your discs</b> in a row: across, up and down, or diagonally.</p>' +
       '<h3>How it works</h3><ul><li>Players take turns dropping one disc into any column. It falls to the lowest empty spot.</li>' +
       '<li>Tap a column to drop your disc.</li><li>If the board fills up with no four in a row, it\'s a draw.</li><li>The starting player switches every game.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table and the other player joins on their own device. Take your turn whenever you like; the home screen shows when it’s your move.</li></ul>' +
       '<h3>Tips</h3><ul><li>The middle column is the strongest. It\'s part of the most possible lines.</li><li>Watch for "traps": two ways to win at once.</li></ul>'
   });
 
   var S = null; // {players:[{name,cpu,color,disc}], grid[r][c] 0/1/2, cur, first, moves:[c], over, wins:[a,b,draws], level}
-  function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {} if (!S.over) Kit.resume.set(S.moves.length ? 'Game ' + (S.wins[0] + S.wins[1] + S.wins[2] + 1) : 'Ready'); }
+  // Online (turnnet.js): the table holds the game (S without the local bits); NET is the table while playing at one
+  var NET = null, NETREC = {};
+  function save() { if (NET) return; try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {} if (!S.over) Kit.resume.set(S.moves.length ? 'Game ' + (S.wins[0] + S.wins[1] + S.wins[2] + 1) : 'Ready'); }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
   function showSetup() {
@@ -190,7 +197,7 @@
     return best;
   }
   function maybeCpu() {
-    if (!S || S.over || !S.players[S.cur].cpu) return;
+    if (NET || !S || S.over || !S.players[S.cur].cpu) return;
     S.busy = true; paintTurn();
     setTimeout(function () { var c = cpuMove(); S.busy = false; drop(c, true); }, 550);
   }
@@ -198,6 +205,7 @@
   // ── Moves ─────────────────────────────────────────────────────────────────
   var cells = [], ghosts = [];
   function drop(c, byCpu) {
+    if (NET) { netDrop(c); return; }
     if (!S || S.over || (S.busy && !byCpu)) return;
     if (S.players[S.cur].cpu && !byCpu) return;
     var r = openRow(S.grid, c);
@@ -361,7 +369,7 @@
     wrap.appendChild(el('div', { class: 'legs' }, [el('i'), el('i')]));
     app.appendChild(wrap);
     app.appendChild(el('div', { class: 'series', text: 'Series  ' + S.wins[0] + ' – ' + S.wins[1] + (S.wins[2] ? '  ·  ' + S.wins[2] + ' draws' : '') }));
-    if (S.over) app.appendChild(el('div', { class: 'actions' }, [el('button', { type: 'button', class: 'btn btn-primary', text: 'Next game', onclick: newRound })]));
+    if (S.over) app.appendChild(el('div', { class: 'actions' }, [el('button', { type: 'button', class: 'btn btn-primary', text: NET ? 'Play again' : 'Next game', onclick: NET ? function () { NET.again(); } : newRound })]));
     paintTurn();
     if (S.line) paintWin();
   }
@@ -384,8 +392,8 @@
   }
   window.addEventListener('resize', function () { requestAnimationFrame(paintFace); });
   function hover(c) {
-    var p = S && S.players[S.cur];
-    ghosts.forEach(function (g, i) { g.className = 'ghost' + (i === c && !S.over && !p.cpu ? ' show disc ' + p.disc : ''); g.style.position = 'relative'; });
+    var p = S && S.players[S.cur], can = NET ? NET.myTurn() && !S.busy : !p.cpu;
+    ghosts.forEach(function (g, i) { g.className = 'ghost' + (i === c && !S.over && can ? ' show disc ' + p.disc : ''); g.style.position = 'relative'; });
   }
   function paintTurn() {
     stripEl.innerHTML = '';
@@ -401,12 +409,80 @@
     turnEl.innerHTML = '';
     if (S.over) { turnEl.appendChild(el('span', { text: S.line ? S.players[S.grid[S.line[0][0]][S.line[0][1]] - 1].name + ' connected four!' : 'Board full: draw' })); return; }
     turnEl.appendChild(el('span', { class: 'dot' }));
+    if (NET) { turnEl.appendChild(el('span', { text: S.cur === NET.seat ? 'Your turn' : 'Waiting for ' + p.name })); return; }
     turnEl.appendChild(el('span', { text: p.cpu ? p.name + ' is thinking…' : Kit.poss(p.name) + ' turn' }));
   }
   function paintWin() {
     (S.line || []).forEach(function (rc) { var d = cells[rc[0]][rc[1]].querySelector('.disc'); if (d) d.classList.add('win'); });
     paintTurn();
   }
+
+  // ── Online ────────────────────────────────────────────────────────────────
+  // Seat 0 is red, seat 1 yellow. A rematch at the same table keeps the series and swaps who starts.
+  function netStart(players, opts, last) {
+    var wins = last && last.wins ? last.wins.slice() : [0, 0, 0], first = last ? 1 - (last.firstWas || 0) : 0, g = [];
+    for (var r = 0; r < ROWS; r++) g.push([0, 0, 0, 0, 0, 0, 0]);
+    return { players: players.map(function (p, i) { return { name: p.name, disc: i === 0 ? 'r' : 'y' }; }), grid: g, cur: first, first: first, firstWas: first,
+      moves: [], over: false, line: null, wins: wins, started: Date.now() };
+  }
+  function netDrop(c) {
+    if (!S || S.over || S.busy) return;
+    if (!NET.myTurn()) { Kit.haptic('error'); turnEl.classList.remove('nudge'); void turnEl.offsetWidth; turnEl.classList.add('nudge'); return; }
+    if (openRow(S.grid, c) < 0) { Kit.haptic('error'); Kit.sfx('bad'); return; }
+    NET.act(function (st) {
+      var r = openRow(st.grid, c); if (r < 0 || st.over) return null;
+      var who = st.cur + 1; st.grid[r][c] = who; st.moves.push(c);
+      var line = findLine(st.grid, who);
+      if (line) { st.over = true; st.line = line; st.wins[st.cur]++; }
+      else if (full(st.grid)) { st.over = true; st.wins[2]++; }
+      else st.cur = 1 - st.cur;
+      return { state: st, mv: { r: r, c: c } };
+    });
+  }
+  // Draw the table: the newest disc falls into place (yours or theirs), then the end of the game if that was it
+  function netShow(net, info) {
+    NET = net; S = JSON.parse(JSON.stringify(net.state)); S.busy = false;
+    render();
+    var mv = info.mv, d = mv && !info.fresh && !info.again && cells[mv.r] && cells[mv.r][mv.c] && cells[mv.r][mv.c].querySelector('.disc');
+    if (info.again) { Kit.sfx('deal'); Kit.callout && Kit.callout(S.cur === net.seat ? 'You start' : S.players[S.cur].name + ' starts'); }
+    function after() { if (S.over) { paintWin(); setTimeout(netEnd, S.line ? 900 : 300); } else if (!info.mine && net.myTurn()) Kit.haptic('light'); }
+    if (d) { S.busy = true; paintTurn(); fallDisc(d, mv.r, mv.c, function () { S.busy = false; paintTurn(); after(); }); }
+    else if (S.over && info.fresh) paintWin();
+    else after();
+  }
+  function netEnd() {
+    if (!NET || !S.over) return;
+    var me = NET.seat, wi = S.line ? S.grid[S.line[0][0]][S.line[0][1]] - 1 : -1, p = wi >= 0 ? S.players[wi] : null, key = NET.code + ':' + S.started;
+    if (!NETREC[key]) {
+      NETREC[key] = 1;
+      Kit.record('c4', { started: S.started, mode: 'Online',
+        players: S.players.map(function (q, i) { return { name: q.name, score: i === wi ? 1 : 0 }; }),
+        winner: p ? p.name : null, summary: p ? p.name + ' won in ' + S.moves.length + ' moves' : 'Draw', highlights: ['Online game · table ' + NET.code],
+        detail: { grid: S.grid.map(function (r) { return r.join('').replace(/0/g, '.'); }), line: S.line ? S.line.map(function (q) { return q[0] + ',' + q[1]; }) : [],
+          moves: S.moves.join(''), discs: 'ry', first: S.first, series: S.wins.slice(), level: '' } });
+    }
+    var res = NET.result, left = res && res.left != null;
+    Kit.win({
+      icon: !p && !left ? 'users' : wi === me || left && res.left !== me ? 'trophy' : 'users',
+      title: left ? res.text : !p ? 'It’s a draw!' : wi === me ? 'You win!' : p.name + ' wins',
+      sub: 'Series: ' + S.players[0].name + ' ' + S.wins[0] + ' – ' + S.wins[1] + ' ' + S.players[1].name,
+      lose: !!p && wi !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      closeLabel: 'Back to games'
+    });
+  }
+  function netLeave() {
+    NET = null;
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.grid && sv.players) { S = sv; S.busy = false; render(); maybeCpu(); } else showSetup();
+  }
+  TurnNet.setup({
+    game: 'connectfour', title: 'Connect Four', min: 2, max: 2,
+    start: netStart,
+    turn: function (st) { return st.over ? [] : [st.cur]; },
+    over: function (st) { if (!st.over) return null; var w = st.line ? st.grid[st.line[0][0]][st.line[0][1]] - 1 : -1; return { win: w >= 0 ? [w] : [], text: w >= 0 ? st.players[w].name + ' connected four' : 'Draw' }; },
+    show: netShow, leave: netLeave
+  });
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}

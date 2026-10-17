@@ -1196,7 +1196,10 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
             .then(function (qs) { var l = []; qs.forEach(function (x) { var d = x.data(); if (st.indexOf(d.status) >= 0) l.push({ code: x.id, d: d, seat: seat }); }); return l; })
             .catch(function () { return []; });
         }
-        return Promise.all([q('chessRooms', 'host', ['playing']), q('chessRooms', 'guest', ['playing']), q('lorcanaRooms', 'host', ['joined', 'playing']), q('lorcanaRooms', 'guest', ['playing'])]);
+        // every other turn-based game (turnnet.js): the same fields at every table, so no game needs its own code here
+        var tq = db.collection('turnRooms').where('accts', 'array-contains', tag).limit(40).get()
+          .then(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); return l; }).catch(function () { return []; });
+        return Promise.all([q('chessRooms', 'host', ['playing']), q('chessRooms', 'guest', ['playing']), q('lorcanaRooms', 'host', ['joined', 'playing']), q('lorcanaRooms', 'guest', ['playing']), tq]);
       }).then(function (r) {
         if (!r) return;
         var out = [], seen = {};
@@ -1212,6 +1215,18 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
           else if (/"phase":"mull"/.test(d.st || '')) { try { var mu = JSON.parse(d.st).mull || {}; mine = !mu[me] || (open && d.pr.seat === me) || (!open && d.owner === me && (answered || mu[1 - me])); } catch (e) { mine = false; } }
           else mine = open ? d.pr.seat === me : d.owner === me;
           out.push({ id: 'lorcana', code: x.code, at: d.at || 0, mine: !!mine, vs: knownBy(me === 0 ? d.guest : d.host), href: 'games/lorcana-play.html?online=1&room=' + x.code });
+        });
+        // turnRooms: your move when it's your seat's turn, or the computer's turn and you moved last (it's waiting on
+        // your device to make its moves)
+        (r[4] || []).forEach(function (x) {
+          var d = x.d, g = findGame(d.game), seats = d.seats || [], turn = d.turn || [];
+          if (!g || d.status !== 'playing' || seen['t' + x.code]) return; seen['t' + x.code] = 1;
+          var me = -1; seats.forEach(function (st, i) { if (me < 0 && st && !st.bot && !st.left && st.acct === tag) me = i; });
+          if (me < 0) return;
+          var mine = turn.indexOf(me) >= 0 || (d.drive === me && turn.some(function (i) { return seats[i] && seats[i].bot; }));
+          var others = seats.filter(function (st, i) { return i !== me && st && !st.bot; }).map(function (st) { return knownBy(st); });
+          var up = turn.map(function (i) { return seats[i]; }).filter(function (st) { return st && !st.bot; })[0];
+          out.push({ id: g.id, code: x.code, at: d.at || 0, mine: !!mine, vs: (mine || !up ? others.join(', ') : knownBy(up)) || 'the computer', href: 'games/' + (g.play || g.id) + '.html?online=1&room=' + x.code });
         });
         // your move first (newest first), then the ones waiting on the other player
         out.sort(function (a, b) { return (b.mine - a.mine) || (b.at - a.at); });
@@ -1256,7 +1271,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       return t;
     }).catch(function () { return null; }));
   }
-  var FT_COLS = ['arcadeRooms', 'chessRooms', 'lorcanaRooms'];
+  var FT_COLS = ['arcadeRooms', 'chessRooms', 'lorcanaRooms', 'turnRooms'];
+  function ftField(col) { return col === 'turnRooms' ? 'lk' : 'host.lk'; }   // (turn-based tables carry the host's tag at the top)
   function ftStop() { FT.unsub.forEach(function (u) { try { u(); } catch (e) {} }); FT.unsub = []; clearInterval(FT.poll); FT.poll = 0; clearTimeout(FT.quick); FT.quick = 0; FT.key = ''; FT.keys = null; }
   // Two ways the lists arrive: the live listener, and quick direct reads (one when home opens, then the live tables
   // every 2 seconds while you're using home: the listener on iPhone can lag 15 to 30 seconds). A quick read under
@@ -1270,7 +1286,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (FT.key !== key || !FT.keys || document.visibilityState === 'hidden' || FT.qBusy) return;
     var t0 = Date.now(); FT.qBusy = true;
     Promise.all(cols.map(function (col) {
-      return FGHSync.restQuery(col, 'host.lk', FT.keys, 20).then(function (l) { FT.rest[col] = { at: Date.now(), l: l.map(function (x) { return { code: x.id, d: x.data }; }) }; }, function (e) { FT.qFail = (FT.qFail || 0) + 1; if (FT.qFail === 1) console.warn('[home] open tables: quick check failed', (e && e.message) || e); });
+      return FGHSync.restQuery(col, ftField(col), FT.keys, 20).then(function (l) { FT.rest[col] = { at: Date.now(), l: l.map(function (x) { return { code: x.id, d: x.data }; }) }; }, function (e) { FT.qFail = (FT.qFail || 0) + 1; if (FT.qFail === 1) console.warn('[home] open tables: quick check failed', (e && e.message) || e); });
     })).then(function () {
       FT.qBusy = false;
       if (FT.key !== key) return;
@@ -1301,7 +1317,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
         if (FT.key !== key) return;
         var failed = false;
         FT_COLS.forEach(function (col) {
-          var q = db.collection(col).where('host.lk', 'in', keys).limit(20);
+          var q = db.collection(col).where(ftField(col), 'in', keys).limit(20);
           FT.unsub.push(q.onSnapshot(function (qs) {
             var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); FT.live[col] = l; ftEval();
           }, function (e) {
@@ -1310,7 +1326,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
             FT.unsub.forEach(function (u) { try { u(); } catch (er) {} }); FT.unsub = [];
             var poll = function () {
               if (document.visibilityState === 'hidden') return;
-              Promise.all(FT_COLS.map(function (c) { return db.collection(c).where('host.lk', 'in', keys).limit(20).get().then(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); FT.live[c] = l; }).catch(function () {}); })).then(ftEval);
+              Promise.all(FT_COLS.map(function (c) { return db.collection(c).where(ftField(c), 'in', keys).limit(20).get().then(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); FT.live[c] = l; }).catch(function () {}); })).then(ftEval);
             };
             poll(); FT.poll = setInterval(poll, 45000);
           }));
@@ -1336,6 +1352,11 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
         if (d.status !== 'waiting' || d.guest || h.dev === myDev || !who[h.lk] || now - (d.at || 0) > 30 * 864e5) return;
         out.push({ id: z[1], code: x.code, at: d.at || 0, live: false, who: who[h.lk].name, href: 'games/' + (z[1] === 'chess' ? 'chess' : 'lorcana-play') + '.html?online=1' });
       });
+    });
+    ftDocs('turnRooms').forEach(function (x) {   // turn-based tables (turnnet.js) taking players: no rush, they wait for days
+      var d = x.d, h = (d.seats || [])[0] || {}, n = (d.seats || []).filter(function (st) { return st && !st.bot; }).length, g = findGame(d.game);
+      if (!g || d.status !== 'open' || h.dev === myDev || n >= (d.max || 2) || !who[d.lk] || now - (d.at || 0) > 7 * 864e5) return;
+      out.push({ id: d.game, code: x.code, at: d.at || 0, live: false, n: n, max: d.max || 2, who: who[d.lk].name, href: 'games/' + (g.play || d.game) + '.html?join=' + x.code });
     });
     out = out.filter(function (x) { return findGame(x.id); });
     out.sort(function (a, b) { return (b.live ? 1 : 0) - (a.live ? 1 : 0) || b.at - a.at; });
@@ -1386,7 +1407,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
         var grp = el('div', { class: 'ots-g' }, [el('div', { class: 'ots-h' }, [Kit.avatar.el(h), el('b', { text: h }), mine.some(function (x) { return x.live; }) ? el('span', { class: 'ots-on', text: 'Online now' }) : null])]);
         mine.forEach(function (x) {
           var g = findGame(x.id), isNew = !otbShown[x.code]; otbShown[x.code] = 1;
-          var sub = x.live ? (x.playing ? (x.info || 'Playing') + ' · jump in' : 'Waiting to start') + ' · ' + x.n + ' of ' + x.max + ' seated' : 'Waiting for an opponent · opened ' + ago(x.at);
+          var sub = x.live ? (x.playing ? (x.info || 'Playing') + ' · jump in' : 'Waiting to start') + ' · ' + x.n + ' of ' + x.max + ' seated' : (x.max > 2 && x.n ? 'Waiting for players · ' + x.n + ' of ' + x.max + ' seated' : 'Waiting for an opponent') + ' · opened ' + ago(x.at);
           grp.appendChild(el('a', { class: 'ots-r' + (x.live ? ' live' : '') + (isNew ? ' arrive' : ''), href: x.href, style: { '--c': g.color } }, [
             el('span', { html: GameIcon(g.id), style: { display: 'contents' } }),
             el('span', { class: 'tx' }, [el('b', { text: g.name }), el('small', { text: sub })]),

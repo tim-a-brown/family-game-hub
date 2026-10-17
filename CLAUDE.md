@@ -72,6 +72,14 @@ Underlying principles for everything:
   computer players). Every game passes `undo` to `Kit.init` when moves can be
   taken back. The game menu always has Frequent players.
 
+## Online games
+
+- **Turn-based games go online through `turnnet.js`** (TurnNet), never their own system: one Firestore doc per table
+  in `turnRooms`, holding the whole game. Every table keeps `seats`, `accts`, `turn` (seat indexes whose move it is)
+  and `drive`, so the home screen's Keep playing shows "Your turn" for any game without game-specific code. A new
+  turn-based online game needs nothing added on the home screen. (Chess and Lorcana predate it and keep their own.)
+- Real-time games (arcade, consoles) use `online.js` (WebRTC); consoles add lockstep in `games/console-net.js`.
+
 ## Lorcana card updates
 
 - Every deploy (and the weekly `lorcana-check.yml` Action, Mondays) saves Lorcast's full card list to

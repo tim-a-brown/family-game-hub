@@ -97,6 +97,19 @@ service cloud.firestore {
       }
     }
 
+    // Turn-based online tables (turnnet.js: Connect Four, Checkers, Hearts, Monopoly…): one doc per table, a 4-letter
+    // code, holding the whole game (st, as text). Each player moves on their turn, from any of their devices; seats,
+    // accts (account tags), turn and drive let the home screen show whose move it is. Knowing the code is access.
+    match /turnRooms/{code} {
+      allow get, delete: if code.matches('^[A-Z]{4}$');
+      allow list: if request.query.limit <= 50;
+      allow create, update: if code.matches('^[A-Z]{4}$')
+        && request.resource.data.keys().hasOnly(['game', 'v', 'status', 'seats', 'accts', 'turn', 'drive', 'st', 'seq', 'mv',
+          'opts', 'min', 'max', 'g', 't0', 'result', 'hb', 'at', 'by', 'lk'])
+        && request.resource.data.st is string && request.resource.data.st.size() < 700000
+        && request.resource.data.seats is list && request.resource.data.seats.size() <= 8;
+    }
+
     // Player profiles for linking: one doc per 6-character share code (name, avatar, ask, rejected game ids,
     // arcade initials and best arcade scores, casino bankroll),
     // with an inbox of games other people recorded with this player in them. Knowing the code is access, like a
