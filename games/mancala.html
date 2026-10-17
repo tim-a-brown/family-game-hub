@@ -56,9 +56,17 @@
 .stone.up{transition:transform .26s cubic-bezier(.3,1.4,.5,1);box-shadow:0 10px 12px rgba(0,0,0,.45);}
 .ctrls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:4px;}
 @media (min-width:640px){.mc{gap:14px;padding-top:12px;}}
+.mtags{gap:12px;justify-content:center;flex-wrap:wrap;}
+/* Landscape iPad / desktop: the board across the full width in the upper part of the screen, the player tags
+   below it on the left and Play again on the right */
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage.ipl{max-width:1000px;}
-  .mc{gap:28px;padding-top:0;min-height:calc(100dvh - 110px - var(--safe-t) - var(--safe-b));justify-content:center;}
+  #app.stage.ipl{max-width:1440px;padding:4px calc(16px + var(--corner-x)) calc(var(--safe-b) + 8px + var(--corner-y));}
+  .mc{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto auto minmax(0,2fr);grid-template-areas:". ." "b b" "t c" ". .";
+    align-items:center;gap:18px 16px;padding-top:0;height:calc(100dvh - var(--safe-t) - var(--safe-b) - var(--corner-y) - 80px);}
+  .mc>.mboard{grid-area:b;justify-self:center;}
+  .mc>.mtags{grid-area:t;justify-content:flex-start;}
+  .mc>.ctrls{grid-area:c;margin:0;}
+  .mc>.ctrls .btn{min-width:180px;}
   .mtag{min-height:52px;padding:6px 18px 6px 7px;}
   .mtag .avatar{width:40px;height:40px;}
   .mtag .nm{font-size:1.1rem;max-width:220px;}
@@ -329,9 +337,10 @@
   // ── Geometry ──────────────────────────────────────────────────────────────
   var G = null;
   function geometry() {
-    var aw = Math.min(innerW(), 940);
+    var land = window.matchMedia && matchMedia('(orientation:landscape) and (min-width:900px) and (min-height:600px)').matches;
+    var aw = land ? innerW() : Math.min(innerW(), 940);
     var vertical = aw < 600;
-    // iPad / desktop: bigger pits (landscape gets a wider stage, so the board lies flat like a real one)
+    // iPad / desktop: bigger pits; sideways the board lies flat across the full width, like a real one
     var big = (window.innerWidth || 0) >= 700 && (window.innerHeight || 0) >= 600;
     var g = { v: vertical, r: {} }, i;
     if (vertical) {
@@ -351,7 +360,7 @@
       g.lbl = function (p) { var r = g.r[p]; if (p === 6 || p === 13) return null; return { x: p <= 5 ? rim / 2 : W - rim / 2, y: r.y + r.h / 2 }; };
       g.ss = Math.round(D * 0.25);
     } else {
-      var D2 = Math.min(big ? 104 : 84, (aw - 60) / 8.6), gap2 = Math.round(D2 * 0.14), rim2 = Math.round(D2 * 0.38);
+      var D2 = land ? Math.min(aw / 9.8, ((window.innerHeight || 800) - 220) / 3) : Math.min(big ? 104 : 84, (aw - 60) / 8.6), gap2 = Math.round(D2 * 0.14), rim2 = Math.round(D2 * 0.38);
       var SW = D2 * 1.15, pad2 = Math.round(D2 * 0.24);
       var W2 = pad2 * 2 + SW * 2 + gap2 * 2 + 6 * D2 + 5 * gap2, H2 = rim2 * 2 + D2 * 2 + Math.round(D2 * 0.25);
       g.W = W2; g.H = H2; g.D = D2;
@@ -391,7 +400,7 @@
     var wrap = el('div', { class: 'mc' });
     tagEls = [mkTag(0), mkTag(1)];
     if (G.v) wrap.appendChild(tagEls[1]);
-    else wrap.appendChild(el('div', { class: 'row', style: { gap: '12px', 'justify-content': 'center', 'flex-wrap': 'wrap' } }, [tagEls[1], tagEls[0]]));
+    else wrap.appendChild(el('div', { class: 'row mtags' }, [tagEls[1], tagEls[0]]));
     boardEl = el('div', { class: 'mboard', style: { width: G.W + 'px', height: G.H + 'px', '--grain': G.v ? '180deg' : '90deg', '--br': Math.round(G.D * 0.7) + 'px' } });
     pitEls = []; lblEls = [];
     for (var i = 0; i < 14; i++) {
