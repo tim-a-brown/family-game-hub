@@ -407,7 +407,7 @@
     var p = S.players[S.cur];
     turnEl.style.setProperty('--c', p.disc === 'r' ? '#ff4d5e' : '#ffc83d');
     turnEl.innerHTML = '';
-    if (S.over) { turnEl.appendChild(el('span', { text: S.line ? S.players[S.grid[S.line[0][0]][S.line[0][1]] - 1].name + ' connected four!' : 'Board full: draw' })); return; }
+    if (S.over) { turnEl.appendChild(el('span', { text: S.line ? S.players[S.grid[S.line[0][0]][S.line[0][1]] - 1].name + ' connected four!' : NET && NET.result && NET.result.left != null ? NET.result.text : 'Board full: draw' })); return; }
     turnEl.appendChild(el('span', { class: 'dot' }));
     if (NET) { turnEl.appendChild(el('span', { text: S.cur === NET.seat ? 'Your turn' : 'Waiting for ' + p.name })); return; }
     turnEl.appendChild(el('span', { text: p.cpu ? p.name + ' is thinking…' : Kit.poss(p.name) + ' turn' }));
@@ -446,6 +446,8 @@
     var mv = info.mv, d = mv && !info.fresh && !info.again && cells[mv.r] && cells[mv.r][mv.c] && cells[mv.r][mv.c].querySelector('.disc');
     if (info.again) { Kit.sfx('deal'); Kit.callout && Kit.callout(S.cur === net.seat ? 'You start' : S.players[S.cur].name + ' starts'); }
     function after() { if (S.over) { paintWin(); setTimeout(netEnd, S.line ? 900 : 300); } else if (!info.mine && net.myTurn()) Kit.haptic('light'); }
+    // the other player left mid-game: the table says so (the board itself isn't over)
+    if (!S.over && net.status === 'over' && net.result && net.result.left != null) { S.over = true; paintTurn(); setTimeout(netEnd, 200); return; }
     if (d) { S.busy = true; paintTurn(); fallDisc(d, mv.r, mv.c, function () { S.busy = false; paintTurn(); after(); }); }
     else if (S.over && info.fresh) paintWin();
     else after();
