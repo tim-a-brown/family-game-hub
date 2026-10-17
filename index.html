@@ -1412,14 +1412,15 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       .sort(function (a, b) { return b.r.ts - a.r.ts; });
   }
   function renderRail() {
-    // a category or a search narrows home to that: your own games in progress stay on All, but an online game waiting
-    // on your move shows whatever you're looking at (friends' open tables are the banner above the search)
+    // a category or a search narrows home to that: your own games in progress stay on All, but online games against
+    // someone (your move or theirs) stay at the top whatever you're looking at (friends' open tables are the banner
+    // above the search)
     var narrowed = !!state.q || state.cat !== 'all';
     var items = narrowed ? [] : currentItems();
     if (!items.length) editing = false;
     var rail = $('rail'); rail.innerHTML = ''; rail.classList.toggle('editing', editing);
     var eb = $('cont-edit'); eb.hidden = !items.length; eb.textContent = editing ? 'Done' : 'Edit'; eb.classList.toggle('on', editing);
-    var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g && (x.n.mine || !narrowed); });
+    var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g; });
     // Online games against someone: your move glows gold with a Your turn tag; one waiting on them sits back, quiet
     nets.forEach(function (x) {
       var mine = x.n.mine;
