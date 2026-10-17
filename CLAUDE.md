@@ -60,10 +60,11 @@ Underlying principles for everything:
   gets its own table "box" via `THEMES` in `kit.js` (felt colour, card backs,
   wood). Keep it understated: colour and material, never mascots or emoji.
 - Don't tune difficulty or design around a player's age. Match the real game and Tim's choices.
-- **Landscape: play on the right, details on the left.** Most players are right-handed, so sideways layouts put
-  the gameplay (the field, the cards being browsed) on the right and the extra details (scores, info panels,
-  card text, filters) on the left. Arcade games and Lorcana's card view follow this. (A console's drawn
-  controller keeps the real controller's layout.)
+- **Landscape: where you act on the right, what you look at on the left.** Most players are right-handed, so
+  sideways layouts put the side you take action on (buttons, the board or cards you tap to play, a playfield you
+  steer) on the right, and what's only for looking at (scores, logs, other players, a board that just shows the
+  state, like Monopoly's) on the left. Decide per game by where the taps go: chess's board is the action;
+  Monopoly's action panel is. (A console's drawn controller keeps the real controller's layout.)
 - Player setup goes through `Kit.setup` (name picker, regulars, robot names for
   computer players). Every game passes `undo` to `Kit.init` when moves can be
   taken back. The game menu always has Frequent players.
