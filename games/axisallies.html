@@ -4031,6 +4031,7 @@ function resumeLocal(saved) {
   buildMap(S.mode);
   buildBoard();
   requestAnimationFrame(function () {
+    if (NET) return;
     measure();
     if (!restoreView()) { fitView(); var c = capitalOf(cur()); if (c != null && S.mode !== 'skirm') focusOn(c, Math.max(fitScale() * 1.6, Math.min(1.1, V.W / 600))); }
     renderAll();
@@ -4038,9 +4039,30 @@ function resumeLocal(saved) {
     if (isCpu(cur())) setTimeout(function () { runCpu(); }, 400);
     else if (S.B) runBattle().catch(function () {});
   });
+}
+
+// ── Start ──────────────────────────────────────────────────────────────────
+(function boot() {
+  var saved = load();
+  if (!saved) { showSetup(); return; }
+  resumeLocal(saved);
 })();
+TurnNet.setup({
+  game: KEY, title: 'Axis & Allies', min: 2, max: 5,
+  seats: netSeats, opts: netOptsNow,
+  start: netStart, turn: netTurn, over: netOver, bot: netBot,
+  show: netShow, leave: netLeave,
+  botTakeover: true,   // someone who leaves is replaced by a computer general; the others play on
+  // a computer general's next step: time to watch the dice land in a battle, quicker otherwise
+  get botMs() {
+    var st = NET && NET.state, fast = st && st.opt && st.opt.speed === 'fast', B = st && st.B;
+    if (B) return B.step === 'vol' ? (fast ? 900 : 1900) : B.step === 'end' ? (fast ? 900 : 1800) : (fast ? 600 : 1100);
+    return fast ? 450 : 1000;
+  }
+});
 // test hook
-window.__aa = { get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir };
+window.__aa = { get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir,
+  get NET() { return NET; }, get DRAFT() { return DRAFT; }, netTurn: netTurn, get undo() { return undoStack.length; } };
 })();
 </script>
 </body>
