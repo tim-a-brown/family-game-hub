@@ -3589,7 +3589,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         ab.trig = {};
         var o = TRIG[k][2] || {};
         for (var q in o) ab.trig[q] = o[q];
-        if (/another|your other/i.test(tm[0])) ab.trig.other = 1;
+        // "other" is about who does it ("one of your other characters", "another character quests"), not the one it
+        // happens to ("whenever one of your characters banishes another character": Mushu counts himself)
+        if (/\byour other\b/i.test(tm[0]) || /^(?:during [^,]*, )?when(?:ever)? another\b/i.test(tm[0])) ab.trig.other = 1;
         // opts that name a match group (number) take their value from it
         ['cls', 'named', 'minS', 'maxC', 'defMaxS', 'defCls', 'typeM', 'dmg', 'under', 'side', 'maxPaid', 'payType'].forEach(function (q) { if (typeof o[q] === 'number') { if (tm[o[q]]) ab.trig[q] = tm[o[q]].trim(); else delete ab.trig[q]; } });
         if (o.cls === 1 && TRIG[k][1][0] === 'playCard' && tm[1]) ab.trig.cls = tm[1].trim();
