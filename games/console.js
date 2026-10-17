@@ -849,16 +849,35 @@
     }
     function toolAt(x, y) { for (var n = 0; n < ctls.length; n++) { var c = ctls[n]; if (c.k === 'tool' && Math.hypot(x - c.cx, y - c.cy) < c.w * .8) return c; } return null; }
     function update() { var next = {}; for (var id in touches) touches[id].forEach(function (i) { next[i] = 1; }); setHeld(next); }
+    function useTool(t) {
+      Kit.haptic('light'); t.el.classList.add('on'); setTimeout(function () { t.el.classList.remove('on'); }, 120);
+      if (t.t === 'menu') { var b = document.querySelector('.gbar button[aria-label="Menu"]'); if (b) b.click(); }
+      else if (ConsoleNet.on()) Kit.toast('Fast-forward is off while you play online');   // (both devices run at the same speed)
+      else { ffOn = !ffOn; t.el.classList.toggle('lit', ffOn); var E = emu(); if (E) try { E.gameManager.toggleFastForward(ffOn ? 1 : 0); } catch (er) {} }
+    }
+    // Touch: what's pressed is worked out afresh from every finger still on the controller, at every touch event,
+    // so a lift iOS never reported (a system gesture taking over a touch at the screen's edge) can't leave a
+    // button held while another thumb stays down
+    var toolIds = {};
+    function fromTouches(e) {
+      if (e.cancelable) e.preventDefault();
+      var next = {};
+      Array.prototype.forEach.call(e.targetTouches, function (t) { if (!toolIds[t.identifier]) read(t.clientX, t.clientY).forEach(function (i) { next[i] = 1; }); });
+      Array.prototype.forEach.call(e.changedTouches, function (t) { if (e.type === 'touchend' || e.type === 'touchcancel') delete toolIds[t.identifier]; });
+      setHeld(next);
+    }
+    sk.addEventListener('touchstart', function (e) {
+      Array.prototype.forEach.call(e.changedTouches, function (t) { var tl = toolAt(t.clientX, t.clientY); if (tl) { toolIds[t.identifier] = 1; useTool(tl); } });
+      fromTouches(e);
+    }, { passive: false });
+    ['touchmove', 'touchend', 'touchcancel'].forEach(function (k) { sk.addEventListener(k, fromTouches, { passive: false }); });
+    // A mouse or pen (and touch where there are no touch events): pointer events
+    var touchEvents = 'ontouchstart' in window;
     sk.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'touch' && touchEvents) return;
       e.preventDefault();
       var t = toolAt(e.clientX, e.clientY);
-      if (t) {
-        Kit.haptic('light'); t.el.classList.add('on'); setTimeout(function () { t.el.classList.remove('on'); }, 120);
-        if (t.t === 'menu') { var b = document.querySelector('.gbar button[aria-label="Menu"]'); if (b) b.click(); }
-        else if (ConsoleNet.on()) Kit.toast('Fast-forward is off while you play online');   // (both devices run at the same speed)
-        else { ffOn = !ffOn; t.el.classList.toggle('lit', ffOn); var E = emu(); if (E) try { E.gameManager.toggleFastForward(ffOn ? 1 : 0); } catch (er) {} }
-        return;
-      }
+      if (t) { useTool(t); return; }
       try { sk.setPointerCapture(e.pointerId); } catch (er) {}
       touches[e.pointerId] = read(e.clientX, e.clientY); update();
     });
@@ -867,7 +886,7 @@
     sk.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     // A lift the controller never heard about (turning the device mid-press, a notification sliding in) mustn't
     // leave a button held: with no finger on the glass, nothing is pressed
-    function releaseAll() { if (!Object.keys(touches).length) return; touches = {}; update(); }
+    function releaseAll() { touches = {}; toolIds = {}; update(); }
     ['pointerup', 'pointercancel'].forEach(function (k) { window.addEventListener(k, function (e) { if (touches[e.pointerId]) { delete touches[e.pointerId]; update(); } }); });
     ['touchend', 'touchcancel'].forEach(function (k) { window.addEventListener(k, function (e) { if (!e.touches || !e.touches.length) releaseAll(); }, { passive: true }); });
     window.addEventListener('blur', releaseAll);
