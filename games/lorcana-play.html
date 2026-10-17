@@ -175,6 +175,25 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .mat-sw i{display:block;height:58px;border-radius:10px;box-shadow:inset 0 0 0 1.5px var(--w14),0 3px 8px rgba(0,0,0,.4);}
 .mat-sw.on i{box-shadow:inset 0 0 0 2.5px var(--gilt),0 0 14px rgba(227,189,98,.45);}
 .mat-sw.on{color:var(--gilt-2);}
+.mat-sw span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* card art mats: the picture sits on ::before (filtered, blurred) under the felt texture */
+.mat.art,.mat-sw i.art,.art-big{position:relative;overflow:hidden;isolation:isolate;}
+.mat.art,.mat-sw i.art,.art-big{container-type:size;}
+/* sized so only the picture shows (the card's top half, inside its border), whatever the shape of the space */
+.art::before{content:'';position:absolute;inset:calc(var(--mb,0px) * -2.5);z-index:-1;--W:max(114cqw,156cqh);background-image:var(--mbg);background-repeat:no-repeat;
+  background-size:var(--W) auto,100% 100%;background-position:50% min(calc(50cqh - var(--W) * .46),calc(var(--W) * -.139)),0 0;background-blend-mode:var(--mblend,normal);filter:blur(var(--mb,0px)) var(--mfx,none);}
+.mat.art.flip::before{transform:rotate(180deg);}
+.mat-sw i.art::before,.art-big::before{inset:calc(var(--mb,0px) * -1);filter:blur(calc(var(--mb,0px) * .3)) var(--mfx,none);}
+.mat-sw i.art::after,.art-big::after{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:inherit;}
+.mat-kinds{margin:6px 0 12px;}
+.art-cur{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+.art-cur .art-big{display:block;height:120px;border-radius:12px;box-shadow:inset 0 0 0 1.5px var(--w14),inset 0 0 30px rgba(0,0,0,.45),0 4px 12px rgba(0,0,0,.45);}
+.art-cur b{font-size:.8rem;color:var(--text-2);text-align:center;}
+.art-filters{grid-template-columns:repeat(auto-fill,minmax(76px,1fr));margin-bottom:14px;}
+.art-filters .mat-sw i{height:46px;}
+.mat-pick .input{margin-bottom:10px;}
+.art-grid{margin-bottom:10px;}
+.art-none{color:var(--text-3);font-size:.82rem;padding:4px 2px 10px;}
 /* Turn indicator: a lacquered band across the middle of the table. The steps of a turn are studs on a gilt thread
    (the current one a lit gold cabochon); the latest move is written on a parchment ribbon with a wax seal. */
 .lp-mid{flex-direction:column;gap:4px;padding:6px 10px 7px;
@@ -7297,34 +7316,115 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     { id: 'nebula', name: 'Nebula', g: 'Designs', bg: 'radial-gradient(45% 40% at 30% 40%,rgba(255,90,170,.28),transparent 70%),radial-gradient(40% 45% at 70% 60%,rgba(70,160,255,.28),transparent 70%),radial-gradient(1px 1px at 20% 30%,#fff,transparent) 0 0/90px 80px,linear-gradient(160deg,#0b0a1f,#191233)' }
   ];
   var MATK = 'lorc_mat';
-  function matById(id) { return MATS.filter(function (m) { return m.id === id; })[0] || null; }
+  // Card art mats: 'art:<filter>:<card id>:<picture url>'. The picture travels with the id so the other device
+  // shows it even when its card list came from elsewhere. Filters calm the art down so cards stay readable
+  var ARTF = [
+    { id: 'clear', name: 'Clear', fx: 'brightness(.92)' },
+    { id: 'dim', name: 'Dim', fx: 'brightness(.55) saturate(.9)' },
+    { id: 'soft', name: 'Soft', fx: 'brightness(.62) saturate(1.05)', blur: 5 },
+    { id: 'mono', name: 'Mono', fx: 'grayscale(1) brightness(.5) contrast(1.15)' },
+    { id: 'sepia', name: 'Sepia', fx: 'sepia(.9) brightness(.55) contrast(1.05)' },
+    { id: 'ink', name: 'Ink wash', fx: 'brightness(.62) contrast(1.05)', tint: 1 }
+  ];
+  var artMats = {};
+  function artMat(f, cid, url) {
+    var id = 'art:' + f + ':' + cid + ':' + url; if (artMats[id]) return artMats[id];
+    var d = DB.byId[cid] || (S && S.defs && S.defs[cid]) || null, ink = d && d.ink && INKC[d.ink[0]] || '#e3bd62';
+    return (artMats[id] = { id: id, g: 'Card art', art: true, f: ARTF.filter(function (x) { return x.id === f; })[0] || ARTF[1], cid: cid, url: url, ink: ink, name: d ? d.n : 'Card art', bg: '#14121f' });
+  }
+  function matById(id) {
+    var a = /^art:(\w+):([^:]+):(.+)$/.exec(id || ''); if (a) return artMat(a[1], a[2], a[3]);
+    return MATS.filter(function (m) { return m.id === id; })[0] || null;
+  }
+  // Paints a mat (or a picker swatch). Art goes on a ::before layer so it can be filtered and blurred under the felt texture
+  function matFill(n, m, url) {
+    if (!m.art) { n.classList.remove('art'); n.style.background = m.bg; return; }
+    var u = url || m.url; if (imgIsBad(u) && backupOf(u)) u = backupOf(u);
+    var img = 'url("' + u.replace(/"/g, '%22') + '")';
+    n.classList.add('art'); n.style.background = m.bg;
+    n.style.setProperty('--mbg', m.f.tint ? img + ',linear-gradient(' + m.ink + ',' + m.ink + ')' : img);
+    n.style.setProperty('--mblend', m.f.tint ? 'luminosity,normal' : 'normal');
+    n.style.setProperty('--mfx', m.f.fx); n.style.setProperty('--mb', (m.f.blur || 0) + 'px');
+  }
+  // a picture that won't load is swapped for the backup copy
+  function probeArt(u, again) { if (!u || imgIsBad(u)) return; var im = new Image(); im.onerror = function () { imgBad[u] = Date.now(); if (backupOf(u)) again(); }; im.src = u; }
   function myMat() { return lsGet(MATK, 'midnight') || 'midnight'; }
   // the mat on a player's side: online, what that player picked; here, what was picked for them
   function matOf(pi) {
     if (S.mode === 'online' && NET.mats && NET.mats[pi]) return matById(NET.mats[pi]) || MATS[0];
     return matById(S.P[pi].mat) || matById(pi === bottomPi() ? myMat() : 'crimson') || MATS[0];
   }
-  function paintMat(n, pi) { if (!n) return; var m = matOf(pi); if (n.dataset.m !== m.id) { n.dataset.m = m.id; n.style.background = m.bg; } }
-  function matSwatch(m, on, click) {
-    return el('button', { type: 'button', class: 'mat-sw' + (on ? ' on' : ''), 'aria-pressed': String(on), 'aria-label': m.name, onclick: click }, [el('i', { style: { background: m.bg } }), el('span', { text: m.name })]);
+  // the opponent's mat faces them, like a real one across the table
+  function paintMat(n, pi, top) {
+    if (!n) return; var m = matOf(pi), k = m.id + (m.art && imgIsBad(m.url) ? '!' : '');
+    if (n.dataset.m === k) return;
+    n.dataset.m = k; n.classList.toggle('flip', !!top); matFill(n, m);
+    if (m.art) probeArt(m.url, function () { n.dataset.m = ''; paintMat(n, pi, top); });
   }
-  // Pick a mat. Pass and play / vs computer: tabs for each person at the table; online: just yours
+  function matSwatch(m, on, click, url, label) {
+    var i = el('i'); matFill(i, m, url);
+    return el('button', { type: 'button', class: 'mat-sw' + (on ? ' on' : ''), 'aria-pressed': String(on), 'aria-label': label || m.name, onclick: click }, [i, el('span', { text: label || m.name })]);
+  }
+  // Pick a mat. Pass and play / vs computer: tabs for each person at the table; online: just yours.
+  // Felt, Designs, or Card art: any card's picture (from your deck, or search every printing) with a filter over it
   function matPicker() {
     if (!S) return;
     var seats = S.mode === 'online' ? [NET.seat] : S.mode === 'cpu' ? [humanIx()] : [0, 1], cur = seats.indexOf(bottomPi()) >= 0 ? bottomPi() : seats[0];
-    var node = el('div', { class: 'mat-pick' }), tabs = el('div', { class: 'seg mat-tabs' }), grid = el('div');
-    function paint() {
-      tabs.innerHTML = ''; if (seats.length > 1) seats.forEach(function (pi) { tabs.appendChild(el('button', { type: 'button', class: pi === cur ? 'on' : '', text: S.P[pi].name, onclick: function () { cur = pi; paint(); } })); });
-      grid.innerHTML = '';
-      ['Felt', 'Designs'].forEach(function (g) {
-        grid.appendChild(el('div', { class: 'label', text: g }));
-        var row = el('div', { class: 'mat-grid' });
-        MATS.filter(function (m) { return m.g === g; }).forEach(function (m) { row.appendChild(matSwatch(m, matOf(cur).id === m.id, function () { setMat(cur, m.id); paint(); })); });
-        grid.appendChild(row);
+    var node = el('div', { class: 'mat-pick' }), tabs = el('div', { class: 'seg mat-tabs' }), kinds = el('div', { class: 'seg mat-kinds' }), grid = el('div');
+    var kind = matOf(cur).g, q = el('input', { class: 'input', type: 'search', placeholder: 'Search any card', 'aria-label': 'Search any card' }), found = el('div');
+    q.addEventListener('input', function () { paintFound(); });
+    function pickArt(d) {
+      var m = matOf(cur), f = m.art ? m.f.id : 'dim', u = d.im.l || d.im.s;
+      setMat(cur, 'art:' + f + ':' + d.id + ':' + u); paint();
+      var pv = $('.art-cur', node); if (pv && pv.scrollIntoView) pv.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    function artSwatch(d, on) { return matSwatch(artMat('clear', d.id, d.im.l || d.im.s), on, function () { pickArt(d); }, d.im.s || d.im.l, d.n); }
+    function artRow(list) {
+      var row = el('div', { class: 'mat-grid art-grid' }), m = matOf(cur);
+      list.forEach(function (d) { row.appendChild(artSwatch(d, !!m.art && m.cid === d.id)); });
+      return row;
+    }
+    // every printing whose name matches, so Enchanted and promo art can be picked too
+    function paintFound() {
+      found.innerHTML = ''; var t = skey(q.value); if (t.length < 2) return;
+      var seen = {}, list = DB.cards.filter(function (d) {
+        var u = d.im && (d.im.l || d.im.s); if (!u || seen[u] || skey(d.n + ' ' + (d.v || '')).indexOf(t) < 0) return false; return (seen[u] = 1);
+      }).slice(0, 36);
+      found.appendChild(list.length ? artRow(list) : el('div', { class: 'art-none', text: 'No cards called that' }));
+    }
+    // the cards in this player's deck for this game, in their chosen printing
+    function deckArt(pi) {
+      var seen = {}, out = [];
+      Object.keys(S.cards).forEach(function (u) {
+        if (S.cards[u].o !== pi) return; var d0 = D(S.cards[u].id); if (!d0) return;
+        var d = artOf(d0) || d0; if (!d.im || !(d.im.l || d.im.s) || seen[d.full || d.id]) return; seen[d.full || d.id] = 1; out.push(d);
       });
+      return out.sort(function (a, b) { return (a.c || 0) - (b.c || 0) || String(a.n).localeCompare(b.n); });
+    }
+    function paint() {
+      tabs.innerHTML = ''; if (seats.length > 1) seats.forEach(function (pi) { tabs.appendChild(el('button', { type: 'button', class: pi === cur ? 'on' : '', text: S.P[pi].name, onclick: function () { cur = pi; kind = matOf(cur).g; paint(); } })); });
+      kinds.innerHTML = '';
+      ['Felt', 'Designs', 'Card art'].forEach(function (g) { kinds.appendChild(el('button', { type: 'button', class: g === kind ? 'on' : '', text: g, onclick: function () { kind = g; paint(); } })); });
+      grid.innerHTML = ''; var m = matOf(cur);
+      if (kind !== 'Card art') {
+        var row = el('div', { class: 'mat-grid' });
+        MATS.filter(function (x) { return x.g === kind; }).forEach(function (x) { row.appendChild(matSwatch(x, m.id === x.id, function () { setMat(cur, x.id); paint(); })); });
+        grid.appendChild(row); return;
+      }
+      if (m.art) {
+        // the chosen art, and the same art under each filter
+        var big = el('i', { class: 'art-big' }); matFill(big, m);
+        grid.appendChild(el('div', { class: 'art-cur' }, [big, el('b', { text: m.name })]));
+        var fr = el('div', { class: 'mat-grid art-filters' });
+        ARTF.forEach(function (f) { fr.appendChild(matSwatch(artMat(f.id, m.cid, m.url), m.f.id === f.id, function () { setMat(cur, 'art:' + f.id + ':' + m.cid + ':' + m.url); paint(); }, null, f.name)); });
+        grid.appendChild(fr);
+      }
+      grid.appendChild(q); grid.appendChild(found); paintFound();
+      var mine = deckArt(cur);
+      if (mine.length) { grid.appendChild(el('div', { class: 'label', text: seats.length > 1 ? S.P[cur].name + '’s deck' : 'Your deck' })); grid.appendChild(artRow(mine)); }
     }
     if (seats.length > 1) node.appendChild(tabs);
-    node.appendChild(grid); paint();
+    node.appendChild(kinds); node.appendChild(grid); paint();
     Kit.sheet({ title: 'Playmat', node: node, actions: [{ label: 'Done', cls: 'btn-primary' }] });
   }
   function setMat(pi, id) {
