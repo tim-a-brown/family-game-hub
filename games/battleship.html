@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 /* Grey plastic game case */
 .case{position:relative;border-radius:18px;padding:8px 9px 10px;
@@ -127,6 +129,24 @@
   #app.bs-battle>.lower{grid-template-columns:1fr;margin-top:8px;}
   #app.bs-battle>.lastshot{text-align:left;}
 }
+/* Online */
+.turn.nudge{animation:bsnudge .4s;}
+@keyframes bsnudge{0%,100%{transform:none;}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+.foe{display:flex;align-items:center;justify-content:center;gap:8px;margin:-2px 0 10px;font-size:.86rem;font-weight:800;color:var(--text-2);}
+.foe .av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:.72rem;font-weight:900;color:#fff;background:var(--c);flex:none;}
+.foe .dots{display:inline-flex;gap:3px;}
+.foe .dots i{width:5px;height:5px;border-radius:50%;background:var(--text-3);animation:bsdot 1.2s infinite;}
+.foe .dots i:nth-child(2){animation-delay:.2s;}.foe .dots i:nth-child(3){animation-delay:.4s;}
+@keyframes bsdot{0%,60%,100%{opacity:.25;transform:none;}30%{opacity:1;transform:translateY(-3px);}}
+.foe .ok{display:inline-flex;align-items:center;gap:4px;color:var(--green,#3ddc84);}
+.foe .ok .ico{width:16px;height:16px;}
+.foe.pop{animation:bspop .5s cubic-bezier(.3,1.6,.6,1);}
+@keyframes bspop{0%{transform:scale(.8);opacity:.3;}100%{transform:none;opacity:1;}}
+.sea.sonar::before{content:"";position:absolute;inset:-50%;z-index:3;pointer-events:none;
+  background:conic-gradient(from 0deg,rgba(140,255,200,0) 0 300deg,rgba(140,255,200,.06) 330deg,rgba(140,255,200,.32) 360deg);animation:bssweep 3.2s linear infinite;}
+@keyframes bssweep{to{transform:rotate(360deg);}}
+.wait-note{text-align:center;color:var(--text-2);font-size:.9rem;font-weight:700;margin:14px 0 0;display:flex;align-items:center;justify-content:center;gap:6px;}
+.wait-note .ico{color:var(--green,#3ddc84);width:18px;height:18px;}
 @media (min-width:700px) and (orientation:portrait){
   #app.bs-battle>.case{max-width:min(100%,calc(100dvh - 570px));margin:0 auto;}
 }
@@ -145,9 +165,9 @@
 
   Kit.init({
     id: 'battleship',
-    onNew: function () { clearSave(); showSetup(); },
-    undo: function () { undo(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Battleship: past games' }); } }],
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Battleship: past games' }); } }]),
     rules:
       '<p class="goal">Find and sink all <b>five</b> of your opponent\'s hidden ships before they sink yours.</p>' +
       '<h3>Your fleet</h3><ul><li>Carrier (5 holes), Battleship (4), Cruiser (3), Submarine (3), Destroyer (2).</li>' +
@@ -160,7 +180,10 @@
       '<h3>Winning</h3><p>The first player to sink the whole enemy fleet wins.</p>' +
       '<h3>Tips</h3><ul><li>Spread your shots in a checkerboard pattern. Every ship covers at least two squares, so you won\'t miss any.</li>' +
       '<li>After a hit, try the squares next to it to find which way the ship runs.</li></ul>' +
-      '<h3>Pass and play</h3><p>Each player places ships in secret. Between turns a screen asks you to pass the phone. Hold the button for 3 seconds to see your fleet, so nobody peeks.</p>'
+      '<h3>Pass and play</h3><p>Each player places ships in secret. Between turns a screen asks you to pass the phone. Hold the button for 3 seconds to see your fleet, so nobody peeks.</p>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table and the other player joins on their own device.</li>' +
+      '<li>You both place your ships at the same time. Your opponent never sees your fleet until the battle is over.</li>' +
+      '<li>Fire whenever you like; the home screen shows when it’s your shot. Moves can’t be taken back online.</li></ul>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -168,7 +191,11 @@
   //      fleets:[[{r,c,h}|null x5] x2], shots:[[100] x2] ('', 'm', 'h'), sunk:[[bool x5] x2],
   //      turn, st:[{shots,hits,streak,best,firstHit:{},sinkIn:{},order:[]}], dead:[], log, started}
   var S = null, token = 0, undoStack = [], fresh = null, busy = false, sel = -1;
+  // Online (turnnet.js): NET is the table while playing at one; S is then this seat's view of the table's state
+  // (the other fleet hidden). DRAFT: this seat's ships while placing, before Ready (only on this device).
+  var NET = null, NETREC = {}, DRAFT = null, DRAFTKEY = '';
   function save() {
+    if (NET) { if (S && S.phase === 'place') { DRAFT = S.fleets[S.placing]; keepDraft(); } return; }
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (!S) return;
     if (S.phase === 'over') Kit.resume.clear();
@@ -329,6 +356,7 @@
   function clearFleet() { S.fleets[S.placing] = [null, null, null, null, null]; sel = -1; Kit.sfx('whoosh'); save(); render(); }
   function ready() {
     if (S.fleets[S.placing].some(function (x) { return !x; })) return;
+    if (NET) { netReady(); return; }
     Kit.sfx('good'); Kit.haptic('medium');
     if (S.mode === '2p' && S.placing === 0) { S.placing = 1; S.pass = true; save(); render(); return; }
     S.phase = 'battle'; S.turn = 0; S.pass = S.mode === '2p'; S.log = '';
@@ -388,15 +416,17 @@
     if (!d.moved) {
       if (d.fromGrid) rotateShip(d.k);
       else { sel = sel === d.k ? -1 : d.k; Kit.sfx('tap'); render(); if (sel >= 0) Kit.toast('Now tap a square for the ' + SHIPS[sel].n); }
-      return;
+        return;
     }
     if (d.ok) placeShip(d.k, d.r, d.c, d.h);
     else { Kit.sfx('bad'); Kit.haptic('error'); render(); }
   }
 
   // ── Battle ────────────────────────────────────────────────────────────────
-  function viewer() { return S.mode === 'cpu' ? 0 : (S.phase === 'place' ? S.placing : S.turn); }
-  function shoot(p, x) {
+  function viewer() { return NET ? Math.max(0, NET.seat) : S.mode === 'cpu' ? 0 : (S.phase === 'place' ? S.placing : S.turn); }
+  function shoot(p, x) { var res = shootOn(S, p, x); fresh = { p: p, x: x }; return res; }
+  // fires p's shot at x on game state S (also used on the online table's state, inside net.act)
+  function shootOn(S, p, x) {
     var q = 1 - p, o = occ(S.fleets[q]), k = o[x], st = S.st[p], res = { hit: k >= 0, k: k, sunk: false, win: false };
     st.shots++;
     if (k >= 0) {
@@ -413,10 +443,10 @@
     } else { S.shots[p][x] = 'm'; st.streak = 0; }
     var who = S.players[p].name;
     S.log = (who === 'You' ? 'You' : who) + ' fired at ' + coord(x) + ': ' + (res.sunk ? 'sank the ' + SHIPS[k].n + '!' : res.hit ? 'hit!' : 'miss');
-    fresh = { p: p, x: x };
     return res;
   }
   function humanFire(x) {
+    if (NET) { netFire(x); return; }
     if (!S || S.phase !== 'battle' || busy || S.pass) return;
     var p = S.turn; if (S.players[p].cpu || S.shots[p][x]) return;
     snapshot();
@@ -455,7 +485,7 @@
 
   // ── Computer player ───────────────────────────────────────────────────────
   function maybeCpu() {
-    if (!S || S.phase !== 'battle' || !S.players[S.turn].cpu) return;
+    if (NET || !S || S.phase !== 'battle' || !S.players[S.turn].cpu) return;
     busy = true; var t = ++token;
     setTimeout(function () {
       if (t !== token) return;
@@ -603,9 +633,10 @@
     app.classList.remove('bs-place', 'bs-battle');
     if (!S) return;
     if (S.pass && S.phase !== 'over') { renderPrivacy(); return; }
-    app.classList.toggle('bs-place', S.phase === 'place');
-    app.classList.toggle('bs-battle', S.phase !== 'place');
-    if (S.phase === 'place') renderPlace(); else renderBattle();
+    var placing = S.phase === 'place' && !(NET && NET.status === 'over');   // (online: a game that ended while placing shows the boards)
+    app.classList.toggle('bs-place', placing);
+    app.classList.toggle('bs-battle', !placing);
+    if (placing) renderPlace(); else renderBattle();
   }
   // Pass and play: cover the screen until the next player holds to see their fleet
   var hoOpen = false;
@@ -623,7 +654,9 @@
   }
   function renderPlace() {
     var v = S.placing, f = S.fleets[v], p = S.players[v];
+    if (NET && S.ready[v]) { renderPlaced(); return; }
     app.appendChild(el('div', { class: 'turn', style: { '--c': '#8fd0ff' } }, [el('span', { text: (S.mode === '2p' ? p.name + ': place' : 'Place') + ' your fleet' })]));
+    if (NET) app.appendChild(foeEl());
     app.appendChild(el('p', { class: 'phint', text: 'Drag ships onto the ocean. Tap a ship to turn it.' }));
     var ships = []; f.forEach(function (sh, k) { if (sh) ships.push({ k: k, r: sh.r, c: sh.c, h: sh.h }); });
     var b = boardEl({ cls: 'own placing', title: '<span>Ocean grid</span><b>' + p.name + '</b>', ships: ships,
@@ -649,7 +682,7 @@
       el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('shuffle') + '<span>Auto-place</span>', onclick: autoPlace }),
       el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('undo') + '<span>Clear</span>', onclick: clearFleet, disabled: f.every(function (x) { return !x; }) })
     ]));
-    var go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', style: { 'margin-top': '10px' }, text: S.mode === '2p' && v === 0 ? 'Done: pass the phone' : 'Ready for battle', onclick: ready });
+    var go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', style: { 'margin-top': '10px' }, text: !NET && S.mode === '2p' && v === 0 ? 'Done: pass the phone' : 'Ready for battle', onclick: ready });
     go.disabled = !done;
     app.appendChild(go);
     requestAnimationFrame(function () {
@@ -659,8 +692,12 @@
   function renderBattle() {
     var over = S.phase === 'over', v = viewer(), q = 1 - v, me = S.players[v], foe = S.players[q];
     var cur = S.players[S.turn];
-    var tl = el('div', { class: 'turn', style: { '--c': over ? 'var(--text-2)' : cur.cpu ? '#ff8a7a' : '#8fd0ff' } });
-    if (over) tl.appendChild(el('span', { text: (sunkCount(1) === 5 ? S.players[0] : S.players[1]).name + ' sank the whole fleet!' }));
+    var left = NET && NET.result && NET.result.left != null, mine = NET && S.turn === v;
+    if (left) over = true;
+    var tl = el('div', { class: 'turn', style: { '--c': over ? 'var(--text-2)' : cur.cpu || NET && !mine ? '#ff8a7a' : '#8fd0ff' } });
+    if (left) tl.appendChild(el('span', { text: NET.result.text }));
+    else if (over) tl.appendChild(el('span', { text: (sunkCount(1) === 5 ? S.players[0] : S.players[1]).name + ' sank the whole fleet!' }));
+    else if (NET) { tl.appendChild(el('span', { class: 'dot' })); tl.appendChild(el('span', { text: mine ? 'Your turn: fire!' : 'Waiting for ' + cur.name })); }
     else { tl.appendChild(el('span', { class: 'dot' })); tl.appendChild(el('span', { text: cur.cpu ? cur.name + ' is aiming…' : (S.mode === 'cpu' ? 'Your turn: fire!' : cur.name + ': fire!') })); }
     app.appendChild(tl);
 
@@ -669,7 +706,7 @@
     S.fleets[q].forEach(function (sh, k) { if (sh && (S.sunk[q][k] || over)) tShips.push({ k: k, r: sh.r, c: sh.c, h: sh.h, cls: S.sunk[q][k] ? 'wreck' : 'ghosted' }); });
     var canFire = !over && !busy && S.turn === v && !me.cpu;
     app.appendChild(boardEl({ cls: 'tgt', title: '<span>Target grid</span><b>' + foe.name + '\'s waters</b>', ships: tShips, pegs: pegsFor(S.shots[v], v),
-      fire: function (x) { return canFire && !S.shots[v][x]; }, onCell: canFire ? humanFire : null }));
+      fire: function (x) { return canFire && !S.shots[v][x]; }, onCell: NET && !over ? netFire : canFire ? humanFire : null }));
 
     // Lower: my ocean grid + enemy fleet status
     var oShips = []; S.fleets[v].forEach(function (sh, k) { if (sh) oShips.push({ k: k, r: sh.r, c: sh.c, h: sh.h, cls: S.sunk[v][k] ? 'wreck' : '' }); });
@@ -685,37 +722,47 @@
     var st = S.st[v];
     side.appendChild(el('div', { class: 'tally', html: 'Shots <b>' + st.shots + '</b> · Hits <b>' + st.hits + '</b>' + (st.shots ? ' (' + Math.round(st.hits / st.shots * 100) + '%)' : '') + '<br>Your ships afloat <b>' + (5 - sunkCount(v)) + '</b>' }));
     app.appendChild(el('div', { class: 'lower' }, [own, side]));
-    app.appendChild(el('div', { class: 'lastshot', text: S.log || (S.mode === 'cpu' ? 'Tap a square on the target grid to fire.' : '') }));
-    if (over) app.appendChild(el('div', { class: 'pbtns' }, [el('button', { type: 'button', class: 'btn btn-primary', text: 'New battle', onclick: newBattle })]));
+    app.appendChild(el('div', { class: 'lastshot', text: NET ? netLog() : S.log || (S.mode === 'cpu' ? 'Tap a square on the target grid to fire.' : '') }));
+    if (over && NET) app.appendChild(el('div', { class: 'pbtns' }, [el('button', { type: 'button', class: 'btn btn-primary', text: left ? 'Back to the lobby' : 'Play again', onclick: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); } })]));
+    else if (over) app.appendChild(el('div', { class: 'pbtns' }, [el('button', { type: 'button', class: 'btn btn-primary', text: 'New battle', onclick: newBattle })]));
     fresh = null;
   }
 
   // ── End of the battle ─────────────────────────────────────────────────────
-  function endGame(w) {
-    var l = 1 - w, W = S.players[w], st = S.st[w], hl = [];
-    S.phase = 'over'; busy = false; save(); render();
+  // the history record's highlights and detail for game G won by seat w (local games and online tables)
+  function highlightsFor(G, w) {
+    var W = G.players[w], st = G.st[w], hl = [];
     hl.push(W.name + ' sank all five ships in ' + st.shots + ' shots (' + Math.round(st.hits / st.shots * 100) + '% hits)');
     // Quickest sink by anyone
     var quick = null;
-    [0, 1].forEach(function (p) { for (var k in S.st[p].sinkIn) { var n = S.st[p].sinkIn[k]; if (SHIPS[k].s < 3) continue; if (!quick || n < quick.n || (n === quick.n && SHIPS[k].s > SHIPS[quick.k].s)) quick = { p: p, k: +k, n: n }; } });
-    if (quick && SHIPS[quick.k].s >= 3) hl.push(S.players[quick.p].name + ' sank the ' + SHIPS[quick.k].n + ' in ' + quick.n + ' shot' + (quick.n === 1 ? '' : 's') + ' after the first hit');
-    if (S.firstBlood >= 0) hl.push(S.players[S.firstBlood].name + ' drew first blood');
-    [0, 1].forEach(function (p) { if (S.st[p].best >= 3) hl.push(S.players[p].name + ' hit ' + S.st[p].best + ' in a row'); });
-    var afloat = SHIPS.filter(function (s, k) { return !S.sunk[w][k]; });
+    [0, 1].forEach(function (p) { for (var k in G.st[p].sinkIn) { var n = G.st[p].sinkIn[k]; if (SHIPS[k].s < 3) continue; if (!quick || n < quick.n || (n === quick.n && SHIPS[k].s > SHIPS[quick.k].s)) quick = { p: p, k: +k, n: n }; } });
+    if (quick && SHIPS[quick.k].s >= 3) hl.push(G.players[quick.p].name + ' sank the ' + SHIPS[quick.k].n + ' in ' + quick.n + ' shot' + (quick.n === 1 ? '' : 's') + ' after the first hit');
+    if (G.firstBlood >= 0) hl.push(G.players[G.firstBlood].name + ' drew first blood');
+    [0, 1].forEach(function (p) { if (G.st[p].best >= 3) hl.push(G.players[p].name + ' hit ' + G.st[p].best + ' in a row'); });
+    var afloat = SHIPS.filter(function (s, k) { return !G.sunk[w][k]; });
     if (afloat.length === 1) hl.push(W.name + ' won with just the ' + afloat[0].n + ' left afloat');
     else if (afloat.length === 5) hl.push(W.name + ' won without losing a single ship');
+    return hl;
+  }
+  // for the history view: each player's fleet ({r,c,h} per ship), the shots fired at it (100 chars, '.' / 'm' miss / 'h' hit),
+  // which of its ships sank, and per-player shooting stats
+  function detailFor(G, w) {
+    return { f0: G.fleets[0], f1: G.fleets[1], at0: G.shots[1].map(function (x) { return x || '.'; }).join(''), at1: G.shots[0].map(function (x) { return x || '.'; }).join(''),
+      sk0: G.sunk[0].join(''), sk1: G.sunk[1].join(''), w: w,
+      st: G.st.map(function (s) { return { s: s.shots, h: s.hits, b: s.best }; }),
+      order: (G.sinkOrder || []).map(function (x) { return { p: x.p, k: x.k }; }), fb: G.firstBlood };
+  }
+  function endGame(w) {
+    var l = 1 - w, W = S.players[w], st = S.st[w];
+    S.phase = 'over'; busy = false; save(); render();
+    var hl = highlightsFor(S, w);
     if (S.mode === 'cpu') hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
     Kit.record(KEY, {
       started: S.started, mode: S.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass and play',
       players: S.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, score: sunkCount(1 - i) }; }),
       winner: W.name, summary: W.name + ' won in ' + st.shots + ' shots', highlights: hl.slice(0, 6),
       meta: { shots: [S.st[0].shots, S.st[1].shots] },
-      // for the history view: each player's fleet ({r,c,h} per ship), the shots fired at it (100 chars, '.' / 'm' miss / 'h' hit),
-      // which of its ships sank, and per-player shooting stats
-      detail: { f0: S.fleets[0], f1: S.fleets[1], at0: S.shots[1].map(function (x) { return x || '.'; }).join(''), at1: S.shots[0].map(function (x) { return x || '.'; }).join(''),
-        sk0: S.sunk[0].join(''), sk1: S.sunk[1].join(''), w: w,
-        st: S.st.map(function (s) { return { s: s.shots, h: s.hits, b: s.best }; }),
-        order: (S.sinkOrder || []).map(function (x) { return { p: x.p, k: x.k }; }), fb: S.firstBlood }
+      detail: detailFor(S, w)
     });
     var lose = W.cpu;
     Kit.win({
@@ -728,13 +775,209 @@
     });
   }
 
+  // ── Online ────────────────────────────────────────────────────────────────
+  // The table's state is S's shape without the local bits: {players, phase, fleets:[fleet|null x2], shots, sunk,
+  // st, turn, first, wins, winner, last, ...}. Placing happens at the same time: it's the move of every seat that
+  // hasn't confirmed a fleet. Each device only ever draws its own fleet (the other one's ships show once sunk, and
+  // all of them when the battle is over). One shot per turn, as in the standard game. Rematches swap who fires first.
+  function netStart(players, opts, last) {
+    var first = last ? 1 - (last.first || 0) : 0;
+    return { players: players.map(function (p) { return { name: p.name }; }), phase: 'place', turn: first, first: first,
+      fleets: [null, null], shots: [blank(), blank()], sunk: [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]], st: [newStats(), newStats()],
+      dead: [], log: '', last: null, firstBlood: -1, sinkOrder: [], winner: -1,
+      wins: last && last.wins ? last.wins.slice() : [0, 0], started: Date.now() };
+  }
+  function netTurn(st) {
+    if (st.phase === 'place') return [0, 1].filter(function (i) { return !st.fleets[i]; });
+    return st.phase === 'battle' ? [st.turn] : [];
+  }
+  function netOver(st) { return st.phase === 'over' ? { win: [st.winner], text: st.players[st.winner].name + ' sank the whole fleet' } : null; }
+  function validFleet(f) {
+    if (!Array.isArray(f) || f.length !== 5) return false;
+    var g = [null, null, null, null, null];
+    for (var k = 0; k < 5; k++) { var s = f[k]; if (!s || !fits(g, k, s.r, s.c, !!s.h)) return false; g[k] = s; }
+    return true;
+  }
+  // this seat's view of the table: the other fleet hidden until it sinks (or the battle ends); while placing, my draft
+  function netView(st) {
+    var V = JSON.parse(JSON.stringify(st)), me = NET.seat, end = st.phase === 'over' || NET.status === 'over';
+    V.mode = 'net'; V.pass = false; V.level = 'normal'; V.placing = Math.max(0, me);
+    V.ready = [!!st.fleets[0], !!st.fleets[1]];
+    V.players.forEach(function (p) { p.cpu = false; });
+    for (var i = 0; i < 2; i++) {
+      if (i === me) { if (!V.fleets[i]) V.fleets[i] = DRAFT; continue; }
+      if (end && V.fleets[i]) continue;
+      V.fleets[i] = (V.fleets[i] || [null, null, null, null, null]).map(function (sh, k) { return V.sunk[i][k] ? sh : null; });
+    }
+    return V;
+  }
+  function keepDraft() { try { localStorage.setItem('battleship_net_draft', JSON.stringify({ k: DRAFTKEY, f: DRAFT })); } catch (e) {} }
+  function loadDraft(key) {
+    try { var d = JSON.parse(localStorage.getItem('battleship_net_draft')); if (d && d.k === key && validPartial(d.f)) return d.f; } catch (e) {}
+    return [null, null, null, null, null];
+  }
+  function validPartial(f) {
+    if (!Array.isArray(f) || f.length !== 5) return false;
+    var g = [null, null, null, null, null];
+    for (var k = 0; k < 5; k++) { var s = f[k]; if (s && !fits(g, k, s.r, s.c, !!s.h)) return false; g[k] = s || null; }
+    return true;
+  }
+  function nudge() {
+    var tl = app.querySelector('.turn'); Kit.haptic('error');
+    if (tl) { tl.classList.remove('nudge'); void tl.offsetWidth; tl.classList.add('nudge'); }
+  }
+  function netReady() {
+    var me = NET.seat, fleet = DRAFT && DRAFT.map(function (s) { return s && { r: s.r, c: s.c, h: !!s.h }; });
+    if (!validFleet(fleet)) return;
+    Kit.sfx('good'); Kit.haptic('medium');
+    NET.act(function (st) {
+      if (st.phase !== 'place' || st.fleets[me]) return null;
+      st.fleets[me] = fleet;
+      var go = !!(st.fleets[0] && st.fleets[1]);
+      if (go) { st.phase = 'battle'; st.turn = st.first; }
+      return { state: st, mv: { t: 'ready', p: me, go: go } };
+    });
+  }
+  function netFire(x) {
+    if (!S || S.phase !== 'battle' || busy) return;
+    var me = NET.seat;
+    if (!NET.myTurn()) { nudge(); return; }
+    if (S.shots[me][x]) return;
+    busy = true; var t = ++token;
+    Kit.sfx('whoosh'); Kit.haptic('light');
+    fxAim(app.querySelector('.sea.tgt'), x);
+    setTimeout(function () {
+      if (t !== token) return;
+      NET.act(function (st) {
+        if (st.phase !== 'battle' || st.turn !== me || st.shots[me][x] || !st.fleets[1 - me]) return null;
+        var r = shootOn(st, me, x);
+        st.last = { p: me, x: x, hit: r.hit, k: r.k, sunk: r.sunk };
+        if (r.win) { st.phase = 'over'; st.winner = me; st.wins[me]++; }
+        else st.turn = 1 - me;
+        return { state: st, mv: { t: 'shot', p: me, x: x, hit: r.hit, k: r.k, sunk: r.sunk, win: r.win } };
+      }).then(function (ok) { if (!ok && t === token) { busy = false; render(); } });
+    }, 340);
+  }
+  function netLog() {
+    var L = S.last, me = NET.seat;
+    if (!L) return S.phase === 'battle' && S.turn === me ? 'Tap a square on the target grid to fire.' : '';
+    var what = L.sunk ? 'sank the ' + SHIPS[L.k].n + '!' : L.hit ? 'hit!' : 'miss';
+    return (L.p === me ? 'You' : S.players[L.p].name) + ' fired at ' + coord(L.x) + ': ' + what;
+  }
+  function foeEl() {
+    var me = S.placing, q = 1 - me, p = S.players[q], ok = S.ready[q];
+    return el('div', { class: 'foe' }, [
+      el('span', { class: 'av', style: { '--c': Kit.color(q) }, text: String(p.name || '?').charAt(0).toUpperCase() }),
+      el('span', { text: p.name }),
+      ok ? el('span', { class: 'ok', html: Kit.icon('check') + '<span>Ready</span>' }) : el('span', { class: 'dots', 'aria-label': 'placing ships' }, [el('i'), el('i'), el('i')])
+    ]);
+  }
+  // my fleet is in: the ocean on sonar watch until the other side is ready
+  function renderPlaced() {
+    var v = S.placing, f = S.fleets[v], q = 1 - v;
+    app.appendChild(el('div', { class: 'turn', style: { '--c': '#ff8a7a' } }, [el('span', { class: 'dot' }), el('span', { text: 'Waiting for ' + S.players[q].name })]));
+    app.appendChild(foeEl());
+    var ships = []; (f || []).forEach(function (sh, k) { if (sh) ships.push({ k: k, r: sh.r, c: sh.c, h: sh.h }); });
+    var b = boardEl({ cls: 'own', title: '<span>Ocean grid</span><b>' + S.players[v].name + '</b>', ships: ships });
+    b.querySelector('.sea').classList.add('sonar');
+    app.appendChild(b);
+    app.appendChild(el('p', { class: 'wait-note', html: Kit.icon('check') + '<span>Your fleet is ready</span>' }));
+  }
+  function shotFx(mv, sea) {
+    if (!sea) return;
+    var me = NET.seat, mineShot = mv.p === me, q = 1 - mv.p;
+    if (mv.hit) {
+      fxBoom(sea, mv.x, mv.sunk); sndBoom(mv.sunk); Kit.haptic(mv.sunk ? 'heavy' : 'medium');
+      if (mv.sunk) {
+        var nm = SHIPS[mv.k].n.toLowerCase();
+        setTimeout(function () { Kit.callout(mineShot ? 'You sank ' + Kit.poss(S.players[q].name) + ' ' + nm + '!' : S.players[mv.p].name + ' sank your ' + nm + '!', mineShot ? '#ffd166' : '#ff7b70'); }, 250);
+        var sh = S.fleets[q] && S.fleets[q][mv.k];
+        if (sh) cellsOf(mv.k, sh).forEach(function (c, i) { if (c !== mv.x) setTimeout(function () { fxBoom(sea, c, false); }, 120 + i * 90); });
+      } else setTimeout(function () { Kit.callout('Hit!', mineShot ? '#ff6a5a' : '#ff7b70'); }, 120);
+    } else { fxSplash(sea, mv.x); sndSplash(); Kit.haptic('light'); }
+  }
+  // Draw the table. A shot plays out where it lands: mine on the target grid, theirs on my own fleet (the shell
+  // comes in, then the splash or explosion). Then the end of the battle if that was it.
+  function netShow(net, info) {
+    NET = net;
+    var st = net.state, mv = info.mv, me = net.seat, key = net.code + ':' + st.started;
+    token++; busy = false; var t = token;
+    if (Kit.handoff.close) Kit.handoff.close(); hoOpen = false;
+    if (key !== DRAFTKEY) { DRAFTKEY = key; DRAFT = loadDraft(key); sel = -1; }
+    if (info.again) document.querySelectorAll('.k-win').forEach(function (n) { n.remove(); });
+    var prev = !info.fresh && !info.again ? info.prev : null;
+    S = netView(st);
+    var ended = function () { if (st.phase === 'over' || net.result && net.result.left != null) setTimeout(function () { if (t === token) netEnd(); }, st.phase === 'over' ? 1500 : 300); };
+    // someone readied while I'm dragging a ship: just update their badge
+    if (drag && S.phase === 'place' && !S.ready[S.placing]) {
+      var fo = app.querySelector('.foe'); if (fo) { var nf = foeEl(); nf.classList.add('pop'); fo.replaceWith(nf); }
+      if (mv && mv.t === 'ready' && mv.p !== me) Kit.sfx('pop');
+      return;
+    }
+    if (mv && mv.t === 'shot' && prev) {
+      if (mv.p === me) { fresh = { p: me, x: mv.x }; render(); shotFx(mv, app.querySelector('.sea.tgt')); ended(); return; }
+      // theirs: the shell lands on my fleet
+      S = netView(prev); render();
+      fxAim(app.querySelector('.sea.own'), mv.x); Kit.sfx('whoosh');
+      busy = true;
+      setTimeout(function () {
+        if (t !== token) return;
+        busy = false; S = netView(st); fresh = { p: mv.p, x: mv.x }; render();
+        shotFx(mv, app.querySelector('.sea.own')); ended();
+      }, 420);
+      return;
+    }
+    render();
+    if (info.again) { Kit.sfx('deal'); setTimeout(function () { Kit.callout('New battle', '#8fd0ff'); }, 150); }
+    else if (mv && mv.t === 'ready' && prev) {
+      if (mv.go) { Kit.sfx('good'); Kit.haptic('medium'); setTimeout(function () { Kit.callout(S.turn === me ? 'You fire first' : S.players[S.turn].name + ' fires first', '#8fd0ff'); }, 200); }
+      else if (mv.p !== me) { Kit.sfx('pop'); Kit.haptic('light'); var f = app.querySelector('.foe'); if (f) f.classList.add('pop'); }
+    }
+    if (prev) ended();
+  }
+  function netEnd() {
+    if (!NET) return;
+    var G = NET.state, res = NET.result, left = res && res.left != null, me = NET.seat;
+    if (!G || G.phase !== 'over' && !left) return;
+    var w = G.phase === 'over' ? G.winner : -1, W = w >= 0 ? G.players[w] : null, key = NET.code + ':' + G.started;
+    if (W && !NETREC[key]) {
+      NETREC[key] = 1;
+      var hl = highlightsFor(G, w); hl.push('Online game · table ' + NET.code);
+      Kit.record(KEY, { started: G.started, mode: 'Online',
+        players: G.players.map(function (p, i) { return { name: p.name, score: G.sunk[1 - i].filter(Boolean).length }; }),
+        winner: W.name, summary: W.name + ' won in ' + G.st[w].shots + ' shots', highlights: hl.slice(0, 6),
+        meta: { shots: [G.st[0].shots, G.st[1].shots] }, detail: detailFor(G, w) });
+    }
+    var series = G.wins[0] + G.wins[1] > 1 ? ' · Series ' + G.wins[0] + '–' + G.wins[1] : '', ss = W ? G.st[w] : null;
+    Kit.win({
+      icon: left || w === me ? 'trophy' : 'users',
+      title: left ? res.text : w === me ? 'You win!' : W.name + ' wins',
+      sub: left ? 'The battle ended early' : (w === me ? 'Whole fleet sunk in ' : W.name + ' sank your fleet in ') + ss.shots + ' shots · ' + Math.round(ss.hits / ss.shots * 100) + '% hits' + series,
+      rank: W ? [{ name: W.name, score: '5 sunk', color: Kit.color(w) }, { name: G.players[1 - w].name, score: G.sunk[w].filter(Boolean).length + ' sunk', color: Kit.color(1 - w) }] : null,
+      lose: !left && w !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      extra: [{ label: 'Look at the boards', onClick: function () {} }]
+    });
+  }
+  function netLeave() {
+    NET = null; DRAFT = null; DRAFTKEY = ''; token++; busy = false; sel = -1; fresh = null;
+    boot();
+  }
+  TurnNet.setup({
+    game: 'battleship', title: 'Battleship', min: 2, max: 2,
+    start: netStart, turn: netTurn, over: netOver, show: netShow, leave: netLeave
+  });
+
   // ── Boot ──────────────────────────────────────────────────────────────────
-  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-  if (saved && saved.fleets && saved.players && saved.phase !== 'over') {
-    S = saved; busy = false;
-    if (S.mode === '2p') S.pass = true;
-    render(); maybeCpu();
-  } else showSetup();
+  function boot() {
+    var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (saved && saved.fleets && saved.players && saved.phase !== 'over') {
+      S = saved; busy = false; undoStack = [];
+      if (S.mode === '2p') S.pass = true;
+      render(); maybeCpu();
+    } else showSetup();
+  }
+  boot();
 })();
 </script>
 </body>

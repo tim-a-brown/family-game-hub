@@ -12,6 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 /* ── Materials ──────────────────────────────────────────────────────────── */
 :root{
@@ -51,6 +52,12 @@
 .sc.roomy .sc-msg{font-size:1.05rem;}
 .sc.roomy .sc-acts .btn.sm{font-size:.85rem;}
 .pls-4 .pl{padding:5px 7px;}
+/* online: how many tiles another player holds (their letters stay hidden) */
+.pl .rk{position:absolute;right:-3px;top:-5px;min-width:17px;height:17px;padding:0 3px;border-radius:4px;display:grid;place-items:center;font:800 .66rem/1 var(--tile-font);color:#2a1a0c;
+  background:var(--grain) 0 0/120px 120px,linear-gradient(165deg,#f8e6bb,#e2bf80);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1.5px 0 #b78c4f,0 2px 4px rgba(0,0,0,.4);transition:transform .3s var(--spring);}
+.pl .rk.low{background:var(--grain) 0 0/120px 120px,linear-gradient(165deg,#ffd9a0,#f0a860);}
+.pl.busy .rk{display:none;}
+.sc-msg.nudge{animation:shake .4s;}
 /* the tile bag: a drawstring cloth bag with the count on it */
 .sc-bag{flex:none;position:relative;width:54px;border:0;padding:0;border-radius:14px;background:var(--w06);color:var(--text);display:grid;place-items:center;cursor:pointer;transition:transform .15s var(--spring);}
 .sc-bag:active{transform:scale(.92);}
@@ -612,6 +619,8 @@
   // S = {mode:'cpu'|'pp'|'online', level, players:[{name, cpu, level, score, rack:[{id,l}]}], bag:[letters],
   //      board:[225], turn, scoreless, n (turns taken), tid, log:[...], last:[squares], lastWords, draw, over, result,
   //      started, hist:[snapshots]}
+  // Online (turnnet.js) the table holds the same S (mode 'online', every rack and the bag); this device draws a copy
+  // with the other racks and the bag taken out (rackN/bagN read their counts).
   // ═════════════════════════════════════════════════════════════════════════
   var S = null;
   var pend = [];          // tiles put on the board this turn: [{id, i, ch}]
@@ -636,12 +645,12 @@
   function humans() { return S.players.filter(function (p) { return !p.cpu; }).length; }
   function humanSeat() { for (var i = 0; i < S.players.length; i++) if (!S.players[i].cpu) return i; return 0; }
   // whose rack this device shows
-  function viewSeat() { if (!S) return 0; if (S.mode === 'online') return net.seat; if (S.mode === 'cpu') return humanSeat(); return S.turn; }
+  function viewSeat() { if (!S) return 0; if (S.mode === 'online') return NET ? NET.seat : -1; if (S.mode === 'cpu') return humanSeat(); return S.turn; }
   function myRack() { var p = S && P(viewSeat()); return p && p.rack ? p.rack : []; }
-  function myTurn() { return !!S && !S.over && S.turn === viewSeat() && !P(S.turn).cpu && !veil && !busy && !net.waiting; }
+  function myTurn() { return !!S && !S.over && S.turn === viewSeat() && !P(S.turn).cpu && !veil && !busy && (S.mode !== 'online' || !!NET && NET.myTurn()); }
   function rackShown() { return myRack().filter(function (t) { return !pend.some(function (q) { return q.id === t.id; }); }); }
   function tileById(id) { var r = myRack(); for (var i = 0; i < r.length; i++) if (r[i].id === id) return r[i]; return null; }
-  function draw(p) { var got = []; while (p.rack.length < 7 && S.bag.length) { var t = { id: ++S.tid, l: S.bag.pop() }; p.rack.push(t); got.push(t.id); } return got; }
+  function draw(p, st) { st = st || S; var got = []; while (p.rack.length < 7 && st.bag.length) { var t = { id: ++st.tid, l: st.bag.pop() }; p.rack.push(t); got.push(t.id); } return got; }
 
   function save() {
     if (!S || S.mode === 'online') return;
@@ -655,15 +664,13 @@
   // ═════════════════════════════════════════════════════════════════════════
   Kit.init({
     id: 'scrabble',
-    onNew: function () { leaveOnline(false); cancelThink(); clearSave(); S = null; showSetup(); },
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cancelThink(); clearSave(); S = null; showSetup(); },
     undo: function () { undo(); },
-    menu: [
+    menu: TurnNet.menu().concat([
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Scrabble: past games' }); } },
       { icon: 'rows', label: 'Moves so far', when: function () { return !!(S && V.root); }, onClick: function () { logSheet(); } },
-      { icon: 'tiles', label: 'Tiles left', sub: 'Letters you haven’t seen yet', when: function () { return !!(S && V.root); }, onClick: function () { unseenSheet(); } },
-      { icon: 'users', label: 'Play online', sub: '2 to 4 players, each on their own device', when: function () { return !net.mode && !(S && V.root && !S.over); }, onClick: function () { goLobby(); } },
-      { icon: 'logout', label: 'Leave the online game', when: function () { return !!net.mode; }, onClick: function () { leaveOnline(true); } }
-    ],
+      { icon: 'tiles', label: 'Tiles left', sub: 'Letters you haven’t seen yet', when: function () { return !!(S && V.root); }, onClick: function () { unseenSheet(); } }
+    ]),
     rules:
       '<p class="goal">Build words on the board, crossword style, and score the most points.</p>' +
       '<h3>Getting started</h3><ul>' +
@@ -691,7 +698,11 @@
       '<li>On a phone, pinch the board or use the magnifier to zoom in.</li>' +
       '<li>With a keyboard: click a square and type. Space switches between across and down, Backspace takes a tile back, Enter plays. Letters you don’t have use a blank if you have one.</li>' +
       '<li>Tap the bag to see which tiles you haven’t seen yet.</li>' +
-      '<li><b>vs Computer:</b> 1 to 3 robots, Easy, Normal or Hard. <b>Pass and play:</b> 2 to 4 players on one device; each rack stays hidden until its player holds the button. <b>Online:</b> 2 to 4 players, each on their own phone or tablet. One opens a table, the others join from the list or with the 4-letter code.</li></ul>'
+      '<li><b>vs Computer:</b> 1 to 3 robots, Easy, Normal or Hard. <b>Pass and play:</b> 2 to 4 players on one device; each rack stays hidden until its player holds the button. <b>Online:</b> 2 to 4 players, each on their own phone or tablet.</li></ul>' +
+      '<h3>Online</h3><ul>' +
+      '<li><b>Play online</b> in the menu: one player opens a table and the others join from the list or with its 4-letter code. Everyone sees only their own tiles.</li>' +
+      '<li>Take your turn whenever you like, close the app, and come back later: the home screen shows when it’s your move. It works live too when everyone is on at once.</li>' +
+      '<li>Moves can’t be taken back online. If someone leaves mid-game, a robot plays their tiles.</li></ul>'
   });
 
   function showSetup() {
@@ -708,7 +719,7 @@
       options: [{ id: 'level', label: 'Computer skill', value: 'normal', choices: LEVELS, when: function (m) { return m === 'cpu'; } }],
       start: "Let's play!",
       onStart: function (cfg) {
-        if (cfg.mode === 'online') { var me = lsGet('scrabble_net', {}) || {}; me.name = cfg.players[0].name === 'Player 1' ? '' : cfg.players[0].name; lsSet('scrabble_net', me); goLobby(); return; }
+        if (cfg.mode === 'online') { var nm0 = cfg.players[0] && cfg.players[0].name; if (nm0 && nm0 !== 'Player 1') lsSet('tn_me', { name: nm0 }); TurnNet.open(); return; }
         startLocal(cfg);
       }
     });
@@ -730,7 +741,15 @@
   // A fresh game: draw for first turn, deal 7 each
   function newGame(o) {
     cancelThink(); pend = []; selId = null; cursor = null; busy = false; veil = false;
-    S = { v: 1, mode: o.mode, level: o.level || 'normal', players: o.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.level || null, score: 0, rack: [] }; }),
+    S = freshState(o);
+    Kit.gameStart();
+    save();
+    buildView();
+    firstDrawSheet(function () { beginTurn(true); });
+  }
+  // (pure: also builds an online table's first state)
+  function freshState(o) {
+    var S = { v: 1, mode: o.mode, level: o.level || 'normal', players: o.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.level || null, score: 0, rack: [] }; }),
       board: [], bag: [], turn: 0, scoreless: 0, n: 0, tid: 0, log: [], last: [], lastWords: [], over: false, result: null, started: Date.now(), hist: [] };
     for (var i = 0; i < 225; i++) S.board.push('');
     // who goes first: each draws a tile, closest to A starts (a blank beats all); a tie draws again
@@ -746,12 +765,8 @@
     S.draw = rounds.map(function (r) { return r.map(function (x) { return x.p + ':' + x.l; }).join(','); });
     S.log.push({ k: 'first', p: S.turn });
     S.bag = shuffle(fullBag());
-    for (var s = 0; s < S.players.length; s++) draw(S.players[(S.turn + s) % S.players.length]);
-    Kit.gameStart();
-    save();
-    buildView();
-    if (S.mode === 'online') sendState();
-    firstDrawSheet(function () { beginTurn(true); });
+    for (var s = 0; s < S.players.length; s++) draw(S.players[(S.turn + s) % S.players.length], S);
+    return S;
   }
 
   // The draw for first turn, shown as tiles flipping over
@@ -781,7 +796,7 @@
     if (!S || S.over) return;
     pend = []; selId = null;
     var p = P(S.turn);
-    if (S.mode === 'online' && net.mode === 'guest') { veil = false; paintAll(); if (S.turn === net.seat) yourTurnPing(); return; }
+    if (S.mode === 'online') { veil = false; paintAll(); return; }   // (turnnet.js makes the computer seats' moves)
     if (p.cpu) { veil = false; paintAll(); robotTurn(); return; }
     if (S.mode === 'pp' && humans() > 1) {
       veil = true; paintAll();
@@ -792,10 +807,8 @@
       return;
     }
     veil = false; paintAll();
-    if (S.mode === 'online' && S.turn === net.seat && !first) yourTurnPing();
   }
-  function yourTurnPing() { Kit.sfx('pop'); Kit.haptic('medium'); Kit.toast('Your turn'); }
-  function nextTurn() { S.turn = (S.turn + 1) % S.players.length; }
+  function nextTurn(st) { st = st || S; st.turn = (st.turn + 1) % st.players.length; }
 
   // Snapshots for Undo
   function pushHist() {
@@ -810,7 +823,7 @@
   function undo() {
     if (!S || !V.root) return;
     if (pend.length) { recall(); return; }
-    if (S.mode === 'online') { Kit.toast('Undo isn’t available online'); return; }
+    if (S.mode === 'online') { Kit.toast('Moves can’t be taken back online'); return; }
     if (S.over) { Kit.toast('The game is over'); return; }
     if (S.mode === 'cpu') {
       if (!S.hist.some(function (h) { return !h.cpu; })) { Kit.toast('Nothing to undo yet'); return; }
@@ -825,74 +838,100 @@
     beginTurn(true);
   }
 
-  // A play: tiles [{id, i, ch}] from seat's rack. Returns the check result (ok false: nothing happened)
-  function doPlay(seat, tiles, how) {
-    var p = P(seat), r = E.evaluate(S.board, tiles.map(function (t) { return { i: t.i, ch: t.ch }; }));
+  // The moves themselves work on any state st (the game here, or an online table's copy inside net.act)
+  // A play: check it. Returns the check result, plus ids (the rack tiles used) when it's legal
+  function checkPlay(st, seat, tiles) {
+    var p = st.players[seat], r = E.evaluate(st.board, tiles.map(function (t) { return { i: t.i, ch: t.ch }; }));
     if (!r.ok) return r;
     var ids = {}; for (var k = 0; k < tiles.length; k++) {
-      var t = tiles[k], rt = p.rack.filter(function (x) { return x.id === t.id; })[0];
+      var t = tiles[k], rt = (p.rack || []).filter(function (x) { return x.id === t.id; })[0];
       if (!rt || ids[t.id] || (rt.l === '?' ? !E.isBlank(t.ch) : rt.l !== t.ch)) return { ok: false, err: 'Those tiles aren’t on the rack' };
       ids[t.id] = 1;
     }
-    pushHist();
-    var before = p.score;
-    tiles.forEach(function (t) { S.board[t.i] = t.ch; });
+    r.ids = ids;
+    return r;
+  }
+  function commitPlay(st, seat, tiles, r) {
+    var p = st.players[seat], ids = r.ids, before = p.score;
+    tiles.forEach(function (t) { st.board[t.i] = t.ch; });
     p.rack = p.rack.filter(function (x) { return !ids[x.id]; });
     p.score += r.score;
-    var drawn = draw(p);
+    var drawn = draw(p, st);
     var mainW = r.words[0].w;
-    S.log.push({ k: 'play', p: seat, w: r.words.map(function (w) { return w.w; }).join(', '), m: mainW, s: r.score, b: r.bingo ? 1 : 0, t: tiles.length });
-    S.last = tiles.map(function (t) { return t.i; });
-    S.lastWords = r.words.map(function (w) { return { w: w.w, s: w.s, sq: w.sq }; });
-    S.scoreless = r.score > 0 ? 0 : S.scoreless + 1;
-    S.n++;
-    afterMove(seat, { kind: 'play', how: how, before: before, drawn: drawn });
+    st.log.push({ k: 'play', p: seat, w: r.words.map(function (w) { return w.w; }).join(', '), m: mainW, s: r.score, b: r.bingo ? 1 : 0, t: tiles.length });
+    st.last = tiles.map(function (t) { return t.i; });
+    st.lastWords = r.words.map(function (w) { return { w: w.w, s: w.s, sq: w.sq }; });
+    st.scoreless = r.score > 0 ? 0 : st.scoreless + 1;
+    st.n++;
+    return { before: before, drawn: drawn };
+  }
+  function canSwap(st, seat, ids) { var p = st.players[seat]; return st.bag.length >= 7 && ids.length > 0 && ids.every(function (id, k) { return ids.indexOf(id) === k && p.rack.some(function (x) { return x.id === id; }); }); }
+  function commitSwap(st, seat, ids) {
+    var p = st.players[seat];
+    var out = p.rack.filter(function (x) { return ids.indexOf(x.id) >= 0; });
+    p.rack = p.rack.filter(function (x) { return ids.indexOf(x.id) < 0; });
+    var drawn = draw(p, st);
+    out.forEach(function (t) { st.bag.push(t.l); }); shuffle(st.bag);
+    st.log.push({ k: 'swap', p: seat, x: out.length });
+    st.last = []; st.lastWords = [];
+    st.scoreless++; st.n++;
+    return drawn;
+  }
+  function commitPass(st, seat) {
+    st.log.push({ k: 'pass', p: seat });
+    st.last = []; st.lastWords = [];
+    st.scoreless++; st.n++;
+  }
+  // after any move: the end of the game, or the next player's turn
+  function finishMove(st, seat) {
+    var p = st.players[seat], end = null;
+    if (!p.rack.length && !st.bag.length) end = { type: 'out', seat: seat };
+    else if (st.scoreless >= 6) end = { type: 'stuck' };
+    if (end) endGame(end, st); else nextTurn(st);
+  }
+
+  // A play: tiles [{id, i, ch}] from seat's rack. Returns the check result (ok false: nothing happened)
+  function doPlay(seat, tiles, how) {
+    var r = checkPlay(S, seat, tiles);
+    if (!r.ok) return r;
+    pushHist();
+    var res = commitPlay(S, seat, tiles, r);
+    afterMove(seat, { kind: 'play', how: how, before: res.before, drawn: res.drawn });
     return r;
   }
   function doSwap(seat, ids) {
-    var p = P(seat);
     if (S.bag.length < 7 || !ids.length) return false;
     pushHist();
-    var out = p.rack.filter(function (x) { return ids.indexOf(x.id) >= 0; });
-    p.rack = p.rack.filter(function (x) { return ids.indexOf(x.id) < 0; });
-    var drawn = draw(p);
-    out.forEach(function (t) { S.bag.push(t.l); }); shuffle(S.bag);
-    S.log.push({ k: 'swap', p: seat, x: out.length });
-    S.last = []; S.lastWords = [];
-    S.scoreless++; S.n++;
+    var drawn = commitSwap(S, seat, ids);
     afterMove(seat, { kind: 'swap', drawn: drawn });
     return true;
   }
   function doPass(seat) {
     pushHist();
-    S.log.push({ k: 'pass', p: seat });
-    S.last = []; S.lastWords = [];
-    S.scoreless++; S.n++;
+    commitPass(S, seat);
     afterMove(seat, { kind: 'pass' });
   }
   function afterMove(seat, info) {
     pend = []; selId = null; cursor = null;
-    var p = P(seat), end = null;
-    if (!p.rack.length && !S.bag.length) end = { type: 'out', seat: seat };
-    else if (S.scoreless >= 6) end = { type: 'stuck' };
-    if (end) endGame(end); else nextTurn();
+    finishMove(S, seat);
     save();
-    if (S.mode === 'online' && net.mode === 'host') sendState();
     showMove(seat, info, function () {
       if (S.over) { showResults(); return; }
       beginTurn(false);
     });
   }
-  function endGame(end) {
-    var pre = S.players.map(function (p) { return p.score; }), adj = S.players.map(function () { return 0; }), left = S.players.map(function (p) { return p.rack.map(function (t) { return t.l; }).join(''); });
-    S.players.forEach(function (p, i) { if (end.type === 'out' && i === end.seat) return; adj[i] = -rackPts(p); });
+  function endGame(end, st) {
+    st = st || S;
+    var pl = st.players;
+    var pre = pl.map(function (p) { return p.score; }), adj = pl.map(function () { return 0; }), left = pl.map(function (p) { return p.rack.map(function (t) { return t.l; }).join(''); });
+    pl.forEach(function (p, i) { if (end.type === 'out' && i === end.seat) return; adj[i] = -rackPts(p); });
     if (end.type === 'out') adj[end.seat] = -adj.reduce(function (a, b) { return a + b; }, 0);
-    S.players.forEach(function (p, i) { p.score += adj[i]; });
-    var order = S.players.map(function (p, i) { return i; }).sort(function (a, b) { return P(b).score - P(a).score || pre[b] - pre[a]; });
-    var top = order[0], tie = order.length > 1 && P(order[1]).score === P(top).score && pre[order[1]] === pre[top];
-    S.over = true;
-    S.result = { type: end.type, seat: end.type === 'out' ? end.seat : -1, pre: pre, adj: adj, left: left, winner: tie ? -1 : top, order: order, tieBreak: !tie && order.length > 1 && P(order[1]).score === P(top).score };
-    S.log.push({ k: 'end', t: end.type, p: end.type === 'out' ? end.seat : -1 });
+    pl.forEach(function (p, i) { p.score += adj[i]; });
+    var order = pl.map(function (p, i) { return i; }).sort(function (a, b) { return pl[b].score - pl[a].score || pre[b] - pre[a]; });
+    var top = order[0], tie = order.length > 1 && pl[order[1]].score === pl[top].score && pre[order[1]] === pre[top];
+    st.over = true;
+    st.result = { type: end.type, seat: end.type === 'out' ? end.seat : -1, pre: pre, adj: adj, left: left, winner: tie ? -1 : top, order: order, tieBreak: !tie && order.length > 1 && pl[order[1]].score === pl[top].score };
+    st.log.push({ k: 'end', t: end.type, p: end.type === 'out' ? end.seat : -1 });
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -925,8 +964,10 @@
   // ═════════════════════════════════════════════════════════════════════════
   // View
   // ═════════════════════════════════════════════════════════════════════════
-  var V = {}, Z = { z: 1, tx: 0, ty: 0 }, cellSig = [];
-  function teardownView() { V = {}; cellSig = []; Z = { z: 1, tx: 0, ty: 0 }; document.removeEventListener('keydown', onKey); window.removeEventListener('resize', fitSoon); }
+  var V = {}, Z = { z: 1, tx: 0, ty: 0 }, cellSig = [], viewTok = 0;
+  // a timer that's dropped if the board is taken down first (a new game, leaving the online table)
+  function later(fn, ms) { var tok = viewTok; return setTimeout(function () { if (tok === viewTok) fn(); }, ms); }
+  function teardownView() { viewTok++; V = {}; cellSig = []; Z = { z: 1, tx: 0, ty: 0 }; document.removeEventListener('keydown', onKey); window.removeEventListener('resize', fitSoon); }
   function grainPos(id) { var h = (id * 2654435761) >>> 0; return { '--gx': -(h % 170) + 'px', '--gy': -((h >> 8) % 170) + 'px' }; }
   function tileEl(l, o) {
     o = o || {};
@@ -1038,15 +1079,17 @@
         V.pls.appendChild(el('div', { class: 'pl', style: { '--c': col(i) } }, [
           p.cpu ? el('span', { class: 'avatar', style: { '--c': col(i) }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name, null, col(i)),
           el('div', { class: 'who' }, [el('span', { class: 'nm', text: p.name }), el('span', { class: 'pt', text: String(p.score) })]),
-          el('span', { class: 'think', html: '<i></i><i></i><i></i>' })
+          el('span', { class: 'think', html: '<i></i><i></i><i></i>' }),
+          S.mode === 'online' && i !== viewSeat() ? el('span', { class: 'rk', 'aria-hidden': 'true' }) : null
         ]));
       });
     }
     S.players.forEach(function (p, i) {
       var c = V.pls.children[i];
       c.classList.toggle('on', tally ? tally.seat === i : !S.over && S.turn === i);
-      c.classList.toggle('me', S.mode === 'online' && i === net.seat);
-      c.classList.toggle('busy', !tally && !S.over && S.turn === i && (p.cpu && busy));
+      c.classList.toggle('me', S.mode === 'online' && i === viewSeat());
+      c.classList.toggle('busy', !tally && !S.over && S.turn === i && p.cpu && (busy || S.mode === 'online'));
+      var rk = c.querySelector('.rk'); if (rk) { var nr = rackN(p); rk.textContent = String(nr); rk.classList.toggle('low', nr < 7); rk.title = nr + (nr === 1 ? ' tile' : ' tiles'); }
       var pt = c.querySelector('.pt'); if (!pt._anim) pt.textContent = String(tally && tally.seat === i && tally.before != null ? tally.before : p.score);
       c.setAttribute('aria-label', p.name + ': ' + p.score + ' points' + (S.turn === i && !S.over ? ', to play' : ''));
     });
@@ -1141,14 +1184,14 @@
       return;
     }
     var p = P(S.turn), txt;
-    if (p.cpu && busy) txt = p.name + ' is thinking…';
-    else if (S.mode === 'online' && S.turn !== net.seat) txt = 'Waiting for ' + p.name + '…';
+    if (p.cpu && (busy || S.mode === 'online')) txt = p.name + ' is thinking…';
+    else if (S.mode === 'online' && S.turn !== viewSeat()) txt = 'Waiting for ' + p.name + '…';
     else if (veil) txt = 'Pass to ' + p.name;
     else txt = (S.mode === 'pp' ? Kit.poss(p.name) : 'Your') + ' turn';
     var t = el('span', { class: 'turn', style: { '--c': col(S.turn) } }, [el('span', { class: 'dot' }), el('span', { text: txt })]);
     m.appendChild(t);
     var lm = lastMoveText(), logShown = V.log && V.log.clientHeight > 30;
-    if (lm && !(p.cpu && busy) && !logShown) m.appendChild(el('span', { class: 'last', text: '· ' + lm }));
+    if (lm && !(p.cpu && (busy || S.mode === 'online')) && !logShown) m.appendChild(el('span', { class: 'last', text: '· ' + lm }));
   }
   function paintActs() {
     if (!V.acts) return;
@@ -1270,7 +1313,7 @@
       else Kit.sfx('whoosh');
       if (seat === viewSeat() && info.drawn && info.drawn.length && !veil) dealIn(info.drawn);
       Kit.toast(lastMoveText());
-      setTimeout(function () { busy = false; done(); }, 900);
+      later(function () { busy = false; done(); }, 900);
       return;
     }
     var t = 0, sqs = S.last.slice().sort(function (a, b) { return a - b; });
@@ -1278,17 +1321,17 @@
       sqs.forEach(function (i, k) {
         var n = V.cells[i].querySelector('.tl'); if (!n) return;
         n.classList.add('hide');
-        setTimeout(function () { n.classList.remove('hide'); n.classList.add('drop'); Kit.sfx('tap', 0.8); Kit.haptic('tick'); setTimeout(function () { n.classList.remove('drop'); }, 450); }, 120 + k * 190);
+        later(function () { n.classList.remove('hide'); n.classList.add('drop'); Kit.sfx('tap', 0.8); Kit.haptic('tick'); later(function () { n.classList.remove('drop'); }, 450); }, 120 + k * 190);
       });
       t = 120 + sqs.length * 190 + 250;
     } else {
-      sqs.forEach(function (i) { var n = V.cells[i].querySelector('.tl'); if (n) { n.classList.add('snap'); setTimeout(function () { n.classList.remove('snap'); }, 300); } });
+      sqs.forEach(function (i) { var n = V.cells[i].querySelector('.tl'); if (n) { n.classList.add('snap'); later(function () { n.classList.remove('snap'); }, 300); } });
       Kit.sfx('chip'); Kit.haptic('medium');
       t = 180;
     }
     var words = S.lastWords || [], entry = S.log.filter(function (e) { return e.k === 'play'; }).pop();
     words.forEach(function (w, k) {
-      setTimeout(function () {
+      later(function () {
         w.sq.forEach(function (i) { var n = V.cells[i].querySelector('.tl'); if (n) { n.classList.remove('wl'); void n.offsetWidth; n.classList.add('wl'); } });
         floatText(w.sq, '+' + w.s, words.length > 1 ? w.w : '');
         tally.lit = k + 1; paintMsg();
@@ -1296,7 +1339,7 @@
       }, t + k * 520);
     });
     t += words.length * 520;
-    setTimeout(function () {
+    later(function () {
       tally.done = true; paintMsg();
       countUp(seat, tally.before, P(seat).score - (S.over && S.result ? S.result.adj[seat] : 0), 650);
       if (entry.b) {
@@ -1306,7 +1349,7 @@
       if (seat === viewSeat() && info.drawn && info.drawn.length && !veil) dealIn(info.drawn);
     }, t);
     t += entry.b ? 1500 : entry.s >= 40 ? 1200 : 750;
-    setTimeout(function () { busy = false; done(); }, t);
+    later(function () { busy = false; done(); }, t);
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -1382,7 +1425,7 @@
       return;
     }
     var tiles = pend.slice();
-    if (S.mode === 'online' && net.mode === 'guest') { net.waiting = true; paintActs(); net.peer.send({ t: 'mv', k: 'play', n: S.n, tiles: tiles }, true); return; }
+    if (S.mode === 'online') { netMove({ k: 'play', tiles: tiles.map(function (t) { return { id: t.id, i: t.i, ch: t.ch }; }) }); return; }
     doPlay(viewSeat(), tiles, 'me');
   }
   function passAsk() {
@@ -1391,7 +1434,7 @@
     Kit.confirm('Pass your turn?', { ok: 'Pass', body: 'You score nothing this turn.' + extra }).then(function (ok) {
       if (!ok || !myTurn()) return;
       recall();
-      if (S.mode === 'online' && net.mode === 'guest') { net.waiting = true; paintActs(); net.peer.send({ t: 'mv', k: 'pass', n: S.n }, true); return; }
+      if (S.mode === 'online') { netMove({ k: 'pass' }); return; }
       doPass(viewSeat());
     });
   }
@@ -1412,7 +1455,7 @@
     var s = Kit.sheet({ title: 'Swap tiles', html: '<p class="muted">Tap the tiles to put back in the bag. You draw the same number of new ones, and it uses your turn.</p>', node: el('div', null, [row, all]),
       actions: [{ label: 'Pick tiles to swap', primary: true, onClick: function () {
         var ids = Object.keys(swapSel).map(Number); if (!ids.length || !myTurn()) return;
-        if (S.mode === 'online' && net.mode === 'guest') { net.waiting = true; paintActs(); net.peer.send({ t: 'mv', k: 'swap', n: S.n, ids: ids }, true); return; }
+        if (S.mode === 'online') { netMove({ k: 'swap', ids: ids }); return; }
         doSwap(viewSeat(), ids);
       } }, { label: 'Cancel', cls: 'btn-ghost' }] });
     go = s.el.querySelector('.k-acts .btn'); upd();
@@ -1578,7 +1621,10 @@
   }
   function boardTap(i) {
     if (i < 0 || !S || S.over) return;
-    if (!myTurn()) { if (!S.board[i]) Kit.toast(veil ? 'Pass the device first' : busy ? 'Just a moment…' : 'It’s ' + Kit.poss(nm(S.turn)) + ' turn'); return; }
+    if (!myTurn()) {
+      if (S.mode === 'online' && !busy) { netNudge(); return; }
+      if (!S.board[i]) Kit.toast(veil ? 'Pass the device first' : busy ? 'Just a moment…' : 'It’s ' + Kit.poss(nm(S.turn)) + ' turn'); return;
+    }
     if (S.board[i]) return;
     if (selId != null) { place(selId, i); return; }
     // no tile picked: set the typing cursor (tap again to switch between across and down)
@@ -1633,7 +1679,8 @@
   function showResults(again) {
     if (!S || !S.over) return;
     var R = S.result, order = R.order, w = R.winner;
-    if (!S.recorded) { S.recorded = true; record(); save(); clearSave(); }
+    if (S.mode === 'online') netRecord();
+    else if (!S.recorded) { S.recorded = true; record(); save(); clearSave(); }
     var best = bestPlay(), bingos = S.log.filter(function (e) { return e.k === 'play' && e.b; });
     var notes = [];
     if (bingos.length) notes.push(bingos.length === 1 ? 'Bingo: ' + nm(bingos[0].p) + ' with ' + bingos[0].m : bingos.length + ' bingos: ' + bingos.map(function (b) { return b.m; }).join(', '));
@@ -1642,12 +1689,14 @@
     if (R.tieBreak) notes.push('Tied, so the score before leftover tiles decided it');
     var meSeat = viewSeat(), lose = w >= 0 && S.mode !== 'pp' && w !== meSeat && (P(w).cpu || S.mode === 'online');
     var title = w < 0 ? 'It’s a tie!' : (S.mode !== 'pp' && w === meSeat) || nm(w) === 'You' ? 'You win!' : nm(w) + ' wins!';
+    var res = S.mode === 'online' && NET ? NET.result : null, left = !!(res && res.left != null);
+    if (left) { title = res.text; lose = false; }
     Kit.win({
       icon: w < 0 ? 'users' : lose ? (P(w).cpu ? 'bot' : 'trophy') : 'trophy', title: title, lose: lose, quiet: !!again,
       sub: w >= 0 && order.length > 1 ? 'by ' + (P(order[0]).score - P(order[1]).score) + (P(order[0]).score - P(order[1]).score === 1 ? ' point' : ' points') : 'Scores are level',
       rank: order.map(function (i) { return { name: nm(i), score: P(i).score, color: col(i), cpu: P(i).cpu }; }),
       notes: notes, notesTitle: 'The game',
-      againLabel: net.mode ? (net.mode === 'host' ? 'Back to your table' : 'Back to the table') : 'Play again',
+      againLabel: left ? 'Back to the lobby' : 'Play again',
       again: function () { playAgain(); },
       extra: [{ label: 'Look at the board', onClick: function () {} }],
       closeLabel: 'Back to games'
@@ -1662,7 +1711,12 @@
   }
   function bestPlay() { var b = null; S.log.forEach(function (e) { if (e.k === 'play' && (!b || e.s > b.s)) b = e; }); return b; }
   function playAgain() {
-    if (net.mode) { backToTable(); return; }
+    if (S.mode === 'online') {
+      if (!NET) return;
+      var res = NET.result;
+      if (res && res.left != null) { TurnNet.leave(); TurnNet.open(); } else NET.again();
+      return;
+    }
     var o = { mode: S.mode, level: S.level, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; }) };
     newGame(o);
   }
@@ -1697,173 +1751,177 @@
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // Online: the host's device runs the game; everyone else sends their moves and sees only their own tiles
+  // Online (turnnet.js): each player on their own device, at their own pace. The table holds the whole game (S with
+  // every rack and the bag); this device draws only its own rack. A move is checked and made on the table's state
+  // inside net.act, so the bag is drawn on the device that moved. A player who leaves is replaced by a robot.
   // ═════════════════════════════════════════════════════════════════════════
-  var net = { mode: null, table: null, peer: null, roster: [], seat: 0, lobby: null, wait: null, hostName: '', waiting: false };
-  function meName() { var m = lsGet('scrabble_net', {}) || {}; return m.name || (function () { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } })() || ''; }
-  function goLobby() {
-    leaveOnline(false); teardownView(); S = null; cancelThink();
-    app.className = 'stage';
-    loadDict().catch(function () {});
-    net.lobby = Online.lobby(app, {
-      game: 'scrabble', title: 'Scrabble Online', max: 4,
-      intro: '2 to 4 players, each on their own phone or tablet.',
-      me: { name: meName() },
-      onName: function (n) { var m = lsGet('scrabble_net', {}) || {}; m.name = n; lsSet('scrabble_net', m); },
-      onHost: function (me) { return hostTable(me.name); },
-      onJoin: function (code, room, me) { return joinTable(code, me.name); },
-      onSolo: function () { closeLobby(); showSetup(); }, solo: 'Play on this device instead',
-      sub: function (r) { return r.status === 'playing' ? 'Game in progress' : (r.n || 1) + ' of 4 players'; },
-      note: 'Each device connects straight to the host’s. If a device can’t connect, try both on the same Wi-Fi.'
+  var NET = null, netQ = [], netBusy = false, myOrder = [];
+  // what this device may see: its own rack; the other racks and the bag only as counts
+  function viewOf(st, seat, seats) {
+    var v = JSON.parse(JSON.stringify(st));
+    v.players.forEach(function (p, i) {
+      if (seats && seats[i] && seats[i].bot) { p.cpu = true; p.level = p.level || 'normal'; }
+      if (i !== seat) { p.n = (p.rack || []).length; p.rack = null; }
     });
-    window.scrollTo(0, 0);
+    v.bagN = (v.bag || []).length; delete v.bag;
+    return v;
   }
-  function closeLobby() { if (net.lobby) { net.lobby.close(); net.lobby = null; } }
-  function busyScreen(text) { teardownView(); app.className = 'stage'; app.innerHTML = ''; app.appendChild(el('div', { class: 'ol' }, [el('div', { class: 'ol-row' }, [el('i', { class: 'ol-spin' }), el('div', { class: 'grow' }, [el('b', { text: text })])])])); }
-  function uniqueName(n) { var base = n || 'Player', k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
-  function rosterMsg() { return { t: 'ro', ro: net.roster.map(function (r) { return { name: r.name, host: !!r.host }; }) }; }
-  function sendRoster() { if (net.table) net.table.broadcast(rosterMsg(), true); if (net.wait) net.wait.update(waitPlayers(net.roster.map(function (r) { return { name: r.name, host: r.host }; }), 0)); }
-  function waitPlayers(ro, me) { return ro.map(function (r, i) { return { name: r.name, host: !!r.host, me: i === me, color: col(i) }; }); }
-  function hostTable(name) {
-    closeLobby(); busyScreen('Opening your table…');
-    return Online.host({ game: 'scrabble', name: name, max: 4, min: 2, screen: app, accept: function () { return S && S.mode === 'online' && !S.over ? 'That game has already started' : true; } }).then(function (table) {
-      table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); goLobby(); });
-      net.mode = 'host'; net.table = table; net.seat = 0;
-      net.roster = [{ name: name, dev: Online.dev(), host: true }];
-      table.on('peer', function (peer) {
-        var un = uniqueName(peer.name);
-        net.roster.push({ name: un, dev: peer.id, peer: peer });
-        sendRoster(); Kit.toast(un + ' joined'); Kit.sfx('pop');
-      });
-      table.on('leave', function (peer) {
-        var r = net.roster.filter(function (x) { return x.peer === peer; })[0];
-        net.roster = net.roster.filter(function (x) { return x.peer !== peer; });
-        if (S && S.mode === 'online' && !S.over && r && r.seat != null) {
-          var p = P(r.seat); p.cpu = true; p.level = 'normal';
-          Kit.toast(p.name + ' left. A robot plays their tiles now.');
-          sendState(); paintAll();
-          if (S.turn === r.seat && !busy) robotTurn();
-        } else { sendRoster(); if (r) Kit.toast(r.name + ' left'); }
-      });
-      table.on('msg', function (peer, m) { hostMsg(peer, m); });
-      showWait();
-    }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
+  // your rack keeps the order you put it in (new tiles go on the end)
+  function keepOrder(v, seat) {
+    var p = v.players[seat]; if (!p || !p.rack || !myOrder.length) return;
+    var pos = {}; myOrder.forEach(function (id, k) { pos[id] = k; });
+    var known = p.rack.filter(function (t) { return pos[t.id] != null; }).sort(function (x, y) { return pos[x.id] - pos[y.id]; });
+    p.rack = known.concat(p.rack.filter(function (t) { return pos[t.id] == null; }));
   }
-  function showWait() {
-    teardownView(); closeLobby(); app.className = 'stage';
-    if (net.mode === 'host') {
-      net.table.setStatus('open', '');
-      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 4, min: 2, table: net.table, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); }, note: 'Everyone plays on their own device and only sees their own tiles.' });
-    } else {
-      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 4, min: 2, players: waitPlayers(net.roster, net.seat), onLeave: function () { leaveOnline(false); goLobby(); } });
-    }
-    window.scrollTo(0, 0);
+  function netStart(players) {
+    return freshState({ mode: 'online', players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: p.bot ? 'normal' : null }; }) });
   }
-  function hostStart() {
-    if (net.roster.length < 2) { Kit.toast('Wait for at least one more player'); return Promise.resolve(); }
+  // a move on a table's state: m = {k:'play', tiles} | {k:'swap', ids} | {k:'pass'}; n0: the turn it was made on
+  function netApply(st, seat, m, n0) {
+    if (!st || st.over || st.turn !== seat || (n0 != null && st.n !== n0)) return null;
+    var mv = { k: m.k, p: seat };
+    if (m.k === 'play') {
+      var r = checkPlay(st, seat, m.tiles || []); if (!r.ok) return null;
+      mv.before = commitPlay(st, seat, m.tiles, r).before;
+    } else if (m.k === 'swap') {
+      if (!canSwap(st, seat, m.ids || [])) return null;
+      commitSwap(st, seat, m.ids);
+    } else if (m.k === 'pass') commitPass(st, seat);
+    else return null;
+    finishMove(st, seat);
+    mv.n = st.n;
+    return { state: st, mv: mv };
+  }
+  function netMove(m) {
+    if (!NET || !S) return;
+    if (!NET.myTurn()) { netNudge(); return; }
+    var seat = NET.seat, n0 = S.n;
+    NET.act(function (st) { return netApply(st, seat, m, n0); }).then(function (ok) { if (!ok && S && V.root && !netBusy) { cellSig = []; paintAll(); } });
+  }
+  function netNudge() {
+    Kit.haptic('error');
+    if (V.msg) { V.msg.classList.remove('nudge'); void V.msg.offsetWidth; V.msg.classList.add('nudge'); }
+  }
+  // a computer seat (someone who left): the same robot as vs Computer, on Normal
+  function netBot(st, seat) {
     return loadDict().then(function () {
-      net.wait = null;
-      net.roster.forEach(function (r, i) { r.seat = i; });
-      newGame({ mode: 'online', players: net.roster.map(function (r) { return { name: r.name, cpu: false }; }) });
-      net.table.setStatus('playing', '');
+      return new Promise(function (resolve) {
+        var p = st.players[seat];
+        p.cpu = true; p.level = p.level || 'normal';
+        think(st.board.slice(), p.rack.map(function (t) { return t.l; }), p.level, st.bag.length, function (res) {
+          var m = { k: 'pass' }, used = {};
+          if (res && res.type === 'play') m = { k: 'play', tiles: res.tiles.map(function (t) {
+            var want = E.isBlank(t.ch) ? '?' : t.ch, rt = p.rack.filter(function (x) { return x.l === want && !used[x.id]; })[0];
+            if (rt) used[rt.id] = 1; return { id: rt ? rt.id : -1, i: t.i, ch: t.ch };
+          }) };
+          else if (res && (res.type === 'exch' || res.type === 'swap')) {
+            var ids = []; res.tiles.forEach(function (l) { var rt = p.rack.filter(function (x) { return x.l === l && !used[x.id]; })[0]; if (rt) { used[rt.id] = 1; ids.push(rt.id); } });
+            m = { k: 'swap', ids: ids };
+          }
+          resolve(netApply(st, seat, m, null) || netApply(st, seat, { k: 'pass' }, null));
+        });
+      });
     });
   }
-  // what one player may see: their own rack, everyone else's tile count
-  function pub(seat) {
-    return { v: 1, mode: 'online', players: S.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, level: p.level, score: p.score, n: p.rack.length, rack: i === seat ? p.rack : null }; }),
-      board: S.board, bagN: S.bag.length, turn: S.turn, scoreless: S.scoreless, n: S.n, tid: 0, log: S.log, last: S.last, lastWords: S.lastWords, draw: S.draw,
-      over: S.over, result: S.result, started: S.started };
+  // TurnNet draws: each update is queued, so a move's animation finishes before the next one lands
+  function netShow(net, info) {
+    if (!NET) takeOver();
+    NET = net;
+    netQ.push({ st: JSON.parse(JSON.stringify(net.state)), info: info || {}, seats: net.seats });
+    if (!netBusy) netNext();
   }
-  function sendState() {
-    if (net.mode !== 'host' || !S) return;
-    net.roster.forEach(function (r) { if (r.peer && r.seat != null) r.peer.send({ t: 'st', you: r.seat, s: pub(r.seat) }, true); });
+  // the table takes over the screen from a local game
+  function takeOver() {
+    cancelThink(); busy = false; veil = false; tally = null; pend = []; selId = null; cursor = null;
+    try { Kit.handoff.close(); } catch (e) {}
+    Array.prototype.forEach.call(document.querySelectorAll('.k-scrim,.k-win'), function (n) { n.remove(); });
   }
-  function hostMsg(peer, m) {
-    if (m.t !== 'mv' || !S || S.mode !== 'online' || S.over) return;
-    var r = net.roster.filter(function (x) { return x.peer === peer; })[0];
-    if (!r || r.seat == null) return;
-    function no(why) { peer.send({ t: 'no', why: why }, true); sendState(); }
-    if (S.turn !== r.seat || m.n !== S.n || busy) return no('It isn’t your turn');
-    if (m.k === 'play') { var res = doPlay(r.seat, m.tiles || [], 'net'); if (!res.ok) no(res.err); }
-    else if (m.k === 'swap') { if (!doSwap(r.seat, m.ids || [])) no('You can’t swap now'); }
-    else if (m.k === 'pass') doPass(r.seat);
+  function netNext() {
+    var q = netQ.shift();
+    if (!q || !NET) { netBusy = false; return; }
+    netBusy = true;
+    loadDict().then(function () {
+      if (!NET) { netBusy = false; return; }
+      netDraw(q, function () { netBusy = false; netNext(); });
+    }).catch(function (e) { netBusy = false; Kit.toast(e.message); });
   }
-  function joinTable(code, name) {
-    closeLobby(); busyScreen('Connecting to the table…');
-    return Online.join(code, { game: 'scrabble', name: name, min: 2, screen: app }).then(function (peer) {
-      net.mode = 'guest'; net.peer = peer; net.hostName = peer.name; net.roster = []; net.seat = -1;
-      peer.on('msg', guestMsg);
-      peer.on('close', function (why) {
-        if (net.peer !== peer) return;
-        var playing = S && S.mode === 'online' && !S.over;
-        net.peer = null; net.mode = null; net.waiting = false;
-        Kit.handoff.close();
-        if (playing) Kit.sheet({ title: 'The game ended', html: '<p class="muted">' + Kit.esc((net.hostName || 'The host') + (why === 'host' || why === 'left' ? ' closed the table.' : '’s connection was lost.')) + '</p>', actions: [{ label: 'OK', primary: true, onClick: goLobby }], onCancel: goLobby });
-        else { Kit.toast((net.hostName || 'The host') + ' closed the table'); goLobby(); }
-      });
-      loadDict().catch(function () {});
-      showWait();
-    }).catch(function (e) {
-      var msg = e && e.nat ? e.message : Online.errText(e);
-      if (e && e.nat) Kit.sheet({ title: 'Couldn’t connect', html: '<p>' + Kit.esc(msg) + '</p>' }); else Kit.toast(msg);
-      goLobby();
+  function netDraw(q, done) {
+    var info = q.info, seat = NET.seat, prev = S && S.mode === 'online' && V.root ? S : null;
+    if (prev && prev.players[seat] && prev.players[seat].rack) myOrder = prev.players[seat].rack.map(function (t) { return t.id; });
+    var v = viewOf(q.st, seat, q.seats);
+    keepOrder(v, seat);
+    var cpuSig = function (x) { return x.players.map(function (p) { return p.cpu ? 1 : 0; }).join(''); };
+    if (info.fresh || info.again || !prev || prev.started !== v.started) {
+      takeOver();
+      S = v; myOrder = [];
+      if (!v.n && !v.over) Kit.gameStart();
+      buildView();
+      if (v.over) { showResults(true); done(); return; }
+      if (info.again) Kit.sfx('deal');
+      if (!v.n) firstDrawSheet(function () { beginTurn(true); }); else beginTurn(true);
+      done();
+      return;
+    }
+    if (cpuSig(prev) !== cpuSig(v) && V.pls) V.pls.innerHTML = '';
+    S = v;
+    var mv = info.mv;
+    if (!mv || v.n !== prev.n + 1) {
+      // changed without a move to show (someone left, or this device caught up): just draw it
+      pend = pend.filter(function (x) { return tileById(x.id) && !S.board[x.i]; });
+      cellSig = []; paintAll();
+      if (S.over) showResults();
+      else netGone();
+      done();
+      return;
+    }
+    pend = []; selId = null; cursor = null;
+    var mover = mv.p, had = {};
+    ((prev.players[seat] && prev.players[seat].rack) || []).forEach(function (t) { had[t.id] = 1; });
+    var drawn = mover === seat ? myRack().filter(function (t) { return !had[t.id]; }).map(function (t) { return t.id; }) : [];
+    showMove(mover, { kind: mv.k, how: mover === seat ? 'me' : 'net', before: prev.players[mover] ? prev.players[mover].score : 0, drawn: drawn }, function () {
+      if (S.over) showResults(); else beginTurn(false);
+      done();
     });
   }
-  function guestMsg(m) {
-    if (m.t === 'ro') { net.roster = m.ro; if (net.wait) { var me = -1; m.ro.forEach(function (r, i) { if (!r.host && me < 0 && r.name) me = i; }); net.wait.update(waitPlayers(m.ro, net.seat >= 0 ? net.seat : m.ro.length - 1)); } return; }
-    if (m.t === 'no') { net.waiting = false; Kit.toast(m.why || 'That didn’t work'); Kit.sfx('bad'); paintAll(); return; }
-    if (m.t === 'st') { loadDict().then(function () { applyRemote(m.s, m.you); }); }
+  // the table ended without the game ending (everyone else left)
+  function netGone() {
+    var res = NET && NET.result;
+    if (!res || res.left == null || S.over || document.querySelector('.k-win')) return;
+    Kit.win({ icon: res.left !== NET.seat ? 'trophy' : 'users', title: res.text, againLabel: 'Back to the lobby', again: function () { TurnNet.leave(); TurnNet.open(); }, closeLabel: 'Back to games' });
   }
-  function applyRemote(s, you) {
-    var prev = S;
-    net.seat = you; net.waiting = false;
-    var fresh = !prev || prev.started !== s.started || !V.root;
-    S = s;
-    if (fresh) {
-      net.wait = null; pend = []; selId = null; cursor = null; busy = false;
-      Array.prototype.forEach.call(document.querySelectorAll('.k-win'), function (n) { n.remove(); });
-      Kit.gameStart(); buildView();
-      if (S.n === 0) firstDrawSheet(function () { beginTurn(true); }); else beginTurn(true);
+  // the game goes in the history once on each device
+  function netRecord() {
+    if (!NET || !S || !S.over) return;
+    var key = NET.code + ':' + S.started, done = lsGet('scrabble_netrec', []);
+    if (!Array.isArray(done)) done = [];
+    if (done.indexOf(key) >= 0) return;
+    done.push(key); lsSet('scrabble_netrec', done.slice(-30));
+    record();
+  }
+  function netLeave() {
+    NET = null; netQ = []; netBusy = false; myOrder = [];
+    takeOver(); S = null;
+    resumeLocal();
+  }
+  // back to the game saved on this device, or the setup screen
+  function resumeLocal() {
+    var saved = lsGet(SAVE, null);
+    if (saved && saved.board && saved.players && !saved.over && saved.mode !== 'online') {
+      loading('Setting the board back up…');
+      loadDict().then(function () {
+        if (NET) return;
+        S = saved; busy = false; pend = []; buildView(); beginTurn(true);
+      }).catch(function (e) { Kit.toast(e.message); showSetup(); });
       return;
     }
-    // keep tiles you were placing if they're still yours and the squares are free
-    pend = pend.filter(function (q) { return tileById(q.id) && !S.board[q.i]; });
-    if (s.n > prev.n) {
-      var e = null; for (var k = S.log.length - 1; k >= 0; k--) if (S.log[k].k === 'play' || S.log[k].k === 'swap' || S.log[k].k === 'pass') { e = S.log[k]; break; }
-      pend = [];
-      var seat = e ? e.p : prev.turn;
-      var had = {}; ((prev.players[you] && prev.players[you].rack) || []).forEach(function (t) { had[t.id] = 1; });
-      var got = seat === you ? myRack().filter(function (t) { return !had[t.id]; }).map(function (t) { return t.id; }) : [];
-      showMove(seat, { kind: e ? e.k : 'pass', how: seat === you ? 'me' : 'net', before: prev.players[seat] ? prev.players[seat].score : 0, drawn: got }, function () {
-        if (S.over) { showResults(); return; }
-        beginTurn(false);
-      });
-    } else paintAll();
+    showSetup();
   }
-  function backToTable() {
-    if (net.mode === 'host' && net.table && !net.table.closed) { S = null; net.roster.forEach(function (r) { delete r.seat; }); showWait(); sendRoster(); return; }
-    if (net.mode === 'guest' && net.peer && !net.peer.closed) { S = null; showWait(); return; }
-    leaveOnline(false); goLobby();
-  }
-  function leaveOnline(ask) {
-    if (!net.mode) { closeLobby(); return; }
-    if (ask) {
-      Kit.confirm('Leave the online game?', { ok: 'Leave', body: net.mode === 'host' ? 'The game ends for everyone at your table.' : 'A robot takes over your tiles.' }).then(function (ok) { if (ok) { leaveOnline(false); goLobby(); } });
-      return;
-    }
-    if (net.table) net.table.close();
-    if (net.peer) { var p = net.peer; net.peer = null; p.close(); }  // no arg: we're the one leaving, so the bye goes out
-    net.mode = null; net.table = null; net.wait = null; net.roster = []; net.waiting = false;
-    if (S && S.mode === 'online') S = null;
-    closeLobby();
-  }
-  window.addEventListener('pagehide', function () { if (net.mode) leaveOnline(false); });
 
   // ═════════════════════════════════════════════════════════════════════════
   // Test hooks (automated checks)
   // ═════════════════════════════════════════════════════════════════════════
   window.__scrabble = {
-    E: E, state: function () { return S; }, pend: function () { return pend; }, net: net, loadDict: loadDict, zoom: function () { return Z; },
+    E: E, state: function () { return S; }, pend: function () { return pend; }, net: function () { return NET; }, loadDict: loadDict, zoom: function () { return Z; },
     // put tiles from the rack on the board: word along a row ('H') or column from square i (skips filled squares)
     lay: function (i, word, dir) {
       var step = dir === 'V' ? 15 : 1, j = i;
@@ -1892,8 +1950,8 @@
         var used = {}; pend = res.tiles.map(function (t) { var want = E.isBlank(t.ch) ? '?' : t.ch, rt = myRack().filter(function (x) { return x.l === want && !used[x.id]; })[0]; used[rt.id] = 1; return { id: rt.id, i: t.i, ch: t.ch }; });
         paintAll(); submit(); return 'play';
       }
-      if (res.type === 'exch' && bagN() >= 7) { var u2 = {}, ids = []; res.tiles.forEach(function (l) { var rt = myRack().filter(function (x) { return x.l === l && !u2[x.id]; })[0]; if (rt) { u2[rt.id] = 1; ids.push(rt.id); } }); doSwap(viewSeat(), ids); return 'swap'; }
-      doPass(viewSeat()); return 'pass';
+      if (res.type === 'exch' && bagN() >= 7) { var u2 = {}, ids = []; res.tiles.forEach(function (l) { var rt = myRack().filter(function (x) { return x.l === l && !u2[x.id]; })[0]; if (rt) { u2[rt.id] = 1; ids.push(rt.id); } }); if (S.mode === 'online') netMove({ k: 'swap', ids: ids }); else doSwap(viewSeat(), ids); return 'swap'; }
+      if (S.mode === 'online') netMove({ k: 'pass' }); else doPass(viewSeat()); return 'pass';
     },
     submit: submit, recall: recall, pass: function () { doPass(S.turn); }, robot: function () { return busy; },
     newGame: function (o) { newGame(o); }, ready: function () { return !!V.root && !busy; }, myTurn: myTurn, fit: fit
@@ -1902,18 +1960,22 @@
   // ═════════════════════════════════════════════════════════════════════════
   // Boot
   // ═════════════════════════════════════════════════════════════════════════
-  (function boot() {
-    if (/[?&]online=1/.test(location.search)) { goLobby(); return; }
-    var saved = lsGet(SAVE, null);
-    if (saved && saved.board && saved.players && !saved.over && saved.mode !== 'online') {
-      loading('Setting the board back up…');
-      loadDict().then(function () {
-        S = saved; busy = false; pend = []; buildView(); beginTurn(true);
-      }).catch(function (e) { Kit.toast(e.message); showSetup(); });
-      return;
-    }
-    showSetup();
-  })();
+  resumeLocal();
+  TurnNet.setup({
+    game: 'scrabble', title: 'Scrabble', min: 2, max: 4,
+    botTakeover: true, botMs: 1400,
+    start: netStart,
+    turn: function (st) { return st.over ? [] : [st.turn]; },
+    over: function (st) {
+      if (!st.over || !st.result) return null;
+      var R = st.result, w = R.winner, pl = st.players;
+      if (w >= 0) return { win: [w], text: pl[w].name + ' won with ' + pl[w].score };
+      var top = pl[R.order[0]].score;
+      return { win: R.order.filter(function (i) { return pl[i].score === top; }), text: 'Tie game at ' + top };
+    },
+    bot: netBot,
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>

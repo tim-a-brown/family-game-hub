@@ -12,12 +12,26 @@
 <script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .stage{padding-bottom:calc(var(--safe-b) + 8px);}
 .handpts{display:inline-flex;align-items:center;gap:3px;}
 .handpts .h{color:#e5263f;}
 .received .pcard{animation:glow 1.6s ease-in-out 2;}
 @keyframes glow{50%{box-shadow:0 0 0 3px var(--green),0 0 18px rgba(61,220,132,.7);}}
+/* Online: passed cards wait face down in front of the player they go to */
+.pstack{position:absolute;z-index:2;display:flex;--cw:30px;pointer-events:none;animation:pop .3s var(--spring);}
+.pstack .pcard+.pcard{margin-left:-21px;}
+.pstack .pcard:nth-child(1){transform:rotate(-8deg);}
+.pstack .pcard:nth-child(3){transform:rotate(8deg);}
+.pstack.n{top:30%;left:50%;transform:translate(-50%,-50%);}
+.pstack.s{bottom:36%;left:50%;transform:translate(-50%,50%);}
+.pstack.w{left:28%;top:46%;transform:translate(-50%,-50%);}
+.pstack.e{right:28%;top:46%;transform:translate(50%,-50%);}
+.ghost{position:fixed;z-index:60;pointer-events:none;margin:0;}
+.cbar.nudge,.chand.nudge{animation:hnudge .4s;}
+@keyframes hnudge{20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(3px);}}
 .sum{width:100%;border-collapse:collapse;margin-top:6px;font-variant-numeric:tabular-nums;}
 .sum th,.sum td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--w08);}
 .sum th:first-child,.sum td:first-child{text-align:left;}
@@ -66,12 +80,12 @@
 
   Kit.init({
     id: 'hearts',
-    onNew: function () { clearSave(); showSetup(); },
-    undo: function () { undo(); },
-    menu: [
-      { icon: 'chart', label: 'Scores so far', onClick: function () { if (S) showScores(false); } },
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
+      { icon: 'chart', label: 'Scores so far', onClick: function () { if (S && S.players) showScores(false); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history('hearts', { keys: ['ht'], title: 'Hearts: past games' }); } }
-    ],
+    ]),
     rules:
       '<p class="goal">Avoid taking hearts and the Queen of Spades. When someone reaches the target score, the <b>lowest score wins</b>.</p>' +
       '<h3>Passing</h3><p>Before each hand, pick 3 cards to pass. The direction rotates: <b>left, right, across, then no pass</b>.</p>' +
@@ -81,12 +95,19 @@
       '<li>You can\'t lead hearts until a heart has been played (hearts are "broken"), unless you only have hearts.</li>' +
       '<li>No hearts or Queen of Spades on the very first trick, unless you have nothing else.</li></ul>' +
       '<h3>Scoring</h3><ul><li>Each heart you take is <b>1 point</b>. The Queen of Spades is <b>13 points</b>.</li>' +
-      '<li><b>Shoot the moon:</b> take all 13 hearts and the Queen and you score 0, while everyone else gets 26.</li></ul>'
+      '<li><b>Shoot the moon:</b> take all 13 hearts and the Queen and you score 0, while everyone else gets 26.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table and up to 3 others join on their own devices. Empty seats are played by the computer.</li>' +
+      '<li>Everyone picks their 3 cards to pass at the same time, then play goes round the table. Take your turn whenever you like; the home screen shows when it’s your move.</li>' +
+      '<li>Moves can’t be taken back online.</li></ul>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
-  var S = null, token = 0, undoStack = [];
+  // ME: the seat drawn at the bottom (you). 0 on this device; your seat at an online table.
+  var S = null, token = 0, undoStack = [], ME = 0;
+  var NET = null, NETREC = {}, NETSEL = [], NETQ = [], NETBUSY = false, NETSEEN = {}, NETFLY = null;
+  function posOf(p) { return SEATS[(p - ME + 4) % 4]; }
   function save() {
+    if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && S.phase !== 'over') Kit.resume.set('Hand ' + S.round + ' · you have ' + S.players[0].total);
   }
@@ -116,16 +137,18 @@
   var sortT = Cards.sortToggle(null, { key: 'hearts_sort', value: 'suit', flip: function () { return handEl; }, onChange: function () { if (S && handEl) paintHand(); } });
   function view(h) { return Cards.sort(h.slice(), { suits: ['c', 'd', 's', 'h'], by: sortT.get() }); }
 
-  function legal(p) {
-    var h = S.hands[p];
-    if (!S.trick.length) {
-      if (S.trickNo === 0) return h.filter(function (c) { return c.r === '2' && c.s === 'c'; });
-      if (!S.broken) { var nh = h.filter(function (c) { return c.s !== 'h'; }); if (nh.length) return nh; }
+  // X: the game to look at (the one on screen unless given: online moves check the table's own copy)
+  function legal(p, X) {
+    X = X || S;
+    var h = X.hands[p];
+    if (!X.trick.length) {
+      if (X.trickNo === 0) return h.filter(function (c) { return c.r === '2' && c.s === 'c'; });
+      if (!X.broken) { var nh = h.filter(function (c) { return c.s !== 'h'; }); if (nh.length) return nh; }
       return h.slice();
     }
-    var led = S.trick[0].c.s, follow = h.filter(function (c) { return c.s === led; });
+    var led = X.trick[0].c.s, follow = h.filter(function (c) { return c.s === led; });
     if (follow.length) return follow;
-    if (S.trickNo === 0) { var safe = h.filter(function (c) { return !pts(c); }); if (safe.length) return safe; }
+    if (X.trickNo === 0) { var safe = h.filter(function (c) { return !pts(c); }); if (safe.length) return safe; }
     return h.slice();
   }
 
@@ -143,8 +166,8 @@
     else { S.phase = 'pass'; save(); render(); }
     Kit.sfx('deal');
   }
-  function cpuPass(p) {
-    var h = S.hands[p], count = { s: 0, h: 0, d: 0, c: 0 };
+  function cpuPass(p, X) {
+    var h = (X || S).hands[p], count = { s: 0, h: 0, d: 0, c: 0 };
     h.forEach(function (c) { count[c.s]++; });
     var scored = h.map(function (c) {
       var v = RANK[c.r];
@@ -157,7 +180,7 @@
     }).sort(function (a, b) { return b.v - a.v; });
     return scored.slice(0, 3).map(function (x) { return x.c.id; });
   }
-  function passTarget(p) { return S.passDir === 'left' ? (p + 1) % 4 : S.passDir === 'right' ? (p + 3) % 4 : (p + 2) % 4; }
+  function passTarget(p, dir) { dir = dir || S.passDir; return dir === 'left' ? (p + 1) % 4 : dir === 'right' ? (p + 3) % 4 : (p + 2) % 4; }
   function doPass() {
     if (S.passSel.length !== 3) return;
     snapshot();
@@ -183,20 +206,21 @@
 
   // ── Playing ───────────────────────────────────────────────────────────────
   function next() {
-    if (!S || S.phase !== 'play') return;
+    if (NET || !S || S.phase !== 'play') return;
     if (S.turn !== 0) {
       var t = token;
       setTimeout(function () { if (t === token && S && S.phase === 'play' && S.turn !== 0) play(S.turn, cpuChoose(S.turn)); }, 650);
     }
     paintSeats(); paintHand(); paintMsg();
   }
-  function cpuChoose(p) {
-    var opts = legal(p), trick = S.trick;
+  function cpuChoose(p, X) {
+    X = X || S;
+    var opts = legal(p, X), trick = X.trick;
     function hi(a) { return a.slice().sort(function (x, y) { return RANK[y.r] - RANK[x.r]; })[0]; }
     function lo(a) { return a.slice().sort(function (x, y) { return RANK[x.r] - RANK[y.r]; })[0]; }
     if (!trick.length) {
       // Lead: lowest card from the suit where we hold the fewest, avoid spades if holding Q/K/A of spades
-      var hasBigSpade = S.hands[p].some(function (c) { return c.s === 's' && RANK[c.r] >= 12; });
+      var hasBigSpade = X.hands[p].some(function (c) { return c.s === 's' && RANK[c.r] >= 12; });
       var pool = opts.filter(function (c) { return !(c.s === 's' && hasBigSpade) && c.s !== 'h'; });
       return lo(pool.length ? pool : opts);
     }
@@ -219,21 +243,22 @@
   }
 
   function play(p, card) {
-    if (!S || S.phase !== 'play' || S.turn !== p) return;
+    if (NET || !S || S.phase !== 'play' || S.turn !== p) return;
     var i = find(S.hands[p], card.id); if (i < 0) return;
-    var from = p === 0 ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
+    var from = p === ME ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
     S.hands[p].splice(i, 1);
     S.trick.push({ p: p, c: card });
     if (card.s === 'h' && !S.broken) { S.broken = true; if (S.trickNo > 0) flash('Hearts are broken!'); }
     if (isQS(card)) Kit.sfx('bad'); else Kit.sfx('flip');
-    var node = Cards.el(card, { cls: 'p-' + SEATS[p] });
+    var node = Cards.el(card, { cls: 'p-' + posOf(p) });
     trickEl.appendChild(node);
     Cards.fly(node, from, { ms: 340 });
-    if (p === 0) paintHand();
+    if (p === ME) paintHand();
     if (S.trick.length === 4) { S.turn = -1; save(); paintSeats(); setTimeout(resolveTrick, 900); }
     else { S.turn = (p + 1) % 4; save(); next(); }
   }
   function resolveTrick() {
+    if (NET || !S || !S.trick || S.trick.length !== 4) return;
     var t = token;
     var led = S.trick[0].c.s, win = S.trick.filter(function (x) { return x.c.s === led; }).sort(function (a, b) { return RANK[b.c.r] - RANK[a.c.r]; })[0];
     var got = S.trick.reduce(function (a, x) { return a + pts(x.c); }, 0);
@@ -276,7 +301,8 @@
     var over = S.players.some(function (p) { return p.total >= S.target; });
     setTimeout(function () { over ? finish() : showScores(true, hand, moon); }, moon >= 0 ? 1200 : 300);
   }
-  function showScores(between, hand, moon) {
+  // o (online): {round} — the next hand is already dealt, so the sheet just closes
+  function showScores(between, hand, moon, o) {
     var t = el('table', { class: 'sum' });
     t.appendChild(el('tr', null, [el('th', { text: '' }), el('th', { text: between ? 'This hand' : '' }), el('th', { text: 'Total' })]));
     var low = Math.min.apply(null, S.players.map(function (p) { return p.total; }));
@@ -286,9 +312,9 @@
       ]));
     });
     var node = el('div', null, [el('p', { class: 'muted', text: (moon >= 0 && between ? S.players[moon].name + ' shot the moon! ' : '') + 'Lowest score wins. Game ends at ' + S.target + '.' }), t]);
-    Kit.sheet({
-      title: between ? 'Hand ' + S.round + ' done' : 'Scores', node: node, dismissible: !between,
-      actions: between ? [{ label: 'Deal next hand', primary: true, onClick: function () { newHand(); } }] : [{ label: 'Close', cls: 'btn-soft' }]
+    return Kit.sheet({
+      title: between ? 'Hand ' + (o ? o.round : S.round) + ' done' : 'Scores', node: node, dismissible: !between || !!o,
+      actions: between ? [{ label: o ? 'Next hand' : 'Deal next hand', primary: true, onClick: function () { if (!o) newHand(); } }] : [{ label: 'Close', cls: 'btn-soft' }]
     });
   }
   function finish() {
@@ -330,12 +356,13 @@
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
-  var seatEls = [], trickEl, handEl, barEl, msgEl;
+  var seatEls = [], trickEl, handEl, barEl, msgEl, feltEl;
   function render() {
     app.innerHTML = '';
     var table = el('div', { class: 'ctable wood' }), felt = el('div', { class: 'felt-in' });
-    seatEls = SEATS.map(function (pos, p) {
-      var s = el('div', { class: 'cseat ' + pos });
+    feltEl = felt;
+    seatEls = [0, 1, 2, 3].map(function (p) {
+      var s = el('div', { class: 'cseat ' + posOf(p) });
       felt.appendChild(s); return s;
     });
     trickEl = el('div', { class: 'ctrick' });
@@ -348,23 +375,30 @@
     app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' });
     app.appendChild(barEl);
-    S.trick.forEach(function (t) { trickEl.appendChild(Cards.el(t.c, { cls: 'p-' + SEATS[t.p] })); });
+    S.trick.forEach(function (t) { trickEl.appendChild(Cards.el(t.c, { cls: 'p-' + posOf(t.p) })); });
     paintSeats(); paintHand(); paintMsg();
     if (S.phase === 'handover') setTimeout(function () { showScores(true, S.rounds[S.rounds.length - 1], -1); }, 200);
   }
+  // whose move it is (their seat glows): online, everyone still picking cards to pass
+  function upSeats() {
+    if (NET && S.phase === 'pass') return netTurn(S);
+    return S.phase === 'play' && S.turn >= 0 ? [S.turn] : [];
+  }
+  function mySeat() { return NET ? NET.seat : 0; }
   function paintSeats() {
+    var up = upSeats();
     S.players.forEach(function (pl, p) {
       var s = seatEls[p]; s.innerHTML = '';
-      s.classList.toggle('turn', S.phase === 'play' && S.turn === p);
+      s.classList.toggle('turn', up.indexOf(p) >= 0);
       var tag = el('div', { class: 'tag' }, [
         el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
-        el('span', { text: p === 0 ? 'You' : pl.name })
+        el('span', { text: p === mySeat() ? 'You' : pl.name })
       ]);
       var info = el('div', { class: 'info' }, [
         el('span', { class: 'chip-s' + (S.taken && S.taken[p] ? ' hot' : ''), html: '<span class="handpts"><span class="h">♥</span>' + (S.taken ? S.taken[p] : 0) + '</span>' }),
         el('span', { class: 'chip-s', text: String(pl.total) })
       ]);
-      if (p === 0) { s.appendChild(info); s.appendChild(tag); }
+      if (p === ME) { s.appendChild(info); s.appendChild(tag); }
       else {
         s.appendChild(tag); s.appendChild(info);
         if (S.hands && S.hands[p].length) {
@@ -374,14 +408,29 @@
         }
       }
     });
+    paintStacks();
   }
+  // Online passing: each player's 3 cards wait face down in front of the player they're going to
+  function paintStacks() {
+    if (!feltEl) return;
+    Array.prototype.forEach.call(feltEl.querySelectorAll('.pstack'), function (n) { n.remove(); });
+    if (!NET || S.phase !== 'pass' || !S.pass) return;
+    S.pass.forEach(function (cs, p) {
+      if (!cs) return;
+      var st = el('div', { class: 'pstack ' + posOf(passTarget(p, S.passDir)), 'data-from': String(p) });
+      for (var k = 0; k < 3; k++) st.appendChild(Kit.card('', '', { back: true }));
+      feltEl.appendChild(st);
+    });
+  }
+  function passedYet() { return !!(NET && S.phase === 'pass' && S.pass && S.pass[ME]); }
   function paintHand() {
     handEl.innerHTML = '';
-    var mine = S.hands ? S.hands[0] : [];
-    var ok = S.phase === 'play' && S.turn === 0 ? legal(0).map(function (c) { return c.id; }) : null;
+    var mine = S.hands && !(NET && NET.seat < 0) ? S.hands[ME] : [];
+    var ok = S.phase === 'play' && S.turn === ME && !(NET && NETBUSY) ? legal(ME).map(function (c) { return c.id; }) : null;
+    var passing = S.phase === 'pass' && !passedYet();
     view(mine).forEach(function (c) {
       var n = Cards.el(c);
-      if (S.phase === 'pass') {
+      if (passing) {
         n.classList.add('play'); if (S.passSel.indexOf(c.id) >= 0) n.classList.add('sel');
         n.addEventListener('click', function () {
           var i = S.passSel.indexOf(c.id);
@@ -389,46 +438,367 @@
           Kit.sfx('tap'); Kit.haptic('light'); save(); paintHand();
         });
       } else if (ok) {
-        if (ok.indexOf(c.id) >= 0) { n.classList.add('play'); n.addEventListener('click', function () { snapshot(); play(0, c); }); }
+        if (ok.indexOf(c.id) >= 0) { n.classList.add('play'); n.addEventListener('click', function () { if (NET) { netPlay(c, n); return; } snapshot(); play(ME, c); }); }
         else { n.classList.add('dim'); n.addEventListener('click', function () { Kit.haptic('error'); Kit.toast(whyNot(c)); }); }
-      }
+      } else if (NET) n.addEventListener('click', netNudge);
       if (S.received && S.received.indexOf(c.id) >= 0 && S.trickNo === 0 && !S.trick.length) n.classList.add('hint');
       handEl.appendChild(n);
     });
+    Cards.fan(handEl);
     requestAnimationFrame(function () { Cards.fan(handEl); });
     paintBar();
   }
   function whyNot(c) {
     if (!S.trick.length && S.trickNo === 0) return 'The 2♣ leads the first trick';
     if (!S.trick.length && c.s === 'h') return "Hearts aren't broken yet";
-    if (S.trick.length && S.hands[0].some(function (x) { return x.s === S.trick[0].c.s; })) return 'You have to follow suit';
+    if (S.trick.length && S.hands[ME].some(function (x) { return x.s === S.trick[0].c.s; })) return 'You have to follow suit';
     if (S.trickNo === 0) return 'No points on the first trick';
     return "You can't play that now";
   }
+  function names(l) {
+    l = l.map(function (p) { return S.players[p].name; });
+    return l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1];
+  }
   function paintBar() {
     barEl.innerHTML = '';
-    if (S.phase === 'pass') {
+    if (S.phase === 'pass' && passedYet()) {
+      var wait = netTurn(S);
+      barEl.appendChild(el('span', { class: 'hint', text: wait.length ? 'Waiting for ' + names(wait) : '' }));
+    } else if (S.phase === 'pass') {
       var dirIcon = S.passDir === 'left' ? 'back' : S.passDir === 'right' ? 'right' : 'swap';
-      var b = el('button', { type: 'button', class: 'btn btn-primary', html: '<span class="passdir">' + Kit.icon(dirIcon) + '<span>Pass ' + S.passDir + (S.passSel.length === 3 ? '' : ' (' + S.passSel.length + '/3)') + '</span></span>', onclick: doPass });
-      b.disabled = S.passSel.length !== 3;
+      var b = el('button', { type: 'button', class: 'btn btn-primary', html: '<span class="passdir">' + Kit.icon(dirIcon) + '<span>Pass ' + S.passDir + (S.passSel.length === 3 ? '' : ' (' + S.passSel.length + '/3)') + '</span></span>', onclick: NET ? netPass : doPass });
+      b.disabled = S.passSel.length !== 3 || (NET && NET.seat < 0);
       barEl.appendChild(b);
     } else if (S.phase === 'play') {
-      barEl.appendChild(el('span', { class: 'hint', text: S.turn === 0 ? (S.trickNo === 0 && !S.trick.length ? 'Lead the 2♣ to start' : 'Your turn: tap a card') : S.turn >= 0 ? S.players[S.turn].name + ' is thinking…' : '' }));
+      var who = S.turn >= 0 && S.players[S.turn];
+      barEl.appendChild(el('span', { class: 'hint', text: S.turn === ME && mySeat() >= 0 ? (S.trickNo === 0 && !S.trick.length ? 'Lead the 2♣ to start' : 'Your turn: tap a card') : who ? (NET && !who.cpu ? 'Waiting for ' + who.name : who.name + ' is thinking…') : '' }));
     }
   }
   function paintMsg() {
     var m = '';
-    if (S.phase === 'pass') m = 'Pick 3 cards to pass ' + S.passDir;
+    if (S.phase === 'pass') m = passedYet() ? '' : 'Pick 3 cards to pass ' + S.passDir;
     else if (S.phase === 'play' && S.trickNo === 0 && !S.trick.length && S.round && S.passDir === 'hold') m = 'No passing this hand';
     msgEl.hidden = !m; msgEl.textContent = m;
   }
-  function flash(t) { msgEl.hidden = false; msgEl.textContent = t; setTimeout(function () { paintMsg(); }, 1600); }
+  function flash(t) { msgEl.hidden = false; msgEl.textContent = t; var m = msgEl; setTimeout(function () { if (m === msgEl) paintMsg(); }, 1600); }
   function seatSay(p, t) {
     var b = el('div', { class: 'say', text: t }); seatEls[p].appendChild(b);
     setTimeout(function () { b.remove(); }, 1300);
   }
   window.addEventListener('resize', function () { if (handEl) Cards.fan(handEl); });
 
+  // ── Online (turnnet.js) ───────────────────────────────────────────────────
+  // The table holds the whole game for all 4 seats (S without the local-only bits). Each device draws its own seat
+  // at the bottom (ME) with only that hand face up. Passing happens at the same time: turn() is every seat that
+  // hasn't passed yet. The move that finishes a trick scores it; the one that finishes a hand scores it and deals.
+  function netTurn(st) {
+    if (!st || !st.players) return [];
+    if (st.phase === 'pass') { var l = []; for (var i = 0; i < 4; i++) if (!st.pass[i]) l.push(i); return l; }
+    if (st.phase === 'play') return st.turn >= 0 ? [st.turn] : [];
+    return [];
+  }
+  function netOpts() {
+    var t = S && S.target && !NET ? S.target : 100;
+    if (!(S && S.target)) { try { var o = (JSON.parse(localStorage.getItem('gn_setup_hearts') || '{}') || {}).options || {}; if (+o.target) t = +o.target; } catch (e) {} }
+    return { target: +t === 50 ? 50 : 100 };
+  }
+  function netStart(players, opts, last) {
+    var st = { online: 1, target: opts && +opts.target === 50 ? 50 : 100, round: 0, rounds: [], highlights: [], hx: [], started: Date.now(),
+      qs: [0, 0, 0, 0], moons: [0, 0, 0, 0], wins: last && last.wins ? last.wins.slice() : [0, 0, 0, 0],
+      players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, total: 0 }; }) };
+    netDeal(st);
+    return st;
+  }
+  function netDeal(st) {
+    st.round++;
+    var d = Cards.shuffle(Cards.deck());
+    st.hands = [[], [], [], []];
+    d.forEach(function (c, i) { st.hands[i % 4].push(c); });
+    st.hands.forEach(sortHand);
+    st.taken = [0, 0, 0, 0]; st.tookQS = -1; st.trick = []; st.trickNo = 0; st.broken = false; st.last = null;
+    st.passDir = PASS[(st.round - 1) % 4];
+    st.pass = [null, null, null, null]; st.recv = [[], [], [], []];
+    if (st.passDir === 'hold') netPlayStart(st); else { st.phase = 'pass'; st.turn = -1; }
+  }
+  function netPlayStart(st) {
+    st.phase = 'play';
+    for (var p = 0; p < 4; p++) if (st.hands[p].some(function (c) { return c.r === '2' && c.s === 'c'; })) st.turn = p;
+    st.leader = st.turn;
+  }
+  function netDoPass(st, seat, ids) {
+    if (!st || st.phase !== 'pass' || seat < 0 || st.pass[seat] || !ids || ids.length !== 3) return null;
+    var h = st.hands[seat], cards = [];
+    for (var i = 0; i < 3; i++) { var k = find(h, ids[i]); if (k < 0 || cards.indexOf(h[k]) >= 0) return null; cards.push(h[k]); }
+    st.hands[seat] = h.filter(function (c) { return cards.indexOf(c) < 0; });
+    st.pass[seat] = cards;
+    var all = st.pass.every(Boolean);
+    if (all) {
+      st.pass.forEach(function (cs, p) { var to = passTarget(p, st.passDir); st.hands[to] = st.hands[to].concat(cs); st.recv[to] = cs.map(function (c) { return c.id; }); });
+      st.hands.forEach(sortHand);
+      netPlayStart(st);
+    }
+    return { state: st, mv: { t: 'pass', p: seat, all: all ? 1 : 0 } };
+  }
+  function netDoPlay(st, seat, id) {
+    if (!st || st.phase !== 'play' || st.turn !== seat) return null;
+    var card = legal(seat, st).filter(function (c) { return c.id === id; })[0];
+    if (!card) return null;
+    st.hands[seat].splice(find(st.hands[seat], id), 1);
+    st.trick.push({ p: seat, c: card });
+    var mv = { t: 'play', p: seat, c: card };
+    if (card.s === 'h' && !st.broken) { st.broken = true; if (st.trickNo > 0) mv.broke = 1; }
+    if (st.trick.length < 4) { st.turn = (seat + 1) % 4; return { state: st, mv: mv }; }
+    var led = st.trick[0].c.s, win = st.trick.filter(function (x) { return x.c.s === led; }).sort(function (a, b) { return RANK[b.c.r] - RANK[a.c.r]; })[0];
+    var got = st.trick.reduce(function (a, x) { return a + pts(x.c); }, 0);
+    st.taken[win.p] += got;
+    if (st.trick.some(function (x) { return isQS(x.c); })) { st.tookQS = win.p; st.dtQ = { w: win.p, l: st.trick[0].p, c: st.trick.map(function (x) { return cc(x.c); }), n: st.trickNo + 1 }; }
+    st.last = { t: st.trick, w: win.p, got: got };
+    st.trick = []; st.trickNo++; st.leader = win.p; st.turn = win.p;
+    mv.done = 1; mv.w = win.p; mv.got = got;
+    if (st.trickNo === 13) { netEndHand(st); mv.hand = 1; }
+    return { state: st, mv: mv };
+  }
+  function netEndHand(st) {
+    var hand = st.taken.slice(), moon = hand.indexOf(26);
+    if (moon >= 0) {
+      hand = hand.map(function (v, i) { return i === moon ? 0 : 26; });
+      st.moons[moon]++;
+      st.highlights.push(st.players[moon].name + ' shot the moon in hand ' + st.round + '!');
+    }
+    if (st.tookQS >= 0 && moon < 0) st.qs[st.tookQS]++;
+    hand.forEach(function (v, i) { st.players[i].total += v; });
+    st.rounds.push(hand);
+    st.hx.push({ d: st.passDir.charAt(0), q: st.tookQS, m: moon });
+    st.lastHand = { round: st.round, hand: hand, taken: st.taken.slice(), moon: moon, last: st.last, dir: st.passDir };
+    if (st.players.some(function (p) { return p.total >= st.target; })) {
+      st.phase = 'over'; st.turn = -1;
+      var low = Math.min.apply(null, st.players.map(function (p) { return p.total; }));
+      st.players.forEach(function (p, i) { if (p.total === low) st.wins[i]++; });
+    } else netDeal(st);
+  }
+  function netWinners(st) {
+    var low = Math.min.apply(null, st.players.map(function (p) { return p.total; })), w = [];
+    st.players.forEach(function (p, i) { if (p.total === low) w.push(i); });
+    return w;
+  }
+  function netOver(st) {
+    if (!st || st.phase !== 'over') return null;
+    var w = netWinners(st);
+    return { win: w, text: w.map(function (i) { return st.players[i].name; }).join(' and ') + (w.length > 1 ? ' tie' : ' wins') + ' with ' + st.players[w[0]].total };
+  }
+  function netBot(st, seat) {
+    if (st.phase === 'pass') return netDoPass(st, seat, cpuPass(seat, st));
+    if (st.phase === 'play') { var c = cpuChoose(seat, st); return c ? netDoPlay(st, seat, c.id) : null; }
+    return null;
+  }
+
+  // Your moves
+  function netNudge() {
+    Kit.haptic('error');
+    [barEl, msgEl].forEach(function (e) { if (!e) return; e.classList.remove('nudge'); void e.offsetWidth; e.classList.add('nudge'); });
+    var up = netTurn(S); up.forEach(function (p) { var t = seatEls[p] && seatEls[p].querySelector('.tag'); if (t && t.animate) t.animate([{ transform: 'scale(1.06)' }, { transform: 'scale(1.16)' }, { transform: 'scale(1.06)' }], { duration: 380 }); });
+  }
+  function netPass() {
+    if (!NET || !S || S.phase !== 'pass' || passedYet()) return;
+    if (!NET.myTurn()) { netNudge(); return; }
+    var ids = NETSEL.slice(0, 3), me = NET.seat; if (ids.length !== 3) return;
+    NETFLY = ids.map(function (id) { var n = handEl.querySelector('[data-id="' + id + '"]'); return n ? n.getBoundingClientRect() : null; });
+    NETSEL = [];
+    Kit.sfx('whoosh');
+    NET.act(function (st) { return netDoPass(st, me, ids); });
+  }
+  function netPlay(c, node) {
+    if (!NET || NETBUSY) return;
+    if (!NET.myTurn()) { netNudge(); return; }
+    var me = NET.seat;
+    NETFLY = {}; NETFLY[c.id] = node.getBoundingClientRect();
+    NET.act(function (st) { return netDoPlay(st, me, c.id); });
+  }
+
+  // Drawing the table: moves are shown one at a time, each animated (a card flying in from its seat, the trick
+  // sweeping to its winner, passed cards crossing the table). A backlog (coming back later) is caught up quickly.
+  function netShow(net, info) {
+    info = info || {};
+    NET = net; ME = Math.max(0, net.seat);
+    var e = { st: JSON.parse(JSON.stringify(net.state)), info: info };
+    if (info.fresh || info.again) { NETQ = [e]; if (NETBUSY) { token++; NETBUSY = false; } if (NETSHEET) { NETSHEET.close(); NETSHEET = null; } }
+    else NETQ.push(e);
+    if (!NETBUSY) netNext();
+  }
+  function netNext() {
+    if (!NET) { NETQ = []; NETBUSY = false; return; }
+    var e = NETQ.shift();
+    if (!e) { NETBUSY = false; if (S && handEl && S.players) paintHand(); return; }
+    NETBUSY = true;
+    netDraw(e.st, e.info, NETQ.length > 2 || document.hidden, netNext);
+  }
+  function netView(st) {
+    S = st;
+    S.received = st.recv ? st.recv[ME] || [] : [];
+    var h = st.hands && st.hands[ME] || [];
+    NETSEL = st.phase === 'pass' && !(st.pass && st.pass[ME]) ? NETSEL.filter(function (id) { return find(h, id) >= 0; }) : [];
+    S.passSel = NETSEL;
+    return S;
+  }
+  function rectEl(r) { return r ? { getBoundingClientRect: function () { return r; } } : null; }
+  function tagOf(p) { return seatEls[p] && seatEls[p].querySelector('.tag'); }
+  // face-down cards sliding from one spot on screen to another and fading there
+  function ghosts(from, toEl, n, ms) {
+    if (!from || !toEl) return;
+    var to = toEl.getBoundingClientRect();
+    for (var i = 0; i < n; i++) (function (i) {
+      var g = Kit.card('', '', { back: true }); g.classList.add('ghost');
+      g.style.setProperty('--cw', Math.max(22, Math.min(40, from.width || 30)) + 'px');
+      g.style.left = (from.left + i * 6) + 'px'; g.style.top = from.top + 'px';
+      document.body.appendChild(g);
+      var dx = to.left + to.width / 2 - (from.left + i * 6) - 15, dy = to.top + to.height / 2 - from.top - 20;
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        g.style.transition = 'transform ' + (ms || 450) + 'ms cubic-bezier(.2,.8,.25,1) ' + (i * 40) + 'ms, opacity ' + (ms || 450) + 'ms ease-in ' + (i * 40) + 'ms';
+        g.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.6)'; g.style.opacity = '0';
+      }); });
+      setTimeout(function () { g.remove(); }, (ms || 450) + 200);
+    })(i);
+  }
+  function netDraw(st, info, quick, done) {
+    var mv = info.mv, t = ++token;
+    function later(ms, f) { setTimeout(function () { if (t === token && NET) f(); }, ms); }
+    if (quick || info.fresh || info.again || !mv) {
+      netView(st); render();
+      if (info.again) { Kit.sfx('deal'); Kit.callout('New game'); }
+      if (st.phase === 'over') later(info.fresh ? 300 : 600, netEnd);
+      else if (info.fresh && st.trickNo === 0 && !st.trick.length) netHandNote(st);
+      done(); return;
+    }
+    if (mv.t === 'pass') return netDrawPass(st, mv, info, later, done);
+    if (mv.t === 'play') return netDrawPlay(st, mv, info, later, done);
+    netView(st); render(); done();
+  }
+  function netDrawPass(st, mv, info, later, done) {
+    var flyR = info.mine && mv.p === ME && Array.isArray(NETFLY) ? NETFLY : null; NETFLY = null;
+    var shown = st;
+    if (mv.all) {   // first show the last passer's cards landing, as if still passing
+      shown = JSON.parse(JSON.stringify(st)); shown.phase = 'pass';
+      shown.hands = shown.hands.map(function (h, p) { return h.filter(function (c) { return st.recv[p].indexOf(c.id) < 0; }); });
+    }
+    netView(shown); render();
+    var stack = feltEl.querySelector('.pstack[data-from="' + mv.p + '"]'), from = tagOf(mv.p);
+    if (stack) Array.prototype.forEach.call(stack.children, function (n, i) { Cards.fly(n, flyR && flyR[i] ? rectEl(flyR[i]) : from, { ms: 420 + i * 60 }); });
+    if (!info.mine) Kit.sfx('whoosh');
+    if (!mv.all) { later(480, done); return; }
+    later(900, function () {
+      // everyone has passed: the stacks go into the hands, yours face up
+      var rs = {};
+      Array.prototype.forEach.call(feltEl.querySelectorAll('.pstack'), function (n) { rs[n.dataset.from] = n.getBoundingClientRect(); });
+      netView(st); render();
+      Kit.sfx('deal'); Kit.haptic('light');
+      for (var p = 0; p < 4; p++) {
+        var to = passTarget(p, st.passDir), r = rs[p];
+        if (!r) continue;
+        if (to === ME && NET.seat >= 0) st.recv[ME].forEach(function (id) { var n = handEl.querySelector('[data-id="' + id + '"]'); if (n) Cards.fly(n, rectEl(r), { ms: 560 }); });
+        else ghosts(r, tagOf(to), 3, 480);
+      }
+      later(650, done);
+    });
+  }
+  // the table just before the last card of a hand landed (the next hand is already dealt in st)
+  function handEndView(st, mv) {
+    var lh = st.lastHand, v = JSON.parse(JSON.stringify(st));
+    v.round = lh.round; v.passDir = lh.dir; v.phase = 'play'; v.trickNo = 12; v.turn = -1; v.pass = null; v.recv = [[], [], [], []];
+    v.hands = [[], [], [], []]; v.taken = lh.taken.slice(); v.taken[mv.w] -= mv.got;
+    v.players.forEach(function (p, i) { p.total -= lh.hand[i]; });
+    v.trick = lh.last.t.slice(0, -1);
+    return v;
+  }
+  function netDrawPlay(st, mv, info, later, done) {
+    var lt = mv.hand ? st.lastHand && st.lastHand.last : mv.done ? st.last : null, v;
+    if (mv.done && !lt) { netView(st); render(); done(); return; }
+    if (mv.hand) v = handEndView(st, mv);
+    else {
+      v = JSON.parse(JSON.stringify(st));
+      if (mv.done) { v.trick = lt.t.slice(0, -1); v.turn = -1; v.taken[mv.w] -= mv.got; }
+      else v.trick = st.trick.slice(0, -1);
+    }
+    netView(v); render();
+    var from = info.mine && mv.p === ME && NETFLY && NETFLY[mv.c.id] ? rectEl(NETFLY[mv.c.id]) : tagOf(mv.p); NETFLY = null;
+    var node = Cards.el(mv.c, { cls: 'p-' + posOf(mv.p) });
+    trickEl.appendChild(node);
+    Cards.fly(node, from, { ms: 340 });
+    if (isQS(mv.c)) Kit.sfx('bad'); else Kit.sfx('flip');
+    if (mv.broke) flash('Hearts are broken!');
+    if (!mv.done) { later(380, function () { if (!info.mine && NET.myTurn()) Kit.haptic('light'); done(); }); return; }
+    later(900, function () {
+      var wc = lt.t.filter(function (x) { return x.p === mv.w; })[0], winNode = wc && trickEl.querySelector('[data-id="' + wc.c.id + '"]');
+      if (winNode) winNode.classList.add('win');
+      if (mv.got) { seatSay(mv.w, '+' + mv.got); if (mv.w === NET.seat) Kit.haptic('error'); }
+      later(650, function () {
+        var dest = tagOf(mv.w).getBoundingClientRect(), box = trickEl.getBoundingClientRect();
+        Array.prototype.forEach.call(trickEl.children, function (n) {
+          n.style.transition = 'transform .35s ease-in, opacity .35s ease-in';
+          n.style.transform = 'translate(' + (dest.left - box.left - 30) + 'px,' + (dest.top - box.top - 30) + 'px) scale(.4)';
+          n.style.opacity = '0';
+        });
+        Kit.sfx('whoosh');
+        later(380, function () {
+          trickEl.innerHTML = '';
+          if (!mv.hand) { netView(st); paintSeats(); paintHand(); paintMsg(); done(); return; }
+          var lh = st.lastHand;
+          if (lh.moon >= 0) { Kit.callout(lh.moon === NET.seat ? 'You shot the moon!' : st.players[lh.moon].name + ' shot the moon!'); Kit.confetti({ count: 90 }); }
+          netView(st); render();
+          if (st.phase === 'over') { later(lh.moon >= 0 ? 1400 : 500, netEnd); done(); return; }
+          Kit.sfx('deal');
+          later(lh.moon >= 0 ? 1200 : 300, function () { netHandNote(st); });
+          done();
+        });
+      });
+    });
+  }
+  // the scores for the hand just finished (once per device; the next hand is already dealt underneath)
+  var NETSHEET = null;
+  function netHandNote(st) {
+    var lh = st.lastHand;
+    if (!NET || !lh || lh.round !== st.round - 1 || st.phase === 'over') return;
+    var key = NET.code + ':' + st.started + ':' + lh.round;
+    if (NETSEEN[key]) return; NETSEEN[key] = 1;
+    if (NETSHEET) NETSHEET.close();
+    NETSHEET = showScores(true, lh.hand, lh.moon, { round: lh.round });
+  }
+  function netEnd() {
+    if (!NET || !S || S.phase !== 'over') return;
+    var me = NET.seat, key = NET.code + ':' + S.started;
+    var rank = S.players.map(function (p, i) { return { name: p.name, score: p.total, cpu: p.cpu, color: Kit.color(i), i: i }; }).sort(function (a, b) { return a.score - b.score; });
+    var w = netWinners(S), tie = w.length > 1, iWin = w.indexOf(me) >= 0;
+    if (!NETREC[key] && me >= 0) {
+      NETREC[key] = 1;
+      Kit.record('hearts', {
+        started: S.started, mode: 'Online', lowWins: true,
+        players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
+        winner: tie ? null : S.players[w[0]].name,
+        rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
+        highlights: S.highlights.concat([S.rounds.length + ' hands, played to ' + S.target, 'Online game · table ' + NET.code]),
+        detail: { hx: S.hx || [], qs: S.qs, moons: S.moons, hand: null, pass: null, q: S.dtQ || null, to: S.target }
+      });
+    }
+    var res = NET.result, left = res && res.left != null, games = S.wins.reduce(function (a, b) { return a + b; }, 0);
+    if (NETSHEET) { NETSHEET.close(); NETSHEET = null; }
+    Kit.win({
+      title: left ? res.text : tie ? (iWin ? 'You tied for the win!' : 'It’s a tie!') : iWin ? 'You win!' : S.players[w[0]].name + ' wins',
+      sub: 'Lowest score wins' + (games > 1 ? ' · games won: ' + S.players.map(function (p, i) { return (i === me ? 'You' : p.name) + ' ' + S.wins[i]; }).join(', ') : ''),
+      rank: rank, lose: !iWin && !left, icon: iWin ? 'trophy' : 'users',
+      againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      closeLabel: 'Back to games'
+    });
+  }
+  function netLeave() {
+    NET = null; ME = 0; NETQ = []; NETBUSY = false; NETSEL = []; token++;
+    if (NETSHEET) { NETSHEET.close(); NETSHEET = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.players && sv.hands && sv.phase !== 'over') {
+      S = sv; render();
+      if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);
+      else if (S.phase === 'play') next();
+    } else showSetup();
+  }
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.hands && saved.phase !== 'over') {
@@ -437,6 +807,18 @@
     if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);
     else if (S.phase === 'play') next();
   } else showSetup();
+
+  // online tables (after the local game is drawn): opens ?online=1&room=CODE from the home screen
+  TurnNet.setup({
+    game: 'hearts', title: 'Hearts', min: 2, max: 4, botMs: 800,
+    seats: function (n) { return Math.max(4, n); },
+    opts: netOpts,
+    start: netStart,
+    turn: netTurn,
+    over: netOver,
+    bot: netBot,
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>

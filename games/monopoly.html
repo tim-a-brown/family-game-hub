@@ -12,6 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <script src="monopoly/engine.js"></script>
 <script src="monopoly/art.js"></script>
 <script src="monopoly/music.js"></script>
@@ -489,22 +490,6 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
 .pk-acts .btn-ghost[hidden]{display:inline-flex;visibility:hidden;}
 .pk-fly{position:fixed;z-index:500;pointer-events:none;will-change:transform;}
 .pk-fly svg.tok-svg{width:100%;height:100%;display:block;filter:drop-shadow(0 10px 6px rgba(0,0,0,.45));}
-/* the online wait room: a smaller tray, and each player's piece beside their name */
-.pk-ol{display:flex;flex-direction:column;gap:8px;}
-.pk-ol .pk-box{padding:8px;border-radius:20px;}
-.pk-ol .pk-tray{gap:6px;padding:8px;}
-.pk-ol .pk-well .pk-tn{font-size:clamp(.6rem,2.4vw,.8rem);}
-/* beside the player circle the list is narrow: smaller piece badges so names fit */
-.olt-side .pk-badge{width:28px;height:28px;}
-.olt-side.cols .pk-badge{position:absolute;top:2px;right:2px;width:20px;height:20px;}
-.olt-side .ol-row{position:relative;}
-.pk-badge{--c:var(--p1);flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;position:relative;
-  background:color-mix(in srgb,var(--c) 18%,transparent);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 60%,transparent);}
-.pk-badge::before{content:"";position:absolute;inset:6px;border-radius:50%;border:2px dashed color-mix(in srgb,var(--c) 55%,transparent);}
-.pk-badge.has{background:radial-gradient(circle at 35% 30%, color-mix(in srgb,var(--c) 70%,#fff), var(--c) 60%, color-mix(in srgb,var(--c) 70%,#000));box-shadow:inset 0 -2px 4px rgba(0,0,0,.3), 0 1px 3px rgba(0,0,0,.35);}
-.pk-badge.has::before{display:none;}
-.pk-badge svg.tok-svg{width:86%;height:86%;filter:drop-shadow(0 1.5px 1px rgba(0,0,0,.55));}
-.pk-badge.land{animation:pkLand .5s var(--spring);}
 @media (prefers-reduced-motion:reduce){.pk-seat.now .pk-ptr,.pk-well.last .pk-pc,.pk-well.wait .pk-pc,.pk-seat.now .pk-sock::before,.pk-acts .pk-go.ready{animation:none;}}
 
 /* ── Wide screens: board on the left, everything else beside it ── */
@@ -532,8 +517,8 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 
   // ═══ State ══════════════════════════════════════════════════════════════
-  // S: the game (engine state). mode: 'cpu' | 'pass' | 'online'. The online host and offline devices run the
-  // engine; online guests get S from the host after every action, with the events to animate.
+  // S: the game (engine state). mode: 'cpu' | 'pass' | 'online'. Online (turnnet.js), the table's doc holds S and
+  // every device runs the engine for its own seat's moves; NET is the table while sitting at one.
   var S = null, mode = null, undoStack = [], busy = 0, chain = Promise.resolve(), botT = 0, view = null, lastTurnSeen = -1;
   var speed = lsGet('mono_speed', 'normal'), TEST = { instant: false };
   var disp = null;   // what the board shows while an animation plays: {pos:[], cash:[], jail:[]}
@@ -543,12 +528,14 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   // can this device act for player p?
   function mine(p) {
     if (!S || p < 0 || !S.players[p]) return false;
-    if (mode === 'online') return p === net.seat && !S.players[p].out;
+    if (mode === 'online') return !!NET && p === NET.seat && !S.players[p].out;
     return !S.players[p].cpu && !S.players[p].out;
   }
+  // online, a seat only acts when the move is theirs (building, mortgaging and trading too)
+  function canAct(p) { return mode !== 'online' || (!!NET && NET.myTurn() && M.needs(S) === p); }
   // whose properties and money the panel shows: you (vs computer, online), or the person whose turn it is (pass and play)
   function viewer() {
-    if (mode === 'online') return net.seat;
+    if (mode === 'online') return NET ? NET.seat : -1;
     if (mode === 'cpu') return 0;
     var n = M.needs(S);
     if (n >= 0 && isHuman(n)) return n;
@@ -561,15 +548,13 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
 
   Kit.init({
     id: 'monopoly',
-    onNew: function () { stopAll(); clearSave(); leaveOnline(); showSetup(); },  // also from the lobby or waiting room (mode not 'online' yet)
-    undo: function () { undo(); },
-    menu: [
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } stopAll(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Monopoly: past games' }); } },
-      { icon: 'globe', label: 'Play online', sub: '2 to 8 players, each on their own device', when: function () { return mode !== 'online'; }, onClick: function () { stopAll(); goLobby(); } },
-      { icon: 'logout', label: 'Leave the online game', when: function () { return mode === 'online'; }, onClick: function () { leaveOnline(); showSetup(); } },
       { icon: 'rocket', label: 'Fast computer players', sub: 'Robots move and decide quicker', toggle: function () { return speed === 'fast'; }, onClick: function () { speed = speed === 'fast' ? 'normal' : 'fast'; lsSet('mono_speed', speed); } },
       music.menuItem
-    ],
+    ]),
     rules:
       '<p class="goal">Buy property, charge rent, build houses and hotels, and be the <b>last player standing</b> when everyone else has gone bankrupt.</p>' +
       '<h3>Your turn</h3><ul><li>Roll the two dice and move that many squares. Passing <b>Go</b> pays you <b>$200</b>.</li>' +
@@ -592,6 +577,9 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       '<h3>House rules (in setup, off unless you choose them)</h3><ul><li><b>Free Parking jackpot</b>: taxes and fines pile up in the middle; land on Free Parking to take them.</li>' +
       '<li><b>$400 on Go</b>: landing exactly on Go pays double.</li><li><b>No auctions</b>: a property no one buys stays with the bank.</li>' +
       '<li><b>Game length</b>: after the time or the number of rounds, the round is finished and the richest player wins (cash, property at its price, half if mortgaged, and buildings at cost).</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b>: open a table and 2 to 8 people join, each on their own device. You can add computer players in the setup.</li>' +
+      '<li>Take your turn whenever you like; the home screen shows when it’s your move. Building, mortgaging and trading happen on your own turn, and a trade or a bid waits for the player it’s for.</li>' +
+      '<li>Moves can’t be taken back online. If someone leaves, the computer plays for them.</li></ul>' +
       '<h3>Playing here</h3><p>Tap any square to see its title deed; the deed of a square up for sale lies on the table while you decide. Tap a player at the top to light up everything they own on the board. Pinch to zoom, or tap + to zoom in on your piece. Build, Mortgage and Trade sit under the board; when you owe money, tap a deed in the row to mortgage it or sell a house.</p>'
   });
 
@@ -620,13 +608,19 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
         { id: 'auction', label: 'Auctions', value: 'on', choices: [['on', 'On', 'The official rule: a property no one buys is auctioned to everyone.'], ['off', 'Off', 'House rule: a property no one buys stays with the bank.']] },
         { id: 'fp', label: 'Free Parking jackpot', value: 'off', choices: [['off', 'Off', 'The official rule: Free Parking is just a rest.'], ['on', 'On', 'House rule: taxes and fines pile up in the middle, and landing on Free Parking takes them.']] },
         { id: 'go400', label: 'Landing on Go', value: 'off', choices: [['off', '$200', 'The official rule: $200 for passing or landing on Go.'], ['on', '$400', 'House rule: landing exactly on Go pays $400.']] },
+        { id: 'bots', label: 'Computer players', value: '0', when: function (m) { return m === 'online'; }, choices: [['0', 'None', 'Only the people who join play.'], ['1', '1', 'One computer player sits at the table with the people who join.'], ['2', '2', 'Two computer players sit at the table with the people who join.'], ['3', '3', 'Three computer players sit at the table with the people who join.']] },
         { id: 'speed', label: 'Computer speed', value: 'normal', when: function (m) { return m === 'cpu'; }, choices: [['normal', 'Easy to follow'], ['fast', 'Fast']] }
       ],
       onStart: function (cfg) {
         var o = cfg.options;
         if (cfg.mode === 'cpu') { speed = o.speed === 'fast' ? 'fast' : 'normal'; lsSet('mono_speed', speed); }
         var opts = { len: o.len, noAuction: o.auction === 'off', fp: o.fp === 'on', go400: o.go400 === 'on' };
-        if (cfg.mode === 'online') { var me = lsGet(NETME, {}) || {}; me.name = cfg.players[0] && cfg.players[0].name !== 'You' ? cfg.players[0].name : me.name; me.opts = opts; lsSet(NETME, me); goLobby(); return; }
+        if (cfg.mode === 'online') {
+          var nm = cfg.players[0] && cfg.players[0].name, me = lsGet(NETME, {}) || {};
+          opts.bots = Math.max(0, Math.min(3, +o.bots || 0)); me.opts = opts; lsSet(NETME, me);
+          if (nm && nm !== 'You' && !/^Player \d+$/.test(nm)) lsSet('tn_me', { name: nm });
+          TurnNet.open(); return;
+        }
         showPicker(cfg.mode, cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), opts);
       }
     });
@@ -1300,7 +1294,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     // the deed of the square on offer lies on the table while anyone decides on it
     holdDeed(busy ? -1 : S.phase === 'buy' && S.offer ? S.offer.sq : S.phase === 'auction' && S.auction ? S.auction.sq : -1);
     // a panel opened from the tools (build planning) takes over the dock until it closes
-    if (view.dock && view.dock.k === 'build') { if (mine(view.dock.v) && !busy && /^(roll|done|buy)$/.test(S.phase)) return renderBuild(box); view.dock = null; }
+    if (view.dock && view.dock.k === 'build') { if (mine(view.dock.v) && canAct(view.dock.v) && !busy && /^(roll|done|buy)$/.test(S.phase)) return renderBuild(box); view.dock = null; }
     if (view.fitKey && S.phase !== 'debt') unfit();
     if (busy && disp && disp.big) { box.appendChild(turnLine(S.cur, '<span class="thinking"><i></i><i></i><i></i></span>')); return; }
     if (S.phase === 'auction') return renderAuction(box, p, me);
@@ -1332,7 +1326,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     }
     // build, mortgage and trade for whoever is using the device
     var v = viewer();
-    if (mine(v) && !busy && /^(roll|done|buy)$/.test(S.phase)) box.appendChild(toolsRow(v));
+    if (mine(v) && canAct(v) && !busy && /^(roll|done|buy)$/.test(S.phase)) box.appendChild(toolsRow(v));
   }
   function lastWhat() {
     var L = S.log.length ? S.log[S.log.length - 1].t : ''; return L.length > 90 ? L.slice(0, 88) + '…' : L;
@@ -1420,7 +1414,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     box.appendChild(turnLine(p, me ? '' : (mine(T2.f) ? 'Waiting for ' + esc(to.name) : thinking(to.name)), mine(p) ? 'A trade for you, ' + to.name : 'A trade for ' + to.name));
     box.appendChild(offerSummary(T2));
     if (me) box.appendChild(el('div', { class: 'btns' }, [btn('Accept', 'btn-primary', function () { act({ t: 'answer', p: p, ok: true }); }, { icon: 'check' }), btn('Decline', 'btn-soft', function () { act({ t: 'answer', p: p, ok: false }); }, { icon: 'close' })]));
-    else if (mine(T2.f) && !busy) box.appendChild(el('div', { class: 'btns' }, [btn('Take the offer back', 'btn-ghost btn-sm', function () { act({ t: 'cancel', p: T2.f }); })]));
+    else if (mine(T2.f) && !busy && mode !== 'online') box.appendChild(el('div', { class: 'btns' }, [btn('Take the offer back', 'btn-ghost btn-sm', function () { act({ t: 'cancel', p: T2.f }); })]));
   }
   function offerSummary(T2) {
     var f = S.players[T2.f], to = S.players[T2.to];
@@ -1476,7 +1470,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   function doAct(a) {
     if (!S) return;
     if (view && view.spot >= 0) unspot();
-    if (mode === 'online' && net.role === 'guest') { netSend({ t: 'act', a: a }); return; }
+    if (mode === 'online') return netAct([a]);
     var pre = snapPre();
     var snap = mode !== 'online' && UNDOABLE[a.t] && isHuman(a.p) ? JSON.stringify(S) : null;
     var r = M.act(S, a);
@@ -1489,15 +1483,14 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     else if (!/^(propose|cancel)$/.test(a.t)) undoStack = [];
     if (isHuman(a.p)) lastHuman = a.p;
     save();
-    if (mode === 'online' && net.role === 'host') netBroadcast(r.ev);
     play(r.ev, pre);
     return r;
   }
   // a build sheet plan: several build/sell actions done as one move (all or nothing, one undo step, one
-  // animation with a single cash change). Guests send them to the host one after another as usual.
+  // animation with a single cash change). Online it's one move at the table, too.
   function doActs(list) {
     if (!S || !list.length) return;
-    if (mode === 'online' && net.role === 'guest') { list.forEach(function (a) { netSend({ t: 'act', a: a }); }); return; }
+    if (mode === 'online') return netAct(list);
     var pre = snapPre(), before = JSON.stringify(S), ev = [], cash = 0, p = list[0].p;
     for (var i = 0; i < list.length; i++) {
       var r = M.act(S, list[i]);
@@ -1505,10 +1498,9 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       r.ev.forEach(function (e) { if (e.e === 'pay' && (e.w === 'build' || e.w === 'sell')) cash += e.f === p ? -e.a : e.a; else ev.push(e); });
     }
     if (cash) ev.unshift(cash < 0 ? { e: 'pay', f: p, t: M.BANK, a: -cash, w: 'build' } : { e: 'pay', f: M.BANK, t: p, a: cash, w: 'sell' });
-    if (mode !== 'online') { undoStack.push(before); if (undoStack.length > 40) undoStack.shift(); } else undoStack = [];
+    undoStack.push(before); if (undoStack.length > 40) undoStack.shift();
     lastHuman = p;
     save();
-    if (mode === 'online' && net.role === 'host') netBroadcast(ev);
     play(ev, pre);
     return { ok: true, ev: ev };
   }
@@ -1527,7 +1519,11 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     if (p < 0) return;
     // pass and play: say whose turn it is when it changes hands
     if (mode === 'pass' && isHuman(p) && lastTurnSeen !== S.turn && S.phase === 'roll' && p === S.cur) { lastTurnSeen = S.turn; passBanner(p); }
-    if (mode === 'online' && net.role === 'guest') return;
+    // online: the table runs the computer players (TurnNet's bot), so this device only greets its own turn
+    if (mode === 'online') {
+      if (NET && NET.myTurn() && p === NET.seat && S.phase === 'roll' && p === S.cur && lastTurnSeen !== S.turn) { lastTurnSeen = S.turn; passBanner(p); }
+      return;
+    }
     if (S.players[p].cpu) {
       clearTimeout(botT);
       var slow = S.phase === 'roll' || S.phase === 'done' ? 700 : S.phase === 'auction' ? 650 : S.phase === 'trade' ? 1400 : 800;
@@ -1545,7 +1541,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   }
   function undo() {
     if (pick) return pickUndo();
-    if (mode === 'online') return Kit.toast('No undo in online games');
+    if (mode === 'online') return Kit.toast('Moves can’t be taken back online');
     if (busy || !undoStack.length) return Kit.toast('Nothing to undo');
     clearTimeout(botT);
     S = JSON.parse(undoStack.pop());
@@ -1755,7 +1751,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       node.appendChild(el('div', { style: { 'max-width': '260px', margin: '0 auto' }, html: deedHTML(sq) }));
       var line = own < 0 ? 'For sale: ' + money(s.p) : (own === v ? 'Yours' : 'Owned by ' + S.players[own].name) + (S.mort[sq] ? ' · mortgaged (no rent)' : s.k === 'st' && !S.hs[sq] && M.ownsGroup(S, own, s.g) ? ' · whole group: rent doubled' : '');
       node.appendChild(el('p', { class: 'muted', style: { 'text-align': 'center', margin: '12px 0 8px', 'font-weight': '800' }, text: line }));
-      if (own === v && mine(v) && S.phase !== 'over') {
+      if (own === v && mine(v) && canAct(v) && S.phase !== 'over') {
         var b = el('div', { class: 'btns' });
         if (s.k === 'st' && M.ownsGroup(S, v, s.g)) {
           var why = M.canBuild(S, v, sq);
@@ -2006,22 +2002,23 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   function showWin(again) {
     if (!S || S.phase !== 'over') return;
     var w = S.winner, P = S.players;
-    if (!S.recorded) { S.recorded = true; recordGame(); }
+    if (mode === 'online') netRecord();
+    else if (!S.recorded) { S.recorded = true; recordGame(); }
     var rank = P.map(function (p, i) { return { i: i, w: M.worth(S, i), out: p.out ? p.outAt : 1e9 }; })
       .sort(function (a, b) { return (a.i === w ? -1 : b.i === w ? 1 : 0) || b.out - a.out || b.w - a.w; });
-    var lose = mode === 'cpu' ? P[w].cpu : mode === 'online' ? w !== net.seat : false;
+    var lose = mode === 'cpu' ? P[w].cpu : mode === 'online' ? !NET || w !== NET.seat : false;
     Kit.win({
       icon: lose ? 'bot' : 'trophy', lose: lose, quiet: !!again,
-      title: (P[w].name === 'You' ? 'You win!' : P[w].name + ' wins!'),
+      title: (P[w].name === 'You' || mode === 'online' && NET && w === NET.seat ? 'You win!' : P[w].name + ' wins!'),
       sub: S.endWhy === 'time' ? 'Richest when time ran out · worth ' + money(M.worth(S, w)) : 'Last one standing after ' + S.round + ' rounds',
       rank: rank.map(function (r) { var p = P[r.i]; return { name: p.name, score: p.out ? 'Bankrupt' : money(r.w), color: pcolor(r.i), cpu: p.cpu }; }),
       notes: highlights().slice(0, 4), notesTitle: 'How it went',
-      againLabel: mode === 'online' ? 'Back to the table' : 'Play again',
+      againLabel: 'Play again',
       again: function () {
-        if (mode === 'online') { backToTable(); return; }
+        if (mode === 'online') { if (NET) NET.again(); return; }
         start(mode, P.map(function (p) { return { name: p.name, cpu: p.cpu, tok: p.tok }; }), S.opts);
       },
-      extra: [{ label: 'Look at the board', onClick: function () { render(); } }, { label: 'Change players', onClick: function () { if (mode === 'online') leaveOnline(); showSetup(); } }]
+      extra: [{ label: 'Look at the board', onClick: function () { render(); } }, mode === 'online' ? { label: 'Leave the table', onClick: function () { TurnNet.leave(); } } : { label: 'Change players', onClick: function () { showSetup(); } }]
     });
   }
   function highlights() {
@@ -2054,267 +2051,234 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     });
   }
 
-  // ═══ Online ═════════════════════════════════════════════════════════════
-  // The host's device runs the game. Guests send what they want to do ({t:'act', a}); the host checks it's
-  // their seat, plays it and sends everyone the new state with what happened ({t:'st', s, ev}).
-  var net = { role: null, table: null, peer: null, seat: 0, roster: [], wait: null, lobby: null, pidN: 0 };
-  function meName() { var m = lsGet(NETME, {}) || {}; return m.name || (function () { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } })() || ''; }
-  function goLobby() {
-    pickStop(); leaveOnline(); S = null; view = null; mode = null; app.className = 'stage'; app.innerHTML = '';
-    net.lobby = Online.lobby(app, {
-      game: 'monopoly', title: 'Play Online', max: 8,
-      intro: 'Two to eight players, each on their own device. One opens a table, the others join.',
-      me: { name: meName() },
-      onName: function (n) { var m = lsGet(NETME, {}) || {}; m.name = n; lsSet(NETME, m); },
-      onHost: function (me) { return hostTable(me.name); },
-      onJoin: function (code, room, me) { return joinTable(code, me.name); },
-      onSolo: function () { closeLobby(); showSetup(); }, solo: 'Play on this device instead',
-      sub: function (r) { return (r.n || 1) + ' of 8 players' + (r.status === 'playing' ? ' · playing' : ''); },
-      note: 'Each device connects straight to the host’s. If one can’t connect, try both on the same Wi-Fi.'
-    });
-    window.scrollTo(0, 0);
+  // ═══ Online (turnnet.js) ════════════════════════════════════════════════
+  // The table's doc holds the whole game (S). A move is NET.act(fn): fn runs the engine on the table's state for
+  // this seat (dice are rolled inside it) and returns the new state with the engine's events, which every device
+  // animates just like a local move. Whose move it is comes from M.needs(): the roller, the bidder whose go it is
+  // (auctions go round the table, as they do here), the player a trade is for, or whoever owes money. Before the
+  // first roll everyone takes a piece from the box (people at once, then the computer players). Bankrupt players
+  // keep their seat, out of the game; someone who leaves is played by the computer.
+  var NET = null, PK = null, NETREC = 'mono_netrec';
+  function clone(o) { return o == null ? o : JSON.parse(JSON.stringify(o)); }
+  function netOpts() { var o = (lsGet(NETME, {}) || {}).opts || {}; return { len: o.len || 'all', noAuction: !!o.noAuction, fp: !!o.fp, go400: !!o.go400, bots: Math.max(0, Math.min(3, +o.bots || 0)) }; }
+  // computer players at this table (the host's choice when it opened)
+  function netBots() { try { var d = TurnNet._t.d; return Math.max(0, Math.min(3, +JSON.parse(d && d.opts || '{}').bots || 0)); } catch (e) { return 0; } }
+  function netStart(players, opts, last) {
+    var keep = !!(last && last.players && last.players.length === players.length && last.players.every(function (x) { return x.tok; }));
+    var st = M.newGame(players.map(function (p, i) { return { name: p.name, cpu: !!p.bot, tok: keep ? last.players[i].tok : M.TOKENS[i % 8] }; }), opts || {});
+    if (!keep) { st.players.forEach(function (x) { x.tok = null; }); st.pick = 1; }   // a rematch keeps everyone's piece
+    st.started = Date.now();
+    return st;
   }
-  function closeLobby() { if (net.lobby) { net.lobby.close(); net.lobby = null; } }
-  function busyScreen(text) { app.innerHTML = ''; app.appendChild(el('div', { class: 'ol' }, [el('div', { class: 'ol-row' }, [el('i', { class: 'ol-spin' }), el('div', { class: 'grow' }, [el('b', { text: text })])])])); }
-  function leaveOnline() {
-    if (net.table) { try { net.table.close(); } catch (e) {} }
-    // drop our peer before closing it so its close handler ignores it; no arg: we're leaving, so the bye goes out
-    if (net.peer) { var p = net.peer; net.peer = null; try { p.close(); } catch (e) {} }
-    closeLobby();
-    net.role = null; net.table = null; net.peer = null; net.roster = []; net.wait = null; net.ol = null;
-    if (mode === 'online') { mode = null; }
+  // who takes a piece now: the people, then the computer players
+  function pickUp(st) {
+    var a = [], b = [];
+    if (st.pick) st.players.forEach(function (x, i) { if (!x.tok) (x.cpu ? b : a).push(i); });
+    return a.length ? a : b;
   }
-  window.addEventListener('pagehide', function () { if (net.role) leaveOnline(); });
-  function hostTable(name) {
-    closeLobby(); busyScreen('Opening your table…');
-    return Online.host({ game: 'monopoly', name: name, max: 8, min: 2, screen: app, accept: function () { return S && mode === 'online' && S.phase !== 'over' ? 'That game has already started' : true; } }).then(function (table) {
-      table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(); goLobby(); });
-      net.role = 'host'; net.table = table; net.seat = 0; net.pidN = 1;
-      net.roster = [{ pid: 1, name: name, host: true, tok: null }];
-      table.on('peer', function (peer) {
-        if (S && mode === 'online' && S.phase !== 'over') { peer.send({ t: 'full' }, true); setTimeout(function () { peer.close('host'); }, 300); return; }
-        peer._pid = ++net.pidN;
-        net.roster.push({ pid: peer._pid, name: uniqueName(peer.name), peer: peer, tok: null });
-        peer.send({ t: 'you', pid: peer._pid }, true);
-        sendRoster(); Kit.toast(peerName(peer) + ' joined'); Kit.sfx('pop');
-      });
-      table.on('leave', function (peer) {
-        var r = net.roster.filter(function (x) { return x.peer === peer; })[0];
-        net.roster = net.roster.filter(function (x) { return x.peer !== peer; });
-        sendRoster();
-        if (r && S && mode === 'online' && S.phase !== 'over' && r.seat != null) {
-          var pl = S.players[r.seat];
-          if (pl && !pl.out) { pl.cpu = true; S.log.push({ t: pl.name + ' left. The computer plays for them now.', p: r.seat, n: S.turn }); netBroadcast([]); render(); afterChange(); Kit.toast(pl.name + ' left · the computer takes over'); }
-        } else if (r) Kit.toast(r.name + ' left');
-      });
-      table.on('msg', function (peer, m) {
-        if (m.t === 'tok') { var rr = net.roster.filter(function (x) { return x.peer === peer; })[0]; if (rr) claimTok(rr, m.tok, peer); return; }
-        if (m.t !== 'act' || !S || mode !== 'online') return;
-        var r = net.roster.filter(function (x) { return x.peer === peer; })[0];
-        if (!r || r.seat == null || !m.a || m.a.p !== r.seat) { peer.send({ t: 'err', msg: 'That isn’t yours to do' }, true); return; }
-        var res = doAct(m.a);
-        if (res && !res.ok) peer.send({ t: 'err', msg: res.err }, true);
-      });
-      showWait();
-    }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
+  function netTurn(st) {
+    if (st.pick) return pickUp(st);
+    if (st.phase === 'over') return [];
+    var n = M.needs(st); return n >= 0 ? [n] : [];
   }
-  function peerName(peer) { var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; return r ? r.name : peer.name; }
-  function uniqueName(n) { var base = n || 'Player', k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
-  function sendRoster() {
-    var ro = net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host, tok: r.tok || null }; });
-    if (net.table) net.table.broadcast({ t: 'ro', ro: ro }, true);
-    if (net.wait) { net.wait.update(waitPlayers(ro, 1)); olPaint(ro, 1); }
+  function netOver(st) {
+    if (st.pick || st.phase !== 'over' || !st.players[st.winner]) return null;
+    return { win: [st.winner], text: st.players[st.winner].name + (st.endWhy === 'time' ? ' was the richest' : ' is the last one standing') };
   }
-  function waitPlayers(ro, mePid) { return ro.map(function (r, i) { return { name: r.name, host: !!r.host, me: r.pid === mePid, color: Kit.color(i), tok: r.tok || null }; }); }
-  function showWait() {
-    S = null; view = null; app.className = 'stage';
-    if (net.role === 'host') {
-      net.table.setStatus('open', '');
-      var ro = net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host, tok: r.tok || null }; });
-      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 8, min: 2, table: net.table, players: waitPlayers(ro, 1),
-        onStart: hostStart, onLeave: function () { leaveOnline(); goLobby(); }, note: 'Everyone starts with $1,500. House rules come from your setup screen.' });
-      olMount(); olPaint(ro, 1);
-    } else {
-      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 8, min: 2, players: guestPlayers(net.ro || []), onLeave: function () { leaveOnline(); goLobby(); } });
-      olMount(); olPaint(net.ro || [], net.myPid);
+  function pickMove(st, seat, tok) {
+    if (!st.pick || !st.players[seat] || st.players[seat].tok || M.TOKENS.indexOf(tok) < 0 || pickUp(st).indexOf(seat) < 0) return null;
+    if (st.players.some(function (x) { return x.tok === tok; })) return null;
+    st.players[seat].tok = tok;
+    if (st.players.every(function (x) { return x.tok; })) { delete st.pick; st.started = Date.now(); }
+    return { state: st, mv: { pick: seat, tok: tok } };
+  }
+  // one move (or a build plan's several) for the seat whose move it is: null when it can't be made on this state
+  function applyActs(st, list) {
+    if (!st || st.pick || st.phase === 'over' || !list.length) return null;
+    var p = list[0].p, ev = [], cash = 0, multi = list.length > 1;
+    if (M.needs(st) !== p || list.some(function (a) { return a.p !== p; })) return null;
+    if (/^m/.test(st.opts.len || '')) st.elapsed = Math.max(st.elapsed || 0, Date.now() - st.started);   // online the clock is the real one
+    for (var i = 0; i < list.length; i++) {
+      var r = M.act(st, list[i]);
+      if (!r.ok) return null;
+      r.ev.forEach(function (e) { if (multi && e.e === 'pay' && (e.w === 'build' || e.w === 'sell')) cash += e.f === p ? -e.a : e.a; else ev.push(e); });
     }
-    window.scrollTo(0, 0);
+    if (cash) ev.unshift(cash < 0 ? { e: 'pay', f: p, t: M.BANK, a: -cash, w: 'build' } : { e: 'pay', f: M.BANK, t: p, a: cash, w: 'sell' });
+    return { state: st, mv: { ev: ev } };
   }
-  // ── Pieces in the wait room. The host's roster holds who has which piece: first come, first served.
-  function claimTok(r, tok, peer) {
-    if (S && mode === 'online' && S.phase !== 'over') return;
-    tok = tok || null;
-    if (tok && M.TOKENS.indexOf(tok) < 0) return;
-    if (tok && net.roster.some(function (x) { return x !== r && x.tok === tok; })) {
-      if (peer) peer.send({ t: 'tokno', tok: tok }, true); else if (net.ol) shakeWell(net.ol.tray.wells[tok]);
+  function shake(node) { if (node && node.animate) node.animate([{ transform: 'none' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(5px)' }, { transform: 'translateX(-3px)' }, { transform: 'none' }], { duration: 380 }); }
+  function nudge() { Kit.haptic('error'); shake(view && view.act && view.act.querySelector('.turnl')); }
+  function netAct(list) {
+    if (!S || !NET) return { ok: false };
+    var p = list[0].p;
+    if (!NET.myTurn() || p !== NET.seat || M.needs(S) !== p) { nudge(); return { ok: false, err: 'Not your turn' }; }
+    var test = clone(S);
+    for (var i = 0; i < list.length; i++) { var r = M.act(test, list[i]); if (!r.ok) { Kit.toast(r.err); Kit.haptic('error'); Kit.sfx('bad'); return r; } }
+    if (view && view.spot >= 0) unspot();
+    var acts = clone(list);
+    NET.act(function (st) { return applyActs(st, acts); });
+    return { ok: true };
+  }
+  // a computer seat's move, made on whichever device has the table open, once what's on screen has played out
+  function netBot(st, seat) {
+    var pause = st.pick ? 450 : st.phase === 'roll' || st.phase === 'done' ? 700 : st.phase === 'auction' ? 650 : st.phase === 'trade' ? 1400 : 800;
+    return chain.then(function () { return wait(pause); }).then(function () {
+      if (st.pick) {
+        var free = M.TOKENS.filter(function (t) { return !st.players.some(function (x) { return x.tok === t; }); });
+        return pickMove(clone(st), seat, free[Math.floor(Math.random() * free.length)]);
+      }
+      var c = clone(st), a = M.bot(c, seat), r = a ? applyActs(c, [a]) : null;
+      if (r) return r;
+      // its first idea was refused: the plainest move that keeps the game going
+      var x = st.players[seat], plain = { roll: 'roll', done: 'endTurn', buy: 'decline', auction: 'pass', trade: 'answer', debt: x && st.debt && x.cash >= st.debt.a ? 'pay' : 'bankrupt' }[st.phase];
+      return plain ? applyActs(clone(st), [{ t: plain, p: seat, ok: false }]) : null;
+    });
+  }
+  function syncCpu() { if (S && NET) S.players.forEach(function (x, i) { x.cpu = !!(NET.seats[i] && NET.seats[i].bot); }); }
+  function snapOf(st) { return { pos: st.players.map(function (p) { return p.pos; }), cash: st.players.map(function (p) { return p.cash; }), jail: st.players.map(function (p) { return p.jail; }), own: st.own.slice(), hs: st.hs.slice() }; }
+  // Draw the table: the first look, or the move just made (yours or anyone's) played out from the state before it
+  function netShow(net, info) {
+    NET = net;
+    var st = clone(net.state); if (!st) return;
+    if (PK && PK.closing) { chain = chain.then(function () { netShow(net, info); }); return; }   // the box is closing: after that
+    var prev = info.fresh || info.again ? null : info.prev;
+    if (st.pick) { enterPick(); pickDraw(st, prev); return; }
+    if (prev && prev.pick && PK) {
+      // the last piece flies to its seat, then the box closes and the board comes out
+      pickDraw(st, prev); PK.closing = true; busy++;
+      chain = chain.then(function () { return wait(1300); }).then(function () { enterGame(st, true); });
       return;
     }
-    r.tok = tok; sendRoster();
+    if (info.fresh || info.again || !view || !S || mode !== 'online' || !prev) { enterGame(st, !!info.again || !!(prev && prev.pick)); return; }
+    var pre = snapOf(prev), ev = (info.mv && info.mv.ev) || [];
+    busy++;
+    chain = chain.then(function () {
+      S = st; syncCpu();
+      if (view && view.dock && !canAct(view.dock.v)) view.dock = null;
+      return animate(ev, pre);
+    }).catch(function (e) { console.error(e); }).then(function () { disp = null; busy = Math.max(0, busy - 1); render(); afterChange(); });
   }
-  function guestPid(ro) { if (net.myPid) return net.myPid; var me = ro.filter(function (r) { return r.name === meName(); })[0]; return me ? me.pid : -1; }
-  function guestPlayers(ro) { return waitPlayers(ro, guestPid(ro)); }
-  function olRo() { return net.role === 'host' ? net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host, tok: r.tok || null }; }) : (net.ro || []); }
-  function olMe() { return net.role === 'host' ? 1 : guestPid(net.ro || []); }
-  // the tray goes under the list of players
-  function olMount() {
-    var wrap = app.querySelector('.ol'), list = wrap && wrap.querySelector('.stack');
-    if (!wrap || !list) { net.ol = null; return; }
-    var tray = trayEl(olTap);
-    var box = el('div', { class: 'pk-ol' }, [el('div', { class: 'ol-h', text: 'Your piece' }), el('div', { class: 'pk-box wood' }, [tray.el])]);
-    var after = wrap.querySelector('.olt-top') || list;   // under the players and their circle, full width
-    after.parentNode.insertBefore(box, after.nextSibling);
-    net.ol = { el: box, tray: tray, pending: null, prev: null };
-  }
-  function olTap(tok) {
-    if (!net.ol) return;
-    var ro = olRo(), me = olMe(), owner = ro.filter(function (r) { return r.tok === tok; })[0], mine = ro.filter(function (r) { return r.pid === me; })[0];
-    if (owner && owner.pid !== me) { shakeWell(net.ol.tray.wells[tok]); return; }
-    if (net.ol.pending) return;
-    var want = owner ? null : tok;   // tap your own piece to put it back
-    if (owner) { Kit.sfx('deal'); Kit.haptic('light'); }
-    if (net.role === 'host') { var r = net.roster.filter(function (x) { return x.pid === 1; })[0]; if (r) claimTok(r, want, null); return; }
-    if (!mine) return;
-    if (want) { net.ol.pending = want; Kit.sfx('pop'); Kit.haptic('light'); olPaint(ro, me); var P = net.ol; setTimeout(function () { if (net.ol === P && P.pending === want) { P.pending = null; olPaint(olRo(), olMe()); } }, 5000); }
-    netSend({ t: 'tok', tok: want });
-  }
-  function olPaint(ro, me) {
-    var O = net.ol; if (!O) return;
-    var mi = -1; ro.forEach(function (r, i) { if (r.pid === me) mi = i; });
-    var my = mi >= 0 ? ro[mi] : null, myTok = my && my.tok, mc = mi >= 0 ? pcolor(mi) : '#ffd27a';
-    if (O.pending && (myTok === O.pending || ro.some(function (r) { return r.tok === O.pending; }))) O.pending = null;
-    var last = !myTok && my ? lastTok(my.name) : null;
-    O.tray.el.style.setProperty('--c', mc);
-    M.TOKENS.forEach(function (t) {
-      var w = O.tray.wells[t], oi = -1; ro.forEach(function (r, i) { if (r.tok === t) oi = i; });
-      var own = oi >= 0 ? ro[oi] : null, isMine = own && own.pid === me;
-      w.style.setProperty('--c', mc);
-      w.classList.toggle('taken', !!own && !isMine);
-      w.classList.toggle('mine', !!isMine);
-      w.classList.toggle('wait', t === O.pending);
-      w.classList.toggle('last', t === last && !own && !O.pending);
-      w.setAttribute('aria-label', A.TOK_NAME[t] + (isMine ? ' (yours, tap to put it back)' : own ? ' (' + own.name + '’s)' : ''));
-      var disc = w.querySelector('.pk-own'), key = own && !isMine ? own.pid + ':' + oi : '';
-      if ((disc ? disc.getAttribute('data-k') : '') !== key) {
-        if (disc) disc.remove();
-        if (key) w.appendChild(el('i', { class: 'pk-own', 'data-k': key, style: { '--oc': pcolor(oi) }, text: (own.name || '?').charAt(0).toUpperCase() }));
-      }
-    });
-    // each player's piece beside their name
-    var rows = app.querySelectorAll('.ol .stack .ol-seat'), badges = {};
-    ro.forEach(function (r, i) {
-      var row = rows[i]; if (!row) return;
-      var old = row.querySelector('.pk-badge'); if (old) old.remove();
-      var b = el('span', { class: 'pk-badge' + (r.tok ? ' has' : ''), style: { '--c': pcolor(i) }, title: r.tok ? A.TOK_NAME[r.tok] : '', html: r.tok ? A.token(r.tok) : '' });
-      row.appendChild(b); badges[r.pid] = b;
-    });
-    // what changed since last time: your piece flies to your name; others' pieces pop in beside theirs
-    var prev = O.prev; O.prev = {}; ro.forEach(function (r) { O.prev[r.pid] = r.tok || null; });
-    if (!prev) return;
-    ro.forEach(function (r) {
-      var was = prev[r.pid], b = badges[r.pid];
-      if (!r.tok || r.tok === was || !b) return;
-      if (r.pid === me) {
-        b.style.visibility = 'hidden';
-        flyTok(r.tok, O.tray.wells[r.tok].querySelector('.pk-pc'), b).then(function () { b.style.visibility = ''; b.classList.add('land'); Kit.sfx('chip'); Kit.haptic('medium'); });
-      } else { b.classList.add('land'); Kit.sfx('chip', 0.6); }
-    });
-  }
-  function hostStart() {
-    if (net.roster.length < 2) { Kit.toast('Wait for at least one more player'); return; }
-    var opts = (lsGet(NETME, {}) || {}).opts || { len: 'all' };
-    net.roster.forEach(function (r, i) { r.seat = i; });
-    // anyone who didn't pick a piece gets one of those left
-    var left = shuffled(M.TOKENS.filter(function (t) { return !net.roster.some(function (r) { return r.tok === t; }); }));
-    net.roster.forEach(function (r) { if (!r.tok) r.tok = left.shift(); });
-    net.wait = null; net.ol = null; mode = 'online';
-    S = M.newGame(net.roster.map(function (r) { return { name: r.name, cpu: false, tok: r.tok }; }), opts);
-    rememberToks([S.players[0]]);
-    Kit.gameStart(); S.started = Date.now(); undoStack = [];
-    net.roster.forEach(function (r) { if (r.peer) r.peer.send({ t: 'seat', seat: r.seat }, true); });
-    net.table.setStatus('playing', 'Round 1');
-    build(); render(); netBroadcast([]);
-    setTimeout(function () { Kit.callout(S.players[0].name + ' goes first'); }, 400);
+  function enterGame(st, hello) {
+    stopAll(); pickStop(); PK = null; mode = 'online'; S = st; syncCpu();
+    lastHuman = -1; lastTurnSeen = hello ? S.turn : -1; undoStack = [];
+    Kit.gameStart(); build(); render();
+    if (NET && S.players[NET.seat]) rememberToks([S.players[NET.seat]]);
+    if (hello && S.phase !== 'over') setTimeout(function () { if (S !== st) return; Kit.callout(NET && S.cur === NET.seat ? 'You go first' : S.players[S.cur].name + ' goes first'); Kit.sfx('whoosh'); }, 400);
     afterChange();
   }
-  function netBroadcast(ev) {
-    if (!net.table) return;
-    var s = JSON.parse(JSON.stringify(S)); s.log = s.log.slice(-40);
-    net.table.broadcast({ t: 'st', s: s, ev: ev }, true);
-    if (S.phase !== 'over') net.table.setStatus('playing', 'Round ' + S.round);
-    else net.table.setStatus('open', '');
+  // ── Choosing pieces at the table: the same box, everyone picking on their own device at once ──
+  function enterPick() {
+    if (mode === 'online' && !S && PK && document.body.contains(PK.root)) return;
+    stopAll(); pickStop(); S = null; view = null; mode = 'online'; PK = null;
   }
-  function netSend(m) { if (net.peer && !net.peer.closed) net.peer.send(m, true); else Kit.toast('Not connected to the table'); }
-  function joinTable(code, name) {
-    closeLobby(); busyScreen('Connecting to the table…');
-    return Online.join(code, { game: 'monopoly', name: name, min: 2, screen: app }).then(function (peer) {
-      net.role = 'guest'; net.peer = peer; net.hostName = peer.name; net.ro = []; net.seat = -1; net.myPid = null;
-      peer.on('msg', guestMsg);
-      peer.on('close', function (why) {
-        if (net.peer !== peer) return;
-        var playing = S && mode === 'online' && S.phase !== 'over';
-        net.peer = null; net.role = null;
-        if (playing) { mode = null; Kit.sheet({ title: 'The game ended', html: '<p class="muted">' + esc(net.hostName || 'The host') + (why === 'host' || why === 'left' ? ' closed the table.' : '’s table lost its connection.') + '</p>', actions: [{ label: 'Back to the lobby', primary: true, onClick: goLobby }] }); }
-        else if (!S) { Kit.toast((net.hostName || 'The host') + ' closed the table'); goLobby(); }
+  function pickDraw(st, prev) {
+    var me = NET ? NET.seat : -1;
+    if (!PK) {
+      app.className = 'stage'; app.innerHTML = '';
+      var n = st.players.length, root = el('div', { class: 'pick' });
+      PK = { root: root, head: el('div', { class: 'pk-head', 'aria-live': 'polite' }), hd: '' };
+      var seatsEl = el('div', { class: 'pk-seats', style: { '--n': n, '--cols': n <= 4 ? n : Math.ceil(n / 2) } });
+      PK.seats = st.players.map(function (x, i) {
+        var sock = el('button', { type: 'button', class: 'pk-sock', disabled: true, 'aria-label': x.name });
+        var s = el('div', { class: 'pk-seat', style: { '--c': pcolor(i) } }, [el('i', { class: 'pk-ptr', html: Kit.icon('down') }), sock, el('div', { class: 'pk-nm', text: i === me ? 'You' : x.name }), el('div', { class: 'pk-tn' })]);
+        seatsEl.appendChild(s);
+        return { el: s, sock: sock, tn: s.querySelector('.pk-tn') };
       });
-      showWait();
-    }).catch(function (e) {
-      var msg = e && e.nat ? e.message : Online.errText(e);
-      if (e && e.nat) Kit.sheet({ title: 'Couldn’t connect', html: '<p>' + esc(msg) + '</p>' }); else Kit.toast(msg);
-      goLobby();
-    });
-  }
-  function guestMsg(m) {
-    if (m.t === 'ro') { net.ro = m.ro; if (net.wait) { net.wait.update(guestPlayers(m.ro)); olPaint(m.ro, guestPid(m.ro)); } return; }
-    if (m.t === 'you') { net.myPid = m.pid; return; }
-    if (m.t === 'tokno') { if (net.ol) { net.ol.pending = null; olPaint(net.ro || [], guestPid(net.ro || [])); shakeWell(net.ol.tray.wells[m.tok]); } return; }
-    if (m.t === 'full') { Kit.toast('That game has already started'); return; }
-    if (m.t === 'seat') { net.seat = m.seat; return; }
-    if (m.t === 'err') { Kit.toast(m.msg || 'Not now'); Kit.sfx('bad'); return; }
-    if (m.t === 'st') {
-      var fresh = !S || mode !== 'online';
-      if (fresh) {
-        mode = 'online'; net.wait = null; net.ol = null; S = m.s; build(); render(); Kit.gameStart();
-        if (S.players[net.seat]) rememberToks([S.players[net.seat]]);
-        setTimeout(function () { Kit.callout(S.players[S.cur].name + ' goes first'); }, 400);
-        return;
-      }
-      var pre = snapPre(), next = m.s;
-      // animate from what's on screen to the host's new state
-      busy++;
-      chain = chain.then(function () {
-        var shownS = S; S = next;
-        S.recorded = shownS.recorded;
-        return animate(m.ev || [], pre);
-      }).catch(function (e) { console.error(e); }).then(function () { disp = null; busy = Math.max(0, busy - 1); render(); afterChange(); });
+      PK.tray = trayEl(netPickTap);
+      root.appendChild(PK.head); root.appendChild(seatsEl); root.appendChild(el('div', { class: 'pk-box wood' }, [PK.tray.el]));
+      app.appendChild(root); window.scrollTo(0, 0);
+      Kit.sfx('flip'); Kit.haptic('light');
+      M.TOKENS.forEach(function (t, k) { var pc = PK.tray.wells[t].querySelector('.pk-pc'); if (pc.animate && !TEST.instant) pc.animate([{ opacity: 0, transform: 'translateY(-26px) scale(1.15)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 60 + k * 45, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'backwards' }); });
     }
+    PK.st = st;
+    var P = PK, up = pickUp(st), myGo = up.indexOf(me) >= 0, col = myGo ? pcolor(me) : '#ffd27a';
+    var free = M.TOKENS.filter(function (t) { return !st.players.some(function (x) { return x.tok === t; }); });
+    var last = myGo ? lastTok(st.players[me].name) : null; if (last && free.indexOf(last) < 0) last = null;
+    var names = up.map(function (i) { return st.players[i].name; });
+    var head = myGo ? 'Pick your piece' : up.length ? 'Waiting for ' + (names.length > 2 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names.join(' and ')) : 'Ready to play';
+    if (head !== P.hd) { P.hd = head; P.head.innerHTML = ''; P.head.appendChild(el('b', { class: 'in', text: head, style: { '--c': myGo ? col : 'var(--text)' } })); }
+    function bot(i) { return NET && NET.seats[i] && NET.seats[i].bot ? '<i class="pk-bot">' + Kit.icon('bot') + '</i>' : ''; }
+    // pieces just taken (here or on another device) lift out of the tray and fly to their seat
+    st.players.forEach(function (x, i) {
+      var s = P.seats[i]; if (!s || !x.tok || !prev || !prev.players[i] || prev.players[i].tok) return;
+      s.flying = true;
+      Kit.sfx('pop', i === me ? 1 : 0.6); if (i === me) Kit.haptic('light');
+      flyTok(x.tok, P.tray.wells[x.tok].querySelector('.pk-pc'), s.sock).then(function () {
+        s.flying = false; if (PK !== P) return;
+        s.sock.classList.add('has'); s.sock.innerHTML = A.token(x.tok) + bot(i); s.tn.textContent = A.TOK_NAME[x.tok];
+        s.sock.classList.remove('land'); void s.sock.offsetWidth; s.sock.classList.add('land');
+        Kit.sfx('chip', i === me ? 1 : 0.6); if (i === me) Kit.haptic('medium');
+        if (!P.st.pick && !P.done) { P.done = true; Kit.sfx('sparkle'); Kit.haptic('success'); }
+      });
+    });
+    st.players.forEach(function (x, i) {
+      var s = P.seats[i]; if (!s) return;
+      var has = !!x.tok && !s.flying;
+      s.el.classList.toggle('now', up.indexOf(i) >= 0);
+      s.sock.classList.toggle('has', has);
+      s.sock.innerHTML = (has ? A.token(x.tok) : '') + bot(i);
+      s.tn.textContent = has ? A.TOK_NAME[x.tok] : '';
+    });
+    M.TOKENS.forEach(function (t) {
+      var w = P.tray.wells[t], gone = free.indexOf(t) < 0;
+      w.classList.toggle('gone', gone); w.disabled = gone;
+      w.classList.toggle('last', t === last);
+      w.style.setProperty('--c', col);
+      w.setAttribute('aria-label', A.TOK_NAME[t] + (gone ? ' (taken)' : ''));
+    });
+    P.tray.el.classList.toggle('lit', myGo); P.tray.el.style.setProperty('--c', col);
   }
-  function backToTable() {
-    if (net.role === 'host' && net.table && !net.table.closed) { mode = null; net.roster.forEach(function (r) { delete r.seat; }); showWait(); sendRoster(); return; }
-    if (net.role === 'guest' && net.peer && !net.peer.closed) { mode = null; showWait(); return; }
-    leaveOnline(); goLobby();
+  function netPickTap(tok) {
+    if (!NET || !PK || !PK.st || !PK.st.pick) return;
+    var st = PK.st, me = NET.seat, w = PK.tray.wells[tok];
+    if (st.players.some(function (x) { return x.tok === tok; })) { shakeWell(w); return; }
+    if (!NET.myTurn() || pickUp(st).indexOf(me) < 0) { Kit.haptic('error'); shake(PK.head); return; }
+    NET.act(function (s) { return pickMove(s, me, tok); });
   }
+  function netLeave() {
+    NET = null; stopAll(); pickStop(); PK = null; S = null; view = null; mode = null;
+    var sv = lsGet(SAVE, null);
+    if (sv && sv.S && sv.S.players && sv.S.phase !== 'over' && sv.mode !== 'online') { S = sv.S; mode = sv.mode; build(); render(); afterChange(); }
+    else showSetup();
+  }
+  // once per device per game
+  function netRecord() {
+    if (!NET || !S) return;
+    var key = NET.code + ':' + S.started, l = lsGet(NETREC, []); if (!Array.isArray(l)) l = [];
+    if (l.indexOf(key) >= 0) return;
+    lsSet(NETREC, l.concat([key]).slice(-30));
+    recordGame();
+  }
+  var NETCFG = {
+    game: 'monopoly', title: 'Monopoly', min: 2, max: 8, botMs: 300, botTakeover: true,
+    seats: function (n) { return Math.min(8, n + netBots()); },
+    opts: function () { var o = netOpts(); NETCFG.max = Math.max(2, 8 - o.bots); return o; },
+    start: netStart, turn: netTurn, over: netOver, bot: netBot, show: netShow, leave: netLeave
+  };
 
   // a game against the clock: count the time spent playing (not time the app sat closed)
   setInterval(function () {
-    if (!S || S.phase === 'over' || document.hidden || (mode === 'online' && net.role === 'guest')) return;
+    if (!S || S.phase === 'over' || document.hidden) return;
     if (!/^m/.test(S.opts.len || '')) return;
-    S.elapsed += 5000;
+    if (mode === 'online') S.elapsed = Math.max(S.elapsed || 0, Date.now() - S.started); else S.elapsed += 5000;
     if (view && view.act) { var lim = view.act.querySelector('.lim'); if (lim && !M.limitHit(S)) lim.textContent = Math.ceil(Math.max(0, +S.opts.len.slice(1) * 60000 - S.elapsed) / 60000) + ' min left'; }
   }, 5000);
 
   // ═══ Test hooks ═════════════════════════════════════════════════════════
   window.__mono = {
     S: function () { return S; }, M: M, act: function (a) { return doAct(a); }, mode: function () { return mode; }, busy: function () { return busy; },
-    instant: function (on) { TEST.instant = on !== false; }, speed: function (v) { speed = v; }, seat: function () { return net.seat; }, role: function () { return net.role; },
+    instant: function (on) { TEST.instant = on !== false; }, speed: function (v) { speed = v; }, seat: function () { return NET ? NET.seat : -1; }, net: function () { return NET; },
     setState: function (s) { stopAll(); S = s; build(); render(); afterChange(); },
-    pick: function () { return pick ? { toks: pick.toks.slice(), chooser: chooser(), anim: pick.anim } : null; }, roster: function () { return net.role === 'host' ? olRo() : net.ro; }, render: function () { render(); }, deed: deedSheet, build: buildSheet, mortgage: mortSheet, trade: tradeSheet
+    pick: function () { return pick ? { toks: pick.toks.slice(), chooser: chooser(), anim: pick.anim } : null; }, render: function () { render(); }, deed: deedSheet, build: buildSheet, mortgage: mortSheet, trade: tradeSheet
   };
 
   // ═══ Start ══════════════════════════════════════════════════════════════
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-  if (/[?&]online=1/.test(location.search)) goLobby();
+  // opened for an online table (?online=1, ?room=CODE): turnnet.js takes it from here, the setup waits underneath
+  if (/[?&](online=1|room=|join=)/.test(location.search)) showSetup();
   else if (saved && saved.S && saved.S.players && saved.S.phase !== 'over' && saved.mode !== 'online') { S = saved.S; mode = saved.mode; build(); render(); afterChange(); }
   else showSetup();
+  TurnNet.setup(NETCFG);
 })();
 </script>
 </body>

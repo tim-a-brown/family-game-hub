@@ -12,6 +12,8 @@
 <script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .stage{padding-bottom:calc(var(--safe-b) + 8px);}
 /* Side seats sit a little higher and the trick a little lower so long names never touch the cards */
@@ -98,6 +100,10 @@
   .stage > .cbar .bidgrid{grid-template-columns:repeat(5,minmax(0,1fr));}
   .stage > .cbar .bidgrid button.nil{grid-column:span 2;}
 }
+/* Online: a tap when it isn't your move shakes whoever's turn it is; people who've stepped away fade a little */
+.cbar.nudge .hint,.cseat.turn.nudge .tag{animation:spnudge .4s;}
+@keyframes spnudge{20%{translate:-6px 0;}40%{translate:6px 0;}60%{translate:-4px 0;}80%{translate:3px 0;}}
+.cseat.away .tag{opacity:.6;}
 </style>
 </head>
 <body>
@@ -112,12 +118,12 @@
 
   Kit.init({
     id: 'spades',
-    onNew: function () { clearSave(); showSetup(); },
-    undo: function () { undo(); },
-    menu: [
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
       { icon: 'chart', label: 'Scores so far', onClick: function () { if (S && S.players) showScores(); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { keys: ['sp'], title: 'Spades: past games' }); } }
-    ],
+    ]),
     rules:
       '<p class="goal">You and your partner (sitting across from you, North) team up against East and West. Bid how many tricks your team will win, then take at least that many. First team to the target score wins.</p>' +
       '<h3>Bidding</h3><ul><li>Everyone gets 13 cards. Starting left of the dealer, each player says how many tricks they think they will win.</li>' +
@@ -133,12 +139,16 @@
       '<li><b>Go set</b> (take fewer than you bid): lose 10 points for each trick you bid.</li>' +
       '<li>Extra tricks are <b>bags</b>. Every 10 bags costs your team <b>100 points</b>.</li>' +
       '<li><b>Nil:</b> +100 if you take no tricks, −100 if you take any. Blind Nil is ±200. Tricks the Nil player takes don\'t help the partner\'s bid, but they count as bags.</li>' +
-      '<li>When a team reaches the target at the end of a hand, the higher score wins. If it\'s tied, play another hand.</li></ul>'
+      '<li>When a team reaches the target at the end of a hand, the higher score wins. If it\'s tied, play another hand.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table and up to three others join on their own devices. The first two people to sit are partners. Empty seats are played by the computer.</li>' +
+      '<li>Bid and play whenever it\'s your turn; the home screen shows when it\'s your move. Each new hand deals itself.</li></ul>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
   var S = null, token = 0, undoStack = [], busy = false;
+  var NET = null;   // the online table while playing at one (see Online below)
   function save() {
+    if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && S.phase !== 'over') Kit.resume.set('Hand ' + S.round + ' · us ' + S.scores[0] + ', them ' + S.scores[1]);
   }
@@ -274,7 +284,7 @@
 
   // ── Turn driver ───────────────────────────────────────────────────────────
   function next() {
-    if (!S) return;
+    if (!S || NET) return;
     paintSeats(); paintHand(); paintMsg(); paintPlaques();
     var t = token, wait = 550 + Math.random() * 350;
     if (S.phase === 'bid') {
@@ -380,7 +390,7 @@
   }
   function resolveTrick() {
     var t = token;
-    if (!S || S.trick.length !== 4) return;
+    if (!S || NET || S.trick.length !== 4) return;
     busy = true;
     var win = trickWinner(S.trick);
     S.taken[win.p]++; S.tricksAll[win.p]++;
@@ -579,7 +589,8 @@
   function paintSeats() {
     S.players.forEach(function (pl, p) {
       var s = seatEls[p]; s.innerHTML = '';
-      s.classList.toggle('turn', (S.phase === 'play' || S.phase === 'bid') && S.turn === p);
+      s.classList.toggle('turn', (S.phase === 'play' || S.phase === 'bid') && S.turn === p || S.phase === 'blind' && !!S.blindAsk && S.blindAsk.indexOf(p) >= 0);
+      s.classList.toggle('away', !!pl.away);
       var tag = el('div', { class: 'tag' }, [
         el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
         el('span', { text: p === 0 ? 'You' : pl.name }),
@@ -587,7 +598,7 @@
       ]);
       var info = el('div', { class: 'info' });
       var b = S.bids ? S.bids[p] : null;
-      if (b == null) info.appendChild(el('span', { class: 'chip-s', text: S.phase === 'bid' && S.turn === p ? 'Bidding…' : (S.phase === 'blind' && p === 0 ? 'Blind?' : 'Bid –') }));
+      if (b == null) info.appendChild(el('span', { class: 'chip-s', text: S.phase === 'bid' && S.turn === p ? 'Bidding…' : (S.phase === 'blind' && (S.blindAsk ? S.blindAsk.indexOf(p) >= 0 : p === 0) ? 'Blind?' : 'Bid –') }));
       else {
         var nil = b === 0;
         info.appendChild(el('span', { class: 'chip-s' + (nil ? ' nil' : ''), text: nil ? bidText(p) : 'Bid ' + b }));
@@ -608,16 +619,17 @@
   function paintHand() {
     handEl.innerHTML = '';
     var mine = S.hands ? S.hands[0] : [];
-    var hidden = S.phase === 'blind' || (S.blind[0] && S.phase === 'bid');
+    var hidden = NET ? S.phase === 'blind' && S.blindAsk.indexOf(0) >= 0 || S.blind[0] && (S.phase === 'bid' || S.phase === 'blind')
+      : S.phase === 'blind' || (S.blind[0] && S.phase === 'bid');
     if (sortRow) sortRow.style.visibility = hidden ? 'hidden' : '';
-    var ok = !busy && S.phase === 'play' && S.turn === 0 && S.trick.length < 4 ? legal(0).map(function (c) { return c.id; }) : null;
+    var ok = !busy && S.phase === 'play' && S.turn === 0 && S.trick.length < 4 && (!NET || NET.myTurn()) ? legal(0).map(function (c) { return c.id; }) : null;
     view(mine).forEach(function (c) {
       if (hidden) { handEl.appendChild(Kit.card('', '', { back: true })); return; }
       var n = Cards.el(c);
       if (ok) {
-        if (ok.indexOf(c.id) >= 0) { n.classList.add('play'); n.addEventListener('click', function () { if (busy || S.turn !== 0) return; snapshot(); play(0, c); }); }
+        if (ok.indexOf(c.id) >= 0) { n.classList.add('play'); n.addEventListener('click', function () { if (NET) { netPlay(c); return; } if (busy || S.turn !== 0) return; snapshot(); play(0, c); }); }
         else { n.classList.add('dim'); n.addEventListener('click', function () { Kit.haptic('error'); Kit.toast(whyNot(c)); }); }
-      }
+      } else if (NET && S.phase !== 'over') n.addEventListener('click', netNudge);
       handEl.appendChild(n);
     });
     requestAnimationFrame(function () { Cards.fan(handEl); });
@@ -630,6 +642,7 @@
   }
   function paintBar() {
     barEl.innerHTML = '';
+    if (NET) { netBar(); return; }
     if (S.phase === 'blind') {
       barEl.appendChild(el('div', { class: 'blindbox' }, [
         el('p', { text: 'You\'re behind by ' + (S.scores[1] - S.scores[0]) + '. Bid Blind Nil before looking? Worth 200 if you take no tricks.' }),
@@ -641,23 +654,27 @@
       return;
     }
     if (S.phase === 'bid' && S.turn === 0 && !S.blind[0]) {
-      var e = estimate(S.hands[0]), sug = Math.max(1, Math.min(13, Math.round(e.est)));
-      var mate = S.bids[2];
-      var grid = el('div', { class: 'bidgrid' });
-      for (var b = 0; b <= 13; b++) (function (b) {
-        grid.appendChild(el('button', { type: 'button', class: (b === 0 ? 'nil' : '') + (b === sug ? ' sug' : ''), text: b === 0 ? 'Nil' : String(b), 'aria-label': b === 0 ? 'Bid Nil' : 'Bid ' + b,
-          onclick: function () { snapshot(); doBid(0, b); } }));
-      })(b);
-      barEl.appendChild(el('div', { class: 'bidbox' }, [
-        el('div', { class: 'bh' }, [el('span', { text: 'Your bid: how many tricks?' }), el('small', { text: (mate != null ? 'Partner bid ' + (mate === 0 ? 'Nil' : mate) + ' · ' : '') + 'tip ' + sug })]),
-        grid
-      ]));
+      barEl.appendChild(bidBox(function (b) { snapshot(); doBid(0, b); }));
       return;
     }
     var txt = '';
     if (S.phase === 'bid') txt = S.turn === 0 ? 'Bidding Blind Nil…' : S.players[S.turn].name + ' is bidding…';
     else if (S.phase === 'play') txt = S.turn === 0 ? (S.trick.length ? 'Your turn: tap a card' : 'Your lead' + (S.broken ? '' : ' (spades not broken yet)')) : S.turn >= 0 ? S.players[S.turn].name + ' is thinking…' : '';
     barEl.appendChild(el('span', { class: 'hint', text: txt }));
+  }
+  // The bid buttons (0 = Nil); the suggested bid is outlined
+  function bidBox(pick) {
+    var e = estimate(S.hands[0]), sug = Math.max(1, Math.min(13, Math.round(e.est)));
+    var mate = S.bids[2];
+    var grid = el('div', { class: 'bidgrid' });
+    for (var b = 0; b <= 13; b++) (function (b) {
+      grid.appendChild(el('button', { type: 'button', class: (b === 0 ? 'nil' : '') + (b === sug ? ' sug' : ''), text: b === 0 ? 'Nil' : String(b), 'aria-label': b === 0 ? 'Bid Nil' : 'Bid ' + b,
+        onclick: function () { pick(b); } }));
+    })(b);
+    return el('div', { class: 'bidbox' }, [
+      el('div', { class: 'bh' }, [el('span', { text: 'Your bid: how many tricks?' }), el('small', { text: (mate != null ? 'Partner bid ' + (mate === 0 ? 'Nil' : mate) + ' · ' : '') + 'tip ' + sug })]),
+      grid
+    ]);
   }
   var flashT = null;
   function paintMsg() {
@@ -676,14 +693,388 @@
   }
   window.addEventListener('resize', function () { if (handEl) Cards.fan(handEl); });
 
+  // ── Online (turnnet.js) ───────────────────────────────────────────────────
+  // The table's state is the game in fixed positions 0 S, 1 W, 2 N, 3 E (teams 0 = 0+2, 1 = 1+3). Table seats map
+  // onto positions with PS: seats fill people first, so the first two people to sit are partners (seats 0, 1 ->
+  // positions 0, 2). Each device draws a turned copy (netView) with its own position at the bottom and every other
+  // hand face down. Rules and the computer players are the local ones, run on the table's state (withS).
+  var PS = [0, 2, 1, 3];   // position <-> table seat (it's its own inverse)
+  var NST = null, ME = 0, NQ = [], NGEN = 0, NETREC = {}, NOVER = null;   // NOVER: the hand-score sheet or win screen up
+  function netCloseOver() { if (NOVER) { var o = NOVER; NOVER = null; try { o.close(); } catch (e) {} } }
+  function withS(st, f) { var keep = S; S = st; try { return f(); } finally { S = keep; } }
+  function netOpts() {
+    var o = {}; try { o = (JSON.parse(localStorage.getItem('gn_setup_spades')) || {}).options || {}; } catch (e) {}
+    return { target: +o.target === 300 ? 300 : 500, blind: +o.blind === 1 };
+  }
+  function netStart(players, opts, last) {
+    var pl = [0, 1, 2, 3].map(function (p) { var x = players[PS[p]] || { name: 'Robot', bot: true }; return { name: x.name, cpu: !!x.bot }; });
+    var st = freshGame(pl, +opts.target || 500, !!opts.blind);
+    st.series = last && last.series ? last.series.slice() : [0, 0];
+    nDeal(st);
+    return st;
+  }
+  function nDeal(st) {
+    st.round++; st.dealer = (st.dealer + 1) % 4;
+    var d = Cards.shuffle(Cards.deck());
+    st.hands = [[], [], [], []];
+    d.forEach(function (c, i) { st.hands[i % 4].push(c); });
+    st.hands.forEach(sortHand);
+    st.bids = [null, null, null, null]; st.blind = [false, false, false, false];
+    st.taken = [0, 0, 0, 0]; st.trick = []; st.trickNo = 0; st.broken = false; st.gone = [];
+    st.voids = [{}, {}, {}, {}];
+    st.dt = st.hands.map(function (h) { return h.map(key); });
+    st.turn = st.leader = (st.dealer + 1) % 4;
+    // Blind Nil: people on a team behind by 100 or more choose before they see their cards (all at once)
+    st.blindAsk = [];
+    if (st.blindOpt) [0, 1, 2, 3].forEach(function (p) { var t = p % 2; if (!st.players[p].cpu && st.scores[1 - t] - st.scores[t] >= 100) st.blindAsk.push(p); });
+    st.phase = st.blindAsk.length ? 'blind' : 'bid';
+  }
+  // after a bid: the next bidder, skipping a Blind Nil (already bid Nil), then play when everyone has bid
+  function nSettle(st) {
+    while (st.phase === 'bid') {
+      if (st.bids.every(function (x) { return x != null; })) { st.phase = 'play'; st.turn = st.leader = (st.dealer + 1) % 4; break; }
+      if (st.blind[st.turn] && st.bids[st.turn] == null) { st.bids[st.turn] = 0; st.turn = (st.turn + 1) % 4; }
+      else break;
+    }
+  }
+  // The moves, on the table's state (S is st while they run): each returns the move info, or null when not allowed
+  function nBlind(st, p, yes) {
+    if (st.phase !== 'blind' || st.blindAsk.indexOf(p) < 0) return null;
+    st.blind[p] = !!yes; st.blindAsk = st.blindAsk.filter(function (x) { return x !== p; });
+    if (!st.blindAsk.length) { st.phase = 'bid'; nSettle(st); }
+    return { k: 'blind', p: p, yes: !!yes };
+  }
+  function nBid(st, p, b) {
+    if (st.phase !== 'bid' || st.turn !== p || st.bids[p] != null || st.blind[p] || !(b >= 0 && b <= 13 && b === Math.floor(b))) return null;
+    st.bids[p] = b; st.turn = (p + 1) % 4; nSettle(st);
+    return { k: 'bid', p: p, b: b };
+  }
+  function nPlay(st, p, id) {
+    if (st.phase !== 'play' || st.turn !== p || st.trick.length >= 4) return null;
+    var i = find(st.hands[p], id); if (i < 0) return null;
+    if (!legal(p).some(function (c) { return c.id === id; })) return null;
+    var card = st.hands[p][i], mv = { k: 'play', p: p, c: card };
+    if (st.trick.length && card.s !== st.trick[0].c.s) st.voids[p][st.trick[0].c.s] = 1;
+    st.hands[p].splice(i, 1);
+    st.trick.push({ p: p, c: card });
+    if (card.s === 's' && !st.broken) { st.broken = true; if (st.trick.length > 1) mv.broke = 1; }
+    if (st.trick.length < 4) { st.turn = (p + 1) % 4; return mv; }
+    var win = trickWinner(st.trick);
+    st.taken[win.p]++; st.tricksAll[win.p]++;
+    st.trick.forEach(function (x) { st.gone.push(key(x.c)); });
+    st.trick = []; st.trickNo++; st.leader = st.turn = win.p; mv.w = win.p;
+    if (st.trickNo === 13) { nEndHand(st); mv.end = 1; }
+    return mv;
+  }
+  // Score the hand (the local rules), then deal the next one, or end the game
+  function nEndHand(st) {
+    var res = [scoreTeam(0), scoreTeam(1)], n = st.round;
+    res.forEach(function (r, t) {
+      st.scores[t] += r.pts; st.bags[t] = r.bagsAfter;
+      var nm = teamName(t);
+      if (r.set) { st.sets[t]++; st.highlights.push(nm + ' went set bidding ' + r.bid + ' in hand ' + n); }
+      else if (r.made && r.bid >= 9) st.highlights.push(nm + ' made a big bid of ' + r.bid + ' in hand ' + n);
+      r.nils.forEach(function (x) {
+        var label = x.blind ? 'Blind Nil' : 'Nil';
+        if (x.ok) { st.nilsMade[x.p]++; st.highlights.push(st.players[x.p].name + ' made ' + label + ' in hand ' + n); }
+        else st.highlights.push(Kit.poss(st.players[x.p].name) + ' ' + label + ' was broken in hand ' + n);
+      });
+      if (r.penalty) st.highlights.push('Bag penalty hit ' + nm + ' in hand ' + n);
+      if (r.took === 13) st.highlights.push(nm + ' took all 13 tricks in hand ' + n);
+    });
+    st.rounds.push([res[0].pts, res[1].pts]);
+    (st.hx = st.hx || []).push({ b: st.bids.map(function (b, p) { return b === 0 ? (st.blind[p] ? 'B' : 'N') : b; }).join('.'), t: st.taken.join('.'), d: st.dealer,
+      r: res.map(function (r) { return r.set ? 's' : r.made ? 'm' : '-'; }).join('') + (res[0].penalty ? 'p' : '') + (res[1].penalty ? 'q' : '') });
+    st.last = { round: n, bids: st.bids.slice(), blind: st.blind.slice(), taken: st.taken.slice(),
+      res: res.map(function (r) { return { bid: r.bid, took: r.took, won: r.won, pts: r.pts, bags: r.bags, penalty: r.penalty, set: r.set, made: r.made, nils: r.nils }; }) };
+    var hi = Math.max(st.scores[0], st.scores[1]);
+    if (hi >= st.target && st.scores[0] !== st.scores[1]) {
+      st.phase = 'over'; st.winner = st.scores[0] > st.scores[1] ? 0 : 1; st.series[st.winner]++; st.turn = -1;
+    } else nDeal(st);
+  }
+  function netTurn(st) {
+    if (!st || st.phase === 'over') return [];
+    if (st.phase === 'blind') return st.blindAsk.map(function (p) { return PS[p]; });
+    return [PS[st.turn]];
+  }
+  function netOver(st) {
+    if (!st || st.phase !== 'over') return null;
+    var w = st.winner;
+    return { win: [PS[w], PS[w + 2]], text: withS(st, function () { return teamName(w); }) + ' win ' + st.scores[w] + ' to ' + st.scores[1 - w] };
+  }
+  // A computer seat (or a person who left): the local computer player
+  function netBot(st, seat) {
+    var p = PS[seat];
+    var mv = withS(st, function () {
+      if (st.phase === 'blind') return nBlind(st, p, false);
+      if (st.phase === 'bid') return nBid(st, p, cpuBid(p));
+      if (st.phase === 'play') return nPlay(st, p, cpuChoose(p).id);
+      return null;
+    });
+    return mv ? { state: st, mv: mv } : null;
+  }
+  function netAct(f) {
+    var me = ME;
+    NET.act(function (st) { var mv = withS(st, function () { return f(st, me); }); return mv ? { state: st, mv: mv } : null; });
+  }
+  function netPlay(c) {
+    if (busy) return;
+    if (!NET.myTurn()) { netNudge(); return; }
+    var id = c.id;
+    netAct(function (st, me) { return nPlay(st, me, id); });
+  }
+  function netBid(b) {
+    if (busy) return;
+    if (!NET.myTurn()) { netNudge(); return; }
+    netAct(function (st, me) { return nBid(st, me, b); });
+  }
+  function netBlind(yes) {
+    if (busy) return;
+    if (!NET.myTurn()) { netNudge(); return; }
+    netAct(function (st, me) { return nBlind(st, me, yes); });
+  }
+  function netNudge() {
+    if (busy || !NET) return;
+    Kit.haptic('error');
+    [barEl].concat(seatEls.filter(function (s) { return s.classList.contains('turn'); })).forEach(function (e) { e.classList.remove('nudge'); void e.offsetWidth; e.classList.add('nudge'); });
+  }
+
+  // This device's turned view of the table: its position at the bottom (0), its team as "us", other hands face down
+  function netView(st) {
+    var me = ME, V = JSON.parse(JSON.stringify(st)), seats = NET ? NET.seats : [], mine = !!NET && NET.seat >= 0;
+    function r(a) { return a ? [0, 1, 2, 3].map(function (v) { return a[(v + me) % 4]; }) : a; }
+    function tm(a) { return a && me % 2 ? [a[1], a[0]] : a; }
+    function pv(p) { return p == null || p < 0 ? p : (p - me + 4) % 4; }
+    V.players = r(V.players).map(function (pl, v) { var s = seats[PS[(v + me) % 4]]; return { name: pl.name, cpu: s ? s.bot : pl.cpu, away: !!(s && !s.bot && !s.me && s.away) }; });
+    V.hands = r(V.hands).map(function (h, v) { return v === 0 && mine ? h : h.map(function () { return {}; }); });
+    ['bids', 'blind', 'taken', 'voids', 'tricksAll', 'nilsMade'].forEach(function (k) { V[k] = r(V[k]); });
+    V.trick = V.trick.map(function (t) { return { p: pv(t.p), c: t.c }; });
+    V.turn = pv(V.turn); V.leader = pv(V.leader); V.dealer = pv(V.dealer);
+    V.blindAsk = (V.blindAsk || []).map(pv);
+    ['scores', 'bags', 'sets', 'series'].forEach(function (k) { V[k] = tm(V[k]); });
+    V.rounds = V.rounds.map(tm);
+    if (V.winner != null) V.winner = me % 2 ? 1 - V.winner : V.winner;
+    if (V.last) {
+      V.last.res = tm(V.last.res); V.last.res.forEach(function (x) { x.nils.forEach(function (y) { y.p = pv(y.p); }); });
+      V.last.bids = r(V.last.bids); V.last.blind = r(V.last.blind); V.last.taken = r(V.last.taken);
+    }
+    V.dt = null; V.hx = null;
+    return V;
+  }
+  function netBar() {
+    var pl = S.players[S.turn], up = NET.myTurn();
+    function hint(t) { barEl.appendChild(el('span', { class: 'hint', text: t })); }
+    function waitFor(verb) { return !pl ? '' : pl.cpu ? pl.name + ' is ' + verb + '…' : 'Waiting for ' + pl.name; }
+    if (S.phase === 'over') return;
+    if (S.phase === 'blind') {
+      if (S.blindAsk.indexOf(0) >= 0 && up) {
+        barEl.appendChild(el('div', { class: 'blindbox' }, [
+          el('p', { text: 'You\'re behind by ' + (S.scores[1] - S.scores[0]) + '. Bid Blind Nil before looking? Worth 200 if you take no tricks.' }),
+          el('div', { class: 'row' }, [
+            el('button', { type: 'button', class: 'btn btn-soft', text: 'Bid Blind Nil', onclick: function () { netBlind(true); } }),
+            el('button', { type: 'button', class: 'btn btn-primary', text: 'Show my cards', onclick: function () { netBlind(false); } })
+          ])
+        ]));
+      } else hint('Waiting for ' + S.blindAsk.map(function (p) { return S.players[p].name; }).join(' and ') + ' to choose Blind Nil');
+      return;
+    }
+    if (S.phase === 'bid') {
+      if (S.turn === 0 && up && !S.blind[0]) barEl.appendChild(bidBox(netBid));
+      else hint(S.turn === 0 ? 'Bidding Blind Nil…' : waitFor('bidding'));
+      return;
+    }
+    if (S.phase === 'play') hint(S.turn === 0 && up ? (S.trick.length ? 'Your turn: tap a card' : 'Your lead' + (S.broken ? '' : ' (spades not broken yet)')) : S.turn >= 0 ? waitFor('thinking') : '');
+  }
+
+  // Draw the table after each move, one at a time: a card flies in from the seat that played it, a finished trick
+  // sweeps to its winner, a finished hand shows its score (the next hand waits behind that sheet)
+  function netShow(net, info) {
+    NET = net; ME = net.seat >= 0 ? PS[net.seat] : 0;
+    if (info.fresh || info.again) { NQ = []; NGEN++; busy = false; netCloseOver(); }
+    NQ.push({ st: JSON.parse(JSON.stringify(net.state)), prev: info.prev ? JSON.parse(JSON.stringify(info.prev)) : null, mv: info.mv, info: info });
+    if (NQ.length > 6) NQ = NQ.slice(-1).map(function (x) { x.skip = true; return x; });   // far behind: jump to now
+    if (!busy) netPump();
+  }
+  function netPump() {
+    var it = NQ.shift(); if (!it) return;
+    var g = NGEN; busy = true;
+    netStep(it, function () {
+      if (g !== NGEN) return;
+      busy = false;
+      if (NQ.length) netPump();
+      else if (NET && S) { paintSeats(); paintHand(); }
+    });
+  }
+  function netStep(it, done) {
+    var st = it.st, prev = it.prev, mv = it.mv, info = it.info, g = NGEN;
+    function later(f, ms) { setTimeout(function () { if (g === NGEN && NET) f(); }, ms); }
+    NST = st; token++;
+    if (!mv || !prev || info.fresh || info.again || it.skip) {
+      S = netView(st); render();
+      if (info.again) { Kit.gameStart(); Kit.sfx('deal'); Kit.callout('New game'); }
+      else if (info.fresh) { Kit.gameStart(); if (st.phase !== 'over') Kit.sfx('deal'); }
+      if (st.phase === 'over') later(netEnd, info.fresh ? 300 : 900);
+      done(); return;
+    }
+    var p = (mv.p - ME + 4) % 4;
+    if (mv.k === 'bid' || mv.k === 'blind') {
+      var wasBid = prev.phase === 'bid';
+      S = netView(st); render();
+      if (mv.k === 'bid') { seatSay(p, mv.b === 0 ? 'Nil' : 'Bid ' + mv.b); Kit.sfx(mv.b === 0 ? 'pop' : 'chip'); }
+      else if (mv.yes) { seatSay(p, 'Blind Nil!'); Kit.sfx('pop'); if (p === 0) Kit.haptic('heavy'); }
+      else Kit.sfx('flip');
+      if ((wasBid || mv.k === 'blind') && S.phase === 'play') flash('Your team: ' + contract(0) + ' · Them: ' + contract(1));
+      later(done, 450); return;
+    }
+    // a card: check it follows from what's on screen, otherwise just draw the table as it is now
+    var ok = mv.k === 'play' && prev.phase === 'play' && prev.turn === mv.p && find(prev.hands[mv.p], mv.c.id) >= 0 && (mv.w == null ? prev.trick.length < 3 : prev.trick.length === 3);
+    if (!ok) { S = netView(st); render(); done(); return; }
+    var fromRect = null;
+    if (p === 0 && handEl) { var hn = handEl.querySelector('[data-id="' + mv.c.id + '"]'); if (hn) fromRect = hn.getBoundingClientRect(); }
+    function fly(node) {
+      var from = fromRect ? { getBoundingClientRect: function () { return fromRect; } } : seatEls[p] && seatEls[p].querySelector('.tag');
+      Cards.fly(node, from, { ms: 340 });
+      Kit.sfx(mv.c.s === 's' && S.trick.length > 1 && S.trick[0].c.s !== 's' ? 'chip' : 'flip');
+      if (p === 0) Kit.haptic('light');
+      if (mv.broke) { flash('Spades are broken!'); Kit.sfx('bad'); }
+    }
+    if (mv.w == null) {
+      S = netView(st); render();
+      fly(trickEl.querySelector('[data-id="' + mv.c.id + '"]'));
+      later(done, 380); return;
+    }
+    // the fourth card: show it land, light the winner, sweep the trick to them
+    var V = netView(prev);
+    V.hands[p] = p === 0 ? V.hands[0].filter(function (c) { return c.id !== mv.c.id; }) : V.hands[p].slice(1);
+    V.trick.push({ p: p, c: mv.c }); V.turn = -1;
+    S = V; render();
+    fly(trickEl.querySelector('[data-id="' + mv.c.id + '"]'));
+    var wv = (mv.w - ME + 4) % 4;
+    later(function () {
+      var wc = V.trick.filter(function (t) { return t.p === wv; })[0], wn = wc && trickEl.querySelector('[data-id="' + wc.c.id + '"]');
+      if (wn) wn.classList.add('win');
+      var nilBroke = isNil(wv) && V.taken[wv] === 0;
+      V.taken[wv]++;
+      if (nilBroke) { seatSay(wv, 'Nil broken!'); Kit.sfx('bad'); if (teamOf(wv) === 0) Kit.haptic('error'); }
+      else if (!isNil(wv) && teamOf(wv) === 0 && wonFor(0) === contract(0) && contract(0) > 0) { Kit.callout('Bid made!', 'var(--green)'); Kit.sfx('good'); Kit.haptic('success'); }
+      else if (wv === 0) Kit.haptic('light');
+      paintSeats(); paintPlaques();
+      later(function () {
+        var dest = seatEls[wv].querySelector('.tag').getBoundingClientRect(), box = trickEl.getBoundingClientRect();
+        Array.prototype.forEach.call(trickEl.children, function (n) {
+          n.style.transition = 'transform .35s ease-in, opacity .35s ease-in';
+          n.style.transform = 'translate(' + (dest.left - box.left - 30) + 'px,' + (dest.top - box.top - 30) + 'px) scale(.4)';
+          n.style.opacity = '0';
+        });
+        Kit.sfx('whoosh');
+        later(function () {
+          trickEl.innerHTML = '';
+          if (!mv.end) { S = netView(st); render(); done(); return; }
+          netHandEnd(st, done);
+        }, 380);
+      }, 650);
+    }, 850);
+  }
+  // A hand just finished: its score, big moments, then the next deal (or the end)
+  function netHandEnd(st, done) {
+    var hv = netView(st), g = NGEN;
+    hv.bids = hv.last.bids; hv.blind = hv.last.blind; hv.taken = hv.last.taken;
+    var res = hv.last.res;
+    S = hv; paintPlaques();
+    if (res[0].nils.some(function (x) { return x.ok; })) { Kit.callout('Nil made!', 'var(--green)'); Kit.sfx('good'); }
+    else if (res[0].set) { Kit.callout('Set!', 'var(--red)'); Kit.sfx('bad'); Kit.haptic('error'); }
+    else if (res[1].set) { Kit.callout('They went set!', 'var(--green)'); Kit.sfx('good'); }
+    else if (res[0].penalty) { Kit.callout('Bag penalty!', 'var(--red)'); Kit.sfx('bad'); }
+    setTimeout(function () {
+      if (g !== NGEN || !NET) return;
+      if (st.phase === 'over') { S = netView(st); render(); netEnd(); done(); return; }
+      var node = el('div');
+      withS(hv, function () {
+        node.appendChild(scoreTable(true));
+        var notes = [];
+        res.forEach(function (r, t) {
+          if (r.set) notes.push({ bad: t === 0, text: teamShort(t) + ' went set (bid ' + r.bid + ', took ' + r.won + ')' });
+          if (r.made) notes.push({ text: teamShort(t) + ' made ' + r.bid + (r.won > r.bid ? ' with ' + (r.won - r.bid) + ' bag' + (r.won - r.bid === 1 ? '' : 's') : ' exactly') });
+          r.nils.forEach(function (x) {
+            var label = x.blind ? 'Blind Nil' : 'Nil';
+            if (x.ok) notes.push({ text: short(x.p) + ' made ' + label + ' (+' + x.v + ')' });
+            else notes.push({ bad: t === 0, text: Kit.poss(short(x.p)) + ' ' + label + ' failed (−' + x.v + ')' });
+          });
+          if (r.penalty) notes.push({ bad: t === 0, text: 'Bag penalty! ' + teamShort(t) + ' lose 100' });
+        });
+        if (notes.length) {
+          var ul = el('ul', { class: 'notes' });
+          notes.forEach(function (n) { ul.appendChild(el('li', { class: n.bad ? 'bad' : '', html: Kit.icon(n.bad ? 'close' : 'check') + '<span>' + Kit.esc(n.text) + '</span>' })); });
+          node.appendChild(ul);
+        }
+        node.appendChild(el('p', { class: 'muted', style: { 'margin-top': '10px', 'font-size': '.85rem' }, text: 'First to ' + hv.target + ' wins. Every 10 bags costs 100.' }));
+      });
+      var shown = false;
+      function deal() { if (shown || g !== NGEN || !NET) return; shown = true; S = netView(st); render(); Kit.sfx('deal'); done(); }
+      NOVER = Kit.sheet({ title: 'Hand ' + hv.last.round + ' done', node: node, onClose: function () { NOVER = null; deal(); }, actions: [{ label: 'Next hand', primary: true }] });
+    }, 900);
+  }
+  function netEnd() {
+    if (!NET || !NST || NST.phase !== 'over') return;
+    var st = NST, w = st.winner, l = 1 - w, key = NET.code + ':' + st.started;
+    if (!NETREC[key]) {
+      NETREC[key] = 1;
+      withS(st, function () {
+        var seen = {}, hl = st.highlights.slice().reverse().filter(function (h) { var k = h.replace(/ in hand \d+$/, ''); if (seen[k]) return false; seen[k] = 1; return true; }).slice(0, 5).reverse();
+        var top = 0; for (var p = 1; p < 4; p++) if (st.tricksAll[p] > st.tricksAll[top]) top = p;
+        hl.push('Most tricks: ' + st.players[top].name + ', ' + st.tricksAll[top] + ' over the game');
+        hl.push(st.rounds.length + ' hands, played to ' + st.target);
+        hl.push('Online game · table ' + NET.code);
+        Kit.record(HKEY, {
+          started: st.started, mode: 'Online',
+          players: [{ name: teamName(0), score: st.scores[0], cpu: false }, { name: teamName(1), score: st.scores[1], cpu: false }],
+          winner: teamName(w),
+          rounds: { labels: st.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: st.rounds },
+          highlights: hl,
+          detail: { names: st.players.map(function (q) { return q.name; }), hx: st.hx || [], bags: st.bags, sets: st.sets, nils: st.nilsMade, tricks: st.tricksAll, hand: st.dt ? st.dt[ME] : null, to: st.target }
+        });
+      });
+    }
+    var V = netView(st), vw = V.winner, watching = NET.seat < 0, res = NET.result, left = res && res.left != null;
+    var won = !watching && vw === 0, margin = st.scores[w] - st.scores[l];
+    var series = st.series[0] + st.series[1] > 1 ? ' · games ' + V.series[0] + '–' + V.series[1] : '';
+    netCloseOver();
+    NOVER = Kit.win({
+      title: left ? res.text : won ? 'You win!' : withS(V, function () { return teamShort(vw); }) + ' win',
+      sub: (won ? 'You and ' + V.players[2].name + ' won by ' : (watching ? 'Won by ' : 'They won by ')) + margin + series,
+      rank: [vw, 1 - vw].map(function (t) { return { name: withS(V, function () { return teamShort(t); }), score: V.scores[t], color: Kit.color(t) }; }),
+      lose: !won, icon: won ? 'trophy' : 'users',
+      againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      closeLabel: 'Back to games'
+    });
+    // (the win screen clears the home screen's "resume" for this game: keep it for the game saved on this device)
+    try { var sv = JSON.parse(localStorage.getItem(SAVE)); if (sv && sv.players && sv.hands && sv.phase !== 'over') Kit.resume.set('Hand ' + sv.round + ' · us ' + sv.scores[0] + ', them ' + sv.scores[1]); } catch (e) {}
+  }
+  function netLeave() {
+    NET = null; NST = null; NQ = []; NGEN++; busy = false; token++;
+    netCloseOver();
+    resumeLocal(true);
+  }
+
   // ── Boot ──────────────────────────────────────────────────────────────────
-  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-  if (saved && saved.players && saved.hands && saved.phase !== 'over') {
-    S = saved; Kit.gameStart(); S.started = S.started || Date.now();
-    render();
-    if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);
-    else if (S.phase !== 'handover') next();
-  } else showSetup();
+  function resumeLocal(back) {
+    var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (saved && saved.players && saved.hands && saved.phase !== 'over') {
+      S = saved; Kit.gameStart(); S.started = S.started || Date.now();
+      if (back) save();
+      render();
+      if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);
+      else if (S.phase !== 'handover') next();
+    } else showSetup();
+  }
+  resumeLocal();
+  TurnNet.setup({
+    game: 'spades', title: 'Spades', min: 2, max: 4, botMs: 1100,
+    seats: function () { return 4; },
+    opts: netOpts, start: netStart, turn: netTurn, over: netOver, bot: netBot,
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>
