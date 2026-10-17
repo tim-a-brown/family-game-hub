@@ -349,17 +349,35 @@
       c.data = full.data; c.local = true; boot(c);
     }).catch(function (e) { console.warn(e); msg('Couldn’t get this game. Check your connection.'); });
   }
-  // a drawn controller when you're playing by touch; a keyboard or real controller gets the picture alone
-  var touchy = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window, padConnected = false;
+  // A drawn controller when you're playing by touch. A real controller on a phone or iPad: the drawn one steps aside
+  // and the picture takes the whole screen (the game bar too; Home, or Select and Start together, or a tap on the
+  // screen brings up the menu). A computer keeps its game bar and gets the biggest picture under it.
+  var touchy = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window, padConnected = false, peekEl = null, peekT = 0;
   function padMode() {
-    var drawn = touchy && !padConnected;
-    skinEl.hidden = !drawn; playEl.classList.toggle('nopad', !drawn);
-    root.classList.toggle('cs-play', drawn);
-    playEl.style.top = drawn ? '0' : (document.querySelector('.gbar') ? document.querySelector('.gbar').getBoundingClientRect().bottom + 'px' : '0');
+    var drawn = touchy && !padConnected, full = touchy && padConnected;
+    skinEl.hidden = !drawn; playEl.classList.toggle('nopad', !drawn); playEl.classList.toggle('padfull', full);
+    root.classList.toggle('cs-play', drawn || full);
+    playEl.style.top = drawn || full ? '0' : (document.querySelector('.gbar') ? document.querySelector('.gbar').getBoundingClientRect().bottom + 'px' : '0');
+    if (full && !peekEl) {
+      peekEl = el('button', { type: 'button', class: 'pad-menu', 'aria-label': 'Menu', html: Kit.icon('more'), onclick: function (e) { e.stopPropagation(); openMenu(); } });
+      playEl.appendChild(peekEl);
+      playEl.addEventListener('pointerdown', function () { if (playEl.classList.contains('padfull')) peek(); });
+    }
+    if (full) peek();
     layout();
   }
-  window.addEventListener('gamepadconnected', function () { padConnected = true; if (playEl) { padMode(); Kit.toast('Controller connected'); } });
-  window.addEventListener('gamepaddisconnected', function () { padConnected = false; if (playEl) padMode(); });
+  // the menu button shows for a few seconds, then gets out of the way
+  function peek() { if (!peekEl) return; peekEl.classList.add('on'); clearTimeout(peekT); peekT = setTimeout(function () { peekEl.classList.remove('on'); }, 3500); }
+  function openMenu() { var b = document.querySelector('.gbar button[aria-label="Menu"]'); if (b) b.click(); }
+  window.addEventListener('gamepadconnected', function (e) {
+    var was = padConnected; padConnected = true; padIdx = e.gamepad ? e.gamepad.index : padIdx;
+    if (playEl) { padMode(); if (!was) Kit.toast(padName(e.gamepad) + ' connected · Home, or Select + Start, opens the menu'); }
+  });
+  window.addEventListener('gamepaddisconnected', function () {
+    var any = Array.prototype.some.call(pads(), function (p) { return p && p.connected !== false; });
+    padConnected = any; padIdx = null; padRelease();
+    if (playEl) { padMode(); Kit.toast('Controller disconnected'); }
+  });
   window.addEventListener('touchstart', function () { if (!touchy) { touchy = true; if (playEl) padMode(); } }, { passive: true });
   window.addEventListener('resize', function () { if (playEl) layout(); else if (!cur) drawShelf(); });
 
@@ -611,7 +629,9 @@
     playEl.classList.toggle('land', land);
     var place = function (c, cx, cy, sw, shh) { c.cx = cx; c.cy = cy; c.w = sw; c.h = shh || sw; c.el.style.left = cx + 'px'; c.el.style.top = cy + 'px'; c.el.style.width = c.w + 'px'; c.el.style.height = c.h + 'px'; };
     var dec = skinEl.querySelector('.decor');
-    if (!drawn) {   // a keyboard or real controller: the picture alone, as big as it goes
+    if (!drawn && playEl.classList.contains('padfull')) {   // a controller on a phone or iPad: the whole screen, inside the notch
+      w = Math.min(W - sL - sR, (H - sT - sB) * 4 / 3); h = w * 3 / 4; x = sL + (W - sL - sR - w) / 2; y = sT + (H - sT - sB - h) / 2;
+    } else if (!drawn) {   // a keyboard or controller on a computer: the picture alone, as big as it goes under the bar
       w = Math.min(W - 24, (H - 24) * 4 / 3); h = w * 3 / 4; x = (W - w) / 2; y = (H - h) / 2;
     } else if (!land) {
       // the controller: thumbs, Select/Start and the corner buttons need about 330 units of height (SNES shoulders 50 more)
@@ -732,13 +752,137 @@
     sk.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   }
 
+  // ═══ A real controller (Bluetooth or USB) ═════════════════════════════════
+  // Read here rather than by EmulatorJS (its own gamepad handling is off: EJS_ownGamepad), so every controller can be
+  // remapped for each console and keeps its own map: gn_pad_map {controller id: {console: {button: [codes]}}}, a
+  // synced setting. Codes: 'b<n>' a controller button, 'a<n>+' / 'a<n>-' a stick pushed one way.
+  window.EJS_ownGamepad = true;
+  var DIRS = [['Up', 4], ['Down', 5], ['Left', 6], ['Right', 7]];
+  var PAD_TARGETS = {
+    nes: DIRS.concat([['B', 0], ['A', 8], ['Select', 2], ['Start', 3]]),
+    snes: DIRS.concat([['Y', 1], ['B', 0], ['X', 9], ['A', 8], ['L', 10], ['R', 11], ['Select', 2], ['Start', 3]]),
+    genesis: DIRS.concat([['A', 1], ['B', 0], ['C', 8], ['Start', 3]]),
+    atari2600: DIRS.concat([['Fire', 0], ['Game Select', 2], ['Game Reset', 3]])
+  };
+  // out of the box, by position: the console's buttons where the controller has them (a standard-layout controller's
+  // face buttons are 0 bottom, 1 right, 2 left, 3 top; 4-7 shoulders and triggers; 8 Select, 9 Start; 12-15 D-pad)
+  function padDefaults() {
+    var m = { 4: ['b12', 'a1-'], 5: ['b13', 'a1+'], 6: ['b14', 'a0-'], 7: ['b15', 'a0+'], 2: ['b8'], 3: ['b9'] };
+    if (SYS_ID === 'nes') { m[0] = ['b0', 'b2']; m[8] = ['b1', 'b3']; }
+    else if (SYS_ID === 'snes') { m[0] = ['b0']; m[8] = ['b1']; m[1] = ['b2']; m[9] = ['b3']; m[10] = ['b4', 'b6']; m[11] = ['b5', 'b7']; }
+    else if (SYS_ID === 'genesis') { m[1] = ['b2']; m[0] = ['b0']; m[8] = ['b1']; }
+    else { m[0] = ['b0', 'b1', 'b2', 'b3']; }
+    return m;
+  }
+  function padMaps() { try { return JSON.parse(localStorage.getItem('gn_pad_map') || '{}') || {}; } catch (e) { return {}; } }
+  function padSave(all) { try { localStorage.setItem('gn_pad_map', JSON.stringify(all)); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite('gn_pad_map'); }
+  function padMapOf(p) { var all = padMaps(), m = p && all[p.id] && all[p.id][SYS_ID]; return m || padDefaults(); }
+  function pads() { try { return navigator.getGamepads ? navigator.getGamepads() : []; } catch (e) { return []; } }
+  var padIdx = null, padHeld = {}, padMenuWas = false, mapper = null;
+  function activePad() {
+    var l = pads(); if (padIdx != null && l[padIdx]) return l[padIdx];
+    for (var i = 0; i < l.length; i++) if (l[i] && l[i].connected !== false) { padIdx = i; return l[i]; }
+    return null;
+  }
+  function padDown(p) {
+    var d = {};
+    Array.prototype.forEach.call(p.buttons, function (b, i) { if (b && (b.pressed || b.value > .5)) d['b' + i] = 1; });
+    Array.prototype.forEach.call(p.axes, function (a, i) { if (a > .5) d['a' + i + '+'] = 1; else if (a < -.5) d['a' + i + '-'] = 1; });
+    return d;
+  }
+  function padRelease() { for (var k in padHeld) { press(+k, 0); delete padHeld[k]; } }
+  (function padTick() {
+    var p = activePad();
+    if (p) {
+      if (!padConnected) { padConnected = true; padIdx = p.index; if (playEl) padMode(); }
+      var down = padDown(p);
+      if (mapper) { padRelease(); mapper(down, p); }   // the remap sheet is listening
+      else if (document.querySelector('.k-scrim')) padRelease();
+      else {
+        var m = padMapOf(p), next = {};
+        Object.keys(m).forEach(function (t) { if (m[t].some(function (c) { return down[c]; })) next[t] = 1; });
+        for (var k in padHeld) if (!next[k]) { press(+k, 0); delete padHeld[k]; }
+        for (var j in next) if (!padHeld[j]) { press(+j, 1); padHeld[j] = 1; }
+        var menu = !!(down.b16 || (down.b8 && down.b9));
+        if (menu && !padMenuWas && cur) { padRelease(); openMenu(); }
+        padMenuWas = menu;
+      }
+    }
+    requestAnimationFrame(padTick);
+  })();
+  // what a controller calls its buttons: Xbox, PlayStation and Nintendo-style layouts by name, others by position
+  function padFamily(p) { var id = (p && p.id) || ''; return /xbox|xinput|microsoft/i.test(id) ? 'x' : /dualshock|dualsense|playstation|sony|ps4|ps5|054c/i.test(id) ? 'ps' : /nintendo|pro controller|joy-?con|8bitdo|sn30|057e/i.test(id) ? 'n' : ''; }
+  function padName(p) { var n = ((p && p.id) || 'Controller').replace(/\(.*?\)/g, ' ').replace(/\s*(Extended Gamepad|Gamepad)\s*$/i, '').replace(/\s+/g, ' ').trim(); return n || 'Controller'; }
+  function codeName(p, c) {
+    if (c[0] === 'a') { var ax = +c.slice(1, -1), pos = c.slice(-1) === '+'; return (ax < 2 ? 'Left stick ' : ax < 4 ? 'Right stick ' : 'Axis ' + ax + ' ') + (ax % 2 ? (pos ? 'down' : 'up') : (pos ? 'right' : 'left')); }
+    var i = +c.slice(1), f = padFamily(p);
+    if (!p || p.mapping !== 'standard') return 'Button ' + i;
+    var face = { x: ['A', 'B', 'X', 'Y'], ps: ['Cross', 'Circle', 'Square', 'Triangle'], n: ['B', 'A', 'Y', 'X'], '': ['Bottom button', 'Right button', 'Left button', 'Top button'] }[f];
+    var sh = { x: ['LB', 'RB', 'LT', 'RT', 'View', 'Menu'], ps: ['L1', 'R1', 'L2', 'R2', 'Share', 'Options'], n: ['L', 'R', 'ZL', 'ZR', 'Minus', 'Plus'], '': ['Left bumper', 'Right bumper', 'Left trigger', 'Right trigger', 'Select', 'Start'] }[f];
+    return i < 4 ? face[i] : i < 10 ? sh[i - 4] : ['Left stick press', 'Right stick press', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right', 'Home'][i - 10] || 'Button ' + i;
+  }
+  // The remap sheet: the console's buttons, each with what it's on now. Press anything on the controller and its row
+  // lights up; tap a row, then press the controller button you want for it.
+  function padSheet() {
+    var box = el('div', { class: 'k-list pm' }), rows = {}, listen = null, startDown = null, s;
+    var head = el('p', { class: 'pm-who' }), m = null, p = null;
+    box.appendChild(head);
+    function load() {
+      p = activePad();
+      head.textContent = p ? padName(p) : 'Press any button on your controller to connect it.';
+      m = JSON.parse(JSON.stringify(padMapOf(p)));
+      PAD_TARGETS[SYS_ID].forEach(function (t) { var r = rows[t[1]]; if (r) r.sub.textContent = (m[t[1]] || []).map(function (c) { return codeName(p, c); }).join(' or ') || 'Nothing'; });
+    }
+    var grp = el('div', { class: 'k-grp' });
+    PAD_TARGETS[SYS_ID].forEach(function (t) {
+      // the console's own button as the row's key: an arrow on a D-pad arm for the directions
+      var rot = { 4: 0, 7: 90, 5: 180, 6: 270 }[t[1]];
+      var key = rot != null ? el('span', { class: 'pm-key k' + t[1], html: '<svg viewBox="0 0 20 20" width="16" height="16" style="transform:rotate(' + rot + 'deg)"><path d="M10 4l6 9H4z" fill="currentColor"/></svg>' })
+        : el('span', { class: 'pm-key pm-' + SYS_ID + ' k' + t[1], text: t[0].replace('Game ', '') });
+      var sub = el('small'), b = el('button', { type: 'button', class: 'pm-row' }, [key, el('span', { class: 'lbl' }, [el('span', { text: t[0] }), sub])]);
+      b.onclick = function () {
+        if (!p) return;
+        if (listen === t[1]) { listen = null; b.classList.remove('listen'); load(); return; }
+        Object.keys(rows).forEach(function (k) { rows[k].el.classList.remove('listen'); });
+        listen = t[1]; startDown = padDown(p); b.classList.add('listen'); sub.textContent = 'Press a button on the controller…'; Kit.haptic('light');
+      };
+      rows[t[1]] = { el: b, sub: sub }; grp.appendChild(b);
+    });
+    box.appendChild(grp);
+    var reset = el('button', { type: 'button', class: 'pm-reset' }, ['Back to the standard layout']);
+    reset.onclick = function () { if (!p) return; var all = padMaps(); if (all[p.id]) { delete all[p.id][SYS_ID]; padSave(all); } listen = null; load(); Kit.toast('Standard layout'); };
+    box.appendChild(reset);
+    load();
+    mapper = function (down, pad) {
+      if (!p || pad.id !== p.id) load();
+      if (listen != null) {
+        var code = Object.keys(down).filter(function (c) { return !startDown[c]; })[0];
+        var swapped = null;
+        Object.keys(startDown).forEach(function (c) { if (!down[c]) delete startDown[c]; });   // let go, then press again counts
+        if (code) {
+          // one console button per controller button: whatever had it swaps onto this one's old button
+          var old = (m[listen] || []).slice();
+          Object.keys(m).forEach(function (k) { if (+k !== listen && (m[k] || []).indexOf(code) >= 0) { var rest = m[k].filter(function (c) { return c !== code; }); m[k] = rest.length ? rest : old.filter(function (c) { return c !== code; }); swapped = k; } });
+          m[listen] = [code];
+          var all = padMaps(); all[p.id] = all[p.id] || {}; all[p.id][SYS_ID] = m; padSave(all);
+          [listen, swapped].forEach(function (k) { if (k == null || !rows[k]) return; var r = rows[k].el; r.classList.remove('listen'); r.classList.add('done'); setTimeout(function () { r.classList.remove('done'); }, 700); });
+          listen = null; Kit.haptic('success'); Kit.sfx('tap'); load();
+        }
+        return;
+      }
+      // live: light up the console buttons the controller is pressing
+      Object.keys(rows).forEach(function (k) { rows[k].el.classList.toggle('lit', (m[k] || []).some(function (c) { return down[c]; })); });
+    };
+    s = Kit.sheet({ title: 'Controller buttons · ' + SYS.name, node: box, onClose: function () { mapper = null; } });
+  }
+
   // ═══ Kit shell ════════════════════════════════════════════════════════════
   function controls() {
     Kit.sheet({ title: 'Controls', html:
       '<p>On a phone or iPad the controller is drawn round the picture (turn sideways and it sits either side). Slide a finger from one button to the next, or touch between two face buttons to press both.</p>' +
       '<p>The <b>Menu</b> button on the controller opens this menu; <b>»</b> runs the game at triple speed until you tap it again.</p>' +
       '<p><b>Keyboard:</b> ' + SYS.keys + '.</p>' +
-      '<p><b>A real controller</b> (Bluetooth or USB) works too: connect it and press a button. The drawn one steps aside.</p>' });
+      '<p><b>A real controller</b> (Bluetooth or USB) works too: connect it and press a button. The drawn one steps aside and the game fills the screen. <b>Home</b>, or <b>Select and Start</b> together, opens this menu. <b>Controller buttons</b> remaps it; each controller keeps its own layout for each console.</p>' });
   }
   var playing = function () { return !!cur; };
   Kit.init({
@@ -748,7 +892,8 @@
       { icon: 'history', label: 'Load state', sub: 'Go back to a saved moment', when: playing, onClick: function () { slotsSheet(false); } },
       { icon: 'sync', label: 'Reset', sub: 'Like the console’s Reset button', when: playing, onClick: function () { var E = emu(); if (E) { E.gameManager.restart(); Kit.haptic('medium'); } } },
       { icon: 'swap', label: 'Change cartridge', sub: 'Back to the ' + SYS.name + ' shelf', when: playing, onClick: toShelf },
-      { icon: 'gamepad', label: 'Controls', onClick: controls }
+      { icon: 'gamepad', label: 'Controller buttons', sub: 'Remap a Bluetooth or USB controller', onClick: padSheet },
+      { icon: 'help', label: 'Controls', onClick: controls }
     ],
     rules:
       '<p class="goal">Play your own ' + SYS.name + ' games. Add the game files you own and they line up on the shelf as cartridges.</p>' +
