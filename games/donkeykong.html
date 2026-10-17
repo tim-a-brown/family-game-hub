@@ -21,6 +21,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 .dk-view{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;touch-action:none;}
 .dk-view[hidden]{display:none;}
 .hud{flex:none;display:flex;align-items:stretch;gap:6px;width:100%;}
+/* the cabinet's own score line is on the screen, so only the pause button sits above it */
+.hud{justify-content:flex-end;}
+.hud .plate{display:none;}
 .plate{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4px 8px;border-radius:14px;
   background:linear-gradient(180deg,#22142a,#120a18);box-shadow:inset 0 0 0 1.5px rgba(255,120,110,.3),0 6px 14px rgba(0,0,0,.35);}
 .plate small{font-size:.6rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,180,170,.65);white-space:nowrap;}
@@ -122,379 +125,77 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 
   // ═══ Pixel art ══════════════════════════════════════════════════════════
   // Everything is drawn into a 224 × 256 screen at one pixel per arcade pixel, then scaled up without smoothing.
+  // The pictures are the arcade game's own pixels and colours, taken from MAME captures of the cabinet: the
+  // sprites, the 25, 50 and 75 m stages and the lettering. The captures never show a few things, so those are
+  // made to match: the 100 m rivets and layout (its girder and ladder pieces are the real ones), the hammer
+  // swing and the death spin (the real sprites turned), and the letters B, K, V and X.
+  var ART = {"atlas":"data:image/png;base64,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","map":{"clr_687":[0,0,42,50],"clr_691":[43,0,47,46],"clr_695":[91,0,42,42],"clr_699":[134,0,47,38],"clr_703":[182,0,42,36],"dk_front":[0,51,40,32],"dk_grabL":[41,51,53,32],"dk_hold":[95,51,40,32],"dk_holdB":[136,51,40,32],"dk_side":[177,51,43,32],"dk_grin":[0,84,46,32],"lad50":[47,84,10,32],"clr_707":[58,84,43,32],"bonus100":[102,84,48,32],"dk_how":[151,84,46,32],"clr_711":[198,84,38,28],"clr_715":[0,117,42,24],"pau_0":[43,117,15,22],"pau_1":[59,117,15,22],"pau_2":[75,117,15,22],"pau_front":[91,117,16,22],"clr_719":[108,117,37,20],"jm_stand":[146,117,16,16],"jm_walk1":[163,117,16,16],"jm_walk2":[180,117,16,16],"jm_jump":[197,117,16,16],"jm_climb1":[214,117,16,16],"jm_climb2":[231,117,16,16],"jm_back":[0,142,16,16],"jm_over1":[17,142,16,16],"jm_over2":[34,142,16,16],"fire0":[51,142,16,16],"fire1":[68,142,16,16],"fox0":[85,142,15,16],"fox1":[101,142,15,16],"oil0":[117,142,16,16],"oil1":[134,142,16,16],"oilB0":[151,142,16,16],"oilB1":[168,142,16,16],"clr_723":[185,142,38,16],"parasol":[224,142,16,15],"spring1":[241,142,12,15],"hammer":[0,159,11,12],"clr_727":[12,159,35,12],"spring2":[48,159,16,11],"bar0":[65,159,12,10],"bar1":[78,159,12,10],"bar2":[91,159,12,10],"bar3":[104,159,12,10],"bbar0":[117,159,12,10],"bbar1":[130,159,12,10],"bbar2":[143,159,12,10],"bbar3":[156,159,12,10],"barS0":[169,159,16,10],"barS1":[186,159,16,10],"bbarS0":[203,159,16,10],"bbarS1":[220,159,16,10],"heart":[237,159,15,10],"heartB":[0,172,16,10],"purse":[17,172,9,9],"help":[27,172,24,8],"help2":[52,172,24,8],"pie":[77,172,16,8],"hat":[94,172,15,8],"car":[110,172,16,8],"clr_731":[127,172,26,8],"gH":[154,172,8,8],"gI":[163,172,8,8],"gG":[172,172,8,8],"gS":[181,172,8,8],"gC":[190,172,8,8],"gO":[199,172,8,8],"gR":[208,172,8,8],"gE":[217,172,8,8],"g0":[226,172,8,8],"g7":[235,172,8,8],"g6":[244,172,8,8],"g5":[0,183,8,8],"g1":[9,183,8,8],"gU":[18,183,8,8],"gP":[27,183,8,8],"gL":[36,183,8,8],"g=":[45,183,8,8],"g9":[54,183,8,8],"g8":[63,183,8,8],"gT":[72,183,8,8],"gD":[81,183,8,8],"gF":[90,183,8,8],"gA":[99,183,8,8],"gM":[108,183,8,8],"g.":[117,183,8,8],"g@":[126,183,8,8],"g2":[135,183,8,8],"g3":[144,183,8,8],"g4":[153,183,8,8],"gW":[162,183,8,8],"gY":[171,183,8,8],"g?":[180,183,8,8],"gm":[189,183,8,8],"gN":[198,183,8,8],"gK":[207,183,8,8],"gB":[216,183,8,8],"gV":[225,183,8,8],"gX":[234,183,8,8],"g!":[243,183,8,8],"g-":[0,192,8,8],"life":[9,192,8,8],"g100":[18,192,16,8],"l100":[35,192,8,8],"g25":[44,192,16,8],"p1":[61,192,3,7],"p0":[65,192,5,7],"p3":[71,192,5,7],"p5":[77,192,5,7],"p8":[83,192,5,7],"clr_735":[89,192,11,4],"motor0":[101,192,14,1],"motor1":[116,192,14,1]},"pos":{"dk_front":[24,52],"dk_grabL":[10,52],"dk_hold":[24,52],"dk_holdB":[24,52],"dk_side":[25,52],"dk_grin":[20,52],"pau_0":[88,34],"pau_1":[89,34],"pau_2":[88,34],"pau_front":[88,34],"help":[104,32],"help2":[104,32],"heart":[106,26],"heartB":[105,26],"clr_687":[62,34],"clr_691":[57,34],"clr_695":[62,34],"clr_699":[57,34],"clr_703":[62,32],"clr_707":[57,32],"clr_711":[62,32],"clr_715":[58,32],"clr_719":[62,32],"clr_723":[61,32],"clr_727":[62,32],"clr_731":[62,32],"clr_735":[64,32],"fox0":[84,111],"fox1":[132,145],"pie":[18,120],"hammer":[16,97],"parasol":[196,152],"hat":[61,159],"lad50":[15,96],"spring1":[182,118],"spring2":[165,71],"car":[32,145],"motor0":[33,239],"motor1":[33,239],"purse":[113,190]},"bg":{"b1":"data:image/png;base64,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","b2":"data:image/png;base64,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","b3":"data:image/png;base64,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"}};
   function mk(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
-  function rows(rs, pal) {
-    var h = rs.length, w = rs[0].length, c = mk(w, h), x = c.getContext('2d');
-    for (var r = 0; r < h; r++) for (var q = 0; q < w; q++) { var ch = rs[r].charAt(q); if (ch !== '.' && pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(q, r, 1, 1); } }
-    return c;
-  }
   function flipX(c) { var f = mk(c.width, c.height), x = f.getContext('2d'); x.translate(c.width, 0); x.scale(-1, 1); x.drawImage(c, 0, 0); return f; }
   function flipY(c) { var f = mk(c.width, c.height), x = f.getContext('2d'); x.translate(0, c.height); x.scale(1, -1); x.drawImage(c, 0, 0); return f; }
-  // A pixel grid for the drawn (not typed-out) sprites: discs and boxes snapped to whole pixels
-  function grid(w, h) {
-    var a = []; for (var i = 0; i < h; i++) a.push(new Array(w).fill(null));
-    var g = {
-      px: function (x, y, c) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < w && y < h) a[y][x] = c; },
-      ell: function (cx, cy, rx, ry, c) {
-        rx = Math.max(.5, rx); ry = Math.max(.5, ry);
-        for (var y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (var x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
-          var dx = (x - cx) / rx, dy = (y - cy) / ry; if (dx * dx + dy * dy <= 1.05) g.px(x, y, c);
-        }
-      },
-      box: function (x0, y0, ww, hh, c) { for (var y = y0; y < y0 + hh; y++) for (var x = x0; x < x0 + ww; x++) g.px(x, y, c); },
-      line: function (x0, y0, x1, y1, c) { var n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (var i = 0; i <= n; i++) g.px(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, c); },
-      get: function (x, y) { return a[y] && a[y][x]; },
-      canvas: function () { var c = mk(w, h), x = c.getContext('2d'); for (var y = 0; y < h; y++) for (var q = 0; q < w; q++) if (a[y][q]) { x.fillStyle = a[y][q]; x.fillRect(q, y, 1, 1); } return c; }
+  function turn(c) { var f = mk(c.height, c.width), x = f.getContext('2d'); x.translate(c.height, 0); x.rotate(PI / 2); x.drawImage(c, 0, 0); return f; }
+  // a copy with some colours swapped ({ 'r,g,b': [r, g, b] })
+  function recolor(c, map) {
+    var f = mk(c.width, c.height), x = f.getContext('2d'); x.drawImage(c, 0, 0);
+    var d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+    for (var i = 0; i < p.length; i += 4) { var to = map[p[i] + ',' + p[i + 1] + ',' + p[i + 2]]; if (p[i + 3] && to) { p[i] = to[0]; p[i + 1] = to[1]; p[i + 2] = to[2]; } }
+    x.putImageData(d, 0, 0); return f;
+  }
+  function rows(rs, pal) {
+    var c = mk(rs[0].length, rs.length), x = c.getContext('2d');
+    for (var r = 0; r < rs.length; r++) for (var q = 0; q < rs[r].length; q++) { var ch = rs[r].charAt(q); if (pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(q, r, 1, 1); } }
+    return c;
+  }
+  // Each sprite is cut from the atlas; POS holds where it sat on the cabinet's screen (Kong, Pauline and the
+  // like are drawn relative to that, so their poses line up exactly as they did)
+  var SPR = {}, BG = {}, POS = ART.pos, artReady = false;
+  function buildSprites(done) {
+    var left = 1 + Object.keys(ART.bg).length, im = new Image();
+    function one() { if (--left === 0) { derive(); artReady = true; if (done) done(); } }
+    im.onload = function () {
+      Object.keys(ART.map).forEach(function (k) { var r = ART.map[k], c = mk(r[2], r[3]); c.getContext('2d').drawImage(im, r[0], r[1], r[2], r[3], 0, 0, r[2], r[3]); SPR[k] = c; });
+      one();
     };
-    return g;
+    im.src = ART.atlas;
+    Object.keys(ART.bg).forEach(function (k) { var b = new Image(); b.onload = function () { var c = mk(W, H); c.getContext('2d').drawImage(b, 0, 0); BG[k] = c; one(); }; b.src = ART.bg[k]; });
+  }
+  var DKX = 44, DKY = 84;   // where Kong stands on 25 m: every pose is placed relative to this
+  function derive() {
+    ['jm_stand', 'jm_walk1', 'jm_walk2', 'jm_jump', 'fire0', 'fire1', 'fox0', 'fox1'].forEach(function (k) { SPR[k + 'L'] = flipX(SPR[k]); });
+    SPR.hammerSide = turn(SPR.hammer);
+    SPR.dk_grinR = flipX(SPR.dk_grin); POS.dk_grinR = [2 * DKX - POS.dk_grin[0] - SPR.dk_grin.width, POS.dk_grin[1]];
+    SPR.dk_fall = flipY(SPR.dk_front);
+    // fireballs turn blue while Jumpman has the hammer
+    var BLUE = { '250,0,0': [0, 0, 236], '183,0,0': [0, 0, 236], '153,0,0': [0, 0, 236], '250,185,0': [0, 251, 255], '251,113,0': [0, 251, 255] };
+    ['fire0', 'fire1', 'fox0', 'fox1'].forEach(function (k) { SPR[k + 'B'] = recolor(SPR[k], BLUE); SPR[k + 'BL'] = flipX(SPR[k + 'B']); });
+    // 25 m with its girders lifted out, for the opening where Kong stamps them crooked
+    var b = mk(W, H), x = b.getContext('2d'); x.drawImage(BG.b1, 0, 0);
+    var d = x.getImageData(0, 56, W, H - 56), p = d.data;
+    for (var i = 0; i < p.length; i += 4) if (p[i] === 250 && p[i + 1] === 40 && p[i + 2] === 153) { p[i] = p[i + 1] = p[i + 2] = 0; }
+    x.putImageData(d, 0, 56); BG.b1bare = b;
+    SPR.rivet = rows(['.YYYYYY.', 'YYYYYYYY', 'YYoooo.Y', 'YYo..o.Y', 'YYo..o.Y', 'YYoooo.Y', 'YYYYYYYY', '.YYYYYY.'], { Y: '#fab900', o: '#990000' });
   }
 
-  // ── Jumpman (16 × 16, facing right) ──
-  var MP = { R: '#e8332a', B: '#2f5bff', S: '#ffc896', H: '#7a3a10', K: '#140c0c', Y: '#ffe04a', W: '#ffffff' };
-  var M_TOP = [
-    '.....RRRRRR.....',
-    '....RRRRRRRRRR..',
-    '....HHSSSKSS....',
-    '...HSSSSSKSSSS..',
-    '...HSHSSSSSSSSS.',
-    '...HHSSSSHHHHH..',
-    '.....SSSSSSSS...'];
-  var M_STAND = M_TOP.concat([
-    '....BBBRRBBB....',
-    '...BBBBRRBBBBB..',
-    '..SSBBRRRRRBBSS.',
-    '..SSSRYRRYRRSSS.',
-    '...SSRRRRRRRRS..',
-    '....RRRRRRRRR...',
-    '....RRRR.RRRR...',
-    '...HHHH...HHHH..',
-    '..HHHHH...HHHHH.']);
-  var M_WALK1 = M_TOP.concat([
-    '....BBBRRBBB....',
-    '...BBBBRRBBBBB..',
-    '..SSBBRRRRRBBSS.',
-    '..SSSRYRRYRRSSS.',
-    '...SSRRRRRRRS...',
-    '....RRRRRRRRR...',
-    '...RRRR...RRRR..',
-    '..HHHH.....HHHH.',
-    '..HHH.......HHH.']);
-  var M_WALK2 = M_TOP.concat([
-    '....BBBRRBBB....',
-    '...BBBBRRBBBB...',
-    '...SBBRRRRRBS...',
-    '...SSRYRRYRSS...',
-    '....SRRRRRRS....',
-    '.....RRRRRRR....',
-    '.....RRR.RRR....',
-    '....HHHH.HHHH...',
-    '....HHHHHHHH....']);
-  var M_JUMP = M_TOP.slice(0, 6).concat([
-    '.S...SSSSSSS..S.',
-    '.SS.BBBRRBBB.SS.',
-    '..SBBBBRRBBBBS..',
-    '...BBBRRRRRBB...',
-    '....RRYRRYRR....',
-    '....RRRRRRRRR...',
-    '...RRRRRRRRRRR..',
-    '..HHRRR...RRRHH.',
-    '..HHH.......HHH.',
-    '................']);
-  var M_CLIMB = [
-    '......RRRR......',
-    '.....RRRRRR.....',
-    '.....HHHHHH.....',
-    '....HHHHHHHH....',
-    '....SHHHHHHS....',
-    '...SS.HHHH.SS...',
-    '..SS..SSSS..SS..',
-    '..B.BBRRRRBB.B..',
-    '....BBRRRRBB....',
-    '....BRRRRRRB....',
-    '....RRRRRRRR....',
-    '....RRR..RRR....',
-    '....RRR..RRR....',
-    '....HH....HH....',
-    '...HHH....HHH...',
-    '................'];
-  var M_CLIMB2 = [
-    '......RRRR......',
-    '.....RRRRRR.....',
-    '.....HHHHHH.....',
-    '....HHHHHHHH....',
-    '...SSHHHHHHSS...',
-    '..SS..HHHH..S...',
-    '.....SSSSSS.SS..',
-    '....BBRRRRBB.B..',
-    '..B.BBRRRRBB....',
-    '....BRRRRRRB....',
-    '....RRRRRRRR....',
-    '....RRR..RRR....',
-    '...RRR....RRR...',
-    '...HH......HH...',
-    '..HHH......HHH..',
-    '................'];
-  // life counter: a tiny Jumpman (7 × 8)
-  var M_LIFE = ['..RRR..', '.RRRRR.', '.HSSKS.', '..SSSS.', '.BRRRB.', 'SRYRYRS', '.RR.RR.', 'HH...HH'];
-
-  // ── Pauline (16 × 19) ──
-  var PP = { O: '#ff8a1e', S: '#ffc896', K: '#140c0c', R: '#e8332a', P: '#ff6ec7', W: '#ffffff', H: '#a83a7a' };
-  var P_BASE = [
-    '....OOOO........',
-    '...OOOOOOO......',
-    '..OOSSSSOOO.....',
-    '..OSKSSKSOO.....',
-    '..OSSSSSSOO.....',
-    '...SSRRSSOOO....',
-    '....SSSSOOOO....',
-    '...PPWWPPOOO....',
-    '..PPPWWPPPOO....',
-    '.SSPPPPPPPSS....',
-    '.SS.PPPPPP.SS...',
-    '....PPPPPP......',
-    '...PPPPPPPP.....',
-    '..PPPPPPPPPP....',
-    '..PPPPPPPPPP....',
-    '.PPPPPPPPPPPP...',
-    '.PWPPWPPWPPWP...',
-    '....SS..SS......',
-    '...HHH..HHH.....'];
-  var P_WAVE = P_BASE.slice(0, 5).concat([
-    'S..SSRRSSOOO....',
-    'SS..SSSSOOOO....',
-    '.S.PPWWPPOOO....',
-    '.SPPPWWPPPOO....',
-    '..PPPPPPPPSS....',
-    '....PPPPPP.SS...']).concat(P_BASE.slice(11));
-
-  // ── Donkey Kong (48 × 32), drawn from shapes ──
-  var DKC = { D: '#a8521e', d: '#6e2f0e', T: '#f7c48a', E: '#ffffff', K: '#140808', M: '#7a1010' };
-  function dkSprite(pose) {
-    var g = grid(48, 33), D = DKC.D, T = DKC.T, d = DKC.d;
-    var back = pose === 'back1' || pose === 'back2';
-    // arms first (they sit behind the body when raised)
-    function armDown(cx, side) { g.ell(cx, 20, 4.5, 9, D); g.ell(cx - side * .5, 29, 3.6, 2.6, T); }
-    function armUp(cx, side, top) { g.ell(cx, 9 + top, 4, 8, D); g.ell(cx + side * 2.5, 1.5 + top, 3, 2.4, T); }
-    if (pose === 'throw') { armUp(11, 1, 0); armUp(37, -1, 0); }
-    else if (pose === 'back1') { armUp(11, 1, 0); armDown(38, -1); }
-    else if (pose === 'back2') { armDown(10, 1); armUp(37, -1, 0); }
-    // legs and feet
-    g.ell(15, 28, 6, 4.2, D); g.ell(33, 28, 6, 4.2, D);
-    g.ell(11.5, 31.2, 4.2, 1.4, T); g.ell(36.5, 31.2, 4.2, 1.4, T);
-    // body, then the chest
-    g.ell(24, 19, 13, 10, D);
-    g.ell(24, 25, 11, 3, d);
-    if (!back) g.ell(24, 20.5, 7.5, 6.5, T);
-    else g.ell(24, 19, 9, 8, D);
-    // head
-    g.ell(24, 8, 8.5, 7.5, D);
-    if (!back) {
-      g.ell(15.5, 8, 2.2, 2.2, D); g.ell(15.5, 8, 1, 1, T); g.ell(32.5, 8, 2.2, 2.2, D); g.ell(32.5, 8, 1, 1, T);
-      g.ell(24, 10.2, 5.8, 4.4, T);
-      for (var x = 18; x <= 30; x++) g.px(x, 5, d);
-      g.px(20, 7, DKC.E); g.px(21, 7, DKC.E); g.px(21, 7, DKC.K); g.px(27, 7, DKC.E); g.px(28, 7, DKC.E); g.px(27, 7, DKC.K);
-      g.px(22, 9, DKC.K); g.px(26, 9, DKC.K);
-      for (x = 20; x <= 28; x++) g.px(x, 12, DKC.M);
-      g.px(21, 12, DKC.E); g.px(23, 12, DKC.E); g.px(25, 12, DKC.E); g.px(27, 12, DKC.E);
-      for (x = 21; x <= 27; x++) g.px(x, 13, DKC.M);
-    } else { g.ell(24, 6, 6, 3, d); }
-    // arms in front of the body
-    if (pose === 'idle') { armDown(9.5, 1); armDown(38.5, -1); }
-    else if (pose === 'beatL') { g.ell(13, 15, 4.2, 5.5, D); g.ell(18, 18.5, 3.2, 3, T); armDown(38.5, -1); }
-    else if (pose === 'beatR') { armDown(9.5, 1); g.ell(35, 15, 4.2, 5.5, D); g.ell(30, 18.5, 3.2, 3, T); }
-    else if (pose === 'side') { g.ell(6, 18, 6.5, 3.6, D); g.ell(1.5, 18, 2.4, 3, T); armDown(38.5, -1); }
-    else if (pose === 'right') { armDown(9.5, 1); g.ell(42, 18, 6.5, 3.6, D); g.ell(46.5, 18, 2.4, 3, T); }
-    return g.canvas();
-  }
-
-  // ── Barrels: rolling (end on, 12 × 10) and going down a ladder (side on, 16 × 10) ──
-  function barrelRoll(fr, blue) {
-    var g = grid(12, 10), rim = blue ? '#1d3f9a' : '#6b3410', body = blue ? '#5fa8ff' : '#d8893c', hi = blue ? '#bfe0ff' : '#ffd08a';
-    g.ell(5.5, 4.5, 5.5, 4.5, rim); g.ell(5.5, 4.5, 4.4, 3.4, body);
-    var a = fr * PI / 4;
-    for (var t = -3.2; t <= 3.2; t += .5) { g.px(5.5 + Math.cos(a) * t, 4.5 + Math.sin(a) * t * .78, rim); g.px(5.5 + Math.cos(a + PI / 2) * t, 4.5 + Math.sin(a + PI / 2) * t * .78, rim); }
-    g.px(3, 2, hi); g.px(4, 1, hi);
-    return g.canvas();
-  }
-  function barrelSide(blue) {
-    var g = grid(16, 10), rim = blue ? '#1d3f9a' : '#6b3410', body = blue ? '#5fa8ff' : '#d8893c', hi = blue ? '#bfe0ff' : '#ffd08a';
-    g.box(2, 0, 12, 10, body); g.box(1, 1, 14, 8, body); g.box(0, 2, 16, 6, body);
-    for (var y = 0; y < 10; y++) { g.px(4, y, rim); g.px(11, y, rim); }
-    g.box(0, 2, 1, 6, rim); g.box(15, 2, 1, 6, rim);
-    for (var x = 5; x <= 10; x++) g.px(x, 2, hi);
-    return g.canvas();
-  }
-  // ── Fireball / firefox (16 × 16, two flicker frames) ──
-  function flame(fr, cool, fox) {
-    var g = grid(16, 16), O = cool ? '#3f7bff' : '#ff6a1a', R = cool ? '#1d2f9a' : '#d81f1f', Y = cool ? '#bfe6ff' : '#ffe64a';
-    g.ell(8, 10.5, 5.6, 5, R); g.ell(8, 10.5, 4.4, 3.9, O); g.ell(8, 11.5, 2.6, 2.4, Y);
-    var tips = fr ? [[4, 5], [8, 2], [12, 6]] : [[5, 4], [9, 3], [11, 5]];
-    tips.forEach(function (t) { g.line(t[0], t[1], 8 + (t[0] - 8) * .4, 8, R); g.line(t[0] + .5, t[1] + 1.5, 8 + (t[0] - 8) * .4, 9, O); });
-    if (fox) { g.px(5, 6, R); g.px(4, 5, R); g.px(11, 6, R); g.px(12, 5, R); }
-    g.px(6, 10, '#fff'); g.px(6, 11, '#140808'); g.px(10, 10, '#fff'); g.px(10, 11, '#140808');
-    return g.canvas();
-  }
-  // ── Hammer, oil drum, flames, items, heart, spring, cement pan, rivet ──
-  var HAMMER = rows([
-    '.HHHHHHHHHH.',
-    'HhhhhhhhhhhH',
-    'HhhhhhhhhhhH',
-    '.HHHHHHHHHH.',
-    '.....tt.....',
-    '.....tt.....',
-    '.....tt.....',
-    '.....tt.....',
-    '.....tt.....',
-    '.....tt.....'], { H: '#6b3410', h: '#c8752c', t: '#f2c68a' });
-  var OIL = rows([
-    '.WWWWWWWWWWWWWW.',
-    'BBBBBBBBBBBBBBBB',
-    'bbbbbbbbbbbbbbbb',
-    'BBBBBBBBBBBBBBBB',
-    'BBWWWBBWBBWBBBBB',
-    'BBWBWBBWBBWBBBBB',
-    'BBWBWBBWBBWBBBBB',
-    'BBWBWBBWBBWBBBBB',
-    'BBWWWBBWBBWWWBBB',
-    'BBBBBBBBBBBBBBBB',
-    'bbbbbbbbbbbbbbbb',
-    'BBBBBBBBBBBBBBBB',
-    'BBBBBBBBBBBBBBBB',
-    'bbbbbbbbbbbbbbbb',
-    'BBBBBBBBBBBBBBBB',
-    '.WWWWWWWWWWWWWW.'], { W: '#bcd2ff', B: '#2b5fd9', b: '#173a96' });
-  function fireTop(fr) {
-    var g = grid(16, 10), R = '#d81f1f', O = '#ff7a1a', Y = '#ffe64a';
-    var hs = fr ? [5, 8, 4, 9, 6, 7] : [7, 4, 9, 5, 8, 6];
-    for (var i = 0; i < 6; i++) { var x = 2 + i * 2.4; g.line(x, 10, x + (fr ? .5 : -.5), 10 - hs[i], R); g.line(x + .6, 10, x, 10 - hs[i] * .65, O); g.px(x + .4, 9, Y); }
-    return g.canvas();
-  }
-  var HAT = rows([
-    '.....PPPPPP.....',
-    '....PPPPPPPP....',
-    '....PPPPPPPP....',
-    '....WWWWWWWW....',
-    '..PPPPPPPPPPPP..',
-    'PPPPPPPPPPPPPPPP',
-    '.PPPPPPPPPPPPPP.'], { P: '#ff6ec7', W: '#ffffff' });
-  var PARASOL = rows([
-    '......PPPP......',
-    '....PPWWWWPP....',
-    '..PPWWPPPPWWPP..',
-    '.PWWPPPPPPPPWWP.',
-    'PWPPPPPPPPPPPPWP',
-    'P.P..P..P..P..P.',
-    '.......K........',
-    '.......K........',
-    '.......K........',
-    '.......K........',
-    '.......K........',
-    '....K..K........',
-    '.....KK.........'], { P: '#ff6ec7', W: '#ffffff', K: '#c88a3c' });
-  var PURSE = rows([
-    '....KKKKKK....',
-    '...K......K...',
-    '..K........K..',
-    '..PPPPYYPPPP..',
-    '.PPPPPYYPPPPP.',
-    'PPPPPPPPPPPPPP',
-    'PPWPPPPPPPPPPP',
-    'PPPPPPPPPPPPPP',
-    'PPPPPPPPPPPPPP',
-    '.PPPPPPPPPPPP.'], { P: '#ff6ec7', W: '#ffffff', K: '#c88a3c', Y: '#ffe04a' });
-  var HEART = rows([
-    '..RRR...RRR..',
-    '.RRRRR.RRRRR.',
-    'RRWRRRRRRRRRR',
-    'RWRRRRRRRRRRR',
-    'RRRRRRRRRRRRR',
-    '.RRRRRRRRRRR.',
-    '..RRRRRRRRR..',
-    '...RRRRRRR...',
-    '....RRRRR....',
-    '.....RRR.....',
-    '......R......'], { R: '#ff3a6a', W: '#ffd0e0' });
-  function springSpr(open) {
-    var g = grid(16, 14), P = '#d8e0f0', C = '#4fd3ff', h = open ? 14 : 10, y0 = 14 - h;
-    g.box(1, y0, 14, 2, P); g.box(1, 12, 14, 2, P);
-    var n = open ? 4 : 3, step = (h - 4) / n;
-    for (var i = 0; i < n; i++) { var ya = y0 + 2 + i * step, yb = ya + step / 2; g.line(3, ya, 12, yb, C); g.line(12, yb, 3, ya + step, C); }
-    return g.canvas();
-  }
-  var PIE = rows([
-    '....YYYYYYYY....',
-    '..YYyYYYYYyYYY..',
-    '.YYYYYYYYYYYYYY.',
-    'GGGGGGGGGGGGGGGG',
-    'gGGGGGGGGGGGGGGg',
-    '.gGGGGGGGGGGGGg.',
-    '..gggggggggggg..'], { Y: '#f2b45a', y: '#ffe0a0', G: '#a7b1c8', g: '#5d6680' });
-  var RIVET = rows([
-    'oYYYYYYo',
-    'YYYYYYYY',
-    'YYooooYY',
-    'YYoYYoYY',
-    'YYoYYoYY',
-    'YYooooYY',
-    'YYYYYYYY',
-    'oYYYYYYo'], { Y: '#ffd84a', o: '#a8780e' });
-
-  // girders: a steel beam with an X lattice, in each stage's colour
-  function girderSeg(col, dark) {
-    var g = grid(16, 8);
-    for (var x = 0; x < 16; x++) { g.px(x, 0, col); g.px(x, 7, col); g.px(x, 1, dark); }
-    for (var y = 2; y < 7; y++) for (x = 0; x < 16; x++) if ((x + y) % 6 === 1 || (x - y + 60) % 6 === 1) g.px(x, y, col);
-    return g.canvas();
-  }
-  function convSeg(col, off) {
-    var g = grid(16, 8);
-    for (var x = 0; x < 16; x++) { g.px(x, 0, col); g.px(x, 7, col); if ((x + off) % 4 < 2) { g.px(x, 2, '#ffd84a'); g.px(x, 5, '#ffd84a'); } }
-    return g.canvas();
-  }
-  function pulley(fr) {
-    var g = grid(8, 8); g.ell(3.5, 3.5, 3.6, 3.6, '#d81f1f'); g.ell(3.5, 3.5, 2.2, 2.2, '#ff8a6a');
-    var a = fr * PI / 4; g.line(3.5 - Math.cos(a) * 3, 3.5 - Math.sin(a) * 3, 3.5 + Math.cos(a) * 3, 3.5 + Math.sin(a) * 3, '#5a0808');
-    return g.canvas();
-  }
-
-  var SPR = {};
-  function buildSprites() {
-    function both(name, c) { SPR[name] = c; SPR[name + 'L'] = flipX(c); }
-    both('stand', rows(M_STAND, MP)); both('walk1', rows(M_WALK1, MP)); both('walk2', rows(M_WALK2, MP)); both('jump', rows(M_JUMP, MP));
-    SPR.climb1 = rows(M_CLIMB, MP); SPR.climb2 = rows(M_CLIMB2, MP); SPR.life = rows(M_LIFE, MP);
-    SPR.pauline = flipX(rows(P_BASE, PP)); SPR.paulineW = flipX(rows(P_WAVE, PP)); SPR.paulineR = rows(P_BASE, PP);
-    ['idle', 'beatL', 'beatR', 'throw', 'side', 'right', 'back1', 'back2'].forEach(function (p) { SPR['dk_' + p] = dkSprite(p); });
-    SPR.dk_fall = flipY(SPR.dk_idle);
-    for (var i = 0; i < 4; i++) { SPR['bar' + i] = barrelRoll(i, false); SPR['bbar' + i] = barrelRoll(i, true); }
-    SPR.barSide = barrelSide(false); SPR.bbarSide = barrelSide(true);
-    for (i = 0; i < 2; i++) { SPR['fire' + i] = flame(i, false); SPR['cool' + i] = flame(i, true); SPR['fox' + i] = flame(i, false, true); SPR['flame' + i] = fireTop(i); SPR['pulley' + i] = pulley(i * 2); SPR['pulleyB' + i] = pulley(i * 2 + 1); }
-    SPR.hammer = HAMMER; SPR.hammerSide = (function () { var c = mk(10, 12), x = c.getContext('2d'); x.translate(10, 0); x.rotate(PI / 2); x.drawImage(HAMMER, 0, 0); return c; })();
-    SPR.oil = OIL; SPR.hat = HAT; SPR.parasol = PARASOL; SPR.purse = PURSE; SPR.heart = HEART; SPR.rivet = RIVET; SPR.pie = PIE;
-    SPR.spring0 = springSpr(false); SPR.spring1 = springSpr(true);
-    var GC = { r: ['#ff3a5c', '#8a1428'], o: ['#ff8a3d', '#8a3a10'], b: ['#3f6bff', '#16247a'], y: ['#ffb02a', '#7a4a08'] };
-    for (var k in GC) { SPR['g' + k] = girderSeg(GC[k][0], GC[k][1]); for (var o = 0; o < 4; o++) SPR['c' + k + o] = convSeg(GC[k][0], o); }
-  }
-
-  // ── 5 × 7 pixel font ──
-  var FONT = {
-    '0': [14, 17, 19, 21, 25, 17, 14], '1': [4, 12, 4, 4, 4, 4, 14], '2': [14, 17, 1, 2, 4, 8, 31], '3': [31, 2, 4, 2, 1, 17, 14], '4': [2, 6, 10, 18, 31, 2, 2],
-    '5': [31, 16, 30, 1, 1, 17, 14], '6': [6, 8, 16, 30, 17, 17, 14], '7': [31, 1, 2, 4, 8, 8, 8], '8': [14, 17, 17, 14, 17, 17, 14], '9': [14, 17, 17, 15, 1, 2, 12],
-    A: [14, 17, 17, 31, 17, 17, 17], B: [30, 17, 17, 30, 17, 17, 30], C: [14, 17, 16, 16, 16, 17, 14], D: [28, 18, 17, 17, 17, 18, 28], E: [31, 16, 16, 30, 16, 16, 31],
-    F: [31, 16, 16, 30, 16, 16, 16], G: [14, 17, 16, 23, 17, 17, 15], H: [17, 17, 17, 31, 17, 17, 17], I: [14, 4, 4, 4, 4, 4, 14], J: [7, 2, 2, 2, 2, 18, 12],
-    K: [17, 18, 20, 24, 20, 18, 17], L: [16, 16, 16, 16, 16, 16, 31], M: [17, 27, 21, 21, 17, 17, 17], N: [17, 17, 25, 21, 19, 17, 17], O: [14, 17, 17, 17, 17, 17, 14],
-    P: [30, 17, 17, 30, 16, 16, 16], Q: [14, 17, 17, 17, 21, 18, 13], R: [30, 17, 17, 30, 20, 18, 17], S: [15, 16, 16, 14, 1, 1, 30], T: [31, 4, 4, 4, 4, 4, 4],
-    U: [17, 17, 17, 17, 17, 17, 14], V: [17, 17, 17, 17, 17, 10, 4], W: [17, 17, 17, 21, 21, 21, 10], X: [17, 17, 10, 4, 10, 17, 17], Y: [17, 17, 17, 10, 4, 4, 4],
-    Z: [31, 1, 2, 4, 8, 16, 31], '=': [0, 0, 31, 0, 31, 0, 0], '-': [0, 0, 0, 31, 0, 0, 0], '!': [4, 4, 4, 4, 4, 0, 4], '?': [14, 17, 1, 2, 4, 0, 4],
-    '.': [0, 0, 0, 0, 0, 0, 4], ':': [0, 4, 0, 0, 0, 4, 0], "'": [4, 4, 8, 0, 0, 0, 0], ',': [0, 0, 0, 0, 4, 4, 8], ' ': [0, 0, 0, 0, 0, 0, 0]
-  };
+  // ── Lettering: the cabinet's 8 × 8 characters, tinted per use, and the thin digits it pops up for points ──
+  var RED = '#fa0000', WHITE = '#fcfcff', BLUE = '#0000ec', CYAN = '#00fbff';
   var TXT = {};
-  function txtC(s, col) {
-    s = String(s).toUpperCase(); var k = s + '|' + col; if (TXT[k]) return TXT[k];
-    var c = mk(Math.max(1, s.length * 6 - 1), 7), x = c.getContext('2d'); x.fillStyle = col;
-    for (var i = 0; i < s.length; i++) { var gl = FONT[s.charAt(i)] || FONT[' ']; for (var r = 0; r < 7; r++) for (var b = 0; b < 5; b++) if (gl[r] >> (4 - b) & 1) x.fillRect(i * 6 + b, r, 1, 1); }
-    return (TXT[k] = c);
+  function tinted(k, col) {
+    var key = k + col; if (TXT[key]) return TXT[key];
+    var g = SPR[k], c = mk(g.width, g.height), x = c.getContext('2d'); x.drawImage(g, 0, 0);
+    x.globalCompositeOperation = 'source-in'; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height);
+    return (TXT[key] = c);
   }
-  function text(s, x, y, col, center) { var c = txtC(s, col || '#fff'); px.drawImage(c, Math.round(center ? x - c.width / 2 : x), Math.round(y)); }
+  function text(s, x, y, col, center) {
+    s = String(s); if (center) x -= s.length * 4;
+    for (var i = 0; i < s.length; i++) {
+      var ch = s.charAt(i); if (ch !== 'm') ch = ch.toUpperCase(); if (ch === '©') ch = '@';
+      if (ch !== ' ' && SPR['g' + ch]) px.drawImage(tinted('g' + ch, col || WHITE), Math.round(x + i * 8), Math.round(y));
+    }
+  }
+  function points(n, x, y) {
+    var s = String(n); if (!/^[01358]+$/.test(s)) return;
+    for (var i = 0; i < s.length; i++) px.drawImage(SPR['p' + s.charAt(i)], Math.round(x - s.length * 2.5 + i * 5), Math.round(y));
+  }
 
   // ═══ Sound: synthesised, in the spirit of the cabinet ═══════════════════
   var Snd = (function () {
@@ -579,7 +280,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // a conveyor (same, but it carries what's on it), or an elevator car (one piece, moving).
   function plat(x0, ys, o) {
     o = o || {};
-    var p = { x0: x0, x1: x0 + ys.length * 16, ys: ys.slice(), kind: o.kind || 'girder', conv: o.conv || 0, holes: [], id: o.id || '', col: o.col || 'r', solid: o.solid !== false };
+    var p = { x0: x0, x1: o.x1 || x0 + ys.length * 16, ys: ys.slice(), kind: o.kind || 'girder', conv: o.conv || 0, holes: [], id: o.id || '', solid: o.solid !== false };
     p.down = ys[ys.length - 1] > ys[0] ? 1 : ys[ys.length - 1] < ys[0] ? -1 : 0;
     return p;
   }
@@ -591,85 +292,87 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     for (var i = 0; i < p.holes.length; i++) { var h = p.holes[i]; if (me && h[2]) continue; if (x >= h[0] && x < h[1]) return null; }
     return p.ys[Math.min(p.ys.length - 1, Math.floor((x - p.x0) / 16))];
   }
+  // x is the middle of the ladder (its rails are at x - 4 and x + 3); stub: how far up a broken one goes
   function lad(S, x, lo, up, o) {
     o = o || {}; var a = S.plats[lo], b = S.plats[up];
     var l = { x: x, lo: a, up: b, yBot: surf(a, x), yTop: surf(b, x), broken: !!o.broken, deco: !!o.deco, retract: o.retract ? { ext: 1, st: 'up', t: rnd(120, 300) } : null };
-    l.stub = Math.round((l.yBot - l.yTop) * .42);
+    l.stub = o.stub || Math.round((l.yBot - l.yTop) * .42);
     S.lads.push(l); return l;
   }
   // kinds: 1 = 25 m (girders and barrels), 2 = 50 m (conveyors), 3 = 75 m (elevators), 4 = 100 m (rivets)
+  // 25, 50 and 75 m are laid out exactly as the cabinet draws them (measured from its screens)
   var SEQS = [[1, 4], [1, 3, 4], [1, 2, 3, 4], [1, 2, 1, 3, 4], [1, 2, 1, 3, 1, 4]];
   function stageList(level) { return SEQS[Math.min(level, 5) - 1]; }
   function buildStage(kind) {
-    var S = { kind: kind, plats: [], lads: [], hammers: [], items: [], oil: null, dk: null, pauline: null, start: null, elev: null, rivets: [], goal: null };
+    var S = { kind: kind, plats: [], lads: [], hammers: [], items: [], oil: null, dk: null, pauline: null, start: null, elev: null, rivets: [], goal: null, walls: null };
     var P = function (x0, ys, o) { S.plats.push(plat(x0, ys, o)); return S.plats.length - 1; };
     if (kind === 1) {
-      var g0 = P(0, [248, 248, 248, 248, 248, 248, 248, 247, 246, 245, 244, 243, 242, 241], { col: 'r' });
-      var g1 = P(0, seq(208, 13, 1), { col: 'r' });
-      var g2 = P(16, seq(188, 13, -1), { col: 'r' });
-      var g3 = P(0, seq(142, 13, 1), { col: 'r' });
-      var g4 = P(16, seq(122, 13, -1), { col: 'r' });
-      var g5 = P(0, [84, 84, 84, 84, 84, 84, 84, 84, 84, 85, 86, 87, 88], { col: 'r', id: 'dk' });
-      var top = P(88, [56, 56, 56], { col: 'r', id: 'top' });
-      lad(S, 84, g0, g1, { broken: true }); lad(S, 188, g0, g1);
+      var g0 = P(0, [248, 248, 248, 248, 248, 248, 248, 247, 246, 245, 244, 243, 242, 241]);
+      var g1 = P(0, seq(208, 13, 1));
+      var g2 = P(16, seq(187, 13, -1));
+      var g3 = P(0, seq(142, 13, 1));
+      var g4 = P(16, seq(121, 13, -1));
+      var g5 = P(0, [84, 84, 84, 84, 84, 84, 84, 84, 84, 85, 86, 87, 88], { id: 'dk' });
+      var top = P(88, [56, 56, 56], { id: 'top' });
+      lad(S, 84, g0, g1, { broken: true, stub: 8 }); lad(S, 188, g0, g1);
       lad(S, 36, g1, g2); lad(S, 100, g1, g2);
-      lad(S, 68, g2, g3, { broken: true }); lad(S, 116, g2, g3); lad(S, 188, g2, g3);
-      lad(S, 36, g3, g4); lad(S, 84, g3, g4, { broken: true }); lad(S, 172, g3, g4);
-      lad(S, 76, g4, g5, { broken: true }); lad(S, 188, g4, g5);
-      lad(S, 124, g5, top);
-      S.decoLads = [{ x: 52, y0: 24, y1: 84 }, { x: 68, y0: 24, y1: 84 }];
-      S.hammers.push({ x: 168, y: surf(S.plats[g1], 168) - 26 }, { x: 28, y: surf(S.plats[g4], 28) - 26 });
-      S.oil = { x: 16, y: 248, lit: false };
-      S.dk = { x: 40, y: 84, mode: 'barrels' }; S.pauline = { x: 104, y: 56 };
+      lad(S, 68, g2, g3, { broken: true, stub: 8 }); lad(S, 116, g2, g3); lad(S, 188, g2, g3);
+      lad(S, 36, g3, g4); lad(S, 76, g3, g4); lad(S, 172, g3, g4, { broken: true, stub: 8 });
+      lad(S, 92, g4, g5, { broken: true, stub: 13 }); lad(S, 188, g4, g5);
+      lad(S, 132, g5, top);
+      S.hammers.push({ x: 21, y: 97 }, { x: 172, y: 189 });
+      S.oil = { x: 24, y: 248, fx: 16, fy: 216, lit: false, flare: 0 };
+      S.dk = { x: DKX, y: 84, mode: 'barrels' }; S.pauline = { x: 96, y: 56 };
       S.start = { x: 56, p: g0 }; S.goal = S.plats[top];
     } else if (kind === 2) {
-      var f0 = P(0, flat(248, 14), { col: 'o' });
-      var c1 = P(16, flat(208, 12), { kind: 'conv', conv: .5, col: 'o' });
-      var m2l = P(0, flat(168, 6), { kind: 'conv', conv: -.5, col: 'o' });
-      var m2c = P(96, flat(168, 2), { col: 'o' });
-      var m2r = P(128, flat(168, 6), { kind: 'conv', conv: .5, col: 'o' });
-      var p3 = P(0, flat(128, 14), { col: 'o' });
-      var c4 = P(0, flat(88, 14), { kind: 'conv', conv: -.5, col: 'o', id: 'top' });
-      var ptop = P(88, flat(56, 3), { col: 'o' });
-      lad(S, 32, f0, c1); lad(S, 112, f0, c1); lad(S, 192, f0, c1);
-      lad(S, 40, c1, m2l); lad(S, 184, c1, m2r);
-      lad(S, 24, m2l, p3); lad(S, 72, m2l, p3); lad(S, 152, m2r, p3); lad(S, 200, m2r, p3);
-      lad(S, 24, p3, c4, { retract: true }); lad(S, 200, p3, c4, { retract: true });
-      lad(S, 124, c4, ptop, { deco: true });
-      S.hammers.push({ x: 24, y: 168 - 26 }, { x: 200, y: 208 - 26 });
-      S.items.push({ kind: 'parasol', x: 56, y: 128 }, { kind: 'purse', x: 176, y: 128 }, { kind: 'hat', x: 200, y: 248 });
-      S.oil = { x: 112, y: 168, lit: true };
-      S.dk = { x: 112, y: 88, mode: 'walk' }; S.pauline = { x: 104, y: 56 };
-      S.start = { x: 48, p: f0 }; S.goal = S.plats[c4];
-      S.pieSpots = [{ p: c1 }, { p: m2l, from: 96 }, { p: m2r, from: 128 }];
+      var f0 = P(0, flat(248, 14));
+      var c1 = P(0, flat(208, 14), { kind: 'conv', conv: .5 });
+      var mL = P(8, flat(168, 3), { x1: 48 }), mC = P(64, flat(168, 6), { x1: 152 }), mR = P(168, flat(168, 3), { x1: 216 });
+      var cL = P(0, flat(128, 6), { kind: 'conv', conv: .5 }), cR = P(128, flat(128, 6), { kind: 'conv', conv: -.5 });
+      var c4 = P(0, flat(88, 14), { kind: 'conv', conv: -.5, id: 'dk' });
+      var ptop = P(88, flat(56, 3), { id: 'top' });
+      [28, 84, 140, 196].forEach(function (x) { lad(S, x, f0, c1); });
+      lad(S, 68, c1, mC); lad(S, 148, c1, mC);
+      lad(S, 28, mL, cL); lad(S, 84, mC, cL); lad(S, 140, mC, cR); lad(S, 196, mR, cR);
+      lad(S, 20, cL, c4, { retract: true, stub: 16 }); lad(S, 204, cR, c4, { retract: true, stub: 16 });
+      lad(S, 132, c4, ptop);
+      S.hammers.push({ x: 20, y: 138 }, { x: 105, y: 176 });
+      S.items.push({ kind: 'hat', x: 68, y: 168 }, { kind: 'parasol', x: 204, y: 168 });
+      S.oil = { x: 112, y: 144, fx: 104, fy: 112, lit: true, flare: 0 };
+      S.dk = { x: 112, y: 88, mode: 'walk' }; S.pauline = { x: 96, y: 56 };
+      S.start = { x: 104, p: f0 }; S.goal = S.plats[ptop];
+      S.pieSpots = [{ p: c1 }, { p: cL }, { p: cR }];
     } else if (kind === 3) {
-      var a0 = P(0, flat(248, 3), { col: 'o' });
-      var b0 = P(64, flat(248, 3), { col: 'o' });
-      var r0 = P(144, flat(248, 5), { col: 'o' });
-      var m1 = P(72, flat(208, 2), { col: 'o' });
-      var m2 = P(72, flat(168, 2), { col: 'o' });
-      var m3 = P(72, flat(128, 2), { col: 'o' });
-      var r1 = P(152, flat(208, 3), { col: 'o' });
-      var r2 = P(168, flat(168, 3), { col: 'o' });
-      var r3 = P(176, flat(128, 3), { col: 'o' });
-      var tg = P(0, flat(84, 14), { col: 'o' });
-      var pt = P(88, flat(56, 4), { col: 'o', id: 'top' });
-      lad(S, 88, b0, m1); lad(S, 80, m1, m2); lad(S, 96, m2, m3);
-      lad(S, 168, r0, r1); lad(S, 184, r1, r2); lad(S, 212, r2, r3); lad(S, 192, r3, tg);
-      lad(S, 144, tg, pt);
+      var a0 = P(0, flat(248, 2)), b0 = P(48, flat(248, 3)), r0 = P(112, flat(248, 7));
+      P(32, [240], { x1: 48 }); P(96, [240], { x1: 112 });   // the elevator motors at the bottom
+      var l232 = P(0, [232, 232], { x1: 24 }), l192 = P(0, [192, 192], { x1: 24 }), l136 = P(0, [136, 136], { x1: 24 });
+      var m136 = P(56, flat(136, 2)), m208 = P(64, [208, 208], { x1: 88 });
+      var tg = P(0, flat(88, 11), { x1: 168, id: 'dk' });
+      var pt = P(88, flat(56, 3), { id: 'top' });
+      P(120, [232, 232], { x1: 144 }); P(152, [224], { x1: 168 }); P(176, [216], { x1: 192 });
+      var s4 = P(200, [208, 208], { x1: 224 }), s5 = P(208, [184], { x1: 224 }), s6 = P(184, [176], { x1: 200 });
+      P(160, [168], { x1: 176 }); var s8 = P(136, [160], { x1: 152 });
+      var s9 = P(184, flat(144, 3), { x1: 224 }), s10 = P(128, [128, 128], { x1: 152 }), s11 = P(160, [120], { x1: 176 });
+      P(184, [112], { x1: 200 }); var s13 = P(208, [104], { x1: 224 });
+      lad(S, 12, l232, l192); lad(S, 20, l192, l136); lad(S, 68, m208, m136); lad(S, 84, m208, m136);
+      lad(S, 132, tg, pt); lad(S, 140, s8, s10); lad(S, 164, s11, tg); lad(S, 188, s6, s9); lad(S, 212, s9, s13); lad(S, 212, s4, s5);
+      // the motor boxes at the foot of each shaft stand up out of the floor: you can only step across onto a car level with you
+      S.walls = [{ x0: 32, x1: 48, y: 240 }, { x0: 96, x1: 112, y: 240 }];
       // two elevator shafts: the left one goes up, the right one goes down
-      S.elev = [{ x: 48, dir: -1, yTop: 100, yBot: 248, cars: [] }, { x: 120, dir: 1, yTop: 100, yBot: 248, cars: [] }];
+      S.elev = [{ x: 32, dir: -1, yTop: 104, yBot: 248, cars: [] }, { x: 96, dir: 1, yTop: 104, yBot: 248, cars: [] }];
       S.elev.forEach(function (sh) { for (var y = sh.yTop + 12; y < sh.yBot; y += 44) addCar(S, sh, y); });
-      S.items.push({ kind: 'parasol', x: 88, y: 128 }, { kind: 'purse', x: 192, y: 168 }, { kind: 'hat', x: 208, y: 248 });
-      S.dk = { x: 40, y: 84, mode: 'springs' }; S.pauline = { x: 112, y: 56 };
+      S.items.push({ kind: 'parasol', x: 10, y: 136 }, { kind: 'hat', x: 74, y: 208 }, { kind: 'purse', x: 214, y: 104 });
+      S.fireSpots = [{ x: 72, p: m136 }, { x: 200, p: s9 }];
+      S.dk = { x: DKX, y: 88, mode: 'springs' }; S.pauline = { x: 96, y: 56 };
       S.start = { x: 16, p: a0 }; S.goal = S.plats[pt];
+      void b0; void r0;
     } else {
-      var q0 = P(0, flat(248, 14), { col: 'b' });
-      var q1 = P(8, flat(208, 13), { col: 'b' });
-      var q2 = P(16, flat(168, 12), { col: 'b' });
-      var q3 = P(24, flat(128, 11), { col: 'b' });
-      var q4 = P(32, flat(88, 10), { col: 'b', id: 'dk' });
-      P(88, flat(48, 3), { col: 'b', id: 'top' });
+      var q0 = P(0, flat(248, 14));
+      var q1 = P(8, flat(208, 13));
+      var q2 = P(16, flat(168, 12));
+      var q3 = P(24, flat(128, 11));
+      var q4 = P(32, flat(88, 10), { id: 'dk' });
+      P(88, flat(48, 3), { id: 'top' });
       lad(S, 20, q0, q1); lad(S, 112, q0, q1); lad(S, 204, q0, q1);
       lad(S, 28, q1, q2); lad(S, 88, q1, q2); lad(S, 136, q1, q2); lad(S, 196, q1, q2);
       lad(S, 36, q2, q3); lad(S, 112, q2, q3); lad(S, 188, q2, q3);
@@ -713,8 +416,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     ST = buildStage(kindNow());
     ST.bonus = bonusStart(G.level); ST.bonusT = 0; ST.t = 0;
     ST.barrels = []; ST.fires = []; ST.pies = []; ST.springs = []; ST.pops = []; ST.sparks = [];
-    ST.dkT = 90; ST.dkPose = 'idle'; ST.thrown = 0; ST.firstDrop = kindNow() === 1; ST.foxT = 120; ST.pieT = 60; ST.springT = 80; ST.shake = 0;
-    if (ST.kind === 3) for (var i = 0; i < 2; i++) ST.fires.push(newFire(i ? 196 : 88, i ? ST.plats[8] : ST.plats[4]));
+    ST.dkT = 90; ST.dkPose = 'front'; ST.thrown = 0; ST.firstDrop = kindNow() === 1; ST.foxT = 120; ST.pieT = 60; ST.springT = 80; ST.shake = 0;
+    if (ST.kind === 3) ST.fireSpots.forEach(function (f) { ST.fires.push(newFire(f.x, ST.plats[f.p])); });
     if (ST.kind === 2) { ST.convT = rnd(240, 420); ST.topT = rnd(200, 360); }
     var s = ST.start;
     G.m = { x: s.x, y: surf(ST.plats[s.p], s.x), p: ST.plats[s.p], st: 'ground', dir: 1, vy: 0, vx: 0, apex: 0, anim: 0, ham: 0, hamT: 0, over: [], lad: null, walked: 0 };
@@ -762,7 +465,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if (jp && !m.ham) { m.st = 'jump'; m.vy = -JV; m.vx = dx * JX; if (dx) m.dir = dx; m.apex = m.y; m.over = []; Snd.jump(); return; }
       var l = !m.ham && U ? ladAt(m.x, m.y, true) : !m.ham && D ? ladAt(m.x, m.y, false) : null;
       if (l && !(U && climbTop(l) >= l.yBot - 1)) { m.st = 'climb'; m.lad = l; m.x = l.x; m.anim = 0; return; }
-      if (dx) { m.dir = dx; m.x += dx * WALK; m.anim += WALK; if (Math.floor(m.anim / 6) !== Math.floor((m.anim - WALK) / 6)) Snd.walk(); }
+      var blocked = dx && ST.walls && ST.walls.some(function (w) { var nx = m.x + dx * WALK; return m.y > w.y && nx > w.x0 - 5 && nx < w.x1 + 5 && !ST.elev.some(function (sh) { return sh.x === w.x0 && sh.cars.some(function (c) { return Math.abs(c.ys[0] - m.y) <= 6; }); }); });
+      if (dx) { m.dir = dx; if (!blocked) { m.x += dx * WALK; m.anim += WALK; if (Math.floor(m.anim / 6) !== Math.floor((m.anim - WALK) / 6)) Snd.walk(); } }
       m.x = clamp(m.x, 5, W - 5);
       p.holes.forEach(function (h) { if (h[2] && (m.x < h[0] - 6 || m.x > h[1] + 6)) h[2] = false; });
       var s = surf(p, m.x, true);
@@ -839,32 +543,33 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       ST.dkT--;
       if (ST.firstDrop) {
         // the first barrel of each life: held overhead, then dropped straight down the left side to light the oil drum
-        if (ST.dkT > 30) ST.dkPose = 'throw';
-        else if (ST.dkT <= 0) { ST.firstDrop = false; ST.barrels.push({ x: 22, y: 70, st: 'drop', vy: 0, blue: true, fr: 0 }); ST.dkPose = 'idle'; ST.dkT = 120; Snd.barrel(); }
+        if (ST.dkT > 30) ST.dkPose = 'holdB';
+        else if (ST.dkT <= 0) { ST.firstDrop = false; ST.barrels.push({ x: 24, y: 70, st: 'drop', vy: 0, blue: true, fr: 0 }); ST.dkPose = 'front'; ST.dkT = 120; Snd.barrel(); }
         return;
       }
-      if (ST.dkT === 40) ST.dkPose = 'side';
-      else if (ST.dkT === 20) ST.dkPose = 'idle';
-      else if (ST.dkT === 8) ST.dkPose = 'right';
+      // reach for the pile, lift a barrel, set it rolling
+      if (ST.dkT === 44) ST.dkPose = 'grabL';
+      else if (ST.dkT === 30) ST.dkPose = 'hold';
+      else if (ST.dkT === 14) ST.dkPose = 'side';
       else if (ST.dkT <= 0) {
         ST.thrown++;
         var wild = G.level >= 2 && Math.random() < .12 + .02 * G.level, blue = !wild && ST.thrown % 7 === 0;
         if (wild) ST.barrels.push({ x: 60, y: 84, st: 'wild', vx: (G.m.x > 60 ? 1 : -1) * .6, vy: -1, blue: true, fr: 0, bounces: 0, lastP: ST.plats[5] });
-        else ST.barrels.push({ x: 66, y: 84, p: ST.plats[5], st: 'roll', dir: 1, blue: blue, fr: 0 });
-        ST.dkPose = 'idle'; Snd.barrel();
+        else ST.barrels.push({ x: 72, y: 84, p: ST.plats[5], st: 'roll', dir: 1, blue: blue, fr: 0 });
+        ST.dkPose = 'front'; Snd.barrel();
         ST.dkT = Math.max(70, 160 - G.level * 16) + Math.floor(rnd(0, 50));
-      } else if (ST.dkT > 60 && ST.dkT % 40 < 20) ST.dkPose = ST.dkT % 80 < 40 ? 'beatL' : 'beatR';
-      else if (ST.dkT > 40) ST.dkPose = 'idle';
+      } else if (ST.dkT > 60 && ST.dkT % 40 < 20) ST.dkPose = ST.dkT % 80 < 40 ? 'grin' : 'grinR';
+      else if (ST.dkT > 44) ST.dkPose = 'front';
     } else if (dk.mode === 'walk') {
       // 50 m: he walks the top conveyor, turning at either end of his patch
-      dk.vx = dk.vx || .4; dk.x += dk.vx; if (dk.x < 80 || dk.x > 144) dk.vx = -dk.vx;
-      ST.dkPose = Math.floor(frame / 20) % 2 ? 'beatL' : 'beatR';
+      dk.vx = dk.vx || .4; dk.x += dk.vx; if (dk.x < 96 || dk.x > 152) dk.vx = -dk.vx;
+      ST.dkPose = Math.floor(frame / 40) % 3 === 2 ? 'front' : Math.floor(frame / 20) % 2 ? 'grin' : 'grinR';
     } else if (dk.mode === 'springs') {
-      ST.springT--; ST.dkPose = ST.springT < 20 ? 'right' : Math.floor(frame / 24) % 2 ? 'beatL' : 'idle';
-      if (ST.springT <= 0) { ST.springs.push({ x: 60, y: 84, vx: rnd(1.1, 1.5), vy: -2.2, base: 84, st: 'hop', fr: 0 }); ST.springT = Math.max(70, 140 - G.level * 12) + Math.floor(rnd(0, 40)); Snd.spring(); }
+      ST.springT--; ST.dkPose = ST.springT < 20 ? 'grinR' : Math.floor(frame / 24) % 2 ? 'grin' : 'front';
+      if (ST.springT <= 0) { ST.springs.push({ x: 66, y: 88, vx: rnd(1.1, 1.5), vy: -2.2, base: 88, st: 'hop', fr: 0 }); ST.springT = Math.max(70, 140 - G.level * 12) + Math.floor(rnd(0, 40)); Snd.spring(); }
     } else if (dk.mode === 'pace') {
       dk.vx = dk.vx || .35; dk.x += dk.vx; if (dk.x < 72 || dk.x > 152) dk.vx = -dk.vx;
-      ST.dkPose = Math.floor(frame / 30) % 3 === 0 ? 'beatL' : Math.floor(frame / 30) % 3 === 1 ? 'idle' : 'beatR';
+      ST.dkPose = Math.floor(frame / 30) % 3 === 0 ? 'grin' : Math.floor(frame / 30) % 3 === 1 ? 'front' : 'grinR';
     }
   }
   function dkBox() { var dk = ST.dk; return { x0: dk.x - 18, x1: dk.x + 18, y0: dk.y - 30, y1: dk.y }; }
@@ -920,6 +625,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function oilHit(blue) {
     var o = ST.oil; if (!o) return;
     if (!o.lit) { o.lit = true; Snd.fire(); }
+    o.flare = 40;
     if (blue && ST.fires.length < maxFires()) { ST.fires.push(newFire(o.x + 6, ST.plats[0], true)); Snd.fire(); }
   }
   function maxFires() { return ST.kind === 1 ? Math.min(5, 1 + G.level) : ST.kind === 2 ? Math.min(5, 2 + G.level) : ST.kind === 3 ? 2 : Math.min(5, 1 + G.level); }
@@ -967,7 +673,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if (f.skip && Math.abs(f.skip.x - f.x) > 3) f.skip = null;
     });
     // 50 m: fireballs come out of the burning drum in the middle; 100 m: firefoxes appear on the floors
-    if (ST.kind === 2 && ST.fires.length < maxFires() && --ST.foxT <= 0) { ST.foxT = Math.floor(rnd(240, 420)); var fb = newFire(112, ST.plats[3], true); fb.y = 150; fb.vx = Math.random() < .5 ? -.7 : .7; ST.fires.push(fb); Snd.fire(); }
+    if (ST.kind === 2 && ST.fires.length < maxFires() && --ST.foxT <= 0) { ST.foxT = Math.floor(rnd(240, 420)); var fb = newFire(112, ST.plats[5], true); fb.y = 118; fb.vx = Math.random() < .5 ? -.7 : .7; ST.fires.push(fb); Snd.fire(); }
     if (ST.kind === 4 && ST.fires.length < maxFires() && --ST.foxT <= 0) {
       ST.foxT = Math.floor(rnd(200, 360));
       var fl = ST.plats[1 + Math.floor(Math.random() * 4)], fx = Math.random() < .5 ? fl.x0 + 8 : fl.x1 - 8;
@@ -978,7 +684,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // ── 50 m: cement pans, conveyors, sliding ladders ──
   function step50() {
     if (--ST.convT <= 0) { ST.convT = rnd(260, 480); ST.plats[1].conv = -ST.plats[1].conv; }
-    if (--ST.topT <= 0) { ST.topT = rnd(220, 400); ST.plats[6].conv = -ST.plats[6].conv; }
+    if (--ST.topT <= 0) { ST.topT = rnd(220, 400); ST.plats[7].conv = -ST.plats[7].conv; }
     if (--ST.pieT <= 0) {
       ST.pieT = Math.max(50, 120 - G.level * 10) + rnd(0, 60);
       var sp = ST.pieSpots[Math.floor(Math.random() * ST.pieSpots.length)], p = ST.plats[sp.p];
@@ -987,7 +693,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     }
     for (var i = ST.pies.length - 1; i >= 0; i--) {
       var q = ST.pies[i];
-      if (q.st === 'ride') { q.x += q.p.conv; if (surf(q.p, q.x) == null) { q.st = 'fall'; q.vy = 0; } }
+      if (q.st === 'ride') {
+        q.x += q.p.conv;
+        // the belts either side of the burning drum feed pans into it
+        if ((q.p === ST.plats[5] && q.x > 92) || (q.p === ST.plats[6] && q.x < 132)) { ST.pies.splice(i, 1); continue; }
+        if (surf(q.p, q.x) == null) { q.st = 'fall'; q.vy = 0; }
+      }
       else { q.vy += .15; q.y += q.vy; if (q.y > H + 10) ST.pies.splice(i, 1); }
     }
     ST.lads.forEach(function (l) {
@@ -1064,9 +775,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var b = ST.bonus; G.stats.stages++;
     if (heightNow() > G.stats.best || G.level > (G.stats.bestL || 0)) { G.stats.best = heightNow(); G.stats.bestL = G.level; }
     G.stats.heights.push({ l: G.level, h: heightNow(), k: ST.kind, b: b });
-    add(b, G.m.x, G.m.y - 24);
+    add(b);
     if (ST.kind === 4) { Snd.win(); setPhase('win', 330); Kit.haptic('success'); }
-    else { Snd.clear(); setPhase('clear', 230); Kit.haptic('success'); }
+    else { Snd.clear(); setPhase('clear', 230); Kit.haptic('success'); ST.barrels = []; ST.fires = []; ST.springs = []; ST.pies = []; }
   }
   function nextStage() {
     G.si++;
@@ -1112,25 +823,25 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     ST.bend = [0, 0, 0, 0, 0, 0, 1];
     ST.plats.forEach(function (p, i) { var mid = p.ys[Math.floor(p.ys.length / 2)]; if (i < 6) p.ys = p.ys.map(function () { return mid; }); });
     G.m = { x: -40, y: 248, st: 'ground', dir: 1, anim: 0, ham: 0, hamT: 0, over: [] };
-    ST.dk.x = 112; ST.dk.y = 248; ST.dkPose = 'back1'; ST.pauline.carried = true;
+    ST.dk.x = 112; ST.dk.y = 248; ST.dkPose = 'climb'; ST.pauline.carried = true;
     setPhase('intro', INTRO_T); Snd.loop(null);
   }
   function introStep() {
     var t = INTRO_T - pt, dk = ST.dk;
     if (t < 200) {
       // climb up the middle with Pauline
-      dk.y = 248 - (248 - 84) * Math.min(1, t / 190); dk.x = 112; ST.dkPose = Math.floor(t / 10) % 2 ? 'back1' : 'back2';
+      dk.y = 248 - (248 - 84) * Math.min(1, t / 190); dk.x = 112; ST.dkPose = 'climb';
       if (t % 20 === 0) Snd.climb();
     } else if (t < 230) {
       // up to the top: Pauline set down on her girder
-      ST.pauline.carried = false; dk.y = 84; ST.dkPose = 'idle';
+      ST.pauline.carried = false; dk.y = 84; ST.dkPose = 'front';
     } else {
       // five stomps leftward, each one bending a girder
       var k = t - 230, hop = Math.floor(k / 44), f = (k % 44) / 44;
       if (hop < 5) {
-        dk.x = 112 - (hop + f) * 14.4; dk.y = 84 - Math.sin(f * PI) * 14; ST.dkPose = f < .5 ? 'throw' : 'idle';
+        dk.x = 112 - (hop + f) * 13.6; dk.y = 84 - Math.sin(f * PI) * 14; ST.dkPose = 'front';
         if (k % 44 === 43) { Snd.stomp(); ST.shake = 6; ST.bend[4 - hop] = 1; ST.bend[5] = Math.max(ST.bend[5], hop >= 4 ? 1 : 0); Kit.haptic('medium'); }
-      } else { dk.x = 40; dk.y = 84; ST.dkPose = Math.floor(k / 16) % 2 ? 'beatL' : 'beatR'; }
+      } else { dk.x = DKX; dk.y = 84; ST.dkPose = Math.floor(k / 16) % 2 ? 'grin' : 'grinR'; }
     }
     // girders ease into their crooked shapes
     ST.plats.forEach(function (p, i) {
@@ -1141,130 +852,136 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
 
   // ═══ Drawing ════════════════════════════════════════════════════════════
-  function spr(c, x, y) { px.drawImage(c, Math.round(x), Math.round(y)); }
+  function spr(c, x, y) { if (c) px.drawImage(c, Math.round(x), Math.round(y)); }
+  // a sprite at the spot it held on the cabinet's screen, moved by (dx, dy)
+  function sprAt(k, dx, dy) { var p = POS[k]; if (p && SPR[k]) spr(SPR[k], p[0] + (dx || 0), p[1] + (dy || 0)); }
   function drawStage() {
-    var colKey = ST.kind === 1 ? 'r' : ST.kind === 4 ? 'b' : 'o';
-    // ladders behind the girders
-    var lc = ST.kind === 1 ? '#3fd0e8' : ST.kind === 4 ? '#ffd84a' : '#ffd84a';
-    if (ST.decoLads) ST.decoLads.forEach(function (d) { ladder(d.x, d.y0, d.y1, lc); });
-    if (!ST.noLads) ST.lads.forEach(function (l) {
-      var yT = surf(l.up, l.x), yB = surf(l.lo, l.x); if (yT == null || yB == null) { yT = l.yTop; yB = l.yBot; }
-      if (l.broken) { ladder(l.x, yT, yT + 6, lc); ladder(l.x, yB - l.stub, yB, lc); }
-      else if (l.retract) { var len = yB - yT; ladder(l.x, yB - l.stub, yB, lc); ladder(l.x, yT + (len - l.stub) * (1 - l.retract.ext), yT + (len - l.stub) * (1 - l.retract.ext) + (len - l.stub), lc); }
-      else ladder(l.x, yT, yB, lc);
+    if (ST.kind === 4) draw100();
+    else if (phase === 'intro') {
+      // the opening: the 25 m picture with its girders drawn piece by piece as Kong bends them
+      px.drawImage(BG.b1bare, 0, 0);
+      ST.plats.forEach(function (p) { for (var i = 0; i < p.ys.length; i++) spr(SPR.g25, p.x0 + i * 16, p.ys[i]); });
+    } else px.drawImage(BG['b' + ST.kind], 0, 0);
+    // 50 m: the two ladders under the top conveyor slide up out of reach and back
+    if (ST.kind === 2) ST.lads.forEach(function (l) {
+      if (!l.retract) return; var c = SPR.lad50, off = Math.round((1 - l.retract.ext) * l.stub);
+      px.drawImage(c, 0, off, c.width, c.height - off, l.x - 5, 96, c.width, c.height - off);
     });
-    // elevator ropes and pulleys
-    if (ST.elev) ST.elev.forEach(function (sh) {
-      px.fillStyle = '#ffd84a'; px.fillRect(sh.x + 1, sh.yTop - 6, 1, sh.yBot - sh.yTop + 14); px.fillRect(sh.x + 14, sh.yTop - 6, 1, sh.yBot - sh.yTop + 14);
-      px.fillStyle = '#ff8a3d'; px.fillRect(sh.x - 1, sh.yTop - 10, 18, 4); px.fillRect(sh.x - 1, sh.yBot + 8, 18, 4);
-    });
-    var cf = Math.floor(frame / 6) % 4;
+    // 75 m: elevator cars, and the motors at the foot of the shafts turning
+    if (ST.elev) {
+      ST.elev.forEach(function (sh) { sh.cars.forEach(function (c) { spr(SPR.car, c.x0, c.ys[0]); }); });
+      if (Math.floor(frame / 8) % 2) { sprAt('motor1'); sprAt('motor1', 64); }
+    }
+  }
+  // 100 m, built from the cabinet's own girder and ladder pieces
+  function draw100() {
     ST.plats.forEach(function (p) {
-      for (var i = 0; i < p.ys.length; i++) {
-        var x = p.x0 + i * 16, y = p.ys[i];
-        var img = p.kind === 'conv' ? SPR['c' + colKey + ((p.conv > 0 ? 4 - cf : cf) % 4)] : SPR['g' + (p.kind === 'elev' ? 'y' : colKey)];
-        spr(img, x, y);
-      }
-      if (p.kind === 'conv') { spr(SPR['pulley' + (Math.floor(frame / 8) % 2)], p.x0 - 4, p.ys[0]); spr(SPR['pulleyB' + (Math.floor(frame / 8) % 2)], p.x1 - 4, p.ys[0]); }
-      // holes where rivets came out
+      for (var i = 0; i < p.ys.length; i++) spr(SPR.g100, p.x0 + i * 16, p.ys[i]);
       p.holes.forEach(function (h) { px.fillStyle = '#000'; px.fillRect(h[0], p.ys[0], h[1] - h[0], 8); });
     });
+    if (!ST.noLads) ST.lads.forEach(function (l) {
+      for (var y = l.yTop + 8; y < l.yBot; y += 8) px.drawImage(SPR.l100, 0, 0, 8, Math.min(8, l.yBot - y), l.x - 4, y, 8, Math.min(8, l.yBot - y));
+    });
     ST.rivets.forEach(function (r) { if (r.on) spr(SPR.rivet, r.x, r.y); });
-  }
-  function ladder(x, y0, y1, col) {
-    if (y1 <= y0) return; px.fillStyle = col;
-    px.fillRect(Math.round(x - 4), Math.round(y0), 1, Math.round(y1 - y0)); px.fillRect(Math.round(x + 3), Math.round(y0), 1, Math.round(y1 - y0));
-    for (var y = Math.ceil(y0 / 4) * 4 + 2; y < y1; y += 4) px.fillRect(Math.round(x - 4), y, 8, 1);
+    spr(SPR.bonus100, 168, 32);
   }
   function drawMario() {
     var m = G.m, L = m.dir < 0 ? 'L' : '', img;
     if (m.st === 'dead') {
-      var t = 170 - pt, c = SPR.stand; px.save(); px.translate(Math.round(m.x), Math.round(m.y - 8));
+      // he spins, then lies still
+      var t = 170 - pt, c = SPR.jm_stand; px.save(); px.translate(Math.round(m.x), Math.round(m.y - 8));
       if (t < 70) px.rotate(Math.floor(t / 6) * PI / 2); else px.rotate(PI / 2);
       px.drawImage(c, -8, -8); px.restore();
-      if (t >= 70) { px.strokeStyle = '#ffe04a'; px.beginPath(); px.ellipse(Math.round(m.x) + 6, Math.round(m.y) - 18, 6, 2, 0, 0, PI * 2); px.stroke(); }
+      if (t >= 70) { px.fillStyle = '#fab900'; for (var a = 0; a < 8; a++) px.fillRect(Math.round(m.x + 6 + Math.cos(a * PI / 4) * 6), Math.round(m.y - 18 + Math.sin(a * PI / 4) * 2), 1, 1); }
       return;
     }
-    if (m.st === 'climb') img = Math.floor(m.anim / 5) % 2 ? SPR.climb2 : SPR.climb1;
-    else if (m.st === 'jump' || m.st === 'fall') img = SPR['jump' + L];
-    else if (m.ham) img = SPR['walk1' + L];
-    else { var moving = ctl.l || ctl.r; img = !moving ? SPR['stand' + L] : SPR[['walk1', 'stand', 'walk2', 'stand'][Math.floor(m.anim / 4) % 4] + L]; }
+    if (m.st === 'climb') {
+      var l = m.lad, k = Math.floor(m.anim / 4) % 2;
+      img = l && !l.broken && m.y - l.yTop < 10 ? SPR[k ? 'jm_over2' : 'jm_over1'] : SPR[k ? 'jm_climb2' : 'jm_climb1'];
+    } else if (m.st === 'jump' || m.st === 'fall') img = SPR['jm_jump' + L];
+    else { var moving = ctl.l || ctl.r || m.ham; img = !moving ? SPR['jm_stand' + L] : SPR[['jm_walk1', 'jm_stand', 'jm_walk2'][Math.floor(m.anim / 3) % 3] + L]; }
     spr(img, m.x - 8, m.y - 16);
     if (m.ham) {
       var flash = m.ham < 120 && Math.floor(frame / 4) % 2, hb = hamBox();
-      if (!flash) { if (hb.up) spr(SPR.hammer, m.x - 6, m.y - 30); else spr(m.dir > 0 ? SPR.hammerSide : flipCache('hammerSide'), m.x + m.dir * 7 - 5, m.y - 13); }
+      if (!flash) { if (hb.up) spr(SPR.hammer, m.x - 5, m.y - 28); else spr(m.dir > 0 ? SPR.hammerSide : flipCache('hammerSide'), m.dir > 0 ? m.x + 2 : m.x - 14, m.y - 12); }
     }
   }
   var FLIPC = {};
   function flipCache(k) { return FLIPC[k] || (FLIPC[k] = flipX(SPR[k])); }
+  // Kong's poses: front, grin (one fist up) and grinR, grabL (reaching for the barrel pile), hold and holdB
+  // (a barrel in his hands), side (setting it rolling)
   function drawDK() {
-    var dk = ST.dk, img = SPR['dk_' + (ST.dkPose || 'idle')];
-    var y = dk.y - 33, x = dk.x - 24;
+    var dk = ST.dk, dx = dk.x - DKX, dy = dk.y - DKY;
     if (phase === 'win') {
       // the rivets are out: he tumbles down head first
       var t = 330 - pt, fy = Math.min(248, 88 + t * t * .02);
-      spr(SPR.dk_fall, x, fy - 33);
-      if (fy >= 248) { for (var i = 0; i < 3; i++) { var a = frame * .1 + i * 2.1; text('*', dk.x + Math.cos(a) * 16, fy - 40 + Math.sin(a) * 4, '#ffe04a', true); } }
+      spr(SPR.dk_fall, POS.dk_front[0] + dx, fy - 32);
       return;
     }
-    if (phase === 'clear') {
-      // he grabs Pauline and climbs off the top
-      var ct = 230 - pt; if (ct > 70) { y -= (ct - 70) * 1.3; img = Math.floor(ct / 8) % 2 ? SPR.dk_back1 : SPR.dk_back2; }
+    if (phase === 'clear' && clearFrame() != null) return;
+    if (phase === 'intro' && ST.dkPose === 'climb') {
+      // carrying Pauline up the ladder (the climb from the end of a stage)
+      var k = Math.floor(frame / 8) % 2 ? 'clr_687' : 'clr_691', o = POS.clr_687;
+      spr(SPR[k], POS[k][0] - o[0] + dk.x - 21, POS[k][1] - o[1] + dk.y - 50);
+      return;
     }
-    spr(img, x, y);
-    // the barrel stack beside him on 25 m, and the barrel he's holding
-    if (ST.kind === 1 && phase !== 'intro') { for (var b = 0; b < 4; b++) spr(SPR.barSide, b % 2 ? 0 : 2, 50 + b * 9 - (b > 1 ? 0 : 0)); }
-    if (ST.dkPose === 'throw' && ST.kind === 1 && phase === 'play') spr(SPR.bbarSide, dk.x - 8, y - 6);
-    if (ST.dkPose === 'side' && ST.kind === 1) spr(SPR.barSide, dk.x - 30, dk.y - 18);
-    if (ST.dkPose === 'right' && ST.kind === 1) spr(SPR.barSide, dk.x + 18, dk.y - 18);
-    if (ST.dkPose === 'right' && ST.kind === 3) spr(SPR.spring0, dk.x + 18, dk.y - 22);
+    var pose = 'dk_' + (ST.dkPose || 'front');
+    sprAt(SPR[pose] ? pose : 'dk_front', dx, dy);
+    if (ST.dkPose === 'side' && ST.kind === 1 && phase === 'play') spr(SPR.bar0, 64 + dx, 74 + dy);
+  }
+  // stage clear: Pauline turns to Jumpman, a heart; then Kong grabs her and climbs away (as on the cabinet)
+  function clearFrame() { var ct = 230 - pt - 60; if (ct < 0) return null; var i = Math.floor(ct / 4); return i < 13 ? 687 + i * 4 : -1; }
+  function drawClear() {
+    var f = clearFrame(), dy = ST.kind === 1 ? 0 : 4;
+    if (f > 0) sprAt('clr_' + f, ST.dk.x - DKX, dy);
+    sprAt(f != null && f >= 707 || f === -1 ? 'heartB' : 'heart');
   }
   function drawPauline() {
-    var p = ST.pauline; if (!p) return;
-    var px0 = p.x - 8, py = p.y - 19;
-    if (phase === 'intro' && p.carried) { px0 = ST.dk.x - 2; py = ST.dk.y - 46; }
-    if (phase === 'clear') { var ct = 230 - pt; if (ct > 70) { px0 = ST.dk.x + 8; py = ST.dk.y - 33 - (ct - 70) * 1.3 - 6; } }
-    var waving = phase === 'play' && Math.floor(frame / 40) % 3 === 0;
-    spr(waving ? SPR.paulineW : SPR.pauline, px0, py);
-    if (waving) text('HELP!', px0 + 18, py - 2, '#ffffff');
+    var p = ST.pauline; if (!p || p.carried) return;
+    if (phase === 'clear' && clearFrame() != null) return;
+    var dx = p.x - 96, dy = p.y - 56, k = 'pau_0';
+    if (phase === 'clear' || phase === 'win') k = 'pau_front';
+    else if (phase === 'play') { var c = Math.floor(frame / 8) % 24; if (c < 8) k = c % 2 ? 'pau_1' : 'pau_2'; }
+    sprAt(k, dx, dy);
+    if (k === 'pau_1' || k === 'pau_2') sprAt(k === 'pau_1' ? 'help' : 'help2', dx, dy);
   }
   function drawObjects() {
-    if (ST.oil) {
-      spr(SPR.oil, ST.oil.x - 8, ST.oil.y - 16);
-      if (ST.oil.lit) spr(SPR['flame' + (Math.floor(frame / 6) % 2)], ST.oil.x - 8, ST.oil.y - 26);
-    }
+    var o = ST.oil;
+    if (o && o.lit) { if (o.flare > 0) o.flare--; spr(SPR[o.flare > 0 ? 'oilB' + (Math.floor(frame / 4) % 2) : 'oil' + (Math.floor(frame / 8) % 2)], o.fx, o.fy); }
     if (ST.noLads) return;
-    ST.hammers.forEach(function (h) { if (h.on) spr(SPR.hammer, h.x - 6, h.y); });
-    ST.items.forEach(function (it) { if (it.on) { var c = SPR[it.kind]; spr(c, it.x - c.width / 2, it.y - c.height); } });
-    ST.pies.forEach(function (q) { spr(SPR.pie, q.x - 8, q.y - 7); });
+    ST.hammers.forEach(function (h) { if (h.on) spr(SPR.hammer, h.x - 5, h.y); });
+    ST.items.forEach(function (it) { if (it.on) { var c = SPR[it.kind]; spr(c, it.x - (c.width >> 1), it.y - c.height); } });
+    ST.pies.forEach(function (q) { spr(SPR.pie, q.x - 8, q.y - 8); });
     ST.barrels.forEach(function (b) {
-      var c = b.st === 'ladder' || b.st === 'drop' || b.st === 'wild' ? SPR[b.blue ? 'bbarSide' : 'barSide'] : SPR[(b.blue ? 'bbar' : 'bar') + (Math.floor(b.fr) % 4 + 4) % 4];
-      spr(c, b.x - c.width / 2, b.y - c.height);
+      if (b.st === 'ladder' || b.st === 'drop' || b.st === 'wild') spr(SPR[(b.blue ? 'bbarS' : 'barS') + (Math.floor(frame / 8) % 2)], b.x - 8, b.y - 10);
+      else spr(SPR[(b.blue ? 'bbar' : 'bar') + ((Math.floor(b.fr) % 4 + 4) % 4)], b.x - 6, b.y - 10);
     });
     ST.fires.forEach(function (f) {
       if (f.born > 0 && Math.floor(frame / 3) % 2) return;
-      var k = G.m.ham ? 'cool' : f.fox ? 'fox' : 'fire', c = SPR[k + (Math.floor(f.fr * 3) % 2)];
-      spr(c, f.x - 8, f.y - 15 + Math.round(Math.sin(f.fr * 4)));
+      var c = SPR[(f.fox ? 'fox' : 'fire') + (Math.floor(frame / 8) % 2) + (G.m.ham ? 'B' : '') + (f.dir < 0 ? 'L' : '')];
+      spr(c, f.x - (c.width >> 1), f.y - c.height);
     });
-    ST.springs.forEach(function (s) { var c = s.vy < 0 ? SPR.spring1 : SPR.spring0; spr(c, s.x - 8, s.y - c.height); });
+    ST.springs.forEach(function (s) { var c = s.y > s.base - 3 ? SPR.spring2 : SPR.spring1; spr(c, s.x - (c.width >> 1), s.y - c.height); });
     ST.sparks.forEach(function (s) {
-      px.fillStyle = s.t % 4 < 2 ? '#ffffff' : '#ffe04a';
-      for (var i = 0; i < 8; i++) { var a = i * PI / 4, r = (24 - s.t) * .6; px.fillRect(Math.round(s.x + Math.cos(a) * r), Math.round(s.y + Math.sin(a) * r), 2, 2); }
+      px.fillStyle = s.t % 4 < 2 ? WHITE : '#fab900';
+      for (var i = 0; i < 8; i++) { var a = i * PI / 4, r = (24 - s.t) * .6; px.fillRect(Math.round(s.x + Math.cos(a) * r), Math.round(s.y + Math.sin(a) * r), 1, 1); }
     });
-    ST.pops.forEach(function (p) { text(String(p.n), p.x, p.y, '#ffffff', true); });
+    ST.pops.forEach(function (p) { points(p.n, p.x, p.y); });
   }
-  var drawLives = true;
-  function drawHUD() {
-    // lives, level, and the bonus box, as on the cabinet
-    for (var i = 0; i < Math.min(6, G.lives - (phase === 'play' || phase === 'ready' ? 1 : 0)); i++) spr(SPR.life, 6 + i * 9, 10);
-    text('L=' + (G.level < 10 ? '0' : '') + G.level, 150, 4, '#3f6bff');
-    var bx = 176, by = 2, low = ST.bonus <= 1000;
-    px.fillStyle = '#3f6bff'; px.fillRect(bx, by, 44, 1); px.fillRect(bx, by + 21, 44, 1); px.fillRect(bx, by, 1, 22); px.fillRect(bx + 43, by, 1, 22);
-    text('BONUS', bx + 22, by + 3, '#ff3a5c', true);
-    if (!(low && Math.floor(frame / 15) % 2)) text(String(ST.bonus), bx + 22, by + 12, low ? '#ff3a5c' : '#3fd0e8', true);
+  // the top of the screen, laid out as on the cabinet
+  function six(n) { return ('000000' + n).slice(-6); }
+  function drawHUD(noBonus) {
+    if (phase !== 'play' || Math.floor(frame / 16) % 2) text('1UP', 24, 0, RED);
+    text('HIGH SCORE', 72, 0, RED);
+    text(six(G.score), 8, 8, WHITE); text(six(Math.max(hiAtStart, G.score)), 88, 8, WHITE);
+    for (var i = 0; i < Math.min(6, G.lives - (phase === 'play' || phase === 'ready' ? 1 : 0)); i++) spr(SPR.life, 8 + i * 8, 24);
+    text('L=' + (G.level < 10 ? '0' : '') + G.level, 168, 24, BLUE);
+    if (noBonus) return;
+    var b = String(ST.bonus), low = ST.bonus <= 1000; while (b.length < 4) b = ' ' + b;
+    if (!(low && Math.floor(frame / 15) % 2)) text(b, 176, 48, ST.kind === 1 || ST.kind === 3 ? CYAN : WHITE);
   }
   function render() {
-    if (!G || !ST) return;
+    if (!G || !ST || !artReady) return;
     px.setTransform(1, 0, 0, 1, 0, 0); px.imageSmoothingEnabled = false;
     px.fillStyle = '#000'; px.fillRect(0, 0, W, H);
     var sh = ST.shake > 0 ? Math.round((Math.random() - .5) * ST.shake) : 0;
@@ -1275,31 +992,25 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if (hideRivetFloors) { var keep = ST.plats.slice(); ST.plats = [ST.plats[0], ST.plats[5]]; ST.noLads = true; drawStage(); ST.plats = keep; } else drawStage();
       drawObjects(); ST.noLads = false; drawPauline(); drawDK();
       if (phase !== 'intro' || G.m.x > -20) drawMario();
-      if (phase === 'clear' || phase === 'win') {
-        var ct = (phase === 'win' ? 330 : 230) - pt, broken = phase === 'clear' && ct > 70;
-        var hx = phase === 'win' ? ST.pauline.x + 10 : (G.m.x + ST.pauline.x) / 2, hy = ST.pauline.y - 34;
-        if (!broken) spr(SPR.heart, hx - 6, hy);
-        else { var d = Math.min(4, (ct - 70) * .2); px.drawImage(SPR.heart, 0, 0, 6, 11, Math.round(hx - 6 - d), hy, 6, 11); px.drawImage(SPR.heart, 6, 0, 7, 11, Math.round(hx + d), hy, 7, 11); }
-        if (phase === 'win' && ct > 120) { G.m.x = ST.pauline.x + 26; G.m.y = ST.pauline.y; G.m.dir = -1; }
+      if (phase === 'clear') drawClear();
+      if (phase === 'win') {
+        var ct = 330 - pt, hx = ST.pauline.x + 10, hy = ST.pauline.y - 34;
+        spr(SPR.heart, hx - 7, hy);
+        if (ct > 120) { G.m.x = ST.pauline.x + 26; G.m.y = ST.pauline.y; G.m.dir = -1; }
       }
-      if (phase !== 'intro') drawHUD();
-      if (phase === 'ready') text('READY', W / 2, 140, '#ffffff', true);
-      if (phase === 'intro') text('TAP TO SKIP', W / 2, 8, 'rgba(255,255,255,.6)', true);
+      drawHUD(phase === 'intro');
+      if (phase === 'ready') text('READY', W / 2, 140, WHITE, true);
+      if (phase === 'intro') text('TAP TO SKIP', W / 2, 16, CYAN, true);
     }
     // to the screen, pixels kept sharp
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
     ctx.drawImage(scr, 0, 0, cv.width, cv.height);
   }
+  // between stages: a Kong for each stage climbed so far
   function drawHowHigh() {
-    var list = stageList(G.level), n = G.si + 1;
-    for (var i = 0; i < n; i++) {
-      var y = 200 - i * 36;
-      px.drawImage(SPR.dk_idle, 0, 0, 48, 33, 72, y - 12, 32, 22);
-      text((i + 1) * 25 + ' M', 132, y, '#ffffff');
-    }
-    text('HOW HIGH CAN YOU GET ?', W / 2, 228, '#ffffff', true);
-    text('LEVEL ' + G.level, W / 2, 30, '#ff3a5c', true);
-    void list;
+    drawHUD(true);
+    for (var i = 0; i <= G.si; i++) { var y = 200 - i * 32; spr(SPR.dk_how, 90, y); text((i + 1) * 25 + ' m', 40, y + 24, WHITE); }
+    text('HOW HIGH CAN YOU GET ?', 24, 240, WHITE);
   }
 
   // ═══ Game over, save, HUD ═══════════════════════════════════════════════
@@ -1497,7 +1208,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function kick() { if (!raf && G && phase !== 'idle' && !paused && !overDone && !document.hidden) { last = 0; acc = 0; raf = requestAnimationFrame(loop); } }
 
   // ═══ Kit shell ══════════════════════════════════════════════════════════
-  buildSprites();
+  buildSprites(function () { if (G) render(); });
   Kit.init({ orient: 'portrait',
     id: 'donkeykong',
     theme: { wood: ['#4a2a1a', '#2a160c'] },
@@ -1532,7 +1243,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     put: function (x, pi) { if (!G) return; var p = ST.plats[pi]; G.m.x = x; G.m.y = surf(p, x); G.m.p = p; G.m.st = 'ground'; },
     render: render, surf: surf, phaseSet: function (p, t) { setPhase(p, t); },
     start: function (cfg) { startGame(cfg || { who: 'Tim', lives: 3 }); },
-    hold: function (v) { testHold = !!v; }, pt: function () { return pt; }
+    hold: function (v) { testHold = !!v; }, pt: function () { return pt; },
+    frameImg: function () { render(); return scr.toDataURL(); }, ready: function () { return artReady; }
   };
 
   new ResizeObserver(function () { fit(); }).observe($('view'));
