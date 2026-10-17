@@ -490,15 +490,27 @@
     genesis: { at: [.68, .5], size: 62, b: [['A', 1, -64, 24, '#2c2c31'], ['B', 0, 0, 0, '#2c2c31'], ['C', 8, 64, -24, '#2c2c31']] },
     atari2600: { at: [.74, .46], size: 96, b: [['', 0, 0, 0, '#c9271d']] }
   };
-  // drawn behind the controls in portrait, stretched to the controller area (viewBox 400 x 330)
+  // the controller's own body, drawn behind the controls when upright and placed round them: P = {W, H, u, dp: [x, y],
+  // face: [x, y], pillY} in pixels
   var DECOR = {
-    nes: '<svg viewBox="0 0 400 330" preserveAspectRatio="none"><rect x="118" y="212" width="164" height="96" rx="10" fill="#cfcbc4" opacity=".16"/>' +
-      '<rect x="130" y="222" width="140" height="7" rx="3.5" fill="#000" opacity=".35"/><rect x="130" y="236" width="140" height="7" rx="3.5" fill="#000" opacity=".35"/>' +
-      '<rect x="130" y="250" width="140" height="7" rx="3.5" fill="#000" opacity=".35"/></svg>',
-    snes: '<svg viewBox="0 0 400 330" preserveAspectRatio="none"><circle cx="304" cy="158" r="96" fill="#8f86ad" opacity=".28"/><circle cx="100" cy="152" r="88" fill="#8f86ad" opacity=".14"/></svg>',
-    genesis: '<svg viewBox="0 0 400 330" preserveAspectRatio="none"><path d="M190 214 Q300 210 392 110 L392 250 Q300 300 190 300 Z" fill="#fff" opacity=".035"/><circle cx="100" cy="152" r="86" fill="#fff" opacity=".03"/></svg>',
-    atari2600: '<svg viewBox="0 0 400 330" preserveAspectRatio="none"><rect x="0" y="252" width="400" height="78" fill="#7a5130" opacity=".22"/>' +
-      '<path d="M0 266 Q120 260 400 270 M0 286 Q200 292 400 282 M0 306 Q140 300 400 310" stroke="#2a180b" stroke-opacity=".3" stroke-width="2" fill="none"/></svg>'
+    nes: function (P) {   // the grey centre panel with its dark stripes, above Select and Start
+      var u = P.u, x = P.W / 2 - 84 * u, y = P.pillY - 70 * u, r = '';
+      for (var i = 0; i < 3; i++) r += '<rect x="' + (x + 12 * u) + '" y="' + (y + (10 + i * 14) * u) + '" width="' + (144 * u) + '" height="' + (7 * u) + '" rx="' + (3.5 * u) + '" fill="#000" opacity=".35"/>';
+      return '<rect x="' + x + '" y="' + y + '" width="' + (168 * u) + '" height="' + (98 * u) + '" rx="' + (10 * u) + '" fill="#cfcbc4" opacity=".16"/>' + r;
+    },
+    snes: function (P) {   // the lilac dish under the four face buttons, a fainter one under the D-pad
+      return '<circle cx="' + P.face[0] + '" cy="' + P.face[1] + '" r="' + (98 * P.u) + '" fill="#8f86ad" opacity=".28"/><circle cx="' + P.dp[0] + '" cy="' + P.dp[1] + '" r="' + (90 * P.u) + '" fill="#8f86ad" opacity=".14"/>';
+    },
+    genesis: function (P) {   // the sweep the three buttons rise along, and the D-pad's round boss
+      var u = P.u, fx = P.face[0], fy = P.face[1];
+      return '<path d="M' + (fx - 150 * u) + ' ' + (fy + 48 * u) + ' Q' + (fx + 30 * u) + ' ' + (fy + 44 * u) + ' ' + P.W + ' ' + (fy - 96 * u) + ' L' + P.W + ' ' + (fy + 70 * u) +
+        ' Q' + (fx + 30 * u) + ' ' + (fy + 118 * u) + ' ' + (fx - 150 * u) + ' ' + (fy + 118 * u) + ' Z" fill="#fff" opacity=".035"/><circle cx="' + P.dp[0] + '" cy="' + P.dp[1] + '" r="' + (88 * u) + '" fill="#fff" opacity=".03"/>';
+    },
+    atari2600: function (P) {   // the console's woodgrain front along the bottom, behind its switches
+      var u = P.u, y = P.pillY - 36 * u, g = '';
+      for (var i = 0; i < 3; i++) { var gy = y + (14 + i * 20) * u; g += '<path d="M0 ' + gy + ' Q' + (P.W * .3) + ' ' + (gy - 6 * u * (i % 2 ? -1 : 1)) + ' ' + P.W + ' ' + (gy + 4 * u) + '" stroke="#2a180b" stroke-opacity=".3" stroke-width="' + (2 * u) + '" fill="none"/>'; }
+      return '<rect x="0" y="' + y + '" width="' + P.W + '" height="' + (P.H - y) + '" fill="#7a5130" opacity=".22"/>' + g;
+    }
   };
   var MID = { nes: [['SELECT', 2], ['START', 3]], snes: [['SELECT', 2], ['START', 3]], genesis: [['START', 3]], atari2600: [['SELECT', 2], ['RESET', 3]] };
   var ctls = [];
@@ -556,7 +568,7 @@
     var sk = el('div', { class: 'skin' });
     ctls = [];
     // the controller's own body behind the buttons (portrait): NES centre panel, SNES button dish, Genesis crescent
-    sk.appendChild(el('div', { class: 'decor', html: DECOR[SYS_ID] }));
+    sk.appendChild(el('div', { class: 'decor' }));
     function add(c, html) { c.el = el('div', { class: 'ctl c-' + c.k, html: html }); sk.appendChild(c.el); ctls.push(c); return c; }
     add({ k: 'dp' }, svgDpad());
     var F = FACE[SYS_ID];
@@ -568,52 +580,80 @@
     wireSkin(sk);
     return sk;
   }
-  // the notch and home-bar insets, in pixels (CSS env() values read through a probe)
+  // the notch, rounded-corner and home-bar insets, in pixels (CSS env() values read through a probe): [top, right, bottom, left]
   var probe = null;
   function safe() {
-    if (!probe) { probe = el('div', { style: { position: 'fixed', left: '0', top: '0', visibility: 'hidden', 'pointer-events': 'none', 'padding-top': 'env(safe-area-inset-top,0px)', 'padding-bottom': 'env(safe-area-inset-bottom,0px)' } }); document.body.appendChild(probe); }
-    var c = getComputedStyle(probe); return [parseFloat(c.paddingTop) || 0, parseFloat(c.paddingBottom) || 0];
+    if (!probe) { probe = el('div', { style: { position: 'fixed', left: '0', top: '0', visibility: 'hidden', 'pointer-events': 'none', 'padding-top': 'env(safe-area-inset-top,0px)',
+      'padding-right': 'env(safe-area-inset-right,0px)', 'padding-bottom': 'env(safe-area-inset-bottom,0px)', 'padding-left': 'env(safe-area-inset-left,0px)' } }); document.body.appendChild(probe); }
+    var c = getComputedStyle(probe); return [parseFloat(c.paddingTop) || 0, parseFloat(c.paddingRight) || 0, parseFloat(c.paddingBottom) || 0, parseFloat(c.paddingLeft) || 0];
   }
-  // place the picture and every control for this screen shape
+  // Place the picture and every control for this screen. One arrangement for every console, every screen:
+  // D-pad (or joystick) under the left thumb, the face buttons in the console's own pattern under the right thumb,
+  // Select/Start along the bottom, the SNES shoulders just above the thumbs, Menu and Fast-forward in the corners.
+  // Controls are sized in units (u) of about a phone's worth and anchored to the edges, so on an iPad they stay
+  // where the thumbs are instead of spreading to the middle; the picture gets every bit of room that leaves.
+  // Upright, the controller sits along the bottom and the picture fills the width above it. Sideways, the picture
+  // fills the height between the two thumb areas; on a small phone it would get too narrow, so it grows into them
+  // and the controls sit see-through over its edges (like Delta).
+  function faceHalf(F) { var m = 0; F.b.forEach(function (b) { m = Math.max(m, Math.abs(b[2])); }); return m + F.size / 2; }
   function layout() {
     if (!playEl) return;
-    var W = playEl.clientWidth, H = playEl.clientHeight, sf = safe(), sT = sf[0], sB = sf[1];
-    var land = W > H * 1.1, drawn = !skinEl.hidden, x, y, w, h;
+    var W = playEl.clientWidth, H = playEl.clientHeight, sf = safe(), sT = sf[0], sR = sf[1], sB = sf[2], sL = sf[3];
+    var land = W > H * 1.1, drawn = !skinEl.hidden, x, y, w, h, u;
+    var F = FACE[SYS_ID], half = faceHalf(F), sh = SYS_ID === 'snes';
     playEl.classList.toggle('land', land);
-    if (!drawn) {   // the picture alone, as big as it goes
+    var place = function (c, cx, cy, sw, shh) { c.cx = cx; c.cy = cy; c.w = sw; c.h = shh || sw; c.el.style.left = cx + 'px'; c.el.style.top = cy + 'px'; c.el.style.width = c.w + 'px'; c.el.style.height = c.h + 'px'; };
+    var dec = skinEl.querySelector('.decor');
+    if (!drawn) {   // a keyboard or real controller: the picture alone, as big as it goes
       w = Math.min(W - 24, (H - 24) * 4 / 3); h = w * 3 / 4; x = (W - w) / 2; y = (H - h) / 2;
     } else if (!land) {
-      w = Math.min(W - 8, 760, (H - sT) * .5 * 4 / 3); h = w * 3 / 4; x = (W - w) / 2; y = sT + 6;
+      // the controller: thumbs, Select/Start and the corner buttons need about 330 units of height (SNES shoulders 50 more)
+      u = Math.max(.72, Math.min(1.25, (W - sL - sR) / 370));
+      var need = (330 + (sh ? 50 : 0)) * u;
+      w = Math.min(W - 8 - sL - sR, (H - sT - sB - need - 8) * 4 / 3); h = w * 3 / 4;
+      if (h < 140) { h = 140; w = h * 4 / 3; u = Math.max(.6, Math.min(u, (H - sT - sB - h - 8) / (330 + (sh ? 50 : 0)))); }
+      x = (W - w) / 2; y = sT + 6;
     } else {
-      h = H - sT - sB - 12; w = h * 4 / 3;
-      if (W - w < 2 * 150) { w = Math.max(W * .5, W - 2 * 150); h = w * 3 / 4; }
-      x = (W - w) / 2; y = sT + (H - sT - sB - h) / 2;
+      u = Math.max(.62, Math.min(1.1, H / 400));
+      var side = Math.max(150 * u, 2 * half * u) + 26 * u;   // what one thumb area needs across
+      var small = H < 520, minSide = side * (small ? .62 : .72);
+      h = H - sT - sB - 8; w = h * 4 / 3;
+      if ((W - sL - sR - w) / 2 < minSide) { w = W - sL - sR - 2 * minSide; h = w * 3 / 4; }
+      x = sL + (W - sL - sR - w) / 2; y = sT + (H - sT - sB - h) / 2;
     }
     scrEl.style.left = x + 'px'; scrEl.style.top = y + 'px'; scrEl.style.width = w + 'px'; scrEl.style.height = h + 'px';
     if (!drawn) return;
-    var F = FACE[SYS_ID], u, place = function (c, cx, cy, sw, shh) { c.cx = cx; c.cy = cy; c.w = sw; c.h = shh || sw; c.el.style.left = cx + 'px'; c.el.style.top = cy + 'px'; c.el.style.width = c.w + 'px'; c.el.style.height = c.h + 'px'; };
+    var L0 = sL + 14 * u, R0 = W - sR - 14 * u;   // the usable edges
     if (!land) {
-      var top = y + h + 8, bh = H - sB - top;
-      u = Math.max(.7, Math.min(1.7, W / 370, bh / 320));
-      var dec = skinEl.querySelector('.decor'); dec.style.left = '0'; dec.style.top = top + 'px'; dec.style.width = W + 'px'; dec.style.height = bh + 'px'; dec.hidden = false;
+      var top = y + h + 6;
+      var toolY = H - sB - 26 * u, pillY = H - sB - 74 * u, thumbY = pillY - 128 * u;
+      thumbY = Math.max(thumbY, top + (sh ? 132 : 82) * u);   // never up under the picture
       ctls.forEach(function (c) {
-        if (c.k === 'dp') place(c, W * .25, top + bh * .44, 150 * u);
-        else if (c.k === 'btn') place(c, W * F.at[0] + c.dx * u, top + bh * F.at[1] + c.dy * u, F.size * u);
-        else if (c.k === 'pill') { var n = MID[SYS_ID].length; place(c, W * (n === 1 ? .5 : c.n ? .6 : .4), top + bh * .85, 92 * u, 52 * u); }
-        else if (c.k === 'sh') place(c, c.side ? W - 70 * u : 70 * u, top + 20 * u, 124 * u, 41 * u);
-        else if (c.k === 'tool') place(c, c.t === 'menu' ? 30 * u : W - 30 * u, top + bh - 26 * u, 42 * u);
+        if (c.k === 'dp') place(c, L0 + 75 * u, thumbY, 150 * u);
+        else if (c.k === 'btn') place(c, R0 - half * u + c.dx * u, thumbY + c.dy * u, F.size * u);
+        else if (c.k === 'pill') { var n = MID[SYS_ID].length; place(c, W / 2 + (n === 1 ? 0 : (c.n ? 46 : -46) * u), pillY, 92 * u, 52 * u); }
+        else if (c.k === 'sh') place(c, c.side ? R0 - 56 * u : L0 + 56 * u, thumbY - 118 * u, 124 * u, 41 * u);
+        else if (c.k === 'tool') place(c, c.t === 'menu' ? L0 + 14 * u : R0 - 14 * u, toolY, 42 * u);
       });
+      dec.style.left = '0'; dec.style.top = '0'; dec.style.width = W + 'px'; dec.style.height = H + 'px'; dec.hidden = false;
+      dec.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '">' + DECOR[SYS_ID]({ W: W, H: H, u: u, dp: [L0 + 75 * u, thumbY], face: [R0 - half * u, thumbY], pillY: pillY }) + '</svg>';
     } else {
-      var side = x, lc = side / 2, rc = x + w + side / 2; skinEl.querySelector('.decor').hidden = true;
-      u = Math.max(.6, Math.min(1.3, H / 380));
+      dec.hidden = true;
+      var midY = sT + (H - sT - sB) * .6;
       ctls.forEach(function (c) {
-        if (c.k === 'dp') place(c, Math.max(lc, 80 * u), H * .58, 150 * u);
-        else if (c.k === 'btn') place(c, Math.min(rc, W - 80 * u) + c.dx * u * .9, H * .55 + c.dy * u * .9, F.size * u * .95);
-        else if (c.k === 'pill') { var n2 = MID[SYS_ID].length; place(c, n2 === 1 || c.n ? Math.min(rc, W - 60 * u) : Math.max(lc, 60 * u), H - sB - 26 * u, 84 * u, 48 * u); }
-        else if (c.k === 'sh') place(c, c.side ? Math.min(rc, W - 64 * u) : Math.max(lc, 64 * u), H * .2, 118 * u, 39 * u);
-        else if (c.k === 'tool') place(c, c.t === 'menu' ? Math.max(lc, 26 * u) - (SYS_ID === 'snes' ? 0 : 0) : Math.min(rc, W - 26 * u), sT + 24 * u, 38 * u);
+        if (c.k === 'dp') place(c, L0 + 75 * u, midY, 150 * u);
+        else if (c.k === 'btn') place(c, R0 - half * u + c.dx * u, midY + c.dy * u, F.size * u);
+        else if (c.k === 'pill') { var n2 = MID[SYS_ID].length; place(c, n2 === 1 || c.n ? R0 - 30 * u : L0 + 30 * u, H - sB - 24 * u, 80 * u, 46 * u); }
+        else if (c.k === 'sh') place(c, c.side ? R0 - 58 * u : L0 + 58 * u, midY - 120 * u, 116 * u, 39 * u);
+        else if (c.k === 'tool') place(c, c.t === 'menu' ? L0 + 6 * u : R0 - 6 * u, sT + 24 * u, 38 * u);
       });
     }
+    // a control over the picture goes see-through, so the game shows through it
+    // (when a good part of it covers the picture: a sliver over the edge stays solid)
+    ctls.forEach(function (c) {
+      var ox = Math.min(c.cx + c.w / 2, x + w) - Math.max(c.cx - c.w / 2, x), oy = Math.min(c.cy + c.h / 2, y + h) - Math.max(c.cy - c.h / 2, y);
+      c.el.classList.toggle('over', ox > c.w * .22 && oy > 0);
+    });
   }
   // Fingers press, slide from button to button, and a touch between two face buttons presses both (B+A on a NES)
   function wireSkin(sk) {
