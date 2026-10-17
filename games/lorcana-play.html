@@ -613,6 +613,11 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .lp-bar .icon-sq{flex:none;width:50px;padding:0;}
 .lp-panel .logbox{flex:1;min-height:0;overflow:auto;border-radius:16px;background:rgba(0,0,0,.25);padding:8px 10px;font-size:.8rem;line-height:1.35;color:var(--text-2);}
 .logbox p{margin:0 0 5px;} .logbox p b{color:var(--text);}
+/* the log's cards: links to see them big; the whole line opens all of its cards */
+.logbox p.lg-has{cursor:pointer;border-radius:6px;transition:background .15s;}
+.logbox p.lg-has:hover{background:rgba(255,255,255,.05);}
+.logbox .lg-c{color:#ffd98a;font-weight:800;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,217,138,.45);text-decoration-thickness:1.5px;text-underline-offset:2px;}
+.logbox .lg-c:hover{color:#fff;text-decoration-color:#ffd98a;}
 .lp-panel h3{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:2px 2px 0;}
 
 /* Drag ghost */
@@ -4237,7 +4242,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function C(u) { return S.cards[u]; }
   function DD(u) { return D(S.cards[u].id); }
   function opp(pi) { return 1 - pi; }
-  function nm(u) { return DD(u).n; }
+  var named = [];   // the cards most recently named (for the log's links: which Mulan was meant)
+  function nm(u) { named.push(u); if (named.length > 16) named.shift(); return DD(u).n; }
   function modSum(u, k) { var t = 0; (C(u).mods || []).forEach(function (x) { if (x[k] && (!x.vsLoc || (clashAt && clashAt.a === u && isLoc(clashAt.t))) && (!x.chalOnly || (clashAt && (clashAt.a === u || clashAt.t === u)))) t += x[k]; }); return t + (stx(u)[k] || 0); }
   // "can't gain Evasive", "All characters lose Rush": only cards that print such a rule are looked at
   var kwBusy = false;
@@ -4339,7 +4345,63 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       .replace(/\b(You) ([A-Za-z\u2019']+)/g, function (m, y, v) { var k = v.toLowerCase(); return YOU_V[k] ? y + ' ' + YOU_V[k] : m; })
       .replace(/ and (skips|draws|gains|takes|puts|plays) /g, function (m, v) { return ' and ' + YOU_V[v] + ' '; });
   }
-  function log(t, pi, priv) { S.log.push({ t: youFix(t), p: pi == null ? -1 : pi, priv: priv ? youFix(priv) : undefined }); if (S.log.length > 120) S.log.splice(0, S.log.length - 120); }
+  function log(t, pi, priv) {
+    t = youFix(t); priv = priv ? youFix(priv) : undefined;
+    var e = { t: t, p: pi == null ? -1 : pi, priv: priv }, r = logRefs(t), pr = priv ? logRefs(priv) : null;
+    if (r.length) e.r = r; if (pr && pr.length) e.pr = pr;
+    S.log.push(e); if (S.log.length > 120) S.log.splice(0, S.log.length - 120);
+    named.length = 0;
+  }
+  // The cards a log line names, so the log can show them: [[start, length, uid]]. Full names ("Mulan – Imperial
+  // Soldier") first; a bare name is the card just named by the rules, else one in play or in a discard (never a
+  // card in a hand or deck: the line says no more than everyone saw).
+  function logRefs(t) {
+    var out = [], taken = [];
+    if (!t || !S) return out;
+    function free(a, b) { return !taken.some(function (x) { return a < x[1] && b > x[0]; }); }
+    function wordAt(i, len) { var a = t.charAt(i - 1), b = t.charAt(i + len); return !/[A-Za-z0-9]/.test(a) && !/[A-Za-z0-9]/.test(b); }
+    function mark(i, len, u) { taken.push([i, i + len]); out.push([i, len, u]); }
+    var byFull = {}, byName = {};
+    Object.keys(S.cards).forEach(function (u) { var d = DD(u); if (!d) return; if (d.full && !byFull[d.full]) byFull[d.full] = u; (byName[d.n] = byName[d.n] || []).push(u); });
+    Object.keys(byFull).sort(function (a, b) { return b.length - a.length; }).forEach(function (f) {
+      for (var i = t.indexOf(f); i >= 0; i = t.indexOf(f, i + f.length)) if (wordAt(i, f.length) && free(i, i + f.length)) mark(i, f.length, byFull[f]);
+    });
+    var pub = {};
+    S.P.forEach(function (P) { P.board.concat(P.discard).forEach(function (u) { pub[u] = 1; (C(u).under || []).forEach(function (x) { pub[x] = 1; }); }); });
+    Object.keys(byName).sort(function (a, b) { return b.length - a.length; }).forEach(function (n) {
+      if (!n) return;
+      var mine = named.filter(function (u) { return S.cards[u] && DD(u).n === n; });
+      var u = mine.length ? mine[mine.length - 1] : byName[n].filter(function (x) { return pub[x]; })[0];
+      if (!u) return;
+      for (var i = t.indexOf(n); i >= 0; i = t.indexOf(n, i + n.length)) if (wordAt(i, n.length) && free(i, i + n.length)) mark(i, n.length, u);
+    });
+    return out.sort(function (a, b) { return a[0] - b[0]; });
+  }
+  // a log line as HTML: its cards are links (tap one to see it; tap the line to see them all)
+  function logHTML(l, idx, me, pad) {
+    var priv = l.priv && l.p === me, t = priv ? l.priv : l.t, r = (priv ? l.pr : l.r) || [], h = '', at = 0;
+    r.forEach(function (x) {
+      if (!S.cards[x[2]] || x[0] < at) return;
+      h += esc(t.slice(at, x[0])) + '<b class="lg-c" role="button" tabindex="0" data-act="log-card" data-l="' + idx + '" data-u="' + esc(x[2]) + '">' + esc(t.substr(x[0], x[1])) + '</b>';
+      at = x[0] + x[1];
+    });
+    h += esc(t.slice(at));
+    var st = l.p >= 0 ? 'border-left:3px solid ' + S.P[l.p].color + ';padding-left:' + pad + 'px' : '';
+    return '<p' + (r.length ? ' class="lg-has" data-act="log-line" data-l="' + idx + '"' : '') + (st ? ' style="' + st + '"' : '') + '>' + h + '</p>';
+  }
+  // the line's cards, big, one after another (swipe or the arrows), starting with the one tapped
+  function logZoom(idx, u, me) {
+    var l = S.log[idx]; if (!l) return;
+    var priv = l.priv && l.p === me, seen = {}, list = [];
+    ((priv ? l.pr : l.r) || []).forEach(function (x) { var k = x[2]; if (!S.cards[k] || seen[C(k).id]) return; seen[C(k).id] = 1; list.push(k); });
+    if (!list.length) return;
+    var i = Math.max(0, u ? list.findIndex(function (k) { return C(k).id === C(u).id; }) : 0);
+    (function show(i, dir) {
+      if (list.length < 2) { zoomDef(DD(list[i])); return; }
+      zoomDef(DD(list[i]), [], { i: i, n: list.length, list: list, ctx: 'log', dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) show(j, step); }, peek: function (k) { var x = list[i + k]; return x ? DD(x) : null; } });
+    })(i, 0);
+    Kit.sfx('tap');
+  }
   function roundIx() { return Math.floor((S.turn - 1) / 2); }
   // why: { u: the card it came from, r: what happened } (an ability that's running fills it in by itself)
   var abNow = null;
@@ -8221,7 +8283,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function renderBar() {
     var bar = $('.lp-bar'), panel = $('.lp-panel');
     bar.innerHTML = controlsHTML(false);
-    var logH = S.log.slice(-40).reverse().map(function (l) { return '<p' + (l.p >= 0 ? ' style="border-left:3px solid ' + S.P[l.p].color + ';padding-left:6px"' : '') + '>' + esc(l.t) + '</p>'; }).join('');
+    var lme = S.mode === 'cpu' ? humanIx() : S.viewer, n0 = S.log.length;
+    var logH = S.log.slice(-40).reverse().map(function (l, k) { return logHTML(Object.assign({}, l, { priv: null }), n0 - 1 - k, lme, 6); }).join('');
     panel.innerHTML = '<h3>Game log</h3><div class="logbox">' + logH + '</div>' + controlsHTML(true);
   }
   function renderMull() {
@@ -8797,6 +8860,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       else if (a === 'pick-why') { if (S.cards[b.dataset.u]) zoomDef(DD(b.dataset.u)); }
       else if (a === 'pick-src') { if (ui.pick && ui.pick.src && S.cards[ui.pick.src]) zoomDef(DD(ui.pick.src)); }
       else if (a === 'log') showLog();
+      else if (a === 'log-card' || a === 'log-line') logZoom(+b.dataset.l, b.dataset.u, S.mode === 'cpu' ? humanIx() : S.viewer);
       else if (a === 'pick-cancel' || a === 'pick-skip') { var p = ui.pick; ui.pick = null; render(); if (p && p.cancel) p.cancel(); }
       else if (a === 'pick-conf') { var pc = ui.pick; if (pc && pc.pre && S.cards[pc.pre] && pc.ok(pc.pre)) { ui.pick = null; render(); pc.done(pc.pre); } }
       else if (a === 'pick-go') { var q = ui.pick; if (q && q.multi && q.multi.need(q.sel)) { ui.pick = null; render(); q.multi.go(q.sel); } }
@@ -10740,7 +10804,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var box = el('div', { class: 'logbox', style: { 'max-height': 'none', background: 'none', padding: '0' } });
     // Your own inked cards are named for you; the other player's stay facedown
     var me = S.mode === 'cpu' ? humanIx() : S.viewer;
-    box.innerHTML = S.log.slice().reverse().map(function (l) { var t = l.priv && l.p === me ? l.priv : l.t; return '<p' + (l.p >= 0 ? ' style="border-left:3px solid ' + S.P[l.p].color + ';padding-left:8px"' : '') + '>' + esc(t) + '</p>'; }).join('') || '<p>Nothing yet.</p>';
+    var n0 = S.log.length;
+    box.innerHTML = S.log.slice().reverse().map(function (l, k) { return logHTML(l, n0 - 1 - k, me, 8); }).join('') || '<p>Nothing yet.</p>';
+    box.addEventListener('click', function (e) { var b = e.target.closest('[data-act^="log-"]'); if (b) logZoom(+b.dataset.l, b.dataset.u, me); });
     Kit.sheet({ title: 'Game Log', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
   function headHTML(d) {
