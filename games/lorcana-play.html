@@ -1447,6 +1447,9 @@ html.lorc .k-sheet .lp-li.cl-row.on{box-shadow:inset 0 0 0 2px var(--gilt),0 0 1
 .ll-row b{display:block;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ll-row small{display:block;font-size:.72rem;color:var(--text-3);font-weight:700;}
 .ll-art{flex:none;width:28px;height:39px;border-radius:4px;overflow:hidden;background:var(--w05);}
+.ll-art.ic{display:grid;place-items:center;color:var(--gilt);background:radial-gradient(circle at 50% 35%,rgba(227,189,98,.16),rgba(227,189,98,.04));box-shadow:inset 0 0 0 1px rgba(227,189,98,.28);}
+.ll-art.ic svg{width:17px;height:17px;}
+.ll-row.neg .ll-art.ic{color:#e88;background:radial-gradient(circle at 50% 35%,rgba(232,120,120,.16),rgba(232,120,120,.04));box-shadow:inset 0 0 0 1px rgba(232,120,120,.28);}
 .ll-art .mini{display:block;width:100%;height:100%;background-size:cover;background-position:center;}
 .ll-d{flex:none;font-family:var(--display);font-weight:400;font-size:1.25rem;color:#ffd970;font-variant-numeric:tabular-nums;}
 .ll-row.neg .ll-d{color:#ff8a8a;}
@@ -10547,8 +10550,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var node = el('div', { class: 'll' }), s;
     function paint(w) {
       var P = S.P[w], rows = (S.ll || []).filter(function (x) { return x.p === w; });
-      var gain = 0, lost = 0, by = { q: 0, a: 0, l: 0 };
-      rows.forEach(function (x) { if (x.d > 0) { gain += x.d; if (x.r === 'Quested') by.q += x.d; else if (/^Location/.test(x.r)) by.l += x.d; else by.a += x.d; } else lost -= x.d; });
+      var gain = 0, lost = 0, by = { q: 0, a: 0, l: 0, h: 0 };
+      rows.forEach(function (x) { if (x.d > 0) { gain += x.d; if (x.r === 'Quested') by.q += x.d; else if (x.r === 'Changed by hand') by.h += x.d; else if (/^Location/.test(x.r)) by.l += x.d; else by.a += x.d; } else lost -= x.d; });
       var early = P.lore - (gain - lost);   // from before the ledger started (a game begun on an older version)
       node.innerHTML = '';
       // whose: the two players as tabs, in their colours
@@ -10557,7 +10560,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           [el('i', { class: 'dot' }), el('span', { text: q.name }), el('b', { text: String(q.lore) })]);
       })));
       // where it came from, at a glance
-      var parts = [['Quests', by.q], ['Abilities', by.a], ['Locations', by.l]].filter(function (x) { return x[1]; });
+      var parts = [['Quests', by.q], ['Abilities', by.a], ['Locations', by.l], ['By hand', by.h]].filter(function (x) { return x[1]; });
       node.appendChild(el('div', { class: 'll-sum' }, [
         el('div', { class: 'll-big', html: '<b>' + P.lore + '</b><small>of ' + needLore(w) + ' lore</small>' }),
         el('div', { class: 'll-parts', html: parts.map(function (x) { return '<span>+' + x[1] + ' ' + x[0].toLowerCase() + '</span>'; }).join('') + (lost ? '<span class="neg">−' + lost + ' lost</span>' : '') })
@@ -10571,11 +10574,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (x.t !== lastT) { lastT = x.t; list.appendChild(el('div', { class: 'll-turn', html: '<span>Turn ' + x.t + (x.t === S.turn ? ' · now' : '') + '</span><b>' + totals[i] + '</b>' })); }
         var d = x.i ? D(x.i) : null, theirs = x.o != null && x.o !== w;
         list.appendChild(el('div', { class: 'll-row' + (x.d < 0 ? ' neg' : ''), role: d ? 'button' : null, onclick: d ? function (dd) { return function () { zoomDef(dd); }; }(d) : null }, [
-          el('span', { class: 'll-art', html: d ? miniArt(d) : '' }),
+          d ? el('span', { class: 'll-art', html: miniArt(d) }) : el('span', { class: 'll-art ic', html: Kit.icon(x.r === 'Changed by hand' ? 'pencil' : 'sparkle') }),
           el('div', { class: 'grow' }, [el('b', { text: x.n || (x.d > 0 ? 'Lore' : 'Lore lost') }), el('small', { text: x.r + (x.w ? ' · ' + x.w : '') + (theirs && !(x.w && x.w.indexOf(S.P[x.o].name + '’s') >= 0) ? ' · ' + S.P[x.o].name + '’s card' : '') })]),
           el('span', { class: 'll-d', text: (x.d > 0 ? '+' : '−') + Math.abs(x.d) })]));
       }
-      if (early > 0) list.appendChild(el('div', { class: 'll-row early' }, [el('span', { class: 'll-art' }), el('div', { class: 'grow' }, [el('b', { text: 'Earlier in the game' }), el('small', { text: 'Before this game kept a ledger' })]), el('span', { class: 'll-d', text: '+' + early })]));
+      if (early > 0) list.appendChild(el('div', { class: 'll-row early' }, [el('span', { class: 'll-art ic', html: Kit.icon('history') }), el('div', { class: 'grow' }, [el('b', { text: 'Earlier in the game' }), el('small', { text: 'Before this game kept a ledger' })]), el('span', { class: 'll-d', text: '+' + early })]));
       node.appendChild(list);
     }
     paint(pi);
