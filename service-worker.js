@@ -227,6 +227,7 @@ const PRECACHE_URLS = [
   '/fonts/jersey-10.woff2',
   '/games/pacman.html',
   '/games/donkeykong.html',
+  '/games/donkeykong-sounds.mp3',
   '/games/paigow.html',
   '/games/peggle.html',
   '/games/pinball.html',

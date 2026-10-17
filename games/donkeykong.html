@@ -197,81 +197,76 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     for (var i = 0; i < s.length; i++) px.drawImage(SPR['p' + s.charAt(i)], Math.round(x - s.length * 2.5 + i * 5), Math.round(y));
   }
 
-  // ═══ Sound: synthesised, in the spirit of the cabinet ═══════════════════
+  // ═══ Sound: the cabinet's own, recorded from its sound board ═════════════
+  // donkeykong-sounds.mp3 holds every tune and effect; each clip is [start, length] in seconds, and a
+  // third value 1 marks a tune that repeats. Tunes from the sound CPU (smash, rivet) cut the music as they
+  // did on the cabinet; the music starts again when they finish.
   var Snd = (function () {
-    var ac = null, out = null, on = true, musGain = null, seq = null;
+    var CLIPS = {
+      intro: [0.25, 5.36408],
+      howhigh: [5.86408, 2.9396],
+      smash: [9.05369, 1.19202],
+      clear: [10.4957, 3.83706],
+      win: [14.5828, 6.86094],
+      rivet: [21.6937, 0.79342],
+      last: [22.7371, 3.18202],
+      roar: [26.1691, 1.96644],
+      walk: [28.3856, 0.25046],
+      jump: [28.886, 0.53692],
+      boom: [29.673, 0.77083],
+      spring: [30.6938, 0.28775],
+      fall: [31.2315, 1.53206],
+      prize: [33.0136, 0.72813],
+      die: [33.9917, 3.14527],
+      hurry: [37.467, 4.91917, 1],
+      ham: [42.7962, 14.7531, 1],
+      b25: [57.9593, 2.29496, 1],
+      b50: [60.6642, 1.35225, 1],
+      b100: [62.4265, 6.88392, 1]
+    };
+    var ac = null, out = null, buf = null, busy = false, mus = null, musName = null, want = null, hold = 0, lastWalk = 0, live = [];
+    function sndOn() { try { return localStorage.getItem('gn_sound') !== '0'; } catch (e) { return true; } }
     function ctx() {
       if (ac) return ac;
       try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
-      out = ac.createGain(); out.gain.value = .5; out.connect(ac.destination);
-      musGain = ac.createGain(); musGain.gain.value = .55; musGain.connect(out);
+      out = ac.createGain(); out.gain.value = .6; out.connect(ac.destination);
       return ac;
     }
-    function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
-    function tone(t, f, dur, type, vol, to, bus) {
-      var a = ctx(); if (!a || !on) return;
-      var o = a.createOscillator(), g = a.createGain(); o.type = type || 'square'; o.frequency.setValueAtTime(f, t);
-      if (to) o.frequency.exponentialRampToValueAtTime(Math.max(20, to), t + dur);
-      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol || .1, t + .006); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-      o.connect(g); g.connect(bus || out); o.start(t); o.stop(t + dur + .02);
+    function load() {
+      var a = ctx(); if (!a || buf || busy) return; busy = true;
+      fetch('donkeykong-sounds.mp3').then(function (r) { return r.arrayBuffer(); }).then(function (d) {
+        a.decodeAudioData(d, function (b) { buf = b; }, function () { busy = false; });
+      }).catch(function () { busy = false; });
     }
-    var nbuf = null;
-    function noise(t, dur, vol, lp) {
-      var a = ctx(); if (!a || !on) return;
-      if (!nbuf) { nbuf = a.createBuffer(1, a.sampleRate, a.sampleRate); var d = nbuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
-      var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); s.buffer = nbuf; f.type = 'lowpass'; f.frequency.value = lp || 1200;
-      g.gain.setValueAtTime(vol || .2, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-      s.connect(f); f.connect(g); g.connect(out); s.start(t, Math.random() * .5); s.stop(t + dur + .02);
+    function src(name, loop) {
+      var c = CLIPS[name]; if (!c || !buf || !ac || !sndOn()) return null;
+      var s = ac.createBufferSource(); s.buffer = buf; s.connect(out);
+      if (loop) { s.loop = true; s.loopStart = c[0]; s.loopEnd = c[0] + c[1]; s.start(0, c[0]); }
+      else { s.start(0, c[0], c[1]); live.push(s); s.onended = function () { var i = live.indexOf(s); if (i >= 0) live.splice(i, 1); }; }
+      return s;
     }
-    function now() { var a = ctx(); return a ? a.currentTime + .01 : 0; }
-    // Background tunes, one per stage, plus the hammer's; each is a list of [midi or 0, beats] at a tempo
-    var TUNES = {
-      b25: { bpm: 168, wave: 'triangle', vol: .16, notes: [[36, 1], [0, 1], [43, 1], [0, 1], [45, 1], [0, 1], [43, 1], [0, 1], [36, 1], [0, 1], [43, 1], [0, 1], [41, 1], [40, 1], [38, 2]] },
-      b50: { bpm: 176, wave: 'square', vol: .07, notes: [[64, .5], [67, .5], [72, .5], [67, .5], [64, .5], [0, .5], [62, .5], [64, .5], [65, 1], [64, .5], [62, .5], [60, 1], [0, 1], [60, .5], [62, .5], [64, .5], [67, .5], [69, 1], [67, 1], [64, 1], [0, 1]] },
-      b75: { bpm: 184, wave: 'square', vol: .06, notes: [[72, .5], [0, .5], [72, .5], [74, .5], [76, 1], [72, .5], [0, .5], [71, .5], [0, .5], [71, .5], [72, .5], [74, 1], [71, .5], [0, .5], [69, .5], [71, .5], [72, .5], [69, .5], [67, 1], [64, 1], [67, 1], [0, 1]] },
-      b100: { bpm: 200, wave: 'square', vol: .06, notes: [[67, .5], [72, .5], [76, .5], [72, .5], [67, .5], [72, .5], [76, .5], [79, .5], [77, .5], [74, .5], [71, .5], [74, .5], [77, 1], [0, 1], [65, .5], [69, .5], [72, .5], [69, .5], [65, .5], [69, .5], [72, .5], [76, .5], [74, .5], [71, .5], [67, .5], [71, .5], [72, 1], [0, 1]] },
-      ham: { bpm: 300, wave: 'square', vol: .07, notes: [[72, 1], [76, 1], [79, 1], [76, 1], [77, 1], [81, 1], [84, 1], [81, 1], [79, 1], [76, 1], [72, 1], [76, 1], [74, 1], [77, 1], [71, 1], [74, 1]] }
-    };
+    function stopMus() { if (mus) { try { mus.stop(); } catch (e) {} } mus = null; musName = null; }
     function loop(name) {
-      if (seq && seq.name === name) return;
-      seq = name ? { name: name, i: 0, t: now() + .05, tune: TUNES[name] } : null;
+      want = name || null;
+      if (musName === want && mus) return;
+      stopMus();
+      if (want && ac && ac.currentTime >= hold) { mus = src(want, true); if (mus) musName = want; }
     }
-    function poll() {
-      var a = ac; if (!a || !seq || !on) return;
-      var tu = seq.tune, beat = 60 / tu.bpm;
-      while (seq.t < a.currentTime + .15) {
-        var n = tu.notes[seq.i % tu.notes.length], d = n[1] * beat;
-        if (n[0]) { tone(seq.t, mtof(n[0]), d * .85, tu.wave, tu.vol, null, musGain); if (seq.name === 'b25') tone(seq.t, mtof(n[0] + 12), d * .3, 'square', .025, null, musGain); }
-        seq.t += d; seq.i++;
-      }
+    function play(name) { src(name); }
+    // a sound-CPU tune: the music stops for it, then starts over
+    function excl(name) {
+      var c = CLIPS[name]; if (!c) return;
+      stopMus(); if (src(name) && ac) hold = ac.currentTime + c[1];
     }
-    var lastStep = 0;
+    function hush() { live.slice().forEach(function (s) { try { s.stop(); } catch (e) {} }); live = []; hold = 0; }
+    load();
     return {
-      unlock: function () { var a = ctx(); if (a && a.state === 'suspended') try { a.resume(); } catch (e) {} },
-      loop: loop, poll: poll,
-      mute: function (v) { on = !v; if (!on) seq = null; },
-      walk: function () { var t = now(); if (t - lastStep < .1) return; lastStep = t; tone(t, 140, .05, 'square', .05, 90); },
-      climb: function () { var t = now(); if (t - lastStep < .12) return; lastStep = t; tone(t, 330, .04, 'square', .035, 260); },
-      jump: function () { var t = now(); tone(t, 400, .08, 'square', .07, 900); tone(t + .08, 900, .06, 'square', .04, 1200); },
-      score: function () { var t = now(); [76, 79, 84].forEach(function (m, i) { tone(t + i * .05, mtof(m), .08, 'square', .06); }); },
-      smash: function () { var t = now(); noise(t, .18, .3, 2400); tone(t, 300, .15, 'sawtooth', .07, 80); },
-      item: function () { var t = now(); [72, 76, 79, 84, 88].forEach(function (m, i) { tone(t + i * .04, mtof(m), .07, 'square', .05); }); },
-      rivet: function () { var t = now(); tone(t, 1200, .06, 'square', .06, 600); noise(t, .06, .15, 4000); },
-      thud: function () { var t = now(); tone(t, 90, .3, 'sine', .4, 40); noise(t, .25, .35, 400); },
-      barrel: function () { var t = now(); tone(t, 110, .08, 'triangle', .12, 70); },
-      spring: function () { var t = now(); tone(t, 300, .12, 'square', .04, 700); },
-      fire: function () { var t = now(); noise(t, .35, .2, 900); },
-      warn: function () { var t = now(); tone(t, 880, .06, 'square', .05); tone(t + .1, 880, .06, 'square', .05); },
-      tick: function () { var t = now(); tone(t, 1600, .02, 'square', .04); },
-      die: function () {
-        loop(null); var t = now();
-        for (var i = 0; i < 12; i++) tone(t + i * .055, mtof(84 - i * 2), .05, 'square', .07);
-        tone(t + .8, 220, .2, 'square', .08, 110); tone(t + 1.05, 165, .25, 'square', .08, 82); tone(t + 1.35, 110, .5, 'square', .09, 55);
-      },
-      clear: function () { loop(null); var t = now(); [[72, 0], [76, .12], [79, .24], [84, .36], [79, .6], [84, .72]].forEach(function (n) { tone(t + n[1], mtof(n[0]), .2, 'square', .08); tone(t + n[1], mtof(n[0] - 12), .2, 'triangle', .1); }); },
-      win: function () { loop(null); var t = now(); [72, 72, 76, 79, 84, 79, 84, 88].forEach(function (m, i) { tone(t + i * .14, mtof(m), .16, 'square', .08); tone(t + i * .14, mtof(m - 24), .16, 'triangle', .12); }); },
-      start: function () { var t = now(); [60, 64, 67, 72, 67, 72, 76].forEach(function (m, i) { tone(t + i * .11, mtof(m), .12, 'square', .07); }); },
-      stomp: function () { var t = now(); tone(t, 70, .35, 'sine', .5, 35); noise(t, .3, .4, 300); }
+      unlock: function () { var a = ctx(); if (a && a.state === 'suspended') try { a.resume(); } catch (e) {} load(); },
+      loop: loop, play: play, excl: excl, hush: hush,
+      // the music waits for a sound-CPU tune to finish, and for the sounds to arrive
+      poll: function () { if (want && !mus && ac && ac.currentTime >= hold) loop(want); },
+      ready: function () { return !!buf; },
+      walk: function () { if (!ac) return; var t = ac.currentTime; if (t - lastWalk < .09) return; lastWalk = t; play('walk'); }
     };
   })();
 
@@ -422,13 +417,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var s = ST.start;
     G.m = { x: s.x, y: surf(ST.plats[s.p], s.x), p: ST.plats[s.p], st: 'ground', dir: 1, vy: 0, vx: 0, apex: 0, anim: 0, ham: 0, hamT: 0, over: [], lad: null, walked: 0 };
     hud(); save();
-    if (fresh) setPhase('howhigh', 150); else setPhase('ready', 70);
+    if (fresh) setPhase('howhigh', 176); else setPhase('ready', 70);
   }
-  function setPhase(p, t) { phase = p; pt = t || 0; if (p === 'play') Snd.loop(['', 'b25', 'b50', 'b75', 'b100'][ST.kind]); }
+  function setPhase(p, t) { phase = p; pt = t || 0; if (p === 'play') Snd.loop(bgm()); if (p === 'howhigh') Snd.play('howhigh'); }
+  // the music under play: the stage's own (the springs stage has none), the hammer's, or the hurry tune when time runs low
+  function bgm() { return G.m && G.m.ham ? 'ham' : ST.bonus <= 1000 ? 'hurry' : ['', 'b25', 'b50', '', 'b100'][ST.kind]; }
   function add(n, x, y) {
     var before = G.score; G.score += n; hud(true);
     if (x != null) ST.pops.push({ x: x, y: y, n: n, t: 50 });
-    if (!G.extra && before < 7000 && G.score >= 7000) { G.extra = true; G.lives++; Kit.callout('Extra life!', '#ff6b6b'); Kit.haptic('success'); Snd.item(); }
+    if (!G.extra && before < 7000 && G.score >= 7000) { G.extra = true; G.lives++; Kit.callout('Extra life!', '#ff6b6b'); Kit.haptic('success'); Snd.play('prize'); }
   }
 
   // ── Where things stand ──
@@ -457,12 +454,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function stepMario() {
     var m = G.m, L = ctl.l, R = ctl.r, U = ctl.u, D = ctl.d, jp = ctl.jumpQ; ctl.jumpQ = false;
     var dx = (R ? 1 : 0) - (L ? 1 : 0);
-    if (m.ham > 0) { m.ham--; m.hamT++; if (m.ham === 0) Snd.loop(['', 'b25', 'b50', 'b75', 'b100'][ST.kind]); }
+    if (m.ham > 0) { m.ham--; m.hamT++; if (m.ham === 0) Snd.loop(bgm()); }
     if (m.st === 'ground') {
       var p = m.p;
       if (p.kind === 'elev') m.y = p.ys[0];
       if (p.conv) m.x += p.conv;
-      if (jp && !m.ham) { m.st = 'jump'; m.vy = -JV; m.vx = dx * JX; if (dx) m.dir = dx; m.apex = m.y; m.over = []; Snd.jump(); return; }
+      if (jp && !m.ham) { m.st = 'jump'; m.vy = -JV; m.vx = dx * JX; if (dx) m.dir = dx; m.apex = m.y; m.over = []; Snd.play('jump'); return; }
       var l = !m.ham && U ? ladAt(m.x, m.y, true) : !m.ham && D ? ladAt(m.x, m.y, false) : null;
       if (l && !(U && climbTop(l) >= l.yBot - 1)) { m.st = 'climb'; m.lad = l; m.x = l.x; m.anim = 0; return; }
       var blocked = dx && ST.walls && ST.walls.some(function (w) { var nx = m.x + dx * WALK; return m.y > w.y && nx > w.x0 - 5 && nx < w.x1 + 5 && !ST.elev.some(function (sh) { return sh.x === w.x0 && sh.cars.some(function (c) { return Math.abs(c.ys[0] - m.y) <= 6; }); }); });
@@ -479,8 +476,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if (m.st === 'ground' && p.kind === 'elev' && p.sh.dir < 0 && m.y <= p.sh.yTop + 2) return die('elevator');
     } else if (m.st === 'climb') {
       var lc = m.lad, lim = climbTop(lc);
-      if (U) { m.y -= CLIMB; m.anim += CLIMB; Snd.climb(); if (m.y <= lim) { if (lim === lc.yTop) { m.y = lc.yTop; m.st = 'ground'; m.p = lc.up; m.lad = null; } else m.y = lim; } }
-      else if (D) { m.y += CLIMB; m.anim += CLIMB; Snd.climb(); if (m.y >= lc.yBot) { m.y = lc.yBot; m.st = 'ground'; m.p = lc.lo; m.lad = null; } }
+      if (U) { m.y -= CLIMB; m.anim += CLIMB; if (m.y <= lim) { if (lim === lc.yTop) { m.y = lc.yTop; m.st = 'ground'; m.p = lc.up; m.lad = null; } else m.y = lim; } }
+      else if (D) { m.y += CLIMB; m.anim += CLIMB; if (m.y >= lc.yBot) { m.y = lc.yBot; m.st = 'ground'; m.p = lc.lo; m.lad = null; } }
       // a retracting ladder pushes you down off its moving part
       if (m.st === 'climb' && m.y < lim - .5) m.y = lim;
     } else {
@@ -495,23 +492,23 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
           m.y = sy; m.p = lp;
           if (sy - m.apex > FALLMAX) return die('fall');
           m.st = 'ground'; m.vy = 0;
-          if (m.over.length) { var n = m.over.length, pts = n === 1 ? 100 : n === 2 ? 300 : 800; G.stats.jumped += n; add(pts, m.x, m.y - 20); Snd.score(); m.over = []; }
+          if (m.over.length) { var n = m.over.length, pts = n === 1 ? 100 : n === 2 ? 300 : 800; G.stats.jumped += n; add(pts, m.x, m.y - 20); Snd.play('prize'); m.over = []; }
         }
       }
       if (m.y > H + 20) return die('fall');
     }
     // hammers: grab one with the top of your head (a jump up into it)
     if (!m.ham) ST.hammers.forEach(function (h) {
-      if (h.on && Math.abs(h.x - m.x) < 8 && m.y - 16 < h.y + 6 && m.y - 4 > h.y) { h.on = false; m.ham = ST.kind === 4 ? 600 : 560; m.hamT = 0; Snd.loop('ham'); Kit.haptic('medium'); if (m.st === 'jump') m.vy = Math.max(m.vy, 0); }
+      if (h.on && Math.abs(h.x - m.x) < 8 && m.y - 16 < h.y + 6 && m.y - 4 > h.y) { h.on = false; m.ham = ST.kind === 4 ? 600 : 560; m.hamT = 0; Snd.loop(bgm()); Kit.haptic('medium'); if (m.st === 'jump') m.vy = Math.max(m.vy, 0); }
     });
     ST.items.forEach(function (it) {
-      if (it.on && Math.abs(it.x - m.x) < 10 && Math.abs(it.y - 6 - (m.y - 8)) < 12) { it.on = false; var n = itemPts(G.level); add(n, it.x, it.y - 18); G.stats.items++; Snd.item(); Kit.haptic('light'); }
+      if (it.on && Math.abs(it.x - m.x) < 10 && Math.abs(it.y - 6 - (m.y - 8)) < 12) { it.on = false; var n = itemPts(G.level); add(n, it.x, it.y - 18); G.stats.items++; Snd.play('prize'); Kit.haptic('light'); }
     });
     // rivets: walk (or jump) over one to pull it out
     ST.rivets.forEach(function (r) {
       if (!r.on) return;
       var onIt = Math.abs(m.x - (r.x + 4)) < 3 && ((m.st === 'ground' && m.p === r.p) || (m.st === 'jump' && m.y < r.y && m.y > r.y - 26));
-      if (onIt) { r.on = false; r.p.holes.push([r.x, r.x + 8, m.st === 'ground']); add(100, r.x + 4, r.y - 16); G.stats.rivets++; Snd.rivet(); ST.shake = 4; Kit.haptic('light'); }
+      if (onIt) { r.on = false; r.p.holes.push([r.x, r.x + 8, m.st === 'ground']); add(100, r.x + 4, r.y - 16); G.stats.rivets++; Snd.excl('rivet'); ST.shake = 4; Kit.haptic('light'); }
     });
     // made it to the top
     if (m.st === 'ground' && ST.goal && m.p === ST.goal) return stageClear();
@@ -544,7 +541,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if (ST.firstDrop) {
         // the first barrel of each life: held overhead, then dropped straight down the left side to light the oil drum
         if (ST.dkT > 30) ST.dkPose = 'holdB';
-        else if (ST.dkT <= 0) { ST.firstDrop = false; ST.barrels.push({ x: 24, y: 70, st: 'drop', vy: 0, blue: true, fr: 0 }); ST.dkPose = 'front'; ST.dkT = 120; Snd.barrel(); }
+        else if (ST.dkT <= 0) { ST.firstDrop = false; ST.barrels.push({ x: 24, y: 70, st: 'drop', vy: 0, blue: true, fr: 0 }); ST.dkPose = 'front'; ST.dkT = 120; }
         return;
       }
       // reach for the pile, lift a barrel, set it rolling
@@ -556,7 +553,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         var wild = G.level >= 2 && Math.random() < .12 + .02 * G.level, blue = !wild && ST.thrown % 7 === 0;
         if (wild) ST.barrels.push({ x: 60, y: 84, st: 'wild', vx: (G.m.x > 60 ? 1 : -1) * .6, vy: -1, blue: true, fr: 0, bounces: 0, lastP: ST.plats[5] });
         else ST.barrels.push({ x: 72, y: 84, p: ST.plats[5], st: 'roll', dir: 1, blue: blue, fr: 0 });
-        ST.dkPose = 'front'; Snd.barrel();
+        ST.dkPose = 'front';
         ST.dkT = Math.max(70, 160 - G.level * 16) + Math.floor(rnd(0, 50));
       } else if (ST.dkT > 60 && ST.dkT % 40 < 20) ST.dkPose = ST.dkT % 80 < 40 ? 'grin' : 'grinR';
       else if (ST.dkT > 44) ST.dkPose = 'front';
@@ -566,7 +563,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       ST.dkPose = Math.floor(frame / 40) % 3 === 2 ? 'front' : Math.floor(frame / 20) % 2 ? 'grin' : 'grinR';
     } else if (dk.mode === 'springs') {
       ST.springT--; ST.dkPose = ST.springT < 20 ? 'grinR' : Math.floor(frame / 24) % 2 ? 'grin' : 'front';
-      if (ST.springT <= 0) { ST.springs.push({ x: 66, y: 88, vx: rnd(1.1, 1.5), vy: -2.2, base: 88, st: 'hop', fr: 0 }); ST.springT = Math.max(70, 140 - G.level * 12) + Math.floor(rnd(0, 40)); Snd.spring(); }
+      if (ST.springT <= 0) { ST.springs.push({ x: 66, y: 88, vx: rnd(1.1, 1.5), vy: -2.2, base: 88, st: 'hop', fr: 0 }); ST.springT = Math.max(70, 140 - G.level * 12) + Math.floor(rnd(0, 40)); }
     } else if (dk.mode === 'pace') {
       dk.vx = dk.vx || .35; dk.x += dk.vx; if (dk.x < 72 || dk.x > 152) dk.vx = -dk.vx;
       ST.dkPose = Math.floor(frame / 30) % 3 === 0 ? 'grin' : Math.floor(frame / 30) % 3 === 1 ? 'front' : 'grinR';
@@ -606,7 +603,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       } else if (b.st === 'fall') {
         var yy = b.y; b.vy += .14; b.x += b.vx; b.y += b.vy;
         var lp = landOn(b.x, yy, b.y);
-        if (lp) { b.y = surf(lp, b.x); b.p = lp; if (!b.bounced) { b.bounced = true; b.vy = -1.1; Snd.barrel(); } else { b.st = 'roll'; b.dir = lp.down || -Math.sign(b.vx) || -1; b.skip = null; } }
+        if (lp) { b.y = surf(lp, b.x); b.p = lp; if (!b.bounced) { b.bounced = true; b.vy = -1.1; } else { b.st = 'roll'; b.dir = lp.down || -Math.sign(b.vx) || -1; b.skip = null; } }
         if (b.y > H + 16 || b.x < -16 || b.x > W + 16) ST.barrels.splice(i, 1);
       } else if (b.st === 'wild') {
         // a wild barrel crashes straight through the girders, bouncing toward Jumpman
@@ -615,7 +612,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         if (wl && wl !== b.lastP && b.y > 100) {
           b.y = surf(wl, b.x); b.bounces++; b.lastP = wl;
           if (wl === ST.plats[0]) { b.st = 'roll'; b.p = wl; b.dir = -1; b.skip = null; }
-          else { b.vy = -1.5; b.vx = (G.m.x > b.x ? 1 : -1) * rnd(.4, .9); Snd.barrel(); }
+          else { b.vy = -1.5; b.vx = (G.m.x > b.x ? 1 : -1) * rnd(.4, .9); }
         }
         if (b.x < 6 || b.x > W - 6) b.vx = -b.vx;
         if (b.y > H + 16) ST.barrels.splice(i, 1);
@@ -624,9 +621,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
   function oilHit(blue) {
     var o = ST.oil; if (!o) return;
-    if (!o.lit) { o.lit = true; Snd.fire(); }
+    if (!o.lit) o.lit = true;
     o.flare = 40;
-    if (blue && ST.fires.length < maxFires()) { ST.fires.push(newFire(o.x + 6, ST.plats[0], true)); Snd.fire(); }
+    if (blue && ST.fires.length < maxFires()) { ST.fires.push(newFire(o.x + 6, ST.plats[0], true)); }
   }
   function maxFires() { return ST.kind === 1 ? Math.min(5, 1 + G.level) : ST.kind === 2 ? Math.min(5, 2 + G.level) : ST.kind === 3 ? 2 : Math.min(5, 1 + G.level); }
 
@@ -673,7 +670,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if (f.skip && Math.abs(f.skip.x - f.x) > 3) f.skip = null;
     });
     // 50 m: fireballs come out of the burning drum in the middle; 100 m: firefoxes appear on the floors
-    if (ST.kind === 2 && ST.fires.length < maxFires() && --ST.foxT <= 0) { ST.foxT = Math.floor(rnd(240, 420)); var fb = newFire(112, ST.plats[5], true); fb.y = 118; fb.vx = Math.random() < .5 ? -.7 : .7; ST.fires.push(fb); Snd.fire(); }
+    if (ST.kind === 2 && ST.fires.length < maxFires() && --ST.foxT <= 0) { ST.foxT = Math.floor(rnd(240, 420)); var fb = newFire(112, ST.plats[5], true); fb.y = 118; fb.vx = Math.random() < .5 ? -.7 : .7; ST.fires.push(fb); }
     if (ST.kind === 4 && ST.fires.length < maxFires() && --ST.foxT <= 0) {
       ST.foxT = Math.floor(rnd(200, 360));
       var fl = ST.plats[1 + Math.floor(Math.random() * 4)], fx = Math.random() < .5 ? fl.x0 + 8 : fl.x1 - 8;
@@ -724,7 +721,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       var s = ST.springs[j]; s.fr++;
       if (s.st === 'hop') {
         s.x += s.vx; s.vy += .16; s.y += s.vy;
-        if (s.y >= s.base) { s.y = s.base; s.vy = -2.2; Snd.spring(); if (s.x > 176) { s.st = 'drop'; s.vx = 0; s.vy = -1.4; } }
+        if (s.y >= s.base) { s.y = s.base; s.vy = -2.2; Snd.play('spring'); if (s.x > 176) { s.st = 'drop'; s.vx = 0; s.vy = -1.4; Snd.play('fall'); } }
       } else { s.vy += .12; s.y += s.vy; }
       if (s.y > H + 20) ST.springs.splice(j, 1);
     }
@@ -734,7 +731,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function collide() {
     var m = G.m, mb = marioBox(), hb = hamBox();
     function smash(list, i, o, pts) {
-      list.splice(i, 1); G.stats.smashed++; add(pts, o.x, o.y - 14); ST.sparks.push({ x: o.x, y: o.y - 6, t: 24 }); Snd.smash(); Kit.haptic('light');
+      list.splice(i, 1); G.stats.smashed++; add(pts, o.x, o.y - 14); ST.sparks.push({ x: o.x, y: o.y - 6, t: 24 }); Snd.excl('smash'); Kit.haptic('light');
     }
     for (var i = ST.barrels.length - 1; i >= 0; i--) {
       var b = ST.barrels[i], bb = { x0: b.x - 5, x1: b.x + 5, y0: b.y - 9, y1: b.y };
@@ -759,7 +756,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var every = Math.max(84, 132 - (G.level - 1) * 12);
     if (++ST.bonusT >= every) {
       ST.bonusT = 0; ST.bonus = Math.max(0, ST.bonus - 100);
-      if (ST.bonus <= 1000 && ST.bonus > 0) Snd.warn();
+      if (ST.bonus <= 1000) Snd.loop(bgm());
       if (ST.bonus === 0) die('time');
     }
   }
@@ -768,7 +765,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function die(why) {
     if (phase !== 'play' || G.god) return;
     G.m.st = 'dead'; G.stats.deaths.push({ by: why, lvl: G.level, h: heightNow() });
-    Snd.die(); Kit.haptic('error'); setPhase('die', 170);
+    Snd.loop(null); Snd.hush(); Snd.play('die'); Kit.haptic('error'); setPhase('die', 200);
   }
   function stageClear() {
     if (phase !== 'play') return;
@@ -776,9 +773,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (heightNow() > G.stats.best || G.level > (G.stats.bestL || 0)) { G.stats.best = heightNow(); G.stats.bestL = G.level; }
     G.stats.heights.push({ l: G.level, h: heightNow(), k: ST.kind, b: b });
     add(b);
-    if (ST.kind === 4) { Snd.win(); setPhase('win', 330); Kit.haptic('success'); }
-    else { Snd.clear(); setPhase('clear', 230); Kit.haptic('success'); ST.barrels = []; ST.fires = []; ST.springs = []; ST.pies = []; }
+    Snd.loop(null); Snd.hush();
+    if (ST.kind === 4) { Snd.play('last'); setPhase('win', WIN_T); Kit.haptic('success'); }
+    else { Snd.play('clear'); setPhase('clear', 230); Kit.haptic('success'); ST.barrels = []; ST.fires = []; ST.springs = []; ST.pies = []; }
   }
+  // the rivets stage ending, timed to the cabinet's tunes
+  var WIN_T = 740, WIN_FALL = 168, WIN_LAND = 258;
   function nextStage() {
     G.si++;
     if (G.si >= stageList(G.level).length) { G.si = 0; G.level++; Kit.callout('Level ' + G.level, '#ff6b6b'); }
@@ -790,16 +790,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     frame++;
     if (ST && ST.shake > 0) ST.shake -= .5;
     if (phase === 'intro') { pt--; introStep(); if (pt <= 0) startStage(true); return; }
-    if (phase === 'howhigh') { if (--pt <= 0) { setPhase('play'); Snd.start(); } return; }
+    if (phase === 'howhigh') { if (--pt <= 0) setPhase('play'); return; }
     if (phase === 'ready') { if (--pt <= 0) setPhase('play'); return; }
     if (phase === 'die') {
       if (--pt <= 0) {
-        G.lives--; drawLives = true;
+        G.lives--; hud();
         if (G.lives <= 0) return gameOver();
         startStage(false);
       }
       return;
     }
+    if (phase === 'win') { var wt = WIN_T - pt; if (wt === WIN_FALL) Snd.play('fall'); if (wt === WIN_LAND) { Snd.play('boom'); ST.shake = 6; } if (wt === WIN_LAND + 66) Snd.play('win'); }
     if (phase === 'clear' || phase === 'win') { ST.t++; if (--pt <= 0) nextStage(); return; }
     if (phase !== 'play') return;
     ST.t++;
@@ -816,7 +817,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
 
   // ── The opening: Kong carries Pauline up and stamps the girders crooked ──
-  var INTRO_T = 470;
+  // timed to the cabinet: the climb lasts the intro tune, a boom as he lands on top, five stomping hops,
+  // then he roars; HOW HIGH follows at 700 ticks
+  var INTRO_T = 700, HOP0 = 354, HOP = 34;
   function startIntro() {
     ST = buildStage(1); ST.bonus = bonusStart(1); ST.barrels = []; ST.fires = []; ST.pies = []; ST.springs = []; ST.pops = []; ST.sparks = []; ST.shake = 0;
     ST.final = ST.plats.map(function (p) { return p.ys.slice(); });
@@ -824,29 +827,30 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     ST.plats.forEach(function (p, i) { var mid = p.ys[Math.floor(p.ys.length / 2)]; if (i < 6) p.ys = p.ys.map(function () { return mid; }); });
     G.m = { x: -40, y: 248, st: 'ground', dir: 1, anim: 0, ham: 0, hamT: 0, over: [] };
     ST.dk.x = 112; ST.dk.y = 248; ST.dkPose = 'climb'; ST.pauline.carried = true;
-    setPhase('intro', INTRO_T); Snd.loop(null);
+    setPhase('intro', INTRO_T); Snd.loop(null); Snd.hush(); Snd.play('intro');
   }
   function introStep() {
     var t = INTRO_T - pt, dk = ST.dk;
-    if (t < 200) {
+    if (t < 312) {
       // climb up the middle with Pauline
-      dk.y = 248 - (248 - 84) * Math.min(1, t / 190); dk.x = 112; ST.dkPose = 'climb';
-      if (t % 20 === 0) Snd.climb();
-    } else if (t < 230) {
-      // up to the top: Pauline set down on her girder
-      ST.pauline.carried = false; dk.y = 84; ST.dkPose = 'front';
+      dk.y = 248 - (248 - 84) * Math.min(1, t / 300); dk.x = 112; ST.dkPose = 'climb';
+    } else if (t < HOP0) {
+      // up to the top: a hop onto the girder, Pauline set down
+      ST.pauline.carried = false; dk.x = 112; ST.dkPose = 'front';
+      dk.y = t < 323 ? 84 - Math.sin((t - 312) / 11 * PI) * 8 : 84;
+      if (t === 323) { Snd.play('boom'); ST.shake = 4; Kit.haptic('light'); }
     } else {
       // five stomps leftward, each one bending a girder
-      var k = t - 230, hop = Math.floor(k / 44), f = (k % 44) / 44;
+      var k = t - HOP0, hop = Math.floor(k / HOP), f = (k % HOP) / HOP;
       if (hop < 5) {
         dk.x = 112 - (hop + f) * 13.6; dk.y = 84 - Math.sin(f * PI) * 14; ST.dkPose = 'front';
-        if (k % 44 === 43) { Snd.stomp(); ST.shake = 6; ST.bend[4 - hop] = 1; ST.bend[5] = Math.max(ST.bend[5], hop >= 4 ? 1 : 0); Kit.haptic('medium'); }
-      } else { dk.x = DKX; dk.y = 84; ST.dkPose = Math.floor(k / 16) % 2 ? 'grin' : 'grinR'; }
+        if (k % HOP === HOP - 1) { Snd.play('boom'); ST.shake = 6; ST.bend[4 - hop] = 1; ST.bend[5] = Math.max(ST.bend[5], hop >= 4 ? 1 : 0); Kit.haptic('medium'); }
+      } else { dk.x = DKX; dk.y = 84; ST.dkPose = Math.floor(k / 16) % 2 ? 'grin' : 'grinR'; if (t === 565) Snd.play('roar'); }
     }
     // girders ease into their crooked shapes
     ST.plats.forEach(function (p, i) {
       if (i > 5) return; var fin = ST.final[i], mid = fin[Math.floor(fin.length / 2)];
-      var cur = ST.bend[i] || (i === 5 && t > 400 ? 1 : 0);
+      var cur = ST.bend[i] || (i === 5 && t > 540 ? 1 : 0);
       p.ys = fin.map(function (y) { return Math.round(mid + (y - mid) * cur); });
     });
   }
@@ -913,8 +917,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function drawDK() {
     var dk = ST.dk, dx = dk.x - DKX, dy = dk.y - DKY;
     if (phase === 'win') {
-      // the rivets are out: he tumbles down head first
-      var t = 330 - pt, fy = Math.min(248, 88 + t * t * .02);
+      // the rivets are out: he rages at the top, then tumbles down head first
+      if (WIN_T - pt < WIN_FALL) { sprAt(Math.floor(frame / 8) % 2 ? 'dk_grin' : 'dk_grinR', dx, dy); return; }
+      var t = WIN_T - pt - WIN_FALL, fy = Math.min(248, 88 + t * t * .02);
       spr(SPR.dk_fall, POS.dk_front[0] + dx, fy - 32);
       return;
     }
@@ -988,15 +993,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     px.setTransform(1, 0, 0, 1, 0, sh);
     if (phase === 'howhigh') { drawHowHigh(); }
     else {
-      var hideRivetFloors = phase === 'win' && (330 - pt) > 20;
+      var hideRivetFloors = phase === 'win' && (WIN_T - pt) > 20;
       if (hideRivetFloors) { var keep = ST.plats.slice(); ST.plats = [ST.plats[0], ST.plats[5]]; ST.noLads = true; drawStage(); ST.plats = keep; } else drawStage();
       drawObjects(); ST.noLads = false; drawPauline(); drawDK();
       if (phase !== 'intro' || G.m.x > -20) drawMario();
       if (phase === 'clear') drawClear();
       if (phase === 'win') {
-        var ct = 330 - pt, hx = ST.pauline.x + 10, hy = ST.pauline.y - 34;
-        spr(SPR.heart, hx - 7, hy);
-        if (ct > 120) { G.m.x = ST.pauline.x + 26; G.m.y = ST.pauline.y; G.m.dir = -1; }
+        var ct = WIN_T - pt, hx = ST.pauline.x + 10, hy = ST.pauline.y - 34;
+        if (ct > WIN_LAND) spr(SPR.heart, hx - 7, hy);
+        if (ct > WIN_LAND + 40) { G.m.x = ST.pauline.x + 26; G.m.y = ST.pauline.y; G.m.dir = -1; }
       }
       drawHUD(phase === 'intro');
       if (phase === 'ready') text('READY', W / 2, 140, WHITE, true);
@@ -1121,7 +1126,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     window.scrollTo(0, 0);
   }
   function leaveGame() {
-    Snd.loop(null); paused = false; welcome = false; G = null; ST = null; phase = 'idle';
+    Snd.loop(null); Snd.hush(); paused = false; welcome = false; G = null; ST = null; phase = 'idle';
     document.documentElement.classList.remove('ar-on');
     var v = $('view'); if (v.parentNode === $('app')) document.body.appendChild(v);
     v.hidden = true;
@@ -1145,7 +1150,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function setPaused(v) {
     if (!G || phase === 'over' || phase === 'idle') return;
     if (paused === v) return;
-    paused = v; if (v) { Snd.loop(null); save(); } else { welcome = false; Snd.unlock(); if (phase === 'play') Snd.loop(G.m.ham ? 'ham' : ['', 'b25', 'b50', 'b75', 'b100'][ST.kind]); last = 0; acc = 0; kick(); }
+    paused = v; if (v) { Snd.loop(null); Snd.hush(); save(); } else { welcome = false; Snd.unlock(); if (phase === 'play') Snd.loop(bgm()); last = 0; acc = 0; kick(); }
     syncOverlay();
   }
 
@@ -1154,7 +1159,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var keyDir = { l: false, r: false, u: false, d: false }, padDir = { l: false, r: false, u: false, d: false };
   function syncCtl() { ['l', 'r', 'u', 'd'].forEach(function (k) { ctl[k] = keyDir[k] || padDir[k]; }); }
   var KEYS = { ArrowUp: 'u', KeyW: 'u', ArrowLeft: 'l', KeyA: 'l', ArrowDown: 'd', KeyS: 'd', ArrowRight: 'r', KeyD: 'r' };
-  function skipIntro() { if (phase === 'intro') { pt = 1; return true; } if (phase === 'howhigh' && pt > 20) { pt = 20; return true; } return false; }
+  function skipIntro() { if (phase === 'intro') { pt = 1; Snd.hush(); return true; } if (phase === 'howhigh' && pt > 20) { pt = 20; return true; } return false; }
   document.addEventListener('keydown', function (e) {
     if (!G || document.querySelector('.ahi-overlay, .k-scrim, .k-win')) return;
     if (KEYS[e.code]) { e.preventDefault(); keyDir[KEYS[e.code]] = true; syncCtl(); if (paused) setPaused(false); return; }
@@ -1244,7 +1249,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     render: render, surf: surf, phaseSet: function (p, t) { setPhase(p, t); },
     start: function (cfg) { startGame(cfg || { who: 'Tim', lives: 3 }); },
     hold: function (v) { testHold = !!v; }, pt: function () { return pt; },
-    frameImg: function () { render(); return scr.toDataURL(); }, ready: function () { return artReady; }
+    frameImg: function () { render(); return scr.toDataURL(); }, ready: function () { return artReady; }, sndReady: Snd.ready
   };
 
   new ResizeObserver(function () { fit(); }).observe($('view'));
