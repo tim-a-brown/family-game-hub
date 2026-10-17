@@ -421,6 +421,7 @@
     skinEl = buildSkin();
     playEl.appendChild(skinEl); playEl.appendChild(scrEl);
     document.body.appendChild(playEl);
+    if (window.ResizeObserver) { var lastWH = ''; new ResizeObserver(function () { var wh = playEl.clientWidth + 'x' + playEl.clientHeight; if (wh !== lastWH) { lastWH = wh; layout(); } }).observe(playEl); }
     padMode();
     requestAnimationFrame(function () { playEl.classList.add('on'); });
     // the game file: on this device, or fetched from your account the first time
@@ -469,7 +470,13 @@
     }
   });
   window.addEventListener('touchstart', function () { if (!touchy) { touchy = true; if (playEl) padMode(); } }, { passive: true });
-  window.addEventListener('resize', function () { if (playEl) layout(); else if (!cur) drawShelf(); });
+  window.addEventListener('resize', function () { if (playEl) relayout(); else if (!cur) drawShelf(); });
+  // Turning the device: iOS can tell the page before its new size has settled (and the notch insets move too), so the
+  // game lays itself out again a few times over the next second, and whenever its screen really changes size
+  var rlT = [];
+  function relayout() { if (!playEl) return; layout(); rlT.forEach(clearTimeout); rlT = [60, 200, 450, 900].map(function (ms) { return setTimeout(function () { if (playEl) layout(); }, ms); }); }
+  window.addEventListener('orientationchange', relayout);
+  if (window.visualViewport) visualViewport.addEventListener('resize', function () { if (playEl) relayout(); });
 
   // static on the glass while the game loads
   function snowCanvas() {
