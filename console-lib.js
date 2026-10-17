@@ -4,7 +4,7 @@
 //
 // Two kinds of games, both in Firebase Storage under a library key (32 random hex digits):
 //   roms/<lib>/<id>               the game file (id = SHA-1 of the file)
-//   roms/<lib>/label-<id>.webp    its cartridge label (box art and logo), when it has one
+//   roms/<lib>/label-<id>[-<v>].webp  its cartridge label (box art and logo), when it has one (art: v)
 //   roms/<lib>/index.json         {v, carts: {id: {sys, name, file, size, added, art?}}, del: {id: at}}
 // - The house games: everyone signed in with a PIN has them. Firestore house/consoles {lib} names their library;
 //   it's read only when signed in, and kept on the device in gn_console_house.
@@ -73,7 +73,8 @@ var ConsoleLib = (function () {
   }
   function houseKey() { var k = get('gn_console_house'); return signedIn() && k && KEY_RE.test(k) ? k : null; }
   function url(k, name, media) { return API + encodeURIComponent('roms/' + k + '/' + name) + (media ? '?alt=media' : ''); }
-  function artUrl(k, id) { return url(k, 'label-' + id + '.webp', true); }
+  // (art: the label's version, so a redrawn label gets a new name and never comes from an old cache)
+  function artUrl(k, id, v) { return url(k, 'label-' + id + (v > 1 ? '-' + v : '') + '.webp', true); }
   function fetchIndex(k) {
     if (!k) return Promise.resolve(null);
     return fetch(url(k, 'index.json', true), { cache: 'no-store' }).then(function (r) {
@@ -116,7 +117,7 @@ var ConsoleLib = (function () {
     return false;
   }
   function entry(id, m, k, isHouse) {
-    return { id: id, sys: m.sys, name: m.name, file: m.file, size: m.size, added: m.added, played: 0, local: false, lib: k, house: isHouse, art: m.art ? artUrl(k, id) : null };
+    return { id: id, sys: m.sys, name: m.name, file: m.file, size: m.size, added: m.added, played: 0, local: false, lib: k, house: isHouse, art: m.art ? artUrl(k, id, m.art) : null };
   }
   // everything: [{id, sys, name, file, size, added, played, local (on this device), house, lib, art, data?}]; uploads
   // any game only this device has to your own library, and drops ones you deleted on another device

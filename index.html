@@ -226,28 +226,33 @@ document.addEventListener('visibilitychange', function () {
 .tiles .g.ct .fav .ico{filter:none;width:16px;height:16px;}
 .tiles .g.ct .fav.on{color:#ffb000;}
 /* NES: the grey toaster cartridge, its label in a black frame, grooves along the bottom */
-.ct-nes .ct-lab{padding:3%;background:#151416;}
+.ct-nes .ct-lab{top:9%;padding:3%;background:#151416;}
 /* Super Nintendo (US): rounded top, grip ribs down both sides, the label in a dark surround */
 .ct-snes .ct-body{border-radius:22% 22% 7px 7px / 12% 12% 7px 7px;background:linear-gradient(180deg,#b9b6bf,#9a97a0 65%,#8a8790);}
 .ct-snes .ct-body::before,.ct-snes .ct-body::after{content:"";position:absolute;top:16%;bottom:12%;width:5%;
   background:repeating-linear-gradient(180deg,rgba(0,0,0,.22) 0 2px,rgba(255,255,255,.15) 2px 3px,transparent 3px 6px);}
 .ct-snes .ct-body::before{left:2.5%;}
 .ct-snes .ct-body::after{right:2.5%;}
-.ct-snes .ct-lab{left:10%;right:10%;top:11%;padding:2.5%;background:#2c2a31;}
+.ct-snes .ct-lab{left:10%;right:10%;top:12%;padding:2.5%;background:#2c2a31;}
 .ct-snes .ct-grip{height:8%;left:26%;right:26%;}
 /* Genesis: black plastic, the black GENESIS band across the top of the label */
 .ct-genesis .ct-body{border-radius:10px 10px 6px 6px;background:linear-gradient(180deg,#2c2c31,#141416 55%,#0c0c0d);box-shadow:inset 0 2px 0 rgba(255,255,255,.12),inset 0 -3px 0 rgba(0,0,0,.4),0 6px 10px -4px rgba(0,0,0,.7),0 2px 0 rgba(0,0,0,.45);}
 .ct-genesis .ct-lab{top:5%;background:#000;}
 .ct-brand{flex:none;display:flex;align-items:center;justify-content:center;padding:4% 0 3%;}
 .ct-brand img{display:block;height:auto;}
-.ct-nes .ct-brand{padding:5% 0 2%;}
-.ct-nes .ct-brand img{width:46%;}
-.ct-snes .ct-brand{padding:5% 0 3%;}
-.ct-snes .ct-brand img{width:66%;}
-.ct-genesis .ct-brand{background:#000;padding:4% 0;}
-.ct-genesis .ct-brand img{width:62%;}
-.ct-atari2600 .ct-brand{background:#0d0c0b;padding:4% 0;}
-.ct-atari2600 .ct-brand img{width:42%;}
+.ct-nes .ct-brand{padding:4% 0 1%;}
+.ct-nes .ct-brand img{width:30%;}
+.ct-snes .ct-brand{padding:4% 0 2%;}
+.ct-snes .ct-brand img{width:44%;}
+.ct-genesis .ct-brand{background:#000;padding:3% 0;}
+.ct-genesis .ct-brand img{width:40%;}
+.ct-atari2600 .ct-brand{background:#0d0c0b;padding:3% 0;}
+.ct-atari2600 .ct-brand img{width:30%;}
+/* the finger hollow: a shallow scoop pressed into the top edge, shaded inside and lit along its lower lip */
+.ct-scoop{position:absolute;left:28%;right:28%;top:0;height:6.5%;border-radius:0 0 50% 50% / 0 0 100% 100%;
+  background:linear-gradient(180deg,rgba(0,0,0,.42),rgba(0,0,0,.16) 70%,rgba(0,0,0,.08));
+  box-shadow:inset 0 3px 4px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.5);}
+.ct-snes .ct-scoop{left:30%;right:30%;height:7%;}
 .ct-genesis .ct-grip{background:repeating-linear-gradient(180deg,rgba(255,255,255,.09) 0 2px,transparent 2px 5px);}
 .tiles .g.ct-genesis .fav{color:#8d8d96;}
 /* Atari 2600: black, the ribbed grip along the top, the picture label below it */
@@ -686,7 +691,9 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     // the label, the NES seal and the Super Nintendo logo under the art
     var brand = el('span', { class: 'ct-brand' }, [el('img', { src: 'img/consoles/' + g.sys + '.svg', alt: '', decoding: 'async' })]), top = g.sys === 'genesis' || g.sys === 'atari2600';
     var lab = el('span', { class: 'ct-lab' }, [top ? brand : null, el('span', { class: 'ct-win' }, [cartLabel(g)]), top ? null : brand]);
-    var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag }, [el('span', { class: 'ct-body' }, [el('span', { class: 'ct-grip' }), lab]),
+    // Nintendo's cartridges have a scooped finger hollow along the top edge, for pushing them into the console
+    var scoop = g.sys === 'nes' || g.sys === 'snes' ? el('span', { class: 'ct-scoop' }) : null;
+    var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag }, [el('span', { class: 'ct-body' }, [scoop, el('span', { class: 'ct-grip' }), lab]),
       el('span', { class: 'ct-name', text: g.name })]);
     go.addEventListener('click', function () { r.classList.add('in'); launch(g); });
     return [r, go];
