@@ -567,8 +567,7 @@ html[data-theme="light"] .cats .chip.on:not([style*="--cc"]),html[data-theme="pa
       '<h3>Drawing</h3><ul><li>Tap the deck or <b>Draw</b> for a new card. Swipe the card left to draw too.</li>' +
       '<li>Pick a category at the top, like <b>Family</b>, <b>Memories</b> or <b>Funny</b>, or leave it on <b>All</b>.</li>' +
       '<li>Tap the <b>star</b> on a card you love. The <b>Starred</b> pile keeps your favorites.</li></ul>' +
-      '<h3>Who answers?</h3><ul><li><b>Spin</b> picks someone at random (never the same person twice in a row).</li>' +
-      '<li><b>Take turns</b> goes around the table. <b>Everyone</b> means everybody answers.</li>' +
+      '<h3>Answering</h3><ul><li>Answer however your table likes: one person, going around, or everyone.</li>' +
       '<li>Anyone can say <b>pass</b>. Just draw the next card.</li></ul>' +
       '<h3>Timer</h3><p>Turn on the answer timer in setup if you want quick answers. It is just for fun.</p>' +
       '<h3>Saving</h3><p>When you are done, choose <b>Finish</b>. The cards you talked about and the ones you starred are saved in Past talks.</p>'
@@ -579,12 +578,8 @@ html[data-theme="light"] .cats .chip.on:not([style*="--cc"]),html[data-theme="pa
     S = null; stopTimer(); dock.remove();
     Kit.setup(app, {
       intro: ALL.length + ' questions that get everyone talking.',
-      players: { min: 1, max: 8, count: 3, label: "Who's at the table?" },
+      // (no names: the talking happens round the table, nothing is kept per person)
       options: [
-        { id: 'who', label: 'Who answers', value: 'spin', help: 'How the game picks who answers each card.', choices: [
-          ['spin', 'Spin', 'A spinner picks someone at random, never the same person twice in a row.'],
-          ['turns', 'Take turns', 'Go around the table in order, one person per card.'],
-          ['all', 'Everyone', 'Everybody answers every card.']] },
         { id: 'timer', label: 'Answer timer', value: 0, help: 'A countdown you can start on each card to keep answers quick. Just for fun.', choices: [
           [0, 'Off', 'No timer. Talk as long as you like.'], [30, '30 s', 'Quick answers.'], [60, '1 min', 'Time for a short story.'], [120, '2 min', 'Time for a longer story.']] },
         { id: 'depth', label: 'Depth', value: 'all', help: 'How big the questions are, from silly to serious.', choices: [
@@ -600,8 +595,7 @@ html[data-theme="light"] .cats .chip.on:not([style*="--cc"]),html[data-theme="pa
   function start(cfg) {
     undoStack = [];
     S = {
-      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, n: 0 }; }),
-      who: cfg.players.length < 2 ? 'all' : String(cfg.options.who || 'spin'),
+      players: [], who: 'all',
       timer: Number(cfg.options.timer) || 0, depth: String(cfg.options.depth || 'all'),
       cat: 'all', deck: [], cur: null, answerer: null, drawn: [], turn: 0, started: Date.now()
     };
@@ -670,7 +664,7 @@ html[data-theme="light"] .cats .chip.on:not([style*="--cc"]),html[data-theme="pa
     felt.appendChild(wrap);
 
     // Who answers
-    if (p) felt.appendChild(whoBox(anim.spin));
+    if (p) { var wb = whoBox(anim.spin); if (wb.children.length) felt.appendChild(wb); }
     app.appendChild(table);
     renderDock();
   }
@@ -713,7 +707,8 @@ html[data-theme="light"] .cats .chip.on:not([style*="--cc"]),html[data-theme="pa
 
   function whoBox(spin) {
     var box = el('div', { class: 'who' });
-    if (S.who === 'all' || S.players.length < 2) {
+    if (!S.players.length) {   // (a talk without names: just the card, and the timer when it's on)
+    } else if (S.who === 'all' || S.players.length < 2) {
       box.appendChild(el('div', { class: 'say', text: S.players.length < 2 ? 'Your turn to answer' : 'Everyone answers' }));
     } else {
       var ring = el('div', { class: 'ring' }), chips = [];
@@ -862,14 +857,14 @@ html[data-theme="light"] .cats .chip.on:not([style*="--cc"]),html[data-theme="pa
         meta: { cards: D.slice(0, 60).map(function (d) { return { q: BYID[d.id].q, c: BYID[d.id].c, who: d.who != null && P[d.who] ? P[d.who].name : '', star: !!d.star }; }) }
       });
       var stars = D.filter(function (d) { return d.star; }).length;
-      var again = { players: P.map(function (p) { return { name: p.name, color: p.color }; }), options: { who: S.who, timer: S.timer, depth: S.depth } };
+      var again = { players: [], options: { timer: S.timer, depth: S.depth } };
       clearSave(); undoStack = [];
       Kit.win({
         icon: 'party', title: 'Great talk!',
         sub: D.length + (D.length === 1 ? ' card' : ' cards') + (mins >= 1 ? ' in ' + mins + ' min' : '') + (stars ? ' · ' + stars + ' starred' : ''),
         rank: S.who === 'all' || P.length < 2 ? null : P.map(function (p) { return { name: p.name, score: p.n + (p.n === 1 ? ' answer' : ' answers'), color: p.color }; }),
         againLabel: 'Keep talking', again: function () { start(again); },
-        extra: [{ label: 'Change who is playing', onClick: showSetup }]
+        extra: [{ label: 'Change settings', onClick: showSetup }]
       });
       S = null; dock.remove();
     };
