@@ -226,7 +226,16 @@ document.addEventListener('visibilitychange', function () {
 .tiles .g.ct .fav .ico{filter:none;width:16px;height:16px;}
 .tiles .g.ct .fav.on{color:#ffb000;}
 /* NES: the grey toaster cartridge, its label in a black frame, grooves along the bottom */
-.ct-nes .ct-lab{top:9%;padding:3%;background:#151416;}
+/* NES: the grey Game Pak, label on the right, the ridged grip down the left with the square finger notch at its top,
+   an arrow under the label and the narrower connector tab along the bottom */
+.tiles .g.ct-nes .go{filter:drop-shadow(0 5px 6px rgba(0,0,0,.45));}
+.ct-nes .ct-body{border-radius:3px 3px 2px 2px;box-shadow:inset 0 2px 0 rgba(255,255,255,.4),inset 0 -2px 0 rgba(0,0,0,.2);
+  clip-path:polygon(0 0,100% 0,100% 94%,95% 94%,95% 100%,5% 100%,5% 94%,0 94%);}
+.ct-nes .ct-lab{left:26%;right:4%;top:4%;padding:3%;background:#151416;}
+.ct-nes .ct-grip{left:4%;width:18%;right:auto;top:13%;bottom:9%;height:auto;
+  background:repeating-linear-gradient(180deg,#8a888b 0 2px,#a9a7aa 2px 3px,#7c7a7d 3px 5px);box-shadow:inset 1px 0 0 rgba(0,0,0,.18),inset -1px 0 0 rgba(255,255,255,.25);}
+.ct-arrow{position:absolute;left:61%;bottom:13%;width:0;height:0;margin-left:-5px;border:5px solid transparent;border-top:6px solid rgba(0,0,0,.28);border-bottom:0;
+  filter:drop-shadow(0 1px 0 rgba(255,255,255,.35));}
 /* Super Nintendo (US): rounded top, grip ribs down both sides, the label in a dark surround */
 .ct-snes .ct-body{border-radius:22% 22% 7px 7px / 12% 12% 7px 7px;background:linear-gradient(180deg,#b9b6bf,#9a97a0 65%,#8a8790);}
 .ct-snes .ct-body::before,.ct-snes .ct-body::after{content:"";position:absolute;top:16%;bottom:12%;width:5%;
@@ -248,12 +257,10 @@ document.addEventListener('visibilitychange', function () {
 .ct-genesis .ct-brand img{width:40%;}
 .ct-atari2600 .ct-brand{background:#0d0c0b;padding:3% 0;}
 .ct-atari2600 .ct-brand img{width:30%;}
-/* the finger notch: a small square recess in the top edge near the corner (the end that stays out of the console),
-   shaded inside, its walls catching the light */
-.ct-scoop{position:absolute;right:9%;top:0;width:12%;height:7%;border-radius:0 0 2px 2px;
-  background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,.28));
-  box-shadow:inset 2px 0 2px rgba(0,0,0,.35),inset -1px 0 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.25),0 1px 0 rgba(255,255,255,.5);}
-.ct-snes .ct-scoop{right:17%;height:7.5%;}
+/* the NES finger notch: a square recess cut into the top edge above the grip, shaded inside, its walls catching the light */
+.ct-scoop{position:absolute;left:4%;width:18%;top:0;height:11%;border-radius:0 0 2px 2px;
+  background:linear-gradient(180deg,rgba(0,0,0,.42),rgba(0,0,0,.2));
+  box-shadow:inset 2px 0 2px rgba(0,0,0,.35),inset -1px 0 0 rgba(255,255,255,.22),inset 0 -2px 2px rgba(0,0,0,.2),0 1px 0 rgba(255,255,255,.45);}
 .ct-genesis .ct-grip{background:repeating-linear-gradient(180deg,rgba(255,255,255,.09) 0 2px,transparent 2px 5px);}
 .tiles .g.ct-genesis .fav{color:#8d8d96;}
 /* Atari 2600: black, the ribbed grip along the top, the picture label below it */
@@ -692,9 +699,10 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     // the label, the NES seal and the Super Nintendo logo under the art
     var brand = el('span', { class: 'ct-brand' }, [el('img', { src: 'img/consoles/' + g.sys + '.svg', alt: '', decoding: 'async' })]), top = g.sys === 'genesis' || g.sys === 'atari2600';
     var lab = el('span', { class: 'ct-lab' }, [top ? brand : null, el('span', { class: 'ct-win' }, [cartLabel(g)]), top ? null : brand]);
-    // Nintendo's cartridges have a small square finger notch in the top edge near the corner
-    var scoop = g.sys === 'nes' || g.sys === 'snes' ? el('span', { class: 'ct-scoop' }) : null;
-    var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag }, [el('span', { class: 'ct-body' }, [scoop, el('span', { class: 'ct-grip' }), lab]),
+    // the NES Game Pak: the ridged grip down its left side with the square finger notch at its top, the arrow under the label
+    var nes = g.sys === 'nes';
+    var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag }, [el('span', { class: 'ct-body' },
+      [nes ? el('span', { class: 'ct-scoop' }) : null, el('span', { class: 'ct-grip' }), lab, nes ? el('span', { class: 'ct-arrow' }) : null]),
       el('span', { class: 'ct-name', text: g.name })]);
     go.addEventListener('click', function () { r.classList.add('in'); launch(g); });
     return [r, go];
