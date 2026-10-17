@@ -1998,7 +1998,8 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   }
 
   // ═══ The end ════════════════════════════════════════════════════════════
-  var shown = false;
+  var shown = false, winOv = null;
+  function closeWin() { if (winOv) { winOv.close(); winOv = null; } }
   function showWin(again) {
     if (!S || S.phase !== 'over') return;
     var w = S.winner, P = S.players;
@@ -2007,8 +2008,9 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     var rank = P.map(function (p, i) { return { i: i, w: M.worth(S, i), out: p.out ? p.outAt : 1e9 }; })
       .sort(function (a, b) { return (a.i === w ? -1 : b.i === w ? 1 : 0) || b.out - a.out || b.w - a.w; });
     var lose = mode === 'cpu' ? P[w].cpu : mode === 'online' ? !NET || w !== NET.seat : false;
-    Kit.win({
-      icon: lose ? 'bot' : 'trophy', lose: lose, quiet: !!again,
+    if (winOv) winOv.close();
+    winOv = Kit.win({
+      icon: lose ? (P[w].cpu ? 'bot' : 'meh') : 'trophy', lose: lose, quiet: !!again,
       title: (P[w].name === 'You' || mode === 'online' && NET && w === NET.seat ? 'You win!' : P[w].name + ' wins!'),
       sub: S.endWhy === 'time' ? 'Richest when time ran out · worth ' + money(M.worth(S, w)) : 'Last one standing after ' + S.round + ' rounds',
       rank: rank.map(function (r) { var p = P[r.i]; return { name: p.name, score: p.out ? 'Bankrupt' : money(r.w), color: pcolor(r.i), cpu: p.cpu }; }),
@@ -2159,7 +2161,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     }).catch(function (e) { console.error(e); }).then(function () { disp = null; busy = Math.max(0, busy - 1); render(); afterChange(); });
   }
   function enterGame(st, hello) {
-    stopAll(); pickStop(); PK = null; mode = 'online'; S = st; syncCpu();
+    closeWin(); stopAll(); pickStop(); PK = null; mode = 'online'; S = st; syncCpu();
     lastHuman = -1; lastTurnSeen = hello ? S.turn : -1; undoStack = [];
     Kit.gameStart(); build(); render();
     if (NET && S.players[NET.seat]) rememberToks([S.players[NET.seat]]);
@@ -2169,7 +2171,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   // ── Choosing pieces at the table: the same box, everyone picking on their own device at once ──
   function enterPick() {
     if (mode === 'online' && !S && PK && document.body.contains(PK.root)) return;
-    stopAll(); pickStop(); S = null; view = null; mode = 'online'; PK = null;
+    closeWin(); stopAll(); pickStop(); S = null; view = null; mode = 'online'; PK = null;
   }
   function pickDraw(st, prev) {
     var me = NET ? NET.seat : -1;
@@ -2236,7 +2238,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     NET.act(function (s) { return pickMove(s, me, tok); });
   }
   function netLeave() {
-    NET = null; stopAll(); pickStop(); PK = null; S = null; view = null; mode = null;
+    NET = null; closeWin(); stopAll(); pickStop(); PK = null; S = null; view = null; mode = null;
     var sv = lsGet(SAVE, null);
     if (sv && sv.S && sv.S.players && sv.S.phase !== 'over' && sv.mode !== 'online') { S = sv.S; mode = sv.mode; build(); render(); afterChange(); }
     else showSetup();

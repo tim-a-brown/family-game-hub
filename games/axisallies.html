@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 /* ── Power colors (board-game muted, readable with white or dark ink) ─────── */
 :root{
@@ -369,6 +371,18 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
   .bt .felt{border-radius:16px;}
   .drow .die{--ds:34px;}
 }
+/* Online: watching another general's turn */
+.aa-wait.nudge{animation:aaNudge .4s;}
+@keyframes aaNudge{20%,60%{transform:translateX(-5px);}40%,80%{transform:translateX(5px);}}
+.aa-side .tn-chips{justify-content:flex-start;margin:2px 0 8px;}
+.aa-mine{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0 0 6px;font-size:.8rem;font-weight:800;color:var(--text-3);}
+.aa-mine .pw{display:inline-flex;align-items:center;gap:5px;color:var(--text);}
+.aa-mine .rnd{width:20px;height:20px;}
+.bt .bdive{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%;}
+.bt .bdive p{flex-basis:100%;margin:0;text-align:center;color:#fff;font-weight:800;font-size:.86rem;}
+/* a ring that spreads where something just changed hands or arrived (another general's move) */
+.fx-ping{fill:none;stroke-width:3;animation:aaPing 1.1s ease-out forwards;transform-box:fill-box;transform-origin:center;}
+@keyframes aaPing{from{opacity:1;transform:scale(.3);}to{opacity:0;transform:scale(1.6);}}
 </style>
 </head>
 <body>
@@ -467,7 +481,7 @@ function buildMap(mode) {
     SKIRM_LAND.forEach(function (n) { on[NAME[n]] = true; });
     SKIRM_SEA.forEach(function (z) { on[z - 1] = true; });
   }
-  M.on = on;
+  M.on = on; M.mode = mode === 'skirm' ? 'skirm' : 'full';
   M.adj = ADJ.map(function (a, i) { return on[i] ? a.filter(function (j) { return on[j]; }) : []; });
   M.view = mode === 'skirm' ? [330, 60, 640, 470] : [0, 0, 1750, 1000];
   M.caps = {};
@@ -506,10 +520,15 @@ var undoStack = [];
 var busy = 0;          // >0 while an animation or computer turn is running
 var tok = 0;           // bumps to cancel pending computer steps
 var ui = { sel: -1, pick: {}, mob: null, preview: null, bankSel: null };
+// Online (turnnet.js): NET is the table while playing at one. The table's state is S without the local bits.
+// QUIET > 0 while a move is worked out on a copy of the state (no saving, no toasts); HEADLESS > 0 while a
+// computer general's move is worked out for the table (no animation, no waiting).
+var NET = null, DRAFT = null, QUIET = 0, HEADLESS = 0;
 
 function cur() { return S.powers[S.pi]; }
 function seatOf(p) { return S.seats[S.ctl[p]]; }
-function isCpu(p) { return !!seatOf(p).cpu; }
+// Online, every power that isn't this device's to play is "someone else's": the screen watches it
+function isCpu(p) { return NET && !QUIET ? S.ctl[p] !== NET.seat : !!seatOf(p).cpu; }
 function pname(p) { return PW[p].name; }
 function newUnit(o, k, t, extra) {
   var u = { i: S.nid++, o: o, k: k, t: t, m: 0 };
@@ -794,7 +813,7 @@ function capture(t, p) {
       var took = S.ipc[q] || 0;
       S.ipc[p] += took; S.ipc[q] = 0;
       hl(pname(p) + ' captured ' + (city || tname(t)) + ' in round ' + S.round + (took ? ' and seized ' + took + ' IPCs' : ''));
-      Kit.callout(city + ' falls!', PW[p].col);
+      if (!QUIET) Kit.callout(city + ' falls!', PW[p].col);
     }
     if (to === q && prev !== q) {
       // Capital liberated: the owner's other freed lands come home too
@@ -966,7 +985,7 @@ function endNcm(force) {
   if (lost.length) {
     lost.forEach(function (u) { removeUnit(u); });
     stat(p, 'airLost', lost.length);
-    Kit.toast(lost.length + ' aircraft ran out of fuel');
+    if (!QUIET) Kit.toast(lost.length + ' aircraft ran out of fuel');
   }
   // Ships keep cargo; clear battle-only flags
   S.units.forEach(function (u) { u.dv = 0; });
@@ -974,7 +993,7 @@ function endNcm(force) {
 }
 // Collect income: the sixth step. The money lands at once; the screen that shows where it came from
 // is dismissed before the next power's turn begins (a reload during it just moves on).
-function endMob() {
+function endMobState() {
   var p = cur(), inc = income(p), before = S.ipc[p];
   S.ipc[p] += inc;
   stat(p, 'income', inc);
@@ -982,6 +1001,11 @@ function endMob() {
   S.units.forEach(function (u) { if (u.h) u.h = 0; });
   S.incomeHist = S.incomeHist || [];
   S.phase = 'inc'; S.B = null; S.bl = [];
+  return { p: p, inc: inc, before: before };
+}
+function endMob() {
+  if (NET) { netEndTurn(); return; }
+  var r = endMobState(), p = r.p, inc = r.inc, before = r.before;
   ui.sel = -1; ui.pick = {}; ui.preview = null; ui.bankSel = null;
   save();
   renderAll();
@@ -995,7 +1019,7 @@ function incomeRows(p) {
   return rows;
 }
 function showIncome(p, inc, before, done) {
-  var seat = seatOf(p), human = !seat.cpu, lost = !holdsCapital(p) && capitalOf(p) != null;
+  var seat = seatOf(p), human = !seat.cpu && !NET, lost = !holdsCapital(p) && capitalOf(p) != null;
   closeBanner();
   var list = el('div', { class: 'aa-inc' });
   if (lost) list.appendChild(el('div', { html: '<span>Capital in enemy hands: no income</span><b>0</b>' }));
@@ -1123,7 +1147,7 @@ function openBattle(b) {
     }
     if (!A.length) { b.done = 1; save(); return null; }
     if (!D.length) {
-      if (A.some(function (u) { return U[u.k].dom === 'L'; }) && foe(S.own[b.t], p)) { capture(b.t, p); Kit.toast(pname(p) + ' takes ' + tname(b.t)); }
+      if (A.some(function (u) { return U[u.k].dom === 'L'; }) && foe(S.own[b.t], p)) { capture(b.t, p); if (!QUIET) Kit.toast(pname(p) + ' takes ' + tname(b.t)); }
       A.forEach(function (u) { u.f = 1; });
       b.done = 1; save(); return null;
     }
@@ -1866,7 +1890,7 @@ function renderTop() {
     el('span', { html: roundelSvg(p) }).firstChild,
     el('div', { class: 'who' }, [
       el('b', { text: pname(p), style: { color: p === 'de' ? '#c9cfcb' : shade(PW[p].col, 0.4) } }),
-      el('small', { html: (seat.cpu ? Kit.icon('bot') + ' ' : '') + esc(seat.name) + ' · Round ' + S.round })
+      el('small', { html: (seat.cpu ? Kit.icon('bot') + ' ' : '') + esc(NET && S.ctl[p] === NET.seat ? 'You' : seat.name) + ' · Round ' + S.round })
     ]),
     el('span', { class: 'aa-pill', title: 'Victory cities: Axis – Allies', html: '<svg viewBox="0 0 24 24" width="14" height="14"><use href="#vc-star" width="24" height="24"/></svg>' + vcCount('X') + '–' + vcCount('A') }),
     el('span', { class: 'aa-pill ipc', title: 'IPCs: your money', 'aria-label': 'IPCs, your money', html: '<i>IPC</i>' + (S.ipc[p] - (S.phase === 'buy' ? buyCost() : 0)) })
@@ -2008,7 +2032,7 @@ function stepBtn(foot, label, fn, loud) { return primary(foot, label, fn, { cls:
 function renderPanel() {
   if (!S || !R.side) return;
   var p = cur();
-  if (S.over) { var sh = panelShell('Game over', { undo: false }); sh.body.appendChild(el('p', { class: 'aa-p', text: S.overMsg || '' })); primary(sh.foot, 'New game', function () { showSetup(); }); return; }
+  if (S.over) { var sh = panelShell('Game over', { undo: false }); sh.body.appendChild(el('p', { class: 'aa-p', text: S.overMsg || '' })); primary(sh.foot, NET ? 'Play again' : 'New game', function () { if (NET) NET.again(); else showSetup(); }); return; }
   if (isCpu(p)) return cpuPanel();
   if (S.phase === 'inc') { var si = panelShell(PH_TITLE.inc, { undo: false, tip: false }); si.body.appendChild(el('p', { class: 'aa-p', text: 'Every territory you hold pays its value.' })); return; }
   if (S.phase === 'buy') return buyPanel();
@@ -2018,9 +2042,20 @@ function renderPanel() {
 }
 function cpuPanel() {
   var p = cur(), sh = panelShell(seatOf(p).name + ' is playing ' + pname(p), { undo: false });
+  if (NET) {
+    // online, watching someone else's turn: the table's seats (whose turn glows), your own powers, the place you tapped
+    R.side.querySelector('h2').classList.add('aa-wait');
+    sh.body.appendChild(TurnNet.chips());
+    var mineP = S.powers.filter(function (q) { return S.ctl[q] === NET.seat; });
+    if (mineP.length) sh.body.appendChild(el('div', { class: 'aa-mine' }, [el('span', { text: 'You play' })].concat(mineP.map(function (q) { return el('span', { class: 'pw', html: roundelSvg(q) + '<b>' + esc(PW[q].short) + '</b>' }); }))));
+    if (S.B && !R.bt) sh.body.appendChild(el('div', { class: 'blist' }, [el('button', { type: 'button', class: 'brow', onclick: function () { Kit.sfx('tap'); netWatchBattle(); } }, [el('span', { html: Kit.icon('dice') }).firstChild,
+      el('span', { class: 'tx' }, [el('b', { text: tname(S.B.t) }), el('small', { text: 'Battle on now · tap to watch' })])])]));
+    if (ui.sel >= 0) { sh.body.appendChild(tinfoCard(ui.sel)); sh.body.appendChild(unitList(ui.sel)); }
+  }
   sh.body.appendChild(el('p', { class: 'aa-p', html: '<b>' + esc(PH_TITLE[S.phase] || '') + '</b>' }));
   var lines = S.log.slice(-5).reverse();
   lines.forEach(function (l) { sh.body.appendChild(el('p', { class: 'aa-p', style: { margin: '2px 0' }, text: l.replace(/^R\d+ /, '') })); });
+  if (NET) return;
   var fast = S.opt.speed === 'fast';
   primary(sh.foot, fast ? 'Speed: fast' : 'Speed: normal', function () { S.opt.speed = fast ? 'normal' : 'fast'; save(); renderPanel(); }, { cls: 'btn-soft' });
 }
@@ -2413,7 +2448,12 @@ function selectPlace(t) {
 function onTap(t) {
   if (!S || S.over || busy) { if (S && t >= 0) { ui.sel = t; renderAll(); } return; }
   var p = cur();
-  if (isCpu(p)) { ui.sel = t; renderAll(); return; }
+  if (isCpu(p)) {
+    ui.sel = t; renderAll();
+    // online: not your turn. The place's card still opens; the "who's playing" title gives a small shake
+    if (NET) { var h = R.side.querySelector('.aa-wait'); if (h) { h.classList.remove('nudge'); void h.offsetWidth; h.classList.add('nudge'); } Kit.haptic('light'); }
+    return;
+  }
   var tg = currentTargets();
   if (S.phase === 'mob' && ui.bankSel && tg[t]) {
     pushUndo();
@@ -2450,6 +2490,7 @@ function undo() {
 }
 function afterPhase() {
   ui.sel = -1; ui.pick = {}; ui.preview = null; ui.bankSel = null; S.v++;
+  if (NET) { netCommit(); return; }
   if (S.over) return;
   save();
   renderAll();
@@ -2467,6 +2508,7 @@ function giveInput(v) { var f = inputWait; inputWait = null; if (f) f(v); }
 function humanPower(p) { return p && !isCpu(p); }
 function startBattle(b) {
   if (busy) return;
+  if (NET) { netOpenBattle(b); return; }
   var B = openBattle(b);
   if (!B) { S.v++; renderAll(); return; }
   runBattle().catch(function () {});
@@ -2630,7 +2672,9 @@ function renderBattle(B, anim) {
   var felt = R.bt.querySelector('.felt');
   felt.innerHTML = '';
   var title = B.k === 'sbr' ? 'Bombing raid: ' + tname(B.t) : 'Battle for ' + tname(B.t);
-  felt.appendChild(el('div', { class: 'bhead' }, [el('h2', { text: title }), el('small', { text: B.k === 'sbr' ? '' : 'Round ' + B.round })]));
+  felt.appendChild(el('div', { class: 'bhead' }, [el('h2', { text: title }), el('small', { text: B.k === 'sbr' ? '' : 'Round ' + B.round }),
+    // online, watching someone else's battle: put it away and look at the map (the panel can bring it back)
+    NET && !NET.myTurn() ? el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Watch the map', style: { color: '#fff' }, html: Kit.icon('close'), onclick: function () { Kit.sfx('tap'); netHideBattle(); } }) : null]));
   var sc = el('div', { class: 'bscroll' });
   felt.appendChild(sc);
   if (B.k === 'sbr') {
@@ -2669,7 +2713,7 @@ function renderBattle(B, anim) {
   if ((B.step === 'pre' || B.step === 'decide')) {
     ['a', 'd'].forEach(function (s) {
       var pw = s === 'a' ? B.att : B.def;
-      if (!subChoice(B, s) || !humanPower(pw)) return;
+      if (!subChoice(B, s) || !humanPower(pw) || (NET && s === 'd')) return;   // (online the defender gets its own turn to choose)
       var seg = el('div', { class: 'seg' });
       [[false, 'Fight'], [true, 'Dive']].forEach(function (c) {
         seg.appendChild(el('button', { type: 'button', class: !!ui.dive[s] === c[0] ? 'on' : '', text: c[1], onclick: function () { ui.dive[s] = c[0]; Kit.sfx('tap'); renderBattle(B); } }));
@@ -2701,6 +2745,12 @@ function renderBattle(B, anim) {
     acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('dice') + '<span>' + (B.k === 'sbr' ? 'Drop the bombs' : B.step === 'pre' ? 'Roll the dice' : 'Roll again') + '</span>', onclick: function () { giveInput('roll'); } }));
   } else if (B.step === 'end' && attHuman) {
     acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Done', onclick: function () { Kit.sfx('tap'); giveInput('ok'); } }));
+  } else if (B.step === 'dive') {
+    // online: the defending submarines' choice, on the defender's own device
+    if (humanPower(B.def)) acts.appendChild(el('div', { class: 'bdive' }, [el('p', { text: PW[B.def].short + ' submarines: fight, or dive away?' }),
+      el('button', { type: 'button', class: 'btn btn-soft', text: 'Dive', onclick: function () { Kit.sfx('whoosh'); giveInput({ dive: true }); } }),
+      el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('dice') + '<span>Fight</span>', onclick: function () { Kit.sfx('tap'); giveInput({ dive: false }); } })]));
+    else acts.appendChild(el('div', { class: 'wait', html: roundelSvg(B.def) + '<span class="think">' + esc(seatOf(B.def).name) + ' decides: fight or dive…</span>' }));
   } else if (B.step !== 'end') {
     var roller = B.step === 'pre' || B.step === 'decide' ? B.att : (B.vols[B.vi] && B.vols[B.vi].side === 'd' ? B.def : B.att);
     acts.appendChild(el('div', { class: 'wait', html: roundelSvg(roller || B.att) + '<span class="think">' + esc(seatOf(roller || B.att).name) + (B.step === 'pre' || B.step === 'decide' ? ' is deciding\u2026' : ' rolls\u2026') + '</span>' }));
@@ -2802,6 +2852,7 @@ function frontDist(p) {
   return dist;
 }
 async function cpuStep(from, to, col) {
+  if (HEADLESS) { S.v++; return; }   // (online: the move is worked out for the table; every device draws it after)
   S.v++; save(); paintMap(); fxArrow(from, to, col);
   if (S.opt.speed !== 'fast' || Math.random() < 0.35) peek(to);
   await wait(spd(260));
@@ -3169,6 +3220,8 @@ function splitFor(map, n, mode, side) {
 function save() {
   if (!S) return;
   S.v = (S.v || 0) + 1;
+  if (QUIET) return;
+  if (NET) { netStash(); return; }   // online: the local saved game stays as it was
   try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
   if (!S.over) Kit.resume.set('Round ' + S.round + ' · ' + pname(cur()), { keys: [SAVE] });
 }
@@ -3197,6 +3250,13 @@ var SKIRM_OWN = { de: ['Germany', 'France', 'NW Europe', 'Italy', 'Norway', 'Fin
 
 function newGame(cfg) {
   tok++; busy = 0; cpuRunning = false; hideBattle(); closeBanner();
+  initGame(cfg);
+  Kit.gameStart();
+  buildBoard();
+  requestAnimationFrame(function () { measure(); fitView(); var c = capitalOf(cur()); if (c != null && cfg.map !== 'skirm') focusOn(c, Math.max(fitScale() * 1.6, Math.min(1.1, V.W / 600))); renderAll(); beginTurnUI(true); });
+}
+// The opening position (S) for a game set up as cfg
+function initGame(cfg) {
   buildMap(cfg.map);
   var powers = cfg.map === 'skirm' ? ['su', 'de', 'uk'] : ORDERS[cfg.order === 'su' ? 'su' : 'de'].slice();
   if (cfg.map === 'skirm' && cfg.order !== 'su') powers = ['de', 'su', 'uk'];
@@ -3217,10 +3277,7 @@ function newGame(cfg) {
     SETUP_FULL.forEach(function (r) { for (var i = 0; i < r[3]; i++) newUnit(r[1], r[2], r[0]); });
   }
   powers.forEach(function (p) { S.ipc[p] = income(p); });
-  Kit.gameStart();
   startTurn();
-  buildBoard();
-  requestAnimationFrame(function () { measure(); fitView(); var c = capitalOf(cur()); if (c != null && cfg.map !== 'skirm') focusOn(c, Math.max(fitScale() * 1.6, Math.min(1.1, V.W / 600))); renderAll(); beginTurnUI(true); });
 }
 
 // ── Turn banner ────────────────────────────────────────────────────────────
@@ -3233,17 +3290,19 @@ function beginTurnUI(first) {
   var p = cur(), seat = seatOf(p);
   var c = capitalOf(p);
   if (c != null && S.own[c] === p) peek(c);
-  if (seat.cpu) { setTimeout(function () { runCpu(); }, spd(500)); return; }
+  if (NET) { if (S.ctl[p] !== NET.seat) return; }   // online: only this device's own turns are announced
+  else if (seat.cpu) { setTimeout(function () { runCpu(); }, spd(500)); return; }
+  var you = !!NET || seat.name === 'You';
   closeBanner();
   var card = el('div', { class: 'card paper', style: { '--pc': p === 'de' ? '#3d423f' : PW[p].col } }, [
     el('div', { html: roundelSvg(p) }).firstChild,
     el('h2', { text: pname(p) }),
-    el('p', { text: (seat.name === 'You' ? 'Your' : seat.name + '’s') + ' turn' }),
+    el('p', { text: (you ? 'Your' : seat.name + '’s') + ' turn' }),
     // the round's order: this power now, and the others the same player commands marked
     el('div', { class: 'aa-order', 'aria-label': 'Turn order' }, S.powers.reduce(function (a, q, i) {
       if (i) a.push(el('span', { class: 'ar', text: '›' }));
       var mine = seatOf(q) === seat;
-      a.push(el('span', { class: 'op' + (q === p ? ' now' : mine ? ' mine' : ''), html: roundelSvg(q) + '<span>' + (q === p ? 'Now' : mine ? (seat.name === 'You' ? 'You' : 'Same') : '') + '</span>' }));
+      a.push(el('span', { class: 'op' + (q === p ? ' now' : mine ? ' mine' : ''), html: roundelSvg(q) + '<span>' + (q === p ? 'Now' : mine ? (you ? 'You' : 'Same') : '') + '</span>' }));
       return a;
     }, [])),
     el('small', { text: 'Round ' + S.round + ' · ' + S.ipc[p] + ' IPCs to spend' + (holdsCapital(p) || capitalOf(p) == null ? '' : ' · capital lost!') }),
@@ -3276,25 +3335,9 @@ function aaDetail(side) {
 function gameOver(side, why) {
   S.over = side; S.overMsg = SIDE[side] + ' win! ' + why + '.';
   S.B = null; S.phase = 'mob';
+  if (QUIET) { S.overWhy = why; return; }   // (online: worked out inside a move; every device shows the end itself)
   hideBattle(); closeBanner();
-  var winners = S.seats.filter(function (s) { return sideOf(s.powers[0]) === side; });
-  var players = S.seats.map(function (s) {
-    var vc = M.vcs.filter(function (t) { return s.powers.indexOf(S.own[t]) >= 0; }).length;
-    return { name: s.name + ' (' + s.powers.map(function (p) { return { de: 'GER', su: 'USSR', jp: 'JPN', uk: 'UK', us: 'USA' }[p]; }).join('+') + ')', score: vc, cpu: !!s.cpu };
-  });
-  var rank = function (h) { return /captured|liberated/.test(h) ? 0 : /took/.test(h) ? 1 : /sank|factory/.test(h) ? 2 : 3; };
-  var hsort = S.hl.map(function (h, i) { return { h: h, i: i }; }).sort(function (a, b) { return rank(a.h) - rank(b.h) || a.i - b.i; }).map(function (x) { return x.h; });
-  var hls = [SIDE[side] + ' won in round ' + S.round + ': ' + why].concat(hsort.slice(0, 5));
-  var most = null; S.powers.forEach(function (p) { var k = (S.stats[p] || {}).caps || 0; if (!most || k > most.k) most = { p: p, k: k }; });
-  if (most && most.k >= 3 && hls.length < 7) hls.push(pname(most.p) + ' captured the most territories (' + most.k + ')');
-  try {
-    Kit.record(KEY, {
-      mode: (S.mode === 'skirm' ? 'Skirmish' : '1942 Second Edition'), players: players,
-      winner: winners.map(function (s) { return s.name; }).join(' & ') || SIDE[side],
-      highlights: hls, summary: SIDE[side] + ' won · round ' + S.round, started: S.started,
-      detail: aaDetail(side)
-    });
-  } catch (e) {}
+  var winners = aaRecord(side, why, S.mode === 'skirm' ? 'Skirmish' : '1942 Second Edition');
   clearSave();
   renderAll();
   var anyHuman = S.seats.some(function (s) { return !s.cpu; });
@@ -3303,11 +3346,37 @@ function gameOver(side, why) {
     icon: 'trophy', lose: anyHuman && !humanWon,
     title: SIDE[side] + ' win!',
     sub: why + ' · round ' + S.round,
-    rank: S.seats.slice().sort(function (a, b) { return (sideOf(b.powers[0]) === side) - (sideOf(a.powers[0]) === side); }).map(function (s) {
-      return { name: s.name + ' · ' + s.powers.map(function (p) { return PW[p].short; }).join(', '), score: M.vcs.filter(function (t) { return s.powers.indexOf(S.own[t]) >= 0; }).length + ' VC', color: PW[s.powers[0]].col };
-    }),
+    rank: aaRank(side),
     again: function () { showSetup(); }, againLabel: 'New game',
     extra: [{ label: 'Look at the map', onClick: function () {} }]
+  });
+}
+// The game's history record (mode: how it was played); returns the winning seats
+function aaRecord(side, why, mode, extra) {
+  var winners = S.seats.filter(function (s) { return s.powers.length && sideOf(s.powers[0]) === side; });
+  var players = S.seats.filter(function (s) { return s.powers.length; }).map(function (s) {
+    var vc = M.vcs.filter(function (t) { return s.powers.indexOf(S.own[t]) >= 0; }).length;
+    return { name: s.name + ' (' + s.powers.map(function (p) { return { de: 'GER', su: 'USSR', jp: 'JPN', uk: 'UK', us: 'USA' }[p]; }).join('+') + ')', score: vc, cpu: !!s.cpu };
+  });
+  var rank = function (h) { return /captured|liberated/.test(h) ? 0 : /took/.test(h) ? 1 : /sank|factory/.test(h) ? 2 : 3; };
+  var hsort = S.hl.map(function (h, i) { return { h: h, i: i }; }).sort(function (a, b) { return rank(a.h) - rank(b.h) || a.i - b.i; }).map(function (x) { return x.h; });
+  var hls = [SIDE[side] + ' won in round ' + S.round + ': ' + why].concat(hsort.slice(0, 5));
+  var most = null; S.powers.forEach(function (p) { var k = (S.stats[p] || {}).caps || 0; if (!most || k > most.k) most = { p: p, k: k }; });
+  if (most && most.k >= 3 && hls.length < 7) hls.push(pname(most.p) + ' captured the most territories (' + most.k + ')');
+  if (extra) hls = hls.concat(extra);
+  try {
+    Kit.record(KEY, {
+      mode: mode, players: players,
+      winner: winners.map(function (s) { return s.name; }).join(' & ') || SIDE[side],
+      highlights: hls, summary: SIDE[side] + ' won · round ' + S.round, started: S.started,
+      detail: aaDetail(side)
+    });
+  } catch (e) {}
+  return winners;
+}
+function aaRank(side) {
+  return S.seats.filter(function (s) { return s.powers.length; }).sort(function (a, b) { return (sideOf(b.powers[0]) === side) - (sideOf(a.powers[0]) === side); }).map(function (s) {
+    return { name: s.name + ' · ' + s.powers.map(function (p) { return PW[p].short; }).join(', '), score: M.vcs.filter(function (t) { return s.powers.indexOf(S.own[t]) >= 0; }).length + ' VC', color: PW[s.powers[0]].col };
   });
 }
 
@@ -3381,7 +3450,11 @@ var RULES =
   '<h3>Skirmish</h3><p>A quicker game in Europe: Germany against the Soviet Union and the United Kingdom on 20 territories and 10 sea zones, with smaller armies. Same units, buying, moves, dice and income. Britain also collects 10 IPCs a turn from its empire off the map. You win by holding an enemy capital at the end of a round (Allies: Berlin; Germany: Moscow or London) or 5 of the 6 victory cities. After round 10 the side with more victory cities wins.</p>' +
   '<h3>Left out</h3><p>Optional rules aren’t included: national objectives, research and technology, and the starting bid. Units can’t ride on an ally’s transport. Fighters fly on their own (they don’t ride a moving carrier). AA hits on planes are taken from the cheapest planes first.</p>' +
   '<h3>Music</h3><p>Marches played by US military bands, public domain recordings from the Internet Archive: ' + MUSIC_TRACKS.map(function (t) { return '<i>' + t.t + '</i> (' + t.by + ', ' + t.band + ')'; }).join(', ') + '. Switch them off with <b>Marching bands</b> in the menu, or play your own Spotify from <b>Music</b>.</p>' +
-  '<h3>Who plays what</h3><p>2 players: Axis against Allies. 3: Germany + Japan; Soviet Union + United States; United Kingdom. 4: Germany; Soviet Union + United States; Japan; United Kingdom. 5: one power each. Any seat can be a computer general.</p>';
+  '<h3>Who plays what</h3><p>2 players: Axis against Allies. 3: Germany + Japan; Soviet Union + United States; United Kingdom. 4: Germany; Soviet Union + United States; Japan; United Kingdom. 5: one power each. Any seat can be a computer general.</p>' +
+  '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table and 1 to 4 others join on their own devices. Powers are shared out as above, in the order people sat down. The game, victory and round limit are the ones on your setup screen; its number of players is how many generals there are, and seats nobody takes are computer generals.</li>' +
+  '<li>Take your turn whenever you like; the home screen shows when it’s yours. When someone attacks you, it’s your turn to choose your losses (and whether your submarines dive).</li>' +
+  '<li>Within a step you can undo until you finish it. Once a step is done, or the dice are rolled, it can’t be taken back online.</li>' +
+  '<li>Leave the online game and a computer general takes over your powers.</li></ul>';
 
 // The sheet: "What do I do now?" first, then the full rules in sections that open on a tap
 function rulesHtml() {
@@ -3438,13 +3511,14 @@ var Music = (function () {
 var KIT_OPTS = { orient: 'landscape', orientTablets: true,
   id: KEY,
   theme: { wood: ['#7a5a3a', '#4e3620'] },
-  onNew: function () { clearSave(); showSetup(); },
-  undo: function () { undo(); },
-  menu: [
+  onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+  // online: only what you haven't sent yet (this step, still on your device) can be taken back
+  undo: function () { if (NET && (!undoStack.length || isCpu(cur()) || busy)) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+  menu: TurnNet.menu().concat([
     { icon: 'tiles', label: 'Show whole map', onClick: function () { if (S && R.map) fitView(true); } },
     Music.menuItem,
     { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Axis & Allies: past games', keys: ['axisallies-score'] }); } }
-  ]
+  ])
 };
 // Kit reads opts.rules each time the sheet opens, so a getter keeps "what do I do now" current
 Object.defineProperty(KIT_OPTS, 'rules', { get: rulesHtml, enumerable: true });
