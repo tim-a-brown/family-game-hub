@@ -451,8 +451,23 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .cont .r1 .t{flex:1;min-width:0;}
 .cont .a{flex:none;font-size:.7rem;font-weight:800;color:var(--text-3);}
 .cont .d{font-size:.75rem;color:var(--text-2);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cont-net{box-shadow:inset 3px 0 0 var(--c), inset 0 0 0 1.5px color-mix(in srgb,var(--yellow) 70%,transparent);}
-.cont-net .d{color:var(--yellow);}
+/* Online games: your turn glows gold and wears a "Your turn" tag; one waiting on the other player sits back */
+.cont-net.turn{background:linear-gradient(120deg,color-mix(in srgb,var(--yellow) 20%,var(--surface)),var(--surface) 75%);
+  box-shadow:inset 3px 0 0 var(--c), inset 0 0 0 1.5px color-mix(in srgb,var(--yellow) 80%,transparent);animation:ytGlow 2.6s ease-in-out infinite;}
+.cont-net.turn .d{color:var(--text);}
+.cont .yt{flex:none;display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 6px;border-radius:999px;background:var(--yellow);color:#2b1a00;
+  font-size:.66rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;box-shadow:0 2px 6px color-mix(in srgb,var(--yellow) 45%,transparent);}
+.cont .yt i{width:6px;height:6px;border-radius:50%;background:#2b1a00;animation:ytDot 1.3s ease-in-out infinite;}
+.cont-net.wait{opacity:.72;}
+.cont-net.wait .gicon{filter:saturate(.55);}
+.cont-net.wait .d{color:var(--text-3);}
+@keyframes ytGlow{0%,100%{box-shadow:inset 3px 0 0 var(--c), inset 0 0 0 1.5px color-mix(in srgb,var(--yellow) 80%,transparent), 0 0 0 0 color-mix(in srgb,var(--yellow) 0%,transparent);}
+  50%{box-shadow:inset 3px 0 0 var(--c), inset 0 0 0 1.5px var(--yellow), 0 0 16px 1px color-mix(in srgb,var(--yellow) 35%,transparent);}}
+@keyframes ytDot{50%{transform:scale(.55);opacity:.45;}}
+@media (prefers-reduced-motion:reduce){.cont-net.turn,.cont .yt i{animation:none;}}
+#cont-n.yt-n{color:var(--yellow);font-weight:900;white-space:nowrap;}
+.cont-w:has(.cont-net.turn){grid-column:span 2;}   /* twice as wide as the others: the first thing you see */
+.cont-net.turn{padding-top:10px;padding-bottom:10px;}.cont-net.turn .gicon{width:40px;height:40px;}
 /* Activity log (profile menu) */
 .al-tag{margin-left:auto;font-size:.8rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text-3);}
 .al-tag.ok{color:#4ade80;}
@@ -1188,7 +1203,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
         r[0].concat(r[1]).forEach(function (x) {
           var d = x.d, h = x.seat === 'host'; if (seen['c' + x.code] || !d.host || !d.guest) return; seen['c' + x.code] = 1;
           var hw = (d.game || 1) % 2 === 1 ? !!d.hw : !d.hw, mine = (hw ? 1 : -1) * (h ? 1 : -1), toMove = (d.moves || []).length % 2 === 0 ? 1 : -1;
-          if (toMove === mine) out.push({ id: 'chess', code: x.code, at: d.at || 0, vs: knownBy(h ? d.guest : d.host), href: 'games/chess.html?online=1&room=' + x.code });
+          out.push({ id: 'chess', code: x.code, at: d.at || 0, mine: toMove === mine, vs: knownBy(h ? d.guest : d.host), href: 'games/chess.html?online=1&room=' + x.code });
         });
         r[2].concat(r[3]).forEach(function (x) {
           var d = x.d, me = x.seat === 'host' ? 0 : 1; if (seen['l' + x.code] || !d.host || !d.guest) return; seen['l' + x.code] = 1;
@@ -1196,14 +1211,28 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
           if (d.status === 'joined') mine = me === 0;
           else if (/"phase":"mull"/.test(d.st || '')) { try { var mu = JSON.parse(d.st).mull || {}; mine = !mu[me] || (open && d.pr.seat === me) || (!open && d.owner === me && (answered || mu[1 - me])); } catch (e) { mine = false; } }
           else mine = open ? d.pr.seat === me : d.owner === me;
-          if (mine) out.push({ id: 'lorcana', code: x.code, at: d.at || 0, vs: knownBy(me === 0 ? d.guest : d.host), href: 'games/lorcana-play.html?online=1&room=' + x.code });
+          out.push({ id: 'lorcana', code: x.code, at: d.at || 0, mine: !!mine, vs: knownBy(me === 0 ? d.guest : d.host), href: 'games/lorcana-play.html?online=1&room=' + x.code });
         });
-        netTurns = out.sort(function (a, b) { return b.at - a.at; }).slice(0, 4);
+        // your move first (newest first), then the ones waiting on the other player
+        out.sort(function (a, b) { return (b.mine - a.mine) || (b.at - a.at); });
+        netTurns = out.filter(function (x) { return x.mine; }).slice(0, 6).concat(out.filter(function (x) { return !x.mine; }).slice(0, 4));
+        // a game that just came back to you, while home is open: a little pop so you notice
+        var nowMine = {}; netTurns.forEach(function (x) { if (x.mine) nowMine[x.id + x.code] = 1; });
+        if (wasMine && Object.keys(nowMine).some(function (k) { return !wasMine[k]; })) { try { Kit.sfx('pop'); Kit.haptic('light'); } catch (e) {} }
+        wasMine = nowMine;
+        turnBadge();
         renderRail();
       });
     }).catch(function (e) { console.warn('[home] online games', e); });
   }
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadNetTurns(); });
+  setInterval(function () { if (document.visibilityState === 'visible') loadNetTurns(); }, 61000);   // (home left open: a move the other player made shows up within a minute)
+  var wasMine = null;
+  // the app's icon carries the count of games waiting on your move (where the device allows a badge)
+  function turnBadge() {
+    var n = netTurns.filter(function (x) { return x.mine; }).length;
+    try { if (navigator.setAppBadge) { if (n) navigator.setAppBadge(n).catch(function () {}); else navigator.clearAppBadge().catch(function () {}); } } catch (e) {}
+  }
 
   // ── Open tables: linked friends with a table you can join ───────────────────
   // Every online game marks its tables with a one-way tag of the host's link code (never the code itself). The tags
@@ -1390,11 +1419,16 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (!items.length) editing = false;
     var rail = $('rail'); rail.innerHTML = ''; rail.classList.toggle('editing', editing);
     var eb = $('cont-edit'); eb.hidden = !items.length; eb.textContent = editing ? 'Done' : 'Edit'; eb.classList.toggle('on', editing);
-    var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g; });
+    var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g && (x.n.mine || !narrowed); });
+    // Online games against someone: your move glows gold with a Your turn tag; one waiting on them sits back, quiet
     nets.forEach(function (x) {
-      rail.appendChild(el('div', { class: 'cont-w' }, [el('a', { class: 'cont cont-net', href: x.n.href, style: { '--c': x.g.color }, title: x.g.name + ': your move' }, [
+      var mine = x.n.mine;
+      rail.appendChild(el('div', { class: 'cont-w' }, [el('a', { class: 'cont cont-net ' + (mine ? 'turn' : 'wait'), href: x.n.href, style: { '--c': x.g.color }, title: x.g.name + (mine ? ': your turn' : ': ' + x.n.vs + '’s turn') }, [
         el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
-        el('span', { class: 'tx' }, [el('div', { class: 'r1' }, [el('div', { class: 't', text: x.g.name }), el('span', { class: 'a', text: ago(x.n.at, true) })]), el('div', { class: 'd', text: 'Your move vs ' + x.n.vs })])
+        el('span', { class: 'tx' }, [
+          el('div', { class: 'r1' }, [el('div', { class: 't', text: x.g.name }), mine ? el('span', { class: 'yt', html: '<i></i>Your turn' }) : el('span', { class: 'a', text: ago(x.n.at, true) })]),
+          el('div', { class: 'd', text: mine ? 'vs ' + x.n.vs + ' · ' + ago(x.n.at) : x.n.vs + '’s turn' })
+        ])
       ])]));
     });
     var shown = railAll || editing || items.length <= 6 ? items : items.slice(0, 6);
@@ -1410,7 +1444,9 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       rail.appendChild(more);
     }
     var nAll = items.length + nets.length;
-    $('cont-n').textContent = nAll > 1 ? nAll + ' going' : '';
+    var nMine = nets.filter(function (x) { return x.n.mine; }).length, cn = $('cont-n');
+    cn.textContent = nMine ? 'Your turn · ' + nMine : nAll > 1 ? nAll + ' going' : '';
+    cn.classList.toggle('yt-n', !!nMine);
     $('cont-sec').hidden = narrowed ? !nets.length : (!nAll && !undoList);
     renderFoot(items.length);
   }
