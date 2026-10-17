@@ -182,7 +182,10 @@
       fs = Math.min(fs, across / (longest * .56));
       b.style.setProperty('--fs', Math.round(fs * w / 100) + 'px');
       // the label: the game's own art and logo when it has them, else its name on coloured paper
-      b.appendChild(c.art ? el('span', { class: 'lab art' }, [el('img', { src: c.art, alt: '', loading: 'lazy', decoding: 'async' }), el('b', { text: n })]) : el('span', { class: 'lab' }, [el('b', { text: n })]));
+      // (with the console's logo where its cartridges carry it: across the top on Genesis and Atari, under the art on NES and SNES)
+      var top = SYS_ID === 'genesis' || SYS_ID === 'atari2600';
+      b.appendChild(c.art ? el('span', { class: 'lab art ' + (top ? 'brand-top' : 'brand-bottom') }, [el('img', { class: 'pic', src: c.art, alt: '', loading: 'lazy', decoding: 'async' }),
+        el('span', { class: 'brand' }, [el('img', { src: '../img/consoles/' + SYS_ID + '.svg', alt: '' })]), el('b', { text: n })]) : el('span', { class: 'lab' }, [el('b', { text: n })]));
       if (!c.local && !c.house) b.appendChild(el('span', { class: 'cloud', html: Kit.icon('cloud') }));
     }
     return b;
