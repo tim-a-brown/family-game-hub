@@ -95,6 +95,18 @@ body{overflow-x:hidden;}
 .zoom .icon-btn{width:46px;height:46px;font-family:var(--display);font-size:1.4rem;}
 .hintline{text-align:center;font-size:.82rem;font-weight:600;line-height:1.4;color:var(--text-3);margin:12px auto 0;max-width:340px;}
 .hintline b{font-weight:800;color:var(--text-2);}
+/* Expert (30 wide) on an iPad / laptop held sideways: the field spans the top; under it the counters and tip on
+   the left, Dig / Flag and zoom on the right */
+@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
+  .ms.play.wide{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"frame frame frame" "hud hint tools";
+    column-gap:20px;row-gap:14px;align-content:start;align-items:center;max-width:1340px;padding-top:6px;}
+  .ms.play.wide::before,.ms.play.wide::after{display:none;}
+  .ms.play.wide > .frame{grid-area:frame;justify-self:center;}
+  .ms.play.wide > .hud{grid-area:hud;width:420px;margin:0;}
+  .ms.play.wide > .hintline{grid-area:hint;margin:0;text-align:left;justify-self:start;}
+  .ms.play.wide > .tools{grid-area:tools;width:auto;margin:0;}
+  .ms.play.wide > .tools .seg{width:260px;}
+}
 </style>
 </head>
 <body>
@@ -490,16 +502,19 @@ body{overflow-x:hidden;}
     if (S.over && !S.won && S.hit >= 0) { field.classList.add('dark'); }
   }
   var baseCs = 30;
+  var WIDE = matchMedia('(orientation:landscape) and (min-width:900px) and (min-height:560px)');
   function layout(rebuild) {
     var vw = Math.min(window.innerWidth, document.documentElement.clientWidth || 9999);
     var portrait = window.innerHeight > vw;
     var tr = S.cols > S.rows && portrait;
     var vc = tr ? S.rows : S.cols, vr = tr ? S.cols : S.rows;
     var tab = vw >= 700 && window.innerHeight >= 700;  // iPad-sized: let cells grow past phone size
-    var availW = Math.min(vw - 24, S.cols > 16 ? 1180 : tab ? 780 : 620) - 16 - 2;
+    // Wide field with the controls in one row under it (the CSS above) leaves more height for the cells
+    var strip = S.cols > 16 && WIDE.matches;
+    var availW = Math.min(vw - 24, strip ? 1316 : S.cols > 16 ? 1180 : tab ? 780 : 620) - 16 - 2;
     var big = vr > 16;
     if (hud.hint) hud.hint.style.display = big ? 'none' : '';
-    var availH = window.innerHeight - 58 - 64 - 68 - (big ? 0 : 80) - 22;
+    var availH = window.innerHeight - 58 - (strip ? 130 : 64 + 68 + (big ? 0 : 80) + 22);
     baseCs = Math.max(14, Math.floor(Math.min(tab ? 72 : 44, availW / vc, Math.max(availH, vr * 16) / vr)));
     var cs = Math.round(baseCs * zoom);
     field.style.setProperty('--cs', cs + 'px');

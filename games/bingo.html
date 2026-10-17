@@ -126,7 +126,7 @@
 .ck-verdict b{font-family:var(--display);font-weight:400;font-size:1.3rem;display:block;margin-bottom:2px;color:#fff;}
 .ck-acts{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
 
-.bcol{display:contents;}
+.bcol,.bctl{display:contents;}
 /* ── iPad portrait: bigger cage, ball and called board ── */
 @media (min-width:700px) and (orientation:portrait){
   .stage{max-width:680px;}
@@ -136,15 +136,26 @@
   .frow{grid-template-columns:34px repeat(15,1fr);gap:3px;}
   .frow + .frow{margin-top:4px;}
 }
-/* ── Wide landscape (iPad, laptop): called board on the left, machine and buttons on the right ── */
+/* ── Wide landscape (iPad, laptop): the wide called board spans the top; below it the machine (what was just
+   called) on the left and the buttons on the right. --striph is the machine's height; the board's rows get the rest. ── */
 @media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .stage:has(> .bcol){max-width:1120px;display:flex;flex-direction:row-reverse;align-items:flex-start;gap:26px;}
-  .bcol{display:block;}
-  .bcol.a{flex:0 1 460px;min-width:380px;}
-  .bcol.b{flex:1 1 0;min-width:0;padding-top:4px;}
-  .machine{--cw2:min(190px,calc(100dvh - 520px));}
-  .fl,.fc{height:clamp(30px,calc((100dvh - 230px) / 5 - 6px),64px);font-size:1.1rem;}
-  .frow{grid-template-columns:32px repeat(15,1fr);gap:3px;}
+  .stage:has(> .bcol){max-width:1240px;display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,420px);
+    grid-template-areas:"board board" "mach ctl";column-gap:28px;row-gap:14px;align-items:center;padding-bottom:calc(var(--safe-b) + 14px);
+    --striph:calc(var(--cw2) * 1.1 + 58px);}
+  .stage:has(> .bcol),.stage:has(> .bcol) .machine{--cw2:clamp(116px,calc(100dvh * .2),230px);}
+  .bcol.a{display:contents;}
+  .bcol.b{grid-area:board;display:block;min-width:0;align-self:start;}
+  .machine{grid-area:mach;margin:0;}
+  .machine .felt-in{grid-template-columns:auto auto minmax(0,1fr);column-gap:22px;padding:10px 14px 8px;min-height:0;}
+  .ball.big{--s:clamp(96px,calc(100dvh * .16),170px);}
+  .recent{grid-column:auto;align-self:stretch;flex-wrap:wrap;align-content:center;gap:8px;min-height:0;margin:0;padding:0 0 0 20px;border-top:0;border-left:1px dashed rgba(255,255,255,.14);}
+  .recent .lbl{flex-basis:100%;}
+  .bctl{grid-area:ctl;display:block;}
+  .ctl{margin:0 0 10px;}
+  .opts{margin:0;}
+  .fl,.fc{height:clamp(30px,calc((100dvh - var(--safe-t) - var(--safe-b) - 58px - var(--striph) - 126px) / 5 - 5px),100px);font-size:clamp(1.05rem,2.2dvh,1.6rem);}
+  .fl{font-size:clamp(1.1rem,2.4dvh,1.6rem);}
+  .frow{grid-template-columns:clamp(32px,4dvh,44px) repeat(15,1fr);gap:4px;}
   .frow + .frow{margin-top:5px;}
 }
 </style>
@@ -252,7 +263,7 @@
       R.recent
     ]);
     R.machine = el('section', { class: 'machine wood' }, [felt]);
-    // Two columns on wide landscape screens (display:contents everywhere else)
+    // Columns for wide landscape screens (display:contents everywhere else)
     var app0 = app, colA = el('div', { class: 'bcol a' }), colB = el('div', { class: 'bcol b' });
     app0.appendChild(colA); app0.appendChild(colB);
     app = colA;
@@ -261,9 +272,12 @@
     R.undo = el('button', { type: 'button', class: 'btn btn-soft sq', 'aria-label': 'Undo last call', html: icon('undo'), onclick: function () { undo(); } });
     R.draw = el('button', { type: 'button', class: 'btn btn-primary drawbtn', onclick: function () { draw(); } });
     R.auto = el('button', { type: 'button', class: 'btn btn-soft sq autobtn', 'aria-label': 'Auto draw', onclick: function () { toggleAuto(); } });
-    app.appendChild(el('div', { class: 'ctl' }, [R.undo, R.draw, R.auto]));
+    // The buttons (display:contents except on wide landscape screens, where they sit right of the machine)
+    var ctlBox = el('div', { class: 'bctl' });
+    app.appendChild(ctlBox);
+    ctlBox.appendChild(el('div', { class: 'ctl' }, [R.undo, R.draw, R.auto]));
     R.bar = el('div', { class: 'autobar' }, [el('i')]);
-    app.appendChild(R.bar);
+    ctlBox.appendChild(R.bar);
 
     R.voice = el('button', { type: 'button', class: 'chip', onclick: function () {
       P.voice = !P.voice; savePrefs(); paintOpts(); Kit.sfx('tap'); Kit.haptic('light');
@@ -275,7 +289,7 @@
       if (autoOn) restartTimer();
     } });
     var check = el('button', { type: 'button', class: 'chip checkbtn', html: icon('check') + '<span>Check a card</span>', onclick: function () { openCheck(); } });
-    app.appendChild(el('div', { class: 'opts' }, [R.voice, R.every, check]));
+    ctlBox.appendChild(el('div', { class: 'opts' }, [R.voice, R.every, check]));
     app = colB;
 
     R.pat = el('button', { type: 'button', class: 'patbtn', onclick: function () { choosePattern(); } });

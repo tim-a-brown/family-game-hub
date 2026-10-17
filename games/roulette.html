@@ -157,17 +157,24 @@
   .rail{padding-top:6px;} .acts .icon-btn{width:46px;height:46px;} .acts .btn{min-height:46px;}
 }
 
-/* ── Wide landscape (iPad, laptop): wheel, last numbers and bankroll along the top; the table on its side across the screen ── */
+/* ── Wide landscape (iPad, laptop): the table on its side spans the top; the rail below holds the wheel, last
+   numbers, bankroll and message on the left, chips and buttons on the right (arrange() moves them) ── */
 @media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .stage.rl:has(> .tbl){max-width:1180px;padding-bottom:calc(var(--rail,150px) + 2px);display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,1fr);grid-template-rows:auto auto auto 1fr;column-gap:18px;align-items:start;}
-  .stage.rl > .head{grid-column:1;grid-row:1 / span 3;margin-bottom:8px;}
-  .stage.rl > .bank{grid-column:2;grid-row:1;margin-bottom:6px;}
-  .stage.rl > .msg{grid-column:2;grid-row:2;margin:4px 0 4px;}
-  .stage.rl > .bg-row{grid-column:2;grid-row:3;}
-  .stage.rl > .tbl{grid-column:1 / span 2;grid-row:4;width:100%;margin:0 auto;}
-  .stage.rl .mini{width:110px;height:110px;}
-  .stage.rl .board{min-height:0;}
-  .rail-in{max-width:640px;}
+  .stage.rl:has(> .tbl){max-width:1240px;padding-top:6px;padding-bottom:calc(var(--rail,150px) + 8px);}
+  .stage.rl > .tbl{width:100%;margin:0 auto;}
+  .rail-in{max-width:1240px;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,390px);grid-template-areas:"info rack" "info acts";column-gap:28px;align-items:center;}
+  .rail-in > .rinfo{grid-area:info;min-width:0;display:flex;gap:18px;align-items:center;}
+  .rail-in > .cz-rack{grid-area:rack;}
+  .rail-in > .acts{grid-area:acts;}
+  .rinfo .head{flex:1 1 0;min-width:0;max-width:440px;margin:0;padding:0;background:none;box-shadow:none;border-radius:0;align-items:center;}
+  .rinfo .mini{width:112px;height:112px;}
+  .rinfo .board{height:112px;box-sizing:border-box;min-height:0;overflow:hidden;}
+  .rinfo .board .nb{width:26px;height:26px;font-size:.9rem;} .rinfo .board .nb.first{width:34px;height:34px;font-size:1.15rem;}
+  .rstat{flex:1 1 0;min-width:0;max-width:380px;}
+  .rstat .bank{margin-bottom:6px;}
+  .rstat .bank div{background:rgba(0,0,0,.26);box-shadow:inset 0 1px 2px rgba(0,0,0,.3);}
+  .rstat .msg{text-align:left;margin:0;min-height:0;color:rgba(255,255,255,.88);}
+  .rstat .bg-row{justify-content:flex-start;margin:6px 0 0;}
 }
 </style>
 </head>
@@ -417,7 +424,8 @@
     var mini = el('canvas', { class: 'mini', 'aria-label': 'Roulette wheel', title: 'See the last spin', onclick: function () { if (!busy && S.recent.length) replayLast(); } });
     R.board = el('div', { class: 'board' });
     R.hcol = el('div', { class: 'hcol' }, [R.board]);
-    app.appendChild(el('div', { class: 'head wood' }, [mini, R.hcol]));
+    R.head = el('div', { class: 'head wood' }, [mini, R.hcol]);
+    app.appendChild(R.head);
     R.mini = mini;
     R.bal = el('b', { class: 'gold' }); R.on = el('b'); R.net = el('b');
     R.bankEl = el('div', { class: 'bank' }, [
@@ -454,24 +462,37 @@
     R.undo = el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Undo last chip', html: Kit.icon('undo'), onclick: undoChip });
     R.rep = el('button', { type: 'button', class: 'btn btn-soft rep', onclick: clearOrRepeat });
     R.spin = el('button', { type: 'button', class: 'btn btn-primary spin', html: Kit.icon('play') + '<span>Spin</span>', onclick: spin });
-    var r = el('div', { class: 'rail wood' }, [el('div', { class: 'rail-in' }, [R.tray, el('div', { class: 'acts' }, [R.undo, R.rep, R.spin])])]);
+    R.railIn = el('div', { class: 'rail-in' }, [R.tray, el('div', { class: 'acts' }, [R.undo, R.rep, R.spin])]);
+    var r = el('div', { class: 'rail wood' }, [R.railIn]);
     document.body.appendChild(r);
-    var setH = function () { document.documentElement.style.setProperty('--rail', r.offsetHeight + 'px'); };
+    var setH = R.setH = function () { document.documentElement.style.setProperty('--rail', r.offsetHeight + 'px'); };
     setH(); if (window.ResizeObserver) new ResizeObserver(setH).observe(r);
   }
-  // Phones: compact head, bankroll tucked into the wood box beside the wheel
+  // Phones: compact head, bankroll tucked into the wood box beside the wheel.
+  // Wide screens (SIDE): the table spans the top; wheel, last numbers, bankroll and message move to the rail's left.
   function isCompact() { return !SIDE.matches && window.innerWidth < 700; }
   function arrange() {
     var c = isCompact();
     app.classList.toggle('cmp', c);
-    if (c) { if (R.bankEl.parentNode !== R.hcol) R.hcol.appendChild(R.bankEl); }
-    else if (R.bankEl.nextSibling !== R.msg) app.insertBefore(R.bankEl, R.msg);
+    if (SIDE.matches && R.railIn) {
+      if (!R.info) R.info = el('div', { class: 'rinfo' }, [el('div', { class: 'rstat' })]);
+      var st = R.info.firstChild;
+      R.info.insertBefore(R.head, st);
+      [R.bankEl, R.msg, R.guide].forEach(function (n) { if (n) st.appendChild(n); });
+      if (R.info.parentNode !== R.railIn) R.railIn.insertBefore(R.info, R.railIn.firstChild);
+    } else {
+      var tbl = R.lay && R.lay.parentElement.parentElement;
+      [R.head, R.bankEl, R.msg, R.guide].forEach(function (n) { if (n) app.insertBefore(n, tbl); });
+      if (R.info) R.info.remove();
+      if (c) R.hcol.appendChild(R.bankEl);
+    }
+    if (R.setH) R.setH();
   }
   // Size the betting layout so everything (head, layout, chip rail) fits the
   // screen with no scrolling. innerHeight tracks the dynamic viewport (dvh).
   function layout(capRH, cutH) {
     var felt = R.lay.parentElement, tbl = felt.parentElement, side = SIDE.matches;
-    tbl.style.maxWidth = '';
+    tbl.style.maxWidth = ''; tbl.style.marginTop = '';
     var fs = getComputedStyle(felt), ts = getComputedStyle(tbl), px = function (v) { return parseFloat(v) || 0; };
     var padX = px(fs.paddingLeft) + px(fs.paddingRight), tPadX = px(ts.paddingLeft) + px(ts.paddingRight);
     var W = Math.floor(felt.clientWidth - padX);
@@ -482,7 +503,7 @@
     if (side) {
       // Wide screens: the table on its side, across the screen; the numbers a little taller than wide
       var availH = Math.max(150, window.innerHeight - top - below - (cutH || 0));
-      RH = Math.floor(Math.max(24, Math.min(W / ROWS_H, availH / 5.3, 78, capRH || 99)));
+      RH = Math.floor(Math.max(24, Math.min(W / ROWS_H, availH / 5.3, 96, capRH || 99)));
       var LW = Math.floor(Math.min(availH, RH * 6.8));
       G = geom(LW, RH, true);
       tbl.style.maxWidth = (G.sw + padX + tPadX) + 'px';
@@ -517,7 +538,9 @@
     R.stacks = {};
     // Safety net: if anything still overflows the screen, shrink the rows to fit
     var over = document.documentElement.scrollHeight - window.innerHeight;
-    if (over > 0 && RH > 18 && !capRH) layout(RH - Math.ceil(over / (g.rot ? 5.3 : ROWS_H)), g.rot ? over : 0);
+    if (over > 0 && RH > 18 && !capRH) { layout(RH - Math.ceil(over / (g.rot ? 5.3 : ROWS_H)), g.rot ? over : 0); return; }
+    // Wide screens: a table that ran out of width before height sits in the middle of the room above the rail
+    if (side) { var free = window.innerHeight - below - tbl.getBoundingClientRect().bottom; if (free > 8) tbl.style.marginTop = Math.floor(free / 2) + 'px'; }
   }
   function cellsFor(id) {
     var b = BETS[id], out = [];

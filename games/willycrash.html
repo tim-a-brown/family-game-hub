@@ -58,6 +58,23 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   .deck{grid-area:deck;height:clamp(150px,46vh,300px);align-self:end;width:100%;}
   .hint{grid-area:hint;font-size:.72rem;}
 }
+/* iPads and laptops sideways: the wide city spans the top; under it the plates on the left, the launch panel on
+   the right (phones on their side keep the side column: they don't have the height for a strip) */
+@media (orientation:landscape) and (min-aspect-ratio:6/5) and (min-height:560px){
+  html.ar-on #app{padding-left:calc(env(safe-area-inset-left,0px) + 16px);padding-right:calc(env(safe-area-inset-right,0px) + 16px);padding-bottom:calc(var(--safe-b) + 12px);}
+  .wc-view{grid-template-columns:minmax(0,1fr) minmax(360px,460px);grid-template-rows:minmax(0,1fr) auto auto;
+    grid-template-areas:"cab cab" "hud deck" "hint deck";column-gap:20px;row-gap:10px;}
+  .hud{display:flex;align-self:center;max-width:560px;}
+  .hud .plate{padding:6px 10px;}
+  .hud .plate.gold{order:-1;}
+  .hud .pbtn{width:56px;min-height:56px;}
+  .deck{height:clamp(124px,17vh,170px);align-self:stretch;}
+  .hint{text-align:left;align-self:start;}
+}
+@media (orientation:landscape) and (min-aspect-ratio:6/5) and (min-height:560px) and (hover:none),
+  (orientation:landscape) and (min-aspect-ratio:6/5) and (min-height:560px) and (pointer:coarse){
+  .hud{grid-row:2 / span 2;}   /* no keyboard hint on touch screens: the plates centre on the launch panel */
+}
 .ov{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;pointer-events:none;}
 .ov[hidden]{display:none;}
 .ov button{pointer-events:auto;}

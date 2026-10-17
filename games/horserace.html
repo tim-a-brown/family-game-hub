@@ -188,8 +188,17 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
   .stage.hr.ph-bet .hz{min-height:52px;padding-top:5px;padding-bottom:5px;}
   .stage.hr.ph-bet .prog{margin-bottom:10px;}
   .rail-in{max-width:760px;}
-  /* The race runs the full width of the screen with the whole-field camera */
+  /* The race runs the full width of the screen with the whole-field camera; under it the rail holds the call
+     and bankroll on the left, Skip on the right */
   .stage.hr.ph-race{max-width:1240px;}
+  .rail.rk-race .rail-in{max-width:1240px;display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,340px);column-gap:24px;align-items:center;}
+  .rk-race .rinfo{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px 10px;min-width:0;}
+  .rk-race .rinfo .call{min-width:0;height:64px;min-height:0;margin:0;padding:8px 14px;overflow:hidden;background:rgba(0,0,0,.32);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);}
+  .rk-race .rinfo .call p{font-size:1.05rem;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}
+  .rk-race .rinfo .bank{min-width:0;margin:0;}
+  .rk-race .rinfo .bank div{background:rgba(0,0,0,.26);box-shadow:inset 0 1px 2px rgba(0,0,0,.3);display:flex;flex-direction:column;justify-content:center;}
+  .rk-race .rinfo .stand{grid-column:1 / -1;margin:0;}
+  .rk-race .rinfo .stand .pp{background:rgba(0,0,0,.26);}
 }
 
 /* ── A phone on its side ───────────────────────────────────────────────────
@@ -1403,9 +1412,21 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
   var MQ_C = matchMedia('(orientation:landscape) and (max-height:540px)');
   var MQ_W = matchMedia('(orientation:landscape) and (min-width:900px) and (min-height:560px)');
   function lmode() { return MQ_C.matches ? 'c' : MQ_W.matches ? 'w' : 'p'; }
+  // iPad / laptop race: the track spans the top; the call and bankroll sit on the rail's left, Skip on its right
+  function placeInfo(m) {
+    if (!R.rinfo || !R.call) return;
+    var into = m === 'w' && S.phase === 'race';
+    if (into) { if (R.call.parentNode !== R.rinfo) { R.rinfo.appendChild(R.call); R.rinfo.appendChild(R.bank); if (R.stand.parentNode) R.rinfo.appendChild(R.stand); } }
+    else if (R.call.parentNode === R.rinfo) {
+      var colA = R.tw.parentNode;
+      colA.insertBefore(R.call, R.tw.nextSibling); colA.insertBefore(R.bank, R.call.nextSibling);
+      if (R.stand.parentNode === R.rinfo) colA.insertBefore(R.stand, R.bank.nextSibling);
+    }
+  }
   function layout() {
     if (!S || !RV || !R.tw || !document.body.contains(RV.el)) return;
     var m = lmode(), ph = S.phase, h;
+    placeInfo(m);
     app.style.setProperty('--hr-h', Math.max(220, window.innerHeight - app.offsetTop) + 'px');
     if (R.setRailH) R.setRailH();
     if (m === 'c') h = ph === 'bet' ? 0 : R.twIn.clientHeight;   // the CSS sizes the track box; the canvas fills it
@@ -1636,8 +1657,9 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
 
   // ── Rail ─────────────────────────────────────────────────────────────────
   function rail(kind) {
+    placeInfo(null);   // the call and bankroll leave the old rail before it goes
     var old = document.querySelector('.rail'); if (old) old.remove();
-    R.railKind = kind; R.pk = null; R.setRailH = null;
+    R.railKind = kind; R.pk = null; R.setRailH = null; R.rinfo = null;
     if (!kind) { document.documentElement.style.setProperty('--rail', '0px'); return; }
     var inner = el('div', { class: 'rail-in' });
     if (kind === 'bet') {
@@ -1653,7 +1675,8 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
       inner.appendChild(R.pk); inner.appendChild(R.tray); inner.appendChild(el('div', { class: 'acts' }, [R.undoB, R.clrB, R.goB]));
     } else if (kind === 'race') {
       R.goB = el('button', { type: 'button', class: 'btn btn-soft go', html: Kit.icon('right') + '<span>Skip to the finish</span>', onclick: skipRace });
-      inner.appendChild(el('div', { class: 'acts' }, [R.goB]));
+      R.rinfo = el('div', { class: 'rinfo' });   // wide screens: the call and bankroll move here (placeInfo)
+      inner.appendChild(R.rinfo); inner.appendChild(el('div', { class: 'acts' }, [R.goB]));
     } else {
       var last = !solo() && (S.raceNo >= S.opt.races || allBroke());
       R.goB = el('button', { type: 'button', class: 'btn btn-primary go', html: Kit.icon(last ? 'trophy' : 'play') + '<span>' + (last ? 'Final standings' : 'Next race') + '</span>', onclick: function () { if (last) endPass(); else { if (solo() && Casino.balance() < 1) { brokeSheet(); return; } nextRace(); } } });

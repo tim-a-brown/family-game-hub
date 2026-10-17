@@ -80,6 +80,17 @@
 .sg-status .s{margin-top:4px;color:var(--text-2);font-weight:700;font-size:.95rem;}
 .sg-go .ico{width:22px;height:22px;}
 .sg-go.wait{visibility:hidden;}
+
+/* ── Wide landscape (iPad, laptop): the table and its row of cups span the top; under it the scoreboard and
+   status on the left, the button on the right (layout() gives the felt the height that's left) ── */
+@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
+  .stage:has(> .sg-table){max-width:1180px;display:grid;grid-template-columns:minmax(300px,400px) minmax(0,1fr) minmax(260px,340px);
+    grid-template-areas:"table table table" "board status go";column-gap:24px;align-items:center;padding-bottom:calc(var(--safe-b) + 14px);}
+  .sg-table{grid-area:table;margin-bottom:16px;}
+  .sg-board{grid-area:board;margin:0;}
+  .sg-status{grid-area:status;margin:0;min-height:0;text-align:left;}
+  .sg-go{grid-area:go;}
+}
 </style>
 </head>
 <body>
@@ -266,7 +277,7 @@
     R.status = el('div', { class: 'sg-status' }, [R.t = el('div', { class: 't' }), R.s = el('div', { class: 's' })]);
     R.go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block sg-go', onclick: onGo });
     app.appendChild(R.board); app.appendChild(table); app.appendChild(R.status); app.appendChild(R.go);
-    buildCups(); paintBoard(); paintGo();
+    paintBoard(); paintGo(); buildCups();   // the scoreboard first: the cups are sized to the room it leaves
   }
   function buildCups() {
     if (R.cups) R.cups.forEach(function (c) { c.w.remove(); });
@@ -289,13 +300,21 @@
   }
 
   var G = {}; // geometry
+  var WIDE = matchMedia('(orientation:landscape) and (min-width:900px) and (min-height:560px)');
   function layout() {
-    var W = R.felt.clientWidth || 340, n = S.n;
-    // Bigger cups on a tablet, as long as the table still fits the screen height
-    var cap = W >= 560 ? Math.max(104, Math.min(140, ((window.innerHeight || 800) - 430) / 2.695)) : 104;
-    var cw3 = Math.min(cap, (W - 20) / 3.7), ch3 = cw3 * 1.1;
-    var avail = (window.innerHeight || 800) - 540;
-    G.H = Math.round(Math.max(ch3 * 2.45, Math.min(avail, ch3 * 3.1))); G.base = Math.round(Math.min(G.H - ch3 * 0.5, G.H / 2 + ch3 * 0.62));
+    var W = R.felt.clientWidth || 340, n = S.n, cw3, ch3;
+    if (WIDE.matches) {
+      // The felt takes the height left above the scoreboard row
+      var avail = window.innerHeight - R.felt.getBoundingClientRect().top - 26 - R.board.offsetHeight - (parseFloat(getComputedStyle(app).paddingBottom) || 0);
+      ch3 = Math.max(110, Math.min(avail / 2.5, (W - 20) / 3.7 * 1.1, 250)); cw3 = ch3 / 1.1;
+      G.H = Math.round(Math.max(ch3 * 2.45, Math.min(avail, ch3 * 3.1)));
+    } else {
+      // Bigger cups on a tablet, as long as the table still fits the screen height
+      var cap = W >= 560 ? Math.max(104, Math.min(140, ((window.innerHeight || 800) - 430) / 2.695)) : 104;
+      cw3 = Math.min(cap, (W - 20) / 3.7); ch3 = cw3 * 1.1;
+      G.H = Math.round(Math.max(ch3 * 2.45, Math.min((window.innerHeight || 800) - 540, ch3 * 3.1)));
+    }
+    G.base = Math.round(Math.min(G.H - ch3 * 0.5, G.H / 2 + ch3 * 0.62));
     G.cw = Math.min(cw3, (W - 16) / (n + (n - 1) * 0.34)); G.ch = G.cw * 1.1;
     var step = G.cw * 1.34, total = G.cw + step * (n - 1);
     G.x = []; for (var i = 0; i < n; i++) G.x.push((W - total) / 2 + i * step);
