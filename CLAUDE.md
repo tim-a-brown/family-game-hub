@@ -65,6 +65,9 @@ Underlying principles for everything:
   steer) on the right, and what's only for looking at (scores, logs, other players, a board that just shows the
   state, like Monopoly's) on the left. Decide per game by where the taps go: chess's board is the action;
   Monopoly's action panel is. (A console's drawn controller keeps the real controller's layout.)
+  A play space that's wider than tall (cribbage's pegboard, a line of dominoes, a backgammon board) instead sits
+  up top across the full width, with the actions and information in a strip below it: buttons on the right of
+  that strip, information on the left.
 - Player setup goes through `Kit.setup` (name picker, regulars, robot names for
   computer players). Every game passes `undo` to `Kit.init` when moves can be
   taken back. The game menu always has Frequent players.
