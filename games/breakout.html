@@ -295,8 +295,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     else if (k.ch === 's') pop(k.x + k.w / 2, k.y, '+' + pts, '#e8eef8', 11);
     sBrick(G.chain);
     if (G.speedMul < 1.3) G.speedMul += 0.0025;
-    // Power-up capsule
-    if (k.ch !== 's' && caps.length < 2 && balls.length < 6 && Math.random() < 0.12) dropCapsule(k.x + k.w / 2, k.y + k.h / 2);
+    // Power-up capsule, Arkanoid's way: about one brick in seventeen, one capsule falling at a time, and none while
+    // more than one ball is in play (multiball breaks bricks fast enough on its own); about four a wall
+    if (k.ch !== 's' && !caps.length && balls.length === 1 && Math.random() < 0.06) dropCapsule(k.x + k.w / 2, k.y + k.h / 2);
     if (G.stats.bricks % 8 === 0) save();
     Kit.haptic('tick');
   }
@@ -417,7 +418,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       '<h3>Bricks</h3><ul><li><b>Colored</b> bricks break in one hit (50 to 120 points).</li>' +
       '<li><b>Silver</b> bricks need 2 hits (3 hits from level 9).</li><li><b>Gold</b> bricks never break. Bounce around them.</li>' +
       '<li>Break 5 or more bricks in a row without touching the paddle for <b>double points</b>.</li></ul>' +
-      '<h3>Power-ups</h3><p>Broken bricks sometimes drop a capsule. Catch it with the paddle:</p><ul>' +
+      '<h3>Power-ups</h3><p>Now and then a broken brick drops a capsule (one at a time, and none during multiball). Catch it with the paddle:</p><ul>' +
       '<li><b>W</b> Wide: a longer paddle for 20 seconds.</li><li><b>M</b> Multiball: every ball splits into three.</li>' +
       '<li><b>S</b> Slow: the ball slows down for 14 seconds.</li><li><b>L</b> Laser: the paddle shoots the bricks for 12 seconds.</li>' +
       '<li><b>+</b> Extra life (rare).</li></ul>' +
