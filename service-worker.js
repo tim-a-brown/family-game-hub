@@ -232,6 +232,7 @@ const PRECACHE_URLS = [
   '/games/snes.html',
   '/games/genesis.html',
   '/games/console.js',
+  '/console-lib.js',
   '/games/console.css',
   // the emulator (its cores are big; EmulatorJS keeps each one in its own storage after the first game)
   '/emu/loader.js',

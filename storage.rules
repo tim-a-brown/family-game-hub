@@ -1,11 +1,17 @@
 rules_version = '2';
-// Firebase Storage: only the Lorcana card-art backup lives here. Anyone can
-// view it (it's public card art); only the deploy service account writes it.
+// Firebase Storage: the Lorcana card-art backup (public card art, written only by the deploy service account),
+// TURN logins, and each account's own console game files (private paths, below).
 service firebase.storage {
   match /b/{bucket}/o {
     match /lorcana/{path=**} {
       allow read: if true;
       allow write: if false;
+    }
+    // Your own console game files (games/nes.html etc.): roms/<library key>/<file>. The key is 32 random hex
+    // digits kept in the account's settings, so only its devices know the path. Exact paths only: no listing.
+    match /roms/{lib}/{file} {
+      allow get, delete: if lib.matches('^[0-9a-f]{32}$');
+      allow create, update: if lib.matches('^[0-9a-f]{32}$') && request.resource.size < 40 * 1024 * 1024;
     }
     // TURN logins for online games (they expire within a day; written by the turn-credentials Action)
     match /online/ice.js {

@@ -49,40 +49,54 @@ html.cs-on #app{flex:1;min-height:0;width:100%;display:flex;}
 /* nothing on the shelf yet */
 .empty-note{text-align:center;color:rgba(255,236,210,.7);font-size:.92rem;line-height:1.4;max-width:300px;margin:10px auto 0;}
 
-/* ── The TV ── */
-.tv-view{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;gap:12px;
-  padding:6px 10px calc(var(--safe-b) + 10px);touch-action:none;}
-.tv{position:relative;flex:none;padding:14px 14px 30px;border-radius:26px;
-  background:linear-gradient(180deg,#3b3632 0%,#24201d 55%,#181513 100%);
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.12),inset 0 -3px 0 rgba(0,0,0,.5),0 22px 40px rgba(0,0,0,.6);}
-.tv::after{content:"";position:absolute;left:50%;bottom:9px;width:44px;height:8px;margin-left:-22px;border-radius:4px;
-  background:linear-gradient(180deg,#121010,#2a2522);box-shadow:inset 0 1px 2px rgba(0,0,0,.8);}
-.tv .knob{position:absolute;bottom:8px;width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#6a625b,#1d1a18);}
-.tv .knob.a{right:24px;}.tv .knob.b{right:40px;}
-.tv .pwr{position:absolute;left:22px;bottom:10px;width:6px;height:6px;border-radius:50%;background:#3a1010;transition:background .3s,box-shadow .3s;}
-.tv.on .pwr{background:#ff3a2a;box-shadow:0 0 6px #ff3a2a;}
-.glass{position:relative;overflow:hidden;border-radius:18px / 22px;background:#050505;
-  box-shadow:inset 0 0 0 3px #0b0a09,inset 0 0 40px rgba(0,0,0,.9);}
+/* a game kept in your account but not on this device yet: it comes down the first time you play it */
+.cart.away svg{opacity:.55;}
+.cart.away .lab{opacity:.75;}
+.cart .cloud{position:absolute;right:-4px;top:-6px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;
+  background:#2b4c7e;color:#e6f0ff;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+.cart .cloud svg{width:14px;height:14px;filter:none;}
+.shelf-note{text-align:center;color:rgba(255,236,210,.6);font-size:.82rem;line-height:1.4;max-width:320px;margin:28px auto 0;}
+
+/* the NES door flips up for the cartridge */
+.unit .door{transform-box:fill-box;transform-origin:50% 0;transition:transform .22s ease-out;}
+.unit.open .door{transform:scaleY(.08);}
+
+/* bigger screens: a bigger shelf and console */
+@media (min-width:700px) and (min-height:700px){
+  .stand{width:min(100%,760px);}
+  .stand .unit{width:min(60%,440px);}
+  .shelves{width:min(100%,760px);}
+}
+
+/* ═══ Playing: the screen and the controller fill the whole display (like Delta) ═══════════════════════
+   Portrait: the picture edge to edge at the top, the system's own controller filling the rest.
+   Landscape: the picture in the middle, the controls either side. The game bar steps aside while a
+   drawn controller is up (its Menu button opens the same menu). */
+html.cs-play .gbar{display:none;}
+html.cs-play body{background:var(--skin-a,#1d1c20);}
+.play{position:fixed;inset:0;z-index:5;background:linear-gradient(180deg,var(--skin-a,#262529),var(--skin-b,#141316));touch-action:none;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overflow:hidden;}
+.play .screen{position:absolute;padding:5px;border-radius:12px;background:#050505;box-shadow:0 0 0 1px rgba(255,255,255,.06),0 10px 30px rgba(0,0,0,.6);}
+.play.nopad .screen{box-shadow:0 0 0 1px rgba(255,255,255,.06),0 20px 60px rgba(0,0,0,.7);}
+.glass{position:relative;width:100%;height:100%;overflow:hidden;border-radius:8px;background:#000;}
 .glass #ejs{position:absolute;inset:0;}
-/* curved-glass sheen and faint scanlines over the picture */
 .glass::before{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;
-  background:repeating-linear-gradient(180deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px),
-    radial-gradient(120% 90% at 30% 15%,rgba(255,255,255,.10),rgba(255,255,255,0) 40%),
-    radial-gradient(110% 110% at 50% 50%,rgba(0,0,0,0) 60%,rgba(0,0,0,.45) 100%);}
-/* switching on: the picture opens from a bright line */
+  background:repeating-linear-gradient(180deg,rgba(0,0,0,.12) 0 1px,transparent 1px 3px),radial-gradient(110% 110% at 50% 50%,rgba(0,0,0,0) 65%,rgba(0,0,0,.35) 100%);}
 .glass .boot{position:absolute;inset:0;z-index:6;pointer-events:none;background:#000;}
-.tv.on .glass .boot{animation:crt-on .7s ease-out forwards;}
+.play.on .glass .boot{animation:crt-on .7s ease-out forwards;}
 @keyframes crt-on{0%{background:#000;clip-path:inset(49.5% 0 49.5% 0);}
   12%{background:#fff;clip-path:inset(49.5% 0 49.5% 0);}35%{background:#d8e6ff;clip-path:inset(30% 0 30% 0);}
   70%{background:rgba(220,235,255,.25);clip-path:inset(0 0 0 0);}100%{background:rgba(0,0,0,0);clip-path:inset(0 0 0 0);}}
-.glass .snow{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .4s;}
-.glass.loading .snow{opacity:.55;}
+.glass .snow{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .4s;width:100%;height:100%;}
+.glass.loading .snow{opacity:.5;}
 .tv-msg{position:absolute;left:0;right:0;bottom:10%;z-index:7;text-align:center;color:#d9f2ff;font-family:var(--display);font-size:1rem;
   text-shadow:0 0 8px rgba(120,200,255,.8);pointer-events:none;letter-spacing:.04em;}
+.tv-msg .bar{display:block;width:40%;height:6px;margin:8px auto 0;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden;}
+.tv-msg .bar i{display:block;height:100%;width:0;background:#9fdcff;transition:width .2s;}
 
-/* "Pick up where you left off": the last picture, with two choices */
+/* "Carry on from where you left off": the last picture, with two choices */
 .resume{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
-  background:rgba(0,0,0,.55);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+  background:rgba(0,0,0,.6);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
 .resume img{width:52%;border-radius:6px;box-shadow:0 0 0 2px rgba(255,255,255,.7),0 10px 24px rgba(0,0,0,.6);image-rendering:pixelated;}
 .resume .row{display:flex;gap:10px;}
 .resume button{border:0;border-radius:12px;padding:10px 16px;font-weight:800;font-size:.95rem;color:#111;background:#ffd45a;box-shadow:0 4px 0 #b38410;}
@@ -96,27 +110,23 @@ html.cs-on #app{flex:1;min-height:0;width:100%;display:flex;}
 #ejs .ejs_error_text{font-family:var(--display);font-size:.95rem;color:#ffd0c8;}
 #ejs canvas{image-rendering:pixelated;}
 
-/* ── The controller (touch screens) ── */
-.pad{isolation:isolate;position:relative;flex:none;width:min(100%,460px);display:flex;justify-content:space-between;align-items:center;
-  padding:16px 18px;user-select:none;-webkit-user-select:none;touch-action:none;}
-.pad[hidden]{display:none;}
-.pad .half{position:relative;display:flex;align-items:center;}
-.pad .half svg{display:block;overflow:visible;}
-.pad [data-b]{cursor:pointer;}
-.pad .on{filter:brightness(.72);transform:translateY(1.5px);}
-.pad [data-b]{transition:filter .04s;transform-box:fill-box;transform-origin:center;}
-.pad .dp .arm.on{filter:brightness(1.6);}
-/* the controller's own body in portrait; in landscape the two halves sit either side of the TV */
-.pad .body{position:absolute;inset:0;z-index:-1;}
-
-@media (orientation:landscape) and (max-height:540px){
-  .tv-view{flex-direction:row;padding:4px 8px calc(var(--safe-b) + 4px);gap:0;}
-  .pad{position:absolute;inset:0;width:auto;padding:0 calc(var(--safe-l,0px) + 14px) 0 calc(var(--safe-r,0px) + 14px);pointer-events:none;}
-  .pad .half{pointer-events:auto;}
-  .pad .body{display:none;}
-  /* Select and Start drop below the face buttons, clear of the picture */
-  .pad .half.m{position:absolute;right:calc(var(--safe-r,0px) + 16px);bottom:calc(var(--safe-b) + 6px);}
-}
+/* ── The controller: each control is drawn as an SVG and placed by console.js ── */
+.skin{position:absolute;inset:0;}
+.skin[hidden]{display:none;}
+.skin .decor{position:absolute;pointer-events:none;}
+.skin .decor[hidden]{display:none;}
+.skin .decor svg{display:block;width:100%;height:100%;}
+.ctl{position:absolute;transform:translate(-50%,-50%);pointer-events:none;}
+.ctl svg{display:block;width:100%;height:100%;overflow:visible;}
+.ctl .face{transition:transform .05s,filter .05s;transform-box:fill-box;transform-origin:center;}
+.ctl.on .face{transform:scale(.93);filter:brightness(.78);}
+.ctl.c-dp .arm{transition:fill .05s;}
+.ctl.c-tool{opacity:.9;}
+.ctl.c-tool.lit .face{filter:drop-shadow(0 0 6px #7fd8ff);}
+.ctl.c-tool.lit .glyph{fill:#7fd8ff;}
+/* landscape: the controls are see-through so the picture shows if they overlap it */
+.play.land .ctl{opacity:.82;}
+.play.land .ctl.c-tool{opacity:.7;}
 
 /* save-state slots: the picture from that moment, and when */
 .cs-slots{display:grid;gap:10px;}
@@ -129,18 +139,3 @@ html.cs-on #app{flex:1;min-height:0;width:100%;display:flex;}
 .cs-slot .t{display:flex;flex-direction:column;gap:2px;}
 .cs-slot b{font-size:1rem;}
 .cs-slot small{color:var(--text-3);font-size:.82rem;}
-/* the NES door flips up for the cartridge */
-.unit .door{transform-box:fill-box;transform-origin:50% 0;transition:transform .22s ease-out;}
-.unit.open .door{transform:scaleY(.08);}
-
-/* bigger screens: a bigger shelf, console and controller */
-.pad{--ps:1;}
-.pad .half.l > svg:not(.shl),.pad .half.r > svg:not(.shr){width:calc(150px * var(--ps));height:auto;}
-.pad .half.m svg{width:calc(var(--mw,104px) * var(--ps));height:auto;}
-.pad .shl,.pad .shr{width:calc(70px * var(--ps));height:auto;top:calc(-24px * var(--ps))!important;}
-@media (min-width:700px) and (min-height:700px){
-  .pad{--ps:1.35;width:min(100%,620px);}
-  .stand{width:min(100%,760px);}
-  .stand .unit{width:min(60%,440px);}
-  .shelves{width:min(100%,760px);}
-}

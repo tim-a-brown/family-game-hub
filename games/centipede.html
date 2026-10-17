@@ -149,7 +149,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     bomb: { c: '#ff4a3d', name: 'Bomb' }
   };
   var POWK = ['scatter', 'shock', 'beam', 'bomb'], POW_T = 1, BOMB_R = 38, CAP_LIFE = 14;
-  var AMMO = { scatter: 30, shock: 50, beam: 4.2, bomb: 10 };
+  // (Shock measured on the cabinet: about 26 orbs, roughly three a second, so a pickup lasts about 8.5 s of firing)
+  var AMMO = { scatter: 30, shock: 26, beam: 4.2, bomb: 10 };
   // Damage to a boss from each kind of hit (a plain shot is 1)
   var BDMG = { laser: 1, scatter: 0.4, shock: 1, beam: 0.45, bomb: 4, blast: 3 };
   var BOSS_NP = 1;        // each extra online player adds 100% to a boss's health
@@ -213,7 +214,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       '<li><b>Bomb beetle</b>: the bug in the red rings. It crawls slowly toward you and blows up when shot, when it reaches you, or on its own when its rings flash fast. The blast takes out mushrooms, bugs and any ship close by, so shoot it from a distance or keep away. <b>300</b>.</li></ul>' +
       '<h3>Power-ups</h3><p>A power-up floats in every 20 to 30 seconds. Shoot it or fly into it to take it. While you have one, its name and ammo bar show in place of your lives (bottom left); what\'s left is gone at the end of the wave.</p><ul>' +
       '<li><b>Scatter</b>: three shots in a spread, 30 times.</li>' +
-      '<li><b>Shock</b>: every hit throws lightning on to the nearest bugs, for 50 shots.</li>' +
+      '<li><b>Shock</b>: slower orbs of lightning; each hit also zaps the bug or segment right next to it. About 26 shots.</li>' +
       '<li><b>Bomb</b>: 10 bombs that fly up and blow up the first thing they hit, taking everything around it with them.</li>' +
       '<li>Those three use ammo only as they fire: with nothing to shoot, turn auto-fire off to save it.</li>' +
       '<li><b>Beam</b>: a laser straight up that goes through everything in its path. It burns out about 4 seconds after you first fire it, whether you keep firing or not.</li></ul>' +
@@ -750,11 +751,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (pw === 'beam') { P.beamOn = true; P.beaming = true; P.beamT -= dt; if (P.beamT <= 0) { P.beamT = 0.07; beamTick(P); if (P.local) snd('beam'); } return; }
     if (P.cool > 0) return;
     if (pw === 'scatter') { [-0.19, 0, 0.19].forEach(function (a) { shoot(P, P.x, a, 'scatter'); }); P.cool = 0.2; useAmmo(P, 1 / AMMO.scatter); if (P.local) snd('scatter'); }
-    else if (pw === 'shock') { shoot(P, P.x, 0, 'shock'); P.cool = 0.12; useAmmo(P, 1 / AMMO.shock); if (P.local) snd('shot', P.x); }
+    else if (pw === 'shock') { shoot(P, P.x, 0, 'shock'); P.cool = SHOCK_COOL; useAmmo(P, 1 / AMMO.shock); if (P.local) snd('shot', P.x); }
     else if (pw === 'bomb') { shoot(P, P.x, 0, 'bomb'); P.cool = 0.42; useAmmo(P, 1 / AMMO.bomb); if (P.local) snd('shoot'); }
     else { shoot(P, P.x, 0, 'laser'); P.cool = 0.12; if (P.local) snd('shot', P.x); }
   }
-  var BSPD = { laser: 640, scatter: 540, shock: 640, bomb: 340 };
+  var BSPD = { laser: 640, scatter: 540, shock: 450, bomb: 340 };
   function shoot(P, x, a, k) {
     var v = BSPD[k];
     G.bullets.push({ id: newId(), o: P.id, x: x, y: P.y - 9, y0: P.y - 9, vx: Math.sin(a) * v, vy: -Math.cos(a) * v, k: k, P: P });
@@ -804,9 +805,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (!hp) { G.stats.mush++; burst(cx(c), cx(r), po ? '#b04dff' : themeOf(G).mush[0], 5, 0.7); snd('pop', cx(c)); }
     else snd('mush', cx(c));
   }
-  // Shock: each hit sets off chain lightning: it jumps to the nearest bug, from that one to the next, and so on
-  // (up to five jumps), and forks once or twice on the way
-  var SHOCK_HOP = 60, SHOCK_N = 5;
+  // Shock (as on the cabinet): slower glowing orbs; each hit bursts into lightning that also takes the one thing right
+  // next to it (a neighbouring segment or bug). The wider crackle is only show: a hit kills about two things.
+  var SHOCK_HOP = 17, SHOCK_N = 1, SHOCK_COOL = 0.32;
   function shock(P, x, y, skip) {
     var used = [], hits = 0, from = [{ x: x, y: y }];
     function nearest(px, py) {
@@ -822,10 +823,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       used.push(t.k); arc(f.x, f.y, t.x, t.y); hits++;
       if (t.s) { var s = segById(t.s); if (s) hitSeg(s, P); } else if (G.foes.indexOf(t.o) >= 0) hitFoe(t.o, P, 1);
       from.push({ x: t.x, y: t.y });
-      if (n === 0 || n === 2) from.push({ x: t.x, y: t.y });     // a fork
     }
-    // a few loose sparks when nothing is near enough
-    if (!hits) for (var i = 0; i < 2; i++) { var an = rnd(0, TAU), r = rnd(14, 24); arc(x, y, x + Math.cos(an) * r, y + Math.sin(an) * r * 0.7); }
+    // the burst: crackling arcs thrown out round the hit (they don't hurt anything)
+    for (var i = 0; i < 4; i++) { var an = rnd(0, TAU), r = rnd(16, 32); arc(x, y, x + Math.cos(an) * r, y + Math.sin(an) * r * 0.6); }
     sound('zap');
   }
   // Beam: a piercing laser straight up from the ship, burning everything in its column several times a second
@@ -3224,7 +3224,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       else if (f && P.cool <= 0) {
         if (pw === 'scatter') { [-0.19, 0, 0.19].forEach(function (an) { V.lb.push({ x: P.x, y: P.y - 9, vx: Math.sin(an) * BSPD.scatter, vy: -Math.cos(an) * BSPD.scatter, k: 'scatter' }); }); P.cool = 0.2; snd('scatter'); }
         else if (pw === 'bomb') { V.lb.push({ x: P.x, y: P.y - 9, vx: 0, vy: -BSPD.bomb, k: 'bomb' }); P.cool = 0.42; snd('shoot'); }
-        else { V.lb.push({ x: P.x, y: P.y - 9, vx: 0, vy: -BSPD.laser, k: pw === 'shock' ? 'shock' : 'laser' }); P.cool = 0.12; snd('shot'); }
+        else if (pw === 'shock') { V.lb.push({ x: P.x, y: P.y - 9, vx: 0, vy: -BSPD.shock, k: 'shock' }); P.cool = SHOCK_COOL; snd('shot'); }
+        else { V.lb.push({ x: P.x, y: P.y - 9, vx: 0, vy: -BSPD.laser, k: 'laser' }); P.cool = 0.12; snd('shot'); }
       }
     } else if (net.peer && !V.ended) { V.sendT -= dt; if (V.sendT <= 0) { V.sendT = 0.2; net.peer.send({ t: 'i', x: q4(P.x), y: q4(P.y), f: 0 }, false); } }
     for (var i = V.lb.length - 1; i >= 0; i--) {

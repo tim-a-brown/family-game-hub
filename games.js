@@ -183,6 +183,21 @@ var GAMES = [
   { id: 'hiscores',    name: 'High Scores',           color: '#f5c842', cat: 'tools', min: 1, max: 0, tag: 'Top 50 for every arcade and puzzle game', play: 'hiscores' }
 ];
 
+// Console games: each game file you've added (console-lib.js keeps the list in gn_console_idx) gets its own tile,
+// opening straight into its console. gn_console_vis {id: 0} hides a game, or a whole console, from the home screen.
+function addConsoleGames() {
+  for (var i = GAMES.length - 1; i >= 0; i--) if (GAMES[i].cart) GAMES.splice(i, 1);
+  var idx = [], vis = {}, SYS = { nes: 'NES', snes: 'Super Nintendo', genesis: 'Sega Genesis' };
+  try { idx = JSON.parse(localStorage.getItem('gn_console_idx') || '[]') || []; vis = JSON.parse(localStorage.getItem('gn_console_vis') || '{}') || {}; } catch (e) {}
+  idx.forEach(function (c) {
+    if (!c || !SYS[c.sys] || !/^[0-9a-f]+$/.test(c.id)) return;
+    GAMES.push({ id: 'cart-' + c.id.slice(0, 16), name: c.name, color: '#000', cat: 'console', min: 1, max: 1, tag: SYS[c.sys] + ' game', play: c.sys + '.html?play=' + c.id,
+      mark: c.sys, cart: c.id, sys: c.sys, hidden: vis[c.id] === 0 || vis[c.sys + ':all'] === 0 });
+  });
+  GAMES.forEach(function (g) { if (g.cat === 'console' && !g.cart) g.hidden = vis[g.id] === 0; });
+}
+addConsoleGames();
+
 // Section colour families: shade each game's colour from its section's hue,
 // stepping hue and lightness so neighbours stay distinguishable.
 (function () {

@@ -1,16 +1,16 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Consoles: NES, Super Nintendo and Sega Genesis, played from your own cartridges.
+// Consoles: NES, Super Nintendo and Sega Genesis, played from your own game files.
 //
 // The page (games/nes.html, snes.html, genesis.html) sets window.CONSOLE to 'nes' | 'snes' | 'genesis'.
-// The shelf shows the console on its stand and the cartridges you've added (game files you own, read from
-// this device). Tap one: it slides into the console, the TV switches on and the game runs in EmulatorJS
-// (../emu/, the RetroArch cores fceumm, snes9x and genesis_plus_gx). Its own menus and on-screen pad are
-// hidden; the controller drawn here, a keyboard or a real gamepad play it.
+// The shelf shows the console on its stand and your games as cartridges. Tap one: it slides into the console
+// and the game takes over the whole display, like Delta: the picture at the top (or in the middle, sideways)
+// and the system's own controller drawn round it, with Menu and Fast-forward buttons. ?play=<id> (a game's
+// tile on the home screen) goes straight to the game. EmulatorJS (../emu/, the RetroArch cores fceumm,
+// snes9x and genesis_plus_gx) runs it; its own menus and on-screen pad are hidden.
 //
-// Privacy: game files stay on this device (IndexedDB gn_console). Nothing is uploaded or synced.
-//   carts  {id (SHA-1 of the file), sys, name, file, size, added, played, data: Blob}
-//   states {key 'id:slot', id, slot ('auto' | 1..3), at, img (data URL), data: Uint8Array}
-// The game's own battery saves (SRAM) are kept by EmulatorJS in its IndexedDB, per cartridge (EJS_gameName = id).
+// Your games: console-lib.js (this device, and the cloud when signed in with a PIN). Save states stay on the
+// device (IndexedDB gn_console, store states: {key 'id:slot', id, slot ('auto' | 1..3), at, img, data}); the game's
+// own battery saves (SRAM) are kept by EmulatorJS, per game (EJS_gameName = id).
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
   'use strict';
@@ -18,19 +18,19 @@
   // Controller buttons are RetroArch's: 0 B, 1 Y, 2 Select, 3 Start, 4-7 up/down/left/right, 8 A, 9 X, 10 L, 11 R
   var SYSTEMS = {
     nes: {
-      name: 'NES', core: 'nes', exts: ['nes', 'fds', 'unf', 'unif'], cw: 92, room: ['#2a2830', '#0c0b10'], wood: ['#7d5a3c', '#4b321e'],
+      name: 'NES', core: 'nes', exts: ['nes', 'fds', 'unf', 'unif'], cw: 92, room: ['#2a2830', '#0c0b10'], wood: ['#7d5a3c', '#4b321e'], skin: ['#2c2b2f', '#18171a'],
       keys: 'Arrow keys move · Z is A · X is B · Enter is Start · V is Select'
     },
     snes: {
-      name: 'Super Nintendo', core: 'snes', exts: ['sfc', 'smc', 'fig', 'swc', 'bs'], cw: 124, room: ['#2c2838', '#0d0b14'], wood: ['#80603f', '#4d3520'],
+      name: 'Super Nintendo', core: 'snes', exts: ['sfc', 'smc', 'fig', 'swc', 'bs'], cw: 124, room: ['#2c2838', '#0d0b14'], wood: ['#80603f', '#4d3520'], skin: ['#d6d3db', '#b5b0bd'],
       keys: 'Arrow keys move · Z is A · X is B · A is X · S is Y · Q and E are L and R · Enter is Start · V is Select'
     },
     genesis: {
-      name: 'Sega Genesis', core: 'segaMD', exts: ['md', 'gen', 'smd', 'bin'], cw: 100, room: ['#26262c', '#0a0a0d'], wood: ['#6e5038', '#422c1b'],
+      name: 'Sega Genesis', core: 'segaMD', exts: ['md', 'gen', 'smd', 'bin'], cw: 100, room: ['#26262c', '#0a0a0d'], wood: ['#6e5038', '#422c1b'], skin: ['#1d1d21', '#0c0c0e'],
       keys: 'Arrow keys move · S is A · X is B · Z is C · Enter is Start'
     }
   };
-  var SYS = SYSTEMS[SYS_ID];
+  var SYS = SYSTEMS[SYS_ID], L = ConsoleLib;
   var $ = function (id) { return document.getElementById(id); };
   function el(tag, attrs, kids) {
     var e = document.createElement(tag);
@@ -46,42 +46,12 @@
   var root = document.documentElement;
   root.style.setProperty('--room-a', SYS.room[0]); root.style.setProperty('--room-b', SYS.room[1]);
   root.style.setProperty('--wood-a', SYS.wood[0]); root.style.setProperty('--wood-b', SYS.wood[1]);
+  root.style.setProperty('--skin-a', SYS.skin[0]); root.style.setProperty('--skin-b', SYS.skin[1]);
 
-  // ═══ Storage (this device only) ═════════════════════════════════════════
-  var dbP = null;
-  function db() {
-    if (dbP) return dbP;
-    dbP = new Promise(function (ok, no) {
-      var r = indexedDB.open('gn_console', 1);
-      r.onupgradeneeded = function () {
-        var d = r.result;
-        if (!d.objectStoreNames.contains('carts')) d.createObjectStore('carts', { keyPath: 'id' }).createIndex('sys', 'sys');
-        if (!d.objectStoreNames.contains('states')) d.createObjectStore('states', { keyPath: 'key' }).createIndex('id', 'id');
-      };
-      r.onsuccess = function () { ok(r.result); }; r.onerror = function () { no(r.error); };
-    });
-    return dbP;
-  }
-  function tx(store, mode, fn) {
-    return db().then(function (d) {
-      return new Promise(function (ok, no) {
-        var t = d.transaction(store, mode), s = t.objectStore(store), out;
-        var r = fn(s); if (r) r.onsuccess = function () { out = r.result; };
-        t.oncomplete = function () { ok(out); }; t.onerror = function () { no(t.error); }; t.onabort = function () { no(t.error); };
-      });
-    });
-  }
-  function cartsOf(sys) { return tx('carts', 'readonly', function (s) { return s.index('sys').getAll(sys); }); }
-  function getCart(id) { return tx('carts', 'readonly', function (s) { return s.get(id); }); }
-  function putCart(c) { return tx('carts', 'readwrite', function (s) { s.put(c); }); }
-  function delCart(id) {
-    return tx('carts', 'readwrite', function (s) { s.delete(id); }).then(function () {
-      return tx('states', 'readwrite', function (s) { var r = s.index('id').openCursor(IDBKeyRange.only(id)); r.onsuccess = function () { var c = r.result; if (c) { c.delete(); c.continue(); } }; });
-    });
-  }
-  function statesOf(id) { return tx('states', 'readonly', function (s) { return s.index('id').getAll(id); }); }
-  function putState(st) { return tx('states', 'readwrite', function (s) { s.put(st); }); }
-  function getState(id, slot) { return tx('states', 'readonly', function (s) { return s.get(id + ':' + slot); }); }
+  // ── Save states (this device) ──
+  function statesOf(id) { return L.tx('states', 'readonly', function (s) { return s.index('id').getAll(id); }); }
+  function putState(st) { return L.tx('states', 'readwrite', function (s) { s.put(st); }); }
+  function getState(id, slot) { return L.tx('states', 'readonly', function (s) { return s.get(id + ':' + slot); }); }
 
   function sha1(buf) {
     if (window.crypto && crypto.subtle) return crypto.subtle.digest('SHA-1', buf).then(function (h) { return Array.prototype.map.call(new Uint8Array(h), function (b) { return (b + 256).toString(16).slice(1); }).join(''); });
@@ -172,13 +142,12 @@
   function cartEl(c, opts) {
     opts = opts || {};
     var C = CARTS[SYS_ID], w = cartW(), lb = LABELS[hashOf(c ? c.id + c.name : '+') % LABELS.length];
-    var b = el('button', { type: 'button', class: 'cart' + (opts.add ? ' add' : '') + (opts.fresh ? ' new' : ''), 'aria-label': c ? c.name : 'Add cartridges',
+    var b = el('button', { type: 'button', class: 'cart' + (opts.add ? ' add' : '') + (opts.fresh ? ' new' : '') + (c && !c.local ? ' away' : ''), 'aria-label': c ? c.name : 'Add games',
       style: { '--cw': w + 'px', '--lx': (C.lab[0] * 100) + '%', '--ly': (C.lab[1] * w * C.vb[1] / C.vb[0]) + 'px', '--lw': (C.lab[2] * 100) + '%',
         '--lh': (C.lab[3] * w * C.vb[1] / C.vb[0]) + 'px', '--lab': lb[0], '--lab-ink': lb[1] } });
-    var shell = opts.add
+    b.innerHTML = opts.add
       ? '<svg viewBox="0 0 ' + C.vb[0] + ' ' + C.vb[1] + '"><rect x="4" y="4" width="' + (C.vb[0] - 8) + '" height="' + (C.vb[1] - 8) + '" rx="10" fill="rgba(255,236,210,.05)" stroke="rgba(255,236,210,.45)" stroke-width="2.5" stroke-dasharray="7 6"/></svg>'
       : '<svg viewBox="0 0 ' + C.vb[0] + ' ' + C.vb[1] + '">' + C.svg() + '</svg>';
-    b.innerHTML = shell;
     if (opts.add) b.appendChild(el('span', { class: 'plus', html: Kit.icon('plus') + '<span>Add games</span>' }));
     else {
       var n = c.name, fs = n.length <= 8 ? 17 : n.length <= 14 ? 15 : n.length <= 24 ? 13 : 11.5;
@@ -187,12 +156,14 @@
       fs = Math.min(fs, across / (longest * .56));
       b.style.setProperty('--fs', Math.round(fs * w / 100) + 'px');
       b.appendChild(el('span', { class: 'lab' }, [el('b', { text: n })]));
+      if (!c.local) b.appendChild(el('span', { class: 'cloud', html: Kit.icon('cloud') }));
     }
     return b;
   }
 
   // ═══ The shelf ════════════════════════════════════════════════════════════
   var view = $('cs'), carts = [], unitEl = null;
+  function mine() { return carts.filter(function (c) { return c.sys === SYS_ID; }); }
   function drawShelf(freshIds) {
     view.innerHTML = '';
     var sv = el('div', { class: 'shelf-view' });
@@ -201,7 +172,7 @@
     sv.appendChild(el('div', { class: 'stand' }, [unitEl, el('div', { class: 'top wood' }), el('div', { class: 'lip' })]));
     var wrap = el('div', { class: 'shelves' }); sv.appendChild(wrap);
     view.appendChild(sv);
-    var all = carts.slice().sort(function (a, b) { return (b.played || b.added) - (a.played || a.added); });
+    var all = mine().sort(function (a, b) { return (b.played || b.added || 0) - (a.played || a.added || 0); });
     var items = all.map(function (c) {
       var b = cartEl(c, { fresh: freshIds && freshIds.indexOf(c.id) >= 0 });
       holdable(b, function () { cartMenu(c); }, function () { insert(c, b); });
@@ -213,7 +184,8 @@
     for (var i = 0; i < items.length; i += per) {
       var p = el('div', { class: 'plank' }); items.slice(i, i + per).forEach(function (x) { p.appendChild(x); }); wrap.appendChild(p);
     }
-    if (!carts.length) sv.appendChild(el('p', { class: 'empty-note', text: 'Add the ' + SYS.name + ' game files you own. They stay on this device and nothing is uploaded.' }));
+    if (!all.length) sv.appendChild(el('p', { class: 'empty-note', text: 'Add the ' + SYS.name + ' game files you own.' }));
+    sv.appendChild(el('p', { class: 'shelf-note', text: L.signedIn() ? 'Your games are kept in your account, so they’re on every device you sign in on.' : 'Your games stay on this device. Sign in with a PIN to have them on all your devices.' }));
   }
   // tap plays it; press and hold for the cartridge's own menu
   function holdable(b, onHold, onTap) {
@@ -224,48 +196,56 @@
     b.addEventListener('click', function (e) { if (held) { e.preventDefault(); return; } onTap(); });
     b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   }
+  function item(ic, label, sub, fn) {
+    return el('button', { type: 'button', onclick: fn }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('span', { class: 'lbl' }, [el('span', { text: label })].concat(sub ? [el('small', { text: sub })] : []))]);
+  }
   function cartMenu(c) {
-    var s = Kit.sheet({ title: c.name, node: el('div', { class: 'k-list' }, [
-      el('button', { type: 'button', onclick: function () { s.close(); renameCart(c); } }, [el('span', { class: 'ic', html: Kit.icon('pencil') }), el('span', { class: 'lbl' }, [el('span', { text: 'Rename' })])]),
-      el('button', { type: 'button', onclick: function () {
+    var s, home = el('button', { type: 'button', class: 'tg', role: 'switch', 'aria-checked': String(L.shown(c.id)) },
+      [el('span', { class: 'ic', html: Kit.icon('home') }), el('span', { class: 'lbl' }, [el('span', { text: 'On the home screen' }), el('small', { text: 'Its own tile in Consoles' })]), el('i', { class: 'sw' })]);
+    home.onclick = function () { var on = !L.shown(c.id); L.show(c.id, on); home.setAttribute('aria-checked', String(on)); Kit.haptic('light'); };
+    s = Kit.sheet({ title: c.name, node: el('div', { class: 'k-list' }, [
+      item('play', 'Play', null, function () { s.close(); insert(c, null); }),
+      item('pencil', 'Rename', null, function () { s.close(); renameCart(c); }),
+      home,
+      item('trash', L.signedIn() ? 'Remove from your games' : 'Remove from this device', c.file + ' · ' + Math.round((c.size || 0) / 1024) + ' KB', function () {
         s.close();
-        Kit.confirm('Take ' + c.name + ' off the shelf?', { ok: 'Remove', danger: true, body: 'Its game file and save states are deleted from this device. Its battery saves stay, in case you add it again.' })
-          .then(function (ok) { if (!ok) return; delCart(c.id).then(function () { carts = carts.filter(function (x) { return x.id !== c.id; }); drawShelf(); Kit.toast('Removed'); }); });
-      } }, [el('span', { class: 'ic', html: Kit.icon('trash') }), el('span', { class: 'lbl' }, [el('span', { text: 'Remove from this device' }), el('small', { text: c.file + ' · ' + Math.round(c.size / 1024) + ' KB' })])])
+        Kit.confirm('Take ' + c.name + ' off the shelf?', { ok: 'Remove', danger: true, body: (L.signedIn() ? 'Its game file is deleted from your account and this device' : 'Its game file is deleted from this device') + ', along with its save states. Its battery saves stay, in case you add it again.' })
+          .then(function (ok) { if (!ok) return; L.drop(c.id).then(function () { carts = carts.filter(function (x) { return x.id !== c.id; }); L.cache(carts); drawShelf(); Kit.toast('Removed'); }); });
+      })
     ]) });
   }
   function renameCart(c) {
     var inp = el('input', { type: 'text', value: c.name, maxlength: '48', class: 'k-input', style: { width: '100%' } });
-    var s = Kit.sheet({ title: 'Rename', node: inp, actions: [
-      { label: 'Save', cls: 'btn-primary', onClick: function () { var v = inp.value.trim(); if (!v) return; c.name = v; putCart(c).then(drawShelf); } },
+    Kit.sheet({ title: 'Rename', node: inp, actions: [
+      { label: 'Save', cls: 'btn-primary', onClick: function () { var v = inp.value.trim(); if (!v) return; c.name = v; L.rename(c).then(function () { L.cache(carts); drawShelf(); }); } },
       { label: 'Cancel', cls: 'btn-soft' }] });
-    setTimeout(function () { inp.focus(); inp.select(); }, 120); void s;
+    setTimeout(function () { inp.focus(); inp.select(); }, 120);
   }
 
-  // ── Adding cartridges: the file picker ──
+  // ── Adding games: the file picker ──
   var picker = el('input', { type: 'file', multiple: '', style: { display: 'none' } });
   document.body.appendChild(picker);
   function pickFiles() { Kit.sfx('tap'); picker.value = ''; picker.click(); }
   picker.addEventListener('change', function () {
     var files = Array.prototype.slice.call(picker.files || []); if (!files.length) return;
     var fresh = [], elsewhere = {}, skipped = [];
+    if (L.signedIn()) Kit.toast(files.length === 1 ? 'Adding to your games' : 'Adding ' + files.length + ' games');
     files.reduce(function (p, f) {
       return p.then(function () {
         var sys = sysOfFile(f.name); if (!sys) { skipped.push(f.name); return; }
         return f.arrayBuffer().then(function (buf) {
           return sha1(buf).then(function (id) {
-            var rec = { id: id, sys: sys, name: cleanName(f.name), file: f.name, size: f.size, added: Date.now(), played: 0, data: new Blob([buf]) };
-            return getCart(id).then(function (old) {
-              if (old) { rec.name = old.name; rec.added = old.added; rec.played = old.played; }
-              return putCart(rec).then(function () {
-                if (sys === SYS_ID) { carts = carts.filter(function (x) { return x.id !== id; }); carts.push(rec); fresh.push(id); }
-                else elsewhere[sys] = (elsewhere[sys] || 0) + 1;
-              });
+            var old = carts.filter(function (x) { return x.id === id; })[0];
+            var rec = { id: id, sys: sys, name: old ? old.name : cleanName(f.name), file: f.name, size: f.size, added: old ? old.added : Date.now(), played: old ? old.played : 0, data: new Blob([buf]) };
+            return L.save(rec).then(function () {
+              rec.local = true; carts = carts.filter(function (x) { return x.id !== id; }); carts.push(rec);
+              if (sys === SYS_ID) fresh.push(id); else elsewhere[sys] = (elsewhere[sys] || 0) + 1;
             });
           });
         });
       });
     }, Promise.resolve()).then(function () {
+      L.cache(carts);
       if (fresh.length) { Kit.sfx('chip'); Kit.haptic('success'); }
       drawShelf(fresh);
       Object.keys(elsewhere).forEach(function (k) { Kit.toast(elsewhere[k] + (elsewhere[k] === 1 ? ' game' : ' games') + ' put on the ' + SYSTEMS[k].name + ' shelf'); });
@@ -273,12 +253,13 @@
     }).catch(function (e) { console.warn(e); Kit.toast('Couldn’t read that file'); });
   });
 
-  // ── Into the console: the cartridge flies to the slot, the light comes on, the TV takes over ──
+  // ── Into the console: the cartridge flies to the slot, the light comes on, the game takes over ──
   var busy = false;
   function insert(c, b) {
     if (busy) return; busy = true;
     if (booted) { location.replace(location.pathname + '?play=' + c.id); return; }   // one game per page load
     Kit.haptic('light');
+    if (!b) { play(c); return; }
     var from = b.getBoundingClientRect(), slot = unitEl.querySelector('.slot').getBoundingClientRect();
     var fly = b.cloneNode(true); fly.classList.add('flying'); fly.classList.remove('new');
     fly.style.left = from.left + 'px'; fly.style.top = from.top + 'px'; fly.style.width = from.width + 'px';
@@ -307,42 +288,41 @@
       s.connect(f); f.connect(g); g.connect(a.destination); s.start(t + p[0]);
     });
   }
-  // the set warming up: a high whine that fades, and a soft thump
-  function hum() {
-    var a = ac(); if (!a || !sndOn()) return; var t = a.currentTime;
-    var o = a.createOscillator(), g = a.createGain(); o.type = 'sine'; o.frequency.value = 15700; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.02, t + .05); g.gain.exponentialRampToValueAtTime(.0001, t + 1.2);
-    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 1.3);
-    var o2 = a.createOscillator(), g2 = a.createGain(); o2.type = 'sine'; o2.frequency.setValueAtTime(90, t); o2.frequency.exponentialRampToValueAtTime(40, t + .25);
-    g2.gain.setValueAtTime(.12, t); g2.gain.exponentialRampToValueAtTime(.0001, t + .3); o2.connect(g2); g2.connect(a.destination); o2.start(t); o2.stop(t + .32);
-  }
 
-  // ═══ The TV ═══════════════════════════════════════════════════════════════
-  var cur = null, booted = false, started = false, tvEl = null, glassEl = null, padEl = null, resumeEl = null;
+  // ═══ Playing ══════════════════════════════════════════════════════════════
+  var cur = null, booted = false, started = false, playEl = null, scrEl = null, glassEl = null, skinEl = null, resumeEl = null;
   function play(c) {
-    cur = c; c.played = Date.now(); putCart(c);
+    cur = c;
     Kit.titleSwitch && Kit.titleSwitch(c.name, function () { toShelf(); }, 'Change cartridge');
     view.innerHTML = '';
-    var tv = el('div', { class: 'tv-view' });
-    tvEl = el('div', { class: 'tv' });
-    glassEl = el('div', { class: 'glass loading' }, [el('div', { id: 'ejs' }), snowCanvas(), el('div', { class: 'boot' }), el('div', { class: 'tv-msg', id: 'tv-msg', text: '' })]);
-    tvEl.appendChild(glassEl); tvEl.appendChild(el('i', { class: 'knob a' })); tvEl.appendChild(el('i', { class: 'knob b' })); tvEl.appendChild(el('i', { class: 'pwr' }));
-    tv.appendChild(tvEl);
-    padEl = buildPad(); tv.appendChild(padEl);
-    view.appendChild(tv);
-    fitTV();
-    requestAnimationFrame(function () { tvEl.classList.add('on'); hum(); });
-    boot(c);
+    playEl = el('div', { class: 'play', 'data-sys': SYS_ID });
+    glassEl = el('div', { class: 'glass loading' }, [el('div', { id: 'ejs' }), snowCanvas(), el('div', { class: 'boot' }), el('div', { class: 'tv-msg', id: 'tv-msg' })]);
+    scrEl = el('div', { class: 'screen' }, [glassEl]);
+    skinEl = buildSkin();
+    playEl.appendChild(skinEl); playEl.appendChild(scrEl);
+    document.body.appendChild(playEl);
+    padMode();
+    requestAnimationFrame(function () { playEl.classList.add('on'); });
+    // the game file: on this device, or fetched from your account the first time
+    if (c.data) return boot(c);
+    msg('Reading cartridge', 0);
+    L.file(c.id, function (f) { msg('Reading cartridge', f); }).then(function (full) {
+      c.data = full.data; c.local = true; boot(c);
+    }).catch(function (e) { console.warn(e); msg('Couldn’t get this game. Check your connection.'); });
   }
-  function fitTV() {
-    if (!tvEl) return;
-    var vw = view.clientWidth, vh = view.clientHeight, land = window.matchMedia('(orientation:landscape) and (max-height:540px)').matches;
-    var padH = padEl && !padEl.hidden && !land ? Math.min(230, vh * .36) : 0;
-    var w = Math.min(vw - 20 - 28, 760, (vh - padH - 24 - 44) * 4 / 3);
-    if (land && padEl && !padEl.hidden) w = Math.min(w, vw - 2 * 170 - 28);
-    w = Math.max(180, Math.floor(w));
-    glassEl.style.width = w + 'px'; glassEl.style.height = Math.round(w * 3 / 4) + 'px';
+  // a drawn controller when you're playing by touch; a keyboard or real controller gets the picture alone
+  var touchy = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window, padConnected = false;
+  function padMode() {
+    var drawn = touchy && !padConnected;
+    skinEl.hidden = !drawn; playEl.classList.toggle('nopad', !drawn);
+    root.classList.toggle('cs-play', drawn);
+    playEl.style.top = drawn ? '0' : (document.querySelector('.gbar') ? document.querySelector('.gbar').getBoundingClientRect().bottom + 'px' : '0');
+    layout();
   }
-  window.addEventListener('resize', function () { if (tvEl) fitTV(); else if (!cur) drawShelf(); });
+  window.addEventListener('gamepadconnected', function () { padConnected = true; if (playEl) { padMode(); Kit.toast('Controller connected'); } });
+  window.addEventListener('gamepaddisconnected', function () { padConnected = false; if (playEl) padMode(); });
+  window.addEventListener('touchstart', function () { if (!touchy) { touchy = true; if (playEl) padMode(); } }, { passive: true });
+  window.addEventListener('resize', function () { if (playEl) layout(); else if (!cur) drawShelf(); });
 
   // static on the glass while the game loads
   function snowCanvas() {
@@ -352,14 +332,18 @@
       for (var i = 0; i < img.data.length; i += 4) { var v = Math.random() * 255 | 0; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
       x.putImageData(img, 0, 0); setTimeout(function () { requestAnimationFrame(tick); }, 50);
     })();
-    c.style.width = '100%'; c.style.height = '100%';
     return c;
   }
-  function msg(t) { var m = $('tv-msg'); if (m) m.textContent = t || ''; }
+  function msg(t, frac) {
+    var m = $('tv-msg'); if (!m) return;
+    m.innerHTML = ''; if (!t) return;
+    m.appendChild(document.createTextNode(t));
+    if (frac != null) { var b = el('span', { class: 'bar' }, [el('i', { style: { width: Math.round(frac * 100) + '%' } })]); m.appendChild(b); }
+  }
 
   function boot(c) {
     booted = true; msg('Loading');
-    var vol = sndOn() ? .5 : 0;
+    c.played = Date.now(); L.tx('carts', 'readwrite', function (s) { if (c.data) s.put(stripLocal(c)); });
     window.EJS_player = '#ejs';
     window.EJS_core = SYS.core;
     window.EJS_gameUrl = new File([c.data], c.file);
@@ -367,7 +351,7 @@
     window.EJS_pathtodata = '../emu/';
     window.EJS_startOnLoaded = true;
     window.EJS_disableAutoLang = false;
-    window.EJS_volume = vol;
+    window.EJS_volume = sndOn() ? .5 : 0;
     window.EJS_color = '#ffc83d';
     window.EJS_backgroundColor = '#000';
     window.EJS_Buttons = { playPause: false, restart: false, mute: false, settings: false, fullscreen: false, saveState: false, loadState: false, screenRecord: false,
@@ -377,17 +361,22 @@
     window.EJS_onGameStart = function () {
       started = true; msg('');
       glassEl.classList.remove('loading');
+      try { emu().gameManager.setFastForwardRatio(3); } catch (e) {}
       getState(c.id, 'auto').then(function (st) { if (st) offerResume(st); });
     };
     var s = document.createElement('script'); s.src = '../emu/loader.js'; document.body.appendChild(s);
-    // while the core loads, its progress shows on the glass
     var poll = setInterval(function () {
       if (started) return clearInterval(poll);
       var t = document.querySelector('#ejs .ejs_loading_text'); if (t && t.textContent) msg(t.textContent.replace(/Download Game Core/, 'Warming up').replace(/Download Game Data/, 'Reading cartridge'));
     }, 200);
   }
+  function stripLocal(c) { var o = {}; for (var k in c) if (k !== 'local') o[k] = c[k]; return o; }
   function emu() { return window.EJS_emulator && window.EJS_emulator.gameManager ? window.EJS_emulator : null; }
   function press(i, v) { var e = emu(); if (e && started) try { e.gameManager.simulateInput(0, i, v); } catch (er) {} }
+  // a game started straight from the home screen has no tap behind it yet: its sound starts with your first touch
+  function wakeAudio() { try { var E = emu(), a = E && E.Module && E.Module.AL && E.Module.AL.currentCtx && E.Module.AL.currentCtx.audioCtx; if (a && a.state === 'suspended') a.resume(); } catch (e) {} }
+  document.addEventListener('pointerdown', wakeAudio, true);
+  document.addEventListener('keydown', wakeAudio, true);
 
   // the last picture from when you left, to carry on from
   function offerResume(st) {
@@ -428,11 +417,10 @@
     statesOf(cur.id).then(function (list) {
       var by = {}; list.forEach(function (s) { by[s.slot] = s; });
       var slots = saving ? [1, 2, 3] : ['auto', 1, 2, 3];
-      var box = el('div', { class: 'cs-slots' });
-      var s;
+      var box = el('div', { class: 'cs-slots' }), s;
       slots.forEach(function (k) {
-        var st = by[k], empty = !st;
-        if (!saving && empty) return;
+        var st = by[k];
+        if (!saving && !st) return;
         box.appendChild(el('button', { type: 'button', class: 'cs-slot', onclick: function () {
           s.close();
           if (saving) saveState(k).then(function (ok) { Kit.toast(ok ? 'Saved in slot ' + k : 'Couldn’t save here'); if (ok) Kit.haptic('success'); });
@@ -446,12 +434,10 @@
       s = Kit.sheet({ title: saving ? 'Save state' : 'Load state', node: box });
     });
   }
-
   function toShelf() {
-    if (started) saveState('auto').then(function () { location.replace(location.pathname); });
-    else location.replace(location.pathname);
+    var go = function () { location.replace(location.pathname); };
+    if (started) saveState('auto').then(go, go); else go();
   }
-
   // leaving or switching away keeps your place
   document.addEventListener('visibilitychange', function () { if (document.hidden && started) saveState('auto'); });
   window.addEventListener('pagehide', function () { if (started) { try { emu().gameManager.saveSaveFiles(); } catch (e) {} } });
@@ -462,109 +448,189 @@
     if (open && !E.paused) { E.pause(); E._kitPaused = true; } else if (!open && E._kitPaused) { E._kitPaused = false; E.play(); }
   }).observe(document.body, { childList: true });
 
-  // ═══ The controller (touch) ═══════════════════════════════════════════════
-  // Each system's own pad: the D-pad on the left, Select/Start in the middle, its face buttons on the right.
-  var PADS = {
-    nes: { body: '#2b2a2e', face: '#d7d4cf', btns: [['B', 0, '#d0262b', 24, 60, 20], ['A', 8, '#d0262b', 74, 46, 20]], mid: [['SELECT', 2], ['START', 3]] },
-    snes: { body: '#cfccd4', face: '#cfccd4', btns: [['Y', 1, '#2b9b4b', 20, 52, 17], ['X', 9, '#2f63c8', 60, 22, 17], ['B', 0, '#e7b81e', 60, 82, 17], ['A', 8, '#d22a35', 100, 52, 17]],
-      mid: [['SELECT', 2], ['START', 3]], shoulders: [['L', 10], ['R', 11]] },
-    genesis: { body: '#141416', face: '#141416', btns: [['A', 1, '#2a2a2e', 18, 70, 17], ['B', 0, '#2a2a2e', 60, 58, 17], ['C', 8, '#2a2a2e', 102, 46, 17]], mid: [['START', 3]] }
+  // ═══ The controller ═══════════════════════════════════════════════════════
+  // Each system's own: the D-pad, its face buttons in their real arrangement, Select/Start (and the SNES shoulders),
+  // plus Menu and Fast-forward. Positions: portrait as shares of the controller area below the picture; face
+  // buttons as offsets (in controller units, u) from the group's centre. Sideways, the D-pad and face buttons sit
+  // either side of the picture.
+  var FACE = {
+    nes: { at: [.75, .44], size: 76, b: [['B', 0, -42, 14, '#d42a2f'], ['A', 8, 42, -14, '#d42a2f']] },
+    snes: { at: [.76, .48], size: 58, b: [['X', 9, 0, -56, '#3a6fd4'], ['Y', 1, -56, 0, '#2ea253'], ['A', 8, 56, 0, '#d93641'], ['B', 0, 0, 56, '#ecbf22']] },
+    genesis: { at: [.68, .5], size: 62, b: [['A', 1, -64, 24, '#2c2c31'], ['B', 0, 0, 0, '#2c2c31'], ['C', 8, 64, -24, '#2c2c31']] }
   };
-  function buildPad() {
-    var P = PADS[SYS_ID];
-    var pad = el('div', { class: 'pad', 'data-sys': SYS_ID });
-    // the body of the controller, drawn behind both halves
-    pad.appendChild(el('div', { class: 'body', html: '<svg width="100%" height="100%" viewBox="0 0 460 200" preserveAspectRatio="none">' + padBody(SYS_ID) + '</svg>' }));
-    var L = el('div', { class: 'half l', html:
-      '<svg width="150" height="150" viewBox="0 0 150 150">' +
-      (SYS_ID === 'genesis' ? '<circle cx="75" cy="75" r="62" fill="#222226"/><circle cx="75" cy="75" r="54" fill="#2e2e33"/>' : '<circle cx="75" cy="75" r="62" fill="' + (SYS_ID === 'snes' ? '#bab6c0' : '#c8c4bd') + '" opacity=".55"/>') +
-      '<g class="dp">' +
-      '<rect class="arm" data-d="u" x="56" y="16" width="38" height="46" rx="5" fill="' + (SYS_ID === 'genesis' ? '#3a3a40' : '#1d1c1f') + '"/>' +
-      '<rect class="arm" data-d="d" x="56" y="88" width="38" height="46" rx="5" fill="' + (SYS_ID === 'genesis' ? '#3a3a40' : '#1d1c1f') + '"/>' +
-      '<rect class="arm" data-d="l" x="16" y="56" width="46" height="38" rx="5" fill="' + (SYS_ID === 'genesis' ? '#3a3a40' : '#1d1c1f') + '"/>' +
-      '<rect class="arm" data-d="r" x="88" y="56" width="46" height="38" rx="5" fill="' + (SYS_ID === 'genesis' ? '#3a3a40' : '#1d1c1f') + '"/>' +
-      '<rect x="56" y="56" width="38" height="38" fill="' + (SYS_ID === 'genesis' ? '#3a3a40' : '#1d1c1f') + '"/><circle cx="75" cy="75" r="9" fill="#000" opacity=".25"/>' +
-      '<path d="M75 24l7 10h-14zM75 126l7-10h-14zM24 75l10-7v14zM126 75l-10-7v14z" fill="#fff" opacity=".18"/></g></svg>' });
-    var mid = el('div', { class: 'half m', style: { '--mw': (P.mid.length * 52) + 'px' } }), mh = '<svg width="' + (P.mid.length * 52) + '" height="60" viewBox="0 0 ' + (P.mid.length * 52) + ' 60">';
-    P.mid.forEach(function (m, i) {
-      mh += '<g data-b="' + m[1] + '"><rect x="' + (i * 52 + 6) + '" y="20" width="40" height="13" rx="6.5" fill="' + (SYS_ID === 'genesis' ? '#2a2a2e' : '#3a393d') + '" transform="rotate(' + (SYS_ID === 'genesis' ? 0 : -18) + ' ' + (i * 52 + 26) + ' 26)"/>' +
-        '<text x="' + (i * 52 + 26) + '" y="52" font-size="10" text-anchor="middle" font-family="sans-serif" font-weight="800" fill="' + (SYS_ID === 'genesis' ? '#8a8a94' : '#c0302c') + '">' + m[0] + '</text></g>';
-    });
-    mid.innerHTML = mh + '</svg>';
-    var R = el('div', { class: 'half r' }), rh = '<svg width="150" height="150" viewBox="0 0 150 150">';
-    if (SYS_ID === 'snes') rh += '<circle cx="80" cy="75" r="64" fill="#bab6c0" opacity=".55"/>';
-    if (SYS_ID === 'nes') rh += '<rect x="2" y="26" width="146" height="76" rx="10" fill="#c8c4bd" opacity=".55"/>';
-    P.btns.forEach(function (b) {
-      rh += '<g data-b="' + b[1] + '"><circle cx="' + (b[3] + 14) + '" cy="' + (b[4] + 4) + '" r="' + (b[5] + 3) + '" fill="#000" opacity=".25"/>' +
-        '<circle cx="' + (b[3] + 14) + '" cy="' + b[4] + '" r="' + b[5] + '" fill="' + b[2] + '"/>' +
-        '<circle cx="' + (b[3] + 10) + '" cy="' + (b[4] - 5) + '" r="' + (b[5] * .45) + '" fill="#fff" opacity=".18"/>' +
-        (SYS_ID === 'genesis' ? '<text x="' + (b[3] + 14) + '" y="' + (b[4] + 5) + '" font-size="15" text-anchor="middle" font-family="sans-serif" font-weight="900" fill="#cfcfd8">' + b[0] + '</text>'
-          : SYS_ID === 'snes' ? '<text x="' + (b[3] + 14) + '" y="' + (b[4] + 5) + '" font-size="13" text-anchor="middle" font-family="sans-serif" font-weight="900" fill="#fff" opacity=".85">' + b[0] + '</text>'
-          : '<text x="' + (b[3] + 14) + '" y="' + (b[4] + b[5] + 16) + '" font-size="13" text-anchor="middle" font-family="sans-serif" font-weight="900" fill="#c0302c">' + b[0] + '</text>') + '</g>';
-    });
-    R.innerHTML = rh + '</svg>';
-    pad.appendChild(L);
-    if (P.shoulders) {
-      // L and R on the controller's top edge
-      var sh = el('div', { class: 'half sh', html: '<svg width="0" height="0"></svg>' }); void sh;
-      L.insertAdjacentHTML('afterbegin', '<svg class="shl" width="70" height="26" viewBox="0 0 70 26" style="position:absolute;left:10px;top:-24px"><g data-b="10"><path d="M4 24 Q8 4 30 3 H66 V24 Z" fill="#a9a5b0"/><text x="40" y="18" font-size="11" font-family="sans-serif" font-weight="900" fill="#5d5867">L</text></g></svg>');
-      R.insertAdjacentHTML('afterbegin', '<svg class="shr" width="70" height="26" viewBox="0 0 70 26" style="position:absolute;right:6px;top:-24px"><g data-b="11"><path d="M66 24 Q62 4 40 3 H4 V24 Z" fill="#a9a5b0"/><text x="26" y="18" font-size="11" font-family="sans-serif" font-weight="900" fill="#5d5867">R</text></g></svg>');
-    }
-    pad.appendChild(mid); pad.appendChild(R);
-    wirePad(pad);
-    // a real controller or a keyboard takes over from the drawn one
-    var touch = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
-    pad.hidden = !touch;
-    window.addEventListener('gamepadconnected', function () { pad.hidden = true; fitTV(); Kit.toast('Controller connected'); });
-    window.addEventListener('touchstart', function () { if (pad.hidden && !(navigator.getGamepads && Array.prototype.some.call(navigator.getGamepads(), Boolean))) { pad.hidden = false; fitTV(); } }, { passive: true });
-    return pad;
+  // drawn behind the controls in portrait, stretched to the controller area (viewBox 400 x 330)
+  var DECOR = {
+    nes: '<svg viewBox="0 0 400 330" preserveAspectRatio="none"><rect x="118" y="212" width="164" height="96" rx="10" fill="#cfcbc4" opacity=".16"/>' +
+      '<rect x="130" y="222" width="140" height="7" rx="3.5" fill="#000" opacity=".35"/><rect x="130" y="236" width="140" height="7" rx="3.5" fill="#000" opacity=".35"/>' +
+      '<rect x="130" y="250" width="140" height="7" rx="3.5" fill="#000" opacity=".35"/></svg>',
+    snes: '<svg viewBox="0 0 400 330" preserveAspectRatio="none"><circle cx="304" cy="158" r="96" fill="#8f86ad" opacity=".28"/><circle cx="100" cy="152" r="88" fill="#8f86ad" opacity=".14"/></svg>',
+    genesis: '<svg viewBox="0 0 400 330" preserveAspectRatio="none"><path d="M190 214 Q300 210 392 110 L392 250 Q300 300 190 300 Z" fill="#fff" opacity=".035"/><circle cx="100" cy="152" r="86" fill="#fff" opacity=".03"/></svg>'
+  };
+  var MID = { nes: [['SELECT', 2], ['START', 3]], snes: [['SELECT', 2], ['START', 3]], genesis: [['START', 3]] };
+  var ctls = [];
+  function svgDpad() {
+    var arm = SYS_ID === 'snes' ? '#3b3a40' : SYS_ID === 'genesis' ? '#34343a' : '#151417', well = SYS_ID === 'snes' ? '#bdb8c6' : SYS_ID === 'genesis' ? '#2a2a2f' : '#cfcbc4';
+    return '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="' + well + '" opacity="' + (SYS_ID === 'nes' ? .35 : .8) + '"/>' +
+      '<circle cx="50" cy="50" r="49" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="1"/>' +
+      '<g class="face"><path d="M36 9h28a3 3 0 0 1 3 3v24h24a3 3 0 0 1 3 3v22a3 3 0 0 1-3 3H67v24a3 3 0 0 1-3 3H36a3 3 0 0 1-3-3V64H9a3 3 0 0 1-3-3V39a3 3 0 0 1 3-3h24V12a3 3 0 0 1 3-3z" fill="' + arm + '"/>' +
+      '<path class="arm" data-d="u" d="M38 12h24v24H38z" fill="transparent"/><path class="arm" data-d="d" d="M38 64h24v24H38z" fill="transparent"/>' +
+      '<path class="arm" data-d="l" d="M9 39h27v22H9z" fill="transparent"/><path class="arm" data-d="r" d="M64 39h27v22H64z" fill="transparent"/>' +
+      '<circle cx="50" cy="50" r="8" fill="#000" opacity=".3"/>' +
+      '<path d="M50 15l6 8H44zM50 85l6-8H44zM15 50l8-6v12zM85 50l-8-6v12z" fill="#fff" opacity=".25"/>' +
+      '<path d="M36 9h28a3 3 0 0 1 3 3v2H33v-2a3 3 0 0 1 3-3z" fill="#fff" opacity=".12"/></g></svg>';
   }
-  function padBody(id) {
-    if (id === 'nes') return '<rect x="0" y="0" width="460" height="200" rx="14" fill="#2b2a2e"/><rect x="8" y="8" width="444" height="184" rx="10" fill="#1f1e22"/>' +
-      '<rect x="170" y="30" width="120" height="140" rx="6" fill="#d7d4cf"/>' + (function () { var s = ''; for (var i = 0; i < 4; i++) s += '<rect x="178" y="' + (40 + i * 14) + '" width="104" height="8" rx="4" fill="#bdb9b2"/>'; return s; })();
-    if (id === 'snes') return '<path d="M100 6 H360 Q456 6 456 100 Q456 194 360 194 Q300 194 270 160 H190 Q160 194 100 194 Q4 194 4 100 Q4 6 100 6 Z" fill="#cfccd4"/>' +
-      '<path d="M100 14 H360 Q448 14 448 100 Q448 186 360 186 Q304 186 276 154 H184 Q156 186 100 186 Q12 186 12 100 Q12 14 100 14 Z" fill="none" stroke="#b7b3bd" stroke-width="2"/>';
-    return '<path d="M60 10 H400 Q456 10 456 70 Q456 150 380 190 Q330 160 230 160 Q130 160 80 190 Q4 150 4 70 Q4 10 60 10 Z" fill="#141416"/>' +
-      '<path d="M66 18 H394 Q448 18 448 70 Q448 140 380 180" fill="none" stroke="#26262a" stroke-width="3"/>';
+  function svgBtn(label, col) {
+    var light = col === '#ecbf22' || col === '#cfcbc4', ink = SYS_ID === 'genesis' ? '#d8d8e0' : light ? '#3a2a00' : '#ffffff';
+    var gid = 'sh' + label + SYS_ID;
+    return '<svg viewBox="0 0 100 100"><defs><radialGradient id="' + gid + '" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></radialGradient></defs>' +
+      '<circle cx="50" cy="54" r="46" fill="#000" opacity=".35"/><g class="face">' +
+      '<circle cx="50" cy="50" r="46" fill="' + col + '"/><circle cx="50" cy="50" r="46" fill="url(#' + gid + ')"/>' +
+      '<circle cx="50" cy="50" r="45" fill="none" stroke="#000" stroke-opacity=".3" stroke-width="2"/>' +
+      '<text x="50" y="62" font-size="36" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" fill="' + ink + '" opacity=".9">' + label + '</text></g></svg>';
   }
-  // Fingers press, slide between buttons (B to A and back, as on the real pad) and the D-pad reads 8 ways
-  function wirePad(pad) {
-    var touches = {}, held = {};
-    function setHeld(next) {
-      for (var k in held) if (!next[k]) { press(+k, 0); held[k] = 0; delete held[k]; mark(k, false); }
-      for (var j in next) if (!held[j]) { press(+j, 1); held[j] = 1; mark(j, true); Kit.haptic('light'); }
+  function svgPill(label) {
+    var dark = SYS_ID !== 'snes', fill = SYS_ID === 'genesis' ? '#3a3a40' : '#3b3a3f', ink = SYS_ID === 'nes' ? '#d0262b' : dark ? '#9a9aa5' : '#5d5867';
+    return '<svg viewBox="0 0 100 56"><g class="face"><rect x="14" y="6" width="72" height="24" rx="12" fill="' + fill + '"/><rect x="18" y="8" width="64" height="7" rx="3.5" fill="#fff" opacity=".12"/></g>' +
+      '<text x="50" y="50" font-size="15" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" letter-spacing="1" fill="' + ink + '">' + label + '</text></svg>';
+  }
+  function svgShoulder(label, right) {
+    return '<svg viewBox="0 0 120 40"><g class="face"><path d="' + (right ? 'M8 38 Q10 4 52 3 H112 Q118 3 118 10 V38 Z' : 'M112 38 Q110 4 68 3 H8 Q2 3 2 10 V38 Z') + '" fill="#a39eab"/>' +
+      '<path d="' + (right ? 'M20 14 Q30 7 52 7 H112' : 'M100 14 Q90 7 68 7 H8') + '" stroke="#fff" stroke-opacity=".35" stroke-width="3" fill="none"/>' +
+      '<text x="' + (right ? 66 : 54) + '" y="30" font-size="18" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" fill="#5d5867">' + label + '</text></g></svg>';
+  }
+  function svgTool(kind) {
+    var g = kind === 'menu' ? '<g class="glyph" fill="#fff"><circle cx="13" cy="20" r="2.6"/><circle cx="20" cy="20" r="2.6"/><circle cx="27" cy="20" r="2.6"/></g>'
+      : '<path class="glyph" d="M10 13l9 7-9 7zM20 13l9 7-9 7z" fill="#fff"/>';
+    return '<svg viewBox="0 0 40 40"><g class="face"><circle cx="20" cy="20" r="18" fill="rgba(0,0,0,.35)" stroke="rgba(255,255,255,.28)" stroke-width="1.5"/>' + g + '</g></svg>';
+  }
+  function buildSkin() {
+    var sk = el('div', { class: 'skin' });
+    ctls = [];
+    // the controller's own body behind the buttons (portrait): NES centre panel, SNES button dish, Genesis crescent
+    sk.appendChild(el('div', { class: 'decor', html: DECOR[SYS_ID] }));
+    function add(c, html) { c.el = el('div', { class: 'ctl c-' + c.k, html: html }); sk.appendChild(c.el); ctls.push(c); return c; }
+    add({ k: 'dp' }, svgDpad());
+    var F = FACE[SYS_ID];
+    F.b.forEach(function (b) { add({ k: 'btn', i: b[1], dx: b[2], dy: b[3] }, svgBtn(b[0], b[4])); });
+    MID[SYS_ID].forEach(function (m, n) { add({ k: 'pill', i: m[1], n: n }, svgPill(m[0])); });
+    if (SYS_ID === 'snes') { add({ k: 'sh', i: 10, side: 0 }, svgShoulder('L', false)); add({ k: 'sh', i: 11, side: 1 }, svgShoulder('R', true)); }
+    add({ k: 'tool', t: 'menu' }, svgTool('menu'));
+    add({ k: 'tool', t: 'ff' }, svgTool('ff'));
+    wireSkin(sk);
+    return sk;
+  }
+  // the notch and home-bar insets, in pixels (CSS env() values read through a probe)
+  var probe = null;
+  function safe() {
+    if (!probe) { probe = el('div', { style: { position: 'fixed', left: '0', top: '0', visibility: 'hidden', 'pointer-events': 'none', 'padding-top': 'env(safe-area-inset-top,0px)', 'padding-bottom': 'env(safe-area-inset-bottom,0px)' } }); document.body.appendChild(probe); }
+    var c = getComputedStyle(probe); return [parseFloat(c.paddingTop) || 0, parseFloat(c.paddingBottom) || 0];
+  }
+  // place the picture and every control for this screen shape
+  function layout() {
+    if (!playEl) return;
+    var W = playEl.clientWidth, H = playEl.clientHeight, sf = safe(), sT = sf[0], sB = sf[1];
+    var land = W > H * 1.1, drawn = !skinEl.hidden, x, y, w, h;
+    playEl.classList.toggle('land', land);
+    if (!drawn) {   // the picture alone, as big as it goes
+      w = Math.min(W - 24, (H - 24) * 4 / 3); h = w * 3 / 4; x = (W - w) / 2; y = (H - h) / 2;
+    } else if (!land) {
+      w = Math.min(W - 8, 760, (H - sT) * .5 * 4 / 3); h = w * 3 / 4; x = (W - w) / 2; y = sT + 6;
+    } else {
+      h = H - sT - sB - 12; w = h * 4 / 3;
+      if (W - w < 2 * 150) { w = Math.max(W * .5, W - 2 * 150); h = w * 3 / 4; }
+      x = (W - w) / 2; y = sT + (H - sT - sB - h) / 2;
     }
+    scrEl.style.left = x + 'px'; scrEl.style.top = y + 'px'; scrEl.style.width = w + 'px'; scrEl.style.height = h + 'px';
+    if (!drawn) return;
+    var F = FACE[SYS_ID], u, place = function (c, cx, cy, sw, shh) { c.cx = cx; c.cy = cy; c.w = sw; c.h = shh || sw; c.el.style.left = cx + 'px'; c.el.style.top = cy + 'px'; c.el.style.width = c.w + 'px'; c.el.style.height = c.h + 'px'; };
+    if (!land) {
+      var top = y + h + 8, bh = H - sB - top;
+      u = Math.max(.7, Math.min(1.7, W / 370, bh / 320));
+      var dec = skinEl.querySelector('.decor'); dec.style.left = '0'; dec.style.top = top + 'px'; dec.style.width = W + 'px'; dec.style.height = bh + 'px'; dec.hidden = false;
+      ctls.forEach(function (c) {
+        if (c.k === 'dp') place(c, W * .25, top + bh * .44, 150 * u);
+        else if (c.k === 'btn') place(c, W * F.at[0] + c.dx * u, top + bh * F.at[1] + c.dy * u, F.size * u);
+        else if (c.k === 'pill') { var n = MID[SYS_ID].length; place(c, W * (n === 1 ? .5 : c.n ? .6 : .4), top + bh * .85, 92 * u, 52 * u); }
+        else if (c.k === 'sh') place(c, c.side ? W - 70 * u : 70 * u, top + 20 * u, 124 * u, 41 * u);
+        else if (c.k === 'tool') place(c, c.t === 'menu' ? 30 * u : W - 30 * u, top + bh - 26 * u, 42 * u);
+      });
+    } else {
+      var side = x, lc = side / 2, rc = x + w + side / 2; skinEl.querySelector('.decor').hidden = true;
+      u = Math.max(.6, Math.min(1.3, H / 380));
+      ctls.forEach(function (c) {
+        if (c.k === 'dp') place(c, Math.max(lc, 80 * u), H * .58, 150 * u);
+        else if (c.k === 'btn') place(c, Math.min(rc, W - 80 * u) + c.dx * u * .9, H * .55 + c.dy * u * .9, F.size * u * .95);
+        else if (c.k === 'pill') { var n2 = MID[SYS_ID].length; place(c, n2 === 1 || c.n ? Math.min(rc, W - 60 * u) : Math.max(lc, 60 * u), H - sB - 26 * u, 84 * u, 48 * u); }
+        else if (c.k === 'sh') place(c, c.side ? Math.min(rc, W - 64 * u) : Math.max(lc, 64 * u), H * .2, 118 * u, 39 * u);
+        else if (c.k === 'tool') place(c, c.t === 'menu' ? Math.max(lc, 26 * u) - (SYS_ID === 'snes' ? 0 : 0) : Math.min(rc, W - 26 * u), sT + 24 * u, 38 * u);
+      });
+    }
+  }
+  // Fingers press, slide from button to button, and a touch between two face buttons presses both (B+A on a NES)
+  function wireSkin(sk) {
+    var touches = {}, held = {}, ffOn = false;
     function mark(i, on) {
-      var g = pad.querySelectorAll('[data-b="' + i + '"]'); for (var n = 0; n < g.length; n++) g[n].classList.toggle('on', on);
-      var d = { 4: 'u', 5: 'd', 6: 'l', 7: 'r' }[i]; if (d) { var a = pad.querySelector('.arm[data-d="' + d + '"]'); if (a) a.classList.toggle('on', on); }
+      ctls.forEach(function (c) { if (c.i === i && c.k !== 'dp') c.el.classList.toggle('on', on); });
+      var d = { 4: 'u', 5: 'd', 6: 'l', 7: 'r' }[i];
+      if (d) { var dp = ctls[0].el, a = dp.querySelector('.arm[data-d="' + d + '"]'); if (a) a.setAttribute('fill', on ? 'rgba(255,255,255,.28)' : 'transparent'); }
+    }
+    function setHeld(next) {
+      for (var k in held) if (!next[k]) { press(+k, 0); delete held[k]; mark(+k, false); }
+      for (var j in next) if (!held[j]) { press(+j, 1); held[j] = 1; mark(+j, true); Kit.haptic('light'); }
     }
     function read(x, y) {
-      var out = [], t = document.elementFromPoint(x, y);
-      var dp = pad.querySelector('.dp'), r = dp.getBoundingClientRect();
-      var cx = r.left + r.width / 2, cy = r.top + r.height / 2, dx = x - cx, dy = y - cy, rr = r.width * .62;
-      if (dx * dx + dy * dy < rr * rr && dx * dx + dy * dy > 36) {
-        var ang = Math.atan2(dy, dx) * 180 / Math.PI;   // 8 ways: each direction covers 67.5 degrees, diagonals overlap
-        if (ang > -157.5 && ang < -22.5) out.push(4);
-        if (ang > 22.5 && ang < 157.5) out.push(5);
-        if (ang > 112.5 || ang < -112.5) out.push(6);
-        if (ang > -67.5 && ang < 67.5) out.push(7);
-        return out;
+      var out = [], best = null, bd = 1e9;
+      ctls.forEach(function (c) {
+        var dx = x - c.cx, dy = y - c.cy;
+        if (c.k === 'dp') {
+          var r = c.w / 2, d2 = dx * dx + dy * dy;
+          if (d2 < r * r * 1.7 && d2 > r * r * .02) {   // eight ways: each direction covers 67.5 degrees, so diagonals overlap
+            var ang = Math.atan2(dy, dx) * 180 / Math.PI;
+            if (ang > -157.5 && ang < -22.5) out.push(4);
+            if (ang > 22.5 && ang < 157.5) out.push(5);
+            if (ang > 112.5 || ang < -112.5) out.push(6);
+            if (ang > -67.5 && ang < 67.5) out.push(7);
+          }
+        } else if (c.k === 'btn') {
+          var rb = c.w / 2, db = Math.sqrt(dx * dx + dy * dy);
+          if (db < rb * 1.12) out.push(c.i); else if (db < rb * 1.6 && db < bd) { bd = db; best = c.i; }
+        } else if (c.k === 'pill' || c.k === 'sh') {
+          if (Math.abs(dx) < c.w * .55 && Math.abs(dy) < c.h * .7) out.push(c.i);
+        }
+      });
+      // between two face buttons: both (B+A on a NES; any neighbouring pair on the others)
+      var bs = ctls.filter(function (c) { return c.k === 'btn'; });
+      for (var m = 0; m < bs.length; m++) for (var n = m + 1; n < bs.length; n++) {
+        var p = bs[m], q = bs[n], gap = Math.hypot(p.cx - q.cx, p.cy - q.cy);
+        if (gap < p.w * 1.6 && Math.hypot(x - (p.cx + q.cx) / 2, y - (p.cy + q.cy) / 2) < p.w * .24) { if (out.indexOf(p.i) < 0) out.push(p.i); if (out.indexOf(q.i) < 0) out.push(q.i); }
       }
-      var g = t && t.closest && t.closest('[data-b]');
-      if (g && pad.contains(g)) out.push(+g.getAttribute('data-b'));
+      if (!out.length && best != null) out.push(best);
       return out;
     }
+    function toolAt(x, y) { for (var n = 0; n < ctls.length; n++) { var c = ctls[n]; if (c.k === 'tool' && Math.hypot(x - c.cx, y - c.cy) < c.w * .8) return c; } return null; }
     function update() { var next = {}; for (var id in touches) touches[id].forEach(function (i) { next[i] = 1; }); setHeld(next); }
-    pad.addEventListener('pointerdown', function (e) { e.preventDefault(); try { pad.setPointerCapture(e.pointerId); } catch (er) {} touches[e.pointerId] = read(e.clientX, e.clientY); update(); ac(); });
-    pad.addEventListener('pointermove', function (e) { if (!touches[e.pointerId]) return; touches[e.pointerId] = read(e.clientX, e.clientY); update(); });
-    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (k) { pad.addEventListener(k, function (e) { delete touches[e.pointerId]; update(); }); });
-    pad.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    sk.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      var t = toolAt(e.clientX, e.clientY);
+      if (t) {
+        Kit.haptic('light'); t.el.classList.add('on'); setTimeout(function () { t.el.classList.remove('on'); }, 120);
+        if (t.t === 'menu') { var b = document.querySelector('.gbar button[aria-label="Menu"]'); if (b) b.click(); }
+        else { ffOn = !ffOn; t.el.classList.toggle('lit', ffOn); var E = emu(); if (E) try { E.gameManager.toggleFastForward(ffOn ? 1 : 0); } catch (er) {} }
+        return;
+      }
+      try { sk.setPointerCapture(e.pointerId); } catch (er) {}
+      touches[e.pointerId] = read(e.clientX, e.clientY); update();
+    });
+    sk.addEventListener('pointermove', function (e) { if (!touches[e.pointerId]) return; touches[e.pointerId] = read(e.clientX, e.clientY); update(); });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (k) { sk.addEventListener(k, function (e) { if (!touches[e.pointerId]) return; delete touches[e.pointerId]; update(); }); });
+    sk.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   }
 
   // ═══ Kit shell ════════════════════════════════════════════════════════════
   function controls() {
     Kit.sheet({ title: 'Controls', html:
-      '<p>On the screen: the controller under the TV (turn your phone sideways and it sits either side). Slide a finger from one button to the next to press both in turn.</p>' +
+      '<p>On a phone or iPad the controller is drawn round the picture (turn sideways and it sits either side). Slide a finger from one button to the next, or touch between two face buttons to press both.</p>' +
+      '<p>The <b>Menu</b> button on the controller opens this menu; <b>»</b> runs the game at triple speed until you tap it again.</p>' +
       '<p><b>Keyboard:</b> ' + SYS.keys + '.</p>' +
       '<p><b>A real controller</b> (Bluetooth or USB) works too: connect it and press a button. The drawn one steps aside.</p>' });
   }
@@ -575,34 +641,33 @@
       { icon: 'bookmark', label: 'Save state', sub: 'Keep this exact moment', when: playing, onClick: function () { slotsSheet(true); } },
       { icon: 'history', label: 'Load state', sub: 'Go back to a saved moment', when: playing, onClick: function () { slotsSheet(false); } },
       { icon: 'sync', label: 'Reset', sub: 'Like the console’s Reset button', when: playing, onClick: function () { var E = emu(); if (E) { E.gameManager.restart(); Kit.haptic('medium'); } } },
-      { icon: 'swap', label: 'Change cartridge', when: playing, onClick: toShelf },
+      { icon: 'swap', label: 'Change cartridge', sub: 'Back to the ' + SYS.name + ' shelf', when: playing, onClick: toShelf },
       { icon: 'gamepad', label: 'Controls', onClick: controls }
     ],
     rules:
       '<p class="goal">Play your own ' + SYS.name + ' games. Add the game files you own and they line up on the shelf as cartridges.</p>' +
-      '<h3>Your games</h3><ul><li>Tap the empty cartridge to add game files (you can pick several at once). Files are read from this device and stay on it; nothing is uploaded.</li>' +
-      '<li>Tap a cartridge to play it. Press and hold one to rename it or take it off the shelf.</li>' +
-      '<li>Each device has its own shelf, so add your games on each phone or iPad you play on.</li></ul>' +
-      '<h3>Playing</h3><ul><li>Use the controller under the TV, a keyboard (' + SYS.keys + '), or a real Bluetooth or USB controller.</li>' +
+      '<h3>Your games</h3><ul><li>Tap the empty cartridge to add game files (you can pick several at once).</li>' +
+      '<li>Signed in with a PIN, they’re kept in your account, so every device you sign in on has them (a cloud badge means it comes down the first time you play it there). As a guest they stay on this device.</li>' +
+      '<li>Each game gets its own tile in Consoles on the home screen, which starts it straight away. <b>Choose</b> there (or press and hold a cartridge) picks what shows.</li>' +
+      '<li>Tap a cartridge to play it. Press and hold one to rename it, hide its tile, or take it off the shelf.</li></ul>' +
+      '<h3>Playing</h3><ul><li>Use the controller drawn on the screen, a keyboard (' + SYS.keys + '), or a real Bluetooth or USB controller.</li>' +
       '<li>Games that save on their own (battery saves) keep them on this device.</li>' +
-      '<li>The menu has <b>Save state</b> and <b>Load state</b> to keep and return to an exact moment, three slots per game. When you leave, your place is kept and you can carry on next time.</li></ul>'
+      '<li><b>Save state</b> and <b>Load state</b> in the menu keep and return to an exact moment, three slots per game. When you leave, your place is kept and you can carry on next time.</li></ul>'
   });
 
   // ═══ Start ════════════════════════════════════════════════════════════════
-  document.documentElement.classList.add('cs-on');
+  root.classList.add('cs-on');
   var want = new URLSearchParams(location.search).get('play');
-  cartsOf(SYS_ID).then(function (list) {
-    carts = list || [];
-    var c = want && carts.filter(function (x) { return x.id === want; })[0];
-    if (c) {
-      // came back with a cartridge chosen: it's in the console; the power button starts it (audio needs a tap)
-      drawShelf(); unitEl.classList.add('on');
-      var go = function () { document.removeEventListener('pointerdown', go, true); play(c); };
-      var hint = el('p', { class: 'empty-note', text: 'Tap anywhere to switch on' });
-      view.querySelector('.stand').appendChild(hint);
-      document.addEventListener('pointerdown', go, true);
-    } else drawShelf();
-  }).catch(function (e) { console.warn(e); view.innerHTML = ''; view.appendChild(el('p', { class: 'empty-note', text: 'This browser can’t keep game files (private browsing blocks it).' })); });
+  function start() {
+    L.list().then(function (list) {
+      carts = list || [];
+      var c = want && carts.filter(function (x) { return x.id === want; })[0];
+      if (c) play(c); else drawShelf();
+    }).catch(function (e) { console.warn(e); view.innerHTML = ''; view.appendChild(el('p', { class: 'empty-note', text: 'This browser can’t keep game files (private browsing blocks it).' })); });
+  }
+  // signed in: wait for the account's settings (the library key) before listing
+  if (window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.onReady) { var go = false; FGHSync.onReady(function () { if (!go) { go = true; start(); } }); setTimeout(function () { if (!go) { go = true; start(); } }, 4000); }
+  else start();
 
-  window.__cs = { db: db, carts: function () { return carts; }, emu: emu, started: function () { return started; }, press: press, saveState: saveState, getState: getState };
+  window.__cs = { carts: function () { return carts; }, emu: emu, started: function () { return started; }, press: press, saveState: saveState, getState: getState, ctls: function () { return ctls; } };
 })();

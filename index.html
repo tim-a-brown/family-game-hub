@@ -21,6 +21,7 @@
 <script src="daily.js"></script>
 <script src="casino.js"></script>
 <script src="spin.js"></script>
+<script src="console-lib.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
   var swReg = null, hadSW = !!navigator.serviceWorker.controller, swReload = false;
@@ -596,7 +597,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var hay = norm(g.name + ' ' + g.tag + ' ' + g.cat);
     return norm(state.q).split(/\s+/).every(function (t) { return hay.indexOf(t) >= 0; });
   }
-  function visibleGames() { return GAMES.filter(function (g) { return fitsWho(g) && fitsQ(g); }); }
+  function visibleGames() { return GAMES.filter(function (g) { return !g.hidden && fitsWho(g) && fitsQ(g); }); }
 
   // ── Game rows ─────────────────────────────────────────────────────────────
   var resumeMap = {};
@@ -815,6 +816,28 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     try { if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite('fav_games'); } catch (e) {}
   }
   // Arcade: the high scores cabinet (every arcade game's top 50 on one screen)
+  function secExtra(id) { return id === 'casino' ? bankBadge() : id === 'arcade' ? hiLink() : id === 'puzzle' && window.Daily ? dailyLink() : id === 'console' ? consoleLink() : null; }
+  // Consoles: choose which consoles and which of your games show here (switches; games stay on their shelves)
+  function consoleLink() {
+    return el('button', { type: 'button', class: 'hs-link', html: Kit.icon('sliders') + '<span>Choose</span>', onclick: consoleChoose });
+  }
+  function consoleChoose() {
+    Kit.sfx('pop');
+    var box = el('div', { class: 'k-list' }), SYS = [['nes', 'NES'], ['snes', 'Super Nintendo'], ['genesis', 'Sega Genesis']];
+    function sw(label, sub, id) {
+      var b = el('button', { type: 'button', class: 'tg', role: 'switch', 'aria-checked': String(ConsoleLib.shown(id)) },
+        [el('span', { class: 'lbl' }, [el('span', { text: label })].concat(sub ? [el('small', { text: sub })] : [])), el('i', { class: 'sw' })]);
+      b.onclick = function () { var on = !ConsoleLib.shown(id); ConsoleLib.show(id, on); b.setAttribute('aria-checked', String(on)); Kit.haptic('light'); };
+      return b;
+    }
+    SYS.forEach(function (s) {
+      var games = GAMES.filter(function (g) { return g.cart && g.sys === s[0]; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+      box.appendChild(el('div', { class: 'k-grp' }, [el('h3', { text: s[1] }), sw(s[1] + ' shelf', 'Where you add and manage ' + s[1] + ' games', s[0])]
+        .concat(games.map(function (g) { return sw(g.name, null, g.cart); }))));
+    });
+    if (!GAMES.some(function (g) { return g.cart; })) box.appendChild(el('p', { class: 'muted', text: 'Games you add on a console’s shelf show up here too, each with its own tile.' }));
+    Kit.sheet({ title: 'Consoles on the home screen', node: box, onClose: function () { addConsoleGames(); render(); } });
+  }
   function hiLink() {
     return el('button', { type: 'button', class: 'hs-link', html: Kit.icon('trophy') + '<span>High scores</span>', onclick: function () { go('hiscores'); } });
   }
@@ -1236,13 +1259,14 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       if (favs.length && !state.q) list.appendChild(section('Favorites', 'star', favs, null, true));
       Kit.cats().forEach(function (c) {
         var gs = vis.filter(function (g) { return g.cat === c.id; });
-        if (gs.length) list.appendChild(section(c.name, c.id, gs, c.id === 'casino' ? bankBadge() : c.id === 'arcade' ? hiLink() : c.id === 'puzzle' && window.Daily ? dailyLink() : null));
+        // Consoles stays even with everything hidden, so its Choose button can bring things back
+        if (gs.length || (c.id === 'console' && !state.q)) list.appendChild(section(c.name, c.id, gs, secExtra(c.id)));
       });
     } else if (state.cat === 'fav') {
       list.appendChild(section('Favorites', 'star', vis.filter(isFav), null, true));
     } else {
       var c = GAME_CATS.filter(function (x) { return x.id === state.cat; })[0];
-      list.appendChild(section(c.name, c.id, vis.filter(function (g) { return g.cat === c.id; }), c.id === 'casino' ? bankBadge() : c.id === 'arcade' ? hiLink() : c.id === 'puzzle' && window.Daily ? dailyLink() : null));
+      list.appendChild(section(c.name, c.id, vis.filter(function (g) { return g.cat === c.id; }), secExtra(c.id)));
     }
     $('empty').classList.toggle('show', !vis.length);
     markWraps();
@@ -1473,7 +1497,13 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   if (mode === 'pin' && window.FGHSync) {
     $('me').classList.add('syncdot');
     if (FGHSync.onStatusChange) FGHSync.onStatusChange(function (s) { var hv = $('me').classList.contains('has-av'); $('me').className = 'me syncdot s-' + s.state + (hv ? ' has-av' : ''); });
-    if (FGHSync.onReady) FGHSync.onReady(function () { refreshWho(); render(); });
+    if (FGHSync.onReady) FGHSync.onReady(function () { refreshWho(); addConsoleGames(); render(); refreshConsoles(); });
+    // console games added or removed on another device: the account's list, then redraw if it changed
+    function refreshConsoles() {
+      if (!window.ConsoleLib || !ConsoleLib.cloud()) return;
+      var before = localStorage.getItem('gn_console_idx');
+      ConsoleLib.list().then(function () { if (localStorage.getItem('gn_console_idx') !== before) { addConsoleGames(); render(); } }).catch(function () {});
+    }
     setTimeout(loadNetTurns, 1200);   // online games where it's your move, once the screen is up
     watchFriendTables();   // and linked friends with a table open (live)
   }

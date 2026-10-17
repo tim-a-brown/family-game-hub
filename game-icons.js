@@ -349,7 +349,7 @@ var GameIcon = (function () {
     var g = (typeof findGame === 'function' && findGame(id)) || { id: id, cat: 'tools', color: '#8b55ff' };
     var c = g.color, gid = 'gi' + (++uid);
     var base = (BASE[g.base || g.cat] || BASE.tools)(c);
-    var mark = MARK[g.id] ? MARK[g.id](c) : txt(g.name.charAt(0), 18, c, 12.5);
+    var mk = MARK[g.mark || g.id], mark = mk ? mk(c) : txt(g.name.charAt(0), 18, c, 12.5);
     // On a coloured tile the picture fills it; on the home screen (bare) it sits on the category's white card like the other marks
     if (PIC[g.id]) { var pb = opts.bare ? [13.5, 21] : [9.3, 29.4]; mark = '<image href="' + PIC[g.id] + '" x="' + pb[0] + '" y="' + pb[0] + '" width="' + pb[1] + '" height="' + pb[1] + '" preserveAspectRatio="xMidYMid meet"/>'; base = [opts.bare ? base[0] : '', '']; }
     return '<svg class="gicon' + (opts.cls ? ' ' + opts.cls : '') + '" viewBox="0 0 48 48" role="img" aria-label="' + g.name + '">' +
@@ -362,7 +362,7 @@ var GameIcon = (function () {
   // read at a glance (High Scores)
   render.solo = function (id) {
     var g = (typeof findGame === 'function' && findGame(id)) || { id: id, cat: 'tools', color: '#8b55ff', name: id };
-    var c = g.color, mark = MARK[g.id] ? MARK[g.id](c) : txt(g.name.charAt(0), 18, c, 12.5);
+    var c = g.color, mk = MARK[g.mark || g.id], mark = mk ? mk(c) : txt(g.name.charAt(0), 18, c, 12.5);
     if (PIC[g.id]) mark = '<image href="' + PIC[g.id] + '" x="0" y="0" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>';
     return '<svg class="gicon solo" viewBox="0 0 48 48" role="img" aria-label="' + g.name + '"><rect width="48" height="48" rx="12" fill="#fff"/>' +
       '<rect x=".75" y=".75" width="46.5" height="46.5" rx="11.3" fill="none" stroke="' + lighten(c, -.2) + '" stroke-opacity=".35" stroke-width="1.5"/>' +
@@ -372,8 +372,8 @@ var GameIcon = (function () {
   // silhouette in the middle of the game table).
   render.mark = function (id) {
     var g = (typeof findGame === 'function' && findGame(id)) || null;
-    if (!g || !MARK[g.id]) return '';
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' + MARK[g.id](g.color) + '</svg>';
+    if (!g || !MARK[g.mark || g.id]) return '';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' + MARK[g.mark || g.id](g.color) + '</svg>';
   };
   return render;
 })();
