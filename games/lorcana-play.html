@@ -8643,7 +8643,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var p = ui.pick;
       if (p.ok(u)) {
         if (p.multi) { var i = p.sel.indexOf(u); if (i >= 0) p.sel.splice(i, 1); else p.sel.push(u); Kit.sfx('tap'); render(); return; }
-        if (p.preview && hintsOn() && p.pre !== u) { p.pre = u; Kit.sfx('tap'); Kit.haptic('light'); render(); return; }
+        // with a preview: the first tap picks it (the bar says what would happen), a second tap on it puts it back;
+        // the Challenge button goes ahead
+        if (p.preview && hintsOn()) { p.pre = p.pre === u ? null : u; Kit.sfx('tap'); Kit.haptic('light'); render(); return; }
         ui.pick = null; render(); p.done(u); return;
       }
       Kit.toast((p.bad && p.bad(u)) || 'Choose one of the glowing cards, or Cancel'); return;
