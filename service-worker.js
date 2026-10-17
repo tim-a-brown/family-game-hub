@@ -39,6 +39,7 @@ const PRECACHE_URLS = [
   '/fonts/great-vibes.woff2',
   '/fonts/cinzel-700.woff2',
   '/fonts/bungee.woff2',
+  '/fonts/russo-one.woff2',
   '/fonts/sofia-sans-condensed.woff2',
   '/fonts/sofia-sans.woff2',
   '/fonts/rye.woff2',

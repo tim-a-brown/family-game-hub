@@ -367,16 +367,25 @@
     layout();
   }
   // the menu button shows for a few seconds, then gets out of the way
-  function peek() { if (!peekEl) return; peekEl.classList.add('on'); clearTimeout(peekT); peekT = setTimeout(function () { peekEl.classList.remove('on'); }, 3500); }
+  function peek() {
+    if (!peekEl) return;
+    [peekEl, seatsEl].forEach(function (x) { if (x) x.classList.add('on'); });
+    clearTimeout(peekT); peekT = setTimeout(function () { [peekEl, seatsEl].forEach(function (x) { if (x) x.classList.remove('on'); }); }, 3500);
+  }
   function openMenu() { var b = document.querySelector('.gbar button[aria-label="Menu"]'); if (b) b.click(); }
-  window.addEventListener('gamepadconnected', function (e) {
-    var was = padConnected; padConnected = true; padIdx = e.gamepad ? e.gamepad.index : padIdx;
-    if (playEl) { padMode(); if (!was) Kit.toast(padName(e.gamepad) + ' connected · Home, or Select + Start, opens the menu'); }
-  });
-  window.addEventListener('gamepaddisconnected', function () {
-    var any = Array.prototype.some.call(pads(), function (p) { return p && p.connected !== false; });
-    padConnected = any; padIdx = null; padRelease();
-    if (playEl) { padMode(); Kit.toast('Controller disconnected'); }
+  // controllers take seats as they press their first button (padTick); a disconnected one gives its seat up
+  window.addEventListener('gamepaddisconnected', function (e) {
+    var gi = e.gamepad ? e.gamepad.index : -1, seat = seats.indexOf(gi);
+    if (seat >= 0) { padRelease(seat); seats[seat] = null; }
+    var any = Array.prototype.some.call(pads(), function (p) { return p && p.connected !== false && p.index !== gi; });
+    padConnected = any;
+    // the one controller left plays as player 1 (a one-player game only listens to player 1)
+    var moved = false;
+    if (seats[0] == null && seats[1] != null) { padRelease(1); seats[0] = seats[1]; seats[1] = null; moved = true; }
+    if (playEl) {
+      padMode(); showSeats();
+      Kit.toast((seat >= 0 ? 'Player ' + (seat + 1) + '’s controller disconnected' : 'Controller disconnected') + (moved ? ' · ' + padName(padAt(seats[0])) + ' is player 1 now' : ''));
+    }
   });
   window.addEventListener('touchstart', function () { if (!touchy) { touchy = true; if (playEl) padMode(); } }, { passive: true });
   window.addEventListener('resize', function () { if (playEl) layout(); else if (!cur) drawShelf(); });
@@ -428,7 +437,7 @@
     }, 200);
   }
   function emu() { return window.EJS_emulator && window.EJS_emulator.gameManager ? window.EJS_emulator : null; }
-  function press(i, v) { var e = emu(); if (e && started) try { e.gameManager.simulateInput(0, i, v); } catch (er) {} }
+  function press(i, v, player) { var e = emu(); if (e && started) try { e.gameManager.simulateInput(player || 0, i, v); } catch (er) {} }
   // a game started straight from the home screen has no tap behind it yet: its sound starts with your first touch
   function wakeAudio() { try { var E = emu(), a = E && E.Module && E.Module.AL && E.Module.AL.currentCtx && E.Module.AL.currentCtx.audioCtx; if (a && a.state === 'suspended') a.resume(); } catch (e) {} }
   document.addEventListener('pointerdown', wakeAudio, true);
@@ -778,38 +787,69 @@
   function padSave(all) { try { localStorage.setItem('gn_pad_map', JSON.stringify(all)); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite('gn_pad_map'); }
   function padMapOf(p) { var all = padMaps(), m = p && all[p.id] && all[p.id][SYS_ID]; return m || padDefaults(); }
   function pads() { try { return navigator.getGamepads ? navigator.getGamepads() : []; } catch (e) { return []; } }
-  var padIdx = null, padHeld = {}, padMenuWas = false, mapper = null;
+  // Two players: each console has two controller ports. A controller takes the first free seat when it presses its
+  // first button (seats[player] = its gamepad index); Swap players in Controller buttons trades them.
+  var SEATS = 2, seats = [null, null], held = [{}, {}], lastPad = null, padMenuWas = false, mapper = null;
+  function padAt(gi) { var l = pads(); return gi != null && l[gi] && l[gi].connected !== false ? l[gi] : null; }
+  // the controller the remap sheet shows: the one last pressed, else player 1's, else any
   function activePad() {
-    var l = pads(); if (padIdx != null && l[padIdx]) return l[padIdx];
-    for (var i = 0; i < l.length; i++) if (l[i] && l[i].connected !== false) { padIdx = i; return l[i]; }
+    var p = padAt(lastPad) || padAt(seats[0]) || padAt(seats[1]); if (p) return p;
+    var l = pads(); for (var i = 0; i < l.length; i++) if (l[i] && l[i].connected !== false) return l[i];
     return null;
   }
+  function seatOf(p) { return p ? seats.indexOf(p.index) : -1; }
   function padDown(p) {
     var d = {};
     Array.prototype.forEach.call(p.buttons, function (b, i) { if (b && (b.pressed || b.value > .5)) d['b' + i] = 1; });
     Array.prototype.forEach.call(p.axes, function (a, i) { if (a > .5) d['a' + i + '+'] = 1; else if (a < -.5) d['a' + i + '-'] = 1; });
     return d;
   }
-  function padRelease() { for (var k in padHeld) { press(+k, 0); delete padHeld[k]; } }
-  (function padTick() {
-    var p = activePad();
-    if (p) {
-      if (!padConnected) { padConnected = true; padIdx = p.index; if (playEl) padMode(); }
-      var down = padDown(p);
-      if (mapper) { padRelease(); mapper(down, p); }   // the remap sheet is listening
-      else if (document.querySelector('.k-scrim')) padRelease();
-      else {
-        var m = padMapOf(p), next = {};
-        Object.keys(m).forEach(function (t) { if (m[t].some(function (c) { return down[c]; })) next[t] = 1; });
-        for (var k in padHeld) if (!next[k]) { press(+k, 0); delete padHeld[k]; }
-        for (var j in next) if (!padHeld[j]) { press(+j, 1); padHeld[j] = 1; }
-        var menu = !!(down.b16 || (down.b8 && down.b9));
-        if (menu && !padMenuWas && cur) { padRelease(); openMenu(); }
-        padMenuWas = menu;
-      }
+  function padRelease(seat) {
+    (seat == null ? [0, 1] : [seat]).forEach(function (n) { for (var k in held[n]) { press(+k, 0, n); delete held[n][k]; } });
+  }
+  // a controller sits down: the first free seat, announced
+  function sit(p) {
+    var n = seats.indexOf(null); if (n < 0) return -1;
+    seats[n] = p.index;
+    var first = !padConnected; padConnected = true;
+    if (playEl) {
+      padMode();
+      if (n === 0 && first) Kit.toast(padName(p) + ' connected · Home, or Select + Start, opens the menu');
+      else { Kit.callout && Kit.callout('Player ' + (n + 1)); Kit.toast('Player ' + (n + 1) + ': ' + padName(p)); Kit.haptic('success'); }
+      showSeats();
     }
+    return n;
+  }
+  (function padTick() {
+    var l = pads(), menuNow = false, scrim = !!document.querySelector('.k-scrim');
+    for (var gi = 0; gi < l.length; gi++) {
+      var p = l[gi]; if (!p || p.connected === false) continue;
+      var down = padDown(p), any = Object.keys(down).length > 0, n = seatOf(p);
+      if (any) lastPad = p.index;
+      if (n < 0 && any && !mapper) n = sit(p);
+      if (mapper) { if (any || p.index === lastPad) mapper(down, p); continue; }   // the remap sheet is listening
+      if (n < 0) continue;
+      if (scrim) { padRelease(n); continue; }
+      var m = padMapOf(p), next = {};
+      Object.keys(m).forEach(function (t) { if (m[t].some(function (c) { return down[c]; })) next[t] = 1; });
+      for (var k in held[n]) if (!next[k]) { press(+k, 0, n); delete held[n][k]; }
+      for (var j in next) if (!held[n][j]) { press(+j, 1, n); held[n][j] = 1; }
+      if (down.b16 || (down.b8 && down.b9)) menuNow = true;
+    }
+    if (mapper) padRelease();
+    if (menuNow && !padMenuWas && cur && !scrim) { padRelease(); openMenu(); }
+    padMenuWas = menuNow;
     requestAnimationFrame(padTick);
   })();
+  // who's playing: a chip per seat, shown with the menu button when the picture fills the screen
+  var seatsEl = null;
+  function showSeats() {
+    if (!playEl) return;
+    if (!seatsEl) { seatsEl = el('div', { class: 'pad-seats' }); playEl.appendChild(seatsEl); }
+    seatsEl.innerHTML = '';
+    seats.forEach(function (gi, n) { var p = padAt(gi); if (p) seatsEl.appendChild(el('span', { class: 'p' + (n + 1) }, [el('b', { text: 'P' + (n + 1) }), el('span', { text: padName(p) })])); });
+    peek();
+  }
   // what a controller calls its buttons: Xbox, PlayStation and Nintendo-style layouts by name, others by position
   function padFamily(p) { var id = (p && p.id) || ''; return /xbox|xinput|microsoft/i.test(id) ? 'x' : /dualshock|dualsense|playstation|sony|ps4|ps5|054c/i.test(id) ? 'ps' : /nintendo|pro controller|joy-?con|8bitdo|sn30|057e/i.test(id) ? 'n' : ''; }
   function padName(p) { var n = ((p && p.id) || 'Controller').replace(/\(.*?\)/g, ' ').replace(/\s*(Extended Gamepad|Gamepad)\s*$/i, '').replace(/\s+/g, ' ').trim(); return n || 'Controller'; }
@@ -826,10 +866,23 @@
   function padSheet() {
     var box = el('div', { class: 'k-list pm' }), rows = {}, listen = null, startDown = null, s;
     var head = el('p', { class: 'pm-who' }), m = null, p = null;
-    box.appendChild(head);
+    // the players: who has which controller, and a swap when there are two
+    var who = el('div', { class: 'pm-seats' });
+    function drawSeats() {
+      who.innerHTML = '';
+      var have = seats.filter(function (gi) { return padAt(gi); }).length;
+      if (have < 2) return;
+      seats.forEach(function (gi, n) { var q = padAt(gi); who.appendChild(el('span', { class: 'p' + (n + 1) + (q && p && q.index === p.index ? ' on' : '') }, [el('b', { text: 'P' + (n + 1) }), el('span', { text: q ? padName(q) : 'No controller' })])); });
+      who.appendChild(el('button', { type: 'button', class: 'pm-swap', html: Kit.icon('swap') + '<span>Swap players</span>', onclick: function () {
+        padRelease(); seats.reverse(); load(); showSeats(); Kit.haptic('medium'); Kit.toast('Players swapped');
+      } }));
+    }
+    box.appendChild(who); box.appendChild(head);
     function load() {
       p = activePad();
-      head.textContent = p ? padName(p) : 'Press any button on your controller to connect it.';
+      var n = seatOf(p);
+      head.textContent = p ? (n >= 0 ? 'Player ' + (n + 1) + ' · ' : '') + padName(p) + (seats.filter(function (gi) { return padAt(gi); }).length > 1 ? ' (press a button on the other controller to set up that one)' : '') : 'Press any button on your controller to connect it.';
+      drawSeats();
       m = JSON.parse(JSON.stringify(padMapOf(p)));
       PAD_TARGETS[SYS_ID].forEach(function (t) { var r = rows[t[1]]; if (r) r.sub.textContent = (m[t[1]] || []).map(function (c) { return codeName(p, c); }).join(' or ') || 'Nothing'; });
     }
@@ -854,7 +907,9 @@
     box.appendChild(reset);
     load();
     mapper = function (down, pad) {
-      if (!p || pad.id !== p.id) load();
+      // the sheet follows whichever controller is being pressed (unless it's waiting for one to pick a button)
+      if (listen == null && Object.keys(down).length && (!p || pad.index !== p.index)) { lastPad = pad.index; load(); }
+      if (!p || pad.index !== p.index) return;
       if (listen != null) {
         var code = Object.keys(down).filter(function (c) { return !startDown[c]; })[0];
         var swapped = null;
@@ -882,7 +937,8 @@
       '<p>On a phone or iPad the controller is drawn round the picture (turn sideways and it sits either side). Slide a finger from one button to the next, or touch between two face buttons to press both.</p>' +
       '<p>The <b>Menu</b> button on the controller opens this menu; <b>»</b> runs the game at triple speed until you tap it again.</p>' +
       '<p><b>Keyboard:</b> ' + SYS.keys + '.</p>' +
-      '<p><b>A real controller</b> (Bluetooth or USB) works too: connect it and press a button. The drawn one steps aside and the game fills the screen. <b>Home</b>, or <b>Select and Start</b> together, opens this menu. <b>Controller buttons</b> remaps it; each controller keeps its own layout for each console.</p>' });
+      '<p><b>A real controller</b> (Bluetooth or USB) works too: connect it and press a button. The drawn one steps aside and the game fills the screen. <b>Home</b>, or <b>Select and Start</b> together, opens this menu. <b>Controller buttons</b> remaps it; each controller keeps its own layout for each console.</p>' +
+      '<p><b>Two players:</b> connect a second controller and press a button on it; it becomes player 2. <b>Controller buttons</b> shows who’s who and can swap them.</p>' });
   }
   var playing = function () { return !!cur; };
   Kit.init({
