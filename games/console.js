@@ -168,7 +168,7 @@
   function cartEl(c, opts) {
     opts = opts || {};
     var C = CARTS[SYS_ID], w = cartW(), lb = LABELS[hashOf(c ? c.id + c.name : '+') % LABELS.length];
-    var b = el('button', { type: 'button', class: 'cart' + (opts.add ? ' add' : '') + (opts.fresh ? ' new' : '') + (c && !c.local ? ' away' : ''), 'aria-label': c ? c.name : 'Add games',
+    var b = el('button', { type: 'button', class: 'cart' + (opts.add ? ' add' : '') + (opts.fresh ? ' new' : '') + (c && !c.local && !c.house ? ' away' : ''), 'aria-label': c ? c.name : 'Add games',
       style: { '--cw': w + 'px', '--lx': (C.lab[0] * 100) + '%', '--ly': (C.lab[1] * w * C.vb[1] / C.vb[0]) + 'px', '--lw': (C.lab[2] * 100) + '%',
         '--lh': (C.lab[3] * w * C.vb[1] / C.vb[0]) + 'px', '--lab': lb[0], '--lab-ink': lb[1] } });
     b.innerHTML = opts.add
@@ -181,8 +181,9 @@
       var longest = n.split(/\s+/).reduce(function (m, x) { return Math.max(m, x.length); }, 1), across = C.lab[2] * 100 - 8;
       fs = Math.min(fs, across / (longest * .56));
       b.style.setProperty('--fs', Math.round(fs * w / 100) + 'px');
-      b.appendChild(el('span', { class: 'lab' }, [el('b', { text: n })]));
-      if (!c.local) b.appendChild(el('span', { class: 'cloud', html: Kit.icon('cloud') }));
+      // the label: the game's own art and logo when it has them, else its name on coloured paper
+      b.appendChild(c.art ? el('span', { class: 'lab art' }, [el('img', { src: c.art, alt: '', loading: 'lazy', decoding: 'async' }), el('b', { text: n })]) : el('span', { class: 'lab' }, [el('b', { text: n })]));
+      if (!c.local && !c.house) b.appendChild(el('span', { class: 'cloud', html: Kit.icon('cloud') }));
     }
     return b;
   }
@@ -211,7 +212,7 @@
       var p = el('div', { class: 'plank' }); items.slice(i, i + per).forEach(function (x) { p.appendChild(x); }); wrap.appendChild(p);
     }
     if (!all.length) sv.appendChild(el('p', { class: 'empty-note', text: 'Add the ' + SYS.name + ' game files you own.' }));
-    sv.appendChild(el('p', { class: 'shelf-note', text: L.signedIn() ? 'Your games are kept in your account, so they’re on every device you sign in on.' : 'Your games stay on this device. Sign in with a PIN to have them on all your devices.' }));
+    sv.appendChild(el('p', { class: 'shelf-note', text: L.signedIn() ? 'Games you add are kept in your account, so they’re on every device you sign in on.' : 'Games you add stay on this device. Sign in with a PIN for everyone’s games, and to have yours on all your devices.' }));
   }
   // tap plays it; press and hold for the cartridge's own menu
   function holdable(b, onHold, onTap) {
@@ -231,9 +232,9 @@
     home.onclick = function () { var on = !L.shown(c.id); L.show(c.id, on); home.setAttribute('aria-checked', String(on)); Kit.haptic('light'); };
     s = Kit.sheet({ title: c.name, node: el('div', { class: 'k-list' }, [
       item('play', 'Play', null, function () { s.close(); insert(c, null); }),
-      item('pencil', 'Rename', null, function () { s.close(); renameCart(c); }),
+      c.house ? null : item('pencil', 'Rename', null, function () { s.close(); renameCart(c); }),
       home,
-      item('trash', L.signedIn() ? 'Remove from your games' : 'Remove from this device', c.file + ' · ' + Math.round((c.size || 0) / 1024) + ' KB', function () {
+      c.house ? null : item('trash', L.signedIn() ? 'Remove from your games' : 'Remove from this device', c.file + ' · ' + Math.round((c.size || 0) / 1024) + ' KB', function () {
         s.close();
         Kit.confirm('Take ' + c.name + ' off the shelf?', { ok: 'Remove', danger: true, body: (L.signedIn() ? 'Its game file is deleted from your account and this device' : 'Its game file is deleted from this device') + ', along with its save states. Its battery saves stay, in case you add it again.' })
           .then(function (ok) { if (!ok) return; L.drop(c.id).then(function () { carts = carts.filter(function (x) { return x.id !== c.id; }); L.cache(carts); drawShelf(); Kit.toast('Removed'); }); });
@@ -332,7 +333,7 @@
     // the game file: on this device, or fetched from your account the first time
     if (c.data) return boot(c);
     msg('Reading cartridge', 0);
-    L.file(c.id, function (f) { msg('Reading cartridge', f); }).then(function (full) {
+    L.file(c, function (f) { msg('Reading cartridge', f); }).then(function (full) {
       c.data = full.data; c.local = true; boot(c);
     }).catch(function (e) { console.warn(e); msg('Couldn’t get this game. Check your connection.'); });
   }
@@ -369,7 +370,7 @@
 
   function boot(c) {
     booted = true; msg('Loading');
-    c.played = Date.now(); L.tx('carts', 'readwrite', function (s) { if (c.data) s.put(stripLocal(c)); });
+    c.played = Date.now(); L.tx('carts', 'readwrite', function (s) { if (c.data) s.put(L.strip(c)); });
     window.EJS_player = '#ejs';
     window.EJS_core = SYS.core;
     window.EJS_gameUrl = new File([c.data], c.file);
@@ -396,7 +397,6 @@
       var t = document.querySelector('#ejs .ejs_loading_text'); if (t && t.textContent) msg(t.textContent.replace(/Download Game Core/, 'Warming up').replace(/Download Game Data/, 'Reading cartridge'));
     }, 200);
   }
-  function stripLocal(c) { var o = {}; for (var k in c) if (k !== 'local') o[k] = c[k]; return o; }
   function emu() { return window.EJS_emulator && window.EJS_emulator.gameManager ? window.EJS_emulator : null; }
   function press(i, v) { var e = emu(); if (e && started) try { e.gameManager.simulateInput(0, i, v); } catch (er) {} }
   // a game started straight from the home screen has no tap behind it yet: its sound starts with your first touch
@@ -700,7 +700,8 @@
     ],
     rules:
       '<p class="goal">Play your own ' + SYS.name + ' games. Add the game files you own and they line up on the shelf as cartridges.</p>' +
-      '<h3>Your games</h3><ul><li>Tap the empty cartridge to add game files (you can pick several at once).</li>' +
+      '<h3>Your games</h3><ul><li>Signed in with a PIN, everyone has the family’s games on the shelf. A game comes down the first time you play it on a device.</li>' +
+      '<li>Tap the empty cartridge to add game files of your own (you can pick several at once).</li>' +
       '<li>Signed in with a PIN, they’re kept in your account, so every device you sign in on has them (a cloud badge means it comes down the first time you play it there). As a guest they stay on this device.</li>' +
       '<li>Each game gets its own tile in Consoles on the home screen, which starts it straight away. <b>Edit</b> there (or press and hold a cartridge) turns tiles on and off.</li>' +
       '<li>Tap a cartridge to play it. Press and hold one to rename it, hide its tile, or take it off the shelf.</li></ul>' +

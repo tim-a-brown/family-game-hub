@@ -185,16 +185,18 @@ var GAMES = [
   { id: 'hiscores',    name: 'High Scores',           color: '#f5c842', cat: 'tools', min: 1, max: 0, tag: 'Top 50 for every arcade and puzzle game', play: 'hiscores' }
 ];
 
-// Console games: each game file you've added (console-lib.js keeps the list in gn_console_idx) gets its own tile,
+// Console games: the house games and each game file you've added (console-lib.js keeps the list in gn_console_idx)
+// get their own cartridge tile,
 // opening straight into its console. gn_console_vis {id: 0} hides a game from the home screen.
 function addConsoleGames() {
   for (var i = GAMES.length - 1; i >= 0; i--) if (GAMES[i].cart) GAMES.splice(i, 1);
   var idx = [], vis = {}, SYS = { nes: 'NES', snes: 'Super Nintendo', genesis: 'Sega Genesis', atari2600: 'Atari 2600' };
   try { idx = JSON.parse(localStorage.getItem('gn_console_idx') || '[]') || []; vis = JSON.parse(localStorage.getItem('gn_console_vis') || '{}') || {}; } catch (e) {}
+  var pin = !!(window.FGHSync && FGHSync.isPin && FGHSync.isPin());
   idx.forEach(function (c) {
-    if (!c || !SYS[c.sys] || !/^[0-9a-f]+$/.test(c.id)) return;
+    if (!c || !SYS[c.sys] || !/^[0-9a-f]+$/.test(c.id) || (c.h && !pin)) return;   // (the house games: signed in only)
     GAMES.push({ id: 'cart-' + c.id.slice(0, 16), name: c.name, color: '#000', cat: 'console', min: 1, max: 1, tag: SYS[c.sys] + ' game', play: c.sys + '.html?play=' + c.id,
-      mark: c.sys, cart: c.id, sys: c.sys, hidden: vis[c.id] === 0 });
+      mark: c.sys, cart: c.id, sys: c.sys, art: c.art || null, hidden: vis[c.id] === 0 });
   });
 }
 addConsoleGames();

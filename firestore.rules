@@ -115,6 +115,15 @@ service cloud.firestore {
       }
     }
 
+    // Console games everyone signed in shares: house/consoles {lib} names the shared game library in Firebase
+    // Storage (console-lib.js). Read one doc by name only; set once, never changed from the app.
+    match /house/{doc} {
+      allow get: if doc == 'consoles';
+      allow create: if doc == 'consoles'
+        && request.resource.data.keys().hasOnly(['lib'])
+        && request.resource.data.lib is string && request.resource.data.lib.matches('^[0-9a-f]{32}$');
+    }
+
     // Default deny — nothing else is accessible.
     match /{document=**} {
       allow read, write: if false;
