@@ -141,14 +141,14 @@
     nes: { vb: [120, 134], lab: [.08, .07, .84, .6], svg: function () {
       var r = ''; for (var i = 0; i < 6; i++) r += '<rect x="14" y="' + (98 + i * 5) + '" width="92" height="2.2" rx="1" fill="#6f6d70"/>';
       return '<path d="M4 4 H116 V122 Q116 130 108 130 H12 Q4 130 4 122 Z" fill="#8f8d90"/><path d="M4 4 H116 V10 H4 Z" fill="#a8a6a9"/>' + r +
-        '<path d="M38 4 Q60 17 82 4 Z" fill="#5f5d60"/><path d="M39 5 Q60 17.5 81 5" fill="none" stroke="#bdbbbe" stroke-width="1.1"/>' +
+        '<rect x="94" y="4" width="13" height="8" rx="1" fill="#5f5d60"/><path d="M94 12 H107" stroke="#bdbbbe" stroke-width="1"/>' +
         '<rect x="4" y="88" width="112" height="3" fill="#7a787b"/>';
     } },
     snes: { vb: [160, 108], lab: [.17, .2, .66, .56], svg: function () {
       return '<path d="M10 14 Q10 4 22 4 H138 Q150 4 150 14 V100 Q150 104 146 104 H14 Q10 104 10 100 Z" fill="#9c99a1"/>' +
         '<path d="M2 18 Q2 10 10 10 V104 H6 Q2 104 2 100 Z M158 18 Q158 10 150 10 V104 H154 Q158 104 158 100 Z" fill="#87848c"/>' +
         '<rect x="18" y="86" width="124" height="3" rx="1.5" fill="#86838b"/><rect x="18" y="92" width="124" height="3" rx="1.5" fill="#86838b"/>' +
-        '<path d="M56 4 Q80 15 104 4 Z" fill="#6f6c75"/><path d="M57 5 Q80 15.5 103 5" fill="none" stroke="#c6c3cb" stroke-width="1.1"/>';
+        '<rect x="116" y="4" width="14" height="8" rx="1" fill="#6f6c75"/><path d="M116 12 H130" stroke="#c6c3cb" stroke-width="1"/>';
     } },
     genesis: { vb: [124, 132], lab: [.1, .08, .8, .58], svg: function () {
       var r = ''; for (var i = 0; i < 5; i++) r += '<rect x="16" y="' + (96 + i * 6) + '" width="92" height="2.6" rx="1.3" fill="#2a2a2e"/>';
