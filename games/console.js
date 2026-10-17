@@ -384,8 +384,6 @@
       gamepad: false, cheat: false, volume: false, saveSavFiles: false, loadSavFiles: false, quickSave: false, quickLoad: false, screenshot: false, cacheManager: false,
       exitEmulation: false, netplay: false, diskButton: false, contextMenu: false, rightClick: false };
     window.EJS_defaultOptions = { 'virtual-gamepad': 'disabled', 'save-state-location': 'browser' };
-    // European Genesis carts run at the American 60 frames a second, as the games were meant to feel
-    if (SYS_ID === 'genesis') window.EJS_defaultOptions.genesis_plus_gx_region_detect = 'ntsc-u';
     window.EJS_onGameStart = function () {
       started = true; msg('');
       glassEl.classList.remove('loading');
