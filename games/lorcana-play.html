@@ -1470,6 +1470,18 @@ html.lorc .k-sheet .lp-li.cl-row.on{box-shadow:inset 0 0 0 2px var(--gilt),0 0 1
 @keyframes planNow{50%{box-shadow:inset 0 0 0 2px #ffd970,0 0 14px rgba(255,217,112,.95);}}
 .pk-chal.pk-prev .pk-x{flex:none;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.25);color:#fff3cf;}
 .pk-chal.pk-prev .pk-x svg{width:16px;height:16px;}
+/* the cards changing a challenge's outcome hang under the preview, joined to it */
+.pk-why{position:absolute;left:12px;right:12px;top:calc(100% - 2px);display:flex;flex-direction:column;gap:3px;padding:6px 8px 7px;border-radius:0 0 12px 12px;
+  background:linear-gradient(180deg,#5a400a,#3a2a00);box-shadow:0 0 0 1.5px rgba(246,225,168,.4),0 8px 18px rgba(0,0,0,.5);animation:whyIn .25s ease-out both;}
+@keyframes whyIn{from{opacity:0;transform:translateY(-6px);}}
+.pk-wr{display:flex;align-items:center;gap:8px;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+.pk-wa{flex:0 0 22px!important;width:22px!important;height:31px;border-radius:3px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,243,207,.5);}
+.pk-wa .mini{display:block!important;position:static!important;width:22px!important;height:31px!important;margin:0!important;background-size:cover;background-position:center;}
+.lp-mid:has(.pk-why){z-index:30;}
+.pk-wt{flex:1 1 auto!important;display:flex;flex-direction:column;min-width:0;line-height:1.2;}
+.pk-wt b{font-size:.76rem;font-weight:900;color:#fff3cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pk-wt b i{font-style:normal;font-weight:800;color:#f6dc95;}
+.pk-wt small{font-size:.7rem;font-weight:700;color:rgba(255,243,207,.85);}
 .pk-chal.pk-prev > :first-child{margin-left:0!important;}
 .lp-pick.pk-chal{top:-9px;bottom:-9px;justify-content:center;gap:10px;border-radius:12px;box-shadow:0 0 0 1.5px rgba(246,225,168,.55),0 6px 18px rgba(0,0,0,.45);}
 .pk-chal .pk-st{flex:none;display:flex;gap:4px;}
@@ -4929,11 +4941,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return a;
   }
   // ── Always-on abilities (worked out fresh whenever a number is needed) ──
-  var stxBusy = false, NOSTX = { s: 0, w: 0, l: 0, sing: 0, kw: {}, cant: {}, can: {}, grant: [], cls: [] };
+  var stxBusy = false, NOSTX = { s: 0, w: 0, l: 0, sing: 0, kw: {}, cant: {}, can: {}, grant: [], cls: [], from: {} };
   function stx(u) {
     if (stxBusy || !S || !onBoard(u)) return NOSTX;
     stxBusy = true;
-    var acc = { s: 0, w: 0, l: 0, sing: 0, kw: {}, cant: {}, can: {}, grant: [], cls: [] };
+    // from: which card (and ability) gave each keyword or restriction, for the challenge preview's reasons
+    var acc = { s: 0, w: 0, l: 0, sing: 0, kw: {}, cant: {}, can: {}, grant: [], cls: [], from: {} };
+    function from(key, x, a, n) { (acc.from[key] = acc.from[key] || []).push({ u: x, ab: a.name || '', n: n }); }
     try {
       inPlayAll().forEach(function (x) {
         var px = C(x).o;
@@ -4944,8 +4958,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
             if (e.t.sel === 'ctx' ? !(clashAt && clashAt[e.t.key === 'att' ? 'a' : 't'] === u && clashAt[e.t.key === 'att' ? 't' : 'a'] === x) : e.t.sel === 'self' || e.t.sel === 'prev' ? u !== x : !(e.t.sel === 'all' && fits(u, e.t, x, px))) return;
             if (e.cond && !condOK(e.cond, x, px)) return;
             if (e.op === 'stat') { var mult = e.per ? perCount(e.per, x, px) : 1; if (e.amt) mult *= amtVal(e.amt, { src: x, pi: px }); for (var k in e.st) acc[k] += e.st[k] * mult; }
-            else if (e.op === 'kw') acc.kw[e.kw] = (acc.kw[e.kw] || 0) + (e.n || 0) * (e.per ? perCount(e.per, x, px) : 1);
-            else if (e.op === 'cant') acc.cant[e.what] = 1;
+            else if (e.op === 'kw') { var kn = (e.n || 0) * (e.per ? perCount(e.per, x, px) : 1); acc.kw[e.kw] = (acc.kw[e.kw] || 0) + kn; from('kw:' + e.kw, x, a, kn); }
+            else if (e.op === 'cant') { acc.cant[e.what] = 1; from('cant:' + e.what, x, a); }
             else if (e.op === 'grant') acc.grant.push(e.ab);
             else if (e.op === 'singPlus') acc.sing += e.n;
             else if (e.op === 'loseAb') (acc.lose = acc.lose || []).push(e.name);
@@ -5034,7 +5048,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         abs(x).forEach(function (ab) {
           if ((ab.kind !== z[1] || x !== u) && ab.kind !== z[2]) return;
           if (!ab.ok || !condOK(ab.cond, x, o, { att: a, def: t })) return;
-          (ab.fx || []).forEach(function (e) { if (e.op === 'kw' && e.dur === 'chal') C(u).mods.push({ kw: e.kw, n: e.n, until: S.turn, chalOnly: 1 }); });
+          (ab.fx || []).forEach(function (e) { if (e.op === 'kw' && e.dur === 'chal') C(u).mods.push({ kw: e.kw, n: e.n, until: S.turn, chalOnly: 1, src: x, srcAb: ab.name || '' }); });
         });
       });
     });
@@ -6606,20 +6620,53 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // What a challenge would deal each way, worked out the way the challenge itself does it: abilities that kick in as it
   // starts ("they gain Resist +2 during that challenge"), shields and "can't be dealt damage" included. Changes nothing.
   function chalOutcome(a, t) {
-    var loc = isLoc(t), ma = (C(a).mods || []).slice(), mt = (C(t).mods || []).slice(), was = clashAt, r = { dA: 0, dD: 0 };
+    var loc = isLoc(t), ma = (C(a).mods || []).slice(), mt = (C(t).mods || []).slice(), was = clashAt, r = { dA: 0, dD: 0, why: [] };
+    // why: the cards that change the result, each with the ability doing it, in words ({ u, ab, txt })
+    function note(src, ab, txt) {
+      if (!src || !S.cards[src] || r.why.some(function (w) { return w.u === src && w.txt === txt; })) return;
+      r.why.push({ u: src, ab: ab ? titleCase(ab) : '', txt: txt });
+    }
+    function abOf(u, test) { var n = ''; abs(u).forEach(function (x) { if (!n && x.fx && x.fx.some(test)) n = x.name || ''; }); return n; }
+    // who gives u this keyword: its own printed one, a timed effect, or a card in play
+    function kwSrc(u, k, say) {
+      var own = DD(u).K[k]; if (typeof own === 'number' && own) note(u, titleCase(k) + ' +' + own, say(own));
+      (C(u).mods || []).forEach(function (m) { if (m.kw === k && m.n) note(m.src, m.srcAb || '', say(m.n)); });
+      (stx(u).from['kw:' + k] || []).forEach(function (f) { if (f.n) note(f.u, f.ab, say(f.n)); });
+    }
+    function cantSrc(u, w, txt) {
+      (C(u).mods || []).forEach(function (m) { if (m.cant === w) note(m.src, '', txt); });
+      (stx(u).from['cant:' + w] || []).forEach(function (f) { note(f.u, f.ab, txt); });
+    }
     try {
       clashAt = { a: a, t: t, shield: chalShields(a, t) };
       chalBoosts(a, t);
       var would = function (u, n) {
         if (n <= 0) return 0;
-        if (u === a && cant(u, 'chalDmgAtt')) return 0;
-        if (cant(u, 'dmg') || cant(u, 'chalDmg') || clashAt.shield.indexOf(u) >= 0) return 0;
-        if ((C(u).mods || []).some(function (m) { return m.shield; })) return 0;
-        if (staticOp(u, 'firstShield') && (TT().fshield || []).indexOf(u) < 0) return 0;
-        if (isChar(u) && S.P[C(u).o].board.some(function (x) { return x !== u && !!staticOp(x, 'redirectDmg'); })) return 0;
-        return Math.max(0, n - kwN(u, 'resist'));
+        var who = nm(u), safe = who + ' takes no damage';
+        if (u === a && cant(u, 'chalDmgAtt')) { cantSrc(u, 'chalDmgAtt', safe); return 0; }
+        if (cant(u, 'dmg') || cant(u, 'chalDmg')) { cantSrc(u, 'dmg', safe); cantSrc(u, 'chalDmg', safe); return 0; }
+        if (clashAt.shield.indexOf(u) >= 0) { note(u, abOf(u, function (e) { return e.op === 'cant' && e.what === 'chalDmgNow'; }), safe + ' from this challenge'); return 0; }
+        var sm = (C(u).mods || []).filter(function (m) { return m.shield; })[0];
+        if (sm) { note(sm.src || u, '', 'the next damage to ' + who + ' is stopped'); return 0; }
+        if (staticOp(u, 'firstShield') && (TT().fshield || []).indexOf(u) < 0) { note(u, abOf(u, function (e) { return e.op === 'firstShield'; }), 'the first damage to ' + who + ' this turn is stopped'); return 0; }
+        var rs = kwN(u, 'resist'), dn = Math.max(0, n - rs);
+        if (rs > 0) kwSrc(u, 'resist', function (k) { return who + ' takes ' + Math.min(n, k) + ' less (Resist +' + k + ')'; });
+        // "put that many damage counters on this character instead"
+        var rd = isChar(u) ? S.P[C(u).o].board.filter(function (x) { return x !== u && !!staticOp(x, 'redirectDmg'); })[0] : null;
+        if (rd) {
+          var left = WP(rd) - C(rd).dmg;
+          note(rd, abOf(rd, function (e) { return e.op === 'redirectDmg'; }), nm(rd) + ' takes the ' + dn + ' damage instead' + (dn && dn >= left ? ' and is banished' : ''));
+          r.redirect = { u: rd, n: dn, kill: dn > 0 && dn >= left };
+          return 0;
+        }
+        return dn;
       };
+      if (kwN(a, 'challenger') > 0) kwSrc(a, 'challenger', function (k) { return nm(a) + ' hits ' + k + ' harder when challenging'; });
+      var wd = [0, 1].map(function (pi) { return S.P[pi].board.filter(function (x) { return !!staticOp(x, 'wpDmg'); })[0]; });
+      [a, t].forEach(function (u) { var x = wd[C(u).o]; if (x && !loc) note(x, abOf(x, function (e) { return e.op === 'wpDmg'; }), nm(u) + ' deals damage equal to its willpower'); });
       r.dA = would(t, hitPow(a, true)); r.dD = loc ? 0 : would(a, hitPow(t, false));
+      if (chalBanishes(a, t)) r.why = [];
+      if (chalBanishes(a, t)) note(a, abOf(a, function (e) { return e.op === 'chalBanish'; }), nm(t) + ' is banished outright, no damage either way');
     } catch (e) {
       r.dA = Math.max(0, hitPow(a, true) - kwN(t, 'resist')); r.dD = loc ? 0 : Math.max(0, hitPow(t, false) - kwN(a, 'resist'));
     } finally { clashAt = was; C(a).mods = ma; C(t).mods = mt; }
@@ -6629,7 +6676,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var loc = isLoc(t), oc = chalOutcome(a, t), dA = oc.dA, dD = oc.dD;
     var lT = WP(t) - C(t).dmg, lA = WP(a) - C(a).dmg, killT = dA > 0 && dA >= lT, killA = dD > 0 && dD >= lA;
     if (chalBanishes(a, t)) { dA = dD = 0; killT = true; killA = false; }   // Boo: it's banished and no damage is dealt
-    return { killT: killT, killA: killA,
+    return { killT: killT, killA: killA, why: oc.why,
       // willpower before → after, behind its mark ("Druun ⛉ 3→1"); HTML
       t: killT ? 'Banishes ' + esc(nm(t)) : dA ? esc(nm(t)) + ' ' + sv('w', 'Willpower', lT + '→' + (lT - dA), -1) : esc(nm(t)) + ' unhurt',
       a: killA ? esc(nm(a)) + ' banished too' : dD ? esc(nm(a)) + ' ' + sv('w', 'Willpower', lA + '→' + (lA - dD), -1) : esc(nm(a)) + ' unhurt' };
@@ -8019,6 +8066,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   var PK_STAR = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20.0 1.0L25.1 7.8L33.4 6.6L32.2 14.9L39.0 20.0L32.2 25.1L33.4 33.4L25.1 32.2L20.0 39.0L14.9 32.2L6.6 33.4L7.8 25.1L1.0 20.0L7.8 14.9L6.6 6.6L14.9 7.8z" fill="#3a404d" stroke="#d9dde4" stroke-width="1.1" stroke-linejoin="round"/><circle cx="20" cy="20" r="11.6" fill="#f1f2f4" stroke="#8d939d" stroke-width="1.2"/></svg>';
   var PK_SHIELD = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M6.5 5h27v14.2c0 8.2-6.2 13.6-13.5 16.3C12.7 32.8 6.5 27.4 6.5 19.2z" fill="#3a404d" stroke="#eef0f3" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.3 7.6h21.4v11.5c0 6.6-4.9 11-10.7 13.3C14.2 30.1 9.3 25.7 9.3 19.1z" fill="none" stroke="#eef0f3" stroke-opacity=".35" stroke-width=".8"/></svg>';
+  // Under the preview: each card that changes the outcome, its picture (tap to read it), the ability and what it does
+  function whyHTML(why) {
+    if (!why || !why.length) return '';
+    return '<div class="pk-why">' + why.map(function (w) {
+      return '<button type="button" class="pk-wr" data-act="pick-why" data-u="' + w.u + '" aria-label="See ' + esc(DD(w.u).full) + '">' +
+        '<span class="pk-wa">' + miniArt(DD(w.u)) + '</span><span class="pk-wt"><b>' + esc(nm(w.u)) + (w.ab ? ' <i>' + esc(w.ab) + '</i>' : '') + '</b><small>' + esc(w.txt) + '</small></span></button>';
+    }).join('') + '</div>';
+  }
   function paintMid() {
     var mid = $('.lp-mid'); if (!mid || !S) return;
     if (S.mode === 'online' && NET.pend && !ui.pick) { mid.innerHTML = '<div class="lp-pick net-wait"><i class="spin"></i><span>' + esc(S.P[opp(NET.seat)].name) + ' is choosing…</span></div>'; return; }
@@ -8035,7 +8090,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           '<button type="button" class="pk-art" data-act="pick-tgt" aria-label="See ' + esc(DD(pk.pre).full) + '">' + miniArt(DD(pk.pre)) + '</button>' +
           '<span class="pk-tx"><b class="' + (pre.killT ? 'good' : '') + '">' + pre.t + '</b><small class="' + (pre.killA ? 'bad' : '') + '">' + pre.a + '</small></span>' +
           '<button type="button" class="btn btn-primary btn-sm pk-go" data-act="pick-conf">Challenge</button>' +
-          '<button type="button" class="pk-x" data-act="pick-cancel" aria-label="Cancel">' + Kit.icon('close') + '</button></div>';
+          '<button type="button" class="pk-x" data-act="pick-cancel" aria-label="Cancel">' + Kit.icon('close') + '</button>' + whyHTML(pre.why) + '</div>';
         return;
       }
       var h = cu ? '<div class="lp-pick pk-chal" aria-label="' + esc(pk.title) + '">' + art +
@@ -8644,6 +8699,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var a = b.dataset.act;
       if (a === 'end') { if (S && S.phase === 'over' && ui.results) { Kit.sfx('pop'); ui.results(); } else humanEnd(); }
       else if (a === 'pick-tgt') { if (ui.pick && ui.pick.pre && S.cards[ui.pick.pre]) zoomDef(DD(ui.pick.pre)); }
+      else if (a === 'pick-why') { if (S.cards[b.dataset.u]) zoomDef(DD(b.dataset.u)); }
       else if (a === 'pick-src') { if (ui.pick && ui.pick.src && S.cards[ui.pick.src]) zoomDef(DD(ui.pick.src)); }
       else if (a === 'log') showLog();
       else if (a === 'pick-cancel' || a === 'pick-skip') { var p = ui.pick; ui.pick = null; render(); if (p && p.cancel) p.cancel(); }
