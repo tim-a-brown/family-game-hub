@@ -29,6 +29,10 @@ var ConsoleHi = (function () {
   function be(m, a, n) { var v = 0; for (var i = 0; i < n; i++) v = v * 256 + m(a + i); return v; }
   function le(m, a, n) { var v = 0; for (var i = n - 1; i >= 0; i--) v = v * 256 + m(a + i); return v; }
 
+  // Sonic games: game mode $FFF600 (bit 7 set while a stage loads): $00 Sega screen, $04 title, $08 the demo, then
+  // levels, special stages, continue and ending screens are all a game under way
+  function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0x04 && md !== 0x08; }
+
   var GAMES = [
     // Mario's score: a digit a byte at $07DD-$07E2, the screen adding a 0 (100 points reads 0,0,0,0,1,0). OperMode
     // $0770: 0 title and demo, 1 playing, 2 the ending, 3 game over.
@@ -37,9 +41,8 @@ var ConsoleHi = (function () {
       play: function (m) { return m(0x770) === 1 || m(0x770) === 2; }, over: function (m) { return m(0x770) === 3; } },
     // the score: 4 bytes at $FFFE26, the screen adding a 0. Game mode $FFF600: $04 title, $08 the demo (which
     // scores), $0C a level ($8C while it loads), $00 the Sega screen after game over.
-    { key: 'sonic', name: 'Sonic the Hedgehog', sys: 'genesis', ids: ['69e102855d4389c3fd1a8f3dc7d193f8eee5fe5b'], re: /^sonic the hedgehog$/,
-      score: function (m) { return be(m, 0xFFFE26, 4) * 10; },
-      play: function (m) { return (m(0xFFF600) & 0x7F) === 0x0C; }, over: function (m) { return false; } }
+    { key: 'sonic', name: 'Sonic the Hedgehog', sys: 'genesis', ids: ['6ddb7de1e17e7f6cdb88927bd906352030daa194'], re: /^sonic the hedgehog$/,
+      score: function (m) { return be(m, 0xFFFE26, 4) * 10; }, play: sonicPlay }
   ];
 
   // ── Which game a cartridge is ──

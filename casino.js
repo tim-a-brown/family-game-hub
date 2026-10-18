@@ -13,7 +13,8 @@
 //                                    'play'  anyone else, or an unnamed seat ("Player 1"): $1,000 in play money for
 //                                            this game; no bankroll is touched
 //        Casino.home()               back to your bankroll (forPlayer() with no name does the same)
-//        Casino.mode()               'mine' | 'link' | 'play' right now
+//        Casino.mode()               'mine' | 'link' | 'player' | 'play' right now
+//        Casino.pbKey(name)          a frequent player's bankroll key (casino_pb_<name>)
 //        Casino.linkRecord(seat)     for a linked player's session: {bk: {seat: {s, e, c}}} to merge into the
 //                                    Kit.record entry (sync.js sends the change to their bankroll); {} otherwise.
 //                                    Each call covers the money since the last one, so record as often as you like.
@@ -591,5 +592,5 @@ const Casino = (function(){
     return r;
   }
 
-  return { balance, bet, win, reset, applyRemote, history, showHistory, rack, chip, stack, forPlayer, home, mode, linkRecord, isMain, isFrequent, playMoney: function(){ return !!PLAY; } };
+  return { balance, bet, win, reset, applyRemote, history, showHistory, rack, chip, stack, forPlayer, home, mode, linkRecord, isMain, isFrequent, pbKey: fpKey, playMoney: function(){ return !!PLAY; } };
 })();
