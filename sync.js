@@ -229,7 +229,7 @@
   // Theme, sound, music, home layout, per-game defaults and game options follow the PIN to every device (cloud
   // `prefs`). Each setting goes by when this device last saw it change (fgh_prefs_at {key: {v, at}}); settings
   // already on a device before they synced count as oldest, so the account's copy wins over them.
-  var PREF_RE = /^(fgh_theme|gn_ini|gn_sound|gn_music|hs_attract|gn_cat_order|gn_cat_off|gn_daily_order|gn_timer|gn_timer_lock|gn_timer_custom|gn_usage_[a-z0-9]+|gn_setup_.+|gn_home_view|gn_spin|mazes_loupe|pinball_view|pinball_btns|pinball_quality|wordle_hard|sandlot_fast|invaders_auto|invaders_invx|invaders_invy|invaders_sticks|invaders_stick_right|jr_motion|jr_scan|jr_speed|lorc_fast|lorc_hints|lorc_sort|lorc_mat|lorc_dk_filter|fortune_mode|trivia_cats|trivia_levels|wyr_cats|hangman_cat|wordscramble_cat|wordsearch_cat|mahjong_dim|centi_opts|gn_spotify|randomtools_settings|diceroller_table|mysteries_book|gn_console_lib|gn_console_vis|gn_pad_map|casino_pb_[a-z0-9_]+|[a-z0-9]+_sort|[a-z0-9]+_music)$/;
+  var PREF_RE = /^(fgh_theme|gn_ini|gn_sound|gn_music|hs_attract|gn_cat_order|gn_cat_off|gn_daily_order|gn_timer|gn_timer_lock|gn_timer_custom|gn_kids|gn_usage_[a-z0-9]+|gn_setup_.+|gn_home_view|gn_spin|mazes_loupe|pinball_view|pinball_btns|pinball_quality|wordle_hard|sandlot_fast|invaders_auto|invaders_invx|invaders_invy|invaders_sticks|invaders_stick_right|jr_motion|jr_scan|jr_speed|lorc_fast|lorc_hints|lorc_sort|lorc_mat|lorc_dk_filter|fortune_mode|trivia_cats|trivia_levels|wyr_cats|hangman_cat|wordscramble_cat|wordsearch_cat|mahjong_dim|centi_opts|gn_spotify|randomtools_settings|diceroller_table|mysteries_book|gn_console_lib|gn_console_vis|gn_pad_map|casino_pb_[a-z0-9_]+|[a-z0-9]+_sort|[a-z0-9]+_music)$/;
   var PREFS_AT = 'fgh_prefs_at';
   function stampPrefs(){
     var had = LS.getItem(PREFS_AT) != null, rec = lsJSON(PREFS_AT) || {}, now = had ? Date.now() : 1, changed = !had, seen = {}, i, k, v;
@@ -634,7 +634,7 @@
         return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, ghDel:null, links:null, isNew:true};
       }
       var d = doc.data() || {};
-      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: typeof d.bank === 'number' && isFinite(d.bank) ? d.bank : null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, players: d.players||null, prefs: d.prefs||null, isNew:false, moved: !!d.moved };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: typeof d.bank === 'number' && isFinite(d.bank) ? d.bank : null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, players: d.players||null, prefs: d.prefs||null, pc: d.pc||null, isNew:false, moved: !!d.moved };
       console.log('[sync] pull', {
         rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
         favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
@@ -846,7 +846,7 @@
           var me = new Error('That PIN was changed. Sign in with the new one.'); me.code = 'moved'; throw me;
         }
         try{ LS.removeItem(MOVED_FLAG); }catch(e){}
-        takeLabel(remote);
+        takeLabel(remote); takePc(remote);
         if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
         var local   = scanLocal();
         var merged  = mergeSnapshots(local, remote);
@@ -893,7 +893,7 @@
       .then(pullCloud)
       .then(function(remote){
         if(remote.moved){ movedOut(); throw Object.assign(new Error('This PIN was already changed on another device.'), { code: 'moved' }); }
-        takeLabel(remote);
+        takeLabel(remote); takePc(remote);
         writeSnapshotToLocal(mergeSnapshots(scanLocal(), remote)); reconcileName();
         oldRef = cloudRef();
         LS.setItem(PIN_KEY, np); LS.setItem(SPACE_KEY, spaceOf(np));
@@ -902,7 +902,10 @@
       })
       .then(function(){
         // Retire the old PIN. If the cloud rules don't allow it yet, the move still stands; the old copy stays.
-        return oldRef.set({ moved: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }).then(function(){ return true; })
+        // parent controls aren't part of this device's save: carry them over to the new PIN as they are
+        var pc = pcLocal();
+        return (pc ? cloudRef().set({ pc: pc }, { merge: true }).catch(function(e){ console.warn('[sync] parent controls did not move', e); }) : Promise.resolve())
+          .then(function(){ return oldRef.set({ moved: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }); }).then(function(){ return true; })
           .catch(function(err){ console.warn('[sync] could not retire the old PIN', err && err.code); return false; });
       })
       .then(function(retired){
@@ -984,7 +987,7 @@
       .then(function(){ return timed(R, 'download', pullCloud); })
       .then(function(remote){
         if(remote.moved){ movedOut(); throw Object.assign(new Error('PIN moved'), { code: 'moved' }); }
-        takeLabel(remote);
+        takeLabel(remote); takePc(remote);
         if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
         var local  = scanLocal();
         var merged = mergeSnapshots(local, remote);
@@ -1117,7 +1120,7 @@
         .then(function(){ return timed(R, 'download', pullCloud); })
         .then(function(remote){
           if(remote.moved){ movedOut(); throw Object.assign(new Error('PIN moved'), { code: 'moved' }); }
-          takeLabel(remote);
+          takeLabel(remote); takePc(remote);
           if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
           var local  = scanLocal();
           var merged = mergeSnapshots(local, remote);
@@ -1640,8 +1643,11 @@
   }
   // A note in your inbox. Returns true when it's dealt with (delete it); a link request stays until answered.
   function readNote(own, x, id, reqs){
-    var m = /^(ask|ack|deny):([A-HJ-NP-Z2-9]{6})$/.exec(String(x.entry || '')); if(!m || m[2] === own.code) return true;
+    var m = /^(ask|ack|deny|par|pc|pok|pno):([A-HJ-NP-Z2-9]{6})$/.exec(String(x.entry || '')); if(!m || m[2] === own.code) return true;
     var code = m[2], L = linksGet(), keys = Object.keys(L.others);
+    // parents: a request or a change for you (fetch your controls now), or a child's answer
+    if(m[1] === 'par' || m[1] === 'pc'){ pcPull(); return true; }
+    if(m[1] === 'pok' || m[1] === 'pno'){ kidNews(code, m[1] === 'pok', x.by || x.from); return true; }
     if(m[1] === 'ack'){ accepted(code); return true; }
     if(m[1] === 'deny'){
       var gone = [];
@@ -1679,7 +1685,7 @@
   var _watchWait = 5000;
   function pendWatch(){
     var vis = typeof document === 'undefined' || document.visibilityState !== 'hidden';
-    var on = _homeWant || (vis && isPin() && waitingOut());
+    var on = _homeWant || (vis && isPin() && (waitingOut() || !!pcLocal()));   // (a child listens on every page, so a parent's change lands within seconds)
     if(on !== _watchOn || (on && !_watch)) watchApply(on);
   }
   function linkWatch(on){ _homeWant = !!on; pendWatch(); }
@@ -1761,7 +1767,7 @@
           var pend = [], reqs = [];
           return Promise.all(q.docs.map(function(d){
             var x0 = d.data() || {};
-            if(x0.key === '_ask' || x0.key === '_ack' || x0.key === '_deny'){ return readNote(own, x0, d.id, reqs) ? d.ref.delete() : null; }
+            if(/^_(ask|ack|deny|par|pc|pok|pno)$/.test(x0.key || '')){ return readNote(own, x0, d.id, reqs) ? d.ref.delete() : null; }
             var it = received(own, d); if(!it || haveGame(it.key, it.entry._id || it.id)) return d.ref.delete();
             if(own.ask){ pend.push(it); return null; }
             if(!window.GameHistory) return null;   // filed by a page that keeps history
@@ -1843,6 +1849,163 @@
     try{ tableBank(e, true); }catch(err){ console.warn('[links] bankroll', err); }   // a bankroll change from it is taken back
     return e && e._id ? rejectId(e._id).catch(function(err){ console.warn('[links] not me', err); }) : Promise.resolve();
   }
+
+  // ── Parents ───────────────────────────────────────────────────────────
+  // A parent and child are linked players first. The parent types the child's PIN (they can sign in to the child's
+  // account anyway), which proves it and lets the parent's devices reach the child's account; then the child accepts
+  // on theirs. The child's account doc holds pc {parents: {code: {name, h, at}}, ask: {code: {name, h, at}}, cats,
+  // games, timer, at}. Only parents write it (and the child, to answer a request, or with a parent's PIN typed on the
+  // lock screen), always as a whole in a transaction, and the child's own saves never include it, so neither side
+  // overwrites the other. h is a hash of the parent's code and PIN, so the child's devices can check a parent's PIN
+  // offline. The child's devices keep a copy (fgh_pc) from every sync; a note in the child's inbox ("pc:") makes them
+  // fetch it at once. The parent's side lists children in gn_kids {code: {pin, name, at}}, a setting that syncs.
+  var PC_KEY = 'fgh_pc';
+  function cleanPc(pc){
+    if(!pc || typeof pc !== 'object') return null;
+    var o = { parents: {}, ask: {}, cats: [], games: [], timer: null, at: Number(pc.at) || 0 };
+    ['parents', 'ask'].forEach(function(f){ var m = pc[f]; if(m && typeof m === 'object') Object.keys(m).forEach(function(c){ var r = m[c]; if(CODE_RE.test(c) && r && typeof r === 'object') o[f][c] = { name: String(r.name || 'Parent').slice(0, 40), h: String(r.h || ''), at: Number(r.at) || 0 }; }); });
+    if(Array.isArray(pc.cats)) o.cats = pc.cats.filter(function(x){ return typeof x === 'string'; });
+    if(Array.isArray(pc.games)) o.games = pc.games.filter(function(x){ return typeof x === 'string'; });
+    var t = pc.timer; if(t && typeof t === 'object' && Number(t.end)) o.timer = { end: Number(t.end), start: Number(t.start) || 0, mins: Number(t.mins) || 0, lock: !!t.lock, cut: !!t.cut, by: String(t.by || '').slice(0, 40) };
+    return Object.keys(o.parents).length || Object.keys(o.ask).length ? o : null;
+  }
+  function pcLocal(){ return cleanPc(lsJSON(PC_KEY)); }
+  function pcStore(pc){
+    var was = LS.getItem(PC_KEY), now = pc ? JSON.stringify(pc) : null; if(was === now) return;
+    try{ if(now) LS.setItem(PC_KEY, now); else LS.removeItem(PC_KEY); }catch(e){}
+    try{ document.dispatchEvent(new CustomEvent('fghpc')); }catch(e){}
+    setTimeout(pendWatch, 0);
+  }
+  function takePc(remote){ if(remote && !remote.moved) pcStore(cleanPc(remote.pc)); }
+  function pcHash(code, p){
+    try{
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode('fgh-parent|' + code + '|' + p)).then(function(h){
+        return Array.prototype.map.call(new Uint8Array(h), function(x){ return ('0' + x.toString(16)).slice(-2); }).join('').slice(0, 32);
+      }, function(){ return ''; });
+    }catch(e){ return Promise.resolve(''); }
+  }
+  function pinRef(p){ return _fb.db.collection('pins').doc(p); }
+  function ownCode(){ var l = linksGet(); return l.own && l.own.code || null; }
+  function codeOfDoc(x){ return x && x.links && x.links.own && x.links.own.code || null; }
+  // change an account's pc in one transaction: fn(pc) edits it (return false: nothing to save); resolves to the new pc
+  function pcEdit(p, fn){
+    return ensureFirebase().then(function(){
+      var ref = pinRef(p);
+      return _fb.db.runTransaction(function(t){
+        return t.get(ref).then(function(d){
+          var x = d.exists ? d.data() || {} : null;
+          if(!x || x.moved) throw Object.assign(new Error('That account moved to a new PIN.'), { code: 'moved' });
+          var pc = cleanPc(x.pc) || { parents: {}, ask: {}, cats: [], games: [], timer: null, at: 0 };
+          if(fn(pc, x) === false) return cleanPc(pc);
+          pc.at = Date.now();
+          var keep = Object.keys(pc.parents).length || Object.keys(pc.ask).length;
+          t.update(ref, { pc: keep ? pc : firebase.firestore.FieldValue.delete(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          return keep ? pc : null;
+        });
+      });
+    });
+  }
+  // the child's side: fetch your controls now (a parent changed them)
+  var _pcPulling = null;
+  function pcPull(){
+    if(!isPin()) return Promise.resolve(null);
+    if(_pcPulling) return _pcPulling;
+    _pcPulling = ensureFirebase().then(function(){ return cloudRef().get(); }).then(function(d){
+      var x = d.exists ? d.data() || {} : {}; if(!x.moved) pcStore(cleanPc(x.pc)); return pcLocal();
+    }).catch(function(e){ console.warn('[parents] pull', e); return pcLocal(); }).then(function(r){ _pcPulling = null; return r; });
+    return _pcPulling;
+  }
+  // the child answers a parent's request (any of the child's devices)
+  function parentAnswer(code, yes){
+    var own = linksGet().own;
+    return pcEdit(pin(), function(pc){
+      var a = pc.ask[code]; if(!a) { if(yes) throw new Error('That request was taken back.'); return false; }
+      delete pc.ask[code];
+      if(yes) pc.parents[code] = { name: a.name, h: a.h, at: Date.now() };
+    }).then(function(pc){
+      pcStore(pc);
+      if(!own || !own.code) return pc;
+      return sendNote(code, yes ? 'pok' : 'pno', own).catch(function(){})
+        .then(function(){ return linkCol().doc(own.code).collection('inbox').doc(noteId('par', code)).delete().catch(function(){}); })
+        .then(function(){ return pc; });
+    });
+  }
+  // a parent's PIN typed on the child's lock screen: right PIN, and the timer is off on every device
+  function pcUnlock(p){
+    var pc = pcLocal(); if(!pc || !/^[0-9]{4}$/.test(p || '')) return Promise.resolve(false);
+    var codes = Object.keys(pc.parents);
+    return Promise.all(codes.map(function(c){ return pc.parents[c].h ? pcHash(c, p).then(function(h){ return h === pc.parents[c].h ? c : null; }) : null; })).then(function(r){
+      var hit = r.filter(Boolean)[0]; if(hit) return hit;
+      if(typeof navigator !== 'undefined' && navigator.onLine === false) return null;
+      // (a parent who changed their PIN since: the cloud knows)
+      return ensureFirebase().then(function(){ return pinRef(p).get(); }).then(function(d){ var x = d.exists ? d.data() || {} : {}, c = codeOfDoc(x); return c && !x.moved && pc.parents[c] ? c : null; }).catch(function(){ return null; });
+    }).then(function(code){
+      if(!code) return false;
+      var t = pc.timer; if(t) try{ LS.setItem('fgh_pc_ok', String(t.start || t.end)); }catch(e){}
+      pcEdit(pin(), function(x){ if(!x.timer) return false; x.timer = null; }).then(function(n){ pcStore(n); }).catch(function(e){ console.warn('[parents] unlock', e); });
+      return true;
+    });
+  }
+  // The parent's side
+  function kidsGet(){ var k = lsJSON('gn_kids'); return k && typeof k === 'object' && !Array.isArray(k) ? k : {}; }
+  function kidsSet(k){ try{ if(Object.keys(k).length) LS.setItem('gn_kids', JSON.stringify(k)); else LS.removeItem('gn_kids'); }catch(e){} noteWrite('gn_kids'); }
+  function kidNews(code, yes, who){
+    try{ window.dispatchEvent(new CustomEvent('fghkids', { detail: { code: code, yes: yes, name: (kidsGet()[code] || {}).name || who || '' } })); }catch(e){}
+  }
+  // ask to be this linked player's parent, with their PIN
+  function kidAsk(code, p, name){
+    var own = linksGet().own;
+    if(!isPin()) return Promise.reject(new Error('Sign in with your PIN first.'));
+    if(!/^[0-9]{4}$/.test(p || '')) return Promise.reject(new Error('A PIN is 4 digits.'));
+    if(p === pin()) return Promise.reject(new Error('That’s your own PIN.'));
+    if(!own || !own.code) return Promise.reject(new Error('Share your profile once first (Share my profile).'));
+    return ensureFirebase().then(function(){ return pinRef(p).get(); }).then(function(d){
+      var x = d.exists ? d.data() || {} : null;
+      if(!x || x.moved || codeOfDoc(x) !== code) throw new Error('That isn’t ' + name + '’s PIN.');
+      return pcHash(own.code, pin());
+    }).then(function(h){
+      var me = myName() || label() || 'Parent';
+      return pcEdit(p, function(pc){ if(pc.parents[own.code]) { pc.parents[own.code].h = h; return; } pc.ask[own.code] = { name: me, h: h, at: Date.now() }; });
+    }).then(function(pc){
+      var K = kidsGet(); K[code] = { pin: p, name: String(name).slice(0, 40), at: Date.now() }; kidsSet(K);
+      return sendNote(code, pc && pc.parents[own.code] ? 'pc' : 'par', own).catch(function(){}).then(function(){ return pc && pc.parents[own.code] ? 'on' : 'ask'; });
+    });
+  }
+  // a child's account as their parent sees it: where the request stands, their controls and settings (play time)
+  function kidRead(code){
+    var k = kidsGet()[code], me = ownCode(); if(!k) return Promise.reject(new Error('Not set up'));
+    return ensureFirebase().then(function(){ return pinRef(k.pin).get(); }).then(function(d){
+      var x = d.exists ? d.data() || {} : null;
+      if(!x || x.moved || codeOfDoc(x) !== code) return { state: 'pin' };   // their PIN changed: ask for the new one
+      var pc = cleanPc(x.pc);
+      return { state: pc && pc.parents[me] ? 'on' : pc && pc.ask[me] ? 'ask' : 'off', pc: pc, prefs: x.prefs || {}, label: x.label || '' };
+    });
+  }
+  // change a child's controls (as one of their parents), then nudge their devices
+  function kidEdit(code, fn){
+    var k = kidsGet()[code], own = linksGet().own; if(!k || !own || !own.code) return Promise.reject(new Error('Not set up'));
+    return pcHash(own.code, pin()).then(function(h){
+      return pcEdit(k.pin, function(pc){
+        var me = pc.parents[own.code]; if(!me) throw Object.assign(new Error('You’re not ' + k.name + '’s parent here anymore.'), { code: 'off' });
+        me.h = h; me.name = myName() || me.name; return fn(pc);
+      });
+    }).then(function(pc){ sendNote(code, 'pc', own).catch(function(){}); return pc; });
+  }
+  // stop being their parent (or take back a request): their controls go once no parent is left
+  function kidEnd(code){
+    var k = kidsGet()[code], own = linksGet().own;
+    function forget(){ var K = kidsGet(); delete K[code]; kidsSet(K); }
+    if(!k || !own || !own.code){ forget(); return Promise.resolve(); }
+    return pcEdit(k.pin, function(pc){
+      var had = pc.parents[own.code] || pc.ask[own.code]; if(!had) return false;
+      delete pc.parents[own.code]; delete pc.ask[own.code];
+      if(!Object.keys(pc.parents).length){ pc.cats = []; pc.games = []; pc.timer = null; }
+    }).catch(function(e){ if(e && e.code !== 'moved') throw e; }).then(function(){
+      forget();
+      return sendNote(code, 'pc', own).catch(function(){});
+    });
+  }
+
   if(typeof document !== 'undefined') document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') linkPoll(); pendWatch(); });
 
   window.FGHSync = {
@@ -1862,6 +2025,9 @@
     continueAsGuest: continueAsGuest,
     onReady: onReady,
     noteWrite: noteWrite,
+    // parents and children (see Parents above)
+    parents: { mine: pcLocal, pull: pcPull, answer: parentAnswer, unlock: pcUnlock },
+    kids: { list: kidsGet, ask: kidAsk, read: kidRead, edit: kidEdit, end: kidEnd },
     syncNow: syncNow,
     syncStatus: syncStatus,
     onStatusChange: onStatusChange,

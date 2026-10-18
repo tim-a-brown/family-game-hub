@@ -720,7 +720,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var hay = norm(g.name + ' ' + g.tag + ' ' + g.cat);
     return norm(state.q).split(/\s+/).every(function (t) { return hay.indexOf(t) >= 0; });
   }
-  function visibleGames() { return GAMES.filter(function (g) { return !g.hidden && (!Kit.catOn || Kit.catOn(g.cat)) && fitsWho(g) && fitsQ(g); }); }   // (sections switched off in Preferences leave)
+  function visibleGames() { return GAMES.filter(function (g) { return !g.hidden && (!Kit.catOn || Kit.catOn(g.cat)) && (!Kit.gameOn || Kit.gameOn(g)) && fitsWho(g) && fitsQ(g); }); }   // (sections switched off in Preferences leave)
 
   // ── Game rows ─────────────────────────────────────────────────────────────
   var resumeMap = {};
@@ -1803,8 +1803,10 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     function item(ic, t, fn, cls, extra) { grp.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); fn(); } }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('span', { text: t }), extra || null])); }
     function tag(t) { return el('span', { class: 'k-st', text: t }); }   // where something stands, in plain muted text
     var reqs = linkReqs(), nPend = window.FGHSync && FGHSync.linkPending ? FGHSync.linkPending().length : 0;
-    if (reqs.length || nPend) {
+    var pcm = FGHSync.parents ? FGHSync.parents.mine() : null, pAsk = pcm ? Object.keys(pcm.ask) : [];
+    if (reqs.length || nPend || pAsk.length) {
       group('Waiting for you');
+      if (pAsk.length) item('shield', pcm.ask[pAsk[0]].name + ' wants to be your parent', function () { Kit.kids.request(pAsk[0]); }, 'hl');
       if (reqs.length) item('link', reqs[0].name + ' wants to link with you', function () { Kit.links.request(reqs[0].id, refreshWho); }, 'hl');
       if (nPend) item('inbox', nPend + (nPend === 1 ? ' game' : ' games') + ' to review', function () { Kit.links.review(refreshWho); }, 'hl');
     }
@@ -1818,6 +1820,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       item('link', 'Share my profile', function () { Kit.links.profile(); });
       var ini = FGHSync.initials ? FGHSync.initials() : '';
       item('gamepad', 'Arcade initials', function () { Kit.links.initials(); }, '', el('span', { class: 'k-ini', text: ini || 'Set' }));
+      if (Kit.family) item('shield', 'Family', function () { Kit.family(); }, '', tag(Kit.familyStatus() || 'Parent controls'));
     }
     // Linked players: the people you've linked with, under People
     if (mode === 'pin' && Kit.links.panel) {

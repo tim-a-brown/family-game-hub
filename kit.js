@@ -242,6 +242,7 @@
     infinity: '<path d="M12 12c-2-2.7-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.3 6-4zm0 0c2 2.7 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.3-6 4z"/>',
     close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
+    shield: '<path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6z"/><path d="M9 12l2 2 4-4"/>',
     lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>',
     swap: '<path d="M7 4v16"/><path d="m3 8 4-4 4 4"/><path d="M17 20V4"/><path d="m21 16-4 4-4-4"/>',
@@ -1124,7 +1125,13 @@
   // Sections switched off in Preferences (gn_cat_off: [cat ids]): their games leave the home screen, its search and
   // Surprise; the games themselves stay put (switch the section back on and they're all there)
   function catsOff() { try { var a = JSON.parse(lsGet('gn_cat_off', '[]')); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
-  function catOn(id) { return catsOff().indexOf(id) < 0; }
+  function catOn(id) { return catsOff().indexOf(id) < 0 && !pcCatOff(id); }
+  // Parent controls (fgh_pc, kept by sync.js from the account): sections and games a parent turned off, and their timer
+  function pcGet() { try { var p = JSON.parse(lsGet('fgh_pc', 'null')); return p && p.parents && Object.keys(p.parents).length ? p : null; } catch (e) { return null; } }
+  function andList(n) { return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0] || ''; }
+  function pcNames(p) { p = p || pcGet(); return p ? andList(Object.keys(p.parents).map(function (c) { return p.parents[c].name; })) : ''; }
+  function pcCatOff(id) { var p = pcGet(); return !!(p && p.cats && p.cats.indexOf(id) >= 0); }
+  function gameOn(g) { var p = pcGet(); return !p || !g || ((p.games || []).indexOf(g.id) < 0 && (p.cats || []).indexOf(g.cat) < 0); }
   function catName(id) { try { for (var i = 0; i < GAME_CATS.length; i++) if (GAME_CATS[i].id === id) return GAME_CATS[i].name; } catch (e) {} return ''; }
   function findGameSafe(k) { try { return typeof findGame === 'function' ? findGame(k) : null; } catch (e) { return null; } }
 
@@ -2329,26 +2336,29 @@
   doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'hidden') useFlush(true); });
   window.addEventListener('pagehide', function () { useFlush(true); });
   // every device's record for this PIN, added up: {day: [24 hours of seconds]}
+  function usageAdd(out, r) { if (r && typeof r === 'object') Object.keys(r).forEach(function (d) { var a = out[d] || (out[d] = new Array(24).fill(0)); (Array.isArray(r[d]) ? r[d] : []).forEach(function (s, h) { a[h] += +s || 0; }); }); return out; }
   function usageAll() {
     useFlush(false);
     var out = {};
     for (var i = 0; i < LS.length; i++) {
       var k = LS.key(i); if (!k || k.indexOf('gn_usage_') !== 0) continue;
       var r = null; try { r = JSON.parse(LS.getItem(k)); } catch (e) {}
-      if (r) Object.keys(r).forEach(function (d) { var a = out[d] || (out[d] = new Array(24).fill(0)); (r[d] || []).forEach(function (s, h) { a[h] += +s || 0; }); });
+      usageAdd(out, r);
     }
     return out;
   }
+  // the same from an account's synced settings (a child's, for their parent)
+  function usageOf(prefs) { var out = {}; Object.keys(prefs || {}).forEach(function (k) { if (k.indexOf('gn_usage_') !== 0 || !prefs[k]) return; var r = null; try { r = JSON.parse(prefs[k].v); } catch (e) {} usageAdd(out, r); }); return out; }
   function minsText(sec) { var m = Math.round(sec / 60); if (m < 1) return sec > 0 ? 'Under a minute' : 'None'; var h = Math.floor(m / 60); return h ? h + ' hr' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min'; }
   function sumDay(a) { return (a || []).reduce(function (x, y) { return x + y; }, 0); }
   function playToday() { var a = usageAll()[dayKey(new Date())]; return sumDay(a); }
   // The screen: today's total, the last 7 days as bars (tap one), and that day hour by hour
-  function playTimeSheet() {
-    var U = usageAll(), days = [], i, today = new Date(); today.setHours(12, 0, 0, 0);
+  function playTimeSheet(U, whose) {
+    U = U && !U.type ? U : usageAll(); var days = [], i, today = new Date(); today.setHours(12, 0, 0, 0);
     for (i = 6; i >= 0; i--) { var d = new Date(today.getTime() - i * 86400000); days.push({ d: d, k: dayKey(d), s: sumDay(U[dayKey(d)]) }); }
     var sel = days.length - 1, max = Math.max(1800, Math.max.apply(null, days.map(function (x) { return x.s; })));
     var week = days.reduce(function (a, x) { return a + x.s; }, 0), active = days.filter(function (x) { return x.s > 0; }).length;
-    var who = window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? (lsGet('my_name', '') || 'This profile') : 'Guest on this device';
+    var who = whose || (window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? (lsGet('my_name', '') || 'This profile') : 'Guest on this device');
     var hero = el('div', { class: 'k-pt-hero' }, [el('small', { text: 'Today' }), el('b', { text: minsText(days[6].s) }),
       el('span', { text: 'This week ' + minsText(week) + (active ? ' · about ' + minsText(week / active) + ' a day played' : '') })]);
     var bars = el('div', { class: 'k-pt-bars', role: 'tablist', 'aria-label': 'Last 7 days' }), hours = el('div', { class: 'k-pt-hours' }), dayT = el('div', { class: 'k-pt-day' }), tip = el('div', { class: 'k-pt-tip' });
@@ -2389,7 +2399,15 @@
   var TIMER = 'gn_timer', timerLocked = false, tmEl = null, tmLock = null, tmLast = null, tmT = 0;
   // the timer used to belong to the device: hand one that's set to whoever is signed in now
   try { [['fgh_timer', TIMER], ['fgh_timer_lock', 'gn_timer_lock'], ['fgh_timer_custom', 'gn_timer_custom']].forEach(function (m) { var v = LS.getItem(m[0]); if (v != null) { if (LS.getItem(m[1]) == null) lsSet(m[1], v); LS.removeItem(m[0]); } }); } catch (e) {}
-  function timerGet() { try { var t = JSON.parse(LS.getItem(TIMER) || 'null'); return t && t.end ? t : null; } catch (e) { return null; } }
+  // A parent's timer (pc.timer, see sync.js) comes first: the child can't change or stop it, and its lock stays until a
+  // parent lifts it (from their own device, or their PIN typed here). "Cut off" locks at once, with no minute's grace.
+  function timerGet() {
+    var p = pcGet(), pt = p && p.timer;
+    if (pt && pt.end && String(pt.start || pt.end) !== lsGet('fgh_pc_ok', '') && (pt.lock || Date.now() - pt.end < 60000)) {
+      var o = { pc: 1, by: pt.by || pcNames(p) }; for (var k in pt) if (k !== 'by') o[k] = pt[k]; return o;
+    }
+    try { var t = JSON.parse(LS.getItem(TIMER) || 'null'); return t && t.end ? t : null; } catch (e) { return null; }
+  }
   function timerSet(t) { try { if (t) LS.setItem(TIMER, JSON.stringify(t)); else LS.removeItem(TIMER); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(TIMER); timerTick(); }
   function clockText(ms) { var s = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return (h ? h + ':' + ('0' + m).slice(-2) : m) + ':' + ('0' + x).slice(-2); }
   function timerChip(text, cls) {
@@ -2403,25 +2421,60 @@
     tmEl.innerHTML = icon('clock') + '<b>' + esc(text) + '</b>';
   }
   function timerChipOff() { if (tmEl) { tmEl.remove(); tmEl = null; } }
-  function timerLockOn() {
-    if (tmLock) return;
-    timerLocked = true;
-    // a long hold (15 seconds, counting down on the button) so it's a decision, not a tap
-    var HOLD = 15000, hold = el('button', { type: 'button', class: 'k-lock-hold', html: '<i></i><span>Hold to unlock</span>' }), lab = hold.querySelector('span'), ht = 0, hi = 0;
-    function down(e) {
-      e.preventDefault(); hold.classList.add('on'); var t0 = Date.now();
-      ht = setTimeout(function () { haptic('success'); timerSet(null); }, HOLD);
-      hi = setInterval(function () { lab.textContent = 'Keep holding · ' + Math.max(1, Math.ceil((HOLD - (Date.now() - t0)) / 1000)); }, 200);
-      lab.textContent = 'Keep holding · 15';
-    }
-    function up() { hold.classList.remove('on'); clearTimeout(ht); clearInterval(hi); lab.textContent = 'Hold to unlock'; }
-    hold.addEventListener('pointerdown', down); ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (k) { hold.addEventListener(k, up); });
-    tmLock = el('div', { class: 'k-lock', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Game time is over' }, [
-      el('div', { class: 'k-lock-in' }, [el('span', { class: 'k-lock-ic', html: icon('moon') }), el('h2', { text: 'Game time’s over' }), el('p', { text: 'Time to put the games away for now.' }), hold])]);
-    // nothing underneath can be tapped, typed into or scrolled
-    ['pointerdown', 'click', 'touchstart', 'keydown', 'wheel'].forEach(function (k) { tmLock.addEventListener(k, function (e) { if (!hold.contains(e.target)) { e.stopPropagation(); if (k !== 'touchstart' && k !== 'pointerdown') e.preventDefault(); } }, { capture: true, passive: false }); });
-    doc.body.appendChild(tmLock);
+  // A parent's PIN, typed on a lock screen: four digits and it checks itself (wrong: a shake, and try again)
+  function parentPin(onOk) {
+    var btn = el('button', { type: 'button', class: 'k-lock-hold', html: icon('shield') + '<span>Parent PIN</span>' });
+    var dots = el('div', { class: 'k-pin-dots', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i'), el('i')]);
+    var inp = el('input', { class: 'k-pin-in', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: '4', autocomplete: 'off', 'aria-label': 'Parent PIN' });
+    var msg = el('small', { class: 'k-pin-msg' }), pad = el('label', { class: 'k-pin', hidden: true }, [dots, inp, msg]);
+    function show() { Array.prototype.forEach.call(dots.children, function (d, i) { d.classList.toggle('on', i < inp.value.length); }); }
+    btn.onclick = function () { btn.hidden = true; pad.hidden = false; inp.focus(); sfx('tap'); };
+    inp.addEventListener('input', function () {
+      inp.value = inp.value.replace(/\D/g, '').slice(0, 4); show(); msg.textContent = '';
+      if (inp.value.length < 4 || !window.FGHSync || !FGHSync.parents) return;
+      inp.disabled = true; msg.textContent = 'Checking…';
+      FGHSync.parents.unlock(inp.value).then(function (ok) {
+        inp.disabled = false;
+        if (ok) { haptic('success'); sfx('good'); onOk(); return; }
+        haptic('error'); sfx('bad'); inp.value = ''; show(); msg.textContent = 'That’s not a parent’s PIN';
+        pad.classList.remove('shake'); void pad.offsetWidth; pad.classList.add('shake'); inp.focus();
+      });
+    });
+    return el('div', { class: 'k-lock-pp' }, [btn, pad]);
+  }
+  // A screen over everything (the game timer's lock, a game a parent turned off): nothing underneath can be tapped,
+  // typed into or scrolled; only its own controls (foot) work
+  function lockScreen(ic, title, text, foot, label) {
+    var n = el('div', { class: 'k-lock', role: 'dialog', 'aria-modal': 'true', 'aria-label': label || title }, [
+      el('div', { class: 'k-lock-in' }, [el('span', { class: 'k-lock-ic', html: icon(ic) }), el('h2', { text: title }), el('p', { text: text }), foot])]);
+    ['pointerdown', 'click', 'touchstart', 'keydown', 'wheel'].forEach(function (k) { n.addEventListener(k, function (e) { if (!foot.contains(e.target)) { e.stopPropagation(); if (k !== 'touchstart' && k !== 'pointerdown') e.preventDefault(); } }, { capture: true, passive: false }); });
+    doc.body.appendChild(n);
     try { doc.activeElement && doc.activeElement.blur && doc.activeElement.blur(); } catch (e) {}
+    return n;
+  }
+  function timerLockOn(t) {
+    var pc = !!(t && t.pc), sig = pc ? 'pc' + (t.cut ? 'c' : '') : 'own';
+    if (tmLock && tmLock._sig === sig) return;
+    if (tmLock) { tmLock.remove(); tmLock = null; }
+    timerLocked = true;
+    var foot;
+    if (pc) foot = parentPin(function () { timerLockOff(); toast('Unlocked'); timerTick(); });
+    else {
+      // a long hold (15 seconds, counting down on the button) so it's a decision, not a tap
+      var HOLD = 15000, hold = el('button', { type: 'button', class: 'k-lock-hold', html: '<i></i><span>Hold to unlock</span>' }), lab = hold.querySelector('span'), ht = 0, hi = 0;
+      var down = function (e) {
+        e.preventDefault(); hold.classList.add('on'); var t0 = Date.now();
+        ht = setTimeout(function () { haptic('success'); timerSet(null); }, HOLD);
+        hi = setInterval(function () { lab.textContent = 'Keep holding · ' + Math.max(1, Math.ceil((HOLD - (Date.now() - t0)) / 1000)); }, 200);
+        lab.textContent = 'Keep holding · 15';
+      };
+      var up = function () { hold.classList.remove('on'); clearTimeout(ht); clearInterval(hi); lab.textContent = 'Hold to unlock'; };
+      hold.addEventListener('pointerdown', down); ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (k) { hold.addEventListener(k, up); });
+      foot = hold;
+    }
+    tmLock = lockScreen(pc && t.cut ? 'lock' : 'moon', pc && t.cut ? 'Games are off for now' : 'Game time’s over',
+      pc ? (t.cut ? t.by + ' turned games off.' : t.by + '’s timer is up. Time to put the games away.') : 'Time to put the games away for now.', foot, 'Game time is over');
+    tmLock._sig = sig;
     try { window.dispatchEvent(new Event('kit:locked')); } catch (e) {}
   }
   function timerLockOff() { timerLocked = false; if (tmLock) { tmLock.remove(); tmLock = null; } }
@@ -2429,35 +2482,56 @@
     clearTimeout(tmT);
     var t = timerGet();
     if (!t) { timerChipOff(); timerLockOff(); tmLast = null; return; }
-    var left = t.end - Date.now(), grace = 60000;
+    var left = t.end - Date.now(), grace = t.cut ? 0 : 60000;
     if (left > 120000) { timerChipOff(); timerLockOff(); tmLast = null; }   // (more time added: warn again near the new end)
     else if (left > 0) {
+      timerLockOff();
       timerChip(clockText(left), left <= 30000 ? 'low' : '');
       if (tmLast !== 'two') { tmLast = 'two'; sfx('tick'); haptic('light'); toast('2 minutes of game time left'); }
     } else if (t.lock && left > -grace) {
+      timerLockOff();
       timerChip('Finish up ' + clockText(left + grace), 'grace');
       if (tmLast !== 'grace') { tmLast = 'grace'; sfx('turn'); haptic('medium'); toast('Time’s up: one more minute to finish up'); }
-    } else if (t.lock) { timerChipOff(); timerLockOn(); }
+    } else if (t.lock) { timerChipOff(); if (!tmLock) { sfx('turn'); haptic('medium'); } timerLockOn(t); }
     else {
+      timerLockOff();
       timerChip('Time’s up', 'up');
       if (tmLast !== 'up') { tmLast = 'up'; sfx('turn'); haptic('medium'); toast('Time’s up'); }
-      if (left < -60000) { timerSet(null); return; }   // the reminder clears itself after a minute
+      if (left < -60000) { if (!t.pc) timerSet(null); else timerTick(); return; }   // the reminder clears itself after a minute
     }
     tmT = setTimeout(timerTick, left > 130000 ? Math.min(30000, left - 120000) : 500);
   }
   doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') timerTick(); });
-  doc.addEventListener('keydown', function (e) { if (timerLocked) { e.stopPropagation(); e.preventDefault(); } }, true);   // locked: no keys reach the game
-  window.addEventListener('storage', function (e) { if (e.key === TIMER) timerTick(); });   // set or stopped in another tab
+  // locked: no keys reach the game (the lock screen's own PIN box still takes them)
+  doc.addEventListener('keydown', function (e) { if ((timerLocked || blockEl) && !(e.target && e.target.closest && e.target.closest('.k-lock'))) { e.stopPropagation(); e.preventDefault(); } }, true);
+  window.addEventListener('storage', function (e) { if (e.key === TIMER || e.key === 'fgh_pc') { timerTick(); blockCheck(); } });   // set or stopped in another tab
   doc.addEventListener('fghsync:updated', timerTick);   // set, changed or stopped on another device
+  // A game (or its whole section) a parent turned off: its page is covered, with the way back home
+  var blockEl = null;
+  function blockCheck() {
+    if (!/\/games\//.test(location.pathname)) return;
+    var g = findGameSafe(pageKey()), off = g && !gameOn(g);
+    if (!off) { if (blockEl) { blockEl.remove(); blockEl = null; } return; }
+    if (blockEl) return;
+    var p = pcGet(), whole = p && p.cats.indexOf(g.cat) >= 0;
+    blockEl = lockScreen('lock', g.name + ' is off', pcNames(p) + ' turned ' + (whole ? 'off ' + (catName(g.cat) || 'these games') : 'this game off') + '.',
+      el('button', { type: 'button', class: 'btn btn-primary', html: icon('home') + '<span>Back to games</span>', onclick: function () { location.href = rootPath() + 'index.html'; } }));
+    try { window.dispatchEvent(new Event('kit:locked')); } catch (e) {}
+  }
+  // a parent changed something: it takes effect right away (and the home screen redraws)
+  doc.addEventListener('fghpc', function () { tmLast = null; timerTick(); blockCheck(); try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {} });
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', blockCheck); else setTimeout(blockCheck, 0);
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', timerTick); else setTimeout(timerTick, 0);
   // Preferences: pick how long (a preset, or Custom: a dial you spin, a full turn an hour); while it runs, a ring that
   // empties as the time goes, how long is left and when it ends, more time, or stop
-  function timerPanel() {
+  // api (a parent setting a child's timer): {get, set, lock, setLock, by, note, cut}; without it, your own timer
+  function timerPanel(api) {
+    api = api || { get: timerGet, set: timerSet, lock: function () { return lsGet('gn_timer_lock', '1') === '1'; }, setLock: function (v) { lsSet('gn_timer_lock', v ? '1' : '0'); } };
     var box = el('div', { class: 'k-tmr' }), iv = 0, NS = 'http://www.w3.org/2000/svg';
-    function lockPref() { return lsGet('gn_timer_lock', '1') === '1'; }
+    function lockPref() { return api.lock(); }
     function durText(m) { var h = Math.floor(m / 60), x = m % 60; return h ? h + ' hr' + (x ? ' ' + x + ' min' : '') : x + ' min'; }
     function endsAt(ms) { return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
-    function start(mins, end) { end = end || Date.now() + mins * 60000; timerSet({ end: end, start: Date.now(), lock: lockPref(), mins: mins }); sfx('good'); haptic('light'); paint(); }
+    function start(mins, end) { end = end || Date.now() + mins * 60000; var t = { end: end, start: Date.now(), lock: lockPref(), mins: mins }; if (api.by) t.by = api.by; api.set(t); sfx('good'); haptic('light'); paint(); }
     function svgEl(tag, at) { var n = doc.createElementNS(NS, tag); for (var a in at) n.setAttribute(a, at[a]); return n; }
     // a ring: track, the filled arc, optional tick marks (every 5 minutes, longer each quarter hour)
     function ring(size, ticks) {
@@ -2473,7 +2547,7 @@
       var b = el('button', { type: 'button', class: 'k-tmr-lock', role: 'switch', 'aria-checked': String(lockOn) }, [
         el('span', { class: 'ic', html: icon('lock') }),
         el('span', { class: 'grow' }, [el('b', { text: 'Lock games when time’s up' }), el('small', { text: lockOn ? 'A minute to finish up, then games close' : 'Just a reminder when time’s up' })]), el('i', { class: 'sw' })]);
-      b.onclick = function () { var x = timerGet(), v = !(x ? x.lock : lockPref()); lsSet('gn_timer_lock', v ? '1' : '0'); if (x) { x.lock = v; timerSet(x); } sfx('tap'); haptic('light'); paint(); };
+      b.onclick = function () { var x = api.get(), v = !(x ? x.lock : lockPref()); api.setLock(v); if (x) { x.lock = v; api.set(x); } sfx('tap'); haptic('light'); paint(); };
       return b;
     }
     // Custom: drag round the dial (clockwise adds time, a full turn is an hour, up to 10 hours, in 5-minute steps)
@@ -2517,7 +2591,7 @@
     }
     function paint() {
       clearInterval(iv); box.innerHTML = '';
-      var t = timerGet();
+      var t = api.get(), mine = t && t.pc && !api.by;   // (a parent's timer, seen by the child: look, don't touch)
       if (!t) {
         var cust = null, picks = el('div', { class: 'k-tmr-picks' });
         [[15, '15', 'min'], [30, '30', 'min'], [45, '45', 'min'], [60, '1', 'hour'], [90, '1½', 'hours'], [120, '2', 'hours']].forEach(function (p) {
@@ -2528,28 +2602,31 @@
           cb.classList.toggle('on', open); cb.setAttribute('aria-expanded', String(open)); sfx('tap');
         } }, [el('span', { html: icon('clock') }), el('small', { text: 'Custom' })]);
         picks.appendChild(cb);
-        box.appendChild(el('p', { class: 'k-tmr-note', text: (window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? 'A countdown for your game time, on every device you sign in on.' : 'A countdown for game time on this device.') + ' It shows up in the last two minutes.' }));
+        box.appendChild(el('p', { class: 'k-tmr-note', text: api.note || (window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? 'A countdown for your game time, on every device you sign in on.' : 'A countdown for game time on this device.') + ' It shows up in the last two minutes.' }));
         box.appendChild(picks);
       } else {
         var R = ring(150, false), left = el('b', { class: 'k-tmr-left' }), cap = el('small'), when = el('p', { class: 'k-tmr-when' });
-        var total = t.start ? t.end - t.start : (t.mins || 60) * 60000;
-        var run = el('div', { class: 'k-tmr-run' }, [
+        var total = t.start ? t.end - t.start : (t.mins || 60) * 60000, locked = t.lock && t.end - Date.now() <= -(t.cut ? 0 : 60000);
+        var stop = el('button', { type: 'button', class: 'btn ' + (locked && api.by ? 'btn-primary' : 'btn-ghost'), html: locked && api.by ? icon('lock') + '<span>Unlock</span>' : 'Stop timer', onclick: function () { api.set(null); sfx('tap'); paint(); } });
+        var run = el('div', { class: 'k-tmr-run' + (locked ? ' locked' : '') }, [
           el('div', { class: 'k-tmr-face' }, [R.svg, el('div', { class: 'k-tmr-mid' }, [left, cap])]),
           el('div', { class: 'k-tmr-side' }, [when,
-            el('div', { class: 'k-tmr-btns' }, [
-              el('button', { type: 'button', class: 'btn btn-soft', html: icon('plus') + '<span>15 min</span>', onclick: function () { var x = timerGet(); if (!x) return; var add = 15 * 60000; x.end = Math.max(x.end, Date.now()) + add; total += add; timerSet(x); sfx('tap'); haptic('light'); paint(); } }),
-              el('button', { type: 'button', class: 'btn btn-ghost', text: 'Stop timer', onclick: function () { timerSet(null); sfx('tap'); paint(); } })])])]);
+            mine ? el('p', { class: 'k-tmr-by', html: icon('shield') + '<span>' + esc(t.by) + (t.cut ? ' turned games off' : ' set this timer') + '</span>' }) : el('div', { class: 'k-tmr-btns' }, [
+              t.cut ? null : el('button', { type: 'button', class: 'btn btn-soft', html: icon('plus') + '<span>15 min</span>', onclick: function () { var x = api.get(); if (!x) return; var add = 15 * 60000; x.end = Math.max(x.end, Date.now()) + add; total += add; api.set(x); sfx('tap'); haptic('light'); paint(); } }),
+              stop])])]);
         var upd = function () {
-          var x = timerGet(); if (!x) { paint(); return; }
+          var x = api.get(); if (!x) { paint(); return; }
           var ms = x.end - Date.now(), tot = x.start ? x.end - x.start : total;
           R.set(ms / tot); run.classList.toggle('low', ms <= 120000);
-          left.textContent = ms > 0 ? clockText(ms) : '0:00'; cap.textContent = ms > 0 ? 'left' : 'time’s up';
-          when.innerHTML = 'Ends at <b>' + esc(endsAt(x.end)) + '</b>';
+          left.textContent = x.cut ? 'Off' : ms > 0 ? clockText(ms) : '0:00'; cap.textContent = x.cut ? 'games locked' : ms > 0 ? 'left' : x.lock && ms <= -60000 ? 'locked' : 'time’s up';
+          when.innerHTML = x.cut ? 'Cut off at <b>' + esc(endsAt(x.end)) + '</b>' : (ms > 0 ? 'Ends at <b>' : 'Ended at <b>') + esc(endsAt(x.end)) + '</b>';
         };
         upd(); iv = setInterval(function () { if (!box.isConnected) { clearInterval(iv); return; } upd(); }, 1000);
         box.appendChild(run);
       }
-      box.appendChild(lockRow(t));
+      if (!mine && !(t && t.cut)) box.appendChild(lockRow(t));
+      // a parent can also stop games right now, with no countdown and no minute's grace
+      if (api.cut && !(t && t.cut)) box.appendChild(el('button', { type: 'button', class: 'btn btn-danger btn-block k-tmr-cut', html: icon('lock') + '<span>Cut off now</span>', onclick: function () { api.cut(); sfx('bad'); haptic('medium'); paint(); } }));
     }
     paint();
     return box;
@@ -2582,15 +2659,15 @@
       var cs = catsOrdered();
       cs.forEach(function (c, i) {
         // the switch shows or hides the whole section on the home screen (the row dims when it's off)
-        var on = catOn(c.id), row = el('div', { class: 'k-ord-row mv' + (on ? '' : ' off'), 'data-id': c.id });
-        var sw = el('button', { type: 'button', class: 'k-ord-sw', role: 'switch', 'aria-checked': String(on), 'aria-label': 'Show ' + c.name + ' on the home screen', html: '<i class="sw"></i>', onclick: function () {
+        var on = catOn(c.id), pcOff = pcCatOff(c.id), row = el('div', { class: 'k-ord-row mv' + (on ? '' : ' off'), 'data-id': c.id });
+        var sw = pcOff ? el('span', { class: 'k-ord-pc', role: 'img', 'aria-label': 'Turned off by ' + pcNames(), html: icon('lock') }) : el('button', { type: 'button', class: 'k-ord-sw', role: 'switch', 'aria-checked': String(on), 'aria-label': 'Show ' + c.name + ' on the home screen', html: '<i class="sw"></i>', onclick: function () {
           var off = catsOff(), k = off.indexOf(c.id);
           if (k >= 0) off.splice(k, 1); else off.push(c.id);
           lsSet('gn_cat_off', JSON.stringify(off)); sfx('tap'); haptic('light'); paintOrd();
           try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
         } });
         ord.appendChild(row);
-        [ordGrip(), el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: c.name })].concat(on ? [] : [el('small', { text: 'Hidden from the home screen' })])), sw].forEach(function (x) { row.appendChild(x); });
+        [ordGrip(), el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: c.name })].concat(on ? [] : [el('small', { text: pcOff ? 'Turned off by ' + pcNames() : 'Hidden from the home screen' })])), sw].forEach(function (x) { row.appendChild(x); });
       });
       if (lsGet('gn_cat_order', '') && lsGet('gn_cat_order', '') !== '[]') ord.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block k-ord-reset', text: 'Back to the usual order', onclick: function () {
         lsSet('gn_cat_order', '[]'); sfx('tap'); paintOrd(); try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
@@ -2628,8 +2705,8 @@
   function homeSheet() { defaultsSheet('home'); }
   function timerSheet() { sheet({ title: 'Game timer', node: timerPanel(), actions: [{ label: 'Done', cls: 'btn-soft' }] }); }
   // a few words for the menus: what the timer and the sections are set to now
-  function timerStatus() { var t = timerGet(); if (!t) return 'Off'; var ms = t.end - Date.now(); return ms > 0 ? (ms >= 3600000 ? Math.floor(ms / 3600000) + ' hr ' + Math.floor(ms / 60000) % 60 + ' min' : Math.ceil(ms / 60000) + ' min') + ' left' : 'Time’s up'; }
-  function homeStatus() { var n = catsOff().length; return n ? n + ' hidden' : 'All shown'; }
+  function timerStatus(t) { t = t === undefined ? timerGet() : t; if (!t) return 'Off'; if (t.cut) return 'Games off'; var ms = t.end - Date.now(); return ms > 0 ? (ms >= 3600000 ? Math.floor(ms / 3600000) + ' hr ' + Math.floor(ms / 60000) % 60 + ' min' : Math.ceil(ms / 60000) + ' min') + ' left' : t.lock && ms <= -60000 ? 'Locked' : 'Time’s up'; }
+  function homeStatus() { var n = catsOrdered().filter(function (c) { return !catOn(c.id); }).length; return n ? n + ' hidden' : 'All shown'; }
   // Your profile: the code to give people, and whether their games need your OK first
   function profileSheet() {
     var node = el('div', { class: 'lk' }), s;
@@ -3001,6 +3078,189 @@
     return box;
   }
   window.addEventListener('fghlinks', function () { Array.prototype.forEach.call(doc.querySelectorAll('.k-names[data-live]'), function (n) { if (n._paint) n._paint(); }); });
+  // ── Family: parents and children ──
+  // A parent manages a linked child's games from their own devices (sync.js: Parents): play time, sections and games
+  // turned off, and the game timer, which starts on the child's devices within seconds. The child accepts first.
+  function kidsMine() { return window.FGHSync && FGHSync.kids ? FGHSync.kids.list() : {}; }
+  function pcRaw() { return window.FGHSync && FGHSync.parents ? FGHSync.parents.mine() : null; }
+  function famBullets(name) {
+    var you = !name;
+    return el('div', { class: 'fam-can' }, [
+      ['chart', you ? 'See your play time' : 'See ' + poss(name) + ' play time', 'Each day, and the time of day'],
+      ['tiles', 'Turn games off', 'Whole sections or single games'],
+      ['clock', you ? 'Set your game timer' : 'Set ' + poss(name) + ' game timer', 'It starts right away. Or cut games off now.']
+    ].map(function (x) { return el('div', { class: 'fam-can-row' }, [el('span', { class: 'ic', html: icon(x[0]) }), el('span', { class: 'grow' }, [el('b', { text: x[1] }), el('small', { text: x[2] })])]); }));
+  }
+  function famPair(a, b) { return el('div', { class: 'lk-sent-pair fam-pair' }, [avEl(a, 'lg', 'var(--surface-3)'), el('span', { class: 'lk-sent-line' }, [el('i'), el('b', { html: icon('shield') })]), avEl(b, 'lg', 'var(--surface-3)')]); }
+  // Family (profile menu): your parents, your children, and adding a child from your linked players
+  function familySheet() {
+    var node = el('div', { class: 'fam' }), s, pc = pcRaw(), kids = kidsMine(), me = lsGet('my_name', '').trim() || 'You';
+    function row(ic, who, sub, fn, cls) { return el('button', { type: 'button', class: 'lk-who fam-row' + (cls ? ' ' + cls : ''), onclick: fn }, [avEl(who, null, 'var(--surface-3)'), el('span', { class: 'grow' }, [el('b', { text: who }), el('small', { text: sub })]), el('span', { class: 'chev', html: icon(ic || 'right') })]); }
+    if (pc && Object.keys(pc.ask).length) {
+      node.appendChild(el('div', { class: 'label k-sec', text: 'Waiting for you' }));
+      Object.keys(pc.ask).forEach(function (c) { node.appendChild(row('right', pc.ask[c].name, 'wants to be your parent', function () { s.close(); setTimeout(function () { parentReqSheet(c); }, 320); }, 'hl')); });
+    }
+    if (pc && Object.keys(pc.parents).length) {
+      node.appendChild(el('div', { class: 'label k-sec', text: 'Your parents' }));
+      Object.keys(pc.parents).forEach(function (c) { node.appendChild(el('div', { class: 'lk-who fam-row still' }, [avEl(pc.parents[c].name, null, 'var(--surface-3)'), el('span', { class: 'grow' }, [el('b', { text: pc.parents[c].name }), el('small', { text: 'Can see your play time, turn games off and set your timer' })]), el('span', { class: 'chev', html: icon('shield') })])); });
+    }
+    var codes = Object.keys(kids);
+    if (codes.length) {
+      node.appendChild(el('div', { class: 'label k-sec', text: 'Your children' }));
+      codes.forEach(function (c) { node.appendChild(row('right', kids[c].name, 'Play time, games and timer', function () { s.close(); setTimeout(function () { kidSheet(c); }, 320); })); });
+    }
+    var linked = linkedList().filter(function (r) { return r.hs && !kids[r.code] && !(pc && (pc.parents[r.code] || pc.ask[r.code])); });
+    node.appendChild(el('div', { class: 'label k-sec', text: codes.length ? 'Add another child' : 'Add a child' }));
+    if (!linked.length) node.appendChild(el('p', { class: 'muted fam-none', text: 'Link them first: in Frequent players, tap the link button next to their name. Then they show up here.' }));
+    linked.forEach(function (r) { node.appendChild(row('plus', r.name, 'Linked player', function () { s.close(); setTimeout(function () { parentSetup(r.name, r.code); }, 320); })); });
+    if (!codes.length && !(pc && Object.keys(pc.parents).length)) node.insertBefore(el('p', { class: 'muted', style: { margin: '0 0 6px' }, text: 'As a parent you can look after a child’s games from your own phone.' }), node.firstChild);
+    s = sheet({ title: 'Family', node: node, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+  }
+  function famStatus() {
+    var pc = pcRaw(), n = Object.keys(kidsMine()).length;
+    if (pc && Object.keys(pc.ask).length) return 'Request';
+    if (pc && Object.keys(pc.parents).length) return 'Parent: ' + andList(Object.keys(pc.parents).map(function (c) { return pc.parents[c].name; }));
+    return n ? n + (n === 1 ? ' child' : ' children') : '';
+  }
+  // Be their parent: their PIN (you can sign in to their account anyway) proves it; then they accept
+  function parentSetup(name, code) {
+    var me = lsGet('my_name', '').trim() || 'You', s;
+    var inp = el('input', { class: 'input fam-pin', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: '4', autocomplete: 'off', placeholder: '• • • •', 'aria-label': poss(name) + ' PIN' });
+    var msg = el('p', { class: 'lk-msg' });
+    var node = el('div', { class: 'lk fam' }, [famPair(me, name),
+      el('p', { class: 'fam-lead', text: 'As ' + poss(name) + ' parent you can:' }), famBullets(name),
+      el('label', { class: 'label', style: { display: 'block', margin: '14px 2px 4px' }, text: poss(name) + ' PIN' }), inp, msg,
+      el('p', { class: 'muted fam-fine', text: name + ' accepts on their phone or tablet. If you’re signed in to ' + poss(name) + ' account somewhere, you can accept it there.' })]);
+    function go() {
+      if (!/^\d{4}$/.test(inp.value)) { msg.textContent = 'Type ' + poss(name) + ' 4-digit PIN'; inp.focus(); return; }
+      msg.textContent = 'Checking…';
+      FGHSync.kids.ask(code, inp.value, name).then(function (st) {
+        s.close(); sfx('good'); haptic('success');
+        setTimeout(function () { st === 'on' ? kidSheet(code) : toast('Sent. Waiting for ' + name + ' to accept'); }, 330);
+      }).catch(function (e) { msg.textContent = (e && e.message) || 'Couldn’t reach ' + poss(name) + ' account. Try again.'; sfx('bad'); inp.select(); });
+    }
+    inp.addEventListener('input', function () { inp.value = inp.value.replace(/\D/g, '').slice(0, 4); msg.textContent = ''; });
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    s = sheet({ title: 'Be ' + poss(name) + ' parent', node: node, actions: [{ label: 'Send request', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
+    setTimeout(function () { inp.focus(); }, 320);
+  }
+  // The child's side: a parent asked
+  function parentReqSheet(code) {
+    var pc = pcRaw(), a = pc && pc.ask[code]; if (!a) return;
+    var me = lsGet('my_name', '').trim() || 'You', s;
+    var node = el('div', { class: 'lk fam' }, [famPair(a.name, me),
+      el('p', { class: 'fam-lead', text: 'They’ll be able to:' }), famBullets()]);
+    function answer(yes) {
+      return FGHSync.parents.answer(code, yes).then(function () { sfx(yes ? 'good' : 'tap'); if (yes) { haptic('success'); toast(a.name + ' is your parent here now'); } })
+        .catch(function (e) { toast((e && e.message) || 'Couldn’t answer. Check your connection.'); sfx('bad'); });
+    }
+    s = sheet({ title: a.name + ' wants to be your parent', node: node, actions: [
+      { label: 'Accept', primary: true, onClick: function () { answer(true); } },
+      { label: 'Decline', cls: 'btn-ghost', onClick: function () { answer(false); } }] });
+  }
+  // A child's account, from their parent's device
+  function kidSheet(code) {
+    var K = kidsMine()[code]; if (!K) return;
+    var name = K.name, me = lsGet('my_name', '').trim() || 'Parent', cur = null, s;
+    var sub = el('small', { text: 'Loading…' }), body = el('div', { class: 'kd-body' });
+    var node = el('div', { class: 'lk kd' }, [el('div', { class: 'lk-top' }, [avEl(name, 'lg', 'var(--surface-3)'), el('div', null, [el('b', { text: name }), sub])]), body]);
+    function load() {
+      FGHSync.kids.read(code).then(function (r) { cur = r; paint(); })
+        .catch(function () { sub.textContent = 'Couldn’t reach ' + poss(name) + ' account'; body.innerHTML = ''; body.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', text: 'Try again', onclick: load })); });
+    }
+    function save(fn) {
+      return FGHSync.kids.edit(code, fn).then(function (pc) { if (pc) cur.pc = pc; })
+        .catch(function (e) { toast((e && e.message) || 'Couldn’t save. Check your connection.'); sfx('bad'); if (e && e.code === 'off') { cur.state = 'off'; } load(); });
+    }
+    function card(title, kids) { return el('section', { class: 'kd-card' }, [el('h3', { text: title })].concat(kids)); }
+    function paint() {
+      body.innerHTML = '';
+      if (cur.state === 'pin') {
+        sub.textContent = 'Their PIN changed';
+        var inp = el('input', { class: 'input fam-pin', type: 'password', inputmode: 'numeric', maxlength: '4', autocomplete: 'off', placeholder: '• • • •', 'aria-label': poss(name) + ' new PIN' }), msg = el('p', { class: 'lk-msg' });
+        body.appendChild(el('p', { class: 'muted', text: 'Type ' + poss(name) + ' new PIN to keep looking after their games.' })); body.appendChild(inp); body.appendChild(msg);
+        body.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', style: { marginTop: '10px' }, text: 'Continue', onclick: function () {
+          msg.textContent = 'Checking…'; FGHSync.kids.ask(code, inp.value, name).then(function () { load(); }).catch(function (e) { msg.textContent = (e && e.message) || 'Try again'; sfx('bad'); });
+        } }));
+        return;
+      }
+      if (cur.state !== 'on') {
+        sub.textContent = cur.state === 'ask' ? 'Waiting for ' + name + ' to accept' : name + ' said no';
+        body.appendChild(el('p', { class: 'muted', text: cur.state === 'ask' ? 'Once ' + name + ' accepts on their phone or tablet, their play time, games and timer show up here.' : 'You’re not ' + poss(name) + ' parent here. You can ask again from Family.' }));
+        body.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: cur.state === 'ask' ? 'Take back the request' : 'Remove', onclick: function () { FGHSync.kids.end(code).then(function () { s.close(); toast(cur.state === 'ask' ? 'Request taken back' : 'Removed'); }); } }));
+        return;
+      }
+      var pc = cur.pc, others = Object.keys(pc.parents).filter(function (c) { return pc.parents[c].name !== me; }).map(function (c) { return pc.parents[c].name; });
+      sub.textContent = 'You’re their parent' + (others.length ? ', with ' + andList(others) : '');
+      // play time: today, and the week at a glance (tap for the day-by-day screen)
+      var U = usageOf(cur.prefs), d0 = new Date(), wk = 0, bars = el('span', { class: 'kd-spark', 'aria-hidden': 'true' }), vals = [];
+      for (var i = 6; i >= 0; i--) { var v = sumDay(U[dayKey(new Date(d0.getTime() - i * 86400000))]); vals.push(v); wk += v; }
+      var mx = Math.max(1800, Math.max.apply(null, vals)); vals.forEach(function (v, j) { bars.appendChild(el('i', { class: j === 6 ? 'now' : '', style: { height: (v ? Math.max(8, v / mx * 100) : 4) + '%' } })); });
+      body.appendChild(el('button', { type: 'button', class: 'kd-time', onclick: function () { playTimeSheet(U, poss(name) + ' play time, all their devices'); } }, [
+        el('span', { class: 'grow' }, [el('small', { text: 'Today' }), el('b', { text: minsText(vals[6]) }), el('span', { text: 'This week ' + minsText(wk) })]), bars, el('span', { class: 'chev', html: icon('right') })]));
+      // the timer: the same picker as your own, but it runs on their devices
+      var tapi = { by: me, note: 'Starts on ' + poss(name) + ' devices right away. They see the countdown in the last two minutes.',
+        get: function () { var t = cur.pc && cur.pc.timer; if (!t || (!t.lock && Date.now() - t.end > 60000)) return null; var o = {}; for (var k in t) o[k] = t[k]; return o; },
+        set: function (t) { cur.pc.timer = t; save(function (x) { x.timer = t; }); },
+        lock: function () { return lsGet('gn_timer_lock', '1') === '1'; }, setLock: function (v) { lsSet('gn_timer_lock', v ? '1' : '0'); },
+        cut: function () { var now = Date.now(); tapi.set({ end: now, start: now, mins: 0, lock: true, cut: true, by: me }); toast(poss(name) + ' games are off'); } };
+      body.appendChild(card('Game timer', [timerPanel(tapi)]));
+      // games: whole sections, or single games
+      var nCat = pc.cats.length, nGame = pc.games.length;
+      var gl = el('div', { class: 'k-list' }, [
+        el('button', { type: 'button', onclick: function () { kidCats(); } }, [el('span', { class: 'ic', html: icon('tiles') }), el('span', { text: 'Sections' }), el('span', { class: 'k-st', text: nCat ? nCat + ' off' : 'All on' })]),
+        el('button', { type: 'button', onclick: function () { kidGames(); } }, [el('span', { class: 'ic', html: icon('gamepad') }), el('span', { text: 'Single games' }), el('span', { class: 'k-st', text: nGame ? nGame + ' off' : 'All on' })])]);
+      body.appendChild(card('Games', [gl]));
+      body.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block kd-end', text: 'Stop being ' + poss(name) + ' parent', onclick: function () {
+        confirmSheet('Stop being ' + poss(name) + ' parent?', { ok: 'Stop', danger: true, body: others.length ? andList(others) + ' still looks after ' + poss(name) + ' games.' : 'Your timer and the games you turned off for ' + name + ' are lifted.' }).then(function (ok) {
+          if (!ok) return; FGHSync.kids.end(code).then(function () { s.close(); toast('Done'); }).catch(function () { toast('Couldn’t reach ' + poss(name) + ' account'); });
+        });
+      } }));
+    }
+    function toggleList(arr, id) { var i = arr.indexOf(id); if (i >= 0) arr.splice(i, 1); else arr.push(id); }
+    var saveT = 0;
+    function saveSoon() { clearTimeout(saveT); var cats = cur.pc.cats.slice(), games = cur.pc.games.slice(); saveT = setTimeout(function () { save(function (x) { x.cats = cats; x.games = games; }); }, 500); }
+    function swRow(ic, title, small, on, fn, dis) {
+      var b = el('button', { type: 'button', class: 'k-ord-sw', role: 'switch', 'aria-checked': String(on), 'aria-label': title, html: '<i class="sw"></i>', onclick: fn });
+      if (dis) b.disabled = true;
+      return el('div', { class: 'k-ord-row' + (on ? '' : ' off') }, [el('span', { class: 'ic' + (ic.indexOf('<') === 0 ? ' gic' : ''), html: ic.indexOf('<') === 0 ? ic : icon(ic) }), el('span', { class: 'grow' }, [el('b', { text: title })].concat(small ? [el('small', { text: small })] : [])), b]);
+    }
+    function kidCats() {
+      var box = el('div', { class: 'k-ord' });
+      function p() {
+        box.innerHTML = '';
+        (typeof GAME_CATS !== 'undefined' ? GAME_CATS : []).forEach(function (c) {
+          var on = cur.pc.cats.indexOf(c.id) < 0;
+          box.appendChild(swRow(c.id, c.name, on ? '' : 'Off for ' + name, on, function () { toggleList(cur.pc.cats, c.id); sfx('tap'); haptic('light'); p(); saveSoon(); }));
+        });
+      }
+      p();
+      sheet({ title: poss(name) + ' sections', node: el('div', null, [el('p', { class: 'muted', style: { margin: '0 0 6px' }, text: 'A section that’s off leaves ' + poss(name) + ' home screen, and its games won’t open.' }), box]), actions: [{ label: 'Done', cls: 'btn-soft' }], onClose: function () { paint(); } });
+    }
+    function kidGames() {
+      var q = el('input', { class: 'input', type: 'search', placeholder: 'Find a game', autocomplete: 'off', 'aria-label': 'Find a game' }), box = el('div', { class: 'k-ord kd-games' });
+      var all = (typeof GAMES !== 'undefined' ? GAMES : []).filter(function (g) { return !g.hidden; });
+      function p() {
+        var t = q.value.trim().toLowerCase(); box.innerHTML = '';
+        (typeof GAME_CATS !== 'undefined' ? GAME_CATS : [{ id: null, name: '' }]).forEach(function (c) {
+          var gs = all.filter(function (g) { return (c.id == null || g.cat === c.id) && (!t || g.name.toLowerCase().indexOf(t) >= 0); }); if (!gs.length) return;
+          var secOff = cur.pc.cats.indexOf(c.id) >= 0;
+          box.appendChild(el('div', { class: 'label k-sec', text: c.name + (secOff ? ' · section off' : '') }));
+          gs.forEach(function (g) {
+            var on = !secOff && cur.pc.games.indexOf(g.id) < 0;
+            box.appendChild(swRow(window.GameIcon ? GameIcon(g.id) : 'gamepad', g.name, secOff ? '' : on ? '' : 'Off for ' + name, on, function () { toggleList(cur.pc.games, g.id); sfx('tap'); haptic('light'); p(); saveSoon(); }, secOff));
+          });
+        });
+        if (!box.firstChild) box.appendChild(el('p', { class: 'muted', text: 'No game called that.' }));
+      }
+      q.addEventListener('input', p); p();
+      sheet({ title: poss(name) + ' games', node: el('div', null, [q, box]), actions: [{ label: 'Done', cls: 'btn-soft' }], onClose: function () { paint(); } });
+    }
+    s = sheet({ title: 'Parent controls', node: node, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+    load();
+  }
+  // a child answered, or a parent changed your controls: say so (on whatever screen)
+  window.addEventListener('fghkids', function (e) { var d = e.detail || {}; if (!d.name) return; toast(d.yes ? d.name + ' accepted. You’re their parent here.' : d.name + ' said no'); if (d.yes) { sfx('good'); haptic('success'); } });
   // Games others recorded with you, waiting for your OK
   function reviewSheet(onDone) {
     var list = window.FGHSync && FGHSync.linkPending ? FGHSync.linkPending() : [], box = el('div', { class: 'lk-rev' }), s;
@@ -3124,7 +3384,7 @@
   window.Kit = {
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
-    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip,
+    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
