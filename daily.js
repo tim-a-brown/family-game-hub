@@ -127,6 +127,27 @@ var Daily = window.Daily = (function () {
   // Other games add their own (the crossword adds its mini and big) with Daily.add(fn)
   function add(fn) { games.push(fn); }
 
+  // Your own order (gn_daily_order: [keys], a setting that follows your PIN). A puzzle you haven't placed yet keeps
+  // its usual spot relative to the ones around it
+  var ORDER = 'gn_daily_order';
+  function keyOf(r) { return r.id + (r.q ? ':' + r.q : ''); }
+  function saved() { try { var a = JSON.parse(localStorage.getItem(ORDER) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function sorted(items) {
+    var ord = saved(); if (!ord.length) return items;
+    var placed = items.filter(function (x) { return ord.indexOf(keyOf(x)) >= 0; }).sort(function (a, b) { return ord.indexOf(keyOf(a)) - ord.indexOf(keyOf(b)); });
+    items.forEach(function (x, i) {
+      if (ord.indexOf(keyOf(x)) >= 0) return;
+      // new ones go in after the puzzle they usually follow
+      var prev = null; for (var j = i - 1; j >= 0 && !prev; j--) if (ord.indexOf(keyOf(items[j])) >= 0) prev = items[j];
+      var at = prev ? placed.indexOf(prev) + 1 : 0; placed.splice(at, 0, x);
+    });
+    return placed;
+  }
+  function saveOrder(keys) {
+    var v = JSON.stringify(keys);
+    if (Kit.lsSet) Kit.lsSet(ORDER, v); else { try { localStorage.setItem(ORDER, v); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(ORDER); }
+  }
+
   function list() {
     var out = [];
     games.forEach(function (fn) {
@@ -137,10 +158,12 @@ var Daily = window.Daily = (function () {
         out.push(r);
       } catch (e) {}
     });
-    return out;
+    return sorted(out);
   }
 
-  // The sheet: today's date, how many are done, one row per game
+  // The sheet: today's date, how many are done, one row per game, in your order. Each row has a grip at its left:
+  // drag it up or down to put the puzzles in the order you like to do them (kept for your PIN)
+  var GRIP = '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg>';
   function open() {
     var el = Kit.el, items = list(), done = items.filter(function (x) { return x.status === 'done'; }).length;
     css();
@@ -151,12 +174,61 @@ var Daily = window.Daily = (function () {
       var right = x.status === 'done' ? el('span', { class: 'dly-st done', html: Kit.icon('check') + '<span>' + Kit.esc(x.note || 'Done') + '</span>' })
         : x.status === 'going' ? el('span', { class: 'dly-st going', text: x.note ? x.note : 'Keep going' })
         : el('span', { class: 'dly-st new', text: 'Play' });
-      box.appendChild(el('a', { class: 'dly-row' + (x.status === 'done' ? ' is-done' : ''), href: 'games/' + x.file, onclick: function () { Kit.sfx('pop'); try { sessionStorage.setItem('fgh_from_daily', '1'); } catch (e) {} } }, [
+      var row = el('a', { class: 'dly-row' + (x.status === 'done' ? ' is-done' : ''), href: 'games/' + x.file, 'data-k': keyOf(x), onclick: function (e) { if (box._dragged) { e.preventDefault(); return; } Kit.sfx('pop'); try { sessionStorage.setItem('fgh_from_daily', '1'); } catch (e2) {} } }, [
+        grip(),
         el('span', { class: 'gi', html: typeof GameIcon === 'function' ? GameIcon(x.id) : '' }),
         el('span', { class: 'tx' }, [el('b', { text: x.name }), el('small', { text: x.what })]),
         right
-      ]));
+      ]);
+      box.appendChild(row);
     });
+    // Drag a row by its grip: it lifts and follows the finger, the others slide out of its way, and it settles into
+    // the gap when let go. The new order is saved straight away
+    function grip() {
+      var g = el('span', { class: 'dly-grip', role: 'button', tabindex: '0', 'aria-label': 'Move (drag, or use the arrow keys)', html: GRIP });
+      var row = null, rows = null, i = 0, to = 0, y0 = 0, on = false, mid = [];
+      function keys() { return Array.prototype.map.call(box.querySelectorAll('.dly-row'), function (r) { return r.getAttribute('data-k'); }); }
+      function place(from, t) {
+        var all = Array.prototype.slice.call(box.querySelectorAll('.dly-row')), r = all[from];
+        if (t === from || !r) return;
+        var ref = all[t]; if (t > from) box.insertBefore(r, ref.nextSibling); else box.insertBefore(r, ref);
+        saveOrder(keys());
+      }
+      g.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); });
+      g.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        var all = Array.prototype.slice.call(box.querySelectorAll('.dly-row')), k = all.indexOf(g.parentNode), t = k + (e.key === 'ArrowUp' ? -1 : 1);
+        if (t < 0 || t >= all.length) return;
+        place(k, t); Kit.sfx('tap'); g.focus();
+      });
+      g.addEventListener('pointerdown', function (e) {
+        if (e.button > 0) return;
+        e.preventDefault(); try { g.setPointerCapture(e.pointerId); } catch (x) {}
+        row = g.parentNode; rows = Array.prototype.slice.call(box.querySelectorAll('.dly-row'));
+        i = to = rows.indexOf(row); y0 = e.clientY; on = true; box._dragged = false;
+        mid = rows.map(function (r) { var b = r.getBoundingClientRect(); return b.top + b.height / 2; });
+        row.classList.add('drag'); box.classList.add('dragging'); Kit.haptic('light');
+      });
+      g.addEventListener('pointermove', function (e) {
+        if (!on) return;
+        var dy = e.clientY - y0, c = mid[i] + dy, t = i, step = row.getBoundingClientRect().height + 8;
+        if (Math.abs(dy) > 4) box._dragged = true;
+        while (t < rows.length - 1 && c > mid[t + 1]) t++;
+        while (t > 0 && c < mid[t - 1]) t--;
+        row.style.transform = 'translateY(' + dy + 'px) scale(1.02)';
+        if (t !== to) { to = t; Kit.haptic('light'); Kit.sfx('tap'); }
+        rows.forEach(function (r, j) { if (j === i) return; var sh = (j > i && j <= to) ? -step : (j < i && j >= to) ? step : 0; r.style.transform = sh ? 'translateY(' + sh + 'px)' : ''; });
+      });
+      function end() {
+        if (!on) return; on = false;
+        rows.forEach(function (r) { r.style.transform = ''; }); row.classList.remove('drag'); box.classList.remove('dragging');
+        if (to !== i) { place(i, to); Kit.sfx('pop'); }
+        setTimeout(function () { box._dragged = false; }, 0);
+      }
+      g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+      return g;
+    }
     Kit.sheet({ title: 'Daily puzzles', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
   var cssDone = false;
@@ -167,6 +239,10 @@ var Daily = window.Daily = (function () {
       '.dly-sum{margin:0 2px 4px;color:var(--text-2);font-weight:700;font-size:.9rem;}' +
       '.dly-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;background:var(--surface-2);color:var(--text);text-decoration:none;-webkit-tap-highlight-color:transparent;}' +
       '.dly-row:active{transform:scale(.99);}' +
+      '.dly-row{transition:transform .18s ease;}.dly-row.drag{position:relative;z-index:3;transition:none;box-shadow:0 12px 30px rgba(0,0,0,.45),inset 0 0 0 1.5px color-mix(in srgb,var(--text) 18%,transparent);}' +
+      '.dly.dragging .dly-row:not(.drag){pointer-events:none;}' +
+      '.dly-grip{flex:none;display:grid;place-items:center;width:28px;height:52px;margin:-6px -6px -6px -6px;border-radius:10px;color:var(--text-3);cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none;}' +
+      '.dly-grip .ico{width:24px;height:24px;}.dly-row.drag .dly-grip,.dly-grip:active{cursor:grabbing;color:var(--text);}' +
       '.dly-row .gi{flex:none;width:44px;height:44px;border-radius:12px;overflow:hidden;}.dly-row .gi svg{width:100%;height:100%;display:block;}' +
       '.dly-row .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}' +
       '.dly-row .tx b{font-weight:800;}.dly-row .tx small{color:var(--text-2);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
