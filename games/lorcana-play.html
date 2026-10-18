@@ -5613,12 +5613,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (t.sel === 'prev') return 'that card';
     if (t.sel === 'ctx') return t.key === 'att' ? 'the challenging character' : 'the challenged character';
     var f = t.f || {}, w = [];
-    if (t.sel === 'chosen') w.push(t.upTo >= 99 ? 'any number of chosen' : t.exact ? (f.other ? 'another ' : '') + t.exact + ' chosen' : t.upTo ? 'up to ' + t.upTo + ' chosen' : f.other ? 'another chosen' : 'chosen');
+    if (t.sel === 'chosen') w.push(t.upTo >= 99 ? 'any number of chosen' : t.exact > 1 ? (f.other ? 'another ' : '') + t.exact + ' chosen' : t.exact ? (f.other ? 'another chosen' : 'chosen') : t.upTo ? 'up to ' + t.upTo + ' chosen' : f.other ? 'another chosen' : 'chosen');
     else w.push(t.side === 'mine' ? (f.other ? 'your other' : 'your') : 'each');
     if (t.side === 'opp') w.push('opposing');
     ['damaged', 'exerted', 'ready', 'undamaged'].forEach(function (k) { if (f[k]) w.push(k); });
     if (f.cls) w.push(f.cls);
-    w.push(t.types.join(' or ') + ((t.sel === 'all' && t.side === 'mine') || t.upTo > 1 ? 's' : ''));
+    w.push(t.types.join(' or ') + ((t.sel === 'all' && t.side === 'mine') || (t.exact ? t.exact > 1 : t.upTo > 1) ? 's' : ''));
     if (t.sel === 'chosen' && t.side === 'mine') w.push('of yours');
     if (f.named) w.push('named ' + f.named.replace(/\|/g, ' or '));
     if (f.maxS != null) w.push('with ' + f.maxS + ' strength or less'); if (f.minS != null) w.push('with ' + f.minS + ' strength or more');
@@ -5654,14 +5654,19 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         return applyChosen(e, st, [best.u], cb);
       }
       var multi = e.t.upTo && e.t.upTo > 1;
+      // an exact number: as many as can be chosen when there are fewer (the prompt and Done count say that many), and
+      // no Skip: it isn't optional (only "up to" and "may" are)
+      var ex = e.t.exact ? Math.min(e.t.exact, legal.length) : 0, eT = e;
+      if (ex && ex < e.t.exact) { eT = {}; for (var k3 in e) eT[k3] = e[k3]; eT.t = {}; for (var k4 in e.t) eT.t[k4] = e.t[k4]; eT.t.exact = ex; }
+      var skipOk = optional || (e.t.upTo && !ex);
       startPick({
-        title: title + ': ' + effText(e), src: st.src,
+        title: title + ': ' + effText(eT), src: st.src,
         ok: function (x) { return legal.indexOf(x) >= 0; },
         bad: function (x) { return C(x).o !== pi && hasKw(x, 'ward') && fits(x, e.t, st.src, pi) ? nm(x) + ' has Ward: effects can’t choose it' : ''; },
-        skip: optional || e.t.upTo ? 'Skip' : null, must: !(optional || e.t.upTo),
+        skip: skipOk ? 'Skip' : null, must: !skipOk,
         cancel: function () { cb(false); },
-        multi: multi ? { max: e.t.totalS != null ? null : e.t.exact || e.t.upTo, min: e.t.exact ? Math.min(e.t.exact, legal.length) : 1, need: function (sel) { if (e.t.totalS != null && sel.reduce(function (a, u) { return a + STR(u); }, 0) > e.t.totalS) return false; return e.t.exact ? sel.length === Math.min(e.t.exact, legal.length) : sel.length >= 1 && sel.length <= e.t.upTo; },
-          label: function (sel) { if (e.t.totalS != null) { var ts = sel.reduce(function (a, u) { return a + STR(u); }, 0); return ts > e.t.totalS ? 'Too much strength: ' + ts + ' of ' + e.t.totalS : 'Done · ' + ts + ' of ' + e.t.totalS + ' strength'; } return 'Done (' + sel.length + '/' + e.t.upTo + ')'; }, go: function (sel) { applyChosen(e, st, sel, cb); } } : null,
+        multi: multi ? { max: e.t.totalS != null ? null : ex || e.t.upTo, min: ex || 1, need: function (sel) { if (e.t.totalS != null && sel.reduce(function (a, u) { return a + STR(u); }, 0) > e.t.totalS) return false; return ex ? sel.length === ex : sel.length >= 1 && sel.length <= e.t.upTo; },
+          label: function (sel) { if (e.t.totalS != null) { var ts = sel.reduce(function (a, u) { return a + STR(u); }, 0); return ts > e.t.totalS ? 'Too much strength: ' + ts + ' of ' + e.t.totalS : 'Done · ' + ts + ' of ' + e.t.totalS + ' strength'; } return 'Done (' + sel.length + '/' + (ex || e.t.upTo) + ')'; }, go: function (sel) { applyChosen(e, st, sel, cb); } } : null,
         done: function (x) { applyChosen(e, st, [x], cb); }
       });
       return;
