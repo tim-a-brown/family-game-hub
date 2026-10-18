@@ -144,6 +144,9 @@
 .tag .lk{position:absolute;right:calc(var(--u)*-4);bottom:calc(var(--u)*-3);display:grid;place-items:center;width:calc(var(--u)*13);height:calc(var(--u)*13);border-radius:50%;background:#5b8cff;color:#fff;box-shadow:0 0 0 1.5px rgba(10,20,15,.9);}
 .tag .lk .ico{width:72%;height:72%;stroke-width:3;}
 .tag.own .nm small{color:#b9cdff;}
+/* a frequent player's own bankroll on this account: the same, with a person badge */
+.tag .lk.pl,.st .lkb.pl{background:#8b6cf0;}
+.tag.own.pl .nm small{color:#d6caff;}
 .tag .nm small.in{animation:bjIn .9s ease-out;}
 @keyframes bjIn{0%{transform:scale(1.35);color:#ffd54a;}100%{transform:none;}}
 .tight .tag{gap:3px;padding:2px 7px 2px 2px;}
@@ -250,8 +253,8 @@
       '<li>Split up to 3 times (4 hands). Split Aces get one card each and can\'t be split again. 21 after a split counts as 21, not blackjack.</li>' +
       '<li>Bets from $1 to $1,000. Odd blackjack payouts are rounded down to the dollar.</li></ul>' +
       '<h3>Whose money</h3><p>Pick <b>Money</b> in setup when several people play on this device.</p><ul>' +
-      '<li><b>Bankrolls</b>: you play from the casino bank shared by all the casino games. A player linked to their own profile brings their own bankroll (the amount their app last shared), and what they win or lose goes back to it when the session is saved. If they tap <b>Not me</b>, it doesn\'t count. Anyone else, and the computer players, get $1,000 in chips for the session.</li>' +
-      '<li>Playing as someone else? They get $1,000 in play money; your bankroll isn\'t touched. Only the seat with your name plays from the casino bank.</li>' +
+      '<li><b>Bankrolls</b>: you play from the casino bank shared by all the casino games. A player linked to their own profile brings their own bankroll (the amount their app last shared), and what they win or lose goes back to it when the session is saved. If they tap <b>Not me</b>, it doesn\'t count. A frequent player has their own bankroll on this account (reset it from their seat when it runs out). Anyone else, a seat without a name, and the computer players get $1,000 in chips for the session.</li>' +
+      '<li>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money. Only the seat with your name plays from your bankroll.</li>' +
       '<li><b>Table money</b>: everyone, you too, starts with the same amount ($500 to $10,000). Nobody\'s bankroll changes. Run out and you can buy back in for the same amount.</li></ul>' +
       '<p>Turn on the hint button in setup to see what basic strategy says, with an optional card-counting coach.</p>'
   });
@@ -261,7 +264,9 @@
   //   'mine'  your casino bank (casino_bank, synced), read directly so a bank of exactly $0 isn't mistaken for "never set"
   //   'link'  a linked player's own bankroll, as they last published it (b0); what they win or lose (bk in the
   //           record) goes to their bankroll when their device files the game (sync.js)
-  //   'chips' $1,000 in session chips (computer seats, and people whose bankroll isn't known)
+  //   'player' a frequent player's own bankroll on this account (casino_pb_<name>, synced with the PIN; the same
+  //           key casino.js uses), read and written directly like 'mine'
+  //   'chips' $1,000 in session chips (computer seats, unnamed seats, and people whose bankroll isn't known)
   //   'table' Table money: everyone starts with the same amount and no bankroll changes
   // Sessions saved before seats had a src: seat 1 is 'mine', the rest 'chips'.
   var STAKES = [500, 1000, 5000, 10000];
@@ -271,21 +276,27 @@
   function setRaw(n) {
     try { localStorage.setItem('casino_bank', String(Math.max(0, Math.round(n)))); if (typeof FGHSync !== 'undefined' && FGHSync.noteWrite) FGHSync.noteWrite('casino_bank'); } catch (e) {}
   }
+  function pbKey(n) { return 'casino_pb_' + (String(n || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'x'); }
+  function pbGet(n) { try { var o = JSON.parse(localStorage.getItem(pbKey(n))); return o && typeof o.bal === 'number' ? Math.max(0, o.bal) : 1000; } catch (e) { return 1000; } }
+  function pbSet(n, v) {
+    try { localStorage.setItem(pbKey(n), JSON.stringify({ name: String(n).trim(), bal: Math.max(0, Math.round(v)) })); if (typeof FGHSync !== 'undefined' && FGHSync.noteWrite) FGHSync.noteWrite(pbKey(n)); } catch (e) {}
+  }
   function srcOf(i) { var s = S.seats[i]; return s.src || (i === 0 ? 'mine' : 'chips'); }
-  function bank(i) { return srcOf(i) === 'mine' ? rawBank() : S.seats[i].bank; }
-  function adj(i, a) { if (!a) return; if (srcOf(i) === 'mine') setRaw(rawBank() + a); else S.seats[i].bank += a; }
+  function bank(i) { var k = srcOf(i); return k === 'mine' ? rawBank() : k === 'player' ? pbGet(S.seats[i].name) : S.seats[i].bank; }
+  function adj(i, a) { if (!a) return; var k = srcOf(i); if (k === 'mine') setRaw(rawBank() + a); else if (k === 'player') pbSet(S.seats[i].name, pbGet(S.seats[i].name) + a); else S.seats[i].bank += a; }
   function mineSeat() { for (var i = 0; i < S.seats.length; i++) if (srcOf(i) === 'mine') return i; return -1; }
-  function bankWord(i) { var k = srcOf(i); return k === 'mine' ? 'Bank' : k === 'link' ? Kit.poss(S.seats[i].name) + ' bankroll' : k === 'table' ? 'Table money' : S.seats[i].cpu ? 'Chips' : 'Play money'; }
-  // Short label by a seat's amount; a linked player's own bankroll carries the same link badge as their seat
-  function moneyLabel(i) { return srcOf(i) === 'link' ? '<span class="lkb">' + Kit.icon('link') + '</span>Bankroll' : Kit.esc(bankWord(i)); }
+  function bankWord(i) { var k = srcOf(i); return k === 'mine' ? 'Bank' : k === 'link' || k === 'player' ? Kit.poss(S.seats[i].name) + ' bankroll' : k === 'table' ? 'Table money' : S.seats[i].cpu ? 'Chips' : 'Play money'; }
+  // Short label by a seat's amount; a linked player's own bankroll carries the same link badge as their seat, a
+  // frequent player's a person badge
+  function moneyLabel(i) { var k = srcOf(i); return k === 'link' || k === 'player' ? '<span class="lkb' + (k === 'player' ? ' pl' : '') + '">' + Kit.icon(k === 'link' ? 'link' : 'user') + '</span>Bankroll' : Kit.esc(bankWord(i)); }
   function isMe(n) {
     var k = String(n || '').trim().toLowerCase(); if (!k) return false;
     var me = ''; try { me = (localStorage.getItem('my_name') || '').trim().toLowerCase(); } catch (e) {}
     if (!me) try { me = String(FGHSync.label() || '').trim().toLowerCase(); } catch (e) {}
     return !!me && k === me;
   }
-  // you (or an unnamed seat, or a device with no name set): plays from the casino bank
-  function isMain(n) { return /^(you|player \d+)$/i.test(String(n || '').trim()) || Casino.isMain(n); }
+  // you (or, on a device with no name set, anyone named; never a seat without a name): plays from the casino bank
+  function isMain(n) { return Casino.isMain(n); }
   function linkedBank(n) { try { return FGHSync.linkBank(n); } catch (e) { return null; } }
   function isLinked(n) { try { return !!FGHSync.linkOf(n); } catch (e) { return false; } }
   function money(n) { n = Math.round(n); return (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US'); }
@@ -336,12 +347,16 @@
     if (S) { var m = mineSeat(); Kit.resume.set('Hand ' + (S.round + (S.phase === 'bet' ? 1 : 0)) + (m >= 0 ? ' · bank ' + money(bank(m)) : S.money === 'table' ? ' · table money' : '')); }
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
-  function snapshot() { undoStack.push({ s: JSON.stringify(S), b: rawBank() }); if (undoStack.length > 30) undoStack.shift(); }
+  function snapshot() {
+    var pb = {}; S.seats.forEach(function (s, i) { if (srcOf(i) === 'player') pb[s.name] = pbGet(s.name); });
+    undoStack.push({ s: JSON.stringify(S), b: rawBank(), pb: pb }); if (undoStack.length > 30) undoStack.shift();
+  }
   function clearUndo() { undoStack = []; }
   function undo() {
     if (!S || !undoStack.length) return Kit.toast('Nothing to undo right now');
     var u = undoStack.pop(); token++;
     S = JSON.parse(u.s); if (mineSeat() >= 0) setRaw(u.b);
+    Object.keys(u.pb || {}).forEach(function (n) { pbSet(n, u.pb[n]); });
     Cards.shuffle(S.shoe);   // no peeking at the card you just undid
     markSeen(); Kit.sfx('whoosh'); Kit.toast('Undone');
     save(); render(); resumeFlow();
@@ -371,7 +386,7 @@
     S = null; token++; clearUndo(); app.innerHTML = ''; setupRef = null;
     try { FGHSync.linkPoll(); } catch (e) {}   // fresh bankrolls for linked players (at most every 20 seconds)
     setupRef = Kit.setup(app, {
-      intro: 'You play from your casino bank: ' + money(rawBank()) + '. Anyone else gets $1,000 in play money.',
+      intro: 'You play from your casino bank: ' + money(rawBank()) + '. Frequent players play from their own; anyone else gets $1,000 in play money.',
       modes: [
         { id: 'cpu', icon: 'bot', title: 'With computer players', desc: 'Extra seats are played by the computer' },
         { id: 'pass', icon: 'phone', title: 'Pass and play', desc: 'Everyone takes their turn on this device' }
@@ -383,7 +398,7 @@
         { id: 'surr', label: 'Late surrender', help: 'Surrender means giving up a bad hand and getting half your bet back.', value: 'off', choices: [['off', 'Off', 'You can’t surrender; every hand is played out.'], ['late', 'On', 'After the dealer checks for blackjack, you can give up your first two cards and keep half your bet.']] },
         { id: 'coach', label: 'Strategy help', value: 'hint', choices: [['off', 'Off', 'No help: you play on your own.'], ['hint', 'Hint button', 'A light bulb button shows the best play by basic strategy.'], ['count', 'Hints + count', 'Hints, plus a card-counting coach that shows the count and changes the advice when it matters.']] },
         { id: 'money', label: 'Money', value: 'bank', when: function (m) { return m === 'pass'; }, help: 'Where everyone’s money comes from.',
-          choices: [['bank', 'Bankrolls', 'You play from your casino bank. Players linked to their own profile bring their bankroll, and what they win or lose goes back to it. Anyone else gets $1,000 in chips.'],
+          choices: [['bank', 'Bankrolls', 'You play from your casino bank. Frequent players play from their own bankroll on this account; players linked to their own profile bring theirs, and what they win or lose goes back to it. Anyone else gets $1,000 in chips.'],
             ['table', 'Table money', 'Everyone, you too, starts with the same amount. Nobody’s bankroll changes.']] },
         { id: 'stake', label: 'Everyone starts with', value: 1000, when: function (m) { return m === 'pass' && moneyPick() === 'table'; },
           choices: STAKES.map(function (v) { return [v, money(v)]; }) }
@@ -395,8 +410,9 @@
   function startSession(players, mode, o) {
     token++; clearUndo(); Kit.gameStart();
     // Money: Table money (pass and play only) gives everyone the same stake. Otherwise you play from your casino
-    // bank (only the seat with your name; seat 1 when this device has no name), linked players from their own
-    // bankroll, anyone else $1,000 in play money (session chips). No seat with your name: the bank isn't touched.
+    // bank (only the seat with your name), linked players from their own bankroll, frequent players from theirs on
+    // this account, anyone else (or a seat without a name) $1,000 in play money (session chips). No seat with your
+    // name: the bank isn't touched.
     var table = mode === 'pass' && players.length > 1 && o.money === 'table';
     var stake = STAKES.indexOf(+o.stake) >= 0 ? +o.stake : 1000;
     var lb = players.map(function (p) { return !table && !p.cpu && !isMe(p.name) ? linkedBank(p.name) : null; });
@@ -407,9 +423,9 @@
       opt: { decks: +o.decks || 6, h17: o.soft17 === 'h17', surr: o.surr === 'late', coach: o.coach || 'hint' },
       money: table ? 'table' : 'bank', stake: stake,
       seats: players.map(function (p, i) {
-        var src = table ? 'table' : i === mine ? 'mine' : lb[i] ? 'link' : 'chips';
-        var b = src === 'mine' ? null : src === 'table' ? stake : src === 'link' ? lb[i].bank : SEAT_STACK;
-        var s = { name: p.name, cpu: !!p.cpu, src: src, bank: b, b0: src === 'mine' ? rawBank() : b, last: 0, rebuys: 0,
+        var src = table ? 'table' : i === mine ? 'mine' : lb[i] ? 'link' : !p.cpu && Casino.isFrequent(p.name) && !isMe(p.name) && !/^(|you|me|player\s*\d*|p\d)$/i.test(String(p.name || '').trim()) ? 'player' : 'chips';
+        var b = src === 'mine' || src === 'player' ? null : src === 'table' ? stake : src === 'link' ? lb[i].bank : SEAT_STACK;
+        var s = { name: p.name, cpu: !!p.cpu, src: src, bank: b, b0: src === 'mine' ? rawBank() : src === 'player' ? pbGet(p.name) : b, last: 0, rebuys: 0,
           st: { hands: 0, won: 0, lost: 0, push: 0, bj: 0, net: 0, best: 0, bestRound: 0, streak: 0, bestStreak: 0, doubles: 0, splits: 0 } };
         if (src === 'link') s.code = lb[i].code;
         return s;
@@ -428,6 +444,8 @@
     });
     // guests at the table: play money, and the bank is safe unless your seat is here
     var guests = table ? [] : S.seats.filter(function (s) { return s.src === 'chips' && !s.cpu && !isLinked(s.name); }).map(function (s) { return s.name; });
+    var own = table ? [] : S.seats.filter(function (s) { return s.src === 'player'; }).map(function (s) { return s.name; });
+    if (own.length) said.push(own.slice(0, -1).join(', ') + (own.length > 1 ? ' and ' : '') + own[own.length - 1] + (own.length > 1 ? ' play from their own bankrolls' : ' plays from ' + Kit.poss(own[0]) + ' own bankroll'));
     if (guests.length) said.push(guests.slice(0, -1).join(', ') + (guests.length > 1 ? ' and ' : '') + guests[guests.length - 1] + (guests.length > 1 ? ' play' : ' plays') + ' with play money' + (mine < 0 ? ' · your bankroll isn’t touched' : ''));
     if (said.length) { Kit.sfx('chip'); Kit.toast(said.join(' · '), 4200); }
   }
@@ -499,10 +517,11 @@
     snapshot();
     var s = S.seats[i], k = srcOf(i);
     if (k === 'mine') Casino.reset();
+    else if (k === 'player') pbSet(s.name, SEAT_STACK);   // resets their bankroll on this account to $1,000
     else if (k === 'link') { s.r = (s.r || 0) + SEAT_STACK - Math.max(0, s.bank); s.bank = SEAT_STACK; }   // resets their bankroll to $1,000 (filed as a reset, r)
     else s.bank += k === 'table' ? S.stake : SEAT_STACK;
     s.rebuys++;
-    Kit.sfx('chip'); Kit.toast(k === 'mine' ? 'Casino bank reset to $1,000' : k === 'link' ? Kit.poss(s.name) + ' bankroll reset to $1,000' : k === 'table' ? s.name + ' bought back in for ' + money(S.stake) : s.name + ' got $1,000 more play money');
+    Kit.sfx('chip'); Kit.toast(k === 'mine' ? 'Casino bank reset to $1,000' : k === 'link' || k === 'player' ? Kit.poss(s.name) + ' bankroll reset to $1,000' : k === 'table' ? s.name + ' bought back in for ' + money(S.stake) : s.name + ' got $1,000 more play money');
     save(); render();
   }
 
@@ -1113,7 +1132,7 @@
     recordSession();
     var hands = S.rounds.length, prev = S, sub = [hands + ' hands'];
     if (mineSeat() >= 0) sub.push('bank now ' + money(rawBank()));
-    seats.forEach(function (s) { if (s.src === 'link') sub.push(Kit.poss(s.name) + ' bankroll ' + money(s.bank)); });
+    seats.forEach(function (s) { if (s.src === 'link') sub.push(Kit.poss(s.name) + ' bankroll ' + money(s.bank)); else if (s.src === 'player') sub.push(Kit.poss(s.name) + ' bankroll ' + money(pbGet(s.name))); });
     clearSave(); token++;
     var rank = seats.map(function (s, i) { return { name: s.name, score: signed(nets[i]), n: nets[i], color: Kit.color(i) }; }).sort(function (a, b) { return b.n - a.n; });
     var n0 = nets[0];
@@ -1153,6 +1172,7 @@
     S.seats.forEach(function (s, i) {
       if (s.src === 'link') out.push(s.name + ' plays from their own bankroll (' + money(s.b0) + ' at the start). What they win or lose goes back to it when the session is saved.');
       else if (s.src === 'mine' && humans().length > 1) out.push(s.name + ' plays from the casino bank.');
+      else if (s.src === 'player') out.push(s.name + ' plays from their own bankroll on this account (' + money(s.b0) + ' at the start).');
       else if (s.src === 'chips' && !s.cpu) out.push(s.name + ' plays with $1,000 in play money.');
     });
     return out.join(' ');
@@ -1273,11 +1293,11 @@
       if (S.phase === 'bet' || !mine.length) hands.appendChild(betSpot(i));
       else mine.forEach(function (h) { hands.appendChild(handEl(h, mine.indexOf(h) > 0, cw, u)); });
       seat.appendChild(hands);
-      var shown = bank(i) - (S.phase === 'bet' ? S.bets[i] : 0), own = srcOf(i) === 'link';
+      var shown = bank(i) - (S.phase === 'bet' ? S.bets[i] : 0), own = srcOf(i) === 'link' || srcOf(i) === 'player', pl = srcOf(i) === 'player';
       var av = el('span', { class: 'avatar', style: { '--c': Kit.color(i) }, html: s.cpu ? Kit.icon('bot') : Kit.esc(s.name.charAt(0).toUpperCase()) });
       var amt = el('small', { text: money(shown) });
-      seat.appendChild(el('div', { class: 'tag' + (own ? ' own' : ''), title: own ? Kit.poss(s.name) + ' own bankroll' : null }, [
-        own ? el('span', { class: 'av' }, [av, el('span', { class: 'lk', html: Kit.icon('link') })]) : av,
+      seat.appendChild(el('div', { class: 'tag' + (own ? ' own' : '') + (pl ? ' pl' : ''), title: own ? Kit.poss(s.name) + ' own bankroll' : null }, [
+        own ? el('span', { class: 'av' }, [av, el('span', { class: 'lk' + (pl ? ' pl' : ''), html: Kit.icon(pl ? 'user' : 'link') })]) : av,
         el('span', { class: 'nm' }, [el('b', { text: s.name }), amt])
       ]));
       // first look at the table: each stack counts up as the money arrives
@@ -1413,8 +1433,8 @@
       status([who(i), el('span', { text: humans().length > 1 ? Kit.poss(s.name) + ' bet' : 'Your bet' })], el('span', { class: 'big', text: money(S.bets[i]) }));
       if (bank(i) < 1) {
         var sk = srcOf(i);
-        c.appendChild(el('p', { class: 'muted center', text: sk === 'mine' ? 'The casino bank is empty.' : sk === 'link' ? Kit.poss(s.name) + ' bankroll is empty.' : s.name + (sk === 'table' ? ' is out of chips.' : ' is out of play money.') }));
-        acts([btn(sk === 'mine' ? 'Reset bank to $1,000' : sk === 'link' ? 'Reset ' + Kit.poss(s.name) + ' bankroll to $1,000' : sk === 'table' ? 'Buy back in for ' + money(S.stake) : '$1,000 more play money', 'btn-yellow', function () { rebuy(i); })], 1);
+        c.appendChild(el('p', { class: 'muted center', text: sk === 'mine' ? 'The casino bank is empty.' : sk === 'link' || sk === 'player' ? Kit.poss(s.name) + ' bankroll is empty.' : s.name + (sk === 'table' ? ' is out of chips.' : ' is out of play money.') }));
+        acts([btn(sk === 'mine' ? 'Reset bank to $1,000' : sk === 'link' || sk === 'player' ? 'Reset ' + Kit.poss(s.name) + ' bankroll to $1,000' : sk === 'table' ? 'Buy back in for ' + money(S.stake) : '$1,000 more play money', 'btn-yellow', function () { rebuy(i); })], 1);
       } else {
         // Chip rack: drag a chip into a betting circle, or tap one to add it to the selected seat
         var rk = Casino.rack({

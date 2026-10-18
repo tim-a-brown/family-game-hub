@@ -168,6 +168,7 @@ body.in-scene .stage{overflow:visible;}
 .setup .modes.slot-cards .mode .ok{position:absolute;top:8px;right:8px;}
 @media (min-width:700px) and (orientation:portrait){ .stage{max-width:640px;} .setup .modes.slot-cards .mode .e{height:200px;} }
 .czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
+.czlk.pl{background:#8b6cf0;}
 .czlk .ico{width:.85em!important;height:.85em!important;color:#fff!important;stroke-width:3;}
 </style>
 </head>
@@ -1445,7 +1446,7 @@ window.dispatchEvent(new Event('cab3d-ready'));
       'Worked out exactly from the reels, the machines pay back: Diamond Sevens <b>' + pct(RTP.classic.rtp) + '</b>, Buffalo Stampede <b>' + pct(RTP.buffalo.rtp) + '</b>, Cleo\'s Gold <b>' + pct(RTP.cleo.rtp) +
       '</b> and Dragon\'s Fortune <b>' + pct(RTP.dragon.rtp) + '</b> of everything bet, over a very long time. The house keeps the rest, so treat it as fun money.</p>' +
       '<h3>Your bankroll</h3><p>Your money is shared by every casino game. Tap Spin again while the reels turn to stop them early. <b>Cash out</b> ends a session and saves it to Past sessions.</p>' +
-      '<p>Playing as someone else? They get $1,000 in play money; your bankroll isn\u2019t touched. A player linked to their own profile plays from their own bankroll.</p>';
+      '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money.</p>';
   }
   Kit.init({ orient: 'portrait',
     id: 'slots',
@@ -1471,31 +1472,36 @@ window.dispatchEvent(new Event('cab3d-ready'));
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function load() { try { return JSON.parse(localStorage.getItem(SAVE)); } catch (e) { return null; } }
-  // ── Whose money (casino.js): you play from your bankroll, a player linked to their own profile from theirs,
-  // anyone else from $1,000 in play money (your bankroll isn't touched). Called when a session starts and resumes.
+  // ── Whose money (casino.js): your bankroll; a player linked to their own profile plays from theirs; a frequent
+  // player from their own bankroll on this account; anyone else, or a seat without a name, from $1,000 in play
+  // money for this game (your bankroll isn't touched). Called when a session starts and when one resumes.
+  function noName(name) { return /^(|you|me|player\s*\d*|p\d)$/i.test(String(name || '').trim()); }
   function moneyFor(name, fresh) {
-    var m = Casino.forPlayer(/^(you|player \d+)$/i.test(String(name || '').trim()) ? '' : name);   // an unnamed seat is you, as before
-    if (fresh && m === 'play') Kit.toast(name + ' plays with play money · your bankroll isn’t touched', 3600);
-    else if (fresh && m === 'link') Kit.toast('Playing from ' + Kit.poss(name) + ' bankroll', 3000);
+    var m = Casino.forPlayer(name || 'Player 1');
+    if (fresh && m === 'play') Kit.toast((noName(name) ? 'No name picked: play money' : name + ' plays with play money') + ' · your bankroll isn’t touched', 3600);
+    else if (fresh && (m === 'link' || m === 'player')) Kit.toast('Playing from ' + Kit.poss(name) + ' bankroll', 3000);
     return m;
   }
-  function bankLabel(name) { var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'link' ? Kit.poss(name) + ' bankroll' : 'Bankroll'; }
-  // short: a narrow HUD box, where a linked player's money reads "[link] Jamie's"
-  function bankLabelHtml(name, short) { var lk = Casino.mode() === 'link'; return (lk ? '<span class="czlk">' + Kit.icon('link') + '</span>' : '') + Kit.esc(lk && short ? Kit.poss(name) : bankLabel(name)); }
-  function bankWords(name) { var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'link' ? Kit.poss(name) + ' bankroll' : 'your bankroll'; }
+  function bankLabel(name) { var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'mine' ? 'Bankroll' : Kit.poss(name) + ' bankroll'; }
+  // a linked player's money carries the link badge, a frequent player's a person badge; short: a narrow HUD box ("Jamie's")
+  function bankLabelHtml(name, short) {
+    var m = Casino.mode(), own = m === 'link' || m === 'player';
+    return (own ? '<span class="czlk' + (m === 'player' ? ' pl' : '') + '">' + Kit.icon(m === 'link' ? 'link' : 'user') + '</span>' : '') + Kit.esc(own && short ? Kit.poss(name) : bankLabel(name));
+  }
+  function bankWords(name) { var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'mine' ? 'your bankroll' : Kit.poss(name) + ' bankroll'; }
   function myBankroll() { try { var v = localStorage.getItem('casino_bank'), n = parseInt(v, 10); return v == null || v === '' || isNaN(n) ? 1000 : Math.max(0, n); } catch (e) { return 1000; } }
   // The out-of-money sheet and the reset menu item, in the words for whoever is playing
   function topUp(name) {
     var m = Casino.mode(), p = Kit.poss(name);
-    return m === 'play' ? { title: 'Out of play money', body: name + ' is out of play money. Have another $1,000?', btn: '$1,000 more play money', done: name + ' has $1,000 in play money', menu: 'Reset play money to $1,000', ask: 'Reset play money to $1,000?', why: 'Only the play money changes; your bankroll isn’t touched.' }
-      : m === 'link' ? { title: 'Out of chips', body: p + ' bankroll is empty. Start fresh with $1,000?', btn: 'Reset ' + p + ' bankroll to $1,000', done: p + ' bankroll is $1,000', menu: 'Reset ' + p + ' bankroll to $1,000', ask: 'Reset ' + p + ' bankroll to $1,000?', why: 'This resets ' + p + ' own bankroll, the one their app shares.' }
+    return m === 'play' ? { title: 'Out of play money', body: (noName(name) ? 'Out of play money.' : name + ' is out of play money.') + ' Have another $1,000?', btn: '$1,000 more play money', done: '$1,000 in play money', menu: 'Reset play money to $1,000', ask: 'Reset play money to $1,000?', why: 'Only the play money changes; your bankroll isn’t touched.' }
+      : m !== 'mine' ? { title: 'Out of chips', body: p + ' bankroll is empty. Start fresh with $1,000?', btn: 'Reset ' + p + ' bankroll to $1,000', done: p + ' bankroll is $1,000', menu: 'Reset ' + p + ' bankroll to $1,000', ask: 'Reset ' + p + ' bankroll to $1,000?', why: m === 'link' ? 'This resets ' + p + ' own bankroll, the one their app shares.' : 'This resets ' + p + ' own bankroll on this account.' }
       : { title: 'Out of chips', body: 'Your bankroll is empty. Start fresh with $1,000?', btn: 'Reset bankroll to $1,000', done: 'Bankroll is $1,000', menu: 'Reset bankroll to $1,000', ask: 'Reset bankroll to $1,000?', why: 'The bankroll is shared with every casino game.' };
   }
   // For the history record: a linked player's carries their bankroll change (once per record); a guest's is marked play money
   function casinoMeta(meta) { return Object.assign(meta || {}, Casino.linkRecord(0)); }
   function playTag(d) { if (Casino.mode() === 'play') d.play = 1; return d; }
   // Back at the setup screen (that session is filed): your bankroll again, so the setup text and the menu show yours
-  function moneyHome() { if (Casino.mode() !== 'mine') Casino.forPlayer(''); }
+  function moneyHome() { Casino.home(); }
   function prefs() { try { return JSON.parse(localStorage.getItem(PREFS)) || {}; } catch (e) { return {}; } }
   function savePrefs() { try { var p = prefs(); p[S.mode] = { li: S.li, bi: S.bi }; localStorage.setItem(PREFS, JSON.stringify(p)); } catch (e) {} }
 
@@ -1775,7 +1781,7 @@ window.dispatchEvent(new Event('cab3d-ready'));
     var net = S.won - S.wagered - (spinning && pendingWin ? pendingWin : 0);
     // whose money: a linked player's pill carries the link badge; a guest's session reads "Play money"
     var mo = Casino.mode(), who = dom.bank.children[0];
-    who.firstChild.innerHTML = mo === 'link' ? '<span class="czlk">' + Kit.icon('link') + '</span>' : Kit.icon('user');
+    who.firstChild.innerHTML = mo === 'link' || mo === 'player' ? '<span class="czlk' + (mo === 'player' ? ' pl' : '') + '">' + Kit.icon(mo === 'link' ? 'link' : 'user') + '</span>' : Kit.icon('user');
     who.title = mo === 'mine' ? '' : bankLabel(S.name);
     who.lastChild.textContent = S.name;
     dom.bank.children[1].innerHTML = (mo === 'play' ? '<span class="pm">Play money</span>' : 'Session ') + '<b class="' + (net > 0 ? 'up' : net < 0 ? 'down' : '') + '">' + signed(net) + '</b>';
