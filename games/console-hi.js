@@ -241,7 +241,7 @@ var ConsoleHi = (function () {
   }
 
   // ── The boards for the High Scores page: games on the shelf and on the home screen that keep a score ──
-  // [{key, name, short, sys, art, id, game}], one per game (two copies of a game share its board), A to Z
+  // [{key, name, short, sys, art, id, game, logo}] (logo: the game's wide title logo, from games/), one per game (two copies of a game share its board), A to Z
   function boards() {
     var idx = [], vis = {};
     try { idx = JSON.parse(localStorage.getItem('gn_console_idx') || '[]') || []; } catch (e) {}
@@ -252,7 +252,7 @@ var ConsoleHi = (function () {
       if (!c || !c.id || !shown(c.id)) return;
       var g = mapFor(c); if (!g) return;
       var k = keyOf(g);
-      if (!by[k] || (!by[k].art && c.art)) by[k] = { key: k, name: g.name, short: g.short || g.name.toUpperCase(), sys: g.sys, art: c.art || null, id: c.id, game: g.key };
+      if (!by[k] || (!by[k].art && c.art)) by[k] = { key: k, name: g.name, short: g.short || g.name.toUpperCase(), sys: g.sys, art: c.art || null, id: c.id, game: g.key, logo: '../img/consoles/logos/' + g.key + '.png' };
     });
     return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.name.localeCompare(b.name, 'en', { numeric: true }); });
   }
