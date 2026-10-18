@@ -34,7 +34,12 @@ if ('serviceWorker' in navigator) {
     if (document.visibilityState === 'visible' && swReg) { try { swReg.update(); } catch (e) {} }
   });
   var swIdle = function () { return !document.querySelector('.k-scrim, .lkm') && !(document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)); };
-  var swGo = function () { if (!swReload) return; if (swIdle()) { swReload = false; location.reload(); } };
+  // (not while a game is opening: the reload would cancel it. That page loads the new version anyway.) The reload
+  // starts at the top, so the pinned search bar isn't restored halfway down the page.
+  var swLeaving = false;
+  window.addEventListener('pagehide', function () { swLeaving = true; });
+  window.addEventListener('pageshow', function () { swLeaving = false; });
+  var swGo = function () { if (!swReload || swLeaving || window.__leaving) return; if (swIdle()) { swReload = false; try { window.scrollTo(0, 0); } catch (e) {} location.reload(); } };
   navigator.serviceWorker.addEventListener('controllerchange', function () {
     if (!hadSW) { hadSW = true; return; }   // first install: nothing old is running
     swReload = true; swGo();
@@ -784,6 +789,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   function go(file, fresh) {
     Kit.sfx('pop'); var h = String(file).split('#'), f = /\.html/.test(h[0]) ? h[0] : h[0] + '.html';
     if (fresh && state.who && state.who !== 'any') f += (f.indexOf('?') >= 0 ? '&' : '?') + 'np=' + state.who;
+    window.__leaving = true; setTimeout(function () { window.__leaving = false; }, 4000);   // (an app update waits: see swGo)
     location.href = 'games/' + f + (h[1] ? '#' + h[1] : '');
   }
   // Lorcana's cards lean and catch the light with the phone's tilt: iPhone asks for motion access
@@ -1969,7 +1975,14 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
 
   document.addEventListener('fghsync:updated', function () { render(); });
-  window.addEventListener('pageshow', function (e) { if (e.persisted) render(); openDailyIfAsked(); });
+  window.addEventListener('pageshow', function (e) { if (e.persisted) render(); openDailyIfAsked(); reseatFilters(); });
+  // iPad can bring the page back (back from a game, a reload) with the pinned search bar drawn partway down the
+  // screen until the next scroll: lay it out again
+  function reseatFilters() {
+    var f = $('filters'); if (!f) return;
+    requestAnimationFrame(function () { f.style.position = 'relative'; void f.offsetHeight; f.style.position = ''; try { window.dispatchEvent(new Event('scroll')); } catch (e) {} });
+  }
+  window.addEventListener('load', function () { setTimeout(reseatFilters, 300); });
   render();
   // a daily puzzle's win screen sends players back here with "Daily puzzles": reopen the list
   function openDailyIfAsked() {
