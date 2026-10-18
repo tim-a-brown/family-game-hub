@@ -13,6 +13,7 @@
 //        Casino.linkRecord(seat)     for a linked player's session: {bk: {seat: {s, e, c}}} to merge into the
 //                                    Kit.record entry (sync.js sends the change to their bankroll); {} otherwise.
 //                                    Each call covers the money since the last one, so record as often as you like.
+//                                    Casino.reset() for a linked player resets their bankroll (to $1,000) the same way.
 //        Casino.isMain(name)         is this you (the name this device plays as, or the PIN's account name)
 //        Casino.playMoney()          true while someone other than you plays (play money or a linked bankroll)
 
@@ -60,7 +61,8 @@ const Casino = (function(){
   function linkRecord(seat){
     if(!PLAY || !PLAY.link) return {};
     var o = {}; o[seat || 0] = { s: PLAY.s0, e: Math.max(0, PLAY.bal), c: PLAY.link };
-    PLAY.s0 = Math.max(0, PLAY.bal); playSave();
+    if(PLAY.r) o[seat || 0].r = PLAY.r;
+    PLAY.s0 = Math.max(0, PLAY.bal); PLAY.r = 0; playSave();
     return { bk: o };
   }
 
@@ -148,7 +150,9 @@ const Casino = (function(){
   }
 
   function reset(){
-    if(PLAY){ if(PLAY.link){ PLAY.s0 -= PLAY.bal - DEFAULT; } PLAY.bal = DEFAULT; playSave(); return; }
+    // a linked player's reset is theirs: it goes to their bankroll with the next record (r: the amount it added),
+    // and their bankroll history shows it as a reset
+    if(PLAY){ if(PLAY.link) PLAY.r = (PLAY.r || 0) + (DEFAULT - Math.max(0, PLAY.bal)); PLAY.bal = DEFAULT; playSave(); return; }
     flush();
     var from = balance();
     save(DEFAULT);

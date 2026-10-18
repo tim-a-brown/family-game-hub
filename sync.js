@@ -1557,25 +1557,28 @@
   // (start and end of your bankroll there, and the profile code it was taken for). Filing the game changes your
   // casino bank by that much (never below $0) and adds a line to your bankroll history; "Not me" takes it back.
   var LEDGER = 'gh_casino_ledger';
-  function tableDelta(e){
+  // (r: part of the change was a reset of your bankroll, done at their table when you ran out: logged as a reset)
+  function tableDelta(e, withReset){
     var code = e && e._from && e._from.code;
     if(!code || !e.bk || typeof e.bk !== 'object' || !Array.isArray(e.players)) return null;
     for(var i = 0; i < e.players.length; i++){
       var p = e.players[i], b = e.bk[i];
       if(!p || p.link !== code || !b || b.c !== code) continue;
-      var d = Math.round(Number(b.e) - Number(b.s));
-      return isFinite(d) ? d : null;
+      var d = Math.round(Number(b.e) - Number(b.s)), r = Math.round(Number(b.r) || 0);
+      if(!isFinite(d)) return null;
+      return withReset ? { d: d, r: isFinite(r) && r > 0 ? r : 0 } : d;
     }
     return null;
   }
   function tableBank(e, rev){
-    var d = tableDelta(e); if(!d) return false;
+    var x = tableDelta(e, true); if(!x || (!x.d && !x.r)) return false;
     var g = null; try{ if(typeof findGame === 'function') g = findGame(e.game); }catch(err){}
     var info = { gid: e._id || '', game: e.game || '', name: g ? g.name : String(e.game || 'Casino'), table: e._from.by || e._from.from || 'Someone', rev: !!rev };
-    var delta = rev ? -d : d;
+    var play = x.d - x.r, ok = false;
     // casino.js (casino pages, home) also keeps its running session right; elsewhere the bank is written here
-    if(typeof Casino !== 'undefined' && Casino.applyRemote) return Casino.applyRemote(delta, info);
-    return bankRemote(delta, info);
+    if(play) ok = typeof Casino !== 'undefined' && Casino.applyRemote ? Casino.applyRemote(rev ? -play : play, info) : bankRemote(rev ? -play : play, info);
+    if(x.r) ok = bankRemote(rev ? -x.r : x.r, { gid: info.gid ? info.gid + ':r' : '', game: info.game, name: info.name, table: info.table, rev: !!rev, reset: true }) || ok;
+    return ok;
   }
   // Change casino_bank by delta and log it in the bankroll history (same formats as casino.js). Once per game:
   // a game id already in the history isn't applied again, and taking one back needs it to have been applied.
@@ -1589,7 +1592,8 @@
     var start = myBank(), end = Math.max(0, start + delta), now = Date.now();
     try{ LS.setItem('casino_bank', String(end)); }catch(e){ return false; }
     noteWrite('casino_bank');
-    list.push({ _date: now, kind: 'session', game: info.game || '', name: info.name || 'Casino', start: start, end: end, net: end - start,
+    if(info.reset) list.push({ _date: now, kind: 'reset', from: start, end: end, game: info.game || '', table: String(info.table || 'Someone').slice(0, 40), gid: info.gid || '', rev: !!info.rev });
+    else list.push({ _date: now, kind: 'session', game: info.game || '', name: info.name || 'Casino', start: start, end: end, net: end - start,
       wagered: 0, won: 0, bets: 0, best: 0, t0: now, table: String(info.table || 'Someone').slice(0, 40), gid: info.gid || '', rev: !!info.rev });
     list.sort(function(a, b){ return (b._date || 0) - (a._date || 0); });
     if(list.length > 300) list.length = 300;
