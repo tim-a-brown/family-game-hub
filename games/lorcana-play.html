@@ -7943,11 +7943,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       prev.innerHTML = ''; prev.appendChild(framer(m));
       unders.innerHTML = '';
       UNDER.forEach(function (x) { unders.appendChild(el('button', { type: 'button', class: x.u === view ? 'on' : '', 'aria-pressed': String(x.u === view), text: x.name, onclick: function () { setUnder(x.u); } })); });
+      // (picking a card redraws the strips: each one stays scrolled where it was, not back at the start)
+      var keepX = Array.prototype.map.call(body.querySelectorAll('.art-strip'), function (r) { return r.scrollLeft; });
       body.innerHTML = '';
       if (view === 'a') {
         body.appendChild(q); body.appendChild(found); paintFound();
         var mine = deckArt(cur);
         if (mine.length) { body.appendChild(el('div', { class: 'label', text: seats.length > 1 ? S.P[cur].name + '’s deck' : solo ? 'Your last deck' : 'Your deck' })); body.appendChild(artRow(mine)); }
+        Array.prototype.forEach.call(body.querySelectorAll('.art-strip'), function (r, i) { if (keepX[i]) r.scrollLeft = keepX[i]; });
       } else if (view === 't') {
         var tr = el('div', { class: 'mat-grid tex-grid' });
         TEX.forEach(function (t, ti) { tr.appendChild(matSwatch(matWith(m, { u: 't', tex: t.k }), m.u === 't' && m.tex === t.k, function () { Kit.sfx('tap'); put({ u: 't', tex: t.k }); }, { url: so.url, who: W, defer: texC[t.k] ? 0 : 40 + ti * 60 }, t.name)); });
