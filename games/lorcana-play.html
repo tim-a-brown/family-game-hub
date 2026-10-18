@@ -370,24 +370,21 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
   background:linear-gradient(115deg,transparent 46%,rgba(255,248,226,.11) 48.6%,rgba(255,255,255,.24) 50%,rgba(255,248,226,.11) 51.4%,transparent 54%) no-repeat;
   background-size:calc(var(--bw,400px) * 4) calc(var(--bh,300px) * 4);
   background-position:calc(var(--bw,400px) * (var(--lx,.5) - 2) - var(--ox,0px)) calc(var(--bh,300px) * (var(--ly,.5) - 2) - var(--oy,0px));}
-.drips{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;border-radius:inherit;}
-.drips::before{content:'';position:absolute;left:0;right:0;top:0;height:calc(var(--cu) * .04);opacity:.92;
-  background:radial-gradient(circle at 50% 0,color-mix(in srgb,var(--inkc) 80%,#fff) 0,var(--inkc) 45%,color-mix(in srgb,var(--inkc) 75%,#000) 62%,transparent 66%) 0 0/calc(var(--cu) * .075) 100% repeat-x;
-  filter:drop-shadow(0 1px 1px rgba(0,0,0,.4));}
-.drips i{position:absolute;top:calc(var(--cu) * .02);left:16%;width:calc(var(--cu) * .052);height:calc(var(--cu) * .29);opacity:0;
-  --dd:4.4s;--dl:0s;--ink:linear-gradient(90deg,color-mix(in srgb,var(--inkc) 70%,#000),var(--inkc) 40%,color-mix(in srgb,var(--inkc) 55%,#fff) 58%,var(--inkc) 75%);
-  animation:dripO var(--dd) cubic-bezier(.55,0,.65,1) var(--dl) infinite;}
-/* the run of ink grows down (scaled, not resized, so the phone doesn't re-lay the page every frame) with its bead riding the end */
-.drips i::before{content:'';position:absolute;left:0;right:0;top:0;height:100%;border-radius:0 0 999px 999px;background:var(--ink);transform-origin:50% 0;transform:scaleY(0);
-  animation:dripS var(--dd) cubic-bezier(.55,0,.65,1) var(--dl) infinite;}
-.drips i::after{content:'';position:absolute;left:50%;top:calc(var(--cu) * -.038);width:calc(var(--cu) * .062);height:calc(var(--cu) * .072);margin-left:calc(var(--cu) * -.031);
-  border-radius:50% 50% 50% 50%/60% 60% 42% 42%;background:var(--ink);box-shadow:inset -1px -2px 2px rgba(0,0,0,.28),inset 1px 1px 2px rgba(255,255,255,.55);
-  animation:dripB var(--dd) cubic-bezier(.55,0,.65,1) var(--dl) infinite;}
-.drips i:nth-child(2){left:56%;width:calc(var(--cu) * .04);--dl:1.5s;--dd:5.1s;}
-.drips i:nth-child(3){left:81%;--dl:2.8s;--dd:4.8s;}
-@keyframes dripO{0%{opacity:0;}8%{opacity:.95;}86%{opacity:.95;}100%{opacity:0;}}
-@keyframes dripS{0%{transform:scaleY(0);}60%{transform:scaleY(.7586);}86%{transform:scaleY(.931);}100%{transform:scaleY(1);}}
-@keyframes dripB{0%{transform:translateY(0);}60%{transform:translateY(calc(var(--cu) * .22));}86%{transform:translateY(calc(var(--cu) * .27));}100%{transform:translateY(calc(var(--cu) * .29));}}
+.drips{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;border-radius:inherit;color:var(--inkc);}
+/* Wet ink as a liquid: the shapes run through a goo filter (blurred, then the edge sharpened again) so a bead and its
+   run neck and merge like real ink, then lit from the top left for a wet gloss (lzInk, in inkDefs) */
+.drips svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.drips .dg{filter:url(#lzInk);}
+.drips .dr-run,.drips .dr-bead{transform-box:fill-box;}
+.drips .dr-run{transform-origin:50% 0;transform:scaleY(0);animation:drRun var(--dd) cubic-bezier(.45,0,.6,1) var(--dl) infinite;}
+.drips .dr-bead{transform-origin:50% 50%;animation:drBead var(--dd) cubic-bezier(.45,0,.6,1) var(--dl) infinite;}
+.drips .dr-lip{animation:drLip 3.6s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:50% 0;}
+/* the run creeps down with its bead swelling at the tip; the bead's neck stretches, it lets go and falls away, and the
+   run that's left soaks back into the card */
+@keyframes drRun{0%{transform:scaleY(0);opacity:1;}12%{transform:scaleY(.04);}58%{transform:scaleY(.7);}82%{transform:scaleY(.9);}88%{transform:scaleY(.84);opacity:1;}100%{transform:scaleY(.8);opacity:0;}}
+@keyframes drBead{0%{transform:translateY(0) scale(.35);opacity:1;}12%{transform:translateY(calc(var(--L) * .04px)) scale(1);}58%{transform:translateY(calc(var(--L) * .7px)) scale(1);}
+  82%{transform:translateY(calc(var(--L) * .9px)) scale(1.06,1.18);}88%{transform:translateY(calc(var(--L) * 1.3px)) scale(.92,1.25);opacity:1;}100%{transform:translateY(calc(var(--L) * 2.6px)) scale(.8,1.1);opacity:0;}}
+@keyframes drLip{from{transform:scaleY(1);}to{transform:scaleY(1.18);}}
 /* Ink dried: a varnish glint sweeps across */
 .slot.dried .lc::before{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;
   background:linear-gradient(115deg,rgba(255,236,170,0) 38%,rgba(255,244,205,.9) 50%,rgba(255,236,170,0) 62%) 0 0/300% 100%;animation:glint .85s ease-out forwards;}
@@ -471,7 +468,7 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .orb::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#fff 0,#fff1c2 30%,#f6c450 60%,#b8862a);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);}
 .orb.drain::before{background:linear-gradient(135deg,#bbb,#6b6478 60%,#3a3446);}
 .orb.drain{filter:drop-shadow(0 0 4px rgba(120,100,160,.8));}
-@media (prefers-reduced-motion:reduce){.slot.dry .lc::after,.drips i,.drips i::before,.drips i::after{animation:none;}.lp-board.shake{animation:none;}}
+@media (prefers-reduced-motion:reduce){.slot.dry .lc::after{animation:none;}.drips .dr-run,.drips .dr-bead,.drips .dr-lip{animation-play-state:paused;}.lp-board.shake{animation:none;}}
 .slot.sel .lc{box-shadow:0 0 0 3px var(--gilt-2),0 0 18px rgba(246,225,168,.8);}
 .slot.can .lc{box-shadow:0 0 0 2px rgba(246,225,168,.75),0 4px 10px rgba(0,0,0,.45);}
 /* Something to choose: a ring of light that breathes, the same on every card (light or dark art, still-wet ink or
@@ -1231,9 +1228,7 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 @keyframes lzArriveFade{from{opacity:0;}}
 .lorc-saver .lz.arrive .lz-in > .lz-flow,.lorc-saver .lz.arrive .lz-in > .lz-info,.lorc-saver .lz.arrive .lz-in > .lz-acts{animation:lzArriveFade .25s ease-out both!important;}   /* battery saver: a plain fade */
 @media (prefers-reduced-motion:reduce){.lz.arrive .lz-in > .lz-flow,.lz.arrive .lz-in > .lz-info,.lz.arrive .lz-in > .lz-acts{animation:lzArriveFade .2s ease-out both;}}
-.lorc-saver .drips i{animation:none;opacity:.95;}
-.lorc-saver .drips i::before{animation:none;transform:scaleY(.7586);}
-.lorc-saver .drips i::after{animation:none;transform:translateY(calc(var(--cu) * .22));}
+.lorc-saver .drips .dr-run,.lorc-saver .drips .dr-bead,.lorc-saver .drips .dr-lip{animation-play-state:paused;}   /* held mid-drip */
 .lorc-saver .bsh,.lorc-saver .tsheen,.lorc-saver .rglint,.lorc-saver .wshim,.lorc-saver .wspark,.lorc-saver .sp::before{display:none!important;}   /* no sheen at all */
 .lorc-saver .lz-info,.lorc-saver .wshim,.lorc-saver .wspark,.lorc-saver .rgem::after,.lorc-saver .lz-bm.tall.on .rib .glint{animation:none!important;}
 .lorc-saver .fchip.on::after,.lorc-saver .iwt.on::after,.lorc-saver .adv-pick.on::after,.lorc-saver .pk-row.on::after,.lorc-saver .sort-row.on::after{animation:none;}
@@ -7012,7 +7007,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   var lastCfg = null;
   function showSetup() {
     tok++; ui.screen = 'setup'; closeOverlays(); Kit.handoff.close();
-    document.documentElement.classList.remove('lp-on'); app.className = 'stage';
+    document.documentElement.classList.remove('lp-on'); Kit.orient(null); app.className = 'stage';
     var st = Kit.setup(app, {
       title: 'Lorcana', mode: ui.launchMode || undefined, modeLocked: !!ui.launchMode,
       modes: [
@@ -7055,7 +7050,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     tok++; ui.screen = 'decks'; closeOverlays(); ui.noCasual = !casualOK(cfg);
     // a casual deck picked last time isn't allowed in this game: back to a random deck
     choices = (choices || lastChoices(cfg)).map(function (ch) { var d = ch && ch.kind === 'saved' ? savedDecks().filter(function (x) { return x.id === ch.id; })[0] : null; return d && ui.noCasual && isCasual(d) ? { kind: 'random' } : ch; });
-    document.documentElement.classList.remove('lp-on'); app.className = 'stage full';
+    document.documentElement.classList.remove('lp-on'); Kit.orient(null); app.className = 'stage full';
     app.innerHTML = '';
     var wrap = el('div', { class: 'dk' });
     wrap.appendChild(el('h1', { text: 'Choose Decks' }));
@@ -8401,7 +8396,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (board) {
       var ks = kwList(u);
       if (ks.length) h += '<div class="kws">' + ks.slice(0, 4).map(function (k) { return '<i title="' + KWNAME[k] + '">' + kwIcon(k) + '</i>'; }).join('') + '</div>';
-      if (d.t === 'character' && !c.dry && S.phase === 'play') h += '<span class="drips" aria-hidden="true"><i></i><i></i><i></i></span>';
+      if (d.t === 'character' && !c.dry && S.phase === 'play') h += '<span class="drips" aria-hidden="true">' + dripsSVG(u) + '</span>';
       if ((c.mods || []).some(function (m) { return m.cant; })) h += '<span class="chains" aria-hidden="true"></span>';
       if (c.dmg) h += '<span class="dmg">' + c.dmg + '</span>';
 
@@ -8769,6 +8764,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function render() {
     if (!S) return;
     document.documentElement.classList.add('lp-on');
+    Kit.orient('portrait');   // phones: two boards and a hand need the height (the library and decks turn freely)
     var lp = $('.lp', app);
     if (!lp) { app.innerHTML = ''; app.className = 'stage full'; lp = buildShell(); app.appendChild(lp); }
     layoutVars();
@@ -10425,6 +10421,42 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     for (var j = Math.max(0, base - 6); j <= Math.min(n - 1, base + 6); j++) { var dd = defAt(j); if (dd && dd.im && dd.im.l) { var im = new Image(); im.decoding = 'async'; im.src = dd.im.l; } }
     return F;
   }
+  // Still-wet ink, drawn on the card's own shape (720 x 1000): an uneven wet lip along the top edge and three runs, each
+  // with a bead at its tip. Where they sit and how long they run come from the card, so each card drips its own way
+  // and the same card drips the same on the table and in the card view; the clock keeps both in step across redraws
+  function inkDefs() {
+    if (document.getElementById('lzInkDefs')) return;
+    var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.id = 'lzInkDefs'; s.setAttribute('aria-hidden', 'true'); s.setAttribute('width', '0'); s.setAttribute('height', '0'); s.style.position = 'absolute';
+    s.innerHTML = '<defs><filter id="lzInk" x="-20%" y="-20%" width="140%" height="160%" color-interpolation-filters="sRGB">' +
+      '<feGaussianBlur in="SourceGraphic" stdDeviation="11.5" result="b"/>' +
+      '<feColorMatrix in="b" type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 24 -10" result="goo"/>' +
+      '<feGaussianBlur in="goo" stdDeviation="9" result="gb"/>' +
+      '<feSpecularLighting in="gb" surfaceScale="9" specularConstant="1.5" specularExponent="30" lighting-color="#fff" result="sp"><fePointLight x="-240" y="-360" z="600"/></feSpecularLighting>' +
+      '<feComposite in="sp" in2="goo" operator="in" result="spi"/>' +
+      '<feComponentTransfer in="goo" result="deep"><feFuncR type="linear" slope=".78"/><feFuncG type="linear" slope=".78"/><feFuncB type="linear" slope=".78"/></feComponentTransfer>' +
+      '<feComposite in="goo" in2="deep" operator="arithmetic" k1="0" k2=".55" k3=".45" k4="0" result="ink"/>' +
+      '<feComposite in="ink" in2="spi" operator="arithmetic" k1="0" k2="1" k3=".9" k4="0" result="lit"/>' +
+      '<feDropShadow in="lit" dx="0" dy="5" stdDeviation="4.5" flood-color="#000" flood-opacity=".5"/>' +
+      '</filter></defs>';
+    document.body.appendChild(s);
+  }
+  function dripsSVG(u) {
+    inkDefs();
+    var h = 0, k = String(u || ''); for (var i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
+    var rnd = function () { h = (h * 1103515245 + 12345) >>> 0; return (h >>> 8) / 16777216; };
+    var lip = '<rect x="-30" y="-40" width="780" height="50"/>';
+    for (var x = 15; x < 720; x += 42 + rnd() * 24) lip += '<circle cx="' + x.toFixed(0) + '" cy="' + (4 + rnd() * 8).toFixed(1) + '" r="' + (12 + rnd() * 11).toFixed(1) + '"/>';
+    var runs = '', now = Date.now() / 1000;
+    [[100, 240], [380, 540], [600, 680]].forEach(function (span, j) {
+      var x = span[0] + rnd() * (span[1] - span[0]), w = 23 + rnd() * 14, L = 160 + rnd() * 160, dd = 4.6 + rnd() * 1.8;
+      var dl = -(((now / dd) + j / 3 + rnd() * .12) % 1) * dd;   // a third of a drip apart
+      var st = ' style="--dd:' + dd.toFixed(2) + 's;--dl:' + dl.toFixed(2) + 's;--L:' + L.toFixed(0) + '"';
+      runs += '<rect class="dr-run"' + st + ' x="' + (x - w / 2).toFixed(1) + '" y="0" width="' + w.toFixed(1) + '" height="' + L.toFixed(0) + '" rx="' + (w / 2).toFixed(1) + '"/>' +
+        '<circle class="dr-bead"' + st + ' cx="' + x.toFixed(1) + '" cy="12" r="' + (w * .78).toFixed(1) + '"/>';
+    });
+    return '<svg viewBox="0 0 720 1000" preserveAspectRatio="none" fill="currentColor"><g class="dg"><g class="dr-lip">' + lip + '</g>' + runs + '</g></svg>';
+  }
   // A card's details panel, as the card view shows it (used to measure how tall it will be)
   function infoOf(x) { var dx = DD(x), zx = zoneOf(x); return headHTML(dx) + defMeta(dx, x) + statusHTML(x, zx) + '<div class="rtext">' + rulesHTML(dx) + kwHelpHTML(dx, zx && zx.z === 'board' ? x : null) + '</div>'; }
   // A character still drying on the table: its big card and carousel card get the wet ink and drips too
@@ -10434,7 +10466,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var z = zoneOf(u); if (!z || z.z !== 'board') return;
     node.classList.add('wet'); node.style.setProperty('--inkc', inkColor(u));
     node.appendChild(el('span', { class: 'wetfx', 'aria-hidden': 'true' }));
-    node.appendChild(el('span', { class: 'drips', 'aria-hidden': 'true', html: '<i></i><i></i><i></i>' }));
+    node.appendChild(el('span', { class: 'drips', 'aria-hidden': 'true', html: dripsSVG(u) }));
   }
   function openZoom(u, dir) {
     if (ui.cp && !ui.cp.fin) { Kit.sfx('tap'); ui.cp.show(); return; }
@@ -11517,7 +11549,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // ── Deck manager: every saved deck (tap to edit; ⋯ to copy or delete), plus New deck and export/import ──
   function showDeckManager(back) {
     tok++; ui.screen = 'decks-mgr'; closeOverlays(); Kit.handoff.close();
-    document.documentElement.classList.remove('lp-on'); app.className = 'stage full';
+    document.documentElement.classList.remove('lp-on'); Kit.orient(null); app.className = 'stage full';
     app.innerHTML = '';
     var again = function () { showDeckManager(back); };
     var wrap = el('div', { class: 'dk dkm' });
@@ -11586,7 +11618,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function showBuilder(deckId, back, o) {
     var lib = !!(o && o.library);
     tok++; ui.screen = 'builder'; closeOverlays(); Kit.handoff.close();
-    document.documentElement.classList.remove('lp-on'); app.className = 'stage full';
+    document.documentElement.classList.remove('lp-on'); Kit.orient(null); app.className = 'stage full';
     layoutVars();
     app.innerHTML = '';
     if (DB.status !== 'ready') {
@@ -13262,7 +13294,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function netWaitScreen(code, host) {
     tok++; ui.screen = 'netwait'; closeOverlays(); Kit.handoff.close();
-    document.documentElement.classList.remove('lp-on'); app.className = 'stage full'; app.innerHTML = '';
+    document.documentElement.classList.remove('lp-on'); Kit.orient(null); app.className = 'stage full'; app.innerHTML = '';
     var wrap = el('div', { class: 'dk' });
     wrap.appendChild(el('h1', { text: host ? 'Your Table Is Open' : 'Joining the Table' }));
     if (host) { wrap.appendChild(el('p', { class: 'net-note', style: { 'text-align': 'center' }, text: 'Table code' })); wrap.appendChild(el('div', { class: 'net-code', text: code })); }
@@ -13283,7 +13315,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function showLobby() {
     tok++; resetQ(); netStop(false); lobbyOff(); ui.screen = 'lobby'; closeOverlays(); Kit.handoff.close(); S = null;
-    document.documentElement.classList.remove('lp-on'); app.className = 'stage full'; app.innerHTML = '';
+    document.documentElement.classList.remove('lp-on'); Kit.orient(null); app.className = 'stage full'; app.innerHTML = '';
     var wrap = el('div', { class: 'dk' });
     wrap.appendChild(el('h1', { text: 'Play Online' }));
     app.appendChild(wrap);
@@ -13381,7 +13413,18 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   var rz = 0;
   function onResize() {
     if (rz) return;
-    rz = requestAnimationFrame(function () { rz = 0; if (S && ui.screen === 'game') render(); else layoutVars(); lzResize(); });
+    rz = requestAnimationFrame(function () { rz = 0; if (S && ui.screen === 'game') { render(); redrag(); } else layoutVars(); lzResize(); });
+  }
+  // A card held up while the device turns: the table was laid out again, so it is held from its new slot and the
+  // places it can go light up again where they are now
+  function redrag() {
+    if (!drag || !drag.on) return;
+    (drag.drops || []).forEach(function (t) { t.node.classList.remove('tgt-ok', 'drop-ok', 'hover-drop'); });
+    var s = $('.lp .slot[data-uid="' + drag.u + '"][data-ctx="' + drag.ctx + '"]');
+    if (s) { drag.s = s; s.classList.add('drag-src'); if (drag.g) drag.g.style.setProperty('--cu', getComputedStyle(s).getPropertyValue('--cu') || '100px'); }
+    drag.drops = dragTargets(drag.u, drag.ctx); drag.hover = null;
+    drag.drops.forEach(function (t) { t.node.classList.add(t.slot ? 'tgt-ok' : 'drop-ok'); });
+    var lp = $('.lp'); if (lp) lp.classList.add('picking');
   }
   // An open card view after the device turns: it switches to the other layout where it was built for one (the actions
   // between the card and its details when stacked, under the cards on the right when side by side; the stacked
