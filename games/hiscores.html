@@ -392,6 +392,11 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     start: function () { startAttract(); },
     toggleAttract: function () { var on = !attractOn(); try { localStorage.setItem('hs_attract', on ? '1' : '0'); } catch (e) {} Kit.toast(on ? 'Attract mode on' : 'Attract mode off'); }
   };
+  // boards for games in a section switched off in Preferences don't show (console boards go with Consoles)
+  if (Kit.catOn) (function () {
+    var keep = BOARDS.filter(function (b) { var bg = String(b.game || ''), bc = /^console_/.test(bg) ? 'console' : (typeof findGame === 'function' && findGame(bg) || {}).cat; return !bc || Kit.catOn(bc); });
+    if (keep.length) { BOARDS.length = 0; keep.forEach(function (b) { BOARDS.push(b); }); }   // (all of them off: show them anyway rather than nothing)
+  })();
   try { var saved = localStorage.getItem('gn_hiscores_sel'); BOARDS.forEach(function (b, i) { if (b.key === saved) cur = i; }); } catch (e) {}
   // #key picks that board; #game picks the game (its last board, as before); an exact key wins
   var wi = -1; BOARDS.forEach(function (b, i) { if (want && (b.key === want || b.game === want)) wi = i; });

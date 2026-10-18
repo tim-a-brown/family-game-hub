@@ -2234,6 +2234,71 @@
     var peek = setInterval(function () { if (document.visibilityState === 'visible' && FGHSync.linkPeek) FGHSync.linkPeek(); }, 3000);
     sheet({ title: 'Request sent', node: node, actions: [{ label: 'Done', primary: true }], onClose: function () { clearInterval(peek); window.removeEventListener('fghlinks', onLinks); } });
   }
+  // ── Drag to reorder a list: a grip on each row; drag it and the row lifts and follows the finger, the others slide
+  // out of its way, and it settles into the gap when let go. Near the top or bottom of a scrolling sheet the list
+  // scrolls itself (faster nearer the edge). Arrow keys on the grip move it one place. rowSel picks the rows in box;
+  // onMove(from, to) after the row has moved in the page. Returns a function that makes a grip for a row.
+  var GRIP_SVG = '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg>';
+  function dragGrip(box, rowSel, onMove, cls) {
+    function all() { return Array.prototype.slice.call(box.querySelectorAll(rowSel)); }
+    function place(from, t) {
+      var rs = all(), r = rs[from];
+      if (t === from || !r) return;
+      var ref = rs[t]; ref.parentNode.insertBefore(r, t > from ? ref.nextSibling : ref);
+      if (onMove) onMove(from, t);
+    }
+    return function () {
+      var g = el('span', { class: cls || 'k-grip', role: 'button', tabindex: '0', 'aria-label': 'Move (drag, or use the arrow keys)', html: GRIP_SVG });
+      var row = null, rows = null, i = 0, to = 0, on = false, mid = [], sc = null, st0 = 0, yc0 = 0, lastY = 0, raf = 0, stMax = 0;
+      function rowOf() { var n = g; while (n && n.parentNode !== box && !(n.matches && n.matches(rowSel))) n = n.parentNode; return n; }
+      g.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); });
+      g.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        var rs = all(), k = rs.indexOf(rowOf()), t = k + (e.key === 'ArrowUp' ? -1 : 1);
+        if (k < 0 || t < 0 || t >= rs.length) return;
+        place(k, t); sfx('tap'); g.focus();
+      });
+      function scroller() { for (var n = box.parentNode; n && n !== doc.body; n = n.parentNode) { var oy = getComputedStyle(n).overflowY; if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight + 1) return n; } return doc.scrollingElement; }
+      function update() {
+        // the row stays within the list, and takes the next place once it's past halfway to it
+        var st = sc.scrollTop, dy = Math.max(mid[0] - mid[i], Math.min(mid[mid.length - 1] - mid[i], lastY + st - yc0)), c = mid[i] + dy, t = i;
+        if (Math.abs(dy) > 4) box._dragged = true;
+        while (t < rows.length - 1 && c > (mid[t] + mid[t + 1]) / 2) t++;
+        while (t > 0 && c < (mid[t] + mid[t - 1]) / 2) t--;
+        row.style.transform = 'translateY(' + dy + 'px) scale(1.02)';
+        if (t !== to) { to = t; haptic('light'); sfx('tap'); }
+        rows.forEach(function (r, j) { if (j === i) return; var sh = (j > i && j <= to) ? mid[j - 1] - mid[j] : (j < i && j >= to) ? mid[j + 1] - mid[j] : 0; r.style.transform = sh ? 'translateY(' + sh + 'px)' : ''; });
+      }
+      function tick() {
+        raf = 0; if (!on) return;
+        var r = sc === doc.scrollingElement ? { top: 0, bottom: innerHeight } : sc.getBoundingClientRect(), edge = 80, v = 0;
+        if (lastY > r.bottom - edge) v = Math.min(1, (lastY - (r.bottom - edge)) / edge);
+        else if (lastY < r.top + edge) v = -Math.min(1, ((r.top + edge) - lastY) / edge);
+        if (v) { var b = sc.scrollTop; sc.scrollTop = Math.max(0, Math.min(stMax, b + v * 16)); if (sc.scrollTop !== b) update(); }   // (never past the list's own end)
+        raf = requestAnimationFrame(tick);
+      }
+      g.addEventListener('pointerdown', function (e) {
+        if (e.button > 0) return;
+        e.preventDefault(); try { g.setPointerCapture(e.pointerId); } catch (x) {}
+        row = rowOf(); rows = all(); if (!row || rows.indexOf(row) < 0) return;
+        sc = scroller(); st0 = sc.scrollTop; stMax = sc.scrollHeight - sc.clientHeight; lastY = e.clientY; yc0 = e.clientY + st0;
+        i = to = rows.indexOf(row); on = true; box._dragged = false;
+        mid = rows.map(function (r) { var b = r.getBoundingClientRect(); return b.top + b.height / 2 + st0; });   // (in list coordinates, so scrolling doesn't throw them off)
+        row.classList.add('drag'); box.classList.add('dragging'); haptic('light');
+        if (!raf) raf = requestAnimationFrame(tick);
+      });
+      g.addEventListener('pointermove', function (e) { if (!on) return; lastY = e.clientY; update(); });
+      function end() {
+        if (!on) return; on = false; if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        rows.forEach(function (r) { r.style.transform = ''; }); row.classList.remove('drag'); box.classList.remove('dragging');
+        if (to !== i) { place(i, to); sfx('pop'); }
+        setTimeout(function () { box._dragged = false; }, 0);
+      }
+      g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+      return g;
+    };
+  }
   // ── Game timer: a countdown set in Preferences that ends gaming on this device ──
   // fgh_timer {end, lock, mins} (this device, whoever is signed in). Nothing shows until the last two minutes: then
   // a small countdown sits in the game's top bar (or a slim pill at the top of the screen where there's no bar), out
@@ -2341,21 +2406,19 @@
     var list = (typeof GAMES !== 'undefined' ? GAMES : []).filter(function (g) { return !g.hidden && setupPageOf(g); });
     // Home screen sections: move them up and down; Favorites always stays first
     var ord = el('div', { class: 'k-ord' });
-    function moveCat(i, d) {
-      var cs = catsOrdered().map(function (c) { return c.id; }), j = i + d; if (j < 0 || j >= cs.length) return;
-      var t = cs[i]; cs[i] = cs[j]; cs[j] = t; lsSet('gn_cat_order', JSON.stringify(cs)); sfx('tap'); haptic('light'); paintOrd();
+    // drag a section by its grip into the order you like (the same feel as the Daily puzzles list)
+    var ordGrip = dragGrip(ord, '.k-ord-row.mv', function () {
+      lsSet('gn_cat_order', JSON.stringify(Array.prototype.map.call(ord.querySelectorAll('.k-ord-row.mv'), function (r) { return r.getAttribute('data-id'); })));
       try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
-    }
+      paintOrd();
+    }, 'k-ord-grip');
     function paintOrd() {
       ord.innerHTML = '';
       ord.appendChild(el('div', { class: 'k-ord-row fixed' }, [el('span', { class: 'ic', html: icon('star') }), el('span', { class: 'grow' }, [el('b', { text: 'Favorites' }), el('small', { text: 'Always first' })])]));
       var cs = catsOrdered();
       cs.forEach(function (c, i) {
-        var up = el('button', { type: 'button', class: 'k-ord-b up', 'aria-label': 'Move ' + c.name + ' up', html: icon('down'), onclick: function () { moveCat(i, -1); } });
-        var dn = el('button', { type: 'button', class: 'k-ord-b', 'aria-label': 'Move ' + c.name + ' down', html: icon('down'), onclick: function () { moveCat(i, 1); } });
-        up.disabled = i === 0; dn.disabled = i === cs.length - 1;
         // the switch shows or hides the whole section on the home screen (the row dims when it's off)
-        var on = catOn(c.id), row = el('div', { class: 'k-ord-row' + (on ? '' : ' off') });
+        var on = catOn(c.id), row = el('div', { class: 'k-ord-row mv' + (on ? '' : ' off'), 'data-id': c.id });
         var sw = el('button', { type: 'button', class: 'k-ord-sw', role: 'switch', 'aria-checked': String(on), 'aria-label': 'Show ' + c.name + ' on the home screen', html: '<i class="sw"></i>', onclick: function () {
           var off = catsOff(), k = off.indexOf(c.id);
           if (k >= 0) off.splice(k, 1); else off.push(c.id);
@@ -2363,7 +2426,7 @@
           try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
         } });
         ord.appendChild(row);
-        [el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: c.name })].concat(on ? [] : [el('small', { text: 'Hidden from the home screen' })])), sw, up, dn].forEach(function (x) { row.appendChild(x); });
+        [ordGrip(), el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: c.name })].concat(on ? [] : [el('small', { text: 'Hidden from the home screen' })])), sw].forEach(function (x) { row.appendChild(x); });
       });
       if (lsGet('gn_cat_order', '') && lsGet('gn_cat_order', '') !== '[]') ord.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block k-ord-reset', text: 'Back to the usual order', onclick: function () {
         lsSet('gn_cat_order', '[]'); sfx('tap'); paintOrd(); try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
@@ -2892,7 +2955,7 @@
   window.Kit = {
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
-    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: defaultsSheet, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet },
+    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: defaultsSheet, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip,
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
