@@ -176,20 +176,48 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .mat-tabs{margin-bottom:4px;}
 .mat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;}
 .mat-sw{display:flex;flex-direction:column;gap:5px;padding:0;border:0;background:none;color:var(--text-2);font:inherit;font-size:.74rem;font-weight:800;cursor:pointer;text-align:center;}
-.mat-sw i{display:block;height:58px;border-radius:10px;box-shadow:inset 0 0 0 1.5px var(--w14),0 3px 8px rgba(0,0,0,.4);}
-.mat-sw.on i{box-shadow:inset 0 0 0 2.5px var(--gilt),0 0 14px rgba(227,189,98,.45);}
+.mat-sw > i{display:block;height:58px;border-radius:10px;box-shadow:inset 0 0 0 1.5px var(--w14),0 3px 8px rgba(0,0,0,.4);}
+.mat-sw.on > i{box-shadow:inset 0 0 0 2.5px var(--gilt),0 0 14px rgba(227,189,98,.45);}
 .mat-sw.on{color:var(--gilt-2);}
 .mat-sw span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* card art mats: the picture sits on ::before (filtered, blurred) under the felt texture */
-.mat.art,.mat-sw i.art,.art-big{position:relative;overflow:hidden;isolation:isolate;}
-.mat.art,.mat-sw i.art,.art-big{container-type:size;}
+/* mats with something underneath (card art, a texture, an avatar): the picture sits on ::before (filtered, blurred)
+   under the felt texture; a design (.m-ov) or glitter (.m-gl) goes over it */
+.mat.art,.mat-sw > i.art,.art-big{position:relative;overflow:hidden;isolation:isolate;}
+.mat.art,.mat-sw > i.art,.art-big{container-type:size;}
 /* sized so only the picture shows (the card's top half, inside its border), whatever the shape of the space */
 /* --fx/--fy: the spot on the card picture kept in the middle; --z: zoom. Kept inside the picture's border */
 .art::before{content:'';position:absolute;inset:calc(var(--mb,0px) * -2.5);z-index:-1;--W:calc(max(114cqw,156cqh) * var(--z,1));--Hi:calc(var(--W) * 1.395);background-image:var(--mbg);background-repeat:no-repeat;
   background-size:var(--W) auto;background-position:clamp(calc(100cqw - var(--W) * .965),calc(50cqw - var(--W) * var(--fx,.5)),calc(var(--W) * -.035)) clamp(calc(100cqh - var(--Hi) * .97),calc(50cqh - var(--Hi) * var(--fy,.33)),calc(var(--Hi) * -.03));mix-blend-mode:var(--mmix,normal);filter:blur(var(--mb,0px)) var(--mfx,none);}
 .mat.art.flip::before{transform:rotate(180deg);}
-.mat-sw i.art::before,.art-big::before{inset:calc(var(--mb,0px) * -1);filter:blur(calc(var(--mb,0px) * .3)) var(--mfx,none);}
-.mat-sw i.art::after,.art-big::after{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:inherit;}
+.art[data-geo=sq]::before{--W:calc(max(100cqw,100cqh) * var(--z,1));--Hi:var(--W);background-position:clamp(calc(100cqw - var(--W)),calc(50cqw - var(--W) * var(--fx,.5)),0px) clamp(calc(100cqh - var(--Hi)),calc(50cqh - var(--Hi) * var(--fy,.45)),0px);}
+.art[data-geo=tile]::before{background-repeat:repeat;background-size:var(--ts,240px) var(--ts,240px);background-position:0 0;}
+.art[data-geo=fill]::before{background-size:100% 100%;background-position:0 0;}
+.art[data-geo=cover]::before{background-size:cover;background-position:50% 50%;}
+.art[data-px]::before{image-rendering:-webkit-optimize-contrast;image-rendering:pixelated;}
+.mat-sw > i.art[data-geo=tile]::before{background-size:calc(var(--ts,240px) * .5) calc(var(--ts,240px) * .5);}
+/* a design laid back over the picture */
+.m-ov{position:absolute;inset:0;pointer-events:none;border-radius:inherit;mix-blend-mode:screen;opacity:.6;}
+/* Glitter: fine dust that stays put, two sets of bright flecks that catch the light at different moments, and a few
+   star glints that pop up somewhere new each time. Only opacity and transform move (cheap to draw) */
+.m-gl{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:inherit;}
+.m-gl > i{position:absolute;inset:0;background-repeat:repeat;}
+.m-gl > .g0{opacity:.42;}
+.m-gl.dense > .g0{opacity:.9;}
+.mat.nodots::after{background:none;}
+.m-gl > .g1{opacity:.14;animation:glTw 4.7s ease-in-out infinite;}
+.m-gl > .g2{opacity:.14;animation:glTw 6.3s ease-in-out -3.1s infinite;}
+@keyframes glTw{0%,34%,100%{opacity:.14;}52%{opacity:.9;}68%{opacity:.22;}}
+.m-gl > b{position:absolute;width:var(--ss,14px);height:var(--ss,14px);margin:calc(var(--ss,14px) * -.5) 0 0 calc(var(--ss,14px) * -.5);opacity:0;
+  background:radial-gradient(circle,#fff 0 7%,var(--gc,#ffe08a) 16%,transparent 44%),linear-gradient(90deg,transparent,rgba(255,255,255,.95) 50%,transparent) 50% 50%/100% 1.5px no-repeat,linear-gradient(0deg,transparent,rgba(255,255,255,.95) 50%,transparent) 50% 50%/1.5px 100% no-repeat;
+  animation:glStar var(--sd,4s) ease-in-out var(--sdl,0s) infinite;}
+@keyframes glStar{0%,80%{opacity:0;transform:scale(.2) rotate(0deg);}87%{opacity:1;transform:scale(1) rotate(25deg);}95%,100%{opacity:0;transform:scale(.3) rotate(50deg);}}
+.m-gl.still > i,.lorc-saver .m-gl > i{animation:none;}
+.m-gl.still > .g1,.lorc-saver .m-gl > .g1{opacity:.5;}
+.m-gl.still > .g2,.lorc-saver .m-gl > .g2{opacity:.3;}
+.lorc-saver .m-gl > b{display:none;}
+@media (prefers-reduced-motion:reduce){.m-gl > i{animation:none;}.m-gl > .g1{opacity:.5;}.m-gl > .g2{opacity:.3;}.m-gl > b{display:none;}}
+.mat-sw > i.art::before,.art-big::before{inset:calc(var(--mb,0px) * -1);filter:blur(calc(var(--mb,0px) * .3)) var(--mfx,none);}
+.mat-sw > i.art::after,.art-big::after{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:inherit;}
 .mat-kinds{margin:6px 0 12px;}
 .art-cur{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
 .art-frame{position:relative;}
@@ -203,17 +231,25 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .art-zi{flex:none;color:var(--text-3);display:grid;}.art-zi svg{width:16px;height:16px;}
 .art-zoom{flex:1;min-width:0;accent-color:var(--gilt);}
 .ink-pick{display:flex;align-items:center;gap:16px;margin:-4px 0 14px;padding:10px 12px;border-radius:14px;background:var(--w05);box-shadow:inset 0 0 0 1px var(--w08);}
-.ink-wheel{position:relative;flex:none;width:112px;height:112px;border-radius:50%;cursor:crosshair;touch-action:none;
+.ink-wheel{position:relative;flex:none;width:104px;height:104px;border-radius:50%;cursor:crosshair;touch-action:none;
   background:radial-gradient(circle,#808080 0,rgba(128,128,128,0) 70%),conic-gradient(from 0deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);box-shadow:0 0 0 2px var(--w14),0 4px 12px rgba(0,0,0,.4);}
 .ink-dot{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;box-shadow:0 0 0 2.5px #fff,0 2px 6px rgba(0,0,0,.6);pointer-events:none;}
-.ink-picks{display:grid;grid-template-columns:repeat(4,30px);gap:10px;}
-.ink-pk{width:30px;height:30px;padding:0;border:0;border-radius:50%;cursor:pointer;box-shadow:inset 0 0 0 2px rgba(0,0,0,.25),0 2px 5px rgba(0,0,0,.4);}
+.ink-picks{flex:1;min-width:0;display:grid;grid-template-columns:repeat(6,minmax(0,30px));gap:10px 8px;}
+.ink-pk{width:100%;height:auto;aspect-ratio:1;padding:0;border:0;border-radius:50%;cursor:pointer;box-shadow:inset 0 0 0 2px rgba(0,0,0,.25),0 2px 5px rgba(0,0,0,.4);}
 .ink-pk.on{box-shadow:0 0 0 2.5px var(--gilt),0 0 10px rgba(227,189,98,.6);}
 .art-filters{grid-template-columns:repeat(auto-fill,minmax(76px,1fr));margin-bottom:14px;}
-.art-filters .mat-sw i{height:46px;}
+.art-filters .mat-sw > i,.tex-grid .mat-sw > i{height:46px;}
 .mat-pick .input{margin-bottom:10px;}
 .art-grid{margin-bottom:10px;}
 .art-none{color:var(--text-3);font-size:.82rem;padding:4px 2px 10px;}
+.art-big.fixed{cursor:default;touch-action:auto;}
+.art-strip{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:88px;grid-template-rows:repeat(2,auto);overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:6px;scroll-snap-type:x proximity;scrollbar-width:thin;}
+.art-strip .mat-sw{scroll-snap-align:start;}
+.tex-grid{grid-template-columns:repeat(auto-fill,minmax(76px,1fr));margin-bottom:6px;}
+.mat-styles > .label:first-child{margin-top:16px;}
+.mat-av{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:var(--w05);box-shadow:inset 0 0 0 1px var(--w08);color:var(--text-2);font-size:.82rem;font-weight:700;}
+.mat-av > .avatar{width:42px;height:42px;font-size:1.1rem;flex:none;}
+.mat-av > .grow{flex:1;min-width:0;}
 /* Turn indicator: a lacquered band across the middle of the table. The steps of a turn are studs on a gilt thread
    (the current one a lit gold cabochon); the latest move is written on a parchment ribbon with a wax seal. */
 .lp-mid{flex-direction:column;gap:4px;padding:6px 10px 7px;
@@ -7453,7 +7489,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Rendering
   // ═════════════════════════════════════════════════════════════════════════
   // ── Playmats: each player's half of the table has its own mat (picked from the menu; online, the other player
-  // sees yours). Plain felts plus illustrated designs, all drawn here so they work offline ──
+  // sees yours). A mat is what's underneath (nothing, a card's art, a texture, or the player's avatar) with one style
+  // over it: a felt colour, a design, or a filter. Everything is drawn here (CSS and small canvases), so it works offline ──
   var MATS = [
     { id: 'midnight', name: 'Midnight', g: 'Felt', bg: 'radial-gradient(120% 90% at 50% 40%,#2f4a8f,#1d2f66 70%,#13204a)' },
     { id: 'emerald', name: 'Emerald', g: 'Felt', bg: 'radial-gradient(120% 90% at 50% 40%,#23855a,#145a3c 70%,#0c4029)' },
@@ -7474,50 +7511,334 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     { id: 'nebula', name: 'Nebula', g: 'Designs', bg: 'radial-gradient(45% 40% at 30% 40%,rgba(255,90,170,.28),transparent 70%),radial-gradient(40% 45% at 70% 60%,rgba(70,160,255,.28),transparent 70%),radial-gradient(1px 1px at 20% 30%,#fff,transparent) 0 0/90px 80px,linear-gradient(160deg,#0b0a1f,#191233)' }
   ];
   var MATK = 'lorc_mat';
-  // Card art mats: 'art:<filter>[~<tint>][@<x>,<y>,<zoom>]:<card id>:<picture url>'. The picture travels with the id so
-  // the other device shows it even when its card list came from elsewhere; x, y is the spot on the card picture kept in
-  // the middle of the mat. Filters calm the art down so cards stay readable
+  // Filters: what happens to the picture underneath. Gold and the glitter washes carry glitter (GLIT) that twinkles
   var ARTF = [
     { id: 'clear', name: 'Clear', fx: 'brightness(.92)' },
     { id: 'dim', name: 'Dim', fx: 'brightness(.55) saturate(.9)' },
     { id: 'soft', name: 'Soft', fx: 'brightness(.62) saturate(1.05)', blur: 5 },
     { id: 'mono', name: 'Mono', fx: 'grayscale(1) brightness(.5) contrast(1.15)' },
     { id: 'silver', name: 'Silver', fx: 'grayscale(1) contrast(.55) brightness(1.18)' },
-    { id: 'sepia', name: 'Gold', fx: 'sepia(1) saturate(2.6) hue-rotate(-8deg) brightness(.68) contrast(1.08)' },
+    { id: 'sepia', name: 'Gold', fx: 'sepia(1) saturate(2.6) hue-rotate(-8deg) brightness(.68) contrast(1.08)', glit: 'g' },
     { id: 'ink', name: 'Ink wash', fx: 'brightness(.62) contrast(1.05)', tint: 1 },
-    { id: 'rainbow', name: 'Rainbow', fx: 'brightness(.66) saturate(1.15)', wash: 'linear-gradient(120deg,#ff4040,#ffa62e 18%,#ffe94a 34%,#3fdc6a 50%,#36a9ff 66%,#8a5cff 82%,#ff4fd8)' }
+    { id: 'rainbow', name: 'Rainbow', fx: 'brightness(.66) saturate(1.15)', wash: 'linear-gradient(120deg,#ff4040,#ffa62e 18%,#ffe94a 34%,#3fdc6a 50%,#36a9ff 66%,#8a5cff 82%,#ff4fd8)' },
+    { id: 'pix', name: '8-bit', fx: 'brightness(.8) saturate(1.1)', pix: 1 },
+    { id: 'tie', name: 'Tie-dye', fx: 'grayscale(1) brightness(1.05) contrast(1.1)', tie: 1 }
   ];
-  var FRAME0 = { x: .5, y: .33, z: 1 };
-  var artMats = {};
-  function artId(o) {
-    var fr = o.fr && (o.fr.x !== FRAME0.x || o.fr.y !== FRAME0.y || o.fr.z !== FRAME0.z) ? '@' + [o.fr.x, o.fr.y, o.fr.z].map(function (v) { return +v.toFixed(3); }).join(',') : '';
-    return 'art:' + o.f + (o.tint ? '~' + o.tint.replace('#', '') : '') + fr + ':' + o.cid + ':' + o.url;
+  var OLDF = { clear: 1, dim: 1, soft: 1, mono: 1, silver: 1, sepia: 1, ink: 1, rainbow: 1 };   // what an older copy of the game can draw
+  // Glitter: a wash colour and its flecks (light to dark)
+  var GLIT = {
+    g: { name: 'Gold glitter', base: '#b5872a', fl: ['#fff6d6', '#ffe08a', '#e9b949', '#b5832a'] },
+    s: { name: 'Silver glitter', base: '#8f97a3', fl: ['#ffffff', '#eef2f7', '#c3cad4', '#8c95a2'] },
+    b: { name: 'Blue glitter', base: '#2457c9', fl: ['#eef6ff', '#9fcbff', '#4f97ff', '#2457d6'] },
+    r: { name: 'Red glitter', base: '#b31c33', fl: ['#fff0f1', '#ff9eaa', '#ff4a62', '#c11f37'] },
+    e: { name: 'Green glitter', base: '#1d8a4a', fl: ['#efffef', '#9ff5bd', '#38d978', '#1c8e47'] },
+    p: { name: 'Black-purple glitter', base: '#2c1546', gnd: ['#2b1742', '#150a24', '#09040f'], fl: ['#f6ecff', '#cf9dff', '#9b4dff', '#5b23a8'], fx: 'brightness(.32) contrast(1.15)' }
+  };
+  var GLITK = ['g', 's', 'b', 'r', 'e', 'p'];
+  // Textures, painted once on a canvas (tileable), then used as a repeating picture
+  var TEX = [{ k: 'f', name: 'Felt', ts: 220 }, { k: 'l', name: 'Linen', ts: 200 }, { k: 'h', name: 'Leather', ts: 260 }, { k: 'w', name: 'Walnut', ts: 340 }, { k: 'm', name: 'Marble', ts: 420 }];
+  var UNDER = [{ u: 'n', name: 'Nothing' }, { u: 'a', name: 'Card art' }, { u: 't', name: 'Texture' }, { u: 'v', name: 'Avatar' }];
+  var FRAME0 = { x: .5, y: .33, z: 1 }, FRAMEV = { x: .5, y: .45, z: 1 };
+  var NOTHING_BG = 'radial-gradient(120% 90% at 50% 40%,#6c6964,#47443f 70%,#302e2b)';   // "nothing" under a filter: a plain neutral felt
+  function styleOf(s) { var i; for (i = 0; i < MATS.length; i++) if (MATS[i].id === s) return MATS[i]; for (i = 0; i < ARTF.length; i++) if (ARTF[i].id === s) return ARTF[i]; return null; }
+  function texOf(k) { return TEX.filter(function (t) { return t.k === k; })[0] || null; }
+  function frDef(u) { return u === 'v' ? FRAMEV : FRAME0; }
+  function frStr(u, fr) { var d = frDef(u); return fr && (fr.x !== d.x || fr.y !== d.y || fr.z !== d.z) ? '@' + [fr.x, fr.y, fr.z].map(function (v) { return +(+v).toFixed(3); }).join(',') : ''; }
+  // Mat ids (saved on this device and in the online table):
+  //   a plain felt or design: its own id ('midnight')
+  //   card art under one of the first eight filters: 'art:<filter>[~<tint>][@<x>,<y>,<zoom>]:<card id>:<picture url>'
+  //     (the older form, so a device on an older copy of the game still shows it)
+  //   anything else: 'm2:<under>:<style>[~<tint>][^<glitter>][@<x>,<y>,<zoom>][:<card id>:<picture url>]'
+  //     under: n nothing, a card art, v avatar, t<k> a texture; style: a felt, design or filter id
+  // The picture travels with the id so the other device shows it even when its card list came from elsewhere; x, y is
+  // the spot on the picture kept in the middle of the mat. An avatar is looked up on each device by the seat's name.
+  function matKey(o) {
+    var st = styleOf(o.s), tint = o.tint ? '~' + String(o.tint).replace('#', '') : '', fr = frStr(o.u, o.fr);
+    if (o.u === 'n' && st && st.g && !tint && !o.glit) return o.s;
+    if (o.u === 'a' && OLDF[o.s] && !o.glit) return 'art:' + o.s + tint + fr + ':' + o.cid + ':' + o.url;
+    return 'm2:' + (o.u === 't' ? 't' + o.tex : o.u) + ':' + o.s + tint + (o.glit ? '^' + o.glit : '') + (o.u === 'a' || o.u === 'v' ? fr : '') + (o.u === 'a' ? ':' + o.cid + ':' + o.url : '');
   }
-  function artMat(f, cid, url, tint, fr) {
-    var id = artId({ f: f, cid: cid, url: url, tint: tint, fr: fr }); if (artMats[id]) return artMats[id];
-    var d = DB.byId[cid] || (S && S.defs && S.defs[cid]) || null, own = d && d.ink && INKC[d.ink[0]] || '#e3bd62';
-    return (artMats[id] = { id: id, g: 'Card art', art: true, f: ARTF.filter(function (x) { return x.id === f; })[0] || ARTF[1], cid: cid, url: url,
-      tint: tint || '', ink: tint || own, fr: fr || FRAME0, name: d ? d.n : 'Card art', bg: '#14121f' });
+  var matsC = {};
+  function mkMat(o) {
+    var u = /^[navt]$/.test(o.u) ? o.u : 'n', st = styleOf(o.s) || (u === 'n' ? MATS[0] : ARTF[1]);
+    var sk = st.g ? (st.g === 'Felt' ? 'felt' : 'design') : 'filter';
+    var wg = st.id === 'ink' && GLIT[o.glit] ? o.glit : '';
+    var tint = st.id === 'ink' && !wg && /^#?[0-9a-f]{6}$/i.test(o.tint || '') ? '#' + String(o.tint).replace('#', '') : '';
+    var tex = u === 't' ? (texOf(o.tex) ? o.tex : 'f') : '';
+    if (u === 'a' && !(o.cid && o.url)) u = 'n';
+    var d = u === 'a' ? DB.byId[o.cid] || (S && S.defs && S.defs[o.cid]) || null : null, own = d && d.ink && INKC[d.ink[0]] || '#e3bd62';
+    var m = { u: u, tex: tex, s: st.id, st: st, sk: sk, f: sk === 'filter' ? st : null, g: sk === 'filter' ? 'Filters' : st.g,
+      tint: tint, wg: wg, glit: wg || st.glit || '', fr: (u === 'a' || u === 'v') && o.fr ? o.fr : frDef(u),
+      cid: u === 'a' ? o.cid : '', url: u === 'a' ? o.url : '', art: u === 'a', bg: st.bg || '#14121f' };
+    m.ink = wg ? GLIT[wg].base : tint || own;
+    m.name = wg ? GLIT[wg].name : st.name;
+    m.uname = u === 'a' ? (d ? d.n : 'Card art') : u === 't' ? texOf(tex).name : u === 'v' ? 'Avatar' : 'Nothing';
+    m.id = matKey({ u: u, tex: tex, s: st.id, tint: tint, glit: wg, fr: m.fr, cid: m.cid, url: m.url });
+    return matsC[m.id] || (matsC[m.id] = m);
   }
   function matById(id) {
-    var a = /^art:(\w+)(?:~([0-9a-f]{6}))?(?:@([\d.]+),([\d.]+),([\d.]+))?:([^:]+):(.+)$/i.exec(id || '');
-    if (a) return artMat(a[1], a[6], a[7], a[2] ? '#' + a[2] : '', a[3] ? { x: +a[3], y: +a[4], z: +a[5] } : null);
-    return MATS.filter(function (m) { return m.id === id; })[0] || null;
+    id = String(id || ''); if (matsC[id]) return matsC[id];
+    var a, o = null;
+    if ((a = /^art:(\w+)(?:~([0-9a-f]{6}))?(?:@([\d.]+),([\d.]+),([\d.]+))?:([^:]+):(.+)$/i.exec(id))) o = { u: 'a', s: a[1], tint: a[2] || '', fr: a[3] ? { x: +a[3], y: +a[4], z: +a[5] } : null, cid: a[6], url: a[7] };
+    else if ((a = /^m2:(n|a|v|t[a-z]):(\w+)(?:~([0-9a-f]{6}))?(?:\^([a-z]))?(?:@([\d.]+),([\d.]+),([\d.]+))?(?::([^:]+):(.+))?$/i.exec(id))) o = { u: a[1].charAt(0), tex: a[1].charAt(1), s: a[2], tint: a[3] || '', glit: a[4] || '', fr: a[5] ? { x: +a[5], y: +a[6], z: +a[7] } : null, cid: a[8], url: a[9] };
+    else { var st = styleOf(id); if (st && st.g) o = { u: 'n', s: id }; }
+    if (!o) return null;
+    if (o.u === 'a' && o.s && !styleOf(o.s)) o.s = 'dim';   // a filter this copy doesn't know
+    var m = mkMat(o); matsC[id] = m; return m;
   }
-  // the same art mat with one thing changed
-  function artWith(m, ch) { var o = { f: m.f.id, cid: m.cid, url: m.url, tint: m.tint, fr: m.fr }; for (var k in ch) o[k] = ch[k]; return artMat(o.f, o.cid, o.url, o.tint, o.fr); }
-  // Paints a mat (or a picker swatch). Art goes on a ::before layer so it can be filtered and blurred under the felt texture
-  function matFill(n, m, url) {
-    if (!m.art) { n.classList.remove('art'); n.style.background = m.bg; return; }
-    var u = url || m.url; if (imgIsBad(u) && backupOf(u)) u = backupOf(u);
-    var img = 'url("' + u.replace(/"/g, '%22') + '")', wash = m.f.wash || (m.f.tint ? 'linear-gradient(' + m.ink + ',' + m.ink + ')' : '');
-    // a colour wash (Ink wash, Rainbow) is the mat's own background, and the picture's light and shade go over it
-    // (a blended picture layer: Safari draws this; a blend between two background layers it often leaves blank)
-    n.classList.add('art'); n.style.background = wash || m.bg;
+  // the same mat with some things changed
+  function matWith(m, ch) { var o = { u: m.u, tex: m.tex, s: m.s, tint: m.tint, glit: m.wg, fr: m.fr, cid: m.cid, url: m.url }; for (var k in ch) o[k] = ch[k]; return mkMat(o); }
+  function cssUrl(u) { return 'url("' + String(u).replace(/"/g, '%22') + '")'; }
+  function hex2rgb(h) { var n = parseInt(String(h).replace('#', ''), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  function mixHex(a, b, t) { var x = hex2rgb(a), y = hex2rgb(b); return '#' + x.map(function (v, i) { return ('0' + Math.round(v + (y[i] - v) * t).toString(16)).slice(-2); }).join(''); }
+  function cnv(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  // ── tileable value noise (wraps every px × py lattice cells) ──
+  function vnoise(seed, px, py) {
+    py = py || px; var r = seeded(seed), g = new Float32Array(px * py), i;
+    for (i = 0; i < g.length; i++) g[i] = r();
+    return function (x, y) {
+      var xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, x0 = ((xi % px) + px) % px, y0 = ((yi % py) + py) % py, x1 = (x0 + 1) % px, y1 = (y0 + 1) % py;
+      fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+      var a = g[y0 * px + x0], b = g[y0 * px + x1], c = g[y1 * px + x0], d = g[y1 * px + x1];
+      return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+    };
+  }
+  // tileable cell noise (n × n cells, one point in each): [distance to the nearest point, to the second nearest]
+  function worley(seed, n) {
+    var r = seeded(seed), P = new Float32Array(n * n * 2), i;
+    for (i = 0; i < P.length; i++) P[i] = r();
+    return function (x, y) {
+      var xi = Math.floor(x), yi = Math.floor(y), f1 = 9, f2 = 9;
+      for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+        var cx = xi + dx, cy = yi + dy, j = ((((cy % n) + n) % n) * n + (((cx % n) + n) % n)) * 2, ddx = cx + P[j] - x, ddy = cy + P[j + 1] - y, d = ddx * ddx + ddy * ddy;
+        if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) f2 = d;
+      }
+      return [Math.sqrt(f1), Math.sqrt(f2)];
+    };
+  }
+  // ── Textures: felt, linen, leather, walnut and marble, each a seamless tile ──
+  var texC = {};
+  function texCanvas(k) {
+    if (texC[k]) return texC[k];
+    var t = texOf(k) || TEX[0], N = Math.round(t.ts * 1.5), c = cnv(N, N), x = c.getContext('2d'), im = x.createImageData(N, N), D = im.data;
+    var n2 = vnoise(k + 2, 2), n4 = vnoise(k + 4, 4), n8 = vnoise(k + 8, 8), n16 = vnoise(k + 16, 16), n32 = vnoise(k + 32, 32), n64 = vnoise(k + 64, 64), n128 = vnoise(k + 128, 128), nA = vnoise(k + 'a', 24, 160);
+    var wor34 = k === 'h' && worley(k + 'w', 52), wor80 = k === 'h' && worley(k + 'v', 80);
+    for (var py = 0; py < N; py++) for (var px = 0; px < N; px++) {
+      var u = px / N, v = py / N, r, g, b, s, q;
+      if (k === 'l') {   // linen: a plain weave of slubby threads
+        var T = 72, au = u * T, av = v * T, ou = au - Math.floor(au), ov = av - Math.floor(av), up = (Math.floor(au) + Math.floor(av)) & 1;
+        var tu = Math.sin(Math.PI * ou), tv = Math.sin(Math.PI * ov), sl = up ? n128(u * 128, v * 16 % 16) : n128(u * 16 % 16, v * 128);
+        s = (up ? .55 + .45 * tu * (.75 + .4 * tv) : .55 + .45 * tv * (.75 + .4 * tu)) * (.86 + .26 * sl) + .07 * (n8(u * 8, v * 8) - .5) + .05 * (n64(u * 64, v * 64) - .5);
+        r = 118 * s + 16; g = 107 * s + 14; b = 88 * s + 10;
+      } else if (k === 'h') {   // leather: rounded pebbles with fine creases between them
+        var wx = .5 * (n8(u * 8, v * 8) - .5), wy = .5 * (n8(u * 8 + 3.3, v * 8) - .5), w1 = wor34(u * 52 + wx, v * 52 + wy), w2 = wor80(u * 80 + wx * 2, v * 80 + wy * 2), e1 = w1[1] - w1[0], e2 = w2[1] - w2[0];
+        var h1 = Math.min(1, e1 / .55), h2 = Math.min(1, e2 / .45);
+        h1 = h1 * h1 * (3 - 2 * h1); h2 = h2 * h2 * (3 - 2 * h2);
+        s = .5 + .16 * h1 + .07 * h2 + .14 * (n4(u * 4, v * 4) - .5) + .08 * (n16(u * 16, v * 16) - .5) + .05 * (n128(u * 128, v * 128) - .5);
+        r = 128 * s; g = 76 * s; b = 44 * s;
+      } else if (k === 'w') {   // walnut: fine growth lines with a gentle wave, pores, and lighter and darker streaks
+        q = v * 26 + 1.3 * n2(u * 2, v * 2) + .5 * n4(u * 4, v * 4) + .15 * n16(u * 16, v * 16);
+        var ri = Math.floor(q), rf = q - ri, rh = ((ri % 26) + 26) % 26, band = (Math.sin(rh * 12.9898) * 43758.5453) % 1;
+        band = band < 0 ? band + 1 : band;
+        var late = rf < .72 ? rf / .72 * .35 : .35 + (rf - .72) / .28 * .65, pore = Math.pow(1 - Math.abs(2 * nA(u * 24, v * 160) - 1), 12);
+        s = .55 + .16 * (band - .5) - .22 * late * late + .1 * (n8(u * 8, v * 8) - .5) + .14 * (nA(u * 24 + 5, v * 160) - .5) - .14 * pore;
+        r = 30 + 120 * s; g = 17 + 76 * s; b = 10 + 42 * s;
+      } else if (k === 'm') {   // black marble: kinked pale veins that come and go, a few threads of gold
+        var tb = Math.abs(2 * n2(u * 2, v * 2) - 1) * .55 + Math.abs(2 * n4(u * 4, v * 4) - 1) * .28 + Math.abs(2 * n8(u * 8, v * 8) - 1) * .12 + Math.abs(2 * n16(u * 16, v * 16) - 1) * .05;
+        var v1 = 1 - Math.abs(Math.sin(2 * Math.PI * (u + v) + 5.5 * tb)), v2 = 1 - Math.abs(Math.sin(2 * Math.PI * (2 * u - v) + 4.5 * tb + 2.1));
+        var mk = Math.min(1, Math.max(0, (n4(u * 4 + 1.7, v * 4) - .3) * 2.5)), l1 = (Math.pow(v1, 30) * .8 + Math.pow(v1, 5) * .18) * (.35 + .65 * mk), l2 = Math.pow(v2, 120) * (1 - mk * .5);
+        var cl = .55 * n8(u * 8, v * 8) + .45 * n32(u * 32, v * 32);
+        r = 22 + 20 * cl; g = 22 + 20 * cl; b = 26 + 22 * cl;
+        r += (214 - r) * l1; g += (208 - g) * l1; b += (199 - b) * l1;
+        r += (220 - r) * l2 * .85; g += (176 - g) * l2 * .85; b += (90 - b) * l2 * .85;
+      } else {   // felt: matted fibres with a soft mottle
+        s = .62 + .2 * (n4(u * 4, v * 4) - .5) + .14 * (n16(u * 16, v * 16) - .5) + .16 * (n64(u * 64, v * 64) - .5) + .2 * (n128(u * 128, v * 128) - .5);
+        r = 70 * s + 8; g = 74 * s + 9; b = 80 * s + 11;
+      }
+      var o = (py * N + px) * 4; D[o] = r; D[o + 1] = g; D[o + 2] = b; D[o + 3] = 255;
+    }
+    x.putImageData(im, 0, 0);
+    return (texC[k] = { c: c, url: c.toDataURL('image/jpeg', .86), ts: t.ts });
+  }
+  // ── Tie-dye: a spiral of dye with pale crinkle lines where the cloth was folded ──
+  var tieU = '';
+  function tieUrl() {
+    if (tieU) return tieU;
+    var W = 360, H = 260, c = cnv(W, H), x = c.getContext('2d'), im = x.createImageData(W, H), D = im.data, n = vnoise('tie', 6), n2 = vnoise('tie2', 12);
+    var P = [[232, 52, 78], [255, 138, 31], [255, 210, 58], [47, 191, 113], [43, 140, 230], [139, 79, 214]];
+    for (var y = 0; y < H; y++) for (var X = 0; X < W; X++) {
+      var dx = (X - W * .5) / H, dy = (y - H * .5) / H, r = Math.sqrt(dx * dx + dy * dy), a = Math.atan2(dy, dx) / (2 * Math.PI) + .5;
+      var wob = .35 * n(X / W * 6, y / H * 6) + .12 * n2(X / W * 12, y / H * 12);
+      var h = (a * 2 + r * 3.2 + wob) * 6, i = Math.floor(h), f = h - i, i0 = ((i % 6) + 6) % 6, i1 = (i0 + 1) % 6;
+      f = f < .4 ? 0 : (f - .4) / .6; f = f * f * (3 - 2 * f);
+      var cr = Math.pow(Math.max(0, Math.sin(a * 2 * Math.PI * 9 + r * 14 + wob * 8)), 14) * .6 + Math.pow(Math.max(0, Math.sin(a * 2 * Math.PI * 23 - r * 9 + wob * 5)), 30) * .35 + Math.max(0, .45 - r * 4) * .9;
+      var o = (y * W + X) * 4;
+      for (var k = 0; k < 3; k++) { var cv = P[i0][k] + (P[i1][k] - P[i0][k]) * f; D[o + k] = cv + (245 - cv) * Math.min(1, cr); }
+      D[o + 3] = 255;
+    }
+    x.putImageData(im, 0, 0);
+    return (tieU = c.toDataURL('image/jpeg', .85));
+  }
+  // ── Glitter: three tiles of flecks (fine dust, and two sets of bright flecks that catch the light at different times) ──
+  var glitC = {};
+  function glitTiles(g) {
+    if (glitC[g]) return glitC[g];
+    var G = GLIT[g] || GLIT.g, R = seeded('gl' + g); G.sh = mixHex(G.base, '#000000', .38);
+    function tile(sz, n, bright, lo) {
+      var N = sz * 2, c = cnv(N, N), x = c.getContext('2d');
+      for (var i = 0; i < n; i++) {
+        var px = R() * N, py = R() * N, col = G.fl[bright ? Math.floor(R() * 3) : lo + Math.floor(R() * (4 - lo))];
+        for (var ox = -N; ox <= N; ox += N) for (var oy = -N; oy <= N; oy += N) {
+          var X = px + ox, Y = py + oy; if (X < -12 || Y < -12 || X > N + 12 || Y > N + 12) continue;
+          if (bright) {
+            var rr = 2.6 + R() * 4.2, gr = x.createRadialGradient(X, Y, 0, X, Y, rr);
+            gr.addColorStop(0, '#fff'); gr.addColorStop(.22, col); gr.addColorStop(1, 'rgba(0,0,0,0)');
+            x.fillStyle = gr; x.beginPath(); x.arc(X, Y, rr, 0, 7); x.fill();
+          } else {
+            var s = 1 + R() * 2.4; x.globalAlpha = .3 + R() * .7; x.fillStyle = R() < .16 ? G.sh : col;
+            x.save(); x.translate(X, Y); x.rotate(R() * 3.2); x.fillRect(-s / 2, -s / 2, s, s * (.6 + R() * .6)); x.restore(); x.globalAlpha = 1;
+          }
+        }
+      }
+      return { url: c.toDataURL('image/png'), sz: sz };
+    }
+    return (glitC[g] = { d: tile(150, 1300, false, 1), dd: tile(130, 3400, false, 0), a: tile(170, 30, true), b: tile(230, 46, true), c: G.fl[1] });
+  }
+  // the glitter layer in a mat: dust that stays put, bright flecks that twinkle, and a few star glints that pop up in
+  // new places. Battery saver and reduced motion keep it still (CSS)
+  function glitLayer(g, stars, dense) {
+    var T = glitTiles(g), L = el('span', { class: 'm-gl' + (dense ? ' dense' : ''), 'aria-hidden': 'true', style: { '--gc': T.c } });
+    [['g0', dense ? T.dd : T.d], ['g1', T.a], ['g2', T.b]].forEach(function (p) { L.appendChild(el('i', { class: p[0], style: { 'background-image': cssUrl(p[1].url), 'background-size': p[1].sz + 'px ' + p[1].sz + 'px' } })); });
+    function spot(b) { b.style.left = (4 + Math.random() * 92).toFixed(1) + '%'; b.style.top = (6 + Math.random() * 88).toFixed(1) + '%'; b.style.setProperty('--ss', (9 + Math.random() * 9).toFixed(0) + 'px'); }
+    for (var i = 0; i < stars; i++) {
+      var b = el('b'); spot(b); b.style.setProperty('--sd', (3.2 + Math.random() * 3.4).toFixed(2) + 's'); b.style.setProperty('--sdl', (-Math.random() * 6).toFixed(2) + 's');
+      b.addEventListener('animationiteration', function (e) { spot(e.currentTarget); });
+      L.appendChild(b);
+    }
+    return L;
+  }
+  // ── 8-bit: the picture shrunk to chunky pixels (halving step by step, so each one is a fair average), mapped to a
+  // 32-colour retro palette with a light ordered dither, then blown back up with hard edges ──
+  var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  var PAL8 = '0000001d2b537e2553008751ab52365f574fc2c3c7fff1e8ff004dffa300ffec2700e43629adff83769cff77a8ffccaa29181411 1d35422136125359742f2949333ba28879f3ef7dbe1250ff6c24a8e72e00b543065ab5754665ff6e59ff9d81'.replace(/ /g, '').match(/.{6}/g).map(hex2rgb);
+  function pixelate(src, w, h, up) {
+    var cw = src.naturalWidth || src.width, ch = src.naturalHeight || src.height, cur = src;
+    while (cw > w * 2.5) { var nw = Math.max(w, Math.round(cw / 2)), nh = Math.max(h, Math.round(ch / 2)), t0 = cnv(nw, nh), x0 = t0.getContext('2d'); x0.imageSmoothingEnabled = true; x0.drawImage(cur, 0, 0, cw, ch, 0, 0, nw, nh); cur = t0; cw = nw; ch = nh; }
+    var c = cnv(w, h), x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.drawImage(cur, 0, 0, cw, ch, 0, 0, w, h);
+    var im = x.getImageData(0, 0, w, h), D = im.data, lum = [], j;
+    // stretch the light and shade to the full range first, so quiet pictures (a texture) still find several colours
+    for (j = 0; j < D.length; j += 4) lum.push(D[j] * .3 + D[j + 1] * .59 + D[j + 2] * .11);
+    lum.sort(function (p, q) { return p - q; });
+    var lo = lum[Math.floor(lum.length * .02)], hi = lum[Math.floor(lum.length * .98)], sc = 235 / Math.max(24, hi - lo);
+    var cs = Math.min(sc, 1.5);
+    for (j = 0; j < D.length; j += 4) { var L0 = D[j] * .3 + D[j + 1] * .59 + D[j + 2] * .11, L1 = (L0 - lo) * sc + 10; for (var k = 0; k < 3; k++) D[j + k] = L1 + (D[j + k] - L0) * cs; }
+    for (var y = 0; y < h; y++) for (var X = 0; X < w; X++) {
+      var o = (y * w + X) * 4, t = ((BAYER[(y & 3) * 4 + (X & 3)] + .5) / 16 - .5) * 16, r = D[o] + t, g = D[o + 1] + t, b = D[o + 2] + t, best = 0, bd = 1e9;
+      for (var i = 0; i < PAL8.length; i++) { var P = PAL8[i], dr = r - P[0], dg = g - P[1], db = b - P[2], rm = (r + P[0]) / 2, dd = (2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db; if (dd < bd) { bd = dd; best = i; } }
+      D[o] = PAL8[best][0]; D[o + 1] = PAL8[best][1]; D[o + 2] = PAL8[best][2]; D[o + 3] = 255;
+    }
+    x.putImageData(im, 0, 0);
+    var c2 = cnv(w * up, h * up), x2 = c2.getContext('2d'); x2.imageSmoothingEnabled = false; x2.drawImage(c, 0, 0, w * up, h * up);
+    return c2.toDataURL('image/png');
+  }
+  // 8-bit over nothing: a dithered night sky with pixel stars
+  var retroU = '';
+  function retroUrl() {
+    if (retroU) return retroU;
+    var w = 96, h = 60, c = cnv(w, h), x = c.getContext('2d'), R = seeded('retro');
+    var A = [[18, 14, 52], [44, 22, 86], [86, 30, 104], [128, 46, 98]];
+    for (var y = 0; y < h; y++) for (var X = 0; X < w; X++) {
+      var t = y / (h - 1) * (A.length - 1) + ((BAYER[(y & 3) * 4 + (X & 3)] + .5) / 16 - .5);
+      var i = Math.max(0, Math.min(A.length - 1, Math.round(t))); x.fillStyle = 'rgb(' + A[i].join(',') + ')'; x.fillRect(X, y, 1, 1);
+    }
+    for (var s = 0; s < 90; s++) { x.fillStyle = R() < .7 ? '#c9c4ff' : '#ffe9a8'; x.fillRect(Math.floor(R() * w), Math.floor(R() * h * .8), 1, 1); }
+    var c2 = cnv(w * 8, h * 8), x2 = c2.getContext('2d'); x2.imageSmoothingEnabled = false; x2.drawImage(c, 0, 0, w * 8, h * 8);
+    return (retroU = c2.toDataURL('image/png'));
+  }
+  // the 8-bit version of what's underneath, made once per picture. Card art comes from the backup copy first (it allows
+  // a canvas to read it); a picture that can't be read stays as it is
+  var pixC = {};
+  function pixOf(src, done) {
+    var c = pixC[src.key];
+    if (c) { if (c.wait) c.wait.push(done); return c.url ? c : null; }
+    c = pixC[src.key] = { wait: [done] };
+    function fin(url, geo) { c.url = url; c.geo = geo; c.ts = src.ts; var w = c.wait; c.wait = null; w.forEach(function (f) { try { f(); } catch (e) {} }); }
+    function make(img) {
+      var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+      if (src.geo === 'tile') { var n = Math.max(8, Math.round(src.ts / 8)); return pixelate(img, n, n, 8); }
+      var w = src.geo === 'card' ? 92 : 56; return pixelate(img, w, Math.max(1, Math.round(w * ih / iw)), 8);
+    }
+    if (src.geo === 'fill') { fin(retroUrl(), 'cover'); return c; }
+    if (src.cv) { try { fin(make(src.cv), src.geo); return c; } catch (e) { c.wait = null; return null; } }
+    var tries = [src.pic]; if (backupOf(src.pic)) tries.unshift(backupOf(src.pic));
+    (function next() {
+      var u = tries.shift(); if (!u) { c.wait = null; return; }
+      var im = new Image(); if (!/^data:/.test(u)) im.crossOrigin = 'anonymous';
+      im.onload = function () { try { fin(make(im), src.geo); } catch (e) { next(); } };
+      im.onerror = next; im.src = u;
+    })();
+    return null;
+  }
+  // ── Avatar: the seat's photo (framed like card art), or their mark or initial as a monogram pattern on their colour ──
+  function avatarSrc(who) {
+    who = who || {}; var h = who.cpu ? Kit.icon('bot') : Kit.avatar && Kit.avatar.html ? Kit.avatar.html(who.name) : null;
+    var ph = h && /^<img[^>]+src="([^"]+)"/.exec(h);
+    if (ph) return { img: cssUrl(ph[1]), pic: ph[1], geo: 'sq', key: 'v' + ph[1].length + ph[1].slice(-40), photo: true };
+    var col = (!who.cpu && Kit.avatar && Kit.avatar.color && Kit.avatar.color(who.name)) || who.color || '#e3bd62';
+    if (!/^#[0-9a-f]{6}$/i.test(col)) col = '#e3bd62';
+    var bg = mixHex(col, '#000000', .62), ink = mixHex(col, '#ffffff', .1), mk;
+    if (h && h.indexOf('<svg') === 0) mk = function (cx, cy, s) { return h.replace(/^<svg/, '<svg x="' + (cx - s / 2) + '" y="' + (cy - s / 2) + '" width="' + s + '" height="' + s + '"').replace(/currentColor/g, ink); };
+    else { var ch = esc(String(h || (who.name || '?').charAt(0)).replace(/<[^>]*>/g, '').charAt(0).toUpperCase() || '?'); mk = function (cx, cy, s) { return '<text x="' + cx + '" y="' + (cy + s * .36) + '" font-size="' + s + '" font-family="Georgia,serif" font-weight="700" text-anchor="middle" fill="' + ink + '">' + ch + '</text>'; }; }
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="132" height="132" viewBox="0 0 132 132"><rect width="132" height="132" fill="' + bg + '"/>' +
+      '<g opacity=".42">' + mk(33, 33, 30) + mk(99, 99, 30) + '</g><g opacity=".2">' + mk(99, 33, 14) + mk(33, 99, 14) + '</g></svg>';
+    var url = 'data:image/svg+xml,' + encodeURIComponent(svg);
+    return { img: cssUrl(url), pic: url, geo: 'tile', ts: 132, key: 'v' + url.length + url.slice(-60) + col };
+  }
+  function avSig(who) { var a = avatarSrc(who); return a.key; }
+  // what's underneath, as a picture for the mat's ::before layer (geo: how it's laid out)
+  function underSrc(m, o) {
+    if (m.u === 'a') { var u = o.url || m.url; if (imgIsBad(u) && backupOf(u)) u = backupOf(u); return { img: cssUrl(u), pic: u, geo: 'card', key: u }; }
+    if (m.u === 't') { var t = texCanvas(m.tex); return { img: cssUrl(t.url), cv: t.c, geo: 'tile', ts: t.ts, key: 't' + m.tex }; }
+    if (m.u === 'v') return avatarSrc(o.who);
+    return { img: NOTHING_BG, geo: 'fill', key: 'n' };
+  }
+  // Paints a mat, a picker swatch, or the big preview. Layers (all inside the element, which is isolated):
+  //   the element's own background: a felt, design, or colour wash
+  //   ::before: what's underneath, filtered; over a colour it blends as luminosity (its light and shade, the wash's colour)
+  //   .m-ov: a design laid back over the picture (screen), .m-gl: glitter
+  // (Blends are mix-blend-mode on separate layers: Safari often leaves a blend between two background layers blank)
+  // o: { url: a smaller picture for a swatch, who: the seat's player (for an avatar), stars: glints, still: no twinkle }
+  function matFill(n, m, o) {
+    o = o || {}; n._mf = m.id;
+    var ly = n.querySelectorAll(':scope > .m-ov, :scope > .m-gl');
+    if (m.u === 'n' && m.sk !== 'filter') {   // a plain felt or design, exactly as it always was
+      for (var i = 0; i < ly.length; i++) ly[i].remove(); n._mly = '';
+      n.classList.remove('art', 'nodots'); delete n.dataset.geo; delete n.dataset.px; n.style.background = m.bg; return;
+    }
+    var src = underSrc(m, o), st = m.st, base, fx, mix = 'luminosity', ov = '', img = src.img, geo = src.geo, ts = src.ts, px = false, dense = m.u === 'n' && !!m.glit;
+    if (m.sk === 'felt') { base = st.bg; fx = 'brightness(.7) contrast(1.08)'; }
+    else if (m.sk === 'design') { base = st.bg; fx = 'brightness(.62) contrast(1.06)'; ov = st.bg; }
+    else {
+      fx = m.wg && GLIT[m.wg].fx || st.fx;
+      base = st.wash || (st.tint ? 'linear-gradient(' + m.ink + ',' + m.ink + ')' : st.tie ? cssUrl(tieUrl()) + ' 50% 50%/cover no-repeat #3a2850' : '');
+      if (!base) { base = m.bg; mix = 'normal'; }
+      if (st.tie) mix = 'multiply';   // the picture's light and shade printed onto the dyed cloth
+      if (dense) { var gb = GLIT[m.glit].base, gn = GLIT[m.glit].gnd || [mixHex(gb, '#ffffff', .1), mixHex(gb, '#000000', .28), mixHex(gb, '#000000', .55)]; img = 'linear-gradient(118deg,rgba(255,255,255,0) 22%,rgba(255,255,255,.12) 42%,rgba(255,255,255,0) 62%),radial-gradient(120% 90% at 50% 40%,' + gn[0] + ',' + gn[1] + ' 65%,' + gn[2] + ')'; fx = 'none'; mix = 'normal'; }
+      if (st.pix) { var p = pixOf(src, function () { if (n._mf === m.id && n.isConnected) matFill(n, m, o); }); if (p) { img = cssUrl(p.url); geo = p.geo; ts = p.ts; px = true; } }
+    }
+    n.classList.add('art'); n.style.background = base;
+    n.classList.toggle('nodots', !!(m.glit || m.u === 't' || st.pix));
+    n.dataset.geo = geo; if (px) n.dataset.px = '1'; else delete n.dataset.px;
+    if (ts) n.style.setProperty('--ts', ts + 'px');
     n.style.setProperty('--mbg', img);
-    n.style.setProperty('--mmix', wash ? 'luminosity' : 'normal');
-    n.style.setProperty('--mfx', m.f.fx); n.style.setProperty('--mb', (m.f.blur || 0) + 'px');
+    n.style.setProperty('--mmix', mix);
+    n.style.setProperty('--mfx', fx); n.style.setProperty('--mb', (st.blur || 0) + 'px');
     frameVars(n, m.fr);
+    var k = ov + '|' + m.glit + '|' + (o.stars || 0) + '|' + !!o.still + '|' + dense;
+    if (n._mly === k && ly.length === (ov ? 1 : 0) + (m.glit ? 1 : 0)) return;
+    for (var j = 0; j < ly.length; j++) ly[j].remove(); n._mly = k;
+    if (ov) n.appendChild(el('i', { class: 'm-ov', 'aria-hidden': 'true', style: { background: ov } }));
+    if (m.glit) { var gl = glitLayer(m.glit, o.still ? 0 : o.stars || 0, dense); if (o.still) gl.classList.add('still'); n.appendChild(gl); }
   }
   function clampN(v, a, b) { return v < a ? a : v > b ? b : v; }
   function hexHsl(hex) {
@@ -7533,42 +7854,64 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // a picture that won't load is swapped for the backup copy
   function probeArt(u, again) { if (!u || imgIsBad(u)) return; var im = new Image(); im.onerror = function () { imgBad[u] = Date.now(); if (backupOf(u)) again(); }; im.src = u; }
   function myMat() { return lsGet(MATK, 'midnight') || 'midnight'; }
+  function myName() { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } }
   // the mat on a player's side: online, what that player picked; here, what was picked for them
   function matOf(pi) {
-    if (S.mode === 'online' && NET.mats && NET.mats[pi]) return matById(NET.mats[pi]) || MATS[0];
-    return matById(S.P[pi].mat) || matById(pi === bottomPi() ? myMat() : 'crimson') || MATS[0];
+    if (S.mode === 'online' && NET.mats && NET.mats[pi]) return matById(NET.mats[pi]) || matById('midnight');
+    return matById(S.P[pi].mat) || matById(pi === bottomPi() ? myMat() : 'crimson') || matById('midnight');
   }
+  function seatWho(pi) { var P = S.P[pi]; return { name: P.name, cpu: !!P.cpu, color: P.color }; }
   // the opponent's mat faces them, like a real one across the table
   function paintMat(n, pi, top) {
-    if (!n) return; var m = matOf(pi), k = m.id + (m.art && imgIsBad(m.url) ? '!' : '');
+    if (!n) return; var m = matOf(pi);
+    var who = seatWho(pi), k = m.id + (m.art && imgIsBad(m.url) ? '!' : '') + (m.u === 'v' ? '|' + avSig(who) : '');
     if (n.dataset.m === k) return;
-    n.dataset.m = k; n.classList.toggle('flip', !!top); matFill(n, m);
+    n.dataset.m = k; n.dataset.mid = m.id; n.classList.toggle('flip', !!top); matFill(n, m, { who: who, stars: 7 });
     if (m.art) probeArt(m.url, function () { n.dataset.m = ''; paintMat(n, pi, top); });
   }
-  function matSwatch(m, on, click, url, label) {
-    var i = el('i'); matFill(i, m, url);
+  function matSwatch(m, on, click, o, label) {
+    o = o || {}; var i = el('i'); matFill(i, m, { url: o.url, who: o.who, stars: on ? 2 : 0, still: !on });
     return el('button', { type: 'button', class: 'mat-sw' + (on ? ' on' : ''), 'aria-pressed': String(on), 'aria-label': label || m.name, onclick: click }, [i, el('span', { text: label || m.name })]);
   }
   // Pick a mat. Pass and play / vs computer: tabs for each person at the table; online: just yours.
-  // Felt, Designs, or Card art: any card's picture (from your deck, or search every printing) with a filter over it
+  // A big preview shaped like the mat (drag to frame a picture), then what's underneath, then the style over it: every
+  // swatch shows that style over what's underneath now, so you see what you'll get before you tap
   // Outside a game (Cards & decks): your own playmat, for your next game, with your last deck's cards to pick art from
   function matPicker() {
     var solo = !S || ui.screen !== 'game';
-    var getMat = solo ? function () { return matById(myMat()) || MATS[0]; } : matOf;
+    var getMat = solo ? function () { return matById(myMat()) || matById('midnight'); } : matOf;
     var putMat = solo ? function (pi, id) { lsSet(MATK, id); Kit.sfx('tap'); } : setMat;
     var seats = solo ? [0] : S.mode === 'online' ? [NET.seat] : S.mode === 'cpu' ? [humanIx()] : [0, 1], cur = solo ? 0 : seats.indexOf(bottomPi()) >= 0 ? bottomPi() : seats[0];
-    var node = el('div', { class: 'mat-pick' }), tabs = el('div', { class: 'seg mat-tabs' }), kinds = el('div', { class: 'seg mat-kinds' }), grid = el('div');
-    var kind = getMat(cur).g, q = el('input', { class: 'input', type: 'search', placeholder: 'Search any card', 'aria-label': 'Search any card' }), found = el('div');
+    var node = el('div', { class: 'mat-pick' }), tabs = el('div', { class: 'seg mat-tabs' }), prev = el('div'), unders = el('div', { class: 'seg mat-kinds' }), body = el('div'), styles = el('div', { class: 'mat-styles' });
+    var q = el('input', { class: 'input', type: 'search', placeholder: 'Search any card', 'aria-label': 'Search any card' }), found = el('div');
+    var memo = {}, view = getMat(cur).u;   // the last card art / texture picked, so switching back finds it again
     q.addEventListener('input', function () { paintFound(); });
+    function who(pi) { return solo ? { name: myName() || 'You', color: Kit.color ? Kit.color(0) : '#ffc83d' } : seatWho(pi); }
+    function remember(m) { if (m.u === 'a') memo.a = { cid: m.cid, url: m.url, fr: m.fr }; if (m.u === 't') memo.t = m.tex; }
+    function put(ch) { var m = getMat(cur); remember(m); var n = matWith(m, ch); remember(n); putMat(cur, n.id); paint(); }
+    // a different underneath keeps the style; a plain felt or design turns to a filter that lets the picture show
+    function setUnder(u) {
+      var m = getMat(cur), ch = { u: u }; view = u;
+      if (u === m.u) { paint(); return; }
+      remember(m);
+      if (m.u === 'n' && m.sk !== 'filter' && u !== 'n') ch.s = u === 't' ? 'clear' : 'dim';
+      if (u === 'a') {
+        var a = memo.a, d = !a && (deckArt(cur)[0] || null);
+        if (!a && !d) { paint(); return; }   // no card yet: search for one
+        ch.cid = a ? a.cid : d.id; ch.url = a ? a.url : d.im.l || d.im.s; ch.fr = a ? a.fr : null;
+      }
+      if (u === 't') ch.tex = memo.t || 'f';
+      if (u === 'v') ch.fr = null;
+      Kit.sfx('tap'); put(ch);
+    }
     function pickArt(d) {
-      var m = getMat(cur), u = d.im.l || d.im.s;
-      putMat(cur, artMat(m.art ? m.f.id : 'dim', d.id, u, m.art ? m.tint : '').id); paint();
+      put({ u: 'a', cid: d.id, url: d.im.l || d.im.s, fr: null, s: getMat(cur).u === 'n' && getMat(cur).sk !== 'filter' ? 'dim' : getMat(cur).s });
       var pv = $('.art-cur', node); if (pv && pv.scrollIntoView) pv.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
-    function artSwatch(d, on) { return matSwatch(artMat('clear', d.id, d.im.l || d.im.s), on, function () { pickArt(d); }, d.im.s || d.im.l, d.n); }
+    function artSwatch(d, on) { return matSwatch(matById('art:clear:' + d.id + ':' + (d.im.l || d.im.s)), on, function () { pickArt(d); }, { url: d.im.s || d.im.l }, d.n); }
     function artRow(list) {
-      var row = el('div', { class: 'mat-grid art-grid' }), m = getMat(cur);
-      list.forEach(function (d) { row.appendChild(artSwatch(d, !!m.art && m.cid === d.id)); });
+      var row = el('div', { class: 'mat-grid art-grid art-strip' }), m = getMat(cur);
+      list.forEach(function (d) { row.appendChild(artSwatch(d, m.u === 'a' && m.cid === d.id)); });
       return row;
     }
     // every printing whose name matches, so Enchanted and promo art can be picked too
@@ -7589,42 +7932,61 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       } else Object.keys(S.cards).forEach(function (u) { if (S.cards[u].o === pi) take(D(S.cards[u].id)); });
       return out.sort(function (a, b) { return (a.c || 0) - (b.c || 0) || String(a.n).localeCompare(b.n); });
     }
+    // swatches over card art use the card's small picture
+    function swUrl(m) { var d = m.u === 'a' && (DB.byId[m.cid] || null); return d && d.im && d.im.s && (d.im.l || d.im.s) === m.url ? d.im.s : null; }
     function paint() {
-      tabs.innerHTML = ''; if (seats.length > 1) seats.forEach(function (pi) { tabs.appendChild(el('button', { type: 'button', class: pi === cur ? 'on' : '', text: S.P[pi].name, onclick: function () { cur = pi; kind = getMat(cur).g; paint(); } })); });
-      kinds.innerHTML = '';
-      ['Felt', 'Designs', 'Card art'].forEach(function (g) { kinds.appendChild(el('button', { type: 'button', class: g === kind ? 'on' : '', text: g, onclick: function () { kind = g; paint(); } })); });
-      grid.innerHTML = ''; var m = getMat(cur);
-      if (kind !== 'Card art') {
-        var row = el('div', { class: 'mat-grid' });
-        MATS.filter(function (x) { return x.g === kind; }).forEach(function (x) { row.appendChild(matSwatch(x, m.id === x.id, function () { putMat(cur, x.id); paint(); })); });
-        grid.appendChild(row); return;
+      var m = getMat(cur), W = who(cur), so = { url: swUrl(m), who: W };
+      if (view !== 'a' || m.u === 'a') view = m.u;
+      tabs.innerHTML = ''; if (seats.length > 1) seats.forEach(function (pi) { tabs.appendChild(el('button', { type: 'button', class: pi === cur ? 'on' : '', text: S.P[pi].name, onclick: function () { cur = pi; view = getMat(cur).u; memo = {}; paint(); } })); });
+      prev.innerHTML = ''; prev.appendChild(framer(m));
+      unders.innerHTML = '';
+      UNDER.forEach(function (x) { unders.appendChild(el('button', { type: 'button', class: x.u === view ? 'on' : '', 'aria-pressed': String(x.u === view), text: x.name, onclick: function () { setUnder(x.u); } })); });
+      body.innerHTML = '';
+      if (view === 'a') {
+        body.appendChild(q); body.appendChild(found); paintFound();
+        var mine = deckArt(cur);
+        if (mine.length) { body.appendChild(el('div', { class: 'label', text: seats.length > 1 ? S.P[cur].name + '’s deck' : solo ? 'Your last deck' : 'Your deck' })); body.appendChild(artRow(mine)); }
+      } else if (view === 't') {
+        var tr = el('div', { class: 'mat-grid tex-grid' });
+        TEX.forEach(function (t) { tr.appendChild(matSwatch(matWith(m, { u: 't', tex: t.k }), m.u === 't' && m.tex === t.k, function () { Kit.sfx('tap'); put({ u: 't', tex: t.k }); }, so, t.name)); });
+        body.appendChild(tr);
+      } else if (view === 'v') {
+        var cpu = !solo && S.P[cur].cpu, nm = W.name, has = Kit.avatar && Kit.avatar.has && Kit.avatar.has(nm);
+        if (!cpu && Kit.avatar && Kit.avatar.edit) body.appendChild(el('div', { class: 'mat-av' }, [Kit.avatar.el(nm, null, W.color),
+          el('span', { class: 'grow', text: avatarSrc(W).photo ? 'Drag the picture above to frame it' : 'Add a photo to see it here' }),
+          el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: has ? 'Change' : 'Add photo', onclick: function () { Kit.avatar.edit(nm, function () { $$('.mat').forEach(function (n) { n.dataset.m = ''; }); if (S && ui.screen === 'game') render(); paint(); }); } })]));
       }
-      if (m.art) {
-        // the chosen art in a window shaped like the mat: drag it to frame, pinch or slide to zoom
-        grid.appendChild(framer(m));
-        var fr = el('div', { class: 'mat-grid art-filters' });
-        ARTF.forEach(function (f) { fr.appendChild(matSwatch(artWith(m, { f: f.id }), m.f.id === f.id, function () { putMat(cur, artWith(getMat(cur), { f: f.id }).id); paint(); }, null, f.name)); });
-        grid.appendChild(fr);
-        if (m.f.tint) grid.appendChild(inkWheel(m));
-      }
-      grid.appendChild(q); grid.appendChild(found); paintFound();
-      var mine = deckArt(cur);
-      if (mine.length) { grid.appendChild(el('div', { class: 'label', text: seats.length > 1 ? S.P[cur].name + '’s deck' : solo ? 'Your last deck' : 'Your deck' })); grid.appendChild(artRow(mine)); }
+      // the styles, each one shown over what's underneath now
+      styles.innerHTML = '';
+      [['Felt', MATS.filter(function (x) { return x.g === 'Felt'; })], ['Designs', MATS.filter(function (x) { return x.g === 'Designs'; })], ['Filters', ARTF]].forEach(function (grp) {
+        styles.appendChild(el('div', { class: 'label', text: grp[0] }));
+        var row = el('div', { class: 'mat-grid art-filters' });
+        grp[1].forEach(function (x) {
+          var mm = matWith(m, { s: x.id }), on = m.s === x.id;
+          row.appendChild(matSwatch(mm, on, function () { Kit.sfx('tap'); put({ s: x.id }); }, so, x.name));
+        });
+        styles.appendChild(row);
+        if (grp[0] === 'Filters' && m.s === 'ink') styles.appendChild(inkWheel(m));
+      });
     }
     // the live mats on the table for this player (top or bottom), so framing shows there as you drag
-    function liveMats() { return solo ? [] : Array.prototype.slice.call(document.querySelectorAll('.mat')).filter(function (n) { return n.dataset.m === getMat(cur).id; }); }
+    function liveMats() { var id = getMat(cur).id; return solo ? [] : $$('.mat').filter(function (n) { return n.dataset.mid === id; }); }
+    // the big preview: shaped like the mat; a picture (card art, a photo) can be dragged to frame it and zoomed
     function framer(m) {
       var mat = solo ? null : $(cur === bottomPi() ? '.mat-bot' : '.mat-top'), r = mat && mat.offsetWidth ? mat.offsetHeight / mat.offsetWidth : .7;
-      var big = el('i', { class: 'art-big' }); big.style.aspectRatio = '1 / ' + Math.min(1.1, Math.max(.35, r)).toFixed(3); matFill(big, m);
+      var W0 = who(cur), sq = m.u === 'v' && avatarSrc(W0).photo, can = m.u === 'a' || sq;
+      var big = el('i', { class: 'art-big' + (can ? '' : ' fixed') }); big.style.aspectRatio = '1 / ' + Math.min(1.1, Math.max(.35, r)).toFixed(3); matFill(big, m, { who: W0, stars: 4 });
+      var cap = m.u === 'n' ? m.name : m.uname === 'Avatar' ? (solo ? 'Your avatar' : (S.P[cur].name + '’s avatar')) + ' · ' + m.name : m.uname + ' · ' + m.name;
+      if (!can) return el('div', { class: 'art-cur' }, [el('div', { class: 'art-frame' }, [big]), el('b', { text: cap })]);
       var fr = { x: m.fr.x, y: m.fr.y, z: m.fr.z }, ptrs = {}, pinch = null, moved = false;
       var zoom = el('input', { type: 'range', class: 'art-zoom', min: '1', max: '3', step: '0.01', value: String(fr.z), 'aria-label': 'Zoom' });
       function lim() {
-        var bw = big.clientWidth || 300, bh = big.clientHeight || 200, W = Math.max(1.14 * bw, 1.56 * bh) * fr.z, H = W * 1.395;
-        fr.x = clampN(fr.x, .5 * bw / W + .035, .965 - .5 * bw / W); fr.y = clampN(fr.y, .5 * bh / H + .03, .97 - .5 * bh / H);
+        var bw = big.clientWidth || 300, bh = big.clientHeight || 200, W = (sq ? Math.max(bw, bh) : Math.max(1.14 * bw, 1.56 * bh)) * fr.z, H = W * (sq ? 1 : 1.395), ex = sq ? 0 : .035, ey = sq ? 0 : .03;
+        fr.x = clampN(fr.x, .5 * bw / W + ex, 1 - ex - .5 * bw / W); fr.y = clampN(fr.y, .5 * bh / H + ey, 1 - ey - .5 * bh / H);
         return { W: W, H: H };
       }
       function show() { lim(); frameVars(big, fr); liveMats().forEach(function (n) { frameVars(n, fr); }); zoom.value = String(fr.z); }
-      function commit() { putMat(cur, artWith(getMat(cur), { fr: { x: fr.x, y: fr.y, z: fr.z } }).id); }
+      function commit() { putMat(cur, matWith(getMat(cur), { fr: { x: +fr.x.toFixed(3), y: +fr.y.toFixed(3), z: +fr.z.toFixed(3) } }).id); }
       big.addEventListener('pointerdown', function (e) { e.preventDefault(); try { big.setPointerCapture(e.pointerId); } catch (x) {} ptrs[e.pointerId] = { x: e.clientX, y: e.clientY }; var k = Object.keys(ptrs); if (k.length === 2) { var a = ptrs[k[0]], b = ptrs[k[1]]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: fr.z }; } });
       big.addEventListener('pointermove', function (e) {
         var p0 = ptrs[e.pointerId]; if (!p0) return;
@@ -7638,14 +8000,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       big.addEventListener('wheel', function (e) { e.preventDefault(); fr.z = clampN(fr.z * (e.deltaY < 0 ? 1.08 : 1 / 1.08), 1, 3); show(); clearTimeout(big.wt); big.wt = setTimeout(commit, 250); }, { passive: false });
       zoom.addEventListener('input', function () { fr.z = +zoom.value; show(); });
       zoom.addEventListener('change', commit);
-      var reset = el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Reset', onclick: function () { fr = { x: FRAME0.x, y: FRAME0.y, z: FRAME0.z }; show(); commit(); } });
+      var reset = el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Reset', onclick: function () { var d = frDef(m.u); fr = { x: d.x, y: d.y, z: d.z }; show(); commit(); } });
       setTimeout(show, 0);
       return el('div', { class: 'art-cur' }, [el('div', { class: 'art-frame' }, [big, el('span', { class: 'art-grip', html: Kit.icon('hand'), 'aria-hidden': 'true' })]),
-        el('div', { class: 'art-zrow' }, [el('span', { class: 'art-zi', html: Kit.icon('search'), 'aria-hidden': 'true' }), zoom, reset]), el('b', { text: m.name })]);
+        el('div', { class: 'art-zrow' }, [el('span', { class: 'art-zi', html: Kit.icon('search'), 'aria-hidden': 'true' }), zoom, reset]), el('b', { text: cap })]);
     }
-    // Ink wash: a colour wheel, with each ink's colour (the card's own first) a tap away
+    // Ink wash: a colour wheel, with each ink's colour (the card's own first) a tap away, and glitter washes
     function inkWheel(m) {
-      var d = DB.byId[m.cid] || (S && S.defs && S.defs[m.cid]), own = d && d.ink ? d.ink.map(function (k) { return INKC[k]; }).filter(Boolean) : [];
+      var d = m.u === 'a' && (DB.byId[m.cid] || (S && S.defs && S.defs[m.cid])), own = d && d.ink ? d.ink.map(function (k) { return INKC[k]; }).filter(Boolean) : [];
       var picks = own.concat(Object.keys(INKC).map(function (k) { return INKC[k]; }).filter(function (c) { return own.indexOf(c) < 0; }));
       var wheel = el('div', { class: 'ink-wheel', role: 'slider', 'aria-label': 'Wash colour' }), dot = el('i', { class: 'ink-dot' }); wheel.appendChild(dot);
       function place(hex) { var h = hexHsl(hex); var a = (h[0] - 90) * Math.PI / 180, rr = h[1] * 50; dot.style.left = (50 + Math.cos(a) * rr) + '%'; dot.style.top = (50 + Math.sin(a) * rr) + '%'; dot.style.background = hex; }
@@ -7653,21 +8015,28 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var b = wheel.getBoundingClientRect(), x = e.clientX - b.left - b.width / 2, y = e.clientY - b.top - b.height / 2;
         var hue = (Math.atan2(y, x) * 180 / Math.PI + 90 + 360) % 360, sat = Math.min(1, Math.hypot(x, y) / (b.width / 2));
         var hex = hslHex(hue, sat, .5); place(hex); wheel.dataset.hex = hex;
-        liveMats().concat([$('.art-big', node)]).forEach(function (n) { if (n) matFill(n, artWith(getMat(cur), { tint: hex })); });
+        var mm = matWith(getMat(cur), { tint: hex, glit: '' }), W = who(cur);
+        liveMats().forEach(function (n) { matFill(n, mm, { who: W, stars: 7 }); });
+        var bg = $('.art-big', node); if (bg) matFill(bg, mm, { who: W, stars: 4 });
       }
       var on = false;
       wheel.addEventListener('pointerdown', function (e) { e.preventDefault(); on = true; try { wheel.setPointerCapture(e.pointerId); } catch (x) {} pickAt(e); });
       wheel.addEventListener('pointermove', function (e) { if (on) pickAt(e); });
-      wheel.addEventListener('pointerup', function () { on = false; if (wheel.dataset.hex) { putMat(cur, artWith(getMat(cur), { tint: wheel.dataset.hex }).id); paint(); } });
+      wheel.addEventListener('pointerup', function () { on = false; if (wheel.dataset.hex) put({ tint: wheel.dataset.hex, glit: '' }); });
       place(m.ink);
       var row = el('div', { class: 'ink-picks' }, picks.map(function (c) {
         var nmk = Object.keys(INKC).filter(function (k) { return INKC[k] === c; })[0];
-        return el('button', { type: 'button', class: 'ink-pk' + (c.toLowerCase() === m.ink.toLowerCase() ? ' on' : ''), style: { background: c }, title: nmk, 'aria-label': nmk, onclick: function () { putMat(cur, artWith(getMat(cur), { tint: c }).id); paint(); } });
-      }));
+        return el('button', { type: 'button', class: 'ink-pk' + (!m.wg && c.toLowerCase() === m.ink.toLowerCase() ? ' on' : ''), style: { background: c }, title: nmk, 'aria-label': nmk, onclick: function () { Kit.sfx('tap'); put({ tint: c, glit: '' }); } });
+      }).concat(GLITK.map(function (g) {
+        var T = glitTiles(g);
+        return el('button', { type: 'button', class: 'ink-pk gl' + (m.wg === g ? ' on' : ''), title: GLIT[g].name, 'aria-label': GLIT[g].name,
+          style: { background: cssUrl(T.a.url) + ' 0 0/' + Math.round(T.a.sz * .5) + 'px,' + cssUrl(T.d.url) + ' 0 0/' + Math.round(T.d.sz * .5) + 'px,radial-gradient(circle at 35% 30%,' + mixHex(GLIT[g].base, '#ffffff', .25) + ',' + GLIT[g].base + ' 60%,' + mixHex(GLIT[g].base, '#000000', .45) + ')' },
+          onclick: function () { Kit.sfx('chip'); put({ glit: g }); } });
+      })));
       return el('div', { class: 'ink-pick' }, [wheel, row]);
     }
     if (seats.length > 1) node.appendChild(tabs);
-    node.appendChild(kinds); node.appendChild(grid); paint();
+    node.appendChild(prev); node.appendChild(unders); node.appendChild(body); node.appendChild(styles); paint();
     if (solo) node.insertBefore(el('p', { class: 'muted mat-solo', text: 'Your playmat for your next game' }), node.firstChild);
     Kit.sheet({ title: solo ? 'Your playmat' : 'Playmat', node: node, actions: [{ label: 'Done', cls: 'btn-primary' }] });
   }
@@ -11806,7 +12175,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       item('check', 'Select this card and more…', function () { selStart(d); });
       item('eye', 'View card', function () { cardZoom(d, list); });
       if (d.im && (d.im.l || d.im.s)) item('sparkle', 'Use as my playmat', function () {
-        var cur = matById(lsGet(MATK, '')), m = artMat(cur && cur.art ? cur.f.id : 'dim', d.id, d.im.l || d.im.s, cur && cur.art ? cur.tint : '');
+        var cur = matById(lsGet(MATK, '')), keep = cur && (cur.u !== 'n' || cur.sk === 'filter');   // keep the style unless it's a plain felt or design
+        var m = cur ? matWith(cur, { u: 'a', cid: d.id, url: d.im.l || d.im.s, fr: null, s: keep ? cur.s : 'dim' }) : matById('art:dim:' + d.id + ':' + (d.im.l || d.im.s));
         lsSet(MATK, m.id); Kit.sfx('chip'); Kit.toast('Playmat set for your next game'); matPicker();
       });
       node.appendChild(lst);
@@ -12982,6 +13352,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     rulesHTML: rulesHTML, chalOutcome: chalOutcome, chalPreview: chalPreview,
     fire: function (src, ab, pi, ctx) { Q.push({ src: src, ab: ab, pi: pi, ctx: ctx || {} }); pumpQ(); },
     rollHTML: rollHTML, fitRoll: fitRoll,
+    matById: matById, matFill: matFill, matPicker: matPicker, matWith: matWith,
     hitFx: function (e, x, src) { var st = { pi: S.cur, src: src, ab: { name: 'Test' }, said: [] }; fx.beam(src, [x]); act(function () { hit(e, st, x); checkBanishAll(); }); }
   };
 })();

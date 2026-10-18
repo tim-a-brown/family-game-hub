@@ -35,20 +35,23 @@ const Casino = (function(){
   // when this device last filed a game for them}. A guest's $1,000 goes nowhere; a linked player's bankroll changes
   // reach them through the history record. Kept on this device only (a reload carries on with it); your bankroll,
   // its history and your link profile never see it.
-  var PLAYK = 'casino_play', PLAY = null;
-  function playSave(){ try{ if(PLAY) localStorage.setItem(PLAYK, JSON.stringify(PLAY)); else localStorage.removeItem(PLAYK); } catch(e){} }
+  var PLAY = null;
+  function PLAYK(){ return 'casino_play_' + gameInfo().id; }   // (each game keeps its own, so one left saved can't lose another's)
+  function playSave(){ try{ if(PLAY) localStorage.setItem(PLAYK(), JSON.stringify(PLAY)); else localStorage.removeItem(PLAYK()); } catch(e){} }
   function meName(){
     var me = ''; try{ me = (localStorage.getItem('my_name') || '').trim(); } catch(e){}
     if(!me) try{ me = String((typeof FGHSync !== 'undefined' && FGHSync.label && FGHSync.label()) || '').trim(); } catch(e){}
     return me.toLowerCase();
   }
   // You, or nobody known (a device with no name set plays from the bankroll, as before)
-  function isMain(name){ var me = meName(), k = String(name || '').trim().toLowerCase(); return !me || !k || k === me; }
+  // You, a seat left with its default name ("Player 1", "You"), or nobody known (a device with no name set plays from
+  // the bankroll, as before)
+  function isMain(name){ var me = meName(), k = String(name || '').trim().toLowerCase(); return !me || !k || k === me || /^(you|me|player\s*\d*|p\d)$/.test(k); }
   function forPlayer(name){
     // (a running session begun under play money, e.g. at page load, isn't yours: drop it so it can't log a fake change)
     if(isMain(name)){ if(PLAY){ PLAY = null; playSave(); S = null; } return 'mine'; }
     var k = String(name).trim(), old = null, lb = null;
-    try{ old = JSON.parse(localStorage.getItem(PLAYK)); } catch(e){}
+    try{ old = JSON.parse(localStorage.getItem(PLAYK())); } catch(e){}
     try{ lb = typeof FGHSync !== 'undefined' && FGHSync.linkBank ? FGHSync.linkBank(k) : null; } catch(e){}
     if(S && !PLAY) flush();
     if(lb && lb.code){
@@ -70,6 +73,10 @@ const Casino = (function(){
   // A missing bankroll starts at $1,000; a real $0 stays $0 (not reset).
   function balance(){
     if(PLAY) return Math.max(0, PLAY.bal);
+    return realBank();
+  }
+  // your own bankroll, whoever is playing (the bankroll history)
+  function realBank(){
     try{ var v = localStorage.getItem(KEY); if(v === null || v === '') return DEFAULT; var n = parseInt(v, 10); return isNaN(n) ? DEFAULT : Math.max(0, n); }
     catch(e){ return DEFAULT; }
   }
@@ -170,7 +177,7 @@ const Casino = (function(){
   function spark(list){
     // Balance after each entry, oldest to newest, ending at the current bankroll
     var pts = list.slice().reverse().map(function(e){ return e.end; }).filter(function(v){ return typeof v === 'number'; });
-    pts.push(balance());
+    pts.push(realBank());
     if(pts.length < 2) return '';
     var W = 320, H = 80, lo = Math.min.apply(null, pts.concat([0])), hi = Math.max.apply(null, pts.concat([DEFAULT]));
     var sx = function(i){ return 4 + i * (W - 8) / (pts.length - 1); }, sy = function(v){ return H - 6 - (v - lo) * (H - 12) / ((hi - lo) || 1); };
@@ -205,7 +212,7 @@ const Casino = (function(){
     var wins = sessions.filter(function(e){ return e.net > 0; }).length, losses = sessions.filter(function(e){ return e.net < 0; }).length;
     var resets = list.filter(function(e){ return e.kind === 'reset'; }).length;
     var net = sessions.reduce(function(a, e){ return a + (e.net || 0); }, 0);
-    box.appendChild(el('div', { class: 'cz-top' }, [el('span', { class: 'muted', text: 'Bankroll now' }), el('span', { class: 'cz-bal', text: money(balance()) })]));
+    box.appendChild(el('div', { class: 'cz-top' }, [el('span', { class: 'muted', text: 'Bankroll now' }), el('span', { class: 'cz-bal', text: money(realBank()) })]));
     if(list.length) box.appendChild(el('div', { html: spark(list) }));
     box.appendChild(el('div', { class: 'cz-sum' }, [
       el('div', null, [el('b', { class: net >= 0 ? 'cz-up' : 'cz-down', text: (net > 0 ? '+' : '') + money(net) }), el('small', { text: 'Net' })]),

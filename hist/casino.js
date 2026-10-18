@@ -2,7 +2,9 @@
 // History views: casino
 (function () {
   if (!window.HistView) return;
-  var R = HistView.register;
+  // (a session played with play money, by a guest: dt.play; its amounts say so)
+  var PLAY = false;
+  var R = function (id, fn) { HistView.register(id, function (e, ui) { PLAY = !!(e && e.dt && e.dt.play); return fn(e, ui); }); };
 
   // ── shared bits ──
   function signed(n) { n = Math.round(Number(n) || 0); return (n > 0 ? '+$' : n < 0 ? '−$' : '$') + Math.abs(n).toLocaleString('en-US'); }
@@ -12,6 +14,7 @@
   function bankStats(ui, b, net, extra) {
     if (!b) return null;
     var list = [['Started with', b.s != null ? ui.money(b.s) : null], ['Ended with', b.e != null ? ui.money(b.e) : null], ['Net', net != null ? signed(net) : null]];
+    if (PLAY) list.unshift(['Money', 'Play money']);
     return ui.stats(list.concat(extra || []));
   }
   // a row of buttons that pick one item; returns {node, set}

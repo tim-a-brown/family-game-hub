@@ -620,16 +620,20 @@
     }, 200);
   }
   // ── Four players: a multitap in port 2, the way the real consoles did it ──
-  // SNES: Nintendo's Super Multitap (snes9x device 257), always plugged in. Games that don't use it read player 2
-  // through it exactly as before (checked: the console's own joypad registers see the same buttons), and games
-  // that do (Super Bomberman 2, NBA Jam) let players 3 and 4 in. Genesis: Sega's Team Player (Genesis Plus GX
-  // device 1537), only for cartridges whose header lists it (I/O support '4'): it would get in the way of player 2
-  // in other games. NES and Atari 2600: two players. RetroArch takes a port's device from the core's remap file.
+  // SNES: Nintendo's Super Multitap (snes9x device 257), for games made for it (MULTITAP below, by name: the
+  // cartridge doesn't say). Games that don't use it would read player 2 through it unchanged, but snes9x with a
+  // multitap now and then runs a frame slightly differently on two devices (checked: same buttons every frame),
+  // which online play has to repair with a resync, so other games keep plain pads, exactly as before.
+  // Genesis: Sega's Team Player (Genesis Plus GX device 1537), for cartridges whose header lists it (I/O support
+  // '4'): it would get in the way of player 2 in other games. NES and Atari 2600: two players.
+  // RetroArch takes a port's device from the core's remap file, written before the console starts.
   var TAPS = { snes: { lib: 'Snes9x', dev: 257 }, genesis: { lib: 'Genesis Plus GX', dev: 1537 } }, TAP_ON = false;
+  var MULTITAP = /bomberman|nba jam|nba hang ?time|nba give|nba live|college slam|barkley|rap jam|madden|\bnhl|fifa|secret of mana|seiken densetsu|trials of mana|micro machines|slam masters|wwf raw|top gear 3000|street racer|smash tennis|olympic summer|final four|quarterback club|unnecessary roughness|j\.? ?league|hebereke|bruce lee|power baseball|wacky sports|yu ?yu hakusho|kunio|\bpieces\b/i;
   function tapOf(c) {
     var T = TAPS[SYS_ID]; if (!T) return Promise.resolve(false);
+    if (NET.mode === 'guest' && NET.cart && NET.cart.tap != null) return Promise.resolve(!!NET.cart.tap);   // joining: the same console as the host's
     try { var tt = sessionStorage.getItem('cs_tap'); if (tt) return Promise.resolve(tt === '1'); } catch (e) {}   // (tests: '1' plugs it in for any game, '0' leaves it out)
-    if (SYS_ID === 'snes') return Promise.resolve(true);
+    if (SYS_ID === 'snes') return Promise.resolve(MULTITAP.test((c.name || '') + ' ' + (c.file || '')));
     return c.data.slice(0, 0x4200).arrayBuffer().then(function (b) {
       var a = new Uint8Array(b);
       if (c.data.size % 16384 === 512 && a[8] === 0xaa && a[9] === 0xbb) {   // .smd: 512-byte header, then 16 KB blocks with odd and even bytes apart
@@ -1274,14 +1278,15 @@
     if (NET.roster.length) return NET.roster.map(function (r) { return { name: r.name, seat: r.seat, host: r.seat === 0, me: r.seat === NET.seat }; });
     return [{ name: NET.other, host: true, seat: 0 }, { name: NET.me, me: true, seat: NET.seat || 1 }];
   }
-  // the seat tags (P1 to P4, in the players' colours) on the table screen's rows
+  // the seat tags (P1 to P4, in the players' colours) on the table screen's rows, in the line under the name
   function netTags() {
     if (!NET.ov) return;
     var pl = netPlayers(), rows = NET.ov.querySelectorAll('.olt-side .stack:not(:empty) > .ol-seat');
     Array.prototype.forEach.call(rows, function (r, i) {
-      var p = pl[i]; if (!p) return;
-      var t = r.querySelector('.net-ptag') || r.appendChild(el('i', { class: 'net-ptag' }));
-      t.className = 'net-ptag p' + (p.seat + 1); t.textContent = 'P' + (p.seat + 1);
+      var p = pl[i], sm = r.querySelector('small'); if (!p || !sm || sm.querySelector('.net-ptag')) return;
+      var t = el('i', { class: 'net-ptag p' + (p.seat + 1), text: 'P' + (p.seat + 1) });
+      sm.textContent = p.host ? 'Host' : p.me ? 'You' : '';
+      sm.insertBefore(t, sm.firstChild); sm.classList.add('net-sm');
     });
   }
   function netWaitUpdate() { if (NET.wait) { NET.wait.update(netPlayers()); netTags(); } }
@@ -1327,7 +1332,7 @@
         NET.guests.push(g); NET.names[seat] = g.name;
         ConsoleNet.listen(peer);
         peer.on('msg', function (m) { netHostMsg(g, m); });
-        peer.send({ t: 'cart', id: cur.id, name: cur.name, file: cur.file, p1: NET.me, seat: seat, max: NET.max }, true);
+        peer.send({ t: 'cart', id: cur.id, name: cur.name, file: cur.file, p1: NET.me, seat: seat, max: NET.max, tap: TAP_ON }, true);
         netRoster();
         if (NET.wait) { netWaitUpdate(); netHostSteps(); }
         else { Kit.toast(g.name + ' is joining'); Kit.sfx('pop'); }
@@ -1476,7 +1481,7 @@
   }
   function netPeek() {
     if (!netHud) return;
-    var h = netHud; h.seats.classList.add('on'); clearTimeout(h.peekT);
+    var h = netHud; h.seats.classList.add('on'); clearTimeout(h.peekT); h.peekUntil = Date.now() + 4500;
     h.peekT = setTimeout(function () { if (netHud === h && !h.veil.classList.contains('on')) h.seats.classList.remove('on'); }, 4500);
   }
   function netSeats() {
@@ -1486,6 +1491,9 @@
     var sig = [st.seats.join(), st.gone.join(), wait, st.seats.map(nameOf).join('|')].join('/');
     if (sig === netHud.sig) return;
     netHud.sig = sig;
+    // someone left: their tag dims, and everyone sees it (the host has already said who)
+    if (netHud.gone != null && st.gone.length > netHud.gone) { netPeek(); if (me !== 0) { Kit.toast(nameOf(st.gone[st.gone.length - 1]) + ' left'); Kit.haptic('warning'); } }
+    netHud.gone = st.gone.length;
     netHud.seats.innerHTML = '';
     netHud.seats.classList.toggle('n3', st.seats.length > 2);
     st.seats.forEach(function (s) {
@@ -1504,7 +1512,7 @@
       netHud.veil.children[2].textContent = st.paused ? who + ' paused the game' : 'Waiting for ' + who;
       netHud.veil.children[3].textContent = st.paused ? 'It carries on when they close the menu' : st.wait > 4000 ? 'Their connection is slow or dropped out' : '';
     }
-    if (on !== netHud.veil.classList.contains('on')) { netHud.veil.classList.toggle('on', on); netHud.seats.classList.toggle('on', on); }
+    if (on !== netHud.veil.classList.contains('on')) { netHud.veil.classList.toggle('on', on); netHud.seats.classList.toggle('on', on || Date.now() < (netHud.peekUntil || 0)); }
   }
   function ffOff() { if (!ffOn) return; ffOn = false; try { emu().gameManager.toggleFastForward(0); } catch (e) {} ctls.forEach(function (c) { if (c.t === 'ff') c.el.classList.remove('lit'); }); }
 
@@ -1525,7 +1533,7 @@
     menu: [
       { icon: 'bookmark', label: 'Save state', sub: 'Keep this exact moment', when: playing, onClick: function () { slotsSheet(true); } },
       { icon: 'history', label: 'Load state', sub: 'Go back to a saved moment', when: hostOrSolo, onClick: function () { slotsSheet(false); } },
-      { icon: 'globe', label: 'Play online', sub: (TAPS[SYS_ID] ? 'Up to four players' : 'Two players') + ', each on their own device', when: function () { return !NET.mode; }, onClick: goOnline },
+      { icon: 'globe', label: 'Play online', sub: TAPS[SYS_ID] ? 'Each player on their own device' : 'Two players, each on their own device', when: function () { return !NET.mode; }, onClick: goOnline },
       { icon: 'users', label: 'Your online table', sub: 'Who’s here, and Start', when: function () { return NET.mode === 'host' && !NET.live; }, onClick: netShowWait },
       { icon: 'logout', label: 'Leave the online game', sub: 'Keep playing on your own', when: function () { return !!NET.mode; }, onClick: function () { netQuit(); } },
       { icon: 'sync', label: 'Reset', sub: 'Like the console’s Reset button', when: hostOrSolo, onClick: function () {
