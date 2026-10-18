@@ -1280,6 +1280,9 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .act.pri .ai{background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.6),rgba(167,122,38,.35));box-shadow:inset 0 0 0 1px rgba(122,84,19,.5);}
 .acts-row.many .act{min-height:62px;padding:6px 3px;}
 .acts-row.many .act .al{font-size:.86rem;}
+/* a long choice ("Return another chosen character of yours to your hand") wraps onto more lines, a little smaller,
+   instead of being cut off */
+.act.long .al{-webkit-line-clamp:4;font-size:.9rem;line-height:1.14;}
 .acts-row.many .act .ai{width:26px;height:26px;}
 .lz-acts .why{font-size:.82rem;color:var(--text-3);text-align:center;margin-top:8px;}
 .lz-x{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));top:calc(var(--safe-t) + 10px);z-index:2;}
@@ -10093,7 +10096,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       function actBtn(a) { if (a.qty) { row.appendChild(qtyCtl(a.qty)); return; } if (a.ok === false) return;
         if (a.off) { row.appendChild(offBtn(a)); return; }
         var pt = actParts(a);
-        row.appendChild(el('button', { type: 'button', class: 'act' + (a.primary ? ' pri' : '') + (a.on ? ' on' : ''), 'aria-pressed': a.on != null ? String(!!a.on) : null, 'aria-label': pt.text, html: '<i class="ai">' + pt.icon + '</i>' + (pt.subHTML ? '<span class="alw"><span class="al">' + esc(pt.main) + '</span><small class="cst">Cost:' + pt.subHTML + '</small></span>' : '<span class="al">' + esc(pt.main) + '</span>' + (pt.sub ? '<small>' + esc(pt.sub) + '</small>' : '')), onclick: function () { if (!a.stay) closeZoom(); a.go(); } })); }
+        row.appendChild(el('button', { type: 'button', class: 'act' + (a.primary ? ' pri' : '') + (a.on ? ' on' : '') + (pt.main.length > 24 ? ' long' : ''), 'aria-pressed': a.on != null ? String(!!a.on) : null, 'aria-label': pt.text, html: '<i class="ai">' + pt.icon + '</i>' + (pt.subHTML ? '<span class="alw"><span class="al">' + esc(pt.main) + '</span><small class="cst">Cost:' + pt.subHTML + '</small></span>' : '<span class="al">' + esc(pt.main) + '</span>' + (pt.sub ? '<small>' + esc(pt.sub) + '</small>' : '')), onclick: function () { if (!a.stay) closeZoom(); a.go(); } })); }
       if (row.children.length > 3) row.classList.add('many');
       g.appendChild(row); if (row2) g.appendChild(row2);
       // (phones keep the line under the buttons even when it's empty, so every card sits at the same height)
