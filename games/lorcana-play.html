@@ -1325,8 +1325,10 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
   .lz .lz-in > .lz-hf{grid-column:2;grid-row:2;align-self:start;justify-self:center;width:auto;max-width:100%;margin:0;justify-content:center;}   /* Sort and the chips centred under the cards */
   .lz .lz-in > .lz-hf .hf-chips{flex:0 1 auto;}
   .lz .lz-in > .lz-info{grid-column:1;grid-row:1 / span 2;align-self:center;}
-  .lz .lz-in:has(> .lz-acts.side) > .lz-info{grid-row:1;align-self:end;max-height:calc(100vh - 200px - var(--safe-t) - var(--safe-b));}
-  .lz .lz-in > .lz-acts.side{grid-column:1;grid-row:2;align-self:start;justify-self:stretch;width:auto;margin:0;}
+  /* the details and the actions both span the rows (top and bottom of the left side), so their heights never change the
+     rows the cards and chips sit in, and the cards stay put from one card to the next; midLeft centres them as a block */
+  .lz .lz-in:has(> .lz-acts.side) > .lz-info{grid-row:1 / span 2;align-self:start;max-height:calc(100vh - 200px - var(--safe-t) - var(--safe-b));}
+  .lz .lz-in > .lz-acts.side{grid-column:1;grid-row:1 / span 2;align-self:end;justify-self:stretch;width:auto;margin:0;}
   .lz-acts.side .why{margin-top:6px;}
   .lz .lz-in .lz-flow.strip{--cu:min(calc(100vh - 150px - var(--safe-t) - var(--safe-b)),calc((98vw - 470px) / 1.12),900px);width:calc(var(--cu) * 1.12);--fx:.25;}
   .lz .lz-in:has(> .lz-hf) .lz-flow.strip{--cu:min(calc(100vh - 215px - var(--safe-t) - var(--safe-b)),calc((98vw - 470px) / 1.12),900px);}
@@ -9738,6 +9740,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function actParts(a) {
     var text = String(a.label).replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim().replace(/^[+−-]\s*/, '');
     var parts = text.split(' · '), main = parts[0], sub = parts.slice(1).join(' · ');
+    // a cost drawn as symbols (exert, ink) loses them as text: the symbols themselves go under the name
+    var raw = String(a.label).split(' · '), symSub = raw.length > 1 && /<(svg|i|span|b)\b/.test(raw.slice(1).join(' · ')) ? raw.slice(1).join(' · ') : '';
+    if (symSub) { main = raw[0].replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim(); sub = ''; }
     var m = /^(Add one|Play exerted) \((.+)\)$/.exec(main); if (m) { main = m[1]; sub = sub || m[2]; }
     var t = text, icon =
       /^Play exerted/.test(t) ? sym('E', 'aic') : /^Play ready/.test(t) ? ACT_READY : /^Play/.test(t) ? Kit.icon('play') : /^Sing/.test(t) ? NOTE_SVG : /^Shift/.test(t) ? Kit.icon('cards') :
@@ -9750,7 +9755,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (main === 'Sing it for free') { main = 'Sing'; sub = sub || 'Free'; }
     var ci = /^(\d+) ink$/.exec(sub);   // an ink cost shows as the cost coin with the number in it
     if (a.icon) icon = a.icon;
-    return { text: text, main: main, sub: sub, icon: icon, subHTML: ci ? costSVG(false, +ci[1], 19) + (a.drop ? '<i class="dropm" title="Uses ' + plural(a.drop, 'ink drop') + '">' + STT_ICO.drop + (a.drop > 1 ? '<b>' + a.drop + '</b>' : '') + '</i>' : '') : '' };
+    return { text: text, main: main, sub: sub, icon: icon, subHTML: ci ? costSVG(false, +ci[1], 19) + (a.drop ? '<i class="dropm" title="Uses ' + plural(a.drop, 'ink drop') + '">' + STT_ICO.drop + (a.drop > 1 ? '<b>' + a.drop + '</b>' : '') + '</i>' : '') : symSub };
   }
   // ── A faint sheen on the card in focus that follows the phone's tilt (or the pointer) ──
   // The card leans a few degrees with the device and a soft band of light slides across it.
@@ -9996,13 +10001,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var inf = $('.lz-in > .lz-info', ov), ac = $('.lz-in > .lz-acts.side', ov), lin = $('.lz-in', ov);
     if (inf) inf.style.translate = ''; if (ac) ac.style.translate = '';
     if (!inf || !ac || !lin || phoneZoom()) return;
-    // layout positions (not on-screen ones, which the opening animation moves): the block in the middle of the space
-    // between the view's top and bottom padding
+    // layout positions (not on-screen ones, which the opening animation moves): the details, a gap, then the actions,
+    // as one block in the middle of the space between the view's top and bottom padding
     var cs = getComputedStyle(lin), base = inf.offsetParent === lin ? 0 : lin.offsetTop;
     var top0 = base + parseFloat(cs.paddingTop), h = lin.offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-    var a = inf.offsetTop, b = ac.offsetTop + ac.offsetHeight, dy = Math.round(top0 + (h - (b - a)) / 2 - a);
-    if (Math.abs(dy) < 2) return;
-    inf.style.translate = ac.style.translate = '0 ' + dy + 'px';
+    var ih = inf.offsetHeight, ah = ac.offsetHeight, gap = 12, top = Math.round(top0 + Math.max(0, (h - ih - gap - ah) / 2));
+    inf.style.translate = '0 ' + (top - inf.offsetTop) + 'px';
+    ac.style.translate = '0 ' + (top + ih + gap - ac.offsetTop) + 'px';
   }
   function fitSide0(ov, keep) {
     var fl = function () { if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure(); };
@@ -10221,6 +10226,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (!(swapping || keep)) { ui.fitCu = 0; ui.fitKey = null; ui.fitDone = false; }
     if (ui.fitCu) { ov.classList.add('lz-fit'); ov.style.setProperty('--cufit', ui.fitCu + 'px'); }
     document.body.appendChild(ov);
+    if (!phoneZoom()) midLeft(ov);
     if (!opt.tapClose) { lzFeed(); requestAnimationFrame(function () { fitLz(ov); }); }
     cardTilt(ov);
     if (F) F.render();
