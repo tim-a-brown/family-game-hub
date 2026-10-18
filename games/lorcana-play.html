@@ -1330,6 +1330,10 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
   .lz .lz-in:has(> .lz-acts.side) > .lz-info{grid-row:1 / span 2;align-self:start;max-height:calc(100vh - 200px - var(--safe-t) - var(--safe-b));}
   .lz .lz-in > .lz-acts.side{grid-column:1;grid-row:1 / span 2;align-self:end;justify-self:stretch;width:auto;margin:0;}
   .lz-acts.side .why{margin-top:6px;}
+  /* a choice an ability is asking for: what's asking heads the left side, over the card's details (midLeft stacks them),
+     and the thumbnail strip stays under the cards, scrolling when the list is long */
+  .lz .lz-in > .cp-head{grid-column:1;grid-row:1 / span 2;align-self:start;width:auto;max-width:none;margin:0;}
+  .lz .lz-in > .lz-flow .lz-strip{max-width:100%;}
   .lz .lz-in .lz-flow.strip{--cu:min(calc(100vh - 150px - var(--safe-t) - var(--safe-b)),calc((98vw - 470px) / 1.12),900px);width:calc(var(--cu) * 1.12);--fx:.25;}
   .lz .lz-in:has(> .lz-hf) .lz-flow.strip{--cu:min(calc(100vh - 215px - var(--safe-t) - var(--safe-b)),calc((98vw - 470px) / 1.12),900px);}
   .lz .lz-in:has(> .lz-acts.side) .lz-card:not(.loc){--cu:min(calc(100vh - 150px - var(--safe-t) - var(--safe-b)),900px);}
@@ -9998,16 +10002,20 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // The details and the card's actions under them sit as one block in the middle of the left side (the grid puts them
   // either side of the line where the cards meet their chips, which left them low with empty space above)
   function midLeft(ov) {
-    var inf = $('.lz-in > .lz-info', ov), ac = $('.lz-in > .lz-acts.side', ov), lin = $('.lz-in', ov);
-    if (inf) inf.style.translate = ''; if (ac) ac.style.translate = '';
+    var inf = $('.lz-in > .lz-info', ov), ac = $('.lz-in > .lz-acts.side', ov), hd = $('.lz-in > .cp-head', ov), lin = $('.lz-in', ov);
+    if (inf) { inf.style.translate = ''; inf.style.maxHeight = ''; } if (hd) hd.style.translate = '';
+    $$('.lz-in > .lz-acts', ov).forEach(function (x) { x.style.translate = ''; });   // (also once turned upright, no longer .side)
     if (!inf || !ac || !lin || phoneZoom()) return;
-    // layout positions (not on-screen ones, which the opening animation moves): the details, a gap, then the actions,
-    // as one block in the middle of the space between the view's top and bottom padding
+    // layout positions (not on-screen ones, which the opening animation moves): what's asking (a choice), the details,
+    // a gap, then the actions, as one block in the middle of the space between the view's top and bottom padding
     var cs = getComputedStyle(lin), base = inf.offsetParent === lin ? 0 : lin.offsetTop;
     var top0 = base + parseFloat(cs.paddingTop), h = lin.offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-    var ih = inf.offsetHeight, ah = ac.offsetHeight, gap = 12, top = Math.round(top0 + Math.max(0, (h - ih - gap - ah) / 2));
-    inf.style.translate = '0 ' + (top - inf.offsetTop) + 'px';
-    ac.style.translate = '0 ' + (top + ih + gap - ac.offsetTop) + 'px';
+    var gap = 12, hh = hd ? hd.offsetHeight + gap : 0, ah = ac.offsetHeight;
+    if (hd) inf.style.maxHeight = Math.max(120, h - hh - gap - ah) + 'px';   // the details scroll before anything leaves the screen
+    var ih = inf.offsetHeight, top = Math.round(top0 + Math.max(0, (h - hh - ih - gap - ah) / 2));
+    if (hd) hd.style.translate = '0 ' + (top - hd.offsetTop) + 'px';
+    inf.style.translate = '0 ' + (top + hh - inf.offsetTop) + 'px';
+    ac.style.translate = '0 ' + (top + hh + ih + gap - ac.offsetTop) + 'px';
   }
   function fitSide0(ov, keep) {
     var fl = function () { if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure(); };
@@ -10046,6 +10054,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure();
   }
   var LZ_FIT_MIN = 304;   // the smallest the card gets: big enough to read and to reach (the details may scroll a little)
+  // a long thumbnail strip scrolls to keep the card you're on in the middle of it
+  function stripMid(st, smooth) {
+    var on = st && st.querySelector('.on'); if (!on || st.scrollWidth <= st.clientWidth) return;
+    st.scrollTo({ left: on.offsetLeft - st.clientWidth / 2 + on.offsetWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
+  }
   function zoomShell(d, infoHTML, acts, whys, nav, opt) {
     opt = opt || {};
     var quiet = !!ui.lzQuiet && !!$$('.lz').length; ui.lzQuiet = false;   // re-dealt in place (sort / filter): no fade in
@@ -10091,6 +10104,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
             html: (nav.hide && nav.hide(x) ? '<i class="lback ls-bk"></i>' : miniArt(DD(x))) + (pk && pk.sel.indexOf(x) >= 0 ? (pk.place ? '<i class="ls-ck ls-n">' + (pk.sel.indexOf(x) + 1) + '</i>' : '<i class="ls-ck">' + Kit.icon('check') + '</i>') : ''), onclick: function (e) { e.stopPropagation(); if (j === nav.i) return; if (F) F.settle(j); else nav.go(j - nav.i); } }));
         });
         posHost.appendChild(strip);
+        setTimeout(function () { stripMid(strip); }, 0);
       } else if (nav.defs && nav.n <= 60) {
         // Deck builder: your deck as a strip of little cards (the full search list keeps a plain counter)
         var dstrip = el('div', { class: 'lz-pos lz-strip', role: 'tablist', 'aria-label': 'Card ' + (nav.i + 1) + ' of ' + nav.n });
@@ -10100,7 +10114,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
             onclick: function (e) { e.stopPropagation(); if (j === nav.i) return; if (F) F.settle(j); else nav.go(j - nav.i); } }));
         });
         posHost.appendChild(dstrip);
-        setTimeout(function () { var on = dstrip.querySelector('.on'); if (on) dstrip.scrollLeft = on.offsetLeft - dstrip.clientWidth / 2 + on.offsetWidth / 2; }, 0);
+        setTimeout(function () { stripMid(dstrip); }, 0);
       } else posHost.appendChild(el('div', { class: 'lz-pos' }, [nav.src ? srcTag(nav.src) : null, el('span', { class: 'ct', text: (nav.i + 1) + ' of ' + nav.n.toLocaleString() })]));
     }
     var info = el('div', { class: 'lz-info', html: infoHTML });
@@ -10284,7 +10298,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       }
       wakeTilt();
       var idx = Math.round(F.pos);
-      if (idx !== F.at) { F.at = idx; var pz = F.ov && F.ov.querySelector('.lz-pos'); if (pz && pz.classList.contains('lz-strip')) $$('.ls-c', pz).forEach(function (t, k) { t.classList.toggle('on', k === idx); }); else if (pz) (pz.querySelector('.ct') || pz).textContent = (idx + 1) + ' of ' + n.toLocaleString(); Kit.sfx('slide'); }
+      if (idx !== F.at) { F.at = idx; var pz = F.ov && F.ov.querySelector('.lz-pos'); if (pz && pz.classList.contains('lz-strip')) { $$('.ls-c', pz).forEach(function (t, k) { t.classList.toggle('on', k === idx); }); stripMid(pz, true); } else if (pz) (pz.querySelector('.ct') || pz).textContent = (idx + 1) + ' of ' + n.toLocaleString(); Kit.sfx('slide'); }
     };
     function stop() { if (F.raf) cancelAnimationFrame(F.raf); F.raf = 0; }
     F.remeasure = function () { CU = 0; F.render(); };
@@ -11251,6 +11265,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       // with the steps listed underneath, the header just names the card
       var pl = planHTML(); if (pl) { head.classList.add('has-plan'); var hb = $('b', head); if (hb) hb.textContent = o.title.split(': ')[0]; head.insertAdjacentHTML('beforeend', pl); }
       var lin = ov && $('.lz-in', ov); if (lin) lin.insertBefore(head, lin.firstChild);
+      if (ov && !phoneZoom()) midLeft(ov);   // sideways it heads the left side
       addPeek(ov);   // hold the eye to look at the table while you choose
     }
     var first = o.uids.map(can).indexOf(true); show(first >= 0 ? first : 0, 0);
@@ -13534,7 +13549,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure();
     ov._sideKeep = false;
     if (pz && ov.classList.contains('lz-min')) fitMin(ov); else { ov.style.removeProperty('--cumin'); ui.cuMin = 0; }
-    requestAnimationFrame(function () { fitLz(ov); });
+    requestAnimationFrame(function () { midLeft(ov); fitLz(ov); });   // (midLeft first: stood upright, it lets go of the sideways stacking)
   }
   window.addEventListener('resize', onResize);
   if (window.visualViewport) visualViewport.addEventListener('resize', onResize);   // pinch-zoom ending
