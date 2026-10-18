@@ -1324,6 +1324,7 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
   .lz.lz-big .lz-in:has(> .lz-acts.side) .lz-card{--cu:min(calc(100vh - 215px - var(--safe-t) - var(--safe-b)),900px);}
   .lz.lz-big .lz-in:has(> .lz-acts.side) .lz-flow.strip{--cu:min(calc(100vh - 215px - var(--safe-t) - var(--safe-b)),calc((98vw - 440px) / 1.12),900px);}
   .lz.lz-big .lz-in:has(.lz-flow.strip){padding-top:calc(var(--safe-t) + 58px);padding-bottom:calc(var(--safe-b) + 8px);}   /* clear of the turn banner */
+  .lz.lz-sfit .lz-flow.strip,.lz.lz-sfit .lz-flow:not(.strip),.lz.lz-sfit .lz-card:not(.loc){--cu:var(--cuside)!important;}   /* fitSide */
 }
 
 /* Sheets used by this game */
@@ -9852,6 +9853,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var cardOf = function () { return ov.querySelector('.lz-fc.focus') || ov.querySelector('.lz-card'); };
     var c0 = cardOf(), a = c0 && c0.getBoundingClientRect(), was = parts.map(function (x) { return x.getBoundingClientRect(); });
     ov.classList.toggle('lz-big', big);
+    fitSide(ov);
     if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure();
     if (window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches) return;
     var c1 = cardOf(), b = c1 && c1.getBoundingClientRect(), ease = 'cubic-bezier(.3,1.25,.5,1)';
@@ -9998,7 +10000,22 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (big.every(function (u) { return !C(u).dry; })) return { ico: 'drop', note: 'Next turn', tip: w, ic: inkColor(big[0]) };
     return { ico: 'ex', note: 'Exerted', tip: w };
   }
+  // Sideways on a short screen (an iPad mini): the cards come down in size until the buttons under them are on the
+  // screen. Moving to the next card keeps the size (no jumping), a fresh look measures again
+  function fitSide(ov, keep) {
+    if (!ov || !ov.isConnected || phoneZoom() || ov.classList.contains('reveal')) return;
+    var fl = function () { if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure(); };
+    if (keep && ui.cuSide) { ov.classList.add('lz-sfit'); ov.style.setProperty('--cuside', ui.cuSide + 'px'); fl(); return; }
+    ov.classList.remove('lz-sfit'); ov.style.removeProperty('--cuside'); ui.cuSide = 0; fl();
+    var c = $('.lz-fc.focus', ov) || $('.lz-card', ov); if (!c || c.classList.contains('loc')) return;
+    var ob = ov.getBoundingClientRect().bottom - 8, low = 0;   // (the view's own padding keeps clear of the home bar)
+    $$('.lz-in > .lz-acts, .lz-in > .lz-hf, .lz-flow .lz-pos', ov).forEach(function (x) { var r = x.getBoundingClientRect(); if (r.height) low = Math.max(low, r.bottom); });
+    var over = Math.max(ov.scrollHeight - ov.clientHeight, low - ob); if (over <= 1) return;
+    ui.cuSide = Math.max(300, Math.floor(c.offsetHeight - over - 8));
+    ov.classList.add('lz-sfit'); ov.style.setProperty('--cuside', ui.cuSide + 'px'); fl();
+  }
   function fitLz(ov) {
+    if (ov && !phoneZoom()) { fitSide(ov, ov._sideKeep); return; }
     if (!ov || !ov.isConnected || !phoneZoom() || !S || ui.screen !== 'game' || ov.classList.contains('lz-min') || ov.classList.contains('reveal')) return;
     // sized once, when the view opens (for the wordiest card in the row); swiping never resizes it after that
     if (ui.fitDone) return; ui.fitDone = true;
@@ -10207,6 +10224,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     cardTilt(ov);
     if (F) F.render();
     if (!swapping && !keep) requestAnimationFrame(function () { ov.classList.add('show'); });
+    ov._sideKeep = !!(swapping || keep);
     ov._pz = phoneZoom();   // the layout it was built for (stacked, or side by side): see lzResize
     if (swapping || keep) Kit.sfx('tap', 0.25); else Kit.sfx('flip');   // moving between cards: just a soft tap
     return ov;
@@ -13505,6 +13523,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       else if (pz && ov.classList.contains('lz-big')) { ov.classList.remove('lz-big'); ov.classList.add('lz-min'); }
     }
     if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure();
+    ov._sideKeep = false;
     if (pz && ov.classList.contains('lz-min')) fitMin(ov); else { ov.style.removeProperty('--cumin'); ui.cuMin = 0; }
     requestAnimationFrame(function () { fitLz(ov); });
   }
