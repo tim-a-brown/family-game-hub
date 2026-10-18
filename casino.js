@@ -3,6 +3,12 @@
 // Usage: Casino.balance(), Casino.bet(n), Casino.win(n), Casino.reset()
 //        Casino.applyRemote(delta, info)  bankroll change from a game at a linked player's table (sync.js)
 //        Casino.history()            ledger entries, newest first
+//        Casino.forPlayer(name)      who's playing: you play from the bankroll; anyone else (a guest at the table)
+//                                    gets play money for the session and the bankroll isn't touched. Returns true
+//                                    when it's your bankroll. Call it when a session starts and when one resumes.
+//        Casino.isMain(name)         is this you (the name this device plays as, or the PIN's account name)
+//        Casino.playMoney()          true while a guest is playing with play money
+
 //        Casino.showHistory()        bankroll history sheet (needs kit.js)
 //
 // Bankroll history: every bet and payout is added to a running session for
@@ -17,8 +23,30 @@ const Casino = (function(){
   const DEFAULT = 1000;
   const MAX = 300;
 
+  // Play money: a guest playing on this device gets $1,000 that goes nowhere (kept on this device only, so a
+  // reload carries on with it). The bankroll, its history and the link profile never see it.
+  var PLAYK = 'casino_play', PLAY = null;
+  function playSave(){ try{ if(PLAY) localStorage.setItem(PLAYK, JSON.stringify(PLAY)); else localStorage.removeItem(PLAYK); } catch(e){} }
+  function meName(){
+    var me = ''; try{ me = (localStorage.getItem('my_name') || '').trim(); } catch(e){}
+    if(!me) try{ me = String((typeof FGHSync !== 'undefined' && FGHSync.label && FGHSync.label()) || '').trim(); } catch(e){}
+    return me.toLowerCase();
+  }
+  // You, or nobody known (a device with no name set plays from the bankroll, as before)
+  function isMain(name){ var me = meName(), k = String(name || '').trim().toLowerCase(); return !me || !k || k === me; }
+  function forPlayer(name){
+    if(isMain(name)){ if(PLAY){ PLAY = null; playSave(); } return true; }
+    var k = String(name).trim(), old = null;
+    try{ old = JSON.parse(localStorage.getItem(PLAYK)); } catch(e){}
+    if(S && !PLAY) flush();
+    PLAY = old && old.name === k && typeof old.bal === 'number' ? old : { name: k, bal: DEFAULT };
+    playSave();
+    return false;
+  }
+
   // A missing bankroll starts at $1,000; a real $0 stays $0 (not reset).
   function balance(){
+    if(PLAY) return Math.max(0, PLAY.bal);
     try{ var v = localStorage.getItem(KEY); if(v === null || v === '') return DEFAULT; var n = parseInt(v, 10); return isNaN(n) ? DEFAULT : Math.max(0, n); }
     catch(e){ return DEFAULT; }
   }
@@ -58,6 +86,7 @@ const Casino = (function(){
   // still logged by their net change.
   function isCasinoPage(){ try{ var g = typeof findGame === 'function' && findGame(gameInfo().id); return !!(g && g.cat === 'casino'); } catch(e){ return false; } }
   function flush(){
+    if(PLAY){ S = null; return; }
     var end = balance();
     if(!S || (!S.bets && !S.won && end === S.start)) { S = null; if(isCasinoPage()) touch(); return; }
     var e = { _date: Date.now(), kind: 'session', game: S.game, name: S.name, start: S.start, end: end,
@@ -76,12 +105,14 @@ const Casino = (function(){
   function bet(n){
     const b = balance();
     if(n > b) return false;
+    if(PLAY){ PLAY.bal = b - n; playSave(); return true; }
     var s = touch(); s.wagered += n; s.bets++;
     save(b - n);
     return true;
   }
   function win(n){
     n = Math.round(n);
+    if(PLAY){ PLAY.bal += n; playSave(); return; }
     var s = touch(); s.won += n; if(n > s.best) s.best = n;
     save(balance() + n);
   }
@@ -97,6 +128,7 @@ const Casino = (function(){
   }
 
   function reset(){
+    if(PLAY){ PLAY.bal = DEFAULT; playSave(); return; }
     flush();
     var from = balance();
     save(DEFAULT);
@@ -479,5 +511,5 @@ const Casino = (function(){
     return r;
   }
 
-  return { balance, bet, win, reset, applyRemote, history, showHistory, rack, chip, stack };
+  return { balance, bet, win, reset, applyRemote, history, showHistory, rack, chip, stack, forPlayer, isMain, playMoney: function(){ return !!PLAY; } };
 })();
