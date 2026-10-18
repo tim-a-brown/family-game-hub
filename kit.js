@@ -2374,8 +2374,28 @@
         [[15, '15 min'], [30, '30 min'], [45, '45 min'], [60, '1 hour'], [90, '1½ hours'], [120, '2 hours']].forEach(function (p) {
           row.appendChild(el('button', { type: 'button', class: 'chip', text: p[1], onclick: function () { timerSet({ end: Date.now() + p[0] * 60000, lock: lockPref(), mins: p[0] }); sfx('good'); haptic('light'); paint(); } }));
         });
+        // Custom: any length in 5-minute steps, or until a time on the clock
+        var cust = el('div', { class: 'k-tmr-cust', hidden: true }), cm = Number(lsGet('fgh_timer_custom', '25')) || 25;
+        var cmEl = el('b', { class: 'k-tmr-n' }), endIn = el('input', { type: 'time', class: 'input k-tmr-at', 'aria-label': 'Or until this time' });
+        function cmText() { var h = Math.floor(cm / 60), m = cm % 60; cmEl.textContent = (h ? h + ' h' + (m ? ' ' : '') : '') + (m || !h ? m + ' min' : ''); }
+        function step(d) { cm = Math.max(5, Math.min(600, cm + d)); endIn.value = ''; cmText(); sfx('tap'); }
+        function hold(btn, d) { var t = 0, r = 0; btn.addEventListener('pointerdown', function () { step(d); t = setTimeout(function () { r = setInterval(function () { step(d); }, 90); }, 420); }); ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (k2) { btn.addEventListener(k2, function () { clearTimeout(t); clearInterval(r); }); }); }
+        var mn = el('button', { type: 'button', class: 'k-ord-b', 'aria-label': '5 minutes less', html: icon('minus') }), pl = el('button', { type: 'button', class: 'k-ord-b', 'aria-label': '5 minutes more', html: icon('plus') });
+        hold(mn, -5); hold(pl, 5); cmText();
+        cust.appendChild(el('div', { class: 'k-tmr-step' }, [mn, cmEl, pl]));
+        cust.appendChild(el('label', { class: 'k-tmr-or' }, [el('span', { text: 'or until' }), endIn]));
+        cust.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Start', onclick: function () {
+          var end = Date.now() + cm * 60000, mins = cm;
+          if (endIn.value) {   // until a time: today, or tomorrow if that time has already gone by
+            var hm = endIn.value.split(':'), d = new Date(); d.setHours(+hm[0], +hm[1], 0, 0); if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+            end = d.getTime(); mins = Math.round((end - Date.now()) / 60000);
+          } else lsSet('fgh_timer_custom', String(cm));
+          timerSet({ end: end, lock: lockPref(), mins: mins }); sfx('good'); haptic('light'); paint();
+        } }));
+        row.appendChild(el('button', { type: 'button', class: 'chip', text: 'Custom', onclick: function () { cust.hidden = !cust.hidden; this.classList.toggle('on', !cust.hidden); sfx('tap'); } }));
         box.appendChild(el('p', { class: 'muted', style: { margin: '0 0 8px' }, text: 'Start a countdown for game time on this device. The time shows up in the last two minutes.' }));
         box.appendChild(row);
+        box.appendChild(cust);
       } else {
         var left = el('b', { class: 'k-tmr-left' }), when = el('small');
         var head = el('div', { class: 'k-tmr-run' }, [el('span', { class: 'ic', html: icon('clock') }), el('span', { class: 'grow' }, [left, when]),
