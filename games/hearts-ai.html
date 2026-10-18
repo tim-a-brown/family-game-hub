@@ -319,7 +319,7 @@
   }
   function finish() {
     S.phase = 'over';
-    var rank = S.players.map(function (p, i) { return { name: p.name, score: p.total, cpu: p.cpu, color: Kit.color(i), i: i }; }).sort(function (a, b) { return a.score - b.score; });
+    var rank = S.players.map(function (p, i) { return { name: p.name, score: p.total, cpu: isCpu(i), color: Kit.color(i), i: i }; }).sort(function (a, b) { return a.score - b.score; });
     var tie = rank[1].score === rank[0].score;
     var hl = S.highlights.slice();
     var qsMost = S.qs.indexOf(Math.max.apply(null, S.qs));
@@ -385,13 +385,15 @@
     return S.phase === 'play' && S.turn >= 0 ? [S.turn] : [];
   }
   function mySeat() { return NET ? NET.seat : 0; }
+  // a computer player (online: also a seat the computer took over when its player left)
+  function isCpu(p) { return NET ? !!(NET.seats[p] && NET.seats[p].bot) : !!S.players[p].cpu; }
   function paintSeats() {
     var up = upSeats();
     S.players.forEach(function (pl, p) {
       var s = seatEls[p]; s.innerHTML = '';
       s.classList.toggle('turn', up.indexOf(p) >= 0);
       var tag = el('div', { class: 'tag' }, [
-        el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
+        el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
         el('span', { text: p === mySeat() ? 'You' : pl.name })
       ]);
       var info = el('div', { class: 'info' }, [
@@ -471,7 +473,7 @@
       barEl.appendChild(b);
     } else if (S.phase === 'play') {
       var who = S.turn >= 0 && S.players[S.turn];
-      barEl.appendChild(el('span', { class: 'hint', text: S.turn === ME && mySeat() >= 0 ? (S.trickNo === 0 && !S.trick.length ? 'Lead the 2♣ to start' : 'Your turn: tap a card') : who ? (NET && !who.cpu ? 'Waiting for ' + who.name : who.name + ' is thinking…') : '' }));
+      barEl.appendChild(el('span', { class: 'hint', text: S.turn === ME && mySeat() >= 0 ? (S.trickNo === 0 && !S.trick.length ? 'Lead the 2♣ to start' : 'Your turn: tap a card') : who ? (NET && !isCpu(S.turn) ? 'Waiting for ' + who.name : who.name + ' is thinking…') : '' }));
     }
   }
   function paintMsg() {
@@ -621,7 +623,7 @@
     info = info || {};
     NET = net; ME = Math.max(0, net.seat);
     var e = { st: JSON.parse(JSON.stringify(net.state)), info: info };
-    if (info.fresh || info.again) { NETQ = [e]; if (NETBUSY) { token++; NETBUSY = false; } if (NETSHEET) { NETSHEET.close(); NETSHEET = null; } }
+    if (info.fresh || info.again) { NETQ = [e]; if (NETBUSY) { token++; NETBUSY = false; } netCloseOv(); }
     else NETQ.push(e);
     if (!NETBUSY) netNext();
   }
@@ -665,7 +667,7 @@
     if (quick || info.fresh || info.again || !mv) {
       netView(st); render();
       if (info.again) { Kit.sfx('deal'); Kit.callout('New game'); }
-      if (st.phase === 'over') later(info.fresh ? 300 : 600, netEnd);
+      if (st.phase === 'over') setTimeout(netEnd, info.fresh ? 300 : 600);
       else if (info.fresh && st.trickNo === 0 && !st.trick.length) netHandNote(st);
       done(); return;
     }
@@ -725,7 +727,7 @@
     Cards.fly(node, from, { ms: 340 });
     if (isQS(mv.c)) Kit.sfx('bad'); else Kit.sfx('flip');
     if (mv.broke) flash('Hearts are broken!');
-    if (!mv.done) { later(380, function () { if (!info.mine && NET.myTurn()) Kit.haptic('light'); done(); }); return; }
+    if (!mv.done) { later(380, function () { netView(st); paintSeats(); if (!info.mine && NET.myTurn()) Kit.haptic('light'); done(); }); return; }
     later(900, function () {
       var wc = lt.t.filter(function (x) { return x.p === mv.w; })[0], winNode = wc && trickEl.querySelector('[data-id="' + wc.c.id + '"]');
       if (winNode) winNode.classList.add('win');
@@ -744,16 +746,18 @@
           var lh = st.lastHand;
           if (lh.moon >= 0) { Kit.callout(lh.moon === NET.seat ? 'You shot the moon!' : st.players[lh.moon].name + ' shot the moon!'); Kit.confetti({ count: 90 }); }
           netView(st); render();
-          if (st.phase === 'over') { later(lh.moon >= 0 ? 1400 : 500, netEnd); done(); return; }
+          // (plain timers: the next moves may already be drawing underneath)
+          if (st.phase === 'over') { setTimeout(netEnd, lh.moon >= 0 ? 1400 : 500); done(); return; }
           Kit.sfx('deal');
-          later(lh.moon >= 0 ? 1200 : 300, function () { netHandNote(st); });
+          setTimeout(function () { if (NET && S && S.started === st.started) netHandNote(st); }, lh.moon >= 0 ? 1200 : 300);
           done();
         });
       });
     });
   }
   // the scores for the hand just finished (once per device; the next hand is already dealt underneath)
-  var NETSHEET = null;
+  var NETSHEET = null, NETWIN = null;
+  function netCloseOv() { if (NETSHEET) { NETSHEET.close(); NETSHEET = null; } if (NETWIN) { NETWIN.close(); NETWIN = null; } }
   function netHandNote(st) {
     var lh = st.lastHand;
     if (!NET || !lh || lh.round !== st.round - 1 || st.phase === 'over') return;
@@ -765,7 +769,8 @@
   function netEnd() {
     if (!NET || !S || S.phase !== 'over') return;
     var me = NET.seat, key = NET.code + ':' + S.started;
-    var rank = S.players.map(function (p, i) { return { name: p.name, score: p.total, cpu: p.cpu, color: Kit.color(i), i: i }; }).sort(function (a, b) { return a.score - b.score; });
+    if (NETWIN && NETWIN.key === key) return;
+    var rank = S.players.map(function (p, i) { return { name: p.name, score: p.total, cpu: isCpu(i), color: Kit.color(i), i: i }; }).sort(function (a, b) { return a.score - b.score; });
     var w = netWinners(S), tie = w.length > 1, iWin = w.indexOf(me) >= 0;
     if (!NETREC[key] && me >= 0) {
       NETREC[key] = 1;
@@ -779,8 +784,8 @@
       });
     }
     var res = NET.result, left = res && res.left != null, games = S.wins.reduce(function (a, b) { return a + b; }, 0);
-    if (NETSHEET) { NETSHEET.close(); NETSHEET = null; }
-    Kit.win({
+    netCloseOv();
+    NETWIN = Kit.win({
       title: left ? res.text : tie ? (iWin ? 'You tied for the win!' : 'It’s a tie!') : iWin ? 'You win!' : S.players[w[0]].name + ' wins',
       sub: 'Lowest score wins' + (games > 1 ? ' · games won: ' + S.players.map(function (p, i) { return (i === me ? 'You' : p.name) + ' ' + S.wins[i]; }).join(', ') : ''),
       rank: rank, lose: !iWin && !left, icon: iWin ? 'trophy' : 'users',
@@ -788,10 +793,11 @@
       again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
       closeLabel: 'Back to games'
     });
+    NETWIN.key = key;
   }
   function netLeave() {
     NET = null; ME = 0; NETQ = []; NETBUSY = false; NETSEL = []; token++;
-    if (NETSHEET) { NETSHEET.close(); NETSHEET = null; }
+    netCloseOv();
     var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
     if (sv && sv.players && sv.hands && sv.phase !== 'over') {
       S = sv; render();
