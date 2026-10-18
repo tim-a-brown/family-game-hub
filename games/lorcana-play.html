@@ -10109,6 +10109,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     cardTilt(ov);
     if (F) F.render();
     if (!swapping && !keep) requestAnimationFrame(function () { ov.classList.add('show'); });
+    ov._pz = phoneZoom();   // the layout it was built for (stacked, or side by side): see lzResize
     if (swapping || keep) Kit.sfx('tap', 0.25); else Kit.sfx('flip');   // moving between cards: just a soft tap
     return ov;
   }
@@ -13307,7 +13308,24 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   var rz = 0;
   function onResize() {
     if (rz) return;
-    rz = requestAnimationFrame(function () { rz = 0; if (S && ui.screen === 'game') render(); else layoutVars(); });
+    rz = requestAnimationFrame(function () { rz = 0; if (S && ui.screen === 'game') render(); else layoutVars(); lzResize(); });
+  }
+  // An open card view after the device turns: it switches to the other layout where it was built for one (the actions
+  // between the card and its details when stacked, under the cards on the right when side by side; the stacked
+  // view's card shrunk to fit), and the carousel is measured again for the new size
+  function lzResize() {
+    var ov = $('.lz'); if (!ov || ov._pz == null) return;
+    var pz = phoneZoom();
+    if (ov._pz !== pz) {
+      ov._pz = pz;
+      var g = $('.lz-in > .lz-acts', ov);
+      if (g && g.classList.contains('hold')) { if (!pz) { g.remove(); ov.classList.remove('has-acts'); } }
+      else if (g) { g.classList.toggle('out', pz); g.classList.toggle('side', !pz); ov.classList.toggle('has-acts', pz); }
+      ov.classList.remove('lz-fit'); ov.style.removeProperty('--cufit');
+      ui.fitCu = 0; ui.fitKey = null; ui.fitDone = false;
+    }
+    if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure();
+    requestAnimationFrame(function () { fitLz(ov); });
   }
   window.addEventListener('resize', onResize);
   if (window.visualViewport) visualViewport.addEventListener('resize', onResize);   // pinch-zoom ending
