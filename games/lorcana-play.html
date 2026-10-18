@@ -186,7 +186,7 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 /* sized so only the picture shows (the card's top half, inside its border), whatever the shape of the space */
 /* --fx/--fy: the spot on the card picture kept in the middle; --z: zoom. Kept inside the picture's border */
 .art::before{content:'';position:absolute;inset:calc(var(--mb,0px) * -2.5);z-index:-1;--W:calc(max(114cqw,156cqh) * var(--z,1));--Hi:calc(var(--W) * 1.395);background-image:var(--mbg);background-repeat:no-repeat;
-  background-size:var(--W) auto,100% 100%;background-position:clamp(calc(100cqw - var(--W) * .965),calc(50cqw - var(--W) * var(--fx,.5)),calc(var(--W) * -.035)) clamp(calc(100cqh - var(--Hi) * .97),calc(50cqh - var(--Hi) * var(--fy,.33)),calc(var(--Hi) * -.03)),0 0;background-blend-mode:var(--mblend,normal);filter:blur(var(--mb,0px)) var(--mfx,none);}
+  background-size:var(--W) auto;background-position:clamp(calc(100cqw - var(--W) * .965),calc(50cqw - var(--W) * var(--fx,.5)),calc(var(--W) * -.035)) clamp(calc(100cqh - var(--Hi) * .97),calc(50cqh - var(--Hi) * var(--fy,.33)),calc(var(--Hi) * -.03));mix-blend-mode:var(--mmix,normal);filter:blur(var(--mb,0px)) var(--mfx,none);}
 .mat.art.flip::before{transform:rotate(180deg);}
 .mat-sw i.art::before,.art-big::before{inset:calc(var(--mb,0px) * -1);filter:blur(calc(var(--mb,0px) * .3)) var(--mfx,none);}
 .mat-sw i.art::after,.art-big::after{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:inherit;}
@@ -7510,9 +7510,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (!m.art) { n.classList.remove('art'); n.style.background = m.bg; return; }
     var u = url || m.url; if (imgIsBad(u) && backupOf(u)) u = backupOf(u);
     var img = 'url("' + u.replace(/"/g, '%22') + '")', wash = m.f.wash || (m.f.tint ? 'linear-gradient(' + m.ink + ',' + m.ink + ')' : '');
-    n.classList.add('art'); n.style.background = m.bg;
-    n.style.setProperty('--mbg', wash ? img + ',' + wash : img);
-    n.style.setProperty('--mblend', wash ? 'luminosity,normal' : 'normal');
+    // a colour wash (Ink wash, Rainbow) is the mat's own background, and the picture's light and shade go over it
+    // (a blended picture layer: Safari draws this; a blend between two background layers it often leaves blank)
+    n.classList.add('art'); n.style.background = wash || m.bg;
+    n.style.setProperty('--mbg', img);
+    n.style.setProperty('--mmix', wash ? 'luminosity' : 'normal');
     n.style.setProperty('--mfx', m.f.fx); n.style.setProperty('--mb', (m.f.blur || 0) + 'px');
     frameVars(n, m.fr);
   }
