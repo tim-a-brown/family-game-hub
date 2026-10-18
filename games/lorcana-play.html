@@ -4168,20 +4168,20 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     cards.forEach(function (c) { var a = artOf(c.d) || c.d; if (!a.im) return; (c.big ? [a.im.s, a.im.l] : [a.im.s]).forEach(function (u) { if (u && !seen[u]) { seen[u] = 1; urls.push(u); } }); });
     try { sw.postMessage({ type: 'lorc-warm', urls: urls }); } catch (e) {}
   }
-  function deckCards(deck) { return Object.keys(deck.cards || {}).map(function (id) { return DB.byId[id]; }).filter(Boolean).map(function (d) { return { d: d, big: true }; }); }
+  function deckArt(deck) { return Object.keys(deck.cards || {}).map(function (id) { return DB.byId[id]; }).filter(Boolean).map(function (d) { return { d: d, big: true }; }); }
   var artWarmed = false;
   function artWarmAll() {
     if (artWarmed || DB.status !== 'ready') return; artWarmed = true;
     var go = function () {
       var lib = DB.unique.slice().sort(function (a, b) { return a.full.localeCompare(b.full); }).slice(0, 240).map(function (d) { return { d: d }; });
-      var decks = []; savedDecks().forEach(function (dk) { decks = decks.concat(deckCards(dk)); });
+      var decks = []; savedDecks().forEach(function (dk) { decks = decks.concat(deckArt(dk)); });
       artWarm(decks.concat(lib));   // decks first: those are the pictures you'll want most
     };
     setTimeout(function () { if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 4000 }); else go(); }, 2500);
   }
   DB.subs.push(artWarmAll);
   function putDeck(deck) {
-    deck.at = Date.now(); setTimeout(function () { artWarm(deckCards(deck)); }, 1500);
+    deck.at = Date.now(); setTimeout(function () { artWarm(deckArt(deck)); }, 1500);
     var del = lsGet(DECKS_DEL, null) || {}; if (del[deck.id]) { delete del[deck.id]; lsSet(DECKS_DEL, del); }
     storeDecks([deck].concat(savedDecks().filter(function (d) { return d.id !== deck.id; })));
   }
@@ -4326,8 +4326,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function C(u) { return S.cards[u]; }
   function DD(u) { return D(S.cards[u].id); }
   function opp(pi) { return 1 - pi; }
-  var named = [];   // the cards most recently named (for the log's links: which Mulan was meant)
-  function nm(u) { named.push(u); if (named.length > 16) named.shift(); return DD(u).n; }
+  var namedRecent = [];   // the cards most recently named (for the log's links: which Mulan was meant)
+  function nm(u) { namedRecent.push(u); if (namedRecent.length > 16) namedRecent.shift(); return DD(u).n; }
   function modSum(u, k) { var t = 0; (C(u).mods || []).forEach(function (x) { if (x[k] && (!x.vsLoc || (clashAt && clashAt.a === u && isLoc(clashAt.t))) && (!x.chalOnly || (clashAt && (clashAt.a === u || clashAt.t === u)))) t += x[k]; }); return t + (stx(u)[k] || 0); }
   // "can't gain Evasive", "All characters lose Rush": only cards that print such a rule are looked at
   var kwBusy = false;
@@ -4434,7 +4434,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var e = { t: t, p: pi == null ? -1 : pi, priv: priv }, r = logRefs(t), pr = priv ? logRefs(priv) : null;
     if (r.length) e.r = r; if (pr && pr.length) e.pr = pr;
     S.log.push(e); if (S.log.length > 120) S.log.splice(0, S.log.length - 120);
-    named.length = 0;
+    namedRecent.length = 0;
   }
   // The cards a log line names, so the log can show them: [[start, length, uid]]. Full names ("Mulan – Imperial
   // Soldier") first; a bare name is the card just named by the rules, else one in play or in a discard (never a
@@ -4454,7 +4454,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     S.P.forEach(function (P) { P.board.concat(P.discard).forEach(function (u) { pub[u] = 1; (C(u).under || []).forEach(function (x) { pub[x] = 1; }); }); });
     Object.keys(byName).sort(function (a, b) { return b.length - a.length; }).forEach(function (n) {
       if (!n) return;
-      var mine = named.filter(function (u) { return S.cards[u] && DD(u).n === n; });
+      var mine = namedRecent.filter(function (u) { return S.cards[u] && DD(u).n === n; });
       var u = mine.length ? mine[mine.length - 1] : byName[n].filter(function (x) { return pub[x]; })[0];
       if (!u) return;
       for (var i = t.indexOf(n); i >= 0; i = t.indexOf(n, i + n.length)) if (wordAt(i, n.length) && free(i, i + n.length)) mark(i, n.length, u);
@@ -5393,7 +5393,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (!it) { flushWait(); return; }
     qBusy = true; decPi = it.pi;
     var t = tok;
-    resolveAb(it, function () { if (t !== tok) return; qBusy = false; render(); later(pumpQ, 160); });
+    try { resolveAb(it, function () { if (t !== tok) return; qBusy = false; render(); later(pumpQ, 160); }); }
+    catch (e) { slip('ability ' + (it.ab && it.ab.name || ''), e); qBusy = false; render(); later(pumpQ, 160); }
   }
   function flushWait() { var w = qWait; qWait = []; w.forEach(function (f) { try { f(); } catch (e) { console.warn(e); } }); }
   function whenQuiet(fn) { if (!qBusy && !Q.length) fn(); else qWait.push(fn); }
@@ -7341,15 +7342,39 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function modalOpen() { return !!$('.k-scrim') || !!$('.lz') || ui.modal > 0 || !!ui.pick; }
   function cpuStep() {
     if (!S || S.phase !== 'play' || S.step !== 'main' || !S.P[S.cur].cpu || finishing) return;
+    cpuAt = Date.now();
     if (modalOpen() || !quiet() || handing) { later(cpuStep, 500); return; }
     if (fxLeft()) { afterFx(cpuStep, 0); return; }
     S.cpuN = (S.cpuN || 0) + 1;
-    var pi = S.cur, a = S.cpuN > 60 ? null : cpuChoose(pi);
-    if (!a) { S.cpuN = 0; endTurn(); return; }
-    if (a.k === 'ab') { if (humans() > 0 || S.mode === 'online') cpuShow(a.u, 'Ability', 'Used ' + abTitle(a.u, a.ab), abTitle(a.u, a.ab)); useAb(a.u, a.ab, true); }
-    else runAction(a, true);
+    var pi = S.cur, a = null;
+    // a move the game trips over (a card it can't run, a bug) costs the computer its turn, never the game
+    try {
+      a = S.cpuN > 60 ? null : cpuChoose(pi);
+      if (a && a.k === 'ab') { if (humans() > 0 || S.mode === 'online') cpuShow(a.u, 'Ability', 'Used ' + abTitle(a.u, a.ab), abTitle(a.u, a.ab)); useAb(a.u, a.ab, true); }
+      else if (a) runAction(a, true);
+    } catch (e) { slip('cpu', e); a = null; }
+    if (!a) { if (S && S.phase === 'play' && S.step === 'main') { S.cpuN = 0; endTurn(); } return; }
     if (S && S.phase === 'play') later(cpuStep, 820 + Math.random() * 300);
   }
+  // Something went wrong inside the game's own code: noted on this device (lorcana_slips, not synced) so it can be
+  // traced, and play carries on
+  function slip(where, e) {
+    try { console.error('Lorcana ' + where, e); var L0 = JSON.parse(localStorage.getItem('lorcana_slips') || '[]'); L0.push({ at: new Date().toISOString(), where: where, msg: String(e && e.stack || e).slice(0, 600), log: S ? S.log.slice(-4).map(function (l) { return l.t; }) : [] }); localStorage.setItem('lorcana_slips', JSON.stringify(L0.slice(-20))); } catch (x) {}
+  }
+  // The computer's turn never stalls: if it hasn't moved for a while and nothing on screen is waiting on anyone, it's
+  // nudged on; an ability stuck part-way (nothing showing, nothing to answer) is let go
+  var cpuAt = 0, qAt = 0, lzStale = 0;
+  setInterval(function () {
+    if (!S || S.phase !== 'play' || finishing || !S.P[S.cur] || !S.P[S.cur].cpu || S.mode === 'online' || document.hidden) { cpuAt = qAt = Date.now(); return; }
+    // a card view that never finished opening (no longer on show) is cleared away rather than holding the turn up
+    if ($('.lz') && !$('.lz.show')) { if (++lzStale >= 3) { lzStale = 0; slip('stale card view', new Error('removed')); $$('.lz:not(.show)').forEach(function (z) { z.remove(); }); } } else lzStale = 0;
+    var shown = !!$('.k-scrim') || !!$('.lz') || !!ui.pick || (ui.cp && !ui.cp.fin) || handing;
+    if (shown) { cpuAt = qAt = Date.now(); return; }
+    var now = Date.now();
+    if (quiet()) qAt = now;
+    else if (now - qAt > 15000) { slip('stuck ability', new Error('released after 15s')); qAt = now; qBusy = false; Q = []; flushWait(); render(); }
+    if (S.step === 'main' && quiet() && now - cpuAt > 9000) { cpuAt = now; slip('cpu nudge', new Error('no move for 9s')); cpuStep(); }
+  }, 3000);
 
   // ── Doing things (human or computer) ────────────────────────────────────
   function runAction(a, byCpu, nested) {
@@ -11706,7 +11731,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var rngFill = function () { rng.style.setProperty('--v', ((rng.value - rng.min) / Math.max(1, rng.max - rng.min) * 100).toFixed(1) + '%'); };
       rng.addEventListener('input', function () { tile = +this.value; grid.style.setProperty('--tile', tile + 'px'); lsSet(TILE, tile); rngFill(); });
       requestAnimationFrame(function () { requestAnimationFrame(fitTile); });
-      window.addEventListener('resize', function rs() { if (!wrap.isConnected) { window.removeEventListener('resize', rs); return; } fitTile(); });
+      window.addEventListener('resize', function rs() { if (!wrap.isConnected) { window.removeEventListener('resize', rs); return; } fitTile(); filtTurn(); });
     }
     // Select, then search, then Sort and Filters, all on one row (library and deck builder alike)
     var row1 = el('div', { class: 'row1' }, [selBtn, sfield, sortBtn, moreBtn]);
@@ -12229,14 +12254,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       ov.appendChild(el('button', { type: 'button', class: 'lz-filt' + (n ? ' on' : '') + (fpanel || fsLive ? ' open' : ''), 'aria-label': 'Filter cards' + (n ? ', ' + n + ' on' : ''), html: FILTER_ICO + (n ? '<b>' + n + '</b>' : ''), title: 'Filter cards',
         onclick: function (e) { e.stopPropagation(); if (fpanel) closeFilterPanel(); else if (fsLive) fsLive.close(); else openFilterPanel(); } }));
     }
-    function openFilterPanel() {
+    function openFilterPanel(quiet) {
       // Phones and tablets: the very same Filters sheet as the library's (look, layout and swipe-down), over the card
       // view, which re-deals behind it as you tap
       if (!(window.matchMedia && matchMedia('(min-width:900px) and (orientation:landscape)').matches)) {
         if (fsLive) return;
         document.documentElement.classList.add('flowsheet');
         fsLive = moreFilters(function () { fsLive = null; document.documentElement.classList.remove('flowsheet'); filterBtn(); });
-        filterBtn(); Kit.sfx('tap'); return;
+        filterBtn(); if (quiet !== true) Kit.sfx('tap'); return;
       }
       if (fpanel) return;
       // Desktop: one Filters panel down the right edge wherever it's opened (library, deck builder or the card view);
@@ -12255,7 +12280,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       // opened over a card: closing the card view closes the panel too
       if (fromCard) { fpObs = new MutationObserver(function () { if (!$('.lz')) closeFilterPanel(); }); fpObs.observe(document.body, { childList: true }); }
       document.addEventListener('keydown', fpKey);
-      filterBtn(); paintChips(); Kit.sfx('tap'); flowRefit();
+      filterBtn(); paintChips(); if (quiet !== true) Kit.sfx('tap'); flowRefit();
     }
     function fpKey(e) { if (e.key === 'Escape' && fpanel && !$('.lz')) closeFilterPanel(); }
     // the card view's space changes when the panel opens or closes beside it (desktop): lay the strip out again
@@ -12575,13 +12600,21 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (fpanel) closeFilterPanel(); else openFilterPanel();
         return null;
       }
-      var sh0 = Kit.sheet({ title: 'Filters', node: adv, onClose: typeof onClose === 'function' ? onClose : null, actions: [
+      var sh0 = fsSheet = Kit.sheet({ title: 'Filters', node: adv, onClose: function () { if (fsSheet === sh0) fsSheet = null; if (typeof onClose === 'function') onClose(); }, actions: [
         { label: 'Clear all', cls: 'btn-clear', keep: true, onClick: clearFilters },
         { label: 'Done', cls: 'btn-primary' }] });
       var bs = document.querySelectorAll('.k-sheet .k-acts .btn-primary'); doneBtn = bs[bs.length - 1];
       var sh = doneBtn && doneBtn.closest('.k-sheet'); if (sh) sh.classList.add('fsheet');   // taller, with its buttons side by side
       doneText(DB.unique.filter(matches).length);
       return sh0;
+    }
+    // Filters open while the device turns: they switch to the other look (a sheet when upright, the side panel when
+    // wide), keeping what's picked
+    var fsSheet = null;
+    function filtTurn() {
+      var wide = window.matchMedia && matchMedia('(min-width:900px) and (orientation:landscape)').matches;
+      if (wide && fsSheet) { fsSheet.close(); openFilterPanel(true); }
+      else if (!wide && fpanel) { closeFilterPanel(); if ($('.lz')) openFilterPanel(true); else moreFilters(); }
     }
     paintChips(); paintDeck(); paintGrid();
     // New Release: jump to the new cards (from the pack), switching the filter on
