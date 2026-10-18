@@ -6876,6 +6876,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [OTHER], title: 'Lorcana: Past Games' }); } },
       { section: 'Cards & decks', icon: 'book', label: 'Card library', onClick: function () { openBuilderFromMenu(true); } },
       { section: 'Cards & decks', icon: 'cards', label: 'Deck manager', onClick: function () { openBuilderFromMenu(false, true); } },
+      { section: 'Cards & decks', icon: 'sparkle', label: 'Your playmat', sub: 'Felt, a design, or any card’s art', when: function () { return !S || ui.screen !== 'game'; }, onClick: function () { matPicker(); } },
       { section: 'Cards & decks', icon: 'share', label: 'Export or import decks', onClick: function () { deckFiles(); } },
       { section: 'Cards & decks', icon: 'sync', label: 'Check for new cards', onClick: function () { DB.load(true).then(function () { Kit.toast(DB.status === 'ready' ? DB.cards.length + ' cards ready' : 'Couldn’t update the cards'); }); } },
       { icon: 'sparkle', label: 'Prioritize special art', toggle: function () { return FANCY; }, onClick: function () { setFancy(!FANCY); Kit.sfx('tap'); Kit.toast(FANCY ? 'Showing Enchanted and Epic art wherever a card has it' : 'Showing the standard art (cards you picked keep your choice)'); } },
@@ -7550,20 +7551,23 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // Pick a mat. Pass and play / vs computer: tabs for each person at the table; online: just yours.
   // Felt, Designs, or Card art: any card's picture (from your deck, or search every printing) with a filter over it
+  // Outside a game (Cards & decks): your own playmat, for your next game, with your last deck's cards to pick art from
   function matPicker() {
-    if (!S) return;
-    var seats = S.mode === 'online' ? [NET.seat] : S.mode === 'cpu' ? [humanIx()] : [0, 1], cur = seats.indexOf(bottomPi()) >= 0 ? bottomPi() : seats[0];
+    var solo = !S || ui.screen !== 'game';
+    var getMat = solo ? function () { return matById(myMat()) || MATS[0]; } : matOf;
+    var putMat = solo ? function (pi, id) { lsSet(MATK, id); Kit.sfx('tap'); } : setMat;
+    var seats = solo ? [0] : S.mode === 'online' ? [NET.seat] : S.mode === 'cpu' ? [humanIx()] : [0, 1], cur = solo ? 0 : seats.indexOf(bottomPi()) >= 0 ? bottomPi() : seats[0];
     var node = el('div', { class: 'mat-pick' }), tabs = el('div', { class: 'seg mat-tabs' }), kinds = el('div', { class: 'seg mat-kinds' }), grid = el('div');
-    var kind = matOf(cur).g, q = el('input', { class: 'input', type: 'search', placeholder: 'Search any card', 'aria-label': 'Search any card' }), found = el('div');
+    var kind = getMat(cur).g, q = el('input', { class: 'input', type: 'search', placeholder: 'Search any card', 'aria-label': 'Search any card' }), found = el('div');
     q.addEventListener('input', function () { paintFound(); });
     function pickArt(d) {
-      var m = matOf(cur), u = d.im.l || d.im.s;
-      setMat(cur, artMat(m.art ? m.f.id : 'dim', d.id, u, m.art ? m.tint : '').id); paint();
+      var m = getMat(cur), u = d.im.l || d.im.s;
+      putMat(cur, artMat(m.art ? m.f.id : 'dim', d.id, u, m.art ? m.tint : '').id); paint();
       var pv = $('.art-cur', node); if (pv && pv.scrollIntoView) pv.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
     function artSwatch(d, on) { return matSwatch(artMat('clear', d.id, d.im.l || d.im.s), on, function () { pickArt(d); }, d.im.s || d.im.l, d.n); }
     function artRow(list) {
-      var row = el('div', { class: 'mat-grid art-grid' }), m = matOf(cur);
+      var row = el('div', { class: 'mat-grid art-grid' }), m = getMat(cur);
       list.forEach(function (d) { row.appendChild(artSwatch(d, !!m.art && m.cid === d.id)); });
       return row;
     }
@@ -7578,38 +7582,39 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // the cards in this player's deck for this game, in their chosen printing
     function deckArt(pi) {
       var seen = {}, out = [];
-      Object.keys(S.cards).forEach(function (u) {
-        if (S.cards[u].o !== pi) return; var d0 = D(S.cards[u].id); if (!d0) return;
-        var d = artOf(d0) || d0; if (!d.im || !(d.im.l || d.im.s) || seen[d.full || d.id]) return; seen[d.full || d.id] = 1; out.push(d);
-      });
+      function take(d0) { if (!d0) return; var d = artOf(d0) || d0; if (!d.im || !(d.im.l || d.im.s) || seen[d.full || d.id]) return; seen[d.full || d.id] = 1; out.push(d); }
+      if (solo) {
+        var lid = lsGet('lorc_last_deck', ''), dk = savedDecks().filter(function (x) { return x.id === lid; })[0] || savedDecks()[0];
+        if (dk) Object.keys(dk.cards).forEach(function (id) { take(DB.byId[id]); });
+      } else Object.keys(S.cards).forEach(function (u) { if (S.cards[u].o === pi) take(D(S.cards[u].id)); });
       return out.sort(function (a, b) { return (a.c || 0) - (b.c || 0) || String(a.n).localeCompare(b.n); });
     }
     function paint() {
-      tabs.innerHTML = ''; if (seats.length > 1) seats.forEach(function (pi) { tabs.appendChild(el('button', { type: 'button', class: pi === cur ? 'on' : '', text: S.P[pi].name, onclick: function () { cur = pi; kind = matOf(cur).g; paint(); } })); });
+      tabs.innerHTML = ''; if (seats.length > 1) seats.forEach(function (pi) { tabs.appendChild(el('button', { type: 'button', class: pi === cur ? 'on' : '', text: S.P[pi].name, onclick: function () { cur = pi; kind = getMat(cur).g; paint(); } })); });
       kinds.innerHTML = '';
       ['Felt', 'Designs', 'Card art'].forEach(function (g) { kinds.appendChild(el('button', { type: 'button', class: g === kind ? 'on' : '', text: g, onclick: function () { kind = g; paint(); } })); });
-      grid.innerHTML = ''; var m = matOf(cur);
+      grid.innerHTML = ''; var m = getMat(cur);
       if (kind !== 'Card art') {
         var row = el('div', { class: 'mat-grid' });
-        MATS.filter(function (x) { return x.g === kind; }).forEach(function (x) { row.appendChild(matSwatch(x, m.id === x.id, function () { setMat(cur, x.id); paint(); })); });
+        MATS.filter(function (x) { return x.g === kind; }).forEach(function (x) { row.appendChild(matSwatch(x, m.id === x.id, function () { putMat(cur, x.id); paint(); })); });
         grid.appendChild(row); return;
       }
       if (m.art) {
         // the chosen art in a window shaped like the mat: drag it to frame, pinch or slide to zoom
         grid.appendChild(framer(m));
         var fr = el('div', { class: 'mat-grid art-filters' });
-        ARTF.forEach(function (f) { fr.appendChild(matSwatch(artWith(m, { f: f.id }), m.f.id === f.id, function () { setMat(cur, artWith(matOf(cur), { f: f.id }).id); paint(); }, null, f.name)); });
+        ARTF.forEach(function (f) { fr.appendChild(matSwatch(artWith(m, { f: f.id }), m.f.id === f.id, function () { putMat(cur, artWith(getMat(cur), { f: f.id }).id); paint(); }, null, f.name)); });
         grid.appendChild(fr);
         if (m.f.tint) grid.appendChild(inkWheel(m));
       }
       grid.appendChild(q); grid.appendChild(found); paintFound();
       var mine = deckArt(cur);
-      if (mine.length) { grid.appendChild(el('div', { class: 'label', text: seats.length > 1 ? S.P[cur].name + '’s deck' : 'Your deck' })); grid.appendChild(artRow(mine)); }
+      if (mine.length) { grid.appendChild(el('div', { class: 'label', text: seats.length > 1 ? S.P[cur].name + '’s deck' : solo ? 'Your last deck' : 'Your deck' })); grid.appendChild(artRow(mine)); }
     }
     // the live mats on the table for this player (top or bottom), so framing shows there as you drag
-    function liveMats() { return Array.prototype.slice.call(document.querySelectorAll('.mat')).filter(function (n) { return n.dataset.m === matOf(cur).id; }); }
+    function liveMats() { return solo ? [] : Array.prototype.slice.call(document.querySelectorAll('.mat')).filter(function (n) { return n.dataset.m === getMat(cur).id; }); }
     function framer(m) {
-      var mat = $(cur === bottomPi() ? '.mat-bot' : '.mat-top'), r = mat && mat.offsetWidth ? mat.offsetHeight / mat.offsetWidth : .7;
+      var mat = solo ? null : $(cur === bottomPi() ? '.mat-bot' : '.mat-top'), r = mat && mat.offsetWidth ? mat.offsetHeight / mat.offsetWidth : .7;
       var big = el('i', { class: 'art-big' }); big.style.aspectRatio = '1 / ' + Math.min(1.1, Math.max(.35, r)).toFixed(3); matFill(big, m);
       var fr = { x: m.fr.x, y: m.fr.y, z: m.fr.z }, ptrs = {}, pinch = null, moved = false;
       var zoom = el('input', { type: 'range', class: 'art-zoom', min: '1', max: '3', step: '0.01', value: String(fr.z), 'aria-label': 'Zoom' });
@@ -7619,7 +7624,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         return { W: W, H: H };
       }
       function show() { lim(); frameVars(big, fr); liveMats().forEach(function (n) { frameVars(n, fr); }); zoom.value = String(fr.z); }
-      function commit() { setMat(cur, artWith(matOf(cur), { fr: { x: fr.x, y: fr.y, z: fr.z } }).id); }
+      function commit() { putMat(cur, artWith(getMat(cur), { fr: { x: fr.x, y: fr.y, z: fr.z } }).id); }
       big.addEventListener('pointerdown', function (e) { e.preventDefault(); try { big.setPointerCapture(e.pointerId); } catch (x) {} ptrs[e.pointerId] = { x: e.clientX, y: e.clientY }; var k = Object.keys(ptrs); if (k.length === 2) { var a = ptrs[k[0]], b = ptrs[k[1]]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: fr.z }; } });
       big.addEventListener('pointermove', function (e) {
         var p0 = ptrs[e.pointerId]; if (!p0) return;
@@ -7640,7 +7645,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     // Ink wash: a colour wheel, with each ink's colour (the card's own first) a tap away
     function inkWheel(m) {
-      var d = DB.byId[m.cid] || (S.defs && S.defs[m.cid]), own = d && d.ink ? d.ink.map(function (k) { return INKC[k]; }).filter(Boolean) : [];
+      var d = DB.byId[m.cid] || (S && S.defs && S.defs[m.cid]), own = d && d.ink ? d.ink.map(function (k) { return INKC[k]; }).filter(Boolean) : [];
       var picks = own.concat(Object.keys(INKC).map(function (k) { return INKC[k]; }).filter(function (c) { return own.indexOf(c) < 0; }));
       var wheel = el('div', { class: 'ink-wheel', role: 'slider', 'aria-label': 'Wash colour' }), dot = el('i', { class: 'ink-dot' }); wheel.appendChild(dot);
       function place(hex) { var h = hexHsl(hex); var a = (h[0] - 90) * Math.PI / 180, rr = h[1] * 50; dot.style.left = (50 + Math.cos(a) * rr) + '%'; dot.style.top = (50 + Math.sin(a) * rr) + '%'; dot.style.background = hex; }
@@ -7648,22 +7653,23 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var b = wheel.getBoundingClientRect(), x = e.clientX - b.left - b.width / 2, y = e.clientY - b.top - b.height / 2;
         var hue = (Math.atan2(y, x) * 180 / Math.PI + 90 + 360) % 360, sat = Math.min(1, Math.hypot(x, y) / (b.width / 2));
         var hex = hslHex(hue, sat, .5); place(hex); wheel.dataset.hex = hex;
-        liveMats().concat([$('.art-big', node)]).forEach(function (n) { if (n) matFill(n, artWith(matOf(cur), { tint: hex })); });
+        liveMats().concat([$('.art-big', node)]).forEach(function (n) { if (n) matFill(n, artWith(getMat(cur), { tint: hex })); });
       }
       var on = false;
       wheel.addEventListener('pointerdown', function (e) { e.preventDefault(); on = true; try { wheel.setPointerCapture(e.pointerId); } catch (x) {} pickAt(e); });
       wheel.addEventListener('pointermove', function (e) { if (on) pickAt(e); });
-      wheel.addEventListener('pointerup', function () { on = false; if (wheel.dataset.hex) { setMat(cur, artWith(matOf(cur), { tint: wheel.dataset.hex }).id); paint(); } });
+      wheel.addEventListener('pointerup', function () { on = false; if (wheel.dataset.hex) { putMat(cur, artWith(getMat(cur), { tint: wheel.dataset.hex }).id); paint(); } });
       place(m.ink);
       var row = el('div', { class: 'ink-picks' }, picks.map(function (c) {
         var nmk = Object.keys(INKC).filter(function (k) { return INKC[k] === c; })[0];
-        return el('button', { type: 'button', class: 'ink-pk' + (c.toLowerCase() === m.ink.toLowerCase() ? ' on' : ''), style: { background: c }, title: nmk, 'aria-label': nmk, onclick: function () { setMat(cur, artWith(matOf(cur), { tint: c }).id); paint(); } });
+        return el('button', { type: 'button', class: 'ink-pk' + (c.toLowerCase() === m.ink.toLowerCase() ? ' on' : ''), style: { background: c }, title: nmk, 'aria-label': nmk, onclick: function () { putMat(cur, artWith(getMat(cur), { tint: c }).id); paint(); } });
       }));
       return el('div', { class: 'ink-pick' }, [wheel, row]);
     }
     if (seats.length > 1) node.appendChild(tabs);
     node.appendChild(kinds); node.appendChild(grid); paint();
-    Kit.sheet({ title: 'Playmat', node: node, actions: [{ label: 'Done', cls: 'btn-primary' }] });
+    if (solo) node.insertBefore(el('p', { class: 'muted mat-solo', text: 'Your playmat for your next game' }), node.firstChild);
+    Kit.sheet({ title: solo ? 'Your playmat' : 'Playmat', node: node, actions: [{ label: 'Done', cls: 'btn-primary' }] });
   }
   function setMat(pi, id) {
     S.P[pi].mat = id; Kit.sfx('tap');
@@ -11799,6 +11805,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       item('bookmark', isMarked(d) ? 'Remove bookmark' : 'Bookmark', function () { toggleMark(d); Kit.toast(isMarked(d) ? 'Bookmarked ' + d.n : 'Bookmark removed'); paintChips(); paintGrid(true); });
       item('check', 'Select this card and more…', function () { selStart(d); });
       item('eye', 'View card', function () { cardZoom(d, list); });
+      if (d.im && (d.im.l || d.im.s)) item('sparkle', 'Use as my playmat', function () {
+        var cur = matById(lsGet(MATK, '')), m = artMat(cur && cur.art ? cur.f.id : 'dim', d.id, d.im.l || d.im.s, cur && cur.art ? cur.tint : '');
+        lsSet(MATK, m.id); Kit.sfx('chip'); Kit.toast('Playmat set for your next game'); matPicker();
+      });
       node.appendChild(lst);
       sh = Kit.sheet({ title: '', node: node, actions: [{ label: 'Close', cls: 'btn-ghost' }] });
     }
