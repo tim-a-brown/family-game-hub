@@ -439,6 +439,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     ]);
     if (S.done) doneTools();
     else setTools([btn('lightbulb', 'Hint', hint, 'btn-soft grow'), btn('undo', 'Undo', undo, 'btn-soft'), hud.zoom]);
+    pHint = null;
     layoutPencil();
     bindPencil();
   }
@@ -501,6 +502,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     svg.classList.toggle('done', !!S.done);
     setPath(S.head, true);
     if (S.revealed) showSolution(false);
+    if (pHint && !S.done && Date.now() - pHint.t < 3600) showHint(pHint);
   }
   // START and FINISH, printed: an arrow into the way in, an arrow out of the way out (a star in the middle of a round maze)
   function marks(u, wallW) {
@@ -796,12 +798,18 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     SND.hint(); Kit.haptic('light'); Kit.callout('+' + p + 's');
     if (back > 0) Kit.toast('Back up to the blue circle first');
     if (S.mode === 'tilt') { labHint = { cells: show, back: back ? route[back] : -1, t: performance.now() }; return; }
-    hintEl.setAttribute('d', MC.line(M, show, tr));
-    var bp = MC.center(M, back > 0 ? route[back] : show[Math.min(show.length - 1, 1)], tr);
+    pHint = { show: show, dot: back > 0 ? route[back] : -1, t: Date.now() };
+    showHint(pHint);
+    if (zoomed()) centerOn(MC.center(M, show[Math.min(show.length - 1, back + 2)], tr));
+  }
+  // the pencil hint on show; drawn again when the page is laid out again (the device turning) while it's up
+  var pHint = null;
+  function showHint(h) {
+    hintEl.setAttribute('d', MC.line(M, h.show, tr));
+    var bp = MC.center(M, h.dot >= 0 ? h.dot : h.show[Math.min(h.show.length - 1, 1)], tr);
     hintDot.setAttribute('cx', bp[0]); hintDot.setAttribute('cy', bp[1]);
     [hintEl, hintDot].forEach(function (n) { n.classList.remove('on'); void n.getBoundingClientRect(); n.classList.add('on'); });
-    hintDot.style.display = back > 0 ? '' : 'none';
-    if (zoomed()) centerOn(MC.center(M, show[Math.min(show.length - 1, back + 2)], tr));
+    hintDot.style.display = h.dot >= 0 ? '' : 'none';
   }
   function askReveal() {
     if (!live()) return;
@@ -1225,7 +1233,14 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
   }
 
   var rz; window.addEventListener('resize', function () {
-    clearTimeout(rz); rz = setTimeout(function () { if (!S || !stage || !stage.isConnected) return; if (S.mode === 'tilt') layoutTilt(); else layoutPencil(); }, 150);
+    clearTimeout(rz); rz = setTimeout(function () {
+      if (!S || !stage || !stage.isConnected) return;
+      if (S.mode === 'tilt') { layoutTilt(); return; }
+      // zoomed in: stay zoomed in as far, around the pen
+      var k = svg && view && zoomed() ? pxu / fitPxu : 0;
+      layoutPencil();
+      if (k) { var r = svg.getBoundingClientRect(); setScale(fitPxu * k, r.left + r.width / 2, r.top + r.height / 2); centerOn(MC.center(M, S.head, tr)); }
+    }, 150);
   });
 
   // ── Test hooks ─────────────────────────────────────────────────────────

@@ -461,7 +461,7 @@
         document.body.appendChild(g); drag.ghost = g; b.style.opacity = '.25'; Kit.sfx('tap'); Kit.haptic('tick');
       }
       if (drag.moving) {
-        var w = drag.ghost.offsetWidth;
+        var w = drag.ghost.offsetWidth; drag.x = e.clientX; drag.y = e.clientY;
         drag.ghost.style.left = (e.clientX - w / 2) + 'px'; drag.ghost.style.top = (e.clientY - w / 2) + 'px';
         var over = targetAt(e.clientX, e.clientY);
         document.querySelectorAll('.slot.over').forEach(function (x) { x.classList.remove('over'); });
@@ -472,6 +472,15 @@
     b.addEventListener('pointerup', function () { endDrag(t); });
     b.addEventListener('pointercancel', function () { if (drag && drag.ghost) drag.ghost.remove(); if (drag) drag.el.style.opacity = ''; drag = null; });
   }
+  // turned mid-drag: the held tile takes the new tile size, still under the finger
+  window.addEventListener('resize', function () {
+    if (!drag || !drag.ghost) return;
+    drag.ghost.style.setProperty('--t', drag.el.getBoundingClientRect().width + 'px');
+    var w = drag.ghost.offsetWidth; drag.ghost.style.left = (drag.x - w / 2) + 'px'; drag.ghost.style.top = (drag.y - w / 2) + 'px';
+    document.querySelectorAll('.slot.over').forEach(function (x) { x.classList.remove('over'); });
+    drag.over = targetAt(drag.x, drag.y);
+    if (drag.over && drag.over.slot != null) slotsEl.children[drag.over.slot].classList.add('over');
+  });
   function targetAt(x, y) {
     var best = null, bd = 1e9;
     Array.prototype.forEach.call(slotsEl.children, function (s, i) {
