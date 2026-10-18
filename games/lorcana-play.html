@@ -1526,6 +1526,7 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .lzf-ev{display:flex;flex-direction:column;gap:2px;}
 .lzf-e{display:flex;align-items:center;gap:7px;min-width:0;opacity:.75;animation:tickIn .28s var(--spring);}
 .lzf-e:last-child{opacity:1;}
+.lzf-e.still{animation:none;}
 .lzf-e b{font-family:var(--display);font-weight:400;letter-spacing:.05em;text-transform:uppercase;color:#f1cf78;flex:none;}
 .lzf-e span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;padding:.45em 0;margin:-.45em 0;}   /* room for the tall lore/ink marks, which the clip was cutting off */
 .lzf-e span .rv-mk{overflow:visible;}
@@ -10306,9 +10307,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (!(swapping || keep)) { ui.fitCu = 0; ui.fitKey = null; ui.fitDone = false; }
     if (ui.fitCu) { ov.classList.add('lz-fit'); ov.style.setProperty('--cufit', ui.fitCu + 'px'); }
     ov._sideKeep = !!(swapping || keep);
+    // the next card in a swipe is drawn at its settled size and place from its first frame: the kept card size, the
+    // turn banner's height and the left side's position all go in before it's painted, so nothing snaps a frame later
+    if (ov._sideKeep && ui.cuSide && !phoneZoom()) { ov.classList.add('lz-sfit'); ov.style.setProperty('--cuside', ui.cuSide + 'px'); }
     document.body.appendChild(ov);
+    if (!opt.tapClose) lzFeed(ov._sideKeep);
     if (!phoneZoom()) midLeft(ov);
-    if (!opt.tapClose) { lzFeed(); requestAnimationFrame(function () { fitLz(ov); }); }
+    // and once more as soon as the caller has finished adding to it (the hand's Sort and filter chips, a pick's prompt),
+    // still before it's painted
+    Promise.resolve().then(function () { if (ov.isConnected && !phoneZoom()) midLeft(ov); });
+    if (!opt.tapClose) requestAnimationFrame(function () { fitLz(ov); });
     cardTilt(ov);
     if (F) F.render();
     if (!swapping && !keep) requestAnimationFrame(function () { ov.classList.add('show'); });
@@ -10912,7 +10920,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Looking through your cards while it's the other player's turn: a status panel above the cards keeps the game in
   // view (whose turn, the lore, their latest moves) without interrupting what you're looking at
   function feedTime() { return !!S && ui.screen === 'game' && S.phase === 'play' && (S.mode === 'online' ? S.cur !== NET.seat : S.mode === 'cpu' && S.P[S.cur].cpu); }
-  function lzFeed() {
+  function lzFeed(still) {
     var ov = $('.lz:not(.reveal)'); if (!ov) return null;
     var f = $('.lz-feed', ov);
     // In a game, every card view keeps the table in sight: whose turn, your ink, the lore (and on the other
@@ -10925,7 +10933,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       // what they've done so far this turn
       var done = [];
       for (var i = S.log.length - 1; i >= 0 && done.length < 3; i--) { var l = S.log[i]; if (l.p !== S.cur || /ended their turn$|opening hand$/.test(l.t)) break; done.unshift(l); }
-      done.forEach(function (l) { feedLine(f, S.P[l.p], '', l.t); });
+      done.forEach(function (l) { feedLine(f, S.P[l.p], '', l.t, still); });   // (moving to the next card: already there, no tick-in)
     }
     var c = S.P[S.cur], me = meIxSafe(), P = S.P[me], ir = P.ink.filter(function (x) { return !C(x).ex; }).length;
     $('.lzf-st', f).innerHTML = '<i class="dot" style="--c:' + c.color + '"></i><b>' + (S.cur === me && !c.cpu ? 'Your turn' : esc(c.name) + '’s turn') + '</b><span class="lzf-t">T' + S.turn + '</span>' +
@@ -10939,10 +10947,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     requestAnimationFrame(function () { if (f.isConnected) ov.style.setProperty('--feedh', f.offsetHeight + 'px'); });
     return f;
   }
-  function feedLine(f, p, verb, text) {
+  function feedLine(f, p, verb, text, still) {
     text = youFix(text);
     var ev = $('.lzf-ev', f);
-    ev.appendChild(el('div', { class: 'lzf-e', html: '<i class="dot" style="--c:' + p.color + '"></i>' + (verb ? '<b>' + esc(verb) + '</b>' : '') + '<span>' + esc(text) + '</span>' }));   // plain words in this small feed
+    ev.appendChild(el('div', { class: 'lzf-e' + (still ? ' still' : ''), html: '<i class="dot" style="--c:' + p.color + '"></i>' + (verb ? '<b>' + esc(verb) + '</b>' : '') + '<span>' + esc(text) + '</span>' }));   // plain words in this small feed
     while (ev.children.length > 3) ev.removeChild(ev.firstChild);
     var ov = f.closest('.lz'); if (ov) requestAnimationFrame(function () { ov.style.setProperty('--feedh', f.offsetHeight + 'px'); });
   }
