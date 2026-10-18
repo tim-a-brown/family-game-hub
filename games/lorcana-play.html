@@ -5608,7 +5608,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (t.sel === 'prev') return 'that card';
     if (t.sel === 'ctx') return t.key === 'att' ? 'the challenging character' : 'the challenged character';
     var f = t.f || {}, w = [];
-    if (t.sel === 'chosen') w.push(t.upTo >= 99 ? 'any number of chosen' : t.upTo ? 'up to ' + t.upTo + ' chosen' : f.other ? 'another chosen' : 'chosen');
+    if (t.sel === 'chosen') w.push(t.upTo >= 99 ? 'any number of chosen' : t.exact ? (f.other ? 'another ' : '') + t.exact + ' chosen' : t.upTo ? 'up to ' + t.upTo + ' chosen' : f.other ? 'another chosen' : 'chosen');
     else w.push(t.side === 'mine' ? (f.other ? 'your other' : 'your') : 'each');
     if (t.side === 'opp') w.push('opposing');
     ['damaged', 'exerted', 'ready', 'undamaged'].forEach(function (k) { if (f[k]) w.push(k); });
@@ -5655,7 +5655,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         bad: function (x) { return C(x).o !== pi && hasKw(x, 'ward') && fits(x, e.t, st.src, pi) ? nm(x) + ' has Ward: effects can’t choose it' : ''; },
         skip: optional || e.t.upTo ? 'Skip' : null, must: !(optional || e.t.upTo),
         cancel: function () { cb(false); },
-        multi: multi ? { need: function (sel) { if (e.t.totalS != null && sel.reduce(function (a, u) { return a + STR(u); }, 0) > e.t.totalS) return false; return e.t.exact ? sel.length === Math.min(e.t.exact, legal.length) : sel.length >= 1 && sel.length <= e.t.upTo; },
+        multi: multi ? { max: e.t.totalS != null ? null : e.t.exact || e.t.upTo, min: e.t.exact ? Math.min(e.t.exact, legal.length) : 1, need: function (sel) { if (e.t.totalS != null && sel.reduce(function (a, u) { return a + STR(u); }, 0) > e.t.totalS) return false; return e.t.exact ? sel.length === Math.min(e.t.exact, legal.length) : sel.length >= 1 && sel.length <= e.t.upTo; },
           label: function (sel) { if (e.t.totalS != null) { var ts = sel.reduce(function (a, u) { return a + STR(u); }, 0); return ts > e.t.totalS ? 'Too much strength: ' + ts + ' of ' + e.t.totalS : 'Done · ' + ts + ' of ' + e.t.totalS + ' strength'; } return 'Done (' + sel.length + '/' + e.t.upTo + ')'; }, go: function (sel) { applyChosen(e, st, sel, cb); } } : null,
         done: function (x) { applyChosen(e, st, [x], cb); }
       });
@@ -6136,7 +6136,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (!ctlHuman(pi)) { var mv = pool.filter(function (u) { return !C(u).at; }).sort(function (a, b) { return LORE(b) - LORE(a); }).slice(0, extra); if (!mv.length && !must.length) return cb(false); return pickLoc(must.concat(mv)); }
     startPick({ title: abTitle(st.src, st.ab) + ': ' + (extra > 1 ? 'choose up to ' + (extra > 20 ? 'any number of' : extra) + ' characters to move' : 'choose a character to move'), src: st.src,
       ok: function (x) { return pool.indexOf(x) >= 0; }, skip: 'Skip', cancel: function () { if (must.length) pickLoc(must); else cb(false); },
-      multi: extra > 1 ? { need: function (sel) { return sel.length >= 1 && sel.length <= extra; }, label: function (sel) { return 'Done (' + sel.length + ')'; }, go: function (sel) { pickLoc(must.concat(sel)); } } : null,
+      multi: extra > 1 ? { max: extra, need: function (sel) { return sel.length >= 1 && sel.length <= extra; }, label: function (sel) { return 'Done (' + sel.length + ')'; }, go: function (sel) { pickLoc(must.concat(sel)); } } : null,
       done: function (x) { pickLoc(must.concat([x])); } });
   }
   // "Name a card": pick any card name
@@ -6639,7 +6639,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var p2 = sacPool(u, cost), n2 = cost.sac.n;
         if (byCpu) { sac = p2.sort(function (a, b) { return cardValue(a) - cardValue(b); }).slice(0, n2); return step(); }
         return startPick({ title: 'Banish ' + (n2 > 1 ? n2 + ' ' + cost.sac.type + 's' : 'which ' + cost.sac.type) + ' to use ' + abTitle(u, ab) + '?', src: u, ok: function (x) { return p2.indexOf(x) >= 0; }, skip: 'Cancel', cancel: function () {},
-          multi: n2 > 1 ? { need: function (sel) { return sel.length === n2; }, label: function (sel) { return 'Done (' + sel.length + '/' + n2 + ')'; }, go: function (sel) { sac = sel; step(); } } : null,
+          multi: n2 > 1 ? { max: n2, min: n2, need: function (sel) { return sel.length === n2; }, label: function (sel) { return 'Done (' + sel.length + '/' + n2 + ')'; }, go: function (sel) { sac = sel; step(); } } : null,
           done: function (x) { sac = [x]; step(); } });
       }
       if (cost.exOther && !exo.length) {
@@ -9488,19 +9488,20 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // Choosing among items or locations, or among two or more characters: their text matters more than where they sit
   // (four Merlins look alike on the table), so the choice opens as a carousel of the cards (full text, swipe through)
-  // instead of glowing cards on the table. A lone character, picks of several cards and challenges stay on the table.
+  // instead of glowing cards on the table; so does a pick of several cards. A lone character and challenges stay on the table.
   var PICK_VERBS = ['Exert', 'Banish', 'Return', 'Ready', 'Move', 'Shift', 'Play', 'Choose'];
   function pickAsCarousel(o) {
-    if (o.multi || o.chal || o.preview) return false;
+    if (o.chal || o.preview) return false;
     var mine = bottomPi(), all = boardOrder(mine).concat(boardOrder(opp(mine))), legal = all.filter(function (x) { return o.ok(x); });
-    if (!legal.length || (legal.length < 2 && DD(legal[0]).t === 'character')) return false;
+    if (!legal.length || (legal.length < 2 && DD(legal[0]).t === 'character' && !o.multi)) return false;
     if (S.P.some(function (P) { return P.hand.some(function (x) { return o.ok(x); }); })) return false;
     var vm = String(o.title).match(new RegExp('\\b(' + PICK_VERBS.join('|') + ')\\b', 'i')), verb = vm ? vm[1].charAt(0).toUpperCase() + vm[1].slice(1).toLowerCase() : 'Choose';
     if (verb === 'Move') verb = 'Move to'; else if (verb === 'Shift') verb = 'Shift onto';
     var back = function () { if (o.cancel) o.cancel(); };
-    cardPick({ title: o.title, src: o.src, uids: legal, n: 1, min: 1, verb: verb,
+    var m = o.multi;   // several cards: tap Choose on each, then the pick's own Done
+    cardPick({ title: o.title, src: o.src, uids: legal, n: m ? m.max || legal.length : 1, min: m && m.min || 1, verb: verb, need: m ? m.need : null, doneLabel: m ? m.label : null,
       cancel: o.must ? null : back, skip: !o.must && !!o.skip, cancelLabel: o.skip || 'Cancel',
-      done: function (x) { if (x && x[0]) o.done(x[0]); else back(); } });
+      done: function (x) { if (m) { if (x && x.length) m.go(x); else back(); } else if (x && x[0]) o.done(x[0]); else back(); } });
     return true;
   }
   function startPick(o) {
@@ -11264,7 +11265,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return lower ? w : w.charAt(0).toUpperCase() + w.slice(1);
   }
   function cardPick(o) {
-    var sel = o.sel || [], n = o.n || 1, min = o.min != null ? o.min : n, fin = false, single = n === 1 && min <= 1 && !o.acts;
+    var sel = o.sel || [], n = o.n || 1, min = o.min != null ? o.min : n, fin = false, single = n === 1 && min <= 1 && !o.acts && !o.need;
     var can = o.can || function () { return true; }, cp = ui.cp = { fin: false, i: 0, show: function () { show(cp.i, 0); } };
     function finish(x) { if (fin) return; fin = cp.fin = true; if (ui.cp === cp) ui.cp = null; closeZoom(); Kit.sfx('pop'); o.done(x); }
     function stop() { if (fin) return; fin = cp.fin = true; if (ui.cp === cp) ui.cp = null; closeZoom(); if (o.cancel) o.cancel(); }
@@ -11278,6 +11279,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (o.acts) o.acts(u).forEach(function (a) { var g0 = a.go; a.go = function () { g0(); ui.lzQuiet = true; show(i); }; a.stay = true; acts.push(a); });
       if (single && min === 0 && !o.cancel && !o.skip) acts.push({ label: 'Skip · take none', go: function () { finish([]); } });
       if (!single && o.n === 0) acts.push({ label: 'Done', primary: true, alone: true, go: function () { finish([]); } });
+      else if (!single && o.need) { var okN = o.need(sel), lab = o.doneLabel ? o.doneLabel(sel) : 'Done';   // the pick's own rule for when it's done (and its own label)
+        acts.push(okN ? { label: lab, primary: true, go: function () { finish(sel.slice()); } } : sel.length ? { label: lab, off: { ico: '', note: 'Not yet', tip: lab } } : { label: lab, ok: false }); }
       else if (!single) acts.push({ label: 'Done · ' + sel.length + (n > 1 ? ' of ' + n : ' chosen'), primary: sel.length >= min, ok: sel.length >= min, go: function () { finish(sel.slice()); } });
       if (o.cancel || o.skip) acts.push({ label: o.cancelLabel || (o.skip ? 'Skip' : 'Cancel'), go: stop });
       var nav = { i: i, n: o.uids.length, list: o.uids, ctx: 'pick', pick: { sel: sel, can: can, place: o.place, count: o.count }, dir: dir || 0,
