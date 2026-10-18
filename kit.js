@@ -2314,23 +2314,39 @@
   // every device's record.
   var USE_DEV = (function () { var v = null; try { v = LS.getItem('fgh_usage_dev'); if (!v || !/^[a-z0-9]{6,12}$/.test(v)) { v = Math.random().toString(36).slice(2, 10); LS.setItem('fgh_usage_dev', v); } } catch (e) { v = 'here'; } return v; })();
   var USE_KEY = 'gn_usage_' + USE_DEV, useIn = Date.now(), usePend = {}, useNoted = 0;
+  // and by game: gn_usegame_<device> {'YYYY-MM-DD': {game id: {hour: seconds}}, _n: {game id: name}} (names for games
+  // that aren't in every device's catalog, like a console cartridge). Time on the home screen and menus has no game.
+  var USE_GKEY = 'gn_usegame_' + USE_DEV, useGPend = {}, useNames = {}, useOver;
+  function pageGame() { if (!/\/games\//.test(location.pathname)) return null; var g = findGameSafe(pageKey()); return g ? g.id : null; }
+  // a page that holds several games (a console's cartridges) says which one is on: Kit.playing(id, name), or null for none
+  function playing(id, name) { useOver = id === undefined ? undefined : id; if (id && name) useNames[id] = String(name).slice(0, 60); }
   function dayKey(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(function (k) { doc.addEventListener(k, function () { useIn = Date.now(); }, { capture: true, passive: true }); });
   setInterval(function () {
     if (doc.visibilityState !== 'visible' || timerLocked) return;
     try { if (navigator.getGamepads && Array.prototype.some.call(navigator.getGamepads() || [], function (g) { return g && g.buttons && g.buttons.some(function (b) { return b.pressed; }); })) useIn = Date.now(); } catch (e) {}
     if (Date.now() - useIn > 300000) return;
-    var d = new Date(), k = dayKey(d), h = d.getHours();
+    var d = new Date(), k = dayKey(d), h = d.getHours(), gid = useOver !== undefined ? useOver : pageGame();
     (usePend[k] = usePend[k] || {})[h] = (usePend[k][h] || 0) + 15;
+    if (gid) { var gp = useGPend[k] || (useGPend[k] = {}), gg = gp[gid] || (gp[gid] = {}); gg[h] = (gg[h] || 0) + 15; }
   }, 15000);
   function useFlush(note) {
-    var ks = Object.keys(usePend); if (!ks.length) return;
+    var ks = Object.keys(usePend); if (!ks.length && !Object.keys(useGPend).length) return;
     var rec = {}; try { rec = JSON.parse(LS.getItem(USE_KEY) || '{}') || {}; } catch (e) {}
     ks.forEach(function (k) { var a = rec[k] || (rec[k] = new Array(24).fill(0)); Object.keys(usePend[k]).forEach(function (h) { a[h] = Math.min(3600, (a[h] || 0) + usePend[k][h]); }); });
     usePend = {};
     var keep = dayKey(new Date(Date.now() - 60 * 86400000)); Object.keys(rec).forEach(function (k) { if (k < keep) delete rec[k]; });
     try { LS.setItem(USE_KEY, JSON.stringify(rec)); } catch (e) {}
-    if (note || Date.now() - useNoted > 300000) { useNoted = Date.now(); if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(USE_KEY); }   // (to the account every few minutes, not every minute)
+    var gs = Object.keys(useGPend);
+    if (gs.length) {
+      var gr = {}; try { gr = JSON.parse(LS.getItem(USE_GKEY) || '{}') || {}; } catch (e) {}
+      gs.forEach(function (k) { var day = gr[k] || (gr[k] = {}); Object.keys(useGPend[k]).forEach(function (g) { var x = day[g] || (day[g] = {}); Object.keys(useGPend[k][g]).forEach(function (h) { x[h] = Math.min(3600, (x[h] || 0) + useGPend[k][g][h]); }); }); });
+      Object.keys(gr).forEach(function (k) { if (k !== '_n' && k < keep) delete gr[k]; });
+      var names = gr._n || {}; Object.keys(useNames).forEach(function (g) { names[g] = useNames[g]; }); if (Object.keys(names).length) gr._n = names;
+      useGPend = {};
+      try { LS.setItem(USE_GKEY, JSON.stringify(gr)); } catch (e) {}
+    }
+    if (note || Date.now() - useNoted > 300000) { useNoted = Date.now(); if (window.FGHSync && FGHSync.noteWrite) { FGHSync.noteWrite(USE_KEY); FGHSync.noteWrite(USE_GKEY); } }   // (to the account every few minutes, not every minute)
   }
   setInterval(function () { useFlush(false); }, 60000);
   doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'hidden') useFlush(true); });
@@ -2347,14 +2363,40 @@
     }
     return out;
   }
+  // by game: every device's record added up, {day: {game: [24 hours]}, _n: names}
+  function gamesAdd(out, r) {
+    if (!r || typeof r !== 'object') return out;
+    Object.keys(r).forEach(function (d) {
+      if (d === '_n') { Object.keys(r._n || {}).forEach(function (g) { out._n[g] = r._n[g]; }); return; }
+      var day = out[d] || (out[d] = {});
+      Object.keys(r[d] || {}).forEach(function (g) { var a = day[g] || (day[g] = new Array(24).fill(0)), x = r[d][g] || {}; Object.keys(x).forEach(function (h) { a[+h] = (a[+h] || 0) + (+x[h] || 0); }); });
+    });
+    return out;
+  }
+  function gamesAll() {
+    useFlush(false);
+    var out = { _n: {} };
+    for (var i = 0; i < LS.length; i++) { var k = LS.key(i); if (!k || k.indexOf('gn_usegame_') !== 0) continue; var r = null; try { r = JSON.parse(LS.getItem(k)); } catch (e) {} gamesAdd(out, r); }
+    return out;
+  }
+  function gamesOf(prefs) { var out = { _n: {} }; Object.keys(prefs || {}).forEach(function (k) { if (k.indexOf('gn_usegame_') !== 0 || !prefs[k]) return; var r = null; try { r = JSON.parse(prefs[k].v); } catch (e) {} gamesAdd(out, r); }); return out; }
+  function gameIconOf(id) { var g = findGameSafe(id); try { if (g && window.GameIcon) return GameIcon(g.id); } catch (e) {} return icon(String(id).indexOf('cart-') === 0 ? 'console' : 'gamepad'); }
+  function gameLabel(G, id) { var g = findGameSafe(id); return g ? g.name : (G && G._n && G._n[id]) || id; }
+  // the games played over some days, most played first: [{id, s}]
+  function gamesTop(G, keys) {
+    var t = {}; keys.forEach(function (k) { var day = G[k] || {}; Object.keys(day).forEach(function (g) { t[g] = (t[g] || 0) + sumDay(day[g]); }); });
+    return Object.keys(t).filter(function (g) { return t[g] > 0; }).map(function (g) { return { id: g, s: t[g] }; }).sort(function (a, b) { return b.s - a.s; });
+  }
   // the same from an account's synced settings (a child's, for their parent)
   function usageOf(prefs) { var out = {}; Object.keys(prefs || {}).forEach(function (k) { if (k.indexOf('gn_usage_') !== 0 || !prefs[k]) return; var r = null; try { r = JSON.parse(prefs[k].v); } catch (e) {} usageAdd(out, r); }); return out; }
   function minsText(sec) { var m = Math.round(sec / 60); if (m < 1) return sec > 0 ? 'Under a minute' : 'None'; var h = Math.floor(m / 60); return h ? h + ' hr' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min'; }
   function sumDay(a) { return (a || []).reduce(function (x, y) { return x + y; }, 0); }
   function playToday() { var a = usageAll()[dayKey(new Date())]; return sumDay(a); }
-  // The screen: today's total, the last 7 days as bars (tap one), and that day hour by hour
-  function playTimeSheet(U, whose) {
-    U = U && !U.type ? U : usageAll(); var days = [], i, today = new Date(); today.setHours(12, 0, 0, 0);
+  // The screen: today's total, the last 7 days as bars (tap one), that day hour by hour, and the games played that day
+  // (or that week). Tap a game and the hours show just that game's time.
+  function playTimeSheet(U, whose, G) {
+    U = U && !U.type ? U : usageAll(); G = G || gamesAll();
+    var days = [], i, today = new Date(); today.setHours(12, 0, 0, 0);
     for (i = 6; i >= 0; i--) { var d = new Date(today.getTime() - i * 86400000); days.push({ d: d, k: dayKey(d), s: sumDay(U[dayKey(d)]) }); }
     var sel = days.length - 1, max = Math.max(1800, Math.max.apply(null, days.map(function (x) { return x.s; })));
     var week = days.reduce(function (a, x) { return a + x.s; }, 0), active = days.filter(function (x) { return x.s > 0; }).length;
@@ -2362,6 +2404,10 @@
     var hero = el('div', { class: 'k-pt-hero' }, [el('small', { text: 'Today' }), el('b', { text: minsText(days[6].s) }),
       el('span', { text: 'This week ' + minsText(week) + (active ? ' · about ' + minsText(week / active) + ' a day played' : '') })]);
     var bars = el('div', { class: 'k-pt-bars', role: 'tablist', 'aria-label': 'Last 7 days' }), hours = el('div', { class: 'k-pt-hours' }), dayT = el('div', { class: 'k-pt-day' }), tip = el('div', { class: 'k-pt-tip' });
+    var span = 'day', pick = null, gHead = el('div', { class: 'k-pt-ghead' }), gList = el('div', { class: 'k-pt-games' });
+    var seg = el('div', { class: 'k-pt-seg', role: 'tablist', 'aria-label': 'Games played' }, [['day', 'Day'], ['week', 'Week']].map(function (o) {
+      return el('button', { type: 'button', role: 'tab', 'data-v': o[0], text: o[1], onclick: function () { span = o[0]; sfx('tap'); paintSel(); } });
+    }));
     days.forEach(function (x, j) {
       var lbl = j === 6 ? 'Today' : x.d.toLocaleDateString([], { weekday: 'short' });
       var b = el('button', { type: 'button', class: 'k-pt-bar', role: 'tab', 'aria-label': lbl + ': ' + minsText(x.s), onclick: function () { sel = j; sfx('tap'); paintSel(); } }, [
@@ -2370,11 +2416,11 @@
         el('span', { class: 'd', text: lbl })]);
       bars.appendChild(b);
     });
-    function paintSel() {
-      Array.prototype.forEach.call(bars.children, function (b, j) { b.classList.toggle('on', j === sel); b.setAttribute('aria-selected', String(j === sel)); });
-      var x = days[sel], a = U[x.k] || new Array(24).fill(0);
-      dayT.innerHTML = '<b>' + esc(sel === 6 ? 'Today' : x.d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })) + '</b><span>' + esc(minsText(x.s)) + '</span>';
-      hours.innerHTML = ''; tip.textContent = '';
+    function dayName(j) { return j === 6 ? 'Today' : days[j].d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }); }
+    function paintHours() {
+      var x = days[sel], a = pick ? ((G[x.k] || {})[pick] || new Array(24).fill(0)) : (U[x.k] || new Array(24).fill(0));
+      dayT.innerHTML = '<b>' + esc(dayName(sel)) + (pick ? ' · ' + esc(gameLabel(G, pick)) : '') + '</b><span>' + esc(minsText(sumDay(a))) + '</span>';
+      hours.innerHTML = ''; tip.textContent = ''; hours.classList.toggle('game', !!pick);
       a.forEach(function (s, h) {
         var lv = s <= 0 ? 0 : s < 600 ? 1 : s < 1500 ? 2 : s < 2700 ? 3 : 4;   // shade by how much of that hour was played
         var lab = function (n) { return (n % 12 || 12) + (n < 12 ? ' AM' : ' PM'); };
@@ -2382,12 +2428,35 @@
         hours.appendChild(c);
       });
     }
+    function paintGames() {
+      Array.prototype.forEach.call(seg.children, function (b) { var on = b.getAttribute('data-v') === span; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
+      var keys = span === 'week' ? days.map(function (x) { return x.k; }) : [days[sel].k];
+      var total = span === 'week' ? week : days[sel].s, top = gamesTop(G, keys), inGames = top.reduce(function (a, x) { return a + x.s; }, 0);
+      gHead.textContent = span === 'week' ? 'Last 7 days' : dayName(sel);
+      gList.innerHTML = '';
+      if (!top.length) { gList.appendChild(el('p', { class: 'muted k-pt-none', text: total ? 'No games played, just the home screen and menus.' : 'Nothing played.' })); return; }
+      var big = top[0].s;
+      top.forEach(function (x) {
+        var on = pick === x.id;
+        gList.appendChild(el('button', { type: 'button', class: 'k-pt-g' + (on ? ' on' : '') + (pick && !on ? ' dim' : ''), 'aria-pressed': String(on), onclick: function () { pick = on ? null : x.id; sfx('tap'); haptic('light'); paintGames(); paintHours(); } }, [
+          el('span', { class: 'gic', html: gameIconOf(x.id) }),
+          el('span', { class: 'grow' }, [el('b', { text: gameLabel(G, x.id) }), el('span', { class: 'k-pt-gbar' }, [el('i', { style: { width: Math.max(3, x.s / big * 100) + '%' } })])]),
+          el('span', { class: 'k-pt-gt', text: minsText(x.s) })]));
+      });
+      var rest = total - inGames;
+      if (rest >= 60) gList.appendChild(el('div', { class: 'k-pt-g rest' }, [el('span', { class: 'gic', html: icon('home') }), el('span', { class: 'grow' }, [el('b', { text: 'Home screen and menus' })]), el('span', { class: 'k-pt-gt', text: minsText(rest) })]));
+    }
+    function paintSel() {
+      Array.prototype.forEach.call(bars.children, function (b, j) { b.classList.toggle('on', j === sel); b.setAttribute('aria-selected', String(j === sel)); });
+      paintHours(); paintGames();
+    }
     paintSel();
     var node = el('div', { class: 'k-pt' }, [
       el('p', { class: 'k-pt-who', text: who + ' · counted while the games are open and in use' }), hero,
       el('div', { class: 'label k-sec', text: 'Last 7 days' }), bars,
       el('div', { class: 'label k-sec', text: 'Time of day' }), dayT, hours,
-      el('div', { class: 'k-pt-axis' }, ['12 AM', '6 AM', '12 PM', '6 PM', '12 AM'].map(function (t) { return el('span', { text: t }); })), tip]);
+      el('div', { class: 'k-pt-axis' }, ['12 AM', '6 AM', '12 PM', '6 PM', '12 AM'].map(function (t) { return el('span', { text: t }); })), tip,
+      el('div', { class: 'k-pt-gtop' }, [el('div', { class: 'label k-sec', text: 'Games' }), seg]), gHead, gList]);
     sheet({ title: 'Play time', node: node, actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
   // ── Game timer: a countdown set in Preferences that ends gaming for this PIN ──
@@ -3196,8 +3265,9 @@
       var U = usageOf(cur.prefs), d0 = new Date(), wk = 0, bars = el('span', { class: 'kd-spark', 'aria-hidden': 'true' }), vals = [];
       for (var i = 6; i >= 0; i--) { var v = sumDay(U[dayKey(new Date(d0.getTime() - i * 86400000))]); vals.push(v); wk += v; }
       var mx = Math.max(1800, Math.max.apply(null, vals)); vals.forEach(function (v, j) { bars.appendChild(el('i', { class: j === 6 ? 'now' : '', style: { height: (v ? Math.max(8, v / mx * 100) : 4) + '%' } })); });
-      body.appendChild(el('button', { type: 'button', class: 'kd-time', onclick: function () { playTimeSheet(U, poss(name) + ' play time, all their devices'); } }, [
-        el('span', { class: 'grow' }, [el('small', { text: 'Today' }), el('b', { text: minsText(vals[6]) }), el('span', { text: 'This week ' + minsText(wk) })]), bars, el('span', { class: 'chev', html: icon('right') })]));
+      var G = gamesOf(cur.prefs), most = gamesTop(G, [dayKey(d0)]).slice(0, 2).map(function (x) { return gameLabel(G, x.id); });
+      body.appendChild(el('button', { type: 'button', class: 'kd-time', onclick: function () { playTimeSheet(U, poss(name) + ' play time, all their devices', G); } }, [
+        el('span', { class: 'grow' }, [el('small', { text: 'Today' }), el('b', { text: minsText(vals[6]) }), el('span', { text: most.length ? 'Mostly ' + andList(most) : 'This week ' + minsText(wk) })]), bars, el('span', { class: 'chev', html: icon('right') })]));
       // the timer: the same picker as your own, but it runs on their devices
       var tapi = { by: me, note: 'Starts on ' + poss(name) + ' devices right away. They see a countdown in the last two minutes, get one more minute to finish up, then games lock until you unlock them.',
         get: function () { var t = cur.pc && cur.pc.timer; if (!t || (!t.lock && Date.now() - t.end > 60000)) return null; var o = {}; for (var k in t) o[k] = t[k]; return o; },
@@ -3384,7 +3454,7 @@
   window.Kit = {
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
-    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
+    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },

@@ -568,6 +568,7 @@
   var cur = null, booted = false, started = false, playEl = null, scrEl = null, glassEl = null, skinEl = null, resumeEl = null;
   function play(c) {
     cur = c;
+    if (Kit.playing) Kit.playing('cart-' + String(c.id).slice(0, 16), c.name);   // play time counts this cartridge
     Kit.titleSwitch && Kit.titleSwitch(c.name, function () { toShelf(); }, 'Change cartridge');
     view.innerHTML = '';
     playEl = el('div', { class: 'play', 'data-sys': SYS_ID });
@@ -808,6 +809,7 @@
     });
   }
   function toShelf() {
+    if (Kit.playing) Kit.playing(null);   // (the shelf isn't a game)
     var go = function () { location.replace(location.pathname); };
     netQuit();
     hiLeave(function () { if (started && !cur.netGame) saveState('auto').then(go, go); else go(); });
