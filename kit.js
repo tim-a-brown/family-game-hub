@@ -2303,7 +2303,7 @@
   // fgh_timer {end, lock, mins} (this device, whoever is signed in). Nothing shows until the last two minutes: then
   // a small countdown sits in the game's top bar (or a slim pill at the top of the screen where there's no bar), out
   // of the game's way. At zero: a chime and "Time's up". With lock on, there's a minute's grace to finish up, then a
-  // screen over everything says game time is over; holding Unlock for two seconds ends the timer.
+  // screen over everything says game time is over; holding Unlock for 15 seconds ends the timer.
   var TIMER = 'fgh_timer', timerLocked = false, tmEl = null, tmLock = null, tmLast = null, tmT = 0;
   function timerGet() { try { var t = JSON.parse(LS.getItem(TIMER) || 'null'); return t && t.end ? t : null; } catch (e) { return null; } }
   function timerSet(t) { try { if (t) LS.setItem(TIMER, JSON.stringify(t)); else LS.removeItem(TIMER); } catch (e) {} timerTick(); }
@@ -2322,9 +2322,15 @@
   function timerLockOn() {
     if (tmLock) return;
     timerLocked = true;
-    var hold = el('button', { type: 'button', class: 'k-lock-hold', html: '<i></i><span>Hold to unlock</span>' }), t0 = 0, ht = 0;
-    function down(e) { e.preventDefault(); hold.classList.add('on'); t0 = Date.now(); ht = setTimeout(function () { haptic('success'); timerSet(null); }, 2000); }
-    function up() { hold.classList.remove('on'); clearTimeout(ht); }
+    // a long hold (15 seconds, counting down on the button) so it's a decision, not a tap
+    var HOLD = 15000, hold = el('button', { type: 'button', class: 'k-lock-hold', html: '<i></i><span>Hold to unlock</span>' }), lab = hold.querySelector('span'), ht = 0, hi = 0;
+    function down(e) {
+      e.preventDefault(); hold.classList.add('on'); var t0 = Date.now();
+      ht = setTimeout(function () { haptic('success'); timerSet(null); }, HOLD);
+      hi = setInterval(function () { lab.textContent = 'Keep holding · ' + Math.max(1, Math.ceil((HOLD - (Date.now() - t0)) / 1000)); }, 200);
+      lab.textContent = 'Keep holding · 15';
+    }
+    function up() { hold.classList.remove('on'); clearTimeout(ht); clearInterval(hi); lab.textContent = 'Hold to unlock'; }
     hold.addEventListener('pointerdown', down); ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (k) { hold.addEventListener(k, up); });
     tmLock = el('div', { class: 'k-lock', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Game time is over' }, [
       el('div', { class: 'k-lock-in' }, [el('span', { class: 'k-lock-ic', html: icon('moon') }), el('h2', { text: 'Game time’s over' }), el('p', { text: 'Time to put the games away for now.' }), hold])]);
