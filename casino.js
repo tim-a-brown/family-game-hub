@@ -8,7 +8,11 @@
 //                                    'link'  a player linked to their own profile: their bankroll, as their app last
 //                                            shared it; what they win or lose goes back to it through the game's
 //                                            history record (add Casino.linkRecord(seat) to the record, see below)
-//                                    'play'  anyone else (a guest): $1,000 in play money; no bankroll is touched
+//                                    'player' a frequent player (Frequent players, this PIN) not linked: their own
+//                                            bankroll here (casino_pb_<name>, synced with the PIN), resettable
+//                                    'play'  anyone else, or an unnamed seat ("Player 1"): $1,000 in play money for
+//                                            this game; no bankroll is touched
+//        Casino.home()               back to your bankroll (forPlayer() with no name does the same)
 //        Casino.mode()               'mine' | 'link' | 'play' right now
 //        Casino.linkRecord(seat)     for a linked player's session: {bk: {seat: {s, e, c}}} to merge into the
 //                                    Kit.record entry (sync.js sends the change to their bankroll); {} otherwise.
@@ -35,33 +39,54 @@ const Casino = (function(){
   // when this device last filed a game for them}. A guest's $1,000 goes nowhere; a linked player's bankroll changes
   // reach them through the history record. Kept on this device only (a reload carries on with it); your bankroll,
   // its history and your link profile never see it.
+  // PLAY = {name, bal, link?, s0?, r?, fp?}: someone other than you is playing. fp: a frequent player's own bankroll,
+  // kept in casino_pb_<name> (a synced setting, so it's theirs on every device signed in with this PIN)
   var PLAY = null;
   function PLAYK(){ return 'casino_play_' + gameInfo().id; }   // (each game keeps its own, so one left saved can't lose another's)
-  function playSave(){ try{ if(PLAY) localStorage.setItem(PLAYK(), JSON.stringify(PLAY)); else localStorage.removeItem(PLAYK()); } catch(e){} }
+  function slug(n){ return String(n || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'x'; }
+  function fpKey(n){ return 'casino_pb_' + slug(n); }
+  function playSave(){
+    try{
+      if(PLAY && PLAY.fp){ localStorage.setItem(fpKey(PLAY.name), JSON.stringify({ name: PLAY.name, bal: Math.max(0, Math.round(PLAY.bal)) })); if(typeof FGHSync !== 'undefined' && FGHSync.noteWrite) FGHSync.noteWrite(fpKey(PLAY.name)); }
+      if(PLAY && !PLAY.fp) localStorage.setItem(PLAYK(), JSON.stringify(PLAY)); else localStorage.removeItem(PLAYK());
+    } catch(e){}
+  }
   function meName(){
     var me = ''; try{ me = (localStorage.getItem('my_name') || '').trim(); } catch(e){}
     if(!me) try{ me = String((typeof FGHSync !== 'undefined' && FGHSync.label && FGHSync.label()) || '').trim(); } catch(e){}
     return me.toLowerCase();
   }
-  // You, or nobody known (a device with no name set plays from the bankroll, as before)
-  // You, a seat left with its default name ("Player 1", "You"), or nobody known (a device with no name set plays from
-  // the bankroll, as before)
-  function isMain(name){ var me = meName(), k = String(name || '').trim().toLowerCase(); return !me || !k || k === me || /^(you|me|player\s*\d*|p\d)$/.test(k); }
+  // a seat left with its default name ("Player 1", "You"): play money
+  function unnamed(name){ return /^(|you|me|player\s*\d*|p\d)$/i.test(String(name || '').trim()); }
+  // you (or, on a device with no name set, anyone named)
+  function isMain(name){ var me = meName(), k = String(name || '').trim().toLowerCase(); return !unnamed(k) && (!me || k === me); }
+  function isFrequent(name){
+    var k = String(name || '').trim().toLowerCase(); if(!k) return false;
+    try{ return typeof FrequentPlayers !== 'undefined' && FrequentPlayers.list().some(function(n){ return String(n).trim().toLowerCase() === k; }); } catch(e){ return false; }
+  }
+  // Who's playing: 'mine' (you), 'link' (their own linked bankroll), 'player' (a frequent player's bankroll on this
+  // PIN), or 'play' (play money, for this game). forPlayer() with no name at all goes back to your bankroll.
   function forPlayer(name){
-    // (a running session begun under play money, e.g. at page load, isn't yours: drop it so it can't log a fake change)
-    if(isMain(name)){ if(PLAY){ PLAY = null; playSave(); S = null; } return 'mine'; }
-    var k = String(name).trim(), old = null, lb = null;
+    var k = name == null ? '' : String(name).trim();
+    // (a running session begun under someone else's money, e.g. at page load, isn't yours: drop it so it can't log a fake change)
+    if(!k || isMain(k)){ if(PLAY){ PLAY = null; playSave(); S = null; } return 'mine'; }
+    var old = null, lb = null;
     try{ old = JSON.parse(localStorage.getItem(PLAYK())); } catch(e){}
-    try{ lb = typeof FGHSync !== 'undefined' && FGHSync.linkBank ? FGHSync.linkBank(k) : null; } catch(e){}
+    try{ lb = !unnamed(k) && typeof FGHSync !== 'undefined' && FGHSync.linkBank ? FGHSync.linkBank(k) : null; } catch(e){}
     if(S && !PLAY) flush();
     if(lb && lb.code){
       // the same linked player carrying on here keeps their running amount; otherwise start from what they shared
       PLAY = old && old.name === k && old.link === lb.code && typeof old.bal === 'number' ? old : { name: k, bal: lb.bank, link: lb.code, s0: lb.bank };
-    } else PLAY = old && old.name === k && !old.link && typeof old.bal === 'number' ? old : { name: k, bal: DEFAULT };
+    } else if(!unnamed(k) && isFrequent(k)){
+      var fb = null; try{ fb = JSON.parse(localStorage.getItem(fpKey(k))); } catch(e){}
+      PLAY = { name: k, bal: fb && typeof fb.bal === 'number' ? fb.bal : DEFAULT, fp: 1 };
+    } else PLAY = old && old.name === k && !old.link && !old.fp && typeof old.bal === 'number' ? old : { name: k, bal: DEFAULT };
     playSave();
-    return PLAY.link ? 'link' : 'play';
+    return mode();
   }
-  function mode(){ return !PLAY ? 'mine' : PLAY.link ? 'link' : 'play'; }
+  // your bankroll again (leaving to the setup screen)
+  function home(){ return forPlayer(null); }
+  function mode(){ return !PLAY ? 'mine' : PLAY.link ? 'link' : PLAY.fp ? 'player' : 'play'; }
   function linkRecord(seat){
     if(!PLAY || !PLAY.link) return {};
     var o = {}; o[seat || 0] = { s: PLAY.s0, e: Math.max(0, PLAY.bal), c: PLAY.link };
@@ -205,6 +230,8 @@ const Casino = (function(){
         '.cz-row .d{font-size:.78rem;color:var(--text-3);font-weight:700}.cz-row .v{font-weight:900;font-variant-numeric:tabular-nums;text-align:right}' +
         '.cz-row .v small{display:block;font-size:.72rem;color:var(--text-3);font-weight:700}' +
         '.cz-up{color:var(--green)}.cz-down{color:var(--red)}.cz-reset{color:var(--yellow)}' +
+        '.cz-fh{margin:14px 2px 2px;font-size:.72rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}' +
+        '.cz-row .avatar{width:34px;height:34px;flex:none;font-size:.8rem}.cz-row .btn-sm{flex:none}' +
         '.cz-rs{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:rgba(255,200,61,.15);color:var(--yellow);flex:none}';
       document.head.appendChild(st);
     }
@@ -219,6 +246,27 @@ const Casino = (function(){
       el('div', null, [el('b', { text: wins + ' / ' + losses }), el('small', { text: 'Up / down' })]),
       el('div', null, [el('b', { class: 'cz-reset', text: String(resets) }), el('small', { text: resets === 1 ? 'Reset' : 'Resets' })])
     ]));
+    // Frequent players' own bankrolls on this account, each with its own reset
+    var fps = []; try{ if(typeof FrequentPlayers !== 'undefined') fps = FrequentPlayers.list().filter(function(n){ return !isMain(n) && !(typeof FGHSync !== 'undefined' && FGHSync.linkOf && FGHSync.linkOf(n)); }); }catch(e){}
+    if(fps.length){
+      box.appendChild(el('div', { class: 'cz-fh', text: 'Players’ bankrolls' }));
+      fps.forEach(function(n){
+        var amt = el('span', { class: 'v' }), row;
+        function cur(){ var fb = null; try{ fb = JSON.parse(localStorage.getItem(fpKey(n))); }catch(e){} return fb && typeof fb.bal === 'number' ? fb.bal : DEFAULT; }
+        function paint(){ amt.textContent = money(cur()); }
+        var btn = el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Reset', onclick: function(){
+          Kit.confirm('Reset ' + (Kit.poss ? Kit.poss(n) : n + '’s') + ' bankroll to ' + money(DEFAULT) + '?', { ok: 'Reset' }).then(function(ok){
+            if(!ok) return;
+            try{ localStorage.setItem(fpKey(n), JSON.stringify({ name: n, bal: DEFAULT })); if(typeof FGHSync !== 'undefined' && FGHSync.noteWrite) FGHSync.noteWrite(fpKey(n)); }catch(e){}
+            if(PLAY && PLAY.fp && PLAY.name.toLowerCase() === String(n).toLowerCase()) PLAY.bal = DEFAULT;
+            paint(); if(Kit.sfx) Kit.sfx('chip');
+          });
+        } });
+        row = el('div', { class: 'cz-row' }, [Kit.avatar && Kit.avatar.el ? Kit.avatar.el(n) : el('span'), el('span', { class: 'tx' }, [el('div', { class: 't', text: n })]), amt, btn]);
+        paint(); box.appendChild(row);
+      });
+      box.appendChild(el('div', { class: 'cz-fh', text: 'Your bankroll history' }));
+    }
     if(!list.length) box.appendChild(el('p', { class: 'muted', text: 'No casino sessions yet. Every game you play adds a line here.' }));
     list.forEach(function(e){
       if(e.kind === 'reset'){
@@ -543,5 +591,5 @@ const Casino = (function(){
     return r;
   }
 
-  return { balance, bet, win, reset, applyRemote, history, showHistory, rack, chip, stack, forPlayer, mode, linkRecord, isMain, playMoney: function(){ return !!PLAY; } };
+  return { balance, bet, win, reset, applyRemote, history, showHistory, rack, chip, stack, forPlayer, home, mode, linkRecord, isMain, isFrequent, playMoney: function(){ return !!PLAY; } };
 })();
