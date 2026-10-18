@@ -346,6 +346,12 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
   background:radial-gradient(ellipse 55% 30% at 28% 16%,rgba(255,255,255,.3),rgba(255,255,255,0) 70%),
     linear-gradient(to top,color-mix(in srgb,var(--inkc) 78%,transparent) 0,color-mix(in srgb,var(--inkc) 30%,transparent) 8%,transparent 18%);
   box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--inkc) 75%,#fff),inset 0 0 calc(var(--cu) * .15) color-mix(in srgb,var(--inkc) 50%,transparent);}
+/* the same still-wet ink on the big card and in the carousel while it's drying */
+.lz-card .wetfx,.lz-fc .wetfx{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(ellipse 55% 30% at 28% 16%,rgba(255,255,255,.3),rgba(255,255,255,0) 70%),
+    linear-gradient(to top,color-mix(in srgb,var(--inkc) 78%,transparent) 0,color-mix(in srgb,var(--inkc) 30%,transparent) 8%,transparent 18%);
+  box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--inkc) 75%,#fff),inset 0 0 calc(var(--cu) * .15) color-mix(in srgb,var(--inkc) 50%,transparent);}
+.lz-card.wet img,.lz-fc.wet img{filter:saturate(.92) brightness(.97);}
 /* The table's light: one band of light across the whole table that moves as the phone tilts. Each card shows the
    part of it that falls on that card, so the shine sits on a few cards and slides on to others */
 .lp-board .lc > .bsh{position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;mix-blend-mode:screen;
@@ -9944,6 +9950,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     } else {
       card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : '') + (prSpecial(artOf(d)) ? ' foil' : '') + (swapping && nav.dir ? (nav.dir > 0 ? ' in-r' : ' in-l') : ''), 'data-r': rarKey(artOf(d)) });
       card.appendChild(artEl(d, true));
+      wetFx(card, nav && nav.list ? nav.list[nav.i] : opt.u);
       inner.appendChild(el('div', { class: 'lz-flow' + (d.t === 'location' ? ' loc' : '') }, [card]));
       if (!opt.tapClose) { holdRoll(card, function () { return ov; }); card.addEventListener('click', function (e) { if (phoneZoom()) e.stopPropagation(); }); }
     }
@@ -10130,6 +10137,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var b = el('button', { type: 'button', class: 'lz-fc' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : '') + (prSpecial(artOf(d)) ? ' foil' : ''), 'data-r': rarKey(artOf(d)), 'aria-label': d.full, onclick: function (e) { e.stopPropagation(); if (Date.now() - F.dragAt < 350 || Date.now() - (b._held || 0) < 600) return; if (j === F.focus) return; F.settle(j); } });
       holdRoll(b, function () { return F.ov; }, function () { return j === F.focus; });
       b.appendChild(artEl(d, true));
+      if (nav0.list) wetFx(b, nav0.list[j]);
       if (nav0.ctx === 'mull') b.appendChild(el('span', { class: 'mtag', text: 'Putting back' }));
       F.el.appendChild(b);
       return (F.items[j] = b);
@@ -10356,6 +10364,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // A card's details panel, as the card view shows it (used to measure how tall it will be)
   function infoOf(x) { var dx = DD(x), zx = zoneOf(x); return headHTML(dx) + defMeta(dx, x) + statusHTML(x, zx) + '<div class="rtext">' + rulesHTML(dx) + kwHelpHTML(dx, zx && zx.z === 'board' ? x : null) + '</div>'; }
+  // A character still drying on the table: its big card and carousel card get the wet ink and drips too
+  function wetFx(node, u) {
+    if (!S || !u || !S.cards[u] || S.phase !== 'play' || C(u).dry || DD(u).t !== 'character') return;
+    var z = zoneOf(u); if (!z || z.z !== 'board') return;
+    node.classList.add('wet'); node.style.setProperty('--inkc', inkColor(u));
+    node.appendChild(el('span', { class: 'wetfx', 'aria-hidden': 'true' }));
+    node.appendChild(el('span', { class: 'drips', 'aria-hidden': 'true', html: '<i></i><i></i><i></i>' }));
+  }
   function openZoom(u, dir) {
     if (ui.cp && !ui.cp.fin) { Kit.sfx('tap'); ui.cp.show(); return; }
     var d = DD(u), z = zoneOf(u), acts = [], whys = [];
