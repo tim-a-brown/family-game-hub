@@ -186,7 +186,7 @@ var Daily = window.Daily = (function () {
     // the gap when let go. The new order is saved straight away
     function grip() {
       var g = el('span', { class: 'dly-grip', role: 'button', tabindex: '0', 'aria-label': 'Move (drag, or use the arrow keys)', html: GRIP });
-      var row = null, rows = null, i = 0, to = 0, y0 = 0, on = false, mid = [];
+      var row = null, rows = null, i = 0, to = 0, on = false, mid = [];
       function keys() { return Array.prototype.map.call(box.querySelectorAll('.dly-row'), function (r) { return r.getAttribute('data-k'); }); }
       function place(from, t) {
         var all = Array.prototype.slice.call(box.querySelectorAll('.dly-row')), r = all[from];
@@ -202,26 +202,40 @@ var Daily = window.Daily = (function () {
         if (t < 0 || t >= all.length) return;
         place(k, t); Kit.sfx('tap'); g.focus();
       });
+      // dragged near the top or bottom of the sheet, the list scrolls itself (faster the closer you are to the edge)
+      var sc = null, st0 = 0, yc0 = 0, lastY = 0, raf = 0, stMax = 0;
+      function scroller() { for (var n = box.parentNode; n && n !== document.body; n = n.parentNode) { var oy = getComputedStyle(n).overflowY; if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight + 1) return n; } return document.scrollingElement; }
+      function update() {
+        // the row stays within the list (dragged past the ends it waits at the first or last place)
+        var st = sc.scrollTop, dy = Math.max(mid[0] - mid[i], Math.min(mid[mid.length - 1] - mid[i], lastY + st - yc0)), c = mid[i] + dy, t = i, step = row.getBoundingClientRect().height + 8;
+        if (Math.abs(dy) > 4) box._dragged = true;
+        while (t < rows.length - 1 && c > (mid[t] + mid[t + 1]) / 2) t++;   // past halfway to the next place: it takes it
+        while (t > 0 && c < (mid[t] + mid[t - 1]) / 2) t--;
+        row.style.transform = 'translateY(' + dy + 'px) scale(1.02)';
+        if (t !== to) { to = t; Kit.haptic('light'); Kit.sfx('tap'); }
+        rows.forEach(function (r, j) { if (j === i) return; var sh = (j > i && j <= to) ? -step : (j < i && j >= to) ? step : 0; r.style.transform = sh ? 'translateY(' + sh + 'px)' : ''; });
+      }
+      function tick() {
+        raf = 0; if (!on) return;
+        var r = sc === document.scrollingElement ? { top: 0, bottom: innerHeight } : sc.getBoundingClientRect(), edge = 80, v = 0;
+        if (lastY > r.bottom - edge) v = Math.min(1, (lastY - (r.bottom - edge)) / edge);
+        else if (lastY < r.top + edge) v = -Math.min(1, ((r.top + edge) - lastY) / edge);
+        if (v) { var b = sc.scrollTop; sc.scrollTop = Math.max(0, Math.min(stMax, b + v * 16)); if (sc.scrollTop !== b) update(); }   // (never past the list's own end)
+        raf = requestAnimationFrame(tick);
+      }
       g.addEventListener('pointerdown', function (e) {
         if (e.button > 0) return;
         e.preventDefault(); try { g.setPointerCapture(e.pointerId); } catch (x) {}
         row = g.parentNode; rows = Array.prototype.slice.call(box.querySelectorAll('.dly-row'));
-        i = to = rows.indexOf(row); y0 = e.clientY; on = true; box._dragged = false;
-        mid = rows.map(function (r) { var b = r.getBoundingClientRect(); return b.top + b.height / 2; });
+        sc = scroller(); st0 = sc.scrollTop; stMax = sc.scrollHeight - sc.clientHeight; lastY = e.clientY; yc0 = e.clientY + st0;
+        i = to = rows.indexOf(row); on = true; box._dragged = false;
+        mid = rows.map(function (r) { var b = r.getBoundingClientRect(); return b.top + b.height / 2 + st0; });   // (in list coordinates, so scrolling doesn't throw them off)
         row.classList.add('drag'); box.classList.add('dragging'); Kit.haptic('light');
+        if (!raf) raf = requestAnimationFrame(tick);
       });
-      g.addEventListener('pointermove', function (e) {
-        if (!on) return;
-        var dy = e.clientY - y0, c = mid[i] + dy, t = i, step = row.getBoundingClientRect().height + 8;
-        if (Math.abs(dy) > 4) box._dragged = true;
-        while (t < rows.length - 1 && c > mid[t + 1]) t++;
-        while (t > 0 && c < mid[t - 1]) t--;
-        row.style.transform = 'translateY(' + dy + 'px) scale(1.02)';
-        if (t !== to) { to = t; Kit.haptic('light'); Kit.sfx('tap'); }
-        rows.forEach(function (r, j) { if (j === i) return; var sh = (j > i && j <= to) ? -step : (j < i && j >= to) ? step : 0; r.style.transform = sh ? 'translateY(' + sh + 'px)' : ''; });
-      });
+      g.addEventListener('pointermove', function (e) { if (!on) return; lastY = e.clientY; update(); });
       function end() {
-        if (!on) return; on = false;
+        if (!on) return; on = false; if (raf) { cancelAnimationFrame(raf); raf = 0; }
         rows.forEach(function (r) { r.style.transform = ''; }); row.classList.remove('drag'); box.classList.remove('dragging');
         if (to !== i) { place(i, to); Kit.sfx('pop'); }
         setTimeout(function () { box._dragged = false; }, 0);
