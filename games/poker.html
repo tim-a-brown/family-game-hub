@@ -289,6 +289,7 @@
 }
 .czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
 .czlk .ico{width:.85em!important;height:.85em!important;color:#fff!important;stroke-width:3;}
+.vp-leds small{text-transform:uppercase;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -835,7 +836,7 @@
     app.innerHTML = '';
     var cab = el('div', { class: 'vp' });
     cab.appendChild(el('div', { class: 'vp-title', text: 'Jacks or Better' }));
-    cab.appendChild(el('div', { class: 'vp-sub', html: Kit.esc('9/6 full pay · ' + usd(S.denom) + ' coins') + (Casino.mode() !== 'mine' ? ' · <span class="vp-who">' + bankLabelHtml(S.name) + '</span>' : '') }));
+    cab.appendChild(el('div', { class: 'vp-sub', text: '9/6 full pay · ' + usd(S.denom) + ' coins' }));
     var dealtRow = S.phase === 'hold' ? vpRow(ev(S.hand)) : -1;
     var tbl = el('table', { class: 'vp-pay' });
     PAY.forEach(function (row, r) {
@@ -865,8 +866,10 @@
     var vc = coachSlot('vp-coach'); if (vc) scr.appendChild(vc);
     cab.appendChild(scr);
     var leds = el('div', { class: 'vp-leds' });
-    [['WIN', S.win ? usd(S.win) : '–'], ['BET', String(S.coins)], ['CREDIT', usd(Casino.balance())]].forEach(function (x) {
-      leds.appendChild(el('div', null, [el('small', { text: x[0] }), el('b', { text: x[1] })]));
+    // the credit meter says whose money it is: a guest's play money, or a linked player's own bankroll
+    var credit = Casino.mode() === 'mine' ? 'CREDIT' : bankLabelHtml(S.name, true);
+    [['WIN', S.win ? usd(S.win) : '–'], ['BET', String(S.coins)], [credit, usd(Casino.balance())]].forEach(function (x) {
+      leds.appendChild(el('div', null, [el('small', { html: x[0] }), el('b', { text: x[1] })]));
     });
     cab.appendChild(leds);
     if (S.phase === 'hold') {
