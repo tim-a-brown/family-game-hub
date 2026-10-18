@@ -456,12 +456,13 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
     d += '<path class="s2"' + at + ' d="' + wob(r, 3, 66.5, 97, 67, 3) + '"/>';
     return '<svg class="ch gridl ' + (cls || '') + '" viewBox="0 0 100 100" preserveAspectRatio="none"><g filter="url(#chalkg)">' + d + '</g></svg>';
   }
-  function strikeSvg(lineIdx, seed, color, sw) {
+  // (anim: draw it in now, only on the move that made the line; afterwards it just stays drawn)
+  function strikeSvg(lineIdx, seed, color, sw, anim) {
     var L = LINES[lineIdx], r = rng(seed);
     function ctr(i) { return [16.7 + (i % 3) * 33.3, 16.7 + Math.floor(i / 3) * 33.3]; }
     var a = ctr(L[0]), b = ctr(L[2]), dx = b[0] - a[0], dy = b[1] - a[1], len = Math.sqrt(dx * dx + dy * dy), ex = dx / len * 13, ey = dy / len * 13;
     var d = wob(r, a[0] - ex, a[1] - ey, b[0] + ex, b[1] + ey, 5);
-    return '<svg class="ch strike new slow" viewBox="0 0 100 100"><g filter="url(#chalk)"><path class="s1" stroke="' + color + '" stroke-width="' + (sw || 5) + '" pathLength="1" d="' + d + '"/></g></svg>';
+    return '<svg class="ch strike' + (anim ? ' new slow' : '') + '" viewBox="0 0 100 100"><g filter="url(#chalk)"><path class="s1" stroke="' + color + '" stroke-width="' + (sw || 5) + '" pathLength="1" d="' + d + '"/></g></svg>';
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -484,10 +485,11 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
       })(i);
     }
     wrap.appendChild(cells);
-    if (G.lines[b] != null && S.variant === 'classic') wrap.insertAdjacentHTML('beforeend', strikeSvg(G.lines[b], seed + 7, '#fffbe8', 5));
+    var justWon = !!(lastMove && lastMove.b === b && G.moves.length && boardJustWon(b));
+    if (G.lines[b] != null && S.variant === 'classic') wrap.insertAdjacentHTML('beforeend', strikeSvg(G.lines[b], seed + 7, '#fffbe8', 5, justWon));
     if (S.nboards > 1 && G.meta[b] && G.meta[b] !== 'D') {
-      if (G.lines[b] != null && S.variant !== 'ultimate') wrap.insertAdjacentHTML('beforeend', strikeSvg(G.lines[b], seed + 7, 'rgba(255,251,232,.7)', 4));
-      wrap.insertAdjacentHTML('beforeend', markSvg(G.meta[b], seed + 500, 'big' + (lastMove && lastMove.b === b && G.moves.length && boardJustWon(b) ? ' new slow' : ''), S.variant === 'ultimate' ? 7 : 7));
+      if (G.lines[b] != null && S.variant !== 'ultimate') wrap.insertAdjacentHTML('beforeend', strikeSvg(G.lines[b], seed + 7, 'rgba(255,251,232,.7)', 4, justWon));
+      wrap.insertAdjacentHTML('beforeend', markSvg(G.meta[b], seed + 500, 'big' + (justWon ? ' new slow' : ''), S.variant === 'ultimate' ? 7 : 7));
     }
     return wrap;
   }
@@ -514,7 +516,7 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
         meta.appendChild(el('div', { class: 'mc' }, [be]));
       }
       meta.insertAdjacentHTML('afterbegin', gridSvg(G.seed + 1, 1.6, fresh ? 'new' : '').replace('ch gridl', 'ch gridl bigl'));
-      if (G.metaLine != null) meta.insertAdjacentHTML('beforeend', strikeSvg(G.metaLine, G.seed + 3, '#fffbe8', 3));
+      if (G.metaLine != null) meta.insertAdjacentHTML('beforeend', strikeSvg(G.metaLine, G.seed + 3, '#fffbe8', 3, !!(lastMove && G.over && G.moves.length)));
       area.appendChild(meta);
     } else {
       var wrapB = el('div', { class: 'boards n' + S.nboards });
