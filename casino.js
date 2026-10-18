@@ -3,11 +3,18 @@
 // Usage: Casino.balance(), Casino.bet(n), Casino.win(n), Casino.reset()
 //        Casino.applyRemote(delta, info)  bankroll change from a game at a linked player's table (sync.js)
 //        Casino.history()            ledger entries, newest first
-//        Casino.forPlayer(name)      who's playing: you play from the bankroll; anyone else (a guest at the table)
-//                                    gets play money for the session and the bankroll isn't touched. Returns true
-//                                    when it's your bankroll. Call it when a session starts and when one resumes.
+//        Casino.forPlayer(name)      who's playing, when a session starts and when one resumes. Returns:
+//                                    'mine'  you: your bankroll
+//                                    'link'  a player linked to their own profile: their bankroll, as their app last
+//                                            shared it; what they win or lose goes back to it through the game's
+//                                            history record (add Casino.linkRecord(seat) to the record, see below)
+//                                    'play'  anyone else (a guest): $1,000 in play money; no bankroll is touched
+//        Casino.mode()               'mine' | 'link' | 'play' right now
+//        Casino.linkRecord(seat)     for a linked player's session: {bk: {seat: {s, e, c}}} to merge into the
+//                                    Kit.record entry (sync.js sends the change to their bankroll); {} otherwise.
+//                                    Each call covers the money since the last one, so record as often as you like.
 //        Casino.isMain(name)         is this you (the name this device plays as, or the PIN's account name)
-//        Casino.playMoney()          true while a guest is playing with play money
+//        Casino.playMoney()          true while someone other than you plays (play money or a linked bankroll)
 
 //        Casino.showHistory()        bankroll history sheet (needs kit.js)
 //
@@ -23,8 +30,10 @@ const Casino = (function(){
   const DEFAULT = 1000;
   const MAX = 300;
 
-  // Play money: a guest playing on this device gets $1,000 that goes nowhere (kept on this device only, so a
-  // reload carries on with it). The bankroll, its history and the link profile never see it.
+  // Someone other than you playing on this device: PLAY = {name, bal, link?: their profile code, s0: their bankroll
+  // when this device last filed a game for them}. A guest's $1,000 goes nowhere; a linked player's bankroll changes
+  // reach them through the history record. Kept on this device only (a reload carries on with it); your bankroll,
+  // its history and your link profile never see it.
   var PLAYK = 'casino_play', PLAY = null;
   function playSave(){ try{ if(PLAY) localStorage.setItem(PLAYK, JSON.stringify(PLAY)); else localStorage.removeItem(PLAYK); } catch(e){} }
   function meName(){
@@ -35,13 +44,24 @@ const Casino = (function(){
   // You, or nobody known (a device with no name set plays from the bankroll, as before)
   function isMain(name){ var me = meName(), k = String(name || '').trim().toLowerCase(); return !me || !k || k === me; }
   function forPlayer(name){
-    if(isMain(name)){ if(PLAY){ PLAY = null; playSave(); } return true; }
-    var k = String(name).trim(), old = null;
+    if(isMain(name)){ if(PLAY){ PLAY = null; playSave(); } return 'mine'; }
+    var k = String(name).trim(), old = null, lb = null;
     try{ old = JSON.parse(localStorage.getItem(PLAYK)); } catch(e){}
+    try{ lb = typeof FGHSync !== 'undefined' && FGHSync.linkBank ? FGHSync.linkBank(k) : null; } catch(e){}
     if(S && !PLAY) flush();
-    PLAY = old && old.name === k && typeof old.bal === 'number' ? old : { name: k, bal: DEFAULT };
+    if(lb && lb.code){
+      // the same linked player carrying on here keeps their running amount; otherwise start from what they shared
+      PLAY = old && old.name === k && old.link === lb.code && typeof old.bal === 'number' ? old : { name: k, bal: lb.bank, link: lb.code, s0: lb.bank };
+    } else PLAY = old && old.name === k && !old.link && typeof old.bal === 'number' ? old : { name: k, bal: DEFAULT };
     playSave();
-    return false;
+    return PLAY.link ? 'link' : 'play';
+  }
+  function mode(){ return !PLAY ? 'mine' : PLAY.link ? 'link' : 'play'; }
+  function linkRecord(seat){
+    if(!PLAY || !PLAY.link) return {};
+    var o = {}; o[seat || 0] = { s: PLAY.s0, e: Math.max(0, PLAY.bal), c: PLAY.link };
+    PLAY.s0 = Math.max(0, PLAY.bal); playSave();
+    return { bk: o };
   }
 
   // A missing bankroll starts at $1,000; a real $0 stays $0 (not reset).
@@ -128,7 +148,7 @@ const Casino = (function(){
   }
 
   function reset(){
-    if(PLAY){ PLAY.bal = DEFAULT; playSave(); return; }
+    if(PLAY){ if(PLAY.link){ PLAY.s0 -= PLAY.bal - DEFAULT; } PLAY.bal = DEFAULT; playSave(); return; }
     flush();
     var from = balance();
     save(DEFAULT);
@@ -511,5 +531,5 @@ const Casino = (function(){
     return r;
   }
 
-  return { balance, bet, win, reset, applyRemote, history, showHistory, rack, chip, stack, forPlayer, isMain, playMoney: function(){ return !!PLAY; } };
+  return { balance, bet, win, reset, applyRemote, history, showHistory, rack, chip, stack, forPlayer, mode, linkRecord, isMain, playMoney: function(){ return !!PLAY; } };
 })();
