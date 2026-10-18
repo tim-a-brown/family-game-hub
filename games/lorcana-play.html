@@ -8088,6 +8088,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     node.appendChild(prev); node.appendChild(unders); node.appendChild(body); node.appendChild(styles); paint();
     if (solo) node.insertBefore(el('p', { class: 'muted mat-solo', text: 'Your playmat for your next game' }), node.firstChild);
     Kit.sheet({ title: solo ? 'Your playmat' : 'Playmat', node: node, actions: [{ label: 'Done', cls: 'btn-primary' }] });
+    // the device turned: the mats on the table changed shape, so the preview takes their new shape
+    function reshape() {
+      if (!node.isConnected) return window.removeEventListener('resize', reshape);
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        var big = $('.art-big', node), mat = solo ? null : $(cur === bottomPi() ? '.mat-bot' : '.mat-top');
+        if (big && mat && mat.offsetWidth) big.style.aspectRatio = '1 / ' + Math.min(1.1, Math.max(.35, mat.offsetHeight / mat.offsetWidth)).toFixed(3);
+      }); });
+    }
+    window.addEventListener('resize', reshape);
   }
   function setMat(pi, id) {
     S.P[pi].mat = id; Kit.sfx('tap');

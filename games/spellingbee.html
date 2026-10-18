@@ -481,7 +481,8 @@ body{overflow-x:hidden;}
   function queueHive() { clearTimeout(hiveT); hiveT = setTimeout(fitHive, 60); }
   window.addEventListener('resize', queueHive);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueHive);
-  if (WIDE.addEventListener) WIDE.addEventListener('change', function () { if (S) paintFound(); });
+  // the wide layout always shows the whole list: an open list folds into it, and opens again when turned back
+  if (WIDE.addEventListener) WIDE.addEventListener('change', function () { $('app').classList.toggle('open', listOpen && !WIDE.matches); if (S) paintFound(); queueHive(); });
   function paintFound(newest) {
     var f = $('found'); f.innerHTML = '';
     var n = S.found.length;

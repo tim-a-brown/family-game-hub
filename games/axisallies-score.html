@@ -1602,9 +1602,12 @@
   // Re-render without losing the scroll position (long lists)
   function renderKeep() { var y = window.scrollY; render(); window.scrollTo(0, y); }
 
-  // Re-size dice when the screen turns
+  // Re-size dice when the screen turns (in place, so dice that just landed stay as they lie)
   var rz = 0;
-  window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (S && (S.view === 'battle' || S.view === 'bomb')) { anim = null; render(); } }, 200); });
+  window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () {
+    var t = S && (S.view === 'battle' || S.view === 'bomb') && app.querySelector('.tray'); if (!t) return;
+    t.style.setProperty('--dsz', S.view === 'bomb' ? (innerWidth >= 700 ? '52px' : '42px') : dsz(S.battle && S.battle.last));
+  }, 200); });
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   S = load();

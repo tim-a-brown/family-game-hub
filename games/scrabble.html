@@ -1012,7 +1012,16 @@
 
   // ── Sizes: the board as big as fits; the rest underneath (phones) or beside it (wide screens) ──
   var fitT = 0;
-  function fitSoon() { clearTimeout(fitT); fitT = setTimeout(function () { fit(); fit(); }, 60); }   // twice, like the first build: the rows measured depend on the first pass
+  function fitSoon() {
+    clearTimeout(fitT);
+    fitT = setTimeout(function () {
+      if (!V.root) return;
+      // zoomed in when the device turns: the same spot of the board stays in the middle, at the same zoom
+      var z = Z.z, fx = V.bs && z > 1.01 ? (V.bs / 2 - Z.tx) / (z * V.bs) : -1, fy = (V.bs / 2 - Z.ty) / (z * V.bs);
+      fit(); fit();   // twice, like the first build: the rows it measures depend on the first pass
+      if (fx >= 0) { Z.z = Math.max(1, Math.min(zmax(), z)); Z.tx = V.bs / 2 - fx * Z.z * V.bs; Z.ty = V.bs / 2 - fy * Z.z * V.bs; clampZoom(); applyZoom(false); }
+    }, 60);
+  }
   function fit() {
     if (!V.root) return;
     var W = window.innerWidth, H = window.innerHeight, bar = (document.querySelector('.gbar') || { offsetHeight: 58 }).offsetHeight;
@@ -1039,10 +1048,7 @@
     V.root.style.setProperty('--rim', rim + 'px');
     V.root.style.setProperty('--gap', gap + 'px');
     V.root.style.setProperty('--cs', cs.toFixed(3) + 'px');
-    // zoomed in when the size changes (the device turned): keep the same spot of the board in the middle
-    var fx = V.bs && Z.z > 1.01 ? (V.bs / 2 - Z.tx) / (Z.z * V.bs) : -1, fy = fx < 0 ? 0 : (V.bs / 2 - Z.ty) / (Z.z * V.bs);
     V.bs = bs; V.cs = cs; V.gap = gap;
-    if (fx >= 0) { Z.z = Math.max(1, Math.min(zmax(), Z.z)); Z.tx = bs / 2 - fx * Z.z * bs; Z.ty = bs / 2 - fy * Z.z * bs; }
     clampZoom(); applyZoom(false);
     if (was !== wide && S) { paintPlayers(); paintMsg(); }   // the bag's label and the last-move line follow the layout
   }

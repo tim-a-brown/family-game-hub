@@ -913,8 +913,11 @@
       var now = i >= S.moves.length - 2;
       movesEl.appendChild(el('span', { class: 'mp' + (now ? ' now' : '') }, [el('i', { text: (i / 2 + 1) + '.' }), el('span', { text: S.moves[i] }), S.moves[i + 1] ? el('span', { text: S.moves[i + 1] }) : null]));
     }
-    requestAnimationFrame(function () { movesEl.scrollLeft = movesEl.scrollWidth; movesEl.scrollTop = movesEl.scrollHeight; });
+    requestAnimationFrame(movesEnd);
   }
+  // the list runs across (upright) or down (sideways iPad): the latest move stays in view, also when the device turns
+  function movesEnd() { if (movesEl) { movesEl.scrollLeft = movesEl.scrollWidth; movesEl.scrollTop = movesEl.scrollHeight; } }
+  window.addEventListener('resize', movesEnd);
 
   // ── Input: tap a piece then a square, or drag ────────────────────────────
   var drag = null;

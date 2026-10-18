@@ -937,7 +937,17 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   }
   function unfit() { if (!view || !view.fitKey) return; view.fitKey = null; if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: TEST.instant ? 'auto' : 'smooth' }); }
   var rsT = 0;
-  window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(function () { if (!view || !S) return; if (view.wide !== wide()) { build(); render(); } else { sizeBoard(); placeTokens(); } }, 120); });
+  window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(function () { if (!view || !S) return; if (view.wide !== wide()) { var was = view; build(); keepPieces(was); render(); } else { sizeBoard(); placeTokens(); } }, 120); });
+  // the layout is rebuilt when the device turns: the dice and tokens move over to the new board as they are
+  // (showing the last roll, or still tumbling or hopping), and an open build plan or spotlit player stays open
+  function keepPieces(was) {
+    view.board.replaceChild(was.dice, view.dice); view.dice = was.dice;
+    was.toks.forEach(function (t, i) { if (view.toks[i]) view.board.replaceChild(t, view.toks[i]); });
+    view.toks = was.toks;
+    view.dock = was.dock; view.spot = was.spot;
+    if (was.spotEl) { view.spotEl = was.spotEl; view.board.appendChild(was.spotEl); }
+    if (view.dock && view.dock.k === 'build') fitBoard('build' + S.turn);
+  }
 
   // ── Zoom and pan ──
   var Z = { z: 1, x: 0, y: 0 };

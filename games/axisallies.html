@@ -2021,8 +2021,15 @@ function panelShell(title, opts) {
   function more() { R.side.classList.toggle('more', body.scrollHeight - body.scrollTop - body.clientHeight > 4); }
   body.addEventListener('scroll', more, { passive: true });
   requestAnimationFrame(more);
+  R.more = more;
   return { body: body, foot: foot };
 }
+// When the device turns: the panel's "more below" shadow is measured again, and the battle board's casualty
+// choice is scrolled back into view (a shorter board would hide it)
+window.addEventListener('resize', function () {
+  if (R.more) R.more();
+  if (R.casNode && R.casNode.isConnected) try { R.casNode.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+});
 // The step's main button: quiet until the player has acted, or when there is nothing to do here
 function primary(foot, label, fn, o) {
   o = o || {};
@@ -2729,7 +2736,7 @@ function renderBattle(B, anim) {
   // Casualty picker: the player's own choice, laid out as pieces, with the confirm button pinned below
   var cp = null;
   R.bt.classList.toggle('cas', B.step === 'cas');
-  if (B.step === 'cas') { cp = casPicker(B); sc.appendChild(cp.node); requestAnimationFrame(function () { try { cp.node.scrollIntoView({ block: 'nearest' }); } catch (e) {} }); }
+  if (B.step === 'cas') { cp = casPicker(B); sc.appendChild(cp.node); R.casNode = cp.node; requestAnimationFrame(function () { try { cp.node.scrollIntoView({ block: 'nearest' }); } catch (e) {} }); }
   // Actions
   var acts = el('div', { class: 'bacts' });
   var attHuman = humanPower(B.att);
