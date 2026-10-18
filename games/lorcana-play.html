@@ -9984,6 +9984,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var wasMin = (swapping || keep) && !!$('.lz.lz-min'), wasBig = (swapping || keep) && !!$('.lz.lz-big');
     closeZoom();
     var ov = el('div', { class: 'lz' + (swapping || keep ? ' noanim show' : '') + (wasMin ? ' lz-min' : '') + (wasBig ? ' lz-big' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
+    // Only a press that starts on the view counts. The tap that opened it (on a card on the table) ends as it appears,
+    // and iPads hand that tap's click to whatever is now under the finger: often Quest or Play
+    ov.addEventListener('pointerdown', function () { ov._down = true; }, true);
+    ov.addEventListener('click', function (e) { if (!ov._down && e.detail !== 0) { e.stopPropagation(); e.preventDefault(); } }, true);
     if (wasMin && ui.cuMin) ov.style.setProperty('--cumin', ui.cuMin + 'px');
     var inner = el('div', { class: 'lz-in' });
     if (ui.rollW) ov.style.setProperty('--roll-w', ui.rollW + 'px');
