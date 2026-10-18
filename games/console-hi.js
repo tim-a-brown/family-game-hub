@@ -44,60 +44,60 @@ var ConsoleHi = (function () {
     // ── NES ──
     // Mario's score: a digit a byte at $07DD-$07E2, the screen adding a 0 (100 points reads 0,0,0,0,1,0). OperMode
     // $0770: 0 title and demo, 1 playing, 2 the ending, 3 game over.
-    { key: 'smb', name: 'Super Mario Bros.', sys: 'nes', ids: ['ea343f4e445a9050d4b4fbac2c77d0693b1d0922'], re: /^super mario bros\.?$/,
+    { key: 'smb', short: 'MARIO', name: 'Super Mario Bros.', sys: 'nes', ids: ['ea343f4e445a9050d4b4fbac2c77d0693b1d0922'], re: /^super mario bros\.?$/,
       score: function (m) { return x10(digits(m, 0x7DD, 6)); },
       play: function (m) { return m(0x770) === 1 || m(0x770) === 2; }, over: function (m) { return m(0x770) === 3; } },
     // 3 bytes at $0715, the screen adding a 0 (no demo)
-    { key: 'smb3', name: 'Super Mario Bros. 3', sys: 'nes', ids: ['6bd518e85eb46a4252af07910f61036e84b020d1'], re: /^super mario bros\.? 3$/,
+    { key: 'smb3', short: 'MARIO 3', name: 'Super Mario Bros. 3', sys: 'nes', ids: ['6bd518e85eb46a4252af07910f61036e84b020d1'], re: /^super mario bros\.? 3$/,
       score: function (m) { return be(m, 0x715, 3) * 10; } },
     // the money: kept as the seven digits drawn on screen at $0324-$032A ($24 a blank before the first digit)
-    { key: 'ducktales', name: 'DuckTales', sys: 'nes', ids: ['4b5720bc6e0590c9372cfbd0c418f8efd4d0c96d'], re: /^duck ?tales$/,
+    { key: 'ducktales', short: 'DUCKTALES', name: 'DuckTales', sys: 'nes', ids: ['4b5720bc6e0590c9372cfbd0c418f8efd4d0c96d'], re: /^duck ?tales$/,
       score: function (m) { var v = 0; for (var i = 0; i < 7; i++) { var d = m(0x324 + i); if (d === 0x24) d = 0; else if (d > 9) return null; v = v * 10 + d; } return v; } },
     // seven digits a byte at $0108-$010E
-    { key: 'ikari', name: 'Ikari Warriors', sys: 'nes', ids: ['6eadbbe4c2a1f7ede2978f149b63270c72db281f'], re: /^ikari warriors$/,
+    { key: 'ikari', short: 'IKARI', name: 'Ikari Warriors', sys: 'nes', ids: ['6eadbbe4c2a1f7ede2978f149b63270c72db281f'], re: /^ikari warriors$/,
       score: function (m) { return digits(m, 0x108, 7); } },
     // seven digits a byte at $0072-$0078, the ones first
-    { key: 'megaman', name: 'Mega Man', sys: 'nes', ids: ['2f88381557339a14c20428455f6991c1eb902c99'], re: /^mega ?man$/,
+    { key: 'megaman', short: 'MEGA MAN', name: 'Mega Man', sys: 'nes', ids: ['2f88381557339a14c20428455f6991c1eb902c99'], re: /^mega ?man$/,
       score: function (m) { return digitsLE(m, 0x72, 7); } },
     // points: six digits a byte at $03E8, starting again each fight (the best fight counts); $0006 is 1 in a game
-    { key: 'punchout', name: 'Mike Tyson’s Punch-Out!!', sys: 'nes', ids: ['0f0c2c2e294ff8ce255a618964728c935fd8963b'], re: /^(mike tysons )?punch-?out!*$/, reset: 1,
+    { key: 'punchout', short: 'PUNCH-OUT', name: 'Mike Tyson’s Punch-Out!!', sys: 'nes', ids: ['0f0c2c2e294ff8ce255a618964728c935fd8963b'], re: /^(mike tysons )?punch-?out!*$/, reset: 1,
       score: function (m) { return digits(m, 0x3E8, 6); }, play: function (m) { return m(0x06) === 1; } },
     // ── Super Nintendo ──
     // Mario's score: 3 bytes at $7E0F34 (low first), the screen adding a 0. Game mode $7E0100: $07 the title, where
     // the demo plays (and scores); $0B on: the map, levels and the screens between
-    { key: 'smw', name: 'Super Mario World', sys: 'snes', ids: ['6b47bb75d16514b6a476aa0c73a683a2a4c18765'], re: /^super mario world$/,
+    { key: 'smw', short: 'MARIO WORLD', name: 'Super Mario World', sys: 'snes', ids: ['6b47bb75d16514b6a476aa0c73a683a2a4c18765'], re: /^super mario world$/,
       score: function (m) { return le(m, 0x7E0F34, 3) * 10; }, play: function (m) { return m(0x7E0100) >= 0x0B; } },
     // player 1's score: packed decimal at $7E0700-$7E0703, in hundreds. $7E0030 is 2 while the attract demo runs
-    { key: 'ssf2', name: 'Super Street Fighter II', sys: 'snes', ids: ['8e67787988024503c4adeadd5fe50a340aa860d7'], re: /^super street fighter ii/,
+    { key: 'ssf2', short: 'SF II', name: 'Super Street Fighter II', sys: 'snes', ids: ['8e67787988024503c4adeadd5fe50a340aa860d7'], re: /^super street fighter ii/,
       score: function (m) { var v = bcd(m, 0x7E0700, 4); return v == null ? null : v * 100; }, play: function (m) { return m(0x7E0030) === 0; } },
     // six digits a byte at $7E0B34, the ones first, the screen adding a 0; starting again each fight (the best counts)
-    { key: 'superpunchout', name: 'Super Punch-Out!!', sys: 'snes', ids: ['3604c855790f37db567e9b425252625045f86697'], re: /^super punch-?out!*$/, reset: 1,
+    { key: 'superpunchout', short: 'SUPER PUNCH', name: 'Super Punch-Out!!', sys: 'snes', ids: ['3604c855790f37db567e9b425252625045f86697'], re: /^super punch-?out!*$/, reset: 1,
       score: function (m) { return x10(digitsLE(m, 0x7E0B34, 6)); } },
     // 4 bytes at $7E8949 (low first). $7E5F2E is 1 while the demo plays (it scores)
-    { key: 'wolf3d', name: 'Wolfenstein 3D', sys: 'snes', ids: ['88fe872eb984af84f8ca7633ef5bd3904a2baeb4'], re: /^wolfenstein 3-?d$/,
+    { key: 'wolf3d', short: 'WOLF 3D', name: 'Wolfenstein 3D', sys: 'snes', ids: ['88fe872eb984af84f8ca7633ef5bd3904a2baeb4'], re: /^wolfenstein 3-?d$/,
       score: function (m) { return le(m, 0x7E8949, 4); }, play: function (m) { return m(0x7E5F2E) === 0; } },
     // ── Genesis ──
     // 4 bytes at $FFFE26, the screen adding a 0
-    { key: 'sonic', name: 'Sonic the Hedgehog', sys: 'genesis', ids: ['6ddb7de1e17e7f6cdb88927bd906352030daa194'], re: /^sonic the hedgehog$/,
+    { key: 'sonic', short: 'SONIC', name: 'Sonic the Hedgehog', sys: 'genesis', ids: ['6ddb7de1e17e7f6cdb88927bd906352030daa194'], re: /^sonic the hedgehog$/,
       score: function (m) { return be(m, 0xFFFE26, 4) * 10; }, play: sonicPlay },
-    { key: 'sonic2', name: 'Sonic the Hedgehog 2', sys: 'genesis', ids: ['8bca5dcef1af3e00098666fd892dc1c2a76333f9'], re: /^sonic the hedgehog 2$/,
+    { key: 'sonic2', short: 'SONIC 2', name: 'Sonic the Hedgehog 2', sys: 'genesis', ids: ['8bca5dcef1af3e00098666fd892dc1c2a76333f9'], re: /^sonic the hedgehog 2$/,
       score: function (m) { return be(m, 0xFFFE26, 4) * 10; }, play: sonicPlay },
     // 4 bytes at $FFF22C. $FFF283 is 1 while the demo plays (it starts with 50,000)
-    { key: 'castleofillusion', name: 'Castle of Illusion', sys: 'genesis', ids: ['4ac3687634a5acc55ac7f156c6de9749158713e4'], re: /castle of illusion/,
+    { key: 'castleofillusion', short: 'MICKEY', name: 'Castle of Illusion', sys: 'genesis', ids: ['4ac3687634a5acc55ac7f156c6de9749158713e4'], re: /castle of illusion/,
       score: function (m) { return be(m, 0xFFF22C, 4); }, play: function (m) { return m(0xFFF283) === 0; } },
     // ── Atari 2600 ──
     // packed decimal at $D5-$D7, starting at 2,000 and going down as well as up: the score at the end counts. The
     // 20-minute clock ($D8 minutes, $D9 seconds) starts with the game and stops when it's over
-    { key: 'pitfall', name: 'Pitfall!', sys: 'atari2600', ids: ['8d525480445d48cc48460dc666ebad78c8fb7b73'], re: /^pitfall!?$/, down: 1,
+    { key: 'pitfall', short: 'PITFALL', name: 'Pitfall!', sys: 'atari2600', ids: ['8d525480445d48cc48460dc666ebad78c8fb7b73'], re: /^pitfall!?$/, down: 1,
       score: function (m) { return bcd(m, 0xD5, 3); },
       clock: function (m) { var t = bcd(m, 0xD8, 2); return t == null ? null : 1200 - (Math.floor(t / 100) * 60 + t % 100); },
       play: function (m) { var t = bcd(m, 0xD8, 2); return t != null && t !== 2000; }, over: function (m) { return m(0xD8) === 0 && m(0xD9) === 0; } },
     // packed decimal at $83-$85
-    { key: 'junglehunt', name: 'Jungle Hunt', sys: 'atari2600', ids: ['83a32a2d686355438c915540cfe0bb13b76c1113'], re: /^jungle hunt$/,
+    { key: 'junglehunt', short: 'JUNGLE HUNT', name: 'Jungle Hunt', sys: 'atari2600', ids: ['83a32a2d686355438c915540cfe0bb13b76c1113'], re: /^jungle hunt$/,
       score: function (m) { return bcd(m, 0x83, 3); } },
-    // packed decimal at $DF-$E1, low byte first
-    { key: 'poleposition', name: 'Pole Position', sys: 'atari2600', ids: ['9d334da07352a9399cbbd9b41c6923232d0cdcd3'], re: /^pole position$/,
-      score: function (m) { return bcdLE(m, 0xDF, 3); } }
+    // packed decimal at $DF-$E1, low byte first; the screen shows it to the ten (its last digit always 0)
+    { key: 'poleposition', short: 'POLE POS.', name: 'Pole Position', sys: 'atari2600', ids: ['9d334da07352a9399cbbd9b41c6923232d0cdcd3'], re: /^pole position$/,
+      score: function (m) { var v = bcdLE(m, 0xDF, 3); return v == null ? null : v - v % 10; } }
   ];
 
   // ── Which game a cartridge is ──
@@ -234,7 +234,7 @@ var ConsoleHi = (function () {
   }
 
   // ── The boards for the High Scores page: games on the shelf and on the home screen that keep a score ──
-  // [{key, name, sys, art, id}], one per game (two copies of a game share its board), A to Z
+  // [{key, name, short, sys, art, id, game}], one per game (two copies of a game share its board), A to Z
   function boards() {
     var idx = [], vis = {};
     try { idx = JSON.parse(localStorage.getItem('gn_console_idx') || '[]') || []; } catch (e) {}
@@ -245,7 +245,7 @@ var ConsoleHi = (function () {
       if (!c || !c.id || !shown(c.id)) return;
       var g = mapFor(c); if (!g) return;
       var k = keyOf(g);
-      if (!by[k] || (!by[k].art && c.art)) by[k] = { key: k, name: g.name, sys: g.sys, art: c.art || null, id: c.id, game: g.key };
+      if (!by[k] || (!by[k].art && c.art)) by[k] = { key: k, name: g.name, short: g.short || g.name.toUpperCase(), sys: g.sys, art: c.art || null, id: c.id, game: g.key };
     });
     return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.name.localeCompare(b.name, 'en', { numeric: true }); });
   }

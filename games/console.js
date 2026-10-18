@@ -1619,7 +1619,7 @@
         else E.gameManager.restart();
       } },
       { icon: 'swap', label: 'Change cartridge', sub: 'Back to the ' + SYS.name + ' shelf', when: playing, onClick: toShelf },
-      { icon: 'trophy', label: 'High scores', sub: 'The best scores in this game', when: function () { return !!hiW; }, onClick: function () {
+      { icon: 'trophy', label: 'High scores', sub: 'The best scores in this game', when: function () { return !!hiW && L.shown(cur.id); }, onClick: function () {   // (the High Scores page lists the games on the home screen)
         var k = hiW.key; hiLeave(function () { var go = function () { ArcadeHi.show(k); }; if (started && !cur.netGame) saveState('auto').then(go, go); else go(); });
       } },
       { icon: 'gamepad', label: 'Controller buttons', sub: 'Remap a Bluetooth or USB controller', onClick: padSheet },

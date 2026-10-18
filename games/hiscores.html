@@ -12,6 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
+<script src="console-hi.js"></script>
 <script src="../arcade-music.js"></script>
 <style>
 @font-face{font-family:"Press Start 2P";src:url("../fonts/press-start-2p.woff2") format("woff2");font-display:block;}
@@ -50,6 +51,14 @@ html[data-theme="light"] body.hs .gbar,html[data-theme="parchment"] body.hs .gba
 .mq .pzi svg{width:100%;height:100%;display:block;}
 .mq.pz canvas{display:none;}
 .mq.pz .pzi{display:block;}
+/* console boards: the cartridge's label on the left of the title, the console's own logo on the right */
+.mq.cs canvas{display:none;}
+.mq.cs .pzi{display:grid;place-items:center;}
+.mq.cs .mt + .pzi{width:58px;}
+.mq .pzi img{display:block;max-width:100%;max-height:100%;}
+.mq .pzi img.lab{width:100%;height:100%;object-fit:cover;border-radius:5px;box-shadow:0 0 0 2px rgba(0,0,0,.6),0 0 0 3px var(--trim),0 0 12px -2px var(--glow);image-rendering:auto;}
+.mq .pzi img.logo{filter:drop-shadow(0 0 6px var(--glow)) drop-shadow(0 1px 0 rgba(0,0,0,.7));}
+.mq .pzi .lab-none{display:grid;place-items:center;width:100%;height:100%;border-radius:5px;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px var(--trim);font-family:"Press Start 2P",monospace;font-size:.7rem;color:var(--tc);}
 .mq .mt{min-width:0;text-align:center;}
 .mq h1{margin:0;font-family:"Bungee",var(--display);font-weight:400;font-size:clamp(1.5rem,7.4vw,2.2rem);line-height:1;letter-spacing:.02em;white-space:nowrap;
   color:var(--tc);text-shadow:0 2px 0 rgba(0,0,0,.6),0 0 14px var(--glow);}
@@ -168,6 +177,10 @@ html[data-theme="light"] body.hs .gbar,html[data-theme="parchment"] body.hs .gba
 .sel-b.hide{display:none;}
 .sel-b .pzb{flex:none;height:22px;width:22px;display:block;}
 .sel-b .pzb svg{width:100%;height:100%;display:block;}
+/* a console game's button: its cartridge label in a little dark frame */
+.sel-b .csb{flex:none;height:20px;width:20px;border-radius:3px;overflow:hidden;background:rgba(0,0,0,.45);box-shadow:0 0 0 1.5px rgba(0,0,0,.55);display:grid;place-items:center;}
+.sel-b .csb img{width:100%;height:100%;object-fit:cover;display:block;}
+.sel-b .csb i{font-style:normal;font-family:"Press Start 2P",monospace;font-size:.45rem;color:#fff;}
 .sel-b{position:relative;flex:none;aspect-ratio:2.5/1;display:flex;align-items:center;justify-content:center;padding:2px 3px;border:0;border-radius:2px;cursor:pointer;
   background:var(--bc);color:var(--bk);filter:saturate(.75) brightness(.72);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.25),0 3px 0 color-mix(in srgb,var(--bc) 40%,#000);transition:transform .06s,box-shadow .06s,filter .2s;}
@@ -178,7 +191,7 @@ html[data-theme="light"] body.hs .gbar,html[data-theme="parchment"] body.hs .gba
 .sel-b span{font-family:'Sofia Sans Condensed',var(--font);font-weight:900;font-size:.7rem;line-height:1;letter-spacing:.03em;white-space:nowrap;min-width:0;overflow:hidden;}
 .sel-b.on{filter:none;box-shadow:inset 0 2px 0 rgba(255,255,255,.45),inset 0 -3px 0 rgba(0,0,0,.2),0 3px 0 color-mix(in srgb,var(--bc) 40%,#000),0 0 0 2px #fff,0 0 16px -2px var(--bc);}
 .sel-b:active{transform:translateY(2px);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 1px 0 color-mix(in srgb,var(--bc) 40%,#000);}
-@media (min-width:600px){.sel{width:116px;gap:9px;}.sel-b span{font-size:.86rem;}.sel-b canvas{height:22px;}.sel-b .pzb{height:28px;width:28px;}}
+@media (min-width:600px){.sel{width:116px;gap:9px;}.sel-b span{font-size:.86rem;}.sel-b canvas{height:22px;}.sel-b .pzb{height:28px;width:28px;}.sel-b .csb{height:26px;width:26px;}}
 @media (prefers-reduced-motion:reduce){.sb,.mq,.mq::before,.sb li.top .rk,.sb li.top .sc,.sb li.top .nm{animation:none;}}
 </style>
 </head>
@@ -321,6 +334,24 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     });
   })();
 
+  // ── Consoles: the console games on the shelf and on the home screen that keep a score (console-hi.js), A to Z,
+  // each in a cabinet of its console's colours, its cartridge label on the sign ──
+  var CS = {
+    nes: { name: 'NES', c: { sel: '#e0403c', sd: '#141416', sm: '#4a494e', bd: '#29282c', trim: '#c9c5bd', mq: 'linear-gradient(180deg,#3d3c41,#141317)', tc: '#fff', glow: '#ff5a52', hc: '#ff7b74', lc: '#d9d6d0', rows: ['#ff7b74', '#ffffff', '#c9c5bd'], pn: '#141317', pn2: '#3b3a3f', btna: '#e0403c', btnb: '#e0403c', ball: '#e0403c', bgo: '.5' } },
+    snes: { name: 'SNES', c: { sel: '#8e7fd0', sd: '#17131f', sm: '#5d5088', bd: '#2b2540', trim: '#cfcbd5', mq: 'linear-gradient(180deg,#4b4176,#17131f)', tc: '#fff', glow: '#a99be8', hc: '#c9bdff', lc: '#e6e3e9', rows: ['#c9bdff', '#ffffff', '#7fd39a', '#ff8a8f'], pn: '#17131f', pn2: '#3d3459', btna: '#8e7fd0', btnb: '#8e7fd0', ball: '#8e7fd0', bgo: '.5' } },
+    genesis: { name: 'GENESIS', c: { sel: '#3b82f6', sd: '#040405', sm: '#26262b', bd: '#111114', trim: '#d0302b', mq: 'linear-gradient(180deg,#2e2e34,#060607)', tc: '#fff', glow: '#4f8ff7', hc: '#7fb0ff', lc: '#e8e8ee', rows: ['#7fb0ff', '#ffffff', '#ff7a74'], pn: '#060607', pn2: '#26262b', btna: '#3b82f6', btnb: '#3b82f6', ball: '#3b82f6', bgo: '.5' } },
+    atari2600: { name: 'ATARI', c: { sel: '#e8742a', sd: '#1a1006', sm: '#6b4424', bd: '#3a2412', trim: '#e1ad66', mq: 'linear-gradient(180deg,#7a5130,#24170b)', tc: '#ffe2b0', glow: '#ff8a3d', hc: '#ffb15c', lc: '#e8c890', rows: ['#ffb15c', '#ffffff', '#e8c890'], pn: '#1a1006', pn2: '#4a301a', btna: '#e8742a', btnb: '#e8742a', ball: '#e8742a', bgo: '.5' } }
+  };
+  (function () {
+    if (!window.ConsoleHi || typeof ArcadeHi === 'undefined') return;
+    ConsoleHi.label();
+    ConsoleHi.boards().forEach(function (cb) {
+      var sy = CS[cb.sys]; if (!sy) return;
+      BOARDS.push({ key: cb.key, game: 'console_' + cb.game, title: cb.name.toUpperCase().replace(/’/g, "'"), short: cb.short, tag: sy.name + ' · HIGH SCORES',
+        anim: 'console', cons: cb, href: cb.sys + '.html?play=' + encodeURIComponent(cb.id), sec: 'console', c: sy.c });
+    });
+  })();
+
   // ── Page ──
   var cur = 0;
   // ── Attract mode: each game's tune (or the cabinet's own) and the auto-advance, both switchable in the menu ──
@@ -433,6 +464,13 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     cv.style.aspectRatio = (w + 2) + ' / ' + (h + 2);
     return cv;
   }
+  // a console game's button: its cartridge label (the first letter on a dark tile when it has none)
+  function consThumb(cb) {
+    var t = el('span', { class: 'csb', 'aria-hidden': 'true' });
+    if (cb.art) { var im = el('img', { src: cb.art, alt: '', loading: 'lazy', decoding: 'async' }); im.onerror = function () { t.innerHTML = ''; t.appendChild(el('i', { text: cb.name.charAt(0) })); }; t.appendChild(im); }
+    else t.appendChild(el('i', { text: cb.name.charAt(0) }));
+    return t;
+  }
   // games with modes (Flappy Bird: classic / wild pipes) share one select button; the toggle picks the mode
   var GROUPS = [];
   BOARDS.forEach(function (b, i) { var g = GROUPS.filter(function (x) { return x.game === b.game; })[0]; if (!g) { g = { game: b.game, idx: [], last: i }; GROUPS.push(g); } g.idx.push(i); });
@@ -457,15 +495,15 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
   GROUPS.forEach(function (g, gi) {
     var b0 = BOARDS[g.idx[0]], gm = findGame(b0.game);
     var bc = b0.c.sel || b0.c.glow;
-    g.btn = el('button', { type: 'button', role: 'tab', class: 'sel-b', 'aria-label': gm ? gm.name : b0.title, style: { '--bc': bc, '--bk': inkOn(bc) },
+    g.btn = el('button', { type: 'button', role: 'tab', class: 'sel-b', 'aria-label': b0.cons ? b0.cons.name : gm ? gm.name : b0.title, style: { '--bc': bc, '--bk': inkOn(bc) },
       onclick: function () { if (groupOf(cur) !== g) { var from = GROUPS.indexOf(groupOf(cur)); show(g.last, gi > from ? 1 : -1); } } },
-      [b0.puzzle ? el('span', { class: 'pzb', html: pzIcon(b0.game), 'aria-hidden': 'true' }) : spriteCanvas(b0.game), el('span', { text: b0.short || b0.title })]);
+      [b0.puzzle ? el('span', { class: 'pzb', html: pzIcon(b0.game), 'aria-hidden': 'true' }) : b0.cons ? consThumb(b0.cons) : spriteCanvas(b0.game), el('span', { text: b0.short || b0.title })]);
     sel.appendChild(g.btn);
   });
-  // Arcade / Puzzles: each remembers the game you last looked at
+  // Arcade / Puzzles / Consoles: each remembers the game you last looked at
   var secLast = {}, secBtns = {};
   var secBar = el('div', { class: 'seg hs-sec', role: 'tablist', 'aria-label': 'High score boards' });
-  [['arcade', 'Arcade'], ['puzzle', 'Puzzles']].forEach(function (s) {
+  [['arcade', 'Arcade'], ['puzzle', 'Puzzles'], ['console', 'Consoles']].forEach(function (s) {
     var first = -1; BOARDS.forEach(function (b, i) { if (first < 0 && b.sec === s[0]) first = i; });
     if (first < 0) return;
     secLast[s[0]] = first;
@@ -486,7 +524,7 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     if (g.btn.scrollIntoView && sel.scrollHeight > sel.clientHeight) { try { g.btn.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
     setTimeout(selEdges, 0);
     cab.style.setProperty('--bcol', bc); cab.style.setProperty('--bink', inkOn(bc));
-    var nm = gm ? gm.name : b.puzzle ? pzName(b.game) : b.title;
+    var nm = b.cons ? b.cons.name : gm ? gm.name : b.puzzle ? pzName(b.game) : b.title;
     st.querySelector('span').textContent = 'PLAY ' + nm.toUpperCase();
     st.setAttribute('aria-label', 'Play ' + nm);
     modes.innerHTML = ''; modes.classList.toggle('on', g.idx.length > 1); modes.classList.toggle('cyc', g.idx.length > 2);
@@ -505,7 +543,7 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     // with modes to step through: just PLAY, on the left, the modes beside it (and a long puzzle name: just PLAY too)
     var sp = st.querySelector('span');
     cp.classList.toggle('has-modes', g.idx.length > 1);
-    if (g.idx.length > 1 || (b.puzzle && sp.scrollWidth > sp.clientWidth + 1)) sp.textContent = 'PLAY';
+    if (g.idx.length > 1 || ((b.puzzle || b.cons) && sp.scrollWidth > sp.clientWidth + 1)) sp.textContent = 'PLAY';
   }
   // Attract mode on demand: steps through every game of the section, a few seconds each, until you touch anything
   var attBtn = el('button', { type: 'button', class: 'att', onclick: function () { if (attractRun) stopAttract(); else { Kit.sfx('pop'); startAttract(); } } });
@@ -578,10 +616,16 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     else mqT.textContent = b.title;
     mqS.textContent = b.tag || (b.sub ? 'HIGH SCORES · ' + (b.mode || b.sub) : 'HIGH SCORES');
     // puzzle boards: the game's icon each side; long names shrink to fit the sign
-    mq.classList.toggle('pz', !!b.puzzle);
+    mq.classList.toggle('pz', !!b.puzzle); mq.classList.toggle('cs', !!b.cons);
     if (b.puzzle && pzL.dataset.g !== b.game) { pzL.innerHTML = pzR.innerHTML = pzIcon(b.game); pzL.dataset.g = b.game; }
+    if (b.cons && pzL.dataset.g !== b.game) {
+      pzL.dataset.g = b.game; pzL.innerHTML = ''; pzR.innerHTML = '';
+      var lab = b.cons.art ? el('img', { class: 'lab', src: b.cons.art, alt: '' }) : el('span', { class: 'lab-none', text: b.cons.name.charAt(0) });
+      if (b.cons.art) lab.onerror = function () { pzL.innerHTML = ''; pzL.appendChild(el('span', { class: 'lab-none', text: b.cons.name.charAt(0) })); };
+      pzL.appendChild(lab); pzR.appendChild(el('img', { class: 'logo', src: '../img/consoles/' + b.cons.sys + '.svg', alt: '' }));
+    }
     mqT.style.fontSize = '';
-    var room = mq.clientWidth - 2 * ((b.puzzle ? 46 : 48) + 10) - 12;
+    var room = mq.clientWidth - 2 * ((b.cons ? 52 : b.puzzle ? 46 : 48) + 10) - 12;
     if (room > 40 && mqT.scrollWidth > room) mqT.style.fontSize = (parseFloat(getComputedStyle(mqT).fontSize) * room / mqT.scrollWidth).toFixed(1) + 'px';
   }
 
@@ -648,7 +692,7 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     crt.classList.add('off');
     setTimeout(function () { theme(b); paintScores(b); startArt(b); crt.classList.remove('off'); }, 170);
   }
-  st.addEventListener('click', function () { Kit.sfx('pop'); location.href = BOARDS[cur].game + '.html'; });
+  st.addEventListener('click', function () { Kit.sfx('pop'); var b = BOARDS[cur]; location.href = b.href || b.game + '.html'; });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); stepGame(-1); }
     else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); stepGame(1); }
@@ -1707,12 +1751,43 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
           g.globalAlpha = 1;
         }
       };
+    },
+
+    // Console boards: the game's cartridge art as big chunky pixels, drifting slowly across the tube, a bright band
+    // rolling down it now and then (no art: soft static in the console's colours)
+    console: function (W, H, b) {
+      var img = null, ok = false, t = 0, roll = -40, nextRoll = rnd(1, 3), sw = 48, sh = Math.max(24, Math.round(48 * H / W));
+      var small = document.createElement('canvas'); small.width = sw; small.height = sh; var sg = small.getContext('2d');
+      if (b.cons && b.cons.art) { img = new Image(); img.onload = function () { ok = true; }; img.src = b.cons.art; }
+      var cols = [b.c.glow, b.c.hc, b.c.trim];
+      return {
+        step: function (dt) {
+          t += dt;
+          if (roll > -40) roll += dt * 60; if (roll > H + 20) roll = -40;
+          nextRoll -= dt; if (nextRoll <= 0) { roll = -12; nextRoll = rnd(6, 11); }
+        },
+        draw: function (g) {
+          if (ok) {
+            // fill the screen with the art (its middle, panning a little either way), shrunk to a few dozen pixels
+            var ar = img.naturalWidth / img.naturalHeight, tr = W / H, cw, ch;
+            if (ar > tr) { ch = img.naturalHeight * 0.9; cw = ch * tr; } else { cw = img.naturalWidth * 0.9; ch = cw / tr; }
+            var dx = (img.naturalWidth - cw) * (0.5 + 0.45 * Math.sin(t * 0.13)), dy = (img.naturalHeight - ch) * (0.5 + 0.45 * Math.cos(t * 0.09));
+            sg.imageSmoothingEnabled = true; sg.clearRect(0, 0, sw, sh); sg.drawImage(img, dx, dy, cw, ch, 0, 0, sw, sh);
+            g.imageSmoothingEnabled = false; g.drawImage(small, 0, 0, W, H);
+          } else {
+            for (var i = 0; i < 70; i++) { g.fillStyle = cols[i % 3]; g.globalAlpha = 0.12 + Math.random() * 0.2; g.fillRect(irnd(0, W - 1), irnd(0, H - 1), irnd(1, 3), 1); }
+            g.globalAlpha = 1;
+          }
+          if (roll > -40) { g.fillStyle = 'rgba(255,255,255,.07)'; g.fillRect(0, Math.round(roll), W, 10); g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(0, Math.round(roll) + 10, W, 4); }
+        }
+      };
     }
   };
 
   // Marquee sprites, one each side of the title
   var MQ = {
     puzzle: function () {},   // puzzle boards show the game's icon instead (see theme)
+    console: function () {},   // console boards show the cartridge label and the console's logo instead (see theme)
     tetris: function (g, t, side) { var sh = side ? [[0, 0], [1, 0], [2, 0], [1, 1]] : [[1, 0], [2, 0], [0, 1], [1, 1]], c = side ? '#b14dff' : '#3dff6a', k = Math.floor(t / 1.2) % 4;
       sh.forEach(function (p) { var x = p[0], y = p[1]; for (var i = 0; i < k; i++) { var nx = 1 - y + 1; y = x; x = nx; } block(g, 4 + x * 5, 3 + y * 5, 5, c); }); },
     snake: function (g, t, side) { if (side) { R(g, 8, 6, 8, 8, '#ef4444'); R(g, 11, 3, 2, 3, '#22c55e'); R(g, 10, 7, 2, 2, '#fca5a5'); return; } for (var i = 0; i < 6; i++) R(g, 2 + i * 3, 8 + Math.round(Math.sin(t * 6 + i) * 2), 3, 3, i ? '#9bbc0f' : '#c5f07a'); },
