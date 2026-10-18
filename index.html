@@ -720,7 +720,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var hay = norm(g.name + ' ' + g.tag + ' ' + g.cat);
     return norm(state.q).split(/\s+/).every(function (t) { return hay.indexOf(t) >= 0; });
   }
-  function visibleGames() { return GAMES.filter(function (g) { return !g.hidden && fitsWho(g) && fitsQ(g); }); }
+  function visibleGames() { return GAMES.filter(function (g) { return !g.hidden && (!Kit.catOn || Kit.catOn(g.cat)) && fitsWho(g) && fitsQ(g); }); }   // (sections switched off in Preferences leave)
 
   // ── Game rows ─────────────────────────────────────────────────────────────
   var resumeMap = {};
@@ -828,7 +828,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // Daily puzzles: under Surprise, as tall as the chips, with how many of today's are done
   function renderDaily() {
     var b = $('dlbtn'); if (!b) return;
-    if (!window.Daily) { b.hidden = true; return; }
+    if (!window.Daily || (Kit.catOn && !Kit.catOn('puzzle'))) { b.hidden = true; return; }   // (Puzzles & Words switched off: no daily button)
     var c = Daily.count(), pct = c.total ? Math.round(100 * c.done / c.total) : 0;
     b.hidden = false; b.classList.toggle('all-done', c.total > 0 && c.done >= c.total);
     b.setAttribute('aria-label', 'Daily puzzles: ' + c.done + ' of ' + c.total + ' done today');
@@ -1491,7 +1491,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       Kit.cats().forEach(function (c) {
         var gs = vis.filter(function (g) { return g.cat === c.id; });
         // Consoles stays even with everything hidden, so its Edit button can bring things back
-        if (gs.length || (c.id === 'console' && !state.q)) list.appendChild(section(c.name, c.id, gs, secExtra(c.id)));
+        if (gs.length || (c.id === 'console' && !state.q && (!Kit.catOn || Kit.catOn('console')))) list.appendChild(section(c.name, c.id, gs, secExtra(c.id)));
       });
     } else if (state.cat === 'fav') {
       list.appendChild(section('Favorites', 'star', vis.filter(isFav), null, true));

@@ -1119,6 +1119,10 @@
     var at = function (c) { var i = order.indexOf(c.id); return i < 0 ? 1000 + base.indexOf(c) : i; };
     return base.sort(function (a, b) { return at(a) - at(b); });
   }
+  // Sections switched off in Preferences (gn_cat_off: [cat ids]): their games leave the home screen, its search and
+  // Surprise; the games themselves stay put (switch the section back on and they're all there)
+  function catsOff() { try { var a = JSON.parse(lsGet('gn_cat_off', '[]')); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function catOn(id) { return catsOff().indexOf(id) < 0; }
   function catName(id) { try { for (var i = 0; i < GAME_CATS.length; i++) if (GAME_CATS[i].id === id) return GAME_CATS[i].name; } catch (e) {} return ''; }
   function findGameSafe(k) { try { return typeof findGame === 'function' ? findGame(k) : null; } catch (e) { return null; } }
 
@@ -2258,7 +2262,16 @@
         var up = el('button', { type: 'button', class: 'k-ord-b up', 'aria-label': 'Move ' + c.name + ' up', html: icon('down'), onclick: function () { moveCat(i, -1); } });
         var dn = el('button', { type: 'button', class: 'k-ord-b', 'aria-label': 'Move ' + c.name + ' down', html: icon('down'), onclick: function () { moveCat(i, 1); } });
         up.disabled = i === 0; dn.disabled = i === cs.length - 1;
-        ord.appendChild(el('div', { class: 'k-ord-row' }, [el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: c.name })]), up, dn]));
+        // the switch shows or hides the whole section on the home screen (the row dims when it's off)
+        var on = catOn(c.id), row = el('div', { class: 'k-ord-row' + (on ? '' : ' off') });
+        var sw = el('button', { type: 'button', class: 'k-ord-sw', role: 'switch', 'aria-checked': String(on), 'aria-label': 'Show ' + c.name + ' on the home screen', html: '<i class="sw"></i>', onclick: function () {
+          var off = catsOff(), k = off.indexOf(c.id);
+          if (k >= 0) off.splice(k, 1); else off.push(c.id);
+          lsSet('gn_cat_off', JSON.stringify(off)); sfx('tap'); haptic('light'); paintOrd();
+          try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
+        } });
+        ord.appendChild(row);
+        [el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: c.name })].concat(on ? [] : [el('small', { text: 'Hidden from the home screen' })])), sw, up, dn].forEach(function (x) { row.appendChild(x); });
       });
       if (lsGet('gn_cat_order', '') && lsGet('gn_cat_order', '') !== '[]') ord.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block k-ord-reset', text: 'Back to the usual order', onclick: function () {
         lsSet('gn_cat_order', '[]'); sfx('tap'); paintOrd(); try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
@@ -2786,7 +2799,7 @@
   window.Kit = {
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
-    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: defaultsSheet, cats: catsOrdered,
+    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: defaultsSheet, cats: catsOrdered, catOn: catOn,
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },

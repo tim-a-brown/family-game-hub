@@ -142,7 +142,7 @@ var Spin = (function () {
     }
     function fill(keep) {
       if (spinning) return;
-      pool = GAMES.filter(function (g) { return g.cat !== 'tools' && fits(g); });
+      pool = GAMES.filter(function (g) { return g.cat !== 'tools' && (!Kit.catOn || Kit.catOn(g.cat)) && fits(g); });   // (not from sections switched off)
       if (!keep) wedges = spread(shuffle(pool.slice()).slice(0, MAXW));
       else wedges = wedges.filter(function (g) { return pool.indexOf(g) >= 0; });
       nLine.innerHTML = '';
