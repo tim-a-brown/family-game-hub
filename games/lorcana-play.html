@@ -9486,14 +9486,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     openZoom(u);
   }
-  // Choosing among items or locations: their text matters more than where they sit, so the choice opens as a
-  // carousel of the cards (full text, swipe through) instead of glowing cards on the table. Characters, picks of
-  // several cards and challenges stay on the table.
+  // Choosing among items or locations, or among two or more characters: their text matters more than where they sit
+  // (four Merlins look alike on the table), so the choice opens as a carousel of the cards (full text, swipe through)
+  // instead of glowing cards on the table. A lone character, picks of several cards and challenges stay on the table.
   var PICK_VERBS = ['Exert', 'Banish', 'Return', 'Ready', 'Move', 'Shift', 'Play', 'Choose'];
   function pickAsCarousel(o) {
     if (o.multi || o.chal || o.preview) return false;
     var mine = bottomPi(), all = boardOrder(mine).concat(boardOrder(opp(mine))), legal = all.filter(function (x) { return o.ok(x); });
-    if (!legal.length || legal.some(function (x) { return DD(x).t === 'character'; })) return false;
+    if (!legal.length || (legal.length < 2 && DD(legal[0]).t === 'character')) return false;
     if (S.P.some(function (P) { return P.hand.some(function (x) { return o.ok(x); }); })) return false;
     var vm = String(o.title).match(new RegExp('\\b(' + PICK_VERBS.join('|') + ')\\b', 'i')), verb = vm ? vm[1].charAt(0).toUpperCase() + vm[1].slice(1).toLowerCase() : 'Choose';
     if (verb === 'Move') verb = 'Move to'; else if (verb === 'Shift') verb = 'Shift onto';
@@ -11282,7 +11282,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (o.cancel || o.skip) acts.push({ label: o.cancelLabel || (o.skip ? 'Skip' : 'Cancel'), go: stop });
       var nav = { i: i, n: o.uids.length, list: o.uids, ctx: 'pick', pick: { sel: sel, can: can, place: o.place, count: o.count }, dir: dir || 0,
         go: function (step) { var j = i + step; if (j >= 0 && j < o.uids.length) show(j, step); }, peek: function (k) { var x = o.uids[i + k]; return x ? DD(x) : null; } };
-      var ov = zoomShell(d, headHTML(d) + defMeta(d, u) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts, whys, nav, { modal: true, onClose: function () { if (!fin) setTimeout(function () { if (!fin) show(i); }, 0); } });
+      // cards on the table carry their state (exerted, damage…) and, when the choice spans both sides, whose they are
+      var zu = zoneOf(u), both = o.uids.some(function (x) { return S.cards[x] && C(x).o !== C(o.uids[0]).o; });
+      var who = both && S.cards[u] ? '<div class="lz-who" style="--c:' + S.P[C(u).o].color + '"><i class="dot"></i>' + esc(S.P[C(u).o].name) + '</div>' : '';
+      var ov = zoomShell(d, who + headHTML(d) + defMeta(d, u) + statusHTML(u, zu) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts, whys, nav, { modal: true, onClose: function () { if (!fin) setTimeout(function () { if (!fin) show(i); }, 0); } });
       // what's asking, pinned above the cards
       var head = el('div', { class: 'cp-head' }, [el('span', { class: 'cp-src', html: o.src && S.cards[o.src] ? miniArt(DD(o.src)) : '' }),
         el('div', { class: 'grow' }, [el('b', { text: o.title }), el('small', { text: o.n === 0 ? (o.uids.length > 1 ? 'Swipe through them and choose where each goes' : 'Choose where it goes') : !single ? sel.length + ' of ' + n + ' chosen' + (min < n ? ' (up to ' + n + ')' : '') + (o.place === 'top' ? ' · 1st chosen is the top card' : o.place === 'bottom' ? ' · 1st chosen is the bottom card' : '') : 'Swipe to look through them' })])]);
