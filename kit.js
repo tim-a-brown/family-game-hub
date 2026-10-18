@@ -587,6 +587,9 @@
     var dpr = Math.min(window.devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
     cv.width = W * dpr; cv.height = H * dpr;
     var g = cv.getContext('2d'); g.scale(dpr, dpr);
+    // the device turning mid-burst: the canvas takes the new screen, and the pieces fly on from where they are
+    var fit = function () { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0); };
+    window.addEventListener('resize', fit);
     var cols = o.colors || ['#ffc83d', '#ff5c9a', '#4da3ff', '#3ddc84', '#9b7bff', '#ff8a3d', '#2fd3c0'];
     var P = [], n = o.count || 140;
     for (var i = 0; i < n; i++) {
@@ -607,7 +610,7 @@
         g.globalAlpha = Math.max(0, 1 - age / 3200); g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.r * 2)));
         g.restore();
       });
-      if (age < 3200) requestAnimationFrame(frame); else cv.remove();
+      if (age < 3200) requestAnimationFrame(frame); else { cv.remove(); window.removeEventListener('resize', fit); }
     })(t0);
   }
 
