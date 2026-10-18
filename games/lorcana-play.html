@@ -669,6 +669,14 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 @media (max-width:600px){.lp-mid .phases{order:0;}.lp-msg{order:1;flex-basis:100%;text-align:center;}}
 .lp-bar .grow{flex:1;}
 .btn-end{min-width:150px;}
+/* waiting for a pick: dashed and quiet, so it never reads as "end turn" */
+.btn.btn-end.wait{background:rgba(255,255,255,.04);color:rgba(255,236,190,.78);box-shadow:none;border:2px dashed rgba(227,189,98,.5);animation:none;}
+.btn-end.pk-big{animation:pkBig 1.4s ease-in-out infinite;}
+.btn-end .pkb-i{display:inline-grid;place-items:center;width:30px;height:30px;flex:none;}
+.btn-end .pkb-i svg{width:26px;height:26px;}
+.btn-end b{font-weight:900;}
+@keyframes pkBig{0%,100%{box-shadow:0 0 0 0 rgba(255,214,110,.0);}50%{box-shadow:0 0 0 6px rgba(255,214,110,.28);}}
+@media (prefers-reduced-motion:reduce){.btn-end.pk-big{animation:none;}}
 .btn-end.attn{animation:attn 1.6s ease-in-out infinite;}
 @keyframes attn{50%{filter:brightness(1.18);box-shadow:0 5px 0 var(--b-lip),0 0 0 6px rgba(255,200,61,.25);}}
 .btn-fx.attn{animation:attn 1.6s ease-in-out infinite;--b:#4a3a8a;}
@@ -8720,15 +8728,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         mid.innerHTML = '<div class="lp-pick pk-chal pk-prev" aria-live="polite">' + art + '<i class="pk-vs" aria-hidden="true">' + ACT_SWORDS + '</i>' +
           '<button type="button" class="pk-art" data-act="pick-tgt" aria-label="See ' + esc(DD(pk.pre).full) + '">' + miniArt(DD(pk.pre)) + '</button>' +
           '<span class="pk-tx"><b class="' + (pre.killT ? 'good' : '') + '">' + pre.t + '</b><small class="' + (pre.killA ? 'bad' : '') + '">' + pre.a + '</small></span>' +
-          '<button type="button" class="btn btn-primary btn-sm pk-go" data-act="pick-conf">Challenge</button>' +
           '<button type="button" class="pk-x" data-act="pick-cancel" aria-label="Cancel">' + Kit.icon('close') + '</button>' + whyHTML(pre.why) + '</div>';
         return;
       }
       var h = cu ? '<div class="lp-pick pk-chal" aria-label="' + esc(pk.title) + '">' + art +
           '<span class="pk-st"><i class="' + vsBase(sv, DD(cu).s || 0) + '" title="Strength">' + PK_STAR + '<b>' + sv + '</b></i><i class="' + vsBase(wl, DD(cu).w || 0) + '" title="Willpower left">' + PK_SHIELD + '<b>' + wl + '</b></i></span>' +
-          '<span class="pk-tx"><small>' + esc(nm(cu)) + (hintsOn() ? ' · tap a target to preview' : '') + '</small><b>Pick a target</b></span>'
+          '<span class="pk-tx"><small>' + esc(nm(cu)) + ' challenges</small><b>Pick a target</b></span>'
         : '<div class="lp-pick">' + art + (PLAN && PLAN.steps.length > 1 ? '<i class="pk-step" title="Step ' + (PLAN.cur[0] + 1) + ' of ' + PLAN.steps.length + '">' + (PLAN.cur[0] + 1) + '/' + PLAN.steps.length + '</i>' : '') + '<span>' + esc(pk.title) + '</span>';
-      if (pk.multi) h += '<button type="button" class="btn btn-primary btn-sm" data-act="pick-go"' + (pk.multi.need(pk.sel) ? '' : ' disabled') + '>' + esc(pk.multi.label(pk.sel)) + '</button>';
       if (pk.skip) h += '<button type="button" class="btn btn-soft btn-sm" data-act="pick-skip">' + esc(pk.skip) + '</button>';
       else if (!pk.must) h += '<button type="button" class="btn btn-soft btn-sm" data-act="pick-cancel">Cancel</button>';
       mid.innerHTML = h + '</div>';
@@ -8751,6 +8757,18 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var fxb = '';
     var over = S.phase === 'over' && !!ui.results;   // looking at the final table: this button brings the results back
     var end = '<button type="button" class="btn btn-primary btn-end' + (idle ? ' attn' : '') + (vertical ? ' btn-block btn-lg' : ' grow') + '" data-act="end"' + (my || over ? '' : ' disabled') + '>' + (over ? Kit.icon('trophy') + '<span>Results</span>' : esc(endLabel)) + '</button>';
+    // Choosing a card: this button is the choice's one way to go ahead (the strip on the table asks the question and shows
+    // what would happen). It waits, dashed, until there's something to do (a tap on it makes the cards you can pick
+    // glow), then lights up as the action itself: "Challenge Koda", or a group of cards' "Sing (5/5)"
+    if (ui.pick && !cpuT && S.phase === 'play') {
+      var pk = ui.pick, cls = 'btn btn-end' + (vertical ? ' btn-block btn-lg' : ' grow');
+      if (pk.chal && pk.pre && S.cards[pk.pre] && pk.ok(pk.pre))
+        end = '<button type="button" class="' + cls + ' btn-primary pk-big" data-act="pick-conf"><i class="pkb-i">' + ACT_SWORDS + '</i><span>Challenge <b>' + esc(nm(pk.pre)) + '</b></span></button>';
+      else if (pk.multi && pk.multi.need(pk.sel))
+        end = '<button type="button" class="' + cls + ' btn-primary pk-big" data-act="pick-go"><span>' + esc(pk.multi.label(pk.sel)) + '</span></button>';
+      else
+        end = '<button type="button" class="' + cls + ' wait" data-act="pick-nudge">' + (pk.chal ? '<i class="pkb-i">' + ACT_SWORDS + '</i>' : '') + '<span>' + esc(pk.multi ? pk.multi.label(pk.sel) : pk.chal ? 'Pick a target' : 'Pick a card') + '</span></button>';
+    }
     if (vertical) return end;
     return fxb + '<button type="button" class="btn btn-soft icon-sq" data-act="log" aria-label="Game log">' + Kit.icon('book') + '</button>' + end;
   }
@@ -9336,6 +9354,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       else if (a === 'pick-src') { if (ui.pick && ui.pick.src && S.cards[ui.pick.src]) zoomDef(DD(ui.pick.src)); }
       else if (a === 'log') showLog();
       else if (a === 'log-card' || a === 'log-line') logZoom(+b.dataset.l, b.dataset.u, S.mode === 'cpu' ? humanIx() : S.viewer);
+      else if (a === 'pick-nudge') { var pn = ui.pick; if (pn) { Kit.haptic('light'); Kit.sfx('tap'); Object.keys(S.cards).forEach(function (x) { var z = zoneOf(x); if (z && (z.z === 'board' || z.z === 'hand') && pn.ok(x)) flash(x); }); } }
       else if (a === 'pick-cancel' || a === 'pick-skip') { var p = ui.pick; ui.pick = null; render(); if (p && p.cancel) p.cancel(); }
       else if (a === 'pick-conf') { var pc = ui.pick; if (pc && pc.pre && S.cards[pc.pre] && pc.ok(pc.pre)) { ui.pick = null; render(); pc.done(pc.pre); } }
       else if (a === 'pick-go') { var q = ui.pick; if (q && q.multi && q.multi.need(q.sel)) { ui.pick = null; render(); q.multi.go(q.sel); } }
