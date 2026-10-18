@@ -9960,6 +9960,23 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // screen. Moving to the next card keeps the size (no jumping), a fresh look measures again
   function fitSide(ov, keep) {
     if (!ov || !ov.isConnected || phoneZoom() || ov.classList.contains('reveal')) return;
+    try { fitSide0(ov, keep); } finally { midLeft(ov); }
+  }
+  // The details and the card's actions under them sit as one block in the middle of the left side (the grid puts them
+  // either side of the line where the cards meet their chips, which left them low with empty space above)
+  function midLeft(ov) {
+    var inf = $('.lz-in > .lz-info', ov), ac = $('.lz-in > .lz-acts.side', ov), lin = $('.lz-in', ov);
+    if (inf) inf.style.translate = ''; if (ac) ac.style.translate = '';
+    if (!inf || !ac || !lin || phoneZoom()) return;
+    // layout positions (not on-screen ones, which the opening animation moves): the block in the middle of the space
+    // between the view's top and bottom padding
+    var cs = getComputedStyle(lin), base = inf.offsetParent === lin ? 0 : lin.offsetTop;
+    var top0 = base + parseFloat(cs.paddingTop), h = lin.offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    var a = inf.offsetTop, b = ac.offsetTop + ac.offsetHeight, dy = Math.round(top0 + (h - (b - a)) / 2 - a);
+    if (Math.abs(dy) < 2) return;
+    inf.style.translate = ac.style.translate = '0 ' + dy + 'px';
+  }
+  function fitSide0(ov, keep) {
     var fl = function () { if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure(); };
     if (keep && ui.cuSide) { ov.classList.add('lz-sfit'); ov.style.setProperty('--cuside', ui.cuSide + 'px'); fl(); return; }
     ov.classList.remove('lz-sfit'); ov.style.removeProperty('--cuside'); ui.cuSide = 0; fl();
