@@ -28,21 +28,76 @@ var ConsoleHi = (function () {
   function bcdLE(m, a, n) { var v = 0; for (var i = n - 1; i >= 0; i--) { var b = m(a + i), hi = b >> 4, lo = b & 15; if (hi > 9 || lo > 9) return null; v = v * 100 + hi * 10 + lo; } return v; }
   function be(m, a, n) { var v = 0; for (var i = 0; i < n; i++) v = v * 256 + m(a + i); return v; }
   function le(m, a, n) { var v = 0; for (var i = n - 1; i >= 0; i--) v = v * 256 + m(a + i); return v; }
+  // one digit a byte, least significant first
+  function digitsLE(m, a, n) { var v = 0; for (var i = n - 1; i >= 0; i--) { var d = m(a + i); if (d > 9) return null; v = v * 10 + d; } return v; }
+  function x10(v) { return v == null ? null : v * 10; }
 
-  // Sonic games: game mode $FFF600 (bit 7 set while a stage loads): $00 Sega screen, $04 title, $08 the demo, then
-  // levels, special stages, continue and ending screens are all a game under way
+  // Sonic games: game mode $FFF600 (bit 7 set while a stage loads): $00 Sega screen, $04 title, $08 the demo (which
+  // scores), then levels ($0C), special stages, continue and ending screens are all a game under way
   function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0x04 && md !== 0x08; }
 
+  // Options: down (the score can go down: the one at the end counts), reset (the score starts again within a game,
+  // each fight: the best one counts), clock(m) (seconds played: going back means a new game; stopping means it's over).
+  // Without play(), any time counts (games with no demo that scores). Without over(), a game ends when the next one
+  // starts (its score back at the start), back on the title (play() false a few seconds), or when you leave.
   var GAMES = [
+    // ── NES ──
     // Mario's score: a digit a byte at $07DD-$07E2, the screen adding a 0 (100 points reads 0,0,0,0,1,0). OperMode
     // $0770: 0 title and demo, 1 playing, 2 the ending, 3 game over.
     { key: 'smb', name: 'Super Mario Bros.', sys: 'nes', ids: ['ea343f4e445a9050d4b4fbac2c77d0693b1d0922'], re: /^super mario bros\.?$/,
-      score: function (m) { var d = digits(m, 0x7DD, 6); return d == null ? null : d * 10; },
+      score: function (m) { return x10(digits(m, 0x7DD, 6)); },
       play: function (m) { return m(0x770) === 1 || m(0x770) === 2; }, over: function (m) { return m(0x770) === 3; } },
-    // the score: 4 bytes at $FFFE26, the screen adding a 0. Game mode $FFF600: $04 title, $08 the demo (which
-    // scores), $0C a level ($8C while it loads), $00 the Sega screen after game over.
+    // 3 bytes at $0715, the screen adding a 0 (no demo)
+    { key: 'smb3', name: 'Super Mario Bros. 3', sys: 'nes', ids: ['6bd518e85eb46a4252af07910f61036e84b020d1'], re: /^super mario bros\.? 3$/,
+      score: function (m) { return be(m, 0x715, 3) * 10; } },
+    // the money: kept as the seven digits drawn on screen at $0324-$032A ($24 a blank before the first digit)
+    { key: 'ducktales', name: 'DuckTales', sys: 'nes', ids: ['4b5720bc6e0590c9372cfbd0c418f8efd4d0c96d'], re: /^duck ?tales$/,
+      score: function (m) { var v = 0; for (var i = 0; i < 7; i++) { var d = m(0x324 + i); if (d === 0x24) d = 0; else if (d > 9) return null; v = v * 10 + d; } return v; } },
+    // seven digits a byte at $0108-$010E
+    { key: 'ikari', name: 'Ikari Warriors', sys: 'nes', ids: ['6eadbbe4c2a1f7ede2978f149b63270c72db281f'], re: /^ikari warriors$/,
+      score: function (m) { return digits(m, 0x108, 7); } },
+    // seven digits a byte at $0072-$0078, the ones first
+    { key: 'megaman', name: 'Mega Man', sys: 'nes', ids: ['2f88381557339a14c20428455f6991c1eb902c99'], re: /^mega ?man$/,
+      score: function (m) { return digitsLE(m, 0x72, 7); } },
+    // points: six digits a byte at $03E8, starting again each fight (the best fight counts); $0006 is 1 in a game
+    { key: 'punchout', name: 'Mike Tyson’s Punch-Out!!', sys: 'nes', ids: ['0f0c2c2e294ff8ce255a618964728c935fd8963b'], re: /^(mike tysons )?punch-?out!*$/, reset: 1,
+      score: function (m) { return digits(m, 0x3E8, 6); }, play: function (m) { return m(0x06) === 1; } },
+    // ── Super Nintendo ──
+    // Mario's score: 3 bytes at $7E0F34 (low first), the screen adding a 0. Game mode $7E0100: $07 the title, where
+    // the demo plays (and scores); $0B on: the map, levels and the screens between
+    { key: 'smw', name: 'Super Mario World', sys: 'snes', ids: ['6b47bb75d16514b6a476aa0c73a683a2a4c18765'], re: /^super mario world$/,
+      score: function (m) { return le(m, 0x7E0F34, 3) * 10; }, play: function (m) { return m(0x7E0100) >= 0x0B; } },
+    // player 1's score: packed decimal at $7E0700-$7E0703, in hundreds. $7E0030 is 2 while the attract demo runs
+    { key: 'ssf2', name: 'Super Street Fighter II', sys: 'snes', ids: ['8e67787988024503c4adeadd5fe50a340aa860d7'], re: /^super street fighter ii/,
+      score: function (m) { var v = bcd(m, 0x7E0700, 4); return v == null ? null : v * 100; }, play: function (m) { return m(0x7E0030) === 0; } },
+    // six digits a byte at $7E0B34, the ones first, the screen adding a 0; starting again each fight (the best counts)
+    { key: 'superpunchout', name: 'Super Punch-Out!!', sys: 'snes', ids: ['3604c855790f37db567e9b425252625045f86697'], re: /^super punch-?out!*$/, reset: 1,
+      score: function (m) { return x10(digitsLE(m, 0x7E0B34, 6)); } },
+    // 4 bytes at $7E8949 (low first). $7E5F2E is 1 while the demo plays (it scores)
+    { key: 'wolf3d', name: 'Wolfenstein 3D', sys: 'snes', ids: ['88fe872eb984af84f8ca7633ef5bd3904a2baeb4'], re: /^wolfenstein 3-?d$/,
+      score: function (m) { return le(m, 0x7E8949, 4); }, play: function (m) { return m(0x7E5F2E) === 0; } },
+    // ── Genesis ──
+    // 4 bytes at $FFFE26, the screen adding a 0
     { key: 'sonic', name: 'Sonic the Hedgehog', sys: 'genesis', ids: ['6ddb7de1e17e7f6cdb88927bd906352030daa194'], re: /^sonic the hedgehog$/,
-      score: function (m) { return be(m, 0xFFFE26, 4) * 10; }, play: sonicPlay }
+      score: function (m) { return be(m, 0xFFFE26, 4) * 10; }, play: sonicPlay },
+    { key: 'sonic2', name: 'Sonic the Hedgehog 2', sys: 'genesis', ids: ['8bca5dcef1af3e00098666fd892dc1c2a76333f9'], re: /^sonic the hedgehog 2$/,
+      score: function (m) { return be(m, 0xFFFE26, 4) * 10; }, play: sonicPlay },
+    // 4 bytes at $FFF22C. $FFF283 is 1 while the demo plays (it starts with 50,000)
+    { key: 'castleofillusion', name: 'Castle of Illusion', sys: 'genesis', ids: ['4ac3687634a5acc55ac7f156c6de9749158713e4'], re: /castle of illusion/,
+      score: function (m) { return be(m, 0xFFF22C, 4); }, play: function (m) { return m(0xFFF283) === 0; } },
+    // ── Atari 2600 ──
+    // packed decimal at $D5-$D7, starting at 2,000 and going down as well as up: the score at the end counts. The
+    // 20-minute clock ($D8 minutes, $D9 seconds) starts with the game and stops when it's over
+    { key: 'pitfall', name: 'Pitfall!', sys: 'atari2600', ids: ['8d525480445d48cc48460dc666ebad78c8fb7b73'], re: /^pitfall!?$/, down: 1,
+      score: function (m) { return bcd(m, 0xD5, 3); },
+      clock: function (m) { var t = bcd(m, 0xD8, 2); return t == null ? null : 1200 - (Math.floor(t / 100) * 60 + t % 100); },
+      play: function (m) { var t = bcd(m, 0xD8, 2); return t != null && t !== 2000; }, over: function (m) { return m(0xD8) === 0 && m(0xD9) === 0; } },
+    // packed decimal at $83-$85
+    { key: 'junglehunt', name: 'Jungle Hunt', sys: 'atari2600', ids: ['83a32a2d686355438c915540cfe0bb13b76c1113'], re: /^jungle hunt$/,
+      score: function (m) { return bcd(m, 0x83, 3); } },
+    // packed decimal at $DF-$E1, low byte first
+    { key: 'poleposition', name: 'Pole Position', sys: 'atari2600', ids: ['9d334da07352a9399cbbd9b41c6923232d0cdcd3'], re: /^pole position$/,
+      score: function (m) { return bcdLE(m, 0xDF, 3); } }
   ];
 
   // ── Which game a cartridge is ──
@@ -130,30 +185,32 @@ var ConsoleHi = (function () {
       cand = scan(E, st);
       if (cand && !cand.length) cand = null;
     }
-    function tick() {
+    function tick(force) {
       var E = o.emu();
-      if (!E || !o.live() || (o.skip && o.skip())) return;
+      if (!E || !o.live() || (o.skip && o.skip()) || (E.paused && !force)) return;   // (paused: the menu is open)
       if (base < 0) { locate(E); return; }
-      var H = heap(), m = mem(H), s, on, over;
-      try { s = g.score(m); on = !!g.play(m); over = !!(g.over && g.over(m)); } catch (e) { s = null; }
+      var H = heap(), m = mem(H), s, on, over, clk = null;
+      try { s = g.score(m); on = g.play ? !!g.play(m) : true; over = !!(g.over && g.over(m)); if (g.clock) clk = g.clock(m); } catch (e) { s = null; }
       if (s == null || !isFinite(s)) { if (++bad > 8) { base = -1; bad = 0; since = Date.now(); } return; }   // (moved, or not this game: look again)
       bad = 0;
-      if (!run) run = fresh(s);
+      if (!run) run = fresh(s, clk);
       if (on && !over) {
         offT = 0;
-        if (!g.down && s < run.last) { end('new'); run = fresh(s); }   // the score went back: a new game (or Reset)
-        if (hold != null && s < hold) hold = null;
+        // a new game (or Reset): the score went back (a game whose score can go down: its clock went back)
+        if (g.clock ? clk != null && run.clk != null && clk < run.clk : !g.down && !g.reset && s < run.last) { end('new'); run = fresh(s, clk); }
+        if (hold != null && (s < hold || (g.clock && clk < hold.clk))) hold = null;
         // a score counts once it moves while the player is pressing buttons (the demo plays itself), and, after a
         // game was filed, only in a new game (its score starts again lower), so one game is never filed twice
         if (s !== run.last && hold == null && Date.now() - lastIn < 60000) run.earned = true;
+        if (g.clock && clk != null) { if (clk === run.clk && run.earned) { if (++run.still >= 10) { hold = { s: scoreOf(run), clk: clk }; end('over'); run = fresh(s, clk); return; } } else run.still = 0; run.clk = clk; }   // (the clock stopped: out of lives)
         run.last = s; if (s > run.best) run.best = s;
         if (run.earned && !passed && top > 0 && s > top) { passed = true; if (o.onPass) o.onPass(s, top); }
       } else if (run.earned) {
         offT += 1;   // (back on the title, or game over: the game is done)
-        if (over || offT >= 6) { hold = scoreOf(run); end(over ? 'over' : 'idle'); run = fresh(s); }
-      } else run = fresh(s);
+        if (over || offT >= 6) { if (over && g.down) run.last = s; hold = g.clock ? { s: scoreOf(run), clk: clk } : scoreOf(run); end(over ? 'over' : 'idle'); run = fresh(s, clk); }
+      } else run = fresh(s, clk);
     }
-    function fresh(s) { return { best: s, last: s, earned: false }; }
+    function fresh(s, clk) { return { best: s, last: s, earned: false, clk: clk, still: 0 }; }
     function scoreOf(r) { return r ? (g.down ? r.last : r.best) : 0; }
     function end(why) {
       if (!run || !run.earned) return;
@@ -169,10 +226,10 @@ var ConsoleHi = (function () {
       // the score so far of a game under way (for leaving the page: filed next time)
       pending: function () { return run && run.earned && scoreOf(run) > 0 ? { key: keyOf(g), score: scoreOf(run), name: g.name, at: Date.now() } : null; },
       // the game ends here (leaving, changing cartridge, loading a saved state): its score, if it made one
-      finish: function (why) { tick(); end(why || 'left'); run = null; },
+      finish: function (why) { tick(true); end(why || 'left'); run = null; },
       stop: function () { clearInterval(timer); },
       // (tests) where the RAM is, and what's read
-      debug: function () { var H = heap(); if (base < 0 || !H) return { base: base }; var m = mem(H); return { base: base, score: g.score(m), play: g.play(m), over: g.over && g.over(m), run: run }; }
+      debug: function () { var H = heap(); if (base < 0 || !H) return { base: base }; var m = mem(H); return { base: base, score: g.score(m), play: g.play ? g.play(m) : true, over: !!(g.over && g.over(m)), clock: g.clock ? g.clock(m) : null, run: run, hold: hold }; }
     };
   }
 
@@ -195,5 +252,5 @@ var ConsoleHi = (function () {
 
   label();
   return { games: GAMES, mapFor: mapFor, key: keyOf, watch: watch, boards: boards, label: label,
-    _: { digits: digits, bcd: bcd, bcdLE: bcdLE, be: be, le: le, stateRam: stateRam, scan: scan, CORE: CORE } };
+    _: { digits: digits, digitsLE: digitsLE, bcd: bcd, bcdLE: bcdLE, be: be, le: le, stateRam: stateRam, scan: scan, CORE: CORE } };
 })();
