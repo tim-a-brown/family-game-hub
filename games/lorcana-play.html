@@ -1307,6 +1307,14 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
   .lz-acts.side .why{margin-top:6px;}
   .lz.lz-min .lz-in:has(.lz-hf){grid-template-columns:auto;}   /* details rolled away: the cards take the middle */
   .lz.lz-min .lz-in:has(.lz-hf) > .lz-flow,.lz.lz-min .lz-in:has(.lz-hf) > .lz-hf{grid-column:1;}
+  /* Double-tapped: the big look. The cards grow to the screen's height (the cards either side tuck in closer), the
+     details stay on the left and the actions under the cards; the sort and filter chips step aside until it's undone */
+  .lz.lz-big .lz-in > .lz-hf{display:none;}
+  .lz.lz-big .lz-card{--cu:min(calc(100vh - 120px - var(--safe-t) - var(--safe-b)),900px);}
+  .lz.lz-big .lz-in:has(.lz-flow.strip) .lz-flow.strip{--cu:min(calc(100vh - 120px - var(--safe-t) - var(--safe-b)),calc((98vw - 440px) / 1.12),900px);width:calc(var(--cu) * 1.12);--fx:.25;}
+  .lz.lz-big .lz-in:has(> .lz-acts.side) .lz-card{--cu:min(calc(100vh - 215px - var(--safe-t) - var(--safe-b)),900px);}
+  .lz.lz-big .lz-in:has(> .lz-acts.side) .lz-flow.strip{--cu:min(calc(100vh - 215px - var(--safe-t) - var(--safe-b)),calc((98vw - 440px) / 1.12),900px);}
+  .lz.lz-big .lz-in:has(.lz-flow.strip){padding-top:calc(var(--safe-t) + 58px);padding-bottom:calc(var(--safe-b) + 8px);}   /* clear of the turn banner */
 }
 
 /* Sheets used by this game */
@@ -9763,7 +9771,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     tiltT.raf = moving && !document.hidden ? requestAnimationFrame(tiltFrame) : 0;
   }
   function wakeTilt() { if (!tiltT.raf && tiltT.ov && tiltT.ov.isConnected) tiltT.raf = requestAnimationFrame(tiltFrame); }
-  // Phones: double-tap the big card to fold the details away so the card fills the screen; again to bring them back
+  // Phones: double-tap the big card to fold the details away so the card fills the screen; again to bring them back.
+  // Sideways (iPads, computers): double-tap grows the cards to the screen's height, the details staying on the left
   function phoneZoom() { return !(window.matchMedia && matchMedia('(min-width:900px) and (orientation:landscape)').matches); }
   // Double-tap a card to roll the details away for a bigger look, and again to bring them back. A tap is a quick press
   // that barely moves (a swipe through the hand is not one); two within a beat, close together, make a double tap.
@@ -9771,11 +9780,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var x0 = 0, y0 = 0, t0 = 0, last = null;
     elm.addEventListener('pointerdown', function (e) { if (e.button > 0) return; x0 = e.clientX; y0 = e.clientY; t0 = Date.now(); });
     elm.addEventListener('pointerup', function (e) {
-      if (!t0 || !phoneZoom() || (ok && !ok())) { last = null; return; }
+      if (!t0 || (ok && !ok())) { last = null; return; }
       var now = Date.now(), tap = now - t0 < 350 && Math.abs(e.clientX - x0) < 12 && Math.abs(e.clientY - y0) < 12; t0 = 0;
       if (!tap) { last = null; return; }
       if (last && now - last.t < 360 && Math.abs(e.clientX - last.x) < 40 && Math.abs(e.clientY - last.y) < 40) {
-        last = null; var ov = getOv(); if (!ov) return; elm._held = now; Kit.haptic('medium'); toggleLzMin(ov);
+        last = null; var ov = getOv(); if (!ov) return; elm._held = now; Kit.haptic('medium'); if (phoneZoom()) toggleLzMin(ov); else toggleLzBig(ov);
       } else last = { t: now, x: e.clientX, y: e.clientY };
     });
     elm.addEventListener('pointercancel', function () { t0 = 0; last = null; });
@@ -9786,6 +9795,30 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var bz = function (a, b, u) { return 3 * a * u * (1 - u) * (1 - u) + 3 * b * u * u * (1 - u) + u * u * u; }, lo = 0, hi = 1, u = t;
     for (var i = 0; i < 30; i++) { u = (lo + hi) / 2; if (bz(x1, x2, u) < t) lo = u; else hi = u; }
     return bz(y1, y2, u);
+  }
+  // Sideways big look: everything glides from where it was to where it lands (the cards grow from their old size)
+  function toggleLzBig(ov) {
+    var big = !ov.classList.contains('lz-big'); ui.lzBig = big;
+    Kit.sfx('tap'); if (Kit.haptic) Kit.haptic('light');
+    var parts = [].slice.call(ov.querySelectorAll('.lz-in > .lz-flow, .lz-in > .lz-info, .lz-in > .lz-acts'));
+    var cardOf = function () { return ov.querySelector('.lz-fc.focus') || ov.querySelector('.lz-card'); };
+    var c0 = cardOf(), a = c0 && c0.getBoundingClientRect(), was = parts.map(function (x) { return x.getBoundingClientRect(); });
+    ov.classList.toggle('lz-big', big);
+    if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure();
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+    var c1 = cardOf(), b = c1 && c1.getBoundingClientRect(), ease = 'cubic-bezier(.3,1.25,.5,1)';
+    parts.forEach(function (x, i) {
+      var r0 = was[i], r1 = x.getBoundingClientRect(); if (!r0.width || !r1.width) return;
+      if (x.classList.contains('lz-flow') && a && b && b.width) {
+        // the cards scale about the front card's top-left corner, from their old size to the new
+        var fr = x.getBoundingClientRect(); x.style.transformOrigin = (b.left - fr.left) + 'px ' + (b.top - fr.top) + 'px';
+        var an = x.animate([{ transform: 'translate(' + (a.left - b.left).toFixed(1) + 'px,' + (a.top - b.top).toFixed(1) + 'px) scale(' + (a.width / b.width).toFixed(4) + ')' }, { transform: 'none' }], { duration: 480, easing: ease });
+        an.onfinish = an.oncancel = function () { x.style.transformOrigin = ''; };
+        return;
+      }
+      var dx = r0.left - r1.left, dy = r0.top - r1.top;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) x.animate([{ transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)' }, { transform: 'none' }], { duration: 480, easing: ease });
+    });
   }
   function toggleLzMin(ov) {
     if (ov._rolling) return;
@@ -9937,9 +9970,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var swapping = (nav && nav.dir && $$('.lz').length) || quiet, slid = flowSlid, keep = slid ? flowKeep : null;
     flowSlid = false; flowKeep = null;
     // moving to the next card keeps the details rolled away if you'd rolled them (a fresh look opens with them showing)
-    var wasMin = (swapping || keep) && !!$('.lz.lz-min');
+    var wasMin = (swapping || keep) && !!$('.lz.lz-min'), wasBig = (swapping || keep) && !!$('.lz.lz-big');
     closeZoom();
-    var ov = el('div', { class: 'lz' + (swapping || keep ? ' noanim show' : '') + (wasMin ? ' lz-min' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
+    var ov = el('div', { class: 'lz' + (swapping || keep ? ' noanim show' : '') + (wasMin ? ' lz-min' : '') + (wasBig ? ' lz-big' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
     var inner = el('div', { class: 'lz-in' });
     if (ui.rollW) ov.style.setProperty('--roll-w', ui.rollW + 'px');
     var F = null, card = null;
@@ -13323,6 +13356,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       else if (g) { g.classList.toggle('out', pz); g.classList.toggle('side', !pz); ov.classList.toggle('has-acts', pz); }
       ov.classList.remove('lz-fit'); ov.style.removeProperty('--cufit');
       ui.fitCu = 0; ui.fitKey = null; ui.fitDone = false;
+      // the bigger look carries over: details rolled away when stacked, the big cards when side by side
+      if (!pz && ov.classList.contains('lz-min')) { ov.classList.remove('lz-min'); ov.classList.add('lz-big'); }
+      else if (pz && ov.classList.contains('lz-big')) { ov.classList.remove('lz-big'); ov.classList.add('lz-min'); }
     }
     if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure();
     requestAnimationFrame(function () { fitLz(ov); });
