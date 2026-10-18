@@ -352,6 +352,16 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
     linear-gradient(to top,color-mix(in srgb,var(--inkc) 78%,transparent) 0,color-mix(in srgb,var(--inkc) 30%,transparent) 8%,transparent 18%);
   box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--inkc) 75%,#fff),inset 0 0 calc(var(--cu) * .15) color-mix(in srgb,var(--inkc) 50%,transparent);}
 .lz-card.wet img,.lz-fc.wet img{filter:saturate(.92) brightness(.97);}
+/* A card in the inkwell, peeked at: washed in ink from the bottom up (the same ink as a card going into the well) */
+.lz-card .inkw,.lz-fc .inkw{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;mix-blend-mode:multiply;
+  background:linear-gradient(0deg,rgba(14,58,160,.9) 0%,rgba(30,104,220,.72) 30%,rgba(70,150,250,.55) 60%,rgba(90,170,255,.45) 100%);
+  box-shadow:inset 0 0 0 2px rgba(120,190,255,.55),inset 0 0 calc(var(--cu) * .12) rgba(40,120,230,.6);}
+.lz-card.inkd img,.lz-fc.inkd img{filter:saturate(.45) brightness(.95);}
+.lz-card.inkd-used img,.lz-fc.inkd-used img{filter:saturate(.35) brightness(.68);}
+.inkpk{display:inline-flex;align-items:center;gap:7px;margin:0 0 10px;padding:5px 11px 5px 9px;border-radius:999px;font-size:.8rem;font-weight:800;color:#e4f3ff;
+  background:rgba(70,150,240,.16);box-shadow:inset 0 0 0 1px rgba(120,190,255,.45);}
+.inkpk i{width:12px;height:13px;flex:none;background:#7cc4ff;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);}
+.inkpk.used i{background:rgba(124,196,255,.35);}
 /* The table's light: one band of light across the whole table that moves as the phone tilts. Each card shows the
    part of it that falls on that card, so the shine sits on a few cards and slides on to others */
 .lp-board .lc > .bsh{position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;mix-blend-mode:screen;
@@ -9298,6 +9308,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (k === 'log') showLog();
     else if (k === 'disc') showDiscard(pi);
     else if (k === 'deck') { if (S.P[pi].deckL.length && topFaceUp(pi)) zoomDef(DD(S.P[pi].deckL[0])); else Kit.toast(S.P[pi].name + ': ' + plural(S.P[pi].deckL.length, 'card') + ' left in deck'); }
+    else if (k === 'ink' && S.P[pi].ink.length) showInk(pi);
     else if (k === 'ink') Kit.toast(S.P[pi].name + ': ' + wellReady(pi) + ' of ' + S.P[pi].ink.length + ' ink ready' + (dropsOf(pi) ? ' + ' + plural(dropsOf(pi), 'ink drop') : '') + (canAct() && pi === S.cur ? (S.P[pi].inked ? '. You already inked this turn.' : '. Drag a card here to ink it.') : ''));
     else if (k === 'lore') loreLedger(pi);
   }
@@ -10000,6 +10011,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : '') + (prSpecial(artOf(d)) ? ' foil' : '') + (swapping && nav.dir ? (nav.dir > 0 ? ' in-r' : ' in-l') : ''), 'data-r': rarKey(artOf(d)) });
       card.appendChild(artEl(d, true));
       wetFx(card, nav && nav.list ? nav.list[nav.i] : opt.u);
+      if (nav && nav.ctx === 'ink') inkWash(card, nav.list[nav.i]);
       inner.appendChild(el('div', { class: 'lz-flow' + (d.t === 'location' ? ' loc' : '') }, [card]));
       if (!opt.tapClose) { holdRoll(card, function () { return ov; }); card.addEventListener('click', function (e) { if (phoneZoom()) e.stopPropagation(); }); }
     }
@@ -10189,6 +10201,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       b.appendChild(artEl(d, true));
       if (nav0.list) wetFx(b, nav0.list[j]);
       if (nav0.ctx === 'mull') b.appendChild(el('span', { class: 'mtag', text: 'Putting back' }));
+      if (nav0.ctx === 'ink') inkWash(b, nav0.list[j]);
       F.el.appendChild(b);
       return (F.items[j] = b);
     }
@@ -10415,6 +10428,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // A card's details panel, as the card view shows it (used to measure how tall it will be)
   function infoOf(x) { var dx = DD(x), zx = zoneOf(x); return headHTML(dx) + defMeta(dx, x) + statusHTML(x, zx) + '<div class="rtext">' + rulesHTML(dx) + kwHelpHTML(dx, zx && zx.z === 'board' ? x : null) + '</div>'; }
   // A character still drying on the table: its big card and carousel card get the wet ink and drips too
+  function inkWash(node, u) { node.classList.add('inkd'); if (u && S.cards[u] && C(u).ex) node.classList.add('inkd-used'); node.appendChild(el('span', { class: 'inkw', 'aria-hidden': 'true' })); }
   function wetFx(node, u) {
     if (!S || !u || !S.cards[u] || S.phase !== 'play' || C(u).dry || DD(u).t !== 'character') return;
     var z = zoneOf(u); if (!z || z.z !== 'board') return;
@@ -11225,6 +11239,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (canAct() && pi === S.cur && !P.cpu && !!boardOp(pi, 'inkFromDisc') && inksLeft(pi) > 0 && (DD(u).k || allInkable(pi))) dacts.push({ label: 'Put into inkwell', go: function () { inkFromDiscard(pi, u); } });
     zoomDef(DD(u), dacts, { i: i, n: pile.length, list: pile, ctx: 'discard', dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < pile.length) discZoom(pi, pile[j], step); }, peek: function (k) { var x = pile[i + k]; return x ? DD(x) : null; } });
   }
+  // A peek into an inkwell: the cards stay face down on the table, but tapping the well shows what went in (newest
+  // first), washed in ink, since they can't come back into play. Used ink (exerted this turn) sits a shade darker
+  function inkZoom(pi, u, dir) {
+    var P = S.P[pi], well = P.ink.slice().reverse(), i = well.indexOf(u); if (i < 0) return;
+    var d = DD(u), used = C(u).ex;
+    var head = '<div class="inkpk' + (used ? ' used' : '') + '"><i></i>' + esc(P.name) + '’s inkwell · ' + (used ? 'used this turn' : 'ready') + '</div>';
+    zoomShell(d, head + headHTML(d) + defMeta(d) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', [], null,
+      { i: i, n: well.length, list: well, ctx: 'ink', dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < well.length) inkZoom(pi, well[j], step); }, peek: function (k) { var x = well[i + k]; return x ? DD(x) : null; } });
+  }
+  function showInk(pi) { var P = S.P[pi]; if (P.ink.length) inkZoom(pi, P.ink[P.ink.length - 1]); }
   // The discard pile opens as a card carousel (newest on top), with a thumbnail strip of the whole pile
   function showDiscard(pi) {
     var P = S.P[pi];
