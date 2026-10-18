@@ -243,6 +243,7 @@
     close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
     lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>',
     swap: '<path d="M7 4v16"/><path d="m3 8 4-4 4 4"/><path d="M17 20V4"/><path d="m21 16-4 4-4-4"/>',
     hand: '<path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
     eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
@@ -336,7 +337,7 @@
 
   // ── Sound: tiny synthesized effects, no files to download ─────────────────
   var actx = null;
-  function soundOn() { return lsGet('gn_sound', '1') === '1'; }
+  function soundOn() { return lsGet('gn_sound', '1') === '1' && !timerLocked; }   // (quiet while the game timer has locked play)
   function ctx() {
     if (!actx) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; actx = new C(); }
     if (actx.state === 'suspended') actx.resume();
@@ -2233,6 +2234,97 @@
     var peek = setInterval(function () { if (document.visibilityState === 'visible' && FGHSync.linkPeek) FGHSync.linkPeek(); }, 3000);
     sheet({ title: 'Request sent', node: node, actions: [{ label: 'Done', primary: true }], onClose: function () { clearInterval(peek); window.removeEventListener('fghlinks', onLinks); } });
   }
+  // ── Game timer: a countdown set in Preferences that ends gaming on this device ──
+  // fgh_timer {end, lock, mins} (this device, whoever is signed in). Nothing shows until the last two minutes: then
+  // a small countdown sits in the game's top bar (or a slim pill at the top of the screen where there's no bar), out
+  // of the game's way. At zero: a chime and "Time's up". With lock on, there's a minute's grace to finish up, then a
+  // screen over everything says game time is over; holding Unlock for two seconds ends the timer.
+  var TIMER = 'fgh_timer', timerLocked = false, tmEl = null, tmLock = null, tmLast = null, tmT = 0;
+  function timerGet() { try { var t = JSON.parse(LS.getItem(TIMER) || 'null'); return t && t.end ? t : null; } catch (e) { return null; } }
+  function timerSet(t) { try { if (t) LS.setItem(TIMER, JSON.stringify(t)); else LS.removeItem(TIMER); } catch (e) {} timerTick(); }
+  function clockText(ms) { var s = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return (h ? h + ':' + ('0' + m).slice(-2) : m) + ':' + ('0' + x).slice(-2); }
+  function timerChip(text, cls) {
+    var host = gbarEl;
+    if (tmEl && host && !host.contains(tmEl)) { tmEl.remove(); tmEl = null; }   // the page's bar arrived after the pill: move into it
+    if (!tmEl) {
+      tmEl = el('div', { class: 'k-timer', role: 'timer', 'aria-live': 'polite' });
+      if (host) { var at = host.querySelector('.icon-btn'); host.insertBefore(tmEl, at); } else { tmEl.classList.add('float'); doc.body.appendChild(tmEl); }
+    }
+    tmEl.className = 'k-timer' + (host ? '' : ' float') + (cls ? ' ' + cls : '');
+    tmEl.innerHTML = icon('clock') + '<b>' + esc(text) + '</b>';
+  }
+  function timerChipOff() { if (tmEl) { tmEl.remove(); tmEl = null; } }
+  function timerLockOn() {
+    if (tmLock) return;
+    timerLocked = true;
+    var hold = el('button', { type: 'button', class: 'k-lock-hold', html: '<i></i><span>Hold to unlock</span>' }), t0 = 0, ht = 0;
+    function down(e) { e.preventDefault(); hold.classList.add('on'); t0 = Date.now(); ht = setTimeout(function () { haptic('success'); timerSet(null); }, 2000); }
+    function up() { hold.classList.remove('on'); clearTimeout(ht); }
+    hold.addEventListener('pointerdown', down); ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (k) { hold.addEventListener(k, up); });
+    tmLock = el('div', { class: 'k-lock', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Game time is over' }, [
+      el('div', { class: 'k-lock-in' }, [el('span', { class: 'k-lock-ic', html: icon('moon') }), el('h2', { text: 'Game time’s over' }), el('p', { text: 'Time to put the games away for now.' }), hold])]);
+    // nothing underneath can be tapped, typed into or scrolled
+    ['pointerdown', 'click', 'touchstart', 'keydown', 'wheel'].forEach(function (k) { tmLock.addEventListener(k, function (e) { if (!hold.contains(e.target)) { e.stopPropagation(); if (k !== 'touchstart' && k !== 'pointerdown') e.preventDefault(); } }, { capture: true, passive: false }); });
+    doc.body.appendChild(tmLock);
+    try { doc.activeElement && doc.activeElement.blur && doc.activeElement.blur(); } catch (e) {}
+    try { window.dispatchEvent(new Event('kit:locked')); } catch (e) {}
+  }
+  function timerLockOff() { timerLocked = false; if (tmLock) { tmLock.remove(); tmLock = null; } }
+  function timerTick() {
+    clearTimeout(tmT);
+    var t = timerGet();
+    if (!t) { timerChipOff(); timerLockOff(); tmLast = null; return; }
+    var left = t.end - Date.now(), grace = 60000;
+    if (left > 120000) { timerChipOff(); timerLockOff(); }
+    else if (left > 0) {
+      timerChip(clockText(left), left <= 30000 ? 'low' : '');
+      if (tmLast !== 'two') { tmLast = 'two'; sfx('tick'); haptic('light'); toast('2 minutes of game time left'); }
+    } else if (t.lock && left > -grace) {
+      timerChip('Finish up ' + clockText(left + grace), 'grace');
+      if (tmLast !== 'grace') { tmLast = 'grace'; sfx('turn'); haptic('medium'); toast('Time’s up: one more minute to finish up'); }
+    } else if (t.lock) { timerChipOff(); timerLockOn(); }
+    else {
+      timerChip('Time’s up', 'up');
+      if (tmLast !== 'up') { tmLast = 'up'; sfx('turn'); haptic('medium'); toast('Time’s up'); }
+      if (left < -60000) { timerSet(null); return; }   // the reminder clears itself after a minute
+    }
+    tmT = setTimeout(timerTick, left > 130000 ? Math.min(30000, left - 120000) : 500);
+  }
+  doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') timerTick(); });
+  doc.addEventListener('keydown', function (e) { if (timerLocked) { e.stopPropagation(); e.preventDefault(); } }, true);   // locked: no keys reach the game
+  window.addEventListener('storage', function (e) { if (e.key === TIMER) timerTick(); });   // set or stopped in another tab
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', timerTick); else setTimeout(timerTick, 0);
+  // Preferences: pick how long; while it runs, how long is left, more time, or stop
+  function timerPanel() {
+    var box = el('div', { class: 'k-tmr' }), iv = 0;
+    function lockPref() { return lsGet('fgh_timer_lock', '1') === '1'; }
+    function paint() {
+      clearInterval(iv); box.innerHTML = '';
+      var t = timerGet(), lockOn = t ? !!t.lock : lockPref();
+      var lockRow = el('button', { type: 'button', class: 'k-tmr-lock', role: 'switch', 'aria-checked': String(lockOn) }, [
+        el('span', { class: 'grow' }, [el('b', { text: 'Lock games when time’s up' }), el('small', { text: lockOn ? 'One more minute to finish up, then games close' : 'Just a reminder when time’s up' })]), el('i', { class: 'sw' })]);
+      lockRow.onclick = function () { var v = !(t ? t.lock : lockPref()); lsSet('fgh_timer_lock', v ? '1' : '0'); if (t) { t.lock = v; timerSet(t); } sfx('tap'); paint(); };
+      if (!t) {
+        var row = el('div', { class: 'k-tmr-picks' });
+        [[15, '15 min'], [30, '30 min'], [45, '45 min'], [60, '1 hour'], [90, '1½ hours'], [120, '2 hours']].forEach(function (p) {
+          row.appendChild(el('button', { type: 'button', class: 'chip', text: p[1], onclick: function () { timerSet({ end: Date.now() + p[0] * 60000, lock: lockPref(), mins: p[0] }); sfx('good'); haptic('light'); paint(); } }));
+        });
+        box.appendChild(el('p', { class: 'muted', style: { margin: '0 0 8px' }, text: 'Start a countdown for game time on this device. The time shows up in the last two minutes.' }));
+        box.appendChild(row);
+      } else {
+        var left = el('b', { class: 'k-tmr-left' }), when = el('small');
+        var head = el('div', { class: 'k-tmr-run' }, [el('span', { class: 'ic', html: icon('clock') }), el('span', { class: 'grow' }, [left, when]),
+          el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: '+15 min', onclick: function () { var x = timerGet(); if (!x) return; x.end = Math.max(x.end, Date.now()) + 15 * 60000; timerSet(x); sfx('tap'); paint(); } }),
+          el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Stop', onclick: function () { timerSet(null); sfx('tap'); paint(); } })]);
+        var upd = function () { var x = timerGet(); if (!x) { paint(); return; } var ms = x.end - Date.now(); left.textContent = ms > 0 ? clockText(ms) + ' left' : 'Time’s up'; when.textContent = 'Ends at ' + new Date(x.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
+        upd(); iv = setInterval(function () { if (!box.isConnected) { clearInterval(iv); return; } upd(); }, 1000);
+        box.appendChild(head);
+      }
+      box.appendChild(lockRow);
+    }
+    paint();
+    return box;
+  }
   // ── Game defaults: each game's own setup, set ahead of time ──
   // The list (profile menu) opens a game's page with ?defaults=1: its normal setup screen, saving instead of
   // starting (see EDIT_DEFAULTS at the top). The choices land in gn_setup_<id>, the same place a game remembers
@@ -2300,6 +2392,7 @@
     q.addEventListener('input', paint);
     paint();
     sheet({ title: 'Preferences', node: el('div', null, [
+        el('div', { class: 'label k-sec', text: 'Game timer' }), timerPanel(),
         el('div', { class: 'label k-sec', text: 'Home screen sections' }), ord,
         el('div', { class: 'label k-sec', text: 'Game defaults' }),
         el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Pick a game to set how it starts: who plays, the computer’s skill and its options. A game also remembers whatever you pick when you start it.' }), q, box]),
@@ -2799,7 +2892,7 @@
   window.Kit = {
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
-    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: defaultsSheet, cats: catsOrdered, catOn: catOn,
+    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: defaultsSheet, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
