@@ -330,7 +330,8 @@
   function place(c) {
     c.w.style.transform = 'translate3d(' + c.x.toFixed(1) + 'px,' + (G.base - G.ch + c.dy).toFixed(1) + 'px,0) scale(' + c.s.toFixed(3) + ')';
   }
-  window.addEventListener('resize', function () { if (S && R.felt && !busy) layout(); });
+  // also mid-shuffle: a move under way finishes on the new spots
+  window.addEventListener('resize', function () { if (S && R.felt && R.felt.isConnected) layout(); });
 
   function paintBoard() {
     var r = run(), rec = Math.max(record(S.lives).v, r.cleared);
@@ -423,7 +424,7 @@
         });
         if (t < 1) requestAnimationFrame(frame);
         else {
-          tracks.forEach(function (k) { S.slot[k.id] = k.to; k.c.dy = 0; k.c.s = 1; k.c.w.style.zIndex = 10; place(k.c); });
+          tracks.forEach(function (k) { S.slot[k.id] = k.to; k.c.x = G.x[k.to]; k.c.dy = 0; k.c.s = 1; k.c.w.style.zIndex = 10; place(k.c); });   // G.x: the table may have been re-laid out mid-move
           resolve();
         }
       }

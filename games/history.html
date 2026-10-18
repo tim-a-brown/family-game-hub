@@ -123,7 +123,7 @@ function line(r) {
 function when(t) { if (!t) return ''; var d = new Date(t); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
 function month(t) { return t ? new Date(t).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'Older'; }
 
-var WIDE = window.matchMedia('(min-width: 900px) and (orientation: landscape)'), cur = '';
+var WIDE = window.matchMedia('(min-width: 900px) and (orientation: landscape)'), cur = '', shownSheet = null;
 function paint() {
   var all = rows(), shown = all.filter(fits), wide = WIDE.matches;
   var top = app; top.innerHTML = '';
@@ -201,7 +201,12 @@ document.addEventListener('keydown', function (ev) {
   var nx = rows[Math.max(0, Math.min(rows.length - 1, i + (ev.key === 'ArrowDown' ? 1 : -1)))];
   if (nx && nx !== rows[i]) { ev.preventDefault(); nx.click(); nx.scrollIntoView({ block: 'nearest' }); }
 });
-WIDE.addEventListener ? WIDE.addEventListener('change', function () { paint(); }) : WIDE.addListener(function () { paint(); });
+// Turned sideways with a game's details open: they move into the pane beside the list
+function onWide() {
+  if (WIDE.matches && shownSheet) { cur = shownSheet.id; shownSheet.sh.close(); }
+  paint();
+}
+WIDE.addEventListener ? WIDE.addEventListener('change', onWide) : WIDE.addListener(onWide);
 function delPicked() {
   var list = Object.keys(picked).map(function (k) { return picked[k]; }); if (!list.length) return;
   Kit.confirm('Delete ' + list.length + (list.length === 1 ? ' game' : ' games') + ' from your history? This removes ' + (list.length === 1 ? 'it' : 'them') + ' on all your devices.', { ok: 'Delete', danger: true }).then(function (ok) {
@@ -213,7 +218,8 @@ function delPicked() {
 function detail(r) {
   if (!window.HistView || !HistView.ready) { Kit.loadHistView().then(function () { if (window.HistView) HistView.ready = true; detail(r); }); return; }
   var node = el('div', null, [Kit.historyDetail(r.e, { game: r.gid })]);
-  Kit.sheet({ title: title(r), node: node, actions: actions(r) });
+  var me = shownSheet = { id: r.key + '|' + r.id };
+  me.sh = Kit.sheet({ title: title(r), node: node, actions: actions(r), onClose: function () { if (shownSheet === me) shownSheet = null; } });
 }
 function actions(r) {
   var acts = [{ label: 'Close', cls: 'btn-soft' }];

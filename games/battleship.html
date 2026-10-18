@@ -685,10 +685,20 @@
     var go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', style: { 'margin-top': '10px' }, text: !NET && S.mode === '2p' && v === 0 ? 'Done: pass the phone' : 'Ready for battle', onclick: ready });
     go.disabled = !done;
     app.appendChild(go);
-    requestAnimationFrame(function () {
-      var sea = app.querySelector('.sea'); if (sea) dock.style.setProperty('--cell', Math.min(sea.getBoundingClientRect().width / N, 34) + 'px');
-    });
+    requestAnimationFrame(dockCell);
   }
+  // the dock's ships match the ocean's squares (measured; again when the device turns)
+  function dockCell() {
+    var sea = app.querySelector('.sea'), dock = app.querySelector('.dock'); if (sea && dock) dock.style.setProperty('--cell', Math.min(sea.getBoundingClientRect().width / N, 34) + 'px');
+  }
+  window.addEventListener('resize', function () {
+    dockCell();
+    // a ship being dragged takes the ocean's new square size
+    var sea = drag && app.querySelector('.sea'); if (!sea) return;
+    var k = sea.getBoundingClientRect().width / N / drag.cp, L = SHIPS[drag.k].s;
+    drag.cp *= k; drag.gx *= k; drag.gy *= k; drag.lift *= k;
+    if (drag.ghost) { drag.ghost.style.width = (drag.h ? L * drag.cp : drag.cp) + 'px'; drag.ghost.style.height = (drag.h ? drag.cp : L * drag.cp) + 'px'; }
+  });
   function renderBattle() {
     var over = S.phase === 'over', v = viewer(), q = 1 - v, me = S.players[v], foe = S.players[q];
     var cur = S.players[S.turn];

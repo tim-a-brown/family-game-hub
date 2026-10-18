@@ -511,9 +511,11 @@
     var c = isCompact();
     app.classList.toggle('cmp', c);
     if (SIDE.matches && R.railIn) {
-      if (!R.info) R.info = el('div', { class: 'rinfo' }, [el('div', { class: 'rstat' })]);
-      var st = R.info.firstChild;
-      R.info.insertBefore(R.head, st);
+      // filled afresh each time: arrange() runs again on every turn of the device and every render
+      if (!R.info) R.info = el('div', { class: 'rinfo' });
+      var st = el('div', { class: 'rstat' });
+      R.info.innerHTML = '';
+      R.info.appendChild(R.head); R.info.appendChild(st);
       [R.bankEl, R.msg, R.guide].forEach(function (n) { if (n) st.appendChild(n); });
       if (R.info.parentNode !== R.railIn) R.railIn.insertBefore(R.info, R.railIn.firstChild);
     } else {

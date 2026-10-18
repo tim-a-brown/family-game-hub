@@ -358,11 +358,13 @@
     }
     function finish() {
       if (over) return; over = true;
+      window.removeEventListener('resize', finish);
       cv.style.opacity = '0'; setTimeout(function () { cv.remove(); }, 520);
       ids.forEach(function (id) { if (cardEls[id]) cardEls[id].style.visibility = 'hidden'; });
       done();
     }
     cv.addEventListener('pointerdown', finish);
+    window.addEventListener('resize', finish);   // the canvas is drawn for this screen size: turning the device ends the show
     Kit.sfx('win');
     (function frame(t) {
       if (over) return;
@@ -603,7 +605,8 @@
     if (Date.now() - lastMove.t < 300 && lastMove.ids.indexOf(id) >= 0) return;
     tapCard(id);
   }
-  window.addEventListener('resize', function () { if (S && felt && felt.isConnected) { fit(); place(true); } });
+  // a card held mid-drag goes back home first (it was measured for the old shape), then the table re-fits
+  window.addEventListener('resize', function () { if (S && felt && felt.isConnected) { onCancel(); fit(); place(true); } });
   window.addEventListener('pagehide', save);
   document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
 

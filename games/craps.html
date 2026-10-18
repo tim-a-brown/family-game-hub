@@ -755,6 +755,7 @@
     busy = false;
     S.anim = null; save();
     R.d1.dataset.v = res.d[0]; R.d2.dataset.v = res.d[1];
+    if (turned) { turned = false; placeDice(false); }   // turned mid-roll: the dice landed in the old box
     // Pay bubbles over winning bets (before repainting the stacks)
     res.won.forEach(function (w) {
       var a = R.anchors[w.id] || R.anchors[w.id.replace(/Odds/, '')]; if (!a) return;
@@ -1029,7 +1030,8 @@
     }
     render();
   } else showSetup();
-  window.addEventListener('resize', function () { if (S && R.puck && !busy) { paintPuck(); placeDice(false); } });
+  var turned = false;
+  window.addEventListener('resize', function () { if (S && R.puck) { if (busy) turned = true; else { paintPuck(); placeDice(false); } } });
   window.addEventListener('pageshow', function () { if (S && R.bal && !busy) paintBank(); });
 })();
 </script>

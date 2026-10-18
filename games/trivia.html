@@ -1312,6 +1312,9 @@ body{overflow-x:hidden;}
 
   // ── View ──
   var VW = null, raf = 0;
+  // phones: four full-width stacked tiles (long answers fit, big tap targets); wider screens: 2 x 2 unless an answer is long
+  function vCols(d) { d.tiles.classList.toggle('one', innerWidth < 600 || d.longA); }
+  window.addEventListener('resize', function () { if (VW && VW.d && VW.d.tiles) vCols(VW.d); });   // turned mid-question
   function vNew(me, solo) {
     cdStop();
     VW = { me: me, solo: !!solo, ro: [], sc: {}, prev: {}, st: 0, q: null, t0: 0, pick: -1, pickE: 0, pickPts: 0, locked: false, ph: '', a: [], l: [], log: [], rv: null, d: null, tm: [], cfg: {}, ended: false, started: Date.now() };
@@ -1373,8 +1376,8 @@ body{overflow-x:hidden;}
       nb ? el('span', { class: 'bon', title: 'Streak bonus if you get this one right', html: Kit.icon('flame') + '+' + nb }) : null
     ]);
     stage.appendChild(d.meter);
-    // phones: four full-width stacked tiles (long answers fit, big tap targets); wider screens: 2 x 2 unless an answer is long
-    d.tiles = el('div', { class: 'tiles' + (innerWidth < 600 || Math.max.apply(null, m.o.map(function (o) { return String(o).length; })) > 26 ? ' one' : '') });
+    d.longA = Math.max.apply(null, m.o.map(function (o) { return String(o).length; })) > 26;
+    d.tiles = el('div', { class: 'tiles' }); vCols(d);
     d.tile = m.o.map(function (o, k) {
       var b = el('button', { type: 'button', class: 'tile blank', disabled: true, style: { '--tc': TILE[k] }, 'aria-label': 'ABCD'.charAt(k) + ': ' + o, onclick: function () { vPick(k); } }, [
         el('span', { class: 'L', text: 'ABCD'.charAt(k) }), el('span', { class: 't', text: o }), el('span', { class: 'chip' }), el('span', { class: 'cnt' })

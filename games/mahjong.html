@@ -555,9 +555,14 @@ body{overflow:hidden;}
     // Small screens and the big layouts: suggest zooming or turning the phone
     var wide = POS.reduce(function (m, p) { return Math.max(m, p.x); }, 0) > 20;
     if (wide && innerWidth < 600) {
-      tipEl.innerHTML = Kit.icon('hand') + (innerHeight > innerWidth ? 'Pinch to zoom, or turn your phone sideways' : 'Pinch to zoom in');
+      tipText();
       tipEl.classList.remove('hide'); setTimeout(function () { tipEl.classList.add('hide'); }, 4500);
     }
+  }
+  // (again when the device turns while it shows: sideways phones don't need the tip)
+  function tipText() {
+    if (innerWidth >= 600) { tipEl.classList.add('hide'); return; }
+    tipEl.innerHTML = Kit.icon('hand') + (innerHeight > innerWidth ? 'Pinch to zoom, or turn your phone sideways' : 'Pinch to zoom in');
   }
   var G = {};
   function layout() {
@@ -671,7 +676,7 @@ body{overflow:hidden;}
     vp.addEventListener('dblclick', function (e) { e.preventDefault(); });
   }
   var rzT = 0;
-  window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { if (S && vp && vp.isConnected) { Z.s = 1; layout(); setZoom(1, 0, 0, true); } }, 80); });
+  window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { if (S && vp && vp.isConnected) { Z.s = 1; layout(); setZoom(1, 0, 0, true); if (tipEl && !tipEl.classList.contains('hide')) tipText(); } }, 80); });
 
   // ── Rules (built after the tile faces exist so the sheet can show them) ───
   var RULES =

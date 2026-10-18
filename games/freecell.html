@@ -435,10 +435,15 @@
   function cascade(ids, done) {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return done();
     var dpr = Math.min(window.devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
-    var cv = el('canvas', { class: 'cascade' }); cv.width = W * dpr; cv.height = H * dpr;
-    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    var cv = el('canvas', { class: 'cascade' });
     document.body.appendChild(cv);
-    var g = cv.getContext('2d'); g.scale(dpr, dpr);
+    var g = cv.getContext('2d');
+    // the screen turned: the canvas and the floor the cards bounce on follow the new window
+    function size() {
+      W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr;
+      cv.style.width = W + 'px'; cv.style.height = H + 'px'; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    size(); window.addEventListener('resize', size);
     var cw = G.cw, ch = G.ch, live = [], i = 0, last = 0, t0 = performance.now(), over = false;
     function img(code) {
       var c = document.createElement('canvas'); c.width = Math.ceil(cw * dpr); c.height = Math.ceil(ch * dpr);
@@ -447,6 +452,7 @@
     var done2 = false;
     function finish() {
       if (done2) return; done2 = true; over = true;
+      window.removeEventListener('resize', size);
       cv.style.opacity = '0'; setTimeout(function () { cv.remove(); }, 520);
       ids.forEach(function (id) { if (cardEls[id]) cardEls[id].style.visibility = 'hidden'; });
       done();
@@ -676,7 +682,13 @@
     if (d) return doMove(src, d);
     nudge(cards); tooMany(src);
   }
-  window.addEventListener('resize', function () { if (S && felt && felt.isConnected) { fit(); place(true); } });
+  window.addEventListener('resize', function () {
+    if (!S || !felt || !felt.isConnected) return;
+    // cards that already leapt off in the winning cascade stay gone
+    var gone = []; for (var id in cardEls) if (cardEls[id].style.visibility === 'hidden') gone.push(id);
+    fit(); place(true);
+    gone.forEach(function (id) { cardEls[id].style.visibility = 'hidden'; });
+  });
   window.addEventListener('pagehide', save);
   document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
 

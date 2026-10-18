@@ -1405,14 +1405,14 @@ var LG = (function () {
     play.appendChild(panel);
     app.appendChild(play);
     wire();
-    layout();
+    wasWide = null; layout();
     render(true); renderClues(); startClock();
     requestAnimationFrame(layout);
   }
   var toolEls = {}, ansCells = [];
   function setTab(t) {
-    var a = document.getElementById('secA'), c = document.getElementById('secC'); if (!a) return;
-    a.hidden = t !== 'a'; c.hidden = t === 'a';
+    var a = document.getElementById('secA'), c = document.getElementById('secC'), w = app.classList.contains('wide'); if (!a) return;
+    a.hidden = !w && t !== 'a'; c.hidden = !w && t === 'a';
     document.getElementById('tabA').classList.toggle('on', t === 'a'); document.getElementById('tabC').classList.toggle('on', t !== 'a');
   }
   function strike(ci) {
@@ -1449,11 +1449,18 @@ var LG = (function () {
   }
   function isWide() { return window.innerWidth > window.innerHeight && window.innerWidth >= 700; }
   function touchy() { try { return matchMedia('(pointer:coarse)').matches; } catch (e) { return false; } }
-  var minTap = 24;
+  var minTap = 24, wasWide = null;
   function layout() {
     if (!gridEl || !S) return;
     var wide = isWide();
     app.classList.toggle('wide', wide);
+    // turned sideways or back: the story and tabs as a page started in this shape has them (wide shows both sections)
+    if (wasWide !== null && wasWide !== wide) {
+      var sty = document.getElementById('story');
+      if (sty && !wide && /[12]/.test(S.m)) { sty._done = true; sty.classList.add('short'); } else if (sty) sty.classList.remove('short');
+    }
+    if (wasWide !== wide) setTab(!wide && S.done ? 'a' : document.getElementById('tabA').classList.contains('on') ? 'a' : 'c');
+    wasWide = wide;
     var k = P.k, n = P.n, C = (k - 1) * n;
     var page = document.getElementById('page'), tools = document.getElementById('tools');
     var availW = (wide ? page.parentNode.clientWidth - Math.min(400, Math.max(300, page.parentNode.clientWidth * 0.34)) - 22 : app.clientWidth - 20) - 16;
@@ -1579,7 +1586,23 @@ var LG = (function () {
     paintMode();
   }
   var resizeT = 0;
-  window.addEventListener('resize', function () { clearTimeout(resizeT); resizeT = setTimeout(function () { if (gridEl && S && document.body.contains(gridEl)) { layout(); requestAnimationFrame(layout); } }, 80); });   // two passes, as when the grid is built
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(function () {
+      if (!gridEl || !S || !document.body.contains(gridEl)) return;
+      // zoomed in: the selected square (or else the one in the middle) stays in view; two passes, as when the grid is built
+      var mid = zoomCs ? viewMid() : null;
+      layout();
+      requestAnimationFrame(function () { layout(); if (mid && focus) centerOn(focus, false); else if (mid) viewMid(mid); });
+    }, 80);
+  });
+  function viewMid(set) {
+    var fx = parseFloat(gridEl.style.getPropertyValue('--lg-cw')) + parseFloat(gridEl.style.getPropertyValue('--lg-lw'));
+    var fy = parseFloat(gridEl.style.getPropertyValue('--lg-ch')) + parseFloat(gridEl.style.getPropertyValue('--lg-lh'));
+    var cx = gview.clientWidth / 2, cy = gview.clientHeight / 2;
+    if (!set) return [(gview.scrollLeft + cx - fx) / curCs, (gview.scrollTop + cy - fy) / curCs];
+    gview.scrollLeft = set[0] * curCs + fx - cx; gview.scrollTop = set[1] * curCs + fy - cy;
+  }
 
   // ── Drawing ───────────────────────────────────────────────────────────────
   // pencil strokes: a few hand-drawn variants, picked per square so the page doesn't look stamped

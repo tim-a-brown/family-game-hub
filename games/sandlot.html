@@ -1592,13 +1592,14 @@
     if (markU != null && S.last && S.last.d) d = S.last.d;
     V.chart.innerHTML = '';
     if (!d) return;
-    var sg = segs(d), lab = [], W = V.chart.clientWidth || 340;
+    var sg = segs(d), lab = [];
     sg.forEach(function (x) {
-      var px = x.v * W, full = px >= x.g.l.length * (W > 480 ? 9.5 : 6.6) + 6;
       var pct = Math.round(x.v * 100);
-      V.chart.appendChild(el('span', { class: 'sg' + (hitKey === x.g.k ? ' hit' : ''), style: { width: (x.v * 100).toFixed(2) + '%', background: x.g.c }, text: full ? x.g.l : px >= 11 ? (x.g.k === 'W' ? 'BB' : x.g.l.charAt(0)) : '' }));
+      var s = el('span', { class: 'sg' + (hitKey === x.g.k ? ' hit' : ''), style: { width: (x.v * 100).toFixed(2) + '%', background: x.g.c } });
+      s._sg = x; V.chart.appendChild(s);
       lab.push(x.g.l + ' ' + pct + '%');
     });
+    chartText();
     V.chart.setAttribute('aria-label', 'Swing chart: ' + lab.join(', '));
     if (markU != null) {
       if (altU != null) V.chart.appendChild(el('span', { class: 'mk alt', style: { left: (altU * 100).toFixed(1) + '%' } }));
@@ -1606,6 +1607,16 @@
       requestAnimationFrame(function () { requestAnimationFrame(function () { mk.style.left = (markU * 100).toFixed(1) + '%'; }); });
     }
   }
+  // each part of the chart is named in full when it's wide enough (again when the device turns)
+  function chartText() {
+    if (!V || !V.chart) return;
+    var W = V.chart.clientWidth || 340;
+    Array.prototype.forEach.call(V.chart.querySelectorAll('.sg'), function (s) {
+      var x = s._sg, px = x.v * W, full = px >= x.g.l.length * (W > 480 ? 9.5 : 6.6) + 6;
+      s.textContent = full ? x.g.l : px >= 11 ? (x.g.k === 'W' ? 'BB' : x.g.l.charAt(0)) : '';
+    });
+  }
+  window.addEventListener('resize', chartText);
   function paintTick(fresh) {
     V.tick.innerHTML = '';
     V.tick.classList.toggle('new', !!fresh);
