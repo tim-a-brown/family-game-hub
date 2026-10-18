@@ -7861,12 +7861,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return matById(S.P[pi].mat) || matById(pi === bottomPi() ? myMat() : 'crimson') || matById('midnight');
   }
   function seatWho(pi) { var P = S.P[pi]; return { name: P.name, cpu: !!P.cpu, color: P.color }; }
-  // the opponent's mat faces them, like a real one across the table
+  // the opponent's mat faces them, like a real one across the table, only with "Flip opponents' cards" on (the same
+  // setting turns their cards); otherwise it's upright like everything else on your screen
   function paintMat(n, pi, top) {
-    if (!n) return; var m = matOf(pi);
-    var who = seatWho(pi), k = m.id + (m.art && imgIsBad(m.url) ? '!' : '') + (m.u === 'v' ? '|' + avSig(who) : '');
+    if (!n) return; var m = matOf(pi), flip = !!top && !!flipOpp;
+    var who = seatWho(pi), k = m.id + (m.art && imgIsBad(m.url) ? '!' : '') + (m.u === 'v' ? '|' + avSig(who) : '') + (flip ? '^' : '');
     if (n.dataset.m === k) return;
-    n.dataset.m = k; n.dataset.mid = m.id; n.classList.toggle('flip', !!top); matFill(n, m, { who: who, stars: 7 });
+    n.dataset.m = k; n.dataset.mid = m.id; n.classList.toggle('flip', flip); matFill(n, m, { who: who, stars: 7 });
     if (m.art) probeArt(m.url, function () { n.dataset.m = ''; paintMat(n, pi, top); });
   }
   function matSwatch(m, on, click, o, label) {
