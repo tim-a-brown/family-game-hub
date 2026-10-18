@@ -271,8 +271,9 @@ var Spin = (function () {
       return 'rgb(' + Math.round(r + (t - r) * p) + ',' + Math.round(g + (t - g) * p) + ',' + Math.round(b + (t - b) * p) + ')';
     }
     function WFONT(px) { return '400 ' + px + "px 'Bungee', system-ui, -apple-system, sans-serif"; }
-    // the wheel is drawn on a canvas, so draw it again once the font has arrived
-    if (document.fonts && document.fonts.load) document.fonts.load("20px 'Bungee'").then(function () { try { draw(); } catch (e) {} }).catch(function () {});
+    // the wheel is drawn on a canvas, so draw it again once the font has arrived (and size it again: the filters
+    // above it can take another line in their own font)
+    if (document.fonts && document.fonts.load) document.fonts.load("20px 'Bungee'").then(function () { return document.fonts.ready; }).then(function () { try { if (root.isConnected) layout(); } catch (e) {} }).catch(function () {});
     function draw() {
       var Sz = cv.width, N = n(), c = ctx;
       c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, Sz, Sz);

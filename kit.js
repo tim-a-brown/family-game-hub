@@ -454,6 +454,9 @@
     if (blur) try { var a = doc.activeElement; if (a && a !== doc.body && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) a.blur(); } catch (e) {}
     function fix() { if (!n.isConnected) return; n.style.transform = ''; var t = n.getBoundingClientRect().top; if (Math.abs(t) > 1) n.style.transform = 'translateY(' + (-t) + 'px)'; }
     requestAnimationFrame(fix); setTimeout(fix, 350); setTimeout(fix, 900);
+    // and again after the device turns (a shift measured for the old shape would leave it off the screen)
+    function onR() { if (!n.isConnected) return window.removeEventListener('resize', onR); clearTimeout(onR.t); onR.t = setTimeout(fix, 300); }
+    window.addEventListener('resize', onR);
   }
   function sheet(o) {
     o = o || {};
@@ -1053,6 +1056,7 @@
     gbarEl = bar;
     requestAnimationFrame(fitBar);
     window.addEventListener('resize', function () { clearTimeout(fitBar.t); fitBar.t = setTimeout(fitBar, 120); });
+    try { doc.fonts.addEventListener('loadingdone', function () { requestAnimationFrame(fitBar); }); } catch (e) {}   // measured again in the title's own font (the first look can be in the fallback)
     // games with modes, options or players to pick again: the title gets a down arrow that goes back to that
     // choice (games with their own picker call Kit.titleSwitch and take the arrow over)
     // while the setup screen is showing there's nothing to go back to: the arrow hides (html.k-in-setup)
@@ -2718,7 +2722,9 @@
       doc.body.appendChild(ov);
       var S = 0, D = 0, base = 1, z = 1, x = 0, y = 0, placed = false;
       function measure() {
+        var was = base;
         S = stage.clientWidth; D = S * 0.84; base = D / Math.min(W, H); pic.style.width = (W * base) + 'px'; pic.style.height = (H * base) + 'px';
+        if (placed && was) { x *= base / was; y *= base / was; }   // the device turned: the same part of the picture stays in the circle
         if (!placed && o.init) { z = Math.max(1, Math.min(4, o.init.z || 1)); var sc = base * z; x = (W / 2 - o.init.u * W) * sc; y = (H / 2 - o.init.v * H) * sc; }
         placed = true; clamp(); draw();
       }
