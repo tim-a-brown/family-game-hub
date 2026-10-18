@@ -2380,14 +2380,17 @@
       el('div', { class: 'k-pt-axis' }, ['12 AM', '6 AM', '12 PM', '6 PM', '12 AM'].map(function (t) { return el('span', { text: t }); })), tip]);
     sheet({ title: 'Play time', node: node, actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
-  // ── Game timer: a countdown set in Preferences that ends gaming on this device ──
-  // fgh_timer {end, lock, mins} (this device, whoever is signed in). Nothing shows until the last two minutes: then
+  // ── Game timer: a countdown set in Preferences that ends gaming for this PIN ──
+  // gn_timer {end, lock, mins} belongs to the PIN (or guest) and syncs like a setting, so it carries on on every device
+  // that PIN signs in on (picked up when a page opens). Nothing shows until the last two minutes: then
   // a small countdown sits in the game's top bar (or a slim pill at the top of the screen where there's no bar), out
   // of the game's way. At zero: a chime and "Time's up". With lock on, there's a minute's grace to finish up, then a
   // screen over everything says game time is over; holding Unlock for 15 seconds ends the timer.
-  var TIMER = 'fgh_timer', timerLocked = false, tmEl = null, tmLock = null, tmLast = null, tmT = 0;
+  var TIMER = 'gn_timer', timerLocked = false, tmEl = null, tmLock = null, tmLast = null, tmT = 0;
+  // the timer used to belong to the device: hand one that's set to whoever is signed in now
+  try { [['fgh_timer', TIMER], ['fgh_timer_lock', 'gn_timer_lock'], ['fgh_timer_custom', 'gn_timer_custom']].forEach(function (m) { var v = LS.getItem(m[0]); if (v != null) { if (LS.getItem(m[1]) == null) lsSet(m[1], v); LS.removeItem(m[0]); } }); } catch (e) {}
   function timerGet() { try { var t = JSON.parse(LS.getItem(TIMER) || 'null'); return t && t.end ? t : null; } catch (e) { return null; } }
-  function timerSet(t) { try { if (t) LS.setItem(TIMER, JSON.stringify(t)); else LS.removeItem(TIMER); } catch (e) {} timerTick(); }
+  function timerSet(t) { try { if (t) LS.setItem(TIMER, JSON.stringify(t)); else LS.removeItem(TIMER); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(TIMER); timerTick(); }
   function clockText(ms) { var s = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return (h ? h + ':' + ('0' + m).slice(-2) : m) + ':' + ('0' + x).slice(-2); }
   function timerChip(text, cls) {
     var host = gbarEl;
@@ -2427,7 +2430,7 @@
     var t = timerGet();
     if (!t) { timerChipOff(); timerLockOff(); tmLast = null; return; }
     var left = t.end - Date.now(), grace = 60000;
-    if (left > 120000) { timerChipOff(); timerLockOff(); }
+    if (left > 120000) { timerChipOff(); timerLockOff(); tmLast = null; }   // (more time added: warn again near the new end)
     else if (left > 0) {
       timerChip(clockText(left), left <= 30000 ? 'low' : '');
       if (tmLast !== 'two') { tmLast = 'two'; sfx('tick'); haptic('light'); toast('2 minutes of game time left'); }
@@ -2445,12 +2448,13 @@
   doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') timerTick(); });
   doc.addEventListener('keydown', function (e) { if (timerLocked) { e.stopPropagation(); e.preventDefault(); } }, true);   // locked: no keys reach the game
   window.addEventListener('storage', function (e) { if (e.key === TIMER) timerTick(); });   // set or stopped in another tab
+  doc.addEventListener('fghsync:updated', timerTick);   // set, changed or stopped on another device
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', timerTick); else setTimeout(timerTick, 0);
   // Preferences: pick how long (a preset, or Custom: a dial you spin, a full turn an hour); while it runs, a ring that
   // empties as the time goes, how long is left and when it ends, more time, or stop
   function timerPanel() {
     var box = el('div', { class: 'k-tmr' }), iv = 0, NS = 'http://www.w3.org/2000/svg';
-    function lockPref() { return lsGet('fgh_timer_lock', '1') === '1'; }
+    function lockPref() { return lsGet('gn_timer_lock', '1') === '1'; }
     function durText(m) { var h = Math.floor(m / 60), x = m % 60; return h ? h + ' hr' + (x ? ' ' + x + ' min' : '') : x + ' min'; }
     function endsAt(ms) { return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
     function start(mins, end) { end = end || Date.now() + mins * 60000; timerSet({ end: end, start: Date.now(), lock: lockPref(), mins: mins }); sfx('good'); haptic('light'); paint(); }
@@ -2469,12 +2473,12 @@
       var b = el('button', { type: 'button', class: 'k-tmr-lock', role: 'switch', 'aria-checked': String(lockOn) }, [
         el('span', { class: 'ic', html: icon('lock') }),
         el('span', { class: 'grow' }, [el('b', { text: 'Lock games when time’s up' }), el('small', { text: lockOn ? 'A minute to finish up, then games close' : 'Just a reminder when time’s up' })]), el('i', { class: 'sw' })]);
-      b.onclick = function () { var x = timerGet(), v = !(x ? x.lock : lockPref()); lsSet('fgh_timer_lock', v ? '1' : '0'); if (x) { x.lock = v; timerSet(x); } sfx('tap'); haptic('light'); paint(); };
+      b.onclick = function () { var x = timerGet(), v = !(x ? x.lock : lockPref()); lsSet('gn_timer_lock', v ? '1' : '0'); if (x) { x.lock = v; timerSet(x); } sfx('tap'); haptic('light'); paint(); };
       return b;
     }
     // Custom: drag round the dial (clockwise adds time, a full turn is an hour, up to 10 hours, in 5-minute steps)
     function dialPanel() {
-      var cm = Math.max(5, Math.min(600, Number(lsGet('fgh_timer_custom', '25')) || 25));
+      var cm = Math.max(5, Math.min(600, Number(lsGet('gn_timer_custom', '25')) || 25));
       var R = ring(240, true), knob = svgEl('circle', { r: 13, class: 'k-dial-knob' }), hrs = el('div', { class: 'k-dial-hrs' });
       R.svg.appendChild(knob);
       var big = el('b', { class: 'k-dial-n' }), sub = el('small', { class: 'k-dial-end' });
@@ -2506,7 +2510,7 @@
         if (at.value) {   // until a time: today, or tomorrow if that time has already gone by
           var hm = at.value.split(':'), d = new Date(); d.setHours(+hm[0], +hm[1], 0, 0); if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
           start(Math.round((d.getTime() - Date.now()) / 60000), d.getTime());
-        } else { lsSet('fgh_timer_custom', String(cm)); start(cm); }
+        } else { lsSet('gn_timer_custom', String(cm)); start(cm); }
       } });
       at.addEventListener('input', function () { dial.classList.toggle('dim', !!at.value); go.textContent = at.value ? 'Start · until ' + endsAt((function () { var hm = at.value.split(':'), d = new Date(); d.setHours(+hm[0], +hm[1], 0, 0); if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1); return d.getTime(); })()) : 'Start'; });
       return el('div', { class: 'k-tmr-cust' }, [dial, el('p', { class: 'k-dial-hint', text: 'Spin the dial: a full turn is an hour' }), el('label', { class: 'k-tmr-or' }, [el('span', { text: 'or until' }), at]), go]);
@@ -2524,7 +2528,7 @@
           cb.classList.toggle('on', open); cb.setAttribute('aria-expanded', String(open)); sfx('tap');
         } }, [el('span', { html: icon('clock') }), el('small', { text: 'Custom' })]);
         picks.appendChild(cb);
-        box.appendChild(el('p', { class: 'k-tmr-note', text: 'A countdown for game time on this device. It shows up in the last two minutes.' }));
+        box.appendChild(el('p', { class: 'k-tmr-note', text: (window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? 'A countdown for your game time, on every device you sign in on.' : 'A countdown for game time on this device.') + ' It shows up in the last two minutes.' }));
         box.appendChild(picks);
       } else {
         var R = ring(150, false), left = el('b', { class: 'k-tmr-left' }), cap = el('small'), when = el('p', { class: 'k-tmr-when' });
