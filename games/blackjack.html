@@ -434,11 +434,13 @@
   // A session saved before only your seat could play from the bank: a seat on the bank that isn't you carries on
   // with play money (what it won or lost so far stays with it), so the bank stops moving for it.
   function migrateSeats() {
-    if (!S || S.money === 'table') return;
+    if (!S || S.money === 'table') return false;
+    var moved = false;
     S.seats.forEach(function (s, i) {
       if (!s.src) s.src = i === 0 ? 'mine' : 'chips';
-      if (s.src === 'mine' && (s.cpu || !isMain(s.name))) { s.bank = Math.max(0, SEAT_STACK + rawBank() - (s.b0 != null ? s.b0 : S.startBank || rawBank())); s.b0 = SEAT_STACK; s.src = 'chips'; }
+      if (s.src === 'mine' && (s.cpu || !isMain(s.name))) { moved = true; s.bank = Math.max(0, SEAT_STACK + rawBank() - (s.b0 != null ? s.b0 : S.startBank || rawBank())); s.b0 = SEAT_STACK; s.src = 'chips'; }
     });
+    return moved;
   }
 
   // ── Betting ───────────────────────────────────────────────────────────────
@@ -1508,7 +1510,7 @@
   }
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.v === 1 && saved.seats && saved.shoe) {
-    S = saved; migrateSeats(); Kit.gameStart(); markSeen(); render(); resumeFlow();
+    S = saved; if (migrateSeats()) save(); Kit.gameStart(); markSeen(); render(); resumeFlow();
   } else showSetup();
 })();
 </script>
