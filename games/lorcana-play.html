@@ -4388,7 +4388,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return got;
   }
   function resetCard(u) { var c = C(u); c.ex = false; c.dmg = 0; c.dry = false; c.at = null; c.mods = []; c.under = []; c.bt = 0; c.upU = null; delete c.fd; }
-  // into the inkwell without being shown (from the deck or the hand by an effect): only its owner knows what it is
+  // into the inkwell without being shown (from the deck or the hand by an effect): it stays face down
   function unseen(u) { C(u).fd = 1; }
   // Is this card under another one face up (the character shifted onto, or put under faceup) or facedown (Boost)?
   // Games saved before this was tracked: a card with the same name as the one on top was shifted onto
@@ -11319,19 +11319,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var P = S.P[pi], well = P.ink.slice().reverse(), i = well.indexOf(u); if (i < 0) return;
     var d = DD(u), used = C(u).ex, hid = inkHid(pi, u);
     var head = '<div class="inkpk' + (used ? ' used' : '') + '"><i></i>' + esc(P.name) + '’s inkwell · ' + (used ? 'used this turn' : 'ready') + '</div>';
-    var info = hid ? head + '<h2 class="inkfd-h">Face down</h2><p class="inkfd-p">It went in without being shown, so only ' + esc(P.name) + ' knows what it is.</p>'
+    var info = hid ? head + '<h2 class="inkfd-h">Face down</h2><p class="inkfd-p">It went into the inkwell without being shown.</p>'
       : head + headHTML(d) + defMeta(d) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>';
     zoomShell(d, info, [], null,
       { i: i, n: well.length, list: well, ctx: 'ink', dir: dir || 0, hide: function (x) { return inkHid(pi, x); }, go: function (step) { var j = i + step; if (j >= 0 && j < well.length) inkZoom(pi, well[j], step); }, peek: function (k) { var x = well[i + k]; return x ? DD(x) : null; } });
     if (hid) { var ov = $('.lz'); if (ov) { ov.setAttribute('aria-label', 'Face-down card'); var bm = $('.lz-bm', ov); if (bm) bm.remove(); } }
   }
-  // Who is looking at this device, and whether a card in someone's inkwell is hidden from them (it went in unseen and
-  // isn't theirs; pass-and-play with the device between turns hides it from everyone)
-  function inkHid(pi, x) {
-    if (!C(x).fd) return false;
-    var who = S.mode === 'online' ? NET.seat : S.mode === 'cpu' ? humanIx() : S.viewer;
-    return who !== pi;
-  }
+  // A card that went into the inkwell face down (from the deck, or the hand by an effect) stays face down for everyone
+  function inkHid(pi, x) { return !!C(x).fd; }
   function showInk(pi) { var P = S.P[pi]; if (P.ink.length) inkZoom(pi, P.ink[P.ink.length - 1]); }
   // The discard pile opens as a card carousel (newest on top), with a thumbnail strip of the whole pile
   function showDiscard(pi) {
