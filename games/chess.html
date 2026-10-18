@@ -1353,9 +1353,11 @@
       return;
     }
     if (!d.guest) return;
+    var theirs = !!prev && (d.moves || []).length > (prev.moves || []).length && d.by !== NET.dev;
     if (!online() || S.online.code !== NET.code || S.online.game !== (d.game || 1)) netBuild(d);
     else netSync(d);
     if (!online()) return;
+    if (theirs && !d.result && !S.over) { setTimeout(function () { Kit.sfx('turn'); }, 450); Kit.haptic('medium'); }   // they moved: your move (the bell, after their piece lands)
     if (d.result && !S.over) finish(d.result);
     if (d.status === 'closed' && d.by !== NET.dev) {
       var nm = pl(-mySide()).name;

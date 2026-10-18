@@ -281,7 +281,7 @@
       else paintChips();
       T.fresh = false;
       var mineNow = net.myTurn();
-      if (mineNow && !T.wasMine && !echo && d.by !== dev()) { try { Kit.sfx('pop'); Kit.haptic('medium'); } catch (e) {} }
+      if (mineNow && !T.wasMine && !echo && d.by !== dev()) { try { setTimeout(function () { Kit.sfx('turn'); }, 350); Kit.haptic('medium'); } catch (e) {} }   // your turn: the bell
       T.wasMine = mineNow;
     } else paintChips();
     botCheck();

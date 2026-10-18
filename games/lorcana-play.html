@@ -7437,8 +7437,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // The computer's turn never stalls: if it hasn't moved for a while and nothing on screen is waiting on anyone, it's
   // nudged on; an ability stuck part-way (nothing showing, nothing to answer) is let go
-  var cpuAt = 0, qAt = 0, lzStale = 0;
+  var cpuAt = 0, qAt = 0, lzStale = 0, handAt = 0;
   setInterval(function () {
+    // online: the turn came to this seat but this device hasn't picked it up for a few seconds (a handover write that
+    // crossed another): take it now
+    if (S && S.mode === 'online' && NET.ref && !NET.owner && !NET.taking && NET.doc && NET.doc.owner === NET.seat && NET.doc.st && !document.getElementById('net-else')) {
+      if (!handAt) handAt = Date.now(); else if (Date.now() - handAt > 4000) { handAt = 0; netTake(NET.doc); }
+    } else handAt = 0;
     if (!S || S.phase !== 'play' || finishing || !S.P[S.cur] || !S.P[S.cur].cpu || S.mode === 'online' || document.hidden) { cpuAt = qAt = Date.now(); return; }
     // a card view that never finished opening (no longer on show) is cleared away rather than holding the turn up
     if ($('.lz') && !$('.lz.show')) { if (++lzStale >= 3) { lzStale = 0; slip('stale card view', new Error('removed')); $$('.lz:not(.show)').forEach(function (z) { z.remove(); }); } } else lzStale = 0;
@@ -8505,7 +8510,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (board) {
       var ks = kwList(u);
       if (ks.length) h += '<div class="kws">' + ks.slice(0, 4).map(function (k) { return '<i title="' + KWNAME[k] + '">' + kwIcon(k) + '</i>'; }).join('') + '</div>';
-      if (d.t === 'character' && !c.dry && S.phase === 'play') h += '<span class="drips" aria-hidden="true">' + dripsSVG(u) + '</span>';
+      if (d.t === 'character' && !c.dry && S.phase === 'play') h += '<span class="drips" aria-hidden="true"></span>';   // (filled below, once)
       if ((c.mods || []).some(function (m) { return m.cant; })) h += '<span class="chains" aria-hidden="true"></span>';
       if (c.dmg) h += '<span class="dmg">' + c.dmg + '</span>';
 
@@ -8519,6 +8524,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     else st = '<span style="font-family:var(--font);font-weight:800;font-size:.8em;opacity:.8">' + (d.song ? 'Song' : d.t === 'item' ? 'Item' : 'Action') + '</span>';
     h += '<div class="ov"><span class="nm">' + esc(d.n) + '</span><span class="st">' + st + '</span></div>';
     if (node._h !== h) { node._ovs.innerHTML = h; node._h = h; }
+    // the drips are drawn once and left running: redrawing them each time the table updates (online, every move the
+    // other player makes) restarted the ink and made it stutter
+    var drp = node._ovs.querySelector('.drips'); if (drp && !drp.firstChild) drp.innerHTML = dripsSVG(u);
     if (board) node.setAttribute('aria-label', d.full + (c.at && S.cards[c.at] ? ', at ' + DD(c.at).full : ''));
     node.title = d.t === 'character' && board && !c.dry && S.phase === 'play' ? 'Ink still drying: can’t quest, challenge or sing until its owner’s next turn' + (hasKw(u, 'rush') ? ' (Rush: can challenge now)' : '') : '';
     var und = node.querySelector(':scope > .under');
@@ -13079,6 +13087,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     s.defs = NET.defs || {}; s.hist = []; s.viewer = NET.seat;
     if (S && S.skipTurn != null && S.skipTurn === s.turn) s.skipTurn = S.skipTurn;
     var over = s.phase === 'over'; if (over) s.phase = 'play';
+    // it just became your turn (they ended theirs): the bell, so you hear it from across the room
+    if (!first && S && S.cur !== NET.seat && s.cur === NET.seat && s.phase === 'play' && !over) { setTimeout(function () { Kit.sfx('turn'); }, 300); Kit.haptic('medium'); }
     var before = first ? null : captureRects();
     if (first) { tok++; resetQ(); closeOverlays(); Kit.handoff.close(); DEF = {}; app.innerHTML = ''; ui.pick = null; ui.hint = null; ui.mullSel = {}; Kit.gameStart(); }
     ui.screen = 'game';
