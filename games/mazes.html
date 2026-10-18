@@ -100,6 +100,14 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
 
 /* ── Labyrinth: a wooden box with a steel ball ── */
 .lab-wrap{position:relative;perspective:1100px;flex:none;}
+.stage{position:relative;}
+/* The way to the finish when it's off the screen: a brass marker on the edge, its arrow toward the gold ring */
+.mz-arrow{position:absolute;left:0;top:0;width:46px;height:46px;margin:-23px 0 0 -23px;z-index:6;pointer-events:none;opacity:0;transition:opacity .25s;}
+.mz-arrow.on{opacity:1;}
+.mz-arrow i{position:absolute;inset:0;display:block;animation:mzBob 1.1s ease-in-out infinite;}
+.mz-arrow svg{width:100%;height:100%;display:block;overflow:visible;filter:drop-shadow(0 3px 5px rgba(0,0,0,.45));}
+@keyframes mzBob{0%,100%{transform:translateX(0);}50%{transform:translateX(5px);}}
+@media (prefers-reduced-motion:reduce){.mz-arrow i{animation:none;}}
 .lab-box{position:relative;border-radius:18px;padding:12px;transform-style:preserve-3d;transition:transform .14s linear;}
 .lab-box canvas{display:block;border-radius:6px;touch-action:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.4), 0 0 0 2px rgba(0,0,0,.25);}
 .lab-ask{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;padding:20px;}
@@ -599,7 +607,14 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     svg.setAttribute('viewBox', view.x.toFixed(3) + ' ' + view.y.toFixed(3) + ' ' + view.w.toFixed(3) + ' ' + view.h.toFixed(3));
     // printed lines thicken a little when zoomed in, not in proportion (they'd look like a marker)
     var w = svg.querySelector('.walls'); if (w) w.setAttribute('stroke-width', (wallPx * Math.pow(pxu / fitPxu, 0.45) / pxu).toFixed(3));
+    // zoomed in with the finish out of view: its marker on the edge of the page
+    if (S && S.mode !== 'tilt' && stage) {
+      penArrow = edgeArrow(stage, penArrow);
+      var sr = stage.getBoundingClientRect(), r = svg.getBoundingClientRect(), f = MC.center(M, M.finish, tr);
+      placeArrow(penArrow, r.left - sr.left, r.top - sr.top, r.width, r.height, (f[0] - view.x) * pxu, (f[1] - view.y) * pxu, zoomed() && !S.done);
+    }
   }
+  var penArrow = null;
   function clampView() {
     ['x', 'y'].forEach(function (a) {
       var w = a === 'x' ? 'w' : 'h';
@@ -928,12 +943,34 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       actions: [{ label: 'High scores', cls: 'btn-soft', onClick: function () { ArcadeHi.show(hiKey(S ? S.mode : 'pencil', S ? S.size : 'easy')); } }, { label: 'Close', cls: 'btn-ghost' }] });
   }
 
+  // ── The finish off the screen: a marker on the edge of the view, pointing the way ──
+  var ARROW_SVG = '<svg viewBox="0 0 46 46" aria-hidden="true"><defs><radialGradient id="mzBr" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#fff1b8"/><stop offset=".45" stop-color="#f0c247"/><stop offset="1" stop-color="#a8721a"/></radialGradient></defs>' +
+    '<circle cx="23" cy="23" r="19" fill="url(#mzBr)" stroke="#6b4512" stroke-width="1.5"/><circle cx="23" cy="23" r="15.5" fill="none" stroke="rgba(255,248,220,.55)" stroke-width="1"/>' +
+    '<path d="M14 23h14M23 16.5l7 6.5-7 6.5" fill="none" stroke="#4a2c08" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function edgeArrow(host, el0) {
+    var a = el0 && el0.isConnected ? el0 : null;
+    if (!a) { a = el('div', { class: 'mz-arrow', 'aria-hidden': 'true' }, [el('i', { html: ARROW_SVG })]); host.appendChild(a); }
+    return a;
+  }
+  // show the marker at the edge of a w x h view (its top left at ox, oy in the host) when (gx, gy), in the view, is off it
+  function placeArrow(a, ox, oy, w, h, gx, gy, show) {
+    var m = 26, off = gx < 0 || gy < 0 || gx > w || gy > h;
+    if (!show || !off || w < 2 * m || h < 2 * m) { a.classList.remove('on'); return; }
+    var cx = w / 2, cy = h / 2, dx = gx - cx, dy = gy - cy;
+    var s = Math.min(dx ? (cx - m) / Math.abs(dx) : 1e9, dy ? (cy - m) / Math.abs(dy) : 1e9);
+    var x = cx + dx * s, y = cy + dy * s, ang = Math.atan2(dy, dx) * 180 / Math.PI;
+    a.style.transform = 'translate(' + (ox + x).toFixed(1) + 'px,' + (oy + y).toFixed(1) + 'px) rotate(' + ang.toFixed(1) + 'deg)';
+    a.classList.add('on');
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   // Labyrinth: the same maze as a wooden box; tilt (or drag) to roll a steel ball to the goal
   // ═══════════════════════════════════════════════════════════════════════
   var cv = null, cx2 = null, boxEl = null, wrapEl = null, ball = null, holes = [], cellPx = 30, dpr = 1, cam = { x: 0, y: 0 }, follow = false, viewW = 0, viewH = 0;
   var staticCv = null, raf = 0, lastF = 0, tiltIn = { x: 0, y: 0 }, dragTilt = null, keyT = { x: 0, y: 0 }, keysDown = {}, oriOn = false, neutral = null, labHint = null, labReveal = false;
   var BR = 0.27, WH = 0.075, HR = 0.31, ACC = 30, FRIC = 1.15, VMAX = 10;
+  // a board too big to show whole opens zoomed out (where the gold ring is), then after a beat zooms in on the ball
+  var intro = null, INTRO_HOLD = 1300, INTRO_ZOOM = 1100, labArrow = null, cvOff = { x: 0, y: 0 };
   function buildTilt() {
     wrapEl = el('div', { class: 'lab-wrap' });
     boxEl = el('div', { class: 'lab-box wood' });
@@ -948,6 +985,8 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     if (S.done) doneTools();
     else setTools([btn('lightbulb', 'Hint', hint, 'btn-soft grow'), btn('compass', 'Level', function () { level(true); }, 'btn-soft')]);
     layoutTilt();
+    intro = follow && !S.done ? { t0: performance.now(), z: false } : null;
+    labArrow = edgeArrow(wrapEl, null);
     bindTilt();
     if (!S.done) askTilt();
     startLoop();
@@ -989,6 +1028,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     cv.style.width = cw + 'px'; cv.style.height = ch + 'px'; cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
     buildStatic();
     camTo(true);
+    var wr = wrapEl.getBoundingClientRect(), cr = cv.getBoundingClientRect(); cvOff = { x: cr.left - wr.left, y: cr.top - wr.top };
     tipEl.textContent = S.done ? '' : (oriOn ? 'Tilt to roll the ball to the gold ring' : TOUCH ? 'Drag on the board to tip it' : 'Drag on the board, or use the arrow keys');
   }
   function V(x, y) { return tr ? [y + 0.3, x + 0.3] : [x + 0.3, y + 0.3]; }   // maze squares → board units (with the rim)
@@ -1038,13 +1078,28 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     var tx = Math.max(0, Math.min(viewW - vw, b[0] - vw / 2)), ty = Math.max(0, Math.min(viewH - vh, b[1] - vh / 2));
     if (snap) { cam.x = tx; cam.y = ty; } else { cam.x += (tx - cam.x) * 0.12; cam.y += (ty - cam.y) * 0.12; }
   }
+  // What the board's view is: the ball's camera, or on the way in from the whole-board overview (the zoom eases out
+  // from the overview's size to the ball's, the middle of the view gliding from the board's middle to the ball)
+  function labView() {
+    var vw = cv.width / dpr / cellPx, vh = cv.height / dpr / cellPx, v = { z: 1, cx: cam.x + vw / 2, cy: cam.y + vh / 2 };
+    if (!intro) return v;
+    var z0 = Math.min(vw / viewW, vh / viewH) * 0.94, el2 = performance.now() - intro.t0;
+    if (el2 < INTRO_HOLD) return { z: z0, cx: viewW / 2, cy: viewH / 2 };
+    if (!intro.z) { intro.z = true; Kit.sfx('whoosh', 0.5); }
+    var p = Math.min(1, (el2 - INTRO_HOLD) / INTRO_ZOOM), e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+    if (p >= 1) { intro = null; return v; }
+    return { z: z0 * Math.pow(1 / z0, e), cx: viewW / 2 + (v.cx - viewW / 2) * e, cy: viewH / 2 + (v.cy - viewH / 2) * e };
+  }
   function renderLab() {
     if (!cx2 || !staticCv) return;
-    var k = cellPx * dpr, g = cx2;
+    var k = cellPx * dpr, g = cx2, zv = labView(), tx = cv.width / 2 - zv.cx * k * zv.z, ty = cv.height / 2 - zv.cy * k * zv.z;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, cv.width, cv.height);
-    g.drawImage(staticCv, -cam.x * k, -cam.y * k);
-    g.setTransform(1, 0, 0, 1, -cam.x * k, -cam.y * k);
+    g.imageSmoothingQuality = 'high';
+    g.setTransform(zv.z, 0, 0, zv.z, tx, ty);
+    g.drawImage(staticCv, 0, 0);
+    // the finish's marker on the edge while it's out of view (not while the opening overview is showing it)
+    if (labArrow) { var gq = V(M.finish % M.cols + 0.5, Math.floor(M.finish / M.cols) + 0.5); placeArrow(labArrow, cvOff.x, cvOff.y, cv.width / dpr, cv.height / dpr, (gq[0] * k * zv.z + tx) / dpr, (gq[1] * k * zv.z + ty) / dpr, follow && !intro && !S.done); }
     // the route, painted on (after Reveal)
     if (labReveal) {
       g.strokeStyle = 'rgba(42,116,201,.75)'; g.lineWidth = 0.14 * k; g.lineCap = 'round'; g.lineJoin = 'round'; g.setLineDash([0.32 * k, 0.22 * k]);
@@ -1062,6 +1117,21 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
           g.beginPath(); g.arc(q[0] * k, q[1] * k, (0.12 + 0.06 * pulse) * k, 0, Math.PI * 2); g.fill();
         });
         if (labHint.back >= 0) { var bq = V(labHint.back % M.cols + 0.5, Math.floor(labHint.back / M.cols) + 0.5); g.strokeStyle = 'rgba(64,150,255,' + al + ')'; g.lineWidth = 0.07 * k; g.beginPath(); g.arc(bq[0] * k, bq[1] * k, 0.4 * k, 0, Math.PI * 2); g.stroke(); }
+      }
+    }
+    // the opening overview: the finish (and the ball) ringed in pulsing gold, so you see at once where you're going
+    if (intro && zv.z < 0.999) {
+      var fa = Math.max(0, 1 - Math.max(0, performance.now() - intro.t0 - INTRO_HOLD) / (INTRO_ZOOM * 0.5)), ph = (performance.now() - intro.t0) / 520;
+      if (fa > 0) {
+        var gp = V(M.finish % M.cols + 0.5, Math.floor(M.finish / M.cols) + 0.5), bp = V(ball.x, ball.y), px1 = dpr / zv.z;
+        [[gp, 1], [bp, 0.55]].forEach(function (q) {
+          for (var w = 0; w < 2; w++) {
+            var f2 = ((ph + w * 0.5) % 1), rr = (10 + f2 * 22) * px1;
+            g.strokeStyle = 'rgba(255,205,70,' + (fa * q[1] * (1 - f2)).toFixed(3) + ')'; g.lineWidth = 3 * px1;
+            g.beginPath(); g.arc(q[0][0] * k, q[0][1] * k, rr, 0, Math.PI * 2); g.stroke();
+          }
+        });
+        g.fillStyle = 'rgba(255,214,90,' + (0.9 * fa).toFixed(3) + ')'; g.beginPath(); g.arc(gp[0] * k, gp[1] * k, 7 * px1, 0, Math.PI * 2); g.fill();
       }
     }
     // the steel ball and its shadow
@@ -1143,6 +1213,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       var dt = Math.min(0.05, (now - lastF) / 1000); lastF = now;
       if (!S || S.mode !== 'tilt' || !cv) return;
       if (paused()) { rollSet(0); renderLab(); return; }
+      if (intro) { camTo(true); renderLab(); return; }   // the ball waits while the view comes in
       if (ball.state === 'fall' || ball.state === 'goal') {
         ball.t += dt;
         if (ball.t >= 0.45) {
@@ -1209,6 +1280,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
   function bindTilt() {
     var origin = null;
     cv.addEventListener('pointerdown', function (e) {
+      if (intro && performance.now() - intro.t0 < INTRO_HOLD) intro.t0 = performance.now() - INTRO_HOLD;   // a tap: zoom in now
       if (!S || S.done || e.button > 0) return;
       ac(); try { cv.setPointerCapture(e.pointerId); } catch (x) {}
       origin = { x: e.clientX, y: e.clientY, id: e.pointerId }; dragTilt = { x: 0, y: 0 };
