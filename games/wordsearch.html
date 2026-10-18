@@ -475,6 +475,20 @@
         }
       }
     });
+    // A finger hides the letters under it, so letting go one letter short or one letter past still counts, when the
+    // drag starts on either end of the word and runs its way (short only on words of 4+ letters). The circle then
+    // lands on the word itself.
+    if (hit < 0 && s.len > 1) {
+      var best = 99;
+      S.words.forEach(function (w, i) {
+        if (w.f) return;
+        var d = s.len - w.w.length; if (d > 1 || d < -1 || (d < 0 && w.w.length < 4)) return;
+        var e = endOf(w);
+        var fwd = w.r === s.r && w.c === s.c && w.dr === s.dr && w.dc === s.dc;
+        var bwd = e[0] === s.r && e[1] === s.c && w.dr === -s.dr && w.dc === -s.dc;
+        if ((fwd || bwd) && Math.abs(d) < best) { best = Math.abs(d); hit = i; }
+      });
+    }
     paintSel();
     if (hit < 0) {
       if (s.len > 2) { Kit.sfx('bad'); Kit.haptic('light'); }
