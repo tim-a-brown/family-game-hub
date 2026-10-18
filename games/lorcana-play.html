@@ -4388,8 +4388,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return got;
   }
   function resetCard(u) { var c = C(u); c.ex = false; c.dmg = 0; c.dry = false; c.at = null; c.mods = []; c.under = []; c.bt = 0; c.upU = null; delete c.fd; }
-  // into the inkwell without being shown (from the deck or the hand by an effect): it stays face down
-  function unseen(u) { C(u).fd = 1; }
+  // into the inkwell without being shown: from the deck no one has seen it (fd 1); from the hand, or after its owner
+  // looked at it, only the owner has (fd 2)
+  function unseen(u, own) { C(u).fd = own ? 2 : 1; }
   // Is this card under another one face up (the character shifted onto, or put under faceup) or facedown (Boost)?
   // Games saved before this was tracked: a card with the same name as the one on top was shifted onto
   function underUp(host, x) { var f = C(x).upU; return f != null ? !!f : DD(x).n === DD(host).n; }
@@ -5816,7 +5817,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       case 'mod': return cb(true);
       case 'handAll': {
         var hl = P.hand.slice(); if (!hl.length) return cb(false);
-        act(function () { hl.forEach(function (x) { P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); if (e.to === 'ink') { C(x).ex = true; P.ink.push(x); unseen(x); inked(pi); } else P.deckL.push(x); }); });
+        act(function () { hl.forEach(function (x) { P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); if (e.to === 'ink') { C(x).ex = true; P.ink.push(x); unseen(x, true); inked(pi); } else P.deckL.push(x); }); });
         if (e.to === 'ink') fx.ink(pi, '#e3bd62'); else fx.drawn(pi);
         st.said.push(P.name + ' put their whole hand ' + (e.to === 'ink' ? 'into their inkwell' : 'on the bottom of their deck')); noUndo(); return cb(true);
       }
@@ -5948,7 +5949,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       case 'kw': { if (!inPlay || e.dur === 'chal') return; var m2 = untilFor(e.dur || 'turn', pi, x, st.src); m2.kw = e.kw; m2.n = (e.n || 0) * (e.per ? perCount(e.per, st.src, pi, st) : 1); m2.why = abTitle(st.src, st.ab); c.mods.push(m2); fx.emblem(x, e.kw); fx.num(x, KWNAME[e.kw] + (e.n ? ' +' + e.n : ''), 'buff'); st.said.push(nm(x) + ' gained ' + KWNAME[e.kw] + durText(e.dur || 'turn')); break; }
       case 'cant': { if (!inPlay || e.what === 'chalDmgNow') return; var m3 = untilFor(e.dur || 'turn', pi, x, st.src); m3.cant = e.what; m3.why = abTitle(st.src, st.ab); c.mods.push(m3); fx.chains(x); fx.num(x, 'Can’t ' + { quest: 'quest', challenge: 'challenge', ready: 'ready', qc: 'act', bechal: 'be challenged', sing: 'sing', move: 'move', dmg: 'be damaged', chalDmg: 'be hurt in challenges' }[e.what], 'debuff'); st.said.push(effText({ op: 'cant', what: e.what, t: { sel: 'prev' }, dur: e.dur }).replace(/^That card/, nm(x))); break; }
       case 'can': { if (!inPlay) return; var m4 = untilFor(e.dur || 'turn', pi, x, st.src); m4.can = e.what; c.mods.push(m4); fx.xglint(x); fx.num(x, 'Can challenge ready', 'buff'); break; }
-      case 'toInk': { var o2 = c.o, zi = zoneOf(x), hid = !!zi && (zi.z === 'hand' || zi.z === 'deck'); leaving[x] = 'ink'; fx.ink(o2, inkColor(x)); if (inPlay) leavePlay(x); else pull(x); resetCard(x); C(x).ex = !e.ready; S.P[o2].ink.push(x); if (hid) unseen(x); st.said.push(who + ' went into the inkwell'); break; }
+      case 'toInk': { var o2 = c.o, zi = zoneOf(x), hid = zi ? (zi.z === 'hand' ? 2 : zi.z === 'deck' ? 1 : 0) : 0; leaving[x] = 'ink'; fx.ink(o2, inkColor(x)); if (inPlay) leavePlay(x); else pull(x); resetCard(x); C(x).ex = !e.ready; S.P[o2].ink.push(x); if (hid) unseen(x, hid === 2); st.said.push(who + ' went into the inkwell'); break; }
       case 'singPlus': { if (!inPlay) return; var ms = untilFor(e.dur || 'turn', pi, x, st.src); ms.sing = e.n; c.mods.push(ms); fx.num(x, '+' + e.n + ' to sing', 'buff'); st.said.push(nm(x) + ' counts as cost +' + e.n + ' for singing'); break; }
       case 'mustQuest': { if (!inPlay) return; var mq = untilFor(e.dur || 'their', pi, x, st.src); mq.must = 'quest'; c.mods.push(mq); st.said.push(nm(x) + ' must quest next turn if able'); break; }
       case 'loseKw': { if (!inPlay) return; var mk = untilFor(e.dur || 'turn', pi, x, st.src); mk.nokw = e.kw; c.mods.push(mk); st.said.push(nm(x) + ' lost ' + KWNAME[e.kw]); break; }
@@ -6192,7 +6193,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function handInkFx(e, st, optional, cb) {
     var pi = st.pi, P = S.P[pi];
     if (!P.hand.length) return cb(false);
-    function fin(sel) { if (!sel.length) return cb(false); var x = sel[0]; act(function () { P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); C(x).ex = !!e.ex; P.ink.push(x); unseen(x); inked(pi); }); fx.ink(pi, inkColor(x)); st.said.push(P.name + ' put a card into their inkwell'); cb(true); }
+    function fin(sel) { if (!sel.length) return cb(false); var x = sel[0]; act(function () { P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); C(x).ex = !!e.ex; P.ink.push(x); unseen(x, true); inked(pi); }); fx.ink(pi, inkColor(x)); st.said.push(P.name + ' put a card into their inkwell'); cb(true); }
     if (!ctlHuman(pi)) { var w = P.hand.slice().sort(function (a, b) { return handValue(a) - handValue(b); })[0]; if (optional && handValue(w) > 2) return cb(false); return fin([w]); }
     privately(pi, function (back) { chooseFromList(abTitle(st.src, st.ab) + ': put a card into your inkwell', P.hand.slice(), 1, function (sel) { back(function () { fin(sel); }); }, { cancel: function () { back(function () { cb(false); }); }, skip: true }); });
   }
@@ -6319,11 +6320,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       act(function () {
         P.deckL.splice(0, top.length);
         var rest = top.filter(function (u) { return take.indexOf(u) < 0; });
-        take.forEach(function (u) { if (pk && pk.to === 'ink') { C(u).ex = true; P.ink.push(u); unseen(u); } else P.hand.push(u); });
+        take.forEach(function (u) { if (pk && pk.to === 'ink') { C(u).ex = true; P.ink.push(u); unseen(u, true); } else P.hand.push(u); });
         if ((e.rest === 'choose' || e.rest === 'split') && order) { P.deckL = order.top.concat(P.deckL).concat(order.bottom); }
         else if (e.rest === 'top') P.deckL = rest.concat(P.deckL);
         else if (e.rest === 'discard') rest.forEach(function (u) { P.discard.push(u); });
-        else if (e.rest === 'ink') rest.forEach(function (u) { C(u).ex = true; P.ink.push(u); unseen(u); });
+        else if (e.rest === 'ink') rest.forEach(function (u) { C(u).ex = true; P.ink.push(u); unseen(u, true); });
         else if (e.rest === 'hand') rest.forEach(function (u) { P.hand.push(u); });
         else if (e.rest === 'topdisc' && order) { P.deckL = order.top.concat(P.deckL); order.bottom.forEach(function (u) { P.discard.push(u); }); }
         else P.deckL = P.deckL.concat(rest);
@@ -11318,15 +11319,20 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function inkZoom(pi, u, dir) {
     var P = S.P[pi], well = P.ink.slice().reverse(), i = well.indexOf(u); if (i < 0) return;
     var d = DD(u), used = C(u).ex, hid = inkHid(pi, u);
-    var head = '<div class="inkpk' + (used ? ' used' : '') + '"><i></i>' + esc(P.name) + '’s inkwell · ' + (used ? 'used this turn' : 'ready') + '</div>';
-    var info = hid ? head + '<h2 class="inkfd-h">Face down</h2><p class="inkfd-p">It went into the inkwell without being shown.</p>'
+    var head = '<div class="inkpk' + (used ? ' used' : '') + '"><i></i>' + esc(P.name) + '’s inkwell · ' + (used ? 'used this turn' : 'ready') + (!hid && C(u).fd === 2 ? ' · face down to ' + esc(S.P[opp(pi)].name) : '') + '</div>';
+    var info = hid ? head + '<h2 class="inkfd-h">Face down</h2><p class="inkfd-p">' + (C(u).fd === 2 ? 'It went in without being shown, so only ' + esc(P.name) + ' knows what it is.' : 'It went into the inkwell without being shown.') + '</p>'
       : head + headHTML(d) + defMeta(d) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>';
     zoomShell(d, info, [], null,
       { i: i, n: well.length, list: well, ctx: 'ink', dir: dir || 0, hide: function (x) { return inkHid(pi, x); }, go: function (step) { var j = i + step; if (j >= 0 && j < well.length) inkZoom(pi, well[j], step); }, peek: function (k) { var x = well[i + k]; return x ? DD(x) : null; } });
     if (hid) { var ov = $('.lz'); if (ov) { ov.setAttribute('aria-label', 'Face-down card'); var bm = $('.lz-bm', ov); if (bm) bm.remove(); } }
   }
-  // A card that went into the inkwell face down (from the deck, or the hand by an effect) stays face down for everyone
-  function inkHid(pi, x) { return !!C(x).fd; }
+  // A card that went into the inkwell face down: from the deck, face down for everyone; from the hand (or seen by its
+  // owner first), its owner can still peek at it. Pass-and-play with the device between turns: face down for both
+  function inkHid(pi, x) {
+    var fd = C(x).fd; if (!fd) return false; if (fd === 1) return true;
+    var who = S.mode === 'online' ? NET.seat : S.mode === 'cpu' ? humanIx() : S.viewer;
+    return who !== pi;
+  }
   function showInk(pi) { var P = S.P[pi]; if (P.ink.length) inkZoom(pi, P.ink[P.ink.length - 1]); }
   // The discard pile opens as a card carousel (newest on top), with a thumbnail strip of the whole pile
   function showDiscard(pi) {
