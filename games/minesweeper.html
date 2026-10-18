@@ -523,10 +523,13 @@ body{overflow-x:hidden;}
     scroller.style.maxWidth = (availW + 2) + 'px';
     hud.zoom.style.display = baseCs < 32 ? '' : 'none';
     if (rebuild || tr !== transposed || field.children.length !== S.rows * S.cols) {
+      // turned mid-game (Expert lies the other way): the new cells keep the mines and crossed-out flags already shown
+      var was = rebuild ? [] : cellEls;
       transposed = tr; field.innerHTML = ''; cellEls = new Array(S.rows * S.cols);
       for (var y = 0; y < vr; y++) for (var x = 0; x < vc; x++) {
         var r = tr ? x : y, c = tr ? y : x, i = r * S.cols + c;
-        var n = el('div', { class: 'cell up', 'data-i': i });
+        var n = el('div', { class: 'cell up' + (was[i] && was[i].classList.contains('mine') ? ' mine' : ''), 'data-i': i });
+        if (was[i]) n._wrongReady = was[i]._wrongReady;
         cellEls[i] = n; field.appendChild(n);
       }
       for (var i = 0; i < cellEls.length; i++) paintCell(i);
