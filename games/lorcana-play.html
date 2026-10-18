@@ -1535,7 +1535,8 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .rv-ticks{position:fixed;left:50%;top:calc(var(--safe-t) + 64px);transform:translateX(-50%);z-index:430;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(560px,calc(100% - 24px));}
 .rv-tick{display:flex;align-items:center;gap:8px;max-width:100%;padding:8px 14px;border-radius:999px;background:linear-gradient(180deg,#2a2152,#1a1438);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.45),0 8px 22px rgba(0,0,0,.5);color:#fff3d0;font-size:.85rem;animation:tickIn .28s var(--spring);}
 .rv-tick b{font-family:var(--display);font-weight:400;letter-spacing:.05em;text-transform:uppercase;color:#f1cf78;}
-.rv-tick span{min-width:0;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:1.25;}
+.rv-tick span{flex:0 1 auto;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.25;padding:.4em 0;margin:-.4em 0;}   /* one line: the ink and lore marks sit in it */
+.rv-tick b{flex:none;}
 .rv-tick{border-radius:18px;}
 .rv-tick .dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none;}
 .rv-tick.out{opacity:0;transform:translateY(-6px);transition:opacity .35s,transform .35s;}
@@ -11003,9 +11004,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (verb === 'Inked') { ov.classList.add('inked'); if (!effect) effect = 'Into the inkwell · ' + p.ink.length + ' ink'; }
     var also = $$('.rv-tick:not(.out)').map(function (t) { t.remove(); return '<span class="rv-also">' + t.innerHTML.replace(/<i class="dot"[^>]*><\/i>/, '') + '</span>'; }).join('');
     ov.insertBefore(el('div', { class: 'rv-head', html: also + '<span class="rv-who"><i class="dot" style="--c:' + p.color + '"></i>' + esc(p.name) + '</span><b class="rv-verb">' + esc(verb) + '</b>' + (effect ? '<span class="rv-fx">' + fxHTML(effect) + '</span>' : '') }), ov.firstChild);
+    var online = S.mode === 'online';   // (online the other player's moves come at their pace: nothing to skip or speed up)
     var row = el('div', { class: 'rv-row' }, [
-      holdTip(el('button', { type: 'button', class: 'rv-skip', text: 'Next turn', onclick: function () { S.skipTurn = S.turn; } }), 'Skip ahead: the rest of this turn shows as quick banners'),
-      holdTip(el('button', { type: 'button', class: 'rv-fast', 'aria-label': 'Fast mode', html: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5v13L11.5 12zM12 5.5v13L20.5 12z" fill="currentColor"/></svg>Fast', onclick: function () { lsSet(FAST, true); Kit.sfx('tap'); Kit.toast('Fast mode on: moves show as banners. Turn it off in the menu.'); } }), 'Fast mode: from now on, moves show as banners instead of stopping here'),
+      online ? null : holdTip(el('button', { type: 'button', class: 'rv-skip', text: 'Next turn', onclick: function () { S.skipTurn = S.turn; } }), 'Skip ahead: the rest of this turn shows as quick banners'),
+      online ? null : holdTip(el('button', { type: 'button', class: 'rv-fast', 'aria-label': 'Fast mode', html: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5v13L11.5 12zM12 5.5v13L20.5 12z" fill="currentColor"/></svg>Fast', onclick: function () { lsSet(FAST, true); Kit.sfx('tap'); Kit.toast('Fast mode on: moves show as banners. Turn it off in the menu.'); } }), 'Fast mode: from now on, moves show as banners instead of stopping here'),
       holdTip(el('button', { type: 'button', class: 'rv-go', text: 'Continue' }), 'Close this card and keep watching')
     ]);
     ov.appendChild(el('div', { class: 'rv-bar' }, [row]));
@@ -12802,7 +12804,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   //   host / guest {name, dev, deck, mat, goal, casual, lk, acct}  status waiting|joined|playing|over|closed
   //   seq  owner (seat running the game)  st  defs  pr {id, seat, k, d, f, cp, go, ans}  an {id, v}  w  at  by (dev.seat)
   var NETK = 'lorc_online', NETL = 'lorc_net_mine', NETME = 'lorc_net_me', WAIT_MS = 30 * 864e5;
-  var NET = { seat: null, owner: false, ref: null, unsub: null, lobbyOff: null, seq: 0, synced: false, pend: null, pn: 0, answered: {}, showing: null, feedSeen: 0, feedMax: 0, defs: null, next: null, pt: 0, dealt: false, errAt: 0,
+  var NET = { fq: [], fqT: 0, seat: null, owner: false, ref: null, unsub: null, lobbyOff: null, seq: 0, synced: false, pend: null, pn: 0, answered: {}, showing: null, feedSeen: 0, feedMax: 0, defs: null, next: null, pt: 0, dealt: false, errAt: 0,
     cp: null, ans: [], rp: [], px: null, pgo: null, wq: null, wbusy: false, rt: 0, taking: false, retake: false, doc: null, acting: null, gone: {}, peekOff: null };
   NET.dev = lsGet('lorc_dev', '') || (function () { var d = Math.random().toString(36).slice(2, 10); lsSet('lorc_dev', d); return d; })();
   function netErr(e) { console.warn(e); if (Date.now() - NET.errAt > 8000) { NET.errAt = Date.now(); Kit.toast('Connection problem: ' + (e && e.message || e)); } }
@@ -12897,10 +12899,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       });
     }).then(function (x) {
       NET.taking = false;
-      if (!x || !sameRef(NET.ref, ref) || NET.owner) return;   // it moved on: the newest copy is on its way here
+      if (!x || !sameRef(NET.ref, ref) || NET.owner) {
+        // it moved on: the newest copy is on its way here. If it already came while this was in flight (and was
+        // ignored, this being busy), take that one now rather than wait for another change
+        var nd = NET.doc;
+        if (!NET.owner && sameRef(NET.ref, ref) && nd && nd.owner === NET.seat && (nd.seq || 0) > base && nd.st) setTimeout(function () { netTake(nd); }, 0);
+        return;
+      }
       NET.seq = base + 1; NET.owner = true; netPill(false);
       netResume(x);
-    }, function (e) { NET.taking = false; NET.retake = true; netErr(e); });
+    }, function (e) { NET.taking = false; NET.retake = true; netErr(e); setTimeout(netRetake, 2500); });   // try again shortly, not only on coming back to the app
   }
   // A fresh start at running the game: pick up where it stands. A question this seat asked before (on a device that's
   // gone now) is dealt with: opening hands take the answer straight in; anything else goes back to the checkpoint.
@@ -12961,7 +12969,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     netPush(true, {});
   }
   // What happened, for the other device to show (the card played, an ability's result)
-  function netFeed(k, a) { NET.feedMax = Math.max(NET.feedMax, S.feedN || 0) + 1; S.feedN = NET.feedMax; S.feed = (S.feed || []).concat([{ n: S.feedN, k: k, a: a }]).slice(-10); }
+  // (this device has seen its own moves: they aren't shown back to it when the other device's copy comes in)
+  function netFeed(k, a) { NET.feedMax = Math.max(NET.feedMax, S.feedN || 0) + 1; S.feedN = NET.feedMax; NET.feedSeen = Math.max(NET.feedSeen, S.feedN); S.feed = (S.feed || []).concat([{ n: S.feedN, k: k, a: a }]).slice(-10); }
   function oppShow(u, verb, how, eff, vs) {
     if (S.mode !== 'online') return cpuShow(u, verb, how, eff, vs);
     netFeed('s', [u, verb, how || '', eff || '', vs || null]);
@@ -12971,6 +12980,19 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (S.mode !== 'online') return ticker(S.P[pi], verb, text);
     netFeed('t', [pi, verb, text]);
     if (pi !== NET.seat) ticker(S.P[pi], verb, text);
+  }
+  // Several moves can arrive in one copy of the game (two Boosts, then a play): each card is shown in turn, the next
+  // waiting until the one showing is closed, so none is replaced before it's seen. Banners go straight on
+  function netFeedDrain() {
+    if (NET.fqT) return;
+    (function step() {
+      NET.fqT = 0;
+      while (NET.fq.length && NET.fq[0].k !== 's') netShowFeed(NET.fq.shift());
+      if (!NET.fq.length || !S || S.mode !== 'online') { NET.fq = []; return; }
+      if ($('.lz.reveal')) { NET.fqT = setTimeout(step, 250); return; }
+      netShowFeed(NET.fq.shift());
+      if (NET.fq.length) NET.fqT = setTimeout(step, 250);
+    })();
   }
   function netShowFeed(f) {
     var a = f.a;
@@ -13063,7 +13085,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     S = s; uidN = S.uidN || 0;
     render(); if (before) animateFrom(before);
     if (first) NET.feedSeen = S.feedN || 0;
-    else (S.feed || []).forEach(function (f) { if (f.n > NET.feedSeen) netShowFeed(f); });
+    else (S.feed || []).forEach(function (f) { if (f.n > NET.feedSeen) NET.fq.push(f); });
+    netFeedDrain();
     NET.feedSeen = Math.max(NET.feedSeen, S.feedN || 0); NET.feedMax = Math.max(NET.feedMax, NET.feedSeen);
     if (over && d.w) { netPill(false); finish(d.w); return; }
     if (d.owner === NET.seat && !NET.owner) {
@@ -13103,6 +13126,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function netListen(ref, seat) {
     lobbyOff();
     if (NET.unsub) NET.unsub();
+    NET.fq = []; clearTimeout(NET.fqT); NET.fqT = 0;
     NET.ref = ref; NET.seat = seat; NET.owner = false; NET.seq = 0; NET.synced = false; NET.pend = null; NET.showing = null; NET.dealt = false; NET.defs = null; NET.answered = {};
     NET.cp = null; NET.ans = []; NET.rp = []; NET.px = null; NET.taking = false; NET.retake = false; NET.doc = null; NET.dealWait = false;
     lsSet(NETK, { code: ref.id, seat: seat, at: Date.now() }); netRemember(ref.id, seat);
