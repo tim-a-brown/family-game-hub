@@ -385,8 +385,8 @@
     sparkle: function () { [1320, 1760, 2350].forEach(function (f, i) { tone(f, i * 0.06, 0.14, 'sine', 0.05); }); },
     splash: function () { noise(0, 0.16, 0.07, 900, 1.2, 300); tone(180, 0, 0.12, 'sine', 0.06, 90); },
     boom: function () { noise(0, 0.32, 0.08, 240, 0.8, 90); tone(95, 0, 0.28, 'sine', 0.09, 45); },
-    // Your turn (online games): a bright two-note bell, a rising "ding-ding" that carries across a room
-    turn: function () { [[880, 0], [1319, 0.14]].forEach(function (p) { tone(p[0], p[1], 0.6, 'sine', 0.14); tone(p[0] * 2.01, p[1], 0.32, 'sine', 0.035); tone(p[0] * 3.02, p[1], 0.16, 'sine', 0.015); }); },
+    // Your turn (online games): one soft chime, a warm note that rings out gently
+    turn: function () { tone(659, 0, 1.1, 'sine', 0.09); tone(659 * 2.005, 0, 0.55, 'sine', 0.018); tone(659 * 3.01, 0, 0.25, 'sine', 0.006); },
     // A dull, soft card brush (no click): low-pitched paper noise with a faint body, for card carousels
     slide: function () { noise(0, 0.05, 0.03, 480 + Math.random() * 80, 0.9, 300); tone(130, 0, 0.04, 'sine', 0.018); }
   };
