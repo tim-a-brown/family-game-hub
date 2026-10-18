@@ -4438,6 +4438,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var c = C(u), p = S.P[c.o], i = p.board.indexOf(u);
     if (i >= 0) { var gr = abs(u).filter(function (a) { return a.i >= 200; }); S.lastGrant = S.lastGrant || {}; if (gr.length) S.lastGrant[u] = gr; else delete S.lastGrant[u]; }
     if (i >= 0) p.board.splice(i, 1);
+    // "when he leaves play" (Merlin – Rabbit) counts every way off the table: back to hand, into the deck or the inkwell,
+    // under another card. Banished ones get theirs with the rest of the banish triggers
+    if (i >= 0 && !leaveBanish && S.phase === 'play') trig(u, ['leave'], c.o, {});
     // effects that last "while this item is in play" end now; remember what was under it
     for (var k0 in S.cards) { var ck = S.cards[k0]; if (ck.mods && ck.mods.length) ck.mods = ck.mods.filter(function (m) { return m.whileSrc !== u; }); }
     S.lastUnder = S.lastUnder || {}; S.lastUnder[u] = (c.under || []).length; S.lastUnderCards = S.lastUnderCards || {}; S.lastUnderCards[u] = (c.under || []).slice();
@@ -4574,7 +4577,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (got) fx.drawn(pi);
     return got;
   }
-  function banish(u) { var o = C(u).o; if (onBoard(u) && staticOp(u, 'banishToInk')) { leavePlay(u); resetCard(u); C(u).ex = true; S.P[o].ink.push(u); log(nm(u) + ' went into the inkwell instead', o); return; } leavePlay(u); S.P[o].discard.push(u); }
+  var leaveBanish = false;
+  function banish(u) { leaveBanish = true; try { banish0(u); } finally { leaveBanish = false; } }
+  function banish0(u) { var o = C(u).o; if (onBoard(u) && staticOp(u, 'banishToInk')) { leavePlay(u); resetCard(u); C(u).ex = true; S.P[o].ink.push(u); log(nm(u) + ' went into the inkwell instead', o); return; } leavePlay(u); S.P[o].discard.push(u); }
   // Anything with damage at or over its willpower is banished
   function checkBanish() {
     var out = [];
