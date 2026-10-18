@@ -2624,7 +2624,7 @@
         upd(); iv = setInterval(function () { if (!box.isConnected) { clearInterval(iv); return; } upd(); }, 1000);
         box.appendChild(run);
       }
-      if (!mine && !(t && t.cut)) box.appendChild(lockRow(t));
+      if (!mine && !api.by && !(t && t.cut)) box.appendChild(lockRow(t));   // (a parent's timer always ends play: no switch)
       // a parent can also stop games right now, with no countdown and no minute's grace
       if (api.cut && !(t && t.cut)) box.appendChild(el('button', { type: 'button', class: 'btn btn-danger btn-block k-tmr-cut', html: icon('lock') + '<span>Cut off now</span>', onclick: function () { api.cut(); sfx('bad'); haptic('medium'); paint(); } }));
     }
@@ -3199,10 +3199,10 @@
       body.appendChild(el('button', { type: 'button', class: 'kd-time', onclick: function () { playTimeSheet(U, poss(name) + ' play time, all their devices'); } }, [
         el('span', { class: 'grow' }, [el('small', { text: 'Today' }), el('b', { text: minsText(vals[6]) }), el('span', { text: 'This week ' + minsText(wk) })]), bars, el('span', { class: 'chev', html: icon('right') })]));
       // the timer: the same picker as your own, but it runs on their devices
-      var tapi = { by: me, note: 'Starts on ' + poss(name) + ' devices right away. They see the countdown in the last two minutes.',
+      var tapi = { by: me, note: 'Starts on ' + poss(name) + ' devices right away. They see a countdown in the last two minutes, get one more minute to finish up, then games lock until you unlock them.',
         get: function () { var t = cur.pc && cur.pc.timer; if (!t || (!t.lock && Date.now() - t.end > 60000)) return null; var o = {}; for (var k in t) o[k] = t[k]; return o; },
         set: function (t) { cur.pc.timer = t; save(function (x) { x.timer = t; }); },
-        lock: function () { return lsGet('gn_timer_lock', '1') === '1'; }, setLock: function (v) { lsSet('gn_timer_lock', v ? '1' : '0'); },
+        lock: function () { return true; }, setLock: function () {},
         cut: function () { var now = Date.now(); tapi.set({ end: now, start: now, mins: 0, lock: true, cut: true, by: me }); toast(poss(name) + ' games are off'); } };
       body.appendChild(card('Game timer', [timerPanel(tapi)]));
       // games: whole sections, or single games
