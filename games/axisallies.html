@@ -2041,7 +2041,7 @@ function renderPanel() {
   if (S.phase === 'mob') return mobPanel();
 }
 function cpuPanel() {
-  var p = cur(), sh = panelShell(seatOf(p).name + ' is playing ' + pname(p), { undo: false });
+  var p = cur(), sh = panelShell(NET ? 'Waiting for ' + seatOf(p).name : seatOf(p).name + ' is playing ' + pname(p), { undo: false });
   if (NET) {
     // online, watching someone else's turn: the table's seats (whose turn glows), your own powers, the place you tapped
     R.side.querySelector('h2').classList.add('aa-wait');
@@ -2776,7 +2776,7 @@ function casPicker(B) {
   var human = humanPower(chooser), seat = seatOf(chooser);
   var shooter = v.side === 'a' ? B.att : B.def, picked = 0; for (var kk in counts) picked += counts[kk];
   var box = el('div', { class: 'bcas', style: { '--pc': PW[chooser].col, '--pci': PW[chooser].ink } }, [
-    el('h4', { html: Kit.icon('hand') + '<span>' + (human ? (seat.name === 'You' ? 'Your choice' : esc(seat.name) + '’s choice') + ': ' + PW[chooser].short + ' takes ' + need + (need === 1 ? ' hit' : ' hits') : esc(seat.name) + ' chooses where ' + need + (need === 1 ? ' hit lands' : ' hits land')) + '</span>' }),
+    el('h4', { html: Kit.icon('hand') + '<span>' + (human ? (seat.name === 'You' || NET ? 'Your choice' : esc(seat.name) + '’s choice') + ': ' + PW[chooser].short + ' takes ' + need + (need === 1 ? ' hit' : ' hits') : esc(seat.name) + ' chooses where ' + need + (need === 1 ? ' hit lands' : ' hits land')) + '</span>' }),
     el('p', { class: 'lead', text: PW[shooter].short + ' scored ' + need + (need === 1 ? ' hit' : ' hits') + '. ' + (human ? 'Tap the pieces that take them (the cheapest are picked for you).' : '') })
   ]);
   var groups = el('div', { class: 'groups' });
@@ -4062,7 +4062,7 @@ TurnNet.setup({
 });
 // test hook
 window.__aa = { get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir,
-  get NET() { return NET; }, get DRAFT() { return DRAFT; }, netTurn: netTurn, get undo() { return undoStack.length; } };
+  get NET() { return NET; }, get DRAFT() { return DRAFT; }, netTurn: netTurn, netBot: netBot, get undo() { return undoStack.length; } };
 })();
 </script>
 </body>

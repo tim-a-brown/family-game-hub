@@ -892,7 +892,7 @@
     NET = net; ME = net.seat >= 0 ? PS[net.seat] : 0;
     if (info.fresh || info.again) { NQ = []; NGEN++; busy = false; netCloseOver(); }
     NQ.push({ st: JSON.parse(JSON.stringify(net.state)), prev: info.prev ? JSON.parse(JSON.stringify(info.prev)) : null, mv: info.mv, info: info });
-    if (NQ.length > 6) { console.log('[spdbg] skip'); NQ = NQ.slice(-1).map(function (x) { x.skip = true; return x; }); }   // far behind: jump to now
+    if (NQ.length > 6) NQ = NQ.slice(-1).map(function (x) { x.skip = true; return x; });   // far behind: jump to now
     if (!busy) netPump();
   }
   function netPump() {
@@ -928,7 +928,7 @@
     }
     // a card: check it follows from what's on screen, otherwise just draw the table as it is now
     var ok = mv.k === 'play' && prev.phase === 'play' && prev.turn === mv.p && find(prev.hands[mv.p], mv.c.id) >= 0 && (mv.w == null ? prev.trick.length < 3 : prev.trick.length === 3);
-    if (!ok) { console.log('[spdbg] notok ' + JSON.stringify(mv)); S = netView(st); render(); done(); return; }
+    if (!ok) { S = netView(st); render(); done(); return; }
     var fromRect = null;
     if (p === 0 && handEl) { var hn = handEl.querySelector('[data-id="' + mv.c.id + '"]'); if (hn) fromRect = hn.getBoundingClientRect(); }
     function fly(node) {
@@ -1017,8 +1017,11 @@
   function netEnd() {
     if (!NET || !NST || NST.phase !== 'over') return;
     var st = NST, w = st.winner, l = 1 - w, key = NET.code + ':' + st.started;
-    if (!NETREC[key]) {
+    // recorded once per device per game (remembered here, so opening the finished table again doesn't add it twice)
+    var done = []; try { done = JSON.parse(localStorage.getItem('spades_netrec')) || []; } catch (e) {}
+    if (NET.seat >= 0 && !NETREC[key] && done.indexOf(key) < 0) {
       NETREC[key] = 1;
+      try { localStorage.setItem('spades_netrec', JSON.stringify(done.concat([key]).slice(-20))); } catch (e) {}
       withS(st, function () {
         var seen = {}, hl = st.highlights.slice().reverse().filter(function (h) { var k = h.replace(/ in hand \d+$/, ''); if (seen[k]) return false; seen[k] = 1; return true; }).slice(0, 5).reverse();
         var top = 0; for (var p = 1; p < 4; p++) if (st.tricksAll[p] > st.tricksAll[top]) top = p;
@@ -1048,8 +1051,6 @@
       again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
       closeLabel: 'Back to games'
     });
-    // (the win screen clears the home screen's "resume" for this game: keep it for the game saved on this device)
-    try { var sv = JSON.parse(localStorage.getItem(SAVE)); if (sv && sv.players && sv.hands && sv.phase !== 'over') Kit.resume.set('Hand ' + sv.round + ' · us ' + sv.scores[0] + ', them ' + sv.scores[1]); } catch (e) {}
   }
   function netLeave() {
     NET = null; NST = null; NQ = []; NGEN++; busy = false; token++;
