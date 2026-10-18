@@ -241,6 +241,7 @@ const PRECACHE_URLS = [
   '/games/console.js',
   '/games/console-art.js',
   '/games/console-net.js',
+  '/games/console-hi.js',
   '/console-lib.js',
   '/games/console.css',
   // the emulator (its cores are big; EmulatorJS keeps each one in its own storage after the first game)

@@ -141,13 +141,20 @@ var ConsoleHi = (function () {
   // every place in the heap holding exactly this RAM (not the state's own copy): the low 32 MB first, where the
   // cores keep it, then the rest only if need be
   function scan(E, st) {
-    var H = E.Module.HEAPU8, ram = st.ram, n = ram.length, best = 0, bw = 0;
-    for (var w = 0; w + 16 <= n; w += 4) { var seen = {}, k = 0; for (var q = 0; q < 16; q++) if (!seen[ram[w + q]]) { seen[ram[w + q]] = 1; k++; } if (k > best) { best = k; bw = w; } }
-    if (best < 6) return null;   // (the RAM is still nearly blank: try again in a moment)
+    var H = E.Module.HEAPU8, ram = st.ram, n = ram.length, best = -1, bw = 0, lim = Math.min(H.length, 32 << 20);
+    // the search walks the heap from one byte value to the next, so it starts from a byte that's rare there (counted
+    // on a sample), in a stretch of RAM varied enough to be found in one place only
+    var freq = new Uint32Array(256); for (var f = 0; f < lim; f += 61) freq[H[f]]++;
+    for (var w = 0; w + 16 <= n; w += 2) {
+      var seen = {}, k = 0; for (var q = 0; q < 16; q++) if (!seen[ram[w + q]]) { seen[ram[w + q]] = 1; k++; }
+      if (k < 8) continue;
+      var sc = 1e9 - freq[ram[w]]; if (sc > best) { best = sc; bw = w; }
+    }
+    if (best < 0) return null;   // (the RAM is still nearly blank: try again in a moment)
     var out = [];
     function pass(from, to) {
-      var b0 = ram[bw], i = from - 1;
-      while ((i = H.indexOf(b0, i + 1)) >= 0 && i < to) {
+      var b0 = ram[bw], V = H.subarray(0, Math.min(H.length, to + 16)), i = from - 1;   // (a view ending at 'to': indexOf stops there)
+      while ((i = V.indexOf(b0, i + 1)) >= 0 && i < to) {
         if (i >= st.ptr && i < st.ptr + st.size) { i = st.ptr + st.size - 1; continue; }
         var ok = true; for (var j = 1; j < 16; j++) if (H[i + j] !== ram[bw + j]) { ok = false; break; }
         if (ok && same(H, i - bw, ram)) out.push(i - bw);
