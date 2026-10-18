@@ -564,7 +564,7 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 /* Phones: details folded away, the card as big as the screen allows */
 @media not all and (min-width:900px) and (orientation:landscape){
   .lz.lz-min .lz-in > .lz-info{display:none;}
-  .lz.lz-min .lz-flow,.lz.lz-min .lz-card{--cu:min(calc(80vh - 60px),128vw,820px);}
+  .lz.lz-min .lz-flow,.lz.lz-min .lz-card{--cu:min(calc(80vh - 60px),128vw,820px,var(--cumin,820px));}   /* --cumin: fitMin */
   /* locations lie sideways: as wide as the screen allows, not as tall */
   .lz.lz-min .lz-card.loc{--cu:min(calc(100vw - 24px),62vh,560px);}
   .lz.lz-min .lz-fc.loc{--lw:min(calc(var(--cu) * .92),calc(100vw - 24px));}
@@ -9820,6 +9820,17 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (Math.abs(dx) > 1 || Math.abs(dy) > 1) x.animate([{ transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)' }, { transform: 'none' }], { duration: 480, easing: ease });
     });
   }
+  // Details rolled away: the card is as big as the screen allows, and no bigger. Where the banner runs to two lines or
+  // the screen's edges take room (iPads), it shrinks until the rolled-up scroll under it is back on the screen
+  function fitMin(ov) {
+    var fl = function () { if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure(); };
+    ov.style.removeProperty('--cumin'); ui.cuMin = 0; fl();
+    var c = ov.querySelector('.lz-fc.focus') || ov.querySelector('.lz-card'); if (!c || c.classList.contains('loc')) return;
+    var rl = ov.querySelector('.lz-roll'), rb = rl && rl.getBoundingClientRect();
+    var over = Math.max(ov.scrollHeight - ov.clientHeight, rb && rb.height ? rb.bottom - (ov.getBoundingClientRect().bottom - 12) : 0); if (over <= 2) return;
+    ui.cuMin = Math.max(LZ_FIT_MIN, Math.floor(c.offsetHeight - over - 6));
+    ov.style.setProperty('--cumin', ui.cuMin + 'px'); fl();
+  }
   function toggleLzMin(ov) {
     if (ov._rolling) return;
     var min = !ov.classList.contains('lz-min'), info = ov.querySelector('.lz-in > .lz-info');
@@ -9840,11 +9851,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       info.style.setProperty('--tilt', ((w / 2 + 10) * Math.tan(3.5 * Math.PI / 180)).toFixed(1) + 'px');
     }
     Kit.sfx('tap'); if (Kit.haptic) Kit.haptic('light');
-    if (still) { ov.classList.toggle('lz-min', min); remeasure(); return; }
+    if (still) { ov.classList.toggle('lz-min', min); if (min) fitMin(ov); remeasure(); return; }
     // The card grows (or shrinks) in step with the roll: measure it in both layouts, then animate between them on the
     // roll's own ease, so the card's edge keeps the same distance from the roller all the way
     var cardOf = function () { return ov.querySelector('.lz-fc.focus') || ov.querySelector('.lz-card'); };
-    var snap = function (on) { ov.classList.toggle('lz-min', on); remeasure(); var c = cardOf(); return c && c.getBoundingClientRect(); };
+    var snap = function (on) { ov.classList.toggle('lz-min', on); if (on) fitMin(ov); remeasure(); var c = cardOf(); return c && c.getBoundingClientRect(); };
     // (both measured in one go, before anything paints; then the open layout stays for the roll to run over)
     var rollAt = function () { var rl = ov.querySelector('.lz-roll'), q = rl && rl.getBoundingClientRect(); return q && q.width ? { x: (q.left + q.right) / 2, y: (q.top + q.bottom) / 2 } : null; };
     // the hand's filter bar and the action buttons sit under the card: they ride with its bottom edge
@@ -9973,6 +9984,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var wasMin = (swapping || keep) && !!$('.lz.lz-min'), wasBig = (swapping || keep) && !!$('.lz.lz-big');
     closeZoom();
     var ov = el('div', { class: 'lz' + (swapping || keep ? ' noanim show' : '') + (wasMin ? ' lz-min' : '') + (wasBig ? ' lz-big' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
+    if (wasMin && ui.cuMin) ov.style.setProperty('--cumin', ui.cuMin + 'px');
     var inner = el('div', { class: 'lz-in' });
     if (ui.rollW) ov.style.setProperty('--roll-w', ui.rollW + 'px');
     var F = null, card = null;
@@ -13361,6 +13373,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       else if (pz && ov.classList.contains('lz-big')) { ov.classList.remove('lz-big'); ov.classList.add('lz-min'); }
     }
     if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure();
+    if (pz && ov.classList.contains('lz-min')) fitMin(ov); else { ov.style.removeProperty('--cumin'); ui.cuMin = 0; }
     requestAnimationFrame(function () { fitLz(ov); });
   }
   window.addEventListener('resize', onResize);
