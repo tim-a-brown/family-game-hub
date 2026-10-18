@@ -1057,6 +1057,7 @@
     requestAnimationFrame(fitBar);
     window.addEventListener('resize', function () { clearTimeout(fitBar.t); fitBar.t = setTimeout(fitBar, 120); });
     try { doc.fonts.addEventListener('loadingdone', function () { requestAnimationFrame(fitBar); }); } catch (e) {}   // measured again in the title's own font (the first look can be in the fallback)
+    try { new ResizeObserver(function () { requestAnimationFrame(fitBar); }).observe(gbarEl.querySelector('.ttl')); } catch (e) {}   // and when the title itself changes (a game renaming it once it starts)
     // games with modes, options or players to pick again: the title gets a down arrow that goes back to that
     // choice (games with their own picker call Kit.titleSwitch and take the arrow over)
     // while the setup screen is showing there's nothing to go back to: the arrow hides (html.k-in-setup)
