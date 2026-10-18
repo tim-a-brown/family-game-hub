@@ -498,7 +498,7 @@
     else if (k === 'link') { s.r = (s.r || 0) + SEAT_STACK - Math.max(0, s.bank); s.bank = SEAT_STACK; }   // resets their bankroll to $1,000 (filed as a reset, r)
     else s.bank += k === 'table' ? S.stake : SEAT_STACK;
     s.rebuys++;
-    Kit.sfx('chip'); Kit.toast(k === 'mine' ? 'Casino bank reset to $1,000' : k === 'link' ? Kit.poss(s.name) + ' bankroll reset to $1,000' : k === 'table' ? s.name + ' bought back in for ' + money(S.stake) : s.name + ' bought $1,000 in chips');
+    Kit.sfx('chip'); Kit.toast(k === 'mine' ? 'Casino bank reset to $1,000' : k === 'link' ? Kit.poss(s.name) + ' bankroll reset to $1,000' : k === 'table' ? s.name + ' bought back in for ' + money(S.stake) : s.name + ' got $1,000 more play money');
     save(); render();
   }
 
@@ -1409,8 +1409,8 @@
       status([who(i), el('span', { text: humans().length > 1 ? Kit.poss(s.name) + ' bet' : 'Your bet' })], el('span', { class: 'big', text: money(S.bets[i]) }));
       if (bank(i) < 1) {
         var sk = srcOf(i);
-        c.appendChild(el('p', { class: 'muted center', text: sk === 'mine' ? 'The casino bank is empty.' : sk === 'link' ? Kit.poss(s.name) + ' bankroll is empty.' : s.name + ' is out of chips.' }));
-        acts([btn(sk === 'mine' ? 'Reset bank to $1,000' : sk === 'link' ? 'Reset ' + Kit.poss(s.name) + ' bankroll to $1,000' : sk === 'table' ? 'Buy back in for ' + money(S.stake) : 'Buy $1,000 in chips', 'btn-yellow', function () { rebuy(i); })], 1);
+        c.appendChild(el('p', { class: 'muted center', text: sk === 'mine' ? 'The casino bank is empty.' : sk === 'link' ? Kit.poss(s.name) + ' bankroll is empty.' : s.name + (sk === 'table' ? ' is out of chips.' : ' is out of play money.') }));
+        acts([btn(sk === 'mine' ? 'Reset bank to $1,000' : sk === 'link' ? 'Reset ' + Kit.poss(s.name) + ' bankroll to $1,000' : sk === 'table' ? 'Buy back in for ' + money(S.stake) : '$1,000 more play money', 'btn-yellow', function () { rebuy(i); })], 1);
       } else {
         // Chip rack: drag a chip into a betting circle, or tap one to add it to the selected seat
         var rk = Casino.rack({

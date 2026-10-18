@@ -2048,6 +2048,7 @@ function cpuPanel() {
     sh.body.appendChild(TurnNet.chips());
     var mineP = S.powers.filter(function (q) { return S.ctl[q] === NET.seat; });
     if (mineP.length) sh.body.appendChild(el('div', { class: 'aa-mine' }, [el('span', { text: 'You play' })].concat(mineP.map(function (q) { return el('span', { class: 'pw', html: roundelSvg(q) + '<b>' + esc(PW[q].short) + '</b>' }); }))));
+    if (S.phase === 'bat' && S.bl.length && !S.B) { var bl = el('div', { class: 'blist' }); S.bl.forEach(function (b) { bl.appendChild(battleRow(b, function () { Kit.sfx('tap'); selectPlace(b.t); }, b.done ? 'done' : battleLocked(b) ? 'lock' : '')); }); sh.body.appendChild(bl); }
     if (S.B && !R.bt) sh.body.appendChild(el('div', { class: 'blist' }, [el('button', { type: 'button', class: 'brow', onclick: function () { Kit.sfx('tap'); netWatchBattle(); } }, [el('span', { html: Kit.icon('dice') }).firstChild,
       el('span', { class: 'tx' }, [el('b', { text: tname(S.B.t) }), el('small', { text: 'Battle on now · tap to watch' })])])]));
     if (ui.sel >= 0) { sh.body.appendChild(tinfoCard(ui.sel)); sh.body.appendChild(unitList(ui.sel)); }
@@ -3605,7 +3606,7 @@ function showSetup() {
 // Computer generals play one step per move, worked out headless with the game's own AI.
 // ═══════════════════════════════════════════════════════════════════════════
 var NETREC = 'axisallies_netrec', NETDRAFT = 'axisallies_netdraft', NETOPTS = null;
-var netN = 0, netTimers = [], lastRollSig = '', lastEndSig = '', lastCasSig = '', lastDecSig = '', btHide = null, lastTurnKey = '';
+var netWinUI = null, netN = 0, netTimers = [], lastRollSig = '', lastEndSig = '', lastCasSig = '', lastDecSig = '', btHide = null, lastTurnKey = '';
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
 // Work out a move on a copy of the state: S is that copy while fn runs (nothing saved, no toasts), then put back
 function calc(st, fn) {
@@ -3872,6 +3873,7 @@ function netShow(net, info) {
   if (first) {
     // whatever was on this device (a local game, its computer turn, its battle) stops where it is: it's saved
     tok++; busy = 0; cpuRunning = false; inputWait = null; hideBattle(); closeBanner();
+    if (netWinUI) { netWinUI.close(); netWinUI = null; }   // (a rematch: the last game's win screen goes on every device)
     if (setupObs) { setupObs.disconnect(); setupObs = null; }
     lastRollSig = lastEndSig = lastCasSig = lastDecSig = lastTurnKey = ''; btHide = null; DRAFT = null;
   }
@@ -4007,7 +4009,8 @@ function netEnd() {
   if (!netRecorded(key)) aaRecord(side, why, 'Online', ['Online game · table ' + NET.code + ' · ' + (S.mode === 'skirm' ? 'Skirmish' : '1942 Second Edition')]);
   var me = S.seats[NET.seat], mySide = me && me.powers.length ? sideOf(me.powers[0]) : '';
   var res = NET.result, left = !!(res && res.left != null);
-  Kit.win({
+  if (netWinUI) netWinUI.close();
+  netWinUI = Kit.win({
     icon: 'trophy', lose: !!mySide && mySide !== side,
     title: mySide === side ? 'You win!' : SIDE[side] + ' win!',
     sub: (why ? why + ' · ' : '') + 'round ' + S.round,
