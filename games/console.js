@@ -490,80 +490,6 @@
     });
   }
 
-  // ═══ High scores ══════════════════════════════════════════════════════════
-  // Games that keep a score (console-hi.js knows which, and where each keeps it) put a finished game's score on
-  // its board on the High Scores page (ArcadeHi, synced as hi_console_<game>). Followed only when playing on this
-  // device: online, the game belongs to everyone at the table. A game left mid-way (the page closed) is kept in
-  // gn_con_hi_pending and offered for the board the next time a console page opens.
-  var hiW = null, hiQ = Promise.resolve(), HI_PEND = 'gn_con_hi_pending';
-  function loadScript(src) { return new Promise(function (ok) { var s = document.createElement('script'); s.src = src; s.onload = s.onerror = function () { ok(); }; document.head.appendChild(s); }); }
-  var hiReady = (typeof ArcadeHi !== 'undefined' ? Promise.resolve() : loadScript('../arcade-hi.js')).then(function () { return window.ConsoleHi ? null : loadScript('console-hi.js'); });
-  function hiOk() { return !!window.ConsoleHi && typeof ArcadeHi !== 'undefined'; }
-  function hiStart(c) {
-    hiReady.then(function () {
-      if (!hiOk() || hiW || c.netGame) return;
-      hiW = ConsoleHi.watch({ cart: c, sys: SYS_ID, emu: emu, live: function () { return started && !resumeEl; }, skip: function () { return !!NET.mode || ConsoleNet.on(); },
-        onEnd: function (key, score, g) { hiFile(key, score, g.name); },
-        onPass: function () { if (!document.querySelector('.ahi-overlay')) { Kit.callout('High score!'); Kit.sfx('sparkle'); Kit.haptic('success'); } } });
-    });
-  }
-  function hiInput() { if (hiW) hiW.input(); }
-  window.addEventListener('keydown', hiInput, true);
-  // a finished game's score: the moment on the TV (a new record gets confetti), then the initials for the board
-  function hiFile(key, score, name, after) {
-    try { localStorage.removeItem(HI_PEND); } catch (e) {}
-    hiQ = hiQ.then(function () {
-      return new Promise(function (done) {
-        if (!hiOk() || !ArcadeHi.qualifies(key, score)) { done(); return; }
-        var top = ArcadeHi.top(key), first = top == null || score > top;
-        hiMoment(score, first ? 'New record' : 'High score', name, function () { ArcadeHi.check(key, score, done); }, first);
-      });
-    });
-    return hiQ.then(function () { if (after) after(); });
-  }
-  function hiMoment(score, head, name, next, big) {
-    Kit.sfx(big ? 'win' : 'good'); Kit.haptic('success'); if (big && Kit.confetti) Kit.confetti();
-    var host = glassEl && glassEl.isConnected ? glassEl : null;
-    if (!host || matchMedia('(prefers-reduced-motion: reduce)').matches) { if (!host) Kit.callout(head); next(); return; }
-    var num = el('b', { class: 'chi-num', text: '0' });
-    var box = el('div', { class: 'chi-moment' + (big ? ' big' : ''), role: 'status' }, [el('small', { text: head }), num, el('span', { class: 'chi-game', text: name })]);
-    host.appendChild(box);
-    var t0 = performance.now(), D = 900;
-    (function count(now) {
-      var k = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - k, 3);
-      num.textContent = Math.round(score * e).toLocaleString('en-US');
-      if (k < 1) requestAnimationFrame(count); else { box.classList.add('done'); Kit.sfx('chip'); }
-    })(t0);
-    setTimeout(function () { box.classList.add('out'); setTimeout(function () { box.remove(); next(); }, 260); }, 2100);
-  }
-  // leaving the game (Change cartridge): its score first
-  function hiLeave(go) {
-    if (!hiW) { go(); return; }
-    var w = hiW; hiW = null;
-    E_pause(); w.finish('left'); w.stop();
-    hiQ.then(go);
-  }
-  function E_pause() { var E = emu(); if (E && !E.paused) try { E.pause(); } catch (e) {} }
-  // the page hidden (switching apps, locking the phone, closing it): the game so far is kept, in case it never comes back
-  document.addEventListener('visibilitychange', function () {
-    try {
-      var p = hiW && hiW.pending();
-      if (document.hidden && p) localStorage.setItem(HI_PEND, JSON.stringify(p)); else if (!document.hidden) localStorage.removeItem(HI_PEND);
-    } catch (e) {}
-  });
-  window.addEventListener('pagehide', function () { try { var p = hiW && hiW.pending(); if (p) localStorage.setItem(HI_PEND, JSON.stringify(p)); } catch (e) {} });
-  // a score from a game left mid-way last time
-  function hiPending() {
-    var p = null; try { p = JSON.parse(localStorage.getItem(HI_PEND) || 'null'); } catch (e) {}
-    if (!p || !p.key || !(p.score > 0)) return;
-    hiReady.then(function () {
-      try { localStorage.removeItem(HI_PEND); } catch (e) {}
-      if (!hiOk() || Date.now() - (p.at || 0) > 14 * 864e5 || !ArcadeHi.qualifies(p.key, p.score)) return;
-      Kit.toast('Your last game of ' + p.name);
-      setTimeout(function () { hiFile(p.key, p.score, p.name); }, 600);
-    });
-  }
-
   // ═══ Playing ══════════════════════════════════════════════════════════════
   var cur = null, booted = false, started = false, playEl = null, scrEl = null, glassEl = null, skinEl = null, resumeEl = null;
   function play(c) {
@@ -677,7 +603,6 @@
       try { emu().gameManager.setFastForwardRatio(3); } catch (e) {}
       ConsoleNet.install(emu());
       if (NET.mode === 'guest') { if (NET.peer) NET.peer.send({ t: 'ready' }, true); return; }
-      hiStart(c);
       if (NET.pick) { var nm = NET.pick; NET.pick = null; root.classList.remove('net-pick'); netHost(nm); return; }
       getState(c.id, 'auto').then(function (st) { if (st) offerResume(st); });
     };
@@ -739,7 +664,7 @@
     return data;
   }
   function emu() { return window.EJS_emulator && window.EJS_emulator.gameManager ? window.EJS_emulator : null; }
-  function press(i, v, player) { var e = emu(); if (e && started) try { e.gameManager.simulateInput(player || 0, i, v); } catch (er) {} if (v) hiInput(); }
+  function press(i, v, player) { var e = emu(); if (e && started) try { e.gameManager.simulateInput(player || 0, i, v); } catch (er) {} }
   // a game started straight from the home screen has no tap behind it yet: its sound starts with your first touch
   function wakeAudio() { try { var E = emu(), a = E && E.Module && E.Module.AL && E.Module.AL.currentCtx && E.Module.AL.currentCtx.audioCtx; if (a && a.state === 'suspended') a.resume(); } catch (e) {} }
   document.addEventListener('pointerdown', wakeAudio, true);
@@ -781,7 +706,6 @@
     var E = emu(); if (!E || !st) return;
     var data = fixState(st.data);
     if (ConsoleNet.on()) { ConsoleNet.load(data); return; }   // online: on every device
-    if (hiW) hiW.finish('load');   // (the game so far is done; the saved moment starts another)
     try { E.gameManager.loadState(data); } catch (e) { Kit.toast('That save doesn’t fit this game'); }
   }
   function ago(t) { var m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : new Date(t).toLocaleDateString(); }
@@ -810,7 +734,7 @@
   function toShelf() {
     var go = function () { location.replace(location.pathname); };
     netQuit();
-    hiLeave(function () { if (started && !cur.netGame) saveState('auto').then(go, go); else go(); });
+    if (started && !cur.netGame) saveState('auto').then(go, go); else go();
   }
   // leaving or switching away keeps your place
   document.addEventListener('visibilitychange', function () { if (document.hidden && started && !cur.netGame) saveState('auto'); });   // (a joiner's game is the host's)
@@ -818,7 +742,7 @@
   // the game waits while a menu or sheet is open
   new MutationObserver(function () {
     var E = emu(); if (!E || !started || resumeEl) return;
-    var open = !!document.querySelector('.k-scrim, .ahi-overlay');
+    var open = !!document.querySelector('.k-scrim');
     if (ConsoleNet.on()) { ConsoleNet.pause(open); return; }   // online: held a frame at a time, both devices together
     if (open && !E.paused) { E.pause(); E._kitPaused = true; } else if (!open && E._kitPaused) { E._kitPaused = false; E.play(); }
   }).observe(document.body, { childList: true });
@@ -1619,9 +1543,6 @@
         else E.gameManager.restart();
       } },
       { icon: 'swap', label: 'Change cartridge', sub: 'Back to the ' + SYS.name + ' shelf', when: playing, onClick: toShelf },
-      { icon: 'trophy', label: 'High scores', sub: 'The best scores in this game', when: function () { return !!hiW; }, onClick: function () {
-        var k = hiW.key; hiLeave(function () { var go = function () { ArcadeHi.show(k); }; if (started && !cur.netGame) saveState('auto').then(go, go); else go(); });
-      } },
       { icon: 'gamepad', label: 'Controller buttons', sub: 'Remap a Bluetooth or USB controller', onClick: padSheet },
       { icon: 'help', label: 'Controls', onClick: controls }
     ],
@@ -1635,7 +1556,6 @@
       '<li>Tap a cartridge to play it. Press and hold one to rename it, hide its tile, or take it off the shelf.</li></ul>' +
       '<h3>Playing</h3><ul><li>Use the controller drawn on the screen, a keyboard (' + SYS.keys + '), or a real Bluetooth or USB controller.</li>' +
       '<li>Games that save on their own (battery saves) keep them on this device.</li>' +
-      '<li>Games that keep a score put your best on the High Scores page.</li>' +
       '<li><b>Save state</b> and <b>Load state</b> in the menu keep and return to an exact moment, three slots per game. When you leave, your place is kept and you can carry on next time.</li></ul>' +
       '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table for the game you’re playing and the others join it on their own devices. You’re player 1; the next to join is player 2' + (TAPS[SYS_ID] ? ', then 3 and 4 (in games made for four players' + (SYS_ID === 'genesis' ? ' with the Team Player' : '') + ')' : '') + '.</li>' +
       '<li>Their device gets the game from the family’s games, or straight from yours, and starts from exactly where you are. Someone can join a game under way: it starts again for everyone from that moment.</li>' +
@@ -1651,7 +1571,6 @@
       carts = list || [];
       var c = want && carts.filter(function (x) { return x.id === want; })[0];
       if (c) play(c); else drawShelf();
-      hiPending();
       if (/[?&]online=1/.test(location.search)) goOnline();   // from home's "open tables", or a joiner's fresh page
     }).catch(function (e) { console.warn(e); view.innerHTML = ''; view.appendChild(el('p', { class: 'empty-note', text: 'This browser can’t keep game files (private browsing blocks it).' })); });
   }
@@ -1659,5 +1578,5 @@
   if (window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.onReady) { var go = false; FGHSync.onReady(function () { if (!go) { go = true; start(); } }); setTimeout(function () { if (!go) { go = true; start(); } }, 4000); }
   else start();
 
-  window.__cs = { net: { go: goOnline, state: function () { return NET; }, quit: netQuit }, carts: function () { return carts; }, emu: emu, started: function () { return started; }, press: press, saveState: saveState, getState: getState, ctls: function () { return ctls; }, hi: function () { return hiW; } };
+  window.__cs = { net: { go: goOnline, state: function () { return NET; }, quit: netQuit }, carts: function () { return carts; }, emu: emu, started: function () { return started; }, press: press, saveState: saveState, getState: getState, ctls: function () { return ctls; } };
 })();
