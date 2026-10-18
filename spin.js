@@ -174,7 +174,7 @@ var Spin = (function () {
     // Canvas geometry (device pixels): the flapper hinge sits above the wheel
     var size = 300, dpr = 1, R = 120, CX = 150, CY = 160;
     function layout() {
-      var r = stage.getBoundingClientRect();
+      var r = { width: stage.offsetWidth, height: stage.offsetHeight };   // (its layout size: the sheet may still be scaling in)
       var reserve = 92;   // spin button and hint below the wheel
       size = Math.max(180, Math.floor(Math.min(r.width - 4, r.height - reserve - 12, 560)));
       dpr = Math.min(3, window.devicePixelRatio || 1);

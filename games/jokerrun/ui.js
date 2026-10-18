@@ -219,8 +219,8 @@
   }
 
   // ═══ Tooltip: tap a joker, card, voucher... ══════════════════════════════
-  var tipEl = null, tipScrim = null;
-  function closeTip() { if (tipEl) { tipEl.remove(); tipEl = null; } if (tipScrim) { tipScrim.remove(); tipScrim = null; } document.querySelectorAll('.sel-on').forEach(function (n) { n.classList.remove('sel-on'); }); }
+  var tipEl = null, tipScrim = null, tipAnchor = null;
+  function closeTip() { tipAnchor = null; if (tipEl) { tipEl.remove(); tipEl = null; } if (tipScrim) { tipScrim.remove(); tipScrim = null; } document.querySelectorAll('.sel-on').forEach(function (n) { n.classList.remove('sel-on'); }); }
   // btns: [{label, cls, on, why}] (why: shown greyed with a reason)
   function showTip(anchor, info, btns) {
     closeTip();
@@ -239,11 +239,15 @@
     }
     document.body.appendChild(tipScrim); document.body.appendChild(t); tipEl = t;
     if (anchor && anchor.classList && anchor.classList.contains('jk')) anchor.classList.add('sel-on');
-    var r = anchor.getBoundingClientRect(), w = t.offsetWidth, h = t.offsetHeight, vw = innerWidth, vh = innerHeight;
+    tipAnchor = anchor; placeTip();
+    Kit.sfx('tap', 0.6); hap('light');
+  }
+  // next to the thing it's about (again after the device turns)
+  function placeTip() {
+    var t = tipEl, r = tipAnchor.getBoundingClientRect(), w = t.offsetWidth, h = t.offsetHeight, vw = innerWidth, vh = innerHeight;
     var x = Math.max(8, Math.min(vw - w - 8, r.left + r.width / 2 - w / 2));
     var y = r.bottom + 8; if (y + h > vh - 6) y = r.top - h - 8; if (y < 6) { y = Math.max(6, Math.min(vh - h - 6, r.top)); x = r.right + 8 + w < vw ? r.right + 8 : Math.max(8, r.left - w - 8); }
     t.style.left = x + 'px'; t.style.top = y + 'px';
-    Kit.sfx('tap', 0.6); hap('light');
   }
 
   // ═══ Layout: card sizes from the space available ══════════════════════════
@@ -272,7 +276,7 @@
     placeHand();
   }
   var lt = 0;
-  window.addEventListener('resize', function () { clearTimeout(lt); lt = setTimeout(function () { layout(); closeTip(); }, 60); });
+  window.addEventListener('resize', function () { clearTimeout(lt); lt = setTimeout(function () { layout(); if (tipEl && tipAnchor && tipAnchor.isConnected) placeTip(); else closeTip(); }, 60); });
 
   // ═══ Render ══════════════════════════════════════════════════════════════
   var busy = false, sel = [], shopUndo = [], packSel = -1;
