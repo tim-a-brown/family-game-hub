@@ -1255,6 +1255,11 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .act:active{transform:translateY(3px);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.55),0 1px 0 #120d26,0 3px 8px rgba(0,0,0,.35);}
 .act .ai{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--w18),rgba(0,0,0,.25));box-shadow:inset 0 0 0 1px rgba(227,189,98,.45);}
 .act .ai svg,.act .ai .ico{width:18px;height:18px;}
+/* the singer's face on Sing, a small note on its edge */
+.act .ai{position:relative;}
+.act .ai .mini{position:absolute;inset:0;border-radius:50%;background-size:180% auto;background-position:50% 18%;box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.8);}
+.act .ai .ai-note{position:absolute;right:-5px;bottom:-4px;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;background:#2a2150;box-shadow:0 0 0 1.5px rgba(227,189,98,.9);color:var(--gilt-2);}
+.act .ai .ai-note svg{width:10px;height:10px;}
 .act .al{display:block;max-width:100%;font-family:var(--display);font-size:1.02rem;line-height:1.05;color:#fff6dc;text-align:center;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .act small{display:block;max-width:100%;font-size:.7rem;font-weight:800;color:rgba(246,225,168,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* An ink cost: small "Cost:" and the cost coin under the action's name */
@@ -7471,14 +7476,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var d = DD(u), ss = singersFor(u);
     if (!canSing(u)) { Kit.toast(d.K.singTogether ? 'Your ready characters don’t add up to cost ' + d.K.singTogether : 'No ready, dry character with cost ' + d.c + ' or more'); return; }
     if (d.K.singTogether) {
-      startPick({ title: 'Sing Together ' + d.K.singTogether + ': choose singers', ok: function (x) { return ss.indexOf(x) >= 0; }, multi: {
+      startPick({ title: 'Sing Together ' + d.K.singTogether + ': choose singers', src: u, cancel: function () { openZoom(u); }, ok: function (x) { return ss.indexOf(x) >= 0; }, multi: {
         need: function (sel) { var t = sel.reduce(function (a, x) { return a + singVal(x); }, 0); return t >= d.K.singTogether || (sel.length === 1 && singVal(sel[0]) >= d.c); },
         label: function (sel) { return 'Sing (' + sel.reduce(function (a, x) { return a + singVal(x); }, 0) + '/' + d.K.singTogether + ')'; },
         go: function (sel) { runAction({ k: 'play', u: u, o: { sing: sel } }); } } });
       return;
     }
     if (ss.length === 1) return runAction({ k: 'play', u: u, o: { sing: ss } });
-    startPick({ title: 'Who sings ' + d.n + '?', ok: function (x) { return ss.indexOf(x) >= 0; }, done: function (x) { runAction({ k: 'play', u: u, o: { sing: [x] } }); } });
+    // (Cancel puts the song back as it was: still in your hand, its card open again)
+    startPick({ title: 'Who sings ' + d.n + '?', src: u, cancel: function () { openZoom(u); }, ok: function (x) { return ss.indexOf(x) >= 0; }, done: function (x) { runAction({ k: 'play', u: u, o: { sing: [x] } }); } });
   }
   function humanChallenge(u) {
     var ds = defenders(u);
@@ -10509,7 +10515,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, z && z.z === 'board' ? u : null) + '</div>';
     var c = C(u), pi = S.cur, my = canAct() && c.o === pi;
     // Only what you can do right now becomes a button
-    function add(label, ok, why, go, o) { if (ok) acts.push({ label: label, go: go, primary: o && o.primary, full: o && o.full }); else if (o && o.off) acts.push({ label: label, off: o.off }); else if (why) whys.push(why); }
+    function add(label, ok, why, go, o) { if (ok) acts.push({ label: label, go: go, primary: o && o.primary, full: o && o.full, icon: o && o.icon }); else if (o && o.off) acts.push({ label: label, off: o.off }); else if (why) whys.push(why); }
     if (my && z.z === 'hand') {
       var cost = playCost(pi, u), blocked = playBlocked(pi, u), need = blocked || 'Needs ' + cost + ' ink (you have ' + inkReady(pi) + ' ready).';
       var bg = d.t === 'character' && d.K.bodyguard;
@@ -10519,7 +10525,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (playOff) acts.push({ label: 'Play · ' + cost + ' ink', off: playOff });
       else add((bg ? 'Play ready · ' : 'Play · ') + cost + ' ink', canPlay(pi, u), d.song && (canSing(u) || singWhy(u)) ? '' : need, function () { humanPlay(u, {}); }, { primary: true });
       if (dropsOf(pi) && cost > 0 && dropBonus(d)) add('Play · spend an ink drop', canPlay(pi, u), '', function () { humanPlay(u, { useDrop: true }); }, { full: true });
-      if (d.t === 'action' && d.song) add('Sing it for free', canSing(u), singWhy(u), function () { humanSing(u); }, { primary: !canPlay(pi, u), off: singOff(u) });
+      // Free because a character sings it instead: the only one who can is named, with their face on the button
+      var ss0 = d.t === 'action' && d.song && canSing(u) ? singersFor(u) : [], one = ss0.length === 1 && !d.K.singTogether;
+      if (d.t === 'action' && d.song) add('Sing it for free' + (one ? ' · ' + DD(ss0[0]).n + ' sings' : ss0.length ? ' · pick a singer' + (d.K.singTogether ? 's' : '') : ''), canSing(u), singWhy(u), function () { humanSing(u); },
+        { primary: !canPlay(pi, u), off: singOff(u), icon: one ? miniArt(DD(ss0[0])) + '<b class="ai-note">' + NOTE_SVG + '</b>' : null });
       if (bg) add('Play exerted · ' + cost + ' ink', canPlay(pi, u), '', function () { humanPlay(u, { exerted: true }); }, { primary: true });   // Bodyguard: same cost, enters exerted
       if (d.K.shift) add((d.K.shift.temp ? 'Temporary Shift · ' : d.K.shift.duo ? 'Duo Shift · ' : d.K.shift.combo ? 'Combo Shift · ' : 'Shift · ') + (d.K.shift.discard ? 'discard ' + d.K.shift.discard.n : d.K.shift.drops ? 'remove ' + plural(d.K.shift.drops, 'ink drop') : shiftCost(u) + ' ink'), canShift(u), '', function () { humanShift(u); });
       var asf = staticOp(u, 'altShift');
