@@ -1082,7 +1082,7 @@
     if (!gbarEl) return;
     gbarEl.classList.remove('k-tight');
     var t = gbarEl.querySelector('.ttl > span:not(.gi):not(.k-chev)');
-    if (t && t.scrollWidth > t.clientWidth + 1) gbarEl.classList.add('k-tight');
+    if (t && t.scrollWidth > t.clientWidth) gbarEl.classList.add('k-tight');
   }
   function titleSwitch(text, onClick, label) {
     var ttl = gbarEl && gbarEl.querySelector('.ttl'); if (!ttl) return;
