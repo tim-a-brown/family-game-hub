@@ -292,6 +292,8 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
 .vo-row .vo-q{flex:none;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:800;background:rgba(227,189,98,.18);color:#e8c56f;}
 .vo-row .vo-q.best{background:rgba(125,240,166,.15);color:#8fe6ad;}
 .vo-row.on{box-shadow:inset 0 0 0 2px var(--accent,#e8c56f);}
+.czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
+.czlk .ico{width:.85em;height:.85em;stroke-width:3;}
 </style>
 </head>
 <body>
@@ -1245,7 +1247,7 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
       { icon: 'coins', label: function () { return S && S.mode === 'pass' ? 'End session now' : 'Cash out (end session)'; }, onClick: function () { endSession(); } },
       { icon: 'history', label: 'Past races', onClick: function () { Kit.history(HKEY, { title: 'Horse Race: past sessions' }); } },
       { icon: 'sound', label: 'Announcer voice', onClick: function () { VO.chooser(); } },
-      { icon: 'sync', label: 'Reset bankroll to $1,000', onClick: resetBank }
+      { icon: 'sync', label: function () { return S && solo() ? topUp(S.players[0].name).menu : 'Reset bankroll to $1,000'; }, onClick: resetBank }
     ],
     rules:
       '<p class="goal">Read the program, bet on the horses you like, then watch them race. Pick right and your tickets pay off.</p>' +
@@ -1270,7 +1272,7 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
       '<li>Prices are rounded down a little and capped at 5,000 to 1. Payouts are rounded to the nearest dollar.</li></ul>' +
       '<p>The results board shows <b>$2 payouts</b>, like the board at a real track: "Win $9.00" means a $2 Win ticket brings back $9.</p>' +
       '<h3>The race</h3><p>The gate bell rings and they\'re off. Follow the leaders on the big screen, the running order on the strip below it, and the little map of the oval. On a phone, turn it sideways to watch the whole field at once. If it\'s too close to call, it goes to a <b>photo finish</b>. Tap <b>Skip</b> to jump to the result.</p><p>The announcer calls the race out loud (turn it off in setup, or tap the call box during a race). It stays quiet when the game sound is off. Choose its voice from <b>Announcer voice</b> in the menu; on iPhone, downloading an Enhanced or Premium voice makes it sound much better.</p>' +
-      '<h3>Solo or pass and play</h3><p><b>Solo</b> bets come from the casino bankroll you share with the other casino games. <b>Cash out</b> in the menu saves your session to Past races.</p>' +
+      '<h3>Solo or pass and play</h3><p><b>Solo</b> bets come from the casino bankroll you share with the other casino games. <b>Cash out</b> in the menu saves your session to Past races. Playing as someone else? They get $1,000 in play money; your bankroll isn\u2019t touched. A player linked to their own profile plays from their own bankroll.</p>' +
       '<p><b>Pass and play</b>: everyone starts with the same <b>table money</b> (pick $100, $250 or $500 in setup). Nobody\'s casino bankroll changes. Players bet one at a time, pass the phone, then everyone watches the race together. Whoever has the most money after the last race wins.</p>'
   });
 
@@ -1289,6 +1291,31 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
   }
   function load() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.field ? s : null; } catch (e) { return null; } }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  // ── Whose money (casino.js): you play from your bankroll, a player linked to their own profile from theirs,
+  // anyone else from $1,000 in play money (your bankroll isn't touched). Called when a session starts and resumes.
+  function moneyFor(name, fresh) {
+    var m = Casino.forPlayer(/^(you|player \d+)$/i.test(String(name || '').trim()) ? '' : name);   // an unnamed seat is you, as before
+    if (fresh && m === 'play') Kit.toast(name + ' plays with play money · your bankroll isn’t touched', 3600);
+    else if (fresh && m === 'link') Kit.toast('Playing from ' + Kit.poss(name) + ' bankroll', 3000);
+    return m;
+  }
+  function bankLabel(name) { var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'link' ? Kit.poss(name) + ' bankroll' : 'Bankroll'; }
+  // short: a narrow HUD box, where a linked player's money reads "[link] Jamie's"
+  function bankLabelHtml(name, short) { var lk = Casino.mode() === 'link'; return (lk ? '<span class="czlk">' + Kit.icon('link') + '</span>' : '') + Kit.esc(lk && short ? Kit.poss(name) : bankLabel(name)); }
+  function bankWords(name) { var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'link' ? Kit.poss(name) + ' bankroll' : 'your bankroll'; }
+  function myBankroll() { try { var v = localStorage.getItem('casino_bank'), n = parseInt(v, 10); return v == null || v === '' || isNaN(n) ? 1000 : Math.max(0, n); } catch (e) { return 1000; } }
+  // The out-of-money sheet and the reset menu item, in the words for whoever is playing
+  function topUp(name) {
+    var m = Casino.mode(), p = Kit.poss(name);
+    return m === 'play' ? { title: 'Out of play money', body: name + ' is out of play money. Have another $1,000?', btn: '$1,000 more play money', done: name + ' has $1,000 in play money', menu: 'Reset play money to $1,000', ask: 'Reset play money to $1,000?', why: 'Only the play money changes; your bankroll isn’t touched.' }
+      : m === 'link' ? { title: 'Out of chips', body: p + ' bankroll is empty. Start fresh with $1,000?', btn: 'Reset ' + p + ' bankroll to $1,000', done: p + ' bankroll is $1,000', menu: 'Reset ' + p + ' bankroll to $1,000', ask: 'Reset ' + p + ' bankroll to $1,000?', why: 'This resets ' + p + ' own bankroll, the one their app shares.' }
+      : { title: 'Out of chips', body: 'Your bankroll is empty. Start fresh with $1,000?', btn: 'Reset bankroll to $1,000', done: 'Bankroll is $1,000', menu: 'Reset bankroll to $1,000', ask: 'Reset bankroll to $1,000?', why: 'The bankroll is shared with every casino game.' };
+  }
+  // For the history record: a linked player's carries their bankroll change (once per record); a guest's is marked play money
+  function casinoMeta(meta) { return Object.assign(meta || {}, Casino.linkRecord(0)); }
+  function playTag(d) { if (Casino.mode() === 'play') d.play = 1; return d; }
+  // Back at the setup screen (that session is filed): your bankroll again, so the setup text and the menu show yours
+  function moneyHome() { if (Casino.mode() !== 'mine') Casino.forPlayer(''); }
   function solo() { return S.mode === 'solo'; }
   function bal(pi) { return solo() ? Casino.balance() : S.players[pi].stack; }
   function take(pi, v) { if (solo()) return Casino.bet(v); var p = S.players[pi]; if (p.stack < v) return false; p.stack -= v; return true; }
@@ -1298,11 +1325,11 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
   // ── Setup ────────────────────────────────────────────────────────────────
   function showSetup() {
     if (RV) RV.stop();
-    S = null; rail(null); app.className = 'stage hr';
+    S = null; rail(null); app.className = 'stage hr'; moneyHome();
     Kit.setup(app, {
       intro: 'Read the program, place your bets, cheer them home',
       modes: [
-        { id: 'solo', icon: 'user', title: 'Solo', desc: 'Bet from your casino bankroll (' + money(Casino.balance()) + ')' },
+        { id: 'solo', icon: 'user', title: 'Solo', desc: 'Bet from your casino bankroll (' + money(myBankroll()) + ')' },
         { id: 'pass', icon: 'phone', title: 'Pass and play', desc: 'Everyone gets the same table money and bets in turn. Richest at the end wins.' }
       ],
       players: { min: 1, max: 6, count: 1, range: function (m) { return m === 'pass' ? [2, 6] : [1, 1]; }, label: "Who's playing?" },
@@ -1324,6 +1351,7 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
   }
   function start(mode, players, o) {
     var pass = mode === 'pass' && players.length > 1;
+    if (pass) moneyHome(); else moneyFor(players[0].name, true);   // pass and play is table money
     S = {
       v: 1, mode: pass ? 'pass' : 'solo', started: Date.now(),
       opt: { field: o.field || 'mix', pace: o.pace || 'full', races: +o.races || 5, stake: +o.stake || 100, voice: o.voice === 'off' ? 'off' : 'on' },
@@ -1454,7 +1482,7 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
     if (solo()) {
       var p = S.players[0];
       R.bal = el('b', { class: 'gold', text: money(Casino.balance()) });
-      R.bank.appendChild(el('div', null, [el('small', { text: 'Bankroll' }), R.bal]));
+      R.bank.appendChild(el('div', null, [el('small', { html: bankLabelHtml(p.name, true) }), R.bal]));
       var paid = S.phase === 'result' && S.race && S.race.per ? S.race.per[0].ret : null;
       R.bank.appendChild(el('div', null, [el('small', { text: paid != null ? 'Paid out' : 'On tickets' }), el('b', { text: money(paid != null ? paid : staked()) })]));
       R.bank.appendChild(el('div', null, [el('small', { text: 'Session' }), el('b', { class: p.net > 0 ? 'pos' : p.net < 0 ? 'neg' : '', text: S.log.length ? signed(p.net) : '$0' })]));
@@ -1957,16 +1985,19 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
 
   // ── Sessions ────────────────────────────────────────────────────────────
   function brokeSheet() {
-    Kit.sheet({ title: 'Out of money', html: '<p class="muted">Your casino bankroll is empty. Start fresh with $1,000?</p>',
-      actions: [{ label: 'Reset bankroll to $1,000', primary: true, onClick: function () { Casino.reset(); if (S) { S.hi = Math.max(S.hi, 1000); paintBank(); if (S.phase === 'bet') paintRail(); save(); } Kit.toast('Bankroll is $1,000'); } }, { label: 'Not now', cls: 'btn-ghost' }] });
+    var w = topUp(S ? S.players[0].name : 'You'), mine = Casino.mode() === 'mine';
+    Kit.sheet({ title: mine ? 'Out of money' : w.title, html: '<p class="muted">' + (mine ? 'Your casino bankroll is empty. Start fresh with $1,000?' : Kit.esc(w.body)) + '</p>',
+      actions: [{ label: w.btn, primary: true, onClick: function () { Casino.reset(); if (S) { if (Casino.mode() === 'link') S.lr = 1; S.hi = Math.max(S.hi, 1000); paintBank(); if (S.phase === 'bet') paintRail(); save(); } Kit.toast(w.done); } }, { label: 'Not now', cls: 'btn-ghost' }] });
   }
   function resetBank() {
     if (S && S.phase === 'race') { Kit.toast('Wait for the race to finish'); return; }
-    Kit.confirm('Reset bankroll to $1,000?', { ok: 'Reset', danger: true, body: 'The bankroll is shared with every casino game.' + (S && solo() && staked() ? ' Your tickets for this race are taken back first.' : '') }).then(function (ok) {
+    var w = topUp(S && solo() ? S.players[0].name : 'You');
+    Kit.confirm(w.ask, { ok: 'Reset', danger: true, body: w.why + (S && solo() && staked() ? ' Your tickets for this race are taken back first.' : '') }).then(function (ok) {
       if (!ok) return;
       if (S && solo() && S.phase === 'bet') { S.tickets = []; S.undo = []; }
+      if (S && solo() && Casino.mode() === 'link') S.lr = 1;
       Casino.reset(); if (S) { save(); if (S.phase === 'bet') { paintSlip(); paintProgram(); paintPick(); paintRail(); } paintBank(); }
-      Kit.toast('Bankroll reset to $1,000'); Kit.sfx('good');
+      Kit.toast(w.done); Kit.sfx('good');
     });
   }
   function highlights() {
@@ -1988,7 +2019,7 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
     return h.slice(0, 6);
   }
   function recordSession() {
-    if (!S || !S.log.length) return null;
+    if (!S || (!S.log.length && !(S.lr && solo()))) return null;   // (a linked player's bankroll reset is always filed)
     var ps = S.players, pass = !solo();
     if (pass) {
       var stakes = ps.map(function () { return S.opt.stake; });
@@ -2012,8 +2043,8 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
       highlights: highlights(),
       summary: p.name + ' ' + (p.net > 0 ? 'up ' + money(p.net) : p.net < 0 ? 'down ' + money(-p.net) : 'broke even') + ' · ' + S.log.length + ' races',
       badge: signed(p.net),
-      meta: { net: p.net, races: S.log.length, wagered: p.wagered, biggest: p.best ? p.best.amt : 0 },
-      detail: sessionDetail()
+      meta: casinoMeta({ net: p.net, races: S.log.length, wagered: p.wagered, biggest: p.best ? p.best.amt : 0 }),
+      detail: playTag(sessionDetail())
     });
   }
   function refundOpen() {
@@ -2029,8 +2060,8 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
       return;
     }
     var p = S.players[0];
-    if (!S.log.length) { refundOpen(); clearSave(); showSetup(); return; }
-    Kit.confirm('Cash out?', { ok: 'Cash out', body: 'You are ' + (p.net >= 0 ? 'up ' : 'down ') + money(Math.abs(p.net)) + ' after ' + S.log.length + ' race' + (S.log.length === 1 ? '' : 's') + '. The session is saved to Past races; open tickets go back to your bankroll.' })
+    if (!S.log.length) { refundOpen(); recordSession(); clearSave(); showSetup(); return; }
+    Kit.confirm('Cash out?', { ok: 'Cash out', body: (Casino.mode() === 'mine' ? 'You are ' : p.name + ' is ') + (p.net >= 0 ? 'up ' : 'down ') + money(Math.abs(p.net)) + ' after ' + S.log.length + ' race' + (S.log.length === 1 ? '' : 's') + '. The session is saved to Past races; open tickets go back to ' + bankWords(p.name) + '.' })
       .then(function (ok) {
         if (!ok) return;
         refundOpen(); recordSession(); clearSave();
@@ -2039,7 +2070,7 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
         Kit.win({
           icon: net >= 0 ? 'coins' : 'meh', lose: net < 0,
           title: net > 0 ? 'Up ' + money(net) + '!' : net < 0 ? 'Down ' + money(-net) : 'Broke even',
-          sub: st.log.length + ' race' + (st.log.length === 1 ? '' : 's') + (p.best ? ' · best ticket ' + signed(p.best.amt) : '') + ' · bankroll ' + money(Casino.balance()),
+          sub: st.log.length + ' race' + (st.log.length === 1 ? '' : 's') + (p.best ? ' · best ticket ' + signed(p.best.amt) : '') + ' · ' + bankWords(p.name).replace(/^your /, '') + ' ' + money(Casino.balance()),
           againLabel: 'New session', again: function () { start('solo', players, st.opt); },
           extra: [{ label: 'Past races', onClick: function () { showSetup(); Kit.history(HKEY, { title: 'Horse Race: past sessions' }); } }]
         });
@@ -2065,7 +2096,7 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
   function newGame() {
     if (!S) { showSetup(); return; }
     if (S.phase === 'race') { Kit.toast('Wait for the race to finish (or skip it)'); return; }
-    var body = S.log.length ? (solo() ? 'This session is saved to Past races first. Open tickets go back to your bankroll.' : 'The current standings are saved to Past races.') : 'Open tickets are taken back.';
+    var body = S.log.length ? (solo() ? 'This session is saved to Past races first. Open tickets go back to ' + bankWords(S.players[0].name) + '.' : 'The current standings are saved to Past races.') : 'Open tickets are taken back.';
     Kit.confirm('Start a new session?', { ok: 'New session', body: body }).then(function (ok) {
       if (!ok) return;
       refundOpen(); recordSession(); clearSave(); showSetup();
@@ -2076,6 +2107,7 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
   var saved = load();
   if (saved) {
     S = saved;
+    if (solo()) moneyFor(S.players[0].name);
     // A solo session left alone for 8+ hours is saved and a fresh one starts
     if (solo() && S.log.length && S.phase !== 'race' && Date.now() - (S.last || 0) > 8 * 3600 * 1000) {
       refundOpen(); recordSession();

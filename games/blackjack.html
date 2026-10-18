@@ -284,6 +284,8 @@
     if (!me) try { me = String(FGHSync.label() || '').trim().toLowerCase(); } catch (e) {}
     return !!me && k === me;
   }
+  // you (or an unnamed seat, or a device with no name set): plays from the casino bank
+  function isMain(n) { return /^(you|player \d+)$/i.test(String(n || '').trim()) || Casino.isMain(n); }
   function linkedBank(n) { try { return FGHSync.linkBank(n); } catch (e) { return null; } }
   function isLinked(n) { try { return !!FGHSync.linkOf(n); } catch (e) { return false; } }
   function money(n) { n = Math.round(n); return (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US'); }
@@ -399,7 +401,7 @@
     var stake = STAKES.indexOf(+o.stake) >= 0 ? +o.stake : 1000;
     var lb = players.map(function (p) { return !table && !p.cpu && !isMe(p.name) ? linkedBank(p.name) : null; });
     var mine = -1;
-    if (!table) players.forEach(function (p, i) { if (mine < 0 && !p.cpu && !lb[i] && Casino.isMain(p.name)) mine = i; });
+    if (!table) players.forEach(function (p, i) { if (mine < 0 && !p.cpu && !lb[i] && isMain(p.name)) mine = i; });
     S = {
       v: 1, started: Date.now(), mode: players.length > 1 ? mode : 'solo',
       opt: { decks: +o.decks || 6, h17: o.soft17 === 'h17', surr: o.surr === 'late', coach: o.coach || 'hint' },
@@ -435,7 +437,7 @@
     if (!S || S.money === 'table') return;
     S.seats.forEach(function (s, i) {
       if (!s.src) s.src = i === 0 ? 'mine' : 'chips';
-      if (s.src === 'mine' && (s.cpu || !Casino.isMain(s.name))) { s.bank = Math.max(0, SEAT_STACK + rawBank() - (s.b0 != null ? s.b0 : S.startBank || rawBank())); s.b0 = SEAT_STACK; s.src = 'chips'; }
+      if (s.src === 'mine' && (s.cpu || !isMain(s.name))) { s.bank = Math.max(0, SEAT_STACK + rawBank() - (s.b0 != null ? s.b0 : S.startBank || rawBank())); s.b0 = SEAT_STACK; s.src = 'chips'; }
     });
   }
 

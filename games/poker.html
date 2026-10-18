@@ -287,6 +287,8 @@
   .vp-btns{margin-top:6px;}
   .vbtn{min-height:68px;font-size:.88rem;} .vbtn.go{font-size:1.1rem;}
 }
+.czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
+.czlk .ico{width:.85em!important;height:.85em!important;color:#fff!important;stroke-width:3;}
 </style>
 </head>
 <body>
@@ -325,7 +327,8 @@
     '<li>If everyone else folds, you win the pot without showing your cards. Otherwise the best hand at the <b>showdown</b> wins, and a tie splits the pot.</li></ul>' +
     '<h3>Cash game or tournament</h3><ul>' +
     '<li><b>Cash game</b>: buy in with chips from your casino bank (shared with the other casino games) and leave whenever you like. Whatever you have goes back to the bank.</li>' +
-    '<li><b>Tournament</b>: everyone starts with 1,500 chips. The blinds go up every few hands, and when you lose all your chips you\'re out. Last player standing wins.</li></ul>';
+    '<li><b>Tournament</b>: everyone starts with 1,500 chips. The blinds go up every few hands, and when you lose all your chips you\'re out. Last player standing wins.</li></ul>' +
+    '<p>Playing as someone else? They get $1,000 in play money; your bankroll isn\u2019t touched. A player linked to their own profile plays from their own bankroll. Video poker works the same way.</p>';
 
   Kit.init({
     id: 'poker', confirmNew: false,
@@ -334,8 +337,8 @@
     menu: [
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Poker: past sessions' }); } },
       { icon: 'users', label: 'Who\'s at the table', onClick: function () { tableInfo(); } },
-      { icon: 'coins', label: function () { return S && S.kind === 'vp' ? 'Cash out' : S && S.kind === 'table' && !S.tourn ? 'Leave the table' : 'Bank: ' + usd(Casino.balance()); }, onClick: function () { cashOutMenu(); } },
-      { icon: 'sync', label: 'Refill the bank', onClick: function () { refill(); } }
+      { icon: 'coins', label: function () { return S && S.kind === 'vp' ? 'Cash out' : S && S.kind === 'table' && !S.tourn ? 'Leave the table' : bankNm() + ': ' + usd(Casino.balance()); }, onClick: function () { cashOutMenu(); } },
+      { icon: 'sync', label: function () { return Casino.mode() === 'mine' ? 'Refill the bank' : topUp(seatName()).menu; }, onClick: function () { refill(); } }
     ],
     rules: RULES
   });
@@ -590,12 +593,42 @@
     try { localStorage.setItem(keyOf(S), JSON.stringify(S)); localStorage.setItem(LAST, keyOf(S)); } catch (e) {}
     Kit.resume.set(resumeLabel(), { keys: [keyOf(S), LAST] });
   }
+  // ── Whose money (casino.js): you play from your bankroll, a player linked to their own profile from theirs,
+  // anyone else from $1,000 in play money (your bankroll isn't touched). Called when a session starts and resumes.
+  function moneyFor(name, fresh) {
+    var m = Casino.forPlayer(/^(you|player \d+)$/i.test(String(name || '').trim()) ? '' : name);   // an unnamed seat is you, as before
+    if (fresh && m === 'play') Kit.toast(name + ' plays with play money · your bankroll isn’t touched', 3600);
+    else if (fresh && m === 'link') Kit.toast('Playing from ' + Kit.poss(name) + ' bankroll', 3000);
+    return m;
+  }
+  function bankLabel(name) { var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'link' ? Kit.poss(name) + ' bankroll' : 'Bankroll'; }
+  // short: a narrow HUD box, where a linked player's money reads "[link] Jamie's"
+  function bankLabelHtml(name, short) { var lk = Casino.mode() === 'link'; return (lk ? '<span class="czlk">' + Kit.icon('link') + '</span>' : '') + Kit.esc(lk && short ? Kit.poss(name) : bankLabel(name)); }
+  function bankWords(name) { var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'link' ? Kit.poss(name) + ' bankroll' : 'your bankroll'; }
+  function myBankroll() { try { var v = localStorage.getItem('casino_bank'), n = parseInt(v, 10); return v == null || v === '' || isNaN(n) ? 1000 : Math.max(0, n); } catch (e) { return 1000; } }
+  // The out-of-money sheet and the reset menu item, in the words for whoever is playing
+  function topUp(name) {
+    var m = Casino.mode(), p = Kit.poss(name);
+    return m === 'play' ? { title: 'Out of play money', body: name + ' is out of play money. Have another $1,000?', btn: '$1,000 more play money', done: name + ' has $1,000 in play money', menu: 'Reset play money to $1,000', ask: 'Reset play money to $1,000?', why: 'Only the play money changes; your bankroll isn’t touched.' }
+      : m === 'link' ? { title: 'Out of chips', body: p + ' bankroll is empty. Start fresh with $1,000?', btn: 'Reset ' + p + ' bankroll to $1,000', done: p + ' bankroll is $1,000', menu: 'Reset ' + p + ' bankroll to $1,000', ask: 'Reset ' + p + ' bankroll to $1,000?', why: 'This resets ' + p + ' own bankroll, the one their app shares.' }
+      : { title: 'Out of chips', body: 'Your bankroll is empty. Start fresh with $1,000?', btn: 'Reset bankroll to $1,000', done: 'Bankroll is $1,000', menu: 'Reset bankroll to $1,000', ask: 'Reset bankroll to $1,000?', why: 'The bankroll is shared with every casino game.' };
+  }
+  // For the history record: a linked player's carries their bankroll change (once per record); a guest's is marked play money
+  function casinoMeta(meta) { return Object.assign(meta || {}, Casino.linkRecord(0)); }
+  function playTag(d) { if (Casino.mode() === 'play') d.play = 1; return d; }
+  // Back at the setup screen (that session is filed): your bankroll again, so the setup text and the menu show yours
+  function moneyHome() { if (Casino.mode() !== 'mine') Casino.forPlayer(''); }
+  // Poker says "bank": the same words, short
+  function bankNm() { return Casino.mode() === 'mine' ? 'Bank' : bankLabel(seatName()); }
+  function bankLc() { return Casino.mode() === 'mine' ? 'bank' : bankWords(seatName()); }
+  function yourBank() { return Casino.mode() === 'mine' ? 'your bank' : bankWords(seatName()); }
+  function seatName(st) { st = st || S; return !st ? 'You' : st.kind === 'vp' ? st.name : st.players && st.players[0] ? st.players[0].name : 'You'; }
   function drop(st) {
     try { localStorage.removeItem(keyOf(st)); if (localStorage.getItem(LAST) === keyOf(st)) localStorage.removeItem(LAST); } catch (e) {}
     Kit.resume.clear();
   }
   function resumeLabel() {
-    if (S.kind === 'vp') return 'Video poker · bank ' + usd(Casino.balance());
+    if (S.kind === 'vp') return 'Video poker · ' + bankLc() + ' ' + usd(Casino.balance());
     var g = S.game === 'om' ? 'Omaha' : 'Hold\'em';
     if (S.tourn) return g + ' tournament · ' + alive().length + ' left';
     return g + ' cash · ' + usd(S.players[0].stack) + ' on the table';
@@ -616,7 +649,7 @@
 
   // ── Setup ──────────────────────────────────────────────────────────────────
   function showSetup() {
-    stop(); S = null; undoStack = []; raiseUI = null; app.classList.remove('raising', 'pland');
+    stop(); S = null; undoStack = []; raiseUI = null; app.classList.remove('raising', 'pland'); moneyHome();
     orient(null);
     Kit.setup(app, {
       modes: [
@@ -646,7 +679,7 @@
         title: 'You have a game going',
         html: '<p class="muted">' + Kit.esc(modeName(old)) + (old.kind === 'table' && !old.tourn ? ' with ' + usd(old.players[0].stack) + ' on the table' : '') + '. Pick up where you left off?</p>',
         actions: [
-          { label: 'Resume', primary: true, onClick: function () { S = old; S.coach = cfg.options.coach === 'on'; resume(); } },
+          { label: 'Resume', primary: true, onClick: function () { S = old; S.coach = cfg.options.coach === 'on'; moneyFor(seatName(S)); resume(); } },
           { label: old.kind === 'table' && !old.tourn ? 'Cash out and start fresh' : 'Start fresh', cls: 'btn-soft', onClick: fresh }
         ]
       });
@@ -655,38 +688,42 @@
   // Close out a saved game that's being replaced (chips go back to the bank, session is recorded)
   function endSaved(st) {
     var keep = S; S = st;
-    if (st.kind === 'vp') { if (st.phase === 'hold') vpAutoDraw(); if (st.hands) recordVP(); }
-    else if (!st.tourn) { Casino.win(st.players[0].stack); if (st.handNo) recordTable(true); }
+    moneyFor(seatName(st));   // its money goes back to whoever played it
+    if (st.kind === 'vp') { if (st.phase === 'hold') vpAutoDraw(); if (st.hands || st.lr) recordVP(); }
+    else if (!st.tourn) { Casino.win(st.players[0].stack); if (st.handNo || st.lr) recordTable(true); }
     drop(st); S = keep;
   }
   function leaveCurrent(then) {
     if (!S) return then();
     if (S.kind === 'vp') {
-      if (!S.hands) { drop(S); return then(); }
-      Kit.confirm('End this video poker session?', { ok: 'End session', body: 'Your winnings are already in the bank. The session is saved to Past games.' }).then(function (ok) { if (ok) { endVP(true); then(); } });
+      if (!S.hands && !S.lr) { drop(S); return then(); }
+      Kit.confirm('End this video poker session?', { ok: 'End session', body: 'Winnings are already in ' + yourBank() + '. The session is saved to Past games.' }).then(function (ok) { if (ok) { endVP(true); then(); } });
     } else if (!S.tourn) {
-      Kit.confirm('Leave the table?', { ok: 'Cash out', body: usd(S.players[0].stack) + ' goes back to your bank.' }).then(function (ok) { if (ok) { cashOut(true); then(); } });
+      Kit.confirm('Leave the table?', { ok: 'Cash out', body: usd(S.players[0].stack) + ' goes back to ' + yourBank() + '.' }).then(function (ok) { if (ok) { cashOut(true); then(); } });
     } else {
       Kit.confirm('Quit this tournament?', { ok: 'Quit', danger: true, body: 'It won\'t count in Past games.' }).then(function (ok) { if (ok) { stop(); drop(S); S = null; then(); } });
     }
   }
   function cashOutMenu() {
-    if (!S) return Kit.toast('Bank: ' + usd(Casino.balance()));
+    if (!S) return Kit.toast(bankNm() + ': ' + usd(Casino.balance()));
     if (S.kind === 'vp') {
       if (S.phase === 'hold') return Kit.toast('Finish this hand first');
-      if (!S.hands) return Kit.toast('Bank: ' + usd(Casino.balance()));
+      if (!S.hands && !S.lr) return Kit.toast(bankNm() + ': ' + usd(Casino.balance()));
       return endVP(false);
     }
-    if (S.tourn) return Kit.toast('Tournament chips aren\'t money. Bank: ' + usd(Casino.balance()));
-    Kit.confirm('Leave the table?', { ok: 'Cash out', body: usd(S.players[0].stack) + ' goes back to your bank.' }).then(function (ok) { if (ok) cashOut(false); });
+    if (S.tourn) return Kit.toast('Tournament chips aren\'t money. ' + bankNm() + ': ' + usd(Casino.balance()));
+    Kit.confirm('Leave the table?', { ok: 'Cash out', body: usd(S.players[0].stack) + ' goes back to ' + yourBank() + '.' }).then(function (ok) { if (ok) cashOut(false); });
   }
   function refill() {
     var b = Casino.balance();
-    if (b >= 1000) return Kit.toast('Your bank has ' + usd(b) + '. Refills are for when you\'re below $1,000.');
-    Kit.confirm('Refill the bank to $1,000?', { ok: 'Refill', body: 'The bank is shared by all the casino games.' }).then(function (ok) {
-      if (!ok) return; Casino.reset(); Kit.sfx('chip'); Kit.toast('Bank refilled to $1,000'); if (S) { save(); repaint(); }
+    var mine = Casino.mode() === 'mine', w = topUp(seatName());
+    if (b >= 1000) return Kit.toast((mine ? 'Your bank has ' : bankLabel(seatName()) + ': ') + usd(b) + '. Refills are for when you\'re below $1,000.');
+    Kit.confirm(mine ? 'Refill the bank to $1,000?' : w.ask, { ok: 'Refill', body: mine ? 'The bank is shared by all the casino games.' : w.why }).then(function (ok) {
+      if (!ok) return; refillNow(); Kit.sfx('chip'); Kit.toast(mine ? 'Bank refilled to $1,000' : w.done); if (S) { save(); repaint(); }
     });
   }
+  // Back to $1,000 (a linked player's reset is filed with the session, so it always gets recorded)
+  function refillNow() { if (S && Casino.mode() === 'link') S.lr = 1; Casino.reset(); }
   function repaint() { if (!S) return; if (S.kind === 'vp') renderVP(); else renderTable(); }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -705,6 +742,7 @@
     return -1;
   }
   function newVP(cfg) {
+    moneyFor(cfg.players[0].name, true);
     S = { kind: 'vp', name: cfg.players[0].name, started: Date.now(), denom: +cfg.options.denom || 1, coins: 5, phase: 'bet', coach: cfg.options.coach === 'on',
       hand: null, held: [false, false, false, false, false], deck: null, row: -1, win: 0,
       hands: 0, bet: 0, paid: 0, wins: 0, best: 99, bestNo: 0, big: 0, bigRow: -1, counts: {}, startBank: Casino.balance() };
@@ -750,9 +788,10 @@
   function lowBank(need) {
     Kit.haptic('error');
     var b = Casino.balance();
-    if (b > 0 && S && S.kind === 'vp' && b >= S.denom) return Kit.toast('Not enough in the bank for ' + usd(need) + '. Bet fewer coins.');
-    Kit.confirm('Your bank is ' + (b ? 'too low' : 'empty'), { ok: 'Refill to $1,000', body: 'You have ' + usd(b) + '. Refill the casino bank to keep playing?' }).then(function (ok) {
-      if (ok) { Casino.reset(); Kit.sfx('chip'); save(); repaint(); }
+    if (b > 0 && S && S.kind === 'vp' && b >= S.denom) return Kit.toast('Not enough money for ' + usd(need) + '. Bet fewer coins.');
+    var mine = Casino.mode() === 'mine';
+    Kit.confirm(mine ? 'Your bank is ' + (b ? 'too low' : 'empty') : bankLabel(seatName()) + (b ? ' is too low' : ' is empty'), { ok: 'Refill to $1,000', body: 'You have ' + usd(b) + '. ' + (mine ? 'Refill the casino bank to keep playing?' : topUp(seatName()).why + ' Refill to keep playing?') }).then(function (ok) {
+      if (ok) { refillNow(); Kit.sfx('chip'); if (S) save(); repaint(); }
     });
   }
   function vpHighlights() {
@@ -769,9 +808,9 @@
     Kit.record(HKEY, {
       started: S.started, mode: 'Video poker', players: [{ name: S.name, score: net, cpu: false }],
       winner: net > 0 ? S.name : null, summary: (net >= 0 ? 'Up ' : 'Down ') + usd(Math.abs(net)) + ' · ' + S.hands + ' hands',
-      highlights: vpHighlights(),
-      detail: { vp: 1, denom: S.denom, bank: { s: S.startBank, e: Casino.balance() }, bet: S.bet, paid: S.paid, hands: S.hands, wins: S.wins,
-        rows: PAY.map(function (row, r) { return S.counts[r] || 0; }), names: PAY.map(function (row) { return row[0]; }), best: S.vbest || null, last: S.vlog || [] }
+      highlights: vpHighlights(), meta: casinoMeta({}),
+      detail: playTag({ vp: 1, denom: S.denom, bank: { s: S.startBank, e: Casino.balance() }, bet: S.bet, paid: S.paid, hands: S.hands, wins: S.wins,
+        rows: PAY.map(function (row, r) { return S.counts[r] || 0; }), names: PAY.map(function (row) { return row[0]; }), best: S.vbest || null, last: S.vlog || [] })
     });
   }
   function endVP(silent) {
@@ -782,7 +821,7 @@
     Kit.win({
       icon: net >= 0 ? 'trophy' : 'meh', lose: net < 0,
       title: net > 0 ? 'Up ' + usd(net) + '!' : net === 0 ? 'Broke even' : 'Down ' + usd(-net),
-      sub: st.hands + ' hands · bank ' + usd(Casino.balance()),
+      sub: st.hands + ' hands · ' + bankLc() + ' ' + usd(Casino.balance()),
       againLabel: 'Play again',
       again: function () { newVP({ players: [{ name: st.name }], options: { denom: st.denom, coach: st.coach ? 'on' : 'off' } }); },
       extra: [{ label: 'Change game', onClick: showSetup }]
@@ -796,7 +835,7 @@
     app.innerHTML = '';
     var cab = el('div', { class: 'vp' });
     cab.appendChild(el('div', { class: 'vp-title', text: 'Jacks or Better' }));
-    cab.appendChild(el('div', { class: 'vp-sub', text: '9/6 full pay · ' + usd(S.denom) + ' coins' }));
+    cab.appendChild(el('div', { class: 'vp-sub', html: Kit.esc('9/6 full pay · ' + usd(S.denom) + ' coins') + (Casino.mode() !== 'mine' ? ' · <span class="vp-who">' + bankLabelHtml(S.name) + '</span>' : '') }));
     var dealtRow = S.phase === 'hold' ? vpRow(ev(S.hand)) : -1;
     var tbl = el('table', { class: 'vp-pay' });
     PAY.forEach(function (row, r) {
@@ -872,6 +911,8 @@
 
   function newTable(cfg) {
     var tourn = cfg.options.fmt !== 'cash', game = cfg.mode;
+    var hu = cfg.players.filter(function (p) { return !p.cpu; })[0] || cfg.players[0];
+    moneyFor(hu.name, !tourn);   // tournament chips aren't money
     var stack = tourn ? TSTACK : Math.min(BUYIN, Casino.balance());
     if (!tourn && stack < 40) { lowBank(BUYIN); return; }
     var styles = Cards.shuffle(['tag', 'lag', 'rock', 'station']).concat(Cards.shuffle(['tag', 'lag']));
@@ -1199,9 +1240,9 @@
     Kit.haptic('error');
     var acts = [];
     if (buy >= 40) acts.push({ label: 'Rebuy ' + usd(buy), primary: true, onClick: function () { Casino.bet(buy); S.players[0].stack = buy; S.players[0].buyin += buy; S.players[0].rebuys++; Kit.sfx('chip'); startHand(); } });
-    else acts.push({ label: 'Refill bank to $1,000', primary: true, onClick: function () { Casino.reset(); askRebuy(); } });
+    else acts.push({ label: Casino.mode() === 'mine' ? 'Refill bank to $1,000' : topUp(seatName()).btn, primary: true, onClick: function () { refillNow(); askRebuy(); } });
     acts.push({ label: 'Leave the table', cls: 'btn-soft', onClick: function () { cashOut(false); } });
-    Kit.sheet({ title: 'Out of chips', html: '<p class="muted">Buy back in for ' + usd(buy) + ' from your bank (' + usd(b) + ')?</p>', actions: acts, dismissible: false });
+    Kit.sheet({ title: 'Out of chips', html: '<p class="muted">' + Kit.esc('Buy back in for ' + usd(buy) + ' from ' + yourBank() + ' (' + usd(b) + ')?') + '</p>', actions: acts, dismissible: false });
   }
 
   // ── Finishing ──────────────────────────────────────────────────────────────
@@ -1245,25 +1286,25 @@
       summary = (net >= 0 ? 'Up ' : 'Down ') + usd(Math.abs(net)) + ' · ' + S.st.rows.length + ' hands';
     }
     Kit.record(HKEY, {
-      started: S.started, mode: modeName(), players: players, winner: winner, lowWins: !!S.tourn, summary: summary,
+      started: S.started, mode: modeName(), players: players, winner: winner, lowWins: !!S.tourn, summary: summary, meta: S.tourn ? {} : casinoMeta({}),
       rounds: S.tourn ? null : chunkRows(), highlights: tableHighlights(),
       detail: { game: S.om ? 'omaha' : 'holdem', tourn: S.tourn ? 1 : 0, big: S.st.bigH || null, best: S.st.bestH && S.st.bestH !== S.st.bigH && (!S.st.bigH || S.st.bestH.no !== S.st.bigH.no) ? S.st.bestH : null,
         last: S.st.lastH && (!S.st.bigH || S.st.lastH.no !== S.st.bigH.no) && (!S.st.bestH || S.st.lastH.no !== S.st.bestH.no) ? S.st.lastH : null,
-        bank: S.tourn ? null : { s: S.players[0].buyin, e: S.players[0].stack }, hands: S.st.rows.length }
+        bank: S.tourn ? null : { s: S.players[0].buyin, e: S.players[0].stack }, hands: S.st.rows.length, play: !S.tourn && Casino.mode() === 'play' ? 1 : undefined }
     });
   }
   function cashOut(silent) {
     stop();
     var st = S, me = st.players[0], net = me.stack - me.buyin;
     Casino.win(me.stack);
-    if (st.st.rows.length) recordTable(true);
+    if (st.st.rows.length || st.lr) recordTable(true);
     drop(st); S = null;
     if (silent) return;
     renderAfter(st);
     Kit.win({
       icon: net >= 0 ? 'trophy' : 'meh', lose: net < 0,
       title: net > 0 ? 'You won ' + usd(net) + '!' : net === 0 ? 'You broke even' : 'You lost ' + usd(-net),
-      sub: st.st.rows.length + ' hands · bank ' + usd(Casino.balance()),
+      sub: st.st.rows.length + ' hands · ' + bankLc() + ' ' + usd(Casino.balance()),
       rank: st.players.map(function (p, i) { return { name: i === 0 ? p.name : p.name, score: signed(p.stack - p.buyin), v: p.stack - p.buyin, color: Kit.color(i) }; }).sort(function (a, b) { return b.v - a.v; }),
       againLabel: 'Sit down again',
       again: function () { replay(st); },
@@ -1410,7 +1451,7 @@
       right = el('span', { html: '<b>' + alive().length + '</b> left' + (H && lvl < LEVELS.length ? ' · up in ' + (inLv + 1) : '') });
     } else {
       left = el('span', { html: (S.limit ? 'Limit <b>$' + S.bb + '/$' + 2 * S.bb + '</b>' : 'Blinds <b>$' + S.sb + '/$' + S.bb + '</b>') + (H ? ' · hand <b>' + S.handNo + '</b>' : '') });
-      right = el('span', { class: 'bank', html: Kit.icon('coins') + 'Bank <b>' + usd(Casino.balance()) + '</b>' });
+      right = el('span', { class: 'bank', html: Kit.icon('coins') + (Casino.mode() === 'mine' ? 'Bank' : bankLabelHtml(seatName())) + ' <b>' + usd(Casino.balance()) + '</b>' });
     }
     app.appendChild(el('div', { class: 'pinfo' }, [left, right]));
 
@@ -1997,7 +2038,7 @@
   // ── Boot ───────────────────────────────────────────────────────────────────
   var lastKey = null; try { lastKey = localStorage.getItem(LAST); } catch (e) {}
   var saved = lastKey ? load(lastKey) : null;
-  if (saved && saved.kind) { S = saved; Kit.gameStart(); resume(); }
+  if (saved && saved.kind) { S = saved; moneyFor(seatName(S)); Kit.gameStart(); resume(); }
   else showSetup();
 })();
 </script>

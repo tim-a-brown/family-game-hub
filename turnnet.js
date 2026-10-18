@@ -42,6 +42,7 @@
 //   TurnNet.menu()        menu items for Kit.init: Play online, Your online game, Leave the online game
 //   TurnNet.on()          true while at an online table
 //   TurnNet.chips()       an element listing the seats, whose turn it is glowing (games may place it)
+//   TurnNet.poke()        look at the table again now (a computer seat's move seems stuck)
 //   net (passed to show): {state, seat (yours, -1 watching), seats, code, mv, myTurn(), act(fn), again(), leave(),
 //                          result, status}
 //     net.act(fn)         your move: fn(state) -> {state, mv} (or null for no move). Shown here at once; written
@@ -222,10 +223,11 @@
       if (T.seq !== seq || !T.d || T.d.status !== 'playing') return;
       var s = bots[0];
       Promise.resolve().then(function () { return G.bot(clone(T.st), s); }).then(function (res) {
-        if (!res || T.seq !== seq) return;
+        if (T.seq !== seq) return;
+        if (!res) { setTimeout(botCheck, 3000); return; }   // (no move this time: look again)
         // (shown when the server has it, as anyone else's move is)
         act(null, s, res).then(function (ok) { if (!ok) setTimeout(botCheck, 1500); });
-      }).catch(function (e) { console.warn('[turnnet] computer move', e); });
+      }).catch(function (e) { console.warn('[turnnet] computer move', e); setTimeout(botCheck, 3000); });
     }, (G.botMs || 900) + rank * 2500);
   }
 
@@ -236,8 +238,21 @@
     remember(code); lsP('tn_last_' + G.game, code);
     T.off = store().watch(code, onDoc, function (e) { console.warn('[turnnet] watch', e); Kit.toast('Connection problem: ' + errText(e)); });
     clearInterval(T.hbT); T.hbT = setInterval(beat, HB);
+    clearInterval(T.wdT); T.wdT = setInterval(watchdog, 15000);
   }
-  function stopListen() { if (T.off) { T.off(); T.off = null; } clearInterval(T.hbT); clearTimeout(T.botT); T.botT = 0; }
+  // A computer seat's move that never came (a dropped update, a stalled timer): look at the table again
+  function watchdog() {
+    if (!T.code || !T.d || T.d.status !== 'playing' || T.botT || T.busy || document.hidden) return;
+    if (!turnOf(T.st).some(function (i) { return T.d.seats[i] && T.d.seats[i].bot; })) return;
+    if (Date.now() - (T.d.at || 0) < 12000) return;
+    poke();
+  }
+  function poke() {
+    if (!T.code) return;
+    var code = T.code;
+    store().get(code).then(function (d) { if (T.code !== code) return; clearTimeout(T.botT); T.botT = 0; onDoc(d); }).catch(function () {});
+  }
+  function stopListen() { if (T.off) { T.off(); T.off = null; } clearInterval(T.hbT); clearInterval(T.wdT); clearTimeout(T.botT); T.botT = 0; }
   function beat() {
     if (!T.code || T.seat < 0 || document.hidden || !T.d || T.d.status === 'over') return;
     var code = T.code, s = T.seat;
@@ -613,7 +628,7 @@
   }
 
   window.TurnNet = {
-    setup: setup, open: lobby, menu: menu, chips: chips, leave: leave, again: again,
+    setup: setup, open: lobby, menu: menu, chips: chips, leave: leave, again: again, poke: poke,
     on: function () { return !!T.code && !!T.d && T.d.status !== 'open'; }, net: net,
     _t: T, _store: store, _acct: acctTag
   };

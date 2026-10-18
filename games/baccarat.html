@@ -141,6 +141,8 @@
   .stage > .board{grid-column:2;grid-row:2;margin-top:4px;}
   .stage > .dock{grid-column:2;grid-row:3;position:static;margin:14px 0 0;padding:0;background:none;}
 }
+.czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
+.czlk .ico{width:.85em!important;height:.85em!important;color:#fff!important;stroke-width:3;}
 </style>
 </head>
 <body>
@@ -195,7 +197,7 @@
       { icon: 'coins', label: 'Cash out', onClick: function () { cashOut(); } },
       { icon: 'history', label: 'Past sessions', onClick: openHistory },
       { icon: 'shuffle', label: 'Shuffle a new shoe', onClick: function () { if (busy || !S) return; newShoe(true); save(); paint(); } },
-      { icon: 'sync', label: 'Reset bankroll to $1,000', onClick: resetBank }
+      { icon: 'sync', label: function () { return topUp(S ? S.name : 'You').menu; }, onClick: resetBank }
     ],
     rules:
       '<p class="goal">Bet on which hand will finish closest to 9: <b>Player</b> or <b>Banker</b>. Or bet that they <b>tie</b>. The dealer plays both hands for you.</p>' +
@@ -211,7 +213,8 @@
       '<li>Limits: Player and Banker up to $1,000; Tie and pairs up to $200.</li></ul>' +
       '<h3>The scoreboard</h3><p>The <b>Big Road</b> tracks the shoe: red circles are Banker wins, blue are Player, a green line marks a tie, and small dots mark pairs. A new column starts each time the winner changes. Fun to watch, but past hands never change the odds of the next one.</p>' +
       '<h3>Best bets</h3><p>House edge: Banker 1.06%, Player 1.24%, Tie 14.4%, pairs 10.4%. Banker is the best bet on the table.</p>' +
-      '<h3>Playing</h3><p>Drag a chip from the rack onto Player, Banker, Tie or a Pair circle. The spot lights up under the chip; let go to put it down (let go anywhere else and it goes back to the rack). Then Deal. Shortcut: tap a chip to pick it, then tap betting areas. Undo takes back your last chip. <b>Cash out</b> ends the session and saves it to Past sessions. Your bankroll is shared by every casino game.</p>'
+      '<h3>Playing</h3><p>Drag a chip from the rack onto Player, Banker, Tie or a Pair circle. The spot lights up under the chip; let go to put it down (let go anywhere else and it goes back to the rack). Then Deal. Shortcut: tap a chip to pick it, then tap betting areas. Undo takes back your last chip. <b>Cash out</b> ends the session and saves it to Past sessions. Your bankroll is shared by every casino game.</p>' +
+      '<p>Playing as someone else? They get $1,000 in play money; your bankroll isn\u2019t touched. A player linked to their own profile plays from their own bankroll.</p>'
   });
   function openHistory() { Kit.history(HKEY, { title: 'Baccarat: past sessions' }); }
 
@@ -227,6 +230,31 @@
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function load() { try { return JSON.parse(localStorage.getItem(SAVE)); } catch (e) { return null; } }
+  // ── Whose money (casino.js): you play from your bankroll, a player linked to their own profile from theirs,
+  // anyone else from $1,000 in play money (your bankroll isn't touched). Called when a session starts and resumes.
+  function moneyFor(name, fresh) {
+    var m = Casino.forPlayer(/^(you|player \d+)$/i.test(String(name || '').trim()) ? '' : name);   // an unnamed seat is you, as before
+    if (fresh && m === 'play') Kit.toast(name + ' plays with play money · your bankroll isn’t touched', 3600);
+    else if (fresh && m === 'link') Kit.toast('Playing from ' + Kit.poss(name) + ' bankroll', 3000);
+    return m;
+  }
+  function bankLabel(name) { var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'link' ? Kit.poss(name) + ' bankroll' : 'Bankroll'; }
+  // short: a narrow HUD box, where a linked player's money reads "[link] Jamie's"
+  function bankLabelHtml(name, short) { var lk = Casino.mode() === 'link'; return (lk ? '<span class="czlk">' + Kit.icon('link') + '</span>' : '') + Kit.esc(lk && short ? Kit.poss(name) : bankLabel(name)); }
+  function bankWords(name) { var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'link' ? Kit.poss(name) + ' bankroll' : 'your bankroll'; }
+  function myBankroll() { try { var v = localStorage.getItem('casino_bank'), n = parseInt(v, 10); return v == null || v === '' || isNaN(n) ? 1000 : Math.max(0, n); } catch (e) { return 1000; } }
+  // The out-of-money sheet and the reset menu item, in the words for whoever is playing
+  function topUp(name) {
+    var m = Casino.mode(), p = Kit.poss(name);
+    return m === 'play' ? { title: 'Out of play money', body: name + ' is out of play money. Have another $1,000?', btn: '$1,000 more play money', done: name + ' has $1,000 in play money', menu: 'Reset play money to $1,000', ask: 'Reset play money to $1,000?', why: 'Only the play money changes; your bankroll isn’t touched.' }
+      : m === 'link' ? { title: 'Out of chips', body: p + ' bankroll is empty. Start fresh with $1,000?', btn: 'Reset ' + p + ' bankroll to $1,000', done: p + ' bankroll is $1,000', menu: 'Reset ' + p + ' bankroll to $1,000', ask: 'Reset ' + p + ' bankroll to $1,000?', why: 'This resets ' + p + ' own bankroll, the one their app shares.' }
+      : { title: 'Out of chips', body: 'Your bankroll is empty. Start fresh with $1,000?', btn: 'Reset bankroll to $1,000', done: 'Bankroll is $1,000', menu: 'Reset bankroll to $1,000', ask: 'Reset bankroll to $1,000?', why: 'The bankroll is shared with every casino game.' };
+  }
+  // For the history record: a linked player's carries their bankroll change (once per record); a guest's is marked play money
+  function casinoMeta(meta) { return Object.assign(meta || {}, Casino.linkRecord(0)); }
+  function playTag(d) { if (Casino.mode() === 'play') d.play = 1; return d; }
+  // Back at the setup screen (that session is filed): your bankroll again, so the setup text and the menu show yours
+  function moneyHome() { if (Casino.mode() !== 'mine') Casino.forPlayer(''); }
 
   function newShoe(announce) {
     var cards = [];
@@ -245,17 +273,18 @@
 
   // ── Setup ─────────────────────────────────────────────────────────────────
   function showSetup() {
-    S = null; token++; busy = false;
+    S = null; token++; busy = false; moneyHome();
     Kit.setup(app, {
       players: { min: 1, max: 1, count: 1, label: "Who's playing?" },
       options: [{ id: 'reveal', label: 'Card reveal', help: 'How the cards are turned over after the deal.', choices: [['squeeze', 'Slow squeeze', 'Cards are lifted and peeked at one corner at a time, like a high-roller table.'], ['quick', 'Quick', 'Cards flip over right away so hands go faster.']], value: 'squeeze' },
         Coach.option({ label: 'Bet guide', help: 'Shows the smartest bet on the table. Tap it for every bet\u2019s real odds, explained in plain words.', off: 'No guide: you bet on your own.', on: 'A \u201cbest bet\u201d tag on the table; tap it to compare every bet and see what yours cost.' })],
-      intro: 'Punto Banco, 8-deck shoe. Bankroll ' + money(Casino.balance()) + ', shared by every casino game',
+      intro: 'Punto Banco, 8-deck shoe. Bankroll ' + money(myBankroll()) + ', shared by every casino game',
       start: 'Take a seat',
       onStart: function (cfg) { start(cfg.players[0].name, cfg.options.reveal, cfg.options.coach); }
     });
   }
   function start(name, reveal, coach) {
+    moneyFor(name, true);
     S = { name: name, reveal: reveal || 'squeeze', coach: coach === 'on' ? 'on' : 'off', started: Date.now(), startBank: Casino.balance(), bets: {}, placed: [], last: null, hand: null, frac: 0, st: blankStats(), shoe: null, roads: [] };
     newShoe(false);
     Kit.gameStart();
@@ -388,7 +417,7 @@
     if (!S || !dom.bank) return;
     var net = S.st.returned - S.st.wagered - (busy && S.hand ? S.hand.back - S.hand.wager : 0);
     var bal = busy && S.hand ? S.hand.bankBefore : Casino.balance();
-    dom.bank.innerHTML = '<span>' + Kit.esc(S.name) + ' · <b>' + money(bal) + '</b></span><span>Session <b class="' + (net > 0.004 ? 'up' : net < -0.004 ? 'down' : '') + '">' + signed(net) + '</b></span>';
+    dom.bank.innerHTML = '<span>' + (Casino.mode() === 'mine' ? Kit.esc(S.name) : bankLabelHtml(S.name)) + ' · <b>' + money(bal) + '</b></span><span>Session <b class="' + (net > 0.004 ? 'up' : net < -0.004 ? 'down' : '') + '">' + signed(net) + '</b></span>';
     var showBets = busy && S.hand ? S.hand.bets : S.bets;
     ORDER.forEach(function (k) { paintStack(k, showBets[k] || 0); });
     dom.felt.classList.toggle('betting', !busy);
@@ -418,7 +447,7 @@
     else { dom.deal.disabled = true; dom.deal.textContent = 'Deal'; }
     var h = '';
     if (!busy) {
-      if (bal < 1 && !t) h = 'Out of chips. Reset the bankroll from the menu.';
+      if (bal < 1 && !t) h = Casino.mode() === 'mine' ? 'Out of chips. Reset the bankroll from the menu.' : 'Out of chips. ' + topUp(S.name).menu + ' from the menu.';
       else if (!t) h = S.hand ? 'Place your next bet' : 'Drag a chip onto Player, Banker or Tie';
       else h = describeBets(S.bets);
     }
@@ -503,7 +532,7 @@
   function placeChip(k) {
     if (!S || busy) return false;
     var bal = Casino.balance(), t = sumBets(S.bets);
-    if (t + sel > bal) { Kit.toast('Not enough in your bankroll for that chip'); Kit.haptic('error'); return false; }
+    if (t + sel > bal) { Kit.toast('Not enough money for that chip'); Kit.haptic('error'); return false; }
     if ((S.bets[k] || 0) + sel > SPOTS[k].max) { Kit.toast(SPOTS[k].name + ' limit is ' + money(SPOTS[k].max)); Kit.haptic('error'); return false; }
     clearTableIfDone();
     S.bets[k] = (S.bets[k] || 0) + sel;
@@ -542,7 +571,7 @@
       ORDER.forEach(function (k) { if (S.bets[k]) S.placed.push({ k: k, v: S.bets[k] }); });
     }
     var wager = sumBets(S.bets);
-    if (wager > bal) { Kit.toast('Not enough in your bankroll'); return; }
+    if (wager > bal) { Kit.toast('Not enough money'); return; }
     clearTableIfDone();
     var lastHand = false;
     if (S.shoe.left === 0 || S.shoe.pos + 6 > S.shoe.cards.length) newShoe(true);
@@ -829,10 +858,11 @@
   // ── Bankroll and session end ──────────────────────────────────────────────
   function resetBank() {
     if (busy) return;
-    Kit.confirm('Reset bankroll to $1,000?', { ok: 'Reset', danger: true, body: 'This is shared by every casino game.' }).then(function (ok) {
+    var w = topUp(S ? S.name : 'You');
+    Kit.confirm(w.ask, { ok: 'Reset', danger: true, body: w.why }).then(function (ok) {
       if (!ok) return;
-      Casino.reset(); Kit.toast('Bankroll reset to $1,000');
-      if (S) { save(); paint(); }
+      Casino.reset(); Kit.toast(w.done);
+      if (S) { if (Casino.mode() === 'link') S.lr = 1; save(); paint(); }
     });
   }
   function highlights(s) {
@@ -853,24 +883,24 @@
       players: [{ name: s.name, score: Math.round(net), cpu: false }], winner: null,
       summary: s.name + (net > 0.004 ? ' up ' + money(net) : net < -0.004 ? ' down ' + money(-net) : ' even') + ' · ' + st.hands + ' hand' + (st.hands === 1 ? '' : 's'),
       highlights: highlights(s),
-      meta: { hands: st.hands, wagered: st.wagered, returned: st.returned, counts: st.counts },
-      detail: { bank: { s: s.startBank, e: Math.round(Casino.balance()) }, hands: st.hands, bet: st.wagered, counts: st.counts, nat: st.nat, rd: st.rd || '', rf: st.rf || '',
-        streak: st.best || null, big: st.bigH || null, last: st.lastH && (!st.bigH || st.lastH.n !== st.bigH.n) ? st.lastH : null }
+      meta: casinoMeta({ hands: st.hands, wagered: st.wagered, returned: st.returned, counts: st.counts }),
+      detail: playTag({ bank: { s: s.startBank, e: Math.round(Casino.balance()) }, hands: st.hands, bet: st.wagered, counts: st.counts, nat: st.nat, rd: st.rd || '', rf: st.rf || '',
+        streak: st.best || null, big: st.bigH || null, last: st.lastH && (!st.bigH || st.lastH.n !== st.bigH.n) ? st.lastH : null })
     });
   }
   function cashOut() {
     if (busy) { Kit.toast('Let the hand finish first'); return; }
     if (!S) { showSetup(); return; }
     var s = S, st = s.st, net = st.returned - st.wagered;
-    if (st.hands) recordSession(s);
+    if (st.hands || s.lr) recordSession(s);   // (a linked player's bankroll reset is always filed)
     clearSave();
-    var name = s.name, reveal = s.reveal, coach = s.coach;
+    var name = s.name, reveal = s.reveal, coach = s.coach, left = bankWords(name).replace(/^your /, '') + ' ' + money(Casino.balance());
     showSetup();
     if (!st.hands) return;
     Kit.win({
       icon: net >= 0 ? 'trophy' : 'coins',
       title: net > 0.004 ? 'Up ' + money(net) + '!' : net < -0.004 ? 'Down ' + money(-net) : 'Broke even',
-      sub: st.hands + ' hands · Banker ' + st.counts.B + ', Player ' + st.counts.P + ', Tie ' + st.counts.T + ' · bankroll ' + money(Casino.balance()),
+      sub: st.hands + ' hands · Banker ' + st.counts.B + ', Player ' + st.counts.P + ', Tie ' + st.counts.T + ' · ' + left,
       lose: net < -0.004,
       againLabel: 'Play again',
       again: function () { start(name, reveal, coach); }
@@ -888,8 +918,9 @@
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = load();
   if (saved && saved.shoe && saved.st) {
+    moneyFor(saved.name || 'You');
     if (Date.now() - (saved.lastAt || 0) > 6 * 3600 * 1000) {
-      if (saved.st.hands) recordSession(saved);
+      if (saved.st.hands || saved.lr) recordSession(saved);
       clearSave(); showSetup();
     } else { S = saved; Kit.gameStart(); render(); }
   } else showSetup();

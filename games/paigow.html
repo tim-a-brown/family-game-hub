@@ -21,6 +21,9 @@
 .bankbar .bk{display:flex;align-items:center;gap:7px;flex:none;}
 .bankbar .bk .ico{width:20px;height:20px;color:var(--yellow);}
 .bankbar .bk b{font-family:var(--display);font-weight:400;font-size:1.4rem;color:var(--yellow);letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+.bankbar .bk{flex-wrap:wrap;row-gap:0;}
+.bankbar .bk .bkl{flex-basis:100%;font-size:.68rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);line-height:1.1;}
+.bankbar .bk .bkl .ico{width:.85em;height:.85em;color:#fff;}
 .bankbar .ss{flex:1;min-width:0;font-size:.8rem;font-weight:800;color:var(--text-3);line-height:1.2;text-align:right;}
 .bankbar .ss span{display:block;font-size:.95rem;color:var(--text-2);}
 .pos{color:var(--green)!important;}.neg{color:var(--red)!important;}
@@ -131,6 +134,8 @@
   .stage > .bankbar{grid-column:2;grid-row:2;margin-bottom:14px;}
   .stage > .ctl{grid-column:2;grid-row:3;}
 }
+.czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
+.czlk .ico{width:.85em!important;height:.85em!important;color:#fff!important;stroke-width:3;}
 </style>
 </head>
 <body>
@@ -149,15 +154,20 @@
   // ── Shared bankroll (casino.js) ───────────────────────────────────────────
   // casino.js reads a $0 bankroll as "no bankroll yet" ($1,000), so read and
   // write the key directly; it is the same synced 'casino_bank' value.
+  // Someone else playing (play money, or a linked player's own bankroll): casino.js keeps it; casino_bank isn't touched.
   function bank() {
+    if (Casino.mode() !== 'mine') return Casino.balance();
     try { var v = localStorage.getItem('casino_bank'); if (v != null && v !== '') { var n = parseInt(v, 10); if (!isNaN(n)) return n; } } catch (e) {}
     return Casino.balance();
   }
   function bankSet(n) {
+    if (Casino.mode() !== 'mine') { var d = Math.round(n) - Casino.balance(); if (d > 0) Casino.win(d); else if (d < 0) Casino.bet(Math.min(-d, Casino.balance())); return; }
     try { localStorage.setItem('casino_bank', String(Math.max(0, Math.round(n)))); } catch (e) {}
     try { if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite('casino_bank'); } catch (e) {}
   }
   function bankAdd(d) { bankSet(bank() + d); }
+  // Back to $1,000: your bankroll as before; play money or a linked player's bankroll through casino.js
+  function bankReset() { if (Casino.mode() === 'mine') bankSet(1000); else { if (S && Casino.mode() === 'link') S.lr = 1; Casino.reset(); } }
   function money(n) { n = Math.round(n); return (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString(); }
   function signed(n) { n = Math.round(n); return (n > 0 ? '+' : n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString(); }
   function commission(bet) { return Math.max(1, Math.round(bet * 0.05)); }
@@ -368,7 +378,7 @@
     menu: [
       { icon: 'logout', label: 'Cash out (end session)', onClick: function () { leave(); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Pai Gow: past sessions' }); } },
-      { icon: 'coins', label: 'Reset bankroll to $1,000', onClick: function () { resetBank(); } }
+      { icon: 'coins', label: function () { return topUp(S ? S.name : 'You').menu; }, onClick: function () { resetBank(); } }
     ],
     rules:
       '<p class="goal">Split your 7 cards into a <b>5-card high hand</b> and a <b>2-card low hand</b>. Beat both of the dealer\'s hands to win.</p>' +
@@ -386,7 +396,8 @@
       '<h3>Hand ranks, best first</h3><ol><li>Five aces (four Aces and the joker)</li><li>Royal flush, then straight flush</li><li>Four of a kind</li><li>Full house</li><li>Flush</li><li>Straight</li><li>Three of a kind</li><li>Two pair</li><li>One pair</li><li>High card (a "pai gow")</li></ol>' +
       '<p>A-2-3-4-5 is the <b>second-best</b> straight, just under 10-J-Q-K-A (standard Nevada rule).</p>' +
       '<h3>The dealer</h3><p>The dealer sets cards by the fixed <b>house way</b>: pairs stay high, two pairs usually split, straights and flushes play high, and so on.</p>' +
-      '<h3>Ending a session</h3><p>Tap <b>Cash out</b> when you leave. Your session is saved in Past games.</p>'
+      '<h3>Ending a session</h3><p>Tap <b>Cash out</b> when you leave. Your session is saved in Past games. Your bankroll is shared by all the casino games.</p>' +
+      '<p>Playing as someone else? They get $1,000 in play money; your bankroll isn\u2019t touched. A player linked to their own profile plays from their own bankroll.</p>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -397,16 +408,42 @@
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function load() { try { return JSON.parse(localStorage.getItem(SAVE) || 'null'); } catch (e) { return null; } }
+  // ── Whose money (casino.js): you play from your bankroll, a player linked to their own profile from theirs,
+  // anyone else from $1,000 in play money (your bankroll isn't touched). Called when a session starts and resumes.
+  function moneyFor(name, fresh) {
+    var m = Casino.forPlayer(/^(you|player \d+)$/i.test(String(name || '').trim()) ? '' : name);   // an unnamed seat is you, as before
+    if (fresh && m === 'play') Kit.toast(name + ' plays with play money · your bankroll isn’t touched', 3600);
+    else if (fresh && m === 'link') Kit.toast('Playing from ' + Kit.poss(name) + ' bankroll', 3000);
+    return m;
+  }
+  function bankLabel(name) { var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'link' ? Kit.poss(name) + ' bankroll' : 'Bankroll'; }
+  // short: a narrow HUD box, where a linked player's money reads "[link] Jamie's"
+  function bankLabelHtml(name, short) { var lk = Casino.mode() === 'link'; return (lk ? '<span class="czlk">' + Kit.icon('link') + '</span>' : '') + Kit.esc(lk && short ? Kit.poss(name) : bankLabel(name)); }
+  function bankWords(name) { var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'link' ? Kit.poss(name) + ' bankroll' : 'your bankroll'; }
+  function myBankroll() { try { var v = localStorage.getItem('casino_bank'), n = parseInt(v, 10); return v == null || v === '' || isNaN(n) ? 1000 : Math.max(0, n); } catch (e) { return 1000; } }
+  // The out-of-money sheet and the reset menu item, in the words for whoever is playing
+  function topUp(name) {
+    var m = Casino.mode(), p = Kit.poss(name);
+    return m === 'play' ? { title: 'Out of play money', body: name + ' is out of play money. Have another $1,000?', btn: '$1,000 more play money', done: name + ' has $1,000 in play money', menu: 'Reset play money to $1,000', ask: 'Reset play money to $1,000?', why: 'Only the play money changes; your bankroll isn’t touched.' }
+      : m === 'link' ? { title: 'Out of chips', body: p + ' bankroll is empty. Start fresh with $1,000?', btn: 'Reset ' + p + ' bankroll to $1,000', done: p + ' bankroll is $1,000', menu: 'Reset ' + p + ' bankroll to $1,000', ask: 'Reset ' + p + ' bankroll to $1,000?', why: 'This resets ' + p + ' own bankroll, the one their app shares.' }
+      : { title: 'Out of chips', body: 'Your bankroll is empty. Start fresh with $1,000?', btn: 'Reset bankroll to $1,000', done: 'Bankroll is $1,000', menu: 'Reset bankroll to $1,000', ask: 'Reset bankroll to $1,000?', why: 'The bankroll is shared with every casino game.' };
+  }
+  // For the history record: a linked player's carries their bankroll change (once per record); a guest's is marked play money
+  function casinoMeta(meta) { return Object.assign(meta || {}, Casino.linkRecord(0)); }
+  function playTag(d) { if (Casino.mode() === 'play') d.play = 1; return d; }
+  // Back at the setup screen (that session is filed): your bankroll again, so the setup text and the menu show yours
+  function moneyHome() { if (Casino.mode() !== 'mine') Casino.forPlayer(''); }
 
   function showSetup() {
-    S = null; token++; undoStack = [];
+    S = null; token++; undoStack = []; moneyHome();
     Kit.setup(app, {
-      intro: 'Set a high hand and a low hand, beat the dealer with both. Your bankroll: ' + money(bank()),
+      intro: 'Set a high hand and a low hand, beat the dealer with both. Your bankroll: ' + money(myBankroll()),
       players: { min: 1, max: 1, count: 1, label: "Who's at the table?" },
       options: [Coach.option({ on: 'A “best split” tag while you set your hands; tap it to compare the best ways to set them.' })],
       start: 'Take a seat',
       onStart: function (cfg) {
         var nm = cfg.players[0].name; if (/^Player \d+$/.test(nm)) nm = 'You';
+        moneyFor(nm, true);
         S = {
           name: nm, opts: { coach: cfg.options.coach === 'on' ? 'on' : 'off' }, started: Date.now(), hand: 0, net: 0, phase: 'bet', bet: 0, last: 0, p: null, d: null, low: [], hw: null, res: null,
           log: [], ev: [], st: { won: 0, lost: 0, push: 0, streak: 0, best: 0, comm: 0, big: null, own: 0, house: 0, bestHi: null }
@@ -533,7 +570,7 @@
   function leave() {
     if (!S) return showSetup();
     if (busy || S.phase === 'set') { Kit.toast('Finish this hand first'); return; }
-    if (!S.hand) { clearSave(); showSetup(); return; }
+    if (!S.hand) { if (S.lr) finish(); else { clearSave(); showSetup(); } return; }   // (a linked player's bankroll reset is always filed)
     Kit.confirm('Cash out and leave the table?', { ok: 'Cash out', body: 'Your session is saved in Past games.' }).then(function (ok) { if (ok) finish(); });
   }
   function highlights() {
@@ -561,15 +598,15 @@
     var summary = s.name + (net > 0 ? ' won ' + money(net) : net < 0 ? ' lost ' + money(-net) : ' broke even') + ' · ' + s.hand + ' hand' + (s.hand === 1 ? '' : 's');
     Kit.record(HKEY, {
       started: s.started, players: [{ name: s.name, score: net }], winner: null, summary: summary,
-      rounds: roundsData(), highlights: highlights(), meta: { hands: s.hand, bankroll: bank(), commission: s.st.comm },
-      detail: { bank: { s: bank() - net, e: bank() }, hands: s.hand, won: s.st.won, lost: s.st.lost, push: s.st.push, comm: s.st.comm, house: s.st.house,
-        big: s.bigH || null, last: (s.hl || []).filter(function (x) { return !s.bigH || x.h !== s.bigH.h; }).slice(-6) }
+      rounds: roundsData(), highlights: highlights(), meta: casinoMeta({ hands: s.hand, bankroll: bank(), commission: s.st.comm }),
+      detail: playTag({ bank: { s: bank() - net, e: bank() }, hands: s.hand, won: s.st.won, lost: s.st.lost, push: s.st.push, comm: s.st.comm, house: s.st.house,
+        big: s.bigH || null, last: (s.hl || []).filter(function (x) { return !s.bigH || x.h !== s.bigH.h; }).slice(-6) })
     });
     clearSave(); S = null;
     Kit.win({
       icon: net >= 0 ? 'trophy' : 'meh', lose: net < 0,
       title: net > 0 ? 'Up ' + money(net) + '!' : net < 0 ? 'Down ' + money(-net) : 'Broke even',
-      sub: s.hand + ' hand' + (s.hand === 1 ? '' : 's') + ' played · bankroll now ' + money(bank()),
+      sub: s.hand + ' hand' + (s.hand === 1 ? '' : 's') + ' played · ' + bankWords(s.name).replace(/^your /, '') + ' now ' + money(bank()),
       againLabel: 'New session', again: showSetup,
       extra: [{ label: 'Past games', onClick: function () { showSetup(); Kit.history(HKEY, { title: 'Pai Gow: past sessions' }); } }]
     });
@@ -577,8 +614,9 @@
   }
   function resetBank() {
     if (S && S.phase === 'set') { Kit.toast('Finish this hand first'); return; }
-    Kit.confirm('Reset the bankroll to $1,000?', { ok: 'Reset', danger: true, body: 'The bankroll is shared by all the casino games.' }).then(function (ok) {
-      if (!ok) return; bankSet(1000); Kit.toast('Bankroll is $1,000'); Kit.sfx('chip'); if (S) { if (S.phase === 'bet') S.bet = 0; save(); render(); } else showSetup();
+    var w = topUp(S ? S.name : 'You');
+    Kit.confirm(w.ask, { ok: 'Reset', danger: true, body: w.why }).then(function (ok) {
+      if (!ok) return; bankReset(); Kit.toast(w.done); Kit.sfx('chip'); if (S) { if (S.phase === 'bet') S.bet = 0; save(); render(); } else showSetup();
     });
   }
 
@@ -733,7 +771,7 @@
       document.createTextNode(S.log.length ? 'Session · ' + S.log.length + ' hand' + (S.log.length === 1 ? '' : 's') : 'Good luck, ' + S.name)
     ]);
     app.appendChild(el('div', { class: 'bankbar' }, [
-      el('div', { class: 'bk', html: Kit.icon('coins') + '<b id="bankv">' + money(bank() - pending()) + '</b>' }), ss,
+      el('div', { class: 'bk', html: Kit.icon('coins') + '<b id="bankv">' + money(bank() - pending()) + '</b>' + (Casino.mode() !== 'mine' ? '<span class="bkl">' + bankLabelHtml(S.name) + '</span>' : '') }), ss,
       el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Cash out', onclick: leave })
     ]));
 
@@ -785,8 +823,9 @@
     ctl.appendChild(status);
     if (S.phase === 'bet') {
       if (bank() < 1 && !S.bet) {
-        status.innerHTML = 'Out of chips! <span class="tip">The house will stake you a fresh $1,000.</span>';
-        acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary main', text: 'Get $1,000 in chips', onclick: function () { bankSet(1000); Kit.sfx('chip'); render(); } }));
+        var w = topUp(S.name), mine = Casino.mode() === 'mine';
+        status.innerHTML = mine ? 'Out of chips! <span class="tip">The house will stake you a fresh $1,000.</span>' : Kit.esc(w.body);
+        acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary main', text: mine ? 'Get $1,000 in chips' : w.btn, onclick: function () { bankReset(); save(); Kit.sfx('chip'); render(); } }));
       } else {
         status.innerHTML = S.bet ? 'Bet <b>' + money(S.bet) + '</b>. Drag on more or deal.' : 'Drag chips from the rack into the <b>Bet</b> circle.';
         var hint0 = status.innerHTML;
@@ -936,7 +975,7 @@
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = load();
-  if (saved && saved.phase) { S = saved; if (S.phase === 'result' && !S.res) S.phase = 'bet'; render(); }
+  if (saved && saved.phase) { S = saved; moneyFor(S.name || 'You'); if (S.phase === 'result' && !S.res) S.phase = 'bet'; render(); }
   else showSetup();
   window.addEventListener('resize', function () { var r = document.getElementById('hrow'); if (r) fitRow(r); });
   window.addEventListener('pageshow', function () { var b = document.getElementById('bankv'); if (b && S) b.textContent = money(bank() - pending()); });

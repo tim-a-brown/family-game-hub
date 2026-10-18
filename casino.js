@@ -45,7 +45,8 @@ const Casino = (function(){
   // You, or nobody known (a device with no name set plays from the bankroll, as before)
   function isMain(name){ var me = meName(), k = String(name || '').trim().toLowerCase(); return !me || !k || k === me; }
   function forPlayer(name){
-    if(isMain(name)){ if(PLAY){ PLAY = null; playSave(); } return 'mine'; }
+    // (a running session begun under play money, e.g. at page load, isn't yours: drop it so it can't log a fake change)
+    if(isMain(name)){ if(PLAY){ PLAY = null; playSave(); S = null; } return 'mine'; }
     var k = String(name).trim(), old = null, lb = null;
     try{ old = JSON.parse(localStorage.getItem(PLAYK)); } catch(e){}
     try{ lb = typeof FGHSync !== 'undefined' && FGHSync.linkBank ? FGHSync.linkBank(k) : null; } catch(e){}

@@ -919,11 +919,13 @@ function startTurn() {
   save();
 }
 function setPhase(ph) {
+  netPre();
   S.phase = ph; undoStack = []; ui.pick = {}; ui.preview = null; ui.bankSel = null;
   if (ph === 'bat') S.bl = computeBattles();
   save();
 }
 function endBuy() {
+  netPre();
   var p = cur(), cost = buyCost();
   S.ipc[p] -= cost;
   for (var t in S.rep) { S.dmg[t] = Math.max(0, (S.dmg[t] || 0) - S.rep[t]); if (!S.dmg[t]) delete S.dmg[t]; }
@@ -981,6 +983,7 @@ function strandedAir(p) {
   return out;
 }
 function endNcm(force) {
+  netPre();
   var p = cur(), lost = strandedAir(p);
   if (lost.length) {
     lost.forEach(function (u) { removeUnit(u); });
@@ -2533,6 +2536,7 @@ function cpuDive(B, side) {
   return side === 'a' ? o.win < 0.25 : o.win > 0.8;
 }
 async function runBattle() {
+  if (NET) return;
   var B = S.B; if (!B) return;
   busy++;
   ui.dive = ui.dive || { a: false, d: false };
@@ -2681,11 +2685,11 @@ function renderBattle(B, anim) {
   if (B.k === 'sbr') {
     sc.appendChild(el('div', { class: 'sides' }, [sideBox(B, 'a'), el('div', { class: 'side' }, [el('h3', null, [el('span', { html: roundelSvg(S.own[B.t]) }).firstChild, el('span', { text: 'Factory' })]), el('div', { class: 'us' }, [el('span', { class: 'bu', style: { '--pc': PW[S.own[B.t]].col, '--pci': PW[S.own[B.t]].ink }, html: unitSvg('ic') + '<span class="n">' + (S.dmg[B.t] || 0) + ' of ' + ipcOf(B.t) * 2 + ' damage</span>' })])])]));
   } else sc.appendChild(el('div', { class: 'sides' }, [sideBox(B, 'a'), sideBox(B, 'd')]));
-  var o = (B.step === 'pre' || B.step === 'decide') ? liveOdds(B) : null;
+  var o = (B.step === 'pre' || B.step === 'decide' || B.step === 'dive') ? liveOdds(B) : null;
   if (o) sc.appendChild(el('div', { class: 'bodds' }, [el('span', { text: PW[B.att].short + ' wins about ' + pct(o.win) + ' of the time from here' }), el('div', { class: 'oddsbar' }, [el('i', { style: { width: pct(o.win) } })])]));
   // Dice tray: the latest volley
   var v = B.vols[B.vi] && B.vols[B.vi].rolled ? B.vols[B.vi] : (B.vi > 0 ? B.vols[B.vi - 1] : null);
-  if (B.step === 'pre' || B.step === 'decide') v = null;
+  if (B.step === 'pre' || B.step === 'decide' || B.step === 'dive') v = null;
   var tray = el('div', { class: 'tray' });
   if (v && v.rolled) {
     var vp = v.side === 'a' ? B.att : (v.kind === 'sbr-aa' ? S.own[B.t] : B.def);
@@ -2705,7 +2709,7 @@ function renderBattle(B, anim) {
       tray.appendChild(el('div', { class: 'drow' }, [el('div', { class: 'dl', html: lab }), dd]));
     });
   } else {
-    tray.appendChild(el('div', { class: 'bmsg', text: B.step === 'end' ? '' : (B.round === 1 && B.step === 'pre' ? 'Ready? Every unit rolls one die. A roll at or under its number is a hit.' : 'Round ' + B.round + ': roll again or pull back.') }));
+    tray.appendChild(el('div', { class: 'bmsg', text: B.step === 'end' ? '' : B.step === 'dive' ? 'Round ' + B.round + ': ' + PW[B.att].short + ' is ready to fire.' : (B.round === 1 && B.step === 'pre' ? 'Ready? Every unit rolls one die. A roll at or under its number is a hit.' : 'Round ' + B.round + ': roll again or pull back.') }));
   }
   if (B.msg && B.step === 'end') tray.appendChild(el('div', { class: 'bmsg', text: B.msg }));
   else if (B.msg) tray.appendChild(el('div', { class: 'bmsg', style: { fontSize: '.8rem', opacity: .85 }, text: B.msg }));
@@ -3165,7 +3169,7 @@ function aiPlace(p) {
 // ── The computer's whole turn ──────────────────────────────────────────────
 var cpuRunning = false;
 async function runCpu() {
-  if (cpuRunning || !S || S.over || !isCpu(cur())) return;
+  if (NET || cpuRunning || !S || S.over || !isCpu(cur())) return;   // (online, computer generals move through the table)
   cpuRunning = true;
   var p = cur(), myTok = tok;
   try {
@@ -3771,14 +3775,32 @@ function bNewRound(B) {
 
 // ── Moves from this device ──
 // The step worked out here goes to the table as one move (only if the table is still where the step began)
+// If it can't be sent (no connection), the step goes back to where it was before it was finished, to send again.
+var netSending = false;
 function netPush(state, mv) {
-  var base = DRAFT && DRAFT.base, out = JSON.stringify(compact(clone(state)));
-  netUnstash();
-  return NET.act(function (st) { if (base && JSON.stringify(st) !== base) return null; return { state: JSON.parse(out), mv: mv }; });
+  if (netSending || !DRAFT) return Promise.resolve(false);
+  var base = DRAFT.base, pre = DRAFT.pre || JSON.stringify(S), code = NET.code, out = JSON.stringify(compact(clone(state)));
+  netSending = true; busy++;
+  return NET.act(function (st) { if (JSON.stringify(st) !== base) return null; return { state: JSON.parse(out), mv: mv }; }).then(function (ok) {
+    netSending = false; busy = Math.max(0, busy - 1);
+    if (ok) netUnstash();
+    else if (NET && NET.code === code) {
+      S = JSON.parse(pre); DRAFT = { code: code, base: base, h: strHash(base) }; undoStack = [];
+      ui.sel = -1; ui.pick = {}; ui.preview = null; ui.bankSel = null; canCache.v = null; tgCache.v = null;
+      netStash(); renderAll();
+    }
+    return ok;
+  });
 }
+// the step as it was before it was finished (taken when finishing starts: buying, ending a move step)
+function netPre() { if (NET && !QUIET && DRAFT && !DRAFT.pre && S) DRAFT.pre = JSON.stringify(S); }
 // A step is done (afterPhase): send it
 function netCommit() {
-  if (!NET || !NET.myTurn() || !DRAFT || S.B) return;
+  if (!NET || !DRAFT) return;
+  if (!NET.myTurn() || S.B) {   // (someone else is deciding something first: the step stays open)
+    if (DRAFT.pre) { S = JSON.parse(DRAFT.pre); DRAFT.pre = null; renderAll(); }
+    Kit.haptic('error'); return;
+  }
   var p = cur();
   if (S.phase === 'bat' && !S.bl.length) { Kit.toast('No battles to fight: on to ' + PH_TITLE.ncm.toLowerCase()); setPhase('ncm'); }
   if (S.phase === 'cm') buyLog(p);
@@ -3918,7 +3940,10 @@ function netShow(net, info) {
   else if (banner) later(first ? 500 : 250, beginTurnUI);
   else if (!first && newTurn && !mine) Kit.sfx('deal');
   if (!first && mine && !info.mine && !newTurn && !S.B) Kit.haptic('light');
+  netWatchdog();
 }
+// A computer general that hasn't moved for a while: TurnNet's own watchdog looks at the table again (TurnNet.poke)
+function netWatchdog() {}
 // The battle board: shown while a battle is on (unless put away), dice rolling when a new volley comes in
 function netBattleView(first) {
   var B = S && S.B;
