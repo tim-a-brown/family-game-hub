@@ -1796,38 +1796,54 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     ]));
     // what's playing on Spotify, with its controls
     if (Kit.musicMini) { var spSlot = el('div', { style: { 'margin-top': '12px' } }); node.appendChild(spSlot); Kit.musicMini(spSlot, function () { s.close(); }); }
-    var list = el('div', { class: 'k-list', style: { 'margin-top': '14px' } });
-    function item(ic, t, fn, cls, extra) { list.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); fn(); } }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('span', { text: t }), extra || null])); }
-    var reqs = linkReqs();
-    if (reqs.length) item('link', reqs[0].name + ' wants to link with you', function () { Kit.links.request(reqs[0].id, refreshWho); }, 'hl');
-    var nPend = window.FGHSync && FGHSync.linkPending ? FGHSync.linkPending().length : 0;
-    if (nPend) item('inbox', nPend + (nPend === 1 ? ' game' : ' games') + ' to review', function () { Kit.links.review(refreshWho); }, 'hl');
+    // The rest in groups, as the in-game menu does: what you've played, the people you play with, how it looks and
+    // sounds, the home screen and game setups, and the account
+    var list = el('div', { class: 'k-list', style: { 'margin-top': '10px' } }), grp = null;
+    function group(name) { grp = el('div', { class: 'k-grp' }, [el('h3', { text: name })]); list.appendChild(grp); }
+    function item(ic, t, fn, cls, extra) { grp.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); fn(); } }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('span', { text: t }), extra || null])); }
+    function tag(t) { return el('span', { class: 'k-st', text: t }); }   // where something stands, in plain muted text
+    var reqs = linkReqs(), nPend = window.FGHSync && FGHSync.linkPending ? FGHSync.linkPending().length : 0;
+    if (reqs.length || nPend) {
+      group('Waiting for you');
+      if (reqs.length) item('link', reqs[0].name + ' wants to link with you', function () { Kit.links.request(reqs[0].id, refreshWho); }, 'hl');
+      if (nPend) item('inbox', nPend + (nPend === 1 ? ' game' : ' games') + ' to review', function () { Kit.links.review(refreshWho); }, 'hl');
+    }
+    group('Play');
     item('history', 'Game history', function () { location.href = 'games/history.html'; });
+    if (Kit.playTime) { var pt = Kit.playToday(), pm = Math.round(pt / 60); item('chart', 'Play time', function () { Kit.playTime(); }, '', tag(pm >= 60 ? Math.floor(pm / 60) + ' hr ' + (pm % 60) + ' min today' : pm ? pm + ' min today' : 'None today')); }
+    if (Kit.timerSheet) item('clock', 'Game timer', function () { Kit.timerSheet(); }, '', tag(Kit.timerStatus()));
+    group('People');
+    item('users', 'Frequent players', function () { Kit.managePlayers(); });
     if (mode === 'pin') {
       item('link', 'Share my profile', function () { Kit.links.profile(); });
       var ini = FGHSync.initials ? FGHSync.initials() : '';
       item('gamepad', 'Arcade initials', function () { Kit.links.initials(); }, '', el('span', { class: 'k-ini', text: ini || 'Set' }));
     }
-    item('users', 'Frequent players', function () { Kit.managePlayers(); });
-    item('sliders', 'Preferences', function () { Kit.prefs(); });
-    // Linked players: their own section, then the rest of the settings
+    // Linked players: the people you've linked with, under People
     if (mode === 'pin' && Kit.links.panel) {
       node.appendChild(list);
       node.appendChild(el('div', { class: 'label k-sec', text: 'Linked players' }));
       node.appendChild(Kit.links.panel(refreshWho));
-      list = el('div', { class: 'k-list', style: { 'margin-top': '14px' } });
+      list = el('div', { class: 'k-list', style: { 'margin-top': '10px' } });
     }
-    item('palette', 'Theme', function () { Kit.theme.pick(); }, '', el('span', { class: 'k-ini', text: Kit.theme.name() }));
-    if (Kit.music) item('headphones', 'Music', function () { Kit.music(); }, '', el('span', { class: 'k-ini', text: get('spotify_auth', '') ? 'Spotify' : 'Connect' }));
-    item(get('gn_sound', '1') === '1' ? 'sound' : 'mute', 'Sound: ' + (get('gn_sound', '1') === '1' ? 'on' : 'off'), function () {
-      set('gn_sound', get('gn_sound', '1') === '1' ? '0' : '1'); Kit.sfx('good');
-    });
+    group('Look & sound');
+    item('palette', 'Theme', function () { Kit.theme.pick(); }, '', tag(Kit.theme.name()));
+    if (Kit.music) item('headphones', 'Music', function () { Kit.music(); }, '', tag(get('spotify_auth', '') ? 'Spotify' : 'Connect'));
+    // sound: a switch that flips right here (the menu stays open)
+    var snd = el('button', { type: 'button', class: 'tg', role: 'switch', 'aria-checked': String(get('gn_sound', '1') === '1') }, [el('span', { class: 'ic', html: Kit.icon('sound') }), el('span', { class: 'lbl' }, [el('span', { text: 'Sound effects' })]), el('i', { class: 'sw' })]);
+    snd.onclick = function () { var on = get('gn_sound', '1') !== '1'; set('gn_sound', on ? '1' : '0'); snd.setAttribute('aria-checked', String(on)); snd.querySelector('.ic').innerHTML = Kit.icon(on ? 'sound' : 'mute'); if (on) Kit.sfx('good'); };
+    if (get('gn_sound', '1') !== '1') snd.querySelector('.ic').innerHTML = Kit.icon('mute');
+    grp.appendChild(snd);
+    group('Home & games');
+    if (Kit.homeSheet) item('tiles', 'Home screen', function () { Kit.homeSheet(); }, '', tag(Kit.homeStatus()));
+    item('sliders', 'Game defaults', function () { Kit.prefs(); });
+    if (Kit.offline) item('plane', 'Offline', function () { Kit.offline(); }, '', tag(+get('fgh_offline_at', '0') ? 'Ready' : 'Save'));
+    group('Account');
     if (mode === 'pin') {
       item('sync', 'Sync now', function () { if (FGHSync.syncNow) FGHSync.syncNow(); Kit.toast('Syncing…'); }, '', lastSyncTag());
       if (FGHSync.changePin) item('key', 'Change PIN', function () { changePinSheet(false); });
     }
-    if (Kit.offline) item('plane', 'Offline', function () { Kit.offline(); }, '', el('span', { class: 'k-ini', text: +get('fgh_offline_at', '0') ? 'Ready' : 'Save' }));
-    if (FGHSync.logGet) item('pulse', 'Activity log', activityLog);
+    if (FGHSync.logGet) item('pulse', 'Sync log', activityLog);
     item('logout', mode === 'pin' ? 'Sign out' : 'Sign in with a PIN', function () {
       if (FGHSync.signOut) FGHSync.signOut(); location.replace('./gate.html');
     }, mode === 'pin' ? 'danger' : '');
@@ -1903,7 +1919,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       copy();
     }
     function copy() { try { navigator.clipboard.writeText(exportText()).then(function () { Kit.toast('Log copied'); }, function () { Kit.toast('Couldn’t copy'); }); } catch (e) { Kit.toast('Couldn’t copy'); } }
-    sh = Kit.sheet({ title: 'Activity log', node: box, actions: [{ label: 'Close', cls: 'btn-ghost' }] });
+    sh = Kit.sheet({ title: 'Sync log', node: box, actions: [{ label: 'Close', cls: 'btn-ghost' }] });
   }
 
   // ── Recent games: the last 10 finished games across every game ───────────

@@ -229,7 +229,7 @@
   // Theme, sound, music, home layout, per-game defaults and game options follow the PIN to every device (cloud
   // `prefs`). Each setting goes by when this device last saw it change (fgh_prefs_at {key: {v, at}}); settings
   // already on a device before they synced count as oldest, so the account's copy wins over them.
-  var PREF_RE = /^(fgh_theme|gn_ini|gn_sound|gn_music|hs_attract|gn_cat_order|gn_cat_off|gn_daily_order|gn_setup_.+|gn_home_view|gn_spin|mazes_loupe|pinball_view|pinball_btns|pinball_quality|wordle_hard|sandlot_fast|invaders_auto|invaders_invx|invaders_invy|invaders_sticks|invaders_stick_right|jr_motion|jr_scan|jr_speed|lorc_fast|lorc_hints|lorc_sort|lorc_mat|lorc_dk_filter|fortune_mode|trivia_cats|trivia_levels|wyr_cats|hangman_cat|wordscramble_cat|wordsearch_cat|mahjong_dim|centi_opts|gn_spotify|randomtools_settings|diceroller_table|mysteries_book|gn_console_lib|gn_console_vis|gn_pad_map|casino_pb_[a-z0-9_]+|[a-z0-9]+_sort|[a-z0-9]+_music)$/;
+  var PREF_RE = /^(fgh_theme|gn_ini|gn_sound|gn_music|hs_attract|gn_cat_order|gn_cat_off|gn_daily_order|gn_usage_[a-z0-9]+|gn_setup_.+|gn_home_view|gn_spin|mazes_loupe|pinball_view|pinball_btns|pinball_quality|wordle_hard|sandlot_fast|invaders_auto|invaders_invx|invaders_invy|invaders_sticks|invaders_stick_right|jr_motion|jr_scan|jr_speed|lorc_fast|lorc_hints|lorc_sort|lorc_mat|lorc_dk_filter|fortune_mode|trivia_cats|trivia_levels|wyr_cats|hangman_cat|wordscramble_cat|wordsearch_cat|mahjong_dim|centi_opts|gn_spotify|randomtools_settings|diceroller_table|mysteries_book|gn_console_lib|gn_console_vis|gn_pad_map|casino_pb_[a-z0-9_]+|[a-z0-9]+_sort|[a-z0-9]+_music)$/;
   var PREFS_AT = 'fgh_prefs_at';
   function stampPrefs(){
     var had = LS.getItem(PREFS_AT) != null, rec = lsJSON(PREFS_AT) || {}, now = had ? Date.now() : 1, changed = !had, seen = {}, i, k, v;
@@ -929,7 +929,7 @@
   // unpacks only that PIN's own stash before syncing with its cloud copy. So nothing from one PIN is ever merged
   // into another. Only the phone's motion-permission answers and test flags stay with the device.
   var SPACE_KEY = 'fgh_space', STASH = 'fgh_space_';
-  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|emu|space(_.*)?|diag_log|sync_last|offline_at|timer|timer_lock)|online_transport|eightball_motion|lorc_tilt(_asked)?|firebase.*)$/;
+  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|emu|space(_.*)?|diag_log|sync_last|offline_at|timer|timer_lock|usage_dev)|online_transport|eightball_motion|lorc_tilt(_asked)?|firebase.*)$/;
   function spaceOf(p){ var h = 5381; p = String(p || ''); for(var i = 0; i < p.length; i++) h = ((h << 5) + h + p.charCodeAt(i)) | 0; return 'p' + (h >>> 0).toString(36); }
   function curSpace(){ return LS.getItem(SPACE_KEY) || (isPin() ? spaceOf(pin()) : 'g'); }
   function switchSpace(to){

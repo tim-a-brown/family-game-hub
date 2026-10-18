@@ -874,6 +874,7 @@
     if (game && game.cat === 'casino' && window.Casino && Casino.showHistory) item(G, 'chart', 'Bankroll history', function () { Casino.showHistory(); });
     toggle('Settings', 'sound', 'Sound', '', soundOn, function () { lsSet('gn_sound', soundOn() ? '0' : '1'); sfx('good'); });
     item('Settings', 'palette', 'Theme', function () { themePick(); }, '', themeRec(themeGet()).name);
+    item('Settings', 'clock', 'Game timer', timerSheet, '', timerStatus());
     var spP = game && spotifyPick(game.id);
     item('Settings', 'headphones', 'Music', spotifySheet, '', !spotifyOn() ? 'Play your Spotify' : spP && spP.u !== 'off' ? spP.n || 'Spotify' : spP ? 'Spotify off in this game' : 'Search or pick a playlist');
     var M = 'More';
@@ -2299,6 +2300,86 @@
       return g;
     };
   }
+  // ── Play time: how long the app is in use, per PIN, by day and hour ──
+  // Counted while a page is on screen and someone has touched it (or a key or pad) in the last 5 minutes, so an iPad
+  // left on a game doesn't run up time. Each device keeps its own record (gn_usage_<device>: {'YYYY-MM-DD': [seconds
+  // in each of the 24 hours]}, 60 days) in the signed-in PIN's space; it syncs with the PIN, and the screen adds up
+  // every device's record.
+  var USE_DEV = (function () { var v = null; try { v = LS.getItem('fgh_usage_dev'); if (!v || !/^[a-z0-9]{6,12}$/.test(v)) { v = Math.random().toString(36).slice(2, 10); LS.setItem('fgh_usage_dev', v); } } catch (e) { v = 'here'; } return v; })();
+  var USE_KEY = 'gn_usage_' + USE_DEV, useIn = Date.now(), usePend = {}, useNoted = 0;
+  function dayKey(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(function (k) { doc.addEventListener(k, function () { useIn = Date.now(); }, { capture: true, passive: true }); });
+  setInterval(function () {
+    if (doc.visibilityState !== 'visible' || timerLocked) return;
+    try { if (navigator.getGamepads && Array.prototype.some.call(navigator.getGamepads() || [], function (g) { return g && g.buttons && g.buttons.some(function (b) { return b.pressed; }); })) useIn = Date.now(); } catch (e) {}
+    if (Date.now() - useIn > 300000) return;
+    var d = new Date(), k = dayKey(d), h = d.getHours();
+    (usePend[k] = usePend[k] || {})[h] = (usePend[k][h] || 0) + 15;
+  }, 15000);
+  function useFlush(note) {
+    var ks = Object.keys(usePend); if (!ks.length) return;
+    var rec = {}; try { rec = JSON.parse(LS.getItem(USE_KEY) || '{}') || {}; } catch (e) {}
+    ks.forEach(function (k) { var a = rec[k] || (rec[k] = new Array(24).fill(0)); Object.keys(usePend[k]).forEach(function (h) { a[h] = Math.min(3600, (a[h] || 0) + usePend[k][h]); }); });
+    usePend = {};
+    var keep = dayKey(new Date(Date.now() - 60 * 86400000)); Object.keys(rec).forEach(function (k) { if (k < keep) delete rec[k]; });
+    try { LS.setItem(USE_KEY, JSON.stringify(rec)); } catch (e) {}
+    if (note || Date.now() - useNoted > 300000) { useNoted = Date.now(); if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(USE_KEY); }   // (to the account every few minutes, not every minute)
+  }
+  setInterval(function () { useFlush(false); }, 60000);
+  doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'hidden') useFlush(true); });
+  window.addEventListener('pagehide', function () { useFlush(true); });
+  // every device's record for this PIN, added up: {day: [24 hours of seconds]}
+  function usageAll() {
+    useFlush(false);
+    var out = {};
+    for (var i = 0; i < LS.length; i++) {
+      var k = LS.key(i); if (!k || k.indexOf('gn_usage_') !== 0) continue;
+      var r = null; try { r = JSON.parse(LS.getItem(k)); } catch (e) {}
+      if (r) Object.keys(r).forEach(function (d) { var a = out[d] || (out[d] = new Array(24).fill(0)); (r[d] || []).forEach(function (s, h) { a[h] += +s || 0; }); });
+    }
+    return out;
+  }
+  function minsText(sec) { var m = Math.round(sec / 60); if (m < 1) return sec > 0 ? 'Under a minute' : 'None'; var h = Math.floor(m / 60); return h ? h + ' hr' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min'; }
+  function sumDay(a) { return (a || []).reduce(function (x, y) { return x + y; }, 0); }
+  function playToday() { var a = usageAll()[dayKey(new Date())]; return sumDay(a); }
+  // The screen: today's total, the last 7 days as bars (tap one), and that day hour by hour
+  function playTimeSheet() {
+    var U = usageAll(), days = [], i, today = new Date(); today.setHours(12, 0, 0, 0);
+    for (i = 6; i >= 0; i--) { var d = new Date(today.getTime() - i * 86400000); days.push({ d: d, k: dayKey(d), s: sumDay(U[dayKey(d)]) }); }
+    var sel = days.length - 1, max = Math.max(1800, Math.max.apply(null, days.map(function (x) { return x.s; })));
+    var week = days.reduce(function (a, x) { return a + x.s; }, 0), active = days.filter(function (x) { return x.s > 0; }).length;
+    var who = window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? (lsGet('my_name', '') || 'This profile') : 'Guest on this device';
+    var hero = el('div', { class: 'k-pt-hero' }, [el('small', { text: 'Today' }), el('b', { text: minsText(days[6].s) }),
+      el('span', { text: 'This week ' + minsText(week) + (active ? ' · about ' + minsText(week / active) + ' a day played' : '') })]);
+    var bars = el('div', { class: 'k-pt-bars', role: 'tablist', 'aria-label': 'Last 7 days' }), hours = el('div', { class: 'k-pt-hours' }), dayT = el('div', { class: 'k-pt-day' }), tip = el('div', { class: 'k-pt-tip' });
+    days.forEach(function (x, j) {
+      var lbl = j === 6 ? 'Today' : x.d.toLocaleDateString([], { weekday: 'short' });
+      var b = el('button', { type: 'button', class: 'k-pt-bar', role: 'tab', 'aria-label': lbl + ': ' + minsText(x.s), onclick: function () { sel = j; sfx('tap'); paintSel(); } }, [
+        el('span', { class: 'v', text: x.s ? minsText(x.s).replace(' min', 'm').replace(' hr', 'h') : '' }),
+        el('span', { class: 'col' }, [el('i', { style: { height: (x.s ? Math.max(4, x.s / max * 100) : 0) + '%' } })]),
+        el('span', { class: 'd', text: lbl })]);
+      bars.appendChild(b);
+    });
+    function paintSel() {
+      Array.prototype.forEach.call(bars.children, function (b, j) { b.classList.toggle('on', j === sel); b.setAttribute('aria-selected', String(j === sel)); });
+      var x = days[sel], a = U[x.k] || new Array(24).fill(0);
+      dayT.innerHTML = '<b>' + esc(sel === 6 ? 'Today' : x.d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })) + '</b><span>' + esc(minsText(x.s)) + '</span>';
+      hours.innerHTML = ''; tip.textContent = '';
+      a.forEach(function (s, h) {
+        var lv = s <= 0 ? 0 : s < 600 ? 1 : s < 1500 ? 2 : s < 2700 ? 3 : 4;   // shade by how much of that hour was played
+        var lab = function (n) { return (n % 12 || 12) + (n < 12 ? ' AM' : ' PM'); };
+        var c = el('button', { type: 'button', class: 'k-pt-h l' + lv, 'aria-label': lab(h) + ': ' + minsText(s), onclick: function () { Array.prototype.forEach.call(hours.children, function (y) { y.classList.remove('pick'); }); c.classList.add('pick'); tip.textContent = lab(h) + '–' + lab((h + 1) % 24) + ' · ' + minsText(s); } });
+        hours.appendChild(c);
+      });
+    }
+    paintSel();
+    var node = el('div', { class: 'k-pt' }, [
+      el('p', { class: 'k-pt-who', text: who + ' · counted while the games are open and in use' }), hero,
+      el('div', { class: 'label k-sec', text: 'Last 7 days' }), bars,
+      el('div', { class: 'label k-sec', text: 'Time of day' }), dayT, hours,
+      el('div', { class: 'k-pt-axis' }, ['12 AM', '6 AM', '12 PM', '6 PM', '12 AM'].map(function (t) { return el('span', { text: t }); })), tip]);
+    sheet({ title: 'Play time', node: node, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+  }
   // ── Game timer: a countdown set in Preferences that ends gaming on this device ──
   // fgh_timer {end, lock, mins} (this device, whoever is signed in). Nothing shows until the last two minutes: then
   // a small countdown sits in the game's top bar (or a slim pill at the top of the screen where there's no bar), out
@@ -2481,7 +2562,7 @@
   }
   function setupSaved(id) { try { return JSON.parse(lsGet('gn_setup_' + id, 'null')); } catch (e) { return null; } }
   function rootPath() { return /\/games\//.test(location.pathname) ? '../' : ''; }
-  function defaultsSheet() {
+  function defaultsSheet(part) {
     var list = (typeof GAMES !== 'undefined' ? GAMES : []).filter(function (g) { return !g.hidden && setupPageOf(g); });
     // Home screen sections: move them up and down; Favorites always stays first
     var ord = el('div', { class: 'k-ord' });
@@ -2533,13 +2614,18 @@
     }
     q.addEventListener('input', paint);
     paint();
-    sheet({ title: 'Preferences', node: el('div', null, [
-        el('div', { class: 'label k-sec', text: 'Game timer' }), timerPanel(),
-        el('div', { class: 'label k-sec', text: 'Home screen sections' }), ord,
-        el('div', { class: 'label k-sec', text: 'Game defaults' }),
+    if (part === 'home') return sheet({ title: 'Home screen', node: el('div', null, [
+        el('p', { class: 'muted', style: { margin: '0 0 4px' }, text: 'Drag sections into the order you like. Switch one off to hide its games from home, search, Surprise and High Scores.' }), ord]),
+      actions: [{ label: 'Done', cls: 'btn-soft' }] });
+    sheet({ title: 'Game defaults', node: el('div', null, [
         el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Pick a game to set how it starts: who plays, the computer’s skill and its options. A game also remembers whatever you pick when you start it.' }), q, box]),
       actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
+  function homeSheet() { defaultsSheet('home'); }
+  function timerSheet() { sheet({ title: 'Game timer', node: timerPanel(), actions: [{ label: 'Done', cls: 'btn-soft' }] }); }
+  // a few words for the menus: what the timer and the sections are set to now
+  function timerStatus() { var t = timerGet(); if (!t) return 'Off'; var ms = t.end - Date.now(); return ms > 0 ? (ms >= 3600000 ? Math.floor(ms / 3600000) + ' hr ' + Math.floor(ms / 60000) % 60 + ' min' : Math.ceil(ms / 60000) + ' min') + ' left' : 'Time’s up'; }
+  function homeStatus() { var n = catsOff().length; return n ? n + ' hidden' : 'All shown'; }
   // Your profile: the code to give people, and whether their games need your OK first
   function profileSheet() {
     var node = el('div', { class: 'lk' }), s;
@@ -3034,7 +3120,7 @@
   window.Kit = {
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
-    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: defaultsSheet, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip,
+    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip,
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
