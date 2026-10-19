@@ -8,7 +8,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 const VERBOSE = process.argv.includes('-v');
-const PACKS = [1, 2, 3, 4].map(n => 'data/riddles-pack-' + n + '.js');
+const PACKS = [1, 2, 3, 4, 5].map(n => 'data/riddles-pack-' + n + '.js').concat('data/riddles-sort.js');
 
 const ctx = { console };
 ctx.window = ctx;
@@ -192,17 +192,36 @@ section('Daily riddle');
   const pick = d => D.pick(ALL, d);
   for (let d = 1; d <= D.CUT; d++) if (pick(d) !== R[oldOrder[(d - 1) % 100]]) { fail('day ' + d + ' changed: ' + pick(d).id); break; }
   // pinned: these days must never change (add riddles only at the end, never move the first FROZEN)
-  const PIN = { 1016: 'cake', 1017: 'fire', 1018: 'p2-crab', 1019: 'p4-train', 1100: 'p4-lighthouse', 1500: 'p1-chair', 2000: 'p3-february', 2117: 'p1-waffle', 2150: 'fire' };
+  // (days from 1024, Tue 20 Oct 2026, follow RIDDLE_SORT.daily: real riddles only, harder through the week)
+  const PIN = { 1016: 'cake', 1017: 'fire', 1018: 'p2-crab', 1019: 'p4-train', 1023: 'p1-pizza' };
+  const SORT = ctx.RIDDLE_SORT, DL = SORT && SORT.daily, BY = {}; ALL.forEach(r => { BY[r.id] = r; });
+  const PIN_V2 = ['p1-mailbox', 'p3-letter-p', 'umbrella', 'p5-aha', 'p5-worldrecord', 'vowels', 'p4-airport'];
+  if (!DL || DL.start !== D.V2) fail('RIDDLE_SORT.daily should start on day ' + D.V2);
+  else {
+    [1, 2, 3].forEach(t => {
+      const L = DL['t' + t], seenT = {};
+      L.forEach(id => { if (!BY[id]) fail('daily list t' + t + ': unknown riddle ' + id); if (SORT.tier[id] !== t) fail('daily list t' + t + ': ' + id + ' is tier ' + SORT.tier[id]); if (seenT[id]) fail('daily list t' + t + ': ' + id + ' twice'); seenT[id] = 1; });
+    });
+    // every day from V2 is a real riddle of that weekday's level, and none repeats within a year
+    const seenY = {};
+    for (let d = D.V2; d < D.V2 + 3 * 366; d++) {
+      const r = pick(d), t = D.tier(d);
+      if (!r || SORT.tier[r.id] !== t) { fail('day ' + d + ': ' + (r && r.id) + ' is not a tier ' + t + ' riddle'); break; }
+      if (d < D.V2 + 366) { if (seenY[r.id]) fail('daily repeats within a year: ' + r.id); seenY[r.id] = 1; }
+    }
+    const first = []; for (let d = D.V2; d < D.V2 + 7; d++) first.push(pick(d).id);
+    // pinned: the new schedule's first week must never change
+    const WEEK = PIN_V2;
+    if (WEEK && first.join(',') !== WEEK.join(',')) fail('the daily schedule from day ' + D.V2 + ' changed: ' + first.join(', '));
+    console.log('  from day ' + D.V2 + ': ' + first.join(', ') + ' ...');
+  }
   Object.keys(PIN).forEach(d => { const r = pick(+d); if (!r || r.id !== PIN[d]) fail('daily for day ' + d + ' is ' + (r && r.id) + ', was ' + PIN[d]); });
   // the frozen riddles, in order (fingerprint of their ids)
   if (D.FROZEN > ALL.length) fail('FROZEN (' + D.FROZEN + ') is more than the ' + ALL.length + ' riddles');
   let h = 0x811c9dc5; ALL.slice(0, D.FROZEN).map(r => r.id).join(',').split('').forEach(c => { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0; });
   const FP = '885fd20a';
   if (h.toString(16) !== FP) fail('the first ' + D.FROZEN + ' riddles were changed or reordered (fingerprint ' + h.toString(16) + ', want ' + FP + '): add new riddles only at the end');
-  // three years with no repeats, starting today
-  const seen = {}; let rep = 0;
-  for (let d = 1017; d <= 2117; d++) { const r = pick(d); if (seen[r.id]) { rep++; if (rep < 4) fail('daily repeats: ' + r.id + ' on days ' + seen[r.id] + ' and ' + d); } seen[r.id] = d; }
-  console.log('  day 1017: ' + pick(1017).id + '; days 1017-2117: ' + Object.keys(seen).length + ' different riddles; no repeats until day ' + (() => { const s2 = {}; for (let d = 1017; ; d++) { const id = pick(d).id; if (s2[id]) return d; s2[id] = 1; } })());
+  console.log('  day 1017: ' + pick(1017).id + '; day 1023: ' + pick(1023).id);
 }
 ok('daily checked');
 

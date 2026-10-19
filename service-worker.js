@@ -192,6 +192,8 @@ const PRECACHE_URLS = [
   '/data/riddles-pack-2.js',
   '/data/riddles-pack-3.js',
   '/data/riddles-pack-4.js',
+  '/data/riddles-pack-5.js',
+  '/data/riddles-sort.js',
   '/games/marbles.html',
   '/games/codebreaker.html',
   '/games/slidepuzzle.html',
