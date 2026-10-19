@@ -280,7 +280,7 @@ body{overflow-x:hidden;}
 .wheelpad{display:flex;flex-direction:column;align-items:center;gap:8px;}
 .cwheel{position:relative;width:min(260px,72vw);aspect-ratio:1;touch-action:none;cursor:grab;}
 .cwheel svg{position:absolute;inset:0;width:100%;height:100%;}
-.cwheel .inner{transform-origin:0 0;}
+.cwheel .w-in{transform-origin:50% 50%;will-change:transform;}
 .wheelrow{display:flex;align-items:center;gap:12px;font-weight:900;}
 .wheelrow .k{min-width:110px;text-align:center;font-size:1rem;}
 .wheelrow .k small{display:block;font-size:.7rem;color:#a9b6d6;font-weight:800;letter-spacing:.06em;}
@@ -337,15 +337,28 @@ body{overflow-x:hidden;}
 .solved .acts .btn-soft{--b:#e4d9bd;--b-ink:#3a2c14;--b-lip:#b9a77c;}
 .loading{min-height:50vh;display:grid;place-items:center;font-family:var(--tw);color:var(--text-2);}
 
-/* ── The clue board: the picture and the decoder ────────────────────────
-   Bigger screens show both. A phone shows one at a time under folder tabs (manila for the picture, navy for the
-   decoder), and the board is --clueH tall: the room left once everything else is on screen (fitPlay). */
-.clue{position:relative;display:flex;flex-direction:column;}
-.cpane{display:flex;flex-direction:column;gap:14px;}
-.cpic .photo{margin:6px 2px 2px;}
-.ctabs{display:none;}
+/* ── The picture drawer (under the case note) and the decoder board ───
+   The drawer is the file's lower flap: the picture drops down inside it, and its tab hangs below. On a phone,
+   fitPlay sets --picH (the picture's height) and --clueH (the decoder's), so everything stays on one screen. */
+.drawer{position:relative;margin-top:-26px;z-index:0;}
+.picbox{display:none;padding:22px 12px 10px;border-radius:0 0 12px 12px;
+  background:radial-gradient(rgba(120,90,30,.06) 1px,transparent 1.2px) 0 0/4px 4px,linear-gradient(180deg,var(--manila-2),var(--manila));box-shadow:0 3px 0 #b99c5e,0 12px 22px rgba(0,0,0,.35);}
+.drawer.open .picbox{display:block;}
+.picbox .photo{margin:0 auto;width:min(100%,calc(var(--picH,9999px) * 1.6667 + 16px));}
+.picbox .photo svg{width:100%;height:auto;}
+.picbox .photo .clip{display:none;}
+.picbox.in{animation:drawer .32s var(--ease);}
+@keyframes drawer{from{opacity:0;transform:translateY(-12px);}}
+.pictab{display:flex;align-items:center;gap:8px;margin:0 0 0 14px;padding:22px 12px 6px;min-height:30px;border:0;border-radius:0 0 12px 12px;
+  background:linear-gradient(180deg,var(--manila-2),#d9c189);color:#5a4520;font-family:var(--tw);font-weight:700;font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;
+  box-shadow:0 3px 0 #b99c5e,0 8px 14px rgba(0,0,0,.3);}
+.drawer.open .pictab{padding-top:6px;margin-top:-2px;}
+.pictab .ico{width:15px;height:15px;}
+.pictab .thumb{display:block;width:40px;height:24px;border-radius:2px;overflow:hidden;box-shadow:0 0 0 2px #fbf8f0,0 2px 4px rgba(0,0,0,.3);}
+.pictab .thumb svg{display:block;width:100%;height:100%;}
+.pictab:active{transform:translateY(1px);}
+.clue[hidden]{display:none;}
 .cpad:empty{display:none;}
-.cpane .in{animation:padin .3s var(--ease);}
 .keysdesk{padding:10px 8px 12px;}
 .keysdesk[hidden]{display:none;}
 @media (max-width:699px){
@@ -362,28 +375,18 @@ body{overflow-x:hidden;}
   .tools .tool .pips{position:static;}
   .paperstrip{padding:10px 8px 12px;}
   .intercept{margin-bottom:8px;font-size:.98rem;}
-  .clue.haspad .ctabs{display:flex;gap:4px;padding:0 10px;position:relative;z-index:1;}
-  .ctabs button{display:flex;align-items:center;gap:6px;min-height:34px;padding:0 14px;border:0;border-radius:10px 10px 0 0;font-family:var(--tw);font-weight:700;font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;
-    background:rgba(255,255,255,.08);color:var(--text-3);transition:background .15s,color .15s;}
-  .ctabs button .ico{width:15px;height:15px;}
-  .ctabs .ct-pic.on{background:linear-gradient(180deg,#f1e0b4,var(--manila));color:#5a4520;}
-  .ctabs .ct-pad.on{background:#24314f;color:#e8edf8;}
-  .clue.haspad .cpane{height:var(--clueH,auto);}
-  .clue.haspad[data-tab="pic"] .cpad,.clue.haspad[data-tab="pad"] .cpic{display:none;}
-  .clue.haspad .cpic{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;border-radius:4px 14px 14px 14px;
-    background:radial-gradient(rgba(120,90,30,.06) 1px,transparent 1.2px) 0 0/4px 4px,linear-gradient(175deg,var(--manila),var(--manila-2));box-shadow:0 3px 0 #b99c5e,0 10px 20px rgba(0,0,0,.35);}
-  .clue.haspad[data-tab="pad"] .ctabs .ct-pad.on{box-shadow:none;}
-  .clue .cpic .photo{margin:0 auto;width:min(calc(100% - 16px),calc((var(--clueH,600px) - 26px) * 1.6667 + 16px));transform:rotate(.4deg);}
-  .clue:not(.haspad) .cpic .photo{width:min(100%,calc((var(--clueH,600px) - 16px) * 1.6667 + 16px));}
-  .clue .cpic .photo svg{width:100%;height:auto;}
-  .clue .cpic .photo .clip{display:none;}
-  .clue.haspad .cpad{flex:1;min-height:0;display:flex;}
-  .clue.haspad .cpad .pad{flex:1;min-height:0;overflow:auto;border-radius:4px 14px 14px 14px;padding:10px;}
-  .clue.haspad .cpad .pad > h4{display:none;}
+  .clue .cpad{max-height:var(--clueH,none);display:flex;}
+  .clue .cpad:has(.wheelpad){height:var(--clueH,auto);}
+  .clue .cpad .pad{flex:1;min-height:0;overflow:auto;padding:10px;}
+  .clue .cpad .pad > h4{display:none;}
+  .play.picopen.haspad .fs{display:none;}
+  .play.haspad .tools .tool{min-height:42px;}
+  .picbox{padding:20px 10px 8px;}
   .clue .wheelpad{flex-direction:row;justify-content:center;gap:10px;height:100%;}
-  .clue .cwheel{width:min(calc(var(--clueH,280px) - 22px),62vw);flex:none;}
+  .clue .cwheel{width:min(calc(var(--clueH,280px) - 20px),62vw);flex:none;align-self:center;}
   .clue .wheelrow{flex-direction:column;gap:8px;}
   .clue .wheelrow .k{min-width:78px;font-size:.95rem;}
+  .clue .nudge{width:40px;height:40px;}
   .tw{gap:4px;padding:0;}
   .clue .phonepad{gap:4px;}
   .clue .phonepad span{padding:3px 2px 4px;}
@@ -400,18 +403,10 @@ body{overflow-x:hidden;}
   .cell .s{height:26px;font-size:1.15rem;}
   .words{gap:8px 12px;}
 }
-/* tablets and computers: the picture and the decoder side by side, so both stay in view with the paper and keys */
-@media (min-width:700px){
-  .clue.haspad .cpane{flex-direction:row;align-items:stretch;gap:14px;}
-  .clue.haspad .cpic,.clue.haspad .cpad{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;}
-  .clue.haspad .cpad .pad{flex:1;}
-  .clue.haspad .cpic .photo{margin:6px 2px;}
-  .clue.haspad .cwheel{width:min(250px,100%);}
-}
 /* Landscape tablets and computers: what you look at (the case, the picture, the decoder) on the left, where you
    answer (the lock, the paper and keys) on the right */
 @media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .play .clue{grid-column:1;}
+  .play .clue,.play .drawer{grid-column:1;}
   .play .file{grid-row:auto;}
   .play .keysdesk{grid-column:2;}
 }
@@ -1843,6 +1838,9 @@ body{overflow-x:hidden;}
     box.appendChild(head);
     var api = { el: box, title: title };
     if (tool === 'wheel') {
+      // Three layers: the fixed outer ring (plain letters), the code ring that turns, and the fixed hub with the shift.
+      // Only the code ring moves, as one smooth layer turned once a frame; letters are recoloured only when the shift
+      // or the highlighted letter changes.
       var stp = 360 / 26, k = S.pad.k || 0, outer = '', inner = '';
       for (var i = 0; i < 26; i++) {
         var a = i * stp * Math.PI / 180, x1 = Math.sin(a), y1 = -Math.cos(a);
@@ -1850,38 +1848,48 @@ body{overflow-x:hidden;}
         outer += '<line x1="' + f1(Math.sin(a + stp * Math.PI / 360) * 98) + '" y1="' + f1(-Math.cos(a + stp * Math.PI / 360) * 98) + '" x2="' + f1(Math.sin(a + stp * Math.PI / 360) * 118) + '" y2="' + f1(-Math.cos(a + stp * Math.PI / 360) * 118) + '" stroke="rgba(60,40,10,.3)" stroke-width="1"/>';
         inner += '<text data-i="' + i + '" x="' + f1(x1 * 86) + '" y="' + f1(y1 * 86 + 5) + '" text-anchor="middle" font-family="' + TYPE + '" font-weight="700" font-size="14" fill="#fff4d6" transform="rotate(' + f1(i * stp) + ' ' + f1(x1 * 86) + ' ' + f1(y1 * 86) + ')">' + ABC[i] + '</text>';
       }
-      var svg = '<svg viewBox="-122 -122 244 244"><circle r="121" fill="#e9d7a5" stroke="#8a6a2a" stroke-width="2"/><circle r="98" fill="#8a5e14"/>' + outer +
-        '<g class="inner"><circle r="97" fill="#1e3a8a"/><circle r="97" fill="none" stroke="#c8962f" stroke-width="2"/>' + inner + '<circle r="70" fill="#162c6a"/>' +
-        '<text y="-40" text-anchor="middle" font-family="' + TYPE + '" font-size="9" fill="#a9b6d6" letter-spacing="2">CODE</text></g>' +
-        '<text y="-50" text-anchor="middle" font-family="' + TYPE + '" font-size="0" fill="#000"></text>' +
-        '<circle r="40" fill="#e9d7a5" stroke="#8a6a2a" stroke-width="2"/><text class="kv" y="8" text-anchor="middle" font-family="' + TYPE + '" font-weight="700" font-size="24" fill="#2a2214">0</text><text y="24" text-anchor="middle" font-family="' + TYPE + '" font-size="8" fill="#6b5a3a" letter-spacing="1.5">SHIFT</text>' +
+      var VB = 'viewBox="-122 -122 244 244"';
+      var html = '<svg class="w-out" ' + VB + '><circle r="121" fill="#e9d7a5" stroke="#8a6a2a" stroke-width="2"/><circle r="98" fill="#8a5e14"/>' + outer + '</svg>' +
+        '<svg class="w-in" ' + VB + '><circle r="97" fill="#1e3a8a"/><circle r="97" fill="none" stroke="#c8962f" stroke-width="2"/>' + inner + '<circle r="70" fill="#162c6a"/>' +
+        '<text y="-40" text-anchor="middle" font-family="' + TYPE + '" font-size="9" fill="#a9b6d6" letter-spacing="2">CODE</text></svg>' +
+        '<svg class="w-hub" ' + VB + '><circle r="40" fill="#e9d7a5" stroke="#8a6a2a" stroke-width="2"/><text class="kv" y="8" text-anchor="middle" font-family="' + TYPE + '" font-weight="700" font-size="24" fill="#2a2214">0</text><text y="24" text-anchor="middle" font-family="' + TYPE + '" font-size="8" fill="#6b5a3a" letter-spacing="1.5">SHIFT</text>' +
         '<path d="M0 -121 L-6 -128 H6Z" fill="#c22a2a"/></svg>';
-      var cw = el('div', { class: 'cwheel', html: svg }), inG = cw.querySelector('.inner'), kv = cw.querySelector('.kv');
+      var cw = el('div', { class: 'cwheel', html: html }), ring = cw.querySelector('.w-in'), kv = cw.querySelector('.kv');
+      var inT = Array.prototype.slice.call(cw.querySelectorAll('[data-i]')), outT = Array.prototype.slice.call(cw.querySelectorAll('[data-o]'));
       var readout = el('div', { class: 'k' });
       box.appendChild(el('div', { class: 'wheelpad' }, [cw, el('div', { class: 'wheelrow' }, [
         el('button', { type: 'button', class: 'nudge', 'aria-label': 'Turn the code ring back', html: Kit.icon('back'), onclick: function () { setK(k - 1, true); } }), readout,
         el('button', { type: 'button', class: 'nudge', 'aria-label': 'Turn the code ring on', html: Kit.icon('right'), onclick: function () { setK(k + 1, true); } })])]));
-      var rotV = -k * stp, hiCode = null;
-      function paintW(anim) {
-        inG.style.transition = anim ? 'transform .3s cubic-bezier(.3,1.4,.5,1)' : 'none'; inG.style.transform = 'rotate(' + f1(rotV) + 'deg)';
-        var kk = ((k % 26) + 26) % 26; kv.textContent = String(kk);
+      var rotV = -k * stp, hiCode = null, shown = null, raf = 0;
+      function turn(anim) { ring.style.transition = anim ? 'transform .3s cubic-bezier(.3,1.4,.5,1)' : 'none'; ring.style.transform = 'rotate(' + rotV.toFixed(2) + 'deg)'; }
+      function marks() {   // the shift readout and the highlighted pair, only when they change
+        var kk = ((k % 26) + 26) % 26, sig = kk + ':' + hiCode; if (sig === shown) return; shown = sig;
+        kv.textContent = String(kk);
         readout.innerHTML = '<small>code ' + ABC[kk] + ' is plain</small>A';
-        Array.prototype.forEach.call(cw.querySelectorAll('[data-i]'), function (t) { t.setAttribute('fill', hiCode === +t.getAttribute('data-i') ? '#ffd36b' : '#fff4d6'); t.setAttribute('font-size', hiCode === +t.getAttribute('data-i') ? '17' : '14'); });
         var hp = hiCode == null ? -1 : (((hiCode - kk) % 26) + 26) % 26;
-        Array.prototype.forEach.call(cw.querySelectorAll('[data-o]'), function (t) { var on = +t.getAttribute('data-o') === hp; t.setAttribute('fill', on ? '#c22a2a' : '#2a2214'); t.setAttribute('font-size', on ? '18' : '14'); });
+        inT.forEach(function (t, i) { var on = hiCode === i; t.setAttribute('fill', on ? '#ffd36b' : '#fff4d6'); t.setAttribute('font-size', on ? '17' : '14'); });
+        outT.forEach(function (t, i) { var on = i === hp; t.setAttribute('fill', on ? '#c22a2a' : '#2a2214'); t.setAttribute('font-size', on ? '18' : '14'); });
       }
+      function paintW(anim) { turn(anim); marks(); }
       function setK(v, anim) { var d = v - k; k = v; rotV -= d * stp; S.pad.k = ((k % 26) + 26) % 26; paintW(anim); tick(); save(); }
       var st = null;
-      function ang(e) { var r = cw.getBoundingClientRect(); return Math.atan2(e.clientX - r.left - r.width / 2, -(e.clientY - r.top - r.height / 2)) * 180 / Math.PI; }
-      cw.addEventListener('pointerdown', function (e) { e.preventDefault(); try { cw.setPointerCapture(e.pointerId); } catch (x) {} st = { a: ang(e), id: e.pointerId }; });
+      function ang(e) { return Math.atan2(e.clientX - st.cx, -(e.clientY - st.cy)) * 180 / Math.PI; }
+      cw.addEventListener('pointerdown', function (e) {
+        e.preventDefault(); try { cw.setPointerCapture(e.pointerId); } catch (x) {}
+        var r = cw.getBoundingClientRect(); st = { id: e.pointerId, cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2 }; st.a = ang(e);
+      });
       cw.addEventListener('pointermove', function (e) {
-        if (!st || e.pointerId !== st.id) return; var a = ang(e), d = a - st.a; if (d > 180) d -= 360; if (d < -180) d += 360; st.a = a; rotV += d; paintW(false);
-        var nk = Math.round(-rotV / stp); if (nk !== k) { k = nk; tick(); kv.textContent = String(((k % 26) + 26) % 26); paintW(false); }
+        if (!st || e.pointerId !== st.id) return;
+        // near the middle a tiny finger wobble is a huge angle: ignore it there
+        if (Math.hypot(e.clientX - st.cx, e.clientY - st.cy) < st.r * 0.22) return;
+        var a = ang(e), d = a - st.a; if (d > 180) d -= 360; if (d < -180) d += 360; st.a = a; rotV += d;
+        var nk = Math.round(-rotV / stp); if (nk !== k) { k = nk; tick(); }
+        if (!raf) raf = requestAnimationFrame(function () { raf = 0; paintW(false); });
       });
       function endW(e) { if (!st || e.pointerId !== st.id) return; st = null; rotV = -k * stp; S.pad.k = ((k % 26) + 26) % 26; paintW(true); save(); }
       cw.addEventListener('pointerup', endW); cw.addEventListener('pointercancel', endW);
       paintW(false);
-      api.focusKey = function (key) { hiCode = key && key.length === 1 ? ABC.indexOf(key) : null; paintW(false); };
+      api.focusKey = function (key) { hiCode = key && key.length === 1 ? ABC.indexOf(key) : null; marks(); };
       api.turnTo = function (v) { setK(v, true); };
     } else if (tool === 'a1z26') {
       var ci = c.cipher && c.cipher.t === 'a1z26' ? c.cipher : { t: 'a1z26' }, adjustable = !!(c.gen && (ci.rev || ci.off));
@@ -2048,14 +2056,17 @@ body{overflow-x:hidden;}
     dom.hints = el('div', { class: 'hints' });
     file.appendChild(dom.hints);
     play.appendChild(file);
-    dom.play = play;
-    // The clue board: the picture and the decoder. A phone shows one at a time under folder tabs, sized to the room
-    // left on screen (fitPlay), so the clue, the decoder and the place you answer are all in view together.
+    dom.play = play; dom.file = file;
+    // The picture: a drawer under the case note, opened and closed by its tab, so it can sit in view while you work
+    // the decoder. The decoder has the board below (sized to the room left on screen by fitPlay).
     var ph = el('div', { class: 'photo' + (fresh ? ' in' : ''), role: 'button', 'aria-label': 'Look closer at the picture', html: '<span class="clip"></span>' + sceneSvg(C) + '<span class="zoom">' + Kit.icon('search') + '</span>' });
     ph.addEventListener('click', zoom);
+    dom.picBox = el('div', { class: 'picbox' }, [ph]);
+    dom.picTab = el('button', { type: 'button', class: 'pictab', onclick: function () { S.pad.pic = !picOpen(); Kit.sfx(S.pad.pic ? 'pop' : 'tap', 0.6); Kit.haptic('light'); save(); paintPic(true); } });
+    dom.drawer = el('div', { class: 'drawer' }, [dom.picBox, dom.picTab]);
+    play.appendChild(dom.drawer);
     dom.padHost = el('div', { class: 'cpad' });
-    dom.tabs = el('div', { class: 'ctabs', role: 'tablist' });
-    dom.clue = el('div', { class: 'clue' }, [dom.tabs, el('div', { class: 'cpane' }, [el('div', { class: 'cpic' }, [ph]), dom.padHost])]);
+    dom.clue = el('div', { class: 'clue' }, [dom.padHost]);
     dom.desk = el('div', { class: 'desk wood' + (C.dev.t === 'msg' ? ' typer' : '') });
     dom.keys = null;
     if (C.dev.t === 'msg') {
@@ -2074,32 +2085,48 @@ body{overflow-x:hidden;}
     window.scrollTo(0, 0);
     fitPlay(); setTimeout(fitPlay, 120); setTimeout(fitPlay, 600);
   }
-  // the folder tabs over the clue board: the picture, and the decoder when the case has one
-  function paintTabs() {
-    if (!dom.tabs) return;
-    var tab = PAD ? (S.pad.tab || (C.dev.t === 'msg' ? 'pad' : 'pic')) : 'pic';
-    dom.clue.setAttribute('data-tab', tab);
-    dom.clue.classList.toggle('haspad', !!PAD);
-    dom.tabs.innerHTML = '';
-    if (!PAD) return;
-    [['pic', 'Picture', 'search'], ['pad', PAD.title || 'Decoder', 'key']].forEach(function (t) {
-      dom.tabs.appendChild(el('button', { type: 'button', role: 'tab', class: 'ct-' + t[0] + (tab === t[0] ? ' on' : ''), 'aria-selected': String(tab === t[0]), html: Kit.icon(t[2]) + '<span>' + esc(t[1]) + '</span>', onclick: function () {
-        if (S.pad.tab === t[0] || (tab === t[0])) return;
-        S.pad.tab = t[0]; Kit.sfx('tap', 0.6); Kit.haptic('light'); save(); paintTabs();
-        var pane = t[0] === 'pad' ? dom.padHost : dom.clue.querySelector('.cpic'); pane.classList.remove('in'); void pane.offsetWidth; pane.classList.add('in');
-      } }));
-    });
+  // the picture drawer: open or shut (remembered per case). Shut by default only on a phone with a decoder to work,
+  // where the room goes to the decoder; the tab carries a little thumbnail so it's clear there's a picture inside
+  function picOpen() { if (S.pad.pic != null) return !!S.pad.pic; return !(PAD && window.matchMedia('(max-width:699px)').matches); }
+  function paintPic(anim) {
+    if (!dom.picTab) return;
+    var on = picOpen();
+    dom.drawer.classList.toggle('open', on);
+    dom.play.classList.toggle('picopen', on); dom.play.classList.toggle('haspad', !!PAD);
+    dom.clue.hidden = !PAD;
+    dom.picTab.setAttribute('aria-expanded', String(on));
+    dom.picTab.innerHTML = (on ? '' : '<span class="thumb">' + sceneSvg(C) + '</span>') + '<span>' + (on ? 'Hide picture' : 'Picture') + '</span>' + (on ? Kit.icon('down').replace('<svg', '<svg style="transform:rotate(180deg)"') : Kit.icon('down'));
+    if (anim && on) { dom.picBox.classList.remove('in'); void dom.picBox.offsetWidth; dom.picBox.classList.add('in'); }
+    fitPlay();
   }
   // On a phone: the clue board takes the height that's left once the case, the paper or lock, the keys and the
   // tools are drawn, between a usable minimum and a comfortable maximum
   function fitPlay() {
     if (!dom.clue || view !== 'play' || !dom.play.isConnected) return;
-    if (!window.matchMedia('(max-width:699px)').matches || S.done) { dom.clue.style.removeProperty('--clueH'); return; }
-    var kids = Array.prototype.filter.call(dom.play.children, function (n) { return n !== dom.clue && n.offsetParent !== null; });
-    var used = kids.reduce(function (a, n) { return a + n.offsetHeight; }, 0) + kids.length * 12;
+    var P = dom.play.style;
+    if (S.done) { P.removeProperty('--clueH'); P.removeProperty('--picH'); return; }
+    if (!window.matchMedia('(max-width:699px)').matches) {
+      P.removeProperty('--clueH');
+      // landscape tablet: the case, the picture and the decoder share the left column, so the picture takes what's left
+      if (!window.matchMedia('(orientation:landscape) and (min-width:900px) and (min-height:560px)').matches || !picOpen()) { P.removeProperty('--picH'); return; }
+      var col = [dom.file, dom.clue].filter(function (n) { return n && n.offsetParent !== null; });
+      var usedL = col.reduce(function (a, n) { return a + n.offsetHeight; }, 0) + col.length * 18 + (dom.picTab.offsetHeight + 20);
+      var topL = dom.play.getBoundingClientRect().top + window.scrollY;
+      P.setProperty('--picH', Math.round(Math.max(120, Math.min(420, window.innerHeight - topL - usedL - 30))) + 'px');
+      return;
+    }
+    // with a decoder, the picture is a compact strip and the decoder gets the room; without one, the picture does
+    var flex = PAD ? dom.clue : (picOpen() ? dom.picBox : null);
+    if (PAD) P.setProperty('--picH', '112px');
+    var kids = Array.prototype.filter.call(dom.play.children, function (n) { return n.offsetParent !== null; });
+    var used = kids.reduce(function (a, n) { return a + n.offsetHeight; }, 0) + (kids.length - 1) * 12 - (flex ? flex.offsetHeight : 0);
     var top = dom.play.getBoundingClientRect().top + window.scrollY, padB = parseFloat(getComputedStyle(app).paddingBottom) || 18;
-    var room = window.innerHeight - top - used - padB - dom.tabs.offsetHeight - 6;
-    dom.clue.style.setProperty('--clueH', Math.round(Math.max(130, Math.min(330, room))) + 'px');
+    var room = window.innerHeight - top - used - padB - 4;
+    if (PAD && flex && picOpen() && room < 190) {   // short of room: the picture strip gives some back before the decoder shrinks
+      var give = Math.min(40, 190 - room); P.setProperty('--picH', (112 - give) + 'px'); room += give;
+    }
+    if (PAD) P.setProperty('--clueH', Math.round(Math.max(170, Math.min(330, room))) + 'px');
+    else if (flex) P.setProperty('--picH', Math.round(Math.max(110, Math.min(320, room - 18))) + 'px');
   }
   window.addEventListener('resize', function () { clearTimeout(fitPlay.t); fitPlay.t = setTimeout(fitPlay, 120); });
   function buildDesk() {
@@ -2110,7 +2137,7 @@ body{overflow-x:hidden;}
     PAD = buildPad(C, D);
     if (PAD) { if (D.setPad) D.setPad(PAD); if (PAD.update) PAD.update(); dom.padHost.appendChild(PAD.el); }
     if (dom.keys) { dom.keys.innerHTML = ''; if (D.kb) dom.keys.appendChild(D.kb); }   // (a coded note's keys sit under the decoder)
-    paintTabs();
+    paintPic(false);
     if (D.paint) D.paint();
   }
   function change(fn) {
@@ -2190,7 +2217,7 @@ body{overflow-x:hidden;}
     if (C.gen && C.dev.t === 'msg') {
       if (C.hintFill && k === 1 && C.hintFill[0]) D.reveal(C.hintFill[0]);
       if ((C.hintFill && k === 2) || (C.fillFirst === 2 && k === 2)) D.revealWord(0);
-      if (C.wheelAt2 && k === 2 && PAD && PAD.turnTo) { if ((S.pad.tab || 'pad') !== 'pad') { S.pad.tab = 'pad'; paintTabs(); } PAD.turnTo(C.wheelAt2); }
+      if (C.wheelAt2 && k === 2 && PAD && PAD.turnTo) PAD.turnTo(C.wheelAt2);
       if (D.paint) D.paint();
     }
     addHint(k - 1, true); paintTools(); save();
