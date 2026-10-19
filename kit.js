@@ -1081,6 +1081,10 @@
     ]);
     doc.body.insertBefore(bar, doc.body.firstChild);
     gbarEl = bar;
+    // --bar is the bar's real height (taller in the installed app and on notched phones), so a game that fills
+    // the screen below it fits exactly and the page stays locked in place
+    function barH() { var h = bar.offsetHeight; if (h) root.style.setProperty('--bar', h + 'px'); }
+    barH(); try { new ResizeObserver(barH).observe(bar, { box: 'border-box' }); } catch (e) {}
     requestAnimationFrame(fitBar);
     window.addEventListener('resize', function () { clearTimeout(fitBar.t); fitBar.t = setTimeout(fitBar, 120); });
     try { doc.fonts.addEventListener('loadingdone', function () { requestAnimationFrame(fitBar); }); } catch (e) {}   // measured again in the title's own font (the first look can be in the fallback)
