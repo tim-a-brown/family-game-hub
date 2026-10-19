@@ -323,7 +323,14 @@ html[data-theme="light"] .tiles .g.ct,html[data-theme="parchment"] .tiles .g.ct{
 .sec-h .bank{margin-left:auto;display:flex;align-items:center;gap:6px;font-weight:900;color:var(--green);}
 .sec-h .bank .bank-amt{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--green);font:inherit;font-weight:900;padding:4px 2px;cursor:pointer;}
 .sec-h .bank .bank-amt .ico{width:16px;height:16px;}
-.sec-h .bank button:not(.bank-amt){border:0;background:var(--w08);color:var(--text-2);border-radius:999px;padding:4px 10px;font-weight:800;font-size:.8rem;}
+.sec-h .bank .bank-br{display:inline-flex;align-items:center;gap:4px;border:0;background:rgba(255,200,61,.14);color:#ffd84d;font:inherit;font-weight:900;font-size:.86rem;padding:3px 9px 3px 7px;border-radius:999px;cursor:pointer;}
+.sec-h .bank .bank-br .ico{width:17px;height:17px;}
+.br-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:var(--w05);}
+.br-row .br-ic{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;background:rgba(255,200,61,.16);color:#ffd84d;}
+.br-row .br-ic .ico{width:22px;height:22px;}
+.br-row b{display:block;}
+.br-row small{display:block;color:var(--text-3);font-weight:700;}
+.sec-h .bank button:not(.bank-amt):not(.bank-br){border:0;background:var(--w08);color:var(--text-2);border-radius:999px;padding:4px 10px;font-weight:800;font-size:.8rem;}
 
 /* Game rows: name first, easy to scan */
 .list{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;}
@@ -1042,12 +1049,23 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var c = window.Daily ? Daily.count() : { done: 0, total: 0 };
     return el('button', { type: 'button', class: 'hs-link dl-link', 'aria-label': 'Daily puzzles', html: Kit.icon('calendar') + '<span>Daily<i> puzzles</i></span>' + (c.done ? '<b>' + c.done + '/' + c.total + '</b>' : ''), onclick: function () { Kit.sfx('tap'); Daily.open(); } });
   }
+  var BR_SVG = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="14" rx="9" ry="5.2" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="7.5" y="5.5" width="9" height="5.5" rx="1.6" fill="currentColor"/></svg>';
   function bankBadge() {
     var b = Casino.balance();
     var box = el('span', { class: 'bank' }, [
       el('button', { type: 'button', class: 'bank-amt', 'aria-label': 'Bankroll history', onclick: function () { Kit.sfx('pop'); Casino.showHistory(); } },
         [el('span', { html: Kit.icon('chart') }), el('span', { text: '$' + b.toLocaleString() })])
     ]);
+    // gold bracelets: championships won on the poker circuit (poker_bracelets; yours are the ones won from your bankroll)
+    var br = []; try { br = (JSON.parse(get('poker_bracelets', '[]')) || []).filter(function (x) { return x && x.m; }); } catch (e) {}
+    if (br.length) box.appendChild(el('button', { type: 'button', class: 'bank-br', 'aria-label': br.length + ' gold bracelet' + (br.length === 1 ? '' : 's'), onclick: function () {
+      Kit.sfx('pop');
+      var list = el('div', { class: 'stack' });
+      br.slice().reverse().forEach(function (x) {
+        list.appendChild(el('div', { class: 'br-row' }, [el('span', { class: 'br-ic', html: BR_SVG }), el('span', { class: 'grow' }, [el('b', { text: x.e + ' champion' }), el('small', { text: x.t + ' circuit · ' + new Date(x.d).toLocaleDateString() + (x.p ? ' · $' + x.p.toLocaleString() : '') })])]));
+      });
+      Kit.sheet({ title: br.length === 1 ? 'Your gold bracelet' : 'Your ' + br.length + ' gold bracelets', node: list, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+    } }, [el('span', { html: BR_SVG }), el('span', { text: '\u00d7' + br.length })]));
     if (b !== 1000) box.appendChild(el('button', {
       type: 'button', text: 'Reset', onclick: function () {
         Kit.confirm('Reset your casino bankroll to $1,000?', { ok: 'Reset', body: 'The reset is kept in your bankroll history.' }).then(function (ok) {
