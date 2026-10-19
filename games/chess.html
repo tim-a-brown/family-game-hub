@@ -1582,6 +1582,13 @@
           if (!d || !d.host || (d.status !== 'waiting' && d.status !== 'playing') || isGone(r.code)) return;
           var hs = seatIs(d.host, tag), gs = seatIs(d.guest, tag);
           if (!hs && !gs) return;
+          // an older table this device sits at, without the account tag: add it, so your other devices find it too
+          if (tag && R.update && (d.status === 'waiting' || d.status === 'playing')) {
+            var fix = {};
+            if (hs === 2 && !d.host.acct) fix['host.acct'] = tag;
+            if (gs === 2 && d.guest && !d.guest.acct) fix['guest.acct'] = tag;
+            if (Object.keys(fix).length) R.update(r.code, fix).catch(function (e) { console.warn('[chess] tag', e); });
+          }
           r.seat = hs > gs ? 'h' : gs > hs ? 'g' : null;   // null: both seats are this PIN (asked when opened)
           r.wait = d.status === 'waiting';
           r.when = d.at || d.t0 || 0;

@@ -452,7 +452,7 @@
         o.at[k] = at; o.sig[k] = v === null ? '-' : strHash(v); o.sent[k] = at;
       });
       o.last = started;
-      if(took.length) console.log('[sync] took ' + took.length + ' saved game' + (took.length === 1 ? '' : 's') + ' and progress from the cloud: ' + took.slice(0, 12).join(', '));
+      if(took.length){ console.log('[sync] took ' + took.length + ' saved game' + (took.length === 1 ? '' : 's') + ' and progress from the cloud: ' + took.slice(0, 12).join(', ')); dlog('sync', 'Saved games in from the cloud: ' + took.slice(0, 20).join(', ') + (took.length > 20 ? ' and ' + (took.length - 20) + ' more' : '')); }
       return took;
     });
   }
@@ -468,7 +468,7 @@
         if(err && err.code === 'permission-denied') o.sent[k] = Math.max(Number(o.sent[k]) || 0, at);   // a newer copy is in the cloud: the next pull brings it
         else console.warn('[sync] could not save ' + k, err && err.code);
       });
-    })).then(function(){ if(n) console.log('[sync] saved ' + n + ' game state' + (n === 1 ? '' : 's') + ' to the cloud'); return n; });
+    })).then(function(){ if(n){ console.log('[sync] saved ' + n + ' game state' + (n === 1 ? '' : 's') + ' to the cloud'); dlog('sync', 'Saved games out to the cloud: ' + keys.slice(0, 20).join(', ') + (keys.length > 20 ? ' and ' + (keys.length - 20) + ' more' : '')); } return n; });
   }
   // one at a time: look for changes, (pull,) push; then a game page whose own keys came in newer reloads
   var _stChain = Promise.resolve(), _stT = 0;
