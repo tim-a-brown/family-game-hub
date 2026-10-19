@@ -208,6 +208,20 @@
 .pland .ls-l .psay,.pland .ls-r .psay{top:auto;bottom:100%;transform:translate(-50%,-3px);}
 .pland .pseat .pdealer{position:absolute;top:-9px;right:-9px;width:20px;height:20px;font-size:.62rem;}
 .pland .ls-rt .pdealer,.pland .ls-td .pdealer,.pland .ls-te .pdealer,.pland .ls-r .pdealer,.pland .ls-rb .pdealer{right:auto;left:-9px;}
+/* home games: the cards you tap to swap lift and dim; Five-Card Draw has no board, just its name */
+.phand.picking .pcard{cursor:pointer;transition:transform .18s var(--ease),filter .18s;}
+.phand .pcard.pick{transform:translateY(-16px) rotate(-4deg);filter:brightness(.62) saturate(.6);box-shadow:0 0 0 3px #ff6b6b,0 10px 18px rgba(0,0,0,.45);}
+.phand.picking .pcard:not(.pick){box-shadow:0 0 0 2px rgba(255,216,77,.55),0 6px 14px rgba(0,0,0,.4);}
+.phand.o5{gap:0;}
+.phand.o5 .pcard+.pcard{margin-left:-8px;}
+.stage.pland .phand.o5{--cw:clamp(38px,12dvh,50px);}
+.pseat .cards.o5 .pcard+.pcard{margin-left:-15px;}
+.pboard.nob{min-height:0;}
+.pvar{display:flex;flex-direction:column;align-items:center;gap:2px;color:rgba(255,255,255,.75);text-shadow:0 2px 6px rgba(0,0,0,.5);}
+.pvar b{font-family:var(--display);font-weight:400;font-size:1.7rem;color:#ffd84d;}
+.pvar span{font-size:.78rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;}
+.pswap{font-weight:800;font-size:.92rem;color:var(--text-2);text-align:center;padding:4px 2px 6px;}
+.pswap b{color:var(--yellow);}
 /* 7 to 10 seats (online): smaller seats; along the top, name above and cards beside the chips, what they did below */
 .pseat.many .tag{max-width:96px;font-size:.74rem;padding:2px 7px 2px 2px;}
 .pseat.many .tag .avatar{width:20px;height:20px;font-size:.62rem;}
@@ -558,6 +572,7 @@
     '<li>Pay the buy-in from your bank, or use a seat you won. You play one table; the rest of the field plays at others, and an empty seat at yours is filled from them.</li>' +
     '<li>Roughly the top 15% are paid. Everyone in the money gets at least 1.5 times the buy-in, and first place gets the most. Finish in the money to open the next stop and win a seat there.</li>' +
     '<li><b>Bounty</b> events pay you on the spot for every player you knock out.</li>' +
+    '<li>The first few stops of the Mixed road also deal <b>home games</b> now and then: <b>Five-Card Draw</b> (five cards, no board, swap up to three, or four if you keep an Ace), <b>Crazy Pineapple</b> (three cards, throw one away after the flop betting), <b>Irish</b> (four cards, throw two away after the flop betting) and <b>Big O</b> (five-card Omaha). Tap the cards to swap or throw away.</li>' +
     '<li>The players get better at every stop. Pros read your betting, play their position and tighten up near the money.</li>' +
     '<li>One event at a time on each road. No take-backs on the circuit.</li></ul>' +
     '<h3>Online tables</h3><ul>' +
@@ -674,7 +689,7 @@
     var used = {}, rest = [], i, k, j, t;
     hole.concat(board).forEach(function (c) { used[c] = 1; });
     for (i = 0; i < 52; i++) if (!used[i]) rest.push(i);
-    var hc = om ? 4 : 2, need = nOpp * hc + (5 - board.length), win = 0, b = [], oh = [];
+    var hc = om ? (S && gv().om ? gv().hc : 4) : 2, need = nOpp * hc + (5 - board.length), win = 0, b = [], oh = [];
     for (var it = 0; it < iters; it++) {
       for (k = 0; k < need; k++) { j = k + Math.floor(Math.random() * (rest.length - k)); t = rest[k]; rest[k] = rest[j]; rest[j] = t; }
       var idx = 0; b.length = 0; for (i = 0; i < board.length; i++) b.push(board[i]); while (b.length < 5) b.push(rest[idx++]);
@@ -762,7 +777,7 @@
     var used = {}, rest = [], i;
     hole.concat(board).forEach(function (c) { used[c] = 1; });
     for (i = 0; i < 52; i++) if (!used[i]) rest.push(i);
-    var hc = om ? 4 : 2, need = nOpp * hc + (5 - board.length), b = [], oh = [];
+    var hc = om ? (S && gv().om ? gv().hc : 4) : 2, need = nOpp * hc + (5 - board.length), b = [], oh = [];
     return {
       init: function () { return { n: 0, win: 0, tie: 0, share: 0, trials: trials }; },
       step: function (st) {
@@ -1223,6 +1238,71 @@
     station: { label: 'Loose, calls a lot', play: .78, raise: 2.3, push: 1.2, vsRaise: .08, aggr: .22, value: 1.6, bluff: .05, callAdj: -.05 }
   };
 
+  // ── The games: Hold'em and Omaha, and the home games the Mixed road deals in its early stops ──────────────
+  // hc: cards each; keep: how many you keep after the flop betting (the rest are thrown away); om: exactly 2 of
+  // your cards with 3 from the board; pl: pot-limit; draw: no board, one swap between two betting rounds
+  var VAR = {
+    he: { name: 'Hold\'em', hc: 2, om: false, pl: false },
+    om: { name: 'Omaha', hc: 4, om: true, pl: true },
+    draw: { name: 'Five-Card Draw', hc: 5, om: false, pl: true, draw: true, home: true, how: 'Five cards each and no board. Bet, swap up to three cards (four if you keep an Ace), then bet again.' },
+    cp: { name: 'Crazy Pineapple', hc: 3, keep: 2, om: false, pl: false, home: true, how: 'Three cards each. After the betting on the flop, throw one away and play Hold\'em.' },
+    ir: { name: 'Irish', hc: 4, keep: 2, om: false, pl: true, home: true, how: 'Four cards each, like Omaha. After the betting on the flop, throw two away and play Hold\'em.' },
+    bigo: { name: 'Big O', hc: 5, om: true, pl: true, home: true, how: 'Five-card Omaha: five cards each, and your hand is exactly 2 of them with 3 from the board.' }
+  };
+  var HOMEV = ['draw', 'cp', 'ir', 'bigo'];
+  function gv(st) { st = st || S; return (st && VAR[st.game]) || (st && st.om ? VAR.om : VAR.he); }
+  // The two cards to keep in Crazy Pineapple / Irish (the best now, or the best start before the flop)
+  function bestKeep(h, board) {
+    if (h.length <= 2) return h.slice();
+    var best = null, bv = -1;
+    for (var a = 0; a < h.length; a++) for (var b = a + 1; b < h.length; b++) {
+      var two = [h[a], h[b]], v = board.length >= 3 ? equity(two, board, 1, false, 90) + (drawy(two, board) ? 0.03 : 0) : 1 - handPct(h[a], h[b]);
+      if (v > bv) { bv = v; best = two; }
+    }
+    return best;
+  }
+  // the cards a hand plays with for working out its chances (Crazy Pineapple / Irish before the throw: the best two)
+  function effHole(h, board) { var v = gv(); return v.keep && h.length > v.keep ? bestKeep(h, board) : h; }
+  // Five-Card Draw: which cards to keep (pat hands, trips, two pair, a pair, four to a flush or an open straight,
+  // otherwise the high cards); at most three swapped, four when keeping an Ace
+  function drawKeep(h) {
+    var v = ev(h), c = catOf(v), rk = {}, su = [[], [], [], []];
+    if (c >= 4 && c !== 7) return h.slice();
+    h.forEach(function (x) { (rk[x >> 2] = rk[x >> 2] || []).push(x); su[x & 3].push(x); });
+    var groups = Object.keys(rk).map(function (r) { return rk[r]; }).filter(function (g) { return g.length >= 2; });
+    if (c === 7 || c === 3 || c === 2 || c === 6) return [].concat.apply([], groups);
+    if (c === 1) return groups[0];
+    for (var s4 = 0; s4 < 4; s4++) if (su[s4].length === 4) return su[s4];
+    var srt = h.slice().sort(function (a, b) { return (b >> 2) - (a >> 2); });
+    for (var i = 0; i < 5; i++) {   // four in a row (open at both ends, or ace-high)
+      var four = srt.filter(function (x, k) { return k !== i; }), rs = four.map(function (x) { return x >> 2; });
+      if (rs[0] - rs[3] === 3 && rs[0] !== rs[1] && rs[1] !== rs[2] && rs[2] !== rs[3]) return four;
+    }
+    if ((srt[0] >> 2) === 12) return (srt[1] >> 2) >= 10 ? srt.slice(0, 2) : srt.slice(0, 1);
+    return srt.slice(0, 2);
+  }
+  function drawLimit(keep) { return keep.some(function (x) { return (x >> 2) === 12; }) ? 4 : 3; }
+  // Five-Card Draw chances: everyone (you too, before the draw) swaps the usual way
+  function equityDraw(hole, nOpp, iters, drawn) {
+    var used = {}, rest = [], i, win = 0;
+    hole.forEach(function (c) { used[c] = 1; });
+    for (i = 0; i < 52; i++) if (!used[i]) rest.push(i);
+    for (var it = 0; it < iters; it++) {
+      var p = 0;
+      for (var k = 0; k < Math.min(rest.length, 5 + nOpp * 9); k++) { var j = k + Math.floor(Math.random() * (rest.length - k)), t = rest[k]; rest[k] = rest[j]; rest[j] = t; }
+      var mine = hole;
+      if (!drawn) { var kp = drawKeep(hole); mine = kp.slice(); while (mine.length < 5) mine.push(rest[p++]); }
+      var my = ev(mine), ties = 0, lost = false;
+      for (var o = 0; o < nOpp; o++) {
+        var oh = rest.slice(p, p + 5); p += 5;
+        var ok = drawKeep(oh); while (ok.length < 5) ok.push(rest[p++]);
+        var sv = ev(ok); if (sv > my) { lost = true; break; } if (sv === my) ties++;
+      }
+      if (!lost) win += 1 / (ties + 1);
+    }
+    return win / iters;
+  }
+
   // ── How strong a starting hand is (Hold'em): the Chen count, as a share of all 1,326 starting hands that are as
   // good or better (0.02 = top 2%: aces, kings). Computer players use it to guess what others hold from how they bet.
   function chen(a, b) {
@@ -1250,7 +1330,7 @@
     var used = {}, pool = [], i, t, w = 0, n = opps.length;
     hole.concat(board).forEach(function (c) { used[c] = 1; });
     for (i = 0; i < 52; i++) if (!used[i]) pool.push(i);
-    var hc = om ? 4 : 2, need = 5 - board.length;
+    var hc = om ? (S && gv().om ? gv().hc : 4) : 2, need = 5 - board.length;
     for (t = 0; t < iters; t++) {
       var taken = {}, hands = [], k;
       for (k = 0; k < n; k++) {
@@ -1327,12 +1407,28 @@
   function nm(i) { return i === 0 ? 'You' : S.players[i].name; }
   function nmPoss(i) { return i === 0 ? 'Your' : S.players[i].name + '\'s'; }
   // Mixed: Hold'em and pot-limit Omaha by turns, a level of each
+  // (the early stops of the Mixed road: a plan with home games sprinkled in, S.mixSeq, one game a level)
   function mixSet() {
     if (!S.mix) return;
-    var om = S.level % 2 === 1;
-    if (om === !!S.om) return;
-    S.om = om; S.pl = om; S.game = om ? 'om' : 'he';
-    if (!SIM && !QUIET && S.handNo > 1) setTimeout(function () { if (S && S.mix) { Kit.callout(om ? 'Omaha round' : 'Hold\'em round'); Kit.sfx('whoosh'); } }, 250);
+    var g = S.mixSeq ? S.mixSeq[Math.min(S.level, S.mixSeq.length - 1)] : S.level % 2 === 1 ? 'om' : 'he';
+    if (g === S.game || !VAR[g]) return;
+    var v = VAR[g];
+    S.game = g; S.om = v.om; S.pl = v.pl;
+    if (SIM || QUIET || S.handNo <= 1) { if (v.home && !SIM && !QUIET) setTimeout(function () { if (S && S.game === g) Kit.toast(v.how, 5200); }, 900); return; }
+    setTimeout(function () {
+      if (!S || S.game !== g) return;
+      Kit.callout(v.home ? 'Dealer\'s choice: ' + v.name : v.name + ' round'); Kit.sfx('whoosh');
+      if (v.home) setTimeout(function () { Kit.toast(v.how, 5200); }, 900);
+    }, 250);
+  }
+  function mixPlan() {
+    var seq = ['he'], last = 'he', forced = 1 + Math.floor(Math.random() * 3);
+    for (var k = 1; k < 60; k++) {
+      var g = k % 2 ? 'om' : 'he';
+      if (k === forced || (k > 1 && Math.random() < 0.35)) { var pk; do { pk = HOMEV[Math.floor(Math.random() * HOMEV.length)]; } while (pk === last); g = pk; }
+      seq.push(g); last = g;
+    }
+    return seq;
   }
   function step0() { return S.tourn ? (S.bb >= 100 ? 25 : 5) : 1; }
   function roundTo(v) { var u = step0(); return Math.round(v / u) * u; }
@@ -1371,7 +1467,8 @@
     if (act.length === 2) { sbI = S.button; bbI = nextIn(sbI, act); }
     else { sbI = nextIn(S.button, act); bbI = nextIn(sbI, act); }
     H.sbI = sbI; H.bbI = bbI;
-    var hc = S.om ? 4 : 2, first = nextIn(S.button, act);
+    var hc = gv().hc, first = nextIn(S.button, act);
+    H.muck = [];
     for (var r = 0; r < hc; r++) { var j = first; for (var k = 0; k < act.length; k++) { H.hole[j].push(H.deck.pop()); j = nextIn(j, act); } }
     put(sbI, S.sb); put(bbI, S.bb);
     H.curBet = S.bb;
@@ -1400,6 +1497,7 @@
       else if (pa) later(function () { humanAct(pa); }, 420);
       else if (R.turn !== H.no + ':' + H.street + ':' + H.curBet) { R.turn = H.no + ':' + H.street + ':' + H.curBet; if (!SIM) { Kit.sfx('pop', 0.5); Kit.haptic('light'); } }
     } else if (H.phase === 'collect') endStreet();
+    else if (H.phase === 'swap') { if (H.swapWait && !QUIET) { save(); renderTable(); } else finishSwap(); }
     else if (H.phase === 'runout') { if (QUIET) return runout(); save(); renderTable(); later(runout, 1100); }
     else {
       save(); renderTable();
@@ -1518,13 +1616,22 @@
     function next() {
       for (var i = 0; i < N(); i++) { H.pot += H.bet[i]; H.bet[i] = 0; H.acted[i] = false; H.canRaise[i] = true; if (H.say[i] !== 'Fold' && H.say[i] !== 'All in') H.say[i] = ''; }
       H.curBet = 0; H.minRaise = S.bb; H.raises = 0; H.sayNew = -1;
-      var lv = live();
-      if (lv.length <= 1 || H.street === 3) return finishHand();
+      contStreet();
+    }
+  }
+  // what comes after a betting round: the draw or the throw-away (home games), the next card, a run-out, the showdown
+  function contStreet() {
+    var H = S.hand, v = gv(), lv = live();
+    if (lv.length <= 1) return finishHand();
+    if (v.draw) { if (H.street === 0 && !H.swapped) return startSwap(); return finishHand(); }
+    if (H.street === 3) return finishHand();
+    if (v.keep && H.street === 1 && !H.swapped) return startSwap();
+    {
       var can = lv.filter(function (j) { return S.players[j].stack > 0; });
       if (can.length <= 1) {
         H.phase = 'runout';
         lv.forEach(function (j) { H.shown[j] = true; });
-        var eq = openEquity(lv.map(function (j) { return H.hole[j]; }), H.board, S.om, S.om ? 400 : 900);
+        var eq = openEquity(lv.map(function (j) { return effHole(H.hole[j], H.board); }), H.board, S.om, S.om ? 400 : 900);
         H.ai = { seats: lv, eq: eq, street: H.street, board: H.board.length };
         Kit.sfx('flip');
         return step();
@@ -1533,6 +1640,57 @@
       H.phase = 'bet'; H.actor = nextToAct(H.button);
       step();
     }
+  }
+  // Home games: the draw (Five-Card Draw) or the throw-away (Crazy Pineapple, Irish). The computer players choose at
+  // once and say how many; then you pick yours (tap the cards), and the swapped cards are dealt.
+  function startSwap() {
+    var H = S.hand, v = gv();
+    H.phase = 'swap'; H.swapWait = false; H.actor = -1;
+    live().forEach(function (j) {
+      var p = S.players[j];
+      if (j === 0 && !p.cpu && !QUIET) { H.swapWait = true; return; }
+      var keep = v.draw ? drawKeep(H.hole[j]) : bestKeep(H.hole[j], H.board);
+      swapApply(j, H.hole[j].filter(function (c) { return keep.indexOf(c) < 0; }));
+    });
+    if (H.swapWait) { R.pick = []; save(); renderTable(); Kit.sfx('pop', 0.5); Kit.haptic('light'); return; }
+    finishSwap();
+  }
+  function swapApply(j, toss) {
+    var H = S.hand, v = gv();
+    H.hole[j] = H.hole[j].filter(function (c) { return toss.indexOf(c) < 0; });
+    toss.forEach(function (c) { H.muck.push(c); });
+    if (v.draw) toss.forEach(function () { if (!H.deck.length) { H.deck = Cards.shuffle(H.muck); H.muck = []; } H.hole[j].push(H.deck.pop()); });
+    H.say[j] = v.draw ? (toss.length ? 'Draws ' + toss.length : 'Stands pat') : 'Throws ' + toss.length;
+    logAdd(j, H.say[j]);
+  }
+  // your pick: the cards you tapped
+  function humanSwap(toss) {
+    var H = S.hand, v = gv();
+    if (!H || H.phase !== 'swap' || !H.swapWait) return;
+    var need = v.keep ? H.hole[0].length - v.keep : null;
+    if (need != null && toss.length !== need) return Kit.toast('Pick ' + need + ' card' + (need === 1 ? '' : 's') + ' to throw away');
+    if (v.draw && toss.length > drawLimit(H.hole[0].filter(function (c) { return toss.indexOf(c) < 0; }))) return Kit.toast('Up to 3 cards, or 4 if you keep an Ace');
+    H.swapWait = false; R.pick = null; R.mine = H.hole[0].slice(); R.mineNo = H.no;
+    swapApply(0, toss);
+    Kit.sfx(toss.length ? 'deal' : 'tap'); Kit.haptic('light');
+    finishSwap();
+  }
+  function finishSwap() {
+    var H = S.hand, v = gv();
+    if (H.phase !== 'swap' || H.swapWait) return;
+    H.swapped = true;
+    for (var i = 0; i < N(); i++) if (H.say[i] !== 'Fold' && !/^(Draws|Stands|Throws)/.test(H.say[i])) H.say[i] = '';
+    if (v.draw) { H.street = 3; logAdd(-1, 'After the draw'); }
+    var can = live().filter(function (j) { return S.players[j].stack > 0; });
+    if (v.draw) {
+      if (can.length <= 1) { live().forEach(function (j) { H.shown[j] = true; }); return later(finishHand, 900); }
+      H.phase = 'bet'; H.actor = nextToAct(H.button);
+      if (!QUIET) renderTable();
+      return later(step, 700);
+    }
+    H.phase = 'bet';
+    if (!QUIET) renderTable();
+    later(contStreet, 600);
   }
   function dealStreet() {
     var H = S.hand;
@@ -1552,6 +1710,7 @@
   // Showdown and side pots
   function finishHand() {
     var H = S.hand, n = N(), lv = live(), i;
+    if (gv().keep) lv.forEach(function (j) { if (H.hole[j].length > gv().keep) H.hole[j] = bestKeep(H.hole[j], H.board); });
     for (i = 0; i < n; i++) { H.pot += H.bet[i]; H.bet[i] = 0; }
     // An uncalled bet goes straight back to whoever made it
     var order = H.total.map(function (t, j) { return j; }).sort(function (a, b) { return H.total[b] - H.total[a]; });
@@ -1870,7 +2029,9 @@
     moneyFor(CZ.name, !CZ.told); CZ.told = true;
     track = circTrack(track);
     app.className = 'stage czapp'; app.innerHTML = '';
-    var pg = circLoad(track), road = CIRC[track], live = load(circKey(track)), liveEv = live && live.circ && live.handNo > 0 ? EV[live.circ.id] : null;
+    var pg = circLoad(track);
+    if (track === 'mx' && !pg.homeTo) { pg.homeTo = 5 + Math.floor(Math.random() * 3); circSave(pg, 'mx'); }
+    var road = CIRC[track], live = load(circKey(track)), liveEv = live && live.circ && live.handNo > 0 ? EV[live.circ.id] : null;
     var titles = Object.keys(pg.wins).reduce(function (a, k) { return a + pg.wins[k]; }, 0), cashes = Object.keys(pg.cash).reduce(function (a, k) { return a + pg.cash[k]; }, 0);
     var wrap = el('div', { class: 'cz' });
     var tabs = el('div', { class: 'cz-tracks', role: 'tablist' });
@@ -1905,7 +2066,7 @@
         el('span', { class: 'cz-ticket', style: { '--fa': ev.felt[0], '--fb': ev.felt[1], '--fc': ev.felt[2] } }, [
           el('span', { class: 'cz-venue', text: ev.venue }),
           el('span', { class: 'cz-chip' + (tix && !here ? ' tix' : ''), style: { '--cc': ev.chip }, html: here ? '<span>' + Kit.icon('play') + '<small>PLAYING</small></span>' : tix ? '<span>SEAT<small>WON</small></span>' : '<span>' + kUsd(ev.buy) + '<small>BUY-IN</small></span>' }),
-          el('span', { class: 'cz-sub', text: ev.city + ' · ' + ev.style }),
+          el('span', { class: 'cz-sub', text: ev.city + ' · ' + ev.style + (homeAt(ev) ? ' · home games' : '') }),
           el('span', { class: 'cz-meta' }, [el('span', { text: ev.field.toLocaleString() + ' players' }), el('span', { text: '1st ' + usd(pays[0]) }), pips]),
           here ? el('span', { class: 'cz-best', text: 'In progress · ' + live.circ.left.toLocaleString() + ' left · you have ' + amt2(live.players[0].stack) })
             : locked ? el('span', { class: 'cz-best lock', text: 'Cash at ' + road[k - 1].venue + ' to open' })
@@ -1928,11 +2089,14 @@
     try { window.scrollTo(0, 0); app.scrollTop = 0; } catch (e) {}
     if (nextEl && road.indexOf(liveEv) !== 0 && pg.open > 1) setTimeout(function () { try { nextEl.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} }, 350);
   }
+  // the early stops of the Mixed road (the first 5 to 7, picked once per road) deal home games too
+  function homeAt(ev) { return ev.mix && ev.no < (circLoad('mx').homeTo || 6); }
   function amt2(n) { return n >= 1e6 ? (Math.round(n / 1e5) / 10) + 'M' : n >= 1e4 ? Math.round(n / 1000) + 'K' : n.toLocaleString(); }
   function circSheet(ev) {
     var pays = paysFor(ev), bank = Casino.balance(), tix = circLoad(ev.track).tix[ev.id], can = tix || bank >= ev.buy, box = el('div');
     var live = load(circKey(ev.track)), liveEv = live && live.circ && live.handNo > 0 ? EV[live.circ.id] : null;
     box.appendChild(el('p', { class: 'muted', text: ev.city + ' · ' + ev.style + ' · ' + gameWord(ev) + (ev.game === 'om' && !ev.mix ? ' (four cards each; use exactly two)' : '') + (ev.bounty ? ' · every player you knock out pays you ' + usd(ev.buy * ev.bounty) + ' on the spot' : '') + '.' }));
+    if (homeAt(ev)) box.appendChild(el('p', { class: 'muted', style: { 'margin-top': '6px' }, html: 'Home games come round too, at random: <b>Five-Card Draw</b>, <b>Crazy Pineapple</b>, <b>Irish</b> and <b>Big O</b>. Each one says how it works when it\'s dealt.' }));
     box.appendChild(el('div', { class: 'czs-facts' }, [
       el('div', null, [el('small', { text: 'Players' }), el('b', { text: ev.field.toLocaleString() })]),
       el('div', null, [el('small', { text: 'Starting chips' }), el('b', { text: ev.stack.toLocaleString() })]),
@@ -1971,7 +2135,7 @@
     var pays = paysFor(ev), names = Kit.cpuNames(40, [CZ.name]);
     pg.played++; circSave(pg, ev.track);
     S = {
-      kind: 'table', game: ev.game, om: ev.game === 'om', limit: false, pl: ev.game === 'om', mix: ev.mix, tourn: true, per: ev.per, started: Date.now(), handNo: 0, level: -1, coach: CZ.coach,
+      kind: 'table', game: ev.game, om: ev.game === 'om', limit: false, pl: ev.game === 'om', mix: ev.mix, mixSeq: homeAt(ev) ? mixPlan() : null, tourn: true, per: ev.per, started: Date.now(), handNo: 0, level: -1, coach: CZ.coach,
       sb: 0, bb: 0, button: null, hand: null,
       players: [{ name: CZ.name, cpu: false, stack: ev.stack, buyin: ev.stack, out: false, place: 0, rebuys: 0 }].concat(names.slice(0, 5).map(function (nm) { return cpuSeat(nm, ev, ev.stack); })),
       circ: { id: ev.id, seat: !!seat, field: ev.field, left: ev.field, else: ev.field - 6, e0: ev.field - 6, paid: pays.length, pays: pays, chips: ev.field * ev.stack, names: names.slice(5), h: 0, kos: 0, bounty: 0 },
@@ -2109,8 +2273,9 @@
     // chances to win: against ranges for a skilled player, against any two cards for a beginner
     var key = H.street + ':' + nOpp + ':' + others.map(function (j) { return Math.round(H.rng[j] * 20) + '.' + Math.round(H.ag[j]); }).join(','), eqc = H.eqc || (H.eqc = {}), cache = eqc[i] || (eqc[i] = {});
     if (cache[key] == null) {
-      var its = Math.round((S.om ? 90 : 200) + sk * (S.om ? 90 : 260));
-      cache[key] = sk >= 0.3 ? equityR(H.hole[i], H.board, others.map(function (j) { var r = H.rng[j]; return { rng: 1 - sk * (1 - r), ag: sk * H.ag[j] }; }), S.om, its) : equity(H.hole[i], H.board, nOpp, S.om, its);
+      var its = Math.round((S.om ? 90 : 200) + sk * (S.om ? 90 : 260)), gvi = gv(), myH = effHole(H.hole[i], H.board);
+      if (gvi.draw) cache[key] = equityDraw(H.hole[i], nOpp, Math.round(its * 0.6), H.street >= 3);
+      else cache[key] = sk >= 0.3 ? equityR(myH, H.board, others.map(function (j) { var r = H.rng[j]; return { rng: 1 - sk * (1 - r), ag: sk * H.ag[j] }; }), S.om, its) : equity(myH, H.board, nOpp, S.om, its);
     }
     var eq = Math.max(0, Math.min(1, cache[key] + (Math.random() - 0.5) * 0.32 * (1 - sk)));
     var rel = eq * (nOpp + 1);
@@ -2141,7 +2306,7 @@
     function passive() { return toCall ? { t: 'fold' } : { t: 'check' }; }
     // beginners slip: a call they shouldn't make, a fold they shouldn't, a raise out of the blue
     if (Math.random() < 0.09 * (1 - sk)) { var slip = Math.random(); if (slip < 0.45 && toCall) return { t: 'call' }; if (slip < 0.7 && o.canRaise && !toCall) return raise(sized(0.4)); }
-    var pct = !S.om && pre ? handPct(H.hole[i][0], H.hole[i][1]) : null;
+    var pct = !S.om && pre && H.hole[i].length === 2 ? handPct(H.hole[i][0], H.hole[i][1]) : null;
 
     // Short stack, no-limit: push or fold (wider the shorter it gets, and wider for a pro from late seats)
     if (!S.limit && !S.pl && pre && bbs <= 12) {
@@ -2262,7 +2427,7 @@
     if (land) { var gb = document.querySelector('.gbar'); app.style.setProperty('--gbh', (gb ? gb.offsetHeight : 44) + 'px'); }
 
     var tb = tableEl = el('div', { class: 'ptable wood' }), felt = el('div', { class: 'felt-in' });
-    if (S.circ) { var ev = EV[S.circ.id]; felt.appendChild(el('div', { class: 'plogo' + (S.circ.ft ? ' ft' : '') }, [el('b', { text: S.circ.ft ? 'Final table' : ev.venue }), el('span', { text: S.circ.ft ? ev.venue : ev.style })])); }
+    if (S.circ && !gv().draw) { var ev = EV[S.circ.id]; felt.appendChild(el('div', { class: 'plogo' + (S.circ.ft ? ' ft' : '') }, [el('b', { text: S.circ.ft ? 'Final table' : ev.venue }), el('span', { text: S.circ.ft ? ev.venue : ev.style })])); }
     tb.appendChild(felt);
     seatEls = []; betEls = [];
     var meSeat = null, meDealer = null, meEq = null;
@@ -2279,7 +2444,7 @@
       if (H && H.phase === 'bet' && H.actor === i) seat.classList.add('turn');
       if (main && main.w.indexOf(i) >= 0 && H.won[i] > 0) seat.classList.add('win');
       if (!me) {
-        var cards = el('div', { class: 'cards' + (S.om ? ' om' : '') });
+        var cards = el('div', { class: 'cards' + (H && H.hole[i] && H.hole[i].length > 2 ? ' om' + (H.hole[i].length > 4 ? ' o5' : '') : '') });
         if (H && H.inHand[i] && !H.folded[i]) {
           if (H.shown[i]) {
             cards.classList.add('face');
@@ -2338,8 +2503,9 @@
       var pe = potEl = el('div', { class: 'ppot' }, [H.pot ? chipStack(H.pot, 4) : null, el('span', { class: 'lbl', text: 'Pot ' + amt(potAll()) })]);
       tb.appendChild(at(pe, land ? [50, 31] : [50, 33]));
     }
-    var board = el('div', { class: 'pboard' }), bl = H ? H.board : [];
-    for (var k = 0; k < 5; k++) {
+    var board = el('div', { class: 'pboard' + (gv().draw ? ' nob' : '') }), bl = H ? H.board : [];
+    if (gv().draw) board.appendChild(el('div', { class: 'pvar' }, [el('b', { text: gv().name }), el('span', { text: H && H.street >= 3 ? 'After the draw' : H && H.phase === 'swap' ? 'The draw' : 'Before the draw' })]));
+    for (var k = 0; k < (gv().draw ? 0 : 5); k++) {
       if (k < bl.length) {
         var ce = cardEl(bl[k]);
         if (R.no === (H && H.no) && k >= (R.board || 0)) { ce.classList.add('deal'); ce.style.animationDelay = ((k - (R.board || 0)) * 0.12) + 's'; }
@@ -2351,10 +2517,17 @@
     if (H && H.phase === 'runout') tb.appendChild(at(el('div', { class: 'pmsg', html: 'All in: <b>running it out</b>' }), land ? [50, 64] : [50, 68]));
     app.appendChild(tb);
 
-    var hand = el('div', { class: 'phand' + (S.om ? ' om' : '') });
-    (H && H.inHand[0] ? H.hole[0] : []).forEach(function (c) {
+    var mh = H && H.inHand[0] ? H.hole[0] : [], picking = H && H.phase === 'swap' && H.swapWait && !final;
+    var hand = el('div', { class: 'phand' + (mh.length > 2 ? ' om' + (mh.length > 4 ? ' o5' : '') : '') + (picking ? ' picking' : '') });
+    if (H && R.mine && R.mineNo !== H.no) R.mine = null;
+    mh.forEach(function (c) {
       var ce = cardEl(c);
       if (H.folded[0]) ce.classList.add('folded');
+      if (R.mine && R.mine.indexOf(c) < 0) { ce.classList.add('deal'); }
+      if (picking) {
+        if ((R.pick || []).indexOf(c) >= 0) ce.classList.add('pick');
+        ce.addEventListener('click', function () { var p = R.pick || (R.pick = []), k2 = p.indexOf(c); if (k2 >= 0) p.splice(k2, 1); else p.push(c); Kit.sfx('tap', 0.5); renderTable(); });
+      }
       if (done && H.five && H.five[0] && main && main.v != null && main.w.indexOf(0) >= 0) ce.classList.add(H.five[0].indexOf(c) >= 0 ? 'best' : 'unused');
       hand.appendChild(ce);
     });
@@ -2362,6 +2535,7 @@
     else { if (myTurn) hand.classList.add('turn'); app.appendChild(hand); }
     app.appendChild(rail(final));
 
+    if (H && R.mine) { R.mineNo = H.no; if (!picking) R.mine = null; }
     if (H && R.no !== H.no) { R.no = H.no; R.board = H.board.length; R.bets = H.bet.slice(); animateDeal(); }
     else if (H) {
       if (R.bets) H.bet.forEach(function (b, i) { if (b > (R.bets[i] || 0) && betEls[i] && seatEls[i]) Cards.fly(betEls[i], seatEls[i].querySelector('.tag'), { ms: 320 }); });
@@ -2376,7 +2550,7 @@
     var H = S.hand, lv = live(); if (lv.length < 2) return null;
     var key = H.board.length + ':' + lv.join(','), c = H.reqc || (H.reqc = {});
     if (!c[key]) {
-      var eq = openEquity(lv.map(function (j) { return H.hole[j]; }), H.board, S.om, S.om ? 320 : 700), o = {}, best = -1;
+      var eq = openEquity(lv.map(function (j) { return effHole(H.hole[j], H.board); }), H.board, S.om, S.om ? 320 : 700), o = {}, best = -1;
       lv.forEach(function (j, k) { o[j] = eq[k]; if (best < 0 || eq[k] > o[best]) best = j; });
       o.lead = best; c[key] = o;
     }
@@ -2384,8 +2558,8 @@
   }
   // How strong your hand is right now: your chances to win against the players still in, with any cards
   function myEq(nOpp) {
-    var H = S.hand, c = H.meq || (H.meq = {}), key = H.board.length + ':' + nOpp;
-    if (c[key] == null) c[key] = nOpp > 0 ? equity(H.hole[0], H.board, nOpp, S.om, S.om ? 260 : 600) : 1;
+    var H = S.hand, c = H.meq || (H.meq = {}), key = H.board.length + ':' + nOpp + ':' + H.street + ':' + H.hole[0].join('.');
+    if (c[key] == null) c[key] = nOpp <= 0 ? 1 : gv().draw ? equityDraw(H.hole[0], nOpp, 260, H.street >= 3) : equity(effHole(H.hole[0], H.board), H.board, nOpp, S.om, S.om ? 260 : 600);
     return c[key];
   }
   function eqColor(e) { return e < 0.25 ? '#ff6b6b' : e < 0.45 ? '#ffa347' : e < 0.65 ? '#ffd84d' : '#3ddc84'; }
@@ -2408,8 +2582,8 @@
   function railHead() {
     var C = S.circ, ev = C && EV[C.id], H = S.hand, h = el('div', { class: 'pev' });
     var g = S.om ? 'Pot-limit Omaha' : S.limit ? 'Limit Hold\'em' : 'Texas Hold\'em';
-    var title = ev ? ev.venue : S.mix ? 'Mixed · ' + (S.om ? 'Omaha' : 'Hold\'em') : g;
-    var sub = S.tourn ? (ev && (S.mix || S.om) ? (S.om ? 'Omaha' : 'Hold\'em') + ' · ' : '') + (ev ? (C.ft ? 'Final table' : stageName()) + ' · ' : S.online ? 'Online · ' : 'Tournament · ') + 'Level ' + (S.level + 1) + ' · ' + amt(S.sb) + '/' + amt(S.bb)
+    var title = ev ? ev.venue : S.mix ? 'Mixed · ' + gv().name : g;
+    var sub = S.tourn ? (ev && (S.mix || S.om) ? gv().name + ' · ' : '') + (ev ? (C.ft ? 'Final table' : stageName()) + ' · ' : S.online ? 'Online · ' : 'Tournament · ') + 'Level ' + (S.level + 1) + ' · ' + amt(S.sb) + '/' + amt(S.bb)
       : (S.limit ? 'Limit $' + S.bb + '/$' + 2 * S.bb : 'Blinds $' + S.sb + '/$' + S.bb) + (H ? ' · Hand ' + S.handNo : '');
     h.appendChild(el('div', { class: 't', text: title }));
     h.appendChild(el('div', { class: 's', text: sub }));
@@ -2454,7 +2628,9 @@
     if (H.phase === 'done') { box.classList.add('res'); box.innerHTML = resultText(H); return box; }
     if (!H.inHand[0]) { box.appendChild(el('div', { class: 'n dim', text: me.out ? 'You\'re out: ' + ordinal(me.place) : 'Sitting this one out' })); return box; }
     if (H.folded[0]) { box.appendChild(el('div', { class: 'n dim', text: 'You folded' })); return box; }
-    var name = H.board.length >= 3 ? handName(score(H.hole[0], H.board, S.om)) : S.om ? 'Use exactly 2 of your 4 cards' : startName(H.hole[0]);
+    var v = gv(), mine = effHole(H.hole[0], H.board);
+    var name = v.draw ? handName(ev(H.hole[0])) : H.board.length >= 3 ? handName(score(mine, H.board, S.om)) + (H.hole[0].length > 2 && v.keep ? ' (keeping two)' : '')
+      : S.om ? 'Use exactly 2 of your ' + H.hole[0].length + ' cards' : v.keep ? 'Keep 2 of your ' + v.hc + ' after the flop' : startName(H.hole[0]);
     var nOpp = live().length - 1, eq = myEq(nOpp), rel = eq * (nOpp + 1);
     box.appendChild(el('div', { class: 'n', text: name }));
     var meter = el('div', { class: 'pmeter', title: 'Your chances to win the hand' }), fill = el('i');
@@ -2480,8 +2656,8 @@
   }
   function miniCard(c) { return '<span class="mc' + ((c & 3) === 1 || (c & 3) === 2 ? ' r' : '') + '">' + RN[c >> 2] + SUITCH[c & 3] + '︎</span>'; }
   function verb(i, t) {
-    var you = i === 0, m = /^(Fold|Check|Call|Bet|Raise to|All in|Rebuys|Sits down)(.*)$/.exec(t) || [t, t, ''];
-    var v = { Fold: ['fold', 'folds'], Check: ['check', 'checks'], Call: ['call', 'calls'], Bet: ['bet', 'bets'], 'Raise to': ['raise to', 'raises to'], 'All in': ['go all in', 'is all in'], Rebuys: ['rebuy', 'rebuys'], 'Sits down': ['sit down', 'sits down'] }[m[1]];
+    var you = i === 0, m = /^(Fold|Check|Call|Bet|Raise to|All in|Rebuys|Sits down|Draws|Stands pat|Throws)(.*)$/.exec(t) || [t, t, ''];
+    var v = { Fold: ['fold', 'folds'], Check: ['check', 'checks'], Call: ['call', 'calls'], Bet: ['bet', 'bets'], 'Raise to': ['raise to', 'raises to'], 'All in': ['go all in', 'is all in'], Rebuys: ['rebuy', 'rebuys'], 'Sits down': ['sit down', 'sits down'], Draws: ['draw', 'draws'], 'Stands pat': ['stand pat', 'stands pat'], Throws: ['throw away', 'throws away'] }[m[1]];
     return (you ? 'You ' : S.players[i].name + ' ') + (v ? v[you ? 0 : 1] : t.toLowerCase()) + m[2];
   }
   function railLog() {
@@ -2517,7 +2693,7 @@
     var H = S.hand, t = token;
     var order = [], act = [];
     for (var i = 0; i < N(); i++) if (H.inHand[i]) act.push(i);
-    var hc = S.om ? 4 : 2, first = nextIn(H.button, act);
+    var hc = gv().hc, first = nextIn(H.button, act);
     var handCards = app.querySelectorAll('.phand .pcard');
     for (var r = 0; r < hc; r++) { var j = first; for (var k = 0; k < act.length; k++) { order.push([j, r]); j = nextIn(j, act); } }
     var origin = tableEl.querySelector('.pboard');
@@ -2561,6 +2737,17 @@
     var H = S.hand, box = el('div', { class: 'pctl' }), me = S.players[0];
     if (!H) return box;
     var bar = el('div', { class: 'pbar' });
+    if (H.phase === 'swap') {
+      var v = gv();
+      if (!H.swapWait) { box.appendChild(el('div', { class: 'pwait', text: v.draw ? 'Dealing the draw' : 'Throwing away' })); return box; }
+      box.classList.add('mine');
+      var picked = (R.pick || []).length, need = v.keep ? H.hole[0].length - v.keep : null, keepers = H.hole[0].filter(function (c) { return (R.pick || []).indexOf(c) < 0; }), lim = v.draw ? drawLimit(keepers) : need;
+      box.appendChild(el('div', { class: 'pswap', html: v.draw ? 'Tap the cards to swap: up to <b>' + lim + '</b>' + (lim === 3 ? ' (4 if you keep an Ace)' : '') : 'Tap <b>' + need + '</b> card' + (need === 1 ? '' : 's') + ' to throw away' }));
+      var ok = v.draw ? picked <= lim : picked === need;
+      bar.appendChild(el('button', { type: 'button', class: 'btn ' + (v.draw && !picked ? 'btn-soft' : 'btn-primary'), disabled: !ok, html: v.draw ? (picked ? 'Swap ' + picked + ' card' + (picked === 1 ? '' : 's') : 'Stand pat') : 'Throw away', onclick: function () { humanSwap((R.pick || []).slice()); } }));
+      box.appendChild(bar);
+      return box;
+    }
     if (H.phase === 'done' && NET) { box.appendChild(el('div', { class: 'pwait', text: S.over ? 'Game over' : 'Next hand coming up' })); return box; }
     if (H.phase === 'done') {
       var C = S.circ, over = S.tourn && (me.out || (C ? C.else === 0 && alive().length <= 1 : alive().length <= 1));
@@ -2836,7 +3023,7 @@
   // ── Hold'em and Omaha: fold, check, call, bet or raise ──
   function tableAdvice() {
     var H = S.hand;
-    if (S.kind !== 'table' || !H || H.phase !== 'bet' || H.actor !== 0 || !H.inHand[0] || H.folded[0]) return undefined;
+    if (S.kind !== 'table' || !H || H.phase !== 'bet' || H.actor !== 0 || !H.inHand[0] || H.folded[0] || gv().home) return undefined;
     var o = options(0), nOpp = live().length - 1;
     if (nOpp < 1) return undefined;
     var hole = H.hole[0].slice(), board = H.board.slice(), om = S.om, trials = om ? 2000 : 4000;
@@ -3189,7 +3376,7 @@
   // Test hook: computer players of the given skills play n cash hands against each other; resolves with each seat's
   // result in big blinds per 100 hands
   window.__pk = {
-    get S() { return S; }, render: function () { renderTable(); }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
+    get S() { return S; }, render: function () { renderTable(); }, deal: function () { startHand(); }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
     peek: function () { return S && { no: S.handNo, phase: S.hand && S.hand.phase, actor: S.hand && S.hand.actor, street: S.hand && S.hand.street, held: !!held }; },
     // a whole circuit event with a computer player of skill sk in your seat
     event: function (id, sk) {
@@ -3206,6 +3393,7 @@
         SIM = { next: function () { if (S.handNo >= n) { var r = S.players.map(function (p) { return Math.round((p.stack - p.buyin) / S.bb / n * 100); }); SIM = false; S = null; stop(); done(r); } else startHand(); } };
         newTable({ mode: game || 'he', players: skills.map(function (k, i) { return { name: 'P' + i, cpu: true }; }), options: { fmt: 'cash', bet: 'nl' } });
         S.players.forEach(function (p, i) { p.sk = skills[i]; p.style = 'tag'; });
+        if (VAR[game] && game !== 'he' && game !== 'om') { var v = VAR[game]; S.game = game; S.om = v.om; S.pl = v.pl; S.hand = null; S.handNo = 0; startHand(); }
       });
     }
   };
