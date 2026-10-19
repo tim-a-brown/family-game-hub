@@ -457,6 +457,7 @@
 .cz-chip{grid-column:2;grid-row:1 / span 4;width:66px;height:66px;border-radius:50%;display:grid;place-items:center;text-align:center;font-weight:900;font-size:.86rem;line-height:1;color:#fff;
   background:radial-gradient(circle,var(--cc) 0 52%,#fff 53% 56%,var(--cc) 57%);box-shadow:inset 0 0 0 4px rgba(255,255,255,.85),inset 0 0 0 7px var(--cc),0 4px 10px rgba(0,0,0,.45);
   -webkit-mask:radial-gradient(circle,#000 0 100%);}
+.cz-chip.tix{background:radial-gradient(circle at 50% 40%,#ffe58a,#e0a91c 70%,#9c6a06);color:#3a2200;}
 .cz-chip small{display:block;font-size:.56rem;letter-spacing:.12em;opacity:.85;margin-top:2px;}
 .cz-stop.locked{cursor:default;}
 .cz-stop.locked .cz-ticket{filter:grayscale(.85) brightness(.6);}
@@ -508,6 +509,13 @@
     '<h3>Cash game or tournament</h3><ul>' +
     '<li><b>Cash game</b>: buy in with chips from your casino bank (shared with the other casino games) and leave whenever you like. Whatever you have goes back to the bank.</li>' +
     '<li><b>Tournament</b>: everyone starts with 1,500 chips. The blinds go up every few hands, and when you lose all your chips you\'re out. Last player standing wins.</li></ul>' +
+    '<h3>Tournament Circuit</h3><ul>' +
+    '<li>Seven stops, from a $100 card room to the $10,000 World Championship Main Event. Pay the buy-in from your bank, or use a seat you won.</li>' +
+    '<li>You play one table; the rest of the field plays at others, and an empty seat at yours is filled from them. The blinds go up every few hands.</li>' +
+    '<li>Roughly the top 15% are paid. Everyone in the money gets at least 1.5 times the buy-in, and first place gets the most. Finish in the money to open the next stop and win a seat there.</li>' +
+    '<li><b>Bounty</b> events pay you on the spot for every player you knock out. The Boardwalk Open is pot-limit Omaha.</li>' +
+    '<li>The players get better at every stop. Pros read your betting, play their position and tighten up near the money.</li>' +
+    '<li>No take-backs on the circuit. Go back to the home screen mid-event and your seat waits for you.</li></ul>' +
     '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money. Video poker works the same way.</p>';
 
   Kit.init({
@@ -1250,7 +1258,7 @@
     H.curBet = S.bb;
     H.log.push({ s: 'Hand ' + S.handNo });
     S.players.forEach(function (p, i) { if (p.rebought) { H.say[i] = 'Rebuys'; delete p.rebought; } if (p.sat === S.handNo) H.say[i] = 'Sits down'; });
-    H.actor = nextToAct(bbI);
+    H.first = nextToAct(bbI);   // first to act, once the cards are out
     undoStack = [];
     save();
     renderTable();
@@ -1263,6 +1271,7 @@
     if (!S || S.kind !== 'table' || !S.hand) return;
     var H = S.hand;
     if (H.phase === 'bet') {
+      if (H.actor < 0 && H.first != null) { H.actor = H.first; delete H.first; }
       if (roundDone()) return endStreet();
       if (H.actor < 0 || !needsAct(H.actor)) H.actor = nextToAct(H.actor < 0 ? H.button : H.actor);
       var pa = H.actor === 0 && !S.players[0].cpu ? preAction() : null;
@@ -1674,7 +1683,7 @@
     return w.map(function (x) { var v = floor + rest * x / sum, u = v >= 1e6 ? 1000 : v >= 1e4 ? 100 : v >= 1000 ? 10 : 1; return Math.round(v / u) * u; });
   }
   function kUsd(n) { return n >= 1000 ? '$' + (n / 1000) + 'K' : '$' + n; }
-  function circLoad() { var c = load(CKEY) || {}; c.open = c.open || 0; c.best = c.best || {}; c.cash = c.cash || {}; c.wins = c.wins || {}; c.net = c.net || 0; c.played = c.played || 0; return c; }
+  function circLoad() { var c = load(CKEY) || {}; c.open = c.open || 0; c.best = c.best || {}; c.cash = c.cash || {}; c.wins = c.wins || {}; c.net = c.net || 0; c.played = c.played || 0; c.tix = c.tix || {}; return c; }
   function circSave(c) { try { localStorage.setItem(CKEY, JSON.stringify(c)); } catch (e) {} }
   // the table's felt and rail in the venue's colours (understated: colour and material only)
   var VENUE_VARS = ['--felt-a', '--felt-b', '--felt-c', '--wood-a', '--wood-b'], venueWas = null;
@@ -1703,12 +1712,12 @@
     stop(); S = null; venueOff(); orient(null); moneyHome();
     if (!CZ) CZ = { name: localStorage.getItem('my_name') || 'You', coach: false };
     moneyFor(CZ.name, true);
-    app.className = 'stage czapp'; app.innerHTML = '';
+    app.className = 'stage czapp'; app.innerHTML = ''; try { window.scrollTo(0, 0); app.scrollTop = 0; } catch (e) {}
     var pg = circLoad(), titles = Object.keys(pg.wins).reduce(function (a, k) { return a + pg.wins[k]; }, 0), cashes = Object.keys(pg.cash).reduce(function (a, k) { return a + pg.cash[k]; }, 0);
     var wrap = el('div', { class: 'cz' });
     wrap.appendChild(el('div', { class: 'cz-head' }, [
       el('h1', { text: 'The Circuit' }),
-      el('p', { text: 'From a $100 card room to the World Championship. Cash at a stop to open the next.' }),
+      el('p', { text: 'From a $100 card room to the World Championship. Finish in the money to win a seat at the next stop.' }),
       el('div', { class: 'cz-stats' }, [
         el('span', { html: Kit.icon('coins') + bankNm() + ' <b>' + usd(Casino.balance()) + '</b>' }),
         el('span', { html: 'Cashes <b>' + cashes + '</b>' }),
@@ -1719,7 +1728,7 @@
     var path = el('div', { class: 'cz-path' });
     path.style.setProperty('--done', Math.round(Math.min(pg.open, CIRCUIT.length - 1) / (CIRCUIT.length - 1) * 100) + '%');
     CIRCUIT.forEach(function (ev, k) {
-      var locked = k > pg.open, best = pg.best[ev.id], won = pg.wins[ev.id], cashed = pg.cash[ev.id];
+      var locked = k > pg.open, best = pg.best[ev.id], won = pg.wins[ev.id], cashed = pg.cash[ev.id], tix = !locked && pg.tix[ev.id];
       var pays = paysFor(ev), cls = 'cz-stop' + (locked ? ' locked' : won ? ' won' : cashed ? ' cashed' : '') + (k === pg.open && !cashed ? ' next' : '') + (ev.gold ? ' gold' : '');
       var pips = el('span', { class: 'pips', title: 'How good the players are' });
       for (var q = 0; q < 5; q++) pips.appendChild(el('i', { class: q < Math.round(ev.ai * 5 + 0.2) ? 'on' : '' }));
@@ -1727,7 +1736,7 @@
         el('span', { class: 'cz-node', html: locked ? Kit.icon('lock') : won ? Kit.icon('trophy') : cashed ? Kit.icon('check') : String(k + 1) }),
         el('span', { class: 'cz-ticket', style: { '--fa': ev.felt[0], '--fb': ev.felt[1], '--fc': ev.felt[2] } }, [
           el('span', { class: 'cz-venue', text: ev.venue }),
-          el('span', { class: 'cz-chip', style: { '--cc': ev.chip }, html: '<span>' + kUsd(ev.buy) + '<small>BUY-IN</small></span>' }),
+          el('span', { class: 'cz-chip' + (tix ? ' tix' : ''), style: { '--cc': ev.chip }, html: tix ? '<span>SEAT<small>WON</small></span>' : '<span>' + kUsd(ev.buy) + '<small>BUY-IN</small></span>' }),
           el('span', { class: 'cz-sub', text: ev.city + ' · ' + ev.style }),
           el('span', { class: 'cz-meta' }, [el('span', { text: ev.field.toLocaleString() + ' players' }), el('span', { text: '1st ' + usd(pays[0]) }), pips]),
           locked ? el('span', { class: 'cz-best lock', text: 'Cash at ' + CIRCUIT[k - 1].venue + ' to open' })
@@ -1742,13 +1751,13 @@
     app.appendChild(wrap);
   }
   function circSheet(ev) {
-    var pays = paysFor(ev), bank = Casino.balance(), can = bank >= ev.buy, box = el('div');
+    var pays = paysFor(ev), bank = Casino.balance(), tix = circLoad().tix[ev.id], can = tix || bank >= ev.buy, box = el('div');
     box.appendChild(el('p', { class: 'muted', text: ev.city + ' · ' + ev.style + (ev.game === 'om' ? ' (four cards each; use exactly two)' : '') + (ev.bounty ? ' · every player you knock out pays you ' + usd(ev.buy * ev.bounty) + ' on the spot' : '') + '.' }));
     box.appendChild(el('div', { class: 'czs-facts' }, [
       el('div', null, [el('small', { text: 'Players' }), el('b', { text: ev.field.toLocaleString() })]),
       el('div', null, [el('small', { text: 'Starting chips' }), el('b', { text: ev.stack.toLocaleString() })]),
       el('div', null, [el('small', { text: 'Blinds go up' }), el('b', { text: 'every ' + ev.per + ' hands' })]),
-      el('div', null, [el('small', { text: 'The field' }), el('b', { text: skillWord(ev.ai) + (ev.ai >= 0.9 ? 's' : ev.ai >= 0.75 ? 's' : ' players') })])
+      el('div', null, [el('small', { text: 'The field' }), el('b', { text: fieldWord(ev.ai) })])
     ]));
     var pl = el('div', { class: 'czs-pay' });
     pays.slice(0, 5).forEach(function (v, k) { pl.appendChild(el('div', null, [el('span', { text: ordinal(k + 1) }), el('span', { text: usd(v) })])); });
@@ -1756,7 +1765,8 @@
     box.appendChild(el('p', { class: 'muted', style: { 'margin-top': '10px' }, text: pays.length.toLocaleString() + ' places paid · prize pool ' + usd(pays.reduce(function (a, b) { return a + b; }, 0)) }));
     box.appendChild(pl);
     var acts = [];
-    if (can) acts.push({ label: 'Buy in · ' + usd(ev.buy), primary: true, onClick: function () { Kit.sfx('chip'); newEvent(ev); } });
+    if (tix) acts.push({ label: 'Take your seat · won at ' + CIRCUIT[ev.no - 1].venue, primary: true, onClick: function () { Kit.sfx('chip'); newEvent(ev, true); } });
+    else if (can) acts.push({ label: 'Buy in · ' + usd(ev.buy), primary: true, onClick: function () { Kit.sfx('chip'); newEvent(ev); } });
     else {
       box.appendChild(el('p', { class: 'muted', style: { color: 'var(--red)', 'margin-top': '8px' }, text: 'You need ' + usd(ev.buy) + '. ' + bankNm() + ' has ' + usd(bank) + '.' }));
       if (bank < 1000) acts.push({ label: Casino.mode() === 'mine' ? 'Refill bank to $1,000' : topUp(seatName()).btn, primary: true, onClick: function () { refillNow(); circLobby(); } });
@@ -1769,17 +1779,18 @@
     return { name: name, cpu: true, style: styles[Math.floor(Math.random() * styles.length)], sk: Math.max(0.05, Math.min(1, ev.ai + (Math.random() - 0.5) * 0.18)),
       stack: stack, buyin: stack, out: false, place: 0, rebuys: 0, bty: ev.bounty ? Math.round(ev.buy * ev.bounty) : 0, sat: hand || 0 };
   }
-  function newEvent(ev) {
+  function newEvent(ev, seat) {
     moneyFor(CZ.name, true);
-    if (Casino.balance() < ev.buy) return circSheet(ev);
-    Casino.bet(ev.buy);
+    var pg = circLoad();
+    if (seat && pg.tix[ev.id]) delete pg.tix[ev.id];
+    else { seat = false; if (Casino.balance() < ev.buy) return circSheet(ev); Casino.bet(ev.buy); }
     var pays = paysFor(ev), names = Kit.cpuNames(40, [CZ.name]);
-    var pg = circLoad(); pg.played++; circSave(pg);
+    pg.played++; circSave(pg);
     S = {
       kind: 'table', game: ev.game, om: ev.game === 'om', limit: false, pl: ev.game === 'om', tourn: true, per: ev.per, started: Date.now(), handNo: 0, level: -1, coach: CZ.coach,
       sb: 0, bb: 0, button: null, hand: null,
       players: [{ name: CZ.name, cpu: false, stack: ev.stack, buyin: ev.stack, out: false, place: 0, rebuys: 0 }].concat(names.slice(0, 5).map(function (nm) { return cpuSeat(nm, ev, ev.stack); })),
-      circ: { id: ev.id, field: ev.field, left: ev.field, else: ev.field - 6, e0: ev.field - 6, paid: pays.length, pays: pays, chips: ev.field * ev.stack, names: names.slice(5), h: 0, kos: 0, bounty: 0 },
+      circ: { id: ev.id, seat: !!seat, field: ev.field, left: ev.field, else: ev.field - 6, e0: ev.field - 6, paid: pays.length, pays: pays, chips: ev.field * ev.stack, names: names.slice(5), h: 0, kos: 0, bounty: 0 },
       st: { rows: [], big: null, best: null, beats: [], kos: [], won: [0, 0, 0, 0, 0, 0], allins: 0 }
     };
     venueOn(ev); Kit.gameStart(); undoStack = []; R = {};
@@ -1860,16 +1871,18 @@
     if (prize) Casino.win(prize);
     var pg = circLoad(), b = pg.best[ev.id];
     if (!b || place < b.place) pg.best[ev.id] = { place: place, prize: prize, field: ev.field };
-    if (prize) { pg.cash[ev.id] = (pg.cash[ev.id] || 0) + 1; if (pg.open < ev.no + 1 && ev.no + 1 < CIRCUIT.length) pg.open = ev.no + 1; }
+    var nx = CIRCUIT[ev.no + 1], seatWon = prize && nx && !pg.tix[nx.id] ? nx : null;
+    if (prize) { pg.cash[ev.id] = (pg.cash[ev.id] || 0) + 1; if (nx && pg.open < ev.no + 1) pg.open = ev.no + 1; }
+    if (seatWon) pg.tix[nx.id] = 1;
     if (place === 1) pg.wins[ev.id] = (pg.wins[ev.id] || 0) + 1;
-    pg.net += prize + C.bounty - ev.buy;
-    var opened = prize && ev.no + 1 < CIRCUIT.length && (!b || !b.prize) && !(pg.cash[ev.id] > 1) ? CIRCUIT[ev.no + 1] : null;
+    pg.net += prize + C.bounty - (C.seat ? 0 : ev.buy);
     circSave(pg);
     var hl = [];
     hl.push((place === 1 ? 'Won' : 'Finished ' + ordinal(place) + ' of ' + ev.field.toLocaleString()) + (prize ? ' for ' + usd(prize) : ''));
     if (C.kos) hl.push('Knocked out ' + C.kos + ' player' + (C.kos === 1 ? '' : 's') + (C.bounty ? ' for ' + usd(C.bounty) + ' in bounties' : ''));
     if (st.st.big) hl.push('Biggest pot: ' + chipsTxt(st.st.big.amt) + ' to ' + st.st.big.who + (st.st.big.fold ? '' : ' with ' + st.st.big.desc));
-    hl.push('Blinds reached ' + chipsTxt(st.sb) + ' / ' + chipsTxt(st.bb) + ' after ' + st.handNo + ' hands');
+    if (seatWon) hl.push('Won a seat at ' + seatWon.venue + ' (' + usd(seatWon.buy) + ' buy-in)');
+    hl.push('Blinds reached ' + chipsTxt(st.sb) + ' / ' + chipsTxt(st.bb) + ' after ' + st.handNo + ' hand' + (st.handNo === 1 ? '' : 's'));
     Kit.record(HKEY, {
       started: st.started, mode: 'Circuit: ' + ev.venue + ' (' + usd(ev.buy) + ')', lowWins: true,
       players: st.players.map(function (p) { return { name: p.name, score: p.out ? p.place : 1, cpu: p.cpu }; }), winner: place === 1 ? me.name : null,
@@ -1881,13 +1894,13 @@
     if (SIM && SIM.done) { var fin = SIM.done; SIM = false; venueOff(); fin({ place: place, prize: prize, hands: st.handNo, level: st.level, bb: st.bb, kos: C.kos, bounty: C.bounty, left: C.left, paidAt: C.itmAt || null, ftAt: C.ftAt || null }); return; }
     renderAfter(st);
     var title = place === 1 ? (ev.gold ? 'World Champion!' : 'You won ' + ev.venue + '!') : prize ? ordinal(place) + ' place · ' + usd(prize) : 'Out in ' + ordinal(place);
-    var sub = place === 1 ? usd(prize) + ' and the title, from a field of ' + ev.field.toLocaleString() : prize ? 'You cashed, and that counts. ' + (opened ? opened.venue + ' is open.' : '') : (C.left - C.paid > 0 ? (place - C.paid) + ' place' + (place - C.paid === 1 ? '' : 's') + ' from the money' : '');
+    var sub = place === 1 ? usd(prize) + ' and the title, from a field of ' + ev.field.toLocaleString() : prize ? 'You cashed' + (seatWon ? ' and won a seat at ' + seatWon.venue + '.' : '.') : (C.left - C.paid > 0 ? (place - C.paid) + ' place' + (place - C.paid === 1 ? '' : 's') + ' from the money' : '');
     var rank = st.players.slice().map(function (p, i) { return { name: i === 0 ? p.name : p.name, score: p.out ? ordinal(p.place) : ordinal(1), place: p.out ? p.place : 1, cpu: p.cpu, color: Kit.color(i) }; }).sort(function (a, b) { return a.place - b.place; });
     Kit.win({
       icon: place === 1 ? 'trophy' : prize ? 'coins' : 'meh', lose: !prize, title: title, sub: sub,
       rank: C.else === 0 ? rank : null, notes: hl.slice(0, 3), notesTitle: 'Your run',
-      againLabel: opened ? 'On to ' + opened.venue : 'Back to the circuit',
-      again: function () { circLobby(); },
+      againLabel: seatWon ? 'Take your seat' : 'Back to the circuit',
+      again: function () { circLobby(); if (seatWon) circSheet(seatWon); },
       extra: [{ label: 'Play this stop again', onClick: function () { circSheet(ev); } }]
     });
     if (place === 1) { Kit.sfx('win'); setTimeout(function () { try { Kit.confetti({ n: 220 }); } catch (e) {} }, 400); }
@@ -2187,6 +2200,7 @@
   }
   function eqColor(e) { return e < 0.25 ? '#ff6b6b' : e < 0.45 ? '#ffa347' : e < 0.65 ? '#ffd84d' : '#3ddc84'; }
   function strengthWord(rel) { return rel < 0.55 ? 'Weak' : rel < 0.9 ? 'Behind' : rel < 1.3 ? 'Fair' : rel < 1.9 ? 'Strong' : 'Very strong'; }
+  function fieldWord(sk) { return sk < 0.25 ? 'Beginners' : sk < 0.4 ? 'Casual players' : sk < 0.6 ? 'Regulars' : sk < 0.75 ? 'Grinders' : sk < 0.9 ? 'Pros' : 'World-class pros'; }
   function skillWord(sk) { return sk < 0.25 ? 'Beginner' : sk < 0.4 ? 'Casual' : sk < 0.6 ? 'Regular' : sk < 0.75 ? 'Grinder' : sk < 0.9 ? 'Pro' : 'World class'; }
 
   // ── The rail ─────────────────────────────────────────────────────────────
@@ -2778,7 +2792,7 @@
   // Test hook: computer players of the given skills play n cash hands against each other; resolves with each seat's
   // result in big blinds per 100 hands
   window.__pk = {
-    get S() { return S; }, render: function () { renderTable(); }, lobby: function () { circLobby(); },
+    get S() { return S; }, render: function () { renderTable(); }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
     peek: function () { return S && { no: S.handNo, phase: S.hand && S.hand.phase, actor: S.hand && S.hand.actor, street: S.hand && S.hand.street, held: !!held }; },
     // a whole circuit event with a computer player of skill sk in your seat
     event: function (id, sk) {
