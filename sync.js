@@ -353,7 +353,7 @@
   // hash of that value}, sent: {key: at uploaded}, ts: newest server time read, last: last pull, done: 1 once synced}.
   // Keys this device already had before any of this count as oldest; where two devices both had one, each keeps its
   // own until either changes it. A game page whose own keys arrive newer from another device reloads to carry on.
-  var ST = 'fgh_st', ST_MAX = 1000000, ST_PULL = 'fgh_st_pull_at';
+  var ST = 'fgh_st', ST_MAX = 300000, ST_PULL = 'fgh_st_pull_at', ST_BATCH = 40;
   var ST_SKIP = /^(hi_|gh_|prog_|fgh_|firebase|lorcana_(decks|marks)_|lorcana_(art|fancy)_v1$|casino_bank$|rklists$|fav_games|my_name$|gn_hidden_names$)/;
   // on this device only: online seats, table codes and device ids, sign-ins, caches, emulator settings, one-time markers
   var ST_DEVICE = /^(online_.*|spotify_.*|tn_.*|.*_dev|.*_online|.*_net[a-z]*(_.*)?|lorc_lktag|lorc_newrel|console_local|lorcana_(cards|story).*|lorcana_slips|lorc_(art|fancy)|slots_thumbs.*|gn_console_(idx|house)|gn_con_ram|gn_offline.*|pinball_qauto|peggle_hi_mig|centi_2d|.*_cache(_.*)?)$/;
@@ -415,18 +415,52 @@
     }
     Object.keys(o.sig).forEach(function(k){ if(!seen[k] && o.sig[k] !== '-' && stKey(k)){ o.sig[k] = '-'; mark(k); } });
   }
-  function stCol(){ var ref = cloudRef(); return ref ? ref.collection('st') : null; }
+  // Saved games travel as plain web requests (Firestore's REST API), never through the Firebase connection the rest
+  // of sync uses: one slow or oversized save can't hold up anything else, and each request gives up after a while.
+  function stBase(){
+    var emu = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && LS.getItem('fgh_emu');
+    return (emu ? 'http://localhost:8080/v1/' : 'https://firestore.googleapis.com/v1/') + 'projects/' + firebaseConfig.projectId + '/databases/(default)/documents';
+  }
+  function stDocName(k){ return 'projects/' + firebaseConfig.projectId + '/databases/(default)/documents/pins/' + pin() + '/st/' + k; }
+  function stFetch(url, body, ms){
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null, to = ctl ? setTimeout(function(){ ctl.abort(); }, ms || 20000) : 0;
+    var b = JSON.stringify(body);   // (a small save finishes even if the page is closed mid-way: keepalive)
+    return fetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 'key=' + firebaseConfig.apiKey, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: b, keepalive: b.length < 60000, signal: ctl ? ctl.signal : undefined })
+      .then(function(r){ clearTimeout(to); return r; }, function(e){ clearTimeout(to); throw e; });
+  }
+  function stQuery(since){
+    var q = { structuredQuery: { from: [{ collectionId: 'st' }], where: { fieldFilter: { field: { fieldPath: 'ts' }, op: 'GREATER_THAN', value: { timestampValue: new Date(since || 0).toISOString() } } }, limit: 1000 } };
+    return stFetch(stBase() + '/pins/' + pin() + ':runQuery', q, 25000).then(function(r){
+      if(!r.ok) throw new Error('saved games read refused (' + r.status + ')');
+      return r.json();
+    }).then(function(rows){
+      return (rows || []).filter(function(x){ return x && x.document; }).map(function(x){
+        var f = x.document.fields || {}, ts = f.ts && f.ts.timestampValue ? Date.parse(f.ts.timestampValue) : 0;
+        return { id: x.document.name.split('/').pop(), v: f.v && 'stringValue' in f.v ? f.v.stringValue : null, at: fromRest(f.at) || 0, ts: ts };
+      });
+    });
+  }
+  // one saved game up: 'ok', 'older' (the cloud has a newer copy) or an error
+  function stPut(k, v, at){
+    var w = { update: { name: stDocName(k), fields: { v: v == null ? { nullValue: null } : { stringValue: v }, at: { integerValue: String(Math.round(at)) } } },
+      updateTransforms: [{ fieldPath: 'ts', setToServerValue: 'REQUEST_TIME' }] };
+    return stFetch(stBase() + ':commit', { writes: [w] }, 20000).then(function(r){
+      if(r.ok) return 'ok';
+      if(r.status === 403) return 'older';
+      throw new Error('saved game ' + k + ' refused (' + r.status + ')');
+    });
+  }
   // newer copies from the cloud into this device; the keys that changed here
   function stPull(o){
-    var col = stCol(); if(!col) return Promise.resolve([]);
+    if(!isPin()) return Promise.resolve([]);
     var started = Date.now();
-    return col.where('ts', '>', firebase.firestore.Timestamp.fromMillis(o.ts)).get().then(function(q){
+    return stQuery(o.ts).then(function(rows){
       var took = [], game = /\/games\//.test(location.pathname), docs = [], tie = {};
-      q.forEach(function(d){ docs.push(d); });
+      docs = rows.slice();
       docs.sort(function(a, b){ return (b.id === 'gn_resume') - (a.id === 'gn_resume'); });   // Keep playing first: it settles ties
       docs.forEach(function(d){
-        var k = d.id, r = d.data() || {}, at = Number(r.at) || 0, v = typeof r.v === 'string' ? r.v : null;
-        var ts = r.ts && r.ts.toMillis ? r.ts.toMillis() : 0; if(ts > o.ts) o.ts = ts;
+        var k = d.id, at = Number(d.at) || 0, v = typeof d.v === 'string' ? d.v : null;
+        var ts = d.ts || 0; if(ts > o.ts) o.ts = ts;
         if(!stKey(k)) return;
         var mine = Number(o.at[k]) || 0, cur = LS.getItem(k);
         if(k === 'gn_resume' && v !== null && cur !== null){
@@ -456,19 +490,26 @@
       return took;
     });
   }
-  // this device's newer changes up to the cloud, one key at a time (the cloud turns down any older than its own)
+  // this device's newer changes up to the cloud, one key at a time (the cloud turns down any older than its own), three
+  // requests at once and at most ST_BATCH a round (a first upload of everything spreads over a few page opens)
   function stPush(o){
-    var col = stCol(); if(!col) return Promise.resolve(0);
+    if(!isPin()) return Promise.resolve(0);
     var keys = Object.keys(o.at).filter(function(k){ return stKey(k) && (Number(o.at[k]) || 0) > (Number(o.sent[k]) || 0); });
-    var n = 0;
-    return Promise.all(keys.map(function(k){
+    keys.sort(function(a, b){ return (Number(o.at[b]) || 0) - (Number(o.at[a]) || 0); });   // newest first
+    var todo = keys.slice(0, ST_BATCH), n = 0, fails = 0, sent = [];
+    function next(){
+      var k = todo.shift(); if(!k || fails >= 3) return Promise.resolve();
       var v = LS.getItem(k), at = Number(o.at[k]) || 0;
-      if(v != null && (v.length > ST_MAX || (v.length > 300000 && new Blob([v]).size > ST_MAX))){ o.sent[k] = at; return null; }   // (a Firestore document holds about 1 MB)
-      return col.doc(k).set({ v: v, at: at, ts: firebase.firestore.FieldValue.serverTimestamp() }).then(function(){ n++; o.sent[k] = Math.max(Number(o.sent[k]) || 0, at); }, function(err){
-        if(err && err.code === 'permission-denied') o.sent[k] = Math.max(Number(o.sent[k]) || 0, at);   // a newer copy is in the cloud: the next pull brings it
-        else console.warn('[sync] could not save ' + k, err && err.code);
-      });
-    })).then(function(){ if(n){ console.log('[sync] saved ' + n + ' game state' + (n === 1 ? '' : 's') + ' to the cloud'); dlog('sync', 'Saved games out to the cloud: ' + keys.slice(0, 20).join(', ') + (keys.length > 20 ? ' and ' + (keys.length - 20) + ' more' : '')); } return n; });
+      if(v != null && (v.length > ST_MAX || (v.length > 100000 && new Blob([v]).size > ST_MAX))){ o.sent[k] = at; return next(); }   // too big to sync: stays on this device
+      return stPut(k, v, at).then(function(res){ o.sent[k] = Math.max(Number(o.sent[k]) || 0, at); if(res === 'ok'){ n++; sent.push(k); } }, function(err){
+        fails++; console.warn('[sync] could not save ' + k, (err && err.message) || err);
+      }).then(next);
+    }
+    return Promise.all([next(), next(), next()]).then(function(){
+      if(n){ console.log('[sync] saved ' + n + ' game state' + (n === 1 ? '' : 's') + ' to the cloud'); dlog('sync', 'Saved games out to the cloud: ' + sent.slice(0, 20).join(', ') + (sent.length > 20 ? ' and ' + (sent.length - 20) + ' more' : '') + (keys.length > todo.length + n ? ' (' + (keys.length - ST_BATCH) + ' more next time)' : '')); }
+      if(fails) dlog('warn', 'Saved games: ' + fails + ' upload' + (fails === 1 ? '' : 's') + ' failed; trying again later');
+      return n;
+    });
   }
   // one at a time: look for changes, (pull,) push; then a game page whose own keys came in newer reloads
   var _stChain = Promise.resolve(), _stT = 0;
@@ -478,7 +519,7 @@
       if(!isPin()) return [];
       var o = stLoad(), took = [];
       stStamp(o);
-      return ensureFirebase()
+      return Promise.resolve()
         .then(function(){ return pull ? stPull(o) : []; })
         .then(function(t){ took = t || []; stStamp(o); return stPush(o); })
         .then(function(){
