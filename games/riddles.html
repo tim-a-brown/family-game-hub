@@ -15,6 +15,8 @@
 <script src="../data/riddles-pack-2.js"></script>
 <script src="../data/riddles-pack-3.js"></script>
 <script src="../data/riddles-pack-4.js"></script>
+<script src="../data/riddles-pack-5.js"></script>
+<script src="../data/riddles-sort.js"></script>
 <script src="../data/words-en.js" defer></script>
 <style>
 @font-face{font-family:"Cinzel";src:url("../fonts/cinzel-700.woff2") format("woff2");font-weight:700;font-display:swap;}
@@ -228,6 +230,11 @@
   var ALL = (window.RIDDLES || []).concat(window.RIDDLES_MORE || []), BY = {};
   ALL.forEach(function (r) { BY[r.id] = r; });
   var LEVELS = ['easy', 'medium', 'hard'];
+  // Only real riddles are played (data/riddles-sort.js): ones that turn on a trick, not plain descriptions or trivia.
+  // Their level is how hard they really are; the rest stay in the data so past days and history still show them.
+  var SORT = window.RIDDLE_SORT && window.RIDDLE_SORT.tier;
+  if (SORT) ALL.forEach(function (r) { var t = SORT[r.id]; if (t) r.d = LEVELS[t - 1]; });
+  var PLAY = SORT ? ALL.filter(function (r) { return SORT[r.id]; }) : ALL;
   var LV = { easy: { name: 'Easy', base: 10, dots: 1 }, medium: { name: 'Medium', base: 20, dots: 2 }, hard: { name: 'Hard', base: 30, dots: 3 } };
   var MODES = { mixed: 'Mixed', easy: 'Easy', medium: 'Medium', hard: 'Hard', daily: 'Daily riddle' };
   var SKEY = 'riddles_state', SEEN = 'riddles_seen', STATS = 'riddles_stats', HKEY = 'riddles';
@@ -266,15 +273,15 @@
       '<li><b>Give up</b> shows the answer, for no points, and ends your streak.</li></ul>' +
       '<h3>Streak</h3><p>Your streak counts riddles solved in a row, across rounds, until you give up on one.</p>' +
       '<h3>Rounds</h3><p>Pick Easy, Medium, Hard or Mixed (easy to hard), and 5 or 10 riddles. You won\'t see the same riddle again until you\'ve seen every one in its level.</p>' +
-      '<h3>Daily riddle</h3><p>One riddle a day, the same for everyone.</p>'
+      '<h3>Daily riddle</h3><p>One riddle a day, the same for everyone. Like a newspaper crossword it gets harder through the week: a quick one on Monday and Tuesday, one to think about Wednesday to Friday, and a hard one at the weekend.</p>'
   });
 
   // ── Picking riddles: no repeats until a level has been seen in full ─────────
   function seenAll() { var s = load(SEEN, null) || {}; LEVELS.forEach(function (l) { if (!Array.isArray(s[l])) s[l] = []; }); return s; }
   function markSeen(id) { var r = BY[id]; if (!r) return; var s = seenAll(); if (s[r.d].indexOf(id) < 0) s[r.d].push(id); store(SEEN, s); }
   function pickFrom(level, taken, seen) {
-    var pool = ALL.filter(function (r) { return r.d === level && taken.indexOf(r.id) < 0 && seen[level].indexOf(r.id) < 0; });
-    if (!pool.length) { seen[level] = []; pool = ALL.filter(function (r) { return r.d === level && taken.indexOf(r.id) < 0; }); }
+    var pool = PLAY.filter(function (r) { return r.d === level && taken.indexOf(r.id) < 0 && seen[level].indexOf(r.id) < 0; });
+    if (!pool.length) { seen[level] = []; pool = PLAY.filter(function (r) { return r.d === level && taken.indexOf(r.id) < 0; }); }
     var r = pool[Math.floor(Math.random() * pool.length)];
     seen[level].push(r.id);
     return r.id;
@@ -318,7 +325,7 @@
     Kit.titleSwitch(null);
     var stt = stats(), day = today(), dd = dailyDone(day);
     function prog(l) {
-      var n = ALL.filter(function (r) { return r.d === l; }), s = n.filter(function (r) { return stt.solved[r.id]; }).length;
+      var n = PLAY.filter(function (r) { return r.d === l; }), s = n.filter(function (r) { return stt.solved[r.id]; }).length;
       return s ? s + ' of ' + n.length + ' solved' : n.length + ' riddles';
     }
     var solvedAll = Object.keys(stt.solved).filter(function (k) { return BY[k]; }).length;
@@ -651,7 +658,7 @@
     box.appendChild(el('div', { class: 'rs-tiles', html: '<div><b>' + solvedN + '</b><span>Solved</span></div><div><b>' + stt.streak + '</b><span>Streak</span></div><div><b>' + stt.best + '</b><span>Best streak</span></div>' }));
     var bars = el('div', { class: 'rs-bars' });
     LEVELS.forEach(function (l) {
-      var all = ALL.filter(function (r) { return r.d === l; }), n = all.filter(function (r) { return stt.solved[r.id]; }).length;
+      var all = PLAY.filter(function (r) { return r.d === l; }), n = all.filter(function (r) { return stt.solved[r.id]; }).length;
       var clean = all.filter(function (r) { return stt.solved[r.id] === 3; }).length;
       bars.appendChild(el('div', { class: 'rs-bar' }, [el('b', { text: LV[l].name }), el('i', { html: '<s style="width:' + Math.round(n / all.length * 100) + '%"></s>' }), el('span', { text: n + ' / ' + all.length + (clean ? ' · ' + clean + ' clean' : '') })]));
     });

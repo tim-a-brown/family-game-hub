@@ -645,8 +645,23 @@
     NEW_N = n;
     return NEW;
   }
+  // From day V2 (Tue 20 Oct 2026) the daily is only real riddles, and gets harder through the week like the
+  // crossword: Monday and Tuesday a quick one, Wednesday to Friday one that needs thought, the weekend a hard one.
+  // Each level walks its own frozen list in data/riddles-sort.js (RIDDLE_SORT.daily.t1/t2/t3), so a day's riddle
+  // never changes; days before V2 stay exactly as they were.
+  var V2 = 1024, V2_TIER = [1, 1, 2, 2, 2, 3, 3];   // Mon..Sun (day 1 was Monday 1 Jan 2024)
+  var V2_POS = null;
+  function v2Index(all, day) {
+    var D = root.RIDDLE_SORT && root.RIDDLE_SORT.daily; if (!D) return -1;
+    var t = V2_TIER[(day - 1) % 7], list = D['t' + t], n = 0, d;
+    for (d = V2; d < day; d++) if (V2_TIER[(d - 1) % 7] === t) n++;   // that level's earlier days since V2
+    var id = list[n % list.length];
+    if (!V2_POS || V2_POS.n !== all.length) { V2_POS = { n: all.length, at: {} }; all.forEach(function (r, i) { V2_POS.at[r.id] = i; }); }
+    return V2_POS.at[id] != null ? V2_POS.at[id] : -1;
+  }
   // index into all of the daily riddle for day
   function dailyIndex(all, day) {
+    if (day >= V2) { var v = v2Index(all, day); if (v >= 0) return v; }
     if (day <= CUT) return oldIndex(day);
     var o = newOrder(Math.min(FROZEN, all.length));
     return o[(day - CUT - 1) % o.length];
@@ -654,5 +669,5 @@
 
   root.RIDDLES = R;
   root.RiddleCheck = { check: check, norm: norm, dist: dist, allow: allow, stem: stem, setDict: setDict, isWord: isWord };
-  root.RiddleDaily = { pick: function (all, day) { return all[dailyIndex(all, day)]; }, index: dailyIndex, CUT: CUT, LAUNCH: LAUNCH, FROZEN: FROZEN };
+  root.RiddleDaily = { pick: function (all, day) { return all[dailyIndex(all, day)]; }, index: dailyIndex, tier: function (day) { return day >= V2 ? V2_TIER[(day - 1) % 7] : 0; }, CUT: CUT, LAUNCH: LAUNCH, FROZEN: FROZEN, V2: V2 };
 })(typeof window !== 'undefined' ? window : this);
