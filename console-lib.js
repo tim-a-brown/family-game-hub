@@ -86,8 +86,8 @@ var ConsoleLib = (function () {
     }).then(function (ix) { ix.carts = ix.carts || {}; ix.del = ix.del || {}; return ix; });
   }
   // a file into a library
-  function put(k, name, body, type) {
-    return fetch(UP + '?uploadType=media&name=' + encodeURIComponent('roms/' + k + '/' + name), { method: 'POST', headers: { 'Content-Type': type }, body: body })
+  function put(k, name, body, type, keep) {
+    return fetch(UP + '?uploadType=media&name=' + encodeURIComponent('roms/' + k + '/' + name), { method: 'POST', headers: { 'Content-Type': type }, body: body, keepalive: !!keep })
       .then(function (r) { if (!r.ok) throw new Error('upload ' + name + ' ' + r.status); return true; });
   }
   // read, change and write back a library's list (yours unless another is named; the newest edit of each game wins)
@@ -230,6 +230,87 @@ var ConsoleLib = (function () {
   function show(id, on) { showMany([id], on); }
   function showMany(ids, on) { var v = vis(); ids.forEach(function (id) { if (on) delete v[id]; else v[id] = 0; }); set('gn_console_vis', JSON.stringify(v)); }
 
-  return { db: db, tx: tx, list: list, save: save, saveAll: saveAll, toFetch: mbOf, setLabel: setLabel, rename: rename, drop: drop, file: file, cache: cache, strip: strip, houseKey: houseKey,
+  // ── Saves that follow the PIN ──
+  // Save states (the three slots, and the automatic one from when you left) and each game's own battery save go up
+  // to your library as well: roms/<lib>/sv-<id>-<slot>.bin (gzipped when the browser can: .gz) with its picture
+  // sv-<id>-<slot>.jpg, and sram-<name>.srm. Which copy is newest is kept in two synced keys (sync.js "Everything else
+  // follows the PIN"): console_saves {'<id>:<slot>': {at, z}} and console_sram {<name>: {at, path}}. What this device
+  // has already sent or taken is in console_local {sv: {key: at}, sram: {name: {at, h}}} (this device only).
+  function jget(k) { try { return JSON.parse(get(k) || '{}') || {}; } catch (e) { return {}; } }
+  function jset(k, o) { set(k, JSON.stringify(o)); }
+  function mine() { var o = jget('console_local'); o.sv = o.sv || {}; o.sram = o.sram || {}; return o; }
+  function hashOf(a) { var h = 0x811c9dc5; for (var i = 0; i < a.length; i++) h = Math.imul(h ^ a[i], 16777619); return (h >>> 0).toString(36) + a.length.toString(36); }
+  function zip(a) {
+    if (!window.CompressionStream) return Promise.resolve({ b: a, z: 0 });
+    return new Response(new Blob([a]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer().then(function (b) { return { b: new Uint8Array(b), z: 1 }; }, function () { return { b: a, z: 0 }; });
+  }
+  function unzip(buf, z) {
+    if (!z) return Promise.resolve(new Uint8Array(buf));
+    return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+  function getFile(k, name) { return fetch(url(k, name, true), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('save ' + r.status); return r; }); }
+  function within(p, ms) { return Promise.race([p, new Promise(function (ok) { setTimeout(function () { ok(null); }, ms); })]); }
+  // a save state (as stored on this device) up to the library; then the synced list says it's the newest
+  function stateUp(st) {
+    var k = lib(true); if (!k || !st || !st.data) return Promise.resolve(false);
+    var base = 'sv-' + st.id + '-' + st.slot, my = mine();
+    if ((my.sv[st.key] || 0) >= st.at) return Promise.resolve(true);
+    return zip(st.data).then(function (zd) {
+      return put(k, base + '.bin', zd.b, 'application/octet-stream')
+        .then(function () { return st.img ? put(k, base + '.jpg', st.img, 'text/plain') : null; })
+        .then(function () {
+          var ix = jget('console_saves'); if ((ix[st.key] && ix[st.key].at || 0) < st.at) { ix[st.key] = { at: st.at, z: zd.z }; jset('console_saves', ix); }
+          my = mine(); my.sv[st.key] = st.at; jset('console_local', my);
+          return true;
+        });
+    }).catch(function (e) { console.warn('[console] save not sent', e); return false; });
+  }
+  // newer save states for one game from the library onto this device
+  function statesDown(id) {
+    var k = lib(false); if (!k) return Promise.resolve(0);
+    var ix = jget('console_saves'), keys = Object.keys(ix).filter(function (x) { return x.indexOf(id + ':') === 0; });
+    return tx('states', 'readonly', function (s) { return s.index('id').getAll(id); }).then(function (have) {
+      var at = {}; (have || []).forEach(function (h) { at[h.key] = h.at || 0; });
+      return Promise.all(keys.filter(function (x) { return (ix[x].at || 0) > (at[x] || 0); }).map(function (x) {
+        var slot = x.slice(id.length + 1), base = 'sv-' + id + '-' + slot;
+        return getFile(k, base + '.bin').then(function (r) { return r.arrayBuffer(); }).then(function (b) { return unzip(b, ix[x].z); }).then(function (data) {
+          return getFile(k, base + '.jpg').then(function (r) { return r.text(); }, function () { return null; }).then(function (img) {
+            var st = { key: x, id: id, slot: /^\d+$/.test(slot) ? +slot : slot, at: ix[x].at, img: img, data: data };
+            return tx('states', 'readwrite', function (s) { s.put(st); }).then(function () { var my = mine(); my.sv[x] = st.at; jset('console_local', my); return 1; });
+          });
+        }).catch(function (e) { console.warn('[console] save not fetched', x, e); return 0; });
+      })).then(function (n) { return n.reduce(function (a, b) { return a + b; }, 0); });
+    });
+  }
+  // saves made here that never got sent (the app was closed first): send them now
+  function statesPending() {
+    if (!lib(false)) return Promise.resolve();
+    var my = mine();
+    return tx('states', 'readonly', function (s) { return s.getAll(); }).then(function (all) {
+      return (all || []).filter(function (st) { return st.at > (my.sv[st.key] || 0) && !/^net-/.test(st.id); }).reduce(function (p, st) { return p.then(function () { return stateUp(st); }); }, Promise.resolve());
+    }).catch(function () {});
+  }
+  // the game's own battery save, when it changed
+  function sramUp(name, path, data) {
+    var k = lib(true); if (!k || !data || !data.length || /^net-/.test(name)) return Promise.resolve(false);
+    var h = hashOf(data), my = mine(); if (my.sram[name] && my.sram[name].h === h) return Promise.resolve(true);
+    var at = Date.now();
+    return put(k, 'sram-' + name + '.srm', data, 'application/octet-stream', data.length < 60000).then(function () {
+      var ix = jget('console_sram'); ix[name] = { at: at, path: path }; jset('console_sram', ix);
+      my = mine(); my.sram[name] = { at: at, h: h }; jset('console_local', my);
+      return true;
+    }).catch(function (e) { console.warn('[console] battery save not sent', e); return false; });
+  }
+  // a newer battery save from another device: {path, data}, to put in place before the game starts
+  function sramDown(name) {
+    var k = lib(false), ix = jget('console_sram')[name], my = mine();
+    if (!k || !ix || !ix.path || (my.sram[name] && my.sram[name].at >= ix.at)) return Promise.resolve(null);
+    return getFile(k, 'sram-' + name + '.srm').then(function (r) { return r.arrayBuffer(); }).then(function (b) {
+      var data = new Uint8Array(b);
+      return { path: ix.path, data: data, done: function () { var m = mine(); m.sram[name] = { at: ix.at, h: hashOf(data) }; jset('console_local', m); } };
+    }).catch(function (e) { console.warn('[console] battery save not fetched', e); return null; });
+  }
+
+  return { db: db, tx: tx, list: list, stateUp: stateUp, statesDown: statesDown, statesPending: statesPending, sramUp: sramUp, sramDown: sramDown, within: within, save: save, saveAll: saveAll, toFetch: mbOf, setLabel: setLabel, rename: rename, drop: drop, file: file, cache: cache, strip: strip, houseKey: houseKey,
     cloud: function () { return !!(lib(false) || houseKey()); }, signedIn: signedIn, shown: shown, show: show, showMany: showMany, vis: vis };
 })();

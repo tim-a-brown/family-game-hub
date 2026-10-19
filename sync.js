@@ -353,10 +353,10 @@
   // hash of that value}, sent: {key: at uploaded}, ts: newest server time read, last: last pull, done: 1 once synced}.
   // Keys this device already had before any of this count as oldest; where two devices both had one, each keeps its
   // own until either changes it. A game page whose own keys arrive newer from another device reloads to carry on.
-  var ST = 'fgh_st', ST_MAX = 400000, ST_PULL = 'fgh_st_pull_at';
+  var ST = 'fgh_st', ST_MAX = 1000000, ST_PULL = 'fgh_st_pull_at';
   var ST_SKIP = /^(hi_|gh_|prog_|fgh_|firebase|lorcana_(decks|marks)_|lorcana_(art|fancy)_v1$|casino_bank$|rklists$|fav_games|my_name$|gn_hidden_names$)/;
   // on this device only: online seats, table codes and device ids, sign-ins, caches, emulator settings, one-time markers
-  var ST_DEVICE = /^(online_.*|spotify_.*|tn_.*|.*_dev|.*_online|.*_net[a-z]*(_.*)?|lorc_lktag|lorc_newrel|lorcana_(cards|story).*|lorcana_slips|lorc_(art|fancy)|slots_thumbs.*|gn_console_(idx|house)|gn_con_ram|gn_offline.*|pinball_qauto|peggle_hi_mig|centi_2d|.*_cache(_.*)?)$/;
+  var ST_DEVICE = /^(online_.*|spotify_.*|tn_.*|.*_dev|.*_online|.*_net[a-z]*(_.*)?|lorc_lktag|lorc_newrel|console_local|lorcana_(cards|story).*|lorcana_slips|lorc_(art|fancy)|slots_thumbs.*|gn_console_(idx|house)|gn_con_ram|gn_offline.*|pinball_qauto|peggle_hi_mig|centi_2d|.*_cache(_.*)?)$/;
   var ST_NORELOAD = /^(gn_resume|gn_name_counts|frequent_players|gn_hiscores_sel)$/;
   function stKey(k){ return !!k && k.length <= 120 && /^[A-Za-z0-9_]+$/.test(k) && !ST_SKIP.test(k) && !PREF_RE.test(k) && !DEVICE_RE.test(k) && !ST_DEVICE.test(k); }
   function stLoad(){ var o = lsJSON(ST) || {}; o.at = o.at || {}; o.sig = o.sig || {}; o.sent = o.sent || {}; o.ts = Number(o.ts) || 0; return o; }
@@ -413,7 +413,7 @@
     var n = 0;
     return Promise.all(keys.map(function(k){
       var v = LS.getItem(k), at = Number(o.at[k]) || 0;
-      if(v != null && v.length > ST_MAX){ o.sent[k] = at; return null; }
+      if(v != null && (v.length > ST_MAX || (v.length > 300000 && new Blob([v]).size > ST_MAX))){ o.sent[k] = at; return null; }   // (a Firestore document holds about 1 MB)
       return col.doc(k).set({ v: v, at: at, ts: firebase.firestore.FieldValue.serverTimestamp() }).then(function(){ n++; o.sent[k] = Math.max(Number(o.sent[k]) || 0, at); }, function(err){
         if(err && err.code === 'permission-denied') o.sent[k] = Math.max(Number(o.sent[k]) || 0, at);   // a newer copy is in the cloud: the next pull brings it
         else console.warn('[sync] could not save ' + k, err && err.code);
@@ -2204,6 +2204,7 @@
     continueAsGuest: continueAsGuest,
     onReady: onReady,
     noteWrite: noteWrite,
+    stSynced: function(){ return _stChain; },   // resolves once saved games and progress are up to date (or couldn't be)
     // parents and children (see Parents above)
     parents: { mine: pcLocal, pull: pcPull, answer: parentAnswer, unlock: pcUnlock },
     kids: { list: kidsGet, ask: kidAsk, read: kidRead, edit: kidEdit, end: kidEnd },

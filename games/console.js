@@ -11,7 +11,8 @@
 //
 // Your games: console-lib.js (this device, and the cloud when signed in with a PIN). Save states stay on the
 // device (IndexedDB gn_console, store states: {key 'id:slot', id, slot ('auto' | 1..3), at, img, data}); the game's
-// own battery saves (SRAM) are kept by EmulatorJS, per game (EJS_gameName = id).
+// own battery saves (SRAM) are kept by EmulatorJS, per game (EJS_gameName = id). When signed in, both also go to your
+// library and come back on your other devices (ConsoleLib stateUp / statesDown / sramUp / sramDown).
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
   'use strict';
@@ -55,7 +56,7 @@
 
   // ── Save states (this device) ──
   function statesOf(id) { return L.tx('states', 'readonly', function (s) { return s.index('id').getAll(id); }); }
-  function putState(st) { return L.tx('states', 'readwrite', function (s) { s.put(st); }); }
+  function putState(st) { return L.tx('states', 'readwrite', function (s) { s.put(st); }).then(function (r) { if (L.stateUp) L.stateUp(st); return r; }); }   // (and up to your library: other devices carry on from it)
   function getState(id, slot) { return L.tx('states', 'readonly', function (s) { return s.get(id + ':' + slot); }); }
 
   function sha1(buf) {
@@ -682,12 +683,25 @@
       if (NET.pick) { var nm = NET.pick; NET.pick = null; root.classList.remove('net-pick'); netHost(nm); return; }
       getState(c.id, 'auto').then(function (st) { if (st) offerResume(st); });
     };
-    // the multitap goes in before the console is switched on, as on the real thing (see tapOf)
+    // (the multitap goes in before the console is switched on, as on the real thing: see tapOf)
+    // saves from your other devices first: the newest save states, and the game's own battery save, which goes in
+    // place before the game is switched on (it reads it as it starts)
+    var name = window.EJS_gameName, sram = null;
+    var fresh = L.statesDown && L.signedIn() && !c.net && NET.mode !== 'guest'
+      ? L.within((window.FGHSync && FGHSync.stSynced ? FGHSync.stSynced() : Promise.resolve()).then(function () {
+          return Promise.all([L.statesDown(c.id), L.sramDown(name).then(function (x) { sram = x; })]);
+        }), 8000).catch(function () {})
+      : Promise.resolve();
     window.EJS_ready = function () {
-      window.EJS_emulator.on('saveDatabaseLoaded', function (FS) { if (TAP_ON) tapIn(FS); });
+      window.EJS_emulator.on('saveDatabaseLoaded', function (FS) {
+        if (TAP_ON) tapIn(FS);
+        if (sram) { try { var dir = sram.path.split('/').slice(0, -1).join('/'), p = ''; dir.split('/').slice(1).forEach(function (part) { p += '/' + part; try { FS.mkdir(p); } catch (e) {} }); FS.writeFile(sram.path, sram.data); sram.done(); } catch (e) { console.warn('[console] battery save not put in place', e); } }
+      });
+      // the game's own battery save, each time it's written out (sent only when it changed)
+      window.EJS_emulator.on('saveSaveFiles', function (data) { if (!c.net && NET.mode !== 'guest' && data && L.sramUp) try { L.sramUp(name, emu().gameManager.getSaveFilePath(), data); } catch (e) {} });
     };
-    tapOf(c).then(function (on) {
-      TAP_ON = on;
+    Promise.all([tapOf(c), fresh]).then(function (r) {
+      TAP_ON = r[0];
       var s = document.createElement('script'); s.src = '../emu/loader.js'; document.body.appendChild(s);
     });
     var poll = setInterval(function () {
@@ -815,7 +829,11 @@
     hiLeave(function () { if (started && !cur.netGame) saveState('auto').then(go, go); else go(); });
   }
   // leaving or switching away keeps your place
-  document.addEventListener('visibilitychange', function () { if (document.hidden && started && !cur.netGame) saveState('auto'); });   // (a joiner's game is the host's)
+  document.addEventListener('visibilitychange', function () { if (document.hidden && started && !cur.netGame) { saveState('auto'); try { emu().gameManager.saveSaveFiles(); } catch (e) {} } });   // (a joiner's game is the host's)
+  // while you play: your place and the game's own save every few minutes, so another device can carry on even if this
+  // one is closed without a goodbye
+  setInterval(function () { if (started && cur && !cur.netGame && !document.hidden && !resumeEl) { saveState('auto'); try { emu().gameManager.saveSaveFiles(); } catch (e) {} } }, 180000);
+  if (L.statesPending) setTimeout(function () { if (L.signedIn()) L.statesPending(); }, 4000);   // saves from last time that didn't get sent
   window.addEventListener('pagehide', function () { if (started) { try { emu().gameManager.saveSaveFiles(); } catch (e) {} } });
   // the game waits while a menu or sheet is open
   new MutationObserver(function () {
