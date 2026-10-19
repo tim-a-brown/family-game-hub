@@ -43,6 +43,7 @@
 //   TurnNet.on()          true while at an online table
 //   TurnNet.chips()       an element listing the seats, whose turn it is glowing (games may place it)
 //   TurnNet.poke()        look at the table again now (a computer seat's move seems stuck)
+//   TurnNet.away()        stop following the table without leaving it (off to play something else; back via Your games)
 //   net (passed to show): {state, seat (yours, -1 watching), seats, code, mv, myTurn(), act(fn), again(), leave(),
 //                          result, status}
 //     net.act(fn)         your move: fn(state) -> {state, mv} (or null for no move). Shown here at once; written
@@ -420,6 +421,12 @@
     return p;
   }
 
+  // Step away from the table without leaving it (your seat stays; it's in Your games and on the home screen)
+  function detach() {
+    if (!T.code) return;
+    stopListen(); T.code = null; T.d = null; T.seat = -1; T.st = null; T.seq = -1; closeOv(); paintChips();
+  }
+
   // ── Screens: the lobby and the waiting room, over the game ──
   var CSS = '.tn-ov{position:fixed;inset:0;z-index:55;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg,#14112a);padding-top:calc(env(safe-area-inset-top,0px) + 10px);}' +
     '.tn-ov .ol{max-width:620px;margin:0 auto;padding:4px 16px calc(env(safe-area-inset-bottom,0px) + 24px);display:flex;flex-direction:column;gap:12px;}' +
@@ -628,7 +635,7 @@
   }
 
   window.TurnNet = {
-    setup: setup, open: lobby, menu: menu, chips: chips, leave: leave, again: again, poke: poke,
+    setup: setup, open: lobby, menu: menu, chips: chips, leave: leave, away: detach, again: again, poke: poke,
     on: function () { return !!T.code && !!T.d && T.d.status !== 'open'; }, net: net,
     _t: T, _store: store, _acct: acctTag
   };

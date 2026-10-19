@@ -14,6 +14,8 @@
 <script src="../players.js"></script>
 <script src="../casino.js"></script>
 <script src="../coach.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .stage{padding-bottom:calc(var(--safe-b) + 10px);}
 /* ── Info strip above the table ── */
@@ -201,11 +203,31 @@
 .pland .pseat .cards.face .pcard+.pcard{margin-left:-8px;}
 .pland .pseat .cards.face.om .pcard+.pcard{margin-left:-17px;}
 /* top and upper side seats say what they did beside them (below is where their chips go) */
-.pland .ls-t .psay,.pland .ls-lt .psay{top:50%;left:100%;transform:translate(5px,-50%);}
-.pland .ls-rt .psay{top:50%;left:auto;right:100%;transform:translate(-5px,-50%);}
+.pland .ls-t .psay,.pland .ls-lt .psay,.pland .ls-ta .psay,.pland .ls-tb .psay{top:50%;left:100%;transform:translate(5px,-50%);}
+.pland .ls-rt .psay,.pland .ls-td .psay,.pland .ls-te .psay{top:50%;left:auto;right:100%;transform:translate(-5px,-50%);}
 .pland .ls-l .psay,.pland .ls-r .psay{top:auto;bottom:100%;transform:translate(-50%,-3px);}
 .pland .pseat .pdealer{position:absolute;top:-9px;right:-9px;width:20px;height:20px;font-size:.62rem;}
-.pland .ls-rt .pdealer,.pland .ls-r .pdealer,.pland .ls-rb .pdealer{right:auto;left:-9px;}
+.pland .ls-rt .pdealer,.pland .ls-td .pdealer,.pland .ls-te .pdealer,.pland .ls-r .pdealer,.pland .ls-rb .pdealer{right:auto;left:-9px;}
+/* 7 to 10 seats (online): smaller seats; along the top, name above and cards beside the chips, what they did below */
+.pseat.many .tag{max-width:96px;font-size:.74rem;padding:2px 7px 2px 2px;}
+.pseat.many .tag .avatar{width:20px;height:20px;font-size:.62rem;}
+.pseat.many .stack{font-size:.68rem;padding:0 6px;}
+.stage:not(.pland) .pseat.many{display:grid;grid-template-columns:auto auto;column-gap:5px;row-gap:3px;justify-items:center;align-items:center;}
+.stage:not(.pland) .pseat.many > .tag{grid-column:1 / 3;grid-row:1;}
+.stage:not(.pland) .pseat.many > .cards{grid-row:2;grid-column:1;--cw:24px;min-height:34px;}
+.stage:not(.pland) .pseat.many > .cards.face{--cw:32px;min-height:45px;}
+.stage:not(.pland) .pseat.many > .stack{grid-row:2;grid-column:2;}
+.stage:not(.pland) .pseat.many .cards .pcard+.pcard{margin-left:-12px;}
+.stage:not(.pland) .pseat.many .cards.om .pcard+.pcard{margin-left:-17px;}
+.pland .pseat.many.ls{grid-template-columns:auto auto;column-gap:4px;row-gap:2px;justify-items:center;}
+.pland .pseat.many.ls > .tag{grid-column:1 / 3;grid-row:1;}
+.pland .pseat.many.ls > .cards{grid-row:2;grid-column:1;--cw:16px;min-height:22px;}
+.pland .pseat.many.ls > .cards.face{--cw:22px;min-height:31px;}
+.pland .pseat.many.ls > .stack{grid-row:2;grid-column:2;}
+.pland .pseat.many .cards .pcard+.pcard{margin-left:-9px;}
+.pland .pseat.many .cards.om .pcard+.pcard{margin-left:-12px;}
+.pland .pseat.many.ls-t .psay,.pland .pseat.many.ls-ta .psay,.pland .pseat.many.ls-tb .psay,.pland .pseat.many.ls-td .psay,.pland .pseat.many.ls-te .psay,.pland .pseat.many.ls-lt .psay,.pland .pseat.many.ls-rt .psay{top:100%;bottom:auto;left:50%;right:auto;transform:translate(-50%,3px);}
+.pseat.many .psay{font-size:.66rem;padding:1px 7px;}
 /* your seat: cards, then your name and chips */
 .pme{position:absolute;left:50%;bottom:2.5%;transform:translateX(-50%);z-index:4;display:flex;flex-direction:column;align-items:center;}
 .pme .pdealer{position:absolute;left:-30px;top:12px;}
@@ -461,6 +483,28 @@
 .cz-chip small{display:block;font-size:.56rem;letter-spacing:.12em;opacity:.85;margin-top:2px;}
 .cz-stop.locked{cursor:default;}
 .cz-stop.locked .cz-ticket{filter:grayscale(.85) brightness(.6);}
+.pgo{display:flex;flex-direction:column;gap:8px;margin:2px 0 14px;}
+.pgo-g{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border:0;border-radius:16px;color:#fbf8ff;font:inherit;text-align:left;cursor:pointer;animation:rise .4s var(--ease) both;
+  background:radial-gradient(rgba(255,255,255,.04) 1px,transparent 1px) 0 0/4px 4px,linear-gradient(120deg,var(--fa,#1f6b45),var(--fb,#0d3b25));box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),0 6px 14px rgba(0,0,0,.3);transition:transform .12s;}
+.pgo-g:active{transform:scale(.98);}
+.pgo-g .ic{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.25);color:#ffd84d;}
+.pgo-g .ic .ico{width:20px;height:20px;}
+.pgo-g .tx{flex:1;min-width:0;}
+.pgo-g b{display:block;font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pgo-g small{display:block;font-size:.8rem;font-weight:800;opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pgo-g .go{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#ffd84d;color:#2b1a00;box-shadow:0 2px 6px rgba(0,0,0,.35);}
+.pgo-g .go .ico{width:16px;height:16px;}
+.cz-tracks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:14px auto 0;max-width:520px;padding:4px;border-radius:18px;background:var(--w05);}
+.cz-tr{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:8px 10px 9px;border-radius:14px;border:0;background:none;color:var(--text-2);font:inherit;cursor:pointer;text-align:left;transition:background .2s,color .2s,transform .12s;}
+.cz-tr b{font-family:var(--display);font-weight:400;font-size:1.2rem;line-height:1;}
+.cz-tr small{font-size:.7rem;font-weight:800;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cz-tr .bar{height:4px;border-radius:2px;background:var(--w08);overflow:hidden;}
+.cz-tr .bar i{display:block;height:100%;background:var(--yellow);border-radius:2px;}
+.cz-tr.on{background:var(--surface-2);color:var(--text);box-shadow:0 3px 10px rgba(0,0,0,.3),inset 0 0 0 1.5px rgba(255,216,77,.5);}
+.cz-tr.on b{color:#ffd84d;}
+.cz-tr:active{transform:scale(.97);}
+.cz-stop.live .cz-ticket{box-shadow:inset 0 0 0 2px #ffd84d,0 0 22px rgba(255,216,77,.35),0 8px 18px rgba(0,0,0,.35);}
+.cz-stop.live .cz-chip .ico{width:22px;height:22px;}
 .cz-foot{margin-top:18px;text-align:center;color:var(--text-3);font-size:.8rem;font-weight:700;}
 .czs-pay{display:flex;flex-direction:column;gap:3px;margin:10px 0 4px;}
 .czs-pay div{display:flex;justify-content:space-between;padding:4px 10px;border-radius:9px;background:var(--w05);font-weight:800;font-size:.86rem;font-variant-numeric:tabular-nums;}
@@ -480,7 +524,7 @@
   var el = Kit.el, app = document.getElementById('app');
   var HKEY = 'poker', LAST = 'poker_last';
   // One saved game per mode (the old page used these as sessionStorage keys)
-  var KEYS = { vp: 'poker_vp', he_cash: 'poker_he_cash', he_tourn: 'poker_he_tourn', om_cash: 'poker_om_cash', om_tourn: 'poker_om_tourn', circ: 'poker_circ' };
+  var KEYS = { vp: 'poker_vp', he_cash: 'poker_he_cash', he_tourn: 'poker_he_tourn', om_cash: 'poker_om_cash', om_tourn: 'poker_om_tourn', circ_he: 'poker_circ', circ_om: 'poker_circ_om', circ_mx: 'poker_circ_mx' };
 
   var RULES =
     '<p class="goal">Make the best five-card poker hand. Play <b>Video Poker</b> against the machine, or <b>Texas Hold\'em</b> and <b>Omaha</b> against computer players.</p>' +
@@ -510,24 +554,31 @@
     '<li><b>Cash game</b>: buy in with chips from your casino bank (shared with the other casino games) and leave whenever you like. Whatever you have goes back to the bank.</li>' +
     '<li><b>Tournament</b>: everyone starts with 1,500 chips. The blinds go up every few hands, and when you lose all your chips you\'re out. Last player standing wins.</li></ul>' +
     '<h3>Tournament Circuit</h3><ul>' +
-    '<li>Seven stops, from a $100 card room to the $10,000 World Championship Main Event. Pay the buy-in from your bank, or use a seat you won.</li>' +
-    '<li>You play one table; the rest of the field plays at others, and an empty seat at yours is filled from them. The blinds go up every few hands.</li>' +
+    '<li>Fifteen stops, from a $100 card room to the World Championship. Pick a road at the top: <b>Hold\'em</b>, <b>Omaha</b> or <b>Mixed</b> (Hold\'em and pot-limit Omaha by turns: the game changes each time the blinds go up). Each road keeps its own progress.</li>' +
+    '<li>Pay the buy-in from your bank, or use a seat you won. You play one table; the rest of the field plays at others, and an empty seat at yours is filled from them.</li>' +
     '<li>Roughly the top 15% are paid. Everyone in the money gets at least 1.5 times the buy-in, and first place gets the most. Finish in the money to open the next stop and win a seat there.</li>' +
-    '<li><b>Bounty</b> events pay you on the spot for every player you knock out. The Boardwalk Open is pot-limit Omaha.</li>' +
+    '<li><b>Bounty</b> events pay you on the spot for every player you knock out.</li>' +
     '<li>The players get better at every stop. Pros read your betting, play their position and tighten up near the money.</li>' +
-    '<li>No take-backs on the circuit. Go back to the home screen mid-event and your seat waits for you.</li></ul>' +
+    '<li>One event at a time on each road. No take-backs on the circuit.</li></ul>' +
+    '<h3>Online tables</h3><ul>' +
+    '<li>2 to 10 people, each on their own device, signed in with their PIN. Computer players can fill the empty seats.</li>' +
+    '<li>A tournament: everyone starts with 1,500 chips and the last player with chips wins the table. Take your turn whenever you like; the home screen shows when it\'s your move.</li>' +
+    '<li>Play as many online tables as you like. Online chips aren\'t money: your bank isn\'t touched.</li></ul>' +
+    '<h3>Games in progress</h3><ul>' +
+    '<li>You can keep one game of each kind going (a Hold\'em cash game, an Omaha tournament, video poker, an event on each circuit road...) and switch between them: they wait for you on the setup screen. End one from the menu.</li></ul>' +
     '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money. Video poker works the same way.</p>';
 
   Kit.init({
     id: 'poker', confirmNew: false,
-    onNew: function () { leaveCurrent(showSetup); },
+    onNew: function () { park(showSetup); },
     undo: function () { undo(); },
-    menu: [
+    menu: TurnNet.menu().concat([
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Poker: past sessions' }); } },
       { icon: 'users', label: 'Who\'s at the table', onClick: function () { tableInfo(); } },
-      { icon: 'coins', label: function () { return S && S.kind === 'vp' ? 'Cash out' : S && S.kind === 'table' && !S.tourn ? 'Leave the table' : bankNm() + ': ' + usd(Casino.balance()); }, onClick: function () { cashOutMenu(); } },
+      { icon: 'coins', label: function () { return S && S.kind === 'vp' ? 'Cash out' : S && S.kind === 'table' && !S.tourn ? 'Leave the table' : bankNm() + ': ' + usd(Casino.balance()); }, when: function () { return !NET && !(S && S.tourn); }, onClick: function () { cashOutMenu(); } },
+      { icon: 'logout', label: function () { return S && S.circ ? 'Give up my seat' : 'Quit this tournament'; }, when: function () { return !NET && !!(S && S.tourn); }, onClick: function () { leaveCurrent(function () { showSetup(); }); } },
       { icon: 'sync', label: function () { return Casino.mode() === 'mine' ? 'Refill the bank' : topUp(seatName()).menu; }, onClick: function () { refill(); } }
-    ],
+    ]),
     rules: RULES
   });
 
@@ -775,13 +826,30 @@
 
   // ── Persistence ────────────────────────────────────────────────────────────
   var S = null, token = 0, timer = null, undoStack = [];
-  function keyOf(st) { return st.kind === 'vp' ? KEYS.vp : st.circ ? KEYS.circ : KEYS[st.game + '_' + (st.tourn ? 'tourn' : 'cash')]; }
+  function keyOf(st) { return st.kind === 'vp' ? KEYS.vp : st.circ ? circKey(EV[st.circ.id].track) : KEYS[st.game + '_' + (st.tourn ? 'tourn' : 'cash')]; }
   function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
-  var SIM = false;   // test hook (__pk.sim): computer players only, nothing drawn or saved
+  var SIM = false, QUIET = false;   // QUIET: working out an online move (state only: nothing drawn, saved or heard)   // test hook (__pk.sim): computer players only, nothing drawn or saved
   function save() {
-    if (!S || SIM) return;
+    if (!S || SIM || QUIET || NET) return;
     try { localStorage.setItem(keyOf(S), JSON.stringify(S)); localStorage.setItem(LAST, keyOf(S)); } catch (e) {}
-    Kit.resume.set(resumeLabel(), { keys: [keyOf(S), LAST] });
+    resumeSync();
+  }
+  // Every game in progress, one of each kind (newest first): {key, st}
+  function going() {
+    var l = [];
+    Object.keys(KEYS).forEach(function (k) {
+      var st = load(KEYS[k]);
+      if (st && st.kind && (st.kind === 'vp' ? st.hands > 0 || st.phase === 'hold' : st.handNo > 0)) l.push({ key: KEYS[k], st: st });
+    });
+    var last = null; try { last = localStorage.getItem(LAST); } catch (e) {}
+    return l.sort(function (a, b) { return (b.key === last) - (a.key === last) || (b.st.started || 0) - (a.st.started || 0); });
+  }
+  // Keep playing on the home screen: the game you played last, and how many more are waiting
+  function resumeSync() {
+    var l = going();
+    if (!l.length) return Kit.resume.clear();
+    var lab = resumeLabel(l[0].st) + (l.length > 1 ? ' · ' + (l.length - 1) + ' more' : '');
+    Kit.resume.set(lab, { keys: l.map(function (x) { return x.key; }).concat([LAST]) });
   }
   // ── Whose money (casino.js): your bankroll; a player linked to their own profile plays from theirs; a frequent
   // player from their own bankroll on this account; anyone else, or a seat without a name, from $1,000 in play
@@ -820,18 +888,26 @@
   function seatName(st) { st = st || S; return !st ? 'You' : st.kind === 'vp' ? st.name : st.players && st.players[0] ? st.players[0].name : 'You'; }
   function drop(st) {
     try { localStorage.removeItem(keyOf(st)); if (localStorage.getItem(LAST) === keyOf(st)) localStorage.removeItem(LAST); } catch (e) {}
-    Kit.resume.clear();
+    resumeSync();
   }
-  function resumeLabel() {
-    if (S.kind === 'vp') return 'Video poker · ' + bankLc() + ' ' + usd(Casino.balance());
-    var g = S.game === 'om' ? 'Omaha' : 'Hold\'em';
-    if (S.circ) return EV[S.circ.id].venue + ' · ' + S.circ.left.toLocaleString() + ' left';
-    if (S.tourn) return g + ' tournament · ' + alive().length + ' left';
-    return g + ' cash · ' + usd(S.players[0].stack) + ' on the table';
+  function resumeLabel(st) {
+    st = st || S;
+    if (st.kind === 'vp') return 'Video poker · ' + st.hands + ' hand' + (st.hands === 1 ? '' : 's');
+    var g = st.game === 'om' ? 'Omaha' : 'Hold\'em';
+    if (st.circ) return EV[st.circ.id].venue + (EV[st.circ.id].track !== 'he' ? ' (' + TR[EV[st.circ.id].track].name + ')' : '') + ' · ' + st.circ.left.toLocaleString() + ' left';
+    if (st.tourn) return g + ' tournament · ' + st.players.filter(function (p) { return !p.out; }).length + ' left';
+    return g + ' cash · ' + usd(st.players[0].stack) + ' on the table';
+  }
+  // Off to another game: this one stays where it is (one of each kind; ending it is in the menu)
+  function park(then) {
+    if (NET) { TurnNet.away(); NET = null; NETQ = []; NETBUSY = false; clearTimeout(netT); netCloseWin(); S = null; R = {}; return then(); }
+    if (S && (S.kind === 'vp' ? !S.hands && S.phase !== 'hold' : !S.handNo)) drop(S);
+    else if (S) save();
+    stop(); S = null; venueOff(); then();
   }
   // Timed steps (computer moves, dealing) wait while the turn-your-phone cover is up, and carry on once it's turned
   var held = null;
-  function later(fn, ms) { if (SIM) ms = 0; var t = token; clearTimeout(timer); held = null; timer = setTimeout(function () { if (t !== token) return; if (Kit.orientOk && !Kit.orientOk()) held = fn; else fn(); }, ms); }
+  function later(fn, ms) { if (QUIET) return fn(); if (SIM) ms = 0; var t = token; clearTimeout(timer); held = null; timer = setTimeout(function () { if (t !== token) return; if (Kit.orientOk && !Kit.orientOk()) held = fn; else fn(); }, ms); }
   function stop() { token++; clearTimeout(timer); held = null; }
   document.addEventListener('kit:orient', function (e) { if (e.detail.ok && held) { var f = held; held = null; later(f, 500); } });
   // Phones: the Hold'em / Omaha table plays sideways, the video poker machine upright; the setup screen either way
@@ -853,21 +929,55 @@
         { id: 'circuit', icon: 'trophy', title: 'Tournament Circuit', desc: 'Buy in at a $100 card room and work your way to the World Championship.' },
         { id: 'he', icon: 'cards', title: 'Texas Hold\'em', desc: '2 cards each, 5 shared. Against computer players.' },
         { id: 'om', icon: 'cards', title: 'Omaha', desc: 'Pot-limit. 4 cards each, use exactly 2.' },
-        { id: 'vp', icon: 'coins', title: 'Video Poker', desc: 'Jacks or Better machine. Hold and draw.' }
+        { id: 'vp', icon: 'coins', title: 'Video Poker', desc: 'Jacks or Better machine. Hold and draw.' },
+        { id: 'net', icon: 'globe', title: 'Online table', desc: 'Friends and family, each on their own device. 2 to 10 players.' }
       ],
-      players: { range: function (m) { return m === 'vp' || m === 'circuit' ? [1, 1] : [2, 6]; }, count: 5, cpu: 'seats', label: 'At the table' },
+      players: { range: function (m) { return m === 'vp' || m === 'circuit' || m === 'net' ? [1, 1] : [2, 6]; }, count: 5, cpu: 'seats', label: 'At the table' },
       options: [
+        { id: 'ngame', label: 'Game', value: 'he', when: function (m) { return m === 'net'; }, choices: [['he', 'Hold\'em'], ['om', 'Omaha', 'Pot-limit Omaha: 4 cards each, use exactly 2.'], ['mx', 'Mixed', 'Hold\'em and Omaha by turns: the game changes when the blinds go up.']] },
+        { id: 'nspeed', label: 'Blinds go up', value: 'tourn', when: function (m) { return m === 'net'; }, choices: [['tourn', 'Every 10 hands'], ['turbo', 'Every 5 hands']] },
+        { id: 'nseats', label: 'Empty seats', value: '6', when: function (m) { return m === 'net'; }, help: 'Computer players fill the table up to this many seats. More people than that can still join, up to 10.', choices: [['0', 'People only'], ['6', 'Fill to 6'], ['9', 'Fill to 9']] },
         { id: 'fmt', label: 'Game', value: 'cash', when: function (m) { return m === 'he' || m === 'om'; }, choices: [['cash', 'Cash game', 'Buy in with money from your casino bank and leave whenever you like.'], ['tourn', 'Tournament', 'Everyone starts with 1,500 chips, the blinds go up every 10 hands, and the last player left wins.'], ['turbo', 'Turbo', 'A faster tournament: the blinds go up every 5 hands.']] },
-        { id: 'ai', label: 'Computer players', value: 'regular', when: function (m) { return m === 'he' || m === 'om'; }, choices: [['casual', 'Casual', 'Play loose, call too much and make mistakes.'], ['regular', 'Regular', 'Solid players who read the table now and then.'], ['sharp', 'Sharp', 'Pros: they read your likely hand, play their seat, bluff in balance and learn how you play.']] },
+        { id: 'ai', label: 'Computer players', value: 'regular', when: function (m) { return m === 'he' || m === 'om' || m === 'net'; }, choices: [['casual', 'Casual', 'Play loose, call too much and make mistakes.'], ['regular', 'Regular', 'Solid players who read the table now and then.'], ['sharp', 'Sharp', 'Pros: they read your likely hand, play their seat, bluff in balance and learn how you play.']] },
         { id: 'bet', label: 'Betting', value: 'nl', when: function (m) { return m === 'he'; }, choices: [['nl', 'No-limit', 'You can bet any amount, up to all your chips.'], ['fl', 'Fixed limit', 'Every bet and raise is one set size, with at most 4 bets a round.']] },
         { id: 'denom', label: 'Coin size', help: 'How much each coin is worth. You bet 1 to 5 coins a hand.', value: 1, when: function (m) { return m === 'vp'; }, choices: [[1, '$1'], [5, '$5'], [25, '$25']] },
         Coach.option({ on: 'A “best move” tag at your turn: which cards to hold, or whether to fold, call or raise. Tap it for the odds behind it.' })
       ],
       onStart: function (cfg) { begin(cfg); }
     });
+    goingStrip();
+  }
+  // Games in progress (one of each kind), right under the title: tap one to sit back down
+  function goingStrip() {
+    var l = going(), hero = app.querySelector('.setup-hero');
+    if (!l.length || !hero) return;
+    var box = el('div', { class: 'pgo' });
+    l.forEach(function (x, k) {
+      var st = x.st, ev = st.circ && EV[st.circ.id];
+      var ic = st.kind === 'vp' ? 'coins' : st.circ || st.tourn ? 'trophy' : 'cards';
+      var title = st.kind === 'vp' ? 'Video poker' : ev ? ev.venue : (st.game === 'om' ? 'Omaha' : st.limit ? 'Limit Hold\'em' : 'Hold\'em') + (st.tourn ? ' tournament' : ' cash game');
+      var sub = st.kind === 'vp' ? st.hands + ' hand' + (st.hands === 1 ? '' : 's') + ' · ' + usd(st.denom) + ' coins'
+        : ev ? TR[ev.track].name + ' circuit · ' + st.circ.left.toLocaleString() + ' left · ' + amt2(st.players[0].stack) + ' chips'
+        : st.tourn ? st.players.filter(function (p) { return !p.out; }).length + ' left · ' + (st.players[0].out ? 'you\'re out' : st.players[0].stack.toLocaleString() + ' chips')
+        : usd(st.players[0].stack) + ' on the table · hand ' + st.handNo;
+      var tone = ev ? [ev.felt[0], ev.felt[2]] : st.kind === 'vp' ? ['#7a1f2a', '#3b0d14'] : st.game === 'om' ? ['#3b2a7a', '#1c133e'] : st.tourn ? ['#155e75', '#09303c'] : ['#1f6b45', '#0d3b25'];
+      var b = el('button', { type: 'button', class: 'pgo-g', style: { '--fa': tone[0], '--fb': tone[1] }, onclick: function () {
+        Kit.sfx('tap'); S = load(x.key); if (!S) return showSetup();
+        if (S.circ) CZ = CZ || { name: seatName(S), coach: !!S.coach };
+        moneyFor(seatName(S)); Kit.gameStart(); resume();
+      } }, [
+        el('span', { class: 'ic', html: Kit.icon(ic) }),
+        el('span', { class: 'tx' }, [el('b', { text: title }), el('small', { text: sub })]),
+        el('span', { class: 'go', html: Kit.icon('play') })
+      ]);
+      b.style.animationDelay = (k * 0.05) + 's';
+      box.appendChild(b);
+    });
+    hero.parentNode.insertBefore(box, hero.nextSibling);
   }
   function begin(cfg) {
-    if (cfg.mode === 'circuit') { CZ = { name: (cfg.players[0] && cfg.players[0].name) || 'You', coach: cfg.options.coach === 'on' }; var cold = load(KEYS.circ); if (cold && cold.circ && cold.handNo > 0) { S = cold; S.coach = CZ.coach; moneyFor(seatName(S), true); resume(); return; } return circLobby(); }
+    if (cfg.mode === 'net') { TurnNet.open(); return; }
+    if (cfg.mode === 'circuit') { CZ = { name: (cfg.players[0] && cfg.players[0].name) || 'You', coach: cfg.options.coach === 'on' }; return circLobby(); }
     var probe = cfg.mode === 'vp' ? { kind: 'vp' } : { kind: 'table', game: cfg.mode, tourn: cfg.options.fmt !== 'cash' };
     var old = load(keyOf(probe));
     function fresh() {
@@ -1216,11 +1326,19 @@
   function put(i, n) { var H = S.hand, p = S.players[i]; n = Math.max(0, Math.min(n, p.stack)); p.stack -= n; H.bet[i] += n; H.total[i] += n; return n; }
   function nm(i) { return i === 0 ? 'You' : S.players[i].name; }
   function nmPoss(i) { return i === 0 ? 'Your' : S.players[i].name + '\'s'; }
+  // Mixed: Hold'em and pot-limit Omaha by turns, a level of each
+  function mixSet() {
+    if (!S.mix) return;
+    var om = S.level % 2 === 1;
+    if (om === !!S.om) return;
+    S.om = om; S.pl = om; S.game = om ? 'om' : 'he';
+    if (!SIM && !QUIET && S.handNo > 1) setTimeout(function () { if (S && S.mix) { Kit.callout(om ? 'Omaha round' : 'Hold\'em round'); Kit.sfx('whoosh'); } }, 250);
+  }
   function step0() { return S.tourn ? (S.bb >= 100 ? 25 : 5) : 1; }
   function roundTo(v) { var u = step0(); return Math.round(v / u) * u; }
 
   function startHand() {
-    stop();
+    if (!QUIET) stop();
     var n = N();
     if (!S.tourn) S.players.forEach(function (p, i) {
       if (i > 0 && p.stack <= 0) { p.stack = BUYIN; p.buyin += BUYIN; p.rebuys++; p.rebought = true; }
@@ -1228,13 +1346,14 @@
     if (S.circ) circSeats();
     if (!S.tourn && S.players[0].stack <= 0) { if (SIM) { S.players[0].stack = BUYIN; S.players[0].buyin += BUYIN; } else { S.hand = null; save(); renderTable(); return askRebuy(); } }
     var act = alive().filter(function (i) { return S.players[i].stack > 0; });
-    if (act.length < 2) return S.circ ? endEvent() : endTourney();
+    if (act.length < 2) return QUIET ? netOver() : S.circ ? endEvent() : endTourney();
     S.handNo++;
     if (S.circ) circBlinds();
     else if (S.tourn) {
       var lv = Math.min(LEVELS.length - 1, Math.floor((S.handNo - 1) / S.per));
-      if (lv !== S.level) { S.level = lv; setTimeout(function () { Kit.toast('Blinds up: ' + LEVELS[lv][0] + ' / ' + LEVELS[lv][1]); }, 300); }
+      if (lv !== S.level) { S.level = lv; if (!QUIET) setTimeout(function () { Kit.toast('Blinds up: ' + LEVELS[lv][0] + ' / ' + LEVELS[lv][1]); }, 300); }
       S.sb = LEVELS[lv][0]; S.bb = LEVELS[lv][1];
+      mixSet();
     }
     S.button = S.button == null ? act[Math.floor(Math.random() * act.length)] : nextIn(S.button, act);
     var H = S.hand = {
@@ -1274,13 +1393,14 @@
       if (H.actor < 0 && H.first != null) { H.actor = H.first; delete H.first; }
       if (roundDone()) return endStreet();
       if (H.actor < 0 || !needsAct(H.actor)) H.actor = nextToAct(H.actor < 0 ? H.button : H.actor);
+      if (QUIET) return;   // (online: whoever's turn it is moves next, from their own device)
       var pa = H.actor === 0 && !S.players[0].cpu ? preAction() : null;
       save(); renderTable();
       if (S.players[H.actor].cpu) later(cpuAct, thinkMs());
       else if (pa) later(function () { humanAct(pa); }, 420);
       else if (R.turn !== H.no + ':' + H.street + ':' + H.curBet) { R.turn = H.no + ':' + H.street + ':' + H.curBet; if (!SIM) { Kit.sfx('pop', 0.5); Kit.haptic('light'); } }
     } else if (H.phase === 'collect') endStreet();
-    else if (H.phase === 'runout') { save(); renderTable(); later(runout, 1100); }
+    else if (H.phase === 'runout') { if (QUIET) return runout(); save(); renderTable(); later(runout, 1100); }
     else {
       save(); renderTable();
       if (S.circ) { if (S.players[0].out || (S.circ.else === 0 && alive().length <= 1)) later(endEvent, 1800); }
@@ -1347,9 +1467,9 @@
       }
       H.curBet = to;
       H.say[i] = p.stack === 0 ? 'All in' : (wasBet ? 'Bet ' : 'Raise to ') + amt(to);
-      Kit.sfx('chip'); if (p.stack === 0) setTimeout(function () { Kit.sfx('chip'); }, 90);
+      Kit.sfx('chip'); if (p.stack === 0 && !QUIET) setTimeout(function () { Kit.sfx('chip'); }, 90);
     }
-    if (p.stack === 0 && !H.folded[i] && H.say[i] === 'All in') { S.st.allins++; if (i === 0) { Kit.haptic('heavy'); Kit.callout('All in!'); } }
+    if (p.stack === 0 && !H.folded[i] && H.say[i] === 'All in') { S.st.allins++; if (i === 0 && !QUIET) { Kit.haptic('heavy'); Kit.callout('All in!'); } }
     logAdd(i, H.say[i]);
     H.sayNew = i;
     H.acted[i] = true;
@@ -1379,6 +1499,7 @@
     if (H.log.length > 24) H.log.shift();
   }
   function humanAct(a) {
+    if (NET) return netHuman(a);
     var H = S.hand;
     if (!H || H.phase !== 'bet' || H.actor !== 0) return;
     undoStack.push({ s: JSON.stringify(S), no: H.no, street: H.street });
@@ -1392,8 +1513,9 @@
     var H = S.hand, t = token;
     H.phase = 'collect';
     var hasBets = H.bet.some(function (b) { return b > 0; });
-    (hasBets ? animateCollect() : Promise.resolve()).then(function () {
-      if (t !== token) return;
+    if (QUIET) return next();
+    (hasBets ? animateCollect() : Promise.resolve()).then(function () { if (t === token) next(); });
+    function next() {
       for (var i = 0; i < N(); i++) { H.pot += H.bet[i]; H.bet[i] = 0; H.acted[i] = false; H.canRaise[i] = true; if (H.say[i] !== 'Fold' && H.say[i] !== 'All in') H.say[i] = ''; }
       H.curBet = 0; H.minRaise = S.bb; H.raises = 0; H.sayNew = -1;
       var lv = live();
@@ -1410,7 +1532,7 @@
       dealStreet();
       H.phase = 'bet'; H.actor = nextToAct(H.button);
       step();
-    });
+    }
   }
   function dealStreet() {
     var H = S.hand;
@@ -1473,6 +1595,7 @@
     var busted = [];
     if (S.tourn) busted = eliminate(H);
     if (S.circ) circAfter(H, busted);
+    if (QUIET) return netAfter();
     undoStack = [];
     save(); renderTable();
     // Sound and fanfare
@@ -1662,17 +1785,43 @@
   // rise so the average stack is worth fewer big blinds as it shrinks (deep at the start, about 24 at the final
   // table, about 12 heads-up). Cash (finish in the money) at a stop to open the next. The players get better at
   // every stop (ai: their skill). Progress lives in poker_circuit (synced with the PIN like every saved game).
-  var CIRCUIT = [
-    { id: 'riverside', venue: 'Riverside Card Room', city: 'Tuesday nights, upstairs', style: 'Freezeout', game: 'he', buy: 100, field: 24, stack: 1500, m0: 50, per: 6, ft: 10, ai: 0.15, felt: ['#1f6b45', '#155234', '#0d3b25'], wood: ['#8a5530', '#5a3418'], chip: '#2f7d4f' },
-    { id: 'horseshoe', venue: 'Lucky Horseshoe', city: 'Downtown', style: 'Turbo', game: 'he', buy: 250, field: 45, stack: 1500, m0: 30, per: 4, ft: 12, ai: 0.3, felt: ['#7a1f2a', '#56141d', '#3b0d14'], wood: ['#5e3418', '#3a1f0e'], chip: '#b3122b' },
-    { id: 'gulf', venue: 'Gulf Coast Classic', city: 'Biloxi', style: 'Deepstack', game: 'he', buy: 500, field: 90, stack: 5000, m0: 100, per: 7, ft: 18, ai: 0.45, felt: ['#155e75', '#0e4556', '#09303c'], wood: ['#9a6a3a', '#5e3c1c'], chip: '#1d6fa3' },
-    { id: 'reno', venue: 'Silver Spur', city: 'Reno', style: 'Bounty', game: 'he', buy: 1000, field: 140, stack: 3000, m0: 60, per: 6, ft: 20, ai: 0.55, bounty: 0.25, felt: ['#6b4a1f', '#4c3414', '#33220c'], wood: ['#3c2a1a', '#21160c'], chip: '#8a6a2a' },
-    { id: 'boardwalk', venue: 'Boardwalk Open', city: 'Atlantic City', style: 'Pot-limit Omaha', game: 'om', buy: 1500, field: 160, stack: 5000, m0: 70, per: 6, ft: 20, ai: 0.65, felt: ['#3b2a7a', '#2a1d5a', '#1c133e'], wood: ['#6b4126', '#412614'], chip: '#5b3fc0' },
-    { id: 'riviera', venue: 'Riviera High Roller', city: 'Monte Carlo', style: 'High Roller', game: 'he', buy: 5000, field: 54, stack: 20000, m0: 80, per: 7, ft: 14, ai: 0.8, felt: ['#0f3d2e', '#0a2c21', '#061e16'], wood: ['#2c1c10', '#170e07'], chip: '#0e5a43' },
-    { id: 'main', venue: 'World Championship', city: 'Las Vegas', style: 'Main Event', game: 'he', buy: 10000, field: 6812, stack: 60000, m0: 120, per: 7, ft: 36, ai: 0.95, felt: ['#7a0f1c', '#560a14', '#38060d'], wood: ['#24242a', '#0e0e12'], chip: '#1a1a1f', gold: true }
+  // Fifteen stops, each played as Hold'em, Omaha or Mixed (a track: its own progress and its own event in progress).
+  // ai: how good the field is (0..1); m0: big blinds in the average stack at the start; per: hands a level; ft: hands
+  // until the final table; bounty: the share of each buy-in that's a bounty on that player.
+  var VENUES = [
+    { id: 'riverside', venue: 'Riverside Card Room', city: 'Tuesday nights, upstairs', style: 'Freezeout', buy: 100, field: 24, stack: 1500, m0: 50, per: 6, ft: 10, ai: 0.12, felt: ['#1f6b45', '#155234', '#0d3b25'], wood: ['#8a5530', '#5a3418'], chip: '#2f7d4f' },
+    { id: 'horseshoe', venue: 'Lucky Horseshoe', city: 'Downtown', style: 'Turbo', buy: 150, field: 36, stack: 1500, m0: 30, per: 4, ft: 11, ai: 0.2, felt: ['#7a1f2a', '#56141d', '#3b0d14'], wood: ['#5e3418', '#3a1f0e'], chip: '#b3122b' },
+    { id: 'lodge', venue: 'The Lodge', city: 'Austin', style: 'Deepstack', buy: 250, field: 60, stack: 5000, m0: 100, per: 7, ft: 14, ai: 0.27, felt: ['#3d5a2a', '#2c431e', '#1d2e13'], wood: ['#7a4a26', '#4a2a12'], chip: '#4f7a2f' },
+    { id: 'gulf', venue: 'Gulf Coast Classic', city: 'Biloxi', style: 'Freezeout', buy: 400, field: 90, stack: 3000, m0: 60, per: 6, ft: 16, ai: 0.34, felt: ['#155e75', '#0e4556', '#09303c'], wood: ['#9a6a3a', '#5e3c1c'], chip: '#1d6fa3' },
+    { id: 'reno', venue: 'Silver Spur', city: 'Reno', style: 'Bounty', buy: 600, field: 120, stack: 3000, m0: 60, per: 6, ft: 18, ai: 0.41, bounty: 0.25, felt: ['#6b4a1f', '#4c3414', '#33220c'], wood: ['#3c2a1a', '#21160c'], chip: '#8a6a2a' },
+    { id: 'deadwood', venue: 'Gold Rush Open', city: 'Deadwood', style: 'Turbo', buy: 800, field: 110, stack: 2500, m0: 35, per: 4, ft: 16, ai: 0.47, felt: ['#5a3a1a', '#432a12', '#2c1b0b'], wood: ['#2a1a0e', '#150c06'], chip: '#c08a1e' },
+    { id: 'boardwalk', venue: 'Boardwalk Open', city: 'Atlantic City', style: 'Deepstack', buy: 1000, field: 220, stack: 5000, m0: 90, per: 7, ft: 22, ai: 0.53, felt: ['#3b2a7a', '#2a1d5a', '#1c133e'], wood: ['#6b4126', '#412614'], chip: '#5b3fc0' },
+    { id: 'coral', venue: 'Coral Bay Series', city: 'Florida', style: 'Freezeout', buy: 1500, field: 300, stack: 5000, m0: 70, per: 6, ft: 22, ai: 0.59, felt: ['#0f6a63', '#0a4f4a', '#063632'], wood: ['#a07850', '#64482c'], chip: '#e2725b' },
+    { id: 'tahoe', venue: 'Tahoe Summit', city: 'Lake Tahoe', style: 'Bounty', buy: 2000, field: 180, stack: 5000, m0: 70, per: 6, ft: 20, ai: 0.65, bounty: 0.3, felt: ['#24485e', '#193446', '#10232f'], wood: ['#4a3626', '#2a1d13'], chip: '#3f7fa8' },
+    { id: 'bayou', venue: 'Bayou Championship', city: 'New Orleans', style: 'Deepstack', buy: 2500, field: 350, stack: 10000, m0: 100, per: 7, ft: 24, ai: 0.7, felt: ['#4a1f4f', '#36163a', '#240e27'], wood: ['#5a3a22', '#331f10'], chip: '#7c3a8a' },
+    { id: 'paris', venue: 'Grand Prix de Paris', city: 'Paris', style: 'Freezeout', buy: 3500, field: 260, stack: 10000, m0: 80, per: 7, ft: 22, ai: 0.75, felt: ['#1f3c6b', '#162c50', '#0e1d36'], wood: ['#3a2416', '#1f130a'], chip: '#2b4d8f' },
+    { id: 'riviera', venue: 'Riviera High Roller', city: 'Monte Carlo', style: 'High Roller', buy: 5000, field: 54, stack: 20000, m0: 80, per: 7, ft: 14, ai: 0.8, felt: ['#0f3d2e', '#0a2c21', '#061e16'], wood: ['#2c1c10', '#170e07'], chip: '#0e5a43' },
+    { id: 'macau', venue: 'Dragon Cup', city: 'Macau', style: 'Deepstack', buy: 7500, field: 140, stack: 30000, m0: 100, per: 7, ft: 18, ai: 0.85, felt: ['#6b1a12', '#4f130d', '#350c08'], wood: ['#2a1608', '#140a03'], chip: '#c8102e' },
+    { id: 'invite', venue: 'Champions Invitational', city: 'Las Vegas', style: 'High Roller', buy: 25000, field: 70, stack: 50000, m0: 90, per: 7, ft: 16, ai: 0.9, felt: ['#22262e', '#181b21', '#0f1115'], wood: ['#3a2a1a', '#1d140b'], chip: '#5a5f6b' },
+    { id: 'main', venue: 'World Championship', city: 'Las Vegas', style: 'Main Event', buy: 10000, field: 6812, stack: 60000, m0: 120, per: 7, ft: 36, ai: 0.96, felt: ['#7a0f1c', '#560a14', '#38060d'], wood: ['#24242a', '#0e0e12'], chip: '#1a1a1f', gold: true }
   ];
-  var EV = {}; CIRCUIT.forEach(function (e, k) { e.no = k; EV[e.id] = e; });
+  var TRACKS = [
+    { id: 'he', name: 'Hold\'em', game: 'he', final: {} },
+    { id: 'om', name: 'Omaha', game: 'om', final: { style: 'Omaha Championship', field: 1180, ft: 30 } },
+    { id: 'mx', name: 'Mixed', game: 'he', mix: true, final: { style: 'Players\' Championship', buy: 50000, field: 112, stack: 250000, m0: 110, ft: 16 } }
+  ];
+  var TR = {}, EV = {}, CIRC = {};
+  TRACKS.forEach(function (t) {
+    TR[t.id] = t;
+    CIRC[t.id] = VENUES.map(function (v, k) {
+      var e = Object.assign({}, v, k === VENUES.length - 1 ? t.final : {}, { id: t.id === 'he' ? v.id : v.id + '_' + t.id, track: t.id, game: t.game, mix: !!t.mix, no: k });
+      EV[e.id] = e; return e;
+    });
+  });
+  function ladder(ev) { return CIRC[ev.track]; }
+  function gameWord(ev) { return ev.mix ? 'Mixed: Hold\'em and Omaha by turns' : ev.game === 'om' ? 'Pot-limit Omaha' : 'No-limit Hold\'em'; }
   var CKEY = 'poker_circuit', CZ = null;
+  function circKey(track) { return KEYS['circ_' + track]; }
   var BBS = [20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 250, 300, 400, 500, 600, 800, 1000, 1200, 1500, 2000, 2500, 3000, 4000, 5000, 6000, 8000, 10000, 12000, 15000,
     20000, 25000, 30000, 40000, 50000, 60000, 80000, 100000, 120000, 150000, 200000, 250000, 300000, 400000, 500000, 600000, 800000, 1000000, 1200000, 1500000, 2000000];
   // places paid and what each pays: everyone in the money gets at least 1.5 buy-ins, the rest goes more to the top
@@ -1683,8 +1832,15 @@
     return w.map(function (x) { var v = floor + rest * x / sum, u = v >= 1e6 ? 1000 : v >= 1e4 ? 100 : v >= 1000 ? 10 : 1; return Math.round(v / u) * u; });
   }
   function kUsd(n) { return n >= 1000 ? '$' + (n / 1000) + 'K' : '$' + n; }
-  function circLoad() { var c = load(CKEY) || {}; c.open = c.open || 0; c.best = c.best || {}; c.cash = c.cash || {}; c.wins = c.wins || {}; c.net = c.net || 0; c.played = c.played || 0; c.tix = c.tix || {}; return c; }
-  function circSave(c) { try { localStorage.setItem(CKEY, JSON.stringify(c)); } catch (e) {} }
+  // poker_circuit: {track: the one picked last, he|om|mx: {open (stops open), best, cash, wins, net, played, tix (seats won)}}
+  function circAll() { var a = load(CKEY) || {}; if (typeof a.open === 'number') a = { he: a }; if (!TR[a.track]) a.track = 'he'; return a; }
+  function circLoad(track) {
+    var a = circAll(), c = a[track || a.track] || {};
+    c.open = c.open || 0; c.best = c.best || {}; c.cash = c.cash || {}; c.wins = c.wins || {}; c.net = c.net || 0; c.played = c.played || 0; c.tix = c.tix || {};
+    return c;
+  }
+  function circSave(c, track) { var a = circAll(); if (track) a[track] = c; else a[a.track] = c; try { localStorage.setItem(CKEY, JSON.stringify(a)); } catch (e) {} }
+  function circTrack(t) { var a = circAll(); if (t && TR[t] && a.track !== t) { a.track = t; try { localStorage.setItem(CKEY, JSON.stringify(a)); } catch (e) {} } return a.track; }
   // the table's felt and rail in the venue's colours (understated: colour and material only)
   var VENUE_VARS = ['--felt-a', '--felt-b', '--felt-c', '--wood-a', '--wood-b'], venueWas = null;
   function venueOn(ev) {
@@ -1703,21 +1859,33 @@
     var C = S.circ, ev = EV[C.id];
     if (C.left <= C.paid) return 'In the money';
     if (C.left - C.paid <= 3) return 'The bubble';
-    if (ev.id !== 'main') return ev.style;
+    if (!ev.gold || ev.field < 500) return ev.style;
     var p = (ev.field - C.left) / (ev.field - C.paid);
     return p < 0.45 ? 'Day 1' : p < 0.8 ? 'Day 2' : 'Day 3';
   }
-  // the lobby: every stop on the road, the next one lit
-  function circLobby() {
+  // the lobby: pick Hold'em, Omaha or Mixed at the top; below, every stop on that road, the next one lit
+  function circLobby(track) {
     stop(); S = null; venueOff(); orient(null); moneyHome();
     if (!CZ) CZ = { name: localStorage.getItem('my_name') || 'You', coach: false };
-    moneyFor(CZ.name, true);
-    app.className = 'stage czapp'; app.innerHTML = ''; try { window.scrollTo(0, 0); app.scrollTop = 0; } catch (e) {}
-    var pg = circLoad(), titles = Object.keys(pg.wins).reduce(function (a, k) { return a + pg.wins[k]; }, 0), cashes = Object.keys(pg.cash).reduce(function (a, k) { return a + pg.cash[k]; }, 0);
+    moneyFor(CZ.name, !CZ.told); CZ.told = true;
+    track = circTrack(track);
+    app.className = 'stage czapp'; app.innerHTML = '';
+    var pg = circLoad(track), road = CIRC[track], live = load(circKey(track)), liveEv = live && live.circ && live.handNo > 0 ? EV[live.circ.id] : null;
+    var titles = Object.keys(pg.wins).reduce(function (a, k) { return a + pg.wins[k]; }, 0), cashes = Object.keys(pg.cash).reduce(function (a, k) { return a + pg.cash[k]; }, 0);
     var wrap = el('div', { class: 'cz' });
+    var tabs = el('div', { class: 'cz-tracks', role: 'tablist' });
+    TRACKS.forEach(function (t) {
+      var p = circLoad(t.id), on = t.id === track, going = load(circKey(t.id)), g = going && going.circ && going.handNo > 0;
+      tabs.appendChild(el('button', { type: 'button', role: 'tab', 'aria-selected': on ? 'true' : 'false', class: 'cz-tr' + (on ? ' on' : ''), onclick: function () { if (on) return; Kit.sfx('tap'); circLobby(t.id); } }, [
+        el('b', { text: t.name }),
+        el('span', { class: 'bar' }, [el('i', { style: { width: Math.round(Math.min(VENUES.length, p.open + (p.cash[CIRC[t.id][VENUES.length - 1].id] ? 1 : 0)) / VENUES.length * 100) + '%' } })]),
+        el('small', { text: g ? 'Playing now' : Object.keys(p.wins).length ? p.open + 1 + ' of ' + VENUES.length + ' · ' + Object.keys(p.wins).length + ' won' : 'Stop ' + (p.open + 1) + ' of ' + VENUES.length })
+      ]));
+    });
     wrap.appendChild(el('div', { class: 'cz-head' }, [
       el('h1', { text: 'The Circuit' }),
-      el('p', { text: 'From a $100 card room to the World Championship. Finish in the money to win a seat at the next stop.' }),
+      el('p', { text: (track === 'mx' ? 'Hold\'em and Omaha by turns' : track === 'om' ? 'Pot-limit Omaha' : 'No-limit Hold\'em') + ', from a $100 card room to the ' + road[VENUES.length - 1].style + ' in Las Vegas. Finish in the money to win a seat at the next stop.' }),
+      tabs,
       el('div', { class: 'cz-stats' }, [
         el('span', { html: Kit.icon('coins') + bankNm() + ' <b>' + usd(Casino.balance()) + '</b>' }),
         el('span', { html: 'Cashes <b>' + cashes + '</b>' }),
@@ -1725,34 +1893,46 @@
         el('span', { html: 'Winnings <b>' + signed(pg.net) + '</b>' })
       ])
     ]));
-    var path = el('div', { class: 'cz-path' });
-    path.style.setProperty('--done', Math.round(Math.min(pg.open, CIRCUIT.length - 1) / (CIRCUIT.length - 1) * 100) + '%');
-    CIRCUIT.forEach(function (ev, k) {
-      var locked = k > pg.open, best = pg.best[ev.id], won = pg.wins[ev.id], cashed = pg.cash[ev.id], tix = !locked && pg.tix[ev.id];
-      var pays = paysFor(ev), cls = 'cz-stop' + (locked ? ' locked' : won ? ' won' : cashed ? ' cashed' : '') + (k === pg.open && !cashed ? ' next' : '') + (ev.gold ? ' gold' : '');
+    var path = el('div', { class: 'cz-path' }), nextEl = null;
+    path.style.setProperty('--done', Math.round(Math.min(pg.open, road.length - 1) / (road.length - 1) * 100) + '%');
+    road.forEach(function (ev, k) {
+      var locked = k > pg.open, best = pg.best[ev.id], won = pg.wins[ev.id], cashed = pg.cash[ev.id], tix = !locked && pg.tix[ev.id], here = liveEv === ev;
+      var pays = paysFor(ev), cls = 'cz-stop' + (locked ? ' locked' : won ? ' won' : cashed ? ' cashed' : '') + ((liveEv ? here : k === pg.open && !cashed) ? ' next' : '') + (here ? ' live' : '') + (ev.gold ? ' gold' : '');
       var pips = el('span', { class: 'pips', title: 'How good the players are' });
       for (var q = 0; q < 5; q++) pips.appendChild(el('i', { class: q < Math.round(ev.ai * 5 + 0.2) ? 'on' : '' }));
-      var b = el('button', { type: 'button', class: cls, style: { animationDelay: (k * 0.05) + 's' } }, [
-        el('span', { class: 'cz-node', html: locked ? Kit.icon('lock') : won ? Kit.icon('trophy') : cashed ? Kit.icon('check') : String(k + 1) }),
+      var b = el('button', { type: 'button', class: cls, style: { animationDelay: Math.min(k, 8) * 0.05 + 's' } }, [
+        el('span', { class: 'cz-node', html: locked ? Kit.icon('lock') : here ? Kit.icon('play') : won ? Kit.icon('trophy') : cashed ? Kit.icon('check') : String(k + 1) }),
         el('span', { class: 'cz-ticket', style: { '--fa': ev.felt[0], '--fb': ev.felt[1], '--fc': ev.felt[2] } }, [
           el('span', { class: 'cz-venue', text: ev.venue }),
-          el('span', { class: 'cz-chip' + (tix ? ' tix' : ''), style: { '--cc': ev.chip }, html: tix ? '<span>SEAT<small>WON</small></span>' : '<span>' + kUsd(ev.buy) + '<small>BUY-IN</small></span>' }),
+          el('span', { class: 'cz-chip' + (tix && !here ? ' tix' : ''), style: { '--cc': ev.chip }, html: here ? '<span>' + Kit.icon('play') + '<small>PLAYING</small></span>' : tix ? '<span>SEAT<small>WON</small></span>' : '<span>' + kUsd(ev.buy) + '<small>BUY-IN</small></span>' }),
           el('span', { class: 'cz-sub', text: ev.city + ' · ' + ev.style }),
           el('span', { class: 'cz-meta' }, [el('span', { text: ev.field.toLocaleString() + ' players' }), el('span', { text: '1st ' + usd(pays[0]) }), pips]),
-          locked ? el('span', { class: 'cz-best lock', text: 'Cash at ' + CIRCUIT[k - 1].venue + ' to open' })
+          here ? el('span', { class: 'cz-best', text: 'In progress · ' + live.circ.left.toLocaleString() + ' left · you have ' + amt2(live.players[0].stack) })
+            : locked ? el('span', { class: 'cz-best lock', text: 'Cash at ' + road[k - 1].venue + ' to open' })
             : best ? el('span', { class: 'cz-best', text: 'Best: ' + ordinal(best.place) + (best.prize ? ' · won ' + usd(best.prize) : '') + (won > 1 ? ' · ' + won + ' titles' : '') }) : null
         ])
       ]);
-      b.addEventListener('click', function () { Kit.sfx('tap'); if (locked) { Kit.toast('Cash at ' + CIRCUIT[k - 1].venue + ' to open this stop'); return; } circSheet(ev); });
+      if (/ next/.test(cls)) nextEl = b;
+      b.addEventListener('click', function () {
+        Kit.sfx('tap');
+        if (here) { S = live; S.coach = CZ.coach; moneyFor(seatName(S)); resume(); return; }
+        if (locked) { Kit.toast('Cash at ' + road[k - 1].venue + ' to open this stop'); return; }
+        circSheet(ev);
+      });
       path.appendChild(b);
     });
     wrap.appendChild(path);
     wrap.appendChild(el('p', { class: 'cz-foot', text: 'Buy-ins come from ' + yourBank() + '. Payouts go back to it.' }));
     app.appendChild(wrap);
+    // the next stop in view (the top of the road stays put while it's near the start)
+    try { window.scrollTo(0, 0); app.scrollTop = 0; } catch (e) {}
+    if (nextEl && road.indexOf(liveEv) !== 0 && pg.open > 1) setTimeout(function () { try { nextEl.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} }, 350);
   }
+  function amt2(n) { return n >= 1e6 ? (Math.round(n / 1e5) / 10) + 'M' : n >= 1e4 ? Math.round(n / 1000) + 'K' : n.toLocaleString(); }
   function circSheet(ev) {
-    var pays = paysFor(ev), bank = Casino.balance(), tix = circLoad().tix[ev.id], can = tix || bank >= ev.buy, box = el('div');
-    box.appendChild(el('p', { class: 'muted', text: ev.city + ' · ' + ev.style + (ev.game === 'om' ? ' (four cards each; use exactly two)' : '') + (ev.bounty ? ' · every player you knock out pays you ' + usd(ev.buy * ev.bounty) + ' on the spot' : '') + '.' }));
+    var pays = paysFor(ev), bank = Casino.balance(), tix = circLoad(ev.track).tix[ev.id], can = tix || bank >= ev.buy, box = el('div');
+    var live = load(circKey(ev.track)), liveEv = live && live.circ && live.handNo > 0 ? EV[live.circ.id] : null;
+    box.appendChild(el('p', { class: 'muted', text: ev.city + ' · ' + ev.style + ' · ' + gameWord(ev) + (ev.game === 'om' && !ev.mix ? ' (four cards each; use exactly two)' : '') + (ev.bounty ? ' · every player you knock out pays you ' + usd(ev.buy * ev.bounty) + ' on the spot' : '') + '.' }));
     box.appendChild(el('div', { class: 'czs-facts' }, [
       el('div', null, [el('small', { text: 'Players' }), el('b', { text: ev.field.toLocaleString() })]),
       el('div', null, [el('small', { text: 'Starting chips' }), el('b', { text: ev.stack.toLocaleString() })]),
@@ -1765,7 +1945,11 @@
     box.appendChild(el('p', { class: 'muted', style: { 'margin-top': '10px' }, text: pays.length.toLocaleString() + ' places paid · prize pool ' + usd(pays.reduce(function (a, b) { return a + b; }, 0)) }));
     box.appendChild(pl);
     var acts = [];
-    if (tix) acts.push({ label: 'Take your seat · won at ' + CIRCUIT[ev.no - 1].venue, primary: true, onClick: function () { Kit.sfx('chip'); newEvent(ev, true); } });
+    if (liveEv && liveEv !== ev) {
+      // one event at a time on each road
+      box.appendChild(el('p', { class: 'muted', style: { color: 'var(--yellow)', 'margin-top': '8px' }, text: 'You\'re still playing ' + liveEv.venue + ' (' + live.circ.left.toLocaleString() + ' left). Finish it, or give up that seat, before you play here.' }));
+      acts.push({ label: 'Back to ' + liveEv.venue, primary: true, onClick: function () { S = live; S.coach = CZ.coach; moneyFor(seatName(S)); resume(); } });
+    } else if (tix) acts.push({ label: 'Take your seat · won at ' + ladder(ev)[ev.no - 1].venue, primary: true, onClick: function () { Kit.sfx('chip'); newEvent(ev, true); } });
     else if (can) acts.push({ label: 'Buy in · ' + usd(ev.buy), primary: true, onClick: function () { Kit.sfx('chip'); newEvent(ev); } });
     else {
       box.appendChild(el('p', { class: 'muted', style: { color: 'var(--red)', 'margin-top': '8px' }, text: 'You need ' + usd(ev.buy) + '. ' + bankNm() + ' has ' + usd(bank) + '.' }));
@@ -1781,13 +1965,13 @@
   }
   function newEvent(ev, seat) {
     moneyFor(CZ.name, true);
-    var pg = circLoad();
+    var pg = circLoad(ev.track);
     if (seat && pg.tix[ev.id]) delete pg.tix[ev.id];
     else { seat = false; if (Casino.balance() < ev.buy) return circSheet(ev); Casino.bet(ev.buy); }
     var pays = paysFor(ev), names = Kit.cpuNames(40, [CZ.name]);
-    pg.played++; circSave(pg);
+    pg.played++; circSave(pg, ev.track);
     S = {
-      kind: 'table', game: ev.game, om: ev.game === 'om', limit: false, pl: ev.game === 'om', tourn: true, per: ev.per, started: Date.now(), handNo: 0, level: -1, coach: CZ.coach,
+      kind: 'table', game: ev.game, om: ev.game === 'om', limit: false, pl: ev.game === 'om', mix: ev.mix, tourn: true, per: ev.per, started: Date.now(), handNo: 0, level: -1, coach: CZ.coach,
       sb: 0, bb: 0, button: null, hand: null,
       players: [{ name: CZ.name, cpu: false, stack: ev.stack, buyin: ev.stack, out: false, place: 0, rebuys: 0 }].concat(names.slice(0, 5).map(function (nm) { return cpuSeat(nm, ev, ev.stack); })),
       circ: { id: ev.id, seat: !!seat, field: ev.field, left: ev.field, else: ev.field - 6, e0: ev.field - 6, paid: pays.length, pays: pays, chips: ev.field * ev.stack, names: names.slice(5), h: 0, kos: 0, bounty: 0 },
@@ -1821,6 +2005,7 @@
     bb = Math.max(bb, S.bb || 0, BBS[0]);
     var up = S.bb && bb > S.bb;
     S.level++; S.bb = bb; S.sb = bb / 2;
+    mixSet();
     if (up && !SIM) setTimeout(function () { Kit.toast('Blinds up: ' + chipsTxt(S.sb) + ' / ' + chipsTxt(S.bb)); }, 300);
   }
   // your rank in the whole field: exact at the final table, an estimate before it
@@ -1869,14 +2054,14 @@
     var st = S, C = st.circ, ev = EV[C.id], me = st.players[0], place = me.out ? me.place : 1;
     var prize = place <= C.paid ? C.pays[place - 1] : 0;
     if (prize) Casino.win(prize);
-    var pg = circLoad(), b = pg.best[ev.id];
+    var pg = circLoad(ev.track), b = pg.best[ev.id];
     if (!b || place < b.place) pg.best[ev.id] = { place: place, prize: prize, field: ev.field };
-    var nx = CIRCUIT[ev.no + 1], seatWon = prize && nx && !pg.tix[nx.id] ? nx : null;
+    var nx = ladder(ev)[ev.no + 1], seatWon = prize && nx && !pg.tix[nx.id] ? nx : null;
     if (prize) { pg.cash[ev.id] = (pg.cash[ev.id] || 0) + 1; if (nx && pg.open < ev.no + 1) pg.open = ev.no + 1; }
     if (seatWon) pg.tix[nx.id] = 1;
     if (place === 1) pg.wins[ev.id] = (pg.wins[ev.id] || 0) + 1;
     pg.net += prize + C.bounty - (C.seat ? 0 : ev.buy);
-    circSave(pg);
+    circSave(pg, ev.track);
     var hl = [];
     hl.push((place === 1 ? 'Won' : 'Finished ' + ordinal(place) + ' of ' + ev.field.toLocaleString()) + (prize ? ' for ' + usd(prize) : ''));
     if (C.kos) hl.push('Knocked out ' + C.kos + ' player' + (C.kos === 1 ? '' : 's') + (C.bounty ? ' for ' + usd(C.bounty) + ' in bounties' : ''));
@@ -1922,7 +2107,7 @@
     var pot = potAll(), toCall = o.toCall, bb = S.bb, R = Math.random(), stackAll = o.all, bbs = stackAll / bb;
     var pre = H.street === 0;
     // chances to win: against ranges for a skilled player, against any two cards for a beginner
-    var key = H.street + ':' + nOpp + ':' + others.map(function (j) { return Math.round(H.rng[j] * 20) + '.' + Math.round(H.ag[j]); }).join(','), cache = H.eqc[i] || (H.eqc[i] = {});
+    var key = H.street + ':' + nOpp + ':' + others.map(function (j) { return Math.round(H.rng[j] * 20) + '.' + Math.round(H.ag[j]); }).join(','), eqc = H.eqc || (H.eqc = {}), cache = eqc[i] || (eqc[i] = {});
     if (cache[key] == null) {
       var its = Math.round((S.om ? 90 : 200) + sk * (S.om ? 90 : 260));
       cache[key] = sk >= 0.3 ? equityR(H.hole[i], H.board, others.map(function (j) { var r = H.rng[j]; return { rng: 1 - sk * (1 - r), ag: sk * H.ag[j] }; }), S.om, its) : equity(H.hole[i], H.board, nOpp, S.om, its);
@@ -2020,6 +2205,7 @@
     if (!S) return Kit.toast('Nothing to undo');
     if (S.kind === 'vp') return Kit.toast('Video poker hands can\'t be taken back');
     if (S.circ) return Kit.toast('No take-backs on the circuit');
+    if (NET) return Kit.toast('No take-backs online');
     var u = undoStack[undoStack.length - 1];
     if (!u) return Kit.toast('Nothing to undo');
     if (!S.hand || u.no !== S.hand.no || u.street !== S.hand.street || S.hand.phase !== 'bet') { undoStack = []; return Kit.toast('Can\'t undo once new cards are out'); }
@@ -2033,8 +2219,8 @@
     var box = el('div', { class: 'tlist' });
     S.players.forEach(function (p, i) {
       box.appendChild(el('div', { class: 'row' }, [
-        el('span', { class: 'avatar', style: { '--c': Kit.color(i) }, html: p.cpu ? Kit.icon('bot') : Kit.esc(p.name.charAt(0).toUpperCase()) }),
-        el('span', { class: 'grow' }, [el('b', { text: i === 0 && p.name !== 'You' ? p.name + ' (you)' : p.name }), el('small', { text: p.out ? 'Out · ' + ordinal(p.place) : p.cpu ? STYLES[p.style].label : 'Your seat' })]),
+        el('span', { class: 'avatar', style: { '--c': seatColor(i) }, html: p.cpu ? Kit.icon('bot') : Kit.esc(p.name.charAt(0).toUpperCase()) }),
+        el('span', { class: 'grow' }, [el('b', { text: i === 0 && p.name !== 'You' ? p.name + ' (you)' : p.name }), el('small', { text: p.out ? 'Out · ' + ordinal(p.place) : i === 0 ? 'Your seat' : p.cpu ? (STYLES[p.style] || STYLES.tag).label : 'Playing online' })]),
         el('span', { class: 's', text: S.tourn ? p.stack.toLocaleString() : signed(p.stack - p.buyin) })
       ]));
     });
@@ -2043,17 +2229,21 @@
   }
 
   // ── Rendering the table ────────────────────────────────────────────────────
-  var POS = { b: [50, 94], lb: [14, 71], lt: [14, 29], t: [50, 8.5], rt: [86, 29], rb: [86, 71], l: [13, 47], r: [87, 47] };
-  var LAY = { 2: ['b', 't'], 3: ['b', 'lt', 'rt'], 4: ['b', 'l', 't', 'r'], 5: ['b', 'lb', 'lt', 'rt', 'rb'], 6: ['b', 'lb', 'lt', 't', 'rt', 'rb'] };
+  var POS = { b: [50, 94], lb: [14, 71], lt: [14, 29], t: [50, 8.5], rt: [86, 29], rb: [86, 71], l: [13, 47], r: [87, 47], tl: [31, 8.5], tr: [69, 8.5], bl: [27, 90], br: [73, 90] };
+  var LAY = { 2: ['b', 't'], 3: ['b', 'lt', 'rt'], 4: ['b', 'l', 't', 'r'], 5: ['b', 'lb', 'lt', 'rt', 'rb'], 6: ['b', 'lb', 'lt', 't', 'rt', 'rb'],
+    7: ['b', 'lb', 'lt', 'tl', 'tr', 'rt', 'rb'], 8: ['b', 'lb', 'l', 'lt', 't', 'rt', 'r', 'rb'], 9: ['b', 'lb', 'l', 'lt', 'tl', 'tr', 'rt', 'r', 'rb'],
+    10: ['b', 'bl', 'lb', 'lt', 'tl', 't', 'tr', 'rt', 'rb', 'br'] };   // (7 to 10: online tables)
   var CEN = [50, 50];
   // Phone sideways: a wide table. Opponents sit along the top and the two ends (al/ar: pinned by their
   // outer edge so they never hang off the rail); your cards sit at the bottom centre, controls on the right.
   // (iPads sideways get the same layout, larger: there the raise panel used to push the buttons off screen)
   var LANDQ = window.matchMedia ? matchMedia('(orientation:landscape) and (max-height:500px), (orientation:landscape) and (hover:none) and (pointer:coarse) and (min-width:900px) and (max-height:900px)') : { matches: false };
-  var POSL = { t: [50, 10], lt: [27, 12], rt: [73, 12], l: [3, 31], r: [97, 31], lb: [3, 67], rb: [97, 67] };
-  var BETL = { t: [50, 22], lt: [30, 25], rt: [70, 25], l: [34, 21], r: [66, 21], lb: [13, 51], rb: [87, 51] };
+  var POSL = { t: [50, 10], lt: [27, 12], rt: [73, 12], l: [3, 31], r: [97, 31], lb: [3, 67], rb: [97, 67], ta: [17, 12], tb: [33.5, 10], td: [66.5, 10], te: [83, 12] };
+  var BETL = { t: [50, 22], lt: [30, 25], rt: [70, 25], l: [34, 21], r: [66, 21], lb: [13, 51], rb: [87, 51], ta: [21, 27], tb: [36, 24], td: [64, 24], te: [79, 27] };
   var CENL = [50, 47];   // the board sits a little high so your cards have room below it
-  var LAYL = { 2: ['b', 't'], 3: ['b', 'lt', 'rt'], 4: ['b', 'l', 't', 'r'], 5: ['b', 'lb', 'lt', 'rt', 'rb'], 6: ['b', 'lb', 'l', 't', 'r', 'rb'] };
+  var LAYL = { 2: ['b', 't'], 3: ['b', 'lt', 'rt'], 4: ['b', 'l', 't', 'r'], 5: ['b', 'lb', 'lt', 'rt', 'rb'], 6: ['b', 'lb', 'l', 't', 'r', 'rb'],
+    7: ['b', 'lb', 'l', 'lt', 'rt', 'r', 'rb'], 8: ['b', 'lb', 'l', 'ta', 't', 'te', 'r', 'rb'], 9: ['b', 'lb', 'l', 'ta', 'tb', 'td', 'te', 'r', 'rb'],
+    10: ['b', 'lb', 'l', 'ta', 'tb', 't', 'td', 'te', 'r', 'rb'] };
   function onLand() { if (S && S.kind === 'table') renderTable(!S.hand || app.classList.contains('after')); }
   if (LANDQ.addEventListener) LANDQ.addEventListener('change', onLand); else if (LANDQ.addListener) LANDQ.addListener(onLand);
   function lerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
@@ -2061,7 +2251,7 @@
   var R = {}, raiseUI = null, tableEl = null, potEl = null, seatEls = [], betEls = [];
 
   function renderTable(final) {
-    if (SIM) return;
+    if (SIM || QUIET) return;
     var H = S.hand, n = N(), land = LANDQ.matches, lay = (land ? LAYL : LAY)[n];
     orient('landscape');
     app.innerHTML = '';
@@ -2082,7 +2272,7 @@
     var myTurn = H && H.phase === 'bet' && H.actor === 0 && !final;
     S.players.forEach(function (p, i) {
       var me = i === 0, pos = land && !me ? POSL[lay[i]] : POS[lay[i]];
-      var seat = el('div', { class: 'pseat' + (me ? ' me' : '') + (land ? (me ? '' : ' ls ls-' + lay[i]) : (/^(l|r|lt|rt)$/.test(lay[i]) ? ' up' : '') + (lay[i] === 't' ? ' top' : '')) });
+      var seat = el('div', { class: 'pseat' + (me ? ' me' : '') + (land ? (me ? '' : ' ls ls-' + lay[i]) : n > 6 ? '' : (/^(l|r|lt|rt)$/.test(lay[i]) ? ' up' : '') + (lay[i] === 't' ? ' top' : '')) + (n > 6 && !me ? ' many' : '') });
       if (p.out) seat.classList.add('out');
       if (p.sat && H && p.sat === H.no) seat.classList.add('sit');
       if (H && H.folded[i]) seat.classList.add('fold');
@@ -2103,7 +2293,7 @@
         seat.appendChild(cards);
       }
       var tag = el('div', { class: 'tag' }, [
-        el('span', { class: 'avatar', style: { '--c': Kit.color(i) }, html: p.cpu ? Kit.icon('bot') : Kit.esc(p.name.charAt(0).toUpperCase()) }),
+        el('span', { class: 'avatar', style: { '--c': seatColor(i) }, html: p.cpu ? Kit.icon('bot') : Kit.esc(p.name.charAt(0).toUpperCase()) }),
         el('span', { text: me ? 'You' : p.name }),
         p.bty && !p.out ? el('span', { class: 'pb', text: usd(p.bty) }) : null
       ]);
@@ -2124,7 +2314,7 @@
       seatEls[i] = seat;
       var bp = lerp(pos, CEN, me ? 0.36 : 0.42), side = pos[0] < 40 ? 'l' : pos[0] > 60 ? 'r' : '';
       if (side) bp = [side === 'l' ? 25 : 75, pos[1] + (pos[1] < 40 ? 8 : pos[1] > 60 ? -7 : 9)];
-      if (land) { bp = me ? [50, 59] : BETL[lay[i]]; side = ''; }
+      if (land) { bp = me ? [50, 59] : BETL[lay[i]].slice(); side = ''; if (n > 6 && /^(t|ta|tb|td|te|lt|rt)$/.test(lay[i])) bp[1] += 6; }
       function atBet(node) { at(node, bp); if (side) node.classList.add('b' + side); return node; }
       if (H && H.bet[i] > 0) {
         var be = el('div', { class: 'pbet' }, [chipStack(H.bet[i]), el('span', { class: 'amt', text: amt(H.bet[i]) })]);
@@ -2217,8 +2407,9 @@
   }
   function railHead() {
     var C = S.circ, ev = C && EV[C.id], H = S.hand, h = el('div', { class: 'pev' });
-    var title = ev ? ev.venue : S.om ? 'Pot-limit Omaha' : S.limit ? 'Limit Hold\'em' : 'Texas Hold\'em';
-    var sub = S.tourn ? (ev ? (C.ft ? 'Final table' : stageName()) + ' · ' : 'Tournament · ') + 'Level ' + (S.level + 1) + ' · ' + amt(S.sb) + '/' + amt(S.bb)
+    var g = S.om ? 'Pot-limit Omaha' : S.limit ? 'Limit Hold\'em' : 'Texas Hold\'em';
+    var title = ev ? ev.venue : S.mix ? 'Mixed · ' + (S.om ? 'Omaha' : 'Hold\'em') : g;
+    var sub = S.tourn ? (ev && (S.mix || S.om) ? (S.om ? 'Omaha' : 'Hold\'em') + ' · ' : '') + (ev ? (C.ft ? 'Final table' : stageName()) + ' · ' : S.online ? 'Online · ' : 'Tournament · ') + 'Level ' + (S.level + 1) + ' · ' + amt(S.sb) + '/' + amt(S.bb)
       : (S.limit ? 'Limit $' + S.bb + '/$' + 2 * S.bb : 'Blinds $' + S.sb + '/$' + S.bb) + (H ? ' · Hand ' + S.handNo : '');
     h.appendChild(el('div', { class: 't', text: title }));
     h.appendChild(el('div', { class: 's', text: sub }));
@@ -2282,7 +2473,7 @@
     var al = alive().slice().sort(function (a, b) { return S.players[b].stack - S.players[a].stack; }), top = Math.max(1, S.players[al[0]] ? S.players[al[0]].stack : 1);
     var box = el('div', { class: 'pstand' });
     al.forEach(function (i, k) {
-      var p = S.players[i], bar = el('i'); bar.style.width = Math.max(2, Math.round(p.stack / top * 100)) + '%'; bar.style.background = Kit.color(i);
+      var p = S.players[i], bar = el('i'); bar.style.width = Math.max(2, Math.round(p.stack / top * 100)) + '%'; bar.style.background = seatColor(i);
       box.appendChild(el('div', { class: i === 0 ? 'me' : '' }, [el('span', { class: 'k', text: String(k + 1) }), el('span', { class: 'nm', text: i === 0 ? 'You' : p.name }), el('span', { class: 'bar' }, [bar]), el('b', { text: amt(p.stack) })]));
     });
     return box;
@@ -2298,7 +2489,7 @@
     if (!H) return box;
     H.log.slice(-9).forEach(function (e) {
       if (e.s) box.appendChild(el('div', { class: e.c && e.c.length ? 'st' : 'hd' }, [el('b', { text: e.s }), e.c && e.c.length ? el('span', { html: e.c.map(miniCard).join(' ') }) : null]));
-      else box.appendChild(el('div', null, [el('i', { class: 'dot', style: { '--c': Kit.color(e.i) } }), el('span', { text: verb(e.i, e.t) })]));
+      else box.appendChild(el('div', null, [el('i', { class: 'dot', style: { '--c': seatColor(e.i) } }), el('span', { text: verb(e.i, e.t) })]));
     });
     return box;
   }
@@ -2370,6 +2561,7 @@
     var H = S.hand, box = el('div', { class: 'pctl' }), me = S.players[0];
     if (!H) return box;
     var bar = el('div', { class: 'pbar' });
+    if (H.phase === 'done' && NET) { box.appendChild(el('div', { class: 'pwait', text: S.over ? 'Game over' : 'Next hand coming up' })); return box; }
     if (H.phase === 'done') {
       var C = S.circ, over = S.tourn && (me.out || (C ? C.else === 0 && alive().length <= 1 : alive().length <= 1));
       if (over) { box.appendChild(el('div', { class: 'pwait', text: me.out ? 'You\'re out of the tournament' : 'Tournament over' })); return box; }
@@ -2400,8 +2592,10 @@
       box.appendChild(bar);
       return box;
     }
-    var who = H.actor >= 0 && H.phase === 'bet' ? S.players[H.actor].name : null;
-    box.appendChild(el('div', { class: 'pwait' }, [who ? el('span', { class: 'think', text: who + ' is thinking' }) : el('span', { text: H.phase === 'runout' ? 'Running out the board' : me.stack === 0 && H.inHand[0] && !H.folded[0] ? 'You\'re all in' : '' })]));
+    var who = H.actor >= 0 && H.phase === 'bet' ? S.players[H.actor].name : null, up = who && S.players[H.actor];
+    if (who && NET && !up.cpu) who = up.away ? 'Waiting for ' + who + ' (away)' : who + '\u2019s turn';
+    else if (who) who += ' is thinking';
+    box.appendChild(el('div', { class: 'pwait' }, [who ? el('span', { class: 'think', text: who }) : el('span', { text: H.phase === 'runout' ? 'Running out the board' : me.stack === 0 && H.inHand[0] && !H.folded[0] ? 'You\'re all in' : '' })]));
     if (H.phase === 'bet' && H.inHand[0] && !H.folded[0] && me.stack > 0) box.appendChild(preActs());
     return box;
   }
@@ -2789,6 +2983,209 @@
     });
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Online tables (turnnet.js): 2 to 10 people, each on their own device, computer players in the empty seats. A
+  // tournament: the whole table lives in one doc. Each move is worked out with this same engine (QUIET: the state
+  // only, nothing drawn or heard) and written as a transaction. Each device draws the table turned round so its own
+  // seat is at the bottom (netRot), and shows a finished hand's showdown before the next one (already dealt) appears.
+  // ═══════════════════════════════════════════════════════════════════════════
+  var NET = null, NETQ = [], NETBUSY = false, NETSEEN = {}, NETREC = {}, NETWIN = null, NETME = 0, netT = 0;
+  // a seat's colour: the same on every device at an online table (the table is drawn turned round on each)
+  function seatColor(i) { return Kit.color(S && S.online ? (i + NETME) % N() : i); }
+  function quiet(st, fn) {
+    var keep = S, k = { sfx: Kit.sfx, haptic: Kit.haptic, callout: Kit.callout, toast: Kit.toast }, noop = function () {};
+    S = st; QUIET = true; Kit.sfx = Kit.haptic = Kit.callout = Kit.toast = noop;
+    try { return fn(); } finally { QUIET = false; S = keep; Kit.sfx = k.sfx; Kit.haptic = k.haptic; Kit.callout = k.callout; Kit.toast = k.toast; }
+  }
+  function netPrefs() { var o = {}; try { o = (JSON.parse(localStorage.getItem('gn_setup_poker') || '{}') || {}).options || {}; } catch (e) {} return o; }
+  function netOpts() {
+    var o = netPrefs();
+    return { game: /^(he|om|mx)$/.test(o.ngame) ? o.ngame : 'he', speed: o.nspeed === 'turbo' ? 'turbo' : 'tourn', seats: /^(0|6|9|10)$/.test(String(o.nseats)) ? +o.nseats : 6, ai: SKILLS[o.ai] ? o.ai : 'regular' };
+  }
+  function netStart(players, o, last) {
+    o = o || {};
+    var om = o.game === 'om', styles = ['tag', 'lag', 'rock', 'station'];
+    var st = {
+      kind: 'table', online: 1, game: om ? 'om' : 'he', om: om, pl: om, mix: o.game === 'mx', limit: false, tourn: true, ai: o.ai || 'regular',
+      per: o.speed === 'turbo' ? 5 : 10, started: Date.now(), handNo: 0, level: 0, sb: LEVELS[0][0], bb: LEVELS[0][1], button: null, hand: null,
+      players: players.map(function (p, i) { return { name: p.name, cpu: !!p.bot, style: p.bot ? styles[i % styles.length] : null, sk: p.bot ? SKILLS[o.ai] || 0.5 : null, stack: TSTACK, buyin: TSTACK, out: false, place: 0, rebuys: 0 }; }),
+      st: { rows: [], big: null, best: null, beats: [], kos: [], won: players.map(function () { return 0; }), allins: 0 },
+      wins: last && last.wins && last.wins.length === players.length ? last.wins.slice() : players.map(function () { return 0; })
+    };
+    quiet(st, startHand);
+    netTrim(st);
+    return st;
+  }
+  function netTurn(st) { var H = st && st.hand; return !st || st.over || !H || H.phase !== 'bet' || H.actor < 0 ? [] : [H.actor]; }
+  function netResult(st) {
+    if (!st || !st.over) return null;
+    var w = st.players.map(function (p, i) { return i; }).filter(function (i) { return st.players[i].place === 1; });
+    return { win: w, text: w.map(function (i) { return st.players[i].name; }).join(' and ') + ' wins' };
+  }
+  // (inside the engine, QUIET) one player has all the chips
+  function netOver() {
+    var standing = alive().sort(function (a, b) { return S.players[b].stack - S.players[a].stack; });
+    standing.forEach(function (i, k) { S.players[i].place = k + 1; });
+    S.over = 1; if (S.wins && standing.length) S.wins[standing[0]]++;
+  }
+  // (inside the engine, QUIET) a hand is over: keep it to show, and deal the next one
+  function netAfter() {
+    var H = S.hand;
+    S.prev = Object.assign({}, H, { stacks: S.players.map(function (p) { return p.stack; }) });
+    delete S.prev.deck;
+    // everyone left is a computer player: the table's over, finishing in chip order
+    if (!S.players.some(function (p) { return !p.cpu && !p.out; })) return netOver();
+    startHand();
+  }
+  function netTrim(st) {
+    [st.hand, st.prev].forEach(function (h) { if (h) { delete h.eqc; delete h.meq; delete h.reqc; } });
+    if (st.st.rows.length > 300) st.st.rows = st.st.rows.slice(-300);
+  }
+  function netMove(st, seat, a) {
+    var H = st.hand;
+    if (!H || st.over || H.phase !== 'bet' || H.actor !== seat) return null;
+    var no = H.no;
+    quiet(st, function () { act(seat, a); });
+    netTrim(st);
+    return { state: st, mv: { s: seat, t: a.t, no: no } };
+  }
+  function netBot(st, seat) {
+    var H = st.hand;
+    if (!H || st.over || H.phase !== 'bet' || H.actor !== seat) return null;
+    var a = quiet(st, function () { return cpuDecide(seat); });
+    return netMove(st, seat, a);
+  }
+  function netHuman(a) {
+    if (!NET || !S || !S.hand || S.hand.phase !== 'bet' || S.hand.actor !== 0 || NET.seat < 0) return;
+    raiseUI = null; SZ = null; R.pre = null;
+    Kit.haptic(a.t === 'fold' ? 'light' : 'medium');
+    var seat = NET.seat, b = Object.assign({}, a);
+    NET.act(function (st) { return netMove(st, seat, Object.assign({}, b)); });
+  }
+  // The table turned round so seat `me` is at the bottom (index 0), as the drawing expects
+  function netRot(st, me) {
+    var v = JSON.parse(JSON.stringify(st)), n = v.players.length;
+    [v.hand, v.prev].forEach(function (H) { if (H) delete H.deck; });
+    delete v.ps;
+    if (me <= 0) return v;
+    function ix(i) { return typeof i !== 'number' || i < 0 ? i : (i - me + n) % n; }
+    function ra(a) { return Array.isArray(a) && a.length === n ? a.map(function (x, k) { return a[(k + me) % n]; }) : a; }
+    function rk(o) { if (!o) return o; var r = {}; Object.keys(o).forEach(function (k) { r[ix(+k)] = o[k]; }); return r; }
+    v.players = ra(v.players); v.button = ix(v.button); v.wins = ra(v.wins);
+    v.st.won = ra(v.st.won); v.st.rows = v.st.rows.map(ra);
+    v.st.kos = v.st.kos.map(function (k) { return Object.assign({}, k, { who: ix(k.who), by: ix(k.by) }); });
+    [v.hand, v.prev].forEach(function (H) {
+      if (!H) return;
+      ['inHand', 'folded', 'bet', 'total', 'acted', 'canRaise', 'say', 'shown', 'hole', 'start', 'rng', 'ag', 'won', 'stacks'].forEach(function (f) { if (H[f]) H[f] = ra(H[f]); });
+      ['actor', 'button', 'sbI', 'bbI', 'first', 'pfr', 'lastAgg', 'sayNew'].forEach(function (f) { H[f] = ix(H[f]); });
+      if (H.results) H.results.forEach(function (r) { r.w = r.w.map(ix); });
+      if (H.scores) H.scores = rk(H.scores);
+      if (H.five) H.five = rk(H.five);
+      if (H.ai) H.ai.seats = H.ai.seats.map(ix);
+      if (H.refund) H.refund.i = ix(H.refund.i);
+      if (H.log) H.log.forEach(function (e) { if (typeof e.i === 'number') e.i = ix(e.i); });
+    });
+    return v;
+  }
+  function netView(e) {
+    var me = Math.max(0, e.seat), v = netRot(e.st, me), n = v.players.length;
+    NETME = me;
+    v.coach = netPrefs().coach === 'on';
+    (e.seats || []).forEach(function (x, i) { var k = (i - me + n) % n; if (v.players[k]) { v.players[k].bot = !!x.bot; v.players[k].away = !!x.away; v.players[k].cpu = !!x.bot; } });
+    return v;
+  }
+  function netShow(net, info) {
+    info = info || {};
+    NET = net;
+    var e = { st: JSON.parse(JSON.stringify(net.state)), seat: net.seat, seats: net.seats, info: info };
+    if (info.fresh || info.again) { NETQ = [e]; clearTimeout(netT); NETBUSY = false; netCloseWin(); R = {}; stop(); venueOff(); }
+    else NETQ.push(e);
+    if (!NETBUSY) netNext();
+  }
+  function netNext() {
+    var e = NETQ.shift();
+    if (!e || !NET) { NETBUSY = false; return; }
+    NETBUSY = true;
+    var was = S && S.online ? S : null, v = netView(e), pv = v.prev, key = NET.code + ':' + v.started + ':' + (pv ? pv.no : 0);
+    var mv = e.info && e.info.mv;
+    if (mv && !e.info.fresh) Kit.sfx(mv.t === 'fold' ? 'flip' : mv.t === 'check' ? 'tap' : 'chip');
+    // the hand just finished, first (when this device was watching it)
+    if (pv && !NETSEEN[key] && was && was.hand && was.hand.no === pv.no && (v.hand.no !== pv.no || v.over)) {
+      NETSEEN[key] = 1;
+      var pview = Object.assign({}, v, { hand: pv, players: v.players.map(function (p, i) { return Object.assign({}, p, { stack: pv.stacks ? pv.stacks[i] : p.stack }); }) });
+      S = pview; R.paid = 0; renderTable();
+      netHandFx(pv);
+      var show = pv.results && pv.results.some(function (r) { return r.v != null; });
+      netT = setTimeout(function () { netDraw(e, v, was); }, show ? 4200 : 1900);
+      return;
+    }
+    if (pv) NETSEEN[key] = 1;
+    netDraw(e, v, was);
+  }
+  function netDraw(e, v, was) {
+    if (!NET) { NETBUSY = false; return; }
+    S = v; renderTable();
+    if (was && v.hand && was.hand && v.hand.no !== was.hand.no) {
+      if (v.mix && was.om !== v.om) { Kit.callout(v.om ? 'Omaha round' : 'Hold\'em round'); Kit.sfx('whoosh'); }
+      else if (v.bb !== was.bb) Kit.toast('Blinds up: ' + amt(v.sb) + ' / ' + amt(v.bb));
+      var outs = v.players.map(function (p, i) { return i; }).filter(function (i) { return v.players[i].out && was.players[i] && !was.players[i].out; });
+      if (outs.length && outs.indexOf(0) < 0) Kit.toast(outs.map(function (i) { return v.players[i].name; }).join(' and ') + (outs.length > 1 ? ' are' : ' is') + ' out');
+      if (outs.indexOf(0) >= 0 && !v.over) Kit.toast('You\'re out in ' + ordinal(v.players[0].place) + '. Watch the rest, or leave in the menu.', 4000);
+    }
+    if (v.over) { netT = setTimeout(function () { netEnd(e, v); NETBUSY = false; netNext(); }, 1200); return; }
+    var H = v.hand;
+    if (H && H.phase === 'bet' && H.actor === 0 && e.seat >= 0 && NETQ.length === 0) {
+      var pa = preAction();
+      if (pa) { netT = setTimeout(function () { NETBUSY = false; netHuman(pa); }, 450); return; }
+    }
+    netT = setTimeout(function () { NETBUSY = false; netNext(); }, NETQ.length ? 380 : 0);
+  }
+  // your share of a finished hand: the sound and the big moments
+  function netHandFx(H) {
+    var main = H.results.filter(function (r) { return !r.back; })[0] || H.results[0], show = main && main.v != null;
+    if (H.won && H.won[0] > 0 && main.w.indexOf(0) >= 0) {
+      Kit.sfx(show ? 'win' : 'good'); Kit.haptic('success');
+      if (show && H.scores && catOf(H.scores[0]) >= 6) Kit.callout(shortName(H.scores[0]) + '!');
+      else if (H.won[0] - H.total[0] >= 40 * S.bb) Kit.callout('Big pot!');
+    } else if (show && H.inHand[0] && !H.folded[0]) { Kit.sfx('lose'); Kit.haptic('error'); }
+  }
+  function netCloseWin() { if (NETWIN) { try { NETWIN.close(); } catch (e) {} NETWIN = null; } }
+  function netEnd(e, v) {
+    if (!NET) return;
+    var key = NET.code + ':' + v.started;
+    if (NETWIN && NETWIN.key === key) return;
+    var me = v.players[0], iWin = e.seat >= 0 && me.place === 1, w = v.players.filter(function (p) { return p.place === 1; })[0];
+    var rank = v.players.map(function (p, i) { return { name: i === 0 && e.seat >= 0 ? p.name + ' (you)' : p.name, score: ordinal(p.place), place: p.place, cpu: p.cpu, color: Kit.color((i + NETME) % v.players.length) }; }).sort(function (a, b) { return a.place - b.place; });
+    if (!NETREC[key] && e.seat >= 0) {
+      NETREC[key] = 1;
+      var keep = S; S = v;
+      try {
+        Kit.record(HKEY, {
+          started: v.started, mode: 'Online ' + (v.mix ? 'mixed' : v.game === 'om' ? 'Omaha' : 'Hold\'em') + ' tournament', lowWins: true,
+          players: v.players.map(function (p) { return { name: p.name, score: p.place, cpu: p.cpu }; }), winner: w ? w.name : null,
+          summary: (w ? w.name : 'Nobody') + ' won · ' + v.players.length + ' players', highlights: tableHighlights().concat(['Online table ' + NET.code]),
+          detail: { game: v.om ? 'omaha' : 'holdem', tourn: 1, big: v.st.bigH || null, hands: v.st.rows.length }
+        });
+      } catch (x) { console.warn(x); }
+      S = keep;
+    }
+    var games = (v.wins || []).reduce(function (a, b) { return a + b; }, 0), res = NET.result, left = res && res.left != null;
+    if (iWin) { Kit.sfx('win'); setTimeout(function () { try { Kit.confetti({ n: 160 }); } catch (x) {} }, 300); }
+    NETWIN = Kit.win({
+      icon: iWin ? 'trophy' : 'users', lose: !iWin,
+      title: iWin ? 'You won the table!' : w ? w.name + ' wins the table' : 'Game over',
+      sub: v.handNo + ' hands' + (games > 1 ? ' · tables won: ' + v.players.map(function (p, i) { return (i === 0 ? 'you' : p.name) + ' ' + v.wins[i]; }).join(', ') : ''),
+      rank: rank, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      closeLabel: 'Back to games'
+    });
+    NETWIN.key = key;
+  }
+  function netLeave() {
+    NET = null; NETQ = []; NETBUSY = false; clearTimeout(netT); netCloseWin(); R = {};
+    showSetup();
+  }
+
   // Test hook: computer players of the given skills play n cash hands against each other; resolves with each seat's
   // result in big blinds per 100 hands
   window.__pk = {
@@ -2818,6 +3215,14 @@
   var saved = lastKey ? load(lastKey) : null;
   if (saved && saved.kind) { S = saved; moneyFor(seatName(S)); Kit.gameStart(); resume(); }
   else showSetup();
+
+  // online tables (after the game on this device is drawn): opens ?online=1&room=CODE from the home screen
+  TurnNet.setup({
+    game: 'poker', title: 'Poker', min: 2, max: 10, botMs: 650,
+    seats: function (n, o) { return Math.min(10, Math.max(n, +(o && o.seats) || 0)); },
+    opts: netOpts, start: netStart, turn: netTurn, over: netResult, bot: netBot,
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>
