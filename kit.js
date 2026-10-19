@@ -669,7 +669,7 @@
     clear: function () {
       if (!game) return;
       var all = {}; try { all = JSON.parse(lsGet('gn_resume', '{}')) || {}; } catch (e) {}
-      delete all[game.id]; lsSet('gn_resume', JSON.stringify(all));
+      if (all[game.id] && !all[game.id].x) { all[game.id] = { ts: Date.now(), x: 1 }; lsSet('gn_resume', JSON.stringify(all)); }   // (kept as gone, so your other devices drop it too)
     }
   };
 

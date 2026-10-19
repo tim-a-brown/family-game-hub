@@ -728,8 +728,10 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   function visibleGames() { return GAMES.filter(function (g) { return !g.hidden && (!Kit.catOn || Kit.catOn(g.cat)) && (!Kit.gameOn || Kit.gameOn(g)) && fitsWho(g) && fitsQ(g); }); }   // (sections switched off in Preferences leave)
 
   // ── Game rows ─────────────────────────────────────────────────────────────
-  var resumeMap = {};
-  try { resumeMap = JSON.parse(get('gn_resume', '{}')) || {}; } catch (e) {}
+  // gn_resume {game id: {ts, label, file, keys?}}; a game taken off the list stays as {ts, x: 1} so other devices drop
+  // it too (sync.js merges the list game by game)
+  function resumeRead() { var m = {}; try { m = JSON.parse(get('gn_resume', '{}')) || {}; } catch (e) {} Object.keys(m).forEach(function (k) { if (!m[k] || m[k].x) delete m[k]; }); return m; }
+  var resumeMap = resumeRead();
   function players(g) { return g.max === 0 ? g.min + '+' : g.min === g.max ? String(g.min) : g.min + '–' + g.max; }
   function badge(g) {
     return resumeMap[g.id] ? el('span', { class: 'live', text: 'Resume' }) : el('span', { class: 'meta', html: Kit.icon(g.max === 1 ? 'user' : 'users') + '<span>' + players(g) + '</span>' });
@@ -805,7 +807,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     Kit.haptic('light');
     if (g.id === 'lorcana') askMotion();
     // a game already going: offer to pick it up (or start fresh) instead of dropping straight in
-    var live = null; try { live = (JSON.parse(get('gn_resume', '{}')) || {})[g.id] || null; } catch (e) {}
+    var live = resumeRead()[g.id] || null;
     if (!g.score && !live) return go(g.play, true);
     Kit.sfx('pop');
     var box = el('div', { class: 'pick' });
@@ -1057,14 +1059,14 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     return box;
   }
   // Swipe a Keep playing tile left to reveal a trash button that deletes the saved game
-  var SAVE_KEYS = {"2048":["2048_state"],"asteroids":["asteroids_state"],"baccarat":["baccarat_state"],"backgammon":["backgammon_state"],"battleship":["battleship_state"],"bingo":["bingo_state"],"blackjack":["blackjack_state"],"boggle":["boggle_state"],"breakout":["breakout_state"],"checkers":["checkers_state"],"chess":["chess_state"],"chinesecheckers":["chinesecheckers_state"],"codebreaker":["codebreaker_state"],"connectfour":["c4_state"],"conversation":["conversation_state"],"craps":["cr_state"],"cribbage":["cribbage_state"],"crossword":["crossword_state"],"cubehopper":["cubehopper_state"],"dealornodeal":["dond_state"],"dice-roller":["diceroller_state"],"dotsboxes":["dotsboxes_state"],"euchre-ai":["euchre_state"],"farkle":["farkle_state"],"fivecrownss-ai":["fivecrowns_state"],"flip7-ai":["flip7_state"],"freecell":["freecell_state"],"gin-rummy-ai":["gin_state"],"hangman":["hangman_state"],"hearts-ai":["hearts_state"],"horserace":["horserace_state"],"jokerrun":["jokerrun_state"],"lorcana":["lorcana_state"],"lrc":["lrc_state"],"madlibs":["madlibs_state"],"mahjong":["mahjong_state"],"mahjong4":["mj4_state"],"mancala":["mancala_state"],"marbles":["marbles_state"],"mathpuzzles":["mathpuzzles_state"],"memorymatch":["memorymatch_state"],"minesweeper":["minesweeper_state"],"minigolf":["mg_state"],"othello":["othello_state"],"pacman":["pacman_state"],"paddleball":["paddleball_state"],"paigow":["paigow_state"],"peggle":["peggle_state"],"phase10-ai":["phase10_state"],"plinko":["plinko_state"],"pokersquares":["pokersquares_state"],"pyramid":["pyramid_state"],"riddlestories":["riddlestories_state"],"rook-ai":["rook_state"],"roulette":["rl_state"],"scorecard":["scorecard_state"],"shellgame":["shellgame_state"],"slidepuzzle":["slidepuzzle_state"],"slots":["slots_state"],"snake":["snake_state"],"solitaire":["solitaire_state"],"spades-ai":["spades_state"],"spellingbee":["spellingbee_state"],"sudoku":["sdk_state","sudoku_state"],"tetris":["tetris_state"],"threecardpoker":["threecardpoker_state"],"tictactoe":["tictactoe_state"],"trivia":["trivia_state"],"wheeloffortune":["wof_state"],"wizard-ai":["wizard_state"],"wordle":["wordle_state"],"wordscramble":["wordscramble_state"],"wordsearch":["wordsearch_state"],"wouldyourather":["wyr_state"],"yahtzee":["yahtzee_state"],"hearts":["pad_ht"],"flip7":["pad_f7"],"rook":["pad_rk"],"spades":["pad_sp"],"euchre":["pad_eu"],"five-crowns":["pad_fc"],"gin-rummy":["pad_rm"],"phase10":["pad_p10"],"wizard":["pad_wz","wizard_pad_bids"]};
+  var SAVE_KEYS = (window.FGHSync && FGHSync.saveKeys) || {};   // each game file's save keys (sync.js)
   var openTile = null;
   // Returns what it removed, so Undo can put it back
   function deleteSaved(x) {
     var file = x.r.file || x.g.play, back = { id: x.g.id, keys: {}, resume: null };
     var keys = (x.r.keys || []).concat(SAVE_KEYS[file] || []);
     keys.forEach(function (k) { try { var v = LS.getItem(k); if (v != null) back.keys[k] = v; LS.removeItem(k); } catch (e) {} });
-    try { var all = JSON.parse(get('gn_resume', '{}')) || {}; back.resume = all[x.g.id] || null; delete all[x.g.id]; set('gn_resume', JSON.stringify(all)); } catch (e) {}
+    try { var all = JSON.parse(get('gn_resume', '{}')) || {}; back.resume = all[x.g.id] || null; all[x.g.id] = { ts: Date.now(), x: 1 }; set('gn_resume', JSON.stringify(all)); } catch (e) {}
     return back;
   }
   function restoreSaved(list) {
@@ -1432,7 +1434,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 
   var railAll = false;
   function currentItems() {
-    try { resumeMap = JSON.parse(get('gn_resume', '{}')) || {}; } catch (e) {}
+    resumeMap = resumeRead();
     var week = Date.now() - 7 * 864e5;
     return Object.keys(resumeMap).map(function (id) { return { g: findGame(id), r: resumeMap[id] }; })
       .filter(function (x) { return x.g && x.r && x.r.ts > week; })
@@ -1563,7 +1565,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // Games with a save from the last week, as shown in Keep playing: id -> file to open
   function goingGames() {
     var m = {}, week = Date.now() - 7 * 864e5, map = {};
-    try { map = JSON.parse(get('gn_resume', '{}')) || {}; } catch (e) {}
+    map = resumeRead();
     Object.keys(map).forEach(function (id) { var g = findGame(id), r = map[id]; if (g && r && r.ts > week) m[id] = r.file || g.play; });
     return m;
   }

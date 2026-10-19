@@ -357,9 +357,44 @@
   var ST_SKIP = /^(hi_|gh_|prog_|fgh_|firebase|lorcana_(decks|marks)_|lorcana_(art|fancy)_v1$|casino_bank$|rklists$|fav_games|my_name$|gn_hidden_names$)/;
   // on this device only: online seats, table codes and device ids, sign-ins, caches, emulator settings, one-time markers
   var ST_DEVICE = /^(online_.*|spotify_.*|tn_.*|.*_dev|.*_online|.*_net[a-z]*(_.*)?|lorc_lktag|lorc_newrel|console_local|lorcana_(cards|story).*|lorcana_slips|lorc_(art|fancy)|slots_thumbs.*|gn_console_(idx|house)|gn_con_ram|gn_offline.*|pinball_qauto|peggle_hi_mig|centi_2d|.*_cache(_.*)?)$/;
+  // each game file's saved-game keys (the home screen's Keep playing deletes these; sync uses them to tell which device
+  // played a game last: stTie)
+  var ST_SAVES = {"2048":["2048_state"],"asteroids":["asteroids_state"],"baccarat":["baccarat_state"],"backgammon":["backgammon_state"],"battleship":["battleship_state"],"bingo":["bingo_state"],"blackjack":["blackjack_state"],"boggle":["boggle_state"],"breakout":["breakout_state"],"checkers":["checkers_state"],"chess":["chess_state"],"chinesecheckers":["chinesecheckers_state"],"codebreaker":["codebreaker_state"],"connectfour":["c4_state"],"conversation":["conversation_state"],"craps":["cr_state"],"cribbage":["cribbage_state"],"crossword":["crossword_state"],"cubehopper":["cubehopper_state"],"dealornodeal":["dond_state"],"dice-roller":["diceroller_state"],"dotsboxes":["dotsboxes_state"],"euchre-ai":["euchre_state"],"farkle":["farkle_state"],"fivecrownss-ai":["fivecrowns_state"],"flip7-ai":["flip7_state"],"freecell":["freecell_state"],"gin-rummy-ai":["gin_state"],"hangman":["hangman_state"],"hearts-ai":["hearts_state"],"horserace":["horserace_state"],"jokerrun":["jokerrun_state"],"lorcana":["lorcana_state"],"lrc":["lrc_state"],"madlibs":["madlibs_state"],"mahjong":["mahjong_state"],"mahjong4":["mj4_state"],"mancala":["mancala_state"],"marbles":["marbles_state"],"mathpuzzles":["mathpuzzles_state"],"memorymatch":["memorymatch_state"],"minesweeper":["minesweeper_state"],"minigolf":["mg_state"],"othello":["othello_state"],"pacman":["pacman_state"],"paddleball":["paddleball_state"],"paigow":["paigow_state"],"peggle":["peggle_state"],"phase10-ai":["phase10_state"],"plinko":["plinko_state"],"pokersquares":["pokersquares_state"],"pyramid":["pyramid_state"],"riddlestories":["riddlestories_state"],"rook-ai":["rook_state"],"roulette":["rl_state"],"scorecard":["scorecard_state"],"shellgame":["shellgame_state"],"slidepuzzle":["slidepuzzle_state"],"slots":["slots_state"],"snake":["snake_state"],"solitaire":["solitaire_state"],"spades-ai":["spades_state"],"spellingbee":["spellingbee_state"],"sudoku":["sdk_state","sudoku_state"],"tetris":["tetris_state"],"threecardpoker":["threecardpoker_state"],"tictactoe":["tictactoe_state"],"trivia":["trivia_state"],"wheeloffortune":["wof_state"],"wizard-ai":["wizard_state"],"wordle":["wordle_state"],"wordscramble":["wordscramble_state"],"wordsearch":["wordsearch_state"],"wouldyourather":["wyr_state"],"yahtzee":["yahtzee_state"],"hearts":["pad_ht"],"flip7":["pad_f7"],"rook":["pad_rk"],"spades":["pad_sp"],"euchre":["pad_eu"],"five-crowns":["pad_fc"],"gin-rummy":["pad_rm"],"phase10":["pad_p10"],"wizard":["pad_wz","wizard_pad_bids"]};
   var ST_NORELOAD = /^(gn_resume|gn_name_counts|frequent_players|gn_hiscores_sel)$/;
   function stKey(k){ return !!k && k.length <= 120 && /^[A-Za-z0-9_]+$/.test(k) && !ST_SKIP.test(k) && !PREF_RE.test(k) && !DEVICE_RE.test(k) && !ST_DEVICE.test(k); }
-  function stLoad(){ var o = lsJSON(ST) || {}; o.at = o.at || {}; o.sig = o.sig || {}; o.sent = o.sent || {}; o.ts = Number(o.ts) || 0; return o; }
+  function stLoad(){
+    var o = lsJSON(ST) || {}; o.at = o.at || {}; o.sig = o.sig || {}; o.sent = o.sent || {}; o.ts = Number(o.ts) || 0;
+    if(o.v !== 2){ o.v = 2; o.ts = 0; }   // once: read everything again, to settle saves both devices had before syncing (stTie)
+    return o;
+  }
+  // Keep playing (gn_resume) merges game by game: the newest entry for each game wins, and one taken off the list
+  // ({ts, x: 1}) stays off. Gone entries are forgotten after 30 days.
+  function resumeObj(str){ try{ var m = JSON.parse(str || '{}'); return m && typeof m === 'object' ? m : {}; }catch(e){ return {}; } }
+  function mergeResume(a, b){
+    var A = resumeObj(a), B = resumeObj(b), out = {}, old = Date.now() - 30 * 864e5;
+    Object.keys(A).concat(Object.keys(B)).forEach(function(id){
+      if(out[id]) return;
+      var x = A[id], y = B[id], e = !x ? y : !y ? x : ((Number(y.ts) || 0) > (Number(x.ts) || 0) ? y : x);
+      if(e && typeof e === 'object' && !(e.x && (Number(e.ts) || 0) < old)) out[id] = e;
+    });
+    var o2 = {}; Object.keys(out).sort().forEach(function(k){ o2[k] = out[k]; });
+    return JSON.stringify(o2);
+  }
+  // Saves both devices already had before they synced (both counted oldest): the device that played that game more
+  // recently (by Keep playing) wins it. {key: 'r' (take the cloud's) | 'l' (send this device's)}
+  function stTie(localStr, remoteStr){
+    var L = resumeObj(localStr), R = resumeObj(remoteStr), out = {};
+    Object.keys(R).forEach(function(id){
+      var l = L[id], r = R[id]; if(!r || r.x) return;
+      var lt = l && !l.x ? Number(l.ts) || 0 : 0, rt = Number(r.ts) || 0, file = r.file || (l && l.file) || id;
+      (ST_SAVES[file] || []).concat(r.keys || [], (l && l.keys) || []).forEach(function(k){ out[k] = rt > lt ? 'r' : 'l'; });
+    });
+    Object.keys(L).forEach(function(id){
+      var l = L[id]; if(!l || l.x || R[id]) return;
+      (ST_SAVES[l.file || id] || []).concat(l.keys || []).forEach(function(k){ if(!out[k]) out[k] = 'l'; });
+    });
+    return out;
+  }
   function stSave(o){ try{ LS.setItem(ST, JSON.stringify(o)); }catch(e){} }
   function strHash(str){
     var h1 = 0x811c9dc5, h2 = 0x2b2b2b2b;
@@ -386,12 +421,27 @@
     var col = stCol(); if(!col) return Promise.resolve([]);
     var started = Date.now();
     return col.where('ts', '>', firebase.firestore.Timestamp.fromMillis(o.ts)).get().then(function(q){
-      var took = [], game = /\/games\//.test(location.pathname);
-      q.forEach(function(d){
+      var took = [], game = /\/games\//.test(location.pathname), docs = [], tie = {};
+      q.forEach(function(d){ docs.push(d); });
+      docs.sort(function(a, b){ return (b.id === 'gn_resume') - (a.id === 'gn_resume'); });   // Keep playing first: it settles ties
+      docs.forEach(function(d){
         var k = d.id, r = d.data() || {}, at = Number(r.at) || 0, v = typeof r.v === 'string' ? r.v : null;
         var ts = r.ts && r.ts.toMillis ? r.ts.toMillis() : 0; if(ts > o.ts) o.ts = ts;
         if(!stKey(k)) return;
         var mine = Number(o.at[k]) || 0, cur = LS.getItem(k);
+        if(k === 'gn_resume' && v !== null && cur !== null){
+          tie = stTie(cur, v);
+          var m = mergeResume(cur, v);
+          if(m !== cur){ try{ LS.setItem(k, m); took.push(k); }catch(e){ return; } }
+          o.sig[k] = strHash(m);
+          if(m === v){ o.at[k] = Math.max(at, mine); o.sent[k] = Math.max(Number(o.sent[k]) || 0, at); }
+          else o.at[k] = Math.max(at, mine) + 1;   // the merged list goes back up
+          return;
+        }
+        if(at === mine && at <= 1 && cur != null && v !== cur && tie[k]){
+          if(tie[k] === 'l'){ o.at[k] = 2; return; }   // this device played it last: its save goes up and wins
+          at = 2;   // the other device played it last: take its save
+        }
         if(at < mine || (at === mine && (mine > 1 || cur != null))){ if(at === mine) o.sent[k] = Math.max(Number(o.sent[k]) || 0, at); return; }
         if(v === null ? cur !== null : cur !== v){
           // this page shows that game: hold its own saves from here on (it reloads with the newer copy)
@@ -2204,7 +2254,8 @@
     continueAsGuest: continueAsGuest,
     onReady: onReady,
     noteWrite: noteWrite,
-    stSynced: function(){ return _stChain; },   // resolves once saved games and progress are up to date (or couldn't be)
+    stSynced: function(){ return _stChain; },
+    saveKeys: ST_SAVES,   // resolves once saved games and progress are up to date (or couldn't be)
     // parents and children (see Parents above)
     parents: { mine: pcLocal, pull: pcPull, answer: parentAnswer, unlock: pcUnlock },
     kids: { list: kidsGet, ask: kidAsk, read: kidRead, edit: kidEdit, end: kidEnd },
