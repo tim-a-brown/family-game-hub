@@ -36,8 +36,10 @@
 //     show(net, info)      draw the table: called at the start and after every move (info: {prev, mv, by, mine,
 //                          fresh: first draw at this table, again: a new game at the same table})
 //     leave()              back to playing on this device
-//     resign(state, seat) -> state    optional: a person leaving mid-game (default: the computer takes their seat
-//                          when the game has bot(), otherwise the game ends and the others win)
+//     resign(state, seat) -> state | {state, bot}   optional: a person leaving mid-game (default: the computer takes
+//                          their seat when the game has bot(), otherwise the game ends and the others win); bot: true
+//                          hands the seat to the computer after all
+//     leaveNote(state, seat) -> text   optional: what leaving does, for the "Leave the online game?" question
 //   TurnNet.open()        the lobby (menu: Play online)
 //   TurnNet.menu()        menu items for Kit.init: Play online, Your online game, Leave the online game
 //   TurnNet.on()          true while at an online table
@@ -264,7 +266,7 @@
     if (!d || d.status === 'closed') {
       var was = T.d; stopListen(); forget(T.code); T.code = null; T.d = null; closeOv();
       if (was && was.status !== 'over') Kit.toast(was && was.seats && was.seats[0] && was.seats[0].dev !== dev() ? 'The table has closed' : 'Table closed');
-      paintChips(); try { G.leave(); } catch (e) {}
+      paintChips(); try { G.leave(); } catch (e) { console.warn('[turnnet] leave', e); }
       return;
     }
     T.d = d;
@@ -402,9 +404,13 @@
         return keep ? { seats: seatsO, accts: (d.accts || []).filter(function (a) { return a !== tag; }), at: Date.now() } : { status: 'closed', seats: seatsO, at: Date.now(), by: dev() };
       }
       if (s < 0) return null;
-      var st = JSON.parse(d.st), seats2 = d.seats.slice(), others = humans(d).length - 1, accts2 = (d.accts || []).filter(function (a) { return a !== tag; });
+      var st = JSON.parse(d.st), seats2 = d.seats.slice(), others = humans(d).filter(function (x) { return !x.left; }).length - 1, accts2 = (d.accts || []).filter(function (a) { return a !== tag; });
       if (!others) return { status: 'closed', accts: accts2, at: Date.now(), by: dev() };
-      if (G.resign) { st = G.resign(st, s); seats2[s] = Object.assign({}, seats2[s], { left: true }); }
+      if (G.resign) {
+        var rr = G.resign(st, s), toBot = rr && rr.state && rr.bot;
+        st = rr && rr.state ? rr.state : rr;
+        seats2[s] = toBot ? { name: seats2[s].name, bot: true, left: true } : Object.assign({}, seats2[s], { left: true });
+      }
       else if (G.bot || G.botTakeover) { seats2[s] = { name: seats2[s].name, bot: true, left: true }; }
       else {
         seats2[s] = Object.assign({}, seats2[s], { left: true });
@@ -417,7 +423,7 @@
       return pr;
     }).catch(function (e) { console.warn('[turnnet] leave', e); });
     T.d = null; T.seat = -1; T.st = null; closeOv(); paintChips();
-    if (!quiet) { try { G.leave(); } catch (e) {} }
+    if (!quiet) { try { G.leave(); } catch (e) { console.warn('[turnnet] leave', e); } }
     return p;
   }
 
@@ -629,7 +635,8 @@
         var d = T.d, playing = d && d.status === 'playing';
         if (!playing) { leave(); return; }
         var botsTake = !!(G.resign || G.botTakeover || G.bot);
-        Kit.confirm('Leave the online game?', { ok: 'Leave', danger: true, body: botsTake ? 'The computer takes your seat and the others play on.' : 'The game ends and the others win.' }).then(function (ok) { if (ok) leave(); });
+        var note = null; try { note = G.leaveNote ? G.leaveNote(T.st, T.seat) : null; } catch (e) {}
+        Kit.confirm('Leave the online game?', { ok: 'Leave', danger: true, body: note || (botsTake ? 'The computer takes your seat and the others play on.' : 'The game ends and the others win.') }).then(function (ok) { if (ok) leave(); });
       } }
     ];
   }

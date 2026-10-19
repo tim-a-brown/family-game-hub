@@ -566,7 +566,8 @@
     '<li>If everyone else folds, you win the pot without showing your cards. Otherwise the best hand at the <b>showdown</b> wins, and a tie splits the pot.</li></ul>' +
     '<h3>Cash game or tournament</h3><ul>' +
     '<li><b>Cash game</b>: buy in with chips from your casino bank (shared with the other casino games) and leave whenever you like. Whatever you have goes back to the bank.</li>' +
-    '<li><b>Tournament</b>: everyone starts with 1,500 chips. The blinds go up every few hands, and when you lose all your chips you\'re out. Last player standing wins.</li></ul>' +
+    '<li><b>Tournament</b>: everyone starts with 1,500 chips. The blinds go up every few hands, and when you lose all your chips you\'re out. Last player standing wins.</li>' +
+    '<li><b>Tournament rebuys</b> (a setting): run out of chips in the first 4 levels and you can rebuy for 1,500 new chips, or call it a day. On the circuit you can re-enter in the first 3 levels for the buy-in.</li></ul>' +
     '<h3>Tournament Circuit</h3><ul>' +
     '<li>Fifteen stops, from a $100 card room to the World Championship. Pick a road at the top: <b>Hold\'em</b>, <b>Omaha</b> or <b>Mixed</b> (Hold\'em and pot-limit Omaha by turns: the game changes each time the blinds go up). Each road keeps its own progress.</li>' +
     '<li>Pay the buy-in from your bank, or use a seat you won. You play one table; the rest of the field plays at others, and an empty seat at yours is filled from them.</li>' +
@@ -578,7 +579,8 @@
     '<h3>Online tables</h3><ul>' +
     '<li>2 to 10 people, each on their own device, signed in with their PIN. Computer players can fill the empty seats.</li>' +
     '<li>A tournament: everyone starts with 1,500 chips and the last player with chips wins the table. Take your turn whenever you like; the home screen shows when it\'s your move.</li>' +
-    '<li>Play as many online tables as you like. Online chips aren\'t money: your bank isn\'t touched.</li></ul>' +
+    '<li>Or a <b>cash game</b>: blinds $1/$2, and everyone buys in for $200 from their own bank. Run out and you choose: rebuy for $200 (from your bank) or leave. Leave whenever you like and your chips go back to your bank.</li>' +
+    '<li>Play as many online tables as you like. Tournament chips aren\'t money: your bank isn\'t touched.</li></ul>' +
     '<h3>Games in progress</h3><ul>' +
     '<li>You can keep one game of each kind going (a Hold\'em cash game, an Omaha tournament, video poker, an event on each circuit road...) and switch between them: they wait for you on the setup screen. End one from the menu.</li></ul>' +
     '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money. Video poker works the same way.</p>';
@@ -950,9 +952,10 @@
       players: { range: function (m) { return m === 'vp' || m === 'circuit' || m === 'net' ? [1, 1] : [2, 6]; }, count: 5, cpu: 'seats', label: 'At the table' },
       options: [
         { id: 'ngame', label: 'Game', value: 'he', when: function (m) { return m === 'net'; }, choices: [['he', 'Hold\'em'], ['om', 'Omaha', 'Pot-limit Omaha: 4 cards each, use exactly 2.'], ['mx', 'Mixed', 'Hold\'em and Omaha by turns: the game changes when the blinds go up.']] },
-        { id: 'nspeed', label: 'Blinds go up', value: 'tourn', when: function (m) { return m === 'net'; }, choices: [['tourn', 'Every 10 hands'], ['turbo', 'Every 5 hands']] },
+        { id: 'nspeed', label: 'Format', value: 'tourn', when: function (m) { return m === 'net'; }, choices: [['tourn', 'Tournament', 'Everyone starts with 1,500 chips, the blinds go up every 10 hands, and the last player with chips wins.'], ['turbo', 'Turbo', 'A faster tournament: the blinds go up every 5 hands.'], ['cash', 'Cash game', 'Blinds $1/$2. Each player buys in for $200 from their own bank, rebuys when they run out, and cashes out whenever they leave.']] },
         { id: 'nseats', label: 'Empty seats', value: '6', when: function (m) { return m === 'net'; }, help: 'Computer players fill the table up to this many seats. More people than that can still join, up to 10.', choices: [['0', 'People only'], ['6', 'Fill to 6'], ['9', 'Fill to 9']] },
         { id: 'fmt', label: 'Game', value: 'cash', when: function (m) { return m === 'he' || m === 'om'; }, choices: [['cash', 'Cash game', 'Buy in with money from your casino bank and leave whenever you like.'], ['tourn', 'Tournament', 'Everyone starts with 1,500 chips, the blinds go up every 10 hands, and the last player left wins.'], ['turbo', 'Turbo', 'A faster tournament: the blinds go up every 5 hands.']] },
+        { id: 'rebuy', label: 'Tournament rebuys', value: '0', when: function (m) { return m === 'he' || m === 'om' || m === 'net'; }, help: 'In a tournament: whether a player who runs out of chips can buy back in for a new stack. Cash games always let you rebuy.', choices: [['0', 'No rebuys'], ['4', 'First 4 levels', 'Run out of chips before level 5 and you can rebuy for 1,500 new chips.']] },
         { id: 'ai', label: 'Computer players', value: 'regular', when: function (m) { return m === 'he' || m === 'om' || m === 'net'; }, choices: [['casual', 'Casual', 'Play loose, call too much and make mistakes.'], ['regular', 'Regular', 'Solid players who read the table now and then.'], ['sharp', 'Sharp', 'Pros: they read your likely hand, play their seat, bluff in balance and learn how you play.']] },
         { id: 'bet', label: 'Betting', value: 'nl', when: function (m) { return m === 'he'; }, choices: [['nl', 'No-limit', 'You can bet any amount, up to all your chips.'], ['fl', 'Fixed limit', 'Every bet and raise is one set size, with at most 4 bets a round.']] },
         { id: 'denom', label: 'Coin size', help: 'How much each coin is worth. You bet 1 to 5 coins a hand.', value: 1, when: function (m) { return m === 'vp'; }, choices: [[1, '$1'], [5, '$5'], [25, '$25']] },
@@ -1374,7 +1377,7 @@
     var styles = Cards.shuffle(['tag', 'lag', 'rock', 'station']).concat(Cards.shuffle(['tag', 'lag']));
     S = {
       kind: 'table', game: game, om: game === 'om', limit: game === 'he' && cfg.options.bet === 'fl', pl: game === 'om',
-      tourn: tourn, ai: cfg.options.ai || 'regular', per: cfg.options.fmt === 'turbo' ? 5 : 10, started: Date.now(), handNo: 0, level: 0, coach: cfg.options.coach === 'on',
+      tourn: tourn, rebuyLv: tourn ? +cfg.options.rebuy || 0 : 0, ai: cfg.options.ai || 'regular', per: cfg.options.fmt === 'turbo' ? 5 : 10, started: Date.now(), handNo: 0, level: 0, coach: cfg.options.coach === 'on',
       sb: tourn ? LEVELS[0][0] : 1, bb: tourn ? LEVELS[0][1] : 2, button: null, hand: null,
       players: cfg.players.map(function (p, i) {
         return { name: p.name, cpu: !!p.cpu, style: p.cpu ? styles[(i - 1) % styles.length] : null, sk: p.cpu ? SKILLS[cfg.options.ai] || 0.5 : null, stack: stack, buyin: stack, out: false, place: 0, rebuys: 0 };
@@ -1436,14 +1439,21 @@
   function startHand() {
     if (!QUIET) stop();
     var n = N();
+    if (!QUIET && S.players[0].wantRe && !S.players[0].cpu) { save(); renderTable(); Kit.haptic('error'); return; }   // (your rebuy choice first)
     if (!S.tourn) S.players.forEach(function (p, i) {
-      if (i > 0 && p.stack <= 0) { p.stack = BUYIN; p.buyin += BUYIN; p.rebuys++; p.rebought = true; }
+      if (S.online && !p.cpu && !p.left && p.stack <= 0) { p.wantRe = 1; return; }
+      if ((i > 0 || S.online) && !p.left && p.stack <= 0) { p.stack = BUYIN; p.buyin += BUYIN; p.rebuys++; p.rebought = true; }
     });
     if (S.circ) circSeats();
-    if (!S.tourn && S.players[0].stack <= 0) { if (SIM) { S.players[0].stack = BUYIN; S.players[0].buyin += BUYIN; } else { S.hand = null; save(); renderTable(); return askRebuy(); } }
+    if (!S.tourn && !S.online && S.players[0].stack <= 0) { if (SIM) { S.players[0].stack = BUYIN; S.players[0].buyin += BUYIN; } else { S.hand = null; save(); renderTable(); return askRebuy(); } }
     var act = alive().filter(function (i) { return S.players[i].stack > 0; });
-    if (act.length < 2) return QUIET ? netOver() : S.circ ? endEvent() : endTourney();
+    if (act.length < 2) {
+      if (QUIET) { if (S.players.some(function (p) { return p.wantRe && !p.left; }) || !S.tourn) { S.stall = 1; return; } return netOver(); }
+      return S.circ ? endEvent() : endTourney();
+    }
+    delete S.stall;
     S.handNo++;
+    if (S.mix && !S.tourn) { S.level = Math.floor((S.handNo - 1) / 10); mixSet(); }
     if (S.circ) circBlinds();
     else if (S.tourn) {
       var lv = Math.min(LEVELS.length - 1, Math.floor((S.handNo - 1) / S.per));
@@ -1822,6 +1832,15 @@
   function eliminate(H) {
     var gone = S.players.map(function (p, i) { return i; }).filter(function (i) { return H.inHand[i] && S.players[i].stack <= 0 && !S.players[i].out; });
     if (!gone.length) return [];
+    // in the rebuy window a person decides (Rebuy or I'm out); a computer player usually rebuys (not on the circuit,
+    // where the rest of the field already stands in for them)
+    if (canRe()) gone = gone.filter(function (i) {
+      var p = S.players[i];
+      if (!p.cpu) { p.wantRe = 1; return false; }
+      if (!S.circ && Math.random() < 0.8) { p.stack = reStack(); p.rebuys++; p.rebought = true; return false; }
+      return true;
+    });
+    if (!gone.length) return [];
     var left = alive().length - gone.length;
     gone.sort(function (a, b) { return H.start[b] - H.start[a]; }); // bigger starting stack finishes higher
     var main = H.results.filter(function (r) { return !r.back; })[0] || H.results[0];
@@ -1833,6 +1852,42 @@
     return gone;
   }
 
+  // Rebuys. Tournaments: during the first levels when the table allows them (the circuit: re-entry for the buy-in in
+  // the first 3 levels). Cash games: any time; a person chooses, the computer players just do.
+  function canRe() { return S.tourn ? (S.circ ? S.level < 3 && S.circ.else > 0 : S.rebuyLv > 0 && S.level < S.rebuyLv) : true; }
+  function reStack() { return S.circ ? EV[S.circ.id].stack : S.tourn ? TSTACK : BUYIN; }
+  function reCost() { return S.circ ? EV[S.circ.id].buy : !S.tourn ? BUYIN : 0; }
+  // player i's choice (yes: buy back in; no: out of the tournament, or out of the cash game's seat)
+  function reDecide(i, yes) {
+    var p = S.players[i];
+    if (!p || !p.wantRe) return;
+    delete p.wantRe;
+    if (yes) {
+      var n = reStack();
+      if (S.circ && !QUIET) { Casino.bet(EV[S.circ.id].buy); S.circ.reent = (S.circ.reent || 0) + 1; }
+      p.stack = n; p.rebuys++; p.rebought = true; if (!S.tourn) p.buyin += n;
+      return;
+    }
+    var place = alive().length + (S.circ ? S.circ.else : 0);
+    p.out = true; p.place = place;
+    if (S.circ) S.circ.left = Math.max(1, S.circ.left - 1);
+  }
+  // your choice on this device (online: a move like any other)
+  function reAct(yes) {
+    if (NET) {
+      var seat = NETSEAT;
+      if (!yes && S && !S.tourn) return TurnNet.leave();
+      return NET.act(function (st) { return netMove(st, seat, { t: 're', yes: !!yes }); });
+    }
+    if (!S || !S.players[0].wantRe) return;
+    if (yes && S.circ && Casino.balance() < reCost()) return lowBank(reCost());
+    Kit.sfx(yes ? 'chip' : 'tap'); Kit.haptic(yes ? 'medium' : 'light');
+    reDecide(0, yes);
+    save();
+    if (yes) return startHand();
+    if (S.circ) return endEvent();
+    return endTourney();
+  }
   function askRebuy() {
     var b = Casino.balance(), buy = Math.min(BUYIN, b);
     Kit.haptic('error');
@@ -1852,6 +1907,8 @@
     if (S.tourn) {
       var kos = st.kos.slice().sort(function (a, b) { return a.no - b.no; });
       kos.slice(0, 2).forEach(function (k) { hl.push((k.bn || S.players[k.by].name) + ' knocked out ' + (k.wn || S.players[k.who].name) + ' in hand ' + k.no); });
+      var rb = S.players.filter(function (p) { return p.rebuys; });
+      if (rb.length) hl.push(rb.map(function (p) { return p.name + ' rebought ' + (p.rebuys > 1 ? p.rebuys + ' times' : 'once'); }).join(', '));
       hl.push('Blinds reached ' + S.sb + ' / ' + S.bb + ' after ' + S.handNo + ' hand' + (S.handNo === 1 ? '' : 's'));
     } else {
       var reb = S.players.filter(function (p) { return p.rebuys; });
@@ -1930,7 +1987,7 @@
   }
   function ordinal(n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
   function replay(st) {
-    newTable({ mode: st.game, players: st.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), options: { fmt: st.tourn ? (st.per === 5 ? 'turbo' : 'tourn') : 'cash', bet: st.limit ? 'fl' : 'nl', ai: st.ai || 'regular', coach: st.coach ? 'on' : 'off' } });
+    newTable({ mode: st.game, players: st.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), options: { fmt: st.tourn ? (st.per === 5 ? 'turbo' : 'tourn') : 'cash', bet: st.limit ? 'fl' : 'nl', ai: st.ai || 'regular', coach: st.coach ? 'on' : 'off', rebuy: String(st.rebuyLv || 0) } });
   }
   // Leave the finished table on screen behind the results card
   function renderAfter(st) { var keep = S; S = st; try { renderTable(true); } catch (e) {} S = keep; }
@@ -2224,12 +2281,13 @@
     if (prize) { pg.cash[ev.id] = (pg.cash[ev.id] || 0) + 1; if (nx && pg.open < ev.no + 1) pg.open = ev.no + 1; }
     if (seatWon) pg.tix[nx.id] = 1;
     if (place === 1) pg.wins[ev.id] = (pg.wins[ev.id] || 0) + 1;
-    pg.net += prize + C.bounty - (C.seat ? 0 : ev.buy);
+    pg.net += prize + C.bounty - (C.seat ? 0 : ev.buy) - (C.reent || 0) * ev.buy;
     circSave(pg, ev.track);
     var hl = [];
     hl.push((place === 1 ? 'Won' : 'Finished ' + ordinal(place) + ' of ' + ev.field.toLocaleString()) + (prize ? ' for ' + usd(prize) : ''));
     if (C.kos) hl.push('Knocked out ' + C.kos + ' player' + (C.kos === 1 ? '' : 's') + (C.bounty ? ' for ' + usd(C.bounty) + ' in bounties' : ''));
     if (st.st.big) hl.push('Biggest pot: ' + chipsTxt(st.st.big.amt) + ' to ' + st.st.big.who + (st.st.big.fold ? '' : ' with ' + st.st.big.desc));
+    if (C.reent) hl.push('Re-entered ' + (C.reent === 1 ? 'once' : C.reent + ' times') + ' (' + usd(C.reent * ev.buy) + ')');
     if (seatWon) hl.push('Won a seat at ' + seatWon.venue + ' (' + usd(seatWon.buy) + ' buy-in)');
     hl.push('Blinds reached ' + chipsTxt(st.sb) + ' / ' + chipsTxt(st.bb) + ' after ' + st.handNo + ' hand' + (st.handNo === 1 ? '' : 's'));
     Kit.record(HKEY, {
@@ -2464,7 +2522,7 @@
       ]);
       tag.addEventListener('click', function () { if (p.cpu) Kit.toast(p.name + ': ' + STYLES[p.style].label.toLowerCase() + (S.circ ? ' · ' + skillWord(skillOf(p)).toLowerCase() : '') + (p.bty ? ' · ' + usd(p.bty) + ' bounty' : '')); });
       seat.appendChild(tag);
-      seat.appendChild(el('span', { class: 'stack', text: p.out ? ordinal(p.place) : amt(p.stack) }));
+      seat.appendChild(el('span', { class: 'stack', text: p.left ? 'Left' : p.out ? ordinal(p.place) : amt(p.stack) }));
       var say = '';
       if (done && H.scores && H.scores[i] != null) say = shortName(H.scores[i]);
       else if (H && H.say[i]) say = H.say[i];
@@ -2737,6 +2795,15 @@
     var H = S.hand, box = el('div', { class: 'pctl' }), me = S.players[0];
     if (!H) return box;
     var bar = el('div', { class: 'pbar' });
+    if (me.wantRe && (!NET || NETSEAT >= 0)) {
+      box.classList.add('mine');
+      var cost = reCost(), short = S.circ && Casino.balance() < cost;
+      box.appendChild(el('div', { class: 'pswap', html: 'Out of chips. ' + (S.circ ? 'Re-enter for <b>' + usd(cost) + '</b> and ' + reStack().toLocaleString() + ' new chips?' : !S.tourn ? 'Buy back in for <b>' + usd(cost) + '</b> from your bank?' : 'Rebuy for <b>' + reStack().toLocaleString() + '</b> new chips?') + (S.tourn && !S.circ && S.rebuyLv ? ' (rebuys until level ' + (S.rebuyLv + 1) + ')' : '') }));
+      bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: S.tourn ? 'I\'m out' : 'Leave the table', onclick: function () { reAct(false); } }));
+      bar.appendChild(el('button', { type: 'button', class: 'btn btn-primary', disabled: short, html: short ? 'Bank too low' : S.circ ? '<span class="two">Re-enter<small>' + usd(cost) + '</small></span>' : S.tourn ? 'Rebuy' : '<span class="two">Rebuy<small>' + usd(cost) + '</small></span>', onclick: function () { reAct(true); } }));
+      box.appendChild(bar);
+      return box;
+    }
     if (H.phase === 'swap') {
       var v = gv();
       if (!H.swapWait) { box.appendChild(el('div', { class: 'pwait', text: v.draw ? 'Dealing the draw' : 'Throwing away' })); return box; }
@@ -3176,7 +3243,7 @@
   // only, nothing drawn or heard) and written as a transaction. Each device draws the table turned round so its own
   // seat is at the bottom (netRot), and shows a finished hand's showdown before the next one (already dealt) appears.
   // ═══════════════════════════════════════════════════════════════════════════
-  var NET = null, NETQ = [], NETBUSY = false, NETSEEN = {}, NETREC = {}, NETWIN = null, NETME = 0, netT = 0;
+  var NET = null, NETSEAT = -1, NETCODE = null, NETQ = [], NETBUSY = false, NETSEEN = {}, NETREC = {}, NETWIN = null, NETME = 0, netT = 0;
   // a seat's colour: the same on every device at an online table (the table is drawn turned round on each)
   function seatColor(i) { return Kit.color(S && S.online ? (i + NETME) % N() : i); }
   function quiet(st, fn) {
@@ -3187,15 +3254,15 @@
   function netPrefs() { var o = {}; try { o = (JSON.parse(localStorage.getItem('gn_setup_poker') || '{}') || {}).options || {}; } catch (e) {} return o; }
   function netOpts() {
     var o = netPrefs();
-    return { game: /^(he|om|mx)$/.test(o.ngame) ? o.ngame : 'he', speed: o.nspeed === 'turbo' ? 'turbo' : 'tourn', seats: /^(0|6|9|10)$/.test(String(o.nseats)) ? +o.nseats : 6, ai: SKILLS[o.ai] ? o.ai : 'regular' };
+    return { game: /^(he|om|mx)$/.test(o.ngame) ? o.ngame : 'he', speed: /^(turbo|cash)$/.test(o.nspeed) ? o.nspeed : 'tourn', seats: /^(0|6|9|10)$/.test(String(o.nseats)) ? +o.nseats : 6, rebuy: +o.rebuy === 4 ? 4 : 0, ai: SKILLS[o.ai] ? o.ai : 'regular' };
   }
   function netStart(players, o, last) {
     o = o || {};
-    var om = o.game === 'om', styles = ['tag', 'lag', 'rock', 'station'];
+    var om = o.game === 'om', styles = ['tag', 'lag', 'rock', 'station'], cash = o.speed === 'cash', chips = cash ? BUYIN : TSTACK;
     var st = {
-      kind: 'table', online: 1, game: om ? 'om' : 'he', om: om, pl: om, mix: o.game === 'mx', limit: false, tourn: true, ai: o.ai || 'regular',
-      per: o.speed === 'turbo' ? 5 : 10, started: Date.now(), handNo: 0, level: 0, sb: LEVELS[0][0], bb: LEVELS[0][1], button: null, hand: null,
-      players: players.map(function (p, i) { return { name: p.name, cpu: !!p.bot, style: p.bot ? styles[i % styles.length] : null, sk: p.bot ? SKILLS[o.ai] || 0.5 : null, stack: TSTACK, buyin: TSTACK, out: false, place: 0, rebuys: 0 }; }),
+      kind: 'table', online: 1, game: om ? 'om' : 'he', om: om, pl: om, mix: o.game === 'mx', limit: false, tourn: !cash, rebuyLv: cash ? 0 : +o.rebuy || 0, ai: o.ai || 'regular',
+      per: o.speed === 'turbo' ? 5 : 10, started: Date.now(), handNo: 0, level: 0, sb: cash ? 1 : LEVELS[0][0], bb: cash ? 2 : LEVELS[0][1], button: null, hand: null,
+      players: players.map(function (p, i) { return { name: p.name, cpu: !!p.bot, style: p.bot ? styles[i % styles.length] : null, sk: p.bot ? SKILLS[o.ai] || 0.5 : null, stack: chips, buyin: chips, out: false, place: 0, rebuys: 0 }; }),
       st: { rows: [], big: null, best: null, beats: [], kos: [], won: players.map(function () { return 0; }), allins: 0 },
       wins: last && last.wins && last.wins.length === players.length ? last.wins.slice() : players.map(function () { return 0; })
     };
@@ -3203,7 +3270,12 @@
     netTrim(st);
     return st;
   }
-  function netTurn(st) { var H = st && st.hand; return !st || st.over || !H || H.phase !== 'bet' || H.actor < 0 ? [] : [H.actor]; }
+  function netTurn(st) {
+    if (!st || st.over) return [];
+    var H = st.hand, l = H && H.phase === 'bet' && H.actor >= 0 ? [H.actor] : [];
+    st.players.forEach(function (p, i) { if (p.wantRe && !p.left && l.indexOf(i) < 0) l.push(i); });
+    return l;
+  }
   function netResult(st) {
     if (!st || !st.over) return null;
     var w = st.players.map(function (p, i) { return i; }).filter(function (i) { return st.players[i].place === 1; });
@@ -3214,6 +3286,64 @@
     var standing = alive().sort(function (a, b) { return S.players[b].stack - S.players[a].stack; });
     standing.forEach(function (i, k) { S.players[i].place = k + 1; });
     S.over = 1; if (S.wins && standing.length) S.wins[standing[0]]++;
+  }
+  // Leaving mid-game. A tournament: the computer plays your chips on. A cash game: you fold any hand you're in and
+  // take your chips with you (your own device puts them back in your bank: netCash)
+  function netResign(st, seat) {
+    if (st.tourn) return { state: st, bot: true };
+    var p = st.players[seat];
+    p.left = 1; p.out = true;
+    quiet(st, function () {
+      var H = S.hand;
+      if (!H || H.phase === 'done') return;
+      if (H.phase === 'bet' && H.actor === seat) return act(seat, { t: 'fold' });
+      if (H.inHand[seat] && !H.folded[seat]) { H.folded[seat] = true; H.say[seat] = 'Fold'; logAdd(seat, 'Fold'); if (live().length <= 1 && H.phase === 'bet') endStreet(); }
+    });
+    p.cashout = p.stack;
+    netTrim(st);
+    return { state: st };
+  }
+  function netLeaveNote(st, seat) {
+    if (!st || st.tourn || seat < 0 || !st.players[seat]) return null;
+    var p = st.players[seat];
+    return 'You cash out: ' + usd(p.stack) + ' goes back to your bank' + (st.hand && st.hand.inHand[seat] && !st.hand.folded[seat] && st.hand.phase !== 'done' ? ' (you fold this hand)' : '') + '. The others play on.';
+  }
+  // Online cash games: your money moves on your own device. poker_net_cash (it follows your PIN, so a second device
+  // of yours never takes it twice) holds, per table, what you've put in and what you took out.
+  var NCKEY = 'poker_net_cash';
+  function ncLoad() { var l = load(NCKEY) || {}, now = Date.now(); Object.keys(l).forEach(function (k) { if (now - (l[k].at || 0) > 60 * 864e5) delete l[k]; }); return l; }
+  function ncSave(l) { try { localStorage.setItem(NCKEY, JSON.stringify(l)); } catch (e) {} }
+  function netBank(v, e) {
+    if (!NET || !v.online || v.tourn || e.seat < 0) return;
+    var me = v.players[0], key = NETCODE + ':' + v.started, l = ncLoad(), L = l[key] || (l[key] = { buy: 0, at: Date.now() });
+    if (L.out != null) return;
+    var owe = me.buyin - L.buy;
+    if (owe <= 0) return;
+    Casino.home();
+    var b = Casino.balance(), pay = Math.min(owe, b);
+    if (pay > 0) Casino.bet(pay);
+    L.buy = me.buyin; L.at = Date.now(); ncSave(l);
+    Kit.toast((L.buy > BUYIN ? 'Rebought for ' : 'Bought in for ') + usd(owe) + ' · bank ' + usd(Casino.balance()));
+    if (pay < owe) Kit.toast('Your bank ran dry. Refill it from the menu.', 4000);
+  }
+  function netCash(v, stack) {
+    if (!NETCODE || !v || !v.online || v.tourn) return null;
+    var key = NETCODE + ':' + v.started, l = ncLoad(), L = l[key];
+    if (!L || L.out != null) return null;
+    Casino.home(); Casino.win(stack);
+    L.out = stack; L.at = Date.now(); ncSave(l);
+    var keep = S; S = v;
+    try {
+      Kit.record(HKEY, {
+        started: v.started, mode: 'Online ' + (v.mix ? 'mixed' : v.game === 'om' ? 'Omaha' : 'Hold\'em') + ' cash game',
+        players: v.players.map(function (p, i) { return { name: p.name, score: (i === 0 ? stack : p.stack) - p.buyin, cpu: p.cpu }; }),
+        winner: null, summary: (stack - L.buy >= 0 ? 'Up ' : 'Down ') + usd(Math.abs(stack - L.buy)) + ' · ' + v.st.rows.length + ' hands',
+        highlights: tableHighlights().concat(['Online table ' + NETCODE]),
+        detail: { game: v.om ? 'omaha' : 'holdem', tourn: 0, big: v.st.bigH || null, hands: v.st.rows.length, bank: { s: L.buy, e: stack } }
+      });
+    } catch (x) { console.warn(x); }
+    S = keep;
+    return { net: stack - L.buy, out: stack };
   }
   // (inside the engine, QUIET) a hand is over: keep it to show, and deal the next one
   function netAfter() {
@@ -3229,6 +3359,13 @@
     if (st.st.rows.length > 300) st.st.rows = st.st.rows.slice(-300);
   }
   function netMove(st, seat, a) {
+    if (a.t === 're') {
+      var pr = st.players[seat];
+      if (!pr || !pr.wantRe || st.over) return null;
+      quiet(st, function () { reDecide(seat, !!a.yes); if (S.stall) startHand(); });
+      netTrim(st);
+      return { state: st, mv: { s: seat, t: 're', yes: !!a.yes } };
+    }
     var H = st.hand;
     if (!H || st.over || H.phase !== 'bet' || H.actor !== seat) return null;
     var no = H.no;
@@ -3237,6 +3374,7 @@
     return { state: st, mv: { s: seat, t: a.t, no: no } };
   }
   function netBot(st, seat) {
+    if (st.players[seat] && st.players[seat].wantRe) return netMove(st, seat, { t: 're', yes: true });   // (a seat the computer took over)
     var H = st.hand;
     if (!H || st.over || H.phase !== 'bet' || H.actor !== seat) return null;
     var a = quiet(st, function () { return cpuDecide(seat); });
@@ -3283,7 +3421,7 @@
   }
   function netShow(net, info) {
     info = info || {};
-    NET = net;
+    NET = net; if (net.code) NETCODE = net.code;
     var e = { st: JSON.parse(JSON.stringify(net.state)), seat: net.seat, seats: net.seats, info: info };
     if (info.fresh || info.again) { NETQ = [e]; clearTimeout(netT); NETBUSY = false; netCloseWin(); R = {}; stop(); venueOff(); }
     else NETQ.push(e);
@@ -3292,10 +3430,10 @@
   function netNext() {
     var e = NETQ.shift();
     if (!e || !NET) { NETBUSY = false; return; }
-    NETBUSY = true;
+    NETBUSY = true; NETSEAT = e.seat;
     var was = S && S.online ? S : null, v = netView(e), pv = v.prev, key = NET.code + ':' + v.started + ':' + (pv ? pv.no : 0);
     var mv = e.info && e.info.mv;
-    if (mv && !e.info.fresh) Kit.sfx(mv.t === 'fold' ? 'flip' : mv.t === 'check' ? 'tap' : 'chip');
+    if (mv && !e.info.fresh) Kit.sfx(mv.t === 'fold' ? 'flip' : mv.t === 'check' ? 'tap' : mv.t === 're' && !mv.yes ? 'tap' : 'chip');
     // the hand just finished, first (when this device was watching it)
     if (pv && !NETSEEN[key] && was && was.hand && was.hand.no === pv.no && (v.hand.no !== pv.no || v.over)) {
       NETSEEN[key] = 1;
@@ -3311,6 +3449,7 @@
   }
   function netDraw(e, v, was) {
     if (!NET) { NETBUSY = false; return; }
+    netBank(v, e);
     S = v; renderTable();
     if (was && v.hand && was.hand && v.hand.no !== was.hand.no) {
       if (v.mix && was.om !== v.om) { Kit.callout(v.om ? 'Omaha round' : 'Hold\'em round'); Kit.sfx('whoosh'); }
@@ -3341,6 +3480,12 @@
     if (!NET) return;
     var key = NET.code + ':' + v.started;
     if (NETWIN && NETWIN.key === key) return;
+    if (!v.tourn) {
+      var co = e.seat >= 0 ? netCash(v, v.players[0].stack) : null;
+      NETWIN = Kit.win({ icon: 'coins', lose: co && co.net < 0, title: 'The table has closed', sub: co ? 'You cashed out ' + usd(co.out) + ' (' + signed(co.net) + ')' : 'Everyone else has left',
+        againLabel: 'Back to the lobby', again: function () { TurnNet.leave(); TurnNet.open(); }, closeLabel: 'Back to games' });
+      NETWIN.key = key; return;
+    }
     var me = v.players[0], iWin = e.seat >= 0 && me.place === 1, w = v.players.filter(function (p) { return p.place === 1; })[0];
     var rank = v.players.map(function (p, i) { return { name: i === 0 && e.seat >= 0 ? p.name + ' (you)' : p.name, score: ordinal(p.place), place: p.place, cpu: p.cpu, color: Kit.color((i + NETME) % v.players.length) }; }).sort(function (a, b) { return a.place - b.place; });
     if (!NETREC[key] && e.seat >= 0) {
@@ -3369,14 +3514,30 @@
     NETWIN.key = key;
   }
   function netLeave() {
+    var v = S && S.online ? S : null, cashing = v && NET && NETSEAT >= 0 && !v.tourn && !v.players[0].left, code = NETCODE, seat = NETSEAT;
     NET = null; NETQ = []; NETBUSY = false; clearTimeout(netT); netCloseWin(); R = {};
     showSetup();
+    if (!cashing) return;
+    // what you take home is what the table kept for you once you'd left (any hand you were in, folded)
+    var tries = 0;
+    (function look() {
+      TurnNet._store().get(code).then(function (d) {
+        var st = d && d.st ? JSON.parse(d.st) : null, p = st && st.players[seat];
+        if (p && p.cashout == null && d.status !== 'closed' && ++tries < 4) return setTimeout(look, 1200);
+        done(p ? (p.cashout != null ? p.cashout : p.stack) : v.players[0].stack);
+      }).catch(function () { done(v.players[0].stack); });
+    })();
+    function done(amt) { NETCODE = code; var co = netCash(v, amt); if (co) cashed(co); }
+  }
+  function cashed(co) {
+    Kit.win({ icon: 'coins', lose: co.net < 0, title: co.net > 0 ? 'You won ' + usd(co.net) + '!' : co.net === 0 ? 'You broke even' : 'You lost ' + usd(-co.net),
+      sub: 'Cashed out ' + usd(co.out) + ' · bank ' + usd(Casino.balance()), againLabel: 'Play online again', again: function () { TurnNet.open(); }, closeLabel: 'Back to games' });
   }
 
   // Test hook: computer players of the given skills play n cash hands against each other; resolves with each seat's
   // result in big blinds per 100 hands
   window.__pk = {
-    get S() { return S; }, render: function () { renderTable(); }, deal: function () { startHand(); }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
+    get S() { return S; }, render: function () { renderTable(); }, deal: function () { startHand(); }, _net: { start: netStart, move: netMove, turn: netTurn, bot: netBot, resign: netResign }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
     peek: function () { return S && { no: S.handNo, phase: S.hand && S.hand.phase, actor: S.hand && S.hand.actor, street: S.hand && S.hand.street, held: !!held }; },
     // a whole circuit event with a computer player of skill sk in your seat
     event: function (id, sk) {
@@ -3408,7 +3569,7 @@
   TurnNet.setup({
     game: 'poker', title: 'Poker', min: 2, max: 10, botMs: 650,
     seats: function (n, o) { return Math.min(10, Math.max(n, +(o && o.seats) || 0)); },
-    opts: netOpts, start: netStart, turn: netTurn, over: netResult, bot: netBot,
+    opts: netOpts, start: netStart, turn: netTurn, over: netResult, bot: netBot, resign: netResign, leaveNote: netLeaveNote,
     show: netShow, leave: netLeave
   });
 })();
