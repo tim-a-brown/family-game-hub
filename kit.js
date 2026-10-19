@@ -956,6 +956,24 @@
     }
     return null;
   }
+  // The on-screen keyboard: iPhone covers the bottom of the screen with it, and an open sheet (pasting a deck, typing a
+  // name) would sit underneath. While it's up, --kb is its height and --vvh the space left, so sheets ride on top of it
+  // (kit.css, html.k-kb), and the box being typed in is scrolled into view inside the sheet.
+  (function () {
+    var vv = window.visualViewport; if (!vv) return;
+    var root = doc.documentElement, on = false;
+    function typing() { var a = doc.activeElement; return !!(a && (/^(TEXTAREA|SELECT)$/.test(a.tagName) || (a.tagName === 'INPUT' && !/^(button|checkbox|radio|range|submit|reset|file|color)$/i.test(a.type || '')) || a.isContentEditable)); }
+    function fit() {
+      var kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      var now = typing() && kb > 80;
+      if (now) { root.style.setProperty('--kb', kb + 'px'); root.style.setProperty('--vvh', Math.round(vv.height) + 'px'); }
+      if (now !== on) { on = now; root.classList.toggle('k-kb', on); if (on) seat(); }
+    }
+    function seat() { setTimeout(function () { var a = doc.activeElement, sh = a && a.closest && a.closest('.k-sheet'); if (sh && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' }); }, 60); }
+    vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
+    doc.addEventListener('focusin', function () { setTimeout(fit, 50); setTimeout(fit, 400); });
+    doc.addEventListener('focusout', function () { setTimeout(fit, 50); });
+  })();
   function startFitLock() {
     queueFit();
     window.addEventListener('resize', queueFit);
