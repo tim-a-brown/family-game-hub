@@ -245,8 +245,27 @@
   function stats() { var s = load(STATS, null) || {}; s.streak = s.streak || 0; s.best = s.best || 0; s.solved = s.solved || {}; s.pts = s.pts || 0; return s; }
   // days since 1 Jan 2024 (local), +1: the same numbering as daily.js
   function today() { return Math.round((new Date().setHours(0, 0, 0, 0) - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }   // local calendar day, steady across DST
-  // the daily riddle: a fixed order, every riddle once before any repeats (RiddleDaily in data/riddles.js)
-  function dailyRiddle(day) { return RiddleDaily.pick(ALL, day); }
+  // The daily riddle is your own: each day, the next riddle at that day's level (quick early in the week, hard at the
+  // weekend) that you haven't yet solved or given up on, anywhere: a daily or a round. A day you skip doesn't use one
+  // up; it waits for the next day of that level. Its order is RIDDLE_SORT.daily; once the day's riddle is picked it
+  // stays for the day (riddles_today). Before the new dailies began, and if every one is done, the shared schedule.
+  var TODAY = 'riddles_today';
+  function doneIds() {
+    var d = {}, s = stats();
+    Object.keys(s.solved || {}).forEach(function (k) { d[k] = 1; });
+    try { GameHistory.load(HKEY).forEach(function (e) { ((e && e.dt && e.dt.r) || []).forEach(function (x) { if (x && x.id && (x.s > 0 || x.g)) d[x.id] = 1; }); }); } catch (e) {}
+    return d;
+  }
+  function dailyRiddle(day) {
+    var D = window.RIDDLE_SORT && RIDDLE_SORT.daily, t = RiddleDaily.tier ? RiddleDaily.tier(day) : 0;
+    if (!D || !t) return RiddleDaily.pick(ALL, day);
+    var pin = load(TODAY, null); if (pin && pin.day === day && BY[pin.id]) return BY[pin.id];
+    var done = doneIds(), list = D['t' + t] || [], r = null;
+    for (var i = 0; i < list.length && !r; i++) if (!done[list[i]] && BY[list[i]]) r = BY[list[i]];
+    r = r || RiddleDaily.pick(ALL, day);
+    store(TODAY, { day: day, id: r.id });
+    return r;
+  }
   function dailyDone(day) { try { return GameHistory.load(HKEY).filter(function (e) { return e && e.daily === day; })[0] || null; } catch (e) { return null; } }
 
   // Curly quotes for display
@@ -273,7 +292,7 @@
       '<li><b>Give up</b> shows the answer, for no points, and ends your streak.</li></ul>' +
       '<h3>Streak</h3><p>Your streak counts riddles solved in a row, across rounds, until you give up on one.</p>' +
       '<h3>Rounds</h3><p>Pick Easy, Medium, Hard or Mixed (easy to hard), and 5 or 10 riddles. You won\'t see the same riddle again until you\'ve seen every one in its level.</p>' +
-      '<h3>Daily riddle</h3><p>One riddle a day, the same for everyone. Like a newspaper crossword it gets harder through the week: a quick one on Monday and Tuesday, one to think about Wednesday to Friday, and a hard one at the weekend.</p>'
+      '<h3>Daily riddle</h3><p>One riddle a day. Like a newspaper crossword it gets harder through the week: a quick one on Monday and Tuesday, one to think about Wednesday to Friday, and a hard one at the weekend. It\'s never one you\'ve already solved or given up on, and a day you miss doesn\'t use one up.</p>'
   });
 
   // ── Picking riddles: no repeats until a level has been seen in full ─────────
@@ -337,7 +356,7 @@
         { id: 'easy', icon: 'star', title: 'Easy', desc: prog('easy') },
         { id: 'medium', icon: 'lightbulb', title: 'Medium', desc: prog('medium') },
         { id: 'hard', icon: 'flame', title: 'Hard', desc: prog('hard') },
-        { id: 'daily', icon: 'calendar', title: 'Daily riddle', desc: dd ? (dd.solved ? 'Solved today. A new one tomorrow.' : 'Done for today. A new one tomorrow.') : 'One riddle, the same for everyone today' }
+        { id: 'daily', icon: 'calendar', title: 'Daily riddle', desc: dd ? (dd.solved ? 'Solved today. A new one tomorrow.' : 'Done for today. A new one tomorrow.') : 'One a day, never one you\'ve done. Harder through the week.' }
       ],
       mode: 'mixed',
       options: [{ id: 'len', label: 'Round', value: 5, choices: [[5, '5 riddles'], [10, '10 riddles']], when: function (m) { return m !== 'daily'; } }],

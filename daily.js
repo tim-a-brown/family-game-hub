@@ -87,7 +87,7 @@ var Daily = window.Daily = (function () {
       if (e) return { id: 'riddles', what: 'Daily riddle', status: 'done', note: e.solved ? (e.stars === 3 ? 'No hints' : 'Solved') : 'Gave up' };
       var s = state('riddles_state');
       if (s && s.daily === day && !s.over && s.res && s.res[0] && (s.res[0].t.length || s.res[0].h)) return { id: 'riddles', what: 'Daily riddle', status: 'going', note: 'Keep thinking' };
-      return { id: 'riddles', what: 'Daily riddle · the same one for everyone', status: 'new' };
+      return { id: 'riddles', what: 'Daily riddle · a new one for you', status: 'new' };
     },
     function ciphers() {
       var day = localDay(), T = { caesar: 'Caesar shift', a1z26: 'Letter numbers', crypto: 'Cryptogram' };
