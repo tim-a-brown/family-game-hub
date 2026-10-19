@@ -193,7 +193,7 @@
     return out;
   }
   function scanLocalRaw(){
-    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null, lorc: scanLorc(), avatars: null, ghDel: null, links: null, players: null, prefs: scanPrefs() };
+    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null, lorc: scanLorc(), avatars: null, ghDel: null, links: null, players: null, prefs: scanPrefs(), prog: scanProg() };
     for(var i = 0; i < LS.length; i++){
       var k = LS.key(i);
       if(!k) continue;
@@ -301,6 +301,43 @@
     Object.keys(LORC_KEYS).forEach(function(f){ try{ LS.setItem(LORC_KEYS[f], JSON.stringify(l[f] || (f === 'decks' ? [] : f === 'fancy' ? null : {}))); }catch(e){} });
   }
 
+  // ── Daily puzzle progress ─────────────────────────────────────────────
+  // A daily puzzle played on more than one device (Spelling Bee) keeps today's progress in prog_<game>:
+  // {<day>: {w: [words found], d: 1 when finished, r: 1 once recorded in history}}. Devices merge it by day:
+  // every word found anywhere, finished or recorded anywhere. Only the latest few days are kept.
+  var PROG_RE = /^prog_([a-z0-9]+)$/, PROG_DAYS = 3;
+  function scanProg(){
+    var o = null;
+    for(var i = 0; i < LS.length; i++){ var k = LS.key(i), m = k && PROG_RE.exec(k); if(!m) continue; var v = lsJSON(k); if(v && typeof v === 'object'){ o = o || {}; o[m[1]] = v; } }
+    return o;
+  }
+  function mergeProgGame(a, b){
+    var out = {};
+    [a || {}, b || {}].forEach(function(src){ Object.keys(src).forEach(function(day){
+      var e = src[day]; if(!/^\d+$/.test(day) || !e || typeof e !== 'object') return;
+      var o = out[day] || (out[day] = { w: [] });
+      asArray(e.w).forEach(function(w){ if(typeof w === 'string' && o.w.indexOf(w) < 0) o.w.push(w); });
+      Object.keys(e).forEach(function(f){ if(f !== 'w' && typeof e[f] === 'number' && !(o[f] >= e[f])) o[f] = e[f]; });
+    }); });
+    var keep = Object.keys(out).sort(function(x, y){ return y - x; }).slice(0, PROG_DAYS), res = {};
+    keep.forEach(function(d){ res[d] = out[d]; });
+    return res;
+  }
+  function mergeProg(a, b){
+    if(!a && !b) return null;
+    var out = {}; a = a || {}; b = b || {};
+    Object.keys(a).concat(Object.keys(b)).forEach(function(g){ if(/^[a-z0-9]+$/.test(g) && !out[g]) out[g] = mergeProgGame(a[g], b[g]); });
+    return out;
+  }
+  function writeProg(p){
+    if(!p) return;
+    var now = scanProg() || {};
+    Object.keys(p).forEach(function(g){
+      var m = mergeProgGame(p[g], now[g]), str = JSON.stringify(m);
+      try{ if(LS.getItem('prog_' + g) !== str) LS.setItem('prog_' + g, str); }catch(e){}
+    });
+  }
+
   // ── Merge strategies ──────────────────────────────────────────────────
   function asArray(v){
     if(Array.isArray(v)) return v;
@@ -401,6 +438,7 @@
     out.links = mergeLinks(local.links, remote.links);
     out.players = mergePlayers(local.players, remote.players);
     out.prefs = mergePrefs(local.prefs, remote.prefs);
+    out.prog = mergeProg(local.prog, remote.prog);
     if(out.ghDel) Object.keys(out.gh).forEach(function(k){ out.gh[k] = out.gh[k].filter(function(r){ return !out.ghDel[ghId(k, r)]; }); });
     // Favorites: newest favsAt timestamp wins the whole list. This lets
     // deletions propagate — unfavoriting bumps the local timestamp, and on
@@ -512,6 +550,7 @@
     }
     if(snap.players) applyPlayers(mergePlayers(snap.players, lsJSON('fgh_players_at')));
     if(snap.prefs) applyPrefs(snap.prefs);
+    if(snap.prog) writeProg(snap.prog);
     if(snap.avatars){
       var av = mergeAvatars(snap.avatars, lsJSON('fgh_avatars'));
       try{ LS.setItem('fgh_avatars', JSON.stringify(av)); }catch(e){}
@@ -634,7 +673,7 @@
         return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, ghDel:null, links:null, isNew:true};
       }
       var d = doc.data() || {};
-      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: typeof d.bank === 'number' && isFinite(d.bank) ? d.bank : null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, players: d.players||null, prefs: d.prefs||null, pc: d.pc||null, isNew:false, moved: !!d.moved };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: typeof d.bank === 'number' && isFinite(d.bank) ? d.bank : null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, players: d.players||null, prefs: d.prefs||null, prog: d.prog||null, pc: d.pc||null, isNew:false, moved: !!d.moved };
       console.log('[sync] pull', {
         rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
         favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
@@ -740,6 +779,7 @@
     if(snap.links) doc.links = sanitizeForFirestore(snap.links);
     if(snap.players) doc.players = sanitizeForFirestore(snap.players);
     if(snap.prefs) doc.prefs = sanitizeForFirestore(snap.prefs);
+    if(snap.prog) doc.prog = sanitizeForFirestore(snap.prog);
     console.log('[sync] push', {
       rklists_count: snap.rklists && snap.rklists.lists ? (Array.isArray(snap.rklists.lists) ? snap.rklists.lists.length : Object.keys(snap.rklists.lists).length) : 0,
       favs_count: Array.isArray(snap.favs) ? snap.favs.length : 'absent',
@@ -767,7 +807,7 @@
     });
     return ref.set(doc, { merge: true }).catch(function(err){
       // Rules that don't allow `prefs` yet: save everything else
-      if(doc.prefs && err && err.code === 'permission-denied'){ console.warn('[sync] cloud refused prefs; saving the rest'); delete doc.prefs; return ref.set(doc, { merge: true }); }
+      if((doc.prefs || doc.prog) && err && err.code === 'permission-denied'){ console.warn('[sync] cloud refused prefs/prog; saving the rest'); delete doc.prefs; delete doc.prog; return ref.set(doc, { merge: true }); }
       throw err;
     }).catch(function(err){
       // Rules that don't allow `lorcana` yet would refuse the whole save:
@@ -1012,7 +1052,7 @@
   function noteWrite(key){
     if(/\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search)) return;
     if(!key) return;
-    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'fgh_players_at' && key !== 'fgh_gh_del' && key !== 'fgh_links' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games' && !(PREF_RE.test(key) && stampPrefs())) return;
+    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'fgh_players_at' && key !== 'fgh_gh_del' && key !== 'fgh_links' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games' && !PROG_RE.test(key) && !(PREF_RE.test(key) && stampPrefs())) return;
     if(isPin()){ markWrite(); schedulePush(); }
     // the bankroll on your link profile follows casino_bank (a few seconds after it settles)
     if(key === 'casino_bank' && isPin()){ clearTimeout(_bankPubT); _bankPubT = setTimeout(function(){ var l = linksGet(); if(l.own && l.own.code && LS.getItem('fgh_link_pub') !== pubSig()) linkPublish(); }, 5000); }
@@ -1158,6 +1198,11 @@
     });
     window.addEventListener('offline', function(){
       setStatus('offline');
+    });
+    // coming back to a game (the home screen does its own): catch up with what other devices saved meanwhile,
+    // like words found in today's puzzle on another device (games hear fghsync:updated)
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible' && isPin() && /\/games\//.test(location.pathname) && !/[?&]defaults=1(&|$)/.test(location.search)) syncNow({ soft: true });
     });
     // settings a game saved straight to the device: send them when the app goes to the background
     document.addEventListener('visibilitychange', function(){

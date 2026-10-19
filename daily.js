@@ -3,7 +3,7 @@
 // Used by the "Daily puzzles" button on the home screen (Puzzles & Words). Each game opens its daily
 // straight away with ?daily=1. The day numbers and "done" checks here must match each game's own:
 //   Wordle        today().day          (days since 1 Jan 2024 local, +1) history dayNum, randomMode
-//   Spelling Bee  dayNum()             (days since 1 Jan 2024 local, +1) spellingbee_state.daily
+//   Spelling Bee  dayNum()             (days since 1 Jan 2024 local, +1) spellingbee_state.daily + prog_spellingbee
 //   Sudoku        today(), DAILY_DIFF  (days since 1 Jan 2024 local, +1) history daily
 //   Word Search   today(), DAILY_DIFF  (same as Sudoku)                   history daily
 //   Mazes         today()              ('YYYY-MM-DD' local)               history daily, solved
@@ -40,7 +40,9 @@ var Daily = window.Daily = (function () {
     },
     function spellingbee() {
       var day = localDay(), all = state('spellingbee_state') || {}, d = all.daily;
-      var n = d && d.day === day && Array.isArray(d.found) ? d.found.length : 0;
+      var w = d && d.day === day && Array.isArray(d.found) ? d.found.slice() : [], pg = state('prog_spellingbee') || {};   // + words found on other devices
+      if (pg[day] && Array.isArray(pg[day].w)) pg[day].w.forEach(function (x) { if (w.indexOf(x) < 0) w.push(x); });
+      var n = w.length;
       return { id: 'spellingbee', what: 'Daily #' + day + ' · a new hive every day', status: n ? 'going' : 'new', note: n ? n + (n === 1 ? ' word' : ' words') : '' };
     },
     function sudoku() {

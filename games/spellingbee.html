@@ -267,7 +267,34 @@ body{overflow-x:hidden;}
   function save() {
     var all = store(); all.cur = S.kind; all[S.kind] = S;
     try { localStorage.setItem(SAVE, JSON.stringify(all)); } catch (e) {}
+    progPut(S);
     if (S.found.length && !S.done) Kit.resume.set(label() + ' · ' + RANKS[rankIdx(total())][0]); else Kit.resume.clear();
+  }
+  // Today's daily follows you between devices: prog_spellingbee (synced with the PIN) holds every word found on
+  // any device, {<day>: {w: [words], d: 1 finished, r: 1 recorded in history}}
+  var PROG = 'prog_spellingbee';
+  function progGet() { try { return JSON.parse(localStorage.getItem(PROG)) || {}; } catch (e) { return {}; } }
+  function progPut(st) {
+    if (!st || st.kind !== 'daily' || !st.day) return;
+    var all = progGet(), e = all[st.day] || { w: [] }, ch = !all[st.day];
+    if (!Array.isArray(e.w)) e.w = [];
+    st.found.forEach(function (w) { if (e.w.indexOf(w) < 0) { e.w.push(w); ch = true; } });
+    if (st.done && !e.d) { e.d = 1; ch = true; }
+    if (st.recorded && !e.r) { e.r = 1; ch = true; }
+    if (!ch) return;
+    all[st.day] = e;
+    Object.keys(all).sort(function (a, b) { return b - a; }).slice(3).forEach(function (d) { delete all[d]; });
+    try { localStorage.setItem(PROG, JSON.stringify(all)); } catch (x) {}
+    if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(PROG);
+  }
+  // words found (and finishing, and recording) on other devices, into this device's copy; true when anything came in
+  function progTake(st) {
+    if (!st || st.kind !== 'daily') return false;
+    var e = progGet()[st.day], ch = false; if (!e) return false;
+    (Array.isArray(e.w) ? e.w : []).forEach(function (w) { if (typeof w === 'string' && st.found.indexOf(w) < 0) { st.found.push(w); ch = true; } });
+    if (e.d && !st.done) { st.done = true; ch = true; }
+    if (e.r && !st.recorded) { st.recorded = true; ch = true; }
+    return ch;
   }
   function label(st) { st = st || S; return st.kind === 'daily' ? 'Daily #' + st.day : 'Practice'; }
   function prep() {
@@ -283,10 +310,10 @@ body{overflow-x:hidden;}
     var all = store(), d = dayNum();
     // Yesterday's (or older) daily with words in it: save it to history first
     if (all.daily && all.daily.day !== d) {
-      finishRecord(all.daily); all.daily = null;
+      progTake(all.daily); finishRecord(all.daily); progPut(all.daily); all.daily = null;   // (once, whichever device gets there first)
       try { localStorage.setItem(SAVE, JSON.stringify(all)); } catch (e) {}
     }
-    if (kind === 'daily') S = all.daily && all.daily.day === d ? all.daily : fresh('daily', dailySeed(d), d);
+    if (kind === 'daily') { S = all.daily && all.daily.day === d ? all.daily : fresh('daily', dailySeed(d), d); progTake(S); }
     else S = all.random && !all.random.done ? all.random : fresh('random', (Math.random() * 4294967296) >>> 0);
     typed = ''; prep(); save(); render(true);
   }
@@ -581,6 +608,15 @@ body{overflow-x:hidden;}
   var st = store(), wantDaily = /[?&]daily=1/.test(location.search);   // ?daily=1: the Daily puzzles list on the home screen
   if (wantDaily) { try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])daily=1&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch (e) {} }
   open(!wantDaily && st.cur === 'random' && st.random && !st.random.done ? 'random' : 'daily');
+  // back from another device: its new words appear in the list
+  document.addEventListener('fghsync:updated', function () {
+    if (!S || S.kind !== 'daily' || S.day !== dayNum()) return;
+    var n = S.found.length, before = rankIdx(total());
+    if (!progTake(S)) return;
+    save(); paintAll();
+    var got = S.found.length - n;
+    if (got > 0) { Kit.toast(got + (got === 1 ? ' word' : ' words') + ' from your other device'); if (rankIdx(total()) > before) Kit.sfx('good'); }
+  });
   window.addEventListener('pageshow', function (e) { if (e.persisted && S && S.kind === 'daily' && S.day !== dayNum()) open('daily'); });
   // test hook
   window.__sb = { get S() { return S; }, get P() { return P; } };
