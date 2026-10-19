@@ -49,6 +49,19 @@ service cloud.firestore {
         ]);
     }
 
+    // Saved games, puzzles in progress, levels and stats (sync.js "Everything else follows the PIN"): one doc per
+    // stored key, read only inside one PIN. A change older than the cloud's copy is turned down, so a device that
+    // missed newer play elsewhere can't overwrite it.
+    match /pins/{pinId}/st/{key} {
+      allow get, list: if pinId.matches('^[0-9]{4}$');
+      allow create, update: if pinId.matches('^[0-9]{4}$')
+        && request.resource.data.keys().hasOnly(['v', 'at', 'ts'])
+        && request.resource.data.at is number
+        && request.resource.data.ts == request.time
+        && (request.resource.data.v == null || (request.resource.data.v is string && request.resource.data.v.size() <= 400000))
+        && (resource == null || request.resource.data.at >= resource.data.at);
+    }
+
     // Lorcana online tables: one doc per table, a 4-letter code. Two devices
     // (two PINs) share it: the table owner writes the game, the other writes
     // answers to choices. Same PIN-style model: knowing the code is access.

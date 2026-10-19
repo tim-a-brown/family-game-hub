@@ -31,7 +31,14 @@
 // Each PIN (and guest play) keeps its own space on a shared device (fgh_space, fgh_space_<id>): see switchSpace.
 (function(){
   'use strict';
-  var LS = window.localStorage;
+  // This file reads and writes the device's storage directly; everything else goes through Storage.prototype, which
+  // is wrapped below (stWatch) so saves made by games are noticed and sent to the PIN's cloud copy
+  var LS = (function(){
+    var s = window.localStorage, P = Storage.prototype, g = P.getItem, st = P.setItem, rm = P.removeItem, ky = P.key;
+    var o = { getItem: function(k){ return g.call(s, k); }, setItem: function(k, v){ st.call(s, k, v); }, removeItem: function(k){ rm.call(s, k); }, key: function(i){ return ky.call(s, i); }, clear: function(){ s.clear(); } };
+    Object.defineProperty(o, 'length', { get: function(){ return s.length; } });
+    return o;
+  })();
   var MODE_KEY  = 'fgh_mode';
   var PIN_KEY   = 'fgh_pin';
   var LABEL_KEY = 'fgh_label';
@@ -337,6 +344,126 @@
       try{ if(LS.getItem('prog_' + g) !== str) LS.setItem('prog_' + g, str); }catch(e){}
     });
   }
+
+  // ── Everything else follows the PIN too ───────────────────────────────
+  // Saved games, puzzles in progress, levels, stats, already-seen lists: every key not synced another way above, not
+  // tied to this device (DEVICE_RE, ST_DEVICE) and not a cache lives in the cloud as pins/{pin}/st/{key}
+  // {v: the stored text (null once removed), at: when it last changed, ts: server time}. The newest change wins, key
+  // by key (the cloud refuses an older one). This device keeps fgh_st {at: {key: when changed or taken}, sig: {key:
+  // hash of that value}, sent: {key: at uploaded}, ts: newest server time read, last: last pull, done: 1 once synced}.
+  // Keys this device already had before any of this count as oldest; where two devices both had one, each keeps its
+  // own until either changes it. A game page whose own keys arrive newer from another device reloads to carry on.
+  var ST = 'fgh_st', ST_MAX = 400000, ST_PULL = 'fgh_st_pull_at';
+  var ST_SKIP = /^(hi_|gh_|prog_|fgh_|firebase|lorcana_(decks|marks)_|lorcana_(art|fancy)_v1$|casino_bank$|rklists$|fav_games|my_name$|gn_hidden_names$)/;
+  // on this device only: online seats, table codes and device ids, sign-ins, caches, emulator settings, one-time markers
+  var ST_DEVICE = /^(online_.*|spotify_.*|tn_.*|.*_dev|.*_online|.*_net[a-z]*(_.*)?|lorc_lktag|lorc_newrel|lorcana_(cards|story).*|lorcana_slips|lorc_(art|fancy)|slots_thumbs.*|gn_console_(idx|house)|gn_con_ram|gn_offline.*|pinball_qauto|peggle_hi_mig|centi_2d|.*_cache(_.*)?)$/;
+  var ST_NORELOAD = /^(gn_resume|gn_name_counts|frequent_players|gn_hiscores_sel)$/;
+  function stKey(k){ return !!k && k.length <= 120 && /^[A-Za-z0-9_]+$/.test(k) && !ST_SKIP.test(k) && !PREF_RE.test(k) && !DEVICE_RE.test(k) && !ST_DEVICE.test(k); }
+  function stLoad(){ var o = lsJSON(ST) || {}; o.at = o.at || {}; o.sig = o.sig || {}; o.sent = o.sent || {}; o.ts = Number(o.ts) || 0; return o; }
+  function stSave(o){ try{ LS.setItem(ST, JSON.stringify(o)); }catch(e){} }
+  function strHash(str){
+    var h1 = 0x811c9dc5, h2 = 0x2b2b2b2b;
+    for(var i = 0; i < str.length; i++){ var ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 16777619); h2 = Math.imul(h2 ^ ch, 2246822519); }
+    return (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36) + str.length.toString(36);
+  }
+  // What changed on this device since the last look. Only a change made once this page has synced and you've touched
+  // it counts as new play; a game re-saving what it loaded (or tidying it) stays on this device and isn't sent.
+  var _stPaged = false, _stInput = false, _stKeys = {}, _stFrozen = {};
+  function stStamp(o){
+    var first = !o.done, live = !first && _stPaged && _stInput, now = Date.now(), seen = {}, i, k, v, h;
+    function mark(k){ var at = Number(o.at[k]) || 0; o.at[k] = first ? Math.max(1, at) : live ? Math.max(now, at + 1) : (at || 1); }
+    for(i = 0; i < LS.length; i++){
+      k = LS.key(i); if(!stKey(k)) continue;
+      v = LS.getItem(k); if(v == null) continue;
+      seen[k] = 1; h = v.length > ST_MAX ? 'big' : strHash(v);
+      if(o.sig[k] !== h){ o.sig[k] = h; mark(k); }
+    }
+    Object.keys(o.sig).forEach(function(k){ if(!seen[k] && o.sig[k] !== '-' && stKey(k)){ o.sig[k] = '-'; mark(k); } });
+  }
+  function stCol(){ var ref = cloudRef(); return ref ? ref.collection('st') : null; }
+  // newer copies from the cloud into this device; the keys that changed here
+  function stPull(o){
+    var col = stCol(); if(!col) return Promise.resolve([]);
+    var started = Date.now();
+    return col.where('ts', '>', firebase.firestore.Timestamp.fromMillis(o.ts)).get().then(function(q){
+      var took = [], game = /\/games\//.test(location.pathname);
+      q.forEach(function(d){
+        var k = d.id, r = d.data() || {}, at = Number(r.at) || 0, v = typeof r.v === 'string' ? r.v : null;
+        var ts = r.ts && r.ts.toMillis ? r.ts.toMillis() : 0; if(ts > o.ts) o.ts = ts;
+        if(!stKey(k)) return;
+        var mine = Number(o.at[k]) || 0, cur = LS.getItem(k);
+        if(at < mine || (at === mine && (mine > 1 || cur != null))){ if(at === mine) o.sent[k] = Math.max(Number(o.sent[k]) || 0, at); return; }
+        if(v === null ? cur !== null : cur !== v){
+          // this page shows that game: hold its own saves from here on (it reloads with the newer copy)
+          if(game && _stKeys[k] && !ST_NORELOAD.test(k)) _stFrozen[k] = 1;
+          try{ if(v === null) LS.removeItem(k); else LS.setItem(k, v); }catch(e){ return; }
+          took.push(k);
+        }
+        o.at[k] = at; o.sig[k] = v === null ? '-' : strHash(v); o.sent[k] = at;
+      });
+      o.last = started;
+      if(took.length) console.log('[sync] took ' + took.length + ' saved game' + (took.length === 1 ? '' : 's') + ' and progress from the cloud: ' + took.slice(0, 12).join(', '));
+      return took;
+    });
+  }
+  // this device's newer changes up to the cloud, one key at a time (the cloud turns down any older than its own)
+  function stPush(o){
+    var col = stCol(); if(!col) return Promise.resolve(0);
+    var keys = Object.keys(o.at).filter(function(k){ return stKey(k) && (Number(o.at[k]) || 0) > (Number(o.sent[k]) || 0); });
+    var n = 0;
+    return Promise.all(keys.map(function(k){
+      var v = LS.getItem(k), at = Number(o.at[k]) || 0;
+      if(v != null && v.length > ST_MAX){ o.sent[k] = at; return null; }
+      return col.doc(k).set({ v: v, at: at, ts: firebase.firestore.FieldValue.serverTimestamp() }).then(function(){ n++; o.sent[k] = Math.max(Number(o.sent[k]) || 0, at); }, function(err){
+        if(err && err.code === 'permission-denied') o.sent[k] = Math.max(Number(o.sent[k]) || 0, at);   // a newer copy is in the cloud: the next pull brings it
+        else console.warn('[sync] could not save ' + k, err && err.code);
+      });
+    })).then(function(){ if(n) console.log('[sync] saved ' + n + ' game state' + (n === 1 ? '' : 's') + ' to the cloud'); return n; });
+  }
+  // one at a time: look for changes, (pull,) push; then a game page whose own keys came in newer reloads
+  var _stChain = Promise.resolve(), _stT = 0;
+  function stSync(pull){
+    if(!isPin()) return Promise.resolve([]);
+    _stChain = _stChain.then(function(){
+      if(!isPin()) return [];
+      var o = stLoad(), took = [];
+      stStamp(o);
+      return ensureFirebase()
+        .then(function(){ return pull ? stPull(o) : []; })
+        .then(function(t){ took = t || []; stStamp(o); return stPush(o); })
+        .then(function(){
+          if(pull){ o.done = 1; ssSet(ST_PULL, String(Date.now())); }
+          stSave(o); _stPaged = true;
+          if(took.length){
+            try{ document.dispatchEvent(new CustomEvent('fghsync:updated', { detail: { keys: took } })); }catch(e){}
+            if(took.some(function(k){ return _stFrozen[k]; })){ ssSet('fgh_st_back', '1'); location.reload(); }
+          }
+          return took;
+        })
+        .catch(function(err){ _stPaged = true; stSave(o); console.warn('[sync] saved games sync failed', err && (err.code || err.message)); return []; });
+    });
+    return _stChain;
+  }
+  // a game saved something: send it a few seconds after things settle (and straight away when the app is put away)
+  function stSoon(){ if(!isPin() || !_stPaged) return; clearTimeout(_stT); _stT = setTimeout(function(){ stSync(false); }, 3000); }
+  (function stWatch(){
+    var P = Storage.prototype, g = P.getItem, st = P.setItem, rm = P.removeItem, ls = window.localStorage;
+    P.getItem = function(k){ if(this === ls && stKey(k)) _stKeys[k] = 1; return g.apply(this, arguments); };
+    P.setItem = function(k, v){
+      if(this === ls && _stFrozen[k]) return;
+      st.apply(this, arguments);
+      if(this === ls && stKey(k)){ _stKeys[k] = 1; stSoon(); }
+    };
+    P.removeItem = function(k){
+      if(this === ls && _stFrozen[k]) return;
+      rm.apply(this, arguments);
+      if(this === ls && stKey(k)){ _stKeys[k] = 1; stSoon(); }
+    };
+    ['pointerdown', 'keydown', 'touchstart'].forEach(function(t){ document.addEventListener(t, function(){ _stInput = true; }, { capture: true, passive: true }); });
+    document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden' && isPin() && _stPaged){ clearTimeout(_stT); stSync(false); } });
+    window.addEventListener('pagehide', function(){ if(isPin() && _stPaged){ clearTimeout(_stT); stSync(false); } });
+  })();
+  function stPulledRecently(){ return Date.now() - (Number(ssGet(ST_PULL)) || 0) < RECENT_MS; }
 
   // ── Merge strategies ──────────────────────────────────────────────────
   function asArray(v){
@@ -897,6 +1024,7 @@
         runDone(R);
         var U = runStart('Upload after sign-in');
         timed(U, 'upload', function(){ return pushNow({ force: true }); }).then(function(){ runDone(U); ssSet(PULL_KEY, String(Date.now())); }, function(err){ runDone(U, err); console.warn('[sync] sign-in upload failed; the next page retries', err); });
+        stSync(true);   // saved games and progress
         return {isNew: remote.isNew};
       })
       .then(function(result){ notifyReady(); return result; },
@@ -952,6 +1080,8 @@
         ssSet(PULL_KEY, String(Date.now()));
         setStatus('synced');
         try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
+        // saved games and progress: all of this device's copy goes up under the new PIN
+        var so = stLoad(); so.sent = {}; so.ts = 0; stSave(so); stSync(true);
         return { ok: true, pin: np, retired: retired };
       })
       .catch(function(err){ setStatus(_syncStatus.state === 'syncing' ? 'synced' : _syncStatus.state); throw err; });
@@ -1016,7 +1146,7 @@
   function syncNow(opts){
     opts = opts || {};
     if(!isPin()){ setStatus('idle'); return Promise.resolve({ ok:true, reason:'guest' }); }
-    if(opts.soft && pulledRecently() && !dirtySinceLastPush()) return Promise.resolve({ ok:true, reason:'recent' });
+    if(opts.soft && pulledRecently() && !dirtySinceLastPush()){ if(!stPulledRecently()) stSync(true); return Promise.resolve({ ok:true, reason:'recent' }); }
     if(typeof navigator !== 'undefined' && navigator.onLine === false){
       setStatus('offline');
       return Promise.resolve({ ok:false, reason:'offline' });
@@ -1032,7 +1162,7 @@
         var local  = scanLocal();
         var merged = mergeSnapshots(local, remote);
         writeSnapshotToLocal(merged); reconcileName();
-        return timed(R, 'upload', function(){ return pushNow({ force: !opts.soft }); }).then(function(r){ ssSet(PULL_KEY, String(Date.now())); return r; });
+        return timed(R, 'upload', function(){ return pushNow({ force: !opts.soft }); }).then(function(r){ ssSet(PULL_KEY, String(Date.now())); return stSync(true).then(function(){ return r; }); });
       })
       .then(function(){
         runDone(R);
@@ -1140,11 +1270,15 @@
     var m = mode();
     if(m === 'pin' && PIN_RE.test(pin()||'') && stampPrefs()) markWrite();   // settings changed since the last sync
     if(m === 'pin' && PIN_RE.test(pin()||'')){
+      if(ssGet('fgh_st_back')){ ssSet('fgh_st_back', ''); setTimeout(function(){ try{ if(window.Kit && Kit.toast) Kit.toast('Picked up from your other device'); }catch(e){} }, 700); }
       if(typeof navigator !== 'undefined' && navigator.onLine === false){
         setStatus('offline');
+        _stPaged = true;
         notifyReady();
         return;
       }
+      // saved games and progress: their own quick look on every page (only what changed since the last one comes down)
+      if(stPulledRecently()) _stPaged = true; else stSync(true);
       if(pulledRecently() && !dirtySinceLastPush()){
         // Synced moments ago on another page of this session and nothing saved since: no round trip needed
         console.log('[sync] boot: synced under a minute ago, nothing new; skipping the round trip');

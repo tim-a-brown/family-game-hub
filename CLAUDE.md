@@ -19,6 +19,12 @@ Synced storage keys must never change: `hi_*`, `gh_*`, `casino_bank`,
 `rklists`, `fav_games`, `lorcana_decks_v1`, `lorcana_decks_del`,
 `lorcana_marks_v1`, `lorcana_marks_del`.
 
+**Everything a game stores follows the PIN** (sync.js "Everything else follows the PIN"): saved games, puzzles in
+progress, levels, stats and seen-lists sync key by key to `pins/{pin}/st/{key}`, newest change wins, and a game page
+reloads when its own keys arrive newer from another device. A new game needs nothing extra. Keys that must stay on
+one device (online seats/table codes, device ids, caches, emulator settings) go in `ST_DEVICE` in sync.js. Renaming
+any game's storage key loses that saved data on every device.
+
 ## How Tim works with Claude
 
 Tim plans and requests changes in chat, proofs them on a preview URL, then says
