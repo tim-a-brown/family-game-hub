@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Poker</title>
 <link rel="stylesheet" href="../kit.css">
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js","three/addons/":"../vendor/three/addons/"}}</script>
 <script src="../sync.js"></script>
 <script src="../games.js"></script>
 <script src="../game-icons.js"></script>
@@ -14,6 +15,7 @@
 <script src="../players.js"></script>
 <script src="../casino.js"></script>
 <script src="../coach.js"></script>
+<script src="poker/people.js"></script>
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
 <style>
@@ -511,20 +513,23 @@
 .pgo-g .go .ico{width:16px;height:16px;}
 .cz-stats span.gold{background:rgba(255,200,61,.14);color:#ffd84d;}
 .cz-stats .pbr{width:17px;height:17px;color:#ffd84d;}
-.pbr-ov{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;text-align:center;color:#fff;cursor:pointer;
+.pbr-ov{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;text-align:center;color:#fff;
   background:radial-gradient(55% 42% at 50% 40%,rgba(255,200,61,.24),transparent 70%),rgba(9,7,18,.94);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:pbrIn .5s var(--ease) both;}
 .pbr-ov.out{animation:pbrOut .3s ease both;}
-.pbr-art{position:relative;width:min(70vw,340px);overflow:hidden;border-radius:30px;animation:pbrDrop 1.1s cubic-bezier(.2,.9,.25,1.15) both;}
-.pbr-big{display:block;width:100%;height:auto;filter:drop-shadow(0 12px 24px rgba(0,0,0,.55)) drop-shadow(0 0 30px rgba(255,200,61,.45));}
-.pbr-art .shine{position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.75) 48%,transparent 60%);transform:translateX(-120%);animation:pbrShine 1.6s 1s ease-in-out both;mix-blend-mode:overlay;}
+.pbr-art{position:relative;width:min(88vw,460px);height:min(56vh,330px);cursor:grab;border-radius:26px;overflow:hidden;box-shadow:0 0 0 2px rgba(255,216,77,.35),0 0 0 7px #2a0a10,0 0 0 8px rgba(255,216,77,.25),0 20px 50px rgba(0,0,0,.6);background:#1a0609;}
+.pbr-go{margin-top:12px;min-width:180px;}
+.brx{width:100%;height:100%;display:grid;place-items:center;perspective:700px;}
+.brx .brs{width:100%;height:auto;max-height:100%;transition:transform .08s linear;filter:drop-shadow(0 14px 22px rgba(0,0,0,.55)) drop-shadow(0 0 26px rgba(255,200,61,.35));}
 .pbr-k{font-weight:900;letter-spacing:.16em;text-transform:uppercase;font-size:.8rem;color:#ffd84d;margin-top:10px;}
 .pbr-ov h2{font-family:var(--display);font-weight:400;font-size:clamp(1.8rem,6vw,2.8rem);line-height:1;color:#ffe58a;text-shadow:0 3px 0 #7a3a00;}
 .pbr-ov p{font-weight:800;color:rgba(255,255,255,.8);}
-.pbr-ov small{margin-top:14px;font-weight:800;color:rgba(255,255,255,.5);animation:pbrIn .4s 1.6s both;}
+
 @keyframes pbrIn{from{opacity:0}}
 @keyframes pbrOut{to{opacity:0}}
-@keyframes pbrDrop{0%{opacity:0;transform:translateY(-40px) scale(.6) rotate(-10deg)}100%{opacity:1;transform:none}}
-@keyframes pbrShine{to{transform:translateX(120%)}}
+.pprof .who{font-weight:900;font-size:1.05rem;}
+.pprof .job{color:var(--text-2);font-weight:700;margin-top:2px;}
+.pprof .story{margin-top:10px;font-style:italic;color:var(--text-2);line-height:1.4;}
+.pprof .plays{margin-top:12px;display:inline-block;padding:4px 11px;border-radius:999px;background:var(--w06);font-weight:800;font-size:.84rem;color:var(--yellow);}
 .cz-tracks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:14px auto 0;max-width:520px;padding:4px;border-radius:18px;background:var(--w05);}
 .cz-tr{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:8px 10px 9px;border-radius:14px;border:0;background:none;color:var(--text-2);font:inherit;cursor:pointer;text-align:left;transition:background .2s,color .2s,transform .12s;}
 .cz-tr b{font-family:var(--display);font-weight:400;font-size:1.2rem;line-height:1;}
@@ -1402,6 +1407,8 @@
       }),
       st: { rows: [], big: null, best: null, beats: [], kos: [], won: cfg.players.map(function () { return 0; }), allins: 0 }
     };
+    var tough = { casual: 0, regular: 0.25, sharp: 0.6 }[cfg.options.ai] || 0.25;
+    S.players.forEach(function (p) { if (!p.cpu) return; var x = persona(tough, 0.05, tableNames()); p.name = x.name; p.pr = x.pr || null; });
     if (!tourn) Casino.bet(stack);
     Kit.gameStart(); undoStack = []; R = {};
     startHand();
@@ -2240,9 +2247,19 @@
     return ev.ai0 + (ev.ai1 - ev.ai0) * Math.pow(Math.max(0, Math.min(1, q)), 0.8);
   }
   // a circuit player is the field's level now plus their own knack (skOff), so the table sharpens as it thins out
+  // the people at the table (poker/people.js): a name, an age, a job, a hometown and a line of backstory; nicknames
+  // now and then, more of them at the big events. tough 0..1: how far up the circuit; intl: how often from abroad.
+  function persona(tough, intl, avoid) {
+    var p = window.PokerPeople ? PokerPeople.make({ tough: tough, intl: intl, avoid: avoid || [] }) : null;
+    if (!p) return { name: Kit.cpuNames(1, avoid || [])[0] };
+    return { name: p.name, pr: { f: p.first, l: p.last, k: p.nick, a: p.age, j: p.job, h: p.home, s: p.story } };
+  }
+  function evPeople(ev) { return { tough: ev.no / (STOPS - 1), intl: /Paris|Monte Carlo|Macau/.test(ev.city) ? 0.6 : /Las Vegas/.test(ev.city) ? 0.3 : ev.local ? 0.03 : 0.08 }; }
+  function tableNames() { return (S ? S.players.map(function (q) { return q.name; }) : []).concat(CZ ? [CZ.name] : []); }
   function cpuSeat(name, ev, stack, hand) {
-    var styles = ['tag', 'lag', 'rock', 'station', 'tag'], off = (Math.random() - 0.5) * 0.18;
-    return { name: name, cpu: true, style: styles[Math.floor(Math.random() * styles.length)], skOff: off, sk: Math.max(0.05, Math.min(1, (S && S.circ ? aiNow() : ev.ai0) + off)),
+    var styles = ['tag', 'lag', 'rock', 'station', 'tag'], off = (Math.random() - 0.5) * 0.18, pr = null;
+    if (name && typeof name === 'object') { pr = name.pr || null; name = name.name; }
+    return { name: name, pr: pr, cpu: true, style: styles[Math.floor(Math.random() * styles.length)], skOff: off, sk: Math.max(0.05, Math.min(1, (S && S.circ ? aiNow() : ev.ai0) + off)),
       stack: stack, buyin: stack, out: false, place: 0, rebuys: 0, bty: ev.bounty ? Math.round(ev.buy * ev.bounty) : 0, sat: hand || 0 };
   }
   function newEvent(ev, seat) {
@@ -2250,14 +2267,15 @@
     var pg = circLoad(ev.track);
     if (seat && pg.tix[ev.id]) delete pg.tix[ev.id];
     else { seat = false; if (Casino.balance() < ev.buy) return circSheet(ev); Casino.bet(ev.buy); }
-    var pays = paysFor(ev), names = Kit.cpuNames(40, [CZ.name]);
+    var pays = paysFor(ev), pe = evPeople(ev), names = [], used = [CZ.name];
+    for (var q = 0; q < 5; q++) { var x = persona(pe.tough, pe.intl, used); used.push(x.name); names.push(x); }
     pg.played++; circSave(pg, ev.track);
     var you = circAll().you;
     S = {
       kind: 'table', game: ev.game, om: ev.game === 'om', limit: false, pl: ev.game === 'om', mix: ev.mix, mixSeq: homeAt(ev) ? mixPlan() : null, tourn: true, per: ev.per, started: Date.now(), handNo: 0, level: -1, coach: CZ.coach,
       sb: 0, bb: 0, button: null, hand: null,
       players: [{ name: CZ.name, cpu: false, stack: ev.stack, buyin: ev.stack, out: false, place: 0, rebuys: 0 }].concat(names.slice(0, 5).map(function (nm) { return cpuSeat(nm, ev, ev.stack); })),
-      circ: { id: ev.id, seat: !!seat, field: ev.field, left: ev.field, else: ev.field - 6, e0: ev.field - 6, paid: pays.length, pays: pays, chips: ev.field * ev.stack, names: names.slice(5), h: 0, kos: 0, bounty: 0 },
+      circ: { id: ev.id, seat: !!seat, field: ev.field, left: ev.field, else: ev.field - 6, e0: ev.field - 6, paid: pays.length, pays: pays, chips: ev.field * ev.stack, names: [], h: 0, kos: 0, bounty: 0 },
       st: { rows: [], big: null, best: null, beats: [], kos: [], won: [0, 0, 0, 0, 0, 0], allins: 0 }
     };
     // the field has heard about you: your habits so far on the circuit (the older ones count for less)
@@ -2271,9 +2289,8 @@
     var C = S.circ, ev = EV[C.id];
     S.players.forEach(function (p, i) {
       if (i === 0 || !p.out || C.else <= 0) return;
-      var nm = C.names.shift() || ('Player ' + (C.left + i)), avg = tableAvg(), u = S.bb >= 100 ? 100 : 25;
+      var pe = evPeople(ev), nm = persona(pe.tough, pe.intl, tableNames()), avg = tableAvg(), u = S.bb >= 100 ? 100 : 25;
       var stack = Math.max(S.bb * 8, Math.round(avg * (0.55 + Math.random() * 0.9) / u) * u);
-      C.names.push(p.name);
       S.players[i] = cpuSeat(nm, ev, stack, S.handNo + 1);
       C.else--;
     });
@@ -2403,33 +2420,115 @@
   }
   // the bracelet, drawn: a gold band with its champion's plate (small: a line icon for chips and labels)
   function braceletSvg(big) {
-    if (!big) return '<svg class="ico pbr" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="14" rx="9" ry="5.2" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="7.5" y="5.5" width="9" height="5.5" rx="1.6" fill="currentColor"/></svg>';
-    return '<svg class="pbr-big" viewBox="0 0 220 150" aria-hidden="true"><defs>' +
-      '<linearGradient id="pbrG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff6c2"/><stop offset=".3" stop-color="#f3c94e"/><stop offset=".62" stop-color="#a8700e"/><stop offset=".85" stop-color="#f7d873"/><stop offset="1" stop-color="#8a5a06"/></linearGradient>' +
-      '<linearGradient id="pbrP" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffefa0"/><stop offset=".5" stop-color="#e2ad2e"/><stop offset="1" stop-color="#9c6608"/></linearGradient></defs>' +
-      '<ellipse cx="110" cy="88" rx="88" ry="46" fill="none" stroke="#5a3a04" stroke-width="22" opacity=".45"/>' +
-      '<ellipse cx="110" cy="84" rx="88" ry="46" fill="none" stroke="url(#pbrG)" stroke-width="18"/>' +
-      '<ellipse cx="110" cy="84" rx="88" ry="46" fill="none" stroke="rgba(90,58,4,.55)" stroke-width="1.5" stroke-dasharray="3 7"/>' +
-      '<rect x="64" y="14" width="92" height="56" rx="12" fill="url(#pbrP)" stroke="#6b4505" stroke-width="2.5"/>' +
-      '<rect x="72" y="22" width="76" height="40" rx="7" fill="none" stroke="#7a5208" stroke-width="1.5"/>' +
-      '<text x="110" y="40" text-anchor="middle" font-size="10" font-weight="900" fill="#5a3a04" letter-spacing="1.6">WORLD</text>' +
-      '<text x="110" y="54" text-anchor="middle" font-size="10" font-weight="900" fill="#5a3a04" letter-spacing="1.6">CHAMPION</text></svg>';
+    return '<svg class="ico pbr" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="14" rx="9" ry="5.2" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="7.5" y="5.5" width="9" height="5.5" rx="1.6" fill="currentColor"/></svg>';
+  }
+  // The gold bracelet, drawn: a band of polished links seen in perspective, and a champion's plate set with
+  // diamonds. The light moves with the device (tilt it) or your finger / pointer: the gold shimmers and the stones
+  // catch it. Gives back the element; it stops listening once it's off the page.
+  var BRN = 0;
+  function braceletBig(label1, label2) {
+    var id = 'br' + (++BRN), W = 320, cx = 160, cy = 92, rx = 132, ry = 58, svg = [], k, t;
+    function g(n) { return 'url(#' + id + n + ')'; }
+    svg.push('<svg class="brs" viewBox="0 0 320 230" aria-hidden="true"><defs>',
+      '<linearGradient id="' + id + 'L" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff8d6"/><stop offset=".22" stop-color="#f7d775"/><stop offset=".5" stop-color="#c99328"/><stop offset=".78" stop-color="#7d5208"/><stop offset="1" stop-color="#e6c25a"/></linearGradient>',
+      '<linearGradient id="' + id + 'K" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c79a3a"/><stop offset=".5" stop-color="#7a5310"/><stop offset="1" stop-color="#3f2904"/></linearGradient>',
+      '<linearGradient id="' + id + 'P" class="brg" x1="0" y1="0" x2="1" y2="1" gradientTransform="rotate(0 .5 .5)"><stop offset="0" stop-color="#fffbe6"/><stop offset=".18" stop-color="#f8dc7e"/><stop offset=".42" stop-color="#d2a03a"/><stop offset=".58" stop-color="#94640f"/><stop offset=".78" stop-color="#f1cd66"/><stop offset="1" stop-color="#fff3bf"/></linearGradient>',
+      '<linearGradient id="' + id + 'I" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a520c"/><stop offset=".5" stop-color="#b8862a"/><stop offset="1" stop-color="#e9c768"/></linearGradient>',
+      '<radialGradient id="' + id + 'D" cx=".38" cy=".35" r=".7"><stop offset="0" stop-color="#ffffff"/><stop offset=".3" stop-color="#eef7ff"/><stop offset=".62" stop-color="#a9cdee"/><stop offset="1" stop-color="#4f6f96"/></radialGradient>',
+      '<linearGradient id="' + id + 'S" class="brsw" x1="0" y1="0" x2="1" y2="0" gradientTransform="translate(-1 0)"><stop offset=".35" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".75"/><stop offset=".65" stop-color="#fff" stop-opacity="0"/></linearGradient>',
+      '<clipPath id="' + id + 'C"><rect x="88" y="128" width="144" height="86" rx="18"/></clipPath>',
+      '<filter id="' + id + 'F" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.2"/></filter></defs>');
+    // the links: the far side first (darker), then the near side
+    function link(t, back) {
+      var x = cx + rx * Math.cos(t), y = cy + ry * Math.sin(t), s = 0.72 + 0.28 * Math.sin(t), ang = Math.atan2(ry * Math.cos(t), -rx * Math.sin(t)) * 180 / Math.PI;
+      var w = 24 * s, h = 17 * s;
+      return '<g transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')">' +
+        '<rect x="' + (-w / 2).toFixed(1) + '" y="' + (-h / 2).toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="' + (h * 0.38).toFixed(1) + '" fill="' + g(back ? 'K' : 'L') + '" stroke="#5a3a04" stroke-width=".8"/>' +
+        '<rect x="' + (-w / 2 + 3 * s).toFixed(1) + '" y="' + (-h / 2 + 2.5 * s).toFixed(1) + '" width="' + (w - 6 * s).toFixed(1) + '" height="' + (h * 0.28).toFixed(1) + '" rx="' + (h * 0.14).toFixed(1) + '" fill="#fff" opacity="' + (back ? 0.12 : 0.38) + '"/></g>';
+    }
+    for (k = 0; k < 40; k++) { t = Math.PI + k * Math.PI / 40; svg.push(link(t, true)); }
+    for (k = 0; k <= 40; k++) { t = k * Math.PI / 40; if (Math.abs(t - Math.PI / 2) > 0.5) svg.push(link(t, false)); }
+    // the plate: bevelled gold, a recessed panel, engraved words, a frame of diamonds
+    svg.push('<rect x="84" y="124" width="152" height="94" rx="20" fill="#4a2f05" opacity=".55" transform="translate(0 4)"/>',
+      '<rect x="84" y="124" width="152" height="94" rx="20" fill="' + g('P') + '" stroke="#6b4505" stroke-width="1.5"/>',
+      '<rect x="104" y="142" width="112" height="58" rx="10" fill="' + g('I') + '" stroke="#5a3a04" stroke-width="1"/>',
+      '<text x="160" y="166" text-anchor="middle" font-family="Georgia,serif" font-size="15" font-weight="700" letter-spacing="2.5" fill="#fff1b8" opacity=".55" transform="translate(0 1)">' + label1 + '</text>',
+      '<text x="160" y="166" text-anchor="middle" font-family="Georgia,serif" font-size="15" font-weight="700" letter-spacing="2.5" fill="#5a3a04">' + label1 + '</text>',
+      '<text x="160" y="187" text-anchor="middle" font-family="Georgia,serif" font-size="11" font-weight="700" letter-spacing="3" fill="#fff1b8" opacity=".55" transform="translate(0 1)">' + label2 + '</text>',
+      '<text x="160" y="187" text-anchor="middle" font-family="Georgia,serif" font-size="11" font-weight="700" letter-spacing="3" fill="#5a3a04">' + label2 + '</text>');
+    // diamonds around the panel (a row on every side, bigger ones at the corners)
+    var stones = [];
+    for (k = 0; k <= 11; k++) { stones.push([98 + k * 11.3, 133, 3.6]); stones.push([98 + k * 11.3, 209, 3.6]); }
+    for (k = 1; k <= 5; k++) { stones.push([93, 133 + k * 12.7, 3.6]); stones.push([227, 133 + k * 12.7, 3.6]); }
+    [[93, 133], [227, 133], [93, 209], [227, 209]].forEach(function (p) { stones.push([p[0], p[1], 5.2]); });
+    stones.forEach(function (d) {
+      svg.push('<g transform="translate(' + d[0].toFixed(1) + ' ' + d[1].toFixed(1) + ')"><circle r="' + (d[2] + 1.1) + '" fill="#8a5d0e"/><circle r="' + d[2] + '" fill="' + g('D') + '"/>' +
+        '<path d="M0 ' + (-d[2]) + 'L' + (d[2] * 0.5) + ' 0L0 ' + d[2] + 'L' + (-d[2] * 0.5) + ' 0Z" fill="#fff" opacity=".35"/></g>');
+    });
+    // the light: a sweep across the gold, and sparkles on some of the stones
+    svg.push('<rect x="84" y="124" width="152" height="94" rx="20" fill="' + g('S') + '" clip-path="url(#' + id + 'C)" style="mix-blend-mode:screen"/>');
+    stones.forEach(function (d, n) {
+      if (n % 3) return;
+      var r = d[2] * 2.6;
+      svg.push('<path class="brk" data-ph="' + (n * 1.7).toFixed(2) + '" transform="translate(' + d[0].toFixed(1) + ' ' + d[1].toFixed(1) + ')" d="M0 ' + (-r) + 'Q1 -1 ' + r + ' 0Q1 1 0 ' + r + 'Q-1 1 ' + (-r) + ' 0Q-1 -1 0 ' + (-r) + 'Z" fill="#fff" opacity="0" filter="url(#' + id + 'F)"/>');
+    });
+    svg.push('</svg>');
+    var box = el('div', { class: 'brx', html: svg.join('') });
+    // light that follows the device or the pointer (and drifts on its own while nothing moves)
+    var tx = 0, ty = 0, gx = 0, gy = 0, last = 0, t0 = Date.now();
+    var grad = box.querySelector('.brg'), sweep = box.querySelector('.brsw'), sp = Array.prototype.slice.call(box.querySelectorAll('.brk')), art = box.querySelector('.brs');
+    function onTilt(e) { if (e.gamma == null) return; gx = Math.max(-1, Math.min(1, e.gamma / 35)); gy = Math.max(-1, Math.min(1, ((e.beta || 45) - 45) / 35)); last = Date.now(); }
+    function onMove(e) { var p = e.touches ? e.touches[0] : e; if (!p) return; gx = (p.clientX / innerWidth - 0.5) * 2; gy = (p.clientY / innerHeight - 0.5) * 2; last = Date.now(); }
+    window.addEventListener('deviceorientation', onTilt);
+    window.addEventListener('pointermove', onMove); window.addEventListener('touchmove', onMove, { passive: true });
+    box.askMotion = function () {
+      try { if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') DeviceOrientationEvent.requestPermission().catch(function () {}); } catch (e) {}
+    };
+    (function frame() {
+      if (!box.isConnected && Date.now() - t0 > 2000) { window.removeEventListener('deviceorientation', onTilt); window.removeEventListener('pointermove', onMove); window.removeEventListener('touchmove', onMove); return; }
+      var now = Date.now(), idle = now - last > 2500, s = now / 1000;
+      var ax = idle ? Math.sin(s * 0.7) * 0.6 : gx, ay = idle ? Math.cos(s * 0.5) * 0.35 : gy;
+      tx += (ax - tx) * 0.12; ty += (ay - ty) * 0.12;
+      if (grad) grad.setAttribute('gradientTransform', 'rotate(' + (tx * 50 + ty * 20).toFixed(1) + ' .5 .5)');
+      if (sweep) sweep.setAttribute('gradientTransform', 'translate(' + (tx * 0.9).toFixed(3) + ' 0)');
+      if (art) art.style.transform = 'rotateY(' + (tx * 14).toFixed(1) + 'deg) rotateX(' + (-ty * 10).toFixed(1) + 'deg)';
+      sp.forEach(function (p) {
+        var ph = +p.getAttribute('data-ph'), o = Math.pow(Math.max(0, Math.sin(ph + tx * 4.2 + ty * 3.1 + s * 0.9)), 14);
+        p.setAttribute('opacity', o.toFixed(3));
+      });
+      requestAnimationFrame(frame);
+    })();
+    return box;
+  }
+  // the real thing in 3D (three.js, loaded when it's needed); the drawn one where there's no 3D
+  function braceletInto(host, top, bottom) {
+    var gone = false, api = null;
+    host.innerHTML = '';
+    import('./poker/bracelet3d.js').then(function () {
+      if (gone) return;
+      api = window.Bracelet3D ? window.Bracelet3D(host, { top: top, bottom: bottom }) : null;
+      if (!api) host.appendChild(braceletBig(top, bottom));
+    }).catch(function () { if (!gone) host.appendChild(braceletBig(top, bottom)); });
+    return { ask: function () { if (api) api.askMotion(); }, dispose: function () { gone = true; if (api) api.dispose(); } };
   }
   // the big moment: the bracelet comes out of the dark and catches the light; tap to carry on
   function braceletReveal(n, ev, prize, then) {
+    var art = el('div', { class: 'pbr-art' });
     var ov = el('div', { class: 'pbr-ov', role: 'dialog', 'aria-label': 'Gold bracelet' }, [
-      el('div', { class: 'pbr-art', html: braceletSvg(true) + '<i class="shine"></i>' }),
+      art,
       el('div', { class: 'pbr-k', text: n === 1 ? 'Your first gold bracelet' : 'Gold bracelet #' + n }),
       el('h2', { text: ev.style + ' champion' }),
       el('p', { text: usd(prize) + ' · ' + TR[ev.track].name + ' · beat a field of ' + ev.field.toLocaleString() }),
-      el('small', { text: 'Tap to continue' })
+      el('button', { type: 'button', class: 'btn btn-primary pbr-go', text: 'Continue' })
     ]);
     document.body.appendChild(ov);
+    var piece = braceletInto(art, 'WORLD CHAMPION', ev.style.toUpperCase() + ' \u00b7 ' + new Date().getFullYear());
+    art.addEventListener('click', function (e) { e.stopPropagation(); piece.ask(); });
     Kit.sfx('win'); Kit.haptic('success');
     setTimeout(function () { try { Kit.confetti({ n: 260 }); } catch (e) {} }, 650);
     var gone = false;
-    function close() { if (gone) return; gone = true; ov.classList.add('out'); setTimeout(function () { ov.remove(); then(); }, 320); }
-    setTimeout(function () { ov.addEventListener('click', close); }, 900);
+    function close() { if (gone) return; gone = true; ov.classList.add('out'); setTimeout(function () { piece.dispose(); ov.remove(); then(); }, 320); }
+    setTimeout(function () { ov.querySelector('.pbr-go').addEventListener('click', close); }, 600);
   }
 
   // ── Computer players ───────────────────────────────────────────────────────
@@ -2561,7 +2660,7 @@
     var box = el('div', { class: 'tlist' });
     S.players.forEach(function (p, i) {
       box.appendChild(el('div', { class: 'row' }, [
-        el('span', { class: 'avatar', style: { '--c': seatColor(i) }, html: p.cpu ? Kit.icon('bot') : Kit.esc(p.name.charAt(0).toUpperCase()) }),
+        el('span', { class: 'avatar', style: { '--c': seatColor(i) }, html: avHtml(p) }),
         el('span', { class: 'grow' }, [el('b', { text: i === 0 && p.name !== 'You' ? p.name + ' (you)' : p.name }), el('small', { text: p.out ? 'Out · ' + ordinal(p.place) : i === 0 ? 'Your seat' : p.cpu ? (STYLES[p.style] || STYLES.tag).label : 'Playing online' })]),
         el('span', { class: 's', text: S.tourn ? p.stack.toLocaleString() : signed(p.stack - p.buyin) })
       ]));
@@ -2635,11 +2734,11 @@
         seat.appendChild(cards);
       }
       var tag = el('div', { class: 'tag' }, [
-        el('span', { class: 'avatar', style: { '--c': seatColor(i) }, html: p.cpu ? Kit.icon('bot') : Kit.esc(p.name.charAt(0).toUpperCase()) }),
+        el('span', { class: 'avatar', style: { '--c': seatColor(i) }, html: avHtml(p) }),
         el('span', { text: me ? 'You' : p.name }),
         p.bty && !p.out ? el('span', { class: 'pb', text: usd(p.bty) }) : null
       ]);
-      tag.addEventListener('click', function () { if (p.cpu) Kit.toast(p.name + ': ' + STYLES[p.style].label.toLowerCase() + (S.circ ? ' · ' + skillWord(skillOf(p)).toLowerCase() : '') + (p.bty ? ' · ' + usd(p.bty) + ' bounty' : '')); });
+      tag.addEventListener('click', function () { if (p.cpu || p.pr) profileSheet(p); });
       seat.appendChild(tag);
       seat.appendChild(el('span', { class: 'stack', text: p.left ? 'Left' : p.out ? ordinal(p.place) : amt(p.stack) }));
       var say = '';
@@ -3364,6 +3463,26 @@
   // ═══════════════════════════════════════════════════════════════════════════
   var NET = null, NETSEAT = -1, NETCODE = null, NETQ = [], NETBUSY = false, NETSEEN = {}, NETREC = {}, NETWIN = null, NETME = 0, netT = 0;
   // a seat's colour: the same on every device at an online table (the table is drawn turned round on each)
+  // a player's face on the table: their initials (a computer player without a made-up person: the robot)
+  function avHtml(p) {
+    if (p.pr) return Kit.esc((p.pr.f.charAt(0) + (p.pr.l || '').charAt(0)).toUpperCase());
+    return p.cpu ? Kit.icon('bot') : Kit.esc(p.name.charAt(0).toUpperCase());
+  }
+  // who they are, and how they play (what you'd pick up at the table: their style, not their cards)
+  function profileSheet(p) {
+    var pr = p.pr, box = el('div', { class: 'pprof' });
+    if (pr) {
+      box.appendChild(el('p', { class: 'who', text: (pr.k ? pr.f + ' ' + pr.l + ', "' + pr.k + '"' : pr.f + ' ' + pr.l) + ', ' + pr.a }));
+      box.appendChild(el('p', { class: 'job', text: cap(pr.j) + ' from ' + pr.h }));
+      if (pr.s) box.appendChild(el('p', { class: 'story', text: pr.s }));
+    }
+    var bits = [];
+    if (p.cpu) bits.push((STYLES[p.style] || STYLES.tag).label);
+    if (p.cpu && S && S.circ) bits.push(skillWord(skillOf(p)));
+    if (p.bty) bits.push(usd(p.bty) + ' bounty on them');
+    if (bits.length) box.appendChild(el('p', { class: 'plays', text: bits.join(' · ') }));
+    Kit.sheet({ title: p.name, node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
   function seatColor(i) { return Kit.color(S && S.online ? (i + NETME) % N() : i); }
   function quiet(st, fn) {
     var keep = S, k = { sfx: Kit.sfx, haptic: Kit.haptic, callout: Kit.callout, toast: Kit.toast }, noop = function () {};
@@ -3385,6 +3504,7 @@
       st: { rows: [], big: null, best: null, beats: [], kos: [], won: players.map(function () { return 0; }), allins: 0 },
       wins: last && last.wins && last.wins.length === players.length ? last.wins.slice() : players.map(function () { return 0; })
     };
+    st.players.forEach(function (p) { if (!p.cpu) return; var x = persona(0.3, 0.1, st.players.map(function (q) { return q.name; })); p.name = x.name; p.pr = x.pr || null; });
     quiet(st, startHand);
     netTrim(st);
     return st;

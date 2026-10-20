@@ -312,6 +312,8 @@ const PRECACHE_URLS = [
   '/vendor/three/addons/postprocessing/AfterimagePass.js',
   '/vendor/three/addons/shaders/AfterimageShader.js',
   '/games/plinko/bigwheel3d.js',
+  '/games/poker/bracelet3d.js',
+  '/games/poker/people.js',
   '/games/poker.html',
   '/games/pokersquares.html',
   '/games/pyramid.html',
