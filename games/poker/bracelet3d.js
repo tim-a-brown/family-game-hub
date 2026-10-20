@@ -3,7 +3,8 @@
 // round the top, the event's emblem raised in the middle, the winner's portrait (a cameo of their avatar) and name
 // under it, the event and year round the bottom. Studio light reflects off the gold; the stones flash as the piece
 // turns, and it follows the device's tilt (or your finger / pointer). Loaded on demand by poker.html:
-//   window.Bracelet3D(host, {venue, style, year, mark, name, avatar}) -> {dispose(), askMotion()}   (null: no WebGL)
+//   window.Bracelet3D(host, {venue, style, year, mark, name, avatar, rain}) -> {dispose(), askMotion()}   (null: no WebGL)
+//   Behind it, stacks of banded $100 bills on the velvet; rain: true (a win) and bills rain down too.
 //   mark: the event's emblem ('spade' | 'cards' | 'suits'); avatar: {photo: dataURL} | {svg: '<svg…>'} | null
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
@@ -261,6 +262,143 @@ function stoneGeo(r) {
   return g;
 }
 
+// ── Cash: $100 bills, banded $10,000 bundles stacked behind the bracelet, and (for a win) bills raining down ──────
+const BILL = { w: 0.62, d: 0.264 };   // a bill's size in the scene (a real one is 2.35 to 1)
+// the face of a bill: pale green-grey paper, a fine frame, a portrait in an oval, the blue security ribbon, 100s
+function billTexture() {
+  const W = 720, H = Math.round(W / 2.35), c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#dfe3d0'); g.addColorStop(0.5, '#cfd6c2'); g.addColorStop(1, '#d9dcc8');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 2600; i++) { x.fillStyle = 'rgba(' + (Math.random() < 0.5 ? '60,90,70' : '255,255,255') + ',' + (Math.random() * 0.08) + ')'; x.fillRect(Math.random() * W, Math.random() * H, 1 + Math.random() * 2, 1); }
+  // fine engraved lines (guilloche) across the paper
+  x.strokeStyle = 'rgba(60,95,72,.16)'; x.lineWidth = 1;
+  for (let k = 0; k < 26; k++) { x.beginPath(); for (let px = 0; px <= W; px += 6) x.lineTo(px, H * (0.12 + k * 0.03) + Math.sin(px / 23 + k) * 6); x.stroke(); }
+  // the frame
+  x.strokeStyle = '#3f5c47'; x.lineWidth = 6; x.strokeRect(12, 12, W - 24, H - 24);
+  x.lineWidth = 2; x.strokeRect(24, 24, W - 48, H - 48);
+  x.fillStyle = 'rgba(63,92,71,.55)'; for (let px = 30; px < W - 30; px += 9) { x.beginPath(); x.arc(px, 19, 2, 0, 7); x.arc(px, H - 19, 2, 0, 7); x.fill(); }
+  // the portrait in its oval (a generic figure)
+  const ox = W * 0.47, oy = H * 0.5;
+  x.fillStyle = 'rgba(70,95,78,.22)'; x.beginPath(); x.ellipse(ox, oy, 74, 96, 0, 0, 7); x.fill();
+  x.strokeStyle = '#3f5c47'; x.lineWidth = 4; x.beginPath(); x.ellipse(ox, oy, 74, 96, 0, 0, 7); x.stroke();
+  x.save(); x.beginPath(); x.ellipse(ox, oy, 70, 92, 0, 0, 7); x.clip();
+  const pg = x.createLinearGradient(ox - 60, oy - 80, ox + 60, oy + 90); pg.addColorStop(0, '#6f8a74'); pg.addColorStop(1, '#2f4636');
+  x.fillStyle = pg; x.beginPath(); x.arc(ox, oy - 18, 34, 0, 7); x.fill();
+  x.beginPath(); x.ellipse(ox, oy + 78, 66, 52, 0, Math.PI, 0); x.fill();
+  x.fillStyle = 'rgba(40,60,46,.6)'; x.beginPath(); x.ellipse(ox - 4, oy - 44, 36, 18, -0.2, Math.PI, 0); x.fill();
+  x.restore();
+  // the blue security ribbon
+  x.fillStyle = '#3d6fd6'; x.fillRect(W * 0.66, 0, 16, H);
+  x.fillStyle = 'rgba(255,255,255,.45)'; for (let py = 6; py < H; py += 22) x.fillRect(W * 0.66 + 3, py, 10, 9);
+  // the 100s
+  x.fillStyle = '#2f4a38'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.font = '900 46px Georgia, serif';
+  [[66, 58], [W - 66, 58], [66, H - 54], [W - 66, H - 54]].forEach(p => x.fillText('100', p[0], p[1]));
+  x.font = '900 112px Georgia, serif'; x.fillStyle = '#9a7a3a'; x.fillText('100', W * 0.83, H * 0.6);
+  x.font = '700 24px Georgia, serif'; x.fillStyle = '#2f4a38'; x.fillText('ONE HUNDRED DOLLARS', ox, H - 40);
+  x.font = '700 20px Georgia, serif'; x.fillText('FEDERAL RESERVE NOTE', ox, 44);
+  // a serial number in green
+  x.font = '700 22px "Courier New", monospace'; x.fillStyle = '#2f7a4a'; x.fillText('LB 24680135 Q', W * 0.22, H * 0.3); x.fillText('LB 24680135 Q', W * 0.8, H * 0.86);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+// the edge of a bundle: a hundred sheets of paper
+function edgeTexture() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64; const x = c.getContext('2d');
+  x.fillStyle = '#d6dccb'; x.fillRect(0, 0, 256, 64);
+  for (let y = 0; y < 64; y += 1.3) { x.fillStyle = 'rgba(' + (Math.random() < 0.5 ? '90,110,90' : '255,255,250') + ',' + (0.15 + Math.random() * 0.3) + ')'; x.fillRect(0, y, 256, 0.6); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+// the paper band round a bundle: mustard, printed $10,000
+function bandTexture() {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 256; const x = c.getContext('2d');
+  x.fillStyle = '#c9a03e'; x.fillRect(0, 0, 128, 256);
+  x.fillStyle = 'rgba(0,0,0,.08)'; for (let i = 0; i < 400; i++) x.fillRect(Math.random() * 128, Math.random() * 256, 2, 1);
+  x.save(); x.translate(64, 128); x.rotate(Math.PI / 2); x.fillStyle = '#5a3d0c'; x.font = '900 34px Georgia, serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('$10,000', 0, 0); x.restore();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+// a bill as a slightly bent sheet (paper never lies quite flat)
+function billGeo(w, d, bend) {
+  const g = new THREE.PlaneGeometry(w, d, 8, 2), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const u = p.getX(i) / w; p.setZ(i, Math.cos(u * Math.PI) * bend + Math.sin(p.getY(i) / d * 3) * bend * 0.3); }
+  g.computeVertexNormals(); return g;
+}
+function cashScene(scene, opts) {
+  const FLOOR = -0.8, bill = billTexture(), edge = edgeTexture(), band = bandTexture();
+  const billMat = new THREE.MeshStandardMaterial({ map: bill, roughness: 0.78, metalness: 0, envMapIntensity: 0.5 });
+  const edgeMat = new THREE.MeshStandardMaterial({ map: edge, roughness: 0.9, envMapIntensity: 0.4 });
+  const bandMat = new THREE.MeshStandardMaterial({ map: band, roughness: 0.7, envMapIntensity: 0.5 });
+  // a table under it all, the same velvet as the backdrop
+  const table = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x2a0b12, roughness: 1, metalness: 0 }));
+  table.rotation.x = -Math.PI / 2; table.position.y = FLOOR; scene.add(table);
+  scene.fog = new THREE.Fog(0x14050a, 4.5, 11);
+  // the bundles: piles of them, two side by side, a few layers high, left and right and behind
+  const BH = 0.085, bundleGeo = new THREE.BoxGeometry(BILL.w, BH, BILL.d), strapGeo = new THREE.BoxGeometry(0.1, BH + 0.006, BILL.d + 0.006);
+  // BoxGeometry faces: +x, -x, +y, -y, +z, -z
+  // [x, z, layers, turn]: a wall of tall stacks at the back (their tops show over the bracelet), lower ones in front
+  const piles = [];
+  [-3.4, -2.6, -1.8, -1.0, -0.3, 0.4, 1.1, 1.9, 2.7, 3.5].forEach((x, i) => piles.push([x + (Math.random() - 0.5) * 0.15, -2.7 - (i % 2) * 0.35, 13 + Math.floor(Math.random() * 9), (Math.random() - 0.5) * 0.5]));
+  [[-2.3, -1.6], [-1.45, -1.9], [1.5, -1.85], [2.35, -1.55]].forEach(c => piles.push([c[0], c[1], 6 + Math.floor(Math.random() * 5), (Math.random() - 0.5) * 0.9]));
+  [[-1.85, -0.55], [1.9, -0.6], [-2.9, -0.4], [3.0, -0.5]].forEach(c => piles.push([c[0], c[1], 2 + Math.floor(Math.random() * 3), (Math.random() - 0.5) * 1.4]));
+  let n = 0; piles.forEach(pl => { n += pl[2] * 2; });
+  const bundles = new THREE.InstancedMesh(bundleGeo, [edgeMat, edgeMat, billMat, billMat, edgeMat, edgeMat], n), straps = new THREE.InstancedMesh(strapGeo, bandMat, n);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), v = new THREE.Vector3();
+  let k = 0;
+  piles.forEach(pl => {
+    for (let layer = 0; layer < pl[2]; layer++) for (let side = 0; side < 2; side++) {
+      const yaw = pl[3] + (Math.random() - 0.5) * 0.08;
+      v.set((Math.random() - 0.5) * 0.03, 0, (side - 0.5) * (BILL.d + 0.012) + (Math.random() - 0.5) * 0.02).applyAxisAngle(new THREE.Vector3(0, 1, 0), pl[3]);
+      p.set(pl[0] + v.x, FLOOR + BH / 2 + layer * (BH + 0.002), pl[1] + v.z);
+      e.set((Math.random() - 0.5) * 0.015, yaw, (Math.random() - 0.5) * 0.015); q.setFromEuler(e); m.compose(p, q, one);
+      bundles.setMatrixAt(k, m); straps.setMatrixAt(k, m); k++;
+    }
+  });
+  scene.add(bundles, straps);
+  // loose bills scattered on the table
+  const looseN = 26, loose = new THREE.InstancedMesh(billGeo(BILL.w * 0.6, BILL.d * 0.6, 0.012), new THREE.MeshStandardMaterial({ map: bill, roughness: 0.8, side: THREE.DoubleSide, envMapIntensity: 0.5 }), looseN);
+  for (let i = 0; i < looseN; i++) {
+    const a = Math.random() * Math.PI * 2, r = 1.3 + Math.random() * 2.4;
+    p.set(Math.cos(a) * r * 1.4, FLOOR + 0.004 + i * 0.0006, -Math.abs(Math.sin(a)) * r - 0.3);
+    e.set(-Math.PI / 2, 0, Math.random() * Math.PI * 2); q.setFromEuler(e); m.compose(p, q, one); loose.setMatrixAt(i, m);
+  }
+  scene.add(loose);
+  // a warm light from behind, so the stacks stand out from the dark
+  const rim = new THREE.PointLight(0xffd9a0, 6, 9); rim.position.set(0, 1.6, -4.2); scene.add(rim);
+  const fill = new THREE.PointLight(0xfff0d8, 3, 8); fill.position.set(-2.5, 0.6, 1.2); scene.add(fill);
+
+  // the rain: bills falling, fluttering and turning over, landing on the table and staying there
+  if (!opts.rain) return { update() {} };
+  const RN = 260, rain = new THREE.InstancedMesh(billGeo(BILL.w * 0.62, BILL.d * 0.62, 0.02), new THREE.MeshStandardMaterial({ map: bill, roughness: 0.75, side: THREE.DoubleSide, envMapIntensity: 0.5 }), RN);
+  const st = [];
+  for (let i = 0; i < RN; i++) {
+    st.push({
+      x: (Math.random() - 0.5) * 5.6, z: -2.6 + Math.random() * 3.8, y0: 1.3 + Math.random() * 6.5, vy: 0.42 + Math.random() * 0.4, y: 9,
+      sw: 0.2 + Math.random() * 0.35, ph: Math.random() * 7, w: 1.6 + Math.random() * 2.4, yaw: Math.random() * 7, spin: (Math.random() - 0.5) * 2.4, landed: false
+    });
+  }
+  rain.frustumCulled = false; scene.add(rain);
+  return {
+    update(tt) {
+      const ft = Math.max(0, tt - 0.5);   // (worked out from the time, so a slow device shows the same fall)
+      st.forEach((b, i) => {
+        if (!b.landed) {
+          // it drifts slower as it flips flat and faster as it turns on edge
+          b.y = b.y0 - b.vy * ft - Math.cos(ft * b.w + b.ph) * 0.06;
+          b.cur = b.yaw + b.spin * ft;
+          if (b.y <= FLOOR + 0.006) { b.y = FLOOR + 0.006 + (i % 40) * 0.0005; b.landed = true; }
+        }
+        const sway = b.landed ? 0 : Math.sin(tt * b.w * 0.5 + b.ph) * b.sw;
+        p.set(b.x + sway, b.y, b.z);
+        if (b.landed) e.set(-Math.PI / 2, 0, b.cur || b.yaw);
+        else e.set(-Math.PI / 2 + Math.sin(tt * b.w + b.ph) * 1.1, Math.cos(tt * b.w * 0.7 + b.ph) * 0.7, b.cur || b.yaw);
+        q.setFromEuler(e); m.compose(p, q, one); rain.setMatrixAt(i, m);
+      });
+      rain.instanceMatrix.needsUpdate = true;
+    }
+  };
+}
+
 window.Bracelet3D = function (host, opts) {
   if (!supported()) return null;
   opts = opts || {};
@@ -336,6 +474,7 @@ window.Bracelet3D = function (host, opts) {
   }
   plate.add(stones, corners);
 
+  const cash = cashScene(scene, opts);
   // lights that move: they make the stones flash as the piece turns
   const key = new THREE.PointLight(0xffffff, 9, 12); key.position.set(2.2, 2.6, 3.4); scene.add(key);
   const glint = new THREE.PointLight(0xfff4d6, 7, 10); scene.add(glint);
@@ -367,6 +506,7 @@ window.Bracelet3D = function (host, opts) {
     piece.position.y = (1 - ease) * 0.6;
     camera.position.lerpVectors(camStart, camEnd, ease); camera.lookAt(look);
     glint.position.set(Math.sin(tt * 1.3 + tx * 3) * 2.2, 1.2 + Math.cos(tt * 0.9 + ty * 2) * 0.8, 2.6);
+    cash.update(tt);
     composer.render();
     requestAnimationFrame(frame);
   }

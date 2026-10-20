@@ -3297,7 +3297,7 @@
     ]);
     document.body.appendChild(ov);
     var rec = bracelets().slice(-1)[0] || { t: TR[ev.track].name, k: ev.track, v: ev.venue, e: ev.style, d: Date.now(), p: prize, n: S.players[0].name };
-    var piece = braceletInto(art, braceletPlate(rec));
+    var piece = braceletInto(art, Object.assign(braceletPlate(rec), { rain: true }));
     art.addEventListener('click', function (e) { e.stopPropagation(); piece.ask(); });
     Kit.sfx('win'); Kit.haptic('success');
     setTimeout(function () { try { Kit.confetti({ n: 260 }); } catch (e) {} }, 650);
@@ -4684,7 +4684,7 @@
   // result in big blinds per 100 hands
   window.__pk = {
     get S() { return S; }, render: function () { renderTable(); }, deal: function () { startHand(); }, _net: { start: netStart, move: netMove, turn: netTurn, bot: netBot, resign: netResign, decide: function (st, i) { return quiet(st, function () { return cpuDecide(i); }); } }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
-    bracelet: function (rec) { braceletShow(rec); },
+    bracelet: function (rec, rain) { if (rain) { var art = el('div', { class: 'pbr-art' }), ov = el('div', { class: 'pbr-ov' }, [art]); document.body.appendChild(ov); braceletInto(art, Object.assign(braceletPlate(rec), { rain: true })); } else braceletShow(rec); },
     peek: function () { return S && { no: S.handNo, phase: S.hand && S.hand.phase, actor: S.hand && S.hand.actor, street: S.hand && S.hand.street, held: !!held }; },
     // a whole circuit event with a computer player of skill sk in your seat
     event: function (id, sk, dc) {
