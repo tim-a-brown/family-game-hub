@@ -573,6 +573,33 @@ const SCENES = {
     slots(g, 5.6, r.back + 1.4, 3, 0);
     return { exposure: 1.0 };
   },
+  // a cruise ship's card room: a wall of windows on the ocean, portholes down the sides, brass rails, a life ring
+  cruise(g) {
+    const r = room(g, { w: 14, d: 10, h: 2.9, floor: PAINT.carpet('#0e2348', '#163266', '#d8b050'), wall: PAINT.panel('#e9e2d2', '#f6f1e6'), wainscot: PAINT.wood('#5a3018', '#3e200e', 24), ceil: PAINT.plain('#f2eee6') });
+    const brass = M({ color: 0xc8a050, metalness: 0.9, roughness: 0.25 });
+    const sea = VIEW.ocean({ sky0: '#0a1640', sky1: '#5a3a7a', sky2: '#ffb070' });
+    for (let i = 0; i < 4; i++) windowOn(g, sea, -4.95 + i * 3.3, 1.7, r.back + 0.02, 2.8, 1.5, 0, 0xf6f1e6);
+    box(g, 14, 0.06, 0.06, brass, 0, 1.0, r.back + 0.25); for (let i = 0; i < 12; i++) cyl(g, 0.02, 0.02, 1.0, brass, -6.5 + i * 1.2, 0.5, r.back + 0.25, 6);
+    // portholes along both sides
+    for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
+      const z = -1 - i * 1.9, x = side * 6.98, ry = -side * Math.PI / 2;
+      const ph = new THREE.Mesh(new THREE.CircleGeometry(0.34, 32), new THREE.MeshBasicMaterial({ map: tex(sea) })); ph.position.set(x, 1.7, z); ph.rotation.y = ry; g.add(ph);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.05, 10, 32), brass); ring.position.set(x - side * 0.01, 1.7, z); ring.rotation.y = ry; g.add(ring);
+    }
+    // a life ring on the back wall, the ship's name over the bar
+    const lr = new THREE.Group(); lr.position.set(5.9, 1.9, r.back + 0.06); g.add(lr);
+    for (let k = 0; k < 8; k++) { const seg = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.08, 10, 12, Math.PI / 4), M({ color: k % 2 ? 0xffffff : 0xd8281e, roughness: 0.6 })); seg.rotation.z = k * Math.PI / 4; lr.add(seg); }
+    sign(g, 'OCEAN MAJESTY', '#0e2348', '#e8c868', 0, 2.6, r.back + 0.03, 3.6, 0.42);
+    // recessed lights in a curved ceiling band
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) { sph(g, 0.07, glow(0xfff2d8, 3), -5 + i * 2, 2.88, -1.2 - j * 2.6); }
+    light(g, 0xfff0d8, 3, -3, 2.6, -2.5, 8); light(g, 0xfff0d8, 3, 3, 2.6, -2.5, 8); light(g, 0xffd0a0, 2, 0, 2.4, -6, 8);
+    slots(g, -5.2, r.back + 1.6, 3, 0, { colors: [0x3ad8ff, 0xffd84d, 0xff6ab0] });
+    pokerTable(g, -2.6, -4.6, { felt: 0x1f3c6b, rail: 0x3a1e0c, seats: 8, rx: 1.3, rz: 0.75, lamp: false, full: 0.85 });
+    pokerTable(g, 2.8, -4.4, { felt: 0x1f3c6b, rail: 0x3a1e0c, seats: 8, rx: 1.3, rz: 0.75, lamp: false, full: 0.85 });
+    pokerTable(g, 1.6, -2.0, { felt: 0x1f3c6b, rail: 0x3a1e0c, seats: 8, rx: 1.3, rz: 0.75, lamp: false });
+    plant(g, -6.4, -1.2, 1.2, true);
+    return { exposure: 1.0 };
+  },
   expo(g, o) {
     const r = room(g, { w: 30, d: 22, h: 8, floor: PAINT.carpet(o.carpet || '#1a2a4a', o.carpet2 || '#22345a', o.carpet3 || '#c8a050'), wall: PAINT.plain('#14141c'), ceil: PAINT.plain('#0e0e14') });
     for (let i = 0; i < 6; i++) for (let j = 0; j < 4; j++) { box(g, 1.2, 0.05, 1.2, glow(0xf4f8ff, 1.8), -12 + i * 5, 7.9, -2 - j * 5); }
@@ -622,7 +649,7 @@ const PLACES = {
   prague: ['salon', { view: VIEW.rooftops({ spires: true }), wall: PAINT.damask('#3a1424', '#4a1a2e'), felt: 0x4a1f4f, curtain: 0x6a1a2a }],
   malta: ['salon', { view: VIEW.ocean({ yachts: true, sky1: '#5a3a6a', sky2: '#ffb06a' }), wall: PAINT.plain('#e8d4b0'), floor: PAINT.tile('#d8c4a0', '#c0aa84', 8), felt: 0x0f3d2e, palms: true, curtain: 0x2a4a6a }],
   seoul: ['casino', { view: VIEW.city({ landmark: LANDMARK.neon, tall: 0.75, lights: ['#ff3a8a', '#3ad8ff', '#ffffff', '#ffd84d'] }), carpet: '#2a0a3a', carpet2: '#3a1a5a', felt: 0x3a1a5a, chandColor: 0xd8e8ff, neon: 'SEOUL CUP', neonColor: '#3ad8ff' }],
-  series: ['expo', {}], seriesspring: ['expo', { banner: 'SPRING SERIES', bannerBg: '#1f6b45', carpet: '#2a1a3a', carpet2: '#3a2a4a' }], seriesfall: ['expo', { banner: 'FALL SERIES', bannerBg: '#c0561e', carpet: '#3a1a10', carpet2: '#4a2414' }]
+  cruise: ['cruise'], series: ['expo', {}], seriesspring: ['expo', { banner: 'SPRING SERIES', bannerBg: '#1f6b45', carpet: '#2a1a3a', carpet2: '#3a2a4a' }], seriesfall: ['expo', { banner: 'FALL SERIES', bannerBg: '#c0561e', carpet: '#3a1a10', carpet2: '#4a2414' }]
 };
 
 // the bars: each one its own sign, neon and walls

@@ -2847,6 +2847,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     back: function () { return { venue: pick(['The Back Room at Sal\'s', 'Upstairs at the Golden Dragon', 'Behind Rosa\'s Cantina', 'The Cellar at Bellini\'s', 'The Back of Lucky\'s Diner']), city: pick(['By invitation only', 'Through the kitchen, knock twice', 'After closing time', 'Cash at the door']), style: 'Back-room game', buy: 100, field: 12, stack: 2000, m0: 60, per: 6, ft: 6, ai0: 0.42, ai1: 0.58, felt: ['#2f3a2c', '#222b20', '#151b14'], wood: ['#3a2616', '#1d120a'], chip: '#6b5a2a' }; },
     room: function (n) { return { venue: pick(n ? ['Lucky Horseshoe', 'Gold Nugget Card Room', 'Lakeview Casino', 'Silver Dollar Card Club'] : ['Riverside Card Room', 'Prairie Rose Card Club', 'Northside Card Room', 'Harbor Lights Card Room']), city: pick(n ? ['Downtown', 'Off the highway', 'Out by the racetrack'] : ['Upstairs, past the bar', 'Across from the courthouse', 'Down by the river']), style: n ? 'Turbo' : 'Freezeout', buy: n ? 250 : 150, field: n ? 50 : 36, stack: n ? 2000 : 1500, m0: n ? 30 : 50, per: n ? 4 : 6, ft: n ? 12 : 11, ai0: n ? 0.32 : 0.27, ai1: n ? 0.5 : 0.45, felt: n ? ['#7a3a1f', '#562814', '#3b1b0d'] : ['#1f6b45', '#155234', '#0d3b25'], wood: n ? ['#5e3418', '#3a1f0e'] : ['#8a5530', '#5a3418'], chip: n ? '#c0561e' : '#2f7d4f' }; }
   };
+  // the Omaha road's card room is at sea: a cruise ship's (a card room's stakes and structure)
+  function cruiseStop() { return Object.assign(LOCAL.room(0), { venue: 'The Ocean Majesty Card Room', city: 'At sea, two days out of Fort Lauderdale', tier: 'room', felt: ['#1f3c6b', '#162c50', '#0e1d36'], wood: ['#6b3a1a', '#3e200e'], chip: '#2b4d8f' }); }
   var LOCAL_ORDER = { 5: ['home', 'pub', 'club', 'back', 'room'], 6: ['home', 'pub', 'club', 'back', 'room', 'room2'], 7: ['home', 'pub', 'pub2', 'club', 'back', 'room', 'room2'] };
   var KNOWN = [
     { id: 'gulf', scene: 'gulf', venue: 'Gulf Coast Classic', city: 'Biloxi', style: 'Deepstack', buy: 400, field: 90, stack: 5000, m0: 100, per: 7, ft: 16, ai0: 0.37, ai1: 0.55, felt: ['#155e75', '#0e4556', '#09303c'], wood: ['#9a6a3a', '#5e3c1c'], chip: '#1d6fa3' },
@@ -2892,7 +2894,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // the room a local stop is played in (by its name)
   var LSCENE = [[/Kitchen/, 'kitchen'], [/Basement/, 'basement'], [/Garage/, 'garage'], [/Dining/, 'dining'], [/Porch/, 'porch'], [/^Lodge/, 'lodge'], [/^Post/, 'vfw'], [/^Firehouse/, 'firehouse'],
     [/Country Club/, 'countryclub'], [/Rec Center/, 'rec'], [/Sal's/, 'backroom'], [/Dragon/, 'dragon'], [/Cantina/, 'cantina'], [/Bellini/, 'cellar'], [/Diner/, 'diner'], [/Riverside/, 'cardriver'],
-    [/Prairie/, 'cardroom'], [/Northside/, 'cardclub'], [/Harbor/, 'cardharbor'], [/Horseshoe/, 'cardwest'], [/Nugget/, 'cardnugget'], [/Lakeview/, 'cardlake'], [/Silver Dollar/, 'carddollar']];
+    [/Ocean Majesty/, 'cruise'], [/Prairie/, 'cardroom'], [/Northside/, 'cardclub'], [/Harbor/, 'cardharbor'], [/Horseshoe/, 'cardwest'], [/Nugget/, 'cardnugget'], [/Lakeview/, 'cardlake'], [/Silver Dollar/, 'carddollar']];
   function localScene(v) {
     for (var i = 0; i < LSCENE.length; i++) if (LSCENE[i][0].test(v)) return LSCENE[i][1];
     for (i = 0; i < PUBN.length; i++) if (v.indexOf(PUBN[i]) >= 0) return 'pub' + i;
@@ -2926,6 +2928,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     cantina: ['Behind a Mexican cantina, under paper flags, tequila on the shelf.', 'Regulars who know each other\'s every move.'],
     cellar: ['A wine cellar under an Italian restaurant: brick walls, barrels and one green table.', 'By invitation only: the town\'s sharks.'],
     diner: ['A chrome-and-checkerboard diner after closing: pie on the counter, cards in the back.', 'Night owls and seasoned locals.'],
+    cruise: ['The card room of a cruise ship, two days out of Fort Lauderdale: a wall of windows on the ocean, portholes, brass rails and the slot machines chiming.', 'Vacationers trying their luck, retirees who play every night of the cruise, and a few regulars who book every sailing.'],
     cardriver: ['A card room down by the river, with a big window over the water.', 'Local grinders, retirees and weekend players.'],
     cardroom: ['A friendly card club out on the prairie: a dozen tables and a busy cash game.', 'Local grinders, ranchers and weekend players.'],
     cardclub: ['A neighborhood card room upstairs from a sports bar.', 'Local grinders and weekend players.'],
@@ -3006,17 +3009,26 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       seen[k] = 1; x.tier = tier; return x;
     }
     function tierOf(x) { return x.tier || { 'Home game': 'home', 'Bar league': x.buy > 40 ? 'pub2' : 'pub', 'Club tourney': 'club', 'Back-room game': 'back', 'Turbo': 'room2' }[x.style] || 'room'; }
+    // roads you already have keep their places first; a new road picks from what's left
     TRACKS.forEach(function (t) {
       var pg = a[t.id] || (a[t.id] = {});
-      if (!pg.road || !pg.road.length) {
-        var k = 5 + Math.floor(Math.random() * 3);
-        pg.road = LOCAL_ORDER[k].map(fresh);
-        changed = true;
-      } else pg.road = pg.road.map(function (x) {
+      if (pg.road && pg.road.length) pg.road = pg.road.map(function (x) {
         var key = localScene(x.venue) || x.venue;
         if (!seen[key]) { seen[key] = 1; return x; }
         changed = true; return fresh(tierOf(x));
       });
+    });
+    TRACKS.forEach(function (t) {
+      var pg = a[t.id];
+      if (!pg.road || !pg.road.length) {
+        var k = 5 + Math.floor(Math.random() * 3);
+        pg.road = LOCAL_ORDER[k].map(fresh);
+        changed = true;
+      }
+      if (t.id === 'om' && !pg.road.some(function (x) { return localScene(x.venue) === 'cruise'; })) {
+        var at = pg.road.map(tierOf).indexOf('room');
+        if (at >= 0) { pg.road[at] = cruiseStop(); changed = true; }
+      }
       var known = KNOWN.slice(KNOWN.length - (STOPS - pg.road.length - 1)), sfx = t.id === 'he' ? '' : '_' + t.id, here = ROADV[t.id] || {}, ser = SERIES[t.id];
       CIRC[t.id] = pg.road.map(function (v, k) { return Object.assign({}, v, { id: t.id + '_l' + k, local: true }); }).concat([Object.assign({}, BIGG, ser)], known.map(function (v) { return Object.assign({}, v, here[v.id]); }))
         .map(function (v, k, all) {
