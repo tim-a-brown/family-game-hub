@@ -86,6 +86,17 @@ Underlying principles for everything:
   turn-based online game needs nothing added on the home screen. (Chess and Lorcana predate it and keep their own.)
 - Real-time games (arcade, consoles) use `online.js` (WebRTC); consoles add lockstep in `games/console-net.js`.
 
+## Poker circuit rooms (pictures)
+
+- Every stop's room is a three.js scene in `games/poker/venue3d.js` (`SCENES`, `PLACES`). The page shows a **finished
+  picture** of it from Firebase Storage `venues/<key>-<view>-<stage>.jpg` (view `room` | `seat`, stage `busy` | `thin` |
+  `final`), and only renders the scene itself in the browser when the picture isn't there.
+- The pictures are path-traced offline (Blender/Cycles) from `VenueScene.build()`'s export, with real people (MakeHuman,
+  AGPL data, used only to make pictures) and real materials; the tooling lives in the session scratchpad
+  (`bl/render.sh`, `bl/batch.sh`), not the repo. Upload with
+  `FIREBASE_SERVICE_ACCOUNT=... node scripts/upload-venue-art.js <folder>`. A changed scene needs its pictures
+  re-rendered and re-uploaded, or the page falls back to the plainer in-browser look of the new scene.
+
 ## Lorcana card updates
 
 - Every deploy (and the weekly `lorcana-check.yml` Action, Mondays) saves Lorcast's full card list to
