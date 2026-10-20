@@ -1622,7 +1622,7 @@ const SCENES = {
     }
     // the brush's podium by the door with the waiting list up on the wall, players waiting for a seat; the house rules; the cage
     const pS = D.cam[0][0] < 0 ? -1 : 1, pX = pS < 0 ? Rr : L;   // the door and the brush's podium on the side away from the camera
-    podium(g, pX - pS * 1.6, -1.0, -pS * 0.7); tvSet(g, pX, 1.95, -1.6, -pS * P2, 'board');
+    podium(g, pX - pS * 1.6, -1.0, -pS * 0.7); tvSet(g, pX, 1.95, -1.6, 1.4, -pS * P2, 'board');
     if (STAGE === 'busy') for (let i = 0; i < 3; i++) stander(g, pX - pS * (2.4 + i * 0.5), -0.2 + (i % 2) * 0.3, pS * (0.6 + i * 0.3), { lod: 1 });
     const rules = canvas(256, 320, (x, w, h) => { x.fillStyle = '#f4efe2'; x.fillRect(0, 0, w, h); x.fillStyle = '#1a1a1a'; x.textAlign = 'center'; x.font = '800 28px Georgia'; x.fillText('HOUSE RULES', w / 2, 44); x.font = '600 17px Georgia'; ['One player to a hand', 'English only at the table', 'No phones during a hand', 'Cards speak', 'Dealer\'s decision is final', 'Tip your dealer'].forEach((l, i) => x.fillText(l, w / 2, 92 + i * 36)); x.strokeStyle = '#1a1a1a'; x.lineWidth = 4; x.strokeRect(8, 8, w - 16, h - 16); });
     rbox(g, 0.62, 0.76, 0.03, 0.01, M({ color: 0x1a1210 }), pX, 1.6, -3.2, P2); plane(g, 0.55, 0.69, M({ map: tex(rules), roughness: 0.6 }), pX - pS * 0.02, 1.6, -3.2, -pS * P2);
