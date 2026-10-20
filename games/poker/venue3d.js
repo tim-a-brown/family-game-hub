@@ -594,7 +594,7 @@ function windowOn(g, view, x, y, z, w, h, ry, frame) {
   const fr = new THREE.Group(); fr.position.set(x, y, z); if (ry) fr.rotation.y = ry; g.add(fr);
   rbox(fr, w + 0.16, 0.1, 0.12, 0.02, fm, 0, h / 2, 0.03); rbox(fr, w + 0.24, 0.08, 0.22, 0.02, fm, 0, -h / 2 - 0.02, 0.07); rbox(fr, 0.1, h, 0.12, 0.02, fm, -w / 2, 0, 0.03); rbox(fr, 0.1, h, 0.12, 0.02, fm, w / 2, 0, 0.03);
   if (frame !== 'none') { box(fr, 0.05, h, 0.06, fm, 0, 0, 0.03); if (h > 1.4) box(fr, w, 0.04, 0.05, fm, 0, h * 0.18, 0.03); }
-  plane(fr, w, h, M({ color: 0x9ab0c8, metalness: 1, roughness: 0.04, transparent: true, opacity: 0.1, envMapIntensity: 1.5 }), 0, 0, 0.02);
+  plane(fr, w, h, M({ color: 0x9ab0c8, metalness: 1, roughness: 0.3, transparent: true, opacity: 0.08, envMapIntensity: 1.5 }), 0, 0, 0.02);
   return m;
 }
 // the final table: the rest of the room goes quiet; a rope line round your table and the crowd behind it; at the
@@ -1585,17 +1585,75 @@ const SCENES = {
     }
     return { exposure: 1.0 };
   },
+  // a casino's poker room: the tables inside a brass rail, the casino floor beyond it (the table-games pit, banks of
+  // slots, the cage), a window or a feature wall at the back, and each house's own style of ceiling, carpet and light
   casino(g, o) {
-    const r = room(g, { w: 18, d: 14, h: 4.2, floor: PAINT.carpet(o.carpet || '#4a0a2a', o.carpet2 || '#7a1a4a', o.carpet3 || '#e8b030'), wall: o.wall || PAINT.damask('#2a0a14', '#3a1020'), ceil: PAINT.plain('#140810') });
-    if (o.view) windowOn(g, o.view, 0, 2.2, r.back + 0.02, 10, 3, 0, 0x1a1210);
-    if (o.chand !== false) { chandelier(g, -4, 3.7, -4, 1.1, o.chandColor); chandelier(g, 4, 3.7, -4, 1.1, o.chandColor); chandelier(g, 0, 3.7, -7.5, 1.3, o.chandColor); }
-    slots(g, -6.5, r.back + 1.2, 7, 0, { colors: o.slotColors }); slots(g, 6.5, r.back + 1.2, 7, 0, { colors: o.slotColors });
-    if (o.neon) neon(g, o.neon, o.neonColor || '#ffd84d', 0, 3.5, r.back + 0.05, 80);
-    for (let i = 0; i < 3; i++) pokerTable(g, -4.5 + i * 4.5, -4.3, { felt: o.felt || 0x1f6b45, rail: 0x1a0a0a, seats: 9, rx: 1.4, rz: 0.8, full: 0.85, lamp: false });
-    pokerTable(g, 2.2, -1.9, { mine: true, felt: o.felt || 0x1f6b45, rail: 0x1a0a0a, seats: 9, rx: 1.4, rz: 0.8, lamp: false });
-    light(g, o.warm || 0xffd8a0, 3, -3, 3.5, -2, 10); light(g, o.warm || 0xffd8a0, 3, 3, 3.5, -2, 10);
-    if (o.plants) { plant(g, -8.4, -2, 1.3, true); plant(g, 8.4, -2, 1.3, true); }
-    if (o.cowboy) { neon(g, 'SILVER SPUR', '#d8e8ff', -6.5, 3.3, r.back + 0.05, 64); const hat = canvas(256, 128, (x, w, h) => { x.fillStyle = '#c8a050'; x.beginPath(); x.ellipse(w / 2, h * 0.75, 110, 22, 0, 0, 7); x.fill(); x.fillRect(w / 2 - 50, h * 0.25, 100, h * 0.5); }); plane(g, 1.4, 0.7, new THREE.MeshBasicMaterial({ map: tex(hat), transparent: true }), 6.5, 3.3, r.back + 0.05); }
+    const T = o.theme || 'gulf';
+    const terrazzo = (a) => canvas(256, 256, (x, w, h) => { x.fillStyle = a; x.fillRect(0, 0, w, h); for (let i = 0; i < 2600; i++) { x.fillStyle = pick(['#c8b8a0', '#8a7a6a', '#e8d8c0', '#d88a5a', '#5a8a8a', '#f4f0e8']); x.beginPath(); x.ellipse(rnd() * w, rnd() * h, 1 + rnd() * 3, 1 + rnd() * 2, rnd() * 3, 0, 7); x.fill(); } x.fillStyle = '#b8a888'; x.fillRect(0, 0, w, 3); x.fillRect(0, 0, 3, h); });
+    const breeze = (a) => canvas(256, 256, (x, w, h) => { x.fillStyle = a; x.fillRect(0, 0, w, h); x.fillStyle = 'rgba(0,0,0,.28)'; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const cx = i * 64 + 32, cy = j * 64 + 32; x.beginPath(); x.arc(cx, cy, 22, 0, 7); x.fill(); } x.fillStyle = a; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const cx = i * 64 + 32, cy = j * 64 + 32; x.beginPath(); for (let k = 0; k < 4; k++) { const an = k * Math.PI / 2 + Math.PI / 4; x.lineTo(cx + Math.cos(an) * 16, cy + Math.sin(an) * 16); x.lineTo(cx + Math.cos(an + Math.PI / 4) * 6, cy + Math.sin(an + Math.PI / 4) * 6); } x.fill(); } x.strokeStyle = 'rgba(0,0,0,.15)'; x.lineWidth = 2; for (let i = 0; i <= 4; i++) { x.beginPath(); x.moveTo(i * 64, 0); x.lineTo(i * 64, h); x.moveTo(0, i * 64); x.lineTo(w, i * 64); x.stroke(); } });
+    const slats = (a, b) => canvas(256, 64, (x, w, h) => { x.fillStyle = b; x.fillRect(0, 0, w, h); for (let i = 0; i < w; i += 16) { const c = new THREE.Color(a).offsetHSL(0, 0, (rnd() - 0.5) * 0.06); x.fillStyle = '#' + c.getHexString(); x.fillRect(i + 2, 0, 11, h); } });
+    const D = {
+      gulf: { floor: PAINT.carpet('#0e4556', '#1a6a7a', '#e8d8a8', 'wave'), wall: PAINT.panel('#e8e0cc', '#f2ecdc'), ceil: PAINT.coffer('#f2ecdc', '#d8ccb0'), felt: 0x155e75, view: VIEW.ocean({ sky1: '#2a3a6a', yachts: true }), col: 'white', fix: 'fans', sign: ['GULF COAST POKER', '#0e4556', '#f4ead0'], palms: true, chand: 0xfff0d8 },
+      reno: { floor: PAINT.carpet('#3a2412', '#6a3a1a', '#d8a040', 'navajo'), wall: PAINT.wood('#6a4424', '#54361c', 30), ceil: PAINT.wood('#4a3020', '#3a2416', 40), felt: 0x6b4a1f, col: 'wood', fix: 'wheels', beams: true, sign: ['POKER', '#1a0e06', '#e8e8f0'], neon: ['Silver Spur', '#d8e8ff'], slotsBack: true },
+      boardwalk: { floor: PAINT.carpet('#2a1d5a', '#4a2a8a', '#e8b030', 'deco'), wall: PAINT.damask('#3a1a3a', '#4a2448'), ceil: PAINT.coffer('#2a1a2a', '#1a0e1a'), felt: 0x3b2a7a, view: VIEW.ocean({ pier: true }), col: 'brass', fix: 'chand', marquee: 'BOARDWALK', chand: 0xffe0b0 },
+      chicago: { floor: PAINT.carpet('#143a44', '#1d4f5c', '#c8a050', 'deco'), wall: PAINT.panel('#2a1e18', '#34261e'), ceil: PAINT.coffer('#3a2a20', '#241812'), felt: 0x1d4f5c, view: VIEW.city({ water: true, tall: 0.8, landmark: LANDMARK.tower }), col: 'marble', fix: 'deco', sign: ['POKER ROOM', '#0e0c0a', '#d8b060'] },
+      tahoe: { floor: PAINT.carpet('#14303a', '#24485e', '#d8c8a0', 'diamond'), wall: PAINT.logs('#7a5030', '#5a3a20'), ceil: PAINT.wood('#6a4628', '#5a3a20', 40), felt: 0x24485e, view: VIEW.mountains({ lake: true, pines: true, sky0: '#060c22', sky1: '#2a3a6a' }), col: 'stone', fix: 'antler', trusses: true, sign: ['HIGH SIERRA POKER', '#1a1410', '#e8d8b0'] },
+      pinewood: { floor: PAINT.carpet('#1f3a24', '#2e5232', '#c8a050', 'scroll'), wall: PAINT.wood('#7a5a3a', '#6a4a2e', 24), ceil: PAINT.wood('#5a3e24', '#4a3220', 40), felt: 0x2a5a3a, view: VIEW.mountains({ pines: true, sky0: '#081020', sky1: '#24304a' }), col: 'tree', fix: 'lantern', trusses: true, sign: ['POKER ROOM', '#1a2a1a', '#e8d8a8'], pines: true },
+      twincities: { floor: PAINT.carpet('#1a2a3a', '#24384a', '#6a8aa8', 'check'), wall: slats('#c8a070', '#3a2a1a'), ceil: PAINT.dropceil(), felt: 0x24485e, view: VIEW.city({ water: true, tall: 0.55, sky2: '#6a7aa0', waterTop: '#d8e4f0' }), col: 'steel', fix: 'linear', sign: ['POKER', '#14202a', '#e8eef4'] },
+      palmsprings: { floor: terrazzo('#e8dcc8'), wall: breeze('#f0e6d4'), ceil: PAINT.plain('#f4ecdc'), felt: 0x2a6a6a, view: VIEW.desert({ pool: true }), col: 'white', fix: 'starburst', sign: ['POKER', '#2a6a6a', '#ffd8a0'], palms: true },
+      miami: { floor: PAINT.carpet('#1a5a6a', '#ff8ab0', '#f4f0e8', 'deco'), wall: PAINT.stripe('#f4e4dc', '#f8d8d0'), ceil: PAINT.plain('#f8f0ea'), felt: 0x1a6a8a, view: VIEW.ocean({ palms: true, sky1: '#6a2a8a', sky2: '#ff6ab0' }), col: 'white', fix: 'cove', neon: ['Ocean Drive', '#ff6ab0'], palms: true, slotColors: [0xff6ab0, 0x3ad8ff, 0xffd84d] },
+      seattle: { floor: PAINT.carpet('#14303a', '#1d4050', '#8ab8c8', 'diamond'), wall: slats('#8a6040', '#2a1a10'), ceil: PAINT.wood('#4a3424', '#3a2818', 30), felt: 0x1d4f5c, view: VIEW.city({ landmark: LANDMARK.needle, water: true, tall: 0.55, sky2: '#4a5a8a' }), col: 'steel', fix: 'linear', trusses: true, sign: ['POKER ROOM', '#14202a', '#e8eef4'] },
+      seoul: { floor: PAINT.carpet('#1a0a2a', '#3a1a5a', '#3ad8ff', 'diamond'), wall: PAINT.panel('#14121a', '#1c1a24'), ceil: PAINT.plain('#0a0a10'), felt: 0x3a1a5a, view: VIEW.city({ landmark: LANDMARK.neon, tall: 0.75, lights: ['#ff3a8a', '#3ad8ff', '#ffffff', '#ffd84d'] }), col: 'gold', fix: 'led', neon: ['SEOUL CUP', '#3ad8ff'], lattice: true }
+    }[T];
+    const r = room(g, { w: 18, d: 14, h: 4.2, floor: D.floor, wall: D.wall, ceil: D.ceil, trim: 0x1a120c, cornice: D.col === 'white' ? 0xf4ecdc : 0x2a1a10, fillI: 0.9, floorRough: T === 'palmsprings' ? 0.3 : 0.75 });
+    const B = r.back, felt = o.felt || D.felt;
+    const brass = M({ color: 0xc8a050, metalness: 0.9, roughness: 0.25, envMapIntensity: 1.1 });
+    // columns down each side
+    const colM = { white: M({ color: 0xf4ecdc, roughness: 0.45 }), wood: M({ map: tex(PAINT.wood('#6a4424', '#54361c', 8), 1, 2), roughness: 0.6 }), brass, marble: M({ map: tex(PAINT.marble('#1a1a1c', '#8a8a8a'), 1, 2), roughness: 0.15, envMapIntensity: 1.1 }), stone: M({ map: tex(PAINT.brick('#8a8478', '#5a564e'), 1, 2), roughness: 0.9 }), tree: M({ map: tex(PAINT.wood('#7a5230', '#5a3a1e', 4), 1, 3), roughness: 0.85 }), steel: M({ color: 0x8a8e94, metalness: 0.8, roughness: 0.35 }), gold: M({ color: 0xd8b050, metalness: 0.95, roughness: 0.2, envMapIntensity: 1.3 }) }[D.col];
+    for (const s of [-1, 1]) for (const z of [-2.0, -7.5]) { if (D.col === 'tree') { cyl(g, 0.32, 0.42, 4.2, colM, s * 7.6, 2.1, z, 14); for (let k = 0; k < 4; k++) { const br = seg(g, [s * 7.6, 3.5, z], [s * 7.6 + Math.cos(k * 1.57) * 1.0, 4.18, z + Math.sin(k * 1.57) * 1.0], 0.12, 0.06, colM); } } else column(g, s * 7.6, z, 4.2, colM, D.col === 'marble' || D.col === 'gold' ? brass : null); }
+    // the back: the window on the city or the view, or a feature wall
+    if (D.view) windowOn(g, D.view, 0, 2.2, B + 0.02, 9, 3.0, 0, D.col === 'white' ? 0xf4ecdc : 0x1a1210);
+    if (D.lattice) for (const s of [-1, 1]) { const lt = canvas(128, 256, (x, w, h) => { x.fillStyle = '#d8b050'; x.fillRect(0, 0, w, h); x.fillStyle = '#1a0a14'; for (let i = 0; i < 4; i++) for (let j = 0; j < 8; j++) { x.fillRect(i * 32 + 4, j * 32 + 4, 24, 24); } x.fillStyle = '#d8b050'; for (let i = 0; i < 4; i++) for (let j = 0; j < 8; j++) { x.fillRect(i * 32 + 14, j * 32 + 4, 4, 24); x.fillRect(i * 32 + 4, j * 32 + 14, 24, 4); } }); plane(g, 1.6, 3.4, M({ map: tex(lt), metalness: 0.5, roughness: 0.35, emissive: 0x3a2a10, emissiveIntensity: 0.4 }), s * 5.8, 2.0, B + 0.03); }
+    // the ceiling
+    if (D.beams || D.trusses) for (let i = 0; i < 5; i++) { const z = 0.8 - i * 3.0; box(g, 18, 0.32, 0.3, M({ map: tex(PAINT.wood('#4a3020', '#3a2416', 8), 4, 1), roughness: 0.8 }), 0, 4.0, z); if (D.trusses) for (const s of [-1, 1]) { const kb = box(g, 0.18, 2.6, 0.2, M({ map: tex(PAINT.wood('#4a3020', '#3a2416', 8), 1, 2), roughness: 0.8 }), s * 4.4, 3.5, z); kb.rotation.z = s * 1.1; } }
+    if (D.fix === 'led') for (let i = 0; i < 9; i++) { box(g, 16, 0.03, 0.08, glow(i % 3 === 1 ? 0xff3a8a : 0x3ad8ff, 2.2), 0, 4.17, 1.0 - i * 1.5); }
+    if (D.fix === 'cove') { for (const s of [-1, 1]) box(g, 0.04, 0.04, 14, glow(0xff6ab0, 2.2), s * 8.6, 3.85, -5); box(g, 17, 0.04, 0.04, glow(0x3ad8ff, 2.2), 0, 3.85, B + 0.5); }
+    // the poker room: its rail, its sign, its tables (each with its light)
+    const tableLight = (x, z) => {
+      if (D.fix === 'chand') chandelier(g, x, 3.4, z, 0.7, D.chand);
+      else if (D.fix === 'deco') { const fm = M({ color: 0x1a1410, metalness: 0.6, roughness: 0.3 }); rbox(g, 2.0, 0.14, 0.7, 0.03, fm, x, 3.1, z); plane(g, 1.9, 0.6, glow(0xfff0d0, 1.4), x, 3.03, z, 0, Math.PI / 2); for (let k = -2; k <= 2; k++) box(g, 0.02, 0.16, 0.72, brass, x + k * 0.4, 3.1, z); for (const s of [-1, 1]) cyl(g, 0.006, 0.006, 1.0, brass, x + s * 0.8, 3.7, z, 4); }
+      else if (D.fix === 'wheels' || D.fix === 'antler') { const w = new THREE.Group(); w.position.set(x, 3.0, z); g.add(w); const wm = M({ color: D.fix === 'antler' ? 0xe0d4bc : 0x4a2e16, roughness: 0.7 });
+        if (D.fix === 'wheels') { const rim = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.04, 8, 40), wm); rim.rotation.x = Math.PI / 2; w.add(rim); for (let i = 0; i < 6; i++) { const s = box(w, 1.36, 0.035, 0.035, wm, 0, 0, 0); s.rotation.y = i / 6 * Math.PI; } }
+        else for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; seg(w, [0, 0, 0], [Math.cos(a) * 0.6, 0.2 + (i % 2) * 0.15, Math.sin(a) * 0.6], 0.035, 0.015, wm); seg(w, [Math.cos(a) * 0.35, 0.1, Math.sin(a) * 0.35], [Math.cos(a + 0.4) * 0.5, 0.4, Math.sin(a + 0.4) * 0.5], 0.02, 0.01, wm); }
+        for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; sph(w, 0.045, glow(0xffd8a0, 3), Math.cos(a) * 0.62, -0.05, Math.sin(a) * 0.62, 8); }
+        for (let i = 0; i < 3; i++) cyl(w, 0.006, 0.006, 1.2, M({ color: 0x1a1a1a }), Math.cos(i * 2.1) * 0.4, 0.6, Math.sin(i * 2.1) * 0.4, 4); }
+      else if (D.fix === 'lantern') { for (const s of [-1, 1]) { cyl(g, 0.006, 0.006, 1.2, M({ color: 0x1a1a1a }), x + s * 0.6, 3.6, z, 4); const lb = M({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 }); box(g, 0.32, 0.04, 0.32, lb, x + s * 0.6, 3.0, z); box(g, 0.26, 0.38, 0.26, M({ color: 0xfff0d0, emissive: 0xffc070, emissiveIntensity: 1.3, transparent: true, opacity: 0.9 }), x + s * 0.6, 2.8, z); for (const a of [-1, 1]) for (const b of [-1, 1]) box(g, 0.025, 0.4, 0.025, lb, x + s * 0.6 + a * 0.14, 2.8, z + b * 0.14); box(g, 0.3, 0.03, 0.3, lb, x + s * 0.6, 2.6, z); } }
+      else if (D.fix === 'starburst') { const sb = new THREE.Group(); sb.position.set(x, 3.2, z); g.add(sb); sph(sb, 0.08, brass, 0, 0, 0); for (let i = 0; i < 14; i++) { const v = new THREE.Vector3().randomDirection().multiplyScalar(0.6); seg(sb, [0, 0, 0], [v.x, v.y * 0.6, v.z], 0.008, 0.008, brass); sph(sb, 0.035, glow(0xffe0b0, 3), v.x, v.y * 0.6, v.z, 8); } cyl(g, 0.006, 0.006, 1.0, brass, x, 3.7, z, 4); }
+      else if (D.fix === 'fans') { const f = new THREE.Group(); f.position.set(x, 3.7, z); g.add(f); const wd2 = M({ color: 0x8a6a4a, roughness: 0.5 }); cyl(f, 0.12, 0.1, 0.16, brass, 0, 0, 0, 16); cyl(f, 0.015, 0.015, 0.5, brass, 0, 0.3, 0, 6); for (let i = 0; i < 5; i++) { const bl = box(f, 0.7, 0.012, 0.14, wd2, 0, -0.04, 0); bl.geometry.translate(0.42, 0, 0); bl.rotation.y = i / 5 * Math.PI * 2 + 0.3; } const gl = sph(f, 0.11, M({ color: 0xfff4e0, emissive: 0xffe0b0, emissiveIntensity: 1.2 }), 0, -0.14, 0, 14); gl.scale.y = 0.7; }
+      else if (D.fix === 'linear' || D.fix === 'led' || D.fix === 'cove') { const fm = M({ color: 0x1c1c1e, metalness: 0.5, roughness: 0.35 }); rbox(g, 2.2, 0.08, 0.3, 0.02, fm, x, 3.1, z); plane(g, 2.1, 0.22, glow(0xfff4e8, 1.6), x, 3.055, z, 0, Math.PI / 2); for (const s of [-1, 1]) cyl(g, 0.005, 0.005, 1.0, fm, x + s * 0.9, 3.65, z, 4); }
+    };
+    const TB = [[-4.6, -4.3], [0, -4.3], [4.6, -4.3]];
+    TB.forEach(([x, z]) => { pokerTable(g, x, z, { felt, rail: 0x1a0a0a, seats: 9, rx: 1.4, rz: 0.8, full: 0.85, lamp: false, ceil: 3.0 }); tableLight(x, z); });
+    pokerTable(g, 2.2, -1.9, { mine: true, felt, rail: 0x1a0a0a, seats: 9, rx: 1.4, rz: 0.8, lamp: false, ceil: 3.0 });
+    // the rail between the poker room and the casino floor, with a gap to walk through
+    for (const [x0, x1] of [[-8.6, -1.0], [1.0, 8.6]]) { box(g, x1 - x0, 0.06, 0.06, brass, (x0 + x1) / 2, 0.95, -6.2); box(g, x1 - x0, 0.03, 0.03, brass, (x0 + x1) / 2, 0.5, -6.2); for (let x = x0; x <= x1 + 0.01; x += 1.2) cyl(g, 0.025, 0.025, 0.95, brass, x, 0.47, -6.2, 8); }
+    if (D.sign) hangBanner(g, D.sign[0], 0, 3.62, -6.2, 3.6, 0.45, D.sign[1], D.sign[2]);
+    if (D.neon) neon(g, D.neon[0], D.neon[1], 0, 3.45, B + 0.06, 80);
+    if (D.marquee) { const mq = new THREE.Group(); mq.position.set(0, 3.45, -6.2); g.add(mq); for (const s of [-1, 1]) cyl(mq, 0.005, 0.005, 1.0, M({ color: 0x111111 }), s * 1.6, 0.8, 0, 4); sign(mq, D.marquee, '#1a0a1a', '#ffd84d', 0, 0, 0, 3.8, 0.6); for (let i = 0; i < 22; i++) for (const s of [-1, 1]) sph(mq, 0.03, glow(0xffe0a0, 4), -1.85 + i * 3.7 / 21, s * 0.27, 0.04, 6); for (let i = 0; i < 4; i++) for (const s of [-1, 1]) sph(mq, 0.03, glow(0xffe0a0, 4), s * 1.88, -0.2 + i * 0.13, 0.04, 6); light(mq, 0xffe0a0, 1.5, 0, 0, 0.6, 4); }
+    // the casino floor beyond the rail: the pit, the slots, the cage, people walking through
+    tableGame(g, -4.2, -8.6, 0, 'blackjack', felt); tableGame(g, 0, -8.8, 0, 'roulette', 0x1a5a2a); tableGame(g, 4.2, -8.6, 0, 'blackjack', felt);
+    slots(g, -6.4, B + 1.0, D.view ? 4 : 7, 0, { colors: D.slotColors }); slots(g, 6.4, B + 1.0, D.view ? 4 : 7, 0, { colors: D.slotColors });
+    slots(g, -8.4, -9.4, 4, Math.PI / 2, { colors: D.slotColors }); cage(g, 8.4, -9.6, -Math.PI / 2, 2.6, 'CASHIER');
+    if (STAGE !== 'final') for (let i = 0; i < Math.round(6 * occ()); i++) stander(g, -6 + rnd() * 12, -6.8 - rnd() * 0.8, rnd() * 6.28, { lod: 1 });
+    // the house's touches
+    if (D.palms) { plant(g, -8.2, -0.8, 1.5, true); plant(g, 8.2, -0.8, 1.5, true); plant(g, -8.2, B + 0.6, 1.6, true); plant(g, 8.2, B + 0.6, 1.6, true); }
+    if (D.pines) for (const s of [-1, 1]) { const p = new THREE.Group(); p.position.set(s * 8.2, 0, -5.0); g.add(p); cyl(p, 0.08, 0.12, 0.6, M({ color: 0x4a3020 }), 0, 0.3, 0, 8); for (let k = 0; k < 4; k++) cyl(p, 0.05, 0.75 - k * 0.15, 0.9, M({ color: 0x1a3a22, roughness: 0.9 }), 0, 0.9 + k * 0.55, 0, 12); }
+    if (T === 'reno') { const hat = canvas(256, 128, (x, w, h) => { x.fillStyle = '#d8e8ff'; x.shadowColor = '#d8e8ff'; x.shadowBlur = 16; x.beginPath(); x.ellipse(w / 2, h * 0.75, 110, 20, 0, 0, 7); x.fill(); x.beginPath(); x.moveTo(w / 2 - 50, h * 0.72); x.quadraticCurveTo(w / 2 - 54, h * 0.15, w / 2, h * 0.28); x.quadraticCurveTo(w / 2 + 54, h * 0.15, w / 2 + 50, h * 0.72); x.fill(); }); plane(g, 1.6, 0.8, new THREE.MeshBasicMaterial({ map: tex(hat), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }), 0, 2.55, B + 0.06); for (const s of [-1, 1]) wagonWheel(g, s * 3.2, 2.4, B + 0.08, 0); }
+    if (T === 'chicago') for (const s of [-1, 1]) for (const z of [-3.6, -8.6]) sconce(g, s * 8.97, 2.4, z, -s * Math.PI / 2, 0xffe0b0);
+    if (T === 'boardwalk') for (const s of [-1, 1]) photo(g, s * 8.96, 2.2, -4.6, 1.4, 0.9, -s * Math.PI / 2, 'land', 0xc8a050);
+    if (T === 'palmsprings') for (const s of [-1, 1]) for (const z of [-3.6, -8.6]) { const sb = new THREE.Group(); sb.position.set(s * 8.9, 2.6, z); g.add(sb); sph(sb, 0.06, brass, 0, 0, 0); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; seg(sb, [0, 0, 0], [0, Math.sin(a) * 0.35, Math.cos(a) * 0.35], 0.006, 0.006, brass); sph(sb, 0.025, glow(0xffe0b0, 3), 0, Math.sin(a) * 0.35, Math.cos(a) * 0.35, 6); } }
+    if (T === 'seoul') for (const s of [-1, 1]) for (let i = 0; i < 3; i++) box(g, 0.04, 3.2, 0.04, glow(i === 1 ? 0xff3a8a : 0x3ad8ff, 2.2), s * 8.96, 2.0, -2.5 - i * 3.0);
+    light(g, 0xffe8c8, 2.6, -4, 3.6, -8.5, 10); light(g, 0xffe8c8, 2.6, 4, 3.6, -8.5, 10);
     return { exposure: 1.0 };
   },
   ballroom(g, o) {
@@ -1797,11 +1855,11 @@ const PLACES = {
   cardroom: ['cardroom', { theme: 'prairie' }], cardriver: ['cardroom', { theme: 'river' }], cardharbor: ['cardroom', { theme: 'harbor' }],
   cardwest: ['cardroom', { theme: 'west' }], cardlake: ['cardroom', { theme: 'lake' }], cardclub: ['cardroom', { theme: 'club' }],
   cardnugget: ['cardroom', { theme: 'nugget' }], carddollar: ['cardroom', { theme: 'dollar' }],
-  gulf: ['casino', { view: VIEW.ocean({ sky1: '#2a3a6a', yachts: true }), carpet: '#0e4556', carpet2: '#155e75', felt: 0x155e75, plants: true, neon: 'GULF COAST CLASSIC', neonColor: '#5ad8ff' }],
-  reno: ['casino', { cowboy: true, carpet: '#4c3414', carpet2: '#6b4a1f', felt: 0x6b4a1f, chandColor: 0xffc880 }],
-  boardwalk: ['casino', { view: VIEW.ocean({ pier: true }), carpet: '#2a1d5a', carpet2: '#3b2a7a', felt: 0x3b2a7a, neon: 'BOARDWALK', neonColor: '#ff5ab0' }],
-  chicago: ['casino', { view: VIEW.city({ water: true, tall: 0.8, landmark: LANDMARK.tower }), carpet: '#143a44', carpet2: '#1d4f5c', felt: 0x1d4f5c, chand: false }],
-  tahoe: ['casino', { view: VIEW.mountains({ lake: true, pines: true, sky0: '#060c22', sky1: '#2a3a6a' }), carpet: '#14303a', carpet2: '#1d4050', felt: 0x24485e, chandColor: 0xd8e8ff }], aspen: ['lodge', { snow: true }],
+  gulf: ['casino', { theme: 'gulf' }],
+  reno: ['casino', { theme: 'reno' }],
+  boardwalk: ['casino', { theme: 'boardwalk' }],
+  chicago: ['casino', { theme: 'chicago' }],
+  tahoe: ['casino', { theme: 'tahoe' }], aspen: ['lodge', { snow: true }],
   paris: ['salon', { view: VIEW.city({ landmark: LANDMARK.eiffel, towers: 12, tall: 0.25, sky2: '#4a3060' }), view2: VIEW.rooftops({}), felt: 0x4a1f4f, curtain: 0x36163a }],
   monaco: ['salon', { view: VIEW.ocean({ yachts: true, sky2: '#ff8a5a' }), felt: 0x0f3d2e, palms: true }],
   macau: ['salon', { view: VIEW.city({ landmark: LANDMARK.lisboa, water: true, tall: 0.7, lights: ['#ffd84d', '#ff5a3a', '#ff3ad8', '#ffffff'] }), wall: PAINT.damask('#6b1a12', '#7a2418'), floor: PAINT.carpet('#4f130d', '#6b1a12', '#e8b030'), felt: 0x6b1a12, curtain: 0xc8a050, lanterns: true, chand: 0xffd070 }],
@@ -1810,20 +1868,20 @@ const PLACES = {
   playerschamp: ['ballroom', { title: 'PLAYERS\' CHAMPIONSHIP', banner: 'PLAYERS\' CHAMPIONSHIP', bannerBg: '#0f3d2e', screen: ['#0f3d2e', '#04140e'], felt: 0x0f3d2e, carpet: '#0a2a1e', carpet2: '#0f3d2e' }],
   bayou: ['salon', { view: VIEW.rooftops({}), wall: PAINT.brick('#8a4a3a', '#4a3a34'), floor: PAINT.wood('#4a2a14', '#3a1e0c', 22), felt: 0x155e75, curtain: 0x2a4a3a, chand: 0xffc070 }],
   minetown: ['saloon', { view: VIEW.mountains({ pines: true, sky0: '#081020', sky1: '#30406a' }) }], deadwood: ['saloon'],
-  pinewood: ['casino', { view: VIEW.mountains({ pines: true, sky0: '#081020', sky1: '#24304a' }), carpet: '#1f3a24', carpet2: '#2a4a2e', felt: 0x2a5a3a, plants: true, chandColor: 0xfff0c8 }],
-  twincities: ['casino', { view: VIEW.city({ water: true, tall: 0.55, sky2: '#6a7aa0', waterTop: '#d8e4f0' }), carpet: '#1a2a3a', carpet2: '#24384a', felt: 0x24485e, chand: false }],
-  palmsprings: ['casino', { view: VIEW.desert({ pool: true }), wall: PAINT.stripe('#e8dcc8', '#d8c8b0'), carpet: '#2a6a6a', carpet2: '#3a8a8a', felt: 0x2a6a6a, plants: true, warm: 0xffe0b0 }],
+  pinewood: ['casino', { theme: 'pinewood' }],
+  twincities: ['casino', { theme: 'twincities' }],
+  palmsprings: ['casino', { theme: 'palmsprings' }],
   london: ['salon', { view: VIEW.rooftops({ clock: true }), wall: PAINT.panel('#2a1a10', '#3a2416'), floor: PAINT.carpet('#1a2a1a', '#2a3a2a', '#c8a050'), felt: 0x1a3a2a, curtain: 0x2a3a2a }],
   vienna: ['salon', { view: VIEW.rooftops({ spires: true }), wall: PAINT.damask('#f4f0e8', '#e8e0d4'), felt: 0x4a1f4f, curtain: 0xc8a050 }],
   singapore: ['salon', { view: VIEW.city({ landmark: LANDMARK.marina, water: true, tall: 0.6 }), wall: PAINT.panel('#1a2a2a', '#223434'), floor: PAINT.carpet('#0e2a2a', '#143a3a', '#c8a050'), felt: 0x0e4a4a, curtain: 0x14303a }],
   nassau: ['salon', { view: VIEW.ocean({ palms: true, sky2: '#ff9a5a' }), wall: PAINT.stripe('#f4ece0', '#e8dcc8'), floor: PAINT.tile('#e8dcc8', '#c8b8a0', 8), felt: 0x1a6a8a, palms: true, curtain: 0x2a8a9a }],
   tunica: ['riverboat', { felt: 0x155e75 }],
-  miami: ['casino', { view: VIEW.ocean({ palms: true, sky1: '#6a2a8a', sky2: '#ff6ab0' }), carpet: '#1a5a6a', carpet2: '#2a8a9a', felt: 0x1a6a8a, plants: true, neon: 'OCEAN DRIVE', neonColor: '#ff6ab0', slotColors: [0xff6ab0, 0x3ad8ff, 0xffd84d] }],
-  seattle: ['casino', { view: VIEW.city({ landmark: LANDMARK.needle, water: true, tall: 0.55, sky2: '#4a5a8a' }), carpet: '#14303a', carpet2: '#1d4050', felt: 0x1d4f5c, chand: false }],
+  miami: ['casino', { theme: 'miami' }],
+  seattle: ['casino', { theme: 'seattle' }],
   sedona: ['lodge', { view: VIEW.desert({ rock: '#8a3a1c' }) }],
   prague: ['salon', { view: VIEW.rooftops({ spires: true }), wall: PAINT.damask('#3a1424', '#4a1a2e'), felt: 0x4a1f4f, curtain: 0x6a1a2a }],
   malta: ['salon', { view: VIEW.ocean({ yachts: true, sky1: '#5a3a6a', sky2: '#ffb06a' }), wall: PAINT.plain('#e8d4b0'), floor: PAINT.tile('#d8c4a0', '#c0aa84', 8), felt: 0x0f3d2e, palms: true, curtain: 0x2a4a6a }],
-  seoul: ['casino', { view: VIEW.city({ landmark: LANDMARK.neon, tall: 0.75, lights: ['#ff3a8a', '#3ad8ff', '#ffffff', '#ffd84d'] }), carpet: '#2a0a3a', carpet2: '#3a1a5a', felt: 0x3a1a5a, chandColor: 0xd8e8ff, neon: 'SEOUL CUP', neonColor: '#3ad8ff' }],
+  seoul: ['casino', { theme: 'seoul' }],
   cruise: ['cruise'], series: ['expo', {}], seriesspring: ['expo', { banner: 'SPRING SERIES', bannerBg: '#1f6b45', carpet: '#2a1a3a', carpet2: '#3a2a4a' }], seriesfall: ['expo', { banner: 'FALL SERIES', bannerBg: '#c0561e', carpet: '#3a1a10', carpet2: '#4a2414' }]
 };
 
