@@ -1071,7 +1071,7 @@
 
     var bar = el('header', { class: 'gbar' }, [
       // back to the home screen: a pill that says so (the title's own arrow is for the game's modes)
-      el('button', { class: 'k-home', type: 'button', 'aria-label': 'Game Night home', html: ICON.back + '<span class="k-home-logo">' + HOME_LOGO + '</span>', onclick: goHome }),
+      el('button', { class: 'k-home', type: 'button', 'aria-label': 'Game Night home', html: ICON.back + '<span class="k-home-logo">' + HOME_LOGO + '</span><span class="k-home-lbl">Home</span>', onclick: goHome }),
       el('div', { class: 'ttl' + (game && window.GameIcon ? ' has-ic' : '') }, [
         game && window.GameIcon ? el('span', { class: 'gi', html: GameIcon(game.id) }) : null,
         el('span', { text: opts.title || (game && game.name) || doc.title })
@@ -1401,7 +1401,8 @@
     }
 
     var wrap = el('div', { class: 'setup' });
-    wrap.appendChild(el('div', { class: 'setup-hero' }, [
+    // the game's icon and its name side by side, centred (the Defaults editor keeps its stacked header)
+    wrap.appendChild(el('div', { class: 'setup-hero' + (game && window.GameIcon && !EDIT_DEFAULTS ? ' k-row' : '') }, [
       game && window.GameIcon ? el('div', { class: 'k-hero-ic', html: GameIcon(game.id) }) : null,
       el('h1', { text: o.title || (game && game.name) || '' }),
       EDIT_DEFAULTS ? el('p', { text: 'Set how this game starts. Saved on this device.' }) : null   // (just the name: no tagline)
