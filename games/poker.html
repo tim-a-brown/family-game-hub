@@ -290,6 +290,7 @@
 .czi-lock{display:flex;align-items:center;gap:6px;margin:10px 0 0;font-weight:800;color:var(--yellow);}
 .czi-lock .ico{width:16px;height:16px;}
 /* the room behind the table at a circuit stop: out of focus, washed toward the theme's background so the text on it reads */
+.pk-vbgs{position:fixed;inset:0;z-index:0;pointer-events:none;}
 .pk-vbg{position:fixed;inset:-30px;z-index:0;pointer-events:none;background:#0b0910 center / cover no-repeat;filter:blur(5px) saturate(1.1);opacity:0;transition:opacity .9s ease;}
 .pk-vbg.on{opacity:1;}
 .pk-vbg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 50%,color-mix(in srgb,var(--bg) 15%,transparent),color-mix(in srgb,var(--bg) 48%,transparent));}
@@ -3078,10 +3079,10 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (!venueWas) { venueWas = {}; VENUE_VARS.forEach(function (k) { venueWas[k] = r.getPropertyValue(k); }); }
     r.setProperty('--felt-a', ev.felt[0]); r.setProperty('--felt-b', ev.felt[1]); r.setProperty('--felt-c', ev.felt[2]);
     r.setProperty('--wood-a', ev.wood[0]); r.setProperty('--wood-b', ev.wood[1]);
-    if (!SIM) venueBg(ev);
+    if (!SIM) venueBg(ev, S && S.circ ? circStage(S.circ) : 'busy');
   }
   function venueOff() {
-    if (VBG) { VBG.classList.remove('on'); VBG.dataset.k = ''; }
+    if (VBG) { [].forEach.call(VBG.children, function (l) { l.classList.remove('on'); }); setTimeout(function () { if (!VBGK) VBG.innerHTML = ''; }, 1000); VBGK = ''; }
     if (!venueWas) return;
     var r = document.documentElement.style;
     VENUE_VARS.forEach(function (k) { if (venueWas[k]) r.setProperty(k, venueWas[k]); else r.removeProperty(k); });
@@ -3235,9 +3236,12 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
   // ── Where you're playing: a 3D picture of every place (poker/venue3d.js, rendered once and kept) ──
   var VPIC = {};
-  function venueArt(key) {
-    if (!VPIC[key]) VPIC[key] = import('./poker/venue3d.js').then(function () { return window.VenueScene ? VenueScene.render(key) : null; }).catch(function () { return null; });
-    return VPIC[key];
+  // o: { view: 'room' (the wide shot) | 'seat' (from your chair), stage: 'busy' | 'thin' | 'final' }
+  function venueArt(key, o) {
+    o = o || { view: 'room', stage: 'busy' };
+    var k = key + '|' + o.view + '|' + o.stage;
+    if (!VPIC[k]) VPIC[k] = import('./poker/venue3d.js').then(function () { return window.VenueScene ? VenueScene.render(key, o) : null; }).catch(function () { return null; });
+    return VPIC[k];
   }
   function venuePic(ev, host) {
     host.classList.add('czi-pic', 'wait');
@@ -3247,14 +3251,27 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     });
     return host;
   }
-  // behind the table at a circuit stop: the room you're in, softly out of focus
-  var VBG = null;
-  function venueBg(ev) {
-    var key = sceneOf(ev);
-    if (!VBG) { VBG = el('div', { class: 'pk-vbg', 'aria-hidden': 'true' }); document.body.insertBefore(VBG, document.body.firstChild); }
-    if (VBG.dataset.k === key) return;
-    VBG.dataset.k = key; VBG.classList.remove('on');
-    venueArt(key).then(function (url) { if (!url || !VBG || VBG.dataset.k !== key) return; VBG.style.backgroundImage = 'url(' + url + ')'; VBG.classList.add('on'); });
+  // how far the event has got, for the room behind the table: every table going, tables closing as the field thins,
+  // then the final table (the rest of the room shut down, a crowd on the rail)
+  function circStage(C) {
+    var ev = EV[C.id], N = C.field || ev.field;
+    if (C.else <= 0) return 'final';
+    return (N - C.left) / Math.max(1, N - 6) >= 0.45 ? 'thin' : 'busy';
+  }
+  // behind the table at a circuit stop: the room you're in, as seen from your chair, softly out of focus; a new stage
+  // fades in over the last
+  var VBG = null, VBGK = '';
+  function venueBg(ev, stage) {
+    var key = sceneOf(ev), k = key + '|' + (stage || 'busy');
+    if (VBGK === k) return;
+    VBGK = k;
+    if (!VBG) { VBG = el('div', { class: 'pk-vbgs', 'aria-hidden': 'true' }); document.body.insertBefore(VBG, document.body.firstChild); }
+    venueArt(key, { view: 'seat', stage: stage || 'busy' }).then(function (url) {
+      if (!url || VBGK !== k) return;
+      var layer = el('div', { class: 'pk-vbg' }); layer.style.backgroundImage = 'url(' + url + ')'; VBG.appendChild(layer);
+      requestAnimationFrame(function () { requestAnimationFrame(function () { layer.classList.add('on'); }); });
+      setTimeout(function () { while (VBG.children.length > 1 && VBG.firstChild !== layer) VBG.removeChild(VBG.firstChild); }, 1200);
+    });
   }
   // the ? on every stop: the place, the game and how it's played, who turns up and how many; k >= 0: a locked stop
   function infoSheet(ev, k) {
@@ -3856,6 +3873,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     app.classList.toggle('pland', land);
     app.classList.toggle('after', !!final);
     app.classList.toggle('pcirc', !!S.circ);
+    if (S.circ && !SIM && !QUIET && EV[S.circ.id]) venueBg(EV[S.circ.id], circStage(S.circ));
     app.classList.remove('raising', 'czapp');
     if (land) { var gb = document.querySelector('.gbar'); app.style.setProperty('--gbh', (gb ? gb.offsetHeight : 44) + 'px'); }
 
