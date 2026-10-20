@@ -134,7 +134,7 @@ var GAMES = [
 
   // ── Casino ───────────────────────────────────────────────────────────────
   { id: 'blackjack',   name: 'Blackjack',    color: '#059669', cat: 'casino', min: 1, max: 4, tag: 'Get closer to 21 than the dealer', play: 'blackjack' },
-  { id: 'poker',       name: 'Poker',        color: '#dc2626', cat: 'casino', min: 1, max: 10, tag: "Video poker, Hold'em and Omaha, solo, on the circuit or online", play: 'poker' },
+  { id: 'poker',       name: 'Poker',        color: '#dc2626', cat: 'casino', min: 1, max: 10, tag: "Hold'em, Omaha, Stud, Draw, home games and video poker, solo, on the circuit or online", play: 'poker' },
   { id: 'roulette',    name: 'Roulette',     color: '#b91c1c', cat: 'casino', min: 1, max: 1, tag: 'Place your bets, spin the wheel', play: 'roulette' },
   { id: 'slots',       name: 'Slots',        color: '#d97706', cat: 'casino', min: 1, max: 1, tag: 'Pull the lever, chase the jackpot', play: 'slots' },
   { id: 'craps',       name: 'Craps',        color: '#047857', cat: 'casino', min: 1, max: 1, tag: 'Roll the bones, ride the point', play: 'craps' },

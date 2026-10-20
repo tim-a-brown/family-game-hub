@@ -1363,6 +1363,7 @@
   //            help: plain-language explanation shown by a tappable "?" next to
   //            the label. A choice can carry its own note as a third item,
   //            [value, label, help]; the note for the chosen value shows too.
+  //            Or {id, value, render:(value, set)=>node, summary:(value)=>text}: the game draws its own picker.
   //   intro:   short line under the title
   //   start:   button label
   //   onStart: function(cfg)   cfg = {mode, players:[{name,cpu,color}], options:{}}
@@ -1441,6 +1442,8 @@
       optsBox.innerHTML = '';
       (o.options || []).forEach(function (op) {
         if (op.when && !op.when(state.mode)) return;
+        // op.render(value, set): the game draws its own picker (a value it keeps in the options like any other)
+        if (op.render) { optsBox.appendChild(op.render(state.options[op.id], function (v) { state.options[op.id] = v; renderOptions(); })); return; }
         var seg = el('div', { class: 'seg' }), choices = choicesOf(op);
         if (!choices.some(function (c) { return String(c[0]) === String(state.options[op.id]); })) state.options[op.id] = op.value;
         choices.forEach(function (c) {
@@ -1575,6 +1578,7 @@
       if (P) { var r = range(); if (r[1] > r[0]) bits.push(state.count + (state.count === 1 ? ' player' : ' players')); }
       (o.options || []).forEach(function (op) {
         if (op.when && !op.when(state.mode)) return;
+        if (op.render) { if (op.summary) bits.push(op.summary(state.options[op.id])); return; }
         var c = (choicesOf(op) || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0];
         if (c) bits.push(c[1]);
       });
