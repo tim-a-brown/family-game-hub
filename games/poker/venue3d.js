@@ -58,9 +58,15 @@ const PAINT = {
       x.fillRect(Math.floor(rnd() * w), y, 2, ph);
     }
   }),
-  carpet: (a, b, c) => canvas(256, 256, (x, w, h) => {
+  carpet: (a, b, c, kind) => canvas(256, 256, (x, w, h) => {
     x.fillStyle = a; x.fillRect(0, 0, w, h);
-    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+    if (kind === 'diamond') { x.strokeStyle = b; x.lineWidth = 5; for (let i = -4; i <= 4; i++) { x.beginPath(); x.moveTo(i * 64, 0); x.lineTo(i * 64 + 256, 256); x.stroke(); x.beginPath(); x.moveTo(i * 64 + 256, 0); x.lineTo(i * 64, 256); x.stroke(); } x.fillStyle = c; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.beginPath(); x.arc(i * 64 + 32, j * 64, 4, 0, 7); x.fill(); } }
+    else if (kind === 'scroll') { for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { const cx = 64 + i * 128, cy = 64 + j * 128; x.strokeStyle = b; x.lineWidth = 7; for (let k = 0; k < 4; k++) { x.beginPath(); x.arc(cx + Math.cos(k * 1.571) * 30, cy + Math.sin(k * 1.571) * 30, 24, k * 1.571, k * 1.571 + 3.6); x.stroke(); } x.fillStyle = c; for (let k = 0; k < 8; k++) { x.save(); x.translate(cx, cy); x.rotate(k * 0.785); x.beginPath(); x.ellipse(52, 0, 10, 4, 0, 0, 7); x.fill(); x.restore(); } x.beginPath(); x.arc(cx, cy, 8, 0, 7); x.fill(); x.fillStyle = b; x.beginPath(); x.arc(cx + 64, cy + 64, 10, 0, 7); x.fill(); } }
+    else if (kind === 'wave') { x.strokeStyle = b; x.lineWidth = 6; for (let j = 0; j < 8; j++) for (let i = -1; i < 5; i++) { x.beginPath(); x.arc(i * 64 + (j % 2) * 32 + 32, j * 32 + 32, 28, Math.PI, Math.PI * 2); x.stroke(); } x.fillStyle = c; for (let j = 0; j < 8; j++) for (let i = 0; i < 4; i++) { x.beginPath(); x.arc(i * 64 + (j % 2) * 32 + 32, j * 32 + 26, 3, 0, 7); x.fill(); } }
+    else if (kind === 'deco') { for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const cx = i * 64 + (j % 2) * 32, cy = j * 64 + 64; for (let k = 3; k > 0; k--) { x.fillStyle = k % 2 ? b : a; x.beginPath(); x.arc(cx, cy, k * 10 + 2, Math.PI, Math.PI * 2); x.fill(); } x.strokeStyle = c; x.lineWidth = 2; x.beginPath(); x.arc(cx, cy, 31, Math.PI, Math.PI * 2); x.stroke(); } }
+    else if (kind === 'navajo') { for (let j = 0; j < 4; j++) { const y = j * 64; x.fillStyle = b; x.fillRect(0, y + 26, w, 12); x.fillStyle = c; for (let i = 0; i < 8; i++) { const cx = i * 32 + 16; x.beginPath(); x.moveTo(cx, y + 6); x.lineTo(cx + 12, y + 20); x.lineTo(cx, y + 34); x.lineTo(cx - 12, y + 20); x.fill(); } x.fillStyle = a; for (let i = 0; i < 8; i++) { const cx = i * 32 + 16; x.fillRect(cx - 3, y + 17, 6, 6); } x.fillStyle = b; for (let i = 0; i < 16; i++) x.fillRect(i * 16, y + 50 + (i % 2) * 4, 10, 4); } }
+    else if (kind === 'check') { for (let i = 0; i < 16; i++) for (let j = 0; j < 16; j++) if ((i + j) % 2) { x.fillStyle = b; x.fillRect(i * 16, j * 16, 16, 16); } x.fillStyle = c; x.globalAlpha = 0.5; for (let i = 0; i < 4; i++) { x.fillRect(i * 64, 0, 2, h); x.fillRect(0, i * 64, w, 2); } x.globalAlpha = 1; }
+    else for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
       const cx = 32 + i * 64, cy = 32 + j * 64;
       x.fillStyle = b; x.beginPath(); for (let k = 0; k < 8; k++) { const an = k / 8 * Math.PI * 2, r = k % 2 ? 10 : 26; x.lineTo(cx + Math.cos(an) * r, cy + Math.sin(an) * r); } x.fill();
       x.fillStyle = c; x.beginPath(); x.arc(cx, cy, 6, 0, 7); x.fill();
@@ -1463,15 +1469,120 @@ const SCENES = {
     pokerTable(g, 1.6, -2.3, { mine: true, felt: 0x2f3a2c, rail: 0xc8ccd4, seats: 6, lamp: false, ceil: 2.8, chair: 0xc81a2a, wood: '#c8ccd4', wood2: '#a8acb4' });
     return { exposure: 1.0 };
   },
+  // a card room: rows of tables each under its own light, a dealer in every box, the brush's podium with the waiting list
+  // up on a screen, the cage, the tournament clock and the ballgames on the TVs. Each club has its own look: o.theme
   cardroom(g, o) {
-    const r = room(g, { w: 16, d: 13, h: 3.4, floor: PAINT.carpet(o.carpet || '#1a2a4a', o.carpet2 || '#2a3a6a', o.carpet3 || '#c8a050'), wall: o.wall || PAINT.panel('#3a2a20', '#4a3426'), ceil: PAINT.plain('#2a2420') });
-    if (o.view) windowOn(g, o.view, 0, 1.8, r.back + 0.02, 7, 2.2, 0);
-    else { sign(g, o.name || 'POKER ROOM', '#14100c', '#d8b060', 0, 2.6, r.back + 0.03, 4, 0.6); screen(g, -4, 1.9, r.back + 0.03, 2.4, 1.2, ['#0a2a5a', '#04102a'], 'NLH 1/2 · 2/5 · PLO'); screen(g, 4, 1.9, r.back + 0.03, 2.4, 1.2, ['#5a0a2a', '#2a0410'], 'TOURNAMENT · 7PM'); }
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) pokerTable(g, -5 + i * 5, -4.2 - j * 3.2, { felt: o.felt || 0x1f6b45, rail: 0x1a1210, seats: 9, rx: 1.4, rz: 0.8, full: 0.85, shade: 0x1a1a1a, lampColor: 0xfff0d8, lampI: 2 });
-    pokerTable(g, 2.2, -1.9, { mine: true, felt: o.felt || 0x1f6b45, rail: 0x1a1210, seats: 9, rx: 1.4, rz: 0.8, shade: 0x1a1a1a });
-    for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) { box(g, 0.5, 0.03, 0.5, glow(0xfff4e0, 2), -6 + i * 4, 3.38, -1.5 - j * 3.5); }
-    light(g, 0xfff0d8, 3, -4, 3.2, -3, 9); light(g, 0xfff0d8, 3, 4, 3.2, -3, 9); light(g, 0xfff0d8, 3, 0, 3.2, -7, 9);
-    if (o.slots) { slots(g, -7.6, -5, 6, Math.PI / 2); }
+    const T = o.theme || 'prairie';
+    const D = {
+      prairie: { floor: PAINT.wood('#8a5a32', '#6e4426', 22), wall: PAINT.planks('#8a6a4a', '#6e5034'), wains: PAINT.planks('#4a3020', '#3a2416'), ceil: PAINT.wood('#7a5a3a', '#6a4a2e', 30), felt: 0x1f6b45, rail: 0x2a1408, trim: 0x2a1408, cornice: 0x3a2414, name: 'PRAIRIE ROSE CARD CLUB', bg: '#2a1410', fg: '#e8c070', fix: 'wheel' },
+      river: { floor: PAINT.carpet('#14303a', '#1c4250', '#4a8a8a', 'diamond'), wall: PAINT.panel('#3e4e4a', '#4a5c58'), ceil: PAINT.dropceil(), felt: 0x1f6b45, rail: 0x1a1210, trim: 0x2a2a2a, cornice: 0xd8d8d0, name: 'RIVERSIDE CARD ROOM', bg: '#10202a', fg: '#d8e8f0', fix: 'bar', view: VIEW.river({ moon: true, trees: true }) },
+      club: { floor: PAINT.carpet('#26262a', '#1c1c20', '#8a2a2a', 'check'), wall: PAINT.brick('#7a3a28', '#4a3a34'), ceil: PAINT.plain('#18181a'), felt: 0x2f5a8a, rail: 0x111111, trim: 0x111111, cornice: 0x1a1a1a, name: 'NORTHSIDE CARD ROOM', bg: '#111111', fg: '#ffd84d', fix: 'bar' },
+      harbor: { floor: PAINT.carpet('#0e1c34', '#1e3658', '#c8a050', 'wave'), wall: PAINT.beadboard('#dcdfd8'), wains: PAINT.beadboard('#1e3a5a'), ceil: PAINT.plain('#ecebe4'), felt: 0x1a4a7a, rail: 0x1a1210, trim: 0x1e3a5a, cornice: 0xf0f0e8, name: 'HARBOR LIGHTS', bg: '#0e2240', fg: '#f0e8d0', fix: 'lamps', view: VIEW.ocean({ yachts: true, sky1: '#2a3a6a', sky2: '#e88a5a' }) },
+      west: { floor: PAINT.carpet('#4a2a14', '#7a3a1a', '#d8a040', 'navajo'), wall: PAINT.wood('#6a4424', '#54361c', 30), ceil: PAINT.tin('#4a3a2a'), felt: 0x7a3a1f, rail: 0x1a0e06, trim: 0x2a1a0a, cornice: 0x2a1a0a, name: 'LUCKY HORSESHOE', bg: '#1a0e06', fg: '#ffd070', fix: 'iron' },
+      nugget: { floor: PAINT.carpet('#3a0e0e', '#5a1a14', '#c89a40', 'scroll'), wall: PAINT.wallpaper('#5e0e12', '#7e1a1c', 'floral'), wains: PAINT.panel('#3a1e0e', '#4a2a14'), ceil: PAINT.tin('#b89858'), felt: 0x7a3a1f, rail: 0x1a0a04, trim: 0x2a1408, cornice: 0xc8a050, name: 'GOLD NUGGET', bg: '#1a0a04', fg: '#e8c050', fix: 'tiffany' },
+      lake: { floor: PAINT.carpet('#2a2a4a', '#3a3a64', '#e8a040', 'diamond'), wall: PAINT.panel('#d8ccb4', '#e6dcc6'), ceil: PAINT.plain('#f0ebe0'), felt: 0x1f6b45, rail: 0x1a1210, trim: 0x5a4030, cornice: 0xf0ebe0, name: 'LAKEVIEW CASINO', bg: '#2a2a4a', fg: '#ffd8a0', fix: 'bar', view: VIEW.ocean({ sky0: '#1a1440', sky1: '#8a4a7a', sky2: '#ff7a3a' }) },
+      dollar: { floor: PAINT.carpet('#2a0c0c', '#4a1616', '#a8acb4', 'deco'), wall: PAINT.panel('#2a2e34', '#33383f'), ceil: PAINT.dropceil(), felt: 0x7a3a1f, rail: 0x111111, trim: 0x111111, cornice: 0xc8ccd4, name: 'SILVER DOLLAR CARD CLUB', bg: '#14161a', fg: '#e0e4ec', fix: 'bar' }
+    }[T];
+    const r = room(g, { w: 16, d: 12, h: 3.0, floor: D.floor, wall: D.wall, wainscot: D.wains, ceil: D.ceil, trim: D.trim, cornice: D.cornice, fillI: 0.8 });
+    const B = r.back, felt = o.felt || D.felt;
+    if (D.wains) for (const s of [-1, 1]) plane(g, 12, 1.0, M({ map: tex(D.wains, 5, 0.5) }), s * 7.99, 0.5, -4, -s * Math.PI / 2);
+    const brass = M({ color: 0xc8a050, metalness: 0.9, roughness: 0.28, envMapIntensity: 1.1 }), iron = M({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.45 });
+    const wd = M({ map: tex(PAINT.wood('#5a3418', '#4a2a12', 18), 2, 1), roughness: 0.45 });
+    // the tables, each with its light over it
+    const TB = [[-5, -4.2], [0, -4.2], [5, -4.2], [-5, -7.4], [0, -7.4], [5, -7.4]];
+    const fixture = (x, z) => {
+      if (D.fix === 'wheel') {   // a wagon wheel hung flat, bulbs round the rim
+        const w = new THREE.Group(); w.position.set(x, 2.45, z); g.add(w); const wm = M({ color: 0x4a2e16, roughness: 0.8 });
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.035, 8, 40), wm); rim.rotation.x = Math.PI / 2; w.add(rim); cyl(w, 0.07, 0.07, 0.1, wm, 0, 0, 0, 12);
+        for (let i = 0; i < 6; i++) { const s = box(w, 1.06, 0.03, 0.03, wm, 0, 0, 0); s.rotation.y = i / 6 * Math.PI; }
+        for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; sph(w, 0.04, glow(0xffd8a0, 3), Math.cos(a) * 0.55, -0.06, Math.sin(a) * 0.55, 8); }
+        for (let i = 0; i < 3; i++) cyl(w, 0.005, 0.005, 0.6, iron, Math.cos(i * 2.1) * 0.3, 0.3, Math.sin(i * 2.1) * 0.3, 4);
+      } else if (D.fix === 'lamps') {   // ship's lamps: brass cages, two to a table
+        for (const s of [-1, 1]) { cyl(g, 0.005, 0.005, 0.6, brass, x + s * 0.6, 2.7, z, 4); cyl(g, 0.11, 0.11, 0.05, brass, x + s * 0.6, 2.4, z, 16); const gl = cyl(g, 0.09, 0.09, 0.22, M({ color: 0xfff4e0, emissive: 0xffd8a0, emissiveIntensity: 1.4, roughness: 0.2 }), x + s * 0.6, 2.25, z, 16); for (let k = 0; k < 4; k++) cyl(g, 0.006, 0.006, 0.24, brass, x + s * 0.6 + Math.cos(k * 1.57) * 0.095, 2.25, z + Math.sin(k * 1.57) * 0.095, 4); cyl(g, 0.11, 0.08, 0.05, brass, x + s * 0.6, 2.12, z, 16); }
+      } else {   // a long fixture: black metal, black iron, or a stained-glass billiard lamp
+        const tf = D.fix === 'tiffany', fm = tf ? M({ color: 0x2a6a3a, emissive: 0xc8a050, emissiveIntensity: 0.35, roughness: 0.3 }) : D.fix === 'iron' ? iron : M({ color: 0x1c1c1e, metalness: 0.5, roughness: 0.35 });
+        if (tf) for (let i = -1; i <= 1; i++) { const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.28, 0.2, 6, 1, true), M({ color: 0x8a3a1a, emissive: 0xffa040, emissiveIntensity: 0.9, side: THREE.DoubleSide, roughness: 0.3 })); sh.position.set(x + i * 0.62, 2.28, z); g.add(sh); sph(g, 0.05, glow(0xffd8a0, 3), x + i * 0.62, 2.22, z, 8); box(g, 1.4, 0.03, 0.03, brass, x, 2.42, z); }
+        else { rbox(g, 1.9, 0.1, 0.5, 0.03, fm, x, 2.45, z); plane(g, 1.78, 0.4, glow(0xfff2dc, 1.5), x, 2.395, z, 0, Math.PI / 2); }
+        for (const s of [-1, 1]) cyl(g, 0.005, 0.005, 0.55, tf ? brass : fm, x + s * 0.7, 2.72, z, 4);
+      }
+    };
+    TB.forEach(([x, z]) => { pokerTable(g, x, z, { felt, rail: D.rail, seats: 9, rx: 1.4, rz: 0.8, full: 0.85, lamp: false, ceil: 2.5 }); fixture(x, z); });
+    pokerTable(g, 2.2, -1.9, { mine: true, felt, rail: D.rail, seats: 9, rx: 1.4, rz: 0.8, lamp: false, ceil: 2.5 });
+    // can lights in the ceiling between the fixtures
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 3; j++) { const d = new THREE.Mesh(new THREE.CircleGeometry(0.08, 16), glow(0xfff4e0, 2.2)); d.rotation.x = Math.PI / 2; d.position.set(-6 + i * 3, 2.995, -2.6 - j * 3.2); g.add(d); }
+    // the back wall: the club's name, the window (where there is a view), the TVs and the tournament clock
+    const clockTV = (x, y, z, w, ry) => { const c = canvas(512, 288, (cx, cw, ch) => { const g2 = cx.createLinearGradient(0, 0, 0, ch); g2.addColorStop(0, '#0a1a3a'); g2.addColorStop(1, '#020610'); cx.fillStyle = g2; cx.fillRect(0, 0, cw, ch); cx.textAlign = 'center'; cx.fillStyle = '#8ad8ff'; cx.font = '700 26px sans-serif'; cx.fillText('LEVEL 6', cw / 2, 44); cx.fillStyle = '#fff'; cx.font = '700 92px sans-serif'; cx.fillText('11:06', cw / 2, 146); cx.fillStyle = '#ffd84d'; cx.font = '700 30px sans-serif'; cx.fillText('150 / 300   ante 300', cw / 2, 200); cx.fillStyle = '#c8d0e0'; cx.font = '600 20px sans-serif'; cx.fillText('PLAYERS 29 OF 36    BREAK IN 0:51', cw / 2, 250); }); const t = new THREE.Group(); t.position.set(x, y, z); t.rotation.y = ry || 0; g.add(t); rbox(t, w + 0.05, w * 9 / 16 + 0.05, 0.06, 0.01, M({ color: 0x0a0a0c, roughness: 0.25 }), 0, 0, 0); plane(t, w, w * 9 / 16, new THREE.MeshBasicMaterial({ map: tex(c) }), 0, 0, 0.032); };
+    if (D.view) {
+      windowOn(g, D.view, 0, 1.5, B + 0.02, 7.6, 1.7, 0, D.trim); sign(g, D.name, D.bg, D.fg, 0, 2.66, B + 0.04, 3.8, 0.38);
+      tvSet(g, -5.9, 1.9, B + 0.05, 1.5, 0, 'football'); clockTV(5.9, 1.9, B + 0.05, 1.5);
+    } else {
+      sign(g, D.name, D.bg, D.fg, 0, 2.45, B + 0.04, 4.6, 0.6);
+      tvSet(g, -2.6, 1.55, B + 0.05, 1.5, 0, T === 'dollar' ? 'horses' : 'football'); tvSet(g, 0, 1.55, B + 0.05, 1.5, 0, T === 'dollar' ? 'horses' : 'baseball'); clockTV(2.6, 1.55, B + 0.05, 1.5);
+    }
+    // the brush's podium by the door, the waiting list on the wall above it, players waiting for a seat; house rules
+    podium(g, -6.4, -1.0, 0.7); tvSet(g, -7.94, 1.95, -1.6, 1.7, Math.PI / 2, 'board');
+    if (STAGE === 'busy') for (let i = 0; i < 3; i++) stander(g, -5.6 + i * 0.5, -0.2 + (i % 2) * 0.3, -0.6 - i * 0.3, { lod: 1 });
+    const rules = canvas(256, 320, (x, w, h) => { x.fillStyle = '#f4efe2'; x.fillRect(0, 0, w, h); x.fillStyle = '#1a1a1a'; x.textAlign = 'center'; x.font = '800 28px Georgia'; x.fillText('HOUSE RULES', w / 2, 44); x.font = '600 17px Georgia'; ['One player to a hand', 'English only at the table', 'No phones during a hand', 'Cards speak', 'Dealer\'s decision is final', 'Tip your dealer'].forEach((l, i) => x.fillText(l, w / 2, 92 + i * 36)); x.strokeStyle = '#1a1a1a'; x.lineWidth = 4; x.strokeRect(8, 8, w - 16, h - 16); });
+    rbox(g, 0.62, 0.76, 0.03, 0.01, M({ color: 0x1a1210 }), -7.97, 1.6, -3.2, Math.PI / 2); plane(g, 0.55, 0.69, M({ map: tex(rules), roughness: 0.6 }), -7.95, 1.6, -3.2, Math.PI / 2);
+    cage(g, -7.15, -6.6, Math.PI / 2, 2.6, 'CAGE');
+    // each club's own character
+    if (T === 'prairie') {
+      for (const x of [-5.4, 5.4]) mountedHead(g, x, 2.1, B + 0.05, 0); for (const z of [-2.6, -5.8]) mountedHead(g, 7.95, 2.05, z, -Math.PI / 2);
+      for (let i = 0; i < 4; i++) box(g, 16, 0.22, 0.26, M({ map: tex(PAINT.wood('#4a3020', '#3a2416', 8), 4, 1), roughness: 0.8 }), 0, 2.88, -1.0 - i * 2.6);
+      for (let i = 0; i < 3; i++) photo(g, 7.96, 1.55, -1.2 - i * 1.6 - (i > 0 ? 1.6 : 0), 0.9, 0.6, -Math.PI / 2, 'land', 0x3a2414);
+      wagonWheel(g, 7.9, 1.2, -8.6, -Math.PI / 2);
+      const rose = canvas(128, 128, (x, w, h) => { x.fillStyle = D.bg; x.fillRect(0, 0, w, h); x.strokeStyle = D.fg; x.lineWidth = 4; x.beginPath(); x.arc(64, 64, 58, 0, 7); x.stroke(); x.fillStyle = '#c02a3a'; for (let k = 0; k < 9; k++) { x.beginPath(); x.ellipse(64 + Math.cos(k * 0.7) * k * 2.4, 56 + Math.sin(k * 0.7) * k * 2.4, 14 - k * 0.6, 9, k * 0.7, 0, 7); x.fill(); } x.fillStyle = '#3a7a3a'; x.fillRect(61, 80, 6, 36); x.beginPath(); x.ellipse(52, 96, 12, 5, -0.5, 0, 7); x.fill(); });
+      for (const s of [-1, 1]) { const rc = cyl(g, 0.3, 0.3, 0.04, M({ map: tex(rose), roughness: 0.5 }), s * 2.75, 2.45, B + 0.05, 32); rc.rotation.x = Math.PI / 2; }
+    } else if (T === 'river') {
+      for (let i = 0; i < 3; i++) tvSet(g, 7.94, 1.9, -2.4 - i * 2.6, 1.3, -Math.PI / 2, ['baseball', 'football', 'golf'][i]);
+      plant(g, -7.3, -9.2, 1.1); plant(g, 7.3, -9.2, 1.1);
+    } else if (T === 'club') {
+      // the sports bar's own bar in the corner, a wall of TVs, pennants, beer neon, ducts across the black ceiling
+      bar(g, 5.6, B + 1.25, 4.2, { wood: '#2a1a10', crowd: 0.6, stool: 0x1a1a1a });
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) tvSet(g, 7.94, 1.55 + j * 0.78, -1.8 - i * 1.4, 1.2, -Math.PI / 2, ['football', 'baseball', 'football', 'golf', 'baseball', 'football'][i * 2 + j]);
+      for (let i = 0; i < 7; i++) { const c = ['#1a3a8a', '#c81a1a', '#1a6a3a', '#e8a020', '#5a1a7a', '#1a1a1a', '#c86a1a'][i]; const pn = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape([new THREE.Vector2(0, 0.14), new THREE.Vector2(0.75, 0), new THREE.Vector2(0, -0.14)])), M({ color: c, side: THREE.DoubleSide, roughness: 0.8 })); pn.position.set(-7.4 + i * 0.95, 2.62, B + 0.03); pn.rotation.z = -0.12; g.add(pn); }
+      neon(g, 'Cold Beer', '#ff3a3a', -5.6, 1.7, B + 0.05, 72); neon(g, 'Game Day', '#3ad8ff', 3.4, 2.6, B + 0.05, 64);
+      for (const z of [-3.0, -6.4]) { const dc = cyl(g, 0.22, 0.22, 16, M({ color: 0x3a3a3c, metalness: 0.7, roughness: 0.4 }), 0, 2.72, z, 16); dc.rotation.z = Math.PI / 2; }
+    } else if (T === 'harbor') {
+      // a ship's wheel, a life ring, charts on the walls, a rope rail, a model ship
+      const wh = new THREE.Group(); wh.position.set(7.9, 1.8, -3.0); wh.rotation.y = -Math.PI / 2; g.add(wh); const wm = M({ color: 0x6a3a1a, roughness: 0.35 });
+      const wr = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.04, 8, 40), wm); wh.add(wr); cyl(wh, 0.1, 0.1, 0.1, brass, 0, 0, 0, 16).rotation.x = Math.PI / 2;
+      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; const sp = cyl(wh, 0.022, 0.022, 0.62, wm, Math.cos(a) * 0.31, Math.sin(a) * 0.31, 0, 8); sp.rotation.z = a - Math.PI / 2; }
+      const lr = new THREE.Group(); lr.position.set(7.92, 1.8, -6.0); lr.rotation.y = -Math.PI / 2; g.add(lr); for (let k = 0; k < 8; k++) { const sg = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.08, 10, 12, Math.PI / 4), M({ color: k % 2 ? 0xffffff : 0xd8281e, roughness: 0.6 })); sg.rotation.z = k * Math.PI / 4; lr.add(sg); }
+      for (let i = 0; i < 2; i++) frameArt(g, 7.95, 1.75, -4.5 + i * -3.4 + 1.5 * 0, 1.0, 0.7, -Math.PI / 2, ['#c8d8e0', '#1e3a5a', '#e8dcc0', '#5a7a8a']);
+      const rope = new THREE.Mesh(new THREE.TubeGeometry(new THREE.LineCurve3(new THREE.Vector3(-8, 1.02, B + 0.05), new THREE.Vector3(8, 1.02, B + 0.05)), 8, 0.025, 6), M({ color: 0xc8a878, roughness: 0.9 })); g.add(rope);
+      const sh = new THREE.Group(); sh.position.set(-7.6, 0, -9.2); g.add(sh); rbox(sh, 0.5, 0.9, 0.5, 0.02, wd, 0, 0.45, 0); const hull = rbox(sh, 0.42, 0.1, 0.12, 0.04, M({ color: 0x1a2a4a }), 0, 0.98, 0); for (let i = -1; i <= 1; i++) cyl(sh, 0.006, 0.006, 0.36, wd, i * 0.12, 1.2, 0, 4); for (let i = -1; i <= 1; i++) plane(sh, 0.1, 0.14, M({ color: 0xf4efe2, side: THREE.DoubleSide }), i * 0.12, 1.22, 0.01);
+    } else if (T === 'west') {
+      // slots down the right wall, a horseshoe in neon over the door, hats on pegs, a longhorn skull
+      slots(g, 7.35, -5.2, 7, -Math.PI / 2, { colors: [0xffd84d, 0xff3a3a, 0x3ad8ff] });
+      const hs = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 8, 40, Math.PI * 1.5), glow(0xffd84d, 3)); hs.position.set(0, 1.62, B + 0.06); hs.rotation.z = -Math.PI / 4 - Math.PI / 2 + Math.PI; g.add(hs); light(g, 0xffd84d, 1.2, 0, 1.6, B + 0.5, 3);
+      for (let i = 0; i < 4; i++) { const hx = -4.6 + i * 0.6; cyl(g, 0.012, 0.012, 0.12, wd, hx, 2.05, B + 0.08, 6).rotation.x = Math.PI / 2; const hc = pick([0x3a2414, 0xc8a878, 0x1a1a1a, 0x6a4a2a]); const br = cyl(g, 0.22, 0.22, 0.02, M({ color: hc, roughness: 0.9 }), hx, 1.9, B + 0.14, 20); br.rotation.x = Math.PI / 2 - 0.25; const cr = cyl(g, 0.1, 0.12, 0.14, M({ color: hc, roughness: 0.9 }), hx, 1.93, B + 0.2, 16); cr.rotation.x = Math.PI / 2 - 0.25; }
+      const sk = new THREE.Group(); sk.position.set(4.2, 1.85, B + 0.08); g.add(sk); const bone = M({ color: 0xe8e0cc, roughness: 0.8 }); const hd = rbox(sk, 0.2, 0.32, 0.12, 0.05, bone, 0, 0, 0); for (const s of [-1, 1]) { const hn = seg(sk, [s * 0.08, 0.1, 0], [s * 0.7, 0.24, 0.05], 0.045, 0.012, bone); }
+    } else if (T === 'nugget') {
+      // a gilt mirror, sepia photographs of the old mining camp, crossed pick and shovel, an ore cart, gas sconces
+      frameArt(g, 5.4, 1.75, B + 0.04, 1.8, 1.1, 0, ['#2a1a0a', '#c89a40', '#6a4a2a', '#e8c878', '#3a2a1a']); frameArt(g, -5.6, 1.75, B + 0.04, 1.2, 0.9, 0, ['#3a2a1a', '#8a6a3a', '#d8b878']);
+      for (let i = 0; i < 4; i++) { const c = canvas(96, 72, (x, w, h) => { const g2 = x.createLinearGradient(0, 0, 0, h); g2.addColorStop(0, '#d8c8a0'); g2.addColorStop(1, '#8a7050'); x.fillStyle = g2; x.fillRect(0, 0, w, h); x.fillStyle = '#4a3820'; for (let k = 0; k < 5; k++) x.fillRect(8 + k * 17, h * 0.45 - (k % 2) * 6, 8, h * 0.4); x.fillRect(0, h * 0.82, w, h * 0.18); x.fillStyle = '#6a5434'; x.beginPath(); x.moveTo(0, h * 0.5); x.lineTo(w * 0.4, h * 0.15); x.lineTo(w, h * 0.45); x.lineTo(w, h * 0.5); x.fill(); }); const fx = 7.95, fz = -1.6 - i * 1.3; rbox(g, 0.05, 0.56, 0.72, 0.01, M({ color: 0x2a1408 }), fx + 0.01, 1.75, fz); plane(g, 0.6, 0.45, M({ map: tex(c), roughness: 0.7 }), fx - 0.02, 1.75, fz, -Math.PI / 2); }
+      const tool = (x, y, z, rz, pick2) => { const t = new THREE.Group(); t.position.set(x, y, z); t.rotation.z = rz; g.add(t); box(t, 0.04, 1.0, 0.04, M({ color: 0x8a6a3a, roughness: 0.8 }), 0, 0, 0); if (pick2) { const h2 = box(t, 0.5, 0.05, 0.04, iron, 0, 0.5, 0); } else box(t, 0.2, 0.26, 0.02, iron, 0, -0.55, 0); };
+      tool(-3.7, 1.8, B + 0.06, 0.5, true); tool(-3.7, 1.8, B + 0.08, -0.5, false);
+      const cart = new THREE.Group(); cart.position.set(7.0, 0, -9.0); cart.rotation.y = -0.6; g.add(cart); const cm = M({ color: 0x4a3a2a, metalness: 0.5, roughness: 0.6 });
+      const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.45, 0.5, 4, 1), cm); bin.rotation.y = Math.PI / 4; bin.position.y = 0.55; bin.scale.set(1, 1, 0.7); cart.add(bin); for (const sx of [-0.3, 0.3]) for (const sz of [-0.28, 0.28]) { const wl = cyl(cart, 0.14, 0.14, 0.05, iron, sx, 0.14, sz, 16); wl.rotation.x = Math.PI / 2; }
+      for (let i = 0; i < 10; i++) sph(g, 0.07 + rnd() * 0.04, M({ color: pick([0xd8b040, 0x8a7a6a, 0xc8a030]), metalness: 0.6, roughness: 0.4 }), 7.0 + (rnd() - 0.5) * 0.5, 0.82, -9.0 + (rnd() - 0.5) * 0.3, 6);
+      for (const z of [-2.4, -5.4, -8.4]) sconce(g, -7.97, 2.05, z, Math.PI / 2, 0xffc070);
+      for (const x of [-6.5, 6.5]) sconce(g, x, 2.05, B + 0.02, 0, 0xffc070);
+    } else if (T === 'lake') {
+      slots(g, 7.35, -5.0, 7, -Math.PI / 2, { colors: [0xff8a3a, 0x3ad8ff, 0xffd84d] });
+      for (let i = 0; i < 2; i++) { const pd = new THREE.Group(); pd.position.set(-4.4 + i * 0.35, 1.9, B + 0.06); pd.rotation.z = (i ? -1 : 1) * 0.35; g.add(pd); box(pd, 0.04, 1.1, 0.03, M({ color: 0xc89a5a, roughness: 0.5 }), 0, 0.25, 0); const bl = rbox(pd, 0.18, 0.5, 0.02, 0.02, M({ color: i ? 0x2a5a8a : 0xb8302a, roughness: 0.5 }), 0, -0.45, 0); }
+      plant(g, -7.3, -9.2, 1.1);
+    } else if (T === 'dollar') {
+      // the race book down the right wall: a bank of screens, the tote board, the betting windows; a giant silver dollar
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) tvSet(g, 7.94, 1.5 + j * 0.72, -1.6 - i * 1.25, 1.1, -Math.PI / 2, j ? 'horses' : (i % 2 ? 'horses' : 'clock'));
+      const tote = canvas(512, 160, (x, w, h) => { x.fillStyle = '#05070a'; x.fillRect(0, 0, w, h); x.font = '700 22px monospace'; x.fillStyle = '#ffd84d'; x.fillText('RACE 7   POST 9:42', 14, 30); for (let k = 0; k < 8; k++) { x.fillStyle = ['#c81a1a', '#f4f4f4', '#1a4aa8', '#e8d020', '#1a8a3a', '#111', '#e86a1a', '#e84aa8'][k]; x.fillRect(14 + k * 62, 50, 26, 26); x.fillStyle = '#fff'; x.fillText(String(k + 1), 20 + k * 62, 72); x.fillStyle = '#8ad8ff'; x.fillText(pick(['5-2', '3-1', '8-1', '12-1', '9-5', '20-1', '6-1', '4-1']), 10 + k * 62, 110); } });
+      plane(g, 2.6, 0.8, new THREE.MeshBasicMaterial({ map: tex(tote) }), 7.95, 2.55, -3.6, -Math.PI / 2);
+      cage(g, 7.15, -8.0, -Math.PI / 2, 2.4, 'RACE BOOK');
+      const coin = canvas(256, 256, (x, w, h) => { const g2 = x.createRadialGradient(100, 90, 10, 128, 128, 128); g2.addColorStop(0, '#f4f6fa'); g2.addColorStop(1, '#8a909a'); x.fillStyle = g2; x.beginPath(); x.arc(128, 128, 126, 0, 7); x.fill(); x.strokeStyle = '#6a707a'; x.lineWidth = 6; x.beginPath(); x.arc(128, 128, 110, 0, 7); x.stroke(); x.fillStyle = '#6a707a'; x.font = '900 34px Georgia'; x.textAlign = 'center'; x.fillText('ONE DOLLAR', 128, 214); x.font = '900 60px Georgia'; x.fillText('$1', 128, 140); for (let k = 0; k < 13; k++) { const a = Math.PI + k / 12 * Math.PI; x.beginPath(); x.arc(128 + Math.cos(a) * 90, 128 + Math.sin(a) * 90, 4, 0, 7); x.fill(); } });
+      for (const s of [-1, 1]) { const cn = cyl(g, 0.3, 0.3, 0.04, M({ map: tex(coin), metalness: 0.85, roughness: 0.3, envMapIntensity: 1.3 }), s * 2.75, 2.45, B + 0.05, 40); cn.rotation.x = Math.PI / 2; }
+      neon(g, 'Open 24 Hours', '#ff3a3a', -4.9, 1.65, B + 0.05, 60);
+    }
     return { exposure: 1.0 };
   },
   casino(g, o) {
@@ -1545,31 +1656,39 @@ const SCENES = {
     slots(g, 5.6, r.back + 1.4, 3, 0);
     return { exposure: 1.0 };
   },
-  // a cruise ship's card room: a wall of windows on the ocean, portholes down the sides, brass rails, a life ring
+  // a cruise ship's card room, two days out: floor-to-ceiling windows on the open sea and the promenade deck, brass rails,
+  // a coved ceiling with its strip of blue light, wave-pattern carpet, polished wood columns, the slots chiming down one
+  // side, the casino cashier, the sea-day tournament on an easel by the door
   cruise(g) {
-    const r = room(g, { w: 14, d: 10, h: 2.9, floor: PAINT.carpet('#0e2348', '#163266', '#d8b050'), wall: PAINT.panel('#e9e2d2', '#f6f1e6'), wainscot: PAINT.wood('#5a3018', '#3e200e', 24), ceil: PAINT.plain('#f2eee6') });
-    const brass = M({ color: 0xc8a050, metalness: 0.9, roughness: 0.25 });
-    const sea = VIEW.ocean({ sky0: '#0a1640', sky1: '#5a3a7a', sky2: '#ffb070' });
-    for (let i = 0; i < 4; i++) windowOn(g, sea, -4.95 + i * 3.3, 1.7, r.back + 0.02, 2.8, 1.5, 0, 0xf6f1e6);
-    box(g, 14, 0.06, 0.06, brass, 0, 1.0, r.back + 0.25); for (let i = 0; i < 12; i++) cyl(g, 0.02, 0.02, 1.0, brass, -6.5 + i * 1.2, 0.5, r.back + 0.25, 6);
-    // portholes along both sides
-    for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
-      const z = -1 - i * 1.9, x = side * 6.98, ry = -side * Math.PI / 2;
-      const ph = new THREE.Mesh(new THREE.CircleGeometry(0.34, 32), new THREE.MeshBasicMaterial({ map: tex(sea) })); ph.position.set(x, 1.7, z); ph.rotation.y = ry; g.add(ph);
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.05, 10, 32), brass); ring.position.set(x - side * 0.01, 1.7, z); ring.rotation.y = ry; g.add(ring);
-    }
-    // a life ring on the back wall, the ship's name over the bar
-    const lr = new THREE.Group(); lr.position.set(5.9, 1.9, r.back + 0.06); g.add(lr);
-    for (let k = 0; k < 8; k++) { const seg = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.08, 10, 12, Math.PI / 4), M({ color: k % 2 ? 0xffffff : 0xd8281e, roughness: 0.6 })); seg.rotation.z = k * Math.PI / 4; lr.add(seg); }
-    sign(g, 'OCEAN MAJESTY', '#0e2348', '#e8c868', 0, 2.6, r.back + 0.03, 3.6, 0.42);
-    // recessed lights in a curved ceiling band
-    for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) { sph(g, 0.07, glow(0xfff2d8, 3), -5 + i * 2, 2.88, -1.2 - j * 2.6); }
-    light(g, 0xfff0d8, 3, -3, 2.6, -2.5, 8); light(g, 0xfff0d8, 3, 3, 2.6, -2.5, 8); light(g, 0xffd0a0, 2, 0, 2.4, -6, 8);
-    slots(g, -5.2, r.back + 1.6, 3, 0, { colors: [0x3ad8ff, 0xffd84d, 0xff6ab0] });
-    pokerTable(g, -2.6, -4.6, { felt: 0x1f3c6b, rail: 0x3a1e0c, seats: 8, rx: 1.3, rz: 0.75, lamp: false, full: 0.85 });
-    pokerTable(g, 2.8, -4.4, { felt: 0x1f3c6b, rail: 0x3a1e0c, seats: 8, rx: 1.3, rz: 0.75, lamp: false, full: 0.85 });
-    pokerTable(g, 1.6, -2.0, { mine: true, felt: 0x1f3c6b, rail: 0x3a1e0c, seats: 8, rx: 1.3, rz: 0.75, lamp: false });
-    plant(g, -6.4, -1.2, 1.2, true);
+    const r = room(g, { w: 14, d: 10, h: 2.9, floor: PAINT.carpet('#0e2348', '#1c3c74', '#d8b050', 'wave'), wall: PAINT.panel('#e9e2d2', '#f6f1e6'), ceil: PAINT.plain('#f2eee6'), trim: 0x3e200e, cornice: 0xf6f1e6, fillI: 0.9 });
+    const B = r.back, brass = M({ color: 0xc8a050, metalness: 0.9, roughness: 0.25, envMapIntensity: 1.1 }), teak = M({ map: tex(PAINT.wood('#7a4a24', '#5a3418', 20), 2, 1), roughness: 0.3, envMapIntensity: 0.8 });
+    // the windows: the sea at sunset past the deck rail, the deck's lights
+    const sea = VIEW.ocean({ sky0: '#0a1640', sky1: '#5a3a7a', sky2: '#ffb070' }); { const x = sea.getContext('2d'), w = sea.width, h = sea.height; x.fillStyle = '#2a1a10'; x.fillRect(0, h * 0.86, w, h * 0.14); for (let i = 0; i < w; i += 22) { x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(i, h * 0.86, 2, h * 0.14); } x.fillStyle = '#f4f2ee'; x.fillRect(0, h * 0.7, w, 7); x.fillRect(0, h * 0.78, w, 4); for (let i = 0; i < w; i += 64) x.fillRect(i, h * 0.7, 6, h * 0.16); x.fillStyle = '#ffe8b0'; for (let i = 30; i < w; i += 128) { x.shadowColor = '#ffd080'; x.shadowBlur = 14; x.fillRect(i, h * 0.84, 10, 6); } x.shadowBlur = 0; }
+    for (let i = 0; i < 4; i++) windowOn(g, sea, -4.95 + i * 3.3, 1.45, B + 0.02, 3.0, 2.2, 0, 0xc8a050);
+    box(g, 14, 0.05, 0.05, brass, 0, 0.95, B + 0.3); for (let i = 0; i < 15; i++) cyl(g, 0.018, 0.018, 0.95, brass, -7 + i, 0.47, B + 0.3, 6);
+    // the cove: a dropped soffit round the room, its edge lit in blue; a modern crystal fixture in the middle
+    const sof = M({ color: 0xf6f1e6, roughness: 0.8 });
+    box(g, 14, 0.25, 0.9, sof, 0, 2.77, B + 0.45); for (const s of [-1, 1]) box(g, 0.9, 0.25, 10, sof, s * 6.55, 2.77, -3);
+    box(g, 12.2, 0.03, 0.03, glow(0x3a8aff, 2.5), 0, 2.64, B + 0.92); for (const s of [-1, 1]) box(g, 0.03, 0.03, 9.1, glow(0x3a8aff, 2.5), s * 6.08, 2.64, -3.4);
+    chandelier(g, -2.6, 2.55, -2.6, 0.6, 0xfff0d8);
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 2; j++) { const d = new THREE.Mesh(new THREE.CircleGeometry(0.07, 16), glow(0xfff4e0, 2.4)); d.rotation.x = Math.PI / 2; d.position.set(-4 + i * 2, 2.895, -1.6 - j * 4.6); g.add(d); }
+    light(g, 0xfff0d8, 2.2, -3, 2.5, -2.5, 8); light(g, 0xfff0d8, 2.2, 3, 2.5, -2.5, 8); light(g, 0xffd0a0, 1.6, 0, 2.3, -6, 8);
+    // polished wood columns with brass collars
+    for (const [cx, cz] of [[-3.3, -3.0], [3.3, -6.2]]) { cyl(g, 0.2, 0.2, 2.9, teak, cx, 1.45, cz, 24); for (const y of [0.1, 2.6]) cyl(g, 0.24, 0.24, 0.12, brass, cx, y, cz, 24); }
+    // the slots down the left side, the cashier on the right, the tournament easel
+    slots(g, -6.4, -4.6, 6, Math.PI / 2, { colors: [0x3ad8ff, 0xffd84d, 0xff6ab0] });
+    neon(g, 'Casino', '#ffd84d', -6.94, 2.35, -4.6, 72, Math.PI / 2);
+    cage(g, 6.2, -6.6, -Math.PI / 2, 2.2, 'CASINO CASHIER');
+    const ez = new THREE.Group(); ez.position.set(-4.4, 0, -8.0); ez.rotation.y = 0.45; g.add(ez); for (const s of [-1, 1]) { const lg = box(ez, 0.04, 1.6, 0.04, brass, s * 0.3, 0.8, 0); lg.rotation.z = s * 0.06; } const bl = box(ez, 0.04, 1.7, 0.04, brass, 0, 0.8, -0.3); bl.rotation.x = -0.2;
+    const pst = canvas(256, 340, (x, w, h) => { const g2 = x.createLinearGradient(0, 0, 0, h); g2.addColorStop(0, '#0e2348'); g2.addColorStop(1, '#1a4a8a'); x.fillStyle = g2; x.fillRect(0, 0, w, h); x.fillStyle = '#e8c868'; x.textAlign = 'center'; x.font = '800 22px Georgia'; x.fillText('SEA DAY', w / 2, 52); x.font = '900 38px Georgia'; x.fillText('POKER', w / 2, 104); x.fillText('TOURNAMENT', w / 2, 146); x.fillStyle = '#fff'; x.font = '600 22px Georgia'; x.fillText('Today  2 PM', w / 2, 210); x.fillText('Card Room, Deck 5', w / 2, 246); x.strokeStyle = '#e8c868'; x.lineWidth = 3; x.strokeRect(10, 10, w - 20, h - 20); });
+    rbox(ez, 0.66, 0.86, 0.03, 0.01, brass, 0, 1.3, 0.04); plane(ez, 0.6, 0.8, M({ map: tex(pst), roughness: 0.5 }), 0, 1.3, 0.06);
+    sign(g, 'OCEAN MAJESTY', '#0e2348', '#e8c868', 0, 2.58, B + 0.95, 3.4, 0.3);
+    // the tables, a dealer in every box (the ship's crew in their vests)
+    pokerTable(g, -2.4, -4.6, { felt: 0x1f3c6b, rail: 0x3a1e0c, seats: 8, rx: 1.3, rz: 0.75, lamp: false, full: 0.85, ceil: 2.9 });
+    pokerTable(g, 2.6, -4.2, { felt: 0x1f3c6b, rail: 0x3a1e0c, seats: 8, rx: 1.3, rz: 0.75, lamp: false, full: 0.85, ceil: 2.9 });
+    pokerTable(g, 1.4, -1.8, { mine: true, felt: 0x1f3c6b, rail: 0x3a1e0c, seats: 8, rx: 1.3, rz: 0.75, lamp: false, ceil: 2.9 });
+    if (STAGE === 'busy') { stander(g, -1.0, B + 0.9, 0, { lod: 1 }); stander(g, -0.5, B + 1.1, -0.4, { lod: 1 }); }
+    plant(g, -6.3, -0.9, 1.1, true);
     return { exposure: 1.0 };
   },
   expo(g, o) {
@@ -1675,10 +1794,9 @@ const PLACES = {
   lodge: ['lodgehall'], vfw: ['vfw'],
   firehouse: ['firehouse'], rec: ['gym'],
   countryclub: ['countryclub'], cellar: ['cellar'], backroom: ['backroom'], dragon: ['dragon'], cantina: ['cantina'], diner: ['diner'],
-  cardroom: ['cardroom', { name: 'PRAIRIE ROSE CARD CLUB' }], cardriver: ['cardroom', { view: VIEW.river({ moon: true, trees: true }) }], cardharbor: ['cardroom', { view: VIEW.ocean({ yachts: true }) }],
-  cardwest: ['cardroom', { carpet: '#4a2a14', carpet2: '#6a3a1a', felt: 0x7a3a1f, slots: true, name: 'LUCKY HORSESHOE' }], cardlake: ['cardroom', { view: VIEW.ocean({ sky2: '#ff7a3a' }), slots: true }],
-  cardclub: ['cardroom', { carpet: '#2a1a3a', carpet2: '#3a2a5a', felt: 0x2f5a8a, name: 'NORTHSIDE CARD ROOM' }], cardnugget: ['cardroom', { carpet: '#3a2a10', carpet2: '#5a4214', carpet3: '#e8c050', name: 'GOLD NUGGET', felt: 0x7a3a1f }],
-  carddollar: ['cardroom', { carpet: '#3a1010', carpet2: '#5a1a1a', name: 'SILVER DOLLAR CARD CLUB', felt: 0x7a3a1f, slots: true }],
+  cardroom: ['cardroom', { theme: 'prairie' }], cardriver: ['cardroom', { theme: 'river' }], cardharbor: ['cardroom', { theme: 'harbor' }],
+  cardwest: ['cardroom', { theme: 'west' }], cardlake: ['cardroom', { theme: 'lake' }], cardclub: ['cardroom', { theme: 'club' }],
+  cardnugget: ['cardroom', { theme: 'nugget' }], carddollar: ['cardroom', { theme: 'dollar' }],
   gulf: ['casino', { view: VIEW.ocean({ sky1: '#2a3a6a', yachts: true }), carpet: '#0e4556', carpet2: '#155e75', felt: 0x155e75, plants: true, neon: 'GULF COAST CLASSIC', neonColor: '#5ad8ff' }],
   reno: ['casino', { cowboy: true, carpet: '#4c3414', carpet2: '#6b4a1f', felt: 0x6b4a1f, chandColor: 0xffc880 }],
   boardwalk: ['casino', { view: VIEW.ocean({ pier: true }), carpet: '#2a1d5a', carpet2: '#3b2a7a', felt: 0x3b2a7a, neon: 'BOARDWALK', neonColor: '#ff5ab0' }],
