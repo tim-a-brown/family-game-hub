@@ -495,7 +495,7 @@ function bar(g, x, z, len, o) {
 function neon(g, text, color, x, y, z, size, ry) {
   const wide = text.length > 8, c = canvas(wide ? 1024 : 512, 128, (cx, w, h) => { let fs = size || 72; do { cx.font = '900 ' + fs + 'px "Brush Script MT", "Segoe Script", Georgia, serif'; fs -= 3; } while (cx.measureText(text).width > w - 50 && fs > 16); cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.shadowColor = color; cx.shadowBlur = 20; cx.fillStyle = color; cx.fillText(text, w / 2, h / 2); cx.fillStyle = '#fff'; cx.shadowBlur = 0; cx.globalAlpha = 0.6; cx.fillText(text, w / 2, h / 2); });
   const m = new THREE.Mesh(new THREE.PlaneGeometry(wide ? 4 : 2, 0.5), new THREE.MeshBasicMaterial({ map: tex(c), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-  m.position.set(x, y, z); if (ry) m.rotation.y = ry; g.add(m); light(g, color, 1.2, x, y, z + 0.4, 3); return m;
+  m.name = 'NEON'; m.position.set(x, y, z); if (ry) m.rotation.y = ry; g.add(m); light(g, color, 1.2, x, y, z + 0.4, 3); return m;
 }
 function sign(g, text, bg, fg, x, y, z, w, h, ry) {
   const c = canvas(512, Math.round(512 * h / w), (cx, cw, ch) => { cx.fillStyle = bg; cx.fillRect(0, 0, cw, ch); cx.strokeStyle = fg; cx.globalAlpha = 0.5; cx.lineWidth = 3; cx.strokeRect(6, 6, cw - 12, ch - 12); cx.globalAlpha = 1; cx.fillStyle = fg; let fs = Math.round(ch * 0.42); do { cx.font = '800 ' + fs + 'px Georgia, serif'; fs -= 2; } while (cx.measureText(text).width > cw * 0.86 && fs > 8); cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(text, cw / 2, ch / 2); });
