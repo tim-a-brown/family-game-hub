@@ -1364,7 +1364,7 @@
   //            the label. A choice can carry its own note as a third item,
   //            [value, label, help]; the note for the chosen value shows too.
   //            Or {id, value, render:(value, set)=>node, summary:(value)=>text}: the game draws its own picker.
-  //   intro:   short line under the title
+  //   intro:   (no longer shown: the setup screen shows just the game's name)
   //   start:   button label
   //   onStart: function(cfg)   cfg = {mode, players:[{name,cpu,color}], options:{}}
   // })
@@ -1404,7 +1404,7 @@
     wrap.appendChild(el('div', { class: 'setup-hero' }, [
       game && window.GameIcon ? el('div', { class: 'k-hero-ic', html: GameIcon(game.id) }) : null,
       el('h1', { text: o.title || (game && game.name) || '' }),
-      el('p', { text: EDIT_DEFAULTS ? 'Set how this game starts. Saved on this device.' : o.intro || (game && game.tag) || '' })
+      EDIT_DEFAULTS ? el('p', { text: 'Set how this game starts. Saved on this device.' }) : null   // (just the name: no tagline)
     ]));
     if (EDIT_DEFAULTS) wrap.firstChild.insertBefore(el('div', { class: 'k-defs-tag', text: 'Defaults' }), wrap.firstChild.querySelector('h1'));
 
