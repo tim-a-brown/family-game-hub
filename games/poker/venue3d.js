@@ -604,8 +604,10 @@ function windowOn(g, view, x, y, z, w, h, ry, frame) {
 // the final table: the rest of the room goes quiet; a rope line round your table and the crowd behind it; at the
 // known stops TV cameras and lights, at the big ones a lighting truss too
 function finalDress(g, o) {
-  if (STAGE === 'thin' && TIER === 'local' && SEAT) {   // the ones already out hang around to watch
-    for (let i = 0; i < 3; i++) { const a = Math.PI * 1.2 + i * 0.3 + rnd() * 0.2, p = ovalPt(SEAT.rx + 1.5, SEAT.rz + 1.3, a); stander(g, SEAT.x + p[0], SEAT.z + p[1], Math.atan2(-p[0], -p[1]), {}); }
+  // at home the ones already out stand at the ends of the table (the sides are counters, walls and the way through)
+  const endSpot = (i) => { const a = [-0.3, 0.3, Math.PI, Math.PI - 0.4, 0, Math.PI + 0.4][i % 6] + (rnd() - 0.5) * 0.15; return ovalPt(SEAT.rx + 0.95 + (i > 2 ? 0.5 : 0), SEAT.rz + 0.9, a); };
+  if (STAGE === 'thin' && TIER === 'local' && SEAT) {
+    for (let i = 0; i < 3; i++) { const p = endSpot(i); stander(g, SEAT.x + p[0], SEAT.z + p[1], Math.atan2(-p[0], -p[1]), {}); }
     return;
   }
   if (STAGE !== 'final' || !SEAT) return;
@@ -617,7 +619,8 @@ function finalDress(g, o) {
   for (let i = 0; i < posts.length - 1; i++) { const a = posts[i], b = posts[i + 1], mid = new THREE.Vector3((a[0] + b[0]) / 2, 0.82, (a[1] + b[1]) / 2); c.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(new THREE.Vector3(a[0], 0.92, a[1]), mid, new THREE.Vector3(b[0], 0.92, b[1])), 10, 0.02, 6), rope)); }
   const crowd = TIER === 'local' ? 6 : TIER === 'known' ? 20 : 34;
   for (let i = 0; i < crowd; i++) {
-    const a = (SEAT.face > 0 ? 0 : Math.PI) + 0.3 + rnd() * (Math.PI - 0.6), d = 0.35 + rnd() * (TIER === 'local' ? 0.4 : 1.4), p = ovalPt(R[0] + d, R[1] + d, a);
+    if (TIER === 'local') { const p = endSpot(i); stander(c, p[0], p[1], Math.atan2(-p[0], -p[1]) + (rnd() - 0.5) * 0.3, {}); continue; }
+    const a = (SEAT.face > 0 ? 0 : Math.PI) + 0.3 + rnd() * (Math.PI - 0.6), d = 0.35 + rnd() * 1.4, p = ovalPt(R[0] + d, R[1] + d, a);
     stander(c, p[0], p[1], Math.atan2(-p[0], -p[1]) + (rnd() - 0.5) * 0.4, { lod: TIER === 'big' && d > 1 ? 1 : 0 });
   }
   if (TIER !== 'local') {
