@@ -169,19 +169,38 @@ function plateFace(o) {
   const top0 = ey + er * 1.16, bot0 = cy + tr[1] - fb * 0.36, ay = (top0 + bot0) / 2;
   const ia = tr[0] - fb * 0.42 - 16, ib = tr[1] - fb * 0.42 - 16;
   const inside = (x, y) => Math.pow((x - cx) / ia, 2) + Math.pow((y - cy) / ib, 2) <= 1;
-  let nf = 76, ar = Math.min(FH * 0.068, (bot0 - top0) / 2 - 16), gap = 0, nw = 0, ax = 0;
-  const fits = () => {
+  // one line if it fits at a good size; otherwise a two-word-or-more name goes on two lines (split where the two
+  // halves are most even), and only then does the type get smaller
+  const words = name.trim().split(/\s+/), splits = [[name]];
+  for (let k = 1; k < words.length; k++) splits.push([words.slice(0, k).join(' '), words.slice(k).join(' ')]);
+  let nf = 76, ar = Math.min(FH * 0.068, (bot0 - top0) / 2 - 16), gap = 0, ax = 0, lines = [name];
+  const lh = () => nf * 1.04;
+  const fits = ls => {
     c.font = '700 ' + nf + 'px Georgia, "Times New Roman", serif';
-    nw = c.measureText(name).width; gap = Math.round(ar * 0.32);
-    ax = cx - (ar * 2 + gap + nw) / 2 + ar;
+    const ws = ls.map(l => c.measureText(l).width), nw = Math.max.apply(null, ws);
+    gap = Math.round(ar * 0.32); ax = cx - (ar * 2 + gap + nw) / 2 + ar;
     for (let k = 0; k < 24; k++) { const t = k / 24 * Math.PI * 2; if (!inside(ax + Math.cos(t) * (ar + 6), ay + Math.sin(t) * (ar + 6))) return false; }
-    const x1 = ax + ar + gap + nw, h = nf * 0.42;
-    return inside(x1, ay - h) && inside(x1, ay + h);
+    return ls.every((l, i) => { const ly = ay + (i - (ls.length - 1) / 2) * lh(), x1 = ax + ar + gap + ws[i], h = nf * 0.42; return inside(x1, ly - h) && inside(x1, ly + h); });
   };
-  while (!fits() && nf > 50) nf -= 2;
-  while (!fits() && ar > FH * 0.045) ar -= 2;
-  while (!fits() && nf > 28) nf -= 2;
-  engrave(ctx => { ctx.font = '700 ' + nf + 'px Georgia, "Times New Roman", serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(name, ax + ar + gap, ay + 3); });
+  const best = () => {   // the most even split that fits at this size
+    let pick = null, diff = Infinity;
+    splits.slice(1).forEach(ls => { c.font = '700 ' + nf + 'px Georgia, "Times New Roman", serif'; const d = Math.abs(c.measureText(ls[0]).width - c.measureText(ls[1]).width); if (d < diff && fits(ls)) { diff = d; pick = ls; } });
+    return pick;
+  };
+  const solve = () => {
+    if (fits([name])) return [name];
+    return best();
+  };
+  let got = null;
+  for (nf = 76; nf >= 62 && !(got = fits([name]) ? [name] : null); nf -= 2) {}
+  if (!got) for (nf = 70; nf >= 46 && !(got = solve()); nf -= 2) {}
+  if (!got) for (nf = 46; ar > FH * 0.045 && !(got = solve()); ar -= 2) {}
+  if (!got) for (; nf > 28 && !(got = solve()); nf -= 2) {}
+  lines = got || [name]; fits(lines);
+  engrave(ctx => {
+    ctx.font = '700 ' + nf + 'px Georgia, "Times New Roman", serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    lines.forEach((l, i) => ctx.fillText(l, ax + ar + gap, ay + 3 + (i - (lines.length - 1) / 2) * lh()));
+  });
   // the cameo's frame, recessed, with the portrait standing up inside it
   c.lineWidth = 6; c.strokeStyle = '#6b4507'; ellipse(c, ax, ay, ar + 6, ar + 6); c.stroke();
   c.fillStyle = 'rgba(80,50,4,.5)'; ellipse(c, ax, ay, ar, ar); c.fill();
@@ -246,7 +265,7 @@ window.Bracelet3D = function (host, opts) {
   if (!supported()) return null;
   opts = opts || {};
   const w = host.clientWidth || 320, h = host.clientHeight || 240;
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.setSize(w, h);
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
