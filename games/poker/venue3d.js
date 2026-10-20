@@ -1477,8 +1477,8 @@ const SCENES = {
     rbox(g, 0.18, 0.28, 0.08, 0.02, M({ color: 0xe8e0c8 }), -3.97, 1.5, -1.2, Math.PI / 2);
     // the bare bulb over the table, the haze
     cyl(g, 0.005, 0.005, 0.9, M({ color: 0x111111 }), 0.6, 2.35, -2.2, 4); const shd = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.14, 24, 1, true), M({ color: 0x2a3a2a, metalness: 0.6, roughness: 0.4, side: THREE.DoubleSide })); shd.position.set(0.6, 1.88, -2.2); g.add(shd); sph(g, 0.05, glow(0xffd080, 4), 0.6, 1.8, -2.2, 10);
-    pokerTable(g, 0.6, -2.2, { mine: true, rx: 1.0, rz: 0.6, felt: 0x2f3a2c, rail: 0x3a2616, seats: 6, lamp: false, ceil: 1.9, lampI: 1.3, lampColor: 0xffd080, chair: 0x5a1a12, wood: '#3a2616' });
-    return { exposure: 0.95, fog: [0x2a2420, 3, 16] };
+    pokerTable(g, 0.6, -2.2, { mine: true, rx: 1.0, rz: 0.6, felt: 0x2f3a2c, rail: 0x3a2616, seats: 6, lamp: false, ceil: 1.9, lampI: 2.0, lampColor: 0xffd080, chair: 0x5a1a12, wood: '#3a2616' });
+    return { exposure: 1.3, fog: [0x2a2420, 3, 16] };
   },
   // upstairs at the Golden Dragon: red lacquer and gold, lanterns, a gilt dragon on a black screen, round banquet tables
   // with lazy susans, the aunties playing mahjong in the corner, the fish tank, a lucky cat waving
