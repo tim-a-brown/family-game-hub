@@ -53,6 +53,7 @@ function arcText(ctx, text, cx, cy, rx, ry, top, size, span, spacing) {
     w = widths.reduce((a, b) => a + b, 0) - f * spacing;
     if (w <= room) break; f -= 2;
   } while (f > 18);
+  const used = f;
   let s = (total - w) / 2;
   const at = d => { let i = 1; while (i < len.length - 1 && len[i] < d) i++; const k = (d - len[i - 1]) / ((len[i] - len[i - 1]) || 1); return [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * k, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * k, Math.atan2(pts[i][1] - pts[i - 1][1], pts[i][0] - pts[i - 1][0])]; };
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -61,6 +62,7 @@ function arcText(ctx, text, cx, cy, rx, ry, top, size, span, spacing) {
     ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(p[2]); ctx.fillText(ch, 0, 0); ctx.restore();
     s += widths[k];
   });
+  return used;
 }
 // the event's emblem, raised in the middle (drawn in one colour; the caller sets fill and stroke)
 const SUITS = {
@@ -155,15 +157,30 @@ function plateFace(o) {
   };
   const tr = [pr[0] - 74, pr[1] - 70];
   engrave(ctx => arcText(ctx, (o.venue || 'World Championship').toUpperCase(), cx, cy, tr[0], tr[1], true, 84, 0.68, 0.16));
-  engrave(ctx => arcText(ctx, ((o.style || 'Champion') + ' · ' + (o.year || new Date().getFullYear())).toUpperCase(), cx, cy, tr[0], tr[1], false, 56, 0.52, 0.2));
+  let fb = 56;
+  engrave(ctx => { fb = arcText(ctx, ((o.style || 'Champion') + ' · ' + (o.year || new Date().getFullYear())).toUpperCase(), cx, cy, tr[0], tr[1], false, 50, 0.46, 0.2); });
   // the emblem with its laurels
-  const ey = cy - FH * 0.115, er = FH * 0.158;
+  const ey = cy - FH * 0.13, er = FH * 0.138;
   raise(ctx => { emblem(ctx, o.mark, cx, ey, er); laurel(ctx, cx, ey, er, 1); laurel(ctx, cx, ey, er, -1); });
   // the winner: portrait and name, side by side under the emblem
   const name = String(o.name || 'Champion');
-  c.font = '700 76px Georgia, "Times New Roman", serif';
-  let nf = 76; while (c.measureText(name).width > FW * 0.44 && nf > 36) { nf -= 2; c.font = '700 ' + nf + 'px Georgia, "Times New Roman", serif'; }
-  const nw = c.measureText(name).width, ar = FH * 0.068, gap = 22, rowW = ar * 2 + gap + nw, ay = cy + FH * 0.197, ax = cx - rowW / 2 + ar;
+  // its space: from the laurels' lowest leaves down to the words round the bottom, centred between them, and kept
+  // inside the oval those words run along (a long name gets smaller type, then a smaller portrait)
+  const top0 = ey + er * 1.16, bot0 = cy + tr[1] - fb * 0.36, ay = (top0 + bot0) / 2;
+  const ia = tr[0] - fb * 0.42 - 16, ib = tr[1] - fb * 0.42 - 16;
+  const inside = (x, y) => Math.pow((x - cx) / ia, 2) + Math.pow((y - cy) / ib, 2) <= 1;
+  let nf = 76, ar = Math.min(FH * 0.068, (bot0 - top0) / 2 - 16), gap = 0, nw = 0, ax = 0;
+  const fits = () => {
+    c.font = '700 ' + nf + 'px Georgia, "Times New Roman", serif';
+    nw = c.measureText(name).width; gap = Math.round(ar * 0.32);
+    ax = cx - (ar * 2 + gap + nw) / 2 + ar;
+    for (let k = 0; k < 24; k++) { const t = k / 24 * Math.PI * 2; if (!inside(ax + Math.cos(t) * (ar + 6), ay + Math.sin(t) * (ar + 6))) return false; }
+    const x1 = ax + ar + gap + nw, h = nf * 0.42;
+    return inside(x1, ay - h) && inside(x1, ay + h);
+  };
+  while (!fits() && nf > 50) nf -= 2;
+  while (!fits() && ar > FH * 0.045) ar -= 2;
+  while (!fits() && nf > 28) nf -= 2;
   engrave(ctx => { ctx.font = '700 ' + nf + 'px Georgia, "Times New Roman", serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(name, ax + ar + gap, ay + 3); });
   // the cameo's frame, recessed, with the portrait standing up inside it
   c.lineWidth = 6; c.strokeStyle = '#6b4507'; ellipse(c, ax, ay, ar + 6, ar + 6); c.stroke();
