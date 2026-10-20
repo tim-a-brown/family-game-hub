@@ -272,6 +272,9 @@
 .pgt .pmini{margin-bottom:4px;}
 .pgt b{font-size:.92rem;font-weight:900;line-height:1.15;}
 .pgt small{font-size:.72rem;font-weight:700;opacity:.72;line-height:1.2;}
+.pgt{position:relative;}
+.pgt .pq{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:.86rem;color:#fff;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);cursor:pointer;}
+.pgt .pq:active{transform:scale(.9);background:rgba(0,0,0,.45);}
 .pgt.on{box-shadow:inset 0 0 0 2px #ffd84d,0 0 14px rgba(255,216,77,.35);}
 .pgt:active{transform:scale(.97);}
 /* the first-time explainer: the game dealt out on a strip of felt */
@@ -1502,7 +1505,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var grid = el('div', { class: 'pgrid' });
       ids.forEach(function (id, k) {
         var p = PICK[id];
-        var b = el('button', { type: 'button', class: 'pgt' + (id === cur ? ' on' : ''), onclick: function () { Kit.sfx('tap'); Kit.haptic('light'); if (sh) sh.close(); set(id); } }, [miniArt(p.art), el('b', { text: p.name }), el('small', { text: p.sub })]);
+        // the "?" deals the game out and explains it, without picking it
+        var q = el('span', { class: 'pq', role: 'button', tabindex: '0', 'aria-label': 'How ' + p.name + ' works', text: '?', onclick: function (e) { e.stopPropagation(); Kit.sfx('tap'); learnSheet(id); } });
+        var b = el('button', { type: 'button', class: 'pgt' + (id === cur ? ' on' : ''), onclick: function () { Kit.sfx('tap'); Kit.haptic('light'); if (sh) sh.close(); set(id); } }, [miniArt(p.art), el('b', { text: p.name }), el('small', { text: p.sub }), LEARN[id] ? q : null]);
         grid.appendChild(b);
       });
       node.appendChild(grid);
@@ -1536,7 +1541,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     indian: { rows: [['Your card: you can\'t see it', '?', 0], ['Everyone else\'s: you can', 'Kh 4c 9d', 0.6]], steps: ['One card each, held up so everyone else sees it.', 'You see every card but your own.', 'One round of betting. The highest card wins.'] },
     acey: { rows: [['Your two', '4h | ? | Jc', 0], ['In between: you win your bet', '4h 8d* Jc', 1.0], ['On the post: you pay double', '4h 4s! Jc', 2.0]], steps: ['Two cards turned up for you.', 'Bet that the next card lands between them, up to the size of the pot.', 'Miss and you pay your bet. Match either end and you pay double.'] }
   };
-  LEARN.lhe = LEARN.he;
+  LEARN.lhe = { rows: LEARN.he.rows, steps: ['Hold\'em: two cards each, five shared, best five of the seven.', 'Every bet and raise is one set size: the small bet before the turn, twice that after. At most four bets a round.'] };
+  LEARN.horse = { rows: [['H: Limit Hold\'em', 'Ah Kd | Qs Jc 10h', 0], ['O: Omaha Hi-Lo', 'Ad 2c Kh Qs', 0.5], ['R: Razz, lowest wins', 'Ac* 2d* 3h* 4s* 5c*', 1.0], ['S: Seven-Card Stud', 'X X Kh Kd 9c', 1.5], ['E: Stud Hi-Lo (eight or better)', 'X X 5h 3d 2c', 2.0]], steps: ['Five games in turn: Hold\'em, Omaha Hi-Lo, Razz, Stud and Stud Hi-Lo (the E is "eight or better").', 'The game changes each time round the table (in a tournament, each time the blinds go up). All of them are played with fixed bets.', 'Each game\'s own explainer comes up the first time it\'s dealt.'] };
+  LEARN.eight = { rows: [['2-7 Triple Draw', '7d 5c 4h 3s 2d', 0], ['Limit Hold\'em, Omaha Hi-Lo, Razz', 'Ah Kd | Ad 2c Kh Qs', 0.5], ['Stud, Stud Hi-Lo', 'X X Kh Kd 9c', 1.0], ['No-limit Hold\'em, Pot-limit Omaha', 'Ah Kh | Qh Jh 10h*', 1.5]], steps: ['Eight games in turn: 2-7 Triple Draw, Limit Hold\'em, Omaha Hi-Lo, Razz, Seven-Card Stud, Stud Hi-Lo, No-limit Hold\'em and Pot-limit Omaha.', 'The game changes each time round the table (in a tournament, each time the blinds go up).', 'Each game\'s own explainer comes up the first time it\'s dealt.'] };
+  LEARN.dc = { rows: [['Each dealer calls a game', 'X X Ah | Kd | 9c', 0], ['Your deal: you pick', 'Qh* Qd*', 0.8]], steps: ['Whoever deals calls the game for that hand. Each computer player has a few favourites (tap their name to see them).', 'When it\'s your deal, you pick from every game.', 'A game you haven\'t played yet is explained before its first hand.'] };
+  LEARN.mx = { rows: [['Hold\'em', 'Ah Kh | Qh Jh 10h', 0], ['Then Omaha', 'Ad Kd 9s 4c | Qd Jd 10d', 0.8]], steps: ['Hold\'em and Pot-limit Omaha by turns.', 'The game changes each time the blinds go up (in a cash game, every ten hands).'] };
   LEARN.stud8 = { rows: [['Your seven', 'Ad_ 2c_ Kh | Kd | 5c | 9h | 4s_', 0], ['High half: pair of Kings', 'Kh* Kd* Ad 9h 5c', 1.6], ['No low: only four cards 8 or under', 'Ad* 2c* 4s* 5c* 9h', 2.2]], steps: ['Seven-Card Stud, but the pot splits.', 'Half to the best hand, half to the best low: five different cards 8 or under (aces low). No low, and the best hand takes it all.', 'One hand can win both halves.'] };
   function learnKnown() { try { return JSON.parse(localStorage.getItem('poker_learned')) || []; } catch (e) { return []; } }
   function learnNeeded(g) { return !!(LEARN[g] && VAR[g] && VAR[g].home && learnKnown().indexOf(g) < 0); }
@@ -1576,7 +1585,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
   // replay: tap the demo to deal it again
   function learnSheet(g, then) {
-    var v = VAR[g], L = LEARN[g]; if (!L) { if (then) then(); return; }
+    var v = PICK[g] || VAR[g], L = LEARN[g]; if (!L) { if (then) then(); return; }
     var node = el('div', { class: 'plearnw' }), demo = learnDemo(g);
     node.appendChild(demo);
     demo.addEventListener('click', function () { var d2 = learnDemo(g); demo.replaceWith(d2); demo = d2; Kit.sfx('deal'); });
