@@ -578,8 +578,12 @@ function finalDress(g, o) {
       for (let i = 0; i < 4; i++) { const x = -SEAT.rx + i * SEAT.rx * 2 / 3; cyl(c, 0.08, 0.12, 0.22, tm, x, 3.05, -SEAT.rz - 0.4, 12); sph(c, 0.07, glow(0xfff4e0, 4), x, 2.95, -SEAT.rz - 0.4, 10); }
     }
   }
-  const s = spot(g, 0xfff4e4, TIER === 'local' ? 6 : 12, SEAT.x, 3.6, SEAT.z + 0.4, SEAT.x, SEAT.z, 0.6);
+  const s = spot(g, 0xfff4e4, TIER === 'local' ? 6 : 12, SEAT.x, 3.6, SEAT.z + 0.4, SEAT.x, SEAT.z, SEAT.face > 0 ? 0.42 : 0.6);
   s.penumbra = 0.4;
+  if (SEAT.face > 0) {   // on a stage: light on the crowd and the hall beyond it
+    spot(g, 0xffe8d0, 22, SEAT.x, 5, SEAT.z + 2, SEAT.x, SEAT.z + 4.5, 0.9);
+    for (const sx of [-6, 0, 6]) light(g, 0xfff0dc, 6, SEAT.x + sx, 4.5, SEAT.z + 9, 16);
+  }
 }
 
 // the room: floor, back wall, side walls, ceiling, a skirting board and a cornice. The camera sits near the front.
