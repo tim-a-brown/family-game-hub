@@ -1735,6 +1735,8 @@ function trawler(g, x, z, ry) {
   const net = new THREE.Mesh(new THREE.SphereGeometry(1.0, 10, 8), M({ color: 0x2a5a4a, roughness: 0.9, wireframe: true })); net.scale.set(1.4, 0.6, 1.0); net.position.set(-2.4, 1.4, -0.4); t.add(net);
   return t;
 }
+// plain glass: a pane you see the world through (the scene outside must be built)
+function glassWall(g, x, y, z, w, h, ry) { return plane(g, w, h, M({ color: 0x9ab0c8, metalness: 1, roughness: 0.22, transparent: true, opacity: 0.07, envMapIntensity: 1.5 }), x, y, z, ry); }
 // END DECOR
 // the room: floor, back wall, side walls, ceiling, a skirting board and a cornice. The camera sits near the front.
 function room(g, o) {
@@ -2256,7 +2258,7 @@ const SCENES = {
     for (let i = 0; i <= 9; i++) { const rb = new THREE.Mesh(new THREE.TorusGeometry(R - 0.05, 0.06, 6, 36, Math.PI), M({ color: 0x5a5a60, metalness: 0.6, roughness: 0.5 })); rb.position.set(0, H, 2 - i * 2); g.add(rb); }
     const endM = M({ map: tex(corr, 4, 3), roughness: 0.55, metalness: 0.3 }); tympanum(g, W, H, R, endM, 0, B, 0); tympanum(g, W, H, R, endM, 0, 2, Math.PI);
     // the end window on the prairie, the yard light and the pickups, the road
-    const view = VIEW.prairie(); windowOn(g, view, 0, 2.6, B + 0.03, 7.6, 2.6, 0, 0x3a3a3a); box(g, 8, 0.1, 0.3, M({ color: 0x5a5a5a, metalness: 0.5 }), 0, 1.25, B + 0.1);
+    const view = VIEW.prairie(); glassWall(g, 0, 2.6, B + 0.03, 7.6, 2.6, 0); for (let i = -2; i <= 2; i++) box(g, 0.08, 2.6, 0.1, M({ color: 0x3a3a3a }), i * 1.9, 2.6, B + 0.08); box(g, 7.8, 0.1, 0.12, M({ color: 0x3a3a3a }), 0, 3.95, B + 0.08); box(g, 8, 0.1, 0.3, M({ color: 0x5a5a5a, metalness: 0.5 }), 0, 1.25, B + 0.1);
     ground(g, 40, 20, M({ map: tex(canvas(128, 128, (x, w, h) => { x.fillStyle = '#5a5248'; x.fillRect(0, 0, w, h); noise(x, w, h, 0.2, 4000); }), 12, 6), roughness: 0.95 }), 0, B - 10, -0.02);
     for (const [x, z, ry, c, pk] of [[-4.6, B - 4.5, 0.4, 0x8a1a1a, true], [1.0, B - 5.5, -0.3, 0xd8d8d8, true], [6.0, B - 4.0, 0.2, 0x1a3a6a, false]]) car(g, x, z, ry, c, pk);
     const yl = new THREE.Group(); yl.position.set(-1.5, 0, B - 3.0); g.add(yl); cyl(yl, 0.1, 0.12, 7, M({ color: 0x3a3a3a }), 0, 3.5, 0, 8); box(yl, 1.0, 0.08, 0.08, M({ color: 0x3a3a3a }), 0.5, 6.9, 0); sph(yl, 0.2, glow(0xd8e8ff, 3), 1.0, 6.8, 0, 10); light(yl, 0xd8e8ff, 3.5, 1.0, 6.4, 0, 14);
@@ -3004,7 +3006,7 @@ const SCENES = {
     for (let i = 0; i < 3; i++) box(g, W, 0.4, 0.3, timber, 0, H - 0.2, -1 - i * 4.5); for (let i = 0; i < 6; i++) box(g, 0.2, 0.25, D, timber, -6 + i * 2.4, H - 0.12, Zc);
     // the steel-sash windows: three tall ones on the river, gridded; the river, the skyline, and the L outside
     box(g, W, H - 4.2, 0.3, M({ map: tex(brick, 6, 1), roughness: 0.9 }), 0, H - (H - 4.2) / 2, B); for (let i = -2; i <= 2; i++) box(g, i % 2 ? 1.2 : 0.6, 4.2, 0.3, M({ map: tex(brick, 0.5, 2), roughness: 0.9 }), i * 3.6, 2.1, B);
-    for (const x of [-5.4, -1.8, 1.8, 5.4]) { windowOn(g, view, x, 2.2, B + 0.02, 2.4, 3.6, 0, 'none'); for (let k = 0; k < 7; k++) box(g, 2.4, 0.03, 0.06, steel, x, 0.5 + k * 0.6, B + 0.1); for (let k = -2; k <= 2; k++) box(g, 0.03, 3.6, 0.06, steel, x + k * 0.6, 2.2, B + 0.1); box(g, 2.6, 0.08, 0.12, steel, x, 0.36, B + 0.1); box(g, 2.6, 0.08, 0.12, steel, x, 4.04, B + 0.1); }
+    for (const x of [-5.4, -1.8, 1.8, 5.4]) { glassWall(g, x, 2.2, B + 0.02, 2.4, 3.6, 0); for (let k = 0; k < 7; k++) box(g, 2.4, 0.03, 0.06, steel, x, 0.5 + k * 0.6, B + 0.1); for (let k = -2; k <= 2; k++) box(g, 0.03, 3.6, 0.06, steel, x + k * 0.6, 2.2, B + 0.1); box(g, 2.6, 0.08, 0.12, steel, x, 0.36, B + 0.1); box(g, 2.6, 0.08, 0.12, steel, x, 4.04, B + 0.1); }
     elTrain(g, 0, 1.6, B - 3.4, 22, 0); backdrop(g, view, 0, Zc, 30, 16, -5, Math.PI * 0.4, Math.PI * 1.6); skyDome(g, 0, Zc, 60, [[0, '#06081c'], [0.6, '#1a1c44'], [1, '#3a2a4a']]);
     // Edison bulbs strung between the columns, a whisky bar with a brick back, leather club chairs, a few old signs
     for (let i = 0; i < 4; i++) stringLights(g, -W / 2 + 0.5, W / 2 - 0.5, 3.6, 0.2 - i * 3.6, 0.45, 0xffb860);
@@ -3179,7 +3181,7 @@ const SCENES = {
     for (const s of [-1, 1]) box(g, 0.4, H, 0.4, fir, s * 7.2, H / 2, -3.0); for (const s of [-1, 1]) box(g, 0.4, H, 0.4, fir, s * 7.2, H / 2, -9.0);
     // the windows on the bay, steel-sashed, the rain running down them; the pier outside with its bollards, the bay
     box(g, W, H - 3.8, 0.3, M({ map: tex(PAINT.planks('#5a4a3a', '#3a2e22'), 6, 1), roughness: 0.9 }), 0, H - (H - 3.8) / 2, B); for (let i = -2; i <= 2; i++) box(g, 0.5, 3.8, 0.3, M({ map: tex(PAINT.planks('#5a4a3a', '#3a2e22'), 0.5, 2), roughness: 0.9 }), i * 3.9, 1.9, B);
-    for (const x of [-5.85, -1.95, 1.95, 5.85]) { windowOn(g, view, x, 2.1, B + 0.02, 3.3, 3.4, 0, 'none'); rainOn(g, x, 2.1, B + 0.07, 3.3, 3.4, 0); for (let k = 0; k < 5; k++) box(g, 3.3, 0.03, 0.06, steel, x, 0.5 + k * 0.8, B + 0.1); for (let k = -1; k <= 1; k++) box(g, 0.03, 3.4, 0.06, steel, x + k * 1.1, 2.1, B + 0.1); box(g, 3.5, 0.08, 0.14, steel, x, 0.36, B + 0.1); box(g, 3.5, 0.08, 0.14, steel, x, 3.84, B + 0.1); }
+    for (const x of [-5.85, -1.95, 1.95, 5.85]) { glassWall(g, x, 2.1, B + 0.02, 3.3, 3.4, 0); rainOn(g, x, 2.1, B + 0.07, 3.3, 3.4, 0); for (let k = 0; k < 5; k++) box(g, 3.3, 0.03, 0.06, steel, x, 0.5 + k * 0.8, B + 0.1); for (let k = -1; k <= 1; k++) box(g, 0.03, 3.4, 0.06, steel, x + k * 1.1, 2.1, B + 0.1); box(g, 3.5, 0.08, 0.14, steel, x, 0.36, B + 0.1); box(g, 3.5, 0.08, 0.14, steel, x, 3.84, B + 0.1); }
     ground(g, 24, 6, M({ map: tex(PAINT.planks('#4a3a28', '#3a2a1c'), 12, 2), roughness: 0.9 }), 0, B - 3, -0.01); for (let i = 0; i < 6; i++) { cyl(g, 0.16, 0.18, 0.5, steel, -10 + i * 4, 0.25, B - 5.6, 10); } for (let i = 0; i < 4; i++) { cyl(g, 0.04, 0.04, 2.6, steel, -8 + i * 5.3, 1.3, B - 4.8, 6); sph(g, 0.14, glow(0xffe0a0, 2.4), -8 + i * 5.3, 2.7, B - 4.8, 10); light(g, 0xffe0a0, 1.0, -8 + i * 5.3, 2.5, B - 4.8, 6); }
     water(g, 80, 40, 0, B - 26, -0.3, 0x0e2030); backdrop(g, view, 0, Zc, 36, 18, -5.5, Math.PI * 0.4, Math.PI * 1.6); skyDome(g, 0, Zc, 60, [[0, '#0c1020'], [0.6, '#24304a'], [1, '#3a4a5a']]);
     // the rowing shell overhead, oars crossed on the wall, the coffee bar and its chalkboard, flannel on the chairs
@@ -3233,7 +3235,7 @@ const SCENES = {
     const steel = M({ color: 0x2a2a30, metalness: 0.7, roughness: 0.4 }); plane(g, W, 1.4, M({ color: 0x9ab0c8, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0.18 }), 0, 0.01, B + 0.7, 0, -P2); for (let i = -3; i <= 3; i++) box(g, 0.06, 0.03, 1.4, steel, i * 2.3, 0.02, B + 0.7); box(g, W, 0.04, 0.06, steel, 0, 0.02, B + 1.4);
     // the river under the glass and out past the window: the water, the dock, the bank with its cottonwoods
     water(g, 60, 30, 0, B - 8, -1.2, 0x14303a); box(g, W + 2, 1.3, 0.3, M({ map: tex(PAINT.brick('#6a6a62', '#3a3a34'), 6, 1), roughness: 0.9 }), 0, -0.65, 2.1);
-    const view = VIEW.riverbarge(); windowOn(g, view, 0, 2.2, B + 0.02, W - 0.6, 2.8, 0, 0x3a2410); for (let i = -2; i <= 2; i++) box(g, 0.08, 2.8, 0.1, M({ color: 0x3a2410 }), i * 2.7, 2.2, B + 0.08);
+    const view = VIEW.riverbarge(); glassWall(g, 0, 2.2, B + 0.02, W - 0.6, 2.8, 0); box(g, W - 0.4, 0.1, 0.14, M({ color: 0x3a2410 }), 0, 0.78, B + 0.08); box(g, W - 0.4, 0.1, 0.14, M({ color: 0x3a2410 }), 0, 3.62, B + 0.08); for (let i = -2; i <= 2; i++) box(g, 0.08, 2.8, 0.1, M({ color: 0x3a2410 }), i * 2.7, 2.2, B + 0.08);
     box(g, 2.0, 0.12, 8, M({ map: tex(planks, 1, 8), roughness: 0.8 }), 4.5, -0.3, B - 4); for (let i = 0; i < 4; i++) cyl(g, 0.08, 0.08, 1.6, M({ color: 0x3a2a1a }), 4.5 + (i % 2 ? 0.9 : -0.9), -1.0, B - 1 - i * 2.2, 8); for (let i = 0; i < 3; i++) { cyl(g, 0.03, 0.03, 1.4, steel, 5.5, 0.4, B - 2 - i * 2.5, 6); sph(g, 0.1, glow(0xffe0a0, 2.6), 5.5, 1.15, B - 2 - i * 2.5, 8); light(g, 0xffe0a0, 1.0, 5.5, 1.1, B - 2 - i * 2.5, 6); }
     for (const [x, z, s] of [[-7, B - 4, 1.3], [-11, B - 8, 1.6], [9, B - 7, 1.4], [12, B - 3, 1.1]]) { const t = new THREE.Group(); t.position.set(x, 0, z); t.scale.setScalar(s); g.add(t); cyl(t, 0.18, 0.25, 3.2, M({ map: tex(PAINT.wood('#5a4a3a', '#3a2e22', 6), 1, 4), roughness: 0.95 }), 0, 1.6, 0, 10); for (let k = 0; k < 9; k++) sph(t, 1.0 + rnd() * 0.6, M({ color: pick([0x2a4a24, 0x3a5a2a, 0x1f3a1e]), roughness: 0.9 }), (rnd() - 0.5) * 2.2, 3.6 + rnd() * 1.8, (rnd() - 0.5) * 2.2, 8); }
     backdrop(g, view, 0, Zc, 34, 16, -5, Math.PI * 0.4, Math.PI * 1.6); skyDome(g, 0, Zc, 60, [[0, '#06081c'], [0.6, '#1a1a44'], [1, '#3a2a4a']]);
@@ -3290,7 +3292,7 @@ const SCENES = {
     for (let i = 0; i < 3; i++) { const z0 = 2 - i * 4; const r = box(g, W, 0.06, 4.6, tin, 0, H + 1.0, z0 - 2.3); r.rotation.x = 0.46; r.userData.flat = 1; const gl = plane(g, W, 2.0, unlit(canvas(64, 64, (x, w, h) => { x.fillStyle = '#0c1226'; x.fillRect(0, 0, w, h); for (let k = 0; k < 20; k++) { x.fillStyle = 'rgba(255,255,255,.6)'; x.fillRect(rnd() * w, rnd() * h, 1.5, 1.5); } }), 0.7), 0, H + 1.0, z0 - 4.0 + 0.02, 0); for (let k = -3; k <= 3; k++) box(g, 0.05, 2.0, 0.08, steel, k * 2.3, H + 1.0, z0 - 4.0 + 0.06); box(g, W, 0.2, 0.2, steel, 0, H, z0); }
     for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { cyl(g, 0.14, 0.14, H, steel, s * 4.5, H / 2, -1 - i * 4, 12); }
     // the window on the dock, the trawler's bow right there, pots and buoys, the harbour beyond
-    const view = VIEW.harbor(); windowOn(g, view, 0, 2.3, B + 0.02, W - 0.4, 3.0, 0, 0x3a3a44); for (let i = -3; i <= 3; i++) box(g, 0.06, 3.0, 0.1, steel, i * 2.3, 2.3, B + 0.08); box(g, W, 0.12, 0.3, M({ color: 0x5a5a5a, roughness: 0.6 }), 0, 0.8, B + 0.1);
+    const view = VIEW.harbor(); glassWall(g, 0, 2.3, B + 0.02, W - 0.4, 3.0, 0); box(g, W, 0.1, 0.14, steel, 0, 3.82, B + 0.08); for (let i = -3; i <= 3; i++) box(g, 0.06, 3.0, 0.1, steel, i * 2.3, 2.3, B + 0.08); box(g, W, 0.12, 0.3, M({ color: 0x5a5a5a, roughness: 0.6 }), 0, 0.8, B + 0.1);
     ground(g, 30, 8, M({ map: tex(PAINT.planks('#6a5a40', '#4a3e2a'), 16, 3), roughness: 0.9 }), 0, B - 4, -0.01); water(g, 80, 40, 0, B - 28, -1.4, 0x0e2a34);
     trawler(g, 2.0, B - 5.6, 0.12); trawler(g, -8.0, B - 9.5, -0.2);
     for (let i = 0; i < 5; i++) { const px = -6 + i * 1.3, pz = B - 1.6 - (i % 2) * 1.0; const pot = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 0.9), M({ color: 0x3a3a3a, wireframe: true })); pot.position.set(px, 0.2 + (i % 2) * 0.4, pz); g.add(pot); box(g, 0.9, 0.4, 0.9, M({ color: 0x2a3a3a, transparent: true, opacity: 0.25 }), px, 0.2 + (i % 2) * 0.4, pz); }
@@ -3334,7 +3336,7 @@ const SCENES = {
     const wheel = (x, z) => { const w = new THREE.Group(); w.position.set(x, 2.5, z); g.add(w); const rim = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.04, 8, 40), wm); rim.rotation.x = P2; w.add(rim); for (let i = 0; i < 6; i++) { const sp = box(w, 1.36, 0.035, 0.035, wm, 0, 0, 0); sp.rotation.y = i / 6 * Math.PI; } for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; cyl(w, 0.02, 0.02, 0.16, M({ color: 0xf4ecd8 }), Math.cos(a) * 0.62, 0.1, Math.sin(a) * 0.62, 6); sph(w, 0.045, glow(0xffd8a0, 3), Math.cos(a) * 0.62, 0.22, Math.sin(a) * 0.62, 8); } for (let i = 0; i < 3; i++) seg(w, [Math.cos(i * 2.1) * 0.5, 0, Math.sin(i * 2.1) * 0.5], [0, 1.0, 0], 0.006, 0.006, M({ color: 0x1a1a1a })); light(w, 0xffd0a0, 2.4, 0, -0.1, 0, 7); };
     pokerTable(g, 1.8, -2.8, { mine: true, felt: 0x7a3a1f, rail: 0x1a0a0a, seats: 9, rx: 1.4, rz: 0.8, lamp: false, ceil: 2.3 }); wheel(1.8, -2.8);
     for (const [x, z, ry] of [[-1.4, -6.8, 0.3], [4.0, -7.4, -0.3]]) { pokerTable(g, x, z, { felt: 0x7a3a1f, rail: 0x1a0a0a, seats: 9, rx: 1.4, rz: 0.8, ry, lamp: false, full: 0.85, ceil: 2.3 }); wheel(x, z); }
-    if (STAGE !== 'final') { stander(g, 0.8, -9.6, 0.3, { arms: 'crossed', lod: 1 }); stander(g, 5.6, -0.6, -2.2, { arms: 'pockets', lod: 1 }); }
+    if (STAGE !== 'final') { stander(g, 0.8, -9.6, 0.3, { arms: 'crossed', lod: 1 }); stander(g, -4.6, -9.6, 0.8, { arms: 'pockets', lod: 1 }); }
     return { exposure: 1.05, cam: [[6.2, 1.5, 1.2], [-1.8, 1.5, -8.0]] };
   },
   // the Nugget: a gold-rush hall, pressed tin overhead, a mezzanine on turned posts with a brass rail, oil-lamp rings, the
