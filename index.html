@@ -427,63 +427,64 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 @keyframes wig{from{transform:rotate(-1.6deg)}to{transform:rotate(1.6deg)}}
 @media (prefers-reduced-motion:reduce){.sec.favs.wiggle .list > .g{animation:none;outline:2px dashed rgba(255,200,61,.6);outline-offset:-2px;}}
 
-/* Keep playing: compact overview, 5-6 games visible at once */
-.cont-w{position:relative;min-width:0;display:flex;align-items:stretch;touch-action:pan-y;--rv:0;}
-/* The tile narrows (it doesn't slide off) so its icon and name stay put and tidy */
-.cont-w .cont{position:relative;z-index:1;flex:none;touch-action:pan-y;-webkit-user-drag:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;width:calc(100% - var(--rv) * 1px);
-  transition:width .32s var(--spring), box-shadow .25s;will-change:width;}
-.cont-w.drag .cont{transition:none;}
-.cont-w.open .cont{box-shadow:inset 3px 0 0 var(--c), 0 0 0 1px var(--w08);}
-.cont-w .cont .a{transition:opacity .2s;}
-/* Opening: the icon tucks away and the name gets the room, so nothing is squeezed */
-.cont-w .cont .gicon{transition:width .32s var(--spring), margin .32s var(--spring), opacity .2s;}
-.cont-w.open .cont{gap:0;padding-left:12px;}
-.cont-w.open .cont .gicon{width:0;opacity:0;margin-right:0;}
-.cont-w.open .cont .r1 .t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:.88rem;line-height:1.15;}
-.cont-w.open .cont .d{display:none;}
-.cont-w.open .cont .a{display:none;}
-.cont-w.open .cont .a,.cont-w.drag .cont .a{opacity:0;}
-/* Trash: a rounded red button that grows into the freed space */
-.cont-del{position:absolute;top:0;right:0;bottom:0;width:52px;border:0;border-radius:14px;padding:0;display:grid;place-items:center;
-  background:linear-gradient(180deg,#ff5a6b,#e0243c);color:#fff;cursor:pointer;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.25), 0 6px 16px -6px rgba(224,36,60,.7);
-  opacity:min(1, calc(var(--rv) / 40));transform:scale(calc(.55 + .45 * min(1, var(--rv) / 60)));transform-origin:right center;
-  transition:opacity .25s, transform .32s var(--spring);pointer-events:none;}
-.cont-w.drag .cont-del{transition:none;}
-.cont-w.open .cont-del{pointer-events:auto;}
-.cont-del:active{transform:scale(.92);}
-.cont-del .ico{width:22px;height:22px;}
-.rail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
-@media (min-width:720px){.rail{grid-template-columns:repeat(3,minmax(0,1fr));}}
-@media (min-width:1100px){.rail{grid-template-columns:repeat(4,minmax(0,1fr));}}
-.cont{--c:#ffc83d;position:relative;min-width:0;width:100%;display:flex;align-items:center;gap:9px;padding:8px 10px 8px 8px;border-radius:14px;
-  background:var(--surface);color:var(--text);text-decoration:none;box-shadow:inset 3px 0 0 var(--c);transition:transform .15s var(--spring), background .15s;}
-.cont:hover{background:var(--surface-2);}
-.cont:active{transform:scale(.97);}
-.cont .gicon{width:34px;height:34px;flex:none;}
-.cont .tx{flex:1;min-width:0;}
-.cont .t{font-weight:800;font-size:.95rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cont .r1{display:flex;align-items:baseline;gap:6px;}
-.cont .r1 .t{flex:1;min-width:0;}
-.cont .a{flex:none;font-size:.7rem;font-weight:800;color:var(--text-3);}
-.cont .d{font-size:.75rem;color:var(--text-2);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-/* Online games: your turn glows gold and wears a "Your turn" tag; one waiting on the other player sits back */
-.cont-net.turn{background:linear-gradient(120deg,color-mix(in srgb,var(--yellow) 20%,var(--surface)),var(--surface) 75%);
-  box-shadow:inset 3px 0 0 var(--c), inset 0 0 0 1.5px color-mix(in srgb,var(--yellow) 80%,transparent);animation:ytGlow 2.6s ease-in-out infinite;}
-.cont-net.turn .d{color:var(--text);}
-.cont .yt{flex:none;display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 6px;border-radius:999px;background:var(--yellow);color:#2b1a00;
-  font-size:.66rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;box-shadow:0 2px 6px color-mix(in srgb,var(--yellow) 45%,transparent);}
-.cont .yt i{width:6px;height:6px;border-radius:50%;background:#2b1a00;animation:ytDot 1.3s ease-in-out infinite;}
-.cont-net.wait{opacity:.72;}
-.cont-net.wait .gicon{filter:saturate(.55);}
-.cont-net.wait .d{color:var(--text-3);}
-@keyframes ytGlow{0%,100%{box-shadow:inset 3px 0 0 var(--c), inset 0 0 0 1.5px color-mix(in srgb,var(--yellow) 80%,transparent), 0 0 0 0 color-mix(in srgb,var(--yellow) 0%,transparent);}
-  50%{box-shadow:inset 3px 0 0 var(--c), inset 0 0 0 1.5px var(--yellow), 0 0 16px 1px color-mix(in srgb,var(--yellow) 35%,transparent);}}
+/* Keep playing: a shelf of little game boxes (your saved games, the last one played first; it scrolls sideways and
+   never gets taller), and under it a short stack of bars for online games (the latest move on top) */
+.shelf{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;
+  margin:0 calc(var(--pad,16px) * -1);padding:4px var(--pad,16px) 12px;scroll-padding-left:var(--pad,16px);}
+.shelf::-webkit-scrollbar{display:none;}
+.sbox{--c:#8b5cf6;flex:none;width:124px;scroll-snap-align:start;position:relative;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;
+  background:var(--surface);color:var(--text);text-decoration:none;box-shadow:0 6px 14px rgba(0,0,0,.18), 0 2px 0 color-mix(in srgb,var(--c) 55%,#000 45%);
+  transition:transform .15s var(--spring);-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;animation:sbox-in .35s var(--spring) both;}
+.sbox:active{transform:scale(.95);}
+@keyframes sbox-in{from{opacity:0;transform:translateX(14px) scale(.96);}}
+.sbox .art{height:100px;display:grid;place-items:center;position:relative;
+  background:radial-gradient(120% 90% at 50% 30%,color-mix(in srgb,var(--c) 78%,#fff 22%),var(--c) 60%,color-mix(in srgb,var(--c) 80%,#000 20%));}
+.sbox .art .gicon{width:64px;height:64px;filter:drop-shadow(0 5px 7px rgba(0,0,0,.3));transition:transform .35s var(--spring);}
+.sbox:active .art .gicon{transform:scale(.9) rotate(-6deg);}
+.sbox .ago{position:absolute;top:6px;right:8px;font-size:.68rem;font-weight:900;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);}
+.sbox .nm{padding:8px 9px 0;font-family:'Bungee',var(--display);font-weight:400;font-size:.8rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sbox .st{padding:2px 9px 10px;font-size:.72rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sbox.old .art{filter:saturate(.45) brightness(.92);}
+.sbox.old .ago{opacity:.75;}
+/* Edit: a delete badge on every box (Undo is right there, so no "are you sure") */
+.sdel{position:absolute;top:6px;left:6px;z-index:2;width:30px;height:30px;border:0;border-radius:50%;display:grid;place-items:center;padding:0;cursor:pointer;
+  background:linear-gradient(180deg,#ff5a6b,#e0243c);color:#fff;box-shadow:0 0 0 2px var(--surface),0 4px 10px rgba(224,36,60,.5);animation:sdel-in .3s var(--spring) both;}
+.sdel .ico{width:16px;height:16px;}
+@keyframes sdel-in{from{transform:scale(0);}}
+.rail.editing .sbox{animation:wig .26s ease-in-out infinite alternate;}
+.rail.editing .sbox:nth-child(2n){animation-delay:-.13s;}
+.rail.editing .nbar{opacity:.4;pointer-events:none;}
+@media (prefers-reduced-motion:reduce){.rail.editing .sbox{animation:none;}.sbox{animation:none;}}
+/* Online games: bars, the latest move on top. Your move: in the game's colour with a gold tag and a play button; waiting
+   on someone else: quiet */
+.nstack{display:flex;flex-direction:column;gap:6px;}
+.nbar{--c:#8b5cf6;display:flex;align-items:center;gap:11px;min-height:54px;padding:7px 8px 7px 9px;border-radius:15px;text-decoration:none;color:var(--text);
+  background:var(--surface);box-shadow:inset 3px 0 0 var(--c);transition:transform .15s var(--spring);}
+.nbar:active{transform:scale(.98);}
+.nbar .gicon{width:38px;height:38px;flex:none;}
+.nbar .tx{flex:1;min-width:0;}
+.nbar b{display:block;font-family:'Bungee',var(--display);font-weight:400;font-size:.92rem;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nbar small{display:block;font-size:.76rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nbar .a{flex:none;font-size:.7rem;font-weight:800;color:var(--text-3);padding-right:6px;}
+.nbar.turn{color:#fff;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--yellow) 85%,transparent),0 6px 16px color-mix(in srgb,var(--c) 30%,transparent);
+  background:linear-gradient(100deg,color-mix(in srgb,var(--c) 80%,#000 20%),color-mix(in srgb,var(--c) 52%,#000 48%));animation:ytGlow 2.6s ease-in-out infinite;}
+.nbar.turn b{color:#fff;}
+.nbar.turn small{color:rgba(255,255,255,.88);}
+.nbar.turn .gicon{filter:drop-shadow(0 3px 5px rgba(0,0,0,.3));}
+.nbar .yt{flex:none;display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 6px;border-radius:999px;background:#ffd84d;color:#2b1a00;
+  font-size:.62rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
+.nbar .yt i{width:6px;height:6px;border-radius:50%;background:#2b1a00;animation:ytDot 1.3s ease-in-out infinite;}
+.nbar .pl{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#16102e;box-shadow:0 3px 0 rgba(0,0,0,.2);}
+.nbar .pl .ico{width:17px;height:17px;}
+.nbar.wait{opacity:.78;}
+.nbar.wait .gicon{filter:saturate(.55);}
+@keyframes ytGlow{0%,100%{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--yellow) 70%,transparent),0 6px 16px color-mix(in srgb,var(--c) 30%,transparent);}
+  50%{box-shadow:inset 0 0 0 1.5px var(--yellow),0 0 18px 2px color-mix(in srgb,var(--yellow) 35%,transparent);}}
 @keyframes ytDot{50%{transform:scale(.55);opacity:.45;}}
-@media (prefers-reduced-motion:reduce){.cont-net.turn,.cont .yt i{animation:none;}}
+@media (prefers-reduced-motion:reduce){.nbar.turn,.nbar .yt i{animation:none;}}
 #cont-n.yt-n{color:var(--yellow);font-weight:900;white-space:nowrap;}
-.cont-w:has(.cont-net.turn){grid-column:span 2;}   /* twice as wide as the others: the first thing you see */
-.cont-net.turn{padding-top:10px;padding-bottom:10px;}.cont-net.turn .gicon{width:40px;height:40px;}
+@media (min-width:720px){.nstack{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media (min-width:1100px){.nstack{grid-template-columns:repeat(3,minmax(0,1fr));}}
 /* Activity log (profile menu) */
 .al-tag{margin-left:auto;font-size:.8rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text-3);}
 .al-tag.ok{color:#4ade80;}
@@ -572,11 +573,6 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .sec-h .cont-edit{margin-left:auto;min-height:34px;padding:0 15px;border:0;border-radius:999px;background:var(--w08);color:var(--text);font:inherit;font-weight:800;font-size:.86rem;cursor:pointer;}
 .sec-h .cont-edit.on{background:var(--yellow-fill,var(--yellow));color:#16102e;}
 .sec-h .cont-edit:active{transform:scale(.96);}
-.rail.editing .cont-w{animation:cont-in .25s ease both;}
-@keyframes cont-in{from{transform:scale(.97)}to{transform:none}}
-.rail.editing .cont{cursor:default;}
-.rail.editing .cont-net{opacity:.45;pointer-events:none;}
-.rail.editing .cont:active{transform:none;}
 .cont-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;}
 .cont-foot:empty{display:none;}
 .cont-foot{margin-top:10px;}
@@ -585,7 +581,6 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 .cont-clear .ico{width:16px;height:16px;}
 .cont-undo{display:inline-flex;align-items:center;gap:10px;min-height:38px;padding:0 6px 0 14px;border-radius:999px;background:var(--surface-2);color:var(--text-2);font-weight:700;font-size:.86rem;}
 .cont-undo button{min-height:30px;padding:0 12px;border:0;border-radius:999px;background:var(--w08);color:var(--text);font:inherit;font-weight:900;cursor:pointer;}
-.rail-more{grid-column:1/-1;justify-self:center;border:0;background:none;color:var(--text-2);font-weight:800;font-size:.85rem;padding:6px 12px;}
 
 .empty{display:none;text-align:center;padding:50px 20px;color:var(--text-2);}
 .empty .e{font-size:3rem;margin-bottom:8px;}
@@ -1091,9 +1086,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     }));
     return box;
   }
-  // Swipe a Keep playing tile left to reveal a trash button that deletes the saved game
+  // Deleting a saved game from Keep playing
   var SAVE_KEYS = (window.FGHSync && FGHSync.saveKeys) || {};   // each game file's save keys (sync.js)
-  var openTile = null;
   // Returns what it removed, so Undo can put it back
   function deleteSaved(x) {
     var file = x.r.file || x.g.play, back = { id: x.g.id, keys: {}, resume: null };
@@ -1111,7 +1105,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
   // ── Edit: trash on every tile (no swipe, no "are you sure" for one game: Undo is right there), and Clear all ──
   var editing = false, undoList = null, undoT = 0;
-  function setEditing(on) { editing = on; if (!on) { undoList = null; clearTimeout(undoT); } Kit.sfx('tap'); if (openTile) openTile(); renderRail(); }
+  function setEditing(on) { editing = on; if (!on) { undoList = null; clearTimeout(undoT); } Kit.sfx('tap'); renderRail(); }
   $('cont-edit').addEventListener('click', function () { setEditing(!editing); });
   function offerUndo(list, label) {
     undoList = list; clearTimeout(undoT);
@@ -1133,65 +1127,44 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       });
     } }));
   }
-  function swipeTile(x, tile) {
-    var w = el('div', { class: 'cont-w' });
-    tile.draggable = false; tile.addEventListener('dragstart', function (e) { e.preventDefault(); });
-    var del = el('button', { type: 'button', class: 'cont-del', 'aria-label': 'Delete ' + x.g.name + ' game in progress', tabindex: '-1' },
-      [el('span', { html: Kit.icon('trash') })]);
-    del.addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (editing) {
+  // A saved game on the shelf: its box (the section's colour, the game's art), where you are and how long ago. Edit
+  // puts a delete badge on each; press and hold (or right-click) offers the same delete.
+  function shelfBox(x) {
+    var g = x.g, cat = GAME_CATS.filter(function (c) { return c.id === g.cat; })[0], old = Date.now() - x.r.ts > 7 * 864e5;
+    var a = el('a', { class: 'sbox' + (old ? ' old' : ''), href: 'games/' + (x.r.file || g.play) + '.html', draggable: 'false', style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color }, title: g.name + ': ' + (x.r.label || 'In progress') }, [
+      el('span', { class: 'art' }, [g.cart ? el('span', { class: 'gicon ct-ic ct-' + g.sys }, [cartLabel(g)]) : el('span', { html: GameIcon(g.id, { bare: true }), style: { display: 'contents' } }), el('span', { class: 'ago', text: ago(x.r.ts, true) })]),
+      el('span', { class: 'nm', text: g.name }),
+      el('span', { class: 'st', text: x.r.label || 'In progress' })
+    ]);
+    function gone(then) { a.style.transition = 'opacity .22s, transform .22s'; a.style.opacity = '0'; a.style.transform = 'scale(.8)'; setTimeout(then, 230); }
+    if (editing) a.appendChild(el('button', { type: 'button', class: 'sdel', 'aria-label': 'Delete ' + g.name + ' game in progress', html: Kit.icon('trash'), onclick: function (e) {
+      e.preventDefault(); e.stopPropagation();
+      var back = deleteSaved(x); Kit.haptic('success'); Kit.sfx('tap');
+      gone(function () { offerUndo((undoList || []).concat([back]), g.name + ' game deleted'); renderRail(); });
+    } }));
+    a.addEventListener('click', function (e) { if (editing) e.preventDefault(); });
+    a.addEventListener('dragstart', function (e) { e.preventDefault(); });
+    a.addEventListener('contextmenu', function (e) {
+      e.preventDefault(); if (editing) return;
+      Kit.haptic('light');
+      Kit.confirm('Delete this ongoing game?', { ok: 'Delete game', danger: true, body: g.name + ' · ' + (x.r.label || 'In progress') + '. Your progress will be lost.' }).then(function (ok) {
+        if (!ok) return;
         var back = deleteSaved(x); Kit.haptic('success'); Kit.sfx('tap');
-        w.style.transition = 'opacity .22s, transform .22s'; w.style.opacity = '0'; w.style.transform = 'scale(.9)';
-        setTimeout(function () { offerUndo((undoList || []).concat([back]), x.g.name + ' game deleted'); renderRail(); }, 230);
-        return;
-      }
-      Kit.confirm('Delete this ongoing game?', { ok: 'Delete game', danger: true, body: x.g.name + ' · ' + (x.r.label || 'In progress') + '. Your progress will be lost.' }).then(function (ok) {
-        if (!ok) { close(); return; }
-        deleteSaved(x); Kit.haptic('success'); Kit.sfx('tap'); Kit.toast(x.g.name + ' game deleted');
-        w.style.transition = 'opacity .25s, transform .25s'; w.style.opacity = '0'; w.style.transform = 'scale(.9)';
-        setTimeout(function () { openTile = null; renderRail(); }, 260);
+        gone(function () { offerUndo([back], g.name + ' game deleted'); renderRail(); });
       });
     });
-    w.appendChild(del); w.appendChild(tile);
-    var REVEAL = 60, x0 = 0, y0 = 0, dx = 0, base = 0, active = false, horiz = null, moved = false;
-    function setX(v) { w.style.setProperty('--rv', String(Math.round(-v))); }
-    function open() { if (openTile && openTile !== close) openTile(); base = -REVEAL; setX(base); w.classList.add('open'); del.tabIndex = 0; openTile = close; }
-    function close() { base = 0; setX(0); w.classList.remove('open'); del.tabIndex = -1; if (openTile === close) openTile = null; }
-    tile.addEventListener('pointerdown', function (e) {
-      if (e.button || editing) return;
-      active = true; horiz = null; moved = false; x0 = e.clientX; y0 = e.clientY; dx = 0;
-    });
-    tile.addEventListener('pointermove', function (e) {
-      if (!active) return;
-      var mx = e.clientX - x0, my = e.clientY - y0;
-      if (horiz === null && (Math.abs(mx) > 8 || Math.abs(my) > 8)) {
-        horiz = Math.abs(mx) > Math.abs(my);
-        if (horiz) { w.classList.add('drag'); try { tile.setPointerCapture(e.pointerId); } catch (er) {} }
-      }
-      if (!horiz) return;
-      moved = true; dx = mx;
-      var v = base + dx; if (v < -REVEAL) v = -REVEAL - (-REVEAL - v) * .25; setX(Math.min(0, v));
-    });
-    function end() {
-      if (!active) return; active = false; w.classList.remove('drag');
-      if (!horiz) return;
-      if (base + dx < -REVEAL / 2) open(); else close();
-    }
-    tile.addEventListener('pointerup', end);
-    tile.addEventListener('pointercancel', end);
-    if (editing) { w.classList.add('open'); setX(-REVEAL); base = -REVEAL; del.tabIndex = 0; }
-    // A swipe (or tapping an open tile) shouldn't launch the game; nor does a tap while editing
-    tile.addEventListener('click', function (e) {
-      if (editing) { e.preventDefault(); return; }
-      if (moved || w.classList.contains('open')) { e.preventDefault(); if (!moved) close(); moved = false; }
-      else if (openTile) { e.preventDefault(); openTile(); }
-    });
-    // Desktop: right-click offers the same delete
-    tile.addEventListener('contextmenu', function (e) { e.preventDefault(); if (!editing) open(); });
-    return w;
+    return a;
   }
-  document.addEventListener('pointerdown', function (e) { if (openTile && !e.target.closest('.cont-w.open')) openTile(); }, true);
+  // An online game: a bar. Your move: the game's colour, a Your turn tag and a play button; theirs: quiet
+  function netBar(x) {
+    var mine = x.n.mine;
+    return el('a', { class: 'nbar ' + (mine ? 'turn' : 'wait'), href: x.n.href, style: { '--c': x.g.color }, title: x.g.name + (mine ? ': your turn' : ': ' + x.n.vs + '’s turn') }, [
+      el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
+      el('span', { class: 'tx' }, [el('b', { text: x.g.name }), el('small', { text: mine ? 'vs ' + x.n.vs + ' · ' + ago(x.n.at) : x.n.vs + '’s turn · ' + ago(x.n.at) })]),
+      mine ? el('span', { class: 'yt', html: '<i></i>Your turn' }) : el('span', { class: 'a', text: ago(x.n.at, true) }),
+      mine ? el('span', { class: 'pl', html: Kit.icon('play') }) : null
+    ]);
+  }
 
   // ── Online games waiting on your move (Chess, Lorcana) ─────────────────────
   // Signed in with a PIN only. A few small one-off queries (no listening), at most once a minute: the tables carrying
@@ -1465,7 +1438,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   $('otb').addEventListener('click', function () { Kit.sfx('tap'); Kit.haptic('light'); openTablesSheet(); });
   $('otb-go').innerHTML = Kit.icon('right');
 
-  var railAll = false, railItems = [];   // (railItems: the games in progress Keep playing shows right now)
+  var railItems = [];   // (railItems: the games in progress Keep playing shows right now)
   function currentItems() {
     resumeMap = resumeRead();
     return Object.keys(resumeMap).map(function (id) { return { g: findGame(id), r: resumeMap[id] }; })
@@ -1480,31 +1453,21 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var items = currentItems().filter(function (x) { return !narrowed || (vis.indexOf(x.g) >= 0 && (state.cat === 'all' || (state.cat === 'fav' ? isFav(x.g) : x.g.cat === state.cat))); });
     railItems = items;
     if (!items.length) editing = false;
-    var rail = $('rail'); rail.innerHTML = ''; rail.classList.toggle('editing', editing);
+    var rail = $('rail'), was = rail.querySelector('.shelf'), sx = was ? was.scrollLeft : 0;
+    rail.innerHTML = ''; rail.classList.toggle('editing', editing);
     var eb = $('cont-edit'); eb.hidden = !items.length; eb.textContent = editing ? 'Done' : 'Edit'; eb.classList.toggle('on', editing);
-    var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g; });
-    // Online games against someone: your move glows gold with a Your turn tag; one waiting on them sits back, quiet
-    nets.forEach(function (x) {
-      var mine = x.n.mine;
-      rail.appendChild(el('div', { class: 'cont-w' }, [el('a', { class: 'cont cont-net ' + (mine ? 'turn' : 'wait'), href: x.n.href, style: { '--c': x.g.color }, title: x.g.name + (mine ? ': your turn' : ': ' + x.n.vs + '’s turn') }, [
-        el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
-        el('span', { class: 'tx' }, [
-          el('div', { class: 'r1' }, [el('div', { class: 't', text: x.g.name }), mine ? el('span', { class: 'yt', html: '<i></i>Your turn' }) : el('span', { class: 'a', text: ago(x.n.at, true) })]),
-          el('div', { class: 'd', text: mine ? 'vs ' + x.n.vs + ' · ' + ago(x.n.at) : x.n.vs + '’s turn' })
-        ])
-      ])]));
-    });
-    var shown = railAll || editing || items.length <= 6 ? items : items.slice(0, 6);
-    shown.forEach(function (x) {
-      rail.appendChild(swipeTile(x, el('a', { class: 'cont', href: 'games/' + (x.r.file || x.g.play) + '.html', style: { '--c': x.g.color }, title: x.g.name }, [
-        el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
-        el('span', { class: 'tx' }, [el('div', { class: 'r1' }, [el('div', { class: 't', text: x.g.name }), el('span', { class: 'a', text: ago(x.r.ts, true) })]), el('div', { class: 'd', text: x.r.label || 'In progress' })])
-      ])));
-    });
-    if (shown.length < items.length) {
-      var more = el('button', { class: 'rail-more', type: 'button', text: 'Show all ' + items.length });
-      more.addEventListener('click', function () { railAll = true; renderRail(); });
-      rail.appendChild(more);
+    // online games: the latest move on top
+    var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g; }).sort(function (a, b) { return (b.n.at || 0) - (a.n.at || 0); });
+    if (items.length) {
+      var shelf = el('div', { class: 'shelf' });
+      items.forEach(function (x) { shelf.appendChild(shelfBox(x)); });
+      rail.appendChild(shelf);
+      if (sx) shelf.scrollLeft = sx;
+    }
+    if (nets.length) {
+      var ns = el('div', { class: 'nstack' });
+      nets.forEach(function (x) { ns.appendChild(netBar(x)); });
+      rail.appendChild(ns);
     }
     var nAll = items.length + nets.length;
     var nMine = nets.filter(function (x) { return x.n.mine; }).length, cn = $('cont-n');
