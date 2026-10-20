@@ -485,7 +485,7 @@ function buildRing(piece, o, diamond) {
     const m = new THREE.Mesh(g, mt); m.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2; m.position.x = sx * (hw + 0.002); piece.add(m);
   };
   side(shankFace('Champion', String(o.year || new Date().getFullYear()), 1), -1);
-  side(shankFace('Summer Series', String(o.venue || ''), -1), 1);
+  side(shankFace(String(o.series || 'Summer Series'), String(o.venue || ''), -1), 1);
   // the crown: a round top with a bevelled rim
   const crown = new THREE.Mesh(new THREE.CylinderGeometry(CROWN.r, CROWN.r * 0.82, CROWN.d, 96, 1), silver);
   crown.rotation.x = Math.PI / 2; crown.position.z = CROWN_Z; piece.add(crown);
