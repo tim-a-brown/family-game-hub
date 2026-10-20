@@ -1665,7 +1665,7 @@ const SCENES = {
       for (const s of [-1, 1]) { const cn = cyl(g, 0.3, 0.3, 0.04, M({ map: tex(coin), metalness: 0.85, roughness: 0.3, envMapIntensity: 1.3 }), s * 2.75, 2.45, B + 0.05, 40); cn.rotation.x = Math.PI / 2; }
       neon(g, 'Open 24 Hours', '#ff3a3a', -4.9, 1.65, B + 0.05, 60);
     }
-    return { exposure: 1.0 };
+    return { exposure: { west: 1.4, nugget: 1.3, club: 1.25, dollar: 1.15, prairie: 1.15 }[T] || 1.0 };
   },
   // a casino's poker room: the tables inside a brass rail, the casino floor beyond it (the table-games pit, banks of
   // slots, the cage), a window or a feature wall at the back, and each house's own style of ceiling, carpet and light
