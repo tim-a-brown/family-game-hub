@@ -1229,7 +1229,7 @@ const SCENES = {
     // shop lights, the old fridge, a space heater glowing by the table, a cooler, a trash can of cans
     for (const [lx, lz] of [[-2, -4.5], [2.6, -4.5]]) { box(g, 1.2, 0.05, 0.18, M({ color: 0xd8d8d8 }), lx, 2.76, lz); box(g, 1.15, 0.03, 0.12, glow(0xf0f6ff, 1.3), lx, 2.735, lz); light(g, 0xe8f0ff, 0.7, lx, 2.6, lz, 6); }
     rbox(g, 0.75, 1.7, 0.7, 0.06, M({ color: 0xf0eee6, roughness: 0.4 }), 0.0, 0.85, B + 0.45); box(g, 0.02, 0.4, 0.04, M({ color: 0xa8a8a8, metalness: 0.8 }), 0.32, 1.1, B + 0.81);
-    const ht = rbox(g, 0.35, 0.5, 0.25, 0.04, M({ color: 0x3a3a3e, roughness: 0.5 }), 2.6, 0.25, -1.0); plane(g, 0.25, 0.25, M({ color: 0x000000, emissive: 0xff5a10, emissiveIntensity: 1.8 }), 2.6, 0.3, -0.87); light(g, 0xff6a20, 1.2, 2.6, 0.35, -0.6, 2.5);
+    const ht = rbox(g, 0.35, 0.5, 0.25, 0.04, M({ color: 0x3a3a3e, roughness: 0.5 }), 2.6, 0.25, -1.0); plane(g, 0.25, 0.25, M({ color: 0x000000, emissive: 0xff5a10, emissiveIntensity: 1.2 }), 2.6, 0.3, -0.87); light(g, 0xff6a20, 0.35, 2.6, 0.35, -0.6, 1.6);
     rbox(g, 0.6, 0.4, 0.4, 0.05, M({ color: 0x2a6ac8, roughness: 0.4 }), 2.9, 0.2, -2.0); rbox(g, 0.62, 0.06, 0.42, 0.03, M({ color: 0xf4f4f4 }), 2.9, 0.42, -2.0);
     cyl(g, 0.25, 0.22, 0.7, M({ color: 0x2a5a2a, roughness: 0.6 }), 3.5, 0.35, -5.0 + 7.5 - 2.4, 16);
     sign(g, 'ROUTE 66', '#1a1a1a', '#f0f0f0', -3.97, 2.05, -3.0, 0.9, 0.42, Math.PI / 2);
