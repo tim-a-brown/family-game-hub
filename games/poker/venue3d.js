@@ -1670,18 +1670,73 @@ const SCENES = {
     light(g, 0xfff0dc, 4, -5, 4, -3, 12); light(g, 0xfff0dc, 4, 5, 4, -3, 12);
     return { exposure: 1.05, fog: [0x0e0a18, 8, 24] };
   },
+  // a private salon for the big games: tall windows on the city, a few tables far apart, and each city's own grand style
+  // (Belle Époque Paris, frescoed Monte Carlo, red-and-gold Macau, a black-glass sky box over the Strip, old French Quarter
+  // brick, a London gentlemen's club, white-and-gold Vienna, Marina Bay glass, colonial Nassau, baroque Prague, Maltese stone)
   salon(g, o) {
-    const r = room(g, { w: 16, d: 12, h: 5, floor: o.floor || PAINT.wood('#6a3a1a', '#4a2410', 20), wall: o.wall || PAINT.damask('#e8dcc0', '#f4ead4'), wainscot: PAINT.panel('#c8a060', '#e0bc78'), ceil: PAINT.tin('#e8d8b0') });
-    windowOn(g, o.view, 0, 2.4, r.back + 0.02, 4, 3.2, 0, 0xc8a060); windowOn(g, o.view2 || o.view, -5, 2.4, r.back + 0.02, 2.2, 3.2, 0, 0xc8a060); windowOn(g, o.view2 || o.view, 5, 2.4, r.back + 0.02, 2.2, 3.2, 0, 0xc8a060);
-    curtain(g, -2.4, 2.6, r.back + 0.06, 0.6, 4.2, o.curtain || 0x7a0f1c); curtain(g, 2.4, 2.6, r.back + 0.06, 0.6, 4.2, o.curtain || 0x7a0f1c);
-    for (const i of [-1, 1]) { cyl(g, 0.22, 0.22, 5, M({ color: 0xe8dcc0, roughness: 0.4 }), i * 7.4, 2.5, -3, 20); }
-    chandelier(g, -3.5, 4.3, -4, 1.3, o.chand); chandelier(g, 3.5, 4.3, -4, 1.3, o.chand); chandelier(g, 0, 4.3, -1.5, 1.0, o.chand);
-    frameArt(g, -7.95, 2.6, -3, 1.6, 1.2, Math.PI / 2, ['#3a2a1a', '#c8a050', '#6a4a2a', '#e8dcc0']); frameArt(g, 7.95, 2.6, -3, 1.6, 1.2, -Math.PI / 2, ['#2a3a2a', '#c8a050', '#6a2a1a']);
-    pokerTable(g, -3, -5, { felt: o.felt || 0x0e5a43, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, full: 0.9 }); pokerTable(g, 3, -5, { felt: o.felt || 0x0e5a43, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, full: 0.9 });
-    pokerTable(g, 1.6, -2, { mine: true, felt: o.felt || 0x0e5a43, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false });
-    if (o.palms) { plant(g, -7, -1.5, 1.4, true); plant(g, 7, -1.5, 1.4, true); }
-    if (o.lanterns) for (let i = 0; i < 7; i++) lantern(g, -6 + i * 2, 3.8, -6 + (i % 2), 0xff2a1a);
-    return { exposure: 1.0 };
+    const T = o.theme || 'paris';
+    const fresco = (sky, border) => canvas(512, 512, (x, w, h) => { const g2 = x.createRadialGradient(w / 2, h / 2, 20, w / 2, h / 2, w * 0.6); g2.addColorStop(0, '#f4e8c8'); g2.addColorStop(0.5, sky); g2.addColorStop(1, '#3a5a8a'); x.fillStyle = g2; x.fillRect(0, 0, w, h); for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(255,248,236,' + (0.2 + rnd() * 0.4) + ')'; x.beginPath(); x.ellipse(rnd() * w, rnd() * h, 30 + rnd() * 70, 14 + rnd() * 30, rnd() * 3, 0, 7); x.fill(); } for (let i = 0; i < 6; i++) { x.fillStyle = 'rgba(232,190,150,.7)'; const fx = 80 + rnd() * 350, fy = 80 + rnd() * 350; x.beginPath(); x.ellipse(fx, fy, 14, 30, rnd() * 3, 0, 7); x.fill(); x.fillStyle = 'rgba(200,60,60,.6)'; x.beginPath(); x.ellipse(fx + 10, fy + 14, 22, 12, rnd() * 3, 0, 7); x.fill(); } x.strokeStyle = border; x.lineWidth = 26; x.strokeRect(0, 0, w, h); x.lineWidth = 4; x.strokeRect(30, 30, w - 60, h - 60); noise(x, w, h, 0.06, 4000); });
+    const parquet = (a, b) => canvas(256, 256, (x, w, h) => { for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { const c = new THREE.Color((i + j) % 2 ? a : b).offsetHSL(0, 0, (rnd() - 0.5) * 0.05); x.fillStyle = '#' + c.getHexString(); x.fillRect(i * 32, j * 32, 32, 32); x.strokeStyle = 'rgba(0,0,0,.25)'; for (let k = 1; k < 4; k++) { x.beginPath(); if ((i + j) % 2) { x.moveTo(i * 32 + k * 8, j * 32); x.lineTo(i * 32 + k * 8, j * 32 + 32); } else { x.moveTo(i * 32, j * 32 + k * 8); x.lineTo(i * 32 + 32, j * 32 + k * 8); } x.stroke(); } } });
+    const D = {
+      paris: { floor: parquet('#8a5a30', '#7a4c26'), wall: PAINT.panel('#ece2cc', '#f4ecd8'), ceil: PAINT.coffer('#f4ecd8', '#e0d0b0'), felt: 0x4a1f4f, curtain: 0x7a0f1c, view: VIEW.city({ landmark: LANDMARK.eiffel, towers: 12, tall: 0.25, sky2: '#4a3060' }), view2: VIEW.rooftops({}), mould: 'gold', fix: 'crystal', arch: true, mirrors: true, rug: '#6a1a2a' },
+      monaco: { floor: PAINT.marble('#efe8dc', '#b8a890'), wall: PAINT.damask('#e8dcc0', '#f4ead4'), ceil: fresco('#9ac0e0', '#c8a050'), felt: 0x0f3d2e, curtain: 0x1f3a2a, view: VIEW.ocean({ yachts: true, sky2: '#ff8a5a' }), mould: 'gold', fix: 'crystal', cols: 'gold', arch: true, palms: true, rug: '#1f3a2a' },
+      macau: { floor: PAINT.carpet('#4f130d', '#6b1a12', '#e8b030', 'scroll'), wall: PAINT.damask('#6b1a12', '#7a2418'), ceil: PAINT.coffer('#7a1a10', '#c8a050'), felt: 0x6b1a12, curtain: 0xc8a050, view: VIEW.city({ landmark: LANDMARK.lisboa, water: true, tall: 0.7, lights: ['#ffd84d', '#ff5a3a', '#ff3ad8', '#ffffff'] }), mould: 'gold', fix: 'lantern', cols: 'red', chand: 0xffd070 },
+      vegasvip: { floor: PAINT.carpet('#14161c', '#1e222a', '#c8a050', 'diamond'), wall: PAINT.panel('#14161a', '#1c1e24'), ceil: PAINT.plain('#0c0c10'), felt: 0x22262e, curtain: 0x111111, view: VIEW.city({ landmark: LANDMARK.strip, tall: 0.6, sky2: '#6a2a8a' }), wide: true, fix: 'linear', cove: 0xc8a050, sofa: 0x1a1a1a },
+      bayou: { floor: PAINT.wood('#5a3418', '#4a2a12', 22), wall: PAINT.brick('#8a4a3a', '#4a3a34'), ceil: PAINT.wood('#3a2416', '#2e1c10', 30), felt: 0x155e75, curtain: 0x2a4a3a, view: VIEW.rooftops({}), fix: 'fans', gas: true, iron: true, piano: true },
+      london: { floor: PAINT.carpet('#1a2a1a', '#24381e', '#c8a050', 'diamond'), wall: PAINT.panel('#2a1a10', '#3a2416'), ceil: PAINT.coffer('#3a2416', '#24160c'), felt: 0x1a3a2a, curtain: 0x2a3a2a, view: VIEW.rooftops({ clock: true }), fix: 'crystal', chand: 0xffc890, books: true, fire: true, portraits: true, sofa: 0x5a1a12 },
+      vienna: { floor: parquet('#9a6a3a', '#8a5a30'), wall: PAINT.damask('#f4f0e8', '#e8e0d4'), ceil: PAINT.coffer('#f8f4ec', '#e8d8b0'), felt: 0x4a1f4f, curtain: 0xc8a050, view: VIEW.rooftops({ spires: true }), mould: 'gold', fix: 'crystal', arch: true, mirrors: true, big: true, rug: '#4a1f4f' },
+      singapore: { floor: PAINT.marble('#e8e4dc', '#a8a49c'), wall: PAINT.panel('#5a4430', '#6a5038'), ceil: PAINT.wood('#6a5038', '#5a4430', 40), felt: 0x0e4a4a, curtain: 0x14303a, view: VIEW.city({ landmark: LANDMARK.marina, water: true, tall: 0.6 }), wide: true, fix: 'pendants', orchids: true },
+      nassau: { floor: PAINT.tile('#efe8d8', '#d8ccb0', 8), wall: PAINT.beadboard('#f4f0e6'), ceil: PAINT.beadboard('#f8f4ec'), felt: 0x1a6a8a, curtain: 0x2a8a9a, view: VIEW.ocean({ palms: true, sky2: '#ff9a5a' }), fix: 'fans', shutters: true, palms: true, rattan: true },
+      prague: { floor: parquet('#6a3a1a', '#5a2e14'), wall: PAINT.damask('#3a1424', '#4a1a2e'), ceil: fresco('#c8a888', '#c8a050'), felt: 0x4a1f4f, curtain: 0x6a1a2a, view: VIEW.rooftops({ spires: true }), mould: 'gold', fix: 'candle', arch: true, portraits: true },
+      malta: { floor: PAINT.tile('#d8c4a0', '#c0aa84', 8), wall: PAINT.stucco('#e0c898'), ceil: PAINT.stucco('#e8d4a8'), felt: 0x0f3d2e, curtain: 0x2a4a6a, view: VIEW.ocean({ yachts: true, sky1: '#5a3a6a', sky2: '#ffb06a' }), fix: 'ironlamp', arches: true, palms: true }
+    }[T];
+    const r = room(g, { w: 16, d: 12, h: 5, floor: D.floor, wall: D.wall, ceil: D.ceil, trim: D.mould === 'gold' ? 0xc8a050 : 0x2a1a10, cornice: D.mould === 'gold' ? 0xd8b868 : 0x2a1a10, fillI: 0.9, floorRough: T === 'monaco' || T === 'singapore' ? 0.2 : 0.6 });
+    const B = r.back, felt = o.felt || D.felt, gold = M({ color: 0xc8a050, metalness: 0.95, roughness: 0.25, envMapIntensity: 1.2 });
+    const frameC = D.mould === 'gold' ? 0xc8a050 : T === 'vegasvip' ? 0x0a0a0c : T === 'nassau' ? 0xf4f0e6 : T === 'singapore' ? 0x2a2a2a : 0x2a1a10;
+    // the windows: one great one in the middle, a tall one each side (floor to ceiling where it's modern)
+    if (D.wide) { windowOn(g, D.view, 0, 2.5, B + 0.02, 14, 4.6, 0, frameC); for (let i = -3; i <= 3; i++) box(g, 0.06, 4.6, 0.08, M({ color: frameC, metalness: 0.6, roughness: 0.3 }), i * 2, 2.5, B + 0.06); }
+    else {
+      windowOn(g, D.view, 0, 2.4, B + 0.02, 4, 3.2, 0, frameC); windowOn(g, D.view2 || D.view, -5, 2.4, B + 0.02, 2.2, 3.2, 0, frameC); windowOn(g, D.view2 || D.view, 5, 2.4, B + 0.02, 2.2, 3.2, 0, frameC);
+      if (D.arch) for (const [x, w] of [[0, 4], [-5, 2.2], [5, 2.2]]) { const ar = new THREE.Mesh(new THREE.TorusGeometry(w / 2 + 0.05, 0.07, 8, 32, Math.PI), M({ color: frameC, metalness: D.mould === 'gold' ? 0.8 : 0, roughness: 0.35 })); ar.position.set(x, 4.0, B + 0.05); ar.scale.y = 0.45; g.add(ar); const fan = new THREE.Mesh(new THREE.CircleGeometry(w / 2, 32, 0, Math.PI), new THREE.MeshBasicMaterial({ map: tex(D.view2 || D.view) })); fan.position.set(x, 4.0, B + 0.02); fan.scale.y = 0.45; g.add(fan); }
+      curtain(g, -2.4, 2.6, B + 0.06, 0.6, 4.4, D.curtain); curtain(g, 2.4, 2.6, B + 0.06, 0.6, 4.4, D.curtain);
+      if (D.shutters) for (const x of [-6.4, -3.6, 3.6, 6.4]) { const sh = canvas(64, 256, (cx, w, h) => { cx.fillStyle = '#f4f0e6'; cx.fillRect(0, 0, w, h); for (let i = 6; i < h; i += 8) { cx.fillStyle = 'rgba(0,0,0,.16)'; cx.fillRect(4, i, w - 8, 3); } cx.strokeStyle = 'rgba(0,0,0,.2)'; cx.strokeRect(2, 2, w - 4, h - 4); }); plane(g, 0.6, 3.2, M({ map: tex(sh), roughness: 0.6 }), x, 2.4, B + 0.05); }
+    }
+    // the walls: gilt mouldings, mirrors, portraits, bookcases, iron, columns
+    if (D.mould === 'gold') for (const s of [-1, 1]) { const wp = new THREE.Group(); wp.position.set(s * 7.98, 0, -3.5); wp.rotation.y = -s * Math.PI / 2; g.add(wp); wallPanels(wp, -5, 5, 0, 1.3, 4.3, gold, 4); wallPanels(wp, -5, 5, 0, 0.2, 1.0, gold, 6); }
+    if (D.mirrors) for (const s of [-1, 1]) mirrorAt(g, s * 7.95, 2.8, -3.5, 1.6, 2.4, -s * Math.PI / 2, 0xc8a050);
+    if (D.portraits) for (const s of [-1, 1]) for (const z of [-1.6, -5.6]) photo(g, s * 7.95, 2.6, z, 1.0, 1.3, -s * Math.PI / 2, 'portrait', 0xb08a40);
+    if (D.books) for (const s of [-1, 1]) for (const z of [-2.0, -5.2]) shelves(g, s * 7.75, z, 2.6, 3.4, -s * Math.PI / 2);
+    if (D.fire) { fireplace(g, 7.6, -7.0, -Math.PI / 2); }
+    if (D.cols) for (const s of [-1, 1]) for (const z of [-0.6, -6.4]) column(g, s * 7.2, z, 5, D.cols === 'gold' ? M({ map: tex(PAINT.marble('#f4ecdc', '#c8b090'), 1, 2), roughness: 0.15 }) : M({ color: 0x8a1410, roughness: 0.25, envMapIntensity: 0.8 }), gold);
+    if (D.arches) for (const s of [-1, 1]) for (const z of [-1.5, -5.5]) { const ar = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.18, 8, 24, Math.PI), M({ map: tex(PAINT.stucco('#d4b888'), 1, 1), roughness: 0.9 })); ar.position.set(s * 7.9, 3.2, z); ar.rotation.y = Math.PI / 2; g.add(ar); for (const t of [-1, 1]) box(g, 0.4, 3.2, 0.36, M({ map: tex(PAINT.stucco('#d4b888'), 1, 2), roughness: 0.9 }), s * 7.85, 1.6, z + t * 1.4); }
+    if (D.gas) for (const s of [-1, 1]) for (const z of [-2.0, -5.5]) { const gl = new THREE.Group(); gl.position.set(s * 7.85, 2.4, z); g.add(gl); const ir = M({ color: 0x1a1a1a, metalness: 0.6 }); box(gl, 0.04, 0.04, 0.3, ir, -s * 0.1, 0, 0, Math.PI / 2); cyl(gl, 0.12, 0.08, 0.32, M({ color: 0xfff0d0, emissive: 0xffa040, emissiveIntensity: 1.4, transparent: true, opacity: 0.85 }), -s * 0.25, 0.1, 0, 6); cyl(gl, 0.14, 0.02, 0.1, ir, -s * 0.25, 0.3, 0, 6); light(gl, 0xffa050, 0.8, -s * 0.3, 0.1, 0, 3.5); }
+    if (D.iron) { const ir = M({ color: 0x141414, metalness: 0.6, roughness: 0.5 }); box(g, 4.2, 0.05, 0.05, ir, 0, 1.6, B + 0.25); for (let i = 0; i < 28; i++) { cyl(g, 0.01, 0.01, 0.8, ir, -2.05 + i * 0.152, 1.2, B + 0.25, 4); if (i % 4 === 0) { const sc = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.01, 4, 16), ir); sc.position.set(-2.05 + i * 0.152 + 0.076, 1.45, B + 0.25); g.add(sc); } } }
+    if (D.piano) { pianoUpright(g, -6.6, -8.6, 0.5, 0x1a0e08); const tp = new THREE.Group(); tp.position.set(-7.95, 2.6, -5.0); tp.rotation.y = Math.PI / 2; g.add(tp); const br2 = M({ color: 0xd8b050, metalness: 0.95, roughness: 0.2 }); cyl(tp, 0.012, 0.012, 0.55, br2, 0, 0, 0, 8).rotation.z = Math.PI / 2; cyl(tp, 0.012, 0.09, 0.2, br2, 0.36, 0, 0, 16).rotation.z = -Math.PI / 2; }
+    // a rug under the tables, sofas, plants, orchids, rattan
+    if (D.rug) rugAt(g, 0, -4.4, 12, 5.8, canvas(512, 256, (x, w, h) => { x.fillStyle = D.rug; x.fillRect(0, 0, w, h); x.strokeStyle = '#c8a050'; x.lineWidth = 6; x.strokeRect(10, 10, w - 20, h - 20); x.lineWidth = 2; x.strokeRect(22, 22, w - 44, h - 44); for (let i = 0; i < 6; i++) { x.strokeStyle = 'rgba(200,160,80,.5)'; x.beginPath(); x.ellipse(w / 2, h / 2, 40 + i * 30, 20 + i * 14, 0, 0, 7); x.stroke(); } noise(x, w, h, 0.08, 4000); }));
+    if (D.sofa) for (const s of [-1, 1]) sofa(g, s * 6.6, -1.4, -s * Math.PI / 2, D.sofa, 2.0);
+    if (D.palms) { plant(g, -7.2, -1.2, 1.5, true); plant(g, 7.2, -1.2, 1.5, true); }
+    if (D.orchids) for (const [x, z] of [[-6.8, -1.2], [6.8, -1.2], [-6.8, -8.6], [6.8, -8.6]]) { cyl(g, 0.16, 0.12, 0.5, M({ color: 0xf4f0e8, roughness: 0.2 }), x, 0.25, z, 16); for (let k = 0; k < 3; k++) { seg(g, [x, 0.5, z], [x + (k - 1) * 0.15, 1.2, z + 0.1], 0.008, 0.006, M({ color: 0x3a5a2a })); for (let f = 0; f < 4; f++) sph(g, 0.04, M({ color: pick([0xf4e8f4, 0xe8a8d8, 0xf8f4f8]), roughness: 0.5 }), x + (k - 1) * 0.15 + f * 0.04, 1.2 - f * 0.06, z + 0.12, 8); } }
+    if (D.rattan) for (const s of [-1, 1]) { const rc = new THREE.Group(); rc.position.set(s * 6.8, 0, -7.4); rc.rotation.y = -s * 0.6; g.add(rc); const rt = M({ map: tex(PAINT.wallpaper('#c89a5a', '#8a6a3a', 'diamond'), 2, 2), roughness: 0.8 }); rbox(rc, 0.9, 0.45, 0.8, 0.08, rt, 0, 0.3, 0); rbox(rc, 0.9, 0.7, 0.12, 0.06, rt, 0, 0.75, -0.36); rbox(rc, 0.8, 0.12, 0.7, 0.05, cloth(0xf4f0e6), 0, 0.58, 0.03); }
+    if (D.cove) { box(g, 15.6, 0.04, 0.04, glow(D.cove, 2.2), 0, 4.85, B + 0.3); for (const s of [-1, 1]) box(g, 0.04, 0.04, 11, glow(D.cove, 2.2), s * 7.8, 4.85, -3.5); }
+    // the lights: chandeliers, lanterns, fans, banker's lamps, candles, pendants
+    const hang = (x, z, s) => {
+      if (D.fix === 'crystal') chandelier(g, x, 4.25, z, (D.big ? 1.6 : 1.3) * s, D.chand);
+      else if (D.fix === 'lantern') { lantern(g, x, 3.7, z, 0xff2a1a); for (let k = -1; k <= 1; k += 2) lantern(g, x + k * 1.2, 3.9, z + 0.6, 0xff3a1a); }
+      else if (D.fix === 'fans') { const f = new THREE.Group(); f.position.set(x, 4.5, z); g.add(f); const wd2 = M({ color: T === 'nassau' ? 0xc89a5a : 0x3a2414, roughness: 0.5 }); cyl(f, 0.14, 0.12, 0.18, gold, 0, 0, 0, 16); cyl(f, 0.015, 0.015, 0.5, gold, 0, 0.3, 0, 6); for (let i = 0; i < 5; i++) { const bl = box(f, 0.8, 0.012, 0.16, wd2, 0, -0.05, 0); bl.geometry.translate(0.48, 0, 0); bl.rotation.y = i / 5 * Math.PI * 2 + 0.3; } const gl2 = sph(f, 0.13, M({ color: 0xfff4e0, emissive: 0xffe0b0, emissiveIntensity: 1.2 }), 0, -0.16, 0, 14); gl2.scale.y = 0.7; }
+      else if (D.fix === 'banker') { for (const k of [-1, 1]) { const bx = x + k * 0.7; cyl(g, 0.006, 0.006, 1.6, gold, bx, 4.2, z, 4); const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6, 16, 1, true, 0, Math.PI), M({ color: 0x1a5a2a, emissive: 0x1a5a2a, emissiveIntensity: 0.4, side: THREE.DoubleSide, roughness: 0.2 })); sh.rotation.z = Math.PI / 2; sh.position.set(bx, 3.4, z); g.add(sh); sph(g, 0.05, glow(0xffe8c0, 3), bx, 3.36, z, 8); } }
+      else if (D.fix === 'candle') { const c = new THREE.Group(); c.position.set(x, 3.9, z); g.add(c); const ir = M({ color: 0x2a2a2a, metalness: 0.5 }); for (const rr of [0.8, 0.5]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.025, 6, 40), gold); ring.rotation.x = Math.PI / 2; ring.position.y = rr === 0.8 ? 0 : 0.35; c.add(ring); for (let i = 0; i < (rr === 0.8 ? 12 : 8); i++) { const a = i / (rr === 0.8 ? 12 : 8) * Math.PI * 2; cyl(c, 0.018, 0.018, 0.14, M({ color: 0xf4ecd8 }), Math.cos(a) * rr, (rr === 0.8 ? 0 : 0.35) + 0.08, Math.sin(a) * rr, 8); sph(c, 0.018, glow(0xffb050, 4), Math.cos(a) * rr, (rr === 0.8 ? 0 : 0.35) + 0.17, Math.sin(a) * rr, 6); } } cyl(c, 0.01, 0.01, 1.2, ir, 0, 0.9, 0, 4); light(c, 0xffb860, 3.5, 0, 0.1, 0, 8); }
+      else if (D.fix === 'ironlamp') { const ir = M({ color: 0x1a1a1a, metalness: 0.6 }); cyl(g, 0.008, 0.008, 1.3, ir, x, 4.35, z, 4); const lb = cyl(g, 0.24, 0.16, 0.42, M({ color: 0xfff0d0, emissive: 0xffb060, emissiveIntensity: 1.2, transparent: true, opacity: 0.85 }), x, 3.5, z, 8); cyl(g, 0.3, 0.05, 0.16, ir, x, 3.78, z, 8); for (let k = 0; k < 8; k++) cyl(g, 0.01, 0.01, 0.44, ir, x + Math.cos(k * 0.785) * 0.2, 3.5, z + Math.sin(k * 0.785) * 0.2, 4); light(g, 0xffb060, 2, x, 3.4, z, 7); }
+      else if (D.fix === 'pendants') { for (let k = -2; k <= 2; k++) { const px = x + k * 0.45; cyl(g, 0.004, 0.004, 1.4 + (k % 2) * 0.3, M({ color: 0x1a1a1a }), px, 4.3, z, 4); const gb = sph(g, 0.12, M({ color: 0xc8a050, metalness: 0.9, roughness: 0.2, emissive: 0xffc070, emissiveIntensity: 0.3 }), px, 3.55 - (k % 2) * 0.3, z, 16); sph(g, 0.06, glow(0xffe0b0, 3), px, 3.46 - (k % 2) * 0.3, z, 8); } }
+      else if (D.fix === 'linear') { const fm = M({ color: 0x0c0c0e, metalness: 0.7, roughness: 0.25 }); rbox(g, 2.6, 0.08, 0.12, 0.02, fm, x, 3.6, z); box(g, 2.5, 0.02, 0.06, glow(0xfff0d8, 3), x, 3.55, z); for (const k of [-1, 1]) cyl(g, 0.004, 0.004, 1.4, fm, x + k * 1.2, 4.3, z, 4); }
+    };
+    hang(-3, -5, 1); hang(3, -5, 1); hang(0, -1.6, 0.8);
+    // the tables
+    pokerTable(g, -3, -5, { felt, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, full: 0.9, ceil: 4.2 }); pokerTable(g, 3, -5, { felt, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, full: 0.9, ceil: 4.2 });
+    pokerTable(g, 1.6, -2, { mine: true, felt, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: 4.2 });
+    // a waiter with a tray, a guard at the door
+    if (STAGE !== 'final') { stander(g, -5.8, -3.0, 0.6, { look: 'smart', arms: 'down', lod: 1 }); stander(g, 6.6, -9.0, -0.4, { look: 'smart', arms: 'crossed', lod: 1 }); }
+    return { exposure: T === 'vegasvip' ? 1.05 : 1.0 };
   },
   lodge(g, o) {
     const r = room(g, { w: 14, d: 10, h: 4.2, floor: PAINT.wood('#6a4020', '#4a2a14', 30), wall: PAINT.wood('#7a5030', '#5a3a20', 36), ceil: PAINT.wood('#5a3a20', '#3a2410', 50) });
@@ -1860,27 +1915,27 @@ const PLACES = {
   boardwalk: ['casino', { theme: 'boardwalk' }],
   chicago: ['casino', { theme: 'chicago' }],
   tahoe: ['casino', { theme: 'tahoe' }], aspen: ['lodge', { snow: true }],
-  paris: ['salon', { view: VIEW.city({ landmark: LANDMARK.eiffel, towers: 12, tall: 0.25, sky2: '#4a3060' }), view2: VIEW.rooftops({}), felt: 0x4a1f4f, curtain: 0x36163a }],
-  monaco: ['salon', { view: VIEW.ocean({ yachts: true, sky2: '#ff8a5a' }), felt: 0x0f3d2e, palms: true }],
-  macau: ['salon', { view: VIEW.city({ landmark: LANDMARK.lisboa, water: true, tall: 0.7, lights: ['#ffd84d', '#ff5a3a', '#ff3ad8', '#ffffff'] }), wall: PAINT.damask('#6b1a12', '#7a2418'), floor: PAINT.carpet('#4f130d', '#6b1a12', '#e8b030'), felt: 0x6b1a12, curtain: 0xc8a050, lanterns: true, chand: 0xffd070 }],
-  vegasvip: ['salon', { view: VIEW.city({ landmark: LANDMARK.strip, tall: 0.6, sky2: '#6a2a8a' }), wall: PAINT.panel('#1a1c22', '#24262e'), floor: PAINT.carpet('#181b21', '#22262e', '#c8a050'), felt: 0x22262e, curtain: 0x111111 }],
+  paris: ['salon', { theme: 'paris' }],
+  monaco: ['salon', { theme: 'monaco' }],
+  macau: ['salon', { theme: 'macau' }],
+  vegasvip: ['salon', { theme: 'vegasvip' }],
   mainevent: ['ballroom', {}], omahachamp: ['ballroom', { title: 'OMAHA WORLD CHAMPIONSHIP', banner: 'OMAHA CHAMPIONSHIP', bannerBg: '#1c133e', screen: ['#3b2a7a', '#100a2a'], felt: 0x3b2a7a, carpet: '#1c133e', carpet2: '#2a1d5a' }],
   playerschamp: ['ballroom', { title: 'PLAYERS\' CHAMPIONSHIP', banner: 'PLAYERS\' CHAMPIONSHIP', bannerBg: '#0f3d2e', screen: ['#0f3d2e', '#04140e'], felt: 0x0f3d2e, carpet: '#0a2a1e', carpet2: '#0f3d2e' }],
-  bayou: ['salon', { view: VIEW.rooftops({}), wall: PAINT.brick('#8a4a3a', '#4a3a34'), floor: PAINT.wood('#4a2a14', '#3a1e0c', 22), felt: 0x155e75, curtain: 0x2a4a3a, chand: 0xffc070 }],
+  bayou: ['salon', { theme: 'bayou' }],
   minetown: ['saloon', { view: VIEW.mountains({ pines: true, sky0: '#081020', sky1: '#30406a' }) }], deadwood: ['saloon'],
   pinewood: ['casino', { theme: 'pinewood' }],
   twincities: ['casino', { theme: 'twincities' }],
   palmsprings: ['casino', { theme: 'palmsprings' }],
-  london: ['salon', { view: VIEW.rooftops({ clock: true }), wall: PAINT.panel('#2a1a10', '#3a2416'), floor: PAINT.carpet('#1a2a1a', '#2a3a2a', '#c8a050'), felt: 0x1a3a2a, curtain: 0x2a3a2a }],
-  vienna: ['salon', { view: VIEW.rooftops({ spires: true }), wall: PAINT.damask('#f4f0e8', '#e8e0d4'), felt: 0x4a1f4f, curtain: 0xc8a050 }],
-  singapore: ['salon', { view: VIEW.city({ landmark: LANDMARK.marina, water: true, tall: 0.6 }), wall: PAINT.panel('#1a2a2a', '#223434'), floor: PAINT.carpet('#0e2a2a', '#143a3a', '#c8a050'), felt: 0x0e4a4a, curtain: 0x14303a }],
-  nassau: ['salon', { view: VIEW.ocean({ palms: true, sky2: '#ff9a5a' }), wall: PAINT.stripe('#f4ece0', '#e8dcc8'), floor: PAINT.tile('#e8dcc8', '#c8b8a0', 8), felt: 0x1a6a8a, palms: true, curtain: 0x2a8a9a }],
+  london: ['salon', { theme: 'london' }],
+  vienna: ['salon', { theme: 'vienna' }],
+  singapore: ['salon', { theme: 'singapore' }],
+  nassau: ['salon', { theme: 'nassau' }],
   tunica: ['riverboat', { felt: 0x155e75 }],
   miami: ['casino', { theme: 'miami' }],
   seattle: ['casino', { theme: 'seattle' }],
   sedona: ['lodge', { view: VIEW.desert({ rock: '#8a3a1c' }) }],
-  prague: ['salon', { view: VIEW.rooftops({ spires: true }), wall: PAINT.damask('#3a1424', '#4a1a2e'), felt: 0x4a1f4f, curtain: 0x6a1a2a }],
-  malta: ['salon', { view: VIEW.ocean({ yachts: true, sky1: '#5a3a6a', sky2: '#ffb06a' }), wall: PAINT.plain('#e8d4b0'), floor: PAINT.tile('#d8c4a0', '#c0aa84', 8), felt: 0x0f3d2e, palms: true, curtain: 0x2a4a6a }],
+  prague: ['salon', { theme: 'prague' }],
+  malta: ['salon', { theme: 'malta' }],
   seoul: ['casino', { theme: 'seoul' }],
   cruise: ['cruise'], series: ['expo', {}], seriesspring: ['expo', { banner: 'SPRING SERIES', bannerBg: '#1f6b45', carpet: '#2a1a3a', carpet2: '#3a2a4a' }], seriesfall: ['expo', { banner: 'FALL SERIES', bannerBg: '#c0561e', carpet: '#3a1a10', carpet2: '#4a2414' }]
 };
