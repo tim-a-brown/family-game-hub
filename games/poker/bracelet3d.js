@@ -157,13 +157,13 @@ function plateFace(o) {
   engrave(ctx => arcText(ctx, (o.venue || 'World Championship').toUpperCase(), cx, cy, tr[0], tr[1], true, 84, 0.68, 0.16));
   engrave(ctx => arcText(ctx, ((o.style || 'Champion') + ' · ' + (o.year || new Date().getFullYear())).toUpperCase(), cx, cy, tr[0], tr[1], false, 56, 0.52, 0.2));
   // the emblem with its laurels
-  const ey = cy - FH * 0.1, er = FH * 0.158;
+  const ey = cy - FH * 0.115, er = FH * 0.158;
   raise(ctx => { emblem(ctx, o.mark, cx, ey, er); laurel(ctx, cx, ey, er, 1); laurel(ctx, cx, ey, er, -1); });
   // the winner: portrait and name, side by side under the emblem
   const name = String(o.name || 'Champion');
-  c.font = '700 84px Georgia, "Times New Roman", serif';
-  let nf = 84; while (c.measureText(name).width > FW * 0.44 && nf > 36) { nf -= 2; c.font = '700 ' + nf + 'px Georgia, "Times New Roman", serif'; }
-  const nw = c.measureText(name).width, ar = FH * 0.085, gap = 26, rowW = ar * 2 + gap + nw, ay = cy + FH * 0.185, ax = cx - rowW / 2 + ar;
+  c.font = '700 76px Georgia, "Times New Roman", serif';
+  let nf = 76; while (c.measureText(name).width > FW * 0.44 && nf > 36) { nf -= 2; c.font = '700 ' + nf + 'px Georgia, "Times New Roman", serif'; }
+  const nw = c.measureText(name).width, ar = FH * 0.068, gap = 22, rowW = ar * 2 + gap + nw, ay = cy + FH * 0.197, ax = cx - rowW / 2 + ar;
   engrave(ctx => { ctx.font = '700 ' + nf + 'px Georgia, "Times New Roman", serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(name, ax + ar + gap, ay + 3); });
   // the cameo's frame, recessed, with the portrait standing up inside it
   c.lineWidth = 6; c.strokeStyle = '#6b4507'; ellipse(c, ax, ay, ar + 6, ar + 6); c.stroke();
