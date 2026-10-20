@@ -4,6 +4,7 @@
 // under it, the event and year round the bottom. Studio light reflects off the gold; the stones flash as the piece
 // turns, and it follows the device's tilt (or your finger / pointer). Loaded on demand by poker.html:
 //   window.Bracelet3D(host, {venue, style, year, mark, name, avatar, rain}) -> {dispose(), askMotion()}   (null: no WebGL)
+//   ring: true for the Summer Series ring instead (silver, a coloured stone: gem '#rrggbb'; venue = the event).
 //   Behind it, stacks of banded $100 bills on the velvet; rain: true (a win) and bills rain down too.
 //   mark: the event's emblem ('spade' | 'cards' | 'suits'); avatar: {photo: dataURL} | {svg: '<svg…>'} | null
 import * as THREE from 'three';
@@ -399,6 +400,116 @@ function cashScene(scene, opts) {
   };
 }
 
+// ── The Summer Series champion's ring: silver, a round crown set with a coloured stone in a halo of diamonds, the
+// event and the winner's name round the crown, CHAMPION and the year on one shank, the series on the other ─────────────────────
+const RG = { r0: 0.48, r1: 0.6, w: 0.34 };     // the band: inside and outside radius, width
+const CROWN = { r: 0.34, d: 0.2 };            // the round top
+const CROWN_Z = RG.r1 + CROWN.d / 2 - 0.05;   // its centre, out from the finger
+const RING_FRONT = CROWN_Z + CROWN.d / 2;
+// letters round a circle: centred on angle a (radians, canvas: 0 = right, π/2 = down); bottom: read along the bottom
+function circText(ctx, text, cx, cy, r, a, size, spacing, bottom, maxSpan) {
+  let f = size, ws, tot;
+  do {
+    ctx.font = '700 ' + f + 'px Georgia, "Times New Roman", serif';
+    ws = Array.from(text).map(ch => ctx.measureText(ch).width + f * spacing);
+    tot = ws.reduce((x, y) => x + y, 0) - f * spacing;
+    if (tot / r <= maxSpan) break; f -= 2;
+  } while (f > 16);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  let s = -tot / 2;
+  Array.from(text).forEach((ch, k) => {
+    const mid = s + (ws[k] - f * spacing) / 2, ang = bottom ? a - mid / r : a + mid / r;
+    ctx.save(); ctx.translate(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r); ctx.rotate(bottom ? ang - Math.PI / 2 : ang + Math.PI / 2); ctx.fillText(ch, 0, 0); ctx.restore();
+    s += ws[k];
+  });
+}
+function silverCanvas(W, H) {
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#f4f6f8'); g.addColorStop(0.45, '#c9ced6'); g.addColorStop(0.7, '#9aa1ab'); g.addColorStop(1, '#e8ebef');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  for (let i = 0; i < H; i += 3) { x.fillStyle = 'rgba(255,255,255,' + Math.random() * 0.07 + ')'; x.fillRect(0, i, W, 1); }
+  const b = document.createElement('canvas'); b.width = W; b.height = H; const y = b.getContext('2d'); y.fillStyle = '#808080'; y.fillRect(0, 0, W, H);
+  return [c, x, b, y];
+}
+// the crown's face: a sunburst under the stone, the event round the top, the winner's name round the bottom
+function crownFace(o) {
+  const N = 1024, [c, x, b, y] = silverCanvas(N, N), C = N / 2, cut = (ctx, col, draw) => { ctx.fillStyle = col; draw(ctx); };
+  // the rim and a recessed ring for the words
+  [[x, 'rgba(60,66,76,.35)'], [y, '#5c5c5c']].forEach(([ctx, col]) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(C, C, N * 0.47, 0, 7); ctx.arc(C, C, N * 0.33, 0, 7, true); ctx.fill(); });
+  // a sunburst behind the stone
+  for (let k = 0; k < 48; k++) { const a = k / 48 * Math.PI * 2; [[x, k % 2 ? 'rgba(255,255,255,.35)' : 'rgba(70,76,88,.35)'], [y, k % 2 ? '#a8a8a8' : '#6a6a6a']].forEach(([ctx, col]) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(C, C); ctx.arc(C, C, N * 0.31, a, a + Math.PI / 48); ctx.fill(); }); }
+  const words = (ctx, col, dy) => {
+    ctx.fillStyle = col; ctx.save(); ctx.translate(0, dy);
+    circText(ctx, String(o.venue || 'Summer Series').toUpperCase(), C, C, N * 0.4, -Math.PI / 2, 70, 0.14, false, 2.6);
+    circText(ctx, String(o.name || 'Champion').toUpperCase(), C, C, N * 0.4, Math.PI / 2, 62, 0.16, true, 2.3);
+    ctx.restore();
+  };
+  words(x, 'rgba(255,255,255,.7)', 3); words(x, '#2c3138', 0); words(y, '#262626', 0);
+  // stars either side
+  [-1, 1].forEach(sd => [[x, '#3a4049'], [y, '#2a2a2a']].forEach(([ctx, col]) => {
+    ctx.fillStyle = col; ctx.beginPath(); const sx = C + sd * N * 0.4, sy = C;
+    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? 9 : 22; ctx.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr); }
+    ctx.closePath(); ctx.fill();
+  }));
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return [t, new THREE.CanvasTexture(b)];
+}
+// a shank's side: words round the band above and below the crown. front: which way the crown is in the picture
+function shankFace(top, bottom, front) {
+  const N = 1024, [c, x, b, y] = silverCanvas(N, N), C = N / 2, r = (RG.r0 + RG.r1) / 2 / RG.r1 * C;
+  // the crown is at the right of the picture (front 1) or the left (-1): the words sit just above and below it
+  const up = front > 0 ? -Math.PI * 0.36 : -Math.PI * 0.64, dn = front > 0 ? Math.PI * 0.36 : Math.PI * 0.64;
+  const words = (ctx, col, dy) => {
+    ctx.fillStyle = col; ctx.save(); ctx.translate(0, dy);
+    circText(ctx, top.toUpperCase(), C, C, r, up, 64, 0.12, false, 1.05);
+    circText(ctx, bottom.toUpperCase(), C, C, r, dn, 64, 0.12, true, 1.05);
+    ctx.restore();
+  };
+  words(x, 'rgba(255,255,255,.7)', 3); words(x, '#2c3138', 0); words(y, '#222', 0);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return [t, new THREE.CanvasTexture(b)];
+}
+function buildRing(piece, o, diamond) {
+  const silver = new THREE.MeshPhysicalMaterial({ color: 0xdfe4ea, metalness: 1, roughness: 0.2, clearcoat: 0.4, clearcoatRoughness: 0.15, envMapIntensity: 1.05 });
+  // the band: a rounded-square profile turned round the finger (the finger runs left to right)
+  const pts = [], rr = 0.03, hw = RG.w / 2;
+  const corner = (cx, cy, a0) => { for (let k = 0; k <= 6; k++) { const a = a0 + k / 6 * Math.PI / 2; pts.push(new THREE.Vector2(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr)); } };
+  corner(RG.r0 + rr, -hw + rr, Math.PI); corner(RG.r1 - rr, -hw + rr, -Math.PI / 2); corner(RG.r1 - rr, hw - rr, 0); corner(RG.r0 + rr, hw - rr, Math.PI / 2);
+  pts.push(pts[0].clone());
+  const band = new THREE.LatheGeometry(pts, 160); band.rotateZ(Math.PI / 2);
+  piece.add(new THREE.Mesh(band, silver));
+  // the shanks' words: the winner's name on one side, the series and the year on the other
+  const side = (tex, sx) => {
+    const g = new THREE.RingGeometry(RG.r0 + 0.012, RG.r1 - 0.012, 160, 1);
+    const mt = new THREE.MeshPhysicalMaterial({ map: tex[0], bumpMap: tex[1], bumpScale: 2.4, metalness: 0.85, roughness: 0.25, envMapIntensity: 1.2 });
+    const m = new THREE.Mesh(g, mt); m.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2; m.position.x = sx * (hw + 0.002); piece.add(m);
+  };
+  side(shankFace('Champion', String(o.year || new Date().getFullYear()), 1), -1);
+  side(shankFace('Summer Series', String(o.venue || ''), -1), 1);
+  // the crown: a round top with a bevelled rim
+  const crown = new THREE.Mesh(new THREE.CylinderGeometry(CROWN.r, CROWN.r * 0.82, CROWN.d, 96, 1), silver);
+  crown.rotation.x = Math.PI / 2; crown.position.z = CROWN_Z; piece.add(crown);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(CROWN.r - 0.012, 0.022, 16, 120), silver); rim.position.z = RING_FRONT; piece.add(rim);
+  const [ft, fb] = crownFace(o);
+  const face = new THREE.Mesh(new THREE.CircleGeometry(CROWN.r - 0.03, 96), new THREE.MeshPhysicalMaterial({ map: ft, bumpMap: fb, bumpScale: 3, metalness: 0.8, roughness: 0.28, envMapIntensity: 1.2, emissive: 0xffffff, emissiveMap: ft, emissiveIntensity: 0.12 }));
+  face.position.z = RING_FRONT + 0.002; piece.add(face);
+  // the stone, its setting, and the halo of diamonds round it
+  const gem = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(o.gem || '#b3122e'), metalness: 0, roughness: 0.02, transmission: 0.55, thickness: 0.4, ior: 1.77, clearcoat: 1, envMapIntensity: 2.2, flatShading: true, attenuationColor: new THREE.Color(o.gem || '#b3122e'), attenuationDistance: 0.3 });
+  const center = new THREE.Mesh(stoneGeo(0.13), gem); center.position.z = RING_FRONT + 0.03; piece.add(center);
+  const setting = new THREE.Mesh(new THREE.TorusGeometry(0.135, 0.014, 12, 64), silver); setting.position.z = RING_FRONT + 0.02; piece.add(setting);
+  const HN = 22, halo = new THREE.InstancedMesh(stoneGeo(0.019), diamond, HN), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), one = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3();
+  for (let k = 0; k < HN; k++) { const a = k / HN * Math.PI * 2; p.set(Math.cos(a) * 0.178, Math.sin(a) * 0.178, RING_FRONT + 0.012); m4.compose(p, q, one); halo.setMatrixAt(k, m4); }
+  piece.add(halo);
+  // little diamonds down each side of the crown
+  const SN = 9, sides = new THREE.InstancedMesh(stoneGeo(0.016), diamond, SN * 2), up = new THREE.Vector3(0, 1, 0);
+  for (let k = 0; k < SN; k++) for (const sx of [-1, 1]) {
+    const a = (k - (SN - 1) / 2) * 0.13;   // round the band, centred on the crown
+    p.set(sx * (hw - 0.04), Math.sin(a) * (RG.r1 + 0.008), Math.cos(a) * (RG.r1 + 0.008));
+    q.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -a); m4.compose(p, q, one); sides.setMatrixAt(k * 2 + (sx > 0 ? 1 : 0), m4);
+  }
+  piece.add(sides);
+}
+
 window.Bracelet3D = function (host, opts) {
   if (!supported()) return null;
   opts = opts || {};
@@ -423,7 +534,7 @@ window.Bracelet3D = function (host, opts) {
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   const camera = new THREE.PerspectiveCamera(30, w / h, 0.1, 50);
   // close on the plate: it fills most of the height, with some band either side (further back on a narrow screen)
-  const front = RP + PD / 2 + BEV, tan = Math.tan(15 * Math.PI / 180), dist = Math.max(1.22 / (2 * tan), 1.75 / (2 * tan * (w / h)));
+  const front = opts.ring ? RING_FRONT : RP + PD / 2 + BEV, tan = Math.tan(15 * Math.PI / 180), dist = opts.ring ? Math.max(1.6 / (2 * tan), 1.6 / (2 * tan * (w / h))) : Math.max(1.22 / (2 * tan), 1.75 / (2 * tan * (w / h)));
   const camEnd = new THREE.Vector3(0, 0.12, front + dist), camStart = new THREE.Vector3(0, 1.1, front + dist + 2.4);
   camera.position.copy(camStart);
 
@@ -432,6 +543,8 @@ window.Bracelet3D = function (host, opts) {
   const stone = new THREE.MeshPhysicalMaterial({ color: 0xdfe9f5, metalness: 0.1, roughness: 0.02, ior: 2.4, reflectivity: 1, clearcoat: 1, envMapIntensity: 1.6, flatShading: true });
 
   const piece = new THREE.Group(); scene.add(piece);
+  if (opts.ring) buildRing(piece, opts, stone);
+  else {
   // the band: centre links (polished) between side links (brushed), each a little rounded block on the ring
   const centreGeo = new RoundedBoxGeometry(0.15, 0.2, 0.07, 3, 0.03);
   const sideGeo = new RoundedBoxGeometry(0.13, 0.09, 0.06, 2, 0.025);
@@ -473,6 +586,7 @@ window.Bracelet3D = function (host, opts) {
     if (big.indexOf(k) >= 0) seat(x, y, 0.016, kb++, corners); else seat(x, y, 0.01, ks++, stones);
   }
   plate.add(stones, corners);
+  }
 
   const cash = cashScene(scene, opts);
   // lights that move: they make the stones flash as the piece turns
@@ -492,17 +606,18 @@ window.Bracelet3D = function (host, opts) {
   window.addEventListener('deviceorientation', onTilt);
   window.addEventListener('pointermove', onMove);
   window.addEventListener('touchmove', onMove, { passive: true });
-  const t0 = performance.now(), look = new THREE.Vector3(0, -0.01, front - 0.3);
+  const t0 = performance.now(), look = opts.ring ? new THREE.Vector3(0, 0.16, 0.2) : new THREE.Vector3(0, -0.01, front - 0.3);
   function frame(now) {
     if (dead) return;
     if (!host.isConnected) return api.dispose();
     const tt = (now - t0) / 1000, idle = now - last > 2500;
-    const ax = idle ? Math.sin(tt * 0.45) * 0.45 : gx, ay = idle ? Math.sin(tt * 0.31) * 0.25 : gy;
+    const ax = idle ? Math.sin(tt * (opts.ring ? 0.32 : 0.45)) * (opts.ring ? 1 : 0.45) : gx, ay = idle ? Math.sin(tt * 0.31) * 0.25 : gy;
     tx += (ax - tx) * 0.08; ty += (ay - ty) * 0.08;
     // it comes out of the dark turning, and the camera moves in on the plate
     const intro = Math.min(1, tt / 1.8), ease = 1 - Math.pow(1 - intro, 3);
-    piece.rotation.y = tx * 0.42 + (1 - ease) * -2.6;
-    piece.rotation.x = 0.05 + ty * 0.16;
+    // (the ring turns further, so each shank's words come round in turn)
+    piece.rotation.y = tx * (opts.ring ? 0.85 : 0.42) + (1 - ease) * -2.6;
+    piece.rotation.x = (opts.ring ? 0.32 : 0.05) + ty * 0.16;
     piece.position.y = (1 - ease) * 0.6;
     camera.position.lerpVectors(camStart, camEnd, ease); camera.lookAt(look);
     glint.position.set(Math.sin(tt * 1.3 + tx * 3) * 2.2, 1.2 + Math.cos(tt * 0.9 + ty * 2) * 0.8, 2.6);
