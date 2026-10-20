@@ -3237,10 +3237,18 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // ── Where you're playing: a 3D picture of every place (poker/venue3d.js, rendered once and kept) ──
   var VPIC = {};
   // o: { view: 'room' (the wide shot) | 'seat' (from your chair), stage: 'busy' | 'thin' | 'final' }
+  // The finished picture of each place (rendered offline with real light and real people) lives in Firebase Storage;
+  // the 3D scene in the page is the fallback when it hasn't arrived
+  var VART = 'https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/venues%2F';
   function venueArt(key, o) {
     o = o || { view: 'room', stage: 'busy' };
     var k = key + '|' + o.view + '|' + o.stage;
-    if (!VPIC[k]) VPIC[k] = import('./poker/venue3d.js').then(function () { return window.VenueScene ? VenueScene.render(key, o) : null; }).catch(function () { return null; });
+    if (!VPIC[k]) VPIC[k] = new Promise(function (res) {
+      var url = VART + key + '-' + o.view + '-' + o.stage + '.jpg?alt=media', im = new Image();
+      im.onload = function () { res(url); };
+      im.onerror = function () { res(import('./poker/venue3d.js').then(function () { return window.VenueScene ? VenueScene.render(key, o) : null; }).catch(function () { return null; })); };
+      im.src = url;
+    });
     return VPIC[k];
   }
   function venuePic(ev, host) {

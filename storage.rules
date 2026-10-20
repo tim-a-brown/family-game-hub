@@ -13,6 +13,11 @@ service firebase.storage {
       allow get, delete: if lib.matches('^[0-9a-f]{32}$');
       allow create, update: if lib.matches('^[0-9a-f]{32}$') && request.resource.size < 40 * 1024 * 1024;
     }
+    // The poker circuit's room pictures (rendered offline, uploaded by scripts/upload-venue-art.js)
+    match /venues/{path=**} {
+      allow read: if true;
+      allow write: if false;
+    }
     // TURN logins for online games (they expire within a day; written by the turn-credentials Action)
     match /online/ice.js {
       allow read: if true;
