@@ -407,7 +407,7 @@ function pokerTable(g, x, z, o) {
   }
   g.add(t);
   const closed = !o.mine && (STAGE === 'final' || (STAGE === 'thin' && rnd() < 0.45));
-  const full = o.mine ? (STAGE === 'final' ? 1 : 0.85) : (o.full || 0.85) * occ() / 0.92;
+  const full = o.mine ? (STAGE === 'final' || TIER === 'local' ? 1 : 0.85) : (o.full || 0.85) * occ() / 0.92;
   const wood = M({ map: tex(PAINT.wood(o.wood || '#5a3418', o.wood2 || '#3a200c', 14), 2, 1), roughness: 0.35, envMapIntensity: 0.8 });
   const ap = new THREE.Mesh(new THREE.ExtrudeGeometry(ovalShape(rx + 0.22, rz + 0.22), { depth: 0.1, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2, curveSegments: 6 }), wood);
   ap.rotation.x = Math.PI / 2; ap.position.y = 0.76; t.add(ap);
@@ -1135,19 +1135,19 @@ const SCENES = {
       plane(L, 7, 2.6, M({ map: tex(PAINT.plain('#c8b898'), 3, 1), roughness: 0.9 }), -4.6, 1.3, -2.8, Math.PI / 2);
       plane(L, 4.6, 7, M({ color: 0xf0ebe0, roughness: 0.9 }), -2.3, 2.6, -2.8, 0, Math.PI / 2);
       rugAt(L, -2.3, -4.2, 2.6, 1.8, canvas(256, 160, (x, w, h) => { x.fillStyle = '#7a8a9a'; x.fillRect(0, 0, w, h); x.strokeStyle = '#e8e0d0'; x.lineWidth = 6; x.strokeRect(12, 12, w - 24, h - 24); for (let i = 0; i < 2000; i++) { x.fillStyle = 'rgba(0,0,0,' + rnd() * 0.08 + ')'; x.fillRect(rnd() * w, rnd() * h, 2, 2); } }));
-      sofa(L, -3.9, -4.4, Math.PI / 2, 0x5a6a5a, 2.2); for (let i = 0; i < 2; i++) { const pw = rbox(L, 0.4, 0.4, 0.14, 0.06, cloth(pick([0xc8a050, 0xe8e0d0, 0x8a3a2a]), 0.9), -3.75, 0.68, -4.9 + i * 1.0, Math.PI / 2 + (rnd() - 0.5) * 0.4); pw.rotation.z = 0.15; }
-      const throwB = rbox(L, 0.5, 0.05, 0.7, 0.03, cloth(0xb8a080, 0.95), -3.6, 0.52, -3.8, 0.3);
+      sofa(L, -1.5, -5.75, 0, 0x5a6a5a, 2.2); for (let i = 0; i < 2; i++) { const pw = rbox(L, 0.4, 0.4, 0.14, 0.06, cloth(pick([0xc8a050, 0xe8e0d0, 0x8a3a2a]), 0.9), -2.0 + i * 1.0, 0.68, -5.9, (rnd() - 0.5) * 0.4); pw.rotation.z = 0.15; }
+      const throwB = rbox(L, 0.7, 0.05, 0.5, 0.03, cloth(0xb8a080, 0.95), -0.9, 0.52, -5.5, 0.3);
+      rbox(L, 0.5, 0.55, 0.5, 0.02, M({ map: tex(PAINT.wood('#4a3020', '#3a2416', 10)), roughness: 0.5 }), -0.1, 0.275, -5.75); cyl(L, 0.09, 0.07, 0.3, M({ color: 0x2a4a6a, roughness: 0.3 }), -0.1, 0.7, -5.75, 16);
       // a floor lamp, on
-      cyl(L, 0.15, 0.17, 0.03, M({ color: 0x1a1a1a, metalness: 0.6 }), -3.9, 0.015, -6.0, 16); cyl(L, 0.012, 0.012, 1.5, M({ color: 0x8a6a3a, metalness: 0.8, roughness: 0.3 }), -3.9, 0.76, -6.0, 8);
-      const shd = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.24, 0.3, 24, 1, true), M({ color: 0xf4e8d0, emissive: 0xffd8a0, emissiveIntensity: 0.9, side: THREE.DoubleSide, roughness: 0.9 })); shd.position.set(-3.9, 1.62, -6.0); L.add(shd); light(L, 0xffc890, 2.2, -3.9, 1.5, -5.9, 6);
+      cyl(L, 0.15, 0.17, 0.03, M({ color: 0x1a1a1a, metalness: 0.6 }), -3.1, 0.015, -5.9, 16); cyl(L, 0.012, 0.012, 1.5, M({ color: 0x8a6a3a, metalness: 0.8, roughness: 0.3 }), -3.1, 0.76, -5.9, 8);
+      const shd = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.24, 0.3, 24, 1, true), M({ color: 0xf4e8d0, emissive: 0xffd8a0, emissiveIntensity: 0.9, side: THREE.DoubleSide, roughness: 0.9 })); shd.position.set(-3.1, 1.62, -5.9); L.add(shd); light(L, 0xffc890, 2.2, -3.1, 1.5, -5.8, 6);
       // the TV on its stand against the near wall, glowing; a coffee table with a bowl and remotes
-      rbox(L, 1.4, 0.5, 0.4, 0.02, M({ map: tex(PAINT.wood('#4a3020', '#3a2416', 10)), roughness: 0.5 }), -0.3, 0.25, -4.4, Math.PI / 2);
-      tvSet(L, -0.25, 0.95, -4.4, 1.2, -Math.PI / 2, 'football');
-      rbox(L, 1.0, 0.06, 0.55, 0.02, M({ map: tex(PAINT.wood('#6a4428', '#5a3820', 10)), roughness: 0.4 }), -2.3, 0.42, -4.4, Math.PI / 2); for (const t of [-1, 1]) for (const u of [-1, 1]) cyl(L, 0.02, 0.02, 0.4, M({ color: 0x3a2416 }), -2.3 + t * 0.22, 0.2, -4.4 + u * 0.42, 6);
-      rbox(L, 0.05, 0.02, 0.17, 0.01, M({ color: 0x111111 }), -2.4, 0.46, -4.2, 0.3);
+      rbox(L, 1.4, 0.5, 0.4, 0.02, M({ map: tex(PAINT.wood('#4a3020', '#3a2416', 10)), roughness: 0.5 }), -2.3, 0.25, 0.3); tvSet(L, -2.3, 0.95, 0.3, 1.2, Math.PI, 'football');
+      rbox(L, 1.0, 0.06, 0.55, 0.02, M({ map: tex(PAINT.wood('#6a4428', '#5a3820', 10)), roughness: 0.4 }), -1.5, 0.42, -4.6); for (const t of [-1, 1]) for (const u of [-1, 1]) cyl(L, 0.02, 0.02, 0.4, M({ color: 0x3a2416 }), -1.5 + t * 0.42, 0.2, -4.6 + u * 0.22, 6);
+      rbox(L, 0.05, 0.02, 0.17, 0.01, M({ color: 0x111111 }), -1.3, 0.46, -4.5, 0.3);
       // family photos on the far wall, a bookcase in the corner, a window with the blinds down
-      for (let i = 0; i < 5; i++) photo(L, -1.6 - (i % 3) * 0.5, 1.45 + Math.floor(i / 3) * 0.45, -6.18, 0.34, 0.26, 0, pick(['team', 'land', 'portrait']), pick([0x2a1a10, 0xc8a050, 0xf4f0e8]));
-      shelves(L, -0.7, -6.0, 1.1, 2.0, 0);
+      for (let i = 0; i < 5; i++) photo(L, -0.9 - (i % 3) * 0.5, 1.5 + Math.floor(i / 3) * 0.45, -6.18, 0.34, 0.26, 0, pick(['team', 'land', 'portrait']), pick([0x2a1a10, 0xc8a050, 0xf4f0e8]));
+      shelves(L, -4.0, -6.0, 1.1, 2.0, 0);
       light(L, 0xffe0b0, 0.6, -2.3, 2.3, -3.5, 6);
       plant(L, -4.2, -1.6, 1.0, false);
     }
@@ -1162,7 +1162,10 @@ const SCENES = {
     cyl(g, 0.065, 0.06, 0.16, M({ color: 0xe8dcc8, roughness: 0.3 }), -0.1, 1.02, B + 0.22, 18); for (let i = 0; i < 4; i++) { const sp = cyl(g, 0.008, 0.01, 0.3, M({ color: i % 2 ? 0x8a5a30 : 0x2a2a2a, roughness: 0.5 }), -0.1 + (i - 1.5) * 0.02, 1.15, B + 0.22, 6); sp.rotation.z = (i - 1.5) * 0.12; }
     for (let i = 0; i < 2; i++) { cyl(g, 0.04, 0.038, 0.095, M({ color: pick([0x2a4a7a, 0xf4f0e8, 0x8a2a2a]), roughness: 0.2 }), -3.95 + i * 0.12, 0.99, -4.42 + i * 0.1, 16); }
     rbox(g, 0.2, 0.3, 0.07, 0.01, M({ map: tex(canvas(64, 96, (x, w, h) => { x.fillStyle = '#e8b830'; x.fillRect(0, 0, w, h); x.fillStyle = '#c8302a'; x.fillRect(4, 8, w - 8, 26); x.fillStyle = '#fff'; x.font = '900 13px sans-serif'; x.fillText('OATS', 14, 26); x.fillStyle = '#d88a3a'; x.beginPath(); x.ellipse(32, 64, 20, 14, 0, 0, 7); x.fill(); })), roughness: 0.6 }), -4.3, 1.09, B + 0.2, 0.3);
-    { const ck = cyl(g, 0.15, 0.15, 0.035, M({ color: 0xf8f4ea, roughness: 0.4 }), -4.47, 2.38, -3.3, 32); ck.rotation.z = Math.PI / 2; const rr = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.018, 8, 32), M({ color: 0x2a2a2a })); rr.position.set(-4.46, 2.38, -3.3); rr.rotation.y = Math.PI / 2; g.add(rr); box(g, 0.01, 0.09, 0.01, M({ color: 0x111111 }), -4.44, 2.41, -3.3); box(g, 0.01, 0.01, 0.07, M({ color: 0x111111 }), -4.44, 2.38, -3.27); }
+    { const ck = cyl(g, 0.14, 0.14, 0.035, M({ color: 0xf8f4ea, roughness: 0.4 }), -4.47, 2.32, -3.3, 32); ck.rotation.z = Math.PI / 2; const rr = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.018, 8, 32), M({ color: 0x2a2a2a })); rr.position.set(-4.46, 2.32, -3.3); rr.rotation.y = Math.PI / 2; g.add(rr); box(g, 0.01, 0.085, 0.01, M({ color: 0x111111 }), -4.44, 2.35, -3.3); box(g, 0.01, 0.01, 0.065, M({ color: 0x111111 }), -4.44, 2.32, -3.27); }
+    // a runner in front of the sink, the dog asleep on the floor by the door
+    rugAt(g, -1.8, B + 0.95, 1.6, 0.7, canvas(256, 112, (x, w, h) => { x.fillStyle = '#5a6a7a'; x.fillRect(0, 0, w, h); x.fillStyle = '#e8e0d0'; x.fillRect(10, 10, w - 20, h - 20); x.fillStyle = '#5a6a7a'; x.fillRect(20, 20, w - 40, h - 40); x.strokeStyle = '#e8e0d0'; x.lineWidth = 3; for (let i = 0; i < 6; i++) { x.beginPath(); x.moveTo(40 + i * 32, 32); x.lineTo(56 + i * 32, h / 2); x.lineTo(40 + i * 32, h - 32); x.lineTo(24 + i * 32, h / 2); x.closePath(); x.stroke(); } for (let i = 0; i < 1500; i++) { x.fillStyle = 'rgba(0,0,0,' + rnd() * 0.1 + ')'; x.fillRect(rnd() * w, rnd() * h, 2, 2); } }));
+    if (EXPORT) { const dg = new THREE.Group(); dg.name = 'PROP_dog'; dg.position.set(-2.5, 0, -2.1); dg.rotation.y = 0.9; g.add(dg); }
     // the wall by the fridge: a cork board of school papers and a calendar, a little shelf of cookbooks, a framed photo
     { rbox(g, 0.9, 0.6, 0.03, 0.01, M({ color: 0x5a3a20, roughness: 0.5 }), 3.4, 1.55, B + 0.02); plane(g, 0.84, 0.54, M({ map: tex(canvas(128, 80, (x, w, h) => { x.fillStyle = '#b8905a'; x.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { x.fillStyle = 'rgba(80,50,20,' + rnd() * 0.3 + ')'; x.fillRect(rnd() * w, rnd() * h, 1, 1); } })), roughness: 0.95 }), 3.4, 1.55, B + 0.04);
       for (let i = 0; i < 6; i++) { const pp = plane(g, 0.16 + rnd() * 0.06, 0.2, M({ map: tex(canvas(32, 40, (x, w, h) => { x.fillStyle = pick(['#fbfaf4', '#f8f0c8', '#e8f0f8']); x.fillRect(0, 0, w, h); x.strokeStyle = '#8a8aa8'; for (let k = 0; k < 6; k++) { x.beginPath(); x.moveTo(3, 6 + k * 5); x.lineTo(w - 3, 6 + k * 5); x.stroke(); } x.strokeStyle = pick(['#e8402a', '#2a6ad8', '#2a9a4a']); x.lineWidth = 2; x.beginPath(); x.moveTo(5, 30); x.lineTo(14, 22); x.lineTo(24, 33); x.stroke(); })), roughness: 0.9 }), 3.08 + (i % 3) * 0.3, 1.66 - Math.floor(i / 3) * 0.24, B + 0.045 + i * 0.001); pp.rotation.z = (rnd() - 0.5) * 0.18; sph(g, 0.012, M({ color: pick([0xd82a1a, 0x2a6ad8, 0xf0c020]) }), pp.position.x, pp.position.y + 0.09, B + 0.06, 8); }
