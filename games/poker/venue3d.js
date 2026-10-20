@@ -245,64 +245,109 @@ const SHIRTS = [0x2b3a67, 0x7a2a2a, 0x2f5a3a, 0x444444, 0x8a6a3a, 0x5a3a7a, 0x1f
 const SKIN = [0xf2c9a8, 0xe0b090, 0xc8946a, 0xa06a44, 0x7a4a2c, 0x5a3420];
 const HAIR = [0x1a120c, 0x2a1a10, 0x3a2414, 0x6a4a2a, 0x9a9a9a, 0xc8a060, 0xd8d0c0, 0x5a2a14];
 const PANTS = [0x1a1c24, 0x2a3040, 0x3a3a3a, 0x4a3a2a, 0x2a3a5a, 0x5a5a50];
-let TORSO = null;
-function torsoGeo() { if (!TORSO) TORSO = new THREE.LatheGeometry([[0.001, 0], [0.14, 0.01], [0.155, 0.08], [0.165, 0.22], [0.185, 0.36], [0.2, 0.45], [0.18, 0.51], [0.11, 0.55], [0.05, 0.57]].map(p => new THREE.Vector2(p[0], p[1])), 22); return TORSO; }
-// o: { sit (default true), hip (seat height), look: 'casual' | 'pro' | 'smart' | 'dealer' | 'bartender', arms: 'table' | 'down' | 'crossed' | 'bar', lod }
+// a tapered limb from a (radius r1) to b (radius r2), rounded at b
+const _a = new THREE.Vector3(), _b = new THREE.Vector3();
+function seg(g, a, b, r1, r2, mat, capA) {
+  _a.set(a[0], a[1], a[2]); _b.set(b[0], b[1], b[2]);
+  const d = _b.clone().sub(_a), len = d.length();
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r2, r1, len, 14), mat);
+  m.position.copy(_a).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(_up, d.normalize()); g.add(m);
+  sph(g, r2, mat, b[0], b[1], b[2], 12); if (capA) sph(g, r1, mat, a[0], a[1], a[2], 12);
+  return m;
+}
+// a body: hips, waist, chest, shoulders (a lathe, flattened front to back); w: build, fem: a woman's shape
+function torsoGeo(fem) {
+  const pts = fem ? [[0.001, 0], [0.175, 0], [0.18, 0.06], [0.16, 0.16], [0.14, 0.25], [0.16, 0.33], [0.175, 0.4], [0.175, 0.46], [0.16, 0.52], [0.1, 0.56], [0.05, 0.575]]
+    : [[0.001, 0], [0.165, 0], [0.17, 0.07], [0.16, 0.17], [0.158, 0.25], [0.175, 0.34], [0.195, 0.42], [0.205, 0.48], [0.185, 0.535], [0.11, 0.57], [0.055, 0.585]];
+  return new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p[0], p[1])), 24);
+}
+// o: { sit (default true), hip (seat height), look: 'casual' | 'pro' | 'smart' | 'dealer' | 'bartender', arms: 'table' | 'down' | 'crossed' | 'pockets' | 'bar', lod }
 function person(g, x, z, face, o) {
   o = o || {};
   const sit = o.sit !== false, lod = o.lod || 0, look = o.look || pick(['casual', 'casual', 'smart', TIER === 'local' ? 'casual' : 'pro']);
+  const fem = rnd() < (look === 'pro' ? 0.25 : 0.4), H = (fem ? 0.93 : 0.98) + rnd() * 0.09, Wd = 0.94 + rnd() * (fem ? 0.14 : 0.3);
   const p = new THREE.Group(); p.position.set(x, sit ? (o.hip || 0.5) - 0.5 : 0, z); p.rotation.y = face; g.add(p);
-  const skin = M({ color: pick(SKIN), roughness: 0.6 }), pants = cloth(pick(PANTS));
+  if (!sit) p.scale.setScalar(H);
+  const skinC = pick(SKIN), skin = M({ color: skinC, roughness: 0.62 }), pants = cloth(pick(fem ? PANTS.concat([0x6a2a3a, 0x2a2a2a]) : PANTS));
   let top = cloth(look === 'dealer' || look === 'bartender' ? 0xd8d4cc : pick(SHIRTS)), arm = top;
-  const hipY = sit ? 0.5 : 0.92;
-  // legs
+  const shoe = M({ color: pick([0x1a1412, 0x3a2414, 0x2a2a2e, 0xd8d8d8]), roughness: 0.5 });
+  const hipY = sit ? 0.5 : 0.92, lx = 0.095 * Wd;
+  // legs: thighs, knees, shins, shoes
   if (sit) {
-    for (const sx of [-0.095, 0.095]) { limb(p, [sx, 0.5, 0.02], [sx, 0.5, 0.4], 0.068, pants); if (!lod) { limb(p, [sx, 0.5, 0.42], [sx, 0.1, 0.46], 0.055, pants); rbox(p, 0.1, 0.07, 0.24, 0.03, M({ color: 0x1a1412, roughness: 0.5 }), sx, 0.035, 0.52); } }
-  } else for (const sx of [-0.09, 0.09]) { limb(p, [sx, 0.92, 0], [sx, 0.08, 0], 0.065, pants); if (!lod) rbox(p, 0.1, 0.07, 0.25, 0.03, M({ color: 0x1a1412, roughness: 0.5 }), sx, 0.035, 0.05); }
-  // body (a lean toward the table when seated)
-  const body = new THREE.Group(); body.position.y = hipY; body.rotation.x = sit ? 0.14 : 0; p.add(body);
-  const t = new THREE.Mesh(torsoGeo(), top); t.scale.set(1, 1, 0.64); body.add(t);
-  if (look === 'dealer' || look === 'bartender') {   // a black vest over the white shirt, and a bow tie
-    const vest = new THREE.Mesh(torsoGeo(), cloth(0x15151a, 0.7)); vest.scale.set(1.04, 0.9, 0.67); body.add(vest);
-    if (!lod) box(body, 0.06, 0.025, 0.02, M({ color: 0x111111 }), 0, 0.53, 0.115);
-  } else if (look === 'smart' && rnd() < 0.6) {      // a jacket
-    const jk = new THREE.Mesh(torsoGeo(), cloth(pick([0x23232a, 0x2a3040, 0x4a3a2a, 0x3a3a40]), 0.8)); jk.scale.set(1.05, 0.95, 0.68); body.add(jk); arm = jk.material;
+    for (const s of [-1, 1]) {
+      seg(p, [s * lx, 0.5, 0.0], [s * lx, 0.49, 0.42], 0.085 * Wd, 0.064 * Wd, pants, true);
+      if (!lod) { seg(p, [s * lx, 0.49, 0.43], [s * lx, 0.09, 0.47], 0.058 * Wd, 0.043, pants); rbox(p, 0.1, 0.07, 0.25, 0.03, shoe, s * lx, 0.035, 0.53); }
+    }
+  } else {
+    const kn = rnd() < 0.5 ? -1 : 1;   // weight on one leg
+    for (const s of [-1, 1]) {
+      const bend = s === kn ? 0.05 : 0;
+      seg(p, [s * lx, 0.92, 0], [s * lx * 1.02, 0.49, 0.02 + bend], 0.088 * Wd, 0.064 * Wd, pants, true);
+      if (!lod) { seg(p, [s * lx * 1.02, 0.49, 0.02 + bend], [s * lx, 0.08, -0.01], 0.06 * Wd, 0.044, pants); rbox(p, 0.1, 0.075, 0.26, 0.03, shoe, s * lx, 0.037, 0.06); }
+    }
+  }
+  // the body (seated: leaning in toward the table)
+  const body = new THREE.Group(); body.position.y = hipY; body.rotation.x = sit ? 0.12 : 0; p.add(body);
+  if (sit) body.scale.setScalar(H);
+  const tg = torsoGeo(fem), t = new THREE.Mesh(tg, top); t.scale.set(Wd, 1, 0.64 * Wd); body.add(t);
+  const shX = (fem ? 0.165 : 0.19) * Wd, shY = fem ? 0.5 : 0.5;
+  if (look === 'dealer' || look === 'bartender') {   // a black vest over the white shirt, a bow tie
+    const vest = new THREE.Mesh(tg, cloth(0x15151a, 0.7)); vest.scale.set(Wd * 1.04, 0.92, 0.67 * Wd); body.add(vest);
+    if (!lod) { box(body, 0.07, 0.03, 0.02, M({ color: 0x111111 }), 0, 0.545, 0.115 * Wd); }
+  } else if (look === 'smart' && rnd() < 0.6) {      // a jacket, open at the front
+    const jk = new THREE.Mesh(tg, cloth(pick([0x23232a, 0x2a3040, 0x4a3a2a, 0x3a3a40, 0x5a2a2a]), 0.8)); jk.scale.set(Wd * 1.05, 0.97, 0.68 * Wd); body.add(jk); arm = jk.material;
+    if (!lod) { const sh = M({ color: pick([0xe8e4dc, 0x9ab8d8, 0xf0e0e0]), roughness: 0.8 }); const v = rbox(body, 0.1, 0.22, 0.02, 0.01, sh, 0, 0.42, 0.125 * Wd); v.rotation.x = -0.12; }
   } else if (look === 'pro' && rnd() < 0.55) {       // a hoodie, hood down
-    top = cloth(pick([0x1f1f24, 0x2a2a30, 0x3a4a5a, 0x5a1a1a, 0x2a3a2a])); t.material = top; arm = top;
-    const hood = sph(body, 0.11, top, 0, 0.55, -0.1); hood.scale.set(1.2, 0.7, 0.8);
+    top = cloth(pick([0x1f1f24, 0x2a2a30, 0x3a4a5a, 0x5a1a1a, 0x2a3a2a, 0x6a6a70])); t.material = top; arm = top;
+    const hood = sph(body, 0.12, top, 0, 0.55, -0.1 * Wd); hood.scale.set(1.25 * Wd, 0.6, 0.75);
+  } else if (!lod && rnd() < 0.5) {                  // a collar
+    const col = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.016, 6, 16), top); col.rotation.x = Math.PI / 2 - 0.2; col.position.set(0, 0.575, 0.01); col.scale.z = 0.8; body.add(col);
   }
-  // arms
-  const sh = [0.205, 0.49, 0.0];
+  // shoulders and arms
   for (const s of [-1, 1]) {
-    let el, hd;
-    if (!sit) { el = [s * 0.23, 0.22, 0.02]; hd = [s * 0.22, -0.05, 0.05]; if (o.arms === 'crossed') { el = [s * 0.2, 0.25, 0.1]; hd = [-s * 0.08, 0.32, 0.14]; } if (o.arms === 'table') { el = [s * 0.22, 0.25, 0.12]; hd = [s * 0.14, 0.0, 0.42]; } }
-    else if (o.arms === 'bar') { el = [s * 0.22, 0.22, 0.14]; hd = [s * 0.12, 0.33, 0.36]; }
-    else { el = [s * 0.21, 0.27, 0.18]; hd = [s * (0.1 + rnd() * 0.05), 0.33, 0.4]; }
-    limb(body, [s * sh[0], sh[1], sh[2]], el, 0.052, arm);
-    limb(body, el, hd, 0.044, arm);
-    if (!lod) sph(body, 0.038, skin, hd[0], hd[1], hd[2], 10);
+    const S = [s * shX, shY, 0];
+    let el, hd, hand = true;
+    if (!sit) {
+      const pose = o.arms || 'down';
+      if (pose === 'crossed') { el = [s * 0.21 * Wd, 0.26, 0.1]; hd = [-s * 0.07, 0.33, 0.15 * Wd]; hand = false; }
+      else if (pose === 'table') { el = [s * 0.22 * Wd, 0.26, 0.12]; hd = [s * 0.14, 0.04, 0.4]; }
+      else if (pose === 'pockets') { el = [s * 0.23 * Wd, 0.25, -0.04]; hd = [s * 0.15 * Wd, 0.04, 0.09 * Wd]; hand = false; }
+      else { el = [s * 0.225 * Wd, 0.23, -0.02]; hd = [s * 0.2 * Wd, -0.02, 0.06]; }
+    } else if (o.arms === 'bar') { el = [s * 0.22 * Wd, 0.24, 0.14]; hd = [s * 0.12, 0.34, 0.36]; }
+    else { el = [s * 0.21 * Wd, 0.28, 0.18]; hd = [s * (0.1 + rnd() * 0.04), 0.33, 0.4]; }
+    sph(body, 0.056 * Wd, arm, S[0] * 0.96, S[1] - 0.015, S[2], 14);
+    seg(body, S, el, 0.054 * Wd, 0.044 * Wd, arm);
+    seg(body, el, hd, 0.043 * Wd, 0.033, arm);
+    if (hand && !lod) { const h = rbox(body, 0.055, 0.03, 0.09, 0.014, skin, hd[0], hd[1] - 0.005, hd[2] + 0.03); h.rotation.y = -s * 0.2; }
   }
-  if (sit && !lod && rnd() < 0.5 && o.arms !== 'bar') { const c1 = new THREE.Mesh(new THREE.PlaneGeometry(0.063, 0.088), cardBack()); c1.position.set(0, 0.36, 0.42); c1.rotation.set(-1.1, 0, 0.1); body.add(c1); }
-  // head
-  const hy = 0.66;
-  cyl(body, 0.048, 0.055, 0.1, skin, 0, 0.6, 0.0, 12);
-  const head = sph(body, 0.1, skin, 0, hy, 0.02, 20); head.scale.set(0.88, 1.1, 0.98);
+  if (sit && !lod && rnd() < 0.5 && o.arms !== 'bar') { const c1 = new THREE.Mesh(new THREE.PlaneGeometry(0.063, 0.088), cardBack()); c1.position.set(0, 0.36, 0.43); c1.rotation.set(-1.1, 0, 0.1); body.add(c1); }
+  // neck and head: a skull, a jaw, ears, nose, brows, eyes, mouth
+  const hy = 0.68;
+  seg(body, [0, 0.55, 0], [0, 0.62, 0.01], 0.056, 0.05, skin);
+  const skull = sph(body, 0.1, skin, 0, hy, 0.0, 20); skull.scale.set(0.86, 1.04, 0.98);
+  const jaw = sph(body, 0.075, skin, 0, hy - 0.055, 0.03, 16); jaw.scale.set(fem ? 0.88 : 0.98, 0.8, 0.95);
   if (!lod) {
-    for (const s of [-1, 1]) { const ear = sph(body, 0.022, skin, s * 0.087, hy, 0.01, 8); ear.scale.set(0.5, 1, 0.8); }
-    const nose = sph(body, 0.02, skin, 0, hy - 0.01, 0.115, 8); nose.scale.set(0.8, 1, 1.2);
-    const eye = M({ color: 0x15100c, roughness: 0.3 });
-    if (look === 'pro' && rnd() < 0.4) rbox(body, 0.15, 0.035, 0.02, 0.01, M({ color: 0x0a0a0c, roughness: 0.1, metalness: 0.6 }), 0, hy + 0.02, 0.105);   // sunglasses
-    else for (const s of [-1, 1]) sph(body, 0.012, eye, s * 0.032, hy + 0.02, 0.1, 8);
+    for (const s of [-1, 1]) { const ear = sph(body, 0.024, skin, s * 0.085, hy - 0.01, 0.0, 8); ear.scale.set(0.45, 1, 0.8); }
+    const nose = sph(body, 0.02, skin, 0, hy - 0.025, 0.1, 8); nose.scale.set(0.8, 1.2, 1.1);
+    const dark = M({ color: 0x15100c, roughness: 0.4 }), brow = M({ color: pick(HAIR), roughness: 0.9 });
+    if (look === 'pro' && rnd() < 0.35) rbox(body, 0.15, 0.035, 0.02, 0.01, M({ color: 0x0a0a0c, roughness: 0.1, metalness: 0.6 }), 0, hy + 0.008, 0.093);   // sunglasses
+    else for (const s of [-1, 1]) { sph(body, 0.013, M({ color: 0xf0ece4, roughness: 0.3 }), s * 0.032, hy + 0.008, 0.083, 8); sph(body, 0.008, dark, s * 0.032, hy + 0.008, 0.094, 6); }
+    for (const s of [-1, 1]) { const b = box(body, 0.034, 0.008, 0.012, brow, s * 0.033, hy + 0.032, 0.09); b.rotation.z = -s * 0.1; }
+    box(body, 0.04, 0.007, 0.01, M({ color: fem ? 0x9a3a3a : 0x6a3a30, roughness: 0.6 }), 0, hy - 0.07, 0.093);
   }
   // hair, hats, headphones
   const hc = M({ color: pick(HAIR), roughness: 0.85 }), r = rnd();
-  if (r < 0.62) { const hr = sph(body, 0.104, hc, 0, hy + 0.035, 0.0, 16); hr.scale.set(0.92, 0.72, 1.0); if (r < 0.22) { const lg = rbox(body, 0.17, 0.2, 0.07, 0.03, hc, 0, hy - 0.07, -0.07); lg.rotation.x = 0.1; } }
+  if (fem && r < 0.75) {   // longer hair: a cap of hair and a fall down the back (or a ponytail)
+    const hr = sph(body, 0.106, hc, 0, hy + 0.025, -0.01, 16); hr.scale.set(0.92, 0.9, 1.02);
+    if (r < 0.45) { const lg = rbox(body, 0.19, 0.26, 0.08, 0.035, hc, 0, hy - 0.1, -0.07); lg.rotation.x = 0.12; }
+    else { const pt = sph(body, 0.04, hc, 0, hy - 0.02, -0.11, 10); pt.scale.set(0.8, 1.6, 0.8); }
+  } else if (r < 0.6) { const hr = sph(body, 0.104, hc, 0, hy + 0.03, -0.012, 16); hr.scale.set(0.92, 0.72, 1.0); }
   else if (r < 0.8 || (look === 'pro' && r < 0.9)) {
     const cap = M({ color: pick([0x1a3a6a, 0x6a1a1a, 0x222222, 0xd8d0c0, 0x2a4a2a]), roughness: 0.8 });
-    const c = sph(body, 0.106, cap, 0, hy + 0.04, 0.0, 16); c.scale.set(0.95, 0.68, 1.02);
-    const back = rnd() < 0.3; const brim = cyl(body, 0.08, 0.08, 0.012, cap, 0, hy + 0.03, back ? -0.13 : 0.13, 16); brim.scale.z = 0.7;
+    const c = sph(body, 0.106, cap, 0, hy + 0.035, -0.005, 16); c.scale.set(0.95, 0.68, 1.02);
+    const back = rnd() < 0.3; const brim = cyl(body, 0.08, 0.08, 0.012, cap, 0, hy + 0.025, back ? -0.13 : 0.13, 16); brim.scale.z = 0.7;
   }
-  if (look === 'pro' && rnd() < 0.35) { const hp = M({ color: 0x111114, roughness: 0.4 }); const band = new THREE.Mesh(new THREE.TorusGeometry(0.105, 0.012, 6, 20, Math.PI), hp); band.position.set(0, hy, 0.01); band.rotation.y = Math.PI / 2; body.add(band); for (const s of [-1, 1]) { const cup = cyl(body, 0.04, 0.04, 0.03, hp, s * 0.1, hy - 0.005, 0.01, 14); cup.rotation.z = Math.PI / 2; } }
+  if (look === 'pro' && rnd() < 0.3) { const hp = M({ color: 0x111114, roughness: 0.4 }); const band = new THREE.Mesh(new THREE.TorusGeometry(0.105, 0.012, 6, 20, Math.PI), hp); band.position.set(0, hy, 0.0); band.rotation.y = Math.PI / 2; body.add(band); for (const s of [-1, 1]) { const cup = cyl(body, 0.04, 0.04, 0.03, hp, s * 0.1, hy - 0.01, 0.0, 14); cup.rotation.z = Math.PI / 2; } }
   return p;
 }
 // a casino chair: padded seat and back, arms, a chrome base
@@ -331,7 +376,7 @@ function chair(g, x, z, ry, col, pushed) {
   return c;
 }
 // a person standing to watch (on the rail, at the bar)
-function stander(g, x, z, face, o) { return person(g, x, z, face, Object.assign({ sit: false, arms: rnd() < 0.4 ? 'crossed' : 'down' }, o)); }
+function stander(g, x, z, face, o) { const r = rnd(); return person(g, x, z, face, Object.assign({ sit: false, arms: r < 0.3 ? 'crossed' : r < 0.55 ? 'pockets' : 'down' }, o)); }
 
 // ── The poker table ──────────────────────────────────────────────────────────────────────────────────────
 // a casino oval: wood apron, a padded rail, printed felt, a dealer, players with chips and cards. o.mine: your table
@@ -610,23 +655,64 @@ function room(g, o) {
 // ── The places ───────────────────────────────────────────────────────────────────────────────────────────
 // each: (g) => { builds the room in group g; returns { exposure, fog, bloom } }
 const SCENES = {
+  // a family's kitchen: warm wood cabinets, a tiled backsplash, the sink under a curtained window, a stove and its hood,
+  // the fridge covered in magnets and the kids' drawings, family photos, a clock; the poker game is on the kitchen table
   kitchen(g) {
-    const r = room(g, { w: 9, d: 7, h: 2.7, floor: PAINT.tile('#d8d0c0', '#a89a80', 10), wall: PAINT.stripe('#e8dcc0', '#e0d2b2'), ceil: PAINT.plain('#ece4d4') });
-    const cab = M({ color: 0xf2ece0, roughness: 0.5 }), counter = M({ color: 0x3a3a40, roughness: 0.25, metalness: 0.2 });
-    for (let i = 0; i < 7; i++) { box(g, 0.6, 0.9, 0.6, cab, -3 + i * 0.62, 0.45, r.back + 0.32); box(g, 0.6, 0.7, 0.35, cab, -3 + i * 0.62, 2.0, r.back + 0.2); }
-    box(g, 4.4, 0.05, 0.65, counter, -1.15, 0.92, r.back + 0.34);
-    rbox(g, 0.85, 1.9, 0.7, 0.05, M({ color: 0xc8ccd2, metalness: 0.7, roughness: 0.3 }), 1.9, 0.95, r.back + 0.4);
-    windowOn(g, VIEW.mountains({ sky0: '#0a1030', sky1: '#2a3a6a', pines: true }), -1.2, 1.75, r.back + 0.02, 1.2, 0.8);
-    for (let i = 0; i < 5; i++) cyl(g, 0.05, 0.05, 0.14 + rnd() * 0.1, M({ color: pick([0xff5a2a, 0xffd84d, 0x2a8a3a, 0xffffff]) }), -2.6 + i * 0.35, 1.02, r.back + 0.35, 10);
-    frameArt(g, -4.45, 1.6, -0.5, 0.8, 0.6, Math.PI / 2, ['#f0e0c0', '#e07040', '#406080', '#80a060']);
-    // pizza boxes, a fruit bowl, a toaster, the kettle, beer bottles; magnets on the fridge
-    for (let i = 0; i < 3; i++) rbox(g, 0.42, 0.05, 0.42, 0.01, M({ color: 0xd8c8a0, roughness: 0.8 }), -0.5, 0.97 + i * 0.05, r.back + 0.36, rnd() * 0.3);
-    const bowl = sph(g, 0.14, M({ color: 0xf4f0e8, roughness: 0.3 }), -2.2, 0.98, r.back + 0.36); bowl.scale.y = 0.45; for (let i = 0; i < 5; i++) sph(g, 0.045, M({ color: pick([0xd82a1a, 0xf0c020, 0x6ab020, 0xff8a20]), roughness: 0.4 }), -2.25 + rnd() * 0.12, 1.03, r.back + 0.3 + rnd() * 0.12);
-    rbox(g, 0.26, 0.18, 0.16, 0.03, M({ color: 0xc8ccd2, metalness: 0.8, roughness: 0.3 }), 0.3, 1.04, r.back + 0.3);
-    cyl(g, 0.08, 0.1, 0.2, M({ color: 0x2a2a2e, metalness: 0.6, roughness: 0.3 }), 0.8, 1.05, r.back + 0.3, 16);
-    for (let i = 0; i < 4; i++) { const bt = new THREE.Mesh(bottleGeo(), M({ color: 0x5a3010, roughness: 0.1, envMapIntensity: 1.2 })); bt.scale.set(0.8, 0.75, 0.8); bt.position.set(0.95 + i * 0.1, 0.95, r.back + 0.45 + (rnd() - 0.5) * 0.1); g.add(bt); }
-    for (let i = 0; i < 6; i++) box(g, 0.06, 0.06, 0.01, M({ color: pick([0xd82a1a, 0x2a6ad8, 0xf0c020, 0x2a9a4a]) }), 1.65 + rnd() * 0.4, 1.2 + rnd() * 0.6, r.back + 0.76);
-    pokerTable(g, 1.0, -2.2, { mine: true, rx: 0.9, rz: 0.55, felt: 0x2e7d4f, rail: 0x7c5530, seats: 5, shade: 0xe8dcc0, lampColor: 0xffe0b0 });
+    const r = room(g, { w: 9, d: 7, h: 2.6, floor: PAINT.wood('#a87848', '#8a5a30', 20), wall: PAINT.plain('#ddd0b0'), ceil: PAINT.plain('#f4efe6'), trim: 0xf4efe6, cornice: 0xf4efe6, fillI: 1.1 });
+    const B = r.back, oak = M({ map: tex(PAINT.wood('#8a5a32', '#74482a', 64), 1, 1), roughness: 0.55 }), oakD = M({ map: tex(PAINT.wood('#74482a', '#5e3a20', 64), 1, 1), roughness: 0.5 });
+    const brass = M({ color: 0xc8a050, metalness: 0.9, roughness: 0.3 }), steel = M({ color: 0xc8ccd2, metalness: 0.85, roughness: 0.28, envMapIntensity: 1 });
+    const granite = M({ map: tex(canvas(256, 64, (x, w, h) => { x.fillStyle = '#3a3430'; x.fillRect(0, 0, w, h); for (let i = 0; i < 1600; i++) { x.fillStyle = pick(['#6a5a4a', '#1a1614', '#8a7a6a', '#2a2420']); x.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 2, 1 + rnd() * 2); } }), 3, 1), roughness: 0.2, envMapIntensity: 1 });
+    const door = (x, y, z, w, h) => { box(g, w - 0.02, h - 0.02, 0.02, oak, x, y, z); box(g, w - 0.14, h - 0.16, 0.012, oakD, x, y, z + 0.012); sph(g, 0.014, brass, x + w / 2 - 0.08, y + (y > 1.5 ? -h / 2 + 0.08 : h / 2 - 0.1), z + 0.03, 8); };
+    // lower cabinets, the counter, the sink, the stove
+    const x0 = -3.9, n = 9;
+    for (let i = 0; i < n; i++) { const x = x0 + 0.3 + i * 0.6; if (i === 5) continue; box(g, 0.6, 0.86, 0.58, oak, x, 0.47, B + 0.3); door(x, 0.5, B + 0.6, 0.58, 0.76); }
+    box(g, n * 0.6, 0.1, 0.56, M({ color: 0x2a1a10 }), x0 + n * 0.3, 0.05, B + 0.28);
+    box(g, 2.95, 0.04, 0.64, granite, x0 + 1.45, 0.92, B + 0.32); box(g, 2.0, 0.04, 0.64, granite, x0 + 4.4, 0.92, B + 0.32);
+    // the sink and faucet under the window
+    box(g, 0.6, 0.05, 0.4, M({ color: 0x8a8e94, metalness: 0.8, roughness: 0.3 }), -1.8, 0.905, B + 0.32);
+    cyl(g, 0.014, 0.018, 0.3, steel, -1.8, 1.07, B + 0.1, 10); const arc = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.013, 8, 16, Math.PI), steel); arc.position.set(-1.8, 1.22, B + 0.19); arc.rotation.y = Math.PI / 2; g.add(arc);
+    // the range: steel body, black glass top with burners, an oven door; its hood
+    const sx = -0.6;
+    box(g, 0.76, 0.9, 0.62, steel, sx, 0.45, B + 0.32); box(g, 0.76, 0.02, 0.62, M({ color: 0x0a0a0c, roughness: 0.1, envMapIntensity: 1.2 }), sx, 0.91, B + 0.32);
+    for (const [bx, bz] of [[-0.17, -0.12], [0.17, -0.12], [-0.17, 0.14], [0.17, 0.14]]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.008, 6, 24), M({ color: 0x3a3a3e, roughness: 0.4 })); ring.rotation.x = Math.PI / 2; ring.position.set(sx + bx, 0.925, B + 0.32 + bz); g.add(ring); }
+    box(g, 0.66, 0.42, 0.01, M({ color: 0x141418, roughness: 0.1, envMapIntensity: 1 }), sx, 0.42, B + 0.635); cyl(g, 0.012, 0.012, 0.6, steel, sx, 0.7, B + 0.66, 8).rotation.z = Math.PI / 2;
+    for (let k = 0; k < 4; k++) cyl(g, 0.02, 0.02, 0.03, M({ color: 0x1a1a1a }), sx - 0.24 + k * 0.16, 0.82, B + 0.64, 10).rotation.x = Math.PI / 2;
+    const hood = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.5, 0.35, 4, 1), steel); hood.rotation.y = Math.PI / 4; hood.scale.set(1.05, 1, 0.75); hood.position.set(sx, 1.72, B + 0.26); g.add(hood); box(g, 0.28, 0.7, 0.22, steel, sx, 2.25, B + 0.12);
+    // the backsplash: white subway tile
+    plane(g, 5.6, 0.62, M({ map: tex(canvas(256, 64, (x, w, h) => { x.fillStyle = '#b8b2a8'; x.fillRect(0, 0, w, h); for (let r2 = 0; r2 < 4; r2++) for (let c = -1; c < 9; c++) { x.fillStyle = '#f2efe8'; x.fillRect(c * 32 + (r2 % 2) * 16 + 1, r2 * 16 + 1, 30, 14); } }), 6, 1), roughness: 0.25, envMapIntensity: 0.9 }), x0 + 2.8, 1.25, B + 0.01);
+    // upper cabinets either side of the window and the hood, a light strip under them
+    for (const [ux, un] of [[-3.6, 2], [0.0, 2]]) for (let i = 0; i < un; i++) { const x = ux + i * 0.6; box(g, 0.6, 0.72, 0.34, oak, x, 1.95, B + 0.17); door(x, 1.95, B + 0.35, 0.58, 0.7); box(g, 0.56, 0.012, 0.02, glow(0xffe2b0, 1.2), x, 1.585, B + 0.3); }
+    light(g, 0xffe2b0, 0.9, -3.3, 1.5, B + 0.4, 2.5); light(g, 0xffe2b0, 0.9, 0.3, 1.5, B + 0.4, 2.5);
+    // the window over the sink, café curtains and a valance, herbs on the sill
+    windowOn(g, VIEW.rooftops({}), -1.8, 1.72, B + 0.02, 1.2, 0.9, 0, 0xf4efe6);
+    curtain(g, -2.15, 1.5, B + 0.07, 0.5, 0.42, 0xe8d8b8); curtain(g, -1.45, 1.5, B + 0.07, 0.5, 0.42, 0xe8d8b8); curtain(g, -1.8, 2.12, B + 0.08, 1.4, 0.22, 0xa04a3a);
+    for (let i = 0; i < 3; i++) { const pt = cyl(g, 0.05, 0.04, 0.09, M({ color: 0xb8603a, roughness: 0.7 }), -2.1 + i * 0.3, 1.33, B + 0.1, 12); for (let k = 0; k < 5; k++) sph(g, 0.03, M({ color: 0x3a7a2a }), -2.1 + i * 0.3 + (rnd() - 0.5) * 0.06, 1.42 + rnd() * 0.06, B + 0.1, 8); }
+    // the fridge: magnets, the kids' drawings, a calendar
+    rbox(g, 0.86, 1.92, 0.72, 0.04, steel, 2.0, 0.96, B + 0.38); box(g, 0.02, 0.5, 0.03, M({ color: 0x8a8e94, metalness: 0.9 }), 1.62, 1.2, B + 0.76);
+    for (let i = 0; i < 5; i++) {
+      const dr = canvas(64, 80, (x, w, h) => { x.fillStyle = '#fbfaf4'; x.fillRect(0, 0, w, h); x.lineWidth = 3; for (let k = 0; k < 6; k++) { x.strokeStyle = pick(['#e8402a', '#2a6ad8', '#f0c020', '#2a9a4a', '#8a3ac8']); x.beginPath(); x.moveTo(rnd() * w, rnd() * h); x.quadraticCurveTo(rnd() * w, rnd() * h, rnd() * w, rnd() * h); x.stroke(); } x.fillStyle = '#f0c020'; x.beginPath(); x.arc(w * 0.75, h * 0.2, 7, 0, 7); x.fill(); });
+      const d = plane(g, 0.2, 0.25, M({ map: tex(dr), roughness: 0.9 }), 1.78 + (i % 3) * 0.22, 1.2 + Math.floor(i / 3) * 0.32 + rnd() * 0.04, B + 0.745); d.rotation.z = (rnd() - 0.5) * 0.15;
+      sph(g, 0.014, M({ color: pick([0xd82a1a, 0x2a6ad8, 0xf0c020]) }), d.position.x, d.position.y + 0.11, B + 0.75, 8);
+    }
+    // the counter: coffee maker, knife block, cutting board, fruit, paper towels, pizza boxes and chips for the game
+    rbox(g, 0.22, 0.34, 0.24, 0.03, M({ color: 0x1a1a1c, roughness: 0.3 }), -3.5, 1.11, B + 0.2); cyl(g, 0.06, 0.05, 0.12, M({ color: 0x2a1a10, roughness: 0.1, transparent: true, opacity: 0.85 }), -3.5, 1.0, B + 0.3, 12);
+    rbox(g, 0.12, 0.2, 0.16, 0.02, oakD, -3.1, 1.04, B + 0.2); for (let k = 0; k < 4; k++) cyl(g, 0.008, 0.008, 0.08, M({ color: 0x111111 }), -3.12 + k * 0.012, 1.17, B + 0.2, 6);
+    rbox(g, 0.4, 0.02, 0.28, 0.01, M({ map: tex(PAINT.wood('#c89a60', '#b0844c', 20)), roughness: 0.6 }), -2.7, 0.95, B + 0.36);
+    const bowl = sph(g, 0.14, M({ color: 0x3a5a7a, roughness: 0.3 }), 0.4, 0.98, B + 0.36); bowl.scale.y = 0.45; for (let i = 0; i < 6; i++) sph(g, 0.042, M({ color: pick([0xd82a1a, 0xf0c020, 0x6ab020, 0xff8a20]), roughness: 0.4 }), 0.35 + rnd() * 0.12, 1.03, B + 0.3 + rnd() * 0.12);
+    cyl(g, 0.06, 0.06, 0.26, M({ color: 0xf8f6f0, roughness: 0.9 }), 1.0, 1.07, B + 0.2, 16);
+    for (let i = 0; i < 3; i++) rbox(g, 0.42, 0.05, 0.42, 0.01, M({ color: 0xd8c8a0, roughness: 0.8 }), -0.2 + 0.9, 0.97 + i * 0.05, B + 0.36, (rnd() - 0.5) * 0.4);
+    for (let i = 0; i < 4; i++) { const bt = new THREE.Mesh(bottleGeo(), M({ color: 0x5a3010, roughness: 0.1, envMapIntensity: 1.2 })); bt.scale.set(0.8, 0.75, 0.8); bt.position.set(-2.4 + i * 0.1, 0.94, B + 0.5); g.add(bt); }
+    // the left wall: a clock, family photos, a calendar; the right: a doorway to the lit living room
+    const clk = cyl(g, 0.17, 0.17, 0.04, M({ color: 0xf8f4ea }), -4.47, 1.95, -2.4, 32); clk.rotation.z = Math.PI / 2; const rim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.02, 8, 32), brass); rim.position.set(-4.46, 1.95, -2.4); rim.rotation.y = Math.PI / 2; g.add(rim);
+    box(g, 0.01, 0.12, 0.012, M({ color: 0x111111 }), -4.44, 1.99, -2.4); box(g, 0.01, 0.012, 0.09, M({ color: 0x111111 }), -4.44, 1.95, -2.36);
+    for (let i = 0; i < 4; i++) frameArt(g, -4.47, 1.2 + (i % 2) * 0.42, -1.0 - Math.floor(i / 2) * 0.5 - (i % 2) * 0.1, 0.3, 0.36, Math.PI / 2, ['#c89a70', '#5a7aa0', '#e8d8b8', '#3a5a3a', '#f0c8a0']);
+    plane(g, 0.32, 0.45, M({ map: tex(canvas(64, 90, (x, w, h) => { x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.fillStyle = '#c0402a'; x.fillRect(0, 0, w, 16); x.strokeStyle = '#ccc'; for (let i = 0; i < 6; i++) { x.beginPath(); x.moveTo(0, 20 + i * 11); x.lineTo(w, 20 + i * 11); x.stroke(); } for (let i = 0; i < 7; i++) { x.beginPath(); x.moveTo(i * 9.3, 20); x.lineTo(i * 9.3, h); x.stroke(); } })) }), -4.48, 1.4, -3.4, Math.PI / 2);
+    box(g, 0.05, 2.1, 0.95, M({ color: 0xf4efe6 }), 4.48, 1.05, -2.8); plane(g, 0.85, 2.0, M({ color: 0x000000, emissive: 0xffb870, emissiveIntensity: 0.35 }), 4.47, 1.0, -2.8, -Math.PI / 2);
+    light(g, 0xffc890, 1.4, 3.9, 1.6, -2.8, 3.5);
+    // a rug under the table, recessed lights in the ceiling
+    const rug = plane(g, 3.2, 2.2, M({ map: tex(PAINT.carpet('#7a3a2a', '#8a4a34', '#e0c890')), roughness: 0.95 }), 1.0, 0.006, -2.2, 0, -Math.PI / 2); rug.userData.flat = 1;
+    for (const [lx, lz] of [[-2.5, -3.6], [-0.5, -3.6], [2.6, -1.0], [-2.5, -1.0]]) { const d = new THREE.Mesh(new THREE.CircleGeometry(0.07, 20), glow(0xfff0d8, 2)); d.rotation.x = Math.PI / 2; d.position.set(lx, 2.595, lz); g.add(d); }
+    pokerTable(g, 1.0, -2.2, { mine: true, rx: 0.9, rz: 0.55, felt: 0x2e7d4f, rail: 0x7c5530, seats: 5, shade: 0xf0e6d0, lampColor: 0xffe0b0, wood: '#8a5a32', wood2: '#6a4224' });
     return { exposure: 1.05 };
   },
   basement(g) {
@@ -997,7 +1083,7 @@ async function render(key, o) {
   scene.traverse(m => { if (m.geometry) m.geometry.dispose(); if (m.material) [].concat(m.material).forEach(x => { if (x.map && !x.map.userData.keep) x.map.dispose(); x.dispose(); }); });
   pm.dispose(); composer.passes.forEach(p => p.dispose && p.dispose()); composer.dispose && composer.dispose();
   // (shared textures are rebuilt next time)
-  FABRIC = null; BOTTLE = null; TORSO = null; CARDB = null; for (const k in CARDF) delete CARDF[k]; for (const k in CHIPM) delete CHIPM[k]; for (const k in FELTS) delete FELTS[k];
+  FABRIC = null; BOTTLE = null; CARDB = null; for (const k in CARDF) delete CARDF[k]; for (const k in CHIPM) delete CHIPM[k]; for (const k in FELTS) delete FELTS[k];
   cache[ck] = url;
   return url;
 }
