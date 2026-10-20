@@ -1041,6 +1041,445 @@ VIEW.course = (o) => canvas(1024, 512, (x, w, h) => {
   x.fillStyle = '#0a1426'; x.beginPath(); x.ellipse(w * 0.25, h * 0.8, w * 0.2, h * 0.07, 0, 0, 7); x.fill(); x.fillStyle = 'rgba(255,246,220,.5)'; x.beginPath(); x.ellipse(w * 0.25, h * 0.8, 14, 5, 0, 0, 7); x.fill();
   x.fillStyle = '#e8e8e8'; x.fillRect(w * 0.66, h * 0.5, 2, h * 0.11); x.fillStyle = '#c81a1a'; x.fillRect(w * 0.662, h * 0.5, 16, 10);
 });
+// ── Skylines true to their cities ─────────────────────────────────────────────────────────────────────────
+// each paints a 1024x512 (or wider) view: the sky, the landmarks you'd know the place by, the water with its lights
+const SKY = {
+  grad: (x, w, h, stops) => { const g2 = x.createLinearGradient(0, 0, 0, h); stops.forEach(([p, c]) => g2.addColorStop(p, c)); x.fillStyle = g2; x.fillRect(0, 0, w, h); },
+  stars: (x, w, h, n, top) => { for (let i = 0; i < n; i++) { x.fillStyle = 'rgba(255,255,255,' + rnd() * 0.7 + ')'; x.fillRect(rnd() * w, rnd() * h * (top || 0.4), 1.5, 1.5); } },
+  moon: (x, cx, cy, r) => { x.fillStyle = '#fff6dc'; x.shadowColor = '#fff6dc'; x.shadowBlur = r * 1.6; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); x.shadowBlur = 0; },
+  // a block of lit windows on a dark facade
+  bldg: (x, bx, by, bw, bh, col, cols, pitch, p) => { x.fillStyle = col || '#0c0f22'; x.fillRect(bx, by, bw, bh); const px = pitch || 8; for (let yy = by + 5; yy < by + bh - 4; yy += px + 1) for (let xx = bx + 3; xx < bx + bw - 3; xx += px) if (rnd() < (p || 0.45)) { x.fillStyle = pick(cols || ['#ffd98a', '#ffe9b8', '#fff3d6']); x.fillRect(xx, yy, px * 0.5, px * 0.6); } },
+  // water from y0 down, with the lights above streaking into it
+  water: (x, w, h, y0, top, bottom, streak, n) => { const wg = x.createLinearGradient(0, y0, 0, h); wg.addColorStop(0, top || '#101a36'); wg.addColorStop(1, bottom || '#03050c'); x.fillStyle = wg; x.fillRect(0, y0, w, h - y0); for (let i = 0; i < (n || 400); i++) { x.fillStyle = 'rgba(' + (streak || '255,214,140') + ',' + rnd() * 0.45 + ')'; x.fillRect(rnd() * w, y0 + rnd() * (h - y0), 6 + rnd() * 22, 1.5); } },
+  glow: (x, col, b, f) => { x.shadowColor = col; x.shadowBlur = b; f(); x.shadowBlur = 0; },
+  // trees in silhouette along a line
+  trees: (x, w, y, n, col, s) => { for (let i = 0; i < n; i++) { const tx = rnd() * w, r = (s || 1) * (14 + rnd() * 22); x.fillStyle = col || '#05070a'; x.beginPath(); x.arc(tx, y - r * 0.6, r, 0, 7); x.fill(); x.fillRect(tx - 3, y - r, 6, r); } },
+  // a palm in silhouette
+  palm: (x, px, py, s, col) => { x.strokeStyle = col || '#05060c'; x.lineWidth = 5 * s; x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + 16 * s, py - 60 * s, px + 8 * s, py - 120 * s); x.stroke(); x.fillStyle = col || '#05060c'; for (let k = 0; k < 9; k++) { x.save(); x.translate(px + 8 * s, py - 120 * s); x.rotate(k * 0.7 - 0.2); x.beginPath(); x.ellipse(28 * s, 4 * s, 32 * s, 5 * s, 0.12, 0, 7); x.fill(); x.restore(); } }
+};
+// the Eiffel Tower, lit gold from inside the way it is after dark: the curve of the legs, the two platforms, the arch
+LANDMARK.eiffel = (x, w, h, base, o) => {
+  o = o || {}; const cx = o.cx || w * 0.5, H = o.H || h * 0.82, top = base - H;
+  const half = (t) => H * (0.19 * Math.pow(1 - t, 2.2) + 0.012) * (t > 0.94 ? 0.5 : 1);   // half-width at height fraction t
+  const pts = []; for (let t = 0; t <= 1.0001; t += 0.04) pts.push([half(t), base - t * H]);
+  const path = () => { x.beginPath(); x.moveTo(cx - pts[0][0], pts[0][1]); pts.forEach(p => x.lineTo(cx - p[0], p[1])); pts.slice().reverse().forEach(p => x.lineTo(cx + p[0], p[1])); x.closePath(); };
+  SKY.glow(x, '#ffb040', 26, () => { x.fillStyle = '#d89a3a'; path(); x.fill(); });
+  // the lattice: the dark sky showing through the ironwork
+  x.save(); path(); x.clip();
+  x.strokeStyle = 'rgba(20,14,30,.55)'; x.lineWidth = 1.5;
+  for (let t = 0.02; t < 1; t += 0.035) { const y = base - t * H, hw = half(t); const n = Math.max(2, Math.round(hw / 7)); for (let k = 0; k <= n; k++) { const xx = cx - hw + k * 2 * hw / n; x.beginPath(); x.moveTo(xx, y); x.lineTo(xx + 5, y - H * 0.035); x.moveTo(xx, y); x.lineTo(xx - 5, y - H * 0.035); x.stroke(); } }
+  // the arch under the first floor, the two platforms, the pillars' feet apart
+  x.fillStyle = 'rgba(20,14,30,.85)'; x.beginPath(); x.ellipse(cx, base - H * 0.02, H * 0.12, H * 0.14, 0, Math.PI, 0); x.fill();
+  x.fillStyle = 'rgba(20,14,30,.5)'; x.fillRect(cx - H * 0.19, base - H * 0.1, H * 0.1, H * 0.1); x.fillRect(cx + H * 0.09, base - H * 0.1, H * 0.1, H * 0.1);
+  x.fillStyle = '#ffd890'; x.fillRect(cx - half(0.17) - 4, base - H * 0.17, half(0.17) * 2 + 8, 5); x.fillRect(cx - half(0.35) - 3, base - H * 0.35, half(0.35) * 2 + 6, 4); x.fillRect(cx - half(0.85) - 4, base - H * 0.85, half(0.85) * 2 + 8, 4);
+  x.restore();
+  x.fillStyle = '#ffe0a0'; x.fillRect(cx - 1.5, top - H * 0.07, 3, H * 0.07);   // the antenna
+  SKY.glow(x, '#ffffff', 14, () => { x.fillStyle = '#ffffff'; x.beginPath(); x.arc(cx, top - H * 0.06, 3, 0, 7); x.fill(); });   // the beacon
+};
+// Haussmann's Paris: six storeys of cream stone, zinc mansards, chimney pots, the tower gold over the river
+VIEW.paris = (o) => canvas(1024, 512, (x, w, h) => {
+  SKY.grad(x, w, h, [[0, '#070a22'], [0.45, '#1c1a48'], [0.68, '#4a2a4e'], [0.78, '#8a4a3a']]); SKY.stars(x, w, h, 140, 0.45);
+  // far rooftops in violet haze, Sacré-Cœur's white domes on the hill to the right
+  x.fillStyle = '#2a2240'; for (let i = 0; i < 60; i++) x.fillRect(i * 18, h * (0.62 + rnd() * 0.05), 20, h * 0.1);
+  x.fillStyle = '#e8e0d8'; SKY.glow(x, '#fff0d8', 18, () => { x.beginPath(); x.ellipse(w * 0.86, h * 0.6, 22, 30, 0, 0, 7); x.fill(); x.beginPath(); x.ellipse(w * 0.83, h * 0.63, 9, 14, 0, 0, 7); x.fill(); x.beginPath(); x.ellipse(w * 0.89, h * 0.63, 9, 14, 0, 0, 7); x.fill(); });
+  LANDMARK.eiffel(x, w, h, h * 0.7, { cx: w * 0.5, H: h * 0.66 });
+  // the Haussmann blocks along the quai, their mansards and dormers
+  for (let i = 0; i < 9; i++) {
+    const bx = i * w / 9 + rnd() * 8, bw = w / 9 - 10 - rnd() * 20, by = h * 0.66 - 44 - rnd() * 40, bh = h * 0.3;
+    x.fillStyle = pick(['#9a8a6a', '#a89878', '#8e7e60']); x.fillRect(bx, by + 14, bw, bh);
+    x.fillStyle = '#2e3440'; x.fillRect(bx - 2, by, bw + 4, 16); x.beginPath(); x.moveTo(bx - 2, by); x.lineTo(bx + 6, by - 10); x.lineTo(bx + bw - 6, by - 10); x.lineTo(bx + bw + 2, by); x.fill();
+    for (let k = 0; k < 4; k++) { x.fillStyle = '#1c2028'; x.fillRect(bx + 8 + k * 24, by - 20, 4, 12); }
+    for (let r = 0; r < 6; r++) for (let c = 0; c < Math.floor(bw / 14); c++) { x.fillStyle = rnd() < 0.4 ? pick(['#e8b860', '#d8a050', '#ffd090']) : '#241e1a'; x.fillRect(bx + 5 + c * 14, by + 20 + r * 18, 6, 10); } x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(bx, by + 50, bw, 3); x.fillStyle = 'rgba(255,255,255,.12)'; x.fillRect(bx, by + 48, bw, 2);
+  }
+  // the Seine: the quai wall, a lit bateau-mouche, the tower's gold in the water
+  x.fillStyle = '#4a4238'; x.fillRect(0, h * 0.7, w, 8); for (let i = 0; i < 34; i++) { x.fillStyle = '#ffe6b0'; SKY.glow(x, '#ffe6b0', 8, () => { x.beginPath(); x.arc(i * 30 + 10, h * 0.69, 2.2, 0, 7); x.fill(); }); }
+  SKY.water(x, w, h, h * 0.715, '#141a30', '#04060c', '255,200,110', 500);
+  x.fillStyle = 'rgba(216,154,58,.35)'; for (let i = 0; i < 40; i++) x.fillRect(w * 0.5 - 60 + rnd() * 120, h * 0.72 + rnd() * h * 0.26, 20 + rnd() * 50, 2);
+  x.fillStyle = '#1a1a22'; x.fillRect(w * 0.18, h * 0.8, 150, 12); x.fillStyle = '#ffe0a0'; for (let k = 0; k < 10; k++) x.fillRect(w * 0.18 + 8 + k * 14, h * 0.803, 8, 6);
+});
+// Monte Carlo: Port Hercule packed with yachts, the Rock with the Prince's Palace, the hill of apartments, the Casino's green copper towers
+VIEW.monaco = (o) => canvas(2048, 512, (x, w, h) => {
+  SKY.grad(x, w, h, [[0, '#0a1034'], [0.4, '#2a2a64'], [0.56, '#7a4a6a'], [0.62, '#ff9a5a']]); SKY.stars(x, w, h, 200, 0.4);
+  // the hills behind, built up to the ridge with lit apartment blocks
+  x.fillStyle = '#1a1830'; x.beginPath(); x.moveTo(0, h * 0.62); for (let px = 0; px <= w; px += 60) x.lineTo(px, h * 0.44 + Math.sin(px / 300) * 30 + Math.cos(px / 130) * 14); x.lineTo(w, h * 0.62); x.fill();
+  for (let i = 0; i < 90; i++) { const bx = rnd() * w, by = h * (0.44 + rnd() * 0.14) + Math.sin(bx / 300) * 30; SKY.bldg(x, bx, by, 18 + rnd() * 40, 20 + rnd() * 50, '#14122a', ['#ffe0a8', '#fff0cc', '#ffc880'], 7, 0.5); }
+  // the Casino de Monte-Carlo: cream facade, two green copper lantern towers, lit gold
+  const cxx = w * 0.62, cy = h * 0.58; x.fillStyle = '#f0e2c0'; SKY.glow(x, '#ffe8b0', 20, () => { x.fillRect(cxx - 90, cy - 30, 180, 44); });
+  x.fillStyle = '#5a8a6a'; for (const s of [-1, 1]) { x.fillRect(cxx + s * 60 - 12, cy - 60, 24, 32); x.beginPath(); x.moveTo(cxx + s * 60 - 14, cy - 60); x.lineTo(cxx + s * 60, cy - 84); x.lineTo(cxx + s * 60 + 14, cy - 60); x.fill(); }
+  x.fillStyle = '#ffd890'; for (let k = 0; k < 7; k++) x.fillRect(cxx - 78 + k * 26, cy - 20, 10, 20);
+  // the Rock: the old town on its headland to the left, the Palace floodlit on top
+  x.fillStyle = '#2a2436'; x.beginPath(); x.moveTo(0, h * 0.72); x.lineTo(0, h * 0.5); x.lineTo(w * 0.1, h * 0.46); x.lineTo(w * 0.24, h * 0.47); x.lineTo(w * 0.3, h * 0.56); x.lineTo(w * 0.33, h * 0.72); x.fill();
+  x.fillStyle = '#e8dcc8'; SKY.glow(x, '#ffe8c0', 16, () => { x.fillRect(w * 0.08, h * 0.42, 120, 24); x.fillRect(w * 0.1, h * 0.38, 16, 10); x.fillRect(w * 0.18, h * 0.38, 16, 10); });
+  for (let i = 0; i < 60; i++) { x.fillStyle = pick(['#ffd98a', '#ffe9b8']); x.fillRect(w * 0.02 + rnd() * w * 0.26, h * (0.48 + rnd() * 0.2), 3, 3); }
+  for (let i = 0; i < w / 44; i++) SKY.bldg(x, i * 44 + rnd() * 6, h * 0.58 + rnd() * 10, 40, h * 0.14, '#1a1626', ['#ffe0a8', '#fff0cc'], 7, 0.55);
+  // the harbour: a quay wall, then yachts rafted along the pontoons, white hulls and lit decks, the big ones moored out
+  x.fillStyle = '#3a3630'; x.fillRect(0, h * 0.72, w, 6); for (let i = 0; i < 70; i++) { x.fillStyle = '#ffe6b0'; x.fillRect(i * 30 + 6, h * 0.71, 3, 3); }
+  SKY.water(x, w, h, h * 0.73, '#0e1a30', '#03060c', '255,220,170', 900);
+  for (let i = 0; i < 48; i++) { const yx = rnd() * w, yy = h * (0.74 + rnd() * 0.2), yl = 30 + rnd() * 70; x.fillStyle = '#eef2f8'; x.fillRect(yx, yy, yl, 7 + yl * 0.08); x.fillRect(yx + yl * 0.25, yy - yl * 0.12, yl * 0.45, yl * 0.12); x.fillStyle = '#ffd98a'; for (let k = 0; k < yl / 10; k++) x.fillRect(yx + 4 + k * 10, yy + 2, 4, 3); x.fillStyle = 'rgba(255,230,180,.25)'; x.fillRect(yx, yy + 10, yl, 18); }
+});
+// Macau from the Praia Grande: the Grand Lisboa's golden lotus bud, the round Lisboa, the Macau Tower, neon on the water
+VIEW.macau = (o) => canvas(1024, 512, (x, w, h) => {
+  SKY.grad(x, w, h, [[0, '#06081a'], [0.5, '#1a1440'], [0.68, '#4a1a3a']]); SKY.stars(x, w, h, 100, 0.45);
+  for (let i = 0; i < 30; i++) SKY.bldg(x, rnd() * w, h * (0.44 + rnd() * 0.16), 22 + rnd() * 40, 60 + rnd() * 90, '#0e0c22', ['#ffd98a', '#9ad4ff', '#ff8ad8'], 7, 0.4);
+  // the Macau Tower: a needle with its disc and antenna, far left
+  x.fillStyle = '#c8d0e0'; x.beginPath(); x.moveTo(w * 0.12 - 7, h * 0.7); x.lineTo(w * 0.12, h * 0.18); x.lineTo(w * 0.12 + 7, h * 0.7); x.fill(); SKY.glow(x, '#ffe8c0', 14, () => { x.fillStyle = '#ffe8c0'; x.beginPath(); x.ellipse(w * 0.12, h * 0.3, 26, 9, 0, 0, 7); x.fill(); }); x.fillRect(w * 0.12 - 1.5, h * 0.1, 3, h * 0.1);
+  // the Grand Lisboa: a lotus bud of gold rising from a podium, its facade scrolling LEDs; Casino Lisboa's round drum beside it
+  const gx = w * 0.56, gb = h * 0.7;
+  SKY.glow(x, '#ffb030', 40, () => { x.fillStyle = '#ffcc5a'; x.beginPath(); x.moveTo(gx, gb - h * 0.6); x.bezierCurveTo(gx - 20, gb - h * 0.5, gx - 90, gb - h * 0.4, gx - 60, gb - h * 0.22); x.lineTo(gx - 40, gb - h * 0.14); x.lineTo(gx + 40, gb - h * 0.14); x.lineTo(gx + 60, gb - h * 0.22); x.bezierCurveTo(gx + 90, gb - h * 0.4, gx + 20, gb - h * 0.5, gx, gb - h * 0.6); x.fill(); });
+  x.fillStyle = 'rgba(120,40,10,.45)'; for (let k = 0; k < 14; k++) { x.beginPath(); x.moveTo(gx, gb - h * 0.6); x.lineTo(gx - 60 + k * 9, gb - h * 0.14); x.lineTo(gx - 56 + k * 9, gb - h * 0.14); x.fill(); }
+  x.fillStyle = '#e8b040'; x.fillRect(gx - 48, gb - h * 0.14, 96, h * 0.14); x.fillStyle = '#ff5ad8'; for (let k = 0; k < 6; k++) x.fillRect(gx - 44 + k * 16, gb - h * 0.1, 8, 3);
+  x.fillStyle = '#8a1a4a'; SKY.glow(x, '#ff5ad8', 16, () => { x.fillRect(gx + 70, gb - h * 0.22, 60, h * 0.22); x.fillStyle = '#ffd84d'; for (let r = 0; r < 5; r++) x.fillRect(gx + 70, gb - h * 0.2 + r * 18, 60, 3); });
+  // the Wynn's curved wall of lit glass, the bridge lights across the bay
+  x.fillStyle = '#2a1a1a'; x.beginPath(); x.moveTo(w * 0.72, gb); x.quadraticCurveTo(w * 0.8, gb - h * 0.42, w * 0.92, gb); x.fill(); x.fillStyle = '#ffd890'; for (let r = 0; r < 12; r++) for (let c = 0; c < 10; c++) if (rnd() < 0.7) x.fillRect(w * 0.74 + c * 18 + (r % 2) * 4, gb - h * 0.3 + r * 11, 6, 5);
+  x.fillStyle = '#9ad4ff'; for (let i = 0; i < 40; i++) x.fillRect(w * 0.0 + i * 26, gb - 6, 3, 3);
+  SKY.water(x, w, h, gb, '#0a0a1e', '#02020a', '255,180,80', 500); x.fillStyle = 'rgba(255,200,60,.4)'; for (let i = 0; i < 50; i++) x.fillRect(gx - 70 + rnd() * 140, gb + rnd() * (h - gb), 20 + rnd() * 50, 2); x.fillStyle = 'rgba(255,90,216,.3)'; for (let i = 0; i < 30; i++) x.fillRect(gx + 60 + rnd() * 80, gb + rnd() * (h - gb), 10 + rnd() * 40, 2);
+});
+// Las Vegas from the top of the Strip: the Sphere lit, the Stratosphere, Luxor's beam, a Bellagio fountain show, the valley's lights to the mountains
+VIEW.vegas = (o) => canvas(2048, 512, (x, w, h) => {
+  SKY.grad(x, w, h, [[0, '#04040e'], [0.3, '#101030'], [0.36, '#2a1a3a']]); SKY.stars(x, w, h, 120, 0.3);
+  x.fillStyle = '#0c0a18'; x.beginPath(); x.moveTo(0, h * 0.4); for (let px = 0; px <= w; px += 50) x.lineTo(px, h * 0.36 + Math.sin(px / 170) * 12 + Math.sin(px / 61) * 5); x.lineTo(w, h * 0.4); x.fill();
+  // the valley below: a grid of streetlights thinning to the horizon
+  for (let r = 0; r < 26; r++) { const y = h * 0.38 + r * r * 0.9, n = 60 + r * 6; for (let i = 0; i < n; i++) { x.fillStyle = 'rgba(255,' + (190 + rnd() * 50 | 0) + ',120,' + (0.3 + rnd() * 0.5) + ')'; x.fillRect(rnd() * w, y + rnd() * 4, 1.5 + r * 0.1, 1.5 + r * 0.1); } }
+  // the Strip's towers, lit, closer and bigger toward the bottom
+  for (let i = 0; i < 22; i++) { const bx = rnd() * w, by = h * (0.4 + rnd() * 0.25), bw = 30 + rnd() * 70, bh = 50 + rnd() * 120; SKY.bldg(x, bx, by, bw, bh, '#0a0a16', ['#ffd98a', '#fff3d6', '#9ad4ff', '#ff8ad8'], 8, 0.5); x.fillStyle = pick(['#ffd84d', '#ff5ab0', '#5ad8ff', '#ff8a3a']); SKY.glow(x, x.fillStyle, 18, () => x.fillRect(bx + 4, by, bw - 8, 7)); }
+  // the Stratosphere's needle, far right; Luxor's pyramid and its beam, far left; the Sphere, big and lit, centre-right
+  x.fillStyle = '#c8d0e0'; x.beginPath(); x.moveTo(w * 0.85 - 8, h * 0.62); x.lineTo(w * 0.85, h * 0.06); x.lineTo(w * 0.85 + 8, h * 0.62); x.fill(); SKY.glow(x, '#ffe8c0', 14, () => { x.fillStyle = '#fff0d0'; x.beginPath(); x.ellipse(w * 0.85, h * 0.2, 30, 12, 0, 0, 7); x.fill(); });
+  x.fillStyle = '#0a0a12'; x.beginPath(); x.moveTo(w * 0.1 - 90, h * 0.74); x.lineTo(w * 0.1, h * 0.5); x.lineTo(w * 0.1 + 90, h * 0.74); x.fill(); x.fillStyle = 'rgba(255,255,255,.75)'; x.fillRect(w * 0.1 - 3, 0, 6, h * 0.5); x.fillStyle = 'rgba(255,255,255,.2)'; x.fillRect(w * 0.1 - 10, 0, 20, h * 0.5);
+  SKY.glow(x, '#ff9a3a', 60, () => { const sg = x.createRadialGradient(w * 0.66 - 20, h * 0.5 - 20, 10, w * 0.66, h * 0.5, 80); sg.addColorStop(0, '#ffe0a0'); sg.addColorStop(0.5, '#ff7a30'); sg.addColorStop(1, '#8a1a60'); x.fillStyle = sg; x.beginPath(); x.arc(w * 0.66, h * 0.5, 78, 0, 7); x.fill(); });
+  x.fillStyle = 'rgba(0,0,0,.35)'; for (let k = 0; k < 10; k++) x.fillRect(w * 0.66 - 78, h * 0.5 - 78 + k * 16, 156, 2);
+  // a half-size Eiffel Tower and the Bellagio's fountains arcing white in their lake
+  LANDMARK.eiffel(x, w, h, h * 0.76, { cx: w * 0.38, H: h * 0.3 });
+  x.fillStyle = '#0a1420'; x.fillRect(w * 0.46, h * 0.78, 300, 40); for (let k = 0; k < 14; k++) { x.strokeStyle = 'rgba(240,250,255,.85)'; x.lineWidth = 3; SKY.glow(x, '#fff', 10, () => { x.beginPath(); x.moveTo(w * 0.46 + 20 + k * 20, h * 0.78 + 30); x.quadraticCurveTo(w * 0.46 + 20 + k * 20 + 10, h * 0.78 - 60 - (k % 3) * 25, w * 0.46 + 20 + k * 20 + 20, h * 0.78 + 30); x.stroke(); }); }
+  // the street itself below, taillights and palms along the median
+  x.fillStyle = '#141018'; x.fillRect(0, h * 0.82, w, h * 0.18); for (let i = 0; i < 200; i++) { x.fillStyle = rnd() < 0.5 ? '#ff2a2a' : '#fff0c0'; x.fillRect(rnd() * w, h * 0.84 + rnd() * h * 0.14, 3, 2); }
+});
+// the French Quarter from a courtyard: the cathedral's three spires white over the roofs, slate and chimneys, a moon in the haze
+VIEW.quarter = (o) => canvas(1024, 512, (x, w, h) => {
+  SKY.grad(x, w, h, [[0, '#0a0e2a'], [0.6, '#2a2050'], [1, '#5a3a50']]); SKY.stars(x, w, h, 80, 0.5); SKY.moon(x, w * 0.76, h * 0.2, 18);
+  // St. Louis Cathedral: the tall central spire, the two flanking, the clock, floodlit white
+  const cx = w * 0.42, by = h * 0.86; x.fillStyle = '#e8e4dc'; SKY.glow(x, '#fff0d8', 24, () => {
+    x.fillRect(cx - 110, by - 90, 220, 90); for (const s of [-1, 1]) { x.fillRect(cx + s * 80 - 18, by - 170, 36, 80); x.beginPath(); x.moveTo(cx + s * 80 - 22, by - 170); x.lineTo(cx + s * 80, by - 250); x.lineTo(cx + s * 80 + 22, by - 170); x.fill(); }
+    x.fillRect(cx - 22, by - 200, 44, 110); x.beginPath(); x.moveTo(cx - 28, by - 200); x.lineTo(cx, by - 320); x.lineTo(cx + 28, by - 200); x.fill(); });
+  x.fillStyle = '#2a2a30'; x.beginPath(); x.arc(cx, by - 120, 14, 0, 7); x.fill(); x.fillStyle = '#fff'; x.beginPath(); x.arc(cx, by - 120, 11, 0, 7); x.fill(); x.fillStyle = '#1a1a1a'; x.fillRect(cx - 1, by - 130, 2, 10); x.fillRect(cx, by - 121, 7, 2);
+  x.fillStyle = '#3a3030'; for (let k = 0; k < 5; k++) x.fillRect(cx - 90 + k * 40, by - 70, 14, 40); x.fillStyle = '#ffd890'; x.fillRect(cx - 12, by - 60, 24, 36);
+  // the Cabildo and Presbytère's mansards either side, slate roofs and chimneys along the block
+  for (let i = 0; i < 12; i++) { const bx = i * 90 - 20, bh = 40 + rnd() * 30; if (Math.abs(bx + 45 - cx) < 140) continue; x.fillStyle = '#1a1620'; x.fillRect(bx, by - bh, 86, bh); x.fillStyle = '#2a2430'; x.beginPath(); x.moveTo(bx - 4, by - bh); x.lineTo(bx + 14, by - bh - 22); x.lineTo(bx + 72, by - bh - 22); x.lineTo(bx + 90, by - bh); x.fill(); x.fillStyle = '#1a1620'; x.fillRect(bx + 20, by - bh - 34, 8, 14); x.fillRect(bx + 60, by - bh - 34, 8, 14); for (let k = 0; k < 3; k++) if (rnd() < 0.6) { x.fillStyle = '#ffd890'; x.fillRect(bx + 12 + k * 26, by - bh + 10, 10, 14); } }
+  x.fillStyle = '#0c0a10'; x.fillRect(0, by, w, h - by);
+});
+// Westminster across the river: the Elizabeth Tower's lit clock, Parliament's long gothic front, the Eye, the Shard
+VIEW.london = (o) => canvas(1024, 512, (x, w, h) => {
+  SKY.grad(x, w, h, [[0, '#0a0e24'], [0.5, '#262a4e'], [0.66, '#4a4060']]); SKY.stars(x, w, h, 60, 0.4); x.fillStyle = 'rgba(80,70,100,.5)'; x.fillRect(0, h * 0.5, w, h * 0.16);
+  const base = h * 0.68;
+  // the London Eye, lit, left
+  x.strokeStyle = 'rgba(120,200,255,.9)'; x.lineWidth = 4; SKY.glow(x, '#8ad0ff', 14, () => { x.beginPath(); x.arc(w * 0.14, base - 92, 92, 0, 7); x.stroke(); x.lineWidth = 1.5; for (let k = 0; k < 24; k++) { x.beginPath(); x.moveTo(w * 0.14, base - 92); x.lineTo(w * 0.14 + Math.cos(k / 24 * 6.283) * 92, base - 92 + Math.sin(k / 24 * 6.283) * 92); x.stroke(); } });
+  x.fillStyle = '#e8f0ff'; for (let k = 0; k < 24; k++) { x.beginPath(); x.ellipse(w * 0.14 + Math.cos(k / 24 * 6.283) * 92, base - 92 + Math.sin(k / 24 * 6.283) * 92, 5, 3.5, 0, 0, 7); x.fill(); }
+  x.fillStyle = '#4a4a5a'; x.beginPath(); x.moveTo(w * 0.14 - 50, base); x.lineTo(w * 0.14, base - 92); x.lineTo(w * 0.14 + 50, base); x.fill();
+  // the Houses of Parliament: the long floodlit front, pinnacles, the Victoria Tower right, the Elizabeth Tower left
+  const px0 = w * 0.3, pw = w * 0.5; x.fillStyle = '#c8b088'; SKY.glow(x, '#ffd8a0', 20, () => { x.fillRect(px0, base - 70, pw, 70); });
+  x.fillStyle = '#6a5a40'; for (let k = 0; k < pw / 14; k++) { x.fillRect(px0 + k * 14 + 3, base - 60, 4, 50); x.fillRect(px0 + k * 14 + 2, base - 82, 6, 12); }
+  x.fillStyle = '#ffd890'; for (let k = 0; k < pw / 14; k++) if (rnd() < 0.7) x.fillRect(px0 + k * 14 + 8, base - 40, 3, 12);
+  x.fillStyle = '#b8a078'; x.fillRect(px0 + pw - 60, base - 170, 60, 170); x.fillStyle = '#6a5a40'; for (const k of [0, 1, 2, 3]) x.fillRect(px0 + pw - 60 + k * 16 + 2, base - 184, 6, 16); x.fillStyle = '#4a6a6a'; x.fillRect(px0 + pw - 54, base - 150, 48, 100);
+  const bx = px0 + 30; x.fillStyle = '#b8a078'; x.fillRect(bx - 18, base - 220, 36, 220); x.fillStyle = '#3a4a5a'; x.beginPath(); x.moveTo(bx - 22, base - 236); x.lineTo(bx, base - 300); x.lineTo(bx + 22, base - 236); x.fill(); x.fillStyle = '#c8a050'; x.fillRect(bx - 3, base - 316, 6, 18);
+  SKY.glow(x, '#fff0b0', 20, () => { x.fillStyle = '#fff4c8'; x.beginPath(); x.arc(bx, base - 215, 16, 0, 7); x.fill(); }); x.strokeStyle = '#1a1a1a'; x.lineWidth = 2; x.beginPath(); x.moveTo(bx, base - 215); x.lineTo(bx, base - 227); x.moveTo(bx, base - 215); x.lineTo(bx + 8, base - 210); x.stroke(); x.fillStyle = '#6a5a40'; x.fillRect(bx - 22, base - 236, 44, 8);
+  // the Shard, a lit spike far right; the bridge's lamps across the front; the river
+  x.fillStyle = '#2a3448'; x.beginPath(); x.moveTo(w * 0.9 - 26, base); x.lineTo(w * 0.9, base - 260); x.lineTo(w * 0.9 + 26, base); x.fill(); x.fillStyle = 'rgba(200,220,255,.5)'; for (let k = 0; k < 18; k++) x.fillRect(w * 0.9 - 20 + k * 0.8, base - 20 - k * 13, 40 - k * 1.6, 1.5);
+  x.fillStyle = '#1a1a22'; x.fillRect(0, base, w, 10); for (let i = 0; i < 20; i++) { SKY.glow(x, '#ffe0a0', 10, () => { x.fillStyle = '#ffe8b0'; x.beginPath(); x.arc(i * 52 + 20, base - 8, 3, 0, 7); x.fill(); }); x.fillStyle = '#2a2a30'; x.fillRect(i * 52 + 19, base - 6, 2, 8); }
+  SKY.water(x, w, h, base + 10, '#141a2a', '#04060c', '255,210,150', 500); x.fillStyle = 'rgba(120,200,255,.3)'; for (let i = 0; i < 30; i++) x.fillRect(w * 0.14 - 60 + rnd() * 120, base + 10 + rnd() * (h - base - 10), 10 + rnd() * 40, 2);
+});
+// Vienna across the Ring: the Stephansdom's tall tower and chevron roof, Baroque domes, the Riesenrad far off
+VIEW.vienna = (o) => canvas(1024, 512, (x, w, h) => {
+  SKY.grad(x, w, h, [[0, '#0c1030'], [0.5, '#2a2a58'], [0.7, '#5a4a6a']]); SKY.stars(x, w, h, 80, 0.4);
+  const base = h * 0.78;
+  for (let i = 0; i < 14; i++) { const bx = i * 76, bh = 60 + rnd() * 30; x.fillStyle = '#1e1c2e'; x.fillRect(bx, base - bh, 72, bh); x.fillStyle = '#2a2838'; x.fillRect(bx - 2, base - bh - 10, 76, 12); for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) if (rnd() < 0.55) { x.fillStyle = '#ffd890'; x.fillRect(bx + 8 + c * 16, base - bh + 12 + r * 16, 6, 9); } }
+  // the Stephansdom: the nave with its zigzag tiles, the great south tower, the stumpy north tower with its cap
+  const cx = w * 0.5; x.fillStyle = '#3a3238'; x.fillRect(cx - 120, base - 120, 240, 120);
+  x.fillStyle = '#2a4a3a'; x.beginPath(); x.moveTo(cx - 130, base - 120); x.lineTo(cx, base - 200); x.lineTo(cx + 130, base - 120); x.fill();
+  x.fillStyle = '#c8a040'; for (let k = 0; k < 10; k++) { x.beginPath(); x.moveTo(cx - 120 + k * 26, base - 124); x.lineTo(cx - 107 + k * 26, base - 150); x.lineTo(cx - 94 + k * 26, base - 124); x.fill(); }
+  x.fillStyle = '#4a4248'; SKY.glow(x, '#ffe0b0', 14, () => { x.fillRect(cx + 70 - 16, base - 300, 32, 300); }); x.beginPath(); x.moveTo(cx + 70 - 20, base - 300); x.lineTo(cx + 70, base - 400); x.lineTo(cx + 70 + 20, base - 300); x.fill();
+  x.fillStyle = '#ffd890'; for (let k = 0; k < 8; k++) x.fillRect(cx + 70 - 4, base - 280 + k * 30, 8, 14);
+  x.fillStyle = '#4a4248'; x.fillRect(cx - 80 - 14, base - 190, 28, 190); x.fillStyle = '#5a8a6a'; x.beginPath(); x.arc(cx - 80, base - 192, 18, Math.PI, 0); x.fill(); x.fillRect(cx - 80 - 2, base - 220, 4, 14);
+  // the Karlskirche's green dome and twin columns, right; the Riesenrad's wheel, far left
+  x.fillStyle = '#2a6a5a'; x.beginPath(); x.ellipse(w * 0.8, base - 110, 44, 50, 0, Math.PI, 0); x.fill(); x.fillStyle = '#d8d0c0'; x.fillRect(w * 0.8 - 60, base - 110, 120, 110); for (const s of [-1, 1]) x.fillRect(w * 0.8 + s * 80 - 6, base - 150, 12, 150);
+  x.strokeStyle = 'rgba(255,230,170,.8)'; x.lineWidth = 3; SKY.glow(x, '#ffe0a0', 10, () => { x.beginPath(); x.arc(w * 0.1, base - 70, 60, 0, 7); x.stroke(); for (let k = 0; k < 12; k++) { x.beginPath(); x.moveTo(w * 0.1, base - 70); x.lineTo(w * 0.1 + Math.cos(k / 12 * 6.283) * 60, base - 70 + Math.sin(k / 12 * 6.283) * 60); x.stroke(); } });
+  // the Ring below: a tram's lit windows, horse chestnuts in a row
+  x.fillStyle = '#0c0c14'; x.fillRect(0, base, w, h - base); SKY.trees(x, w, base + 8, 30, '#0a120c', 0.9);
+  x.fillStyle = '#c81a1a'; x.fillRect(w * 0.6, base + 30, 160, 22); x.fillStyle = '#ffe8b0'; for (let k = 0; k < 8; k++) x.fillRect(w * 0.6 + 8 + k * 19, base + 34, 12, 10);
+  for (let i = 0; i < 24; i++) { SKY.glow(x, '#ffe0a0', 8, () => { x.fillStyle = '#fff0c0'; x.beginPath(); x.arc(i * 44 + 20, base + 16, 2.5, 0, 7); x.fill(); }); }
+});
+// Marina Bay from a tower: the Sands' three towers under the SkyPark, the ArtScience lotus, the Supertrees lit violet, the Flyer
+VIEW.singapore = (o) => canvas(1024, 512, (x, w, h) => {
+  SKY.grad(x, w, h, [[0, '#060a20'], [0.45, '#1c2050'], [0.6, '#4a3060']]); SKY.stars(x, w, h, 80, 0.4);
+  const base = h * 0.66;
+  for (let i = 0; i < 26; i++) SKY.bldg(x, rnd() * w, base - 60 - rnd() * 120, 20 + rnd() * 36, 80 + rnd() * 140, '#0c1226', ['#ffe0a8', '#9ad4ff', '#fff'], 7, 0.45);
+  // the Sands: three towers leaning in, the SkyPark laid across their tops like a hull
+  const sx = w * 0.42; x.fillStyle = '#1a2440'; for (let k = 0; k < 3; k++) { const tx = sx + k * 74; x.beginPath(); x.moveTo(tx - 20, base); x.lineTo(tx - 8, base - 230); x.lineTo(tx + 22, base - 230); x.lineTo(tx + 24, base); x.fill(); x.fillStyle = '#ffd890'; for (let r = 0; r < 22; r++) for (let c = 0; c < 4; c++) if (rnd() < 0.6) x.fillRect(tx - 12 + c * 9 + r * 0.3, base - 220 + r * 10, 5, 5); x.fillStyle = '#1a2440'; }
+  SKY.glow(x, '#ffe8c0', 16, () => { x.fillStyle = '#e8e4d8'; x.beginPath(); x.moveTo(sx - 60, base - 236); x.quadraticCurveTo(sx + 80, base - 262, sx + 240, base - 232); x.lineTo(sx + 230, base - 226); x.lineTo(sx - 40, base - 228); x.fill(); });
+  x.fillStyle = '#3ad8c8'; x.fillRect(sx + 100, base - 240, 80, 3);
+  // the ArtScience Museum's lotus, the Flyer's wheel, the Supertrees in the gardens behind
+  x.fillStyle = '#d8dce8'; for (let k = 0; k < 7; k++) { x.beginPath(); x.ellipse(w * 0.2 + k * 10, base - 20, 10, 36 + (k % 2) * 10, (k - 3) * 0.22, 0, 7); x.fill(); }
+  x.strokeStyle = 'rgba(160,210,255,.8)'; x.lineWidth = 3; SKY.glow(x, '#9ad4ff', 10, () => { x.beginPath(); x.arc(w * 0.9, base - 80, 70, 0, 7); x.stroke(); for (let k = 0; k < 16; k++) { x.beginPath(); x.moveTo(w * 0.9, base - 80); x.lineTo(w * 0.9 + Math.cos(k / 16 * 6.283) * 70, base - 80 + Math.sin(k / 16 * 6.283) * 70); x.stroke(); } });
+  for (let k = 0; k < 7; k++) { const tx = w * 0.62 + k * 36 + (k % 2) * 10, th = 60 + (k % 3) * 24; x.fillStyle = '#3a1a5a'; x.fillRect(tx - 3, base - th, 6, th); SKY.glow(x, '#c060ff', 22, () => { x.fillStyle = '#b060ff'; x.beginPath(); x.moveTo(tx - 24, base - th); x.lineTo(tx - 6, base - th - 18); x.lineTo(tx + 6, base - th - 18); x.lineTo(tx + 24, base - th); x.fill(); }); }
+  SKY.water(x, w, h, base, '#0a1428', '#02040a', '255,220,170', 400); x.fillStyle = 'rgba(180,120,255,.3)'; for (let i = 0; i < 40; i++) x.fillRect(w * 0.6 + rnd() * 260, base + rnd() * (h - base), 10 + rnd() * 40, 2);
+});
+// Nassau at sunset, from the beach: the sea to the horizon, Atlantis's pink towers and arch far across the water, a sail, palms either side
+VIEW.nassau = (o) => canvas(2048, 512, (x, w, h) => {
+  SKY.grad(x, w, h, [[0, '#1a1a5a'], [0.3, '#6a3a7a'], [0.5, '#ff8a5a'], [0.58, '#ffc070'], [0.6, '#2a6a8a'], [0.62, '#1a7a9a'], [0.85, '#0a4a6a'], [1, '#0a3a5a']]); SKY.stars(x, w, h, 60, 0.25);
+  x.fillStyle = 'rgba(255,170,100,.35)'; for (let k = 0; k < 6; k++) { x.beginPath(); x.ellipse(w * (0.2 + k * 0.13), h * (0.36 + (k % 2) * 0.08), 90 + k * 20, 9, 0, 0, 7); x.fill(); }
+  SKY.glow(x, '#ffe0a0', 60, () => { x.fillStyle = '#fff0c0'; x.beginPath(); x.arc(w * 0.62, h * 0.57, 26, Math.PI, 0); x.fill(); });
+  // Atlantis on Paradise Island: the Royal Towers joined by their bridge, coral pink, far on the horizon to the left
+  const ax = w * 0.22, ab = h * 0.6; x.fillStyle = '#c8807a'; for (const s of [-1, 1]) { x.fillRect(ax + s * 40 - 16, ab - 70, 32, 70); x.fillRect(ax + s * 40 - 10, ab - 82, 20, 12); } x.fillRect(ax - 30, ab - 56, 60, 10); x.fillStyle = '#ffe0a0'; for (let k = 0; k < 12; k++) for (const s of [-1, 1]) if (rnd() < 0.5) x.fillRect(ax + s * 40 - 12 + (k % 3) * 9, ab - 66 + Math.floor(k / 3) * 14, 4, 6);
+  x.fillStyle = '#6a4a5a'; x.fillRect(ax - 120, ab - 14, 240, 14); x.fillStyle = '#ffd890'; for (let k = 0; k < 20; k++) x.fillRect(ax - 116 + k * 12, ab - 10, 3, 3);
+  // the water: swells catching the sunset, a sail, the shallows going turquoise toward the sand
+  for (let i = 0; i < 900; i++) { const yy = h * 0.61 + rnd() * h * 0.39; x.fillStyle = 'rgba(' + (yy < h * 0.7 ? '255,200,140' : '180,240,255') + ',' + rnd() * 0.35 + ')'; x.fillRect(rnd() * w, yy, 10 + rnd() * 40, 1.5 + (yy - h * 0.6) / 80); }
+  x.fillStyle = '#fff4e0'; x.beginPath(); x.moveTo(w * 0.72, h * 0.6); x.lineTo(w * 0.72, h * 0.5); x.lineTo(w * 0.745, h * 0.6); x.fill(); x.fillStyle = '#2a1a1a'; x.fillRect(w * 0.712, h * 0.6, 40, 4);
+  const wg = x.createLinearGradient(0, h * 0.86, 0, h); wg.addColorStop(0, 'rgba(60,200,220,0)'); wg.addColorStop(1, 'rgba(120,230,230,.6)'); x.fillStyle = wg; x.fillRect(0, h * 0.86, w, h * 0.14);
+  for (const [px, s] of [[w * 0.05, 1.3], [w * 0.1, 1.0], [w * 0.92, 1.2], [w * 0.97, 0.9], [w * 0.86, 0.8]]) SKY.palm(x, px, h * 0.92, s, '#0a1a16');
+});
+// Prague from the Old Town: the Castle and St. Vitus's spires lit gold on the hill, the Charles Bridge and its tower, red roofs, the Vltava
+VIEW.prague = (o) => canvas(1024, 512, (x, w, h) => {
+  SKY.grad(x, w, h, [[0, '#0a0c28'], [0.45, '#2a2250'], [0.6, '#5a3a58']]); SKY.stars(x, w, h, 100, 0.4);
+  // the hill, the long palace front floodlit, the cathedral's two needle spires and the great tower behind
+  x.fillStyle = '#1a1830'; x.beginPath(); x.moveTo(0, h * 0.6); x.lineTo(w * 0.2, h * 0.46); x.lineTo(w * 0.7, h * 0.42); x.lineTo(w, h * 0.5); x.lineTo(w, h * 0.6); x.fill();
+  const px0 = w * 0.26, pb = h * 0.47; x.fillStyle = '#d8c8a0'; SKY.glow(x, '#ffd890', 24, () => { x.fillRect(px0, pb - 40, w * 0.42, 40); }); x.fillStyle = '#4a3a30'; x.fillRect(px0 - 4, pb - 52, w * 0.42 + 8, 12); x.fillStyle = '#5a4a40'; for (let k = 0; k < 30; k++) x.fillRect(px0 + 8 + k * 14, pb - 30, 5, 10);
+  const vx = px0 + w * 0.16; x.fillStyle = '#4a4050'; x.fillRect(vx - 60, pb - 120, 120, 80); for (const s of [-1, 1]) { x.fillRect(vx + s * 30 - 8, pb - 170, 16, 60); x.fillStyle = '#6a6070'; x.beginPath(); x.moveTo(vx + s * 30 - 10, pb - 170); x.lineTo(vx + s * 30, pb - 240); x.lineTo(vx + s * 30 + 10, pb - 170); x.fill(); x.fillStyle = '#4a4050'; }
+  x.fillRect(vx + 70, pb - 150, 26, 110); x.fillStyle = '#2a6a5a'; x.beginPath(); x.ellipse(vx + 83, pb - 152, 16, 14, 0, Math.PI, 0); x.fill(); x.fillRect(vx + 81, pb - 180, 4, 16);
+  x.fillStyle = '#ffd890'; for (let k = 0; k < 6; k++) x.fillRect(vx - 50 + k * 20, pb - 100, 6, 30);
+  // the Lesser Town's red roofs tumbling down to the river, St. Nicholas's green dome
+  for (let i = 0; i < 70; i++) { const bx = rnd() * w, by = pb + 10 + rnd() * h * 0.16, bw = 16 + rnd() * 30; x.fillStyle = '#2a1a1a'; x.fillRect(bx, by, bw, 24); x.fillStyle = pick(['#7a3020', '#8a3a24', '#6a2a1c']); x.beginPath(); x.moveTo(bx - 2, by); x.lineTo(bx + bw / 2, by - 12); x.lineTo(bx + bw + 2, by); x.fill(); if (rnd() < 0.5) { x.fillStyle = '#ffd890'; x.fillRect(bx + 4, by + 6, 4, 6); } }
+  x.fillStyle = '#2a6a5a'; x.beginPath(); x.ellipse(w * 0.2, h * 0.6, 30, 26, 0, Math.PI, 0); x.fill(); x.fillStyle = '#3a3030'; x.fillRect(w * 0.2 - 30, h * 0.6, 60, 30); x.fillRect(w * 0.2 + 40, h * 0.5, 12, 40);
+  x.fillStyle = '#1a1420'; x.fillRect(0, h * 0.66, w, h * 0.09); for (let i = 0; i < 40; i++) { x.fillStyle = '#ffd890'; x.fillRect(rnd() * w, h * 0.67 + rnd() * h * 0.06, 3, 4); }
+  // the Charles Bridge: its arches, the statues along the parapet, the Old Town tower at our end, lamps
+  const by = h * 0.74; x.fillStyle = '#3a3230'; x.fillRect(0, by, w, 14); for (let k = 0; k < 9; k++) { x.fillStyle = '#0c0c18'; x.beginPath(); x.ellipse(60 + k * 112, by + 14, 42, 28, 0, Math.PI, 0); x.fill(); }
+  x.fillStyle = '#1a1620'; for (let k = 0; k < 17; k++) x.fillRect(30 + k * 58, by - 22, 7, 22); for (let k = 0; k < 9; k++) SKY.glow(x, '#ffd890', 10, () => { x.fillStyle = '#ffe8b0'; x.beginPath(); x.arc(70 + k * 112, by - 16, 3, 0, 7); x.fill(); });
+  x.fillStyle = '#3a3030'; x.fillRect(w * 0.88, by - 150, 50, 150); x.beginPath(); x.moveTo(w * 0.88 - 6, by - 150); x.lineTo(w * 0.88 + 25, by - 210); x.lineTo(w * 0.88 + 56, by - 150); x.fill(); x.fillStyle = '#ffd890'; x.fillRect(w * 0.88 + 20, by - 110, 10, 18);
+  SKY.water(x, w, h, by + 14, '#0e1426', '#03050c', '255,210,150', 400);
+});
+// Valletta across the Grand Harbour at dusk: the bastions floodlit honey, the Carmelite dome and St. Paul's spire, boats
+VIEW.malta = (o) => canvas(2048, 512, (x, w, h) => {
+  SKY.grad(x, w, h, [[0, '#1a1a4a'], [0.35, '#5a3a6a'], [0.52, '#ff9a5a'], [0.58, '#ffc890']]); SKY.stars(x, w, h, 60, 0.3);
+  const base = h * 0.6;
+  // the city on its ridge: tight stone houses with their closed wooden balconies, church domes, the spire
+  x.fillStyle = '#5a4a3a'; x.beginPath(); x.moveTo(0, base + 20); x.lineTo(w * 0.1, base - 40); x.lineTo(w * 0.5, base - 70); x.lineTo(w * 0.8, base - 50); x.lineTo(w, base + 10); x.lineTo(w, base + 30); x.lineTo(0, base + 30); x.fill();
+  for (let i = 0; i < 110; i++) { const bx = rnd() * w, bh = 26 + rnd() * 40, by = base - 40 - (0.5 - Math.abs(bx / w - 0.5)) * 60 + rnd() * 30; x.fillStyle = pick(['#c8a878', '#b89868', '#d8b888']); x.fillRect(bx, by, 22 + rnd() * 20, bh); x.fillStyle = pick(['#2a5a3a', '#7a2a1a', '#2a3a6a']); x.fillRect(bx + 4, by + 8, 10, 12); if (rnd() < 0.5) { x.fillStyle = '#ffe0a0'; x.fillRect(bx + 6, by + 10, 5, 7); } }
+  SKY.glow(x, '#ffd8a0', 26, () => { x.fillStyle = '#9ab0b8'; x.beginPath(); x.ellipse(w * 0.5, base - 90, 54, 44, 0, Math.PI, 0); x.fill(); x.fillStyle = '#d8b888'; x.fillRect(w * 0.5 - 60, base - 90, 120, 60); x.fillRect(w * 0.5 - 4, base - 150, 8, 18); });
+  x.fillStyle = '#d8c8a0'; x.fillRect(w * 0.58 - 10, base - 170, 20, 120); x.beginPath(); x.moveTo(w * 0.58 - 12, base - 170); x.lineTo(w * 0.58, base - 250); x.lineTo(w * 0.58 + 12, base - 170); x.fill();
+  // the bastions: long walls of stone floodlit amber, stepping down to the water; Fort St. Elmo's low fort at the point
+  x.fillStyle = '#b8905a'; SKY.glow(x, '#ffb060', 30, () => { x.fillRect(0, base - 10, w, 26); x.fillRect(w * 0.1, base - 30, w * 0.75, 22); }); x.fillStyle = 'rgba(0,0,0,.25)'; for (let k = 0; k < 40; k++) x.fillRect(k * 52, base - 30, 3, 46);
+  x.fillStyle = '#6a5a44'; x.fillRect(0, base + 16, w, 10);
+  // the harbour: the water catching the sunset, luzzus and a ferry, their lights
+  SKY.water(x, w, h, base + 26, '#1a2a44', '#06101e', '255,200,120', 900);
+  for (let i = 0; i < 9; i++) { const yx = rnd() * w, yy = base + 50 + rnd() * h * 0.3; x.fillStyle = pick(['#d8282a', '#2a5ad8', '#f0d040']); x.fillRect(yx, yy, 26, 7); x.fillStyle = '#fff'; x.fillRect(yx + 4, yy + 2, 4, 3); x.fillStyle = '#f0f0f0'; x.fillRect(yx + 10, yy - 4, 3, 4); }
+  x.fillStyle = '#e8e8f0'; x.fillRect(w * 0.7, base + 40, 90, 10); x.fillRect(w * 0.72, base + 32, 60, 8); x.fillStyle = '#ffe0a0'; for (let k = 0; k < 9; k++) x.fillRect(w * 0.7 + 6 + k * 9, base + 43, 4, 3);
+});
+
+// ── Outdoors and big architecture ──────────────────────────────────────────────────────────────────────────
+// a painted view as light, for the big backdrops (the offline renderer keeps these dim, see 'sky')
+function unlit(c, k) { const m = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffffff, emissiveMap: tex(c), emissiveIntensity: k || 1, roughness: 1 }); m.userData.kind = 'sky'; return m; }
+// the world beyond an open side: a curved backdrop round the room (the view painted on it) under a sky dome
+function backdrop(g, view, cx, cz, r, h, y, a0, a1) {
+  const geo = new THREE.CylinderGeometry(r, r, h, 64, 1, true, a0, a1 - a0);
+  const m = new THREE.Mesh(geo, unlit(view)); m.material.side = THREE.BackSide; m.position.set(cx, y + h / 2, cz); g.add(m); m.userData.flat = 1; return m;
+}
+function skyDome(g, cx, cz, r, stops) {
+  const c = canvas(8, 256, (x, w, h) => { const g2 = x.createLinearGradient(0, 0, 0, h); stops.forEach(([p, col]) => g2.addColorStop(p, col)); x.fillStyle = g2; x.fillRect(0, 0, w, h); });
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.52), unlit(c, 0.9)); m.material.side = THREE.BackSide; m.position.set(cx, -r * 0.03, cz); g.add(m); m.userData.flat = 1; return m;
+}
+// ground that goes on past the room's floor: sand, grass, flagstones (subdivided so the renderer doesn't take it for the floor)
+function ground(g, w, d, mat, x, z, y) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d, 6, 6), mat); m.rotation.x = -Math.PI / 2; m.position.set(x, y == null ? -0.02 : y, z); g.add(m); m.userData.flat = 1; return m; }
+// still water: a pool, a harbour, the sea by the deck
+function water(g, w, d, x, z, y, col) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d, 4, 4), new THREE.MeshPhysicalMaterial({ color: col || 0x1a6a8a, roughness: 0.04, metalness: 0.1, transmission: 0.3, thickness: 1, envMapIntensity: 1.6, emissive: col || 0x1a6a8a, emissiveIntensity: 0.15 })); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); g.add(m); m.userData.flat = 1; m.material.userData.kind = 'water'; return m; }
+// a window with a round top: the plane shaped to the arch, the view mapped across it, a frame round the edge
+function archShape(w, h, pointed) {
+  const s = new THREE.Shape(), r = w / 2; s.moveTo(-r, -h / 2); s.lineTo(r, -h / 2); s.lineTo(r, h / 2 - r);
+  if (pointed) { s.quadraticCurveTo(r, h / 2 + r * 0.1, 0, h / 2 + r * 0.6); s.quadraticCurveTo(-r, h / 2 + r * 0.1, -r, h / 2 - r); } else s.absarc(0, h / 2 - r, r, 0, Math.PI, false);
+  s.lineTo(-r, -h / 2); return s;
+}
+function archWindow(g, view, x, y, z, w, h, ry, frame, pointed) {
+  const geo = new THREE.ShapeGeometry(archShape(w, h, pointed), 24); geo.computeBoundingBox(); const bb = geo.boundingBox, uv = geo.attributes.uv, pos = geo.attributes.position;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, (pos.getX(i) - bb.min.x) / (bb.max.x - bb.min.x), (pos.getY(i) - bb.min.y) / (bb.max.y - bb.min.y));
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex(view) })); m.position.set(x, y, z); if (ry) m.rotation.y = ry; g.add(m);
+  const fr = new THREE.Group(); fr.position.set(x, y, z); if (ry) fr.rotation.y = ry; g.add(fr);
+  const fm = M({ color: frame || 0x1a1410, roughness: 0.45 }), r = w / 2;
+  const pts = []; for (let i = 0; i <= 24; i++) { const a = Math.PI * i / 24; pts.push(new THREE.Vector3(Math.cos(a) * r, h / 2 - r + Math.sin(a) * r * (pointed ? 1.5 : 1), 0.04)); }
+  fr.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 32, 0.06, 8), fm));
+  box(fr, 0.1, h - r + 0.2, 0.12, fm, -r, (-h / 2 + h / 2 - r) / 2 - 0.1, 0.04); box(fr, 0.1, h - r + 0.2, 0.12, fm, r, (-h / 2 + h / 2 - r) / 2 - 0.1, 0.04); box(fr, w + 0.24, 0.08, 0.22, fm, 0, -h / 2 - 0.02, 0.07);
+  box(fr, 0.05, h - r, 0.05, fm, 0, -r / 2, 0.04); box(fr, w, 0.04, 0.05, fm, 0, h / 2 - r, 0.04);
+  const gl = new THREE.Mesh(geo.clone(), M({ color: 0x9ab0c8, metalness: 1, roughness: 0.3, transparent: true, opacity: 0.08, envMapIntensity: 1.5 })); gl.position.z = 0.02; fr.add(gl);
+  return m;
+}
+// a bay window: n panes on an arc, framed, the view on each
+function bayWindow(g, view, x, y, z, r, h, n, span, frame) {
+  const b = new THREE.Group(); b.position.set(x, y, z); g.add(b);
+  const fm = M({ color: frame || 0xf0ebe0, roughness: 0.5 }), pw = 2 * r * Math.sin(span / n / 2) - 0.14;
+  const base = tex(view); for (let i = 0; i < n; i++) { const a = -span / 2 + (i + 0.5) * span / n; const px = Math.sin(a) * r, pz = -Math.cos(a) * r; const t = base.clone(); t.wrapS = THREE.ClampToEdgeWrapping; t.repeat.set(0.6 / n, 1); t.offset.set(0.2 + 0.6 * i / n, 0); t.needsUpdate = true; const pane = plane(b, pw, h, new THREE.MeshBasicMaterial({ map: t }), px, 0, pz, -a); plane(b, pw, h, M({ color: 0x9ab0c8, metalness: 1, roughness: 0.3, transparent: true, opacity: 0.08, envMapIntensity: 1.5 }), px + Math.sin(a) * 0.02, 0, pz - Math.cos(a) * 0.02, -a); box(b, pw, 0.04, 0.05, M({ color: frame || 0xf0ebe0, roughness: 0.5 }), px, h * 0.1, pz, -a); }
+  for (let i = 0; i <= n; i++) { const a = -span / 2 + i * span / n; box(b, 0.16, h + 0.3, 0.16, fm, Math.sin(a) * r, 0, -Math.cos(a) * r); }
+  // the seat round the bay
+  const pts = []; for (let i = 0; i <= 16; i++) { const a = -span / 2 + i * span / 16; pts.push(new THREE.Vector2(Math.sin(a) * (r - 0.3), -Math.cos(a) * (r - 0.3))); }
+  return b;
+}
+// a railing between two points: iron (thin balusters), wood, or a stone balustrade
+function railing(g, x0, z0, x1, z1, h, style, col) {
+  const dx = x1 - x0, dz = z1 - z0, len = Math.hypot(dx, dz), ry = Math.atan2(dx, dz) + Math.PI / 2;
+  const r = new THREE.Group(); r.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2); r.rotation.y = ry; g.add(r);
+  if (style === 'stone') {
+    const st = M({ map: tex(PAINT.stucco(col || '#d8c8a0'), 2, 1), roughness: 0.9 });
+    box(r, len, 0.08, 0.3, st, 0, h, 0); box(r, len, 0.1, 0.34, st, 0, 0.05, 0);
+    const n = Math.floor(len / 0.3); for (let i = 0; i < n; i++) { const bl = new THREE.Mesh(new THREE.LatheGeometry([[0.06, 0], [0.1, 0.06], [0.05, 0.3], [0.09, 0.5], [0.11, 0.6], [0.05, 0.7], [0.1, 0.8], [0.06, 0.85]].map(q => new THREE.Vector2(q[0] * h / 0.9, q[1] * h / 0.9)), 10), st); bl.position.set(-len / 2 + (i + 0.5) * len / n, 0.1, 0); r.add(bl); }
+  } else {
+    const m = M({ color: col || (style === 'wood' ? 0xf0ebe0 : 0x141414), metalness: style === 'wood' ? 0 : 0.6, roughness: 0.5 });
+    box(r, len, 0.05, 0.08, m, 0, h, 0); box(r, len, 0.03, 0.03, m, 0, 0.12, 0);
+    const n = Math.floor(len / (style === 'wood' ? 0.16 : 0.13)); for (let i = 0; i <= n; i++) { const bx = -len / 2 + i * len / n; cyl(r, 0.012, 0.012, h, m, bx, h / 2, 0, 6); if (style === 'iron' && i % 2) { const sc = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.008, 4, 12), m); sc.position.set(bx + len / n / 2, h * 0.6, 0); r.add(sc); } }
+    for (let i = 0; i <= Math.floor(len / 2); i++) box(r, 0.05, h + 0.02, 0.05, m, -len / 2 + i * Math.min(2, len), h / 2, 0);
+  }
+  return r;
+}
+// a tiered fountain: stone basin, water, a bowl above spilling into it, lit from below
+function fountain(g, x, z, r) {
+  const f = new THREE.Group(); f.position.set(x, 0, z); g.add(f); r = r || 1.6;
+  const st = M({ map: tex(PAINT.stucco('#b8b0a0'), 2, 1), roughness: 0.85 });
+  cyl(f, r, r + 0.1, 0.5, st, 0, 0.25, 0, 32); cyl(f, r - 0.12, r - 0.12, 0.02, M({ color: 0x1a3a4a, roughness: 0.03, metalness: 0.3, envMapIntensity: 1.6 }), 0, 0.46, 0, 32);
+  cyl(f, 0.12, 0.16, 0.9, st, 0, 0.9, 0, 12); const bowl = new THREE.Mesh(new THREE.LatheGeometry([[0.001, 0], [0.5, 0.02], [0.62, 0.14], [0.6, 0.2], [0.001, 0.2]].map(q => new THREE.Vector2(q[0], q[1])), 24), st); bowl.position.y = 1.32; f.add(bowl);
+  cyl(f, 0.06, 0.09, 0.5, st, 0, 1.7, 0, 10); const top = new THREE.Mesh(new THREE.LatheGeometry([[0.001, 0], [0.26, 0.02], [0.32, 0.1], [0.3, 0.14], [0.001, 0.14]].map(q => new THREE.Vector2(q[0], q[1])), 20), st); top.position.y = 1.95; f.add(top);
+  const wm = M({ color: 0xcce8ff, transparent: true, opacity: 0.55, roughness: 0.05 }); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; seg(f, [Math.cos(a) * 0.3, 2.06, Math.sin(a) * 0.3], [Math.cos(a) * 0.34, 1.52, Math.sin(a) * 0.34], 0.01, 0.014, wm); seg(f, [Math.cos(a + 0.3) * 0.6, 1.48, Math.sin(a + 0.3) * 0.6], [Math.cos(a + 0.3) * 0.66, 0.5, Math.sin(a + 0.3) * 0.66], 0.012, 0.02, wm); } sph(f, 0.06, wm, 0, 2.2, 0, 8).scale.y = 2.5;
+  light(f, 0x8ad0ff, 1.6, 0, 0.6, 0, 4); return f;
+}
+// a pool at night: turquoise water lit from under, pale coping, the far edge spilling over
+function pool(g, x, z, w, d) {
+  const cop = M({ map: tex(PAINT.stucco('#e8e0d0'), 4, 1), roughness: 0.7 });
+  box(g, w + 0.6, 0.12, 0.3, cop, x, 0.06, z + d / 2 + 0.15); for (const s of [-1, 1]) box(g, 0.3, 0.12, d + 0.6, cop, x + s * (w / 2 + 0.15), 0.06, z);
+  box(g, w, 0.6, d, M({ color: 0x1a7a9a, roughness: 0.3 }), x, -0.32, z);
+  const wt = water(g, w, d, x, z, 0.08, 0x2ad0d8); wt.material.emissiveIntensity = 0.5;
+  for (let i = 0; i < 4; i++) light(g, 0x40e0e8, 1.2, x - w / 2 + (i + 0.5) * w / 4, 0.0, z, 3);
+  return wt;
+}
+// a real palm: a tapered, slightly leaning trunk with ring scars, fronds that droop, for outside
+let FROND = null;
+function frondTex() { if (!FROND) FROND = tex(canvas(256, 64, (x, w, h) => { x.clearRect(0, 0, w, h); x.strokeStyle = '#2a5a24'; x.lineWidth = 3; x.beginPath(); x.moveTo(0, h / 2); x.lineTo(w, h / 2); x.stroke(); for (let i = 6; i < w; i += 7) { x.strokeStyle = pick(['#2f6a2a', '#3a7a30', '#245a22']); x.lineWidth = 3; x.beginPath(); x.moveTo(i, h / 2); x.lineTo(i + 14, 2 + (i % 3)); x.moveTo(i, h / 2); x.lineTo(i + 14, h - 2 - (i % 3)); x.stroke(); } })); return FROND; }
+function palmTree(g, x, z, hgt, lean) {
+  const p = new THREE.Group(); p.position.set(x, 0, z); p.rotation.y = rnd() * 6.28; g.add(p); hgt = hgt || 5;
+  const bark = M({ map: tex(PAINT.wood('#8a7050', '#6a5038', 6), 1, 6), roughness: 0.95 });
+  const pts = []; for (let i = 0; i <= 8; i++) { const t = i / 8; pts.push(new THREE.Vector3(Math.sin(t * 1.2) * (lean || 0.5) * t, t * hgt, 0)); }
+  const trunk = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.16, 10), bark); p.add(trunk);
+  for (let i = 1; i < 12; i++) { const t = i / 12, q = pts[0].clone().lerp(pts[8], t); const ring = cyl(p, 0.17 + 0.03 * (1 - t), 0.19 + 0.03 * (1 - t), 0.05, M({ color: 0x5a4030, roughness: 0.95 }), Math.sin(t * 1.2) * (lean || 0.5) * t, t * hgt, 0, 10); }
+  const top = pts[8]; const leaf = new THREE.MeshStandardMaterial({ map: frondTex(), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.7, color: 0xffffff });
+  for (let i = 0; i < 13; i++) { const a = i / 13 * Math.PI * 2 + rnd() * 0.3, tilt = 0.25 + rnd() * 0.55; const geo = new THREE.PlaneGeometry(2.6, 0.5, 12, 1), ps = geo.attributes.position; for (let k = 0; k < ps.count; k++) { const u = (ps.getX(k) + 1.3) / 2.6; ps.setY(k, ps.getY(k) - u * u * 1.1); } geo.translate(1.3, 0, 0); const f = new THREE.Mesh(geo, leaf); f.position.set(top.x, top.y + 0.1, top.z); f.rotation.set(0, -a, tilt - 0.1); f.rotateX(0.2); p.add(f); }
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; sph(p, 0.05, M({ color: 0x6a4a1a }), top.x + Math.cos(a) * 0.2, top.y - 0.15, top.z + Math.sin(a) * 0.2, 6); }
+  return p;
+}
+// a banana plant: a cluster of big paddle leaves (the courtyard kind)
+function banana(g, x, z, s) {
+  const p = new THREE.Group(); p.position.set(x, 0, z); p.scale.setScalar(s || 1); p.rotation.y = rnd() * 6; g.add(p);
+  cyl(p, 0.1, 0.14, 1.4, M({ color: 0x5a7a3a, roughness: 0.8 }), 0, 0.7, 0, 10);
+  for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283, geo = new THREE.PlaneGeometry(0.5, 1.6, 2, 8), ps = geo.attributes.position; for (let k = 0; k < ps.count; k++) { const v = (ps.getY(k) + 0.8) / 1.6; ps.setZ(k, -v * v * 0.6); } geo.translate(0, 0.8, 0); const lf = new THREE.Mesh(geo, M({ color: pick([0x2f6a2a, 0x3a7a30, 0x4a8a3a]), side: THREE.DoubleSide, roughness: 0.6 })); lf.position.set(0, 1.3, 0); lf.rotation.set(-0.5 - rnd() * 0.5, a, 0); lf.rotation.order = 'YXZ'; p.add(lf); }
+  return p;
+}
+// a dome overhead: the inside of a half sphere, a ring of ribs, a ring at the spring line
+function dome(g, x, y, z, r, mat, ribs, ribMat) {
+  const d = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), mat); d.material.side = THREE.BackSide; d.position.set(x, y, z); g.add(d); d.userData.flat = 1;
+  for (let i = 0; i < (ribs || 0); i++) { const rb = new THREE.Mesh(new THREE.TorusGeometry(r - 0.05, 0.06, 6, 32, Math.PI / 2), ribMat); rb.position.set(x, y, z); rb.rotation.y = i / ribs * Math.PI * 2; g.add(rb); }
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.12, 8, 64), ribMat || mat); ring.rotation.x = Math.PI / 2; ring.position.set(x, y, z); g.add(ring);
+  return d;
+}
+// a barrel vault: a half-cylinder ceiling along z, its ridge over x, springing at y (pointed: taller, like a gothic vault)
+function vault(g, x, y, z, w, len, mat, pointed, squash) {
+  const geo = new THREE.CylinderGeometry(w / 2, w / 2, len, 36, 1, true, 0, Math.PI); geo.rotateZ(Math.PI / 2); geo.rotateY(Math.PI / 2); if (pointed || squash) geo.scale(1, squash || 1.3, 1);
+  const m = new THREE.Mesh(geo, mat); m.material.side = THREE.BackSide; m.position.set(x, y, z); g.add(m); m.userData.flat = 1; return m;
+}
+// a gothic rib: a pointed arch of stone across a bay
+function ribArch(g, x0, z0, x1, z1, y0, rise, r, mat) {
+  const mid = new THREE.Vector3((x0 + x1) / 2, y0 + rise, (z0 + z1) / 2);
+  const c = new THREE.QuadraticBezierCurve3(new THREE.Vector3(x0, y0, z0), new THREE.Vector3(mid.x, y0 + rise * 1.5, mid.z), new THREE.Vector3(x1, y0, z1));
+  const m = new THREE.Mesh(new THREE.TubeGeometry(c, 24, r || 0.09, 8), mat); g.add(m); return m;
+}
+// an open arch in a wall (a loggia's arcade): piers either side, the arch over, the wall above it filled
+function arcade(g, x0, x1, z, y, h, n, mat, ry) {
+  const a = new THREE.Group(); a.position.set(0, 0, 0); g.add(a); const len = x1 - x0, pw = len / n;
+  for (let i = 0; i <= n; i++) box(a, 0.5, h, 0.6, mat, x0 + i * pw, h / 2, z);
+  for (let i = 0; i < n; i++) { const cx = x0 + (i + 0.5) * pw, r = pw / 2 - 0.25; const ar = new THREE.Mesh(new THREE.TorusGeometry(r, 0.22, 8, 24, Math.PI), mat); ar.position.set(cx, h, z); ar.scale.y = 0.75; a.add(ar); box(a, pw, y - h - r * 0.75 + 0.3, 0.6, mat, cx, (y + h + r * 0.75) / 2 - 0.1, z); }
+  if (ry) { a.rotation.y = ry; }
+  return a;
+}
+// a gas lamp on a post
+function lampPost(g, x, z, h, col) {
+  const ir = M({ color: 0x141414, metalness: 0.6, roughness: 0.5 }); h = h || 2.6;
+  cyl(g, 0.04, 0.07, h, ir, x, h / 2, z, 8); cyl(g, 0.14, 0.18, 0.06, ir, x, 0.03, z, 12);
+  cyl(g, 0.12, 0.16, 0.3, M({ color: 0xfff0d0, emissive: col || 0xffb050, emissiveIntensity: 1.6, transparent: true, opacity: 0.85 }), x, h + 0.15, z, 6); cyl(g, 0.02, 0.2, 0.1, ir, x, h + 0.34, z, 6);
+  light(g, col || 0xffb050, 2.2, x, h + 0.1, z, 7);
+}
+// a living wall: ferns and leaves packed over a frame
+function greenWall(g, x, y, z, w, h, ry) {
+  const gw = new THREE.Group(); gw.position.set(x, y, z); gw.rotation.y = ry || 0; g.add(gw);
+  box(gw, w, h, 0.1, M({ color: 0x1a2a1a }), 0, 0, 0);
+  for (let i = 0; i < w * h * 22; i++) { const lf = sph(gw, 0.06 + rnd() * 0.07, M({ color: pick([0x2f6a2a, 0x3a7a30, 0x1f5a24, 0x4a8a3a, 0x6a9a4a]), roughness: 0.7 }), (rnd() - 0.5) * w, (rnd() - 0.5) * h, 0.08 + rnd() * 0.12, 6); lf.scale.set(1.6, 1, 0.5); lf.rotation.z = rnd() * 3; }
+  return gw;
+}
+// a marble-topped bistro table with bentwood chairs
+function bistro(g, x, z, people) {
+  const t = new THREE.Group(); t.position.set(x, 0, z); t.rotation.y = rnd() * 6; g.add(t);
+  cyl(t, 0.38, 0.38, 0.03, M({ map: tex(PAINT.marble('#f0ece4', '#b8b0a0'), 1, 1), roughness: 0.15 }), 0, 0.74, 0, 24); cyl(t, 0.03, 0.03, 0.72, M({ color: 0x1a1a1a, metalness: 0.6 }), 0, 0.37, 0, 8); cyl(t, 0.24, 0.26, 0.03, M({ color: 0x1a1a1a, metalness: 0.6 }), 0, 0.015, 0, 20);
+  for (let i = 0; i < 2; i++) { const a = i * Math.PI + 0.4; chair(t, Math.cos(a) * 0.62, Math.sin(a) * 0.62, Math.atan2(-Math.cos(a), -Math.sin(a)), 0x5a3a1a); if (people && rnd() < 0.7) person(t, Math.cos(a) * 0.56, Math.sin(a) * 0.56, Math.atan2(-Math.cos(a), -Math.sin(a)), { arms: 'table', lod: 1 }); }
+  cyl(t, 0.035, 0.03, 0.08, M({ color: 0xffffff, roughness: 0.3 }), 0.12, 0.79, 0.08, 10); cyl(t, 0.02, 0.02, 0.14, M({ color: 0xd8e8f0, transparent: true, opacity: 0.5, roughness: 0.05 }), -0.1, 0.81, -0.1, 10);
+  return t;
+}
+// a pastry case: a lit glass vitrine with cakes on shelves
+function vitrine(g, x, z, len, ry) {
+  const v = new THREE.Group(); v.position.set(x, 0, z); v.rotation.y = ry || 0; g.add(v);
+  box(v, len, 0.9, 0.7, M({ map: tex(PAINT.wood('#4a2a14', '#3a2010', 20), 2, 1), roughness: 0.4 }), 0, 0.45, 0);
+  box(v, len, 0.6, 0.7, new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, roughness: 0.05, thickness: 0.01, transparent: true, opacity: 0.3 }), 0, 1.2, 0);
+  for (let s = 0; s < 2; s++) { box(v, len - 0.1, 0.02, 0.6, M({ color: 0xf0f0f0, roughness: 0.2 }), 0, 0.92 + s * 0.28, 0); for (let i = 0; i < len / 0.3; i++) { const cx = -len / 2 + 0.2 + i * 0.3; cyl(v, 0.1, 0.1, 0.07, M({ color: pick([0x8a3a2a, 0xf0e0c0, 0x4a2a1a, 0xe8c8d0, 0xd8a040]), roughness: 0.6 }), cx, 0.97 + s * 0.28, (rnd() - 0.5) * 0.2, 14); if (rnd() < 0.5) sph(v, 0.03, M({ color: 0xd82a2a }), cx, 1.03 + s * 0.28, 0, 6); } }
+  box(v, len - 0.1, 0.02, 0.05, glow(0xfff0d0, 2.5), 0, 1.49, 0.3); light(v, 0xfff0d0, 1.2, 0, 1.2, 0.2, 2.5);
+  return v;
+}
+// a newspaper rack with papers on their holders
+function paperRack(g, x, z, ry) {
+  const r = new THREE.Group(); r.position.set(x, 0, z); r.rotation.y = ry || 0; g.add(r);
+  const wd = M({ color: 0x3a2010, roughness: 0.5 }); box(r, 0.7, 0.04, 0.3, wd, 0, 1.2, 0); for (const s of [-1, 1]) cyl(r, 0.02, 0.025, 1.2, wd, s * 0.33, 0.6, 0, 8);
+  for (let i = 0; i < 5; i++) { cyl(r, 0.012, 0.012, 0.7, M({ color: 0xc8a050, metalness: 0.8 }), -0.26 + i * 0.13, 0.84, 0, 6); plane(r, 0.09, 0.56, M({ color: pick([0xf4f0e6, 0xe8e0d0, 0xf0e8d8]), roughness: 0.9, side: THREE.DoubleSide }), -0.26 + i * 0.13, 0.86, 0.02, 0.4 + i * 0.1); }
+  return r;
+}
+// a thatched roof on posts: a hip of palm thatch over a deck
+function thatchRoof(g, x, z, w, d, h0, h1) {
+  const th = M({ map: tex(canvas(256, 256, (cx, cw, ch) => { cx.fillStyle = '#9a7a4a'; cx.fillRect(0, 0, cw, ch); for (let i = 0; i < 9000; i++) { cx.fillStyle = 'rgba(' + (rnd() < 0.5 ? '40,25,10' : '220,190,130') + ',' + rnd() * 0.35 + ')'; cx.fillRect(rnd() * cw, rnd() * ch, 1.5, 4 + rnd() * 8); } for (let y = 0; y < ch; y += 32) { cx.fillStyle = 'rgba(0,0,0,.3)'; cx.fillRect(0, y, cw, 3); } }), 4, 4), roughness: 1, side: THREE.DoubleSide });
+  const geo = new THREE.BufferGeometry(); const hw = w / 2 + 1.2, hd = d / 2 + 1.2, rw = w * 0.2, rd = d * 0.1;
+  const v = [[-hw, h0, hd], [hw, h0, hd], [hw, h0, -hd], [-hw, h0, -hd], [-rw, h1, rd], [rw, h1, rd], [rw, h1, -rd], [-rw, h1, -rd]];
+  const faces = [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7], [4, 5, 6, 7]]; const pos = [], uv = [];
+  faces.forEach(f => { const q = f.map(i => v[i]); for (const tri of [[0, 1, 2], [0, 2, 3]]) tri.forEach(k => { pos.push(...q[k]); uv.push(q[k][0] / 3, q[k][2] / 3); }); });
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, th); m.position.set(x, 0, z); g.add(m);
+  const pm = M({ color: 0xf0ebe0, roughness: 0.6 }); for (const [px, pz] of [[-w / 2, d / 2], [w / 2, d / 2], [w / 2, -d / 2], [-w / 2, -d / 2], [0, d / 2], [0, -d / 2], [-w / 2, 0], [w / 2, 0]]) { cyl(g, 0.09, 0.1, h0, pm, x + px, h0 / 2, z + pz, 12); for (const s of [-1, 1]) { const br = box(g, 0.06, 0.9, 0.06, pm, x + px + s * 0.3, h0 - 0.35, z + pz); br.rotation.z = -s * 0.8; } }
+  for (const s of [-1, 1]) box(g, w + 0.2, 0.12, 0.12, pm, x, h0 - 0.06, z + s * d / 2); for (const s of [-1, 1]) box(g, 0.12, 0.12, d, pm, x + s * w / 2, h0 - 0.06, z);
+  return m;
+}
+// a tiki torch: a bamboo pole with a flame
+function torch(g, x, z) { cyl(g, 0.03, 0.035, 1.8, M({ color: 0x8a6a3a, roughness: 0.9 }), x, 0.9, z, 8); cyl(g, 0.07, 0.05, 0.2, M({ color: 0x2a2a2a, metalness: 0.5 }), x, 1.88, z, 8); const f = sph(g, 0.08, glow(0xff8a20, 4), x, 2.05, z, 8); f.scale.y = 1.8; light(g, 0xff9a30, 2.2, x, 2.1, z, 5); }
+// an Adirondack chair
+function adirondack(g, x, z, ry, col) { const c = new THREE.Group(); c.position.set(x, 0, z); c.rotation.y = ry || 0; g.add(c); const m = M({ color: col || 0xf0ebe0, roughness: 0.7 }); for (let i = 0; i < 5; i++) { const s = box(c, 0.1, 0.02, 0.8, m, -0.24 + i * 0.12, 0.34 + i * 0.0, 0); s.rotation.x = -0.15; const bk = box(c, 0.1, 0.9, 0.02, m, -0.24 + i * 0.12, 0.7, -0.38); bk.rotation.x = -0.35; } for (const s of [-1, 1]) { box(c, 0.16, 0.03, 0.9, m, s * 0.36, 0.58, -0.05); box(c, 0.04, 0.55, 0.04, m, s * 0.33, 0.28, 0.32); box(c, 0.04, 0.4, 0.04, m, s * 0.33, 0.2, -0.3); } return c; }
+// a mezzanine edge: a gallery floor with its balustrade, round a tall room
+function gallery(g, x0, z0, x1, z1, y, depth, floorMat, railStyle, railCol) {
+  const dx = x1 - x0, dz = z1 - z0, len = Math.hypot(dx, dz), ry = Math.atan2(dx, dz) + Math.PI / 2;
+  const m = new THREE.Group(); m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2); m.rotation.y = ry; g.add(m);
+  box(m, len, 0.3, depth, floorMat, 0, -0.15, depth / 2); box(m, len, 0.08, 0.1, M({ color: 0xc8a050, metalness: 0.9, roughness: 0.3 }), 0, -0.04, 0.05);
+  railing(m, -len / 2, 0, len / 2, 0, 1.0, railStyle, railCol);
+  return m;
+}
+// a room's shell without the assumptions: any wall can be left out (open to the outside, or to a vault above)
+function shell(g, o) {
+  const w = o.w, d = o.d, h = o.h, Zc = 2 - d / 2, B = 2 - d, flat = [];
+  const wm = (c, rx, ry) => M({ map: tex(c, rx, ry), roughness: o.wallRough || 0.85 });
+  if (o.floor) { const fl = tex(o.floor, w / 2, d / 2); flat.push(plane(g, w, d, M({ map: fl, bumpMap: fl, bumpScale: 0.6, roughness: o.floorRough || 0.75 }), 0, 0, Zc, 0, -Math.PI / 2)); }
+  if (o.back !== false) flat.push(plane(g, w, h, wm(o.wall, w / 2.4, h / 2.4), 0, h / 2, B));
+  if (o.front !== false) flat.push(plane(g, w, h, wm(o.side || o.wall, w / 2.4, h / 2.4), 0, h / 2, 2, Math.PI));
+  if (o.left !== false) flat.push(plane(g, d, h, wm(o.side || o.wall, d / 2.4, h / 2.4), -w / 2, h / 2, Zc, Math.PI / 2));
+  if (o.right !== false) flat.push(plane(g, d, h, wm(o.side || o.wall, d / 2.4, h / 2.4), w / 2, h / 2, Zc, -Math.PI / 2));
+  if (o.ceil) flat.push(plane(g, w, d, M({ map: tex(o.ceil, w / 2, d / 2), roughness: 0.9 }), 0, h, Zc, 0, Math.PI / 2));
+  if (o.trim) { const tm = M({ color: o.trim, roughness: 0.5 }); if (o.back !== false) box(g, w, 0.12, 0.03, tm, 0, 0.06, B + 0.015); if (o.left !== false) box(g, 0.03, 0.12, d, tm, -w / 2 + 0.015, 0.06, Zc); if (o.right !== false) box(g, 0.03, 0.12, d, tm, w / 2 - 0.015, 0.06, Zc); }
+  if (o.cornice) { const cm = M({ color: o.cornice, roughness: 0.6 }); if (o.back !== false) box(g, w, 0.1, 0.1, cm, 0, h - 0.05, B + 0.05); if (o.left !== false) box(g, 0.1, 0.1, d, cm, -w / 2 + 0.05, h - 0.05, Zc); if (o.right !== false) box(g, 0.1, 0.1, d, cm, w / 2 - 0.05, h - 0.05, Zc); }
+  flat.forEach(m => { m.userData.flat = 1; });
+  if (o.fill !== false) light(g, o.fillC || 0xfff0dc, o.fillI || 1.4, 0, Math.min(h, 6) - 0.3, Zc + 0.5, Math.max(w, d) * 1.2);
+  return { w, d, h, back: B, Zc };
+}
+// a wall with a round top (the end of a barrel vault)
+function tympanum(g, w, h, r, mat, x, z, ry) { const t = new THREE.Group(); t.position.set(x, 0, z); t.rotation.y = ry || 0; g.add(t); plane(t, w, h, mat, 0, h / 2, 0); const c = new THREE.Mesh(new THREE.CircleGeometry(r, 48, 0, Math.PI), mat); c.position.set(0, h, 0); t.add(c); c.userData.flat = 1; return t; }
 // END DECOR
 // the room: floor, back wall, side walls, ceiling, a skirting board and a cornice. The camera sits near the front.
 function room(g, o) {
@@ -1810,93 +2249,6 @@ const SCENES = {
     light(g, 0xfff0dc, 3, -6, 5, -3, 14); light(g, 0xfff0dc, 3, 6, 5, -3, 14);
     return { exposure: 1.05, fog: [0x0e0a18, 12, 34], cam: o.cam || [[-4.6, 1.6, 1.8], [2.0, 1.2, -9.0]] };
   },
-  // a private salon for the big games: tall windows on the city, a few tables far apart, and each city's own grand style
-  // (Belle Époque Paris, frescoed Monte Carlo, red-and-gold Macau, a black-glass sky box over the Strip, old French Quarter
-  // brick, a London gentlemen's club, white-and-gold Vienna, Marina Bay glass, colonial Nassau, baroque Prague, Maltese stone)
-  salon(g, o) {
-    const T = o.theme || 'paris', P2 = Math.PI / 2;
-    const fresco = (sky, border) => canvas(512, 512, (x, w, h) => { const g2 = x.createRadialGradient(w / 2, h / 2, 20, w / 2, h / 2, w * 0.6); g2.addColorStop(0, '#f4e8c8'); g2.addColorStop(0.5, sky); g2.addColorStop(1, '#3a5a8a'); x.fillStyle = g2; x.fillRect(0, 0, w, h); for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(255,248,236,' + (0.2 + rnd() * 0.4) + ')'; x.beginPath(); x.ellipse(rnd() * w, rnd() * h, 30 + rnd() * 70, 14 + rnd() * 30, rnd() * 3, 0, 7); x.fill(); } for (let i = 0; i < 6; i++) { x.fillStyle = 'rgba(232,190,150,.7)'; const fx = 80 + rnd() * 350, fy = 80 + rnd() * 350; x.beginPath(); x.ellipse(fx, fy, 14, 30, rnd() * 3, 0, 7); x.fill(); x.fillStyle = 'rgba(200,60,60,.6)'; x.beginPath(); x.ellipse(fx + 10, fy + 14, 22, 12, rnd() * 3, 0, 7); x.fill(); } x.strokeStyle = border; x.lineWidth = 26; x.strokeRect(0, 0, w, h); x.lineWidth = 4; x.strokeRect(30, 30, w - 60, h - 60); noise(x, w, h, 0.06, 4000); });
-    const parquet = (a, b) => canvas(256, 256, (x, w, h) => { for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { const c = new THREE.Color((i + j) % 2 ? a : b).offsetHSL(0, 0, (rnd() - 0.5) * 0.05); x.fillStyle = '#' + c.getHexString(); x.fillRect(i * 32, j * 32, 32, 32); x.strokeStyle = 'rgba(0,0,0,.25)'; for (let k = 1; k < 4; k++) { x.beginPath(); if ((i + j) % 2) { x.moveTo(i * 32 + k * 8, j * 32); x.lineTo(i * 32 + k * 8, j * 32 + 32); } else { x.moveTo(i * 32, j * 32 + k * 8); x.lineTo(i * 32 + 32, j * 32 + k * 8); } x.stroke(); } } });
-    const D = {
-      paris: { floor: parquet('#8a5a30', '#7a4c26'), wall: PAINT.panel('#ece2cc', '#f4ecd8'), ceil: PAINT.coffer('#f4ecd8', '#e0d0b0'), felt: 0x4a1f4f, curtain: 0x7a0f1c, view: VIEW.city({ landmark: LANDMARK.eiffel, towers: 12, tall: 0.25, sky2: '#4a3060' }), view2: VIEW.rooftops({}), mould: 'gold', fix: 'crystal', arch: true, mirrors: true, rug: '#6a1a2a' },
-      monaco: { floor: PAINT.marble('#efe8dc', '#b8a890'), wall: PAINT.damask('#e8dcc0', '#f4ead4'), ceil: fresco('#9ac0e0', '#c8a050'), felt: 0x0f3d2e, curtain: 0x1f3a2a, view: VIEW.ocean({ yachts: true, sky2: '#ff8a5a' }), mould: 'gold', fix: 'crystal', cols: 'gold', arch: true, palms: true, rug: '#1f3a2a' },
-      macau: { floor: PAINT.carpet('#4f130d', '#6b1a12', '#e8b030', 'scroll'), wall: PAINT.damask('#6b1a12', '#7a2418'), ceil: PAINT.coffer('#7a1a10', '#c8a050'), felt: 0x6b1a12, curtain: 0xc8a050, view: VIEW.city({ landmark: LANDMARK.lisboa, water: true, tall: 0.7, lights: ['#ffd84d', '#ff5a3a', '#ff3ad8', '#ffffff'] }), mould: 'gold', fix: 'lantern', cols: 'red', chand: 0xffd070 },
-      vegasvip: { floor: PAINT.carpet('#14161c', '#1e222a', '#c8a050', 'diamond'), wall: PAINT.panel('#14161a', '#1c1e24'), ceil: PAINT.plain('#0c0c10'), felt: 0x22262e, curtain: 0x111111, view: VIEW.city({ landmark: LANDMARK.strip, tall: 0.6, sky2: '#6a2a8a' }), wide: true, fix: 'linear', cove: 0xc8a050, sofa: 0x1a1a1a },
-      bayou: { floor: PAINT.wood('#5a3418', '#4a2a12', 22), wall: PAINT.brick('#8a4a3a', '#4a3a34'), ceil: PAINT.wood('#3a2416', '#2e1c10', 30), felt: 0x155e75, curtain: 0x2a4a3a, view: VIEW.rooftops({}), fix: 'fans', gas: true, iron: true, piano: true },
-      london: { floor: PAINT.carpet('#1a2a1a', '#24381e', '#c8a050', 'diamond'), wall: PAINT.panel('#2a1a10', '#3a2416'), ceil: PAINT.coffer('#3a2416', '#24160c'), felt: 0x1a3a2a, curtain: 0x2a3a2a, view: VIEW.rooftops({ clock: true }), fix: 'crystal', chand: 0xffc890, books: true, fire: true, portraits: true, sofa: 0x5a1a12 },
-      vienna: { floor: parquet('#9a6a3a', '#8a5a30'), wall: PAINT.damask('#f4f0e8', '#e8e0d4'), ceil: PAINT.coffer('#f8f4ec', '#e8d8b0'), felt: 0x4a1f4f, curtain: 0xc8a050, view: VIEW.rooftops({ spires: true }), mould: 'gold', fix: 'crystal', arch: true, mirrors: true, big: true, rug: '#4a1f4f' },
-      singapore: { floor: PAINT.marble('#e8e4dc', '#a8a49c'), wall: PAINT.panel('#5a4430', '#6a5038'), ceil: PAINT.wood('#6a5038', '#5a4430', 40), felt: 0x0e4a4a, curtain: 0x14303a, view: VIEW.city({ landmark: LANDMARK.marina, water: true, tall: 0.6 }), wide: true, fix: 'pendants', orchids: true },
-      nassau: { floor: PAINT.tile('#efe8d8', '#d8ccb0', 8), wall: PAINT.beadboard('#f4f0e6'), ceil: PAINT.beadboard('#f8f4ec'), felt: 0x1a6a8a, curtain: 0x2a8a9a, view: VIEW.ocean({ palms: true, sky2: '#ff9a5a' }), fix: 'fans', shutters: true, palms: true, rattan: true },
-      prague: { floor: parquet('#6a3a1a', '#5a2e14'), wall: PAINT.damask('#3a1424', '#4a1a2e'), ceil: fresco('#c8a888', '#c8a050'), felt: 0x4a1f4f, curtain: 0x6a1a2a, view: VIEW.rooftops({ spires: true }), mould: 'gold', fix: 'candle', arch: true, portraits: true },
-      malta: { floor: PAINT.tile('#d8c4a0', '#c0aa84', 8), wall: PAINT.stucco('#e0c898'), ceil: PAINT.stucco('#e8d4a8'), felt: 0x0f3d2e, curtain: 0x2a4a6a, view: VIEW.ocean({ yachts: true, sky1: '#5a3a6a', sky2: '#ffb06a' }), fix: 'ironlamp', arches: true, palms: true }
-    }[T];
-    // each city's own plan: Paris a wide Belle Époque ballroom, Monte Carlo the grandest and tallest, Macau a long
-    // red corridor of tables, the Strip a low wide black sky box along the glass, the Quarter a small brick parlour,
-    // London a snug club room, Vienna a tall white hall, Marina Bay wide glass, Nassau a veranda, Prague a tall narrow
-    // baroque room, Malta a vaulted stone hall
-    const LAY = {
-      paris: { w: 16, d: 12, h: 5.2, tables: [[-4.4, -5.4, 0.3], [4.0, -5.8, -0.3]], mine: [0.4, -1.9], cam: [[-5.8, 1.6, 1.4], [1.4, 1.15, -5.6]], expo: 1.0 },
-      monaco: { w: 20, d: 14, h: 6.5, tables: [[-6.2, -5.2, 0.4], [0.6, -8.4, 0], [6.4, -5.4, -0.4]], mine: [2.6, -1.9], cam: [[-7.2, 1.3, 1.6], [2.2, 2.0, -7.5]], expo: 1.0 },
-      macau: { w: 12, d: 18, h: 4.6, tables: [[-2.9, -6.2, P2], [2.7, -9.6, P2], [-2.7, -13.0, P2]], mine: [2.1, -2.0], cam: [[-3.9, 1.5, 1.6], [0.8, 1.1, -12.0]], expo: 1.05 },
-      vegasvip: { w: 22, d: 10, h: 3.6, tables: [[-7.2, -4.8, 0.2], [-1.2, -5.4, 0], [5.8, -4.8, -0.2]], mine: [2.0, -1.9], cam: [[8.8, 1.45, 1.3], [-3.0, 1.1, -5.8]], expo: 1.1 },
-      bayou: { w: 10, d: 12, h: 3.8, tables: [[-2.0, -6.4, 0.5]], mine: [1.2, -2.2], cam: [[-3.4, 1.5, 1.6], [1.2, 1.1, -6.6]], expo: 1.05 },
-      london: { w: 12, d: 11, h: 4.2, tables: [[-3.0, -5.6, 0.6]], mine: [1.6, -2.2], cam: [[4.4, 1.5, 1.5], [-1.6, 1.1, -5.8]], expo: 1.05 },
-      vienna: { w: 18, d: 10, h: 5.6, tables: [[-5.6, -4.4, 0.25], [5.4, -4.6, -0.25]], mine: [0, -1.9], cam: [[7.0, 1.5, 1.5], [-1.6, 1.5, -5.6]], expo: 1.0 },
-      singapore: { w: 18, d: 12, h: 4.0, tables: [[-5.4, -5.2, 0.3], [5.4, -6.0, -0.3], [0.2, -8.2, 0]], mine: [1.4, -2.2], cam: [[-6.6, 1.5, 1.4], [1.4, 1.1, -6.2]], expo: 1.05 },
-      nassau: { w: 13, d: 10, h: 3.6, tables: [[-3.4, -5.2, 0.4]], mine: [1.8, -2.1], cam: [[4.8, 1.45, 1.6], [-1.0, 1.05, -5.6]], expo: 1.05 },
-      prague: { w: 12, d: 15, h: 5.4, tables: [[0, -7.6, 0], [0, -11.2, 0]], mine: [0.6, -2.4], cam: [[-3.8, 1.5, 1.6], [0.6, 1.4, -10.0]], expo: 1.0 },
-      malta: { w: 12, d: 10, h: 4.4, tables: [[-3.2, -5.4, 0.5]], mine: [1.6, -2.1], cam: [[-4.2, 1.5, 1.5], [1.6, 1.1, -5.6]], expo: 1.05 }
-    }[T], W2 = LAY.w / 2, Zc = 2 - LAY.d / 2, HY = LAY.h - 5;   // HY: how far the ceiling fixtures move from the 5 m plan
-    const r = room(g, { w: LAY.w, d: LAY.d, h: LAY.h, floor: D.floor, wall: D.wall, ceil: D.ceil, trim: D.mould === 'gold' ? 0xc8a050 : 0x2a1a10, cornice: D.mould === 'gold' ? 0xd8b868 : 0x2a1a10, fillI: 0.9, floorRough: T === 'monaco' || T === 'singapore' ? 0.2 : 0.6 });
-    r.g = g; const B = r.back, felt = o.felt || D.felt, gold = M({ color: 0xc8a050, metalness: 0.95, roughness: 0.25, envMapIntensity: 1.2 });
-    const frameC = D.mould === 'gold' ? 0xc8a050 : T === 'vegasvip' ? 0x0a0a0c : T === 'nassau' ? 0xf4f0e6 : T === 'singapore' ? 0x2a2a2a : 0x2a1a10;
-    // the windows: one great one in the middle, a tall one each side (floor to ceiling where it's modern)
-    if (D.wide) { const wh = LAY.h - 0.4; windowOn(g, D.view, 0, wh / 2 + 0.2, B + 0.02, LAY.w - 2, wh, 0, frameC); for (let i = -Math.floor((W2 - 1) / 2); i * 2 <= W2 - 1; i++) box(g, 0.06, wh, 0.08, M({ color: frameC, metalness: 0.6, roughness: 0.3 }), i * 2, wh / 2 + 0.2, B + 0.06); }
-    else {
-      const SX = Math.min(5, W2 - 2.6), wh = Math.min(3.2, LAY.h - 1.4), wy = wh / 2 + 0.8;
-      windowOn(g, D.view, 0, wy, B + 0.02, 4, wh, 0, frameC); windowOn(g, D.view2 || D.view, -SX, wy, B + 0.02, 2.2, wh, 0, frameC); windowOn(g, D.view2 || D.view, SX, wy, B + 0.02, 2.2, wh, 0, frameC);
-      if (D.arch) for (const [x, w] of [[0, 4], [-SX, 2.2], [SX, 2.2]]) { const ar = new THREE.Mesh(new THREE.TorusGeometry(w / 2 + 0.05, 0.07, 8, 32, Math.PI), M({ color: frameC, metalness: D.mould === 'gold' ? 0.8 : 0, roughness: 0.35 })); ar.position.set(x, wy + wh / 2, B + 0.05); ar.scale.y = 0.45; g.add(ar); const fan = new THREE.Mesh(new THREE.CircleGeometry(w / 2, 32, 0, Math.PI), new THREE.MeshBasicMaterial({ map: tex(D.view2 || D.view) })); fan.position.set(x, wy + wh / 2, B + 0.02); fan.scale.y = 0.45; g.add(fan); }
-      curtain(g, -2.4, (wy + wh / 2 + 0.3) / 2, B + 0.06, 0.6, wy + wh / 2 + 0.3, D.curtain); curtain(g, 2.4, (wy + wh / 2 + 0.3) / 2, B + 0.06, 0.6, wy + wh / 2 + 0.3, D.curtain);
-      if (D.shutters) for (const x of [-SX - 1.45, -SX + 1.45, SX - 1.45, SX + 1.45]) { const sh = canvas(64, 256, (cx, w, h) => { cx.fillStyle = '#f4f0e6'; cx.fillRect(0, 0, w, h); for (let i = 6; i < h; i += 8) { cx.fillStyle = 'rgba(0,0,0,.16)'; cx.fillRect(4, i, w - 8, 3); } cx.strokeStyle = 'rgba(0,0,0,.2)'; cx.strokeRect(2, 2, w - 4, h - 4); }); plane(g, 0.6, wh, M({ map: tex(sh), roughness: 0.6 }), x, wy, B + 0.05); }
-    }
-    // the walls: gilt mouldings, mirrors, portraits, bookcases, iron, columns
-    if (D.mould === 'gold') for (const s of [-1, 1]) { const wp = new THREE.Group(); wp.position.set(s * (W2 - 0.02), 0, Zc); wp.rotation.y = -s * Math.PI / 2; g.add(wp); const pn = Math.round(LAY.d / 2.5); wallPanels(wp, 1 - LAY.d / 2, LAY.d / 2 - 1, 0, 1.3, LAY.h - 0.7, gold, pn); wallPanels(wp, 1 - LAY.d / 2, LAY.d / 2 - 1, 0, 0.2, 1.0, gold, pn + 2); }
-    if (D.mirrors) for (const s of [-1, 1]) mirrorAt(g, s * (W2 - 0.05), 2.8, Zc, 1.6, 2.4, -s * Math.PI / 2, 0xc8a050);
-    if (D.portraits) for (const s of [-1, 1]) for (const z of [Zc + 2, Zc - 2]) photo(g, s * (W2 - 0.05), 2.6, z, 1.0, 1.3, -s * Math.PI / 2, 'portrait', 0xb08a40);
-    if (D.books) for (const s of [-1, 1]) for (const z of [Zc + 1.6, Zc - 1.6]) shelves(g, s * (W2 - 0.25), z, 2.6, Math.min(3.4, LAY.h - 0.6), -s * Math.PI / 2);
-    if (D.fire) { fireplace(g, W2 - 0.4, B + 3.0, -Math.PI / 2); }
-    if (D.cols) for (const s of [-1, 1]) for (const z of [Zc + 2.9, Zc - 2.9]) column(g, s * (W2 - 0.8), z, LAY.h, D.cols === 'gold' ? M({ map: tex(PAINT.marble('#f4ecdc', '#c8b090'), 1, 2), roughness: 0.15 }) : M({ color: 0x8a1410, roughness: 0.25, envMapIntensity: 0.8 }), gold);
-    if (D.arches) for (const s of [-1, 1]) for (const z of [Zc + 2, Zc - 2]) { const ar = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.18, 8, 24, Math.PI), M({ map: tex(PAINT.stucco('#d4b888'), 1, 1), roughness: 0.9 })); ar.position.set(s * (W2 - 0.1), 3.2, z); ar.rotation.y = Math.PI / 2; g.add(ar); for (const t of [-1, 1]) box(g, 0.4, 3.2, 0.36, M({ map: tex(PAINT.stucco('#d4b888'), 1, 2), roughness: 0.9 }), s * (W2 - 0.15), 1.6, z + t * 1.4); }
-    if (D.gas) for (const s of [-1, 1]) for (const z of [Zc + 1.75, Zc - 1.75]) { const gl = new THREE.Group(); gl.position.set(s * (W2 - 0.15), 2.4, z); g.add(gl); const ir = M({ color: 0x1a1a1a, metalness: 0.6 }); box(gl, 0.04, 0.04, 0.3, ir, -s * 0.1, 0, 0, Math.PI / 2); cyl(gl, 0.12, 0.08, 0.32, M({ color: 0xfff0d0, emissive: 0xffa040, emissiveIntensity: 1.4, transparent: true, opacity: 0.85 }), -s * 0.25, 0.1, 0, 6); cyl(gl, 0.14, 0.02, 0.1, ir, -s * 0.25, 0.3, 0, 6); light(gl, 0xffa050, 0.8, -s * 0.3, 0.1, 0, 3.5); }
-    if (D.iron) { const ir = M({ color: 0x141414, metalness: 0.6, roughness: 0.5 }); box(g, 4.2, 0.05, 0.05, ir, 0, 1.6, B + 0.25); for (let i = 0; i < 28; i++) { cyl(g, 0.01, 0.01, 0.8, ir, -2.05 + i * 0.152, 1.2, B + 0.25, 4); if (i % 4 === 0) { const sc = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.01, 4, 16), ir); sc.position.set(-2.05 + i * 0.152 + 0.076, 1.45, B + 0.25); g.add(sc); } } }
-    if (D.piano) { pianoUpright(g, -(W2 - 1.4), B + 1.4, 0.5, 0x1a0e08); const tp = new THREE.Group(); tp.position.set(-(W2 - 0.05), 2.6, Zc - 1); tp.rotation.y = Math.PI / 2; g.add(tp); const br2 = M({ color: 0xd8b050, metalness: 0.95, roughness: 0.2 }); cyl(tp, 0.012, 0.012, 0.55, br2, 0, 0, 0, 8).rotation.z = Math.PI / 2; cyl(tp, 0.012, 0.09, 0.2, br2, 0.36, 0, 0, 16).rotation.z = -Math.PI / 2; }
-    // a rug under the tables, sofas, plants, orchids, rattan
-    if (D.rug) rugAt(g, 0, Zc - 0.4, LAY.w - 4, LAY.d - 6.2, canvas(512, 256, (x, w, h) => { x.fillStyle = D.rug; x.fillRect(0, 0, w, h); x.strokeStyle = '#c8a050'; x.lineWidth = 6; x.strokeRect(10, 10, w - 20, h - 20); x.lineWidth = 2; x.strokeRect(22, 22, w - 44, h - 44); for (let i = 0; i < 6; i++) { x.strokeStyle = 'rgba(200,160,80,.5)'; x.beginPath(); x.ellipse(w / 2, h / 2, 40 + i * 30, 20 + i * 14, 0, 0, 7); x.stroke(); } noise(x, w, h, 0.08, 4000); }));
-    if (D.sofa) for (const s of [-1, 1]) sofa(g, s * (W2 - 1.4), -1.4, -s * Math.PI / 2, D.sofa, 2.0);
-    if (D.palms) { plant(g, -(W2 - 0.8), -1.2, 1.5, true); plant(g, W2 - 0.8, -1.2, 1.5, true); }
-    if (D.orchids) for (const [x, z] of [[-(W2 - 1.2), -1.2], [W2 - 1.2, -1.2], [-(W2 - 1.2), B + 1.4], [W2 - 1.2, B + 1.4]]) { cyl(g, 0.16, 0.12, 0.5, M({ color: 0xf4f0e8, roughness: 0.2 }), x, 0.25, z, 16); for (let k = 0; k < 3; k++) { seg(g, [x, 0.5, z], [x + (k - 1) * 0.15, 1.2, z + 0.1], 0.008, 0.006, M({ color: 0x3a5a2a })); for (let f = 0; f < 4; f++) sph(g, 0.04, M({ color: pick([0xf4e8f4, 0xe8a8d8, 0xf8f4f8]), roughness: 0.5 }), x + (k - 1) * 0.15 + f * 0.04, 1.2 - f * 0.06, z + 0.12, 8); } }
-    if (D.rattan) for (const s of [-1, 1]) { const rc = new THREE.Group(); rc.position.set(s * (W2 - 1.2), 0, B + 2.6); rc.rotation.y = -s * 0.6; g.add(rc); const rt = M({ map: tex(PAINT.wallpaper('#c89a5a', '#8a6a3a', 'diamond'), 2, 2), roughness: 0.8 }); rbox(rc, 0.9, 0.45, 0.8, 0.08, rt, 0, 0.3, 0); rbox(rc, 0.9, 0.7, 0.12, 0.06, rt, 0, 0.75, -0.36); rbox(rc, 0.8, 0.12, 0.7, 0.05, cloth(0xf4f0e6), 0, 0.58, 0.03); }
-    if (D.cove) { box(g, LAY.w - 0.4, 0.04, 0.04, glow(D.cove, 2.2), 0, LAY.h - 0.15, B + 0.3); for (const s of [-1, 1]) box(g, 0.04, 0.04, LAY.d - 1, glow(D.cove, 2.2), s * (W2 - 0.2), LAY.h - 0.15, Zc); }
-    // the lights: chandeliers, lanterns, fans, banker's lamps, candles, pendants
-    const hang = (x, z, s) => {
-      const g = new THREE.Group(); g.position.y = HY; r.g.add(g);
-      if (D.fix === 'crystal') chandelier(g, x, 4.25, z, (D.big ? 1.6 : 1.3) * s, D.chand);
-      else if (D.fix === 'lantern') { lantern(g, x, 3.7, z, 0xff2a1a); for (let k = -1; k <= 1; k += 2) lantern(g, x + k * 1.2, 3.9, z + 0.6, 0xff3a1a); }
-      else if (D.fix === 'fans') { const f = new THREE.Group(); f.position.set(x, 4.5, z); g.add(f); const wd2 = M({ color: T === 'nassau' ? 0xc89a5a : 0x3a2414, roughness: 0.5 }); cyl(f, 0.14, 0.12, 0.18, gold, 0, 0, 0, 16); cyl(f, 0.015, 0.015, 0.5, gold, 0, 0.3, 0, 6); for (let i = 0; i < 5; i++) { const bl = box(f, 0.8, 0.012, 0.16, wd2, 0, -0.05, 0); bl.geometry.translate(0.48, 0, 0); bl.rotation.y = i / 5 * Math.PI * 2 + 0.3; } const gl2 = sph(f, 0.13, M({ color: 0xfff4e0, emissive: 0xffe0b0, emissiveIntensity: 1.2 }), 0, -0.16, 0, 14); gl2.scale.y = 0.7; }
-      else if (D.fix === 'banker') { for (const k of [-1, 1]) { const bx = x + k * 0.7; cyl(g, 0.006, 0.006, 1.6, gold, bx, 4.2, z, 4); const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6, 16, 1, true, 0, Math.PI), M({ color: 0x1a5a2a, emissive: 0x1a5a2a, emissiveIntensity: 0.4, side: THREE.DoubleSide, roughness: 0.2 })); sh.rotation.z = Math.PI / 2; sh.position.set(bx, 3.4, z); g.add(sh); sph(g, 0.05, glow(0xffe8c0, 3), bx, 3.36, z, 8); } }
-      else if (D.fix === 'candle') { const c = new THREE.Group(); c.position.set(x, 3.9, z); g.add(c); const ir = M({ color: 0x2a2a2a, metalness: 0.5 }); for (const rr of [0.8, 0.5]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.025, 6, 40), gold); ring.rotation.x = Math.PI / 2; ring.position.y = rr === 0.8 ? 0 : 0.35; c.add(ring); for (let i = 0; i < (rr === 0.8 ? 12 : 8); i++) { const a = i / (rr === 0.8 ? 12 : 8) * Math.PI * 2; cyl(c, 0.018, 0.018, 0.14, M({ color: 0xf4ecd8 }), Math.cos(a) * rr, (rr === 0.8 ? 0 : 0.35) + 0.08, Math.sin(a) * rr, 8); sph(c, 0.018, glow(0xffb050, 4), Math.cos(a) * rr, (rr === 0.8 ? 0 : 0.35) + 0.17, Math.sin(a) * rr, 6); } } cyl(c, 0.01, 0.01, 1.2, ir, 0, 0.9, 0, 4); light(c, 0xffb860, 3.5, 0, 0.1, 0, 8); }
-      else if (D.fix === 'ironlamp') { const ir = M({ color: 0x1a1a1a, metalness: 0.6 }); cyl(g, 0.008, 0.008, 1.3, ir, x, 4.35, z, 4); const lb = cyl(g, 0.24, 0.16, 0.42, M({ color: 0xfff0d0, emissive: 0xffb060, emissiveIntensity: 1.2, transparent: true, opacity: 0.85 }), x, 3.5, z, 8); cyl(g, 0.3, 0.05, 0.16, ir, x, 3.78, z, 8); for (let k = 0; k < 8; k++) cyl(g, 0.01, 0.01, 0.44, ir, x + Math.cos(k * 0.785) * 0.2, 3.5, z + Math.sin(k * 0.785) * 0.2, 4); light(g, 0xffb060, 2, x, 3.4, z, 7); }
-      else if (D.fix === 'pendants') { for (let k = -2; k <= 2; k++) { const px = x + k * 0.45; cyl(g, 0.004, 0.004, 1.4 + (k % 2) * 0.3, M({ color: 0x1a1a1a }), px, 4.3, z, 4); const gb = sph(g, 0.12, M({ color: 0xc8a050, metalness: 0.9, roughness: 0.2, emissive: 0xffc070, emissiveIntensity: 0.3 }), px, 3.55 - (k % 2) * 0.3, z, 16); sph(g, 0.06, glow(0xffe0b0, 3), px, 3.46 - (k % 2) * 0.3, z, 8); } }
-      else if (D.fix === 'linear') { const fm = M({ color: 0x0c0c0e, metalness: 0.7, roughness: 0.25 }); rbox(g, 2.6, 0.08, 0.12, 0.02, fm, x, 3.6, z); box(g, 2.5, 0.02, 0.06, glow(0xfff0d8, 3), x, 3.55, z); for (const k of [-1, 1]) cyl(g, 0.004, 0.004, 1.4, fm, x + k * 1.2, 4.3, z, 4); }
-    };
-    LAY.tables.forEach(([x, z]) => hang(x, z, 1)); hang(LAY.mine[0], LAY.mine[1], 0.8);
-    // the tables
-    LAY.tables.forEach(([x, z, ry]) => pokerTable(g, x, z, { felt, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry, lamp: false, full: 0.9, ceil: LAY.h - 0.8 }));
-    pokerTable(g, LAY.mine[0], LAY.mine[1], { mine: true, felt, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: LAY.h - 0.8 });
-    // a waiter with a tray, a guard at the door
-    if (STAGE !== 'final') { stander(g, -(W2 - 2.2), Zc + 1.0, 0.6, { look: 'smart', arms: 'down', lod: 1 }); stander(g, W2 - 1.4, B + 1.0, -0.4, { look: 'smart', arms: 'crossed', lod: 1 }); }
-    return { exposure: LAY.expo, cam: LAY.cam };
-  },
   // a mountain lodge's card room. Aspen: log walls, a river-stone fireplace to the rafters, antler chandeliers, skis, snow
   // falling past the big window. Sedona: adobe, vigas and latillas overhead, a kiva fireplace, red rock out the window
   lodge(g, o) {
@@ -2133,10 +2485,386 @@ const SCENES = {
     for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) if (!(i === 2 && j === 0)) pokerTable(g, -3.6 + i * 3.6, -3.9 - j * 2.8, { felt: 0x1a5a6a, rail: 0x3a2a1a, lamp: false, seats: 6, full: 0.85, ceil: 5.5 });
     pokerTable(g, 1.6, -1.6, { mine: true, felt: 0x1a5a6a, rail: 0x3a2a1a, lamp: false, seats: 6, ceil: 5.5 });
     return { exposure: 1.0 };
+  },
+  // Paris: a Belle Époque gallery under an iron-and-glass barrel vault, twenty-two metres long, the Eiffel Tower lit gold
+  // through the great arched window at the end; pilasters and tall mirrors down both sides, red velvet banquettes, two
+  // crystal chandeliers the size of carriages
+  paris(g, o) {
+    const W = 12, D = 22, H = 4.6, R = W / 2, Zc = 2 - D / 2, B = 2 - D, P2 = Math.PI / 2;
+    const vers = canvas(256, 256, (x, w, h) => { x.fillStyle = '#8a5a30'; x.fillRect(0, 0, w, h); for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { x.save(); x.translate(i * 128 + 64, j * 128 + 64); x.rotate(Math.PI / 4); for (let k = 0; k < 3; k++) { x.strokeStyle = 'rgba(40,20,5,' + (0.5 - k * 0.12) + ')'; x.lineWidth = 3; x.strokeRect(-76 + k * 18, -76 + k * 18, 152 - k * 36, 152 - k * 36); } x.restore(); } for (let i = 0; i < 300; i++) { x.strokeStyle = 'rgba(0,0,0,' + rnd() * 0.12 + ')'; x.beginPath(); const xx = rnd() * w, yy = rnd() * h; x.moveTo(xx, yy); x.lineTo(xx + 30 * (rnd() < 0.5 ? 1 : -1), yy + 30); x.stroke(); } }); vers.__kind = 'wood';
+    const stone = PAINT.stucco('#e8e0d0');
+    shell(g, { w: W, d: D, h: H, floor: vers, wall: stone, back: false, front: false, trim: 0x3a2a1a, cornice: 0xc8a050, fillI: 1.0 });
+    const wm = M({ map: tex(stone, W / 2.4, H / 2.4), roughness: 0.85 }), gold = M({ color: 0xc8a050, metalness: 0.95, roughness: 0.25, envMapIntensity: 1.2 });
+    tympanum(g, W, H, R, wm, 0, B, 0); tympanum(g, W, H, R, wm, 0, 2, Math.PI);
+    // the great window on the tower, the Seine below it
+    archWindow(g, VIEW.paris(), 0, 4.8, B + 0.04, 8.6, 7.6, 0, 0x2a3a30); curtain(g, -4.1, 2.6, B + 0.1, 0.8, 5.2, 0x7a0f1c); curtain(g, 4.1, 2.6, B + 0.1, 0.8, 5.2, 0x7a0f1c);
+    mirrorAt(g, 0, 3.2, 1.95, 3.6, 4.2, Math.PI, 0xc8a050);
+    // the vault: night sky through the glass, green iron ribs every two metres, a ridge beam
+    const glass = canvas(512, 1024, (x, w, h) => { const g2 = x.createLinearGradient(0, 0, w, 0); g2.addColorStop(0, '#0a1030'); g2.addColorStop(0.5, '#04061a'); g2.addColorStop(1, '#0a1030'); x.fillStyle = g2; x.fillRect(0, 0, w, h); for (let i = 0; i < 260; i++) { x.fillStyle = 'rgba(255,255,255,' + rnd() * 0.6 + ')'; x.fillRect(rnd() * w, rnd() * h, 1.5, 1.5); } x.fillStyle = 'rgba(120,140,170,.18)'; for (let i = 0; i < w; i += 64) x.fillRect(i, 0, 3, h); for (let j = 0; j < h; j += 48) x.fillRect(0, j, w, 2); });
+    const vm = unlit(glass, 0.7); vault(g, 0, H, Zc, W, D, vm);
+    const iron = M({ color: 0x2a4a3a, metalness: 0.5, roughness: 0.5 });
+    for (let i = 0; i <= 11; i++) { const z = 2 - i * 2; const rb = new THREE.Mesh(new THREE.TorusGeometry(R - 0.06, 0.07, 8, 40, Math.PI), iron); rb.position.set(0, H, z); g.add(rb); }
+    box(g, 0.16, 0.16, D, iron, 0, H + R - 0.1, Zc); for (const s of [-1, 1]) box(g, 0.1, 0.1, D, iron, s * R * 0.7, H + R * 0.7, Zc);
+    // pilasters, mirrors between them, sconces on each, banquettes and gueridons under the mirrors
+    for (const s of [-1, 1]) for (let i = 0; i < 8; i++) {
+      const z = 0.6 - i * 2.75, px = s * (R - 0.25);
+      box(g, 0.5, H, 0.5, M({ map: tex(stone, 0.5, 2), roughness: 0.8 }), px, H / 2, z); box(g, 0.6, 0.18, 0.6, gold, px, H - 0.09, z); box(g, 0.56, 0.04, 0.56, gold, px, H - 0.24, z); box(g, 0.6, 0.12, 0.6, gold, px, 0.06, z);
+      if (i < 7) { const mz = z - 1.375; mirrorAt(g, s * (R - 0.05), 2.4, mz, 1.5, 3.0, -s * P2, 0xc8a050); sconce(g, s * (R - 0.08), 3.3, mz + 0.95, -s * P2, 0xffe0b0);
+        if (i % 2 === 0) sofa(g, s * (R - 0.55), mz, -s * P2, 0x7a0f1c, 1.9); else { const t = bistro(g, s * (R - 0.75), mz, false); cyl(g, 0.05, 0.05, 0.3, M({ color: 0x1a4a2a, roughness: 0.2 }), s * (R - 0.75), 0.9, mz, 10); } }
+    }
+    // the chandeliers down the vault, lanterns on the pilasters' line, the light of the room
+    for (const z of [-1.5, -8.0, -14.5]) { chandelier(g, 0, H + 2.6, z, 2.2, 0xffe8c0); light(g, 0xfff0dc, 2.6, 0, H + 1.0, z, 13); }
+    // the tables down the gallery, yours first
+    pokerTable(g, 0.3, -2.0, { mine: true, felt: 0x4a1f4f, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: 6 });
+    pokerTable(g, -2.4, -8.0, { felt: 0x4a1f4f, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: 0.35, lamp: false, full: 0.9, ceil: 6 });
+    pokerTable(g, 2.5, -13.6, { felt: 0x4a1f4f, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: -0.3, lamp: false, full: 0.9, ceil: 6 });
+    if (STAGE !== 'final') { stander(g, -3.6, -5.2, 0.8, { look: 'smart', arms: 'down', lod: 1 }); stander(g, 3.2, -17.6, -0.3, { look: 'smart', arms: 'crossed', lod: 1 }); stander(g, -2.0, -17.0, 0.4, { look: 'smart', lod: 1 }); }
+    return { exposure: 1.0, cam: [[-4.5, 1.7, 1.0], [0.8, 2.6, -14]] };
+  },
+  // Monte Carlo: a rotunda under a painted dome, twelve gilded piers, the arches on the harbour side open to a stone terrace
+  // over Port Hercule and its yachts, mirrors in the arches on the other side; a compass rose in the marble underfoot
+  monaco(g, o) {
+    const R = 8, Hs = 5.4, Zc = -5.5, P2 = Math.PI / 2, N = 12;
+    const rose = canvas(1024, 1024, (x, w, h) => { const c = w / 2; x.fillStyle = '#ece4d4'; x.fillRect(0, 0, w, h); for (let i = 0; i < 1400; i++) { x.strokeStyle = 'rgba(120,100,80,' + rnd() * 0.25 + ')'; x.lineWidth = 1; x.beginPath(); const xx = rnd() * w, yy = rnd() * h; x.moveTo(xx, yy); x.bezierCurveTo(xx + 40, yy + 20, xx + 60, yy - 30, xx + 110, yy + 10); x.stroke(); } for (let k = 0; k < 16; k++) { x.fillStyle = k % 2 ? '#8a3a2a' : '#2a2a2a'; x.beginPath(); x.moveTo(c, c); x.lineTo(c + Math.cos(k / 16 * 6.283 - 0.08) * (k % 2 ? 300 : 420), c + Math.sin(k / 16 * 6.283 - 0.08) * (k % 2 ? 300 : 420)); x.lineTo(c + Math.cos(k / 16 * 6.283 + 0.08) * (k % 2 ? 300 : 420), c + Math.sin(k / 16 * 6.283 + 0.08) * (k % 2 ? 300 : 420)); x.fill(); } x.strokeStyle = '#8a3a2a'; x.lineWidth = 14; x.beginPath(); x.arc(c, c, 470, 0, 7); x.stroke(); x.strokeStyle = '#2a2a2a'; x.lineWidth = 4; x.beginPath(); x.arc(c, c, 440, 0, 7); x.stroke(); x.fillStyle = '#c8a050'; x.beginPath(); x.arc(c, c, 40, 0, 7); x.fill(); }); rose.__kind = 'marble';
+    const fl = new THREE.Mesh(new THREE.CircleGeometry(R, 64), M({ map: tex(rose), roughness: 0.12 })); fl.rotation.x = -P2; fl.position.set(0, 0, Zc); g.add(fl); fl.userData.flat = 1;
+    const gold = M({ color: 0xc8a050, metalness: 0.95, roughness: 0.25, envMapIntensity: 1.2 }), cream = M({ map: tex(PAINT.damask('#ece2cc', '#f4ecd8'), 2, 2), roughness: 0.8 });
+    const fresco = canvas(1024, 512, (x, w, h) => { const g2 = x.createLinearGradient(0, 0, 0, h); g2.addColorStop(0, '#f4e8c8'); g2.addColorStop(0.5, '#9ac0e0'); g2.addColorStop(1, '#5a86b8'); x.fillStyle = g2; x.fillRect(0, 0, w, h); for (let i = 0; i < 70; i++) { x.fillStyle = 'rgba(255,250,240,' + (0.25 + rnd() * 0.5) + ')'; x.beginPath(); x.ellipse(rnd() * w, h * 0.3 + rnd() * h * 0.6, 40 + rnd() * 90, 14 + rnd() * 30, 0, 0, 7); x.fill(); } for (let i = 0; i < 12; i++) { x.fillStyle = 'rgba(200,160,80,.6)'; x.fillRect(i * w / 12, 0, 3, h); } x.strokeStyle = '#c8a050'; x.lineWidth = 10; x.strokeRect(0, h * 0.86, w, h * 0.14); for (let i = 0; i < 40; i++) { x.fillStyle = '#c8a050'; x.beginPath(); x.arc(i * w / 40 + 12, h * 0.93, 6, 0, 7); x.fill(); } });
+    dome(g, 0, Hs, Zc, R, M({ map: tex(fresco), roughness: 0.9 }), 16, gold);
+    // the ring of piers and arches: open to the terrace at the back, mirrored at the front
+    const view = VIEW.monaco();
+    for (let i = 0; i < N; i++) {
+      const a = i / N * Math.PI * 2, px = Math.sin(a) * R, pz = Zc + Math.cos(a) * R;
+      const pier = box(g, 0.7, Hs, 0.7, cream, px, Hs / 2, pz, a); box(g, 0.9, 0.2, 0.9, gold, px, Hs - 0.1, pz, a); box(g, 0.9, 0.12, 0.9, gold, px, 0.06, pz, a);
+      const am = a + Math.PI / N, ax = Math.sin(am) * R, az = Zc + Math.cos(am) * R, ry = am + Math.PI;
+      // the wall above and beside each arch
+      const sg = new THREE.Group(); sg.position.set(ax, 0, az); sg.rotation.y = ry; g.add(sg);
+      box(sg, 4.2, Hs - 4.3, 0.3, cream, 0, Hs - (Hs - 4.3) / 2, -0.1); for (const s of [-1, 1]) box(sg, 0.4, 4.3, 0.3, cream, s * 1.75, 2.15, -0.1);
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.14, 8, 32, Math.PI), gold); arch.position.set(0, 2.9, 0.04); sg.add(arch);
+      if (Math.cos(am) < -0.05) { if (STAGE !== 'final' && rnd() < 0.5) stander(sg, (rnd() - 0.5) * 1.6, -0.9, Math.PI + (rnd() - 0.5), { look: 'smart', lod: 1 }); }
+      else if (Math.cos(am) > 0.05) { mirrorAt(sg, 0, 2.2, -0.02, 2.9, 4.2, 0, 0xc8a050); } else archWindow(sg, view, 0, 2.2, -0.02, 3.0, 4.4, 0, 0xc8a050);
+      sconce(g, Math.sin(a) * (R - 0.4), 3.4, Zc + Math.cos(a) * (R - 0.4), a + Math.PI, 0xffe0b0);
+    }
+    // the terrace beyond the open arches: stone floor, a balustrade, lamps, the harbour and the Rock all round
+    ground(g, 40, 24, M({ map: tex(PAINT.tile('#d8ccb0', '#c4b89c', 6), 10, 6), roughness: 0.8 }), 0, Zc - 10, -0.01);
+    for (let i = 0; i < 14; i++) { const a0 = Math.PI * 0.52 + i / 14 * Math.PI * 0.96, a1 = Math.PI * 0.52 + (i + 1) / 14 * Math.PI * 0.96; railing(g, Math.sin(a0) * 11.5, Zc + Math.cos(a0) * 11.5, Math.sin(a1) * 11.5, Zc + Math.cos(a1) * 11.5, 1.0, 'stone', '#d8c8a0'); }
+    for (const a of [Math.PI * 0.62, Math.PI * 0.85, Math.PI * 1.15, Math.PI * 1.38]) lampPost(g, Math.sin(a) * 11.0, Zc + Math.cos(a) * 11.0, 2.8, 0xffd890);
+    backdrop(g, view, 0, Zc, 26, 20, -4, Math.PI * 0.45, Math.PI * 1.55); skyDome(g, 0, Zc, 60, [[0, '#06081c'], [0.5, '#1a1a48'], [0.9, '#5a3a5a'], [1, '#ff9a5a']]);
+    // the chandelier under the dome, the light of the room
+    chandelier(g, 0, Hs + R * 0.55, Zc, 2.6, 0xffe8c0); light(g, 0xfff0dc, 3.0, 0, Hs + 1, Zc, 16); light(g, 0xfff0dc, 1.6, 0, 4, Zc + 5, 12);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283 + 0.3; chandelier(g, Math.sin(a) * 5.2, Hs - 0.6, Zc + Math.cos(a) * 5.2, 0.9, 0xffe8c0); }
+    // the tables, set wide apart on the rose
+    pokerTable(g, 1.6, -3.0, { mine: true, felt: 0x0f3d2e, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: 5 });
+    pokerTable(g, -3.8, -6.6, { felt: 0x0f3d2e, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: 0.5, lamp: false, full: 0.9, ceil: 5 });
+    pokerTable(g, 3.6, -8.8, { felt: 0x0f3d2e, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: -0.4, lamp: false, full: 0.9, ceil: 5 });
+    if (STAGE !== 'final') { stander(g, -1.2, -10.4, 0.2, { look: 'smart', arms: 'down', lod: 1 }); stander(g, 5.4, -2.6, -0.9, { look: 'smart', arms: 'crossed', lod: 1 }); }
+    return { exposure: 1.0, cam: [[-4.6, 1.5, -0.2], [1.4, 2.8, -9.5]] };
+  },
+  // Macau: a two-storey atrium in red lacquer and gold, a gallery round three sides, red lanterns hung down through the
+  // void, a lotus pond under the glass wall and the Grand Lisboa's golden bud filling it
+  macau(g, o) {
+    const W = 14, D = 18, H = 9, Zc = 2 - D / 2, B = 2 - D, P2 = Math.PI / 2, GY = 4.6;
+    shell(g, { w: W, d: D, h: H, floor: PAINT.carpet('#4f130d', '#6b1a12', '#e8b030', 'scroll'), wall: PAINT.damask('#6b1a12', '#7a2418'), ceil: PAINT.coffer('#5a1410', '#c8a050'), back: false, trim: 0xc8a050, cornice: 0xc8a050, fillI: 1.2, fillC: 0xffd0a0 });
+    const gold = M({ color: 0xd8b050, metalness: 0.95, roughness: 0.25, envMapIntensity: 1.2 }), lacq = M({ color: 0x120808, roughness: 0.12, envMapIntensity: 1.0 }), red = M({ color: 0x8a1010, roughness: 0.3 });
+    // the glass wall: two storeys of it, black mullions, the bay beyond
+    const view = VIEW.macau(); windowOn(g, view, 0, H / 2, B + 0.02, W - 0.2, H - 0.2, 0, 0x0a0a0a);
+    for (let i = -2; i <= 2; i++) box(g, 0.1, H, 0.14, lacq, i * 2.9, H / 2, B + 0.1); box(g, W, 0.16, 0.16, lacq, 0, GY, B + 0.1); box(g, W, 0.16, 0.16, lacq, 0, H - 0.08, B + 0.1);
+    // the lotus pond along the glass: stepping stones, floating candles
+    box(g, W - 1.2, 0.3, 2.0, M({ map: tex(PAINT.stucco('#3a3a3a'), 6, 1), roughness: 0.8 }), 0, 0.15, B + 1.3); water(g, W - 1.6, 1.7, 0, B + 1.3, 0.28, 0x0e3a3a);
+    for (let i = 0; i < 16; i++) { const px = -5.6 + i * 0.75 + (rnd() - 0.5) * 0.3, pz = B + 0.7 + rnd() * 1.2; cyl(g, 0.12, 0.1, 0.03, M({ color: 0xf4e8d8, roughness: 0.4 }), px, 0.31, pz, 12); sph(g, 0.025, glow(0xffb040, 4), px, 0.35, pz, 6); if (i % 3 === 0) { const lf = cyl(g, 0.22, 0.22, 0.01, M({ color: 0x2a6a3a, roughness: 0.6 }), px + 0.3, 0.3, pz, 12); } }
+    box(g, W - 1.2, 0.05, 0.05, gold, 0, 0.6, B + 2.35); for (let i = 0; i < 8; i++) cyl(g, 0.015, 0.015, 0.6, gold, -5.6 + i * 1.6, 0.3, B + 2.35, 6);
+    // the gallery round three sides on black lacquer columns, people at the rail looking down
+    const galFloor = M({ map: tex(PAINT.wood('#2a1208', '#1a0a04', 60), 4, 1), roughness: 0.35 });
+    gallery(g, -W / 2 + 2.4, 2, -W / 2 + 2.4, B + 2.4, GY, 2.4, galFloor, 'wood', 0x8a1010); gallery(g, W / 2 - 2.4, B + 2.4, W / 2 - 2.4, 2, GY, 2.4, galFloor, 'wood', 0x8a1010); gallery(g, W / 2 - 2.4, 2, -W / 2 + 2.4, 2, GY, 2.4, galFloor, 'wood', 0x8a1010);
+    for (const s of [-1, 1]) for (let i = 0; i < 4; i++) column(g, s * (W / 2 - 2.4), 0.2 - i * 4.6, GY, lacq, gold);
+    const up = new THREE.Group(); up.position.y = GY; g.add(up);
+    if (STAGE !== 'final') for (let i = 0; i < 6; i++) { const s = i % 2 ? 1 : -1, z = -1 - Math.floor(i / 2) * 4.5 - rnd(); stander(up, s * (W / 2 - 2.0), z, -s * P2 + (rnd() - 0.5) * 0.4, { arms: 'crossed', lod: 1 }); }
+    for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { lantern(g, s * (W / 2 - 1.2), GY + 1.4, -1.5 - i * 5, 0xff3a1a); }
+    for (const s of [-1, 1]) for (let i = 0; i < 3; i++) photo(g, s * (W / 2 - 0.05), GY + 2.2, -2.0 - i * 5, 1.2, 1.8, -s * P2, 'portrait', 0xd8b050);
+    // the lanterns through the void, each on its cord from the coffers
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 4; j++) { const x = -4 + i * 2 + (j % 2) * 0.8, z = -2.5 - j * 3.6, y = 3.4 + ((i * 3 + j * 5) % 7) * 0.5; cyl(g, 0.006, 0.006, H - y, M({ color: 0x3a0a0a }), x, (H + y) / 2, z, 4); lantern(g, x, y, z, 0xff2a1a); if ((i + j) % 2 === 0) light(g, 0xff6a30, 1.4, x, y - 0.3, z, 6); }
+    // dragon-scale gold screens either side of the glass, a gong, the cage of the cashier at the front
+    for (const s of [-1, 1]) { plane(g, 2.6, 4.2, M({ map: tex(PAINT.wallpaper('#c8a050', '#8a6a20', 'scale'), 3, 5), roughness: 0.4, metalness: 0.4 }), s * 5.6, 2.2, B + 0.3); }
+    const gong = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.06, 32), M({ color: 0xc8a050, metalness: 0.9, roughness: 0.35 })); gong.rotation.x = P2; gong.position.set(W / 2 - 0.5, 2.0, -3); g.add(gong); box(g, 0.1, 2.9, 0.1, lacq, W / 2 - 0.5, 1.45, -1.9); box(g, 0.1, 2.9, 0.1, lacq, W / 2 - 0.5, 1.45, -4.1); box(g, 0.1, 0.1, 2.3, lacq, W / 2 - 0.5, 2.95, -3);
+    for (const s of [-1, 1]) sofa(g, s * 5.4, -14.6, -s * P2, 0x8a1010, 2.2);
+    // the tables on the atrium floor, yours nearest
+    pokerTable(g, 1.2, -3.0, { mine: true, felt: 0x6b1a12, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: 5 });
+    pokerTable(g, -3.4, -6.8, { felt: 0x6b1a12, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: 0.4, lamp: false, full: 0.9, ceil: 5 });
+    pokerTable(g, 3.2, -9.8, { felt: 0x6b1a12, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: -0.3, lamp: false, full: 0.9, ceil: 5 });
+    pokerTable(g, -2.4, -12.4, { felt: 0x6b1a12, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: 0.2, lamp: false, full: 0.9, ceil: 5 });
+    light(g, 0xffd0a0, 2.2, 0, 7.5, -4, 14); light(g, 0xffd0a0, 2.2, 0, 7.5, -11, 14);
+    if (STAGE !== 'final') { stander(g, -4.8, -3.4, 0.9, { look: 'smart', arms: 'down', lod: 1 }); stander(g, 5.2, -13.0, -0.6, { look: 'smart', arms: 'crossed', lod: 1 }); }
+    return { exposure: 1.05, cam: [[2.7, 1.5, 0.9], [-1.4, 2.8, -11]] };
+  },
+  // the Strip's sky suite: a corner of black glass fifty floors up, the whole valley of lights below, a star-field ceiling,
+  // a backlit onyx bar, low and wide and dark
+  vegasvip(g, o) {
+    const W = 20, D = 14, H = 3.6, Zc = 2 - D / 2, B = 2 - D, P2 = Math.PI / 2;
+    shell(g, { w: W, d: D, h: H, floor: PAINT.carpet('#14161c', '#1e222a', '#c8a050', 'diamond'), wall: PAINT.panel('#14161a', '#1c1e24'), ceil: PAINT.plain('#08080c'), back: false, right: false, trim: 0x0a0a0c, fillI: 0.7, fillC: 0xffe0c0 });
+    const black = M({ color: 0x0a0a0c, metalness: 0.7, roughness: 0.25 }), view = VIEW.vegas();
+    // the glass on two sides, meeting at the corner; the lights go on below the sill, so the view hangs low
+    windowOn(g, view, 0, H / 2, B + 0.02, W - 0.3, H - 0.1, 0, 'none'); windowOn(g, view, W / 2 - 0.02, H / 2, Zc, D - 0.3, H - 0.1, -P2, 'none');
+    for (let i = -3; i <= 3; i++) box(g, 0.08, H, 0.12, black, i * 2.8, H / 2, B + 0.08); for (let i = -2; i <= 2; i++) box(g, 0.12, H, 0.08, black, W / 2 - 0.08, H / 2, Zc + i * 2.8); box(g, 0.18, H, 0.18, black, W / 2 - 0.1, H / 2, B + 0.1);
+    box(g, W, 0.1, 0.14, black, 0, 0.05, B + 0.08); box(g, 0.14, 0.1, D, black, W / 2 - 0.08, 0.05, Zc);
+    // the stars overhead: hundreds of fibre points in the black ceiling
+    for (let i = 0; i < 260; i++) { const s = sph(g, 0.012 + rnd() * 0.012, glow(pick([0xffffff, 0xd8e8ff, 0xffe8c0]), 6), (rnd() - 0.5) * (W - 1), H - 0.02, Zc + (rnd() - 0.5) * (D - 1), 6); }
+    // linear fixtures over the tables, soft amber coves along the solid walls
+    const lin = (x, z, len, ry) => { const f = new THREE.Group(); f.position.set(x, 0, z); f.rotation.y = ry || 0; g.add(f); rbox(f, len, 0.08, 0.12, 0.02, black, 0, 2.95, 0); box(f, len - 0.1, 0.02, 0.06, glow(0xfff0d8, 3), 0, 2.9, 0); for (const k of [-1, 1]) cyl(f, 0.004, 0.004, 0.6, black, k * len * 0.4, 3.3, 0, 4); light(f, 0xfff0d8, 2.0, 0, 2.7, 0, 7); };
+    box(g, W - 0.4, 0.04, 0.04, glow(0xc8a050, 2.2), 0, H - 0.15, 2 - 0.3); box(g, 0.04, 0.04, D - 0.4, glow(0xc8a050, 2.2), -W / 2 + 0.3, H - 0.15, Zc);
+    // the onyx bar along the left wall, lit from inside, bottles up the wall behind it
+    bar(g, -W / 2 + 1.6, -5.0, 7, { ry: P2, wood: '#0c0c10', wood2: '#141418', top: 0x1a1410, crowd: 0.5 }); box(g, 0.06, 0.9, 6.9, glow(0xffb060, 1.3), -W / 2 + 1.95, 0.55, -5.0); light(g, 0xffb060, 1.6, -W / 2 + 2.4, 0.9, -5.0, 6);
+    // a lounge by the front wall: a round of black leather, a low table, an ice bucket
+    for (const [x, z, ry] of [[-4.6, 0.3, Math.PI], [-6.8, -1.2, P2], [-2.4, -1.2, -P2]]) sofa(g, x, z, ry, 0x101014, 2.0);
+    cyl(g, 0.6, 0.6, 0.04, M({ color: 0x0a0a0a, roughness: 0.1, envMapIntensity: 1.5 }), -4.6, 0.42, -1.2, 32); cyl(g, 0.08, 0.1, 0.4, black, -4.6, 0.2, -1.2, 12); cyl(g, 0.14, 0.11, 0.2, M({ color: 0xd8d8e0, metalness: 0.9, roughness: 0.2 }), -4.4, 0.54, -1.3, 14); cyl(g, 0.03, 0.03, 0.3, M({ color: 0x1a3a1a, roughness: 0.2 }), -4.4, 0.72, -1.3, 8);
+    // the private lift, a VIP plate beside it; a view-side ledge with a few stools
+    box(g, 2.0, 2.4, 0.08, M({ color: 0x8a8a90, metalness: 0.9, roughness: 0.25 }), 5.6, 1.2, 1.96); box(g, 0.02, 2.4, 0.06, black, 5.6, 1.2, 1.92); sign(g, 'SKY SUITE', '#0a0a0c', '#d8b050', 7.4, 1.9, 1.96, 1.2, 0.3);
+    box(g, 0.5, 0.05, D - 2, M({ color: 0x0a0a0a, roughness: 0.1, envMapIntensity: 1.5 }), W / 2 - 0.5, 1.05, Zc); for (let i = 0; i < 4; i++) { const z = -2 - i * 2.6; cyl(g, 0.17, 0.17, 0.06, cloth(0x101014, 0.5), W / 2 - 1.2, 0.72, z, 16); cyl(g, 0.02, 0.03, 0.7, black, W / 2 - 1.2, 0.35, z, 8); if (STAGE !== 'final' && rnd() < 0.6) person(g, W / 2 - 1.2, z, -P2, { hip: 0.76, arms: 'bar', lod: 1 }); }
+    // the tables
+    pokerTable(g, 1.6, -2.6, { mine: true, felt: 0x22262e, rail: 0x0a0a0c, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: 3.0 }); lin(1.6, -2.6, 2.8);
+    pokerTable(g, 6.2, -7.2, { felt: 0x22262e, rail: 0x0a0a0c, seats: 8, rx: 1.4, rz: 0.8, ry: -0.35, lamp: false, full: 0.9, ceil: 3.0 }); lin(6.2, -7.2, 2.8, -0.35);
+    pokerTable(g, -3.2, -8.4, { felt: 0x22262e, rail: 0x0a0a0c, seats: 8, rx: 1.4, rz: 0.8, ry: 0.25, lamp: false, full: 0.9, ceil: 3.0 }); lin(-3.2, -8.4, 2.8, 0.25);
+    for (let i = 0; i < 4; i++) light(g, pick([0xff6ab0, 0x8a4aff]), 0.6, -8 + i * 5.3, 0.3, B + 0.6, 4);
+    if (STAGE !== 'final') { stander(g, -0.6, -11.0, 0.3, { look: 'smart', arms: 'down', lod: 1 }); stander(g, 3.6, 0.6, -2.4, { look: 'smart', arms: 'crossed', lod: 1 }); }
+    return { exposure: 1.1, cam: [[-6.6, 1.45, 1.2], [3.2, 1.3, -7.6]] };
+  },
+  // the French Quarter: an open courtyard between old brick walls, iron-lace galleries hung with ferns on two floors,
+  // a cast-iron fountain, bananas in the corners, gas lamps and strings of bulbs, the cathedral's spires over the back wall
+  bayou(g, o) {
+    const W = 12, D = 14, H = 7.6, Zc = 2 - D / 2, B = 2 - D, P2 = Math.PI / 2;
+    const flag = PAINT.tile('#6a6660', '#4a4640', 5), brick = PAINT.brick('#8a4a3a', '#4a3a34');
+    shell(g, { w: W, d: D, h: H, floor: flag, wall: brick, back: false, fillI: 0.9, fillC: 0xffd0a0 });
+    const bm = M({ map: tex(brick, W / 2.4, 2), roughness: 0.9 }), iron = M({ color: 0x141414, metalness: 0.6, roughness: 0.5 }), green = M({ color: 0x1a3a2a, roughness: 0.6 });
+    // the back wall is lower, a carriage gate in it, and the city and sky beyond
+    plane(g, W, 5.0, bm, 0, 2.5, B); box(g, W, 0.3, 0.5, M({ map: tex(PAINT.stucco('#b8a888'), 6, 1), roughness: 0.9 }), 0, 5.1, B + 0.05);
+    const gate = new THREE.Group(); gate.position.set(0, 0, B + 0.1); g.add(gate); const ga = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.2, 8, 24, Math.PI), M({ map: tex(PAINT.stucco('#b8a888'), 1, 1), roughness: 0.9 })); ga.position.y = 2.6; gate.add(ga); for (const s of [-1, 1]) box(gate, 0.4, 2.6, 0.4, M({ map: tex(PAINT.stucco('#b8a888'), 1, 2), roughness: 0.9 }), s * 1.45, 1.3, 0);
+    for (let i = 0; i < 12; i++) cyl(gate, 0.015, 0.015, 3.4, iron, -1.1 + i * 0.2, 1.7, 0, 6); box(gate, 2.3, 0.04, 0.04, iron, 0, 1.0, 0); box(gate, 2.3, 0.04, 0.04, iron, 0, 2.4, 0);
+    plane(g, 2.4, 3.4, unlit(canvas(64, 64, (x, w, h) => { x.fillStyle = '#0a0a14'; x.fillRect(0, 0, w, h); x.fillStyle = '#ffd890'; x.fillRect(20, 30, 6, 6); x.fillRect(40, 20, 5, 7); }), 0.6), 0, 1.7, B - 0.3);
+    backdrop(g, VIEW.quarter(), 0, Zc, 18, 18, -3, Math.PI * 0.5, Math.PI * 1.5); skyDome(g, 0, Zc, 50, [[0, '#06081c'], [0.6, '#141a44'], [1, '#3a2a50']]);
+    // the galleries down both sides and across the front, on iron posts, ferns over the rails, lit windows behind
+    const gf = M({ map: tex(PAINT.wood('#5a4028', '#4a3018', 30), 4, 1), roughness: 0.6 });
+    for (const y of [3.4, 6.4]) {
+      gallery(g, -W / 2 + 1.7, 2, -W / 2 + 1.7, B + 0.3, y, 1.7, gf, 'iron', 0x141414); gallery(g, W / 2 - 1.7, B + 0.3, W / 2 - 1.7, 2, y, 1.7, gf, 'iron', 0x141414); gallery(g, W / 2 - 1.7, 2, -W / 2 + 1.7, 2, y, 1.7, gf, 'iron', 0x141414);
+      for (const s of [-1, 1]) for (let i = 0; i < 4; i++) { const z = -0.6 - i * 3.6; windowOn(g, canvas(64, 96, (x, w, h) => { x.fillStyle = '#3a2a1a'; x.fillRect(0, 0, w, h); const gg = x.createLinearGradient(0, 0, 0, h); gg.addColorStop(0, '#ffe0a0'); gg.addColorStop(1, '#c88a40'); x.fillStyle = gg; x.fillRect(6, 6, w - 12, h - 12); x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(w / 2 - 2, 6, 4, h - 12); x.fillRect(6, h / 2 - 2, w - 12, 4); }), s * (W / 2 - 0.02), y + 1.5, z, 1.0, 2.0, -s * P2, 0x1a2a1a); for (const t of [-1, 1]) box(g, 0.04, 2.1, 0.5, green, s * (W / 2 - 0.05), y + 1.5, z + t * 0.78); light(g, 0xffd090, 0.9, s * (W / 2 - 0.6), y + 1.6, z, 4); }
+      for (const s of [-1, 1]) for (let i = 0; i < 7; i++) { const z = 1.5 - i * 2.1; const fern = new THREE.Group(); fern.position.set(s * (W / 2 - 1.7), y + 0.6, z); g.add(fern); for (let k = 0; k < 12; k++) { const lf = box(fern, 0.5, 0.05, 0.08, M({ color: pick([0x2f6a2a, 0x3a7a30, 0x4a8a3a]), roughness: 0.7 }), 0, 0, 0); lf.rotation.set(0, k / 12 * 6.283, -0.4 - rnd() * 0.5); lf.geometry.translate(0.25, 0, 0); } }
+    }
+    for (const s of [-1, 1]) for (let i = 0; i < 5; i++) cyl(g, 0.04, 0.04, H, iron, s * (W / 2 - 1.7), H / 2, 2 - i * 3.5, 8);
+    // the walls above the galleries, the gas lamps on brackets, the strings of bulbs criss-crossing overhead
+    for (const s of [-1, 1]) for (const z of [-2.0, -6.0, -10.0]) { const gl = new THREE.Group(); gl.position.set(s * (W / 2 - 0.1), 2.4, z); g.add(gl); box(gl, 0.04, 0.04, 0.3, iron, -s * 0.1, 0, 0, P2); cyl(gl, 0.12, 0.08, 0.32, M({ color: 0xfff0d0, emissive: 0xffa040, emissiveIntensity: 1.4, transparent: true, opacity: 0.85 }), -s * 0.25, 0.1, 0, 6); cyl(gl, 0.14, 0.02, 0.1, iron, -s * 0.25, 0.3, 0, 6); light(gl, 0xffa050, 1.2, -s * 0.35, 0.1, 0, 5); }
+    for (let i = 0; i < 4; i++) stringLights(g, -W / 2 + 1.7, W / 2 - 1.7, 4.4 + (i % 2) * 0.3, -1.0 - i * 3.0, 0.5, 0xffd38a);
+    for (const s of [-1, 1]) lampPost(g, s * 1.9, B + 1.0, 2.4, 0xffb050);
+    // the fountain, the bananas, a few café tables, the piano under the gallery and the trio at it
+    fountain(g, 0, -8.6, 1.5);
+    for (const [x, z, s] of [[-4.6, -11.4, 1.1], [4.6, -11.4, 1.0], [-4.8, 0.8, 0.9], [4.8, 0.6, 1.0], [2.6, -10.8, 0.8]]) banana(g, x, z, s);
+    for (const [x, z] of [[-3.8, -0.4], [3.9, -1.2], [-4.0, -4.2], [4.2, -5.6]]) bistro(g, x, z, STAGE !== 'final');
+    pianoUpright(g, -4.2, -9.4, P2 + 0.3, 0x1a0e08); if (STAGE !== 'final') { stander(g, -3.5, -8.4, 2.2, { look: 'smart', arms: 'down', lod: 1 }); stander(g, -2.8, -9.6, 1.4, { look: 'smart', arms: 'crossed', lod: 1 }); stander(g, 3.6, -8.6, -1.2, { look: 'smart', lod: 1 }); }
+    // the tables on the flagstones
+    pokerTable(g, 1.4, -3.4, { mine: true, felt: 0x155e75, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: 4.2 });
+    pokerTable(g, -2.6, -6.6, { felt: 0x155e75, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: 0.45, lamp: false, full: 0.9, ceil: 4.2 });
+    light(g, 0xffd0a0, 2.4, 1.4, 3.6, -3.4, 9); light(g, 0xffd0a0, 2.2, -2.6, 3.6, -6.6, 9);
+    return { exposure: 1.05, cam: [[-4.0, 1.6, 1.0], [1.2, 2.4, -9.0]] };
+  },
+  // a St. James's club: oak and leather, a deep bay window on the river with Westminster across it, the fire and its club
+  // fender, the library wall with its ladder, a snooker table under a long brass light, decanters on the tray
+  london(g, o) {
+    const W = 11, D = 13, H = 4.4, Zc = 2 - D / 2, B = 2 - D, P2 = Math.PI / 2;
+    const panel = PAINT.panel('#2a1a10', '#3a2416');
+    shell(g, { w: W, d: D, h: H, floor: PAINT.carpet('#1a2a1a', '#24381e', '#c8a050', 'diamond'), wall: panel, ceil: PAINT.coffer('#3a2416', '#24160c'), back: false, trim: 0x1a0e08, cornice: 0x3a2416, fillI: 0.9, fillC: 0xffd8b0 });
+    const oak = M({ map: tex(panel, 2, 1), roughness: 0.5 }), brass = M({ color: 0xc8a050, metalness: 0.9, roughness: 0.3 }), view = VIEW.london();
+    // the back wall either side of the bay, the lintel, then the bay itself: five sashes on the arc, a cushioned seat round it
+    for (const s of [-1, 1]) plane(g, (W - 5.6) / 2, H, M({ map: tex(panel, 1.2, 1.8), roughness: 0.5 }), s * (W / 2 - (W - 5.6) / 4), H / 2, B); plane(g, 5.6, H - 3.6, M({ map: tex(panel, 2.3, 0.4), roughness: 0.5 }), 0, H - (H - 3.6) / 2, B);
+    const bay = new THREE.Group(); bay.position.set(0, 0, B); g.add(bay);
+    bayWindow(bay, view, 0, 2.0, 0, 3.0, 2.8, 5, Math.PI * 0.78, 0xf0ebe0);
+    const cap = new THREE.Mesh(new THREE.CircleGeometry(3.3, 32, Math.PI, Math.PI), M({ color: 0x2a1a10, roughness: 0.7 })); cap.rotation.x = P2; cap.position.set(0, 3.6, 0); bay.add(cap); cap.userData.flat = 1;
+    const fl2 = new THREE.Mesh(new THREE.CircleGeometry(3.3, 32, Math.PI, Math.PI), M({ map: tex(PAINT.wood('#4a2a14', '#3a2010', 20), 2, 2), roughness: 0.4 })); fl2.rotation.x = -P2; fl2.position.set(0, 0.16, 0); bay.add(fl2); fl2.userData.flat = 1;
+    box(bay, 5.6, 0.16, 0.3, oak, 0, 0.08, 0.15);
+    for (let i = 0; i < 5; i++) { const a = -Math.PI * 0.39 + (i + 0.5) * Math.PI * 0.78 / 5, r = 2.5; const st = rbox(bay, 1.5, 0.12, 0.6, 0.04, cloth(0x5a1a12, 0.8), Math.sin(a) * r, 0.56, -Math.cos(a) * r, -a); box(bay, 1.5, 0.4, 0.6, oak, Math.sin(a) * r, 0.3, -Math.cos(a) * r, -a); }
+    for (const s of [-1, 1]) curtain(g, s * 2.5, 2.0, B + 0.4, 0.7, 3.4, 0x2a3a2a);
+    // the fire on the right with its club fender and two wing chairs; the library wall on the left with its ladder
+    fireplace(g, W / 2 - 0.3, -5.5, -P2); box(g, 0.06, 0.4, 2.6, brass, W / 2 - 1.3, 0.2, -5.5); rbox(g, 0.4, 0.1, 2.6, 0.03, cloth(0x5a1a12, 0.7), W / 2 - 1.3, 0.45, -5.5);
+    for (const t of [-1, 1]) sofa(g, W / 2 - 2.0, -5.5 + t * 1.6, -P2 + t * 0.9, 0x4a2a14, 1.0);
+    for (let i = 0; i < 3; i++) shelves(g, -W / 2 + 0.25, -2.2 - i * 3.0, 2.8, 3.9, P2);
+    const lad = new THREE.Group(); lad.position.set(-W / 2 + 0.75, 0, -4.6); lad.rotation.z = 0.18; g.add(lad); for (const s of [-1, 1]) box(lad, 0.05, 3.6, 0.05, oak, s * 0.22, 1.8, 0); for (let i = 0; i < 9; i++) box(lad, 0.44, 0.04, 0.04, oak, 0, 0.3 + i * 0.4, 0);
+    box(g, 0.04, 0.04, 9, brass, -W / 2 + 0.6, 3.95, -5.5);
+    // the snooker table under its long light, at the front on the left
+    poolTable(g, -2.6, -1.0, P2, 0x1f6b45); for (let i = -1; i <= 1; i++) { const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.3, 0.26, 24, 1, true), M({ color: 0x1a5a2a, side: THREE.DoubleSide, roughness: 0.3, metalness: 0.2 })); sh.position.set(-2.6, 2.0, -1.0 + i * 0.9); g.add(sh); sph(g, 0.06, glow(0xffe8c0, 3), -2.6, 1.9, -1.0 + i * 0.9, 8); cyl(g, 0.006, 0.006, 2.3, brass, -2.6, 3.2, -1.0 + i * 0.9, 4); } light(g, 0xffe8c0, 1.8, -2.6, 1.8, -1.0, 5);
+    // decanters on a tray, a grandfather clock, portraits of the members, the chesterfields, the chandeliers
+    rbox(g, 0.9, 0.04, 0.5, 0.01, brass, 3.4, 0.76, -9.6); cyl(g, 0.05, 0.05, 0.74, oak, 3.4, 0.37, -9.6, 10); for (let i = 0; i < 3; i++) { const dc = new THREE.Mesh(new THREE.LatheGeometry([[0.001, 0], [0.07, 0], [0.09, 0.1], [0.06, 0.2], [0.025, 0.24], [0.025, 0.3], [0.04, 0.33], [0.001, 0.33]].map(q => new THREE.Vector2(q[0], q[1])), 12), new THREE.MeshPhysicalMaterial({ color: pick([0xc87a30, 0x8a3a1a, 0xd8d8c0]), roughness: 0.05, transmission: 0.5, thickness: 0.05 })); dc.position.set(3.15 + i * 0.26, 0.78, -9.6); g.add(dc); }
+    box(g, 0.5, 2.3, 0.35, oak, 4.0, 1.15, 1.75); cyl(g, 0.16, 0.16, 0.02, M({ color: 0xf4ecd8 }), 4.0, 1.9, 1.56, 24).rotation.x = P2; box(g, 0.36, 1.2, 0.02, M({ color: 0xc8a050, metalness: 0.9, roughness: 0.3, transparent: true, opacity: 0.4 }), 4.0, 1.0, 1.56);
+    for (let i = 0; i < 3; i++) photo(g, -3.6 + i * 2.8, 2.5, 1.96, 0.9, 1.2, Math.PI, 'portrait', 0xb08a40); photo(g, W / 2 - 0.03, 2.6, -8.6, 1.0, 1.3, -P2, 'portrait', 0xb08a40);
+    sofa(g, 3.0, 1.2, Math.PI, 0x5a1a12, 2.2); sofa(g, -4.6, -8.2, P2, 0x5a1a12, 2.0);
+    for (const [x, z] of [[1.8, -3.6], [-2.6, -7.6]]) { chandelier(g, x, 3.5, z, 0.9, 0xffc890); }
+    for (const [x, z] of [[-4.2, -10.2], [4.2, 0.4]]) { cyl(g, 0.04, 0.05, 0.9, brass, x, 0.45, z, 8); const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.5, 16, 1, true, 0, Math.PI), M({ color: 0x1a5a2a, emissive: 0x1a5a2a, emissiveIntensity: 0.4, side: THREE.DoubleSide, roughness: 0.2 })); sh.rotation.z = P2; sh.position.set(x, 1.0, z); g.add(sh); sph(g, 0.04, glow(0xffe8c0, 3), x, 0.97, z, 8); light(g, 0xffe8c0, 0.7, x, 1.0, z, 3); }
+    // the tables
+    pokerTable(g, 1.8, -3.6, { mine: true, felt: 0x1a3a2a, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: 3.6 });
+    pokerTable(g, -2.6, -7.6, { felt: 0x1a3a2a, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: 0.5, lamp: false, full: 0.9, ceil: 3.6 });
+    if (STAGE !== 'final') { stander(g, 2.4, -8.8, 0.6, { look: 'smart', arms: 'down', lod: 1 }); stander(g, -1.0, 0.4, 2.6, { look: 'smart', arms: 'crossed', lod: 1 }); }
+    return { exposure: 1.05, cam: [[4.3, 1.5, 1.3], [-1.6, 1.5, -7.8]] };
+  },
+  // a Viennese Kaffeehaus: a long high room, round-topped windows down one side on the Ring and the Stephansdom, red velvet
+  // banquettes under tall mirrors down the other, marble bistro tables between, globe lamps on brass stems, the pastry case
+  vienna(g, o) {
+    const W = 9, D = 20, H = 5.9, Zc = 2 - D / 2, B = 2 - D, P2 = Math.PI / 2;
+    const herring = canvas(256, 256, (x, w, h) => { x.fillStyle = '#9a6a3a'; x.fillRect(0, 0, w, h); for (let i = -8; i < 16; i++) for (let j = 0; j < 8; j++) { x.save(); x.translate(j * 32, i * 32); x.rotate(j % 2 ? Math.PI / 4 : -Math.PI / 4); x.fillStyle = '#' + new THREE.Color('#a0703e').offsetHSL(0, 0, (rnd() - 0.5) * 0.1).getHexString(); x.fillRect(-4, -14, 40, 12); x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(-4, -14, 40, 1); x.restore(); } }); herring.__kind = 'wood';
+    shell(g, { w: W, d: D, h: H, floor: herring, wall: PAINT.damask('#f4f0e8', '#e8e0d4'), ceil: null, trim: 0x3a2010, fillI: 1.2 });
+    const cream = M({ map: tex(PAINT.plain('#f6f2ea'), 4, 4), roughness: 0.9 }), oak = M({ map: tex(PAINT.wood('#4a2a14', '#3a2010', 20), 2, 1), roughness: 0.4 }), brass = M({ color: 0xc8a050, metalness: 0.9, roughness: 0.3 });
+    vault(g, 0, H - 2.1, Zc, W, D, cream, false, 0.42); box(g, W, 0.12, 0.12, M({ color: 0xe0d8c8, roughness: 0.7 }), 0, H - 2.1, B + 0.06); for (const s of [-1, 1]) box(g, 0.12, 0.12, D, M({ color: 0xe0d8c8, roughness: 0.7 }), s * (W / 2 - 0.06), H - 2.1, Zc);
+    for (let i = 0; i <= 5; i++) { const rb = new THREE.Mesh(new THREE.TorusGeometry(W / 2 - 0.04, 0.08, 6, 36, Math.PI), M({ color: 0xe8e0d0, roughness: 0.8 })); rb.position.set(0, H - 2.1, 1.6 - i * 3.8); rb.scale.y = 0.42; g.add(rb); }
+    // the dark wainscot round the room, the windows down the left on the Ring, the mirrors and banquettes down the right
+    for (const s of [-1, 1]) plane(g, D, 1.1, M({ map: tex(PAINT.panel('#3a2010', '#4a2a16'), 10, 0.5), roughness: 0.5 }), s * (W / 2 - 0.01), 0.55, Zc, -s * P2);
+    plane(g, W, 1.1, M({ map: tex(PAINT.panel('#3a2010', '#4a2a16'), 4, 0.5), roughness: 0.5 }), 0, 0.55, B + 0.01);
+    const view = VIEW.vienna();
+    for (let i = 0; i < 5; i++) { const z = -0.6 - i * 3.8; archWindow(g, view, -W / 2 + 0.02, 2.6, z, 2.0, 3.6, P2, 0xf0ebe0); box(g, 0.02, 0.02, 2.2, brass, -W / 2 + 0.12, 2.1, z); curtain(g, -W / 2 + 0.1, 1.5, z, 2.1, 1.2, 0xfaf6ee, P2); light(g, 0xd8e0ff, 0.5, -W / 2 + 0.6, 2.6, z, 4); }
+    for (let i = 0; i < 5; i++) { const z = -0.6 - i * 3.8; mirrorAt(g, W / 2 - 0.05, 2.5, z, 2.2, 2.2, -P2, 0xc8a050); sconce(g, W / 2 - 0.08, 3.0, z + 1.5, -P2, 0xffe0b0); sofa(g, W / 2 - 0.5, z, -P2, 0x8a1a1a, 3.4); }
+    // globe lamps on brass stems, down the middle and over the banquettes
+    const globe = (x, z, y) => { cyl(g, 0.012, 0.012, H - 2.3 - y, brass, x, (H - 2.3 + y) / 2, z, 6); sph(g, 0.17, glow(0xfff0d8, 2.2), x, y, z, 14); light(g, 0xfff0d8, 1.6, x, y - 0.1, z, 6); };
+    for (let i = 0; i < 5; i++) { globe(W / 2 - 1.5, -0.6 - i * 3.8, 2.4); globe(-W / 2 + 1.5, -2.5 - i * 3.8, 2.4); }
+    // the café: bistro tables by the windows and the banquettes, the papers, the coat stand, the pastry case and the espresso machine at the back
+    for (let i = 0; i < 5; i++) { bistro(g, -W / 2 + 1.3, -2.5 - i * 3.8, STAGE !== 'final'); bistro(g, W / 2 - 1.5, -2.5 - i * 3.8 + 0.3, STAGE !== 'final'); }
+    paperRack(g, -W / 2 + 0.6, 1.2, P2 + 0.3); cyl(g, 0.02, 0.02, 1.8, oak, W / 2 - 0.6, 0.9, 1.3, 8); cyl(g, 0.22, 0.22, 0.03, oak, W / 2 - 0.6, 0.015, 1.3, 16); for (let k = 0; k < 4; k++) { const hk = box(g, 0.02, 0.02, 0.22, oak, W / 2 - 0.6, 1.7, 1.3, k * P2 / 2); } rbox(g, 0.4, 0.5, 0.1, 0.05, cloth(0x2a2a30), W / 2 - 0.75, 1.45, 1.3);
+    vitrine(g, 0.6, B + 0.8, 3.4, 0); box(g, 2.2, 1.0, 0.7, oak, -2.9, 0.5, B + 0.8); rbox(g, 0.7, 0.5, 0.5, 0.04, M({ color: 0xd8d8e0, metalness: 0.95, roughness: 0.2 }), -2.9, 1.27, B + 0.8); cyl(g, 0.04, 0.04, 0.3, M({ color: 0xd8d8e0, metalness: 0.95, roughness: 0.2 }), -2.6, 1.6, B + 0.8, 10); for (let k = 0; k < 6; k++) cyl(g, 0.035, 0.03, 0.06, M({ color: 0xffffff, roughness: 0.3 }), -3.6 + k * 0.14, 1.03, B + 1.0, 10);
+    shelves(g, -2.9, B + 0.25, 2.2, 3.0, 0, 'bottles'); box(g, 0.02, 0.02, 1.2, brass, 2.3, 1.0, B + 0.5);
+    if (STAGE !== 'final') { stander(g, -0.8, B + 1.9, 0.2, { look: 'smart', arms: 'down', lod: 1 }); stander(g, 1.6, -7.4, 2.4, { look: 'smart', arms: 'table', lod: 1 }); }
+    // the card tables down the middle
+    pokerTable(g, 0.3, -3.8, { mine: true, felt: 0x4a1f4f, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: 3.6 });
+    pokerTable(g, -0.3, -10.0, { felt: 0x4a1f4f, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: 0.15, lamp: false, full: 0.9, ceil: 3.6 });
+    pokerTable(g, 0.4, -15.6, { felt: 0x4a1f4f, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: -0.15, lamp: false, full: 0.9, ceil: 3.6 });
+    for (const z of [-3.8, -10.0, -15.6]) { globe(0.3, z, 2.7); }
+    return { exposure: 1.0, cam: [[3.3, 1.5, 1.3], [-0.6, 1.7, -14]] };
+  },
+  // Marina Bay from fifty-seven floors up: a glass corner, a terrace with an infinity pool past it, the Sands and the
+  // Supertrees below; teak overhead, white terrazzo, a living wall of ferns and orchids
+  singapore(g, o) {
+    const W = 16, D = 14, H = 4.0, Zc = 2 - D / 2, B = 2 - D, P2 = Math.PI / 2;
+    shell(g, { w: W, d: D, h: H, floor: PAINT.marble('#e8e4dc', '#a8a49c'), wall: PAINT.panel('#5a4430', '#6a5038'), ceil: PAINT.wood('#6a5038', '#5a4430', 40), back: false, left: false, trim: 0x2a2a2a, fillI: 1.1, floorRough: 0.2 });
+    const steel = M({ color: 0x2a2a2e, metalness: 0.8, roughness: 0.3 }), view = VIEW.singapore(), teak = M({ map: tex(PAINT.wood('#7a5a38', '#5a4028', 30), 6, 1), roughness: 0.5 });
+    // the glass on two sides, floor to ceiling, slim black mullions
+    const glassM = () => M({ color: 0x9ab0c8, metalness: 1, roughness: 0.25, transparent: true, opacity: 0.07, envMapIntensity: 1.5 }); plane(g, W - 0.2, H - 0.1, glassM(), 0, H / 2, B + 0.02); plane(g, D - 0.2, H - 0.1, glassM(), -W / 2 + 0.02, H / 2, Zc, P2);
+    for (let i = -3; i <= 3; i++) box(g, 0.06, H, 0.1, steel, i * 2.6, H / 2, B + 0.06); for (let i = -2; i <= 2; i++) box(g, 0.1, H, 0.06, steel, -W / 2 + 0.06, H / 2, Zc + i * 2.6); box(g, 0.14, H, 0.14, steel, -W / 2 + 0.07, H / 2, B + 0.07);
+    box(g, W, 0.08, 0.1, steel, 0, 0.04, B + 0.06); box(g, 0.1, 0.08, D, steel, -W / 2 + 0.06, 0.04, Zc); box(g, W, 0.12, 0.12, steel, 0, H - 0.06, B + 0.06);
+    // the terrace past the glass: a teak deck, the pool lit from under, loungers, a glass rail, the bay beyond
+    ground(g, 26, 9, teak, -2, B - 4.6, -0.02); pool(g, 0, B - 5.0, 11, 3.4);
+    for (let i = 0; i < 5; i++) adirondack(g, -5.5 + i * 2.6, B - 2.2, Math.PI, 0xf0ebe0);
+    for (let i = 0; i < 3; i++) { cyl(g, 0.3, 0.26, 0.5, M({ color: 0xf0ebe0, roughness: 0.5 }), -9.6, 0.25, B - 1.5 - i * 2.6, 16); plant(g, -9.6, B - 1.5 - i * 2.6, 1.3, false); }
+    for (let i = 0; i < 6; i++) box(g, 0.06, 1.1, 0.06, steel, -11 + i * 4.4, 0.55, B - 8.8); plane(g, 22, 1.0, M({ color: 0xa8c8d8, metalness: 0.2, roughness: 0.05, transparent: true, opacity: 0.25 }), -0.2, 0.55, B - 8.8); box(g, 22.2, 0.05, 0.05, steel, -0.2, 1.1, B - 8.8);
+    for (let i = 0; i < 4; i++) { cyl(g, 0.02, 0.02, 0.5, steel, -8 + i * 5, 0.25, B - 8.4, 6); sph(g, 0.06, glow(0xffd890, 3), -8 + i * 5, 0.52, B - 8.4, 8); light(g, 0xffd890, 0.6, -8 + i * 5, 0.5, B - 8.4, 3); }
+    backdrop(g, view, 0, Zc, 26, 20, -6, Math.PI * 0.35, Math.PI * 1.75); skyDome(g, 0, Zc, 60, [[0, '#06081c'], [0.55, '#1a1e4a'], [1, '#4a3060']]);
+    // the teak ceiling's recessed strips, the living wall down the right, orchids on their plinths
+    for (let i = 0; i < 4; i++) { box(g, W - 2, 0.03, 0.08, glow(0xfff0d8, 2.6), 0, H - 0.03, -1.0 - i * 3.0); light(g, 0xfff0d8, 1.4, 0, H - 0.4, -1.0 - i * 3.0, 9); }
+    greenWall(g, W / 2 - 0.1, 2.0, Zc, D - 1.0, 3.4, -P2);
+    for (const z of [-1.5, -5.5, -9.5]) { box(g, 0.5, 0.9, 0.5, M({ color: 0xf4f0e8, roughness: 0.3 }), W / 2 - 0.9, 0.45, z); cyl(g, 0.14, 0.11, 0.3, M({ color: 0xf4f0e8, roughness: 0.2 }), W / 2 - 0.9, 1.05, z, 14); for (let k = 0; k < 3; k++) { seg(g, [W / 2 - 0.9, 1.2, z], [W / 2 - 0.9 + (k - 1) * 0.15, 1.7, z + 0.1], 0.008, 0.006, M({ color: 0x3a5a2a })); for (let f = 0; f < 4; f++) sph(g, 0.04, M({ color: pick([0xf4e8f4, 0xe8a8d8, 0xf8f4f8]), roughness: 0.5 }), W / 2 - 0.9 + (k - 1) * 0.15 + f * 0.04, 1.7 - f * 0.06, z + 0.12, 8); } }
+    // a low teak console by the front wall, a lounge corner, the tables
+    box(g, 3.2, 0.7, 0.5, teak, 2.0, 0.35, 1.7); cyl(g, 0.16, 0.16, 0.5, M({ color: 0xffffff, emissive: 0xfff0d8, emissiveIntensity: 0.8, roughness: 0.5 }), 0.8, 0.95, 1.7, 16); cyl(g, 0.16, 0.16, 0.5, M({ color: 0xffffff, emissive: 0xfff0d8, emissiveIntensity: 0.8, roughness: 0.5 }), 3.2, 0.95, 1.7, 16);
+    sofa(g, -4.8, 1.3, Math.PI, 0xe8e4dc, 2.4); sofa(g, -6.8, -0.6, P2, 0xe8e4dc, 2.0);
+    const pend = (x, z) => { for (let k = -1; k <= 1; k++) { const px = x + k * 0.5; cyl(g, 0.004, 0.004, 1.4 + (k % 2) * 0.3, steel, px, 3.3, z, 4); sph(g, 0.12, M({ color: 0xc8a050, metalness: 0.9, roughness: 0.2, emissive: 0xffc070, emissiveIntensity: 0.3 }), px, 2.55 - (k % 2) * 0.3, z, 16); sph(g, 0.06, glow(0xffe0b0, 3), px, 2.46 - (k % 2) * 0.3, z, 8); } light(g, 0xffe0b0, 1.4, x, 2.4, z, 6); };
+    pokerTable(g, 1.4, -2.8, { mine: true, felt: 0x0e4a4a, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: 3.4 }); pend(1.4, -2.8);
+    pokerTable(g, -4.4, -6.0, { felt: 0x0e4a4a, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: 0.3, lamp: false, full: 0.9, ceil: 3.4 }); pend(-4.4, -6.0);
+    pokerTable(g, 4.2, -7.8, { felt: 0x0e4a4a, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: -0.3, lamp: false, full: 0.9, ceil: 3.4 }); pend(4.2, -7.8);
+    if (STAGE !== 'final') { stander(g, -1.6, -9.6, 0.4, { look: 'smart', arms: 'down', lod: 1 }); stander(g, 5.6, -1.2, -1.8, { look: 'smart', arms: 'crossed', lod: 1 }); const outside = new THREE.Group(); g.add(outside); stander(outside, 3.0, B - 3.4, 0.4, { arms: 'crossed', lod: 1 }); stander(outside, -6.8, B - 7.4, 2.8, { arms: 'pockets', lod: 1 }); }
+    return { exposure: 1.05, cam: [[6.4, 1.5, 1.3], [-1.8, 1.6, -9.0]] };
+  },
+  // Nassau: no walls at all. A thatched pavilion on a deck in the sand, the sea twenty yards off at sunset, palms leaning
+  // over the roof, tiki torches round the edge, a beach bar, Atlantis's towers across the water
+  nassau(g, o) {
+    const W = 14, D = 12, Zc = 2 - D / 2, B = 2 - D, P2 = Math.PI / 2;
+    const deck = PAINT.planks('#c8a878', '#a88858'); const fl = tex(deck, W / 2, D / 2);
+    const floor = plane(g, W, D, M({ map: fl, bumpMap: fl, bumpScale: 0.6, roughness: 0.7 }), 0, 0.02, Zc, 0, -P2); floor.userData.flat = 1;
+    box(g, W + 0.3, 0.16, D + 0.3, M({ map: tex(deck, 8, 1), roughness: 0.8 }), 0, -0.08, Zc);
+    const sand = canvas(256, 256, (x, w, h) => { x.fillStyle = '#e8d8b8'; x.fillRect(0, 0, w, h); noise(x, w, h, 0.18, 14000); for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(120,100,70,.12)'; x.beginPath(); x.ellipse(rnd() * w, rnd() * h, 10 + rnd() * 30, 3 + rnd() * 6, rnd() * 3, 0, 7); x.fill(); } }); sand.__kind = 'stucco';
+    ground(g, 90, 50, M({ map: tex(sand, 30, 16), roughness: 0.95 }), 0, Zc - 6, -0.04);
+    water(g, 100, 50, 0, B - 30, -0.03, 0x1a7a8a); for (let i = 0; i < 3; i++) { const foam = plane(g, 90, 0.6, M({ color: 0xf4f8f8, transparent: true, opacity: 0.5 - i * 0.12, roughness: 0.9 }), 0, -0.02, B - 5.6 - i * 0.9, 0, -P2); foam.userData.flat = 1; }
+    const view = VIEW.nassau(); backdrop(g, view, 0, Zc, 38, 15, -4.5, Math.PI * 0.15, Math.PI * 1.85); skyDome(g, 0, Zc, 70, [[0, '#101040'], [0.45, '#4a2a6a'], [0.75, '#c86a5a'], [1, '#ffb070']]);
+    // the pavilion: a hip of thatch on white posts, string lights under the eaves, lanterns over the tables
+    thatchRoof(g, 0, Zc, W, D, 3.2, 5.6);
+    for (const s of [-1, 1]) stringLights(g, -W / 2, W / 2, 3.0, Zc + s * D / 2, 0.35, 0xffd38a); for (const s of [-1, 1]) for (let i = 0; i < 6; i++) { sph(g, 0.05, glow(0xffd38a, 3.5), s * W / 2, 2.9 - Math.sin(i / 5 * Math.PI) * 0.3, Zc - D / 2 + 1 + i * 2, 8); }
+    const lant = (x, z) => { cyl(g, 0.005, 0.005, 1.2, M({ color: 0x3a2a1a }), x, 3.4, z, 4); const l = cyl(g, 0.16, 0.2, 0.3, M({ color: 0xd8c0a0, emissive: 0xffb050, emissiveIntensity: 1.0, roughness: 0.9 }), x, 2.7, z, 8); cyl(g, 0.22, 0.05, 0.12, M({ color: 0x6a5030 }), x, 2.9, z, 8); light(g, 0xffc070, 2.2, x, 2.5, z, 7); };
+    lant(1.4, -3.0); lant(-3.2, -6.4); lant(4.6, -7.6);
+    // the beach bar on the left: rum bottles, a thatch brim, a sign; stools and a few at them
+    bar(g, -5.4, -2.6, 4.2, { ry: P2, wood: '#8a6a3a', wood2: '#6a4a24', top: 0x5a3a1a, crowd: 0.5 }); sign(g, 'CONCH SHACK', '#1a6a8a', '#ffe8b0', -6.6, 2.4, -2.6, 2.2, 0.4, P2);
+    // tiki torches round the deck, Adirondacks on the sand facing the water, a fire pit, a surfboard against a post
+    for (const [x, z] of [[-8.0, 1.6], [8.0, 1.6], [-8.0, -5.0], [8.0, -5.0], [-8.0, -11.6], [8.0, -11.6], [-3, -13.0], [3, -13.0]]) torch(g, x, z);
+    for (let i = 0; i < 4; i++) adirondack(g, -4.5 + i * 3.0, B - 3.2 - (i % 2) * 0.6, Math.PI + (rnd() - 0.5) * 0.3, pick([0xf0ebe0, 0x3ab8c8, 0xf0d060]));
+    cyl(g, 0.7, 0.8, 0.3, M({ map: tex(PAINT.brick('#8a8078', '#4a4640'), 2, 1), roughness: 0.9 }), 6.0, 0.1, B - 4.0, 16); sph(g, 0.25, glow(0xff7a20, 4), 6.0, 0.35, B - 4.0, 8).scale.y = 1.5; light(g, 0xff8a30, 2.6, 6.0, 0.6, B - 4.0, 6);
+    const sb = rbox(g, 0.5, 2.4, 0.06, 0.2, M({ color: 0xf0d060, roughness: 0.4 }), W / 2 + 0.2, 1.1, Zc - D / 2 + 0.6); sb.rotation.z = -0.25; sb.rotation.y = 0.3;
+    // the palms, leaning over the roof and down the beach
+    for (const [x, z, h, l] of [[-9.2, -1.0, 6.5, 0.9], [9.4, -3.6, 5.8, -0.8], [-8.6, -9.0, 7.0, 0.7], [10.0, -10.5, 6.2, -1.0], [-13, -14, 5.5, 0.5], [13.5, -15, 6.0, -0.6], [-10, 4, 5.0, 0.8], [11, 5, 5.4, -0.5], [-16, -6, 6.4, 0.9], [16, -7, 5.8, -0.7]]) palmTree(g, x, z, h, l);
+    // the tables on the deck
+    pokerTable(g, 1.4, -3.0, { mine: true, felt: 0x1a6a8a, rail: 0x3a2414, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: 2.9 });
+    pokerTable(g, -3.2, -6.4, { felt: 0x1a6a8a, rail: 0x3a2414, seats: 8, rx: 1.4, rz: 0.8, ry: 0.4, lamp: false, full: 0.9, ceil: 2.9 });
+    pokerTable(g, 4.6, -7.6, { felt: 0x1a6a8a, rail: 0x3a2414, seats: 8, rx: 1.4, rz: 0.8, ry: -0.5, lamp: false, full: 0.9, ceil: 2.9 });
+    light(g, 0xffd0a0, 1.8, 0, 2.8, Zc, 12); light(g, 0xff9a60, 1.2, 0, 3, B - 8, 20);
+    if (STAGE !== 'final') { stander(g, -1.2, -9.8, 0.3, { arms: 'crossed', lod: 1 }); stander(g, 6.2, -1.2, -1.6, { look: 'smart', arms: 'down', lod: 1 }); stander(g, 2.0, B - 2.4, Math.PI, { arms: 'pockets', lod: 1 }); }
+    return { exposure: 1.05, cam: [[-6.9, 1.6, 2.0], [1.4, 1.7, -9.0]] };
+  },
+  // Prague: a gothic hall in an Old Town palace, ribbed vaults on two rows of stone columns, pointed windows on the Castle
+  // across the river, tapestries and torches on the walls, iron candle-rings, a fireplace you could stand in
+  prague(g, o) {
+    const W = 10, D = 16, H = 4.2, Zc = 2 - D / 2, B = 2 - D, P2 = Math.PI / 2;
+    const stone = PAINT.stucco('#b8a888'), flags = PAINT.tile('#8a8078', '#6a6058', 6);
+    shell(g, { w: W, d: D, h: 8.2, floor: flags, wall: stone, ceil: null, trim: 0x5a5048, fillI: 0.8, fillC: 0xffc080 });
+    const st = M({ map: tex(stone, 1, 2), roughness: 0.9 }), iron = M({ color: 0x141414, metalness: 0.6, roughness: 0.5 });
+    vault(g, 0, H, Zc, W, D, M({ map: tex(stone, 4, 6), roughness: 0.9 }), false, 0.78);
+    for (let i = 0; i <= 4; i++) { const z = 2 - i * 4; for (const s of [-1, 1]) column(g, s * 3.0, z, H, st, st); ribArch(g, -3.0, z, 3.0, z, H, 2.2, 0.1, st); for (const s of [-1, 1]) ribArch(g, s * 3.0, z, s * (W / 2), z, H, 1.2, 0.08, st); if (i < 4) { ribArch(g, -3.0, z, 3.0, z - 4, H, 2.4, 0.07, st); ribArch(g, 3.0, z, -3.0, z - 4, H, 2.4, 0.07, st); for (const s of [-1, 1]) ribArch(g, s * 3.0, z, s * 3.0, z - 4, H, 1.6, 0.08, st); } }
+    // the pointed windows on the Castle, lead lines across them
+    const view = VIEW.prague(); for (let i = -1; i <= 1; i++) { archWindow(g, view, i * 3.0, 3.8, B + 0.03, 2.0, 5.0, 0, 0x3a3028, true); for (let k = 0; k < 6; k++) box(g, 2.0, 0.015, 0.03, iron, i * 3.0, 1.6 + k * 0.7, B + 0.09); for (let k = -1; k <= 1; k++) box(g, 0.015, 4.6, 0.03, iron, i * 3.0 + k * 0.6, 3.6, B + 0.09); }
+    // tapestries and torches down the side walls, the great fireplace, a shield over it
+    const tap = canvas(256, 384, (x, w, h) => { x.fillStyle = '#5a1a1a'; x.fillRect(0, 0, w, h); x.fillStyle = '#c8a050'; x.fillRect(12, 12, w - 24, 6); x.fillRect(12, h - 18, w - 24, 6); for (let i = 0; i < 3; i++) for (let j = 0; j < 4; j++) { x.save(); x.translate(50 + i * 78, 70 + j * 80); x.fillStyle = (i + j) % 2 ? '#c8a050' : '#e8d8b0'; x.beginPath(); x.moveTo(0, -22); x.lineTo(16, 0); x.lineTo(0, 22); x.lineTo(-16, 0); x.fill(); x.fillStyle = '#1a1a2a'; x.beginPath(); x.arc(0, 0, 7, 0, 7); x.fill(); x.restore(); } noise(x, w, h, 0.2, 9000); });
+    for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { const z = -2 - i * 4.4; plane(g, 1.6, 2.4, M({ map: tex(tap), roughness: 1 }), s * (W / 2 - 0.04), 2.6, z, -s * P2); box(g, 1.7, 0.04, 0.04, iron, s * (W / 2 - 0.06), 3.84, z, 0); for (const t of [-1, 1]) { const tz = z + t * 1.6; box(g, 0.05, 0.05, 0.3, iron, s * (W / 2 - 0.15), 2.3, tz, 0); cyl(g, 0.05, 0.03, 0.35, M({ color: 0x3a2a1a }), s * (W / 2 - 0.3), 2.42, tz, 8); const fl = sph(g, 0.09, glow(0xff8a20, 4), s * (W / 2 - 0.3), 2.7, tz, 8); fl.scale.y = 1.8; light(g, 0xff9a30, 1.4, s * (W / 2 - 0.4), 2.7, tz, 6); } }
+    fireplace(g, W / 2 - 0.3, -7.0, -P2); plane(g, 0.8, 1.0, M({ map: tex(canvas(64, 80, (x, w, h) => { x.fillStyle = '#c8a050'; x.beginPath(); x.moveTo(4, 4); x.lineTo(w - 4, 4); x.lineTo(w - 4, h * 0.6); x.quadraticCurveTo(w / 2, h, w / 2, h - 4); x.quadraticCurveTo(w / 2, h, 4, h * 0.6); x.fill(); x.fillStyle = '#8a1010'; x.fillRect(10, 10, w - 20, h * 0.45); x.fillStyle = '#fff'; x.beginPath(); x.arc(w / 2, 26, 9, 0, 7); x.fill(); })), roughness: 0.6 }), W / 2 - 0.62, 3.8, -7.0, -P2);
+    // the iron candle-rings down the nave, a long oak board with pewter and a barrel by the wall
+    const ring = (x, z) => { const c = new THREE.Group(); c.position.set(x, 3.4, z); g.add(c); const tor = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.03, 6, 36), iron); tor.rotation.x = P2; c.add(tor); for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; cyl(c, 0.018, 0.018, 0.16, M({ color: 0xf4ecd8 }), Math.cos(a) * 0.75, 0.1, Math.sin(a) * 0.75, 8); sph(c, 0.025, glow(0xffb050, 4), Math.cos(a) * 0.75, 0.2, Math.sin(a) * 0.75, 6); } for (let k = 0; k < 3; k++) { const ch = seg(c, [Math.cos(k * 2.09) * 0.75, 0, Math.sin(k * 2.09) * 0.75], [0, 1.6, 0], 0.01, 0.01, iron); } cyl(c, 0.01, 0.01, H + 3.0 - 5.0, iron, 0, 1.6 + (H + 3.0 - 5.0) / 2, 0, 4); light(c, 0xffb860, 3.0, 0, 0.1, 0, 8); };
+    ring(0.8, -3.4); ring(-0.6, -8.4); ring(0.6, -12.6);
+    box(g, 0.9, 0.06, 3.2, M({ map: tex(PAINT.wood('#5a3a1a', '#3a2410', 10), 1, 4), roughness: 0.6 }), -W / 2 + 0.9, 0.78, -10.4); for (const s of [-1, 1]) box(g, 0.7, 0.72, 0.1, M({ color: 0x3a2410 }), -W / 2 + 0.9, 0.36, -10.4 + s * 1.4); for (let i = 0; i < 5; i++) cyl(g, 0.05, 0.04, 0.16, M({ color: 0x8a8a90, metalness: 0.8, roughness: 0.35 }), -W / 2 + 0.7 + (i % 2) * 0.4, 0.89, -11.6 + i * 0.6, 10);
+    barrel(g, -W / 2 + 0.7, 0.45, 1.0, true); barrel(g, -W / 2 + 0.7, 0.45, -14.2, true);
+    // the tables down the nave between the columns
+    pokerTable(g, 0.8, -3.4, { mine: true, felt: 0x4a1f4f, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: 3.4 });
+    pokerTable(g, -0.6, -8.4, { felt: 0x4a1f4f, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: 0.2, lamp: false, full: 0.9, ceil: 3.4 });
+    pokerTable(g, 0.6, -12.6, { felt: 0x4a1f4f, rail: 0x1a0a04, seats: 8, rx: 1.4, rz: 0.8, ry: -0.2, lamp: false, full: 0.9, ceil: 3.4 });
+    light(g, 0xffc080, 1.6, 0, 5.5, -3, 12); light(g, 0xffc080, 1.6, 0, 5.5, -11, 12);
+    if (STAGE !== 'final') { stander(g, 3.9, -1.4, -1.0, { look: 'smart', arms: 'down', lod: 1 }); stander(g, -3.8, -14.2, 0.6, { look: 'smart', arms: 'crossed', lod: 1 }); }
+    return { exposure: 1.0, cam: [[-3.6, 1.5, 1.4], [0.8, 2.8, -12]] };
+  },
+  // Malta: the loggia of a Knights' palazzo, honey limestone, a vaulted stone ceiling, an arcade open to a terrace over the
+  // Grand Harbour with Valletta floodlit across the water, closed wooden balconies on the walls, oleanders, iron lanterns
+  malta(g, o) {
+    const W = 12, D = 10, H = 3.4, Zc = 2 - D / 2, B = 2 - D, P2 = Math.PI / 2;
+    const lime = PAINT.stucco('#e0c898'), tile = PAINT.tile('#d8c4a0', '#c0aa84', 8);
+    shell(g, { w: W, d: D, h: 5.6, floor: tile, wall: lime, ceil: null, back: false, trim: 0xb89860, fillI: 1.0, fillC: 0xffd8a0 });
+    const st = M({ map: tex(lime, 1, 1), roughness: 0.9 }), iron = M({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.5 });
+    vault(g, 0, H, Zc, W, D, M({ map: tex(lime, 4, 4), roughness: 0.9 }), false, 0.4);
+    rugAt(g, 0, -3.6, 5, 5, canvas(256, 256, (x, w, h) => { x.fillStyle = '#c8b088'; x.fillRect(0, 0, w, h); x.fillStyle = '#f0e4c8'; x.beginPath(); x.arc(w / 2, h / 2, 100, 0, 7); x.fill(); x.fillStyle = '#8a1a1a'; for (let k = 0; k < 4; k++) { x.save(); x.translate(w / 2, h / 2); x.rotate(k * P2); x.beginPath(); x.moveTo(0, -6); x.lineTo(-28, -88); x.lineTo(0, -70); x.lineTo(28, -88); x.closePath(); x.fill(); x.restore(); } x.strokeStyle = '#8a1a1a'; x.lineWidth = 4; x.beginPath(); x.arc(w / 2, h / 2, 108, 0, 7); x.stroke(); }));
+    // the arcade on the harbour side, the terrace past it with its balustrade, the palms and the harbour and the city
+    arcade(g, -W / 2, W / 2, B, 5.6, 3.3, 3, st);
+    const view = VIEW.malta(); ground(g, 30, 12, M({ map: tex(tile, 14, 6), roughness: 0.85 }), 0, B - 5, -0.01);
+    for (let i = 0; i < 4; i++) railing(g, -11 + i * 5.5, B - 7.5, -5.5 + i * 5.5, B - 7.5, 1.0, 'stone', '#d8c8a0'); for (const s of [-1, 1]) railing(g, s * 11, B - 7.5, s * 11, B - 1, 1.0, 'stone', '#d8c8a0');
+    for (const [x, z, h, l] of [[-9.0, B - 10.5, 6.5, 0.6], [8.4, B - 11, 6.0, -0.7], [13, B - 5, 5.6, -0.5]]) palmTree(g, x, z, h, l);
+    for (const s of [-1, 1]) { cyl(g, 0.34, 0.28, 0.6, M({ color: 0xb86a4a, roughness: 0.8 }), s * 4.2, 0.3, B - 1.2, 14); plant(g, s * 4.2, B - 1.2, 1.4, false); for (let k = 0; k < 10; k++) sph(g, 0.05, M({ color: pick([0xf06a8a, 0xf8a0b8, 0xffffff]), roughness: 0.6 }), s * 4.2 + (rnd() - 0.5) * 0.8, 1.3 + rnd() * 0.7, B - 1.2 + (rnd() - 0.5) * 0.8, 6); }
+    for (const x of [-6, -2, 2, 6]) { cyl(g, 0.02, 0.02, 0.9, iron, x, 3.6, B + 0.3, 4); const lb = cyl(g, 0.16, 0.12, 0.34, M({ color: 0xfff0d0, emissive: 0xffb060, emissiveIntensity: 1.2, transparent: true, opacity: 0.85 }), x, 3.0, B + 0.3, 6); cyl(g, 0.2, 0.04, 0.12, iron, x, 3.22, B + 0.3, 6); light(g, 0xffb060, 1.6, x, 2.9, B + 0.3, 7); }
+    for (const x of [-9, 9]) lampPost(g, x, B - 6.8, 2.6, 0xffc070);
+    backdrop(g, view, 0, Zc, 30, 14, -4.2, Math.PI * 0.4, Math.PI * 1.6); skyDome(g, 0, Zc, 70, [[0, '#101040'], [0.5, '#4a2a5a'], [0.8, '#c87a5a'], [1, '#ffc890']]);
+    // the gallariji: closed wooden balconies high on the side walls, their little windows lit; a lion-head fountain on the left
+    for (const s of [-1, 1]) for (const z of [-1.4, -5.2]) { const col = s > 0 ? 0x2a5a3a : 0x7a2a1a; const b = new THREE.Group(); b.position.set(s * (W / 2 - 0.35), 3.4, z); g.add(b); box(b, 0.7, 1.7, 2.2, M({ color: col, roughness: 0.5 }), 0, 0, 0); box(b, 0.8, 0.1, 2.4, M({ color: col, roughness: 0.5 }), 0, 0.9, 0); for (let k = -1; k <= 1; k++) plane(b, 0.5, 0.7, unlit(canvas(32, 48, (x, w, h) => { x.fillStyle = '#ffd890'; x.fillRect(0, 0, w, h); x.fillStyle = 'rgba(0,0,0,.4)'; x.fillRect(w / 2 - 1, 0, 2, h); x.fillRect(0, h / 2 - 1, w, 2); }), 0.5), -s * 0.36, 0.1, k * 0.7, -s * P2); const cb = box(b, 0.5, 0.5, 2.0, st, s * 0.1, -1.1, 0); cb.rotation.z = 0; }
+    const lion = new THREE.Group(); lion.position.set(-W / 2 + 0.3, 0, -3.3); g.add(lion); box(lion, 0.3, 0.6, 1.2, st, 0, 0.3, 0); water(lion, 0.2, 1.0, 0.0, 0, 0.55, 0x1a5a6a); sph(lion, 0.14, M({ map: tex(lime), roughness: 0.9 }), 0.05, 1.2, 0, 10); seg(lion, [0.1, 1.1, 0], [0.1, 0.6, 0], 0.008, 0.012, M({ color: 0xcce8ff, transparent: true, opacity: 0.6 }));
+    for (const s of [-1, 1]) photo(g, s * (W / 2 - 0.03), 1.9, 0.4, 0.9, 1.1, -s * P2, 'portrait', 0x8a6a30);
+    // the tables
+    pokerTable(g, 1.6, -2.6, { mine: true, felt: 0x0f3d2e, rail: 0x3a2414, seats: 8, rx: 1.4, rz: 0.8, lamp: false, ceil: 3.0 });
+    pokerTable(g, -3.0, -5.8, { felt: 0x0f3d2e, rail: 0x3a2414, seats: 8, rx: 1.4, rz: 0.8, ry: 0.5, lamp: false, full: 0.9, ceil: 3.0 });
+    for (const [x, z] of [[1.6, -2.6], [-3.0, -5.8]]) { cyl(g, 0.01, 0.01, 1.0, iron, x, 3.2, z, 4); const lb = cyl(g, 0.26, 0.18, 0.44, M({ color: 0xfff0d0, emissive: 0xffb060, emissiveIntensity: 1.2, transparent: true, opacity: 0.85 }), x, 2.5, z, 8); cyl(g, 0.32, 0.05, 0.16, iron, x, 2.78, z, 8); for (let k = 0; k < 8; k++) cyl(g, 0.01, 0.01, 0.46, iron, x + Math.cos(k * 0.785) * 0.22, 2.5, z + Math.sin(k * 0.785) * 0.22, 4); light(g, 0xffb060, 2.4, x, 2.4, z, 7); }
+    if (STAGE !== 'final') { stander(g, 4.4, -7.2, -0.6, { look: 'smart', arms: 'down', lod: 1 }); stander(g, -2.2, B - 2.8, 2.8, { arms: 'crossed', lod: 1 }); stander(g, 3.0, B - 4.0, 3.4, { arms: 'pockets', lod: 1 }); }
+    return { exposure: 1.05, cam: [[-4.6, 1.5, 1.3], [1.4, 1.9, -8.5]] };
   }
 };
 // which room each place uses, and how it's dressed (the key is what poker.html asks for)
 const PLACES = {
+  malta: ['malta'],
+  prague: ['prague'],
+  nassau: ['nassau'],
+  singapore: ['singapore'],
+  vienna: ['vienna'],
+  london: ['london'],
+  bayou: ['bayou'],
+  vegasvip: ['vegasvip'],
+  macau: ['macau'],
+  monaco: ['monaco'],
+  paris: ['paris'],
   kitchen: ['kitchen'], basement: ['basement'], garage: ['garage'], dining: ['dining'], porch: ['porch'],
   lodge: ['lodgehall'], vfw: ['vfw'],
   firehouse: ['firehouse'], rec: ['gym'],
@@ -2149,27 +2877,16 @@ const PLACES = {
   boardwalk: ['casino', { theme: 'boardwalk' }],
   chicago: ['casino', { theme: 'chicago' }],
   tahoe: ['casino', { theme: 'tahoe' }], aspen: ['lodge', { snow: true }],
-  paris: ['salon', { theme: 'paris' }],
-  monaco: ['salon', { theme: 'monaco' }],
-  macau: ['salon', { theme: 'macau' }],
-  vegasvip: ['salon', { theme: 'vegasvip' }],
   mainevent: ['ballroom', {}], omahachamp: ['ballroom', { mine: [-7.6, -1.6], cam: [[-11.6, 1.7, 1.0], [-2.0, 1.3, -9.0]], title: 'OMAHA WORLD CHAMPIONSHIP', banner: 'OMAHA CHAMPIONSHIP', bannerBg: '#1c133e', screen: ['#3b2a7a', '#100a2a'], felt: 0x3b2a7a, carpet: '#1c133e', carpet2: '#2a1d5a' }],
   playerschamp: ['ballroom', { mine: [7.4, -1.6], cam: [[11.2, 1.5, 1.4], [-1.0, 1.4, -8.5]], title: 'PLAYERS\' CHAMPIONSHIP', banner: 'PLAYERS\' CHAMPIONSHIP', bannerBg: '#0f3d2e', screen: ['#0f3d2e', '#04140e'], felt: 0x0f3d2e, carpet: '#0a2a1e', carpet2: '#0f3d2e' }],
-  bayou: ['salon', { theme: 'bayou' }],
   minetown: ['saloon', { view: VIEW.mountains({ pines: true, sky0: '#081020', sky1: '#30406a' }) }], deadwood: ['saloon'],
   pinewood: ['casino', { theme: 'pinewood' }],
   twincities: ['casino', { theme: 'twincities' }],
   palmsprings: ['casino', { theme: 'palmsprings' }],
-  london: ['salon', { theme: 'london' }],
-  vienna: ['salon', { theme: 'vienna' }],
-  singapore: ['salon', { theme: 'singapore' }],
-  nassau: ['salon', { theme: 'nassau' }],
   tunica: ['riverboat', { felt: 0x155e75 }],
   miami: ['casino', { theme: 'miami' }],
   seattle: ['casino', { theme: 'seattle' }],
   sedona: ['lodge', { view: VIEW.desert({ rock: '#8a3a1c' }) }],
-  prague: ['salon', { theme: 'prague' }],
-  malta: ['salon', { theme: 'malta' }],
   seoul: ['casino', { theme: 'seoul' }],
   cruise: ['cruise'], series: ['expo', {}], seriesspring: ['expo', { mine: [-7.2, -1.4], cam: [[-12.2, 1.6, 0.8], [-1.0, 1.4, -12.0]], banner: 'SPRING SERIES', bannerBg: '#1f6b45', carpet: '#2a1a3a', carpet2: '#3a2a4a' }], seriesfall: ['expo', { mine: [8.4, -1.4], cam: [[13.6, 1.7, 1.0], [0, 1.4, -12.0]], banner: 'FALL SERIES', bannerBg: '#c0561e', carpet: '#3a1a10', carpet2: '#4a2414' }]
 };
