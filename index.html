@@ -1125,7 +1125,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       el('span', { text: undoList.length === 1 ? 'Game deleted' : undoList.length + ' games deleted' }),
       el('button', { type: 'button', text: 'Undo', onclick: function () { var l = undoList; undoList = null; clearTimeout(undoT); restoreSaved(l); Kit.sfx('pop'); Kit.toast(l.length === 1 ? 'Game is back' : 'Games are back'); renderRail(); } })]));
     if (editing && nGames > 1) foot.appendChild(el('button', { type: 'button', class: 'cont-clear', html: Kit.icon('trash') + '<span>Clear all</span>', onclick: function () {
-      var list = currentItems();
+      var list = railItems.slice();
       Kit.confirm('Clear all ' + list.length + ' games in progress?', { ok: 'Clear all', danger: true, body: 'Each one can be put back with Undo for a few seconds.' }).then(function (ok) {
         if (!ok) return;
         var backs = list.map(deleteSaved); Kit.haptic('success'); Kit.sfx('tap');
@@ -1465,20 +1465,20 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   $('otb').addEventListener('click', function () { Kit.sfx('tap'); Kit.haptic('light'); openTablesSheet(); });
   $('otb-go').innerHTML = Kit.icon('right');
 
-  var railAll = false;
+  var railAll = false, railItems = [];   // (railItems: the games in progress Keep playing shows right now)
   function currentItems() {
     resumeMap = resumeRead();
-    var week = Date.now() - 7 * 864e5;
     return Object.keys(resumeMap).map(function (id) { return { g: findGame(id), r: resumeMap[id] }; })
-      .filter(function (x) { return x.g && x.r && x.r.ts > week; })
+      .filter(function (x) { return x.g && x.r; })
       .sort(function (a, b) { return b.r.ts - a.r.ts; });
   }
   function renderRail() {
-    // a category or a search narrows home to that: your own games in progress stay on All, but online games against
-    // someone (your move or theirs) stay at the top whatever you're looking at (friends' open tables are the banner
-    // above the search)
-    var narrowed = !!state.q || state.cat !== 'all';
-    var items = narrowed ? [] : currentItems();
+    // every game with a Resume tag is here too; a category or a search narrows this to its own games, but online games
+    // against someone (your move or theirs) stay at the top whatever you're looking at (friends' open tables are the
+    // banner above the search)
+    var narrowed = !!state.q || state.cat !== 'all', vis = narrowed ? visibleGames() : null;
+    var items = currentItems().filter(function (x) { return !narrowed || (vis.indexOf(x.g) >= 0 && (state.cat === 'all' || (state.cat === 'fav' ? isFav(x.g) : x.g.cat === state.cat))); });
+    railItems = items;
     if (!items.length) editing = false;
     var rail = $('rail'); rail.innerHTML = ''; rail.classList.toggle('editing', editing);
     var eb = $('cont-edit'); eb.hidden = !items.length; eb.textContent = editing ? 'Done' : 'Edit'; eb.classList.toggle('on', editing);
@@ -1510,7 +1510,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var nMine = nets.filter(function (x) { return x.n.mine; }).length, cn = $('cont-n');
     cn.textContent = nMine ? 'Your turn · ' + nMine : nAll > 1 ? nAll + ' going' : '';
     cn.classList.toggle('yt-n', !!nMine);
-    $('cont-sec').hidden = narrowed ? !nets.length : (!nAll && !undoList);
+    $('cont-sec').hidden = !nAll && !undoList;
     renderFoot(items.length);
   }
   function ago(ts, short) {
@@ -1595,11 +1595,10 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     return b;
   }
 
-  // Games with a save from the last week, as shown in Keep playing: id -> file to open
+  // Games with a save, as shown in Keep playing: id -> file to open
   function goingGames() {
-    var m = {}, week = Date.now() - 7 * 864e5, map = {};
-    map = resumeRead();
-    Object.keys(map).forEach(function (id) { var g = findGame(id), r = map[id]; if (g && r && r.ts > week) m[id] = r.file || g.play; });
+    var m = {}, map = resumeRead();
+    Object.keys(map).forEach(function (id) { var g = findGame(id), r = map[id]; if (g && r) m[id] = r.file || g.play; });
     return m;
   }
   // Surprise: a raffle wheel of games, with its own filters (spin.js)
