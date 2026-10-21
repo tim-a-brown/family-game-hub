@@ -1726,10 +1726,15 @@ VIEW.racetrack = (o) => canvas(2048, 512, (x, w, h) => {
 });
 // a fishing trawler tied up at a dock, the bow right by the window
 function trawler(g, x, z, ry) {
-  const t = new THREE.Group(); t.position.set(x, 0, z); t.rotation.y = ry || 0; g.add(t);
+  // sits in the water (hull bottom at the waterline, -1.4), the deck a little below a pier-level floor
+  const t = new THREE.Group(); t.position.set(x, -0.7, z); t.rotation.y = ry || 0; g.add(t);
   const hull = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 10, 0, Math.PI * 2, 0, Math.PI * 0.6), M({ color: 0x1a3a5a, roughness: 0.6, side: THREE.DoubleSide })); hull.scale.set(5.5, 1.6, 1.8); hull.rotation.x = Math.PI; hull.position.y = 0.9; t.add(hull);
   box(t, 9, 0.12, 3.2, M({ map: tex(PAINT.planks('#8a7a5a', '#6a5a40'), 6, 2), roughness: 0.8 }), 0, 0.95, 0); box(t, 9.2, 0.5, 0.1, M({ color: 0x1a3a5a, roughness: 0.6 }), 0, 1.2, 1.6); box(t, 9.2, 0.5, 0.1, M({ color: 0x1a3a5a, roughness: 0.6 }), 0, 1.2, -1.6);
-  rbox(t, 2.4, 1.8, 2.6, 0.1, M({ color: 0xf0ece0, roughness: 0.5 }), 1.8, 1.9, 0); for (let k = -1; k <= 1; k++) plane(t, 0.6, 0.5, glow(0xffe8b0, 1.4), 3.01, 2.1, k * 0.8, Math.PI / 2);
+  // the wheelhouse: cream above a dark band, a dark roof with a radar bar, a stack behind, the windows one strip
+  const dk = M({ color: 0x1e2228, roughness: 0.6 });
+  rbox(t, 2.4, 1.8, 2.6, 0.1, M({ color: 0xf0ece0, roughness: 0.5 }), 1.8, 1.9, 0); box(t, 2.44, 0.42, 2.64, M({ color: 0x1a3a5a, roughness: 0.6 }), 1.8, 1.22, 0); box(t, 2.7, 0.1, 2.9, dk, 1.8, 2.84, 0);
+  box(t, 0.06, 0.7, 2.5, dk, 3.0, 2.15, 0); for (let k = -1; k <= 1; k++) plane(t, 0.64, 0.46, glow(0xffe8b0, 1.0), 3.04, 2.15, k * 0.78, Math.PI / 2);
+  cyl(t, 0.03, 0.03, 0.5, dk, 1.8, 3.1, 0, 6); const rad = box(t, 0.9, 0.06, 0.12, M({ color: 0xd0d0d0 }), 1.8, 3.36, 0); rad.rotation.y = 0.6; cyl(t, 0.14, 0.18, 1.2, M({ color: 0x8a2a1a, roughness: 0.6 }), 0.3, 2.9, -0.6, 10); cyl(t, 0.15, 0.15, 0.1, dk, 0.3, 3.5, -0.6, 10);
   cyl(t, 0.08, 0.1, 7, M({ color: 0x3a2a1a }), -1.0, 4.4, 0, 8); const boom = cyl(t, 0.05, 0.06, 5, M({ color: 0x3a2a1a }), -3.0, 5.0, 0, 8); boom.rotation.z = 1.1; sph(t, 0.08, glow(0xfff0c0, 3), -1.0, 8.0, 0, 8); light(t, 0xfff0c0, 1.2, -1.0, 7.8, 0, 8);
   for (let i = 0; i < 6; i++) sph(t, 0.18, M({ color: pick([0xff6a2a, 0xffd84d, 0xf0f0f0]), roughness: 0.6 }), -4.2 + i * 1.5, 1.05, 1.72, 10);
   const net = new THREE.Mesh(new THREE.SphereGeometry(1.0, 10, 8), M({ color: 0x2a5a4a, roughness: 0.9, wireframe: true })); net.scale.set(1.4, 0.6, 1.0); net.position.set(-2.4, 1.4, -0.4); t.add(net);
@@ -3449,7 +3454,7 @@ const SCENES = {
     // the window on the dock, the trawler's bow right there, pots and buoys, the harbour beyond
     const view = VIEW.harbor(); glassWall(g, 0, 2.3, B + 0.02, W - 0.4, 3.0, 0); box(g, W, 0.1, 0.14, steel, 0, 3.82, B + 0.08); for (let i = -3; i <= 3; i++) box(g, 0.06, 3.0, 0.1, steel, i * 2.3, 2.3, B + 0.08); box(g, W, 0.12, 0.3, M({ color: 0x5a5a5a, roughness: 0.6 }), 0, 0.8, B + 0.1);
     ground(g, 30, 8, M({ map: tex(PAINT.planks('#6a5a40', '#4a3e2a'), 16, 3), roughness: 0.9 }), 0, B - 4, -0.01); water(g, 80, 40, 0, B - 28, -1.4, 0x0e2a34);
-    trawler(g, 2.0, B - 5.6, 0.12); trawler(g, -8.0, B - 9.5, -0.2);
+    trawler(g, 2.0, B - 10.8, 0.12); trawler(g, -8.0, B - 14.5, -0.25);
     for (let i = 0; i < 5; i++) { const px = -6 + i * 1.3, pz = B - 1.6 - (i % 2) * 1.0; const pot = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 0.9), M({ color: 0x3a3a3a, wireframe: true })); pot.position.set(px, 0.2 + (i % 2) * 0.4, pz); g.add(pot); box(g, 0.9, 0.4, 0.9, M({ color: 0x2a3a3a, transparent: true, opacity: 0.25 }), px, 0.2 + (i % 2) * 0.4, pz); }
     for (let i = 0; i < 6; i++) sph(g, 0.2, M({ color: pick([0xff6a2a, 0xffd84d, 0xf0f0f0, 0x3ad8ff]), roughness: 0.6 }), 4 + (i % 3) * 0.5, 0.2 + Math.floor(i / 3) * 0.4, B - 1.8, 10);
     for (let i = 0; i < 4; i++) { cyl(g, 0.16, 0.18, 0.5, steel, -7 + i * 4.6, 0.25, B - 7.5, 10); } for (const x of [-6, 6]) { cyl(g, 0.04, 0.04, 3.0, steel, x, 1.5, B - 6.5, 6); sph(g, 0.14, glow(0xffe0a0, 2.6), x, 3.1, B - 6.5, 10); light(g, 0xffe0a0, 1.4, x, 3.0, B - 6.5, 8); }
