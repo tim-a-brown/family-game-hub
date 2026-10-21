@@ -71,13 +71,16 @@
   // The Basement Game: a home-bar neon sign, stairs going down on one side, a cocktail glass on the other
   SAMPLE.basement = { venue: 'The Basement Game', city: 'Game night at your cousin\'s', style: 'Home game' };
   LOGOS.basement = function (o) {
-    var v = String(o.venue), the = /^the\s+/i.test(v), rest = v.replace(/^the\s+/i, ''), w = rest.split(/\s+/),
-      top = w.length > 1 ? w.slice(0, -1).join(' ') : rest, bot = w.length > 1 ? w[w.length - 1] : '';
+    var v = String(o.venue), the = /^the\s+/i.test(v), top = v.replace(/^the\s+/i, '').replace(/\s+(game|poker)$/i, '');
     function neon(inner) { return '<g stroke-opacity=".28" stroke-width="16">' + inner + '</g><g stroke-width="5">' + inner + '</g>'; }
     var n = '';
-    n += '<text x="300" y="148" font-size="72" font-family="Bungee" text-anchor="middle" fill="none" stroke="' + C + '" stroke-linejoin="round"' + fit(top, 72, 0.8, 440) + '>' + E(up(top)) + '</text>';
-    if (bot) n += '<text x="300" y="340" font-size="92" font-family="Bungee" text-anchor="middle" fill="none" stroke="' + C + '" stroke-linejoin="round"' + fit(bot, 92, 0.8, 400) + '>' + E(up(bot)) + '</text>';
+    n += '<text x="300" y="150" font-size="80" font-family="Bungee" text-anchor="middle" fill="none" stroke="' + C + '" stroke-linejoin="round"' + fit(top, 80, 0.8, 440) + '>' + E(up(top)) + '</text>';
     if (the) n += '<rect x="250" y="30" width="100" height="38" rx="19" fill="none" stroke="' + C + '"/>';
+    // the four suits in neon tube under the cards
+    var SU = [SPADE, 'M0 0.42C-0.5 0 -0.55 -0.35 -0.27 -0.45C-0.1 -0.5 0 -0.38 0 -0.28C0 -0.38 0.1 -0.5 0.27 -0.45C0.55 -0.35 0.5 0 0 0.42Z',
+      'M0 -0.5L0.36 0L0 0.5L-0.36 0Z', 'M0 -0.02A0.2 0.2 0 1 1 0.001 -0.02ZM-0.04 0.06A0.2 0.2 0 1 1 -0.04 0.061ZM0.04 0.06A0.2 0.2 0 1 1 0.04 0.061ZM0 0.1L0.12 0.48H-0.12Z'];
+    SU[3] = 'M-0.2 -0.22a0.2 0.2 0 1 0 0.4 0a0.2 0.2 0 1 0 -0.4 0ZM-0.44 0.1a0.2 0.2 0 1 0 0.4 0a0.2 0.2 0 1 0 -0.4 0ZM0.04 0.1a0.2 0.2 0 1 0 0.4 0a0.2 0.2 0 1 0 -0.4 0ZM0 0.12L0.12 0.48H-0.12Z';
+    SU.forEach(function (d, i) { n += '<path d="' + d + '" transform="translate(' + (186 + i * 76) + ' 306) scale(56)" fill="none" stroke="' + C + '" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>'; });
     // stairs down (left), martini glass (right)
     n += '<path d="M14 150h24v28h24v28h24v28h24v28" fill="none" stroke="' + C + '" stroke-linecap="round" stroke-linejoin="round"/>';
     n += '<path d="M90 300l18 -18M108 300v-18h-18" fill="none" stroke="' + C + '" stroke-linecap="round" stroke-linejoin="round"/>';
@@ -91,10 +94,10 @@
   // The Garage Game: the garage door itself (cards land on its panels) under a bolted shop sign
   SAMPLE.garage = { venue: 'The Garage Game', city: 'Saturday at the neighbors\'', style: 'Home game' };
   LOGOS.garage = function (o) {
-    var v = up(o.venue), b = '';
+    var v = up(String(o.venue).replace(/\s+game$/i, '')), b = '';
     b += '<rect x="98" y="30" width="404" height="84" rx="8"' + stk(6) + '/>';
     [[116, 48], [484, 48], [116, 96], [484, 96]].forEach(function (p) { b += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="6" fill="' + C + '"/>'; });
-    b += tx(300, 94, 58, "'Sofia Sans Condensed'", E(v), ' font-weight="900" letter-spacing="2"' + fit(v, 58, 0.46, 336, 2));
+    b += tx(300, 96, 64, "'Sofia Sans Condensed'", E(v), ' font-weight="900" letter-spacing="3"' + fit(v, 64, 0.46, 336, 3));
     // door frame + panels
     b += pth('M70 400V132H530V400', stk(9));
     var cols = 4, x0 = 88, w = (424 - 3 * 10) / 4, rows = [150, 204, 258, 312];
@@ -111,7 +114,7 @@
   // Dining Room Poker: a place setting (the cards are on the plate), the chandelier above, a formal script name
   SAMPLE.dining = { venue: 'Dining Room Poker', city: 'Saturday at the neighbors\'', style: 'Home game' };
   LOGOS.dining = function (o) {
-    var v = String(o.venue), b = '';
+    var v = String(o.venue).replace(/\s+poker$/i, ''), b = '';
     // chandelier
     b += ln(300, 0, 300, 36, 5) + '<ellipse cx="300" cy="44" rx="9" ry="11" fill="' + C + '"/>' + '<rect x="296" y="50" width="8" height="40" fill="' + C + '"/>';
     b += pth('M262 84Q300 112 338 84Z');
@@ -128,7 +131,7 @@
     for (var i = 0; i < 4; i++) f += '<rect x="' + (44 + i * 9) + '" y="128" width="5" height="44" rx="2.5" fill="' + C + '"/>';
     f += pth('M43 168H80Q80 194 66 200V318Q66 326 61.5 326Q57 326 57 318V200Q43 194 43 168Z');
     b += f + pth('M536 126Q560 152 556 230H536Z') + '<rect x="536" y="226" width="18" height="100" rx="9" fill="' + C + '"/>';
-    b += tx(300, 338, 54, 'Pagella', E(v), ' font-weight="700" font-style="italic"' + fit(v, 54, 0.46, 450));
+    b += tx(300, 338, 54, 'Pagella', E(v), ' font-weight="700" font-style="italic"' + fit(v, 58, 0.5, 410));
     b += ln(196, 362, 280, 362, 4, 0.6) + ln(320, 362, 404, 362, 4, 0.6) + pth('M300 352L310 362L300 372L290 362Z');
     return svg(b);
   };
@@ -136,18 +139,18 @@
   // The Back Porch Game: string lights across the top, rocking chairs either side, the river below
   SAMPLE.porch = { venue: 'The Back Porch Game', city: 'After the barbecue', style: 'Home game' };
   LOGOS.porch = function (o) {
-    var v = String(o.venue), b = '';
-    b += pth('M6 30Q300 124 594 30', stk(4));
+    var v = String(o.venue).replace(/\s+game$/i, ''), b = '';
+    b += pth('M6 30Q300 110 594 30', stk(4));
     for (var i = 1; i < 14; i++) {
-      var t = i / 14, x = (1 - t) * (1 - t) * 6 + 2 * t * (1 - t) * 300 + t * t * 594, y = (1 - t) * (1 - t) * 30 + 2 * t * (1 - t) * 124 + t * t * 30;
+      var t = i / 14, x = (1 - t) * (1 - t) * 6 + 2 * t * (1 - t) * 300 + t * t * 594, y = (1 - t) * (1 - t) * 30 + 2 * t * (1 - t) * 110 + t * t * 30;
       b += '<rect x="' + (x - 4).toFixed(1) + '" y="' + y.toFixed(1) + '" width="8" height="7" fill="' + C + '"/>' +
         '<ellipse cx="' + x.toFixed(1) + '" cy="' + (y + 17).toFixed(1) + '" rx="7.5" ry="10.5" fill="' + C + '" fill-opacity="' + (i % 3 === 1 ? 1 : 0.55) + '"/>';
     }
-    b += tx(300, 150, 58, "'Baloo 2'", E(v), ' font-weight="700"' + fit(v, 58, 0.44, 420));
+    b += tx(300, 148, 64, "'Baloo 2'", E(v), ' font-weight="700"' + fit(v, 64, 0.44, 420));
     var chair = pth('M6 0Q12 40 18 64L20 120M14 64H74M71 64L73 118M16 32H64Q72 32 72 40V64M-6 110Q40 132 92 104', stk(7)) + '<circle cx="6" cy="0" r="6" fill="' + C + '"/>' +
       pth('M8 14L18 14M10 46H20', stk(5, 0.6));
-    b += '<g transform="translate(20 176)">' + chair + '</g><g transform="translate(580 176) scale(-1 1)">' + chair + '</g>';
-    if (o.city) b += tx(300, 292, 28, 'Fredoka', E(o.city), ' font-weight="600"' + fit(o.city, 28, 0.5, 420));
+    b += '<g transform="translate(40 176)">' + chair + '</g><g transform="translate(560 176) scale(-1 1)">' + chair + '</g>';
+    if (o.city) b += tx(300, 292, 28, 'Fredoka', E(o.city), ' font-weight="600"' + fit(o.city, 28, 0.5, 330));
     [[322, 170, 1], [342, 200, 0.6], [362, 230, 0.4]].forEach(function (r) {
       var x = 300 - r[1], d = 'M' + x + ' ' + r[0];
       for (var k = 0; k < r[1] * 2 / 30; k++) d += k ? 't30 0' : 'q15 -9 30 0';
@@ -166,18 +169,18 @@
       return '<rect x="' + (cx - 36) + '" y="126" width="72" height="12" rx="3" fill="' + C + '"/>' +
         '<circle cx="' + (cx - 32) + '" cy="142" r="7" fill="' + C + '"/><circle cx="' + (cx + 32) + '" cy="142" r="7" fill="' + C + '"/>' +
         '<rect x="' + (cx - 26) + '" y="138" width="52" height="10" fill="' + C + '" fill-opacity=".6"/>' +
-        '<rect x="' + (cx - 23) + '" y="152" width="46" height="172"' + stk(5) + '/>' + ln(cx - 8, 162, cx - 8, 314, 4, 0.55) + ln(cx + 8, 162, cx + 8, 314, 4, 0.55) +
-        '<rect x="' + (cx - 31) + '" y="326" width="62" height="12" rx="2" fill="' + C + '"/><rect x="' + (cx - 38) + '" y="342" width="76" height="14" rx="2" fill="' + C + '"/>';
+        '<rect x="' + (cx - 23) + '" y="152" width="46" height="150"' + stk(5) + '/>' + ln(cx - 8, 162, cx - 8, 292, 4, 0.55) + ln(cx + 8, 162, cx + 8, 292, 4, 0.55) +
+        '<rect x="' + (cx - 31) + '" y="304" width="62" height="12" rx="2" fill="' + C + '"/><rect x="' + (cx - 38) + '" y="318" width="76" height="12" rx="2" fill="' + C + '"/>';
     }
-    b += col(62) + col(538);
-    b += pth('M26 126A274 116 0 0 1 574 126', stk(7)) + pth('M282 0H318L311 30H289Z');
+    b += col(78) + col(522);
+    b += pth('M42 126A258 104 0 0 1 558 126', stk(7)) + pth('M284 8H316L310 34H290Z');
     b += '<defs><path id="lodge-a" d="M92 162A208 110 0 0 1 508 162"/></defs>';
     b += '<text font-family="Cinzel" font-weight="700" font-size="40" fill="' + C + '" text-anchor="middle" letter-spacing="2"' + fit(top, 40, 0.74, 400, 2) +
       '><textPath href="#lodge-a" startOffset="50%">' + E(top) + '</textPath></text>';
     if (sub) {
       b += pth('M150 274L110 274L126 298L110 322L150 322', ' fill="' + C + '" fill-opacity=".35"') + pth('M450 274L490 274L474 298L450 322Z', ' fill="' + C + '" fill-opacity=".35"');
       b += pth('M150 264Q300 278 450 264V314Q300 328 150 314Z', stk(5));
-      b += tx(300, 304, 30, 'Cinzel', E(sub), ' font-weight="700" letter-spacing="1"' + fit(sub, 30, 0.72, 270, 1));
+      b += tx(300, 300, 26, 'Cinzel', E(sub), ' font-weight="700" letter-spacing="2"' + fit(sub, 26, 0.72, 270, 2));
     }
     if (o.city) b += tx(300, 362, 22, 'Pagella', E(o.city), ' font-style="italic"' + fit(o.city, 22, 0.42, 380));
     return svg(b);
@@ -186,8 +189,8 @@
   // Post NNN Veterans Hall Tourney: flag bunting, stars and sergeant's chevrons, stencil-sturdy lettering
   SAMPLE.vfw = { venue: 'Post 512 Veterans Hall Tourney', city: 'In the big hall, after the fish fry', style: 'Club tourney' };
   LOGOS.vfw = function (o) {
-    var v = String(o.venue), m = v.match(/^(post\s+\d+)\s*(.*)$/i), top = m ? m[1] : v, rest = m ? m[2] : '', b = '';
-    var w = rest.split(/\s+/).filter(Boolean), l1 = w.length > 1 ? w.slice(0, -1).join(' ') : rest, l2 = w.length > 1 ? w[w.length - 1] : '';
+    var v = String(o.venue), m = v.match(/^(post\s+\d+)\s*(.*)$/i), top = m ? m[1] : v, b = '';
+    var l1 = m ? m[2].replace(/\s*(tourney|tournament|poker night|card night|fundraiser)$/i, '') : '';
     // bunting fan hanging from the top edge
     var n = 7, r1 = 40, r2 = 94, cx = 300;
     for (var i = 0; i < n; i++) {
@@ -196,32 +199,28 @@
       b += '<path d="M' + P(r1, a1) + 'L' + P(r2, a1) + 'A' + r2 + ' ' + r2 + ' 0 0 1 ' + P(r2, a2) + 'L' + P(r1, a2) + 'A' + r1 + ' ' + r1 + ' 0 0 0 ' + P(r1, a1) + 'Z" fill="' + C + '" fill-opacity="' + (i % 2 ? 0.35 : 1) + '"/>';
     }
     b += '<path d="M' + (cx - 34) + ' 0A34 34 0 0 0 ' + (cx + 34) + ' 0Z" fill="' + C + '" fill-opacity=".65"/>';
-    b += tx(300, 156, 62, "'Russo One'", E(up(top)), ' letter-spacing="3"' + fit(top, 62, 0.68, 330, 3));
-    b += pth(star(92, 132, 22)) + pth(star(508, 132, 22));
-    [176, 202, 228].forEach(function (y) { b += pth('M28 ' + (y + 30) + 'L66 ' + y + 'L104 ' + (y + 30), stk(11)) + pth('M496 ' + (y + 30) + 'L534 ' + y + 'L572 ' + (y + 30), stk(11)); });
+    b += tx(300, 148, 62, "'Russo One'", E(up(top)), ' letter-spacing="3"' + fit(top, 62, 0.68, 330, 3));
+    b += pth(star(92, 126, 22)) + pth(star(508, 126, 22));
+    [176, 202, 228].forEach(function (y) { b += pth('M46 ' + (y + 28) + 'L82 ' + y + 'L118 ' + (y + 28), stk(11)) + pth('M482 ' + (y + 28) + 'L518 ' + y + 'L554 ' + (y + 28), stk(11)); });
     if (l1) b += tx(300, 302, 48, "'Sofia Sans Condensed'", E(up(l1)), ' font-weight="800" letter-spacing="2"' + fit(l1, 48, 0.5, 380, 2));
-    if (l2) {
-      b += tx(300, 342, 26, "'Sofia Sans Condensed'", E(up(l2)), ' font-weight="700" letter-spacing="8"');
-      var hw = Math.min(200, l2.length * 21 / 2 + 22);
-      b += ln(150, 333, 300 - hw, 333, 5) + ln(300 + hw, 333, 450, 333, 5);
-    }
+    b += ln(170, 336, 262, 336, 5) + ln(338, 336, 430, 336, 5) + pth(star(278, 336, 11)) + pth(star(300, 336, 11)) + pth(star(322, 336, 11));
     return svg(b);
   };
 
   // Firehouse NN Fundraiser: the fire-service cross with gold-leaf style scroll banners and a ladder
   SAMPLE.firehouse = { venue: 'Firehouse 13 Fundraiser', city: 'Raising money for a good cause', style: 'Club tourney' };
   LOGOS.firehouse = function (o) {
-    var v = String(o.venue), m = v.match(/^(firehouse)\s+(\d+)\s*(.*)$/i), name = m ? m[1] : v, num = m ? m[2] : '', sub = m ? m[3] : '', b = '';
+    var v = String(o.venue), m = v.match(/^(firehouse)\s+(\d+)\s*(.*)$/i), name = m ? m[1] : v.replace(/\s+(fundraiser|tourney|night)$/i, ''), num = m ? m[2] : '', sub = 'Engine Co.' + (m ? ' ' + m[2] : ''), b = '';
     // cross as one outline
     var arm = [[-26, -26], [-76, -180], [0, -150], [76, -180]], d = '';
     for (var k = 0; k < 4; k++) {
       var R = function (p) { var x = p[0], y = p[1]; for (var j = 0; j < k; j++) { var t = x; x = -y; y = t; } return (300 + x) + ' ' + (200 + y); };
       d += (k ? 'L' : 'M') + R(arm[0]) + 'L' + R(arm[1]) + 'Q' + R(arm[2]) + ' ' + R(arm[3]);
     }
-    b += '<path d="' + d + 'Z" fill="' + C + '" fill-opacity=".3" stroke="' + C + '" stroke-width="7" stroke-linejoin="round"/>';
-    if (num) b += tx(300, 66, 44, 'Rye', E(num));
-    // ladder in the bottom arm
-    b += ln(284, 334, 284, 378, 5) + ln(316, 334, 316, 378, 5) + ln(284, 346, 316, 346, 5) + ln(284, 364, 316, 364, 5);
+    b += '<mask id="firehouse-x"><rect width="600" height="400" fill="#fff"/><path d="M96 78Q300 52 504 78V124Q300 98 96 124ZM96 282Q300 308 504 282V326Q300 352 96 326Z" fill="#000" stroke="#000" stroke-width="8"/></mask>' +
+      '<path d="' + d + 'Z" fill="' + C + '" fill-opacity=".3" stroke="' + C + '" stroke-width="7" stroke-linejoin="round" mask="url(#firehouse-x)"/>';
+        // ladder in the bottom arm
+    b += ln(286, 348, 286, 382, 5) + ln(314, 348, 314, 382, 5) + ln(286, 358, 314, 358, 5) + ln(286, 372, 314, 372, 5);
     b += '<defs><path id="firehouse-p1" d="M96 112Q300 86 504 112"/><path id="firehouse-p2" d="M96 316Q300 342 504 316"/>' +
       '<mask id="firehouse-k"><rect width="600" height="400" fill="#fff"/>' +
       '<text font-family="Rye" font-size="40" text-anchor="middle" fill="#000"' + fit(name, 40, 0.86, 380) + '><textPath href="#firehouse-p1" startOffset="50%">' + E(up(name)) + '</textPath></text>' +
@@ -240,7 +239,8 @@
   // Country Club Card Night: a laurel wreath around the table, crossed golf clubs, engraved caps and a script
   SAMPLE.countryclub = { venue: 'Country Club Card Night', city: 'Saturday night, members and guests', style: 'Club tourney' };
   LOGOS.countryclub = function (o) {
-    var v = String(o.venue), m = v.match(/^(.*?club)\s+(.*)$/i), top = m ? m[1] : v, sub = m ? m[2] : '', b = '';
+    var v = String(o.venue), m = v.match(/^(.*?club)\b/i), top = m ? m[1] : v.replace(/\s+(card night|poker night|tourney)$/i, ''), b = '';
+    var sub = top.split(/\s+/).filter(function (x) { return /^[A-Z]/i.test(x) && !/^(the|of)$/i.test(x); }).map(function (x) { return x[0].toUpperCase(); }).join('').slice(0, 3);
     var cx = 300, cy = 205, rx = 252, ry = 152;
     function pt(a) { return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)]; }
     function branch(a0, a1, dir) {
@@ -262,19 +262,19 @@
     b += pth('M300 356C282 338 262 342 266 356C262 370 282 374 300 356ZM300 356C318 338 338 342 334 356C338 370 318 374 300 356Z', stk(5)) + '<circle cx="300" cy="356" r="6" fill="' + C + '"/>' +
       pth('M296 360L284 392M304 360L316 392', stk(5));
     // crossed golf clubs at the crown
-    b += ln(272, 6, 322, 52, 5) + ln(328, 6, 278, 52, 5) + ln(272, 6, 282, 15, 8) + ln(328, 6, 318, 15, 8) +
-      pth('M318 48L338 52L336 60L316 56Z') + pth('M282 48L262 52L264 60L284 56Z');
-    b += '<defs><path id="countryclub-a" d="M86 160A224 132 0 0 1 514 160"/></defs>';
+    b += ln(278, 12, 318, 42, 5) + ln(322, 12, 282, 42, 5) + ln(278, 12, 286, 18, 8) + ln(322, 12, 314, 18, 8) +
+      pth('M314 38L334 42L332 50L312 46Z') + pth('M286 38L266 42L268 50L288 46Z');
+    b += '<defs><path id="countryclub-a" d="M90 172A220 128 0 0 1 510 172"/></defs>';
     b += '<text font-family="Pagella" font-weight="700" font-size="36" fill="' + C + '" text-anchor="middle" letter-spacing="5"' + fit(top, 36, 0.72, 380, 5) +
       '><textPath href="#countryclub-a" startOffset="50%">' + E(up(top)) + '</textPath></text>';
-    if (sub) b += tx(300, 318, 68, "'Great Vibes'", E(sub), ' stroke="' + C + '" stroke-width="1.6"' + fit(sub, 68, 0.4, 300));
+    if (sub) b += tx(300, 330, 96, "'Great Vibes'", E(sub), ' stroke="' + C + '" stroke-width="2" letter-spacing="-14"');
     return svg(b);
   };
 
   // Elm Street Rec Center Tourney: the gym floor: center circle, the paint and three-point arcs, varsity lettering
   SAMPLE.rec = { venue: 'Elm Street Rec Center Tourney', city: 'Folding tables and a coffee urn', style: 'Club tourney' };
   LOGOS.rec = function (o) {
-    var v = String(o.venue), m = v.match(/^(.*?)\s+(rec(?:reation)? center)\s*(.*)$/i), l1 = m ? m[1] : v, l2 = m ? m[2] : '', l3 = m ? m[3] : '', b = '';
+    var v = String(o.venue), m = v.match(/^(.*?)\s+(rec(?:reation)? center)\s*(.*)$/i), l1 = m ? m[1] : v, l2 = m ? m[2] : '', b = '';
     // court
     [0, 1].forEach(function (s) {
       var g = s ? ' transform="translate(600 0) scale(-1 1)"' : '';
@@ -284,8 +284,7 @@
     });
     b += '<circle cx="300" cy="200" r="74"' + stk(6) + '/>' + ln(300, 118, 300, 282, 6);
     b += tx(300, 120, 82, "'Jersey 10'", E(up(l1)), ' letter-spacing="3"' + fit(l1, 82, 0.46, 340, 3));
-    if (l2) b += tx(300, 330, 74, "'Jersey 10'", E(up(l2)), ' letter-spacing="3"' + fit(l2, 74, 0.46, 340, 3));
-    if (l3) b += tx(300, 366, 24, "'Sofia Sans Condensed'", E(up(l3)), ' font-weight="800" letter-spacing="10"');
+    if (l2) b += tx(300, 338, 74, "'Jersey 10'", E(up(l2)), ' letter-spacing="3"' + fit(l2, 74, 0.46, 340, 3));
     return svg(b);
   };
 
@@ -296,14 +295,15 @@
   LOGOS.glad = function (o) {
     var v = String(o.venue), m = v.match(/^(.*?)\s+(of\s+.*)$/i), l1 = m ? m[1] : v, l2 = m ? m[2] : '', b = '';
     var cut = '';
-    for (var a = 196; a <= 344; a += 12) { var r = a * Math.PI / 180; cut += ln(300, 84, (300 + 90 * Math.cos(r)).toFixed(1), (84 + 90 * Math.sin(r)).toFixed(1), 3.5).replace(/stroke="currentColor"/, 'stroke="#000"'); }
+    for (var x = 234; x <= 366; x += 11) cut += '<line x1="' + x + '" y1="4" x2="' + x + '" y2="66" stroke="#000" stroke-width="3.5"/>';
     b += '<defs><mask id="glad-m"><rect width="600" height="400" fill="#fff"/>' + cut + '</mask>' +
       '<mask id="glad-v"><rect width="600" height="400" fill="#fff"/>';
-    for (var gx = 262; gx < 340; gx += 15) for (var gy = 132; gy < 150; gy += 9) b += '<rect x="' + gx + '" y="' + gy + '" width="9" height="5" fill="#000"/>';
+    for (var gx = 266; gx < 336; gx += 13) for (var gy = 134; gy < 152; gy += 8) b += '<rect x="' + gx + '" y="' + gy + '" width="7" height="4.5" fill="#000"/>';
     b += '</mask></defs>';
-    b += '<path d="M226 78A74 62 0 0 1 374 78Z" fill="' + C + '" fill-opacity=".8" mask="url(#glad-m)"/>';
-    b += pth('M244 118C244 70 356 70 356 118Z') + pth('M202 128Q300 106 398 128L390 136Q300 118 210 136Z');
-    b += '<rect x="254" y="126" width="92" height="28" rx="5" fill="' + C + '" mask="url(#glad-v)"/>';
+    b += '<path d="M222 84C224 30 258 12 300 12C342 12 376 30 378 84Z" fill="' + C + '" fill-opacity=".8" mask="url(#glad-m)"/>';
+    b += '<rect x="230" y="74" width="140" height="12" rx="5" fill="' + C + '"/>';
+    b += pth('M246 124C246 78 354 78 354 124Z') + pth('M194 124Q300 110 406 124L398 138Q300 122 202 138Z');
+    b += '<rect x="258" y="128" width="84" height="27" rx="5" fill="' + C + '" mask="url(#glad-v)"/>';
     function sword(c) {
       return pth('M' + (c - 8) + ' 150Q' + (c - 13) + ' 250 ' + c + ' 332Q' + (c + 13) + ' 250 ' + (c + 8) + ' 150Z', ' fill="' + C + '" fill-opacity=".85"') +
         '<rect x="' + (c - 26) + '" y="138" width="52" height="12" rx="5" fill="' + C + '"/>' +
@@ -327,16 +327,15 @@
     b += '<rect x="40" y="44" width="520" height="312" rx="46"' + stk(6) + '/>';
     b += '<rect x="54" y="58" width="492" height="284" rx="34" fill="none" stroke="' + C + '" stroke-width="10" stroke-dasharray="4 5" stroke-opacity=".6"/>';
     b += '<rect x="70" y="74" width="460" height="252" rx="22"' + stk(4, 0.7) + '/>';
-    [[110, 112], [490, 112], [110, 288], [490, 288]].forEach(function (p) {
+    [[104, 110], [496, 110], [104, 290], [496, 290]].forEach(function (p) {
       var d = '';
       for (var i = 0; i < 24; i++) { var a = i * Math.PI / 12, r = i % 2 ? 26 : 31; d += (i ? 'L' : 'M') + (p[0] + r * Math.cos(a)).toFixed(1) + ' ' + (p[1] + r * Math.sin(a)).toFixed(1); }
       b += '<path d="' + d + 'Z" fill="' + C + '" fill-opacity=".3" stroke="' + C + '" stroke-width="4" stroke-linejoin="round"/>' +
         tx(p[0], p[1] + 10, 28, 'Pagella', '1M', ' font-weight="700"');
     });
-    if (o.series) b += tx(300, 104, 20, "'Sofia Sans Condensed'", E(up(o.series)), ' font-weight="700" letter-spacing="7"');
-    b += tx(300, 146, 46, 'Pagella', E(up(l1)), ' font-weight="700" letter-spacing="3"' + fit(l1, 46, 0.7, 330, 3));
-    if (l2) b += tx(300, 292, 46, 'Pagella', E(up(l2)), ' font-weight="700" letter-spacing="10"' + fit(l2, 46, 0.7, 300, 10));
-    b += tx(300, 318, 18, "'Sofia Sans Condensed'", 'ONE MILLION', ' font-weight="800" letter-spacing="9"');
+    b += tx(300, 138, 50, 'Pagella', E(up(l1)), ' font-weight="700" letter-spacing="3"' + fit(l1, 50, 0.7, 300, 3));
+    if (l2) b += tx(300, 294, 50, 'Pagella', E(up(l2)), ' font-weight="700" letter-spacing="10"' + fit(l2, 50, 0.7, 300, 10));
+    if (o.series) b += tx(300, 318, 18, "'Sofia Sans Condensed'", E(up(o.series)), ' font-weight="800" letter-spacing="7"');
     return svg(b);
   };
 
@@ -345,14 +344,16 @@
   LOGOS.monster = function (o) {
     var v = String(o.venue), w = v.split(/\s+/), l1 = w.length > 1 ? w.slice(0, -1).join(' ') : v, l2 = w.length > 1 ? w[w.length - 1] : '', b = '';
     function tower(cx, n, base, seed) {
-      var s = '', top = 0;
+      var s = '', top = 0, hi = '', lo = '';
       for (var i = 0; i < n; i++) {
         var y = base - i * 19, jx = Math.round(Math.sin(i * 1.7 + seed) * 4);
         [[0, 12, 1], [12, 22, 0.35], [22, 54, 1], [54, 64, 0.35], [64, 76, 1]].forEach(function (p) {
-          s += '<rect x="' + (cx - 38 + jx + p[0]) + '" y="' + y + '" width="' + (p[1] - p[0]) + '" height="14" fill="' + C + '" fill-opacity="' + p[2] + '"/>';
+          var r = 'M' + (cx - 38 + jx + p[0]) + ' ' + y + 'h' + (p[1] - p[0]) + 'v14h-' + (p[1] - p[0]) + 'z';
+          if (p[2] < 1) lo += r; else hi += r;
         });
         top = y; var tj = jx;
       }
+      s += '<path d="' + hi + '" fill="' + C + '"/><path d="' + lo + '" fill="' + C + '" fill-opacity=".35"/>';
       s += '<path fill-rule="evenodd" fill="' + C + '" d="M' + (cx - 38 + tj) + ' ' + top + 'a38 10 0 1 0 76 0a38 10 0 1 0 -76 0ZM' + (cx - 24 + tj) + ' ' + top + 'a24 6 0 1 0 48 0a24 6 0 1 0 -48 0Z"/>';
       return s;
     }
@@ -399,12 +400,18 @@
   function P(d, a) { return '<path d="' + d + '"' + (a || '') + '/>'; }
   function L(w) { return ' fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="' + w + '"'; }
   function star(cx, cy, r, ri, n) { var d = '', k; n = n || 5; ri = ri || r * 0.42; for (k = 0; k < n * 2; k++) { var a = Math.PI * k / n - Math.PI / 2, q = k % 2 ? ri : r; d += (k ? 'L' : 'M') + (cx + q * Math.cos(a)).toFixed(1) + ',' + (cy + q * Math.sin(a)).toFixed(1); } return P(d + 'Z'); }
+  // the restaurant's own name, without where the game is ("The Back Room at Sal's" -> "Sal's", "Upstairs at the Golden Dragon" -> "The Golden Dragon")
+  function brand(v) {
+    var s = String(v), re = /^.*?\b(?:at|behind|above|below|beneath|under|upstairs|downstairs|(?:out |in )?back of|in back of)\s+/i, k = 0;
+    while (re.test(s) && k++ < 4) { var t = s.replace(re, ''); if (!t || t === s) break; s = t; }
+    return s.replace(/^the\b/, 'The');
+  }
   function split(v, re) { var m = String(v).match(re); return m ? m : null; }
 
   // ── The Back Room at Sal's: the joint's matchbook ──
   SAMPLE.backroom = { venue: "The Back Room at Sal's", city: 'Through the kitchen, knock twice', style: 'Back-room game' };
   LOGOS.backroom = function (o) {
-    var m = split(o.venue, /^(.*?)\s+at\s+(.+)$/i), top = m ? m[1] : '', nm = m ? m[2] : o.venue;
+    var nm = brand(o.venue);
     function fiasco(cx) { // a Chianti bottle in its straw jacket, a candle burning in the neck, wax run down it
       return '<ellipse cx="' + cx + '" cy="112" rx="5" ry="10"/>' + '<rect x="' + (cx - 6) + '" y="124" width="12" height="26" fill-opacity=".55"/>' +
         P('M' + (cx - 8) + ',150h16v40c0,8 18,16 18,40c0,20 -12,32 -26,32s-26,-12 -26,-32c0,-24 18,-32 18,-40z', ' fill-opacity=".3"') +
@@ -415,16 +422,16 @@
     }
     return SV + '<rect x="62" y="40" width="476" height="320" rx="38"' + L(6) + '/>' +
       T(nm, 300, 146, 116, 'Great Vibes', { cw: 0.42, max: 400 }) +
-      (top ? T(U(top), 300, 291, 34, 'Cinzel', { w: 700, ls: 4, cw: 0.78, max: 380 }) : '') +
+      T('ITALIAN KITCHEN', 300, 290, 34, 'Cinzel', { w: 700, ls: 3, cw: 0.74 }) +
       P('M62,306h476v16a38,38 0 0 1 -38,38h-400a38,38 0 0 1 -38,-38z', ' fill-opacity=".32"') + P('M62,306h476', L(5)) +
       T('CLOSE COVER BEFORE STRIKING', 300, 340, 20, 'Sofia Sans Condensed', { w: 800, ls: 4, cw: 0.46, max: 380 }) +
-      fiasco(98) + fiasco(502) + '</svg>';
+      fiasco(95) + fiasco(505) + '</svg>';
   };
 
   // ── Upstairs at the Golden Dragon: the restaurant's menu-cover crest, key-fret border, lanterns ──
   SAMPLE.dragon = { venue: 'Upstairs at the Golden Dragon', city: 'After closing time', style: 'Back-room game' };
   LOGOS.dragon = function (o) {
-    var m = split(o.venue, /^(.*?\b(?:at|the))\s+(?:the\s+)?(.+)$/i), top = m ? o.venue.slice(0, o.venue.length - m[2].length).trim() : '', nm = m ? m[2] : o.venue;
+    var b = brand(o.venue), m = b.match(/^(the)\s+(.+)$/i), top = m ? m[1] : '', nm = m ? m[2] : b;
     var fret = '', x;
     for (x = 92; x < 500; x += 40) if (x < 236 || x > 330) fret += 'M' + x + ',334V298H' + (x + 30) + 'V324H' + (x + 12) + 'V310H' + (x + 20);
     function lantern(cx) {
@@ -434,8 +441,8 @@
         '<rect x="' + (cx - 16) + '" y="234" width="32" height="10" rx="2"/>' + P('M' + (cx - 6) + ',244v24M' + cx + ',244v28M' + (cx + 6) + ',244v24', L(4));
     }
     return SV +
-      P('M150,72H450M150,152H450', L(5) + ' stroke-opacity=".5"') +
-      (top ? T(U(top), 300, 60, 22, 'Sofia Sans Condensed', { w: 800, ls: 7, cw: 0.5, max: 300 }) : '') +
+      P('M150,152H450', L(5) + ' stroke-opacity=".5"') +
+      (top ? T(U(top), 300, 62, 26, 'Sofia Sans Condensed', { w: 800, ls: 10, cw: 0.5, max: 300 }) + P('M196,54H252M348,54H404', L(4)) : '') +
       T(U(nm), 300, 136, 64, 'Pagella', { w: 700, ls: 3, cw: 0.72, max: 470 }) +
       P(fret, ' fill="none" stroke-width="6" stroke-linecap="square"') +
       P('M88,286H252M348,286H512M88,346H252M348,346H512', L(5)) +
@@ -448,7 +455,7 @@
   // ── Behind Rosa's Cantina: papel picado strung across the top, painted talavera tiles ──
   SAMPLE.cantina = { venue: "Behind Rosa's Cantina", city: 'Through the kitchen, knock twice', style: 'Back-room game' };
   LOGOS.cantina = function (o) {
-    var m = split(o.venue, /^(Behind|The Back of|Out back of)?\s*(.+?)\s+(Cantina)$/i), pre = m && m[1] ? m[1] : '', nm = m ? m[2] : o.venue, suf = m ? m[3] : '';
+    var b = brand(o.venue), m = b.match(/^(.+?)\s+(cantina)$/i), nm = m ? m[1] : b, suf = m ? m[2] : '';
     var flags = '', i, xs = [140, 204, 268, 332, 396, 460];
     for (i = 0; i < 6; i++) {
       var x = xs[i], y = 18 + Math.round(10 * Math.sin(Math.PI * (x - 100) / 400)), w = 48, h = 42, z = '', k;
@@ -466,8 +473,7 @@
     var row = '';
     for (i = 0; i < 9; i++) row += P('M' + (189 + i * 28) + ',346l8,-8 8,8 -8,8z', i % 2 ? ' fill-opacity=".5"' : '');
     return SV + P('M100,18Q300,38 500,18', L(4) + ' stroke-opacity=".6"') + flags +
-      (pre ? P('M214,88H262M338,88H386', L(4)) + T(U(pre), 300, 95, 20, 'Bungee', { ls: 4, cw: 0.72, max: 200 }) : '') +
-      T(nm, 300, 150, 72, 'Lilita One', { cw: 0.5, max: 400 }) +
+      T(nm, 300, 148, 84, 'Lilita One', { cw: 0.5, max: 400 }) +
       (suf ? T(U(suf), 300, 316, 56, 'Bungee', { ls: 6, cw: 0.78, max: 380 }) : '') + row +
       tile(78) + tile(522) + '</svg>';
   };
@@ -475,7 +481,7 @@
   // ── The Cellar at Bellini's: the brick barrel vault and the diamond-bin wine rack ──
   SAMPLE.cellar = { venue: "The Cellar at Bellini's", city: 'By invitation only', style: 'Back-room game' };
   LOGOS.cellar = function (o) {
-    var m = split(o.venue, /^(.*?)\s+at\s+(.+)$/i), top = m ? m[1] : '', nm = m ? m[2] : o.venue;
+    var nm = brand(o.venue);
     var cx = 300, cy = 262, r0 = 208, r1 = 248, n = 15, d = '', i;
     for (i = 0; i < n; i++) {
       if (i === 7) continue;
@@ -492,8 +498,8 @@
     for (x = 150; x <= 450; x += 60) ends += '<circle cx="' + x + '" cy="302" r="10"/>';
     for (x = 120; x <= 480; x += 60) ends += '<circle cx="' + x + '" cy="282" r="6" fill-opacity=".5"/><circle cx="' + x + '" cy="322" r="6" fill-opacity=".5"/>';
     return SV + P(d, ' fill-opacity=".42"') + P('M276,8h48l-6,50h-36z') + P(piers, ' fill-opacity=".42"') +
-      (top ? T(U(top), 300, 94, 22, 'Cinzel', { w: 700, ls: 5, cw: 0.8, max: 230 }) : '') +
-      T(nm, 300, 150, 60, 'Pagella', { w: 700, it: true, cw: 0.5, max: 330 }) +
+      T('RISTORANTE', 300, 94, 22, 'Cinzel', { w: 700, ls: 6, cw: 0.8 }) +
+      T(nm, 300, 150, 64, 'Pagella', { w: 700, it: true, cw: 0.5, max: 330 }) +
       P('M90,262H510M90,342H510', L(5)) + P(rack.replace(/M(\d+),262l-30,40 30,40/g, function (s, a) { return +a > 120 ? s : ''; }).replace(/M480,262l30,40 -30,40/, ''), L(5)) + ends +
       P('M40,374H560', L(6)) + '</svg>';
   };
@@ -501,7 +507,7 @@
   // ── The Back of Lucky's Diner: the neon over the door, the letter boxes, the checkerboard ──
   SAMPLE.diner = { venue: "The Back of Lucky's Diner", city: 'After closing time', style: 'Back-room game' };
   LOGOS.diner = function (o) {
-    var m = split(o.venue, /^(The Back of|Behind|Out back of)?\s*(.+?)(?:\s+(Diner))?$/i), pre = m && m[1] ? m[1] : '', nm = m ? m[2] : o.venue, word = U(m && m[3] ? m[3] : 'Diner');
+    var b = brand(o.venue), m = b.match(/^(.+?)\s+(diner)$/i), nm = m ? m[1] : b, word = 'DINER';
     var boxes = '', n = word.length, bw = 62, gap = 10, w = n * bw + (n - 1) * gap, x0 = 300 - w / 2, i;
     for (i = 0; i < n; i++) boxes += '<rect x="' + (x0 + i * (bw + gap)) + '" y="262" width="' + bw + '" height="66" rx="6" fill-opacity=".3" stroke-width="5"/>' + T(word[i], x0 + i * (bw + gap) + bw / 2, 315, 54, 'Sofia Sans Condensed', { w: 900 });
     var chk = '';
@@ -509,11 +515,160 @@
     var neon = T(nm, 300, 142, 104, 'Baloo 2', { w: 700, cw: 0.5, max: 420, attr: ' transform="skewX(-8) translate(20 0)"' });
     return SV + '<g fill="none" stroke-linejoin="round" stroke-width="20" stroke-opacity=".3">' + neon + '</g>' +
       '<g fill="none" stroke-linejoin="round" stroke-width="6">' + neon + '</g>' +
-      (pre ? T(U(pre), 300, 40, 22, 'Sofia Sans Condensed', { w: 800, ls: 8, cw: 0.5 }) : '') +
+      T('COFFEE & PIE', 300, 40, 22, 'Sofia Sans Condensed', { w: 800, ls: 8, cw: 0.5 }) +
       star(96, 92, 26, 6, 4) + star(504, 104, 20, 5, 4) + star(130, 52, 12, 3, 4) +
       P('M66,186h44v26a22,22 0 0 1 -44,0zM110,192c14,0 14,20 0,20', L(5)) + P('M58,236h60', L(5)) + P('M78,176c-6,-8 6,-12 0,-22M96,176c-6,-8 6,-12 0,-22', L(4) + ' stroke-opacity=".6"') +
       P('M486,236h56M514,236v-8M496,228h36M494,228c0,-40 40,-40 40,0M514,180v-6', L(5)) + P('M500,226l14,-16 14,16z', ' fill-opacity=".5"') +
       boxes + chk + '</svg>';
+  };
+
+  // the card rooms: the name, and what's left of it ("Card Room", "Card Club", "Casino")
+  function room(v) { var m = String(v).match(/^(.*?)\s+(card room|card club|casino)$/i); return m ? [m[1], m[2]] : [String(v), '']; }
+  function arc(id, cx, cy, r, a0, a1) { // a text path from angle a0 to a1 (degrees, clockwise from +x), sweep by sign
+    var r0 = a0 * Math.PI / 180, r1 = a1 * Math.PI / 180;
+    return '<path id="' + id + '" fill="none" d="M' + (cx + r * Math.cos(r0)).toFixed(1) + ',' + (cy + r * Math.sin(r0)).toFixed(1) + 'A' + r + ',' + r + ' 0 0 ' + (a1 > a0 ? 1 : 0) + ' ' + (cx + r * Math.cos(r1)).toFixed(1) + ',' + (cy + r * Math.sin(r1)).toFixed(1) + '"/>';
+  }
+  function TP(id, s, sz, font, a) {
+    a = a || {}; var est = s.length * sz * (a.cw || 0.6) + (s.length - 1) * (a.ls || 0);
+    return '<text font-family="' + font + '" font-size="' + sz + '"' + (a.w ? ' font-weight="' + a.w + '"' : '') + (a.ls ? ' letter-spacing="' + a.ls + '"' : '') + (a.fill ? ' fill="' + a.fill + '"' : '') + (a.attr || '') +
+      '><textPath href="#' + id + '" startOffset="50%" text-anchor="middle"' + (a.max && est > a.max ? ' textLength="' + a.max + '" lengthAdjust="spacingAndGlyphs"' : '') + '>' + E(s) + '</textPath></text>';
+  }
+
+  // ── Riverside Card Room: the boathouse on the bank; a towboat pushing its barges under the name ──
+  SAMPLE.cardriver = { venue: 'Riverside Card Room', city: 'Down by the river', style: 'Freezeout' };
+  LOGOS.cardriver = function (o) {
+    var r = room(o.venue);
+    var ring = '<circle cx="74" cy="200" r="34"' + L(16) + ' stroke-opacity=".4"/><circle cx="74" cy="200" r="34" fill="none" stroke-width="16" stroke-dasharray="17 36.4" stroke-dashoffset="8"/>' +
+      '<circle cx="74" cy="200" r="51"' + L(4) + ' stroke-dasharray="10 9" stroke-opacity=".6"/>';
+    function oar(a) { return '<g transform="rotate(' + a + ' 526 200)">' + P('M526,138V244', L(6)) + '<rect x="516" y="236" width="20" height="34" rx="10"/>' + P('M520,140h12', L(6)) + '</g>'; }
+    var tow = P('M104,298h92v20h-100zM202,298h92v20h-92zM300,298h92v20h-92z', ' fill-opacity=".5"') + P('M104,298h92v20h-100zM202,298h92v20h-92zM300,298h92v20h-92z', L(4)) +
+      P('M398,296h8v24h-8zM410,292h84l-6,28h-78z') + P('M420,276h60v16h-60zM440,260h34v16h-34z') + '<rect x="446" y="244" width="7" height="16"/><rect x="460" y="244" width="7" height="16"/>' +
+      P('M428,280h44M446,264h22', ' fill="none" stroke-width="4" stroke-opacity=".3"');
+    return SV + T(U(r[0]), 300, 128, 98, 'Sofia Sans Condensed', { w: 900, ls: 4, cw: 0.47, max: 440 }) +
+      ring + oar(28) + oar(-28) + tow +
+      P(wave(70, 530, 334, 6, 28), L(5)) + P(wave(130, 470, 350, 5, 28), L(4) + ' stroke-opacity=".45"') +
+      (r[1] ? T(U(r[1]), 300, 380, 26, 'Sofia Sans', { w: 800, ls: 12, cw: 0.62, max: 320 }) : '') + '</svg>';
+  };
+
+  // ── Prairie Rose Card Club: the wild rose of the plains, the name on a ribbon across it ──
+  SAMPLE.cardroom = { venue: 'Prairie Rose Card Club', city: 'Across from the courthouse', style: 'Freezeout' };
+  LOGOS.cardroom = function (o) {
+    var r = room(o.venue), cx = 300, cy = 190, d = '', k;
+    var pet = [[0, -26], [-36, -38], [-74, -84], [-58, -130], [-32, -156], [0, -132], [32, -156], [58, -130], [74, -84], [36, -38]];
+    function pt(p, a) { var c = Math.cos(a), s = Math.sin(a); return (cx + p[0] * c - p[1] * s).toFixed(1) + ',' + (cy + p[0] * s + p[1] * c).toFixed(1); }
+    for (k = 0; k < 5; k++) { var a = k * 2 * Math.PI / 5; d += 'M' + pt(pet[0], a) + 'C' + pt(pet[1], a) + ' ' + pt(pet[2], a) + ' ' + pt(pet[3], a) + 'Q' + pt(pet[4], a) + ' ' + pt(pet[5], a) + 'Q' + pt(pet[6], a) + ' ' + pt(pet[7], a) + 'C' + pt(pet[8], a) + ' ' + pt(pet[9], a) + ' ' + pt(pet[0], a) + 'Z'; }
+    var dots = ''; for (k = 0; k < 12; k++) { var b = k * Math.PI / 6; dots += '<circle cx="' + (cx + 50 * Math.cos(b)).toFixed(1) + '" cy="' + (cy + 50 * Math.sin(b)).toFixed(1) + '" r="6"/>'; }
+    var id = 'cardroom-m';
+    return SV + '<defs><mask id="' + id + '"><rect width="600" height="400" fill="#fff"/>' + T(U(r[0]), 300, 316, 40, 'Pagella', { w: 700, ls: 2, cw: 0.7, max: 340, fill: '#000' }) + '</mask></defs>' +
+      '<clipPath id="cardroom-c"><rect width="600" height="268"/></clipPath><g clip-path="url(#cardroom-c)">' + P(d, ' fill-opacity=".3"') + P(d, L(5)) + '</g>' + '<circle cx="300" cy="190" r="34" fill-opacity=".5"/><circle cx="300" cy="190" r="34"' + L(4) + '/>' + dots +
+      P('M66,290h70v56h-70l18,-28z', ' fill-opacity=".6"') + P('M534,290h-70v56h70l-18,-28z', ' fill-opacity=".6"') + P('M116,330l20,16v-16zM484,330l-20,16v-16z') +
+      '<rect x="116" y="274" width="368" height="56" mask="url(#' + id + ')"/>' +
+      (r[1] ? T(U(r[1]), 300, 378, 24, 'Pagella', { w: 700, ls: 10, cw: 0.7, max: 300 }) : '') + '</svg>';
+  };
+
+  // ── Northside Card Room: upstairs from the sports bar; varsity arch, pennants, sleeve stripes ──
+  SAMPLE.cardclub = { venue: 'Northside Card Room', city: 'Upstairs, past the bar', style: 'Freezeout' };
+  LOGOS.cardclub = function (o) {
+    var r = room(o.venue), id = 'cardclub-a';
+    function pennant(x, dir) { return P('M' + x + ',170v60l' + (-78 * dir) + ',-30z', ' fill-opacity=".5"') + P('M' + x + ',170v60l' + (-78 * dir) + ',-30z', L(4)) + star(x - 26 * dir, 200, 12, 5); }
+    return SV + arc(id, 300, 700, 590, 250, 290) +
+      TP(id, U(r[0]), 96, 'Jersey 10', { cw: 0.5, max: 380, attr: ' fill="none" stroke-width="14" stroke-linejoin="round" stroke-opacity=".35"' }) +
+      TP(id, U(r[0]), 96, 'Jersey 10', { cw: 0.5, max: 380 }) +
+      pennant(118, 1) + pennant(482, -1) +
+      (r[1] ? T(U(r[1]), 300, 312, 44, 'Russo One', { ls: 4, cw: 0.66, max: 360 }) : '') +
+      star(118, 296, 13, 5) + star(482, 296, 13, 5) +
+      '<rect x="130" y="334" width="340" height="12"/><rect x="160" y="354" width="280" height="8" fill-opacity=".55"/></svg>';
+  };
+
+  // ── Harbor Lights Card Room: the old cannery on the docks; the lighthouse throws its beam across the name ──
+  SAMPLE.cardharbor = { venue: 'Harbor Lights Card Room', city: 'Down by the river', style: 'Freezeout' };
+  LOGOS.cardharbor = function (o) {
+    var r = room(o.venue), id = 'cardharbor-c', rope = '', x;
+    for (x = 150; x < 540; x += 11) rope += 'M' + x + ',318l7,12';
+    return SV + '<defs><clipPath id="' + id + '"><path d="M68,112h32l12,218h-56z"/></clipPath></defs>' +
+      P('M100,78L590,28V150L100,96z', ' fill-opacity=".3"') +
+      P('M68,112h32l12,218h-56z', ' fill-opacity=".45"') + '<g clip-path="url(#' + id + ')"><rect x="50" y="150" width="70" height="30"/><rect x="50" y="212" width="70" height="30"/><rect x="50" y="274" width="70" height="30"/></g>' +
+      P('M68,112h32l12,218h-56z', L(4)) + '<rect x="58" y="102" width="52" height="10" rx="2"/>' +
+      '<rect x="70" y="72" width="28" height="30" fill-opacity=".6"/>' + P('M70,72h28v30h-28z', L(4)) + P('M64,72l20,-18 20,18z') + '<circle cx="84" cy="48" r="5"/>' +
+      P('M40,330h90', L(6)) +
+      T(U(r[0]), 342, 112, 42, 'Bungee', { cw: 0.76, max: 410 }) +
+      (r[1] ? T(U(r[1]), 342, 296, 30, 'Sofia Sans', { w: 800, ls: 12, cw: 0.62, max: 340 }) : '') +
+      P(rope, ' fill="none" stroke-width="4" stroke-linecap="round"') + '</svg>';
+  };
+
+  // ── Lucky Horseshoe: the big neon horseshoe on its pole over the highway; the cards land inside it ──
+  SAMPLE.cardwest = { venue: 'Lucky Horseshoe', city: 'Off the highway', style: 'Turbo' };
+  LOGOS.cardwest = function (o) {
+    var w = String(o.venue).split(/\s+/), top = w.length > 1 ? w[0] : '', rest = w.length > 1 ? w.slice(1).join(' ') : o.venue;
+    var id = 'cardwest-m', ap = 'cardwest-a', holes = '', i;
+    [74, 112].forEach(function (y) { holes += '<rect x="147" y="' + y + '' + '" width="10" height="20" rx="2" fill="#000"/><rect x="443" y="' + y + '" width="10" height="20" rx="2" fill="#000"/>'; });
+    function wheel(cx, cy) { var d = '', k; for (k = 0; k < 8; k++) { var a = k * Math.PI / 4; d += 'M' + (cx + 8 * Math.cos(a)).toFixed(1) + ',' + (cy + 8 * Math.sin(a)).toFixed(1) + 'L' + (cx + 32 * Math.cos(a)).toFixed(1) + ',' + (cy + 32 * Math.sin(a)).toFixed(1); }
+      return '<circle cx="' + cx + '" cy="' + cy + '" r="34"' + L(7) + '/><circle cx="' + cx + '" cy="' + cy + '" r="9"/>' + P(d, L(4)); }
+    var shoe = 'M126,36H182V190A118,118 0 0 0 418,190V36H474V190A174,174 0 0 1 126,190Z';
+    return SV + arc(ap, 300, 190, 159, 160, 20) +
+      '<defs><mask id="' + id + '"><rect width="600" height="400" fill="#fff"/>' + holes + TP(ap, U(rest), 34, 'Rye', { cw: 0.8, ls: 3, max: 330, fill: '#000' }) + '</mask></defs>' +
+      '<path d="' + shoe + '" fill-opacity=".6" mask="url(#' + id + ')"/>' + P(shoe, L(4)) + '<rect x="120" y="30" width="68" height="14" rx="3"/><rect x="412" y="30" width="68" height="14" rx="3"/>' +
+      (top ? T(U(top), 300, 132, 62, 'Rye', { cw: 0.78, max: 220 }) : '') +
+      star(300, 64, 16, 7) + star(256, 74, 10, 4) + star(344, 74, 10, 4) +
+      wheel(64, 304) + wheel(536, 304) + '</svg>';
+  };
+
+  // ── Gold Nugget Card Room: the gold-rush hall; an assay bar stamped with the name, pick and shovel crossed below ──
+  SAMPLE.cardnugget = { venue: 'Gold Nugget Card Room', city: 'Downtown', style: 'Turbo' };
+  LOGOS.cardnugget = function (o) {
+    var r = room(o.venue), id = 'cardnugget-m', sub = r[1] ? U(r[1]).split(' ') : [];
+    return SV + '<defs><mask id="' + id + '"><rect width="600" height="400" fill="#fff"/>' + T(U(r[0]), 300, 110, 54, 'Sofia Sans Condensed', { w: 900, ls: 3, cw: 0.5, max: 280, fill: '#000' }) + '</mask></defs>' +
+      P('M150,30H450L494,140H106Z', ' fill-opacity=".35"') + P('M150,30H450L494,140H106Z', L(5)) +
+      P('M172,48H428L458,124H142Z', ' mask="url(#' + id + ')"') + P('M150,30L172,48M450,30L428,48M494,140L458,124M106,140L142,124', L(4)) +
+      // pick over shovel, crossed
+      P('M248,352L346,262', L(9)) + P('M310,236Q356,234 380,284', L(11)) +
+      P('M352,352L262,268', L(9)) + '<path d="M-17,-26h34v24q0,22 -17,32q-17,-10 -17,-32z" transform="translate(252 254) rotate(-47)"/>' + P('M340,362l24,-20', L(7)) +
+      (sub.length === 2 ? T(sub[0], 168, 318, 40, 'Rye', { ls: 3, cw: 0.8, max: 140 }) + T(sub[1], 432, 318, 40, 'Rye', { ls: 3, cw: 0.8, max: 140 }) : sub.length ? T(sub.join(' '), 300, 384, 26, 'Rye', { ls: 3, cw: 0.8, max: 300 }) : '') +
+      star(168, 348, 8, 3, 4) + star(432, 348, 8, 3, 4) + '</svg>';
+  };
+
+  // ── Lakeview Casino: the glass prow on the lake, the sun going down into the water, pines on the shore ──
+  SAMPLE.cardlake = { venue: 'Lakeview Casino', city: 'Out by the racetrack', style: 'Turbo' };
+  LOGOS.cardlake = function (o) {
+    var r = room(o.venue), id = 'cardlake-m', rays = '', k;
+    for (k = 1; k < 8; k++) { var a = Math.PI + k * Math.PI / 8; rays += 'M' + (300 + 104 * Math.cos(a)).toFixed(1) + ',' + (146 + 104 * Math.sin(a)).toFixed(1) + 'L' + (300 + 132 * Math.cos(a)).toFixed(1) + ',' + (146 + 132 * Math.sin(a)).toFixed(1); }
+    function pines(x, s) { return P('M' + x + ',146l' + (-26 * s) + ',0 ' + (14 * s) + ',-22 ' + (-9 * s) + ',0 ' + (12 * s) + ',-20 ' + (-7 * s) + ',0 ' + (16 * s) + ',-30 ' + (16 * s) + ',30 ' + (-7 * s) + ',0 ' + (12 * s) + ',20 ' + (-9 * s) + ',0 ' + (14 * s) + ',22z') +
+      P('M' + (x + 34 * s) + ',146l' + (-18 * s) + ',0 ' + (10 * s) + ',-16 ' + (-6 * s) + ',0 ' + (14 * s) + ',-24 ' + (14 * s) + ',24 ' + (-6 * s) + ',0 ' + (10 * s) + ',16z', ' fill-opacity=".6"'); }
+    var rip = ''; [[172, 70], [190, 50], [208, 34], [226, 20]].forEach(function (q) { rip += 'M' + (100 - q[1]) + ',' + q[0] + 'h' + q[1] + 'M' + (500) + ',' + q[0] + 'h' + q[1]; });
+    return SV + '<defs><mask id="' + id + '"><rect width="600" height="400" fill="#fff"/><rect x="180" y="108" width="240" height="6" fill="#000"/><rect x="180" y="122" width="240" height="8" fill="#000"/><rect x="180" y="136" width="240" height="10" fill="#000"/></mask></defs>' +
+      P('M210,146a90,90 0 0 1 180,0z', ' mask="url(#' + id + ')"') + P(rays, L(6)) +
+      P('M40,150H560', L(5)) + pines(64, 1) + pines(536, -1) + P(rip, L(5) + ' stroke-opacity=".6"') +
+      T(r[0], 300, 314, 78, 'Pagella', { w: 700, it: true, cw: 0.52, max: 420 }) +
+      (r[1] ? P('M150,350H210M390,350H450', L(4)) + T(U(r[1]), 300, 359, 24, 'Sofia Sans', { w: 800, ls: 12, cw: 0.62, max: 170 }) : '') + '</svg>';
+  };
+
+  // ── Silver Dollar Card Club: the card club by the track, open all night; the cards land on a big silver dollar ──
+  SAMPLE.carddollar = { venue: 'Silver Dollar Card Club', city: 'Out by the racetrack', style: 'Turbo' };
+  LOGOS.carddollar = function (o) {
+    var r = room(o.venue), a1 = 'carddollar-t', a2 = 'carddollar-b';
+    return SV + arc(a1, 300, 198, 140, 200, 340) + arc(a2, 300, 198, 164, 140, 40) +
+      '<circle cx="300" cy="198" r="184" fill="none" stroke-width="12" stroke-dasharray="5 6"/>' + '<circle cx="300" cy="198" r="172"' + L(5) + '/>' +
+      '<circle cx="300" cy="198" r="114"' + L(4) + ' stroke-opacity=".5"/>' +
+      TP(a1, U(r[0]), 36, 'Cinzel', { w: 700, ls: 3, cw: 0.8, max: 330 }) +
+      (r[1] ? TP(a2, U(r[1]), 30, 'Cinzel', { w: 700, ls: 4, cw: 0.74, max: 230 }) : '') +
+      star(160, 290, 11, 5) + star(440, 290, 11, 5) +
+      T('OPEN ALL NIGHT', 300, 282, 20, 'Sofia Sans Condensed', { w: 800, ls: 6, cw: 0.5, op: '.7' }) + '</svg>';
+  };
+
+  // ── The Ocean Majesty Card Room: the cruise line's crown over the sea ──
+  SAMPLE.cruise = { venue: 'The Ocean Majesty Card Room', city: 'At sea, two days out of Fort Lauderdale', style: 'Freezeout' };
+  LOGOS.cruise = function (o) {
+    var r = room(String(o.venue).replace(/^the\s+/i, ''));
+    function rose(cx) { return star(cx, 200, 40, 9, 4) + '<g fill-opacity=".5">' + '<path d="' + star(cx, 200, 28, 8, 4).replace(/^<path d="|"\/>$/g, '') + '" transform="rotate(45 ' + cx + ' 200)"/></g>' + '<circle cx="' + cx + '" cy="200" r="22"' + L(4) + '/>'; }
+    return SV +
+      P('M262,62L254,28 276,44 300,20 324,44 346,28 338,62Z') + '<rect x="258" y="66" width="84" height="9" rx="2"/>' +
+      '<circle cx="254" cy="24" r="5"/><circle cx="300" cy="15" r="6"/><circle cx="346" cy="24" r="5"/>' +
+      P('M140,70H236M364,70H460', L(4)) + '<circle cx="134" cy="70" r="4"/><circle cx="466" cy="70" r="4"/>' +
+      T(U(r[0]), 300, 132, 42, 'Cinzel', { w: 700, ls: 6, cw: 0.74, max: 470 }) +
+      rose(74) + rose(526) +
+      P(wave(150, 450, 272, 7, 30), L(5)) + P(wave(180, 420, 288, 6, 30), L(4) + ' stroke-opacity=".5"') +
+      (r[1] ? T(r[1].replace(/\b\w/g, function (c) { return c.toUpperCase(); }), 300, 334, 38, 'Pagella', { w: 700, it: true, cw: 0.5, max: 360 }) : '') +
+      T('AT SEA', 300, 366, 18, 'Cinzel', { w: 700, ls: 10, cw: 0.8, op: '.7' }) + '</svg>';
   };
 })();
 
@@ -604,10 +759,7 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
       '<path d="M198 286C186 270 212 262 198 244M184 290C168 272 192 262 176 246" fill="none" stroke="' + C + '" stroke-width="5" stroke-linecap="round" stroke-opacity=".5"/>';
     // flanking words with rules
     var L = 'PINTS', Rt = p.suf ? up(p.suf) : 'POKER', sz = 26, ls = 5;
-    var wl = W(L, sz, 0.69, ls), wr = W(Rt, sz, 0.69, ls);
     s += T(186, 334, L, 'Cinzel', sz, { w: 700, ls: ls, anchor: 'end' }) + T(380, 334, Rt, 'Cinzel', sz, { w: 700, ls: ls, anchor: 'start' });
-    s += '<path d="M' + R(176 - wl) + ' 345H86M' + R(390 + wr) + ' 345H514" stroke="' + C + '" stroke-width="4" stroke-opacity=".6"/>';
-    s += '<path d="M90 345l-8-6v12zM510 345l8-6v12z" fill-opacity=".6"/>';
     return svg(s);
   };
 
@@ -619,7 +771,7 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
     xs.forEach(function (x, i) {
       var t = tops[i], kind = i === 4 ? 9 : i % 3;
       s += '<rect x="' + (x - 8) + '" y="112" width="16" height="10" rx="2"/>'; // collar
-      if (kind === 9) s += '<path d="M' + (x - 7) + ' 112L' + (x - 14) + ' ' + (t + 22) + 'Q' + x + ' ' + (t - 6) + ' ' + (x + 14) + ' ' + (t + 22) + 'L' + (x + 7) + ' 112Z"/><circle cx="' + x + '" cy="' + (t + 26) + '" r="6" fill="#000" fill-opacity="0"/>';
+      if (kind === 9) s += '<path d="M' + (x - 7) + ' 112L' + (x - 14) + ' ' + (t + 22) + 'Q' + x + ' ' + (t - 6) + ' ' + (x + 14) + ' ' + (t + 22) + 'L' + (x + 7) + ' 112Z"/>';
       else if (kind === 0) s += '<rect x="' + (x - 10) + '" y="' + t + '" width="20" height="' + (112 - t) + '" rx="5"/>';
       else if (kind === 1) s += '<rect x="' + (x - 5) + '" y="' + (t + 14) + '" width="10" height="' + (100 - t) + '"/><circle cx="' + x + '" cy="' + (t + 10) + '" r="12"/>';
       else s += '<path d="M' + (x - 5) + ' 112L' + (x - 12) + ' ' + t + 'H' + (x + 12) + 'L' + (x + 5) + ' 112Z"/>';
@@ -650,21 +802,19 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
   };
 
   // ── pub4 The Black Dog: dive-bar sticker block, hound sprawled under the cards, marker-scrawled tagline ──
-  var DOG = 'M0 88L0 80Q2 74 10 74L58 74L60 62Q52 50 46 44L30 42L10 40Q2 38 2 32Q2 26 10 24L30 20Q36 12 44 8Q56 2 66 8Q74 14 76 24Q82 34 92 40Q140 34 190 40Q230 46 236 70Q250 74 268 68L270 75Q252 82 236 80L236 88Z';
-  var DOGK = 'M60 12Q76 22 70 46Q62 50 55 42M206 50Q182 62 194 88M60 66Q84 72 120 74';
+  var DOG = 'M0 100L0 92Q2 86 10 86L56 86L60 72Q56 62 50 56L30 54L12 52Q2 50 2 42Q2 34 10 33L30 30Q36 18 46 14Q60 6 72 14Q80 22 80 34Q84 46 96 52Q140 44 176 54Q198 62 200 84Q214 88 232 84L234 90Q216 98 200 96L200 100Z';
+  var DOGK = 'M62 16Q80 26 74 52Q64 56 58 48M172 60Q150 72 158 100M62 76Q90 84 120 86';
   LOGOS.pub4 = function (o) {
     var p = parts(o.venue, 'Black Dog');
     var s = '<mask id="pub4-m"><rect width="600" height="400" fill="#fff"/>' +
       T(326, 122, up(p.name), 'Sofia Sans Condensed', 84, { w: 900, max: 296, k: 0.46, ls: 1, fill: '#000' }) +
       (p.the ? T(150, 90, up(p.the), 'Sofia Sans Condensed', 24, { w: 900, ls: 4, fill: '#000', tr: 'rotate(-90 150 90)' }) : '') + '</mask>';
-    s += '<g transform="rotate(-3 300 90)"><rect x="118" y="36" width="364" height="104" rx="6" mask="url(#pub4-m)"/>' +
-      '<rect x="128" y="46" width="344" height="84" rx="3" fill="none" stroke="#000" stroke-opacity="0"/></g>';
-    s += '<mask id="pub4-d"><rect width="600" height="400" fill="#fff"/><g transform="translate(160 264) scale(.95)"><path d="' + DOGK + '" fill="none" stroke="#000" stroke-width="4.5" stroke-linecap="round"/><circle cx="38" cy="22" r="3.5" fill="#000"/></g></mask>';
-    s += '<path mask="url(#pub4-d)" transform="translate(160 264) scale(.95)" d="' + DOG + '"/>';
-    // 8-ball beside the dog
-    s += '<circle cx="452" cy="326" r="24"/><circle cx="452" cy="322" r="10" fill="none" stroke="#000" stroke-width="0"/>';
-    s += '<mask id="pub4-b"><rect width="600" height="400" fill="#fff"/><circle cx="446" cy="320" r="11" fill="#000"/></mask>';
-    s = s.replace('<circle cx="452" cy="326" r="24"/>', '<circle cx="452" cy="326" r="24" mask="url(#pub4-b)"/>' + T(446, 326, '8', 'Sofia Sans Condensed', 16, { w: 900 }));
+    s += '<rect transform="rotate(-3 300 90)" x="118" y="36" width="364" height="104" rx="6" mask="url(#pub4-m)"/>';
+    s += '<mask id="pub4-d"><rect width="600" height="400" fill="#fff"/><g><path d="' + DOGK + '" fill="none" stroke="#000" stroke-width="5" stroke-linecap="round"/><circle cx="40" cy="27" r="4" fill="#000"/></g></mask>';
+    s += '<path mask="url(#pub4-d)" transform="translate(176 258)" d="' + DOG + '"/>';
+    // the 8-ball the dog is guarding
+    s += '<mask id="pub4-b"><rect width="600" height="400" fill="#fff"/><circle cx="446" cy="320" r="11" fill="#000"/></mask>' +
+      '<circle cx="452" cy="326" r="24" mask="url(#pub4-b)"/>' + T(446, 326, '8', 'Sofia Sans Condensed', 16, { w: 900 });
     var line = (p.suf ? p.suf.toLowerCase() + '  ·  ' : '') + 'cold beer · pool · jukebox';
     s += T(300, 380, line, 'Patrick Hand', 28, { max: 380, k: 0.36, op: 0.9 });
     return svg(s);
@@ -674,13 +824,13 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
   LOGOS.pub5 = function (o) {
     var p = parts(o.venue, 'Shamrock');
     var leaf = 'M0 0C-10 -20 -64 -40 -60 -84C-57 -112 -16 -118 0 -92C16 -118 57 -112 60 -84C64 -40 10 -20 0 0Z';
-    var s = '<g transform="translate(300 196) scale(1.38)">';
-    [0, -118, 118].forEach(function (a) {
-      s += '<g transform="rotate(' + a + ')"><path d="' + leaf + '" fill-opacity=".38" stroke="' + C + '" stroke-width="4.5" stroke-linejoin="round"/>' +
+    var s = '<g transform="translate(300 182) scale(1.2)">';
+    [0, -116, 116].forEach(function (a) {
+      s += '<g transform="rotate(' + a + ')"><path d="' + leaf + '" fill-opacity=".5" stroke="' + C + '" stroke-width="4.5" stroke-linejoin="round"/>' +
         '<path d="M0 -6V-80" stroke="' + C + '" stroke-width="3.5" stroke-linecap="round"/></g>';
     });
-    s += '<path d="M0 0C6 30 18 52 40 64" fill="none" stroke="' + C + '" stroke-width="7" stroke-linecap="round"/></g>';
-    s += T(120, 72, 'Céad Míle', 'Great Vibes', 38, {}) + T(484, 72, 'Fáilte', 'Great Vibes', 38, {});
+    s += '<path d="M0 0C4 20 10 34 22 44" fill="none" stroke="' + C + '" stroke-width="7" stroke-linecap="round"/></g>';
+    s += T(146, 80, 'Céad Míle', 'Great Vibes', 38, {}) + T(456, 80, 'Fáilte', 'Great Vibes', 38, {});
     s += T(300, 352, (p.the ? p.the + ' ' : '') + p.name, 'Pagella', 50, { it: 1, w: 700, max: 380, k: 0.53 });
     s += T(300, 382, up(p.suf || 'Irish Pub'), 'Sofia Sans', 20, { w: 800, ls: 9, op: 0.8 });
     return svg(s);
@@ -699,7 +849,7 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
     s += '<ellipse cx="300" cy="318" rx="252" ry="52" fill="none" stroke="' + C + '" stroke-width="6"/>' +
       '<ellipse cx="300" cy="318" rx="234" ry="40" fill="none" stroke="' + C + '" stroke-width="4" stroke-opacity=".4" stroke-dasharray="2 12" stroke-linecap="round"/>' +
       '<ellipse cx="512" cy="340" rx="22" ry="7"/>';
-    s += '<path d="M150 300Q320 352 428 332" fill="none" stroke="' + C + '" stroke-width="5" stroke-opacity=".55" stroke-dasharray="1 14" stroke-linecap="round"/><circle cx="446" cy="330" r="11"/>';
+    s += '<circle cx="452" cy="334" r="11"/>';
     s += T(280, 330, 'NINETEENTH HOLE', 'Sofia Sans', 21, { w: 800, ls: 5, op: 0.9 });
     return svg(s);
   };
@@ -732,12 +882,12 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
   };
 
   // ── pub8 The Blue Moose: ski-lodge trophy antlers spanning the top, trail-marker tagline ──
-  var ANTLER = 'M286 156C260 146 230 132 196 134C152 136 112 124 86 98L80 70L100 86L100 54L120 80L128 44L144 74L156 38L168 72L186 40L194 76L212 52L216 88C232 100 250 112 266 120L258 96L270 104L282 132Z';
+  var ANTLER = 'M284 146C268 140 252 134 236 132C196 136 140 132 110 112C96 102 86 90 82 76Q76 60 88 60Q96 62 98 74L104 58Q104 42 116 44Q124 48 120 66L132 52Q136 34 148 38Q154 44 146 64L162 52Q170 32 182 38Q186 46 176 66L192 60Q202 44 212 50Q214 58 202 76C214 88 224 96 236 100L246 92Q252 80 262 84Q264 92 256 104C266 112 276 122 290 128Z';
   LOGOS.pub8 = function (o) {
     var p = parts(o.venue, 'Blue Moose');
     var s = mirror('<path d="' + ANTLER + '"/>');
     // the head between them, ears out
-    s += '<path d="M272 138C276 118 324 118 328 138L326 160H274Z"/>' +
+    s += '<path d="M272 138C276 118 324 118 328 138L322 196Q300 212 278 196Z"/>' +
       '<path d="M272 146C256 140 236 146 226 156C242 162 260 160 274 154Z" fill-opacity=".7"/><path d="M328 146C344 140 364 146 374 156C358 162 340 160 326 154Z" fill-opacity=".7"/>';
     s += T(300, 278, up(p.the || ''), 'Sofia Sans', 20, { w: 800, ls: 10, op: 0.85 });
     s += T(300, 332, up(p.name), 'Baloo 2', 66, { w: 700, max: 440, k: 0.58, ls: 1 });
@@ -756,21 +906,340 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
       '<circle cx="300" cy="200" r="172" fill="none" stroke="' + C + '" stroke-width="7" stroke-dasharray="0 13.5" stroke-linecap="round"/>' +
       '<circle cx="300" cy="200" r="160" fill="none" stroke="' + C + '" stroke-width="4" stroke-opacity=".7"/>';
     s += '<path id="pub9-t" d="M168 200A132 132 0 0 1 432 200" fill="none"/><path id="pub9-b" d="M150 200A150 150 0 0 0 450 200" fill="none"/>';
-    var top = up((p.the ? p.the + ' ' : '') + p.name), sz = Math.min(40, 390 / (top.length * 0.67 + (top.length - 1) * 0.08));
+    var top = up((p.the ? p.the + ' ' : '') + p.name), sz = Math.min(40, 340 / (top.length * 0.67 + (top.length - 1) * 0.08));
     s += '<text font-family="Cinzel" font-weight="700" font-size="' + R(sz) + '" letter-spacing="' + R(sz * 0.08) + '" text-anchor="middle"><textPath href="#pub9-t" startOffset="50%">' + E(top) + '</textPath></text>';
-    s += '<text font-family="Cinzel" font-weight="700" font-size="20" letter-spacing="5" text-anchor="middle" fill-opacity=".85" dy="0"><textPath href="#pub9-b" startOffset="50%">IN LUCK WE TRUST</textPath></text>';
+    s += '<text font-family="Cinzel" font-weight="700" font-size="19" letter-spacing="3.5" text-anchor="middle" fill-opacity=".85"><textPath href="#pub9-b" startOffset="50%">IN LUCK WE TRUST</textPath></text>';
     // wheat ears
     var ear = '', i;
     for (i = 0; i < 7; i++) {
-      var t = 0.45 + i * 0.085, x0 = 204, y0 = 318, cx = 128, cy = 250, x1 = 150, y1 = 96;
+      var t = 0.3 + i * 0.105, x0 = 190, y0 = 292, cx = 136, cy = 274, x1 = 146, y1 = 196;
       var x = (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * cx + t * t * x1, y = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * cy + t * t * y1;
       var dx = 2 * (1 - t) * (cx - x0) + 2 * t * (x1 - cx), dy = 2 * (1 - t) * (cy - y0) + 2 * t * (y1 - cy), a = Math.atan2(dy, dx) * 180 / Math.PI + 90;
       ear += '<ellipse cx="0" cy="-12" rx="6" ry="13" transform="translate(' + R(x) + ' ' + R(y) + ') rotate(' + R(a - 32) + ')"/><ellipse cx="0" cy="-12" rx="6" ry="13" transform="translate(' + R(x) + ' ' + R(y) + ') rotate(' + R(a + 32) + ')"/>';
     }
-    ear += '<ellipse cx="150" cy="90" rx="6" ry="14" transform="rotate(8 150 90)"/><path d="M204 318Q128 250 150 96" fill="none" stroke="' + C + '" stroke-width="5" stroke-linecap="round"/>';
+    ear += '<ellipse cx="148" cy="181" rx="6" ry="14" transform="rotate(8 148 181)"/><path d="M190 292Q136 274 146 196" fill="none" stroke="' + C + '" stroke-width="5" stroke-linecap="round"/>';
     s += mirror(ear);
-    s += T(300, 296, up(p.suf || 'One Cent'), 'Cinzel', 34, { w: 700, ls: 4, max: 220, k: 0.69 });
+    s += T(300, 284, up(p.suf || 'One Cent'), 'Cinzel', 32, { w: 700, ls: 3, max: 168, k: 0.69 });
     s += T(300, 132, 'KARAOKE', 'Sofia Sans Condensed', 20, { w: 800, ls: 8, op: 0.75 });
+    return svg(s);
+  };
+})();
+
+// ── g4 ──
+// g4: the Hold'em road's named tournament stops, $400 deepstack to the World Championship
+(function () {
+  var W = 'fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"';
+  function f(n) { return Math.round(n * 10) / 10; }
+  function up(s) { return E(String(s || '').toUpperCase()); }
+  function svg(b) { return '<svg viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg" fill="currentColor">' + b + '</svg>'; }
+  // squeeze a line into max units when its estimated width (k: average glyph width in em) runs over
+  function fit(s, size, k, max, ls) { var w = String(s).length * (size * k + (ls || 0)); return w > max ? ' textLength="' + max + '" lengthAdjust="spacingAndGlyphs"' : ''; }
+  // a line of text, centred on x (letter-spacing adds a trailing gap, so nudge right by half of it)
+  function T(x, y, size, fam, s, a, k, max) {
+    a = a || {}; var ls = a.ls || 0, raw = a.raw != null ? a.raw : s;
+    return '<text x="' + f(x + ls / 2) + '" y="' + y + '" text-anchor="' + (a.anchor || 'middle') + '" font-family="' + fam + '" font-size="' + size + '"' +
+      (a.w ? ' font-weight="' + a.w + '"' : '') + (a.it ? ' font-style="italic"' : '') + (ls ? ' letter-spacing="' + ls + '"' : '') +
+      (a.op ? ' fill-opacity="' + a.op + '"' : '') + (max ? fit(raw, size, k, max, ls) : '') + '>' + s + '</text>';
+  }
+  function star(cx, cy, R, r, n, rot) {
+    var p = [], i, a; rot = rot == null ? -90 : rot;
+    for (i = 0; i < n * 2; i++) { a = (rot + i * 180 / n) * Math.PI / 180; p.push(f(cx + Math.cos(a) * (i % 2 ? r : R)) + ',' + f(cy + Math.sin(a) * (i % 2 ? r : R))); }
+    return p.join(' ');
+  }
+  function words(v) { var w = String(v || '').split(/\s+/).filter(Boolean); return w; }
+
+  // ── Gulf Coast Classic · Biloxi: a striped sunset on the Gulf, the Biloxi lighthouse and a beach palm ──────────
+  SAMPLE.gulf = { venue: 'Gulf Coast Classic', city: 'Biloxi', style: 'Deepstack' };
+  LOGOS.gulf = function (o) {
+    var w = words(o.venue), last = w.length > 1 ? w.pop() : '', first = w.join(' ');
+    var s = '<defs><clipPath id="gulf-s"><rect x="200" y="40" width="200" height="62"/><rect x="200" y="108" width="200" height="11"/>' +
+      '<rect x="200" y="125" width="200" height="7"/><rect x="200" y="137" width="200" height="4"/></clipPath></defs>';
+    s += '<circle cx="300" cy="142" r="88" clip-path="url(#gulf-s)"/>';
+    s += '<path d="M104 147H496" ' + W + ' stroke-width="5" stroke-opacity=".7"/>';
+    s += '<path d="M240 256H360M268 267H332" ' + W + ' stroke-width="5" stroke-opacity=".55"/>';
+    // gulls
+    s += '<path d="M136 80q10-10 20 0q10-10 20 0M168 106q7-7 14 0q7-7 14 0" ' + W + ' stroke-width="4.5" stroke-opacity=".8"/>';
+    // Biloxi lighthouse (cast-iron cone, lantern, beam over the water)
+    s += '<path d="M84 117L156 98V140Z" fill-opacity=".3"/>';
+    s += '<path d="M55 302L64 146H84L93 302Z"/><rect x="55" y="136" width="38" height="8" rx="2"/><rect x="47" y="300" width="54" height="9" rx="2"/>';
+    s += '<path d="M65 134V114H83V134M74 114V134" ' + W + ' stroke-width="4"/><path d="M61 114Q74 92 87 114Z"/><path d="M74 98V86" ' + W + ' stroke-width="4"/>';
+    // palm
+    s += '<path d="M538 306Q546 232 516 162" ' + W + ' stroke-width="9"/>';
+    s += '<path d="M516 158Q486 132 452 148Q488 140 516 164Z"/><path d="M516 158Q488 160 468 196Q494 168 518 164Z"/>' +
+      '<path d="M516 160Q522 124 498 100Q530 122 522 160Z"/><path d="M516 158Q548 130 578 146Q548 142 518 164Z"/><path d="M516 160Q550 162 562 198Q538 170 514 164Z"/>';
+    // wordmark
+    s += T(300, 322, 58, 'Lilita One', up(first || o.venue), { raw: first || o.venue }, 0.56, 400);
+    if (last) {
+      s += T(300, 354, 27, 'Sofia Sans Condensed', up(last), { w: 800, ls: 12, raw: last }, 0.5, 220);
+      s += '<path d="M150 346q9-9 18 0t18 0t18 0M396 346q9-9 18 0t18 0t18 0" ' + W + ' stroke-width="4.5"/>';
+    }
+    s += T(300, 380, 15, 'Sofia Sans Condensed', up(o.city) + ' &#183; ' + up(o.style), { w: 700, ls: 5, raw: o.city + ' . ' + o.style }, 0.5, 300);
+    return svg(s);
+  };
+
+  // ── Silver Spur · Reno: the name rides a Reno-style arch on two pillars; a spur and rowel under the board ───────
+  SAMPLE.reno = { venue: 'Silver Spur', city: 'Reno', style: 'Bounty' };
+  LOGOS.reno = function (o) {
+    function ay(r, x) { return f(560 - Math.sqrt(r * r - (x - 300) * (x - 300))); }
+    var s = '<defs><path id="reno-a" d="M66 ' + ay(447, 66) + 'A447 447 0 0 1 534 ' + ay(447, 534) + '"/></defs>';
+    s += '<path d="M56 336V' + ay(495, 56) + 'A495 495 0 0 1 544 ' + ay(495, 544) + 'V336" ' + W + ' stroke-width="6"/>';
+    s += '<path d="M90 336V' + ay(428, 90) + 'A428 428 0 0 1 510 ' + ay(428, 510) + 'V336" ' + W + ' stroke-width="6"/>';
+    s += '<rect x="46" y="332" width="54" height="12" rx="2"/><rect x="500" y="332" width="54" height="12" rx="2"/>';
+    s += '<path d="M56 250H90M510 250H544" ' + W + ' stroke-width="4" stroke-opacity=".6"/>';
+    for (var a = -26; a <= 26; a += 4) { var t = a * Math.PI / 180; s += '<circle cx="' + f(300 + 516 * Math.sin(t)) + '" cy="' + f(560 - 516 * Math.cos(t)) + '" r="4.5"/>'; }
+    s += '<polygon points="' + star(300, 26, 19, 8, 5) + '"/>';
+    s += '<text font-family="Rye" font-size="44" text-anchor="middle"><textPath href="#reno-a" startOffset="50%"' + fit(o.venue, 44, 0.9, 420) + '>' + up(o.venue) + '</textPath></text>';
+    // spur: heel band, strap button, shank, rowel
+    s += '<path d="M162 258C168 336 290 344 344 302L336 290C286 322 186 318 180 258Z"/><circle cx="171" cy="257" r="12"/><path d="M171 257L150 246" ' + W + ' stroke-width="8"/>';
+    s += '<path d="M336 297L392 305" ' + W + ' stroke-width="10"/><path d="M356 302q6 22-4 30" ' + W + ' stroke-width="4" stroke-opacity=".6"/>';
+    s += '<path fill-rule="evenodd" d="M' + star(426, 307, 37, 12, 12).replace(/ /g, 'L') + 'ZM432 307a6 6 0 1 0-12 0a6 6 0 1 0 12 0Z"/>';
+    s += T(300, 374, 24, 'Rye', up(o.city) + ' &#183; ' + up(o.style), { raw: o.city + ' . ' + o.style }, 0.8, 300);
+    return svg(s);
+  };
+
+  // ── Boardwalk Open · Atlantic City: a light-bulb marquee, the pier's Ferris wheel and pilings ──────────────────
+  SAMPLE.boardwalk = { venue: 'Boardwalk Open', city: 'Atlantic City', style: 'Deepstack' };
+  LOGOS.boardwalk = function (o) {
+    var w = words(o.venue), last = w.length > 1 ? w.pop() : '', first = w.join(' '), s = '', x, y, i;
+    s += '<rect x="104" y="30" width="392" height="114" rx="12" ' + W + ' stroke-width="5"/>';
+    for (x = 118; x <= 483; x += 22.8) s += '<circle cx="' + f(x) + '" cy="43" r="4"/><circle cx="' + f(x) + '" cy="131" r="4"/>';
+    for (y = 65; y <= 110; y += 22) s += '<circle cx="118" cy="' + y + '" r="4"/><circle cx="482" cy="' + y + '" r="4"/>';
+    s += T(300, 69, 13, 'Bungee', up(o.city) + ' &#183; ' + up(o.style), { ls: 3, raw: o.city + ' . ' + o.style, op: '.8' }, 0.75, 300);
+    s += T(300, 117, 46, 'Bungee', up(first || o.venue), { raw: first || o.venue }, 0.74, 330);
+    // pier deck and pilings
+    s += '<rect x="106" y="338" width="388" height="9" rx="2"/>';
+    for (x = 128; x <= 476; x += 29) s += '<path d="M' + x + ' 349V366" ' + W + ' stroke-width="5" stroke-opacity=".6"/>';
+    // Ferris wheel
+    var cx = 460, cy = 290, r = 46;
+    s += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" ' + W + ' stroke-width="5"/><circle cx="' + cx + '" cy="' + cy + '" r="' + (r - 14) + '" ' + W + ' stroke-width="4" stroke-opacity=".5"/>';
+    for (i = 0; i < 8; i++) {
+      var t = (i * 45 + 22.5) * Math.PI / 180, ex = cx + Math.cos(t) * r, ey = cy + Math.sin(t) * r;
+      s += '<path d="M' + cx + ' ' + cy + 'L' + f(ex) + ' ' + f(ey) + '" ' + W + ' stroke-width="4" stroke-opacity=".7"/><rect x="' + f(ex - 6) + '" y="' + f(ey) + '" width="12" height="10" rx="3"/>';
+    }
+    s += '<path d="M' + cx + ' ' + cy + 'L430 338M' + cx + ' ' + cy + 'L490 338" ' + W + ' stroke-width="6"/><circle cx="' + cx + '" cy="' + cy + '" r="8"/>';
+    // striped beach umbrella
+    s += '<path d="M150 284V338" ' + W + ' stroke-width="5"/>';
+    s += '<path d="M104 292Q150 238 196 292Q184 284 173 292Q161 284 150 292Q139 284 127 292Q116 284 104 292Z" fill-opacity=".35"/>';
+    s += '<path d="M127 292Q139 284 150 292L150 256Q136 262 127 292ZM173 292Q161 284 150 292L150 256Q164 262 173 292Z" fill-opacity="0"/>';
+    s += '<path d="M104 292Q116 284 127 292Q132 262 150 252Q120 256 104 292ZM150 292Q161 284 173 292Q168 262 150 252Z"/>';
+    if (last) s += T(300, 324, 52, 'Bungee', up(last), { raw: last }, 0.74, 200);
+    return svg(s);
+  };
+
+  // ── Lakeshore Open · Chicago: the city flag's two blue stripes and six-point stars, the skyline on the lake ────
+  SAMPLE.chicago = { venue: 'Lakeshore Open', city: 'Chicago', style: 'Freezeout' };
+  LOGOS.chicago = function (o) {
+    var s = '';
+    s += T(300, 98, 60, 'Sofia Sans Condensed', up(o.venue), { w: 900, ls: 3, raw: o.venue }, 0.5, 450);
+    s += T(300, 126, 18, 'Sofia Sans Condensed', up(o.city) + ' &#183; ' + up(o.style), { w: 700, ls: 9, raw: o.city + ' . ' + o.style, op: '.85' }, 0.5, 300);
+    s += '<rect x="64" y="137" width="472" height="11"/><rect x="92" y="340" width="416" height="11"/>';
+    [46, 98, 502, 554].forEach(function (x) { s += '<polygon points="' + star(x, 200, 24, 10.5, 6) + '"/>'; });
+    // skyline, base 334: boxes, the Aon slab, Hancock (tapered, twin masts), Willis (setbacks, twin masts), Trump spire
+    var b = [[116, 312, 18], [136, 298, 16], [154, 318, 14], [170, 304, 12], [184, 276, 22], [208, 300, 14], [258, 296, 14], [274, 286, 16], [292, 306, 8],
+      [362, 294, 16], [380, 310, 14], [396, 288, 20], [418, 304, 16], [436, 296, 18], [456, 312, 14], [472, 320, 14]], p = '';
+    b.forEach(function (q) { p += 'M' + q[0] + ' 334V' + q[1] + 'H' + (q[0] + q[2]) + 'V334Z'; });
+    p += 'M224 334L230 274H250L256 334Z';                                  // Hancock
+    p += 'M302 334V296H308V282H314V270H332V282H338V296H344V334Z';           // Willis
+    p += 'M346 334V286H350V276H354V266H358V334Z';                           // Trump
+    s += '<path d="' + p + '"/>';
+    s += '<path d="M235 274V256M245 274V256M318 270V252M328 270V254M356 266V252" ' + W + ' stroke-width="4"/>';
+    return svg(s);
+  };
+
+  // ── Tahoe Summit · Lake Tahoe: a snow-capped Sierra ridge with a summit flag, pines, ripples on the lake ───────
+  SAMPLE.tahoe = { venue: 'Tahoe Summit', city: 'Lake Tahoe', style: 'Bounty' };
+  LOGOS.tahoe = function (o) {
+    var pk = [[66, 152], [128, 102], [158, 120], [214, 62], [250, 92], [300, 36], [346, 84], [382, 66], [432, 110], [466, 94], [534, 152]], s = '', i;
+    s += '<polygon points="' + pk.map(function (q) { return q.join(','); }).join(' ') + '" fill-opacity=".4"/>';
+    for (i = 1; i < pk.length - 1; i++) {
+      var P = pk[i], L = pk[i - 1], R = pk[i + 1]; if (P[1] > L[1] && P[1] > R[1]) continue;   // valleys get no snow
+      var h = (i === 5 ? 0.42 : 0.36), lx = P[0] + (L[0] - P[0]) * h, ly = P[1] + (L[1] - P[1]) * h, rx = P[0] + (R[0] - P[0]) * h, ry = P[1] + (R[1] - P[1]) * h;
+      s += '<polygon points="' + [P, [rx, ry], [P[0] + (rx - P[0]) * 0.55, ry - 4], [P[0] + (rx - P[0]) * 0.15, ry + 5], [P[0] + (lx - P[0]) * 0.45, ly - 3], [lx, ly]].map(function (q) { return f(q[0]) + ',' + f(q[1]); }).join(' ') + '"/>';
+    }
+    s += '<path d="M300 36V12" ' + W + ' stroke-width="4"/><path d="M302 12L324 18L302 25Z"/>';
+    function pine(x, top, bot, wd) { var hgt = bot - top, q = '', k; for (k = 0; k < 3; k++) { var ty = top + k * hgt * 0.24, by = top + hgt * (0.36 + k * 0.24), hw = wd * (0.5 + k * 0.25); q += 'M' + x + ' ' + f(ty) + 'L' + f(x + hw) + ' ' + f(by) + 'H' + f(x - hw) + 'Z'; } return '<path d="' + q + 'M' + (x - 3) + ' ' + f(top + hgt * 0.84) + 'h6V' + bot + 'h-6Z"/>'; }
+    s += pine(62, 158, 262, 34) + pine(98, 192, 262, 24) + pine(538, 158, 262, 34) + pine(502, 192, 262, 24);
+    s += '<path d="M40 266H560" ' + W + ' stroke-width="4" stroke-opacity=".5"/>';
+    s += '<path d="M200 279H400M236 290H364" ' + W + ' stroke-width="4" stroke-opacity=".45"/>';
+    s += T(300, 336, 44, 'Sofia Sans', up(o.venue), { w: 800, ls: 7, raw: o.venue }, 0.64, 420);
+    var el = /tahoe/i.test(o.city + o.venue) ? ' &#183; ELEV. 6,225 FT' : '';   // the lake's surface elevation
+    s += T(300, 364, 15, 'Sofia Sans', up(o.city) + el + ' &#183; ' + up(o.style), { w: 700, ls: 4, raw: o.city + (el ? ' . ELEV. 6,225 FT' : '') + ' . ' + o.style, op: '.85' }, 0.6, 400);
+    return svg(s);
+  };
+
+  // ── Grand Prix de Paris: the Eiffel Tower standing through the board, script name either side, sparkles ──────
+  SAMPLE.paris = { venue: 'Grand Prix de Paris', city: 'Paris', style: 'Freezeout' };
+  LOGOS.paris = function (o) {
+    var v = String(o.venue), m = v.match(/^(.*?)\s+((?:de|of|du)\s+.*)$/i), head = m ? m[1] : v, tail = m ? m[2] : o.city;
+    var hw = words(head), left = hw.length > 1 ? hw.slice(0, Math.ceil(hw.length / 2)).join(' ') : head, right = hw.length > 1 ? hw.slice(Math.ceil(hw.length / 2)).join(' ') : '';
+    var L = [['M', -3, 40], ['L', -7, 52], ['Q', -10, 100, -24, 134], ['L', -36, 134], ['L', -36, 146], ['L', -27, 146], ['Q', -36, 212, -60, 250], ['L', -78, 250], ['L', -78, 264], ['L', -64, 264],
+      ['Q', -84, 316, -126, 342], ['L', -88, 342], ['Q', -62, 290, 0, 288]];
+    var d = '', i, c;
+    L.forEach(function (q) { d += q[0] + q.slice(1).map(function (n, j) { return j % 2 ? n : 300 + n; }).join(' '); });
+    for (i = L.length - 1; i > 0; i--) {                    // mirror back up the right side
+      c = L[i]; var prev = L[i - 1], ex = 600 - (300 + prev[prev.length - 2]), ey = prev[prev.length - 1];
+      d += c[0] === 'Q' ? 'Q' + (600 - (300 + c[1])) + ' ' + c[2] + ' ' + ex + ' ' + ey : 'L' + ex + ' ' + ey;
+    }
+    var s = '<path d="' + d + 'Z"/>';
+    s += '<path d="M300 40V16" ' + W + ' stroke-width="4"/><path d="M262 140H338M226 258H374" ' + W + ' stroke-width="4" stroke-opacity=".6"/>';
+    s += '<path d="M138 344H462" ' + W + ' stroke-width="4" stroke-opacity=".55"/>';
+    [[244, 46, 10], [356, 70, 8], [252, 96, 7], [340, 30, 6]].forEach(function (q) { s += '<polygon points="' + star(q[0], q[1], q[2], q[2] * 0.28, 4) + '" fill-opacity=".8"/>'; });
+    if (right) {
+      s += T(170, 130, 74, 'Great Vibes', E(left), { raw: left }, 0.42, 190) + T(432, 130, 74, 'Great Vibes', E(right), { raw: right }, 0.42, 170);
+    } else s += T(300, 120, 74, 'Great Vibes', E(left), { raw: left }, 0.42, 420);
+    s += T(300, 380, 26, 'Sofia Sans Condensed', up(tail), { w: 700, ls: 14, raw: tail }, 0.5, 300);
+    s += T(126, 300, 15, 'Sofia Sans Condensed', up(o.style), { w: 700, ls: 5, raw: o.style, op: '.8' }, 0.5, 110);
+    s += T(474, 300, 15, 'Sofia Sans Condensed', up(o.city), { w: 700, ls: 5, raw: o.city, op: '.8' }, 0.5, 110);
+    return svg(s);
+  };
+
+  // ── Riviera High Roller · Monte Carlo: a crowned shield in the Grimaldi lozenges, the name on a ribbon ────────
+  SAMPLE.monaco = { venue: 'Riviera High Roller', city: 'Monte Carlo', style: 'High Roller' };
+  LOGOS.monaco = function (o) {
+    var shield = 'M206 74H394V214Q394 296 300 338Q206 296 206 214Z', band = 'M120 302Q300 338 480 302V352Q300 388 120 352Z', s = '', i, j;
+    s += '<defs><clipPath id="monaco-c"><path d="' + shield + '"/></clipPath><mask id="monaco-m" maskUnits="userSpaceOnUse" x="0" y="0" width="600" height="400">' +
+      '<rect width="600" height="400" fill="#fff"/><path d="M110 292Q300 328 490 292V362Q300 398 110 362Z" fill="#000"/></mask>' +
+      '<path id="monaco-t" d="M128 338Q300 372 472 338"/></defs>';
+    var lz = '';
+    for (j = 0; j < 7; j++) for (i = 0; i < 6; i++) { var x = 206 + i * 38, y = 74 + j * 50; lz += 'M' + x + ' ' + (y - 25) + 'L' + (x + 19) + ' ' + y + 'L' + x + ' ' + (y + 25) + 'L' + (x - 19) + ' ' + y + 'Z'; }
+    s += '<g mask="url(#monaco-m)"><path clip-path="url(#monaco-c)" d="' + lz + '" fill-opacity=".5"/><path d="' + shield + '" ' + W + ' stroke-width="7"/></g>';
+    // crown
+    s += '<path d="M260 64L254 30L278 46L300 20L322 46L346 30L340 64Z"/><rect x="258" y="62" width="84" height="8" rx="2"/>';
+    s += '<circle cx="254" cy="26" r="5"/><circle cx="300" cy="15" r="6"/><circle cx="346" cy="26" r="5"/>';
+    // ribbon: tails behind, band in front
+    s += '<path d="M90 318H126V368H90L104 343Z" fill-opacity=".45"/><path d="M510 318H474V368H510L496 343Z" fill-opacity=".45"/>';
+    s += '<path d="' + band + '" ' + W + ' stroke-width="5"/>';
+    s += '<text font-family="Pagella" font-weight="700" font-size="32" text-anchor="middle" letter-spacing="3"><textPath href="#monaco-t" startOffset="50%"' + fit(o.venue, 32, 0.72, 330, 3) + '>' + up(o.venue) + '</textPath></text>';
+    var cw = words(o.city), a = cw.length > 1 ? cw[0] : o.city, b = cw.length > 1 ? cw.slice(1).join(' ') : o.style;
+    s += T(126, 124, 25, 'Pagella', up(a), { w: 700, ls: 6, raw: a }, 0.72, 140) + T(474, 124, 25, 'Pagella', up(b), { w: 700, ls: 6, raw: b }, 0.72, 140);
+    s += '<path d="M86 138H166M434 138H514" ' + W + ' stroke-width="4" stroke-opacity=".55"/>';
+    s += '<polygon points="126,82 134,92 126,102 118,92"/><polygon points="474,82 482,92 474,102 466,92"/>';
+    return svg(s);
+  };
+
+  // ── Dragon Cup · Macau: a bold Chinese dragon snakes over the board, open-mouthed, chasing the flaming pearl ────
+  SAMPLE.macau = { venue: 'Dragon Cup', city: 'Macau', style: 'Deepstack' };
+  LOGOS.macau = function (o) {
+    // body centreline, neck to tail: over the top in two waves, then down the right side
+    var K = [[238, 104], [282, 70], [330, 50], [376, 82], [416, 118], [458, 100], [498, 66], [532, 84], [544, 138], [540, 192], [522, 234], [496, 260]];
+    var C = [], i, j, s = '', f = Math.round;
+    for (i = 0; i < K.length - 1; i++) {
+      var p0 = K[i - 1] || K[i], p1 = K[i], p2 = K[i + 1], p3 = K[i + 2] || K[i + 1];
+      for (j = 0; j < 8; j++) {
+        var t = j / 8, t2 = t * t, t3 = t2 * t;
+        C.push([0, 1].map(function (d) { return 0.5 * (2 * p1[d] + (-p0[d] + p2[d]) * t + (2 * p0[d] - 5 * p1[d] + 4 * p2[d] - p3[d]) * t2 + (-p0[d] + 3 * p1[d] - 3 * p2[d] + p3[d]) * t3); }));
+      }
+    }
+    C.push(K[K.length - 1]);
+    var N = C.length - 1, back = [], mid = [], belly = [], nrm = [], wid = [];
+    for (i = 0; i <= N; i++) {
+      var a = C[Math.max(0, i - 1)], b = C[Math.min(N, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy), n = [dy / l, -dx / l], u = i / N;
+      var w = u < 0.06 ? 30 + u * 130 : 38 - 30 * Math.pow((u - 0.06) / 0.94, 1.2);
+      nrm.push(n); wid.push(w);
+      back.push([C[i][0] + n[0] * w / 2, C[i][1] + n[1] * w / 2]); mid.push([C[i][0] - n[0] * w * 0.12, C[i][1] - n[1] * w * 0.12]); belly.push([C[i][0] - n[0] * w / 2, C[i][1] - n[1] * w / 2]);
+    }
+    function poly(A, B) { return 'M' + A.concat(B.slice().reverse()).map(function (q) { return f(q[0]) + ' ' + f(q[1]); }).join('L') + 'Z'; }
+    // scales: chevrons pointing to the tail, knocked out of the back; plates across the belly
+    var sc = '', pl = '';
+    for (i = 3; i < N - 4; i += 3) {
+      var c = C[i], n2 = nrm[i], w2 = wid[i], tx = -n2[1], ty = n2[0], r = w2 * 0.24, cx = c[0] + n2[0] * w2 * 0.2, cy = c[1] + n2[1] * w2 * 0.2;
+      sc += 'M' + f(cx - tx * r + n2[0] * r) + ' ' + f(cy - ty * r + n2[1] * r) + 'Q' + f(cx + tx * r * 0.3) + ' ' + f(cy + ty * r * 0.3) + ' ' + f(cx - tx * r - n2[0] * r) + ' ' + f(cy - ty * r - n2[1] * r);
+      pl += 'M' + f(mid[i][0]) + ' ' + f(mid[i][1]) + 'L' + f(belly[i][0] - n2[0] * 2) + ' ' + f(belly[i][1] - n2[1] * 2);
+    }
+    s += '<defs><mask id="macau-m" maskUnits="userSpaceOnUse" x="0" y="0" width="600" height="400"><rect width="600" height="400" fill="#fff"/>' +
+      '<path d="' + sc + '" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="' + pl + '" stroke="#000" stroke-width="4"/></mask></defs>';
+    // dorsal fins: flame-shaped spikes raked back toward the tail
+    var fin = '';
+    for (i = 3; i < N - 2; i += 4) {
+      var p = back[i], q2 = back[Math.min(N, i + 3)], n3 = nrm[i], h = 9 + wid[i] * 0.45;
+      fin += 'M' + f(p[0]) + ' ' + f(p[1]) + 'Q' + f(p[0] + n3[0] * h * 0.9) + ' ' + f(p[1] + n3[1] * h * 0.9) + ' ' + f(q2[0] + n3[0] * h) + ' ' + f(q2[1] + n3[1] * h) + 'Q' + f((p[0] + q2[0]) / 2 + n3[0] * 3) + ' ' + f((p[1] + q2[1]) / 2 + n3[1] * 3) + ' ' + f(q2[0]) + ' ' + f(q2[1]) + 'Z';
+    }
+    s += '<path d="' + fin + '" fill-opacity=".75"/>';
+    // legs with three-taloned claws, hung from the belly
+    function leg(k, kx, ky, fx, fy, ang) {
+      var B = belly[k], Kn = [B[0] + kx, B[1] + ky], F = [Kn[0] + fx, Kn[1] + fy], out = '';
+      out += '<path d="M' + f(B[0] - nrm[k][0] * -6) + ' ' + f(B[1] - nrm[k][1] * -6) + 'Q' + f(Kn[0]) + ' ' + f(Kn[1]) + ' ' + f(F[0]) + ' ' + f(F[1]) + '" ' + W + ' stroke-width="11"/>';
+      out += '<path d="M' + f(Kn[0] - 2) + ' ' + f(Kn[1]) + 'q' + (kx > 0 ? 14 : -14) + ' -2 ' + (kx > 0 ? 20 : -20) + ' -14q' + (kx > 0 ? -2 : 2) + ' 10 ' + (kx > 0 ? -8 : 8) + ' 20Z" fill-opacity=".7"/>';
+      [-40, 0, 40].forEach(function (d) {
+        out += '<path transform="translate(' + f(F[0]) + ' ' + f(F[1]) + ') rotate(' + (ang + d) + ')" d="M-3-6L12-6Q25-5 27 8Q17 0 9 5L-3 6Z"/>';
+      });
+      return out;
+    }
+    s += leg(7, -6, 18, -16, 16, 110) + leg(17, 4, 20, 10, 14, 80) + leg(42, 8, 18, 12, 12, 70) + leg(67, -14, 8, -14, 10, 150);
+    s += '<g mask="url(#macau-m)"><path d="' + poly(back, mid) + '"/><path d="' + poly(mid, belly) + '" fill-opacity=".65"/></g>';
+    // tail: a forked flame fin
+    var Z = C[N], zn = nrm[N];
+    s += '<path d="M' + f(Z[0] + zn[0] * 5) + ' ' + f(Z[1] + zn[1] * 5) + 'Q466 268 448 300Q472 286 482 290Q476 300 474 318Q494 296 ' + f(Z[0] - zn[0] * 5) + ' ' + f(Z[1] - zn[1] * 5) + 'Z" fill-opacity=".85"/>';
+    s += '<g transform="translate(256 100) scale(1.15) translate(-256 -100)">';
+    // head, facing left toward the pearl: snout, open jaws with a fang, eye, horns, mane, whiskers, beard
+    s += '<path fill-rule="evenodd" d="M252 82C236 68 216 62 198 66L184 58L174 72L152 74Q134 74 130 86Q128 96 140 97L178 99L146 112Q140 122 152 125L190 119Q214 130 236 128L256 124Z' +
+      'M196 79a6 6 0 1 0 0.1 0Z"/>';
+    s += '<path d="M152 98L156 108L162 99ZM150 113L158 106L162 114Z" fill-opacity=".55"/>';
+    s += '<path d="M198 66Q212 34 254 22Q228 42 212 70ZM212 68Q240 52 270 54Q244 60 222 74ZM232 40l-4-16l12 12Z"/>';
+    s += '<path d="M244 72Q262 50 290 46Q270 62 266 80ZM250 122Q270 140 298 136Q274 130 266 112ZM226 128Q230 150 218 166Q242 152 246 126Z" fill-opacity=".7"/>';
+    s += '<path d="M134 84Q106 70 114 46Q120 32 104 22M146 118Q126 150 98 146M176 72Q166 46 178 34" ' + W + ' stroke-width="5"/>';
+    s += '<path d="M168 122Q168 146 152 158Q178 152 190 122Z" fill-opacity=".75"/></g>';
+    // the flaming pearl
+    s += '<path fill-rule="evenodd" d="M72 100a19 19 0 1 0 0.1 0ZM74 108a9 9 0 1 1-8 14a12 12 0 0 0 8-14Z"/>';
+    s += '<path d="M50 110Q36 94 46 76Q48 92 58 98M94 104Q100 86 92 72Q100 80 90 96M58 134Q46 150 54 164Q58 150 68 142M88 136Q100 148 96 162Q90 150 82 142M72 94Q66 80 74 68Q80 80 74 92" ' + W + ' stroke-width="4.5" stroke-opacity=".75"/>';
+    // cloud scrolls at the lower left
+    s += '<path d="M44 236H120Q134 236 132 224Q130 212 116 214Q116 198 98 198Q84 198 80 210Q74 202 64 206Q54 212 60 222Q46 220 44 230M98 220a8 8 0 1 0-12-6" ' + W + ' stroke-width="5" stroke-opacity=".7"/>';
+    s += '<path d="M78 300H140Q152 300 150 290Q148 280 136 282Q134 268 118 270Q104 272 104 284Q92 280 88 290" ' + W + ' stroke-width="5" stroke-opacity=".5"/>';
+    s += T(300, 338, 54, 'Russo One', up(o.venue), { ls: 3, raw: o.venue }, 0.66, 330);
+    s += T(300, 366, 17, 'Russo One', up(o.city) + ' &#183; ' + up(o.style), { ls: 7, raw: o.city + ' . ' + o.style, op: '.85' }, 0.65, 300);
+    return svg(s);
+  };
+
+  // ── Champions Invitational · Las Vegas: an Art Deco card, three champion stars, stepped Strip-tower pylons ──────
+  SAMPLE.vegasvip = { venue: 'Champions Invitational', city: 'Las Vegas', style: 'High Roller' };
+  LOGOS.vegasvip = function (o) {
+    var w = words(o.venue), first = w.length > 1 ? w[0] : o.venue, rest = w.length > 1 ? w.slice(1).join(' ') : '', s = '';
+    s += '<path d="M132 34H468L536 102V298L468 366H132L64 298V102Z" ' + W + ' stroke-width="5"/>';
+    s += '<path d="M138 48H462L522 108V292L462 352H138L78 292V108Z" ' + W + ' stroke-width="4" stroke-opacity=".45"/>';
+    // corner fans
+    [[132, 34, 1, 1], [468, 34, -1, 1], [132, 366, 1, -1], [468, 366, -1, -1]].forEach(function (c) { s += '<path d="M' + (c[0] - c[2] * 54) + ' ' + (c[1] + c[3] * 54) + 'L' + (c[0] - c[2] * 40) + ' ' + (c[1] + c[3] * 40) + '" ' + W + ' stroke-width="4" stroke-opacity=".7"/>'; });
+    // stepped pylons either side of the board
+    [[92, 1], [508, -1]].forEach(function (p) { var x = p[0], d = p[1]; s += '<path d="M' + x + ' 140V260M' + (x + d * 14) + ' 158V242M' + (x + d * 28) + ' 178V222" ' + W + ' stroke-width="7"/>'; });
+    s += '<polygon points="' + star(300, 62, 15, 6, 5) + '"/><polygon points="' + star(266, 68, 10, 4, 5) + '" fill-opacity=".7"/><polygon points="' + star(334, 68, 10, 4, 5) + '" fill-opacity=".7"/>';
+    s += '<path d="M190 66H246M354 66H410" ' + W + ' stroke-width="4" stroke-opacity=".55"/>';
+    s += T(300, 132, 58, 'Sofia Sans Condensed', up(first), { w: 800, ls: 10, raw: first }, 0.52, 360);
+    if (rest) s += T(300, 300, 50, 'Pagella', E(rest), { w: 700, it: 1, raw: rest }, 0.48, 330);
+    s += '<path d="M150 320H272M328 320H450" ' + W + ' stroke-width="4" stroke-opacity=".6"/><polygon points="300,312 308,320 300,328 292,320"/>';
+    s += T(300, 344, 14, 'Sofia Sans Condensed', 'BY INVITATION ONLY &#183; ' + up(o.city), { w: 700, ls: 5, raw: 'BY INVITATION ONLY . ' + o.city, op: '.85' }, 0.5, 330);
+    return svg(s);
+  };
+
+  // ── World Championship · Las Vegas Main Event: a full laurel wreath, a champion's star, classical capitals ─────
+  SAMPLE.mainevent = { venue: 'World Championship', city: 'Las Vegas', style: 'Main Event' };
+  LOGOS.mainevent = function (o) {
+    var cx = 300, cy = 208, rx = 262, ry = 166, s = '', w = words(o.venue), last = w.length > 1 ? w.pop() : o.venue, first = w.length ? w.join(' ') : '';
+    function pt(a) { var t = a * Math.PI / 180; return [cx + rx * Math.cos(t), cy + ry * Math.sin(t)]; }
+    function leaf(x, y, ang, len, wid, op) {
+      return '<path transform="translate(' + f(x) + ' ' + f(y) + ') rotate(' + f(ang) + ')" d="M0 0Q' + f(len / 2) + ' ' + (-wid) + ' ' + len + ' 0Q' + f(len / 2) + ' ' + wid + ' 0 0Z"' + (op ? ' fill-opacity="' + op + '"' : '') + '/>';
+    }
+    [1, -1].forEach(function (side) {
+      // stem from the bottom (a=90) round the side to the top; side 1 = left (angles 92..244), -1 = right (88..-64)
+      var st = 'M', a, k, A0 = 96, A1 = 242, n = 13;
+      for (k = 0; k <= 40; k++) { a = A0 + (A1 - A0) * k / 40; var P = pt(side > 0 ? a : 180 - a); st += (k ? 'L' : '') + f(P[0]) + ' ' + f(P[1]); }
+      s += '<path d="' + st + '" ' + W + ' stroke-width="5"/>';
+      for (k = 0; k < n; k++) {
+        a = A0 + 6 + (A1 - A0 - 6) * k / n; var aa = side > 0 ? a : 180 - a, Q = pt(aa), t = aa * Math.PI / 180;
+        var dir = Math.atan2(ry * Math.cos(t), -rx * Math.sin(t)) * 180 / Math.PI + (side > 0 ? 0 : 180);   // along the stem, toward the top
+        var sz = 1 - k * 0.025;
+        s += leaf(Q[0], Q[1], dir - 38 * side, 32 * sz, 11 * sz) + leaf(Q[0], Q[1], dir + 34 * side, 26 * sz, 9 * sz, '.6');
+      }
+      var E1 = pt(side > 0 ? A1 : 180 - A1), t1 = (side > 0 ? A1 : 180 - A1) * Math.PI / 180, d1 = Math.atan2(ry * Math.cos(t1), -rx * Math.sin(t1)) * 180 / Math.PI + (side > 0 ? 0 : 180);
+      s += leaf(E1[0], E1[1], d1, 30, 9);
+    });
+    // ribbon knot where the stems cross
+    s += '<path d="M300 366L276 384L282 360ZM300 366L324 384L318 360Z" fill-opacity=".7"/><circle cx="300" cy="366" r="7"/>';
+    s += '<polygon points="' + star(300, 46, 22, 9, 5) + '"/>';
+    if (first) s += T(300, 104, 34, 'Cinzel', up(first), { w: 700, ls: 16, raw: first }, 0.82, 300);
+    s += T(300, 146, 44, 'Cinzel', up(last), { w: 700, ls: 2, raw: last }, 0.8, 380);
+    s += T(300, 292, 34, 'Cinzel', up(o.style), { w: 700, ls: 8, raw: o.style }, 0.8, 300);
+    s += '<path d="M104 282H142M458 282H496" ' + W + ' stroke-width="4" stroke-opacity=".6"/>';
+    s += T(300, 320, 17, 'Sofia Sans Condensed', '$10,000 &#183; NO-LIMIT HOLD&#8217;EM', { w: 700, ls: 6, raw: '$10,000 . NO-LIMIT HOLDEM' }, 0.5, 300);
+    s += T(300, 346, 15, 'Cinzel', up(o.city), { w: 700, ls: 8, raw: o.city, op: '.85' }, 0.8, 200);
     return svg(s);
   };
 })();
@@ -859,7 +1328,7 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
       line(150, 40, 190, 40, 4) + line(410, 40, 450, 40, 4) +
       T(300, 47, String(o.city || 'Connecticut').toUpperCase(), 'Sofia Sans', 19, { w: 800, ls: 7, max: 200, k: 0.62 }) +
       T(300, 118, o.venue, 'Lilita One', 66, { max: 470, k: 0.52 }) +
-      trees + line(70, 365, 530, 365, 5) +
+      trees + '<rect x="20" y="338" width="560" height="28" rx="3"/>' +
       T(300, 391, String(o.style || 'Deepstack').toUpperCase(), 'Sofia Sans', 15, { w: 800, ls: 10, op: 0.85, max: 220, k: 0.62 }) + CLOSE;
   };
 
@@ -1034,10 +1503,10 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
     var ribbon = '<path d="M150,276L102,276L119,301L102,326L164,326L164,312L150,312Z" fill-opacity=".45"/><path d="M450,276L498,276L481,301L498,326L436,326L436,312L450,312Z" fill-opacity=".45"/>' +
       '<rect x="150" y="262" width="300" height="50"' + SK(5) + '/>';
     return OPEN + '<defs><path id="omahachamp-a" d="M115,165A210,210 0 0 1 485,165"/></defs>' +
-      '<g>' + w + '</g><g transform="matrix(-1 0 0 1 600 0)">' + w + '</g>' + fan +
+      '<g>' + w + '</g><g transform="matrix(-1 0 0 1 600 0)">' + w + '</g>' + fan + '<path d="M246,100l4.1,8.9 9.7,1.1-7.2,6.6 2,9.6-8.6,-4.9-8.6,4.9 2,-9.6-7.2,-6.6 9.7,-1.1Z"/><path d="M354,100l4.1,8.9 9.7,1.1-7.2,6.6 2,9.6-8.6,-4.9-8.6,4.9 2,-9.6-7.2,-6.6 9.7,-1.1Z"/>' +
       '<text font-family="Cinzel" font-weight="700" font-size="44" letter-spacing="6" text-anchor="middle"' + fit(arc.toUpperCase(), 44, 440, 0.8, 6) + '><textPath href="#omahachamp-a" startOffset="50%">' + E(arc.toUpperCase()) + '</textPath></text>' +
       ribbon + (rib ? T(302, 300, rib.toUpperCase(), 'Cinzel', 34, { w: 700, ls: 4, max: 280, k: 0.78 }) : '') +
-      T(300, 350, (String(o.city || 'Omaha') + ' · Nebraska').toUpperCase(), 'Sofia Sans', 17, { w: 800, ls: 8, max: 260, k: 0.62 }) + CLOSE;
+      T(300, 344, (String(o.city || 'Omaha') + ' · Nebraska').toUpperCase(), 'Sofia Sans', 16, { w: 800, ls: 6, max: 210, k: 0.62 }) + CLOSE;
   };
 })();
 
@@ -1102,9 +1571,9 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
   LOGOS.deadwood = function (o) {
     var n = split(o.venue);
     function card(rank, suit, id, tr, mask) {
-      return '<g transform="' + tr + '"' + (mask ? ' mask="url(#' + mask + ')"' : '') + '><rect x="-27" y="-40" width="54" height="80" rx="6" fill="none" stroke="currentColor" stroke-width="5"/>' +
-        '<text x="-15" y="-13" text-anchor="middle" font-family="Rye" font-size="24">' + rank + '</text>' +
-        '<g transform="translate(5 12) scale(1.15)">' + (suit === 's' ? '<path d="' + SPADE + '"/>' : CLUB) + '</g></g>';
+      return (mask ? '<g mask="url(#' + mask + ')">' : '<g>') + '<g transform="' + tr + '"><rect x="-27" y="-40" width="54" height="80" rx="6" fill="none" stroke="currentColor" stroke-width="5"/>' +
+        '<text x="-15" y="-13" text-anchor="middle" font-family="Pagella" font-weight="700" font-size="25">' + rank + '</text>' +
+        '<g transform="translate(5 12) scale(1.15)">' + (suit === 's' ? '<path d="' + SPADE + '"/>' : CLUB) + '</g></g></g>';
     }
     function pair(cx, r1, r2, k) {
       var b = 'translate(' + (cx - 14) + ' 196) rotate(-10)', t = 'translate(' + (cx + 14) + ' 206) rotate(9)';
@@ -1149,8 +1618,8 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
       '<path d="M112 290h86M124 304h70M136 318h54M488 290h-86M476 304h-70M464 318h-54" stroke="currentColor" stroke-width="5"/>' +
       T(300, 326, E(n[1]), 'font-family="Great Vibes" font-size="104" fill-opacity=".4" stroke="currentColor" stroke-width="4" stroke-linejoin="round"') +
       T(300, 376, 'MIAMI BEACH · DEEPSTACK', 'font-family="Sofia Sans Condensed" font-weight="700" font-size="17" letter-spacing="5" fill-opacity=".85"') +
-      palm(82, 118, 'M100 372C108 300 104 200 82 120', [-160, -128, -96, -60, -26, 8, 34], 1) +
-      palm(522, 146, 'M502 360C496 290 500 220 522 148', [-160, -128, -96, -62, -28, 6, 32], -1)
+      palm(76, 112, 'M98 372C106 300 100 200 76 114', [-164, -132, -100, -66, -32, 4, 30], 1) +
+      palm(522, 146, 'M502 360C496 290 500 220 522 148', [-164, -132, -100, -66, -32, 2, 28], -1)
     );
   };
 
@@ -1217,8 +1686,8 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
       '<path d="' + ticks + '" stroke-width="4" stroke-opacity=".7"/>' +
       '<circle cx="300" cy="172" r="94" stroke-width="5" stroke-opacity=".55"/>' +
       '<path d="M190 286Q300 330 410 286" stroke-width="4" stroke-opacity=".55"/>' +
-      '<path d="M300 200V64" stroke-width="5"/></g>' +
-      '<circle cx="300" cy="106" r="10"/><path d="' + star(300, 60, 15) + star(64, 200, 18) + star(536, 200, 18) + '"/>' +
+      '<path d="M300 200V92" stroke-width="5"/></g>' +
+      '<circle cx="300" cy="118" r="10"/><path d="' + star(300, 84, 14) + star(64, 200, 18) + star(536, 200, 18) + '"/>' +
       '<text font-family="Cinzel" font-weight="700" font-size="40" letter-spacing="12" text-anchor="middle"><textPath href="#prague-a" startOffset="50%">' + U(n[0]) + '</textPath></text>' +
       '<text font-family="Cinzel" font-weight="700" font-size="36" letter-spacing="6" text-anchor="middle"><textPath href="#prague-b" startOffset="50%">' + U(n[1]) + '</textPath></text>' +
       T(300, 316, 'PRAHA', 'font-family="Cinzel" font-weight="700" font-size="20" letter-spacing="9" fill-opacity=".8"')
@@ -1235,8 +1704,8 @@ SAMPLE.pub9 = { venue: 'The Lucky Penny Tavern', city: 'Poker night upstairs at 
     var sub = T(300, 336, 'Valletta · Malta', 'font-family="Pagella" font-style="italic" font-size="24"');
     return S(
       '<mask id="malta-m"><rect width="600" height="400" fill="#fff"/><g fill="#000" stroke="#000" stroke-width="16" stroke-linejoin="round">' + top + bot + sub + '</g></mask>' +
-      '<g mask="url(#malta-m)"><g fill-opacity=".28" stroke="currentColor" stroke-width="6" stroke-linejoin="miter">' + arms + '</g>' +
-      '<g fill="none" stroke="currentColor" stroke-width="4" stroke-opacity=".5" transform="translate(300 200) scale(.8) translate(-300 -200)">' + arms.replace(/<path /g, '<path stroke-width="5" ') + '</g></g>' +
+      '<g mask="url(#malta-m)"><g fill-opacity=".34" stroke="currentColor" stroke-width="6" stroke-linejoin="miter">' + arms + '</g>' +
+      '<g fill="none" stroke="currentColor" stroke-width="4" stroke-opacity=".45"><circle cx="300" cy="200" r="30"/></g></g>' +
       top + bot + sub
     );
   };

@@ -608,11 +608,16 @@
 .pctl .pbar .btn.pleave{flex:0 0 auto;padding:0 16px;}
 .pctl .pbar .btn small{display:block;font-size:.72rem;opacity:.85;font-variant-numeric:tabular-nums;}
 .pctl .pbar .btn-yellow{flex-grow:1.25;}
-.pctl .pbar .btn .one{white-space:nowrap;} .pctl .pbar .btn .one i{font-style:normal;}
-.pctl .pbar .btn .one b{font-weight:inherit;color:#0a5c2e;font-variant-numeric:tabular-nums;}
-.pctl .pbar .btn-green .one b{color:#0a5c2e;}
-html:is([data-theme="light"],[data-theme="parchment"]) .pctl .pbar .btn-green .one b{color:#c6ffd9;}
-.pctl .pbar .btn.tight .one i{display:none;} .pctl .pbar .btn.tighter{font-size:.86rem;}
+/* a betting button on one line: the move, then its amount in a tag tinted from the button's own ink (reads on every theme) */
+.pctl .pbar .btn:has(.one){padding:0 12px;}
+.pctl .pbar .btn .one{display:inline-flex;align-items:center;justify-content:center;gap:.38em;white-space:nowrap;} .pctl .pbar .btn .one > *{flex:none;} .pctl .pbar .btn .one i{font-style:normal;}
+.pctl .pbar .btn .one b{display:inline-flex;align-items:center;justify-content:center;min-width:1.7em;height:1.6em;padding:0 .48em;border-radius:.5em;
+  font-weight:inherit;line-height:1;color:inherit;font-variant-numeric:tabular-nums;
+  background:color-mix(in srgb,var(--b-ink) 15%,transparent);box-shadow:inset 0 1px 2px color-mix(in srgb,var(--b-ink) 20%,transparent);}
+.pctl .pbar .btn.tight .one i{display:none;}
+.pctl .pbar .btn.tighter{font-size:.86rem;} .pctl .pbar .btn.tighter .one{gap:.28em;} .pctl .pbar .btn.tighter .one b{padding:0 .36em;}
+/* no room for one line (the narrow sideways panel): the word over its tag */
+.pctl .pbar .btn.stack{font-size:.8rem;line-height:1;} .pctl .pbar .btn.stack .one{flex-direction:column;gap:2px;} .pctl .pbar .btn.stack .one b{height:1.42em;padding:0 .4em;}
 .pctl.mine .pbar .btn{animation:rise .3s var(--ease) both;}
 .pwait{display:flex;align-items:center;justify-content:center;gap:8px;min-height:30px;color:var(--text-2);font-weight:800;font-size:.86rem;text-align:center;}
 .pwait .think::after{content:"";display:inline-block;width:1.2em;text-align:left;animation:dots 1.2s steps(4) infinite;}
@@ -663,6 +668,7 @@ html:is([data-theme="light"],[data-theme="parchment"]) .pctl .pbar .btn-green .o
 .plogo.art{inset:0;transform:none;display:block;}
 .plogo.art svg{position:absolute;left:10%;top:10%;width:80%;height:80%;color:#fff;opacity:.13;overflow:visible;}
 .plogo.art.ft svg{color:#ffd84d;opacity:.17;}
+.pport .plogo.art svg{left:4%;width:92%;}
 .plogo.art .ftl{position:absolute;left:0;right:0;bottom:3.5%;text-align:center;font-weight:900;font-size:clamp(.55rem,1.3vw,.8rem);letter-spacing:.42em;text-transform:uppercase;color:rgba(255,216,77,.22);}
 .pcirc .felt-in::before{display:none;}
 .stage.pland{grid-template-columns:minmax(0,1fr) clamp(224px,28vw,272px);grid-template-rows:minmax(0,1fr);}
@@ -5192,10 +5198,28 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
   // a betting button on one line: the move, then the amount in colour at the same size ("to" gives way first when tight)
   function oneLine(b, word, money) {
-    b.innerHTML = '<span class="one">' + word + ' <b>' + Kit.esc(money) + '</b></span>';
-    b.classList.remove('tight', 'tighter');
-    var fit = function () { var s = b.firstChild; return !s || s.scrollWidth <= b.clientWidth - 16; };
-    requestAnimationFrame(function () { if (!b.isConnected || fit()) return; b.classList.add('tight'); if (!fit()) b.classList.add('tighter'); });
+    var set = function (m) { b.innerHTML = '<span class="one">' + word + ' <b>' + Kit.esc(m) + '</b></span>'; };
+    set(money);
+    // short of room: "to" goes, then the type steps down, then the tag drops under the word, then a huge amount is
+    // written short (1.25M). The buttons in a row take the same step, so they stay one size.
+    var fit = function () { var s = b.firstChild; return !s || s.scrollWidth <= b.clientWidth - 24; };
+    requestAnimationFrame(function () {
+      if (!b.isConnected) return;
+      b.classList.remove.apply(b.classList, FIT);
+      for (var i = 0; i < FIT.length && !fit(); i++) b.classList.add(FIT[i]);
+      b._fit = i;
+      if (!fit()) set(shortAmt(money));
+      var row = b.parentNode, all = row ? [].slice.call(row.children).filter(function (x) { return x._fit != null; }) : [b];
+      var top = Math.max.apply(null, all.map(function (x) { return x._fit; }));
+      all.forEach(function (x) { FIT.forEach(function (c, k) { x.classList.toggle(c, k < top); }); });
+    });
+  }
+  var FIT = ['tight', 'tighter', 'stack'];
+  function shortAmt(m) {
+    var n = parseFloat(String(m).replace(/[^0-9.]/g, '')), pre = /^\$/.test(m) ? '$' : '';
+    if (!(n >= 10000)) return m;
+    var d = n >= 1e6 ? [1e6, 'M'] : [1e3, 'K'], v = n / d[0];
+    return pre + (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + d[1];
   }
   // the slider, with its ends in real amounts (the least you can make it and all you've got), so a bet reads against
   // your stack
@@ -5999,7 +6023,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // Test hook: computer players of the given skills play n cash hands against each other; resolves with each seat's
   // result in big blinds per 100 hands
   window.__pk = {
-    get S() { return S; }, render: function () { renderTable(); }, deal: function () { startHand(); }, learn: function (g) { learnSheet(g); }, _net: { start: netStart, move: netMove, turn: netTurn, bot: netBot, resign: netResign, decide: function (st, i) { return quiet(st, function () { return cpuDecide(i); }); } }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
+    get S() { return S; }, render: function () { renderTable(); }, deal: function () { startHand(); }, learn: function (g) { learnSheet(g); }, oneLine: function (b, w, m) { oneLine(b, w, m); }, _net: { start: netStart, move: netMove, turn: netTurn, bot: netBot, resign: netResign, decide: function (st, i) { return quiet(st, function () { return cpuDecide(i); }); } }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
     ring: function (rec, rain) { if (rain) { var art = el('div', { class: 'pbr-art' }), ov = el('div', { class: 'pbr-ov' }, [art]); document.body.appendChild(ov); braceletInto(art, Object.assign(ringPlate(rec), { rain: true })); } else ringShow(rec); },
     bracelet: function (rec, rain) { if (rain) { var art = el('div', { class: 'pbr-art' }), ov = el('div', { class: 'pbr-ov' }, [art]); document.body.appendChild(ov); braceletInto(art, Object.assign(braceletPlate(rec), { rain: true })); } else braceletShow(rec); },
     peek: function () { return S && { no: S.handNo, phase: S.hand && S.hand.phase, actor: S.hand && S.hand.actor, street: S.hand && S.hand.street, held: !!held }; },
