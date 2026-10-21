@@ -1851,15 +1851,16 @@ function starDome(g, cx, cz, r, stops, n) {
 // an aspen grove in its autumn colour: white trunks, gold and orange crowns, one mesh per colour
 function aspenGrove(g, land, n, o) {
   o = o || {}; const groups = { trunk: [], gold: [], orange: [], lime: [] };
-  const trunk = new THREE.CylinderGeometry(0.07, 0.12, 1, 6, 1).toNonIndexed(), crown = new THREE.SphereGeometry(1, 7, 5).toNonIndexed();
+  const trunk = new THREE.CylinderGeometry(0.045, 0.085, 1, 6, 1).toNonIndexed(), crown = new THREE.SphereGeometry(1, 6, 4).toNonIndexed();
   const put = (k, geo, sx, sy, sz, tx, ty, tz) => { const q = geo.clone(); q.scale(sx, sy, sz); q.translate(tx, ty, tz); groups[k].push(q); };
   for (let i = 0; i < n; i++) {
     const wx = land.cx + (rnd() - 0.5) * land.w * (o.spread || 0.9), wz = land.cz + (rnd() - 0.5) * land.d * (o.spread || 0.9), h = land.at(wx, wz) - land.y;
     if (h > land.tree || h < (o.low == null ? 0.02 : o.low)) continue; if (o.ok && !o.ok(wx, wz, h)) continue;
-    const s = (o.size || 1) * (0.7 + rnd() * 0.6), th = 7 * s, y0 = land.y + h; put('trunk', trunk, s, th, s, wx, y0 + th / 2, wz);
-    const col = pick(['gold', 'gold', 'orange', 'lime']); for (let k = 0; k < 9; k++) { const cs = (0.45 + rnd() * 0.35) * s; put(col, crown, cs, cs * 1.5, cs, wx + (rnd() - 0.5) * 1.6 * s, y0 + th * 0.5 + rnd() * th * 0.55, wz + (rnd() - 0.5) * 1.6 * s); }
+    // a slender white trunk and a narrow crown of many small leaf clusters, like a real aspen, not one round blob
+    const s = (o.size || 1) * (0.7 + rnd() * 0.6), th = (7 + rnd() * 3) * s, y0 = land.y + h; put('trunk', trunk, s, th, s, wx, y0 + th / 2, wz);
+    const col = pick(['gold', 'gold', 'gold', 'orange', 'lime', 'green']); for (let k = 0; k < 16; k++) { const f = k / 16, cs = (0.2 + rnd() * 0.22) * s * (1 - f * 0.45), r = (0.3 + rnd() * 0.5) * s * (1 - f * 0.5), a = rnd() * Math.PI * 2; put(col, crown, cs, cs * 1.35, cs, wx + Math.cos(a) * r, y0 + th * (0.42 + f * 0.58), wz + Math.sin(a) * r); }
   }
-  const cols = { trunk: 0xe8e4dc, gold: 0xe8b020, orange: 0xd86a18, lime: 0xb8c030 };
+  const cols = { trunk: 0xe8e4dc, gold: 0xe0a828, orange: 0xcc6a20, lime: 0xa8b038, green: 0x6a8a30 };
   for (const k in groups) { const parts = groups[k]; if (!parts.length) continue; let cnt = 0; parts.forEach(p => { cnt += p.attributes.position.count; }); const P = new Float32Array(cnt * 3), N = new Float32Array(cnt * 3); let off = 0; parts.forEach(p => { P.set(p.attributes.position.array, off); N.set(p.attributes.normal.array, off); off += p.attributes.position.array.length; }); const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); const m = new THREE.Mesh(geo, M({ color: cols[k], roughness: k === 'trunk' ? 0.7 : 0.85 })); g.add(m); m.userData.flat = 1; }
 }
 // END DECOR
@@ -2451,7 +2452,7 @@ const SCENES = {
     wallWithHole(g, 14, 4.4, M({ map: tex(A ? PAINT.logs('#8a5a30', '#6a4020') : PAINT.adobe('#d89a68'), 14 / 2.4, 4.4 / 2.4), roughness: 0.85 }), B, -2.4, 2.2, 6.2, 3.2);
     glassWall(g, -2.4, 2.2, B + 0.02, 6.2, 3.2, 0); { const fm = M({ color: A ? 0x3a2410 : 0x5a3018, roughness: 0.5 }); for (let i = -2; i <= 2; i++) box(g, 0.08, 3.2, 0.12, fm, -2.4 + i * 1.55, 2.2, B + 0.06); box(g, 6.4, 0.1, 0.14, fm, -2.4, 3.85, B + 0.06); box(g, 6.4, 0.12, 0.3, fm, -2.4, 0.55, B + 0.1); box(g, 6.4, 0.06, 0.12, fm, -2.4, 2.2, B + 0.06); }
     // the land outside: Aspen's peaks under snow with the firs coming down to the lodge; Sedona's red rock in the last of the sun
-    if (A) { const land = landscape(g, { x: -2.4, z: B - 56, w: 160, d: 110, kind: 'alpine', snow: 10, treeline: 9, near: 0.16, scale: 1.1, dust: true }); aspenGrove(g, land, 1400, { size: 0.9, ok: (x, z, h) => z < B - 14 }); forest(g, land, 160, { size: 1.2, low: 2, ok: (x, z, h) => z < B - 20 }); moon(g, 0xffc890, 1.1, [-70, 26, B + 10], [0, 0, B - 50]); starDome(g, 0, B - 20, 160, [[0, '#101a48'], [0.5, '#3a3a78'], [0.8, '#b86a4a'], [1, '#ffb070']], 160); }
+    if (A) { const land = landscape(g, { x: -2.4, z: B - 56, w: 160, d: 110, kind: 'alpine', snow: 10, treeline: 9, near: 0.16, scale: 1.1, dust: true }); aspenGrove(g, land, 900, { size: 0.85, ok: (x, z, h) => z < B - 12 && !(Math.abs(x + 2.4) < 7 && z > B - 46) }); forest(g, land, 160, { size: 1.2, low: 2, ok: (x, z, h) => z < B - 20 }); moon(g, 0xffc890, 0.85, [-70, 26, B + 10], [0, 0, B - 50]); starDome(g, 0, B - 20, 160, [[0, '#101a48'], [0.5, '#3a3a78'], [0.8, '#b86a4a'], [1, '#ffb070']], 160); }
     else { const land = landscape(g, { x: -2.4, z: B - 46, w: 150, d: 90, kind: 'mesa', near: 0.24, scale: 0.6 }); forest(g, land, 320, { size: 1.0, round: true, color: 0x3a5a34, low: 0.02, ok: (x, z, h) => h < 2.5 }); for (const [x, z, sz] of [[-6.5, B - 5, 1.1], [-1.0, B - 7, 0.9], [-4.2, B - 10, 1.3], [2.5, B - 6, 0.8]]) agave(g, x, z, sz); moon(g, 0xffb880, 1.1, [-60, 20, B + 20], [0, 0, B - 40]); moon(g, 0xc8d0ff, 0.5, [-30, 40, B - 100], [0, 0, B - 20]); sph(g, 2.6, glow(0xfff4e0, 6), -30, 34, B - 110, 16); starDome(g, 0, B - 20, 160, [[0, '#04061a'], [0.5, '#101640'], [0.82, '#3a2240'], [1, '#b85a30']], 600); }
     // the beams: log trusses, or round vigas running wall to wall
     if (A) for (let i = 0; i < 4; i++) { const z = 0.6 - i * 2.4; const tb = cyl(g, 0.16, 0.16, 14, logM, 0, 4.1, z, 12); tb.rotation.z = Math.PI / 2; for (const s of [-1, 1]) { const kb = cyl(g, 0.11, 0.11, 2.4, logM, s * 3.2, 3.6, z, 10); kb.rotation.z = s * 1.05; } }
