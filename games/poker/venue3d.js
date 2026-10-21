@@ -181,6 +181,7 @@ const LANDMARK = {
 let V = 'room', STAGE = 'busy', TIER = 'local';
 let SEAT = null, SPOTS = [], LIGHTS = [], FEAT = null, CHAIRS = 'casino', DEALER = true, EXPORT = false, PN = 0;
 const occ = () => (STAGE === 'busy' ? 0.92 : STAGE === 'thin' ? 0.5 : 0);
+let OTHERS = 0;   // other tables built so far: the first one never closes when the field thins, so no room is ever empty
 
 // ── Materials and props ──────────────────────────────────────────────────────────────────────────────────
 let FABRIC = null;
@@ -406,7 +407,7 @@ function pokerTable(g, x, z, o) {
     }
   }
   g.add(t);
-  const closed = !o.mine && (STAGE === 'final' || (STAGE === 'thin' && rnd() < 0.45));
+  const closed = !o.mine && (STAGE === 'final' || (STAGE === 'thin' && OTHERS++ > 0 && rnd() < 0.45));
   const full = o.mine ? (STAGE === 'final' || TIER === 'local' ? 1 : 0.85) : (o.full || 0.85) * occ() / 0.92;
   const wood = M({ map: tex(PAINT.wood(o.wood || '#5a3418', o.wood2 || '#3a200c', 14), 2, 1), roughness: 0.35, envMapIntensity: 0.8 });
   const ap = new THREE.Mesh(new THREE.ExtrudeGeometry(ovalShape(rx + 0.22, rz + 0.22), { depth: 0.1, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2, curveSegments: 6 }), wood);
@@ -3647,7 +3648,7 @@ function setup() {
 }
 function build(key, o) {
   const def = PLACES[key] || PLACES.cardroom;
-  V = o.view === 'seat' ? 'seat' : 'room'; STAGE = o.stage === 'final' ? 'final' : o.stage === 'thin' ? 'thin' : 'busy';
+  V = o.view === 'seat' ? 'seat' : 'room'; STAGE = o.stage === 'final' ? 'final' : o.stage === 'thin' ? 'thin' : 'busy'; OTHERS = 0;
   TIER = LOCALK.test(key) ? 'local' : BIGK.test(key) ? 'big' : 'known';
   SEAT = null; FEAT = null; SPOTS = []; LIGHTS = [];
   DEALER = !LOCALK.test(key) || /^(card\w*|cruise)$/.test(key);
