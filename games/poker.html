@@ -485,8 +485,22 @@
 .pyou .pct{flex:none;font-size:1.2rem;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;}
 .pyou .pct.w{color:var(--red);} .pyou .pct.b{color:var(--orange,#ff8a3d);} .pyou .pct.f{color:var(--yellow);} .pyou .pct.s{color:var(--green);}
 .pyou .n.dim{color:var(--text-2);}
-.pyou.res{font-weight:800;font-size:.86rem;line-height:1.35;color:var(--text);animation:rise .4s var(--ease) both;}
-.pyou.res b{color:var(--yellow);}
+.pyou.res{display:flex;flex-direction:column;gap:7px;font-weight:800;font-size:.86rem;line-height:1.35;color:var(--text);animation:rise .4s var(--ease) both;}
+.pyou.res > b,.pyou.res > span b{color:var(--yellow);}
+.rr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:8px;row-gap:2px;}
+.rr + .rr{padding-top:7px;border-top:1px solid var(--line);}
+.rr .dots{display:flex;}
+.rr .dots i{width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--bg-2);}
+.rr .dots i + i{margin-left:-3px;}
+.rr .w{font-weight:900;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rr .a{font-weight:900;font-size:1.25rem;line-height:1;color:var(--yellow);font-variant-numeric:tabular-nums;}
+.rr.me .a{color:var(--green);}
+.rr .h{grid-column:2 / -1;display:flex;align-items:center;gap:6px;min-width:0;font-size:.8rem;font-weight:800;color:var(--text-2);}
+.rr .h em{flex:none;padding:1px 7px;border-radius:999px;background:var(--w07);font-style:normal;font-size:.62rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
+.rme{display:flex;align-items:baseline;gap:6px;font-size:.78rem;font-weight:800;color:var(--text-3);}
+.rme small{font-size:.6rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;}
+.rme b{font-variant-numeric:tabular-nums;color:var(--text-2);}
+.rme.up b{color:var(--green);} .rme.down b{color:var(--red);}
 .pmeter{position:relative;height:8px;border-radius:4px;background:var(--w12);margin:7px 0 4px;}
 .pmeter > i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .5s var(--ease),background .5s;}
 .pmeter > b{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;border-radius:2px;background:#fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.5);}
@@ -647,7 +661,7 @@
   .pland .stk{--w:20px;} .pland .ppot .stk.big{--w:24px;}
   .pev .t{font-size:1.35rem;} .pev .tg{font-size:.76rem;} .pev .bl{font-size:.95rem;}
   .ptile{padding:6px 11px 7px;} .ptile small{font-size:.64rem;} .ptile b{font-size:1.25rem;} .ptile b span{font-size:.8rem;}
-  .pyou .n{font-size:1.1rem;} .pyou .cap{font-size:.8rem;} .pyou.res{font-size:.98rem;}
+  .pyou .n{font-size:1.1rem;} .pyou .cap{font-size:.8rem;} .pyou.res{font-size:.98rem;} .rr .w{font-size:1.08rem;} .rr .a{font-size:1.45rem;} .rr .h{font-size:.9rem;}
   .plog{font-size:.88rem;} .plog-in{gap:4px;} .mc{font-size:.84rem;}
   .psz .pre button{min-height:40px;font-size:.86rem;} .psz .row button{width:38px;height:38px;}
   .pctl .pbar .btn{min-height:62px;font-size:1.1rem;}
@@ -4488,7 +4502,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function railYou() {
     var H = S.hand; if (!H) return null;
     var box = el('div', { class: 'pyou' }), me = S.players[0];
-    if (H.phase === 'done') { box.classList.add('res'); box.innerHTML = resultText(H); return box; }
+    if (H.phase === 'done') { box.classList.add('res'); return resultBox(H, box); }
     if (!H.inHand[0]) { box.appendChild(el('div', { class: 'n dim', text: me.out ? 'You\'re out: ' + ordinal(me.place) : 'Sitting this one out' })); return box; }
     if (H.folded[0]) { box.appendChild(el('div', { class: 'n dim', text: 'You folded' })); return box; }
     var v = gv();
@@ -4756,6 +4770,43 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var a = h[0] >> 2, b = h[1] >> 2, hi = Math.max(a, b), lo = Math.min(a, b);
     if (a === b) return 'Pair of ' + RP[a];
     return RW[hi] + '-' + RW[lo] + ((h[0] & 3) === (h[1] & 3) ? ' suited' : '');
+  }
+  // the hand's result: each pot's winner with their seat colour and the amount, the hand that won it under that, and
+  // how the hand went for you
+  function resultBox(H, box) {
+    if (H.results.some(function (r) { return r.acey || r.carry; })) { box.innerHTML = resultText(H); return box; }
+    var real = H.results.filter(function (r) { return !r.back; }), fresh = R.resAt !== H.no, me = S.players[0];
+    R.resAt = H.no;
+    if (!real.length) real = H.results.slice(0, 1);
+    real.slice(0, 3).forEach(function (r) {
+      var many = r.w.length > 1, mine = r.w.indexOf(0) >= 0 && !many;   // (a split pot shows the pot; your share is on the You line)
+      var hn = r.fold ? 'Everyone else folded' : r.back ? 'Bet returned' : r.lo ? r.label : r.v != null ? (evBased() && !H.hn ? handName(r.v) : hName(H, r.w[0]) || handName(r.v)) : '';
+      var tag = r.lo ? (gv().chicago ? 'Spade half' : 'Low') : r.half ? 'High' : real.length > 1 ? (r.side ? 'Side pot' : 'Main pot') : many ? 'Split' : '';
+      var who = r.w.map(function (j) { return j === 0 ? 'You' : S.players[j].name; }).join(' & ');
+      var a = el('b', { class: 'a', text: (mine ? '+' : '') + amt(r.amt) });
+      var row = el('div', { class: 'rr' + (mine ? ' me' : '') }, [
+        el('span', { class: 'dots' }, r.w.slice(0, 3).map(function (j) { return el('i', { style: { '--c': seatColor(j) } }); })),
+        el('span', { class: 'w', text: who + (mine && !many ? ' win' : many ? ' split' : ' wins') }),
+        a,
+        hn || tag ? el('span', { class: 'h' }, [tag ? el('em', { text: tag }) : null, hn ? document.createTextNode(hn) : null]) : null]);
+      box.appendChild(row);
+      // the amount counts up the first time the result shows
+      if (fresh && !SIM && r.amt > 0) (function (a, total, pre) {
+        var t0 = 0;
+        requestAnimationFrame(function f(t) {
+          if (!a.isConnected) return;   // (redrawn already: the new one shows the full amount)
+          if (!t0) t0 = t;
+          var k = Math.min(1, (t - t0) / 650), e = 1 - Math.pow(1 - k, 3); a.textContent = pre + amt(Math.round(total * e));
+          if (k < 1) requestAnimationFrame(f);
+        });
+      })(a, r.amt, mine ? '+' : '');
+    });
+    // you this hand
+    if (H.inHand[0] && H.total[0] > 0 && !real.some(function (r) { return r.w.length === 1 && r.w[0] === 0 && real.length === 1; })) {
+      var net = H.won[0] - H.total[0];
+      box.appendChild(el('div', { class: 'rme ' + (net > 0 ? 'up' : net < 0 ? 'down' : '') }, [el('small', { text: 'You' }), el('b', { text: net === 0 ? 'Even' : (net > 0 ? '+' : '\u2212') + amt(Math.abs(net)) }), H.folded[0] ? el('span', { text: 'folded' }) : null]));
+    }
+    return box;
   }
   function resultText(H) {
     var parts = [];
