@@ -437,6 +437,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
   transition:transform .15s var(--spring);-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;animation:sbox-in .35s var(--spring) both;}
 .sbox:active{transform:scale(.95);}
 @keyframes sbox-in{from{opacity:0;transform:translateX(14px) scale(.96);}}
+.rail:not(.editing) .sbox.seen{animation:none;}
 .sbox .art{height:100px;display:grid;place-items:center;position:relative;
   background:radial-gradient(120% 90% at 50% 30%,color-mix(in srgb,var(--c) 78%,#fff 22%),var(--c) 60%,color-mix(in srgb,var(--c) 80%,#000 20%));}
 .sbox .art .gicon{width:64px;height:64px;filter:drop-shadow(0 5px 7px rgba(0,0,0,.3));transition:transform .35s var(--spring);}
@@ -645,6 +646,48 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 .lkm-ok{min-width:180px;margin-top:10px;opacity:0;transition:opacity .4s 1s;}
 .lkm.show .lkm-t,.lkm.show .lkm-s,.lkm.show .lkm-ok{opacity:1;transform:none;}
 @media (prefers-reduced-motion:reduce){.lkm *{transition-duration:.01ms!important;animation:none!important;}}
+
+/* ── Game tiles: the Keep playing box on its side (art square in the section's colour on the left, the name and
+   players on the right), two across on a phone ── */
+:root .tiles .g:not(.ct){aspect-ratio:auto;display:flex;flex-direction:row;border-radius:14px;overflow:hidden;background:var(--surface);
+  box-shadow:0 6px 14px rgba(0,0,0,.18),0 2px 0 color-mix(in srgb,var(--c) 55%,#000 45%);}
+:root[data-theme="light"] .tiles .g:not(.ct),:root[data-theme="parchment"] .tiles .g:not(.ct){background:#fff;box-shadow:0 6px 14px rgba(40,20,80,.12),0 2px 0 color-mix(in srgb,var(--c) 55%,#000 45%);}
+:root .tiles .g:not(.ct):hover{filter:none;}
+:root .tiles .g:not(.ct) .go{position:relative;inset:auto;flex:1;display:flex;flex-direction:row;align-items:stretch;gap:0;padding:0;border-radius:0;--arth:76px;min-height:76px;text-align:left;}
+:root .tiles .g:not(.ct) .go::after{display:none;}
+:root .tiles .g:not(.ct) .go::before{content:"";flex:none;display:block;width:var(--arth);min-height:var(--arth);
+  background:radial-gradient(120% 90% at 50% 30%,color-mix(in srgb,var(--c) 78%,#fff 22%),var(--c) 60%,color-mix(in srgb,var(--c) 80%,#000 20%));}
+:root .tiles .g:not(.ct) .gicon{position:absolute;z-index:1;width:62px;height:62px;left:calc(var(--arth) / 2 - 31px);top:calc(50% - 30px);filter:drop-shadow(0 5px 7px rgba(0,0,0,.3));}
+:root .tiles .g:not(.ct) .go:active .gicon{transform:scale(.9) rotate(-6deg);}
+:root .tiles .g:not(.ct) .txt{position:static;inset:auto;display:block;flex:1;min-width:0;align-self:center;padding:8px 26px 8px 10px;}
+:root .tiles .g:not(.ct) .txt b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:.86rem;line-height:1.15;color:var(--text);text-shadow:none;white-space:normal;overflow:hidden;}
+:root .tiles .g:not(.ct) .txt b.long,:root .tiles .g:not(.ct) .txt b.two{font-size:.78rem;}
+:root .tiles .g:not(.ct) .meta{position:static;margin-top:4px;font-size:.7rem;font-weight:900;color:var(--text-3);text-shadow:none;}
+:root .tiles .g:not(.ct) .meta .ico{width:12px;height:12px;}
+:root .tiles .g:not(.ct) .live{position:static;display:inline-block;margin-top:4px;font-size:.58rem;padding:2px 7px;}
+:root .tiles .g:not(.ct) .fav{top:auto;bottom:0;left:auto;right:0;width:32px;height:32px;color:var(--text-3);opacity:1;}
+:root .tiles .g:not(.ct) .fav .ico{width:16px;height:16px;}
+:root .tiles .g:not(.ct) .fav:not(.on){opacity:.55;}
+:root .tiles .g:not(.ct) .fav.on{color:#ffd84d;opacity:1;}
+:root .list.tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+@media (min-width:720px){:root .list.tiles{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media (min-width:1080px){:root .list.tiles{grid-template-columns:repeat(4,minmax(0,1fr));}}
+/* section headers: the icon in a badge of the section's colour (the same as its tiles' art), the count as a pill */
+.sec[style*="--sc"] > .sec-h > span:first-child,.sec-h > .kp-ic{flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+  background:radial-gradient(120% 90% at 50% 30%,color-mix(in srgb,var(--sc) 78%,#fff 22%),var(--sc) 60%,color-mix(in srgb,var(--sc) 80%,#000 20%));
+  box-shadow:0 2px 0 color-mix(in srgb,var(--sc) 55%,#000 45%);}
+.sec[style*="--sc"] > .sec-h > span:first-child .ico,.sec-h > .kp-ic .ico{width:17px;height:17px;color:#fff;}
+.sec-h > .kp-ic{--sc:hsl(28 92% 52%);}
+.sec-h .n{padding:1px 8px;border-radius:999px;background:var(--w07,rgba(255,255,255,.07));font-size:.8rem;}
+:root[data-theme="light"] .sec-h .n,:root[data-theme="parchment"] .sec-h .n{background:rgba(40,20,80,.07);}
+.sec-h .n:empty{display:none;}
+/* Keep playing: a tall, thin arrow at the shelf's right edge while there's more to see; tap it to slide along */
+.shelf-w{position:relative;}
+.shelf-more{position:absolute;z-index:2;top:4px;bottom:12px;right:calc(var(--pad,16px) * -1);width:30px;padding:0;border:0;cursor:pointer;display:grid;place-items:center;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--bg,#141029) 85%,transparent) 55%);color:var(--text);transition:opacity .2s;}
+.shelf-more svg{width:12px;height:46px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));}
+.shelf-more.off{opacity:0;pointer-events:none;}
+.shelf-more:active svg{transform:translateX(2px);}
 </style>
 </head>
 <body>
@@ -674,7 +717,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   </div>
 
   <section class="sec" id="cont-sec" hidden>
-    <div class="sec-h"><h2>Keep playing</h2><span class="n" id="cont-n"></span><button type="button" class="cont-edit" id="cont-edit" hidden>Edit</button></div>
+    <div class="sec-h"><span class="kp-ic" id="kp-ic"></span><h2>Keep playing</h2><span class="n" id="cont-n"></span><button type="button" class="cont-edit" id="cont-edit" hidden>Edit</button></div>
     <div class="rail" id="rail"></div>
     <div class="cont-foot" id="cont-foot"></div>
   </section>
@@ -873,7 +916,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
 
   function section(title, ic, games, extra, favs) {
-    var s = el('section', { class: 'sec' + (favs ? ' favs' : '') });
+    var sc = GAME_CATS.filter(function (x) { return x.id === ic; })[0];
+    var s = el('section', { class: 'sec' + (favs ? ' favs' : ''), style: sc ? { '--sc': 'hsl(' + sc.hue + ' ' + sc.sat + '% 46%)' } : null });
     var h = el('div', { class: 'sec-h' }, [el('span', { html: Kit.icon(ic) }), el('h2', { text: title }), el('span', { class: 'n', text: String(games.length) })]);
     if (extra) h.appendChild(extra);
     s.appendChild(h);
@@ -1437,8 +1481,12 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
   $('otb').addEventListener('click', function () { Kit.sfx('tap'); Kit.haptic('light'); openTablesSheet(); });
   $('otb-go').innerHTML = Kit.icon('right');
+  $('kp-ic').innerHTML = Kit.icon('play');
 
   var railItems = [];   // (railItems: the games in progress Keep playing shows right now)
+  // a redraw only rebuilds the row when something in it changed, and a box only slides in the first time it shows
+  // (a sync arriving redraws home; the row used to replay its entrance each time)
+  var railSig = '', railSeen = {};
   function currentItems() {
     resumeMap = resumeRead();
     return Object.keys(resumeMap).map(function (id) { return { g: findGame(id), r: resumeMap[id] }; })
@@ -1453,6 +1501,10 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var items = currentItems().filter(function (x) { return !narrowed || (vis.indexOf(x.g) >= 0 && (state.cat === 'all' || (state.cat === 'fav' ? isFav(x.g) : x.g.cat === state.cat))); });
     railItems = items;
     if (!items.length) editing = false;
+    var nets0 = netTurns.map(function (x) { return x.id + ':' + x.code + ':' + (x.at || 0) + ':' + (x.mine ? 1 : 0) + ':' + (x.vs || ''); });
+    var sig = JSON.stringify([editing, !!undoList, Math.floor(Date.now() / 6e4), items.map(function (x) { return x.g.id + ':' + x.r.ts + ':' + (x.r.label || '') + ':' + (x.r.file || ''); }), nets0]);
+    if (sig === railSig) return;
+    railSig = sig;
     var rail = $('rail'), was = rail.querySelector('.shelf'), sx = was ? was.scrollLeft : 0;
     rail.innerHTML = ''; rail.classList.toggle('editing', editing);
     var eb = $('cont-edit'); eb.hidden = !items.length; eb.textContent = editing ? 'Done' : 'Edit'; eb.classList.toggle('on', editing);
@@ -1460,9 +1512,16 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g; }).sort(function (a, b) { return (b.n.at || 0) - (a.n.at || 0); });
     if (items.length) {
       var shelf = el('div', { class: 'shelf' });
-      items.forEach(function (x) { shelf.appendChild(shelfBox(x)); });
-      rail.appendChild(shelf);
+      items.forEach(function (x) { var bx = shelfBox(x); if (railSeen[x.g.id]) bx.classList.add('seen'); railSeen[x.g.id] = 1; shelf.appendChild(bx); });
+      // the arrow at the right edge: there while there's more to the right; a tap slides the shelf along
+      var more = el('button', { type: 'button', class: 'shelf-more off', 'aria-label': 'More games in progress',
+        html: '<svg viewBox="0 0 12 46" aria-hidden="true"><path d="M2 2l8 21-8 21" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        onclick: function () { Kit.sfx('tap'); shelf.scrollBy({ left: shelf.clientWidth * 0.8, behavior: 'smooth' }); } });
+      var edge = function () { more.classList.toggle('off', shelf.scrollLeft + shelf.clientWidth >= shelf.scrollWidth - 8); };
+      shelf.addEventListener('scroll', edge, { passive: true });
+      rail.appendChild(el('div', { class: 'shelf-w' }, [shelf, more]));
       if (sx) shelf.scrollLeft = sx;
+      requestAnimationFrame(edge);
     }
     if (nets.length) {
       var ns = el('div', { class: 'nstack' });
