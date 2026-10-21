@@ -1797,7 +1797,8 @@ function landscape(g, o) {
     if (kind === 'alpine') { const ridge = 1 - Math.abs(n2(lx, ly, 0.045)); return S * (Math.pow(v, 1.3) * 26 * (0.55 + 0.45 * ridge) + Math.max(0, n2(lx, ly, 0.13)) * 4 * v + Math.abs(n2(lx, ly, 0.4)) * 0.6 * v) * rim; }
     if (kind === 'mesa') { const n = n2(lx, ly, 0.05), b = Math.max(0, n - 0.1) * 6; const crag = Math.min(1, b) * (1 - Math.min(1, b)) * 4 * Math.abs(n2(lx, ly, 0.35)) + Math.min(1, b) * Math.abs(n2(lx, ly, 0.22)) * 1.6; const mesa = Math.min(1, b) * 14 * (0.5 + v * 0.7) + crag; const ground = Math.max(0, n2(lx, ly, 0.2)) * 1.2 + Math.abs(n2(lx, ly, 0.5)) * 0.3; return S * (Math.max(mesa, 0) + ground + v * 6) * rim; }
     if (kind === 'hills') return S * (Math.pow(v, 1.4) * 9 * (0.6 + 0.4 * n2(lx, ly, 0.06)) + Math.abs(n2(lx, ly, 0.2)) * 1.5 * v) * rim;
-    return S * Math.pow(v, 1.5) * 18 * (0.6 + 0.4 * n2(lx, ly, 0.05)) * rim;   // a long wall of mountains
+    // a long wall of mountains: the big mass, then ridges and gullies cut into its face so the light rakes across it
+    return S * (Math.pow(v, 1.5) * 18 * (0.6 + 0.4 * n2(lx, ly, 0.05)) + Math.abs(n2(lx, ly, 0.11)) * 5 * v + Math.abs(n2(lx, ly, 0.3)) * 1.6 * v + Math.abs(n2(lx, ly, 0.8)) * 0.4 * v) * rim;
   };
   const geo = new THREE.PlaneGeometry(w, d, seg, seg), pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) pos.setZ(i, hf(pos.getX(i), pos.getY(i)));
@@ -1811,6 +1812,7 @@ function landscape(g, o) {
       let r, gg, b;
       if (kind === 'mesa') { const band = Math.floor(h / 1.1) % 3, t = 0.5 + band * 0.11 + Math.sin(h * 4.1) * 0.07 + (Math.abs(h / 1.1 - Math.round(h / 1.1)) < 0.08 ? -0.18 : 0); if (h < 1.2) { r = 150 + Math.sin(lx * 0.3) * 10; gg = 110; b = 80; if (sl < 0.2 && rnd() < 0.08) { r = 60; gg = 80; b = 50; } } else { r = 190 * t + 20; gg = 80 * t + 10; b = 55 * t; if (sl < 0.25 && h > 3) { r *= 0.9; gg *= 0.95; } if (sl > 0.6) { r *= 0.72; gg *= 0.68; b *= 0.68; } } }
       else if (kind === 'hills') { const t = sl; r = 30 + t * 50; gg = 60 + t * 30; b = 30 + t * 20; if (h < 0.3) { r = 40; gg = 70; b = 40; } }
+      else if (kind === 'wall') { const lit = 1 - sl * 0.75, gully = n2(lx, ly, 0.3) < -0.45 ? 0.6 : 1; r = (96 + 94 * lit) * gully; gg = (72 + 68 * lit) * gully; b = (58 + 50 * lit) * gully; if (h < 1.0) { r = 150; gg = 125; b = 95; } }
       else { if (h > snow && sl < 0.75) { const k = 1 - sl * 0.4; r = 230 * k; gg = 236 * k; b = 250 * k; } else if (h > tree) { const k = 0.7 + sl * 0.3; r = 92 * k; gg = 86 * k; b = 84 * k; } else if (o.dust) { const k = 0.85 + sl * 0.15, p = n2(lx * 2.3, ly * 2.3, 0.9) > 0.25 && sl < 0.4; r = (p ? 226 : 112) * k; gg = (p ? 232 : 96) * k; b = (p ? 240 : 58) * k; } else { const k = 0.8 + sl * 0.2; r = 34 * k; gg = 54 * k; b = 34 * k; } }
       const i = (py * cw + qx) * 4; const dn = (rnd() - 0.5) * 14; px[i] = r + dn; px[i + 1] = gg + dn; px[i + 2] = b + dn; px[i + 3] = 255;
     }
