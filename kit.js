@@ -14,7 +14,7 @@
 //   Kit.setup(root, {...})                     standard "who's playing" screen
 //   Kit.handoff({name, color, what}) -> Promise  pass-and-play cover; hold 3s to reveal
 //   Kit.win({...})                             celebration + results card
-//   Kit.sheet({title, html|node, actions})     bottom sheet; returns {close}
+//   Kit.sheet({title, html|node, actions})     bottom sheet; returns {close}. An action can have a short second line: {label, sub}
 //   Kit.confirm(msg, {ok, danger})             -> Promise<bool>
 //   Kit.toast(msg)   Kit.callout(text)         quick feedback
 //   Kit.confetti()   Kit.sfx(name, vol?)   Kit.haptic(kind)
@@ -488,8 +488,8 @@
       var acts = el('div', { class: 'k-acts' });
       o.actions.forEach(function (a) {
         acts.appendChild(el('button', {
-          class: 'btn btn-block ' + (a.cls || (a.primary ? 'btn-primary' : a.danger ? 'btn-red' : 'btn-soft')),
-          type: 'button', text: a.label,
+          class: 'btn btn-block ' + (a.cls || (a.primary ? 'btn-primary' : a.danger ? 'btn-red' : 'btn-soft')) + (a.sub ? ' k-two' : ''),
+          type: 'button', text: a.sub ? null : a.label, html: a.sub ? esc(a.label) + '<small>' + esc(a.sub) + '</small>' : null,
           onclick: function () { if (closed) return; sfx('tap'); haptic('light'); if (!a.keep) close(); if (a.onClick) a.onClick(); }   // a second tap while it closes does nothing
         }));
       });
