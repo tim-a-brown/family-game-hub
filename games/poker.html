@@ -533,7 +533,6 @@
 .pyou .cap i{font-style:normal;} .pyou.wbm .cap i{display:none;}   /* beside the best move, the count of players gives way */
 .pyou .cap .ok{color:var(--green);} .pyou .cap .no{color:var(--red);}
 .plog{flex:1 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:0 4px;font-size:.76rem;font-weight:700;color:var(--text-2);}
-.plog.tiny{visibility:hidden;}
 .plog{position:relative;}
 /* "see the whole log": a small round chip, centred on the last line */
 .plog .more{position:absolute;right:10px;bottom:calc(var(--lpb,14px) + var(--lh,17px) / 2 - 11px);width:22px;height:22px;display:grid;place-items:center;border-radius:50%;
@@ -542,10 +541,14 @@
 .plog.tap:active .more{background:var(--yellow-fill);color:#2b1a00;}
 .plog-in{padding-right:26px;}
 
-.plog.one .plog-in{-webkit-mask-image:none;mask-image:none;justify-content:center;}
-.plog.one .plog-in > div:not(:last-child){display:none;}
-.plog.one .plog-in > div.win{display:flex;}
-.plog.one .plog-in > div.win .cs{display:none;}
+.plog.tk{flex:none;display:block;}
+.plog.tk .more{top:50%;bottom:auto;margin-top:-11px;}
+.plog.tk .plog-in{display:grid;grid-template-columns:minmax(0,1fr);justify-content:stretch;overflow:hidden;min-height:17px;-webkit-mask-image:none;mask-image:none;}
+.plog.tk .plog-in > div{grid-area:1 / 1;align-self:center;margin:0;}
+.plog.tk .in{animation:tkin .45s var(--ease) both;}
+.plog.tk .out{animation:tkout .45s var(--ease) both;color:var(--text-2);}
+@keyframes tkin{from{transform:translateY(115%);opacity:0;}}
+@keyframes tkout{to{transform:translateY(-115%);opacity:0;}}
 .plog-in{flex:1 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;
   -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 20px);mask-image:linear-gradient(180deg,transparent 0,#000 20px);}   /* older lines slide up under the section above */
 .plog-in > div{display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;min-height:17px;flex:none;}
@@ -626,7 +629,7 @@
 .pland .prail{grid-column:2;grid-row:1;padding-top:2px;gap:8px;}
 .stage.pland{padding-right:calc(var(--corner-x) + 10px);}
 /* the reading card: one panel, sections split by hairlines */
-.pside{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border-radius:var(--r);overflow:hidden;background:var(--w05);box-shadow:inset 0 0 0 1px var(--line);}
+.pside{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;border-radius:var(--r);overflow:hidden;background:var(--w05);box-shadow:inset 0 0 0 1px var(--line);}
 .pside > *{flex:none;background:none !important;box-shadow:none !important;border-radius:0 !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}
 .pside > * + *{border-top:1px solid var(--line);}
 .pside .pev{padding:8px 12px 9px;}
@@ -636,7 +639,8 @@
 .pside .ptile:nth-child(n+3){border-top:1px solid var(--line);}
 .pside .pyou{padding:8px 12px;}
 .pside .pstand{padding:7px 12px;}
-.pside .plog{--lpb:14px;--lh:17px;flex:1 1 0;padding:4px 14px var(--lpb);}
+.pside .plog{padding:8px 40px 9px 14px;}
+.pdeck{margin-top:auto;}   /* the buttons stay at the bottom, under your thumb */
 /* the deck you act on */
 /* the whole table's log, over the sidebar */
 .pfull{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line),var(--shadow-sm);animation:rise .25s var(--ease) both;}
@@ -672,13 +676,13 @@
 .pland .pme .peq{left:auto;right:0;transform:none;bottom:100%;}
 @media (max-height:500px){
   .pland .prail{gap:6px;}
-  .pside .pev{padding:6px 11px 7px;} .pside .ptile{padding:4px 11px 5px;} .pside .pyou{padding:6px 11px;} .pside .plog{--lpb:12px;padding:3px 13px var(--lpb);}
+  .pside .pev{padding:6px 11px 7px;} .pside .ptile{padding:4px 11px 5px;} .pside .pyou{padding:6px 11px;} .pside .plog{padding:6px 38px 7px 13px;}
   .pdeck{--pd:7px;gap:7px;}
   .pland .ptiles .ptile:nth-child(n+3){display:none;}
   .pland .pev{padding:6px 10px 7px;} .pland .pev .t{font-size:1rem;} .pland .pev .lvrow{margin-top:4px;} .pland .pev .meta{margin-top:3px;}
   .pland .pev .tg{padding:1px 7px;font-size:.62rem;} .pland .pev .bl{font-size:.76rem;}
   .pland .pyou .pct{font-size:1.02rem;} .pland .ptile b{font-size:.98rem;}
-  .pland .pyou{padding:6px 10px;} .pland .pyou .n{font-size:.88rem;} .pland .pyou.wbm{column-gap:8px;} .pland .pbm-b{padding:5px 9px 5px 7px;gap:4px;} .pland .pbm-b .ic .ico{width:15px;height:15px;} .pland .pbm-b b{font-size:.88rem;} .pland .pmeter{margin:5px 0 3px;height:7px;}
+  .pland .pyou{padding:6px 10px;} .pland .pyou .n{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .pland .pyou.wbm{column-gap:8px;} .pland .pbm-b{padding:5px 9px 5px 7px;gap:4px;} .pland .pbm-b .ic .ico{width:15px;height:15px;} .pland .pbm-b b{font-size:.88rem;} .pland .pmeter{margin:5px 0 3px;height:7px;}
   .pland .psz{padding:5px 6px 5px;} .pland .psz .pre button{min-height:38px;font-size:.82rem;} .pland .psz .row{margin-top:4px;}
   .pland .psz .row button{width:38px;height:38px;} .pland .psz input[type=range]{height:30px;}
   /* while you size a bet (or line up three pre-moves) there's no room for everything: the two info tiles step aside */
@@ -692,7 +696,7 @@
   .pev .t{font-size:1.35rem;} .pev .tg{font-size:.76rem;} .pev .bl{font-size:.95rem;}
   .ptile{padding:6px 11px 7px;} .ptile small{font-size:.64rem;} .ptile b{font-size:1.25rem;} .ptile b span{font-size:.8rem;}
   .pyou .n{font-size:1.1rem;} .pyou .cap{font-size:.8rem;} .pyou.res{font-size:.98rem;} .rr .w{font-size:1.08rem;} .rr .a{font-size:1.45rem;} .rr .h{font-size:.9rem;}
-  .plog{font-size:.88rem;} .pside .plog{--lh:21px;} .plog-in{gap:4px;} .mc{font-size:.84rem;}
+  .plog{font-size:.88rem;} .plog-in{gap:4px;} .mc{font-size:.84rem;}
   .psz .pre button{min-height:40px;font-size:.86rem;} .psz .row button{width:38px;height:38px;}
   .pctl .pbar .btn{min-height:62px;font-size:1.1rem;}
   .ppre button{min-height:50px;font-size:.9rem;}
@@ -4773,21 +4777,23 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var v = { Fold: ['fold', 'folds'], Check: ['check', 'checks'], Call: ['call', 'calls'], Bet: ['bet', 'bets'], 'Raise to': ['raise to', 'raises to'], 'All in': ['go all in', 'is all in'], Rebuys: ['rebuy', 'rebuys'], 'Sits down': ['sit down', 'sits down'], Draws: ['draw', 'draws'], 'Stands pat': ['stand pat', 'stands pat'], Throws: ['throw away', 'throws away'] }[m[1]];
     return (you ? 'You ' : (nm || S.players[i].name) + ' ') + (v ? v[you ? 0 : 1] : t.toLowerCase()) + m[2];
   }
+  // the latest thing that happened, one line; each new one rolls in from below as the last one rolls away. The arrow
+  // opens the whole log
   function railLog() {
-    var H = S.hand, box = el('div', { class: 'plog' }), inner = el('div', { class: 'plog-in' });
+    var H = S.hand, box = el('div', { class: 'plog tk' }), inner = el('div', { class: 'plog-in' });
     box.appendChild(inner);
-    // room for one line: just the latest; less than that: leave the space empty rather than show a sliver
-    var more = el('span', { class: 'more', 'aria-hidden': 'true', html: Kit.icon('right') });
-    // the arrow chip sits on the last line, whatever that line is (a line of text or a winner's cards)
-    function placeMore() {
-      var last = inner.lastElementChild; if (!last || !box.isConnected) return;
-      var t = last.querySelector('.cs') || last, r = t.getBoundingClientRect(), b = box.getBoundingClientRect();
-      more.style.top = Math.round(r.top - b.top + r.height / 2 - 11) + 'px'; more.style.bottom = 'auto';
+    box.appendChild(el('span', { class: 'more', 'aria-hidden': 'true', html: Kit.icon('right') }));
+    if (!H || !H.log.length) return box;
+    var e = H.log[H.log.length - 1], k = S.handNo + ':' + H.log.length, now = Date.now(), T = R.tick;
+    if (!T || T.k !== k) R.tick = T = { k: k, e: e, pe: T && T.e, t: now };
+    var row = logRow(e), age = now - T.t;
+    if (T.pe && age < 450) {
+      // a redraw mid-roll picks the motion up where it was
+      var old = logRow(T.pe); old.classList.add('out'); row.classList.add('in');
+      old.style.animationDelay = row.style.animationDelay = -age + 'ms';
+      inner.appendChild(old);
     }
-    if (window.ResizeObserver) new ResizeObserver(function () { var h = box.clientHeight; box.classList.toggle('one', h < 44 && h >= 22); box.classList.toggle('tiny', h < 22); requestAnimationFrame(placeMore); }).observe(box);
-    box.appendChild(more);
-    if (!H) return box;
-    H.log.slice(-9).forEach(function (e) { inner.appendChild(logRow(e)); });
+    inner.appendChild(row);
     return box;
   }
   function logRow(e) {
