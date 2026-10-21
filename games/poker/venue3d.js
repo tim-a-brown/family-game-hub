@@ -1850,7 +1850,7 @@ function starDome(g, cx, cz, r, stops, n) {
 }
 // an aspen grove in its autumn colour: white trunks, gold and orange crowns, one mesh per colour
 function aspenGrove(g, land, n, o) {
-  o = o || {}; const groups = { trunk: [], gold: [], orange: [], lime: [] };
+  o = o || {}; const groups = { trunk: [], gold: [], orange: [], lime: [], green: [] };
   const trunk = new THREE.CylinderGeometry(0.045, 0.085, 1, 6, 1).toNonIndexed(), crown = new THREE.SphereGeometry(1, 6, 4).toNonIndexed();
   const put = (k, geo, sx, sy, sz, tx, ty, tz) => { const q = geo.clone(); q.scale(sx, sy, sz); q.translate(tx, ty, tz); groups[k].push(q); };
   for (let i = 0; i < n; i++) {
