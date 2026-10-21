@@ -4063,8 +4063,25 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function at(node, p) { node.classList.add('pa'); node.style.left = p[0] + '%'; node.style.top = p[1] + '%'; return node; }
   var R = {}, raiseUI = null, tableEl = null, potEl = null, seatEls = [], betEls = [];
 
+  // A tap in progress keeps the table still: the table redraws whenever anyone acts, and a redraw between finger down
+  // and finger up swaps the button under the finger for a new one, so the tap was lost and needed another. While a
+  // button or tappable panel is pressed, a redraw waits for the press to end (at most 1.5s).
+  var PRESS = null, PRESS_T = 0, PRESS_DUE = null;
+  function pressEnd() {
+    if (PRESS == null) return;
+    PRESS = null; clearTimeout(PRESS_T);
+    if (PRESS_DUE) { var due = PRESS_DUE; PRESS_DUE = null; setTimeout(function () { if (S && S.kind === 'table' && PRESS == null) renderTable(due.final); }, 80); }
+  }
+  document.addEventListener('pointerdown', function (e) {
+    var t = e.target && e.target.closest && e.target.closest('button, .tap, input, label');
+    if (!t || !app.contains(t)) return;
+    PRESS = e.pointerId; clearTimeout(PRESS_T); PRESS_T = setTimeout(pressEnd, 1500);
+  }, true);
+  document.addEventListener('pointerup', pressEnd, true);
+  document.addEventListener('pointercancel', pressEnd, true);
   function renderTable(final) {
     if (SIM || QUIET) return;
+    if (PRESS != null) { PRESS_DUE = { final: final }; return; }
     var H = S.hand, n = N(), land = LANDQ.matches, lay = (land ? LAYL : LAY)[n];
     orient('landscape');
     app.innerHTML = '';
