@@ -592,6 +592,9 @@
 .pctl .pbar .btn.pleave{flex:0 0 auto;padding:0 16px;}
 .pctl .pbar .btn small{display:block;font-size:.72rem;opacity:.85;font-variant-numeric:tabular-nums;}
 .pctl .pbar .btn-yellow{flex-grow:1.25;}
+.pctl .pbar .btn .one{white-space:nowrap;} .pctl .pbar .btn .one i{font-style:normal;}
+.pctl .pbar .btn .one b{font-weight:inherit;color:#0a5c2e;font-variant-numeric:tabular-nums;}
+.pctl .pbar .btn.tight .one i{display:none;} .pctl .pbar .btn.tighter{font-size:.86rem;}
 .pctl.mine .pbar .btn{animation:rise .3s var(--ease) both;}
 .pwait{display:flex;align-items:center;justify-content:center;gap:8px;min-height:30px;color:var(--text-2);font-weight:800;font-size:.86rem;text-align:center;}
 .pwait .think::after{content:"";display:inline-block;width:1.2em;text-align:left;animation:dots 1.2s steps(4) infinite;}
@@ -5139,7 +5142,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         if (!rb) return;
         if (!S.limit && !SZ) return;
         var to = S.limit ? o.minTo : SZ.to, all = to >= o.all;
-        rb.innerHTML = '<span class="two">' + (all ? 'All in' : o.isBet ? 'Bet' : 'Raise') + '<small>' + (all || o.isBet ? '' : 'to ') + amt(to) + '</small></span>';
+        // one line: the move, then the amount in green at the same size ("to" gives way first when it's tight)
+        rb.innerHTML = '<span class="one">' + (all ? 'All in' : o.isBet ? 'Bet' : 'Raise<i> to</i>') + ' <b>' + amt(to) + '</b></span>';
+        rb.classList.remove('tight', 'tighter');
+        var fit = function () { var s = rb.firstChild; return !s || s.scrollWidth <= rb.clientWidth - 8; };
+        requestAnimationFrame(function () { if (!rb.isConnected || fit()) return; rb.classList.add('tight'); if (!fit()) rb.classList.add('tighter'); });
       }
       paintRb();
       box.appendChild(bar);
