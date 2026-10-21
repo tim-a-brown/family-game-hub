@@ -1784,7 +1784,7 @@ function landscape(g, o) {
   const hf = (lx, ly) => {
     const v = far(ly), rim = Math.min(1, Math.max(0, (0.5 - Math.abs(lx / w)) * 6));
     if (kind === 'alpine') { const ridge = 1 - Math.abs(n2(lx, ly, 0.045)); return S * (Math.pow(v, 1.3) * 26 * (0.55 + 0.45 * ridge) + Math.max(0, n2(lx, ly, 0.13)) * 4 * v + Math.abs(n2(lx, ly, 0.4)) * 0.6 * v) * rim; }
-    if (kind === 'mesa') { const n = n2(lx, ly, 0.05), b = Math.max(0, n - 0.1) * 2.2; const mesa = Math.min(1, b) * 14 * (0.5 + v * 0.7); const ground = Math.max(0, n2(lx, ly, 0.2)) * 1.2 + Math.abs(n2(lx, ly, 0.5)) * 0.3; return S * (Math.max(mesa, 0) + ground + v * 6) * rim; }
+    if (kind === 'mesa') { const n = n2(lx, ly, 0.05), b = Math.max(0, n - 0.1) * 6; const mesa = Math.min(1, b) * 14 * (0.5 + v * 0.7); const ground = Math.max(0, n2(lx, ly, 0.2)) * 1.2 + Math.abs(n2(lx, ly, 0.5)) * 0.3; return S * (Math.max(mesa, 0) + ground + v * 6) * rim; }
     if (kind === 'hills') return S * (Math.pow(v, 1.4) * 9 * (0.6 + 0.4 * n2(lx, ly, 0.06)) + Math.abs(n2(lx, ly, 0.2)) * 1.5 * v) * rim;
     return S * Math.pow(v, 1.5) * 18 * (0.6 + 0.4 * n2(lx, ly, 0.05)) * rim;   // a long wall of mountains
   };
@@ -1798,9 +1798,9 @@ function landscape(g, o) {
       const lx = (qx / (cw - 1) - 0.5) * w, ly = (0.5 - py / (ch - 1)) * d, h = hf(lx, ly);
       const sl = Math.min(1, (Math.abs(hf(lx + e, ly) - hf(lx - e, ly)) + Math.abs(hf(lx, ly + e) - hf(lx, ly - e))) / (4 * e) * 1.2);
       let r, gg, b;
-      if (kind === 'mesa') { const band = Math.floor(h / 1.6) % 2, t = 0.55 + band * 0.12 + Math.sin(h * 2.1) * 0.06; if (h < 1.2) { r = 150 + Math.sin(lx * 0.3) * 10; gg = 110; b = 80; if (sl < 0.2 && rnd() < 0.08) { r = 60; gg = 80; b = 50; } } else { r = 190 * t + 20; gg = 80 * t + 10; b = 55 * t; if (sl < 0.25 && h > 3) { r *= 0.9; gg *= 0.95; } } }
+      if (kind === 'mesa') { const band = Math.floor(h / 1.6) % 2, t = 0.55 + band * 0.12 + Math.sin(h * 2.1) * 0.06; if (h < 1.2) { r = 150 + Math.sin(lx * 0.3) * 10; gg = 110; b = 80; if (sl < 0.2 && rnd() < 0.08) { r = 60; gg = 80; b = 50; } } else { r = 190 * t + 20; gg = 80 * t + 10; b = 55 * t; if (sl < 0.25 && h > 3) { r *= 0.9; gg *= 0.95; } if (sl > 0.6) { r *= 0.72; gg *= 0.68; b *= 0.68; } } }
       else if (kind === 'hills') { const t = sl; r = 30 + t * 50; gg = 60 + t * 30; b = 30 + t * 20; if (h < 0.3) { r = 40; gg = 70; b = 40; } }
-      else { if (h > snow && sl < 0.75) { const k = 1 - sl * 0.4; r = 230 * k; gg = 236 * k; b = 250 * k; } else if (h > tree) { const k = 0.7 + sl * 0.3; r = 92 * k; gg = 86 * k; b = 84 * k; } else { const k = 0.8 + sl * 0.2; r = 34 * k; gg = 54 * k; b = 34 * k; } }
+      else { if (h > snow && sl < 0.75) { const k = 1 - sl * 0.4; r = 230 * k; gg = 236 * k; b = 250 * k; } else if (h > tree) { const k = 0.7 + sl * 0.3; r = 92 * k; gg = 86 * k; b = 84 * k; } else if (o.dust) { const k = 0.85 + sl * 0.15, p = n2(lx * 2.3, ly * 2.3, 0.9) > 0.25 && sl < 0.4; r = (p ? 226 : 112) * k; gg = (p ? 232 : 96) * k; b = (p ? 240 : 58) * k; } else { const k = 0.8 + sl * 0.2; r = 34 * k; gg = 54 * k; b = 34 * k; } }
       const i = (py * cw + qx) * 4; const dn = (rnd() - 0.5) * 14; px[i] = r + dn; px[i + 1] = gg + dn; px[i + 2] = b + dn; px[i + 3] = 255;
     }
     x.putImageData(img, 0, 0);
@@ -1841,6 +1841,20 @@ function wallWithHole(g, w, h, mat, z, hx, hy, hw, hh, ry) {
 function starDome(g, cx, cz, r, stops, n) {
   const c = canvas(1024, 512, (x, w, h) => { const g2 = x.createLinearGradient(0, 0, 0, h); stops.forEach(([p, col]) => g2.addColorStop(p, col)); x.fillStyle = g2; x.fillRect(0, 0, w, h); for (let i = 0; i < (n || 900); i++) { x.fillStyle = 'rgba(255,255,255,' + (0.3 + rnd() * 0.7) + ')'; const s = 0.8 + rnd() * 1.6; x.fillRect(rnd() * w, rnd() * h * 0.75, s, s); } });
   const m = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 24, 0, Math.PI * 2, 0, Math.PI * 0.52), unlit(c, 0.9)); m.material.side = THREE.BackSide; m.position.set(cx, -r * 0.03, cz); g.add(m); m.userData.flat = 1; return m;
+}
+// an aspen grove in its autumn colour: white trunks, gold and orange crowns, one mesh per colour
+function aspenGrove(g, land, n, o) {
+  o = o || {}; const groups = { trunk: [], gold: [], orange: [], lime: [] };
+  const trunk = new THREE.CylinderGeometry(0.07, 0.12, 1, 6, 1).toNonIndexed(), crown = new THREE.SphereGeometry(1, 7, 5).toNonIndexed();
+  const put = (k, geo, sx, sy, sz, tx, ty, tz) => { const q = geo.clone(); q.scale(sx, sy, sz); q.translate(tx, ty, tz); groups[k].push(q); };
+  for (let i = 0; i < n; i++) {
+    const wx = land.cx + (rnd() - 0.5) * land.w * (o.spread || 0.9), wz = land.cz + (rnd() - 0.5) * land.d * (o.spread || 0.9), h = land.at(wx, wz) - land.y;
+    if (h > land.tree || h < (o.low == null ? 0.02 : o.low)) continue; if (o.ok && !o.ok(wx, wz, h)) continue;
+    const s = (o.size || 1) * (0.7 + rnd() * 0.6), th = 7 * s, y0 = land.y + h; put('trunk', trunk, s, th, s, wx, y0 + th / 2, wz);
+    const col = pick(['gold', 'gold', 'orange', 'lime']); for (let k = 0; k < 9; k++) { const cs = (0.45 + rnd() * 0.35) * s; put(col, crown, cs, cs * 1.5, cs, wx + (rnd() - 0.5) * 1.6 * s, y0 + th * 0.5 + rnd() * th * 0.55, wz + (rnd() - 0.5) * 1.6 * s); }
+  }
+  const cols = { trunk: 0xe8e4dc, gold: 0xe8b020, orange: 0xd86a18, lime: 0xb8c030 };
+  for (const k in groups) { const parts = groups[k]; if (!parts.length) continue; let cnt = 0; parts.forEach(p => { cnt += p.attributes.position.count; }); const P = new Float32Array(cnt * 3), N = new Float32Array(cnt * 3); let off = 0; parts.forEach(p => { P.set(p.attributes.position.array, off); N.set(p.attributes.normal.array, off); off += p.attributes.position.array.length; }); const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); const m = new THREE.Mesh(geo, M({ color: cols[k], roughness: k === 'trunk' ? 0.7 : 0.85 })); g.add(m); m.userData.flat = 1; }
 }
 // END DECOR
 // the room: floor, back wall, side walls, ceiling, a skirting board and a cornice. The camera sits near the front.
@@ -2423,7 +2437,7 @@ const SCENES = {
   lodge(g, o) {
     const T = o.theme || (o.snow ? 'aspen' : 'sedona'), A = T === 'aspen';
     const latilla = canvas(256, 256, (x, w, h) => { for (let i = 0; i < w; i += 8) { const c = new THREE.Color('#b8956a').offsetHSL(0, 0, (rnd() - 0.5) * 0.12); x.fillStyle = '#' + c.getHexString(); x.fillRect(i, 0, 7, h); x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(i + 7, 0, 1, h); } });
-    const r = room(g, { w: 14, d: 10, h: 4.4, floor: A ? PAINT.wood('#6a4020', '#4a2a14', 30) : PAINT.terracotta('#b8603a'), wall: A ? PAINT.logs('#8a5a30', '#6a4020') : PAINT.adobe('#d89a68'), ceil: A ? PAINT.wood('#5a3a20', '#3a2410', 50) : latilla, trim: A ? 0x3a2410 : 0x8a5030, cornice: A ? 0x3a2410 : 0xc8885a, fillI: 0.8, back: false });
+    const r = room(g, { w: 14, d: 10, h: 4.4, floor: A ? PAINT.wood('#6a4020', '#4a2a14', 30) : PAINT.terracotta('#b8603a'), wall: A ? PAINT.logs('#8a5a30', '#6a4020') : PAINT.adobe('#d89a68'), ceil: A ? PAINT.wood('#5a3a20', '#3a2410', 50) : latilla, trim: A ? 0x3a2410 : 0x8a5030, cornice: A ? 0x3a2410 : 0xc8885a, fillI: A ? 1.0 : 1.3, back: false });
     const B = r.back, logM = M({ map: tex(PAINT.wood('#6a4424', '#4a2e16', 6), 1, 4), roughness: 0.85 });
     // the view: snowy peaks with snow falling, or red rock at dusk
     const view = A ? VIEW.mountains({ pines: true, snow: true, sky0: '#06102a', sky1: '#3a4a7a' }) : VIEW.desert({ rock: '#6a2a14', palms: false, buttes: true });
@@ -2431,8 +2445,8 @@ const SCENES = {
     wallWithHole(g, 14, 4.4, M({ map: tex(A ? PAINT.logs('#8a5a30', '#6a4020') : PAINT.adobe('#d89a68'), 14 / 2.4, 4.4 / 2.4), roughness: 0.85 }), B, -2.4, 2.2, 6.2, 3.2);
     glassWall(g, -2.4, 2.2, B + 0.02, 6.2, 3.2, 0); { const fm = M({ color: A ? 0x3a2410 : 0x5a3018, roughness: 0.5 }); for (let i = -2; i <= 2; i++) box(g, 0.08, 3.2, 0.12, fm, -2.4 + i * 1.55, 2.2, B + 0.06); box(g, 6.4, 0.1, 0.14, fm, -2.4, 3.85, B + 0.06); box(g, 6.4, 0.12, 0.3, fm, -2.4, 0.55, B + 0.1); box(g, 6.4, 0.06, 0.12, fm, -2.4, 2.2, B + 0.06); }
     // the land outside: Aspen's peaks under snow with the firs coming down to the lodge; Sedona's red rock in the last of the sun
-    if (A) { const land = landscape(g, { x: -2.4, z: B - 56, w: 160, d: 110, kind: 'alpine', snow: 0, treeline: 10, near: 0.16, scale: 1.1 }); forest(g, land, 900, { size: 1.1, low: 0.02 }); moon(g, 0xb8c8ff, 0.8, [40, 60, B - 10], [0, 0, B - 50]); starDome(g, 0, B - 20, 160, [[0, '#03061a'], [0.6, '#0e1838'], [1, '#2a3a6a']]); }
-    else { const land = landscape(g, { x: -2.4, z: B - 46, w: 150, d: 90, kind: 'mesa', near: 0.12, scale: 1.0 }); forest(g, land, 260, { size: 0.45, color: 0x2a4a2a, low: 0.02, ok: (x, z, h) => h < 2.5 }); moon(g, 0xff9a50, 1.8, [-70, 16, B - 30], [0, 0, B - 30]); starDome(g, 0, B - 20, 160, [[0, '#2a1a50'], [0.45, '#8a3a5a'], [0.75, '#ff8a4a'], [1, '#ffb070']], 120); }
+    if (A) { const land = landscape(g, { x: -2.4, z: B - 56, w: 160, d: 110, kind: 'alpine', snow: 10, treeline: 9, near: 0.16, scale: 1.1, dust: true }); aspenGrove(g, land, 1400, { size: 0.9, ok: (x, z, h) => z < B - 14 }); forest(g, land, 160, { size: 1.2, low: 2, ok: (x, z, h) => z < B - 20 }); moon(g, 0xc8d4ff, 1.0, [40, 60, B - 10], [0, 0, B - 50]); starDome(g, 0, B - 20, 160, [[0, '#03061a'], [0.6, '#0e1838'], [1, '#2a3a6a']]); }
+    else { const land = landscape(g, { x: -2.4, z: B - 46, w: 150, d: 90, kind: 'mesa', near: 0.12, scale: 1.0 }); forest(g, land, 260, { size: 0.45, color: 0x2a4a2a, low: 0.02, ok: (x, z, h) => h < 2.5 }); moon(g, 0xffa060, 2.6, [-70, 18, B - 36], [0, 0, B - 30]); starDome(g, 0, B - 20, 160, [[0, '#120a2a'], [0.5, '#3a1a40'], [0.8, '#a84a34'], [1, '#ff9a50']], 120); }
     // the beams: log trusses, or round vigas running wall to wall
     if (A) for (let i = 0; i < 4; i++) { const z = 0.6 - i * 2.4; const tb = cyl(g, 0.16, 0.16, 14, logM, 0, 4.1, z, 12); tb.rotation.z = Math.PI / 2; for (const s of [-1, 1]) { const kb = cyl(g, 0.11, 0.11, 2.4, logM, s * 3.2, 3.6, z, 10); kb.rotation.z = s * 1.05; } }
     else for (let i = 0; i < 8; i++) { const z = 1.6 - i * 1.2; const v = cyl(g, 0.13, 0.13, 14.6, M({ map: tex(PAINT.wood('#5a3418', '#4a2a12', 4), 1, 6), roughness: 0.9 }), 0, 4.25, z, 12); v.rotation.z = Math.PI / 2; for (const s of [-1, 1]) cyl(g, 0.13, 0.13, 0.04, M({ color: 0x3a2010 }), s * 7.0, 4.25, z, 12).rotation.z = Math.PI / 2; }
@@ -2450,7 +2464,7 @@ const SCENES = {
     rugAt(g, 1.2, -3.0, 5.2, 3.6, nav);
     // lights: antler chandeliers, or punched-tin lanterns
     for (const [x, z] of [[-2.6, -3.8], [1.6, -2.2]]) { if (A) { const w = new THREE.Group(); w.position.set(x, 3.2, z); g.add(w); const wm = M({ color: 0xe0d4bc, roughness: 0.7 }); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; seg(w, [0, 0, 0], [Math.cos(a) * 0.65, 0.2 + (i % 2) * 0.15, Math.sin(a) * 0.65], 0.04, 0.015, wm); seg(w, [Math.cos(a) * 0.4, 0.1, Math.sin(a) * 0.4], [Math.cos(a + 0.4) * 0.55, 0.45, Math.sin(a + 0.4) * 0.55], 0.022, 0.01, wm); sph(w, 0.045, glow(0xffd8a0, 3), Math.cos(a) * 0.66, 0.0, Math.sin(a) * 0.66, 8); } for (let i = 0; i < 3; i++) cyl(w, 0.006, 0.006, 1.0, M({ color: 0x1a1a1a }), Math.cos(i * 2.1) * 0.3, 0.6, Math.sin(i * 2.1) * 0.3, 4); light(w, 0xffc890, 2.2, 0, -0.2, 0, 7); }
-      else { const tin = M({ color: 0x9a8a70, metalness: 0.8, roughness: 0.4, emissive: 0x6a3a10, emissiveIntensity: 0.4 }); cyl(g, 0.006, 0.006, 0.9, M({ color: 0x1a1a1a }), x, 3.9, z, 4); const lt = cyl(g, 0.2, 0.2, 0.5, tin, x, 3.2, z, 8); cyl(g, 0.02, 0.24, 0.22, tin, x, 3.55, z, 8); light(g, 0xffb060, 2.2, x, 3.0, z, 7); } }
+      else { const tin = M({ color: 0x9a8a70, metalness: 0.8, roughness: 0.4, emissive: 0x6a3a10, emissiveIntensity: 0.4 }); cyl(g, 0.006, 0.006, 0.9, M({ color: 0x1a1a1a }), x, 3.9, z, 4); const lt = cyl(g, 0.2, 0.2, 0.5, tin, x, 3.2, z, 8); cyl(g, 0.02, 0.24, 0.22, tin, x, 3.55, z, 8); light(g, 0xffb060, 3.4, x, 3.0, z, 8); } }
     // a leather sofa by the fire, the tables
     sofa(g, 2.8, B + 2.6, Math.PI, A ? 0x5a2a14 : 0x7a4a2a, 2.2);
     pokerTable(g, A ? -3.4 : -3.2, A ? -4.2 : -5.0, { felt: A ? 0x24485e : 0x7a3a1f, rail: 0x3a2414, seats: 8, rx: 1.3, rz: 0.75, ry: A ? 0.5 : -0.4, lamp: false, full: 0.85, ceil: 3.2 });
