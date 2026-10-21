@@ -3572,6 +3572,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var bracelet = place === 1 && ev.gold && !SIM ? awardBracelet(ev, prize, me.name) : 0;
     // a Summer Series win: the champion's ring (poker_rings)
     var ring = place === 1 && ev.grp && !SIM ? awardRing(ev, prize, me.name) : 0;
+    // the players still in when you go out haven't finished yet: they're listed above you, most chips first
+    var inOrder = st.players.filter(function (p) { return !p.out; }).sort(function (a, b) { return b.stack - a.stack; });
     var hl = [];
     if (bracelet) hl.push('Gold bracelet #' + bracelet);
     if (ring) hl.push(seriesOf(ev) + ' ring #' + ring);
@@ -3583,7 +3585,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     hl.push('Blinds reached ' + chipsTxt(st.sb) + ' / ' + chipsTxt(st.bb) + ' after ' + st.handNo + ' hand' + (st.handNo === 1 ? '' : 's'));
     Kit.record(HKEY, {
       started: st.started, mode: 'Circuit: ' + ev.venue + ' (' + usd(ev.buy) + ')', lowWins: true,
-      players: st.players.map(function (p) { return { name: p.name, score: p.out ? p.place : 1, cpu: p.cpu }; }), winner: place === 1 ? me.name : null,
+      players: st.players.map(function (p) { return { name: p.name, score: p.out ? p.place : 1 + inOrder.indexOf(p), cpu: p.cpu }; }), winner: place === 1 ? me.name : null,
       summary: (place === 1 ? 'Champion' : ordinal(place) + ' of ' + N.toLocaleString()) + (prize ? ' · won ' + usd(prize) : ''),
       meta: casinoMeta({}), highlights: hl.concat(tableHighlights().slice(0, 2)),
       detail: { game: st.om ? 'omaha' : 'holdem', tourn: 1, big: st.st.bigH || null, hands: st.st.rows.length }
@@ -3593,7 +3595,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     renderAfter(st);
     var title = place === 1 ? (ev.gold ? 'World Champion!' : 'You won ' + ev.venue + '!') : prize ? ordinal(place) + ' place · ' + usd(prize) : 'Out in ' + ordinal(place);
     var sub = place === 1 ? usd(prize) + ' and the title, from a field of ' + N.toLocaleString() : prize ? 'You cashed' + (seatWon ? ' and won a seat at ' + seatWon.venue + '.' : '.') : (C.left - C.paid > 0 ? (place - C.paid) + ' place' + (place - C.paid === 1 ? '' : 's') + ' from the money' : '');
-    var rank = st.players.slice().map(function (p, i) { return { name: i === 0 ? p.name : p.name, score: p.out ? ordinal(p.place) : ordinal(1), place: p.out ? p.place : 1, cpu: p.cpu, color: Kit.color(i) }; }).sort(function (a, b) { return a.place - b.place; });
+    var rank = st.players.slice().map(function (p, i) { return { name: p.name, score: p.out ? ordinal(p.place) : inOrder.length === 1 ? ordinal(1) : 'Still in \u00b7 ' + chipsTxt(p.stack), place: p.out ? p.place : inOrder.indexOf(p) * 0.001, cpu: p.cpu, color: Kit.color(i) }; }).sort(function (a, b) { return a.place - b.place; });
     function result() {
       Kit.win({
         icon: place === 1 ? 'trophy' : prize ? 'coins' : 'meh', lose: !prize, title: title, sub: sub,
