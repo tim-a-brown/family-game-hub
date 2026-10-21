@@ -684,7 +684,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
 .pprof .who{font-weight:900;font-size:1.05rem;}
 .pprof .job{color:var(--text-2);font-weight:700;margin-top:2px;}
 .pprof .story{margin-top:10px;font-style:italic;color:var(--text-2);line-height:1.4;}
-/* tap the event card, the tiles or your hand for the full story */
+/* tap the event card, the tiles or your hand for the full story; the middle of the table for the rules */
+.pboard.tap{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.pboard.tap:active .pvar,.pboard.tap:active > .pcard{filter:brightness(1.12);}
 .prail .tap{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .12s var(--ease),filter .12s;}
 .prail .tap:active{transform:scale(.97);filter:brightness(1.15);}
 .pdet{display:flex;flex-direction:column;gap:12px;}
@@ -4061,6 +4063,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     var vb = gv(), nob = noBoard(), board = el('div', { class: 'pboard' + (nob ? ' nob' : '') }), bl = H ? H.board : [];
     if (nob) board.appendChild(varCentre(H, done));
+    // tap the middle of the table for how the game being dealt works
+    board.classList.add('tap'); board.addEventListener('click', function () { Kit.sfx('tap', 0.5); Kit.haptic('light'); learnSheet(learnId()); });
     for (var k = 0; k < (nob ? bl.length : 5); k++) {
       if (k < bl.length) {
         var ce = cardEl(bl[k]);
@@ -4332,9 +4336,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     nowRows(box);
     pinSheet(gameTitle(), box);
   }
+  // the explainer for the game being dealt (Limit Hold'em and Stud Hi-Lo share Hold'em's and Stud's)
+  function learnId() { var g = S.game; return LEARN[g] ? g : g === 'lhe' ? 'he' : g === 'stud8' || gv().stud ? 'stud' : S.om ? 'om' : 'he'; }
   function gameTitle() { var v = gv(); return S.game === 'om' ? 'Pot-limit Omaha' : S.game === 'he' ? (S.limit ? 'Limit Hold\'em' : 'No-limit Hold\'em') : v.name; }
   function nowRows(box) {
-    var v = gv(), C = S.circ, lid = LEARN[S.game] ? S.game : S.om ? 'om' : 'he', L = LEARN[lid];
+    var v = gv(), C = S.circ, lid = learnId(), L = LEARN[lid];
     function row(label, text, extra) { box.appendChild(el('div', { class: 'czi-row' }, [el('small', { text: label }), el('p', { text: text }), extra || null])); }
     var how = el('div', { class: 'czi-learn' });
     how.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Show me how ' + v.name + ' works', onclick: function () { Kit.sfx('tap'); learnSheet(lid); } }));
