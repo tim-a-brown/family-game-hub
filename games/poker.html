@@ -339,8 +339,15 @@
 @keyframes ltoss{to{opacity:.12;transform:translateY(-14px) rotate(16deg) scale(.9);}}
 @keyframes lfade{to{opacity:1;}}
 @media (prefers-reduced-motion:reduce){.plearn .pcard.ldeal,.plearn .llab,.lsteps li,.plearn .lchip{animation:none;opacity:1;}.plearn .pcard.toss{animation:none;opacity:.25;}}
-.pswap{font-weight:800;font-size:.92rem;color:var(--text-2);text-align:center;padding:4px 2px 6px;}
+.pswap{display:flex;flex-direction:column;align-items:center;gap:3px;font-weight:800;font-size:.92rem;color:var(--text-2);text-align:center;padding:2px 2px 4px;}
 .pswap b{color:var(--yellow);}
+.pswap .dr{display:flex;align-items:center;gap:8px;font-size:.62rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);}
+.pswap .dots{display:flex;gap:4px;}
+.pswap .dots i{width:7px;height:7px;border-radius:50%;background:var(--w14);}
+.pswap .dots i.done{background:var(--text-3);} .pswap .dots i.now{background:var(--yellow-fill);box-shadow:0 0 0 3px rgba(242,182,42,.25);}
+.pswap .t{font-size:.98rem;font-weight:900;color:var(--text);line-height:1.25;}
+.pswap .lim{font-size:.76rem;font-weight:800;color:var(--text-3);}
+.pswap .lim b{color:var(--text-2);}
 /* 7 to 10 seats (online): smaller seats; along the top, name above and cards beside the chips, what they did below */
 .pseat.many .tag{max-width:96px;font-size:.74rem;padding:2px 7px 2px 2px;}
 .pseat.many .tag .avatar{width:20px;height:20px;font-size:.62rem;}
@@ -515,8 +522,8 @@
 .plog{flex:1 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:0 4px;font-size:.76rem;font-weight:700;color:var(--text-2);}
 .plog.tiny{visibility:hidden;}
 .plog{position:relative;}
-.plog .more{position:absolute;right:8px;bottom:11px;width:16px;height:16px;color:var(--text-3);opacity:.8;}
-.pland .plog .more{bottom:9px;}
+.plog .more{position:absolute;right:11px;bottom:14px;width:16px;height:16px;color:var(--text-3);opacity:.8;}
+.pland .plog .more{bottom:12px;}
 .plog .more .ico,.plog .more svg{width:16px;height:16px;}
 .plog-in{padding-right:16px;}
 .plog.one .plog-in{-webkit-mask-image:none;mask-image:none;justify-content:center;}
@@ -603,7 +610,7 @@
 .pland .prail{grid-column:2;grid-row:1;padding-top:2px;gap:8px;}
 .stage.pland{padding-right:calc(var(--corner-x) + 10px);}
 /* the reading card: one panel, sections split by hairlines */
-.pside{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border-radius:calc(var(--r) + 7px);overflow:hidden;background:var(--w05);box-shadow:inset 0 0 0 1px var(--line);}
+.pside{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border-radius:var(--r);overflow:hidden;background:var(--w05);box-shadow:inset 0 0 0 1px var(--line);}
 .pside > *{flex:none;background:none !important;box-shadow:none !important;border-radius:0 !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}
 .pside > * + *{border-top:1px solid var(--line);}
 .pside .pev{padding:8px 12px 9px;}
@@ -613,7 +620,7 @@
 .pside .ptile:nth-child(n+3){border-top:1px solid var(--line);}
 .pside .pyou{padding:8px 12px;}
 .pside .pstand{padding:7px 12px;}
-.pside .plog{flex:1 1 0;padding:4px 12px 11px;}
+.pside .plog{flex:1 1 0;padding:4px 14px 14px;}
 /* the deck you act on */
 /* the whole table's log, over the sidebar */
 .pfull{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line),var(--shadow-sm);animation:rise .25s var(--ease) both;}
@@ -649,7 +656,7 @@
 .pland .pme .peq{left:auto;right:0;transform:none;bottom:100%;}
 @media (max-height:500px){
   .pland .prail{gap:6px;}
-  .pside .pev{padding:6px 11px 7px;} .pside .ptile{padding:4px 11px 5px;} .pside .pyou{padding:6px 11px;} .pside .plog{padding:3px 11px 9px;}
+  .pside .pev{padding:6px 11px 7px;} .pside .ptile{padding:4px 11px 5px;} .pside .pyou{padding:6px 11px;} .pside .plog{padding:3px 13px 12px;}
   .pdeck{--pd:7px;gap:7px;}
   .pland .ptiles .ptile:nth-child(n+3){display:none;}
   .pland .pev{padding:6px 10px 7px;} .pland .pev .t{font-size:1rem;} .pland .pev .lvrow{margin-top:4px;} .pland .pev .meta{margin-top:3px;}
@@ -4935,8 +4942,17 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (!H.swapWait) { box.appendChild(el('div', { class: 'pwait', text: v.draw ? 'Dealing the draw' : 'Throwing away' })); return box; }
       box.classList.add('mine');
       var picked = (R.pick || []).length, need = v.keep ? H.hole[0].length - v.keep : null, keepers = H.hole[0].filter(function (c) { return (R.pick || []).indexOf(c) < 0; }), lim = v.draw ? (S.game === 'draw' ? drawLimit(keepers) : H.hole[0].length) : need;
-      var dl = (v.draws || 1) > 1 ? ' · draw ' + ((H.drawsDone || 0) + 1) + ' of ' + v.draws : '';
-      box.appendChild(el('div', { class: 'pswap', html: v.draw ? 'Tap the cards to swap' + (S.game === 'draw' ? ': up to <b>' + lim + '</b>' + (lim === 3 ? ' (4 if you keep an Ace)' : '') : '') + dl : 'Tap <b>' + need + '</b> card' + (need === 1 ? '' : 's') + ' to throw away' }));
+      // which draw this is (with a dot for each), what to do, and the limit
+      var sw = el('div', { class: 'pswap' }), nd = v.draws || 1, dn = (H.drawsDone || 0) + 1;
+      if (v.draw && nd > 1) {
+        var dots = el('span', { class: 'dots' });
+        for (var q = 1; q <= nd; q++) dots.appendChild(el('i', { class: q < dn ? 'done' : q === dn ? 'now' : '' }));
+        sw.appendChild(el('div', { class: 'dr' }, [el('span', { text: 'Draw ' + dn + ' of ' + nd }), dots]));
+      }
+      sw.appendChild(el('div', { class: 't', html: v.draw ? 'Tap the cards to swap' : 'Throw away <b>' + need + '</b> card' + (need === 1 ? '' : 's') }));
+      if (!v.draw) sw.appendChild(el('div', { class: 'lim', text: need === 1 ? 'Tap it in your hand' : 'Tap them in your hand' }));
+      else if (S.game === 'draw') sw.appendChild(el('div', { class: 'lim', html: 'Up to <b>' + lim + '</b>' + (lim === 3 ? ' · 4 if you keep an Ace' : '') }));
+      box.appendChild(sw);
       var ok = v.draw ? picked <= lim : picked === need;
       bar.appendChild(el('button', { type: 'button', class: 'btn ' + (v.draw && !picked ? 'btn-soft' : 'btn-primary'), disabled: !ok, html: v.draw ? (picked ? 'Swap ' + picked + ' card' + (picked === 1 ? '' : 's') : 'Stand pat') : 'Throw away', onclick: function () { humanSwap((R.pick || []).slice()); } }));
       box.appendChild(bar);
