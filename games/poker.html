@@ -2962,6 +2962,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     main.w.forEach(function (j) { st.won[j]++; });
     var snap = handSnap(H, total, main);
     var evb = evBased();
+    histHand(H, main);
     if (!st.big || total > st.big.amt) { st.big = { amt: total, who: main.w.map(function (j) { return S.players[j].name; }).join(' and '), desc: main.v != null ? (evb ? aName(main.v) : hName(H, main.w[0]).toLowerCase()) : '', no: H.no, fold: !!main.fold || !main.w.length }; st.bigH = snap; }
     if (main.v != null && evb && (!st.bestH || main.v > st.bestH.v)) st.bestH = snap;
     st.lastH = snap;
@@ -2987,6 +2988,41 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (st.beats.length > 6) st.beats = st.beats.slice(-6);
   }
   // A finished hand for the history view: board, who showed what, who won
+  // For the game's history: each hand you played as one line ('no|your cards|board|net|W/L/F|your hand|who beat
+  // you|game'), and your chips after every hand
+  function histHand(H, main) {
+    var st = S.st, me = S.players[0];
+    if (!H.inHand[0] || !H.hole || !H.hole[0] || !H.hole[0].length) return;
+    var net = H.won[0] - H.total[0], res = H.folded[0] ? 'F' : main.w.indexOf(0) >= 0 || net > 0 ? 'W' : 'L';
+    var mine = H.scores && H.scores[0] != null ? hName(H, 0) : '', vs = '';
+    if (res !== 'W' && main.w.length && main.w.indexOf(0) < 0) vs = main.w.map(function (j) { return S.players[j].name; }).join(' and ') + (main.v != null && !main.fold ? ' · ' + (hName(H, main.w[0]) || '') : '');
+    var v = gv(), g = S.mix || S.rot || S.dc ? v.name : '';
+    (st.hx || (st.hx = [])).push([H.no, H.hole[0].map(code).join(''), (H.board || []).map(code).join(''), net, res, mine, vs, g].join('|').replace(/\|+$/, ''));
+    if (st.hx.length > 60) st.hx.splice(0, st.hx.length - 60);
+    if (!st.sk) st.sk = [me.stack - net];
+    st.sk.push(me.stack);
+    if (st.sk.length > 1200) st.sk = st.sk.filter(function (x, k) { return k % 2 === 0 || k === st.sk.length - 1; });
+  }
+  // What every poker record adds to its detail: your hands, your chips over the game, hands won per seat, who
+  // knocked out whom; trimmed to fit (the history syncs, so each record's detail stays small)
+  function histDetail(st, d) {
+    var hx = st.hx || [], sk = st.sk || [];
+    if (hx.length) d.hx = hx.slice(-40);
+    if (sk.length > 1) {
+      var step = Math.max(1, Math.ceil((sk.length - 1) / 90)), pts = [];
+      for (var k = 0; k < sk.length - 1; k += step) pts.push(Math.round(sk[k]));
+      pts.push(Math.round(sk[sk.length - 1]));
+      d.sk = pts.join(','); d.skn = sk.length - 1;
+    }
+    if (st.won) d.hw = st.won.slice();
+    if (st.kos && st.kos.length) d.ko = st.kos.slice().sort(function (a, b) { return a.no - b.no; }).slice(0, 16).map(function (k) {
+      return k.no + '|' + (k.bn || (S.players[k.by] || {}).name || '') + '|' + (k.wn || (S.players[k.who] || {}).name || '');
+    });
+    while (JSON.stringify(d).length > 5600 && d.hx && d.hx.length > 8) d.hx.shift();
+    if (JSON.stringify(d).length > 5600) delete d.last;
+    if (JSON.stringify(d).length > 5600) delete d.best;
+    return d;
+  }
   function handSnap(H, total, main) {
     var seats = Object.keys(H.scores || {}).map(Number);
     if (seats.indexOf(0) < 0 && H.inHand[0] && H.hole && H.hole[0]) seats.unshift(0);
@@ -3117,9 +3153,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     Kit.record(HKEY, {
       started: S.started, mode: modeName(), players: players, winner: winner, lowWins: !!S.tourn, summary: summary, meta: S.tourn ? {} : casinoMeta({}),
       rounds: S.tourn ? null : chunkRows(), highlights: tableHighlights(),
-      detail: { game: S.om ? 'omaha' : 'holdem', tourn: S.tourn ? 1 : 0, big: S.st.bigH || null, best: S.st.bestH && S.st.bestH !== S.st.bigH && (!S.st.bigH || S.st.bestH.no !== S.st.bigH.no) ? S.st.bestH : null,
+      detail: histDetail(S.st, { game: S.om ? 'omaha' : 'holdem', tourn: S.tourn ? 1 : 0, big: S.st.bigH || null, best: S.st.bestH && S.st.bestH !== S.st.bigH && (!S.st.bigH || S.st.bestH.no !== S.st.bigH.no) ? S.st.bestH : null,
         last: S.st.lastH && (!S.st.bigH || S.st.lastH.no !== S.st.bigH.no) && (!S.st.bestH || S.st.lastH.no !== S.st.bestH.no) ? S.st.lastH : null,
-        bank: S.tourn ? null : { s: S.players[0].buyin, e: S.players[0].stack }, hands: S.st.rows.length, play: !S.tourn && Casino.mode() === 'play' ? 1 : undefined }
+        bank: S.tourn ? null : { s: S.players[0].buyin, e: S.players[0].stack }, hands: S.st.rows.length, play: !S.tourn && Casino.mode() === 'play' ? 1 : undefined })
     });
   }
   function cashOut(silent) {
@@ -3810,8 +3846,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       started: st.started, mode: 'Circuit: ' + ev.venue + ' (' + usd(ev.buy) + ')', lowWins: true,
       players: st.players.map(function (p) { return { name: p.name, score: p.out ? p.place : 1 + inOrder.indexOf(p), cpu: p.cpu }; }), winner: place === 1 ? me.name : null,
       summary: (place === 1 ? 'Champion' : ordinal(place) + ' of ' + N.toLocaleString()) + (prize ? ' · won ' + usd(prize) : ''),
-      meta: casinoMeta({}), highlights: hl.concat(tableHighlights().slice(0, 2)),
-      detail: { game: st.om ? 'omaha' : 'holdem', tourn: 1, big: st.st.bigH || null, hands: st.st.rows.length }
+      meta: casinoMeta({}), highlights: hl.concat(tableHighlights().filter(function (h) { return !/^Biggest pot/.test(h); }).slice(0, 2)),
+      detail: histDetail(st.st, { game: st.om ? 'omaha' : 'holdem', tourn: 1, big: st.st.bigH || null, best: st.st.bestH && (!st.st.bigH || st.st.bestH.no !== st.st.bigH.no) ? st.st.bestH : null,
+        hands: st.st.rows.length, fin: { pl: place, n: N, pz: prize || 0, buy: ev.buy } })
     });
     drop(st); S = null;
     if (SIM && SIM.done) { var fin = SIM.done; SIM = false; venueOff(); fin({ place: place, prize: prize, hands: st.handNo, level: st.level, bb: st.bb, kos: C.kos, bounty: C.bounty, left: C.left, paidAt: C.itmAt || null, ftAt: C.ftAt || null }); return; }
@@ -5715,7 +5752,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         players: v.players.map(function (p, i) { return { name: p.name, score: (i === 0 ? stack : p.stack) - p.buyin, cpu: p.cpu }; }),
         winner: null, summary: (stack - L.buy >= 0 ? 'Up ' : 'Down ') + usd(Math.abs(stack - L.buy)) + ' · ' + v.st.rows.length + ' hands',
         highlights: tableHighlights().concat(['Online table ' + NETCODE]),
-        detail: { game: v.om ? 'omaha' : 'holdem', tourn: 0, big: v.st.bigH || null, hands: v.st.rows.length, bank: { s: L.buy, e: stack } }
+        detail: histDetail(v.st, { game: v.om ? 'omaha' : 'holdem', tourn: 0, big: v.st.bigH || null, hands: v.st.rows.length, bank: { s: L.buy, e: stack } })
       });
     } catch (x) { console.warn(x); }
     S = keep;
@@ -5872,7 +5909,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
           started: v.started, mode: 'Online ' + (v.mix ? 'mixed' : v.game === 'om' ? 'Omaha' : 'Hold\'em') + ' tournament', lowWins: true,
           players: v.players.map(function (p) { return { name: p.name, score: p.place, cpu: p.cpu }; }), winner: w ? w.name : null,
           summary: (w ? w.name : 'Nobody') + ' won · ' + v.players.length + ' players', highlights: tableHighlights().concat(['Online table ' + NET.code]),
-          detail: { game: v.om ? 'omaha' : 'holdem', tourn: 1, big: v.st.bigH || null, hands: v.st.rows.length }
+          detail: histDetail(v.st, { game: v.om ? 'omaha' : 'holdem', tourn: 1, big: v.st.bigH || null, hands: v.st.rows.length })
         });
       } catch (x) { console.warn(x); }
       S = keep;
