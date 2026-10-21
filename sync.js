@@ -965,6 +965,24 @@
     return (h1 >>> 0).toString(36) + '.' + (h2 >>> 0).toString(36) + '.' + str.length;
   }
 
+  // The account's cloud copy in parts: each game's history and scores on their own, every other field whole
+  var PARTS_KEY = 'fgh_sync_parts';
+  function docParts(doc){
+    var o = {};
+    Object.keys(doc).forEach(function(f){
+      if(f === 'updatedAt') return;
+      if((f === 'gh' || f === 'hi') && doc[f] && typeof doc[f] === 'object') Object.keys(doc[f]).forEach(function(k){ o[f + '.' + k] = doc[f][k]; });
+      else o[f] = doc[f];
+    });
+    return o;
+  }
+  function partSig(n, v){
+    var str = n + '|' + stableStr(v), h1 = 0x811c9dc5, h2 = 0x2b2b2b2b;
+    for(var i = 0; i < str.length; i++){ var ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 16777619); h2 = Math.imul(h2 ^ ch, 2246822519); }
+    return (h1 >>> 0).toString(36) + '.' + (h2 >>> 0).toString(36) + '.' + str.length;
+  }
+  // what this device last saved, part by part (for this PIN only; none yet means the next save sends everything)
+  function partSigs(){ var r = lsJSON(PARTS_KEY); return r && r.pin === pin() && r.s ? r.s : null; }
   function pushNow(opts){
     opts = opts || {};
     var ref = cloudRef(); if(!ref) return Promise.resolve();
@@ -1011,7 +1029,25 @@
       try{ LS.setItem(P_KEY, String(pushAt)); }catch(e){}
       return Promise.resolve('same');
     }
-    function saved(r){ try{ LS.setItem(SIG_KEY, sig); LS.setItem(P_KEY, String(pushAt)); }catch(e){} return r; }
+    // Only the parts that changed since this device's last save go up (one game's history, one game's scores, the
+    // favourites...): the cloud keeps the rest as it is (merge:true merges maps field by field). Uploading the whole
+    // account every time took seconds on a phone once the history had grown.
+    var parts = docParts(doc), sent = partSigs(), now = {}, full = opts.force || !sent;
+    Object.keys(parts).forEach(function(n){ now[n] = partSig(n, parts[n]); });
+    if(!full){
+      var up = { updatedAt: doc.updatedAt }, nUp = 0;
+      Object.keys(parts).forEach(function(n){
+        if(sent[n] === now[n]) return;
+        nUp++;
+        var dot = n.indexOf('.');
+        if(dot < 0) up[n] = doc[n];
+        else { var f = n.slice(0, dot), k = n.slice(dot + 1); (up[f] || (up[f] = {}))[k] = doc[f][k]; }
+      });
+      if(!nUp){ try{ LS.setItem(SIG_KEY, sig); LS.setItem(P_KEY, String(pushAt)); }catch(e){} return Promise.resolve('same'); }
+      console.log('[sync] push: ' + nUp + ' changed part' + (nUp === 1 ? '' : 's') + ' of ' + Object.keys(parts).length);
+      doc = up;
+    }
+    function saved(r){ try{ LS.setItem(SIG_KEY, sig); LS.setItem(P_KEY, String(pushAt)); LS.setItem(PARTS_KEY, JSON.stringify({ pin: pin(), s: now })); }catch(e){} return r; }
     // merge:true means fields not in `doc` are preserved on the cloud side.
     // This prevents the race where device A has empty local for some field
     // and pushes before device B's newly-saved data lands — merge:false
@@ -1156,7 +1192,7 @@
         writeSnapshotToLocal(mergeSnapshots(scanLocal(), remote)); reconcileName();
         oldRef = cloudRef();
         LS.setItem(PIN_KEY, np); LS.setItem(SPACE_KEY, spaceOf(np));
-        try{ LS.removeItem(SIG_KEY); }catch(e){}
+        try{ LS.removeItem(SIG_KEY); LS.removeItem(PARTS_KEY); }catch(e){}
         return pushNow({ force: true }).catch(function(err){ LS.setItem(PIN_KEY, op); LS.setItem(SPACE_KEY, spaceOf(op)); throw err; });
       })
       .then(function(){
