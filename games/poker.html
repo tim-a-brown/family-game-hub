@@ -487,6 +487,19 @@
 .ptile.flash{animation:tflash 1s var(--ease);}
 @keyframes tflash{0%{background:rgba(255,200,61,.35);}}
 .pyou{padding:8px 12px 8px;border-radius:14px;background:var(--w05);}
+.pyou.wbm{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;}
+.pyou.wbm .yh{grid-column:1 / -1;}
+.pyou.wbm .yl{min-width:0;}
+.pyou.wbm .pbm{margin-top:5px;}
+.pyou .yh.c{align-items:center;}
+.pyou.wbm .cap span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;} .pyou.wbm .cap span + span{flex:none;}
+.pbm{display:flex;align-items:center;}
+.pbm-b{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:66px;padding:6px 9px;border:0;border-radius:12px;
+  background:rgba(20,16,10,.88);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,216,74,.55);font:inherit;cursor:pointer;}
+.pbm-b small{font-size:.54rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.65);white-space:nowrap;}
+.pbm-b b{font-size:1rem;font-weight:900;color:#ffd84a;white-space:nowrap;}
+.pbm-b.wait b{color:rgba(255,255,255,.5);}
+.pbm-b:active{transform:scale(.96);}
 .pyou .yh{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
 .pyou .n{font-weight:900;color:var(--text);font-size:.95rem;line-height:1.2;min-width:0;}
 .pyou .pct{flex:none;font-size:1.2rem;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;}
@@ -518,6 +531,7 @@
 .pmeter > i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .5s var(--ease),background .5s;}
 .pmeter > b{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;border-radius:2px;background:#fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.5);}
 .pyou .cap{display:flex;justify-content:space-between;gap:6px;font-size:.7rem;font-weight:800;color:var(--text-2);white-space:nowrap;}
+.pyou .cap i{font-style:normal;} .pyou.wbm .cap i{display:none;}   /* beside the best move, the count of players gives way */
 .pyou .cap .ok{color:var(--green);} .pyou .cap .no{color:var(--red);}
 .plog{flex:1 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:0 4px;font-size:.76rem;font-weight:700;color:var(--text-2);}
 .plog.tiny{visibility:hidden;}
@@ -665,11 +679,11 @@
   .pland .pev{padding:6px 10px 7px;} .pland .pev .t{font-size:1rem;} .pland .pev .lvrow{margin-top:4px;} .pland .pev .meta{margin-top:3px;}
   .pland .pev .tg{padding:1px 7px;font-size:.62rem;} .pland .pev .bl{font-size:.76rem;}
   .pland .pyou .pct{font-size:1.02rem;} .pland .ptile b{font-size:.98rem;}
-  .pland .pyou{padding:6px 10px;} .pland .pyou .n{font-size:.88rem;} .pland .pmeter{margin:5px 0 3px;height:7px;}
+  .pland .pyou{padding:6px 10px;} .pland .pyou .n{font-size:.88rem;} .pland .pyou.wbm{column-gap:8px;} .pland .pbm-b{min-width:58px;padding:4px 7px;border-radius:10px;} .pland .pbm-b small{font-size:.5rem;} .pland .pbm-b b{font-size:.88rem;} .pland .pmeter{margin:5px 0 3px;height:7px;}
   .pland .psz{padding:5px 6px 5px;} .pland .psz .pre button{min-height:38px;font-size:.82rem;} .pland .psz .row{margin-top:4px;}
   .pland .psz .row button{width:38px;height:38px;} .pland .psz input[type=range]{height:30px;}
-  /* while you size a bet there's no room for everything: the two info tiles step aside for bigger buttons */
-  .pland .prail:has(.psz) .ptiles,.pland .prail:has(.psz) .pev .meta{display:none;}
+  /* while you size a bet (or line up three pre-moves) there's no room for everything: the two info tiles step aside */
+  .pland .prail:is(:has(.psz),:has(.ppre > :nth-child(3))) .ptiles,.pland .prail:is(:has(.psz),:has(.ppre > :nth-child(3))) .pev .meta{display:none;}
   .pland .pctl{gap:5px;} .pland .pctl .pbar .btn{min-height:46px;font-size:.92rem;}
   .pland .ppre button{min-height:40px;font-size:.78rem;padding:0 8px;gap:6px;} .pland .ppre button::before{width:16px;height:16px;}
 }
@@ -4421,7 +4435,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
 
   // ── The rail ─────────────────────────────────────────────────────────────
   function rail(final) {
-    var box = el('div', { class: 'prail' }), you = railYou(), tc = final ? null : coachSlot('pcoach'), ctl = final ? null : controls();
+    YOUBM = false;
+    var box = el('div', { class: 'prail' }), you = railYou(final), tc = final || YOUBM ? null : coachSlot('pcoach'), ctl = final ? null : controls();
     if (LANDQ.matches && R.logOpen) {
       // the whole table's history over the whole sidebar; when there's something for you to do, its header says so
       box.appendChild(fullLog(!!(ctl && ctl.classList.contains('mine'))));
@@ -4516,7 +4531,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     return t;
   }
-  function railYou() {
+  var YOUBM = false;   // the best-move tip went into your hand's section (so not into the deck)
+  function railYou(final) {
     var H = S.hand; if (!H) return null;
     var box = el('div', { class: 'pyou' }), me = S.players[0];
     if (H.phase === 'done') { box.classList.add('res'); return resultBox(H, box); }
@@ -4528,16 +4544,21 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (nOpp) { box.classList.add('tap'); box.onclick = handSheet; }
     var yh = el('div', { class: 'yh' }, [el('div', { class: 'n', text: youName(H, v) })]);
     box.appendChild(yh);
-    if (!railPref('eq')) return box;
+    // the best-move tip sits beside the win chance, under the hand's name; with it off (or nothing to decide), the
+    // win chance has the width
+    var bm = !final && !NET && S.coach ? coachSlot('pbm') : null, col = box;
+    if (bm) YOUBM = true;
+    if (!railPref('eq')) { if (bm) { yh.classList.add('c'); yh.appendChild(bm); } return box; }
+    if (bm) { col = el('div', { class: 'yl' }); box.classList.add('wbm'); box.appendChild(col); box.appendChild(bm); }
     var eq = myEq(nOpp), rel = eq * (nOpp + 1);
     if (nOpp) yh.appendChild(el('b', { class: 'pct ' + (eq < 0.25 ? 'w' : eq < 0.45 ? 'b' : eq < 0.65 ? 'f' : 's'), text: Math.round(eq * 100) + '%' }));
     var meter = el('div', { class: 'pmeter', title: 'Your chances to win the hand' }), fill = el('i');
     fill.style.width = Math.max(3, Math.round(eq * 100)) + '%'; fill.style.background = eqColor(eq); meter.appendChild(fill);
     var o = H.phase === 'bet' && H.actor === 0 ? options(0) : null, need = o && o.toCall > 0 ? o.call / (potAll() + o.call) : null;
     if (need != null) { var tk = el('b'); tk.style.left = Math.round(need * 100) + '%'; meter.appendChild(tk); }
-    box.appendChild(meter);
-    box.appendChild(el('div', { class: 'cap' }, [
-      el('span', { text: nOpp ? strengthWord(rel) + ' · vs ' + nOpp : 'Uncontested' }),
+    col.appendChild(meter);
+    col.appendChild(el('div', { class: 'cap' }, [
+      nOpp ? el('span', null, [strengthWord(rel), el('i', { text: ' · vs ' + nOpp })]) : el('span', { text: 'Uncontested' }),
       need != null ? el('span', { class: eq >= need ? 'ok' : 'no', text: 'Need ' + Math.round(need * 100) + '%' }) : null
     ]));
     return box;
@@ -5122,6 +5143,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var a = S && coachAdvice();
     cSlot.innerHTML = '';
     if (a === undefined) return;
+    if (cSlot.classList.contains('pbm')) {
+      cSlot.appendChild(el('button', { type: 'button', class: 'pbm-b' + (a ? '' : ' wait'), disabled: !a, onclick: function (e) { e.stopPropagation(); if (a) { Kit.sfx('tap'); a.open(); } } },
+        [el('small', { text: 'Best move' }), el('b', { text: a ? a.short : '…' })]));
+      return;
+    }
     cSlot.appendChild(a ? Coach.chip(a.chip, a.open) : el('span', { class: 'pc-wait', text: 'Working out the odds…' }));
   }
   var SUITCH = ['♣', '♦', '♥', '♠'], SUITN = ['club', 'diamond', 'heart', 'spade'];
@@ -5278,7 +5304,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       function (st) { return { n: st.n, win: st.win / st.n, tie: st.tie / st.n, eq: (st.win + st.share) / st.n }; });
     if (!sd) return null;
     var plan = tablePlan(sd, o, nOpp), mv = plan.moves.filter(function (m) { return m.best; })[0];
-    return { chip: 'Best move: <b>' + mv.short + '</b>', open: function () { tableSheet(plan); } };
+    return { chip: 'Best move: <b>' + mv.short + '</b>', short: mv.short, open: function () { tableSheet(plan); } };
   }
   function cAmt(x) { return S.tourn ? Math.round(x).toLocaleString() + ' chips' : usd(x); }
   function potOf(x) { return S.tourn ? 'the ' + Math.round(x).toLocaleString() + '-chip pot' : 'the ' + usd(x) + ' pot'; }
