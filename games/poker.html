@@ -4128,6 +4128,29 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (!t || !app.contains(t)) return;
     PRESS = e.pointerId; clearTimeout(PRESS_T); PRESS_T = setTimeout(pressEnd, 1500);
   }, true);
+  // Taps act when the finger lifts. iPhone Safari sometimes holds back the click after a touch (it takes the first
+  // touch for a hover), so a button or panel could need two or three taps: a press that starts and ends on the same
+  // control, without moving, runs it straight away, and the click Safari may still send after it is ignored.
+  var TAPSEL = 'button, .tap', tapAt = null, swallow = null;
+  document.addEventListener('pointerdown', function (e) {
+    var t = e.target && e.target.closest && e.target.closest(TAPSEL);
+    tapAt = t && app.contains(t) && !t.disabled && e.isPrimary ? { el: t, x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId } : null;
+  }, true);
+  document.addEventListener('pointerup', function (e) {
+    var a = tapAt; tapAt = null;
+    if (!a || e.pointerId !== a.id || e.pointerType === 'mouse') return;
+    var t = e.target && e.target.closest && e.target.closest(TAPSEL);
+    if (t !== a.el || !a.el.isConnected || a.el.disabled || Math.hypot(e.clientX - a.x, e.clientY - a.y) > 12 || Date.now() - a.t > 700) return;
+    swallow = { x: e.clientX, y: e.clientY, until: Date.now() + 800 };
+    a.el.click();
+  }, true);
+  document.addEventListener('pointercancel', function () { tapAt = null; }, true);
+  document.addEventListener('click', function (e) {
+    if (!swallow || !e.isTrusted) return;
+    if (Date.now() > swallow.until) { swallow = null; return; }
+    // the same touch's own click, wherever it lands now (on the control, or on a sheet that control just opened)
+    if (Math.hypot(e.clientX - swallow.x, e.clientY - swallow.y) <= 16) { e.preventDefault(); e.stopPropagation(); swallow = null; }
+  }, true);
   document.addEventListener('pointerup', pressEnd, true);
   document.addEventListener('pointercancel', pressEnd, true);
   function renderTable(final) {
@@ -4408,7 +4431,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     function bl(k, val) { meta.appendChild(el('span', { class: 'bl' }, [el('small', { text: k }), document.createTextNode(val)])); }
     if (S.tourn) {
       if (ev) tg(v.name);
-      if (ev) { var stg = C.ft ? 'Final table' : stageName(); tg(stg, stg === 'The bubble' ? 'hot' : stg === 'In the money' ? 'ok' : C.ft ? 'gold' : ''); }
+      // the stage only when it says something (the event's own type is in its sheet)
+      if (ev) { var stg = C.ft ? 'Final table' : stageName(); if (stg !== ev.style) tg(stg, stg === 'The bubble' ? 'hot' : stg === 'In the money' ? 'ok' : C.ft ? 'gold' : ''); }
       else tg(S.online ? 'Online' : 'Tournament');
     } else {
       if (H) tg('Hand ' + S.handNo);
