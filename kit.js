@@ -1861,7 +1861,7 @@
     var r = rank === 'T' || rank === 10 ? '10' : String(rank);
     var c = el('div', { class: 'pcard' + (red ? ' red' : '') + (o.back ? ' back' : '') + (o.cls ? ' ' + o.cls : ''), 'data-r': r, 'data-s': st });
     var corner = '<span class="ix">' + esc(r) + '<b>' + st + '</b></span><span class="ix bot">' + esc(r) + '<b>' + st + '</b></span>';
-    var center = /^[JQK]$/.test(r) ? '<span class="face"><span>' + r + '</span><i>' + st + '</i></span>' : '<span class="pip">' + st + '</span>';
+    var center = /^[JQK]$/.test(r) ? '<span class="face" data-s="' + st + '"><span>' + r + '</span><i>' + st + '</i></span>' : '<span class="pip">' + st + '</span>';
     c.innerHTML = corner + center;
     c.setAttribute('aria-label', o.back ? 'Face-down card' : ({ A: 'Ace', J: 'Jack', Q: 'Queen', K: 'King' }[r] || r) + ' of ' + ({ '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs' }[st] || st));
     return c;
