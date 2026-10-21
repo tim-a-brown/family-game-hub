@@ -16,9 +16,25 @@
 <script src="../casino.js"></script>
 <script src="../coach.js"></script>
 <script src="poker/people.js"></script>
+<script src="poker/logos.js"></script>
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
 <style>
+/* the lettering of the places' felt logos (poker/logos.js); each font loads only where a logo uses it */
+@font-face{font-family:"Rye";src:url("../fonts/rye.woff2") format("woff2");font-display:swap;}
+@font-face{font-family:"Cinzel";src:url("../fonts/cinzel-700.woff2") format("woff2");font-weight:700;font-display:swap;}
+@font-face{font-family:"Great Vibes";src:url("../fonts/great-vibes.woff2") format("woff2");font-display:swap;}
+@font-face{font-family:"Bungee";src:url("../fonts/bungee.woff2") format("woff2");font-display:swap;}
+@font-face{font-family:"Russo One";src:url("../fonts/russo-one.woff2") format("woff2");font-display:swap;}
+@font-face{font-family:"Pagella";src:url("../fonts/pagella-400.woff2") format("woff2");font-weight:400;font-display:swap;}
+@font-face{font-family:"Pagella";src:url("../fonts/pagella-400italic.woff2") format("woff2");font-weight:400;font-style:italic;font-display:swap;}
+@font-face{font-family:"Pagella";src:url("../fonts/pagella-700.woff2") format("woff2");font-weight:700;font-display:swap;}
+@font-face{font-family:"Pagella";src:url("../fonts/pagella-700italic.woff2") format("woff2");font-weight:700;font-style:italic;font-display:swap;}
+@font-face{font-family:"Sofia Sans Condensed";src:url("../fonts/sofia-sans-condensed.woff2") format("woff2");font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Sofia Sans";src:url("../fonts/sofia-sans.woff2") format("woff2");font-weight:100 900;font-display:swap;}
+@font-face{font-family:"Baloo 2";src:url("../fonts/baloo2-700.woff2") format("woff2");font-weight:700;font-display:swap;}
+@font-face{font-family:"Fredoka";src:url("../fonts/fredoka-600.woff2") format("woff2");font-weight:600;font-display:swap;}
+@font-face{font-family:"Jersey 10";src:url("../fonts/jersey-10.woff2") format("woff2");font-display:swap;}
 .stage{padding-bottom:calc(var(--safe-b) + 10px);}
 /* ── Info strip above the table ── */
 .pinfo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 4px 10px;font-weight:800;font-size:.82rem;color:var(--text-2);white-space:nowrap;}
@@ -643,6 +659,11 @@ html:is([data-theme="light"],[data-theme="parchment"]) .pctl .pbar .btn-green .o
 .plogo b{font-family:var(--display);font-weight:400;font-size:clamp(1.3rem,4.2vw,2.7rem);letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.075);line-height:1;}
 .plogo span{font-weight:900;font-size:clamp(.6rem,1.4vw,.9rem);letter-spacing:.4em;text-transform:uppercase;color:rgba(255,255,255,.08);margin-top:4px;}
 .plogo.ft b{color:rgba(255,216,77,.12);}
+/* the place's own logo, printed across the felt (gold at the final table) */
+.plogo.art{inset:0;transform:none;display:block;}
+.plogo.art svg{position:absolute;left:10%;top:10%;width:80%;height:80%;color:#fff;opacity:.13;overflow:visible;}
+.plogo.art.ft svg{color:#ffd84d;opacity:.17;}
+.plogo.art .ftl{position:absolute;left:0;right:0;bottom:3.5%;text-align:center;font-weight:900;font-size:clamp(.55rem,1.3vw,.8rem);letter-spacing:.42em;text-transform:uppercase;color:rgba(255,216,77,.22);}
 .pcirc .felt-in::before{display:none;}
 .stage.pland{grid-template-columns:minmax(0,1fr) clamp(224px,28vw,272px);grid-template-rows:minmax(0,1fr);}
 .stage.pland .ptable{grid-row:1;}
@@ -3287,6 +3308,12 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     for (i = 0; i < PUBN.length; i++) if (v.indexOf(PUBN[i]) >= 0) return 'pub' + i;
     return null;
   }
+  // the place's logo for its felt (poker/logos.js): by its room, or for a big-field event by the event
+  function feltLogo(ev) {
+    if (!window.PokerLogos) return '';
+    var k = ev.grp ? String(ev.id).replace(/_.*$/, '') : sceneOf(ev);
+    return PokerLogos.svg(k, { venue: ev.venue, city: ev.city, style: ev.style, series: ev.grp && EV[ev.grp] ? EV[ev.grp].venue : '' });
+  }
   function sceneOf(ev) { return ev.scene || (ev.local && localScene(ev.venue)) || 'cardroom'; }
   // what each place is like, and who turns up (the info sheet behind every stop's ?)
   var PLACE = {
@@ -4327,7 +4354,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (lme) { var gb = document.querySelector('.gbar'); app.style.setProperty('--gbh', (gb ? gb.offsetHeight : 44) + 'px'); }
 
     var tb = tableEl = el('div', { class: 'ptable wood' }), felt = el('div', { class: 'felt-in' });
-    if (S.circ && !noBoard()) { var ev = EV[S.circ.id]; felt.appendChild(el('div', { class: 'plogo' + (S.circ.ft ? ' ft' : '') }, [el('b', { text: S.circ.ft ? 'Final table' : ev.venue }), el('span', { text: S.circ.ft ? ev.venue : ev.style })])); }
+    if (S.circ && !noBoard()) {
+      var ev = EV[S.circ.id], art = feltLogo(ev);
+      if (art) { var lg = el('div', { class: 'plogo art' + (S.circ.ft ? ' ft' : '') }); lg.innerHTML = art; if (S.circ.ft) lg.appendChild(el('div', { class: 'ftl', text: 'Final table' })); felt.appendChild(lg); }
+      else felt.appendChild(el('div', { class: 'plogo' + (S.circ.ft ? ' ft' : '') }, [el('b', { text: S.circ.ft ? 'Final table' : ev.venue }), el('span', { text: S.circ.ft ? ev.venue : ev.style })]));
+    }
     tb.appendChild(felt);
     seatEls = []; betEls = [];
     var meSeat = null, meDealer = null, meEq = null;
