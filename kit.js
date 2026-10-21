@@ -945,8 +945,13 @@
     // .k-hold on the page: the game is laid out to the screen and is always held still (a moment of overflow while
     // something animates in must not let it scroll, and the lock must not switch itself off)
     var se = doc.scrollingElement || root, fits = se.scrollHeight <= window.innerHeight + 2 || !!doc.querySelector('.k-hold');
-    if (fits && window.scrollY > 0) window.scrollTo(0, 0);
+    if (fits) pin();
     if (fits !== fitLock) { fitLock = fits; root.classList.toggle('k-fit', fits); }
+  }
+  // back to the top left: the window, and the page itself (iPhone can scroll a locked page sideways after quick taps)
+  function pin() {
+    if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+    [doc.body, root].forEach(function (n) { if (n && (n.scrollLeft || n.scrollTop)) { n.scrollLeft = 0; n.scrollTop = 0; } });
   }
   function queueFit() { if (!fitRaf) fitRaf = requestAnimationFrame(checkFit); }
   function scrollerFor(t) {
@@ -983,8 +988,12 @@
     if (window.ResizeObserver) new ResizeObserver(queueFit).observe(doc.body);
     if (window.MutationObserver) new MutationObserver(queueFit).observe(doc.body, { childList: true, subtree: true });
     // A page that fits the screen never stays shifted: iPhone can leave it scrolled or offset after a double tap
-    function unshift() { if (!fitLock) return; var vv = window.visualViewport; if (window.scrollY || (vv && vv.scale < 1.02 && vv.offsetTop > 0.5)) window.scrollTo(0, 0); }
+    function unshift() {
+      if (!fitLock) return; var vv = window.visualViewport;
+      if (window.scrollY || window.scrollX || doc.body.scrollLeft || doc.body.scrollTop || root.scrollLeft || (vv && vv.scale < 1.02 && (vv.offsetTop > 0.5 || Math.abs(vv.offsetLeft) > 0.5))) pin();
+    }
     window.addEventListener('scroll', unshift, { passive: true });
+    doc.addEventListener('scroll', function (e) { if (e.target === doc || e.target === doc.body || e.target === root) unshift(); }, { passive: true, capture: true });
     if (window.visualViewport) { visualViewport.addEventListener('scroll', unshift); visualViewport.addEventListener('resize', unshift); }
     doc.addEventListener('touchend', function () { setTimeout(unshift, 350); }, { passive: true });
     doc.addEventListener('touchmove', function (e) {
