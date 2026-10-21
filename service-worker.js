@@ -320,6 +320,7 @@ const PRECACHE_URLS = [
   '/games/poker/venue3d.js',
   '/games/poker/people.js',
   '/games/poker/logos.js',
+  '/games/poker/logo-fonts.css',
   '/games/poker.html',
   '/games/pokersquares.html',
   '/games/pyramid.html',
