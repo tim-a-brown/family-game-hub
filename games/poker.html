@@ -474,13 +474,13 @@
 .prail .pcoach{margin:0;min-height:0;justify-content:flex-start;}
 .psz{padding:6px 7px 7px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow-sm);animation:rise .3s var(--ease) both;}
 .psz .pre{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;}
-.psz .pre button{min-height:32px;padding:0 2px;border:0;border-radius:10px;background:var(--w07);color:var(--text);font-weight:900;font-size:.74rem;white-space:nowrap;transition:background .15s,transform .1s;}
+.psz .pre button{min-height:40px;padding:0 2px;border:0;border-radius:11px;background:var(--w07);color:var(--text);font-weight:900;font-size:.84rem;white-space:nowrap;transition:background .15s,transform .1s;}
 .psz .pre button.on{background:var(--yellow);color:#2b1a00;box-shadow:0 2px 0 #9a6b00;}
 .psz .pre button:active{transform:translateY(1px);}
 .psz .pre button:disabled{opacity:.35;}
 .psz .row{display:flex;align-items:center;gap:6px;margin-top:5px;}
-.psz .row button{flex:none;width:32px;height:32px;border:0;border-radius:50%;background:var(--w07);color:var(--text);font-weight:900;font-size:1.1rem;line-height:1;}
-.psz input[type=range]{flex:1;min-width:0;height:28px;accent-color:var(--yellow);}
+.psz .row button{flex:none;width:40px;height:40px;border:0;border-radius:50%;background:var(--w07);color:var(--text);font-weight:900;font-size:1.1rem;line-height:1;}
+.psz input[type=range]{flex:1;min-width:0;height:32px;accent-color:var(--yellow);}
 .pctl .pbar{display:flex;gap:6px;min-height:0;}
 .pctl .pbar .btn{flex:1 1 0;min-height:52px;padding:0 6px;font-size:.98rem;}
 .pctl .pbar .btn .two{display:flex;flex-direction:column;line-height:1.1;}
@@ -508,6 +508,17 @@
 .pseat.sit .tag{animation:sitdown .6s var(--spring);}
 @keyframes sitdown{from{transform:translateY(-14px) scale(.8);opacity:0;}}
 /* the venue's name printed on the felt */
+.pseat .cards.zoomable{cursor:zoom-in;touch-action:none;-webkit-touch-callout:none;}
+.pzoom{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:12px 16px 16px;border-radius:20px;background:rgba(8,10,26,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 18px 40px rgba(0,0,0,.55);}
+.pzoom.in{animation:pzin .18s var(--spring) both;}
+.pzoom.out{animation:pzout .15s ease-in both;}
+@keyframes pzin{from{opacity:0;transform:translate(-50%,-50%) scale(.6);}}
+@keyframes pzout{to{opacity:0;transform:translate(-50%,-50%) scale(.85);}}
+.pzoom .pzn{font-weight:900;font-size:.9rem;color:#fff;}
+.pzoom .pzc{display:flex;gap:6px;--cw:clamp(58px,9vw,96px);}
+.pland .pzoom .pzc{--cw:clamp(52px,17dvh,92px);}
+.pzoom .pzc .pcard{margin:0!important;box-shadow:0 0 0 1px rgba(0,0,0,.15),0 8px 18px rgba(0,0,0,.5);}
 .plogo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none;z-index:0;white-space:nowrap;}
 .plogo b{font-family:var(--display);font-weight:400;font-size:clamp(1.3rem,4.2vw,2.7rem);letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.075);line-height:1;}
 .plogo span{font-weight:900;font-size:clamp(.6rem,1.4vw,.9rem);letter-spacing:.4em;text-transform:uppercase;color:rgba(255,255,255,.08);margin-top:4px;}
@@ -526,8 +537,10 @@
   .pland .ptiles .ptile:nth-child(n+3){display:none;}
   .pland .pev{padding:6px 10px 7px;} .pland .pev .t{font-size:1rem;} .pland .pev .lv{margin-top:4px;}
   .pland .pyou{padding:6px 10px;} .pland .pyou .n{font-size:.88rem;} .pland .pmeter{margin:5px 0 3px;height:7px;}
-  .pland .psz{padding:5px 6px 5px;} .pland .psz .pre button{min-height:28px;font-size:.7rem;} .pland .psz .row{margin-top:3px;}
-  .pland .psz .row button{width:28px;height:28px;} .pland .psz input[type=range]{height:24px;}
+  .pland .psz{padding:5px 6px 5px;} .pland .psz .pre button{min-height:38px;font-size:.82rem;} .pland .psz .row{margin-top:4px;}
+  .pland .psz .row button{width:38px;height:38px;} .pland .psz input[type=range]{height:30px;}
+  /* while you size a bet there's no room for everything: the two info tiles step aside for bigger buttons */
+  .pland .prail:has(.psz) .ptiles{display:none;}
   .pland .pctl{gap:5px;} .pland .pctl .pbar .btn{min-height:46px;font-size:.92rem;}
   .pland .ppre button{min-height:38px;font-size:.74rem;}
 }
@@ -1122,7 +1135,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
   // ── Setup ──────────────────────────────────────────────────────────────────
   function showSetup() {
-    stop(); S = null; undoStack = []; raiseUI = null; app.classList.remove('raising', 'pland', 'pcirc', 'czapp'); moneyHome(); venueOff();
+    stop(); S = null; undoStack = []; raiseUI = null; app.classList.remove('raising', 'pland', 'pcirc', 'czapp', 'k-hold'); moneyHome(); venueOff();
     orient(null);
     Kit.setup(app, {
       modes: [
@@ -1344,7 +1357,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function renderVP(o) {
     o = o || {};
     orient('portrait');
-    app.classList.remove('raising', 'pland');
+    app.classList.remove('raising', 'pland', 'k-hold');
     app.innerHTML = '';
     var cab = el('div', { class: 'vp' });
     cab.appendChild(el('div', { class: 'vp-title', text: 'Jacks or Better' }));
@@ -3879,6 +3892,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     orient('landscape');
     app.innerHTML = '';
     app.classList.toggle('pland', land);
+    app.classList.toggle('k-hold', land);   // the landscape table is laid out to the screen: the page never scrolls
     app.classList.toggle('after', !!final);
     app.classList.toggle('pcirc', !!S.circ);
     if (S.circ && !SIM && !QUIET && EV[S.circ.id]) venueBg(EV[S.circ.id], circStage(S.circ));
@@ -3920,6 +3934,14 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
           });
         }
         seat.appendChild(cards);
+        // press and hold a player's cards to see them big in the middle of the table (any card showing face up)
+        if (cards.querySelector('.pcard:not(.back)')) {
+          cards.classList.add('zoomable');
+          (function (ix) {
+            cards.addEventListener('pointerdown', function (e) { if (e.button > 0) return; e.preventDefault(); zoomOn(ix); });
+            cards.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+          })(i);
+        }
       }
       var tag = el('div', { class: 'tag' }, [
         el('span', { class: 'avatar', style: { '--c': seatColor(i) }, html: avHtml(p) }),
@@ -3962,6 +3984,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         tb.appendChild(at(el('div', { class: 'pdealer', text: 'D', 'aria-label': 'Dealer button' }), dp));
       }
     });
+    if (ZOOM != null) drawZoom(false);
     potEl = null;
     if (H && !done) {
       var pe = potEl = el('div', { class: 'ppot' }, [H.pot ? chipStack(H.pot, 4) : null, el('span', { class: 'lbl', text: 'Pot ' + amt(potAll()) })]);
@@ -4017,6 +4040,24 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // games with no shared board: the middle of the table says what's being played and where the hand is
   function noBoard() { var v = gv(); return !!(v.draw || v.stud || v.guts || v.acey || v.indian); }
   function isWild(c) { var w = S.hand && wildOf(S.hand); return !!(w && w.indexOf(c >> 2) >= 0); }
+  // ── Hold to look: a player's cards, big, in the middle of the table while your finger stays down ──────────────
+  var ZOOM = null;
+  function zoomOn(i) { if (ZOOM === i) return; ZOOM = i; drawZoom(true); Kit.haptic('light'); }
+  function zoomOff() {
+    if (ZOOM == null) return; ZOOM = null;
+    var z = document.querySelector('.pzoom'); if (!z) return;
+    z.classList.add('out'); setTimeout(function () { if (z.parentNode) z.parentNode.removeChild(z); }, 150);
+  }
+  function drawZoom(fresh) {
+    var old = document.querySelector('.pzoom'); if (old && old.parentNode) old.parentNode.removeChild(old);
+    var seat = seatEls[ZOOM], src = seat && seat.querySelector('.cards'), p = S && S.players[ZOOM];
+    if (!tableEl || !src || !p || !src.querySelector('.pcard:not(.back)')) { ZOOM = null; return; }
+    var row = el('div', { class: 'pzc' });
+    Array.prototype.forEach.call(src.children, function (c) { var k = c.cloneNode(true); k.classList.remove('deal'); k.style.animationDelay = ''; row.appendChild(k); });
+    tableEl.appendChild(el('div', { class: 'pzoom' + (fresh ? ' in' : ''), 'aria-hidden': 'true' }, [el('div', { class: 'pzn', text: p.name }), row]));
+  }
+  ['pointerup', 'pointercancel'].forEach(function (t) { document.addEventListener(t, zoomOff); });
+  window.addEventListener('blur', zoomOff);
   function markWild(ce, c) { if (isWild(c)) ce.classList.add('wild'); return ce; }
   function hiddenCard() { var b = backEl(); b.classList.add('hid'); b.appendChild(el('i', { class: 'q', text: '?' })); return b; }
   function wildText(H) { var w = wildOf(H); return w ? 'Wild: ' + w.map(function (r) { return RP[r]; }).join(' and ') : ''; }

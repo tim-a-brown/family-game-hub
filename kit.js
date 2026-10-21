@@ -942,7 +942,9 @@
   var fitLock = false, fitRaf = 0;
   function checkFit() {
     fitRaf = 0;
-    var se = doc.scrollingElement || root, fits = se.scrollHeight <= window.innerHeight + 2;
+    // .k-hold on the page: the game is laid out to the screen and is always held still (a moment of overflow while
+    // something animates in must not let it scroll, and the lock must not switch itself off)
+    var se = doc.scrollingElement || root, fits = se.scrollHeight <= window.innerHeight + 2 || !!doc.querySelector('.k-hold');
     if (fits && window.scrollY > 0) window.scrollTo(0, 0);
     if (fits !== fitLock) { fitLock = fits; root.classList.toggle('k-fit', fits); }
   }
