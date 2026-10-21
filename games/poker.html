@@ -506,6 +506,7 @@
 .pyou .pct{flex:none;font-size:1.2rem;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;}
 .pyou .pct.w{color:var(--red);} .pyou .pct.b{color:var(--orange,#ff8a3d);} .pyou .pct.f{color:var(--yellow);} .pyou .pct.s{color:var(--green);}
 .pyou .n.dim{color:var(--text-2);}
+.pyou .n.cs2{font-size:1.05rem;letter-spacing:.01em;} .pyou .n.cs2 .su.r{color:var(--red);} .pyou .n.cs2 .dash{margin:0 1px;color:var(--text-3);}
 .pyou.res{display:flex;flex-direction:column;gap:7px;font-weight:800;font-size:.86rem;line-height:1.35;color:var(--text);animation:rise .4s var(--ease) both;}
 .pyou.res > b,.pyou.res > span b{color:var(--yellow);}
 .rr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:8px;row-gap:2px;}
@@ -691,7 +692,7 @@
   .pland .pev{padding:6px 10px 7px;} .pland .pev .t{font-size:1rem;} .pland .pev .lvrow{margin-top:4px;}
   .pland .pev .tg{padding:1px 7px;font-size:.62rem;} .pland .pev .bl{font-size:.76rem;}
   .pland .pyou .pct{font-size:1.02rem;} .pland .ptile b{font-size:.98rem;}
-  .pland .pyou{padding:6px 10px;} .pland .pyou .n{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .pland .pyou.wbm{column-gap:7px;} .pland .pyou.wbm .cap{gap:4px;} .pland .pyou.wbm .cap .pct{font-size:.94rem;margin-right:0;} .pland .pbm-b{min-width:0;padding:0 0 0 9px;gap:2px;} .pland .pbm-b .ic .ico{width:16px;height:16px;} .pland .pbm-b b{font-size:.9rem;} .pland .pmeter{margin:5px 0 3px;height:7px;}
+  .pland .pyou{padding:6px 10px;} .pland .pyou .n.cs2{font-size:.98rem;} .pland .pyou .n{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .pland .pyou.wbm{column-gap:7px;} .pland .pyou.wbm .cap{gap:4px;} .pland .pyou.wbm .cap .pct{font-size:.94rem;margin-right:0;} .pland .pbm-b{min-width:0;padding:0 0 0 9px;gap:2px;} .pland .pbm-b .ic .ico{width:16px;height:16px;} .pland .pbm-b b{font-size:.9rem;} .pland .pmeter{margin:5px 0 3px;height:7px;}
   .pland .psz{padding:5px 6px 5px;} .pland .psz .pre button{min-height:38px;font-size:.82rem;} .pland .psz .row{margin-top:4px;}
   .pland .psz .row button{width:38px;height:38px;} .pland .psz input[type=range]{height:24px;} .pland .psz .ends{font-size:.62rem;}
   /* while you size a bet (or line up three pre-moves) there's no room for everything: the two info tiles step aside */
@@ -4556,7 +4557,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (v.acey || v.guts) { var ay = aceyYou(H, box, v); if (ay) return ay; }
     var nOpp = live().length - 1;
     if (nOpp) { box.classList.add('tap'); box.onclick = handSheet; }
-    var yh = el('div', { class: 'yh' }, [el('div', { class: 'n', text: youName(H, v) })]);
+    var yh = el('div', { class: 'yh' }, [youNameEl(H, v)]);
     // the best-move tip stands the full height of the section, beside the hand; with it off (or nothing to decide),
     // the hand has the width
     var bm = !final && !NET && S.coach ? coachSlot('pbm') : null, col = box;
@@ -4578,6 +4579,16 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     // short of room, the strength word gives way (the number and its colour say it too)
     if (nOpp) requestAnimationFrame(function () { if (cs.isConnected && cs.scrollWidth > cs.clientWidth + 1) cs.classList.add('tight'); });
     return box;
+  }
+  // before the board, your two cards as they are: K♥-10♠ (the suits show suited without saying it)
+  function startHTML(h) {
+    var a = h[0] >> 2 >= h[1] >> 2 ? h[0] : h[1], b = a === h[0] ? h[1] : h[0];
+    function one(c) { return RN[c >> 2] + '<span class="su' + ((c & 3) === 1 || (c & 3) === 2 ? ' r' : '') + '">' + SUITCH[c & 3] + '︎</span>'; }
+    return one(a) + '<span class="dash">-</span>' + one(b);
+  }
+  function youNameEl(H, v) {
+    var hc = H.hole[0], pre = !v.gen && !v.draw && H.board.length < 3 && !S.om && !v.keep && hc.length === 2;
+    return pre ? el('div', { class: 'n cs2', html: startHTML(hc) }) : el('div', { class: 'n', text: youName(H, v) });
   }
   function youName(H, v) {
     var mine = effHole(H.hole[0], H.board);
@@ -4761,7 +4772,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // Acey-Deucey: your two cards and the chance the next lands between. Guts: your two cards.
   function aceyYou(H, box, v) {
     if (v.guts) {
-      box.appendChild(el('div', { class: 'n', text: startName(H.hole[0]) }));
+      box.appendChild(H.hole[0].length === 2 ? el('div', { class: 'n cs2', html: startHTML(H.hole[0]) }) : el('div', { class: 'n', text: startName(H.hole[0]) }));
       return box;
     }
     var ac = H.ac;
