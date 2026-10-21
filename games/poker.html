@@ -486,7 +486,7 @@
 .psz{padding:6px 7px 7px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow-sm);animation:rise .3s var(--ease) both;}
 .psz .pre{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;}
 .psz .pre button{min-height:40px;padding:0 2px;border:0;border-radius:11px;background:var(--w07);color:var(--text);font-weight:900;font-size:.84rem;white-space:nowrap;transition:background .15s,transform .1s;}
-.psz .pre button.on{background:var(--yellow);color:#2b1a00;box-shadow:0 2px 0 #9a6b00;}
+.psz .pre button.on{background:var(--yellow-fill);color:#2b1a00;box-shadow:0 2px 0 #9a6b00;}
 .psz .pre button:active{transform:translateY(1px);}
 .psz .pre button:disabled{opacity:.35;}
 .psz .row{display:flex;align-items:center;gap:6px;margin-top:5px;}
@@ -540,16 +540,39 @@
 .plogo span{font-weight:900;font-size:clamp(.6rem,1.4vw,.9rem);letter-spacing:.4em;text-transform:uppercase;color:rgba(255,255,255,.08);margin-top:4px;}
 .plogo.ft b{color:rgba(255,216,77,.12);}
 .pcirc .felt-in::before{display:none;}
-.stage.pland{grid-template-columns:minmax(0,1fr) clamp(206px,26vw,262px);grid-template-rows:minmax(0,1fr);}
+.stage.pland{grid-template-columns:minmax(0,1fr) clamp(224px,28vw,272px);grid-template-rows:minmax(0,1fr);}
 .stage.pland .ptable{grid-row:1;}
-.pland .prail{grid-column:2;grid-row:1;padding-top:2px;}
+.pland .prail{grid-column:2;grid-row:1;padding-top:2px;gap:8px;}
+.stage.pland{padding-right:calc(var(--corner-x) + 10px);}
+/* the reading card: one panel, sections split by hairlines */
+.pside{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:var(--w05);box-shadow:inset 0 0 0 1px var(--line);}
+.pside > *{flex:none;background:none !important;box-shadow:none !important;border-radius:0 !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}
+.pside > * + *{border-top:1px solid var(--line);}
+.pside .pev{padding:8px 12px 9px;}
+.pside .ptiles{gap:0;}
+.pside .ptile{background:none !important;box-shadow:none !important;border-radius:0 !important;padding:6px 12px 7px;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}
+.pside .ptile:nth-child(even){border-left:1px solid var(--line);}
+.pside .ptile:nth-child(n+3){border-top:1px solid var(--line);}
+.pside .pyou{padding:8px 12px;}
+.pside .pstand{padding:7px 12px;}
+.pside .plog{flex:1 1 0;padding:6px 12px 7px;}
+/* the deck you act on */
+.pdeck{flex:none;display:flex;flex-direction:column;gap:7px;padding:8px;border-radius:18px;background:var(--w05);box-shadow:inset 0 0 0 1px var(--line);}
+.pdeck .pctl{margin-top:0;}
+.prail .pdeck .pcoach{justify-content:center;align-self:stretch;}
+.pdeck .psz{padding:0;background:none;box-shadow:none;}
+.pdeck .pwait{min-height:44px;}
+.pcirc .pside,.pcirc .pdeck{background:linear-gradient(var(--glass),var(--glass)),var(--glass);-webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3);box-shadow:inset 0 0 0 1px var(--line-2),0 6px 18px rgba(0,0,0,.22);}
+.pcirc .pdeck .pwait{background:none;-webkit-backdrop-filter:none;backdrop-filter:none;padding:0;}
 .pland .pme{flex-direction:row;align-items:flex-end;gap:8px;}
 .pland .pseat.me{margin:0 0 4px;flex-direction:column;align-items:flex-start;gap:3px;}
 .pland .pseat.me .psay{top:auto;bottom:100%;left:auto;right:0;transform:translate(0,-4px);}   /* grows left onto the felt, never over your cards */
 .pland .pme .pdealer{left:auto;right:-30px;top:auto;bottom:10px;}
 .pland .pme .peq{left:auto;right:0;transform:none;bottom:100%;}
 @media (max-height:500px){
-  .pland .prail{gap:5px;}
+  .pland .prail{gap:6px;}
+  .pside .pev{padding:6px 11px 7px;} .pside .ptile{padding:4px 11px 5px;} .pside .pyou{padding:6px 11px;} .pside .plog{padding:5px 11px;}
+  .pdeck{padding:6px;gap:6px;border-radius:16px;}
   .pland .ptiles .ptile:nth-child(n+3){display:none;}
   .pland .pev{padding:6px 10px 7px;} .pland .pev .t{font-size:1rem;} .pland .pev .lv{margin-top:4px;}
   .pland .pyou{padding:6px 10px;} .pland .pyou .n{font-size:.88rem;} .pland .pmeter{margin:5px 0 3px;height:7px;}
@@ -4206,14 +4229,23 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
 
   // ── The rail ─────────────────────────────────────────────────────────────
   function rail(final) {
-    var box = el('div', { class: 'prail' });
+    var box = el('div', { class: 'prail' }), you = railYou(), tc = final ? null : coachSlot('pcoach'), ctl = final ? null : controls();
+    if (LANDQ.matches) {
+      // sideways: two blocks. One card to read (the event, where you stand, your hand, the hand so far) and one deck
+      // to act on (the best-move chip, bet sizing and the buttons)
+      var card = el('div', { class: 'pside' });
+      card.appendChild(railHead()); card.appendChild(railTiles());
+      if (you) card.appendChild(you);
+      card.appendChild(railStand()); card.appendChild(railLog());
+      box.appendChild(card);
+      if (tc || (ctl && ctl.childNodes.length)) box.appendChild(el('div', { class: 'pdeck' }, [tc, ctl]));
+      return box;
+    }
     box.appendChild(railHead());
     box.appendChild(railTiles());
-    var you = railYou(); if (you) box.appendChild(you);
-    if (LANDQ.matches) { box.appendChild(railStand()); box.appendChild(railLog()); }
-    var tc = final ? null : coachSlot('pcoach');
+    if (you) box.appendChild(you);
     if (tc) box.appendChild(tc);
-    if (!final) box.appendChild(controls());
+    if (ctl) box.appendChild(ctl);
     return box;
   }
   function railHead() {
