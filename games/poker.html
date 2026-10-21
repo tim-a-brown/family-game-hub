@@ -522,10 +522,13 @@
 .plog{flex:1 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:0 4px;font-size:.76rem;font-weight:700;color:var(--text-2);}
 .plog.tiny{visibility:hidden;}
 .plog{position:relative;}
-.plog .more{position:absolute;right:11px;bottom:14px;width:16px;height:16px;color:var(--text-3);opacity:.8;}
-.pland .plog .more{bottom:12px;}
-.plog .more .ico,.plog .more svg{width:16px;height:16px;}
-.plog-in{padding-right:16px;}
+/* "see the whole log": a small round chip, centred on the last line */
+.plog .more{position:absolute;right:10px;bottom:calc(var(--lpb,14px) + var(--lh,17px) / 2 - 11px);width:22px;height:22px;display:grid;place-items:center;border-radius:50%;
+  background:var(--w12);color:var(--text);box-shadow:inset 0 0 0 1px var(--line);}
+.plog .more .ico,.plog .more svg{width:14px;height:14px;}
+.plog.tap:active .more{background:var(--yellow-fill);color:#2b1a00;}
+.plog-in{padding-right:26px;}
+
 .plog.one .plog-in{-webkit-mask-image:none;mask-image:none;justify-content:center;}
 .plog.one .plog-in > div:not(:last-child){display:none;}
 .plog.one .plog-in > div.win{display:flex;}
@@ -620,7 +623,7 @@
 .pside .ptile:nth-child(n+3){border-top:1px solid var(--line);}
 .pside .pyou{padding:8px 12px;}
 .pside .pstand{padding:7px 12px;}
-.pside .plog{flex:1 1 0;padding:4px 14px 14px;}
+.pside .plog{--lpb:14px;--lh:17px;flex:1 1 0;padding:4px 14px var(--lpb);}
 /* the deck you act on */
 /* the whole table's log, over the sidebar */
 .pfull{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line),var(--shadow-sm);animation:rise .25s var(--ease) both;}
@@ -656,7 +659,7 @@
 .pland .pme .peq{left:auto;right:0;transform:none;bottom:100%;}
 @media (max-height:500px){
   .pland .prail{gap:6px;}
-  .pside .pev{padding:6px 11px 7px;} .pside .ptile{padding:4px 11px 5px;} .pside .pyou{padding:6px 11px;} .pside .plog{padding:3px 13px 12px;}
+  .pside .pev{padding:6px 11px 7px;} .pside .ptile{padding:4px 11px 5px;} .pside .pyou{padding:6px 11px;} .pside .plog{--lpb:12px;padding:3px 13px var(--lpb);}
   .pdeck{--pd:7px;gap:7px;}
   .pland .ptiles .ptile:nth-child(n+3){display:none;}
   .pland .pev{padding:6px 10px 7px;} .pland .pev .t{font-size:1rem;} .pland .pev .lvrow{margin-top:4px;} .pland .pev .meta{margin-top:3px;}
@@ -676,7 +679,7 @@
   .pev .t{font-size:1.35rem;} .pev .tg{font-size:.76rem;} .pev .bl{font-size:.95rem;}
   .ptile{padding:6px 11px 7px;} .ptile small{font-size:.64rem;} .ptile b{font-size:1.25rem;} .ptile b span{font-size:.8rem;}
   .pyou .n{font-size:1.1rem;} .pyou .cap{font-size:.8rem;} .pyou.res{font-size:.98rem;} .rr .w{font-size:1.08rem;} .rr .a{font-size:1.45rem;} .rr .h{font-size:.9rem;}
-  .plog{font-size:.88rem;} .plog-in{gap:4px;} .mc{font-size:.84rem;}
+  .plog{font-size:.88rem;} .pside .plog{--lh:21px;} .plog-in{gap:4px;} .mc{font-size:.84rem;}
   .psz .pre button{min-height:40px;font-size:.86rem;} .psz .row button{width:38px;height:38px;}
   .pctl .pbar .btn{min-height:62px;font-size:1.1rem;}
   .ppre button{min-height:50px;font-size:.9rem;}
@@ -4754,8 +4757,15 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var H = S.hand, box = el('div', { class: 'plog' }), inner = el('div', { class: 'plog-in' });
     box.appendChild(inner);
     // room for one line: just the latest; less than that: leave the space empty rather than show a sliver
-    if (window.ResizeObserver) new ResizeObserver(function () { var h = box.clientHeight; box.classList.toggle('one', h < 44 && h >= 22); box.classList.toggle('tiny', h < 22); }).observe(box);
-    box.appendChild(el('span', { class: 'more', 'aria-hidden': 'true', html: Kit.icon('right') }));
+    var more = el('span', { class: 'more', 'aria-hidden': 'true', html: Kit.icon('right') });
+    // the arrow chip sits on the last line, whatever that line is (a line of text or a winner's cards)
+    function placeMore() {
+      var last = inner.lastElementChild; if (!last || !box.isConnected) return;
+      var t = last.querySelector('.cs') || last, r = t.getBoundingClientRect(), b = box.getBoundingClientRect();
+      more.style.top = Math.round(r.top - b.top + r.height / 2 - 11) + 'px'; more.style.bottom = 'auto';
+    }
+    if (window.ResizeObserver) new ResizeObserver(function () { var h = box.clientHeight; box.classList.toggle('one', h < 44 && h >= 22); box.classList.toggle('tiny', h < 22); requestAnimationFrame(placeMore); }).observe(box);
+    box.appendChild(more);
     if (!H) return box;
     H.log.slice(-9).forEach(function (e) { inner.appendChild(logRow(e)); });
     return box;
@@ -4815,6 +4825,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         g.hn || tag ? el('span', { class: 'h' }, [tag ? el('em', { text: tag }) : null, g.hn ? el('span', { class: 'hn', text: g.hn }) : null]) : null,
         g.pots.length > 1 ? el('span', { class: 'pots' }, g.pots.map(function (pt, k) { return el('span', null, [el('small', { text: pt.side ? (g.pots.filter(function (q) { return q.side; }).length > 1 ? 'Side ' + k : 'Side') : 'Main' }), document.createTextNode(amt(pt.amt))]); })) : null]);
       box.appendChild(row);
+      // a long name: "wins" steps aside whole rather than showing half a word
+      requestAnimationFrame(function () { var vb = row.querySelector('.vb'); if (vb && vb.scrollWidth > vb.clientWidth + 1) vb.style.display = 'none'; });
       // the amount counts up the first time the result shows
       if (fresh && !SIM && g.amt > 0) (function (a, total, pre) {
         var t0 = 0;
