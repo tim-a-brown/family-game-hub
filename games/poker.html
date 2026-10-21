@@ -577,7 +577,9 @@
 .pfull{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line),var(--shadow-sm);animation:rise .25s var(--ease) both;}
 .pcirc .pfull{background:linear-gradient(var(--glass),var(--glass)),var(--glass);-webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3);box-shadow:inset 0 0 0 1px var(--line-2),0 6px 18px rgba(0,0,0,.22);}
 .pfull-h{flex:none;display:flex;align-items:center;gap:8px;padding:8px 6px 8px 12px;border-bottom:1px solid var(--line);}
-.pfull-h b{font-weight:900;font-size:.95rem;} .pfull-h small{flex:1;font-size:.74rem;font-weight:800;color:var(--text-3);}
+.pfull-h b{font-weight:900;font-size:.95rem;white-space:nowrap;} .pfull-h small{flex:1;font-size:.74rem;font-weight:800;color:var(--text-3);}
+.pfull-go{flex:none;margin-left:auto;min-height:32px;padding:0 10px;white-space:nowrap;border:0;border-radius:999px;background:var(--yellow-fill);color:#2b1a00;font-weight:900;font-size:.82rem;box-shadow:0 3px 0 #9a6b00;animation:pfgo 1.4s ease-in-out infinite;}
+@keyframes pfgo{50%{transform:scale(1.06);}}
 .pfull-x{flex:none;width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:50%;background:var(--w07);color:var(--text);}
 .pfull-x .ico{width:18px;height:18px;}
 .pfull-l{flex:1 1 0;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:flex;flex-direction:column;gap:3px;padding:4px 12px 10px;font-size:.8rem;font-weight:700;color:var(--text-2);}
@@ -4280,9 +4282,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function rail(final) {
     var box = el('div', { class: 'prail' }), you = railYou(), tc = final ? null : coachSlot('pcoach'), ctl = final ? null : controls();
     if (LANDQ.matches && R.logOpen) {
-      // the whole table's history over the sidebar; the deck stays while there's something to press
-      box.appendChild(fullLog());
-      if (ctl && ctl.querySelector('button')) box.appendChild(el('div', { class: 'pdeck' }, [tc, ctl]));
+      // the whole table's history over the whole sidebar; when there's something for you to do, its header says so
+      box.appendChild(fullLog(!!(ctl && ctl.classList.contains('mine'))));
       return box;
     }
     if (LANDQ.matches) {
@@ -4605,12 +4606,13 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     return el('div', null, [el('i', { class: 'dot', style: { '--c': seatColor(e.i) } }), el('span', { text: verb(e.i, e.t, e.n) })]);
   }
   // every hand at this table so far, newest at the bottom; it stays where you scrolled while the hand goes on
-  function fullLog() {
+  function fullLog(yourTurn) {
     var H = S.hand, box = el('div', { class: 'pfull' }), list = el('div', { class: 'pfull-l' });
     function shut() { R.logOpen = false; Kit.sfx('tap', 0.5); renderTable(); }
+    var nH = (S.tlog || []).length + (H ? 1 : 0);
     box.appendChild(el('div', { class: 'pfull-h' }, [
       el('b', { text: 'This table' }),
-      el('small', { text: (S.tlog || []).length + (H ? 1 : 0) + ' hand' + ((S.tlog || []).length + (H ? 1 : 0) === 1 ? '' : 's') }),
+      yourTurn ? el('button', { type: 'button', class: 'pfull-go', text: 'Your move', onclick: shut }) : el('small', { text: nH + ' hand' + (nH === 1 ? '' : 's') }),
       el('button', { type: 'button', class: 'pfull-x', 'aria-label': 'Close the log', html: Kit.icon('close'), onclick: shut })]));
     box.appendChild(list);
     (S.tlog || []).concat(H ? [H.log] : []).forEach(function (hand) { hand.forEach(function (e) { list.appendChild(logRow(e)); }); });
