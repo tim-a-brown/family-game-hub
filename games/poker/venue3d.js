@@ -1827,8 +1827,9 @@ function forest(g, land, n, o) {
 }
 // moonlight (or the last of the sun): one far light over the land, so the slopes have light and shadow
 function moon(g, color, intensity, from, at) {
-  const l = new THREE.DirectionalLight(color || 0xb8c8ff, intensity == null ? 0.6 : intensity); l.position.set(...from); l.target.position.set(...(at || [0, 0, -40])); l.add(l.target); g.add(l); LIGHTS.push(l);
-  l.userData.dir = [l.target.position.x, l.target.position.y, l.target.position.z]; return l;
+  const l = new THREE.DirectionalLight(color || 0xb8c8ff, intensity == null ? 0.6 : intensity); l.position.set(...from); at = at || [0, 0, -40];
+  l.target.position.set(at[0] - from[0], at[1] - from[1], at[2] - from[2]); l.add(l.target); g.add(l); LIGHTS.push(l);   // the target rides with the light, so its place is the direction
+  l.userData.dir = [at[0] - from[0], at[1] - from[1], at[2] - from[2]]; return l;
 }
 // a wall with a hole in it for a real window (four planes round the opening)
 function wallWithHole(g, w, h, mat, z, hx, hy, hw, hh, ry) {
