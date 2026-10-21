@@ -4230,7 +4230,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         el('span', { text: me ? 'You' : p.name }),
         p.bty && !p.out ? el('span', { class: 'pb', text: S.circ && EV[S.circ.id].mystery ? '?' : usd(p.bty) }) : null
       ]);
-      tag.addEventListener('click', function () { if (p.cpu || p.pr) profileSheet(p); });
+      if (p.cpu || p.pr || me) { tag.classList.add('tap'); tag.addEventListener('click', function () { profileSheet(p); }); }
       seat.appendChild(tag);
       // what each player has: their chips beside the amount
       if (p.left || p.out || p.stack <= 0) seat.appendChild(el('span', { class: 'stack', text: p.left ? 'Left' : p.out ? ordinal(p.place) : amt(p.stack) }));
@@ -5380,19 +5380,35 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     return p.cpu ? Kit.icon('bot') : Kit.esc(p.name.charAt(0).toUpperCase());
   }
   // who they are, and how they play (what you'd pick up at the table: their style, not their cards)
+  // your own game, from what you've done: how loose (how often you play a hand) and how aggressive (bets and raises
+  // against calls), and what the table makes of it
+  function yourStyle(ps) {
+    var n = ps.hands || 0; if (n < 4) return null;
+    var vp = ps.vpip / n, acts = (ps.bets || 0) + (ps.calls || 0), ag = acts ? (ps.bets || 0) / acts : ((ps.pfr || 0) / Math.max(1, ps.vpip));
+    var loose = vp > 0.38, aggr = ag >= 0.45;
+    return loose ? (aggr ? 'lag' : 'station') : (aggr ? 'tag' : 'rock');
+  }
+  var YOURS = {
+    tag: 'You pick your hands and bet them. The table takes your bets seriously: expect more folds when you bet, and fewer light calls. A well-timed bluff works well for you.',
+    lag: 'You play a lot of hands and push them. The table will call you down lighter and bet into you more, so your good hands get paid; your bluffs get looked up more often.',
+    rock: 'You play few hands and mostly call. The table will steal your blinds and fold quickly when you finally bet, so your strong hands win small pots. Raising more would get you paid.',
+    station: 'You play a lot of hands and mostly call. The table will bet its good hands at you and seldom bluff you. Folding more of the weak ones, and raising the good ones, would save chips.'
+  };
   // tap a player: who they are, their chips up close, and how they play (from what they've done at this table)
   function profileSheet(p) {
     var i = S ? S.players.indexOf(p) : -1, pr = p.pr, root = el('div', { class: 'pdet pp' }), cols = pinCols(root), a = cols[0], b = cols[1];
+    var you = i === 0 && !p.cpu, ps0 = (S && S.ps || {})[p.name] || {}, mine = you ? yourStyle(ps0) : null;
     // who: their seat colour and initials, name, what they do, and their game in a word or two
     var pills = el('div', { class: 'pp-pills' });
     if (p.cpu) pills.appendChild(el('span', { class: 'pp-pill gold', text: (STYLES[p.style] || STYLES.tag).label }));
+    if (mine) pills.appendChild(el('span', { class: 'pp-pill gold', text: STYLES[mine].label }));
     if (p.cpu && S && S.circ) pills.appendChild(el('span', { class: 'pp-pill', text: skillWord(skillOf(p)) }));
     if (p.bty) pills.appendChild(el('span', { class: 'pp-pill', text: S && S.circ && EV[S.circ.id].mystery ? 'Mystery bounty' : usd(p.bty) + ' bounty' }));
     a.appendChild(el('div', { class: 'pp-head' }, [
       el('span', { class: 'avatar pp-av', style: { '--c': i >= 0 ? seatColor(i) : 'var(--surface-3)' }, html: avHtml(p) }),
       el('div', { class: 'pp-id' }, [
         el('b', { text: pr ? pr.f + ' ' + pr.l + (pr.k ? ' "' + pr.k + '"' : '') : p.name }),
-        pr ? el('span', { text: pr.a + ' · ' + cap(pr.j) + ' · ' + pr.h }) : null,
+        pr ? el('span', { text: pr.a + ' · ' + cap(pr.j) + ' · ' + pr.h }) : you ? el('span', { text: S.circ ? 'Your habits follow you from stop to stop' : 'Your habits at this table' }) : null,
         pills.childNodes.length ? pills : null])]));
     if (pr && pr.s) a.appendChild(el('p', { class: 'pp-story', text: pr.s }));
     // their chips, exactly, on the felt; then how that stacks up
@@ -5401,13 +5417,14 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       a.appendChild(el('div', { class: 'pin-chips felt-in' }, [chipStack(p.stack, 'big'), el('div', { class: 'amt' }, [el('b', { text: amt(p.stack) }), S.bb ? el('small', { text: Math.round(p.stack / S.bb) + ' big blinds' }) : null])]));
       var tiles = [pinStat('At the table', ordinal(rk), 'of ' + al.length)];
       if (i !== 0 && !me.out) { var d = p.stack - me.stack; tiles.push(pinStat('Against you', d === 0 ? 'Even' : (d > 0 ? '+' : '−') + amt(Math.abs(d)), d > 0 ? 'more than you' : d < 0 ? 'less than you' : 'same stack')); }
-      if (S.tourn) { var avg = al.reduce(function (t, j) { return t + S.players[j].stack; }, 0) / Math.max(1, al.length); tiles.push(pinStat('Average', amt(avg), p.stack >= avg ? 'they\'re above it' : 'they\'re below it')); }
+      if (S.tourn) { var avg = al.reduce(function (t, j) { return t + S.players[j].stack; }, 0) / Math.max(1, al.length); tiles.push(pinStat('Average', amt(avg), (you ? 'you\'re ' : 'they\'re ') + (p.stack >= avg ? 'above it' : 'below it'))); }
       a.appendChild(el('div', { class: 'pin-stats' }, tiles));
     }
     // how they play: their style's read, then what they've actually done here
-    var ps = (S && S.ps || {})[p.name] || {}, seen = ps.hands || 0, R0 = p.cpu ? READS[p.style] || READS.tag : null;
-    b.appendChild(pinH('How they play'));
+    var ps = ps0, seen = ps.hands || 0, R0 = p.cpu ? READS[p.style] || READS.tag : null;
+    b.appendChild(pinH(you ? 'How you play' : 'How they play'));
     if (R0) b.appendChild(el('p', { class: 'pp-read', text: R0[0] + ' ' + R0[1] + ' ' + R0[2] }));
+    if (mine) b.appendChild(el('p', { class: 'pp-read', text: YOURS[mine] }));
     if (seen >= 4) {
       var acts = (ps.bets || 0) + (ps.calls || 0), g = el('div', { class: 'pp-gauges' });
       [['Plays a hand', ps.vpip / seen, 'before the flop'], ['Raises first', (ps.pfr || 0) / seen, 'comes in raising'],
@@ -5418,11 +5435,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         g.appendChild(el('div', { class: 'pp-g' }, [el('small', { text: r[0] }), el('b', { text: Math.round(r[1] * 100) + '%' }), el('i', null, [f]), el('span', { text: r[2] })]));
       });
       b.appendChild(g);
-      b.appendChild(el('p', { class: 'pp-note', text: 'From ' + seen + ' hands at this table.' }));
+      b.appendChild(el('p', { class: 'pp-note', text: 'From ' + seen + ' hands' + (you && S.circ ? ' on the circuit (older ones count for less).' : ' at this table.') + (you ? ' The sharper players use these to read you.' : '') }));
     } else b.appendChild(el('p', { class: 'pp-note', text: seen ? 'Only ' + seen + ' hand' + (seen === 1 ? '' : 's') + ' seen so far: their numbers fill in after a few more.' : 'No hands seen yet: their numbers fill in after a few.' }));
     var H = S && S.hand;
     if (H && i >= 0 && H.inHand[i]) {
-      var did = H.folded[i] ? 'Folded' : H.ag[i] >= 1 ? 'Betting since the flop' : H.pfr === i ? 'Raised before the flop' : H.ag[i] > 0 ? 'Calling bets' : H.say[i] ? verb(i, H.say[i]).slice(p.name.length + 1) : 'Waiting to act';
+      var did = H.folded[i] ? 'Folded' : H.ag[i] >= 1 ? 'Betting since the flop' : H.pfr === i ? 'Raised before the flop' : H.ag[i] > 0 ? 'Calling bets' : H.say[i] ? (you ? verb(i, H.say[i]).replace(/^You /, '') : verb(i, H.say[i]).slice(p.name.length + 1)) : you && H.actor === 0 ? 'Your move' : 'Waiting to act';
       b.appendChild(el('div', { class: 'pp-now' }, [el('small', { text: 'This hand' }), el('b', { text: cap(did) })]));
     }
     if (p.cpu && S && S.dcd) b.appendChild(el('p', { class: 'pp-note', text: 'Likes to deal ' + favOf(p).map(function (g2) { return VAR[g2].name; }).join(', ') + '.' }));
