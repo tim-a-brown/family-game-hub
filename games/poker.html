@@ -325,6 +325,9 @@
 .plearn .lcards{display:flex;align-items:center;gap:5px;--cw:clamp(34px,10vw,46px);min-height:calc(var(--cw) * 1.45);flex-wrap:wrap;}
 .plearn .lgap{width:6px;}
 .plearn .pcard.ldeal{opacity:0;animation:ldeal .42s cubic-bezier(.2,.8,.3,1.2) forwards;}
+/* each card on its own layer: Safari otherwise leaves thin traces of a glowing card's shadow where it flew in */
+.plearn .pcard,.plearn .lchip{will-change:transform,opacity;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+.plearn{transform:translateZ(0);}
 .plearn .pcard.toss{animation:ldeal .42s cubic-bezier(.2,.8,.3,1.2) forwards,ltoss .5s ease var(--tt,1.2s) forwards;}
 .plearn .pcard.fresh{box-shadow:0 0 0 2px #ffd84d,0 0 12px rgba(255,216,77,.6);}
 .plearn .pcard.down{margin-top:6px;}
@@ -727,6 +730,50 @@
 .stage:not(.pland) .prail .pyou{grid-column:1 / -1;}
 .stage:not(.pland) .prail .pcoach,.stage:not(.pland) .prail .pctl{grid-column:1 / -1;}
 .stage:not(.pland) .plabel{display:none;}
+/* ── Phone upright: the table fills the screen, your cards rise off its bottom rail, and under it one card to read
+   (the event and where you stand, your hand, the latest action) and the deck to act on ── */
+.stage.pport{max-width:none;margin:0;height:calc(100dvh - var(--gbh,44px));display:flex;flex-direction:column;padding:2px 10px calc(var(--safe-b) + 8px);}
+.stage.pport .ptable,.stage.pport.raising .ptable{flex:1 1 auto;height:auto;min-height:0;margin:0 0 24px;border-radius:46% / 30%;}
+.pport .ptable > .felt-in{inset:10px;border-radius:46% / 30%;}
+.pport .ptable > .felt-in::after{inset:12% 10%;border-radius:46% / 30%;}
+.pport .pme{bottom:-22px;flex-direction:row;align-items:flex-end;gap:8px;}
+.pport .pme .pdealer{left:calc(100% + 8px);right:auto;top:auto;bottom:30px;}
+.pport .pme .peq{left:auto;right:0;transform:none;bottom:100%;}
+.pport .pme .pseat{position:absolute;right:calc(100% + 8px);bottom:26px;margin:0;flex-direction:column;align-items:flex-end;gap:3px;}   /* your cards stay centred; your name and chips beside them */
+.pport .pme .pseat .psay{top:auto;bottom:100%;left:auto;right:0;transform:translate(0,-4px);}
+.pport .pev .tg:not(.hot):not(.ok):not(.gold){display:none;}   /* in the narrow box only the tags that say something now */
+.stage.pport .phand,.stage.pport.raising .phand{--cw:clamp(56px,16.5vw,70px);gap:6px;min-height:0;}
+.stage.pport .phand.om{--cw:clamp(46px,13vw,58px);gap:3px;}
+.stage.pport .phand.o5{--cw:clamp(42px,12vw,52px);}
+.stage.pport .phand.s7{--cw:clamp(38px,10.5vw,48px);}
+.stage.pport .prail{flex:none;display:flex;flex-direction:column;gap:6px;margin:0;}
+.stage.pport .pboard{--cw:clamp(36px,min(11.5vw,6.2dvh),52px);}
+.pport .pside{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);}
+.pport .pside > *{grid-column:1 / -1;}
+.pport .pside > .pev{grid-column:1;grid-row:1;}
+.pport .pside > .ptiles{grid-column:2;grid-row:1;border-top:0;border-left:1px solid var(--line);grid-template-columns:minmax(0,1fr);align-content:center;}
+.pport .pside .ptile:nth-child(n+3){display:none;}
+.pport .pside .ptile:nth-child(even){border-left:0;border-top:1px solid var(--line);}
+.pport .pstand{display:none;}
+.stage.pport .prail:has(> .pfull){height:58%;} .pport .prail > .pfull{flex:1 1 auto;min-height:0;}   /* the whole log takes the lower half; the table stays in view above it */
+.pport .pseat.up.pa{transform:translate(-50%,-100%);} .pport .pseat.pa:is(.ps-lb,.ps-rb){transform:translate(-50%,0);}
+.pport .ps-lb .psay{top:50%;bottom:auto;left:100%;transform:translate(4px,-50%);} .pport .ps-rb .psay{top:50%;bottom:auto;left:auto;right:100%;transform:translate(-4px,-50%);}   /* what they said sits toward the middle, clear of your seat */   /* the upper side seats stand on their chips: cards turned up grow away from the board */
+/* short phones (SE): everything a notch tighter, and while you size a bet the event and the two tiles step aside */
+@media (orientation:portrait) and (max-height:740px){
+  .stage.pport .prail{gap:5px;}
+  .pport .pside .pev{padding:5px 10px 6px;} .pport .pev .t{font-size:1rem;} .pport .pev .lvrow{margin-top:3px;}
+  .pport .pside .ptile{padding:3px 10px;} .pport .ptile b{font-size:.98rem;}
+  .pport .pside .pyou{padding:5px 10px;} .pport .pyou .n{font-size:.92rem;}
+  .pport .pside .plog{padding:5px 38px 6px 12px;}
+  .pport .pdeck{--pd:7px;gap:6px;}
+  .pport .psz .pre button{min-height:34px;font-size:.8rem;} .pport .psz .row{margin-top:3px;} .pport .psz .row button{width:36px;height:36px;} .pport .psz input[type=range]{height:24px;}
+  .pport .pctl{gap:5px;} .pport .pctl .pbar .btn{min-height:46px;}
+  .pport .ppre button{min-height:38px;}
+  .stage.pport .phand,.stage.pport.raising .phand{--cw:clamp(46px,13.5vw,56px);}
+  .stage.pport .ptable{margin-bottom:18px;} .pport .pme{bottom:-16px;}
+  .pport .pme .pseat > .tag{display:none;} .pport .pme .pseat{bottom:0;}   /* your cards say it's you; the side seats get the room */
+  .pport .prail:is(:has(.psz),:has(.ppre > :nth-child(3))) .pside > :is(.pev,.ptiles){display:none;}
+}
 
 /* ══ The Circuit: the road from a kitchen table to the World Championship ═══════════════════════════════════ */
 .cz{max-width:760px;margin:0 auto;padding:2px 14px calc(var(--safe-b) + 28px);}
@@ -1402,7 +1449,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
   // ── Setup ──────────────────────────────────────────────────────────────────
   function showSetup() {
-    stop(); S = null; undoStack = []; raiseUI = null; app.classList.remove('raising', 'pland', 'pcirc', 'czapp', 'k-hold'); moneyHome(); venueOff();
+    stop(); S = null; undoStack = []; raiseUI = null; app.classList.remove('raising', 'pland', 'pport', 'pcirc', 'czapp', 'k-hold'); moneyHome(); venueOff();
     orient(null);
     Kit.setup(app, {
       modes: [
@@ -1624,7 +1671,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function renderVP(o) {
     o = o || {};
     orient('portrait');
-    app.classList.remove('raising', 'pland', 'k-hold');
+    app.classList.remove('raising', 'pland', 'pport', 'k-hold');
     app.innerHTML = '';
     var cab = el('div', { class: 'vp' });
     cab.appendChild(el('div', { class: 'vp-title', text: 'Jacks or Better' }));
@@ -4159,6 +4206,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     7: ['b', 'lb', 'lt', 'tl', 'tr', 'rt', 'rb'], 8: ['b', 'lb', 'l', 'lt', 't', 'rt', 'r', 'rb'], 9: ['b', 'lb', 'l', 'lt', 'tl', 'tr', 'rt', 'r', 'rb'],
     10: ['b', 'bl', 'lb', 'lt', 'tl', 't', 'tr', 'rt', 'rb', 'br'] };   // (7 to 10: online tables)
   var CEN = [50, 50];
+  // a phone upright: the lower side seats sit a little higher, clear of your name and cards on the bottom rail
+  var POSP = { lb: [12, 58], rb: [88, 58], bl: [22, 74], br: [78, 74], lt: [14, 38], rt: [86, 38], l: [13, 56], r: [87, 56] };   // (lt/rt/l/r stand on their chips and lb/rb hang from their top, so cards turned up grow away from the board)
   // Phone sideways: a wide table. Opponents sit along the top and the two ends (al/ar: pinned by their
   // outer edge so they never hang off the rail); your cards sit at the bottom centre, controls on the right.
   // (iPads sideways get the same layout, larger: there the raise panel used to push the buttons off screen)
@@ -4169,8 +4218,12 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   var LAYL = { 2: ['b', 't'], 3: ['b', 'lt', 'rt'], 4: ['b', 'l', 't', 'r'], 5: ['b', 'lb', 'lt', 'rt', 'rb'], 6: ['b', 'lb', 'l', 't', 'r', 'rb'],
     7: ['b', 'lb', 'l', 'lt', 'rt', 'r', 'rb'], 8: ['b', 'lb', 'l', 'ta', 't', 'te', 'r', 'rb'], 9: ['b', 'lb', 'l', 'ta', 'tb', 'td', 'te', 'r', 'rb'],
     10: ['b', 'lb', 'l', 'ta', 'tb', 't', 'td', 'te', 'r', 'rb'] };
+  // Phone upright: the table fills the screen above one card to read and the deck to act on (the same pieces as
+  // sideways), your cards rising off the table's bottom rail
+  var PORTQ = window.matchMedia ? matchMedia('(orientation:portrait) and (max-width:540px)') : { matches: false };
+  function sideLay() { return LANDQ.matches || PORTQ.matches; }
   function onLand() { if (S && S.kind === 'table') renderTable(!S.hand || app.classList.contains('after')); }
-  if (LANDQ.addEventListener) LANDQ.addEventListener('change', onLand); else if (LANDQ.addListener) LANDQ.addListener(onLand);
+  [LANDQ, PORTQ].forEach(function (q) { if (q.addEventListener) q.addEventListener('change', onLand); else if (q.addListener) q.addListener(onLand); });
   function lerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
   function at(node, p) { node.classList.add('pa'); node.style.left = p[0] + '%'; node.style.top = p[1] + '%'; return node; }
   var R = {}, raiseUI = null, tableEl = null, potEl = null, seatEls = [], betEls = [];
@@ -4217,16 +4270,17 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function renderTable(final) {
     if (SIM || QUIET) return;
     if (PRESS != null) { PRESS_DUE = { final: final }; return; }
-    var H = S.hand, n = N(), land = LANDQ.matches, lay = (land ? LAYL : LAY)[n];
-    orient('landscape');
+    var H = S.hand, n = N(), land = LANDQ.matches, port = !land && PORTQ.matches, lme = land || port, lay = (land ? LAYL : LAY)[n];
+    orient(null);
     app.innerHTML = '';
     app.classList.toggle('pland', land);
-    app.classList.toggle('k-hold', land);   // the landscape table is laid out to the screen: the page never scrolls
+    app.classList.toggle('pport', port);
+    app.classList.toggle('k-hold', lme);   // a phone's table is laid out to the screen: the page never scrolls
     app.classList.toggle('after', !!final);
     app.classList.toggle('pcirc', !!S.circ);
     if (S.circ && !SIM && !QUIET && EV[S.circ.id]) venueBg(EV[S.circ.id], circStage(S.circ));
     app.classList.remove('raising', 'czapp');
-    if (land) { var gb = document.querySelector('.gbar'); app.style.setProperty('--gbh', (gb ? gb.offsetHeight : 44) + 'px'); }
+    if (lme) { var gb = document.querySelector('.gbar'); app.style.setProperty('--gbh', (gb ? gb.offsetHeight : 44) + 'px'); }
 
     var tb = tableEl = el('div', { class: 'ptable wood' }), felt = el('div', { class: 'felt-in' });
     if (S.circ && !noBoard()) { var ev = EV[S.circ.id]; felt.appendChild(el('div', { class: 'plogo' + (S.circ.ft ? ' ft' : '') }, [el('b', { text: S.circ.ft ? 'Final table' : ev.venue }), el('span', { text: S.circ.ft ? ev.venue : ev.style })])); }
@@ -4238,8 +4292,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var reqs = H && (H.phase === 'runout' || (H.phase === 'collect' && H.ai)) ? runEq() : null;
     var myTurn = H && H.phase === 'bet' && H.actor === 0 && !final;
     S.players.forEach(function (p, i) {
-      var me = i === 0, pos = land && !me ? POSL[lay[i]] : POS[lay[i]];
+      var me = i === 0, pos = land && !me ? POSL[lay[i]] : port && !me && POSP[lay[i]] && (n <= 6 || /^[lr]b$|^b[lr]$/.test(lay[i])) ? POSP[lay[i]] : POS[lay[i]];
       var seat = el('div', { class: 'pseat' + (me ? ' me' : '') + (land ? (me ? '' : ' ls ls-' + lay[i]) : n > 6 ? '' : (/^(l|r|lt|rt)$/.test(lay[i]) ? ' up' : '') + (lay[i] === 't' ? ' top' : '')) + (n > 6 && !me ? ' many' : '') });
+      if (port && !me) seat.classList.add('ps-' + lay[i]);
       if (p.out) seat.classList.add('out');
       if (p.sat && H && p.sat === H.no) seat.classList.add('sit');
       if (H && H.folded[i]) seat.classList.add('fold');
@@ -4286,8 +4341,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (done && H.scores && H.scores[i] != null) say = evBased() && !gv().wild && !gv().ftq ? shortName(H.scores[i]) : hName(H, i);
       else if (H && H.say[i]) say = H.say[i];
       if (say) seat.appendChild(el('div', { class: 'psay' + (done && H.scores && H.scores[i] != null ? ' hand' : say === 'Fold' ? ' fold' : '') + (H && H.sayNew === i ? ' new' : ''), text: say }));
-      if (reqs && reqs[i] != null) { var eb = el('div', { class: 'peq' + (reqs.lead === i ? ' lead' : ''), text: Math.round(reqs[i] * 100) + '%' }); if (me && land) meEq = eb; else seat.appendChild(eb); }
-      if (land && me) meSeat = seat;
+      if (reqs && reqs[i] != null) { var eb = el('div', { class: 'peq' + (reqs.lead === i ? ' lead' : ''), text: Math.round(reqs[i] * 100) + '%' }); if (me && lme) meEq = eb; else seat.appendChild(eb); }
+      if (lme && me) meSeat = seat;
       else {
         tb.appendChild(at(seat, pos));
         if (land && /^(l|lb)$/.test(lay[i])) seat.classList.add('al');
@@ -4297,6 +4352,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var bp = lerp(pos, CEN, me ? 0.36 : 0.42), side = pos[0] < 40 ? 'l' : pos[0] > 60 ? 'r' : '';
       if (side) bp = [side === 'l' ? 25 : 75, pos[1] + (pos[1] < 40 ? 8 : pos[1] > 60 ? -7 : 9)];
       if (land) { bp = me ? [50, 59] : BETL[lay[i]].slice(); side = ''; if (n > 6 && /^(t|ta|tb|td|te|lt|rt)$/.test(lay[i])) bp[1] += 6; }
+      else if (port && me) { bp = [50, 66]; side = ''; }
       function atBet(node) { at(node, bp); if (side) node.classList.add('b' + side); return node; }
       if (H && H.bet[i] > 0) {
         var be = el('div', { class: 'pbet' }, [chipStack(H.bet[i]), el('span', { class: 'amt', text: amt(H.bet[i]) })]);
@@ -4305,7 +4361,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         var we = el('div', { class: 'pbet won' }, [chipStack(H.won[i]), el('span', { class: 'amt', text: '+' + amt(H.won[i]) })]);
         tb.appendChild(atBet(we)); betEls[i] = we;
       }
-      if (H && H.button === i && land) {
+      if (H && H.button === i && lme) {
         var dl = el('div', { class: 'pdealer', text: 'D', 'aria-label': 'Dealer button' });
         if (me) meDealer = dl; else seat.appendChild(dl);
       } else if (H && H.button === i) {
@@ -4358,7 +4414,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (done && H.five && H.five[0] && H.five[0].length && main && main.v != null && main.w.indexOf(0) >= 0) ce.classList.add(H.five[0].indexOf(c) >= 0 ? 'best' : 'unused');
       hand.appendChild(ce);
     });
-    if (land) tb.appendChild(el('div', { class: 'pme' + (myTurn ? ' turn' : '') }, [meDealer, meSeat, hand, meEq]));
+    if (lme) tb.appendChild(el('div', { class: 'pme' + (myTurn ? ' turn' : '') }, [meDealer, meSeat, hand, meEq]));
     else { if (myTurn) hand.classList.add('turn'); app.appendChild(hand); }
     app.appendChild(rail(final));
 
@@ -4453,13 +4509,13 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function rail(final) {
     YOUBM = false;
     var box = el('div', { class: 'prail' }), you = railYou(final), tc = final || YOUBM ? null : coachSlot('pcoach'), ctl = final ? null : controls();
-    if (LANDQ.matches && R.logOpen) {
+    if (sideLay() && R.logOpen) {
       // the whole table's history over the whole sidebar; when there's something for you to do, its header says so
       box.appendChild(fullLog(!!(ctl && ctl.classList.contains('mine'))));
       return box;
     }
-    if (LANDQ.matches) {
-      // sideways: two blocks. One card to read (the event, where you stand, your hand, the hand so far) and one deck
+    if (sideLay()) {
+      // sideways (and a phone upright): two blocks. One card to read (the event, where you stand, your hand, the hand so far) and one deck
       // to act on (the best-move chip, bet sizing and the buttons)
       var card = el('div', { class: 'pside' });
       card.appendChild(railHead()); card.appendChild(railTiles());
@@ -5857,7 +5913,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // Test hook: computer players of the given skills play n cash hands against each other; resolves with each seat's
   // result in big blinds per 100 hands
   window.__pk = {
-    get S() { return S; }, render: function () { renderTable(); }, deal: function () { startHand(); }, _net: { start: netStart, move: netMove, turn: netTurn, bot: netBot, resign: netResign, decide: function (st, i) { return quiet(st, function () { return cpuDecide(i); }); } }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
+    get S() { return S; }, render: function () { renderTable(); }, deal: function () { startHand(); }, learn: function (g) { learnSheet(g); }, _net: { start: netStart, move: netMove, turn: netTurn, bot: netBot, resign: netResign, decide: function (st, i) { return quiet(st, function () { return cpuDecide(i); }); } }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
     ring: function (rec, rain) { if (rain) { var art = el('div', { class: 'pbr-art' }), ov = el('div', { class: 'pbr-ov' }, [art]); document.body.appendChild(ov); braceletInto(art, Object.assign(ringPlate(rec), { rain: true })); } else ringShow(rec); },
     bracelet: function (rec, rain) { if (rain) { var art = el('div', { class: 'pbr-art' }), ov = el('div', { class: 'pbr-ov' }, [art]); document.body.appendChild(ov); braceletInto(art, Object.assign(braceletPlate(rec), { rain: true })); } else braceletShow(rec); },
     peek: function () { return S && { no: S.handNo, phase: S.hand && S.hand.phase, actor: S.hand && S.hand.actor, street: S.hand && S.hand.street, held: !!held }; },
