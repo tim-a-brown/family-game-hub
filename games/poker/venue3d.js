@@ -619,9 +619,11 @@ function finalDress(g, o) {
   if (TIER !== 'local') for (let i = 0; i < 14; i++) { const a = (SEAT.face > 0 ? 0 : Math.PI) + 0.35 + i / 13 * (Math.PI - 0.7); const p = ovalPt(R[0], R[1], a); posts.push(p); cyl(c, 0.025, 0.025, 0.95, brass, p[0], 0.48, p[1], 10); sph(c, 0.04, brass, p[0], 0.97, p[1], 10); cyl(c, 0.14, 0.16, 0.03, brass, p[0], 0.015, p[1], 16); }
   for (let i = 0; i < posts.length - 1; i++) { const a = posts[i], b = posts[i + 1], mid = new THREE.Vector3((a[0] + b[0]) / 2, 0.82, (a[1] + b[1]) / 2); c.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(new THREE.Vector3(a[0], 0.92, a[1]), mid, new THREE.Vector3(b[0], 0.92, b[1])), 10, 0.02, 6), rope)); }
   const crowd = TIER === 'local' ? 6 : TIER === 'known' ? 20 : 34;
+  const camX = 1.1, camZ = SEAT.rz + 3.4 + (SEAT.face > 0 ? 1.8 : 0);   // where the wide final-table camera stands (relative to the table), kept clear
   for (let i = 0; i < crowd; i++) {
     if (TIER === 'local') { const p = endSpot(i); stander(c, p[0], p[1], Math.atan2(-p[0], -p[1]) + (rnd() - 0.5) * 0.3, {}); continue; }
     const a = (SEAT.face > 0 ? 0 : Math.PI) + 0.3 + rnd() * (Math.PI - 0.6), d = 0.35 + rnd() * 1.4, p = ovalPt(R[0] + d, R[1] + d, a);
+    if (Math.hypot(p[0] - camX, p[1] - camZ) < 1.0) continue;
     stander(c, p[0], p[1], Math.atan2(-p[0], -p[1]) + (rnd() - 0.5) * 0.4, { lod: TIER === 'big' && d > 1 ? 1 : 0 });
   }
   if (TIER !== 'local') {
@@ -3678,8 +3680,15 @@ function build(key, o) {
   else if (res.cam) { cam.position.set(...res.cam[0]); cam.lookAt(...res.cam[1]); }
   else { cam.position.set(0, 1.45, 1.6); cam.lookAt(0, 1.25, -6); }
   // shadows from the lights nearest what the camera looks at; everything solid casts and catches them
-  const look = new THREE.Vector3(); cam.getWorldDirection(look); look.multiplyScalar(4).add(cam.position);
   scene.updateMatrixWorld(true);
+  if (V === 'room' && STAGE === 'final' && SEAT) {
+    // the wide final-table camera sits at a fixed offset from the table; in a small room that can be inside a wall, a
+    // pillar or the crowd. Anything solid between the table and the camera: the camera slides in front of it.
+    const from = new THREE.Vector3(SEAT.x, y0 + 1.5, SEAT.z), dir = cam.position.clone().sub(from), len = dir.length(); dir.normalize();
+    const hit = new THREE.Raycaster(from, dir, 1.2, len + 0.02).intersectObject(g, true).find(h => h.object.visible && !(h.object.material && h.object.material.transparent && h.object.material.opacity < 0.5));
+    if (hit) { cam.position.copy(from).addScaledVector(dir, Math.max(1.8, hit.distance - 0.5)); cam.lookAt(SEAT.x, y0 + 0.75, SEAT.z - 0.2); cam.userData.slid = +(len - hit.distance).toFixed(2); scene.updateMatrixWorld(true); }
+  }
+  const look = new THREE.Vector3(); cam.getWorldDirection(look); look.multiplyScalar(4).add(cam.position);
   const wp = new THREE.Vector3();
   SPOTS.slice().sort((a, b) => a.getWorldPosition(wp).distanceTo(look) - b.getWorldPosition(new THREE.Vector3()).distanceTo(look)).slice(0, 4).forEach(s => {
     s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0004; s.shadow.normalBias = 0.02; s.shadow.camera.near = 0.3; s.shadow.camera.far = 8;
