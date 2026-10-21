@@ -2509,7 +2509,7 @@ const SCENES = {
     mountedHead(g, -6.95, 2.6, -3.0, Math.PI / 2);
     if (MT) {
       glassWall(g, 4.0, 2.0, B + 0.02, 2.6, 1.7, 0); { const fm = M({ color: 0x2a1a0c, roughness: 0.5 }); box(g, 0.06, 1.7, 0.1, fm, 4.0, 2.0, B + 0.06); box(g, 2.6, 0.06, 0.1, fm, 4.0, 2.0, B + 0.06); box(g, 2.8, 0.1, 0.12, fm, 4.0, 2.9, B + 0.06); box(g, 2.8, 0.1, 0.3, fm, 4.0, 1.1, B + 0.1); }
-      { const land = landscape(g, { x: 4, z: B - 50, w: 130, d: 95, kind: 'alpine', snow: 9, treeline: 8, near: 0.18 }); forest(g, land, 700, { size: 1.0 }); moon(g, 0xb8c8ff, 0.7, [30, 55, B - 10], [0, 0, B - 45]); starDome(g, 0, B - 20, 150, [[0, '#03061a'], [0.6, '#0e1838'], [1, '#2a3a6a']]); }
+      { const land = landscape(g, { x: 4, z: B - 50, w: 130, d: 95, kind: 'alpine', snow: 9, treeline: 8, near: 0.18, scale: 1.5 }); forest(g, land, 520, { size: 1.1, ok: (x, z, h) => z < B - 16 && !(Math.abs(x - 4) < 2 + (B - z) * 0.25 && z > B - 60) }); moon(g, 0xb8c8ff, 1.0, [30, 55, B - 10], [0, 0, B - 45]); starDome(g, 0, B - 20, 150, [[0, '#03061a'], [0.6, '#0e1838'], [1, '#2a3a6a']]); }
       slots(g, 6.4, -4.0, 4, -Math.PI / 2, { colors: [0xffd84d, 0xff3a3a, 0x3ad8ff] });
       const cart = new THREE.Group(); cart.position.set(-6.0, 0, -1.2); cart.rotation.y = 0.5; g.add(cart); const cm = M({ color: 0x4a3a2a, metalness: 0.5, roughness: 0.6 }), ir = M({ color: 0x1a1a1a, metalness: 0.6 });
       const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.45, 0.5, 4, 1), cm); bin.rotation.y = Math.PI / 4; bin.position.y = 0.55; bin.scale.set(1, 1, 0.7); cart.add(bin); for (const sx of [-0.3, 0.3]) for (const sz of [-0.28, 0.28]) cyl(cart, 0.14, 0.14, 0.05, ir, sx, 0.14, sz, 16).rotation.x = Math.PI / 2;
