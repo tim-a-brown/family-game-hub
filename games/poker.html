@@ -573,7 +573,11 @@
 .psz .pre button:disabled{opacity:.35;}
 .psz .row{display:flex;align-items:center;gap:6px;margin-top:5px;}
 .psz .row button{flex:none;width:40px;height:40px;border:0;border-radius:50%;background:var(--w07);color:var(--text);font-weight:900;font-size:1.1rem;line-height:1;}
-.psz input[type=range]{flex:1;min-width:0;height:32px;accent-color:var(--yellow);}
+.psz .trk{flex:1;min-width:0;display:flex;flex-direction:column;}
+.psz input[type=range]{width:100%;min-width:0;height:26px;margin:0;accent-color:var(--yellow);}
+.psz .ends{display:flex;justify-content:space-between;gap:6px;margin-top:-1px;padding:0 2px;font-size:.66rem;font-weight:900;line-height:1.1;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.psz .ends small{font-size:.54rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.psz .ends .on,.psz .ends .on small{color:var(--yellow);}
 .pctl .pbar{display:flex;gap:6px;min-height:0;}
 .pctl .pbar .btn{flex:1 1 0;min-height:52px;padding:0 6px;font-size:.98rem;}
 .pctl .pbar .btn .two{display:flex;flex-direction:column;align-items:center;text-align:center;line-height:1.1;white-space:nowrap;max-width:100%;}
@@ -684,7 +688,7 @@
   .pland .pyou .pct{font-size:1.02rem;} .pland .ptile b{font-size:.98rem;}
   .pland .pyou{padding:6px 10px;} .pland .pyou .n{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .pland .pyou.wbm{column-gap:8px;} .pland .pbm-b{padding:5px 9px 5px 7px;gap:4px;} .pland .pbm-b .ic .ico{width:15px;height:15px;} .pland .pbm-b b{font-size:.88rem;} .pland .pmeter{margin:5px 0 3px;height:7px;}
   .pland .psz{padding:5px 6px 5px;} .pland .psz .pre button{min-height:38px;font-size:.82rem;} .pland .psz .row{margin-top:4px;}
-  .pland .psz .row button{width:38px;height:38px;} .pland .psz input[type=range]{height:30px;}
+  .pland .psz .row button{width:38px;height:38px;} .pland .psz input[type=range]{height:24px;} .pland .psz .ends{font-size:.62rem;}
   /* while you size a bet (or line up three pre-moves) there's no room for everything: the two info tiles step aside */
   .pland .prail:is(:has(.psz),:has(.ppre > :nth-child(3))) .ptiles,.pland .prail:is(:has(.psz),:has(.ppre > :nth-child(3))) .pev .meta{display:none;}
   .pland .pctl{gap:5px;} .pland .pctl .pbar .btn{min-height:46px;font-size:.92rem;}
@@ -5035,6 +5039,15 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (H.phase === 'bet' && H.inHand[0] && !H.folded[0] && me.stack > 0) box.appendChild(preActs());
     return box;
   }
+  // the slider, with its ends in real amounts (the least you can make it and all you've got), so a bet reads against
+  // your stack
+  function szTrack(slider, o, top) {
+    var lo = el('span', null, [el('small', { text: 'Min' }), ' ' + amt(o.minTo)]), hi = el('span', null, [el('small', { text: top }), ' ' + amt(o.maxTo)]);
+    var t = el('div', { class: 'trk' }, [slider, el('div', { class: 'ends' }, [lo, hi])]);
+    t.mark = function (v) { lo.classList.toggle('on', v <= o.minTo); hi.classList.toggle('on', v >= o.maxTo); };
+    t.mark(SZ.to);
+    return t;
+  }
   // Acey-Deucey's bet: a slice of the pot, up to all of it
   function aceySizer(o, onSet) {
     var box = el('div', { class: 'psz' }), pre = el('div', { class: 'pre' }), btns = [];
@@ -5050,10 +5063,12 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       SZ.to = Math.max(o.minTo, Math.min(o.maxTo, v));
       if (!fromSlider) slider.value = SZ.to;
       btns.forEach(function (b) { b.classList.toggle('on', b._v === SZ.to); });
+      trk.mark(SZ.to);
       onSet();
     }
+    var trk = szTrack(slider, o, 'Pot');
     box.appendChild(pre);
-    box.appendChild(el('div', { class: 'row' }, [slider]));
+    box.appendChild(el('div', { class: 'row' }, [trk]));
     btns.forEach(function (b) { b.classList.toggle('on', b._v === SZ.to); });
     return box;
   }
@@ -5082,10 +5097,12 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       SZ.to = Math.max(o.minTo, Math.min(o.maxTo, v));
       if (!fromSlider) slider.value = SZ.to;
       btns.forEach(function (b) { b.classList.toggle('on', !b.disabled && b._v === SZ.to); });
+      trk.mark(SZ.to);
       onSet();
     }
+    var trk = szTrack(slider, o, o.maxTo < o.all ? 'Max' : 'All in');
     box.appendChild(pre);
-    box.appendChild(el('div', { class: 'row' }, [minus, slider, plus]));
+    box.appendChild(el('div', { class: 'row' }, [minus, trk, plus]));
     btns.forEach(function (b) { b.classList.toggle('on', !b.disabled && b._v === SZ.to); });
     return box;
   }
