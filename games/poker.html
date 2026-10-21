@@ -437,8 +437,8 @@
 .pcirc .pev .t{color:var(--yellow);}
 /* a room picture behind the table: the side panels get a frosted, nearly solid surface so they read on any room in
    any theme, and the soft buttons (Check) are solid buttons, not a tint that vanishes into the picture */
-.pcirc .prail :is(.pev,.ptile,.pyou){background:var(--glass);-webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2);box-shadow:inset 0 0 0 1px var(--line),var(--shadow-sm);}
-.pcirc .prail .plog{border-radius:12px;padding:5px 8px;background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}
+.pcirc .prail :is(.pev,.ptile,.pyou,.plog){background:linear-gradient(var(--glass),var(--glass)),var(--glass);-webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3);box-shadow:inset 0 0 0 1px var(--line-2),0 4px 14px rgba(0,0,0,.22);}
+.pcirc .prail .plog{border-radius:12px;padding:5px 8px;}
 .pcirc .pctl .btn-soft{--b:var(--surface);--b-lip:rgba(0,0,0,.24);box-shadow:0 5px 0 var(--b-lip),inset 0 0 0 1px var(--line-2);}
 .pev .s{font-size:.74rem;font-weight:800;color:var(--text-2);margin-top:1px;line-height:1.3;}   /* wraps to a second line rather than cutting off */
 .pev .lv{display:flex;gap:3px;margin-top:6px;align-items:center;}
@@ -455,7 +455,7 @@
 @keyframes tflash{0%{background:rgba(255,200,61,.35);}}
 .pyou{padding:8px 12px 8px;border-radius:14px;background:var(--w05);}
 .pyou .n{font-weight:900;color:var(--yellow);font-size:.95rem;line-height:1.2;}
-.pyou .n.dim{color:var(--text-3);}
+.pyou .n.dim{color:var(--text-2);}
 .pyou.res{font-weight:800;font-size:.86rem;line-height:1.35;color:var(--text);animation:rise .4s var(--ease) both;}
 .pyou.res b{color:var(--yellow);}
 .pmeter{position:relative;height:8px;border-radius:4px;background:var(--w12);margin:7px 0 4px;}
@@ -468,6 +468,9 @@
 .plog > div{display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;min-height:17px;flex:none;}
 .plog > div > span{overflow:hidden;text-overflow:ellipsis;}
 .plog > div:last-child{color:var(--text);}
+.plog > div.win{flex-wrap:wrap;row-gap:1px;white-space:normal;color:var(--text);font-weight:900;margin-top:2px;}
+.plog > div.win > span{overflow:visible;}
+.plog .win .cs{flex-basis:100%;padding-left:14px;white-space:nowrap;overflow:hidden;}
 .plog .dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none;}
 .plog .st{color:var(--text);margin-top:2px;}
 .plog .st b{font-size:.62rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);}
@@ -2653,6 +2656,16 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (!paid) for (i = 0; i < n; i++) S.players[i].stack += won[i];
     H.potWas = H.pot; H.pot = 0;
     H.won = won; H.results = results; H.scores = scores; H.five = five; H.phase = 'done'; H.actor = -1;
+    // the log ends with who won and the cards that won it
+    if (showdown) results.forEach(function (r) {
+      if (r.back || r.fold || r.carry || r.acey || !r.w.length) return;
+      var hn = r.lo ? r.label : r.v != null ? (evBased() && !H.hn ? handName(r.v) : hName(H, r.w[0]) || handName(r.v)) : '';
+      r.w.forEach(function (j) {
+        var c = r.lo ? [] : five[j] && five[j].length ? five[j] : H.hole[j] || [];
+        H.log.push({ win: j, t: nm(j) + (r.w.length > 1 ? (j === 0 ? ' split ' : ' splits ') : j === 0 ? ' win ' : ' wins ') + (r.lo ? (gv().chicago ? 'the spade half' : 'low') : r.half ? 'high' : amt(r.amt)) + (hn ? ' \u00b7 ' + hn : ''), c: c.slice() });
+      });
+    });
+    if (H.log.length > 24) H.log.splice(0, H.log.length - 24);
     H.say = H.say.map(function (s, j) { return s === 'Fold' ? s : ''; });
     tally(H);
     var busted = [];
@@ -4456,7 +4469,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var H = S.hand, box = el('div', { class: 'plog' });
     if (!H) return box;
     H.log.slice(-9).forEach(function (e) {
-      if (e.s) box.appendChild(el('div', { class: e.c && e.c.length ? 'st' : 'hd' }, [el('b', { text: e.s }), e.c && e.c.length ? el('span', { html: e.c.map(miniCard).join(' ') }) : null]));
+      if (e.win != null) box.appendChild(el('div', { class: 'win' }, [el('i', { class: 'dot', style: { '--c': seatColor(e.win) } }), el('span', { text: e.t }), e.c && e.c.length ? el('span', { class: 'cs', html: e.c.map(miniCard).join(' ') }) : null]));
+      else if (e.s) box.appendChild(el('div', { class: e.c && e.c.length ? 'st' : 'hd' }, [el('b', { text: e.s }), e.c && e.c.length ? el('span', { html: e.c.map(miniCard).join(' ') }) : null]));
       else box.appendChild(el('div', null, [el('i', { class: 'dot', style: { '--c': seatColor(e.i) } }), el('span', { text: verb(e.i, e.t) })]));
     });
     return box;
