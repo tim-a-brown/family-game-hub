@@ -594,6 +594,8 @@
 .pctl .pbar .btn-yellow{flex-grow:1.25;}
 .pctl .pbar .btn .one{white-space:nowrap;} .pctl .pbar .btn .one i{font-style:normal;}
 .pctl .pbar .btn .one b{font-weight:inherit;color:#0a5c2e;font-variant-numeric:tabular-nums;}
+.pctl .pbar .btn-green .one b{color:#0a5c2e;}
+html:is([data-theme="light"],[data-theme="parchment"]) .pctl .pbar .btn-green .one b{color:#c6ffd9;}
 .pctl .pbar .btn.tight .one i{display:none;} .pctl .pbar .btn.tighter{font-size:.86rem;}
 .pctl.mine .pbar .btn{animation:rise .3s var(--ease) both;}
 .pwait{display:flex;align-items:center;justify-content:center;gap:8px;min-height:30px;color:var(--text-2);font-weight:800;font-size:.86rem;text-align:center;}
@@ -5135,7 +5137,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (o.canRaise && !S.limit) box.appendChild(sizer(o, function () { paintRb(); }));
       if (o.toCall > 0) bar.appendChild(el('button', { type: 'button', class: 'btn btn-red', text: 'Fold', onclick: function () { humanAct({ t: 'fold' }); } }));
       if (o.canCheck) bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Check', onclick: function () { humanAct({ t: 'check' }); } }));
-      else bar.appendChild(el('button', { type: 'button', class: 'btn btn-green', html: '<span class="two">' + (o.call >= me.stack ? 'All in' : 'Call') + '<small>' + amt(o.call) + '</small></span>', onclick: function () { humanAct({ t: 'call' }); } }));
+      else { var cb = el('button', { type: 'button', class: 'btn btn-green', onclick: function () { humanAct({ t: 'call' }); } }); bar.appendChild(cb); oneLine(cb, o.call >= me.stack ? 'All in' : 'Call', amt(o.call)); }
       if (o.canRaise) {
         rb = el('button', { type: 'button', class: 'btn btn-yellow', onclick: function () { if (!S.limit && !SZ) return; humanAct({ t: 'raise', to: S.limit ? o.minTo : SZ.to }); } });
         bar.appendChild(rb);
@@ -5144,11 +5146,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         if (!rb) return;
         if (!S.limit && !SZ) return;
         var to = S.limit ? o.minTo : SZ.to, all = to >= o.all;
-        // one line: the move, then the amount in green at the same size ("to" gives way first when it's tight)
-        rb.innerHTML = '<span class="one">' + (all ? 'All in' : o.isBet ? 'Bet' : 'Raise<i> to</i>') + ' <b>' + amt(to) + '</b></span>';
-        rb.classList.remove('tight', 'tighter');
-        var fit = function () { var s = rb.firstChild; return !s || s.scrollWidth <= rb.clientWidth - 8; };
-        requestAnimationFrame(function () { if (!rb.isConnected || fit()) return; rb.classList.add('tight'); if (!fit()) rb.classList.add('tighter'); });
+        oneLine(rb, all ? 'All in' : o.isBet ? 'Bet' : 'Raise<i> to</i>', amt(to));
       }
       paintRb();
       box.appendChild(bar);
@@ -5160,6 +5158,13 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     box.appendChild(el('div', { class: 'pwait' }, [who ? el('span', { class: 'think', text: who }) : el('span', { text: H.phase === 'runout' ? 'Running out the board' : me.stack === 0 && H.inHand[0] && !H.folded[0] ? 'You\'re all in' : '' })]));
     if (H.phase === 'bet' && H.inHand[0] && !H.folded[0] && me.stack > 0) box.appendChild(preActs());
     return box;
+  }
+  // a betting button on one line: the move, then the amount in colour at the same size ("to" gives way first when tight)
+  function oneLine(b, word, money) {
+    b.innerHTML = '<span class="one">' + word + ' <b>' + Kit.esc(money) + '</b></span>';
+    b.classList.remove('tight', 'tighter');
+    var fit = function () { var s = b.firstChild; return !s || s.scrollWidth <= b.clientWidth - 16; };
+    requestAnimationFrame(function () { if (!b.isConnected || fit()) return; b.classList.add('tight'); if (!fit()) b.classList.add('tighter'); });
   }
   // the slider, with its ends in real amounts (the least you can make it and all you've got), so a bet reads against
   // your stack
