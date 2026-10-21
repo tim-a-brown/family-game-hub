@@ -79,6 +79,8 @@
 .pbet .amt{font-weight:900;font-size:.76rem;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .pbet.won .amt{color:var(--yellow);font-size:.86rem;}
 .ppot{z-index:2;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.ppot .lbl:has(small){border-radius:10px;text-align:center;}
+.ppot .lbl small{display:block;font-size:.66rem;font-weight:800;opacity:.75;text-align:center;line-height:1.1;}
 .ppot .lbl{padding:2px 10px;border-radius:999px;background:rgba(0,0,0,.38);color:#fff;font-weight:900;font-size:.8rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .pboard{z-index:2;display:flex;gap:4px;--cw:clamp(42px,11.6vw,54px);}
 .pboard .pcard.slot{background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14);}
@@ -1148,16 +1150,23 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function signed(n) { return (n > 0 ? '+' : '') + usd(n); }
   function amt(n) { return S && S.tourn ? chipsTxt(n) : usd(n); }
   function chipsTxt(n) { n = Math.round(n); return n >= 1e7 ? Math.round(n / 1e6) + 'M' : n >= 1e6 ? (Math.round(n / 1e5) / 10) + 'M' : n >= 1e5 ? Math.round(n / 1e3) + 'k' : n.toLocaleString(); }
-  var DEN = [[5000, '#e8742a'], [1000, '#e9c02a'], [500, '#7b3fc4'], [100, '#24242a'], [25, '#1f9a4a'], [5, '#d42a2a'], [1, '#f2eee4']];
-  // size: '' (bets), 'mini' (a player's stack beside the seat), 'big' (the pot)
-  function chipStack(v, maxCols, maxPer, size) {
-    var box = el('div', { class: 'stk' + (size ? ' ' + size : '') }), left = Math.round(v), cols = [];
-    var from = DEN.findIndex(function (d) { return v / d[0] >= 2.5; }); if (from < 0) from = DEN.length - 1;
-    DEN.slice(from).forEach(function (d) { var n = Math.floor(left / d[0]); if (n) { cols.push([d, n]); left -= n * d[0]; } });
-    cols.slice(0, maxCols || 3).forEach(function (c) {
-      var col = el('div', { class: 'col' });
-      for (var i = 0; i < Math.min(c[1], maxPer || 6); i++) col.appendChild(el('i', { class: c[0][0] === 1 ? 'lt' : '', style: { '--c': c[0][1] } }));
-      box.appendChild(col);
+  // chip colours by value: the cash-game set ($1 white to $5,000 orange) and tournament chips above it
+  var DEN = [[5000000, '#7a4a24'], [1000000, '#e05aa0'], [500000, '#8d96a3'], [100000, '#2a7fd4'], [25000, '#19a7a0'], [5000, '#e8742a'], [1000, '#e9c02a'], [500, '#7b3fc4'], [100, '#24242a'], [25, '#1f9a4a'], [5, '#d42a2a'], [1, '#f2eee4']];
+  // chips that add up to exactly the amount: the fewest chips, biggest first; a tall pile of one colour is split into
+  // more stacks. size: '' (bets), 'mini' (a player's stack beside the seat), 'big' (the pot)
+  function chipCols(v) {
+    var left = Math.max(0, Math.round(v)), cols = [];
+    DEN.forEach(function (d) { var n = Math.floor(left / d[0]); left -= n * d[0]; if (n) cols.push([d, n]); });
+    return cols;
+  }
+  function chipStack(v, size) {
+    var box = el('div', { class: 'stk' + (size ? ' ' + size : '') }), per = size === 'big' ? 10 : size === 'mini' ? 5 : 8;   // (a player's stack stays as low as the amount beside it)
+    chipCols(v).forEach(function (c) {
+      for (var n = c[1]; n > 0; n -= per) {
+        var col = el('div', { class: 'col' });
+        for (var i = 0; i < Math.min(n, per); i++) col.appendChild(el('i', { class: c[0][0] === 1 ? 'lt' : '', style: { '--c': c[0][1] } }));
+        box.appendChild(col);
+      }
     });
     return box;
   }
@@ -4035,7 +4044,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // (iPads sideways get the same layout, larger: there the raise panel used to push the buttons off screen)
   var LANDQ = window.matchMedia ? matchMedia('(orientation:landscape) and (max-height:500px), (orientation:landscape) and (hover:none) and (pointer:coarse) and (min-width:900px) and (max-height:900px)') : { matches: false };
   var POSL = { t: [50, 10], lt: [27, 12], rt: [73, 12], l: [3, 31], r: [97, 31], lb: [3, 67], rb: [97, 67], ta: [17, 12], tb: [33.5, 10], td: [66.5, 10], te: [83, 12] };
-  var BETL = { t: [50, 22], lt: [30, 25], rt: [70, 25], l: [34, 21], r: [66, 21], lb: [13, 51], rb: [87, 51], ta: [21, 27], tb: [36, 24], td: [64, 24], te: [79, 27] };
+  var BETL = { t: [50, 24], lt: [30, 25], rt: [70, 25], l: [34, 21], r: [66, 21], lb: [13, 51], rb: [87, 51], ta: [21, 27], tb: [36, 24], td: [64, 24], te: [79, 27] };
   var CENL = [50, 47];   // the board sits a little high so your cards have room below it
   var LAYL = { 2: ['b', 't'], 3: ['b', 'lt', 'rt'], 4: ['b', 'l', 't', 'r'], 5: ['b', 'lb', 'lt', 'rt', 'rb'], 6: ['b', 'lb', 'l', 't', 'r', 'rb'],
     7: ['b', 'lb', 'l', 'lt', 'rt', 'r', 'rb'], 8: ['b', 'lb', 'l', 'ta', 't', 'te', 'r', 'rb'], 9: ['b', 'lb', 'l', 'ta', 'tb', 'td', 'te', 'r', 'rb'],
@@ -4112,7 +4121,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       seat.appendChild(tag);
       // what each player has: their chips beside the amount
       if (p.left || p.out || p.stack <= 0) seat.appendChild(el('span', { class: 'stack', text: p.left ? 'Left' : p.out ? ordinal(p.place) : amt(p.stack) }));
-      else seat.appendChild(el('div', { class: 'pstk' }, [chipStack(p.stack, 3, 6, 'mini'), el('span', { class: 'stack', text: amt(p.stack) })]));
+      else seat.appendChild(el('div', { class: 'pstk' }, [chipStack(p.stack, 'mini'), el('span', { class: 'stack', text: amt(p.stack) })]));
       var say = '';
       if (done && H.scores && H.scores[i] != null) say = evBased() && !gv().wild && !gv().ftq ? shortName(H.scores[i]) : hName(H, i);
       else if (H && H.say[i]) say = H.say[i];
@@ -4149,7 +4158,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (ZOOM != null) drawZoom(false);
     potEl = null;
     if (H && !done) {
-      var pe = potEl = el('div', { class: 'ppot' }, [H.pot ? chipStack(H.pot, 5, 9, 'big') : null, el('span', { class: 'lbl', text: 'Pot ' + amt(potAll()) })]);
+      // the chips in the middle and exactly what they add up to; with bets still out, the whole pot under it
+      var all = potAll(), lbl = el('span', { class: 'lbl' }, [document.createTextNode(H.pot ? 'Pot ' + amt(H.pot) : 'Pot ' + amt(all)), H.pot && all > H.pot ? el('small', { text: amt(all) + ' with bets' }) : null]);
+      var pe = potEl = el('div', { class: 'ppot' }, [H.pot ? chipStack(H.pot, 'big') : null, lbl]);
       tb.appendChild(at(pe, gv().acey ? (land ? [50, 19] : [50, 21]) : land ? [50, 31] : [50, 33]));
     }
     var vb = gv(), nob = noBoard(), board = el('div', { class: 'pboard' + (nob ? ' nob' : '') }), bl = H ? H.board : [];
