@@ -1064,10 +1064,11 @@ LANDMARK.eiffel = (x, w, h, base, o) => {
   const half = (t) => H * (0.19 * Math.pow(1 - t, 2.2) + 0.012) * (t > 0.94 ? 0.5 : 1);   // half-width at height fraction t
   const pts = []; for (let t = 0; t <= 1.0001; t += 0.04) pts.push([half(t), base - t * H]);
   const path = () => { x.beginPath(); x.moveTo(cx - pts[0][0], pts[0][1]); pts.forEach(p => x.lineTo(cx - p[0], p[1])); pts.slice().reverse().forEach(p => x.lineTo(cx + p[0], p[1])); x.closePath(); };
-  SKY.glow(x, '#ffb040', 26, () => { x.fillStyle = '#d89a3a'; path(); x.fill(); });
-  // the lattice: the dark sky showing through the ironwork
+  SKY.glow(x, '#ffb040', 12, () => { x.fillStyle = '#e0a640'; path(); x.fill(); });
+  // the lattice: a hint of the dark sky through the ironwork (kept faint, so from across the river it reads as one
+  // solid gold shape, not a sparkle of dots)
   x.save(); path(); x.clip();
-  x.strokeStyle = 'rgba(20,14,30,.55)'; x.lineWidth = 1.5;
+  x.strokeStyle = 'rgba(20,14,30,.22)'; x.lineWidth = 1;
   for (let t = 0.02; t < 1; t += 0.035) { const y = base - t * H, hw = half(t); const n = Math.max(2, Math.round(hw / 7)); for (let k = 0; k <= n; k++) { const xx = cx - hw + k * 2 * hw / n; x.beginPath(); x.moveTo(xx, y); x.lineTo(xx + 5, y - H * 0.035); x.moveTo(xx, y); x.lineTo(xx - 5, y - H * 0.035); x.stroke(); } }
   // the arch under the first floor, the two platforms, the pillars' feet apart
   x.fillStyle = 'rgba(20,14,30,.85)'; x.beginPath(); x.ellipse(cx, base - H * 0.02, H * 0.12, H * 0.14, 0, Math.PI, 0); x.fill();
@@ -1083,7 +1084,7 @@ VIEW.paris = (o) => canvas(1024, 512, (x, w, h) => {
   // far rooftops in violet haze, Sacré-Cœur's white domes on the hill to the right
   x.fillStyle = '#2a2240'; for (let i = 0; i < 60; i++) x.fillRect(i * 18, h * (0.62 + rnd() * 0.05), 20, h * 0.1);
   x.fillStyle = '#e8e0d8'; SKY.glow(x, '#fff0d8', 18, () => { x.beginPath(); x.ellipse(w * 0.86, h * 0.6, 22, 30, 0, 0, 7); x.fill(); x.beginPath(); x.ellipse(w * 0.83, h * 0.63, 9, 14, 0, 0, 7); x.fill(); x.beginPath(); x.ellipse(w * 0.89, h * 0.63, 9, 14, 0, 0, 7); x.fill(); });
-  LANDMARK.eiffel(x, w, h, h * 0.7, { cx: w * 0.5, H: h * 0.66 });
+  LANDMARK.eiffel(x, w, h, h * 0.7, { cx: w * 0.5, H: h * 0.74 });
   // the Haussmann blocks along the quai, their mansards and dormers
   for (let i = 0; i < 9; i++) {
     const bx = i * w / 9 + rnd() * 8, bw = w / 9 - 10 - rnd() * 20, by = h * 0.66 - 44 - rnd() * 40, bh = h * 0.3;
@@ -1105,9 +1106,13 @@ VIEW.monaco = (o) => canvas(2048, 512, (x, w, h) => {
   x.fillStyle = '#1a1830'; x.beginPath(); x.moveTo(0, h * 0.62); for (let px = 0; px <= w; px += 60) x.lineTo(px, h * 0.44 + Math.sin(px / 300) * 30 + Math.cos(px / 130) * 14); x.lineTo(w, h * 0.62); x.fill();
   for (let i = 0; i < 90; i++) { const bx = rnd() * w, by = h * (0.44 + rnd() * 0.14) + Math.sin(bx / 300) * 30; SKY.bldg(x, bx, by, 18 + rnd() * 40, 20 + rnd() * 50, '#14122a', ['#ffe0a8', '#fff0cc', '#ffc880'], 7, 0.5); }
   // the Casino de Monte-Carlo: cream facade, two green copper lantern towers, lit gold
-  const cxx = w * 0.62, cy = h * 0.58; x.fillStyle = '#f0e2c0'; SKY.glow(x, '#ffe8b0', 20, () => { x.fillRect(cxx - 90, cy - 30, 180, 44); });
-  x.fillStyle = '#5a8a6a'; for (const s of [-1, 1]) { x.fillRect(cxx + s * 60 - 12, cy - 60, 24, 32); x.beginPath(); x.moveTo(cxx + s * 60 - 14, cy - 60); x.lineTo(cxx + s * 60, cy - 84); x.lineTo(cxx + s * 60 + 14, cy - 60); x.fill(); }
-  x.fillStyle = '#ffd890'; for (let k = 0; k < 7; k++) x.fillRect(cxx - 78 + k * 26, cy - 20, 10, 20);
+  // (big enough to read from inside the salon: the facade, its arched windows, the two lantern towers, and the Hôtel de
+  // Paris's dome beside it)
+  const cxx = w * 0.62, cy = h * 0.6; x.fillStyle = '#f0e2c0'; SKY.glow(x, '#ffe8b0', 24, () => { x.fillRect(cxx - 150, cy - 56, 300, 72); });
+  x.fillStyle = '#5a8a6a'; for (const s of [-1, 1]) { x.fillRect(cxx + s * 100 - 20, cy - 106, 40, 52); x.beginPath(); x.moveTo(cxx + s * 100 - 24, cy - 106); x.lineTo(cxx + s * 100, cy - 146); x.lineTo(cxx + s * 100 + 24, cy - 106); x.fill(); }
+  x.fillStyle = '#4a7a5a'; x.beginPath(); x.moveTo(cxx - 40, cy - 56); x.lineTo(cxx, cy - 86); x.lineTo(cxx + 40, cy - 56); x.fill();
+  x.fillStyle = '#ffd890'; for (let k = 0; k < 9; k++) { x.beginPath(); x.moveTo(cxx - 136 + k * 32, cy + 10); x.lineTo(cxx - 136 + k * 32, cy - 26); x.arc(cxx - 128 + k * 32, cy - 26, 8, Math.PI, 0); x.lineTo(cxx - 120 + k * 32, cy + 10); x.fill(); }
+  x.fillStyle = '#e8d8b8'; SKY.glow(x, '#ffe8b0', 16, () => { x.fillRect(cxx + 170, cy - 40, 120, 56); }); x.fillStyle = '#5a7a7a'; x.beginPath(); x.ellipse(cxx + 230, cy - 44, 36, 26, 0, Math.PI, 0); x.fill(); x.fillStyle = '#ffd890'; for (let k = 0; k < 5; k++) x.fillRect(cxx + 180 + k * 22, cy - 28, 8, 30);
   // the Rock: the old town on its headland to the left, the Palace floodlit on top
   x.fillStyle = '#2a2436'; x.beginPath(); x.moveTo(0, h * 0.72); x.lineTo(0, h * 0.5); x.lineTo(w * 0.1, h * 0.46); x.lineTo(w * 0.24, h * 0.47); x.lineTo(w * 0.3, h * 0.56); x.lineTo(w * 0.33, h * 0.72); x.fill();
   x.fillStyle = '#e8dcc8'; SKY.glow(x, '#ffe8c0', 16, () => { x.fillRect(w * 0.08, h * 0.42, 120, 24); x.fillRect(w * 0.1, h * 0.38, 16, 10); x.fillRect(w * 0.18, h * 0.38, 16, 10); });
@@ -1116,7 +1121,7 @@ VIEW.monaco = (o) => canvas(2048, 512, (x, w, h) => {
   // the harbour: a quay wall, then yachts rafted along the pontoons, white hulls and lit decks, the big ones moored out
   x.fillStyle = '#3a3630'; x.fillRect(0, h * 0.72, w, 6); for (let i = 0; i < 70; i++) { x.fillStyle = '#ffe6b0'; x.fillRect(i * 30 + 6, h * 0.71, 3, 3); }
   SKY.water(x, w, h, h * 0.73, '#0e1a30', '#03060c', '255,220,170', 900);
-  for (let i = 0; i < 48; i++) { const yx = rnd() * w, yy = h * (0.74 + rnd() * 0.2), yl = 30 + rnd() * 70; x.fillStyle = '#eef2f8'; x.fillRect(yx, yy, yl, 7 + yl * 0.08); x.fillRect(yx + yl * 0.25, yy - yl * 0.12, yl * 0.45, yl * 0.12); x.fillStyle = '#ffd98a'; for (let k = 0; k < yl / 10; k++) x.fillRect(yx + 4 + k * 10, yy + 2, 4, 3); x.fillStyle = 'rgba(255,230,180,.25)'; x.fillRect(yx, yy + 10, yl, 18); }
+  for (let i = 0; i < 48; i++) { const yx = rnd() * w, yy = h * (0.735 + rnd() * 0.09), yl = 50 + rnd() * 110; x.fillStyle = '#eef2f8'; x.fillRect(yx, yy, yl, 7 + yl * 0.08); x.fillRect(yx + yl * 0.25, yy - yl * 0.12, yl * 0.45, yl * 0.12); x.fillStyle = '#ffd98a'; for (let k = 0; k < yl / 10; k++) x.fillRect(yx + 4 + k * 10, yy + 2, 4, 3); x.fillStyle = 'rgba(255,230,180,.25)'; x.fillRect(yx, yy + 10, yl, 18); }
 });
 // Macau from the Praia Grande: the Grand Lisboa's golden lotus bud, the round Lisboa, the Macau Tower, neon on the water
 VIEW.macau = (o) => canvas(1024, 512, (x, w, h) => {
