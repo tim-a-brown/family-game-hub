@@ -492,10 +492,16 @@
 .rr .dots{display:flex;}
 .rr .dots i{width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--bg-2);}
 .rr .dots i + i{margin-left:-3px;}
-.rr .w{font-weight:900;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rr .w{display:flex;min-width:0;font-weight:900;font-size:.95rem;white-space:nowrap;}
+.rr .w .nm{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.rr .w .vb{flex:0 100 auto;min-width:0;overflow:hidden;white-space:pre;color:var(--text-2);font-weight:800;}   /* "wins" gives way before the name does */
 .rr .a{font-weight:900;font-size:1.25rem;line-height:1;color:var(--yellow);font-variant-numeric:tabular-nums;}
 .rr.me .a{color:var(--green);}
 .rr .h{grid-column:2 / -1;display:flex;align-items:center;gap:6px;min-width:0;font-size:.8rem;font-weight:800;color:var(--text-2);}
+.rr .h .hn{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rr .pots{grid-column:2 / -1;display:flex;flex-wrap:wrap;gap:3px 10px;font-size:.74rem;font-weight:800;color:var(--text-2);font-variant-numeric:tabular-nums;}
+.rr .pots small{margin-right:4px;font-size:.58rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.rmore{font-size:.72rem;font-weight:800;color:var(--text-3);}
 .rr .h em{flex:none;padding:1px 7px;border-radius:999px;background:var(--w07);font-style:normal;font-size:.62rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
 .rme{display:flex;align-items:baseline;gap:6px;font-size:.78rem;font-weight:800;color:var(--text-3);}
 .rme small{font-size:.6rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;}
@@ -4778,20 +4784,31 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var real = H.results.filter(function (r) { return !r.back; }), fresh = R.resAt !== H.no, me = S.players[0];
     R.resAt = H.no;
     if (!real.length) real = H.results.slice(0, 1);
-    real.slice(0, 3).forEach(function (r) {
-      var many = r.w.length > 1, mine = r.w.indexOf(0) >= 0 && !many;   // (a split pot shows the pot; your share is on the You line)
+    // one row per winner and hand: the same player taking the main and side pots with one hand is one win (its pots
+    // listed under it); different winners, or the high and low halves, are rows of their own
+    var rows = [], byKey = {};
+    real.forEach(function (r) {
       var hn = r.fold ? 'Everyone else folded' : r.back ? 'Bet returned' : r.lo ? r.label : r.v != null ? (evBased() && !H.hn ? handName(r.v) : hName(H, r.w[0]) || handName(r.v)) : '';
-      var tag = r.lo ? (gv().chicago ? 'Spade half' : 'Low') : r.half ? 'High' : real.length > 1 ? (r.side ? 'Side pot' : 'Main pot') : many ? 'Split' : '';
-      var who = r.w.map(function (j) { return j === 0 ? 'You' : S.players[j].name; }).join(' & ');
-      var a = el('b', { class: 'a', text: (mine ? '+' : '') + amt(r.amt) });
+      var half = r.lo ? (gv().chicago ? 'Spade half' : 'Low') : r.half ? 'High' : '';
+      var key = r.w.join(',') + '|' + hn + '|' + half, g = byKey[key];
+      if (!g) { g = byKey[key] = { w: r.w, hn: hn, half: half, amt: 0, pots: [] }; rows.push(g); }
+      g.amt += r.amt; g.pots.push({ side: r.side, amt: r.amt });
+    });
+    var multi = real.length > 1;
+    rows.slice(0, 3).forEach(function (g) {
+      var many = g.w.length > 1, mine = g.w.indexOf(0) >= 0 && !many;   // (a split pot shows the pot; your share is on the You line)
+      var who = g.w.map(function (j) { return j === 0 ? 'You' : S.players[j].name; }).join(' & ');
+      var tag = g.half || (many ? 'Split' : multi && g.pots.length === 1 ? (g.pots[0].side ? 'Side pot' : 'Main pot') : '');
+      var a = el('b', { class: 'a', text: (mine ? '+' : '') + amt(g.amt) });
       var row = el('div', { class: 'rr' + (mine ? ' me' : '') }, [
-        el('span', { class: 'dots' }, r.w.slice(0, 3).map(function (j) { return el('i', { style: { '--c': seatColor(j) } }); })),
-        el('span', { class: 'w', text: who + (mine && !many ? ' win' : many ? ' split' : ' wins') }),
+        el('span', { class: 'dots' }, g.w.slice(0, 3).map(function (j) { return el('i', { style: { '--c': seatColor(j) } }); })),
+        el('span', { class: 'w' }, [el('span', { class: 'nm', text: who }), el('span', { class: 'vb', text: mine && !many ? ' win' : many ? ' split' : ' wins' })]),
         a,
-        hn || tag ? el('span', { class: 'h' }, [tag ? el('em', { text: tag }) : null, hn ? document.createTextNode(hn) : null]) : null]);
+        g.hn || tag ? el('span', { class: 'h' }, [tag ? el('em', { text: tag }) : null, g.hn ? el('span', { class: 'hn', text: g.hn }) : null]) : null,
+        g.pots.length > 1 ? el('span', { class: 'pots' }, g.pots.map(function (pt, k) { return el('span', null, [el('small', { text: pt.side ? (g.pots.filter(function (q) { return q.side; }).length > 1 ? 'Side ' + k : 'Side') : 'Main' }), document.createTextNode(amt(pt.amt))]); })) : null]);
       box.appendChild(row);
       // the amount counts up the first time the result shows
-      if (fresh && !SIM && r.amt > 0) (function (a, total, pre) {
+      if (fresh && !SIM && g.amt > 0) (function (a, total, pre) {
         var t0 = 0;
         requestAnimationFrame(function f(t) {
           if (!a.isConnected) return;   // (redrawn already: the new one shows the full amount)
@@ -4799,10 +4816,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
           var k = Math.min(1, (t - t0) / 650), e = 1 - Math.pow(1 - k, 3); a.textContent = pre + amt(Math.round(total * e));
           if (k < 1) requestAnimationFrame(f);
         });
-      })(a, r.amt, mine ? '+' : '');
+      })(a, g.amt, mine ? '+' : '');
     });
+    if (rows.length > 3) box.appendChild(el('div', { class: 'rmore', text: '+' + (rows.length - 3) + ' more pot' + (rows.length - 3 === 1 ? '' : 's') + ': tap the log' }));
     // you this hand
-    if (H.inHand[0] && H.total[0] > 0 && !real.some(function (r) { return r.w.length === 1 && r.w[0] === 0 && real.length === 1; })) {
+    if (H.inHand[0] && H.total[0] > 0 && !(rows.length === 1 && rows[0].w.length === 1 && rows[0].w[0] === 0)) {
       var net = H.won[0] - H.total[0];
       box.appendChild(el('div', { class: 'rme ' + (net > 0 ? 'up' : net < 0 ? 'down' : '') }, [el('small', { text: 'You' }), el('b', { text: net === 0 ? 'Even' : (net > 0 ? '+' : '\u2212') + amt(Math.abs(net)) }), H.folded[0] ? el('span', { text: 'folded' }) : null]));
     }
@@ -4904,8 +4922,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (!SZ || SZ.key !== 'acey' + H.no + ':' + H.ak) SZ = { key: 'acey' + H.no + ':' + H.ak, to: Math.max(amin, roundTo(amax * Math.min(1, aceyOdds(H.ac).win))) };
       box.appendChild(aceySizer(ao, function () { paintA(); }));
       bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Pass', onclick: function () { aceyBet(0, 0); } }));
-      var ab = el('button', { type: 'button', class: 'btn btn-yellow', onclick: function () { aceyBet(0, SZ.to); } });
-      function paintA() { ab.innerHTML = '<span class="two">Bet<small>' + (SZ.to >= H.pot ? 'the pot · ' : '') + amt(SZ.to) + '</small></span>'; }
+      var ab = el('button', { type: 'button', class: 'btn btn-yellow', onclick: function () { if (SZ) aceyBet(0, SZ.to); } });
+      function paintA() { if (!SZ) return; ab.innerHTML = '<span class="two">Bet<small>' + (SZ.to >= H.pot ? 'the pot · ' : '') + amt(SZ.to) + '</small></span>'; }
       paintA();
       bar.appendChild(ab);
       box.appendChild(bar);
@@ -4942,11 +4960,12 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (o.canCheck) bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Check', onclick: function () { humanAct({ t: 'check' }); } }));
       else bar.appendChild(el('button', { type: 'button', class: 'btn btn-green', html: '<span class="two">' + (o.call >= me.stack ? 'All in' : 'Call') + '<small>' + amt(o.call) + '</small></span>', onclick: function () { humanAct({ t: 'call' }); } }));
       if (o.canRaise) {
-        rb = el('button', { type: 'button', class: 'btn btn-yellow', onclick: function () { humanAct({ t: 'raise', to: S.limit ? o.minTo : SZ.to }); } });
+        rb = el('button', { type: 'button', class: 'btn btn-yellow', onclick: function () { if (!S.limit && !SZ) return; humanAct({ t: 'raise', to: S.limit ? o.minTo : SZ.to }); } });
         bar.appendChild(rb);
       }
       function paintRb() {
         if (!rb) return;
+        if (!S.limit && !SZ) return;
         var to = S.limit ? o.minTo : SZ.to, all = to >= o.all;
         rb.innerHTML = '<span class="two">' + (all ? 'All in' : o.isBet ? 'Bet' : 'Raise') + '<small>' + (all || o.isBet ? '' : 'to ') + amt(to) + '</small></span>';
       }
@@ -4972,6 +4991,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var slider = el('input', { type: 'range', min: o.minTo, max: o.maxTo, step: 1, value: SZ.to, 'aria-label': 'Bet size' });
     slider.addEventListener('input', function () { set(+slider.value, true); Kit.sfx('tick', 0.3); });
     function set(v, fromSlider) {
+      if (!SZ) return;   // (the hand moved on: this sizer is stale)
       SZ.to = Math.max(o.minTo, Math.min(o.maxTo, v));
       if (!fromSlider) slider.value = SZ.to;
       btns.forEach(function (b) { b.classList.toggle('on', b._v === SZ.to); });
@@ -5000,9 +5020,10 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var stepV = sizeStep();
     var slider = el('input', { type: 'range', min: o.minTo, max: o.maxTo, step: 1, value: SZ.to, 'aria-label': 'Bet size' });
     slider.addEventListener('input', function () { var v = +slider.value; set(v >= o.maxTo ? o.maxTo : Math.max(o.minTo, Math.round(v / stepV) * stepV), true); Kit.sfx('tick', 0.3); });
-    var minus = el('button', { type: 'button', 'aria-label': 'Smaller', text: '−', onclick: function () { Kit.sfx('tick'); set(SZ.to - stepV * (S.tourn ? 1 : 2)); } });
-    var plus = el('button', { type: 'button', 'aria-label': 'Bigger', text: '+', onclick: function () { Kit.sfx('tick'); set(SZ.to + stepV * (S.tourn ? 1 : 2)); } });
+    var minus = el('button', { type: 'button', 'aria-label': 'Smaller', text: '−', onclick: function () { if (!SZ) return; Kit.sfx('tick'); set(SZ.to - stepV * (S.tourn ? 1 : 2)); } });
+    var plus = el('button', { type: 'button', 'aria-label': 'Bigger', text: '+', onclick: function () { if (!SZ) return; Kit.sfx('tick'); set(SZ.to + stepV * (S.tourn ? 1 : 2)); } });
     function set(v, fromSlider) {
+      if (!SZ) return;   // (the hand moved on: this sizer is stale)
       SZ.to = Math.max(o.minTo, Math.min(o.maxTo, v));
       if (!fromSlider) slider.value = SZ.to;
       btns.forEach(function (b) { b.classList.toggle('on', !b.disabled && b._v === SZ.to); });
