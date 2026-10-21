@@ -4660,7 +4660,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var eq = myEq(nOpp), rel = eq * (nOpp + 1);
     var meter = el('div', { class: 'pmeter', title: 'Your chances to win the hand' }), fill = el('i');
     fill.style.width = Math.max(3, Math.round(eq * 100)) + '%'; fill.style.background = eqColor(eq); meter.appendChild(fill);
-    var o = H.phase === 'bet' && H.actor === 0 ? options(0) : null, need = o && o.toCall > 0 ? o.call / (potAll() + o.call) : null;
+    var o = H.phase === 'bet' && H.actor === 0 ? options(0) : null, need = o && o.toCall > 0 ? callPot(o).need : null;
     if (need != null) { var tk = el('b'); tk.style.left = Math.round(need * 100) + '%'; meter.appendChild(tk); }
     col.appendChild(meter);
     // your chance, how it stacks up, and the chance a call needs (the white tick on the meter)
@@ -4787,7 +4787,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var H = S && S.hand; if (!H || H.phase === 'done' || !H.inHand[0] || H.folded[0]) return;
     var v = gv(), opp = live().filter(function (j) { return j !== 0; }), nOpp = opp.length; if (!nOpp) return;
     var eq = myEq(nOpp), rel = eq * (nOpp + 1), root = el('div', { class: 'pdet' }), cols = pinCols(root), box = cols[0];
-    var o = H.phase === 'bet' && H.actor === 0 ? options(0) : null, need = o && o.toCall > 0 ? o.call / (potAll() + o.call) : null;
+    var o = H.phase === 'bet' && H.actor === 0 ? options(0) : null, cp = o && o.toCall > 0 ? callPot(o) : null, need = cp ? cp.need : null;
     // their likely hands from what they've done (and how they play): the same read the sharper computer players make
     var eqR = null;
     if (!v.gen && !v.draw) {
@@ -4820,7 +4820,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     box.appendChild(el('p', { class: 'pin-sub', text: lines.join(' ') }));
     if (need != null) {
       box.appendChild(pinH('The price'));
-      box.appendChild(el('p', { class: 'pin-sub', html: 'The pot is <b>' + Kit.esc(amt(potAll())) + '</b> and it costs <b>' + Kit.esc(amt(o.call)) + '</b> to call, so you need to win <b>' + Math.round(need * 100) + '%</b> of the time to break even (the white mark). ' + (use >= need ? '<span class="ok">At ' + Math.round(use * 100) + '%, calling pays off over time.</span>' : '<span class="no">At ' + Math.round(use * 100) + '%, calling loses money over time' + (o.canRaise ? ' unless a raise can make them fold' : '') + '.</span>') }));
+      box.appendChild(el('p', { class: 'pin-sub', html: 'The pot is <b>' + Kit.esc(amt(potAll())) + '</b>' + (cp.W > potAll() + o.call + 0.5 ? ', <b>' + Kit.esc(amt(cp.W)) + '</b> once everyone still in matches the bet,' : '') + ' and it costs <b>' + Kit.esc(amt(o.call)) + '</b> to call, so you need to win <b>' + Math.round(need * 100) + '%</b> of the time to break even (the white mark). ' + (use >= need ? '<span class="ok">At ' + Math.round(use * 100) + '%, calling pays off over time.</span>' : '<span class="no">At ' + Math.round(use * 100) + '%, calling loses money over time' + (o.canRaise ? ' unless a raise can make them fold' : '') + '.</span>') }));
     } else if (o && o.canCheck) box.appendChild(el('p', { class: 'pin-sub', text: 'Nothing to call: checking is free.' + (use > 1 / (nOpp + 1) * 1.3 ? ' With better than an even share, a bet makes worse hands pay.' : '') }));
     box = cols[1];
     box.appendChild(pinH(nOpp === 1 ? 'Still in against you' : 'The ' + nOpp + ' still in against you'));
@@ -5452,18 +5452,22 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (Math.round(a * 100) !== Math.round(b * 100) || Math.abs(a - b) < 1e-9) return [pc(a), pc(b)];
     return [Math.round(a * 1000) / 10 + '%', Math.round(b * 1000) / 10 + '%'];
   }
-  function tablePlan(sd, o, nOpp) {
-    var H = S.hand, me = S.players[0], eq = sd.eq, fair = 1 / (nOpp + 1), strong = Math.min(0.9, fair + 0.12);
-    // The pot you play for if you call. The win chances assume everyone still in goes to the showdown, so the
-    // pot counts them matching your bet too (players still to act haven't yet). From each player you can win at
-    // most what you put in yourself (all in for less).
-    var c = o.call, T0 = H.total[0] + c, now = 0, W = 0;
+  // The pot you play for if you call. The win chances assume everyone still in goes to the showdown, so the
+  // pot counts them matching your bet too (players still to act haven't yet). From each player you can win at
+  // most what you put in yourself (all in for less). need: the share of the time a call has to win to break even.
+  function callPot(o) {
+    var H = S.hand, c = o.call, T0 = H.total[0] + c, now = 0, W = 0;
     for (var j = 0; j < N(); j++) {
       var t = j === 0 ? T0 : Math.min(H.total[j], T0);
       now += t;
       W += j > 0 && H.inHand[j] && !H.folded[j] ? Math.min(T0, H.total[j] + S.players[j].stack) : t;
     }
-    var need = c > 0 ? c / W : 0, capped = c < o.toCall, behind = W - now;
+    return { W: W, now: now, need: c > 0 ? c / W : 0 };
+  }
+  function tablePlan(sd, o, nOpp) {
+    var H = S.hand, me = S.players[0], eq = sd.eq, fair = 1 / (nOpp + 1), strong = Math.min(0.9, fair + 0.12);
+    var c = o.call, cp = callPot(o), W = cp.W, now = cp.now;
+    var need = cp.need, capped = c < o.toCall, behind = W - now;
     var raiseTo = o.canRaise ? (S.limit ? o.minTo : Math.min(o.maxTo, Math.max(o.minTo, roundTo(o.isBet ? potAll() * 0.6 : H.curBet * 3)))) : 0;
     var raiseCost = raiseTo - H.bet[0], word = o.isBet ? 'Bet' : 'Raise';
     var best;
