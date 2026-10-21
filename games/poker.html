@@ -805,6 +805,16 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
 .pin-eq b{font-size:1.05rem;font-weight:900;font-variant-numeric:tabular-nums;text-align:right;}
 .pdet .pmeter{height:12px;border-radius:6px;margin:0;} .pdet .pmeter > i{border-radius:6px;}
 .pin-opp{display:flex;flex-direction:column;gap:8px;}
+.pin-chips{position:relative;overflow:hidden;isolation:isolate;display:flex;align-items:flex-end;justify-content:center;gap:14px;min-height:76px;padding:12px 12px 14px;border-radius:14px;box-shadow:inset 0 2px 8px rgba(0,0,0,.4);}
+.pin-chips .stk{--w:30px;gap:4px;}
+.pin-chips > b{color:#fff;font-weight:900;font-size:1.25rem;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.6);}
+.pin-style{margin:0;font-weight:900;color:var(--yellow);}
+.pin-bars{display:flex;flex-direction:column;gap:10px;}
+.pin-bars .top{display:flex;justify-content:space-between;gap:8px;font-weight:800;font-size:.9rem;}
+.pin-bars .top b{font-variant-numeric:tabular-nums;}
+.pin-bars i{display:block;height:8px;margin:4px 0 3px;border-radius:4px;background:var(--w12);overflow:hidden;}
+.pin-bars s{display:block;height:100%;border-radius:4px;background:var(--yellow-fill);}
+.pin-bars small{display:block;font-size:.74rem;color:var(--text-3);font-weight:700;}
 .pin-o{padding:9px 12px 10px;border-radius:12px;background:var(--w05);box-shadow:inset 0 0 0 1px var(--line);border-left:4px solid var(--c);}
 .pin-o .top b{display:block;font-weight:900;}
 .pin-o .top span{display:block;font-size:.76rem;font-weight:800;color:var(--yellow);}
@@ -5233,20 +5243,57 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     return p.cpu ? Kit.icon('bot') : Kit.esc(p.name.charAt(0).toUpperCase());
   }
   // who they are, and how they play (what you'd pick up at the table: their style, not their cards)
+  // tap a player: who they are, their chips up close, and how they play (from what they've done at this table)
   function profileSheet(p) {
-    var pr = p.pr, box = el('div', { class: 'pprof' });
+    var i = S ? S.players.indexOf(p) : -1, pr = p.pr, root = el('div', { class: 'pdet' }), cols = pinCols(root), a = cols[0], b = cols[1];
+    var who = el('div', { class: 'pprof' });
     if (pr) {
-      box.appendChild(el('p', { class: 'who', text: (pr.k ? pr.f + ' ' + pr.l + ', "' + pr.k + '"' : pr.f + ' ' + pr.l) + ', ' + pr.a }));
-      box.appendChild(el('p', { class: 'job', text: cap(pr.j) + ' from ' + pr.h }));
-      if (pr.s) box.appendChild(el('p', { class: 'story', text: pr.s }));
+      who.appendChild(el('p', { class: 'who', text: (pr.k ? pr.f + ' ' + pr.l + ', "' + pr.k + '"' : pr.f + ' ' + pr.l) + ', ' + pr.a }));
+      who.appendChild(el('p', { class: 'job', text: cap(pr.j) + ' from ' + pr.h }));
+      if (pr.s) who.appendChild(el('p', { class: 'story', text: pr.s }));
     }
     var bits = [];
-    if (p.cpu) bits.push((STYLES[p.style] || STYLES.tag).label);
     if (p.cpu && S && S.circ) bits.push(skillWord(skillOf(p)));
     if (p.bty) bits.push(S && S.circ && EV[S.circ.id].mystery ? 'A mystery bounty on them' : usd(p.bty) + ' bounty on them');
-    if (p.cpu && S && S.dcd) box.appendChild(el('p', { class: 'plays', text: 'Likes to deal ' + favOf(p).map(function (g) { return VAR[g].name; }).join(', ') }));
-    if (bits.length) box.appendChild(el('p', { class: 'plays', text: bits.join(' · ') }));
-    Kit.sheet({ title: p.name, node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+    if (bits.length) who.appendChild(el('p', { class: 'plays', text: bits.join(' · ') }));
+    if (who.childNodes.length) a.appendChild(who);
+    // their chips, exactly, on a strip of the table's felt; and how that stacks up
+    if (S && i >= 0 && !p.out && !p.left) {
+      a.appendChild(el('div', { class: 'pin-chips felt-in' }, [chipStack(p.stack, 'big'), el('b', { text: amt(p.stack) })]));
+      var al = alive(), rk = 1 + al.filter(function (j) { return S.players[j].stack > p.stack; }).length, me = S.players[0];
+      var line = [S.bb ? Math.round(p.stack / S.bb) + ' big blinds' : '', al.length > 1 ? (rk === 1 ? 'the biggest stack at the table' : ordinal(rk) + ' of ' + al.length + ' at the table') : ''].filter(Boolean);
+      if (i !== 0 && !me.out) line.push(p.stack > me.stack ? amt(p.stack - me.stack) + ' more than you' : p.stack < me.stack ? amt(me.stack - p.stack) + ' less than you' : 'the same as you');
+      a.appendChild(el('p', { class: 'pin-sub', text: cap(line.join(' · ')) + '.' }));
+    }
+    // how they play
+    var ps = (S && S.ps || {})[p.name] || {}, seen = ps.hands || 0;
+    b.appendChild(pinH('How they play'));
+    if (p.cpu) b.appendChild(el('p', { class: 'pin-style', text: (STYLES[p.style] || STYLES.tag).label }));
+    var R0 = p.cpu ? READS[p.style] || READS.tag : null;
+    if (R0) b.appendChild(el('p', { class: 'pin-sub', text: R0[0] + ' ' + R0[1] + ' ' + R0[2] }));
+    if (seen >= 4) {
+      var acts = (ps.bets || 0) + (ps.calls || 0), rows = [
+        ['Plays a hand', ps.vpip / seen, 'Of ' + seen + ' hands, how often they put chips in before the flop'],
+        ['Raises first', (ps.pfr || 0) / seen, 'How often they come in raising'],
+        ps.faced >= 3 ? ['Folds to a bet', ps.folded / ps.faced, 'After the flop, when someone bets at them'] : null,
+        acts >= 4 ? ['Bets, not calls', (ps.bets || 0) / acts, 'Of their bets and calls, how many are bets or raises'] : null
+      ];
+      var bars = el('div', { class: 'pin-bars' });
+      rows.forEach(function (r) {
+        if (!r) return;
+        var f = el('s'); f.style.width = Math.max(2, Math.round(r[1] * 100)) + '%';
+        bars.appendChild(el('div', null, [el('div', { class: 'top' }, [el('span', { text: r[0] }), el('b', { text: Math.round(r[1] * 100) + '%' })]), el('i', null, [f]), el('small', { text: r[2] })]));
+      });
+      b.appendChild(bars);
+    } else b.appendChild(el('p', { class: 'pin-sub', text: seen ? 'Only ' + seen + ' hand' + (seen === 1 ? '' : 's') + ' seen so far: their numbers show up after a few more.' : 'No hands seen yet: their numbers show up after a few.' }));
+    var H = S && S.hand;
+    if (H && i >= 0 && H.inHand[i]) {
+      var did = H.folded[i] ? 'Folded' : H.ag[i] >= 1 ? 'Betting since the flop' : H.pfr === i ? 'Raised before the flop' : H.ag[i] > 0 ? 'Calling bets' : H.say[i] ? verb(i, H.say[i]).slice(p.name.length + 1) : 'Waiting to act';
+      b.appendChild(pinH('This hand'));
+      b.appendChild(el('p', { class: 'pin-sub', text: cap(did) + '.' }));
+    }
+    if (p.cpu && S && S.dcd) b.appendChild(el('p', { class: 'pin-sub', text: 'Likes to deal ' + favOf(p).map(function (g) { return VAR[g].name; }).join(', ') + '.' }));
+    pinSheet(p.name, root);
   }
   function seatColor(i) { return Kit.color(S && S.online ? (i + NETME) % N() : i); }
   function quiet(st, fn) {
