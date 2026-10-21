@@ -1774,6 +1774,73 @@ VIEW.la = (o) => canvas(2048, 512, (x, w, h) => {
   x.fillStyle = '#1a1420'; x.fillRect(0, h * 0.7, w, h * 0.3); for (let i = 0; i < 40; i++) SKY.palm(x, rnd() * w, h * 0.74, 1.0 + rnd() * 0.8, '#0a0810');
   for (let i = 0; i < 160; i++) { x.fillStyle = rnd() < 0.5 ? '#ff2a2a' : '#fff0c0'; x.fillRect(rnd() * w, h * 0.78 + rnd() * h * 0.2, 4, 2); }
 });
+// ── Land out past the glass: real hills, peaks and mesas, forests on them, lit by the moon ────────────────────────
+// a heightfield: the ground as a mesh, painted by its own height and slope, so the renderer lights it like land
+function landscape(g, o) {
+  const w = o.w || 120, d = o.d || 90, seg = o.seg || 96, cx = o.x || 0, cz = o.z || -60, kind = o.kind || 'alpine', S = o.scale || 1;
+  const ph = []; for (let i = 0; i < 12; i++) ph.push(rnd() * 6.283);
+  const n2 = (x, y, f) => (Math.sin(x * f + ph[0]) * Math.cos(y * f * 0.8 + ph[1]) + Math.sin((x + y) * f * 1.7 + ph[2]) * 0.5 + Math.cos((x - y * 0.6) * f * 2.9 + ph[3]) * 0.25) / 1.75;
+  const far = (ly) => Math.max(0, Math.min(1, (ly / d + 0.5 - (o.near || 0.18)) / (1 - (o.near || 0.18))));
+  const hf = (lx, ly) => {
+    const v = far(ly), rim = Math.min(1, Math.max(0, (0.5 - Math.abs(lx / w)) * 6));
+    if (kind === 'alpine') { const ridge = 1 - Math.abs(n2(lx, ly, 0.045)); return S * (Math.pow(v, 1.3) * 26 * (0.55 + 0.45 * ridge) + Math.max(0, n2(lx, ly, 0.13)) * 4 * v + Math.abs(n2(lx, ly, 0.4)) * 0.6 * v) * rim; }
+    if (kind === 'mesa') { const n = n2(lx, ly, 0.05), b = Math.max(0, n - 0.1) * 2.2; const mesa = Math.min(1, b) * 14 * (0.5 + v * 0.7); const ground = Math.max(0, n2(lx, ly, 0.2)) * 1.2 + Math.abs(n2(lx, ly, 0.5)) * 0.3; return S * (Math.max(mesa, 0) + ground + v * 6) * rim; }
+    if (kind === 'hills') return S * (Math.pow(v, 1.4) * 9 * (0.6 + 0.4 * n2(lx, ly, 0.06)) + Math.abs(n2(lx, ly, 0.2)) * 1.5 * v) * rim;
+    return S * Math.pow(v, 1.5) * 18 * (0.6 + 0.4 * n2(lx, ly, 0.05)) * rim;   // a long wall of mountains
+  };
+  const geo = new THREE.PlaneGeometry(w, d, seg, seg), pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) pos.setZ(i, hf(pos.getX(i), pos.getY(i)));
+  geo.computeVertexNormals();
+  const snow = o.snow == null ? (kind === 'alpine' ? 11 * S : 1e9) : o.snow, tree = o.treeline == null ? 9 * S : o.treeline;
+  const paint = canvas(1024, 1024, (x, cw, ch) => {
+    const img = x.createImageData(cw, ch), px = img.data, e = 0.8;
+    for (let py = 0; py < ch; py++) for (let qx = 0; qx < cw; qx++) {
+      const lx = (qx / (cw - 1) - 0.5) * w, ly = (0.5 - py / (ch - 1)) * d, h = hf(lx, ly);
+      const sl = Math.min(1, (Math.abs(hf(lx + e, ly) - hf(lx - e, ly)) + Math.abs(hf(lx, ly + e) - hf(lx, ly - e))) / (4 * e) * 1.2);
+      let r, gg, b;
+      if (kind === 'mesa') { const band = Math.floor(h / 1.6) % 2, t = 0.55 + band * 0.12 + Math.sin(h * 2.1) * 0.06; if (h < 1.2) { r = 150 + Math.sin(lx * 0.3) * 10; gg = 110; b = 80; if (sl < 0.2 && rnd() < 0.08) { r = 60; gg = 80; b = 50; } } else { r = 190 * t + 20; gg = 80 * t + 10; b = 55 * t; if (sl < 0.25 && h > 3) { r *= 0.9; gg *= 0.95; } } }
+      else if (kind === 'hills') { const t = sl; r = 30 + t * 50; gg = 60 + t * 30; b = 30 + t * 20; if (h < 0.3) { r = 40; gg = 70; b = 40; } }
+      else { if (h > snow && sl < 0.75) { const k = 1 - sl * 0.4; r = 230 * k; gg = 236 * k; b = 250 * k; } else if (h > tree) { const k = 0.7 + sl * 0.3; r = 92 * k; gg = 86 * k; b = 84 * k; } else { const k = 0.8 + sl * 0.2; r = 34 * k; gg = 54 * k; b = 34 * k; } }
+      const i = (py * cw + qx) * 4; const dn = (rnd() - 0.5) * 14; px[i] = r + dn; px[i + 1] = gg + dn; px[i + 2] = b + dn; px[i + 3] = 255;
+    }
+    x.putImageData(img, 0, 0);
+  });
+  paint.__kind = kind === 'mesa' ? 'stucco' : 'concrete';
+  const m = new THREE.Mesh(geo, M({ map: tex(paint), roughness: 0.95 })); m.rotation.x = -Math.PI / 2; m.position.set(cx, o.y == null ? -0.1 : o.y, cz); g.add(m); m.userData.flat = 1;
+  return { mesh: m, hf, w, d, cx, cz, y: o.y == null ? -0.1 : o.y, snow, tree, at: (wx, wz) => hf(wx - cx, cz - wz) + (o.y == null ? -0.1 : o.y) };
+}
+// a forest on the land: fir trees as stacked cones, one merged mesh so the renderer takes them in one go
+function forest(g, land, n, o) {
+  o = o || {}; const parts = [], col = o.color || 0x183a22, dark = new THREE.Color(col), tri = (geo, tx, ty, tz, s) => { const q = geo.clone(); q.scale(s, s, s); q.translate(tx, ty, tz); parts.push(q); };
+  const cone = new THREE.ConeGeometry(1, 2.2, 6).toNonIndexed();
+  for (let i = 0; i < n; i++) {
+    const wx = land.cx + (rnd() - 0.5) * land.w * (o.spread || 0.9), wz = land.cz + (rnd() - 0.5) * land.d * (o.spread || 0.9), h = land.at(wx, wz) - land.y;
+    if (h > land.tree || h < (o.low == null ? 0.05 : o.low)) continue; if (o.ok && !o.ok(wx, wz, h)) continue;
+    const s = (o.size || 1) * (0.6 + rnd() * 0.7); for (let k = 0; k < 3; k++) tri(cone, wx, land.y + h + (0.9 + k * 0.9) * s, wz, s * (1 - k * 0.22));
+  }
+  if (!parts.length) return null;
+  let cnt = 0; parts.forEach(p => { cnt += p.attributes.position.count; });
+  const P = new Float32Array(cnt * 3), N = new Float32Array(cnt * 3); let off = 0;
+  parts.forEach(p => { P.set(p.attributes.position.array, off); N.set(p.attributes.normal.array, off); off += p.attributes.position.array.length; });
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3));
+  const m = new THREE.Mesh(geo, M({ color: col, roughness: 0.9 })); g.add(m); m.userData.flat = 1; return m;
+}
+// moonlight (or the last of the sun): one far light over the land, so the slopes have light and shadow
+function moon(g, color, intensity, from, at) {
+  const l = new THREE.DirectionalLight(color || 0xb8c8ff, intensity == null ? 0.6 : intensity); l.position.set(...from); l.target.position.set(...(at || [0, 0, -40])); l.add(l.target); g.add(l); LIGHTS.push(l);
+  l.userData.dir = [l.target.position.x, l.target.position.y, l.target.position.z]; return l;
+}
+// a wall with a hole in it for a real window (four planes round the opening)
+function wallWithHole(g, w, h, mat, z, hx, hy, hw, hh, ry) {
+  const t = new THREE.Group(); t.position.set(0, 0, z); t.rotation.y = ry || 0; g.add(t); const x0 = hx - hw / 2, x1 = hx + hw / 2, y0 = hy - hh / 2, y1 = hy + hh / 2;
+  const ps = []; if (x0 > -w / 2) ps.push(plane(t, x0 + w / 2, h, mat, (x0 - w / 2) / 2, h / 2, 0)); if (x1 < w / 2) ps.push(plane(t, w / 2 - x1, h, mat, (x1 + w / 2) / 2, h / 2, 0));
+  if (y0 > 0) ps.push(plane(t, hw, y0, mat, hx, y0 / 2, 0)); if (y1 < h) ps.push(plane(t, hw, h - y1, mat, hx, (y1 + h) / 2, 0)); ps.forEach(p => { p.userData.flat = 1; }); return t;
+}
+// a night sky with stars for the dome
+function starDome(g, cx, cz, r, stops, n) {
+  const c = canvas(1024, 512, (x, w, h) => { const g2 = x.createLinearGradient(0, 0, 0, h); stops.forEach(([p, col]) => g2.addColorStop(p, col)); x.fillStyle = g2; x.fillRect(0, 0, w, h); for (let i = 0; i < (n || 900); i++) { x.fillStyle = 'rgba(255,255,255,' + (0.3 + rnd() * 0.7) + ')'; const s = 0.8 + rnd() * 1.6; x.fillRect(rnd() * w, rnd() * h * 0.75, s, s); } });
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 24, 0, Math.PI * 2, 0, Math.PI * 0.52), unlit(c, 0.9)); m.material.side = THREE.BackSide; m.position.set(cx, -r * 0.03, cz); g.add(m); m.userData.flat = 1; return m;
+}
 // END DECOR
 // the room: floor, back wall, side walls, ceiling, a skirting board and a cornice. The camera sits near the front.
 function room(g, o) {
@@ -1782,7 +1849,7 @@ function room(g, o) {
   const flat = [];
   flat.push(plane(g, w, d, M({ map: fl, bumpMap: fl, bumpScale: 0.6, roughness: o.floorRough || 0.75 }), 0, 0, -d / 2 + 2, 0, -Math.PI / 2));
   const wm = M({ map: tex(o.wall, w / 2.4, h / 2.4), roughness: 0.85 }), sm = M({ map: tex(o.side || o.wall, d / 2.4, h / 2.4), roughness: 0.85 });
-  flat.push(plane(g, w, h, wm, 0, h / 2, -d + 2));
+  if (o.back !== false) flat.push(plane(g, w, h, wm, 0, h / 2, -d + 2));
   flat.push(plane(g, w, h, M({ map: tex(o.side || o.wall, w / 2.4, h / 2.4), roughness: 0.85 }), 0, h / 2, 2, Math.PI));   // the fourth wall, behind the camera
   if (o.doorL) {   // the left wall with a doorway cut in it: [centre z, width, height]
     const [dz, dw, dh] = o.doorL, z0 = 2, z1 = -d + 2, a = dz + dw / 2, b = dz - dw / 2;
@@ -2355,12 +2422,16 @@ const SCENES = {
   lodge(g, o) {
     const T = o.theme || (o.snow ? 'aspen' : 'sedona'), A = T === 'aspen';
     const latilla = canvas(256, 256, (x, w, h) => { for (let i = 0; i < w; i += 8) { const c = new THREE.Color('#b8956a').offsetHSL(0, 0, (rnd() - 0.5) * 0.12); x.fillStyle = '#' + c.getHexString(); x.fillRect(i, 0, 7, h); x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(i + 7, 0, 1, h); } });
-    const r = room(g, { w: 14, d: 10, h: 4.4, floor: A ? PAINT.wood('#6a4020', '#4a2a14', 30) : PAINT.terracotta('#b8603a'), wall: A ? PAINT.logs('#8a5a30', '#6a4020') : PAINT.adobe('#d89a68'), ceil: A ? PAINT.wood('#5a3a20', '#3a2410', 50) : latilla, trim: A ? 0x3a2410 : 0x8a5030, cornice: A ? 0x3a2410 : 0xc8885a, fillI: 0.8 });
+    const r = room(g, { w: 14, d: 10, h: 4.4, floor: A ? PAINT.wood('#6a4020', '#4a2a14', 30) : PAINT.terracotta('#b8603a'), wall: A ? PAINT.logs('#8a5a30', '#6a4020') : PAINT.adobe('#d89a68'), ceil: A ? PAINT.wood('#5a3a20', '#3a2410', 50) : latilla, trim: A ? 0x3a2410 : 0x8a5030, cornice: A ? 0x3a2410 : 0xc8885a, fillI: 0.8, back: false });
     const B = r.back, logM = M({ map: tex(PAINT.wood('#6a4424', '#4a2e16', 6), 1, 4), roughness: 0.85 });
     // the view: snowy peaks with snow falling, or red rock at dusk
     const view = A ? VIEW.mountains({ pines: true, snow: true, sky0: '#06102a', sky1: '#3a4a7a' }) : VIEW.desert({ rock: '#6a2a14', palms: false, buttes: true });
     if (A) { const x = view.getContext('2d'); for (let i = 0; i < 500; i++) { x.fillStyle = 'rgba(255,255,255,' + (0.4 + rnd() * 0.5) + ')'; x.beginPath(); x.arc(rnd() * view.width, rnd() * view.height, 1 + rnd() * 2.5, 0, 7); x.fill(); } }
-    windowOn(g, view, -2.4, 2.2, B + 0.02, 6.2, 3.2, 0, A ? 0x3a2410 : 0x5a3018);
+    wallWithHole(g, 14, 4.4, M({ map: tex(A ? PAINT.logs('#8a5a30', '#6a4020') : PAINT.adobe('#d89a68'), 14 / 2.4, 4.4 / 2.4), roughness: 0.85 }), B, -2.4, 2.2, 6.2, 3.2);
+    glassWall(g, -2.4, 2.2, B + 0.02, 6.2, 3.2, 0); { const fm = M({ color: A ? 0x3a2410 : 0x5a3018, roughness: 0.5 }); for (let i = -2; i <= 2; i++) box(g, 0.08, 3.2, 0.12, fm, -2.4 + i * 1.55, 2.2, B + 0.06); box(g, 6.4, 0.1, 0.14, fm, -2.4, 3.85, B + 0.06); box(g, 6.4, 0.12, 0.3, fm, -2.4, 0.55, B + 0.1); box(g, 6.4, 0.06, 0.12, fm, -2.4, 2.2, B + 0.06); }
+    // the land outside: Aspen's peaks under snow with the firs coming down to the lodge; Sedona's red rock in the last of the sun
+    if (A) { const land = landscape(g, { x: -2.4, z: B - 56, w: 160, d: 110, kind: 'alpine', snow: 0, treeline: 10, near: 0.16, scale: 1.1 }); forest(g, land, 900, { size: 1.1, low: 0.02 }); moon(g, 0xb8c8ff, 0.8, [40, 60, B - 10], [0, 0, B - 50]); starDome(g, 0, B - 20, 160, [[0, '#03061a'], [0.6, '#0e1838'], [1, '#2a3a6a']]); }
+    else { const land = landscape(g, { x: -2.4, z: B - 46, w: 150, d: 90, kind: 'mesa', near: 0.12, scale: 1.0 }); forest(g, land, 260, { size: 0.45, color: 0x2a4a2a, low: 0.02, ok: (x, z, h) => h < 2.5 }); moon(g, 0xff9a50, 1.8, [-70, 16, B - 30], [0, 0, B - 30]); starDome(g, 0, B - 20, 160, [[0, '#2a1a50'], [0.45, '#8a3a5a'], [0.75, '#ff8a4a'], [1, '#ffb070']], 120); }
     // the beams: log trusses, or round vigas running wall to wall
     if (A) for (let i = 0; i < 4; i++) { const z = 0.6 - i * 2.4; const tb = cyl(g, 0.16, 0.16, 14, logM, 0, 4.1, z, 12); tb.rotation.z = Math.PI / 2; for (const s of [-1, 1]) { const kb = cyl(g, 0.11, 0.11, 2.4, logM, s * 3.2, 3.6, z, 10); kb.rotation.z = s * 1.05; } }
     else for (let i = 0; i < 8; i++) { const z = 1.6 - i * 1.2; const v = cyl(g, 0.13, 0.13, 14.6, M({ map: tex(PAINT.wood('#5a3418', '#4a2a12', 4), 1, 6), roughness: 0.9 }), 0, 4.25, z, 12); v.rotation.z = Math.PI / 2; for (const s of [-1, 1]) cyl(g, 0.13, 0.13, 0.04, M({ color: 0x3a2010 }), s * 7.0, 4.25, z, 12).rotation.z = Math.PI / 2; }
@@ -2390,8 +2461,9 @@ const SCENES = {
   // slots by the bar, ore carts, picks and lanterns, the peaks out the window
   saloon(g, o) {
     const MT = !!o.view;
-    const r = room(g, { w: 14, d: 10, h: 3.8, floor: PAINT.planks('#8a6a44', '#6e5234'), wall: MT ? PAINT.brick('#8a4a30', '#5a4a40') : PAINT.planks('#8a5a30', '#6a4020'), wainscot: PAINT.panel('#4a2a14', '#5a3418'), ceil: PAINT.tin(MT ? '#8a7a5a' : '#3a3028'), trim: 0x2a1408, cornice: 0x3a2010, fillI: 0.7 });
+    const r = room(g, { w: 14, d: 10, h: 3.8, floor: PAINT.planks('#8a6a44', '#6e5234'), wall: MT ? PAINT.brick('#8a4a30', '#5a4a40') : PAINT.planks('#8a5a30', '#6a4020'), wainscot: PAINT.panel('#4a2a14', '#5a3418'), ceil: PAINT.tin(MT ? '#8a7a5a' : '#3a3028'), trim: 0x2a1408, cornice: 0x3a2010, fillI: 0.7, back: MT ? false : true });
     const B = r.back, brass = M({ color: 0xc8a050, metalness: 0.9, roughness: 0.3 });
+    if (MT) wallWithHole(g, 14, 3.8, M({ map: tex(PAINT.brick('#8a4a30', '#5a4a40'), 14 / 2.4, 3.8 / 2.4), roughness: 0.85 }), B, 4.0, 2.0, 2.6, 1.7);
     bar(g, -2.6, B + 1.3, 7, { wood: '#4a2410', crowd: 0.6 });
     box(g, 7, 0.04, 0.04, brass, -2.6, 0.2, B + 1.9);   // the foot rail
     for (let i = 0; i < 3; i++) { const sp = new THREE.Mesh(new THREE.LatheGeometry([[0.001, 0], [0.12, 0.02], [0.14, 0.12], [0.08, 0.2], [0.13, 0.26]].map(q => new THREE.Vector2(q[0], q[1])), 16), brass); sp.position.set(-5.6 + i * 2.8, 0, B + 2.1); g.add(sp); }
@@ -2406,7 +2478,8 @@ const SCENES = {
     rbox(g, 1.0, 0.68, 0.04, 0.01, M({ color: 0xc8a050, metalness: 0.7, roughness: 0.35 }), 4.4, 2.6, B + 0.03); plane(g, 0.9, 0.56, M({ map: tex(dmh) }), 4.4, 2.6, B + 0.06);
     mountedHead(g, -6.95, 2.6, -3.0, Math.PI / 2);
     if (MT) {
-      windowOn(g, o.view, 4.0, 2.0, B + 0.02, 2.6, 1.7, 0, 0x2a1a0c);
+      glassWall(g, 4.0, 2.0, B + 0.02, 2.6, 1.7, 0); { const fm = M({ color: 0x2a1a0c, roughness: 0.5 }); box(g, 0.06, 1.7, 0.1, fm, 4.0, 2.0, B + 0.06); box(g, 2.6, 0.06, 0.1, fm, 4.0, 2.0, B + 0.06); box(g, 2.8, 0.1, 0.12, fm, 4.0, 2.9, B + 0.06); box(g, 2.8, 0.1, 0.3, fm, 4.0, 1.1, B + 0.1); }
+      { const land = landscape(g, { x: 4, z: B - 50, w: 130, d: 95, kind: 'alpine', snow: 9, treeline: 8, near: 0.18 }); forest(g, land, 700, { size: 1.0 }); moon(g, 0xb8c8ff, 0.7, [30, 55, B - 10], [0, 0, B - 45]); starDome(g, 0, B - 20, 150, [[0, '#03061a'], [0.6, '#0e1838'], [1, '#2a3a6a']]); }
       slots(g, 6.4, -4.0, 4, -Math.PI / 2, { colors: [0xffd84d, 0xff3a3a, 0x3ad8ff] });
       const cart = new THREE.Group(); cart.position.set(-6.0, 0, -1.2); cart.rotation.y = 0.5; g.add(cart); const cm = M({ color: 0x4a3a2a, metalness: 0.5, roughness: 0.6 }), ir = M({ color: 0x1a1a1a, metalness: 0.6 });
       const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.45, 0.5, 4, 1), cm); bin.rotation.y = Math.PI / 4; bin.position.y = 0.55; bin.scale.set(1, 1, 0.7); cart.add(bin); for (const sx of [-0.3, 0.3]) for (const sz of [-0.28, 0.28]) cyl(cart, 0.14, 0.14, 0.05, ir, sx, 0.14, sz, 16).rotation.x = Math.PI / 2;
@@ -3100,7 +3173,7 @@ const SCENES = {
     ground(g, 60, 40, M({ map: tex(canvas(128, 128, (x, w, h) => { x.fillStyle = '#e8ecf4'; x.fillRect(0, 0, w, h); noise(x, w, h, 0.08, 3000); }), 10, 8), roughness: 0.95 }), 0, B - 24, -0.05); water(g, 80, 30, 0, B - 30, -0.04, 0x0e2a44);
     for (let i = 0; i < 14; i++) { const px = -24 + i * 3.6 + (i % 3), pz = B - 9 - (i % 4) * 2.2; const p = new THREE.Group(); p.position.set(px, 0, pz); g.add(p); cyl(p, 0.08, 0.12, 1.2, M({ color: 0x3a2a1a }), 0, 0.6, 0, 8); for (let k = 0; k < 5; k++) cyl(p, 0.05, 1.3 - k * 0.22, 1.4, M({ color: k % 2 ? 0x0e2a18 : 0x123420, roughness: 0.9 }), 0, 1.6 + k * 1.0, 0, 8); }
     box(g, 1.2, 0.3, 10, M({ map: tex(PAINT.planks('#5a4a30', '#4a3a24'), 2, 10), roughness: 0.8 }), 4, 0.0, B - 14); for (let i = 0; i < 5; i++) { cyl(g, 0.03, 0.03, 0.9, steel, 4.5, 0.6, B - 10 - i * 2, 6); sph(g, 0.06, glow(0xffe0a0, 3), 4.5, 1.05, B - 10 - i * 2, 8); }
-    backdrop(g, view, 0, Zc, 44, 22, -6, Math.PI * 0.4, Math.PI * 1.6); skyDome(g, 0, Zc, 70, [[0, '#04061a'], [0.6, '#101a3a'], [1, '#2a3a6a']]);
+    { const land = landscape(g, { x: 0, z: B - 78, w: 190, d: 90, kind: 'alpine', snow: 12, treeline: 10, near: 0.32, scale: 1.4 }); forest(g, land, 700, { size: 1.2 }); moon(g, 0xb8c8ff, 0.7, [50, 60, B - 20], [0, 0, B - 60]); } starDome(g, 0, Zc, 170, [[0, '#04061a'], [0.6, '#101a3a'], [1, '#2a3a6a']]);
     // the hearth in the middle of the room, its copper hood up to the ridge; the round bar; cone pendants
     hearth(g, -4.0, -3.0);
     bar(g, 5.8, -8.4, 4.4, { ry: 0, wood: '#4a3018', wood2: '#3a2410', top: 0x1a1410, crowd: 0.5 }); cyl(g, 0.02, 0.02, 2.4, steel, 5.8, 3.6, -8.4, 6);
@@ -3119,11 +3192,13 @@ const SCENES = {
   pinewood(g, o) {
     const W = 16, D = 13, H = 4.6, Zc = 2 - D / 2, B = 2 - D, P2 = Math.PI / 2;
     const pine = PAINT.wood('#c8a060', '#a8824a', 24);
-    shell(g, { w: W, d: D, h: H, floor: PAINT.planks('#8a6a44', '#6e5234'), wall: pine, ceil: PAINT.wood('#a8824a', '#8a6a3a', 40), trim: 0x5a3a1a, cornice: 0x5a3a1a, fillI: 0.9, fillC: 0xffd0a0 });
+    shell(g, { w: W, d: D, h: H, floor: PAINT.planks('#8a6a44', '#6e5234'), wall: pine, ceil: PAINT.wood('#a8824a', '#8a6a3a', 40), back: false, trim: 0x5a3a1a, cornice: 0x5a3a1a, fillI: 0.9, fillC: 0xffd0a0 });
+    { const wm = M({ map: tex(pine, W / 2.4, H / 2.4), roughness: 0.85 }); for (const [x0, x1] of [[-W / 2, -7.3], [-3.1, -2.1], [2.1, 3.1], [7.3, W / 2]]) plane(g, x1 - x0, H, wm, (x0 + x1) / 2, H / 2, B).userData.flat = 1; for (const x of [-5.2, 0, 5.2]) { plane(g, 4.2, 1.1, wm, x, 0.55, B).userData.flat = 1; plane(g, 4.2, H - 3.5, wm, x, (H + 3.5) / 2, B).userData.flat = 1; } }
     const log = M({ map: tex(PAINT.wood('#8a6a3a', '#6a4a24', 6), 1, 4), roughness: 0.85 }), stone = M({ map: tex(PAINT.brick('#8a8078', '#4a4640'), 2, 2), roughness: 0.9 });
     for (let i = 0; i <= 4; i++) { const z = 2 - i * 3.25; const bm = cyl(g, 0.16, 0.16, W, log, 0, H - 0.2, z, 12); bm.rotation.z = P2; } for (const s of [-1, 1]) cyl(g, 0.14, 0.14, D, log, s * 5.5, H - 0.36, Zc, 12).rotation.x = P2;
     // the windows on the lights: three wide ones on the back, each with a snow sill
-    const view = VIEW.aurora(); for (const x of [-5.2, 0, 5.2]) { windowOn(g, view, x, 2.3, B + 0.02, 4.2, 2.4, 0, 0x5a3a1a); box(g, 4.6, 0.08, 0.3, M({ color: 0xf0f4f8, roughness: 0.9 }), x, 1.06, B + 0.2); }
+    const view = VIEW.aurora(); for (const x of [-5.2, 0, 5.2]) { glassWall(g, x, 2.3, B + 0.02, 4.2, 2.4, 0); const fm = M({ color: 0x5a3a1a, roughness: 0.5 }); box(g, 0.06, 2.4, 0.1, fm, x, 2.3, B + 0.06); box(g, 4.2, 0.06, 0.1, fm, x, 2.3, B + 0.06); box(g, 4.4, 0.1, 0.12, fm, x, 3.55, B + 0.06); box(g, 4.6, 0.08, 0.3, M({ color: 0xf0f4f8, roughness: 0.9 }), x, 1.06, B + 0.2); }
+    ground(g, 70, 40, M({ color: 0xe8ecf4, roughness: 0.95 }), 0, B - 12, -0.08); { const land = landscape(g, { x: 0, z: B - 60, w: 170, d: 90, kind: 'hills', near: 0.3, scale: 1.3 }); forest(g, land, 1100, { size: 1.0, low: -1, color: 0x0e2a18 }); moon(g, 0x9affc0, 0.35, [-30, 50, B - 30], [0, 0, B - 50]); } backdrop(g, view, 0, Zc, 150, 60, -12, Math.PI * 0.4, Math.PI * 1.6); starDome(g, 0, Zc, 220, [[0, '#04061a'], [0.6, '#0a1430'], [1, '#0e1a2a']], 400);
     // the canoe overhead, snowshoes crossed, the moose over the bar, a mounted muskie, the fieldstone chimney and its stove
     canoe(g, 0.8, H - 1.6, -5.0, 0.3);
     for (const s of [-1, 1]) { const ss = new THREE.Group(); ss.position.set(-W / 2 + 0.08, 2.6, -3.0 + s * 0.3); ss.rotation.z = s * 0.4; ss.rotation.y = P2; g.add(ss); const fr = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.02, 6, 20), M({ color: 0xc8a060 })); fr.scale.y = 2.6; ss.add(fr); for (let k = 0; k < 6; k++) box(ss, 0.46, 0.01, 0.01, M({ color: 0xe8d8b8 }), 0, -0.45 + k * 0.18, 0); }
@@ -3189,7 +3264,7 @@ const SCENES = {
     for (const [x, z, h, l] of [[-12, B - 10, 7, 0.5], [12.5, B - 11, 7.5, -0.6], [-6, B - 12, 6.5, 0.3]]) palmTree(g, x, z, h, l);
     ground(g, 60, 36, M({ map: tex(canvas(128, 128, (x, w, h) => { x.fillStyle = '#b89a78'; x.fillRect(0, 0, w, h); noise(x, w, h, 0.14, 4000); }), 16, 10), roughness: 0.95 }), 0, B - 24, -0.05);
     for (const x of [-10, 10]) { cyl(g, 0.04, 0.04, 2.2, steel, x, 1.1, B - 9.5, 6); sph(g, 0.12, glow(0xffd090, 2.6), x, 2.3, B - 9.5, 10); light(g, 0xffd090, 1.2, x, 2.2, B - 9.5, 6); }
-    backdrop(g, view, 0, Zc, 44, 18, -5, Math.PI * 0.4, Math.PI * 1.6); skyDome(g, 0, Zc, 70, [[0, '#1c1440'], [0.5, '#5a2a6a'], [0.85, '#c86a4a'], [1, '#ffb070']]);
+    { const land = landscape(g, { x: -10, z: B - 70, w: 220, d: 90, kind: 'wall', snow: 1e9, treeline: -1, near: 0.3, scale: 1.8 }); moon(g, 0xff8a50, 1.2, [-80, 14, B - 20], [0, 0, B - 40]); } backdrop(g, view, 0, Zc, 150, 50, -12, Math.PI * 0.4, Math.PI * 1.6); starDome(g, 0, Zc, 220, [[0, '#1c1440'], [0.5, '#5a2a6a'], [0.85, '#c86a4a'], [1, '#ffb070']], 150);
     // sputnik lamps over the tables, a long white bar with a breeze-block front, orange and teal chairs by the glass
     const sput = (x, z) => { const sb = new THREE.Group(); sb.position.set(x, 2.5, z); g.add(sb); const br = M({ color: 0xc8a050, metalness: 0.9, roughness: 0.3 }); sph(sb, 0.08, br, 0, 0, 0); for (let i = 0; i < 14; i++) { const v = new THREE.Vector3().randomDirection().multiplyScalar(0.6); seg(sb, [0, 0, 0], [v.x, v.y, v.z], 0.012, 0.012, br); sph(sb, 0.05, glow(0xffe8c0, 3), v.x, v.y, v.z, 8); } cyl(sb, 0.006, 0.006, H - 2.5, M({ color: 0x1a1a1a }), 0, (H - 2.5) / 2, 0, 4); light(sb, 0xffe8c0, 2.2, 0, -0.2, 0, 7); };
     bar(g, -W / 2 + 1.6, -5.0, 6, { ry: P2, wood: '#f4ecdc', wood2: '#e8dcc8', top: 0x2a8a8a, mirror: false, crowd: 0.5 }); plane(g, 6, 1.0, M({ map: tex(breeze, 3, 0.5), roughness: 0.8 }), -W / 2 + 1.91, 0.52, -5.0, P2);
