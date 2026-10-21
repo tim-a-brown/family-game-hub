@@ -1108,7 +1108,7 @@ VIEW.monaco = (o) => canvas(2048, 512, (x, w, h) => {
   // the Casino de Monte-Carlo: cream facade, two green copper lantern towers, lit gold
   // (big enough to read from inside the salon: the facade, its arched windows, the two lantern towers, and the Hôtel de
   // Paris's dome beside it)
-  const cxx = w * 0.36, cy = h * 0.6; x.fillStyle = '#f0e2c0'; SKY.glow(x, '#ffe8b0', 24, () => { x.fillRect(cxx - 150, cy - 56, 300, 72); });
+  const cxx = w * 0.36, cy = h * 0.56; x.fillStyle = '#f0e2c0'; SKY.glow(x, '#ffe8b0', 24, () => { x.fillRect(cxx - 150, cy - 56, 300, 72); });
   x.fillStyle = '#5a8a6a'; for (const s of [-1, 1]) { x.fillRect(cxx + s * 100 - 20, cy - 106, 40, 52); x.beginPath(); x.moveTo(cxx + s * 100 - 24, cy - 106); x.lineTo(cxx + s * 100, cy - 146); x.lineTo(cxx + s * 100 + 24, cy - 106); x.fill(); }
   x.fillStyle = '#4a7a5a'; x.beginPath(); x.moveTo(cxx - 40, cy - 56); x.lineTo(cxx, cy - 86); x.lineTo(cxx + 40, cy - 56); x.fill();
   x.fillStyle = '#ffd890'; for (let k = 0; k < 9; k++) { x.beginPath(); x.moveTo(cxx - 136 + k * 32, cy + 10); x.lineTo(cxx - 136 + k * 32, cy - 26); x.arc(cxx - 128 + k * 32, cy - 26, 8, Math.PI, 0); x.lineTo(cxx - 120 + k * 32, cy + 10); x.fill(); }
@@ -1117,7 +1117,8 @@ VIEW.monaco = (o) => canvas(2048, 512, (x, w, h) => {
   x.fillStyle = '#2a2436'; x.beginPath(); x.moveTo(w, h * 0.72); x.lineTo(w, h * 0.5); x.lineTo(w * 0.9, h * 0.46); x.lineTo(w * 0.76, h * 0.47); x.lineTo(w * 0.7, h * 0.56); x.lineTo(w * 0.67, h * 0.72); x.fill();
   x.fillStyle = '#e8dcc8'; SKY.glow(x, '#ffe8c0', 16, () => { x.fillRect(w * 0.8, h * 0.42, 120, 24); x.fillRect(w * 0.81, h * 0.38, 16, 10); x.fillRect(w * 0.85, h * 0.38, 16, 10); });
   for (let i = 0; i < 60; i++) { x.fillStyle = pick(['#ffd98a', '#ffe9b8']); x.fillRect(w * 0.72 + rnd() * w * 0.26, h * (0.48 + rnd() * 0.2), 3, 3); }
-  for (let i = 0; i < w / 44; i++) SKY.bldg(x, i * 44 + rnd() * 6, h * 0.58 + rnd() * 10, 40, h * 0.14, '#1a1626', ['#ffe0a8', '#fff0cc'], 7, 0.55);
+  for (let i = 0; i < w / 44; i++) { const bx = i * 44 + rnd() * 6; if (bx > cxx - 190 && bx < cxx + 320) continue; SKY.bldg(x, bx, h * 0.58 + rnd() * 10, 40, h * 0.14, '#1a1626', ['#ffe0a8', '#fff0cc'], 7, 0.55); }
+  x.fillStyle = '#2a2a3a'; x.fillRect(cxx - 190, cy + 16, 510, h * 0.72 - cy - 16); x.fillStyle = '#ffe6b0'; for (let k = 0; k < 16; k++) x.fillRect(cxx - 180 + k * 32, cy + 30, 3, 3);   // the Casino's gardens and the Place du Casino in front of it
   // the harbour: a quay wall, then yachts rafted along the pontoons, white hulls and lit decks, the big ones moored out
   x.fillStyle = '#3a3630'; x.fillRect(0, h * 0.72, w, 6); for (let i = 0; i < 70; i++) { x.fillStyle = '#ffe6b0'; x.fillRect(i * 30 + 6, h * 0.71, 3, 3); }
   SKY.water(x, w, h, h * 0.73, '#0e1a30', '#03060c', '255,220,170', 900);
