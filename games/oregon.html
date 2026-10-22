@@ -142,6 +142,27 @@ html.k-kb .ot.typing .ot-scr{display:none;}
 .nm-row label{width:1.4em;color:var(--e-gray);text-align:right;}
 .nm-row input{flex:1;min-width:0;height:40px;border:0;border-radius:0;background:#111;color:#fff;font:400 1.5rem/1 var(--vt);padding:2px 10px;box-shadow:inset 0 0 0 2px var(--e-dgray);outline:none;}
 .nm-row input:focus{box-shadow:inset 0 0 0 2px var(--e-yel);}
+/* a typing field and the keypad under it (no phone keyboard: the game has its own, like the old computers) */
+.ot-tf{flex:1;min-width:0;height:40px;display:flex;align-items:center;background:#111;color:#fff;font:400 1.5rem/1 var(--vt);padding:2px 10px;
+  box-shadow:inset 0 0 0 2px var(--e-dgray);cursor:text;white-space:nowrap;overflow:hidden;}
+.ot-tf.on{box-shadow:inset 0 0 0 2px var(--e-yel);}
+.ot-tf .ph{color:#666;}
+.ot-tf.on.fresh .tx{background:var(--e-yel);color:#000;}
+@media (orientation:landscape) and (min-width:600px) and (max-height:560px){ .ot.typing .ot-info .nm-sub{display:none;} }
+.ot-tf .cur{display:none;width:.55em;height:1em;background:var(--e-yel);margin-left:1px;flex:none;}
+.ot-tf.on .cur{display:inline-block;animation:otCur 1s steps(1) infinite;}
+@keyframes otCur{50%{opacity:0;}}
+.kp{display:flex;flex-direction:column;gap:5px;padding:7px;background:#1a1a1a;box-shadow:inset 0 0 0 2px #333,4px 4px 0 #000;}
+.kp-r{display:flex;gap:5px;justify-content:center;}
+.kp button{flex:1 1 0;min-width:0;height:40px;border:0;padding:0;cursor:pointer;color:#f4f4f4;font:400 1.45rem/1 var(--vt);
+  background:linear-gradient(#4a4a4a,#333);box-shadow:inset 0 2px 0 #6a6a6a,inset 0 -3px 0 #1a1a1a,0 2px 0 #000;}
+.kp button.w2{flex-grow:1.6;} .kp button.sp{flex-grow:5;} .kp button.nx{flex-grow:2.2;background:linear-gradient(#0a7a0a,#005a00);box-shadow:inset 0 2px 0 var(--e-lgreen),inset 0 -3px 0 #003a00,0 2px 0 #000;}
+.kp button.dim{color:#aaa;font-size:1.3rem;}
+.kp button svg{width:20px;height:20px;}
+.kp button.hit,.kp button:active{transform:translateY(2px);background:#5a5a5a;box-shadow:inset 0 1px 0 #7a7a7a,0 0 0 #000;}
+.kp .spacer{flex:.5 1 0;}
+@media (min-width:900px) and (min-height:700px){ .kp button{height:52px;font-size:1.8rem;} .ot-tf{height:52px;font-size:1.9rem;} }
+@media (orientation:landscape) and (min-width:600px) and (max-height:560px){ .kp{gap:3px;padding:4px;} .kp-r{gap:3px;} .kp button{height:30px;font-size:1.2rem;} .ot-tf{height:32px;} .nm-row{margin-bottom:3px;} }
 .nm-chips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 8px;}
 .nm-chips button{border:0;background:#222;color:#fff;font:400 1.15rem/1 var(--vt);padding:5px 9px;box-shadow:inset 0 0 0 2px var(--e-dgray);cursor:pointer;}
 .ot-in{width:100%;height:42px;border:0;background:#111;color:#fff;font:400 1.45rem/1 var(--vt);padding:2px 10px;box-shadow:inset 0 0 0 2px var(--e-yel);outline:none;border-radius:0;}
@@ -519,6 +540,73 @@ html.k-kb .ot.typing .ot-scr{display:none;}
   }
   function clearLow() { info.innerHTML = ''; act.innerHTML = ''; info.scrollTop = 0; }
 
+  // ── Typing: the game's own keypad ─────────────────────────────────────────
+  // Names and epitaphs are typed on an Apple II-style keypad drawn in the game, never the phone's keyboard (which
+  // covered the boxes). A physical keyboard works too. Letters capitalize at the start of each word.
+  function textField(value, max, ph) {
+    var t = el('span', { class: 'tx' }), c = el('span', { class: 'cur' }), p = el('span', { class: 'ph', text: ph || '' });
+    var f = el('div', { class: 'ot-tf', role: 'textbox' }, [t, c, p]);
+    f.max = max;
+    f.set = function (v) { f.value = String(v || '').slice(0, max); t.textContent = f.value; p.style.display = f.value ? 'none' : ''; if (f.onedit) f.onedit(f.value); };
+    f.set(value);
+    return f;
+  }
+  var KP = null;
+  document.addEventListener('keydown', function (e) { if (KP && KP.el.isConnected && !e.metaKey && !e.ctrlKey) KP.key(e); });
+  function keypad(fields, o) {
+    o = o || {};
+    var cur = -1, kp = { el: el('div', { class: 'kp' }) };
+    function f() { return fields[cur]; }
+    function sel(i) { cur = (i + fields.length) % fields.length; fields.forEach(function (x, j) { x.classList.toggle('on', j === cur); x.classList.toggle('fresh', j === cur && !!x.value); }); if (f().scrollIntoView) f().scrollIntoView({ block: 'nearest' }); nx.innerHTML = fields.length > 1 ? 'Next' : 'Clear'; }
+    function type(ch) {
+      if (f().classList.contains('fresh')) { f().classList.remove('fresh'); f().set(''); }
+      var v = f().value; if (v.length >= f().max) { Kit.haptic('error'); return; }
+      if (/[a-z]/i.test(ch)) ch = (o.sentence ? !v || /[.!?] $/.test(v) : !v || / $|-$/.test(v)) ? ch.toUpperCase() : ch.toLowerCase();
+      if (ch === ' ' && (!v || / $/.test(v))) return;
+      f().set(v + ch); SND.key(); Kit.haptic('tick');
+    }
+    function back() { var v = f().value; if (!v) return; if (f().classList.contains('fresh')) { f().classList.remove('fresh'); f().set(''); } else f().set(v.slice(0, -1)); SND.key(); Kit.haptic('tick'); }
+    function press(b, fn) {
+      // pointerdown, so a fast typist's taps all land; the key dips like a real one
+      b.addEventListener('pointerdown', function (e) { e.preventDefault(); ac(); b.classList.add('hit'); setTimeout(function () { b.classList.remove('hit'); }, 90); fn(e); });
+      return b;
+    }
+    function key(label, fn, cls) { return press(el('button', { type: 'button', class: cls || '', html: label }), fn); }
+    ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'].forEach(function (row, ri) {
+      var r = el('div', { class: 'kp-r' });
+      if (ri === 1) r.appendChild(el('span', { class: 'spacer' }));
+      row.split('').forEach(function (ch) { r.appendChild(key(ch, function () { type(ch); })); });
+      if (ri === 1) r.appendChild(el('span', { class: 'spacer' }));
+      if (ri === 2) {
+        var bk = key('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 5H9l-6 7 6 7h12z"/><path d="m12 9 6 6m0-6-6 6"/></svg>', back, 'w2'), hold = 0;
+        bk.setAttribute('aria-label', 'Delete');
+        bk.addEventListener('pointerdown', function () { clearTimeout(hold); hold = setTimeout(function () { f().set(''); Kit.haptic('medium'); }, 550); });
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (k) { bk.addEventListener(k, function () { clearTimeout(hold); }); });
+        r.appendChild(bk);
+      }
+      kp.el.appendChild(r);
+    });
+    var last = el('div', { class: 'kp-r' });
+    ["'", '-'].forEach(function (ch) { last.appendChild(key(ch, function () { type(ch); }, 'dim')); });
+    last.appendChild(key('Space', function () { type(' '); }, 'sp dim'));
+    last.appendChild(key('.', function () { type('.'); }, 'dim'));
+    var nx = key('Next', function () { if (fields.length > 1) { sel(cur + 1); Kit.sfx('tap', 0.4); } else { f().set(''); Kit.haptic('medium'); } }, 'nx');
+    last.appendChild(nx);
+    kp.el.appendChild(last);
+    fields.forEach(function (x, i) { x.addEventListener('pointerdown', function (e) { e.preventDefault(); ac(); if (i !== cur) { sel(i); SND.key(); Kit.haptic('tick'); } }); });
+    kp.key = function (e) {
+      if (e.key === 'Backspace') { back(); e.preventDefault(); }
+      else if (e.key === 'Tab' || e.key === 'ArrowDown') { sel(cur + (e.shiftKey ? -1 : 1)); e.preventDefault(); }
+      else if (e.key === 'ArrowUp') { sel(cur - 1); e.preventDefault(); }
+      else if (e.key === 'Enter') { if (o.enter) o.enter(); e.preventDefault(); }
+      else if (e.key.length === 1 && /[a-z '.\-]/i.test(e.key)) { type(e.key); e.preventDefault(); }
+    };
+    kp.sel = sel; kp.cur = function () { return cur; };
+    sel(o.start || 0);
+    KP = kp;
+    return kp;
+  }
+
   // text that types itself out like the old computers did; tap to finish
   var typing = null;
   function say(target, text, o) {
@@ -599,28 +687,28 @@ html.k-kb .ot.typing .ot-scr{display:none;}
   }
 
   function showNames() {
-    shell(); setView(picView('independence'), { frac: 0.4 }); root.classList.add('typing');
+    shell(); setView(picView('independence'), { frac: 0.26 }); root.classList.add('typing');
     banner('Independence, Missouri', dstr(S.date));
     clearLow();
     info.appendChild(el('h2', { text: 'Your party' }));
-    info.appendChild(el('p', { class: 'dim', text: 'The wagon leader and the four people traveling with you.' }));
+    info.appendChild(el('p', { class: 'dim nm-sub', text: 'The wagon leader and the four people traveling with you.' }));
     var inputs = [], known = [];
     try { known = (Kit.knownNames() || []).filter(function (x) { return x && x !== 'You'; }).slice(0, 10); } catch (e) {}
-    var focusI = 1;
     S.people.forEach(function (p, i) {
-      var inp = el('input', { type: 'text', maxlength: '14', value: p.n, 'aria-label': i ? 'Party member ' + i : 'Wagon leader', autocomplete: 'off', autocapitalize: 'words' });
-      inp.addEventListener('focus', function () { focusI = i; setTimeout(function () { if (inp.scrollIntoView) inp.scrollIntoView({ block: 'nearest' }); }, 350); });
-      inp.addEventListener('input', function () { SND.key(); });
+      var inp = textField(p.n, 14, 'Name');
+      inp.setAttribute('aria-label', i ? 'Party member ' + i : 'Wagon leader');
       inputs.push(inp);
-      var dice = el('button', { type: 'button', class: 'st-b', 'aria-label': 'Another name', html: ic('shuffle'), onclick: function () { var used = inputs.map(function (x) { return x.value; }); var nm = pick(OT.NAMES.filter(function (x) { return used.indexOf(x) < 0; })); inp.value = nm; SND.key(); Kit.haptic('tick'); } });
+      var dice = el('button', { type: 'button', class: 'st-b', 'aria-label': 'Another name', html: ic('shuffle'), onclick: function () { var used = inputs.map(function (x) { return x.value; }); var nm = pick(OT.NAMES.filter(function (x) { return used.indexOf(x) < 0; })); inp.set(nm); kp.sel(i); SND.key(); Kit.haptic('tick'); } });
       dice.querySelector('svg').style.cssText = 'width:20px;height:20px';
       // your regulars: the same "choose a player" sheet every game's setup uses
       var who = known.length ? el('button', { type: 'button', class: 'st-b', 'aria-label': 'Choose a player', html: ic('users'), onclick: function () {
-        Kit.pickName(function (nm) { inp.value = nm.slice(0, 14); SND.key(); Kit.haptic('tick'); }, { taken: inputs.filter(function (x) { return x !== inp; }).map(function (x) { return x.value; }), title: i ? 'Party member ' + i : 'Wagon leader' });
+        Kit.pickName(function (nm) { inp.set(nm.slice(0, 14)); kp.sel(i); SND.key(); Kit.haptic('tick'); }, { taken: inputs.filter(function (x) { return x !== inp; }).map(function (x) { return x.value; }), title: i ? 'Party member ' + i : 'Wagon leader' });
       } }) : null;
       if (who) who.querySelector('svg').style.cssText = 'width:20px;height:20px';
       info.appendChild(el('div', { class: 'nm-row' }, [el('label', { text: i ? String(i) : '' , html: i ? String(i) : ic('star') }), inp, who, dice]));
     });
+    var kp = keypad(inputs, { start: 1 });
+    act.appendChild(kp.el);
     act.appendChild(btn('These are my companions', 'go', function () {
       inputs.forEach(function (x, i) { var v = x.value.trim().slice(0, 14); S.people[i].n = v || S.people[i].n; });
       S.phase = 'store'; save(); showStore(true);
@@ -1362,7 +1450,7 @@ html.k-kb .ot.typing .ot-scr{display:none;}
   function deathScreen(p) {
     return new Promise(function (res) {
       var isLeader = p === leader();
-      shell(); var v = tombView(p.n.length * 7 + S.days); setView(v, { frac: 0.55 });
+      shell(); var v = tombView(p.n.length * 7 + S.days); setView(v, { frac: land() && window.innerHeight < 560 ? 0.3 : 0.55 });
       musicWanted = false;
       SND.dirge(); Kit.haptic('heavy');
       var st = stoneText(v, { name: p.n, ep: '', date: dstr(p.date) });
@@ -1370,12 +1458,12 @@ html.k-kb .ot.typing .ot-scr{display:none;}
       var msg = el('p', { class: 'red' }); info.appendChild(msg);
       say(msg, isLeader ? 'You have ' + causeText(p.cause).replace(/^died/, 'died') + '.' : p.n + ' has ' + causeText(p.cause) + '.');
       info.appendChild(el('p', { class: 'dim', text: 'Write an epitaph for the tombstone. Travelers who pass this way will read it.', style: { 'margin-top': '6px' } }));
-      var inp = el('input', { class: 'ot-in', type: 'text', maxlength: '40', placeholder: pick(OT.EPITAPHS), autocomplete: 'off' });
-      inp.addEventListener('input', function () { st.ep(inp.value); SND.key(); });
-      info.appendChild(inp);
-      var chips = el('div', { class: 'nm-chips' });
-      OT.EPITAPHS.slice().sort(function () { return Math.random() - 0.5; }).slice(0, 4).forEach(function (e) { chips.appendChild(el('button', { type: 'button', text: e, onclick: function () { inp.value = e; st.ep(e); SND.key(); } })); });
-      info.appendChild(chips);
+      var inp = textField('', 40, pick(OT.EPITAPHS)); inp.classList.add('ep'); inp.onedit = function (v) { st.ep(v); };
+      var eps = OT.EPITAPHS.slice().sort(function () { return Math.random() - 0.5; }), epI = 0;
+      var dice = el('button', { type: 'button', class: 'st-b', 'aria-label': 'Suggest an epitaph', html: ic('shuffle'), onclick: function () { inp.set(eps[epI++ % eps.length]); SND.key(); Kit.haptic('tick'); } });
+      dice.querySelector('svg').style.cssText = 'width:20px;height:20px';
+      info.appendChild(el('div', { class: 'nm-row' }, [inp, dice]));
+      act.appendChild(keypad([inp], { sentence: true }).el);
       act.appendChild(btn('Lay ' + (isLeader ? 'yourself' : p.n) + ' to rest', 'go', function () {
         var ep = inp.value.trim().slice(0, 40);
         p.ep = ep;
