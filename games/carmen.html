@@ -218,7 +218,9 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
   };
   var ORDER = ['world', 'usa', 'time', 'europe', 'asia', 'africa', 'americas'];
   // rank, arrests needed, cities on the trail
-  var RANKS = [['Gumshoe', 0, 4], ['Private Eye', 2, 5], ['Investigator', 5, 5], ['Detective', 9, 6], ['Ace Detective', 14, 7], ['Super Sleuth', 20, 8]];
+  var RANKS = [['Gumshoe', 0, 4], ['Private Eye', 2, 5], ['Investigator', 5, 5], ['Detective', 9, 6], ['Ace Detective', 14, 7], ['Super Sleuth', 20, 7]];
+  // V.I.L.E. grows as you rise: how many of the files below are open at each rank (the 1985 ten first)
+  var ROSTER = [10, 14, 18, 22, 24, 24];
   var CARMEN_CASE = 19;   // the arrest that makes you a Super Sleuth is Carmen herself
   var TRAITS = { sex: ['Female', 'Male'], hair: ['Black', 'Brown', 'Red', 'Blond'], hobby: ['Tennis', 'Mountain Climbing', 'Croquet'], feature: ['Limps', 'Ring', 'Tattoo', 'Scar', 'Jewelry'], auto: ['Convertible', 'Limousine', 'Race Car', 'Motorcycle'] };
   var TRAIT_NAMES = { sex: 'Sex', hair: 'Hair', hobby: 'Hobby', feature: 'Feature', auto: 'Auto' };
@@ -243,7 +245,37 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
     { name: 'Len Bulk', sex: 'Male', hair: 'Red', hobby: 'Mountain Climbing', feature: 'Scar', auto: 'Motorcycle',
       bio: 'Former strongman. Rides a big motorcycle and carries off big treasures.', look: { style: 'short', skin: '#e0b088', coat: '#3a3a3a', bg: '#4a6a3a', beard: true } },
     { name: 'Fast Eddie B.', sex: 'Male', hair: 'Black', hobby: 'Croquet', feature: 'Tattoo', auto: 'Convertible',
-      bio: 'Smooth talker with a fast convertible. Never stays in one city for long.', look: { style: 'slick', skin: '#7a4a2a', coat: '#2a3a5a', bg: '#5a3a5a', glasses: true } }
+      bio: 'Smooth talker with a fast convertible. Never stays in one city for long.', look: { style: 'slick', skin: '#7a4a2a', coat: '#2a3a5a', bg: '#5a3a5a', glasses: true } },
+    // Later V.I.L.E. recruits (the gang grew in the sequels and on TV). Their files open as you rise in rank, two at a
+    // time; traits chosen so that, with all 24 open, it takes two or three traits to single anyone out.
+    { name: 'Patty Larceny', sex: 'Female', hair: 'Brown', hobby: 'Croquet', feature: 'Tattoo', auto: 'Race Car',
+      bio: 'V.I.L.E.\'s youngest member. Picked her first pocket at a croquet match and drew a getaway car on her arm.', look: { style: 'bob', skin: '#f4cca0', coat: '#2a6a3a', bg: '#3a5a7a' } },
+    { name: 'Vic the Slick', sex: 'Male', hair: 'Blond', hobby: 'Tennis', feature: 'Ring', auto: 'Convertible',
+      bio: 'Con man with a diamond pinky ring and a perfect backhand. Sells famous landmarks he doesn\'t own.', look: { style: 'slick', skin: '#f4cca0', coat: '#5a2a5a', bg: '#2a4a3a', hat: 'fedora' } },
+    { name: 'Contessa', sex: 'Female', hair: 'Blond', hobby: 'Croquet', feature: 'Limps', auto: 'Limousine',
+      bio: 'Countess of nowhere in particular. Walks with a jeweled cane since a croquet accident, and never alone.', look: { style: 'long', skin: '#f4cca0', coat: '#6a1a3a', bg: '#4a3a6a' } },
+    { name: 'Top Grunge', sex: 'Male', hair: 'Black', hobby: 'Tennis', feature: 'Scar', auto: 'Race Car',
+      bio: 'Rock guitarist turned getaway driver. Got his scar from a stage dive, and plays tennis to stay sharp.', look: { style: 'curly', skin: '#c88a5c', coat: '#2a2a2a', bg: '#6a2a2a' } },
+    { name: 'Sarah Nade', sex: 'Female', hair: 'Brown', hobby: 'Tennis', feature: 'Jewelry', auto: 'Limousine',
+      bio: 'Lounge singer who hums a tune while she empties the vault. Rides to every show in a limousine.', look: { style: 'long', skin: '#a06a40', coat: '#2a2a5a', bg: '#5a2a4a' } },
+    { name: 'Justin Case', sex: 'Male', hair: 'Black', hobby: 'Croquet', feature: 'Scar', auto: 'Limousine',
+      bio: 'Plans for everything, twice. Carries a spare croquet mallet, a spare passport and a spare limousine.', look: { style: 'short', skin: '#e0b088', coat: '#3a3a4a', bg: '#3a5a4a', glasses: true } },
+    { name: 'M.T. Pockets', sex: 'Female', hair: 'Red', hobby: 'Croquet', feature: 'Ring', auto: 'Convertible',
+      bio: 'Penniless heiress who keeps up appearances with other people\'s treasures. Never takes off her signet ring.', look: { style: 'bob', skin: '#f4cca0', coat: '#5a4a2a', bg: '#2a3a5a' } },
+    { name: 'Buggs Zapper', sex: 'Male', hair: 'Black', hobby: 'Mountain Climbing', feature: 'Scar', auto: 'Motorcycle',
+      bio: 'Electronics wizard who taps phones from mountaintops. The scar is from his first homemade radio.', look: { style: 'short', skin: '#7a4a2a', coat: '#2a4a2a', bg: '#4a4a6a', glasses: true } },
+    { name: 'Dee Dee Locke', sex: 'Female', hair: 'Red', hobby: 'Croquet', feature: 'Ring', auto: 'Limousine',
+      bio: 'Safecracker who has never met a lock she couldn\'t open. Wears a ring with a tiny pick hidden in it.', look: { style: 'long', skin: '#e0b088', coat: '#2a2a3a', bg: '#6a4a2a' } },
+    { name: 'Rob M. Blind', sex: 'Male', hair: 'Red', hobby: 'Croquet', feature: 'Scar', auto: 'Race Car',
+      bio: 'Pickpocket with the fastest hands in V.I.L.E. and a race car parked around the corner.', look: { style: 'slick', skin: '#f4cca0', coat: '#4a3a2a', bg: '#2a5a5a', mustache: true } },
+    { name: 'Paige Turner', sex: 'Female', hair: 'Brown', hobby: 'Croquet', feature: 'Jewelry', auto: 'Convertible',
+      bio: 'Rare-book thief who reads everything she steals. Drives a convertible with the top down, even in the rain.', look: { style: 'bob', skin: '#c88a5c', coat: '#4a2a2a', bg: '#3a4a2a', glasses: true } },
+    { name: 'Ken Hartley Reed', sex: 'Male', hair: 'Red', hobby: 'Mountain Climbing', feature: 'Ring', auto: 'Motorcycle',
+      bio: 'Forger with terrible eyesight and beautiful handwriting. Climbs mountains to deliver fake maps.', look: { style: 'short', skin: '#e0b088', coat: '#3a4a5a', bg: '#5a5a3a', glasses: true, beard: true } },
+    { name: 'Eartha Brute', sex: 'Female', hair: 'Red', hobby: 'Tennis', feature: 'Ring', auto: 'Limousine',
+      bio: 'Former wrestling champion. Serves at over 100 miles an hour and carries treasures other thieves can\'t lift.', look: { style: 'bob', skin: '#a06a40', coat: '#3a2a4a', bg: '#2a6a4a' } },
+    { name: 'RoboCrook', sex: 'Male', hair: 'Black', hobby: 'Croquet', feature: 'Ring', auto: 'Race Car',
+      bio: 'More machine than man. The ring on his steel hand is a lock pick, and his race car drives itself.', look: { style: 'bald', skin: '#a8acb8', coat: '#4a4e5a', bg: '#1a2a4a', glasses: true } }
   ];
   SUS.forEach(function (s, i) { s.look = Object.assign({ sex: s.sex === 'Female' ? 'F' : 'M', hair: s.hair, feature: s.feature, seed: 'sus' + i, name: s.name }, s.look); });
   // where witnesses are questioned, and what they tend to know about
@@ -369,35 +401,43 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
 
   // ── Case generation ──────────────────────────────────────────────────────
   var C = null, UNDO = [], busy = false;
-  function newCase(v, player) {
-    var car = careerOf(player, v), rk = rankOf(car.solved), stops = RANKS[rk][2];
+  function newCase(v, player, solved) {
+    var car = solved != null ? { solved: solved } : careerOf(player, v), rk = rankOf(car.solved), stops = RANKS[rk][2];
     var r = seeded(Date.now() + ':' + Math.random());
-    var trail = shuffle(DATA.map(function (p) { return p.id; }), r).slice(0, stops);
-    // the trail shouldn't double back on itself: no hop to a place right next door, if it can be helped
-    var sus = car.solved === CARMEN_CASE || (rk === RANKS.length - 1 && r() < 0.2) ? 0 : 1 + Math.floor(r() * (SUS.length - 1));
+    // the trail: no hop longer than 8 hours (so a 7-stop case leaves room for a wrong turn by Sunday) and none to
+    // the place right next door, if it can be helped
+    var trail = [pick(DATA, r)];
+    while (trail.length < stops) {
+      var at = trail[trail.length - 1], rest = shuffle(DATA.filter(function (p) { return trail.indexOf(p) < 0; }), r);
+      trail.push(rest.filter(function (p) { var h = hopHours(v, at, p); return h <= 8 && h >= 3; })[0] || rest.filter(function (p) { return hopHours(v, at, p) <= 8; })[0] || rest[0]);
+    }
+    trail = trail.map(function (p) { return p.id; });
+    var nSus = ROSTER[rk], sus = car.solved === CARMEN_CASE || (rk === RANKS.length - 1 && r() < 0.2) ? 0 : 1 + Math.floor(r() * (nSus - 1));
     var start = place(trail[0]);
-    var c = { v: v, player: player, rank: rk, id: Math.floor(r() * 1e9).toString(36), sus: sus, trail: trail, i: 0, at: trail[0], last: trail[0], t: START_T,
+    var c = { v: v, player: player, rank: rk, nSus: nSus, id: Math.floor(r() * 1e9).toString(36), sus: sus, trail: trail, i: 0, at: trail[0], last: trail[0], t: START_T,
       treasure: pick(start.treasure, r), warrant: null, comp: { sex: SUS[sus].sex === 'Female' ? 0 : 1 }, cities: {}, notes: [], used: {}, over: false,
       undos: 0, flights: 0, wrong: 0, danger: false, started: Date.now(), solvedBefore: car.solved,
       path: [trail[0] + '|' + START_T], asked: 0, hench: 0 };
-    c.traitAt = traitPlan(sus, rk, stops, r);
+    c.traitAt = traitPlan(sus, rk, stops, r, nSus);
     return c;
   }
   // Which witness answers carry a trait. A new agent hears plenty, early, and often more than needed. Higher ranks
   // hear less, and later: the traits that single out the thief only add up together (no one of them is enough
   // alone), at most one per city, and the one that completes the warrant comes late on the trail.
   var CLUE_PLAN = [   // [traits it takes to single out the thief, extra traits, first city with a trait, last trait from (share of the trail)]
-    [1, 2, 0, 0], [1, 1, 0, 0], [2, 1, 0, 0.4], [2, 0, 1, 0.5], [3, 0, 1, 0.6], [3, 0, 1, 0.7]];
-  function traitPlan(sus, rk, stops, r) {
+    [1, 2, 0, 0], [2, 1, 0, 0], [2, 1, 0, 0.4], [3, 0, 1, 0.5], [3, 0, 1, 0.6], [4, 0, 1, 0.7]];
+  // the V.I.L.E. members open on this case (older saves predate the bigger roster: the 1985 ten)
+  function roster(n) { return SUS.slice(0, n || (C && C.nSus) || 10); }
+  function traitPlan(sus, rk, stops, r, nSus) {
     var P = CLUE_PLAN[Math.min(rk, CLUE_PLAN.length - 1)], cities = stops - 1, keys = ['hair', 'hobby', 'feature', 'auto'], S = SUS[sus];
-    function only(ks) { return SUS.filter(function (o) { return o.sex === S.sex && ks.every(function (k) { return o[k] === S[k]; }); }).length === 1; }
+    function only(ks) { return roster(nSus).filter(function (o) { return o.sex === S.sex && ks.every(function (k) { return o[k] === S[k]; }); }).length === 1; }
     // every set of traits that singles the thief out with nothing to spare; take the size closest to the plan
     var sets = [];
     for (var m = 1; m < 16; m++) {
       var ks = keys.filter(function (k, i) { return m & (1 << i); });
       if (only(ks) && ks.every(function (k) { return !only(ks.filter(function (x) { return x !== k; })) || ks.length === 1; })) sets.push(ks);
     }
-    if (!sets.length) sets.push(distinguishing(sus));
+    if (!sets.length) sets.push(distinguishing(sus, nSus));
     var best = Math.min.apply(null, sets.map(function (ks) { return Math.abs(ks.length - P[0]) + (ks.length > P[0] ? 0.5 : 0); }));
     var need = shuffle(pick(sets.filter(function (ks) { return Math.abs(ks.length - P[0]) + (ks.length > P[0] ? 0.5 : 0) === best; }), r), r);
     var extra = shuffle(keys.filter(function (k) { return need.indexOf(k) < 0; }), r).slice(0, P[1]);
@@ -421,12 +461,12 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
     return plan;
   }
   // the smallest set of traits (besides sex) that singles out suspect s
-  function distinguishing(s) {
+  function distinguishing(s, nSus) {
     var S = SUS[s], keys = ['hair', 'hobby', 'feature', 'auto'], best = keys;
     for (var m = 1; m < 16; m++) {
       var ks = keys.filter(function (k, i) { return m & (1 << i); });
       if (ks.length >= best.length) continue;
-      var n = SUS.filter(function (o) { return o.sex === S.sex && ks.every(function (k) { return o[k] === S[k]; }); }).length;
+      var n = roster(nSus).filter(function (o) { return o.sex === S.sex && ks.every(function (k) { return o[k] === S[k]; }); }).length;
       if (n === 1) best = ks;
     }
     return best;
@@ -471,10 +511,11 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
     while (opts.length < 4 && pool.length) opts.push(pool.shift());
     return (C.cities[id] = { locs: locs, opts: shuffle(opts, r), seen: {} });
   }
-  function flightHours(a, b) {
+  function flightHours(a, b) { return hopHours(C.v, a, b); }
+  function hopHours(v, a, b) {
     var d = km(a, b);
-    if (C.v === 'time') return Math.min(10, 2 + Math.round(Math.abs((a.year || 0) - (b.year || 0)) / 400) + Math.round(d / 4000));
-    return Math.max(2, Math.min(12, Math.round(d / V[C.v].speed) + 1));
+    if (v === 'time') return Math.min(10, 2 + Math.round(Math.abs((a.year || 0) - (b.year || 0)) / 400) + Math.round(d / 4000));
+    return Math.max(2, Math.min(12, Math.round(d / V[v].speed) + 1));
   }
 
   // ── Save / undo ──────────────────────────────────────────────────────────
@@ -772,7 +813,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
     clearOv();
     var crt = el('div', { class: 'crt' }); $.ov.appendChild(crt); $.cv.className = '';
     function show(lines) { crt.innerHTML = '<div class="h">ACME CRIME COMPUTER</div><div class="h">INTERPOL LINK ' + (C.v === 'time' ? 'ACROSS ALL TIME' : 'ONLINE') + '</div>' + lines; }
-    function matches() { return SUS.filter(function (s) { return Object.keys(C.comp).every(function (k) { return C.comp[k] == null || s[k] === TRAITS[k][C.comp[k]]; }); }); }
+    function matches() { return roster().filter(function (s) { return Object.keys(C.comp).every(function (k) { return C.comp[k] == null || s[k] === TRAITS[k][C.comp[k]]; }); }); }
     function draw() {
       var m = matches();
       show('<div>SUSPECTS MATCHING: <span class="m">' + m.length + '</span></div>' + m.map(function (s) { return '<div>&gt; ' + esc(s.name.toUpperCase()) + '</div>'; }).join('') +
@@ -812,7 +853,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
 
   // ── Dossiers and notes ──────────────────────────────────────────────────
   function dossierMenu() {
-    var keys = SUS.map(function (s, i) { return keyBtn(null, s.name, s.sex, function () { dossier(i); }); });
+    var keys = roster().map(function (s, i) { return keyBtn(null, s.name, s.sex, function () { dossier(i); }); });
     panel('V.I.L.E. dossiers', [keyBtn('folder', 'Case notes', C.notes.length + ' statements', function () { notes(); dosOpen = false; }, 'go')].concat(keys), true, 'dos');
     notes(); say('V.I.L.E. files and your case notes.', 'DOSSIERS'); if (typing) typing.skip();
   }
@@ -859,7 +900,10 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       .then(function () { return wait(1400); }).then(function () {
         if (!promoted) return;
         $.ov.appendChild(el('div', { class: 'big', html: 'PROMOTED!<br>' + esc(RANKS[after][0].toUpperCase()) })); jingle('promo'); Kit.confetti();
-        return say('ACME promotes you to <em>' + esc(RANKS[after][0]) + '</em>! Your cases now cross ' + RANKS[after][2] + ' ' + V[C.v].unit + ', and witnesses will say less about the thief.', 'PROMOTION').then(function () { return wait(1600); });
+        var fresh = SUS.slice(ROSTER[before], ROSTER[after]).map(function (x) { return '<em>' + esc(x.name) + '</em>'; });
+        var longer = RANKS[after][2] > RANKS[before][2] ? 'Your cases now cross ' + RANKS[after][2] + ' ' + V[C.v].unit + ', and ' : 'From now on ';
+        return say('ACME promotes you to <em>' + esc(RANKS[after][0]) + '</em>! ' + longer + 'witnesses will say less about the thief.' +
+          (fresh.length ? ' New V.I.L.E. files have reached the agency: ' + fresh.join(', ') + '.' : ''), 'PROMOTION').then(function () { return wait(1600); });
       }).then(function () {
         busy = false;
         var done = function () {
@@ -1065,7 +1109,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       '<h3>Travel</h3><ul><li><b>Depart</b> shows the places you can reach. Longer trips cost more hours. At 11 pm you stop to sleep until 7 am.</li></ul>' +
       '<h3>Crime computer</h3><ul><li>Enter the traits you have heard. When only one V.I.L.E. member fits, you get a <b>warrant</b> for them.</li>' +
       '<li>In the hideout city witnesses warn you the thief is close. Find the thief with the right warrant to make the arrest. No warrant, or the wrong one, and the thief goes free.</li></ul>' +
-      '<h3>Ranks</h3><ul><li>Gumshoe, Private Eye (2 arrests), Investigator (5), Detective (9), Ace Detective (14), Super Sleuth (20). Higher ranks mean longer trails.</li>' +
+      '<h3>Ranks</h3><ul><li>Gumshoe, Private Eye (2 arrests), Investigator (5), Detective (9), Ace Detective (14), Super Sleuth (20).</li><li>Each promotion means a longer trail (up to 7 stops), more V.I.L.E. members to sort through (10 at first, 24 in the end), and witnesses who say less, later.</li>' +
       '<li>The 20th arrest is Carmen Sandiego herself. Each version keeps its own rank for each player.</li></ul>' +
       '<h3>Versions</h3><p>World, USA (all 50 states), Time (history, by Chronoskimmer), Europe, Asia, Africa and the Americas. Keep an atlas or encyclopedia handy, just like in 1985.</p>'
   });
@@ -1077,7 +1121,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
   }
 
   // test hooks
-  window.__cs = { C: function () { return C; }, place: place, fly: fly, win: win, lose: lose, caseFile: caseFile, investigate: investigate };
+  window.__cs = { C: function () { return C; }, newCase: newCase, loadData: loadData, SUS: SUS, ROSTER: ROSTER, RANKS: RANKS, place: place, hopHours: hopHours, place: place, fly: fly, win: win, lose: lose, caseFile: caseFile, investigate: investigate };
 
   // Resume a case in progress, or start at the setup screen
   var sv = rd(SAVE, null);
