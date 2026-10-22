@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carmen Sandiego</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
+<script src="carmen/maps.js"></script>
+<script src="carmen/art.js"></script>
+<script src="carmen/data-world.js"></script>
+<script src="carmen/data-usa.js"></script>
+<script src="carmen/data-time.js"></script>
+<script src="carmen/data-europe.js"></script>
+<script src="carmen/data-asia.js"></script>
+<script src="carmen/data-africa.js"></script>
+<script src="carmen/data-americas.js"></script>
+<style>
+/* Pixel fonts: Press Start 2P and Jersey 10 (SIL Open Font License, see fonts/) */
+@font-face{font-family:"Press Start 2P";src:url("../fonts/press-start-2p.woff2") format("woff2");font-display:swap;}
+@font-face{font-family:"Jersey 10";src:url("../fonts/jersey-10.woff2") format("woff2");font-display:swap;}
+:root{--px:"Press Start 2P",ui-monospace,monospace;--vt:"Jersey 10",ui-monospace,monospace;
+  --steel:#a8acb8;--steel-hi:#e4e6ee;--steel-lo:#5a5e6c;--navy:#0a0c2e;--crt:#7df0ff;--amber:#ffd860;--red:#e8262e;}
+body{overflow:hidden;}
+.cs{position:relative;display:grid;gap:8px;height:calc(100dvh - var(--bar) - var(--safe-b));padding:4px 8px calc(var(--safe-b) + 8px);
+  grid-template-rows:auto auto minmax(70px,1fr) auto;grid-template-areas:"head" "pic" "text" "act";max-width:720px;margin:0 auto;}
+@media (orientation:landscape) and (min-width:640px){
+  .cs{max-width:1240px;grid-template-columns:minmax(0,1fr) minmax(250px,32%);grid-template-rows:auto minmax(0,1fr) clamp(76px,20vh,170px);
+    grid-template-areas:"head act" "pic act" "text act";}
+  /* the picture keeps its 16:10 shape inside whatever room it gets */
+  .cs-picw{container-type:size;min-height:0;}
+  .cs-picw .cs-pic{width:min(100cqw,160cqh);}
+}
+/* phones held sideways: the city and clock stack beside the picture, the text runs under both */
+@media (orientation:landscape) and (min-width:640px) and (max-height:560px){
+  .cs{grid-template-columns:minmax(0,1fr) minmax(140px,190px) minmax(220px,30%);grid-template-rows:minmax(0,1fr) clamp(64px,24vh,110px);
+    grid-template-areas:"pic head act" "text text act";gap:6px;padding-top:2px;}
+  .cs .cs-head{flex-direction:column;}
+  .cs .cs-city b{white-space:normal;font-size:.62rem;}
+  .cs .cs-time{flex:1;}
+  .cs .cs-time b{font-size:.5rem;white-space:normal;}
+  .cs .key{min-height:40px;padding:6px 8px;}
+  .cs .cs-act{padding:6px;gap:6px;}
+}
+/* Beveled steel panels, like the 1990s PC version's chrome */
+.bevel{background:linear-gradient(180deg,#b8bcc8,#9a9eac);border-radius:3px;
+  box-shadow:inset 2px 2px 0 var(--steel-hi),inset -2px -2px 0 var(--steel-lo),0 3px 8px rgba(0,0,0,.45);}
+.cs-head{grid-area:head;display:flex;align-items:stretch;gap:8px;padding:5px;min-width:0;}
+.cs-city{flex:1;min-width:0;background:var(--navy);border-radius:2px;padding:7px 10px;box-shadow:inset 2px 2px 0 #000,inset -1px -1px 0 #3a3e5a;}
+.cs-city b{display:block;font:400 clamp(.72rem,2.4vw,1rem)/1.25 var(--px);color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:2px 2px 0 #5a2a00;}
+.cs-city small{display:block;font:400 1.15rem/1 var(--vt);color:#a8b4ff;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cs-time{display:flex;align-items:center;gap:8px;background:var(--navy);border-radius:2px;padding:4px 10px 4px 6px;box-shadow:inset 2px 2px 0 #000,inset -1px -1px 0 #3a3e5a;}
+.cs-time canvas{width:40px;height:40px;image-rendering:pixelated;}
+.cs-time b{display:block;font:400 clamp(.62rem,2vw,.8rem)/1.2 var(--px);color:#fff;white-space:nowrap;}
+.cs-time small{display:block;font:400 1.05rem/1 var(--vt);color:#ff8a8a;margin-top:4px;white-space:nowrap;}
+.cs-time.late small{animation:blink .8s steps(2) infinite;}
+@keyframes blink{50%{opacity:.25;}}
+.cs-picw{grid-area:pic;display:grid;place-items:center;}
+.cs-pic{position:relative;aspect-ratio:16/10;width:100%;padding:6px;overflow:hidden;}
+.cs-pic > canvas,.cs-scr{position:absolute;inset:6px;width:calc(100% - 12px);height:calc(100% - 12px);image-rendering:pixelated;background:#000;}
+.cs-pic::after{content:"";position:absolute;inset:6px;pointer-events:none;z-index:8;
+  background:repeating-linear-gradient(180deg,rgba(0,0,0,.14) 0 1px,transparent 1px 3px),radial-gradient(120% 100% at 50% 50%,transparent 60%,rgba(0,0,0,.35));}
+.cs-pic canvas.wipe{animation:wipe .7s steps(12) both;}
+@keyframes wipe{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
+.cs-pic canvas.fade{animation:fadein .5s steps(5) both;}
+@keyframes fadein{from{opacity:0;}to{opacity:1;}}
+.cs-ov{position:absolute;inset:6px;z-index:5;pointer-events:none;}
+.cs-ov > *{pointer-events:auto;}
+.cs-text{grid-area:text;overflow-y:auto;background:#000;border-radius:3px;padding:8px 12px;color:#e8f4ff;font:400 clamp(1.25rem,3.6vw,1.5rem)/1.12 var(--vt);
+  box-shadow:inset 0 0 0 2px #3a3e5a,inset 0 0 0 4px #000,inset 0 0 0 5px #6a6e84;text-shadow:0 0 6px rgba(140,220,255,.35);cursor:pointer;}
+.cs-text .who{display:block;font:400 .6rem/1.4 var(--px);color:var(--crt);margin-bottom:4px;letter-spacing:.04em;}
+.cs-text em{font-style:normal;color:var(--amber);}
+.cs-text .caret{display:inline-block;width:.5em;height:.9em;background:#e8f4ff;vertical-align:-.1em;animation:blink .6s steps(2) infinite;}
+.cs-text .sub{color:#9aa4c8;}
+.cs-text.warn{color:#ffb0b0;}
+/* the action side */
+.cs-act{grid-area:act;display:flex;flex-direction:column;gap:8px;padding:8px;min-height:0;}
+.cs-act h4{font:400 .62rem/1.3 var(--px);color:#1a1c2e;margin:2px 2px 0;text-shadow:1px 1px 0 rgba(255,255,255,.5);}
+.cs-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.cs-btns > :only-child{grid-column:1/-1;}
+@media (orientation:landscape) and (min-width:640px){ .cs-btns{grid-template-columns:1fr;} .cs-act{overflow-y:auto;} }
+.key{display:flex;align-items:center;gap:10px;min-height:52px;padding:8px 10px;border:0;border-radius:3px;cursor:pointer;text-align:left;color:#14162a;
+  background:linear-gradient(180deg,#d4d8e2,#b0b4c2);font:400 clamp(.56rem,1.9vw,.7rem)/1.35 var(--px);
+  box-shadow:inset 2px 2px 0 #f4f6fc,inset -2px -2px 0 #6a6e7c,0 2px 0 #2a2c3a;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.key:active:not(:disabled){transform:translateY(2px);box-shadow:inset 2px 2px 0 #6a6e7c,inset -2px -2px 0 #f4f6fc;}
+.key:disabled{opacity:.5;cursor:default;}
+.key svg{width:26px;height:26px;flex:none;shape-rendering:crispEdges;}
+.key .lb{flex:1;min-width:0;}
+.key .lb small{display:block;font:400 1.05rem/1 var(--vt);color:#3a3e5a;margin-top:3px;}
+.key.go{background:linear-gradient(180deg,#ffd860,#e8a828);box-shadow:inset 2px 2px 0 #fff2b0,inset -2px -2px 0 #9a6410,0 2px 0 #3a2400;}
+.key.red{background:linear-gradient(180deg,#ff6a6a,#c82a2a);color:#fff;box-shadow:inset 2px 2px 0 #ffb0b0,inset -2px -2px 0 #7a1010,0 2px 0 #3a0000;}
+.key.on{background:linear-gradient(180deg,#9ae8ff,#5ab8e0);}
+.key.seen{background:linear-gradient(180deg,#b8bcc8,#9a9eac);color:#3a3e5a;}
+.key.hot{outline:3px solid var(--amber);outline-offset:1px;}
+.cs-list{display:flex;flex-direction:column;gap:8px;min-height:0;overflow-y:auto;}
+.cs-back{min-height:44px;justify-content:center;}
+.trait{display:flex;align-items:center;gap:8px;}
+.trait span{width:74px;flex:none;font:400 .55rem/1 var(--px);color:#1a1c2e;}
+.trait .key{flex:1;min-height:42px;justify-content:center;text-align:center;}
+/* map overlay */
+.dot{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;background:#fff;box-shadow:0 0 0 2px #000;image-rendering:pixelated;}
+.dot.opt{background:var(--amber);animation:blink .5s steps(2) infinite;}
+.dot.opt.hot{animation:none;background:#fff;transform:scale(1.4);}
+.dot.here{background:var(--red);}
+.dot i{position:absolute;left:12px;top:-6px;white-space:nowrap;font:400 .5rem/1 var(--px);color:#fff;text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;font-style:normal;}
+.dot.left i{left:auto;right:12px;}
+.plane{position:absolute;width:32px;height:20px;margin:-10px 0 0 -16px;image-rendering:pixelated;z-index:3;}
+.trailline{position:absolute;inset:0;width:100%;height:100%;}
+/* witness, henchman, dossier, crt */
+.wit{position:absolute;right:3%;bottom:0;width:30%;aspect-ratio:48/56;image-rendering:pixelated;border:3px solid #000;box-shadow:0 0 0 2px #c8ccd8;bottom:4%;animation:pop .3s steps(4) both;}
+@keyframes pop{from{transform:translateY(40%);opacity:0;}}
+.hench{position:absolute;bottom:6%;height:52%;aspect-ratio:20/34;image-rendering:pixelated;animation:dash 1.1s steps(14) both;}
+@keyframes dash{from{left:-15%;}to{left:110%;}}
+.zzz{position:absolute;inset:0;background:rgba(0,0,30,.72);display:grid;place-items:center;font:400 1.4rem/1 var(--px);color:#fff;animation:fadein .4s steps(4) both;}
+.zzz b{animation:float 1.2s steps(6) infinite;}
+@keyframes float{50%{transform:translateY(-10px);}}
+.crt{position:absolute;inset:0;background:#020a02;color:#58f070;font:400 clamp(1rem,2.6vw,1.35rem)/1.05 var(--vt);padding:6px 10px;overflow:hidden;text-shadow:0 0 6px rgba(88,240,112,.6);}
+.crt .h{font:400 clamp(.45rem,1.4vw,.6rem)/1.6 var(--px);color:#a8ffb8;}
+.crt .m{color:#fff;}
+.dossier{position:absolute;inset:0;display:flex;gap:4%;padding:4%;background:#efe6cc;color:#2a2010;
+  background-image:repeating-linear-gradient(180deg,transparent 0 22px,rgba(90,120,200,.25) 22px 23px);overflow:hidden;}
+.dossier canvas{height:100%;aspect-ratio:48/56;image-rendering:pixelated;border:3px solid #2a2010;background:#000;flex:none;}
+.dossier .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font:400 clamp(1rem,2.6vw,1.3rem)/1.05 var(--vt);}
+.dossier .tx b{font:400 clamp(.5rem,1.7vw,.72rem)/1.3 var(--px);color:#8a1010;margin-bottom:4px;}
+.dossier .tx p{margin:4px 0 0;color:#5a4a30;}
+.dossier .tx span{color:#5a4a30;}
+.notes{position:absolute;inset:0;background:#efe6cc;color:#2a2010;padding:3% 4%;overflow-y:auto;font:400 clamp(1rem,2.6vw,1.25rem)/1.1 var(--vt);
+  background-image:repeating-linear-gradient(180deg,transparent 0 22px,rgba(90,120,200,.25) 22px 23px);}
+.notes b{font:400 .55rem/1.6 var(--px);color:#8a1010;display:block;margin-top:6px;}
+.warrant{position:absolute;left:12%;right:12%;top:8%;bottom:8%;background:#f4ecd4;color:#2a2010;border:4px double #5a4a30;padding:4%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;
+  font:400 clamp(1rem,2.6vw,1.3rem)/1.05 var(--vt);animation:slidein .5s steps(8) both;}
+.warrant b{font:400 clamp(.5rem,1.8vw,.8rem)/1.3 var(--px);color:#2a2010;}
+.warrant .stamp{font:400 clamp(.55rem,2vw,.9rem)/1 var(--px);color:#c81e24;border:3px solid #c81e24;padding:6px 8px;transform:rotate(-10deg);animation:stamp .35s .6s steps(4) both;}
+@keyframes slidein{from{transform:translateY(-110%);}}
+@keyframes stamp{from{transform:rotate(-10deg) scale(3);opacity:0;}}
+.bars{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 9%,#3a3e4a 9% 11%,#8a8e9a 11% 12%,transparent 12% 16%);animation:barsdown .6s steps(10) both;}
+@keyframes barsdown{from{transform:translateY(-100%);}}
+.siren{position:absolute;inset:0;animation:siren .5s steps(2) infinite;mix-blend-mode:screen;}
+@keyframes siren{0%{background:rgba(255,0,0,.35);}50%{background:rgba(0,60,255,.35);}}
+.big{position:absolute;left:0;right:0;top:38%;text-align:center;font:400 clamp(.9rem,4vw,1.8rem)/1.3 var(--px);color:var(--amber);text-shadow:3px 3px 0 #000,-1px -1px 0 #000;animation:zoom .5s steps(6) both;}
+@keyframes zoom{from{transform:scale(3);opacity:0;}}
+.flash{position:absolute;inset:0;background:#fff;animation:flashout .5s steps(5) forwards;}
+@keyframes flashout{to{opacity:0;}}
+.ttl{position:absolute;left:2%;right:2%;top:4%;text-align:center;font:400 clamp(.42rem,1.7vw,.8rem)/1.4 var(--px);color:#fff;text-shadow:2px 2px 0 #8a1010;}
+.ttl b{display:block;color:var(--amber);font-size:1.45em;line-height:1.25;margin:2px 0;text-shadow:3px 3px 0 #8a1010;}
+.ttl small{display:block;color:#ff8a8a;font-size:.7em;margin-top:2px;letter-spacing:.3em;}
+.cs-pic.shake{animation:shake .35s steps(6);}
+@keyframes shake{25%{transform:translate(-5px,2px);}50%{transform:translate(4px,-3px);}75%{transform:translate(-3px,1px);}}
+@media (prefers-reduced-motion:reduce){.dot.opt,.cs-text .caret{animation:none;}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), A = window.CarmenArt;
+  var SAVE = 'carmen_case', CAREER = 'carmen_career', HKEY = 'carmen';
+
+  // ── Versions, ranks, suspects ────────────────────────────────────────────
+  var V = {
+    world:    { name: 'World', title: 'Where in the World Is Carmen Sandiego?', icon: 'globe', desc: 'The 1985 original: cities on every continent', view: { lon0: -170, lon1: 190, lat0: -50, lat1: 76 }, speed: 1100, unit: 'cities' },
+    usa:      { name: 'USA', title: 'Where in the U.S.A. Is Carmen Sandiego?', icon: 'flag', desc: 'All fifty states', view: 'usa', speed: 650, unit: 'states' },
+    time:     { name: 'Time', title: 'Where in Time Is Carmen Sandiego?', icon: 'clock', desc: 'Chase through history in the Chronoskimmer', view: { lon0: -170, lon1: 190, lat0: -50, lat1: 76 }, time: true, unit: 'eras' },
+    europe:   { name: 'Europe', title: 'Where in Europe Is Carmen Sandiego?', icon: 'compass', desc: 'Capitals from Reykjavik to Kyiv', view: { lon0: -26, lon1: 42, lat0: 33, lat1: 68 }, speed: 520, unit: 'capitals' },
+    asia:     { name: 'Asia', title: 'Where in Asia Is Carmen Sandiego?', icon: 'mountain', desc: 'From Istanbul to Tokyo', view: { lon0: 24, lon1: 146, lat0: -12, lat1: 56 }, speed: 950, unit: 'cities' },
+    africa:   { name: 'Africa', title: 'Where in Africa Is Carmen Sandiego?', icon: 'sun', desc: 'From Cairo to Cape Town', view: { lon0: -20, lon1: 60, lat0: -37, lat1: 38 }, speed: 850, unit: 'cities' },
+    americas: { name: 'Americas', title: 'Where in the Americas Is Carmen Sandiego?', icon: 'anchor', desc: 'Anchorage to Ushuaia', view: { lon0: -168, lon1: -28, lat0: -57, lat1: 64 }, speed: 950, unit: 'cities' }
+  };
+  var ORDER = ['world', 'usa', 'time', 'europe', 'asia', 'africa', 'americas'];
+  // rank, arrests needed, cities on the trail
+  var RANKS = [['Gumshoe', 0, 4], ['Private Eye', 2, 5], ['Investigator', 5, 5], ['Detective', 9, 6], ['Ace Detective', 14, 7], ['Super Sleuth', 20, 8]];
+  var CARMEN_CASE = 19;   // the arrest that makes you a Super Sleuth is Carmen herself
+  var TRAITS = { sex: ['Female', 'Male'], hair: ['Black', 'Brown', 'Red', 'Blond'], hobby: ['Tennis', 'Mountain Climbing', 'Croquet'], feature: ['Limps', 'Ring', 'Tattoo', 'Scar', 'Jewelry'], auto: ['Convertible', 'Limousine', 'Race Car', 'Motorcycle'] };
+  var TRAIT_NAMES = { sex: 'Sex', hair: 'Hair', hobby: 'Hobby', feature: 'Feature', auto: 'Auto' };
+  // The V.I.L.E. roster of the 1985 game
+  var SUS = [
+    { name: 'Carmen Sandiego', sex: 'Female', hair: 'Brown', hobby: 'Tennis', feature: 'Jewelry', auto: 'Convertible', carmen: true,
+      bio: 'Former agent of the Ecuadorian secret service. Founder and leader of V.I.L.E. Has never been caught.', look: { carmen: true, skin: '#e0b088', bg: '#3a1030' } },
+    { name: 'Merey LaRoc', sex: 'Female', hair: 'Brown', hobby: 'Mountain Climbing', feature: 'Limps', auto: 'Limousine',
+      bio: 'Monaco socialite who climbs mountains for the view and steals the ones she likes.', look: { style: 'long', skin: '#f4cca0', coat: '#2a3a6a', bg: '#4a5a8a' } },
+    { name: 'Lady Agatha Wayland', sex: 'Female', hair: 'Red', hobby: 'Tennis', feature: 'Ring', auto: 'Convertible',
+      bio: 'English aristocrat. Plays a ruthless game of tennis and never loses a ring.', look: { style: 'bob', skin: '#f4cca0', coat: '#3a6a4a', bg: '#6a4a3a' } },
+    { name: 'Dazzle Annie Nonker', sex: 'Female', hair: 'Blond', hobby: 'Tennis', feature: 'Jewelry', auto: 'Limousine',
+      bio: 'Fancies anything that sparkles. Arrives everywhere by limousine.', look: { style: 'long', skin: '#e0b088', coat: '#6a2a5a', bg: '#3a3a6a' } },
+    { name: 'Katherine Drib', sex: 'Female', hair: 'Brown', hobby: 'Mountain Climbing', feature: 'Tattoo', auto: 'Race Car',
+      bio: 'Speed climber and speed driver. Known for a tattoo of an anchor.', look: { style: 'bob', skin: '#c88a5c', coat: '#5a3a2a', bg: '#2a5a5a' } },
+    { name: 'Ihor Ihorovitch', sex: 'Male', hair: 'Blond', hobby: 'Croquet', feature: 'Tattoo', auto: 'Limousine',
+      bio: 'Croquet champion of three continents. Chauffeured, tattooed, unflappable.', look: { style: 'short', skin: '#f4cca0', coat: '#2a2a3a', bg: '#5a4a2a' } },
+    { name: 'Scar Graynolt', sex: 'Male', hair: 'Red', hobby: 'Croquet', feature: 'Ring', auto: 'Race Car',
+      bio: 'Smuggler turned gentleman. Swings a croquet mallet and wears his grandfather\'s ring.', look: { style: 'slick', skin: '#e0b088', coat: '#4a2a2a', bg: '#2a3a5a', mustache: true } },
+    { name: 'Nick Brunch', sex: 'Male', hair: 'Black', hobby: 'Mountain Climbing', feature: 'Ring', auto: 'Motorcycle',
+      bio: 'Restaurant critic who climbs to the best views and leaves without paying.', look: { style: 'curly', skin: '#a06a40', coat: '#3a4a2a', bg: '#6a3a3a' } },
+    { name: 'Len Bulk', sex: 'Male', hair: 'Red', hobby: 'Mountain Climbing', feature: 'Scar', auto: 'Motorcycle',
+      bio: 'Former strongman. Rides a big motorcycle and carries off big treasures.', look: { style: 'short', skin: '#e0b088', coat: '#3a3a3a', bg: '#4a6a3a', beard: true } },
+    { name: 'Fast Eddie B.', sex: 'Male', hair: 'Black', hobby: 'Croquet', feature: 'Tattoo', auto: 'Convertible',
+      bio: 'Smooth talker with a fast convertible. Never stays in one city for long.', look: { style: 'slick', skin: '#7a4a2a', coat: '#2a3a5a', bg: '#5a3a5a', glasses: true } }
+  ];
+  SUS.forEach(function (s, i) { s.look = Object.assign({ sex: s.sex === 'Female' ? 'F' : 'M', hair: s.hair, feature: s.feature, seed: 'sus' + i, name: s.name }, s.look); });
+  // where witnesses are questioned, and what they tend to know about
+  var LOCS = {
+    bank: ['Bank', ['money', 'culture']], library: ['Library', ['hist', 'lang', 'people', 'era']], museum: ['Museum', ['culture', 'sight', 'hist', 'invention']],
+    airport: ['Airport', ['flag', 'geo', 'capital']], hotel: ['Hotel', ['culture', 'sight', 'people']], dock: ['Docks', ['geo', 'nature']],
+    market: ['Market', ['money', 'culture', 'nature']], embassy: ['Embassy', ['flag', 'lang', 'capital', 'symbol']], exchange: ['Stock Exchange', ['money', 'geo']],
+    station: ['Train Station', ['geo', 'symbol', 'capital', 'sight']]
+  };
+  var TIME_LOCS = {   // (the time machine's stops have no banks or airports)
+    market: ['Market', ['money', 'culture', 'invention']], dock: ['Harbor', ['geo', 'nature']], library: ['Scribe', ['hist', 'lang', 'people', 'era']],
+    hotel: ['Inn', ['culture', 'sight', 'people']], museum: ['Temple', ['sight', 'hist', 'era']], embassy: ['Palace', ['people', 'hist', 'flag']], station: ['Workshop', ['invention', 'era', 'geo']]
+  };
+
+  // ── Pixel icons for the keys (12 × 12) ────────────────────────────────────
+  var BM = {
+    mag: ['..####......', '.#....#.....', '#......#....', '#..##..#....', '#.#....#....', '#......#....', '.#....#.....', '..####.#....', '.......##...', '........##..', '.........##.', '..........#.'],
+    plane: ['.....#......', '.....##.....', '.....###....', '#....####...', '##..#######.', '############', '##..#######.', '#....####...', '.....###....', '.....##.....', '.....#......', '............'],
+    comp: ['############', '#..........#', '#.########.#', '#.#.#....#.#', '#.#...#..#.#', '#.########.#', '#..........#', '############', '....####....', '..########..', '.##########.', '............'],
+    folder: ['####........', '#..#####....', '#.......####', '############', '#..........#', '#.##.......#', '#..........#', '#.####.....#', '#..........#', '############', '............', '............'],
+    back: ['............', '....#.......', '...##.......', '..#########.', '.##########.', '..#########.', '...##.......', '....#.......', '............', '............', '............', '............'],
+    clock: ['...######...', '..#......#..', '.#...#....#.', '#....#.....#', '#....#.....#', '#....####..#', '#..........#', '#..........#', '.#........#.', '..#......#..', '...######...', '............'],
+    star: ['.....##.....', '.....##.....', '....####....', '############', '.##########.', '..########..', '...######...', '..###..###..', '..##....##..', '.##......##.', '............', '............'],
+    door: ['.########...', '.#......#...', '.#......#...', '.#......#...', '.#....#.#...', '.#......#...', '.#......#...', '.#......#...', '.########...', '............', '............', '............'],
+    time: ['############', '.#........#.', '..#......#..', '...#....#...', '....#..#....', '.....##.....', '.....##.....', '....#..#....', '...#.##.#...', '..#.####.#..', '.##########.', '############']
+  };
+  function pix(name, c) {
+    var b = BM[name], r = '';
+    for (var y = 0; y < 12; y++) for (var x = 0; x < 12; x++) if (b[y][x] === '#') r += '<rect x="' + x + '" y="' + y + '" width="1" height="1"/>';
+    return '<svg viewBox="0 0 12 12" fill="' + (c || 'currentColor') + '" aria-hidden="true">' + r + '</svg>';
+  }
+
+  // ── Sound: Kit's sounds, plus our own chiptune voice for the theme ─────────
+  var ac = null;
+  function soundOn() { try { return localStorage.getItem('gn_sound') !== '0'; } catch (e) { return true; } }
+  function actx() { if (!ac) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ac = new C(); } if (ac.state === 'suspended') ac.resume(); return ac; }
+  function beep(f, t0, dur, type, vol, slide) {
+    var a = actx(); if (!a || !soundOn()) return;
+    var o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+    o.type = type || 'square'; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.05, t + 0.008); g.gain.setValueAtTime(vol || 0.05, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function hiss(t0, dur, vol, f0, f1) {
+    var a = actx(); if (!a || !soundOn()) return;
+    var n = Math.floor(a.sampleRate * dur), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime + t0;
+    f.type = 'bandpass'; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.buffer = b; s.connect(f); f.connect(g); g.connect(a.destination); s.start(t); s.stop(t + dur + 0.02);
+  }
+  var SFX = {
+    key: function () { hiss(0, 0.02, 0.04, 2400); },
+    type: function () { beep(1800 + Math.random() * 400, 0, 0.012, 'square', 0.012); },
+    tick: function () { beep(2200, 0, 0.02, 'square', 0.02); },
+    plane: function () { hiss(0, 1.8, 0.06, 300, 1400); beep(110, 0, 1.6, 'sawtooth', 0.015, 220); },
+    land: function () { hiss(0, 0.6, 0.05, 900, 200); },
+    blip: function () { beep(880, 0, 0.05, 'square', 0.04); beep(1320, 0.05, 0.06, 'square', 0.04); },
+    compute: function () { for (var i = 0; i < 10; i++) beep(400 + Math.random() * 1400, i * 0.06, 0.05, 'square', 0.025); },
+    warrant: function () { hiss(0, 0.12, 0.12, 300); beep(160, 0, 0.12, 'square', 0.06, 80); },
+    siren: function () { for (var i = 0; i < 4; i++) beep(i % 2 ? 660 : 880, i * 0.32, 0.3, 'square', 0.04); },
+    danger: function () { hiss(0, 0.25, 0.1, 3000, 400); beep(1200, 0, 0.3, 'sawtooth', 0.03, 200); },
+    sleep: function () { [523, 392, 330, 262].forEach(function (f, i) { beep(f, i * 0.22, 0.3, 'triangle', 0.05); }); },
+    dash: function () { for (var i = 0; i < 6; i++) hiss(i * 0.12, 0.05, 0.05, 700); },
+    wrong: function () { beep(220, 0, 0.18, 'square', 0.04, 160); beep(160, 0.2, 0.3, 'square', 0.04, 110); }
+  };
+  function sfx(n) { if (SFX[n]) try { SFX[n](); } catch (e) {} }
+  // The theme: an original sneaky minor-key tune (walking bass, square-wave melody), not the TV show's song
+  var N = {}; (function () { var nm = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']; for (var o = 1; o < 7; o++) nm.forEach(function (n, i) { N[n + o] = 440 * Math.pow(2, (o * 12 + i - 57) / 12); }); })();
+  var THEME = {
+    bpm: 132,
+    mel: 'r2 D4 F4 A4 G#4 A4 r1 F4 D4 r1 E4 F4 E4 D4 r2 | r2 G4 A#4 D5 C#5 D5 r1 A#4 G4 r1 A4 A#4 A4 G4 r2 | r2 A4 C5 E5 D#5 E5 r1 C#5 A4 r1 G4 F4 E4 C#4 r2 | D4 r1 D4 F4 r1 A4 D5 r1 C5 A4 F4 G4 E4 D4 r1',
+    bas: 'D2 A2 D3 A2 D2 A2 C3 A2 D2 A2 D3 A2 C3 A2 A#2 A2 | G2 D3 G3 D3 G2 D3 F3 D3 G2 D3 G3 D3 A#2 A2 G2 F2 | A2 E3 A3 E3 A2 E3 G3 E3 A2 E3 A3 E3 G3 E3 C#3 A2 | D2 A2 D3 A2 A#2 F3 A#2 F2 A2 E3 A2 C#3 D3 A2 D2 r1'
+  };
+  var musicT = null, musicOn = false;
+  function playTheme(loop) {
+    stopTheme(); if (!soundOn() || !actx()) return; musicOn = true;
+    var e = 60 / THEME.bpm / 2;   // an eighth note
+    function seq(s) { return s.replace(/\|/g, ' ').split(/\s+/).filter(Boolean).map(function (t) { var m = /^r(\d)$/.exec(t); return m ? { r: +m[1] } : { f: N[t] }; }); }
+    var mel = seq(THEME.mel), bas = seq(THEME.bas);
+    function go() {
+      if (!musicOn) return;
+      var t = 0, sw = function (i) { return i % 2 ? e * 0.86 : e * 1.14; };   // swing
+      mel.forEach(function (n, i) { var d = n.r ? sw(i) * n.r : sw(i); if (n.f) beep(n.f, t, d * 0.9, 'square', 0.035); t += d; });
+      var tb = 0; bas.forEach(function (n, i) { var d = n.r ? sw(i) * n.r : sw(i); if (n.f) beep(n.f, tb, d * 0.95, 'triangle', 0.09); if (i % 2 === 1) hiss(tb, 0.03, 0.025, 7000); tb += d; });
+      if (loop) musicT = setTimeout(go, Math.max(t, tb) * 1000);
+    }
+    go();
+  }
+  function stopTheme() { musicOn = false; clearTimeout(musicT); }
+  function jingle(kind) {
+    if (!soundOn()) return;
+    var J = { win: ['D4', 'F4', 'A4', 'D5', 'A4', 'D5', 'F5', 'A5'], promo: ['G4', 'C5', 'E5', 'G5', 'E5', 'G5', 'C6'], lose: ['A4', 'G#4', 'G4', 'F#4', 'F4'] }[kind];
+    J.forEach(function (n, i) { beep(N[n], i * 0.13, kind === 'lose' ? 0.24 : 0.16, 'square', 0.045); beep(N[n] / 2, i * 0.13, 0.14, 'triangle', 0.07); });
+  }
+
+  // ── Storage ──────────────────────────────────────────────────────────────
+  function rd(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } }
+  function wr(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function careerOf(name, v) { var c = rd(CAREER, {}), p = c[(name || '').toLowerCase()] || {}; return p[v] || { solved: 0, lost: 0, carmen: 0 }; }
+  function careerSet(name, v, rec) { var c = rd(CAREER, {}), k = (name || '').toLowerCase(); c[k] = c[k] || {}; c[k][v] = rec; wr(CAREER, c); }
+  function rankOf(solved) { var r = 0; for (var i = 0; i < RANKS.length; i++) if (solved >= RANKS[i][1]) r = i; return r; }
+
+  // ── Small helpers ─────────────────────────────────────────────────────────
+  var R = Math.random;
+  function seeded(seed) { return A.rng(seed); }
+  function pick(a, r) { return a[Math.floor((r || R)() * a.length)]; }
+  function shuffle(a, r) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor((r || R)() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function esc(s) { return Kit.esc(s); }
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  var DATA = null, BYID = {};
+  function place(id) { return BYID[id]; }
+  function km(a, b) {
+    var r = Math.PI / 180, dl = (b.lat - a.lat) * r, dn = (b.lon - a.lon) * r;
+    var h = Math.sin(dl / 2) * Math.sin(dl / 2) + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dn / 2) * Math.sin(dn / 2);
+    return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+  function yr(y) { return y == null ? '' : y < 0 ? (-y) + ' BC' : y < 1000 ? 'AD ' + y : String(y); }
+  var DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon'];
+  function fmtT(h) { var d = Math.floor(h / 24), hr = Math.floor(h % 24), ap = hr < 12 ? 'am' : 'pm', h12 = hr % 12 || 12; return DAYS[Math.min(7, d)] + ' ' + h12 + ':00 ' + ap; }
+  var START_T = 9, DEADLINE = 6 * 24 + 17;   // Monday 9 am to Sunday 5 pm
+
+  // ── Case generation ──────────────────────────────────────────────────────
+  var C = null, UNDO = [], busy = false;
+  function newCase(v, player) {
+    var car = careerOf(player, v), rk = rankOf(car.solved), stops = RANKS[rk][2];
+    var r = seeded(Date.now() + ':' + Math.random());
+    var trail = shuffle(DATA.map(function (p) { return p.id; }), r).slice(0, stops);
+    // the trail shouldn't double back on itself: no hop to a place right next door, if it can be helped
+    var sus = car.solved === CARMEN_CASE || (rk === RANKS.length - 1 && r() < 0.2) ? 0 : 1 + Math.floor(r() * (SUS.length - 1));
+    var start = place(trail[0]);
+    var c = { v: v, player: player, rank: rk, id: Math.floor(r() * 1e9).toString(36), sus: sus, trail: trail, i: 0, at: trail[0], last: trail[0], t: START_T,
+      treasure: pick(start.treasure, r), warrant: null, comp: { sex: SUS[sus].sex === 'Female' ? 0 : 1 }, cities: {}, notes: [], used: {}, over: false,
+      undos: 0, flights: 0, wrong: 0, danger: false, started: Date.now(), solvedBefore: car.solved };
+    // which witness answers carry a trait: enough to single out the suspect, before the last city
+    var need = distinguishing(sus), keys = shuffle(['hair', 'hobby', 'feature', 'auto'], r), order = need.concat(keys.filter(function (k) { return need.indexOf(k) < 0; }));
+    var slots = []; for (var ci = 0; ci < stops - 1; ci++) for (var li = 0; li < 3; li++) slots.push(ci + ':' + li);
+    slots = shuffle(slots, r); c.traitAt = {};
+    var spread = Math.max(order.length, Math.min(slots.length, order.length + Math.floor((stops - 1) * 0.5)));
+    for (var k = 0; k < spread && k < slots.length; k++) c.traitAt[slots[k]] = order[k % order.length];
+    return c;
+  }
+  // the smallest set of traits (besides sex) that singles out suspect s
+  function distinguishing(s) {
+    var S = SUS[s], keys = ['hair', 'hobby', 'feature', 'auto'], best = keys;
+    for (var m = 1; m < 16; m++) {
+      var ks = keys.filter(function (k, i) { return m & (1 << i); });
+      if (ks.length >= best.length) continue;
+      var n = SUS.filter(function (o) { return o.sex === S.sex && ks.every(function (k) { return o[k] === S[k]; }); }).length;
+      if (n === 1) best = ks;
+    }
+    return best;
+  }
+  function fill(t, sex) {
+    var F = sex === 'Female';
+    return t.replace(/\{S\}/g, F ? 'She' : 'He').replace(/\{s\}/g, F ? 'she' : 'he').replace(/\{P\}/g, F ? 'her' : 'his').replace(/\{O\}/g, F ? 'her' : 'him');
+  }
+  var TRAIT_LINES = {
+    hair: function (v) { return pick(['{S} had <em>' + v.toLowerCase() + '</em> hair.', 'I noticed {P} <em>' + v.toLowerCase() + '</em> hair.']); },
+    hobby: function (v) { return { Tennis: pick(['{S} was carrying a <em>tennis</em> racket.', '{S} wanted to know where to play <em>tennis</em>.']), 'Mountain Climbing': pick(['{S} had <em>mountain climbing</em> gear.', '{S} talked about <em>mountain climbing</em>.']), Croquet: pick(['{S} was carrying a <em>croquet</em> mallet.', '{S} asked where to play <em>croquet</em>.']) }[v]; },
+    feature: function (v) { return { Limps: '{S} walked with a <em>limp</em>.', Ring: '{S} wore a big <em>ring</em>.', Tattoo: 'I saw a <em>tattoo</em> on {P} arm.', Scar: '{S} had a <em>scar</em>.', Jewelry: '{S} was wearing lots of <em>jewelry</em>.' }[v]; },
+    auto: function (v) { return pick(['{S} drove off in a <em>' + v.toLowerCase() + '</em>.', '{S} asked where to rent a <em>' + v.toLowerCase() + '</em>.']); }
+  };
+  var LEADS = ['', '', 'Yes, I saw {O}. ', 'I remember {O}. ', '{S} was here not long ago. ', 'Oh, yes. '];
+  var NOTSEEN = ['Sorry, I haven\'t seen anyone like that.', 'I\'ve never seen anyone like that around here.', 'Nobody like that has been through here.', 'Sorry, I can\'t help you.', 'I don\'t know what you\'re talking about.'];
+  function locSet() { return C.v === 'time' ? TIME_LOCS : LOCS; }
+  function city(id) {
+    if (C.cities[id]) return C.cities[id];
+    var r = seeded(C.id + id), k = C.trail.indexOf(id), n = C.trail.length, L = locSet();
+    var types = shuffle(Object.keys(L), r).slice(0, 3), S = SUS[C.sus], locs;
+    if (k >= 0 && k < n - 1) {
+      var next = place(C.trail[k + 1]), clues = next.clues.slice(), used = {};
+      var hen = k > 0 ? Math.floor(r() * 3) : -1;
+      locs = types.map(function (t, li) {
+        var pref = L[t][1], cand = clues.filter(function (c) { return !used[c[1]] && pref.indexOf(c[0]) >= 0; });
+        if (!cand.length) cand = clues.filter(function (c) { return !used[c[1]]; });
+        var cl = pick(cand, r); used[cl[1]] = 1;
+        var text = pick(LEADS, r) + cl[1], tr = C.traitAt[k + ':' + li];
+        if (tr) text += ' ' + TRAIT_LINES[tr](S[tr]);
+        return { t: t, text: fill(text, S.sex), hench: li === hen, trait: tr || null };
+      });
+    } else if (k === n - 1) {
+      var hide = Math.floor(r() * 3);
+      locs = types.map(function (t, li) { return { t: t, hide: li === hide, text: fill(pick(['Watch your step! {S} is somewhere in this city.', 'I saw {O} only an hour ago. {S} must be close by.', 'Be careful. {S} is in town, and {s} has friends.'], r), S.sex) }; });
+    } else locs = types.map(function (t) { return { t: t, text: fill(pick(NOTSEEN, r), S.sex), none: true }; });
+    // destinations: the way forward (on the trail) and the way back, plus decoys
+    var opts = [], ahead = C.trail.slice((k >= 0 ? k : C.i) + 1);
+    if (k >= 0) { if (k < n - 1) opts.push(C.trail[k + 1]); if (k > 0) opts.push(C.trail[k - 1]); }
+    else opts.push(C.trail[C.i]);
+    var pool = shuffle(DATA.map(function (p) { return p.id; }).filter(function (x) { return x !== id && opts.indexOf(x) < 0 && C.trail.indexOf(x) < 0; }), r);
+    while (opts.length < 4 && pool.length) opts.push(pool.shift());
+    return (C.cities[id] = { locs: locs, opts: shuffle(opts, r), seen: {} });
+  }
+  function flightHours(a, b) {
+    var d = km(a, b);
+    if (C.v === 'time') return Math.min(10, 2 + Math.round(Math.abs((a.year || 0) - (b.year || 0)) / 400) + Math.round(d / 4000));
+    return Math.max(2, Math.min(12, Math.round(d / V[C.v].speed) + 1));
+  }
+
+  // ── Save / undo ──────────────────────────────────────────────────────────
+  function save() {
+    if (!C || C.over) return;
+    wr(SAVE, { C: C, U: UNDO.slice(-12) });
+    Kit.resume.set(V[C.v].name + ' · ' + RANKS[C.rank][0] + ' · ' + place(C.at).name);
+  }
+  function snap() { UNDO.push(JSON.stringify(C)); if (UNDO.length > 12) UNDO.shift(); }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); UNDO = []; }
+  function undo() {
+    if (busy || !C || C.over || !UNDO.length) { Kit.toast('Nothing to undo'); return; }
+    var u = C.undos + 1; C = JSON.parse(UNDO.pop()); C.undos = u; save(); sfx('key');
+    screen(); arrive(true);
+  }
+  function loadData(v) { DATA = window.CARMEN_DATA && window.CARMEN_DATA[v] || []; BYID = {}; DATA.forEach(function (p) { BYID[p.id] = p; }); }
+
+  // ── The screen ───────────────────────────────────────────────────────────
+  var $ = {};
+  function screen() {
+    app.innerHTML = '';
+    var cs = el('div', { class: 'cs k-hold' });
+    $.city = el('b'); $.country = el('small'); $.clock = el('canvas', { width: 20, height: 20 }); $.day = el('b'); $.dl = el('small');
+    $.timeBox = el('div', { class: 'cs-time' }, [$.clock, el('div', null, [$.day, $.dl])]);
+    cs.appendChild(el('div', { class: 'cs-head bevel' }, [el('div', { class: 'cs-city' }, [$.city, $.country]), $.timeBox]));
+    $.cv = el('canvas', { width: A.W, height: A.H }); $.ov = el('div', { class: 'cs-ov' });
+    $.pic = el('div', { class: 'cs-pic bevel' }, [$.cv, $.ov]); cs.appendChild(el('div', { class: 'cs-picw' }, [$.pic]));
+    $.text = el('div', { class: 'cs-text', role: 'log', 'aria-live': 'polite' }); cs.appendChild($.text);
+    $.text.addEventListener('click', function () { if (typing) typing.skip(); });
+    $.act = el('div', { class: 'cs-act bevel' }); cs.appendChild($.act);
+    app.appendChild(cs);
+  }
+  // the pixel clock in the corner
+  function drawClock(h) {
+    var cv = $.clock, x = cv.getContext('2d'), m = (h % 1) * 60, hr = Math.floor(h) % 12;
+    x.clearRect(0, 0, 20, 20); x.fillStyle = '#e8e8f0';
+    for (var a = 0; a < 64; a++) { var t = a / 64 * Math.PI * 2; x.fillRect(Math.round(10 + Math.cos(t) * 9) - (Math.cos(t) > 0 ? 1 : 0), Math.round(10 + Math.sin(t) * 9) - (Math.sin(t) > 0 ? 1 : 0), 1, 1); }
+    for (var k = 0; k < 12; k++) { var u = k / 12 * Math.PI * 2; x.fillStyle = k % 3 ? '#8a8ea8' : '#ffd860'; x.fillRect(Math.round(10 + Math.sin(u) * 7) - 0.5 | 0, Math.round(10 - Math.cos(u) * 7) - 0.5 | 0, 1, 1); }
+    function hand(ang, len, c) { x.fillStyle = c; for (var i = 0; i <= len; i += 0.5) x.fillRect(Math.round(10 + Math.sin(ang) * i - 0.5), Math.round(10 - Math.cos(ang) * i - 0.5), 1, 1); }
+    hand((hr + m / 60) / 12 * Math.PI * 2, 4.5, '#ffffff'); hand(m / 60 * Math.PI * 2, 7, '#ff6060');
+  }
+  function showTime(h) {
+    drawClock(h); $.day.textContent = fmtT(h);
+    var left = DEADLINE - h; $.dl.textContent = left <= 0 ? 'Out of time' : 'Deadline ' + (left < 24 ? Math.floor(left) + ' hrs' : 'Sun 5 pm');
+    $.timeBox.classList.toggle('late', left < 24);
+  }
+  function header(p) {
+    $.city.textContent = p.name;
+    $.country.textContent = C.v === 'time' ? p.country + ', ' + yr(p.year) : p.country === p.name ? (C.v === 'usa' ? 'State' : 'City-state') : p.country;
+  }
+  // text typed out like a teletype; tap the box to finish it
+  var typing = null;
+  function say(html, who, cls) {
+    if (typing) typing.skip(true);
+    $.text.className = 'cs-text' + (cls ? ' ' + cls : ''); $.text.innerHTML = '';
+    var w = who ? el('span', { class: 'who', text: who }) : null; if (w) $.text.appendChild(w);
+    var body = el('span'), caret = el('span', { class: 'caret' }); $.text.appendChild(body); $.text.appendChild(caret);
+    // type the visible characters; tags go in whole
+    var parts = String(html).split(/(<[^>]+>)/), out = '', pi = 0, ci = 0, done = false, n = 0;
+    return new Promise(function (res) {
+      function fin() { if (done) return; done = true; body.innerHTML = html; caret.remove(); clearInterval(iv); typing = null; res(); }
+      typing = { skip: function () { fin(); } };
+      var iv = setInterval(function () {
+        for (var s = 0; s < 2; s++) {
+          if (pi >= parts.length) return fin();
+          var p = parts[pi];
+          if (p.charAt(0) === '<') { out += p; pi++; continue; }
+          if (ci < p.length) { var ch = p.charAt(ci++); if (ch === '&') { var e = p.indexOf(';', ci); if (e > 0) { ch += p.slice(ci, e + 1); ci = e + 1; } } out += ch; if (++n % 3 === 0) sfx('type'); }
+          else { pi++; ci = 0; }
+        }
+        body.innerHTML = out;
+      }, 22);
+    });
+  }
+  // the right-hand panel
+  function keyBtn(icon, label, sub, fn, cls) {
+    var b = el('button', { type: 'button', class: 'key' + (cls ? ' ' + cls : ''), onclick: function () { if (busy || b.disabled) return; sfx('key'); Kit.haptic('light'); fn(); } },
+      [icon ? el('span', { html: pix(icon) }) : null, el('span', { class: 'lb' }, [document.createTextNode(label), sub ? el('small', { text: sub }) : null])]);
+    return b;
+  }
+  function panel(title, kids, list) {
+    $.act.innerHTML = '';
+    if (title) $.act.appendChild(el('h4', { text: title }));
+    var box = el('div', { class: list ? 'cs-list' : 'cs-btns' }, kids);
+    $.act.appendChild(box); return box;
+  }
+  function menu() {
+    clearOv();
+    var p = place(C.at), cd = city(C.at);
+    panel(RANKS[C.rank][0] + ' ' + C.player, [
+      keyBtn('mag', 'Investigate', Object.keys(cd.seen).length + ' of 3 asked', investigateMenu),
+      keyBtn('plane', C.v === 'time' ? 'Time travel' : 'Depart', C.v === 'time' ? 'Chronoskimmer' : 'by plane', departMenu),
+      keyBtn('comp', 'Crime computer', C.warrant != null ? 'Warrant: ' + SUS[C.warrant].name : 'No warrant yet', computerMenu, C.warrant != null ? 'on' : ''),
+      keyBtn('folder', 'Dossiers', 'V.I.L.E. files, notes', dossierMenu)
+    ]);
+  }
+  function backKey(fn) { return keyBtn('back', 'Back', null, fn || function () { scenePic(); menu(); }, 'cs-back'); }
+  function clearOv() { $.ov.innerHTML = ''; }
+  function scenePic(anim) {
+    clearOv(); var p = place(C.at);
+    A.scene($.cv, p); $.cv.className = anim ? anim : ''; void $.cv.offsetWidth; if (anim) $.cv.className = anim;
+  }
+
+  // ── Arriving ─────────────────────────────────────────────────────────────
+  function arrive(quiet) {
+    var p = place(C.at); header(p); showTime(C.t); scenePic(quiet ? '' : 'wipe'); menu(); city(C.at); save();
+    var lead = C.v === 'time' ? '' : '';
+    return say(esc(p.blurb), null, '');
+  }
+
+  // ── Investigate ──────────────────────────────────────────────────────────
+  function investigateMenu() {
+    var cd = city(C.at), L = locSet();
+    panel('Where do you want to go?', cd.locs.map(function (l, i) {
+      var seen = cd.seen[i];
+      return keyBtn('door', L[l.t][0], seen ? 'Asked (1 hr to ask again)' : '+' + (Object.keys(cd.seen).length + 1) + ' hr', function () { investigate(i); }, seen ? 'seen' : '');
+    }).concat([backKey()]), true);
+  }
+  function investigate(li) {
+    var cd = city(C.at), l = cd.locs[li], L = locSet(), seen = cd.seen[li];
+    snap();
+    var cost = seen ? 1 : Object.keys(cd.seen).length + 1;
+    busy = true; cd.seen[li] = 1;
+    A.interior($.cv, l.t, C.id + C.at + li); $.cv.className = 'fade'; clearOv();
+    $.text.className = 'cs-text'; $.text.innerHTML = '<span class="who">' + esc(L[l.t][0].toUpperCase()) + '</span>';
+    advance(cost).then(function (ok) {
+      if (!ok) return;
+      var k = C.trail.indexOf(C.at);
+      if (l.hide) return capture();
+      var chain = Promise.resolve();
+      if (l.hench && !seen) chain = chain.then(henchman);
+      if (k === C.trail.length - 1 && !l.hide && !C.danger) chain = chain.then(danger);
+      return chain.then(function () {
+        var w = el('canvas', { class: 'wit', width: 48, height: 56 });
+        A.portrait(w, witnessLook(l.t, li)); $.ov.appendChild(w);
+        if (!seen) C.notes.push({ at: C.at, loc: L[l.t][0], text: l.text, none: !!l.none });
+        save();
+        return say(l.text, L[l.t][0].toUpperCase() + (l.none ? '' : ': A WITNESS'));
+      }).then(function () { return maybeSleep(); }).then(function () { busy = false; investigateMenu(); });
+    });
+  }
+  function witnessLook(t, li) {
+    var r = seeded(C.id + C.at + t), o = { seed: C.id + C.at + t, sex: r() < 0.5 ? 'F' : 'M', hair: pick(['Black', 'Brown', 'Red', 'Blond', 'Gray'], r) };
+    if (t === 'airport') { o.hat = 'cap'; o.capc = '#1a2a5a'; }
+    if (t === 'library' || t === 'exchange') o.glasses = true;
+    if (t === 'dock') { o.hat = 'cap'; o.capc = '#3a3a3a'; o.coat = '#2a3a5a'; }
+    if (t === 'embassy' || t === 'bank') o.coat = '#1a1a2a';
+    return o;
+  }
+  function henchman() {
+    var h = el('canvas', { class: 'hench', width: 20, height: 34 }); A.henchman(h); $.ov.appendChild(h); sfx('dash');
+    return wait(1150).then(function () { h.remove(); });
+  }
+  function danger() {
+    C.danger = true; sfx('danger'); Kit.haptic('heavy');
+    $.pic.classList.remove('shake'); void $.pic.offsetWidth; $.pic.classList.add('shake');
+    var line = pick(['A knife whizzed past your ear!', 'A flowerpot crashed down where you were standing!', 'Someone tripped you on the stairs!', 'A car sped straight at you!']);
+    return say('<em>' + line + '</em> You lose an hour shaking it off.', 'LOOK OUT', 'warn').then(function () { return wait(500); }).then(function () { return advance(1); });
+  }
+
+  // ── Time ─────────────────────────────────────────────────────────────────
+  // run the clock forward with the hands spinning; resolves false if time ran out
+  function advance(h) {
+    var t0 = C.t, t1 = C.t + h, steps = Math.max(6, Math.round(h * 5)), i = 0;
+    C.t = t1;
+    return new Promise(function (res) {
+      var iv = setInterval(function () {
+        i++; showTime(t0 + (t1 - t0) * i / steps); if (i % 5 === 0) sfx('tick');
+        if (i >= steps) { clearInterval(iv); showTime(t1); if (t1 >= DEADLINE) { busy = true; outOfTime(); res(false); } else res(true); }
+      }, 40);
+    });
+  }
+  function maybeSleep() {
+    var hr = C.t % 24; if (hr < 23 && hr >= 7) return Promise.resolve(true);
+    var to = hr >= 23 ? C.t - hr + 24 + 7 : C.t - hr + 7;
+    var z = el('div', { class: 'zzz' }, [el('b', { text: 'Z z z' })]); $.ov.appendChild(z); sfx('sleep');
+    return say('It\'s late. You get some sleep until 7 am.', 'NIGHT').then(function () { return advance(to - C.t); }).then(function (ok) { z.remove(); save(); return ok; });
+  }
+
+  // ── Travel ───────────────────────────────────────────────────────────────
+  var proj = null;
+  function mapPic() {
+    clearOv(); proj = A.map($.cv, V[C.v].view); $.cv.className = 'fade';
+  }
+  function dot(p, cls, label) {
+    var q = proj(p.lat, p.lon), d = el('div', { class: 'dot ' + (cls || '') + (q.x > 0.72 ? ' left' : ''), style: { left: (q.x * 100) + '%', top: (q.y * 100) + '%' } });
+    if (label) d.appendChild(el('i', { text: label }));
+    $.ov.appendChild(d); return d;
+  }
+  function departMenu() {
+    var cd = city(C.at), here = place(C.at);
+    mapPic(); dot(here, 'here', here.name);
+    var dots = {};
+    cd.opts.forEach(function (id) { var p = place(id); dots[id] = dot(p, 'opt', p.name + (C.v === 'time' ? ' ' + yr(p.year) : '')); });
+    say('Where to? You can reach these ' + (C.v === 'time' ? 'times and places' : V[C.v].unit) + ' from ' + esc(here.name) + '.', C.v === 'time' ? 'CHRONOSKIMMER' : 'FLIGHTS');
+    var keys = cd.opts.map(function (id) {
+      var p = place(id), b = keyBtn('plane', p.name, (C.v === 'time' ? yr(p.year) + ' · ' : '') + flightHours(here, p) + ' hrs', function () { fly(id); });
+      ['pointerenter', 'focus'].forEach(function (ev) { b.addEventListener(ev, function () { dots[id].classList.add('hot'); }); });
+      ['pointerleave', 'blur'].forEach(function (ev) { b.addEventListener(ev, function () { dots[id].classList.remove('hot'); }); });
+      return b;
+    });
+    panel(C.v === 'time' ? 'Set the Chronoskimmer' : 'Choose a flight', keys.concat([backKey()]), true);
+  }
+  function fly(id) {
+    var from = place(C.at), to = place(id), hrs = flightHours(from, to);
+    snap(); busy = true; C.flights++;
+    Array.prototype.forEach.call($.act.querySelectorAll('button'), function (b) { b.disabled = true; });
+    var a = proj(from.lat, from.lon), b = proj(to.lat, to.lon);
+    var pl = el('canvas', { class: 'plane', width: 16, height: 10 }); A.plane(pl); $.ov.appendChild(pl);
+    var dx = b.x - a.x, dy = b.y - a.y, ang = Math.atan2(dy, dx), dist = Math.hypot(dx, dy), lift = Math.min(0.25, dist * 0.35);
+    pl.style.transform = 'rotate(' + ang + 'rad)';
+    var tl = el('canvas', { class: 'trailline', width: 384, height: 240 }); $.ov.insertBefore(tl, pl); var tx = tl.getContext('2d'); tx.fillStyle = '#ffffff';
+    sfx('plane');
+    var t0 = performance.now(), dur = 1500 + Math.min(1500, dist * 2200);
+    say((C.v === 'time' ? 'Traveling to ' + esc(to.name) + ', ' + yr(to.year) : 'Flying to ' + esc(to.name)) + '...', C.v === 'time' ? 'CHRONOSKIMMER' : 'IN FLIGHT');
+    var clock = advance(hrs);
+    return new Promise(function (res) {
+      (function step(now) {
+        var t = Math.min(1, (now - t0) / dur), e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        var x = a.x + dx * e, y = a.y + dy * e - Math.sin(Math.PI * e) * lift;
+        var nx = a.x + dx * Math.min(1, e + 0.02), ny = a.y + dy * Math.min(1, e + 0.02) - Math.sin(Math.PI * Math.min(1, e + 0.02)) * lift;
+        pl.style.left = (x * 100) + '%'; pl.style.top = (y * 100) + '%'; pl.style.transform = 'rotate(' + Math.atan2(ny - y, nx - x) + 'rad)';
+        if (Math.floor(now / 60) % 2) tx.fillRect(Math.round(x * 384), Math.round(y * 240), 2, 2);
+        if (t < 1) requestAnimationFrame(step); else res();
+      })(t0);
+    }).then(function () { return clock; }).then(function (ok) {
+      if (!ok) return;
+      sfx('land');
+      C.at = id;
+      var k = C.trail.indexOf(id);
+      if (k === C.i + 1) C.i = k;
+      if (k < 0) C.wrong++; else C.last = id;
+      city(id); save();
+      return arrive().then(function () { return maybeSleep(); }).then(function () { busy = false; menu(); });
+    });
+  }
+
+  // ── Crime computer ──────────────────────────────────────────────────────
+  function computerMenu() {
+    clearOv();
+    var crt = el('div', { class: 'crt' }); $.ov.appendChild(crt); $.cv.className = '';
+    function show(lines) { crt.innerHTML = '<div class="h">ACME CRIME COMPUTER</div><div class="h">INTERPOL LINK ' + (C.v === 'time' ? 'ACROSS ALL TIME' : 'ONLINE') + '</div>' + lines; }
+    function matches() { return SUS.filter(function (s) { return Object.keys(C.comp).every(function (k) { return C.comp[k] == null || s[k] === TRAITS[k][C.comp[k]]; }); }); }
+    function draw() {
+      var m = matches();
+      show('<div>SUSPECTS MATCHING: <span class="m">' + m.length + '</span></div>' + m.map(function (s) { return '<div>&gt; ' + esc(s.name.toUpperCase()) + '</div>'; }).join('') +
+        (C.warrant != null ? '<div class="m">WARRANT HELD: ' + esc(SUS[C.warrant].name.toUpperCase()) + '</div>' : ''));
+    }
+    var rows = Object.keys(TRAITS).map(function (k) {
+      var b = el('button', { type: 'button', class: 'key', onclick: function () {
+        if (busy) return; sfx('blip');
+        var v = C.comp[k]; C.comp[k] = v == null ? 0 : v + 1 >= TRAITS[k].length ? null : v + 1; set(); draw(); save();
+      } });
+      function set() { b.textContent = C.comp[k] == null ? '?' : TRAITS[k][C.comp[k]]; b.classList.toggle('on', C.comp[k] != null); }
+      set(); return el('div', { class: 'trait' }, [el('span', { text: TRAIT_NAMES[k] }), b]);
+    });
+    var go = keyBtn('comp', 'Compute warrant', null, compute, 'go');
+    panel('Tap a trait to set it', rows.concat([go, backKey()]), true);
+    draw();
+    say('Set what witnesses told you. One match gets a warrant.', 'CRIME COMPUTER');
+    function compute() {
+      busy = true; sfx('compute');
+      show('<div>PROCESSING...</div>');
+      setTimeout(function () {
+        busy = false; var m = matches();
+        if (m.length === 1) {
+          snapIfChange(SUS.indexOf(m[0]));
+          C.warrant = SUS.indexOf(m[0]); save(); draw();
+          var w = el('div', { class: 'warrant' }, [el('b', { text: 'WARRANT FOR ARREST' }), el('div', { text: 'ACME Detective Agency' }), el('b', { text: m[0].name.toUpperCase() }), el('div', { class: 'stamp', text: 'ISSUED' })]);
+          $.ov.appendChild(w); setTimeout(function () { sfx('warrant'); Kit.haptic('medium'); }, 650);
+          say('Warrant issued for <em>' + esc(m[0].name) + '</em>. Now catch ' + (m[0].sex === 'Female' ? 'her' : 'him') + '!', 'CRIME COMPUTER');
+          setTimeout(function () { w.remove(); }, 2600);
+        } else if (!m.length) { sfx('wrong'); say('No V.I.L.E. member matches all of that. Check your notes.', 'CRIME COMPUTER', 'warn'); }
+        else { sfx('wrong'); say(m.length + ' suspects still match. Find out more before a warrant can be issued.', 'CRIME COMPUTER'); }
+      }, 900);
+    }
+    function snapIfChange(n) { if (C.warrant !== n) snap(); }
+  }
+
+  // ── Dossiers and notes ──────────────────────────────────────────────────
+  function dossierMenu() {
+    var keys = SUS.map(function (s, i) { return keyBtn(null, s.name, s.sex, function () { dossier(i); }); });
+    panel('V.I.L.E. dossiers', [keyBtn('folder', 'Case notes', C.notes.length + ' statements', notes, 'go')].concat(keys, [backKey()]), true);
+    notes();
+  }
+  function dossier(i) {
+    var s = SUS[i]; clearOv();
+    var c = el('canvas', { width: 48, height: 56 }); A.portrait(c, s.look);
+    var rows = ['sex', 'hair', 'hobby', 'feature', 'auto'].map(function (k) { return el('div', null, [el('span', { text: TRAIT_NAMES[k] + ': ' }), document.createTextNode(s[k])]); });
+    $.ov.appendChild(el('div', { class: 'dossier' }, [c, el('div', { class: 'tx' }, [el('b', { text: s.name.toUpperCase() })].concat(rows, [el('p', { text: s.bio })]))]));
+    say('V.I.L.E. file: ' + esc(s.name) + '.', 'DOSSIER');
+  }
+  function notes() {
+    clearOv();
+    var box = el('div', { class: 'notes' });
+    box.appendChild(el('b', { text: 'CASE NOTES: ' + C.treasure.toUpperCase() }));
+    if (!C.notes.length) box.appendChild(el('div', { text: 'No statements yet. Investigate to question witnesses.' }));
+    var last = null;
+    C.notes.forEach(function (n) {
+      if (n.at !== last) { box.appendChild(el('b', { text: place(n.at).name.toUpperCase() })); last = n.at; }
+      box.appendChild(el('div', { html: esc(n.loc) + ': ' + n.text }));
+    });
+    $.ov.appendChild(box); box.scrollTop = box.scrollHeight;
+  }
+
+  // ── Endings ─────────────────────────────────────────────────────────────
+  function capture() {
+    var S = SUS[C.sus], c = el('canvas', { class: 'wit', width: 48, height: 56 });
+    A.portrait(c, S.look); c.style.width = '34%'; c.style.right = '33%';
+    $.ov.appendChild(el('div', { class: 'flash' })); $.ov.appendChild(c); Kit.haptic('heavy'); sfx('danger');
+    return say('There ' + (S.sex === 'Female' ? 'she' : 'he') + ' is! It\'s <em>' + esc(S.name) + '</em>!', 'THE HIDEOUT').then(function () { return wait(900); }).then(function () {
+      if (C.warrant === C.sus) return win();
+      return lose(C.warrant == null ? 'nowarrant' : 'wrongwarrant');
+    });
+  }
+  function score() { return 500 * (C.rank + 1) + 10 * Math.max(0, Math.floor(DEADLINE - C.t)) + (C.sus === 0 ? 2000 : 0); }
+  function win() {
+    C.over = true; clearSave();
+    var S = SUS[C.sus], start = place(C.trail[0]);
+    $.ov.appendChild(el('div', { class: 'bars' })); $.ov.appendChild(el('div', { class: 'siren' })); sfx('siren'); jingle('win');
+    var car = careerOf(C.player, C.v), before = rankOf(car.solved);
+    car.solved++; if (C.sus === 0) car.carmen = (car.carmen || 0) + 1; careerSet(C.player, C.v, car);
+    var after = rankOf(car.solved), promoted = after > before, sc = score();
+    record(true, sc, promoted ? RANKS[after][0] : '');
+    return say('<em>' + esc(S.name) + '</em> is under arrest! ' + (C.sus === 0 ? 'You caught Carmen Sandiego herself! ' : '') + 'The ' + esc(C.treasure) + ' is going back to ' + esc(start.name) + '.', 'CASE CLOSED')
+      .then(function () { return wait(1400); }).then(function () {
+        if (!promoted) return;
+        $.ov.appendChild(el('div', { class: 'big', html: 'PROMOTED!<br>' + esc(RANKS[after][0].toUpperCase()) })); jingle('promo'); Kit.confetti();
+        return say('ACME promotes you to <em>' + esc(RANKS[after][0]) + '</em>! Your cases now cross ' + RANKS[after][2] + ' ' + V[C.v].unit + '.', 'PROMOTION').then(function () { return wait(1600); });
+      }).then(function () {
+        busy = false;
+        var done = function () {
+          var notes = ['Arrested ' + S.name + ' with ' + fmtHrs(DEADLINE - C.t) + ' to spare', C.flights + ' trips' + (C.wrong ? ', ' + C.wrong + ' wrong turn' + (C.wrong > 1 ? 's' : '') : ', no wrong turns'), 'Cases solved: ' + car.solved];
+          if (car.solved === CARMEN_CASE && after < RANKS.length - 1) notes.push('Next case: rumour says Carmen Sandiego herself is on the move');
+          Kit.win({ icon: 'trophy', title: C.sus === 0 ? 'You caught Carmen!' : 'Case closed!', sub: promoted ? 'Promoted to ' + RANKS[after][0] : RANKS[after][0] + ' ' + C.player, notes: notes, notesTitle: 'Case file',
+            againLabel: 'Next case', again: function () { begin(C.v, C.player); }, extra: [{ label: 'Choose a version', onClick: showSetup }] });
+        };
+        if (C.undos) done(); else ArcadeHi.check('carmen_' + C.v, sc, done, { who: C.player });
+      });
+  }
+  function fmtHrs(h) { h = Math.max(0, Math.floor(h)); return h >= 24 ? Math.floor(h / 24) + ' day' + (h >= 48 ? 's' : '') + ' ' + (h % 24) + ' hrs' : h + ' hrs'; }
+  function lose(why) {
+    C.over = true; clearSave(); busy = false;
+    var S = SUS[C.sus], car = careerOf(C.player, C.v); car.lost = (car.lost || 0) + 1; careerSet(C.player, C.v, car);
+    record(false, 0, '');
+    var msg = {
+      nowarrant: ['No warrant!', 'You found ' + S.name + ', but without a warrant ' + (S.sex === 'Female' ? 'she' : 'he') + ' walked free.'],
+      wrongwarrant: ['Wrong warrant', 'Your warrant was for ' + (C.warrant != null ? SUS[C.warrant].name : '') + '. ' + S.name + ' laughed and slipped away.'],
+      time: ['Out of time', 'It\'s Sunday at 5 pm. ' + S.name + ' got away with the ' + C.treasure + '.']
+    }[why];
+    jingle('lose'); sfx('wrong');
+    say(esc(msg[1]), 'CASE LOST', 'warn').then(function () { return wait(1200); }).then(function () {
+      Kit.win({ lose: true, icon: 'meh', title: msg[0], sub: msg[1], againLabel: 'Next case', again: function () { begin(C.v, C.player); }, extra: [{ label: 'Choose a version', onClick: showSetup }] });
+    });
+  }
+  function outOfTime() { lose('time'); }
+  function record(won, sc, promo) {
+    var S = SUS[C.sus];
+    try {
+      Kit.record(HKEY, { players: [{ name: C.player, score: won ? 1 : 0 }], winner: won ? C.player : null, mode: V[C.v].name,
+        summary: (won ? 'Caught ' : 'Lost ') + S.name + ' · ' + V[C.v].name, badge: promo || '',
+        highlights: [(won ? 'Arrested ' : 'Chased ') + S.name + ' from ' + place(C.trail[0]).name, promo ? 'Promoted to ' + promo : ''],
+        meta: { won: won, ver: C.v, rank: RANKS[C.rank][0], sus: S.name, score: sc, undos: C.undos },
+        detail: { Version: V[C.v].name, Rank: RANKS[C.rank][0], Suspect: S.name, Treasure: C.treasure, Trail: C.trail.map(function (id) { return place(id).name; }).join(' > '), Result: won ? 'Arrested' : 'Got away' } });
+    } catch (e) {}
+  }
+
+  // ── Title and briefing ───────────────────────────────────────────────────
+  var titleT = 0;
+  function begin(v, player) {
+    loadData(v); clearSave();
+    C = newCase(v, player); UNDO = []; busy = false;
+    screen(); titleScreen();
+  }
+  function titleScreen() {
+    var car = careerOf(C.player, C.v), frame = 0;
+    $.city.textContent = 'ACME Detective Agency'; $.country.textContent = V[C.v].name + ' edition'; showTime(C.t);
+    clearInterval(titleT); titleT = setInterval(function () { if (!document.body.contains($.cv)) return clearInterval(titleT); A.title($.cv, frame++); }, 90);
+    A.title($.cv, 0);
+    var words = V[C.v].title.replace('?', '').split(' Is ');
+    $.ov.appendChild(el('div', { class: 'ttl', html: esc(words[0]) + ' is<b>Carmen Sandiego?</b><small>' + esc(V[C.v].name.toUpperCase()) + '</small>' }));
+    playTheme(true);
+    say('Welcome to the ACME Detective Agency, <em>' + esc(C.player) + '</em>. Rank: <em>' + RANKS[C.rank][0] + '</em>. Cases solved: ' + car.solved + '.' +
+      (C.rank < RANKS.length - 1 ? ' <span class="sub">Next rank, ' + RANKS[C.rank + 1][0] + ', after ' + RANKS[C.rank + 1][1] + ' arrests.</span>' : ''), 'ACME DETECTIVE AGENCY');
+    panel('A new case', [keyBtn('star', 'Accept the case', RANKS[C.rank][2] + ' ' + V[C.v].unit + ' on the trail', briefing, 'go')]);
+  }
+  function briefing() {
+    clearInterval(titleT); stopTheme(); Kit.gameStart();
+    var S = SUS[C.sus], p = place(C.trail[0]);
+    header(p); scenePic('wipe');
+    panel('Your assignment', [keyBtn('mag', 'Start investigating', null, function () { busy = false; arrive(true); }, 'go')]);
+    sfx('blip');
+    var who = S.carmen ? 'Carmen Sandiego herself was' : 'A ' + S.sex.toLowerCase() + ' suspect was';
+    save();
+    return say('<em>*** FLASH ***</em> ' + (C.v === 'time' ? 'A treasure has been stolen from history! In ' + esc(p.name) + ', ' + yr(p.year) : 'National treasure stolen from ' + esc(p.name)) +
+      '. The treasure: <em>' + esc(C.treasure) + '</em>. ' + who + ' seen at the scene of the crime. Track the thief to the hideout and make the arrest by <em>Sunday, 5 pm</em>. Good luck, ' + esc(RANKS[C.rank][0]) + ' ' + esc(C.player) + '.', 'ACME HEADQUARTERS');
+  }
+
+  // ── Setup ───────────────────────────────────────────────────────────────
+  function showSetup() {
+    clearInterval(titleT); stopTheme(); busy = false; app.innerHTML = '';
+    Kit.setup(app, {
+      modes: ORDER.map(function (k) { return { id: k, icon: V[k].icon, title: V[k].name, desc: V[k].desc + ' · ' + ((window.CARMEN_DATA[k] || []).length) + ' ' + V[k].unit }; }),
+      mode: 'world', start: 'Report for duty',
+      players: { min: 1, max: 1, count: 1, label: 'Detective' },
+      onStart: function (cfg) { begin(cfg.mode, cfg.players[0].name); }
+    });
+  }
+
+  Kit.init({
+    id: 'carmen',
+    onNew: function () { if (C && !C.over) { clearSave(); } C = null; showSetup(); },
+    undo: undo,
+    menu: [
+      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show('carmen_' + (C ? C.v : 'world')); } },
+      { icon: 'star', label: 'Career', onClick: careerSheet },
+      { icon: 'history', label: 'Past cases', onClick: function () { Kit.history(HKEY, { title: 'Carmen Sandiego: past cases' }); } },
+      { icon: 'users', label: 'Frequent players', onClick: function () { Kit.managePlayers(); } }
+    ],
+    rules:
+      '<p class="goal">A V.I.L.E. thief has stolen a treasure. Follow the trail from city to city, get a warrant, and arrest the thief in the hideout by <b>Sunday at 5 pm</b>.</p>' +
+      '<h3>Each city</h3><ul><li><b>Investigate</b>: question witnesses in three places. Each one costs time: 1 hour, then 2, then 3. Asking again costs 1 hour.</li>' +
+      '<li>Witnesses on the right trail describe where the thief went next (a flag, money, a language, a landmark), and sometimes the thief: hair, hobby, a feature, a car.</li>' +
+      '<li>If witnesses have never seen the thief, you are in the wrong city. Go back.</li>' +
+      '<li>A dark figure dashing past means a V.I.L.E. henchman: you are on the right trail.</li></ul>' +
+      '<h3>Travel</h3><ul><li><b>Depart</b> shows the places you can reach. Longer trips cost more hours. At 11 pm you stop to sleep until 7 am.</li></ul>' +
+      '<h3>Crime computer</h3><ul><li>Enter the traits you have heard. When only one V.I.L.E. member fits, you get a <b>warrant</b> for them.</li>' +
+      '<li>In the hideout city witnesses warn you the thief is close. Find the thief with the right warrant to make the arrest. No warrant, or the wrong one, and the thief goes free.</li></ul>' +
+      '<h3>Ranks</h3><ul><li>Gumshoe, Private Eye (2 arrests), Investigator (5), Detective (9), Ace Detective (14), Super Sleuth (20). Higher ranks mean longer trails.</li>' +
+      '<li>The 20th arrest is Carmen Sandiego herself. Each version keeps its own rank for each player.</li></ul>' +
+      '<h3>Versions</h3><p>World, USA (all 50 states), Time (history, by Chronoskimmer), Europe, Asia, Africa and the Americas. Keep an atlas or encyclopedia handy, just like in 1985.</p>'
+  });
+  function careerSheet() {
+    var name = C ? C.player : (Kit.player && Kit.player()) || '';
+    var rows = ORDER.map(function (k) { var c = careerOf(name, k); return '<tr><td>' + V[k].name + '</td><td>' + RANKS[rankOf(c.solved)][0] + '</td><td style="text-align:right">' + c.solved + '</td><td style="text-align:right">' + (c.carmen ? 'Yes' : '') + '</td></tr>'; }).join('');
+    Kit.sheet({ title: (name ? name + ': ' : '') + 'ACME career', html: '<table style="width:100%;border-collapse:collapse;font-size:.95rem"><tr style="text-align:left;opacity:.7"><th>Version</th><th>Rank</th><th style="text-align:right">Arrests</th><th style="text-align:right">Carmen</th></tr>' + rows + '</table>', actions: [{ label: 'Done', cls: 'btn-soft' }] });
+  }
+
+  // Resume a case in progress, or start at the setup screen
+  var sv = rd(SAVE, null);
+  if (sv && sv.C && !sv.C.over && window.CARMEN_DATA[sv.C.v]) {
+    C = sv.C; UNDO = sv.U || []; loadData(C.v);
+    if (!C.trail.every(function (id) { return BYID[id]; })) { clearSave(); showSetup(); }
+    else { screen(); arrive(true); }
+  } else showSetup();
+})();
+</script>
+</body>
+</html>

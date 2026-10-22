@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v600p1-2026-10-22-no-cpu-regulars';
+const CACHE_VERSION = 'v602p1-2026-10-22-no-cpu-regulars';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -123,7 +123,18 @@ const PRECACHE_URLS = [
   '/games/boggle.html',
   '/games/breakout.html',
   '/games/candymatch.html',
+  '/games/carmen.html',
+  '/games/carmen/art.js',
+  '/games/carmen/maps.js',
+  '/games/carmen/data-world.js',
+  '/games/carmen/data-usa.js',
+  '/games/carmen/data-time.js',
+  '/games/carmen/data-europe.js',
+  '/games/carmen/data-asia.js',
+  '/games/carmen/data-africa.js',
+  '/games/carmen/data-americas.js',
   '/games/hotdogstand.html',
+  '/games/drugwars.html',
   '/games/checkers.html',
   '/games/scrabble.html',
   '/data/scrabble-words.js',

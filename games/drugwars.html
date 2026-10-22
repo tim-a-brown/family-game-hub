@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drug Wars</title>
+<script>
+// Hidden game: only reachable once Hot Dog Stand's secret is unlocked on this device
+try { if (localStorage.getItem('hotdogstand_dw') !== '1' && !/[?&]dev=1/.test(location.search)) location.replace('hotdogstand.html'); } catch (e) {}
+</script>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
+<style>
+html,body{overflow:hidden;overscroll-behavior:none;}
+body{touch-action:manipulation;}
+/* ── The desk: the calculator lies on it, your scratch paper beside it ─────── */
+.dw-stage{position:fixed;left:0;right:0;bottom:0;top:var(--bar,56px);overflow:hidden;display:flex;align-items:center;justify-content:center;gap:28px;
+  --wood-a:#6d5134;--wood-b:#4a3622;padding:10px 12px calc(var(--safe-b,0px) + 10px);}
+.dw-stage.wood{box-shadow:none;}
+.dw-stage::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 90% at 60% 40%,transparent 40%,rgba(0,0,0,.45));}
+.dw-fx{position:absolute;inset:0;pointer-events:none;z-index:5;}
+.dw-lights{opacity:0;transition:opacity .5s;mix-blend-mode:screen;
+  background:radial-gradient(60% 70% at 0% 30%,rgba(255,40,50,.55),transparent 70%),radial-gradient(60% 70% at 100% 30%,rgba(40,90,255,.55),transparent 70%);}
+.dw-lights.on{opacity:1;animation:cops .9s steps(1) infinite;}
+@keyframes cops{0%{background:radial-gradient(60% 70% at 0% 30%,rgba(255,40,50,.6),transparent 70%),radial-gradient(40% 50% at 100% 70%,rgba(40,90,255,.25),transparent 70%);}
+  50%{background:radial-gradient(40% 50% at 0% 70%,rgba(255,40,50,.25),transparent 70%),radial-gradient(60% 70% at 100% 30%,rgba(40,90,255,.6),transparent 70%);}}
+.dw-flash{background:#fff7d6;opacity:0;}
+.dw-flash.go{animation:flash .32s ease-out;}
+@keyframes flash{0%{opacity:.85;}100%{opacity:0;}}
+.dw-vig{opacity:0;background:radial-gradient(80% 80% at 50% 50%,transparent 45%,rgba(200,0,0,.65));}
+.dw-vig.go{animation:vig .9s ease-out;}
+@keyframes vig{0%{opacity:1;}100%{opacity:0;}}
+.dw-cash{position:absolute;z-index:6;pointer-events:none;font:400 2rem/1 var(--display);color:#7ef0b0;text-shadow:0 3px 0 rgba(0,0,0,.35),0 0 18px rgba(80,255,160,.5);animation:cashUp 1.4s cubic-bezier(.2,.8,.2,1) forwards;}
+.dw-cash.neg{color:#ff7b7b;text-shadow:0 3px 0 rgba(0,0,0,.35),0 0 18px rgba(255,60,60,.5);}
+@keyframes cashUp{0%{transform:translate(-50%,10px) scale(.6);opacity:0;}15%{transform:translate(-50%,0) scale(1.1);opacity:1;}100%{transform:translate(-50%,-70px) scale(1);opacity:0;}}
+
+/* ── Scratch paper (only when there's room beside the calculator) ─────────── */
+.dw-notes{position:relative;z-index:1;flex:0 1 380px;min-width:0;max-height:calc(100% - 20px);overflow:hidden;border-radius:4px;padding:18px 20px 22px 44px;transform:rotate(-2.2deg);
+  font-family:var(--hand);color:#2a2a4a;font-size:1.15rem;line-height:40px;display:none;}
+.dw-notes::before{content:"";position:absolute;top:0;bottom:0;left:32px;width:2px;background:rgba(220,60,70,.45);}
+.dw-wide .dw-notes{display:block;}
+.dw-notes h3{font:400 1.5rem/40px var(--hand);margin:0;color:#1d2a6b;}
+.dw-notes .st{display:flex;flex-wrap:wrap;gap:0 16px;}
+.dw-notes .st b{font-weight:400;color:#1d2a6b;}
+.dw-notes .st .owe{color:#b3262e;}
+.dw-notes table{border-collapse:collapse;width:100%;font-size:1.02rem;line-height:40px;}
+.dw-notes th{font-weight:400;color:#6d6d86;text-align:right;padding:0 0 0 6px;}
+.dw-notes th:first-child,.dw-notes td:first-child{text-align:left;padding:0;}
+.dw-notes td{text-align:right;padding:0 0 0 6px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.dw-notes td.hi{color:#b3262e;}
+.dw-notes td.lo{color:#1f7a3a;}
+.dw-notes tr.new{animation:scrib .9s ease-out both;}
+@keyframes scrib{0%{clip-path:inset(0 100% 0 0);}100%{clip-path:inset(0 0 0 0);}}
+.dw-notes .ev{color:#b3262e;font-size:.95rem;}
+
+/* ── The calculator (drawn at 360 × 800 and scaled to fit) ────────────────── */
+.dw-hold{position:relative;z-index:1;flex:none;}
+.calc{position:absolute;left:0;top:0;width:360px;height:800px;transform-origin:0 0;}
+.calc-in{position:absolute;inset:0;border-radius:30px 30px 46px 46px;padding:14px 16px 0;
+  background:
+    radial-gradient(140% 60% at 50% 0%,rgba(255,255,255,.08),transparent 60%),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.012) 0 1px,transparent 1px 3px),
+    linear-gradient(180deg,#45484f 0%,#33363c 30%,#2a2c31 100%);
+  box-shadow:0 30px 50px rgba(0,0,0,.55),0 8px 14px rgba(0,0,0,.4),inset 0 2px 0 rgba(255,255,255,.14),inset 0 -6px 10px rgba(0,0,0,.35),inset 3px 0 6px rgba(255,255,255,.04),inset -3px 0 6px rgba(0,0,0,.25);}
+.calc-in.jolt{animation:jolt .28s;}
+.calc-in.shake{animation:shake .5s;}
+.calc-in.rumble{animation:rumble 1s linear;}
+@keyframes jolt{30%{transform:translate(0,4px) rotate(.4deg);}70%{transform:translate(0,-2px) rotate(-.2deg);}}
+@keyframes shake{15%{transform:translate(-7px,2px) rotate(-1.4deg);}35%{transform:translate(6px,-2px) rotate(1.2deg);}55%{transform:translate(-4px,1px) rotate(-.6deg);}75%{transform:translate(2px,0) rotate(.3deg);}}
+@keyframes rumble{0%,100%{transform:none;}10%,30%,50%,70%,90%{transform:translate(1px,1px);}20%,40%,60%,80%{transform:translate(-1px,0);}}
+.c-top{display:flex;justify-content:space-between;align-items:baseline;height:24px;padding:0 6px;color:#d9dbe0;}
+.c-top .ti{font:800 9.5px/1 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.16em;opacity:.85;}
+.c-top .md{font:italic 900 19px/1 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.02em;}
+.bezel{position:relative;margin-top:6px;height:238px;border-radius:12px 12px 14px 14px / 12px 12px 34px 34px;padding:18px 20px 0;
+  background:linear-gradient(180deg,#202227,#17181c);box-shadow:inset 0 2px 5px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.1);}
+.bezel .bz{position:absolute;left:0;right:0;bottom:12px;text-align:center;font:800 7.5px/1 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.32em;color:#7d8088;}
+.lcd{position:relative;width:288px;height:192px;border-radius:3px;overflow:hidden;background:#b0bd9e;cursor:pointer;
+  box-shadow:inset 0 0 0 2px #8f9a80,inset 0 3px 8px rgba(0,0,0,.35);}
+.lcd canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;}
+.lcd::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(160deg,rgba(255,255,255,.22),rgba(255,255,255,0) 38%),radial-gradient(130% 120% at 50% 50%,transparent 60%,rgba(40,50,30,.28));}
+.keys{margin-top:12px;padding:0 4px;}
+.kc{position:relative;display:flex;flex-direction:column;align-items:stretch;}
+.kl{display:flex;justify-content:space-between;align-items:flex-end;height:12px;padding:0 1px 1px;font:800 7.4px/1 "Helvetica Neue",Helvetica,Arial,sans-serif;white-space:nowrap;letter-spacing:-.01em;}
+.kl .l2{color:#6fb6e8;}
+.kl .la{color:#9fd3a7;margin-left:auto;transition:color .2s,text-shadow .2s;}
+.k{position:relative;display:flex;align-items:center;justify-content:center;border:0;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  font:800 11px/1 "Helvetica Neue",Helvetica,Arial,sans-serif;color:#f2f3f5;height:32px;border-radius:8px 8px 10px 10px;
+  background:linear-gradient(180deg,#5a5e67,#3b3e45 70%,#34373d);box-shadow:0 3px 0 #1a1b1f,0 4px 6px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.22);
+  transition:transform .05s,box-shadow .05s,filter .2s;user-select:none;-webkit-user-select:none;}
+.k.dn{transform:translateY(2.5px);box-shadow:0 .5px 0 #1a1b1f,0 1px 2px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.1);filter:brightness(.92);}
+.k.num{background:linear-gradient(180deg,#e6e8eb,#c4c7cc 70%,#b6b9be);color:#1d1f24;font-size:14px;box-shadow:0 3px 0 #6d7076,0 4px 6px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.7);}
+.k.num.dn{box-shadow:0 .5px 0 #6d7076,0 1px 2px rgba(0,0,0,.45);}
+.k.k2{background:linear-gradient(180deg,#76c3ef,#4b9fd2 70%,#4092c4);color:#0e2433;}
+.k.ka{background:linear-gradient(180deg,#b9dfbd,#8fc597 70%,#84b98c);color:#13301a;}
+.k.ent{background:linear-gradient(180deg,#e6e8eb,#c4c7cc 70%,#b6b9be);color:#1d1f24;}
+.k.gk{height:20px;border-radius:10px;font-size:8.5px;background:linear-gradient(180deg,#a5aebf,#828b9c);color:#1b1f28;box-shadow:0 2px 0 #3b4049,0 3px 5px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.4);}
+.k.gk.dn{box-shadow:0 .5px 0 #3b4049;}
+.k .sup{font-size:.72em;vertical-align:super;line-height:0;}
+/* keys the screen is waiting on glow softly; letters you'd type light up */
+.k.hint::after{content:"";position:absolute;inset:-3px;border-radius:11px 11px 13px 13px;pointer-events:none;box-shadow:0 0 0 2px rgba(190,255,200,.55),0 0 14px rgba(150,255,170,.45);animation:hint 1.6s ease-in-out infinite;}
+.k.gk.hint::after{border-radius:13px;}
+@keyframes hint{0%,100%{opacity:.35;}50%{opacity:1;}}
+.kc.lit .la{color:#d9ffde;text-shadow:0 0 6px rgba(150,255,170,.9),0 0 2px #fff;}
+.grow5{display:grid;grid-template-columns:repeat(5,1fr);gap:4px 10px;}
+.mid{display:flex;gap:10px;margin-top:8px;}
+.mid .g3{flex:3;display:grid;grid-template-columns:repeat(3,1fr);gap:4px 10px;}
+.dpad{flex:2;position:relative;height:88px;margin-top:4px;}
+.dpad .ring{position:absolute;left:50%;top:50%;width:96px;height:84px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,#2b2d32 40%,#1f2125 72%);box-shadow:inset 0 2px 5px rgba(0,0,0,.6);}
+.dpad .k{position:absolute;width:34px;height:26px;font-size:10px;}
+.dpad .k[data-k=up]{left:50%;top:2px;margin-left:-17px;border-radius:12px 12px 6px 6px;}
+.dpad .k[data-k=down]{left:50%;bottom:6px;margin-left:-17px;border-radius:6px 6px 12px 12px;}
+.dpad .k[data-k=left]{left:calc(50% - 50px);top:31px;border-radius:12px 6px 6px 12px;}
+.dpad .k[data-k=right]{left:calc(50% + 16px);top:31px;border-radius:6px 12px 12px 6px;}
+.main{margin-top:8px;}
+.main .grow5{gap:2px 10px;}
+.c-foot{position:absolute;left:0;right:0;bottom:12px;text-align:center;font:800 7px/1 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.3em;color:#6d7077;}
+</style>
+</head>
+<body>
+<div class="dw-stage wood" id="stage">
+  <div class="dw-notes paper" id="notes"></div>
+  <div class="dw-hold" id="hold"><div class="calc" id="calc"><div class="calc-in" id="calcIn">
+    <div class="c-top"><span class="ti">TEXAS INSTRUMENTS</span><span class="md">TI-82</span></div>
+    <div class="bezel"><div class="lcd" id="lcd"><canvas id="cv" width="768" height="512"></canvas></div><div class="bz">GRAPHICS</div></div>
+    <div class="keys" id="keys"></div>
+  </div></div></div>
+  <div class="dw-fx dw-lights" id="lights"></div>
+  <div class="dw-fx dw-flash" id="flash"></div>
+  <div class="dw-fx dw-vig" id="vig"></div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el;
+  var SAVE = 'drugwars_state', HKEY = 'drugwars', BOARD = 'drugwars';
+  var who = (function () { var m = /[?&]p=([^&]+)/.exec(location.search); var n = m ? decodeURIComponent(m[1]) : ''; return n || Kit.player() || ''; })();
+
+  // ═══ The TI-82 home screen: 16 × 8 characters on a 96 × 64 pixel LCD ═══════════════════════════
+  // 5 × 7 glyphs in 6 × 8 cells, as the calculator draws them (each row a 5-bit number, left pixel = 16)
+  var FONT = {
+    ' ': '00000000000000', A: '0e11111f111111', B: '1e11111e11111e', C: '0e11101010110e', D: '1c12111111121c', E: '1f10101e10101f',
+    F: '1f10101e101010', G: '0e11101711110f', H: '1111111f111111', I: '0e04040404040e', J: '0702020202120c', K: '11121418141211',
+    L: '1010101010101f', M: '111b1515111111', N: '11111915131111', O: '0e11111111110e', P: '1e11111e101010', Q: '0e11111115120d',
+    R: '1e11111e141211', S: '0f10100e01011e', T: '1f040404040404', U: '1111111111110e', V: '11111111110a04', W: '1111111515150a',
+    X: '11110a040a1111', Y: '1111110a040404', Z: '1f01020408101f',
+    0: '0e11131519110e', 1: '040c040404040e', 2: '0e11010204081f', 3: '1f02040201110e', 4: '02060a121f0202', 5: '1f101e0101110e',
+    6: '0608101e11110e', 7: '1f010204080808', 8: '0e11110e11110e', 9: '0e11110f01020c',
+    '!': '04040404040004', '?': '0e110102040004', '.': '00000000000c0c', ',': '000000000c0408', "'": '0c040800000000',
+    '"': '0a0a0a00000000', ':': '000c0c000c0c00', '(': '02040808080402', ')': '08040202020408', '=': '00001f001f0000',
+    '-': '0000001f000000', '+': '0004041f040400', '/': '00010204081000', '$': '040f140e051e04', '>': '08040201020408',
+    'θ': '0e11111f11110e', '~': '00000e00000000', '↑': '040e1504040404', '_': '0000000000001f', '█': '1f1f1f1f1f1f1f',
+    p: '00001e111e1010', r: '00001619101010', g: '00000f110f010e', m: '00001a15151111', o: '00000e1111110e', n: '00001619111111',
+    e: '00000e111f100e', u: '0000111111130d', i: '04000c0404040e', t: '08081c08080906'
+  };
+  var GLY = {};
+  Object.keys(FONT).forEach(function (k) { var h = FONT[k], a = []; for (var i = 0; i < 7; i++) a.push(parseInt(h.substr(i * 2, 2), 16)); GLY[k] = a; });
+
+  var ch = [], inv = [], row = 0, cur = null, ind = null, blink = true, contrast = 1;
+  var tgt = new Float32Array(96 * 64), lit = new Float32Array(96 * 64);
+  for (var i0 = 0; i0 < 128; i0++) { ch.push(' '); inv.push(0); }
+  var cv = document.getElementById('cv'), cx = cv.getContext('2d');
+  var PX = 8, ON = [31, 40, 26], OFF = '#b0bd9e';
+
+  function compose() {
+    tgt.fill(0);
+    for (var r = 0; r < 8; r++) for (var c = 0; c < 16; c++) {
+      var k = r * 16 + c, g = GLY[ch[k]] || GLY['?'], iv = inv[k];
+      if (cur && blink && cur.r === r && cur.c === c) { g = GLY[cur.g]; iv = cur.x ? 1 : 0; }
+      for (var y = 0; y < 8; y++) for (var x = 0; x < 6; x++) {
+        var on = y < 7 && x < 5 ? (g[y] >> (4 - x)) & 1 : 0;
+        if (iv) on = 1 - on;
+        if (on) tgt[(r * 8 + y) * 96 + c * 6 + x] = 1;
+      }
+    }
+    if (ind) {   // the busy indicator in the top-right corner: a moving line while running, dots while paused
+      var t = Math.floor(performance.now() / (ind === 'run' ? 80 : 180));
+      for (var x2 = 0; x2 < 6; x2++) tgt[90 + x2] = (ind === 'run' ? ((x2 - t) % 6 + 6) % 6 < 4 : (x2 + t) % 2 === 0) ? 1 : 0;
+    }
+  }
+  var raf = 0, dirty = true, indT = 0;
+  function kick() { dirty = true; if (!raf) raf = requestAnimationFrame(frame); }
+  function frame() {
+    raf = 0;
+    if (dirty) { compose(); dirty = false; }
+    var moving = false;
+    for (var i = 0; i < 6144; i++) {
+      var d = tgt[i] - lit[i];
+      if (d > 0.004 || d < -0.004) { lit[i] += d * (d > 0 ? 0.42 : 0.24); moving = true; } else lit[i] = tgt[i];   // LCD pixels fade, slower going off
+    }
+    draw();
+    if (moving) raf = requestAnimationFrame(frame);
+    else if (ind && !indT) indT = setTimeout(function () { indT = 0; kick(); }, 60);
+  }
+  // the backplate: LCD glass with the faint grid of unlit pixels
+  var base = document.createElement('canvas'); base.width = 768; base.height = 512;
+  (function () { var b = base.getContext('2d'); b.fillStyle = OFF; b.fillRect(0, 0, 768, 512); b.fillStyle = 'rgba(70,90,50,.07)'; for (var y = 0; y < 64; y++) for (var x = 0; x < 96; x++) b.fillRect(x * PX + .5, y * PX + .5, PX - 1, PX - 1); })();
+  function draw() {
+    cx.drawImage(base, 0, 0);
+    // lit pixels, with the shadow they cast on the backplate
+    for (var pass = 0; pass < 2; pass++) {
+      for (var lv = 1; lv <= 8; lv++) {
+        var lo = (lv - 1) / 8, hi = lv / 8, any = false;
+        cx.beginPath();
+        for (var i = 0; i < 6144; i++) { var v = lit[i]; if (v > lo && v <= hi && v > 0.02) { any = true; cx.rect((i % 96) * PX + (pass ? 0 : 1.3) + .5, Math.floor(i / 96) * PX + (pass ? 0 : 1.3) + .5, PX - 1, PX - 1); } }
+        if (!any) continue;
+        var a = hi * contrast;
+        cx.fillStyle = pass ? 'rgba(' + ON[0] + ',' + ON[1] + ',' + ON[2] + ',' + Math.min(1, a * 0.95).toFixed(3) + ')' : 'rgba(40,55,30,' + (a * 0.09).toFixed(3) + ')';
+        cx.fill();
+      }
+    }
+  }
+  setInterval(function () { if (cur) { blink = !blink; kick(); } }, 480);
+
+  // ── Home screen commands, as TI-BASIC has them ────────────────────────────────────────────────
+  var gen = 0, ABORT = { abort: 1 };
+  function live(g) { if (g !== gen) throw ABORT; }
+  function sleep(ms) { var g = gen; return new Promise(function (res) { setTimeout(res, ms); }).then(function () { live(g); }); }
+  function clr() { for (var i = 0; i < 128; i++) { ch[i] = ' '; inv[i] = 0; } row = 0; kick(); }
+  function scrollUp() { ch.splice(0, 16); inv.splice(0, 16); for (var i = 0; i < 16; i++) { ch.push(' '); inv.push(0); } row = Math.max(0, row - 1); }
+  function num(n) { n = Math.round(n * 1e6) / 1e6; var s = String(Math.abs(n)); if (s.length > 14) s = Math.abs(n).toExponential(6).toUpperCase(); return (n < 0 ? '~' : '') + s; }
+  function putLine(s, right) {
+    if (row > 7) scrollUp();
+    s = String(s).slice(0, 16); if (right) while (s.length < 16) s = ' ' + s;
+    for (var c = 0; c < 16; c++) { ch[row * 16 + c] = s[c] || ' '; inv[row * 16 + c] = 0; }
+    row++;
+  }
+  // Disp: strings on the left, numbers on the right, one per line (scrolls up past the bottom)
+  function disp() {
+    var a = arguments, g = gen, p = Promise.resolve();
+    for (var i = 0; i < a.length; i++) (function (x) { p = p.then(function () { live(g); putLine(typeof x === 'number' ? num(x) : x, typeof x === 'number'); kick(); return sleep(26); }); })(a[i]);
+    return p;
+  }
+  function output(r, c, s) { var k = (r - 1) * 16 + (c - 1); for (var i = 0; i < s.length && k < 128; i++, k++) { ch[k] = s[i]; inv[k] = 0; } kick(); }
+
+  // What the program is waiting on, and the keys that answer it
+  var wait = null, mode2 = false, alpha = false, alock = false;
+  function waitFor(w) { var g = gen; return new Promise(function (res) { w.res = res; wait = w; }).then(function (v) { live(g); return v; }); }
+  function pause() {
+    ind = 'pause'; hint(['enter']); kick();
+    return waitFor({ type: 'pause' }).then(function () { ind = 'run'; hint([]); kick(); });
+  }
+  // Input "PROMPT",X: answers a number, or a letter, which reads that variable (C is the price of cocaine)
+  function input(prompt, o) {
+    o = o || {};
+    if (row > 7) scrollUp();
+    var p = prompt == null ? '?' : prompt, text = '', r0 = row;
+    if (o.drug) { alpha = true; }
+    function paint() {
+      var s = p + text;
+      while (r0 + Math.floor(s.length / 16) > 7) { scrollUp(); r0--; }
+      var n = Math.floor(s.length / 16) + 1;
+      for (var r = r0; r < r0 + n && r < 8; r++) for (var c = 0; c < 16; c++) { var k = (r - r0) * 16 + c; ch[r * 16 + c] = s[k] || ' '; inv[r * 16 + c] = 0; }
+      cur = { r: r0 + Math.floor(s.length / 16), c: s.length % 16, g: '█' }; curLook(); blink = true; kick();
+    }
+    ind = null; paint();
+    hint(o.drug ? ['enter', 'prgm', 'pow', 'math', 'sub', 'ln', 'rp'] : o.yn ? ['k1', 'k2', 'enter'] : ['k0', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'k8', 'k9', 'enter'], o.drug);
+    return waitFor({
+      type: 'input', o: o,
+      typed: function (c) { if ((p + text).length < 46) { text += c; paint(); } },
+      del: function () { text = text.slice(0, -1); paint(); },
+      clear: function () { text = ''; paint(); },
+      paint: paint,
+      enter: function () {
+        var t = text.trim(), val = null;
+        if (/^~?\d+(\.\d*)?$|^~?\.\d+$/.test(t)) val = parseFloat(t.replace('~', '-'));
+        else if (/^[A-Zθ]$/.test(t)) val = V[t] || 0;
+        if (val == null || !isFinite(val)) { fx('nope'); text = ''; paint(); return false; }
+        row = r0 + Math.floor((p + text).length / 16) + 1; cur = null; alpha = false; mode2 = false; ind = 'run'; hint([]); kick();
+        return val;
+      }
+    });
+  }
+  // Menu("TITLE","ITEM",...): pick with the arrows and ENTER, or the item's number, or a tap on the screen
+  function menu(title, items) {
+    clr(); ind = null; var sel = 0;
+    function paint() {
+      clr();
+      for (var c = 0; c < title.length && c < 16; c++) { ch[c] = title[c]; inv[c] = 1; }
+      items.forEach(function (it, i) { var s = (i + 1) + ':' + it; for (var c = 0; c < 16; c++) { ch[(i + 1) * 16 + c] = s[c] || ' '; inv[(i + 1) * 16 + c] = i === sel && c < 2 ? 1 : 0; } });
+      kick();
+    }
+    paint();
+    hint(items.map(function (x, i) { return 'k' + (i + 1); }).concat(['up', 'down', 'enter']));
+    return waitFor({
+      type: 'menu', n: items.length,
+      move: function (d) { sel = (sel + d + items.length) % items.length; paint(); },
+      pick: function (i) { sel = i; paint(); return i; },
+      sel: function () { return sel; }
+    }).then(function (i) { clr(); ind = 'run'; hint([]); return i; });
+  }
+
+  // ═══ The calculator: keys drawn as the real TI-82's, working as the controls ═══════════════════
+  // [id, label, 2nd label, alpha label, class]
+  var GRAPH = [['yeq', 'Y=', 'STAT PLOT'], ['window', 'WINDOW', 'TblSet'], ['zoom', 'ZOOM', 'FORMAT'], ['trace', 'TRACE', 'CALC'], ['graph', 'GRAPH', 'TABLE']];
+  var MID = [['2nd', '2nd', '', '', 'k2'], ['mode', 'MODE', 'QUIT'], ['del', 'DEL', 'INS'],
+             ['alpha', 'ALPHA', 'A-LOCK', '', 'ka'], ['xt', 'X,T,θ', 'LINK'], ['stat', 'STAT', 'LIST']];
+  var MAIN = [
+    ['math', 'MATH', 'TEST', 'A'], ['matrx', 'MATRX', 'ANGLE', 'B'], ['prgm', 'PRGM', 'DRAW', 'C'], ['vars', 'VARS', 'Y-VARS'], ['clear', 'CLEAR'],
+    ['xinv', 'x<span class="sup">-1</span>', 'ABS', 'D'], ['sin', 'SIN', 'SIN<span class="sup">-1</span>', 'E'], ['cos', 'COS', 'COS<span class="sup">-1</span>', 'F'], ['tan', 'TAN', 'TAN<span class="sup">-1</span>', 'G'], ['pow', '^', 'π', 'H'],
+    ['sq', 'x<span class="sup">2</span>', '√', 'I'], ['comma', ',', 'EE', 'J'], ['lp', '(', '{', 'K'], ['rp', ')', '}', 'L'], ['div', '÷', '', 'M'],
+    ['log', 'LOG', '10<span class="sup">x</span>', 'N'], ['k7', '7', 'u', 'O', 'num'], ['k8', '8', 'v', 'P', 'num'], ['k9', '9', '', 'Q', 'num'], ['mul', '×', '[', 'R'],
+    ['ln', 'LN', 'e<span class="sup">x</span>', 'S'], ['k4', '4', 'L4', 'T', 'num'], ['k5', '5', 'L5', 'U', 'num'], ['k6', '6', 'L6', 'V', 'num'], ['sub', '−', ']', 'W'],
+    ['sto', 'STO▸', 'RCL', 'X'], ['k1', '1', 'L1', 'Y', 'num'], ['k2', '2', 'L2', 'Z', 'num'], ['k3', '3', 'L3', 'θ', 'num'], ['add', '+', 'MEM', '"'],
+    ['on', 'ON', 'OFF'], ['k0', '0', '', '␣', 'num'], ['dot', '.', '', ':', 'num'], ['neg', '(−)', 'ANS', '?', 'num'], ['enter', 'ENTER', 'ENTRY', '', 'ent']
+  ];
+  var DIGIT = { k0: '0', k1: '1', k2: '2', k3: '3', k4: '4', k5: '5', k6: '6', k7: '7', k8: '8', k9: '9', dot: '.', neg: '~' };
+  var LETTER = {};
+  MAIN.forEach(function (k) { if (k[3] && /^[A-Zθ]$/.test(k[3])) LETTER[k[0]] = k[3]; });
+  var keyEl = {};
+  function keyNode(k, cls) {
+    var b = el('button', { type: 'button', class: 'k ' + (cls || k[4] || ''), 'data-k': k[0], 'aria-label': (k[1] || '').replace(/<[^>]+>/g, '') + (k[3] ? ' (' + k[3] + ')' : ''), html: k[1] });
+    keyEl[k[0]] = b;
+    var wrap = el('div', { class: 'kc' }, [el('div', { class: 'kl', html: '<span class="l2">' + (k[2] || '') + '</span><span class="la">' + (k[3] || '') + '</span>' }), b]);
+    b._kc = wrap;
+    return wrap;
+  }
+  (function build() {
+    var host = document.getElementById('keys');
+    var g = el('div', { class: 'grow5' }); GRAPH.forEach(function (k) { g.appendChild(keyNode(k, 'gk')); }); host.appendChild(g);
+    var g3 = el('div', { class: 'g3' }); MID.forEach(function (k) { g3.appendChild(keyNode(k)); });
+    var dp = el('div', { class: 'dpad' }, [el('div', { class: 'ring' })]);
+    [['up', '▲'], ['left', '◀'], ['right', '▶'], ['down', '▼']].forEach(function (a) { var b = el('button', { type: 'button', class: 'k', 'data-k': a[0], 'aria-label': a[0], html: a[1] }); keyEl[a[0]] = b; dp.appendChild(b); });
+    host.appendChild(el('div', { class: 'mid' }, [g3, dp]));
+    var m = el('div', { class: 'grow5' }); MAIN.forEach(function (k) { m.appendChild(keyNode(k)); });
+    host.appendChild(el('div', { class: 'main' }, [m]));
+    host.parentNode.appendChild(el('div', { class: 'c-foot', text: '' }));
+  })();
+
+  var hinted = [];
+  function hint(ids, letters) {
+    hinted.forEach(function (id) { var b = keyEl[id]; if (b) { b.classList.remove('hint'); if (b._kc) b._kc.classList.remove('lit'); } });
+    hinted = ids.slice();
+    ids.forEach(function (id) { var b = keyEl[id]; if (!b) return; if (letters && LETTER[id]) b._kc.classList.add('lit'); b.classList.add('hint'); });
+  }
+  function curLook() { if (cur) { cur.g = mode2 ? '↑' : alpha ? 'A' : '█'; cur.x = mode2 || alpha; } }
+
+  // ── Pressing a key ───────────────────────────────────────────────────────────────────────────
+  function press(id) {
+    var b = keyEl[id];
+    if (b) { b.classList.add('dn'); setTimeout(function () { b.classList.remove('dn'); }, 110); }
+    click(); Kit.haptic('tick');
+    if (id === 'on') { brk(); return; }
+    if (id === '2nd') { mode2 = !mode2; curLook(); kick(); return; }
+    if (mode2 && (id === 'up' || id === 'down')) { contrast = Math.max(0.35, Math.min(1.25, contrast + (id === 'up' ? 0.1 : -0.1))); kick(); return; }   // 2nd ▲▼: LCD contrast
+    if (id === 'alpha') { if (mode2) { alock = true; alpha = true; } else { alpha = !alpha; alock = false; } mode2 = false; curLook(); kick(); return; }
+    var w = wait, was2 = mode2; mode2 = false;
+    if (!w) return;
+    if (w.type === 'pause' || w.type === 'home') { if (id === 'enter') resolve(); curLook(); return; }
+    if (w.type === 'menu') {
+      if (id === 'up' || id === 'down') return w.move(id === 'up' ? -1 : 1);
+      if (id === 'enter') return resolve(w.sel());
+      var d = DIGIT[id]; if (d && +d >= 1 && +d <= w.n) { w.pick(+d - 1); setTimeout(function () { if (wait === w) resolve(+d - 1); }, 90); }
+      return;
+    }
+    if (w.type === 'input') {
+      if (id === 'enter') { var v = w.enter(); if (v !== false) resolve(v); return; }
+      if (id === 'del') return w.del();
+      if (id === 'clear') return w.clear();
+      if (was2) { w.paint(); return; }
+      if (alpha && LETTER[id]) { w.typed(LETTER[id]); if (!alock) alpha = false; w.paint(); return; }
+      if (alpha && id === 'k0') { w.typed(' '); if (!alock) alpha = false; w.paint(); return; }
+      if (DIGIT[id]) { if (alpha) { alpha = false; } w.typed(DIGIT[id]); return; }
+      w.paint();
+    }
+  }
+  function resolve(v) { var w = wait; wait = null; if (w) w.res(v); }
+  // every key: press on touch-down, like the real rubber keys
+  document.getElementById('keys').addEventListener('pointerdown', function (e) {
+    var b = e.target.closest('[data-k]'); if (!b) return; e.preventDefault(); press(b.getAttribute('data-k'));
+  });
+  // a computer keyboard works too
+  var KB = { Enter: 'enter', Backspace: 'del', Delete: 'del', Escape: 'clear', ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', '.': 'dot', '-': 'neg' };
+  document.addEventListener('keydown', function (e) {
+    if (!wait || e.metaKey || e.ctrlKey || e.altKey || document.querySelector('.ahi-overlay')) return;
+    var k = e.key, id = KB[k];
+    if (!id && /^[0-9]$/.test(k)) id = 'k' + k;
+    if (!id && /^[a-z]$/i.test(k)) { var L = k.toUpperCase(); for (var kk in LETTER) if (LETTER[kk] === L) id = kk; if (id && wait && wait.type === 'input') { alpha = true; } }
+    if (!id) return;
+    e.preventDefault(); press(id);
+  });
+  // a tap on the screen picks a menu line, or carries on from a pause
+  document.getElementById('lcd').addEventListener('click', function (e) {
+    var w = wait; if (!w) return;
+    var r = this.getBoundingClientRect(), line = Math.floor((e.clientY - r.top) / r.height * 8);
+    if (w.type === 'menu' && line >= 1 && line <= w.n) { click(); w.pick(line - 1); setTimeout(function () { if (wait === w) resolve(line - 1); }, 120); }
+    else if (w.type === 'pause' || w.type === 'home') { click(); resolve(); }
+  });
+
+  // ═══ Sound, light and motion ═══════════════════════════════════════════════════════════════════
+  var AC = null;
+  function ac() {
+    try { if (localStorage.getItem('gn_sound') === '0') return null; } catch (e) {}
+    if (!AC) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; AC = new C(); }
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+  function tone(f, t0, dur, type, vol, slide) {
+    var a = ac(); if (!a) return;
+    var o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+    o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.03);
+  }
+  function noise(t0, dur, vol, type, freq, q, sweepTo) {
+    var a = ac(); if (!a) return;
+    var n = Math.floor(a.sampleRate * dur), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime + t0;
+    f.type = type || 'lowpass'; f.frequency.setValueAtTime(freq || 1000, t); if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t + dur); f.Q.value = q || 0.7;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.buffer = b; s.connect(f); f.connect(g); g.connect(a.destination); s.start(t);
+  }
+  function click() { noise(0, 0.018, 0.22, 'bandpass', 2600, 1.2); tone(180, 0, 0.025, 'triangle', 0.05); }   // the rubber key and its plastic snap
+  function bang() { noise(0, 0.35, 0.7, 'lowpass', 4000, 0.8, 260); tone(110, 0, 0.25, 'sine', 0.45, 38); }
+  function siren(sec) {
+    var a = ac(); if (!a) return;
+    var o = a.createOscillator(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime;
+    o.type = 'sawtooth'; f.type = 'lowpass'; f.frequency.value = 1400;
+    for (var i = 0; i < sec / 0.5; i++) { o.frequency.setValueAtTime(i % 2 ? 960 : 720, t + i * 0.5); }
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.4); g.gain.setValueAtTime(0.05, t + sec - 0.8); g.gain.exponentialRampToValueAtTime(0.0001, t + sec);
+    o.connect(f); f.connect(g); g.connect(a.destination); o.start(t); o.stop(t + sec + 0.05);
+  }
+  function rumble() { noise(0, 1.4, 0.35, 'lowpass', 180, 1, 90); noise(0.15, 0.9, 0.08, 'bandpass', 900, 2, 400); }
+  function register(n) { for (var i = 0; i < Math.min(5, n); i++) setTimeout(function () { Kit.sfx('chip', 0.7); }, i * 70); }
+
+  var calcIn = document.getElementById('calcIn');
+  function move(cls) { calcIn.classList.remove('jolt', 'shake', 'rumble'); void calcIn.offsetWidth; calcIn.classList.add(cls); }
+  function flashFx(id) { var n = document.getElementById(id); n.classList.remove('go'); void n.offsetWidth; n.classList.add('go'); }
+  function cash(n) {
+    var h = document.getElementById('hold').getBoundingClientRect(), st = document.getElementById('stage').getBoundingClientRect();
+    var c = el('div', { class: 'dw-cash' + (n < 0 ? ' neg' : ''), text: (n < 0 ? '−$' : '+$') + Math.abs(n).toLocaleString('en-US') });
+    c.style.left = (h.left - st.left + h.width / 2) + 'px'; c.style.top = (h.top - st.top + h.height * 0.2) + 'px';
+    document.getElementById('stage').appendChild(c); setTimeout(function () { c.remove(); }, 1500);
+  }
+  function lights(on) { document.getElementById('lights').classList.toggle('on', !!on); }
+  function fx(what, n) {
+    switch (what) {
+      case 'nope': move('jolt'); Kit.haptic('error'); break;
+      case 'up': move('jolt'); Kit.sfx('good'); tone(440, 0, .12, 'square', .04, 880); Kit.haptic('medium'); break;
+      case 'down': move('jolt'); Kit.sfx('pop'); tone(700, 0, .18, 'square', .035, 260); Kit.haptic('light'); break;
+      case 'mugged': move('shake'); Kit.sfx('bad'); noise(0, .25, .25, 'bandpass', 900, 1); Kit.haptic('error'); if (n) cash(-n); break;
+      case 'found': Kit.sfx('sparkle'); Kit.haptic('success'); break;
+      case 'offer': Kit.sfx('tick'); break;
+      case 'buy': register(3); Kit.haptic('light'); if (n) cash(-n); break;
+      case 'sell': register(5); Kit.haptic('success'); if (n) cash(n); break;
+      case 'cops': lights(true); siren(3.6); move('shake'); Kit.haptic('heavy'); break;
+      case 'run': noise(0, .7, .12, 'bandpass', 500, 3, 1200); break;
+      case 'escape': lights(false); Kit.sfx('whoosh'); Kit.haptic('success'); break;
+      case 'shoot': bang(); flashFx('flash'); move('jolt'); Kit.haptic('heavy'); break;
+      case 'incoming': setTimeout(bang, 60); setTimeout(bang, 260); flashFx('flash'); break;
+      case 'hit': flashFx('vig'); move('shake'); Kit.sfx('bad'); Kit.haptic('error'); break;
+      case 'miss': Kit.sfx('whoosh'); break;
+      case 'killone': Kit.sfx('good'); Kit.haptic('success'); break;
+      case 'killall': lights(false); Kit.sfx('win'); register(5); Kit.haptic('success'); Kit.confetti({ count: 70, colors: ['#7ef0b0', '#b0bd9e', '#1f281a', '#ffd447'] }); if (n) cash(n); break;
+      case 'dead': lights(false); Kit.sfx('lose'); Kit.haptic('error'); fade(); break;
+      case 'trip': trip(); break;
+      case 'subway': rumble(); Kit.sfx('whoosh', 0.6); move('rumble'); Kit.haptic('medium'); break;
+      case 'copsoff': lights(false); break;
+    }
+  }
+  function fade() { var c0 = contrast, t0 = performance.now(); (function f() { var k = (performance.now() - t0) / 1600; contrast = c0 * (1 - Math.min(1, k) * 0.75); kick(); if (k < 1) requestAnimationFrame(f); else setTimeout(function () { contrast = c0; kick(); }, 2400); })(); }
+  function trip() {   // the LCD contrast swims, as if someone's leaning on 2nd ▲▼
+    var c0 = contrast, t0 = performance.now(); Kit.sfx('sparkle');
+    (function f() { var k = (performance.now() - t0) / 3200; contrast = c0 * (0.7 + 0.55 * Math.sin(k * 14)); calcIn.style.transform = 'rotate(' + (Math.sin(k * 9) * 2.5).toFixed(2) + 'deg)'; kick(); if (k < 1) requestAnimationFrame(f); else { contrast = c0; calcIn.style.transform = ''; kick(); } })();
+  }
+
+  // ═══ DRUGWAR: the TI-82 program, label for label ═══════════════════════════════════════════════
+  // J.M.'s Drugwar Simulation v2.00 for the TI-82 (original game for IBM by John E. Dell). Variables as the
+  // calculator had them: Z cash, Y debt, V bank, B day, T coat size, K free space, M N O P Q R the drugs carried
+  // (cocaine heroin acid weed speed ludes), C H A W S L their prices today, I guns, J damage.
+  var V = {}, loc = 0, stats = null, started = Date.now(), notes = [], todayEv = null, hiGo = null;
+  var PLACES = ['BRONX', 'GHETTO', 'CENTRAL PARK', 'MANHATTEN', 'CONEY ISLAND', 'BROOKLYN'];
+  var PLACE_NAME = ['Bronx', 'Ghetto', 'Central Park', 'Manhattan', 'Coney Island', 'Brooklyn'];
+  var DRUGS = ['COCAINE', 'HEROINE', 'ACID', 'WEED', 'SPEED', 'LUDES'], HOLD = ['M', 'N', 'O', 'P', 'Q', 'R'], PRICE = ['C', 'H', 'A', 'W', 'S', 'L'];
+  function rnd() { return Math.random(); }
+  function round(x) { return Math.round(x); }
+  function units() { return V.M + V.N + V.O + V.P + V.Q + V.R; }
+  function free() { V.K = V.T - units(); }
+  function freshVars() {
+    V = {}; 'ABCDEFGHIJKLMNOPQRSTUVWXYZθ'.split('').forEach(function (k) { V[k] = 0; });
+    V.Z = 2000; V.Y = 5000; V.V = 0; V.K = 100; V.B = 1; V.T = 100; V.I = 0; V.J = 0;
+    loc = 0; notes = []; todayEv = null; started = Date.now(); Kit.gameStart();
+    stats = { best: 2000, killed: 0, escaped: 0, mugged: 0, chased: 0, bought: 0, sold: 0, end: '' };
+  }
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify({ v: 1, V: V, loc: loc, stats: stats, started: started, notes: notes.slice(0, 30), who: who })); } catch (e) {}
+  }
+  function load() { try { var s = JSON.parse(localStorage.getItem(SAVE) || 'null'); return s && s.v === 1 && s.V ? s : null; } catch (e) { return null; } }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} }
+
+  async function lblG() {
+    freshVars(); paper();
+    clr(); await disp(" J.M.'S DRUGWAR", '   SIMULATION', '', '  VERSION 2.00', '', '  JUST SAY NO.');
+    await pause();
+    clr(); await disp('', 'ORIGINAL GAME', 'FOR IBM BY:', '  JOHN E. DELL', '');
+    await disp('INSTRUCTIONS?');
+    var X = await input('(1=YES,2=NO)', { yn: true });
+    if (X === 1) {
+      clr(); await disp('THIS IS A GAME', 'OF BUYING AND', 'SELLING. YOUR', 'GOAL IS TO PAY-', 'OFF YOUR DEBT TO', 'THE LOAN SHARK,', 'AND THEN MAKE AS'); await pause();
+      clr(); await disp('MUCH MONEY AS', 'POSSIBLE IN A 1', 'MONTH PERIOD.', 'WATCH-OUT FOR', 'THE POLICE IF', 'YOU DEAL TOO', 'HEAVILY!'); await pause();
+      clr(); await disp('PRICES FOR DRUGS', 'ARE:', 'COCAINE:', '15000-28000', 'HEROINE:', '5000-12000', 'ACID: 1000-4200'); await pause();
+      await disp('WEED: 300-720', 'SPEED: 70-220', 'LUDES: 10-50'); await pause();
+      clr(); await disp('GENERALY, TYPE', 'THE FIRST LETTER', 'OF WHAT YOU WANT', 'TO DO, I.E.:', 'W=WEED, L=LUDES', 'ETC...'); await pause();
+      await disp('BUT, 1=YES AND', '2=NO'); await pause();
+      clr(); await disp('THE LAST NUMBER', 'IN THE PRICES', 'LIST IS YOUR', 'WALLET. THE LAST', 'NUMBER IN YOUR', 'TRENCHCOAT IS', 'FREE SPACE.'); await pause();
+    }
+    return 'θ';
+  }
+
+  // Lbl θ: a new day. Today's prices, then whatever happens on the street
+  async function newDay() {
+    V.C = round(rnd() * 12000 + 16000); V.H = round(rnd() * 7000 + 5000); V.A = round(rnd() * 34 + 10) * 100;
+    V.W = round(rnd() * 42 + 33) * 10; V.S = round(rnd() * 15 + 7) * 10; V.L = round(rnd() * 4 + 1) * 10;
+    var D = forceD != null ? forceD : round(rnd() * 20), X; forceD = null; V.D = D; todayEv = null;
+    if (D === 1) { clr(); await disp('RIVAL DEALERS', 'ARE SELLING', 'CHEAP LUDES!!!'); fx('down'); await pause(); V.L = 2; todayEv = 'cheap ludes'; }
+    if (D === 2) { clr(); await disp('WEED PRICES HAVE', 'BOTTOMED-OUT!!!'); fx('down'); await pause(); V.W = 122; todayEv = 'weed bottomed out'; }
+    if (D === 3) { clr(); await disp('PIGS ARE SELLING', 'CHEAP HEROINE', "FROM LAST WEEK'S", 'RAID!!!!'); fx('down'); await pause(); V.H = Math.floor(850 + rnd() * 1150); todayEv = 'cheap heroin'; }
+    if (D === 4 || D === 5) { clr(); await disp('ADDICTS ARE', 'BUYING HEROINE', 'AT OUTRAGEOUS', 'PRICES!!!'); fx('up'); await pause(); V.H = Math.floor(18000 + rnd() * 25000); todayEv = 'heroin through the roof'; }
+    if (D === 6 || D === 7) { clr(); await disp('PIGS MADE A BIG', 'COKE BUST!', 'PRICES ARE', 'OUTRAGEOUS!!!!'); fx('up'); await pause(); V.C = Math.floor(80000 + rnd() * 60000); todayEv = 'coke bust!'; }
+    if (D === 8) { clr(); await disp('YOU WERE MUGGED', 'IN THE SUBWAY!'); var lost = V.Z - Math.floor(V.Z / 3) * 2; fx('mugged', lost); stats.mugged++; await pause(); V.Z = Math.floor(V.Z / 3) * 2; todayEv = 'mugged'; }
+    if (D === 15 && V.Z >= 300) {
+      clr(); await disp('WILL YOU BUY A', 'NEW TRENCHCOAT', 'WITH MORE', 'POCKETS FOR 200', 'BUCKS?'); fx('offer');
+      X = await input(null, { yn: true });
+      if (X === 1) { V.T += 10; free(); V.Z -= 200; fx('buy', 200); todayEv = 'bigger coat'; }
+    }
+    if (D === 14) {
+      clr(); await disp("THERE'S SOME", 'WEED HERE THAT', 'SMELLS LIKE GOOD', 'STUFF!!'); await pause();
+      await disp('WILL YOU SMOKE'); X = await input('IT?', { yn: true });
+      if (X === 1) {
+        clr(); fx('trip'); await disp('YOU HALLUCINATE', 'ON THE WILDEST', 'TRIP OF YOUR', 'LIFE,'); await pause();
+        await disp('STUMBLE ON TO', 'THE SUBWAY', 'TRACKS AND GET', 'CREAMED BY A', 'TRAIN.'); fx('dead'); await pause();
+        clr(); await disp('JUST SAY NO TO', 'DRUGS.'); await pause();
+        stats.end = 'Hit by a train on day ' + V.B;
+        return 'C';
+      }
+    }
+    if (V.Z >= 500 && V.K >= 5 && (D === 12 || D === 13)) {
+      clr(); await disp('WILL YOU BUY A'); X = round(rnd() * 2);
+      if (X === 0) await disp('BARRETTA');
+      if (X === 1) await disp('SATURDAY NIGHT', 'SPECIAL');
+      if (X === 2) await disp('.44 MAGNUM');
+      await disp('FOR 400 DOLLARS?'); fx('offer');
+      X = await input(null, { yn: true });
+      if (X === 1) { V.I++; V.Z -= 400; V.T -= 5; free(); fx('buy', 400); todayEv = 'bought a gun'; }
+    }
+    if (D === 16 && V.K >= 8) {
+      var F = Math.floor(rnd() * 7 + 1);
+      clr(); await disp('YOU FOUND:', F, 'UNITS OF:');
+      X = Math.floor(rnd() * 5);
+      var nm = ['LUDES', 'SPEED', 'WEED', 'ACID', 'HEROINE', 'COCAINE'][X];
+      await disp(('                ' + nm).slice(-16));
+      V[['R', 'Q', 'P', 'O', 'N', 'M'][X]] += F;
+      await disp('ON A DEAD DUDE', 'IN THE SUBWAY!!!'); fx('found');
+      free(); await pause(); todayEv = 'found ' + F + ' ' + nm.toLowerCase().replace('heroine', 'heroin');
+      return 'A';
+    }
+    if (D === 17) { clr(); await disp('THE MARKET HAS', 'BEEN FLOODED', 'WITH CHEAP HOME-', 'MADE ACID!!!!'); V.A = Math.floor(250 + rnd() * 550); fx('down'); await pause(); todayEv = 'cheap acid'; return 'A'; }
+    if ((D === 9 || D === 10 || D === 11) && units() >= 50) { V.D = D === 9 ? 1 : D === 10 ? 3 : 4; todayEv = 'cops!'; return chase(true); }
+    return 'A';
+  }
+
+  // Officer Hardass and his deputies
+  async function chase(fresh) {
+    V.chase = 1;
+    if (fresh) { stats.chased++; logDay(); save(); clr(); await disp('OFFICER HARDASS', 'AND', V.D, 'OF HIS DEPPUTIES', 'ARE AFTER YOU!'); fx('cops'); await pause(); }
+    else lights(true);
+    for (;;) {
+      var m = await menu('BEING CHASED!!', ['VIEW GUNS', 'VIEW DAMMAGE', 'NUMBER OF PIGS', 'RUN', 'FIGHT']), r = null;
+      if (m === 0) { await disp('NUMBER OF GUNS', 'YOU HAVE:', V.I); await pause(); continue; }
+      if (m === 1) { await disp('YOUR DAMMAGE=', V.J, '(50 DAMMAGE AND', 'YOU DIE!)'); await pause(); continue; }
+      if (m === 2) { await disp('THERE ARE:', V.D + 1, 'PIGS STILL', 'CHASING YOU!'); await pause(); continue; }
+      if (m === 3) {
+        clr(); await disp('', '', '', '', '    RUNNING'); fx('run'); await sleep(900);
+        if (round(rnd()) === 0) { clr(); await disp('YOU LOST THEM IN', 'AN ALLEY!!'); fx('escape'); stats.escaped++; V.chase = 0; await pause(); return 'A'; }
+        clr(); await disp("YOU CAN'T SHAKE", 'THEM!'); move('jolt'); await pause();
+        r = await fired(); if (r) return r; continue;
+      }
+      if (V.I === 0) { clr(); await disp("YOU DON'T HAVE", 'ANY GUNS!'); Kit.sfx('bad'); await pause(); await disp('YOU HAVE TO RUN!'); await pause(); continue; }
+      clr(); fx('shoot'); await sleep(250);
+      if (round(rnd()) === 0) { await disp('YOU MISSED!!!'); await pause(); }
+      else {
+        await disp('YOU KILLED ONE!!'); fx('killone'); stats.killed++; await pause();
+        V.D--;
+        if (V.D === -1) return killedAll();
+      }
+      r = await fired(); if (r) return r;
+    }
+  }
+  // Lbl O: they shoot back
+  async function fired() {
+    var X = round(rnd());
+    clr(); await disp("THEY'RE FIRING", 'AT YOU!!'); fx('incoming'); await sleep(700);
+    if (X === 0) { await disp('THEY MISSED!!'); fx('miss'); await pause(); return null; }
+    await disp("YOU'VE BEEN HIT!"); V.J += 3; fx('hit'); await pause();
+    if (V.J >= 50) { await disp("YOU'VE BEEN ", 'KILLED!!'); fx('dead'); await pause(); stats.end = 'Shot by the cops on day ' + V.B; return 'C'; }
+    return null;
+  }
+  async function killedAll() {
+    clr(); await disp('YOU KILLED ALL', 'OF THEM!');
+    var X = Math.floor(rnd() * 1250 + 750); V.Z += X;
+    fx('killall', X); await pause();
+    await disp('YOU FOUND', X, 'DOLLARS ON', "OFFICER HARDASS'", 'CARCASS!!'); await pause();
+    V.chase = 0;
+    if (V.Z >= 1200) {
+      clr(); await disp('WILL YOU PAY', '1000 DOLLARS FOR', 'A DOCTOR TO SEW', 'YOU UP?');
+      var Y = await input(null, { yn: true });
+      if (Y === 1) { V.Z -= 1000; V.J = 0; fx('buy', 1000); }
+    }
+    return 'A';
+  }
+
+  // Lbl A: the main menu
+  async function mainMenu() {
+    V.chase = 0; lights(false); stats.best = Math.max(stats.best, V.Z + V.V - V.Y);
+    logDay(); save(); paper();
+    var m = await menu('DRUGWAR!', ['SEE PRICES', 'TRENCHCOAT', 'BUY', 'SELL', 'JET', 'SEE LOAN SHARK', 'VISIT BANK']);
+    if (m === 0) { await disp(V.C, V.H, V.A, V.W, V.S, V.L, V.Z); DRUGS.concat(['WALLET']).forEach(function (n, i) { output(i + 1, 1, n); }); await pause(); return 'A'; }
+    if (m === 1) { await disp(V.M, V.N, V.O, V.P, V.Q, V.R, V.K); DRUGS.concat(['FREE SPACE']).forEach(function (n, i) { output(i + 1, 1, n); }); await pause(); return 'A'; }
+    if (m === 2) return buy();
+    if (m === 3) return sell();
+    if (m === 4) return jet();
+    if (m === 5) return shark();
+    return bank();
+  }
+  function which(F) { for (var i = 0; i < 6; i++) if (F === V[PRICE[i]]) return i; return -1; }
+  function whole(n) { return n === Math.floor(n); }
+  async function buy() {
+    for (;;) {
+      clr(); await disp('DAY NUMBER:', V.B);
+      var F = await input('WHAT TO BUY?', { drug: true }), d = which(F);
+      if (d < 0) { fx('nope'); continue; }
+      V.E = Math.floor(V.Z / F);
+      await disp('HOW MUCH?', 'YOU CAN AFFORD:', V.E, 'YOU CAN HOLD:', V.K);
+      var G = await input(null);
+      if (G > V.K || G < 0 || G > V.E || !whole(G)) { fx('nope'); continue; }
+      V.Z -= F * G; V[HOLD[d]] += G; free();
+      if (G) { fx('buy', F * G); stats.bought += F * G; paper(); }
+      return 'A';
+    }
+  }
+  async function sell() {
+    for (;;) {
+      clr(); await disp('DAY NUMBER:', V.B);
+      var F = await input('WHAT TO SELL?', { drug: true }), d = which(F);
+      if (d < 0) { fx('nope'); continue; }
+      V.E = V[HOLD[d]];
+      await disp('HOW MUCH?', 'YOU HAVE:', V.E);
+      var G = await input(null);
+      if (G > V.E || G < 0 || !whole(G)) { fx('nope'); continue; }
+      V[HOLD[d]] -= G; V.Z += F * G; free();
+      if (G) { fx('sell', F * G); stats.sold += F * G; paper(); }
+      return 'A';
+    }
+  }
+  async function jet() {
+    for (;;) {
+      var m = await menu('WHERE TO, DUDE?', PLACES.concat(['OOPS... STAY!']));
+      if (m === 6) return 'A';
+      if (m === 0 && loc === 0) { clr(); await disp("YOU'RE ALREADY", 'IN THE BRONX!'); await pause(); continue; }
+      loc = m;
+      // Lbl S: a day goes by on the subway; the loan shark's 10% and the bank's 6% come due
+      clr(); await disp('', '', '', '', '     SUBWAY'); fx('subway');
+      V.B++; V.Y = Math.floor(V.Y * 1.1); V.V = Math.floor(V.V * 1.06);
+      await sleep(1150);
+      if (V.B === 31) { stats.end = 'Made it to day 30'; return 'C'; }
+      return 'θ';
+    }
+  }
+  async function shark() {
+    if (loc !== 0) { clr(); await disp('THE LOAN SHARK', 'ONLY DEALS IN', 'THE BRONX.'); await pause(); return 'A'; }
+    for (;;) {
+      var m = await menu('LOAN SHARK...', ['REPAY', 'BORROW']), F;
+      if (m === 0) {
+        await disp("YOU'RE DEBT IS:", V.Y, 'YOUR WALLET=', V.Z, 'REPAY HOW MUCH?');
+        F = await input(null);
+        if (F > V.Z || F < 0 || F > V.Y || !whole(F)) { fx('nope'); continue; }
+        V.Y -= F; V.Z -= F; if (F) { fx('buy', F); if (!V.Y) { Kit.sfx('win'); Kit.callout('Debt paid off', '#7ef0b0'); } }
+        return 'A';
+      }
+      for (;;) {   // Lbl Q
+        clr(); await disp('YOUR DEBT=', V.Y, 'YOUR WALLET=', V.Z, 'BORROW HOW MUCH');
+        F = await input('MORE?');
+        if (F > 5000) { clr(); await disp("YOU THINK HE'S", 'CRAZY, MAN?!'); move('shake'); Kit.sfx('bad'); await pause(); continue; }
+        break;
+      }
+      if (F < 0 || !whole(F)) { fx('nope'); continue; }
+      V.Y += F; V.Z += F; if (F) fx('sell', F);
+      return 'A';
+    }
+  }
+  async function bank() {
+    if (loc !== 0) { clr(); await disp('THE BANK IS IN', 'THE BRONX.'); await pause(); return 'A'; }
+    for (;;) {
+      var m = await menu('      BANK      ', ['VIEW ACCOUNT', 'DEPOSIT', 'WITHDRAW', 'GOODBYE']), G;
+      if (m === 3) return 'A';
+      if (m === 0) { await disp('YOUR ACCOUNT=', V.V); await pause(); continue; }
+      for (;;) {
+        clr();
+        if (m === 1) { await disp('HOW MUCH TO', 'DEPOSIT?', 'YOU HAVE:', V.Z); G = await input(null); if (G > V.Z || G < 0 || !whole(G)) { fx('nope'); continue; } V.V += G; V.Z -= G; if (G) register(3); }
+        else { await disp('HOW MUCH TO', 'WITHDRAW?', 'ACCOUNT=', V.V); G = await input(null); if (G > V.V || G < 0 || !whole(G)) { fx('nope'); continue; } V.V -= G; V.Z += G; if (G) register(3); }
+        break;
+      }
+      paper();
+    }
+  }
+
+  // Lbl C: game over. Score out of 100: √(net worth ÷ 31.5), so $315,000 is a perfect 100
+  async function gameOver() {
+    lights(false); clearSave(); V.chase = 0; paper();
+    var net = V.V + V.Z - V.Y, sc = net < 0 ? 0 : Math.min(100, Math.sqrt(net / 31.5)); sc = round(sc);
+    clr(); await disp('   GAME OVER!');
+    await disp('YOUR SCORE (ON A', 'SCALE OF 1 TO', '100)=', sc, '');
+    var big = sc >= 50, pos = net > 0;
+    if (pos) { Kit.sfx(big ? 'win' : 'good'); Kit.haptic('success'); if (big) Kit.confetti({ count: 160, colors: ['#7ef0b0', '#b0bd9e', '#1f281a', '#ffd447', '#ffffff'] }); }
+    else if (!/train|Shot/.test(stats.end)) Kit.sfx('lose');
+    record(net, sc);
+    await pause();
+    if (pos) { var g = gen; ind = null; await new Promise(function (res) { ArcadeHi.check(BOARD, net, res, who ? { who: who } : null); }); live(g); }
+    var X = await input('PLAY AGAIN?', { yn: true });
+    if (X === 1) return 'G';
+    clr(); await disp('   THANKS FOR', '    PLAYING!'); await pause();
+    clr(); await disp('', '', 'REMEMBER:', '', 'WATCH YOUR BACK.'); await pause();
+    await disp('', 'HAVE A NICE DAY!');
+    return 'END';
+  }
+  function record(net, sc) {
+    var hl = [];
+    hl.push((stats.end || 'Game over on day ' + V.B) + ', worth ' + money(net));
+    if (V.Y > 0) hl.push('Still owed the loan shark ' + money(V.Y)); else hl.push('Paid off the loan shark');
+    if (stats.killed) hl.push('Took down ' + stats.killed + (stats.killed === 1 ? ' cop' : ' cops'));
+    if (stats.escaped) hl.push('Lost the cops ' + stats.escaped + (stats.escaped === 1 ? ' time' : ' times'));
+    if (stats.mugged) hl.push('Mugged ' + stats.mugged + (stats.mugged === 1 ? ' time' : ' times'));
+    hl.push('Bought ' + money(stats.bought) + ', sold ' + money(stats.sold));
+    Kit.record(HKEY, {
+      started: started, mode: 'TI-82', players: [{ name: who || 'You', score: Math.max(0, net) }], winner: net > 0 ? (who || 'You') : null,
+      summary: 'Score ' + sc + ' of 100 · ' + money(net), badge: money(net), highlights: hl,
+      meta: { score: sc, net: net, cash: V.Z, bank: V.V, debt: V.Y, day: Math.min(30, V.B), end: stats.end }
+    });
+  }
+  function money(n) { return (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-US'); }
+
+  // ── Running the program ───────────────────────────────────────────────────────────────────────
+  // The home screen first: prgmDRUGWAR is typed in and waiting for ENTER (and again after it ends or breaks)
+  function home(done) {
+    gen++; wait = null; alpha = mode2 = false; lights(false);
+    clr(); ind = null;
+    if (done) { putLine('Done', true); }
+    putLine('prgmDRUGWAR'); cur = { r: row - 1, c: 11, g: '█' }; blink = true; kick();
+    hint(['enter']);
+    var g = gen;
+    waitFor({ type: 'home' }).then(function () { if (g !== gen) return; cur = null; run(); }, function () {});
+  }
+  function run(fresh) {
+    gen++; var g = gen;
+    wait = null; cur = null; ind = 'run'; clr(); kick();
+    var s = fresh ? null : load(), start = 'G';
+    if (s) { V = s.V; loc = s.loc || 0; stats = s.stats; started = s.started || Date.now(); notes = s.notes || []; if (s.who && !who) who = s.who; start = V.chase ? 'chase' : 'A'; paper(); }
+    (async function () {
+      var L = start;
+      for (;;) {
+        if (g !== gen) return;
+        if (L === 'G') L = await lblG();
+        else if (L === 'θ') L = await newDay();
+        else if (L === 'A') L = await mainMenu();
+        else if (L === 'chase') L = await chase(false);
+        else if (L === 'C') L = await gameOver();
+        else break;
+      }
+      if (g === gen) home(true);
+    })().catch(function (e) { if (e !== ABORT) { console.error(e); if (g === gen) home(false); } });
+  }
+  // ON: ERR:BREAK, as the calculator does when you stop a program
+  function brk() {
+    if (wait && wait.type === 'home') return;
+    gen++; wait = null; cur = null; ind = null; lights(false); alpha = mode2 = false;
+    var g = gen;
+    menu('ERR:BREAK', ['Goto', 'Quit']).then(function (i) { if (g !== gen) return; if (i === 0) run(); else home(false); }, function () {});
+  }
+  function newGame() {
+    var go = function () { clearSave(); notes = []; run(true); };
+    if (load()) Kit.confirm('Start a new game? This one ends here.', { ok: 'New game', danger: true }).then(function (y) { if (y) go(); });
+    else go();
+  }
+
+  // ═══ Scratch paper: what you'd have written down in class ═════════════════════════════════════
+  var notesEl = document.getElementById('notes');
+  function logDay() {
+    if (!V.B || V.B > 30) return;
+    if (notes[0] && notes[0].d === V.B) { if (todayEv && !notes[0].e) notes[0].e = todayEv; return; }
+    notes.unshift({ d: V.B, l: loc, p: PRICE.map(function (k) { return V[k]; }), e: todayEv, n: 1 });
+    if (notes.length > 30) notes.length = 30;
+  }
+  function k(n) { return n >= 10000 ? (Math.round(n / 100) / 10) + 'k' : n >= 1000 ? (Math.round(n / 10) / 100) + 'k' : String(n); }
+  var MID_P = [22000, 8500, 2700, 525, 145, 30];
+  function paper() {
+    if (!V || !V.B) { notesEl.innerHTML = ''; return; }
+    var day = Math.min(30, V.B), h = '<h3>Day ' + day + ' of 30 · ' + PLACE_NAME[loc] + '</h3>';
+    h += '<div class="st"><span>Cash <b>' + money(V.Z) + '</b></span><span>Bank <b>' + money(V.V) + '</b></span><span class="owe">Owe ' + money(V.Y) + '</span></div>';
+    var held = DRUGS.map(function (d, i) { return V[HOLD[i]] ? V[HOLD[i]] + ' ' + d.toLowerCase().replace('heroine', 'heroin') : null; }).filter(Boolean);
+    h += '<div class="st"><span>Coat ' + (held.length ? held.join(', ') : 'empty') + ' · ' + V.K + ' free</span>' + (V.I ? '<span>' + V.I + (V.I === 1 ? ' gun' : ' guns') + '</span>' : '') + (V.J ? '<span class="owe">hurt ' + V.J + '/50</span>' : '') + '</div>';
+    h += '<table><tr><th></th><th>C</th><th>H</th><th>A</th><th>W</th><th>S</th><th>L</th></tr>';
+    notes.slice(0, 12).forEach(function (n, j) {
+      h += '<tr' + (j === 0 && n.n ? ' class="new"' : '') + '><td>' + n.d + ' ' + PLACE_NAME[n.l].split(' ')[0] + '</td>' + n.p.map(function (p, i) { return '<td class="' + (p > MID_P[i] * 1.6 ? 'hi' : p < MID_P[i] * 0.55 ? 'lo' : '') + '">' + k(p) + '</td>'; }).join('') + '</tr>';
+      if (n.e) h += '<tr><td colspan="7" class="ev">' + Kit.esc(n.e) + '</td></tr>';
+      n.n = 0;
+    });
+    notesEl.innerHTML = h + '</table>';
+  }
+
+  // ═══ Fit the calculator to the screen ═════════════════════════════════════════════════════════
+  var stage = document.getElementById('stage'), hold = document.getElementById('hold'), calc = document.getElementById('calc');
+  function fit() {
+    var W = stage.clientWidth - 24, H = stage.clientHeight - 20;
+    var s = Math.min(H / 800, W / 360, 1.3);
+    var wide = W - 360 * s >= 300;
+    stage.classList.toggle('dw-wide', wide);
+    if (wide) s = Math.min(s, (W - 300) / 360);
+    calc.style.transform = 'scale(' + s + ')';
+    hold.style.width = (360 * s) + 'px'; hold.style.height = (800 * s) + 'px';
+  }
+  window.addEventListener('resize', fit); fit(); setTimeout(fit, 300);
+
+  Kit.init({
+    id: 'drugwars', title: 'Drug Wars', color: '#8fc597', orient: 'portrait',
+    menu: [
+      { icon: 'play', label: 'New game', onClick: newGame },
+      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(BOARD); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Drug Wars: past games' }); } },
+      { icon: 'hotdogstand', label: 'Back to Hot Dog Stand', onClick: function () { location.href = 'hotdogstand.html'; } }
+    ],
+    rules:
+      '<p class="goal">The classic TI-82 game. You owe a loan shark $5,000 and have $2,000 in your pocket. You have 30 days to pay him off and get as rich as you can.</p>' +
+      '<h3>Playing the calculator</h3><ul><li>Pick from a menu with its number key, the arrows and ENTER, or tap the line on the screen.</li>' +
+      '<li>To buy or sell, type the drug’s first letter. The screen switches to letters for you and the letters you can use light up: <b>C</b> cocaine, <b>H</b> heroin, <b>A</b> acid, <b>W</b> weed, <b>S</b> speed, <b>L</b> ludes. Then type how many and press ENTER.</li>' +
+      '<li>Answer questions with 1 for yes and 2 for no. ENTER goes on from a message.</li><li>ON stops the program, as on the real calculator. 2nd and the up or down arrow change the screen contrast.</li></ul>' +
+      '<h3>The street</h3><ul><li>Every subway ride takes a day. The six places are the Bronx, the Ghetto, Central Park, Manhattan, Coney Island and Brooklyn.</li>' +
+      '<li>Normal prices: cocaine 16,000–28,000, heroin 5,000–12,000, acid 1,000–4,400, weed 330–750, speed 70–220, ludes 10–50. Busts and floods send prices far above or below that.</li>' +
+      '<li>Your trench coat holds 100. You may be offered a bigger coat (+10 for $200) or a gun ($400, takes 5 spaces).</li>' +
+      '<li>The loan shark and the bank are only in the Bronx. The debt grows 10% a day; the bank pays 6% a day. You can borrow up to $5,000 at a time.</li>' +
+      '<li>Carry 50 or more and Officer Hardass may come after you. Run (half the time you get away) or fight if you have a gun. Each hit is 3 damage; 50 and you’re dead. Watch out for muggers, and don’t smoke what you find.</li></ul>' +
+      '<h3>Score</h3><p>At the end, your cash plus bank minus debt is scored out of 100 (the square root of your worth ÷ 31.5, so $315,000 is a perfect 100). Your worth goes on the high score board.</p>' +
+      '<p>Ported from J.M.’s Drugwar Simulation for the TI-82, based on John E. Dell’s original game for the IBM PC.</p>'
+  });
+
+  var forceD = null;
+  window.__dw = { force: function (d) { forceD = d; }, V: function () { return V; }, press: press, state: function () { return { wait: wait && wait.type, ch: ch.join(''), loc: loc }; }, run: run, set: function (k, v) { V[k] = v; } };
+
+  // Boot: the calculator's on, the program name typed in, waiting for ENTER
+  home(false);
+  if (load()) { paper(); }
+})();
+</script>
+</body>
+</html>

@@ -18,6 +18,31 @@ body{overflow-x:hidden;}
 .hd-main{display:flex;flex-direction:column;gap:10px;}
 .hd-panel{display:flex;flex-direction:column;gap:10px;min-width:0;}
 
+/* ── The secret: tap the hot dog on the setup screen (see showSetup) ─────── */
+.k-hero-ic{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.k-hero-ic.wob .gicon{animation:wob .45s var(--spring);}
+@keyframes wob{25%{transform:rotate(calc(var(--wob,8deg) * -1)) scale(var(--wsc,1.04));}60%{transform:rotate(var(--wob,8deg));}100%{transform:none;}}
+.k-hero-ic.spin .gicon{animation:spinIt 1.1s cubic-bezier(.3,1.3,.5,1);}
+@keyframes spinIt{0%{transform:none;}40%{transform:rotateY(540deg) scale(1.35);filter:grayscale(1) contrast(1.4);}100%{transform:rotateY(720deg);}}
+/* unlocked: a switch dressed as a TI-82, its little LCD reading DRUGWAR */
+.dw-sec{display:flex;flex-direction:column;gap:6px;}
+.dw-row{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px 10px 10px;border:0;border-radius:14px 14px 20px 20px;cursor:pointer;text-align:left;font:inherit;color:#eef0f3;
+  background:linear-gradient(180deg,#45484f,#2a2c31);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 6px 14px rgba(0,0,0,.35);}
+.dw-row .lcd{flex:none;width:92px;height:40px;border-radius:5px;padding:5px;background:#17181c;box-shadow:inset 0 2px 4px rgba(0,0,0,.7);}
+.dw-row canvas{display:block;width:100%;height:100%;border-radius:2px;image-rendering:pixelated;background:#b0bd9e;transition:filter .3s;}
+.dw-row[aria-checked="false"] canvas{filter:brightness(.55) saturate(.4);}
+.dw-row .grow{flex:1;min-width:0;}
+.dw-row .grow b{display:block;font:900 1.02rem/1.15 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.02em;}
+.dw-row .grow small{display:block;color:rgba(255,255,255,.66);font-size:.8rem;font-weight:700;margin-top:2px;}
+.dw-row .sw{flex:none;position:relative;width:48px;height:28px;border-radius:14px;background:rgba(255,255,255,.2);transition:background .2s;}
+.dw-row .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s var(--spring);}
+.dw-row[aria-checked="true"] .sw{background:#8fc597;}
+.dw-row[aria-checked="true"] .sw::after{transform:translateX(20px);}
+.dw-row.arrive{animation:dwArrive .7s var(--spring) both;}
+@keyframes dwArrive{0%{transform:translateY(16px) scale(.92);opacity:0;}60%{box-shadow:0 0 0 6px rgba(143,197,151,.4);}100%{transform:none;opacity:1;}}
+.dw-hide{align-self:flex-start;border:0;background:none;color:var(--text-3);font-weight:800;font-size:.8rem;padding:4px 2px;cursor:pointer;text-decoration:underline;}
+.setup.dw-on .modes{opacity:.35;pointer-events:none;filter:grayscale(1);transition:opacity .3s,filter .3s;}
+
 /* ── Season strip: game n of N, cash toward the goal ─────────────────────── */
 .hd-strip{display:flex;align-items:center;gap:10px;padding:2px 2px 0;}
 .hd-strip .gn{font:400 1rem/1 var(--display);color:var(--text-2);white-space:nowrap;}
@@ -871,15 +896,70 @@ body{overflow-x:hidden;}
   });
 
   // ── Setup ─────────────────────────────────────────────────────────────────
+  // The secret (same as Apples to Apples): tap the hot dog 12 times in a row and it turns into Drug Wars, the
+  // TI-82 game (games/drugwars.html). Unlocked, a switch shows here; it starts off every time.
+  var DWK = 'hotdogstand_dw';
+  function dwUnlocked() { try { return localStorage.getItem(DWK) === '1'; } catch (e) { return false; } }
   function showSetup() {
     stopDay(); app.className = 'hd'; app.innerHTML = '';
-    Kit.setup(app, {
+    var dwOn = false;
+    var st = Kit.setup(app, {
       intro: 'Run the stand outside the stadium for a season',
       modes: Object.keys(MODES).map(function (k) { var m = MODES[k]; return { id: k, icon: k === 'rookie' ? 'star' : k === 'pro' ? 'flag' : 'flame', title: m.name, desc: m.desc }; }),
       mode: 'rookie', start: 'Open for the season',
       players: { min: 1, max: 1, count: 1, label: 'Owner' },
-      onStart: function (cfg) { newSeason(cfg.mode); }
+      onStart: function (cfg) {
+        if (dwOn) { var nm = cfg.players[0] && cfg.players[0].name; location.href = 'drugwars.html' + (nm && nm !== 'You' ? '?p=' + encodeURIComponent(nm) : ''); return; }
+        newSeason(cfg.mode);
+      }
     });
+    if (!st || !st.el || /[?&]defaults=1/.test(location.search)) return;
+    var box = el('div', { class: 'dw-sec' }), startBtn = st.el.querySelector('.k-start');
+    st.el.insertBefore(box, startBtn);
+    function paint() {
+      box.innerHTML = '';
+      st.el.classList.toggle('dw-on', dwOn);
+      if (startBtn) startBtn.textContent = dwOn ? 'Turn on the TI-82' : 'Open for the season';
+      if (!dwUnlocked()) return;
+      var cv = el('canvas', { width: 46, height: 14 });
+      var row = el('button', { type: 'button', class: 'dw-row', role: 'switch', 'aria-checked': String(dwOn), onclick: function () {
+        dwOn = !dwOn; Kit.sfx(dwOn ? 'pop' : 'tap'); Kit.haptic('light'); paint();
+      } }, [el('span', { class: 'lcd' }, [cv]), el('span', { class: 'grow' }, [el('b', { text: 'Drug Wars' }), el('small', { text: dwOn ? 'On: the TI-82 game from math class' : 'Off: running the hot dog stand' })]), el('span', { class: 'sw' })]);
+      lcdWord(cv, 'DRUGWAR');
+      box.appendChild(row);
+      box.appendChild(el('button', { type: 'button', class: 'dw-hide', text: 'Hide Drug Wars on this device', onclick: function () { try { localStorage.removeItem(DWK); } catch (e) {} dwOn = false; Kit.toast('Hidden'); paint(); } }));
+    }
+    paint();
+    // the hot dog in the header: 12 taps in a row (each within 1.2 s). The first 5 do nothing you can see; from the
+    // 6th it starts to shake, harder each tap, and the 12th unlocks Drug Wars
+    var ic = st.el.querySelector('.k-hero-ic'), taps = 0, lastTap = 0, QUIET = 5, NEED = 12;
+    if (ic) ic.addEventListener('click', function () {
+      var now = Date.now(); taps = now - lastTap < 1200 ? taps + 1 : 1; lastTap = now;
+      if (taps <= QUIET) return;
+      var k = taps - QUIET;
+      ic.style.setProperty('--wob', (6 + k * 3) + 'deg'); ic.style.setProperty('--wsc', String(1 + k * 0.03));
+      ic.classList.remove('wob', 'spin'); void ic.offsetWidth; ic.classList.add('wob');
+      Kit.sfx(taps >= NEED ? 'sparkle' : k >= 4 ? 'pop' : 'tap', 0.4 + k * 0.08); Kit.haptic(k >= 4 ? 'light' : 'tick');
+      if (taps < NEED) return;
+      taps = 0;
+      if (dwUnlocked()) { var r0 = box.querySelector('.dw-row'); if (r0) { r0.scrollIntoView({ behavior: 'smooth', block: 'center' }); r0.classList.remove('arrive'); void r0.offsetWidth; r0.classList.add('arrive'); } return; }
+      try { localStorage.setItem(DWK, '1'); } catch (e) {}
+      ic.classList.remove('wob'); void ic.offsetWidth; ic.classList.add('spin');
+      Kit.haptic('success'); Kit.sfx('win');
+      Kit.confetti({ count: 150, colors: ['#b0bd9e', '#1f281a', '#45484f', '#8fc597', '#6fb6e8'] });
+      setTimeout(function () { Kit.callout('Drug Wars unlocked', '#b9dfbd'); }, 450);
+      setTimeout(function () {
+        paint();
+        var row = box.querySelector('.dw-row'); if (row) { row.classList.add('arrive'); row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }, 900);
+    });
+  }
+  // a word in the TI-82's pixel font on a little LCD (6 × 8 cells, 5 × 7 letters)
+  var DW_GLY = { D: '1c12111111121c', R: '1e11111e141211', U: '1111111111110e', G: '0e11101711110f', W: '1111111515150a', A: '0e11111f111111' };
+  function lcdWord(cv, w) {
+    var c = cv.getContext('2d'); c.fillStyle = '#b0bd9e'; c.fillRect(0, 0, cv.width, cv.height); c.fillStyle = '#1f281a';
+    var x0 = Math.floor((cv.width - w.length * 6 + 1) / 2), y0 = Math.floor((cv.height - 7) / 2);
+    w.split('').forEach(function (ch, i) { var h = DW_GLY[ch]; for (var y = 0; y < 7; y++) { var b = parseInt(h.substr(y * 2, 2), 16); for (var x = 0; x < 5; x++) if ((b >> (4 - x)) & 1) c.fillRect(x0 + i * 6 + x, y0 + y, 1, 1); } });
   }
   function newSeason(mode) {
     var seed = Math.floor(Math.random() * 2e9);
