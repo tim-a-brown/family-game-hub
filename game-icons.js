@@ -282,6 +282,11 @@ var GameIcon = (function () {
 
     // Arcade (screen base; bright marks)
     tetris: function () { var q = function (x, y, c) { return rect(x, y, 4.6, 4.6, 1, c); }; return q(4, 2, P) + q(9, 2, P) + q(14, 2, P) + q(9, 7, P) + q(4, 13, O) + q(4, 18, O) + q(9, 18, O) + q(14, 13, Y) + q(19, 13, Y) + q(14, 18, Y) + q(19, 18, Y); },
+    tetrinet: function () {   // a stack with a special block (its letter) and a second field beside it
+      var q = function (x, y, c) { return rect(x, y, 4.6, 4.6, 1, c); };
+      return q(2, 18, O) + q(7, 18, P) + q(2, 13, B) + q(12, 18, Y) + rect(7, 13, 4.6, 4.6, 1, G) + txt('N', 4.4, W, 15.4, 9.3) +
+        rect(17, 7, 5, 16, 1.2, W, ' opacity=".18"') + q(17.2, 18.2, R) + q(17.2, 13.4, P) + q(9, 3, Y) + q(9, 7.8, Y) + q(4.2, 7.8, Y);
+    },
     snake: function () { return rect(2, 15, 4, 4, 1, '#3ddc84') + rect(6, 15, 4, 4, 1, '#3ddc84') + rect(10, 15, 4, 4, 1, '#3ddc84') + rect(10, 11, 4, 4, 1, '#3ddc84') + rect(10, 7, 4, 4, 1, '#3ddc84') + rect(14, 7, 4, 4, 1, '#7dffb3') + circ(19.5, 17, 2.4, R); },
     donkeykong: function () {   // a barrel rolling down a red sloped girder, with a ladder beside it
       var g = '#e5263f', h = '#7a1424';

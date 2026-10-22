@@ -144,7 +144,14 @@ var GAMES = [
   { id: 'paigow',      name: 'Pai Gow',      color: '#9f1239', cat: 'casino', min: 1, max: 1, tag: 'Set a high hand and a low hand', play: 'paigow' },
 
   // ── Arcade ───────────────────────────────────────────────────────────────
-  { id: 'tetris',      name: 'Tetris',       color: '#8b5cf6', cat: 'arcade', min: 1, max: 1, tag: 'Stack and clear lines', play: 'tetris' },
+  { id: 'tetris',      name: 'Tetris',       color: '#8b5cf6', cat: 'arcade', min: 1, max: 6, tag: 'Stack and clear lines, solo or TetriNET with up to 6', play: 'tetris',
+    launch: [
+      { icon: 'gamepad', title: 'Play Tetris', desc: 'Just you: clear lines and climb the levels', file: 'tetris.html' },
+      { icon: 'bot', title: 'TetriNET vs computer', desc: 'Up to 6 fields at once, with specials to fire at the others', file: 'tetrinet.html' },
+      { icon: 'users', title: 'TetriNET online', desc: '2 to 6 players, each on their own device', file: 'tetrinet.html?online=1' }
+    ] },
+  // TetriNET lives under Tetris (its launch options), so it has no tile of its own
+  { id: 'tetrinet',    name: 'TetriNET',     color: '#8b5cf6', cat: 'arcade', min: 1, max: 6, tag: 'Multiplayer Tetris with specials, online or vs computer', play: 'tetrinet', hidden: true },
   { id: 'snake',       name: 'Snake',        color: '#22c55e', cat: 'arcade', min: 1, max: 1, tag: "Eat, grow, don't crash", play: 'snake' },
   { id: 'pacman',      name: 'Pac-Man',      color: '#facc15', cat: 'arcade', min: 1, max: 1, tag: 'Eat the dots, dodge the ghosts', play: 'pacman' },
   { id: 'donkeykong',  name: 'Donkey Kong',  color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Climb the girders, jump the barrels, rescue Pauline', play: 'donkeykong' },
