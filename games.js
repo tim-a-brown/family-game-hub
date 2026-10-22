@@ -147,8 +147,7 @@ var GAMES = [
   { id: 'tetris',      name: 'Tetris',       color: '#8b5cf6', cat: 'arcade', min: 1, max: 6, tag: 'Stack and clear lines, solo or TetriNET with up to 6', play: 'tetris',
     launch: [
       { icon: 'gamepad', title: 'Play Tetris', desc: 'Just you: clear lines and climb the levels', file: 'tetris.html' },
-      { icon: 'bot', title: 'TetriNET vs computer', desc: 'Up to 6 fields at once, with specials to fire at the others', file: 'tetrinet.html' },
-      { icon: 'users', title: 'TetriNET online', desc: '2 to 6 players, each on their own device', file: 'tetrinet.html?online=1' }
+      { icon: 'users', title: 'TetriNET', desc: 'Up to 6 fields at once with specials to fire: against the computer or online', file: 'tetrinet.html' }
     ] },
   // TetriNET lives under Tetris (its launch options), so it has no tile of its own
   { id: 'tetrinet',    name: 'TetriNET',     color: '#8b5cf6', cat: 'arcade', min: 1, max: 6, tag: 'Multiplayer Tetris with specials, online or vs computer', play: 'tetrinet', hidden: true },
