@@ -756,6 +756,22 @@
       });
     }).catch(function () { return null; });
   }
+  // The app's icon carries the count of games waiting on your move (an installed app; iPhone and iPad show it only
+  // once notifications are allowed, asked the first time you tap through to an online game)
+  function turnBadge(list) {
+    if (!list) return;
+    var n = list.filter(function (x) { return x.mine; }).length;
+    try { if (navigator.setAppBadge) { if (n) navigator.setAppBadge(n).catch(function () {}); else navigator.clearAppBadge().catch(function () {}); } } catch (e) {}
+  }
+  function badgeAsk() {
+    var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    if (!standalone || !window.Notification || Notification.permission !== 'default' || lsGet('badge_asked_dev', '')) return Promise.resolve();
+    try { LS.setItem('badge_asked_dev', '1'); } catch (e) {}
+    var asked;
+    try { asked = Notification.requestPermission(); } catch (e) { return Promise.resolve(); }
+    // (the answer, or on after a few seconds either way)
+    return Promise.race([Promise.resolve(asked).catch(function () {}), new Promise(function (ok) { setTimeout(ok, 8000); })]);
+  }
   // the moves already told about (on this device): a table's turn is news once
   function turnsSeen() { try { return JSON.parse(lsGet('turns_seen_dev', '{}')) || {}; } catch (e) { return {}; } }
   function turnsMark(list) {
@@ -767,17 +783,16 @@
   // On a game page: check now and then while the page is up; a table that came back to you drops the banner
   var TW = { t: 0, at: 0, el: null, hide: 0 };
   function turnWatch() {
-    if (TW.on || !game) return; TW.on = 1;
+    if (TW.on || !game || !/\/games\//.test(location.pathname)) return; TW.on = 1;
     function check() {
       if (doc.visibilityState !== 'visible' || Date.now() - TW.at < 45000) return;
       TW.at = Date.now();
       netTurns().then(function (list) {
         if (!list) return;
-        // (never the table you're at: TurnNet games know their table; Chess and Lorcana keep their own, so any of theirs)
-        var seen = turnsSeen(), tn = window.TurnNet && TurnNet._t;
-        function here(x) { return x.id === game.id && (tn ? tn.code === x.code : true); }
-        var fresh = list.filter(function (x) { return x.mine && x.at && seen[x.id + ':' + x.code] !== x.at && !here(x); });
-        turnsMark(list);
+        // (never for the game you're in: you'd see the move right there)
+        var seen = turnsSeen();
+        var fresh = list.filter(function (x) { return x.mine && x.at && seen[x.id + ':' + x.code] !== x.at && x.id !== game.id; });
+        turnsMark(list); turnBadge(list);
         if (fresh.length) turnBanner(fresh[0], fresh.length - 1);
       });
     }
@@ -823,13 +838,13 @@
     });
     b.addEventListener('click', function (e) {
       if (moved) return;
-      if (e.target.closest && e.target.closest('.go')) { haptic('light'); sfx('pop'); close(); setTimeout(function () { location.href = href; }, 120); }
+      if (e.target.closest && e.target.closest('.go')) { haptic('light'); sfx('pop'); close(); badgeAsk().then(function () { location.href = href; }); }
       else { sfx('tap', 0.5); close(); }
     });
     doc.body.appendChild(b); TW.el = b;
     requestAnimationFrame(function () { requestAnimationFrame(function () { b.classList.add('show'); }); });
     sfx('pop'); haptic('medium');
-    TW.hide = setTimeout(close, 9000);
+    TW.hide = setTimeout(close, 4000);   // (about as long as a phone's own banner stays up)
   }
 
   // ── Favorites (same storage the home screen and sync use) ─────────────────
@@ -3661,7 +3676,7 @@
   handoff.close = function () { var c = doc.querySelector('.k-ho'); if (c) c.remove(); };
 
   window.Kit = {
-    netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner,
+    netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk,
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },

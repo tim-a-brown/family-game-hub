@@ -1224,7 +1224,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // An online game: a bar. Your move: the game's colour, a Your turn tag and a play button; theirs: quiet
   function netBar(x) {
     var mine = x.n.mine;
-    return el('a', { class: 'nbar ' + (mine ? 'turn' : 'wait'), href: x.n.href, style: { '--c': x.g.color }, title: x.g.name + (mine ? ': your turn' : ': ' + x.n.vs + '’s turn') }, [
+    // (the first tap through to an online game asks to allow notifications, which the icon's count needs on iPhone)
+    return el('a', { class: 'nbar ' + (mine ? 'turn' : 'wait'), href: x.n.href, onclick: function (e) { var h = x.n.href; e.preventDefault(); Kit.badgeAsk().then(function () { location.href = h; }); }, style: { '--c': x.g.color }, title: x.g.name + (mine ? ': your turn' : ': ' + x.n.vs + '’s turn') }, [
       el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
       el('span', { class: 'tx' }, [el('b', { text: x.g.name }), el('small', { text: mine ? 'vs ' + x.n.vs + ' · ' + ago(x.n.at) : x.n.vs + '’s turn · ' + ago(x.n.at) })]),
       mine ? el('span', { class: 'yt', html: '<i></i><span>Your turn</span>' }) : el('span', { class: 'a', text: ago(x.n.at, true) }),
@@ -1258,10 +1259,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   setInterval(function () { if (document.visibilityState === 'visible') loadNetTurns(); }, 61000);   // (home left open: a move the other player made shows up within a minute)
   var wasMine = null;
   // the app's icon carries the count of games waiting on your move (where the device allows a badge)
-  function turnBadge() {
-    var n = netTurns.filter(function (x) { return x.mine; }).length;
-    try { if (navigator.setAppBadge) { if (n) navigator.setAppBadge(n).catch(function () {}); else navigator.clearAppBadge().catch(function () {}); } } catch (e) {}
-  }
+  function turnBadge() { Kit.turnBadge(netTurns); }
 
   // ── Open tables: linked friends with a table you can join ───────────────────
   // Every online game marks its tables with a one-way tag of the host's link code (never the code itself). The tags
