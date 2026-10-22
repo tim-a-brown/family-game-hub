@@ -212,8 +212,28 @@
     var d = e.dt; if (!d || !d.st) return null;
     var P = names(e), out = [], lastSt = d.st[d.st.length - 1] || '';
     var lastPts = e.rounds && e.rounds.scores ? e.rounds.scores[e.rounds.scores.length - 1] || [] : [];
-    var STN = { b: 'Bust', '7': 'Flip 7!', f: 'Frozen', s: 'Stayed' };
-    if (d.fin && d.fin.length) {
+    var STN = { b: 'Bust', '7': 'Flip 7!', f: 'Frozen', s: 'Stayed' }, ck = HistView.ck, sc = ck ? ck.scoresOf(e) : [], tot = ck ? ck.cum(sc, P.length) : [];
+    var tb = function (a) { return (a || []).reduce(function (x, y) { return x + (y || 0); }, 0); }, big = null;
+    sc.forEach(function (r, ri) { r.forEach(function (v, p) { if (!big || v > big.v) big = { v: v, p: p, r: ri + 1 }; }); });
+    out.push(ui.stats([['Rounds', d.st.length, d.target ? 'played to ' + d.target : ''], big && big.v ? ['Best round', big.v, P[big.p] + ', round ' + big.r] : null,
+      ['Busts', tb(d.bust)], tb(d.f7) ? ['Flip 7s', tb(d.f7), '+15 each'] : null].filter(Boolean).slice(0, 3)));
+    var rr = d.rr || [], off = d.st.length - rr.length;
+    if (ck && rr.length) {
+      // every round (the last 16 at most): each player's cards, how the round ended for them, points and total
+      var panel = el('div', { class: 'hv' });
+      var show = function (k) {
+        var i = off + k, st = d.st[i] || '', pts = sc[i] || [], kids = [];
+        var f7 = P.filter(function (x, p) { return st.charAt(p) === '7'; });
+        kids.push(ck.head('<b>Round ' + (i + 1) + '</b>', f7.length ? f7.join(' & ') + ' flipped 7' : null, 'big'));
+        P.forEach(function (x, p) {
+          var c = st.charAt(p);
+          kids.push(el('div', { class: 'sx-prow' }, [el('div', { class: 'hd' }, [el('span', { text: x }), el('small', { text: STN[c] || '' }), el('b', { text: (c === 'b' ? '0' : pts[p] != null ? '+' + pts[p] : '') + (tot[i] ? ' · ' + tot[i][p] : '') })]), f7row((rr[k].c || [])[p])]));
+        });
+        panel.innerHTML = ''; panel.appendChild(ck.felt(['#1f7a4a', '#145a35', '#0e4a2b'], kids));
+      };
+      var items = rr.map(function (r, k) { var i = off + k, pts = sc[i] || [], b = -1; pts.forEach(function (v, p) { if (b < 0 || v > pts[b]) b = p; }); return { t: String(i + 1), c: b >= 0 ? ui.color(b) : null, ring: /7/.test(d.st[i] || ''), title: 'Round ' + (i + 1) }; });
+      out.push(ui.section('Every round · tap one', [ck.road(items, rr.length - 1, show), panel, ck.key(P.map(function (x, p) { return ['Best round: ' + short(x, 8), ui.color(p)]; }).concat([['Flip 7', 'ring']])), legend([['#e5263f', 'Red cross: the duplicate that busted']])], { icon: 'cards' }));
+    } else if (d.fin && d.fin.length) {
       var felt = el('div', { class: 'sx-felt' });
       P.forEach(function (x, i) {
         var st = lastSt.charAt(i);
@@ -242,6 +262,12 @@
     out.push(ui.section('Tally', ui.table(['', 'Busts', 'Flip 7', 'Froze', 'Saved'], P.map(function (x, i) {
       return [x, (d.bust || [])[i] || 0, (d.f7 || [])[i] || 0, (d.frz || [])[i] || 0, (d.sv || [])[i] || 0];
     }))));
+    if (ck && tot.length) {
+      var last = tot[tot.length - 1], hi = Math.max.apply(null, last), w = last.indexOf(hi), lr = sc[sc.length - 1] || [];
+      var why = P[w] + ' passed ' + (d.target || 200) + ' in round ' + d.st.length + (lr[w] ? ' with a ' + lr[w] + '-point round' : '') + ', finishing on ' + hi + '.';
+      var bw = (d.bust || [])[w] || 0; if (bw === 0) why += ' Never busted once.';
+      out.push(ck.foot(why, 'flag'));
+    }
     return ui.wrap(out);
   });
 
