@@ -382,7 +382,16 @@
     var fastest = allW.filter(function (x) { return x.s != null; }).sort(function (a, b) { return a.s - b.s; })[0];
     var solved = allW.length, timed = allW.filter(function (x) { return x.s != null; });
     var avg = timed.length ? Math.round(timed.reduce(function (s, x) { return s + x.s; }, 0) / timed.length) : null;
-    out.push(ui.stats([['Solved', solved], ['Average', avg != null ? avg + 's' : null], ['Fastest', fastest ? fastest.s + 's' : null, fastest ? up(fastest.w) : '']]));
+    var top = multi ? null : (P[0] || {}).score;
+    out.push(ui.stats([['Solved', solved], ['Average', avg != null ? avg + 's' : null], ['Fastest', fastest ? fastest.s + 's' : null, fastest ? up(fastest.w) : ''],
+      !multi && d.pb != null && top != null ? ['Points', top, top > d.pb ? 'new best (was ' + d.pb + ')' : 'best ' + d.pb] : null]));
+    // seconds on each word: gold for the fastest, grey for skipped
+    var Z = HistView._pz;
+    if (!multi && Z && d.t[0] && d.t[0].ws.some(function (x) { return x.s != null; })) {
+      var ws0 = d.t[0].ws;
+      out.push(ui.section('Time on each word', [Z.columns(ui, ws0.map(function (x) { var sk = x.fl.replace(/a=.*/, '').indexOf('k') >= 0; return { v: x.s || 0, top: x.s != null ? x.s + 's' : '', c: x === fastest ? '#facc15' : sk ? '#6b7280' : /[ch]/.test(x.fl.replace(/a=.*/, '')) ? '#b7a0ff' : '#7ee2a0' }; }), { aria: 'Seconds on each word', avg: true }),
+        ui.el('p', { class: 'muted', style: { margin: '0', 'font-size': '.78rem', 'font-weight': '700', 'text-align': 'center' }, text: 'Gold: fastest · Purple: used a clue or hint · Grey: skipped · Dashed: average' })], { icon: 'chart' }));
+    }
     d.t.forEach(function (T) {
       var box = ui.el('div', { class: 'hvw-sc' });
       T.ws.forEach(function (x) {

@@ -689,11 +689,12 @@
     return best;
   }
   // History: every turn's words as one string, 'WORD.MIX.points.seconds.flags' (flags: k skipped, c clue, h letter hints, a=ALT another word that fit)
-  function scrambleDetail() {
+  function scrambleDetail(pb) {
     function enc(w, mix) { return [w.w, mix ? w.mix : '', w.pts || 0, w.s == null ? '' : w.s, (w.skipped ? 'k' : '') + (w.clue ? 'c' : '') + (w.help ? 'h' : '') + (w.as ? 'a=' + w.as : '')].join('.'); }
     function build(mix) { return { tm: S.time, t: S.log.map(function (L) { return { p: L.p, r: L.r, sc: L.score, bs: L.best, w: L.words.map(function (w) { return enc(w, mix); }).join(' ') }; }) }; }
     var d = build(true);
     if (JSON.stringify(d).length > 5000) d = build(false);
+    if (pb != null) d.pb = pb;   // the best solo score before this one, same clock and level
     return d;
   }
   function finish() {
@@ -729,7 +730,7 @@
       summary: solo ? P[0].name + ' scored ' + top : undefined,
       highlights: hl.slice(0, 6),
       meta: { solo: solo, time: S.time, diff: S.diff, cat: S.cat, top: top },
-      detail: scrambleDetail()
+      detail: scrambleDetail(best)
     });
     clearSave();
     Kit.win({
@@ -754,7 +755,7 @@
     if (S.phase === 'play') { if (S.R) S.R.fresh = false; if (S.time) { paused = true; render(); } else { render(); } }
     else render();
   } else showSetup();
-  window.__sc = { state: function () { return S; } };
+  window.__sc = { state: function () { return S; }, start: start, solve: function () { solved(S.R.w); }, skip: function () { skip(); }, end: function () { endTurn(); } };
 })();
 </script>
 </body>
