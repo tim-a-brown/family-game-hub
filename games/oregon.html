@@ -134,6 +134,7 @@ html.k-kb .ot.typing .ot-scr{display:none;}
 .st-b{width:40px;height:38px;border:0;background:var(--e-blue);color:#fff;font:400 1.6rem/1 var(--vt);box-shadow:inset 0 0 0 2px var(--e-lblue);cursor:pointer;}
 .st-b:active{background:var(--e-lblue);}
 .st-b[disabled]{opacity:.3;}
+.st-b.full{opacity:.35;box-shadow:inset 0 0 0 2px var(--e-dgray);background:#1a1a3a;}
 .st-bill{display:flex;justify-content:space-between;gap:10px;font-size:1.5rem;margin-top:4px;}
 .st-bill b{color:var(--e-yel);font-weight:400;}
 .ot-quote{border-left:4px solid var(--e-brown);padding-left:8px;}
@@ -729,6 +730,23 @@ html.k-kb .ot.typing .ot-scr{display:none;}
     var ITEMS = ['oxen', 'food', 'clothes', 'bullets', 'wheels', 'axles', 'tongues'];
     function unitPrice(k) { var it = OT.STORE[k]; return it.price * mult / (k === 'oxen' && !matts ? 2 : 1); }
     function step(k) { return k === 'food' ? 50 : 1; }
+    // What the wagon can hold in all (what's already aboard counts): 9 yoke of oxen, 2,000 pounds of food, 99 sets of
+    // clothing, 99 boxes of bullets, 3 of each spare part. room(k) is how many more of the store's units fit.
+    var PARTS = { wheels: 'wheels', axles: 'axles', tongues: 'tongues' };
+    function room(k) {
+      if (k === 'oxen') return Math.floor((18 - S.oxen) / (matts ? 2 : 1));
+      if (k === 'food') return OT.FOOD_MAX - S.food;
+      if (k === 'clothes') return 99 - S.clothes;
+      if (k === 'bullets') return 99 - Math.ceil(S.bullets / 20);
+      return 3 - S[k];
+    }
+    function fullMsg(k) {
+      var had = k === 'oxen' ? S.oxen : k === 'food' ? S.food : k === 'clothes' ? S.clothes : k === 'bullets' ? Math.ceil(S.bullets / 20) : S[k];
+      var whole = k === 'oxen' ? 'Your wagon can only be pulled by 9 yoke of oxen (18 oxen)' : k === 'food' ? 'The wagon can only carry 2,000 pounds of food' :
+        k === 'clothes' ? 'The wagon can only carry 99 sets of clothing' : k === 'bullets' ? 'The wagon can only carry 99 boxes of bullets' :
+        'The wagon can only carry 3 spare wagon ' + PARTS[k];
+      return whole + (had > 0 && k !== 'food' && k !== 'oxen' ? '. You have ' + (k === 'bullets' ? had + ' already' : had + ' aboard') : '');
+    }
     function bill() { var b = 0; ITEMS.forEach(function (k) { b += cart[k] / step(k) * unitPrice(k) * step(k) * (k === 'food' ? 1 : 1); }); return Math.round(b * 100) / 100; }
     function have(k) { return k === 'oxen' ? S.oxen : k === 'bullets' ? S.bullets : S[k]; }
     var quoteEl, billEl, leftEl, haveEl, leaveB, qEls = {};
@@ -738,7 +756,7 @@ html.k-kb .ot.typing .ot-scr{display:none;}
       quoteEl.innerHTML = '<b>' + (matts ? 'Matt says' : 'The clerk says') + '</b>' + esc(matts ? said : focus === 'oxen' ? 'Oxen are ' + money(unitPrice('oxen')) + ' each out here.' : said);
       billEl.innerHTML = '<span>Bill</span><b>' + money(bill()) + '</b>';
       leftEl.innerHTML = '<span class="dim">Money left</span><span class="' + (leftCash < 0 ? 'red' : '') + '">' + money(leftCash) + '</span>';
-      ITEMS.forEach(function (k) { qEls[k].textContent = shown(k); });
+      ITEMS.forEach(function (k) { qEls[k].textContent = shown(k); var pl = qEls[k].nextSibling; if (pl) pl.classList.toggle('full', cart[k] + step(k) > room(k)); });
       var buying = bill() > 0;
       leaveB.innerHTML = ic(buying ? 'coins' : 'back') + '<span class="tx">' + (buying ? 'Pay ' + money(bill()) + ' and leave' : 'Leave the store') + '</span>';
     }
@@ -759,8 +777,7 @@ html.k-kb .ot.typing .ot-scr{display:none;}
           if (nv < 0) return false;
           if (d > 0) {
             if (bill() + s * unitPrice(k) > S.cash + 1e-6) { SND.nope(); Kit.haptic('error'); Kit.toast('Not enough money'); return false; }
-            if (k === 'food' && S.food + nv > OT.FOOD_MAX) { SND.nope(); Kit.toast('The wagon can only carry 2,000 pounds of food'); return false; }
-            if (nv > (k === 'food' ? OT.FOOD_MAX : matts ? it.max : 99)) { SND.nope(); return false; }
+            if (nv > room(k)) { SND.nope(); Kit.haptic('error'); Kit.toast(fullMsg(k)); return false; }
           }
           cart[k] = nv; focus = k; d > 0 ? SND.coin() : SND.tick(); Kit.haptic('tick');
           update(); q.classList.remove('bump'); void q.offsetWidth; q.classList.add('bump');
