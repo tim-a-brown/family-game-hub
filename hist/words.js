@@ -145,7 +145,7 @@
     ]);
     var revCells = m.join('').split('r').length - 1;
     var out = [ui.section(null, paper)];
-    out.push(ui.stats([['Time', d.gu ? 'Revealed' : ui.time(d.s)], ['Checks', d.ch || 0], ['Revealed', revCells ? revCells + (revCells === 1 ? ' square' : ' squares') : 0]]));
+    out.push(ui.stats([['Time', d.gu ? 'Revealed' : ui.time(d.s)], ['Checks', d.ch || 0], ['Squares revealed', revCells]]));
     // the clues, with the ones that needed revealing marked
     var A = d.a || [], D = d.d || [], ai = 0, di = 0;
     M.words.sort(function (x, y) { return (x.dir === y.dir ? 0 : x.dir === 'a' ? -1 : 1) || x.n - y.n; });
