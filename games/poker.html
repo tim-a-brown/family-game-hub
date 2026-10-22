@@ -1111,6 +1111,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Poker: past sessions' }); } },
       { icon: 'users', label: 'Who\'s at the table', onClick: function () { tableInfo(); } },
       { icon: 'sparkle', label: 'Best move', sub: 'A tip on what to do, on your turn', when: function () { return !!(S && S.kind === 'table' && !NET); }, toggle: function () { return !!(S && S.coach); }, onClick: function () { S.coach = !S.coach; if (S.circ && CZ) CZ.coach = S.coach; save(); renderTable(); } },
+      { icon: 'clock', label: function () { return 'Pace: ' + PACEN[pace()]; }, sub: 'How quickly the others play', when: function () { return !!(S && S.kind === 'table' && !NET); }, onClick: function () { paceNext(); } },
       { icon: 'chart', label: 'Win chances', sub: 'The bar under your hand', when: function () { return !!(S && S.kind === 'table'); }, toggle: function () { return railPref('eq'); }, onClick: function () { railFlip('eq'); } },
       { icon: 'history', label: 'Hand log', sub: 'Sideways: tap it for the whole table', when: function () { return !!(S && S.kind === 'table'); }, toggle: function () { return railPref('log'); }, onClick: function () { railFlip('log'); } },
       { icon: 'help', label: function () { return 'How ' + gv().name + ' works'; }, when: function () { return !!(S && S.kind === 'table' && LEARN[S.game] && VAR[S.game].home); }, onClick: function () { learnSheet(S.game); } },
@@ -2487,7 +2488,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (QUIET) return;   // (online: whoever's turn it is moves next, from their own device)
       var pa = H.actor === 0 && !S.players[0].cpu ? preAction() : null;
       save(); renderTable();
-      if (S.players[H.actor].cpu) later(cpuAct, thinkMs());
+      if (S.players[H.actor].cpu) later(cpuAct, beatMs());
       else if (pa) later(function () { humanAct(pa); }, 420);
       else if (R.turn !== H.no + ':' + H.street + ':' + H.curBet) { R.turn = H.no + ':' + H.street + ':' + H.curBet; if (!SIM) { Kit.sfx('pop', 0.5); Kit.haptic('light'); } }
     } else if (H.phase === 'collect') endStreet();
@@ -2512,7 +2513,30 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (P.k === 'ca') return P.any || H.curBet === P.bet ? (toCall ? { t: 'call' } : { t: 'check' }) : null;
     return null;
   }
-  function thinkMs() { var H = S.hand, watching = !H.inHand[0] || H.folded[0] || S.players[0].stack === 0; return (600 + Math.random() * 320) * (watching ? 0.55 : 1); }
+  // How long a computer player takes. A beat before anyone moves (longer when a new card has just landed, so you can
+  // read it), then a think sized to the decision: a fold or a check is quick, a call takes a look, a bet or a raise
+  // takes longer, going all in longest; a big price to pay adds time, and now and then someone really tanks. Each
+  // player's style shades it, it all runs quicker once you're out of the hand, and Pace (the game menu) scales it.
+  var PACEK = 'poker_pace', PACES = { relaxed: 1.4, normal: 1, quick: 0.55 }, PACEN = { relaxed: 'Relaxed', normal: 'Normal', quick: 'Quick' };
+  function pace() { var v = null; try { v = localStorage.getItem(PACEK); } catch (e) {} return PACES[v] ? v : 'normal'; }
+  function paceMul() { return PACES[pace()]; }
+  function paceNext() { var k = Object.keys(PACES), v = k[(k.indexOf(pace()) + 1) % k.length]; try { localStorage.setItem(PACEK, v); } catch (e) {} Kit.toast('Pace: ' + PACEN[v]); }
+  function watching() { var H = S.hand; return !H.inHand[0] || H.folded[0] || S.players[0].stack === 0; }
+  function beatMs() {
+    var H = S.hand, key = H.no + ':' + H.street, fresh = R.beat !== key; R.beat = key;
+    return (fresh && H.street > 0 ? 900 : 280) * (watching() ? 0.6 : 1) * paceMul();
+  }
+  function thinkMs(i, a) {
+    var H = S.hand, p = S.players[i], toCall = Math.max(0, H.curBet - H.bet[i]);
+    var allIn = a.t === 'raise' && a.to >= H.bet[i] + p.stack;
+    var t = a.t === 'fold' ? (toCall > S.bb ? 950 : 700) : a.t === 'check' ? 750 : a.t === 'call' ? 1350 : allIn ? 2400 : 1800;
+    if (a.t !== 'check' && a.t !== 'fold' && (toCall >= S.bb * 4 || toCall >= p.stack * 0.3)) t += 550;   // a real price to weigh
+    if (H.street === 0 && a.t === 'fold' && toCall <= S.bb) t *= 0.8;   // junk thrown away before the flop
+    var st = p.style; t *= st === 'lag' ? 0.85 : st === 'rock' ? 1.15 : st === 'station' ? 0.9 : 1;
+    t *= 0.8 + Math.random() * 0.5;
+    if (a.t !== 'fold' && a.t !== 'check' && Math.random() < 0.07) t *= 1.8;   // the long think
+    return Math.min(4500, t * (watching() ? 0.6 : 1) * paceMul());
+  }
   function roundDone() {
     var H = S.hand, lv = live();
     if (lv.length <= 1) return true;
@@ -2732,11 +2756,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function runout() {
     var H = S.hand;
     if (gv().stud) {
-      if (H.street < 4) { studStreet(); save(); renderTable(); later(H.street < 4 ? runout : finishHand, 1150); }
+      if (H.street < 4) { studStreet(); save(); renderTable(); later(H.street < 4 ? runout : finishHand, 1150 * paceMul()); }
       else finishHand();
       return;
     }
-    if (H.board.length < 5) { dealStreet(); save(); renderTable(); if (H.board.length < 5) later(runout, 1250); else later(finishHand, 1100); }
+    if (H.board.length < 5) { dealStreet(); save(); renderTable(); if (H.board.length < 5) later(runout, 1250 * paceMul()); else later(finishHand, 1100 * paceMul()); }
     else finishHand();
   }
 
@@ -4147,7 +4171,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function cpuAct() {
     var H = S.hand; if (!H || H.phase !== 'bet') return;
     var i = H.actor; if (i < 0 || !S.players[i].cpu) return;
-    act(i, cpuDecide(i));
+    // decided now, played after a think as long as the decision deserves (so a quick fold is quick and a big call is not)
+    var a = cpuDecide(i), no = H.no, street = H.street;
+    later(function () { var h = S && S.hand; if (h && h.no === no && h.street === street && h.phase === 'bet' && h.actor === i) act(i, a); }, thinkMs(i, a));
   }
   // Every computer player weighs its chances against what the others probably hold (from how they've bet), the price
   // of calling, where it sits, its stack and the tournament around it. Skill sets how well: a beginner reads only its
@@ -5168,7 +5194,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var C = S.circ, over = S.tourn && (me.out || (C ? C.else === 0 && alive().length <= 1 : alive().length <= 1));
       if (over) { box.appendChild(el('div', { class: 'pwait', text: me.out ? 'You\'re out of the tournament' : 'Tournament over' })); return box; }
       if (!S.tourn) bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft pleave', text: 'Leave', onclick: function () { cashOutMenu(); } }));
-      var ms = H.inHand[0] && !H.folded[0] && H.results && H.results.some(function (r) { return r.v != null; }) ? 11200 : 6800;
+      var ms = (H.inHand[0] && !H.folded[0] && H.results && H.results.some(function (r) { return r.v != null; }) ? 11200 : 6800) * Math.max(0.75, paceMul());
       bar.appendChild(el('button', { type: 'button', class: 'btn btn-primary pnext', html: Kit.icon('cards') + '<span>Next hand</span><i class="ring" style="animation-duration:' + ms + 'ms"></i>', onclick: function () { Kit.sfx('tap'); startHand(); } }));
       box.appendChild(bar);
       autoNext(ms);
