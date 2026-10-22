@@ -783,7 +783,7 @@
     var pin = window.FGHSync && FGHSync.isPin && FGHSync.isPin();
     var demo = el('div', { class: 'k-note k-turnban k-tb-demo', 'aria-hidden': 'true' }, [
       el('span', { class: 'ic', html: window.GameIcon ? GameIcon('chess') : '' }),
-      el('span', { class: 'grow' }, [el('span', { class: 'yt', html: '<i></i>Your turn' }), el('b', { text: 'Chess' }), el('small', { text: 'Cam moved' })]),
+      el('span', { class: 'grow' }, [el('span', { class: 'yt', html: '<i></i>Your turn' }), el('b', { text: 'Chess' })]),
       el('span', { class: 'go' }, [el('span', { html: icon('play') })])]);
     var list = el('div', { class: 'k-list' });
     function sw(ic, label, sub, key, after) {
@@ -856,8 +856,7 @@
       el('span', { class: 'ic', html: window.GameIcon ? GameIcon(g.id) : '' }),
       el('span', { class: 'grow' }, [
         el('span', { class: 'yt', html: '<i></i>Your turn' }),
-        el('b', { text: g.name }),
-        el('small', { text: (x.vs && x.vs !== 'the computer' ? x.vs + ' moved' : 'It’s back to you') + (more > 0 ? ' · ' + more + ' more waiting' : '') })]),
+        el('b', { text: g.name })].concat(more > 0 ? [el('small', { text: more + ' more waiting' })] : [])),
       el('button', { type: 'button', class: 'go', 'aria-label': 'Play ' + g.name }, [el('span', { html: icon('play') })])
     ]);
     function close() { clearTimeout(TW.hide); if (!b.isConnected) return; b.style.transform = ''; b.classList.remove('show'); setTimeout(function () { b.remove(); }, 520); if (TW.el === b) TW.el = null; }
