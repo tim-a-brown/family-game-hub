@@ -217,6 +217,7 @@
       moves.push({ f: f, to: to });
     });
     p.st.rolls++; S.turns++;
+    (S.rl = S.rl || []).push(who.toString(36) + faces.join(''));   // every roll for the history: who, then the faces
     var cs = faces.filter(function (f) { return f === 'C'; }).length, dots = faces.filter(function (f) { return f === '.'; }).length;
     if (n === 3 && cs === 3) { p.st.tripleC++; note(p.name + ' rolled C-C-C and put 3 chips in the pot (round ' + S.round + ')'); }
     if (n === 3 && dots === 3) p.st.tripleDot++;
@@ -338,6 +339,15 @@
     setTimeout(function () { b.remove(); }, (ms || 1100) * Math.max(.6, spd()));
   }
 
+  // The rolls for the history (the last 240), and the chips everyone had before the first one kept
+  function rollLog() {
+    var rl = S.rl || [], keep = rl.slice(-240), n = S.players.length, ch = S.players.map(function () { return 3; }), pot = 0;
+    rl.slice(0, rl.length - keep.length).forEach(function (t) {
+      var w = parseInt(t.charAt(0), 36);
+      t.slice(1).split('').forEach(function (f) { if (f === '.') return; ch[w]--; if (f === 'L') ch[(w + 1) % n]++; else if (f === 'R') ch[(w - 1 + n) % n]++; else pot++; });
+    });
+    return { rl: keep.join(' '), r0: keep.length < rl.length ? ch.join(',') + ',' + pot : '' };
+  }
   // ── End of game ──────────────────────────────────────────────────────────
   function finish() {
     if (!S || S.done) return;
@@ -369,7 +379,7 @@
       meta: { pot: pot, stake: S.stake },
       // per-player stats, the roll that ended it, and the biggest the pot got (chips over time come from rounds)
       detail: { p: S.players.map(function (q) { var s = q.st || {}; return { z: s.zero || 0, pk: s.peak || 0, pr: s.peakR || 0, c3: s.tripleC || 0, d3: s.tripleDot || 0, n: s.rolls || 0 }; }),
-        lw: S.last ? S.last.who : -1, lf: S.last ? S.last.faces.join('') : '', mp: S.maxPot || pot }
+        lw: S.last ? S.last.who : -1, lf: S.last ? S.last.faces.join('') : '', mp: S.maxPot || pot, rl: rollLog().rl, r0: rollLog().r0 }
     });
     clearSave();
     var last = S, t = token;
@@ -541,7 +551,7 @@
   }
 
   // Test hooks
-  window.__lrc = { state: function () { return S; }, busy: function () { return busy; }, speed: function (x) { testSpd = x; } };
+  window.__lrc = { state: function () { return S; }, busy: function () { return busy; }, speed: function (x) { testSpd = x; }, start: function (cfg) { start(cfg); } };
 
   // ── Boot ─────────────────────────────────────────────────────────────────
   var saved = load();

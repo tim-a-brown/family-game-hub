@@ -1669,8 +1669,11 @@ body.pyl-on{
     shell.sqs[i].classList.add('blink');
     await sleep(1500);
     shell.sqs[i].classList.remove('blink');
-    var res = await follow(i, 0);
+    var res = await follow(i, 0), who = S.cur, bonusSpin = S.phase === 'bonus';
     await apply(res.i, res.sl, fromPassed);
+    // every stop for the history: round (b = bonus), player, where the light stopped, where it ended up, what it was, the bank after
+    var sl = res.sl, code = { cash: 'c', prize: 'p', wh: 'w', dbl: 'd' }[sl.t] || 'o';
+    (S.log.st = S.log.st || []).push([bonusSpin ? 'b' : S.round, who, i, res.i, code, sl.v || 0, sl.s ? 1 : 0, Math.round(a.bank || 0)].join('.'));
     shell.board.classList.remove('dim', 'red');
     setLit(-1); T.frozen = false;
     save();
@@ -1936,7 +1939,7 @@ body.pyl-on{
       highlights: highlights(),
       detail: { wh: S.players.map(function (p) { return p.wh; }), pz: S.log.prizes.map(function (z) { return z.p + ':' + z.n + ':' + (z.v || 0); }),
         kp: S.players.map(function (p) { return p.prizes.map(function (z) { return z.n + ':' + (z.v || 0); }).join('|'); }), bk: S.players.map(function (p) { return p.bank; }),
-        bonus: B && B.result ? { p: B.p, r: B.result, lv: B.level, k: B.kept || 0, w: B.wh } : null },
+        bonus: B && B.result ? { p: B.p, r: B.result, lv: B.level, k: B.kept || 0, w: B.wh } : null, st: (S.log.st || []).slice(-90).join(' ') },
       summary: (tie ? 'Tie' : rank[0].name + ' won') + ' · ' + money(rank[0].h),
       badge: money(rank[0].h)
     });

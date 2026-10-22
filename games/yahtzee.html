@@ -227,12 +227,20 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     if (S.busy && !P().cpu) return;
     if (S.rolls >= 3) return;
     S.rolls++;
+    var kept = S.held.map(function (h, i) { return h && S.dice[i] > 0; });
     for (var i = 0; i < 5; i++) if (!S.held[i] || S.dice[i] === 0) { S.dice[i] = 1 + Math.floor(Math.random() * 6); S.held[i] = S.held[i] && S.dice[i] > 0; }
+    noteRoll(S, kept);
     Kit.sfx('roll'); Kit.haptic('medium');
     render(true);
     rollFx();
     save();
   }
+  // Each roll of the turn for the history: five characters, held dice as letters (a = a held 1 ... f = a held 6)
+  function noteRoll(st, kept) {
+    if (st.rolls === 1) st.rs = [];
+    (st.rs = st.rs || []).push(st.dice.map(function (v, i) { return kept[i] ? 'abcdef'.charAt(v - 1) : String(v); }).join(''));
+  }
+  function turnRolls(st) { var r = (st.rs || []).join('>'); st.rs = []; return r; }
   // the big-roll moments (local and online)
   function rollFx() {
     var d = S.dice;
@@ -255,7 +263,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     if (!p.cpu) snapshot();
     var wasJokerBonus = S.mode !== 'card' && isYahtzee(S.dice) && p.card.yz === 50;
     p.card[id] = val; lastScored = id; lastBy = S.cur;
-    (p.log = p.log || []).push({ r: S.round, id: id, v: val, y: S.mode !== 'card' && isYahtzee(S.dice), d: S.mode !== 'card' ? S.dice.join('') : '' });
+    (p.log = p.log || []).push({ r: S.round, id: id, v: val, y: S.mode !== 'card' && isYahtzee(S.dice), d: S.mode !== 'card' ? S.dice.join('') : '', s: S.mode !== 'card' ? turnRolls(S) : '' });
     if (wasJokerBonus) { p.yb = (p.yb || 0) + 1; Kit.callout('+100 Bonus!'); Kit.confetti({ count: 80 }); }
     var u = upperSum(p);
     if (CAT[id].up && u >= 63 && u - val < 63) setTimeout(function () { Kit.callout('+35 Bonus!'); Kit.sfx('win'); }, 200);
@@ -320,7 +328,9 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
       // the scorecard: each box in order (13 numbers), extra Yahtzee bonuses, and the dice each box was scored with
       detail: { p: S.players.map(function (p) {
         var dice = CATS.map(function (c) { var x = (p.log || []).filter(function (l) { return l.id === c.id; })[0]; return x && x.d ? x.d : '-'; }).join(' ');
-        return { c: CATS.map(function (c) { return p.card[c.id] == null ? null : p.card[c.id]; }), yb: p.yb || 0, d: /\d/.test(dice) ? dice : '' };
+        // every turn in order: the box filled (0-c, in card order) and that turn's rolls
+        var t = S.mode === 'card' ? '' : (p.log || []).map(function (l) { var k = CATS.map(function (c) { return c.id; }).indexOf(l.id); return k < 0 ? '' : k.toString(16) + (l.s || l.d || ''); }).filter(Boolean).join(' ');
+        return { c: CATS.map(function (c) { return p.card[c.id] == null ? null : p.card[c.id]; }), yb: p.yb || 0, d: /\d/.test(dice) ? dice : '', t: t };
       }) }
     });
     return { rank: rank, top: top, tie: tie };
@@ -617,6 +627,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     st.rolls++;
     for (var i = 0; i < 5; i++) if (!h[i]) st.dice[i] = 1 + Math.floor(Math.random() * 6);
     st.held = h;
+    noteRoll(st, h);
     return { state: st, mv: { t: 'r', s: st.cur, h: h, d: st.dice.slice(), n: st.rolls } };
   }
   // Scoring a box, then the next player with boxes left
@@ -627,7 +638,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     var v = opt[id], yz = isYahtzee(st.dice), bonus = yz && p.card.yz === 50;
     p.card[id] = v;
     if (bonus) p.yb = (p.yb || 0) + 1;
-    (p.log = p.log || []).push({ r: filled(p), id: id, v: v, y: yz, d: st.dice.join('') });
+    (p.log = p.log || []).push({ r: filled(p), id: id, v: v, y: yz, d: st.dice.join(''), s: turnRolls(st) });
     var mv = { t: 's', s: st.cur, id: id, v: v, b: bonus ? 1 : 0 };
     st.rolls = 0; st.dice = [0, 0, 0, 0, 0]; st.held = noHold();
     var n = st.players.length;
@@ -754,6 +765,8 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     S = saved; S.busy = false;
     render(); maybeCpu();
   } else showSetup();
+  // test hook: start a game ({mode, players:[{name, cpu}]}) and read the state
+  window.__yahtzee = { start: function (cfg) { start(cfg); }, state: function () { return S; } };
 })();
 </script>
 </body>

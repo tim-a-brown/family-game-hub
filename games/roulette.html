@@ -1159,6 +1159,15 @@
     h.push(money(ss.wagered) + ' bet over ' + ss.spins + ' spin' + (ss.spins === 1 ? '' : 's'));
     return h.slice(0, 6);
   }
+  // the money after every spin for the history chart (at most 61 points)
+  function skString(start, nets) {
+    var a = [start], t = start; (nets || []).forEach(function (n) { t += n; a.push(Math.round(t)); });
+    if (a.length < 2) return null;
+    var n = a.length, m = 60, out = [];
+    if (n <= m + 1) return a.join(',');
+    for (var i = 0; i <= m; i++) out.push(a[Math.round(i * (n - 1) / m)]);
+    return out.join(',');
+  }
   function recordSession(st) {
     var ss = st.sess; if (!ss.spins && !st.lr) return null;   // (a linked player's bankroll reset is always filed)
     var labels = [], scores = [];
@@ -1174,7 +1183,8 @@
       rounds: { labels: labels, scores: scores }, highlights: highlights(ss),
       meta: casinoMeta({ net: ss.net, spins: ss.spins, wagered: ss.wagered, biggest: ss.best ? ss.best.amt : 0 }),
       detail: playTag({ wheel: st.wheel, bank: { s: ss.startBank, e: Casino.balance(), hi: ss.hi }, spins: ss.spins, bet: ss.wagered, log: ss.slog || [], from: Math.max(1, ss.spins - (ss.slog || []).length + 1),
-        best: ss.bestSpin || null, last: ss.lastSpin && ss.lastSpin !== ss.bestSpin && (!ss.bestSpin || ss.bestSpin.no !== ss.lastSpin.no) ? ss.lastSpin : null })
+        best: ss.bestSpin || null, last: ss.lastSpin && ss.lastSpin !== ss.bestSpin && (!ss.bestSpin || ss.bestSpin.no !== ss.lastSpin.no) ? ss.lastSpin : null,
+        sk: skString(ss.startBank, ss.series) })
     });
   }
   // Cash out (toSetup=false) or start a new session (toSetup=true)

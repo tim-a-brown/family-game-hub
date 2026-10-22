@@ -37,6 +37,17 @@
       vals.map(function (v, i) { return svgDie(v, i * (s + g), 0, s); }).join('') + '</svg>';
   }
 
+  function roadStrip(ui, items, start, show) {
+    var box = ui.el('div', { class: 'dv-road' }), btns = [];
+    items.forEach(function (it, i) {
+      var b = ui.el('button', { type: 'button', class: 'dv-rb ' + (it.c || ''), style: it.pc ? { '--pc': it.pc } : null, text: it.t || '', title: it.title || '', 'aria-label': it.title || it.t || String(i + 1), onclick: function () { pick(i); } });
+      btns.push(b); box.appendChild(b);
+    });
+    function pick(i) { btns.forEach(function (b, j) { b.classList.toggle('on', i === j); }); show(i); }
+    if (items.length) pick(Math.min(Math.max(0, start), items.length - 1));
+    return box;
+  }
+  function dvKey(ui, list) { return ui.el('div', { class: 'dv-key' }, list.map(function (x) { return ui.el('span', null, [x[0] ? ui.el('i', { class: x[0] }) : null, ui.el('span', { text: x[1] })]); })); }
   function legend(ui, series) {
     return ui.el('div', { class: 'dv-legend' }, series.map(function (s) {
       return ui.el('span', null, [ui.el('i', { style: { background: s.color, opacity: s.dash ? 0.6 : 1 } }), ui.el('span', { text: s.name })]);
@@ -51,6 +62,48 @@
     '.dv-good{color:#4ade80 !important;}.dv-bad{color:#f87171 !important;}',
     '.dv-sub{font-size:.8rem;font-weight:900;color:var(--text);margin:2px 0 -2px;display:flex;align-items:center;gap:6px;}',
     '.dv-dstrip{display:inline-block;vertical-align:middle;}',
+    '.dv-road{display:flex;flex-wrap:wrap;gap:3px;}',
+    '.dv-rb{appearance:none;border:0;cursor:pointer;min-width:22px;height:22px;border-radius:5px;padding:0 3px;font:inherit;font-size:.62rem;font-weight:900;color:#fff;background:rgba(255,255,255,.12);}',
+    '.dv-rb.w{background:#16a34a;}.dv-rb.l{background:#b91c1c;}.dv-rb.p{background:#2f6fd6;}.dv-rb.big{background:#d4a017;color:#1b1404;}.dv-rb.on{outline:2.5px solid #fff;outline-offset:1px;}',
+    '.dv-key{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:.72rem;font-weight:800;color:var(--text-3);}',
+    '.dv-key>span{display:inline-flex;align-items:center;gap:4px;}.dv-key i{display:inline-block;width:10px;height:10px;border-radius:3px;background:rgba(255,255,255,.12);}.dv-key i.w{background:#16a34a;}.dv-key i.l{background:#b91c1c;}.dv-key i.p{background:#2f6fd6;}.dv-key i.big{background:#d4a017;}',
+    '.dv-rb.pz{background:#c01f92;}.dv-rb.pc{box-shadow:inset 0 -3px 0 var(--pc);}.dv-key i.pz{background:#c01f92;}',
+    '.dv-chart{width:100%;height:auto;display:block;}',
+    '.lr-felt{max-width:100%;line-height:normal;padding:10px;background:#0b2326;display:flex;flex-direction:column;gap:6px;}.lr-felt svg{display:block;}',
+    '.lr-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.84rem;font-weight:800;color:rgba(255,255,255,.85);}.lr-top .lr-dice svg{width:auto;height:30px;}',
+    '.dv-tabs{display:flex;flex-wrap:wrap;gap:5px;}',
+    '.dv-tab{appearance:none;border:0;cursor:pointer;font:inherit;font-size:.8rem;font-weight:900;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--pc) 45%,transparent);}',
+    '.dv-tab.on{background:var(--pc);color:#111;}',
+    '.dv-foot{text-align:center;font-weight:900;font-size:.88rem;line-height:1.35;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.05);color:var(--text-2);}',
+    '.fk-felt .dv-dstrip{width:auto;height:26px;}',
+    '.fk-felt{max-width:100%;line-height:normal;padding:12px;display:flex;flex-direction:column;gap:10px;color:#fff;}',
+    '.fk-top{font-size:.7rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.65);}',
+    '.fk-sets{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;}.fk-set{display:flex;flex-direction:column;gap:3px;}.fk-set small{font-size:.74rem;font-weight:900;color:rgba(255,255,255,.75);}',
+    '.fk-bust{padding:4px 6px;border-radius:8px;background:rgba(200,16,46,.35);box-shadow:inset 0 0 0 1.5px #f87171;}.fk-bust small{color:#fca5a5;}',
+    '.fk-end{align-self:flex-start;font-size:.9rem;font-weight:800;padding:5px 10px;border-radius:8px;}.fk-end.ok{background:#fffaf0;color:#1d1a2e;}.fk-end.ok b{color:#0f7a3d;font-size:1.05rem;}',
+    '.fk-end.bad{background:#c8102e;color:#fff;transform:rotate(-2deg);}.fk-end.bad b{letter-spacing:.12em;}',
+    /* Yahtzee: the paper card and the dice tray */
+    '.dv-card.yc{padding:0 0 6px;border-radius:6px 6px 14px 14px;background:linear-gradient(180deg,#fffaf0,#f6eedb);}',
+    '.yc-head{display:flex;align-items:baseline;justify-content:space-between;padding:10px 12px 6px;border-bottom:3px double #c8102e;}',
+    '.yc-head b{font-family:var(--display);font-weight:400;font-size:1.45rem;color:#c8102e;letter-spacing:.04em;}.yc-head small{font-family:var(--hand);font-size:1.05rem;color:#6a6a80;}',
+    '.yc table{table-layout:auto;}.yc th,.yc td{padding:3px 8px;border-bottom:1px solid rgba(60,80,160,.16);}',
+    '.yc th{text-align:left;font-weight:800;color:#2a2a3a;}.yc th b{display:block;font-size:.84rem;font-weight:900;line-height:1.1;}.yc th small{display:block;font-size:.66rem;font-weight:700;color:#8a8796;line-height:1.1;}',
+    '.yc tr.nm th{font-family:var(--hand);font-weight:400;font-size:1.05rem;text-align:center;border-bottom:2px solid rgba(60,80,160,.3);}',
+    '.yc .yc-l{display:flex;align-items:center;gap:7px;}.yc .yc-die{line-height:0;}',
+    '.yc td.v{text-align:center;border-left:1px solid rgba(200,16,46,.22);font-family:var(--hand);font-size:1.3rem;color:#1f2a6b;font-weight:400;line-height:1.1;}',
+    '.yc td.v.w{color:#0f7a3d;}.yc td.v.z{color:rgba(200,16,46,.6);}.yc td.v.e{color:rgba(80,80,110,.4);}.yc td.v.short{font-size:.95rem;color:#8a8796;}',
+    '.yc tr.sect th{font-size:.62rem;font-weight:900;letter-spacing:.14em;color:#c8102e;text-transform:uppercase;background:rgba(200,16,46,.05);padding:3px 8px;}',
+    '.yc tr.sum th,.yc tr.sum td{background:rgba(200,16,46,.06);}.yc tr.sum th b{color:#c8102e;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;}',
+    '.yc tr.big th,.yc tr.big td{border-top:2px solid #c8102e;border-bottom:0;}.yc tr.big th b{color:#c8102e;letter-spacing:.06em;text-transform:uppercase;}.yc tr.big td.v{font-size:1.65rem;}',
+    '.yt-tray{border-radius:20px;padding:7px;}.yt-felt{border-radius:15px;padding:10px 12px 12px;display:flex;flex-direction:column;gap:7px;}',
+    '.yt-top{display:flex;justify-content:space-between;align-items:baseline;color:#fff;}.yt-top b{font-family:var(--display);font-weight:400;font-size:1.15rem;}.yt-top span{font-size:.74rem;font-weight:800;color:rgba(255,255,255,.65);}',
+    '.yt-roll{display:flex;align-items:center;gap:8px;}.yt-roll .n{width:44px;flex:none;font-size:.64rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.6);}',
+    '.yt-roll .hv-dice{gap:5px;flex-wrap:nowrap;}.yt-roll .die{--ds:min(34px,9vw);}.yt-roll:not(.fin) .die:not(.hv-hl){opacity:.72;}.yt-roll .kp{font-size:.66rem;font-weight:800;color:#ffd54a;white-space:nowrap;}',
+    '.yt-box{display:flex;align-items:baseline;gap:8px;margin-top:2px;padding:6px 10px;border-radius:10px;background:#fffaf0;color:#2a2a3a;box-shadow:0 3px 8px -4px rgba(0,0,0,.6);}',
+    '.yt-box span{font-weight:900;font-size:.86rem;}.yt-box b{margin-left:auto;font-family:var(--hand);font-weight:400;font-size:1.5rem;line-height:1;color:#1f2a6b;}',
+    '.yt-box.z b{color:#c8102e;text-decoration:line-through;font-size:1.15rem;}.yt-box.y{box-shadow:0 0 0 3px #ffd54a,0 0 16px rgba(255,213,74,.5);}.yt-box.y b{color:#0f7a3d;}',
+    '.yt-box i{font-style:normal;font-size:.7rem;font-weight:900;color:#fff;background:#0f7a3d;padding:2px 6px;border-radius:5px;}',
+    '.yt-olds{display:flex;flex-direction:column;gap:5px;}.yt-old{display:flex;align-items:center;gap:10px;font-size:.84rem;font-weight:800;color:var(--text-2);}',
     /* Yahtzee scorecard: paper and ink */
     '.dv-card{background:#f7f2e4;color:#1d1a2e;border-radius:12px;padding:6px 8px 8px;box-shadow:0 6px 16px -6px rgba(0,0,0,.6);overflow-x:auto;}',
     '.dv-card table{width:100%;border-collapse:collapse;font-size:.84rem;font-variant-numeric:tabular-nums;}',
@@ -100,11 +153,16 @@
     '.dd-off b{color:#ffdf8a;}',
     '.dd-tag{font-size:.66rem;font-weight:900;letter-spacing:.06em;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.1);color:var(--text-2);}',
     '.dd-tag.deal{background:#22a55a;color:#fff;}.dd-tag.nd{background:#c2304b;color:#fff;}',
+    '.dd-step{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:14px;background:linear-gradient(180deg,#121a3c,#0a0f26);box-shadow:inset 0 0 0 1px rgba(255,210,120,.25);}',
+    '.dd-step.deal{box-shadow:inset 0 0 0 2px #4ade80;}.dd-step.ghost{opacity:.8;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);}.dd-step .dd-off{grid-column:auto;}',
+    '.dd-h{font-size:.74rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#ffdf8a;}',
+    '.dv-rb.gh{background:transparent;box-shadow:inset 0 0 0 1.5px #ffc93a;color:#ffdf8a;}.dv-key i.gh{background:transparent;box-shadow:inset 0 0 0 1.5px #ffc93a;}',
     /* Shell game */
     '.sg-run{display:flex;flex-wrap:wrap;gap:3px;}',
     '.sg-p{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:.62rem;font-weight:900;color:#fff;}',
     '.sg-p.ok{background:#22a55a;}.sg-p.no{background:#c2304b;}',
-    '.sg-p.t4{box-shadow:0 0 0 2px #ffc83d;}.sg-p.t5{box-shadow:0 0 0 2px #f472b6;}'
+    '.sg-p.t4{box-shadow:0 0 0 2px #ffc83d;}.sg-p.t5{box-shadow:0 0 0 2px #f472b6;}',
+    'button.sg-p{appearance:none;border:0;padding:0;font:inherit;font-size:.62rem;font-weight:900;cursor:pointer;}.sg-p.on{outline:2.5px solid #fff;outline-offset:2px;}'
   ].join('\n'));
 
   // ════════════════════════════════════════════════════════════════════════
@@ -112,71 +170,147 @@
   // ════════════════════════════════════════════════════════════════════════
   var YCATS = [['Ones', 1], ['Twos', 1], ['Threes', 1], ['Fours', 1], ['Fives', 1], ['Sixes', 1],
     ['3 of a Kind'], ['4 of a Kind'], ['Full House'], ['Sm. Straight'], ['Lg. Straight'], ['Yahtzee'], ['Chance']];
+  var YHINT = ['Add up the 1s', 'Add up the 2s', 'Add up the 3s', 'Add up the 4s', 'Add up the 5s', 'Add up the 6s', 'Total of all dice', 'Total of all dice', '3 + 2 alike · 25', '4 in a row · 30', '5 in a row · 40', '5 alike · 50', 'Total of all dice'];
+  function isYz(d) { return /^(\d)\1{4}$/.test(String(d || '').replace(/[a-f]/g, function (c) { return 'abcdef'.indexOf(c) + 1; })); }
+  function plainDice(r) { return String(r || '').replace(/[a-f]/g, function (c) { return String('abcdef'.indexOf(c) + 1); }); }
+  // a player's turns, in order: {k: box, rolls: ['12345', 'aa366', ...], v: points, bonus: a joker Yahtzee bonus}
+  function yTurns(p) {
+    var c = arr(p.c), yzAt = -1, out = [];
+    String(p.t || '').split(' ').filter(Boolean).forEach(function (tok, i) {
+      var k = parseInt(tok.charAt(0), 16), rolls = tok.slice(1).split('>').filter(Boolean), last = plainDice(rolls[rolls.length - 1]);
+      var bonus = isYz(last) && k !== 11 && yzAt >= 0 && c[11] === 50;
+      if (k === 11) yzAt = i;
+      out.push({ n: i + 1, k: k, rolls: rolls, v: c[k], bonus: bonus, yz: isYz(last) });
+    });
+    return out;
+  }
   R('yahtzee', function (e, ui) {
     var d = e.dt; if (!d || !d.p) return null;
     var ps = arr(d.p), nm = names(e);
     if (!ps.length) return null;
-    var solo = ps.length === 1, showDice = solo && ps[0].d;
+    var solo = ps.length === 1, showDice = solo && ps[0].d && !ps[0].t;
     var cards = ps.map(function (p) {
       var c = arr(p.c), dice = String(p.d || '').split(' ');
       var up = 0, lo = 0; c.forEach(function (v, i) { if (i < 6) up += v || 0; else lo += v || 0; });
       var bonus = up >= 63 ? 35 : 0, yb = (p.yb || 0) * 100;
-      return { c: c, dice: dice, up: up, bonus: bonus, lo: lo, yb: yb, total: up + bonus + lo + yb };
+      return { c: c, dice: dice, up: up, bonus: bonus, lo: lo, yb: yb, total: up + bonus + lo + yb, turns: yTurns(p) };
     });
     var best = Math.max.apply(null, cards.map(function (c) { return c.total; }));
-    var t = '<table><tr class="hd"><th>' + (solo ? 'Box' : '') + '</th>' + (showDice ? '<th class="cap">Dice</th>' : '') +
-      cards.map(function (c, i) { return '<th>' + esc(solo ? 'Score' : nm[i] || 'P' + (i + 1)) + '</th>'; }).join('') + '</tr>';
-    function row(label, fn, cls, diceFn) {
-      t += '<tr class="' + (cls || '') + '"><td>' + label + '</td>' + (showDice ? '<td class="dd">' + (diceFn ? diceFn() : '') + '</td>' : '') + cards.map(fn).join('') + '</tr>';
-    }
-    function cell(v, extra) { return v == null ? '<td>–</td>' : v === 0 ? '<td class="z">0</td>' : '<td' + (extra ? ' class="' + extra + '"' : '') + '>' + v + '</td>'; }
+    // the scorecard, drawn like the game's own paper card
+    var t = '<div class="yc-head"><b>YAHTZEE</b>' + (solo ? '<small>' + esc(nm[0] || '') + '</small>' : '') + '</div><table>' +
+      (solo ? '' : '<tr class="nm"><th></th>' + cards.map(function (c, i) { return '<th style="color:' + ui.color(i) + '">' + esc(nm[i] || 'P' + (i + 1)) + '</th>'; }).join('') + '</tr>') +
+      (showDice ? '' : '');
+    function row(label, fn, cls) { t += '<tr class="' + (cls || '') + '"><th>' + label + '</th>' + cards.map(fn).join('') + '</tr>'; }
+    function cell(v, extra) { return v == null ? '<td class="v e">–</td>' : v === 0 ? '<td class="v z"><s>0</s></td>' : '<td class="v' + (extra ? ' ' + extra : '') + '">' + v + '</td>'; }
+    t += '<tr class="sect"><th colspan="' + (cards.length + 1) + '">Upper section</th></tr>';
     YCATS.forEach(function (cat, k) {
       if (k === 6) {
-        row('Upper total', function (c) { return '<td>' + c.up + '</td>'; }, 'sum');
-        row('Bonus <span class="cap">(63+)</span>', function (c) { return c.bonus ? '<td class="w">+35</td>' : '<td class="cap">' + (63 - c.up) + ' short</td>'; }, 'sum');
+        row('<b>Upper total</b>', function (c) { return '<td class="v">' + c.up + '</td>'; }, 'sum');
+        row('<b>Bonus</b><small>63 or more · 35</small>', function (c) { return c.bonus ? '<td class="v w">35</td>' : '<td class="v short">' + (63 - c.up) + ' short</td>'; }, 'sum');
+        t += '<tr class="sect"><th colspan="' + (cards.length + 1) + '">Lower section</th></tr>';
       }
-      row(cat[0], function (c) { var v = c.c[k]; return cell(v, k === 11 && v === 50 ? 'w' : ''); }, '', function () { var x = cards[0].dice[k]; return x && x !== '-' ? diceStrip(x, 13) : ''; });
+      var lab = (k < 6 ? '<span class="yc-die">' + diceStrip(String(k + 1), 15) + '</span>' : '') + '<span><b>' + cat[0] + '</b>' + (solo ? '<small>' + YHINT[k] + '</small>' : '') + '</span>';
+      row('<div class="yc-l">' + lab + '</div>', function (c) { var v = c.c[k]; return cell(v, k === 11 && v === 50 ? 'w' : ''); });
     });
-    row('Lower total', function (c) { return '<td>' + c.lo + '</td>'; }, 'sum');
-    if (cards.some(function (c) { return c.yb; })) row('Yahtzee bonus', function (c) { return c.yb ? '<td class="w">+' + c.yb + '</td>' : '<td>–</td>'; }, 'sum');
-    row('Grand total', function (c) { return '<td' + (c.total === best && !solo ? ' class="w"' : '') + '>' + c.total + '</td>'; }, 'big');
+    row('<b>Lower total</b>', function (c) { return '<td class="v">' + c.lo + '</td>'; }, 'sum');
+    if (cards.some(function (c) { return c.yb; })) row('<b>Yahtzee bonus</b><small>100 each</small>', function (c) { return c.yb ? '<td class="v w">' + c.yb + '</td>' : '<td class="v e">–</td>'; }, 'sum');
+    row('<b>Grand total</b>', function (c) { return '<td class="v' + (c.total === best && !solo ? ' w' : '') + '">' + c.total + '</td>'; }, 'big');
     t += '</table>';
-    var out = [ui.section(solo ? 'Scorecard' : 'Scorecards', ui.el('div', { class: 'dv-card', html: t }), { icon: 'pencil' })];
-
-    // Big rolls: the dice behind the best boxes (multi-player; solo shows them in the card)
-    if (!solo) {
+    var out = [];
+    // the numbers that matter
+    var me = cards[solo ? 0 : Math.max(0, nm.indexOf(e.winner))], yzN = function (c, p) { return (c.c[11] === 50 ? 1 : 0) + (p.yb || 0); };
+    var bt = null; me.turns.forEach(function (x) { if (x.k !== 11 && (!bt || (x.v || 0) > (bt.v || 0))) bt = x; });
+    if (solo) out.push(ui.stats([['Final score', me.total], ['Yahtzees', yzN(me, ps[0])], ['Upper bonus', me.bonus ? 'Made' : 'Missed', me.bonus ? me.up + ' in the upper' : (63 - me.up) + ' short'],
+      ['Best turn', bt && bt.v ? bt.v : null, bt && bt.v ? YCATS[bt.k][0] + ' · turn ' + bt.n : ''], ['Scratched', me.c.filter(function (v) { return v === 0; }).length || null, 'boxes with a 0']]));
+    else out.push(ui.stats(cards.map(function (c, i) { return i; }).sort(function (a, b) { return cards[b].total - cards[a].total; }).map(function (i) { var c = cards[i], y = yzN(c, ps[i]); return [nm[i] || 'P' + (i + 1), c.total, (y ? y + ' Yahtzee' + (y > 1 ? 's' : '') + ' · ' : '') + (c.bonus ? 'bonus' : 'no bonus')]; })));
+    out.push(ui.section(solo ? 'Scorecard' : 'Scorecards', ui.el('div', { class: 'dv-card yc', html: t }), { icon: 'pencil' }));
+    // every turn: the rolls, the dice kept, the box it went in
+    if (cards.some(function (c) { return c.turns.length; })) {
+      var who = solo ? 0 : Math.max(0, nm.indexOf(e.winner)), box = ui.el('div', { class: 'hv' }), stripBox = ui.el('div');
+      var showTurn = function (c, x) {
+        var kids = [ui.el('div', { class: 'yt-top' }, [ui.el('b', { text: 'Turn ' + x.n }), ui.el('span', { text: x.rolls.length === 1 ? 'one roll' : x.rolls.length + ' rolls' })])];
+        x.rolls.forEach(function (r, i) {
+          var vals = plainDice(r).split('').map(Number), held = []; r.split('').forEach(function (ch, j) { if (/[a-f]/.test(ch)) held.push(j); });
+          kids.push(ui.el('div', { class: 'yt-roll' + (i === x.rolls.length - 1 ? ' fin' : '') }, [ui.el('span', { class: 'n', text: 'Roll ' + (i + 1) }), ui.dice(vals, { held: held, size: 34 }), held.length ? ui.el('span', { class: 'kp', text: 'kept ' + held.length }) : null]));
+        });
+        var v = x.v == null ? '–' : x.v;
+        kids.push(ui.el('div', { class: 'yt-box' + (x.v === 0 ? ' z' : x.yz && x.k === 11 ? ' y' : '') }, [ui.el('span', { text: YCATS[x.k][0] }), ui.el('b', { text: x.v === 0 ? 'scratched' : String(v) }), x.bonus ? ui.el('i', { text: '+100 bonus' }) : null]));
+        box.innerHTML = ''; box.appendChild(ui.el('div', { class: 'wood yt-tray' }, [ui.el('div', { class: 'felt-in yt-felt' }, kids)]));
+      };
+      var drawStrip = function (i) {
+        var c = cards[i], start = 0;
+        c.turns.forEach(function (x, j) { if (x.yz && !c.turns[start].yz) start = j; else if (!c.turns[start].yz && (x.v || 0) > (c.turns[start].v || 0)) start = j; });
+        var items = c.turns.map(function (x) { return { c: x.yz && (x.k === 11 || x.bonus) ? 'big' : x.v === 0 ? 'l' : x.k < 6 ? 'p' : 'w', t: String(x.n), title: 'Turn ' + x.n + ': ' + YCATS[x.k][0] + ' ' + (x.v == null ? '' : x.v) }; });
+        stripBox.innerHTML = '';
+        if (c.turns.length) stripBox.appendChild(roadStrip(ui, items, start, function (j) { showTurn(c, c.turns[j]); }));
+        else { box.innerHTML = ''; box.appendChild(ui.el('p', { class: 'dv-note', text: 'No rolls kept for this player.' })); }
+      };
+      var kids = [];
+      if (!solo) {
+        var tabs = ui.el('div', { class: 'dv-tabs' }), tb = [];
+        cards.forEach(function (c, i) { var b = ui.el('button', { type: 'button', class: 'dv-tab', style: { '--pc': ui.color(i) }, text: nm[i] || 'P' + (i + 1), onclick: function () { tb.forEach(function (x, j) { x.classList.toggle('on', j === i); }); drawStrip(i); } }); tb.push(b); tabs.appendChild(b); });
+        tb[who].classList.add('on'); kids.push(tabs);
+      }
+      kids.push(stripBox, box, dvKey(ui, [['p', 'upper'], ['w', 'lower'], ['l', 'scratched'], ['big', 'Yahtzee']]));
+      out.push(ui.section('Every turn · tap one', kids, { icon: 'dice' }));
+      drawStrip(who);
+    } else if (!solo) {
+      // older games: the dice behind the best boxes
       var BIG = [11, 10, 9, 8, 7], rows = [];
       ps.forEach(function (p, i) {
         var dice = String(p.d || '').split(' '), c = arr(p.c);
         BIG.forEach(function (k) { if (c[k] > 0 && dice[k] && dice[k] !== '-') rows.push({ i: i, k: k, d: dice[k], v: c[k] }); });
       });
       if (rows.length) {
-        var box = ui.el('div', { class: 'stack', style: { display: 'flex', 'flex-direction': 'column', gap: '6px' } });
+        var bx = ui.el('div', { style: { display: 'flex', 'flex-direction': 'column', gap: '6px' } });
         rows.slice(0, 10).forEach(function (r) {
-          box.appendChild(ui.el('div', { style: { display: 'flex', 'align-items': 'center', gap: '10px', 'font-size': '.86rem', 'font-weight': '800' } }, [
-            ui.el('span', { html: diceStrip(r.d, 20) }),
-            ui.el('span', { style: { color: ui.color(r.i) }, text: nm[r.i] || '' }),
-            ui.el('span', { style: { color: 'var(--text-2)' }, text: YCATS[r.k][0] + ' · ' + r.v })
-          ]));
+          bx.appendChild(ui.el('div', { style: { display: 'flex', 'align-items': 'center', gap: '10px', 'font-size': '.86rem', 'font-weight': '800' } }, [
+            ui.el('span', { html: diceStrip(r.d, 20) }), ui.el('span', { style: { color: ui.color(r.i) }, text: nm[r.i] || '' }), ui.el('span', { style: { color: 'var(--text-2)' }, text: YCATS[r.k][0] + ' · ' + r.v })]));
         });
-        out.push(ui.section('Big rolls', box, { icon: 'dice' }));
+        out.push(ui.section('Big rolls', bx, { icon: 'dice' }));
       }
+    } else if (ps[0].d) {
+      // older solo games: the dice each box was scored with
+      var dl = String(ps[0].d).split(' '), rr = [];
+      YCATS.forEach(function (cat, k) { if (dl[k] && dl[k] !== '-') rr.push(ui.el('div', { class: 'yt-old' }, [ui.el('span', { html: diceStrip(dl[k], 18) }), ui.el('span', { text: cat[0] + ' · ' + (me.c[k] == null ? '–' : me.c[k]) })])); });
+      if (rr.length) out.push(ui.section('The dice in each box', ui.el('div', { class: 'yt-olds' }, rr), { icon: 'dice' }));
     }
-    var yz = ps.map(function (p, i) { var c = arr(p.c); return { i: i, n: (c[11] === 50 ? 1 : 0) + (p.yb || 0) }; }).filter(function (x) { return x.n; });
-    if (yz.length) out.push(ui.stats(yz.map(function (x) { return [solo ? 'Yahtzees' : 'Yahtzees · ' + (nm[x.i] || ''), x.n]; })));
+    // the last word
+    var w = cards[solo ? 0 : Math.max(0, nm.indexOf(e.winner))], wy = yzN(w, ps[cards.indexOf(w)]), z = w.c.filter(function (v) { return v === 0; }).length;
+    var line = (solo ? 'Final score ' + w.total : (e.winner ? e.winner + ' won with ' + w.total : 'A tie at ' + w.total)) + ': ' + (w.bonus ? 'upper bonus made' : 'upper bonus missed by ' + (63 - w.up)) +
+      (wy ? ', ' + (wy === 1 ? 'one Yahtzee' : wy + ' Yahtzees') : '') + (z ? ', ' + z + ' box' + (z === 1 ? '' : 'es') + ' scratched' : '') + '.';
+    out.push(ui.el('div', { class: 'dv-foot', text: line }));
     return ui.wrap(out);
   });
 
   // ════════════════════════════════════════════════════════════════════════
   // Farkle: race to the target, best rolls, farkles and hot dice
   // ════════════════════════════════════════════════════════════════════════
+  // one turn: 'round/dice:pts,dice:pts=banked' or '...x<the farkle roll>'
+  function fkTurn(tok) {
+    var m = /^(\d+)\/(.*?)(?:=(\d+)|x(\d*))$/.exec(String(tok)); if (!m) return null;
+    var sets = m[2] ? m[2].split(',').filter(Boolean).map(function (x) { var q = x.split(':'); return { d: q[0], p: +q[1] || 0 }; }) : [];
+    var run = 0, hot = 0; sets.forEach(function (st) { run += st.d.length; if (run === 6) { st.hot = 1; hot++; run = 0; } });
+    var pts = sets.reduce(function (a, x) { return a + x.p; }, 0);
+    return { r: +m[1], sets: sets, bank: m[3] != null ? +m[3] : null, fk: m[4] != null ? m[4] : null, pts: pts, hot: hot };
+  }
+  var FK_FELT = 'radial-gradient(120% 120% at 50% 0%,#26508e,#0f274b)';
+  function fkTurnPic(ui, t) {
+    var row = ui.el('div', { class: 'fk-sets' });
+    t.sets.forEach(function (st, k) {
+      row.appendChild(ui.el('div', { class: 'fk-set' }, [ui.el('span', { html: diceStrip(st.d, 26) }), ui.el('small', { text: (k ? '+' : '') + fmtN(st.p) + (st.hot ? ' · hot dice' : '') })]));
+    });
+    if (t.fk != null) row.appendChild(ui.el('div', { class: 'fk-set fk-bust' }, [ui.el('span', { html: diceStrip(t.fk, 26) }), ui.el('small', { text: 'no score' })]));
+    var end = t.bank != null ? ui.el('div', { class: 'fk-end ok', html: 'Banked <b>' + fmtN(t.bank) + '</b>' }) : ui.el('div', { class: 'fk-end bad', html: '<b>FARKLE</b>' + (t.pts ? ' · lost ' + fmtN(t.pts) : '') });
+    return ui.el('div', { class: 'hv-snap fk-felt', style: { background: FK_FELT } }, [ui.el('div', { class: 'fk-top', text: 'Round ' + t.r + (t.hot ? ' · hot dice ' + (t.hot === 1 ? 'once' : t.hot + ' times') : '') }), t.sets.length || t.fk ? row : null, end]);
+  }
   R('farkle', function (e, ui) {
     var d = e.dt, nm = names(e), out = [];
     if (!d || !d.p) return ui.wrap(out);
     var ps = arr(d.p);
     // biggest turn: the dice set aside, one group per roll
     var bi = -1; ps.forEach(function (p, i) { if (p.b && (bi < 0 || p.b > ps[bi].b)) bi = i; });
-    if (bi >= 0 && ps[bi].bs) {
+    if (bi >= 0 && ps[bi].bs && !ps.some(function (p) { return p.tl; })) {
       var sets = String(ps[bi].bs).split(' ').filter(Boolean).map(function (x) { var q = x.split(':'); return { d: q[0], p: +q[1] }; });
       var row = ui.el('div', { style: { display: 'flex', 'flex-wrap': 'wrap', gap: '10px 14px', 'align-items': 'flex-end' } });
       sets.forEach(function (st, k) {
@@ -189,6 +323,28 @@
         ui.el('div', { class: 'hv-snap f-felt', style: { 'max-width': '100%', 'line-height': 'normal', padding: '12px', background: 'radial-gradient(120% 120% at 50% 0%,#26508e,#0f274b)' } }, [row]),
         ps[bi].bh ? ui.el('p', { class: 'dv-note', html: 'Hot dice ' + (ps[bi].bh === 1 ? 'once' : ps[bi].bh === 2 ? 'twice' : ps[bi].bh + ' times') + ' in that turn: all six scored and got rolled again.' }) : null
       ], { icon: 'flame' }));
+    }
+    // every turn: the dice set aside and how it ended
+    var turns = ps.map(function (p) { return String(p.tl || '').split(' ').filter(Boolean).map(fkTurn).filter(Boolean); });
+    if (turns.some(function (t) { return t.length; })) {
+      var who = Math.max(0, nm.indexOf(e.winner)), card = ui.el('div', { class: 'hv' }), strip = ui.el('div');
+      var draw = function (i) {
+        var ts = turns[i], big = -1; ts.forEach(function (t, j) { if (t.bank != null && (big < 0 || t.bank > ts[big].bank)) big = j; });
+        strip.innerHTML = ''; card.innerHTML = '';
+        if (!ts.length) { card.appendChild(ui.el('p', { class: 'dv-note', text: 'No turns kept for ' + (nm[i] || 'this player') + '.' })); return; }
+        strip.appendChild(roadStrip(ui, ts.map(function (t) { return { c: t.bank == null ? 'l' : t.bank >= 1000 ? 'big' : 'w', t: String(t.r), title: 'Round ' + t.r + (t.bank != null ? ': banked ' + fmtN(t.bank) : ': farkle') }; }),
+          big >= 0 ? big : ts.length - 1, function (j) { card.innerHTML = ''; card.appendChild(fkTurnPic(ui, ts[j])); }));
+      };
+      var kids = [];
+      if (ps.length > 1) {
+        var tabs = ui.el('div', { class: 'dv-tabs' }), tb = [];
+        nm.forEach(function (n, i) { var b = ui.el('button', { type: 'button', class: 'dv-tab' + (i === who ? ' on' : ''), style: { '--pc': ui.color(i) }, text: n, onclick: function () { tb.forEach(function (x, j) { x.classList.toggle('on', j === i); }); draw(i); } }); tb.push(b); tabs.appendChild(b); });
+        kids.push(tabs);
+      }
+      var shown = turns.reduce(function (a, t) { return Math.max(a, t.length); }, 0), all = shown >= (e.rounds && e.rounds.scores ? arr(e.rounds.scores).length : 0);
+      kids.push(strip, card, dvKey(ui, [['w', 'banked'], ['big', '1,000 or more'], ['l', 'farkle']]));
+      out.push(ui.section(all ? 'Every turn · tap one' : 'The last turns · tap one', kids, { icon: 'dice' }));
+      draw(who);
     }
     // best single roll per player
     var br = ps.map(function (p, i) { var q = String(p.br || '').split(':'); return { i: i, d: q[0], p: +q[1] || 0 }; }).filter(function (x) { return x.d && x.p; });
@@ -211,6 +367,12 @@
       ['Biggest farkle'].concat(ps.map(function (p) { return p.lm ? { t: '−' + fmtN(p.lm), c: 'bad' } : '–'; }))
     ];
     out.push(ui.section(ps.length > 1 ? 'Player stats' : 'Stats', ui.table(head, rows), { icon: 'pulse' }));
+    // the last word
+    var P = e.players || [], wi = Math.max(0, nm.indexOf(e.winner)), sc = P.map(function (p) { return p.score || 0; }).sort(function (a, b) { return b - a; });
+    var rn = e.rounds && e.rounds.scores ? arr(e.rounds.scores).length : 0;
+    var line = ps.length === 1 ? 'Reached ' + fmtN(P[0] ? P[0].score : 0) + (rn ? ' in ' + rn + ' turns' : '') + ' with ' + (ps[0].f || 0) + ' farkle' + (ps[0].f === 1 ? '' : 's') + '.'
+      : e.winner ? e.winner + ' won by ' + fmtN(sc[0] - sc[1]) + (rn ? ' after ' + rn + ' rounds' : '') + '.' + (ps[wi] && ps[wi].b ? ' Best turn: ' + fmtN(ps[wi].b) + '.' : '') : 'A tie at ' + fmtN(sc[0]) + '.';
+    out.push(ui.el('div', { class: 'dv-foot', text: line }));
     return ui.wrap(out);
   });
 
@@ -222,6 +384,37 @@
     if (f === '.') o += '<circle cx="' + (x + s / 2) + '" cy="' + (y + s / 2) + '" r="' + s * 0.12 + '" fill="#1a1830"/>';
     else o += '<text x="' + (x + s / 2) + '" y="' + (y + s / 2 + 1) + '" text-anchor="middle" dominant-baseline="central" font-size="' + s * 0.58 + '" font-weight="900" fill="' + (f === 'C' ? '#c8102e' : '#1a1830') + '" font-family="system-ui">' + f + '</text>';
     return o;
+  }
+  // The table after one roll: everyone around the felt with their chips, the pot in the middle, arrows where this roll sent chips
+  function lrcTable(ui, nm, before, after, who, faces, potB, potA) {
+    var n = nm.length, W = 320, H = 230, cx = W / 2, cy = 112, rx = 122, ry = 78, s = '', id = 'lr' + (++uid);
+    var at = function (i) { var a = Math.PI / 2 + i * 2 * Math.PI / n; return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)]; };
+    s += '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="The table after this roll">';
+    s += '<defs><radialGradient id="' + id + '" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#17727a"/><stop offset="1" stop-color="#09393e"/></radialGradient>' +
+      '<marker id="' + id + 'a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#ffd54a"/></marker></defs>';
+    s += '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + (rx + 36) + '" ry="' + (ry + 30) + '" fill="#6b4320"/><ellipse cx="' + cx + '" cy="' + cy + '" rx="' + (rx + 28) + '" ry="' + (ry + 22) + '" fill="url(#' + id + ')"/>';
+    // where the chips went
+    var moved = { L: 0, R: 0, C: 0 }; faces.split('').forEach(function (f) { if (moved[f] != null) moved[f]++; });
+    var from = at(who);
+    [['L', (who + 1) % n], ['R', (who - 1 + n) % n], ['C', -1]].forEach(function (m) {
+      if (!moved[m[0]]) return;
+      var to = m[1] < 0 ? [cx, cy] : at(m[1]), dx = to[0] - from[0], dy = to[1] - from[1], L = Math.sqrt(dx * dx + dy * dy) || 1;
+      var x1 = from[0] + dx / L * 26, y1 = from[1] + dy / L * 26, x2 = to[0] - dx / L * 26, y2 = to[1] - dy / L * 26;
+      s += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="#ffd54a" stroke-width="3" marker-end="url(#' + id + 'a)"/>';
+      s += '<text x="' + ((x1 + x2) / 2).toFixed(1) + '" y="' + ((y1 + y2) / 2 - 6).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="900" fill="#ffd54a" font-family="system-ui">' + m[0] + (moved[m[0]] > 1 ? ' ×' + moved[m[0]] : '') + '</text>';
+    });
+    // the pot
+    s += '<circle cx="' + cx + '" cy="' + cy + '" r="22" fill="rgba(0,0,0,.28)" stroke="rgba(255,255,255,.25)" stroke-dasharray="3 3"/>';
+    s += '<text x="' + cx + '" y="' + (cy - 2) + '" text-anchor="middle" font-size="15" font-weight="900" fill="#fff" font-family="system-ui">' + potA + '</text><text x="' + cx + '" y="' + (cy + 11) + '" text-anchor="middle" font-size="7.5" font-weight="900" letter-spacing="1" fill="rgba(255,255,255,.6)" font-family="system-ui">POT</text>';
+    nm.forEach(function (name, i) {
+      var p = at(i), c = after[i], d = c - before[i], col = ui.color(i), me = i === who;
+      s += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="21" fill="' + (c ? '#0b2a2e' : 'rgba(0,0,0,.35)') + '" stroke="' + col + '" stroke-width="' + (me ? 4 : 2) + '"' + (c ? '' : ' stroke-dasharray="3 3"') + '/>';
+      for (var k = 0; k < Math.min(c, 6); k++) s += '<ellipse cx="' + p[0].toFixed(1) + '" cy="' + (p[1] + 8 - k * 3.2).toFixed(1) + '" rx="9" ry="3.4" fill="' + ['#e5263f', '#2f6fd6', '#f2c230'][k % 3] + '" stroke="#fff" stroke-width=".8"/>';
+      s += '<text x="' + p[0].toFixed(1) + '" y="' + (p[1] - 7).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="900" fill="#fff" font-family="system-ui">' + (c > 6 || !c ? c : '') + '</text>';
+      var ty = p[1] > cy ? p[1] + 34 : p[1] - 27;
+      s += '<text x="' + p[0].toFixed(1) + '" y="' + ty.toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="900" fill="' + col + '" font-family="system-ui">' + esc(name.length > 9 ? name.slice(0, 8) + '…' : name) + (d ? ' ' + (d > 0 ? '+' : '−') + Math.abs(d) : '') + '</text>';
+    });
+    return s + '</svg>';
   }
   R('lrc', function (e, ui) {
     var d = e.dt, nm = names(e), out = [];
@@ -240,7 +433,30 @@
     }
     if (!d) return ui.wrap(out);
     var ps = arr(d.p);
-    if (d.lf && d.lw >= 0) {
+    // every roll: tap one to see who rolled what and where the chips went
+    var rl = String(d.rl || '').split(' ').filter(Boolean);
+    if (rl.length && nm.length) {
+      var n0 = String(d.r0 || '').split(',').map(Number), ch = nm.map(function (x, i) { return d.r0 ? n0[i] || 0 : 3; }), pot = d.r0 ? n0[nm.length] || 0 : 0, snaps = [];
+      rl.forEach(function (t) {
+        var w = parseInt(t.charAt(0), 36), f = t.slice(1), b = ch.slice(), pb = pot, N = nm.length;
+        f.split('').forEach(function (x) { if (x === '.') return; ch[w]--; if (x === 'L') ch[(w + 1) % N]++; else if (x === 'R') ch[(w - 1 + N) % N]++; else pot++; });
+        snaps.push({ w: w, f: f, b: b, a: ch.slice(), pb: pb, pa: pot });
+      });
+      var card = ui.el('div', { class: 'hv' });
+      var items = snaps.map(function (x, k) { return { c: /^\.+$/.test(x.f) ? 'w' : x.f.indexOf('C') >= 0 ? 'l' : 'p', pc: ui.color(x.w), t: String(k + 1 + (d.r0 ? 0 : 0)), title: (nm[x.w] || '') + ' rolled ' + x.f.split('').join(' ') }; });
+      items.forEach(function (it) { it.c += ' pc'; });
+      var showRoll = function (k) {
+        var x = snaps[k], fs = x.f.split(''), sz = 30, g = 8, w = fs.length * sz + (fs.length - 1) * g;
+        var dice = '<svg viewBox="-2 -2 ' + (w + 4) + ' ' + (sz + 4) + '" width="' + (w + 4) + '" height="' + (sz + 4) + '" aria-hidden="true">' + fs.map(function (f, i) { return lrcDie(f, i * (sz + g), 0, sz); }).join('') + '</svg>';
+        var words = fs.map(function (f) { return f === 'L' ? 'left' : f === 'R' ? 'right' : f === 'C' ? 'center' : 'dot'; });
+        card.innerHTML = '';
+        card.appendChild(ui.el('div', { class: 'hv-snap lr-felt' }, [ui.el('div', { class: 'lr-top' }, [ui.el('span', { html: '<b style="color:' + ui.color(x.w) + '">' + esc(nm[x.w] || '') + '</b> rolled ' + words.join(', ') }), ui.el('span', { class: 'lr-dice', html: dice })]),
+          ui.el('div', { html: lrcTable(ui, nm, x.b, x.a, x.w, x.f, x.pb, x.pa) })]));
+      };
+      out.push(ui.section(d.r0 ? 'The last ' + rl.length + ' rolls · tap one' : 'Every roll · tap one', [roadStrip(ui, items, snaps.length - 1, showRoll), card,
+        dvKey(ui, [['p', 'passed chips'], ['l', 'chips to the pot'], ['w', 'all dots, kept them'], ['', 'the bar under each: who rolled']])], { icon: 'dice' }));
+    }
+    if (d.lf && d.lw >= 0 && !d.rl) {
       var f = String(d.lf).split(''), s = 34, g = 8, w = f.length * s + (f.length - 1) * g;
       var svg = '<svg viewBox="-4 -4 ' + (w + 8) + ' ' + (s + 8) + '" style="max-width:' + (w + 8) * 1.4 + 'px">' + f.map(function (x, i) { return lrcDie(x, i * (s + g), 0, s); }).join('') + '</svg>';
       var winner = e.winner, who = nm[d.lw] || '';
@@ -261,6 +477,8 @@
         ['Three dots', d3 || null]
       ]));
     }
+    var wp = (e.players || []).filter(function (p) { return p.name === e.winner; })[0];
+    if (wp) out.push(ui.el('div', { class: 'dv-foot', text: wp.name + ' was the last one holding chips and took home ' + wp.score + '.' + (d.rl && !d.r0 ? ' ' + String(d.rl).split(' ').length + ' rolls in all.' : '') }));
     return ui.wrap(out);
   });
 
@@ -269,46 +487,63 @@
   // ════════════════════════════════════════════════════════════════════════
   var PV = [100, 500, 1000, 0, 10000, 0, 1000, 500, 100];
   function pSlot(v) { return v === 10000 ? ['#ffe27a', '#e6a412', '#3a2300'] : v === 0 ? ['#c22a3c', '#7a0f1e', '#fff'] : v === 1000 ? ['#2f7be0', '#1a4a9a', '#fff'] : v === 500 ? ['#2bb3a3', '#137468', '#fff'] : ['#8a5ae0', '#53309c', '#fff']; }
+  function pName(v) { return v === 10000 ? '$10,000' : '$' + v; }
   R('plinko', function (e, ui) {
     var d = e.dt; if (!d || !d.p) return null;
     var ps = arr(d.p), nm = names(e), out = [];
-    var drops = [];
+    var drops = [], pfoot = null;
     ps.forEach(function (p, i) { String(p.d || '').split(' ').filter(Boolean).forEach(function (t, k) { var q = t.split(':'); drops.push({ i: i, k: k, x: (+q[0]) / 10, s: +q[1] }); }); });
     if (drops.length) {
-      var W = 340, pad = 8, sw = (W - 2 * pad) / 9, top = 26, rowsY = 12, gapY = 15, H = top + rowsY * gapY + 70;
-      var slotTop = top + rowsY * gapY + 4, plateY = H - 26, id = 'pk' + (++uid);
-      var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Plinko board with every chip">';
-      s += '<defs><linearGradient id="' + id + 'b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a6b"/><stop offset="1" stop-color="#11143a"/></linearGradient></defs>';
-      s += '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="10" fill="url(#' + id + 'b)"/>';
-      for (var r = 0; r < rowsY; r++) {
-        var y = top + 10 + r * gapY;
-        for (var c = 0; c <= 9; c++) {
-          var x = pad + (r % 2 ? c * sw : (c + 0.5) * sw);
-          if (r % 2 === 0 && c === 9) continue;
-          s += '<circle cx="' + x.toFixed(1) + '" cy="' + y + '" r="2" fill="#d6dcff" opacity=".75"/>';
+      // the board with every chip; hi = the chip picked on the strip (its path solid, the rest faded)
+      var board = function (hi) {
+        var W = 340, pad = 8, sw = (W - 2 * pad) / 9, top = 26, rowsY = 12, gapY = 15, H = top + rowsY * gapY + 70;
+        var slotTop = top + rowsY * gapY + 4, plateY = H - 26, id = 'pk' + (++uid);
+        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Plinko board with every chip">';
+        s += '<defs><linearGradient id="' + id + 'b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a6b"/><stop offset="1" stop-color="#11143a"/></linearGradient></defs>';
+        s += '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="10" fill="url(#' + id + 'b)"/>';
+        for (var r = 0; r < rowsY; r++) {
+          var y = top + 10 + r * gapY;
+          for (var c = 0; c <= 9; c++) {
+            var x = pad + (r % 2 ? c * sw : (c + 0.5) * sw);
+            if (r % 2 === 0 && c === 9) continue;
+            s += '<circle cx="' + x.toFixed(1) + '" cy="' + y + '" r="2" fill="#d6dcff" opacity=".75"/>';
+          }
         }
-      }
-      for (var k = 0; k < 9; k++) {
-        var col = pSlot(PV[k]), sx = pad + k * sw;
-        if (k) s += '<rect x="' + (sx - 1) + '" y="' + slotTop + '" width="2" height="' + (plateY - slotTop) + '" fill="#c7cde8"/>';
-        s += '<rect x="' + (sx + 1.5) + '" y="' + plateY + '" width="' + (sw - 3) + '" height="20" rx="4" fill="' + col[1] + '"/>';
-        s += '<rect x="' + (sx + 1.5) + '" y="' + plateY + '" width="' + (sw - 3) + '" height="10" rx="4" fill="' + col[0] + '" opacity=".55"/>';
-        s += '<text x="' + (sx + sw / 2) + '" y="' + (plateY + 10.5) + '" text-anchor="middle" dominant-baseline="central" font-size="' + (PV[k] === 10000 ? 9.5 : 10) + '" font-weight="900" fill="' + col[2] + '" font-family="system-ui">' + (PV[k] === 10000 ? '$10K' : '$' + PV[k]) + '</text>';
-      }
-      // paths and chips: drop marker on the rail, chip stacked in its slot
-      var stack = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-      drops.forEach(function (q) {
-        var x0 = pad + q.x * sw, x1 = pad + (q.s + 0.5) * sw, n = stack[q.s]++, y1 = plateY - 9 - n * 13;
-        var colr = ui.color(q.i);
-        s += '<path d="M' + x0.toFixed(1) + ' 14 C ' + x0.toFixed(1) + ' ' + (top + 70) + ', ' + x1.toFixed(1) + ' ' + (slotTop - 60) + ', ' + x1.toFixed(1) + ' ' + y1 + '" fill="none" stroke="' + colr + '" stroke-width="1.6" stroke-dasharray="3 3" opacity=".55"/>';
-        s += '<circle cx="' + x0.toFixed(1) + '" cy="14" r="5" fill="none" stroke="' + colr + '" stroke-width="2"/>';
-        s += '<circle cx="' + x1.toFixed(1) + '" cy="' + y1 + '" r="6.5" fill="' + colr + '" stroke="rgba(255,255,255,.85)" stroke-width="1.5"/>';
-      });
-      s += '</svg>';
-      out.push(ui.section('Where the chips went', [ui.picture(s, { max: 380 }), ps.length > 1 ? legend(ui, nm.map(function (n, i) { return { name: n, color: ui.color(i) }; })) : null,
+        for (var k = 0; k < 9; k++) {
+          var col = pSlot(PV[k]), sx = pad + k * sw, lit = hi != null && drops[hi].s === k;
+          if (k) s += '<rect x="' + (sx - 1) + '" y="' + slotTop + '" width="2" height="' + (plateY - slotTop) + '" fill="#c7cde8"/>';
+          s += '<rect x="' + (sx + 1.5) + '" y="' + plateY + '" width="' + (sw - 3) + '" height="20" rx="4" fill="' + col[1] + '"' + (lit ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
+          s += '<rect x="' + (sx + 1.5) + '" y="' + plateY + '" width="' + (sw - 3) + '" height="10" rx="4" fill="' + col[0] + '" opacity=".55"/>';
+          s += '<text x="' + (sx + sw / 2) + '" y="' + (plateY + 10.5) + '" text-anchor="middle" dominant-baseline="central" font-size="' + (PV[k] === 10000 ? 9.5 : 10) + '" font-weight="900" fill="' + col[2] + '" font-family="system-ui">' + (PV[k] === 10000 ? '$10K' : '$' + PV[k]) + '</text>';
+        }
+        // paths and chips: drop marker on the rail, chip stacked in its slot
+        var stack = [0, 0, 0, 0, 0, 0, 0, 0, 0], front = '';
+        drops.forEach(function (q, n) {
+          var x0 = pad + q.x * sw, x1 = pad + (q.s + 0.5) * sw, h = stack[q.s]++, y1 = plateY - 9 - h * 13, me = hi === n, dim = hi != null && !me;
+          var colr = ui.color(q.i), g = '<g' + (dim ? ' opacity=".28"' : '') + '>';
+          g += '<path d="M' + x0.toFixed(1) + ' 14 C ' + x0.toFixed(1) + ' ' + (top + 70) + ', ' + x1.toFixed(1) + ' ' + (slotTop - 60) + ', ' + x1.toFixed(1) + ' ' + y1 + '" fill="none" stroke="' + (me ? '#fff' : colr) + '" stroke-width="' + (me ? 2.5 : 1.6) + '"' + (me ? '' : ' stroke-dasharray="3 3" opacity=".55"') + '/>';
+          g += '<circle cx="' + x0.toFixed(1) + '" cy="14" r="5" fill="none" stroke="' + colr + '" stroke-width="2"/>';
+          g += '<circle cx="' + x1.toFixed(1) + '" cy="' + y1 + '" r="' + (me ? 8 : 6.5) + '" fill="' + colr + '" stroke="' + (me ? '#fff' : 'rgba(255,255,255,.85)') + '" stroke-width="' + (me ? 2.5 : 1.5) + '"/></g>';
+          if (me) front = g; else s += g;
+        });
+        return s + front + '</svg>';
+      };
+      var pic = ui.el('div'), note = ui.el('p', { class: 'dv-note' });
+      var showChip = function (n) {
+        var q = drops[n], v = PV[q.s];
+        pic.innerHTML = ''; pic.appendChild(ui.picture(board(n), { max: 380 }));
+        note.innerHTML = (ps.length > 1 ? '<b style="color:' + ui.color(q.i) + '">' + esc(nm[q.i] || '') + '</b>, chip ' + (q.k + 1) : 'Chip ' + (q.k + 1)) + ': let go above the ' + pName(PV[Math.min(8, Math.max(0, Math.floor(q.x)))]) + ' slot, landed in <b class="' + (v ? 'dv-good' : 'dv-bad') + '">' + (v === 10000 ? '$10,000' : '$' + v) + '</b>.';
+      };
+      var best = 0; drops.forEach(function (q, n) { if (PV[q.s] > PV[drops[best].s]) best = n; });
+      var items = drops.map(function (q, n) { var v = PV[q.s]; return { c: (v === 10000 ? 'big' : v === 0 ? 'l' : v >= 1000 ? 'w' : 'p') + (ps.length > 1 ? ' pc' : ''), pc: ui.color(q.i), t: String(n + 1), title: (nm[q.i] || '') + ' chip ' + (q.k + 1) + ': $' + v }; });
+      out.push(ui.section('Every chip · tap one', [roadStrip(ui, items, best, showChip), pic, note, ps.length > 1 ? legend(ui, nm.map(function (n, i) { return { name: n, color: ui.color(i) }; })) : null,
         ui.el('p', { class: 'dv-note', text: 'Rings at the top: where each chip was let go. Dots: the slot it landed in.' })], { icon: 'coins' }));
       var aimMid = drops.filter(function (q) { return q.x >= 4 && q.x <= 5; }).length, hit = drops.filter(function (q) { return q.s === 4; }).length, zero = drops.filter(function (q) { return PV[q.s] === 0; }).length;
-      out.push(ui.stats([['Chips dropped', drops.length], ['Aimed at $10K', aimMid], ['Landed on $10K', hit], ['Landed on $0', zero]]));
+      var tot = drops.reduce(function (a, q) { return a + PV[q.s]; }, 0);
+      out.unshift(ui.stats([ps.length === 1 ? ['Won', cash(tot)] : null, ['Chips dropped', drops.length], ['Best chip', cash(PV[drops[best].s])], ['Landed on $10K', hit], ['Landed on $0', zero], ['Aimed at $10K', aimMid]]));
+      var P = e.players || [], wn = P.filter(function (p) { return p.name === e.winner; })[0];
+      pfoot = (ui.el('div', { class: 'dv-foot', text: ps.length > 1 ? (wn ? wn.name + ' won with ' + cash(wn.score) + '.' : 'A tie.') + ' ' + drops.length + ' chips dropped, ' + hit + ' on the $10,000.'
+        : drops.length + ' chip' + (drops.length === 1 ? '' : 's') + ' for ' + cash(tot) + (hit ? ', ' + hit + ' on the $10,000' : '') + (zero ? ', ' + zero + ' on $0' : '') + '.' }));
     }
     // the Big Wheel spin that set each player's chips
     var spins = []; ps.forEach(function (p, i) { if (p.w && p.w.n) spins.push({ i: i, n: +p.w.n, j: p.w.j || +p.w.n === 7 }); });
@@ -329,7 +564,7 @@
         if (sp.j) sv += '<text x="' + (x + pw / 2) + '" y="' + (ph + 30) + '" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="900" letter-spacing="1.5" font-family="system-ui" fill="#e0b84e">JACKPOT</text>';
       });
       sv += '</svg>';
-      out.unshift(ui.section('The Big Wheel', [ui.picture(sv, { max: Math.min(420, SW) }), ui.el('p', { class: 'dv-note', text: 'The panel each spin stopped on: that many chips to drop.' })], { icon: 'star' }));
+      out.splice(drops.length ? 1 : 0, 0, ui.section('The Big Wheel', [ui.picture(sv, { max: Math.min(420, SW) }), ui.el('p', { class: 'dv-note', text: 'The panel each spin stopped on: that many chips to drop.' })], { icon: 'star' }));
     }
     // price game that earned the chips (games before the Big Wheel)
     var q = []; ps.forEach(function (p, i) { arr(p.q).forEach(function (x) { q.push({ i: i, x: x }); }); });
@@ -341,6 +576,7 @@
       });
       out.push(ui.section('Earning the chips', ui.table(multi ? ['', 'Prize', 'Shown → real', ''] : ['Prize', 'Shown', 'Real', ''], rows), { icon: 'eye' }));
     }
+    if (pfoot) out.push(pfoot);
     return ui.wrap(out);
   });
 
@@ -366,22 +602,42 @@
     var runs = arr(d.r), nm = names(e), out = [];
     runs.forEach(function (r, i) {
       var parts = [], seq = String(r.q || ''), lvl = 1, row = ui.el('div', { class: 'sg-run' });
-      seq.split('').forEach(function (ch) {
-        var n = lvl <= 6 ? 3 : lvl <= 12 ? 4 : 5;
-        row.appendChild(ui.el('span', { class: 'sg-p ' + (ch === '1' ? 'ok' : 'no') + (n > 3 ? ' t' + n : ''), text: String(lvl), title: 'Level ' + lvl + (ch === '1' ? ': found it' : ': missed') }));
+      var miss = arr(r.m).filter(function (x) { return x && x.a >= 0 && x.p >= 0; }), cups = ui.el('div'), btns = [], shown = 0;
+      // a miss: the cups lifted, the ball and the cup that was picked
+      var showMiss = function (x, b) {
+        btns.forEach(function (o) { o.classList.toggle('on', o === b); });
+        cups.innerHTML = '';
+        cups.appendChild(ui.el('div', { class: 'dv-sub', text: 'Level ' + x.l + ': ' + x.n + ' cups, ' + x.mv + ' moves. The ball was under cup ' + (x.a + 1) + ', the pick was cup ' + (x.p + 1) + '.' }));
+        cups.appendChild(ui.el('div', { class: 'hv-snap', style: { 'max-width': '360px', background: 'radial-gradient(120% 120% at 50% 0%,#1d6a70,#0b3439)' }, html: cupsSvg(x.n, x.a, x.p) }));
+      };
+      // match the misses kept (the last few) to the red marks, from the end
+      var reds = []; seq.split('').forEach(function (ch, k) { if (ch !== '1') reds.push(k); });
+      var missAt = {}; miss.slice().reverse().forEach(function (x, k) { var at = reds[reds.length - 1 - k]; if (at != null) missAt[at] = x; });
+      seq.split('').forEach(function (ch, k) {
+        var n = lvl <= 6 ? 3 : lvl <= 12 ? 4 : 5, x = missAt[k];
+        var b = ui.el(x ? 'button' : 'span', { type: x ? 'button' : null, class: 'sg-p ' + (ch === '1' ? 'ok' : 'no') + (n > 3 ? ' t' + n : '') + (x ? ' tap' : ''), text: String(lvl), title: 'Level ' + lvl + (ch === '1' ? ': found it' : ': missed') });
+        if (x) { btns.push(b); b.onclick = function () { showMiss(x, b); }; }
+        row.appendChild(b);
         if (ch === '1') lvl++;
       });
       if (seq) parts.push(row);
       var h = String(r.h || '').split(',');
       parts.push(ui.stats([['Levels cleared', r.c], ['Best streak', r.b], ['Most cups', r.mc], h.length === 3 ? ['Hardest shuffle', h[0] + ' moves', h[1] + ' cups · level ' + h[2]] : null]));
-      var miss = arr(r.m), last = miss[miss.length - 1];
-      if (last && last.a >= 0 && last.p >= 0) {
-        parts.push(ui.el('div', { class: 'dv-sub', text: (miss.length > 1 ? 'Last miss' : 'The miss') + ': level ' + last.l + ', ' + last.mv + ' moves' }));
-        parts.push(ui.el('div', { class: 'hv-snap', style: { 'max-width': '360px', background: 'radial-gradient(120% 120% at 50% 0%,#1d6a70,#0b3439)' }, html: cupsSvg(last.n, last.a, last.p) }));
+      if (miss.length) {
+        parts.push(cups);
+        var lastBtn = btns[btns.length - 1];
+        showMiss(miss[miss.length - 1], lastBtn || null);
+        if (btns.length > 1) parts.push(ui.el('p', { class: 'dv-note', text: 'Tap a red level to see that miss.' }));
       }
       out.push(ui.section(runs.length > 1 ? (nm[i] || 'Player ' + (i + 1)) + "'s run" : 'The run', parts, { icon: 'eye' }));
     });
     if (seqLegendNeeded(runs)) out.push(ui.el('p', { class: 'dv-note', text: 'Green: found the ball. Red: missed.' + (runs.some(function (r) { return r.mc > 3; }) ? ' A yellow ring means 4 cups, pink means 5.' : '') }));
+    var P = e.players || [];
+    if (P.length) {
+      var top = P.slice().sort(function (x, y) { return (y.score || 0) - (x.score || 0); });
+      out.push(ui.el('div', { class: 'dv-foot', text: P.length === 1 ? P[0].name + ' cleared ' + P[0].score + ' level' + (P[0].score === 1 ? '' : 's') + (d.lv === 1 ? ' on one miss.' : ' before the misses ran out.')
+        : e.winner ? e.winner + ' won, clearing ' + top[0].score + ' levels.' : 'A tie at ' + top[0].score + ' levels.' }));
+    }
     return ui.wrap(out);
   });
   function seqLegendNeeded(runs) { return runs.some(function (r) { return r.q; }); }
@@ -512,7 +768,8 @@
       '<rect x="2" y="10" width="60" height="44" rx="6" fill="#c7ccd4" stroke="#7b838e" stroke-width="1.5"/><rect x="2" y="10" width="60" height="16" rx="6" fill="#eef0f3"/>' +
       '<rect x="16" y="22" width="32" height="22" rx="4" fill="#fffef6" stroke="#bdb59a"/><text x="32" y="34" text-anchor="middle" dominant-baseline="central" font-size="17" font-weight="900" fill="#111" font-family="system-ui">' + num + '</text></svg>';
   }
-  function moneyBoard(inPlay, mine) {
+  function moneyBoard(inPlay, mine, just) {
+    just = just || {};
     var W = 326, bw = 150, bh = 18, g = 3, pad = 8, H = pad * 2 + 13 * bh + 12 * g, id = 'dd' + (++uid);
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Money board">';
     s += '<defs><linearGradient id="' + id + 'l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7db7ff"/><stop offset=".45" stop-color="#2f78e6"/><stop offset="1" stop-color="#1c55b8"/></linearGradient>' +
@@ -520,8 +777,10 @@
     s += '<rect width="' + W + '" height="' + H + '" rx="12" fill="#0a0f26"/>';
     DV.forEach(function (v, k) {
       var col = k < 13 ? 0 : 1, row = k % 13, x = pad + col * (bw + 10), y = pad + row * (bh + g), live = inPlay[k], me = k === mine;
-      s += '<rect x="' + x + '" y="' + y + '" width="' + bw + '" height="' + bh + '" rx="4" fill="' + (live ? 'url(#' + id + (col ? 'h' : 'l') + ')' : 'rgba(255,255,255,.05)') + '"' + (me ? ' stroke="#fff" stroke-width="2.5"' : '') + '/>';
-      s += '<text x="' + (x + bw / 2) + '" y="' + (y + bh / 2 + 0.5) + '" text-anchor="middle" dominant-baseline="central" font-size="11.5" font-weight="900" fill="' + (live ? (col ? '#3b2500' : '#fff') : 'rgba(255,255,255,.25)') + '" font-family="system-ui"' + (live ? '' : ' text-decoration="line-through"') + '>' + cash(v) + '</text>';
+      var jt = just[k];
+      s += '<rect x="' + x + '" y="' + y + '" width="' + bw + '" height="' + bh + '" rx="4" fill="' + (live ? 'url(#' + id + (col ? 'h' : 'l') + ')' : jt ? 'rgba(239,68,68,.28)' : 'rgba(255,255,255,.05)') + '"' + (me ? ' stroke="#fff" stroke-width="2.5"' : jt ? ' stroke="#f87171" stroke-width="1.5"' : '') + '/>';
+      s += '<text x="' + (x + bw / 2) + '" y="' + (y + bh / 2 + 0.5) + '" text-anchor="middle" dominant-baseline="central" font-size="11.5" font-weight="900" fill="' + (live ? (col ? '#3b2500' : '#fff') : jt ? '#fecaca' : 'rgba(255,255,255,.25)') + '" font-family="system-ui"' + (live ? '' : ' text-decoration="line-through"') + '>' + cash(v) + '</text>';
+      if (jt) s += '<text x="' + (x + 8) + '" y="' + (y + bh / 2 + 0.5) + '" dominant-baseline="central" font-size="9" font-weight="900" fill="#fecaca" font-family="system-ui">#' + jt + '</text>';
     });
     return s + '</svg>';
   }
@@ -571,6 +830,7 @@
       if (best >= 0) line += mv >= offs[best] ? '<b class="dv-good">Beat the best offer (' + cash(offs[best]) + ') by ' + cash(mv - offs[best]) + '.</b>' : '<b class="dv-bad">The best offer was ' + cash(offs[best]) + ' in round ' + (best + 1) + '.</b>';
     }
     out.push(ui.el('div', { class: 'dd-verdict' }, [ui.el('div', { html: caseSvg(my + 1) }), ui.el('div', null, [ui.el('div', { class: 'big', text: big }), ui.el('p', { html: line })])]));
+    out.push(ui.stats([['Won', cash(won)], ['Case ' + (my + 1) + ' held', cash(mv)], ['Best offer', best >= 0 ? cash(offs[best]) : null, best >= 0 ? 'round ' + (best + 1) : ''], ['Cases opened', Math.min(opened.length, dealR >= 0 ? DCUM[dealR] : opened.length)]]));
     // offers vs what was left
     if (allOff.length) {
       out.push(ui.section("The Banker's offers", [ui.picture(offerChart(allOff.slice(0, 9), avgs.map(function (a, r) { return allOff[r] != null ? a : null; }), dealR, offs.length), { frame: 'dark', max: 420 }),
@@ -578,32 +838,37 @@
           ui.el('span', null, [ui.el('i', { style: { background: '#7db7ff' } }), ui.el('span', { text: 'Average left in play' })]),
           gh.length ? ui.el('span', null, [ui.el('i', { style: { background: 'transparent', border: '1.5px dashed #ffc93a', 'border-radius': '2px' } }), ui.el('span', { text: 'What it would have been' })]) : null])], { icon: 'chart' }));
     }
-    // round by round
-    var list = ui.el('div', { class: 'dd-rounds' }), prev = 0;
+    // round by round: tap one to see the board after it, the cases opened in it lit red
+    var steps = [], prev = 0;
     for (var rr = 0; rr < 9; rr++) {
       var ids = opened.slice(prev, DCUM[rr]); prev = DCUM[rr];
       if (!ids.length) break;
-      var ghost = dealR >= 0 && rr > dealR, o = allOff[rr], deal = rr === dealR;
-      var cs = ui.el('div', { class: 'dd-cs' }, ids.map(function (i) { var v = vals[i]; return ui.el('span', { class: 'dd-c ' + (v >= 100000 ? 'top' : v >= 1000 ? 'hi' : 'lo') }, [ui.el('i', { text: String(i + 1) }), ui.el('span', { text: fmtK(v) })]); }));
-      var offLine = o != null ? ui.el('div', { class: 'dd-off' }, [ui.el('span', { html: (ghost ? 'Would have offered ' : 'Offer ') + '<b>' + cash(o) + '</b>' }),
-        avgs[rr] != null ? ui.el('span', { text: Math.round(o / avgs[rr] * 100) + '% of the ' + fmtK(avgs[rr]) + ' average' }) : null,
-        ghost ? ui.el('span', { class: 'dd-tag', text: 'WHAT IF' }) : ui.el('span', { class: 'dd-tag ' + (deal ? 'deal' : 'nd'), text: deal ? 'DEAL' : 'NO DEAL' })]) : null;
-      list.appendChild(ui.el('div', { class: 'dd-r' + (ghost ? ' ghost' : '') + (deal ? ' deal' : '') }, [ui.el('b', { text: 'Round ' + (rr + 1) }), cs, offLine]));
+      steps.push({ r: rr, ids: ids, cut: DCUM[rr], o: allOff[rr], ghost: dealR >= 0 && rr > dealR, deal: rr === dealR });
     }
-    // the final two
-    if (opened.length >= 25) {
-      var other = opened[24];
-      list.appendChild(ui.el('div', { class: 'dd-r' }, [ui.el('b', { text: 'Final' }), ui.el('div', { class: 'dd-cs' }, [
-        ui.el('span', { class: 'dd-c ' + (vals[other] >= 1000 ? 'hi' : 'lo') }, [ui.el('i', { text: String(other + 1) }), ui.el('span', { text: fmtK(vals[other]) + (g.sw ? ' (first pick)' : ' (left on stage)') })]),
-        ui.el('span', { class: 'dd-c top' }, [ui.el('i', { text: String(my + 1) }), ui.el('span', { text: fmtK(mv) + ' (your case)' })])])]));
+    if (opened.length >= 25) steps.push({ fin: true, ids: [opened[24]], cut: 24 });
+    if (steps.length) {
+      var card = ui.el('div', { class: 'hv' }), start = steps.length - 1;
+      steps.forEach(function (st, k) { if (st.deal) start = k; });
+      var showStep = function (k) {
+        var st = steps[k], gone = {}, just = {};
+        opened.slice(0, st.cut).forEach(function (i) { gone[i] = 1; });
+        if (!st.fin) st.ids.forEach(function (i) { just[DV.indexOf(vals[i])] = i + 1; });
+        var inPlay = DV.map(function (v) { return !gone[vals.indexOf(v)]; });
+        var cs = ui.el('div', { class: 'dd-cs' }, st.ids.map(function (i) { var v = vals[i]; return ui.el('span', { class: 'dd-c ' + (v >= 100000 ? 'top' : v >= 1000 ? 'hi' : 'lo') }, [ui.el('i', { text: String(i + 1) }), ui.el('span', { text: fmtK(v) + (st.fin ? (g.sw ? ' (your first pick)' : ' (left on stage)') : '') })]); }));
+        if (st.fin) cs.appendChild(ui.el('span', { class: 'dd-c top' }, [ui.el('i', { text: String(my + 1) }), ui.el('span', { text: fmtK(mv) + ' (your case)' })]));
+        var head = st.fin ? 'The final two' : (st.ghost ? 'Round ' + (st.r + 1) + ' · what if' : 'Round ' + (st.r + 1)) + ' · opened ' + st.ids.length;
+        var offLine = st.o != null && !st.fin ? ui.el('div', { class: 'dd-off' }, [ui.el('span', { html: (st.ghost ? 'Would have offered ' : 'The Banker offered ') + '<b>' + cash(st.o) + '</b>' }),
+          avgs[st.r] != null ? ui.el('span', { text: Math.round(st.o / avgs[st.r] * 100) + '% of the ' + fmtK(avgs[st.r]) + ' average' }) : null,
+          st.ghost ? ui.el('span', { class: 'dd-tag', text: 'WHAT IF' }) : ui.el('span', { class: 'dd-tag ' + (st.deal ? 'deal' : 'nd'), text: st.deal ? 'DEAL' : 'NO DEAL' })]) : null;
+        card.innerHTML = '';
+        card.appendChild(ui.el('div', { class: 'dd-step' + (st.ghost ? ' ghost' : '') + (st.deal ? ' deal' : '') }, [ui.el('b', { class: 'dd-h', text: head }), cs,
+          ui.picture(moneyBoard(inPlay, DV.indexOf(mv), just), { max: 380 }), offLine]));
+      };
+      var items = steps.map(function (st) { return { c: st.fin ? 'big' : st.deal ? 'w' : st.ghost ? 'gh' : 'l', t: st.fin ? 'F' : String(st.r + 1), title: st.fin ? 'The final two' : 'Round ' + (st.r + 1) }; });
+      out.push(ui.section('Round by round · tap one', [roadStrip(ui, items, start, showStep), card,
+        dvKey(ui, [['l', 'No Deal'], ['w', 'Deal'], ['gh', 'what if'], ['big', 'the final two']]),
+        ui.el('p', { class: 'dv-note', text: 'Lit amounts were still in play. Red ones came out of the cases opened that round; the white outline is what your case held.' })], { icon: 'book' }));
     }
-    out.push(ui.section('Case by case', list, { icon: 'book' }));
-    // the money board at the moment of decision
-    var cut = dealR >= 0 ? DCUM[dealR] : Math.min(24, opened.length);
-    var gone2 = {}; opened.slice(0, cut).forEach(function (i) { gone2[i] = 1; });
-    var inPlay = DV.map(function (v) { var ci = vals.indexOf(v); return !gone2[ci]; });
-    out.push(ui.section(dealR >= 0 ? 'The board when you took the deal' : 'The board at the end', [ui.picture(moneyBoard(inPlay, DV.indexOf(mv)), { max: 380 }),
-      ui.el('p', { class: 'dv-note', text: 'Lit amounts were still in play. The white outline is what your case held.' })], { icon: 'coins' }));
     return multi ? ui.section(name + ' · ' + cash(won), out) : out;
   }
   R('dealornodeal', function (e, ui) {
@@ -632,6 +897,54 @@
     '.hv-pyl .lv{display:flex;gap:5px;}.hv-pyl .lv i{width:22px;height:8px;border-radius:4px;background:rgba(255,255,255,.12);}.hv-pyl .lv i.on{background:#f6c33a;box-shadow:0 0 6px rgba(246,195,58,.6);}',
     '.hv-pyl .bn small{font-size:.66rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55);}'
   ].join(''));
+  // The Big Board: 18 squares around the screen (5 across, 6 down), the one the light stopped on lit
+  function pylPos(i) { i = (i + 18) % 18; if (i < 5) return [i, 0]; if (i < 9) return [4, i - 4]; if (i < 14) return [13 - i, 5]; return [0, 18 - i]; }
+  var PYL_COL = { c: ['#4a86ff', '#1a3fc4'], cs: ['#a06bff', '#5d22cc'], p: ['#ff58b6', '#a01a7c'], w: ['#ff5a4a', '#a80d1a'], d: ['#ffe27a', '#d49a12'], o: ['#8fa0c8', '#3a4670'] };
+  function pylBoard(x, who, pc, prize) {
+    var cw = 62, ch = 50, g = 5, pad = 8, W = pad * 2 + 5 * cw + 4 * g, H = pad * 2 + 6 * ch + 5 * g, id = 'py' + (++uid), s = '';
+    s += '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="The Big Board">';
+    s += '<defs><radialGradient id="' + id + '" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#1d2a6e"/><stop offset="1" stop-color="#080b2a"/></radialGradient></defs>';
+    s += '<rect width="' + W + '" height="' + H + '" rx="14" fill="url(#' + id + ')" stroke="#f6c33a" stroke-width="3"/>';
+    for (var k = 0; k < 18; k++) {
+      var q = pylPos(k), sx = pad + q[0] * (cw + g), sy = pad + q[1] * (ch + g), hit = k === x.i, from = k === x.i0 && x.i0 !== x.i;
+      if (!hit) { s += '<rect x="' + sx + '" y="' + sy + '" width="' + cw + '" height="' + ch + '" rx="7" fill="#0b0630" stroke="' + (from ? '#f6c33a' : 'rgba(255,255,255,.12)') + '"' + (from ? ' stroke-dasharray="4 3" stroke-width="2"' : '') + '/>'; continue; }
+      var col = PYL_COL[x.code === 'c' && x.s ? 'cs' : x.code] || PYL_COL.o;
+      s += '<rect x="' + (sx - 3) + '" y="' + (sy - 3) + '" width="' + (cw + 6) + '" height="' + (ch + 6) + '" rx="9" fill="none" stroke="#fff6c8" stroke-width="3"/>';
+      s += '<rect x="' + sx + '" y="' + sy + '" width="' + cw + '" height="' + ch + '" rx="7" fill="' + col[1] + '"/><rect x="' + sx + '" y="' + sy + '" width="' + cw + '" height="' + ch / 2 + '" rx="7" fill="' + col[0] + '" opacity=".55"/>';
+      var big = x.code === 'w' ? 'WHAMMY' : x.code === 'd' ? 'DOUBLE' : x.code === 'p' ? 'PRIZE' : fmtK(x.v), small = x.code === 'p' ? fmtK(x.v) : x.code === 'd' ? 'your $$' : x.s ? '+ ONE SPIN' : '';
+      s += '<text x="' + (sx + cw / 2) + '" y="' + (sy + (small ? ch * 0.42 : ch / 2)) + '" text-anchor="middle" dominant-baseline="central" font-size="' + (big.length > 5 ? 11 : 15) + '" font-weight="900" fill="' + (x.code === 'd' ? '#3a2300' : '#fff') + '" font-family="system-ui">' + big + '</text>';
+      if (small) s += '<text x="' + (sx + cw / 2) + '" y="' + (sy + ch * 0.76) + '" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="900" fill="' + (x.code === 'd' ? '#3a2300' : '#ffe7a0') + '" font-family="system-ui">' + small + '</text>';
+    }
+    // the screen in the middle: who, what it did, the bank after
+    var mx = pad + cw + g, my = pad + ch + g, mw = 3 * cw + 2 * g, mh = 4 * ch + 3 * g;
+    s += '<rect x="' + mx + '" y="' + my + '" width="' + mw + '" height="' + mh + '" rx="10" fill="#05071c" stroke="rgba(246,195,58,.35)"/>';
+    var gain = x.code === 'w' ? 'WHAMMY!' : x.code === 'd' ? 'DOUBLED' : x.code === 'p' ? '+' + cash(x.v) : x.code === 'c' ? '+' + cash(x.v) : '';
+    s += '<text x="' + (mx + mw / 2) + '" y="' + (my + 34) + '" text-anchor="middle" font-size="15" font-weight="900" fill="' + pc + '" font-family="system-ui">' + esc(who) + '</text>';
+    if (prize) s += '<text x="' + (mx + mw / 2) + '" y="' + (my + 62) + '" text-anchor="middle" font-size="12" font-weight="800" fill="#ffb3e1" font-family="system-ui">' + esc(prize.length > 24 ? prize.slice(0, 23) + '…' : prize) + '</text>';
+    s += '<text x="' + (mx + mw / 2) + '" y="' + (my + mh / 2 + 18) + '" text-anchor="middle" font-size="' + (x.code === 'w' ? 26 : 28) + '" font-weight="900" fill="' + (x.code === 'w' ? '#ff6a5a' : '#ffd84a') + '" font-family="system-ui">' + gain + '</text>';
+    s += '<text x="' + (mx + mw / 2) + '" y="' + (my + mh - 40) + '" text-anchor="middle" font-size="10" font-weight="900" letter-spacing="1.5" fill="rgba(255,255,255,.55)" font-family="system-ui">' + (x.b ? 'BONUS BANK' : 'BANK') + '</text>';
+    s += '<text x="' + (mx + mw / 2) + '" y="' + (my + mh - 18) + '" text-anchor="middle" font-size="18" font-weight="900" fill="#fff" font-family="system-ui">' + cash(x.bank) + '</text>';
+    return s + '</svg>';
+  }
+  function pylStop(t) {
+    var q = String(t).split('.'); if (q.length < 8) return null;
+    return { r: q[0], b: q[0] === 'b', p: +q[1], i0: +q[2], i: +q[3], code: q[4], v: +q[5] || 0, s: q[6] === '1', bank: +q[7] || 0 };
+  }
+  // each player's bank stop by stop: one line each
+  function pylChart(ui, stops, n) {
+    var main = stops.filter(function (x) { return !x.b; }); if (main.length < 3) return null;
+    var W = 320, H = 130, pl = 6, pr = 6, pt = 10, pb = 18, bank = []; for (var i = 0; i < n; i++) bank.push(0);
+    var lines = bank.map(function () { return [0]; }), mx = 1;
+    main.forEach(function (x) { if (bank[x.p] == null) return; bank[x.p] = x.bank; lines.forEach(function (l, i) { l.push(bank[i]); }); mx = Math.max(mx, x.bank); });
+    var X = function (k) { return pl + k * (W - pl - pr) / main.length; }, Y = function (v) { return pt + (mx - v) * (H - pt - pb) / mx; };
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="dv-chart" role="img" aria-label="Each bank, spin by spin">';
+    main.forEach(function (x, k) { if (x.code === 'w') s += '<rect x="' + (X(k + 1) - 1.5).toFixed(1) + '" y="' + pt + '" width="3" height="' + (H - pt - pb) + '" fill="rgba(255,90,74,.25)"/>'; });
+    var r2 = -1; main.forEach(function (x, k) { if (r2 < 0 && x.r === '2') r2 = k; });
+    if (r2 > 0) s += '<line x1="' + X(r2).toFixed(1) + '" x2="' + X(r2).toFixed(1) + '" y1="' + pt + '" y2="' + (H - pb) + '" stroke="rgba(255,255,255,.3)" stroke-dasharray="3 3"/><text x="' + (X(r2) + 4).toFixed(1) + '" y="' + (H - 5) + '" font-size="9" font-weight="800" fill="rgba(255,255,255,.55)">Round 2</text>';
+    s += '<text x="' + pl + '" y="' + (H - 5) + '" font-size="9" font-weight="800" fill="rgba(255,255,255,.55)">Round 1</text>';
+    lines.forEach(function (l, i) { s += '<polyline points="' + l.map(function (v, k) { return X(k).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' ') + '" fill="none" stroke="' + ui.color(i) + '" stroke-width="2.5" stroke-linejoin="round"/>'; });
+    return s + '</svg>';
+  }
   R('pressyourluck', function (e, ui) {
     var d = e.dt; if (!d || !d.wh) return null;
     var el = ui.el, P = e.players || [], wh = arr(d.wh), kp = arr(d.kp), bk = arr(d.bk), B = d.bonus, box = el('div', { class: 'hv-pyl' });
@@ -670,6 +983,24 @@
       ]));
     }
     var tw = wh.reduce(function (a, v) { return a + (Number(v) || 0); }, 0);
-    return ui.wrap([ui.section('The scoreboard', box), ui.stats([['Whammies', tw], ['Prizes landed', arr(d.pz).length || null]])]);
+    var stops = String(d.st || '').split(' ').filter(Boolean).map(pylStop).filter(Boolean), out = [];
+    var cashTop = 0; stops.forEach(function (x) { if (x.code === 'c' || x.code === 'p') cashTop = Math.max(cashTop, x.v); });
+    out.push(ui.stats([['Spins', stops.length || null], ['Whammies', tw], ['Prizes landed', arr(d.pz).length || null], ['Biggest square', cashTop ? cash(cashTop) : null]]));
+    out.push(ui.section('The scoreboard', box, { icon: 'trophy' }));
+    if (stops.length) {
+      // the prize names, in the order they were landed
+      var pzn = arr(d.pz).map(function (z) { var q = String(z).split(':'); return q.slice(1, q.length > 2 ? -1 : undefined).join(':'); }), pk = 0;
+      stops.forEach(function (x) { if (x.code === 'p' && !x.b) x.name = pzn[pk++] || ''; });
+      var card = ui.el('div', { class: 'hv' }), big = -1;
+      stops.forEach(function (x, k) { if ((x.code === 'c' || x.code === 'p') && (big < 0 || x.v > stops[big].v)) big = k; });
+      var items = stops.map(function (x, k) { return { c: (x.code === 'w' ? 'l' : x.code === 'd' ? 'big' : x.code === 'p' ? 'pz' : 'p') + ' pc', pc: x.b ? '#fff' : ui.color(x.p), t: x.b ? 'B' : String(k + 1), title: (x.b ? 'Bonus · ' : 'Spin ' + (k + 1) + ' · ') + ((P[x.p] || {}).name || '') }; });
+      var strip = roadStrip(ui, items, big >= 0 ? big : stops.length - 1, function (k) { var x = stops[k]; card.innerHTML = ''; card.appendChild(ui.picture(pylBoard(x, (P[x.p] || {}).name || '', x.b ? '#ffd84a' : ui.color(x.p), x.name), { max: 340 })); });
+      out.push(ui.section('Every spin · tap one', [strip, card, dvKey(ui, [['p', 'cash'], ['pz', 'prize'], ['big', 'double'], ['l', 'Whammy'], ['', 'the bar under each: whose spin']])], { icon: 'star' }));
+      var chs = pylChart(ui, stops, P.length);
+      if (chs) out.push(ui.section('The banks, spin by spin', [ui.picture(chs, { frame: 'dark', max: 420 }), legend(ui, P.map(function (p, i) { return { name: p.name, color: ui.color(i) }; })), ui.el('p', { class: 'dv-note', text: 'Red stripes: a Whammy hit.' })], { icon: 'chart' }));
+    }
+    var win = P.filter(function (p) { return p.name === e.winner; })[0];
+    out.push(ui.el('div', { class: 'dv-foot', text: (win ? win.name + ' won with ' + cash(win.score) : 'A tie') + '. ' + (tw ? (tw === 1 ? 'One Whammy' : tw + ' Whammies') + ' in all.' : 'No Whammies all game!') + (B && B.r === 'jackpot' ? ' Then the bonus jackpot!' : '') }));
+    return ui.wrap(out);
   });
 })();

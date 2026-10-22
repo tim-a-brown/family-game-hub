@@ -239,7 +239,60 @@
     return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 20 20" aria-hidden="true"><rect x=".5" y=".5" width="19" height="19" rx="4" fill="#f7f3ea" stroke="rgba(0,0,0,.35)"/>' +
       P.map(function (p) { return '<circle cx="' + p[0] * 20 + '" cy="' + p[1] * 20 + '" r="2.1" fill="' + (v === 1 ? '#c8102e' : '#1b1b1b') + '"/>'; }).join('') + '</svg>';
   }
+  // ── session helpers ──
+  function series(s) { return String(s == null ? '' : s).split(',').filter(function (x) { return x !== ''; }).map(Number).filter(function (x) { return !isNaN(x); }); }
+  // The money over the session: a line from the first hand to the last on the game's own table, the start level
+  // dashed, the high marked in gold. v = money after each hand (v[0] = before the first); o = {bg, unit, n, hi}
+  function moneyChart(ui, game, v, o) {
+    o = o || {}; v = (v || []).filter(function (x) { return x != null && !isNaN(x); }); if (v.length < 2) return null;
+    var W = 320, H = 120, pl = 6, pr = 6, pt = 14, pb = 16, mn = Math.min.apply(null, v), mx = Math.max.apply(null, v), s0 = v[0], id = 'czm' + (++uid);
+    var x = function (i) { return pl + i * (W - pl - pr) / (v.length - 1); }, y = function (n) { return pt + (mx - n) * (H - pt - pb) / ((mx - mn) || 1); };
+    var pts = v.map(function (n, i) { return x(i).toFixed(1) + ',' + y(n).toFixed(1); }).join(' '), end = v[v.length - 1], up = end >= s0;
+    var col = up ? '#4ade80' : '#f87171', hi = v.indexOf(mx), unit = o.unit || 'Hand';
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="cz-chart" role="img" aria-label="Money over the session">' +
+      '<defs><linearGradient id="' + id + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity=".35"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs>' +
+      '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y(s0).toFixed(1) + '" y2="' + y(s0).toFixed(1) + '" stroke="rgba(255,255,255,.35)" stroke-dasharray="4 4"/>' +
+      '<polygon points="' + x(0).toFixed(1) + ',' + (H - pb) + ' ' + pts + ' ' + x(v.length - 1).toFixed(1) + ',' + (H - pb) + '" fill="url(#' + id + ')"/>' +
+      '<polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+      (mx > s0 ? '<circle cx="' + x(hi).toFixed(1) + '" cy="' + y(mx).toFixed(1) + '" r="3.5" fill="#ffd54a"/>' : '') +
+      '<circle cx="' + x(v.length - 1).toFixed(1) + '" cy="' + y(end).toFixed(1) + '" r="4" fill="' + col + '" stroke="#fff" stroke-width="1.5"/>' +
+      '<text x="' + pl + '" y="' + (H - 3) + '" font-size="10" font-weight="800" fill="rgba(255,255,255,.6)">' + unit + ' ' + ui.num(o.from || 1) + '</text>' +
+      '<text x="' + (W - pr) + '" y="' + (H - 3) + '" font-size="10" font-weight="800" fill="rgba(255,255,255,.6)" text-anchor="end">' + unit + ' ' + ui.num(o.n || v.length - 1) + '</text></svg>';
+    var kids = [ui.el('div', { class: 'cz-kv', html: '<span>Started <b>' + ui.money(s0) + '</b></span>' + (mx > s0 ? '<span>High <b style="color:#ffd54a">' + ui.money(mx) + '</b></span>' : '') + '<span>Ended <b style="color:' + col + '">' + ui.money(end) + '</b></span>' }),
+      ui.el('div', { class: 'cz-chartw', html: svg })];
+    return o.bg ? ui.el('div', { class: 'cz-felt', style: { background: o.bg } }, kids) : felt(ui, game, kids);
+  }
+  // money after each hand, from the nets of the hands (start = the bankroll before the first)
+  function runFrom(start, nets) { var v = [start], t = start; nets.forEach(function (n) { t += Number(n) || 0; v.push(t); }); return v; }
+  // the plain-language last word under a session
+  function foot(ui, text, net) { return text ? ui.el('div', { class: 'cz-foot ' + (net > 0 ? 'good' : net < 0 ? 'bad' : ''), text: text }) : null; }
+  function plural(n, w, ws) { return n + ' ' + (n === 1 ? w : ws || w + 's'); }
+  function upDown(net) { return net > 0 ? 'up ' + ui0.money(net) : net < 0 ? 'down ' + ui0.money(-net) : 'even'; }
+  var ui0 = HistView.ui;
+  // "Every hand · tap one": a strip of the stored hands (in order) and the picked one drawn below.
+  // o = {no(x), net(x), draw(x, isBig) -> node, total, word:'hand', icon}
+  function replay(ui, list, o) {
+    if (!list.length) return null;
+    var big = -1; list.forEach(function (x, i) { if (o.net(x) > 0 && (big < 0 || o.net(x) > o.net(list[big]))) big = i; });
+    var card = ui.el('div', { class: 'hv' }), W = o.word || 'hand', Ws = o.words || W + 's';
+    var items = list.map(function (x, i) { var n = o.net(x); return { c: i === big ? 'big' : n > 0 ? 'w' : n < 0 ? 'l' : 'p', t: String(o.no(x)), title: W.charAt(0).toUpperCase() + W.slice(1) + ' ' + o.no(x) + ' ' + signed(n) }; });
+    var show = function (i) { card.innerHTML = ''; card.appendChild(o.draw(list[i], i === big)); };
+    var title = list.length < (o.total || 0) ? list.length + ' of the ' + o.total + ' ' + Ws + ' · tap one' : 'Every ' + W + ' · tap one';
+    return ui.section(title, [road(ui, items, big >= 0 ? big : list.length - 1, show), card,
+      roadKey(ui, [['w', 'won'], ['l', 'lost'], ['p', o.even || 'push'], ['big', 'biggest win']])], { icon: o.icon || 'cards' });
+  }
+  // a record's stored hands: the recent ones plus the biggest win, in order, each once
+  function handList(d, key, recent) {
+    var seen = {}, out = [];
+    [].concat(recent || [], d.big ? [d.big] : []).forEach(function (x) { if (x && !seen[x[key]]) { seen[x[key]] = 1; out.push(x); } });
+    return out.sort(function (a, b) { return a[key] - b[key]; });
+  }
+  function roadKey(ui, list) { return ui.el('div', { class: 'cz-key cz-key2' }, list.map(function (x) { return ui.el('span', null, [ui.el('i', { class: x[0] }), ui.el('span', { text: x[1] })]); })); }
+
   HistView.css('hv-casino2', [
+    '.cz-foot{text-align:center;font-weight:900;font-size:.88rem;line-height:1.35;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.05);color:var(--text-2);}',
+    '.cz-foot.good{color:#4ade80;}.cz-foot.bad{color:#fca5a5;}',
+    '.cz-key2>span{display:inline-flex;align-items:center;gap:4px;}.cz-key.cz-key2 i{margin-right:0;}',
     '.cz-line{display:flex;flex-direction:column;gap:4px;}',
     '.cz-line .lab{font-size:.66rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.65);}',
     '.cz-felt .hv-cards{--cw:40px;}',
@@ -253,6 +306,9 @@
     '.cz-ball{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;font-size:.74rem;font-weight:900;color:#fff;box-shadow:inset 0 -2px 0 rgba(0,0,0,.3);}',
     '.cz-ball.red{background:#c8102e;}.cz-ball.black{background:#1b1b1f;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25);}.cz-ball.green{background:#15803d;}',
     '.cz-ball.lg{width:54px;height:54px;font-size:1.4rem;}',
+    'button.cz-bb{appearance:none;border:0;padding:0;font:inherit;font-size:.74rem;font-weight:900;cursor:pointer;}.cz-bb.won{box-shadow:0 0 0 2px #ffd54a;}.cz-bb.on{outline:2.5px solid #fff;outline-offset:2px;}',
+    '.cz-felt .hv-dice .die{--ds:44px;}',
+    '.cz-wheel{align-self:center;width:100%;max-width:230px;line-height:0;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));}.cz-wheel svg{width:100%;height:auto;display:block;}',
     '.cz-marq{display:flex;flex-wrap:wrap;gap:4px;padding:10px;border-radius:12px;background:linear-gradient(#141218,#0b0a0e);box-shadow:inset 0 2px 10px rgba(0,0,0,.9);}',
     '.cz-bets{width:100%;border-collapse:collapse;font-size:.82rem;font-variant-numeric:tabular-nums;}',
     '.cz-bets td{padding:4px 2px;border-top:1px solid rgba(255,255,255,.12);font-weight:800;color:#fff;}',
@@ -284,7 +340,11 @@
     '.cz-chartw{line-height:0;}.cz-chart{width:100%;height:auto;display:block;}',
     '.cz-key{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:.72rem;font-weight:800;color:var(--text-3);}',
     '.cz-key i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:-6px;background:rgba(255,255,255,.12);}.cz-key i.w{background:#16a34a;}.cz-key i.l{background:#b91c1c;}.cz-key i.p{background:#6b7280;}.cz-key i.big{background:#d4a017;}',
-    '.hv-tbl tr.me th,.hv-tbl tr.me td{color:var(--yellow);}'
+    '.hv-tbl tr.me th,.hv-tbl tr.me td{color:var(--yellow);}',
+    '.cz-pgs{display:flex;gap:10px;align-items:flex-start;}.cz-pgs .hv-cards{--cw:31px;gap:3px;flex-wrap:nowrap;}',
+    '.cz-pgp{display:flex;flex-direction:column;gap:3px;min-width:0;}.cz-pgp .lab{font-size:.58rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);}',
+    '.cz-pgn{display:flex;align-items:center;gap:5px;font-size:.74rem;font-weight:800;color:rgba(255,255,255,.85);white-space:nowrap;}',
+    '.cz-pgm{font-size:.58rem;font-weight:900;letter-spacing:.06em;padding:1px 5px;border-radius:4px;}.cz-pgm.w{background:#16a34a;color:#fff;}.cz-pgm.l{background:rgba(0,0,0,.35);color:#fca5a5;}.cz-pgm.c{background:rgba(255,255,255,.18);color:#fff;}'
   ].join(''));
 
   // ═════════════ Blackjack ═════════════
@@ -441,25 +501,73 @@
   var REDS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
   function rcol(n) { return n === '0' || n === '00' ? 'green' : REDS.indexOf(+n) >= 0 ? 'red' : 'black'; }
   function ball(ui, n, lg) { return ui.el('span', { class: 'cz-ball ' + rcol(String(n)) + (lg ? ' lg' : ''), text: String(n) }); }
-  function spinCard(ui, x, title) {
-    var rows = (x.b || []).map(function (b) { return ui.el('tr', null, [ui.el('td', { text: b.t }), ui.el('td', { class: 'dim', text: ui.money(b.a) }), ui.el('td', { class: b.p ? 'good' : 'dim', text: b.p ? 'paid ' + ui.money(b.p) : 'lost' })]); });
-    return felt(ui, 'roulette', [ui.el('div', { class: 'cz-hand' }, [ball(ui, x.n, true), ui.el('div', { class: 'cz-kv', html: '<span><b>' + ui.esc(title) + '</b></span><span>spin ' + x.no + '</span><span>' + ui.esc(rcol(x.n)) + '</span>' }),
-      ui.el('span', { class: 'cz-res ' + cls(x.r - x.s), text: signed(x.r - x.s) })]), rows.length ? ui.el('table', { class: 'cz-bets' }, rows) : null]);
+  var WHEEL_EU = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+  var WHEEL_US = [0, 28, 9, 26, 30, 11, 7, 20, 32, 17, 5, 22, 34, 15, 3, 24, 36, 13, 1, '00', 27, 10, 25, 29, 12, 8, 19, 31, 18, 6, 21, 33, 16, 4, 23, 35, 14, 2];
+  // the wheel, turned so the pocket the ball landed in sits at the top, ball in it
+  function wheelPic(n, us) {
+    var W = us ? WHEEL_US : WHEEL_EU, N = W.length, k = Math.max(0, W.map(String).indexOf(String(n))), c = 110, R1 = 104, R3 = 70, a = 2 * Math.PI / N, s = '', id = 'czwh' + (++uid);
+    var pt = function (r, t) { return [c + r * Math.sin(t), c - r * Math.cos(t)]; }, P = function (r, t) { var q = pt(r, t); return q[0].toFixed(2) + ',' + q[1].toFixed(2); };
+    var wedge = function (r1, r2, t0, t1) { return 'M' + P(r1, t0) + ' A' + r1 + ' ' + r1 + ' 0 0 1 ' + P(r1, t1) + ' L' + P(r2, t1) + ' A' + r2 + ' ' + r2 + ' 0 0 0 ' + P(r2, t0) + 'Z'; };
+    s += '<svg viewBox="0 0 220 220" role="img" aria-label="The wheel, the ball in ' + n + '"><defs><radialGradient id="' + id + '" cx=".5" cy=".42" r=".6"><stop offset="0" stop-color="#9a6430"/><stop offset="1" stop-color="#4a2a0e"/></radialGradient></defs>';
+    s += '<circle cx="' + c + '" cy="' + c + '" r="109" fill="#3e230c" stroke="#d4a017" stroke-width="2"/>';
+    W.forEach(function (v, i) {
+      var t0 = (i - k - 0.5) * a, t1 = (i - k + 0.5) * a, col = rcol(String(v)), hit = i === k;
+      var fill = col === 'red' ? '#c8102e' : col === 'green' ? '#15803d' : '#1b1b1f';
+      s += '<path d="' + wedge(R1, R3, t0, t1) + '" fill="' + fill + '" stroke="#d4a017" stroke-width=".6"/>';
+      var tm = (i - k) * a, tp = pt(R1 - 9, tm);
+      s += '<text x="' + tp[0].toFixed(2) + '" y="' + tp[1].toFixed(2) + '" transform="rotate(' + (tm * 180 / Math.PI).toFixed(1) + ' ' + tp[0].toFixed(2) + ' ' + tp[1].toFixed(2) + ')" text-anchor="middle" dominant-baseline="central" font-size="' + (hit ? 10 : 7.5) + '" font-weight="900" fill="' + (hit ? '#ffd54a' : '#fff') + '" font-family="system-ui">' + v + '</text>';
+    });
+    // the winning pocket ringed in gold with the ball in it
+    s += '<path d="' + wedge(R1 + 1, R3 - 1, -a / 2, a / 2) + '" fill="none" stroke="#ffd54a" stroke-width="2.5"/>';
+    var bp = pt(R3 + 9, 0);
+    s += '<circle cx="' + bp[0] + '" cy="' + bp[1] + '" r="5.5" fill="#fbfbf6" stroke="rgba(0,0,0,.4)"/><circle cx="' + (bp[0] - 1.6) + '" cy="' + (bp[1] - 1.8) + '" r="1.8" fill="#fff"/>';
+    // the cone and the turret
+    s += '<circle cx="' + c + '" cy="' + c + '" r="' + (R3 - 1) + '" fill="url(#' + id + ')" stroke="#d4a017" stroke-width="1.5"/>';
+    for (var j = 0; j < 4; j++) { var q = pt(30, j * Math.PI / 2 + Math.PI / 4); s += '<line x1="' + c + '" y1="' + c + '" x2="' + q[0].toFixed(2) + '" y2="' + q[1].toFixed(2) + '" stroke="#e8c45a" stroke-width="3.5" stroke-linecap="round"/><circle cx="' + q[0].toFixed(2) + '" cy="' + q[1].toFixed(2) + '" r="3.5" fill="#e8c45a"/>'; }
+    s += '<circle cx="' + c + '" cy="' + c + '" r="9" fill="#e8c45a" stroke="#8a5a10"/>';
+    return s + '</svg>';
+  }
+  function betRows(ui, list) { return list && list.length ? ui.el('table', { class: 'cz-bets' }, list.map(function (b) { return ui.el('tr', null, [ui.el('td', { text: b.t }), ui.el('td', { class: 'dim', text: ui.money(b.a) }), ui.el('td', { class: b.p ? 'good' : 'dim', text: b.p ? 'paid ' + ui.money(b.p) : 'lost' })]); })) : null; }
+  function spinCard(ui, x, title, us) {
+    return felt(ui, 'roulette', [ui.el('div', { class: 'cz-hand' }, [ball(ui, x.n, true), ui.el('div', { class: 'cz-kv', html: '<span><b>' + ui.esc(title) + '</b></span>' + (x.no ? '<span>spin ' + x.no + '</span>' : '') + '<span>' + ui.esc(rcol(x.n)) + '</span><span>bet ' + ui.money(x.s) + '</span>' }),
+      ui.el('span', { class: 'cz-res ' + cls(x.r - x.s), text: signed(x.r - x.s) })]),
+      ui.el('div', { class: 'cz-wheel', html: wheelPic(x.n, us) }), betRows(ui, x.b)]);
   }
   R('roulette', function (e, ui) {
     var d = e.dt; if (!d) return null;
-    var out = [], log = d.log || [];
-    out.push(bankStats(ui, d.bank, e.players && e.players[0] ? e.players[0].score : null, [['Spins', d.spins], ['Bet', d.bet ? ui.money(d.bet) : null], ['Peak', d.bank && d.bank.hi > d.bank.s ? ui.money(d.bank.hi) : null]]));
+    var out = [], log = d.log || [], us = d.wheel === 'us', net = e.players && e.players[0] ? e.players[0].score : null;
+    var bestNet = d.best ? d.best.r - d.best.s : 0;
+    out.push(bankStats(ui, d.bank, net, [['Spins', d.spins], ['Bet', d.bet ? ui.money(d.bet) : null], ['Peak', d.bank && d.bank.hi > d.bank.s ? ui.money(d.bank.hi) : null], ['Biggest win', bestNet > 0 ? signed(bestNet) : null, d.best ? 'on ' + d.best.n : '']]));
+    // the money, spin by spin (a whole-session line; older records draw it from the spins they kept)
+    var mv = d.sk ? series(d.sk) : null;
+    if (!mv && log.length > 1 && net != null && d.bank) { var lsum = log.reduce(function (a, x) { return a + x.r - x.s; }, 0); mv = runFrom(d.bank.s + net - lsum, log.map(function (x) { return x.r - x.s; })); }
     if (log.length) {
+      // every spin kept: tap a ball to see the wheel and the bets
+      var from = d.from || Math.max(1, (d.spins || log.length) - log.length + 1), card = ui.el('div', { class: 'hv' }), btns = [];
+      var spins = log.map(function (x, i) {
+        var no = from + i, full = d.best && d.best.no === no ? d.best : d.last && d.last.no === no ? d.last : null;
+        return full || { no: no, n: x.n, s: x.s, r: x.r };
+      });
+      var pick = function (i) { btns.forEach(function (b, j) { b.classList.toggle('on', i === j); }); var x = spins[i]; card.innerHTML = ''; card.appendChild(spinCard(ui, x, d.best && x.no === d.best.no ? 'Biggest win' : i === spins.length - 1 ? 'Last spin' : 'Spin ' + x.no, us)); };
+      var marq = ui.el('div', { class: 'cz-marq' }, spins.map(function (x, i) {
+        var b = ui.el('button', { type: 'button', class: 'cz-ball cz-bb ' + rcol(String(x.n)) + (x.r > x.s ? ' won' : ''), text: String(x.n), title: 'Spin ' + x.no + ': bet ' + ui.money(x.s) + ', ' + signed(x.r - x.s), onclick: function () { pick(i); } });
+        btns.push(b); return b;
+      }));
       var c = { red: 0, black: 0, green: 0 }, cnt = {}; log.forEach(function (x) { c[rcol(x.n)]++; cnt[x.n] = (cnt[x.n] || 0) + 1; });
-      out.push(ui.section(log.length < d.spins ? 'Last ' + log.length + ' spins' : 'Every spin', [ui.el('div', { class: 'cz-marq' }, log.map(function (x) { var b = ball(ui, x.n); if (x.r > x.s) b.style.boxShadow = '0 0 0 2px #ffd54a'; b.title = 'Bet ' + ui.money(x.s) + ', ' + signed(x.r - x.s); return b; })),
-        ui.el('div', { class: 'cz-sub', text: 'Gold ring: a winning spin.' }),
-        ui.bars([{ label: 'Red', value: c.red, color: '#c8102e' }, { label: 'Black', value: c.black, color: '#3a3a44' }, { label: 'Green', value: c.green, color: '#15803d' }])], { icon: 'target' }));
+      var start = spins.length - 1; spins.forEach(function (x, i) { if (d.best && x.no === d.best.no) start = i; });
+      out.push(ui.section(log.length < (d.spins || 0) ? 'Last ' + log.length + ' spins · tap one' : 'Every spin · tap one', [marq, card,
+        ui.el('div', { class: 'cz-key', html: '<i class="big" style="border-radius:50%"></i>gold ring: a winning spin' })], { icon: 'target' }));
+      pick(start);
+      if (d.best && !spins.some(function (x) { return x.no === d.best.no; })) out.push(ui.section('Biggest win', spinCard(ui, d.best, 'Biggest win', us), { icon: 'trophy' }));
+      if (mv && mv.length > 1) out.push(ui.section('Your money', moneyChart(ui, 'roulette', mv, { unit: 'Spin', from: d.sk ? 1 : from, n: d.spins || log.length }), { icon: 'chart' }));
+      out.push(ui.section('Where the ball landed', ui.bars([{ label: 'Red', value: c.red, color: '#c8102e' }, { label: 'Black', value: c.black, color: '#3a3a44' }, { label: 'Green', value: c.green, color: '#15803d' }]), { icon: 'chart' }));
       var hot = Object.keys(cnt).filter(function (k) { return cnt[k] >= 2; }).sort(function (a, b) { return cnt[b] - cnt[a]; }).slice(0, 5);
       if (hot.length) out.push(ui.section('Hot numbers', ui.el('div', { class: 'cz-hand' }, hot.map(function (k) { return ui.el('span', { class: 'cz-hand' }, [ball(ui, k), ui.el('span', { class: 'cz-sub', text: '×' + cnt[k] })]); }))));
+    } else {
+      if (d.best) out.push(ui.section('Biggest win', spinCard(ui, d.best, 'Best spin', us), { icon: 'trophy' }));
+      if (d.last) out.push(ui.section('Last spin', spinCard(ui, d.last, 'Last spin', us)));
     }
-    if (d.best) out.push(ui.section('Biggest win', spinCard(ui, d.best, 'Best spin'), { icon: 'trophy' }));
-    if (d.last) out.push(ui.section('Last spin', spinCard(ui, d.last, 'Last spin')));
+    if (d.spins) out.push(foot(ui, plural(d.spins, 'spin') + ' on the ' + (us ? 'American' : 'European') + ' wheel' + (d.best && bestNet > 0 ? ', best was ' + d.best.n + ' for ' + signed(bestNet) : '') + '. ' + (net != null ? 'Finished ' + upDown(net) + '.' : ''), net));
     return ui.wrap(out);
   });
 
@@ -577,26 +685,51 @@
     var n = +m[2], s = m[1];
     return W[n] + ' ' + (n === 1 && SNAME[s] ? SNAME[s] : SPLUR[s] || s);
   }
+  // a spin's colour on the strip: gold for 10x the bet or a feature, green for more than the bet back, grey for some back
+  function spinCls(x) { var a = x.a || 0, tb = x.tb || 1; return a >= tb * 10 || x.fs || x.hs ? 'big' : a > tb ? 'w' : a > 0 ? 'p' : 'l'; }
   R('slots', function (e, ui) {
     var d = e.dt; if (!d) return null;
-    var out = [], net = (d.won || 0) - (d.bet || 0), m = d.m || 'classic';
-    out.push(bankStats(ui, d.bank, net, [['Spins', d.spins], ['Winning spins', d.spins ? d.hits + ' of ' + d.spins : null],
-      [m === 'buffalo' ? 'Free games' : 'Free spins', d.fs ? d.fs : null], ['Hold & Spin', d.hs ? d.hs : null]]));
+    var out = [], net = (d.won || 0) - (d.bet || 0), m = d.m || 'classic', skin = SLOT_SKIN[m] || SLOT_SKIN.classic;
+    var free = m === 'buffalo' ? 'Free games' : 'Free spins';
+    out.push(bankStats(ui, d.bank, net, [['Spins', d.spins], ['Winning spins', d.spins ? d.hits + ' of ' + d.spins : null, d.spins ? Math.round(d.hits / d.spins * 100) + '%' : ''],
+      ['Biggest win', d.big && d.big.a ? ui.money(d.big.a) : null, d.big && d.big.tb ? Math.round(d.big.a / d.big.tb) + 'x the bet' : ''],
+      [free, d.fs ? d.fs : null], ['Hold & Spin', d.hs ? d.hs : null], ['Longest dry spell', d.dry >= 5 ? d.dry + ' spins' : null]]));
     if (d.jps) out.push(ui.section('Jackpots', ui.chips(['GRAND', 'MAJOR', 'MINOR', 'MINI'].filter(function (k) { return d.jps[k]; }).map(function (k) { return { t: k + ' ×' + d.jps[k], on: k === 'GRAND' }; })), { icon: 'star' }));
     if (d.big) out.push(ui.section('Biggest win', spinShot(ui, d.big, ui.money(d.big.a) + ' win', m), { icon: 'trophy' }));
-    if (d.last) out.push(ui.section('Last spin', spinShot(ui, d.last, 'Last spin', m)));
+    // the money, spin by spin
+    var ch = d.sk ? moneyChart(ui, 'slots', series(d.sk), { bg: skin[0], unit: 'Spin', n: d.spins }) : null;
+    if (ch) out.push(ui.section('Your money', ch, { icon: 'chart' }));
+    // the last spins as they landed: tap one to see the reels
+    var rec = (d.rec || []).slice();
+    if (rec.length) {
+      var card = ui.el('div', { class: 'hv' });
+      var items = rec.map(function (x) { return { c: spinCls(x), t: String(x.no), title: 'Spin ' + x.no + (x.a ? ': paid ' + ui.money(x.a) : ': no win') }; });
+      var show = function (i) { var x = rec[i]; card.innerHTML = ''; card.appendChild(spinShot(ui, x, x === rec[rec.length - 1] ? 'Last spin' : 'Spin ' + x.no, m)); };
+      out.push(ui.section(rec.length < (d.spins || 0) ? 'Last ' + rec.length + ' spins · tap one' : 'Every spin · tap one', [road(ui, items, rec.length - 1, show), card,
+        roadKey(ui, [['w', 'won'], ['p', 'some back'], ['l', 'nothing'], ['big', '10x or a feature']])], { icon: 'rows' }));
+    } else if (d.last) out.push(ui.section('Last spin', spinShot(ui, d.last, 'Last spin', m)));
     var cb = d.combos ? Object.keys(d.combos).filter(function (k) { return d.combos[k]; }).sort(function (a, b) { return d.combos[b] - d.combos[a]; }) : [];
     if (cb.length) out.push(ui.section('What lined up', ui.chips(cb.slice(0, 12).map(function (k) { return comboName(k) + ' ×' + d.combos[k]; }))));
+    if (d.spins) {
+      var nm = SLOT_NAMES[m] || 'the slots', t = plural(d.spins, 'spin') + ' on ' + nm + ', ' + upDown(net) + '.';
+      if (d.big && d.big.a) t += ' Best: ' + ui.money(d.big.a) + ' on spin ' + d.big.no + '.';
+      if (d.peak > 0 && d.peak >= net + 20) t += ' Was up ' + ui.money(d.peak) + ' at the high.';
+      out.push(foot(ui, t, net));
+    }
     return ui.wrap(out);
   });
 
   // ═════════════ Craps ═════════════
   R('craps', function (e, ui) {
     var d = e.dt; if (!d) return null;
-    var out = [];
-    out.push(bankStats(ui, d.bank, e.players && e.players[0] ? e.players[0].score : null, [['Rolls', d.rolls], ['Points made', d.made], ['Seven-outs', d.sevens]]));
-    if (d.best) out.push(ui.section('Best roll', felt(ui, 'craps', [ui.el('div', { class: 'cz-hand' }, [ui.el('span', { class: 'tag', html: '<b style="font-size:1.4rem">' + (d.best.h ? 'Hard ' : '') + d.best.t + '</b>' }),
-      ui.el('span', { class: 'tag', text: d.best.b || '' }), ui.el('span', { class: 'cz-res good', text: signed(d.best.a) })])]), { icon: 'trophy' }));
+    var out = [], net = e.players && e.players[0] ? e.players[0].score : null;
+    out.push(bankStats(ui, d.bank, net, [['Rolls', d.rolls], ['Points made', d.made], ['Seven-outs', d.sevens], ['Naturals', d.nat || null], ['Peak', d.bank && d.bank.hi > d.bank.s ? ui.money(d.bank.hi) : null]]));
+    if (d.best) {
+      var bd = String(d.best.d || ''), dv = bd.length === 2 ? [+bd.charAt(0), +bd.charAt(1)] : d.best.h ? [d.best.t / 2, d.best.t / 2] : null;
+      out.push(ui.section('Best roll', felt(ui, 'craps', [ui.el('div', { class: 'cz-hand' }, [dv ? ui.dice(dv, { size: 44 }) : null,
+        ui.el('div', { class: 'cz-kv', html: '<span><b style="font-size:1.25rem">' + (d.best.h ? 'Hard ' : '') + d.best.t + '</b></span>' + (d.best.no ? '<span>roll ' + d.best.no + '</span>' : '') + (d.best.b ? '<span>' + ui.esc(d.best.b) + '</span>' : '') }),
+        ui.el('span', { class: 'cz-res good', text: signed(d.best.a) })])]), { icon: 'trophy' }));
+    }
     var r = String(d.r || ''), n = d.n || [], rolls = [];
     for (var i = 0; i + 2 < r.length + 1; i += 3) rolls.push({ a: +r.charAt(i), b: +r.charAt(i + 1), k: r.charAt(i + 2), net: n[i / 3] });
     if (!rolls.length) return ui.wrap(out);
@@ -614,6 +747,13 @@
     });
     var legend = ui.el('div', { class: 'cz-kv', html: '<span><span class="cz-roll P" style="display:inline-block;width:10px;height:10px;vertical-align:-1px"></span> point set</span><span><span class="cz-roll M" style="display:inline-block;width:10px;height:10px;vertical-align:-1px"></span> point made</span><span><span class="cz-roll S" style="display:inline-block;width:10px;height:10px;vertical-align:-1px"></span> seven out</span><span><span class="cz-roll N" style="display:inline-block;width:10px;height:10px;vertical-align:-1px"></span> natural</span><span><span class="cz-roll C" style="display:inline-block;width:10px;height:10px;vertical-align:-1px"></span> craps</span>' });
     out.push(ui.section(hands.length > shown.length ? 'The last ' + shown.length + ' shooters' : 'Every roll', felt(ui, 'craps', [box, legend]), { icon: 'dice' }));
+    // the money roll by roll (over the rolls kept)
+    if (rolls.length > 1 && net != null && d.bank) {
+      var lsum = rolls.reduce(function (a, x) { return a + (x.net || 0); }, 0), first = (d.rolls || rolls.length) - rolls.length + 1;
+      out.push(ui.section('Your money', moneyChart(ui, 'craps', runFrom(d.bank.s + net - lsum, rolls.map(function (x) { return x.net || 0; })), { unit: 'Roll', from: first, n: d.rolls || rolls.length }), { icon: 'chart' }));
+    }
+    var longest = hands.reduce(function (m, h) { return Math.max(m, h.length); }, 0);
+    if (d.rolls) out.push(foot(ui, plural(d.rolls, 'roll') + ', ' + plural(d.made || 0, 'point') + ' made, ' + plural(d.sevens || 0, 'seven-out') + '.' + (longest >= 8 ? ' Longest hand: ' + longest + ' rolls.' : '') + (net != null ? ' Finished ' + upDown(net) + '.' : ''), net));
     return ui.wrap(out);
   });
 
@@ -645,12 +785,21 @@
   }
   R('baccarat', function (e, ui) {
     var d = e.dt; if (!d) return null;
-    var out = [], c = d.counts || {};
-    out.push(bankStats(ui, d.bank, e.players && e.players[0] ? e.players[0].score : null, [['Hands', d.hands], ['Naturals', d.nat || null], ['Longest run', d.streak && d.streak.n >= 3 ? d.streak.n + ' ' + (d.streak.w === 'B' ? 'Banker' : 'Player') : null]]));
+    var out = [], c = d.counts || {}, net = e.players && e.players[0] ? e.players[0].score : null;
+    out.push(bankStats(ui, d.bank, net, [['Hands', d.hands], ['Naturals', d.nat || null], ['Longest run', d.streak && d.streak.n >= 3 ? d.streak.n + ' ' + (d.streak.w === 'B' ? 'Banker' : 'Player') : null],
+      ['Biggest win', d.big && d.big.net > 0 ? signed(d.big.net) : null, d.big ? 'hand ' + d.big.n : '']]));
     if (d.rd) out.push(ui.section('The road', [ui.el('div', { class: 'cz-bead', html: bead(d.rd, d.rf) }),
       ui.bars([{ label: 'Banker', value: c.B || 0, color: '#e0283a' }, { label: 'Player', value: c.P || 0, color: '#2a62d6' }, { label: 'Tie', value: c.T || 0, color: '#1f9d55' }])], { icon: 'rows' }));
-    if (d.big) out.push(ui.section('Biggest win', bacHand(ui, d.big, 'Best hand'), { icon: 'trophy' }));
-    if (d.last) out.push(ui.section('Last hand', bacHand(ui, d.last, 'Last hand')));
+    var ch = d.sk ? moneyChart(ui, 'baccarat', series(d.sk), { n: d.hands }) : null;
+    if (ch) out.push(ui.section('Your money', ch, { icon: 'chart' }));
+    var hs = handList(d, 'n', d.hl || (d.last ? [d.last] : []));
+    if (hs.length > 1 || d.hl) out.push(replay(ui, hs, { total: d.hands, no: function (x) { return x.n; }, net: function (x) { return x.net; }, draw: function (x, big) { return bacHand(ui, x, big ? 'Biggest win' : 'Hand ' + x.n); } }));
+    else if (d.big) out.push(ui.section('Biggest win', bacHand(ui, d.big, 'Best hand'), { icon: 'trophy' }));
+    if (!d.hl && d.last) out.push(ui.section('Last hand', bacHand(ui, d.last, 'Last hand')));
+    if (d.hands) {
+      var lead = (c.B || 0) > (c.P || 0) ? 'Banker' : (c.P || 0) > (c.B || 0) ? 'Player' : null;
+      out.push(foot(ui, plural(d.hands, 'hand') + (lead ? ', ' + lead + ' won the most' : '') + (c.T ? ', ' + plural(c.T, 'tie') : '') + '. ' + (net != null ? 'Finished ' + upDown(net) + '.' : ''), net));
+    }
     return ui.wrap(out);
   });
 
@@ -661,38 +810,43 @@
       line(ui, 'Dealer · ' + x.de, x.d, null, null, { small: false }), line(ui, 'You · ' + x.pe, x.p, null, null, { small: false }),
       ui.el('div', { class: 'cz-kv', html: '<span>Ante <b>' + ui.money(x.a) + '</b></span>' + (x.pl ? '<span>Play <b>' + ui.money(x.pl) + '</b></span>' : '') + (x.pp ? '<span>Pair Plus <b>' + ui.money(x.pp) + '</b></span>' : '') })]);
   }
-  function handRows(ui, list, fn) { return ui.el('div', { class: 'cz-list' }, list.map(fn)); }
   R('threecardpoker', function (e, ui) {
     var d = e.dt; if (!d) return null;
-    var out = [];
-    out.push(bankStats(ui, d.bank, e.players && e.players[0] ? e.players[0].score : null, [['Hands', d.hands], ['Won · lost', d.won + ' · ' + d.lost], ['Pair Plus paid', d.pp ? ui.money(d.pp) : null]]));
-    if (d.big) out.push(ui.section('Biggest win', tcpHand(ui, d.big, 'Best hand'), { icon: 'trophy' }));
-    var last = (d.last || []).slice().reverse();
-    if (last.length) out.push(ui.section('Last hands', handRows(ui, last, function (x) {
-      return ui.el('div', { class: 'cz-row' }, [ui.cards(codes(x.p)), ui.el('div', { class: 'tx' }, [ui.el('span', { text: x.pe + ' vs ' + x.de }), ui.el('small', { text: 'Hand ' + x.h + ' · ' + tcpWhy(x) })]), ui.el('span', { class: 'am ' + cls(x.n), text: signed(x.n) })]);
-    })));
+    var out = [], net = e.players && e.players[0] ? e.players[0].score : null;
+    out.push(bankStats(ui, d.bank, net, [['Hands', d.hands], ['Won · lost', d.won + ' · ' + d.lost], ['Folded', d.folds || null], ['Pair Plus paid', d.pp ? ui.money(d.pp) : null], ['Ante bonus', d.bonus ? ui.money(d.bonus) : null]]));
+    var ch = d.sk ? moneyChart(ui, 'threecardpoker', series(d.sk), { n: d.hands }) : null;
+    if (ch) out.push(ui.section('Your money', ch, { icon: 'chart' }));
+    var hs = handList(d, 'h', d.last);
+    if (hs.length) out.push(replay(ui, hs, { total: d.hands, no: function (x) { return x.h; }, net: function (x) { return x.n; }, draw: function (x, big) { return tcpHand(ui, x, big ? 'Biggest win' : 'Hand ' + x.h); } }));
+    if (d.hands) out.push(foot(ui, plural(d.hands, 'hand') + ': won ' + (d.won || 0) + ', lost ' + (d.lost || 0) + (d.folds ? ' (' + d.folds + ' folded)' : '') + (d.nq ? '. The dealer missed qualifying ' + plural(d.nq, 'time') : '') + '. ' + (net != null ? 'Finished ' + upDown(net) + '.' : ''), net));
     return ui.wrap(out);
   });
 
   // ═════════════ Pai Gow ═════════════
   function pgMark(v) { return v > 0 ? 'wins' : v === 0 ? 'copy' : 'loses'; }
+  // the table: the dealer's two hands on top, yours below, each with its name; yours marked won or lost
+  function pgSide(ui, who, hi, lo, hn, ln, hw, lw) {
+    var part = function (lab, cs, nm, w) {
+      var mark = w == null ? null : ui.el('span', { class: 'cz-pgm ' + (w > 0 ? 'w' : w === 0 ? 'c' : 'l'), text: w > 0 ? 'WIN' : w === 0 ? 'COPY' : 'LOSE' });
+      return ui.el('div', { class: 'cz-pgp' }, [ui.el('div', { class: 'lab', text: lab }), cardRow(ui, cs), ui.el('div', { class: 'cz-pgn' }, [ui.el('span', { text: nm || '' }), mark])]);
+    };
+    return ui.el('div', { class: 'cz-line' }, [ui.el('div', { class: 'lab', text: who }), ui.el('div', { class: 'cz-pgs' }, [part('High', hi, hn, hw), part('Low', lo, ln, lw)])]);
+  }
   function pgHand(ui, x, title) {
     var o = { win: 'Won both', push: 'Push', lose: 'Lost' }[x.o] || '';
-    return felt(ui, 'paigow', [ui.el('div', { class: 'cz-hand' }, [ui.el('div', { class: 'cz-kv', html: '<span><b>' + ui.esc(title) + '</b></span><span>hand ' + x.h + '</span><span>' + o + '</span><span>bet ' + ui.money(x.b) + '</span>' }), ui.el('span', { class: 'cz-res ' + cls(x.n), text: signed(x.n) })]),
-      line(ui, 'Your high · ' + x.phn + ' · ' + pgMark(x.hw), x.ph), line(ui, 'Your low · ' + x.pln + ' · ' + pgMark(x.lw), x.pl),
-      line(ui, 'Dealer high · ' + x.dhn, x.dh), line(ui, 'Dealer low · ' + x.dln, x.dl),
+    return felt(ui, 'paigow', [ui.el('div', { class: 'cz-hand' }, [ui.el('div', { class: 'cz-kv', html: '<span><b>' + ui.esc(title) + '</b></span><span>' + o + '</span><span>bet ' + ui.money(x.b) + '</span>' }), ui.el('span', { class: 'cz-res ' + cls(x.n), text: signed(x.n) })]),
+      pgSide(ui, 'Dealer', x.dh, x.dl, x.dhn, x.dln), pgSide(ui, 'You', x.ph, x.pl, x.phn, x.pln, x.hw, x.lw),
       ui.el('div', { class: 'cz-kv', text: x.way ? 'Set the house way.' : 'Set your own way.' })]);
   }
   R('paigow', function (e, ui) {
     var d = e.dt; if (!d) return null;
-    var out = [];
-    out.push(bankStats(ui, d.bank, e.players && e.players[0] ? e.players[0].score : null, [['Hands', d.hands], ['Won · push · lost', d.won + ' · ' + d.push + ' · ' + d.lost], ['Commission', d.comm ? ui.money(d.comm) : null]]));
-    if (d.big) out.push(ui.section('Biggest win', pgHand(ui, d.big, 'Best hand'), { icon: 'trophy' }));
-    var last = (d.last || []).slice().reverse();
-    if (last.length) out.push(ui.section('Last hands', handRows(ui, last, function (x) {
-      return ui.el('div', { class: 'cz-row col' }, [ui.el('div', { class: 'cz-pg' }, [cardRow(ui, x.ph), cardRow(ui, x.pl)]),
-        ui.el('div', { class: 'cz-row-b' }, [ui.el('div', { class: 'tx' }, [ui.el('span', { text: x.phn + ' / ' + x.pln }), ui.el('small', { text: 'Hand ' + x.h + ' · dealer ' + x.dhn.toLowerCase() + ' / ' + x.dln.toLowerCase() })]), ui.el('span', { class: 'am ' + cls(x.n), text: signed(x.n) })])]);
-    })));
+    var out = [], net = e.players && e.players[0] ? e.players[0].score : null;
+    out.push(bankStats(ui, d.bank, net, [['Hands', d.hands], ['Won · push · lost', d.won + ' · ' + d.push + ' · ' + d.lost], ['Commission', d.comm ? ui.money(d.comm) : null], ['Best streak', d.best ? d.best + ' wins' : null]]));
+    var ch = d.sk ? moneyChart(ui, 'paigow', series(d.sk), { n: d.hands }) : null;
+    if (ch) out.push(ui.section('Your money', ch, { icon: 'chart' }));
+    var hs = handList(d, 'h', d.last);
+    if (hs.length) out.push(replay(ui, hs, { total: d.hands, no: function (x) { return x.h; }, net: function (x) { return x.n; }, draw: function (x, big) { return pgHand(ui, x, big ? 'Biggest win' : 'Hand ' + x.h); } }));
+    if (d.hands) out.push(foot(ui, plural(d.hands, 'hand') + ': won ' + (d.won || 0) + ', pushed ' + (d.push || 0) + ', lost ' + (d.lost || 0) + '.' + (d.house != null ? ' House way on ' + (d.house === d.hands ? 'every hand' : d.house + ' of ' + d.hands) + '.' : '') + (net != null ? ' Finished ' + upDown(net) + '.' : ''), net));
     return ui.wrap(out);
   });
 })();

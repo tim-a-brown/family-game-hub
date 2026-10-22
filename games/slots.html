@@ -2039,6 +2039,21 @@ window.dispatchEvent(new Event('cab3d-ready'));
       if (total >= tb * 10) st.bigWins++;
     } else { st.dry++; st.maxDry = Math.max(st.maxDry, st.dry); }
     st.lastShot = sh;
+    // for the history view: the money after every spin, and the last few spins as they landed
+    sessionMark(st, st.startBank + st.won - st.wagered);
+    (st.rec = st.rec || []).push(sh); if (st.rec.length > 8) st.rec.shift();
+  }
+  // the session's money, one point per spin (thinned to every other point once it gets long)
+  function sessionMark(st, v) {
+    var a = st.sk || (st.sk = [st.startBank]); a.push(Math.round(v));
+    if (a.length > 240) { st.sk = a.filter(function (x, i) { return i % 2 === 0 || i === a.length - 1; }); st.skStep = (st.skStep || 1) * 2; }
+  }
+  function skString(a) {
+    if (!a || a.length < 2) return null;
+    var n = a.length, m = 60, out = [];
+    if (n <= m + 1) return a.join(',');
+    for (var i = 0; i <= m; i++) out.push(a[Math.round(i * (n - 1) / m)]);
+    return out.join(',');
   }
   // The reels as they landed, for the history view (small: strings, no nested arrays)
   function shot(res, tb, no) {
@@ -2471,7 +2486,8 @@ window.dispatchEvent(new Event('cab3d-ready'));
     cab: function () { return cab; },
     ready: function () { return !!cab; },
     handle: function () { return dom.handle; },
-    rects: function () { return RECT; }
+    rects: function () { return RECT; },
+    cashOut: function () { cashOut(); }
   };
 
   // The cabinet turns a few degrees with the device or pointer (the room's layers shift too)
@@ -2604,11 +2620,18 @@ window.dispatchEvent(new Event('cab3d-ready'));
     ck.forEach(function (k) { combos[k] = st.combos[k]; });
     var dt = { m: st.mode, bank: { s: st.startBank, e: end }, spins: st.spins, bet: st.wagered, won: st.won, hits: st.hits, jp: st.jackpots || 0,
       fs: st.fsTrig || 0, hs: st.hsTrig || 0, jps: st.jps && Object.keys(st.jps).length ? st.jps : null,
-      big: st.bigShot || null, last: st.lastShot && (!st.bigShot || st.lastShot.no !== st.bigShot.no) ? st.lastShot : null, combos: combos };
+      big: st.bigShot || null, last: st.lastShot && (!st.bigShot || st.lastShot.no !== st.bigShot.no) ? st.lastShot : null, combos: combos,
+      sk: skString(st.sk), dry: st.maxDry || 0, peak: st.peakNet > 0 ? st.peakNet : 0 };
+    // the last spins as they landed (the biggest win is kept on its own)
+    var rec = (st.rec || []).filter(function (x) { return !st.bigShot || x.no !== st.bigShot.no; }).map(function (x) { return JSON.parse(JSON.stringify(x)); });
+    if (rec.length) { dt.rec = rec; dt.last = null; }
     // keep the synced record small
-    if (JSON.stringify(dt).length > 2900 && dt.last) dt.last.w = (dt.last.w || []).slice(0, 2);
-    if (JSON.stringify(dt).length > 2900) dt.last = null;
-    if (JSON.stringify(dt).length > 2900 && dt.big) dt.big.w = (dt.big.w || []).slice(0, 3);
+    var size = function () { return JSON.stringify(dt).length; };
+    if (size() > 3000 && dt.rec) dt.rec.forEach(function (x) { x.w = (x.w || []).slice(0, 2); });
+    while (size() > 3000 && dt.rec && dt.rec.length > 3) dt.rec.shift();
+    if (size() > 3000 && dt.last) dt.last.w = (dt.last.w || []).slice(0, 2);
+    if (size() > 3000) { dt.last = null; if (dt.rec) dt.rec = dt.rec.slice(-2); }
+    if (size() > 3000 && dt.big) dt.big.w = (dt.big.w || []).slice(0, 3);
     Kit.record(HKEY, {
       started: st.started, mode: machineName(st.mode),
       players: [{ name: st.name, score: net, cpu: false }], winner: null,

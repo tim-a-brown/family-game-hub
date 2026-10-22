@@ -643,6 +643,10 @@
     var snap = { n: h.n, p: h.p, b: h.b, pt: h.pt, bt: h.bt, w: h.w, bets: Object.keys(h.bets).filter(function (k) { return h.bets[k] > 0; }).map(function (k) { return { t: SPOTS[k].name, a: h.bets[k], r: Math.round((h.ret[k] || 0) * 100) / 100 }; }), net: Math.round(net * 100) / 100 };
     if (st.big && st.big.n === h.n) st.bigH = snap;
     st.lastH = snap;
+    (st.hl = st.hl || []).push(snap); if (st.hl.length > 12) st.hl.shift();
+    // the money after every hand (thinned to every other point once it gets long)
+    var sk = st.sk || (st.sk = [S.startBank]); sk.push(Math.round(S.startBank + st.returned - st.wagered));
+    if (sk.length > 240) st.sk = sk.filter(function (x, i) { return i % 2 === 0 || i === sk.length - 1; });
     if (h.ret.t > 0) st.notes.push({ n: h.n, t: 'Called the Tie on hand ' + h.n + ' (' + h.pt + ' all) for ' + signed(h.ret.t - h.bets.t) });
     if (h.ret.pp > 0) st.notes.push({ n: h.n, t: 'Player Pair of ' + plural(rankOf(h.p[0])) + ' paid 11 to 1 on hand ' + h.n });
     if (h.ret.bp > 0) st.notes.push({ n: h.n, t: 'Banker Pair of ' + plural(rankOf(h.b[0])) + ' paid 11 to 1 on hand ' + h.n });
@@ -884,6 +888,8 @@
   }
   function recordSession(s) {
     var st = s.st, net = st.returned - st.wagered, r = Math.round(net * 100) / 100;
+    var hl = (st.hl || []).filter(function (x) { return !st.bigH || x.n !== st.bigH.n; }).slice(-10);
+    while (hl.length > 4 && JSON.stringify(hl).length + (st.rd || '').length * 2 > 2300) hl.shift();
     Kit.record(HKEY, {
       started: s.started, mode: 'Punto Banco',
       players: [{ name: s.name, score: Math.round(net), cpu: false }], winner: null,
@@ -891,8 +897,17 @@
       highlights: highlights(s),
       meta: casinoMeta({ hands: st.hands, wagered: st.wagered, returned: st.returned, counts: st.counts }),
       detail: playTag({ bank: { s: s.startBank, e: Math.round(Casino.balance()) }, hands: st.hands, bet: st.wagered, counts: st.counts, nat: st.nat, rd: st.rd || '', rf: st.rf || '',
-        streak: st.best || null, big: st.bigH || null, last: st.lastH && (!st.bigH || st.lastH.n !== st.bigH.n) ? st.lastH : null })
+        streak: st.best || null, big: st.bigH || null, last: !hl.length && st.lastH && (!st.bigH || st.lastH.n !== st.bigH.n) ? st.lastH : null,
+        hl: hl.length ? hl : null, sk: skString(st.sk) })
     });
+  }
+  // the money after every hand for the history chart (at most 61 points)
+  function skString(a) {
+    if (!a || a.length < 2) return null;
+    var n = a.length, m = 60, out = [];
+    if (n <= m + 1) return a.join(',');
+    for (var i = 0; i <= m; i++) out.push(a[Math.round(i * (n - 1) / m)]);
+    return out.join(',');
   }
   function cashOut() {
     if (busy) { Kit.toast('Let the hand finish first'); return; }
