@@ -96,6 +96,7 @@
     '.hvw-wsl span{justify-self:start;font-weight:900;font-size:.74rem;letter-spacing:.05em;padding:1px 3px;border-radius:3px;font-family:"Courier New",ui-monospace,monospace;}' +
     '.hvw-wsl span.f{text-decoration:line-through;text-decoration-thickness:1.5px;color:rgba(22,19,15,.6);}' +
     '.hvw-wsl span.n{color:#b3122f;}' +
+    '.hvw-replay{display:flex;flex-direction:column;gap:6px;}.hvw-range{width:100%;accent-color:var(--yellow);}.hvw-replay b{font-size:.85rem;color:var(--text-2);}' +
     '.hvw-wsl span small{font-family:system-ui;font-weight:700;font-size:.62rem;color:#6b6455;margin-left:3px;text-decoration:none;display:inline-block;}'
   );
 
@@ -421,29 +422,53 @@
     var d = e.dt; if (!d || !d.g || !d.g.length) return null;
     var g = d.g.map(up), n = g.length, cs = 24, W = n * cs;
     var ws = (d.w || []).map(function (s) { var p = String(s).split(' '); return { w: p[0], r: +p[1], c: +p[2], dr: +p[3], dc: +p[4], f: +p[5] || 0, t: p[6] === '' || p[6] == null ? null : +p[6] }; });
-    var s = '<svg viewBox="-2 -2 ' + (W + 4) + ' ' + (W + 4) + '" role="img" aria-label="Word search grid">';
-    ws.forEach(function (w) {
-      var L = w.w.length - 1, x1 = w.c * cs + cs / 2, y1 = w.r * cs + cs / 2, x2 = (w.c + w.dc * L) * cs + cs / 2, y2 = (w.r + w.dr * L) * cs + cs / 2;
-      if (w.f) s += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + WS_HL[(w.f - 1) % WS_HL.length] + '" stroke-width="' + cs * 0.8 + '" stroke-linecap="round" opacity=".7"/>';
-      else s += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#b3122f" stroke-width="' + cs * 0.78 + '" stroke-linecap="round" fill="none" opacity=".12"/>' +
-        '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#b3122f" stroke-width="1.6" stroke-dasharray="3 2.5" stroke-linecap="round" opacity=".85"/>';
-    });
-    for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) s += '<text x="' + (c * cs + cs / 2) + '" y="' + (r * cs + cs / 2 + 1) + '" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="900" fill="#262636" font-family="Courier New,ui-monospace,monospace">' + esc(g[r].charAt(c)) + '</text>';
-    s += '</svg>';
-    var list = ui.el('div', { class: 'hvw-wsl' });
-    ws.forEach(function (w) {
-      list.appendChild(ui.el('span', { class: w.f ? 'f' : 'n', style: w.f ? { background: WS_HL[(w.f - 1) % WS_HL.length] } : null, html: esc(w.w) }));
-    });
-    var found = ws.filter(function (w) { return w.f; }).sort(function (a, b) { return a.f - b.f; });
-    var mode = String(e.mode || '').split(' · ')[1] || e.cat || 'Word Search';
-    var paper = ui.el('div', { class: 'hvw-paper' }, [ui.el('div', { class: 'hvw-mast', html: '<b>' + esc(mode) + '</b><span>' + n + '×' + n + ' · ' + found.length + ' of ' + ws.length + ' found</span>' }), ui.el('div', { html: s }), list]);
-    var out = [ui.section(null, paper)];
-    out.push(ui.stats([['Time', e.seconds != null ? ui.time(e.seconds) : null, d.lim ? 'of ' + ui.time(d.lim) : ''], ['Found', found.length + ' / ' + ws.length], ['Hints', e.hints || 0]]));
-    if (found.length > 1 && found.some(function (w) { return w.t != null; })) {
-      var prev = 0;
-      out.push(ui.section('Order found', ui.log(found.map(function (w) { var gap = w.t - prev; prev = w.t; return { b: ui.time(w.t), t: w.w + (found.indexOf(w) ? '  (+' + Math.max(0, gap) + 's)' : ''), c: WS_HL[(w.f - 1) % WS_HL.length] }; }))));
+    var found = ws.filter(function (w) { return w.f > 0; }).sort(function (a, b) { return a.f - b.f; });
+    // the page with the highlighter marks of the first `upto` finds (the last of them ringed); the rest, when it's over, in red
+    function draw(upto, end) {
+      var s = '<svg viewBox="-2 -2 ' + (W + 4) + ' ' + (W + 4) + '" role="img" aria-label="Word search grid">';
+      ws.forEach(function (w) {
+        var L = w.w.length - 1, x1 = w.c * cs + cs / 2, y1 = w.r * cs + cs / 2, x2 = (w.c + w.dc * L) * cs + cs / 2, y2 = (w.r + w.dr * L) * cs + cs / 2, line = 'x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"';
+        if (w.f > 0 && w.f <= upto) {
+          s += '<line ' + line + ' stroke="' + WS_HL[(w.f - 1) % WS_HL.length] + '" stroke-width="' + cs * 0.8 + '" stroke-linecap="round" opacity=".7"/>';
+          if (w.f === upto && !end) s += '<line ' + line + ' stroke="#262636" stroke-width="' + (cs * 0.8 + 3) + '" stroke-linecap="round" fill="none" opacity=".9" stroke-dasharray="0" style="mix-blend-mode:multiply" /><line ' + line + ' stroke="' + WS_HL[(w.f - 1) % WS_HL.length] + '" stroke-width="' + (cs * 0.8 - 1) + '" stroke-linecap="round"/>';
+        } else if (end && !(w.f > 0)) s += '<line ' + line + ' stroke="#b3122f" stroke-width="' + cs * 0.78 + '" stroke-linecap="round" fill="none" opacity=".12"/><line ' + line + ' stroke="#b3122f" stroke-width="1.6" stroke-dasharray="3 2.5" stroke-linecap="round" opacity=".85"/>';
+      });
+      for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) s += '<text x="' + (c * cs + cs / 2) + '" y="' + (r * cs + cs / 2 + 1) + '" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="900" fill="#262636" font-family="Courier New,ui-monospace,monospace">' + esc(g[r].charAt(c)) + '</text>';
+      return s + '</svg>';
     }
-    if (found.length < ws.length) out.push(ui.facts([['Not found', ws.filter(function (w) { return !w.f; }).map(function (w) { return w.w; }).join(', ')]]));
+    var list = ui.el('div', { class: 'hvw-wsl' }), items = [];
+    ws.forEach(function (w) { var sp = ui.el('span', { html: esc(w.w) }); items.push({ w: w, el: sp }); list.appendChild(sp); });
+    function paintList(upto, end) {
+      items.forEach(function (it) {
+        var on = it.w.f > 0 && it.w.f <= upto;
+        it.el.className = on ? 'f' : end && !(it.w.f > 0) ? 'n' : '';
+        it.el.style.background = on ? WS_HL[(it.w.f - 1) % WS_HL.length] : '';
+      });
+    }
+    var mode = String(e.mode || '').split(' · ')[1] || e.cat || 'Word Search';
+    var gridBox = ui.el('div'), head = ui.el('span');
+    var paper = ui.el('div', { class: 'hvw-paper' }, [ui.el('div', { class: 'hvw-mast' }, [ui.el('b', { text: mode }), head]), gridBox, list]);
+    var out = [ui.section(null, paper)];
+    function show(m) {
+      var end = m >= found.length;
+      gridBox.innerHTML = draw(m, end); paintList(m, end);
+      head.textContent = n + '×' + n + ' · ' + (end ? found.length + ' of ' + ws.length + ' found' : 'find ' + m + ' of ' + found.length);
+      var w = found[m - 1];
+      return m === 0 ? 'The printed page' : end ? (found.length === ws.length ? 'All ' + ws.length + ' found' : found.length + ' of ' + ws.length + ' found · the rest are dashed in red') : 'Find ' + m + ': ' + w.w + (w.t != null ? ' at ' + ui.time(w.t) : '');
+    }
+    if (found.length > 1 && found.some(function (w) { return w.t != null; })) {
+      var label = ui.el('b'), rng = ui.el('input', { type: 'range', min: '0', max: String(found.length), value: String(found.length), class: 'hvw-range', 'aria-label': 'Step through the finds' });
+      rng.addEventListener('input', function () { label.textContent = show(+rng.value); });
+      label.textContent = show(found.length);
+      out.push(ui.el('div', { class: 'hvw-replay' }, [rng, label]));
+    } else show(found.length);
+    var pb = d.pb, done = !d.tu && found.length === ws.length;
+    out.push(ui.stats([['Time', e.seconds != null ? ui.time(e.seconds) : null, d.lim ? 'of ' + ui.time(d.lim) : pb == null ? '' : !done ? '' : pb < 0 ? 'first finish' : e.seconds < pb ? 'new best (was ' + ui.time(pb) + ')' : 'best ' + ui.time(pb)], ['Found', found.length + ' / ' + ws.length], ['Hints', e.hints || 0, e.hints ? '+15s each' : '']]));
+    var Z = HistView._pz;
+    if (Z && found.length > 1 && found.some(function (w) { return w.t != null; }) && e.seconds > 0) {
+      var line = []; found.forEach(function (w, i) { if (w.t != null) line.push([w.t, i + 1]); });
+      out.push(ui.section('How it went', Z.howItWent(ui, { total: e.seconds, ev: d.ev, line: line, max: ws.length, unit: 'words', lim: d.lim || 0, end: done ? 'All found' : d.tu ? 'Time up' : 'Stopped', endOk: done }), { icon: 'chart' }));
+    }
     return ui.wrap(out);
   });
 })();
