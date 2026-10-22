@@ -39,6 +39,73 @@
   var SPADE = 'M0 -0.5C0.18 -0.28 0.5 -0.12 0.5 0.1C0.5 0.3 0.25 0.38 0.06 0.24L0.14 0.5L-0.14 0.5L-0.06 0.24C-0.25 0.38 -0.5 0.3 -0.5 0.1C-0.5 -0.12 -0.18 -0.28 0 -0.5Z';
   function up(s) { return String(s).toUpperCase(); }
 
+  /* ── The festival's own look, shared by its four events: the season and the city ──
+     Summer Series (Las Vegas): desert sun and the Welcome sign's starburst; Spring Series (Los Angeles): palms and
+     jacaranda blossoms; Fall Series (Philadelphia): maple leaves and the Liberty Bell. */
+  function season(o) { var t = String(o.series || ''); return /fall/i.test(t) ? 'fall' : /spring/i.test(t) ? 'spring' : 'summer'; }
+  function r1(n) { return Math.round(n * 10) / 10; }
+  var MAPLE = 'M0 -50L8 -34L18 -38L14 -14L30 -26L34 -18L48 -22L42 -6L50 -2L28 14L32 22L4 17L3 44L-3 44L-4 17L-32 22L-28 14L-50 -2L-42 -6L-48 -22L-34 -18L-30 -26L-14 -14L-18 -38L-8 -34Z';
+  function at(x, y, rot, sc, inner) { return '<g transform="translate(' + r1(x) + ' ' + r1(y) + ') rotate(' + r1(rot || 0) + ') scale(' + sc + ')">' + inner + '</g>'; }
+  function blossom() {   // five rounded petals, a pale heart (unit: about 100 across)
+    var d = '';
+    for (var i = 0; i < 5; i++) {
+      var a = (i * 72 - 90) * Math.PI / 180, x = 25 * Math.cos(a), y = 25 * Math.sin(a);
+      d += '<ellipse cx="' + r1(x) + '" cy="' + r1(y) + '" rx="24" ry="17" transform="rotate(' + (i * 72) + ' ' + r1(x) + ' ' + r1(y) + ')"/>';
+    }
+    return '<g fill="' + C + '">' + d + '</g><circle r="10" fill="#000" fill-opacity=".25"/>';
+  }
+  function sparkle() { return '<path d="M0 -50Q4 -4 50 0Q4 4 0 50Q-4 4 -50 0Q-4 -4 0 -50Z" fill="' + C + '"/>'; }
+  function sun() {
+    var r = '';
+    for (var i = 0; i < 12; i++) r += '<path d="M-5 -34L0 -50L5 -34Z" transform="rotate(' + (i * 30) + ')" fill="' + C + '"/>';
+    return r + '<circle r="26" fill="' + C + '"/>';
+  }
+  // one small piece of the season, scattered around a logo
+  function bit(se, x, y, rot, sc, o) {
+    var g = se === 'fall' ? '<path d="' + MAPLE + '" fill="' + C + '"/>' : se === 'spring' ? blossom() : sparkle();
+    return '<g opacity="' + (o || 1) + '">' + at(x, y, rot, sc, g) + '</g>';
+  }
+  // a palm: a leaning trunk, fronds from the crown (base at x,y, height h)
+  function palm(x, y, h, lean, w) {
+    var tx2 = x + lean, ty = y - h, b = pth('M' + x + ' ' + y + 'Q' + r1(x + lean * 0.2) + ' ' + r1(y - h * 0.55) + ' ' + tx2 + ' ' + ty, stk(5 * (w || 1)));
+    [-168, -140, -110, -70, -40, -12].forEach(function (a, i) {
+      var L = h * (i === 2 || i === 3 ? 0.42 : 0.5);
+      b += '<path d="M0 0Q' + r1(L / 2) + ' ' + r1(-L * 0.28) + ' ' + r1(L) + ' ' + r1(L * 0.12) + 'Q' + r1(L / 2) + ' ' + r1(-L * 0.05) + ' 0 0Z" fill="' + C + '" transform="translate(' + tx2 + ' ' + ty + ') rotate(' + a + ')"/>';
+    });
+    return b + '<circle cx="' + (tx2 - 3) + '" cy="' + (ty + 5) + '" r="' + r1(h * 0.04) + '" fill="' + C + '"/><circle cx="' + (tx2 + 4) + '" cy="' + (ty + 6) + '" r="' + r1(h * 0.04) + '" fill="' + C + '"/>';
+  }
+  // a poker chip with the season at its heart: the series' badge
+  function chipBadge(se, cx, cy, r) {
+    var b = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '"' + op(0.22) + '/><circle cx="' + cx + '" cy="' + cy + '" r="' + r + '"' + stk(Math.max(3, r * 0.09)) + '/>';
+    for (var i = 0; i < 8; i++) b += '<rect x="' + r1(cx - r * 0.13) + '" y="' + r1(cy - r) + '" width="' + r1(r * 0.26) + '" height="' + r1(r * 0.22) + '" fill="' + C + '" transform="rotate(' + (i * 45 + 22.5) + ' ' + cx + ' ' + cy + ')"/>';
+    b += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r1(r * 0.7) + '"' + stk(Math.max(2, r * 0.05), 0.8) + '/>';
+    var g = se === 'fall' ? '<path d="' + MAPLE + '" fill="' + C + '"/>' : se === 'spring' ? palm(0, 44, 84, 10, 1) : sun();
+    return b + at(cx, cy + (se === 'fall' ? -r * 0.04 : 0), se === 'fall' ? -8 : 0, r1(r * 0.0105 * 100) / 100, g);
+  }
+  var LBN = 0;
+  // the city's landmark, about 100 across at sc 1: the Liberty Bell (crack and all), two palms on the hills, the Welcome sign
+  function landmark(se, cx, cy, sc) {
+    var g;
+    if (se === 'fall') {
+      var id = 'lbell' + (++LBN);
+      g = '<defs><mask id="' + id + '" maskUnits="userSpaceOnUse" x="-60" y="-60" width="120" height="120"><rect x="-60" y="-60" width="120" height="120" fill="#fff"/>' +
+        '<path d="M3 -12L-3 -2L4 7L-3 16L2 27" fill="none" stroke="#000" stroke-width="3.5" stroke-linejoin="round"/>' +
+        '<path d="M-24 -14Q0 -20 24 -14M-28 6Q0 0 28 6" fill="none" stroke="#000" stroke-width="2"/></mask></defs>' +
+        '<path d="M-32 -46H32V-38H-32ZM-7 -38H7V-31H-7Z" fill="' + C + '"/>' +
+        '<g mask="url(#' + id + ')"><path d="M-21 -31C-23 -8 -25 12 -37 22L-41 27H41L37 22C25 12 23 -8 21 -31Q0 -38 -21 -31Z" fill="' + C + '"/>' +
+        '<path d="M-45 27H45V34Q0 38 -45 34Z" fill="' + C + '"/></g><circle cy="42" r="5" fill="' + C + '"/>';
+    } else if (se === 'spring') {
+      g = '<path d="M-60 40Q-30 18 -6 30Q20 12 60 40Z"' + op(0.45) + '/>' + palm(-16, 40, 86, -12, 0.9) + palm(18, 40, 70, 12, 0.8);
+    } else {
+      var bulbs = '';
+      for (var i = 0; i < 16; i++) { var a = i * Math.PI / 8; bulbs += '<circle cx="' + r1(40 * Math.cos(a)) + '" cy="' + r1(20 * Math.sin(a)) + '" r="2.4" fill="' + C + '"/>'; }
+      g = '<path d="M-50 0L-38 -22Q0 -32 38 -22L50 0L38 22Q0 32 -38 22Z"' + op(0.25) + '/><path d="M-50 0L-38 -22Q0 -32 38 -22L50 0L38 22Q0 32 -38 22Z"' + stk(4) + '/>' + bulbs +
+        '<text y="6" font-size="17" font-family="\'Sofia Sans Condensed\'" font-weight="800" letter-spacing="1" text-anchor="middle" fill="' + C + '">LAS VEGAS</text>' +
+        '<path d="M0 -28V-40" stroke="' + C + '" stroke-width="3"/>' + at(0, -50, 0, 0.26, sparkle()) + at(0, -50, 45, 0.16, sparkle());
+    }
+    return at(cx, cy, 0, sc, g);
+  }
+
   /* ───────── HOME GAMES ───────── */
 
   // Kitchen Table: brush-lettered name over a gingham tablecloth the cards land on; a coffee mug and a stack of clay chips
@@ -329,7 +396,12 @@
       var hw = l2.length * 12 + 14;
       b += tx(300, 350, 24, "'Castoro Titling'", E(up(l2)), ' letter-spacing="6" stroke="' + C + '" stroke-width="1"') + ln(160, 342, 300 - hw, 342, 4) + ln(300 + hw, 342, 440, 342, 4);
     }
-    if (o.series) b += tx(300, 377, 18, "'Sofia Sans Condensed'", E(up(o.series)), ' font-weight="700" letter-spacing="6"');
+    if (o.series) {
+      var se = season(o);
+      b += chipBadge(se, 150, 66, 40) + chipBadge(se, 450, 66, 40);
+      b += tx(300, 377, 18, "'Sofia Sans Condensed'", E(up(o.series)), ' font-weight="700" letter-spacing="6"');
+      var sw = String(o.series).length * 17.2 / 2 + 22; b += bit(se, 300 - sw, 371, -24, 0.26) + bit(se, 300 + sw, 371, 24, 0.26);
+    }
     return svg(b);
   };
 
@@ -346,7 +418,12 @@
       for (var i = 0; i < 24; i++) { var a = i * Math.PI / 12, r = i % 2 ? 27 : 33; d += (i ? 'L' : 'M') + (p[0] + r * Math.cos(a)).toFixed(1) + ' ' + (p[1] + r * Math.sin(a)).toFixed(1); }
       b += '<path d="' + d + 'Z" fill="' + C + '" fill-opacity=".3" stroke="' + C + '" stroke-width="4" stroke-linejoin="round"/>' + tx(p[0], p[1] + 10, 28, "'Old Standard TT'", '1M', ' font-weight="700"');
     });
-    if (o.series) b += tx(300, 97, 16, "'Share Tech Mono'", E(up(o.series)), ' letter-spacing="6"');
+    if (o.series) {
+      var se = season(o);
+      b += tx(300, 97, 16, "'Share Tech Mono'", E(up(o.series)), ' letter-spacing="6"');
+      b += '<g opacity=".5">' + landmark(se, 300, 214, 0.78) + '</g>';
+      b += bit(se, 104, 106, -30, 0.3, 0.8) + bit(se, 496, 106, 30, 0.3, 0.8) + bit(se, 104, 296, 200, 0.3, 0.8) + bit(se, 496, 296, 160, 0.3, 0.8);
+    }
     b += tx(300, 138, 38, "'Old Standard TT'", E(up(v)), ' font-weight="700" letter-spacing="2"' + fit(v, 38, 0.7, 420, 2));
     b += tx(300, 298, 24, "'Old Standard TT'", 'ONE MILLION', ' font-weight="700" letter-spacing="10"');
     return svg(b);
@@ -383,7 +460,12 @@
     var y1 = l2 ? 148 - s2 * 0.72 - 14 : 140;
     b += tx(300, y1.toFixed(0), s1.toFixed(0), "'Bowlby One SC'", E(up(l1)), ' textLength="' + W + '" lengthAdjust="spacingAndGlyphs"');
     if (l2) b += tx(300, 148, s2.toFixed(0), "'Bowlby One SC'", E(up(l2)), ' textLength="' + W + '" lengthAdjust="spacingAndGlyphs"');
-    if (o.series) b += tx(300, 344, 20, "'Sofia Sans Condensed'", E(up(o.series)), ' font-weight="700" letter-spacing="7"');
+    if (o.series) {
+      var se = season(o);
+      b += '<g opacity=".4">' + landmark(se, 300, 230, 0.62) + '</g>';
+      b += tx(300, 344, 20, "'Sofia Sans Condensed'", E(up(o.series)), ' font-weight="700" letter-spacing="7"');
+      b += bit(se, 146, 336, -20, 0.34) + bit(se, 454, 336, 20, 0.34) + bit(se, 150, 36, 30, 0.3, 0.8) + bit(se, 450, 36, -30, 0.3, 0.8) + bit(se, 112, 70, 70, 0.2, 0.55) + bit(se, 488, 70, -70, 0.2, 0.55);
+    }
     return svg(b);
   };
 
@@ -400,7 +482,24 @@
       '<text x="300" y="129" font-family="\'Courier Prime\'" font-weight="700" font-size="50" text-anchor="middle" fill="#000">?</text></mask></defs>';
     b += '<path d="' + d + 'Z" fill="' + C + '" mask="url(#mystery-m)"/>';
     b += tx(300, 300, 46, "'Courier Prime'", E(up(v)), ' font-weight="700" word-spacing="-12" stroke="' + C + '" stroke-width="1"' + fit(v, 46, 0.6, 420));
-    if (o.series) b += tx(300, 330, 18, "'Courier Prime'", E(up(o.series)), ' font-weight="700" letter-spacing="6"');
+    if (o.series) {
+      var se = season(o), city = up(o.city || (se === 'fall' ? 'Philadelphia' : se === 'spring' ? 'Los Angeles' : 'Las Vegas'));
+      b += tx(300, 330, 18, "'Courier Prime'", E(up(o.series)), ' font-weight="700" letter-spacing="6"');
+      // the stamp: perforated edge, the landmark, the season's name
+      var perf = '';
+      for (var px = 436; px <= 506; px += 7) perf += '<circle cx="' + px + '" cy="140" r="3"/><circle cx="' + px + '" cy="232" r="3"/>';
+      for (var py = 147; py <= 226; py += 7) perf += '<circle cx="432" cy="' + py + '" r="3"/><circle cx="510" cy="' + py + '" r="3"/>';
+      b += '<defs><mask id="mystery-s"><rect width="600" height="400" fill="#fff"/><g fill="#000">' + perf + '</g></mask></defs>';
+      b += '<rect x="432" y="140" width="78" height="92" fill="' + C + '" fill-opacity=".3" mask="url(#mystery-s)"/><rect x="440" y="148" width="62" height="76"' + stk(2.5) + '/>';
+      b += landmark(se, 471, 182, 0.42) + tx(471, 219, 11, "'Courier Prime'", up(se), ' font-weight="700" letter-spacing="2"');
+      // the postmark over its corner: the city round the ring, wavy cancel lines
+      b += '<defs><path id="mystery-pm" d="M346 190a34 34 0 1 1 68 0"/></defs><circle cx="380" cy="190" r="46"' + stk(3, 0.85) + '/><circle cx="380" cy="190" r="22"' + stk(2, 0.85) + '/>' +
+        tp('mystery-pm', 11, "'Courier Prime'", E(city), ' font-weight="700" letter-spacing="1" fill-opacity=".9"' + fit(city, 11, 0.62, 100, 1)) +
+        tx(380, 195, 13, "'Courier Prime'", '&#9733;', ' fill-opacity=".9"');
+      for (var w = 0; w < 3; w++) b += pth('M440 ' + (170 + w * 12) + 'q10 -7 20 0t20 0t20 0t20 0', stk(2.5, 0.7));
+      // tucked under the flap on the left
+      b += bit(se, 150, 188, -30, 0.5, 0.9) + bit(se, 196, 168, 20, 0.34, 0.65) + bit(se, 186, 222, 80, 0.26, 0.5);
+    }
     return svg(b);
   };
 })();
@@ -592,16 +691,36 @@
       (r[1] ? T(U(r[1]), 300, 370, 24, 'Spectral SC', { w: 700, ls: 10, cw: 0.72, max: 280 }) : '') + '</svg>';
   };
 
-  // ── Northside Card Room: upstairs from the sports bar; varsity arch, pennants, sleeve stripes ──
+  // ── Northside Card Room: upstairs from the sports bar; varsity arch, team pennants on their sticks, crossed bats and
+  //    a ball, the bar's scoreboard along the bottom (HOME and GUEST, the ninth inning) ──
   SAMPLE.cardclub = { venue: 'Northside Card Room', city: 'Upstairs, past the bar', style: 'Freezeout' };
   LOGOS.cardclub = function (o) {
-    var r = room(o.venue), id = 'cardclub-a';
-    function pennant(x, dir) { return P('M' + x + ',170v60l' + (-78 * dir) + ',-30z', ' fill-opacity=".5"') + P('M' + x + ',170v60l' + (-78 * dir) + ',-30z', L(4)) + star(x - 26 * dir, 200, 12, 5); }
+    var r = room(o.venue), id = 'cardclub-a', ini = U(r[0]).charAt(0);
+    // a felt pennant on its stick, the team's letter on it, flying out from the side
+    function pennant(x, dir) {
+      var tip = x + 124 * dir;
+      return P('M' + x + ',176V336', L(6)) + '<circle cx="' + x + '" cy="171" r="6"/>' +
+        P('M' + x + ',182L' + tip + ',216L' + x + ',250Z', ' fill-opacity=".45"') + P('M' + x + ',182L' + tip + ',216L' + x + ',250Z', L(4)) +
+        P('M' + (x + 8 * dir) + ',182V250', L(8)) +
+        T(ini, x + 40 * dir, 234, 50, 'Alumni Sans Collegiate One', {});
+    }
+    // crossed bats behind a ball (the stitches as two seams)
+    function bats(cx, cy) {
+      var bat = 'M-7,-62Q-11,-22 -4,30L-7,54H7L4,30Q11,-22 7,-62Q0,-67 -7,-62Z';
+      return '<g transform="translate(' + cx + ' ' + cy + ')">' +
+        '<path d="' + bat + '" transform="rotate(-36)" fill-opacity=".8"/><path d="' + bat + '" transform="rotate(36)" fill-opacity=".8"/>' +
+        '<circle cy="-6" r="19"/><path d="M-9,-17Q-3,-6 -9,7M9,-19Q3,-6 9,7" stroke="#000" stroke-opacity=".35"' + L(2.5) + '/></g>';
+    }
+    // the scoreboard: HOME and GUEST over lit digits, the period in the middle
+    var sb = '<rect x="150" y="276" width="300" height="78" rx="8" fill-opacity=".22"/><rect x="150" y="276" width="300" height="78" rx="8"' + L(4) + '/>' +
+      T('HOME', 205, 298, 17, 'Teko', { w: 600, ls: 3 }) + T('GUEST', 395, 298, 17, 'Teko', { w: 600, ls: 3 }) +
+      '<rect x="176" y="306" width="58" height="38" rx="4" fill-opacity=".35"/><rect x="366" y="306" width="58" height="38" rx="4" fill-opacity=".35"/>' +
+      T('5', 205, 337, 34, 'Teko', { w: 600 }) + T('4', 395, 337, 34, 'Teko', { w: 600 }) +
+      T('INN', 300, 302, 13, 'Teko', { w: 600, ls: 2, op: 0.8 }) + '<circle cx="300" cy="324" r="15" fill-opacity=".35"/>' + T('9', 300, 334, 26, 'Teko', { w: 600 });
     return SV + arc(id, 300, 700, 590, 250, 290) +
       TP(id, U(r[0]), 104, 'Alumni Sans Collegiate One', { cw: 0.34, max: 380 }) +
       (r[1] ? T(U(r[1]), 300, 144, 30, 'Teko', { w: 600, ls: 6, cw: 0.46, max: 170 }) : '') +
-      pennant(118, 1) + pennant(482, -1) +
-      '<rect x="140" y="284" width="320" height="14"/><rect x="140" y="306" width="320" height="8" fill-opacity=".55"/><rect x="140" y="322" width="320" height="14"/></svg>';
+      pennant(40, 1) + pennant(560, -1) + bats(300, 222) + sb + '</svg>';
   };
 
   // ── Harbor Lights Card Room: the old cannery on the docks; the lighthouse throws its beam across the name ──
