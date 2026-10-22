@@ -424,12 +424,18 @@
     });
   }
 
+  // Each turn for the history: the dice set aside (dice:points, in order) and how it ended ('=' banked, 'x' + the farkle roll)
+  function noteTurn(p, end) {
+    var t = S.sets.map(function (x) { return x.v.join('') + ':' + x.p; }).join(',') + end;
+    (p.st.tl = p.st.tl || []).push(S.round + '/' + t); if (p.st.tl.length > 40) p.st.tl.shift();
+  }
   // Score bookkeeping for a farkle. Runs once per farkle, even across a reload.
   function applyFarkle() {
     if (S.fkInfo) return S.fkInfo;
     var p = P(), lost = S.turn, pen = 0;
     p.fk++; p.st.farkles++;
     if (lost > p.st.lostMax) p.st.lostMax = lost;
+    noteTurn(p, 'x' + S.dice.filter(function (d) { return !d.kept && d.v; }).map(function (d) { return d.v; }).join(''));
     if (lost >= 1000) note(lost >= 2000 ? 4 : 3, p.name + ' farkled with ' + fmt(lost) + ' on the line', lost);
     if (S.rules.pen && p.fk >= 3) {
       pen = Math.min(1000, p.score); p.score -= pen; p.fk = 0;
@@ -462,6 +468,7 @@
     var amt = S.turn;
     var before = p.score;
     p.score += amt; p.on = true; p.fk = 0; p.st.banks++;
+    noteTurn(p, '=' + amt);
     if (amt > p.st.best) { p.st.best = amt; p.st.bestSets = S.sets.map(function (x) { return x.v.join('') + ':' + x.p; }).join(' '); p.st.bestHot = S.hot; }
     S.rounds[S.round - 1][S.cur] += amt;
     if (S.hot >= 2) note(3, p.name + ' had hot dice ' + (S.hot === 2 ? 'twice' : S.hot + ' times') + ' in one turn');
@@ -501,6 +508,12 @@
   // Highlights: keep the juiciest moments
   function note(pri, text, v) { S.ev.push({ p: pri, t: text, v: v || 0, r: S.round }); }
 
+  // the turns each player kept for the history, the latest ones, sharing about 2,000 characters between the players
+  function turnLog(p) {
+    var tl = (p.st && p.st.tl) || [], room = Math.floor(2000 / S.players.length), out = [], n = 0;
+    for (var i = tl.length - 1; i >= 0 && n + tl[i].length + 1 <= room; i--) { out.unshift(tl[i]); n += tl[i].length + 1; }
+    return out.join(' ');
+  }
   function finish() {
     S.phase = 'over'; lock = false;
     var rank = S.players.map(function (p, i) { return { name: p.name, score: p.score, color: p.color, cpu: p.cpu, i: i }; })
@@ -528,7 +541,7 @@
       meta: { target: S.rules.target, doubling: S.rules.dbl },
       detail: { t: S.rules.target, p: S.players.map(function (p) {
         var s = p.st || {};
-        return { f: s.farkles || 0, h: s.hot || 0, mh: s.maxHotTurn || 0, b: s.best || 0, bs: s.bestSets || '', bh: s.bestHot || 0, lm: s.lostMax || 0, k: s.banks || 0, br: s.br ? s.br.v + ':' + s.br.p : '' };
+        return { f: s.farkles || 0, h: s.hot || 0, mh: s.maxHotTurn || 0, b: s.best || 0, bs: s.bestSets || '', bh: s.bestHot || 0, lm: s.lostMax || 0, k: s.banks || 0, br: s.br ? s.br.v + ':' + s.br.p : '', tl: turnLog(p) };
       }) }
     });
     clearSave();
@@ -797,7 +810,7 @@
   // Test hooks
   window.__farkle = {
     state: function () { return S; }, speed: function (x) { SPD = x; }, lock: function () { return lock; },
-    scoreOf: scoreOf, hasScore: hasScore, plan: function () { return cpuPlan(); }
+    scoreOf: scoreOf, hasScore: hasScore, plan: function () { return cpuPlan(); }, start: function (cfg) { start(cfg); }
   };
 
   // ── Boot ─────────────────────────────────────────────────────────────────

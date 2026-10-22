@@ -70,6 +70,13 @@
     '.dv-tab{appearance:none;border:0;cursor:pointer;font:inherit;font-size:.8rem;font-weight:900;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--pc) 45%,transparent);}',
     '.dv-tab.on{background:var(--pc);color:#111;}',
     '.dv-foot{text-align:center;font-weight:900;font-size:.88rem;line-height:1.35;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.05);color:var(--text-2);}',
+    '.fk-felt .dv-dstrip{width:auto;height:26px;}',
+    '.fk-felt{max-width:100%;line-height:normal;padding:12px;display:flex;flex-direction:column;gap:10px;color:#fff;}',
+    '.fk-top{font-size:.7rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.65);}',
+    '.fk-sets{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;}.fk-set{display:flex;flex-direction:column;gap:3px;}.fk-set small{font-size:.74rem;font-weight:900;color:rgba(255,255,255,.75);}',
+    '.fk-bust{padding:4px 6px;border-radius:8px;background:rgba(200,16,46,.35);box-shadow:inset 0 0 0 1.5px #f87171;}.fk-bust small{color:#fca5a5;}',
+    '.fk-end{align-self:flex-start;font-size:.9rem;font-weight:800;padding:5px 10px;border-radius:8px;}.fk-end.ok{background:#fffaf0;color:#1d1a2e;}.fk-end.ok b{color:#0f7a3d;font-size:1.05rem;}',
+    '.fk-end.bad{background:#c8102e;color:#fff;transform:rotate(-2deg);}.fk-end.bad b{letter-spacing:.12em;}',
     /* Yahtzee: the paper card and the dice tray */
     '.dv-card.yc{padding:0 0 6px;border-radius:6px 6px 14px 14px;background:linear-gradient(180deg,#fffaf0,#f6eedb);}',
     '.yc-head{display:flex;align-items:baseline;justify-content:space-between;padding:10px 12px 6px;border-bottom:3px double #c8102e;}',
@@ -269,13 +276,31 @@
   // ════════════════════════════════════════════════════════════════════════
   // Farkle: race to the target, best rolls, farkles and hot dice
   // ════════════════════════════════════════════════════════════════════════
+  // one turn: 'round/dice:pts,dice:pts=banked' or '...x<the farkle roll>'
+  function fkTurn(tok) {
+    var m = /^(\d+)\/(.*?)(?:=(\d+)|x(\d*))$/.exec(String(tok)); if (!m) return null;
+    var sets = m[2] ? m[2].split(',').filter(Boolean).map(function (x) { var q = x.split(':'); return { d: q[0], p: +q[1] || 0 }; }) : [];
+    var run = 0, hot = 0; sets.forEach(function (st) { run += st.d.length; if (run === 6) { st.hot = 1; hot++; run = 0; } });
+    var pts = sets.reduce(function (a, x) { return a + x.p; }, 0);
+    return { r: +m[1], sets: sets, bank: m[3] != null ? +m[3] : null, fk: m[4] != null ? m[4] : null, pts: pts, hot: hot };
+  }
+  var FK_FELT = 'radial-gradient(120% 120% at 50% 0%,#26508e,#0f274b)';
+  function fkTurnPic(ui, t) {
+    var row = ui.el('div', { class: 'fk-sets' });
+    t.sets.forEach(function (st, k) {
+      row.appendChild(ui.el('div', { class: 'fk-set' }, [ui.el('span', { html: diceStrip(st.d, 26) }), ui.el('small', { text: (k ? '+' : '') + fmtN(st.p) + (st.hot ? ' · hot dice' : '') })]));
+    });
+    if (t.fk != null) row.appendChild(ui.el('div', { class: 'fk-set fk-bust' }, [ui.el('span', { html: diceStrip(t.fk, 26) }), ui.el('small', { text: 'no score' })]));
+    var end = t.bank != null ? ui.el('div', { class: 'fk-end ok', html: 'Banked <b>' + fmtN(t.bank) + '</b>' }) : ui.el('div', { class: 'fk-end bad', html: '<b>FARKLE</b>' + (t.pts ? ' · lost ' + fmtN(t.pts) : '') });
+    return ui.el('div', { class: 'hv-snap fk-felt', style: { background: FK_FELT } }, [ui.el('div', { class: 'fk-top', text: 'Round ' + t.r + (t.hot ? ' · hot dice ' + (t.hot === 1 ? 'once' : t.hot + ' times') : '') }), t.sets.length || t.fk ? row : null, end]);
+  }
   R('farkle', function (e, ui) {
     var d = e.dt, nm = names(e), out = [];
     if (!d || !d.p) return ui.wrap(out);
     var ps = arr(d.p);
     // biggest turn: the dice set aside, one group per roll
     var bi = -1; ps.forEach(function (p, i) { if (p.b && (bi < 0 || p.b > ps[bi].b)) bi = i; });
-    if (bi >= 0 && ps[bi].bs) {
+    if (bi >= 0 && ps[bi].bs && !ps.some(function (p) { return p.tl; })) {
       var sets = String(ps[bi].bs).split(' ').filter(Boolean).map(function (x) { var q = x.split(':'); return { d: q[0], p: +q[1] }; });
       var row = ui.el('div', { style: { display: 'flex', 'flex-wrap': 'wrap', gap: '10px 14px', 'align-items': 'flex-end' } });
       sets.forEach(function (st, k) {
@@ -288,6 +313,28 @@
         ui.el('div', { class: 'hv-snap f-felt', style: { 'max-width': '100%', 'line-height': 'normal', padding: '12px', background: 'radial-gradient(120% 120% at 50% 0%,#26508e,#0f274b)' } }, [row]),
         ps[bi].bh ? ui.el('p', { class: 'dv-note', html: 'Hot dice ' + (ps[bi].bh === 1 ? 'once' : ps[bi].bh === 2 ? 'twice' : ps[bi].bh + ' times') + ' in that turn: all six scored and got rolled again.' }) : null
       ], { icon: 'flame' }));
+    }
+    // every turn: the dice set aside and how it ended
+    var turns = ps.map(function (p) { return String(p.tl || '').split(' ').filter(Boolean).map(fkTurn).filter(Boolean); });
+    if (turns.some(function (t) { return t.length; })) {
+      var who = Math.max(0, nm.indexOf(e.winner)), card = ui.el('div', { class: 'hv' }), strip = ui.el('div');
+      var draw = function (i) {
+        var ts = turns[i], big = -1; ts.forEach(function (t, j) { if (t.bank != null && (big < 0 || t.bank > ts[big].bank)) big = j; });
+        strip.innerHTML = ''; card.innerHTML = '';
+        if (!ts.length) { card.appendChild(ui.el('p', { class: 'dv-note', text: 'No turns kept for ' + (nm[i] || 'this player') + '.' })); return; }
+        strip.appendChild(roadStrip(ui, ts.map(function (t) { return { c: t.bank == null ? 'l' : t.bank >= 1000 ? 'big' : 'w', t: String(t.r), title: 'Round ' + t.r + (t.bank != null ? ': banked ' + fmtN(t.bank) : ': farkle') }; }),
+          big >= 0 ? big : ts.length - 1, function (j) { card.innerHTML = ''; card.appendChild(fkTurnPic(ui, ts[j])); }));
+      };
+      var kids = [];
+      if (ps.length > 1) {
+        var tabs = ui.el('div', { class: 'dv-tabs' }), tb = [];
+        nm.forEach(function (n, i) { var b = ui.el('button', { type: 'button', class: 'dv-tab' + (i === who ? ' on' : ''), style: { '--pc': ui.color(i) }, text: n, onclick: function () { tb.forEach(function (x, j) { x.classList.toggle('on', j === i); }); draw(i); } }); tb.push(b); tabs.appendChild(b); });
+        kids.push(tabs);
+      }
+      var shown = turns.reduce(function (a, t) { return Math.max(a, t.length); }, 0), all = shown >= (e.rounds && e.rounds.scores ? arr(e.rounds.scores).length : 0);
+      kids.push(strip, card, ui.el('div', { class: 'dv-key', html: '<i class="w"></i>banked <i class="big"></i>1,000 or more <i class="l"></i>farkle' }));
+      out.push(ui.section(all ? 'Every turn · tap one' : 'The last turns · tap one', kids, { icon: 'dice' }));
+      draw(who);
     }
     // best single roll per player
     var br = ps.map(function (p, i) { var q = String(p.br || '').split(':'); return { i: i, d: q[0], p: +q[1] || 0 }; }).filter(function (x) { return x.d && x.p; });
@@ -310,6 +357,12 @@
       ['Biggest farkle'].concat(ps.map(function (p) { return p.lm ? { t: '−' + fmtN(p.lm), c: 'bad' } : '–'; }))
     ];
     out.push(ui.section(ps.length > 1 ? 'Player stats' : 'Stats', ui.table(head, rows), { icon: 'pulse' }));
+    // the last word
+    var P = e.players || [], wi = Math.max(0, nm.indexOf(e.winner)), sc = P.map(function (p) { return p.score || 0; }).sort(function (a, b) { return b - a; });
+    var rn = e.rounds && e.rounds.scores ? arr(e.rounds.scores).length : 0;
+    var line = ps.length === 1 ? 'Reached ' + fmtN(P[0] ? P[0].score : 0) + (rn ? ' in ' + rn + ' turns' : '') + ' with ' + (ps[0].f || 0) + ' farkle' + (ps[0].f === 1 ? '' : 's') + '.'
+      : e.winner ? e.winner + ' won by ' + fmtN(sc[0] - sc[1]) + (rn ? ' after ' + rn + ' rounds' : '') + '.' + (ps[wi] && ps[wi].b ? ' Best turn: ' + fmtN(ps[wi].b) + '.' : '') : 'A tie at ' + fmtN(sc[0]) + '.';
+    out.push(ui.el('div', { class: 'dv-foot', text: line }));
     return ui.wrap(out);
   });
 
