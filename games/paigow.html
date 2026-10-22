@@ -600,6 +600,15 @@
     }
     return { labels: labels, scores: scores };
   }
+  // the money after every hand for the history chart (at most 61 points)
+  function skString(start, nets) {
+    var a = [start], t = start; nets.forEach(function (n) { t += n; a.push(Math.round(t)); });
+    if (a.length < 2) return null;
+    var n = a.length, m = 60, out = [];
+    if (n <= m + 1) return a.join(',');
+    for (var i = 0; i <= m; i++) out.push(a[Math.round(i * (n - 1) / m)]);
+    return out.join(',');
+  }
   function finish() {
     var s = S, net = s.net;
     var summary = s.name + (net > 0 ? ' won ' + money(net) : net < 0 ? ' lost ' + money(-net) : ' broke even') + ' · ' + s.hand + ' hand' + (s.hand === 1 ? '' : 's');
@@ -607,7 +616,8 @@
       started: s.started, players: [{ name: s.name, score: net }], winner: null, summary: summary,
       rounds: roundsData(), highlights: highlights(), meta: casinoMeta({ hands: s.hand, bankroll: bank(), commission: s.st.comm }),
       detail: playTag({ bank: { s: bank() - net, e: bank() }, hands: s.hand, won: s.st.won, lost: s.st.lost, push: s.st.push, comm: s.st.comm, house: s.st.house,
-        big: s.bigH || null, last: (s.hl || []).filter(function (x) { return !s.bigH || x.h !== s.bigH.h; }).slice(-6) })
+        big: s.bigH || null, last: (s.hl || []).filter(function (x) { return !s.bigH || x.h !== s.bigH.h; }).slice(-10),
+        sk: skString(bank() - net, s.log), best: s.st.best >= 2 ? s.st.best : 0 })
     });
     clearSave(); S = null;
     Kit.win({
