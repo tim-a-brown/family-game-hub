@@ -287,11 +287,12 @@
     [].concat(recent || [], d.big ? [d.big] : []).forEach(function (x) { if (x && !seen[x[key]]) { seen[x[key]] = 1; out.push(x); } });
     return out.sort(function (a, b) { return a[key] - b[key]; });
   }
-  function roadKey(ui, list) { return ui.el('div', { class: 'cz-key', html: list.map(function (x) { return '<i class="' + x[0] + '"></i>' + ui.esc(x[1]); }).join(' ') }); }
+  function roadKey(ui, list) { return ui.el('div', { class: 'cz-key cz-key2' }, list.map(function (x) { return ui.el('span', null, [ui.el('i', { class: x[0] }), ui.el('span', { text: x[1] })]); })); }
 
   HistView.css('hv-casino2', [
     '.cz-foot{text-align:center;font-weight:900;font-size:.88rem;line-height:1.35;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.05);color:var(--text-2);}',
     '.cz-foot.good{color:#4ade80;}.cz-foot.bad{color:#fca5a5;}',
+    '.cz-key2>span{display:inline-flex;align-items:center;gap:4px;}.cz-key.cz-key2 i{margin-right:0;}',
     '.cz-line{display:flex;flex-direction:column;gap:4px;}',
     '.cz-line .lab{font-size:.66rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.65);}',
     '.cz-felt .hv-cards{--cw:40px;}',
@@ -712,7 +713,7 @@
     if (d.spins) {
       var nm = SLOT_NAMES[m] || 'the slots', t = plural(d.spins, 'spin') + ' on ' + nm + ', ' + upDown(net) + '.';
       if (d.big && d.big.a) t += ' Best: ' + ui.money(d.big.a) + ' on spin ' + d.big.no + '.';
-      if (d.peak > 0 && d.peak > net) t += ' Was up ' + ui.money(d.peak) + ' at the high.';
+      if (d.peak > 0 && d.peak >= net + 20) t += ' Was up ' + ui.money(d.peak) + ' at the high.';
       out.push(foot(ui, t, net));
     }
     return ui.wrap(out);
