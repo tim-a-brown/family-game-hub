@@ -802,5 +802,5 @@
     g.put(cv); return cv;
   }
 
-  window.CarmenArt = { W: W, H: H, scene: scene, interior: interior, portrait: portrait, map: map, title: title, henchman: henchman, plane: plane, kinds: Object.keys(LM), interiors: Object.keys(INTERIOR), rng: rng };
+  window.CarmenArt = { rings: rings, W: W, H: H, scene: scene, interior: interior, portrait: portrait, map: map, title: title, henchman: henchman, plane: plane, kinds: Object.keys(LM), interiors: Object.keys(INTERIOR), rng: rng };
 })();
