@@ -632,11 +632,39 @@
       n > 1 ? ['Lead changes', changes] : null,
       big ? [low ? 'Best round' : 'Biggest round', ui.num(big.v), P[big.i] + ', round ' + big.r] : null,
       tight && sc.length > 2 ? ['Closest after', 'Round ' + tight.r, tight.g === 0 ? 'tied' : 'gap of ' + ui.num(tight.g)] : null,
-      ['Rounds', sc.length]
+      n > 1 ? null : ['Rounds', sc.length]
     ]));
+    var ck = HistView.ck;
+    if (ck && n > 1 && sc.length >= 2) {
+      // every round: what each side scored, and the standings after it (who moved up or down)
+      var labels = (e.rounds.labels || []), panel = el('div', { class: 'hv' });
+      var rankAt = function (c) { var o = c.map(function (v, i) { return i; }).sort(function (a, b) { return low ? c[a] - c[b] : c[b] - c[a]; }), r = []; o.forEach(function (p, k) { r[p] = k; }); return r; };
+      var show = function (ri) {
+        var r = sc[ri], c = cum[ri], rk = rankAt(c), prev = ri ? rankAt(cum[ri - 1]) : null, kids = [];
+        var best = -1; r.forEach(function (v, i) { if (v != null && (best < 0 || (low ? v < r[best] : v > r[best]))) best = i; });
+        var l = leader(c);
+        kids.push(ck.head('<b>' + ui.esc(labels[ri] || 'Round ' + (ri + 1)) + '</b>', l >= 0 ? short(P[l], 12) + ' leads' : 'All square', l >= 0 ? 'good' : ''));
+        var order = P.map(function (x, i) { return i; }).sort(function (a, b) { return rk[a] - rk[b]; });
+        kids.push(ck.plates(order.map(function (i) {
+          var mv = prev ? prev[i] - rk[i] : 0;
+          return { n: short(P[i], 9), v: (r[i] > 0 ? '+' : '') + (r[i] == null ? '–' : ui.num(r[i])), s: 'total ' + ui.num(c[i]), s2: (rk[i] + 1) + (['st', 'nd', 'rd'][rk[i]] || 'th') + (mv > 0 ? ', up ' + mv : mv < 0 ? ', down ' + (-mv) : ''), c: ui.color(i), cls: i === best ? 'good' : '' };
+        })));
+        panel.innerHTML = ''; panel.appendChild(ck.felt(['#34406a', '#252e52', '#1a2140'], kids));
+      };
+      var items = sc.map(function (r, ri) { var l = leader(cum[ri]); return { t: String(ri + 1), c: l >= 0 ? ui.color(l) : null, ring: ri > 0 && l >= 0 && leader(cum[ri - 1]) !== l, title: (labels[ri] || 'Round ' + (ri + 1)) + (l >= 0 ? ': ' + P[l] + ' leads' : '') }; });
+      out.push(ui.section('Every round · tap one', [ck.road(items, sc.length - 1, show), panel, ck.key(P.map(function (x, i) { return [short(x, 10) + ' leads', ui.color(i)]; }).concat([['Lead changed', 'ring']]))], { icon: 'chart' }));
+    }
     if (n > 1 && sc.length >= 2) {
       out.push(ui.section('Rounds in the lead', ui.bars(P.map(function (x, i) { return { label: x, value: ledRounds[i], max: sc.length, color: ui.color(i), text: ledRounds[i] + ' of ' + sc.length }; }))));
       out.push(ui.section('Average per round', ui.bars(P.map(function (x, i) { var a = run[i] / sc.length; return { label: x, value: Math.abs(a), color: ui.color(i), text: (Math.round(a * 10) / 10).toLocaleString('en-US') }; }))));
+    }
+    if (ck && n > 1 && cum.length) {
+      var fl = leader(cum[cum.length - 1]), since = cum.length;
+      while (since > 1 && leader(cum[since - 2]) === fl) since--;
+      if (fl >= 0) {
+        var fs = cum[cum.length - 1].slice().sort(function (a, b) { return low ? a - b : b - a; });
+        out.push(ck.foot(P[fl] + ' won by ' + ui.num(Math.abs(fs[0] - fs[1])) + (since === 1 ? ', leading from the first round to the last.' : ', in front for good from round ' + since + (changes ? ' after ' + changes + (changes === 1 ? ' lead change.' : ' lead changes.') : '.')), 'trophy'));
+      }
     }
     return ui.wrap(out);
   });
@@ -668,6 +696,15 @@
       out.push(ui.section('Income by round', ui.picture(lineChart(series, { aria: 'Income by round', xl: function (i) { return i === 0 ? 'Start' : i; } }), { frame: 'dark', max: 420 }), { icon: 'chart' }));
     }
     if (d.bat) out.push(ui.stats([['Battles rolled', d.bat], ['Dice thrown', ui.num(d.dice)]]));
+    var ck = HistView.ck;
+    if (ck && (d.side || d.how)) {
+      var SN2 = { axis: 'Axis', allies: 'Allies' }, held = d.vc ? d.vc.split('').filter(function (c) { return c === (d.side === 'axis' ? 'a' : 'l'); }).length : null;
+      var need = d.need ? d.need[d.side === 'axis' ? 0 : 1] : null, lost = (pw || []).filter(function (p) { return p.cap === 0; }).map(function (p) { return AA[p.k] ? AA[p.k][0] : p.k; });
+      var why = !d.side ? 'Stopped with no winner.' : d.how === 'cities' ? 'The ' + SN2[d.side] + ' won on victory cities, holding ' + held + ' of the ' + need + ' they needed.'
+        : 'The ' + SN2[d.side] + ' won by agreement' + (held != null ? ', holding ' + held + ' victory cities' : '') + '.';
+      if (lost.length) why += ' Capital lost: ' + lost.join(', ') + '.';
+      out.push(ck.foot(why, 'flag'));
+    }
     return ui.wrap(out);
   });
 })();
