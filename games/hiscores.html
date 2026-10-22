@@ -133,6 +133,7 @@ html[data-theme="light"] body.hs .gbar,html[data-theme="parchment"] body.hs .gba
 .att{flex:none;display:grid;place-items:center;width:48px;min-height:48px;border:0;border-radius:12px;cursor:pointer;background:rgba(0,0,0,.45);color:var(--bcol);box-shadow:inset 0 0 0 1px var(--w08);transition:background .15s,color .15s;}
 .att .ico{width:20px;height:20px;}
 .att.on{background:var(--bcol);color:var(--bink);}
+.att b{font:400 1.05rem/1 var(--display);letter-spacing:.02em;}
 .att:active{transform:translateY(2px);}
 /* attract mode: a bar along the bottom of the screen fills while each board is up */
 .attbar{position:absolute;left:0;right:0;bottom:0;height:5px;z-index:4;pointer-events:none;opacity:0;transition:opacity .3s;background:rgba(0,0,0,.45);}
@@ -374,17 +375,22 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
   ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, function () { if (!tapped) { tapped = true; ac(); } }, { passive: true }); });
   setInterval(function () { if (tapped && document.visibilityState === 'visible' && !document.querySelector('.k-sheet')) Mus.tick(); else Mus.stop(); }, 90);
   function attractOn() { return localStorage.getItem('hs_attract') !== '0'; }
-  var DWELL = 10, attractRun = false, attT = 0, attQuiet = 0;
+  // the button steps through off, regular (10 s a game), 2x speed (5 s a game); the cabinet starting by itself uses the last speed picked
+  var DWELL0 = 10, DWELL = DWELL0, attractRun = false, attT = 0, attQuiet = 0;
+  var attSpeed = (function () { try { return localStorage.getItem('hs_attract_x') === '2' ? 2 : 1; } catch (e) { return 1; } })();
+  function setSpeed(x) { attSpeed = x; DWELL = DWELL0 / x; try { localStorage.setItem('hs_attract_x', String(x)); } catch (e) {} }
+  DWELL = DWELL0 / attSpeed;
   function paintAtt() {
     if (!attBtn) return;
-    attBtn.innerHTML = Kit.icon(attractRun ? 'pause' : 'sparkle');
+    attBtn.innerHTML = attractRun ? '<b>' + attSpeed + 'x</b>' : Kit.icon('sparkle');
     attBtn.classList.toggle('on', attractRun);
-    attBtn.setAttribute('aria-label', attractRun ? 'Stop attract mode' : 'Start attract mode');
-    attBtn.title = attractRun ? 'Stop attract mode' : 'Attract mode: show every game in turn';
+    var next = !attractRun ? 'Start attract mode' : attSpeed === 1 ? 'Attract mode at 2x speed' : 'Stop attract mode';
+    attBtn.setAttribute('aria-label', next);
+    attBtn.title = !attractRun ? 'Attract mode: show every game in turn' : (attSpeed === 1 ? 'Regular speed. Tap for 2x' : '2x speed. Tap to stop');
     crt.classList.toggle('attr', attractRun);
     attFill.style.transform = 'scaleX(' + (attractRun ? Math.min(1, attT / DWELL) : 0) + ')';
   }
-  function startAttract(quiet) { attractRun = true; attT = 0; attQuiet = Date.now(); paintAtt(); run(); if (!quiet) Kit.toast('Attract mode: tap anywhere to stop'); }
+  function startAttract(quiet) { attractRun = true; attT = 0; attQuiet = Date.now(); paintAtt(); run(); if (!quiet) Kit.toast('Attract mode: tap the button for 2x, tap anywhere else to stop'); }
   function stopAttract() { if (!attractRun) return; attractRun = false; attT = 0; paintAtt(); run(); }
   window.HSAttract = {
     music: function () { return Mus.on(); },
@@ -562,7 +568,11 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     if (g.idx.length > 1 || ((b.puzzle || b.cons) && sp.scrollWidth > sp.clientWidth + 1)) sp.textContent = 'PLAY';
   }
   // Attract mode on demand: steps through every game of the section, a few seconds each, until you touch anything
-  var attBtn = el('button', { type: 'button', class: 'att', onclick: function () { if (attractRun) stopAttract(); else { Kit.sfx('pop'); startAttract(); } } });
+  var attBtn = el('button', { type: 'button', class: 'att', onclick: function () {
+    if (!attractRun) { setSpeed(1); Kit.sfx('pop'); startAttract(); }
+    else if (attSpeed === 1) { setSpeed(2); attT = Math.min(attT, DWELL * .5); Kit.sfx('pop'); Kit.toast('Attract mode: 2x speed'); paintAtt(); }
+    else stopAttract();
+  } });
   var cp = el('div', { class: 'cp' }, [modes, st, attBtn]);
   cab.appendChild(mq); cab.appendChild(el('div', { class: 'bez' }, [selW, crt])); cab.appendChild(cp);
   if (secBar.children.length > 1) app.appendChild(secBar);
