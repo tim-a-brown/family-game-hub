@@ -397,7 +397,38 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
   function yr(y) { return y == null ? '' : y < 0 ? (-y) + ' BC' : y < 1000 ? 'AD ' + y : String(y); }
   var DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon'];
   function fmtT(h) { var d = Math.floor(h / 24), hr = Math.floor(h % 24), ap = hr < 12 ? 'am' : 'pm', h12 = hr % 12 || 12; return DAYS[Math.min(7, d)] + ' ' + h12 + ':00 ' + ap; }
-  var START_T = 9, DEADLINE = 6 * 24 + 17;   // Monday 9 am to Sunday 5 pm
+  var START_T = 9, DEADLINE = 6 * 24 + 17;   // Monday 9 am to Sunday 5 pm: the most time ACME ever gives
+  function dl() { return (C && C.dl) || DEADLINE; }
+  function fmtDay(h) { var d = Math.floor(h / 24), hr = Math.floor(h % 24), ap = hr < 12 ? 'am' : 'pm'; return DAYS[Math.min(7, d)] + ' ' + (hr % 12 || 12) + ' ' + ap; }
+  var FULLDAY = { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday' };
+  // The deadline for a case: a perfect run (every witness asked, no wrong turns) plus the wrong turns ACME allows
+  // at your rank, each costed as a round trip to an average place in this version and back. Never later than Sunday 5 pm.
+  // SPARE: wrong turns allowed for, at a typical cost (an average round trip, an hour asking, and often a night's sleep);
+  // SURE: wrong turns always allowed for, even at a long one's cost (90th-percentile hop each way, plus a night)
+  var SPARE = [6, 4.5, 3.5, 2.5, 2, 1.5], SURE = [3, 2, 2, 1, 1, 1];
+  var tripCache = {};
+  function tripCost(v) {
+    if (tripCache[v]) return tripCache[v];
+    var hs = []; DATA.forEach(function (a) { DATA.forEach(function (b) { if (a !== b) hs.push(hopHours(v, a, b)); }); });
+    hs.sort(function (x, y) { return x - y; });
+    var avg = hs.reduce(function (x, y) { return x + y; }, 0) / Math.max(1, hs.length), p90 = hs[Math.floor(hs.length * 0.9)] || avg;
+    return (tripCache[v] = { avg: 2 * avg + 1 + 6, long: 2 * p90 + 1 + 8 });
+  }
+  function nightOff(t) { var hr = t % 24; return hr < 23 && hr >= 7 ? t : hr >= 23 ? t - hr + 24 + 7 : t - hr + 7; }
+  function perfectRun(v, P) {
+    var t = START_T;
+    for (var i = 0; i < P.length; i++) {
+      t = nightOff(t); for (var a = 1; a <= 3; a++) { t += a; t = nightOff(t); }
+      if (i < P.length - 1) t += hopHours(v, P[i], P[i + 1]);
+    }
+    return t;
+  }
+  function caseDeadline(v, trail, rk) {
+    var tc = tripCost(v), d = Math.min(DEADLINE, Math.ceil(perfectRun(v, trail.map(place)) + Math.max(SPARE[rk] * tc.avg, SURE[rk] * tc.long)));
+    // a deadline in the night (you're asleep 11 pm to 7 am anyway) reads as 11 pm the evening before
+    var hr = d % 24; if (hr >= 23) d = d - hr + 23; else if (hr < 7) d = d - hr - 1;
+    return d;
+  }
 
   // ── Case generation ──────────────────────────────────────────────────────
   var C = null, UNDO = [], busy = false;
@@ -419,6 +450,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       undos: 0, flights: 0, wrong: 0, danger: false, started: Date.now(), solvedBefore: car.solved,
       path: [trail[0] + '|' + START_T], asked: 0, hench: 0 };
     c.traitAt = traitPlan(sus, rk, stops, r, nSus);
+    c.dl = caseDeadline(v, trail, rk);
     return c;
   }
   // Which witness answers carry a trait. A new agent hears plenty, early, and often more than needed. Higher ranks
@@ -577,7 +609,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
   }
   function showTime(h) {
     drawClock(h); $.day.textContent = fmtT(h);
-    var left = DEADLINE - h; $.dl.textContent = left <= 0 ? 'Out of time' : 'Deadline ' + (left < 24 ? Math.floor(left) + ' hrs' : 'Sun 5 pm');
+    var left = dl() - h; $.dl.textContent = left <= 0 ? 'Out of time' : 'Deadline ' + (left < 24 ? Math.floor(left) + ' hrs' : fmtDay(dl()));
     $.timeBox.classList.toggle('late', left < 24);
   }
   function header(p) {
@@ -728,7 +760,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
     return new Promise(function (res) {
       var iv = setInterval(function () {
         i++; showTime(t0 + (t1 - t0) * i / steps); if (i % 5 === 0) sfx('tick');
-        if (i >= steps) { clearInterval(iv); showTime(t1); if (t1 >= DEADLINE) { busy = true; outOfTime(); res(false); } else res(true); }
+        if (i >= steps) { clearInterval(iv); showTime(t1); if (t1 >= dl()) { busy = true; outOfTime(); res(false); } else res(true); }
       }, 40);
     });
   }
@@ -905,7 +937,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       return lose(C.warrant == null ? 'nowarrant' : 'wrongwarrant');
     });
   }
-  function score() { return 500 * (C.rank + 1) + 10 * Math.max(0, Math.floor(DEADLINE - C.t)) + (C.sus === 0 ? 2000 : 0); }
+  function score() { return 500 * (C.rank + 1) + 10 * Math.max(0, Math.floor(dl() - C.t)) + (C.sus === 0 ? 2000 : 0); }
   function win() {
     C.over = true; clearSave();
     var S = SUS[C.sus], start = place(C.trail[0]);
@@ -925,7 +957,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       }).then(function () {
         busy = false;
         var done = function () {
-          var notes = ['Arrested ' + S.name + ' with ' + fmtHrs(DEADLINE - C.t) + ' to spare', C.flights + ' trips' + (C.wrong ? ', ' + C.wrong + ' wrong turn' + (C.wrong > 1 ? 's' : '') : ', no wrong turns'), 'Cases solved: ' + car.solved];
+          var notes = ['Arrested ' + S.name + ' with ' + fmtHrs(dl() - C.t) + ' to spare', C.flights + ' trips' + (C.wrong ? ', ' + C.wrong + ' wrong turn' + (C.wrong > 1 ? 's' : '') : ', no wrong turns'), 'Cases solved: ' + car.solved];
           if (car.solved === CARMEN_CASE && after < RANKS.length - 1) notes.push('Next case: rumour says Carmen Sandiego herself is on the move');
           Kit.win({ icon: 'trophy', title: C.sus === 0 ? 'You caught Carmen!' : 'Case closed!', sub: promoted ? 'Promoted to ' + RANKS[after][0] : RANKS[after][0] + ' ' + C.player, notes: notes, notesTitle: 'Case file',
             againLabel: 'Next case', again: function () { begin(C.v, C.player); }, extra: [{ label: 'Choose a version', onClick: showSetup }] });
@@ -941,7 +973,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
     var msg = {
       nowarrant: ['No warrant!', 'You found ' + S.name + ', but without a warrant ' + (S.sex === 'Female' ? 'she' : 'he') + ' walked free.'],
       wrongwarrant: ['Wrong warrant', 'Your warrant was for ' + (C.warrant != null ? SUS[C.warrant].name : '') + '. ' + S.name + ' laughed and slipped away.'],
-      time: ['Out of time', 'It\'s Sunday at 5 pm. ' + S.name + ' got away with the ' + C.treasure + '.']
+      time: ['Out of time', 'It\'s ' + FULLDAY[fmtDay(dl()).split(' ')[0]] + ' at ' + fmtDay(dl()).split(' ').slice(1).join(' ') + '. ' + S.name + ' got away with the ' + C.treasure + '.']
     }[why];
     jingle('lose'); sfx('wrong');
     say(esc(msg[1]), 'CASE LOST', 'warn').then(function () { return wait(1200); }).then(function () {
@@ -974,7 +1006,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       var s = at(n.at) + '|' + n.loc + '|' + t; room -= s.length; said.push(s);
     });
     return { v: C.v, rk: RANKS[C.rank][0], sus: S.name, sx: S.sex, tt: [S.hair, S.hobby, S.feature, S.auto].join('|'), tr: C.treasure, won: won ? 1 : 0,
-      why: won ? '' : why || '', wr: C.warrant != null ? SUS[C.warrant].name : '', hr: Math.round(C.t - START_T), left: Math.max(0, Math.floor(DEADLINE - C.t)),
+      why: won ? '' : why || '', wr: C.warrant != null ? SUS[C.warrant].name : '', hr: Math.round(C.t - START_T), left: Math.max(0, Math.floor(dl() - C.t)),
       sc: sc || 0, pr: promo || '', fl: C.flights, wg: C.wrong, ak: C.asked || 0, hm: C.hench || 0, un: C.undos || 0,
       pl: pl, trail: C.trail.map(at).join(','), path: path.join(','), said: said };
   }
@@ -1007,7 +1039,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
     var who = S.carmen ? 'Carmen Sandiego herself was' : 'A ' + S.sex.toLowerCase() + ' suspect was';
     save();
     return say('<em>*** FLASH ***</em> ' + (C.v === 'time' ? 'A treasure has been stolen from history! In ' + esc(p.name) + ', ' + yr(p.year) : 'National treasure stolen from ' + esc(p.name)) +
-      '. The treasure: <em>' + esc(C.treasure) + '</em>. ' + who + ' seen at the scene of the crime. Track the thief to the hideout and make the arrest by <em>Sunday, 5 pm</em>. Good luck, ' + esc(RANKS[C.rank][0]) + ' ' + esc(C.player) + '.', 'ACME HEADQUARTERS');
+      '. The treasure: <em>' + esc(C.treasure) + '</em>. ' + who + ' seen at the scene of the crime. Track the thief to the hideout and make the arrest by <em>' + FULLDAY[fmtDay(dl()).split(' ')[0]] + ', ' + fmtDay(dl()).split(' ').slice(1).join(' ') + '</em>. Good luck, ' + esc(RANKS[C.rank][0]) + ' ' + esc(C.player) + '.', 'ACME HEADQUARTERS');
   }
 
   // ── The globe you pick a version on ──────────────────────────────────────
@@ -1119,7 +1151,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       { icon: 'users', label: 'Frequent players', onClick: function () { Kit.managePlayers(); } }
     ],
     rules:
-      '<p class="goal">A V.I.L.E. thief has stolen a treasure. Follow the trail from city to city, get a warrant, and arrest the thief in the hideout by <b>Sunday at 5 pm</b>.</p>' +
+      '<p class="goal">A V.I.L.E. thief has stolen a treasure. Follow the trail from city to city, get a warrant, and arrest the thief in the hideout before the deadline in your briefing.</p>' +
       '<h3>Each city</h3><ul><li><b>Investigate</b>: question witnesses in three places. Each one costs time: 1 hour, then 2, then 3. Asking again costs 1 hour.</li>' +
       '<li>Witnesses on the right trail describe where the thief went next (a flag, money, a language, a landmark), and sometimes the thief: hair, hobby, a feature, a car.</li>' +
       '<li>If witnesses have never seen the thief, you are in the wrong city. Go back.</li>' +
@@ -1127,7 +1159,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       '<h3>Travel</h3><ul><li><b>Depart</b> shows the places you can reach. Longer trips cost more hours. At 11 pm you stop to sleep until 7 am.</li></ul>' +
       '<h3>Crime computer</h3><ul><li>Enter the traits you have heard. When only one V.I.L.E. member fits, you get a <b>warrant</b> for them.</li>' +
       '<li>In the hideout city witnesses warn you the thief is close. Find the thief with the right warrant to make the arrest. No warrant, or the wrong one, and the thief goes free.</li></ul>' +
-      '<h3>Ranks</h3><ul><li>Gumshoe, Private Eye (2 arrests), Investigator (5), Detective (9), Ace Detective (14), Super Sleuth (20).</li><li>Each promotion means a longer trail (up to 7 stops), more V.I.L.E. members to sort through (10 at first, 24 in the end), and witnesses who say less, later.</li>' +
+      '<h3>Ranks</h3><ul><li>Gumshoe, Private Eye (2 arrests), Investigator (5), Detective (9), Ace Detective (14), Super Sleuth (20).</li><li>Each promotion means a longer trail (up to 7 stops), more V.I.L.E. members to sort through (10 at first, 24 in the end), witnesses who say less, later, and a tighter deadline: new agents get until Sunday at 5 pm, a Super Sleuth has time for about one wrong turn.</li>' +
       '<li>The 20th arrest is Carmen Sandiego herself. Each version keeps its own rank for each player.</li></ul>' +
       '<h3>Versions</h3><p>World, USA (all 50 states), Time (history, by Chronoskimmer), Europe, Asia, Africa and the Americas. Keep an atlas or encyclopedia handy, just like in 1985.</p>'
   });
