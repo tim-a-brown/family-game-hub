@@ -6,7 +6,7 @@
   if (!window.HistView) return;
 
   HistView.css('hv-oregon', [
-    '@font-face{font-family:"Jersey 10";src:url("fonts/jersey-10.woff2") format("woff2"),url("../fonts/jersey-10.woff2") format("woff2");font-display:swap;}',
+    '@font-face{font-family:"Jersey 10";src:url("/fonts/jersey-10.woff2") format("woff2");font-display:swap;}',
     '.or-scr{border-radius:14px;padding:12px 14px;background:#000;color:#fff;font:400 1.25rem/1.1 "Jersey 10",ui-monospace,monospace;display:flex;flex-direction:column;gap:10px;',
     'box-shadow:inset 0 0 0 2px #555,0 8px 20px -10px rgba(0,0,0,.8);}',
     '.or-top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;}',

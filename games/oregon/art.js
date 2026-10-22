@@ -705,7 +705,9 @@ var OTArt = window.OTArt = (function () {
     var g = snow ? { a: 'w', b: 'l', l: 1 } : L.ground === 'dry' ? { a: 'y', b: 'n', l: 2 } : { a: 'g', b: 'G', l: 1 };
     p.r(0, 0, W, H, g);
     for (var i = 0; i < W * H / 200; i++) { var x = Math.round(r() * W), y = Math.round(r() * H); p.px(x, y, snow ? 'l' : L.ground === 'dry' ? 'n' : 'g'); p.px(x, y - 1, snow ? 'w' : L.ground === 'dry' ? 'y' : 'G'); }
-    var obs = [], n = 6 + Math.round(r() * 4);
+    for (var t2 = 0; t2 < W * H / 160; t2++) { var gx = Math.round(r() * W), gy2 = Math.round(r() * H), gc = snow ? 'l' : L.ground === 'dry' ? 'n' : 'g'; p.line(gx, gy2, gx - 1, gy2 - 2, gc); p.line(gx + 1, gy2, gx + 2, gy2 - 2, gc); if (!snow && r() < 0.12) p.px(gx + 3, gy2 - 1, ['y', 'M', 'w'][Math.floor(r() * 3)]); }
+    if (L.ground !== 'dry' || r() < 0.4) { var cy = Math.round(H * (0.15 + r() * 0.2)); for (var x2 = 0; x2 < W; x2++) { var yy = cy + Math.round(Math.sin(x2 / 23) * 4 + Math.sin(x2 / 9) * 1.5); p.r(x2, yy, 1, 4, snow ? 'C' : { a: 'b', b: 'B', l: 2 }); p.px(x2, yy - 1, snow ? 'w' : 'n'); p.px(x2, yy + 4, snow ? 'w' : 'n'); } }
+    var obs = [], n = 7 + Math.round(r() * 5);
     for (var k = 0; k < n; k++) {
       var ox2 = 14 + Math.round(r() * (W - 28)), oy = 16 + Math.round(r() * (H - 46));
       if (Math.abs(ox2 - W / 2) < 26 && oy > H - 60) continue;
