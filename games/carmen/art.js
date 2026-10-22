@@ -700,8 +700,8 @@
     }
     // Carmen's trench: the big collar turned up around her face, belt, red all over
     if (top === 'trench' && L.carmen) {
-      g.poly([[cx - 24, 84], [cx - 30, 58], [cx - 18, 66], [cx - 12, 82]], '#a8141c'); g.poly([[cx + 24, 84], [cx + 30, 58], [cx + 18, 66], [cx + 12, 82]], '#7a0e14');
-      g.line(cx - 29, 59, cx - 19, 67, '#e8484a'); g.rect(cx - 30, 104, 60, 3, '#5a0a10'); g.rect(cx - 4, 103, 8, 5, '#d8b040'); g.rect(cx - 2, 104, 4, 3, '#5a0a10');
+      g.poly([[cx - 24, 84], [cx - 32, 50], [cx - 17, 60], [cx - 12, 82]], '#a8141c'); g.poly([[cx + 24, 84], [cx + 32, 50], [cx + 17, 60], [cx + 12, 82]], '#5a0a10');
+      g.line(cx - 31, 51, cx - 18, 61, '#e8484a'); g.rect(cx - 30, 104, 60, 3, '#5a0a10'); g.rect(cx - 4, 103, 8, 5, '#d8b040'); g.rect(cx - 2, 104, 4, 3, '#5a0a10');
       g.p(cx - 14, 96, '#e8484a'); g.p(cx - 14, 100, '#e8484a'); g.p(cx + 14, 96, '#5a0a10'); g.p(cx + 14, 100, '#5a0a10');
     }
 
@@ -714,7 +714,7 @@
     if (L.robot) {   // steel plates and rivets
       g.line(cx - 18, 40, cx + 18, 40, '#7a808c'); g.line(cx, 22, cx, 40, '#7a808c'); [[cx - 14, 30], [cx + 14, 30], [cx - 15, 56], [cx + 15, 56]].forEach(function (q) { g.p(q[0], q[1], '#e8ecf4'); g.p(q[0] + 1, q[1] + 1, '#5a5e6a'); });
     }
-    if (F && !L.robot) { g.rect(cx - 14, 54, 5, 2, mix(skin, '#e8907a', 0.3)); g.rect(cx + 9, 54, 5, 2, mix(skD, '#c8706a', 0.3)); }
+    if (F && !L.robot && !L.carmen) { g.rect(cx - 14, 54, 5, 2, mix(skin, '#e8907a', 0.3)); g.rect(cx + 9, 54, 5, 2, mix(skD, '#c8706a', 0.3)); }
     if (L.stubble) g.drect(cx - 13, 58, 26, 10, skin, skDD, 0.35);
 
     // eyes, brows, nose, mouth
@@ -781,7 +781,7 @@
     var f = L.feature;
     if (f === 'Scar') { g.line(cx + 7, ey + 4, cx + 12, ey + 14, mix(skin, '#7a1a1a', 0.6)); g.line(cx + 8, ey + 4, cx + 13, ey + 14, mix(skin, '#ffffff', 0.25)); }
     if (f === 'Jewelry' || L.earrings) { var ec = L.earrings === 'pearl' ? '#f4f0e8' : '#f0d040'; g.rect(cx - rx - 1, 54, 2, 3, ec); g.rect(cx + rx - 1, 54, 2, 3, ec); if (L.earrings === 'hoop' || f === 'Jewelry') { g.ell(cx - rx, 59, 3, 3, null); g.p(cx - rx - 2, 58, ec); g.p(cx - rx + 2, 58, ec); g.p(cx - rx, 61, ec); g.p(cx + rx - 2, 58, ec); g.p(cx + rx + 2, 58, ec); g.p(cx + rx, 61, ec); } }
-    if (f === 'Jewelry' || L.necklace) { var nc = L.necklace === 'pearl' ? '#f4f0e8' : '#f0d040'; for (var j = -12; j <= 12; j++) g.p(cx + j, 82 + Math.round(6 - Math.abs(j) * 0.45), (j & 1) ? nc : shade(nc, -0.25)); if (f === 'Jewelry') g.ell(cx, 89, 3, 3, '#3ac8e8'); }
+    if (f === 'Jewelry' || L.necklace) { var nc = L.necklace === 'pearl' ? '#f4f0e8' : '#f0d040'; for (var j = -12; j <= 12; j++) g.p(cx + j, 82 + Math.round(6 - Math.abs(j) * 0.45), (j & 1) ? nc : shade(nc, -0.25)); if (f === 'Jewelry') g.ell(cx, 89, 3, 3, L.carmen ? '#a8142a' : '#3ac8e8'); }
     if (f === 'Tattoo') {
       g.poly([[2, 112], [8, 96], [22, 88], [30, 92], [18, 104], [16, 112]], function (x, y) { return x + y > 118 ? skD : skin; }); g.ell(26, 89, 6, 5, skin); g.rect(4, 108, 13, 4, cD);   // rolled sleeve, forearm
       var tx = 15, ty = 99, ink = '#2a4a8a'; g.rect(tx, ty - 6, 1, 10, ink); g.rect(tx - 3, ty - 4, 7, 1, ink); g.p(tx - 1, ty - 8, ink); g.p(tx + 1, ty - 8, ink); g.p(tx, ty - 9, ink); g.line(tx - 4, ty + 1, tx, ty + 4, ink); g.line(tx + 4, ty + 1, tx, ty + 4, ink);
@@ -792,15 +792,25 @@
     // hats
     if (L.carmen) {
       var red = '#c81e24', rd = '#8a1218', rl = '#e8484a';
-      // the brim's shadow across her eyes, then the brim and crown of the fedora
-      for (var yy = ey - 8; yy < ey + 7; yy++) for (var xx = cx - 18; xx < cx + 18; xx++) { var cur = g.get(xx, yy); if (cur) { var c8 = cur >>> 0, hexc = '#' + [c8 & 255, (c8 >> 8) & 255, (c8 >> 16) & 255].map(function (v) { return (v < 16 ? '0' : '') + v.toString(16); }).join(''); g.p(xx, yy, mix(hexc, '#2a0e10', yy < ey + 2 ? 0.78 : 0.78 - (yy - ey - 1) * 0.14)); } }
-      g.p(lx2 + 3, ey + 1, '#f4e0c0'); g.p(rx2 + 3, ey + 1, '#f4e0c0');   // a glint of the eyes in the shadow
+      // closed red lips, no smile; then the shadows: the brim's across her eyes, and the far half of her face and hair
+      // in the dark, as if lit by one lamp from the left
+      g.rect(cx - 4, my2 - 1, 8, 1, '#7a0e1e'); g.rect(cx - 4, my2, 8, 1, '#a8182a'); g.rect(cx - 3, my2 + 1, 6, 1, '#c03040');
+      function hexAt(x, y) { var c8 = g.get(x, y) >>> 0; return '#' + [c8 & 255, (c8 >> 8) & 255, (c8 >> 16) & 255].map(function (v) { return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+      function inFace(x, y) { var dx = (x + 0.5 - cx) / 17.5, dy = (y + 0.5 - 46) / 24; return dx * dx + dy * dy <= 1 || (x >= cx - 8 && x < cx + 8 && y >= 64 && y < 84); }
+      for (var yy = 30; yy < 98; yy++) for (var xx = cx - 24; xx < cx + 30; xx++) {
+        if (!g.get(xx, yy)) continue;
+        var face = inFace(xx, yy), a = 0;
+        if (face && yy < ey + 4) a = 0.93 - Math.max(0, yy - ey) * 0.06;                    // under the brim
+        if (face && xx >= cx - 1) a = Math.max(a, xx === cx - 1 ? 0.45 : xx === cx ? 0.65 : 0.8);  // the dark side
+        if (!face && xx > cx + 12 && yy < 92 && (yy < 84 || xx < cx + 24)) a = Math.max(a, 0.6);  // her hair and collar on that side
+        if (a) g.p(xx, yy, mix(hexAt(xx, yy), '#1a0608', a));
+      }
+      g.p(lx2 + 3, ey + 1, '#f4e0c0'); g.p(lx2 + 2, ey + 1, '#8a6a50');   // one eye catches the light
       // the wide brim, tipped down over her right eye; the crown pinched at the front
       g.poly([[cx - 36, 31], [cx - 20, 27], [cx + 18, 29], [cx + 36, 36], [cx + 30, 40], [cx + 10, 37], [cx - 20, 36], [cx - 34, 35]], function (x, y) { return y > 34 - (x - cx) * 0.06 ? rd : x < cx - 16 ? rl : red; });
       g.ell(cx + 1, 27, 19, 15, function (x) { return x < cx - 8 ? rl : x > cx + 10 ? rd : red; }, 'top'); g.rect(cx - 18, 25, 38, 6, function (x) { return x > cx + 10 ? rd : red; });
       g.poly([[cx - 18, 26], [cx + 20, 27], [cx + 20, 31], [cx - 18, 30]], '#2a0a0e');
       g.poly([[cx - 3, 13], [cx + 1, 12], [cx + 4, 22], [cx + 1, 23]], rd); g.line(cx - 11, 17, cx - 7, 24, rl); g.line(cx + 9, 16, cx + 12, 24, shade(rd, -0.2));
-      g.rect(cx - 5, my2 - 1, 10, 2, '#c81e3a'); g.p(cx + 5, my2 - 2, '#c81e3a'); g.rect(cx - 4, my2 + 1, 8, 1, '#e8486a');   // red lips, the smile
     } else if (L.hat === 'fedora' || L.hat === 'bowler') {
       var hc = L.hatc || '#3a3a40', hcL = shade(hc, 0.15), hcD = shade(hc, -0.3);
       if (L.hat === 'fedora') { g.ell(cx, 30, 28, 5, hcD); g.ell(cx, 29, 27, 3.5, hc); g.ell(cx, 22, 17, 12, function (x) { return x < cx - 6 ? hcL : x > cx + 8 ? hcD : hc; }, 'top'); g.rect(cx - 17, 20, 34, 8, hc); g.rect(cx - 17, 24, 34, 3, L.band || '#1a1a1a'); g.line(cx - 2, 11, cx + 2, 18, hcD); }
