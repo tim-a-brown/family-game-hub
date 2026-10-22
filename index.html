@@ -438,7 +438,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .sbox:active{transform:scale(.95);}
 @keyframes sbox-in{from{opacity:0;transform:translateX(14px) scale(.96);}}
 .rail:not(.editing) .sbox.seen{animation:none;}
-.sbox .art{height:132px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px 0;position:relative;
+.sbox .art{height:124px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px 0;position:relative;
   background:radial-gradient(120% 90% at 50% 30%,color-mix(in srgb,var(--c) 78%,#fff 22%),var(--c) 60%,color-mix(in srgb,var(--c) 80%,#000 20%));}
 .sbox .art .gicon{flex:none;width:64px;height:64px;filter:drop-shadow(0 5px 7px rgba(0,0,0,.3));transition:transform .35s var(--spring);}
 .sbox:active .art .gicon{transform:scale(.9) rotate(-6deg);}
@@ -446,7 +446,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .sbox .nm{padding:9px 9px 10px;font-family:'Bungee',var(--display);font-weight:400;font-size:.8rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* where you are, left-aligned under the icon: a label with dots puts each fact on its own line ("Round 6" over "182 pts"),
    one without wraps onto two */
-.sbox .st{align-self:stretch;padding:0 1px;font-size:.72rem;font-weight:800;line-height:1.22;text-align:left;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);}
+.sbox .st{align-self:stretch;padding:0 1px;font-size:.72rem;font-weight:800;line-height:1.25;text-align:left;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);}
 .sbox .st > span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .sbox .st.one{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;}
 .sbox.old .art{filter:saturate(.45) brightness(.92);}
@@ -1186,11 +1186,12 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
   // A saved game on the shelf: its box (the section's colour, the game's art), where you are and how long ago. Edit
   // puts a delete badge on each; press and hold (or right-click) offers the same delete.
-  // "Round 6 · 182 pts" → one fact per line, at most three (any more stay together on the first)
+  // "Round 6 · 182 pts" → one fact per line, two at most (games keep their labels to two; an older saved label
+  // with more keeps its last two, the most specific)
   function stLines(t) {
     var p = String(t).split(' · ').map(function (q) { return q.trim(); }).filter(Boolean);
     if (p.length < 2) return el('span', { class: 'st one', text: p[0] || t });
-    if (p.length > 3) p = [p.slice(0, -2).join(' · ')].concat(p.slice(-2));
+    p = p.slice(-2);
     return el('span', { class: 'st' }, p.map(function (q) { return el('span', { text: q }); }));
   }
   function shelfBox(x) {

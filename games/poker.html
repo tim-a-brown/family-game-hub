@@ -1415,7 +1415,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function resumeSync() {
     var l = going();
     if (!l.length) return Kit.resume.clear();
-    var lab = resumeLabel(l[0].st) + (l.length > 1 ? ' · ' + (l.length - 1) + ' more' : '');
+    var st = l[0].st, lab = st.kind === 'vp' ? 'Video poker · ' + st.hands + ' hand' + (st.hands === 1 ? '' : 's')
+      : st.circ ? EV[st.circ.id].venue + ' · ' + st.circ.left.toLocaleString() + ' left'
+      : st.tourn ? 'Tournament · ' + st.players.filter(function (p) { return !p.out; }).length + ' left' : tableName(st) + ' · ' + usd(st.players[0].stack);
     Kit.resume.set(lab, { keys: l.map(function (x) { return x.key; }).concat([LAST]) });
   }
   // ── Whose money (casino.js): your bankroll; a player linked to their own profile plays from theirs; a frequent
