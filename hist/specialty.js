@@ -8,6 +8,7 @@
   function names(e) { return (e.players || []).map(function (p) { return p.name; }); }
   function short(n, k) { n = String(n || ''); k = k || 8; return n.length > k ? n.slice(0, k - 1) + '…' : n; }
   function nums(s) { return String(s == null ? '' : s).split(',').map(function (x) { return x === '' ? null : +x; }); }
+  function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
   function sum(a) { return a.reduce(function (s, v) { return s + (Number(v) || 0); }, 0); }
   function svgEsc(s) { return HistView.ui.esc(s); }
 
@@ -126,11 +127,49 @@
     return el('div', { class: 'sx-legend' }, items.map(function (x) { return el('span', null, [el('i', { style: { background: x[0] } }), document.createTextNode(x[1])]); }));
   }
 
-  // ── Wizard: trump and bid/took every round ─────────────────────────────────
+  // ── Wizard: every round (trump card, bids and tricks, your cards), bid/took grid, and what decided it ──
   var SUIT = { s: ['♠', '#1d1b2e', 'Spades'], h: ['♥', '#d81e3a', 'Hearts'], d: ['♦', '#d81e3a', 'Diamonds'], c: ['♣', '#1d1b2e', 'Clubs'] };
+  HistView.css('hv-wizard', '.sx-wz{background:linear-gradient(160deg,#3b2a8f,#1d1550)!important;color:#ffd166!important;}.sx-wz .big,.sx-js .big{font-size:calc(var(--cw) * .32)!important;font-weight:900;}' +
+    '.sx-js{background:linear-gradient(160deg,#e8e3d6,#bdb6a2)!important;color:#5a4a8a!important;}');
+  function wzCard(code, w) {
+    var ck = HistView.ck, n;
+    if (code === 'W' || code === 'W+') n = window.Kit.cardFace({ center: 'W', label: 'Wizard', cls: 'sx-wz', aria: 'Wizard' });
+    else if (code === 'J' || code === 'J-') n = window.Kit.cardFace({ center: 'J', label: 'Jester', cls: 'sx-js', aria: 'Jester' });
+    else return ck.card(code, w);
+    n.style.setProperty('--cw', w + 'px');
+    return n;
+  }
   R('wizard', function (e, ui) {
     var d = e.dt; if (!d || !d.r || !d.r.length) return null;
-    var P = names(e), n = P.length;
+    var P = names(e), n = P.length, ck = HistView.ck, sc = ck ? ck.scoresOf(e) : [], tot = ck ? ck.cum(sc, n) : [];
+    var hitsAll = P.map(function (x, i) { return d.r.filter(function (r) { return nums(r.b)[i] === nums(r.k)[i]; }).length; });
+    var hTop = hitsAll.indexOf(Math.max.apply(null, hitsAll)), big = null;
+    sc.forEach(function (r, ri) { r.forEach(function (v, p) { if (!big || v > big.v) big = { v: v, p: p, r: ri + 1 }; }); });
+    var wz = d.wiz && d.wiz.length ? d.wiz : null, wTop = wz ? wz.indexOf(Math.max.apply(null, wz)) : -1;
+    var out = [ui.stats([['Most bids made', hitsAll[hTop] + ' of ' + d.r.length, P[hTop]], big ? ['Best round', '+' + big.v, P[big.p] + ', round ' + big.r] : null,
+      wz && wz[wTop] ? ['Most Wizards', wz[wTop], P[wTop]] : null])];
+    // every round: trump card, bids vs tricks, your cards
+    if (ck) {
+      var panel = el('div', { class: 'hv' });
+      var show = function (i) {
+        var r = d.r[i], b = nums(r.b), k = nums(r.k), pts = sc[i] || [], kids = [], su = SUIT[r.t];
+        var made = P.filter(function (x, p) { return b[p] === k[p]; }).length;
+        kids.push(ck.head('<b>Round ' + (i + 1) + '</b> · ' + plural(i + 1, 'card') + (P[r.d] ? ' · ' + ui.esc(short(P[r.d], 10)) + ' dealt' : ''), made === n ? 'Everyone made it' : made ? made + ' of ' + n + ' made it' : 'Nobody made it', made ? 'good' : 'bad'));
+        var tc = r.tc === 'W' ? 'W' : r.tc === 'J' ? 'J' : r.tc;
+        kids.push(el('div', { class: 'hvc-pair', style: { 'align-items': 'center' } }, [
+          ck.grp(r.tc === 'W' ? 'Turned up: a Wizard' : r.tc === 'J' ? 'Turned up: a Jester' : r.tc ? 'Trump card' : 'No trump card', tc ? el('div', { class: 'hvc-row', style: { '--cw': '40px' } }, [wzCard(tc, 40)]) : el('div', { class: 'hvc-sub', text: 'Every card was dealt' })),
+          el('div', { class: 'hvc-sub', text: su ? su[2] + ' were trump' + (r.tc === 'W' ? ' (the dealer chose)' : '') : 'No trump this round' })]));
+        kids.push(ck.plates(P.map(function (x, p) { return { n: short(x, 8), v: k[p] + '/' + b[p], s: 'took / bid', s2: (pts[p] > 0 ? '+' : '') + (pts[p] != null ? pts[p] : '') + (tot[i] ? ' · ' + tot[i][p] : ''), c: ui.color(p), cls: b[p] === k[p] ? 'good' : 'bad' }; })));
+        if (r.h) {
+          var hand = el('div', { class: 'hvc-row' + (r.h.length > 20 ? ' fan' : ''), style: { '--cw': '34px', '--ov': '-.45' } });
+          for (var j = 0; j + 1 < r.h.length; j += 2) { var c = wzCard(r.h.substr(j, 2), 34), cd = r.h.substr(j, 2); if (r.t && cd.charAt(1) !== r.t && cd !== 'W+') c.classList.add('dim'); hand.appendChild(c); }
+          kids.push(ck.grp(short(P[0], 12) + "'s cards", hand, r.t ? 'Trump and Wizards are bright' : ''));
+        }
+        panel.innerHTML = ''; panel.appendChild(ck.felt(['#3a2f7a', '#241c55', '#18123d'], kids));
+      };
+      var items = d.r.map(function (r, i) { var pts = sc[i] || [], best = -1; pts.forEach(function (v, p) { if (best < 0 || v > pts[best]) best = p; }); var b = nums(r.b), k = nums(r.k); return { t: String(i + 1), c: best >= 0 ? ui.color(best) : null, ring: P.every(function (x, p) { return b[p] === k[p]; }), title: 'Round ' + (i + 1) }; });
+      out.push(ui.section('Every round · tap one', [ck.road(items, d.r.length - 1, show), panel, ck.key(P.map(function (x, p) { return ['Best round: ' + short(x, 8), ui.color(p)]; }).concat([['Everyone made it', 'ring']]))], { icon: 'cards' }));
+    }
     var rows = d.r.map(function (r, ri) {
       var su = SUIT[r.t], tc = r.tc;
       var trump = su ? { c: 'su', html: '<span style="color:' + su[1] + '">' + su[0] + '</span>' + (tc === 'W' ? '<small>WIZ</small>' : ''), title: su[2] + (tc === 'W' ? ' (dealer chose after a Wizard)' : '') }
@@ -142,18 +181,18 @@
       }));
     });
     var head = [{ t: '' }, { t: 'Trump' }].concat(P.map(function (x, i) { return { t: short(x, 6), color: ui.color(i) }; }));
-    var out = [ui.section('Bid / took each round', [grid(head, rows), legend([['rgba(34,165,90,.85)', 'Made the bid'], ['rgba(194,48,75,.5)', 'Missed']])], { icon: 'target' })];
-    // exact bids and best streak per player
+    out.push(ui.section('Bid / took each round', [grid(head, rows), legend([['rgba(34,165,90,.85)', 'Made the bid'], ['rgba(194,48,75,.5)', 'Missed']])], { icon: 'target' }));
     var bars = P.map(function (x, i) {
-      var hits = 0, run = 0, best = 0;
-      d.r.forEach(function (r) { var b = nums(r.b)[i], k = nums(r.k)[i]; if (b === k) { hits++; run++; best = Math.max(best, run); } else run = 0; });
-      return { label: x, value: hits, max: d.r.length, color: ui.color(i), text: hits + ' of ' + d.r.length + (best >= 2 ? ' · ' + best + ' in a row' : '') };
+      var run = 0, best = 0;
+      d.r.forEach(function (r) { if (nums(r.b)[i] === nums(r.k)[i]) { run++; best = Math.max(best, run); } else run = 0; });
+      return { label: x, value: hitsAll[i], max: d.r.length, color: ui.color(i), text: hitsAll[i] + ' of ' + d.r.length + (best >= 2 ? ' · ' + best + ' in a row' : '') };
     });
     out.push(ui.section('Bids made', ui.bars(bars)));
-    var tc = { s: 0, h: 0, d: 0, c: 0, x: 0 }; d.r.forEach(function (r) { if (SUIT[r.t]) tc[r.t]++; else tc.x++; });
-    var wz = d.wiz && d.wiz.length ? d.wiz : null;
-    out.push(ui.section('Trump suits', ui.chips(['s', 'h', 'd', 'c'].map(function (k) { return { t: SUIT[k][2] + ' ' + tc[k] }; }).concat(tc.x ? [{ t: 'No trump ' + tc.x }] : [])
-      .concat(wz && Math.max.apply(null, wz) ? [{ t: 'Most Wizards played: ' + P[wz.indexOf(Math.max.apply(null, wz))] + ' (' + Math.max.apply(null, wz) + ')', on: 1 }] : []))));
+    if (ck && tot.length) {
+      var last = tot[tot.length - 1], hi = Math.max.apply(null, last), w = last.indexOf(hi), sorted = last.slice().sort(function (a, c) { return c - a; });
+      var why = last.filter(function (v) { return v === hi; }).length > 1 ? 'A tie at ' + hi + ' after ' + d.r.length + ' rounds.' : P[w] + ' won with ' + hi + ', ' + (hi - sorted[1]) + ' ahead, making ' + hitsAll[w] + ' of ' + d.r.length + ' bids.';
+      out.push(ck.foot(why, 'target'));
+    }
     return ui.wrap(out);
   });
 
