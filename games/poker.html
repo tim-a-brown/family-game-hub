@@ -3281,15 +3281,18 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // the way to the championship. ai0 / ai1: how good the field is (0..1) at the start and by the final table: each
   // stop is tougher than the one before, except the back room, whose regulars are sharks (the card room after it feels
   // easier for a while); m0: big blinds in the average stack at the start; per: hands a level; ft: hands until the
-  // final table (times the event length, below); bounty: the share of each buy-in that's a bounty on that player.
-  // Event length (the game menu): how long a tournament runs, as a multiple of that base. Quick is a sprint, Normal a
-  // good sitting, Near real close to the real thing: a home game of 60-odd hands, a regional stop over 200, the big
-  // fields over a thousand (you can always leave an event and come back to it). The blind levels stretch with it.
+  // final table at the old fixed pace (no longer used: the field now plays itself out); bounty: the share of each
+  // buy-in that's a bounty on that player.
+  // Event length (the game menu) is the structure, as in a real tournament: how many hands a blind level lasts. Quick
+  // is a turbo, Normal a good sitting, Near real a real one: about 8 hands a level at a home game, 20-odd at a regional
+  // stop, 50 at the Main Event (you can always leave an event and come back to it).
   var LENK = 'poker_len', LENN = { quick: 'Quick', normal: 'Normal', real: 'Near real' };
   function lenMode() { var v = null; try { v = localStorage.getItem(LENK); } catch (e) {} return LENN[v] ? v : 'normal'; }
   function lenNext() { var k = Object.keys(LENN), v = k[(k.indexOf(lenMode()) + 1) % k.length]; try { localStorage.setItem(LENK, v); } catch (e) {} Kit.toast('Event length: ' + LENN[v]); }
-  function lenF(ev) { var m = lenMode(); return m === 'quick' ? 1 : m === 'normal' ? 2.4 : 10 + 2.2 * Math.log2(Math.max(8, ev.field) / 8); }
-  function perOf(ev) { return Math.max(3, Math.round(ev.per * Math.pow(lenF(ev) / 2.4, 0.75))); }
+  function perOf(ev) {
+    var m = lenMode(), f = Math.max(8, (S && S.circ && S.circ.id === ev.id && S.circ.field) || ev.field);
+    return m === 'quick' ? Math.max(3, Math.round(ev.per * 0.55)) : m === 'normal' ? ev.per : Math.round(8 + 4.5 * Math.log2(f / 8));
+  }
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
   var PUBN = ['Rusty Anchor', 'Copper Kettle', 'Brass Tap', 'Red Lion', 'Black Dog', 'Shamrock', 'Tin Cup', 'Iron Horse', 'Blue Moose', 'Lucky Penny'];
   var LOCAL = {
@@ -3815,7 +3818,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var C = S.circ, ev = EV[C.id];
     S.players.forEach(function (p, i) {
       if (i === 0 || !p.out || C.else <= 0) return;
-      var pe = evPeople(ev), nm = persona(pe.tough, pe.intl, tableNames()), avg = tableAvg(), u = S.bb >= 100 ? 100 : 25;
+      var pe = evPeople(ev), nm = persona(pe.tough, pe.intl, tableNames()), avg = fieldAvg(), u = S.bb >= 100 ? 100 : 25;
       var stack = Math.max(S.bb * 8, Math.round(avg * (0.55 + Math.random() * 0.9) / u) * u);
       S.players[i] = cpuSeat(nm, ev, stack, S.handNo + 1);
       C.else--;
@@ -3827,19 +3830,29 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var C = S.circ, ev = EV[C.id];
     S.per = perOf(ev);
     if ((S.handNo - 1) % S.per !== 0 && S.bb) return;
-    var avg = tableAvg(), N = C.field || ev.field, q = Math.min(1, (N - C.left) / Math.max(1, N - 6));
-    if (C.else <= 0 && C.ftLv == null) C.ftLv = S.level;
-    var M = C.else > 0 ? ev.m0 + (24 - ev.m0) * Math.pow(q, 0.85) : Math.max(5, 24 - 3 * (6 - alive().length) - 1.5 * (S.level - C.ftLv));
-    var target = avg / M, bb = BBS[0];
-    BBS.forEach(function (v) { if (v <= target) bb = v; });
+    // a real structure: each level about a quarter bigger than the last, whatever's happening in the field
+    S.level++;
+    var target = ev.stack / ev.m0 * Math.pow(1.25, S.level), bb = BBS[0];
+    BBS.forEach(function (v) { if (v <= target * 1.001) bb = v; });
     bb = Math.max(bb, S.bb || 0, BBS[0]);
     var up = S.bb && bb > S.bb;
-    S.level++; S.bb = bb; S.sb = bb / 2;
+    S.bb = bb; S.sb = bb / 2;
     mixSet();
     if (up && !SIM) setTimeout(function () { Kit.toast('Blinds up: ' + chipsTxt(S.sb) + ' / ' + chipsTxt(S.bb)); }, 300);
   }
   // your rank in the whole field: exact at the final table, an estimate before it
   // the average stack: the chips at your table stand for the field (other tables' busts don't move chips to yours)
+  // the whole field's average stack (every chip is still in play, spread over the players left)
+  function fieldAvg() { var C = S.circ; return C.chips / Math.max(1, C.left); }
+  // the chance a player goes out in a hand, by the field's average stack in big blinds: deep, hardly anyone; short,
+  // plenty (the same pressure that busts players at your table)
+  function bustRate(M) { return 0.3 / Math.pow(Math.max(1, M) + 8, 0.9); }
+  function poisson(m) {
+    if (m > 30) return Math.max(0, Math.round(m + Math.sqrt(m) * Math.sqrt(-2 * Math.log(Math.random() || 1e-9)) * Math.cos(2 * Math.PI * Math.random())));
+    var L = Math.exp(-m), k = 0, p = 1;
+    do { k++; p *= Math.random(); } while (p > L);
+    return k - 1;
+  }
   function tableAvg() { var al = alive().filter(function (i) { return S.players[i].stack > 0; }); return al.reduce(function (a, i) { return a + S.players[i].stack; }, 0) / Math.max(1, al.length); }
   // a stack as the hand was dealt (so your place holds still while the chips are in the middle)
   function stackAt(i) { var H = S.hand; return H && H.phase !== 'done' && H.start && H.start[i] != null ? H.start[i] : S.players[i].stack; }
@@ -3867,7 +3880,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     var tableLeft = alive().length, before = C.else + tableLeft + busted.length, L = C.else + tableLeft;
     if (C.else > 0) {
-      var target = Math.round(C.e0 * Math.pow(Math.max(0, 1 - C.h / (ev.ft * lenF(ev))), 1.4)), elim = Math.max(0, C.else - target);
+      // the other tables play this hand too: each of their players goes out with the same chance as one here
+      var elim = poisson(C.else * bustRate(fieldAvg() / Math.max(1, S.bb)));
       if (L > C.paid && L - elim <= C.paid) elim = L - C.paid - 1 > 0 ? L - C.paid - 1 : (Math.random() < 0.45 ? 1 : 0);   // hand for hand on the bubble
       elim = Math.min(elim, C.else);
       C.else -= elim;
