@@ -186,7 +186,7 @@ var GAMES = [
   // ── Tools ────────────────────────────────────────────────────────────────
   { id: 'scorecard',   name: 'Scorecard',    color: '#0ea5e9', cat: 'tools', min: 1, max: 8, tag: 'Keep score for any game', play: 'scorecard' },
   { id: 'dice-roller', name: 'Dice Roller',  color: '#f97316', cat: 'tools', min: 1, max: 0, tag: 'Any dice, any number', play: 'dice-roller' },
-  { id: 'randomtools', name: 'Random Tools',      color: '#14b8a6', cat: 'tools', min: 1, max: 0, tag: 'Random numbers, coin flips, teams', play: 'randomtools' },
+  { id: 'randomtools', name: 'Randomizer',        color: '#14b8a6', cat: 'tools', min: 1, max: 0, tag: 'Random numbers, coin flips, teams', play: 'randomtools' },
   { id: 'bingo',       name: 'Bingo Caller', color: '#e11d48', cat: 'tools', min: 1, max: 0, tag: 'Draw balls and call BINGO', play: 'bingo' },
   { id: 'ranker',      name: 'Ranker',       color: '#eab308', cat: 'tools', min: 1, max: 0, tag: 'Rank anything, settle debates', play: 'ranker' },
   { id: 'players',     name: 'Frequent Players',      color: '#6366f1', cat: 'tools', min: 1, max: 0, tag: 'The names you play with most', play: 'players' },
