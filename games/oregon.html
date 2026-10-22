@@ -23,7 +23,7 @@
   --e-blue:#0000aa;--e-lblue:#5555ff;--e-green:#00aa00;--e-lgreen:#55ff55;--e-cyan:#55ffff;--e-red:#ff5555;--e-yel:#ffff55;--e-brown:#aa5500;--e-gray:#aaaaaa;--e-dgray:#555555;}
 body{overflow:hidden;}
 /* The game is one black pixel screen under the game bar: the picture on top, the panel below it */
-.ot{position:relative;display:flex;flex-direction:column;height:calc(100dvh - var(--bar) - var(--safe-b));max-width:1180px;margin:0 auto;background:#000;color:#fff;
+.ot{position:relative;display:flex;flex-direction:column;height:calc(100dvh - var(--bar));max-width:1180px;margin:0 auto;background:#000;color:#fff;
   font:400 1.4rem/1.08 var(--vt);-webkit-user-select:none;user-select:none;}
 .ot-scr{position:relative;flex:none;overflow:hidden;background:#000;touch-action:none;}
 .ot-scr canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;}
@@ -31,11 +31,12 @@ body{overflow:hidden;}
 @keyframes otWipe{from{clip-path:inset(0 0 0 100%);}to{clip-path:inset(0 0 0 0);}}
 .ot-ov{position:absolute;inset:0;pointer-events:none;}
 .ot-ov > *{pointer-events:auto;}
-.ot-low{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px 12px 10px;overflow:hidden;}
+/* the bottom edge clears the home bar and the screen's rounded corners (kit.css --safe-b, --corner-x/y) */
+.ot-low{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px calc(12px + var(--corner-x,0px)) calc(10px + var(--safe-b,0px) + var(--corner-y,0px));overflow:hidden;}
 .ot-info{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;}
 .ot-act{flex:none;display:flex;flex-direction:column;gap:7px;}
 @media (orientation:landscape) and (min-width:600px){
-  .ot-low{flex-direction:row;gap:14px;padding:8px 12px calc(8px + var(--safe-b,0px));}
+  .ot-low{flex-direction:row;gap:14px;padding:8px calc(12px + var(--corner-x,0px)) calc(8px + var(--safe-b,0px) + var(--corner-y,0px));}
   .ot-act{flex:none;width:min(46%,430px);justify-content:flex-end;overflow-y:auto;}
 }
 .ot.full .ot-scr{flex:1;}
@@ -98,8 +99,9 @@ html.k-kb .ot.typing .ot-scr{display:none;}
   font:400 1.4rem/1 var(--vt);color:#fff;background:var(--e-blue);box-shadow:inset 0 0 0 2px var(--e-lblue),4px 4px 0 #000;-webkit-tap-highlight-color:transparent;text-align:left;}
 .ob svg{width:20px;height:20px;flex:none;stroke-width:2.2;}
 .ob:active{transform:translate(2px,2px);box-shadow:inset 0 0 0 2px var(--e-lblue),2px 2px 0 #000;}
-.ob.go{background:var(--e-green);box-shadow:inset 0 0 0 2px var(--e-lgreen),4px 4px 0 #000;font-size:1.55rem;}
-.ob.go:active{box-shadow:inset 0 0 0 2px var(--e-lgreen),2px 2px 0 #000;}
+.ob.go{background:linear-gradient(#1ec01e,#009a00 55%,#007a00);min-height:52px;font-size:1.6rem;text-shadow:2px 2px 0 #004a00;
+  box-shadow:inset 0 3px 0 #8aff8a,inset 3px 0 0 #4ae04a,inset -3px 0 0 #006a00,inset 0 -5px 0 #005200,0 4px 0 #002a00,0 6px 14px rgba(0,0,0,.55);}
+.ob.go:active{transform:translateY(3px);box-shadow:inset 0 2px 0 #5ae05a,inset 0 -2px 0 #005200,0 1px 0 #002a00;}
 .ob.warn{background:#7a0000;box-shadow:inset 0 0 0 2px var(--e-red),4px 4px 0 #000;}
 .ob.plain{background:#111;box-shadow:inset 0 0 0 2px var(--e-dgray),4px 4px 0 #000;}
 .ob[disabled]{opacity:.38;cursor:default;}
@@ -114,7 +116,7 @@ html.k-kb .ot.typing .ot-scr{display:none;}
   .ot-grid .ob{flex-direction:row;min-height:34px;font-size:1.15rem;padding:2px 4px 4px;gap:4px;}
   .ot-grid .ob svg{width:15px;height:15px;}
   .ob{min-height:36px;padding:3px 10px 5px;}
-  .ob.go{font-size:1.4rem;}
+  .ob.go{font-size:1.4rem;min-height:40px;}
   .ob .sub{font-size:.98rem;}
   .ot-act{gap:5px;}
   .ot-low{padding-top:6px;}
@@ -147,8 +149,9 @@ html.k-kb .ot.typing .ot-scr{display:none;}
   box-shadow:inset 0 0 0 2px var(--e-dgray);cursor:text;white-space:nowrap;overflow:hidden;}
 .ot-tf.on{box-shadow:inset 0 0 0 2px var(--e-yel);}
 .ot-tf .ph{color:#666;}
+@media (max-width:599px){ .ot.typing .nm-row .ot-tf,.ot.typing .nm-row .st-b{height:36px;} .ot.typing .nm-row{margin-bottom:4px;} .ot.typing .kp button{height:38px;} .ot.typing .ot-info h2{margin-bottom:6px;} .ot.typing .ot-info .nm-sub{display:none;} }
 .ot-tf.on.fresh .tx{background:var(--e-yel);color:#000;}
-@media (orientation:landscape) and (min-width:600px) and (max-height:560px){ .ot.typing .ot-info .nm-sub{display:none;} }
+@media (orientation:landscape) and (min-width:600px) and (max-height:560px){ .ot.typing .ot-info .nm-sub,.ot.typing .ot-info h2{display:none;} .ot-act{padding-bottom:6px;} }
 .ot-tf .cur{display:none;width:.55em;height:1em;background:var(--e-yel);margin-left:1px;flex:none;}
 .ot-tf.on .cur{display:inline-block;animation:otCur 1s steps(1) infinite;}
 @keyframes otCur{50%{opacity:0;}}
@@ -687,7 +690,7 @@ html.k-kb .ot.typing .ot-scr{display:none;}
   }
 
   function showNames() {
-    shell(); setView(picView('independence'), { frac: 0.26 }); root.classList.add('typing');
+    shell(); setView(picView('independence'), { frac: 0.25 }); root.classList.add('typing');
     banner('Independence, Missouri', dstr(S.date));
     clearLow();
     info.appendChild(el('h2', { text: 'Your party' }));
