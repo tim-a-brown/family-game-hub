@@ -173,6 +173,7 @@ var GAMES = [
   { id: 'minesweeper', name: 'Minesweeper',  color: '#64748b', cat: 'arcade', min: 1, max: 1, tag: 'Clear the field without a boom', play: 'minesweeper' },
   { id: 'carmen',      name: 'Carmen Sandiego', color: '#c81e24', cat: 'arcade', min: 1, max: 1, tag: 'Track V.I.L.E. thieves around the world and through time', play: 'carmen' },
   { id: 'hotdogstand', name: 'Hot Dog Stand', color: '#d6402f', cat: 'arcade', min: 1, max: 1, tag: 'Run the stadium stand for a season', play: 'hotdogstand' },
+  { id: 'oregon',      name: 'The Oregon Trail', color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Lead your wagon party 2,000 miles west in 1848', play: 'oregon' },
   { id: 'candymatch',  name: 'Candy Match',  color: '#ff4f9a', cat: 'arcade', min: 1, max: 1, tag: 'Swap candies, match three, beat the level', play: 'candymatch' },
 
   // ── Consoles: your own cartridges. The consoles' shelves have no tiles (Edit on the home screen opens them);
@@ -272,6 +273,8 @@ var HI_BOARDS = (function () {
     });
   });
   add('candymatch', 'candymatch', { label: '', unit: 'score' });
+  // The Oregon Trail: points for reaching Oregon (the Oregon Top Ten)
+  add('oregon', 'oregon', { label: '', unit: 'points' });
   // Hot Dog Stand: final cash for the season, one board per season level
   [['rookie', 'Rookie'], ['pro', 'Pro'], ['allstar', 'All-Star']].forEach(function (d) {
     add('hotdogstand', 'hotdogstand_' + d[0], { label: d[1] + ' season', tab: d[1], unit: 'cash', pin: 1 });

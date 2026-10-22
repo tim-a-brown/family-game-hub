@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Oregon Trail</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
+<script src="../arcade-music.js"></script>
+<script src="oregon/data.js"></script>
+<script src="oregon/art.js"></script>
+<style>
+/* Pixel fonts: Jersey 10 and Press Start 2P (SIL Open Font License, see fonts/) */
+@font-face{font-family:"Jersey 10";src:url("../fonts/jersey-10.woff2") format("woff2");font-display:swap;}
+@font-face{font-family:"Press Start 2P";src:url("../fonts/press-start-2p.woff2") format("woff2");font-display:swap;}
+:root{--vt:"Jersey 10",ui-monospace,monospace;--px:"Press Start 2P",ui-monospace,monospace;
+  --e-blue:#0000aa;--e-lblue:#5555ff;--e-green:#00aa00;--e-lgreen:#55ff55;--e-cyan:#55ffff;--e-red:#ff5555;--e-yel:#ffff55;--e-brown:#aa5500;--e-gray:#aaaaaa;--e-dgray:#555555;}
+body{overflow:hidden;}
+/* The game is one black pixel screen under the game bar: the picture on top, the panel below it */
+.ot{position:relative;display:flex;flex-direction:column;height:calc(100dvh - var(--bar) - var(--safe-b));max-width:1180px;margin:0 auto;background:#000;color:#fff;
+  font:400 1.4rem/1.08 var(--vt);-webkit-user-select:none;user-select:none;}
+.ot-scr{position:relative;flex:none;overflow:hidden;background:#000;touch-action:none;}
+.ot-scr canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;}
+.ot-scr.wipe canvas{animation:otWipe .55s steps(11) both;}
+@keyframes otWipe{from{clip-path:inset(0 0 0 100%);}to{clip-path:inset(0 0 0 0);}}
+.ot-ov{position:absolute;inset:0;pointer-events:none;}
+.ot-ov > *{pointer-events:auto;}
+.ot-low{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px 12px 10px;overflow:hidden;}
+.ot-info{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;}
+.ot-act{flex:none;display:flex;flex-direction:column;gap:7px;}
+@media (orientation:landscape) and (min-width:600px){
+  .ot-low{flex-direction:row;gap:14px;padding:8px 12px calc(8px + var(--safe-b,0px));}
+  .ot-act{flex:none;width:min(46%,430px);justify-content:flex-end;overflow-y:auto;}
+}
+.ot.full .ot-scr{flex:1;}
+.ot.full .ot-low{display:none;}
+
+/* big screens (tablets, desktop): bigger type */
+@media (min-width:900px) and (min-height:700px){
+  .ot{font-size:1.85rem;}
+  .ob{font-size:1.75rem;min-height:56px;} .ob.go{font-size:1.95rem;} .ob .sub{font-size:1.3rem;} .ob svg{width:24px;height:24px;}
+  .ot-grid .ob{font-size:1.55rem;min-height:70px;}
+  .ot-pp{font-size:1.45rem;}
+  .ot-ban b{font-size:1.1rem;} .ot-ban small{font-size:1.5rem;}
+  .ot h2{font-size:1.15rem;}
+  .st-row .q{font-size:1.9rem;} .st-b{width:52px;height:48px;font-size:2rem;} .st-bill{font-size:1.9rem;} .st-row .nm small{font-size:1.3rem;}
+  .nm-row input,.ot-in{height:52px;font-size:1.9rem;} .nm-chips button{font-size:1.5rem;}
+  .sc-t{font-size:1.7rem;} .sc-t tr.tot td{font-size:2rem;}
+  .hud{font-size:1.8rem;}
+}
+/* the banner over the picture: where you are, the date */
+.ot-ban{position:absolute;left:50%;top:8px;transform:translateX(-50%);background:#000;border:2px solid #fff;padding:4px 14px 5px;text-align:center;white-space:nowrap;
+  animation:otBan .5s steps(6) both;box-shadow:4px 4px 0 rgba(0,0,0,.6);}
+.ot-ban b{display:block;font:400 clamp(.6rem,2.2vw,.95rem)/1.35 var(--px);color:#fff;}
+.ot-ban small{display:block;font:400 1.15rem/1 var(--vt);color:var(--e-yel);}
+@keyframes otBan{from{transform:translate(-50%,-40px);}to{transform:translate(-50%,0);}}
+
+/* text */
+.ot h2{margin:0 0 6px;font:400 clamp(.7rem,2.6vw,1rem)/1.4 var(--px);color:var(--e-yel);letter-spacing:.02em;}
+.ot p{margin:0 0 6px;}
+.ot .dim{color:var(--e-gray);}
+.ot .yel{color:var(--e-yel);} .ot .red{color:var(--e-red);} .ot .grn{color:var(--e-lgreen);} .ot .cyn{color:var(--e-cyan);}
+.ot-say{white-space:pre-wrap;}
+.ot-say .caret{display:inline-block;width:.45em;height:.85em;background:#fff;vertical-align:-.05em;animation:otBlink .6s steps(2) infinite;}
+@keyframes otBlink{50%{opacity:0;}}
+
+/* the status rows: Date, Weather, Health... */
+.ot-stat{display:grid;grid-template-columns:auto 1fr;gap:1px 10px;align-items:baseline;}
+.ot-stat dt{color:var(--e-gray);white-space:nowrap;}
+.ot-stat dd{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+@media (orientation:landscape) and (min-width:600px) and (max-height:560px){
+  .ot-stat{grid-template-columns:auto 1fr auto 1fr;}
+}
+.ot-seg{position:relative;height:10px;margin:6px 0 2px;background:#222;border:2px solid var(--e-dgray);}
+.ot-seg i{position:absolute;left:0;top:0;bottom:0;background:repeating-linear-gradient(90deg,var(--e-brown) 0 6px,#7a3d00 6px 8px);transition:width .6s steps(8);}
+.ot-seg b{position:absolute;top:-6px;width:4px;height:18px;background:#fff;}
+/* the party: one chip each */
+.ot-party{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:6px;}
+.ot-pp{display:inline-flex;align-items:center;gap:5px;padding:1px 7px 2px;border:2px solid var(--e-dgray);color:#fff;font-size:1.15rem;}
+.ot-pp.sick{border-color:var(--e-red);color:var(--e-red);animation:otPulse 1.2s steps(2) infinite;}
+.ot-pp.hurt{border-color:var(--e-yel);color:var(--e-yel);}
+.ot-pp.dead{border-color:#333;color:#666;text-decoration:line-through;}
+.ot-pp.lead::before{content:"";width:6px;height:6px;background:var(--e-yel);}
+@keyframes otPulse{50%{border-color:#600;}}
+
+/* buttons, in the game's own look */
+.ob{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:5px 12px 7px;border:0;border-radius:0;cursor:pointer;
+  font:400 1.4rem/1 var(--vt);color:#fff;background:var(--e-blue);box-shadow:inset 0 0 0 2px var(--e-lblue),4px 4px 0 #000;-webkit-tap-highlight-color:transparent;text-align:left;}
+.ob svg{width:20px;height:20px;flex:none;stroke-width:2.2;}
+.ob:active{transform:translate(2px,2px);box-shadow:inset 0 0 0 2px var(--e-lblue),2px 2px 0 #000;}
+.ob.go{background:var(--e-green);box-shadow:inset 0 0 0 2px var(--e-lgreen),4px 4px 0 #000;font-size:1.55rem;}
+.ob.go:active{box-shadow:inset 0 0 0 2px var(--e-lgreen),2px 2px 0 #000;}
+.ob.warn{background:#7a0000;box-shadow:inset 0 0 0 2px var(--e-red),4px 4px 0 #000;}
+.ob.plain{background:#111;box-shadow:inset 0 0 0 2px var(--e-dgray),4px 4px 0 #000;}
+.ob[disabled]{opacity:.38;cursor:default;}
+.ob .sub{display:block;font-size:1.05rem;color:rgba(255,255,255,.72);margin-top:2px;}
+.ob .tx{flex:1;min-width:0;}
+.ob.hot{animation:otHot 1s steps(2) infinite;}
+@keyframes otHot{50%{box-shadow:inset 0 0 0 2px var(--e-yel),4px 4px 0 #000;}}
+.ot-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+.ot-grid .ob{flex-direction:column;gap:3px;min-height:56px;font-size:1.2rem;text-align:center;padding:6px 4px;}
+@media (orientation:landscape) and (min-width:600px) and (max-height:560px){
+  .ot-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;}
+  .ot-grid .ob{flex-direction:row;min-height:34px;font-size:1.15rem;padding:2px 4px 4px;gap:4px;}
+  .ot-grid .ob svg{width:15px;height:15px;}
+  .ob{min-height:36px;padding:3px 10px 5px;}
+  .ob.go{font-size:1.4rem;}
+  .ob .sub{font-size:.98rem;}
+  .ot-act{gap:5px;}
+  .ot-low{padding-top:6px;}
+  .ot{font-size:1.25rem;}
+  .ot-pp{font-size:1.05rem;padding:0 5px 1px;}
+}
+.ot-row2{display:flex;gap:7px;} .ot-row2 > .ob{flex:1;}
+
+/* the store's shelf: rows with amount steppers */
+.st-row{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:6px;padding:3px 0;border-bottom:1px dashed #333;}
+.st-row .nm small{display:block;font-size:1.02rem;color:var(--e-gray);}
+.st-row .q{min-width:3.4em;text-align:center;color:var(--e-yel);font-size:1.5rem;}
+.st-row .q.bump{animation:otBump .25s steps(3);}
+@keyframes otBump{50%{transform:scale(1.35);color:#fff;}}
+.st-b{width:40px;height:38px;border:0;background:var(--e-blue);color:#fff;font:400 1.6rem/1 var(--vt);box-shadow:inset 0 0 0 2px var(--e-lblue);cursor:pointer;}
+.st-b:active{background:var(--e-lblue);}
+.st-b[disabled]{opacity:.3;}
+.st-bill{display:flex;justify-content:space-between;gap:10px;font-size:1.5rem;margin-top:4px;}
+.st-bill b{color:var(--e-yel);font-weight:400;}
+.ot-quote{border-left:4px solid var(--e-brown);padding-left:8px;}
+.ot-quote b{display:block;color:var(--e-yel);font-weight:400;font-size:1.15rem;}
+
+/* names */
+.nm-row{display:flex;gap:6px;align-items:center;margin-bottom:5px;}
+.nm-row label{width:1.4em;color:var(--e-gray);text-align:right;}
+.nm-row input{flex:1;min-width:0;height:40px;border:0;border-radius:0;background:#111;color:#fff;font:400 1.5rem/1 var(--vt);padding:2px 10px;box-shadow:inset 0 0 0 2px var(--e-dgray);outline:none;}
+.nm-row input:focus{box-shadow:inset 0 0 0 2px var(--e-yel);}
+.nm-chips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 8px;}
+.nm-chips button{border:0;background:#222;color:#fff;font:400 1.15rem/1 var(--vt);padding:5px 9px;box-shadow:inset 0 0 0 2px var(--e-dgray);cursor:pointer;}
+.ot-in{width:100%;height:42px;border:0;background:#111;color:#fff;font:400 1.45rem/1 var(--vt);padding:2px 10px;box-shadow:inset 0 0 0 2px var(--e-yel);outline:none;border-radius:0;}
+
+/* the tombstone's writing, over the picture */
+.tb-txt{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;color:#222;pointer-events:none;overflow:hidden;}
+.tb-txt .hl{font:400 calc(var(--s,2) * 3.4px)/1.4 var(--px);color:#333;}
+.tb-txt .nm{font:400 calc(var(--s,2) * 12px)/1 var(--vt);color:#111;margin-top:.15em;}
+.tb-txt .ep{font:400 calc(var(--s,2) * 7.4px)/1.05 var(--vt);color:#333;margin-top:.3em;max-width:96%;overflow-wrap:anywhere;}
+.tb-txt .dt{font:400 calc(var(--s,2) * 6px)/1 var(--vt);color:#555;margin-top:.4em;}
+
+/* score tally and the top ten */
+.sc-t{width:100%;border-collapse:collapse;font-size:1.3rem;}
+.sc-t td{padding:1px 4px;}
+.sc-t td:last-child{text-align:right;color:var(--e-yel);font-variant-numeric:tabular-nums;}
+.sc-t tr.in{animation:otIn .3s steps(4) both;}
+@keyframes otIn{from{opacity:0;transform:translateX(-12px);}}
+.sc-t tr.tot td{border-top:2px solid #fff;color:#fff;font-size:1.6rem;}
+.tt td:nth-child(1){color:var(--e-gray);width:1.6em;}
+.tt td:nth-child(3){text-align:right;color:var(--e-yel);}
+.tt td:nth-child(4){color:var(--e-gray);text-align:right;font-size:1.1rem;}
+.tt tr.me td{color:var(--e-lgreen);animation:otPulse2 .8s steps(2) 6;}
+.tt tr.old td{color:#888;}
+@keyframes otPulse2{50%{color:#fff;}}
+
+/* hunting and rafting heads-up display */
+.hud{position:absolute;left:8px;right:8px;top:6px;display:flex;justify-content:space-between;gap:8px;font:400 1.35rem/1 var(--vt);color:#fff;text-shadow:2px 2px 0 #000;pointer-events:none;}
+.hud b{font-weight:400;color:var(--e-yel);}
+.hud-end{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#000;border:2px solid #fff;padding:12px 16px;text-align:center;min-width:240px;max-width:90%;box-shadow:6px 6px 0 rgba(0,0,0,.6);}
+.hud-end .ob{margin-top:10px;width:100%;}
+.hud-tip{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:rgba(0,0,0,.75);padding:4px 10px 5px;font:400 1.2rem/1 var(--vt);white-space:nowrap;pointer-events:none;}
+.hud-quit{position:absolute;right:8px;bottom:8px;min-height:36px;font-size:1.2rem;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function () {
+  'use strict';
+  var app = document.getElementById('app');
+  var N = OT.NODES, DAY = 864e5, SAVE = 'oregon_state', GRAVES = 'oregon_graves', HKEY = 'oregon', BOARD = 'oregon';
+  function el(t, a, kids) { return Kit.el ? Kit.el(t, a, kids) : document.createElement(t); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+  function ri(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function chance(p) { return Math.random() < p; }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function n(v) { return Math.round(v).toLocaleString('en-US'); }
+  function money(v) { v = Math.round(v * 100) / 100; return '$' + (v % 1 ? v.toFixed(2) : n(v)); }
+  function plural(k, one, many) { return n(k) + ' ' + (k === 1 ? one : (many || one + 's')); }
+  function ic(name) { return Kit.icon(name); }
+  function dstr(ms) { var d = new Date(ms); return OT.MONTHS[d.getUTCMonth()] + ' ' + d.getUTCDate() + ', ' + d.getUTCFullYear(); }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  // ── Sound: a PC speaker and a little noise ──────────────────────────────
+  var AC = null, MASTER = null;
+  function ac() {
+    try { if (localStorage.getItem('gn_sound') === '0') return null; } catch (e) {}
+    if (!AC) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; AC = new C(); MASTER = AC.createGain(); MASTER.gain.value = 0.9; MASTER.connect(AC.destination); }
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+  function tone(f, t0, dur, type, vol, slide) {
+    var a = ac(); if (!a) return;
+    var o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+    o.type = type || 'square'; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.006); g.gain.setValueAtTime(vol, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(MASTER); o.start(t); o.stop(t + dur + 0.03);
+  }
+  function noise(t0, dur, vol, type, freq, q, sweepTo) {
+    var a = ac(); if (!a) return;
+    var len = Math.floor(a.sampleRate * dur), b = a.createBuffer(1, len, a.sampleRate), d = b.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime + t0;
+    f.type = type || 'lowpass'; f.frequency.setValueAtTime(freq || 1000, t); if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t + dur); f.Q.value = q || 0.7;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.buffer = b; s.connect(f); f.connect(g); g.connect(MASTER); s.start(t);
+  }
+  function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+  // a tune on the speaker: [[midi, beats], ...]
+  function jingle(notes, beat, vol, type) { var t = 0; beat = beat || 0.11; notes.forEach(function (x) { if (x[0]) tone(mtof(x[0]), t, beat * x[1] * 0.92, type || 'square', vol || 0.05); t += beat * x[1]; }); return t; }
+  var SND = {
+    clop: function (hi) { noise(0, 0.05, 0.16, 'bandpass', hi ? 900 : 650, 3); tone(hi ? 170 : 140, 0, 0.04, 'triangle', 0.08); },
+    creak: function () { tone(260 + Math.random() * 80, 0, 0.18, 'sawtooth', 0.012, 200); },
+    tick: function () { tone(1800, 0, 0.012, 'square', 0.012); },
+    key: function () { tone(1200 + Math.random() * 200, 0, 0.015, 'square', 0.02); },
+    coin: function () { tone(1568, 0, 0.06, 'square', 0.04); tone(2093, 0.05, 0.12, 'square', 0.035); },
+    nope: function () { tone(160, 0, 0.18, 'square', 0.05); },
+    land: function () { jingle([[67, 1], [72, 1], [76, 1], [79, 3]], 0.1, 0.05); },
+    good: function () { jingle([[72, 1], [76, 1], [79, 2]], 0.09, 0.05); },
+    bad: function () { jingle([[64, 1], [60, 1], [55, 3]], 0.13, 0.055); },
+    // the funeral: slow, low, a hymn-like phrase
+    dirge: function () { jingle([[57, 3], [57, 1], [60, 2], [59, 2], [57, 4], [0, 1], [52, 3], [55, 1], [57, 6]], 0.16, 0.05, 'triangle'); },
+    splash: function () { noise(0, 0.6, 0.35, 'lowpass', 1800, 0.7, 300); noise(0.05, 0.4, 0.12, 'highpass', 3000); },
+    water: function () { noise(0, 1.6, 0.06, 'bandpass', 600, 0.5, 900); },
+    thunder: function () { noise(0, 1.8, 0.45, 'lowpass', 220, 0.6, 60); },
+    crack: function () { noise(0, 0.12, 0.3, 'highpass', 1200); tone(90, 0, 0.2, 'square', 0.05, 50); },
+    gun: function () { noise(0, 0.25, 0.5, 'lowpass', 2400, 0.6, 200); tone(110, 0, 0.12, 'square', 0.1, 40); },
+    hit: function () { noise(0, 0.12, 0.25, 'lowpass', 400); tone(220, 0, 0.1, 'square', 0.05, 110); },
+    bonk: function () { noise(0, 0.25, 0.4, 'lowpass', 300); tone(70, 0, 0.25, 'square', 0.08, 40); },
+    tally: function (k) { tone(880 + (k % 8) * 55, 0, 0.04, 'square', 0.03); }
+  };
+  // "Oh! Susanna" (Stephen Foster, 1848: the year the game is set), on the speaker with an oom-pah bass
+  var SUSANNA = {
+    eighth: 0.19, leadVol: 0.035, leadLp: 2400, bassVol: 0.07, bassWave: 'triangle', drumVol: 0, leadLen: 0.7,
+    lead: [76, 79, 79, 81, 79, 76, 72, 74, 76, 76, 74, 72, 74, 0, 72, 74, 76, 79, 79, 81, 79, 76, 72, 74, 76, 76, 74, 74, 72, 0, 0, 0,
+           77, 0, 81, 0, 81, 0, 79, 79, 76, 72, 0, 74, 0, 0, 72, 74, 76, 79, 79, 81, 79, 76, 72, 74, 76, 76, 74, 74, 72, 0, 72, 74],
+    bass: [48, 0, 55, 0, 48, 0, 55, 0, 48, 0, 55, 0, 43, 0, 50, 0, 48, 0, 55, 0, 48, 0, 55, 0, 43, 0, 50, 0, 48, 0, 55, 0,
+           41, 0, 48, 0, 48, 0, 55, 0, 48, 0, 55, 0, 43, 0, 50, 0, 48, 0, 55, 0, 48, 0, 55, 0, 43, 0, 50, 0, 48, 0, 55, 0],
+    drums: ''
+  };
+  var music = ArcadeMusic.create({ key: 'oregon_music', song: SUSANNA, ctx: function () { return ac(); }, out: function () { return MASTER; },
+    tempo: function () { return S ? [1, 1.12, 1.25][S.pace - 1] : 1; } });
+  var musicWanted = false;
+
+  // ── State ───────────────────────────────────────────────────────────────
+  var S = null;
+  function save() {
+    if (!S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S.phase !== 'over') Kit.resume.set(placeName() + ' · ' + dstr(S.date)); else Kit.resume.clear();
+  }
+  function load() { try { var v = JSON.parse(localStorage.getItem(SAVE) || 'null'); return v && v.v === 1 && v.people ? v : null; } catch (e) { return null; } }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function graves() { try { var g = JSON.parse(localStorage.getItem(GRAVES) || '[]'); return Array.isArray(g) ? g : []; } catch (e) { return []; } }
+  function addGrave(g) { var all = graves(); all.unshift(g); try { localStorage.setItem(GRAVES, JSON.stringify(all.slice(0, 60))); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(GRAVES); }
+
+  function alive() { return S.people.filter(function (p) { return p.alive; }); }
+  function leader() { return S.people[0]; }
+  function hIdx() { var h = S.hp; return h < 34 ? 0 : h < 67 ? 1 : h < 100 ? 2 : 3; }
+  function month() { return new Date(S.date).getUTCMonth(); }
+  function here() { return N[S.at]; }
+  function high() { return !!(N[S.at].high || (S.next && N[S.next] && N[S.next].high) || S.barlow); }
+  function landNow() { return S.barlow ? 'forest' : S.raft ? 'columbia' : N[S.at].land; }
+  function placeName() { if (S.phase === 'travel' && S.next) return 'On the trail to ' + (N[S.next].short || N[S.next].name); return N[S.at].short || N[S.at].name; }
+  function nextName() { return S.next ? N[S.next].name : ''; }
+  function partsCount() { return S.wheels + S.axles + S.tongues; }
+
+  // ── Weather ─────────────────────────────────────────────────────────────
+  var TEMP = [24, 30, 40, 52, 62, 72, 81, 79, 67, 53, 38, 28];
+  var WET = [0.14, 0.14, 0.2, 0.24, 0.24, 0.2, 0.12, 0.1, 0.12, 0.14, 0.18, 0.18];
+  function weather() {
+    var m = month(), t = TEMP[m] - (high() ? 15 : 0) + (Math.random() * 2 - 1) * 11, c = 'clear', dry = OT.LAND[landNow()] && landNow() !== 'prairie' && landNow() !== 'platte' && landNow() !== 'forest' && landNow() !== 'valley';
+    if (chance(WET[m] * (dry ? 0.6 : 1))) c = t < 34 ? (chance(0.25) ? 'blizzard' : 'snow') : (chance(0.2) ? 'storm' : 'rain');
+    else if (!dry && chance(0.03)) c = 'fog';
+    S.wx = { t: Math.round(t), c: c };
+    S.wet = (S.wet || 0) * 0.75 + (c === 'rain' || c === 'storm' ? 1 : 0);
+    if (c === 'snow' || c === 'blizzard') S.snow = Math.min(12, (S.snow || 0) + (c === 'blizzard' ? 3 : 1)); else if (t > 40) S.snow = Math.max(0, (S.snow || 0) - 1);
+  }
+  function wxWord() {
+    if (!S.wx) return 'fair';
+    var t = S.wx.t, w = t > 90 ? 'very hot' : t > 70 ? 'hot' : t > 50 ? 'warm' : t > 30 ? 'cool' : t > 10 ? 'cold' : 'very cold';
+    return { rain: 'rainy', storm: 'heavy rain', snow: 'snowy', blizzard: 'blizzard', fog: 'foggy' }[S.wx.c] ? w + ', ' + { rain: 'rainy', storm: 'heavy rain', snow: 'snowing', blizzard: 'blizzard', fog: 'foggy' }[S.wx.c] : w;
+  }
+
+  // ── One day passes ──────────────────────────────────────────────────────
+  // mode: 'travel' | 'rest' | 'wait'. Returns what happened, to be shown in order.
+  var ILL = {
+    dysentery: { w: 26, die: 0.026 }, cholera: { w: 12, die: 0.06 }, typhoid: { w: 13, die: 0.04 }, measles: { w: 10, die: 0.03 },
+    'a fever': { w: 22, die: 0.018 }, exhaustion: { w: 17, die: 0.012 }
+  };
+  function sickName(k) { return k === 'a fever' ? 'a fever' : k; }
+  function day(mode, out) {
+    out = out || [];
+    S.date += DAY; S.days++;
+    weather();
+    var ppl = alive(), nAlive = ppl.length;
+    var need = nAlive * OT.RATIONS[S.rations - 1].lb;
+    if (S.food >= need) { S.food -= need; S.starve = 0; } else { S.food = 0; S.starve++; }
+    var sick = ppl.filter(function (p) { return p.ill || p.hurt; }).length;
+    var wear = (mode === 'travel' ? OT.PACE[S.pace - 1].wear : 0) + OT.RATIONS[S.rations - 1].wear + (S.starve ? 6 + Math.min(8, S.starve) : 0) + sick;
+    var t = S.wx.t, cl = S.clothes / Math.max(1, nAlive);
+    if (t > 90) wear += 2; else if (t > 80) wear += 1;
+    if (t < 40) wear += cl >= 2 ? 0 : cl >= 1 ? 1 : 2;
+    if (t < 15) wear += cl >= 2 ? 1 : cl >= 1 ? 3 : 5;
+    if (S.wx.c === 'blizzard' && mode === 'travel') wear += 3;
+    S.hp = S.hp * (mode === 'travel' ? 0.9 : 0.82) + wear;
+    if (S.starve === 1) out.push({ t: 'You have run out of food.', tone: 'bad' });
+    // the sick get better or worse
+    ppl.forEach(function (p) {
+      if (!p.alive) return;
+      if (p.ill) {
+        var I = ILL[p.ill] || ILL.exhaustion, die = I.die * 0.75 * (0.4 + S.hp / 55) * (mode === 'travel' ? 1 : 0.45) * (p === leader() ? 0.6 : 1);
+        if (chance(die)) { kill(p, p.ill, out); return; }
+        if (chance(mode === 'travel' ? 0.07 : 0.15) || (S.hp < 30 && chance(0.04))) { out.push({ t: p.n + ' is well again.', tone: 'good', sfx: 'good', quiet: true }); p.ill = null; }
+      }
+      if (p.hurt) {
+        if (p.hurt === 'a snakebite' && chance(0.04 * (mode === 'travel' ? 1 : 0.5) * (p === leader() ? 0.5 : 1))) { kill(p, 'a snakebite', out); return; }
+        if (chance(mode === 'travel' ? 0.05 : 0.1)) { out.push({ t: p.n + (p.hurt === 'a snakebite' ? ' is over the snakebite.' : '\'s ' + p.hurt.replace(/^a /, '') + ' has healed.'), tone: 'good', quiet: true }); p.hurt = null; }
+      }
+    });
+    // falling ill: more likely when health is poor, and from bad water
+    alive().forEach(function (p) {
+      if (p.ill) return;
+      var pIll = 0.0026 + Math.max(0, S.hp - 22) / 100 * 0.03;
+      if (chance(pIll)) {
+        var k = wpick(ILL, function (k) { return k === 'exhaustion' ? 1 + (S.pace - 1) * 1.5 : k === 'dysentery' || k === 'cholera' ? 1 + (S.badWater || 0) : 1; });
+        p.ill = k; out.push({ t: p.n + ' has ' + sickName(k) + '.', tone: 'bad', sfx: 'bad', who: p.n });
+      }
+    });
+    S.badWater = Math.max(0, (S.badWater || 0) - 0.2);
+    // worn out past all bearing: the weakest begin to die
+    if (S.hp >= 140 && chance(0.2)) {
+      var weak = alive().sort(function (a, b) { return (b.ill ? 1 : 0) - (a.ill ? 1 : 0); }), v = weak.length > 1 && weak[0] === leader() ? weak[1] : weak[0];
+      if (v) kill(v, S.starve ? 'starvation' : v.ill || 'exhaustion', out);
+    } else if (S.starve > 3 && chance(0.08)) { var v2 = pick(alive()); if (v2) kill(v2, 'starvation', out); }
+    return out;
+  }
+  function wpick(tbl, mul) { var tot = 0, k; for (k in tbl) tot += tbl[k].w * (mul ? mul(k) : 1); var r = Math.random() * tot; for (k in tbl) { r -= tbl[k].w * (mul ? mul(k) : 1); if (r <= 0) return k; } return k; }
+  function kill(p, cause, out) {
+    if (!p.alive) return;
+    p.alive = false; p.cause = cause; p.ill = null; p.hurt = null; p.mi = Math.round(S.miles); p.at = S.at; p.d = Math.round(S.done || 0); p.date = S.date;
+    S.deaths = (S.deaths || 0) + 1;
+    out.push({ death: p, cause: cause });
+  }
+
+  // ── Things that happen on the trail ─────────────────────────────────────
+  // each: w = chance a travelling day, ok(): can it happen now, go(out): make it happen
+  function lose(days, out) { for (var i = 0; i < days; i++) day('wait', out); }
+  function stealOf() {
+    var c = [];
+    if (S.food > 40) c.push(function () { var q = Math.round(S.food * (0.1 + Math.random() * 0.25)); S.food -= q; return plural(q, 'pound') + ' of food'; });
+    if (S.clothes > 1) c.push(function () { var q = Math.min(S.clothes - 1, ri(1, 3)); S.clothes -= q; return plural(q, 'set') + ' of clothing'; });
+    if (S.bullets > 20) c.push(function () { var q = Math.min(S.bullets, ri(2, 6) * 10); S.bullets -= q; return plural(q, 'bullet'); });
+    if (S.oxen > 3) c.push(function () { S.oxen--; return '1 ox'; });
+    return c.length ? pick(c)() : null;
+  }
+  var PART = { wheel: 'wheels', axle: 'axles', tongue: 'tongues' };
+  var EVENTS = [
+    { w: 0.006, go: function (o) { var s = stealOf(); if (s) o.push({ t: 'A thief comes during the night and steals ' + s + '.', tone: 'bad', sfx: 'bad' }); } },
+    { w: 0.0025, go: function (o) {
+      var lost = [];
+      if (S.food > 20) { var q = Math.round(S.food * (0.1 + Math.random() * 0.2)); S.food -= q; lost.push(plural(q, 'pound') + ' of food'); }
+      if (S.clothes > 0 && chance(0.6)) { var c = Math.min(S.clothes, ri(1, 2)); S.clothes -= c; lost.push(plural(c, 'set') + ' of clothing'); }
+      if (S.bullets > 0 && chance(0.5)) { var b = Math.min(S.bullets, ri(1, 4) * 10); S.bullets -= b; lost.push(plural(b, 'bullet')); }
+      o.push({ t: 'A fire in the wagon! You lose ' + (lost.length ? listJoin(lost) : 'nothing important, luckily') + '.', tone: 'bad', sfx: 'bad', fx: 'fire' });
+    } },
+    { w: 0.004, go: function (o) { var d = ri(1, 4); o.push({ t: 'You lose the trail. You lose ' + plural(d, 'day') + ' finding it again.', tone: 'bad', sfx: 'bad' }); lose(d, o); } },
+    { w: 0.003, go: function (o) { var d = ri(1, 3); o.push({ t: 'Wrong trail. You lose ' + plural(d, 'day') + '.', tone: 'bad', sfx: 'bad' }); lose(d, o); } },
+    { w: 0.003, ok: function () { return landNow() === 'rockies' || landNow() === 'forest' || landNow() === 'snake'; }, go: function (o) { var d = ri(1, 3); o.push({ t: 'Rough trail. Rocks and fallen timber block the way. You lose ' + plural(d, 'day') + '.', tone: 'bad', sfx: 'bad' }); lose(d, o); } },
+    { w: 0.004, ok: function () { return S.wx.c !== 'snow' && S.wx.c !== 'blizzard'; }, go: function (o) { o.push({ t: 'Heavy fog. You lose a day.', tone: 'bad', fx: 'fog' }); lose(1, o); } },
+    { w: 0.004, ok: function () { var m = month(); return m >= 4 && m <= 8 && !high(); }, go: function (o) { var q = Math.min(S.food, ri(5, 25)); S.food -= q; o.push({ t: 'A hailstorm! You stop for a day' + (q ? ' and ' + plural(q, 'pound') + ' of food is ruined' : '') + '.', tone: 'bad', sfx: 'thunder', fx: 'storm' }); lose(1, o); } },
+    { w: 0.006, ok: function () { return OT.LAND[landNow()].water; }, go: function (o) { S.hp += 10; S.badWater = 3; o.push({ t: 'Bad water.', tone: 'bad', sfx: 'bad' }); } },
+    { w: 0.005, ok: function () { var l = landNow(); return l === 'sage' || l === 'snake' || l === 'columbia' || l === 'bluffs'; }, go: function (o) { S.hp += 12; o.push({ t: 'No water.', tone: 'bad', sfx: 'bad' }); } },
+    { w: 0.005, ok: function () { var l = landNow(); return S.oxen > 0 && (l === 'sage' || l === 'snake' || l === 'columbia' || month() >= 9); }, go: function (o) { o.push({ t: 'Inadequate grass. The oxen grow weak.', tone: 'bad' }); if (S.oxen > S.oxHurt && chance(0.5)) S.oxHurt++; } },
+    { w: 0.011, go: function (o) { breakPart(o); } },
+    { w: 0.004, ok: function () { return S.oxen > S.oxHurt; }, go: function (o) { if (S.occ === 'farmer' && chance(0.5)) return; S.oxHurt++; o.push({ t: 'One of the oxen is injured.', tone: 'bad', sfx: 'bad' }); } },
+    { w: 0.003, ok: function () { return S.oxen > 0; }, go: function (o) { if (S.occ === 'farmer' && chance(0.5)) return; S.oxen--; if (S.oxHurt > S.oxen) S.oxHurt = S.oxen; o.push({ t: S.oxen ? 'An ox has died.' : 'Your last ox has died. You cannot go on without oxen.', tone: 'bad', sfx: 'bad' }); } },
+    { w: 0.003, ok: function () { return S.oxen > 0; }, go: function (o) { var d = ri(1, 3); o.push({ t: 'An ox wanders off. You lose ' + plural(d, 'day') + ' looking for it.', tone: 'bad' }); lose(d, o); } },
+    { w: 0.0025, ok: function () { return alive().length > 1; }, go: function (o) { var p = pick(alive().slice(1)), d = ri(2, 5); o.push({ t: p.n + ' is lost. You lose ' + plural(d, 'day') + ' searching.', tone: 'bad', sfx: 'bad' }); lose(d, o); } },
+    { w: 0.0035, go: function (o) { var p = pick(alive()); if (!p || p.hurt) return; var k = pick(['a broken arm', 'a broken leg', 'a snakebite']); p.hurt = k; S.hp += 4; o.push({ t: k === 'a snakebite' ? p.n + ' is bitten by a snake.' : p.n + ' has ' + k + '.', tone: 'bad', sfx: 'bad' }); } },
+    { w: 0.008, ok: function () { var m = month(); return m >= 5 && m <= 8 && landNow() !== 'sage' && landNow() !== 'snake'; }, go: function (o) { var q = ri(20, 60); q = Math.min(q, OT.FOOD_MAX - S.food); if (q <= 0) return; S.food += q; o.push({ t: 'You find wild fruit: ' + pick(['chokecherries', 'wild plums', 'serviceberries', 'currants', 'huckleberries']) + '. You gather ' + plural(q, 'pound') + ' of food.', tone: 'good', sfx: 'good' }); } },
+    { w: 0.004, go: function (o) {
+      if (chance(0.35)) { o.push({ t: 'You find an abandoned wagon, but it is empty.', tone: '' }); return; }
+      var got = pick([function () { var q = ri(20, 80) * 2; S.food = Math.min(OT.FOOD_MAX, S.food + q); return plural(q, 'pound') + ' of food'; },
+        function () { var q = ri(1, 3); S.clothes += q; return plural(q, 'set') + ' of clothing'; },
+        function () { var q = ri(2, 8) * 10; S.bullets += q; return plural(q, 'bullet'); },
+        function () { var k = pick(['wheel', 'axle', 'tongue']); S[PART[k]]++; return 'a wagon ' + k; }])();
+      o.push({ t: 'You find an abandoned wagon with ' + got + '.', tone: 'good', sfx: 'good' });
+    } },
+    { w: 0.012, ok: function () { return S.wx.c === 'storm'; }, go: function (o) { o.push({ t: 'Severe thunderstorm. You lose a day.', tone: 'bad', sfx: 'thunder', fx: 'storm' }); lose(1, o); } },
+    { w: 0.25, ok: function () { return S.wx.c === 'blizzard'; }, go: function (o) { var d = ri(1, 3); o.push({ t: 'A blizzard! You lose ' + plural(d, 'day') + ' waiting it out.', tone: 'bad', sfx: 'bad', fx: 'blizzard' }); lose(d, o); } },
+    { w: 0.06, ok: function () { return (S.snow || 0) > 5 && high(); }, go: function (o) { var d = ri(1, 4); o.push({ t: 'Heavy snow. The trail is buried and you lose ' + plural(d, 'day') + '.', tone: 'bad', fx: 'snow' }); lose(d, o); } }
+  ];
+  function listJoin(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  function breakPart(o) {
+    if (S.broken) return;
+    var k = pick(['wheel', 'axle', 'tongue']), key = PART[k];
+    if (S[key] > 0) { S[key]--; o.push({ t: 'A broken wagon ' + k + '. You replace it with your spare.', tone: 'bad', sfx: 'crack' }); lose(1, o); return; }
+    if (chance(S.occ === 'carpenter' ? 0.65 : 0.35)) { o.push({ t: 'A broken wagon ' + k + '. You are able to repair it.', tone: 'bad', sfx: 'crack' }); lose(1, o); return; }
+    S.broken = k; o.push({ t: 'A broken wagon ' + k + '. You can\'t fix it and you have no spare. Try trading for one.', tone: 'bad', sfx: 'crack', stop: true });
+  }
+
+  // ── Travel: one day on the move ─────────────────────────────────────────
+  function speed() {
+    if (S.oxen <= 0 || S.broken) return 0;
+    var eo = S.oxen - S.oxHurt * 0.5, of = Math.min(1, 0.42 + 0.58 * Math.min(1, eo / 6));
+    var wx = { rain: 0.85, storm: 0.6, snow: 0.55, blizzard: 0.15, fog: 0.8 }[S.wx.c] || 1;
+    var sn = high() && (S.snow || 0) > 4 ? 0.65 : 1;
+    return 16 * OT.PACE[S.pace - 1].mph * of * OT.LAND[landNow()].slow * wx * sn * (hIdx() >= 3 ? 0.8 : 1) * (0.88 + Math.random() * 0.24);
+  }
+  function travelDay() {
+    var out = [], left = S.segMi - S.done, mi = Math.min(left, speed());
+    var before = S.done;
+    day('travel', out);
+    if (!leader().alive) return { out: out, mi: 0 };
+    S.done += mi; S.miles += mi;
+    // graves from earlier trips along this stretch
+    graves().forEach(function (g) { if (g.at === S.at && g.to === S.next && g.d > before && g.d <= S.done && !g.self) out.push({ grave: g }); });
+    if (mi > 0) EVENTS.forEach(function (e) { if ((!e.ok || e.ok()) && chance(e.w)) e.go(out); });
+    return { out: out, mi: mi, arrived: S.done >= S.segMi - 0.01 };
+  }
+
+  // ── The screen: the picture and the panel ───────────────────────────────
+  var root, scr, cvs, ctx, ov, low, info, act, view = null, LW = 240, LH = 120, mode = 'main', sceneFrac = 0.5;
+  function shell() {
+    app.innerHTML = '';
+    root = el('div', { class: 'ot' });
+    scr = el('div', { class: 'ot-scr' });
+    cvs = el('canvas'); ctx = cvs.getContext('2d');
+    ov = el('div', { class: 'ot-ov' });
+    scr.appendChild(cvs); scr.appendChild(ov);
+    low = el('div', { class: 'ot-low' });
+    info = el('div', { class: 'ot-info' }); act = el('div', { class: 'ot-act' });
+    low.appendChild(info); low.appendChild(act);
+    root.appendChild(scr); root.appendChild(low); app.appendChild(root);
+    scr.addEventListener('pointerdown', function (e) { if (view && view.down) view.down(e); else if (scrTap) scrTap(e); });
+    layout();
+  }
+  var scrTap = null;
+  function land() { return window.matchMedia('(orientation:landscape) and (min-width:600px)').matches; }
+  // fit the picture: a fixed number of pixels tall, as wide as the screen
+  function layout() {
+    if (!root) return;
+    root.classList.toggle('full', mode === 'full');
+    var W = root.clientWidth, Hc = root.clientHeight, dpr = window.devicePixelRatio || 1, cssH, s;
+    if (mode === 'full') { cssH = Hc; s = Math.max(1.5, Math.min(W / 300, cssH / 170)); LH = Math.round(cssH / s); }
+    else {
+      LH = 120;
+      cssH = land() ? Math.min(Hc * sceneFrac, W / 1.6) : Math.min(W * 120 / 196, Hc * (sceneFrac + 0.04));
+      s = cssH / LH;
+    }
+    s = Math.max(1, Math.round(s * dpr) / dpr);
+    LW = Math.ceil(W / s); LH = Math.ceil(cssH / s);
+    scr.style.height = Math.round(LH * s) + 'px';
+    if (cvs.width !== LW || cvs.height !== LH) { cvs.width = LW; cvs.height = LH; ctx.imageSmoothingEnabled = false; if (view && view.resize) view.resize(LW, LH); }
+    scr.style.setProperty('--s', s);
+    root._s = s;
+  }
+  window.addEventListener('resize', function () { setTimeout(function () { layout(); if (view && view.relayout) view.relayout(); }, 60); });
+  function setView(v, o) {
+    o = o || {};
+    if (o.mode && o.mode !== mode) { mode = o.mode; }
+    else if (!o.mode && mode !== 'main') mode = 'main';
+    if (o.frac) sceneFrac = o.frac; else sceneFrac = 0.52;
+    layout();
+    if (view && view.leave) view.leave();
+    view = v; ov.innerHTML = ''; scrTap = null;
+    if (view && view.resize) view.resize(LW, LH);
+    if (o.wipe !== false) { scr.classList.remove('wipe'); void scr.offsetWidth; scr.classList.add('wipe'); }
+  }
+  var t0 = performance.now();
+  function loop(now) {
+    requestAnimationFrame(loop);
+    if (document.hidden || !view) return;
+    var t = now - t0;
+    try { view.draw(ctx, t, now); } catch (e) { console.error(e); }
+    if (musicWanted) music.tick(); else music.stop();
+  }
+  requestAnimationFrame(loop);
+
+  // a still picture (landmark, store, river...) with its moving parts, plus anything drawn over it
+  function picView(id, opt, over) {
+    var pic = null, key = '';
+    var v = {
+      resize: function (W, H) { var k = id + W + 'x' + H; if (k === key) return; key = k; pic = OTArt.scene(id, W, H, Object.assign({ season: OTArt.seasonOf(S ? month() : 4, S ? high() : false), mood: S && S.wx && (S.wx.c === 'rain' || S.wx.c === 'storm' || S.wx.c === 'snow' || S.wx.c === 'blizzard') ? 'gray' : 'day' }, opt || {})); v.pic = pic; },
+      draw: function (c, t) { if (!pic) return; c.drawImage(pic.img, 0, 0); pic.anim(c, t); if (over) over(c, t, pic); }
+    };
+    return v;
+  }
+  function banner(title, sub) {
+    var b = el('div', { class: 'ot-ban' }, [el('b', { text: title }), sub ? el('small', { text: sub }) : null]);
+    ov.appendChild(b); return b;
+  }
+  function btn(label, cls, onclick, o) {
+    o = o || {};
+    var b = el('button', { type: 'button', class: 'ob' + (cls ? ' ' + cls : ''), onclick: function () { if (b.disabled) return; ac(); Kit.sfx('tap', 0.5); Kit.haptic('light'); onclick && onclick(); } });
+    b.innerHTML = (o.icon ? ic(o.icon) : '') + '<span class="tx">' + esc(label) + (o.sub ? '<span class="sub">' + esc(o.sub) + '</span>' : '') + '</span>';
+    if (o.disabled) b.disabled = true;
+    return b;
+  }
+  function clearLow() { info.innerHTML = ''; act.innerHTML = ''; info.scrollTop = 0; }
+
+  // text that types itself out like the old computers did; tap to finish
+  var typing = null;
+  function say(target, text, o) {
+    o = o || {};
+    if (typing) typing.finish();
+    var box = el('div', { class: 'ot-say' + (o.cls ? ' ' + o.cls : '') }), caret = el('span', { class: 'caret' }), i = 0, timer = 0, done = false, res;
+    target.appendChild(box);
+    var p = new Promise(function (r) { res = r; });
+    function finish() { if (done) return; done = true; clearInterval(timer); box.textContent = text; typing = null; res(); }
+    var step = Math.max(1, Math.round(text.length / 120));
+    timer = setInterval(function () {
+      i = Math.min(text.length, i + step); box.textContent = text.slice(0, i); box.appendChild(caret);
+      if (i % 3 === 0) SND.key();
+      if (i >= text.length) finish();
+    }, o.fast ? 8 : 18);
+    typing = { finish: finish };
+    box.addEventListener('click', finish);
+    return p;
+  }
+
+  // ── The status panel ────────────────────────────────────────────────────
+  function statusHTML() {
+    var rows = [['Date', dstr(S.date)], ['Weather', wxWord()], ['Health', '<span class="' + ['grn', '', 'yel', 'red'][hIdx()] + '">' + OT.HEALTH[hIdx()] + '</span>'],
+      ['Food', '<span class="' + (S.food < alive().length * 30 ? 'red' : '') + '">' + plural(S.food, 'pound') + '</span>']];
+    if (S.next) rows.push(['Next landmark', plural(Math.ceil(S.segMi - S.done), 'mile')]);
+    rows.push(['Miles traveled', plural(Math.floor(S.miles), 'mile')]);
+    var h = '<dl class="ot-stat">' + rows.map(function (r) { return '<dt>' + r[0] + ':</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>';
+    if (S.next) h += '<div class="ot-seg" title="' + esc(nextName()) + '"><i style="width:' + clamp(S.done / S.segMi * 100, 0, 100) + '%"></i></div><div class="dim" style="font-size:1.1rem;display:flex;justify-content:space-between"><span>' + esc(N[S.at].short || N[S.at].name) + '</span><span class="yel">' + esc(N[S.next].short || N[S.next].name) + '</span></div>';
+    h += partyHTML();
+    if (S.broken) h += '<p class="red" style="margin-top:6px">Broken wagon ' + S.broken + ': trade for a new one.</p>';
+    if (S.oxen <= 0) h += '<p class="red" style="margin-top:6px">No oxen to pull the wagon: trade for some.</p>';
+    return h;
+  }
+  function partyHTML() {
+    return '<div class="ot-party">' + S.people.map(function (p, i) {
+      var cls = !p.alive ? 'dead' : p.ill ? 'sick' : p.hurt ? 'hurt' : '';
+      return '<span class="ot-pp ' + cls + (i === 0 ? ' lead' : '') + '" title="' + esc(p.alive ? (p.ill || p.hurt || 'well') : 'died of ' + p.cause) + '">' + esc(p.n) + (p.alive && (p.ill || p.hurt) ? ' <small>' + esc((p.ill || p.hurt).replace(/^an? /, '')) + '</small>' : '') + '</span>';
+    }).join('') + '</div>';
+  }
+
+  // ── Setting out: occupation and month (the setup screen), then names, then Matt's store ──
+  var OCC_ICON = { banker: 'coins', carpenter: 'hand', farmer: 'leaf' };
+  function showSetup() {
+    musicWanted = false; mode = 'main'; view = null;
+    app.innerHTML = '';
+    var box = el('div', { style: { 'max-width': '720px', margin: '0 auto' } }); app.appendChild(box);
+    Kit.setup(box, {
+      modes: Object.keys(OT.OCC).map(function (k) { var o = OT.OCC[k]; return { id: k, icon: OCC_ICON[k], title: o.name + ' ' + o.from, desc: '$' + n(o.cash) + ' to start. ' + o.perk }; }),
+      mode: 'banker', start: 'Head west',
+      players: { min: 1, max: 1, count: 1, label: 'Wagon leader' },
+      options: [{ id: 'month', label: 'Leave Independence in', value: 3, choices: OT.DEPART.map(function (d) { return [d.m, d.name.slice(0, 3), d.note]; }) }],
+      onStart: function (cfg) {
+        var nm = cfg.players[0] && cfg.players[0].name; if (!nm || nm === 'You') nm = '';
+        newGame(cfg.mode, +cfg.options.month || 3, nm);
+      }
+    });
+  }
+  function newGame(occ, m, leaderName) {
+    var pool = OT.NAMES.slice().sort(function () { return Math.random() - 0.5; });
+    S = { v: 1, occ: occ, start: Date.UTC(1848, m, 1), date: Date.UTC(1848, m, 1), days: 0, started: Date.now(),
+      people: [{ n: leaderName || pool[0], alive: true }].concat([1, 2, 3, 4].map(function (i) { return { n: pool[i], alive: true }; })),
+      cash: OT.OCC[occ].cash, oxen: 0, oxHurt: 0, food: 0, clothes: 0, bullets: 0, wheels: 0, axles: 0, tongues: 0,
+      pace: 1, rations: 1, hp: 0, at: 'independence', next: null, segMi: 0, done: 0, miles: 0, path: ['independence'], phase: 'names',
+      wx: { t: 60, c: 'clear' }, starve: 0, deaths: 0, log: [], hunted: 0, killed: 0, crossed: [] };
+    Kit.gameStart(); save(); go();
+  }
+  // where to pick up: each phase has a screen
+  function go() {
+    var ph = S.phase;
+    if (ph === 'names') return showNames();
+    if (ph === 'store') return showStore(true);
+    if (ph === 'travel') return showTravel(false);
+    if (ph === 'stop') return showStop();
+    if (ph === 'river') return showRiver();
+    if (ph === 'dalles') return showDalles();
+    if (ph === 'over') { clearSave(); S = null; return showSetup(); }
+    showStop();
+  }
+
+  function showNames() {
+    shell(); setView(picView('independence'), { frac: 0.4 });
+    banner('Independence, Missouri', dstr(S.date));
+    clearLow();
+    info.appendChild(el('h2', { text: 'Your party' }));
+    info.appendChild(el('p', { class: 'dim', text: 'The wagon leader and the four people traveling with you.' }));
+    var inputs = [], known = [];
+    try { known = (Kit.knownNames() || []).filter(function (x) { return x && x !== 'You'; }).slice(0, 10); } catch (e) {}
+    var focusI = 1;
+    S.people.forEach(function (p, i) {
+      var inp = el('input', { type: 'text', maxlength: '14', value: p.n, 'aria-label': i ? 'Party member ' + i : 'Wagon leader', autocomplete: 'off', autocapitalize: 'words' });
+      inp.addEventListener('focus', function () { focusI = i; });
+      inp.addEventListener('input', function () { SND.key(); });
+      inputs.push(inp);
+      var dice = el('button', { type: 'button', class: 'st-b', 'aria-label': 'Another name', html: ic('shuffle'), onclick: function () { var used = inputs.map(function (x) { return x.value; }); var nm = pick(OT.NAMES.filter(function (x) { return used.indexOf(x) < 0; })); inp.value = nm; SND.key(); Kit.haptic('tick'); } });
+      dice.querySelector('svg').style.cssText = 'width:20px;height:20px';
+      info.appendChild(el('div', { class: 'nm-row' }, [el('label', { text: i ? String(i) : '' , html: i ? String(i) : ic('star') }), inp, dice]));
+    });
+    if (known.length) {
+      var chips = el('div', { class: 'nm-chips' });
+      known.forEach(function (k) { chips.appendChild(el('button', { type: 'button', text: k, onclick: function () { inputs[focusI].value = k; SND.key(); Kit.haptic('tick'); focusI = Math.min(4, focusI + 1); inputs[focusI].focus(); } })); });
+      info.appendChild(el('p', { class: 'dim', text: 'Your regulars (tap to fill the highlighted name):', style: { 'font-size': '1.1rem', margin: '6px 0 0' } }));
+      info.appendChild(chips);
+    }
+    act.appendChild(btn('These are my companions', 'go', function () {
+      inputs.forEach(function (x, i) { var v = x.value.trim().slice(0, 14); S.people[i].n = v || S.people[i].n; });
+      S.phase = 'store'; save(); showStore(true);
+    }, { icon: 'check' }));
+  }
+
+  // ── Stores: Matt's in Independence, and the forts ───────────────────────
+  // at Matt's oxen come by the yoke and food by 50 pounds; at a fort, oxen one at a time and prices go up
+  function showStore(matts) {
+    var mult = matts ? 1 : (here().mult || 1);
+    shell(); setView(picView('store'), { frac: 0.36 });
+    banner(matts ? 'Matt\'s General Store' : here().name, matts ? 'Independence, Missouri' : 'The fort\'s store');
+    musicWanted = matts;
+    var cart = { oxen: 0, food: 0, clothes: 0, bullets: 0, wheels: 0, axles: 0, tongues: 0 }, focus = 'oxen';
+    var ITEMS = ['oxen', 'food', 'clothes', 'bullets', 'wheels', 'axles', 'tongues'];
+    function unitPrice(k) { var it = OT.STORE[k]; return it.price * mult / (k === 'oxen' && !matts ? 2 : 1); }
+    function step(k) { return k === 'food' ? 50 : 1; }
+    function bill() { var b = 0; ITEMS.forEach(function (k) { b += cart[k] / step(k) * unitPrice(k) * step(k) * (k === 'food' ? 1 : 1); }); return Math.round(b * 100) / 100; }
+    function have(k) { return k === 'oxen' ? S.oxen : k === 'bullets' ? S.bullets : S[k]; }
+    var quoteEl, billEl, leftEl, haveEl, leaveB, qEls = {};
+    function shown(k) { var qty = cart[k]; return k === 'oxen' ? (matts ? qty + ' yoke' : plural(qty, 'ox', 'oxen')) : k === 'food' ? qty + ' lb' : k === 'bullets' ? qty + ' box' + (qty === 1 ? '' : 'es') : String(qty); }
+    function update() {
+      var leftCash = S.cash - bill(), said = OT.STORE[focus].advice || OT.STORE.wheels.advice;
+      quoteEl.innerHTML = '<b>' + (matts ? 'Matt says' : 'The clerk says') + '</b>' + esc(matts ? said : focus === 'oxen' ? 'Oxen are ' + money(unitPrice('oxen')) + ' each out here.' : said);
+      billEl.innerHTML = '<span>Bill</span><b>' + money(bill()) + '</b>';
+      leftEl.innerHTML = '<span class="dim">Money left</span><span class="' + (leftCash < 0 ? 'red' : '') + '">' + money(leftCash) + '</span>';
+      ITEMS.forEach(function (k) { qEls[k].textContent = shown(k); });
+      var buying = bill() > 0;
+      leaveB.innerHTML = ic(buying ? 'coins' : 'back') + '<span class="tx">' + (buying ? 'Pay ' + money(bill()) + ' and leave' : 'Leave the store') + '</span>';
+    }
+    function paint() {
+      clearLow();
+      quoteEl = el('div', { class: 'ot-quote' }); info.appendChild(quoteEl);
+      billEl = el('div', { class: 'st-bill' }); leftEl = el('div', { class: 'st-bill' }); info.appendChild(billEl); info.appendChild(leftEl);
+      info.appendChild(el('div', { class: 'dim', style: { 'font-size': '1.1rem', 'margin-top': '6px' }, html: 'In the wagon: ' + plural(S.oxen, 'ox', 'oxen') + ', ' + plural(S.food, 'pound') + ' of food, ' + plural(S.clothes, 'set') + ' of clothing, ' + plural(S.bullets, 'bullet') + ', ' + plural(partsCount(), 'spare part') + '. Money: ' + money(S.cash) + '.' }));
+      var list = el('div', { class: 'st-list' });
+      ITEMS.forEach(function (k) {
+        var it = OT.STORE[k];
+        var price = k === 'oxen' ? (matts ? money(40) + ' a yoke of 2' : money(unitPrice('oxen')) + ' an ox') : k === 'food' ? money(unitPrice('food')) + ' a pound' : k === 'bullets' ? money(unitPrice('bullets')) + ' a box of 20' : money(unitPrice(k)) + (k === 'clothes' ? ' a set' : ' each');
+        var q = qEls[k] = el('span', { class: 'q' });
+        var minus = el('button', { type: 'button', class: 'st-b', text: '−', 'aria-label': 'Less ' + it.name });
+        var plus = el('button', { type: 'button', class: 'st-b', text: '+', 'aria-label': 'More ' + it.name });
+        function change(d) {
+          var s = step(k), nv = cart[k] + d * s;
+          if (nv < 0) return false;
+          if (d > 0) {
+            if (bill() + s * unitPrice(k) > S.cash + 1e-6) { SND.nope(); Kit.haptic('error'); Kit.toast('Not enough money'); return false; }
+            if (k === 'food' && S.food + nv > OT.FOOD_MAX) { SND.nope(); Kit.toast('The wagon can only carry 2,000 pounds of food'); return false; }
+            if (nv > (k === 'food' ? OT.FOOD_MAX : matts ? it.max : 99)) { SND.nope(); return false; }
+          }
+          cart[k] = nv; focus = k; d > 0 ? SND.coin() : SND.tick(); Kit.haptic('tick');
+          update(); q.classList.remove('bump'); void q.offsetWidth; q.classList.add('bump');
+          return true;
+        }
+        hold(minus, function () { return change(-1); }); hold(plus, function () { return change(1); });
+        list.appendChild(el('div', { class: 'st-row', 'data-k': k }, [el('div', { class: 'nm', html: esc(it.name) + '<small>' + esc(price) + '</small>' }), minus, q, plus]));
+      });
+      act.appendChild(list);
+      leaveB = btn('Leave the store', 'go', function () {
+        var b = bill();
+        var oxenAfter = S.oxen + (matts ? cart.oxen * 2 : cart.oxen);
+        if (matts && oxenAfter < 2) { SND.nope(); Kit.haptic('error'); focus = 'oxen'; update(); Kit.toast('You need at least one yoke of oxen to pull the wagon'); return; }
+        S.cash = Math.round((S.cash - b) * 100) / 100; S.oxen = oxenAfter; S.food += cart.food; S.clothes += cart.clothes; S.bullets += cart.bullets * 20;
+        S.wheels += cart.wheels; S.axles += cart.axles; S.tongues += cart.tongues;
+        if (b > 0) { SND.coin(); setTimeout(SND.coin, 120); }
+        if (matts) { S.phase = 'stop'; save(); depart(); } else { S.phase = 'stop'; save(); showStop(); }
+      }, { icon: 'back' });
+      act.appendChild(leaveB);
+      update();
+    }
+    paint();
+  }
+  // press and hold to keep adding
+  function hold(b, fn) {
+    var tmr = 0, rep = 0;
+    function stop() { clearTimeout(tmr); clearInterval(rep); }
+    b.addEventListener('pointerdown', function (e) { e.preventDefault(); ac(); if (fn() === false) return; tmr = setTimeout(function () { rep = setInterval(function () { if (fn() === false) stop(); }, 90); }, 380); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (t) { b.addEventListener(t, stop); });
+  }
+
+  // leaving Independence
+  function depart() {
+    S.next = 'kansas'; S.segMi = N.independence.next[0].mi; S.done = 0; S.phase = 'travel'; save();
+    shell(); setView(picView('independence'), { frac: 0.5 });
+    banner('Independence, Missouri', dstr(S.date));
+    musicWanted = true;
+    clearLow();
+    info.appendChild(el('h2', { text: 'Westward!' }));
+    say(info, 'It is ' + dstr(S.date) + '. Your party of five sets out from Independence, Missouri, bound for the Willamette Valley in Oregon, 2,000 miles away.\n\nThe first stop is the Kansas River crossing, 102 miles west.');
+    act.appendChild(btn('Start down the trail', 'go', function () { showTravel(true); }, { icon: 'flag' }));
+  }
+
+  // ── On the trail ────────────────────────────────────────────────────────
+  var T = null;   // the travel animation: {art, scroll, moving, dayStart, res, stop}
+  var DAY_MS = 760;
+  function travelView() {
+    var art = null, w = 0, h = 0;
+    return {
+      isTravel: true,
+      resize: function (W, H) { if (W === w && H === h && art) return; w = W; h = H; art = new OTArt.Travel(W, H); art.key = ''; },
+      draw: function (c, t, now) {
+        if (!art) return;
+        var wx = S.wx || {}, mood = wx.c === 'rain' || wx.c === 'storm' || wx.c === 'snow' || wx.c === 'blizzard' || wx.c === 'fog' ? 'gray' : 'day';
+        art.set(landNow(), month(), mood, high(), high() && (S.snow || 0) > 4);
+        var moving = !!(T && T.moving), p = moving ? clamp((now - T.dayStart) / DAY_MS, 0, 1) : 0;
+        var scroll = T ? T.scroll + (moving ? T.dpx * p : 0) : 0;
+        var step = Math.floor(t / 170);
+        if (moving && T.lastStep !== step) { T.lastStep = step; SND.clop(step % 2); if (step % 9 === 0 && chance(0.4)) SND.creak(); }
+        var dist = S.segMi - (S.done - (moving ? T.res.mi * (1 - p) : 0));
+        var nx = S.next ? N[S.next] : null;
+        var gs = [];
+        if (S.next) graves().forEach(function (g) { if (g.at === S.at && g.to === S.next) gs.push({ dmi: g.d - (S.done - (moving ? T.res.mi * (1 - p) : 0)) }); });
+        art.draw(c, { scroll: scroll, t: t, moving: moving, step: step, oxen: Math.min(4, S.oxen), broken: S.broken, weather: wx.c === 'clear' ? null : wx.c,
+          ahead: nx ? { id: S.next, kind: nx.kind, mi: dist } : null, graves: gs });
+        if (moving && p >= 1 && !T.ending) { T.ending = true; endDay(); }
+      }
+    };
+  }
+  function showTravel(fresh) {
+    S.phase = 'travel'; save();
+    shell(); setView(travelView(), { frac: 0.52, wipe: fresh });
+    musicWanted = true;
+    T = { scroll: (S.miles * 6) | 0, moving: false };
+    scrTap = function () { if (T && T.moving) T.stop = true; };
+    paintTravel();
+    setTimeout(nextDay, fresh ? 500 : 250);
+  }
+  function paintTravel() {
+    clearLow();
+    info.innerHTML = statusHTML();
+    var stopB = btn('Stop to size up the situation', '', function () { if (T) T.stop = true; stopB.disabled = true; stopB.querySelector('.tx').textContent = 'Stopping...'; }, { icon: 'pause' });
+    act.appendChild(stopB);
+  }
+  function refreshTravelInfo() { var sc = info.scrollTop; info.innerHTML = statusHTML(); info.scrollTop = sc; }
+  function nextDay() {
+    if (!T || S.phase !== 'travel' || view == null) return;
+    if (T.stop) { T = null; showStop(); return; }
+    if (S.broken || S.oxen <= 0) { T = null; showStop(); return; }
+    var res = travelDay();
+    T.res = res; T.dpx = res.mi * 6; T.dayStart = performance.now(); T.moving = res.mi > 0; T.ending = false;
+    if (!T.moving) { T.ending = true; setTimeout(endDay, 380); }
+  }
+  function endDay() {
+    if (!T) return;
+    T.scroll += T.dpx; T.moving = false;
+    var res = T.res;
+    save(); refreshTravelInfo();
+    var queue = res.out.slice();
+    if (res.arrived) queue.push({ arrive: true });
+    if (!queue.length) { setTimeout(nextDay, 40); return; }
+    present(queue).then(function (r) {
+      if (r === 'over') return;
+      if (res.arrived && leader().alive) { T = null; arrive(); return; }
+      if (r === 'stop' || S.broken || S.oxen <= 0) { T = null; showStop(); return; }
+      if (S.phase !== 'travel') return;
+      showTravelAgain();
+    });
+  }
+  function showTravelAgain() { if (!(view && view.isTravel) || !T) { showTravel(false); return; } paintTravel(); setTimeout(nextDay, 300); }
+
+  // show what happened, one thing at a time. Resolves 'over' when the game has ended, 'stop' to stop travelling
+  function present(queue) {
+    var stop = false;
+    function next() {
+      if (!queue.length) return Promise.resolve(stop ? 'stop' : 'ok');
+      var m = queue.shift();
+      if (m.arrive) return next();
+      if (m.death) return deathScreen(m.death).then(function (r) { if (r === 'over') return 'over'; return next(); });
+      if (m.grave) return graveScreen(m.grave).then(next);
+      if (m.stop) stop = true;
+      return message(m).then(next);
+    }
+    return next();
+  }
+  // one event in the panel, with an OK
+  function message(m) {
+    return new Promise(function (res) {
+      if (m.quiet && S.phase === 'travel') { Kit.toast(m.t); return res(); }
+      clearLow();
+      if (m.sfx && SND[m.sfx]) SND[m.sfx](); else if (m.tone === 'bad') SND.bad(); else if (m.tone === 'good') SND.good();
+      Kit.haptic(m.tone === 'bad' ? 'medium' : 'light');
+      if (m.fx && T) T.fx = m.fx;
+      info.appendChild(el('div', { html: statusHTML(), style: { opacity: 0.55 } }));
+      var box = el('div', { style: { 'margin-top': '8px', padding: '8px 10px', border: '2px solid ' + (m.tone === 'bad' ? 'var(--e-red)' : m.tone === 'good' ? 'var(--e-lgreen)' : '#fff') } });
+      info.insertBefore(box, info.firstChild);
+      say(box, m.t);
+      act.appendChild(btn('OK', 'go', function () { if (typing) typing.finish(); res(); }, { icon: 'check' }));
+    });
+  }
+
+  // ── Arriving somewhere ──────────────────────────────────────────────────
+  function arrive() {
+    var id = S.next;
+    S.at = id; S.next = null; S.segMi = 0; S.done = 0; S.path.push(id);
+    var nd = N[id];
+    if (nd.kind === 'end') return arriveOregon();
+    SND.land(); Kit.haptic('success');
+    if (nd.kind === 'river') { S.phase = 'river'; S.river = riverNow(id); save(); return showRiver(true); }
+    if (id === 'dalles') { S.phase = 'dalles'; save(); return showDalles(true); }
+    S.phase = 'stop'; save(); showStop(true);
+  }
+  function showStop(arrived) {
+    S.phase = 'stop'; save();
+    var nd = here(), id = S.at;
+    shell(); setView(picView(id === 'independence' ? 'independence' : id), { frac: 0.48 });
+    musicWanted = false;
+    banner(nd.full || nd.name, dstr(S.date));
+    paintStop(arrived);
+  }
+  function paintStop(arrived) {
+    clearLow();
+    var nd = here(), atLand = nd.kind !== 'river' && S.path[S.path.length - 1] === S.at && !S.next;
+    if (arrived) { var sp = el('p', { class: 'yel' }); info.appendChild(sp); say(sp, 'You are now at ' + (nd.full || nd.name) + '.' + (nd.kind === 'fort' ? ' There is a store here.' : '')); }
+    info.insertAdjacentHTML('beforeend', statusHTML());
+    var blocked = S.broken || S.oxen <= 0;
+    var cont = btn(blocked ? (S.broken ? 'The wagon is broken' : 'No oxen to pull the wagon') : 'Continue on the trail', 'go', function () { leaveStop(); }, { icon: 'flag', disabled: blocked });
+    act.appendChild(cont);
+    var g = el('div', { class: 'ot-grid' });
+    g.appendChild(btn('Supplies', 'plain', showSupplies, { icon: 'inbox' }));
+    g.appendChild(btn('Map', 'plain', showMap, { icon: 'globe' }));
+    g.appendChild(btn('Pace', 'plain', showPace, { icon: 'bolt' }));
+    g.appendChild(btn('Rations', 'plain', showRations, { icon: 'coffee' }));
+    g.appendChild(btn('Rest', 'plain', showRest, { icon: 'moon' }));
+    var tr = btn('Trade', 'plain' + (blocked ? ' hot' : ''), showTrade, { icon: 'swap' }); g.appendChild(tr);
+    if (atLand && OT.TALK[S.at]) g.appendChild(btn('Talk', 'plain', showTalk, { icon: 'users' }));
+    if (atLand && nd.kind === 'fort') g.appendChild(btn('Buy', 'plain', function () { showStore(false); }, { icon: 'coins' }));
+    act.appendChild(g);
+  }
+  function leaveStop() {
+    var nd = here();
+    if (nd.fork && !S.next) return showFork();
+    if (!S.next) { var nx = nd.next[0]; S.next = nx.to; S.segMi = nx.mi; S.done = 0; }
+    showTravel(true);
+  }
+  function showFork() {
+    var nd = here();
+    clearLow();
+    info.appendChild(el('h2', { text: 'The trail divides here' }));
+    say(info, nd.id === 'bluemtns' || S.at === 'bluemtns' ? 'You may head for Fort Walla Walla, or go straight on to The Dalles.' : 'You may head for the Green River crossing, or for Fort Bridger.');
+    nd.next.forEach(function (x) {
+      act.appendChild(btn(x.label, 'go', function () { S.next = x.to; S.segMi = x.mi; S.done = 0; save(); showTravel(true); }, { icon: 'flag', sub: x.mi + ' miles. ' + x.sub }));
+    });
+    act.appendChild(btn('Not yet', 'plain', function () { paintStop(false); }, { icon: 'back' }));
+  }
+
+  // ── The stop menu's pages ───────────────────────────────────────────────
+  function backBtn() { return btn('Back', 'plain', function () { if (S.phase === 'river') showRiverPanel(); else if (S.phase === 'dalles') paintDalles(); else paintStop(false); }, { icon: 'back' }); }
+  function showSupplies() {
+    clearLow();
+    info.appendChild(el('h2', { text: 'Your supplies' }));
+    var rows = [['Oxen', S.oxen + (S.oxHurt ? ' (' + S.oxHurt + ' injured)' : '')], ['Sets of clothing', S.clothes], ['Bullets', S.bullets], ['Wagon wheels', S.wheels], ['Wagon axles', S.axles], ['Wagon tongues', S.tongues], ['Pounds of food', n(S.food)], ['Money left', money(S.cash)]];
+    info.insertAdjacentHTML('beforeend', '<dl class="ot-stat">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd class="yel">' + r[1] + '</dd>'; }).join('') + '</dl>');
+    var days = Math.floor(S.food / Math.max(1, alive().length * OT.RATIONS[S.rations - 1].lb));
+    info.appendChild(el('p', { class: 'dim', style: { 'margin-top': '6px' }, text: 'Food for about ' + plural(days, 'day') + ' at ' + OT.RATIONS[S.rations - 1].name.toLowerCase() + ' rations.' }));
+    act.appendChild(backBtn());
+  }
+  function showPace() { pickList('Change pace', OT.PACE, S.pace, function (v) { S.pace = v; }); }
+  function showRations() { pickList('Change food rations', OT.RATIONS, S.rations, function (v) { S.rations = v; }); }
+  function pickList(title, list, cur, set) {
+    clearLow();
+    info.appendChild(el('h2', { text: title }));
+    var curItem = list[cur - 1];
+    info.appendChild(el('p', { html: 'Right now: <span class="yel">' + esc(curItem.name) + '</span>' }));
+    list.forEach(function (x) { act.appendChild(btn(x.name, x.id === cur ? 'go' : '', function () { set(x.id); save(); SND.tick(); pickList(title, list, x.id, set); }, { sub: x.desc, icon: x.id === cur ? 'check' : null })); });
+    act.appendChild(backBtn());
+  }
+  function showRest() {
+    clearLow();
+    var d = 2;
+    info.appendChild(el('h2', { text: 'Stop to rest' }));
+    var p = el('p'); info.appendChild(p);
+    function paint() { p.innerHTML = 'Rest for <span class="yel">' + plural(d, 'day') + '</span>. Resting helps the sick and the tired get better, but everyone still eats.'; }
+    paint();
+    var row = el('div', { class: 'ot-row2' });
+    row.appendChild(btn('Fewer', 'plain', function () { d = Math.max(1, d - 1); paint(); }, { icon: 'minus' }));
+    row.appendChild(btn('More', 'plain', function () { d = Math.min(9, d + 1); paint(); }, { icon: 'plus' }));
+    act.appendChild(row);
+    act.appendChild(btn('Rest', 'go', function () { passDays(d, 'rest', 'You rest for ' + plural(d, 'day') + '.'); }, { icon: 'moon' }));
+    act.appendChild(backBtn());
+  }
+  // days pass where you are (rest, waiting, trading): show what happened, then come back here
+  function passDays(k, how, text) {
+    var out = [];
+    for (var i = 0; i < k && leader().alive; i++) day(how, out);
+    save();
+    out.unshift({ t: text + ' Health is now ' + OT.HEALTH[hIdx()] + '.', tone: '' });
+    return present(out).then(function (r) { if (r === 'over') return 'over'; back(); return r; });
+  }
+  function back() { if (S.phase === 'river') showRiver(false); else if (S.phase === 'dalles') showDalles(false); else showStop(false); }
+
+  // trading: someone offers a swap; trying takes a day
+  var GOODS = { oxen: ['ox', 'oxen', 25], food: ['pound of food', 'pounds of food', 0.25], clothes: ['set of clothing', 'sets of clothing', 12], bullets: ['bullet', 'bullets', 0.12], wheels: ['wagon wheel', 'wagon wheels', 16], axles: ['wagon axle', 'wagon axles', 16], tongues: ['wagon tongue', 'wagon tongues', 16] };
+  function gname(k, q) { return plural(q, GOODS[k][0], GOODS[k][1]); }
+  function makeOffer() {
+    var mine = Object.keys(GOODS).filter(function (k) { return S[k] > (k === 'food' ? 40 : k === 'bullets' ? 20 : k === 'oxen' ? 2 : 0); });
+    if (!mine.length) return null;
+    var want = pick(mine), give;
+    if (S.broken && chance(0.6)) give = PART[S.broken];
+    else if (S.oxen <= 0 && chance(0.6)) give = 'oxen';
+    else give = pick(Object.keys(GOODS).filter(function (k) { return k !== want; }));
+    if (give === want) return null;
+    var wq = want === 'food' ? ri(2, 8) * 25 : want === 'bullets' ? ri(2, 8) * 10 : want === 'oxen' ? 1 : ri(1, Math.min(3, S[want]));
+    wq = Math.min(wq, S[want]);
+    var val = wq * GOODS[want][2] * (0.6 + Math.random() * 0.8);
+    var gq = Math.max(1, Math.round(val / GOODS[give][2]));
+    if (give === 'food') gq = Math.max(25, Math.round(gq / 25) * 25);
+    if (give === 'bullets') gq = Math.max(10, Math.round(gq / 10) * 10);
+    if (give === 'oxen') gq = Math.min(2, gq);
+    if (PART[S.broken] === give) gq = 1;
+    return { want: want, wq: wq, give: give, gq: gq };
+  }
+  function showTrade() {
+    clearLow();
+    info.appendChild(el('h2', { text: 'Trading' }));
+    var o = makeOffer();
+    S.date += DAY; S.days++; save();   // asking around takes a day
+    var who = pick(['A man', 'A woman', 'A trader', 'An emigrant family', 'A trapper', 'A Shoshone trader', 'A soldier']);
+    if (!o) { say(info, 'You ask around for a day, but no one wants to trade with you.'); act.appendChild(backBtn()); return; }
+    say(info, who + ' would like ' + gname(o.want, o.wq) + '. In return, they offer ' + gname(o.give, o.gq) + '.\n\nYou have ' + gname(o.want, S[o.want]) + '.');
+    act.appendChild(btn('Make the trade', 'go', function () {
+      S[o.want] -= o.wq; S[o.give] += o.gq;
+      if (o.want === 'oxen' && S.oxHurt > S.oxen) S.oxHurt = S.oxen;
+      if (o.give === 'food') S.food = Math.min(OT.FOOD_MAX, S.food);
+      var fixed = S.broken && PART[S.broken] === o.give;
+      if (fixed) { S[o.give]--; S.broken = null; }
+      save(); SND.good(); Kit.haptic('success');
+      clearLow(); say(info, fixed ? 'You trade, and fit the new ' + o.give.replace(/s$/, '') + ' to the wagon. You can go on.' : 'It\'s a deal.');
+      act.appendChild(btn('Trade again', '', showTrade, { icon: 'swap' })); act.appendChild(backBtn());
+    }, { icon: 'swap' }));
+    act.appendChild(btn('No thanks', 'plain', function () { paintStopOrBack(); }, { icon: 'close' }));
+  }
+  function paintStopOrBack() { if (S.phase === 'river') showRiverPanel(); else if (S.phase === 'dalles') paintDalles(); else paintStop(false); }
+  var talkI = {};
+  function showTalk() {
+    clearLow();
+    var list = OT.TALK[S.at] || [], i = (talkI[S.at] = ((talkI[S.at] == null ? -1 : talkI[S.at]) + 1) % list.length), q = list[i];
+    var box = el('div', { class: 'ot-quote' }); box.appendChild(el('b', { text: q[0] + ':' })); info.appendChild(box);
+    say(box, '"' + q[1] + '"');
+    act.appendChild(btn('Talk to someone else', '', showTalk, { icon: 'users' }));
+    act.appendChild(backBtn());
+  }
+  // the map in the picture
+  function showMap() {
+    var prev = view;
+    var mv = { resize: function (W, H) { mv.m = OTArt.map(W, H, { map: OT.MAP, nodes: N, path: S.path, here: S.next ? { lon: N[S.at].lon + (N[S.next].lon - N[S.at].lon) * S.done / S.segMi, lat: N[S.at].lat + (N[S.next].lat - N[S.at].lat) * S.done / S.segMi } : null }); },
+      draw: function (c, t) { if (!mv.m) return; c.drawImage(mv.m.img, 0, 0); var a = S.next ? N[S.at] : N[S.at], x = mv.m.X(a.lon), y = mv.m.Y(a.lat);
+        if (S.next) { x = mv.m.X(N[S.at].lon + (N[S.next].lon - N[S.at].lon) * S.done / S.segMi); y = mv.m.Y(N[S.at].lat + (N[S.next].lat - N[S.at].lat) * S.done / S.segMi); }
+        if (Math.floor(t / 300) % 2) { var P = OTArt.P(c); P.r(x - 3, y - 3, 7, 7, 'k'); P.r(x - 2, y - 2, 5, 5, 'R'); } } };
+    view = null; setView(mv, { frac: land() ? 0.62 : 0.62 }); mv.resize(LW, LH);
+    clearLow();
+    info.appendChild(el('h2', { text: 'The trail' }));
+    var total = 0, seq = [];
+    info.insertAdjacentHTML('beforeend', '<p>You have traveled <span class="yel">' + plural(Math.floor(S.miles), 'mile') + '</span> since ' + dstr(S.start).replace(/, \d+$/, '') + '.' + (S.next ? ' Next: <span class="yel">' + esc(N[S.next].name) + '</span>, ' + plural(Math.ceil(S.segMi - S.done), 'mile') + ' away.' : '') + '</p>' +
+      '<p class="dim" style="font-size:1.1rem">Red: the way you came. Dots: the trail ahead. Yellow: landmarks, white: forts, blue: rivers.</p>');
+    act.appendChild(btn('Close the map', 'plain', function () { back(); }, { icon: 'back' }));
+  }
+
+  // ── Rivers ──────────────────────────────────────────────────────────────
+  function riverNow(id) {
+    var R = OT.RIVERS[id], m = month();
+    var d = R.base + R.spring * OT.SPRING[m] + (S.wet || 0) * 0.5;
+    d = Math.max(0.6, d * (0.85 + Math.random() * 0.3));
+    return { id: id, depth: Math.round(d * 10) / 10, width: ri(R.width[0], R.width[1]), waited: 0 };
+  }
+  var crossing = null;   // the wagon crossing: {how, t0, fail}
+  function riverView(id) {
+    return picView(id, {}, function (c, t, pic) {
+      if (!crossing) return;
+      var p = clamp((performance.now() - crossing.t0) / crossing.dur, 0, 1), P = OTArt.P(c), W = c.canvas.width;
+      var wy = Math.round((pic.wTop + pic.wBot) / 2) - 16, x = Math.round(W - 30 - p * (W + 40)), bob = Math.round(Math.sin(t / 160) * 1.2);
+      if (crossing.how === 'ferry' || crossing.how === 'guide') { P.r(x - 34, wy + 20, 74, 5, 'n'); P.r(x - 34, wy + 20, 74, 1, 'y'); P.line(0, wy + 4, W, wy + 4, 'd'); }
+      var tip = crossing.fail && p > 0.45 ? Math.min(1, (p - 0.45) * 5) : 0;
+      c.save();
+      if (tip) { c.translate(x + 14, wy + 20); c.rotate(-tip * 1.2); c.translate(-(x + 14), -(wy + 20)); }
+      OTArt.team(P, x, wy + bob + (crossing.how === 'float' ? 4 : 0), Math.floor(t / 200), -t / 300, { oxen: crossing.how === 'float' ? 0 : Math.min(4, S.oxen) });
+      c.restore();
+      // the water covers the wheels
+      if (crossing.how !== 'ferry' && crossing.how !== 'guide') { var top = wy + (crossing.how === 'float' ? 22 : 18) + bob; OTArt.water(P, Math.max(0, x - 60), top, 110, 8, t * 2, false); }
+      for (var k = 0; k < 6; k++) { var sx = x + 34 + k * 3 + Math.round(Math.sin(t / 90 + k) * 2); P.px(sx, wy + 22 + (k % 3), 'w'); }
+      if (tip) for (var j = 0; j < 7; j++) { var fx = x + 20 + j * 14 + Math.round((p - 0.45) * 120), fy = wy + 24 + (j % 3) * 4 + Math.round(Math.sin(t / 200 + j) * 1.5); P.r(fx, fy, 4, 3, j % 2 ? 'n' : 'w'); P.px(fx, fy, 'k'); }
+    });
+  }
+  function showRiver(arrived) {
+    S.phase = 'river'; save();
+    var id = S.at, nd = here();
+    shell(); setView(riverView(id), { frac: 0.5 });
+    musicWanted = false;
+    banner(nd.name, dstr(S.date));
+    if (arrived) SND.water();
+    showRiverPanel(arrived);
+  }
+  function showRiverPanel(arrived) {
+    clearLow();
+    var R = S.river, cfg = OT.RIVERS[S.at];
+    var p = el('p'); info.appendChild(p);
+    say(p, (arrived ? 'You must cross the river in order to continue. ' : '') + 'The river is ' + n(R.width) + ' feet across, and ' + R.depth.toFixed(1) + ' feet deep in the middle.');
+    info.insertAdjacentHTML('beforeend', '<div class="dim" style="font-size:1.15rem;margin-top:4px">' + dstr(S.date) + ' · Weather: ' + wxWord() + '</div>' + partyHTML());
+    var g = el('div', { style: { display: 'flex', 'flex-direction': 'column', gap: '6px' } });
+    g.appendChild(btn('Attempt to ford the river', R.depth > 3 ? 'warn' : '', function () { cross('ford'); }, { sub: R.depth <= 2.5 ? 'Shallow enough to wade' : R.depth <= 3 ? 'Your supplies may get wet' : 'Deep: the wagon may tip over', icon: 'flag' }));
+    g.appendChild(btn('Caulk the wagon and float it', '', function () { cross('float'); }, { sub: R.depth < 1.5 ? 'Too shallow to float' : 'Seal the wagon bed and float across', icon: 'anchor', disabled: R.depth < 1.5 }));
+    if (cfg.ferry) g.appendChild(btn('Take a ferry across', '', function () { cross('ferry'); }, { sub: money(cfg.ferry.cost) + ' and a wait of a few days', icon: 'coins', disabled: S.cash < cfg.ferry.cost }));
+    if (cfg.guide) g.appendChild(btn('Hire a Shoshone guide', '', function () { cross('guide'); }, { sub: 'For ' + cfg.guide.clothes + ' sets of clothing', icon: 'users', disabled: S.clothes < cfg.guide.clothes }));
+    g.appendChild(btn('Wait a day to see if conditions improve', 'plain', function () { var r0 = S.river; passDays(1, 'rest', 'You wait a day.').then(function () { var nr = riverNow(S.at); nr.width = r0.width; nr.depth = Math.round(((r0.depth * 2 + nr.depth) / 3) * 10) / 10; S.river = nr; save(); showRiverPanel(false); }); }, { icon: 'clock' }));
+    var more = el('div', { class: 'ot-row2' });
+    more.appendChild(btn('Talk', 'plain', showTalk, { icon: 'users' }));
+    more.appendChild(btn('Supplies', 'plain', showSupplies, { icon: 'inbox' }));
+    g.appendChild(more);
+    act.appendChild(g);
+  }
+  function cross(how) {
+    var R = S.river, cfg = OT.RIVERS[S.at], out = [], fail = false, wet = false;
+    if (how === 'ferry') {
+      S.cash -= cfg.ferry.cost; var w = ri(cfg.ferry.wait[0], cfg.ferry.wait[1]);
+      out.push({ t: 'The ferry operator takes ' + money(cfg.ferry.cost) + '. You will have to wait ' + plural(w, 'day') + ' for your turn.', tone: '' });
+      for (var i = 0; i < w; i++) day('rest', out);
+    } else if (how === 'guide') { S.clothes -= cfg.guide.clothes; fail = chance(0.03); }
+    else if (how === 'ford') { if (R.depth > 3) fail = chance(Math.min(0.92, 0.32 + (R.depth - 3) * 0.24)); else if (R.depth > 2.5) wet = chance(0.6); }
+    else if (how === 'float') fail = chance(Math.min(0.5, 0.07 + R.width / 8000 + (R.depth > 8 ? 0.05 : 0)));
+    if (!leader().alive) { save(); return present(out); }
+    var go2 = function () {
+      clearLow();
+      info.appendChild(el('p', { class: 'yel', text: { ford: 'Fording the river...', float: 'Floating the wagon across...', ferry: 'The ferry takes you across...', guide: 'The guide leads you across...' }[how] }));
+      crossing = { how: how, t0: performance.now(), dur: fail ? 3800 : 3200, fail: fail };
+      SND.water(); setTimeout(SND.water, 1500);
+      if (fail) setTimeout(function () { SND.splash(); Kit.haptic('heavy'); }, crossing.dur * 0.5);
+      setTimeout(function () {
+        crossing = null;
+        var res = [];
+        if (fail) res = capsize(how);
+        else if (wet) { var q = Math.min(S.food, ri(10, 40)); S.food -= q; res.push({ t: 'Your supplies got wet. You lose ' + plural(q, 'pound') + ' of food and a day drying everything out.', tone: 'bad', sfx: 'bad' }); lose(1, res); }
+        else res.push({ t: how === 'ford' && R.depth > 2 ? 'It was a muddy crossing, but you made it across.' : 'You made it across safely.', tone: 'good', sfx: 'good' });
+        S.crossed.push(S.at.slice(0, 2) + how.charAt(0) + (fail ? 'x' : ''));
+        var nx = here().next[0]; S.next = nx.to; S.segMi = nx.mi; S.done = 0; S.phase = 'travel'; S.river = null; save();
+        present(res).then(function (r) { if (r === 'over') return; showTravel(true); });
+      }, crossing.dur + 200);
+    };
+    if (out.length) present(out).then(function (r) { if (r !== 'over') { showRiver(false); go2(); } }); else go2();
+  }
+  function capsize(how) {
+    var res = [], lost = [];
+    function takeFrac(k, label, f, min) { if (S[k] <= 0) return; var q = Math.max(min || 1, Math.round(S[k] * f)); q = Math.min(q, S[k]); S[k] -= q; lost.push(label(q)); }
+    var f = 0.2 + Math.random() * 0.35;
+    takeFrac('food', function (q) { return plural(q, 'pound') + ' of food'; }, f, 10);
+    if (chance(0.7)) takeFrac('clothes', function (q) { return plural(q, 'set') + ' of clothing'; }, f);
+    if (chance(0.6)) takeFrac('bullets', function (q) { return plural(q, 'bullet'); }, f, 10);
+    ['wheels', 'axles', 'tongues'].forEach(function (k) { if (S[k] && chance(0.3)) { S[k]--; lost.push('a wagon ' + k.replace(/s$/, '')); } });
+    if (how === 'ford' && S.oxen > 1 && chance(0.35)) { S.oxen--; lost.push('an ox'); }
+    res.push({ t: (how === 'float' ? 'The wagon tips over while floating.' : how === 'guide' ? 'The current pulls the wagon off the guide\'s line.' : 'The wagon tips over while fording.') + (lost.length ? ' You lose ' + listJoin(lost) + '.' : ''), tone: 'bad', sfx: 'bad' });
+    var others = alive().slice(1);
+    if (others.length && chance(how === 'guide' ? 0.15 : 0.3)) kill(pick(others), 'drowning', res);
+    lose(1, res);
+    return res;
+  }
+
+  // ── The Dalles: the river or the Barlow Road ────────────────────────────
+  function showDalles(arrived) {
+    S.phase = 'dalles'; save();
+    shell(); setView(picView('dalles'), { frac: 0.5 });
+    banner('The Dalles', dstr(S.date));
+    paintDalles(arrived);
+  }
+  function paintDalles(arrived) {
+    clearLow();
+    var p = el('p'); info.appendChild(p);
+    say(p, (arrived ? 'You are now at The Dalles. ' : '') + 'The road ends here at the Columbia River. To reach the Willamette Valley you can float your wagon down the river on a raft, or take the Barlow Toll Road around the south side of Mount Hood.');
+    info.insertAdjacentHTML('beforeend', statusHTML());
+    act.appendChild(btn('Float down the Columbia River', 'go', startRaft, { icon: 'anchor', sub: OT.COLUMBIA.mi + ' miles of fast water. You steer the raft' }));
+    act.appendChild(btn('Take the Barlow Toll Road', '', function () {
+      S.cash -= OT.BARLOW.toll; S.barlow = true; S.next = 'willamette'; S.segMi = OT.BARLOW.mi; S.done = 0; save(); SND.coin();
+      showTravel(true);
+    }, { icon: 'mountain', sub: money(OT.BARLOW.toll) + ' toll. ' + OT.BARLOW.mi + ' miles of steep mountain road', disabled: S.cash < OT.BARLOW.toll || S.broken || S.oxen <= 0 }));
+    var g = el('div', { class: 'ot-grid' });
+    g.appendChild(btn('Talk', 'plain', showTalk, { icon: 'users' }));
+    g.appendChild(btn('Supplies', 'plain', showSupplies, { icon: 'inbox' }));
+    g.appendChild(btn('Rest', 'plain', showRest, { icon: 'moon' }));
+    g.appendChild(btn('Trade', 'plain', showTrade, { icon: 'swap' }));
+    g.appendChild(btn('Map', 'plain', showMap, { icon: 'globe' }));
+    g.appendChild(btn('Rations', 'plain', showRations, { icon: 'coffee' }));
+    act.appendChild(g);
+  }
+  // the raft down the Columbia: the steering game lives in raftGame (below); without it the float is left to chance
+  function startRaft() {
+    S.raft = true; save();
+    if (window.OTRaft) return OTRaft.start();
+    var out = [];
+    for (var i = 0; i < 5; i++) day('wait', out);
+    if (chance(0.3)) { var q = Math.min(S.food, ri(30, 120)); S.food -= q; out.push({ t: 'The raft strikes a rock in the rapids. You lose ' + plural(q, 'pound') + ' of food.', tone: 'bad', sfx: 'bonk' }); if (chance(0.25) && alive().length > 1) kill(pick(alive().slice(1)), 'drowning', out); }
+    else out.push({ t: 'You float down the Columbia without trouble.', tone: 'good' });
+    present(out).then(function (r) { if (r === 'over') return; S.next = 'willamette'; arrive(); });
+  }
+
+  // ── Deaths and graves ───────────────────────────────────────────────────
+  function causeText(c) { return c === 'drowning' ? 'drowned' : c === 'starvation' ? 'starved to death' : 'died of ' + c; }
+  function tombView(seed) {
+    var v = picView('tomb', { mood: 'gray', seed: seed });
+    return v;
+  }
+  // writing on the stone, laid over the picture where the stone is
+  function stoneText(v, lines) {
+    var box = el('div', { class: 'tb-txt' });
+    ov.appendChild(box);
+    function place() {
+      var s = root._s, st = v.pic && v.pic.stone; if (!st) return;
+      var ar = Math.round(st.w * 0.36);
+      box.style.left = ((st.x + st.w * 0.08) * s) + 'px'; box.style.top = ((st.y + ar * 0.55) * s) + 'px'; box.style.width = (st.w * 0.84 * s) + 'px'; box.style.height = ((st.h - ar * 0.55 - 5) * s) + 'px';
+    }
+    box.innerHTML = '<div class="hl">Here lies</div><div class="nm">' + esc(lines.name) + '</div><div class="ep">' + esc(lines.ep || '') + '</div><div class="dt">' + esc(lines.date || '') + '</div>';
+    setTimeout(place, 30); setTimeout(place, 300);
+    return { el: box, ep: function (t) { box.querySelector('.ep').textContent = t; }, place: place };
+  }
+  function deathScreen(p) {
+    return new Promise(function (res) {
+      var isLeader = p === leader();
+      shell(); var v = tombView(p.n.length * 7 + S.days); setView(v, { frac: 0.55 });
+      musicWanted = false;
+      SND.dirge(); Kit.haptic('heavy');
+      var st = stoneText(v, { name: p.n, ep: '', date: dstr(p.date) });
+      clearLow();
+      var msg = el('p', { class: 'red' }); info.appendChild(msg);
+      say(msg, isLeader ? 'You have ' + causeText(p.cause).replace(/^died/, 'died') + '.' : p.n + ' has ' + causeText(p.cause) + '.');
+      info.appendChild(el('p', { class: 'dim', text: 'Write an epitaph for the tombstone. Travelers who pass this way will read it.', style: { 'margin-top': '6px' } }));
+      var inp = el('input', { class: 'ot-in', type: 'text', maxlength: '40', placeholder: pick(OT.EPITAPHS), autocomplete: 'off' });
+      inp.addEventListener('input', function () { st.ep(inp.value); SND.key(); });
+      info.appendChild(inp);
+      var chips = el('div', { class: 'nm-chips' });
+      OT.EPITAPHS.slice().sort(function () { return Math.random() - 0.5; }).slice(0, 4).forEach(function (e) { chips.appendChild(el('button', { type: 'button', text: e, onclick: function () { inp.value = e; st.ep(e); SND.key(); } })); });
+      info.appendChild(chips);
+      act.appendChild(btn('Lay ' + (isLeader ? 'yourself' : p.n) + ' to rest', 'go', function () {
+        var ep = inp.value.trim().slice(0, 40);
+        p.ep = ep;
+        addGrave({ n: p.n, e: ep, c: p.cause, at: p.at, to: S.next || p.at, d: Math.round(p.d || 0), y: dstr(p.date), by: leader().n, t: Date.now(), k: S.started });
+        (S.log = S.log || []).push({ n: p.n, c: p.cause, at: N[p.at].short || N[p.at].name, date: dstr(p.date) });
+        save();
+        if (isLeader || !alive().length) { gameOver(p); res('over'); return; }
+        res('ok');
+      }, { icon: 'feather' }));
+    });
+  }
+  function graveScreen(g) {
+    return new Promise(function (res) {
+      var was = view, wasMode = mode, frac = sceneFrac;
+      var v = tombView(g.n.length * 7 + (g.t || 0) % 97);
+      setView(v, { frac: 0.52 });
+      stoneText(v, { name: g.n, ep: g.e, date: g.y });
+      SND.dirge();
+      clearLow();
+      var p = el('p'); info.appendChild(p);
+      say(p, 'You pass a grave by the trail. ' + g.n + ' ' + causeText(g.c) + (g.by && g.by !== g.n ? ', traveling with ' + g.by : '') + '.');
+      act.appendChild(btn('Pay your respects and go on', 'go', function () { setView(travelView(), { frac: 0.52 }); res(); }, { icon: 'flag' }));
+    });
+  }
+  function gameOver(p) {
+    S.phase = 'over';
+    recordTrip(false, p);
+    clearSave();
+    clearLow();
+    info.appendChild(el('h2', { text: 'Your journey has ended' }));
+    say(info, p.n + ' ' + causeText(p.cause) + ' near ' + (N[p.at].short || N[p.at].name) + ', ' + plural(Math.floor(S.miles), 'mile') + ' from Independence, on ' + dstr(p.date) + '.' + (alive().length ? ' The rest of the party turns back.' : ''));
+    var occ = S.occ;
+    act.appendChild(btn('Try the trail again', 'go', function () { S = null; showSetup(); }, { icon: 'flag' }));
+    act.appendChild(btn('Back to games', 'plain', function () { S = null; Kit.home(); }, { icon: 'home' }));
+  }
+
+  // ── Oregon! ─────────────────────────────────────────────────────────────
+  function arriveOregon() {
+    S.phase = 'over'; save();
+    shell(); setView(picView('willamette'), { frac: 0.5 });
+    musicWanted = false;
+    banner('Willamette Valley, Oregon', dstr(S.date));
+    jingle([[72, 1], [72, 1], [74, 1], [76, 2], [79, 2], [79, 1], [81, 1], [79, 1], [76, 1], [72, 1], [74, 1], [76, 2], [76, 1], [74, 1], [72, 4]], 0.14, 0.05);
+    Kit.confetti(); Kit.haptic('success');
+    setTimeout(function () { Kit.callout('You made it to Oregon!'); }, 300);
+    clearLow();
+    var p = el('p', { class: 'yel' }); info.appendChild(p);
+    say(p, 'Congratulations! You have made it to Oregon! ' + (alive().length === 5 ? 'Everyone in your party made it.' : plural(alive().length, 'person', 'people') + ' in your party made it.') + '\n\nLet\'s see how many points you have earned.');
+    act.appendChild(btn('Count the points', 'go', showScore, { icon: 'star' }));
+  }
+  function scoreRows() {
+    var h = hIdx(), sc = OT.SCORE, k = alive().length, parts = partsCount(), rows = [];
+    rows.push([plural(k, 'person', 'people') + ' in ' + OT.HEALTH[h] + ' health', k * sc.person[h]]);
+    rows.push(['1 wagon', sc.wagon]);
+    rows.push([plural(S.oxen, 'ox', 'oxen'), S.oxen * sc.ox]);
+    rows.push([plural(parts, 'spare wagon part'), parts * sc.part]);
+    rows.push([plural(S.clothes, 'set') + ' of clothing', S.clothes * sc.clothes]);
+    rows.push([plural(S.bullets, 'bullet'), Math.floor(S.bullets / sc.bullets)]);
+    rows.push([plural(S.food, 'pound') + ' of food', Math.floor(S.food / sc.food)]);
+    rows.push([money(Math.floor(S.cash)) + ' cash', Math.floor(Math.floor(S.cash) / sc.cash)]);
+    return rows;
+  }
+  function finalScore() { var t = 0; scoreRows().forEach(function (r) { t += r[1]; }); return t * OT.OCC[S.occ].mult; }
+  function rating(v) { for (var i = 0; i < OT.RATINGS.length; i++) if (v >= OT.RATINGS[i][0]) return OT.RATINGS[i][1]; return 'Greenhorn'; }
+  function showScore() {
+    clearLow();
+    info.appendChild(el('h2', { text: 'Points for arriving in Oregon' }));
+    var tb = el('table', { class: 'sc-t' }); info.appendChild(tb);
+    var rows = scoreRows(), sub = 0, i = 0, mult = OT.OCC[S.occ].mult;
+    var total = finalScore();
+    recordTrip(true);
+    (function nextRow() {
+      if (i < rows.length) {
+        var r = rows[i++], tr = el('tr', { class: 'in' }, [el('td', { text: r[0] }), el('td', { text: '0' })]); tb.appendChild(tr);
+        var cell = tr.lastChild, k = 0, steps = 8;
+        var iv = setInterval(function () { k++; cell.textContent = n(r[1] * k / steps); SND.tally(k); if (k >= steps) { clearInterval(iv); sub += r[1]; info.scrollTop = 1e6; setTimeout(nextRow, 120); } }, 35);
+        return;
+      }
+      tb.appendChild(el('tr', { class: 'in' }, [el('td', { text: 'Subtotal' }), el('td', { text: n(sub) })]));
+      tb.appendChild(el('tr', { class: 'in' }, [el('td', { text: 'Bonus for arriving as a ' + OT.OCC[S.occ].name.toLowerCase() }), el('td', { text: '× ' + mult })]));
+      var tot = el('tr', { class: 'in tot' }, [el('td', { text: 'Total' }), el('td', { text: n(total) })]); tb.appendChild(tot);
+      info.scrollTop = 1e6;
+      jingle([[72, 1], [76, 1], [79, 1], [84, 3]], 0.09, 0.05); Kit.haptic('success');
+      if (total >= 7000) { Kit.confetti(); Kit.callout('Trail guide!'); }
+      act.appendChild(btn('See the Oregon Top Ten', 'go', function () {
+        clearSave();
+        ArcadeHi.check(BOARD, total, function () { showTopTen(total); });
+      }, { icon: 'trophy' }));
+    })();
+  }
+  function showTopTen(mine) {
+    shell(); setView(picView('title'), { frac: 0.36 });
+    banner('The Oregon Top Ten');
+    musicWanted = true;
+    clearLow();
+    var board = []; try { board = ArcadeHi.board(BOARD) || []; } catch (e) {}
+    var rows = board.slice(0, 10).map(function (e) { return { name: e.by ? e.by : e.name, score: e.score, me: mine != null && e.score === mine && !e.by }; });
+    var markedMe = false; rows.forEach(function (r) { if (r.me && !markedMe) markedMe = true; else r.me = false; });
+    OT.PIONEERS.forEach(function (pi) { if (rows.length < 10 && rows.every(function (r) { return r.score !== pi[1]; })) rows.push({ name: pi[0], score: pi[1], old: true }); });
+    rows.sort(function (a, b) { return b.score - a.score; }); rows = rows.slice(0, 10);
+    var tb = el('table', { class: 'sc-t tt' });
+    rows.forEach(function (r, i) { tb.appendChild(el('tr', { class: (r.me ? 'me' : '') + (r.old ? ' old' : '') }, [el('td', { text: String(i + 1) }), el('td', { text: r.name }), el('td', { text: n(r.score) }), el('td', { text: rating(r.score) })])); });
+    info.appendChild(tb);
+    if (mine != null) info.appendChild(el('p', { style: { 'margin-top': '8px' }, html: 'Your score: <span class="yel">' + n(mine) + '</span>, rated <span class="yel">' + rating(mine) + '</span>.' }));
+    info.appendChild(el('p', { class: 'dim', style: { 'font-size': '1.1rem' }, text: 'Trail guide: 7,000 and up. Adventurer: 3,000 to 6,999. Greenhorn: under 3,000.' }));
+    act.appendChild(btn('Travel the trail again', 'go', function () { S = null; showSetup(); }, { icon: 'flag' }));
+    act.appendChild(btn('Back to games', 'plain', function () { S = null; Kit.home(); }, { icon: 'home' }));
+  }
+
+  // ── History ─────────────────────────────────────────────────────────────
+  function recordTrip(arrived, died) {
+    if (!S || S.recorded) return;
+    S.recorded = true;
+    var score = arrived ? finalScore() : 0, nm = leader().n, occ = OT.OCC[S.occ];
+    var where = died ? (N[died.at].short || N[died.at].name) : arrived ? 'Oregon' : (N[S.at].short || N[S.at].name);
+    var hl = [];
+    if (arrived) hl.push('Reached the Willamette Valley on ' + dstr(S.date) + ', ' + plural(S.days, 'day') + ' after leaving Independence');
+    else if (died) hl.push(died.n + ' ' + causeText(died.cause) + ' near ' + where + ', ' + plural(Math.floor(S.miles), 'mile') + ' along the trail');
+    (S.log || []).forEach(function (d) { if (!died || d.n !== died.n) hl.push(d.n + ' ' + causeText(d.c) + ' near ' + d.at + ' (' + d.date + ')'); });
+    if (S.killed) hl.push('Brought back ' + plural(S.hunted, 'pound') + ' of meat from hunting');
+    Kit.record(HKEY, {
+      started: S.started, mode: occ.name, players: [{ name: nm, score: score }], winner: arrived ? nm : null,
+      summary: arrived ? 'Reached Oregon · ' + n(score) + ' points' : 'Died near ' + where,
+      badge: arrived ? n(score) : 'RIP', highlights: hl,
+      meta: { arrived: arrived, occ: S.occ, score: score, miles: Math.floor(S.miles) },
+      detail: { o: S.occ, a: arrived ? 1 : 0, s: score, r: arrived ? rating(score) : '', mi: Math.floor(S.miles), dy: S.days, st: dstr(S.start), en: dstr(S.date), w: where,
+        p: S.people.map(function (p) { return { n: p.n, a: p.alive ? 1 : 0, c: p.cause || '', e: p.ep || '', at: p.at ? (N[p.at].short || N[p.at].name) : '' }; }),
+        h: OT.HEALTH[hIdx()], route: S.path.map(function (id) { return N[id].short || N[id].name; }).join('|'), f: S.food, c: Math.floor(S.cash), ox: S.oxen, b: S.bullets, cl: S.clothes, hu: S.hunted || 0 }
+    });
+  }
+
+  // ── The game bar ────────────────────────────────────────────────────────
+  Kit.init({
+    id: 'oregon',
+    theme: { felt: ['#3f5a2a', '#2b3f1c', '#1c2a12'], wood: ['#9a6a3e', '#6a4424'] },
+    onNew: function () {
+      if (S && S.phase !== 'over' && S.phase !== 'names') Kit.confirm('Start a new trip? This one ends here.', { ok: 'New trip', danger: true }).then(function (y) { if (y) { recordTrip(false); clearSave(); S = null; showSetup(); } });
+      else { clearSave(); S = null; showSetup(); }
+    },
+    menu: [
+      music.menuItem,
+      { icon: 'trophy', label: 'Oregon Top Ten', onClick: function () { if (S && S.phase !== 'over') ArcadeHi.show(BOARD); else showTopTen(null); } },
+      { icon: 'history', label: 'Past trips', onClick: function () { Kit.history(HKEY, { title: 'The Oregon Trail: past trips' }); } }
+    ],
+    rules:
+      '<p class="goal">Lead your party of five from Independence, Missouri to the Willamette Valley in Oregon, 2,000 miles away, in 1848. Get there with as many people, supplies and as much money as you can.</p>' +
+      '<h3>Before you leave</h3><ul><li><b>Occupation.</b> A banker starts with $1,600, a carpenter with $800, a farmer with $400. A carpenter\'s points are doubled and a farmer\'s tripled. Carpenters are better at fixing the wagon; farmers keep their oxen healthier.</li>' +
+      '<li><b>Month.</b> Leave too early and there\'s no grass for the oxen; too late and you\'ll meet snow in the mountains.</li>' +
+      '<li><b>Matt\'s General Store.</b> Oxen ($40 a yoke), food (20 cents a pound), clothing ($10 a set), ammunition ($2 a box of 20 bullets) and spare wheels, axles and tongues ($10 each). Prices at the forts are higher.</li></ul>' +
+      '<h3>On the trail</h3><ul><li>Stop any time to check supplies, look at the map, change your <b>pace</b> (steady, strenuous, grueling) and <b>rations</b> (filling, meager, bare bones), rest, or trade.</li>' +
+      '<li>A faster pace and smaller rations save time and food but wear your party down. Poor health brings sickness: dysentery, cholera, typhoid, measles, fevers and exhaustion. Resting helps.</li>' +
+      '<li>At landmarks you can talk to people; at forts you can buy supplies.</li></ul>' +
+      '<h3>Rivers</h3><p>Ford if the water is shallow (under 2½ feet is safe, over 3 feet risks tipping the wagon), caulk the wagon and float it, take a ferry where there is one, or hire a guide at the Snake River. You can also wait a day for the river to drop.</p>' +
+      '<h3>The end of the trail</h3><p>At The Dalles, float the Columbia River on a raft or take the Barlow Toll Road around Mount Hood.</p>' +
+      '<h3>Points</h3><p>Each survivor scores 500 (good health), 400 (fair), 300 (poor) or 200 (very poor). Add 50 for the wagon, 4 per ox, 2 per spare part, 2 per set of clothing, 1 per 50 bullets, 1 per 25 pounds of food and 1 per $5. Then the occupation bonus. Trail guides score 7,000 or more.</p>'
+  });
+  ArcadeHi.config(BOARD, { unit: 'points' });
+
+  // test hooks
+  window.__ot = { __setS: function (s) { S = s; }, state: function () { return S; }, set: function (s) { S = s; save(); go(); }, go: go, day: day, travelDay: travelDay, score: finalScore, showTopTen: showTopTen, arrive: arrive, newGame: newGame,
+    deathScreen: deathScreen, showRiver: showRiver, riverNow: riverNow, showStore: showStore, showStop: showStop, showDalles: showDalles, showMap: showMap, arriveOregon: arriveOregon, showScore: showScore, graveScreen: graveScreen, present: present, message: message, setT: function (v) { DAY_MS = v; } };
+
+  // ── Boot ────────────────────────────────────────────────────────────────
+  S = load();
+  if (S && S.phase !== 'over') go();
+  else { S = null; showSetup(); }
+})();
+</script>
+</body>
+</html>

@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v604-2026-10-22-randomizer-tetrinet';
+const CACHE_VERSION = 'v605-2026-10-22-oregon-trail';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -134,6 +134,9 @@ const PRECACHE_URLS = [
   '/games/carmen/data-africa.js',
   '/games/carmen/data-americas.js',
   '/games/hotdogstand.html',
+  '/games/oregon.html',
+  '/games/oregon/data.js',
+  '/games/oregon/art.js',
   '/games/drugwars.html',
   '/games/checkers.html',
   '/games/scrabble.html',
@@ -323,6 +326,7 @@ const PRECACHE_URLS = [
   '/hist/casino.js',
   '/hist/arcade.js',
   '/hist/lorcana.js',
+  '/hist/oregon.js',
   '/fonts/press-start-2p.woff2',
   '/games/plinko.html',
   '/vendor/three/addons/postprocessing/AfterimagePass.js',
