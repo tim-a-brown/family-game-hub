@@ -441,23 +441,41 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
     var best = Math.min.apply(null, sets.map(function (ks) { return Math.abs(ks.length - P[0]) + (ks.length > P[0] ? 0.5 : 0); }));
     var need = shuffle(pick(sets.filter(function (ks) { return Math.abs(ks.length - P[0]) + (ks.length > P[0] ? 0.5 : 0) === best; }), r), r);
     var extra = shuffle(keys.filter(function (k) { return need.indexOf(k) < 0; }), r).slice(0, P[1]);
-    var plan = {}, at = {};
+    // first, which city tells each trait
+    var at = {}, lastC = -1, lastK = need[need.length - 1];
     if (P[3]) {
       // one trait per city, from the first allowed city on, the last of the needed ones no earlier than the share given
       var first = Math.min(P[2], cities - 1), late = Math.min(cities - 1, Math.max(first, Math.ceil(cities * P[3]) - 1));
       var pool = []; for (var ci = first; ci < cities; ci++) pool.push(ci);
-      var lastC = late + Math.floor(r() * (cities - late));
+      lastC = late + Math.floor(r() * (cities - late));
       var rest = shuffle(pool.filter(function (x) { return x !== lastC; }), r);
       var early = rest.filter(function (x) { return x < lastC; }).concat(rest.filter(function (x) { return x > lastC; }));
-      var list = need.slice(0, -1).concat(extra);
-      list.forEach(function (k, i) { if (early[i] != null) at[early[i]] = k; });
-      at[lastC] = need[need.length - 1];
-      Object.keys(at).forEach(function (ci) { plan[ci + ':' + Math.floor(r() * 3)] = at[ci]; });
+      need.slice(0, -1).concat(extra).forEach(function (k, i) { if (early[i] != null) (at[early[i]] = at[early[i]] || []).push(k); });
+      (at[lastC] = at[lastC] || []).push(lastK);
     } else {
-      var slots = []; for (var cj = 0; cj < cities; cj++) for (var li = 0; li < 3; li++) slots.push(cj + ':' + li);
-      slots = shuffle(slots, r);
-      need.concat(extra).forEach(function (k, i) { if (slots[i]) plan[slots[i]] = k; });
+      var cs = []; for (var cj = 0; cj < cities; cj++) cs.push(cj); cs = shuffle(cs, r);
+      need.concat(extra).forEach(function (k, i) { var c0 = cs[i % cs.length]; (at[c0] = at[c0] || []).push(k); });
     }
+    // The cushion: a trait is seen by two of the city's three witnesses, so you can't miss it by asking the wrong
+    // one, and every trait the warrant needs turns up once more somewhere else on the trail (the one that completes
+    // it only later on, so the warrant never comes sooner than planned).
+    var plan = {}, used = {};
+    function put(ci, li, k) { plan[ci + ':' + li] = k; used[ci + ':' + li] = 1; }
+    Object.keys(at).forEach(function (ci) {
+      var lis = shuffle([0, 1, 2], r), ks = at[ci];
+      if (ks.length === 1) { put(ci, lis[0], ks[0]); put(ci, lis[1], ks[0]); }
+      else ks.slice(0, 3).forEach(function (k, i) { put(ci, lis[i], k); });
+    });
+    need.forEach(function (k) {
+      var home = +Object.keys(at).filter(function (ci) { return at[ci].indexOf(k) >= 0; })[0];
+      var from = k === lastK && lastC >= 0 ? lastC + 1 : (P[3] ? Math.min(P[2], cities - 1) : 0);
+      var spots = [];
+      for (var ci = from; ci < cities; ci++) if (ci !== home) for (var li = 0; li < 3; li++) if (!used[ci + ':' + li]) spots.push([ci, li]);
+      // prefer a city that tells no other trait yet
+      var quiet = spots.filter(function (x) { return !at[x[0]]; });
+      var sp = pick(quiet.length ? quiet : spots, r);
+      if (sp) put(sp[0], sp[1], k);
+    });
     return plan;
   }
   // the smallest set of traits (besides sex) that singles out suspect s
