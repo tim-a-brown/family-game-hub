@@ -1455,6 +1455,8 @@ body{overflow-x:hidden;}
     return out.replace(/P-/g, p);
   }
   window.__ccScene = sceneSvg;
+  // the history view draws a past case's picture with these (on this page only)
+  window.CipherArt = { scene: sceneSvg, gen: makeGen, byId: function (id) { return BYID[id] || null; } };
 
   // ── Sounds of our own (beeps, the typewriter bell); Kit.sfx for the rest ──
   var AC = null;
@@ -2199,7 +2201,7 @@ body{overflow-x:hidden;}
       return;
     }
     if (r) { solved(); return; }
-    S.tries++; S.tried.push(D.tried()); if (S.tried.length > 6) S.tried.shift();
+    S.tries++; S.tried.push(D.tried()); if (S.tried.length > 6) S.tried.shift(); S.ev = ((S.ev || '') + ' x' + S.time).trim();
     D.shake(); Kit.sfx('bad'); Kit.haptic('error'); paintTally(true); save();
     if (S.tries === 3 && S.hints === 0) setTimeout(function () { Kit.toast('Stuck? A hint is on the desk.'); pulse(); }, 800);
   };
@@ -2212,7 +2214,7 @@ body{overflow-x:hidden;}
       Kit.confirm('Show the answer?', { ok: 'Show me', danger: true, body: 'The case is opened for you, and it counts as opened, not solved.' }).then(function (ok) { if (ok) reveal(); });
       return;
     }
-    S.hints++;
+    S.hints++; S.ev = ((S.ev || '') + ' h' + S.time).trim();
     var k = S.hints;
     if (C.gen && C.dev.t === 'msg') {
       if (C.hintFill && k === 1 && C.hintFill[0]) D.reveal(C.hintFill[0]);
@@ -2310,7 +2312,8 @@ body{overflow-x:hidden;}
       started: S.started, mode: label(), players: [{ name: S.who || 'You' }], winner: revealed ? null : (S.who || 'You'),
       summary: (revealed ? 'Opened' : 'Solved') + ' · ' + title + ' · ' + fmt(S.time), badge: revealed ? 'Opened' : fmt(S.time), highlights: hl,
       meta: { cid: C.gen ? '' : C.id, kind: kind, lv: C.lv, secs: S.time, tries: S.tries, hints: S.hints, revealed: !!revealed, daily: C.daily || 0, gen: C.gen ? C.type : '' },
-      detail: { t: title, no: C.gen ? C.no : 'Case ' + caseNo(C), k: kind, lv: C.lv, d: C.dev.t, c: code.slice(0, 160), a: String(answerText(C)).slice(0, 120), by: C.by || '', tr: S.tried.slice(-4), rv: revealed ? 1 : 0 }
+      detail: { t: title, no: C.gen ? C.no : 'Case ' + caseNo(C), k: kind, lv: C.lv, d: C.dev.t, c: code.slice(0, 160), a: String(answerText(C)).slice(0, 120), by: C.by || '', tr: S.tried.slice(-4), rv: revealed ? 1 : 0,
+        id: C.gen ? '' : C.id, g: C.gen ? [C.type, C.lv, C.seed, C.daily || 0].join('|') : '', s: String(C.setup || '').slice(0, 240), x: String(C.explain || '').slice(0, 300), ev: S.ev || '', dn: C.dev.n || 0 }
     });
   }
 

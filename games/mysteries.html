@@ -575,7 +575,7 @@ body{overflow-x:hidden;}
     if (!S || S.done || !S.sel || !cur) return;
     var id = S.sel;
     if (id === cur.c.answer) { solved(); return; }
-    S.misses++; S.crossed.push(id); S.sel = null;
+    S.misses++; S.crossed.push(id); S.sel = null; S.ev = (S.ev || '') + ' x' + S.secs;
     Kit.sfx('bad'); Kit.haptic('error');
     cur.photo.classList.remove('shake'); void cur.photo.offsetWidth; cur.photo.classList.add('shake');
     var w = el('div', { class: 'ms-wrong', text: ['Not quite. Look again!', 'No, that doesn’t fit the clues.', 'Hmm, not that one.'][S.misses % 3] });
@@ -586,7 +586,7 @@ body{overflow-x:hidden;}
   // ── Hints ───────────────────────────────────────────────────────────────
   function hint() {
     if (!S || S.done || !cur || S.hints >= 2) return;
-    S.hints++;
+    S.hints++; S.ev = (S.ev || '') + ' h' + S.secs;
     Kit.sfx('pop'); Kit.haptic('light');
     addNote(S.hints - 1, true);
     if (S.hints === 2) hintMark(true);
@@ -742,7 +742,7 @@ body{overflow-x:hidden;}
       summary: c.title + (S.solved ? ' · solved in ' + fmt(S.secs) : ' · solution seen'), badge: S.solved ? fmt(S.secs) : 'Seen',
       highlights: hl,
       meta: { cid: c.id, level: c.level, no: c.no, secs: S.secs, hints: S.hints, misses: S.misses, solved: !!S.solved, revealed: !!S.revealed, daily: S.daily || 0, perfect: !!S.perfect },
-      detail: { c: c.id, t: c.title, lv: c.level, n: c.no, s: S.secs, h: S.hints, m: S.misses, ok: S.solved ? 1 : 0, x: S.crossed.map(label) }
+      detail: { c: c.id, t: c.title, lv: c.level, n: c.no, s: S.secs, h: S.hints, m: S.misses, ok: S.solved ? 1 : 0, x: S.crossed.map(label), q: c.q, a: label(c.answer), ev: (S.ev || '').trim(), dy: c.daily || 0 }
     });
   }
 
