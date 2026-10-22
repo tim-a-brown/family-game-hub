@@ -109,7 +109,7 @@
 .ppot .lbl small{display:block;font-size:.66rem;font-weight:800;opacity:.75;text-align:center;line-height:1.1;}
 .ppot .lbl{padding:2px 10px;border-radius:999px;background:rgba(0,0,0,.38);color:#fff;font-weight:900;font-size:.8rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .pboard{z-index:2;display:flex;gap:4px;--cw:clamp(42px,11.6vw,54px);}
-.pboard .pcard.slot{background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14);}
+.pboard > .pcard.slot{visibility:hidden;}   /* the board's cards still to come: their places kept, nothing drawn over the felt's logo */
 .pcard.deal{animation:flipin .45s var(--ease) backwards;}   /* (not "both": once dealt, the card must still lift when picked) */
 @keyframes flipin{from{transform:rotateY(90deg) translateY(-10px) scale(.85);opacity:0;}to{transform:none;opacity:1;}}
 .pcard.best{box-shadow:0 0 0 3px var(--yellow),0 0 16px rgba(255,200,61,.75)!important;}
@@ -1114,7 +1114,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Poker: past sessions' }); } },
       { icon: 'users', label: 'Who\'s at the table', onClick: function () { tableInfo(); } },
       { icon: 'sparkle', label: 'Best move', sub: 'A tip on what to do, on your turn', when: function () { return !!(S && S.kind === 'table' && !NET); }, toggle: function () { return !!(S && S.coach); }, onClick: function () { S.coach = !S.coach; if (S.circ && CZ) CZ.coach = S.coach; save(); renderTable(); } },
-      { icon: 'trophy', label: function () { return 'Event length: ' + LENN[lenMode()]; }, sub: 'How long a tournament runs', when: function () { return !NET; }, onClick: function () { lenNext(); } },
+      { icon: 'trophy', label: function () { return 'Tournament speed: ' + LENN[lenMode()]; }, sub: 'How fast the blinds rise', when: function () { return !NET; }, onClick: function () { lenNext(); } },
       { icon: 'clock', label: function () { return 'Pace: ' + PACEN[pace()]; }, sub: 'How quickly the others play', when: function () { return !!(S && S.kind === 'table' && !NET); }, onClick: function () { paceNext(); } },
       { icon: 'chart', label: 'Win chances', sub: 'The bar under your hand', when: function () { return !!(S && S.kind === 'table'); }, toggle: function () { return railPref('eq'); }, onClick: function () { railFlip('eq'); } },
       { icon: 'history', label: 'Hand log', sub: 'Sideways: tap it for the whole table', when: function () { return !!(S && S.kind === 'table'); }, toggle: function () { return railPref('log'); }, onClick: function () { railFlip('log'); } },
@@ -3329,11 +3329,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // final table at the old fixed pace (no longer used: the field now plays itself out); bounty: the share of each
   // buy-in that's a bounty on that player.
   // Event length (the game menu) is the structure, as in a real tournament: how many hands a blind level lasts. Quick
-  // is a turbo, Normal a good sitting, Near real a real one: about 8 hands a level at a home game, 20-odd at a regional
+  // is a turbo, Balanced a good sitting, Simulation a real one: about 8 hands a level at a home game, 20-odd at a regional
   // stop, 50 at the Main Event (you can always leave an event and come back to it).
-  var LENK = 'poker_len', LENN = { quick: 'Quick', normal: 'Normal', real: 'Near real' };
+  var LENK = 'poker_len', LENN = { quick: 'Quick', normal: 'Balanced', real: 'Simulation' };
   function lenMode() { var v = null; try { v = localStorage.getItem(LENK); } catch (e) {} return LENN[v] ? v : 'normal'; }
-  function lenNext() { var k = Object.keys(LENN), v = k[(k.indexOf(lenMode()) + 1) % k.length]; try { localStorage.setItem(LENK, v); } catch (e) {} Kit.toast('Event length: ' + LENN[v]); }
+  function lenNext() { var k = Object.keys(LENN), v = k[(k.indexOf(lenMode()) + 1) % k.length]; try { localStorage.setItem(LENK, v); } catch (e) {} Kit.toast('Tournament speed: ' + LENN[v]); }
   function perOf(ev) {
     var m = lenMode(), f = Math.max(8, (S && S.circ && S.circ.id === ev.id && S.circ.field) || ev.field);
     return m === 'quick' ? Math.max(3, Math.round(ev.per * 0.55)) : m === 'normal' ? ev.per : Math.round(8 + 4.5 * Math.log2(f / 8));
