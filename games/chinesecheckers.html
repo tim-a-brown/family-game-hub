@@ -364,7 +364,8 @@
       mode: cfg.mode, level: cfg.level, places: !!cfg.places, nostay: !!cfg.nostay, spin: !!cfg.spin,
       players: cfg.players, pts: st.pts, b: st.b, turn: 0, round: 1,
       cnt: cfg.players.map(function () { return 0; }), fin: [], won: [], last: null,
-      st: { chains: cfg.players.map(function () { return 0; }), big: [] }, rk: {}, hist: [], over: false, started: Date.now(), rot: 0
+      st: { chains: cfg.players.map(function () { return 0; }), big: [] }, rk: {}, hist: [], over: false, started: Date.now(), rot: 0,
+      ml: ''   // every move for the history replay: from and to cells, two base-36 characters each
     };
     sel = -1; selMoves = [];
     S.rot = wantRot(0);
@@ -388,6 +389,8 @@
     while (target - r < -180) target += 360;
     return target;
   }
+  function cell36(i) { return (i < 36 ? '0' : '') + i.toString(36); }
+  function movesMade() { return S.cnt.reduce(function (a, b) { return a + b; }, 0); }
   function commit(mv, byCpu) {
     if (!S || S.over) return;
     var p = S.turn;
@@ -400,6 +403,7 @@
     var D = E.DIST[E.tgtOf(S.pts, p)], gain = D[legal.f] - D[legal.t];
     S.b = S.b.slice(); S.b[legal.f] = 0; S.b[legal.t] = p + 1;
     S.cnt[p]++; S.last = { p: p, path: path };
+    if (S.ml != null) S.ml += cell36(legal.f) + cell36(legal.t);
     if (h > S.st.chains[p]) S.st.chains[p] = h;
     if (h >= 4) S.st.big.push({ p: p, h: h, gain: gain, round: S.round });
     var rk = S.rk[p] || (S.rk[p] = {}), kk = E.key(S.b, p); rk[kk] = (rk[kk] || 0) + 1;
@@ -453,6 +457,7 @@
     while (S.hist.length) { snap = S.hist.pop(); if (!snap.cpu) break; }
     S.b = snap.b.split('').map(Number); S.turn = snap.turn; S.round = snap.round; S.cnt = snap.cnt; S.fin = snap.fin; S.won = snap.won || [];
     S.last = snap.last; S.st = JSON.parse(snap.st); S.rot = snap.rot;
+    if (S.ml != null) S.ml = S.ml.slice(0, movesMade() * 4);
     sel = -1; selMoves = [];
     Kit.sfx('whoosh'); save(); render(); maybeCpu();
   }
@@ -509,7 +514,8 @@
       summary: W.name + ' won in ' + moves + ' moves',
       highlights: hl, meta: { rounds: S.round, places: S.fin.map(function (i) { return S.players[i].name; }), colors: S.players.map(function (x) { return x.col; }) },
       detail: { b: S.b.join(''), pt: S.pts.join(''), n: S.players.map(function (x) { return x.name; }), c: S.players.map(function (x) { return x.col; }),
-        fin: S.fin.slice(), mv: S.cnt.slice(), ch: (S.st.chains || []).slice(), hm: S.players.map(function (x, i) { return E.homeCount(S.b, i, S.pts); }), r: S.round }
+        fin: S.fin.slice(), mv: S.cnt.slice(), ch: (S.st.chains || []).slice(), hm: S.players.map(function (x, i) { return E.homeCount(S.b, i, S.pts); }), r: S.round,
+        ml: S.ml && S.ml.length === movesMade() * 4 && S.ml.length <= 2800 ? S.ml : undefined }
     });
     var lose = W.cpu && humans() > 0 && S.mode !== 'pp';
     Kit.callout(W.name === 'You' ? 'You win!' : W.name + ' wins!', CHEX[W.col]);
@@ -752,7 +758,7 @@
     E: E, state: function () { return S; },
     fast: function (on) { fast = !!on; },
     start: function (cfg) { newGame(cfg); },
-    set: function (b, turn) { if (!S) return; cancelThink(); S.busy = false; animating = false; S.b = b.slice(); S.turn = turn || 0; S.hist = []; S.last = null; sel = -1; selMoves = []; save(); render(); maybeCpu(); },
+    set: function (b, turn) { if (!S) return; cancelThink(); S.busy = false; animating = false; S.b = b.slice(); S.turn = turn || 0; S.hist = []; S.last = null; S.ml = null; sel = -1; selMoves = []; save(); render(); maybeCpu(); },
     move: function (f, t) { var m = E.movesFrom(S.b, f, S.pts, S.nostay).filter(function (x) { return x.t === t; })[0]; if (m) commit(m); return !!m; },
     cellXY: function (c) {
       var r = wrapEl.getBoundingClientRect(), sc = r.width / VB.w, th = (S.rot || 0) * Math.PI / 180;

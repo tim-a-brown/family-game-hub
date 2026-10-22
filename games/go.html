@@ -856,6 +856,7 @@ function GoEngine() {
     if (S.hcap >= 2) E.handicap(S.n, S.hcap).forEach(function (i) { S.b[i] = BLACK; });
     S.turn = S.hcap >= 2 ? WHITE : BLACK; S.ko = -1; S.last = -1; S.caps = [0, 0, 0]; S.passes = 0; S.mv = 0; S.lastPass = 0;
     S.hist = []; S.phase = 'play'; S.dead = null; S.big = null; S.kos = 0; S.started = Date.now(); S.busy = false; S.result = null;
+    S.ml = '';   // every move for the history replay: row and column letters ('..' a pass)
     Kit.gameStart(); save(); build(); paint(); maybeCpu();
   }
 
@@ -866,6 +867,7 @@ function GoEngine() {
   function restore(h) {
     S.b = h.b.split('').map(Number); S.turn = h.turn; S.ko = h.ko; S.last = h.last; S.caps = h.caps; S.passes = h.passes; S.mv = h.mv;
     S.lastPass = h.lastPass; S.big = h.big; S.kos = h.kos;
+    if (S.ml != null) S.ml = S.ml.slice(0, 2 * S.mv);
   }
   var WHY = { suicide: 'No liberties there: that stone would be captured straight away', ko: 'Ko! You can\'t take back right away. Play somewhere else first', occupied: '' };
   // i = board index, or -1 to pass
@@ -879,6 +881,7 @@ function GoEngine() {
     S.hist.push(snap(byCpu));
     pv = -1;
     var anim = null;
+    if (S.ml != null) S.ml += i < 0 ? '..' : 'abcdefghijklmnopqrs'.charAt((i / S.n) | 0) + 'abcdefghijklmnopqrs'.charAt(i % S.n);
     if (i < 0) {
       S.passes++; S.ko = -1; S.last = -1; S.lastPass = c; S.mv++; S.turn = 3 - c;
       Kit.sfx('tap'); Kit.haptic('light');
@@ -983,6 +986,8 @@ function GoEngine() {
     var d = { n: S.n, grid: rows, last: S.last, caps: [S.caps[1], S.caps[2]], kos: S.kos || 0, rule: S.rule, komi: S.komi, hcap: S.hcap };
     if (sc) { d.st = [sc.stones[1], sc.stones[2]]; d.te = [sc.terr[1], sc.terr[2]]; d.pr = [sc.pris[1], sc.pris[2]]; d.dd = [sc.dead[1], sc.dead[2]]; d.hc = sc.hc; d.tot = [sc.total[1], sc.total[2]]; }
     if (S.big) d.big = { c: S.big.c === BLACK ? 'b' : 'w', n: S.big.n, mv: S.big.mv };
+    // the moves, for a replay (handicap stones go down first, then White moves)
+    if (S.ml != null && S.ml.length === 2 * S.mv && S.ml.length <= 1400) d.ml = S.ml;
     return d;
   }
   function finish(o) {
@@ -1277,7 +1282,7 @@ function GoEngine() {
   // Test hooks
   window.__go = {
     E: E, state: function () { return S; },
-    set: function (arr, turn, extra) { epoch++; cancelThink(); S.busy = false; S.b = arr.slice(); S.turn = turn || BLACK; S.hist = []; S.last = -1; S.ko = -1; S.phase = 'play'; S.passes = 0; S.lastPass = 0; S.dead = null; if (extra) for (var k in extra) S[k] = extra[k]; save(); paint(); maybeCpu(); },
+    set: function (arr, turn, extra) { epoch++; cancelThink(); S.busy = false; S.b = arr.slice(); S.turn = turn || BLACK; S.hist = []; S.last = -1; S.ml = null; S.ko = -1; S.phase = 'play'; S.passes = 0; S.lastPass = 0; S.dead = null; if (extra) for (var k in extra) S[k] = extra[k]; save(); paint(); maybeCpu(); },
     move: function (i) { return move(i); }, pass: function () { return move(-1); }, finish: function () { finish(); }, undo: undo, toggle: toggleDead
   };
 

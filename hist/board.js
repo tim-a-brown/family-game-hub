@@ -409,11 +409,11 @@
   var ccG = null;
   function ccGeo() {
     if (ccG) return ccG;
-    var C = [], PX = [], PY = [], H3 = Math.sqrt(3) / 2, PT = [];
+    var C = [], PX = [], PY = [], H3 = Math.sqrt(3) / 2, PT = [], IDX = {};
     for (var z = -8; z <= 8; z++) for (var x = -8; x <= 8; x++) {
       var y = -x - z; if (y < -8 || y > 8) continue;
       if (!(x <= 4 && y <= 4 && z <= 4) && !(x >= -4 && y >= -4 && z >= -4)) continue;
-      C.push([x, y, z]); PX.push(x + z / 2); PY.push(z * H3);
+      IDX[x + ',' + z] = C.length; C.push([x, y, z]); PX.push(x + z / 2); PY.push(z * H3);
     }
     var regs = [];
     [[0, 1], [0, -1], [1, 1], [1, -1], [2, 1], [2, -1]].forEach(function (r) {
@@ -424,18 +424,31 @@
     regs.sort(function (a, b) { return a.a - b.a; });
     regs.forEach(function (r, k) { PT[k] = r.cells; });
     function hd(a, b) { var A = C[a], B = C[b]; return (Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2])) / 2; }
-    ccG = { C: C, PX: PX, PY: PY, PT: PT, hd: hd, N: C.length };
+    var TIP = PT.map(function (cells) { return cells.filter(function (c) { var Q = C[c]; return Math.max(Math.abs(Q[0]), Math.abs(Q[1]), Math.abs(Q[2])) === 8; })[0]; });
+    var D6 = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]], NB = C.map(function (c) { return D6.map(function (d) { var j = IDX[(c[0] + d[0]) + ',' + (c[2] + d[1])]; return j == null ? -1 : j; }); });
+    ccG = { C: C, PX: PX, PY: PY, PT: PT, TIP: TIP, NB: NB, hd: hd, N: C.length };
     return ccG;
   }
   var CC_HEX = { red: '#ff5a5f', blue: '#5b9bff', green: '#3fd27a', yellow: '#ffd23f', purple: '#b18cff', white: '#f4f1e8' };
   var CC_TINT = { red: '#e0242c', blue: '#2a6ae8', green: '#1fae52', yellow: '#f5c20a', purple: '#6a3fa8', white: '#f4f1e8' };
-  R('chinesecheckers', function (e, ui) {
-    var d = e.dt; if (!d || !d.b) return null;
-    var g = ccGeo(), b = String(d.b), pts = String(d.pt || '').split('').map(Number), cols = d.c || [], nm = d.n || names(e);
-    if (b.length !== g.N) return null;
+  // the route a marble took from f to t on board b (before the move): a step, or the shortest chain of hops
+  function ccPath(g, b, f, t) {
+    if (g.NB[f].indexOf(t) >= 0) return [f, t];
+    var par = {}, q = [f], qi = 0; par[f] = -1;
+    while (qi < q.length) {
+      var c = q[qi++]; if (c === t) break;
+      for (var d = 0; d < 6; d++) { var m = g.NB[c][d]; if (m < 0 || m === f || !b[m]) continue; var j = g.NB[m][d]; if (j < 0 || (b[j] && j !== f) || par[j] !== undefined) continue; par[j] = c; q.push(j); }
+    }
+    if (par[t] === undefined) return [f, t];
+    var p = [t]; while (par[p[0]] !== -1) p.unshift(par[p[0]]);
+    return p;
+  }
+  // b: 121 numbers (0 empty, else player + 1); o.path: the move just made
+  function ccSvg(g, b, pts, cols, o) {
+    o = o || {};
     var poly = [], k;
     for (k = 0; k < 6; k++) { var a = (90 + 60 * k) * Math.PI / 180; poly.push(f2(7.62 * Math.cos(a)) + ',' + f2(7.62 * Math.sin(a))); }
-    var s = '<svg viewBox="-7 -8.08 14 16.16" role="img" aria-label="Final board"><defs>' +
+    var s = '<svg viewBox="-7 -8.08 14 16.16" role="img" aria-label="Chinese checkers board"><defs>' +
       '<linearGradient id="hvccw" x1="0" y1="0" x2=".35" y2="1"><stop offset="0" stop-color="#9a5a2c"/><stop offset=".45" stop-color="#7a4220"/><stop offset="1" stop-color="#4f2810"/></linearGradient>' +
       '<radialGradient id="hvcch" cx=".5" cy=".58" r=".6"><stop offset="0" stop-color="#2a160a"/><stop offset="1" stop-color="#050201"/></radialGradient>' +
       '<radialGradient id="hvccm" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></radialGradient></defs>' +
@@ -445,31 +458,79 @@
     s += '<clipPath id="hvccclip"><polygon points="' + poly.join(' ') + '"/></clipPath><g clip-path="url(#hvccclip)"><polygon points="' + star.join(' ') + '" fill="rgba(40,16,4,.28)" stroke="rgba(255,222,170,.28)" stroke-width=".06"/></g>';
     pts.forEach(function (pt, p) {
       var cells = g.PT[pt], col = CC_TINT[cols[p]] || '#888'; if (!cells) return;
-      var tip = cells.filter(function (c) { var C = g.C[c]; return Math.max(Math.abs(C[0]), Math.abs(C[1]), Math.abs(C[2])) === 8; })[0];
-      var far = cells.filter(function (c) { return g.hd(c, tip) === 3; }), a1 = far[0], b1 = far[far.length - 1];
+      var tip = g.TIP[pt], far = cells.filter(function (c) { return g.hd(c, tip) === 3; }), a1 = far[0], b1 = far[far.length - 1];
       var cx = (g.PX[tip] + g.PX[a1] + g.PX[b1]) / 3, cy = (g.PY[tip] + g.PY[a1] + g.PY[b1]) / 3;
       s += '<polygon points="' + [tip, a1, b1].map(function (c) { return f2(cx + (g.PX[c] - cx) * 1.46) + ',' + f2(cy + (g.PY[c] - cy) * 1.46); }).join(' ') + '" fill="' + col + '" fill-opacity="' + (cols[p] === 'white' ? .2 : .3) + '" stroke="' + col + '" stroke-opacity=".55" stroke-width=".07" stroke-linejoin="round"/>';
     });
     for (var i = 0; i < g.N; i++) {
-      var x = f2(g.PX[i]), y = f2(g.PY[i]), v = +b.charAt(i);
+      var x = f2(g.PX[i]), y = f2(g.PY[i]), v = b[i];
       s += '<circle cx="' + x + '" cy="' + f2(g.PY[i] + .035) + '" r=".3" fill="rgba(255,214,160,.22)"/><circle cx="' + x + '" cy="' + y + '" r=".285" fill="url(#hvcch)"/>';
       if (v) {
         var mc = CC_HEX[cols[v - 1]] || '#ccc';
         s += '<circle cx="' + x + '" cy="' + f2(g.PY[i] + .06) + '" r=".4" fill="rgba(0,0,0,.45)"/><circle cx="' + x + '" cy="' + y + '" r=".38" fill="' + mc + '"/><circle cx="' + x + '" cy="' + y + '" r=".38" fill="url(#hvccm)"/>';
       }
     }
-    s += '</svg>';
-    var out = [ui.section('Final board', ui.picture(s, { max: 330 }))];
-    var fin = d.fin || [], mv = d.mv || [], ch = d.ch || [], hm = d.hm || [];
+    if (o.path && o.path.length > 1) {
+      var P = o.path, ln = P.map(function (c) { return f2(g.PX[c]) + ',' + f2(g.PY[c]); }).join(' ');
+      s += '<polyline points="' + ln + '" fill="none" stroke="rgba(255,236,190,.9)" stroke-width=".11" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray=".22 .16"/>';
+      s += '<circle cx="' + f2(g.PX[P[0]]) + '" cy="' + f2(g.PY[P[0]]) + '" r=".36" fill="none" stroke="rgba(255,236,190,.8)" stroke-width=".07"/>';
+      P.slice(1, -1).forEach(function (c) { s += '<circle cx="' + f2(g.PX[c]) + '" cy="' + f2(g.PY[c]) + '" r=".11" fill="rgba(255,236,190,.9)"/>'; });
+      var e1 = P[P.length - 1]; s += '<circle cx="' + f2(g.PX[e1]) + '" cy="' + f2(g.PY[e1]) + '" r=".48" fill="none" stroke="#fff" stroke-width=".09"/>';
+    }
+    return s + '</svg>';
+  }
+  R('chinesecheckers', function (e, ui) {
+    var d = e.dt; if (!d || !d.b) return null;
+    var B = HistView.boardUI, g = ccGeo(), fb = String(d.b).split('').map(Number), pts = String(d.pt || '').split('').map(Number), cols = d.c || [], nm = d.n || names(e);
+    if (fb.length !== g.N) return null;
+    var fin = d.fin || [], mv = d.mv || [], ch = d.ch || [], hm = d.hm || [], out = [];
+    // the replay: every position from the start, rebuilt from the move list
+    var ml = String(d.ml || ''), steps = null;
+    if (ml.length >= 8 && ml.length % 4 === 0) {
+      var b = []; for (var i = 0; i < g.N; i++) b.push(0);
+      pts.forEach(function (pt, p) { (g.PT[pt] || []).forEach(function (c) { b[c] = p + 1; }); });
+      steps = [{ b: b }];
+      for (i = 0; i < ml.length; i += 4) {
+        var f = parseInt(ml.substr(i, 2), 36), t = parseInt(ml.substr(i + 2, 2), 36), p = b[f] - 1;
+        if (p < 0 || b[t]) { steps = null; break; }
+        var path = ccPath(g, b, f, t); b = b.slice(); b[f] = 0; b[t] = p + 1;
+        steps.push({ b: b, p: p, path: path, h: path.length > 2 || g.NB[f].indexOf(t) < 0 ? path.length - 1 : 0 });
+      }
+      if (steps && steps[steps.length - 1].b.join('') !== fb.join('')) steps = null;
+    }
+    // how far each player had to go: hex steps to their goal tip, as a share of where they started
+    function togo(bb, p) { var tip = g.TIP[(pts[p] + 3) % 6], s = 0; for (var c = 0; c < g.N; c++) if (bb[c] === p + 1) s += g.hd(c, tip); return s - 20; }
+    var w = fin[0], bestCh = -1; ch.forEach(function (h, i) { if (bestCh < 0 || h > ch[bestCh]) bestCh = i; });
+    out.push(ui.stats([['Winner', w != null ? mv[w] : null, w != null ? 'moves · ' + nm[w] : ''], ['Longest chain', bestCh >= 0 && ch[bestCh] ? ch[bestCh] : null, bestCh >= 0 && ch[bestCh] ? 'hops · ' + nm[bestCh] : ''], ['Rounds', d.r || null, nm.length + (nm.length === 1 ? ' player' : ' players')]]));
+    var snap = ui.picture(ccSvg(g, fb, pts, cols, { path: steps ? steps[steps.length - 1].path : null }), { max: 330 });
+    out.push(ui.section(steps ? 'The board' : 'Final board', steps ? snap : [snap, B.key(ui, nm.map(function (x, p) { return [x, CC_HEX[cols[p]] || ui.color(p)]; }))]));
+    if (steps) {
+      var N = steps.length - 1, start = steps[0].b, base = nm.map(function (x, p) { return togo(start, p) || 1; });
+      var prog = nm.map(function () { return []; });
+      steps.forEach(function (st) { nm.forEach(function (x, p) { prog[p].push(Math.round(100 * (1 - togo(st.b, p) / base[p]))); }); });
+      var chart = B.chart(ui, nm.map(function (x, p) { return { v: prog[p], c: CC_HEX[cols[p]] || ui.color(p) }; }), { lo: 0, hi: 100, from: 'Start', to: 'Move ' + N, aria: 'How far across the star each player had got' });
+      out.push(ui.section('Replay', B.replay(ui, N, function (n) {
+        var st = steps[n];
+        snap.innerHTML = ccSvg(g, st.b, pts, cols, { path: st.path });
+        chart.at(n);
+        if (!n) return 'Everyone in their home point';
+        return 'Move ' + n + ' · ' + (nm[st.p] || 'Player') + (st.h > 1 ? ' hopped ' + st.h + ' times' : st.h === 1 ? ' hopped' : ' stepped') + ' · ' + prog[st.p][n] + '% of the way';
+      }, { start: N, ms: Math.max(90, Math.min(400, 20000 / N)) })));
+      out.push(ui.section('The race across the star', [chart, B.key(ui, nm.map(function (x, p) { return [x, CC_HEX[cols[p]] || ui.color(p)]; }))]));
+    }
     var order = fin.slice(); nm.forEach(function (x, i) { if (order.indexOf(i) < 0) order.push(i); });
     var rows = order.map(function (i) {
       var place = fin.indexOf(i);
-      var r = [nm[i] || 'Player', { t: place >= 0 ? ['1st', '2nd', '3rd', '4th', '5th', '6th'][place] : '–', c: place === 0 ? 'hi' : '' }, (hm[i] != null ? hm[i] : '–') + '/10', mv[i] != null ? mv[i] : '–', ch[i] || 0];
-      return r;
+      return [nm[i] || 'Player', { t: place >= 0 ? ['1st', '2nd', '3rd', '4th', '5th', '6th'][place] : '–', c: place === 0 ? 'hi' : '' }, (hm[i] != null ? hm[i] : '–') + '/10', mv[i] != null ? mv[i] : '–', ch[i] || 0];
     });
-    out.push(ui.section('How far everyone got', ui.table(['', 'Place', 'Home', 'Moves', 'Best hops'], rows)));
-    var chips = order.map(function (i) { return { t: nm[i] + ': ' + (cols[i] ? cols[i].charAt(0).toUpperCase() + cols[i].slice(1) : ''), c: CC_HEX[cols[i]] }; });
-    out.push(ui.chips(chips));
+    if (nm.length > 1) out.push(ui.section('How far everyone got', ui.table(['', 'Place', 'Home', 'Moves', 'Best hops'], rows)));
+    // what decided it
+    if (w != null && nm[w]) {
+      var why = nm[w] + ' filled the goal point in ' + mv[w] + ' moves';
+      if (nm.length > 1) { var ru = order[1]; why += ru != null && hm[ru] != null ? '; ' + nm[ru] + ' had ' + hm[ru] + ' of 10 home' : ''; }
+      if (bestCh === w && ch[w] >= 4) why += '. A ' + ch[w] + '-hop chain helped';
+      out.push(B.foot(ui, why, 'trophy'));
+    }
     return ui.wrap(out);
   });
 

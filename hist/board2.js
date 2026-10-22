@@ -144,12 +144,64 @@
     }
     return s + '</svg>';
   }
+  // the game move by move: [{b: board array (0/1 black/2 white), c, i, caps, pass}], or null if it doesn't add up
+  function goHandicap(n, h) {
+    var a = n <= 9 ? 2 : 3, z = n - 1 - a, m = (n - 1) / 2, TR = [a, z], BL = [z, a], BR = [z, z], TL = [a, a], C = [m, m], L = [m, a], Rr = [m, z], T = [a, m], Bt = [z, m];
+    var P = { 2: [TR, BL], 3: [TR, BL, BR], 4: [TR, BL, BR, TL], 5: [TR, BL, BR, TL, C], 6: [TR, BL, BR, TL, L, Rr], 7: [TR, BL, BR, TL, L, Rr, C], 8: [TR, BL, BR, TL, L, Rr, T, Bt], 9: [TR, BL, BR, TL, L, Rr, T, Bt, C] }[h] || [];
+    return P.map(function (rc) { return rc[0] * n + rc[1]; });
+  }
+  function goReplay(d) {
+    var n = d.n, ml = String(d.ml || ''), b = [], L = 'abcdefghijklmnopqrs', out = [];
+    for (var i = 0; i < n * n; i++) b.push(0);
+    var hc = d.hcap >= 2 ? goHandicap(n, d.hcap) : [];
+    hc.forEach(function (x) { b[x] = 1; });
+    out.push({ b: b.slice() });
+    function nbs(x) { var r = (x / n) | 0, c = x % n, o = []; if (r) o.push(x - n); if (r < n - 1) o.push(x + n); if (c) o.push(x - 1); if (c < n - 1) o.push(x + 1); return o; }
+    function group(x) { var col = b[x], seen = {}, st = [x], g = [], libs = 0; seen[x] = 1; while (st.length) { var y = st.pop(); g.push(y); nbs(y).forEach(function (z) { if (seen[z]) return; if (!b[z]) { seen[z] = 1; libs++; } else if (b[z] === col) { seen[z] = 1; st.push(z); } }); } return { g: g, libs: libs }; }
+    var c = hc.length ? 2 : 1;
+    for (var k = 0; k + 1 < ml.length; k += 2) {
+      if (ml.charAt(k) === '.') { out.push({ b: b.slice(), c: c, pass: true }); c = 3 - c; continue; }
+      var x = L.indexOf(ml.charAt(k)) * n + L.indexOf(ml.charAt(k + 1));
+      if (x < 0 || b[x]) return null;
+      b[x] = c; var caps = 0;
+      nbs(x).forEach(function (z) { if (b[z] === 3 - c) { var G = group(z); if (!G.libs) { G.g.forEach(function (y) { b[y] = 0; }); caps += G.g.length; } } });
+      out.push({ b: b.slice(), c: c, i: x, caps: caps }); c = 3 - c;
+    }
+    return out;
+  }
   R('go', function (e, ui) {
     var d = e.dt; if (!d || !d.grid) return null;
-    var out = [ui.section('Final board', [ui.picture(goSvg(d.grid, d.n || d.grid.length, d.last), { frame: 'wood' }),
-      ui.el('small', { class: 'hv-note', text: d.tot ? 'Small squares show whose territory each empty point is. Faded stones were dead and came off at the end.' : 'The game ended by resignation.' })])];
+    var B = HistView.boardUI, n = d.n || d.grid.length, out = [];
     var bn = 'Black', wn = 'White';
     (e.players || []).forEach(function (p, i) { if (/\(Black\)$/.test(p.name)) bn = plainName(e, i); else if (/\(White\)$/.test(p.name)) wn = plainName(e, i); });
+    var steps = d.ml ? goReplay(d) : null;
+    if (steps) {
+      // the replay's last position has to be the recorded one (dead stones still on the board, territory left out)
+      var lb = steps[steps.length - 1].b, ok = true;
+      for (var r = 0; r < n && ok; r++) for (var c = 0; c < n; c++) { var ch = d.grid[r].charAt(c), v = /[bB]/.test(ch) ? 1 : /[wW]/.test(ch) ? 2 : 0; if (v !== lb[r * n + c]) { ok = false; break; } }
+      if (!ok) steps = null;
+    }
+    var resign = !d.tot, margin = d.tot ? Math.abs(d.tot[0] - d.tot[1]) : 0, bw = d.tot ? d.tot[0] > d.tot[1] : null;
+    out.push(ui.stats([['Result', resign ? 'Resigned' : (bw ? 'B' : 'W') + '+' + margin, resign ? '' : (bw ? bn : wn) + ' won'], ['Moves', steps ? steps.length - 1 : null, n + '×' + n + (d.hcap >= 2 ? ' · ' + d.hcap + ' handicap' : '')],
+      ['Biggest capture', d.big ? d.big.n : null, d.big ? (d.big.c === 'b' ? bn : wn) + ' · move ' + d.big.mv : '']]));
+    var snap = ui.picture(goSvg(d.grid, n, d.last), { frame: 'wood' });
+    out.push(ui.section('Final board', [snap, ui.el('small', { class: 'hv-note', text: d.tot ? 'Small squares show whose territory each empty point is. Faded stones were dead and came off at the end.' : 'The game ended by resignation.' })]));
+    if (steps && steps.length > 2) {
+      var N = steps.length - 1, sb = [], sw = [];
+      steps.forEach(function (s) { var a = 0, w = 0; s.b.forEach(function (v) { if (v === 1) a++; else if (v === 2) w++; }); sb.push(a); sw.push(w); });
+      var chart = B.chart(ui, [{ v: sw, c: '#f4f1e8' }, { v: sb, c: '#55505a', w: 3, halo: 'rgba(255,255,255,.7)' }], { lo: 0, from: 'Move 1', to: 'Move ' + N, aria: 'Stones on the board, move by move' });
+      var rowsOf = function (b) { var rs = []; for (var r = 0; r < n; r++) { var s = ''; for (var c = 0; c < n; c++) { var v = b[r * n + c]; s += v === 1 ? 'b' : v === 2 ? 'w' : '.'; } rs.push(s); } return rs; };
+      var cName = function (i) { return 'ABCDEFGHJKLMNOPQRST'.charAt(i % n) + (n - ((i / n) | 0)); };
+      out.push(ui.section('Replay', B.replay(ui, N, function (k) {
+        var s = steps[k];
+        snap.innerHTML = goSvg(k === N ? d.grid : rowsOf(s.b), n, s.i != null ? s.i : -1);
+        chart.at(k);
+        if (!k) return d.hcap >= 2 ? d.hcap + ' handicap stones for Black; White to move' : 'An empty board; Black to move';
+        var who = s.c === 1 ? bn + ' (Black)' : wn + ' (White)';
+        return (k === N ? 'Final · ' : '') + 'Move ' + k + ' · ' + who + (s.pass ? ' passed' : ' at ' + cName(s.i) + (s.caps ? ', captured ' + s.caps + (s.caps === 1 ? ' stone' : ' stones') : ''));
+      }, { start: N, ms: Math.max(90, Math.min(500, 24000 / N)) })));
+      out.push(ui.section('Stones on the board', [chart, B.key(ui, [[bn + ' · Black', '#55505a'], [wn + ' · White', '#f4f1e8']])]));
+    }
     if (d.tot) {
       var rows = [], area = d.rule === 'area';
       if (area) rows.push(['Stones on board', d.st[0], d.st[1]]);
@@ -159,8 +211,20 @@
       if (d.hc) rows.push(['Handicap bonus', '', d.hc]);
       out.push(ui.section(area ? 'Score (area scoring)' : 'Score (territory scoring)', ui.table(['', bn, wn], rows, { foot: ['Total', d.tot[0], d.tot[1]] })));
     }
-    out.push(ui.stats([['Captured by ' + bn, d.caps ? d.caps[0] : null], ['Captured by ' + wn, d.caps ? d.caps[1] : null], ['Dead stones', d.dd ? d.dd[0] + d.dd[1] : null],
-      ['Ko captures', d.kos || null], ['Handicap', d.hcap >= 2 ? d.hcap + ' stones' : null]]));
+    out.push(ui.stats([['Captured by ' + bn, d.caps ? d.caps[0] : null], ['Captured by ' + wn, d.caps ? d.caps[1] : null], ['Dead stones', d.dd ? d.dd[0] + d.dd[1] : d.kos ? 0 : null, d.kos ? d.kos + ' ko ' + (d.kos === 1 ? 'capture' : 'captures') : '']]));
+    // what decided it
+    var why = '';
+    if (d.tot) {
+      var W = bw ? 0 : 1, wnm = bw ? bn : wn, held = d.rule === 'area' ? [d.st[0] + d.te[0], d.st[1] + d.te[1]] : [d.te[0], d.te[1]];
+      if (!bw && d.komi && margin <= d.komi) why = 'Komi decided it: ' + wnm + ' (White) won by ' + margin + ' thanks to ' + d.komi + ' points of komi';
+      else if (held[W] > held[1 - W]) why = wnm + ' held more of the board: ' + held[W] + ' points of ' + (d.rule === 'area' ? 'stones and territory' : 'territory') + ' to ' + held[1 - W];
+      else if (d.rule !== 'area' && d.pr[W] > d.pr[1 - W]) why = wnm + ' won on prisoners: ' + d.pr[W] + ' to ' + d.pr[1 - W];
+      else why = wnm + ' won by ' + margin;
+    } else {
+      var winP = (e.players || []).filter(function (p) { return p.name === e.winner; })[0];
+      why = (winP ? String(winP.name).replace(/ \((Black|White)\)$/, '') : 'The winner') + ' won when the other side resigned';
+    }
+    out.push(B.foot(ui, why, 'trophy'));
     return ui.wrap(out);
   });
 
@@ -294,9 +358,11 @@
     return ui.wrap(out);
   });
 
-  // ── Battleship: both oceans side by side ──
+  // ── Battleship: both oceans side by side, a shot-by-shot replay and the race to 17 hits ──
   var BS_SIZE = [5, 4, 3, 3, 2], BS_NAME = ['Carrier', 'Battleship', 'Cruiser', 'Submarine', 'Destroyer'];
-  function bsSvg(fleet, shots, sunk) {
+  function bsCells(k, sh) { var o = []; for (var i = 0; i < BS_SIZE[k]; i++) o.push((sh.r + (sh.h ? 0 : i)) * 10 + sh.c + (sh.h ? i : 0)); return o; }
+  // hot: the square just fired at
+  function bsSvg(fleet, shots, sunk, hot) {
     var cs = 17, pad = 14, W = pad + cs * 10 + 3, s = '<svg viewBox="0 0 ' + W + ' ' + W + '" role="img" aria-label="Ocean grid">';
     s += '<rect width="' + W + '" height="' + W + '" rx="6" fill="#0d3b66"/><rect x="' + pad + '" y="' + pad + '" width="' + cs * 10 + '" height="' + cs * 10 + '" fill="#1565a8"/>';
     for (var k = 0; k <= 10; k++) s += '<line x1="' + (pad + k * cs) + '" x2="' + (pad + k * cs) + '" y1="' + pad + '" y2="' + (pad + 10 * cs) + '" stroke="rgba(255,255,255,.14)"/><line y1="' + (pad + k * cs) + '" y2="' + (pad + k * cs) + '" x1="' + pad + '" x2="' + (pad + 10 * cs) + '" stroke="rgba(255,255,255,.14)"/>';
@@ -312,21 +378,58 @@
       var ch = shots.charAt(x); if (ch !== 'h' && ch !== 'm') continue;
       var cx = pad + (x % 10) * cs + cs / 2, cy = pad + Math.floor(x / 10) * cs + cs / 2;
       s += ch === 'h' ? '<circle cx="' + cx + '" cy="' + cy + '" r="4.2" fill="#e8343f" stroke="#7d0f16" stroke-width="1"/>' : '<circle cx="' + cx + '" cy="' + cy + '" r="2.8" fill="#f2f5f8" stroke="rgba(0,0,0,.3)" stroke-width=".6"/>';
+      if (x === hot) s += '<circle cx="' + cx + '" cy="' + cy + '" r="7.5" fill="none" stroke="#ffd54a" stroke-width="1.8"/>';
     }
     return s + '</svg>';
   }
   R('battleship', function (e, ui) {
     var d = e.dt; if (!d || !d.at0) return null;
-    var nm = [plainName(e, 0), plainName(e, 1)], out = [];
+    var B = HistView.boardUI, nm = [plainName(e, 0), plainName(e, 1)], out = [], st = d.st || [];
+    var pics = [], subs = [];
     var grids = ui.el('div', { class: 'hv-two' }, [0, 1].map(function (p) {
       var sk = String(d['sk' + p] || ''), n = sk.split('').filter(function (c) { return c === '1'; }).length;
-      return ui.el('div', { class: 'hv-two-c' }, [ui.el('b', { text: Kit.poss(nm[p]) + ' fleet' }), ui.picture(bsSvg(d['f' + p], String(d['at' + p]), sk), {}), ui.el('small', { text: n === 5 ? 'All 5 sunk' : (5 - n) + ' of 5 afloat' })]);
+      pics[p] = ui.picture(bsSvg(d['f' + p], String(d['at' + p]), sk), {}); subs[p] = ui.el('small', { text: n === 5 ? 'All 5 sunk' : (5 - n) + ' of 5 afloat' });
+      return ui.el('div', { class: 'hv-two-c' }, [ui.el('b', { text: Kit.poss(nm[p]) + ' fleet' }), pics[p], subs[p]]);
     }));
+    var w = d.w != null ? d.w : null;
+    if (st.length === 2 && w != null) out.push(ui.stats([['Shots to win', st[w].s, nm[w]], ['Hit rate', st[w].s ? Math.round(st[w].h / st[w].s * 100) + '%' : null, st[1 - w].s ? nm[1 - w] + ' ' + Math.round(st[1 - w].h / st[1 - w].s * 100) + '%' : ''], ['Best streak', Math.max(st[0].b, st[1].b), 'hits in a row · ' + nm[st[0].b >= st[1].b ? 0 : 1]]]));
     out.push(ui.section('Both oceans', [grids, ui.el('small', { class: 'hv-note', text: 'Red pegs are hits, white pegs are misses. Dark ships were sunk.' })]));
-    var st = d.st || [];
+    // the replay: the shots one by one
+    var sq = String(d.sq || ''), shots = [];
+    for (var i = 0; i + 2 < sq.length + 1 && i < sq.length; i += 3) shots.push({ p: +sq.charAt(i), x: +sq.substr(i + 1, 2) });
+    if (shots.length > 1) {
+      var N = shots.length, occ = [[], []];
+      [0, 1].forEach(function (p) { (d['f' + p] || []).forEach(function (sh, k) { if (sh) bsCells(k, sh).forEach(function (c) { occ[p][c] = k; }); }); });
+      // hits for each shooter after every shot
+      var hits = [[0], [0]], run = [0, 0];
+      shots.forEach(function (s) { if (occ[1 - s.p][s.x] != null) run[s.p]++; hits[0].push(run[0]); hits[1].push(run[1]); });
+      var chart = B.chart(ui, [{ v: hits[0], c: ui.color(0) }, { v: hits[1], c: ui.color(1) }], { lo: 0, hi: 17, mid: 17, midLabel: '17 hits sink the fleet', from: 'First shot', to: 'Shot ' + N, aria: 'Hits for each player, shot by shot' });
+      out.push(ui.section('Replay', B.replay(ui, N, function (n) {
+        var at = [[], []]; for (var k = 0; k < 100; k++) { at[0].push('.'); at[1].push('.'); }
+        var last = n ? shots[n - 1] : null, res = '';
+        for (k = 0; k < n; k++) { var s = shots[k], tgt = 1 - s.p; at[tgt][s.x] = occ[tgt][s.x] != null ? 'h' : 'm'; }
+        [0, 1].forEach(function (p) {
+          var sk = (d['f' + p] || []).map(function (sh, kk) { return sh && bsCells(kk, sh).every(function (c) { return at[p][c] === 'h'; }) ? '1' : '0'; }).join('');
+          pics[p].innerHTML = bsSvg(d['f' + p], at[p].join(''), sk, last && 1 - last.p === p ? last.x : -1);
+          var sn = sk.split('').filter(function (c) { return c === '1'; }).length; subs[p].textContent = sn === 5 ? 'All 5 sunk' : (5 - sn) + ' of 5 afloat';
+          if (last && 1 - last.p === p) { var kk2 = occ[p][last.x]; res = kk2 == null ? 'miss' : sk.charAt(kk2) === '1' ? 'sank the ' + BS_NAME[kk2] + '!' : 'hit'; }   // (each square is fired at once, so a ship sunk now was sunk by this shot)
+        });
+        chart.at(n);
+        if (!n) return 'Both fleets in place';
+        return 'Shot ' + n + ' · ' + nm[last.p] + ' fired at ' + 'ABCDEFGHIJ'.charAt(Math.floor(last.x / 10)) + (last.x % 10 + 1) + ': ' + res + ' · hits ' + hits[0][n] + '–' + hits[1][n];
+      }, { start: N, ms: Math.max(120, Math.min(450, 16000 / N)) })));
+      out.push(ui.section('The race to 17 hits', [chart, B.key(ui, [[nm[0], ui.color(0)], [nm[1], ui.color(1)]])]));
+    }
     if (st.length === 2) out.push(ui.table(['', nm[0], nm[1]], [['Shots', st[0].s, st[1].s], ['Hits', st[0].h, st[1].h],
       ['Accuracy', st[0].s ? Math.round(st[0].h / st[0].s * 100) + '%' : '–', st[1].s ? Math.round(st[1].h / st[1].s * 100) + '%' : '–'], ['Best hit streak', st[0].b, st[1].b]]));
     if (d.order && d.order.length) out.push(ui.section('Ships sunk, in order', ui.log(d.order.map(function (x) { return { c: x.p, t: nm[x.p] + ' sank ' + possLow(nm[1 - x.p]) + ' ' + BS_NAME[x.k] }; }))));
+    // what decided it
+    if (w != null && st.length === 2) {
+      var afloat = String(d['sk' + w] || '').split('').filter(function (c) { return c !== '1'; }).length, acc = [0, 1].map(function (p) { return st[p].s ? st[p].h / st[p].s : 0; });
+      var why = acc[w] > acc[1 - w] + .08 ? nm[w] + ' shot straighter: ' + Math.round(acc[w] * 100) + '% hits to ' + Math.round(acc[1 - w] * 100) + '%' : d.fb === w ? nm[w] + ' found the ships first and never gave up the lead' : nm[w] + ' sank the last ship first';
+      why += afloat === 5 ? ', and never lost a ship' : afloat ? ', with ' + afloat + (afloat === 1 ? ' ship' : ' ships') + ' still afloat' : '';
+      out.push(B.foot(ui, why, 'trophy'));
+    }
     return ui.wrap(out);
   });
 
