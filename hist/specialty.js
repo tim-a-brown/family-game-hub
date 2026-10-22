@@ -412,7 +412,7 @@
   }
   R('sandlot', function (e, ui) {
     var d = e.dt; if (!d || !d.tm) return null;
-    var out = [];
+    var out = [], ck = HistView.ck;
     if (d.derby) {
       d.tm.forEach(function (T, t) {
         var rows = (T.s || []).map(function (s) { var a = s.split('|'); return [a[0], a[1], { t: a[2], c: +a[2] ? 'hi' : '' }, a[3], +a[4] ? a[4] + ' ft' : '–']; });
@@ -422,8 +422,58 @@
       if (best && +best[4]) out.push(ui.stats([['Longest home run', best[4] + ' ft', best[0]], d.off ? ['Swing-off', 'Yes', 'to break a tie'] : null]));
       return ui.wrap(out);
     }
+    var aw = 1 - d.home, win = d.tm[0].r > d.tm[1].r ? 0 : 1, T0 = d.tm[aw], T1 = d.tm[d.home];
+    // big numbers: hits, homers, errors, the star bat
+    var hrs = [0, 0], star = null;
+    d.tm.forEach(function (T, t) { (T.b || []).forEach(function (s) { var a = s.split('|'), v = a.slice(2, 9).map(Number); hrs[t] += v[3]; var sc = v[2] * 2 + v[3] * 4 + v[4] * 2 + v[1]; if (!star || sc > star.sc) star = { sc: sc, n: a[0], t: t, h: v[2], ab: v[0], hr: v[3], rbi: v[4] }; }); });
+    var innN = Math.max(nums(T0.l).length, nums(T1.l).length);
+    out.push(ui.stats([['Hits', T0.h + ' – ' + T1.h, short(T0.n, 10) + ' first'], ['Home runs', hrs[aw] + ' – ' + hrs[d.home]], ['Errors', T0.e + ' – ' + T1.e],
+      star && star.h ? ['Star bat', star.h + ' for ' + star.ab, star.n + (star.hr ? ', ' + star.hr + ' HR' : '') + (star.rbi ? ', ' + star.rbi + ' RBI' : '')] : null,
+      innN > (d.inn || 9) ? ['Extra innings', innN] : null]));
+    // how it ended: the diamond at the last play
+    if (d.end) {
+      var E = d.end, b = String(E.b || '000'), W = 320, H = 190, cx = 160, hy = 168, s = 62;
+      var bx = [[cx + s, hy - s], [cx, hy - 2 * s], [cx - s, hy - s]];
+      var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="The bases at the last play">' +
+        '<rect width="' + W + '" height="' + H + '" fill="#2f7a3a"/>' +
+        '<path d="M' + cx + ' ' + (hy + 12) + ' L' + (cx - 150) + ' ' + (hy - 140) + ' A 210 210 0 0 1 ' + (cx + 150) + ' ' + (hy - 140) + ' Z" fill="#36893f"/>' +
+        '<path d="M' + cx + ' ' + (hy + 8) + ' L' + (cx + s + 22) + ' ' + (hy - s) + ' L' + cx + ' ' + (hy - 2 * s - 22) + ' L' + (cx - s - 22) + ' ' + (hy - s) + ' Z" fill="#b9804a"/>' +
+        '<path d="M' + cx + ' ' + (hy - 6) + ' L' + (cx + s - 14) + ' ' + (hy - s) + ' L' + cx + ' ' + (hy - 2 * s + 14) + ' L' + (cx - s + 14) + ' ' + (hy - s) + ' Z" fill="#3f9447"/>' +
+        '<circle cx="' + cx + '" cy="' + (hy - s) + '" r="9" fill="#b9804a"/>' +
+        '<path d="M' + cx + ' ' + hy + ' L' + (cx + s) + ' ' + (hy - s) + ' L' + cx + ' ' + (hy - 2 * s) + ' L' + (cx - s) + ' ' + (hy - s) + ' Z" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.5"/>';
+      bx.forEach(function (p, k) { var on = b.charAt(k) === '1'; svg += '<rect x="' + (p[0] - 8) + '" y="' + (p[1] - 8) + '" width="16" height="16" transform="rotate(45 ' + p[0] + ' ' + p[1] + ')" fill="' + (on ? '#ffd166' : '#fbf3dc') + '" stroke="' + (on ? '#fff' : 'rgba(0,0,0,.25)') + '" stroke-width="' + (on ? 2 : 1) + '"/>' + (on ? '<circle cx="' + p[0] + '" cy="' + (p[1] - 16) + '" r="6" fill="' + (d.tm[E.h ? d.home : aw].c || '#fff') + '" stroke="#fff" stroke-width="1.5"/>' : ''); });
+      svg += '<path d="M' + (cx - 7) + ' ' + (hy - 4) + ' h14 v6 l-7 6 l-7 -6 z" fill="#fbf3dc"/>';
+      var outs = Math.min(3, E.o || 0);
+      if (!d.wo && E.o === 0 && !/\d/.test(b.replace(/0/g, ''))) outs = 3;   // older records: the side was already reset
+      svg += '<rect x="10" y="10" width="92" height="44" rx="8" fill="rgba(10,26,19,.82)"/><text x="20" y="28" font-size="11" font-weight="900" fill="#fbf3dc" font-family="system-ui">' + (E.h ? 'BOT ' : 'TOP ') + E.i + '</text>';
+      for (var k = 0; k < 3; k++) svg += '<circle cx="' + (24 + k * 14) + '" cy="42" r="5" fill="' + (k < outs ? '#ffb84a' : 'rgba(251,243,220,.2)') + '"/>';
+      svg += '<text x="70" y="45" font-size="9" font-weight="800" fill="rgba(251,243,220,.7)" font-family="system-ui">OUTS</text>';
+      svg += '<rect x="' + (W - 112) + '" y="10" width="102" height="44" rx="8" fill="rgba(10,26,19,.82)"/>';
+      [aw, d.home].forEach(function (t, r) { svg += '<circle cx="' + (W - 100) + '" cy="' + (24 + r * 18) + '" r="4" fill="' + (d.tm[t].c || '#fff') + '"/><text x="' + (W - 90) + '" y="' + (28 + r * 18) + '" font-size="11" font-weight="800" fill="' + (t === win ? '#ffd166' : '#fbf3dc') + '" font-family="system-ui">' + ui.esc(short(d.tm[t].n, 8)) + '</text><text x="' + (W - 16) + '" y="' + (28 + r * 18) + '" text-anchor="end" font-size="13" font-weight="900" fill="' + (t === win ? '#ffd166' : '#fbf3dc') + '" font-family="system-ui">' + d.tm[t].r + '</text>'; });
+      svg += '</svg>';
+      out.push(ui.section('How it ended', [ui.picture(svg, { max: 420 }), E.t ? el('p', { class: 'sx-play', text: '“' + E.t + '”' }) : null], { icon: 'flag' }));
+    }
     out.push(ui.section('Scoreboard', sbNode(d), { icon: 'trophy' }));
-    [1 - d.home, d.home].forEach(function (t) {
+    // every half-inning: the result of each play, and how the runs scored
+    if (ck && d.hx && d.hx.length) {
+      var OC = { S: ['1B', 'h'], D: ['2B', 'h'], T: ['3B', 'h'], HR: ['HR', 'hr'], BH: ['Bunt hit', 'h'], K: ['K', 'o'], GB: ['Ground out', 'o'], FB: ['Fly out', 'o'], LD: ['Line out', 'o'], PU: ['Pop out', 'o'],
+        DP: ['Double play', 'o'], SH: ['Sac bunt', 'o'], BO: ['Bunt out', 'o'], CS: ['Caught stealing', 'o'], BB: ['Walk', 'w'], IBB: ['Int. walk', 'w'], HBP: ['Hit by pitch', 'w'], E: ['Error', 'w'], SB: ['Stolen base', 'w'] };
+      var panel = el('div', { class: 'hv' });
+      var show = function (i) {
+        var h = d.hx[i], bt = h.h ? d.home : aw, kids = [];
+        kids.push(ck.head('<b>' + (h.h ? 'Bottom ' : 'Top ') + h.i + '</b> · ' + ui.esc(d.tm[bt].n) + ' batting', h.r ? '+' + h.r + (h.r === 1 ? ' run' : ' runs') : 'No runs', h.r ? 'good' : ''));
+        var row = el('div', { class: 'sx-pas' });
+        String(h.o || '').split(',').filter(Boolean).forEach(function (x) { var m = /^([A-Z]+)(\+(\d))?$/.exec(x) || [], o = OC[m[1]] || [m[1] || x, 'o']; row.appendChild(el('span', { class: 'sx-pa ' + o[1], text: o[0] + (m[3] ? ' +' + m[3] : '') })); });
+        kids.push(row);
+        if (h.t) h.t.split(' / ').forEach(function (t) { kids.push(el('p', { class: 'sx-play', text: '“' + t + '”' })); });
+        panel.innerHTML = ''; panel.appendChild(ck.felt(['#2f7a3a', '#1f5a2a', '#15401d'], kids));
+      };
+      var items = d.hx.map(function (h) { var bt = h.h ? d.home : aw; return { t: (h.h ? 'B' : 'T') + h.i, c: h.r ? d.tm[bt].c : null, dk: h.r && /^#(f|e|d)/i.test(d.tm[bt].c || ''), ring: /HR/.test(h.o || ''), title: (h.h ? 'Bottom ' : 'Top ') + h.i + (h.r ? ': ' + h.r + ' runs' : '') }; });
+      var start = 0; d.hx.forEach(function (h, i) { if (h.r >= (d.hx[start].r || 0)) start = i; });
+      out.push(ui.section('Every half-inning · tap one', [ck.road(items, start, show), panel,
+        ck.key([[short(T0.n, 12) + ' scored', T0.c], [short(T1.n, 12) + ' scored', T1.c], ['Home run', 'ring']])], { icon: 'chart' }));
+    }
+    [aw, d.home].forEach(function (t) {
       var T = d.tm[t];
       if (!T || !T.b || !T.b.length) return;
       var tot = [0, 0, 0, 0, 0, 0, 0];
@@ -435,15 +485,35 @@
       if (T.p && T.p.length) nodes.push(ui.table(['Pitching', 'IP', 'H', 'R', 'BB', 'K', 'HR', 'PC'], T.p.map(function (s) { var a = s.split('|'); return [short(a[0], 15), Math.floor(a[1] / 3) + '.' + a[1] % 3].concat(a.slice(2)); })));
       out.push(ui.section('Box score: ' + T.n, nodes));
     });
-    if (d.plays && d.plays.length) {
-      var aw = 1 - d.home;
+    if (d.plays && d.plays.length && !(d.hx && d.hx.length)) {
       out.push(ui.section('Scoring plays', ui.log(d.plays.map(function (p) {
         var bt = p.h ? d.home : aw;
         return { b: (p.h ? 'Bot ' : 'Top ') + p.i, t: p.t + (p.r > 1 ? ' (' + p.r + ' runs)' : ''), c: d.tm[bt].c };
       })), { icon: 'flag' }));
     }
+    if (ck) {
+      var W2 = d.tm[win], L2 = d.tm[1 - win], la = nums(T0.l), lh = nums(T1.l), run = [0, 0], go = null;
+      // the half-inning where the winner went ahead for good
+      for (var ii = 0; ii < innN; ii++) [0, 1].forEach(function (hh) {
+        var t = hh ? d.home : aw, v = (hh ? lh : la)[ii]; if (v == null) return;
+        var before = run[win] > run[1 - win]; run[t] += v;
+        var now = run[win] > run[1 - win];
+        if (now && !before) go = { i: ii + 1, h: hh }; else if (!now) go = null;
+      });
+      var why = W2.n + ' won ' + W2.r + '–' + L2.r + (d.wo ? ' on a walk-off in the bottom of the ' + ord(innN) : innN > (d.inn || 9) ? ' in ' + innN + ' innings' : '') + '.';
+      if (go && !d.wo) {
+        var gh = (d.hx || []).filter(function (h) { return h.i === go.i && h.h === go.h; })[0];
+        why += ' They took the lead for good in the ' + (go.h ? 'bottom' : 'top') + ' of the ' + ord(go.i) + (gh && gh.t ? ': ' + gh.t.split(' / ')[0] : '.');
+      }
+      out.push(ck.foot(why, 'trophy'));
+    }
     return ui.wrap(out);
   });
+  function ord(n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+  HistView.css('hv-sandlot', '.sx-play{margin:0;font-size:.82rem;font-weight:700;font-style:italic;color:rgba(255,255,255,.85);line-height:1.35;}' +
+    '.hv-sec>.sx-play{color:var(--text-2);}' +
+    '.sx-pas{display:flex;flex-wrap:wrap;gap:4px;}.sx-pa{font-size:.72rem;font-weight:900;padding:4px 8px;border-radius:7px;background:rgba(0,0,0,.28);color:rgba(255,255,255,.8);}' +
+    '.sx-pa.h{background:#fbf3dc;color:#17382b;}.sx-pa.hr{background:#ffd166;color:#3a2600;}.sx-pa.w{background:rgba(120,180,255,.3);color:#e3efff;}');
 
   // ── Scorecard (any game): the race, leader changes, biggest rounds ─────────
   // Works from the saved rounds, so older games get it too.
