@@ -1111,6 +1111,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Poker: past sessions' }); } },
       { icon: 'users', label: 'Who\'s at the table', onClick: function () { tableInfo(); } },
       { icon: 'sparkle', label: 'Best move', sub: 'A tip on what to do, on your turn', when: function () { return !!(S && S.kind === 'table' && !NET); }, toggle: function () { return !!(S && S.coach); }, onClick: function () { S.coach = !S.coach; if (S.circ && CZ) CZ.coach = S.coach; save(); renderTable(); } },
+      { icon: 'trophy', label: function () { return 'Event length: ' + LENN[lenMode()]; }, sub: 'How long a tournament runs', when: function () { return !NET; }, onClick: function () { lenNext(); } },
       { icon: 'clock', label: function () { return 'Pace: ' + PACEN[pace()]; }, sub: 'How quickly the others play', when: function () { return !!(S && S.kind === 'table' && !NET); }, onClick: function () { paceNext(); } },
       { icon: 'chart', label: 'Win chances', sub: 'The bar under your hand', when: function () { return !!(S && S.kind === 'table'); }, toggle: function () { return railPref('eq'); }, onClick: function () { railFlip('eq'); } },
       { icon: 'history', label: 'Hand log', sub: 'Sideways: tap it for the whole table', when: function () { return !!(S && S.kind === 'table'); }, toggle: function () { return railPref('log'); }, onClick: function () { railFlip('log'); } },
@@ -3280,9 +3281,15 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // the way to the championship. ai0 / ai1: how good the field is (0..1) at the start and by the final table: each
   // stop is tougher than the one before, except the back room, whose regulars are sharks (the card room after it feels
   // easier for a while); m0: big blinds in the average stack at the start; per: hands a level; ft: hands until the
-  // final table (times FTX: the rest of the field plays on while you do, and a tournament should feel like a long
-  // night, not a sprint); bounty: the share of each buy-in that's a bounty on that player.
-  var FTX = 2.4;
+  // final table (times the event length, below); bounty: the share of each buy-in that's a bounty on that player.
+  // Event length (the game menu): how long a tournament runs, as a multiple of that base. Quick is a sprint, Normal a
+  // good sitting, Near real close to the real thing: a home game of 60-odd hands, a regional stop over 200, the big
+  // fields over a thousand (you can always leave an event and come back to it). The blind levels stretch with it.
+  var LENK = 'poker_len', LENN = { quick: 'Quick', normal: 'Normal', real: 'Near real' };
+  function lenMode() { var v = null; try { v = localStorage.getItem(LENK); } catch (e) {} return LENN[v] ? v : 'normal'; }
+  function lenNext() { var k = Object.keys(LENN), v = k[(k.indexOf(lenMode()) + 1) % k.length]; try { localStorage.setItem(LENK, v); } catch (e) {} Kit.toast('Event length: ' + LENN[v]); }
+  function lenF(ev) { var m = lenMode(); return m === 'quick' ? 1 : m === 'normal' ? 2.4 : 10 + 2.2 * Math.log2(Math.max(8, ev.field) / 8); }
+  function perOf(ev) { return Math.max(3, Math.round(ev.per * Math.pow(lenF(ev) / 2.4, 0.75))); }
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
   var PUBN = ['Rusty Anchor', 'Copper Kettle', 'Brass Tap', 'Red Lion', 'Black Dog', 'Shamrock', 'Tin Cup', 'Iron Horse', 'Blue Moose', 'Lucky Penny'];
   var LOCAL = {
@@ -3662,7 +3669,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     box.appendChild(el('div', { class: 'czs-facts' }, [
       el('div', null, [el('small', { text: 'Players expected' }), el('b', { text: fieldTxt(ev) })]),
       el('div', null, [el('small', { text: 'Starting chips' }), el('b', { text: ev.stack.toLocaleString() })]),
-      el('div', null, [el('small', { text: 'Blinds go up' }), el('b', { text: 'every ' + ev.per + ' hands' })]),
+      el('div', null, [el('small', { text: 'Blinds go up' }), el('b', { text: 'every ' + perOf(ev) + ' hands' })]),
       el('div', null, [el('small', { text: 'The field' }), el('b', { text: fieldWord(ev.ai0) === fieldWord(ev.ai1) ? fieldWord(ev.ai0) : fieldWord(ev.ai0) + ', then ' + fieldWord(ev.ai1).toLowerCase() + ' by the end' })])
     ]));
     var pl = el('div', { class: 'czs-pay' });
@@ -3748,7 +3755,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var sw = styleWord(ev); if (sw) row(ev.style, sw);
     }
     row('Who plays', (ev.grp ? '' : 'Expect ' + fieldTxt(ev) + ' players. ') + pl[1] + ' ' + (fieldWord(ev.ai0) === fieldWord(ev.ai1) ? fieldWord(ev.ai0) : fieldWord(ev.ai0) + ' at first, ' + fieldWord(ev.ai1).toLowerCase() + ' by the end') + '.');
-    if (!g) row('Buy-in', usd(ev.buy) + ' for ' + ev.stack.toLocaleString() + ' chips. The blinds go up every ' + ev.per + ' hands.');
+    if (!g) row('Buy-in', usd(ev.buy) + ' for ' + ev.stack.toLocaleString() + ' chips. The blinds go up every ' + perOf(ev) + ' hands.');
     if (k >= 0) { var prev = ladder(ev)[k - 1]; box.appendChild(el('p', { class: 'czi-lock', html: Kit.icon('lock') + ' ' + (prev.grp ? 'Cash in a ' + prev.venue + ' event to open this stop.' : 'Cash at ' + prev.venue + ' to open this stop.') })); }
     var sh = Kit.sheet({ title: ev.venue, node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
     if (now && sh && sh.el) sh.el.classList.add('pk-wide');
@@ -3818,6 +3825,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // blinds: a new level every `per` hands, sized to the average stack and how far through the field we are
   function circBlinds() {
     var C = S.circ, ev = EV[C.id];
+    S.per = perOf(ev);
     if ((S.handNo - 1) % S.per !== 0 && S.bb) return;
     var avg = tableAvg(), N = C.field || ev.field, q = Math.min(1, (N - C.left) / Math.max(1, N - 6));
     if (C.else <= 0 && C.ftLv == null) C.ftLv = S.level;
@@ -3859,7 +3867,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     var tableLeft = alive().length, before = C.else + tableLeft + busted.length, L = C.else + tableLeft;
     if (C.else > 0) {
-      var target = Math.round(C.e0 * Math.pow(Math.max(0, 1 - C.h / (ev.ft * FTX)), 1.4)), elim = Math.max(0, C.else - target);
+      var target = Math.round(C.e0 * Math.pow(Math.max(0, 1 - C.h / (ev.ft * lenF(ev))), 1.4)), elim = Math.max(0, C.else - target);
       if (L > C.paid && L - elim <= C.paid) elim = L - C.paid - 1 > 0 ? L - C.paid - 1 : (Math.random() < 0.45 ? 1 : 0);   // hand for hand on the bubble
       elim = Math.min(elim, C.else);
       C.else -= elim;
@@ -4678,8 +4686,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (S.tourn) {
       var row = el('div', { class: 'lvrow' });
       if (H && (!C || S.level < 99)) {
-        var lv = el('div', { class: 'lv', title: 'Blinds go up when these fill' }), inLv = (S.handNo - 1) % S.per;
-        for (var k = 0; k < S.per; k++) lv.appendChild(el('i', { class: (k <= inLv ? 'on' : '') + (inLv === S.per - 1 && k === inLv ? ' last' : '') }));
+        var lv = el('div', { class: 'lv', title: 'Blinds go up when these fill' }), inLv = (S.handNo - 1) % S.per, dots = Math.min(S.per, 8), lit = Math.floor((inLv + 1) * dots / S.per);
+        for (var k = 0; k < dots; k++) lv.appendChild(el('i', { class: (k < lit ? 'on' : '') + (inLv === S.per - 1 && k === lit - 1 ? ' last' : '') }));
         row.appendChild(lv);
       }
       row.appendChild(el('span', { class: 'bl' }, [el('small', { text: 'Lv ' + (S.level + 1) }), document.createTextNode(amt(S.sb) + '/' + amt(S.bb))]));
