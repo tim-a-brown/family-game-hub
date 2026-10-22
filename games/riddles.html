@@ -372,6 +372,7 @@
   var V = {};   // the live nodes
   function play(enter) {
     var r = cur(), s = st();
+    if (!s.done && !s.t0) s.t0 = Date.now();   // for the history: how long each riddle took
     app.className = '';
     app.innerHTML = '';
     Kit.titleSwitch(S.daily ? 'Daily riddle' : MODES[S.mode], function () { leave(); }, 'Choose a level');
@@ -522,7 +523,7 @@
     if (st().done) return;
     Kit.confirm('Show the answer?', { ok: 'Show it', body: 'No points for this one, and your streak starts over.' }).then(function (ok) {
       if (!ok) return;
-      var s = st(); s.done = 1; s.g = 1; s.ok = 0; s.s = 0; s.p = 0;
+      var s = st(); s.done = 1; s.g = 1; s.ok = 0; s.s = 0; s.p = 0; s.sec = s.t0 ? Math.round((Date.now() - s.t0) / 1000) : 0;
       var stt = stats(), had = stt.streak; stt.streak = 0; store(STATS, stt);
       // the remaining stars crumble
       Array.prototype.forEach.call(V.stars.children, function (c, k) { if (!c.classList.contains('gone')) setTimeout(function () { c.classList.add('lost'); }, k * 90); });
@@ -536,7 +537,7 @@
 
   function solve() {
     var s = st(), r = cur();
-    s.done = 1; s.ok = 1; s.s = 3 - s.h; s.p = LV[r.d].base * s.s; S.pts += s.p;
+    s.done = 1; s.ok = 1; s.s = 3 - s.h; s.p = LV[r.d].base * s.s; S.pts += s.p; s.sec = s.t0 ? Math.round((Date.now() - s.t0) / 1000) : 0;
     var stt = stats();
     stt.streak++; stt.best = Math.max(stt.best, stt.streak); stt.pts += s.p;
     stt.solved[r.id] = Math.max(stt.solved[r.id] || 0, s.s);
@@ -615,7 +616,9 @@
       badge: S.daily ? (solved ? stars + '/3' : 'X') : solved + '/' + n,
       highlights: hl,
       meta: { daily: S.daily || 0, level: S.mode, n: n, solved: solved, stars: stars, pts: S.pts, hints: hints, gaveUp: gave },
-      detail: { lv: S.mode, r: S.res.map(function (x, i) { var r = BY[S.ids[i]]; return { id: r.id, d: r.d, q: r.q.replace(/\n/g, ' / ').slice(0, 170), a: r.a, s: x.ok ? x.s : 0, h: x.h, g: x.g ? 1 : 0, t: x.t.length }; }) }
+      detail: { lv: S.mode, r: S.res.map(function (x, i) { var r = BY[S.ids[i]]; return { id: r.id, d: r.d, q: r.q.replace(/\n/g, ' / ').slice(0, 170), a: r.a, s: x.ok ? x.s : 0, h: x.h, g: x.g ? 1 : 0, t: x.t.length, p: x.p || 0, sc: x.sec || 0,
+        // what you typed, in order ('~' marks a close one)
+        y: x.t.slice(-5).map(function (tr) { return String(tr[0]).replace(/[|~]/g, ' ') + (tr[1] ? '~' : ''); }).join('|') }; }) }
     });
     Kit.resume.clear();
     store(SKEY, S);
@@ -664,6 +667,8 @@
     V.acts.after(el('p', { class: 'daynote', text: 'A new riddle tomorrow.' }));
   }
 
+  // test hooks
+  window.__rd = { get: function () { return S; }, start: startRound, cur: cur, hint: hint, next: next, type: function (g) { V.input.value = g; submit(); } };
   function leave() {
     if (S && !S.over && S.res.some(function (x) { return x.done || x.t.length || x.h; })) {
       Kit.confirm('Choose another level?', { ok: 'Choose', body: 'This round will be dropped.' }).then(function (ok) { if (ok) { Kit.resume.clear(); store(SKEY, null); showSetup(); } });

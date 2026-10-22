@@ -1187,7 +1187,7 @@ body{overflow-x:hidden;}
     var ch = TL.chain(P);
     if (S.hints >= 2) { if (lastHint) { showHint(lastHint.k, lastHint.text); } else Kit.toast('No hints left'); return; }
     var k = nextStep(), st = ch[k], text = S.hints === 0 ? TL.stepLead(P, st) : TL.stepWhy(P, st);
-    S.hints++; S.hintAt = k; lastHint = { k: k, text: text };
+    S.hints++; S.hintAt = k; lastHint = { k: k, text: text }; S.ev = ((S.ev || '') + ' h' + S.time).trim();
     Kit.sfx('sparkle'); Kit.haptic('light');
     showHint(k, text); render(); save();
   }
@@ -1208,6 +1208,7 @@ body{overflow-x:hidden;}
     var r = TL.checkKK(P, S.marks);
     if (!r) { solved(); return; }
     S.wrong++; Kit.sfx('bad'); Kit.haptic('error');
+    S.ev = ((S.ev || '') + ' x' + S.time).trim(); S.wt = (S.wt || []).concat([S.marks.join('')]).slice(-4);   // for the history
     clearMarksUI();
     var Nn = N();
     if (r.spy != null) { flashRule(); note('There is exactly one spy on stage. You have ' + (r.spy ? TL.NUM[r.spy] : 'none') + '.', true); }
@@ -1247,6 +1248,7 @@ body{overflow-x:hidden;}
       if (!r) { S.acc = i; solved(); return; }
       beam.classList.remove('on'); actorEls[i].classList.remove('pick');
       S.wrong++; Kit.sfx('bad'); Kit.haptic('error');
+      S.ev = ((S.ev || '') + ' x' + S.time).trim(); S.wt = (S.wt || []).concat([String(i)]).slice(-4);   // for the history
       var a = actorEls[i]; a.classList.add('bad'); setTimeout(function () { a.classList.remove('bad'); }, 500);
       var Nn = N(), x = '[[' + i + ']]', msg;
       if (r.paradox) msg = 'If ' + x + ' ' + Nn.P + ', the stories could not be sorted into true and false.';
@@ -1311,7 +1313,8 @@ body{overflow-x:hidden;}
       started: S.started, mode: label(), players: [{ name: 'You' }], winner: gave ? null : 'You',
       summary: (gave ? 'Answer shown' : 'Solved') + ' · ' + label() + (gave ? '' : ' in ' + fmt(S.time)), badge: gave ? '' : fmt(S.time), highlights: hl,
       meta: { lvl: S.lvl, daily: S.daily, no: S.no, cls: S.cls, seconds: S.time, hints: S.hints, wrong: S.wrong, solved: !gave, fam: P.fam },
-      detail: { set: P.set, fam: P.fam, nm: P.names.join(','), t: P.sol.t.join(''), c: P.sol.c, rule: P.rule || '', spy: P.spy ? 1 : 0, st: P.st.map(function (_, i) { return plain(TL.say(P, i)); }), tv: P.st.map(function (_, i) { return TL.ev(P.st[i], P.sol) ? 1 : 0; }).join(''), lv: S.lvl, no: S.no, h: S.hints, w: S.wrong, g: gave ? 1 : 0 }
+      detail: { set: P.set, fam: P.fam, nm: P.names.join(','), t: P.sol.t.join(''), c: P.sol.c, rule: P.rule || '', spy: P.spy ? 1 : 0, st: P.st.map(function (_, i) { return plain(TL.say(P, i)); }), tv: P.st.map(function (_, i) { return TL.ev(P.st[i], P.sol) ? 1 : 0; }).join(''), lv: S.lvl, no: S.no, h: S.hints, w: S.wrong, g: gave ? 1 : 0,
+        wy: P.st.map(function (_, i) { return plain(TL.why(P, i).text).replace(/^(True|False): /, '').slice(0, 140); }), wt: S.wt || [], ev: S.ev || '' }
     });
     if (S.cls >= 0 && !gave) { var cd = jget(CLSKEY, []); if (cd.indexOf(S.cls) < 0) { cd.push(S.cls); jset(CLSKEY, cd); } }
     clearSave();
@@ -1579,9 +1582,12 @@ body{overflow-x:hidden;}
   }
 
   // Test hook
+  // the history view draws each speaker's face with this (on this page only)
+  window.TruthArt = { heads: function (set, names) { var L = Art.looks({ set: set, names: names, n: names.length }), u = 'hv' + Math.floor(Math.random() * 1e6); return L.map(function (x, i) { return Art.head(x, u + 'h' + i); }); } };
   window.__tl = { get: function () { return S; }, TL: TL, Art: Art, classics: CLASSICS, classic: classic,
     answer: function () { return P ? (P.fam === 'wd' ? P.sol.c : P.sol.t.slice()) : null; },
-    mark: function (arr) { S.marks = arr.slice(); render(); save(); }, layout: function () { layout(); } };
+    mark: function (arr) { S.marks = arr.slice(); render(); save(); }, layout: function () { layout(); },
+    start: newPuzzle, hint: function () { hint(); }, check: function () { check(); }, pick: function (i) { pick(i); }, fam: function () { return P && P.fam; } };
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}

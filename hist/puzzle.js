@@ -582,10 +582,13 @@
     '.hv-rd .top .s{margin-left:auto;display:flex;gap:2px;}',
     '.hv-rd .top .s .ico{width:15px;height:15px;color:rgba(92,58,20,.38);}',
     '.hv-rd .top .s .on{color:#8d5e10;fill:#e3b04b;}',
-    '.hv-rd .rq{margin:7px 0 5px;font:italic 400 .92rem/1.32 "Pagella",Georgia,serif;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}',
+    '.hv-rd .rq{margin:7px 0 5px;font:italic 400 .92rem/1.32 "Pagella",Georgia,serif;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden;}',
     '.hv-rd .a{font:700 1rem/1.2 "Cinzel",Georgia,serif;letter-spacing:.05em;text-transform:uppercase;color:#7a4e0c;}',
     '.hv-rd .t.g .a{color:#5e4a30;}',
-    '.hv-rd .n{margin-top:3px;font:400 .8rem/1.2 Georgia,serif;color:rgba(74,50,24,.75);}'
+    '.hv-rd .n{margin-top:3px;font:400 .8rem/1.2 Georgia,serif;color:rgba(74,50,24,.75);}',
+    '.hv-rd .y{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:5px;font:400 1.02rem/1.15 "Patrick Hand","Bradley Hand",cursive;color:#3d2810;}',
+    '.hv-rd .y s{color:#9b2c1c;text-decoration-thickness:1.5px;}.hv-rd .y s small{font:800 .58rem system-ui,sans-serif;letter-spacing:.08em;color:#b7791f;margin-left:3px;text-decoration:none;display:inline-block;}',
+    '.hv-rd .y b{display:inline-flex;align-items:center;gap:3px;color:#1d6a3e;font-weight:400;}.hv-rd .y b .ico{width:14px;height:14px;}'
   ].join(''));
   R('riddles', function (e, ui) {
     var d = e.dt; if (!d || !d.r || !d.r.length) return null;
@@ -594,16 +597,33 @@
       var st = ui.el('span', { class: 's', 'aria-label': (x.g ? 0 : x.s) + ' stars' });
       for (var k = 0; k < 3; k++) st.appendChild(ui.el('span', { html: ui.icon('star').replace('class="ico"', 'class="ico' + (!x.g && k < x.s ? ' on' : '') + '"') }));
       var note = x.g ? 'Gave up' : (x.h ? x.h + (x.h === 1 ? ' hint' : ' hints') : 'No hints') + ' · ' + x.t + (x.t === 1 ? ' try' : ' tries');
+      if (x.sc) note += ' · ' + sec(x.sc);
+      if (x.p) note += ' · +' + x.p + ' points';
+      // what was typed: wrong ones crossed out, the right one ticked
+      var ys = x.y ? String(x.y).split('|') : [], yb = null;
+      if (ys.length) {
+        yb = ui.el('div', { class: 'y' });
+        ys.forEach(function (t, k) {
+          var close = /~$/.test(t), w = t.replace(/~$/, ''), right = !x.g && k === ys.length - 1;
+          yb.appendChild(right ? ui.el('b', { html: ui.icon('check') + ui.esc(w) }) : ui.el('s', { html: ui.esc(w) + (close ? '<small>CLOSE</small>' : '') }));
+        });
+      }
       box.appendChild(ui.el('div', { class: 't' + (x.g ? ' g' : '') }, [
         ui.el('div', { class: 'top' }, [ui.el('span', { text: (d.r.length > 1 ? (i + 1) + ' · ' : '') + (LV[x.d] || '') }), st]),
-        ui.el('div', { class: 'rq', text: x.q }), ui.el('div', { class: 'a', text: x.a }), ui.el('div', { class: 'n', text: note })
+        ui.el('div', { class: 'rq', text: x.q }), ui.el('div', { class: 'a', text: x.a }), yb, ui.el('div', { class: 'n', text: note })
       ]));
     });
     var solved = d.r.filter(function (x) { return !x.g; }).length, hints = d.r.reduce(function (a, x) { return a + (x.h || 0); }, 0);
-    return ui.wrap([
-      d.r.length > 1 ? ui.stats([['Solved', solved + ' / ' + d.r.length], ['Points', e.pts != null ? e.pts : null], ['Hints', hints]]) : null,
-      ui.section(d.r.length > 1 ? 'The riddles' : 'The riddle', box)
-    ]);
+    var tot = d.r.reduce(function (a, x) { return a + (x.sc || 0); }, 0), out = [];
+    if (d.r.length > 1) out.push(ui.stats([['Solved', solved + ' / ' + d.r.length], ['Hints', hints], tot ? ['Time', sec(tot)] : ['Points', e.pts != null ? e.pts : null]]));
+    else if (tot) out.push(ui.stats([['Time', sec(tot)], ['Points', e.pts || 0], ['Tries', d.r[0].t || 0]]));
+    if (d.r.length > 1 && tot) {
+      var SC = ['#8a5a2a', '#c48a1c', '#e3b04b', '#f6d77c'];
+      out.push(ui.section('Time on each riddle', [columns(ui, d.r.map(function (x) { return { v: x.sc || 0, top: x.sc ? sec(x.sc) : '', c: x.g ? '#b4534a' : SC[x.s || 0] }; }), { aria: 'Time on each riddle' }),
+        ui.el('p', { class: 'hv-pz-note', text: 'Brighter gold: more stars · Red: gave up' })], { icon: 'chart' }));
+    }
+    out.push(ui.section(d.r.length > 1 ? 'The riddles' : 'The riddle', box));
+    return ui.wrap(out);
   });
   // ── Truth or Lies: the cast, what each one said, and who was lying ──
   HistView.css('hv-truthlies', [
@@ -619,7 +639,17 @@
     '.hvtl .tf{font-family:var(--font,system-ui);font-weight:900;font-size:.62rem;letter-spacing:.1em;padding:1px 4px;border:1.5px solid currentColor;border-radius:4px;transform:rotate(-6deg);}',
     '.hvtl .tf.t{color:#1d7a46;}.hvtl .tf.f{color:#b3202f;}',
     '.hvtl .end{margin:8px 0 0;text-align:center;font-weight:700;font-size:.86rem;}',
-    '.hvtl .end.g{color:#8a6a3a;font-weight:400;font-style:italic;}'
+    '.hvtl .end.g{color:#8a6a3a;font-weight:400;font-style:italic;}',
+    '.hvtl li{grid-template-columns:auto 1fr auto;}',
+    '.hvtl .face{display:flex;flex-direction:column;align-items:center;gap:2px;}',
+    '.hvtl .face .hd{width:40px;height:40px;border-radius:50%;overflow:hidden;background:#e9dcc0;box-shadow:0 0 0 2px var(--wc,#888);}.hvtl .face .hd svg{width:100%;height:100%;display:block;}',
+    '.hvtl .why{display:block;margin-top:2px;font-family:Georgia,serif;font-style:italic;font-size:.74rem;line-height:1.3;color:#6b5a44;}',
+    '.hvtl .acc{position:relative;}.hvtl .acc::after{content:"";position:absolute;inset:-4px;border:2.5px solid #d0283c;border-radius:50%;}',
+    '.hvtl-w{display:flex;flex-direction:column;gap:6px;}',
+    '.hvtl-w .r{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.8rem;font-weight:800;color:var(--text-2);}',
+    '.hvtl-w .r>b{font-size:.7rem;color:#f0645a;letter-spacing:.08em;min-width:46px;}',
+    '.hvtl-w .t{display:inline-flex;align-items:center;gap:4px;padding:2px 7px 2px 3px;border-radius:999px;background:rgba(255,255,255,.06);}',
+    '.hvtl-w .t i{width:14px;height:14px;border-radius:50%;}.hvtl-w .t.bad{box-shadow:0 0 0 2px #f0645a;}'
   ].join(''));
   R('truthlies', function (e, ui) {
     var d = e.dt; if (!d || !d.nm || !d.st) return null;
@@ -632,19 +662,38 @@
       ui.el('h5', { text: S[0] }),
       ui.el('p', { class: 'r', text: wd ? (RULES[d.rule] || '') : 'Truth-tellers and liars' + (d.spy ? ', and one spy' : '') + '.' })
     ]);
-    var ul = ui.el('ul');
+    var ul = ui.el('ul'), heads = null, wy = d.wy || [], WC = ['#1f9a55', '#d0283c', '#7a52c7'];
+    try { if (window.TruthArt) heads = TruthArt.heads(d.set, names); } catch (err) { heads = null; }
     [].concat(d.st).forEach(function (s, i) {
       var ty = +t.charAt(i), kind = wd ? (ty ? 'lying' : 'honest') : ty === 2 ? 'spy' : S[ty ? 2 : 1];
+      var badge = ui.el('span', { class: 'who w' + ty, html: ui.esc(names[i] || '') + '<small>' + ui.esc(kind) + '</small>' });
       ul.appendChild(ui.el('li', null, [
-        ui.el('span', { class: 'who w' + ty, html: ui.esc(names[i] || '') + '<small>' + ui.esc(kind) + '</small>' }),
-        ui.el('span', { class: 'say', text: s }),
+        heads ? ui.el('span', { class: 'face' }, [ui.el('span', { class: 'hd' + (wd && i === d.c ? ' acc' : ''), style: { '--wc': WC[ty] || '#888' }, html: heads[i] }), badge]) : badge,
+        ui.el('span', { class: 'say' }, [ui.el('span', { text: s }), wy[i] ? ui.el('span', { class: 'why', text: wy[i] }) : null]),
         tv ? ui.el('span', { class: 'tf ' + (tv.charAt(i) === '1' ? 't' : 'f'), text: tv.charAt(i) === '1' ? 'TRUE' : 'FALSE' }) : null
       ]));
     });
     box.appendChild(ul);
     if (wd && d.c >= 0) box.appendChild(ui.el('p', { class: 'end', text: (names[d.c] || '') + ' ' + S[1] + '.' }));
     if (d.g) box.appendChild(ui.el('p', { class: 'end g', text: 'Answer shown' }));
-    return ui.wrap([box, ui.stats([['Time', d.g ? '' : ui.time(e.seconds || 0)], ['Hints', d.h], ['Wrong guesses', d.w]])]);
+    var out = [box, ui.stats([['Time', d.g ? '' : ui.time(e.seconds || 0)], ['Hints', d.h], ['Wrong guesses', d.w]])];
+    if (evList(d.ev).length && e.seconds > 0) out.push(ui.section('How it went', howItWent(ui, { total: e.seconds, ev: d.ev, end: d.g ? 'Shown' : 'Solved', endOk: !d.g, names: { x: 'Wrong guess' } }), { icon: 'chart' }));
+    // the wrong guesses: who you pointed at, or the tokens you had out
+    if (d.wt && d.wt.length) {
+      var wb = ui.el('div', { class: 'hvtl-w' }), first = Math.max(0, (d.w || d.wt.length) - d.wt.length);
+      d.wt.forEach(function (w, k) {
+        var row = ui.el('div', { class: 'r' }, [ui.el('b', { text: 'TRY ' + (first + k + 1) })]);
+        if (wd) row.appendChild(ui.el('span', { text: 'You said ' + (names[+w] || '?') + ' ' + S[1] + '.' }));
+        else String(w).split('').forEach(function (m, j) {
+          var bad = m !== t.charAt(j);
+          row.appendChild(ui.el('span', { class: 't' + (bad ? ' bad' : ''), title: bad ? 'Wrong' : '' }, [ui.el('i', { style: { background: WC[+m] || '#888' } }), ui.el('span', { text: names[j] || '' })]));
+        });
+        wb.appendChild(row);
+      });
+      if (!wd) wb.appendChild(ui.el('p', { class: 'hv-pz-note', text: 'Green: ' + S[1] + ' · Red: ' + S[2] + (d.spy ? ' · Purple: spy' : '') + ' · Ringed: had it wrong' }));
+      out.push(ui.section('Wrong guesses', wb, { icon: 'close' }));
+    }
+    return ui.wrap(out);
   });
   // ── Cipher Cases: the case file with its code, the answer and the wrong tries ──
   HistView.css('hv-ciphers', '.hv-cc{position:relative;align-self:center;width:100%;max-width:380px;box-sizing:border-box;border-radius:3px 10px 10px 10px;padding:12px 14px;color:#3a2c14;background:linear-gradient(175deg,#ecd9a8,#dcc28a);box-shadow:0 3px 0 #b99c5e,0 10px 20px rgba(0,0,0,.4);font-family:"American Typewriter","Courier New",monospace;}' +
