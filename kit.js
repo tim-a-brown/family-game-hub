@@ -673,6 +673,144 @@
     }
   };
 
+  // ── Online games waiting on your move ─────────────────────────────────────
+  // Signed in with a PIN only. A few small one-off queries (no listening): the tables carrying this account's tag (a
+  // one-way hash of the PIN the games put on their seats). Home lists them in Keep playing; on a game page, a table
+  // that just came back to you (one you're not playing right now) drops a banner in from the top.
+  var ACT = null;
+  function acctTag() {
+    var pin = window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? FGHSync.pin() : null, c = window.crypto && window.crypto.subtle;
+    if (!pin || !c || typeof TextEncoder === 'undefined') return Promise.resolve(null);
+    var h = 5381; for (var i = 0; i < pin.length; i++) h = ((h << 5) + h + pin.charCodeAt(i)) | 0;
+    var k = 'p' + (h >>> 0).toString(36), saved = null;
+    try { saved = JSON.parse(lsGet('fgh_acct_tag', 'null')); } catch (e) {}
+    if (saved && saved.k === k && saved.t) return Promise.resolve(saved.t);
+    if (ACT && ACT.k === k) return ACT.p;
+    var enc = new TextEncoder();
+    ACT = { k: k, p: c.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveBits']).then(function (key) {
+      return c.deriveBits({ name: 'PBKDF2', salt: enc.encode('fgh-online-account'), iterations: 150000, hash: 'SHA-256' }, key, 64);
+    }).then(function (b) {
+      var t = Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+      lsSet('fgh_acct_tag', JSON.stringify({ k: k, t: t }));
+      return t;
+    }).catch(function () { return null; }) };
+    return ACT.p;
+  }
+  // The name you know someone by, from the link tags the games have already worked out
+  function knownBy(seat) {
+    if (!seat) return 'someone';
+    try {
+      var tags = JSON.parse(lsGet('lorc_lktag', '{}')) || {}, L = window.FGHSync && FGHSync.links ? FGHSync.links() : null;
+      if (seat.lk && L && L.others) for (var k in L.others) { var o = L.others[k]; if (o && !o.off && o.code && tags[o.code] === seat.lk && o.name) return o.name; }
+    } catch (e) {}
+    return seat.name || 'someone';
+  }
+  // Every online table you sit at: [{ id, code, at, mine, vs, file }], your move first. file is the page in games/
+  // (with the room), so home adds 'games/' and a game page uses it as it is.
+  function netTurns() {
+    if (!window.FGHSync || !FGHSync.isPin || !FGHSync.isPin() || !FGHSync.db) return Promise.resolve(null);
+    return acctTag().then(function (tag) {
+      if (!tag) return null;
+      return FGHSync.db().then(function (db) {
+        function q(col, seat, st) {
+          var c = db.collection(col);
+          return c.where(seat + '.acct', '==', tag).where('status', 'in', st).limit(10).get()
+            .catch(function () { return c.where(seat + '.acct', '==', tag).limit(30).get(); })
+            .then(function (qs) { var l = []; qs.forEach(function (x) { var d = x.data(); if (st.indexOf(d.status) >= 0) l.push({ code: x.id, d: d, seat: seat }); }); return l; })
+            .catch(function () { return []; });
+        }
+        // every other turn-based game (turnnet.js): the same fields at every table, so no game needs its own code here
+        var tq = db.collection('turnRooms').where('accts', 'array-contains', tag).limit(40).get()
+          .then(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); return l; }).catch(function () { return []; });
+        return Promise.all([q('chessRooms', 'host', ['playing']), q('chessRooms', 'guest', ['playing']), q('lorcanaRooms', 'host', ['joined', 'playing']), q('lorcanaRooms', 'guest', ['playing']), tq]);
+      }).then(function (r) {
+        if (!r) return null;
+        var out = [], seen = {};
+        r[0].concat(r[1]).forEach(function (x) {
+          var d = x.d, h = x.seat === 'host'; if (seen['c' + x.code] || !d.host || !d.guest) return; seen['c' + x.code] = 1;
+          var hw = (d.game || 1) % 2 === 1 ? !!d.hw : !d.hw, mine = (hw ? 1 : -1) * (h ? 1 : -1), toMove = (d.moves || []).length % 2 === 0 ? 1 : -1;
+          out.push({ id: 'chess', code: x.code, at: d.at || 0, mine: toMove === mine, vs: knownBy(h ? d.guest : d.host), file: 'chess.html?online=1&room=' + x.code });
+        });
+        r[2].concat(r[3]).forEach(function (x) {
+          var d = x.d, me = x.seat === 'host' ? 0 : 1; if (seen['l' + x.code] || !d.host || !d.guest) return; seen['l' + x.code] = 1;
+          var answered = !!(d.pr && d.an && d.an.id === d.pr.id), open = !!d.pr && !answered, mine;
+          if (d.status === 'joined') mine = me === 0;
+          else if (/"phase":"mull"/.test(d.st || '')) { try { var mu = JSON.parse(d.st).mull || {}; mine = !mu[me] || (open && d.pr.seat === me) || (!open && d.owner === me && (answered || mu[1 - me])); } catch (e) { mine = false; } }
+          else mine = open ? d.pr.seat === me : d.owner === me;
+          out.push({ id: 'lorcana', code: x.code, at: d.at || 0, mine: !!mine, vs: knownBy(me === 0 ? d.guest : d.host), file: 'lorcana-play.html?online=1&room=' + x.code });
+        });
+        // turnRooms: your move when it's your seat's turn, or the computer's turn and you moved last (it's waiting on
+        // your device to make its moves)
+        (r[4] || []).forEach(function (x) {
+          var d = x.d, g = findGameSafe(d.game), seats = d.seats || [], turn = d.turn || [];
+          if (!g || d.status !== 'playing' || seen['t' + x.code]) return; seen['t' + x.code] = 1;
+          var me = -1; seats.forEach(function (st, i) { if (me < 0 && st && !st.bot && !st.left && st.acct === tag) me = i; });
+          if (me < 0) return;
+          var mine = turn.indexOf(me) >= 0 || (d.drive === me && turn.some(function (i) { return seats[i] && seats[i].bot; }));
+          var others = seats.filter(function (st, i) { return i !== me && st && !st.bot; }).map(function (st) { return knownBy(st); });
+          var up = turn.map(function (i) { return seats[i]; }).filter(function (st) { return st && !st.bot; })[0];
+          out.push({ id: g.id, code: x.code, at: d.at || 0, mine: !!mine, vs: (mine || !up ? others.join(', ') : knownBy(up)) || 'the computer', file: (g.play || g.id) + '.html?online=1&room=' + x.code });
+        });
+        out.sort(function (a, b) { return (b.mine - a.mine) || (b.at - a.at); });
+        return out;
+      });
+    }).catch(function () { return null; });
+  }
+  // the moves already told about (on this device): a table's turn is news once
+  function turnsSeen() { try { return JSON.parse(lsGet('turns_seen_dev', '{}')) || {}; } catch (e) { return {}; } }
+  function turnsMark(list) {
+    var s = turnsSeen(), now = Date.now();
+    (list || []).forEach(function (x) { if (x.mine) s[x.id + ':' + x.code] = x.at || now; });
+    var keys = Object.keys(s); if (keys.length > 80) keys.sort(function (a, b) { return s[a] - s[b]; }).slice(0, keys.length - 80).forEach(function (k) { delete s[k]; });
+    try { LS.setItem('turns_seen_dev', JSON.stringify(s)); } catch (e) {}
+  }
+  // On a game page: check now and then while the page is up; a table that came back to you drops the banner
+  var TW = { t: 0, at: 0, el: null, hide: 0 };
+  function turnWatch() {
+    if (TW.on || !game) return; TW.on = 1;
+    function check() {
+      if (doc.visibilityState !== 'visible' || Date.now() - TW.at < 45000) return;
+      TW.at = Date.now();
+      netTurns().then(function (list) {
+        if (!list) return;
+        // (never the table you're at: TurnNet games know their table; Chess and Lorcana keep their own, so any of theirs)
+        var seen = turnsSeen(), tn = window.TurnNet && TurnNet._t;
+        function here(x) { return x.id === game.id && (tn ? tn.code === x.code : true); }
+        var fresh = list.filter(function (x) { return x.mine && x.at && seen[x.id + ':' + x.code] !== x.at && !here(x); });
+        turnsMark(list);
+        if (fresh.length) turnBanner(fresh[0], fresh.length - 1);
+      });
+    }
+    setTimeout(check, 4000);
+    setInterval(check, 60000);
+    doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') setTimeout(check, 800); });
+  }
+  // The banner: the game's icon, whose move it is, and a Play button; tap it to go, swipe it up (or wait) to let it be
+  function turnBanner(x, more) {
+    var g = findGameSafe(x.id); if (!g) return;
+    if (TW.el) TW.el.remove();
+    clearTimeout(TW.hide);
+    var href = (/\/games\//.test(location.pathname) ? '' : 'games/') + x.file;
+    var b = el('div', { class: 'k-note k-turnban', role: 'status', 'aria-label': 'Your turn in ' + g.name + '. Tap to play' }, [
+      el('span', { class: 'ic', html: window.GameIcon ? GameIcon(g.id) : '' }),
+      el('span', { class: 'grow' }, [
+        el('span', { class: 'yt', html: '<i></i>Your turn' }),
+        el('b', { text: g.name }),
+        el('small', { text: (x.vs && x.vs !== 'the computer' ? x.vs + ' moved' : 'It’s back to you') + (more > 0 ? ' · ' + more + ' more waiting' : '') })]),
+      el('span', { class: 'go', html: icon('play') })
+    ]);
+    function close() { clearTimeout(TW.hide); if (!b.isConnected) return; b.style.transform = ''; b.classList.remove('show'); setTimeout(function () { b.remove(); }, 520); if (TW.el === b) TW.el = null; }
+    var y0 = null, moved = false;
+    b.addEventListener('touchstart', function (e) { y0 = e.touches[0].clientY; moved = false; }, { passive: true });
+    b.addEventListener('touchmove', function (e) { if (y0 == null) return; var dy = e.touches[0].clientY - y0; if (dy < -6) { moved = true; b.style.transform = 'translate(-50%,' + dy + 'px)'; } }, { passive: true });
+    b.addEventListener('touchend', function (e) { if (moved) { var dy = e.changedTouches[0].clientY - y0; if (dy < -30) close(); else b.style.transform = ''; } y0 = null; });
+    b.addEventListener('click', function () { if (moved) return; haptic('light'); sfx('pop'); close(); setTimeout(function () { location.href = href; }, 120); });
+    doc.body.appendChild(b); TW.el = b;
+    requestAnimationFrame(function () { requestAnimationFrame(function () { b.classList.add('show'); }); });
+    sfx('pop'); haptic('medium');
+    TW.hide = setTimeout(close, 9000);
+  }
+
   // ── Favorites (same storage the home screen and sync use) ─────────────────
   function favHref() { return game ? 'games/' + (game.play || game.id) + '.html' : ''; }
   function favs() { try { var a = JSON.parse(lsGet('fav_games', '[]')); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
@@ -1069,6 +1207,7 @@
     opts = o || {};
     startFitLock();
     game = findGameSafe(opts.id || pageKey());
+    if (game) setTimeout(turnWatch, 0);
     if (opts.orient) orientGate(opts.orient, opts.orientTablets);
     var accent = opts.color || (game && game.color) || '#ffc83d';
     root.style.setProperty('--accent', accent);
@@ -3501,6 +3640,7 @@
   handoff.close = function () { var c = doc.querySelector('.k-ho'); if (c) c.remove(); };
 
   window.Kit = {
+    netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner,
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
