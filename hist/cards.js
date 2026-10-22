@@ -105,6 +105,8 @@
     '.hvc-rb{appearance:none;border:0;cursor:pointer;min-width:27px;height:27px;padding:0 6px;border-radius:7px;font:inherit;font-size:.7rem;font-weight:900;color:#fff;',
     'background:var(--rc,rgba(255,255,255,.14));box-shadow:inset 0 -2px 0 rgba(0,0,0,.28);font-variant-numeric:tabular-nums;}',
     '.hvc-rb.dk{color:#1b1404;}.hvc-rb.on{outline:2.5px solid #fff;outline-offset:1.5px;}',
+    '.hvc-rb.ring{box-shadow:inset 0 0 0 2.5px #fff,inset 0 -2px 0 rgba(0,0,0,.28);}',
+    '.hvc-key i.ring{background:transparent;box-shadow:inset 0 0 0 2px #fff;}',
     '.hvc-key{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:.72rem;font-weight:800;color:var(--text-3);}',
     '.hvc-key span{display:inline-flex;align-items:center;gap:5px;}.hvc-key i{width:10px;height:10px;border-radius:3px;display:inline-block;}',
     '.hvc-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.86rem;font-weight:800;color:rgba(255,255,255,.85);}',
@@ -127,7 +129,7 @@
   function road(items, start, show) {
     var box = K().el('div', { class: 'hvc-road' }), btns = [];
     items.forEach(function (it, i) {
-      var b = K().el('button', { type: 'button', class: 'hvc-rb' + (it.dk ? ' dk' : ''), style: it.c ? { '--rc': it.c } : null, text: it.t, title: it.title || '', 'aria-label': it.title || it.t,
+      var b = K().el('button', { type: 'button', class: 'hvc-rb' + (it.dk ? ' dk' : '') + (it.ring ? ' ring' : ''), style: it.c ? { '--rc': it.c } : null, text: it.t, title: it.title || '', 'aria-label': it.title || it.t,
         onclick: function () { pick(i); } });
       btns.push(b); box.appendChild(b);
     });
@@ -135,7 +137,7 @@
     if (items.length) pick(Math.max(0, Math.min(items.length - 1, start)));
     return box;
   }
-  function key(list) { return K().el('div', { class: 'hvc-key' }, list.filter(Boolean).map(function (x) { return K().el('span', null, [K().el('i', { style: { background: x[1] } }), document.createTextNode(x[0])]); })); }
+  function key(list) { return K().el('div', { class: 'hvc-key' }, list.filter(Boolean).map(function (x) { return K().el('span', null, [K().el('i', x[1] === 'ring' ? { class: 'ring' } : { style: { background: x[1] } }), document.createTextNode(x[0])]); })); }
   // one plate per seat: [{n: name, v: big value, s: sub text, c: colour, cls}]
   function plates(list) {
     var box = K().el('div', { class: 'hvc-plates', style: { '--n': list.length } });
@@ -192,9 +194,9 @@
         if (h.b) kids.push(K().el('div', { class: 'hvc-mini', text: h.b === 1 ? 'Hearts were broken on the first trick.' : 'Hearts were broken on trick ' + h.b + '.' }));
         panel.innerHTML = ''; panel.appendChild(felt('hearts', kids));
       };
-      var items = hx.map(function (h, i) { var w = h.m >= 0 ? h.m : h.q; return { t: String(i + 1), c: h.m >= 0 ? '#ffd166' : w >= 0 ? ui.color(w) : null, dk: h.m >= 0, title: 'Hand ' + (i + 1) + (h.m >= 0 ? ': ' + nm[h.m] + ' shot the moon' : h.q >= 0 ? ': Q♠ to ' + nm[h.q] : '') }; });
+      var items = hx.map(function (h, i) { var w = h.m >= 0 ? h.m : h.q; return { t: String(i + 1), c: w >= 0 ? ui.color(w) : null, ring: h.m >= 0, title: 'Hand ' + (i + 1) + (h.m >= 0 ? ': ' + nm[h.m] + ' shot the moon' : h.q >= 0 ? ': Q♠ to ' + nm[h.q] : '') }; });
       out.push(ui.section('Every hand · tap one', [road(items, hx.length - 1, show), panel,
-        key(nm.map(function (x, p) { return ['Q♠ to ' + first(x), ui.color(p)]; }).concat(moons ? [['Moon', '#ffd166']] : []))], { icon: 'cards' }));
+        key(nm.map(function (x, p) { return ['Q♠ to ' + first(x), ui.color(p)]; }).concat(moons ? [['Moon shot', 'ring']] : []))], { icon: 'cards' }));
     }
     // over the game
     if (d.qs) {
@@ -257,10 +259,10 @@
       var items = hx.map(function (h, i) {
         var r = String(h.r || ''), b = String(h.b).split('.'), t = String(h.t).split('.').map(Number), nilOk = [0, 1, 2, 3].some(function (p) { return (b[p] === 'N' || b[p] === 'B') && t[p] === 0; });
         var pts = sc[i] || [0, 0], w = pts[0] === pts[1] ? -1 : pts[0] > pts[1] ? 0 : 1;
-        return { t: String(i + 1), c: nilOk ? '#ffd166' : w >= 0 ? ui.color(w) : null, dk: nilOk, title: 'Hand ' + (i + 1) + (r.indexOf('s') >= 0 ? ': a team went set' : '') };
+        return { t: String(i + 1), c: w >= 0 ? ui.color(w) : null, ring: nilOk, title: 'Hand ' + (i + 1) + (r.indexOf('s') >= 0 ? ': a team went set' : '') };
       });
       out.push(ui.section('Every hand · tap one', [road(items, hx.length - 1, show), panel,
-        key([['Hand to ' + teams[0], ui.color(0)], ['Hand to ' + teams[1], ui.color(1)], nilsMade ? ['Nil made', '#ffd166'] : null])], { icon: 'cards' }));
+        key([['Hand to ' + teams[0], ui.color(0)], ['Hand to ' + teams[1], ui.color(1)], nilsMade ? ['Nil made', 'ring'] : null])], { icon: 'cards' }));
       var rows = hx.map(function (h, i) {
         var b = String(h.b).split('.'), t = String(h.t).split('.').map(Number), r = String(h.r || '');
         return ['H' + (i + 1)].concat([0, 1, 2, 3].map(function (p) {
@@ -286,31 +288,50 @@
   });
   HistView.css('hv-cards-note', '.hv-note{margin:0;font-size:.76rem;color:var(--text-3);font-weight:700;}');
 
-  // ── Euchre: every hand's call, who made it, and the hand they called on ──
+  // ── Euchre: every hand (the turned card, who called what, tricks, the maker's cards), and what decided it ──
+  var LEFTOF = { s: 'c', c: 's', h: 'd', d: 'h' };
+  function euTrump(code, t) { var p = parse(code); return !!(p && t && (p.s === t || (p.r === 'J' && LEFTOF[t] === p.s))); }
   R('euchre', function (e, ui) {
     var d = e.dt; if (!d || !d.hx) return null;
-    var nm = d.names || [], out = [];
-    var RES = { made: ['Made', 'good'], march: ['March', 'big'], 'alone-march': ['Alone march', 'big'], euchred: ['Euchred', 'bad'] };
-    var list = K().el('div', { class: 'hvc-hands' });
-    d.hx.forEach(function (h, i) {
-      var r = RES[h.r] || [h.r, ''], up = parse(h.u);
-      var how = h.c === 1 ? (up ? 'ordered up the ' + label(h.u) : 'ordered it up') : 'named ' + (SN[h.t] || '').toLowerCase() + (up ? ' (turned down ' + label(h.u) + ')' : '');
-      var who = nm[h.m] || '?';
-      list.appendChild(K().el('div', { class: 'hvc-hand' }, [
-        suitTag(h.t),
-        K().el('div', { class: 't' }, [K().el('span', { text: who + (h.a ? ' went alone' : ' called ' + (SN[h.t] || '')) }), K().el('small', { text: 'Hand ' + (i + 1) + ' · ' + how + ' · ' + h.k + ' of 5 tricks' })]),
-        K().el('span', { class: 'r ' + r[1], text: r[0] }),
-        h.h && h.h.length ? K().el('div', { class: 'cs' }, [row(h.h, { w: 30, hl: h.c === 1 && h.d === h.m ? [h.u] : [], cls: function (c) { var p = parse(c); return p && h.t && (p.s === h.t || (p.r === 'J' && ({ s: 'c', c: 's', h: 'd', d: 'h' })[h.t] === p.s)) ? '' : 'dim'; } })]) : null
-      ]));
-    });
-    out.push(ui.section('Every call', [list, ui.el('p', { class: 'hv-note', text: 'The cards the maker played with. Trump is bright.' })]));
+    var nm = d.names || [], hx = d.hx, out = [], sc = scoresOf(e), tot = cum(sc, 2);
+    var RES = { made: ['Made it', 'good'], march: ['March', 'big'], 'alone-march': ['Alone march', 'big'], euchred: ['Euchred', 'bad'] };
+    var tn = [first(nm[0]) + ' & ' + first(nm[2]), first(nm[1]) + ' & ' + first(nm[3])];
     var tm = [0, 1].map(function (t) {
-      var mine = d.hx.filter(function (h) { return h.m % 2 === t; });
+      var mine = hx.filter(function (h) { return h.m % 2 === t; });
       return { calls: mine.length, eu: mine.filter(function (h) { return h.r === 'euchred'; }).length, mar: mine.filter(function (h) { return /march/.test(h.r); }).length, al: mine.filter(function (h) { return h.a; }).length };
     });
-    var tn = [first(nm[0]) + ' & ' + first(nm[2]), first(nm[1]) + ' & ' + first(nm[3])];
+    out.push(ui.stats([['Hands', hx.length, d.to ? 'played to ' + d.to : ''], ['Euchres', tm[0].eu + tm[1].eu, 'callers who fell short'],
+      ['Marches', tm[0].mar + tm[1].mar, 'all 5 tricks'], tm[0].al + tm[1].al ? ['Went alone', tm[0].al + tm[1].al] : null]));
+    var panel = K().el('div', { class: 'hv' });
+    var show = function (i) {
+      var h = hx[i], r = RES[h.r] || [h.r, ''], kids = [], mt = h.m % 2, pts = sc[i] || [], after = h.s ? String(h.s).split('.').map(Number) : tot[i] || [];
+      var w = h.w ? String(h.w).split('.').map(Number) : null, out1 = h.a ? (h.m + 2) % 4 : -1;
+      kids.push(head('<b>Hand ' + (i + 1) + '</b>' + (nm[h.d] ? ' · ' + K().esc(first(nm[h.d])) + ' dealt' : ''), r[0], r[1]));
+      var call = h.c === 1 ? (h.m === h.d ? first(nm[h.m]) + ' picked it up' : first(nm[h.m]) + ' ordered it up') : first(nm[h.m]) + ' named ' + (SN[h.t] || '').toLowerCase();
+      kids.push(K().el('div', { class: 'hvc-pair', style: { 'align-items': 'center' } }, [
+        h.u ? grp(h.c === 1 ? 'Turned up' : 'Turned down', row([h.u], { w: 40, cls: function () { return h.c === 1 ? '' : 'dim'; } })) : null,
+        K().el('div', { class: 'hvc-grp' }, [K().el('div', { class: 'hvc-cap', text: 'Trump' }), K().el('div', { style: { display: 'flex', 'align-items': 'center', gap: '8px' } }, [suitTag(h.t), K().el('span', { class: 'hvc-sub', text: call + (h.a ? ', alone' : '') })])])
+      ]));
+      if (w) kids.push(plates([0, 1, 2, 3].map(function (p) {
+        return { n: first(nm[p]), v: p === out1 ? '–' : w[p], s: p === out1 ? 'sat out' : plural(w[p], 'trick'), s2: p === h.m ? 'caller' : '', c: ui.color(p % 2), cls: p === h.m ? (h.r === 'euchred' ? 'bad' : 'good') : '' };
+      })));
+      kids.push(plates([0, 1].map(function (t) { return { n: tn[t], v: pts[t] ? '+' + pts[t] : '0', s: 'score ' + (after[t] != null ? after[t] : ''), c: ui.color(t), cls: pts[t] ? (t === mt ? 'good' : 'bad') : '' }; })));
+      var trumpCls = function (c) { return euTrump(c, h.t) ? '' : 'dim'; };
+      if (h.h && h.h.length) kids.push(grp(first(nm[h.m]) + "'s cards", row(h.h, { w: 36, hl: h.c === 1 && h.d === h.m ? [h.u] : [], cls: trumpCls }), 'Trump is bright' + (h.c === 1 && h.d === h.m ? ' · ringed: the card picked up' : '')));
+      if (h.y && h.y.length) kids.push(grp(first(nm[0]) + "'s cards", row(h.y, { w: 32, cls: trumpCls })));
+      panel.innerHTML = ''; panel.appendChild(felt('euchre', kids));
+    };
+    var items = hx.map(function (h, i) { var mt = h.m % 2, win = h.r === 'euchred' ? 1 - mt : mt, big = /march/.test(h.r); return { t: String(i + 1), c: ui.color(win), ring: big, title: 'Hand ' + (i + 1) + ': ' + (RES[h.r] || [h.r])[0] }; });
+    out.push(ui.section('Every hand · tap one', [road(items, hx.length - 1, show), panel,
+      key([['Point to ' + tn[0], ui.color(0)], ['Point to ' + tn[1], ui.color(1)], ['March', 'ring']])], { icon: 'cards' }));
     out.push(ui.table(['', tn[0], tn[1]], [['Called trump', tm[0].calls, tm[1].calls], ['Euchred', tm[0].eu, tm[1].eu], ['Marches', tm[0].mar, tm[1].mar], ['Went alone', tm[0].al, tm[1].al]], { headColors: [null, ui.color(0), ui.color(1)] }));
     if (d.throwins) out.push(ui.facts([['Thrown in', plural(d.throwins, 'deal') + ' (everyone passed)']]));
+    var fin = (e.players || []).map(function (p) { return p.score; }), lh = hx[hx.length - 1];
+    if (fin.length === 2 && fin[0] != null && lh) {
+      var wt = fin[0] > fin[1] ? 0 : 1, lm = lh.m % 2;
+      var how = lh.r === 'euchred' ? 'by euchring ' + first(nm[lh.m]) : lm === wt ? (/march/.test(lh.r) ? 'with a march' + (lh.a ? ' alone' : '') : 'making ' + (SN[lh.t] || '').toLowerCase() + ' trump') : '';
+      out.push(foot(tn[wt] + ' reached ' + fin[wt] + ' in hand ' + hx.length + (how ? ' ' + how : '') + ', winning ' + fin[wt] + ' to ' + fin[1 - wt] + '.', 'flag'));
+    }
     return ui.wrap(out);
   });
 
