@@ -329,7 +329,10 @@ var MazeCore = (function () {
     o = o || {};
     var b = bounds(m, false), pad = U * 1.4, vb = (b.x - pad) + ' ' + (b.y - pad) + ' ' + (b.w + 2 * pad) + ' ' + (b.h + 2 * pad);
     var sw = Math.max(1.1, U * 0.13);
-    return '<svg viewBox="' + vb + '" class="' + (o.cls || '') + '" role="img" aria-label="The maze">' +
+    // o.dead: the dead ends you went down (drawn in pencil grey, under the line), o.ghost: the way out (faint, when it wasn't reached)
+    var under = (o.dead || []).map(function (c) { return '<path d="' + line(m, pathTo(m, c), false, { entry: true }) + '" fill="none" stroke="#9aa0ae" stroke-width="' + U * 0.26 + '" stroke-linecap="round" stroke-linejoin="round" opacity=".75"/><circle cx="' + center(m, c, false)[0].toFixed(1) + '" cy="' + center(m, c, false)[1].toFixed(1) + '" r="' + U * 0.22 + '" fill="#7a8090"/>'; }).join('');
+    if (o.ghost) under += '<path d="' + line(m, m.solution, false, { entry: true, exit: true }) + '" fill="none" stroke="#2f7de1" stroke-width="' + U * 0.2 + '" stroke-dasharray="' + U * 0.4 + ' ' + U * 0.3 + '" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>';
+    return '<svg viewBox="' + vb + '" class="' + (o.cls || '') + '" role="img" aria-label="The maze">' + under +
       '<path d="' + walls(m, false, true) + '" fill="none" stroke="#23263a" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
       (cells && cells.length ? '<path d="' + line(m, cells, false, { entry: true, exit: o.exit }) + '" fill="none" stroke="' + (o.color || '#d2402c') + '" stroke-width="' + U * 0.34 + '" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>' : '') +
       '</svg>';
@@ -339,9 +342,19 @@ var MazeCore = (function () {
     var m = make({ shape: dt.sh, size: dt.z, paths: dt.p, seed: dt.s }), head = dt.h >= 0 && dt.h < m.n ? dt.h : m.start;
     var solved = head === m.finish;
     ui.css('hv-maze', '.hv-maze{align-self:center;width:100%;max-width:300px;padding:10px;border-radius:6px;background:linear-gradient(180deg,#fffaf0,#f5ecd7);box-shadow:0 6px 16px -6px rgba(0,0,0,.6);box-sizing:border-box;}.hv-maze svg{width:100%;height:auto;display:block;}');
-    var box = ui.el('div', { class: 'hv-maze', html: svgOf(m, pathTo(m, head), { exit: solved }) });
+    var dead = (dt.dx || []).filter(function (c) { return c >= 0 && c < m.n; });
+    var box = ui.el('div', { class: 'hv-maze', html: svgOf(m, pathTo(m, head), { exit: solved, dead: dead, ghost: !solved }) });
     var kids = [box];
-    if (ui.stats) { var st = ui.stats([['Time', dt.t != null ? clock(dt.t) : null], ['Hints', dt.hn || 0], ['Wrong turns', dt.w != null ? dt.w : null], ['Holes', dt.f ? dt.f : null]]); if (st) kids.push(st); }
+    if (dead.length || !solved) kids.push(ui.el('p', { class: 'hv-pz-note', text: 'Red: ' + (dt.m === 'tilt' ? 'where the ball got to' : 'your line') + (dead.length ? ' · Grey: dead ends you tried' : '') + (!solved ? ' · Dashed blue: the way out' : '') }));
+    var pb = dt.pb, t = dt.t;
+    if (ui.stats) {
+      var st = ui.stats([['Time', t != null ? clock(t) : null, t == null || pb == null || pb < 0 ? (dt.pn ? 'with ' + dt.pn + 's for hints' : '') : !pb ? 'first solve at this size' : t < pb ? 'new best (was ' + clock(pb) + ')' : 'best ' + clock(pb)],
+        ['Hints', dt.hn || 0], ['Wrong turns', dt.w != null ? dt.w : null], ['Holes', dt.f ? dt.f : null],
+        dt.dr && solved && dt.m !== 'tilt' ? ['Squares drawn', dt.dr, 'shortest way ' + (m.solution.length - 1)] : null]);
+      if (st) kids.push(st);
+    }
+    var Z = window.HistView && HistView._pz, evs = Z ? Z.evList(dt.ev) : [];
+    if (Z && evs.length && (dt.rt || t)) kids.push(ui.section('How it went', Z.howItWent(ui, { total: dt.rt || t, ev: evs, end: solved ? 'Out' : 'Shown', endOk: solved, names: { x: 'Dead end' } }), { icon: 'chart' }));
     return ui.section((dt.m === 'tilt' ? 'Labyrinth' : 'Maze') + ' No. ' + dt.s, kids, { icon: 'compass' });
   }
   function clock(s) { s = Math.max(0, Number(s) || 0); var m = Math.floor(s / 60), r = s - m * 60; return m + ':' + (r < 10 ? '0' : '') + r.toFixed(1); }
