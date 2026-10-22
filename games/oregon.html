@@ -15,6 +15,7 @@
 <script src="../arcade-music.js"></script>
 <script src="oregon/data.js"></script>
 <script src="oregon/art.js"></script>
+<script src="oregon/usmap.js"></script>
 <style>
 /* Pixel fonts: Jersey 10 and Press Start 2P (SIL Open Font License, see fonts/) */
 @font-face{font-family:"Jersey 10";src:url("../fonts/jersey-10.woff2") format("woff2");font-display:swap;}
@@ -34,6 +35,11 @@ body{overflow:hidden;}
 /* the bottom edge clears the home bar and the screen's rounded corners (kit.css --safe-b, --corner-x/y) */
 .ot-low{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px calc(12px + var(--corner-x,0px)) calc(10px + var(--safe-b,0px) + var(--corner-y,0px));overflow:hidden;}
 .ot-info{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;}
+/* the old map over the trail: above the picture upright, at the left of the lower half sideways */
+.ot-map{flex:none;padding:8px 10px 6px;background:#000;}
+.ot-map canvas{display:block;width:100%;image-rendering:pixelated;box-shadow:0 0 0 2px #2a1a0a,4px 4px 0 #000;}
+@media (orientation:landscape) and (min-width:600px){ .ot-low > .ot-map{padding:0;width:min(36%,440px);align-self:flex-start;} .ot.trav .ot-act{width:min(28%,320px);} }
+@media (orientation:landscape) and (min-width:600px) and (max-height:560px){ .ot-low > .ot-map{width:30%;} .ot.trav .ot-act{width:26%;} .ot.trav .ot-act .ob{font-size:1.15rem;} }
 .ot-act{flex:none;display:flex;flex-direction:column;gap:7px;}
 @media (orientation:landscape) and (min-width:600px){
   .ot-low{flex-direction:row;gap:14px;padding:8px calc(12px + var(--corner-x,0px)) calc(8px + var(--safe-b,0px) + var(--corner-y,0px));}
@@ -81,6 +87,8 @@ html.k-kb .ot.typing .ot-scr{display:none;}
 .ot-stat dd{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 @media (orientation:landscape) and (min-width:600px) and (max-height:560px){
   .ot-stat{grid-template-columns:auto 1fr auto 1fr;}
+  /* traveling, the map takes part of the row: one column of facts, a little smaller */
+  .ot.trav .ot-stat{grid-template-columns:auto 1fr;font-size:1.08rem;line-height:1.02;}
 }
 .ot-seg{position:relative;height:10px;margin:6px 0 2px;background:#222;border:2px solid var(--e-dgray);}
 .ot-seg i{position:absolute;left:0;top:0;bottom:0;background:repeating-linear-gradient(90deg,var(--e-brown) 0 6px,#7a3d00 6px 8px);transition:width .6s steps(8);}
@@ -838,6 +846,7 @@ html.k-kb .ot.typing .ot-scr{display:none;}
         var step = Math.floor(t / 170);
         if (moving && T.lastStep !== step) { T.lastStep = step; SND.clop(step % 2); if (step % 9 === 0 && chance(0.4)) SND.creak(); }
         var dist = S.segMi - (S.done - (moving ? T.res.mi * (1 - p) : 0));
+        drawTrailMap(S.done - (moving ? T.res.mi * (1 - p) : 0), t);
         var nx = S.next ? N[S.next] : null;
         var gs = [];
         if (S.next) graves().forEach(function (g) { if (g.at === S.at && g.to === S.next) gs.push({ dmi: g.d - (S.done - (moving ? T.res.mi * (1 - p) : 0)) }); });
@@ -847,9 +856,43 @@ html.k-kb .ot.typing .ot-scr{display:none;}
       }
     };
   }
+  // the old map of the country above the trail: the whole route, red where you've been, the wagon creeping west
+  var TM = null;
+  function trailMap() {
+    var cv = el('canvas'), box = el('div', { class: 'ot-map' }, [cv]);
+    if (land()) low.insertBefore(box, info); else root.insertBefore(box, scr);
+    root.classList.add('trav');
+    TM = { box: box, cv: cv, w: 0, key: '' };
+    layout();
+  }
+  function drawTrailMap(done, t) {
+    if (!TM || !TM.box.isConnected) return;
+    var cw = TM.box.clientWidth - (land() ? 0 : 20), W = Math.max(60, Math.round(cw / 2)), H = Math.round(W / 1.9);
+    if (TM.w !== W) { TM.w = W; TM.cv.width = W; TM.cv.height = H; TM.base = OTArt.oldMap(W, H, { map: OT.MAP }); TM.key = ''; }
+    var a = N[S.at], b = S.next ? N[S.next] : null, f = b ? clamp(done / S.segMi, 0, 1) : 0;
+    var here = b ? { lon: a.lon + (b.lon - a.lon) * f, lat: a.lat + (b.lat - a.lat) * f } : { lon: a.lon, lat: a.lat };
+    var blink = Math.floor(t / 400) % 2, key = here.lon.toFixed(3) + here.lat.toFixed(3) + blink + (S.path || []).length;
+    if (key === TM.key) return; TM.key = key;
+    var c = TM.cv.getContext('2d'), M = TM.base, X = M.X, Y = M.Y;
+    c.drawImage(M.img, 0, 0);
+    function seg(p, q, col, dash) { var x0 = X(p.lon), y0 = Y(p.lat), x1 = X(q.lon), y1 = Y(q.lat), n = Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))); c.fillStyle = col; for (var j = 0; j <= n; j++) { if (dash && j % 3 === 2) continue; c.fillRect(Math.round(x0 + (x1 - x0) * j / Math.max(1, n)), Math.round(y0 + (y1 - y0) * j / Math.max(1, n)), 1, 1); } }
+    // the trail ahead in brown dashes, every branch of it; where you've been in red
+    Object.keys(N).forEach(function (id) { (N[id].next || []).forEach(function (nx) { seg(N[id], N[nx.to], '#7a4a24', true); }); });
+    var path = S.path || [];
+    for (var j = 0; j + 1 < path.length; j++) seg(N[path[j]], N[path[j + 1]], '#b0281a', false);
+    if (b) seg(a, here, '#b0281a', false);
+    Object.keys(N).forEach(function (id) { var n = N[id], x = Math.round(X(n.lon)), y = Math.round(Y(n.lat)); c.fillStyle = path.indexOf(id) >= 0 ? '#b0281a' : '#4a2e16'; c.fillRect(x - 1, y - 1, 2, 2); });
+    if (b) { var nx2 = Math.round(X(b.lon)), ny2 = Math.round(Y(b.lat)); if (blink) { c.fillStyle = '#e8b020'; c.fillRect(nx2 - 1, ny2 - 1, 3, 3); } }
+    // the wagon: a white cover on brown wheels
+    var wx = Math.round(X(here.lon)), wy = Math.round(Y(here.lat));
+    c.fillStyle = '#1a1008'; c.fillRect(wx - 3, wy - 4, 7, 5);
+    c.fillStyle = '#f4f0e0'; c.fillRect(wx - 2, wy - 3, 5, 2);
+    c.fillStyle = '#7a4a24'; c.fillRect(wx - 2, wy - 1, 5, 1);
+    c.fillStyle = '#1a1008'; c.fillRect(wx - 2, wy + 1, 1, 1); c.fillRect(wx + 2, wy + 1, 1, 1);
+  }
   function showTravel(fresh) {
     S.phase = 'travel'; save();
-    shell(); setView(travelView(), { frac: 0.52, wipe: fresh });
+    shell(); trailMap(); setView(travelView(), { frac: 0.52, wipe: fresh });
     musicWanted = true;
     T = { scroll: (S.miles * 6) | 0, moving: false };
     scrTap = function () { if (T && T.moving) T.stop = true; };

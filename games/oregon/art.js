@@ -611,6 +611,74 @@ var OTArt = window.OTArt = (function () {
     return { img: c, X: X, Y: Y };
   }
 
+  // ── The old map: the lower 48 on aged paper, for the top of the travel screen ──
+  // Engraved-looking: hatched sea, inked coast, dotted state lines, rivers and peaks of the West. Drawn once per size;
+  // the trail and the wagon go on top every frame (oldMapTrail). W, H in map pixels (each shown 2 screen pixels wide).
+  var USR = null;
+  function usRings() {
+    if (USR) return USR;
+    USR = (window.OT_USMAP || '').split('|').filter(Boolean).map(function (r) {
+      var parts = r.split(';'), a = parts[0].split(','), x = parseInt(a[0], 36), y = parseInt(a[1], 36), out = [[x / 10, y / 10]];
+      for (var i = 1; i < parts.length; i++) { a = parts[i].split(','); x += parseInt(a[0], 36); y += parseInt(a[1], 36); out.push([x / 10, y / 10]); }
+      return out;
+    });
+    return USR;
+  }
+  function oldMap(W, H, o) {
+    var lon0 = -125.6, lon1 = -66.2, lat0 = 24.2, lat1 = 49.9, k = Math.cos(37.5 * Math.PI / 180);
+    var sx = (W - 6) / ((lon1 - lon0) * k), sy = (H - 6) / (lat1 - lat0), s = Math.min(sx, sy);
+    var ox = (W - (lon1 - lon0) * k * s) / 2, oy = (H - (lat1 - lat0) * s) / 2;
+    function X(lon) { return ox + (lon - lon0) * k * s; }
+    function Y(lat) { return oy + (lat1 - lat) * s; }
+    // land mask and state lines, rasterized then thresholded so every edge is a whole pixel
+    var mc = mk(W, H), m = mc.getContext('2d'), rings = usRings();
+    m.fillStyle = '#000';
+    rings.forEach(function (r) { m.beginPath(); r.forEach(function (p, i) { i ? m.lineTo(X(p[0]), Y(p[1])) : m.moveTo(X(p[0]), Y(p[1])); }); m.closePath(); m.fill(); });
+    var land = m.getImageData(0, 0, W, H).data;
+    var bc = mk(W, H), b = bc.getContext('2d'); b.strokeStyle = '#000'; b.lineWidth = 0.8;
+    rings.forEach(function (r) { b.beginPath(); r.forEach(function (p, i) { i ? b.lineTo(X(p[0]), Y(p[1])) : b.moveTo(X(p[0]), Y(p[1])); }); b.closePath(); b.stroke(); });
+    var bord = b.getImageData(0, 0, W, H).data;
+    function L(x, y) { return x >= 0 && y >= 0 && x < W && y < H && land[(y * W + x) * 4 + 3] > 110; }
+    var c = mk(W, H), cx = c.getContext('2d'), im = cx.createImageData(W, H), d = im.data;
+    function rgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+    var PAPER = rgb('#ead9a8'), PAPER2 = rgb('#dcc68e'), SEA = rgb('#d6cfa6'), HATCH = rgb('#a99f78'), INK = rgb('#4a2e16'), STATE = rgb('#b4955e'), STAIN = rgb('#cdb27a');
+    function hsh(x, y) { var n = x * 374761393 + y * 668265263; n = (n ^ (n >>> 13)) * 1274126177; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; }
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+      var i = (y * W + x) * 4, col, isL = L(x, y);
+      // the paper browns toward its edges, with a few blotches
+      var ex = Math.min(x, W - 1 - x) / W, ey = Math.min(y, H - 1 - y) / H, edge = Math.max(0, 0.1 - Math.min(ex, ey * 1.6)) * 7;
+      var blot = Math.sin(x * 0.11 + y * 0.07) * Math.sin(x * 0.05 - y * 0.13) > 0.55;
+      if (isL) {
+        var coast = !L(x - 1, y) || !L(x + 1, y) || !L(x, y - 1) || !L(x, y + 1);
+        if (coast) col = INK;
+        else if (bord[i + 3] > 90 && (x + y) % 2) col = STATE;
+        else col = hsh(x, y) < edge + (blot ? 0.25 : 0.04) ? PAPER2 : PAPER;
+      } else {
+        var near = L(x - 1, y) || L(x + 1, y) || L(x, y - 1) || L(x, y + 1) || L(x - 2, y) || L(x + 2, y) || L(x, y - 2) || L(x, y + 2);
+        var ripple = !near && (L(x - 3, y) || L(x + 3, y) || L(x, y - 3) || L(x, y + 3));
+        col = ripple ? HATCH : !near && y % 3 === 0 && hsh(x, y) > 0.12 ? HATCH : hsh(x, y) < edge ? STAIN : SEA;
+      }
+      d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255;
+    }
+    cx.putImageData(im, 0, 0);
+    var p = P(cx);
+    function line(x0, y0, x1, y1, hex) { var n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) | 0; cx.fillStyle = hex; for (var j = 0; j <= n; j++) cx.fillRect(Math.round(x0 + (x1 - x0) * j / Math.max(1, n)), Math.round(y0 + (y1 - y0) * j / Math.max(1, n)), 1, 1); }
+    // rivers of the trail country, and the Mississippi
+    var rivers = (o.map && o.map.rivers || []).concat([[[-95.2, 47.2], [-93.3, 45.0], [-91.2, 43.5], [-90.6, 41.5], [-91.4, 40.4], [-90.2, 38.6], [-89.3, 37.0], [-90.1, 35.1], [-91.1, 33.0], [-91.4, 31.0], [-90.1, 29.9], [-89.4, 29.2]],
+      [[-89.2, 37.0], [-88.2, 37.6], [-86.8, 38.0], [-85.7, 38.3], [-84.5, 39.1], [-82.6, 38.6], [-80.6, 40.6], [-80.0, 40.4]]]);
+    rivers.forEach(function (rv) { for (var j = 0; j + 1 < rv.length; j++) line(X(rv[j][0]), Y(rv[j][1]), X(rv[j + 1][0]), Y(rv[j + 1][1]), '#5a7890'); });
+    // peaks drawn like an engraver's little carets
+    (o.map && o.map.peaks || []).forEach(function (q) { var x = Math.round(X(q[0])), y = Math.round(Y(q[1])); cx.fillStyle = '#7a5a34'; cx.fillRect(x, y - 2, 1, 1); cx.fillRect(x - 1, y - 1, 1, 1); cx.fillRect(x + 1, y - 1, 1, 1); cx.fillRect(x - 2, y, 1, 1); cx.fillRect(x + 2, y, 1, 1); });
+    // a compass rose out in the Atlantic, a double rule around the sheet
+    var rx = Math.round(X(-69.5)), ry = Math.round(Y(31.5)), rr = Math.max(3, Math.round(H * 0.07));
+    cx.fillStyle = '#4a2e16'; for (var j = -rr; j <= rr; j++) { cx.fillRect(rx + j, ry, 1, 1); cx.fillRect(rx, ry + j, 1, 1); }
+    cx.fillStyle = '#8a2a1a'; cx.fillRect(rx - 1, ry - rr, 3, 2); cx.fillStyle = '#ead9a8'; cx.fillRect(rx, ry, 1, 1);
+    if (rr >= 5) { cx.fillStyle = '#4a2e16'; cx.fillRect(rx - 1, ry - rr - 4, 1, 3); cx.fillRect(rx + 1, ry - rr - 4, 1, 3); cx.fillRect(rx, ry - rr - 3, 1, 1); }   // N
+    cx.fillStyle = '#4a2e16'; cx.fillRect(0, 0, W, 1); cx.fillRect(0, H - 1, W, 1); cx.fillRect(0, 0, 1, H); cx.fillRect(W - 1, 0, 1, H);
+    cx.fillStyle = '#8a6a3a'; cx.fillRect(2, 2, W - 4, 1); cx.fillRect(2, H - 3, W - 4, 1); cx.fillRect(2, 2, 1, H - 4); cx.fillRect(W - 3, 2, 1, H - 4);
+    return { img: c, X: X, Y: Y };
+  }
+
   // ── Hunting ──────────────────────────────────────────────────────────────
   // animals facing left; legs are drawn by code so they can run
   var ANIMALS = {
@@ -736,6 +804,6 @@ var OTArt = window.OTArt = (function () {
     p.ell(x, y, s, Math.round(s * 0.6), 'd'); p.ell(x - 1, y - 1, s - 2, Math.max(1, Math.round(s * 0.4)), 'l');
   }
 
-  return { PAL: PAL, P: P, mk: mk, rng: rng, hash: hash, Travel: Travel, scene: scene, map: map, team: team, wagon: wagon, ox: ox, tree: tree,
+  return { PAL: PAL, P: P, mk: mk, rng: rng, hash: hash, Travel: Travel, scene: scene, map: map, oldMap: oldMap, team: team, wagon: wagon, ox: ox, tree: tree,
     animal: animal, ANIMALS: ANIMALS, hunter: hunter, huntField: huntField, raft: raft, riverRock: riverRock, water: water, LOOK: LOOK, seasonOf: seasonOf };
 })();
