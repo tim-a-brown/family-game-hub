@@ -475,7 +475,7 @@ var GENERATORS={
     box.classList.remove('bad'); void box.offsetWidth; box.classList.add('bad'); mark(false);
     Kit.sfx('bad'); Kit.haptic('error');
     if (S.tries >= 2) {
-      S.log.push(logged(c, 0));
+      S.log.push(logged(c, 0, (Date.now() - S.qStart) / 1000));
       S.reveal = true; entry = fmtNum(c.ans);
       setTimeout(function () { paintEntry(); $box().className = 'box show'; }, 450);
       showNote('The answer is <b>' + Kit.esc(fmtNum(c.ans)) + '</b>. ' + Kit.esc(c.hint) + (c.teach ? ' ' + Kit.esc(c.teach) : ''));
@@ -496,7 +496,7 @@ var GENERATORS={
   function skip() {
     if (!S || S.done || busy) return;
     if (S.reveal) return nextPuzzle();
-    S.skips++; S.streak = 0; S.log.push(logged(S.cur, -1));
+    S.skips++; S.streak = 0; S.log.push(logged(S.cur, -1, (Date.now() - S.qStart) / 1000));
     Kit.sfx('whoosh');
     paintStrip();
     nextPuzzle();
@@ -564,7 +564,7 @@ var GENERATORS={
       players: [{ name: nm, score: S.score }], winner: nm,
       summary: S.score + ' points · ' + right + '/' + n + ' right', badge: S.score + ' pts',
       highlights: hl.slice(0, 6), meta: { level: S.level, modeId: S.mode, secs: S.secs, score: S.score, right: right, total: n, streak: S.best },
-      detail: { log: S.log.slice(-40).map(function (l) { return { t: l.t, r: l.r, q: l.q, a: l.a, w: l.w, s: l.s, h: l.h }; }), more: Math.max(0, S.log.length - 40), fast: S.fast || 0 }
+      detail: { log: S.log.slice(-40).map(function (l) { return { t: l.t, r: l.r, q: l.q, a: l.a, w: l.w, s: l.s, h: l.h }; }), more: Math.max(0, S.log.length - 40), fast: S.fast || 0, pb: prevBest }
     });
     clearSave(); paintStrip();
     var acc = n ? Math.round(100 * right / n) : 0, timed = S.mode === 'timed', key = hiKey(S.level, S.secs);
@@ -676,7 +676,7 @@ var GENERATORS={
   }
 
   // Test hook
-  window.__mp = { get: function () { return S; }, start: function (mode, level, secs) { newGame(mode, level, secs || 60, 'You'); }, finish: function () { finish(); } };
+  window.__mp = { get: function () { return S; }, start: function (mode, level, secs) { newGame(mode, level, secs || 60, 'You'); }, finish: function () { finish(); }, press: function (k) { press(k); }, hint: function () { hint(); }, skip: function () { skip(); } };
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}

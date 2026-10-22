@@ -151,9 +151,9 @@
     '.hv-slate ol{list-style:none;margin:0;padding:4px 2px;display:flex;flex-direction:column;gap:7px;counter-reset:q;}',
     '.hv-slate li{display:grid;grid-template-columns:20px 1fr auto;gap:8px;align-items:baseline;color:#eef2ea;font-family:"Bradley Hand","Segoe Print","Comic Sans MS",cursive;font-size:1rem;line-height:1.25;}',
     '.hv-slate li::before{counter-increment:q;content:counter(q);font-family:var(--font,system-ui);font-size:.7rem;font-weight:900;color:rgba(238,242,234,.45);text-align:right;}',
-    '.hv-slate .q{min-width:0;overflow-wrap:anywhere;}.hv-slate .a{font-weight:700;color:#fff6b0;white-space:nowrap;}',
-    '.hv-slate .w{color:#ff9b9b;text-decoration:line-through;margin-right:6px;font-size:.88em;}',
-    '.hv-slate .m{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;}.hv-slate .m .ico{width:15px;height:15px;}',
+    '.hv-slate li{text-align:left;}.hv-slate .hq{min-width:0;overflow-wrap:anywhere;}.hv-slate .ha{font-weight:700;color:#fff6b0;white-space:nowrap;}',
+    '.hv-slate .hw{color:#ff9b9b;text-decoration:line-through;margin-right:6px;font-size:.88em;}',
+    '.hv-slate .hm{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;}.hv-slate .hm .ico{width:15px;height:15px;}',
     '.hv-slate .ok{color:#7ee2a0;}.hv-slate .half{color:#ffd46b;}.hv-slate .no{color:#ff8a8a;}.hv-slate .skip{color:rgba(238,242,234,.5);}',
     '.hv-slate small{font-family:var(--font,system-ui);font-size:.68rem;font-weight:800;color:rgba(238,242,234,.55);margin-left:6px;}'
   ].join(''));
@@ -531,14 +531,21 @@
     d.log.forEach(function (l) {
       var cls = l.r === 2 ? 'ok' : l.r === 1 ? 'half' : l.r === 0 ? 'no' : 'skip';
       var q = String(l.q || l.t || '').replace(/\s*=\s*\?\s*$/, '');
-      var ans = ui.el('span', { class: 'a' }, [l.w && l.r !== -1 ? ui.el('span', { class: 'w', text: String(l.w).replace(/ /g, ', ') }) : null, ui.el('span', { text: l.r === -1 ? 'skipped · ' + (l.a || '') : (l.a || '') })]);
-      var mark = ui.el('span', { class: 'm ' + cls, html: l.r > 0 ? ui.icon('check') : l.r === 0 ? ui.icon('close') : ui.icon('right') });
+      var ans = ui.el('span', { class: 'ha' }, [l.w && l.r !== -1 ? ui.el('span', { class: 'hw', text: String(l.w).replace(/ /g, ', ') }) : null, ui.el('span', { text: l.r === -1 ? 'skipped · ' + (l.a || '') : (l.a || '') })]);
+      var mark = ui.el('span', { class: 'hm ' + cls, html: l.r > 0 ? ui.icon('check') : l.r === 0 ? ui.icon('close') : ui.icon('right') });
       var meta = (l.h ? 'hint' : '') + (l.s ? (l.h ? ' · ' : '') + l.s + 's' : '');
-      ol.appendChild(ui.el('li', null, [ui.el('span', { class: 'q' }, [ui.el('span', { text: q + (/[?]/.test(q) || l.q == null ? '' : ' =') }), meta ? ui.el('small', { text: meta }) : null]), ui.el('span', { style: { display: 'flex', gap: '6px', 'align-items': 'baseline' } }, [ans, mark])]));
+      ol.appendChild(ui.el('li', null, [ui.el('span', { class: 'hq' }, [ui.el('span', { text: q + (/[?]/.test(q) || l.q == null ? '' : ' =') }), meta ? ui.el('small', { text: meta }) : null]), ui.el('span', { style: { display: 'flex', gap: '6px', 'align-items': 'baseline' } }, [ans, mark])]));
     });
     var out = [ui.section(d.more ? 'The last ' + d.log.length + ' problems' : 'The problems', ui.el('div', { class: 'hv-slate' }, [ol]))];
     var right = e.right != null ? e.right : d.log.filter(function (l) { return l.r > 0; }).length, n = e.total || d.log.length;
-    out.push(ui.stats([['Points', e.score], ['Right', right + ' / ' + n], ['Best streak', e.streak || 0], d.fast ? ['Fastest', d.fast + 's'] : null]));
+    var pb = d.pb != null ? d.pb : null;
+    out.push(ui.stats([['Points', e.score, pb == null ? '' : pb < 0 ? 'first time' : e.score > pb ? 'new best (was ' + pb + ')' : 'best ' + pb], ['Right', right + ' / ' + n], ['Best streak', e.streak || 0]]));
+    // seconds on each problem, coloured by how it went
+    if (d.log.some(function (l) { return l.s > 0; })) {
+      var MC = { 2: '#7ee2a0', 1: '#ffd46b', 0: '#ff8a8a' };
+      out.push(ui.section('Time on each problem', [columns(ui, d.log.map(function (l) { return { v: l.s || 0, top: l.s ? l.s + 's' : '', c: MC[l.r] || '#6b7280' }; }), { aria: 'Seconds on each problem', avg: true }),
+        ui.el('p', { class: 'hv-pz-note', text: 'Green: right · Yellow: right with a hint · Red: wrong' + (d.log.some(function (l) { return l.r === -1; }) ? ' · Grey: skipped' : '') + ' · Dashed: average' + (d.fast ? ' · Fastest ' + d.fast + 's' : '') })], { icon: 'chart' }));
+    }
     // which kinds of puzzle went well
     var kinds = {}; d.log.forEach(function (l) { var k = kinds[l.t] = kinds[l.t] || { n: 0, ok: 0 }; k.n++; if (l.r > 0) k.ok++; });
     var ks = Object.keys(kinds); if (ks.length > 1 && ks.some(function (k) { return kinds[k].n > 1; })) out.push(ui.section('By kind', ui.bars(ks.map(function (k) { return { label: k, value: Math.round(100 * kinds[k].ok / kinds[k].n), max: 100, color: '#7ee2a0', text: kinds[k].ok + ' / ' + kinds[k].n }; }))));
