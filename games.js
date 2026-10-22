@@ -269,6 +269,8 @@ var HI_BOARDS = (function () {
   [['rookie', 'Rookie'], ['pro', 'Pro'], ['allstar', 'All-Star']].forEach(function (d) {
     add('hotdogstand', 'hotdogstand_' + d[0], { label: d[1] + ' season', tab: d[1], unit: 'cash', pin: 1 });
   });
+  // Drug Wars (hidden in Hot Dog Stand): net worth at the end of the 30 days. Not in the catalog, so it names itself
+  add('drugwars', 'drugwars', { label: '', title: 'Drug Wars', unit: 'cash', secret: 'hotdogstand_dw' });
   // Trivia Countdown (solo): one board per level and game length
   [['easy', 'Elementary'], ['medium', 'General'], ['hard', 'Genius']].forEach(function (l) {
     [10, 15, 20].forEach(function (n) { add('trivia', 'trivia_cd_' + l[0] + '_' + n, { label: l[1] + ' · ' + n + ' questions', tab: l[1] + ' ' + n, unit: 'points' }); });
