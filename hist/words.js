@@ -78,6 +78,11 @@
     '.hvw-hmc .hv-tile.s-r{color:#ff9d9d;background:transparent;box-shadow:inset 0 -2px 0 rgba(255,157,157,.6);}' +
     '.hvw-hmc .hv-tile.s-n{width:10px;box-shadow:none;}' +
     '.hvw-hmc .miss{font-size:.78rem;color:rgba(244,241,230,.55);font-weight:700;}' +
+    '.hvw-hmc .seq{display:flex;flex-wrap:wrap;gap:3px;}' +
+    '.hvw-hmc .seq button{appearance:none;border:0;padding:0;width:20px;height:22px;border-radius:4px;font:900 .78rem/1 "Chalkboard SE","Comic Sans MS",ui-rounded,sans-serif;cursor:pointer;background:rgba(244,241,230,.12);color:#f4f1e6;}' +
+    '.hvw-hmc .seq button.x{color:#ff9d9d;background:rgba(255,120,120,.12);text-decoration:line-through;}' +
+    '.hvw-hmc .seq button.cur{outline:2px solid #ffe28a;outline-offset:1px;}' +
+    '.hvw-hmc.mid{box-shadow:inset 0 0 0 2px #8a6a3a,inset 0 0 0 4px #3b2a19;}' +
     '.hvw-hmc .miss s{color:#ff9d9d;font-weight:900;letter-spacing:.12em;text-decoration-thickness:2px;margin-left:3px;}' +
     /* word scramble */
     '.hvw-sc{display:flex;flex-direction:column;gap:6px;}' +
@@ -324,10 +329,10 @@
       '<circle cx="130" cy="62" r="16" fill="none" stroke="@" stroke-width="4.5"/>', L(130, 78, 130, 132, '@', 4.5), L(130, 92, 106, 116, '@', 4.5), L(130, 92, 154, 116, '@', 4.5), L(130, 132, 112, 170, '@', 4.5), L(130, 132, 148, 170, '@', 4.5)];
     var shown = 10 - max + mi;
     for (var i = 0; i < Math.min(shown, 10); i++) {
-      if (i < 4) { if (i === 3 && w.ok) s += L(130, 20, 130, 30); else s += parts[i]; }
-      else if (!w.ok) s += parts[i].replace(/@/g, red);
+      if (i < 4) { if (i === 3 && w.ok && !w.mid) s += L(130, 20, 130, 30); else s += parts[i]; }
+      else if (!w.ok || w.mid) s += parts[i].replace(/@/g, w.mid ? ch : red);
     }
-    if (w.ok) {
+    if (w.ok && !w.mid) {
       // freed: the figure stands on the ground beside the gallows
       var y = '#ffe28a';
       s += '<circle cx="172" cy="132" r="13" fill="none" stroke="' + y + '" stroke-width="4"/>' + L(172, 145, 172, 178, y, 4) + L(172, 156, 152, 146, y, 4) + L(172, 156, 192, 146, y, 4) + L(172, 178, 160, 204, y, 4) + L(172, 178, 184, 204, y, 4) +
@@ -340,31 +345,55 @@
     var list = d && d.w ? d.w : (e.words || []).map(function (x) { return { w: x.w, ok: x.won ? 1 : 0, m: x.misses, mx: { easy: 10, medium: 8, hard: 6 }[e.diff] || 6, g: '' }; });
     if (!list.length) return null;
     var box = ui.el('div', { class: 'hvw-hm' }), oneCat = list.every(function (w) { return w.c === list[0].c; });
-    list.forEach(function (w) {
-      var word = up(w.w), gs = up(w.g), have = !!gs;
+    // one word's chalkboard as it stood after `upto` guesses (all of them when upto is null)
+    function card(w, upto) {
+      var word = up(w.w), all = up(w.g), have = !!all, gs = upto == null ? all : all.slice(0, upto), end = upto == null || upto >= all.length;
+      var misses = gs.split('').filter(function (c) { return word.indexOf(c) < 0; }).length;
+      var shown = end ? w : { w: w.w, ok: 1, m: misses, mx: w.mx, mid: 1 };
       var tiles = '', st = '';
-      word.split('').forEach(function (c) { if (c === ' ') { tiles += '_'; st += 'n'; } else { tiles += c; st += !w.ok && have && gs.indexOf(c) < 0 ? 'r' : 'w'; } });
-      if (!w.ok && !have) st = st.replace(/w/g, 'r');
-      var missed = gs.split('').filter(function (c) { return word.indexOf(c) < 0; }).join(' ');
-      var top = [ui.el('b', { text: w.ok ? 'Saved' : 'Lost', class: w.ok ? 'ok' : 'no' }), ui.el('span', { text: w.m + ' of ' + w.mx + ' misses' })];
-      if (w.c && !oneCat) top.push(ui.el('span', { text: '· ' + w.c }));
-      if (duel && w.gu != null) top.push(ui.el('span', { text: '· ' + ((P[w.gu] || {}).name || '') + ' guessing' }));
-      if (w.ok && w.p) top.push(ui.el('span', { text: '· +' + w.p + (w.p === 1 ? ' pt' : ' pts') }));
-      if (!w.ok && w.st) top.push(ui.el('span', { text: '· +' + w.st + ' to ' + ((P[w.se] || {}).name || 'setter') }));
+      word.split('').forEach(function (c) {
+        if (c === ' ') { tiles += '_'; st += 'n'; return; }
+        var known = gs.indexOf(c) >= 0 || (end && w.ok) || (end && !have);
+        tiles += end || known ? c : '_';
+        st += end ? (!w.ok && have && gs.indexOf(c) < 0 ? 'r' : 'w') : 'w';
+      });
+      if (end && !w.ok && !have) st = st.replace(/w/g, 'r');
+      var top = [ui.el('b', { text: !end ? 'Guess ' + upto + ' of ' + all.length : w.ok ? 'Saved' : 'Lost', class: !end ? '' : w.ok ? 'ok' : 'no' }), ui.el('span', { text: (end ? w.m : misses) + ' of ' + w.mx + ' misses' })];
+      if (end && w.c && !oneCat) top.push(ui.el('span', { text: '· ' + w.c }));
+      if (end && duel && w.gu != null) top.push(ui.el('span', { text: '· ' + ((P[w.gu] || {}).name || '') + ' guessing' }));
+      if (end && w.ok && w.p) top.push(ui.el('span', { text: '· +' + w.p + (w.p === 1 ? ' pt' : ' pts') }));
+      if (end && !w.ok && w.st) top.push(ui.el('span', { text: '· +' + w.st + ' to ' + ((P[w.se] || {}).name || 'setter') }));
+      // the guesses in order: tap one to see the board at that point
+      var seq = null;
+      if (have) {
+        seq = ui.el('div', { class: 'seq' });
+        all.split('').forEach(function (c, k) {
+          var hit = word.indexOf(c) >= 0;
+          seq.appendChild(ui.el('button', { type: 'button', class: (hit ? 'h' : 'x') + (upto != null && k < upto ? ' on' : '') + (upto === k + 1 ? ' cur' : ''), text: c, 'aria-label': 'Guess ' + (k + 1) + ': ' + c + (hit ? ', in the word' : ', a miss'),
+            onclick: function () { paint(upto === k + 1 ? null : k + 1); } }));
+        });
+      }
       var extras = [];
-      if (w.wh) extras.push('solved in one go');
-      if (w.cl) extras.push('used the clue');
-      box.appendChild(ui.el('div', { class: 'hvw-hmc' }, [
-        ui.el('div', { html: hmPic(w, d && d.th) }),
-        ui.el('div', { class: 'info' }, [
-          ui.el('div', { class: 'top' }, top),
-          ui.tiles(tiles, st),
-          missed ? ui.el('div', { class: 'miss', html: 'Wrong letters<s>' + esc(missed) + '</s>' }) : have ? ui.el('div', { class: 'miss', text: 'No wrong letters' }) : null,
-          extras.length ? ui.el('div', { class: 'miss', text: extras.join(' · ') }) : null
-        ])
-      ]));
-    });
-    return ui.wrap([ui.section(list.length === 1 ? 'The word' : 'The words', box)]);
+      if (end && w.wh) extras.push('solved in one go');
+      if (end && w.cl) extras.push('used the clue');
+      var row = ui.el('div', { class: 'hvw-hmc' + (end ? '' : ' mid') }, [
+        ui.el('div', { html: hmPic(shown, d && d.th) }),
+        ui.el('div', { class: 'info' }, [ui.el('div', { class: 'top' }, top), ui.tiles(tiles, st), seq,
+          !have ? null : null, extras.length ? ui.el('div', { class: 'miss', text: extras.join(' · ') }) : null])
+      ]);
+      var wrap = ui.el('div'); wrap.appendChild(row);
+      function paint(u) { var n2 = card(w, u); wrap.parentNode.replaceChild(n2, wrap); }
+      return wrap;
+    }
+    list.forEach(function (w) { box.appendChild(card(w, null)); });
+    var out = [];
+    if (list.length > 1 && !duel) {
+      var saved = list.filter(function (w) { return w.ok; }).length, miss = list.reduce(function (a, w) { return a + (w.m || 0); }, 0), clean = list.filter(function (w) { return w.ok && !w.m; }).length;
+      out.push(ui.stats([['Saved', saved + ' / ' + list.length], ['Misses', miss], ['No-miss words', clean]]));
+    }
+    out.push(ui.section(list.length === 1 ? 'The word' : 'The words', box));
+    if (list.some(function (w) { return w.g; })) out.push(ui.el('p', { class: 'muted', style: { margin: '0', 'font-size': '.78rem', 'font-weight': '700', 'text-align': 'center' }, text: 'Letters in the order guessed: red ones missed. Tap one to see the board at that guess.' }));
+    return ui.wrap(out);
   });
 
   // ── Word Scramble: every word, how long it took ────────────────────────────
