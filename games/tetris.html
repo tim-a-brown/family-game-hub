@@ -355,7 +355,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     G.lines += full.length;
     G.level = Math.max(G.startLevel, Math.floor(G.lines / 10) + 1);
     if (G.level > before) {
-      G.stats.maxLevel = G.level;
+      G.stats.maxLevel = G.level; trkLevel(trk(G.stats), before, G.score);
       banner('LEVEL ' + G.level, 'Faster!', '#ffd45a', 1.6);
       sLevel(); Kit.haptic('success');
     }
@@ -716,6 +716,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     spawn(G.pendingType || null); G.pendingType = null;
   }
 
+  // ── The run's story for the game's history (hist/arcade.js draws it): the score every few seconds of play,
+  // when each level ended and each life lost. Kept in the saved stats, so a resumed game carries on.
+  function trk(o) { return o.trk || (o.trk = { sk: [], si: 2, nx: 0, sec: 0, lx: [], lf: [], ll: 0 }); }
+  function trkTime(T, dt, score) { T.sec += dt; while (T.sec >= T.nx) { T.sk.push(score); T.nx += T.si; if (T.sk.length > 90) { T.sk = T.sk.filter(function (v, i) { return i % 2 === 0; }); T.si *= 2; T.nx = T.sk.length * T.si; } } }
+  function trkLevel(T, n, score) { T.lx.push([n, Math.round(T.sec), score, T.ll].join('|')); T.ll = 0; if (T.lx.length > 40) T.lx.shift(); }
+  function trkLife(T, n, why) { T.ll++; T.lf.push([Math.round(T.sec), n, why || ''].join('|')); if (T.lf.length > 20) T.lf.shift(); }
+  function trkOut(T, n, score) { return { sk: T.sk.join(','), si: T.si, te: Math.round(T.sec), se: score, lx: T.lx.concat([[n, Math.round(T.sec), score, T.ll, 1].join('|')]).slice(-40), lf: T.lf.slice() }; }
+
   function endGame() {
     if (G.ended) return; G.ended = true;
     var st = G.stats, h = [];
@@ -736,13 +744,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var detail = {
       b: G.board.slice(top0).map(function (r) { return r.map(function (v) { return v || '.'; }).join(''); }), over: HID - top0,
       lv: G.level, sl: G.startLevel, ln: G.lines, pcs: st.pieces, cl: st.clears.slice(1), ts: st.tspins, cb: st.maxCombo, b2b: st.b2b,
-      pc: st.pc, hd: st.holds, bm: st.bestMove, bmn: st.bestMoveName, cls: G.classic ? 1 : 0, t: Math.round(G.playMs / 1000), hr: hiRk, hb: prevBest
+      pc: st.pc, hd: st.holds, bm: st.bestMove, bmn: st.bestMoveName, cls: G.classic ? 1 : 0, t: Math.round(G.playMs / 1000), hr: hiRk, hb: prevBest, run: trkOut(trk(st), G.level, G.score)
     };
     Kit.record(KEY, {
       detail: detail,
       started: G.started, mode: 'Marathon' + (G.startLevel > 1 ? ' from level ' + G.startLevel : ''),
       players: [{ name: G.who, score: G.score }], winner: null,
-      rounds: lvls.length > 1 ? { labels: lvls.map(function (l) { return 'Lvl ' + l; }), scores: lvls.map(function (l) { return [G.perLevel[l]]; }) } : null,
       highlights: h.slice(0, 6),
       summary: fmt(G.score) + ' points · ' + G.lines + ' lines · level ' + G.level,
       badge: 'Lvl ' + G.level,
@@ -797,6 +804,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       return;
     }
     G.playMs += dt * 1000;
+    if (G.phase === 'play') trkTime(trk(G.stats), dt, G.score);
     if (G.phase === 'clear') {
       G.clearT += dt;
       if (G.clearT >= 0.3) finishClear();

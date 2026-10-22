@@ -781,6 +781,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function die(why) {
     if (phase !== 'play' || G.god) return;
     G.m.st = 'dead'; G.stats.deaths.push({ by: why, lvl: G.level, h: heightNow() });
+    stageEv(why);
     Snd.loop(null); Snd.hush(); Snd.play('die'); Kit.haptic('error'); setPhase('die', DIE_T);
   }
   function stageClear() {
@@ -789,9 +790,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (heightNow() > G.stats.best || G.level > (G.stats.bestL || 0)) { G.stats.best = heightNow(); G.stats.bestL = G.level; }
     G.stats.heights.push({ l: G.level, h: heightNow(), k: ST.kind, b: b });
     add(b); if (ST.kind === 4) ST.bonus = 0;   // paid out: the box reads 000 through the ending
+    stageEv('C', b);
     Snd.loop(null); Snd.hush();
     if (ST.kind === 4) { Snd.play('last'); setPhase('win', WIN_T); Kit.haptic('success'); }
     else { Snd.play('clear'); setPhase('clear', 230); Kit.haptic('success'); ST.barrels = []; ST.fires = []; ST.springs = []; ST.pies = []; }
+  }
+  // every stage played, for the game's history: 'level|stage kind|C (cleared) or what cost the life|bonus|seconds|score|x|y'
+  function stageEv(res, bonus) {
+    var ev = G.stats.ev || (G.stats.ev = []);
+    ev.push([G.level, ST.kind, res, bonus != null ? bonus : ST.bonus, Math.round(ST.t / 60), G.score, Math.round(G.m.x), Math.round(G.m.y)].join('|'));
+    if (ev.length > 40) ev.shift();
   }
   // the rivets stage ending, timed to the cabinet's tunes
   var WIN_T = 740, WIN_FALL = 168, WIN_LAND = 258, DIE_T = 200;
@@ -1063,7 +1071,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var hiL = hiList();
     try {
       Kit.record(KEY, {
-        detail: { lv: G.level, h: heightNow(), k: kindNow(), st: s.stages, j: s.jumped, sm: s.smashed, rv: s.rivets, it: s.items, dd: s.deaths.slice(-8).map(function (d) { return { b: d.by, l: d.lvl, h: d.h }; }), lvs: G.startLives,
+        detail: { lv: G.level, h: heightNow(), k: kindNow(), st: s.stages, ev: (s.ev || []).slice(-40), j: s.jumped, sm: s.smashed, rv: s.rivets, it: s.items, dd: s.deaths.slice(-8).map(function (d) { return { b: d.by, l: d.lvl, h: d.h }; }), lvs: G.startLives,
           hr: G.score > 0 && (hiL.length < ArcadeHi.max || G.score > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= G.score; }).length + 1 : 0, hb: hiAtStart || 0 },
         started: G.started, mode: G.startLives !== 3 ? G.startLives + ' lives' : '',
         players: [{ name: who, score: G.score }], winner: null,

@@ -339,7 +339,8 @@ html,body{overflow:hidden;overscroll-behavior:none;}
     var start = place(trail[0]);
     var c = { v: v, player: player, rank: rk, id: Math.floor(r() * 1e9).toString(36), sus: sus, trail: trail, i: 0, at: trail[0], last: trail[0], t: START_T,
       treasure: pick(start.treasure, r), warrant: null, comp: { sex: SUS[sus].sex === 'Female' ? 0 : 1 }, cities: {}, notes: [], used: {}, over: false,
-      undos: 0, flights: 0, wrong: 0, danger: false, started: Date.now(), solvedBefore: car.solved };
+      undos: 0, flights: 0, wrong: 0, danger: false, started: Date.now(), solvedBefore: car.solved,
+      path: [trail[0] + '|' + START_T], asked: 0, hench: 0 };
     // which witness answers carry a trait: enough to single out the suspect, before the last city
     var need = distinguishing(sus), keys = shuffle(['hair', 'hobby', 'feature', 'auto'], r), order = need.concat(keys.filter(function (k) { return need.indexOf(k) < 0; }));
     var slots = []; for (var ci = 0; ci < stops - 1; ci++) for (var li = 0; li < 3; li++) slots.push(ci + ':' + li);
@@ -529,7 +530,7 @@ html,body{overflow:hidden;overscroll-behavior:none;}
     var cd = city(C.at), l = cd.locs[li], L = locSet(), seen = cd.seen[li];
     snap();
     var cost = seen ? 1 : Object.keys(cd.seen).length + 1;
-    busy = true; cd.seen[li] = 1;
+    busy = true; cd.seen[li] = 1; C.asked = (C.asked || 0) + 1;
     A.interior($.cv, l.t, C.id + C.at + li); $.cv.className = 'fade'; clearOv();
     $.text.className = 'cs-text'; $.text.innerHTML = '<span class="who">' + esc(L[l.t][0].toUpperCase()) + '</span>';
     advance(cost).then(function (ok) {
@@ -537,7 +538,7 @@ html,body{overflow:hidden;overscroll-behavior:none;}
       var k = C.trail.indexOf(C.at);
       if (l.hide) return capture();
       var chain = Promise.resolve();
-      if (l.hench && !seen) chain = chain.then(henchman);
+      if (l.hench && !seen) { C.hench = (C.hench || 0) + 1; chain = chain.then(henchman); }
       var scared = false;
       if (k === C.trail.length - 1 && !l.hide && !C.danger) chain = chain.then(function () { scared = true; return danger(); });
       return chain.then(function () {
@@ -637,6 +638,7 @@ html,body{overflow:hidden;overscroll-behavior:none;}
       if (!ok) return;
       sfx('land');
       C.at = id;
+      (C.path || (C.path = [C.trail[0] + '|' + START_T])).push(id + '|' + Math.round(C.t));
       var k = C.trail.indexOf(id);
       if (k === C.i + 1) C.i = k;
       if (k < 0) C.wrong++; else C.last = id;
@@ -752,7 +754,7 @@ html,body{overflow:hidden;overscroll-behavior:none;}
   function lose(why) {
     C.over = true; clearSave(); busy = false;
     var S = SUS[C.sus], car = careerOf(C.player, C.v); car.lost = (car.lost || 0) + 1; careerSet(C.player, C.v, car);
-    record(false, 0, '');
+    record(false, 0, '', why);
     var msg = {
       nowarrant: ['No warrant!', 'You found ' + S.name + ', but without a warrant ' + (S.sex === 'Female' ? 'she' : 'he') + ' walked free.'],
       wrongwarrant: ['Wrong warrant', 'Your warrant was for ' + (C.warrant != null ? SUS[C.warrant].name : '') + '. ' + S.name + ' laughed and slipped away.'],
@@ -764,15 +766,34 @@ html,body{overflow:hidden;overscroll-behavior:none;}
     });
   }
   function outOfTime() { lose('time'); }
-  function record(won, sc, promo) {
+  function record(won, sc, promo, why) {
     var S = SUS[C.sus];
     try {
       Kit.record(HKEY, { players: [{ name: C.player, score: won ? 1 : 0 }], winner: won ? C.player : null, mode: V[C.v].name,
         summary: (won ? 'Caught ' : 'Lost ') + S.name + ' · ' + V[C.v].name, badge: promo || '',
         highlights: [(won ? 'Arrested ' : 'Chased ') + S.name + ' from ' + place(C.trail[0]).name, promo ? 'Promoted to ' + promo : ''],
         meta: { won: won, ver: C.v, rank: RANKS[C.rank][0], sus: S.name, score: sc, undos: C.undos },
-        detail: { Version: V[C.v].name, Rank: RANKS[C.rank][0], Suspect: S.name, Treasure: C.treasure, Trail: C.trail.map(function (id) { return place(id).name; }).join(' > '), Result: won ? 'Arrested' : 'Got away' } });
+        detail: caseFile(won, sc, promo, why) });
     } catch (e) {}
+  }
+  // The case for the history: every place once ('name|lat|lon|year'), the thief's trail and your route as
+  // indexes into it ('index@hour' for the route), what witnesses said, and how it ended
+  function caseFile(won, sc, promo, why) {
+    var S = SUS[C.sus], pl = [], idx = {};
+    function at(id) { if (idx[id] == null) { var p = place(id); idx[id] = pl.length; pl.push([p.name, Math.round(p.lat * 10) / 10, Math.round(p.lon * 10) / 10, p.year != null ? p.year : ''].join('|')); } return idx[id]; }
+    C.trail.forEach(at);
+    var path = (C.path || [C.trail[0] + '|' + START_T]).map(function (x) { var a = x.split('|'); return at(a[0]) + '@' + a[1]; });
+    var said = [], room = 1800;
+    C.notes.forEach(function (n) {
+      if (n.none || room <= 0) return;
+      var t = String(n.text).replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+      if (t.length > 140) t = t.slice(0, 137) + '...';
+      var s = at(n.at) + '|' + n.loc + '|' + t; room -= s.length; said.push(s);
+    });
+    return { v: C.v, rk: RANKS[C.rank][0], sus: S.name, sx: S.sex, tt: [S.hair, S.hobby, S.feature, S.auto].join('|'), tr: C.treasure, won: won ? 1 : 0,
+      why: won ? '' : why || '', wr: C.warrant != null ? SUS[C.warrant].name : '', hr: Math.round(C.t - START_T), left: Math.max(0, Math.floor(DEADLINE - C.t)),
+      sc: sc || 0, pr: promo || '', fl: C.flights, wg: C.wrong, ak: C.asked || 0, hm: C.hench || 0, un: C.undos || 0,
+      pl: pl, trail: C.trail.map(at).join(','), path: path.join(','), said: said };
   }
 
   // ── Title and briefing ───────────────────────────────────────────────────
@@ -845,6 +866,9 @@ html,body{overflow:hidden;overscroll-behavior:none;}
     var rows = ORDER.map(function (k) { var c = careerOf(name, k); return '<tr><td>' + V[k].name + '</td><td>' + RANKS[rankOf(c.solved)][0] + '</td><td style="text-align:right">' + c.solved + '</td><td style="text-align:right">' + (c.carmen ? 'Yes' : '') + '</td></tr>'; }).join('');
     Kit.sheet({ title: (name ? name + ': ' : '') + 'ACME career', html: '<table style="width:100%;border-collapse:collapse;font-size:.95rem"><tr style="text-align:left;opacity:.7"><th>Version</th><th>Rank</th><th style="text-align:right">Arrests</th><th style="text-align:right">Carmen</th></tr>' + rows + '</table>', actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
+
+  // test hooks
+  window.__cs = { C: function () { return C; }, place: place, fly: fly, win: win, lose: lose, caseFile: caseFile, investigate: investigate };
 
   // Resume a case in progress, or start at the setup screen
   var sv = rd(SAVE, null);

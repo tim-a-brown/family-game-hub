@@ -313,6 +313,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
   Eng.prototype.die = function () {
     if (!this.alive) return;
     this.alive = false; this.cur = null; this.inv = []; this.dirty = true;
+    this.preB = bStr(this.b);   // the field as it stood when it went out (kept for the game's history)
     for (var r = 0; r < ROWS; r++) for (var x = 0; x < COLS; x++) this.b[r][x] = Math.random() < 0.55 ? TYPES.charAt(rnd(7)) : '';
   };
   // A special lands on this field. Returns what to draw (cells that went, blocks that flew, …)
@@ -427,8 +428,9 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
   var M = null;       // the match
   var net = { mode: null, table: null, peer: null, roster: [], lobby: null, wait: null, myPid: 0, hostName: '', botsN: 0 };
   function makeMatch(o) {
-    M = { mode: o.mode, me: o.me, seats: o.seats.map(function (s, i) { return { i: i, name: s.name, bot: !!s.bot, pid: s.pid, alive: true, b: newBoard(), lv: CFG.start, ln: 0, place: 0 }; }),
-      eng: {}, out: [], over: false, phase: 'ready', readyT: 0, t: 0, started: Date.now(), skill: o.skill || 'normal', shadow: o.shadow !== false, log: [], won: null };
+    M = { mode: o.mode, me: o.me, seats: o.seats.map(function (s, i) { return { i: i, name: s.name, bot: !!s.bot, pid: s.pid, alive: true, b: newBoard(), lv: CFG.start, ln: 0, place: 0,
+        u: {}, r: 0, sl: 0, hit: null, ko: -1, kk: '', outT: 0, fin: '' }; }),
+      eng: {}, out: [], over: false, phase: 'ready', readyT: 0, t: 0, started: Date.now(), skill: o.skill || 'normal', shadow: o.shadow !== false, log: [], won: null, hx: [] };
     M.seats.forEach(function (s) {
       if (s.i === M.me || (s.bot && M.mode !== 'guest')) {
         var e = new Eng(s.i, { bot: s.bot && s.i !== M.me, skill: M.skill });
@@ -450,7 +452,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     if (m.t === 'f') { var S = M.seats[s]; if (!S) return; if (!M.eng[s]) S.b = strB(m.f); S.lv = m.lv || S.lv; S.ln = m.ln || 0; bcast({ t: 'f', s: s, f: m.f, lv: m.lv, ln: m.ln }); return; }
     if (m.t === 'use') { if (!M.seats[s] || !M.seats[s].alive || !M.seats[m.to] || !M.seats[m.to].alive || SPK.indexOf(m.k) < 0) return; bcast({ t: 'use', from: s, to: m.to, k: m.k }); onUse(s, m.to, m.k); return; }
     if (m.t === 'cl') { bcast({ t: 'cl', from: s, n: m.n }); onLines(s, m.n); return; }
-    if (m.t === 'dead') { if (!M.seats[s] || !M.seats[s].alive) return; bcast({ t: 'dead', s: s, f: m.f }); onDead(s, m.f); checkEnd(); return; }
+    if (m.t === 'dead') { if (!M.seats[s] || !M.seats[s].alive) return; bcast({ t: 'dead', s: s, f: m.f, pf: m.pf }); onDead(s, m.f, m.pf); checkEnd(); return; }
   }
   function guestIn(m) {
     if (m.t === 'hi') { net.myPid = m.you; return; }
@@ -460,7 +462,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     if (m.t === 'f') { if (m.s === M.me) return; var S = M.seats[m.s]; if (S) { S.b = strB(m.f); S.lv = m.lv || S.lv; S.ln = m.ln || 0; } return; }
     if (m.t === 'use') { onUse(m.from, m.to, m.k); return; }
     if (m.t === 'cl') { onLines(m.from, m.n); return; }
-    if (m.t === 'dead') { onDead(m.s, m.f); return; }
+    if (m.t === 'dead') { onDead(m.s, m.f, m.pf); return; }
     if (m.t === 'end') { finish(m); return; }
   }
   function sendField(e) {
@@ -475,6 +477,11 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     var near = from === M.me || to === M.me;
     orb(from, to, k);
     logEv(from, to, k);
+    // for the history: who used what on whom, and the last rival to hit each field
+    var F0 = M.seats[from], T0 = M.seats[to];
+    F0.u[k] = (F0.u[k] || 0) + 1;
+    if (from !== to) { T0.r++; T0.hit = { f: from, k: k, t: M.t }; }
+    hxEv(from, to, k);
     if (near) sZap();
     // both sides of a switch are taken now, as the fields stand when it's used
     var A = k === 's' ? copyB(M.eng[from] ? M.eng[from].b : M.seats[from].b) : null, B = k === 's' ? copyB(M.eng[to] ? M.eng[to].b : M.seats[to].b) : null;
@@ -500,8 +507,11 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
   }
   function onLines(from, n) {
     if (!M) return;
+    if (M.seats[from]) M.seats[from].sl += n;
+    hxEv(from, -1, 'L' + n);
     M.seats.forEach(function (s) {
       if (s.i === from || !s.alive) return;
+      s.hit = { f: from, k: 'L' + n, t: M.t };
       orb(from, s.i, 'line', n);
       later(FLY, function () {
         if (!M) return;
@@ -515,9 +525,16 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     });
     logEv(from, -1, 'line', n);
   }
-  function outLocal(e) { emit(e.seat, { t: 'dead', f: bStr(e.b) }); }
-  function onDead(s, f) {
+  function outLocal(e) { emit(e.seat, { t: 'dead', f: bStr(e.b), pf: e.preB }); }
+  // the match's story for the history: 'seconds|from|to|what' (to -1 = lines to everyone, what 'X' = out)
+  function hxEv(from, to, k) { if (!M || M.phase !== 'play') return; M.hx.push(Math.round(Math.max(0, M.t - 2.4)) + '|' + from + '|' + to + '|' + k); if (M.hx.length > 80) M.hx.shift(); }
+  function onDead(s, f, pf) {
     var S = M.seats[s]; if (!S || !S.alive) return;
+    S.fin = pf || bStr(S.b);
+    S.outT = Math.round(Math.max(0, M.t - 2.4));
+    // knocked out: the last rival whose special or lines landed in the 15 seconds before
+    if (S.hit && M.t - S.hit.t < 15 && S.hit.f !== s) { S.ko = S.hit.f; S.kk = S.hit.k; }
+    hxEv(S.ko, s, 'X');
     S.alive = false; if (f && !M.eng[s]) S.b = strB(f);
     M.out.push(s);
     S.place = M.seats.length - M.out.length + 1;
@@ -864,8 +881,19 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     if (st.sent) h.push('Sent ' + st.sent + (st.sent === 1 ? ' line' : ' lines') + ' to the others');
     if (st.hit) h.push('Hit by ' + st.hit + (st.hit === 1 ? ' special' : ' specials'));
     var online = M.mode !== 'local';
+    // every field as it ended (empty rows at the top left off), what each player fired and took, who knocked out whom
+    function trim(s) { s = s || ''; var k = 0; while (k + COLS <= s.length && /^\.+$/.test(s.substr(k, COLS))) k += COLS; return s.slice(k); }
+    var detail = {
+      me: M.me, w: m.win, sk: online ? '' : M.skill, tt: Math.round(Math.max(0, M.t - 2.4)), ev: M.hx.slice(-60),
+      st: { ln: st.lines || 0, tt: st.tetris || 0, u: st.used || 0, h: st.hit || 0, s: st.sent || 0, g: st.got || 0 },
+      s: M.seats.map(function (s) {
+        var u = SPK.split('').filter(function (k) { return s.u[k]; }).map(function (k) { return k + s.u[k]; }).join('');
+        return { nm: s.i === M.me ? (me.name || 'You') : s.name, b: s.bot ? 1 : 0, pl: s.place || 0, ln: s.ln || 0, u: u, r: s.r, sl: s.sl, ko: s.ko, kk: s.kk, t: s.outT,
+          f: trim(s.alive || !s.fin ? bStr(M.eng[s.i] ? M.eng[s.i].b : s.b) : s.fin) };
+      })
+    };
     Kit.record(KEY, {
-      started: M.started, mode: online ? 'Online' : 'Against the computer',
+      started: M.started, mode: online ? 'Online' : 'Against the computer', detail: detail,
       players: order.map(function (s) { return { name: s.i === M.me ? (me.name || 'You') : s.name, score: s.ln || 0, cpu: s.bot || undefined }; }),
       winner: m.win >= 0 ? (m.win === M.me ? me.name : M.seats[m.win].name) : null,
       highlights: h, summary: (iWon ? 'Won' : placeText(me.place || 0) + ' place') + ' · ' + M.seats.length + ' players', badge: iWon ? '1st' : placeText(me.place || 0),

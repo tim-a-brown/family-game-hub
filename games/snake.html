@@ -248,6 +248,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function interval() { return SPEEDS[G.speed].ms * Math.max(0.72, 1 - G.apples * 0.005) / 1000; }
 
+  // ── The run's story for the game's history (hist/arcade.js draws it): the score every few seconds of play,
+  // when each level ended and each life lost. Kept in the saved stats, so a resumed game carries on.
+  function trk(o) { return o.trk || (o.trk = { sk: [], si: 2, nx: 0, sec: 0, lx: [], lf: [], ll: 0 }); }
+  function trkTime(T, dt, score) { T.sec += dt; while (T.sec >= T.nx) { T.sk.push(score); T.nx += T.si; if (T.sk.length > 90) { T.sk = T.sk.filter(function (v, i) { return i % 2 === 0; }); T.si *= 2; T.nx = T.sk.length * T.si; } } }
+  function trkLevel(T, n, score) { T.lx.push([n, Math.round(T.sec), score, T.ll].join('|')); T.ll = 0; if (T.lx.length > 40) T.lx.shift(); }
+  function trkLife(T, n, why) { T.ll++; T.lf.push([Math.round(T.sec), n, why || ''].join('|')); if (T.lf.length > 20) T.lf.shift(); }
+  function trkOut(T, n, score) { return { sk: T.sk.join(','), si: T.si, te: Math.round(T.sec), se: score, lx: T.lx.concat([[n, Math.round(T.sec), score, T.ll, 1].join('|')]).slice(-40), lf: T.lf.slice() }; }
+
   function die(why, x, y) {
     musicStop(true);
     G.phase = 'dying'; G.why = why; G.dieT = 0; G.popped = 0; G.crash = { x: x, y: y };
@@ -497,7 +505,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var detail = {
       hd: G.body[0].x + ',' + G.body[0].y, p: path, cr: G.crash ? G.crash.x + ',' + G.crash.y : '', why: G.why || '',
       f: G.food ? G.food.x + ',' + G.food.y : '', gd: G.gold ? G.gold.x + ',' + G.gold.y : '', w: G.wrap ? 1 : 0, sp: G.speed,
-      ap: G.apples, gl: G.golds, ml: len, wr: G.stats.wraps || 0, st: G.steps || 0, t: secs, sz: COLS + 'x' + ROWS,
+      ap: G.apples, gl: G.golds, ml: len, wr: G.stats.wraps || 0, st: G.steps || 0, t: secs, sz: COLS + 'x' + ROWS, run: trkOut(trk(G.stats), 1, G.score),
       hr: G.score > 0 && (hiL.length < ArcadeHi.max || G.score > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= G.score; }).length + 1 : 0, hb: G.best0 || 0
     };
     Kit.record(KEY, {
@@ -540,6 +548,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.food) G.food.t += dt; if (G.gold) G.gold.t += dt;
     if (G.phase === 'play') {
       G.playMs += dt * 1000;
+      trkTime(trk(G.stats), dt, G.score);
       G.acc += dt;
       var iv = interval(), n = 0;
       while (G.acc >= iv && n++ < 4 && G.phase === 'play') { G.acc -= iv; step(); }

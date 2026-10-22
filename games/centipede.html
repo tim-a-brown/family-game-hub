@@ -638,8 +638,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     G.shots = G.shots.filter(function (s) { return (s.x - x) * (s.x - x) + (s.y - y) * (s.y - y) >= BOMB_R * BOMB_R; });
     blast(P, x, y, BOMB_R, BDMG.bomb);
   }
+  // ── The run's story for the game's history (hist/arcade.js draws it): the score every few seconds of play,
+  // when each level ended and each life lost. Kept in the saved stats, so a resumed game carries on.
+  function trk(o) { return o.trk || (o.trk = { sk: [], si: 2, nx: 0, sec: 0, lx: [], lf: [], ll: 0 }); }
+  function trkTime(T, dt, score) { T.sec += dt; while (T.sec >= T.nx) { T.sk.push(score); T.nx += T.si; if (T.sk.length > 90) { T.sk = T.sk.filter(function (v, i) { return i % 2 === 0; }); T.si *= 2; T.nx = T.sk.length * T.si; } } }
+  function trkLevel(T, n, score) { T.lx.push([n, Math.round(T.sec), score, T.ll].join('|')); T.ll = 0; if (T.lx.length > 40) T.lx.shift(); }
+  function trkLife(T, n, why) { T.ll++; T.lf.push([Math.round(T.sec), n, why || ''].join('|')); if (T.lf.length > 20) T.lf.shift(); }
+  function trkOut(T, n, score) { return { sk: T.sk.join(','), si: T.si, te: Math.round(T.sec), se: score, lx: T.lx.concat([[n, Math.round(T.sec), score, T.ll, 1].join('|')]).slice(-40), lf: T.lf.slice() }; }
+
   function killPlayer(P) {
     if (!P.alive) return;
+    if (G && G.stats) trkLife(trk(G.stats), G.wave, P.lastBy || '');
     P.alive = false; P.lives--; P.deaths++; P.power = null; P.powerT = 0; P.beamOn = false; P.fire = false; P.beaming = false; P.combo = 0;
     boom(P.x, P.y, P.color, true); burst(P.x, P.y, P.color, 22, 1.5); burst(P.x, P.y, '#ffffff', 8, 1);
     sound('die'); shake(0.8); flash('#ff3d5a', 0.45); buzz(P.id, 'error');
@@ -665,7 +674,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (G.phase === 'over' || G.phase === 'won') { if (G.phaseT > 2.2 && !G.ended) endGame(G.stats.saved); return; }
     G.players.forEach(function (P) { playerStep(P, dt); });
     if (G.phase === 'intro' && G.phaseT > G.introT) { G.phase = 'play'; G.phaseT = 0; if (G.boss && G.boss.type === 'mega') G.oneLife = true; }
-    if (G.phase === 'play') { G.waveT += dt; runScript(); }
+    if (G.phase === 'play') { G.waveT += dt; runScript(); trkTime(trk(G.stats), dt, G.score); }
     G.chains.forEach(function (ch) { if (ch.frz > 0) ch.frz -= dt; moveChain(ch, ch.sp * (ch.frz > 0 ? 0.4 : 1) * (ch.segs.length === 1 ? 1.1 : 1) * dt); });
     rebuildSegs();
     foesStep(dt);
@@ -679,7 +688,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     // (after a boss falls, a beat to watch it shatter before the wave-complete banner)
     if (G.phase === 'play' && !G.chains.length && !G.boss && !G.trainsLeft && !(G.bossFell && G.t - G.bossFell < 1.1)) { G.phase = 'clear'; G.phaseT = 0; waveBonus(); }
     if (G.phase === 'clear') popStep();
-    if (G.phase === 'clear' && G.phaseT > (G.progWave === G.wave ? PROG_T + 0.5 : 2.2)) { G.lostBonus = false; startWave(G.wave + 1); }
+    if (G.phase === 'clear' && G.phaseT > (G.progWave === G.wave ? PROG_T + 0.5 : 2.2)) { G.lostBonus = false; trkLevel(trk(G.stats), G.wave, G.score); startWave(G.wave + 1); }
     if (G.oneLife && G.phase === 'play' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); })) bonusLost();
     if (G.phase !== 'over' && G.players.length && G.players.every(function (p) { return !p.alive && (p.lives <= 0 || p.benched); }) && !(G.phase === 'clear' && G.lostBonus)) { G.phase = 'over'; G.phaseT = 0; sound('over'); announce('Game over', 2); }
   }
@@ -2949,7 +2958,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     Kit.record(KEY, {
       detail: { w: R.wave, won: R.won ? 1 : 0, df: R.diff || 'arcade', np: R.players.length, ts: online ? R.score : 0,
         b: st.bosses || 0, sg: st.segs || 0, hd: st.heads || 0, sp: st.spiders || 0, fl: st.fleas || 0, sc: st.scorps || 0, bg: st.bugs || 0,
-        pw: st.powers || 0, ms: st.mush || 0, cb: st.combo || 0, by: (P0 && P0.lastBy) || '', nt: note ? 1 : 0,
+        pw: st.powers || 0, ms: st.mush || 0, cb: st.combo || 0, by: (P0 && P0.lastBy) || '', nt: note ? 1 : 0, run: st.trk ? trkOut(st.trk, R.wave, R.score) : undefined,
         hr: myScore > 0 && (hiL.length < ArcadeHi.max || myScore > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= myScore; }).length + 1 : 0,
         hb: G ? G.best0 || 0 : 0 },
       started: R.started || null, mode: (online ? 'Online co-op' : 'Solo') + ' · ' + (DIFF[R.diff] || DIFF.arcade).name,

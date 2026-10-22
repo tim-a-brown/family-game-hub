@@ -528,6 +528,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
   function step() {
     frame++;
+    if (phase === 'play' && G) trkTime(trk(G.stats), 1 / 60, G.score);
     if (phase === 'ready') { if (--G.pt <= 0) setPhase('play'); return; }
     if (phase === 'eat') { if (--G.pt <= 0) setPhase('play'); tickPopups(); G.ghosts.forEach(function (gh) { if (gh.state === 'eyes' || gh.state === 'enter') moveGhost(gh); }); return; }
     if (phase === 'die1') { if (--G.pt <= 0) { setPhase('die2', 100); Snd.die(); } return; }
@@ -589,7 +590,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         return;
       } else {
         if (window.__pac && window.__pac.god) continue;
-        G.stats.deaths.push({ by: gh.def.label, lvl: G.level });
+        G.stats.deaths.push({ by: gh.def.label, lvl: G.level }); trkLife(trk(G.stats), G.level, gh.def.label);
         Snd.loop(null); Kit.haptic('error');
         setPhase('die1', 60);
         return;
@@ -604,7 +605,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
   function levelClear() {
     Snd.loop(null); Snd.clear(); Kit.haptic('success');
-    G.stats.levelPts.push(G.score - G.levelStart);
+    G.stats.levelPts.push(G.score - G.levelStart); trkLevel(trk(G.stats), G.level, G.score);
     setPhase('clear', 60);
   }
   function afterClear() {
@@ -613,6 +614,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     else nextLevel();
   }
   function nextLevel() { G.level++; G.levelStart = G.score; startLevel(null); Kit.callout('Level ' + G.level, '#ffd84a'); }
+
+  // ── The run's story for the game's history (hist/arcade.js draws it): the score every few seconds of play,
+  // when each level ended and each life lost. Kept in the saved stats, so a resumed game carries on.
+  function trk(o) { return o.trk || (o.trk = { sk: [], si: 2, nx: 0, sec: 0, lx: [], lf: [], ll: 0 }); }
+  function trkTime(T, dt, score) { T.sec += dt; while (T.sec >= T.nx) { T.sk.push(score); T.nx += T.si; if (T.sk.length > 90) { T.sk = T.sk.filter(function (v, i) { return i % 2 === 0; }); T.si *= 2; T.nx = T.sk.length * T.si; } } }
+  function trkLevel(T, n, score) { T.lx.push([n, Math.round(T.sec), score, T.ll].join('|')); T.ll = 0; if (T.lx.length > 40) T.lx.shift(); }
+  function trkLife(T, n, why) { T.ll++; T.lf.push([Math.round(T.sec), n, why || ''].join('|')); if (T.lf.length > 20) T.lf.shift(); }
+  function trkOut(T, n, score) { return { sk: T.sk.join(','), si: T.si, te: Math.round(T.sec), se: score, lx: T.lx.concat([[n, Math.round(T.sec), score, T.ll, 1].join('|')]).slice(-40), lf: T.lf.slice() }; }
 
   // ═══ Game over, record, high scores ═════════════════════════════════════
   var lastResult = null;
@@ -643,7 +652,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       gh: G.ghosts.map(function (g) { return Math.round(g.x) + ',' + Math.round(g.y) + ',' + (g.state === 'eyes' ? 'e' : g.fright ? 'f' : 'n'); }).join(';'),
       lv: G.level, ea: G.eaten, dd: G.stats.deaths.slice(-6).map(function (d) { return { b: d.by, l: d.lvl }; }),
       ge: G.stats.ghosts, mc: G.stats.maxCombo, q4: G.stats.quad, fr: G.stats.fruit, bf: G.stats.bestFruit ? G.stats.bestFruit.n : '',
-      pp: G.stats.pellets || 0, el: G.stats.extraLife || 0, lvs: G.startLives,
+      pp: G.stats.pellets || 0, el: G.stats.extraLife || 0, lvs: G.startLives, run: trkOut(trk(G.stats), G.level, G.score),
       hr: G.score > 0 && (hiL.length < ArcadeHi.max || G.score > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= G.score; }).length + 1 : 0, hb: hiAtStart || 0
     };
     try {
@@ -651,7 +660,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         detail: detail,
         started: G.started, mode: G.startLives !== 3 ? G.startLives + ' lives' : '',
         players: [{ name: who, score: G.score }], winner: null,
-        rounds: lp.length > 1 ? { labels: lp.map(function (x, i) { return 'Level ' + (i + 1); }), scores: lp.map(function (x) { return [x]; }) } : null,
         highlights: hl.slice(0, 6),
         summary: G.score.toLocaleString() + ' points · level ' + G.level, badge: G.score + ' pts',
         meta: { score: G.score, level: G.level, result: 'gameover', ghosts: G.stats.ghosts }
@@ -1069,6 +1077,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     eatAllBut: function (n) { if (!G) return; for (var i = 0; i < G.dots.length && G.left > n; i++) if (G.dots[i]) { G.dots[i] = 0; G.left--; G.eaten++; } },
     lives: function (n) { if (G) { G.lives = n; drawStrip(); } },
     steer: function (d) { steer(d); }, god: false, MAP: MAP,
+    clearLevel: function () { if (!G || phase !== 'play') return; for (var i = 0; i < G.dots.length; i++) if (G.dots[i]) { G.dots[i] = 0; G.eaten++; } G.left = 0; levelClear(); },
     kill: function () { if (!G) return; var gh = G.ghosts[0]; gh.state = 'out'; gh.fright = false; gh.x = G.pac.x; gh.y = G.pac.y; }
   };
 
