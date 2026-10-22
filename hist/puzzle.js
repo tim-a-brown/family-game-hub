@@ -345,7 +345,7 @@
     var base = given.map(function (g, i) { return g || (inOrd[i] ? 0 : vals[i]); });
     if (ord.length > 4) {
       var fill = ui.el('div', { class: 'hv-snap f-paper', style: { 'max-width': '320px', padding: '6px' } });
-      out.push(ui.section('How you filled it in', [fill, replay(ui, fill, ord.length, Math.min(ord.length, Math.round(ord.length / 2)), function (m) {
+      var fillSec = (ui.section('How you filled it in', [fill, replay(ui, fill, ord.length, Math.min(ord.length, Math.round(ord.length / 2)), function (m) {
         var v = base.slice(); for (var j = 0; j < m; j++) v[ord[j]] = vals[ord[j]];
         fill.innerHTML = sdSvg(given, v, { last: m ? ord[m - 1] : -1, h: d.h });
         var c = m ? ord[m - 1] : -1;
@@ -353,7 +353,16 @@
       })]));
     }
     var lvl = d.lv >= 5 ? 'Advanced chains' : d.lv === 4 ? 'XY-Wing or Swordfish' : d.lv === 3 ? 'Triples or X-Wing' : '';
-    out.push(ui.stats([['Time', sec(e.seconds)], ['Level', SD_DIFF[e.diff] || e.diff], ['Wrong numbers', d.mh ? '–' : e.mistakes || 0], ['Hints', e.hints || 0]]));
+    var pb = d.pb || 0, best = !e.hints && (!pb || e.seconds < pb);
+    out.push(ui.stats([['Time', sec(e.seconds), d.pb != null ? (best ? (pb ? 'new best (was ' + sec(pb) + ')' : 'first clean solve') : pb ? 'best ' + sec(pb) : '') : ''], ['Wrong numbers', d.mh ? '–' : e.mistakes || 0], ['Hints', e.hints || 0]]));
+    // squares filled over time, with the hints and wrong numbers on the clock
+    if (Array.isArray(d.t) && d.t.length && e.seconds > 0) {
+      var ts = d.t.filter(function (x) { return x >= 0; }).sort(function (a, b) { return a - b; }), line = [], prevT = -1;
+      ts.forEach(function (x, i) { if (x === prevT) line[line.length - 1][1] = i + 1; else line.push([x, i + 1]); prevT = x; });
+      var ev = evList(d.ev).filter(function (m) { return !(d.mh && m.k === 'x'); });
+      if (line.length > 1) out.push(ui.section('How it went', howItWent(ui, { total: e.seconds, ev: ev, line: line, max: ts.length, unit: 'squares to fill', end: 'Solved', names: { x: 'Wrong number' } }), { icon: 'chart' }));
+    }
+    if (fillSec) out.push(fillSec);
     out.push(ui.facts([['Puzzle', d.no ? 'No. ' + d.no + (e.daily ? ' (daily)' : '') : ''], ['Needed', lvl]]));
     return ui.wrap(out);
   });

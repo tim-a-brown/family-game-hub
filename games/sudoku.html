@@ -471,8 +471,8 @@ html[data-theme="light"] .pad.notes button,html[data-theme="parchment"] .pad.not
     if (v === S.sol[i]) Sdk.PEERS[i].forEach(function (j) { S.notes[j] &= m; });
     lastWrite = i;
     // for the history picture: when each square got its right number, and squares that ever had a wrong one
-    if (v === S.sol[i]) { S.at = S.at || {}; S.at[i] = (S.seq = (S.seq || 0) + 1); }
-    else { S.bad = S.bad || {}; S.bad[i] = 1; }
+    if (v === S.sol[i]) { S.at = S.at || {}; S.at[i] = (S.seq = (S.seq || 0) + 1); S.tt = S.tt || {}; S.tt[i] = S.time; }
+    else { S.bad = S.bad || {}; S.bad[i] = 1; S.ev = ((S.ev || '') + ' x' + S.time).trim(); }
     if (v !== S.sol[i]) {
       S.mistakes++;
       if (opts.mistakes) { Kit.sfx('bad'); Kit.haptic('error'); } else { Kit.sfx('tap'); Kit.haptic('light'); }
@@ -505,7 +505,7 @@ html[data-theme="light"] .pad.notes button,html[data-theme="parchment"] .pad.not
       if (target < 0) { var cand = Sdk.candidates(g), bc = 10; for (i = 0; i < 81; i++) if (!g[i] && Sdk.bits(cand[i]) < bc) { bc = Sdk.bits(cand[i]); target = i; } }
       why = 'A tricky spot. Here is a ' + S.sol[target] + ' to get you going.';
     }
-    S.hints++; sel = target;
+    S.hints++; sel = target; S.ev = ((S.ev || '') + ' h' + S.time).trim();
     write(target, S.sol[target], true);
     if (!S.done) note(why);
   }
@@ -549,7 +549,7 @@ html[data-theme="light"] .pad.notes button,html[data-theme="parchment"] .pad.not
       started: S.started, mode: label(), players: [{ name: 'You' }], winner: 'You',
       summary: name + ' · solved in ' + fmt(S.time), badge: fmt(S.time), highlights: hl.slice(0, 6),
       meta: { diff: S.diff, seconds: S.time, hints: S.hints, mistakes: S.mistakes, daily: S.daily, level: S.level, board: grid(S.vals), givens: grid(S.given) },
-      detail: histDetail()
+      detail: histDetail(prev)
     });
     clearSave(); render();
     var g = document.getElementById('grid'); if (g) g.classList.add('won');
@@ -572,11 +572,13 @@ html[data-theme="light"] .pad.notes button,html[data-theme="parchment"] .pad.not
   }
   // History detail: givens and final grid as 81-digit strings, hinted squares, squares that had a wrong number,
   // and the order the squares were filled in (cell numbers), for the replay
-  function histDetail() {
+  function histDetail(pb) {
     var at = S.at || {}, ord = Object.keys(at).map(Number).filter(function (i) { return !S.given[i]; }).sort(function (a, b) { return at[a] - at[b]; });
     var hi = [], bad = [];
     for (var i = 0; i < 81; i++) { if (S.hinted[i]) hi.push(i); if (S.bad && S.bad[i]) bad.push(i); }
-    return { g: S.given.join(''), v: S.vals.join(''), h: hi, x: bad, o: ord, no: S.no, lv: S.level, mh: opts.mistakes ? 0 : 1 };
+    var tt = S.tt || {};
+    return { g: S.given.join(''), v: S.vals.join(''), h: hi, x: bad, o: ord, no: S.no, lv: S.level, mh: opts.mistakes ? 0 : 1,
+      t: ord.map(function (i) { return tt[i] != null ? tt[i] : -1; }), ev: (S.ev || '').split(' ').slice(-40).join(' '), pb: pb || 0 };
   }
   function miniGrid(e) {
     if (!e || !Array.isArray(e.board) || !Array.isArray(e.givens)) return null;
@@ -692,7 +694,7 @@ html[data-theme="light"] .pad.notes button,html[data-theme="parchment"] .pad.not
     var n = 0; for (var i = 0; i < 81 && S; i++) if (!S.vals[i]) { if (n++ >= (leave || 0)) S.vals[i] = S.sol[i]; }
     // put the left-over blanks last: refill so exactly `leave` blanks remain
     render(); save();
-  }, Sdk: Sdk,
+  }, Sdk: Sdk, start: function (d) { newPuzzle(d); }, write: function (i, v) { write(i, v, false); }, hint: function () { hint(); },
     // write the last missing number (after fill), as if typed
     finish: function () { for (var i = 0; i < 81 && S; i++) if (S.vals[i] !== S.sol[i]) { write(i, S.sol[i], false); return true; } return false; } };
 
