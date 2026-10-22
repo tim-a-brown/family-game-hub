@@ -886,12 +886,12 @@
     if (B === 4) { g.W = g.H = 2 * (tip + 0.95); } else { g.apo = tip + 0.62; g.rc = g.apo + 0.55; g.W = 2 * g.rc; g.H = 2 * g.apo; }
     MGEO[B] = g; return g;
   }
-  var M_RULES = { cards: 'Cards & Marbles', agg: 'Aggravation', wahoo: 'Wahoo', plain: 'Wahoo, no center' };
-  R('marbles', function (e, ui) {
-    var d = e.dt; if (!d || !d.p || !d.B) return null;
-    var B = +d.B, g = mGeo(B), W = g.W, H = g.H, nm = names(e), F = function (v) { return v.toFixed(3); }, s = [];
+  // pos: each player's four marble positions; o.hot: {'pi,mi': 1} marbles that just moved; o.sent: the same for ones sent home
+  function mbSvg(d, g, pos, o) {
+    o = o || {};
+    var B = g.B, W = g.W, H = g.H, F = function (v) { return v.toFixed(3); }, s = [];
     var armCol = {}; d.p.forEach(function (p) { armCol[p.a] = p.c; });
-    s.push('<svg viewBox="' + F(-W / 2) + ' ' + F(-H / 2) + ' ' + F(W) + ' ' + F(H) + '" role="img" aria-label="Final board"><defs>' +
+    s.push('<svg viewBox="' + F(-W / 2) + ' ' + F(-H / 2) + ' ' + F(W) + ' ' + F(H) + '" role="img" aria-label="Marbles board"><defs>' +
       '<linearGradient id="hvmw" x1="0" y1="0" x2=".35" y2="1"><stop offset="0" stop-color="#e2b47a"/><stop offset=".55" stop-color="#cf9a5c"/><stop offset="1" stop-color="#b37c42"/></linearGradient>' +
       '<radialGradient id="hvmh" cx=".5" cy=".38" r=".62"><stop offset="0" stop-color="#140904"/><stop offset=".7" stop-color="#2a1608"/><stop offset="1" stop-color="#4a2a12"/></radialGradient>' +
       '<radialGradient id="hvmm" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".6"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></radialGradient>' +
@@ -919,22 +919,77 @@
     g.home.forEach(function (h) { h.forEach(function (p) { s.push(hole(p)); }); });
     g.base.forEach(function (h) { h.forEach(function (p) { s.push(hole(p)); }); });
     if (d.r === 'agg' || d.r === 'wahoo') s.push(hole([0, 0], .36));
-    d.p.forEach(function (p) {
-      String(p.m || '').split(',').forEach(function (v, mi) {
-        v = +v; var xy;
+    var rings = '';
+    d.p.forEach(function (p, pi) {
+      (pos[pi] || []).forEach(function (v, mi) {
+        var xy;
         if (v === -1) xy = g.base[p.a][mi]; else if (v === MCEN) xy = [0, 0]; else if (v < g.N) xy = g.track[(p.a * MSEG + 7 + v) % g.N]; else xy = g.home[p.a][v - g.N];
         if (!xy) return;
         s.push('<circle cx="' + F(xy[0]) + '" cy="' + F(xy[1] + .06) + '" r=".42" fill="rgba(0,0,0,.4)"/><circle cx="' + F(xy[0]) + '" cy="' + F(xy[1]) + '" r=".4" fill="' + (p.c || '#ccc') + '"/><circle cx="' + F(xy[0]) + '" cy="' + F(xy[1]) + '" r=".4" fill="url(#hvmm)"/>');
+        var k = pi + ',' + mi;
+        if (o.hot && o.hot[k]) rings += '<circle cx="' + F(xy[0]) + '" cy="' + F(xy[1]) + '" r=".6" fill="none" stroke="#fff" stroke-width=".1"/>';
+        if (o.sent && o.sent[k]) rings += '<circle cx="' + F(xy[0]) + '" cy="' + F(xy[1]) + '" r=".6" fill="none" stroke="#ff4a4a" stroke-width=".1" stroke-dasharray=".18 .12"/>';
       });
     });
-    s.push('</svg>');
-    var out = [ui.section('Final board', ui.picture(s.join(''), { max: 340 }))];
-    var N = g.N, rows = d.p.map(function (p, i) {
-      var home = String(p.m || '').split(',').filter(function (v) { v = +v; return v >= N && v !== MCEN; }).length;
-      return [nm[i] || 'Player', { t: home + '/4', c: (d.w || []).indexOf(i) >= 0 ? 'hi' : '' }, p.t, p.s, p.g];
-    });
-    out.push(ui.section('Marbles', ui.table(['', 'Home', 'Turns', d.r === 'agg' ? 'Aggravated' : 'Sent back', 'Got sent'], rows)));
-    out.push(ui.chips(d.p.map(function (p, i) { return { t: nm[i], c: p.c }; }).concat([{ t: M_RULES[d.r] || '' }])));
+    s.push(rings + '</svg>');
+    return s.join('');
+  }
+  var M_RULES = { cards: 'Cards & Marbles', agg: 'Aggravation', wahoo: 'Wahoo', plain: 'Wahoo, no center' };
+  R('marbles', function (e, ui) {
+    var d = e.dt; if (!d || !d.p || !d.B) return null;
+    var Bu = HistView.boardUI, g = mGeo(+d.B), nm = names(e), N = g.N, out = [];
+    var fin = d.p.map(function (p) { return String(p.m || '').split(',').map(Number); });
+    var homeOf = function (ms) { return ms.filter(function (v) { return v >= N && v !== MCEN; }).length; };
+    // the replay, from every marble that moved
+    var toks = String(d.ml || '').split(' ').filter(Boolean), steps = null;
+    if (toks.length > 1) {
+      var pos = d.p.map(function () { return [-1, -1, -1, -1]; });
+      steps = [{ pos: pos }];
+      toks.forEach(function (t) {
+        if (!steps) return;
+        pos = pos.map(function (a) { return a.slice(); });
+        var hot = {}, sent = {}, actor = -1, fwd = 0;
+        for (var k = 0; k + 3 < t.length; k += 4) {
+          var pi = parseInt(t.charAt(k), 36), mi = +t.charAt(k + 1), c = t.substr(k + 2, 2), v = c === 'zz' ? MCEN : parseInt(c, 36) - 1;
+          if (!pos[pi] || mi > 3) { steps = null; return; }
+          var was = pos[pi][mi]; pos[pi][mi] = v;
+          if (v === -1 && was !== -1) sent[pi + ',' + mi] = 1; else { hot[pi + ',' + mi] = 1; if (actor < 0) actor = pi; fwd = v === MCEN || was === MCEN || was === -1 ? fwd : Math.abs(v - was) > Math.abs(fwd) ? v - was : fwd; }
+        }
+        steps.push({ pos: pos, hot: hot, sent: sent, actor: actor, fwd: fwd });
+      });
+      if (steps && steps[steps.length - 1].pos.map(function (a) { return a.join(','); }).join('|') !== fin.map(function (a) { return a.join(','); }).join('|')) steps = null;
+    }
+    var winners = (d.w || []).map(function (i) { return nm[i]; }).filter(Boolean);
+    var sentTot = d.p.reduce(function (a, p) { return a + (p.s || 0); }, 0), topS = d.p.map(function (p, i) { return { i: i, s: p.s || 0 }; }).sort(function (a, b) { return b.s - a.s; })[0];
+    out.push(ui.stats([['Turns', d.w && d.p[d.w[0]] ? d.p[d.w[0]].t : null, winners.length ? 'for ' + winners.join(' & ') : ''], [d.r === 'agg' ? 'Aggravated' : 'Sent home', sentTot, topS && topS.s ? nm[topS.i] + ' most (' + topS.s + ')' : 'nobody'], ['Players', d.p.length, (d.tm ? 'partners · ' : '') + (M_RULES[d.r] || '')]]));
+    var last = steps ? steps[steps.length - 1] : null;
+    var snap = ui.picture(mbSvg(d, g, fin, last ? { hot: last.hot, sent: last.sent } : {}), { max: 340 });
+    out.push(ui.section(steps ? 'The board' : 'Final board', [snap, Bu.key(ui, d.p.map(function (p, i) { return [nm[i], p.c]; }))]));
+    if (steps) {
+      var S = steps.length - 1, max = 4 * N + 6;
+      var prog = d.p.map(function (p, pi) { return steps.map(function (st) { return Math.round(100 * st.pos[pi].reduce(function (a, v) { return a + (v === -1 ? 0 : v === MCEN ? N / 2 : v); }, 0) / max); }); });
+      var chart = Bu.chart(ui, d.p.map(function (p, pi) { return { v: prog[pi], c: p.c || ui.color(pi) }; }), { lo: 0, hi: 100, from: 'Start', to: 'The end', aria: 'How far round the board each player had got' });
+      out.push(ui.section('Replay', Bu.replay(ui, S, function (n) {
+        var st = steps[n];
+        snap.innerHTML = mbSvg(d, g, st.pos, { hot: st.hot, sent: st.sent });
+        chart.at(n);
+        if (!n) return 'Every marble in its base';
+        var who = nm[st.actor] || 'Someone', vic = Object.keys(st.sent || {}).map(function (k) { return nm[+k.split(',')[0]]; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
+        var home = st.actor >= 0 ? homeOf(st.pos[st.actor]) : 0;
+        return 'Move ' + n + ' · ' + (st.actor >= 0 ? who + (st.fwd < 0 ? ' backed up ' + (-st.fwd) + (st.fwd === -1 ? ' hole' : ' holes') : ' moved' + (st.fwd > 0 ? ' ' + st.fwd + (st.fwd === 1 ? ' hole' : ' holes') : '')) : 'A marble went back') + (vic.length ? ' · sent ' + vic.join(' and ') + ' home' : '') + (st.actor >= 0 ? ' · ' + home + ' of 4 home' : '');
+      }, { start: S, ms: Math.max(120, Math.min(500, 24000 / S)) })));
+      out.push(ui.section('The race round the board', chart));
+    }
+    var rows = d.p.map(function (p, i) { return [nm[i] || 'Player', { t: homeOf(fin[i]) + '/4', c: (d.w || []).indexOf(i) >= 0 ? 'hi' : '' }, p.t, p.s, p.g]; });
+    out.push(ui.section('Marbles', ui.table(['', 'Home', 'Turns', 'Sent', 'Got sent'], rows)));
+    // what decided it
+    if (winners.length) {
+      var wi = d.w[0], most = d.p.map(function (p, i) { return { i: i, g: p.g || 0 }; }).sort(function (a, b) { return b.g - a.g; })[0];
+      var why = winners.join(' & ') + (winners.length > 1 ? ' got all eight marbles home' : ' got all four marbles home');
+      if (d.p[wi].s >= 2) why += ', sending others home ' + d.p[wi].s + ' times on the way';
+      else if (most && most.g >= 2 && most.i !== wi) why += ' while ' + nm[most.i] + ' got sent back ' + most.g + ' times';
+      out.push(Bu.foot(ui, why, 'trophy'));
+    }
     return ui.wrap(out);
   });
 
@@ -959,44 +1014,76 @@
     aaMap.catch(function () { aaMap = null; });
     return aaMap;
   }
-  function aaSvg(m, d) {
-    var own = String(d.own || ''), skirm = d.mp === 's', vb = skirm ? [330, 60, 640, 470] : [0, 0, 1750, 1000];
+  // own: who held each place (defaults to the end); flip: places that changed hands since the frame before
+  function aaSvg(m, d, own, flip) {
+    own = String(own || d.own || '');
+    var skirm = d.mp === 's', vb = skirm ? [330, 60, 640, 470] : [0, 0, 1750, 1000];
     var ic = String(d.ic || '').split(',').filter(Boolean).map(Number), s = '';
-    var sea = '', land = '', marks = '';
+    var sea = '', land = '', marks = '', hot = '';
     for (var t = 0; t < m.TER.length; t++) {
       var T = m.TER[t], geo = m.GEO[t]; if (!geo) continue;
       var ch = own.charAt(t);
       if (T[1] === 1) { sea += '<path d="' + geo + '"/>'; continue; }
       var p = AA[ch], imp = T[4] & 8, fill = p ? p.c : ch === '-' ? '#cdbb8f' : skirm ? '#22323c' : '#a89a7a', op = p ? 1 : skirm && ch === '.' ? 1 : .75;
       land += '<path d="' + geo + '" fill="' + fill + '" fill-opacity="' + op + '"' + (imp ? ' stroke-dasharray="4 3"' : '') + '/>';
+      if (flip && flip[t]) hot += '<path d="' + geo + '"/>';
       if (T[4] & 2 && (!skirm || ch !== '.')) {
         var cx = T[5], cy = T[6], r = skirm ? 8 : 11, st = '';
         for (var k = 0; k < 10; k++) { var a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * .42 : r; st += (k ? 'L' : 'M') + f2(cx + rr * Math.cos(a)) + ' ' + f2(cy + rr * Math.sin(a)); }
         marks += '<path d="' + st + 'Z" fill="#ffd34d" stroke="#5a3a00" stroke-width="1.4" stroke-linejoin="round"/>';
       }
-      if (ic.indexOf(t) >= 0 && T[5] != null) marks += '<rect x="' + (T[5] - (skirm ? 4 : 5)) + '" y="' + (T[6] + (skirm ? 6 : 9)) + '" width="' + (skirm ? 8 : 10) + '" height="' + (skirm ? 6 : 7) + '" rx="1.5" fill="#1b1712" stroke="#fff" stroke-opacity=".6" stroke-width="1"/>';
+      if (ic.indexOf(t) >= 0 && T[5] != null && own === String(d.own)) marks += '<rect x="' + (T[5] - (skirm ? 4 : 5)) + '" y="' + (T[6] + (skirm ? 6 : 9)) + '" width="' + (skirm ? 8 : 10) + '" height="' + (skirm ? 6 : 7) + '" rx="1.5" fill="#1b1712" stroke="#fff" stroke-opacity=".6" stroke-width="1"/>';
     }
-    s = '<svg viewBox="' + vb.join(' ') + '" role="img" aria-label="Map at the end"><rect x="' + vb[0] + '" y="' + vb[1] + '" width="' + vb[2] + '" height="' + vb[3] + '" fill="#2d566e"/>' +
+    s = '<svg viewBox="' + vb.join(' ') + '" role="img" aria-label="The map"><rect x="' + vb[0] + '" y="' + vb[1] + '" width="' + vb[2] + '" height="' + vb[3] + '" fill="#2d566e"/>' +
       '<g fill="#3a6a85" stroke="#24485c" stroke-width="1.5">' + sea + '</g>' +
-      '<g stroke="#2a1f12" stroke-width="' + (skirm ? 1.6 : 2.2) + '" stroke-linejoin="round">' + land + '</g>' + marks + '</svg>';
+      '<g stroke="#2a1f12" stroke-width="' + (skirm ? 1.6 : 2.2) + '" stroke-linejoin="round">' + land + '</g>' +
+      (hot ? '<g fill="none" stroke="#fff" stroke-width="' + (skirm ? 3 : 4.5) + '" stroke-linejoin="round" opacity=".95">' + hot + '</g>' : '') + marks + '</svg>';
     return s;
   }
   R('axisallies', function (e, ui) {
     var d = e.dt; if (!d || !d.own) return null;
-    var out = [];
-    var mapBox = ui.picture('<div class="ld">Loading the map…</div>', { frame: 'wood', max: 380 });
-    mapBox.classList.add('hvb-map');
-    out.push(ui.section('The map at the end (round ' + (d.r || '?') + ')', mapBox));
-    try {
-      aaLoad().then(function (m) { mapBox.innerHTML = aaSvg(m, d); }).catch(function () { mapBox.remove(); });
-    } catch (err) { mapBox.remove(); }
+    var B = HistView.boardUI, out = [], pw = (d.pw || []).slice();
     var own = String(d.own), counts = {};
     own.split('').forEach(function (ch) { if (AA[ch]) counts[ch] = (counts[ch] || 0) + 1; });
-    var pw = (d.pw || []).slice();
-    out.push(ui.chips(pw.map(function (x) { var P = AA_BY[x.p] || {}; return { t: P.n || x.p, c: P.c, on: true }; })));
+    var letterOf = function (p) { return Object.keys(AA).filter(function (k) { return AA[k].p === p; })[0]; };
+    var SIDE = { de: 'Axis', jp: 'Axis', su: 'Allies', uk: 'Allies', us: 'Allies' };
+    var vc = { Axis: 0, Allies: 0 }; pw.forEach(function (x) { vc[SIDE[x.p]] = (vc[SIDE[x.p]] || 0) + (x.v || 0); });
+    out.push(ui.stats([['Rounds', d.r || null, d.mp === 's' ? 'Skirmish' : '1942 map'], ['Victory cities', vc.Axis + '–' + vc.Allies, 'Axis–Allies at the end'],
+      ['Capitals lost', pw.filter(function (x) { return !x.cap; }).length || 0, pw.filter(function (x) { return !x.cap; }).map(function (x) { return (AA_BY[x.p] || {}).sh; }).join(', ') || 'none fell']]));
+    var mapBox = ui.picture('<div class="ld">Loading the map…</div>', { frame: 'wood', max: 380 });
+    mapBox.classList.add('hvb-map');
+    // the map round by round: the start of each round kept, then the end
+    var rh = d.rh, frames = [];
+    if (rh && rh.o0) {
+      var cur = String(rh.o0); frames.push({ o: cur, r: rh.r0 });
+      (rh.d || []).forEach(function (chg, k) {
+        var a = cur.split(''), fl = {}; String(chg).replace(/(..)(.)/g, function (m0, t, l) { var i = parseInt(t, 36); a[i] = l; fl[i] = 1; return ''; });
+        cur = a.join(''); frames.push({ o: cur, r: rh.r0 + k + 1, fl: fl });
+      });
+      var fe = {}; for (var t = 0; t < own.length; t++) if (own.charAt(t) !== cur.charAt(t)) fe[t] = 1;
+      frames.push({ o: own, r: d.r, end: true, fl: fe });
+    }
+    var mapM = null, curF = frames.length - 1;
+    function draw() { if (!mapM) return; var f = frames[curF]; mapBox.innerHTML = aaSvg(mapM, d, f ? f.o : own, f ? f.fl : null); }
+    out.push(ui.section(frames.length > 1 ? 'The map' : 'The map at the end (round ' + (d.r || '?') + ')', mapBox));
+    try { aaLoad().then(function (m) { mapM = m; draw(); }).catch(function () { mapBox.remove(); }); } catch (err) { mapBox.remove(); }
+    var chart = null;
+    if (frames.length > 1) {
+      // income at the start of each round, and at the end
+      var series = pw.map(function (x) { var v = String((rh.i || {})[x.p] || '').split(',').filter(function (s) { return s !== ''; }).map(Number); v.push(x.i || 0); return { v: v, c: (AA_BY[x.p] || {}).c || '#888', w: 2.5 }; }).filter(function (s) { return s.v.length > 1; });
+      if (series.length) chart = B.chart(ui, series, { lo: 0, from: 'Round ' + rh.r0, to: 'End', aria: 'Income (IPCs) for each power, round by round' });
+      out.push(ui.section('Round by round', B.replay(ui, frames.length - 1, function (n) {
+        curF = n; draw(); if (chart) chart.at(n);
+        var f = frames[n], cnt = {}; f.o.split('').forEach(function (ch) { if (AA[ch]) cnt[ch] = (cnt[ch] || 0) + 1; });
+        var moved = f.fl ? Object.keys(f.fl).length : 0;
+        var land = pw.map(function (x) { return (AA_BY[x.p] || {}).sh + ' ' + (cnt[letterOf(x.p)] || 0); }).join(' · ');
+        return (f.end ? 'The end, round ' + f.r : 'Start of round ' + f.r) + (n && moved ? ' · ' + moved + (moved === 1 ? ' place' : ' places') + ' changed hands (outlined)' : '') + ' · land: ' + land;
+      }, { ms: 1100 })));
+      if (chart) out.push(ui.section('Income each round', [chart, B.key(ui, pw.map(function (x) { var P = AA_BY[x.p] || {}; return [P.sh || x.p, P.c]; }))]));
+    } else out.push(ui.chips(pw.map(function (x) { var P = AA_BY[x.p] || {}; return { t: P.n || x.p, c: P.c, on: true }; })));
     var rows = pw.map(function (x) {
-      var P = AA_BY[x.p] || {}, letter = Object.keys(AA).filter(function (k) { return AA[k].p === x.p; })[0];
-      return [P.sh || x.p, counts[letter] || 0, x.i, x.v, { t: x.cap ? 'Held' : 'Lost', c: x.cap ? 'good' : 'bad' }];
+      var P = AA_BY[x.p] || {};
+      return [P.sh || x.p, counts[letterOf(x.p)] || 0, x.i, x.v, { t: x.cap ? 'Held' : 'Lost', c: x.cap ? 'good' : 'bad' }];
     });
     out.push(ui.section('Powers at the end', ui.table(['', 'Land', 'IPCs', 'Cities', 'Capital'], rows)));
     // what armies were left, by power
@@ -1006,6 +1093,11 @@
       return { t: parts.join(', ') || 'No units left', b: (AA_BY[x.p] || {}).sh + ': ', c: (AA_BY[x.p] || {}).c };
     });
     out.push(ui.section('Armies left', ui.log(armies)));
+    // what decided it
+    var sd = d.sd === 'X' || d.sd === 'axis' ? 'Axis' : d.sd === 'A' || d.sd === 'allies' ? 'Allies' : null;
+    var lost = pw.filter(function (x) { return !x.cap; }).map(function (x) { return (AA_BY[x.p] || {}).n; });
+    var why = (sd ? 'The ' + sd + ' won' : 'It ended') + ' in round ' + (d.r || '?') + (lost.length ? '; ' + lost.join(' and ') + (lost.length === 1 ? ' had lost its capital' : ' had lost their capitals') : '') + ' · victory cities ' + vc.Axis + ' Axis, ' + vc.Allies + ' Allies';
+    out.push(B.foot(ui, why, 'flag'));
     return ui.wrap(out);
   });
 })();

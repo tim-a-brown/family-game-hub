@@ -189,8 +189,21 @@
   function G() { return geo(S.B); }
   function N() { return SEG * S.B; }
   function isCards() { return S && S.rules === 'cards'; }
+  // Every marble that moved, for the history replay: on each save, the marbles not where they were last time
+  // ('player marble position': base 36, position + 1 in two characters, 00 = base, zz = centre), space separated
+  function logMarbles() {
+    if (!S || S.ml == null) return;
+    var now = S.players.map(function (P) { return P.m.join(','); }).join('|');
+    if (now === S.mlp) return;
+    var prev = String(S.mlp || '').split('|').map(function (x) { return x.split(',').map(Number); }), t = '';
+    S.players.forEach(function (P, pi) {
+      P.m.forEach(function (v, mi) { if (!prev[pi] || prev[pi][mi] !== v) { var c = v === CEN ? 'zz' : (v + 1).toString(36); t += pi.toString(36) + mi + (c.length < 2 ? '0' : '') + c; } });
+    });
+    S.ml += (S.ml ? ' ' : '') + t; S.mlp = now;
+  }
   function save() {
     if (!S) return;
+    logMarbles();
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S.phase !== 'over') Kit.resume.set(Kit.poss(S.players[S.cur].name) + ' turn · ' + RULES[S.rules]);
   }
@@ -335,8 +348,9 @@
       players: o.players.map(function (p, i) {
         return { name: p.name, cpu: !!p.cpu, color: p.color, arm: arms[i], m: [-1, -1, -1, -1], st: newStats() };
       }),
-      cur: 0, phase: 'roll', die: 0, sixRun: 0, turns: 0, started: Date.now(), hist: [], last: null
+      cur: 0, phase: 'roll', die: 0, sixRun: 0, turns: 0, started: Date.now(), hist: [], last: null, ml: ''
     };
+    S.mlp = S.players.map(function (P) { return P.m.join(','); }).join('|');
     if (S.rules === 'cards') {
       S.king = o.king || '13'; S.jokers = o.jokers || 'on'; S.dealMode = o.deal || '5'; S.deck = []; S.hands = S.players.map(function () { return []; });
       S.pile = []; S.lastCard = S.players.map(function () { return null; }); S.pend = null; S.deals = 0; S.line = '';
@@ -993,7 +1007,7 @@
       players: players, winner: wname,
       summary: wname + ' won · ' + RULES[S.rules],
       highlights: hl.slice(0, 6),
-      detail: { B: S.B, r: S.rules, tm: S.teams ? 1 : 0, w: w.team.slice(), p: S.players.map(function (p) {
+      detail: { B: S.B, r: S.rules, tm: S.teams ? 1 : 0, w: w.team.slice(), ml: (logMarbles(), S.ml && S.ml.length < 2600 ? S.ml : undefined), p: S.players.map(function (p) {
         var sent = 0; Object.keys(p.st.agg).forEach(function (v) { sent += p.st.agg[v]; });
         return { a: p.arm, c: p.color, m: p.m.join(','), t: p.st.turns, s: sent, g: p.st.got };
       }) }

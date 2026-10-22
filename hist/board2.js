@@ -767,7 +767,7 @@
   // ── Monopoly: the board at the end (who owned what, buildings, mortgages), worth, rent and who went broke ──
   R('monopoly', function (e, ui) {
     var d = e.dt; if (!d || !d.o) return null;
-    var nm = (e.players || []).map(function (p) { return p.name; }), out = [];
+    var B = HistView.boardUI, nm = (e.players || []).map(function (p) { return p.name; }), out = [];
     var GC = ['#8a4b2a', '#a9dcf5', '#d6338a', '#f3901d', '#e1251b', '#f6e100', '#1d9e55', '#1b5fae'];
     // group of each square (-1: not a street)
     var G = [-1, 0, -1, 0, -1, -1, 1, -1, 1, 1, -1, 2, -1, 2, 2, -1, 3, -1, 3, 3, -1, 4, -1, 4, 4, -1, 5, 5, -1, 5, -1, 6, 6, -1, 6, -1, -1, 7, -1, 7];
@@ -797,7 +797,18 @@
     }
     s += '<text x="200" y="208" text-anchor="middle" font-family="Lilita One,system-ui,sans-serif" font-size="34" fill="#d7262e" transform="rotate(-45 200 200)">MONOPOLY</text></svg>';
     var key = nm.map(function (n, i) { return { t: n, c: ui.color(i) }; });
+    out.unshift(ui.stats([['Rounds', d.r], ['Biggest rent', d.big ? ui.money(d.big.a) : null, d.big && nm[d.big.f] ? nm[d.big.f] + ' to ' + nm[d.big.t] : ''], ['Ended', d.why === 'time' ? (/r25/.test(d.opt || '') ? 'Rounds up' : 'Time up') : 'Last one left', (d.out || []).length ? (d.out.length === 1 ? '1 went broke' : d.out.length + ' went broke') : '']]));
     out.push(ui.section('The board at the end', [ui.picture(s, { frame: 'wood', max: 360 }), ui.chips(key)]));
+    // everyone's worth round by round
+    var wh = d.wh;
+    if (wh && wh.w && wh.w.length > 1) {
+      var ser = nm.map(function () { return []; });
+      wh.w.forEach(function (row) { String(row).split(',').forEach(function (v, i) { if (ser[i]) ser[i].push(+v || 0); }); });
+      ser.forEach(function (v, i) { v.push((d.out || []).some(function (b) { return b.p === i; }) ? 0 : +(d.w || [])[i] || 0); });
+      var allW = [].concat.apply([], ser), loW = Math.max(0, Math.min.apply(null, allW) - 300);
+      var ch = B.chart(ui, ser.map(function (v, i) { return { v: v, c: ui.color(i) }; }), { lo: loW, mid: 1500, from: 'Round ' + (wh.r0 || 1), to: 'The end', aria: 'What everyone was worth, round by round' });
+      out.push(ui.section('Worth over the game', [ch, ui.el('small', { class: 'hv-note', text: 'Cash plus what every deed and building would fetch' + (wh.s > 1 ? ', every ' + wh.s + ' rounds' : ', at the start of each round') + '. Dashed: the $1,500 everyone starts with.' })]));
+    }
     var rows = nm.map(function (n, i) {
       var props = 0; for (var q = 0; q < 40; q++) if (d.o.charAt(q) === String(i)) props++;
       var bk = (d.out || []).filter(function (b) { return b.p === i; })[0];
@@ -806,8 +817,19 @@
     out.push(ui.table(['', 'Worth', 'Deeds', 'Rent in'], rows));
     if (d.out && d.out.length) out.push(ui.section('Bankruptcies', ui.log(d.out.map(function (b) { return { c: b.p, t: nm[b.p] + ' went broke on turn ' + b.n + (b.to >= 0 ? ', to ' + nm[b.to] : ', to the bank') }; }))));
     var opt = String(d.opt || '').split(',').filter(Boolean).map(function (o) { return { fp: 'Free Parking jackpot', go400: '$400 on Go', noauction: 'No auctions', m60: '1 hour game', m90: '90 minute game', r25: '25 rounds' }[o] || o; });
-    out.push(ui.stats([['Rounds', d.r], ['Biggest rent', d.big ? ui.money(d.big.a) : null, d.big && nm[d.big.f] ? nm[d.big.f] + ' to ' + nm[d.big.t] : ''], ['Ended', d.why === 'time' ? 'Time up' : 'Last one left']]));
     if (opt.length) out.push(ui.chips(opt));
+    // what decided it: full colour groups, rent and buildings
+    var sets = nm.map(function () { return 0; }), houses = nm.map(function () { return 0; });
+    for (var g = 0; g < 8; g++) { var sq = []; for (var q2 = 0; q2 < 40; q2++) if (G[q2] === g) sq.push(q2); var o0 = d.o.charAt(sq[0]); if (o0 !== '-' && sq.every(function (x) { return d.o.charAt(x) === o0; })) sets[+o0]++; }
+    var hotels = nm.map(function () { return 0; });
+    for (var q3 = 0; q3 < 40; q3++) { var ow = d.o.charAt(q3), hh = +d.h.charAt(q3) || 0; if (ow !== '-' && ow !== '') { if (hh === 5) hotels[+ow]++; else houses[+ow] += hh; } }
+    var wi = nm.indexOf(e.winner), why = '';
+    if (wi >= 0) {
+      why = nm[wi] + (sets[wi] ? ' held ' + (sets[wi] === 1 ? 'a full colour group' : sets[wi] + ' full colour groups') + (hotels[wi] || houses[wi] ? ' with ' + [hotels[wi] ? hotels[wi] + (hotels[wi] === 1 ? ' hotel' : ' hotels') : '', houses[wi] ? houses[wi] + (houses[wi] === 1 ? ' house' : ' houses') : ''].filter(Boolean).join(' and ') : '') : ' won without a full colour group');
+      if (d.rg && d.rg[wi]) why += ' and took in ' + ui.money(d.rg[wi]) + ' in rent';
+      if (d.why === 'time') why += /r25/.test(d.opt || '') ? '; richest after the last round' : '; richest when time ran out'; else if ((d.out || []).length) why += '; last one standing';
+    }
+    out.push(B.foot(ui, why, 'trophy'));
     return ui.wrap(out);
   });
 
