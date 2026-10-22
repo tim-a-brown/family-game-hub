@@ -357,13 +357,45 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       treasure: pick(start.treasure, r), warrant: null, comp: { sex: SUS[sus].sex === 'Female' ? 0 : 1 }, cities: {}, notes: [], used: {}, over: false,
       undos: 0, flights: 0, wrong: 0, danger: false, started: Date.now(), solvedBefore: car.solved,
       path: [trail[0] + '|' + START_T], asked: 0, hench: 0 };
-    // which witness answers carry a trait: enough to single out the suspect, before the last city
-    var need = distinguishing(sus), keys = shuffle(['hair', 'hobby', 'feature', 'auto'], r), order = need.concat(keys.filter(function (k) { return need.indexOf(k) < 0; }));
-    var slots = []; for (var ci = 0; ci < stops - 1; ci++) for (var li = 0; li < 3; li++) slots.push(ci + ':' + li);
-    slots = shuffle(slots, r); c.traitAt = {};
-    var spread = Math.max(order.length, Math.min(slots.length, order.length + Math.floor((stops - 1) * 0.5)));
-    for (var k = 0; k < spread && k < slots.length; k++) c.traitAt[slots[k]] = order[k % order.length];
+    c.traitAt = traitPlan(sus, rk, stops, r);
     return c;
+  }
+  // Which witness answers carry a trait. A new agent hears plenty, early, and often more than needed. Higher ranks
+  // hear less, and later: the traits that single out the thief only add up together (no one of them is enough
+  // alone), at most one per city, and the one that completes the warrant comes late on the trail.
+  var CLUE_PLAN = [   // [traits it takes to single out the thief, extra traits, first city with a trait, last trait from (share of the trail)]
+    [1, 2, 0, 0], [1, 1, 0, 0], [2, 1, 0, 0.4], [2, 0, 1, 0.5], [3, 0, 1, 0.6], [3, 0, 1, 0.7]];
+  function traitPlan(sus, rk, stops, r) {
+    var P = CLUE_PLAN[Math.min(rk, CLUE_PLAN.length - 1)], cities = stops - 1, keys = ['hair', 'hobby', 'feature', 'auto'], S = SUS[sus];
+    function only(ks) { return SUS.filter(function (o) { return o.sex === S.sex && ks.every(function (k) { return o[k] === S[k]; }); }).length === 1; }
+    // every set of traits that singles the thief out with nothing to spare; take the size closest to the plan
+    var sets = [];
+    for (var m = 1; m < 16; m++) {
+      var ks = keys.filter(function (k, i) { return m & (1 << i); });
+      if (only(ks) && ks.every(function (k) { return !only(ks.filter(function (x) { return x !== k; })) || ks.length === 1; })) sets.push(ks);
+    }
+    if (!sets.length) sets.push(distinguishing(sus));
+    var best = Math.min.apply(null, sets.map(function (ks) { return Math.abs(ks.length - P[0]) + (ks.length > P[0] ? 0.5 : 0); }));
+    var need = shuffle(pick(sets.filter(function (ks) { return Math.abs(ks.length - P[0]) + (ks.length > P[0] ? 0.5 : 0) === best; }), r), r);
+    var extra = shuffle(keys.filter(function (k) { return need.indexOf(k) < 0; }), r).slice(0, P[1]);
+    var plan = {}, at = {};
+    if (P[3]) {
+      // one trait per city, from the first allowed city on, the last of the needed ones no earlier than the share given
+      var first = Math.min(P[2], cities - 1), late = Math.min(cities - 1, Math.max(first, Math.ceil(cities * P[3]) - 1));
+      var pool = []; for (var ci = first; ci < cities; ci++) pool.push(ci);
+      var lastC = late + Math.floor(r() * (cities - late));
+      var rest = shuffle(pool.filter(function (x) { return x !== lastC; }), r);
+      var early = rest.filter(function (x) { return x < lastC; }).concat(rest.filter(function (x) { return x > lastC; }));
+      var list = need.slice(0, -1).concat(extra);
+      list.forEach(function (k, i) { if (early[i] != null) at[early[i]] = k; });
+      at[lastC] = need[need.length - 1];
+      Object.keys(at).forEach(function (ci) { plan[ci + ':' + Math.floor(r() * 3)] = at[ci]; });
+    } else {
+      var slots = []; for (var cj = 0; cj < cities; cj++) for (var li = 0; li < 3; li++) slots.push(cj + ':' + li);
+      slots = shuffle(slots, r);
+      need.concat(extra).forEach(function (k, i) { if (slots[i]) plan[slots[i]] = k; });
+    }
+    return plan;
   }
   // the smallest set of traits (besides sex) that singles out suspect s
   function distinguishing(s) {

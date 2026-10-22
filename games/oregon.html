@@ -143,6 +143,15 @@ html.k-kb .ot.typing .ot-scr{display:none;}
 .nm-row input{flex:1;min-width:0;height:40px;border:0;border-radius:0;background:#111;color:#fff;font:400 1.5rem/1 var(--vt);padding:2px 10px;box-shadow:inset 0 0 0 2px var(--e-dgray);outline:none;}
 .nm-row input:focus{box-shadow:inset 0 0 0 2px var(--e-yel);}
 .nm-chips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 8px;}
+.nm-regbox{min-width:0;}
+.nm-reglbl{font-size:1.1rem;margin:0 0 2px !important;}
+.nm-regs{margin:0;}
+/* keyboard up: the regulars become one line you can swipe along */
+html.k-kb .ot.typing .nm-reglbl{display:none;}
+html.k-kb .ot.typing .nm-regs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;}
+html.k-kb .ot.typing .nm-regs button{flex:none;}
+/* sideways the regulars have the whole right column, so they wrap there even with the keyboard up */
+@media (orientation:landscape) and (min-width:600px){ html.k-kb .ot.typing .nm-regs{flex-wrap:wrap;overflow:visible;} }
 .nm-chips button{border:0;background:#222;color:#fff;font:400 1.15rem/1 var(--vt);padding:5px 9px;box-shadow:inset 0 0 0 2px var(--e-dgray);cursor:pointer;}
 .ot-in{width:100%;height:42px;border:0;background:#111;color:#fff;font:400 1.45rem/1 var(--vt);padding:2px 10px;box-shadow:inset 0 0 0 2px var(--e-yel);outline:none;border-radius:0;}
 
@@ -616,11 +625,15 @@ html.k-kb .ot.typing .ot-scr{display:none;}
       dice.querySelector('svg').style.cssText = 'width:20px;height:20px';
       info.appendChild(el('div', { class: 'nm-row' }, [el('label', { text: i ? String(i) : '' , html: i ? String(i) : ic('star') }), inp, dice]));
     });
+    // regulars sit with the button, so they stay in view above the keyboard; a tap keeps the keyboard up
     if (known.length) {
-      var chips = el('div', { class: 'nm-chips' });
-      known.forEach(function (k) { chips.appendChild(el('button', { type: 'button', text: k, onclick: function () { inputs[focusI].value = k; SND.key(); Kit.haptic('tick'); focusI = Math.min(4, focusI + 1); inputs[focusI].focus(); } })); });
-      info.appendChild(el('p', { class: 'dim', text: 'Your regulars (tap to fill the highlighted name):', style: { 'font-size': '1.1rem', margin: '6px 0 0' } }));
-      info.appendChild(chips);
+      var chips = el('div', { class: 'nm-chips nm-regs' });
+      known.forEach(function (k) {
+        var b = el('button', { type: 'button', text: k, onclick: function () { inputs[focusI].value = k; SND.key(); Kit.haptic('tick'); focusI = Math.min(4, focusI + 1); inputs[focusI].focus(); } });
+        b.addEventListener('pointerdown', function (e) { if (document.activeElement && document.activeElement.tagName === 'INPUT') e.preventDefault(); });
+        chips.appendChild(b);
+      });
+      act.appendChild(el('div', { class: 'nm-regbox' }, [el('p', { class: 'dim nm-reglbl', text: 'Your regulars' }), chips]));
     }
     act.appendChild(btn('These are my companions', 'go', function () {
       inputs.forEach(function (x, i) { var v = x.value.trim().slice(0, 14); S.people[i].n = v || S.people[i].n; });
