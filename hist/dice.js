@@ -47,6 +47,7 @@
     if (items.length) pick(Math.min(Math.max(0, start), items.length - 1));
     return box;
   }
+  function dvKey(ui, list) { return ui.el('div', { class: 'dv-key' }, list.map(function (x) { return ui.el('span', null, [x[0] ? ui.el('i', { class: x[0] }) : null, ui.el('span', { text: x[1] })]); })); }
   function legend(ui, series) {
     return ui.el('div', { class: 'dv-legend' }, series.map(function (s) {
       return ui.el('span', null, [ui.el('i', { style: { background: s.color, opacity: s.dash ? 0.6 : 1 } }), ui.el('span', { text: s.name })]);
@@ -65,7 +66,9 @@
     '.dv-rb{appearance:none;border:0;cursor:pointer;min-width:22px;height:22px;border-radius:5px;padding:0 3px;font:inherit;font-size:.62rem;font-weight:900;color:#fff;background:rgba(255,255,255,.12);}',
     '.dv-rb.w{background:#16a34a;}.dv-rb.l{background:#b91c1c;}.dv-rb.p{background:#2f6fd6;}.dv-rb.big{background:#d4a017;color:#1b1404;}.dv-rb.on{outline:2.5px solid #fff;outline-offset:1px;}',
     '.dv-key{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:.72rem;font-weight:800;color:var(--text-3);}',
-    '.dv-key i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:-6px;background:rgba(255,255,255,.12);}.dv-key i.w{background:#16a34a;}.dv-key i.l{background:#b91c1c;}.dv-key i.p{background:#2f6fd6;}.dv-key i.big{background:#d4a017;}',
+    '.dv-key>span{display:inline-flex;align-items:center;gap:4px;}.dv-key i{display:inline-block;width:10px;height:10px;border-radius:3px;background:rgba(255,255,255,.12);}.dv-key i.w{background:#16a34a;}.dv-key i.l{background:#b91c1c;}.dv-key i.p{background:#2f6fd6;}.dv-key i.big{background:#d4a017;}',
+    '.dv-rb.pz{background:#c01f92;}.dv-rb.pc{box-shadow:inset 0 -3px 0 var(--pc);}.dv-key i.pz{background:#c01f92;}',
+    '.dv-chart{width:100%;height:auto;display:block;}',
     '.dv-tabs{display:flex;flex-wrap:wrap;gap:5px;}',
     '.dv-tab{appearance:none;border:0;cursor:pointer;font:inherit;font-size:.8rem;font-weight:900;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--pc) 45%,transparent);}',
     '.dv-tab.on{background:var(--pc);color:#111;}',
@@ -241,7 +244,7 @@
         cards.forEach(function (c, i) { var b = ui.el('button', { type: 'button', class: 'dv-tab', style: { '--pc': ui.color(i) }, text: nm[i] || 'P' + (i + 1), onclick: function () { tb.forEach(function (x, j) { x.classList.toggle('on', j === i); }); drawStrip(i); } }); tb.push(b); tabs.appendChild(b); });
         tb[who].classList.add('on'); kids.push(tabs);
       }
-      kids.push(stripBox, box, ui.el('div', { class: 'dv-key', html: '<i class="p"></i>upper <i class="w"></i>lower <i class="l"></i>scratched <i class="big"></i>Yahtzee' }));
+      kids.push(stripBox, box, dvKey(ui, [['p', 'upper'], ['w', 'lower'], ['l', 'scratched'], ['big', 'Yahtzee']]));
       out.push(ui.section('Every turn · tap one', kids, { icon: 'dice' }));
       drawStrip(who);
     } else if (!solo) {
@@ -332,7 +335,7 @@
         kids.push(tabs);
       }
       var shown = turns.reduce(function (a, t) { return Math.max(a, t.length); }, 0), all = shown >= (e.rounds && e.rounds.scores ? arr(e.rounds.scores).length : 0);
-      kids.push(strip, card, ui.el('div', { class: 'dv-key', html: '<i class="w"></i>banked <i class="big"></i>1,000 or more <i class="l"></i>farkle' }));
+      kids.push(strip, card, dvKey(ui, [['w', 'banked'], ['big', '1,000 or more'], ['l', 'farkle']]));
       out.push(ui.section(all ? 'Every turn · tap one' : 'The last turns · tap one', kids, { icon: 'dice' }));
       draw(who);
     }
@@ -784,6 +787,54 @@
     '.hv-pyl .lv{display:flex;gap:5px;}.hv-pyl .lv i{width:22px;height:8px;border-radius:4px;background:rgba(255,255,255,.12);}.hv-pyl .lv i.on{background:#f6c33a;box-shadow:0 0 6px rgba(246,195,58,.6);}',
     '.hv-pyl .bn small{font-size:.66rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55);}'
   ].join(''));
+  // The Big Board: 18 squares around the screen (5 across, 6 down), the one the light stopped on lit
+  function pylPos(i) { i = (i + 18) % 18; if (i < 5) return [i, 0]; if (i < 9) return [4, i - 4]; if (i < 14) return [13 - i, 5]; return [0, 18 - i]; }
+  var PYL_COL = { c: ['#4a86ff', '#1a3fc4'], cs: ['#a06bff', '#5d22cc'], p: ['#ff58b6', '#a01a7c'], w: ['#ff5a4a', '#a80d1a'], d: ['#ffe27a', '#d49a12'], o: ['#8fa0c8', '#3a4670'] };
+  function pylBoard(x, who, pc, prize) {
+    var cw = 62, ch = 50, g = 5, pad = 8, W = pad * 2 + 5 * cw + 4 * g, H = pad * 2 + 6 * ch + 5 * g, id = 'py' + (++uid), s = '';
+    s += '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="The Big Board">';
+    s += '<defs><radialGradient id="' + id + '" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#1d2a6e"/><stop offset="1" stop-color="#080b2a"/></radialGradient></defs>';
+    s += '<rect width="' + W + '" height="' + H + '" rx="14" fill="url(#' + id + ')" stroke="#f6c33a" stroke-width="3"/>';
+    for (var k = 0; k < 18; k++) {
+      var q = pylPos(k), sx = pad + q[0] * (cw + g), sy = pad + q[1] * (ch + g), hit = k === x.i, from = k === x.i0 && x.i0 !== x.i;
+      if (!hit) { s += '<rect x="' + sx + '" y="' + sy + '" width="' + cw + '" height="' + ch + '" rx="7" fill="#0b0630" stroke="' + (from ? '#f6c33a' : 'rgba(255,255,255,.12)') + '"' + (from ? ' stroke-dasharray="4 3" stroke-width="2"' : '') + '/>'; continue; }
+      var col = PYL_COL[x.code === 'c' && x.s ? 'cs' : x.code] || PYL_COL.o;
+      s += '<rect x="' + (sx - 3) + '" y="' + (sy - 3) + '" width="' + (cw + 6) + '" height="' + (ch + 6) + '" rx="9" fill="none" stroke="#fff6c8" stroke-width="3"/>';
+      s += '<rect x="' + sx + '" y="' + sy + '" width="' + cw + '" height="' + ch + '" rx="7" fill="' + col[1] + '"/><rect x="' + sx + '" y="' + sy + '" width="' + cw + '" height="' + ch / 2 + '" rx="7" fill="' + col[0] + '" opacity=".55"/>';
+      var big = x.code === 'w' ? 'WHAMMY' : x.code === 'd' ? 'DOUBLE' : x.code === 'p' ? 'PRIZE' : fmtK(x.v), small = x.code === 'p' ? fmtK(x.v) : x.code === 'd' ? 'your $$' : x.s ? '+ ONE SPIN' : '';
+      s += '<text x="' + (sx + cw / 2) + '" y="' + (sy + (small ? ch * 0.42 : ch / 2)) + '" text-anchor="middle" dominant-baseline="central" font-size="' + (big.length > 5 ? 11 : 15) + '" font-weight="900" fill="' + (x.code === 'd' ? '#3a2300' : '#fff') + '" font-family="system-ui">' + big + '</text>';
+      if (small) s += '<text x="' + (sx + cw / 2) + '" y="' + (sy + ch * 0.76) + '" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="900" fill="' + (x.code === 'd' ? '#3a2300' : '#ffe7a0') + '" font-family="system-ui">' + small + '</text>';
+    }
+    // the screen in the middle: who, what it did, the bank after
+    var mx = pad + cw + g, my = pad + ch + g, mw = 3 * cw + 2 * g, mh = 4 * ch + 3 * g;
+    s += '<rect x="' + mx + '" y="' + my + '" width="' + mw + '" height="' + mh + '" rx="10" fill="#05071c" stroke="rgba(246,195,58,.35)"/>';
+    var gain = x.code === 'w' ? 'WHAMMY!' : x.code === 'd' ? 'DOUBLED' : x.code === 'p' ? '+' + cash(x.v) : x.code === 'c' ? '+' + cash(x.v) : '';
+    s += '<text x="' + (mx + mw / 2) + '" y="' + (my + 34) + '" text-anchor="middle" font-size="15" font-weight="900" fill="' + pc + '" font-family="system-ui">' + esc(who) + '</text>';
+    if (prize) s += '<text x="' + (mx + mw / 2) + '" y="' + (my + 62) + '" text-anchor="middle" font-size="12" font-weight="800" fill="#ffb3e1" font-family="system-ui">' + esc(prize.length > 24 ? prize.slice(0, 23) + '…' : prize) + '</text>';
+    s += '<text x="' + (mx + mw / 2) + '" y="' + (my + mh / 2 + 18) + '" text-anchor="middle" font-size="' + (x.code === 'w' ? 26 : 28) + '" font-weight="900" fill="' + (x.code === 'w' ? '#ff6a5a' : '#ffd84a') + '" font-family="system-ui">' + gain + '</text>';
+    s += '<text x="' + (mx + mw / 2) + '" y="' + (my + mh - 40) + '" text-anchor="middle" font-size="10" font-weight="900" letter-spacing="1.5" fill="rgba(255,255,255,.55)" font-family="system-ui">' + (x.b ? 'BONUS BANK' : 'BANK') + '</text>';
+    s += '<text x="' + (mx + mw / 2) + '" y="' + (my + mh - 18) + '" text-anchor="middle" font-size="18" font-weight="900" fill="#fff" font-family="system-ui">' + cash(x.bank) + '</text>';
+    return s + '</svg>';
+  }
+  function pylStop(t) {
+    var q = String(t).split('.'); if (q.length < 8) return null;
+    return { r: q[0], b: q[0] === 'b', p: +q[1], i0: +q[2], i: +q[3], code: q[4], v: +q[5] || 0, s: q[6] === '1', bank: +q[7] || 0 };
+  }
+  // each player's bank stop by stop: one line each
+  function pylChart(ui, stops, n) {
+    var main = stops.filter(function (x) { return !x.b; }); if (main.length < 3) return null;
+    var W = 320, H = 130, pl = 6, pr = 6, pt = 10, pb = 18, bank = []; for (var i = 0; i < n; i++) bank.push(0);
+    var lines = bank.map(function () { return [0]; }), mx = 1;
+    main.forEach(function (x) { if (bank[x.p] == null) return; bank[x.p] = x.bank; lines.forEach(function (l, i) { l.push(bank[i]); }); mx = Math.max(mx, x.bank); });
+    var X = function (k) { return pl + k * (W - pl - pr) / main.length; }, Y = function (v) { return pt + (mx - v) * (H - pt - pb) / mx; };
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="dv-chart" role="img" aria-label="Each bank, spin by spin">';
+    main.forEach(function (x, k) { if (x.code === 'w') s += '<rect x="' + (X(k + 1) - 1.5).toFixed(1) + '" y="' + pt + '" width="3" height="' + (H - pt - pb) + '" fill="rgba(255,90,74,.25)"/>'; });
+    var r2 = -1; main.forEach(function (x, k) { if (r2 < 0 && x.r === '2') r2 = k; });
+    if (r2 > 0) s += '<line x1="' + X(r2).toFixed(1) + '" x2="' + X(r2).toFixed(1) + '" y1="' + pt + '" y2="' + (H - pb) + '" stroke="rgba(255,255,255,.3)" stroke-dasharray="3 3"/><text x="' + (X(r2) + 4).toFixed(1) + '" y="' + (H - 5) + '" font-size="9" font-weight="800" fill="rgba(255,255,255,.55)">Round 2</text>';
+    s += '<text x="' + pl + '" y="' + (H - 5) + '" font-size="9" font-weight="800" fill="rgba(255,255,255,.55)">Round 1</text>';
+    lines.forEach(function (l, i) { s += '<polyline points="' + l.map(function (v, k) { return X(k).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' ') + '" fill="none" stroke="' + ui.color(i) + '" stroke-width="2.5" stroke-linejoin="round"/>'; });
+    return s + '</svg>';
+  }
   R('pressyourluck', function (e, ui) {
     var d = e.dt; if (!d || !d.wh) return null;
     var el = ui.el, P = e.players || [], wh = arr(d.wh), kp = arr(d.kp), bk = arr(d.bk), B = d.bonus, box = el('div', { class: 'hv-pyl' });
@@ -822,6 +873,24 @@
       ]));
     }
     var tw = wh.reduce(function (a, v) { return a + (Number(v) || 0); }, 0);
-    return ui.wrap([ui.section('The scoreboard', box), ui.stats([['Whammies', tw], ['Prizes landed', arr(d.pz).length || null]])]);
+    var stops = String(d.st || '').split(' ').filter(Boolean).map(pylStop).filter(Boolean), out = [];
+    var cashTop = 0; stops.forEach(function (x) { if (x.code === 'c' || x.code === 'p') cashTop = Math.max(cashTop, x.v); });
+    out.push(ui.stats([['Spins', stops.length || null], ['Whammies', tw], ['Prizes landed', arr(d.pz).length || null], ['Biggest square', cashTop ? cash(cashTop) : null]]));
+    out.push(ui.section('The scoreboard', box, { icon: 'trophy' }));
+    if (stops.length) {
+      // the prize names, in the order they were landed
+      var pzn = arr(d.pz).map(function (z) { var q = String(z).split(':'); return q.slice(1, q.length > 2 ? -1 : undefined).join(':'); }), pk = 0;
+      stops.forEach(function (x) { if (x.code === 'p' && !x.b) x.name = pzn[pk++] || ''; });
+      var card = ui.el('div', { class: 'hv' }), big = -1;
+      stops.forEach(function (x, k) { if ((x.code === 'c' || x.code === 'p') && (big < 0 || x.v > stops[big].v)) big = k; });
+      var items = stops.map(function (x, k) { return { c: (x.code === 'w' ? 'l' : x.code === 'd' ? 'big' : x.code === 'p' ? 'pz' : 'p') + ' pc', pc: x.b ? '#fff' : ui.color(x.p), t: x.b ? 'B' : String(k + 1), title: (x.b ? 'Bonus · ' : 'Spin ' + (k + 1) + ' · ') + ((P[x.p] || {}).name || '') }; });
+      var strip = roadStrip(ui, items, big >= 0 ? big : stops.length - 1, function (k) { var x = stops[k]; card.innerHTML = ''; card.appendChild(ui.picture(pylBoard(x, (P[x.p] || {}).name || '', x.b ? '#ffd84a' : ui.color(x.p), x.name), { max: 340 })); });
+      out.push(ui.section('Every spin · tap one', [strip, card, dvKey(ui, [['p', 'cash'], ['pz', 'prize'], ['big', 'double'], ['l', 'Whammy'], ['', 'the bar under each: whose spin']])], { icon: 'star' }));
+      var chs = pylChart(ui, stops, P.length);
+      if (chs) out.push(ui.section('The banks, spin by spin', [ui.picture(chs, { frame: 'dark', max: 420 }), legend(ui, P.map(function (p, i) { return { name: p.name, color: ui.color(i) }; })), ui.el('p', { class: 'dv-note', text: 'Red stripes: a Whammy hit.' })], { icon: 'chart' }));
+    }
+    var win = P.filter(function (p) { return p.name === e.winner; })[0];
+    out.push(ui.el('div', { class: 'dv-foot', text: (win ? win.name + ' won with ' + cash(win.score) : 'A tie') + '. ' + (tw ? (tw === 1 ? 'One Whammy' : tw + ' Whammies') + ' in all.' : 'No Whammies all game!') + (B && B.r === 'jackpot' ? ' Then the bonus jackpot!' : '') }));
+    return ui.wrap(out);
   });
 })();
