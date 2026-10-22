@@ -429,7 +429,33 @@
   }
   R('phase10', function (e, ui) {
     var d = e.dt; if (!d || !d.made || !d.made.length) return null;
-    var P = names(e), out = [];
+    var P = names(e), out = [], ck = HistView.ck, sc = ck ? ck.scoresOf(e) : [], tot = ck ? ck.cum(sc, P.length) : [], H = d.h || [];
+    var PHD = ['2 sets of 3', '1 set of 3 + 1 run of 4', '1 set of 4 + 1 run of 4', '1 run of 7', '1 run of 8', '1 run of 9', '2 sets of 4', '7 cards of one color', '1 set of 5 + 1 set of 2', '1 set of 5 + 1 set of 3'];
+    var madeN = P.map(function (x, i) { return d.made.filter(function (m) { return m.charAt(i) === '1'; }).length; });
+    var outsN = P.map(function (x, i) { return H.filter(function (h) { return h.o === i; }).length; });
+    var oTop = outsN.indexOf(Math.max.apply(null, outsN)), stuck = null;
+    P.forEach(function (x, i) { var run = 0; d.made.forEach(function (m, r) { if (m.charAt(i) === '1') run = 0; else { run++; if (!stuck || run > stuck.n) stuck = { n: run, p: i, ph: H[r] ? nums(H[r].a)[i] : '' }; } }); });
+    out.push(ui.stats([['Hands', d.made.length, 'to finish phase ' + (d.last || 10)], outsN[oTop] ? ['Went out most', outsN[oTop] + '×', P[oTop]] : null,
+      stuck && stuck.n >= 2 ? ['Longest stuck', stuck.n + ' hands', P[stuck.p] + ' on phase ' + stuck.ph] : null]));
+    if (ck && H.some(function (h) { return h.t; })) {
+      var panel = el('div', { class: 'hv' });
+      var show = function (r) {
+        var h = H[r], m = d.made[r] || '', ph = nums(h.a), pts = sc[r] || [], kids = [], tb = h.t ? String(h.t).split('/') : [];
+        kids.push(HistView.ck.head('<b>Hand ' + (r + 1) + '</b>', h.o >= 0 ? short(P[h.o], 10) + ' went out' : null, 'good'));
+        P.forEach(function (x, i) {
+          var cell = String(tb[i] || ';').split(';'), row = el('div', { class: 'sx-cards' }), ok = m.charAt(i) === '1';
+          if (cell[0]) cell[0].split('|').forEach(function (g) { var gg = el('div', { class: 'sx-grp' }); g.split(' ').forEach(function (c) { var n = p10card(c); if (n) gg.appendChild(n); }); row.appendChild(gg); });
+          if (cell[1]) { var lf = el('div', { class: 'sx-grp left' }); cell[1].split(' ').forEach(function (c) { var n = p10card(c); if (n) lf.appendChild(n); }); row.appendChild(lf); }
+          kids.push(el('div', { class: 'sx-prow' }, [el('div', { class: 'hd' }, [el('span', { text: x }), el('small', { text: 'Phase ' + ph[i] + (ok ? ' made' : ' missed') }),
+            el('b', { text: (pts[i] ? '+' + pts[i] : '0') + (tot[r] ? ' · ' + tot[r][i] : '') })]), el('div', { class: 'hvc-mini', text: PHD[ph[i] - 1] || '' }), row]));
+        });
+        panel.innerHTML = ''; panel.appendChild(HistView.ck.felt(['#2c3a7a', '#1c2758', '#151d48'], kids));
+      };
+      var first = H.findIndex ? H.findIndex(function (h) { return h.t; }) : 0, items = [], idx = [];
+      H.forEach(function (h, r) { if (!h.t) return; idx.push(r); items.push({ t: String(r + 1), c: h.o >= 0 ? ui.color(h.o) : null, ring: d.made[r] && d.made[r].indexOf('0') < 0, title: 'Hand ' + (r + 1) }); });
+      out.push(ui.section(first > 0 ? 'The last ' + items.length + ' hands · tap one' : 'Every hand · tap one', [ck.road(items, items.length - 1, function (k) { show(idx[k]); }), panel,
+        ck.key(P.map(function (x, p) { return [short(x, 10) + ' went out', ui.color(p)]; }).concat([['Everyone made it', 'ring']])), legend([['rgba(220,40,60,.6)', 'Left in hand (counts against)']])], { icon: 'cards' }));
+    }
     var rows = P.map(function (x, i) {
       return [{ th: 1, c: 'nm', t: short(x, 9) }].concat(d.made.map(function (m, r) {
         var h = d.h[r], ph = h ? nums(h.a)[i] : '', ok = m.charAt(i) === '1', went = h && h.o === i;
@@ -438,7 +464,7 @@
     });
     out.push(ui.section('Phase ladder', [grid([{ t: 'Hand' }].concat(d.made.map(function (m, r) { return { t: String(r + 1) }; })), rows),
       legend([['rgba(34,165,90,.85)', 'Made the phase'], ['rgba(194,48,75,.5)', 'Missed'], ['#ffd75e', 'Went out (ring)']])], { icon: 'target' }));
-    if (d.laid && d.laid.some(Boolean)) {
+    if (d.laid && d.laid.some(Boolean) && !H.some(function (h) { return h.t; })) {
       var felt = el('div', { class: 'sx-felt', style: { '--f1': '#2c3a7a', '--f2': '#151d48' } });
       P.forEach(function (x, i) {
         var lay = d.laid[i]; var lastH = d.h[d.h.length - 1], ph = lastH ? nums(lastH.a)[i] : '';
@@ -453,6 +479,14 @@
       d.skips.forEach(function (r, a) { nums(r).forEach(function (v, b) { if (v) list.push({ t: P[a] + ' skipped ' + P[b] + (v > 1 ? ' ×' + v : ''), v: v, c: a }); }); });
       list.sort(function (x, y) { return y.v - x.v; });
       if (list.length) out.push(ui.section('Skips', ui.log(list.slice(0, 8).map(function (x) { return { t: x.t, c: x.c }; }))));
+    }
+    var wi = e.winner ? P.indexOf(e.winner) : -1;
+    if (ck && wi >= 0 && tot.length) {
+      var fin = tot[tot.length - 1], others = P.map(function (x, i) { return i; }).filter(function (i) { return i !== wi; });
+      var done2 = others.filter(function (i) { return d.made[d.made.length - 1].charAt(i) === '1' && nums((H[H.length - 1] || {}).a)[i] === (d.last || 10); });
+      var why = P[wi] + ' finished phase ' + (d.last || 10) + ' first, in hand ' + d.made.length + (done2.length ? ', and had fewer points than ' + done2.map(function (i) { return P[i]; }).join(' and ') + ' who finished too' : '') + '.';
+      why += ' ' + P[wi] + ' made ' + madeN[wi] + ' of ' + d.made.length + ' phases tried.';
+      out.push(ck.foot(why, 'flag'));
     }
     return ui.wrap(out);
   });

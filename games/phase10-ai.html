@@ -687,7 +687,10 @@
   // ── End of a hand ─────────────────────────────────────────────────────────
   function endHand(out) {
     var st = S.stats, row = [], phr = [];
-    (S.phAt = S.phAt || []).push({ a: S.players.map(function (pl) { return pl.ph; }).join(','), o: out, sk: S.handSkips ? S.handSkips.join(',') : '' });
+    // for the history: each player's laid-down phase ('groups|groups') and the cards left in hand, as 'laid;left', split by '/'
+    function c2(c) { return isW(c) ? 'w' : isS(c) ? 's' : c.c + c.n; }
+    var tbl = S.players.map(function (pl, p) { return (S.laid[p] ? S.laid[p].map(function (g) { return g.cards.map(c2).join(' '); }).join('|') : '') + ';' + S.hands[p].map(c2).join(' '); }).join('/');
+    (S.phAt = S.phAt || []).push({ a: S.players.map(function (pl) { return pl.ph; }).join(','), o: out, sk: S.handSkips ? S.handSkips.join(',') : '', t: tbl });
     S.players.forEach(function (pl, p) {
       var got = handPts(S.hands[p]);
       row.push(got); pl.total += got;
@@ -750,7 +753,8 @@
       detail: (function () {
         function cc(c) { return isW(c) ? 'w' : isS(c) ? 's' : c.c + c.n; }
         return {
-          last: S.last, made: S.phRounds.map(function (r) { return r.join(''); }), h: S.phAt || [],
+          last: S.last, made: S.phRounds.map(function (r) { return r.join(''); }),
+          h: (S.phAt || []).map(function (x, i, all) { return i >= all.length - 12 ? x : { a: x.a, o: x.o, sk: x.sk }; }),
           skips: S.stats.skips.map(function (r) { return r.join(','); }),
           laid: (S.laid || []).map(function (gs) { return gs ? gs.map(function (g) { return g.cards.map(cc).join(' '); }).join('|') : ''; })
         };
