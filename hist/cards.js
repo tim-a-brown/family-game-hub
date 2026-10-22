@@ -411,7 +411,7 @@
     return ui.wrap(out);
   });
 
-  // ── Solitaire & FreeCell: the deal as it was laid out, and the race to the foundations ──
+  // ── Solitaire & FreeCell: replay the whole game move by move from the deal, and the race to the foundations ──
   var PGA = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ';
   function codes2(s) { var o = []; s = String(s || ''); for (var i = 0; i + 1 < s.length; i += 2) o.push(s.substr(i, 2)); return o; }
   function tableau(cols, down, w) {
@@ -426,57 +426,205 @@
   function progress(ui, pg, moves) {
     var p = String(pg || ''); if (p.length < 2) return null;
     var pts = p.split('').map(function (ch) { return Math.max(0, PGA.indexOf(ch)); });
-    return ui.section('Cards home, move by move', ui.picture(chart([{ pts: pts, color: '#ffd166', fill: true }], { max: 52, h: 130, aria: 'Cards on the foundations', lines: [{ y: 52, label: '52' }, { y: 26, label: '26' }], xlabel: (moves || pts.length - 1) + ' moves' }), { frame: 'dark', max: 380 }));
+    return ui.section('Cards home, move by move', ui.picture(chart([{ pts: pts, color: '#ffd166', fill: true }], { max: 52, h: 130, aria: 'Cards on the foundations', lines: [{ y: 52, label: '52' }, { y: 26, label: '26' }], xlabel: (moves || pts.length - 1) + ' moves' }), { frame: 'dark', max: 380 }), { icon: 'chart' });
   }
-  HistView.css('hv-cards-tab', '.hvc-tab{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:4px;justify-items:center;}' +
-    '.hvc-tab .col{display:flex;flex-direction:column;align-items:center;}.hvc-tab .col .pcard{box-shadow:0 1px 4px rgba(0,0,0,.4);}' +
-    '.hvc-tab .col .pcard+.pcard{margin-top:calc(var(--cw) * -1.05);}.hvc-tab .pcard.dim{filter:brightness(.7) saturate(.65);}');
+  HistView.css('hv-cards-tab', [
+    '.hvc-tab{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:4px;justify-items:center;}',
+    '.hvc-tab .col{display:flex;flex-direction:column;align-items:center;min-height:calc(var(--cw) * 1.4);}.hvc-tab .col .pcard{box-shadow:0 1px 4px rgba(0,0,0,.4);}',
+    '.hvc-tab .col .pcard+.pcard{margin-top:calc(var(--cw) * -1.05);}.hvc-tab .col .pcard.dn+.pcard{margin-top:calc(var(--cw) * -1.22);}.hvc-tab .pcard.dim{filter:brightness(.7) saturate(.65);}',
+    '.hvc-slot{position:relative;width:var(--cw);height:calc(var(--cw) * 1.4);border-radius:calc(var(--cw) * .1);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.38);background:rgba(0,0,0,.2);flex:none;display:grid;place-items:center;color:rgba(255,255,255,.4);font-size:calc(var(--cw) * .42);}',
+    '.hvc-top{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:4px;justify-items:center;--cw:40px;}',
+    '.hvc-top .waste{display:flex;}.hvc-top .waste .pcard+.pcard{margin-left:calc(var(--cw) * -.72);}',
+    '.pcard.mv{outline:2.5px solid #ffd166;outline-offset:1px;z-index:2;}',
+    '.hvc-scrub{display:flex;flex-direction:column;gap:8px;}',
+    '.hvc-scrub .ctl{display:flex;align-items:center;gap:8px;}',
+    '.hvc-scrub input{flex:1;min-width:0;accent-color:#ffd166;}',
+    '.hvc-scrub .st{appearance:none;border:0;cursor:pointer;width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.1);color:var(--text);display:grid;place-items:center;flex:none;}',
+    '.hvc-scrub .st .ico{width:18px;height:18px;}.hvc-scrub .st.prev .ico{transform:rotate(180deg);}',
+    '.hvc-scrub .cap{font-size:.84rem;font-weight:800;color:var(--text-2);min-height:1.2em;}'
+  ].join(''));
+  // a replay control: slider + step buttons + moments to jump to; show(i) draws step i (0 = the deal)
+  function scrub(n, start, show, moments, capFn) {
+    var cap = K().el('div', { class: 'cap' }), rng = K().el('input', { type: 'range', min: '0', max: String(n), value: String(start), 'aria-label': 'Move' });
+    function go(i) { i = Math.max(0, Math.min(n, i)); rng.value = String(i); show(i); cap.textContent = capFn(i); }
+    rng.addEventListener('input', function () { go(+rng.value); });
+    var prev = K().el('button', { type: 'button', class: 'st prev', 'aria-label': 'Back one move', html: K().icon('right'), onclick: function () { go(+rng.value - 1); } });
+    var nxt = K().el('button', { type: 'button', class: 'st', 'aria-label': 'Forward one move', html: K().icon('right'), onclick: function () { go(+rng.value + 1); } });
+    var box = K().el('div', { class: 'hvc-scrub' }, [K().el('div', { class: 'ctl' }, [prev, rng, nxt]), cap]);
+    if (moments && moments.length) {
+      var ch = K().el('div', { class: 'hvc-road' });
+      moments.forEach(function (m) { ch.appendChild(K().el('button', { type: 'button', class: 'hvc-rb', style: { '--rc': m.c || 'rgba(255,255,255,.14)' }, text: m.t, onclick: function () { go(m.i); } })); });
+      box.appendChild(ch);
+    }
+    go(start);
+    return box;
+  }
+  // The game re-played from the deal: kind 'k' (Klondike: tab/down/stock/waste) or 'f' (FreeCell: cells)
+  function patience(kind, d) {
+    var g = { tab: (d.tab || []).map(codes2), found: [[], [], [], []], cells: [null, null, null, null], stock: codes2(d.stock), waste: [], down: [], last: [] };
+    g.tab.forEach(function (c, i) { g.down.push(kind === 'k' ? i : 0); });
+    var mv = String(d.mv || ''), steps = [], k = 0;
+    while (k < mv.length) { var ch = mv.charAt(k); if (ch === 'D' || ch === 'R') { steps.push(ch); k++; } else { steps.push(mv.substr(k, 3)); k += 3; } }
+    g.steps = steps;
+    g.apply = function (m) {
+      g.last = [];
+      if (m === 'D') { var n = Math.min(d.draw || 1, g.stock.length); for (var i = 0; i < n; i++) g.waste.push(g.stock.pop()); g.last = g.waste.slice(-n); return; }
+      if (m === 'R') { g.stock = g.waste.reverse(); g.waste = []; return; }
+      var c = m.substr(0, 2), to = m.charAt(2), moved = null;
+      for (var t = 0; t < g.tab.length && !moved; t++) {
+        var at = g.tab[t].indexOf(c);
+        if (at >= 0) { moved = g.tab[t].splice(at); var L = g.tab[t].length; g.down[t] = Math.min(g.down[t], L); if (L && g.down[t] >= L) g.down[t] = L - 1; }
+      }
+      if (!moved && g.waste.length && g.waste[g.waste.length - 1] === c) moved = [g.waste.pop()];
+      if (!moved) for (var f = 0; f < 4 && !moved; f++) if (g.found[f].length && g.found[f][g.found[f].length - 1] === c) moved = [g.found[f].pop()];
+      if (!moved) for (var x = 0; x < 4 && !moved; x++) if (g.cells[x] === c) { moved = [c]; g.cells[x] = null; }
+      if (!moved) return;
+      if ('ABCD'.indexOf(to) >= 0) g.found['ABCD'.indexOf(to)].push(moved[0]);
+      else if ('WXYZ'.indexOf(to) >= 0) g.cells['WXYZ'.indexOf(to)] = moved[0];
+      else g.tab[+to] = g.tab[+to].concat(moved);
+      g.last = moved;
+    };
+    return g;
+  }
+  function patienceAt(kind, d, n) { var g = patience(kind, d); for (var i = 0; i < n && i < g.steps.length; i++) g.apply(g.steps[i]); return g; }
+  function patienceDraw(kind, g, w) {
+    var slot = function (t) { return K().el('div', { class: 'hvc-slot', text: t || '' }); }, mark = function (c) { return g.last.indexOf(c) >= 0 ? 'mv' : ''; };
+    var top = K().el('div', { class: 'hvc-top', style: { '--cols': g.tab.length, '--cw': w + 'px' } });
+    if (kind === 'k') {
+      top.appendChild(g.stock.length ? card('??', w) : slot());
+      var ws = K().el('div', { class: 'waste' }); g.waste.slice(-3).forEach(function (c) { ws.appendChild(card(c, w, mark(c))); });
+      top.appendChild(g.waste.length ? ws : slot()); top.appendChild(K().el('div'));
+    } else g.cells.forEach(function (c) { top.appendChild(c ? card(c, w, mark(c)) : slot()); });
+    g.found.forEach(function (f, i) { top.appendChild(f.length ? card(f[f.length - 1], w, mark(f[f.length - 1])) : slot('A')); });
+    var tb = K().el('div', { class: 'hvc-tab', style: { '--cols': g.tab.length, '--cw': w + 'px' } });
+    g.tab.forEach(function (col, i) {
+      var c = K().el('div', { class: 'col' });
+      if (!col.length) c.appendChild(slot(kind === 'k' ? 'K' : ''));
+      col.forEach(function (code, k) { c.appendChild(k < g.down[i] ? card('??', w, 'dn') : card(code, w, mark(code))); });
+      tb.appendChild(c);
+    });
+    return [top, tb];
+  }
+  function homeOf(g) { return g.found.reduce(function (a, f) { return a + f.length; }, 0); }
+  function patienceView(kind, e, ui, felted) {
+    var d = e.dt, w = kind === 'k' ? 38 : 33, g = patience(kind, d), N = g.steps.length;
+    if (!N) return null;
+    // moments to jump to: the deal, the first card home, the last face-down card turned up (Klondike), the end
+    var mom = [{ t: 'Deal', i: 0 }], seenHome = false, upAll = -1, half = -1;
+    for (var i = 0; i < N; i++) {
+      g.apply(g.steps[i]);
+      if (!seenHome && homeOf(g) > 0) { seenHome = true; mom.push({ t: 'First home', i: i + 1 }); }
+      if (half < 0 && homeOf(g) >= 26) half = i + 1;
+      if (kind === 'k' && upAll < 0 && g.down.every(function (x) { return x === 0; })) upAll = i + 1;
+    }
+    if (half > 0) mom.push({ t: 'Half home', i: half });
+    if (upAll > 0) mom.push({ t: 'All face up', i: upAll });
+    mom.push({ t: homeOf(g) === 52 ? 'All home' : 'The end', i: N, c: homeOf(g) === 52 ? '#ffd166' : null });
+    mom.sort(function (a, b) { return a.i - b.i; });
+    var box = K().el('div', { class: 'hv' });
+    function show(n) { var s = patienceAt(kind, d, n); box.innerHTML = ''; box.appendChild(felted(patienceDraw(kind, s, w))); }
+    function capFn(n) {
+      if (!n) return 'The deal';
+      var m = g.steps[n - 1], s = patienceAt(kind, d, n), where;
+      if (m === 'D') where = 'Turned over the stock';
+      else if (m === 'R') where = 'Turned the deck back over';
+      else { var to = m.charAt(2); where = label(m.substr(0, 2)) + (s.last.length > 1 ? ' and ' + plural(s.last.length - 1, 'card') : '') + ' to ' + ('ABCD'.indexOf(to) >= 0 ? 'the foundation' : 'WXYZ'.indexOf(to) >= 0 ? 'a free cell' : 'column ' + (+to + 1)); }
+      return 'Move ' + n + ' of ' + N + ': ' + where + ' · ' + homeOf(s) + ' home';
+    }
+    return [box, scrub(N, N, show, mom, capFn)];
+  }
   R('solitaire', function (e, ui) {
     var d = e.dt; if (!d) return null;
     var out = [];
-    if (d.tab) {
-      var down = [0, 1, 2, 3, 4, 5, 6];
+    out.push(ui.stats([['Moves', e.moves], ['Time', e.time != null ? ui.time(e.time) : null], ['Score', e.score != null ? ui.num(e.score) : null],
+      ['Trips through deck', d.passes != null ? d.passes + 1 : null], ['Cards turned up', d.flips], ['Undos', d.undos]]));
+    var rp = d.tab && d.mv ? patienceView('k', e, ui, function (kids) { return felt('sol', kids); }) : null;
+    if (rp) out.push(ui.section('Replay · move by move', rp, { icon: 'play' }));
+    else if (d.tab) {
       var stock = codes2(d.stock).reverse();
-      out.push(ui.section('The deal', felt('sol', [tableau(d.tab, down, 42),
+      out.push(ui.section('The deal', felt('sol', [tableau(d.tab, [0, 1, 2, 3, 4, 5, 6], 42),
         stock.length ? grp('The stock, in the order it turned over', row(stock, { w: 26, fan: true, ov: -.6 })) : null,
         K().el('div', { class: 'hvc-sub', text: 'Dimmed cards started face down.' })])));
     }
     out.push(progress(ui, d.pg, e.moves));
-    out.push(ui.stats([['Moves', e.moves], ['Time', e.time != null ? ui.time(e.time) : null], ['Score', e.score != null ? ui.num(e.score) : null],
-      ['Trips through deck', d.passes != null ? d.passes + 1 : null], ['Cards turned up', d.flips], ['Undos', d.undos], ['Cards that finished themselves', d.auto || null]]));
+    var why = 'Won in ' + (e.time != null ? ui.time(e.time) : '') + ' with ' + plural(e.moves || 0, 'move') + (d.draw ? ', turning ' + (d.draw === 3 ? 'three cards' : 'one card') + ' at a time' : '') + '.';
+    if (d.auto >= 4) why += ' The last ' + d.auto + ' cards finished themselves.';
+    out.push(foot(e.winner || e.moves ? why : '', 'trophy'));
     return ui.wrap(out);
   });
   R('freecell', function (e, ui) {
     var d = e.dt; if (!d) return null;
     var out = [];
-    if (d.tab) out.push(ui.section('Deal #' + (e.deal || ''), felt('fc', [tableau(d.tab, null, 34)])));
+    out.push(ui.stats([['Moves', e.moves], ['Time', e.time != null ? ui.time(e.time) : null], ['Most free cells used', d.cells != null ? d.cells + ' of 4' : null], ['Undos', d.undos]]));
+    var rp = d.tab && d.mv ? patienceView('f', e, ui, function (kids) { return felt('fc', kids); }) : null;
+    if (rp) out.push(ui.section('Replay · move by move', rp, { icon: 'play' }));
+    else if (d.tab) out.push(ui.section('Deal #' + (e.deal || ''), felt('fc', [tableau(d.tab, null, 34)])));
     out.push(progress(ui, d.pg, e.moves));
-    out.push(ui.stats([['Moves', e.moves], ['Time', e.time != null ? ui.time(e.time) : null], ['Most free cells used', d.cells != null ? d.cells + ' of 4' : null], ['Undos', d.undos], ['Cards that went home themselves', d.auto || null]]));
+    var why = 'Won deal #' + (e.deal || '') + ' in ' + (e.time != null ? ui.time(e.time) : '') + ' with ' + plural(e.moves || 0, 'move') + (d.cells === 0 ? ', never using a free cell.' : d.cells === 4 ? ', at one point using all four free cells.' : d.cells ? ', never needing more than ' + plural(d.cells, 'free cell') + '.' : '.');
+    if (d.auto >= 4) why += ' The last ' + d.auto + ' cards went home by themselves.';
+    out.push(foot(e.moves ? why : '', 'trophy'));
     return ui.wrap(out);
   });
 
-  // ── Pyramid: the pyramid as dealt (what was left stays bright), and every pair ──
+  // ── Pyramid: replay from the deal (each pair or King taken away), where it stopped, and every pair ──
   HistView.css('hv-cards-pyr', '.hvc-pyr{display:flex;flex-direction:column;align-items:center;--cw:40px;}' +
     '.hvc-pyr .pr{display:flex;gap:4px;}.hvc-pyr .pr+.pr{margin-top:calc(var(--cw) * -.78);}.hvc-pyr .pcard{box-shadow:0 2px 5px rgba(0,0,0,.45);}' +
-    '.hvc-pyr .pcard:not(.gone){position:relative;z-index:2;}.hvc-pyr .pcard.gone{filter:brightness(.42) saturate(.25);box-shadow:0 1px 2px rgba(0,0,0,.3);}');
+    '.hvc-pyr .pcard:not(.gone){position:relative;z-index:2;}.hvc-pyr .pcard.gone{filter:brightness(.42) saturate(.25);box-shadow:0 1px 2px rgba(0,0,0,.3);}' +
+    '.hvc-pyr .pcard.mv{filter:none;opacity:.55;outline:2.5px solid #ffd166;}' +
+    '.hvc-deck{display:flex;align-items:center;gap:12px;--cw:38px;}.hvc-deck .lb{font-size:.74rem;font-weight:800;color:rgba(255,255,255,.75);}');
+  function pyrDraw(src, gone, taken) {
+    var pyr = K().el('div', { class: 'hvc-pyr' }), k = 0;
+    for (var r = 0; r < 7; r++) {
+      var pr = K().el('div', { class: 'pr' });
+      for (var c = 0; c <= r; c++, k++) { var code = src[k]; pr.appendChild(card(code === '..' ? '??' : code, 40, taken && taken.indexOf(code) >= 0 ? 'gone mv' : gone[k] ? 'gone' : '')); }
+      pyr.appendChild(pr);
+    }
+    return pyr;
+  }
   R('pyramid', function (e, ui) {
     var d = e.dt; if (!d) return null;
     var out = [], p0 = codes2(d.p0), left = codes2(d.left);
-    var src = p0.length === 28 ? p0 : left.length === 28 ? left : null;
-    if (src) {
-      var pyr = K().el('div', { class: 'hvc-pyr' }), k = 0;
-      for (var r = 0; r < 7; r++) {
-        var pr = K().el('div', { class: 'pr' });
-        for (var c = 0; c <= r; c++, k++) { var code = src[k], still = left[k] && left[k] !== '..'; pr.appendChild(card(code === '..' ? '??' : code, 40, d.won || still ? '' : 'gone')); }
-        pyr.appendChild(pr);
-      }
-      var cleared = left.filter(function (x) { return x === '..'; }).length;
-      out.push(ui.section(d.won ? 'The pyramid you cleared' : 'Where it stopped', felt('pyr', [pyr, K().el('div', { class: 'hvc-sub', text: d.won ? 'All 28 cards taken away.' : 'Bright cards were left: ' + cleared + ' of 28 cleared.' })])));
+    var src = p0.length === 28 ? p0 : left.length === 28 ? left : null, cleared = left.filter(function (x) { return x === '..'; }).length;
+    out.push(ui.stats([['Cleared', (d.won ? 28 : cleared) + ' of 28'], ['Moves', e.moves], ['Time', e.time != null ? ui.time(e.time) : null], ['Trips through deck', d.pass], ['Undos', d.undos]]));
+    var steps = d.mv ? String(d.mv).split('.') : [];
+    if (src && p0.length === 28 && steps.length && d.st) {
+      // replay: the pyramid, the stock and the face-up pile after each move
+      var at = function (n) {
+        var g = { gone: {}, stock: codes2(d.st), waste: [], pass: 1, taken: null };
+        for (var i = 0; i < n; i++) {
+          var m = steps[i]; g.taken = null;
+          if (m === 'D') g.waste.push(g.stock.pop());
+          else if (m === 'R') { g.stock = g.waste.reverse(); g.waste = []; g.pass++; }
+          else { g.taken = codes2(m); g.taken.forEach(function (c) { var k = p0.indexOf(c); if (k >= 0) g.gone[k] = 1; else if (g.waste[g.waste.length - 1] === c) g.waste.pop(); }); }
+        }
+        return g;
+      };
+      var box = K().el('div', { class: 'hv' });
+      var show = function (n) {
+        var g = at(n), wt = g.waste[g.waste.length - 1];
+        var deck = K().el('div', { class: 'hvc-deck' }, [g.stock.length ? card('??', 38) : K().el('div', { class: 'hvc-slot', style: { '--cw': '38px' } }), K().el('span', { class: 'lb', text: g.stock.length + ' in the stock' }),
+          wt ? card(wt, 38, g.taken && g.taken.indexOf(wt) >= 0 ? 'mv' : '') : K().el('div', { class: 'hvc-slot', style: { '--cw': '38px' } }), K().el('span', { class: 'lb', text: 'Trip ' + g.pass + ' of 3' })]);
+        box.innerHTML = ''; box.appendChild(felt('pyr', [pyrDraw(p0, g.gone, g.taken), deck]));
+      };
+      var cap = function (n) {
+        if (!n) return 'The deal';
+        var m = steps[n - 1], cs = m === 'D' || m === 'R' ? null : codes2(m), g = at(n), cl = Object.keys(g.gone).length;
+        return 'Move ' + n + ' of ' + steps.length + ': ' + (m === 'D' ? 'turned a card from the stock' : m === 'R' ? 'turned the deck back over' : cs.length === 1 ? 'took away the ' + label(cs[0]) : 'took away ' + cs.map(label).join(' + ')) + ' · ' + cl + ' of 28 cleared';
+      };
+      var mom = [{ t: 'Deal', i: 0 }], passAt = 1;
+      steps.forEach(function (m, i) { if (m === 'R') { passAt++; mom.push({ t: 'Trip ' + passAt, i: i + 1 }); } });
+      mom.push({ t: d.won ? 'Cleared' : 'Stuck', i: steps.length, c: d.won ? '#ffd166' : null });
+      out.push(ui.section('Replay · move by move', [box, scrub(steps.length, steps.length, show, mom, cap)], { icon: 'play' }));
+    } else if (src) {
+      var gone = {}; left.forEach(function (x, k) { if (!d.won && x === '..') gone[k] = 1; });
+      out.push(ui.section(d.won ? 'The pyramid you cleared' : 'Where it stopped', felt('pyr', [pyrDraw(src, d.won ? {} : gone), K().el('div', { class: 'hvc-sub', text: d.won ? 'All 28 cards taken away.' : 'Bright cards were left: ' + cleared + ' of 28 cleared.' })])));
     }
-    if (d.pl && d.pl.length) {
+    if (d.pl && d.pl.length && !(steps.length && d.st)) {
       out.push(ui.section('Taken away, in order', ui.chips(d.pl.map(function (x) { var cs = codes2(x); return { t: cs.map(label).join(' + '), c: cs.length === 1 ? '#ffd166' : null }; }))));
     }
-    out.push(ui.stats([['Moves', e.moves], ['Time', e.time != null ? ui.time(e.time) : null], ['Trips through deck', d.pass], ['Left in deck', d.deck], ['Undos', d.undos]]));
+    var stuck = left.filter(function (x) { return x && x !== '..'; });
+    out.push(foot(d.won ? 'Cleared all 28 cards' + (d.pass === 1 ? ' on the first trip through the deck.' : ' on trip ' + d.pass + ' of 3.') + (d.deck ? ' ' + d.deck + ' cards were still in the deck.' : '')
+      : 'Out of moves with ' + plural(stuck.length, 'card') + ' left in the pyramid' + (stuck.length && stuck.length <= 6 ? ': ' + stuck.map(label).join(' ') : '') + '. No two free cards made 13.', d.won ? 'trophy' : 'flag'));
     return ui.wrap(out);
   });
 
@@ -537,55 +685,73 @@
     return ui.wrap(out);
   });
 
-  // ── Poker Squares: the final 5×5 grid with each row and column's hand, and a replay ──
+  // ── Poker Squares: the final 5×5 grid with each row and column's hand, and a card-by-card replay ──
   var PSN = { royal: 'Royal flush', sf: 'Straight flush', quads: 'Four of a kind', full: 'Full house', flush: 'Flush', straight: 'Straight', trips: 'Three of a kind', two: 'Two pair', pair: 'Pair', none: 'Nothing' };
   HistView.css('hv-cards-ps', [
     '.hvc-ps{display:grid;grid-template-columns:repeat(5,var(--cw)) minmax(0,1fr);gap:5px 5px;--cw:44px;align-items:center;justify-content:center;}',
-    '.hvc-ps .pcard{box-shadow:0 2px 5px rgba(0,0,0,.45);}.hvc-ps .pcard.slot{background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.2);}',
+    '.hvc-ps .pcard{box-shadow:0 2px 5px rgba(0,0,0,.45);}.hvc-ps .hvc-slot{--cw:44px;}',
     '.hvc-ps .pcard.new{outline:2.5px solid #ffd166;outline-offset:1px;}',
+    '.hvc-ps .pcard.lit{box-shadow:0 0 0 2.5px #ffd166,0 2px 5px rgba(0,0,0,.45);}',
     '.hvc-ps .lb{font-size:.68rem;font-weight:800;line-height:1.1;color:rgba(255,255,255,.65);min-width:0;}',
     '.hvc-ps .lb b{display:block;font-size:.9rem;font-weight:900;color:#fff;}.hvc-ps .lb.z b{color:rgba(255,255,255,.45);}',
     '.hvc-ps .lb.c{text-align:center;align-self:start;font-size:.6rem;overflow-wrap:anywhere;}.hvc-ps .lb.big b{color:#ffd166;}'
   ].join(''));
+  function psLines(L) { var o = []; for (var j = 0; j < 5; j++) o.push(L < 5 ? L * 5 + j : j * 5 + (L - 5)); return o; }
+  function psName(L) { return L < 5 ? 'row ' + (L + 1) : 'column ' + (L - 4); }
   R('pokersquares', function (e, ui) {
     var d = e.dt; if (!d || !d.g) return null;
-    var out = [], ord = String(d.ord || '');
+    var out = [], ord = String(d.ord || ''), total = e.players && e.players[0] ? e.players[0].score : null;
+    var best = -1; d.ln.forEach(function (id, L) { if (d.pt[L] && (best < 0 || d.pt[L] > d.pt[best])) best = L; });
+    var scored = d.sc != null ? d.sc : d.pt.filter(function (p) { return p > 0; }).length;
+    out.push(ui.stats([['Points', total, d.rt || ''], ['Hands that scored', scored + ' of 10'], best >= 0 ? ['Best hand', PSN[d.ln[best]] || d.ln[best], d.pt[best] + ' points, ' + psName(best)] : null,
+      d.hb ? ['Best before', d.hb, total > d.hb ? 'beaten!' : ''] : null]));
     var snap = K().el('div');
     function lb(L, col, show) {
       var id = d.ln[L] || 'none', p = d.pt[L] || 0;
       return K().el('div', { class: 'lb' + (col ? ' c' : '') + (p ? '' : ' z') + (/royal|sf|quads|full/.test(id) ? ' big' : ''), html: show ? '<b>' + p + '</b>' + K().esc(PSN[id] || id) : '' });
     }
-    function draw(n) {
-      var have = {}, last = -1;
-      if (n == null || n >= 25 || !ord) for (var i = 0; i < 25; i++) have[i] = 1;
+    // n cards placed (null = all); lit = a line to ring
+    function draw(n, lit) {
+      var have = {}, last = -1, full = n == null || n >= 25 || !ord;
+      if (full) for (var i = 0; i < 25; i++) have[i] = 1;
       else for (var j = 0; j < n; j++) { have[ord.charCodeAt(j) - 97] = 1; last = ord.charCodeAt(j) - 97; }
-      var full = n == null || n >= 25 || !ord;
+      var ring = lit != null ? psLines(lit) : [];
       var g = K().el('div', { class: 'hvc-ps' });
       for (var r = 0; r < 5; r++) {
-        for (var c = 0; c < 5; c++) {
-          var k = r * 5 + c, el = have[k] ? card(d.g[k], 44, k === last ? 'new' : '') : K().el('div', { class: 'pcard slot' });
-          g.appendChild(el);
-        }
-        g.appendChild(lb(r, false, full));
+        for (var c = 0; c < 5; c++) { var k = r * 5 + c; g.appendChild(have[k] ? card(d.g[k], 44, (k === last ? 'new' : '') + (ring.indexOf(k) >= 0 ? ' lit' : '')) : K().el('div', { class: 'hvc-slot' })); }
+        g.appendChild(lb(r, false, full || psLines(r).every(function (x) { return have[x]; })));
       }
-      for (var c2 = 0; c2 < 5; c2++) g.appendChild(lb(5 + c2, true, full));
-      snap.innerHTML = ''; snap.appendChild(g);
+      for (var c2 = 0; c2 < 5; c2++) g.appendChild(lb(5 + c2, true, full || psLines(5 + c2).every(function (x) { return have[x]; })));
+      snap.innerHTML = ''; snap.appendChild(felt('ps', [g]));
     }
-    draw(null);
-    out.push(ui.section('Final grid', felt('ps', [snap])));
     if (ord.length >= 25) {
-      var cap = ui.el('b'), rng = ui.el('input', { type: 'range', min: '0', max: '25', value: '25', class: 'hv-range', 'aria-label': 'Card' });
-      var show = function (n) { draw(n); cap.textContent = n >= 25 ? 'Final grid · ' + (e.players && e.players[0] ? e.players[0].score : '') + ' points' : n === 0 ? 'Empty grid' : 'Card ' + n + ': ' + label(d.g[ord.charCodeAt(n - 1) - 97]); };
-      rng.addEventListener('input', function () { show(+rng.value); });
-      show(25);
-      out.push(ui.section('Replay, card by card', ui.el('div', { class: 'hv-replay' }, [rng, cap])));
-    }
+      // moments: each row or column as it was finished
+      var mom = [{ t: 'Empty', i: 0 }], done = {};
+      for (var n = 1; n <= 25; n++) {
+        var placed = {}; for (var j = 0; j < n; j++) placed[ord.charCodeAt(j) - 97] = 1;
+        for (var L = 0; L < 10; L++) if (!done[L] && psLines(L).every(function (x) { return placed[x]; })) { done[L] = n; if (d.pt[L] && /royal|sf|quads|full|flush|straight/.test(d.ln[L])) mom.push({ t: PSN[d.ln[L]] + ', ' + (L < 5 ? 'row ' + (L + 1) : 'col ' + (L - 4)), i: n, L: L, c: /royal|sf|quads|full/.test(d.ln[L]) ? '#ffd166' : null }); }
+      }
+      mom.push({ t: 'Final grid', i: 25 });
+      mom = mom.filter(function (m, k) { return k < 9 || m.i === 25; });
+      var litAt = {}; mom.forEach(function (m) { if (m.L != null) litAt[m.i] = m.L; });
+      var showN = function (n) { draw(n, litAt[n]); };
+      var capN = function (n) {
+        if (n >= 25) return 'Final grid · ' + total + ' points';
+        if (!n) return 'The empty grid';
+        var k = ord.charCodeAt(n - 1) - 97, fin = [];
+        for (var L = 0; L < 10; L++) if (done[L] === n) fin.push(psName(L) + ': ' + (d.pt[L] ? PSN[d.ln[L]] + ' +' + d.pt[L] : 'nothing'));
+        return 'Card ' + n + ': ' + label(d.g[k]) + ' to row ' + (Math.floor(k / 5) + 1) + ', column ' + (k % 5 + 1) + (fin.length ? ' · ' + fin.join(', ') : '');
+      };
+      out.push(ui.section('Card by card · drag or tap a hand', [snap, scrub(25, 25, showN, mom, capN)], { icon: 'play' }));
+    } else { draw(null); out.push(ui.section('Final grid', snap)); }
     var made = {}; d.ln.forEach(function (id, i) { if (d.pt[i]) made[id] = (made[id] || 0) + 1; });
     var order = ['royal', 'sf', 'quads', 'full', 'flush', 'straight', 'trips', 'two', 'pair'];
     var chips = order.filter(function (k) { return made[k]; }).map(function (k) { return { t: made[k] + ' × ' + PSN[k], on: /royal|sf|quads|full/.test(k), c: '#ef4444' }; });
-    if (chips.length) out.push(ui.chips(chips));
+    if (chips.length) out.push(ui.section('Hands made', ui.chips(chips)));
     out.push(ui.facts([['Scoring', d.sys === 'british' ? 'British' : 'American']]));
+    if (best >= 0) out.push(foot(PSN[d.ln[best]] + ' in ' + psName(best) + ' was worth ' + d.pt[best] + ' of the ' + total + ' points; ' + scored + ' of 10 hands scored.', 'star'));
     return ui.wrap(out);
   });
+
   HistView.css('hv-cards-replay', '.hv-replay{display:flex;flex-direction:column;gap:6px;}.hv-range{width:100%;accent-color:var(--yellow);}.hv-replay b{font-size:.85rem;color:var(--text-2);}');
 })();

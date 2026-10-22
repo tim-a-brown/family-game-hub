@@ -220,7 +220,7 @@
       S.disc.push(id);
     });
     S.sel = null; S.moves++;
-    (S.pl = S.pl || []).push(ids.join(''));
+    (S.pl = S.pl || []).push(ids.join('')); mvLog(ids.join(''));
     if (ids.length === 1) S.kings++; else S.pairs++;
     lastMove = { ids: ids, t: Date.now() };
     Kit.sfx('pop'); Kit.haptic('light');
@@ -230,17 +230,20 @@
     if (S.over) return;
     if (S.stock.length) {
       snapshot(); begin();
-      S.waste.push(S.stock.pop()); S.sel = null; S.moves++;
+      S.waste.push(S.stock.pop()); S.sel = null; S.moves++; mvLog('D');
       Kit.sfx('flip'); Kit.haptic('light');
     } else if (S.pass < PASSES && S.waste.length) {
       snapshot(); begin();
-      S.stock = S.waste.reverse(); S.waste = []; S.pass++; S.sel = null; S.moves++;
+      S.stock = S.waste.reverse(); S.waste = []; S.pass++; S.sel = null; S.moves++; mvLog('R');
       Kit.sfx('whoosh'); Kit.haptic('medium');
       Kit.toast('Pass ' + S.pass + ' of ' + PASSES + (S.pass === PASSES ? ': last time through!' : ''));
     } else { Kit.toast(S.waste.length ? 'No passes left' : 'The stock is empty'); Kit.haptic('error'); return; }
     lastMove = { ids: [], t: Date.now() };
     after();
   }
+  // History replay: every move in order (undone ones drop out with the snapshot), '.'-separated:
+  // a King or a pair taken away ('Ks', '7s6h'), 'D' = a card turned from the stock, 'R' = the deck turned back over
+  function mvLog(m) { S.mv = (S.mv ? S.mv + '.' : '') + m; }
   function tapCard(id) {
     if (S.over) return;
     if (!isFree(id)) { nudge([id]); return; }
@@ -326,7 +329,8 @@
   function pyrDetail() {
     var d0 = null; try { d0 = JSON.parse(I); } catch (e) {}
     return { p0: d0 && d0.pyr ? d0.pyr.join('') : '', left: S.pyr.map(function (c) { return c || '..'; }).join(''), pl: (S.pl || []).slice(0, 60),
-      pass: S.pass, deck: S.stock.length + S.waste.length, undos: S.undos, won: !!S.won };
+      pass: S.pass, deck: S.stock.length + S.waste.length, undos: S.undos, won: !!S.won,
+      st: d0 && d0.stock ? d0.stock.join('') : '', mv: (S.mv || '').length <= 1500 ? S.mv || '' : '' };
   }
   function recordLoss() {
     S.recorded = true;
