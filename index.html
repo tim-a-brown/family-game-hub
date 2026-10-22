@@ -443,6 +443,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .sbox .art .gicon{flex:none;width:64px;height:64px;filter:drop-shadow(0 5px 7px rgba(0,0,0,.3));transition:transform .35s var(--spring);}
 .sbox:active .art .gicon{transform:scale(.9) rotate(-6deg);}
 .sbox .ago{position:absolute;top:6px;right:8px;font-size:.68rem;font-weight:900;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);}
+.sbox .nm.two{white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.15;}
 .sbox .nm{padding:9px 9px 10px;font-family:'Bungee',var(--display);font-weight:400;font-size:.8rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* where you are, left-aligned under the icon: a label with dots puts each fact on its own line ("Round 6" over "182 pts"),
    one without wraps onto two */
@@ -1482,7 +1483,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (nets.length) {
       var ns = el('div', { class: 'nstack' });
       nets.forEach(function (x) { ns.appendChild(netBar(x)); });
-      rail.appendChild(el('div', { class: 'nhead', text: 'Online multiplayer' }));
+      rail.appendChild(el('div', { class: 'nhead', text: 'Online games' }));
       rail.appendChild(ns);
     }
     var nAll = items.length + nets.length;
@@ -1491,6 +1492,22 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     cn.classList.toggle('yt-n', !!nMine);
     $('cont-sec').hidden = !nAll && !undoList;
     renderFoot(items.length);
+    fitNames(rail);
+  }
+  // a game's name on its box shrinks until it fits on one line (no "…"); a very long one takes two lines
+  function fitNames(box) {
+    function fit() {
+      Array.prototype.forEach.call(box.querySelectorAll('.sbox .nm'), function (n) {
+        n.style.fontSize = ''; n.classList.remove('two');
+        var w = n.clientWidth - 18, s = parseFloat(getComputedStyle(n).fontSize), need = n.scrollWidth - 18;
+        if (w <= 0 || need <= w) return;
+        var to = Math.floor(s * w / need * 10) / 10;
+        if (to >= 9) n.style.fontSize = to + 'px';
+        else { n.style.fontSize = '10px'; n.classList.add('two'); }
+      });
+    }
+    fit();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
   }
   function ago(ts, short) {
     var s = (Date.now() - ts) / 1000;
