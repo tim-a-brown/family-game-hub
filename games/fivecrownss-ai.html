@@ -532,6 +532,8 @@
     pts.forEach(function (v, p) { S.players[p].total += v; });
     S.rounds.push({ pts: pts, out: S.outBy, catch: res.map(function (r) { return r.left.filter(function (c) { return c.r === 'JK'; }).length + '/' + r.left.filter(function (c) { return isW(c, w) && c.r !== 'JK'; }).length; }) });
     S.last = res.map(function (r) { return { pts: r.pts, groups: r.groups.map(function (g) { return g.cards; }), left: r.left }; });
+    function cc(c) { return c.r === 'JK' ? 'JK' : c.r + c.s; }
+    S.rounds[S.rounds.length - 1].h = S.last.map(function (r) { return r.groups.map(function (g) { return g.map(cc).join(' '); }).join('|') + '/' + r.left.map(cc).join(' '); });
     S.phase = S.round >= S.len ? 'over' : 'roundover';
     undoStack = [];
     save(); paint();
@@ -626,8 +628,11 @@
       // history detail: who went out each round, and the final round's hands laid out in groups
       detail: (function () {
         function cc(c) { return c.r === 'JK' ? 'JK' : c.r + c.s; }
+        // every round's hands as they were counted: 'melds|melds/left over' per player (the earliest rounds drop out if it gets big)
+        var rr = S.rounds.map(function (r) { return r.h ? { h: r.h } : null; }), size = JSON.stringify(rr).length;
+        for (var k = 0; k < rr.length && size > 3600; k++) if (rr[k]) { size -= JSON.stringify(rr[k]).length; rr[k] = null; }
         return {
-          len: S.len, out: S.rounds.map(function (r) { return r.out >= 0 ? String(r.out) : '-'; }).join(''),
+          len: S.len, out: S.rounds.map(function (r) { return r.out >= 0 ? String(r.out) : '-'; }).join(''), rr: rr,
           fin: (S.last || []).map(function (r) { return { p: r.pts, g: r.groups.map(function (g) { return g.map(cc).join(' '); }).join('|'), l: r.left.map(cc).join(' ') }; })
         };
       })()

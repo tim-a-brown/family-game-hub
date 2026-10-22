@@ -206,7 +206,7 @@
     return ui.wrap(out);
   });
 
-  // ── Five Crowns: wilds by round, who went out, the final hands ─────────────
+  // ── Five Crowns: every round (the wild card, who went out, everyone's hand laid down), and what decided it ──
   var FC = { t: ['★', '#e3a400'], h: ['♥', '#d81e3a'], c: ['♣', '#178a4a'], s: ['♠', '#1d1b2e'], d: ['♦', '#1f62d0'] };
   var FCR = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
   function fcCard(code, wildRank) {
@@ -215,28 +215,51 @@
     var s = FC[m[2]];
     return el('span', { class: 'sx-c' + (m[1] === wildRank ? ' wild' : ''), style: { color: s[1] }, html: m[1] + '<small>' + s[0] + '</small>' });
   }
+  function fcHand(groups, left, wr) {
+    var row = el('div', { class: 'sx-cards' });
+    String(groups || '').split('|').filter(Boolean).forEach(function (g) { var gg = el('div', { class: 'sx-grp' }); g.split(' ').forEach(function (c) { var n = fcCard(c, wr); if (n) gg.appendChild(n); }); row.appendChild(gg); });
+    if (left) { var lf = el('div', { class: 'sx-grp left' }); left.split(' ').forEach(function (c) { var n = fcCard(c, wr); if (n) lf.appendChild(n); }); row.appendChild(lf); }
+    return row;
+  }
+  function fcWild(i) { return FCR[i] === 'K' ? 'Kings' : FCR[i] === 'J' ? 'Jacks' : FCR[i] === 'Q' ? 'Queens' : FCR[i] + 's'; }
   R(['five-crowns', 'fivecrowns', 'fivecrwns', 'fivecrownss-ai'], function (e, ui) {
     var d = e.dt; if (!d || d.out == null) return null;
-    var P = names(e), out = [], nR = d.out.length;
-    var strip = el('div', { class: 'sx-strip' });
-    d.out.split('').forEach(function (o, i) {
-      strip.appendChild(el('div', null, [el('span', { class: 'crown', text: FCR[i] }), el('small', { class: o === '-' ? 'none' : '', text: o === '-' ? '–' : short(P[+o], 8) })]));
-    });
-    out.push(ui.section('Wilds and who went out', strip, { icon: 'crown' }));
-    if (d.fin && d.fin.length) {
-      var wr = FCR[nR - 1], felt = el('div', { class: 'sx-felt' });
-      P.forEach(function (x, i) {
-        var f = d.fin[i]; if (!f) return;
-        var row = el('div', { class: 'sx-cards' });
-        String(f.g || '').split('|').filter(Boolean).forEach(function (g) { var gg = el('div', { class: 'sx-grp' }); g.split(' ').forEach(function (c) { var n = fcCard(c, wr); if (n) gg.appendChild(n); }); row.appendChild(gg); });
-        if (f.l) { var lf = el('div', { class: 'sx-grp left' }); f.l.split(' ').forEach(function (c) { var n = fcCard(c, wr); if (n) lf.appendChild(n); }); row.appendChild(lf); }
-        var wentOut = d.out.charAt(nR - 1) === String(i);
-        felt.appendChild(el('div', { class: 'sx-prow' }, [el('div', { class: 'hd' }, [el('span', { text: x }), el('small', { text: wentOut ? 'Went out' : f.l ? 'Caught with' : 'All down' }), el('b', { text: f.p ? '+' + f.p : '0' })]), row]));
-      });
-      out.push(ui.section('Final round: ' + (FCR[nR - 1] === 'K' ? 'Kings' : FCR[nR - 1] + 's') + ' wild', [felt, legend([['#e7b416', 'Wild card'], ['rgba(220,40,60,.6)', 'Left in hand (counts against)']])], { icon: 'cards' }));
-    }
+    var P = names(e), out = [], nR = d.out.length, ck = HistView.ck, sc = ck ? ck.scoresOf(e) : [], tot = ck ? ck.cum(sc, P.length) : [];
     var outs = P.map(function (x, i) { return d.out.split('').filter(function (o) { return o === String(i); }).length; });
+    var most = outs.indexOf(Math.max.apply(null, outs)), big = null;
+    sc.forEach(function (r, ri) { r.forEach(function (v, p) { if (!big || v > big.v) big = { v: v, p: p, r: ri }; }); });
+    out.push(ui.stats([['Rounds', nR, nR < 11 ? 'quick game' : '3s wild to Kings wild'], outs[most] ? ['Went out most', outs[most] + '×', P[most]] : null,
+      big && big.v ? ['Worst catch', big.v, P[big.p] + ', ' + fcWild(big.r).toLowerCase() + ' wild'] : null]));
+    var rr = d.rr || [];
+    if (ck) {
+      var panel = el('div', { class: 'hv' });
+      var show = function (i) {
+        var o = d.out.charAt(i), wr = FCR[i], kids = [], r = rr[i], pts = sc[i] || [];
+        kids.push(ck.head('<b>' + ui.esc(fcWild(i)) + ' wild</b> · round ' + (i + 1), o === '-' ? null : short(P[+o], 10) + ' went out', 'good'));
+        if (r && r.h) P.forEach(function (x, p) {
+          var hp = String(r.h[p] || '').split('/'), wentOut = o === String(p);
+          kids.push(el('div', { class: 'sx-prow' }, [el('div', { class: 'hd' }, [el('span', { text: x }), el('small', { text: wentOut ? 'Went out' : hp[1] ? 'Caught with' : 'All down' }),
+            el('b', { text: (pts[p] ? '+' + pts[p] : '0') + (tot[i] ? ' · ' + tot[i][p] : '') })]), fcHand(hp[0], hp[1], wr)]));
+        });
+        else if (i === nR - 1 && d.fin && d.fin.length) P.forEach(function (x, p) {
+          var f = d.fin[p]; if (!f) return;
+          kids.push(el('div', { class: 'sx-prow' }, [el('div', { class: 'hd' }, [el('span', { text: x }), el('small', { text: o === String(p) ? 'Went out' : f.l ? 'Caught with' : 'All down' }), el('b', { text: f.p ? '+' + f.p : '0' })]), fcHand(f.g, f.l, wr)]));
+        });
+        else kids.push(ck.plates(P.map(function (x, p) { return { n: short(x, 8), v: pts[p] != null ? (pts[p] ? '+' + pts[p] : '0') : '–', s: tot[i] ? 'total ' + tot[i][p] : '', c: ui.color(p), cls: o === String(p) ? 'good' : '' }; })));
+        panel.innerHTML = ''; panel.appendChild(ck.felt(['#1d7a52', '#105636', '#0a3f27'], kids));
+      };
+      var items = d.out.split('').map(function (o, i) { return { t: FCR[i], c: o === '-' ? null : ui.color(+o), title: fcWild(i) + ' wild' + (o === '-' ? '' : ': ' + P[+o] + ' went out') }; });
+      out.push(ui.section('Every round · tap one', [ck.road(items, nR - 1, show), panel,
+        ck.key(P.map(function (x, p) { return [short(x, 10) + ' went out', ui.color(p)]; })), legend([['#e7b416', 'Wild card'], ['rgba(220,40,60,.6)', 'Left in hand (counts against)']])], { icon: 'crown' }));
+    }
     out.push(ui.section('Went out first', ui.bars(P.map(function (x, i) { return { label: x, value: outs[i], max: nR, color: ui.color(i), text: outs[i] + (outs[i] === 1 ? ' time' : ' times') }; }))));
+    if (ck && tot.length) {
+      var last = tot[tot.length - 1], lo = Math.min.apply(null, last), w = last.indexOf(lo), second = last.slice().sort(function (a, b) { return a - b; })[1];
+      var why = last.filter(function (v) { return v === lo; }).length > 1 ? 'A tie at ' + lo + ' after ' + nR + ' rounds.' : P[w] + ' won with the lowest total, ' + lo + (second != null ? ', ' + (second - lo) + ' ahead' : '') + '.';
+      if (outs[w] && outs[w] === outs[most]) why += ' ' + P[w] + ' went out first ' + (outs[w] === 1 ? 'once' : outs[w] + ' times') + '.';
+      else if (big && big.p !== w && big.v >= 40) why += ' ' + P[big.p] + ' was caught with ' + big.v + ' when ' + fcWild(big.r).toLowerCase() + ' were wild.';
+      out.push(ck.foot(why, 'crown'));
+    }
     return ui.wrap(out);
   });
 
