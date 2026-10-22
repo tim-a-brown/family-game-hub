@@ -911,25 +911,52 @@
       return l ? mix('#0a2a0a', '#5ab04a', t2) : mix('#020a30', '#3a6ad8', t2);
     });
     for (var a = 0; a < 6; a++) { var yy = gy - gr + a * gr / 3; g.ell(gx, gy, gr, gr, function (x, y) { return y === Math.round(yy) ? null : null; }); }
-    // Carmen: trench coat with the collar up and the wide-brimmed hat, lit from the globe on the right
-    var X = 50, B = H + 14, red = '#c81e24', rd = '#7a0e14', rl = '#f0484a';
-    g.poly([[X - 30, B], [X - 20, B - 50], [X - 13, B - 62], [X + 13, B - 62], [X + 20, B - 50], [X + 32, B]], function (x, y) {
-      var fold = ((x - X) * 3 + y) % 11 === 0; return x > X + 10 ? (fold ? red : rl) : x < X - 8 ? (fold ? '#5a0a10' : rd) : fold ? rd : red; });
-    g.poly([[X - 14, B - 62], [X - 4, B - 40], [X - 1, B - 60]], rd); g.poly([[X + 14, B - 62], [X + 4, B - 40], [X + 1, B - 60]], rl);   // lapels
-    g.rect(X - 22, B - 30, 46, 3, '#4a0a0e'); g.rect(X - 2, B - 31, 5, 5, '#e8c040'); g.rect(X - 1, B - 30, 3, 3, '#4a0a0e');   // belt and buckle
-    g.poly([[X + 18, B - 50], [X + 26, B - 26], [X + 22, B - 24], [X + 15, B - 44]], rl); g.ell(X + 24, B - 24, 3, 3, '#1a1210');   // arm, black glove
-    g.poly([[X - 15, B - 63], [X - 11, B - 78], [X - 6, B - 64]], red); g.poly([[X + 15, B - 63], [X + 11, B - 78], [X + 6, B - 64]], rl);   // collar up
-    g.rect(X - 5, B - 76, 10, 14, '#e0a880'); g.rect(X + 2, B - 76, 3, 14, '#f0c09a'); g.rect(X - 5, B - 76, 10, 4, '#5a3020');   // face, brim shadow
-    g.rect(X - 5, B - 76, 10, 6, '#3a1a14'); g.rect(X + 2, B - 76, 3, 6, '#5a2a1c'); g.p(X - 3, B - 72, '#f4e0c0');   // the brim's shadow, a glint of one eye
-    g.rect(X - 2, B - 66, 5, 1, '#a8182a'); g.rect(X - 1, B - 65, 3, 1, '#c03040');   // red lips, closed, no smile
-    // long brown hair falling from under the hat, over the turned-up collar
-    g.poly([[X - 6, B - 78], [X - 4, B - 64], [X - 7, B - 54], [X - 12, B - 48], [X - 13, B - 62], [X - 11, B - 78]], function (x, y) { return (x + (y >> 2)) % 4 === 0 ? '#4a2a1a' : '#2e1a12'; });
-    g.poly([[X + 5, B - 78], [X + 6, B - 64], [X + 9, B - 56], [X + 13, B - 52], [X + 12, B - 66], [X + 10, B - 78]], function (x, y) { return (x + (y >> 2)) % 4 === 0 ? '#2e1a12' : '#1a0e08'; });
-    g.poly([[X - 5, B - 63], [X + 5, B - 63], [X + 4, B - 57], [X, B - 53], [X - 4, B - 57]], function (x) { return x > X + 1 ? '#c8961c' : '#e8b830'; });   // the gold scarf
-    [B - 46, B - 40, B - 22, B - 16].forEach(function (yb) { g.rect(X - 7, yb, 2, 2, '#e8b830'); g.rect(X + 6, yb, 2, 2, '#c8961c'); });   // brass buttons
-    g.ell(X, B - 79, 22, 4, rd); g.ell(X + 1, B - 80, 21, 3, red); g.rect(X + 6, B - 81, 12, 1, rl);   // brim
-    g.ell(X, B - 84, 11, 9, function (x) { return x > X + 4 ? rl : x < X - 6 ? rd : red; }, 'top'); g.rect(X - 11, B - 85, 22, 4, red);
-    g.rect(X - 11, B - 84, 22, 3, '#e8b830'); g.rect(X + 4, B - 84, 7, 3, '#c8961c'); g.line(X - 2, B - 92, X + 2, B - 88, rd);   // gold band, crease
+    // Carmen, after the classic cartoon: hands on hips in black gloves, padded shoulders, the collar up to her cheek,
+    // the wide fedora with its gold band tipped over her eyes, a mass of black hair, gold scarf, belted double-breasted
+    // trench with brass buttons and the belt's tie flying. Lit from the globe on her left (our right). Drawn on its own
+    // layer, then outlined in dark ink like the cartoon's line art.
+    var f = new G(W, H), X = 50, T = H - 84;
+    var red = '#c81e24', rd = '#8a1218', rdd = '#5a0a10', rl = '#ec4446', gold = '#e8b830', goldD = '#a87818', blk = '#1a1210', blk2 = '#33251e';
+    function lit(x0, light, mid, dark) { return function (x) { return x > X + 6 ? light : x < X - 8 ? dark : mid; }; }
+    // the coat below the belt, flaring out, and the belt's loose tie fluttering behind her
+    f.poly([[X - 16, T + 61], [X + 15, T + 61], [X + 23, H], [X - 24, H]], function (x, y) { return (x - X) % 9 === 0 && y > T + 66 ? rdd : x > X + 8 ? rl : x < X - 9 ? rd : red; });
+    f.line(X - 1, T + 62, X - 1, H, rdd);
+    [[X - 14, T + 63], [X - 19, T + 70], [X - 16, T + 77], [X - 22, T + 84]].forEach(function (q, i, a) { if (i) { f.line(a[i - 1][0], a[i - 1][1], q[0], q[1], red); f.line(a[i - 1][0] - 1, a[i - 1][1], q[0] - 1, q[1], rd); } });
+    // arms akimbo: shoulder, elbow out wide, gloved fist on the hip
+    f.poly([[X - 17, T + 36], [X - 23, T + 38], [X - 33, T + 51], [X - 18, T + 62], [X - 13, T + 58], [X - 26, T + 51], [X - 18, T + 43]], function (x, y) { return y < T + 51 && x > X - 25 ? red : rd; });
+    f.poly([[X + 16, T + 35], [X + 22, T + 37], [X + 32, T + 50], [X + 16, T + 62], [X + 11, T + 58], [X + 25, T + 50], [X + 17, T + 42]], function (x, y) { return y < T + 50 && x < X + 24 ? '#ff6a5e' : rl; });
+    f.ell(X - 15, T + 60, 4, 3.5, blk); f.ell(X + 13, T + 60, 4, 3.5, blk2); f.p(X - 17, T + 58, '#4a3a34'); f.p(X + 15, T + 58, '#5a4a44');   // black gloves on her hips
+    // the torso: big padded shoulders down to a cinched waist
+    f.poly([[X - 21, T + 36], [X - 9, T + 33], [X + 9, T + 33], [X + 20, T + 35], [X + 14, T + 44], [X + 10, T + 61], [X - 11, T + 61], [X - 15, T + 44]], lit(0, rl, red, rd));
+    f.line(X - 20, T + 37, X - 9, T + 34, rl); f.line(X + 19, T + 36, X + 10, T + 34, '#ff7a6a');
+    // double-breasted front: the overlap line and two rows of brass buttons
+    f.line(X + 2, T + 40, X + 2, T + 60, rdd);
+    [T + 44, T + 50, T + 56, T + 68, T + 75].forEach(function (yb) { f.rect(X - 4, yb, 2, 2, gold); f.rect(X + 5, yb, 2, 2, goldD); });
+    // belt and buckle
+    f.rect(X - 13, T + 59, 25, 3, rdd); f.rect(X - 3, T + 58, 6, 5, gold); f.rect(X - 2, T + 59, 4, 3, rdd);
+    // the tall collar, up past her chin on both sides
+    f.poly([[X - 15, T + 37], [X - 13, T + 19], [X - 7, T + 26], [X - 5, T + 38]], rd); f.line(X - 13, T + 20, X - 7, T + 27, rl);
+    f.poly([[X + 13, T + 36], [X + 11, T + 17], [X + 5, T + 25], [X + 4, T + 38]], rl); f.line(X + 11, T + 18, X + 5, T + 25, '#ff7a6a');
+    // gold scarf at the throat
+    f.poly([[X - 6, T + 28], [X + 4, T + 28], [X + 3, T + 34], [X - 1, T + 37], [X - 5, T + 34]], function (x) { return x > X ? goldD : gold; });
+    // hair: a full black mass behind her, spilling out on the far side
+    f.poly([[X - 3, T + 9], [X + 13, T + 10], [X + 20, T + 18], [X + 18, T + 26], [X + 21, T + 33], [X + 15, T + 36], [X + 9, T + 28], [X + 4, T + 22]], function (x, y) { return (x + y) % 5 === 0 ? '#3a2a24' : blk; });
+    f.poly([[X - 9, T + 13], [X - 4, T + 12], [X - 6, T + 22], [X - 12, T + 26], [X - 11, T + 18]], blk);
+    // her face, turned three-quarters: in the hat's shadow above, red lips below
+    f.poly([[X - 8, T + 13], [X + 4, T + 13], [X + 5, T + 22], [X + 2, T + 28], [X - 3, T + 29], [X - 7, T + 25], [X - 9, T + 19]], function (x, y) { return y < T + 19 ? '#7a4a38' : x > X + 1 ? '#f0c09a' : '#e0a880'; });
+    f.rect(X - 6, T + 18, 3, 1, '#2a1410'); f.p(X - 5, T + 17, '#f4e0c0');   // one eye glinting under the brim
+    f.p(X + 1, T + 21, '#c88a6a'); f.rect(X - 4, T + 24, 5, 1, '#a8182a'); f.rect(X - 3, T + 25, 3, 1, '#c03040');   // nose, lips
+    // the fedora: tall pinched crown, gold band, the wide brim dipping low in front
+    f.poly([[X - 9, T + 2], [X - 2, T - 1], [X + 9, T + 1], [X + 11, T + 11], [X - 11, T + 12]], function (x, y) { return x > X + 5 ? rl : x < X - 6 ? rd : red; });
+    f.line(X - 1, T, X + 1, T + 6, rd);
+    f.poly([[X - 11, T + 8], [X + 11, T + 7], [X + 11, T + 11], [X - 11, T + 12]], function (x, y) { return x > X + 6 ? '#f4d060' : y > T + 10 ? goldD : gold; });
+    f.poly([[X - 26, T + 16], [X - 10, T + 11], [X + 12, T + 10], [X + 26, T + 12], [X + 20, T + 15], [X + 8, T + 15], [X - 6, T + 17], [X - 20, T + 20]], function (x, y) { return y > T + 15 ? rd : x > X + 8 ? rl : red; });
+    f.line(X - 25, T + 16, X - 10, T + 12, rl);
+    // ink outline around the whole figure, then onto the scene
+    for (var yy = 0; yy < H; yy++) for (var xx = 0; xx < W; xx++) {
+      if (f.get(xx, yy)) { g.b[yy * W + xx] = f.get(xx, yy); continue; }
+      if (f.get(xx - 1, yy) || f.get(xx + 1, yy) || f.get(xx, yy - 1) || f.get(xx, yy + 1)) g.p(xx, yy, '#14060a');
+    }
     g.put(cv); return cv;
   }
   // a henchman dashing past: drawn on its own small canvas and slid across the picture by CSS
