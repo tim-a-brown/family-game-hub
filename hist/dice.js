@@ -161,7 +161,8 @@
     '.sg-run{display:flex;flex-wrap:wrap;gap:3px;}',
     '.sg-p{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:.62rem;font-weight:900;color:#fff;}',
     '.sg-p.ok{background:#22a55a;}.sg-p.no{background:#c2304b;}',
-    '.sg-p.t4{box-shadow:0 0 0 2px #ffc83d;}.sg-p.t5{box-shadow:0 0 0 2px #f472b6;}'
+    '.sg-p.t4{box-shadow:0 0 0 2px #ffc83d;}.sg-p.t5{box-shadow:0 0 0 2px #f472b6;}',
+    'button.sg-p{appearance:none;border:0;padding:0;font:inherit;font-size:.62rem;font-weight:900;cursor:pointer;}.sg-p.on{outline:2.5px solid #fff;outline-offset:2px;}'
   ].join('\n'));
 
   // ════════════════════════════════════════════════════════════════════════
@@ -477,7 +478,7 @@
       ]));
     }
     var wp = (e.players || []).filter(function (p) { return p.name === e.winner; })[0];
-    if (wp) out.push(ui.el('div', { class: 'dv-foot', text: wp.name + ' was the last one holding chips and took home ' + wp.score + '.' + (d.rl ? ' ' + String(d.rl).split(' ').length + ' rolls in all.' : '') }));
+    if (wp) out.push(ui.el('div', { class: 'dv-foot', text: wp.name + ' was the last one holding chips and took home ' + wp.score + '.' + (d.rl && !d.r0 ? ' ' + String(d.rl).split(' ').length + ' rolls in all.' : '') }));
     return ui.wrap(out);
   });
 
@@ -486,46 +487,63 @@
   // ════════════════════════════════════════════════════════════════════════
   var PV = [100, 500, 1000, 0, 10000, 0, 1000, 500, 100];
   function pSlot(v) { return v === 10000 ? ['#ffe27a', '#e6a412', '#3a2300'] : v === 0 ? ['#c22a3c', '#7a0f1e', '#fff'] : v === 1000 ? ['#2f7be0', '#1a4a9a', '#fff'] : v === 500 ? ['#2bb3a3', '#137468', '#fff'] : ['#8a5ae0', '#53309c', '#fff']; }
+  function pName(v) { return v === 10000 ? '$10,000' : '$' + v; }
   R('plinko', function (e, ui) {
     var d = e.dt; if (!d || !d.p) return null;
     var ps = arr(d.p), nm = names(e), out = [];
-    var drops = [];
+    var drops = [], pfoot = null;
     ps.forEach(function (p, i) { String(p.d || '').split(' ').filter(Boolean).forEach(function (t, k) { var q = t.split(':'); drops.push({ i: i, k: k, x: (+q[0]) / 10, s: +q[1] }); }); });
     if (drops.length) {
-      var W = 340, pad = 8, sw = (W - 2 * pad) / 9, top = 26, rowsY = 12, gapY = 15, H = top + rowsY * gapY + 70;
-      var slotTop = top + rowsY * gapY + 4, plateY = H - 26, id = 'pk' + (++uid);
-      var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Plinko board with every chip">';
-      s += '<defs><linearGradient id="' + id + 'b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a6b"/><stop offset="1" stop-color="#11143a"/></linearGradient></defs>';
-      s += '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="10" fill="url(#' + id + 'b)"/>';
-      for (var r = 0; r < rowsY; r++) {
-        var y = top + 10 + r * gapY;
-        for (var c = 0; c <= 9; c++) {
-          var x = pad + (r % 2 ? c * sw : (c + 0.5) * sw);
-          if (r % 2 === 0 && c === 9) continue;
-          s += '<circle cx="' + x.toFixed(1) + '" cy="' + y + '" r="2" fill="#d6dcff" opacity=".75"/>';
+      // the board with every chip; hi = the chip picked on the strip (its path solid, the rest faded)
+      var board = function (hi) {
+        var W = 340, pad = 8, sw = (W - 2 * pad) / 9, top = 26, rowsY = 12, gapY = 15, H = top + rowsY * gapY + 70;
+        var slotTop = top + rowsY * gapY + 4, plateY = H - 26, id = 'pk' + (++uid);
+        var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Plinko board with every chip">';
+        s += '<defs><linearGradient id="' + id + 'b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a6b"/><stop offset="1" stop-color="#11143a"/></linearGradient></defs>';
+        s += '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="10" fill="url(#' + id + 'b)"/>';
+        for (var r = 0; r < rowsY; r++) {
+          var y = top + 10 + r * gapY;
+          for (var c = 0; c <= 9; c++) {
+            var x = pad + (r % 2 ? c * sw : (c + 0.5) * sw);
+            if (r % 2 === 0 && c === 9) continue;
+            s += '<circle cx="' + x.toFixed(1) + '" cy="' + y + '" r="2" fill="#d6dcff" opacity=".75"/>';
+          }
         }
-      }
-      for (var k = 0; k < 9; k++) {
-        var col = pSlot(PV[k]), sx = pad + k * sw;
-        if (k) s += '<rect x="' + (sx - 1) + '" y="' + slotTop + '" width="2" height="' + (plateY - slotTop) + '" fill="#c7cde8"/>';
-        s += '<rect x="' + (sx + 1.5) + '" y="' + plateY + '" width="' + (sw - 3) + '" height="20" rx="4" fill="' + col[1] + '"/>';
-        s += '<rect x="' + (sx + 1.5) + '" y="' + plateY + '" width="' + (sw - 3) + '" height="10" rx="4" fill="' + col[0] + '" opacity=".55"/>';
-        s += '<text x="' + (sx + sw / 2) + '" y="' + (plateY + 10.5) + '" text-anchor="middle" dominant-baseline="central" font-size="' + (PV[k] === 10000 ? 9.5 : 10) + '" font-weight="900" fill="' + col[2] + '" font-family="system-ui">' + (PV[k] === 10000 ? '$10K' : '$' + PV[k]) + '</text>';
-      }
-      // paths and chips: drop marker on the rail, chip stacked in its slot
-      var stack = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-      drops.forEach(function (q) {
-        var x0 = pad + q.x * sw, x1 = pad + (q.s + 0.5) * sw, n = stack[q.s]++, y1 = plateY - 9 - n * 13;
-        var colr = ui.color(q.i);
-        s += '<path d="M' + x0.toFixed(1) + ' 14 C ' + x0.toFixed(1) + ' ' + (top + 70) + ', ' + x1.toFixed(1) + ' ' + (slotTop - 60) + ', ' + x1.toFixed(1) + ' ' + y1 + '" fill="none" stroke="' + colr + '" stroke-width="1.6" stroke-dasharray="3 3" opacity=".55"/>';
-        s += '<circle cx="' + x0.toFixed(1) + '" cy="14" r="5" fill="none" stroke="' + colr + '" stroke-width="2"/>';
-        s += '<circle cx="' + x1.toFixed(1) + '" cy="' + y1 + '" r="6.5" fill="' + colr + '" stroke="rgba(255,255,255,.85)" stroke-width="1.5"/>';
-      });
-      s += '</svg>';
-      out.push(ui.section('Where the chips went', [ui.picture(s, { max: 380 }), ps.length > 1 ? legend(ui, nm.map(function (n, i) { return { name: n, color: ui.color(i) }; })) : null,
+        for (var k = 0; k < 9; k++) {
+          var col = pSlot(PV[k]), sx = pad + k * sw, lit = hi != null && drops[hi].s === k;
+          if (k) s += '<rect x="' + (sx - 1) + '" y="' + slotTop + '" width="2" height="' + (plateY - slotTop) + '" fill="#c7cde8"/>';
+          s += '<rect x="' + (sx + 1.5) + '" y="' + plateY + '" width="' + (sw - 3) + '" height="20" rx="4" fill="' + col[1] + '"' + (lit ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
+          s += '<rect x="' + (sx + 1.5) + '" y="' + plateY + '" width="' + (sw - 3) + '" height="10" rx="4" fill="' + col[0] + '" opacity=".55"/>';
+          s += '<text x="' + (sx + sw / 2) + '" y="' + (plateY + 10.5) + '" text-anchor="middle" dominant-baseline="central" font-size="' + (PV[k] === 10000 ? 9.5 : 10) + '" font-weight="900" fill="' + col[2] + '" font-family="system-ui">' + (PV[k] === 10000 ? '$10K' : '$' + PV[k]) + '</text>';
+        }
+        // paths and chips: drop marker on the rail, chip stacked in its slot
+        var stack = [0, 0, 0, 0, 0, 0, 0, 0, 0], front = '';
+        drops.forEach(function (q, n) {
+          var x0 = pad + q.x * sw, x1 = pad + (q.s + 0.5) * sw, h = stack[q.s]++, y1 = plateY - 9 - h * 13, me = hi === n, dim = hi != null && !me;
+          var colr = ui.color(q.i), g = '<g' + (dim ? ' opacity=".28"' : '') + '>';
+          g += '<path d="M' + x0.toFixed(1) + ' 14 C ' + x0.toFixed(1) + ' ' + (top + 70) + ', ' + x1.toFixed(1) + ' ' + (slotTop - 60) + ', ' + x1.toFixed(1) + ' ' + y1 + '" fill="none" stroke="' + (me ? '#fff' : colr) + '" stroke-width="' + (me ? 2.5 : 1.6) + '"' + (me ? '' : ' stroke-dasharray="3 3" opacity=".55"') + '/>';
+          g += '<circle cx="' + x0.toFixed(1) + '" cy="14" r="5" fill="none" stroke="' + colr + '" stroke-width="2"/>';
+          g += '<circle cx="' + x1.toFixed(1) + '" cy="' + y1 + '" r="' + (me ? 8 : 6.5) + '" fill="' + colr + '" stroke="' + (me ? '#fff' : 'rgba(255,255,255,.85)') + '" stroke-width="' + (me ? 2.5 : 1.5) + '"/></g>';
+          if (me) front = g; else s += g;
+        });
+        return s + front + '</svg>';
+      };
+      var pic = ui.el('div'), note = ui.el('p', { class: 'dv-note' });
+      var showChip = function (n) {
+        var q = drops[n], v = PV[q.s];
+        pic.innerHTML = ''; pic.appendChild(ui.picture(board(n), { max: 380 }));
+        note.innerHTML = (ps.length > 1 ? '<b style="color:' + ui.color(q.i) + '">' + esc(nm[q.i] || '') + '</b>, chip ' + (q.k + 1) : 'Chip ' + (q.k + 1)) + ': let go above the ' + pName(PV[Math.min(8, Math.max(0, Math.floor(q.x)))]) + ' slot, landed in <b class="' + (v ? 'dv-good' : 'dv-bad') + '">' + (v === 10000 ? '$10,000' : '$' + v) + '</b>.';
+      };
+      var best = 0; drops.forEach(function (q, n) { if (PV[q.s] > PV[drops[best].s]) best = n; });
+      var items = drops.map(function (q, n) { var v = PV[q.s]; return { c: (v === 10000 ? 'big' : v === 0 ? 'l' : v >= 1000 ? 'w' : 'p') + (ps.length > 1 ? ' pc' : ''), pc: ui.color(q.i), t: String(n + 1), title: (nm[q.i] || '') + ' chip ' + (q.k + 1) + ': $' + v }; });
+      out.push(ui.section('Every chip · tap one', [roadStrip(ui, items, best, showChip), pic, note, ps.length > 1 ? legend(ui, nm.map(function (n, i) { return { name: n, color: ui.color(i) }; })) : null,
         ui.el('p', { class: 'dv-note', text: 'Rings at the top: where each chip was let go. Dots: the slot it landed in.' })], { icon: 'coins' }));
       var aimMid = drops.filter(function (q) { return q.x >= 4 && q.x <= 5; }).length, hit = drops.filter(function (q) { return q.s === 4; }).length, zero = drops.filter(function (q) { return PV[q.s] === 0; }).length;
-      out.push(ui.stats([['Chips dropped', drops.length], ['Aimed at $10K', aimMid], ['Landed on $10K', hit], ['Landed on $0', zero]]));
+      var tot = drops.reduce(function (a, q) { return a + PV[q.s]; }, 0);
+      out.unshift(ui.stats([ps.length === 1 ? ['Won', cash(tot)] : null, ['Chips dropped', drops.length], ['Best chip', cash(PV[drops[best].s])], ['Landed on $10K', hit], ['Landed on $0', zero], ['Aimed at $10K', aimMid]]));
+      var P = e.players || [], wn = P.filter(function (p) { return p.name === e.winner; })[0];
+      pfoot = (ui.el('div', { class: 'dv-foot', text: ps.length > 1 ? (wn ? wn.name + ' won with ' + cash(wn.score) + '.' : 'A tie.') + ' ' + drops.length + ' chips dropped, ' + hit + ' on the $10,000.'
+        : drops.length + ' chip' + (drops.length === 1 ? '' : 's') + ' for ' + cash(tot) + (hit ? ', ' + hit + ' on the $10,000' : '') + (zero ? ', ' + zero + ' on $0' : '') + '.' }));
     }
     // the Big Wheel spin that set each player's chips
     var spins = []; ps.forEach(function (p, i) { if (p.w && p.w.n) spins.push({ i: i, n: +p.w.n, j: p.w.j || +p.w.n === 7 }); });
@@ -546,7 +564,7 @@
         if (sp.j) sv += '<text x="' + (x + pw / 2) + '" y="' + (ph + 30) + '" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="900" letter-spacing="1.5" font-family="system-ui" fill="#e0b84e">JACKPOT</text>';
       });
       sv += '</svg>';
-      out.unshift(ui.section('The Big Wheel', [ui.picture(sv, { max: Math.min(420, SW) }), ui.el('p', { class: 'dv-note', text: 'The panel each spin stopped on: that many chips to drop.' })], { icon: 'star' }));
+      out.splice(drops.length ? 1 : 0, 0, ui.section('The Big Wheel', [ui.picture(sv, { max: Math.min(420, SW) }), ui.el('p', { class: 'dv-note', text: 'The panel each spin stopped on: that many chips to drop.' })], { icon: 'star' }));
     }
     // price game that earned the chips (games before the Big Wheel)
     var q = []; ps.forEach(function (p, i) { arr(p.q).forEach(function (x) { q.push({ i: i, x: x }); }); });
@@ -558,6 +576,7 @@
       });
       out.push(ui.section('Earning the chips', ui.table(multi ? ['', 'Prize', 'Shown → real', ''] : ['Prize', 'Shown', 'Real', ''], rows), { icon: 'eye' }));
     }
+    if (pfoot) out.push(pfoot);
     return ui.wrap(out);
   });
 
@@ -583,22 +602,42 @@
     var runs = arr(d.r), nm = names(e), out = [];
     runs.forEach(function (r, i) {
       var parts = [], seq = String(r.q || ''), lvl = 1, row = ui.el('div', { class: 'sg-run' });
-      seq.split('').forEach(function (ch) {
-        var n = lvl <= 6 ? 3 : lvl <= 12 ? 4 : 5;
-        row.appendChild(ui.el('span', { class: 'sg-p ' + (ch === '1' ? 'ok' : 'no') + (n > 3 ? ' t' + n : ''), text: String(lvl), title: 'Level ' + lvl + (ch === '1' ? ': found it' : ': missed') }));
+      var miss = arr(r.m).filter(function (x) { return x && x.a >= 0 && x.p >= 0; }), cups = ui.el('div'), btns = [], shown = 0;
+      // a miss: the cups lifted, the ball and the cup that was picked
+      var showMiss = function (x, b) {
+        btns.forEach(function (o) { o.classList.toggle('on', o === b); });
+        cups.innerHTML = '';
+        cups.appendChild(ui.el('div', { class: 'dv-sub', text: 'Level ' + x.l + ': ' + x.n + ' cups, ' + x.mv + ' moves. The ball was under cup ' + (x.a + 1) + ', the pick was cup ' + (x.p + 1) + '.' }));
+        cups.appendChild(ui.el('div', { class: 'hv-snap', style: { 'max-width': '360px', background: 'radial-gradient(120% 120% at 50% 0%,#1d6a70,#0b3439)' }, html: cupsSvg(x.n, x.a, x.p) }));
+      };
+      // match the misses kept (the last few) to the red marks, from the end
+      var reds = []; seq.split('').forEach(function (ch, k) { if (ch !== '1') reds.push(k); });
+      var missAt = {}; miss.slice().reverse().forEach(function (x, k) { var at = reds[reds.length - 1 - k]; if (at != null) missAt[at] = x; });
+      seq.split('').forEach(function (ch, k) {
+        var n = lvl <= 6 ? 3 : lvl <= 12 ? 4 : 5, x = missAt[k];
+        var b = ui.el(x ? 'button' : 'span', { type: x ? 'button' : null, class: 'sg-p ' + (ch === '1' ? 'ok' : 'no') + (n > 3 ? ' t' + n : '') + (x ? ' tap' : ''), text: String(lvl), title: 'Level ' + lvl + (ch === '1' ? ': found it' : ': missed') });
+        if (x) { btns.push(b); b.onclick = function () { showMiss(x, b); }; }
+        row.appendChild(b);
         if (ch === '1') lvl++;
       });
       if (seq) parts.push(row);
       var h = String(r.h || '').split(',');
       parts.push(ui.stats([['Levels cleared', r.c], ['Best streak', r.b], ['Most cups', r.mc], h.length === 3 ? ['Hardest shuffle', h[0] + ' moves', h[1] + ' cups · level ' + h[2]] : null]));
-      var miss = arr(r.m), last = miss[miss.length - 1];
-      if (last && last.a >= 0 && last.p >= 0) {
-        parts.push(ui.el('div', { class: 'dv-sub', text: (miss.length > 1 ? 'Last miss' : 'The miss') + ': level ' + last.l + ', ' + last.mv + ' moves' }));
-        parts.push(ui.el('div', { class: 'hv-snap', style: { 'max-width': '360px', background: 'radial-gradient(120% 120% at 50% 0%,#1d6a70,#0b3439)' }, html: cupsSvg(last.n, last.a, last.p) }));
+      if (miss.length) {
+        parts.push(cups);
+        var lastBtn = btns[btns.length - 1];
+        showMiss(miss[miss.length - 1], lastBtn || null);
+        if (btns.length > 1) parts.push(ui.el('p', { class: 'dv-note', text: 'Tap a red level to see that miss.' }));
       }
       out.push(ui.section(runs.length > 1 ? (nm[i] || 'Player ' + (i + 1)) + "'s run" : 'The run', parts, { icon: 'eye' }));
     });
     if (seqLegendNeeded(runs)) out.push(ui.el('p', { class: 'dv-note', text: 'Green: found the ball. Red: missed.' + (runs.some(function (r) { return r.mc > 3; }) ? ' A yellow ring means 4 cups, pink means 5.' : '') }));
+    var P = e.players || [];
+    if (P.length) {
+      var top = P.slice().sort(function (x, y) { return (y.score || 0) - (x.score || 0); });
+      out.push(ui.el('div', { class: 'dv-foot', text: P.length === 1 ? P[0].name + ' cleared ' + P[0].score + ' level' + (P[0].score === 1 ? '' : 's') + (d.lv === 1 ? ' on one miss.' : ' before the misses ran out.')
+        : e.winner ? e.winner + ' won, clearing ' + top[0].score + ' levels.' : 'A tie at ' + top[0].score + ' levels.' }));
+    }
     return ui.wrap(out);
   });
   function seqLegendNeeded(runs) { return runs.some(function (r) { return r.q; }); }
