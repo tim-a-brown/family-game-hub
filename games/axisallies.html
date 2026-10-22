@@ -914,6 +914,7 @@ function startTurn() {
   });
   S.turnOwn = S.own.slice(); S.capt = []; S.buy = {}; S.rep = {}; S.placed = {};
   S.bl = []; S.B = null; S.phase = 'buy';
+  aaRoundSnap();
   undoStack = [];
   ui.sel = -1; ui.pick = {}; ui.preview = null; ui.bankSel = null;
   save();
@@ -3330,11 +3331,25 @@ function beginTurnUI(first) {
 // ── Game over ──────────────────────────────────────────────────────────────
 // History detail: who held each territory at the end (one letter per map place), and each power's standing
 var AA_LETTER = { su: 's', de: 'd', uk: 'k', jp: 'j', us: 'u' };
+function aaOwnStr() { var own = ''; for (var t = 0; t < NT; t++) own += !M.on[t] || isSea(t) ? '.' : AA_LETTER[S.own[t]] || '-'; return own; }
+// The map and each power's income at the start of every round, for the history view: S.rh = {r0: first round kept,
+// o0: who held each place then, d: [what changed by each later round: place (2 base-36 characters) + new holder's letter],
+// i: {power: 'income,income,..'}, at: the last round kept, cur: the map as of then}
+function aaRoundSnap() {
+  try {
+    var o = aaOwnStr(), rh = S.rh;
+    if (!rh) { rh = S.rh = { r0: S.round, o0: o, d: [], i: {}, at: S.round, cur: o }; S.powers.forEach(function (p) { rh.i[p] = String(income(p)); }); return; }
+    if (rh.at === S.round) return;
+    var ch = ''; for (var t = 0; t < o.length; t++) if (o.charAt(t) !== rh.cur.charAt(t)) ch += (t < 36 ? '0' : '') + t.toString(36) + o.charAt(t);
+    rh.d.push(ch); rh.at = S.round; rh.cur = o;
+    S.powers.forEach(function (p) { rh.i[p] = (rh.i[p] != null ? rh.i[p] + ',' : '') + income(p); });
+  } catch (e) {}
+}
 function aaDetail(side) {
   try {
-    var own = '';
-    for (var t = 0; t < NT; t++) own += !M.on[t] || isSea(t) ? '.' : AA_LETTER[S.own[t]] || '-';
-    return {
+    var own = aaOwnStr();
+    var rh = S.rh && JSON.stringify(S.rh).length < 2600 ? { r0: S.rh.r0, o0: S.rh.o0, d: S.rh.d.slice(), i: S.rh.i } : undefined;
+    return { rh: rh,
       mp: S.mode === 'skirm' ? 's' : 'f', sd: side, r: S.round, own: own,
       ic: Object.keys(S.ic).filter(function (t) { return S.ic[t] && M.on[t]; }).join(','),
       pw: S.powers.map(function (p) {

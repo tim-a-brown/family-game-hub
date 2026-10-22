@@ -225,7 +225,7 @@
     S.fleets = [[null, null, null, null, null], [null, null, null, null, null]];
     S.shots = [blank(), blank()]; S.sunk = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]];
     S.st = [newStats(), newStats()]; S.dead = []; S.log = ''; S.started = Date.now(); Kit.gameStart();
-    S.firstBlood = -1; S.sinkOrder = [];
+    S.firstBlood = -1; S.sinkOrder = []; S.seq = '';
     if (S.players[1].cpu) S.fleets[1] = randomFleet();
     save(); render();
   }
@@ -424,7 +424,11 @@
 
   // ── Battle ────────────────────────────────────────────────────────────────
   function viewer() { return NET ? Math.max(0, NET.seat) : S.mode === 'cpu' ? 0 : (S.phase === 'place' ? S.placing : S.turn); }
-  function shoot(p, x) { var res = shootOn(S, p, x); fresh = { p: p, x: x }; return res; }
+  function shoot(p, x) {
+    var res = shootOn(S, p, x); fresh = { p: p, x: x };
+    if (S.seq != null) S.seq += p + (x < 10 ? '0' : '') + x;   // every shot in order, for the history replay (this device's games)
+    return res;
+  }
   // fires p's shot at x on game state S (also used on the online table's state, inside net.act)
   function shootOn(S, p, x) {
     var q = 1 - p, o = occ(S.fleets[q]), k = o[x], st = S.st[p], res = { hit: k >= 0, k: k, sunk: false, win: false };
@@ -760,7 +764,9 @@
     return { f0: G.fleets[0], f1: G.fleets[1], at0: G.shots[1].map(function (x) { return x || '.'; }).join(''), at1: G.shots[0].map(function (x) { return x || '.'; }).join(''),
       sk0: G.sunk[0].join(''), sk1: G.sunk[1].join(''), w: w,
       st: G.st.map(function (s) { return { s: s.shots, h: s.hits, b: s.best }; }),
-      order: (G.sinkOrder || []).map(function (x) { return { p: x.p, k: x.k }; }), fb: G.firstBlood };
+      order: (G.sinkOrder || []).map(function (x) { return { p: x.p, k: x.k }; }), fb: G.firstBlood,
+      // every shot in order ('seat' + two-digit square), when this device kept them (games played here, not online)
+      sq: G.seq && G.seq.length === 3 * (G.st[0].shots + G.st[1].shots) ? G.seq : undefined };
   }
   function endGame(w) {
     var l = 1 - w, W = S.players[w], st = S.st[w];

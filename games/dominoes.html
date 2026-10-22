@@ -482,6 +482,7 @@
   function deal() {
     var n = S.players.length, per = n === 2 ? 7 : 5, set = shuffle(fullSet());
     S.hand++; S.line = null; S.passes = 0; S.last = null; S.res = null; S.undo = null; S.undoBy = -1; sel = -1;
+    S.pl = '';   // this hand, move by move, for the history replay (see domDetail)
     S.players.forEach(function (p) {
       p.hand = set.splice(0, per).sort(function (a, b) { return (b[1] + b[0] * 0.01) - (a[1] + a[0] * 0.01) || b[0] - a[0]; });
       p.drew = 0;
@@ -568,6 +569,7 @@
       if (!S.hl.bigPlay || pts > S.hl.bigPlay.pts) S.hl.bigPlay = { name: who(pi), pts: pts, hand: S.hand };
     }
     S.last = { p: pi, id: tid(t), t: t, pts: pts };
+    if (S.pl != null) S.pl += (S.pl ? ' ' : '') + pi + t[0] + t[1] + (o.lead ? 'L' : end) + (pts || '');
     sel = -1; lock = true; done = true;
     save(); paint({ fly: { id: tid(t), from: from, cpu: P.cpu && pi !== S.viewer } });
     var dur = 430;
@@ -596,6 +598,7 @@
     P.drewTurn = (P.drewTurn || 0) + 1;
     var t = S.bone.pop(); P.hand.push(t);
     P.drew = (P.drew || 0) + 1;
+    if (S.pl != null) S.pl += ' ' + pi + 'd';
     if (!S.hl.draw || P.drewTurn > S.hl.draw.n) S.hl.draw = { name: who(pi), n: P.drewTurn, hand: S.hand };
     lock = true; save();
     var from = boneRect();
@@ -613,6 +616,7 @@
     noteLacks(pi);
     S.passes++; done = true;
     S.last = { p: pi, pass: true };
+    if (S.pl != null) S.pl += ' ' + pi + 'x';
     say(pi, 'Pass'); Kit.sfx('tap');
     S.players[pi].drewTurn = 0;
     if (S.passes >= S.players.length) { save(); later(function () { endHand('block', -1); }, 700); return; }
@@ -700,7 +704,10 @@
       return {
         v: S.variant, h: S.hand, k: r ? r.kind : '', wi: r ? r.wi : -1, tm: S.teams ? 1 : 0,
         ln: L ? { r: '' + L.root.t[0] + L.root.t[1], sp: L.spin ? 1 : 0, W: enc(L.arms.W), E: enc(L.arms.E), N: enc(L.arms.N), S: enc(L.arms.S) } : null,
-        hd: hands.map(function (h) { return h.map(function (t) { return '' + t[0] + t[1]; }).join(''); }), bn: S.bone ? S.bone.length : 0
+        hd: hands.map(function (h) { return h.map(function (t) { return '' + t[0] + t[1]; }).join(''); }), bn: S.bone ? S.bone.length : 0,
+        // the last hand move by move: 'seat a b end points' run together per play (end L = the lead, E W N S), 'seat d' a
+        // tile drawn from the boneyard, 'seat x' a pass; space separated
+        pl: S.pl && S.pl.length < 1500 ? S.pl : undefined
       };
     } catch (e) { return null; }
   }

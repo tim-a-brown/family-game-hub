@@ -584,7 +584,21 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   });
 
   // ═══ Save / resume ══════════════════════════════════════════════════════
+  // Everyone's worth at the start of each round, for the history chart: {r0: first round, r: last round kept, w: ['1500,1500', ..]}
+  // (in the save for games here; online, this device keeps it while the table is open)
+  var netWk = null;
+  function trackWorth(st, wk) {
+    if (!st || !st.players || st.phase === 'over' || st.pick || wk.r === st.round) return;
+    wk.r = st.round; wk.w.push(st.players.map(function (p, i) { return p.out ? 0 : M.worth(st, i); }).join(','));
+  }
+  function worthDetail(wk) {
+    if (!wk || !wk.w || wk.w.length < 2) return undefined;
+    var w = wk.w.slice(), step = Math.ceil(w.length / 40), out = [];
+    for (var i = 0; i < w.length; i += step) out.push(w[i]);
+    return { r0: wk.r0, s: step, w: out };
+  }
   function save() {
+    if (S && mode !== 'online' && S.phase !== 'over') trackWorth(S, S.wk || (S.wk = { r0: S.round, r: 0, w: [] }));
     if (!S || mode === 'online') return;
     if (S.phase === 'over') { clearSave(); return; }
     try { localStorage.setItem(SAVE, JSON.stringify({ S: S, mode: mode })); } catch (e) {}
@@ -2059,6 +2073,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       summary: P[w].name + ' won · ' + (S.endWhy === 'time' ? 'richest at the end' : 'last one standing') + ' · ' + S.round + ' rounds',
       detail: { o: o, h: hs, m: mo, tk: P.map(function (p) { return p.tok; }), w: P.map(function (p, i) { return M.worth(S, i); }), c: P.map(function (p) { return p.cash; }),
         rg: S.st.map(function (s) { return s.rentGot; }), out: S.out.map(function (b) { return { p: b.p, to: b.to, n: b.n }; }), r: S.round, t: S.turn, why: S.endWhy,
+        wh: worthDetail(mode === 'online' ? netWk : S.wk),
         big: S.big, opt: [S.opts.fp ? 'fp' : '', S.opts.go400 ? 'go400' : '', S.opts.noAuction ? 'noauction' : '', S.opts.len !== 'all' ? S.opts.len : ''].filter(Boolean).join(',') }
     });
   }
@@ -2152,6 +2167,9 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   function netShow(net, info) {
     NET = net;
     var st = clone(net.state); if (!st) return;
+    var wkKey = net.code + ':' + st.started;
+    if (!netWk || netWk.key !== wkKey) netWk = { key: wkKey, r0: st.round, r: 0, w: [] };
+    trackWorth(st, netWk);
     if (PK && PK.closing) { chain = chain.then(function () { netShow(net, info); }); return; }   // the box is closing: after that
     var prev = info.fresh || info.again ? null : info.prev;
     if (st.pick) { enterPick(); pickDraw(st, prev); return; }

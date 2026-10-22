@@ -858,7 +858,7 @@
     p.score += r.score;
     var drawn = draw(p, st);
     var mainW = r.words[0].w;
-    st.log.push({ k: 'play', p: seat, w: r.words.map(function (w) { return w.w; }).join(', '), m: mainW, s: r.score, b: r.bingo ? 1 : 0, t: tiles.length });
+    st.log.push({ k: 'play', p: seat, w: r.words.map(function (w) { return w.w; }).join(', '), m: mainW, s: r.score, b: r.bingo ? 1 : 0, t: tiles.length, q: tiles.map(function (t) { return t.i; }) });
     st.last = tiles.map(function (t) { return t.i; });
     st.lastWords = r.words.map(function (w) { return { w: w.w, s: w.s, sq: w.sq }; });
     st.scoreless = r.score > 0 ? 0 : st.scoreless + 1;
@@ -1731,6 +1731,17 @@
     var o = { mode: S.mode, level: S.level, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; }) };
     newGame(o);
   }
+  // Every turn for the history replay: 'seat:WORD:score:cells' (cells: the row and column letters of each tile laid, then
+  // '*' for a bingo), 'seat:#n' a swap of n tiles, 'seat:-' a pass. Left out if a play is missing its cells or it runs long.
+  function turnList() {
+    var L = 'abcdefghijklmno', out = [], ok = true;
+    S.log.forEach(function (e) {
+      if (e.k === 'play') { if (!e.q) ok = false; else out.push(e.p + ':' + e.m + ':' + e.s + ':' + e.q.map(function (i) { return L.charAt(Math.floor(i / 15)) + L.charAt(i % 15); }).join('') + (e.b ? '*' : '')); }
+      else if (e.k === 'swap') out.push(e.p + ':#' + e.x);
+      else if (e.k === 'pass') out.push(e.p + ':-');
+    });
+    return ok && out.join('').length < 2400 ? out : undefined;
+  }
   function record() {
     var R = S.result, rows = [];
     for (var r = 0; r < 15; r++) { var row = ''; for (var c = 0; c < 15; c++) row += S.board[r * 15 + c] || '.'; rows.push(row); }
@@ -1757,7 +1768,7 @@
       rounds: rounds.length > 1 && rounds.length <= 40 ? { labels: rounds.map(function (x, k) { return k === rounds.length - 1 ? 'End' : String(k + 1); }), scores: rounds.map(function (row) { return row.map(function (v) { return v == null ? 0 : v; }); }) } : null,
       highlights: hl,
       detail: { b: rows, top: top, bg: S.players.map(function (p, i) { return plays.filter(function (e) { return e.p === i && e.b; }).length; }), mv: S.players.map(function (p, i) { return plays.filter(function (e) { return e.p === i; }).length; }),
-        end: R.type, o: R.seat, adj: R.adj, left: R.left, tn: S.n, lv: S.mode === 'cpu' ? S.level : '' }
+        end: R.type, o: R.seat, adj: R.adj, left: R.left, tn: S.n, lv: S.mode === 'cpu' ? S.level : '', tl: turnList() }
     });
   }
 
