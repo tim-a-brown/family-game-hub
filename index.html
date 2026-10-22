@@ -657,7 +657,10 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 :root .tiles .g:not(.ct) .go::after{display:none;}
 :root .tiles .g:not(.ct) .go::before{content:"";flex:none;display:block;width:var(--arth);min-height:var(--arth);
   background:radial-gradient(120% 90% at 50% 30%,color-mix(in srgb,var(--c) 78%,#fff 22%),var(--c) 60%,color-mix(in srgb,var(--c) 80%,#000 20%));}
-:root .tiles .g:not(.ct) .gicon{position:absolute;z-index:1;width:62px;height:62px;left:calc(var(--arth) / 2 - 31px);top:calc(50% - 30px);filter:drop-shadow(0 5px 7px rgba(0,0,0,.3));}
+/* the icon fills most of its square (casino's round chip a touch smaller, so its edge stays inside) */
+:root .tiles .g:not(.ct){--gi:81px;}
+:root .tiles .g[data-cat="casino"]:not(.ct){--gi:79px;}
+:root .tiles .g:not(.ct) .gicon{position:absolute;z-index:1;width:var(--gi);height:var(--gi);left:calc(var(--arth) / 2 - var(--gi) / 2);top:calc(50% - var(--gi) / 2 + 1px);filter:drop-shadow(0 5px 7px rgba(0,0,0,.3));}
 :root .tiles .g:not(.ct) .go:active .gicon{transform:scale(.9) rotate(-6deg);}
 :root .tiles .g:not(.ct) .txt{position:static;inset:auto;display:block;flex:1;min-width:0;align-self:center;padding:8px 26px 8px 10px;}
 :root .tiles .g:not(.ct) .txt b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:.86rem;line-height:1.15;color:var(--text);text-shadow:none;white-space:normal;overflow:hidden;}
@@ -825,7 +828,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     }
     // the tile frame is one colour per section (the icon keeps the game's own shade)
     var cat = GAME_CATS.filter(function (x) { return x.id === g.cat; })[0];
-    var r = el('div', { class: 'g', 'data-id': g.id, style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color } });
+    var r = el('div', { class: 'g', 'data-id': g.id, 'data-cat': g.cat, style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color } });
     var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag + '. ' + players(g) + ' players' }, [
       g.cart ? el('span', { class: 'gicon ct-ic ct-' + g.sys }, [cartLabel(g)]) : el('span', { html: GameIcon(g.id, { bare: tiles }), style: { display: 'contents' } }),
       el('span', { class: 'txt' }, [el('b', { text: g.name, class: /\S{10,}/.test(g.name) ? 'long' : g.name.length > 11 ? 'two' : '' })].concat(tiles ? [badge(g)] : [])),
