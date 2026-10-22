@@ -440,8 +440,9 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .rail:not(.editing) .sbox.seen{animation:none;}
 .sbox .art{height:100px;display:grid;place-items:center;position:relative;
   background:radial-gradient(120% 90% at 50% 30%,color-mix(in srgb,var(--c) 78%,#fff 22%),var(--c) 60%,color-mix(in srgb,var(--c) 80%,#000 20%));}
-.sbox .art .gicon{width:64px;height:64px;filter:drop-shadow(0 5px 7px rgba(0,0,0,.3));transition:transform .35s var(--spring);}
+.sbox .art .gicon{width:83px;height:83px;filter:drop-shadow(0 5px 7px rgba(0,0,0,.3));transition:transform .35s var(--spring);}
 .sbox:active .art .gicon{transform:scale(.9) rotate(-6deg);}
+.sbox[data-cat="casino"] .art .gicon{width:81px;height:81px;}
 .sbox .ago{position:absolute;top:6px;right:8px;font-size:.68rem;font-weight:900;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);}
 .sbox .nm{padding:8px 9px 0;font-family:'Bungee',var(--display);font-weight:400;font-size:.8rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .sbox .st{padding:2px 9px 10px;font-size:.72rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -462,7 +463,8 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .nbar{--c:#8b5cf6;display:flex;align-items:center;gap:11px;min-height:54px;padding:7px 8px 7px 9px;border-radius:15px;text-decoration:none;color:var(--text);
   background:var(--surface);box-shadow:inset 3px 0 0 var(--c);transition:transform .15s var(--spring);}
 .nbar:active{transform:scale(.98);}
-.nbar .gicon{width:38px;height:38px;flex:none;}
+.nbar .gicon{width:49px;height:49px;flex:none;}
+.nbar[data-cat="casino"] .gicon{width:48px;height:48px;}
 .nbar .tx{flex:1;min-width:0;}
 .nbar b{display:block;font-family:'Bungee',var(--display);font-weight:400;font-size:.92rem;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .nbar small{display:block;font-size:.76rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -1184,7 +1186,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // puts a delete badge on each; press and hold (or right-click) offers the same delete.
   function shelfBox(x) {
     var g = x.g, cat = GAME_CATS.filter(function (c) { return c.id === g.cat; })[0], old = Date.now() - x.r.ts > 7 * 864e5;
-    var a = el('a', { class: 'sbox' + (old ? ' old' : ''), href: 'games/' + (x.r.file || g.play) + '.html', draggable: 'false', style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color }, title: g.name + ': ' + (x.r.label || 'In progress') }, [
+    var a = el('a', { class: 'sbox' + (old ? ' old' : ''), 'data-cat': g.cat, href: 'games/' + (x.r.file || g.play) + '.html', draggable: 'false', style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color }, title: g.name + ': ' + (x.r.label || 'In progress') }, [
       el('span', { class: 'art' }, [g.cart ? el('span', { class: 'gicon ct-ic ct-' + g.sys }, [cartLabel(g)]) : el('span', { html: GameIcon(g.id, { bare: true }), style: { display: 'contents' } }), el('span', { class: 'ago', text: ago(x.r.ts, true) })]),
       el('span', { class: 'nm', text: g.name }),
       el('span', { class: 'st', text: x.r.label || 'In progress' })
@@ -1211,7 +1213,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // An online game: a bar. Your move: the game's colour, a Your turn tag and a play button; theirs: quiet
   function netBar(x) {
     var mine = x.n.mine;
-    return el('a', { class: 'nbar ' + (mine ? 'turn' : 'wait'), href: x.n.href, style: { '--c': x.g.color }, title: x.g.name + (mine ? ': your turn' : ': ' + x.n.vs + '’s turn') }, [
+    return el('a', { class: 'nbar ' + (mine ? 'turn' : 'wait'), 'data-cat': x.g.cat, href: x.n.href, style: { '--c': x.g.color }, title: x.g.name + (mine ? ': your turn' : ': ' + x.n.vs + '’s turn') }, [
       el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
       el('span', { class: 'tx' }, [el('b', { text: x.g.name }), el('small', { text: mine ? 'vs ' + x.n.vs + ' · ' + ago(x.n.at) : x.n.vs + '’s turn · ' + ago(x.n.at) })]),
       mine ? el('span', { class: 'yt', html: '<i></i>Your turn' }) : el('span', { class: 'a', text: ago(x.n.at, true) }),
