@@ -37,7 +37,8 @@
   function possLow(n) { return n === 'You' ? 'your' : Kit.poss(n); }
   function plainName(e, i) { var p = (e.players || [])[i]; return p ? String(p.name).replace(/ \((Black|White)\)$/, '') : ''; }
   // A replay slider under a picture: show(n) redraws for step n (0..max)
-  function slider(ui, max, show) {
+  function slider(ui, max, show, o) {
+    if (HistView.boardUI) return HistView.boardUI.replay(ui, max, show, o);
     var label = ui.el('b'), rng = ui.el('input', { type: 'range', min: '0', max: String(max), value: String(max), class: 'hv-range', 'aria-label': 'Move' });
     rng.addEventListener('input', function () { label.textContent = show(+rng.value) || ''; });
     label.textContent = show(max) || '';
@@ -301,48 +302,105 @@
     return ui.wrap(out);
   });
 
-  // ── Mancala: the pits when the game ended, then the race between the stores ──
+  // ── Mancala: the pits when the game ended, a replay of every sowing, and the race between the stores ──
   var MC_GLASS = ['#3d8bff', '#2fc56b', '#ffad33', '#ff4d6d', '#a479ff', '#35d0d0', '#f2f2f2'];
-  function mcSvg(b, cols) {
+  // o: {from: pit just played, to: where its last stone landed, cap: [pits emptied by a capture]}
+  function mcSvg(b, cols, o) {
+    o = o || {};
     var W = 360, H = 150, sw = 40, pw = (W - 20 - 2 * sw - 24) / 6, s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Mancala board">';
-    s += '<defs><radialGradient id="mcp" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#3b220e"/><stop offset="1" stop-color="#5e3a1a"/></radialGradient></defs>';
+    s += '<defs><radialGradient id="mcp" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#3b220e"/><stop offset="1" stop-color="#5e3a1a"/></radialGradient>' +
+      '<radialGradient id="mcg" cx=".35" cy=".3" r=".7"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>';
     s += '<rect width="' + W + '" height="' + H + '" rx="22" fill="#9a6431"/><rect x="3" y="3" width="' + (W - 6) + '" height="' + (H - 6) + '" rx="20" fill="none" stroke="rgba(255,230,180,.18)" stroke-width="2"/>';
-    var seed = 7; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
-    function stones(cx, cy, rx, ry, n) {
-      var t = '', show = Math.min(n, 14);
-      for (var k = 0; k < show; k++) { var a = rnd() * 6.283, rr = Math.sqrt(rnd()); t += '<circle cx="' + (cx + Math.cos(a) * rr * rx).toFixed(1) + '" cy="' + (cy + Math.sin(a) * rr * ry).toFixed(1) + '" r="4" fill="' + MC_GLASS[Math.floor(rnd() * 7)] + '" opacity=".92"/>'; }
+    // each pit scatters its stones the same way every time, so a replay only adds and takes away stones
+    function stones(pit, cx, cy, rx, ry, n) {
+      var seed = pit * 7919 + 13, t = '', show = Math.min(n, 16);
+      function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+      for (var k = 0; k < show; k++) {
+        var a = rnd() * 6.283, rr = Math.sqrt(rnd()), c = MC_GLASS[Math.floor(rnd() * 7)], X = (cx + Math.cos(a) * rr * rx).toFixed(1), Y = (cy + Math.sin(a) * rr * ry).toFixed(1);
+        t += '<circle cx="' + X + '" cy="' + (+Y + .8).toFixed(1) + '" r="4" fill="rgba(0,0,0,.35)"/><circle cx="' + X + '" cy="' + Y + '" r="4" fill="' + c + '" opacity=".95"/><circle cx="' + X + '" cy="' + Y + '" r="4" fill="url(#mcg)"/>';
+      }
       return t;
     }
     function count(cx, y, n, c) { return '<text x="' + cx + '" y="' + y + '" text-anchor="middle" font-size="13" font-weight="900" fill="' + (c || '#ffe9c4') + '" font-family="system-ui">' + n + '</text>'; }
     // player 1's store on the left, player 0's on the right; player 0's pits along the bottom, left to right
-    [[13, 10], [6, W - 10 - sw]].forEach(function (q, j) {
+    [[13, 10], [6, W - 10 - sw]].forEach(function (q) {
       var x = q[1], n = b[q[0]];
-      s += '<rect x="' + x + '" y="22" width="' + sw + '" height="' + (H - 44) + '" rx="' + sw / 2 + '" fill="url(#mcp)"/>' + stones(x + sw / 2, H / 2, sw * 0.28, H * 0.26, n) +
+      s += '<rect x="' + x + '" y="22" width="' + sw + '" height="' + (H - 44) + '" rx="' + sw / 2 + '" fill="url(#mcp)"/>' + stones(q[0], x + sw / 2, H / 2, sw * 0.28, H * 0.26, n) +
         '<rect x="' + (x + 4) + '" y="' + (H / 2 - 11) + '" width="' + (sw - 8) + '" height="22" rx="7" fill="rgba(0,0,0,.55)"/>' + count(x + sw / 2, H / 2 + 5, n, '#fff');
+      if (o.to === q[0]) s += '<rect x="' + (x - 3) + '" y="19" width="' + (sw + 6) + '" height="' + (H - 38) + '" rx="' + (sw / 2 + 3) + '" fill="none" stroke="#fff" stroke-width="2.5"/>';
     });
     for (var i = 0; i < 6; i++) {
       var xb = 10 + sw + 12 + i * pw + pw / 2, xt = 10 + sw + 12 + (5 - i) * pw + pw / 2, r = Math.min(pw * 0.42, 22);
       [[i, xb, H - 42], [i + 7, xt, 42]].forEach(function (q) {
-        s += '<circle cx="' + q[1] + '" cy="' + q[2] + '" r="' + r + '" fill="url(#mcp)"/>' + stones(q[1], q[2], r * 0.55, r * 0.55, b[q[0]]);
-        s += count(q[1], q[2] + (q[2] > H / 2 ? r + 14 : -r - 5) , b[q[0]]);
+        var cp = o.cap && o.cap.indexOf(q[0]) >= 0;
+        s += '<circle cx="' + q[1] + '" cy="' + q[2] + '" r="' + r + '" fill="url(#mcp)"/>' + stones(q[0], q[1], q[2], r * 0.55, r * 0.55, b[q[0]]);
+        if (o.from === q[0] || o.to === q[0]) s += '<circle cx="' + q[1] + '" cy="' + q[2] + '" r="' + (r + 3) + '" fill="none" stroke="' + (o.from === q[0] ? '#ffd54a' : '#fff') + '" stroke-width="2.5"' + (o.from === q[0] ? ' stroke-dasharray="5 3"' : '') + '/>';
+        if (cp) s += '<circle cx="' + q[1] + '" cy="' + q[2] + '" r="' + (r + 3) + '" fill="none" stroke="#ff5a5a" stroke-width="2.5"/>';
+        s += count(q[1], q[2] + (q[2] > H / 2 ? r + 14 : -r - 5), b[q[0]]);
       });
     }
     return s + '</svg>';
   }
+  // standard Kalah: one sowing on a 14-count board (pits 0-5 + store 6 for the first player, 7-12 + store 13 for the second)
+  function mcSow(b, pit) {
+    b = b.slice(); var pl = pit > 6 ? 1 : 0, mine = pl ? 13 : 6, theirs = pl ? 6 : 13, n = b[pit], c = pit, out = { pl: pl, n: n, cap: 0 };
+    b[pit] = 0;
+    while (n > 0) { c = (c + 1) % 14; if (c === theirs) c = (c + 1) % 14; b[c]++; n--; }
+    out.to = c; out.extra = c === mine;
+    if (!out.extra && (pl ? c >= 7 && c <= 12 : c <= 5) && b[c] === 1 && b[12 - c] > 0) { out.cap = b[12 - c] + 1; out.capAt = [c, 12 - c]; b[mine] += out.cap; b[c] = 0; b[12 - c] = 0; }
+    var e0 = true, e1 = true; for (var i = 0; i < 6; i++) { if (b[i]) e0 = false; if (b[i + 7]) e1 = false; }
+    out.end = e0 || e1; out.b = b;
+    return out;
+  }
   R('mancala', function (e, ui) {
     var d = e.dt; if (!d || !d.b) return null;
-    var nm = [plainName(e, 0), plainName(e, 1)], cols = (d.col || []).map(function (c, i) { return c || Kit.color(i); }), out = [];
+    var B = HistView.boardUI, nm = [plainName(e, 0), plainName(e, 1)], cols = (d.col || []).map(function (c, i) { return c || Kit.color(i); }), out = [];
     var left = [0, 0]; for (var i = 0; i < 6; i++) { left[0] += d.b[i]; left[1] += d.b[i + 7]; }
-    out.push(ui.section('When the game ended', [ui.picture(mcSvg(d.b, cols), { frame: 'wood', max: 380 }),
-      ui.el('small', { class: 'hv-note', text: 'Bottom row and right store: ' + nm[0] + '. Top row and left store: ' + nm[1] + '.' + (d.sw && d.sw.n ? ' ' + nm[d.sw.w] + ' then swept the last ' + d.sw.n + ' stone' + (d.sw.n === 1 ? '' : 's') + ' into their store.' : '') })]));
-    if (d.t0 && d.t0.length > 1) {
-      var tot = d.per * 12 || 48, fin = (e.players || []).map(function (p) { return typeof p.score === 'number' ? p.score : null; });
-      out.push(ui.section('Stores over the game', [ui.picture(spark([{ v: [0].concat(d.t0, fin[0] != null ? [fin[0]] : []), c: cols[0] }, { v: [0].concat(d.t1, fin[1] != null ? [fin[1]] : []), c: cols[1] }], { lo: 0, hi: Math.max(tot / 2 + 4, Math.max.apply(null, d.t0.concat(d.t1, fin.filter(function (x) { return x != null; })))), mid: tot / 2, aria: 'Stores over the game' }), { frame: 'dark' }),
-        ui.chips([{ t: nm[0], c: cols[0], on: 1 }, { t: nm[1], c: cols[1], on: 1 }, { t: 'Dashed line: half the stones (' + tot / 2 + ')' }])]));
+    var fin = (e.players || []).map(function (p) { return typeof p.score === 'number' ? p.score : null; });
+    var w = fin[0] != null && fin[1] != null ? (fin[0] > fin[1] ? 0 : fin[1] > fin[0] ? 1 : -1) : -1;
+    // the replay: every board from the start, rebuilt from the pits played
+    var mv = String(d.m || ''), steps = null;
+    if (mv.length > 1 && d.per) {
+      var bd = []; for (i = 0; i < 14; i++) bd.push(i === 6 || i === 13 ? 0 : d.per);
+      steps = [{ b: bd }];
+      for (i = 0; i < mv.length; i++) { var r = mcSow(bd, mv.charCodeAt(i) - 97); steps.push(r); bd = r.b; }
+      if (bd.join() !== d.b.join()) steps = null;   // (doesn't match how it ended: show the end only)
     }
+    var snap = ui.picture(mcSvg(d.b, cols), { frame: 'wood', max: 380 });
+    var note = ui.el('small', { class: 'hv-note', text: 'Bottom row and right store: ' + nm[0] + '. Top row and left store: ' + nm[1] + '.' + (d.sw && d.sw.n ? ' ' + nm[d.sw.w] + ' then swept the last ' + d.sw.n + ' stone' + (d.sw.n === 1 ? '' : 's') + ' into their store.' : '') });
     var caps = d.caps || [], ct = [0, 0], cs = [0, 0]; caps.forEach(function (c) { ct[c.w]++; cs[c.w] += c.n; });
+    var big = caps.slice().sort(function (a, b) { return b.n - a.n; })[0];
+    out.push(ui.stats([['Final', fin[0] != null ? fin[0] + '–' + fin[1] : null, w >= 0 ? nm[w] + ' by ' + Math.abs(fin[0] - fin[1]) : 'tied'], ['Moves', d.mv || null],
+      ['Biggest capture', big ? big.n : null, big ? nm[big.w] : ''], ['Extra turns', d.ex ? d.ex[0] + d.ex[1] : null, d.ex ? d.ex[0] + '–' + d.ex[1] : '']]));
+    out.push(ui.section(steps ? 'The board' : 'When the game ended', [snap, note]));
+    var tot = d.per * 12 || 48, ch = null;
+    if (d.t0 && d.t0.length > 1) {
+      var s0 = [0].concat(d.t0, fin[0] != null ? [fin[0]] : []), s1 = [0].concat(d.t1, fin[1] != null ? [fin[1]] : []);
+      ch = HistView.boardUI.chart(ui, [{ v: s0, c: cols[0] }, { v: s1, c: cols[1] }], { lo: 0, hi: Math.max(tot / 2 + 4, Math.max.apply(null, s0.concat(s1))), mid: tot / 2, midLabel: 'Half the stones: ' + tot / 2, from: 'Start', to: 'End', aria: 'Stones in each store over the game' });
+    }
+    if (steps) {
+      var N = steps.length - 1;
+      out.push(ui.section('Replay', B.replay(ui, N, function (n) {
+        var st = steps[n], pit = n ? mv.charCodeAt(n - 1) - 97 : -1;
+        snap.innerHTML = mcSvg(n === N ? d.b : st.b, cols, n ? { from: pit, to: st.to, cap: st.capAt } : {});
+        if (ch) ch.at(n);
+        if (!n) return 'Start: ' + d.per + ' stones in every pit';
+        return 'Move ' + n + ' · ' + nm[st.pl] + ' sowed ' + st.n + (st.n === 1 ? ' stone' : ' stones') + (st.extra ? ', the last one in the store: goes again' : st.cap ? ' and captured ' + st.cap : '') + (st.end ? '. A side is empty: game over' : '');
+      }, { start: N })));
+    }
+    if (ch) out.push(ui.section('Stores over the game', [ch, B.key(ui, [[nm[0], cols[0]], [nm[1], cols[1]], ['Dashed: half the stones', 'rgba(255,255,255,.3)']])]));
     out.push(ui.table(['', nm[0], nm[1]], [['Captures', ct[0], ct[1]], ['Stones captured', cs[0], cs[1]], ['Extra turns', d.ex ? d.ex[0] : null, d.ex ? d.ex[1] : null], ['Left on side at end', left[0], left[1]]]));
-    out.push(ui.stats([['Moves', d.mv || null], ['Stones per pit', d.per || null], ['Series', d.ser ? d.ser[0] + '–' + d.ser[1] + (d.ser[2] ? ' (' + d.ser[2] + ' tied)' : '') : null]]));
+    if (d.ser && d.ser[0] + d.ser[1] + (d.ser[2] || 0) > 1) out.push(ui.stats([['Series', d.ser[0] + '–' + d.ser[1] + (d.ser[2] ? ' (' + d.ser[2] + ' tied)' : '')], ['Stones per pit', d.per || null]]));
+    // what decided it
+    var why = '';
+    if (w >= 0) {
+      var margin = Math.abs(fin[0] - fin[1]);
+      why = cs[w] - cs[1 - w] >= Math.max(4, margin / 2) ? nm[w] + ' won it on captures: ' + cs[w] + ' stones taken to ' + cs[1 - w]
+        : d.sw && d.sw.w === w && d.sw.n >= margin ? 'The sweep decided it: ' + nm[w] + ' kept the ' + d.sw.n + ' stones left on their side'
+        : d.ex && d.ex[w] - d.ex[1 - w] >= 3 ? nm[w] + ' strung together more extra turns (' + d.ex[w] + ' to ' + d.ex[1 - w] + ')'
+        : nm[w] + ' won ' + fin[w] + ' to ' + fin[1 - w];
+    } else if (fin[0] != null) why = 'Dead even: ' + fin[0] + ' stones each';
+    out.push(B.foot(ui, why, 'trophy'));
     return ui.wrap(out);
   });
 
@@ -414,32 +472,89 @@
     return ui.wrap(out);
   });
 
-  // Scrabble: the final board (premium squares and maple tiles; blanks in red), the best plays, and each player's game
+  // Scrabble: the board (premium squares and maple tiles; blanks in red), every turn in a strip you tap to see the board
+  // as it was then with that word lit, the score race, the best plays, and each player's game
+  var SC_PREM = ['T..d...T...d..T', '.D...t...t...D.', '..D...d.d...D..', 'd..D...d...D..d', '....D.....D....', '.t...t...t...t.', '..d...d.d...d..', 'T..d...*...d..T'];
+  var SC_FILL = { T: '#d6493b', D: '#f2aca1', '*': '#f2aca1', t: '#2b80c2', d: '#a4d2ec', '.': '#ece3c7' };
+  var SC_LAB = { T: 'TW', D: 'DW', t: 'TL', d: 'DL' };
+  var SC_VAL = { A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10 };
+  // rows: the final board; show: cells to draw (null = all); hot: cells laid this turn; col: their player's colour
+  function scSvg(rows, show, hot, col) {
+    var cs = 20, g = 1, W = 15 * cs + 16 * g, s = '<svg viewBox="0 0 ' + W + ' ' + W + '" role="img" aria-label="Scrabble board"><rect width="' + W + '" height="' + W + '" fill="#1d4c40"/>', top = '';
+    for (var r = 0; r < 15; r++) for (var c = 0; c < 15; c++) {
+      var i = r * 15 + c, x = g + c * (cs + g), y = g + r * (cs + g), ch = rows[r].charAt(c), pm = SC_PREM[r <= 7 ? r : 14 - r].charAt(c);
+      if (ch && ch !== '.' && (!show || show[i])) {
+        var blank = ch >= 'a' && ch <= 'z', L = ch.toUpperCase(), h = hot && hot[i];
+        var t = '<rect x="' + x + '" y="' + y + '" width="' + cs + '" height="' + cs + '" rx="3" fill="' + (h ? '#ffe2a6' : '#efd39c') + '"/><rect x="' + x + '" y="' + (y + cs - 2.5) + '" width="' + cs + '" height="2.5" rx="1" fill="#c99c5a"/>' +
+          '<text x="' + (x + cs * 0.46) + '" y="' + (y + cs * 0.5) + '" text-anchor="middle" dominant-baseline="central" font-size="12.5" font-weight="800" fill="' + (blank ? '#9a3d1e' : '#2a1a0c') + '" font-family="ui-rounded,system-ui,sans-serif">' + L + '</text>' +
+          (blank ? '' : '<text x="' + (x + cs - 3) + '" y="' + (y + cs - 4.5) + '" text-anchor="end" font-size="5.5" font-weight="800" fill="#2a1a0c" font-family="system-ui,sans-serif">' + SC_VAL[L] + '</text>');
+        if (h) top += '<rect x="' + (x - 1) + '" y="' + (y - 1) + '" width="' + (cs + 2) + '" height="' + (cs + 2) + '" rx="3.5" fill="none" stroke="' + (col || '#ffd54a') + '" stroke-width="2.2"/>';
+        s += t;
+      } else {
+        s += '<rect x="' + x + '" y="' + y + '" width="' + cs + '" height="' + cs + '" fill="' + SC_FILL[pm] + '"/>';
+        if (SC_LAB[pm]) s += '<text x="' + (x + cs / 2) + '" y="' + (y + cs / 2 + .5) + '" text-anchor="middle" dominant-baseline="central" font-size="6" font-weight="900" fill="' + (pm === 'D' || pm === 'd' ? 'rgba(60,30,20,.55)' : 'rgba(255,255,255,.8)') + '" font-family="system-ui,sans-serif">' + SC_LAB[pm] + '</text>';
+        if (pm === '*') s += '<path transform="translate(' + (x + cs / 2) + ' ' + (y + cs / 2) + ') scale(.55)" d="M0-9 2.6-3 9-2.8 4-1 5.6 6.5 0 3 -5.6 6.5 -4-1 -9-2.8 -2.6-3Z" fill="rgba(120,40,30,.6)"/>';
+      }
+    }
+    return s + top + '</svg>';
+  }
   R('scrabble', function (e, ui) {
     var d = e.dt; if (!d || !d.b || d.b.length !== 15) return null;
-    var nm = (e.players || []).map(function (p) { return p.name; });
-    var PREM = ['T..d...T...d..T', '.D...t...t...D.', '..D...d.d...D..', 'd..D...d...D..d', '....D.....D....', '.t...t...t...t.', '..d...d.d...d..', 'T..d...*...d..T'];
-    var FILL = { T: '#d6493b', D: '#f2aca1', '*': '#f2aca1', t: '#2b80c2', d: '#a4d2ec', '.': '#ece3c7' };
-    var VAL = { A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10 };
-    var cs = 20, g = 1, W = 15 * cs + 16 * g, s = '<svg viewBox="0 0 ' + W + ' ' + W + '" role="img" aria-label="Final board"><rect width="' + W + '" height="' + W + '" fill="#1d4c40"/>';
-    for (var r = 0; r < 15; r++) for (var c = 0; c < 15; c++) {
-      var x = g + c * (cs + g), y = g + r * (cs + g), ch = d.b[r].charAt(c), pm = PREM[r <= 7 ? r : 14 - r].charAt(c);
-      if (ch && ch !== '.') {
-        var blank = ch >= 'a' && ch <= 'z', L = ch.toUpperCase();
-        s += '<rect x="' + x + '" y="' + y + '" width="' + cs + '" height="' + cs + '" rx="3" fill="#efd39c"/><rect x="' + x + '" y="' + (y + cs - 2.5) + '" width="' + cs + '" height="2.5" rx="1" fill="#c99c5a"/>' +
-          '<text x="' + (x + cs * 0.46) + '" y="' + (y + cs * 0.5) + '" text-anchor="middle" dominant-baseline="central" font-size="12.5" font-weight="800" fill="' + (blank ? '#9a3d1e' : '#2a1a0c') + '" font-family="ui-rounded,system-ui,sans-serif">' + L + '</text>' +
-          (blank ? '' : '<text x="' + (x + cs - 3) + '" y="' + (y + cs - 4.5) + '" text-anchor="end" font-size="5.5" font-weight="800" fill="#2a1a0c" font-family="system-ui,sans-serif">' + VAL[L] + '</text>');
-      } else s += '<rect x="' + x + '" y="' + y + '" width="' + cs + '" height="' + cs + '" fill="' + FILL[pm] + '"/>';
-    }
-    s += '</svg>';
-    var out = [ui.section('Final board', ui.picture(s, { frame: 'wood', max: 360 }))];
-    if (d.top && d.top.length) out.push(ui.section('Best plays', ui.log(d.top.map(function (t) { return { c: t.p, b: t.w, t: t.s + ' points' + (t.b ? ' · bingo' : '') + ' · ' + (nm[t.p] || '') }; }))));
+    var B = HistView.boardUI, nm = (e.players || []).map(function (p) { return p.name; }), P = nm.length, out = [];
+    var snap = ui.picture(scSvg(d.b), { frame: 'wood', max: 360 });
+    // the turns, if this record has them
+    var L = 'abcdefghijklmno', turns = (d.tl || []).map(function (t) {
+      var a = String(t).split(':'), x = { p: +a[0] || 0 };
+      if (a[1] === '-') x.k = 'pass'; else if (a[1] && a[1].charAt(0) === '#') { x.k = 'swap'; x.n = +a[1].slice(1); }
+      else { x.k = 'play'; x.w = a[1]; x.s = +a[2] || 0; var q = a[3] || ''; x.b = /\*$/.test(q); q = q.replace('*', ''); x.c = []; for (var i = 0; i + 1 < q.length; i += 2) x.c.push(L.indexOf(q.charAt(i)) * 15 + L.indexOf(q.charAt(i + 1))); }
+      return x;
+    });
+    var plays = turns.filter(function (t) { return t.k === 'play'; }), best = plays.slice().sort(function (a, b) { return b.s - a.s; })[0];
+    var bingos = d.bg ? d.bg.reduce(function (a, b) { return a + b; }, 0) : plays.filter(function (t) { return t.b; }).length;
+    var top = d.top && d.top[0];
+    out.push(ui.stats([['Best play', top ? top.s : best ? best.s : null, top ? top.w + ' · ' + (nm[top.p] || '') : best ? best.w + ' · ' + nm[best.p] : ''], ['Bingos', bingos, 'all 7 tiles at once'], ['Turns', d.tn || turns.length || null]]));
+    out.push(ui.section(turns.length ? 'The board' : 'Final board', snap));
+    if (plays.length > 1) {
+      // score after every turn, for each player
+      var run = nm.map(function () { return 0; }), ser = nm.map(function () { return [0]; });
+      turns.forEach(function (t) { if (t.k === 'play') run[t.p] += t.s; ser.forEach(function (v, i) { v.push(run[i]); }); });
+      var fin = (e.players || []).map(function (p) { return p.score; });
+      // (the score race by round is drawn under the view from the record's rounds; this one only when there are none)
+      var ch = e.rounds ? null : B.chart(ui, ser.map(function (v, i) { return { v: typeof fin[i] === 'number' ? v.concat([fin[i]]) : v, c: ui.color(i) }; }), { lo: 0, from: 'Turn 1', to: 'After leftovers', aria: 'Scores turn by turn' });
+      var N = turns.length, cellsUpTo = function (n) { var m = {}; for (var k = 0; k < n; k++) (turns[k].c || []).forEach(function (i) { m[i] = 1; }); return m; };
+      var items = turns.map(function (t) {
+        return t.k === 'play' ? { t: t.w, s: t.s + (t.b ? ' · bingo' : ''), c: ui.color(t.p), hot: t === best || t.b } : { t: t.k === 'swap' ? 'Swap ' + t.n : 'Pass', s: nm[t.p], c: ui.color(t.p), dim: true };
+      });
+      var rp, st = B.strip(ui, items, null, function (i) { rp.go(i + 1); });
+      rp = B.replay(ui, N, function (n) {
+        var t = turns[n - 1], hot = {};
+        if (t && t.c) t.c.forEach(function (i) { hot[i] = 1; });
+        snap.innerHTML = scSvg(d.b, n === N ? null : cellsUpTo(n), hot, t ? ui.color(t.p) : null);
+        if (n) st.set(n - 1, true); if (ch) ch.at(n);
+        if (!n) return 'An empty board';
+        var who = nm[t.p] || 'Player';
+        return 'Turn ' + n + ' · ' + (t.k === 'play' ? who + ' played ' + t.w + ' for ' + t.s + (t.b ? ', a bingo' : '') : t.k === 'swap' ? who + ' swapped ' + t.n + (t.n === 1 ? ' tile' : ' tiles') : who + ' passed') + ' · ' + run.map(function (x, i) { return ser[i][n]; }).join('–');
+      }, { start: best ? turns.indexOf(best) + 1 : N, ms: 650 });
+      out.push(ui.section('Every turn · tap one', [st, rp]));
+      if (ch) out.push(ui.section('The score race', [ch, B.key(ui, nm.map(function (n, i) { return [n, ui.color(i)]; }))]));
+    } else if (d.top && d.top.length) out.push(ui.section('Best plays', ui.log(d.top.map(function (t) { return { c: t.p, b: t.w, t: t.s + ' points' + (t.b ? ' · bingo' : '') + ' · ' + (nm[t.p] || '') }; }))));
     var rows = nm.map(function (n, i) {
       var adj = d.adj ? d.adj[i] : 0;
       return [n, d.mv ? d.mv[i] : '–', d.bg ? d.bg[i] : '–', adj > 0 ? '+' + adj : adj < 0 ? String(adj) : '0'];
     });
     out.push(ui.section('Each player', ui.table(['', 'Plays', 'Bingos', 'Leftover'], rows)));
-    out.push(ui.facts([['Ended', d.end === 'out' ? (nm[d.o] || 'Someone') + ' went out' : 'Six scoreless turns in a row'], ['Turns', d.tn], ['Computer', d.lv ? d.lv.charAt(0).toUpperCase() + d.lv.slice(1) : '']]));
+    // what decided it
+    var sc = (e.players || []).map(function (p, i) { return { i: i, s: p.score }; }).filter(function (x) { return typeof x.s === 'number'; }).sort(function (a, b) { return b.s - a.s; });
+    var why = d.end === 'out' ? (nm[d.o] || 'Someone') + ' went out first' : 'Six scoreless turns in a row ended it';
+    if (sc.length > 1) {
+      var mg = sc[0].s - sc[1].s, wi = sc[0].i;
+      if (!mg) why += '; a tie at ' + sc[0].s;
+      else {
+        var swing = d.adj ? d.adj[wi] - d.adj[sc[1].i] : 0;
+        why += swing >= mg ? '. The leftover tiles decided it: ' + nm[wi] + ' won by ' + mg : best && best.p === wi && best.s >= mg ? '. ' + nm[wi] + ' won by ' + mg + ', and ' + best.w + ' (' + best.s + ') was the difference' : '. ' + nm[wi] + ' won by ' + mg;
+      }
+    }
+    out.push(B.foot(ui, why, 'trophy'));
     return ui.wrap(out);
   });
 

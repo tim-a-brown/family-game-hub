@@ -150,7 +150,7 @@
       for (var j = 0; j < S.per; j++) S.stones.push({ c: (ci++ * 5 + i) % GLASS.length, p: i, k: ++K });
     }
     S.cur = S.first; S.over = false; S.started = Date.now(); S.moves = 0;
-    S.st = { caps: [], extra: [0, 0], chain: 0, bestChain: { n: 0, who: -1 }, sweep: null, t0: [], t1: [] };
+    S.st = { caps: [], extra: [0, 0], chain: 0, bestChain: { n: 0, who: -1 }, sweep: null, t0: [], t1: [], m: '' };
     S.last = -1;
     save(); render(); maybeCpu();
   }
@@ -242,6 +242,7 @@
   function after(pl, from, lastPit, n) {
     var b = counts(), who = S.players[pl], extra = lastPit === storeOf(pl), cap = 0, delay = 0;
     S.moves++;
+    if (S.st.m != null) S.st.m += 'abcdefghijklmn'.charAt(from);   // every pit played, for the history replay
     if (!extra && own(pl, lastPit) && b[lastPit] === 1 && b[12 - lastPit] > 0) {
       cap = b[12 - lastPit] + 1;
       moveAll([lastPit, 12 - lastPit], storeOf(pl));
@@ -316,9 +317,9 @@
       players: P.map(function (p, i) { return { name: p.name, score: i ? s1 : s0, cpu: p.cpu }; }),
       winner: w >= 0 ? P[w].name : null, highlights: hl,
       // for the history view: the pits the moment the game ended (before the sweep), store totals after every move
-      // (t0/t1), captures and extra turns
+      // (t0/t1), captures and extra turns, and every pit played in order (m: a = pit 0 .. m = pit 12)
       detail: { b: S.st.endB || counts(), per: S.per, t0: S.st.t0 || [], t1: S.st.t1 || [],
-        caps: S.st.caps.map(function (c) { return { w: c.who, n: c.n, p: c.pit }; }), ex: S.st.extra.slice(), ch: S.st.bestChain, sw: S.st.sweep ? { w: S.st.sweep.who, n: S.st.sweep.n } : null, mv: S.moves, ser: S.wins.slice(),
+        caps: S.st.caps.map(function (c) { return { w: c.who, n: c.n, p: c.pit }; }), m: S.st.m != null && S.st.m.length === S.moves ? S.st.m : undefined, ex: S.st.extra.slice(), ch: S.st.bestChain, sw: S.st.sweep ? { w: S.st.sweep.who, n: S.st.sweep.n } : null, mv: S.moves, ser: S.wins.slice(),
         col: P.map(function (p) { return p.color || ''; }) }
     });
     clearSave();

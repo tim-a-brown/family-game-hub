@@ -7,18 +7,109 @@
   function f2(v) { return Math.round(v * 1000) / 1000; }
   function names(e) { return (e.players || []).map(function (p) { return String(p.name || '').replace(/ \((White|Black|Red)\)$/, ''); }); }
 
-  // A replay slider (like Connect Four's): calls show(n) for n = 0..max
-  function replay(ui, max, show) {
-    var label = ui.el('b'), rng = ui.el('input', { type: 'range', min: '0', max: String(max), value: String(max), class: 'hvb-range', 'aria-label': 'Move' });
-    rng.addEventListener('input', function () { label.textContent = show(+rng.value) || ''; });
-    label.textContent = show(max) || '';
-    return ui.el('div', { class: 'hvb-replay' }, [rng, label]);
+  // ── Shared pieces (board2.js reaches them through HistView.boardUI when it draws) ──
+  // A replay: back / play / forward buttons around a scrubber. show(n) redraws step n (0..max) and returns its caption.
+  // o.start: the step to open on (default the end); o.ms: play speed
+  function replay(ui, max, show, o) {
+    o = o || {};
+    var label = ui.el('b', { class: 'hvb-cap' }), cur = o.start != null ? o.start : max, timer = null;
+    var rng = ui.el('input', { type: 'range', min: '0', max: String(max), value: String(cur), class: 'hvb-range', 'aria-label': 'Move' });
+    function go(n) { cur = Math.max(0, Math.min(max, n)); rng.value = String(cur); label.textContent = show(cur) || ''; back.disabled = cur <= 0; fwd.disabled = cur >= max; }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } play.innerHTML = ui.icon('play'); play.setAttribute('aria-label', 'Play the game through'); }
+    var back = ui.el('button', { type: 'button', class: 'hvb-sb', 'aria-label': 'Back one move', html: ui.icon('back'), onclick: function () { stop(); go(cur - 1); } });
+    var fwd = ui.el('button', { type: 'button', class: 'hvb-sb', 'aria-label': 'Forward one move', html: ui.icon('right'), onclick: function () { stop(); go(cur + 1); } });
+    var play = ui.el('button', { type: 'button', class: 'hvb-sb hvb-play', onclick: function () {
+      if (timer) { stop(); return; }
+      if (cur >= max) go(0);
+      play.innerHTML = ui.icon('pause'); play.setAttribute('aria-label', 'Pause');
+      var ms = o.ms || Math.max(120, Math.min(700, 14000 / Math.max(1, max)));
+      timer = setInterval(function () { if (!rng.isConnected || cur >= max) { stop(); return; } go(cur + 1); }, ms);
+    } });
+    rng.addEventListener('input', function () { stop(); go(+rng.value); });
+    stop(); go(cur);
+    var box = ui.el('div', { class: 'hvb-replay' }, [ui.el('div', { class: 'hvb-ctl' }, [back, play, rng, fwd]), label]);
+    box.go = go;
+    return box;
   }
+  // A line chart on a dark panel: series [{v:[..], c:'#hex', w?, fill?, dash?}]; o = {lo, hi, mid, h, from, to, aria, fmt}
+  // Returns a node with .at(i): a cursor at point i (the replay moves it)
+  function chart(ui, series, o) {
+    o = o || {};
+    var W = 320, H = o.h || 110, PL = 6, PR = 6, PT = 10, PB = o.from || o.to ? 16 : 6;
+    var n = Math.max.apply(null, series.map(function (s) { return s.v.length; }).concat([2]));
+    var all = [].concat.apply([], series.map(function (s) { return s.v; }));
+    var lo = o.lo != null ? o.lo : Math.min.apply(null, all.concat([0])), hi = o.hi != null ? o.hi : Math.max.apply(null, all.concat([1]));
+    function x(i) { return PL + i * (W - PL - PR) / (n - 1); }
+    function y(v) { return PT + (hi - v) * (H - PT - PB) / ((hi - lo) || 1); }
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + ui.esc(o.aria || 'Chart') + '">';
+    if (o.mid != null) s += '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + f2(y(o.mid)) + '" y2="' + f2(y(o.mid)) + '" stroke="rgba(255,255,255,.28)" stroke-dasharray="4 4"/>';
+    if (o.midLabel) s += '<text x="' + (W - PR) + '" y="' + f2(y(o.mid) - 4) + '" text-anchor="end" font-size="9" font-weight="800" fill="rgba(255,255,255,.5)" font-family="system-ui">' + ui.esc(o.midLabel) + '</text>';
+    series.forEach(function (sr) {
+      if (!sr.v.length) return;
+      var pts = sr.v.map(function (v, i) { return f2(x(i)) + ',' + f2(y(v)); }).join(' ');
+      if (sr.fill) s += '<polygon points="' + f2(x(0)) + ',' + f2(y(lo)) + ' ' + pts + ' ' + f2(x(sr.v.length - 1)) + ',' + f2(y(lo)) + '" fill="' + sr.fill + '"/>';
+      s += '<polyline points="' + pts + '" fill="none" stroke="' + sr.c + '" stroke-width="' + (sr.w || 2.5) + '" stroke-linejoin="round" stroke-linecap="round"' + (sr.dash ? ' stroke-dasharray="' + sr.dash + '"' : '') + (sr.halo ? ' style="filter:drop-shadow(0 0 1.2px ' + sr.halo + ')"' : '') + '/>';
+      var L = sr.v.length - 1;
+      s += '<circle cx="' + f2(x(L)) + '" cy="' + f2(y(sr.v[L])) + '" r="3.6" fill="' + sr.c + '" stroke="rgba(0,0,0,.5)" stroke-width="1"/>';
+    });
+    if (o.from) s += '<text x="' + PL + '" y="' + (H - 3) + '" font-size="9.5" font-weight="800" fill="rgba(255,255,255,.55)" font-family="system-ui">' + ui.esc(o.from) + '</text>';
+    if (o.to) s += '<text x="' + (W - PR) + '" y="' + (H - 3) + '" text-anchor="end" font-size="9.5" font-weight="800" fill="rgba(255,255,255,.55)" font-family="system-ui">' + ui.esc(o.to) + '</text>';
+    s += '<line class="hvb-cur" x1="0" x2="0" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#ffd54a" stroke-width="1.5" opacity="0"/></svg>';
+    var node = ui.el('div', { class: 'hvb-chart', html: s });
+    node.at = function (i) {
+      var c = node.querySelector('.hvb-cur'); if (!c) return;
+      if (i == null || i < 0) { c.setAttribute('opacity', '0'); return; }
+      var X = f2(x(Math.min(n - 1, i))); c.setAttribute('x1', X); c.setAttribute('x2', X); c.setAttribute('opacity', '.9');
+    };
+    return node;
+  }
+  // a key under a chart: [[name, colour], ..]
+  function key(ui, list) { return ui.el('div', { class: 'hvb-key' }, list.filter(Boolean).map(function (k) { return ui.el('span', null, [ui.el('i', { style: { background: k[1] } }), ui.el('span', { text: k[0] })]); })); }
+  // A strip of tappable moves: items [{t: main text, s: small text, c: colour, hot}], tap one: pick(i)
+  function strip(ui, items, start, pick) {
+    var box = ui.el('div', { class: 'hvb-strip', role: 'tablist' }), btns = [];
+    items.forEach(function (it, i) {
+      var b = ui.el('button', { type: 'button', role: 'tab', class: 'hvb-sp' + (it.hot ? ' hot' : '') + (it.dim ? ' dim' : ''), style: it.c ? { '--pc': it.c } : null, onclick: function () { set(i); } },
+        [ui.el('b', { text: it.t }), it.s != null ? ui.el('small', { text: it.s }) : null]);
+      btns.push(b); box.appendChild(b);
+    });
+    function scroll(i) { var b = btns[i]; if (b && box.scrollWidth > box.clientWidth) box.scrollLeft = Math.max(0, b.offsetLeft - box.offsetLeft - box.clientWidth / 2 + b.offsetWidth / 2); }
+    // quiet: just light it (the replay moved, so don't redraw again)
+    function set(i, quiet) {
+      btns.forEach(function (b, j) { b.classList.toggle('on', i === j); b.setAttribute('aria-selected', i === j ? 'true' : 'false'); });
+      scroll(i);
+      if (!quiet) pick(i);
+    }
+    box.set = set;
+    if (items.length && start != null) { set(start); setTimeout(function () { scroll(start); }, 60); }
+    return box;
+  }
+  // what decided it, in a line
+  function foot(ui, text, icon) { return text ? ui.el('div', { class: 'hvb-foot', html: ui.icon(icon || 'flag') + '<span>' + ui.esc(text) + '</span>' }) : null; }
+  HistView.boardUI = { replay: replay, chart: chart, key: key, strip: strip, foot: foot, f2: f2 };
 
   HistView.css('hv-board', [
     '.hvb-replay{display:flex;flex-direction:column;gap:6px;}',
-    '.hvb-range{width:100%;accent-color:var(--yellow);}',
-    '.hvb-replay b{font-size:.85rem;color:var(--text-2);}',
+    '.hvb-ctl{display:flex;align-items:center;gap:6px;}',
+    '.hvb-range{flex:1;min-width:0;width:100%;accent-color:var(--yellow);}',
+    '.hvb-sb{appearance:none;border:0;cursor:pointer;flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;padding:0;background:var(--w08);color:var(--text);}',
+    '.hvb-sb .ico{width:16px;height:16px;}.hvb-sb:disabled{opacity:.35;cursor:default;}.hvb-sb:active{transform:scale(.94);}',
+    '.hvb-sb.hvb-play{background:var(--yellow);color:#1b1404;}',
+    '.hvb-cap{font-size:.85rem;color:var(--text-2);min-height:1.25em;line-height:1.3;}',
+    '.hvb-chart{line-height:0;border-radius:14px;padding:8px;background:linear-gradient(#15161f,#0c0d13);box-shadow:inset 0 0 0 1px var(--w08);}',
+    '.hvb-chart svg{width:100%;height:auto;display:block;}',
+    '.hvb-key{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.74rem;font-weight:800;color:var(--text-3);}',
+    '.hvb-key span{display:inline-flex;align-items:center;gap:5px;}.hvb-key i{width:10px;height:10px;border-radius:3px;display:inline-block;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}',
+    '.hvb-strip{display:flex;gap:5px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin;}',
+    '.hvb-sp{appearance:none;border:0;cursor:pointer;flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:6px 9px 5px;border-radius:10px;font:inherit;text-align:left;',
+    'background:var(--w06);color:var(--text);box-shadow:inset 3px 0 0 var(--pc,var(--w15));max-width:150px;}',
+    '.hvb-sp b{font-size:.8rem;font-weight:900;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}',
+    '.hvb-sp small{font-size:.68rem;font-weight:800;color:var(--text-3);white-space:nowrap;}',
+    '.hvb-sp.hot{background:color-mix(in srgb,#d4a017 26%,var(--w06));}.hvb-sp.hot small{color:#f5c542;}',
+    '.hvb-sp.dim b{color:var(--text-3);font-weight:800;}',
+    '.hvb-sp.on{outline:2.5px solid var(--yellow);outline-offset:-1px;}',
+    '.hvb-foot{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:12px;background:var(--w05);font-size:.86rem;font-weight:800;color:var(--text-2);line-height:1.3;}',
+    '.hvb-foot .ico{width:16px;height:16px;flex:none;color:var(--yellow);}',
     '.hvb-moves{max-height:132px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:2px 4px;padding:8px 10px;border-radius:12px;background:#f6f1e3;color:#2b2218;font-size:.84rem;line-height:1.5;font-variant-numeric:tabular-nums;}',
     '.hvb-moves .no{color:#9a8a70;font-weight:800;margin-left:4px;}',
     '.hvb-moves span.mv{padding:0 3px;border-radius:4px;font-weight:700;}',
