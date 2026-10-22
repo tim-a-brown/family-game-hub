@@ -5270,7 +5270,19 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var v = H.street === 0 ? (H.curBet <= S.bb ? 2.5 * S.bb + live().filter(function (j) { return j !== 0 && H.bet[j] === S.bb && H.acted[j]; }).length * S.bb : 3 * H.curBet) : (o.isBet ? pot * 0.6 : H.curBet * 2.6);
     return Math.max(o.minTo, Math.min(o.maxTo, roundTo(v)));
   }
+  // A tap that lands just as the buttons change (your turn arriving under a pre-action tap, Call 200 turning into
+  // Call 400) is dropped: for a second after what's shown there changes, taps on it do nothing
   function controls() {
+    var box = controlsBox(), now = Date.now();
+    var sig = (box.classList.contains('mine') ? 'M' : 'W') + '|' + Array.prototype.map.call(box.querySelectorAll('.ppre button'), function (b) { return b.textContent; }).join(',') +
+      '|' + Array.prototype.map.call(box.querySelectorAll('.pbar button'), function (b) { return b.textContent.split(/\s/)[0]; }).join(',');
+    if (R.ctlSig !== sig) { if (R.ctlSig != null) R.ctlAt = now; R.ctlSig = sig; }
+    box.addEventListener('click', function (e) {
+      if (Date.now() - (R.ctlAt || 0) < 1000 && e.target.closest && e.target.closest('button')) { e.stopPropagation(); e.preventDefault(); }
+    }, true);
+    return box;
+  }
+  function controlsBox() {
     var H = S.hand, box = el('div', { class: 'pctl' }), me = S.players[0];
     if (!H) return box;
     var bar = el('div', { class: 'pbar' });
