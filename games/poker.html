@@ -4643,6 +4643,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (lme) tb.appendChild(el('div', { class: 'pme' + (myTurn ? ' turn' : '') }, [meDealer, meSeat, hand, meEq]));
     else { if (myTurn) hand.classList.add('turn'); app.appendChild(hand); }
     app.appendChild(rail(final));
+    requestAnimationFrame(fitTiles);
 
     if (H && R.mine) { R.mineNo = H.no; if (!picking) R.mine = null; }
     if (H && R.no !== H.no) { R.no = H.no; R.board = H.board.length; R.bets = H.bet.slice(); animateDeal(); }
@@ -4806,6 +4807,18 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
   function tile(label, value, cls, sub, pre) {
     return el('div', { class: 'ptile' + (cls ? ' ' + cls : '') }, [el('b', null, [pre ? el('em', { text: pre }) : null, document.createTextNode(value), sub ? el('span', { text: sub }) : null]), el('small', { text: label })]);
+  }
+  // a tile's number and its "of …" shrink together until they fit (a 15,000-player field on an iPad mini), never "…"
+  function fitTiles() {
+    Array.prototype.forEach.call(document.querySelectorAll('.ptile b'), function (b) {
+      var sp = b.querySelector('span');
+      b.style.fontSize = ''; if (sp) sp.style.fontSize = '';
+      var w = b.clientWidth, need = b.scrollWidth;
+      if (!w || need <= w + 0.5) return;
+      var k = Math.max(w / need * 0.97, 0.6);
+      if (sp) sp.style.fontSize = (parseFloat(getComputedStyle(sp).fontSize) * k).toFixed(1) + 'px';
+      b.style.fontSize = (parseFloat(getComputedStyle(b).fontSize) * k).toFixed(1) + 'px';
+    });
   }
   function railTiles() {
     var t = el('div', { class: 'ptiles tap', onclick: standSheet }), me = S.players[0], C = S.circ, st = S.st;
