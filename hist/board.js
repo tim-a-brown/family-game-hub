@@ -214,10 +214,19 @@
         var sp = ui.el('span', { class: 'mv', text: m }); spans.push(sp); moveList.appendChild(sp);
       });
     }
+    // material over the game (pawn 1, knight and bishop 3, rook 5, queen 9): White's total minus Black's
+    var MV = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }, mat = null, mch = null;
+    if (plies > 1) {
+      mat = [0]; var bb = chStart();
+      uci.forEach(function (m) { chApply(bb, m); var s = 0; bb.forEach(function (c) { if (c !== '.') s += c === c.toUpperCase() ? MV[c.toLowerCase()] : -MV[c]; }); mat.push(s); });
+      var mx = Math.max(3, Math.max.apply(null, mat.map(Math.abs)));
+      mch = chart(ui, [{ v: mat, c: '#f1e6cd', fill: 'rgba(241,230,205,.14)' }], { lo: -mx, hi: mx, mid: 0, h: 96, from: 'Move 1', to: 'Move ' + Math.ceil(plies / 2), aria: 'Material: above the line White is ahead, below it Black' });
+    }
     if (plies > 1) {
       out.push(ui.section('Replay', replay(ui, plies, function (n) {
         var b = chStart(), lm = null;
         for (var i = 0; i < n; i++) lm = chApply(b, uci[i]);
+        if (mch) mch.at(n);
         snap.innerHTML = chBoard(n === plies ? fin : b, { flip: flip, last: lm, mated: n === plies ? mated : null });
         spans.forEach(function (s, i) { s.classList.toggle('on', i === n - 1); });
         if (moveList && spans[n - 1]) moveList.scrollTop = Math.max(0, spans[n - 1].offsetTop - moveList.offsetTop - 50);
@@ -226,6 +235,7 @@
         return (n === plies ? 'Final · ' : '') + 'Move ' + mvNo + ' · ' + nameOf(side) + ' (' + (side === 1 ? 'White' : 'Black') + '): ' + (san ? san[n - 1] : uci[n - 1]);
       })));
     }
+    if (mch) out.push(ui.section('Material', [mch, ui.el('small', { class: 'hv-note', text: 'Above the line White (' + nameOf(1) + ') is ahead in pieces, below it Black (' + nameOf(-1) + ').' })]));
     if (moveList) out.push(ui.section('Moves', moveList));
     // captures: pieces each side took, biggest first
     var VAL = [0, 1, 3, 3, 5, 9, 0];
@@ -237,6 +247,14 @@
     }
     if (d.cw || d.cb) out.push(ui.section('Captured', ui.el('div', { class: 'hvb-caps' }, [capRow(d.cw, true), capRow(d.cb, false)])));
     out.push(ui.facts([['Result', (CH_RES[d.res] || 'Over') + (d.w ? ': ' + nameOf(d.w) + ' won' : '')], ['Moves', Math.ceil(plies / 2) || ''], ['Computer', d.lv ? d.lv.charAt(0).toUpperCase() + d.lv.slice(1) : '']]));
+    // what decided it
+    if (mat) {
+      var endM = mat[mat.length - 1], side = endM > 0 ? 1 : -1, why = (CH_RES[d.res] || 'It ended') + ' on move ' + Math.ceil(plies / 2);
+      if (d.w && endM * d.w >= 3) why += ', ' + nameOf(d.w) + ' was ' + endM * d.w + ' points of material up';
+      else if (d.w && endM * d.w < 0) why += ', even though ' + nameOf(-d.w) + ' had more pieces left';
+      else if (!d.w && Math.abs(endM) >= 3) why += ' with ' + nameOf(side) + ' ' + Math.abs(endM) + ' points up';
+      out.push(foot(ui, why, d.w ? 'trophy' : 'flag'));
+    }
     return ui.wrap(out);
   });
 
@@ -284,11 +302,19 @@
     if (mv.length) { var tmp = ckStart(); mv.forEach(function (m) { lastHl = ckApply(tmp, m); }); }
     var snap = ui.picture(ckBoard(fin, { flip: flip, hl: lastHl }), { frame: 'wood', max: 340 });
     var out = [ui.section('Final board', snap)];
+    // pieces left on each side, move by move
+    var cnB = null, cnR = null, kch = null;
+    if (mv.length > 1) {
+      cnB = [12]; cnR = [12]; var kb = ckStart();
+      mv.forEach(function (m) { ckApply(kb, m); cnB.push(kb.filter(function (x) { return x.toLowerCase() === 'b'; }).length); cnR.push(kb.filter(function (x) { return x.toLowerCase() === 'r'; }).length); });
+      kch = chart(ui, [{ v: cnR, c: '#e0323c', w: 4 }, { v: cnB, c: '#d4d4dc', w: 2 }], { lo: 0, hi: 12, h: 90, from: 'Start · 12 each', to: 'Move ' + Math.ceil(mv.length / 2), aria: 'Pieces left on each side' });
+    }
     if (mv.length > 1) {
       var first = d.first === -1 ? -1 : 1;
       out.push(ui.section('Replay', replay(ui, mv.length, function (n) {
         var b = ckStart(), hl = null;
         for (var i = 0; i < n; i++) hl = ckApply(b, mv[i]);
+        if (kch) kch.at(n);
         snap.innerHTML = ckBoard(n === mv.length ? fin : b, { flip: flip, hl: hl });
         if (!n) return 'Starting board';
         var side = (n - 1) % 2 === 0 ? first : -first, m = mv[n - 1], k = (m.match(/x/g) || []).length;
@@ -303,6 +329,14 @@
       [nameOf(-1) + ' (Red)', cnt('r'), kings('r'), 12 - cnt('b')]
     ]));
     out.push(ui.facts([['Result', (RES[d.res] || 'Over') + (d.w ? ': ' + nameOf(d.w) + ' won' : '')], ['Moves', Math.ceil(mv.length / 2) || ''], ['Jumps', d.f === 0 ? 'Optional (house rule)' : 'Must jump']]));
+    if (kch) out.splice(2, 0, ui.section('Pieces left', [kch, key(ui, [[nameOf(1) + ' · Black', '#d4d4dc'], [nameOf(-1) + ' · Red', '#e0323c']])]));
+    // what decided it: when the winner went ahead in pieces for good
+    if (d.w && cnB) {
+      var mine = d.w === 1 ? cnB : cnR, theirs = d.w === 1 ? cnR : cnB, ahead = 0;
+      for (var k = 0; k < mine.length; k++) if (mine[k] <= theirs[k]) ahead = k + 1;
+      var why = (RES[d.res] || 'Won') + ': ' + nameOf(d.w) + (ahead < mine.length ? ' went ahead in pieces on move ' + Math.ceil(ahead / 2) + ' and stayed there' : ' came back to win') + ', ' + mine[mine.length - 1] + ' left to ' + theirs[theirs.length - 1];
+      out.push(foot(ui, why, 'trophy'));
+    }
     return ui.wrap(out);
   });
 

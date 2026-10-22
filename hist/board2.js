@@ -396,7 +396,8 @@
     out.push(ui.section('Both oceans', [grids, ui.el('small', { class: 'hv-note', text: 'Red pegs are hits, white pegs are misses. Dark ships were sunk.' })]));
     // the replay: the shots one by one
     var sq = String(d.sq || ''), shots = [];
-    for (var i = 0; i + 2 < sq.length + 1 && i < sq.length; i += 3) shots.push({ p: +sq.charAt(i), x: +sq.substr(i + 1, 2) });
+    for (var i = 0; i + 2 < sq.length; i += 3) shots.push({ p: +sq.charAt(i), x: +sq.substr(i + 1, 2) });
+    if (shots.some(function (s) { return !(s.p === 0 || s.p === 1) || !(s.x >= 0 && s.x < 100); })) shots = [];
     if (shots.length > 1) {
       var N = shots.length, occ = [[], []];
       [0, 1].forEach(function (p) { (d['f' + p] || []).forEach(function (sh, k) { if (sh) bsCells(k, sh).forEach(function (c) { occ[p][c] = k; }); }); });
@@ -709,12 +710,13 @@
     var B = HistView.boardUI, nm = (e.players || []).map(function (p) { return p.name; }), P = nm.length, out = [];
     var snap = ui.picture(scSvg(d.b), { frame: 'wood', max: 360 });
     // the turns, if this record has them
-    var L = 'abcdefghijklmno', turns = (d.tl || []).map(function (t) {
+    var L = 'abcdefghijklmno', turns = (Array.isArray(d.tl) ? d.tl : []).map(function (t) {
       var a = String(t).split(':'), x = { p: +a[0] || 0 };
       if (a[1] === '-') x.k = 'pass'; else if (a[1] && a[1].charAt(0) === '#') { x.k = 'swap'; x.n = +a[1].slice(1); }
       else { x.k = 'play'; x.w = a[1]; x.s = +a[2] || 0; var q = a[3] || ''; x.b = /\*$/.test(q); q = q.replace('*', ''); x.c = []; for (var i = 0; i + 1 < q.length; i += 2) x.c.push(L.indexOf(q.charAt(i)) * 15 + L.indexOf(q.charAt(i + 1))); }
       return x;
     });
+    if (turns.some(function (t) { return t.c && t.c.some(function (i) { return !(i >= 0 && i < 225); }); })) turns = [];
     var plays = turns.filter(function (t) { return t.k === 'play'; }), best = plays.slice().sort(function (a, b) { return b.s - a.s; })[0];
     var bingos = d.bg ? d.bg.reduce(function (a, b) { return a + b; }, 0) : plays.filter(function (t) { return t.b; }).length;
     var top = d.top && d.top[0];
