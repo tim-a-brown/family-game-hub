@@ -695,14 +695,16 @@
     '.hvc-jk{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;}',
     '.hvc-jk .jc{position:relative;width:64px;aspect-ratio:5/7;border-radius:8px;background:linear-gradient(160deg,var(--a),var(--b));',
     'box-shadow:inset 0 0 0 3px #e8e8f0,inset 0 0 0 4.5px rgba(0,0,0,.35),0 6px 14px rgba(0,0,0,.45);display:grid;place-items:center;overflow:hidden;}',
-    '.hvc-jk.r3 .jc{box-shadow:inset 0 0 0 3px #ffd56a,inset 0 0 0 4.5px rgba(0,0,0,.35),0 6px 14px rgba(0,0,0,.45);}',
+    '.hvc-jk.jr3 .jc{box-shadow:inset 0 0 0 3px #ffd56a,inset 0 0 0 4.5px rgba(0,0,0,.35),0 6px 14px rgba(0,0,0,.45);}',
     '.hvc-jk .jc .ico{width:30px;height:30px;color:var(--k);}',
-    '.hvc-jk .jc i{position:absolute;top:7%;right:9%;width:8px;height:8px;border-radius:50%;background:#5fb0ff;}.hvc-jk.r2 .jc i{background:#3ddc84;}.hvc-jk.r3 .jc i{background:#ff4d6d;}',
+    '.hvc-jk .jc i{position:absolute;top:7%;right:9%;width:8px;height:8px;border-radius:50%;background:#5fb0ff;}.hvc-jk.jr2 .jc i{background:#3ddc84;}.hvc-jk.jr3 .jc i{background:#ff4d6d;}',
+    '.hvc-meter{height:12px;border-radius:999px;background:rgba(0,0,0,.35);overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.5);}.hvc-meter i{display:block;height:100%;border-radius:inherit;}',
     '.hvc-jk b{font-size:.78rem;font-weight:900;line-height:1.1;}.hvc-jk small{font-size:.7rem;color:var(--text-3);font-weight:700;line-height:1.2;}'
   ].join(''));
   R('jokerrun', function (e, ui) {
     var d = e.dt; if (!d) return null;
     var out = [], b = d.bh;
+    out.push(ui.stats([['Ante reached', d.ante, d.won ? 'won the run' : ''], b && b.t ? ['Biggest hand', ui.num(b.t), b.hn || ''] : null, ['Money earned', d.earned ? '$' + d.earned : null], ['Bosses beaten', d.bosses ? d.bosses.length : null]]));
     if (b && b.c) {
       var sc = String(b.s || ''), en = String(b.e || '');
       var cards = row(b.c, { w: 46, cls: function (c, i) { return sc.charAt(i) === '0' ? 'dim' : ''; } });
@@ -717,10 +719,38 @@
         b.j && b.j.length ? K().el('div', { class: 'hvc-sub', style: { 'text-align': 'center' }, text: 'Jokers: ' + b.j.join(', ') }) : null
       ])));
     }
+    var bl = (d.bl || []).map(function (x) { var a = String(x).split('|'); return { a: +a[0], b: +a[1], s: +a[2], t: +a[3], h: +a[4], bh: a[5], o: a[6], n: a[7] || '' }; });
+    if (bl.length) {
+      // the climb: every blind's score against its target (log scale: targets grow fast)
+      var W = 320, H = 120, pl0 = 6, pr0 = 6, pt0 = 8, pb0 = 18, mx = Math.log10(Math.max.apply(null, bl.map(function (x) { return Math.max(x.s, x.t); }).concat([100]))), mn = 2;
+      var bw = (W - pl0 - pr0) / bl.length, Y = function (v) { return pt0 + (H - pt0 - pb0) * (1 - (Math.log10(Math.max(100, v)) - mn) / Math.max(.1, mx - mn)); };
+      var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Score against target, blind by blind">';
+      bl.forEach(function (x, i) {
+        var x0 = pl0 + i * bw + 1.5, col = x.o === 's' ? 'rgba(255,255,255,.18)' : x.o === 'l' ? '#e0353f' : x.b === 2 ? '#ffd166' : '#3ddc84';
+        if (x.o !== 's') svg += '<rect x="' + x0.toFixed(1) + '" y="' + Y(x.s).toFixed(1) + '" width="' + Math.max(2, bw - 3).toFixed(1) + '" height="' + (H - pb0 - Y(x.s)).toFixed(1) + '" rx="2" fill="' + col + '"/>';
+        svg += '<rect x="' + (x0 - 1).toFixed(1) + '" y="' + (Y(x.t) - 1).toFixed(1) + '" width="' + (bw - 1).toFixed(1) + '" height="2" fill="#fff" opacity=".8"/>';
+        if (x.b === 0 && i) svg += '<line x1="' + (x0 - 1.5).toFixed(1) + '" x2="' + (x0 - 1.5).toFixed(1) + '" y1="' + pt0 + '" y2="' + (H - pb0) + '" stroke="rgba(255,255,255,.12)"/>';
+        if (x.b === 0) svg += '<text x="' + (x0 + 1).toFixed(1) + '" y="' + (H - 5) + '" font-size="9" font-weight="800" fill="rgba(255,255,255,.55)" font-family="system-ui">A' + x.a + '</text>';
+      });
+      svg += '</svg>';
+      var panel = K().el('div', { class: 'hv' });
+      var show = function (i) {
+        var x = bl[i], kids = [], pct = x.t ? Math.round(x.s / x.t * 100) : 0;
+        kids.push(head('<b>' + K().esc(x.n) + '</b> · ante ' + x.a, x.o === 's' ? 'Skipped' : x.o === 'l' ? 'Lost here' : 'Beaten', x.o === 'l' ? 'bad' : x.o === 's' ? '' : x.b === 2 ? 'big' : 'good'));
+        if (x.o !== 's') {
+          kids.push(K().el('div', { class: 'hvc-meter' }, [K().el('i', { style: { width: Math.min(100, pct) + '%', background: x.o === 'l' ? '#e0353f' : '#3ddc84' } })]));
+          kids.push(plates([{ n: 'Scored', v: ui.num(x.s), s: pct + '% of the target' }, { n: 'Target', v: ui.num(x.t), s: x.b === 2 ? 'boss blind' : x.b ? 'big blind' : 'small blind' }, { n: 'Hands', v: x.h, s: x.bh ? 'best: ' + x.bh : '' }]));
+        } else kids.push(K().el('div', { class: 'hvc-sub', text: 'Skipped for its tag (target ' + ui.num(x.t) + ').' }));
+        panel.innerHTML = ''; panel.appendChild(felt('jr', kids));
+      };
+      var items = bl.map(function (x) { return { t: x.a + ['s', 'b', 'B'][x.b], c: x.o === 's' ? null : x.o === 'l' ? '#e0353f' : x.b === 2 ? '#d4a017' : '#1f9a5a', dk: x.b === 2 && x.o === 'w', title: x.n + ', ante ' + x.a }; });
+      out.push(ui.section('Every blind · tap one', [ui.picture(svg, { frame: 'dark', max: 380 }), road(items, bl.length - 1, show), panel,
+        key([['Beaten', '#1f9a5a'], ['Boss beaten', '#d4a017'], ['Lost', '#e0353f'], ['Skipped', 'rgba(255,255,255,.14)'], ['Target (line)', '#fff']])], { icon: 'chart' }));
+    }
     if (d.jk && d.jk.length) {
       var box = K().el('div', { class: 'hvc-jks' });
       d.jk.forEach(function (j) {
-        box.appendChild(K().el('div', { class: 'hvc-jk r' + (j.r || 1) }, [
+        box.appendChild(K().el('div', { class: 'hvc-jk jr' + (j.r || 1) }, [
           K().el('div', { class: 'jc', style: { '--a': j.a, '--b': j.b, '--k': j.k }, html: '<i></i>' + K().icon('sparkle') }),
           K().el('b', { text: j.n }), K().el('small', { text: j.d || '' })]));
       });
@@ -735,7 +765,8 @@
       var pl = Object.keys(d.plays).map(function (k) { return { label: k, value: d.plays[k], color: '#e0353f' }; }).sort(function (a, c) { return c.value - a.value; });
       if (pl.length) out.push(ui.section('Hands played', ui.bars(pl)));
     }
-    out.push(ui.stats([['Ante reached', d.ante], ['Money earned', d.earned ? '$' + d.earned : null], ['Cash at the end', d.money != null ? '$' + d.money : null], ['Deck size', d.deck]]));
+    out.push(ui.stats([['Cash at the end', d.money != null ? '$' + d.money : null], ['Deck size', d.deck]]));
+    out.push(foot(d.won ? 'Beat all 8 antes' + (b && b.t ? ', with a biggest hand of ' + ui.num(b.t) : '') + '.' : d.lost ? 'Stopped by ' + d.lost.name + ' at ante ' + (d.lost.ante || d.ante) + ': scored ' + ui.num(d.lost.score) + ' of the ' + ui.num(d.lost.target) + ' needed (' + Math.round(d.lost.score / Math.max(1, d.lost.target) * 100) + '%).' : '', d.won ? 'trophy' : 'flag'));
     return ui.wrap(out);
   });
 

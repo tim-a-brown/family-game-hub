@@ -673,7 +673,7 @@
     var info = blindInfo(S.bi), B = S.bi === 2 ? BOSSES[S.boss] : null, notes = [];
     S.round++;
     S.target = S.testTarget || info.target; S.testTarget = 0;
-    S.score = 0; S.handsPlayedRound = 0; S.dealtOnce = false; S.fd = {}; S.playsRound = {}; S.discUsed = false; S.bossOff = false; S.forced = null; S.jOff = null; S.fresh = [];
+    S.score = 0; S.rBest = null; S.handsPlayedRound = 0; S.dealtOnce = false; S.fd = {}; S.playsRound = {}; S.discUsed = false; S.bossOff = false; S.forced = null; S.jOff = null; S.fresh = [];
     if (S.pend.some(function (t) { return t.k === 'juggle'; })) { S.juggle = 3; S.pend = S.pend.filter(function (t) { return t.k !== 'juggle'; }); }
     S.phase = 'play';
     var Bon = activeBoss();
@@ -692,7 +692,7 @@
   function skipBlind() {
     if (S.phase !== 'blind' || S.bi > 1) return null;
     var t = S.tags[S.bi];
-    S.skipped[S.bi] = true; S.stats.skips++;
+    S.skipped[S.bi] = true; S.stats.skips++; blindLog('s');
     S.bi++;
     var msg = applyTag(t);
     return { tag: t, msg: msg };
@@ -844,6 +844,7 @@
     S.playsRound[res.hand] = (S.playsRound[res.hand] || 0) + 1;
     S.lastHand = res.hand;
     S.score += res.total;
+    if (!S.rBest || res.total > S.rBest.t) S.rBest = { t: res.total, h: res.hand };
     S.money += res.money;
     res.made = [];
     res.makes.forEach(function (t) { if (consRoom()) { var c = addCons(consKey(t)); res.made.push(c.k); } });
@@ -901,12 +902,20 @@
     if (!S.hand.length) { out.lose = true; loseRun(); }
     return out;
   }
+  // For the history: one line per blind, 'ante|blind 0-2|score|target|hands played|best hand|w/l/s|name'
+  function blindLog(out) {
+    var info = blindInfo(S.bi), st = S.stats, sk = out === 's';
+    (st.bl = st.bl || []).push([S.ante, S.bi, sk ? 0 : Math.round(S.score || 0), Math.round((sk ? info.target : S.target) || 0), sk ? 0 : S.handsPlayedRound || 0, !sk && S.rBest ? S.rBest.h : '', out, info.name].join('|'));
+    if (st.bl.length > 40) st.bl.shift();
+  }
   function loseRun() {
+    blindLog('l');
     var info = blindInfo(S.bi);
     S.stats.lostTo = { name: info.name, target: S.target, score: S.score, ante: S.ante };
     S.phase = 'over';
   }
   function endRound(saved) {
+    blindLog('w');
     var info = blindInfo(S.bi), lines = [], notes = [];
     lines.push({ k: 'blind', label: info.name, sub: 'Score at least ' + fmt(S.target), amt: info.reward, dollars: true });
     if (saved) notes.push('Lucky Bones saved the run, then broke');
