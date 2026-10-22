@@ -341,7 +341,11 @@
   // ── Cribbage: the peg race, best hands with their cards, and the last show ──
   R('cribbage', function (e, ui) {
     var d = e.dt; if (!d) return null;
-    var nm = names(e), out = [];
+    var nm = names(e), out = [], fin = (e.players || []).map(function (p) { return p.score; });
+    var bestP = d.best ? [0, 1].filter(function (p) { return d.best[p]; }).sort(function (a, b) { return d.best[b].pts - d.best[a].pts; })[0] : null;
+    out.push(ui.stats([fin.length === 2 ? ['Won by', Math.abs(fin[0] - fin[1]), d.skunk === 2 ? 'a double skunk' : d.skunk ? 'a skunk' : 'points'] : null,
+      bestP != null ? ['Best count', d.best[bestP].pts, first(nm[bestP]) + "'s " + (d.best[bestP].crib ? 'crib' : 'hand')] : null,
+      d.big && d.big.pts >= 3 ? ['Biggest peg', d.big.pts, first(nm[d.big.p])] : null]));
     if (d.tr) {
       var sc = [0, 0], pts = [[0], [0]], marks = [], i = 0, n = 0;
       var tr = String(d.tr);
@@ -367,7 +371,25 @@
       });
       if (bk.length) out.push(ui.section('Best hands', felt('cribbage', bk)));
     }
-    if (d.last && d.last.h0) {
+    if (d.hx && d.hx.length) {
+      var hx = d.hx, panel = K().el('div', { class: 'hv' }), off = Math.max(0, scoresOf(e).length - hx.length);
+      var show = function (i) {
+        var h = hx[i], kids = [], hs = h.h ? String(h.h).split('.').map(Number) : null, g = h.g ? String(h.g).split('.').map(Number) : null;
+        var got = hs ? [0, 1].map(function (p) { return hs[p] + g[p] + (p === h.d ? h.c : 0); }) : String(h.p || '0.0').split('.').map(Number);
+        kids.push(head('<b>Hand ' + (off + i + 1) + '</b> · ' + K().esc(first(nm[h.d])) + "'s crib", h.x ? 'The game ended here' : null, h.x ? 'big' : ''));
+        kids.push(plates([0, 1].map(function (p) { return { n: first(nm[p]), v: '+' + got[p], s: hs ? 'peg ' + g[p] + ' · hand ' + hs[p] : '', s2: hs && p === h.d ? 'crib ' + h.c : '', c: ui.color(p), cls: got[p] > got[1 - p] ? 'good' : '' }; })));
+        [1 - h.d, h.d].forEach(function (p) { var cs = codes2(p ? h.h1 : h.h0); if (cs.length) kids.push(grp(nm[p] + (hs ? ' · ' + hs[p] : ''), K().el('div', { class: 'hvc-pair' }, [row(cs, { w: 36 }), h.st ? row([h.st], { w: 36, hl: [h.st] }) : null]))); });
+        if (h.cr) kids.push(grp('Crib (' + first(nm[h.d]) + ')' + (hs ? ' · ' + h.c : ''), K().el('div', { class: 'hvc-pair' }, [row(codes2(h.cr), { w: 36 }), h.st ? row([h.st], { w: 36, hl: [h.st] }) : null]), h.st ? 'Ringed: the starter card, shared by every count' : ''));
+        panel.innerHTML = ''; panel.appendChild(felt('cribbage', kids));
+      };
+      var items = hx.map(function (h, i) {
+        var hs = h.h ? String(h.h).split('.').map(Number) : null, g = h.g ? String(h.g).split('.').map(Number) : null;
+        var got = hs ? [0, 1].map(function (p) { return hs[p] + g[p] + (p === h.d ? h.c : 0); }) : String(h.p || '0.0').split('.').map(Number);
+        var big = hs && Math.max(hs[0], hs[1], h.c) >= 16;
+        return { t: String(off + i + 1), c: got[0] === got[1] ? null : ui.color(got[0] > got[1] ? 0 : 1), ring: big, title: 'Hand ' + (off + i + 1) + ': ' + got.join(' – ') };
+      });
+      out.push(ui.section('Every hand · tap one', [road(items, hx.length - 1, show), panel, key([['More points: ' + first(nm[0]), ui.color(0)], ['More points: ' + first(nm[1]), ui.color(1)], ['A count of 16+', 'ring']])], { icon: 'cards' }));
+    } else if (d.last && d.last.h0) {
       var L = d.last, kids = [];
       [0, 1].forEach(function (p) { var h = p ? L.h1 : L.h0; if (h && h.length) kids.push(grp(nm[p] + (L.d === p ? ' (dealer)' : ''), row(h, { w: 36 }))); });
       kids.push(K().el('div', { class: 'hvc-pair' }, [L.cr && L.cr.length ? grp('Crib (' + first(nm[L.d]) + ')', row(L.cr, { w: 36 })) : null, L.st ? grp('Starter', row([L.st], { w: 36 })) : null]));
@@ -376,6 +398,13 @@
     if (d.peg && d.show) out.push(ui.table(['', first(nm[0]), first(nm[1])], [['Pegging', d.peg[0], d.peg[1]], ['Hands & crib', d.show[0], d.show[1]],
       d.heels && (d.heels[0] || d.heels[1]) ? ['His heels', d.heels[0], d.heels[1]] : null, d.zero ? ['Zero hands', d.zero[0], d.zero[1]] : null].filter(Boolean), { headColors: [null, ui.color(0), ui.color(1)] }));
     if (d.big && d.big.pts >= 3) out.push(ui.facts([['Biggest peg', d.big.pts + ' for ' + String(d.big.text || '').replace(/ for \d+/g, '').replace(/, /g, ' + ') + ' (' + nm[d.big.p] + ')']]));
+    if (fin.length === 2 && fin[0] != null) {
+      var w = fin[0] > fin[1] ? 0 : 1, lh = d.hx && d.hx[d.hx.length - 1];
+      var why = nm[w] + ' reached 121' + (lh && lh.x ? ' during hand ' + scoresOf(e).length : '') + ', ' + (fin[w] - fin[1 - w]) + ' points ahead.';
+      if (d.skunk) why += ' ' + nm[1 - w] + (d.skunk === 2 ? ' never reached 61: a double skunk.' : ' never reached 91: a skunk.');
+      else if (d.peg && d.peg[w] > d.peg[1 - w] + 5) why += ' Pegging made the difference: ' + d.peg[w] + ' to ' + d.peg[1 - w] + '.';
+      out.push(foot(why, 'flag'));
+    }
     return ui.wrap(out);
   });
 
