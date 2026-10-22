@@ -829,9 +829,10 @@
       TW.at = Date.now();
       netTurns().then(function (list) {
         if (!list) return;
-        // (never for the game you're in: you'd see the move right there)
-        var seen = turnsSeen();
-        var fresh = list.filter(function (x) { return x.mine && x.at && seen[x.id + ':' + x.code] !== x.at && x.id !== game.id; });
+        // (never for the table you're at: you'd see the move right there. The same game against the computer, or
+        // another table of it, still hears about it)
+        var seen = turnsSeen(), at = atTable();
+        var fresh = list.filter(function (x) { return x.mine && x.at && seen[x.id + ':' + x.code] !== x.at && x.code !== at; });
         turnsMark(list); turnBadge(list);
         if (fresh.length && nPref('gn_turn_ban')) turnBanner(fresh[0], fresh.length - 1);
       });
@@ -839,6 +840,11 @@
     setTimeout(check, 4000);
     setInterval(check, 60000);
     doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') setTimeout(check, 800); });
+  }
+  // The online table this page is at, if any: TurnNet games know theirs; Chess and Lorcana say through window.onlineTable
+  function atTable() {
+    try { if (window.TurnNet && TurnNet._t && TurnNet._t.code) return TurnNet._t.code; if (typeof window.onlineTable === 'function') return window.onlineTable() || null; } catch (e) {}
+    return null;
   }
   // The banner: the game's icon, whose move it is, and a Play button; tap it to go, swipe it up (or wait) to let it be
   function turnBanner(x, more, o) {
