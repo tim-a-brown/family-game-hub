@@ -40,6 +40,8 @@
     '.hvw-wgrid .hv-tile.s-y{background:#c9a227;}' +
     '.hvw-wgrid .hv-tile.s-g{background:#4a9b4f;}' +
     '.hvw-wgrid .hv-tile.s-x{box-shadow:inset 0 0 0 2px #2b2c31;}' +
+    '.hvw-wr{display:flex;align-items:center;gap:8px;}.hvw-wr .lf{width:58px;font-size:.66rem;font-weight:800;color:rgba(255,255,255,.5);line-height:1.15;}' +
+    '.hvw-wr .lf b{display:block;font-size:.95rem;color:#fff;font-variant-numeric:tabular-nums;}.hvw-wr .lf.one b{color:#7fd987;}' +
     '.hvw-ans{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}' +
     '.hvw-ans .hv-tile{width:34px;height:34px;font-size:1.1rem;}' +
     '.hvw-kb{display:flex;flex-direction:column;gap:4px;align-items:center;}' +
@@ -176,13 +178,18 @@
   R('wordle', function (e, ui) {
     var ans = up(e.answer), gs = (e.guesses || []).map(up);
     if (!ans || !gs.length) return null;
-    var grid = ui.el('div', { class: 'hvw-wgrid' }), best = {}, rank = { b: 1, y: 2, g: 3 };
+    var grid = ui.el('div', { class: 'hvw-wgrid' }), best = {}, rank = { b: 1, y: 2, g: 3 }, d = e.dt || {}, lf = Array.isArray(d.lf) ? d.lf : null;
     for (var i = 0; i < 6; i++) {
-      if (gs[i]) { var st = wordleCheck(gs[i], ans); grid.appendChild(ui.tiles(gs[i], st)); gs[i].split('').forEach(function (ch, j) { var v = st.charAt(j); if (!best[ch] || rank[v] > rank[best[ch]]) best[ch] = v; }); }
-      else grid.appendChild(ui.tiles('_____', 'xxxxx'));
+      var row;
+      if (gs[i]) { var st = wordleCheck(gs[i], ans); row = ui.tiles(gs[i], st); gs[i].split('').forEach(function (ch, j) { var v = st.charAt(j); if (!best[ch] || rank[v] > rank[best[ch]]) best[ch] = v; }); }
+      else row = ui.tiles('_____', 'xxxxx');
+      // how many answers were still possible after this guess
+      if (lf) grid.appendChild(ui.el('div', { class: 'hvw-wr' }, [row, ui.el('span', { class: 'lf' + (gs[i] && lf[i] === 1 ? ' one' : ''), html: gs[i] && lf[i] != null && gs[i] !== ans ? '<b>' + lf[i].toLocaleString('en-US') + '</b>' + (lf[i] === 1 ? 'word' : 'words') + ' left' : '' })]));
+      else grid.appendChild(row);
     }
     var won = gs[gs.length - 1] === ans;
     var out = [ui.section(null, grid)];
+    if (e.dt) out.push(ui.stats([['Guesses', won ? gs.length + ' / 6' : 'X / 6'], ['Streak', d.sk || 0], e.hard ? ['Mode', 'Hard'] : null]));
     if (!won) out.push(ui.section('The word', ui.el('div', { class: 'hvw-ans' }, [ui.tiles(ans, 'rrrrr'),
       ui.el('span', { class: 'muted', style: { 'font-weight': '800', 'font-size': '.88rem' }, text: 'Not solved' + (e.hard ? ' · hard mode' : '') })])));
     else if (e.hard) out.push(ui.chips([{ t: 'Hard mode', c: '#f97316' }]));
