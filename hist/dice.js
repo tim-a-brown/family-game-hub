@@ -69,6 +69,8 @@
     '.dv-key>span{display:inline-flex;align-items:center;gap:4px;}.dv-key i{display:inline-block;width:10px;height:10px;border-radius:3px;background:rgba(255,255,255,.12);}.dv-key i.w{background:#16a34a;}.dv-key i.l{background:#b91c1c;}.dv-key i.p{background:#2f6fd6;}.dv-key i.big{background:#d4a017;}',
     '.dv-rb.pz{background:#c01f92;}.dv-rb.pc{box-shadow:inset 0 -3px 0 var(--pc);}.dv-key i.pz{background:#c01f92;}',
     '.dv-chart{width:100%;height:auto;display:block;}',
+    '.lr-felt{max-width:100%;line-height:normal;padding:10px;background:#0b2326;display:flex;flex-direction:column;gap:6px;}.lr-felt svg{display:block;}',
+    '.lr-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.84rem;font-weight:800;color:rgba(255,255,255,.85);}.lr-top .lr-dice svg{width:auto;height:30px;}',
     '.dv-tabs{display:flex;flex-wrap:wrap;gap:5px;}',
     '.dv-tab{appearance:none;border:0;cursor:pointer;font:inherit;font-size:.8rem;font-weight:900;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--pc) 45%,transparent);}',
     '.dv-tab.on{background:var(--pc);color:#111;}',
@@ -382,6 +384,37 @@
     else o += '<text x="' + (x + s / 2) + '" y="' + (y + s / 2 + 1) + '" text-anchor="middle" dominant-baseline="central" font-size="' + s * 0.58 + '" font-weight="900" fill="' + (f === 'C' ? '#c8102e' : '#1a1830') + '" font-family="system-ui">' + f + '</text>';
     return o;
   }
+  // The table after one roll: everyone around the felt with their chips, the pot in the middle, arrows where this roll sent chips
+  function lrcTable(ui, nm, before, after, who, faces, potB, potA) {
+    var n = nm.length, W = 320, H = 230, cx = W / 2, cy = 112, rx = 122, ry = 78, s = '', id = 'lr' + (++uid);
+    var at = function (i) { var a = Math.PI / 2 + i * 2 * Math.PI / n; return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)]; };
+    s += '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="The table after this roll">';
+    s += '<defs><radialGradient id="' + id + '" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#17727a"/><stop offset="1" stop-color="#09393e"/></radialGradient>' +
+      '<marker id="' + id + 'a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#ffd54a"/></marker></defs>';
+    s += '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + (rx + 36) + '" ry="' + (ry + 30) + '" fill="#6b4320"/><ellipse cx="' + cx + '" cy="' + cy + '" rx="' + (rx + 28) + '" ry="' + (ry + 22) + '" fill="url(#' + id + ')"/>';
+    // where the chips went
+    var moved = { L: 0, R: 0, C: 0 }; faces.split('').forEach(function (f) { if (moved[f] != null) moved[f]++; });
+    var from = at(who);
+    [['L', (who + 1) % n], ['R', (who - 1 + n) % n], ['C', -1]].forEach(function (m) {
+      if (!moved[m[0]]) return;
+      var to = m[1] < 0 ? [cx, cy] : at(m[1]), dx = to[0] - from[0], dy = to[1] - from[1], L = Math.sqrt(dx * dx + dy * dy) || 1;
+      var x1 = from[0] + dx / L * 26, y1 = from[1] + dy / L * 26, x2 = to[0] - dx / L * 26, y2 = to[1] - dy / L * 26;
+      s += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="#ffd54a" stroke-width="3" marker-end="url(#' + id + 'a)"/>';
+      s += '<text x="' + ((x1 + x2) / 2).toFixed(1) + '" y="' + ((y1 + y2) / 2 - 6).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="900" fill="#ffd54a" font-family="system-ui">' + m[0] + (moved[m[0]] > 1 ? ' ×' + moved[m[0]] : '') + '</text>';
+    });
+    // the pot
+    s += '<circle cx="' + cx + '" cy="' + cy + '" r="22" fill="rgba(0,0,0,.28)" stroke="rgba(255,255,255,.25)" stroke-dasharray="3 3"/>';
+    s += '<text x="' + cx + '" y="' + (cy - 2) + '" text-anchor="middle" font-size="15" font-weight="900" fill="#fff" font-family="system-ui">' + potA + '</text><text x="' + cx + '" y="' + (cy + 11) + '" text-anchor="middle" font-size="7.5" font-weight="900" letter-spacing="1" fill="rgba(255,255,255,.6)" font-family="system-ui">POT</text>';
+    nm.forEach(function (name, i) {
+      var p = at(i), c = after[i], d = c - before[i], col = ui.color(i), me = i === who;
+      s += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="21" fill="' + (c ? '#0b2a2e' : 'rgba(0,0,0,.35)') + '" stroke="' + col + '" stroke-width="' + (me ? 4 : 2) + '"' + (c ? '' : ' stroke-dasharray="3 3"') + '/>';
+      for (var k = 0; k < Math.min(c, 6); k++) s += '<ellipse cx="' + p[0].toFixed(1) + '" cy="' + (p[1] + 8 - k * 3.2).toFixed(1) + '" rx="9" ry="3.4" fill="' + ['#e5263f', '#2f6fd6', '#f2c230'][k % 3] + '" stroke="#fff" stroke-width=".8"/>';
+      s += '<text x="' + p[0].toFixed(1) + '" y="' + (p[1] - 7).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="900" fill="#fff" font-family="system-ui">' + (c > 6 || !c ? c : '') + '</text>';
+      var ty = p[1] > cy ? p[1] + 34 : p[1] - 27;
+      s += '<text x="' + p[0].toFixed(1) + '" y="' + ty.toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="900" fill="' + col + '" font-family="system-ui">' + esc(name.length > 9 ? name.slice(0, 8) + '…' : name) + (d ? ' ' + (d > 0 ? '+' : '−') + Math.abs(d) : '') + '</text>';
+    });
+    return s + '</svg>';
+  }
   R('lrc', function (e, ui) {
     var d = e.dt, nm = names(e), out = [];
     var labs = e.rounds && e.rounds.labels ? arr(e.rounds.labels) : [], sc = e.rounds && e.rounds.scores ? arr(e.rounds.scores) : [];
@@ -399,7 +432,30 @@
     }
     if (!d) return ui.wrap(out);
     var ps = arr(d.p);
-    if (d.lf && d.lw >= 0) {
+    // every roll: tap one to see who rolled what and where the chips went
+    var rl = String(d.rl || '').split(' ').filter(Boolean);
+    if (rl.length && nm.length) {
+      var n0 = String(d.r0 || '').split(',').map(Number), ch = nm.map(function (x, i) { return d.r0 ? n0[i] || 0 : 3; }), pot = d.r0 ? n0[nm.length] || 0 : 0, snaps = [];
+      rl.forEach(function (t) {
+        var w = parseInt(t.charAt(0), 36), f = t.slice(1), b = ch.slice(), pb = pot, N = nm.length;
+        f.split('').forEach(function (x) { if (x === '.') return; ch[w]--; if (x === 'L') ch[(w + 1) % N]++; else if (x === 'R') ch[(w - 1 + N) % N]++; else pot++; });
+        snaps.push({ w: w, f: f, b: b, a: ch.slice(), pb: pb, pa: pot });
+      });
+      var card = ui.el('div', { class: 'hv' });
+      var items = snaps.map(function (x, k) { return { c: /^\.+$/.test(x.f) ? 'w' : x.f.indexOf('C') >= 0 ? 'l' : 'p', pc: ui.color(x.w), t: String(k + 1 + (d.r0 ? 0 : 0)), title: (nm[x.w] || '') + ' rolled ' + x.f.split('').join(' ') }; });
+      items.forEach(function (it) { it.c += ' pc'; });
+      var showRoll = function (k) {
+        var x = snaps[k], fs = x.f.split(''), sz = 30, g = 8, w = fs.length * sz + (fs.length - 1) * g;
+        var dice = '<svg viewBox="-2 -2 ' + (w + 4) + ' ' + (sz + 4) + '" width="' + (w + 4) + '" height="' + (sz + 4) + '" aria-hidden="true">' + fs.map(function (f, i) { return lrcDie(f, i * (sz + g), 0, sz); }).join('') + '</svg>';
+        var words = fs.map(function (f) { return f === 'L' ? 'left' : f === 'R' ? 'right' : f === 'C' ? 'center' : 'dot'; });
+        card.innerHTML = '';
+        card.appendChild(ui.el('div', { class: 'hv-snap lr-felt' }, [ui.el('div', { class: 'lr-top' }, [ui.el('span', { html: '<b style="color:' + ui.color(x.w) + '">' + esc(nm[x.w] || '') + '</b> rolled ' + words.join(', ') }), ui.el('span', { class: 'lr-dice', html: dice })]),
+          ui.el('div', { html: lrcTable(ui, nm, x.b, x.a, x.w, x.f, x.pb, x.pa) })]));
+      };
+      out.push(ui.section(d.r0 ? 'The last ' + rl.length + ' rolls · tap one' : 'Every roll · tap one', [roadStrip(ui, items, snaps.length - 1, showRoll), card,
+        dvKey(ui, [['p', 'passed chips'], ['l', 'chips to the pot'], ['w', 'all dots, kept them'], ['', 'the bar under each: who rolled']])], { icon: 'dice' }));
+    }
+    if (d.lf && d.lw >= 0 && !d.rl) {
       var f = String(d.lf).split(''), s = 34, g = 8, w = f.length * s + (f.length - 1) * g;
       var svg = '<svg viewBox="-4 -4 ' + (w + 8) + ' ' + (s + 8) + '" style="max-width:' + (w + 8) * 1.4 + 'px">' + f.map(function (x, i) { return lrcDie(x, i * (s + g), 0, s); }).join('') + '</svg>';
       var winner = e.winner, who = nm[d.lw] || '';
@@ -420,6 +476,8 @@
         ['Three dots', d3 || null]
       ]));
     }
+    var wp = (e.players || []).filter(function (p) { return p.name === e.winner; })[0];
+    if (wp) out.push(ui.el('div', { class: 'dv-foot', text: wp.name + ' was the last one holding chips and took home ' + wp.score + '.' + (d.rl ? ' ' + String(d.rl).split(' ').length + ' rolls in all.' : '') }));
     return ui.wrap(out);
   });
 
