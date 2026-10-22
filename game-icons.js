@@ -199,6 +199,13 @@ var GameIcon = (function () {
         line('M3.4 12.4c1.4-1.3 2.4 1.3 3.8 0s2.4 1.3 3.8 0 2.4 1.3 3.8 0 2.4 1.3 3.8 0 1.6.9 2.4.3', Y, 1.3) +
         path('M1.5 13.5c0 2.6 4.5 4.6 10.5 4.6s10.5-2 10.5-4.6c0 3.6-4.5 6.4-10.5 6.4S1.5 17.1 1.5 13.5z', '#b8742f');
     },
+    oregon: function () {   // on the arcade screen: the covered wagon on the trail, west to the left
+      return rect(0, 19.5, 24, 1.6, 0, '#a85a1e') +
+        path('M7.5 13.5C7.5 6.6 10 4.5 14.5 4.5S22 6.6 22 13.5z', W) + line('M12 5.4v8M16.6 4.8v8.6', S, 1.1) +
+        rect(6.6, 13, 16.2, 3.6, .6, '#8a4a1c') + line('M6.6 14.8h16', '#5e2f10', .8) +
+        circ(9.6, 18.4, 2.6, K) + circ(9.6, 18.4, 1.3, '#c98a4a') + circ(19.4, 17.8, 3.2, K) + circ(19.4, 17.8, 1.7, '#c98a4a') +
+        line('M6.6 15.2L2.5 16.5', K, 1.1) + rect(.4, 14.4, 4.6, 3.4, 1.4, '#8a4a1c') + path('M.6 14.4l-.4-1.6M3.8 14.4l.6-1.6', 'none', ' stroke="' + CREAM + '" stroke-width=".9" stroke-linecap="round"');
+    },
     minesweeper: function () {   // on the arcade screen: covered squares, a flag, numbers, and the mine in the middle
       var g = '', open = { 1: '2', 3: '1', 4: '', 5: '1' };
       for (var i = 0; i < 9; i++) { var x = .5 + (i % 3) * 7.8, y = .5 + Math.floor(i / 3) * 7.8; g += rect(x, y, 7.2, 7.2, 1.3, i in open ? '#26304a' : '#6f7fa6'); }
