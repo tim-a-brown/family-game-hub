@@ -762,8 +762,8 @@
       // Carmen: long brown hair framing the face, under the hat
       // long, full and a little wavy, spilling over the turned-up collar
       function wave(y) { return Math.round(Math.sin(y / 5) * 1.6); }
-      g.poly([[cx - 18, 32], [cx - 13, 40], [cx - 15, 64], [cx - 12, 84], [cx - 20, 96], [cx - 28, 90], [cx - 25, 60], [cx - 23, 36]], function (x, y) { var w = x + wave(y); return w % 6 === 0 ? hL : w % 6 === 3 ? shade(hair, -0.12) : hair; });
-      g.poly([[cx + 18, 32], [cx + 23, 36], [cx + 25, 60], [cx + 28, 90], [cx + 20, 96], [cx + 12, 84], [cx + 15, 64], [cx + 13, 40]], function (x, y) { var w = x + wave(y); return w % 6 === 0 ? hair : w % 6 === 3 ? shade(hD, -0.15) : hD; });
+      g.poly([[cx - 18, 32], [cx - 13, 40], [cx - 15, 64], [cx - 12, 84], [cx - 18, 98], [cx - 30, 94], [cx - 34, 76], [cx - 28, 58], [cx - 31, 44], [cx - 24, 34]], function (x, y) { var w = x + wave(y); return w % 6 === 0 ? hL : w % 6 === 3 ? shade(hair, -0.12) : hair; });
+      g.poly([[cx + 18, 32], [cx + 25, 34], [cx + 31, 46], [cx + 29, 60], [cx + 35, 78], [cx + 30, 96], [cx + 18, 98], [cx + 12, 84], [cx + 15, 64], [cx + 13, 40]], function (x, y) { var w = x + wave(y); return w % 6 === 0 ? hair : w % 6 === 3 ? shade(hD, -0.15) : hD; });
       g.poly([[cx - 17, 32], [cx - 2, 33], [cx - 15, 42]], hair);
     }
 
@@ -780,8 +780,8 @@
     // the dossier's feature
     var f = L.feature;
     if (f === 'Scar') { g.line(cx + 7, ey + 4, cx + 12, ey + 14, mix(skin, '#7a1a1a', 0.6)); g.line(cx + 8, ey + 4, cx + 13, ey + 14, mix(skin, '#ffffff', 0.25)); }
-    if (f === 'Jewelry' || L.earrings) { var ec = L.earrings === 'pearl' ? '#f4f0e8' : '#f0d040'; g.rect(cx - rx - 1, 54, 2, 3, ec); g.rect(cx + rx - 1, 54, 2, 3, ec); if (L.earrings === 'hoop' || f === 'Jewelry') { g.ell(cx - rx, 59, 3, 3, null); g.p(cx - rx - 2, 58, ec); g.p(cx - rx + 2, 58, ec); g.p(cx - rx, 61, ec); g.p(cx + rx - 2, 58, ec); g.p(cx + rx + 2, 58, ec); g.p(cx + rx, 61, ec); } }
-    if (f === 'Jewelry' || L.necklace) { var nc = L.necklace === 'pearl' ? '#f4f0e8' : '#f0d040'; for (var j = -12; j <= 12; j++) g.p(cx + j, 82 + Math.round(6 - Math.abs(j) * 0.45), (j & 1) ? nc : shade(nc, -0.25)); if (f === 'Jewelry') g.ell(cx, 89, 3, 3, L.carmen ? '#a8142a' : '#3ac8e8'); }
+    if (f === 'Jewelry' || L.earrings) { var ec = L.carmen ? '#d81e2a' : L.earrings === 'pearl' ? '#f4f0e8' : '#f0d040'; g.rect(cx - rx - 1, 54, 2, 3, ec); g.rect(cx + rx - 1, 54, 2, 3, ec); if (L.earrings === 'hoop' || f === 'Jewelry') { g.ell(cx - rx, 59, 3, 3, null); g.p(cx - rx - 2, 58, ec); g.p(cx - rx + 2, 58, ec); g.p(cx - rx, 61, ec); g.p(cx + rx - 2, 58, ec); g.p(cx + rx + 2, 58, ec); g.p(cx + rx, 61, ec); } }
+    if ((f === 'Jewelry' && !L.carmen) || L.necklace) { var nc = L.necklace === 'pearl' ? '#f4f0e8' : '#f0d040'; for (var j = -12; j <= 12; j++) g.p(cx + j, 82 + Math.round(6 - Math.abs(j) * 0.45), (j & 1) ? nc : shade(nc, -0.25)); if (f === 'Jewelry') g.ell(cx, 89, 3, 3, L.carmen ? '#a8142a' : '#3ac8e8'); }
     if (f === 'Tattoo') {
       g.poly([[2, 112], [8, 96], [22, 88], [30, 92], [18, 104], [16, 112]], function (x, y) { return x + y > 118 ? skD : skin; }); g.ell(26, 89, 6, 5, skin); g.rect(4, 108, 13, 4, cD);   // rolled sleeve, forearm
       var tx = 15, ty = 99, ink = '#2a4a8a'; g.rect(tx, ty - 6, 1, 10, ink); g.rect(tx - 3, ty - 4, 7, 1, ink); g.p(tx - 1, ty - 8, ink); g.p(tx + 1, ty - 8, ink); g.p(tx, ty - 9, ink); g.line(tx - 4, ty + 1, tx, ty + 4, ink); g.line(tx + 4, ty + 1, tx, ty + 4, ink);
@@ -795,6 +795,12 @@
       // closed red lips, no smile; then the shadows: the brim's across her eyes, and the far half of her face and hair
       // in the dark, as if lit by one lamp from the left
       g.rect(cx - 4, my2 - 1, 8, 1, '#7a0e1e'); g.rect(cx - 4, my2, 8, 1, '#a8182a'); g.rect(cx - 3, my2 + 1, 6, 1, '#c03040');
+      // the gold scarf at her throat, inside the turned-up collar
+      g.poly([[cx - 12, 74], [cx + 12, 74], [cx + 10, 84], [cx + 2, 92], [cx - 6, 86], [cx - 11, 82]], function (x, y) { return (x - y) % 5 === 0 ? '#a87818' : x > cx + 2 ? '#c89820' : '#e8b830'; });
+      // a black-gloved hand at the collar
+      g.poly([[8, 112], [12, 94], [20, 86], [30, 84], [34, 90], [28, 96], [26, 112]], function (x, y) { return x + y < 112 ? '#3a2a24' : '#1a1210'; });
+      for (var fg = 0; fg < 3; fg++) g.rect(22 + fg * 4, 82 + fg, 3, 7, fg === 2 ? '#1a1210' : '#2e221c');
+      g.rect(10, 104, 16, 2, '#7a0e14');
       function hexAt(x, y) { var c8 = g.get(x, y) >>> 0; return '#' + [c8 & 255, (c8 >> 8) & 255, (c8 >> 16) & 255].map(function (v) { return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
       function inFace(x, y) { var dx = (x + 0.5 - cx) / 17.5, dy = (y + 0.5 - 46) / 24; return dx * dx + dy * dy <= 1 || (x >= cx - 8 && x < cx + 8 && y >= 64 && y < 84); }
       for (var yy = 30; yy < 98; yy++) for (var xx = cx - 24; xx < cx + 30; xx++) {
@@ -809,7 +815,7 @@
       // the wide brim, tipped down over her right eye; the crown pinched at the front
       g.poly([[cx - 36, 31], [cx - 20, 27], [cx + 18, 29], [cx + 36, 36], [cx + 30, 40], [cx + 10, 37], [cx - 20, 36], [cx - 34, 35]], function (x, y) { return y > 34 - (x - cx) * 0.06 ? rd : x < cx - 16 ? rl : red; });
       g.ell(cx + 1, 27, 19, 15, function (x) { return x < cx - 8 ? rl : x > cx + 10 ? rd : red; }, 'top'); g.rect(cx - 18, 25, 38, 6, function (x) { return x > cx + 10 ? rd : red; });
-      g.poly([[cx - 18, 26], [cx + 20, 27], [cx + 20, 31], [cx - 18, 30]], '#2a0a0e');
+      g.poly([[cx - 18, 25], [cx + 20, 26], [cx + 20, 31], [cx - 18, 30]], function (x, y) { return y >= 29 ? '#9a6a10' : x > cx + 10 ? '#c8961c' : '#e8b830'; });
       g.poly([[cx - 3, 13], [cx + 1, 12], [cx + 4, 22], [cx + 1, 23]], rd); g.line(cx - 11, 17, cx - 7, 24, rl); g.line(cx + 9, 16, cx + 12, 24, shade(rd, -0.2));
     } else if (L.hat === 'fedora' || L.hat === 'bowler') {
       var hc = L.hatc || '#3a3a40', hcL = shade(hc, 0.15), hcD = shade(hc, -0.3);
@@ -911,17 +917,19 @@
       var fold = ((x - X) * 3 + y) % 11 === 0; return x > X + 10 ? (fold ? red : rl) : x < X - 8 ? (fold ? '#5a0a10' : rd) : fold ? rd : red; });
     g.poly([[X - 14, B - 62], [X - 4, B - 40], [X - 1, B - 60]], rd); g.poly([[X + 14, B - 62], [X + 4, B - 40], [X + 1, B - 60]], rl);   // lapels
     g.rect(X - 22, B - 30, 46, 3, '#4a0a0e'); g.rect(X - 2, B - 31, 5, 5, '#e8c040'); g.rect(X - 1, B - 30, 3, 3, '#4a0a0e');   // belt and buckle
-    g.poly([[X + 18, B - 50], [X + 26, B - 26], [X + 22, B - 24], [X + 15, B - 44]], rl); g.ell(X + 24, B - 24, 3, 3, '#e8b48a');   // arm, glove
+    g.poly([[X + 18, B - 50], [X + 26, B - 26], [X + 22, B - 24], [X + 15, B - 44]], rl); g.ell(X + 24, B - 24, 3, 3, '#1a1210');   // arm, black glove
     g.poly([[X - 15, B - 63], [X - 11, B - 78], [X - 6, B - 64]], red); g.poly([[X + 15, B - 63], [X + 11, B - 78], [X + 6, B - 64]], rl);   // collar up
     g.rect(X - 5, B - 76, 10, 14, '#e0a880'); g.rect(X + 2, B - 76, 3, 14, '#f0c09a'); g.rect(X - 5, B - 76, 10, 4, '#5a3020');   // face, brim shadow
-    g.rect(X - 5, B - 76, 10, 6, '#3a1a14'); g.rect(X + 2, B - 76, 3, 6, '#5a2a1c'); g.p(X - 3, B - 72, '#f4e0c0'); g.p(X + 2, B - 72, '#f4e0c0');   // the brim's shadow, a glint of eyes
-    g.rect(X - 2, B - 66, 5, 1, '#c81e3a'); g.p(X + 3, B - 67, '#c81e3a');   // red lips, the smile
+    g.rect(X - 5, B - 76, 10, 6, '#3a1a14'); g.rect(X + 2, B - 76, 3, 6, '#5a2a1c'); g.p(X - 3, B - 72, '#f4e0c0');   // the brim's shadow, a glint of one eye
+    g.rect(X - 2, B - 66, 5, 1, '#a8182a'); g.rect(X - 1, B - 65, 3, 1, '#c03040');   // red lips, closed, no smile
     // long brown hair falling from under the hat, over the turned-up collar
-    g.poly([[X - 6, B - 78], [X - 4, B - 64], [X - 7, B - 54], [X - 12, B - 48], [X - 13, B - 62], [X - 11, B - 78]], function (x, y) { return (x + (y >> 2)) % 4 === 0 ? '#7a4a24' : '#5a3418'; });
-    g.poly([[X + 5, B - 78], [X + 6, B - 64], [X + 9, B - 56], [X + 13, B - 52], [X + 12, B - 66], [X + 10, B - 78]], function (x, y) { return (x + (y >> 2)) % 4 === 0 ? '#5a3418' : '#3a200e'; });
+    g.poly([[X - 6, B - 78], [X - 4, B - 64], [X - 7, B - 54], [X - 12, B - 48], [X - 13, B - 62], [X - 11, B - 78]], function (x, y) { return (x + (y >> 2)) % 4 === 0 ? '#4a2a1a' : '#2e1a12'; });
+    g.poly([[X + 5, B - 78], [X + 6, B - 64], [X + 9, B - 56], [X + 13, B - 52], [X + 12, B - 66], [X + 10, B - 78]], function (x, y) { return (x + (y >> 2)) % 4 === 0 ? '#2e1a12' : '#1a0e08'; });
+    g.poly([[X - 5, B - 63], [X + 5, B - 63], [X + 4, B - 57], [X, B - 53], [X - 4, B - 57]], function (x) { return x > X + 1 ? '#c8961c' : '#e8b830'; });   // the gold scarf
+    [B - 46, B - 40, B - 22, B - 16].forEach(function (yb) { g.rect(X - 7, yb, 2, 2, '#e8b830'); g.rect(X + 6, yb, 2, 2, '#c8961c'); });   // brass buttons
     g.ell(X, B - 79, 22, 4, rd); g.ell(X + 1, B - 80, 21, 3, red); g.rect(X + 6, B - 81, 12, 1, rl);   // brim
     g.ell(X, B - 84, 11, 9, function (x) { return x > X + 4 ? rl : x < X - 6 ? rd : red; }, 'top'); g.rect(X - 11, B - 85, 22, 4, red);
-    g.rect(X - 11, B - 83, 22, 2, '#1a0a0a'); g.line(X - 2, B - 92, X + 2, B - 88, rd);   // band, crease
+    g.rect(X - 11, B - 84, 22, 3, '#e8b830'); g.rect(X + 4, B - 84, 7, 3, '#c8961c'); g.line(X - 2, B - 92, X + 2, B - 88, rd);   // gold band, crease
     g.put(cv); return cv;
   }
   // a henchman dashing past: drawn on its own small canvas and slid across the picture by CSS
