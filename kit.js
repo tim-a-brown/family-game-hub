@@ -1205,8 +1205,10 @@
   // someone removed them. Ordered by how often each person has played.
   function fpRead() { try { var a = JSON.parse(lsGet('frequent_players', '[]')); return Array.isArray(a) ? a.filter(function (x) { return typeof x === 'string' && x.trim(); }) : []; } catch (e) { return []; } }
   function fpWrite(a) { lsSet('frequent_players', JSON.stringify(a)); }
+  // People in saved history. Computer players (cpu: true, like poker's named opponents) aren't people;
+  // historyNames.bots holds the names that only ever appear as computer players.
   function historyNames() {
-    var seen = {};
+    var seen = {}, bots = {};
     try {
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i); if (!k || k.indexOf('gh_') !== 0) continue;
@@ -1215,21 +1217,28 @@
         list.forEach(function (e) {
           (e && Array.isArray(e.players) ? e.players : []).forEach(function (p) {
             var n = baseName((p && (p.name || p)) || '');
-            if (isPersonName(n)) { var key = n.toLowerCase(); seen[key] = seen[key] || { n: n, c: 0 }; seen[key].c++; }
+            if (!isPersonName(n)) return;
+            var key = n.toLowerCase();
+            if (p && (p.cpu || p.bot)) { bots[key] = 1; return; }
+            seen[key] = seen[key] || { n: n, c: 0 }; seen[key].c++;
           });
         });
       }
     } catch (e) {}
+    Object.keys(seen).forEach(function (k) { delete bots[k]; });
+    historyNames.bots = bots;
     return seen;
   }
   function knownNames() {
     var hidden = hiddenNames().map(function (x) { return x.toLowerCase(); });
-    var fp = [], have = {}, hist = historyNames(), changed = false;
+    var fp = [], have = {}, hist = historyNames(), changed = false, bots = historyNames.bots || {}, counts0 = nameCounts(), roster = plRead();
     // Fold "Tim (White)" back into "Tim" (older games added these as separate people)
     fpRead().forEach(function (n) {
       var b = baseName(n), k = b.toLowerCase();
       if (b !== n) changed = true;
       if (!b || have[k]) { changed = true; return; }
+      // a computer player that older history scans added: nobody picked them for a game or added them on purpose
+      if (bots[k] && !counts0[k] && !(roster[k] && !roster[k].h)) { changed = true; return; }
       have[k] = true; fp.push(b);
     });
     Object.keys(hist).forEach(function (k) {
