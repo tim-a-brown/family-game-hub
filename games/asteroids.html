@@ -423,8 +423,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     hudDirty = true; updateHud();
     save();
   }
+  // ── The run's story for the game's history (hist/arcade.js draws it): the score every few seconds of play,
+  // when each level ended and each life lost. Kept in the saved stats, so a resumed game carries on.
+  function trk(o) { return o.trk || (o.trk = { sk: [], si: 2, nx: 0, sec: 0, lx: [], lf: [], ll: 0 }); }
+  function trkTime(T, dt, score) { T.sec += dt; while (T.sec >= T.nx) { T.sk.push(score); T.nx += T.si; if (T.sk.length > 90) { T.sk = T.sk.filter(function (v, i) { return i % 2 === 0; }); T.si *= 2; T.nx = T.sk.length * T.si; } } }
+  function trkLevel(T, n, score) { T.lx.push([n, Math.round(T.sec), score, T.ll].join('|')); T.ll = 0; if (T.lx.length > 40) T.lx.shift(); }
+  function trkLife(T, n, why) { T.ll++; T.lf.push([Math.round(T.sec), n, why || ''].join('|')); if (T.lf.length > 20) T.lf.shift(); }
+  function trkOut(T, n, score) { return { sk: T.sk.join(','), si: T.si, te: Math.round(T.sec), se: score, lx: T.lx.concat([[n, Math.round(T.sec), score, T.ll, 1].join('|')]).slice(-40), lf: T.lf.slice() }; }
+
   function startWave() {
-    if (G.wave) G.stats.perWave.push(G.score - G.stats.waveStartScore);
+    if (G.wave) { G.stats.perWave.push(G.score - G.stats.waveStartScore); trkLevel(trk(G.stats), G.wave, G.score); }
     G.stats.waveStartScore = G.score;
     G.wave++; G.waveT = 0; G.beatGap = 1; G.nextWaveT = 0;
     var n = Math.min(11, 4 + (G.wave - 1) * 2);
@@ -492,6 +500,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function update(dt) {
     var st = G.stats;
     G.waveT += dt;
+    if (ship && !ship.dead) trkTime(trk(st), dt, G.score);
     // effects
     parts = parts.filter(function (p) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 1 - dt * 1.2; p.vy *= 1 - dt * 1.2; return p.life > 0; });
     debris = debris.filter(function (d) { d.life -= dt; d.x += d.vx * dt; d.y += d.vy * dt; d.a += d.spin * dt; return d.life > 0; });
@@ -680,7 +689,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function killShip(cause) {
     var s = ship; s.dead = true; G.lives--; hudDirty = true;
-    G.stats.deaths.push({ by: cause, wave: G.wave });
+    G.stats.deaths.push({ by: cause, wave: G.wave }); trkLife(trk(G.stats), G.wave, cause);
     // break the ship into its line pieces
     var segs = [[13, 0, -9.6, -8.4], [13, 0, -9.6, 8.4], [-6.6, -6.2, -6.6, 6.2]];
     segs.forEach(function (sg) {
@@ -736,14 +745,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       w: Math.round(WW), h: Math.round(WH), rk: rocks.slice(0, 30).map(function (r) { return { x: Math.round(r.x), y: Math.round(r.y), s: r.size }; }),
       sh: ship ? Math.round(ship.x) + ',' + Math.round(ship.y) + ',' + (+(ship.a || 0).toFixed(2)) : '', uf: ufo ? Math.round(ufo.x) + ',' + Math.round(ufo.y) + ',' + (ufo.big ? 'b' : 's') : '',
       wv: G.wave, rb: st.rocks.slice(1), ub: st.ufoBig, us: st.ufoSmall, sx: st.shots, hx: st.hits, hy: st.hypers, hd: st.hyperDeaths, ex: st.extra,
-      dd: st.deaths.slice(-6).map(function (d) { return { b: d.by, w: d.wave }; }), bt: G.steer === 'buttons' ? 1 : 0,
+      dd: st.deaths.slice(-6).map(function (d) { return { b: d.by, w: d.wave }; }), bt: G.steer === 'buttons' ? 1 : 0, run: trkOut(trk(st), G.wave, G.score),
       hr: sc0 > 0 && (hiL.length < ArcadeHi.max || sc0 > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= sc0; }).length + 1 : 0, hb: G.best0 || 0
     };
     Kit.record(KEY, {
       detail: detail,
       started: G.started, mode: G.steer === 'buttons' ? 'Button controls' : '',
       players: [{ name: G.who, score: G.score }], winner: null,
-      rounds: pw.length > 1 ? { labels: pw.map(function (x, i) { return 'W' + (i + 1); }), scores: pw.map(function (x) { return [x]; }) } : null,
       highlights: h.slice(0, 6), summary: fmt(G.score) + ' points · wave ' + G.wave, badge: 'Wave ' + G.wave,
       meta: { score: G.score, wave: G.wave, rocks: rk, saucers: st.ufoBig + st.ufoSmall }
     });

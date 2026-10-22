@@ -271,13 +271,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (R.steps === 1) return s ? S.t[2] : S.t[0];
     return S.t[s];
   }
+  // ── The run's story for the game's history (hist/arcade.js draws it): the score every few seconds of play,
+  // when each level ended and each life lost. Kept in the saved stats, so a resumed game carries on.
+  function trk(o) { return o.trk || (o.trk = { sk: [], si: 2, nx: 0, sec: 0, lx: [], lf: [], ll: 0 }); }
+  function trkTime(T, dt, score) { T.sec += dt; while (T.sec >= T.nx) { T.sk.push(score); T.nx += T.si; if (T.sk.length > 90) { T.sk = T.sk.filter(function (v, i) { return i % 2 === 0; }); T.si *= 2; T.nx = T.sk.length * T.si; } } }
+  function trkLevel(T, n, score) { T.lx.push([n, Math.round(T.sec), score, T.ll].join('|')); T.ll = 0; if (T.lx.length > 40) T.lx.shift(); }
+  function trkLife(T, n, why) { T.ll++; T.lf.push([Math.round(T.sec), n, why || ''].join('|')); if (T.lf.length > 20) T.lf.shift(); }
+  function trkOut(T, n, score) { return { sk: T.sk.join(','), si: T.si, te: Math.round(T.sec), se: score, lx: T.lx.concat([[n, Math.round(T.sec), score, T.ll, 1].join('|')]).slice(-40), lf: T.lf.slice() }; }
+
   function roundClear() {
     G.phase = 'clear'; G.clearT = 0;
     enemies.forEach(function (e) { burst(e.x, e.y - 8, '#fff', 8); });
     enemies = []; G.lure = null; G.freeze = 0;
     var bonus = Math.min(5000, 1000 + 250 * (G.ri - 1)), db = discs.length * 50;
     addScore(bonus + db);
-    G.stats.rounds++;
+    G.stats.rounds++; trkLevel(trk(G.stats), G.level + '-' + G.round, G.score);
     if (!G.roundDeaths) G.stats.perfect++;
     G.perRound.push({ l: G.level + '-' + G.round, s: G.score - G.roundStart });
     fx.banner = { text: 'ROUND CLEAR', sub: '+' + fmt(bonus) + ' bonus' + (db ? ' · discs +' + db : ''), c: '#ffd24a', life: 2.3, max: 2.3 };
@@ -514,7 +522,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     G.phase = 'dead'; G.deadT = 0; G.roundDeaths++;
     var kind = e.type === 'egg' ? 'purple' : e.type;
     G.deaths[kind] = (G.deaths[kind] || 0) + 1; G.lastDeath = { k: kind, r: e.r, c: e.c };
-    G.lives--; hudDirty = true;
+    G.lives--; hudDirty = true; trkLife(trk(G.stats), G.level + '-' + G.round, kind);
     fx.shake = 0.5; fx.flash = 1;
     sHit(); setTimeout(sCurse, 180); Kit.haptic('error');
     save();
@@ -527,7 +535,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var p = cellXY(q.r, q.c); q.x = p.x; q.y = p.y;
   }
   function afterFall() {
-    G.lives--; hudDirty = true;
+    G.lives--; hudDirty = true; trkLife(trk(G.stats), G.level + '-' + G.round, 'fall');
     enemies = []; G.lure = null; G.freeze = 0;
     if (G.lives <= 0) { G.phase = 'over'; G.overT = 0; save(); return; }
     var h = q.home || { r: 0, c: 0 };
@@ -822,20 +830,19 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var NAMES = { red: 'red balls', purple: 'the purple ball', coily: 'Coily', ugg: 'Ugg', wrong: 'Wrongway', fall: 'falling off the edge' };
     var dk = Object.keys(G.deaths).sort(function (a, b) { return G.deaths[b] - G.deaths[a]; });
     if (dk.length) h.push('Lost the most lives to ' + (NAMES[dk[0]] || dk[0]) + ' (' + G.deaths[dk[0]] + ')');
-    var rounds = G.perRound.length > 1 ? { labels: G.perRound.map(function (r) { return r.l; }), scores: G.perRound.map(function (r) { return [r.s]; }) } : null;
     var mode = [G.pace === 'easy' ? 'Relaxed speed' : '', G.startLevel > 1 ? 'Started at level ' + G.startLevel : ''].filter(Boolean).join(' · ');
     // history detail: the pyramid as it was left (cube colour steps), the round's colours, and the run's numbers
     var hiL = ArcadeHi.list('cubehopper'), sc0 = G.score, scm = scheme(), qo = q && q.lastOn && onBoard(q.lastOn.r, q.lastOn.c) ? q.lastOn : null;
     var detail = {
       cb: cubes.join(''), st: rule().steps, rl: rule().id, col: [scm.l, scm.r].concat(scm.t).join(','), q: qo ? qo.r + ',' + qo.c : '',
       ds: discs.map(function (d) { return d.side + d.row; }).join(','), lv: G.level, rd: G.round, sl: G.startLevel, pace: G.pace,
-      d: G.deaths, ld: G.lastDeath || null, cu: st.cubes, hp: st.hops, lu: st.lured, ca: st.caught, gr: st.greens, dc: st.discs, rr: st.rounds, pf: st.perfect, ex: st.extra, rv: st.reverted,
+      run: trkOut(trk(st), G.level + '-' + G.round, G.score), d: G.deaths, ld: G.lastDeath || null, cu: st.cubes, hp: st.hops, lu: st.lured, ca: st.caught, gr: st.greens, dc: st.discs, rr: st.rounds, pf: st.perfect, ex: st.extra, rv: st.reverted,
       hr: sc0 > 0 && (hiL.length < ArcadeHi.max || sc0 > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= sc0; }).length + 1 : 0, hb: G.best0 || 0
     };
     Kit.record(KEY, {
       detail: detail,
       started: G.started, mode: mode,
-      players: [{ name: G.who, score: G.score }], winner: null, rounds: rounds,
+      players: [{ name: G.who, score: G.score }], winner: null,
       highlights: h.slice(0, 6), summary: fmt(G.score) + ' points · level ' + G.level + '-' + G.round, badge: 'L' + G.level + '-' + G.round,
       meta: { score: G.score, level: G.level, round: G.round }
     });
@@ -878,6 +885,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     discs.forEach(function (d) { d.spin += dt * 5; });
     var ph = G.phase;
     if (ph === 'play') {
+      trkTime(trk(G.stats), dt, G.score);
       updateQ(dt);
       if (G.phase !== 'play') return;
       updateEnemies(dt);

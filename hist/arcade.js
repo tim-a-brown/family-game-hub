@@ -35,9 +35,9 @@
     '.ar-foot{font-size:.78rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#ff6b7a;text-align:center;}',
     '.ar-foot.ok{color:#7dff9a;}',
     '.ar-sub{font-size:.7rem;color:rgba(233,236,255,.55);letter-spacing:.08em;text-transform:uppercase;font-weight:800;}',
-    '.ar-key{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;font-size:.64rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(233,236,255,.6);}',
-    '.ar-key span{display:inline-flex;align-items:center;gap:5px;}',
-    '.ar-key span i{width:10px;height:10px;border-radius:2px;display:inline-block;}'
+    '.ar-kz{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;font-size:.64rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(233,236,255,.6);}',
+    '.ar-kz span{display:inline-flex;align-items:center;gap:5px;}',
+    '.ar-kz span i{width:10px;height:10px;border-radius:2px;display:inline-block;}'
   ].join(''));
 
   // ── shared pieces ──
@@ -75,7 +75,7 @@
     o = o || {};
     return '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + (o.aria || 'How the run ended') + '"' + (o.crisp ? ' shape-rendering="crispEdges"' : '') + '>' + body + '</svg>';
   }
-  function key(ui, list) { return ui.el('div', { class: 'ar-key' }, list.map(function (x) { return ui.el('span', null, [ui.el('i', { style: { background: x[1] } }), ui.el('span', { text: x[0] })]); })); }
+  function key(ui, list) { return ui.el('div', { class: 'ar-kz' }, list.map(function (x) { return ui.el('span', null, [ui.el('i', { style: { background: x[1] } }), ui.el('span', { text: x[0] })]); })); }
   function rnd(seed) { var s = seed % 2147483647; if (s <= 0) s += 2147483646; return function () { s = s * 16807 % 2147483647; return (s - 1) / 2147483646; }; }
 
   // ═══ Tetris ═══
@@ -96,14 +96,14 @@
     });
     if (over) s += '<rect x="2" y="' + (2 + over * cs - 0.6) + '" width="' + C * cs + '" height="1.2" fill="#ff4058"/>';
     var cl = d.cl || [0, 0, 0, 0];
-    return screen(ui, {
+    return withRun(ui, d.run, { ac: '#b45ef0', noLives: true }, screen(ui, {
       ac: '#b45ef0', title: 'Game over' + (d.cls ? ' · Classic' : ''), score: n(myScore(e)), rank: rankText(d),
       pic: svg(C * cs + 4, H + 4, s, { crisp: true, aria: 'The final stack' }), side: true, picMax: 150,
       stats: [['Level', d.lv, d.sl > 1 ? 'started at ' + d.sl : ''], ['Lines', n(d.ln)], ['Tetrises', cl[3] || 0, cl[0] || cl[1] || cl[2] ? 'singles ' + cl[0] + ' · doubles ' + cl[1] + ' · triples ' + cl[2] : ''],
         ['Blocks', n(d.pcs)], d.ts ? ['T-spins', d.ts] : null, d.cb >= 2 ? ['Best combo', d.cb + ' in a row'] : null, d.b2b ? ['Back-to-back', d.b2b] : null,
         d.pc ? ['Perfect clears', d.pc] : null, d.bm >= 300 ? ['Best move', n(d.bm), d.bmn] : null, d.t ? ['Time', mmss(d.t)] : null],
       foot: over ? 'Stacked past the top' : 'Topped out'
-    });
+    }));
   });
 
   // ═══ Snake ═══
@@ -137,13 +137,13 @@
       s += '<g stroke="#fff" stroke-width="3.2" stroke-linecap="round"><path d="M' + (kx - 3) + ' ' + (ky - 3) + 'l6 6M' + (kx + 3) + ' ' + (ky - 3) + 'l-6 6"/></g><g stroke="#ff2e48" stroke-width="1.8" stroke-linecap="round"><path d="M' + (kx - 3) + ' ' + (ky - 3) + 'l6 6M' + (kx + 3) + ' ' + (ky - 3) + 'l-6 6"/></g>';
     }
     var SP = { relaxed: 'Relaxed', normal: 'Normal', fast: 'Fast', turbo: 'Turbo' };
-    return screen(ui, {
+    return withRun(ui, d.run, { ac: '#7dff9a', noStrip: true, noLives: true }, screen(ui, {
       ac: '#7dff9a', title: d.why === 'full' ? 'Board filled!' : 'Game over', score: n(myScore(e)), rank: rankText(d),
       pic: svg(C * cs, Rn * cs, s, { aria: 'The snake when the game ended' }), side: true, picMax: 160,
       stats: [['Length', d.ml], ['Apples', n(d.ap), d.gl ? d.gl + ' golden' : ''], ['Speed', SP[d.sp] || d.sp], ['Edges', d.w ? 'Wrap around' : 'Solid walls', d.w && d.wr ? 'wrapped ' + d.wr + '×' : ''],
         d.t ? ['Time', mmss(d.t)] : null, d.st ? ['Moves', n(d.st)] : null],
       foot: d.why === 'full' ? 'Filled the whole board' : d.why === 'wall' ? 'Crashed into the wall' : 'Ran into its own tail', footOk: d.why === 'full'
-    });
+    }));
   });
 
   // ═══ Pac-Man ═══
@@ -195,14 +195,14 @@
     }
     var dd = d.dd || [], last = dd[dd.length - 1];
     var lost = dd.length ? key(ui, dd.map(function (x) { var g = GHOST.filter(function (q) { return q[0] === x.b; })[0]; return [x.b + ' · level ' + x.l, g ? g[1] : '#888']; })) : null;
-    return screen(ui, {
+    return withRun(ui, d.run, { ac: '#ffd84a' }, screen(ui, {
       ac: '#ffd84a', title: 'Game over · level ' + d.lv, score: n(myScore(e)), rank: rankText(d),
       pic: svg(224, 248, s, { aria: 'The maze when the last life was lost' }), picMax: 300,
       stats: [['Level', d.lv], ['Dots eaten', (d.ea || 0) + '/244', left ? left + ' left' : ''], ['Ghosts eaten', d.ge || 0, d.mc > 1 ? 'best streak ' + d.mc : ''],
         d.q4 ? ['All four', d.q4 + '×'] : null, ['Fruit', d.fr || 0, d.bf ? 'best: ' + d.bf.toLowerCase() : ''], d.pp ? ['Power pellets', d.pp] : null, d.el ? ['Extra life', 'Level ' + d.el] : null],
-      extra: lost ? [ui.el('div', { class: 'ar-sub', text: 'Lives lost to', style: { 'text-align': 'center' } }), lost] : null,
+      extra: lost && !d.run ? [ui.el('div', { class: 'ar-sub', text: 'Lives lost to', style: { 'text-align': 'center' } }), lost] : null,
       foot: last ? 'Caught by ' + last.b : ''
-    });
+    }));
   });
 
   // ═══ Breakout ═══
@@ -226,14 +226,14 @@
     var pk = d.pk || {}, pws = Object.keys(pk).filter(function (k) { return POW[k]; }).sort(function (a, b) { return pk[b] - pk[a]; });
     var chips = pws.length ? ui.chips(pws.map(function (k) { return { t: POW[k][0] + ' ×' + pk[k], c: POW[k][1] }; })) : null;
     if (chips) chips.style.justifyContent = 'center';
-    return screen(ui, {
+    return withRun(ui, d.run, { ac: '#ff5c7a', why: function (w) { return w === 'ball' ? 'missed the ball' : w; }, lifeWord: 'Ball' }, screen(ui, {
       ac: '#ff5c7a', title: d.won ? 'All ' + (d.of || 12) + ' levels cleared!' : 'Game over · ' + d.nm, score: n(myScore(e)), rank: rankText(d),
       pic: svg(W, Hh, s, { aria: 'The wall as it was left' }), picMax: 320,
       stats: [['Level', d.lv + (d.of ? '/' + d.of : ''), d.nm], ['Bricks smashed', n(d.br)], d.won ? null : ['Bricks left', left], ['Levels cleared', d.cl || 0],
         d.mc ? ['Best chain', d.mc] : null, ['Power-ups', d.pw || 0], d.mb > 1 ? ['Most balls', d.mb] : null, d.ph ? ['Paddle hits', n(d.ph)] : null],
       extra: [chips],
       foot: d.won ? 'Beat every level' : 'Lost the last ball on level ' + d.lv, footOk: !!d.won
-    });
+    }));
   });
 
   // ═══ Flappy Bird ═══
@@ -292,7 +292,7 @@
     }
     var rb = d.rb || [0, 0, 0], tot = (rb[0] || 0) + (rb[1] || 0) + (rb[2] || 0), dd = d.dd || [], last = dd[dd.length - 1];
     var acc = d.sx ? Math.round((d.hx || 0) / d.sx * 100) + '%' : '';
-    return screen(ui, {
+    return withRun(ui, d.run, { ac: '#9ff3ff', unit: 'Wave', lifeWord: 'Ship' }, screen(ui, {
       ac: '#9ff3ff', title: 'Game over · wave ' + d.wv, score: n(myScore(e)), rank: rankText(d),
       pic: svg(W, H, s, { aria: 'The field when the last ship was lost' }), side: true, picMax: 150,
       stats: [['Wave', d.wv], ['Rocks', n(tot), rb[2] + ' big · ' + rb[1] + ' med · ' + rb[0] + ' small'], ['Accuracy', acc, d.sx ? n(d.sx) + ' shots' : ''],
@@ -300,7 +300,7 @@
         d.hy ? ['Hyperspace', d.hy + '×', d.hd ? 'landed on a rock ' + d.hd + '×' : ''] : null, d.ex ? ['Extra ships', d.ex] : null,
         dd.length ? ['Ships lost', dd.length] : null],
       foot: last ? 'Last ship lost to ' + last.b : ''
-    });
+    }));
   });
 
   // ═══ Peggle ═══
@@ -383,14 +383,14 @@
     var RULE = { one: 'One hop per cube', two: 'Two hops per cube', toggle: 'Hops flip cubes back', twoback: 'Two hops, slips back', tworeset: 'Two hops, resets' };
     var dths = d.d || {}, dk = Object.keys(dths).sort(function (a, b) { return dths[b] - dths[a]; });
     var lost = dk.length ? key(ui, dk.map(function (x) { return [(QDEATH[x] || x).replace(/^(a |the )/, '') + ' ×' + dths[x], x === 'coily' ? '#a24cf0' : x === 'red' ? '#ff3b4f' : x === 'purple' ? '#8a3fd0' : x === 'fall' ? '#5b6cc4' : '#3ddc5a']; })) : null;
-    return screen(ui, {
+    return withRun(ui, d.run, { ac: '#ff8a1f', unit: 'Round', why: function (w) { return QDEATH[w] || w; } }, screen(ui, {
       ac: '#ff8a1f', title: 'Game over · level ' + d.lv + '-' + d.rd, score: n(myScore(e)), rank: rankText(d),
       pic: svg(340, 300, s, { aria: 'The pyramid when the game ended' }), picMax: 300,
       stats: [['Level', d.lv + '-' + d.rd, RULE[d.rl] || ''], ['Cubes left', left + '/28'], ['Cubes changed', n(d.cu)], ['Hops', n(d.hp)], ['Rounds cleared', d.rr || 0, d.pf ? d.pf + ' without a slip' : ''],
         d.lu ? ['Coily lured', d.lu] : null, d.ca ? ['Slick & Sam', d.ca + ' caught'] : null, d.gr ? ['Green ball', d.gr + '× freeze'] : null, d.dc ? ['Disc rides', d.dc] : null, d.ex ? ['Extra lives', d.ex] : null],
-      extra: lost ? [ui.el('div', { class: 'ar-sub', text: 'Lives lost to', style: { 'text-align': 'center' } }), lost] : null,
+      extra: lost && !d.run ? [ui.el('div', { class: 'ar-sub', text: 'Lives lost to', style: { 'text-align': 'center' } }), lost] : null,
       foot: d.ld && d.ld.k ? 'Last life lost to ' + (QDEATH[d.ld.k] || d.ld.k) : ''
-    });
+    }));
   });
 
   // ═══ Pong ═══
@@ -620,7 +620,7 @@
       s += '<text x="' + (x + CW / 2) + '" y="' + (y + CH / 2 + 3.5) + '" text-anchor="middle" font-size="9" font-weight="900" fill="' + (done || here ? '#06120a' : 'rgba(255,255,255,.35)') + '" font-family="ui-monospace,monospace">' + i + '</text>';
     }
     var two = d.np > 1, acc = d.sh ? Math.min(100, Math.round((d.k || 0) / d.sh * 100)) + '%' : '';
-    return screen(ui, {
+    return withRun(ui, d.run, { ac: '#2fd35a', unit: 'Stage', lifeWord: 'Base', why: function (w) { return w === 'invaded' ? 'the invaders reached the bottom' : 'the shield ran out'; } }, screen(ui, {
       ac: '#2fd35a', title: (d.a50 ? 'All 50 stages · ' : 'Game over · ') + 'stage ' + w, score: n(two ? Math.max(d.s1 || 0, d.s2 || 0) : myScore(e)), rank: rankText(d),
       pic: svg(W, H, s, { aria: 'The 50 stages: green ones cleared, gold ones were saucer bonus stages, red is where it ended' }), picMax: 340,
       stats: [two ? ['Red', n(d.s1), 'best streak ' + (d.b1 || 0), '#ff4a5a'] : null, two ? ['Blue', n(d.s2), 'best streak ' + (d.b2 || 0), '#3fa9ff'] : null,
@@ -631,7 +631,7 @@
         (d.w1 || d.w2) && !two ? ['Weapon', d.w1 === 'ring' ? 'Ring' : 'Missiles'] : null],
       extra: [key(ui, [['Cleared', '#2fd35a'], ['Saucer bonus', '#ffd84a'], [d.a50 ? 'Endless' : 'Ended here', '#ff3b5c']])],
       foot: d.why === 'invaded' ? 'The invaders reached the bottom' : d.a50 ? 'Beat all 50 stages' : 'The shield ran out', footOk: !!d.a50
-    });
+    }));
   }
   R('invaders', function (e, ui) {
     var d = e.dt; if (d && !d.rack && d.w) return invFrenzy(e, ui, d);
@@ -712,14 +712,14 @@
     if (loop) s += '<text x="6" y="13" text-anchor="start" font-size="8" font-weight="900" fill="#ffd84a" font-family="ui-monospace,monospace">ENDLESS · LOOP ' + (loop + 1) + '</text>';
     var online = d.np > 1, by = CT_BY[d.by] || '';
     if (by && CT_BOSS[at] && (d.by === 'mega' || d.by === 'firefly' || (at === 3 && d.by === 'wasp') || (at === 9 && d.by === 'beetle'))) by = 'The ' + CT_BOSS[at][0];
-    return screen(ui, {
+    return withRun(ui, d.run, { ac: '#3fa9ff', unit: 'Wave', why: function (w) { var t = CT_BY[w] || w; return t.charAt(0).toLowerCase() + t.slice(1); } }, screen(ui, {
       ac: '#3fa9ff', title: d.won ? 'Mega Spider beaten · wave ' + w : 'Game over · wave ' + w, score: n(myScore(e)), rank: rankText(d),
       pic: svg(W, H, s, { aria: 'The ten waves: lit ones cleared, diamonds are boss waves, red is where it ended' }), picMax: 360,
       stats: [online ? ['Team score', n(d.ts)] : null, ['Bosses', d.b || 0, d.b && d.b < 4 ? ['Killer Wasp', 'Night Flyer', 'Blast Beetle'].slice(0, d.b).join(', ') : d.b >= 4 ? 'all four' + (d.b > 4 ? ', some twice' : '') : ''],
         d.sg ? ['Segments', n(d.sg), (d.hd || 0) + ' heads'] : null, d.sp ? ['Spiders', d.sp] : null, d.bg ? ['Other bugs', n(d.bg)] : null,
         d.pw ? ['Power-ups', d.pw] : null, d.cb >= 5 ? ['Best combo', 'x' + d.cb] : null, d.df === 'relaxed' ? ['Mode', 'Relaxed'] : null],
       foot: d.won ? 'Beat the Mega Spider' : by ? 'Last life lost to: ' + by.charAt(0).toLowerCase() + by.slice(1) : '', footOk: !!d.won
-    });
+    }));
   });
 
   // ═══════════ Shared: a tappable strip, a chart, panels ═══════════
@@ -740,7 +740,7 @@
     '.ar-lg{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none;}',
     '.ar-lg li{display:flex;gap:8px;align-items:baseline;font-size:.76rem;font-weight:700;color:rgba(233,236,255,.86);line-height:1.35;}',
     '.ar-lg li b{flex:none;min-width:36px;color:rgba(233,236,255,.5);font-variant-numeric:tabular-nums;}',
-    '.ar-lg li i{flex:none;width:9px;height:9px;border-radius:2px;align-self:center;}',
+    '.ar-lg li i{flex:none;width:9px;height:9px;border-radius:2px;align-self:flex-start;margin-top:.3em;}',
     '.ar-chips{display:flex;flex-wrap:wrap;gap:4px;}',
     '.ar-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 7px;border-radius:5px;font-size:.66rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;',
     'background:color-mix(in srgb,var(--cc,#888) 22%,transparent);color:color-mix(in srgb,var(--cc,#888) 55%,#fff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cc,#888) 45%,transparent);}'
@@ -807,6 +807,46 @@
     return svg(W, H, s, { aria: o.aria || 'How it went' });
   }
   function starPath(x, y, R1, R2) { var p = ''; for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? R2 : R1; p += (i ? 'L' : 'M') + (x + Math.cos(a) * r).toFixed(1) + ' ' + (y + Math.sin(a) * r).toFixed(1); } return p + 'Z'; }
+
+  // ═══ A run's story (d.run, from the games' trk… helpers): the score over time with each level's end and each
+  // life lost marked, then every level on a tap: how long it took, what it scored, the lives it cost.
+  // o: {ac, unit: 'Level' | 'Wave' | ..., why(cause) -> words, card(level number, entry) -> extra nodes, lifeWord}
+  function withRun(ui, run, o, node) { return ui.wrap([node].concat(runParts(ui, run, o))); }
+  function runParts(ui, run, o) {
+    o = o || {};
+    if (!run || !run.sk) return [];
+    var unit = o.unit || 'Level', si = run.si || 2, v = String(run.sk).split(',').filter(function (x) { return x !== ''; }).map(Number), te = run.te || 0;
+    if (run.se != null && (run.se !== v[v.length - 1] || te > (v.length - 1) * si + si / 2)) v.push(run.se);
+    var lx = (run.lx || []).map(function (s) { var a = String(s).split('|'); return { n: a[0], t: +a[1] || 0, s: +a[2] || 0, l: +a[3] || 0, end: a[4] === '1' }; });
+    var lz = lx[lx.length - 1], ly = lx[lx.length - 2];
+    if (lz && lz.end && ly && ly.n === lz.n) lx.pop();   // the last level was cleared: the game ended on it, not in it
+    var lf = (run.lf || []).map(function (s) { var a = String(s).split('|'); return { t: +a[0] || 0, n: a[1], why: a.slice(2).join('|') }; });
+    var out = [], last = v.length - 1;
+    function idx(t) { return Math.max(0, Math.min(last, t >= te ? last : Math.round(t / si))); }
+    var why = o.why || function (x) { return x; }, lw = o.lifeWord || 'Life';
+    if (v.length >= 3) {
+      var marks = lx.filter(function (x) { return !x.end; }).map(function (x) { return { i: idx(x.t), k: 'dot', c: '#7dff9a' }; }).concat(lf.map(function (x) { return { i: idx(x.t), k: 'x', c: '#ff4058' }; }));
+      var ticks = [], used = {};
+      lx.forEach(function (x, k) { var i = k ? idx(lx[k - 1].t) : 0; if (lx.length <= 12 || k % Math.ceil(lx.length / 10) === 0) if (!used[i]) { used[i] = 1; ticks.push({ i: i, t: (k ? '' : unit.charAt(0)) + x.n }); } });
+      var ch = chart({ v: v, c: o.ac || '#7dff9a', marks: marks, ticks: ticks.length > 1 ? ticks : null, x0: ticks.length > 1 ? null : '0:00', x1: ticks.length > 1 ? null : mmss(te), aria: 'Score over the game: dots where a ' + unit.toLowerCase() + ' was cleared, crosses where a life was lost' });
+      var lives = lf.map(function (x, k) { return { b: mmss(x.t), c: '#ff4058', t: (o.lifeWord || 'Life') + ' ' + (k + 1) + ' · ' + unit.toLowerCase() + ' ' + x.n + (x.why ? ': ' + why(x.why) : '') }; });
+      out.push(ui.section('How it went', pane(ui, [ui.el('div', { class: 'ar-pic', html: ch }), key(ui, [lx.some(function (x) { return !x.end; }) ? [unit + ' cleared', '#7dff9a'] : null, lf.length && !o.noLives ? [lw + ' lost', '#ff4058'] : null, [mmss(te) + ' in all', 'rgba(255,255,255,.3)']].filter(Boolean)), lives.length && !o.noLives ? legend(ui, lives) : null], o.ac), { icon: 'chart' }));
+    }
+    if (!o.noStrip && (lx.length >= 2 || (lx.length === 1 && lx[0].l))) {
+      var card = ui.el('div', { class: 'ar-card' });
+      var show = function (k) {
+        var x = lx[k], p = lx[k - 1] || { t: 0, s: 0 }, dies = lf.filter(function (f) { return f.n === x.n && f.t >= p.t && f.t <= x.t + 1; });
+        var st = ui.el('div', { class: 'ar-st' }, [stat(ui, unit, x.n, x.end ? 'where it ended' : 'cleared', x.end ? '#ff4058' : '#7dff9a'), stat(ui, 'Time', mmss(x.t - p.t)), stat(ui, 'Points', '+' + n(x.s - p.s), 'score ' + n(x.s)),
+          o.noLives ? null : stat(ui, x.l ? (x.l === 1 ? lw + ' lost' : (lw === 'Life' ? 'Lives' : lw + 's') + ' lost') : 'No ' + lw.toLowerCase() + ' lost', x.l || '–', dies.map(function (f) { return why(f.why); }).filter(Boolean).join(', '))]);
+        card.innerHTML = ''; card.appendChild(st);
+        if (o.card) [].concat(o.card(x.n, x) || []).forEach(function (nd) { if (nd) card.appendChild(nd); });
+      };
+      var fast = null; lx.forEach(function (x, k) { var d = x.t - (k ? lx[k - 1].t : 0); if (!x.end && (fast == null || d < fast.d)) fast = { k: k, d: d }; });
+      var items = lx.map(function (x, k) { return { t: x.n, c: x.end ? '#ff4058' : x.l ? '#ff9a4a' : '#2fd35a', ink: !x.end, title: unit + ' ' + x.n }; });
+      out.push(ui.section('Every ' + unit.toLowerCase() + ' · tap one', pane(ui, [strip(ui, items, lx.length - 1, show), key(ui, [['Clean', '#2fd35a'], lx.some(function (x) { return x.l && !x.end; }) ? ['Cost a ' + lw.toLowerCase(), '#ff9a4a'] : null, ['Where it ended', '#ff4058']].filter(Boolean)), card], o.ac), { icon: 'flag' }));
+    }
+    return out;
+  }
 
   // ═══ TetriNET ═══
   // Every field side by side as the match ended, a lane for each player showing the specials that hit them and
@@ -1121,9 +1161,10 @@
     rings.forEach(function (r) {
       var lo = Infinity, hi = -Infinity; r.pts.forEach(function (p) { lo = Math.min(lo, p[0]); hi = Math.max(hi, p[0]); });
       if (!usa && r.pts.every(function (q) { return q[1] < -55; })) return;
-      // a ring cut at the date line keeps to one side; one wholly west of the view's left edge moves round to the right
+      // a ring cut at the date line keeps its far-east end (Chukotka) on the east side, and western Europe where it is;
+      // a ring wholly west of the view's left edge moves round to the right
       var wrap = !usa && hi - lo > 300, east = !usa && !wrap && view.lon1 > 180 && hi < view.lon0;
-      var pts = r.pts.map(function (p) { return pr(p[1], (wrap && p[0] < 0) || east ? p[0] + 360 : p[0]); });
+      var pts = r.pts.map(function (p) { return pr(p[1], (wrap && p[0] < -120) || east ? p[0] + 360 : p[0]); });
       var mnx = Infinity, mxx = -Infinity; pts.forEach(function (q) { mnx = Math.min(mnx, q.x); mxx = Math.max(mxx, q.x); });
       if (mxx < 0 || mnx > 384) return;
       x.beginPath(); pts.forEach(function (q, i) { if (i) x.lineTo(q.x, q.y); else x.moveTo(q.x, q.y); }); x.closePath();
@@ -1311,7 +1352,7 @@
           (w[0] || w[1] || w[2] ? '<span>Walked away: <b>' + w[0] + '</b> too pricey · <b>' + w[1] + '</b> line too long · <b>' + w[2] + '</b> sold out</span>' : '<span>Nobody walked away</span>') +
           (x.peak ? '<span>Longest line ' + x.peak + '</span>' : '') + (x.help ? '<span>' + x.help + (x.help === 1 ? ' helper' : ' helpers') + '</span>' : '') + (x.spoil ? '<span>' + x.spoil + ' went bad</span>' : '') }));
       }
-      body.push(el('div', { class: 'hds-sum', html: '<span>' + (x.spend != null ? 'Spent ' + money(x.spend, true) + ' · ' : '') + 'took ' + money(x.rev, true) + '</span><b class="' + (x.net >= 0 ? 'up' : 'down') + '">' + (x.net >= 0 ? '+' : '') + money(x.net, true) + '</b><span>Cash ' + money(x.cash, true) + '</span>' }));
+      body.push(el('div', { class: 'hds-sum', html: '<span>' + (x.spend != null ? 'Spent ' + money(x.spend, true) + ' · ' : '') + 'took ' + money(x.rev, true) + '</span><b class="' + (x.net >= 0 ? 'hds-up' : 'hds-down') + '">' + (x.net >= 0 ? '+' : '') + money(x.net, true) + '</b><span>Cash ' + money(x.cash, true) + '</span>' }));
       card.innerHTML = '';
       card.appendChild(el('div', { class: 'hds-tk', style: { '--tk': T[1] } }, [el('div', { class: 'hds-stub' }, [el('span', { text: T[0] })]), el('div', { class: 'hds-bd' }, body)]));
     }

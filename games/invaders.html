@@ -831,7 +831,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
 
   // ═══ Ending a stage, the weapon choice, losing ════════════════════════════
   function clearWave() {
-    G.phase = 'clear'; G.clearT = 0; G.stats.cleared++;
+    G.phase = 'clear'; G.clearT = 0; G.stats.cleared++; trkLevel(trk(G.stats), G.wave, invTotal());
     var B = G.sauc, bonus = Math.round(G.ib), perfect = B ? B.hit === B.total : G.hurt === 0;
     if (B) { bonus = 100 * B.hit + (perfect ? 5000 : 0); G.stats.bonusUfos += B.hit; G.stats.bonusTotal += B.total; }
     else if (perfect) bonus += 1000;
@@ -884,9 +884,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (next >= 0) showChoice(next);
     else { G.phase = 'clear'; startWave(G.wave + 1); lastT = 0; acc = 0; wake(); }
   }
+  // ── The run's story for the game's history (hist/arcade.js draws it): the score every few seconds of play,
+  // when each level ended and each life lost. Kept in the saved stats, so a resumed game carries on.
+  function trk(o) { return o.trk || (o.trk = { sk: [], si: 2, nx: 0, sec: 0, lx: [], lf: [], ll: 0 }); }
+  function trkTime(T, dt, score) { T.sec += dt; while (T.sec >= T.nx) { T.sk.push(score); T.nx += T.si; if (T.sk.length > 90) { T.sk = T.sk.filter(function (v, i) { return i % 2 === 0; }); T.si *= 2; T.nx = T.sk.length * T.si; } } }
+  function trkLevel(T, n, score) { T.lx.push([n, Math.round(T.sec), score, T.ll].join('|')); T.ll = 0; if (T.lx.length > 40) T.lx.shift(); }
+  function trkLife(T, n, why) { T.ll++; T.lf.push([Math.round(T.sec), n, why || ''].join('|')); if (T.lf.length > 20) T.lf.shift(); }
+  function trkOut(T, n, score) { return { sk: T.sk.join(','), si: T.si, te: Math.round(T.sec), se: score, lx: T.lx.concat([[n, Math.round(T.sec), score, T.ll, 1].join('|')]).slice(-40), lf: T.lf.slice() }; }
+
+  function invTotal() { var t = 0; (G.pl || []).forEach(function (p) { t += p.score || 0; }); return t; }
   function die(why) {
     if (G.phase === 'dying') return;
-    G.phase = 'dying'; G.dieT = 0; G.why = why || 'shield';
+    G.phase = 'dying'; G.dieT = 0; G.why = why || 'shield'; trkLife(trk(G.stats), G.wave, G.why);
     [0, 1].forEach(function (i) { explode(canX(i), CAN_Y, '#6dff4a', true); });
     burst(WW / 2, BOTTOM, 'fire', 40, 1.8, 1.4); ring(WW / 2, BOTTOM, '#ff4f5e', 220, 0.8, 160);
     fx.shake = 0.9; fx.glitch = 0.7;
@@ -916,6 +925,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     var dt = TICK, i;
     if (G.phase === 'choose') return;
     G.t += dt; G.waveT += dt;
+    if (G.phase === 'play') trkTime(trk(G.stats), dt, invTotal());
     keys.hold = keys.l || keys.r || keys.u || keys.d ? keys.hold + dt : 0;
     keys.hold2 = keys.l2 || keys.r2 || keys.u2 || keys.d2 ? keys.hold2 + dt : 0;
     fx.shake = Math.max(0, fx.shake - dt * 1.6); fx.flash = Math.max(0, fx.flash - dt * 2.5); fx.glitch = Math.max(0, fx.glitch - dt);
@@ -1339,7 +1349,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     var detail = {
       w: G.wave, cl: st.cleared, k: st.kills, hv: st.heavies, sp: st.splits, u: st.ufos, sh: st.shots, ls: st.lasersShot, bm: st.bombs, ch: st.chain, pf: st.perfect, fv: st.rushes,
       np: pl.length, s1: pl[0].score, b1: pl[0].best, w1: pl[0].wpn || '', s2: two ? pl[1].score : 0, b2: two ? pl[1].best : 0, w2: two ? pl[1].wpn || '' : '',
-      why: G.why || '', a50: st.all50 ? 1 : 0, hb: G.best0 || 0, bu: st.bonusUfos, bt: st.bonusTotal
+      why: G.why || '', a50: st.all50 ? 1 : 0, hb: G.best0 || 0, bu: st.bonusUfos, bt: st.bonusTotal, run: trkOut(trk(st), G.wave, invTotal())
     };
     var hiL = ArcadeHi.list(HI), top0 = Math.max.apply(null, pl.map(function (p) { return p.score; }));
     detail.hr = top0 > 0 && (hiL.length < ArcadeHi.max || top0 > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= top0; }).length + 1 : 0;
