@@ -34,6 +34,7 @@
     return ui.wrap(out);
   });
   // ── shared bits ──
+  function f2(v) { return Math.round(v * 100) / 100; }
   function possLow(n) { return n === 'You' ? 'your' : Kit.poss(n); }
   function plainName(e, i) { var p = (e.players || [])[i]; return p ? String(p.name).replace(/ \((Black|White)\)$/, '') : ''; }
   // A replay slider under a picture: show(n) redraws for step n (0..max)
@@ -163,8 +164,10 @@
     return ui.wrap(out);
   });
 
-  // ── Backgammon: where the checkers ended, the cube, and how each game was won ──
-  function bgSvg(d) {
+  // ── Backgammon: the board, a replay of the last game turn by turn with the dice, the pip race, the cube ──
+  // d = {p: + White / − Black per point (index 0 = White's 1-point), bar, off, cube, own, cubeOn}; o = {dice, side, to:[points], from:[points], hit:[points]}
+  function bgSvg(d, o) {
+    o = o || {};
     var W = 360, H = 250, fw = 10, bar = 24, tray = 26, iw = W - 2 * fw - bar - tray, pw = iw / 12, th = 96, cr = Math.min(pw * 0.46, 12.5);
     var top = fw, bot = H - fw, s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Backgammon board"><defs>' +
       '<radialGradient id="bgw" cx=".35" cy=".28" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#f3ead8"/><stop offset="1" stop-color="#b8a684"/></radialGradient>' +
@@ -176,20 +179,25 @@
     function px(col) { return fw + col * pw + (col >= 6 ? bar : 0); } // col 0..11 left to right
     // point index i (0..23): bottom row right→left is 0..11, top row left→right is 12..23
     function geo(i) { return i < 12 ? { col: 11 - i, up: false } : { col: i - 12, up: true }; }
+    var marks = '';
     for (var i = 0; i < 24; i++) {
       var g = geo(i), x = px(g.col), fill = (i % 2) ? '#a3302a' : '#e9dcbc';
       s += g.up ? '<path d="M' + x + ' ' + top + 'L' + (x + pw) + ' ' + top + 'L' + (x + pw / 2) + ' ' + (top + th) + 'Z" fill="' + fill + '"/>'
         : '<path d="M' + x + ' ' + bot + 'L' + (x + pw) + ' ' + bot + 'L' + (x + pw / 2) + ' ' + (bot - th) + 'Z" fill="' + fill + '"/>';
       // point numbers from White's side
       s += '<text x="' + (x + pw / 2) + '" y="' + (g.up ? top + th + 9 : bot - th - 4) + '" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,.4)" font-family="system-ui">' + (i + 1) + '</text>';
-      var v = (d.p || [])[i] || 0, n = Math.abs(v); if (!n) continue;
-      var col = v > 0 ? 'w' : 'b', show = Math.min(n, 5);
+      var v = (d.p || [])[i] || 0, n = Math.abs(v), show = Math.min(n, 5), col = v > 0 ? 'w' : 'b';
       for (var k = 0; k < show; k++) {
         var cy = g.up ? top + cr + k * cr * 1.9 : bot - cr - k * cr * 1.9;
         s += '<circle cx="' + (x + pw / 2) + '" cy="' + cy + '" r="' + cr + '" fill="url(#bg' + col + ')" stroke="rgba(0,0,0,.45)" stroke-width=".8"/>';
         if (k === show - 1 && n > 5) s += '<text x="' + (x + pw / 2) + '" y="' + cy + '" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="900" fill="' + (col === 'w' ? '#5b4a35' : '#f1e6d2') + '" font-family="system-ui">' + n + '</text>';
       }
+      // this turn: where checkers left (dashed) and landed (ringed), a hit in red
+      var tip = function (k2) { return g.up ? top + cr + k2 * cr * 1.9 : bot - cr - k2 * cr * 1.9; };
+      if (o.to && o.to.indexOf(i) >= 0 && n) marks += '<circle cx="' + (x + pw / 2) + '" cy="' + tip(show - 1) + '" r="' + (cr + 2) + '" fill="none" stroke="' + (o.hit && o.hit.indexOf(i) >= 0 ? '#ff5a4e' : '#ffd54a') + '" stroke-width="2.2"/>';
+      if (o.from && o.from.indexOf(i) >= 0) marks += '<circle cx="' + (x + pw / 2) + '" cy="' + tip(n && (v > 0) === (o.side === 0) ? Math.min(show, 4) : 0) + '" r="' + (cr - 1) + '" fill="none" stroke="#ffd54a" stroke-width="1.6" stroke-dasharray="3 2.5" opacity=".9"/>';
     }
+    s += marks;
     // bar checkers
     var barC = d.bar || [0, 0];
     [0, 1].forEach(function (pl) { for (var k = 0; k < Math.min(barC[pl], 4); k++) s += '<circle cx="' + (bx + bar / 2) + '" cy="' + (pl === 0 ? H / 2 + 16 + k * 14 : H / 2 - 16 - k * 14) + '" r="' + Math.min(cr, 10) + '" fill="url(#bg' + (pl ? 'b' : 'w') + ')" stroke="rgba(0,0,0,.45)"/>'; });
@@ -199,25 +207,90 @@
     for (a = 0; a < off[1]; a++) s += '<rect x="' + (tx + 2) + '" y="' + (top + 2 + a * 5.6) + '" width="' + (tray - 10) + '" height="4.6" rx="1.5" fill="#2a2522" stroke="rgba(255,255,255,.18)" stroke-width=".6"/>';
     // the cube: middle if nobody owns it, else on its owner's side
     if (d.cubeOn !== false) {
-      var cs = 20, cy2 = d.own === 0 ? H - fw - 30 - cs : d.own === 1 ? fw + 30 : H / 2 - cs / 2, cx2 = d.own === -1 || d.own == null ? bx + bar / 2 - cs / 2 : bx + bar / 2 - cs / 2;
+      var cs = 20, cy2 = d.own === 0 ? H - fw - 30 - cs : d.own === 1 ? fw + 30 : H / 2 - cs / 2, cx2 = bx + bar / 2 - cs / 2;
       s += '<rect x="' + cx2 + '" y="' + cy2 + '" width="' + cs + '" height="' + cs + '" rx="4" fill="#fbf6e6" stroke="rgba(0,0,0,.35)"/><text x="' + (cx2 + cs / 2) + '" y="' + (cy2 + cs / 2) + '" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="900" fill="#3a2a14" font-family="system-ui">' + (d.cube > 1 ? d.cube : 64) + '</text>';
+    }
+    // the dice, in the mover's colours on the right half
+    if (o.dice) {
+      // in whichever half has fewer tall stacks reaching the middle
+      var tall = [0, 0]; for (var q2 = 0; q2 < 24; q2++) if (Math.abs((d.p || [])[q2] || 0) >= 4) tall[geo(q2).col >= 6 ? 1 : 0]++;
+      var half = tall[1] <= tall[0] ? 6 : 0, dw = 17, dx0 = px(half) + pw * 3 - dw - 4, dy0 = H / 2 - dw / 2, P1 = { 1: [[.5, .5]], 2: [[.27, .27], [.73, .73]], 3: [[.27, .27], [.5, .5], [.73, .73]], 4: [[.27, .27], [.73, .27], [.27, .73], [.73, .73]], 5: [[.27, .27], [.73, .27], [.5, .5], [.27, .73], [.73, .73]], 6: [[.27, .25], [.73, .25], [.27, .5], [.73, .5], [.27, .75], [.73, .75]] };
+      o.dice.forEach(function (v2, j) {
+        var X = dx0 + j * (dw + 8), wh = o.side === 0;
+        s += '<rect x="' + (X + 1) + '" y="' + (dy0 + 2) + '" width="' + dw + '" height="' + dw + '" rx="4" fill="rgba(0,0,0,.4)"/><rect x="' + X + '" y="' + dy0 + '" width="' + dw + '" height="' + dw + '" rx="4" fill="' + (wh ? '#f7f3ea' : '#2a2522') + '" stroke="rgba(0,0,0,.4)"/>';
+        (P1[v2] || []).forEach(function (q) { s += '<circle cx="' + f2(X + q[0] * dw) + '" cy="' + f2(dy0 + q[1] * dw) + '" r="1.8" fill="' + (wh ? '#1b1b1b' : '#f1e6d2') + '"/>'; });
+      });
     }
     return s + '</svg>';
   }
+  function bgStart() { var p = []; for (var i = 0; i < 24; i++) p.push(0); p[23] = 2; p[12] = 5; p[7] = 3; p[5] = 5; p[0] = -2; p[11] = -5; p[16] = -3; p[18] = -5; return { p: p, bar: [0, 0], off: [0, 0] }; }
+  function bgPips(q, s) { var t = 25 * q.bar[s]; for (var i = 0; i < 24; i++) { var v = q.p[i]; if (s === 0 && v > 0) t += v * (i + 1); if (s === 1 && v < 0) t += -v * (24 - i); } return t; }
+  // the last game, turn by turn, from the move string. Returns null if it doesn't add up
+  function bgTurns(str) {
+    var q = bgStart(), out = [], cube = 1, own = -1, ok = true;
+    String(str).split(' ').forEach(function (t) {
+      if (!ok || !t) return;
+      var s = +t.charAt(0);
+      if (t.charAt(1) === 'C') { cube = +t.slice(2) || cube * 2; own = 1 - s; out.push({ s: s, cubeTo: cube, q: q, cube: cube, own: own, pips: [bgPips(q, 0), bgPips(q, 1)] }); return; }
+      var dice = [+t.charAt(1), +t.charAt(2)], mv = [], from = [], to = [], hit = [], sg = s === 0 ? 1 : -1;
+      q = { p: q.p.slice(), bar: q.bar.slice(), off: q.off.slice() };
+      for (var k = 3; k + 1 < t.length; k += 2) {
+        var f = t.charCodeAt(k) - 97, g = t.charCodeAt(k + 1) - 97;   // 24 = bar, 25 = off
+        if (f === 24) { if (!q.bar[s]) { ok = false; return; } q.bar[s]--; } else { if (q.p[f] * sg <= 0) { ok = false; return; } q.p[f] -= sg; from.push(f); }
+        if (g === 25) q.off[s]++;
+        else { if (q.p[g] * sg === -1) { q.p[g] = 0; q.bar[1 - s]++; hit.push(g); } q.p[g] += sg; to.push(g); }
+        mv.push([f, g]);
+      }
+      out.push({ s: s, dice: dice, mv: mv, from: from, to: to, hit: hit, q: q, cube: cube, own: own, pips: [bgPips(q, 0), bgPips(q, 1)] });
+    });
+    return ok ? out : null;
+  }
   R('backgammon', function (e, ui) {
     var d = e.dt; if (!d || !d.p) return null;
-    var nm = [plainName(e, 0), plainName(e, 1)], out = [];
-    out.push(ui.section('Final position', [ui.picture(bgSvg(d), { frame: 'wood', max: 380 }),
-      ui.chips([{ t: 'White: ' + nm[0], c: '#e9e4d8' }, { t: 'Black: ' + nm[1], c: '#9a9aa6' }])]));
-    var HOW = { single: 'a single game', gammon: 'a gammon', backgammon: 'a backgammon' };
-    var g = d.g || [];
+    var B = HistView.boardUI, nm = [plainName(e, 0), plainName(e, 1)], out = [];
+    var HOW = { single: 'a single game', gammon: 'a gammon', backgammon: 'a backgammon' }, g = d.g || [], last = g[g.length - 1];
+    var turns = d.mv ? bgTurns(d.mv) : null;
+    if (turns) { var fq = turns[turns.length - 1].q; if (fq.p.join() !== d.p.join() || fq.off.join() !== (d.off || []).join()) turns = null; }
+    var off = d.off || [0, 0];
+    out.push(ui.stats([[g.length > 1 ? 'Games' : 'Points', g.length > 1 ? g.length : last ? last.pts : null, g.length > 1 ? 'match to ' + d.to : last ? (last.h === 'drop' ? 'a dropped double' : HOW[last.h] || '') : ''],
+      ['Checkers hit', d.hits ? d.hits[0] + d.hits[1] : null, d.hits ? d.hits[0] + '–' + d.hits[1] : ''], d.cubeOn !== false ? ['Cube', d.max || 1, d.max > 1 ? 'highest it went' : 'never turned'] : ['Turns', turns ? turns.filter(function (t) { return t.dice; }).length : null]]));
+    var snap = ui.picture(bgSvg(d), { frame: 'wood', max: 380 });
+    out.push(ui.section('Final position', [snap, ui.chips([{ t: 'White: ' + nm[0], c: '#e9e4d8' }, { t: 'Black: ' + nm[1], c: '#9a9aa6' }])]));
+    var ch = null;
+    if (turns && turns.length > 1) {
+      var pw = [[167], [167]]; turns.forEach(function (t) { pw[0].push(t.pips[0]); pw[1].push(t.pips[1]); });
+      ch = B.chart(ui, [{ v: pw[0], c: '#f4f1e8' }, { v: pw[1], c: '#55505a', w: 3, halo: 'rgba(255,255,255,.7)' }], { lo: 0, from: 'Start · 167 each', to: g.length > 1 ? 'End of game ' + g.length : 'The end', aria: 'Pips left to go, turn by turn' });
+      var N = turns.length;
+      function pt(i, s) { return i === 24 ? 'bar' : i === 25 ? 'off' : String(s === 0 ? i + 1 : 24 - i); }
+      out.push(ui.section(g.length > 1 ? 'Replay game ' + g.length : 'Replay', B.replay(ui, N, function (n) {
+        var t = turns[n - 1];
+        if (!n) { snap.innerHTML = bgSvg({ p: bgStart().p, bar: [0, 0], off: [0, 0], cube: 1, own: -1, cubeOn: d.cubeOn }); ch.at(0); return 'The opening set-up'; }
+        snap.innerHTML = bgSvg({ p: t.q.p, bar: t.q.bar, off: t.q.off, cube: t.cube, own: t.own, cubeOn: d.cubeOn }, { dice: t.dice, side: t.s, from: t.from, to: t.to, hit: t.hit });
+        ch.at(n);
+        if (t.cubeTo) return 'Turn ' + n + ' · ' + nm[t.s] + ' doubled; ' + nm[1 - t.s] + ' took. The cube is at ' + t.cubeTo;
+        var moves = t.mv.map(function (m) { return pt(m[0], t.s) + '/' + pt(m[1], t.s); }).join(', ');
+        return 'Turn ' + n + ' · ' + nm[t.s] + ' rolled ' + t.dice[0] + '-' + t.dice[1] + ': ' + (moves || 'no move') + (t.hit.length ? ' · hit!' : '') + ' · pips ' + t.pips[0] + '–' + t.pips[1];
+      }, { start: N, ms: 550 })));
+      out.push(ui.section('The pip race', [ch, B.key(ui, [['White · ' + nm[0], '#f4f1e8'], ['Black · ' + nm[1], '#55505a']]), ui.el('small', { class: 'hv-note', text: 'Pips are the dots still to travel home: lower is ahead.' })]));
+    }
     if (g.length) out.push(ui.section(g.length > 1 ? 'Each game' : 'How it ended', ui.log(g.map(function (x, i) {
       return { c: x.w, b: (g.length > 1 ? 'Game ' + (i + 1) + ': ' : ''), t: (x.h === 'drop' ? nm[x.w] + ' won when ' + nm[1 - x.w] + ' dropped the double' : nm[x.w] + ' won ' + (HOW[x.h] || 'the game')) + ', ' + x.pts + (x.pts === 1 ? ' point' : ' points') + (x.c > 1 ? ' (cube at ' + x.c + ')' : '') + (x.h !== 'drop' && x.pl ? ' · ' + nm[1 - x.w] + ' had ' + x.pl + ' pips left' : '') };
     }))));
-    var off = d.off || [0, 0];
     out.push(ui.table(['', nm[0], nm[1]], [['Borne off', off[0] + ' / 15', off[1] + ' / 15'], ['Pips left', d.pips ? d.pips[0] : null, d.pips ? d.pips[1] : null],
       ['Checkers hit', d.hits ? d.hits[0] : null, d.hits ? d.hits[1] : null], ['Doubles rolled', d.dbl ? d.dbl[0] : null, d.dbl ? d.dbl[1] : null]]));
-    if (d.cubeOn !== false) out.push(ui.stats([['Final cube', d.cube || 1], ['Highest cube', d.max || 1], ['Match to', d.to > 1 ? d.to : null]]));
+    // what decided it
+    if (last) {
+      var w = last.w, why;
+      if (last.h === 'drop') why = nm[1 - w] + ' gave up the game rather than play on for ' + last.c * 2;
+      else if (last.h === 'gammon' || last.h === 'backgammon') why = nm[w] + ' bore off all 15 before ' + nm[1 - w] + ' got a single checker off: ' + HOW[last.h] + ', worth ' + last.pts;
+      else if (turns) {
+        // when the winner took the lead in the race for good
+        var lead = 0; turns.forEach(function (t, k) { if (t.pips[w] > t.pips[1 - w]) lead = k + 1; });
+        why = last.pl <= 12 ? 'A close race: ' + nm[1 - w] + ' had only ' + last.pl + ' pips to go' : lead < turns.length ? nm[w] + ' took the lead in the race on turn ' + (lead + 1) + ' and kept it' : nm[w] + ' won the race home';
+      } else why = nm[w] + ' bore off all 15 first';
+      if (d.to > 1) why += ' · match to ' + d.to;
+      out.push(B.foot(ui, why, 'trophy'));
+    }
     return ui.wrap(out);
   });
 
@@ -450,25 +523,55 @@
     return { hand: hand };
   })();
   R(['mahjong4', 'mj4'], function (e, ui) {
-    var d = e.dt; if (!d || !d.hands) return null;
-    var P = e.players || [], nm = P.map(function (p) { return p.name; }), out = [];
+    var d = e.dt; if (!d || !d.hands || !d.hands.length) return null;
+    var B = HistView.boardUI, P = e.players || [], nm = P.map(function (p) { return p.name; }), out = [];
     var WIND = { E: 'East', S: 'South', W: 'West', N: 'North' };
-    var list = d.hands.map(function (h) {
-      var box = ui.el('div', { class: 'hv-mjh' });
+    var deltas = e.rounds && e.rounds.scores && e.rounds.scores.length === d.hands.length ? e.rounds.scores : null;
+    var hands = d.hands, wonH = hands.filter(function (h) { return h.w >= 0; });
+    var big = wonH.slice().sort(function (a, b) { return (b.fa || 0) - (a.fa || 0) || (b.pt || 0) - (a.pt || 0); })[0];
+    var selfN = wonH.filter(function (h) { return h.f < 0 || h.f == null; }).length;
+    out.push(ui.stats([['Hands', hands.length, (hands.length - wonH.length) ? (hands.length - wonH.length) + ' drawn' : 'every one won'],
+      ['Biggest hand', big ? big.fa + ' faan' : null, big ? nm[big.w] + ' · ' + (WIND[String(big.l).charAt(0)] || '') + ' ' + String(big.l).slice(1) : ''],
+      ['Self-drawn', wonH.length ? selfN + ' of ' + wonH.length : null, 'won off the wall']]));
+    // one hand on the felt: the winning tiles, how it scored, who paid
+    var card = ui.el('div');
+    function show(k) {
+      var h = hands[k], box = ui.el('div', { class: 'hv-mjh big' });
       var head = h.w < 0 ? 'Draw: the wall ran out' : nm[h.w] + (h.f < 0 || h.f == null ? ' won, self-drawn' : ' won on ' + possLow(nm[h.f] || '?') + ' discard');
-      box.appendChild(ui.el('div', { class: 'hv-mjh-t' }, [ui.el('b', { text: (WIND[String(h.l).charAt(0)] || '') + ' ' + String(h.l).slice(1) }), ui.el('span', { text: head, style: h.w >= 0 ? { color: Kit.color(h.w) } : null }),
-        h.w >= 0 ? ui.el('i', { text: h.fa + ' faan · ' + h.pt + ' pts' }) : null]));
+      box.appendChild(ui.el('div', { class: 'hv-mjh-t' }, [ui.el('b', { text: (WIND[String(h.l).charAt(0)] || '') + ' ' + String(h.l).slice(1) }),
+        ui.el('span', { text: head, style: h.w >= 0 ? { color: Kit.color(h.w) } : null }), h.w >= 0 ? ui.el('i', { text: h.fa + ' faan · ' + h.pt + ' pts' }) : null]));
       if (h.t) box.appendChild(MJ.hand(h.t, ui.el));
+      else if (h.w >= 0) box.appendChild(ui.el('div', { class: 'hv-mj-none', text: 'The tiles of smaller hands aren’t kept in long games.' }));
       var y = h.w >= 0 ? (h.y ? String(h.y).split('|') : ['Chicken hand']) : [];
-      if (h.d >= 0 && nm[h.d]) y.push({ t: 'Dealer: ' + nm[h.d] });
-      if (y.length) box.appendChild(ui.chips(y));
-      return box;
+      if (y.length) box.appendChild(ui.chips(y.map(function (t) { return { t: t, on: true }; })));
+      // the money: who got and who paid
+      var dl = deltas ? deltas[k] : null;
+      if (dl && dl.some(function (v) { return v; })) {
+        box.appendChild(ui.el('div', { class: 'hv-mj-pay' }, nm.map(function (n, i) {
+          var v = +dl[i] || 0;
+          return ui.el('span', { class: v > 0 ? 'up' : v < 0 ? 'dn' : '' }, [ui.el('i', { style: { background: Kit.color(i) } }), ui.el('span', { class: 'n', text: n }), ui.el('b', { text: v > 0 ? '+' + v : v < 0 ? '−' + (-v) : '0' })]);
+        })));
+      }
+      if (h.d >= 0 && nm[h.d]) box.appendChild(ui.el('small', { class: 'hv-mj-d', text: 'Dealer: ' + nm[h.d] + (h.w === h.d ? ' (kept the deal)' : '') }));
+      card.innerHTML = ''; card.appendChild(box);
+    }
+    var items = hands.map(function (h) {
+      return { t: String(h.l), s: h.w < 0 ? 'Draw' : (nm[h.w] || '').split(' ')[0] + ' · ' + h.fa, c: h.w >= 0 ? Kit.color(h.w) : null, hot: h === big, dim: h.w < 0 };
     });
-    out.push(ui.section('Hand by hand', list));
+    out.push(ui.section(hands.length > 1 ? 'Every hand · tap one' : 'The hand', [hands.length > 1 ? B.strip(ui, items, big ? hands.indexOf(big) : hands.length - 1, show) : null, card]));
+    if (hands.length === 1) show(0);
     // who won, who paid
     var wins = [0, 0, 0, 0], self = [0, 0, 0, 0], dealt = [0, 0, 0, 0], best = [0, 0, 0, 0];
-    d.hands.forEach(function (h) { if (h.w < 0) return; wins[h.w]++; if (h.f < 0 || h.f == null) self[h.w]++; else dealt[h.f]++; best[h.w] = Math.max(best[h.w], h.fa || 0); });
-    out.push(ui.section('Who won, who paid', ui.table(['', 'Won', 'Self-drawn', 'Dealt in', 'Best'], nm.map(function (n, i) { return [n, wins[i], self[i], dealt[i], best[i] ? best[i] + ' faan' : '–']; }))));
+    hands.forEach(function (h) { if (h.w < 0) return; wins[h.w]++; if (h.f < 0 || h.f == null) self[h.w]++; else dealt[h.f]++; best[h.w] = Math.max(best[h.w], h.fa || 0); });
+    out.push(ui.section('Who won, who paid', ui.table(['', 'Won', 'Self-drawn', 'Dealt in', 'Top faan'], nm.map(function (n, i) { return [n, wins[i], self[i], dealt[i], best[i] || '–']; }))));
+    // what decided it
+    var sc = P.map(function (p, i) { return { i: i, s: p.score }; }).filter(function (x) { return typeof x.s === 'number'; }).sort(function (a, b) { return b.s - a.s; });
+    if (sc.length > 1 && sc[0].s !== sc[1].s) {
+      var wi = sc[0].i, why = nm[wi] + ' won ' + wins[wi] + (wins[wi] === 1 ? ' hand' : ' hands');
+      if (big && big.w === wi && big.fa >= 3) why += ', and the ' + big.fa + '-faan ' + (String(big.y || '').split('|')[0] || 'hand') + ' in ' + big.l + ' was the big one';
+      else if (dealt[wi] === 0 && hands.length > 2) why += ' and never dealt in';
+      out.push(B.foot(ui, why, 'trophy'));
+    }
     return ui.wrap(out);
   });
 
@@ -609,5 +712,11 @@
     '.hv-note{font-size:.78rem;color:var(--text-3);line-height:1.35;}' +
     '.hv-two{display:grid;grid-template-columns:1fr 1fr;gap:8px;}.hv-two-c{display:flex;flex-direction:column;gap:4px;min-width:0;align-items:center;text-align:center;}.hv-two-c b{font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}.hv-two-c small{font-size:.74rem;color:var(--text-3);font-weight:700;}.hv-two-c .hv-snap{padding:0;border-radius:8px;overflow:hidden;}' +
     '.hv-mjh{display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:12px;background:radial-gradient(120% 120% at 50% 0%,#1f7a4a,#0e4a2b);}.hv-mjh-t{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;font-size:.86rem;}.hv-mjh-t span{font-weight:800;}.hv-mjh-t i{font-style:normal;color:rgba(255,255,255,.7);font-size:.8rem;margin-left:auto;}.hv-mjh .hv-chip{background:rgba(0,0,0,.25);}' +
-    '.hv-mj{display:flex;flex-wrap:wrap;gap:5px;}.hv-mj-g{display:flex;gap:1px;}.hv-mt{position:relative;width:21px;height:28px;border-radius:3px;background:linear-gradient(165deg,#fffef8,#f7f0de 55%,#ebe1c6);box-shadow:inset 0 0 0 1px rgba(120,95,50,.25),0 2px 0 #1f5ea8,0 3px 2px rgba(0,0,0,.35);}.hv-mt svg{position:absolute;inset:5% 7%;width:86%;height:90%;overflow:visible;}.hv-mt.back{background:linear-gradient(160deg,#2d7bd0,#1f5ea8);box-shadow:0 2px 0 #e9dfc4,0 3px 2px rgba(0,0,0,.35);}.hv-mt.hot{box-shadow:inset 0 0 0 1px rgba(120,95,50,.25),0 0 0 2px #ffd84a,0 0 8px rgba(255,216,74,.7);}');
+    '.hv-mj{display:flex;flex-wrap:wrap;gap:5px;}.hv-mj-g{display:flex;gap:1px;}.hv-mt{position:relative;width:21px;height:28px;border-radius:3px;background:linear-gradient(165deg,#fffef8,#f7f0de 55%,#ebe1c6);box-shadow:inset 0 0 0 1px rgba(120,95,50,.25),0 2px 0 #1f5ea8,0 3px 2px rgba(0,0,0,.35);}.hv-mt svg{position:absolute;inset:5% 7%;width:86%;height:90%;overflow:visible;}.hv-mt.back{background:linear-gradient(160deg,#2d7bd0,#1f5ea8);box-shadow:0 2px 0 #e9dfc4,0 3px 2px rgba(0,0,0,.35);}.hv-mt.hot{box-shadow:inset 0 0 0 1px rgba(120,95,50,.25),0 0 0 2px #ffd84a,0 0 8px rgba(255,216,74,.7);}' +
+    '.hv-mjh.big{gap:9px;padding:12px;}.hv-mjh.big .hv-mj{gap:5px;}.hv-mjh.big .hv-mt{width:21px;height:29px;}' +
+    '.hv-mj-pay{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.14);}' +
+    '.hv-mj-pay>span{display:flex;align-items:center;gap:6px;font-size:.8rem;font-weight:800;min-width:0;}.hv-mj-pay i{width:9px;height:9px;border-radius:50%;flex:none;}' +
+    '.hv-mj-pay .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(255,255,255,.85);}.hv-mj-pay b{font-variant-numeric:tabular-nums;color:rgba(255,255,255,.6);}' +
+    '.hv-mj-pay .up b{color:#86efac;}.hv-mj-pay .dn b{color:#fca5a5;}.hv-mj-d{font-size:.74rem;font-weight:700;color:rgba(255,255,255,.6);}.hv-mj-none{font-size:.78rem;color:rgba(255,255,255,.6);font-style:italic;}' +
+    '.hv-mjh .hv-chip.on{background:rgba(0,0,0,.3);color:#fff;}');
 })();

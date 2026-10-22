@@ -474,46 +474,114 @@
   });
 
   // ═════════════════════════════════════════════════════════════════════════
-  // Mastermind: every guess with its pegs, and the secret code
+  // Mastermind: the board guess by guess (the code stays covered until the end), how fast the guesses closed in
   // ═════════════════════════════════════════════════════════════════════════
   var MM_PEG = ['#e8323c', '#ff8a1f', '#ffd23a', '#27b856', '#2f78ff', '#9a4dff', '#ff6fb5', '#f2efe8'];
   var MM_NAME = ['Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Purple', 'Pink', 'White'];
-  function mmBoard(code, guesses, P, C, label) {
+  // o: {upTo: rows shown (others empty holes), hide: cover the code, hot: row to light}
+  function mmBoard(code, guesses, P, C, label, o) {
+    o = o || {};
+    var shown = o.upTo == null ? guesses.length : o.upTo;
     var hole = 26, rh = 34, keyW = P === 5 ? 34 : 26, W = 26 + P * hole + 12 + keyW + 10, H = rh + 10 + Math.max(1, guesses.length) * rh + 10;
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + (label || 'Mastermind board') + '"><defs><radialGradient id="hvmmp" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></radialGradient></defs>';
+    function empty(cx, cy, r) { return '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r * .42) + '" fill="#1c120a" stroke="rgba(0,0,0,.4)" stroke-width="1"/><circle cx="' + cx + '" cy="' + (cy + .8) + '" r="' + (r * .42) + '" fill="none" stroke="rgba(255,220,170,.18)" stroke-width=".8"/>'; }
     function peg(c, cx, cy, r) {
       if (c === C || MM_PEG[c] == null) return '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r - 2) + '" fill="#1c120a" stroke="rgba(255,236,210,.35)" stroke-width="1.2" stroke-dasharray="2.5 2"/>';
       return '<circle cx="' + cx + '" cy="' + (cy + 1.5) + '" r="' + r + '" fill="rgba(0,0,0,.45)"/><circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + MM_PEG[c] + '"/><circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="url(#hvmmp)"/>';
     }
-    // secret code row
+    // secret code row, under a shield until it's solved
     s += '<rect x="22" y="4" width="' + (P * hole + 8) + '" height="' + (rh - 2) + '" rx="8" fill="rgba(0,0,0,.35)"/>';
     s += '<text x="12" y="' + (4 + rh / 2) + '" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="900" fill="rgba(255,236,210,.55)" font-family="system-ui" transform="rotate(-90 12 ' + (4 + rh / 2) + ')">CODE</text>';
-    code.forEach(function (c, i) { s += peg(c, 26 + i * hole + hole / 2, 4 + rh / 2 - 1, 10); });
+    if (o.hide) s += '<rect x="24" y="6" width="' + (P * hole + 4) + '" height="' + (rh - 6) + '" rx="6" fill="#3a2414" stroke="rgba(255,220,170,.25)"/><text x="' + (26 + P * hole / 2) + '" y="' + (4 + rh / 2) + '" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="900" letter-spacing="6" fill="rgba(255,236,210,.45)" font-family="system-ui">' + new Array(P + 1).join('?') + '</text>';
+    else code.forEach(function (c, i) { s += peg(c, 26 + i * hole + hole / 2, 4 + rh / 2 - 1, 10); });
     s += '<line x1="6" y1="' + (rh + 6) + '" x2="' + (W - 6) + '" y2="' + (rh + 6) + '" stroke="rgba(0,0,0,.4)" stroke-width="2"/>';
     guesses.forEach(function (gr, r) {
-      var y = rh + 10 + r * rh + rh / 2;
-      s += '<text x="12" y="' + y + '" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="800" fill="rgba(255,236,210,.45)" font-family="system-ui">' + (r + 1) + '</text>';
-      gr.g.forEach(function (c, i) { s += peg(c, 26 + i * hole + hole / 2, y, 9.5); });
+      var y = rh + 10 + r * rh + rh / 2, on = r < shown;
+      if (o.hot === r) s += '<rect x="3" y="' + (y - rh / 2 + 1) + '" width="' + (W - 6) + '" height="' + (rh - 2) + '" rx="8" fill="rgba(255,213,74,.14)" stroke="rgba(255,213,74,.6)" stroke-width="1.2"/>';
+      s += '<text x="12" y="' + y + '" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="800" fill="rgba(255,236,210,' + (on ? .45 : .2) + ')" font-family="system-ui">' + (r + 1) + '</text>';
+      gr.g.forEach(function (c, i) { s += on ? peg(c, 26 + i * hole + hole / 2, y, 9.5) : empty(26 + i * hole + hole / 2, y, 9.5); });
       var kx = 26 + P * hole + 12, per = P === 5 ? 3 : 2;
       for (var k = 0; k < P; k++) {
         var col = k % per, row = Math.floor(k / per), cx = kx + 5 + col * 10, cy = y - 5 + row * 10;
-        var fill = k < gr.b ? '#111' : k < gr.b + gr.w ? '#f4f1e8' : null;
+        var fill = on ? (k < gr.b ? '#111' : k < gr.b + gr.w ? '#f4f1e8' : null) : null;
         s += fill ? '<circle cx="' + cx + '" cy="' + cy + '" r="3.8" fill="' + fill + '" stroke="' + (k < gr.b ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.4)') + '" stroke-width=".8"/>' : '<circle cx="' + cx + '" cy="' + cy + '" r="2" fill="rgba(0,0,0,.45)"/>';
       }
     });
     return s + '</svg>';
   }
+  // How many codes still fit every answer so far, after each guess (the start included)
+  function mmLeft(gs, P, K, dup) {
+    var codes = [], cur = [];
+    (function gen(i, used) {
+      if (codes.length > 60000) return;
+      if (i === P) { codes.push(cur.slice()); return; }
+      for (var c = 0; c < K; c++) { if (!dup && used[c]) continue; cur[i] = c; used[c] = 1; gen(i + 1, used); used[c] = 0; }
+    })(0, []);
+    function fb(a, b) {
+      var bl = 0, ca = [], cb = [], k; for (k = 0; k < K; k++) { ca.push(0); cb.push(0); }
+      for (k = 0; k < P; k++) { if (a[k] === b[k]) bl++; else { ca[a[k]]++; cb[b[k]]++; } }
+      var wh = 0; for (k = 0; k < K; k++) wh += Math.min(ca[k], cb[k]);
+      return bl * 10 + wh;
+    }
+    var out = [codes.length], live = codes;
+    gs.forEach(function (gr) { var want = gr.b * 10 + gr.w; live = live.filter(function (c) { return fb(c, gr.g) === want; }); out.push(live.length); });
+    return out;
+  }
   R('codebreaker', function (e, ui) {
     var d = e.dt; if (!d || !d.r || !d.r.length) return null;
-    var nm = names(e), P = +d.P || 4, C = +d.C, out = [];
-    d.r.forEach(function (rd, ri) {
+    var B = HistView.boardUI, nm = names(e), P = +d.P || 4, C = +d.C, K = C + (d.bl ? 1 : 0), out = [];
+    var rounds = d.r.map(function (rd, ri) {
       var code = String(rd.c || '').split('').map(Number);
       var gs = String(rd.g || '').split(' ').filter(Boolean).map(function (x) { var p = x.split(':'); return { g: p[0].split('').map(Number), b: +(p[1] || '00').charAt(0), w: +(p[1] || '00').charAt(1) }; });
-      var title = d.r.length > 1 ? 'Round ' + (ri + 1) + ': ' + (nm[rd.m] || 'Player') + "'s code" : rd.m >= 0 && nm[rd.m] ? nm[rd.m] + "'s code" : 'The secret code';
-      var cname = code.map(function (c) { return c === C ? 'Blank' : MM_NAME[c] || '?'; }).join(', ');
-      var sub = rd.ok ? (nm[rd.k] || 'Breaker') + ' cracked it in ' + gs.length + (gs.length === 1 ? ' guess' : ' guesses') : 'Never cracked';
-      out.push(ui.section(title, [ui.picture(mmBoard(code, gs, P, C, 'Code: ' + cname), { frame: 'wood', max: P === 5 ? 280 : 250 }), ui.facts([['Code', cname], ['Result', sub]])]));
+      return { rd: rd, code: code, gs: gs, i: ri };
     });
+    // repeats allowed? (older records don't say: any repeat in a code or guess means yes; 5 pegs always allow them)
+    var dup = d.dp != null ? !!d.dp : P === 5 || rounds.some(function (r) { return [r.code].concat(r.gs.map(function (g) { return g.g; })).some(function (a) { return a.some(function (c, i) { return a.indexOf(c) !== i; }); }); });
+    var area = ui.el('div', { class: 'hv' });
+    function show(ri) {
+      var R0 = rounds[ri], rd = R0.rd, code = R0.code, gs = R0.gs, N = gs.length, kids = [];
+      var cname = code.map(function (c) { return c === C ? 'Blank' : MM_NAME[c] || '?'; }).join(', ');
+      var left = null; try { left = mmLeft(gs, P, K, dup); } catch (err) {}
+      kids.push(ui.stats([[rd.ok ? 'Cracked in' : 'Guesses', N, rd.ok ? (N === 1 ? 'guess' : 'guesses') + (nm[rd.k] ? ' · ' + nm[rd.k] : '') : 'never cracked'], ['Possible codes', left ? left[0].toLocaleString('en-US') : null, P + ' holes · ' + K + (d.bl ? ' with blank' : ' colors') + (dup ? ' · repeats' : '')],
+        ['After guess 1', left && left.length > 1 ? left[1].toLocaleString('en-US') : null, left && left.length > 1 ? 'codes still fit' : '']]));
+      var snap = ui.picture(mmBoard(code, gs, P, C, 'Code: ' + cname), { frame: 'wood', max: P === 5 ? 280 : 250 });
+      kids.push(snap);
+      var ch = null;
+      if (left && N > 1) {
+        // log scale: 1296 down to 1 reads as steady steps
+        var lv = left.map(function (n) { return Math.log(Math.max(1, n)) / Math.LN10; });
+        ch = B.chart(ui, [{ v: lv, c: '#ffd54a', fill: 'rgba(255,213,74,.12)' }], { lo: 0, hi: Math.max(1, lv[0]), h: 90, from: left[0].toLocaleString('en-US') + ' possible', to: (left[N] === 1 ? 'One left' : left[N] + ' left'), aria: 'Codes still possible after each guess' });
+      }
+      if (N > 1) kids.push(B.replay(ui, N, function (n) {
+        snap.innerHTML = mmBoard(code, gs, P, C, 'Code: ' + cname, { upTo: n, hide: n < N || !rd.ok && n < N, hot: n ? n - 1 : null });
+        if (ch) ch.at(n);
+        if (!n) return 'The code is set: ' + (left ? left[0].toLocaleString('en-US') + ' codes it could be' : 'four holes to fill');
+        var g = gs[n - 1], fit = left ? left[n] : null;
+        var a = 'Guess ' + n + ': ' + (g.b === P ? 'all ' + P + ' right!' : (g.b ? g.b + ' right spot' : 'none in the right spot') + (g.w ? ', ' + g.w + ' right color' : ''));
+        return a + (fit != null && g.b !== P ? ' · ' + (fit === 1 ? 'only 1 code fits now' : fit.toLocaleString('en-US') + ' codes still fit') : '') + (n === N && !rd.ok ? ' · out of rows' : '');
+      }, { start: N, ms: 900 }));
+      if (ch) kids.push(ui.section('Codes still possible, guess by guess', ch));
+      kids.push(ui.facts([['Code', cname]]));
+      // what decided it
+      var why = '';
+      if (left && rd.ok) {
+        var one = left.indexOf(1);
+        why = N === 1 ? 'A lucky first guess' : one > 0 && one < N ? 'Guess ' + one + ' left only one possible code; guess ' + N + ' played it'
+          : 'Guess ' + (N - 1) + ' left ' + left[N - 1].toLocaleString('en-US') + ' codes that fit, and guess ' + N + ' picked the right one';
+      } else if (!rd.ok) why = 'The code held' + (left ? left[N] === 1 ? ': only one code still fit, so one more row would have cracked it' : ' with ' + left[N].toLocaleString('en-US') + ' codes still possible after the last row' : '');
+      kids.push(B.foot(ui, why, rd.ok ? 'key' : 'lock'));
+      area.innerHTML = ''; kids.forEach(function (k) { if (k) area.appendChild(k); });
+    }
+    if (rounds.length > 1) {
+      out.push(ui.section('Each round · tap one', B.strip(ui, rounds.map(function (r) {
+        return { t: 'Round ' + (r.i + 1), s: (nm[r.rd.m] || 'Player') + '’s code · ' + (r.rd.ok ? r.gs.length + (r.gs.length === 1 ? ' guess' : ' guesses') : 'held'), c: ui.color(r.rd.m >= 0 ? r.rd.m : 0), hot: !r.rd.ok };
+      }), rounds.length - 1, show)));
+    } else {
+      var r0 = rounds[0].rd;
+      out.push(ui.el('h4', { class: 'hv-h', text: r0.m >= 0 && nm[r0.m] ? nm[r0.m] + "'s code" : 'The secret code' }));
+      show(0);
+    }
+    out.push(area);
     return ui.wrap(out);
   });
 
@@ -521,7 +589,7 @@
   // Dominoes: the last hand's line of play, and what everyone was left holding
   // ═════════════════════════════════════════════════════════════════════════
   var PIPS = { 0: [], 1: [[1, 1]], 2: [[0, 0], [2, 2]], 3: [[0, 0], [1, 1], [2, 2]], 4: [[0, 0], [0, 2], [2, 0], [2, 2]], 5: [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]], 6: [[0, 0], [1, 0], [2, 0], [0, 2], [1, 2], [2, 2]] };
-  // a tile a|b; vertical = standing up (a on top). pips = [row, col] in a 3x3 grid on each half
+  // a tile a|b in a hand; vertical = standing up (a on top). pips = [row, col] in a 3x3 grid on each half
   function domSvg(a, b, vert, cls) {
     var u = 20, s = '';
     function half(v, ox, oy) {
@@ -537,26 +605,181 @@
     return '<svg class="' + (vert ? 'v' : 'h') + (cls ? ' ' + cls : '') + '" viewBox="0 0 ' + W + ' ' + H + '" aria-label="' + a + '-' + b + '">' + s + '</svg>';
   }
   function domPairs(str) { var o = []; str = String(str || ''); for (var i = 0; i + 1 < str.length; i += 2) o.push([+str.charAt(i), +str.charAt(i + 1)]); return o; }
-  var DOM_V = { draw: 'Draw game', block: 'Block game', fives: 'All Fives' };
+  // ── the line of play, laid out the way the game lays it out (games/dominoes.html: place, reroot, layout) ──
+  function dmPlace(L, t, end, fives) {
+    if (!L) return { root: { t: [t[0], t[1]] }, arms: { E: [], W: [], N: [], S: [] }, spin: fives && t[0] === t[1] };
+    L = JSON.parse(JSON.stringify(L));
+    var v = dmEnds(L).filter(function (e) { return e.end === end; })[0];
+    if (!v) return null;
+    v = v.v;
+    var o = t[0] === v ? [t[0], t[1]] : [t[1], t[0]];
+    L.arms[end].push({ t: o });
+    if (fives && !L.spin && o[0] === o[1]) {   // the first double in All Fives becomes the spinner
+      var arm = L.arms[end], sp = arm.pop(), back = [];
+      for (var j = arm.length - 1; j >= 0; j--) back.push({ t: [arm[j].t[1], arm[j].t[0]] });
+      var r = L.root.t;
+      if (end === 'W') { L.arms.E = back.concat([{ t: [r[0], r[1]] }], L.arms.E); L.arms.W = []; }
+      else { L.arms.W = back.concat([{ t: [r[1], r[0]] }], L.arms.W); L.arms.E = []; }
+      L.root = { t: sp.t }; L.spin = true;
+    }
+    return L;
+  }
+  function dmEnds(L) {
+    var r = L.root, A = L.arms, last = function (a) { return a[a.length - 1]; }, out = [];
+    out.push({ end: 'E', v: A.E.length ? last(A.E).t[1] : r.t[1] });
+    out.push({ end: 'W', v: A.W.length ? last(A.W).t[1] : r.t[0] });
+    if (L.spin && A.E.length && A.W.length) { out.push({ end: 'N', v: A.N.length ? last(A.N).t[1] : r.t[0] }); out.push({ end: 'S', v: A.S.length ? last(A.S).t[1] : r.t[0] }); }
+    return out;
+  }
+  var DM = (function () {
+    var DV = { E: [1, 0], W: [-1, 0], N: [0, -1], S: [0, 1] }, ROT = { N: 0, E: 90, S: 180, W: -90 }, OPP = { E: 'W', W: 'E', N: 'S', S: 'N' }, EPS = 0.01;
+    function rectOf(g) { return { x0: g.cx - g.w / 2, x1: g.cx + g.w / 2, y0: g.cy - g.h / 2, y1: g.cy + g.h / 2 }; }
+    function overlap(a, b) { return a.x0 < b.x1 - EPS && b.x0 < a.x1 - EPS && a.y0 < b.y1 - EPS && b.y0 < a.y1 - EPS; }
+    function geom(st, kind, d2, dbl) {
+      var P = st.P, dv = DV[st.d], horiz;
+      if (kind === 's') {
+        horiz = dv[1] === 0;
+        if (dbl) return { cx: P[0] + .5 * dv[0], cy: P[1] + .5 * dv[1], w: horiz ? 1 : 2, h: horiz ? 2 : 1, rot: horiz ? 0 : 90, np: [P[0] + dv[0], P[1] + dv[1]], nd: st.d, cross: true };
+        return { cx: P[0] + dv[0], cy: P[1] + dv[1], w: horiz ? 2 : 1, h: horiz ? 1 : 2, rot: ROT[OPP[st.d]], np: [P[0] + 2 * dv[0], P[1] + 2 * dv[1]], nd: st.d };
+      }
+      var d2v = DV[d2], M;
+      if (kind === 't') M = [P[0] + .5 * dv[0], P[1] + .5 * dv[1]];
+      else { var off = st.cx + .5; M = [P[0] - .5 * dv[0] + off * d2v[0], P[1] - .5 * dv[1] + off * d2v[1]]; }
+      horiz = d2v[1] === 0;
+      return { cx: M[0] + .5 * d2v[0], cy: M[1] + .5 * d2v[1], w: horiz ? 2 : 1, h: horiz ? 1 : 2, rot: ROT[OPP[d2]], np: [M[0] + 1.5 * d2v[0], M[1] + 1.5 * d2v[1]], nd: d2 };
+    }
+    function regionOK(arm, r, spin, RR) {
+      if (!spin) {
+        if (arm === 'E') return r.y0 >= -1 - EPS && (r.y0 >= 1 - EPS || r.x0 >= RR.x1 - EPS);
+        return r.y1 <= 1 + EPS && (r.y1 <= -1 + EPS || r.x1 <= RR.x0 + EPS);
+      }
+      if (arm === 'E') return r.x0 >= .5 - EPS && r.y0 >= -1 - EPS && (r.y1 <= 1 + EPS || r.x0 >= 1 - EPS);
+      if (arm === 'S') return r.y0 >= 1 - EPS && r.x1 <= 1 + EPS;
+      if (arm === 'W') return r.x1 <= -.5 + EPS && r.y1 <= 1 + EPS && (r.y0 >= -1 - EPS || r.x1 <= -1 + EPS);
+      return r.y1 <= -1 + EPS && r.x0 >= -1 - EPS;
+    }
+    function stepArm(st, ctx, dbl, relax) {
+      var tries = st.mode === 'run' ? [['s'], ['t', st.pd], ['h', st.pd], ['t', OPP[st.pd]], ['h', OPP[st.pd]]] : [['t', OPP[st.lastMain]], ['h', OPP[st.lastMain]], ['s'], ['t', st.lastMain], ['h', st.lastMain]];
+      for (var i = 0; i < tries.length; i++) {
+        var k = tries[i][0], d2 = tries[i][1], g = geom(st, k, d2, dbl && k === 's'), r = rectOf(g);
+        if (relax < 2) {
+          if (r.x0 < -ctx.W / 2 - EPS || r.x1 > ctx.W / 2 + EPS || r.y0 < -ctx.H / 2 - EPS || r.y1 > ctx.H / 2 + EPS) continue;
+          if (relax < 1 && !regionOK(st.arm, r, ctx.spin, ctx.RR)) continue;
+          if (ctx.rects.some(function (q) { return overlap(q, r); })) continue;
+        }
+        var ns = { arm: st.arm, P: g.np, d: g.nd, pd: st.pd, cx: g.cross ? 1 : .5, mode: st.mode, lastMain: st.lastMain };
+        if (k !== 's') { if (d2 === st.pd || d2 === OPP[st.pd]) { ns.mode = 'corner'; if (st.mode === 'run') ns.lastMain = st.d; } else ns.mode = 'run'; }
+        return { g: g, r: r, st: ns };
+      }
+      return null;
+    }
+    function layout(L, W, H, relax) {
+      var out = { ok: true, items: [], rects: [] }, rt = L.root.t, rd = rt[0] === rt[1];
+      var root = rd ? { cx: 0, cy: 0, w: 1, h: 2, rot: 0 } : { cx: 0, cy: 0, w: 2, h: 1, rot: -90 }, RR = rectOf(root);
+      out.rects.push(RR);
+      out.items.push({ a: rt[0], b: rt[1], cx: 0, cy: 0, w: root.w, h: root.h, rot: root.rot, spin: L.spin, key: 'R' });
+      var ctx = { W: W, H: H, spin: L.spin, RR: RR, rects: out.rects }, pd = L.spin ? { E: 'S', S: 'W', W: 'N', N: 'E' } : { E: 'S', W: 'N' };
+      var starts = { E: [RR.x1, 0], W: [RR.x0, 0], N: [0, RR.y0], S: [0, RR.y1] };
+      Object.keys(pd).forEach(function (arm) {
+        var st = { arm: arm, P: starts[arm], d: arm, pd: pd[arm], cx: (arm === 'E' || arm === 'W') ? (rd ? 1 : .5) : .5, mode: 'run', lastMain: arm };
+        (L.arms[arm] || []).forEach(function (x, k) {
+          if (!out.ok && relax < 2) return;
+          var res = stepArm(st, ctx, x.t[0] === x.t[1], relax);
+          if (!res) { out.ok = false; return; }
+          out.rects.push(res.r);
+          out.items.push({ a: x.t[0], b: x.t[1], cx: res.g.cx, cy: res.g.cy, w: res.g.w, h: res.g.h, rot: res.g.rot, key: arm + k });
+          st = res.st;
+        });
+      });
+      return out;
+    }
+    // fit the line to a W x H picture (px): shrink the tile until the line fits, as the game does
+    function fit(L, PW, PH) {
+      var u = Math.min(PW, PH) / 7.2, lay = null;
+      for (var k = 0; k < 8; k++) { lay = layout(L, PW / u - .3, PH / u - .3, 0); if (lay.ok) break; u *= .88; }
+      if (!lay.ok) lay = layout(L, PW / u - .3, PH / u - .3, 1);
+      if (!lay.ok) lay = layout(L, PW / u - .3, PH / u - .3, 2);
+      return lay;
+    }
+    return { fit: fit };
+  })();
+  var DM_P = [[], [5], [3, 7], [3, 5, 7], [1, 3, 7, 9], [1, 3, 5, 7, 9], [1, 3, 4, 6, 7, 9]];
+  // the line on felt. hot: key of the tile just played; o.cap: a caption on the table
+  function dmTable(L, o) {
+    o = o || {};
+    var PW = 340, PH = 250, s = '<svg viewBox="0 0 ' + PW + ' ' + PH + '" role="img" aria-label="The line of play"><defs>' +
+      '<radialGradient id="dmf" cx=".5" cy=".4" r=".75"><stop offset="0" stop-color="#1f8a5c"/><stop offset=".7" stop-color="#11603f"/><stop offset="1" stop-color="#0a4129"/></radialGradient>' +
+      '<linearGradient id="dmt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffef8"/><stop offset=".55" stop-color="#f7f0dd"/><stop offset="1" stop-color="#e9dec4"/></linearGradient>' +
+      '<radialGradient id="dmp" cx=".38" cy=".32" r=".7"><stop offset="0" stop-color="#4a4540"/><stop offset=".62" stop-color="#0b0a09"/></radialGradient>' +
+      '<radialGradient id="dmb" cx=".35" cy=".3" r=".7"><stop offset="0" stop-color="#fff6cf"/><stop offset=".4" stop-color="#e2b54c"/><stop offset="1" stop-color="#9a6a18"/></radialGradient></defs>' +
+      '<rect width="' + PW + '" height="' + PH + '" rx="12" fill="url(#dmf)"/>';
+    if (L) {
+      var lay = DM.fit(L, PW, PH), bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9;
+      lay.rects.forEach(function (r) { bx0 = Math.min(bx0, r.x0); bx1 = Math.max(bx1, r.x1); by0 = Math.min(by0, r.y0); by1 = Math.max(by1, r.y1); });
+      bx0 -= .6; bx1 += .6; by0 -= .6; by1 += .6;
+      var sc = Math.min(PW / (bx1 - bx0), PH / (by1 - by0), 34), ox = PW / 2 - (bx0 + bx1) / 2 * sc, oy = PH / 2 - (by0 + by1) / 2 * sc, top = '';
+      lay.items.forEach(function (it) {
+        var cx = f2(ox + it.cx * sc), cy = f2(oy + it.cy * sc), u = sc, g = '<g transform="translate(' + cx + ' ' + cy + ') rotate(' + it.rot + ')">';
+        g += '<rect x="' + f2(-u / 2 + .6) + '" y="' + f2(-u + 1.4) + '" width="' + f2(u) + '" height="' + f2(2 * u) + '" rx="' + f2(u * .17) + '" fill="rgba(0,0,0,.35)"/>';
+        g += '<rect x="' + f2(-u / 2) + '" y="' + f2(-u) + '" width="' + f2(u) + '" height="' + f2(2 * u) + '" rx="' + f2(u * .17) + '" fill="url(#dmt)" stroke="rgba(90,70,40,.45)" stroke-width=".8"/>';
+        g += '<line x1="' + f2(-u * .39) + '" x2="' + f2(u * .39) + '" y1="0" y2="0" stroke="rgba(60,45,25,.55)" stroke-width="' + f2(Math.max(.8, u * .045)) + '"/>';
+        [[it.a, -u], [it.b, 0]].forEach(function (h) {
+          (DM_P[h[0]] || []).forEach(function (k) { var c = (k - 1) % 3, r = Math.floor((k - 1) / 3); g += '<circle cx="' + f2(-u / 2 + u * (.24 + c * .26)) + '" cy="' + f2(h[1] + u * (.24 + r * .26)) + '" r="' + f2(u * .095) + '" fill="url(#dmp)"/>'; });
+        });
+        g += '<circle r="' + f2(u * .1) + '" fill="url(#dmb)"/></g>';
+        s += g;
+        if (it.key === o.hot || (it.spin && L.spin)) top += '<rect x="' + f2(ox + (it.cx - it.w / 2) * sc - 2) + '" y="' + f2(oy + (it.cy - it.h / 2) * sc - 2) + '" width="' + f2(it.w * sc + 4) + '" height="' + f2(it.h * sc + 4) + '" rx="' + f2(sc * .25) + '" fill="none" stroke="' + (it.key === o.hot ? (o.col || '#fff') : 'rgba(255,214,120,.8)') + '" stroke-width="' + (it.key === o.hot ? 2.6 : 1.6) + '"' + (it.key === o.hot ? '' : ' stroke-dasharray="4 3"') + '/>';
+      });
+      s += top;
+    }
+    if (o.cap) s += '<text x="' + PW / 2 + '" y="' + (PH - 9) + '" text-anchor="middle" font-size="10" font-weight="900" letter-spacing="1" fill="rgba(255,255,255,.5)" font-family="system-ui">' + o.cap + '</text>';
+    return s + '</svg>';
+  }
+  // the line from the old record form (each arm outward from the root)
+  function dmFromLn(Ln) {
+    var r = domPairs(Ln.r)[0]; if (!r) return null;
+    var L = { root: { t: r }, arms: {}, spin: !!Ln.sp };
+    ['E', 'W', 'N', 'S'].forEach(function (k) { L.arms[k] = domPairs(Ln[k]).map(function (t) { return { t: t }; }); });
+    return L;
+  }
+  var DOM_V = { draw: 'Draw game', block: 'Block game', fives: 'All Fives' }, DOM_END = { E: 'right', W: 'left', N: 'top', S: 'bottom' };
   R('dominoes', function (e, ui) {
     var d = e.dt; if (!d) return null;
-    var nm = names(e), out = [];
-    if (d.ln && d.ln.r) {
-      var L = d.ln, r = domPairs(L.r)[0], W = domPairs(L.W), E = domPairs(L.E), html = '';
-      W.slice().reverse().forEach(function (t) { html += domSvg(t[1], t[0], t[0] === t[1]); });
-      html += domSvg(r[0], r[1], r[0] === r[1], L.sp ? 'hl' : '');
-      E.forEach(function (t) { html += domSvg(t[0], t[1], t[0] === t[1]); });
-      var line = ui.el('div', { class: 'hvb-dom', html: html });
-      var nodes = [ui.el('div', { class: 'hv-snap f-felt', style: { 'max-width': '380px', 'line-height': 'normal' } }, [line])];
-      ['N', 'S'].forEach(function (k) {
-        var arm = domPairs(L[k]); if (!arm.length) return;
-        var h2 = ''; arm.forEach(function (t) { h2 += domSvg(t[0], t[1], t[0] === t[1]); });
-        nodes.push(ui.el('div', { class: 'hv-snap f-felt', style: { 'max-width': '380px', 'line-height': 'normal', padding: '6px' } }, [
-          ui.el('div', { style: { color: 'rgba(255,255,255,.6)', 'font-size': '.72rem', 'font-weight': '800', 'margin-bottom': '4px', 'text-align': 'center' }, text: 'Off the spinner, ' + (k === 'N' ? 'up' : 'down') }),
-          ui.el('div', { class: 'hvb-dom', html: h2 })]));
-      });
-      var cnt = 1 + W.length + E.length + domPairs(L.N).length + domPairs(L.S).length;
-      out.push(ui.section('Hand ' + (d.h || '') + ': the line of play (' + cnt + ' tiles)', ui.el('div', { class: 'hvb-mm' }, nodes)));
+    var B = HistView.boardUI, nm = names(e), out = [], fives = d.v === 'fives';
+    var Lfin = d.ln && d.ln.r ? dmFromLn(d.ln) : null;
+    // the hand move by move: plays and passes are the steps; draws are counted into the next step
+    var toks = String(d.pl || '').split(' ').filter(Boolean), steps = [], L = null, drew = 0, ok = toks.length > 0;
+    toks.forEach(function (t) {
+      if (!ok) return;
+      var p = +t.charAt(0), k = t.charAt(1);
+      if (k === 'd') { drew++; return; }
+      if (k === 'x') { steps.push({ p: p, pass: true, drew: drew, L: L }); drew = 0; return; }
+      var tl = [+t.charAt(1), +t.charAt(2)], end = t.charAt(3), pts = +t.slice(4) || 0;
+      var L2 = dmPlace(end === 'L' ? null : L, tl, end, fives);
+      if (!L2) { ok = false; return; }
+      L = L2;
+      var A = end === 'L' ? null : L.arms[end], key = end === 'L' ? 'R' : end + (A.length - 1);
+      if (L.spin && end !== 'L' && tl[0] === tl[1] && L.root.t[0] === tl[0] && !A.length) key = 'R';   // just became the spinner
+      steps.push({ p: p, t: tl, end: end, pts: pts, drew: drew, L: L, key: key }); drew = 0;
+    });
+    if (!ok || !steps.length) steps = null;
+    var finalL = steps ? steps[steps.length - 1].L : Lfin;
+    var cnt = 0; if (finalL) { cnt = 1; ['E', 'W', 'N', 'S'].forEach(function (k) { cnt += (finalL.arms[k] || []).length; }); }
+    var lastP = steps ? steps.filter(function (s) { return !s.pass; }).pop() : null;
+    var snap = ui.picture(dmTable(finalL, { hot: lastP && lastP.key, col: lastP ? ui.color(lastP.p) : null, cap: finalL ? cnt + ' TILES' : '' }), { frame: 'wood', max: 380 });
+    out.push(ui.stats([['Hands', d.h || null, DOM_V[d.v] || ''], ['Last hand', d.k === 'domino' ? 'Domino' : d.k === 'block' ? 'Blocked' : d.k === 'match' ? 'Target hit' : null, d.k === 'domino' ? (nm[d.wi] ? nm[d.wi] + ' went out' : '') : d.k === 'block' ? 'nobody could play' : d.k === 'match' ? 'mid-hand' : ''],
+      ['Boneyard', d.v === 'block' ? null : d.bn != null ? d.bn : null, 'tiles left']]));
+    if (finalL) out.push(ui.section('Hand ' + (d.h || '') + ': the line of play', snap));
+    if (steps && steps.length > 1) {
+      var N = steps.length;
+      out.push(ui.section('Replay the hand', B.replay(ui, N, function (n) {
+        var st = steps[n - 1], Ln = n ? st.L : null;
+        snap.innerHTML = dmTable(Ln, { hot: st && !st.pass ? st.key : null, col: st ? ui.color(st.p) : null, cap: n === 0 ? 'THE DEAL' : '' });
+        if (!n) return 'The deal';
+        var who = nm[st.p] || 'Player', pre = st.drew ? who + ' drew ' + st.drew + ', then ' : who + ' ';
+        if (st.pass) return 'Play ' + n + ' · ' + (st.drew ? who + ' drew ' + st.drew + ' and passed' : who + ' passed');
+        return 'Play ' + n + ' · ' + pre + (st.end === 'L' ? 'led the ' : 'played the ') + (st.t[0] === st.t[1] ? 'double ' + st.t[0] : st.t[0] + '-' + st.t[1]) + (st.end === 'L' ? '' : ' on the ' + DOM_END[st.end]) + (st.pts ? ', scored ' + st.pts : '');
+      }, { start: N, ms: 600 })));
     }
     if (d.hd && d.hd.length) {
       var rows = d.hd.map(function (h, i) {
@@ -567,7 +790,13 @@
       });
       out.push(ui.section('Left in hand', ui.el('div', { class: 'hvb-mm' }, rows)));
     }
-    out.push(ui.facts([['Game', DOM_V[d.v] || ''], ['Hands', d.h || ''], ['Last hand', d.k === 'domino' ? (nm[d.wi] ? nm[d.wi] + ' dominoed' : 'Domino') : d.k === 'block' ? 'Blocked' : d.k === 'match' ? 'Reached the target mid-hand' : ''], ['Boneyard', d.v === 'block' ? '' : d.bn != null ? d.bn + ' tiles left' : '']]));
+    // what decided it
+    var why = '';
+    if (d.k === 'domino' && nm[d.wi]) why = nm[d.wi] + ' went out' + (d.h > 1 ? ' in the last hand' : '') + ' and scored the dots left in everyone else’s hand';
+    else if (d.k === 'block') why = 'Nobody could play, so the lowest count of dots took the hand';
+    else if (d.k === 'match') why = 'The winning points came in the middle of a hand';
+    if (fives && steps) { var fp = {}; steps.forEach(function (s) { if (s.pts) fp[s.p] = (fp[s.p] || 0) + s.pts; }); var bp = Object.keys(fp).sort(function (a, b) { return fp[b] - fp[a]; })[0]; if (bp != null && fp[bp] >= 10) why += (why ? '. ' : '') + nm[bp] + ' made ' + fp[bp] + ' points from fives in that hand'; }
+    out.push(B.foot(ui, why, 'trophy'));
     return ui.wrap(out);
   });
 

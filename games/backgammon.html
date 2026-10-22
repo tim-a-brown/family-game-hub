@@ -197,6 +197,9 @@
     var a, b; do { a = rnd(); b = rnd(); } while (a === b);
     S.cur = a > b ? 0 : 1; S.dice = [a, b].sort(function (x, y) { return y - x; }); S.left = S.dice.slice();
     S.phase = 'move'; S.opening = [a, b];
+    // this game turn by turn, for the history replay: 'seat die die' then each move as two letters (point a-x from
+    // White's 1 to 24, y the bar, z off); 'seatC4' a double taken. Space separated.
+    S.mv = '' + S.cur + S.dice[0] + S.dice[1];
     save(); render(true);
     var first = S.players[S.cur];
     setTimeout(function () { Kit.callout((first.name === 'You' ? 'You go' : first.name + ' goes') + ' first'); }, 650);
@@ -382,6 +385,7 @@
     S.dice = [rnd(), rnd()];
     S.left = S.dice[0] === S.dice[1] ? [S.dice[0], S.dice[0], S.dice[0], S.dice[0]] : S.dice.slice();
     if (S.dice[0] === S.dice[1]) S.ms.doubles[S.cur]++;
+    if (S.mv != null) S.mv += ' ' + S.cur + S.dice[0] + S.dice[1];
     S.phase = 'move'; S.opening = null; sel = null;
     Kit.sfx('roll'); Kit.haptic('medium');
     save(); render(true);
@@ -417,6 +421,7 @@
     var s = S.cur, before = S.pos, fromXY = checkerXY(m.from, s, stackTop(before, s, m.from));
     var victimFrom = m.to !== OFF && own(before, 1 - s, m.to) === 1 ? checkerXY(m.to, 1 - s, 0) : null;
     S.pos = apply(before, s, m); delete S.pos.hit;
+    if (S.mv != null) S.mv += mvCode(m.from) + mvCode(m.to);
     S.left = without(S.left, S.left.indexOf(m.d));
     if (victimFrom) {
       S.gs.hits[s]++; S.ms.hits[s]++;
@@ -430,6 +435,7 @@
     save();
     return false;
   }
+  function mvCode(i) { return i === BAR ? 'y' : i === OFF ? 'z' : String.fromCharCode(97 + i); }
   function stackTop(pos, s, where) { return where === BAR ? pos.bar[s] - 1 : where === OFF ? pos.off[s] - 1 : own(pos, s, where) - 1; }
 
   // Human taps
@@ -534,6 +540,7 @@
     if (S.phase !== 'double') return;
     if (take) {
       S.cube *= 2; S.owner = o; S.ms.maxCube = Math.max(S.ms.maxCube, S.cube);
+      if (S.mv != null) S.mv += ' ' + s + 'C' + S.cube;
       Kit.toast(P[o].name === 'You' ? 'You take. Cube is at ' + S.cube : P[o].name + ' takes. Cube is at ' + S.cube);
       Kit.sfx('good');
       S.phase = 'roll'; save(); render();
@@ -605,7 +612,8 @@
       // for the history view: where the checkers ended (p: + White / − Black per point 1..24), the cube, and each game's result
       detail: { p: S.pos.p.slice(), bar: S.pos.bar.slice(), off: S.pos.off.slice(), cube: S.cube, own: S.owner, to: S.target, cubeOn: !!S.cubeOn,
         g: S.games.map(function (g) { return { w: g.w, h: g.how, pts: g.pts, c: g.cube, pl: g.pipsLeft }; }),
-        hits: S.ms.hits.slice(), dbl: S.ms.doubles.slice(), max: S.ms.maxCube, pips: [pips(S.pos, 0), pips(S.pos, 1)] }
+        hits: S.ms.hits.slice(), dbl: S.ms.doubles.slice(), max: S.ms.maxCube, pips: [pips(S.pos, 0), pips(S.pos, 1)],
+        mv: S.mv && S.mv.length < 2600 ? S.mv : undefined }
     });
     clearSave();
     var lose = P[w].cpu, last2 = S.games[S.games.length - 1];
