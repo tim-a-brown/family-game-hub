@@ -3280,7 +3280,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // the way to the championship. ai0 / ai1: how good the field is (0..1) at the start and by the final table: each
   // stop is tougher than the one before, except the back room, whose regulars are sharks (the card room after it feels
   // easier for a while); m0: big blinds in the average stack at the start; per: hands a level; ft: hands until the
-  // final table; bounty: the share of each buy-in that's a bounty on that player.
+  // final table (times FTX: the rest of the field plays on while you do, and a tournament should feel like a long
+  // night, not a sprint); bounty: the share of each buy-in that's a bounty on that player.
+  var FTX = 2.4;
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
   var PUBN = ['Rusty Anchor', 'Copper Kettle', 'Brass Tap', 'Red Lion', 'Black Dog', 'Shamrock', 'Tin Cup', 'Iron Horse', 'Blue Moose', 'Lucky Penny'];
   var LOCAL = {
@@ -3857,7 +3859,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     var tableLeft = alive().length, before = C.else + tableLeft + busted.length, L = C.else + tableLeft;
     if (C.else > 0) {
-      var target = Math.round(C.e0 * Math.pow(Math.max(0, 1 - C.h / ev.ft), 1.4)), elim = Math.max(0, C.else - target);
+      var target = Math.round(C.e0 * Math.pow(Math.max(0, 1 - C.h / (ev.ft * FTX)), 1.4)), elim = Math.max(0, C.else - target);
       if (L > C.paid && L - elim <= C.paid) elim = L - C.paid - 1 > 0 ? L - C.paid - 1 : (Math.random() < 0.45 ? 1 : 0);   // hand for hand on the bubble
       elim = Math.min(elim, C.else);
       C.else -= elim;
