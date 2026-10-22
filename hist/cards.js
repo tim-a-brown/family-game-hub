@@ -37,7 +37,7 @@
     return box;
   }
   function felt(kind, kids, cls) {
-    var f = FELT[kind] || FELT.sol;
+    var f = Array.isArray(kind) ? kind : FELT[kind] || FELT.sol;
     return K().el('div', { class: 'hvc-felt' + (cls ? ' ' + cls : ''), style: { '--fa': f[0], '--fb': f[1], '--fc': f[2] } }, [].concat(kids).filter(Boolean));
   }
   // a labelled group inside a felt panel
@@ -158,6 +158,9 @@
   var SORD = { c: 0, d: 1, s: 2, h: 3 }, RORD = '2345678910JQKA';
   function rIdx(r) { return r === '10' ? 8 : RORD.indexOf(r); }
   function sortH(cs, ord) { ord = ord || SORD; return cs.slice().sort(function (a, b) { var x = parse(a), y = parse(b); if (!x || !y) return 0; return ord[x.s] - ord[y.s] || rIdx(x.r) - rIdx(y.r); }); }
+
+  // the same pieces for the other card-game views (hist/specialty.js), used when a view draws
+  HistView.ck = { road: road, key: key, plates: plates, head: head, foot: foot, felt: felt, grp: grp, row: row, card: card, trick: trick, cum: cum, scoresOf: scoresOf, chart: chart };
 
   // ── Hearts: every hand (who took the Queen, the moon, your cards and passes), and what decided it ──
   var HDIR = { l: 'passed left', r: 'passed right', a: 'passed across', h: 'no passing' };

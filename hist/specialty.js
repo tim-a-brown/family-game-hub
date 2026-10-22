@@ -240,25 +240,94 @@
     return ui.wrap(out);
   });
 
-  // ── Rook: every hand's bid, trump and result ───────────────────────────────
+  // ── Rook: every hand (the bid, trump, the bidder's cards, the nest and what was buried), and what decided it ──
   var RK = { r: ['Red', '#e0485a'], y: ['Yellow', '#f0b000'], g: ['Green', '#2bb36a'], b: ['Black', '#9a98ad'] };
+  var RKINK = { r: '#d42a3c', y: '#d99a00', g: '#1d9a52', b: '#22202f' };
+  var RKBIRD = '<svg viewBox="0 0 64 64" aria-hidden="true"><g fill="#1d1b2e"><path d="M4 44 L20 36 L22 41 L8 50 Z"/>' +
+    '<path d="M16 38 C18 28 28 23 38 24 C40 18 44 14 50 15 C54 16 56 19 56 21 L62 23 L56 25 C55 30 52 33 48 35 C46 42 38 47 28 47 C22 47 18 44 16 38 Z"/>' +
+    '<path d="M27 47 L25 57 M25 57 L21 58 M25 57 L28 59 M35 46 L36 56 M36 56 L32 58 M36 56 L40 57" stroke="#1d1b2e" stroke-width="2.4" stroke-linecap="round" fill="none"/></g>' +
+    '<path d="M22 36 C28 30 36 30 42 33 C36 34 30 37 26 41 Z" fill="#4a4660"/><circle cx="50" cy="20" r="2" fill="#fff"/><circle cx="50.4" cy="20" r="1" fill="#1d1b2e"/></svg>';
+  HistView.css('hv-rook', [
+    '.sx-rk{display:flex;flex-wrap:wrap;gap:3px;--cw:34px;}.sx-rk.fan{flex-wrap:nowrap;gap:0;}.sx-rk.fan .pcard+.pcard{margin-left:calc(var(--cw) * -.45);}',
+    '.sx-rk .pcard{flex:none;box-shadow:0 2px 5px rgba(0,0,0,.4);}',
+    '.sx-rk .pcard.rk{background:linear-gradient(160deg,#ffffff 0%,#fbf8f0 55%,color-mix(in srgb,var(--ink) 14%,#f4eedf) 100%);}',
+    '.sx-rk .pcard.rk::before{content:"";position:absolute;inset:5%;border-radius:calc(var(--cw) * .07);border:calc(var(--cw) * .025) solid color-mix(in srgb,var(--ink) 45%,transparent);}',
+    '.sx-rk .pcard.rk .ix{color:var(--ink);font-weight:900;font-size:calc(var(--cw) * .27);left:9%;top:6%;}',
+    '.sx-rk .pcard.rk .big{font-size:calc(var(--cw) * .5);padding-left:calc(var(--cw) * .12);}',
+    '.sx-rk .pcard.rk .lbl{bottom:7%;left:auto;right:9%;width:auto;font-size:calc(var(--cw) * .15);}',
+    '.sx-rk .pcard.rook{background:linear-gradient(160deg,#fdfbf6,#e9e3d3);}',
+    '.sx-rk .pcard.rook::before{content:"";position:absolute;inset:8% 10%;border-radius:calc(var(--cw) * .07);background:radial-gradient(circle at 50% 45%,#ffb340 0,#f07c1c 70%,#c9560c 100%);box-shadow:inset 0 0 0 calc(var(--cw) * .025) #1d1b2e;}',
+    '.sx-rk .pcard.rook .big{inset:6% 8% 18%;}.sx-rk .pcard.rook .big svg{width:78%;height:auto;}',
+    '.sx-rk .pcard.rook .lbl{color:#fff;bottom:11%;font-size:calc(var(--cw) * .15);letter-spacing:.1em;}',
+    '.sx-rk .pcard.dim{filter:brightness(.6) saturate(.6);}',
+    '.sx-rk .pcard.tr{box-shadow:0 0 0 2px #ffd166,0 2px 5px rgba(0,0,0,.4);}'
+  ].join(''));
+  function rkPts(c) { return c === 'rook' ? 20 : 0; }
+  function rkCard(id, trump) {
+    var Kt = window.Kit, n;
+    if (id === 'rook') n = Kt.cardFace({ html: RKBIRD, label: 'Rook', cls: 'rook', aria: 'The Rook' });
+    else {
+      var col = id.charAt(0), r = +id.slice(1), p = r === 1 ? 15 : r === 14 || r === 10 ? 10 : r === 5 ? 5 : 0;
+      n = Kt.cardFace({ rank: String(r), corner: false, color: RKINK[col] || '#333', label: p ? p + '' : '', cls: 'rk', aria: (RK[col] || [''])[0] + ' ' + r });
+      n.insertAdjacentHTML('afterbegin', '<span class="ix">' + r + '</span>');
+    }
+    if (trump && (id === 'rook' || id.charAt(0) === trump)) n.classList.add('tr');
+    return n;
+  }
+  function rkRow(list, o) {
+    o = o || {}; var box = el('div', { class: 'sx-rk' + (o.fan ? ' fan' : '') });
+    if (o.w) box.style.setProperty('--cw', o.w + 'px');
+    String(list || '').split('.').filter(Boolean).forEach(function (id) { var c = rkCard(id, o.trump); if (o.dim && o.dim(id)) c.classList.add('dim'); box.appendChild(c); });
+    return box;
+  }
+  function rkVal(id) { if (id === 'rook') return 20; var r = +id.slice(1); return r === 1 ? 15 : r === 14 || r === 10 ? 10 : r === 5 ? 5 : 0; }
   R('rook', function (e, ui) {
     var d = e.dt; if (!d || !d.h || !d.h.length) return null;
-    var pl = d.pl || [], T = [pl[0] + ' & ' + pl[2], pl[1] + ' & ' + pl[3]];
+    var ck = HistView.ck, pl = d.pl || [], T = [pl[0] + ' & ' + pl[2], pl[1] + ' & ' + pl[3]], out = [];
+    var sc = ck ? ck.scoresOf(e) : [], tot = ck ? ck.cum(sc, 2) : [];
+    var rk = d.rook || [], hb = d.h.reduce(function (a, h) { return h.bid > a.bid ? h : a; }, d.h[0]);
+    var rkTop = rk.length ? rk.indexOf(Math.max.apply(null, rk)) : -1, sets = d.h.filter(function (h) { return !h.m; }).length;
+    out.push(ui.stats([['Hands', d.h.length, d.target ? 'played to ' + d.target : ''], ['Highest bid', hb.bid, pl[hb.b] + (hb.m ? ', made it' : ', went set')],
+      rkTop >= 0 && rk[rkTop] ? ['Rook caught', rk[rkTop] + '×', pl[rkTop]] : null, ['Bids set', sets, 'of ' + d.h.length]]));
+    if (ck) {
+      var panel = el('div', { class: 'hv' });
+      var show = function (i) {
+        var h = d.h[i], bt = h.b % 2, took = [h.c0, h.c1], tr = RK[h.t] || ['?', '#888'], kids = [], pts = sc[i] || [], after = h.s ? String(h.s).split('.').map(Number) : tot[i] || [];
+        kids.push(ck.head('<b>Hand ' + (i + 1) + '</b> · ' + ui.esc(short(pl[h.b], 10)) + ' bid ' + h.bid, h.m ? 'Made it with ' + took[bt] : 'Set: took ' + took[bt], h.m ? 'good' : 'bad'));
+        kids.push(el('div', { class: 'sx-row2', style: { color: 'rgba(255,255,255,.85)' } }, [el('span', { class: 'sx-dot', style: { background: tr[1], width: '14px', height: '14px' } }), document.createTextNode(tr[0] + ' was trump' + (h.rk >= 0 ? ' · the Rook went to ' + pl[h.rk] : ''))]));
+        var w = h.w ? String(h.w).split('.').map(Number) : null, bs = h.bs ? String(h.bs).split('.').map(Number) : null;
+        if (w || bs) kids.push(ck.plates(pl.map(function (x, p) {
+          return { n: short(x, 9), v: bs ? (bs[p] ? bs[p] : 'Pass') : w[p], s: bs ? 'last bid' : 'tricks', s2: w ? (bs ? w[p] + (w[p] === 1 ? ' trick' : ' tricks') : '') : '', c: ui.color(p % 2), cls: p === h.b ? (h.m ? 'good' : 'bad') : '' };
+        })));
+        kids.push(ck.plates([0, 1].map(function (t) {
+          return { n: T[t], v: pts[t] != null ? (pts[t] > 0 ? '+' : '') + pts[t] : '–', s: 'took ' + took[t] + ' of 180', s2: 'score ' + (after[t] != null ? after[t] : ''), c: ui.color(t), cls: t === bt ? (h.m ? 'good' : 'bad') : '' };
+        })));
+        if (h.bh) {
+          kids.push(ck.grp(short(pl[h.b], 12) + "'s cards after the nest", rkRow(h.bh, { w: 27, trump: h.t }), 'Trump cards ringed'));
+          kids.push(el('div', { class: 'hvc-pair' }, [ck.grp('The nest', rkRow(h.ne, { w: 28 })), ck.grp('Buried', rkRow(h.bu, { w: 28 }), String(h.bu || '').split('.').filter(Boolean).reduce(function (a, id) { return a + rkVal(id); }, 0) + ' points, to whoever won the last trick' + (h.lt != null && pl[h.lt] ? ' (' + short(pl[h.lt], 10) + ')' : ''))]));
+          if (h.yh) kids.push(ck.grp(short(pl[0], 12) + "'s cards", rkRow(h.yh, { w: 27, trump: h.t })));
+        } else if (h.n) kids.push(el('div', { class: 'hvc-mini', text: 'The nest held ' + h.n + ' points.' }));
+        panel.innerHTML = ''; panel.appendChild(ck.felt(['#1c5a8a', '#123d61', '#0b2a45'], kids));
+      };
+      var items = d.h.map(function (h, i) { return { t: String(i + 1), c: ui.color(h.b % 2), ring: !h.m, title: 'Hand ' + (i + 1) + ': ' + pl[h.b] + ' bid ' + h.bid + (h.m ? ', made' : ', set') }; });
+      out.push(ui.section('Every hand · tap one', [ck.road(items, d.h.length - 1, show), panel, ck.key([['Bid by ' + T[0], ui.color(0)], ['Bid by ' + T[1], ui.color(1)], sets ? ['Went set', 'ring'] : null])], { icon: 'cards' }));
+    }
     var rows = d.h.map(function (h, i) {
       var bt = h.b % 2, took = bt ? h.c1 : h.c0, tr = RK[h.t] || ['?', '#888'];
       return [{ th: 1, t: String(i + 1) }, { t: String(h.bid), c: 'bid' }, { t: short(pl[h.b], 8), style: { color: ui.color(bt) } },
         { html: '<span class="sx-dot" style="background:' + tr[1] + '"></span>' + tr[0] }, { t: String(took) },
         { t: h.m ? 'Made' : 'Set', c: h.m ? 'hit' : 'miss' }];
     });
-    var out = [ui.section('Hand by hand', [grid([{ t: '' }, { t: 'Bid' }, { t: 'Won by' }, { t: 'Trump' }, { t: 'Took' }, { t: '' }], rows),
-      el('p', { class: 'sx-legend', text: 'Took = points the bidding team captured (180 in the deck).' })], { icon: 'cards' })];
+    out.push(ui.section('Hand by hand', [grid([{ t: '' }, { t: 'Bid' }, { t: 'Won by' }, { t: 'Trump' }, { t: 'Took' }, { t: '' }], rows),
+      el('p', { class: 'sx-legend', text: 'Took = points the bidding team captured (180 in the deck).' })]));
     var won = [0, 0]; d.h.forEach(function (h) { won[h.b % 2]++; });
     out.push(ui.section('Teams', ui.table(['', 'Bids won', 'Made', 'Set'], [0, 1].map(function (t) { return [short(T[t], 16), won[t], (d.made || [])[t] || 0, (d.set || [])[t] || 0]; }))));
-    var rk = d.rook || [], hb = d.h.reduce(function (a, h) { return h.bid > a.bid ? h : a; }, d.h[0]);
-    var rkTop = rk.length ? rk.indexOf(Math.max.apply(null, rk)) : -1;
-    out.push(ui.stats([['Highest bid', hb.bid, pl[hb.b]], ['Hands', d.h.length], rkTop >= 0 && rk[rkTop] ? ['Rook caught', rk[rkTop] + '×', pl[rkTop]] : null,
-      ['Trump picks', (function () { var c = {}; d.h.forEach(function (h) { c[h.t] = (c[h.t] || 0) + 1; }); var k = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0]; return RK[k] ? RK[k][0] : ''; })(), 'most often']]));
+    var fin = (e.players || []).map(function (p) { return p.score; }), lh = d.h[d.h.length - 1];
+    if (ck && fin.length === 2 && fin[0] != null) {
+      var wt = fin[0] > fin[1] ? 0 : 1, lbt = lh.b % 2;
+      var how = lbt === wt ? (lh.m ? ' by making a bid of ' + lh.bid : '') : lh.m ? '' : ' when ' + pl[lh.b] + ' went set on ' + lh.bid;
+      out.push(ck.foot(T[wt] + ' passed ' + (d.target || 500) + ' in hand ' + d.h.length + how + ', winning ' + fin[wt] + ' to ' + fin[1 - wt] + '.', 'flag'));
+    }
     return ui.wrap(out);
   });
 
