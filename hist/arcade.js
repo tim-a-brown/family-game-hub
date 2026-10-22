@@ -721,4 +721,738 @@
       foot: d.won ? 'Beat the Mega Spider' : by ? 'Last life lost to: ' + by.charAt(0).toLowerCase() + by.slice(1) : '', footOk: !!d.won
     });
   });
+
+  // ═══════════ Shared: a tappable strip, a chart, panels ═══════════
+  // where the site's files are (for fonts and the Carmen maps), from this file's own address
+  var ROOT = (function () { try { var s = document.currentScript && document.currentScript.src; if (s) return s.replace(/hist\/arcade\.js(\?.*)?$/, ''); } catch (e) {} return ''; })();
+  HistView.css('hv-arcade2', [
+    '.ar-road{display:flex;flex-wrap:wrap;gap:4px;}',
+    '.ar-rb{appearance:none;border:0;cursor:pointer;min-width:27px;height:27px;padding:0 6px;border-radius:6px;font:900 .68rem/1 ui-monospace,"SF Mono",Menlo,Consolas,monospace;',
+    'color:#fff;background:var(--rc,#3a3f5c);box-shadow:inset 0 -2px 0 rgba(0,0,0,.28);transition:transform .12s;}',
+    '.ar-rb.ink{color:#141414;}',
+    '.ar-rb.on{outline:2.5px solid var(--ro,#fff);outline-offset:1.5px;transform:translateY(-1px);}',
+    '.ar-card{display:flex;flex-direction:column;gap:10px;}',
+    '.ar-two{display:flex;gap:12px;align-items:flex-start;}',
+    '.ar-two>.ar-pic{flex:0 0 40%;}',
+    '.ar-two>.ar-st{flex:1;min-width:0;grid-template-columns:1fr;gap:7px;}',
+    '.ar-line{font-size:.78rem;font-weight:700;color:rgba(233,236,255,.82);line-height:1.45;}',
+    '.ar-line b{color:#fff;}',
+    '.ar-lg{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none;}',
+    '.ar-lg li{display:flex;gap:8px;align-items:baseline;font-size:.76rem;font-weight:700;color:rgba(233,236,255,.86);line-height:1.35;}',
+    '.ar-lg li b{flex:none;min-width:36px;color:rgba(233,236,255,.5);font-variant-numeric:tabular-nums;}',
+    '.ar-lg li i{flex:none;width:9px;height:9px;border-radius:2px;align-self:center;}',
+    '.ar-chips{display:flex;flex-wrap:wrap;gap:4px;}',
+    '.ar-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 7px;border-radius:5px;font-size:.66rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;',
+    'background:color-mix(in srgb,var(--cc,#888) 22%,transparent);color:color-mix(in srgb,var(--cc,#888) 55%,#fff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cc,#888) 45%,transparent);}'
+  ].join(''));
+  // a strip of small buttons, one per hand/level/event; tapping one shows it. items: [{t, c (colour), title, ink (dark text)}]
+  function strip(ui, items, start, show, o) {
+    o = o || {};
+    var box = ui.el('div', { class: 'ar-road' + (o.cls ? ' ' + o.cls : '') }), btns = [];
+    items.forEach(function (it, i) {
+      var b = ui.el('button', { type: 'button', class: 'ar-rb' + (it.ink ? ' ink' : ''), style: { '--rc': it.c || '#3a3f5c' }, text: it.t == null ? String(i + 1) : String(it.t), title: it.title || '', 'aria-label': it.title || String(it.t || i + 1),
+        onclick: function () { pick(i); } });
+      btns.push(b); box.appendChild(b);
+    });
+    function pick(i) { btns.forEach(function (b, j) { b.classList.toggle('on', i === j); b.setAttribute('aria-pressed', i === j ? 'true' : 'false'); }); show(i); }
+    if (items.length) pick(Math.max(0, Math.min(items.length - 1, start || 0)));
+    return box;
+  }
+  // a dark arcade panel holding other pieces
+  function pane(ui, kids, ac) { return ui.el('div', { class: 'ar-scr', style: { '--ac': ac || '#ffd84a' } }, [].concat(kids).filter(Boolean)); }
+  function chips(ui, list) { return ui.el('div', { class: 'ar-chips' }, list.map(function (x) { return ui.el('span', { class: 'ar-chip', style: { '--cc': x[1] || '#888' }, text: x[0] }); })); }
+  function legend(ui, lines) { return ui.el('ul', { class: 'ar-lg' }, lines.map(function (x) { return ui.el('li', null, [x.b != null ? ui.el('b', { text: x.b }) : null, x.c ? ui.el('i', { style: { background: x.c } }) : null, ui.el('span', { text: x.t })]); })); }
+  function money(n, cents) { n = Number(n) || 0; if (cents) n = (n < 0 ? -1 : 1) * Math.floor(Math.abs(Math.round(n)) / 100);   // whole dollars, as the game shows them
+    return (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-US'); }
+  function ord(k) { k = +k || 0; var v = k % 100; return k + (v >= 11 && v <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][k % 10] || 'th'); }
+  function short(v) { v = Number(v) || 0; var a = Math.abs(v), s = a >= 1e6 ? (a / 1e6).toFixed(a >= 1e7 ? 0 : 1) + 'M' : a >= 1e4 ? Math.round(a / 1000) + 'K' : a >= 1000 ? (a / 1000).toFixed(1) + 'K' : String(Math.round(a)); return (v < 0 ? '−' : '') + s; }
+  // A line chart on a dark screen. o: {v: values, w, h, c: line colour, fmt(v), x0, x1: end labels, base: a dashed level,
+  //   goal: {v, label, c}, marks: [{i, k: 'x'|'dot'|'star'|'ring', c}], ticks: [{i, t}] labels along the bottom, area: false to skip the fill, bg}
+  var chartN = 0;
+  function chart(o) {
+    var v = o.v || [], n = v.length; if (n < 2) return '';
+    var W = o.w || 320, H = o.h || 132, pl = 10, pr = 12, pt = 16, pb = o.ticks || o.x0 ? 18 : 8, fmt = o.fmt || short, id = 'arc' + (++chartN), c = o.c || '#7dff9a';
+    var all = v.concat(o.base != null ? [o.base] : [], o.goal ? [o.goal.v] : []);
+    var mn = Math.min.apply(null, all.concat(o.zero === false ? [] : [0])), mx = Math.max.apply(null, all); if (mx === mn) mx = mn + 1;
+    function X(i) { return pl + i * (W - pl - pr) / (n - 1); }
+    function Y(val) { return pt + (mx - val) * (H - pt - pb) / (mx - mn); }
+    var s = '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + c + '" stop-opacity=".38"/><stop offset="1" stop-color="' + c + '" stop-opacity="0"/></linearGradient></defs>';
+    s += '<rect width="' + W + '" height="' + H + '" rx="6" fill="' + (o.bg || '#05060d') + '"/>';
+    for (var g = 1; g < 4; g++) s += '<rect x="' + pl + '" y="' + (pt + g * (H - pt - pb) / 4).toFixed(1) + '" width="' + (W - pl - pr) + '" height=".6" fill="rgba(140,160,255,.10)"/>';
+    if (mn < 0) s += '<rect x="' + pl + '" y="' + Y(0).toFixed(1) + '" width="' + (W - pl - pr) + '" height="1" fill="rgba(255,255,255,.28)"/>';
+    if (o.base != null) s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(o.base).toFixed(1) + '" y2="' + Y(o.base).toFixed(1) + '" stroke="rgba(255,255,255,.4)" stroke-dasharray="3 4"/>';
+    if (o.goal) {
+      var gy = Y(o.goal.v).toFixed(1), gc = o.goal.c || '#ffd84a';
+      s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + gy + '" y2="' + gy + '" stroke="' + gc + '" stroke-width="1.4" stroke-dasharray="6 4"/>';
+      if (o.goal.label) s += '<text x="' + (pl + 2) + '" y="' + (gy - 4) + '" font-size="9" font-weight="900" fill="' + gc + '" font-family="ui-monospace,monospace">' + o.goal.label + '</text>';
+    }
+    var pts = v.map(function (val, i) { return X(i).toFixed(1) + ',' + Y(val).toFixed(1); });
+    var floor = Y(Math.max(mn, Math.min(0, mx))).toFixed(1);
+    if (o.area !== false) s += '<polygon points="' + X(0).toFixed(1) + ',' + floor + ' ' + pts.join(' ') + ' ' + X(n - 1).toFixed(1) + ',' + floor + '" fill="url(#' + id + ')"/>';
+    s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + c + '" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>';
+    (o.marks || []).forEach(function (m) {
+      if (m.i == null || m.i < 0 || m.i >= n) return;
+      var x = X(m.i), y = Y(v[m.i]), mc = m.c || c;
+      if (m.k === 'x') s += '<path d="M' + (x - 3.5) + ' ' + (y - 3.5) + 'l7 7M' + (x + 3.5) + ' ' + (y - 3.5) + 'l-7 7" stroke="#05060d" stroke-width="4.5" stroke-linecap="round"/><path d="M' + (x - 3.5) + ' ' + (y - 3.5) + 'l7 7M' + (x + 3.5) + ' ' + (y - 3.5) + 'l-7 7" stroke="' + mc + '" stroke-width="2.2" stroke-linecap="round"/>';
+      else if (m.k === 'star') s += '<path d="' + starPath(x, y, 6.5, 2.8) + '" fill="' + mc + '" stroke="#05060d" stroke-width="1.2"/>';
+      else if (m.k === 'ring') s += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5.5" fill="none" stroke="' + mc + '" stroke-width="2"/>';
+      else s += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (m.r || 3.2) + '" fill="' + mc + '" stroke="#05060d" stroke-width="1.2"/>';
+    });
+    var hi = v.indexOf(Math.max.apply(null, v));
+    var hx = X(hi), ha = hx > W - 44 ? 'end' : hx < pl + 30 ? 'start' : 'middle';
+    s += '<text x="' + (ha === 'end' ? W - pr + 4 : ha === 'start' ? pl : hx).toFixed(1) + '" y="' + Math.max(10, Y(v[hi]) - 8).toFixed(1) + '" text-anchor="' + ha + '" font-size="9" font-weight="900" fill="#fff" font-family="ui-monospace,monospace">' + fmt(v[hi]) + '</text>';
+    (o.ticks || []).forEach(function (t) { s += '<text x="' + X(t.i).toFixed(1) + '" y="' + (H - 5) + '" text-anchor="' + (t.i === 0 ? 'start' : t.i === n - 1 ? 'end' : 'middle') + '" font-size="8.5" font-weight="800" fill="rgba(233,236,255,.5)" font-family="ui-monospace,monospace">' + t.t + '</text>'; });
+    if (o.x0) s += '<text x="' + pl + '" y="' + (H - 5) + '" font-size="8.5" font-weight="800" fill="rgba(233,236,255,.5)" font-family="ui-monospace,monospace">' + o.x0 + '</text>';
+    if (o.x1) s += '<text x="' + (W - pr) + '" y="' + (H - 5) + '" text-anchor="end" font-size="8.5" font-weight="800" fill="rgba(233,236,255,.5)" font-family="ui-monospace,monospace">' + o.x1 + '</text>';
+    return svg(W, H, s, { aria: o.aria || 'How it went' });
+  }
+  function starPath(x, y, R1, R2) { var p = ''; for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? R2 : R1; p += (i ? 'L' : 'M') + (x + Math.cos(a) * r).toFixed(1) + ' ' + (y + Math.sin(a) * r).toFixed(1); } return p + 'Z'; }
+
+  // ═══ TetriNET ═══
+  // Every field side by side as the match ended, a lane for each player showing the specials that hit them and
+  // when they went out, the knockouts, and each player's field and numbers on a tap.
+  var TN_SP = { a: ['Add Line', '#ff4a5c'], c: ['Clear Line', '#36c76e'], n: ['Nuke Field', '#ffd23a'], r: ['Random Clear', '#2fc2e8'], s: ['Switch Fields', '#b15ef0'],
+    b: ['Clear Specials', '#5f7cff'], g: ['Gravity', '#ff9a2a'], q: ['Quake', '#ff5fae'], o: ['Block Bomb', '#eceaf6'] };
+  var TN_PC = ['#ffd166', '#ff7a8a', '#4fd1c5', '#8b7cff', '#5b8cff', '#3fb56b'];
+  function tnWhat(k) {
+    if (!k) return '';
+    if (k.charAt(0) === 'L') { var m = +k.slice(1); return m === 4 ? 'a Tetris (4 lines)' : m + (m === 1 ? ' line' : ' lines'); }
+    var sp = TN_SP[k]; return sp ? (/^[AEIOU]/.test(sp[0]) ? 'an ' : 'a ') + sp[0] : k;
+  }
+  function tnField(f, x, y, cs) {
+    var C = 12, Rn = 22; f = String(f || ''); if (f.length > C * Rn) f = f.slice(-C * Rn); f = new Array(C * Rn - f.length + 1).join('.') + f;
+    var s = '<rect x="' + x + '" y="' + y + '" width="' + C * cs + '" height="' + Rn * cs + '" fill="#0c0e1c"/>';
+    for (var c0 = 1; c0 < C; c0++) s += '<rect x="' + (x + c0 * cs) + '" y="' + y + '" width=".35" height="' + Rn * cs + '" fill="rgba(255,255,255,.05)"/>';
+    for (var r = 0; r < Rn; r++) for (var c = 0; c < C; c++) {
+      var ch = f.charAt(r * C + c); if (!ch || ch === '.') continue;
+      var px = x + c * cs, py = y + r * cs, sp = TN_SP[ch];
+      if (sp) {
+        s += '<rect x="' + px + '" y="' + py + '" width="' + cs + '" height="' + cs + '" fill="' + sp[1] + '"/><rect x="' + (px + cs * .2) + '" y="' + (py + cs * .2) + '" width="' + cs * .6 + '" height="' + cs * .6 + '" fill="rgba(255,255,255,.45)"/>';
+        if (cs >= 7) s += '<text x="' + (px + cs / 2) + '" y="' + (py + cs * .78) + '" text-anchor="middle" font-size="' + cs * .8 + '" font-weight="900" fill="#141414" font-family="ui-monospace,monospace">' + ch.toUpperCase() + '</text>';
+      } else {
+        s += '<rect x="' + px + '" y="' + py + '" width="' + cs + '" height="' + cs + '" fill="' + (TET[ch] || TET.G) + '"/>';
+        if (cs >= 4) s += '<rect x="' + px + '" y="' + py + '" width="' + cs + '" height="' + Math.max(1, cs * .2) + '" fill="rgba(255,255,255,.35)"/><rect x="' + px + '" y="' + (py + cs * .8) + '" width="' + cs + '" height="' + cs * .2 + '" fill="rgba(0,0,0,.28)"/>';
+      }
+    }
+    return s;
+  }
+  function tnUsed(u) { var out = []; String(u || '').replace(/([a-z])(\d+)/g, function (m, k, c) { out.push([k, +c]); return m; }); return out; }
+  R('tetrinet', function (e, ui) {
+    var d = e.dt; if (!d || !d.s || !d.s.length) return null;
+    var S = d.s, N = S.length, mi = d.me || 0, me = S[mi] || S[0], st = d.st || {}, tt = Math.max(1, d.tt || 0), won = d.w === mi;
+    function nm(i) { return S[i] ? S[i].nm || 'Player ' + (i + 1) : '?'; }
+    function endT(i) { return i === d.w ? tt : (S[i].t || tt); }
+    var order = S.map(function (p, i) { return i; }).sort(function (a, b) { return (S[a].pl || 99) - (S[b].pl || 99); });
+    // the fields
+    var gap = N > 4 ? 5 : 8, cs = Math.max(3, Math.min(9, Math.floor((332 - gap * (N - 1)) / (N * 12)))), fw = 12 * cs, fh = 22 * cs, top = 15, fs = N > 4 ? 7.5 : 9;
+    var W = N * fw + (N - 1) * gap + 8, H = top + fh + 17, s = '<rect width="' + W + '" height="' + H + '" fill="#07080f"/>';
+    S.forEach(function (p, i) {
+      var x = 4 + i * (fw + gap), col = TN_PC[i % 6], win = i === d.w, maxc = Math.max(3, Math.floor(fw / (fs * .62)));
+      s += '<text x="' + (x + fw / 2) + '" y="10" text-anchor="middle" font-size="' + fs + '" font-weight="900" fill="' + col + '" font-family="ui-monospace,monospace">' + ui.esc((i === mi ? nm(i) : nm(i)).toUpperCase().slice(0, maxc)) + '</text>';
+      s += tnField(p.f, x, top, cs);
+      if (!win) s += '<rect x="' + x + '" y="' + top + '" width="' + fw + '" height="' + fh + '" fill="rgba(5,6,12,.42)"/><text x="' + (x + fw / 2) + '" y="' + (top + fh * .42) + '" text-anchor="middle" font-size="' + (fs + 2) + '" font-weight="900" fill="#ff4058" stroke="#05060d" stroke-width="2.5" paint-order="stroke" font-family="ui-monospace,monospace">OUT</text>' +
+        '<text x="' + (x + fw / 2) + '" y="' + (top + fh * .42 + fs + 3) + '" text-anchor="middle" font-size="' + (fs - .5) + '" font-weight="800" fill="#fff" stroke="#05060d" stroke-width="2.5" paint-order="stroke" font-family="ui-monospace,monospace">' + mmss(p.t) + '</text>';
+      s += '<rect x="' + (x - 1) + '" y="' + (top - 1) + '" width="' + (fw + 2) + '" height="' + (fh + 2) + '" fill="none" stroke="' + (win ? '#ffd84a' : i === mi ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.14)') + '" stroke-width="' + (win ? 2.2 : 1.2) + '"/>';
+      s += '<text x="' + (x + fw / 2) + '" y="' + (H - 4) + '" text-anchor="middle" font-size="' + fs + '" font-weight="900" fill="' + (win ? '#ffd84a' : 'rgba(233,236,255,.6)') + '" font-family="ui-monospace,monospace">' + (p.pl ? ord(p.pl).toUpperCase() : '') + '</text>';
+    });
+    var main = screen(ui, {
+      ac: won ? '#ffd84a' : '#b45ef0', title: (won ? 'Last one standing' : 'Out') + ' · ' + N + ' players' + (d.sk ? ' · ' + d.sk : ''), score: me.pl ? ord(me.pl) : '–', unit: 'of ' + N,
+      rank: won ? { t: 'Winner', cls: 'new' } : d.w >= 0 ? { t: nm(d.w) + ' won' } : null,
+      pic: svg(W, H, s, { aria: 'Every field as the match ended' }), picMax: 380,
+      stats: [['Lines', n(st.ln != null ? st.ln : me.ln)], st.tt ? ['Tetrises', st.tt] : null, ['Specials used', st.u != null ? st.u : tnUsed(me.u).reduce(function (a, x) { return a + x[1]; }, 0)],
+        ['Hit by', st.h != null ? st.h : me.r, 'specials'], st.s ? ['Lines sent', st.s] : null, st.g ? ['Picked up', st.g, 'specials'] : null, ['Lasted', mmss(endT(mi))]],
+      foot: won ? 'Last one standing' : me.ko >= 0 ? 'Knocked out by ' + nm(me.ko) + ' with ' + tnWhat(me.kk) : 'Topped out', footOk: won
+    });
+    // how it went: a lane per player, specials landing on them, the moment each went out
+    var LH = 19, L0 = 62, W2 = 332, H2 = N * LH + 26, X = function (t) { return L0 + Math.min(1, Math.max(0, t) / tt) * (W2 - L0 - 12); }, row = {};
+    order.forEach(function (i, k) { row[i] = k; });
+    var g = '<rect width="' + W2 + '" height="' + H2 + '" rx="6" fill="#05060d"/>';
+    for (var m = 60; m < tt; m += 60) g += '<rect x="' + X(m).toFixed(1) + '" y="4" width=".7" height="' + (N * LH + 4) + '" fill="rgba(140,160,255,.14)"/><text x="' + X(m).toFixed(1) + '" y="' + (H2 - 6) + '" text-anchor="middle" font-size="8" font-weight="800" fill="rgba(233,236,255,.45)" font-family="ui-monospace,monospace">' + (m / 60) + ':00</text>';
+    order.forEach(function (i, k) {
+      var y = 6 + k * LH, c = TN_PC[i % 6];
+      g += '<text x="6" y="' + (y + LH / 2 + 3) + '" font-size="9" font-weight="900" fill="' + c + '" font-family="ui-monospace,monospace">' + ui.esc(nm(i).toUpperCase().slice(0, 8)) + '</text>';
+      g += '<rect x="' + L0 + '" y="' + (y + 4) + '" width="' + (X(endT(i)) - L0).toFixed(1) + '" height="' + (LH - 8) + '" rx="3" fill="' + c + '" opacity=".26"/>';
+      if (i === d.w) g += '<path d="' + starPath(X(tt), y + LH / 2, 6.5, 2.8) + '" fill="#ffd84a" stroke="#05060d" stroke-width="1"/>';
+    });
+    (d.ev || []).forEach(function (str) {
+      var a = String(str).split('|'), t = +a[0], f = +a[1], to = +a[2], k = a[3];
+      if (k === 'X') { if (row[to] == null) return; var yx = 6 + row[to] * LH + LH / 2, xx = X(t), kc = f >= 0 ? TN_PC[f % 6] : '#8a90b0'; g += '<path d="M' + (xx - 4.5) + ' ' + (yx - 4.5) + 'l9 9M' + (xx + 4.5) + ' ' + (yx - 4.5) + 'l-9 9" stroke="#05060d" stroke-width="5" stroke-linecap="round"/><path d="M' + (xx - 4.5) + ' ' + (yx - 4.5) + 'l9 9M' + (xx + 4.5) + ' ' + (yx - 4.5) + 'l-9 9" stroke="' + kc + '" stroke-width="2.4" stroke-linecap="round"/>'; return; }
+      if (k.charAt(0) === 'L') { S.forEach(function (p, i) { if (i === f || t > endT(i) || row[i] == null) return; var yl = 6 + row[i] * LH, hh = +k.slice(1) * 2 + 2; g += '<rect x="' + (X(t) - .9).toFixed(1) + '" y="' + (yl + LH - 4 - hh) + '" width="1.8" height="' + hh + '" fill="#ff4058"/>'; }); return; }
+      var sp = TN_SP[k]; if (!sp || row[to] == null) return;
+      var ys = 6 + row[to] * LH + LH / 2, xs = X(t).toFixed(1);
+      g += to === f ? '<circle cx="' + xs + '" cy="' + ys + '" r="3" fill="none" stroke="' + sp[1] + '" stroke-width="1.6"/>' : '<circle cx="' + xs + '" cy="' + ys + '" r="3.3" fill="' + sp[1] + '" stroke="#05060d" stroke-width="1"/>';
+    });
+    g += '<text x="' + L0 + '" y="' + (H2 - 6) + '" font-size="8" font-weight="800" fill="rgba(233,236,255,.45)" font-family="ui-monospace,monospace">0:00</text><text x="' + (W2 - 12) + '" y="' + (H2 - 6) + '" text-anchor="end" font-size="8" font-weight="800" fill="rgba(233,236,255,.45)" font-family="ui-monospace,monospace">' + mmss(tt) + '</text>';
+    var usedKinds = {}; (d.ev || []).forEach(function (str) { var k = String(str).split('|')[3]; if (TN_SP[k]) usedKinds[k] = 1; });
+    var laneKey = chips(ui, Object.keys(usedKinds).map(function (k) { return [TN_SP[k][0], TN_SP[k][1]]; }).concat([['Lines added', '#ff4058'], ['Out', '#8a90b0']]));
+    // knockouts, in order
+    var outs = order.slice().filter(function (i) { return i !== d.w; }).sort(function (a, b) { return (S[a].t || 0) - (S[b].t || 0); });
+    var koLines = outs.map(function (i) { var p = S[i]; return { b: mmss(p.t), c: p.ko >= 0 ? TN_PC[p.ko % 6] : '#8a90b0', t: p.ko >= 0 ? nm(p.ko) + ' knocked out ' + nm(i) + ' with ' + tnWhat(p.kk) : nm(i) + ' topped out' }; });
+    if (d.w >= 0) koLines.push({ b: mmss(tt), c: '#ffd84a', t: nm(d.w) + ' was the last one standing' });
+    // each player on a tap: their field big, and what they did
+    var card = ui.el('div', { class: 'ar-card' });
+    function showP(k) {
+      var i = order[k], p = S[i], c9 = 9, fs2 = svg(12 * c9 + 4, 22 * c9 + 4, '<rect width="' + (12 * c9 + 4) + '" height="' + (22 * c9 + 4) + '" fill="' + (i === d.w ? '#ffd84a' : '#2a2f4a') + '"/>' + tnField(p.f, 2, 2, c9), { aria: nm(i) + '’s field' });
+      var used = tnUsed(p.u), kos = S.map(function (q, j) { return q.ko === i ? nm(j) : null; }).filter(Boolean);
+      card.innerHTML = '';
+      card.appendChild(ui.el('div', { class: 'ar-two' }, [ui.el('div', { class: 'ar-pic', html: fs2 }), ui.el('div', { class: 'ar-st' }, [
+        stat(ui, 'Finished', (p.pl ? ord(p.pl) : '–') + (i === mi ? ' · you' : ''), i === d.w ? 'last one standing' : 'out at ' + mmss(p.t), TN_PC[i % 6]),
+        stat(ui, 'Lines', n(p.ln)), stat(ui, 'Hit by', p.r || 0, 'specials from rivals'), p.sl ? stat(ui, 'Lines sent', p.sl, 'to everyone else') : null,
+        kos.length ? stat(ui, 'Knocked out', kos.join(', ')) : null,
+        p.ko >= 0 ? stat(ui, 'Out by', nm(p.ko), tnWhat(p.kk)) : null])]));
+      card.appendChild(used.length ? chips(ui, used.map(function (x) { return [TN_SP[x[0]][0] + ' ×' + x[1], TN_SP[x[0]][1]]; })) : ui.el('div', { class: 'ar-sub', text: 'Used no specials' }));
+    }
+    var items = order.map(function (i) { return { t: nm(i).slice(0, 9), c: TN_PC[i % 6], ink: true, title: nm(i) + ', ' + ord(S[i].pl || 0) }; });
+    return ui.wrap([main,
+      ui.section('How it went', pane(ui, [ui.el('div', { class: 'ar-pic', html: svg(W2, H2, g, { aria: 'A lane for each player: dots are specials that hit them, red ticks are lines added, a cross is when they went out' }) }), laneKey, legend(ui, koLines)], '#b45ef0'), { icon: 'chart' }),
+      ui.section('Every player · tap one', pane(ui, [strip(ui, items, order.indexOf(mi), showP), card], '#b45ef0'), { icon: 'users' })]);
+  });
+  // ═══ Donkey Kong ═══
+  // The stage where the last life went, drawn as the cabinet lays it out (girders, ladders, Kong, Pauline) with a mark
+  // where each life ended on it; the score stage by stage; and every stage played on a tap.
+  var DK_SEQ = [[1, 4], [1, 3, 4], [1, 2, 3, 4], [1, 2, 1, 3, 4], [1, 2, 1, 3, 1, 4]];
+  var DK_NAME = { 1: 'Girders', 2: 'Conveyors', 3: 'Elevators', 4: 'Rivets' };
+  var DK_WHY = { barrel: 'a barrel', fireball: 'a fireball', firefox: 'a firefox', pie: 'a cement pan', spring: 'a spring', dk: 'Donkey Kong himself', fall: 'a fall', time: 'the bonus timer', elevator: 'the top of an elevator' };
+  // the stages as the game builds them (games/donkeykong.html buildStage): platforms by 16-pixel piece, ladders by where they stand
+  function dkStage(kind) {
+    var S = { kind: kind, plats: [], lads: [], elev: null, rivets: [], dk: [44, 84], pa: [96, 56], oil: null };
+    function seq(a, n, d) { var r = []; for (var i = 0; i < n; i++) r.push(a + i * d); return r; }
+    function flat(y, k) { return seq(y, k, 0); }
+    function P(x0, ys, o) { o = o || {}; S.plats.push({ x0: x0, x1: o.x1 || x0 + ys.length * 16, ys: ys, conv: !!o.conv }); return S.plats.length - 1; }
+    function surf(p, x) { var i = Math.floor((x - p.x0) / 16); return p.ys[Math.max(0, Math.min(p.ys.length - 1, i))]; }
+    function L(x, lo, up, o) { o = o || {}; var yb = surf(S.plats[lo], x), yt = surf(S.plats[up], x); S.lads.push({ x: x, yb: yb, yt: yt, br: !!o.broken, stub: o.stub || Math.round((yb - yt) * .42) }); }
+    if (kind === 1) {
+      var g0 = P(0, [248, 248, 248, 248, 248, 248, 248, 247, 246, 245, 244, 243, 242, 241]), g1 = P(0, seq(208, 13, 1)), g2 = P(16, seq(187, 13, -1)), g3 = P(0, seq(142, 13, 1)),
+        g4 = P(16, seq(121, 13, -1)), g5 = P(0, [84, 84, 84, 84, 84, 84, 84, 84, 84, 85, 86, 87, 88]), top = P(88, [56, 56, 56]);
+      L(84, g0, g1, { broken: true, stub: 8 }); L(188, g0, g1); L(36, g1, g2); L(100, g1, g2); L(68, g2, g3, { broken: true, stub: 8 }); L(116, g2, g3); L(188, g2, g3);
+      L(36, g3, g4); L(76, g3, g4); L(172, g3, g4, { broken: true, stub: 8 }); L(92, g4, g5, { broken: true, stub: 13 }); L(188, g4, g5); L(132, g5, top);
+      S.oil = [24, 248];
+    } else if (kind === 2) {
+      var f0 = P(0, flat(248, 14)), c1 = P(0, flat(208, 14), { conv: 1 }), mL = P(8, flat(168, 3), { x1: 48 }), mC = P(64, flat(168, 6), { x1: 152 }), mR = P(168, flat(168, 3), { x1: 216 });
+      var cL = P(0, flat(128, 6), { conv: 1 }), cR = P(128, flat(128, 6), { conv: 1 }), c4 = P(0, flat(88, 14), { conv: 1 }), pt = P(88, flat(56, 3));
+      [28, 84, 140, 196].forEach(function (x) { L(x, f0, c1); });
+      L(68, c1, mC); L(148, c1, mC); L(28, mL, cL); L(84, mC, cL); L(140, mC, cR); L(196, mR, cR); L(20, cL, c4, { stub: 16 }); L(204, cR, c4, { stub: 16 }); L(132, c4, pt);
+      S.dk = [112, 88];
+    } else if (kind === 3) {
+      P(0, flat(248, 2)); P(48, flat(248, 3)); P(112, flat(248, 7)); P(32, [240], { x1: 48 }); P(96, [240], { x1: 112 });
+      var l232 = P(0, [232, 232], { x1: 24 }), l192 = P(0, [192, 192], { x1: 24 }), l136 = P(0, [136, 136], { x1: 24 }), m136 = P(56, flat(136, 2)), m208 = P(64, [208, 208], { x1: 88 });
+      var tg = P(0, flat(88, 11), { x1: 168 }), p3 = P(88, flat(56, 3));
+      P(120, [232, 232], { x1: 144 }); P(152, [224], { x1: 168 }); P(176, [216], { x1: 192 });
+      var s4 = P(200, [208, 208], { x1: 224 }), s5 = P(208, [184], { x1: 224 }), s6 = P(184, [176], { x1: 200 });
+      P(160, [168], { x1: 176 }); var s8 = P(136, [160], { x1: 152 }), s9 = P(184, flat(144, 3), { x1: 224 }), s10 = P(128, [128, 128], { x1: 152 }), s11 = P(160, [120], { x1: 176 });
+      P(184, [112], { x1: 200 }); var s13 = P(208, [104], { x1: 224 });
+      L(12, l232, l192); L(20, l192, l136); L(68, m208, m136); L(84, m208, m136); L(132, tg, p3); L(140, s8, s10); L(164, s11, tg); L(188, s6, s9); L(212, s9, s13); L(212, s4, s5);
+      S.elev = [32, 96];
+    } else {
+      P(0, flat(248, 14)); var q1 = P(8, flat(208, 13)), q2 = P(16, flat(168, 12)), q3 = P(24, flat(128, 11)), q4 = P(32, flat(88, 10)), q0 = 0; P(88, flat(48, 3));
+      L(20, q0, q1); L(112, q0, q1); L(204, q0, q1); L(28, q1, q2); L(88, q1, q2); L(136, q1, q2); L(196, q1, q2); L(36, q2, q3); L(112, q2, q3); L(188, q2, q3); L(44, q3, q4); L(180, q3, q4);
+      [q1, q2, q3, q4].forEach(function (pi) { [48, 168].forEach(function (rx) { S.rivets.push([rx, S.plats[pi].ys[0]]); }); });
+      S.dk = [112, 88]; S.pa = [104, 48];
+    }
+    return S;
+  }
+  function dkMan(x, y, dead) {   // Jumpman, feet at (x, y); lying down when it cost a life
+    return '<g transform="translate(' + x + ' ' + y + ')' + (dead ? ' rotate(-90)' : '') + ' translate(-6 -16)"><rect x="3" y="0" width="7" height="2" fill="#fa0000"/><rect x="2" y="2" width="10" height="2" fill="#fa0000"/>' +
+      '<rect x="3" y="4" width="7" height="4" fill="#ffb27a"/><rect x="2" y="5" width="2" height="2" fill="#6a2a00"/><rect x="2" y="8" width="9" height="5" fill="#2846ff"/><rect x="0" y="8" width="3" height="3" fill="#fa0000"/>' +
+      '<rect x="10" y="8" width="3" height="3" fill="#fa0000"/><rect x="2" y="13" width="3" height="3" fill="#8a4a1a"/><rect x="8" y="13" width="3" height="3" fill="#8a4a1a"/></g>';
+  }
+  // marks: [{x, y, n, last}]
+  function dkPic(kind, marks, hud) {
+    var S = dkStage(kind), s = '<rect width="224" height="256" fill="#000"/>', gp = '', cp = '', lp = '';
+    S.plats.forEach(function (p) {
+      for (var x = p.x0; x < p.x1; x += 16) {
+        var y = p.ys[Math.min(p.ys.length - 1, Math.floor((x - p.x0) / 16))], w = Math.min(16, p.x1 - x), seg = 'M' + x + ' ' + (y + .6) + 'h' + w + 'M' + x + ' ' + (y + 7.4) + 'h' + w;
+        if (w === 16) seg += 'M' + x + ' ' + (y + 1) + 'l4 6l4 -6l4 6l4 -6';
+        if (p.conv) cp += seg; else gp += seg;
+      }
+    });
+    S.lads.forEach(function (l) {
+      function part(y0, y1) { if (y1 <= y0) return; lp += 'M' + (l.x - 3.5) + ' ' + y0 + 'V' + y1 + 'M' + (l.x + 3.5) + ' ' + y0 + 'V' + y1; for (var y = y0 + 2; y < y1; y += 4) lp += 'M' + (l.x - 3.5) + ' ' + y + 'h7'; }
+      if (l.br) { part(l.yt + 8, l.yt + 12); part(l.yb - l.stub, l.yb); } else part(l.yt + 8, l.yb);
+    });
+    s += '<path d="' + lp + '" stroke="#00e8ff" stroke-width="1.2" fill="none"/>';
+    if (S.elev) S.elev.forEach(function (ex, j) {
+      s += '<path d="M' + (ex + 2) + ' 104V240M' + (ex + 14) + ' 104V240" stroke="#ffb000" stroke-width="1" opacity=".75"/><rect x="' + ex + '" y="98" width="16" height="6" fill="#fa2899"/><rect x="' + ex + '" y="240" width="16" height="8" fill="#fa2899"/>';
+      for (var cy = 116 + j * 22; cy < 240; cy += 44) s += '<rect x="' + (ex + 1) + '" y="' + cy + '" width="14" height="6" fill="#ff8a00"/><rect x="' + (ex + 1) + '" y="' + cy + '" width="14" height="1.5" fill="#ffd27a"/>';
+    });
+    s += '<path d="' + gp + '" stroke="#fa2899" stroke-width="1.3" fill="none"/>';
+    if (cp) s += '<path d="' + cp + '" stroke="#ff9c00" stroke-width="1.3" fill="none"/>';
+    S.rivets.forEach(function (r) { s += '<rect x="' + r[0] + '" y="' + r[1] + '" width="8" height="8" fill="#fab900"/><rect x="' + (r[0] + 2) + '" y="' + (r[1] + 2) + '" width="4" height="4" fill="#990000"/>'; });
+    if (S.oil) s += '<rect x="16" y="232" width="16" height="16" rx="1" fill="#2846ff"/><rect x="16" y="236" width="16" height="1.5" fill="#9fb4ff"/><rect x="16" y="243" width="16" height="1.5" fill="#9fb4ff"/><text x="24" y="242" text-anchor="middle" font-size="5" font-weight="900" fill="#fff" font-family="ui-monospace,monospace">OIL</text>' +
+      '<path d="M18 232q3 -9 6 -3q2 -7 6 0q-1 -5 2 3z" fill="#ff8a00"/>';
+    // Kong and Pauline
+    var kx = S.dk[0], ky = S.dk[1];
+    s += '<g transform="translate(' + kx + ' ' + ky + ')"><ellipse cx="0" cy="-14" rx="17" ry="13" fill="#9a3a12"/><ellipse cx="0" cy="-10" rx="9" ry="8" fill="#f0b070"/><circle cx="0" cy="-27" r="8" fill="#9a3a12"/>' +
+      '<ellipse cx="0" cy="-24" rx="5" ry="3.5" fill="#f0b070"/><rect x="-4" y="-30" width="2" height="2" fill="#fff"/><rect x="2" y="-30" width="2" height="2" fill="#fff"/><rect x="-17" y="-6" width="9" height="6" rx="2" fill="#9a3a12"/><rect x="8" y="-6" width="9" height="6" rx="2" fill="#9a3a12"/></g>';
+    var px = S.pa[0], py = S.pa[1];
+    s += '<g transform="translate(' + px + ' ' + py + ')"><path d="M-5 0l2 -12h6l2 12z" fill="#ff5fae"/><circle cx="0" cy="-15" r="3.5" fill="#ffb27a"/><path d="M-4 -16q4 -6 8 0v6h-2v-5h-4v5h-2z" fill="#ffd200"/></g>';
+    if (hud) s += '<text x="4" y="11" font-size="9" font-weight="900" fill="#fff" font-family="ui-monospace,monospace">' + hud[0] + '</text><text x="220" y="11" text-anchor="end" font-size="9" font-weight="900" fill="#00e8ff" font-family="ui-monospace,monospace">' + hud[1] + '</text>';
+    (marks || []).forEach(function (m) {
+      if (m.x == null || isNaN(m.x)) return;
+      var x = Math.max(8, Math.min(216, m.x)), y = Math.max(20, Math.min(252, m.y));
+      if (m.last) s += '<circle cx="' + x + '" cy="' + (y - 7) + '" r="13" fill="none" stroke="#fff" stroke-width="1.4" stroke-dasharray="3 2.5"/>' + dkMan(x, y, true);
+      else s += '<circle cx="' + x + '" cy="' + (y - 6) + '" r="5" fill="#fa0000" stroke="#000" stroke-width="1"/>';
+      if (m.n) s += '<text x="' + x + '" y="' + (y - (m.last ? 22 : 3.5)) + '" text-anchor="middle" font-size="' + (m.last ? 8 : 6.5) + '" font-weight="900" fill="#fff" stroke="#000" stroke-width="2" paint-order="stroke" font-family="ui-monospace,monospace">' + m.n + '</text>';
+    });
+    return svg(224, 256, s, { crisp: true, aria: 'The ' + (DK_NAME[kind] || '').toLowerCase() + ' stage' });
+  }
+  // the stage list from the record: each one with its height on the way up that level
+  function dkEvents(d) {
+    var si = 0, lv = 0, life = 0;
+    return (d.ev || []).map(function (str) {
+      var a = String(str).split('|'), l = +a[0], k = +a[1], seqL = DK_SEQ[Math.min(Math.max(l, 1), 5) - 1];
+      if (l !== lv) { lv = l; si = 0; }
+      var j = seqL.indexOf(k, si); if (j < 0) j = seqL.indexOf(k); if (j >= 0) si = j;
+      var x = { l: l, k: k, r: a[2], b: +a[3] || 0, t: +a[4] || 0, s: +a[5] || 0, x: +a[6], y: +a[7], h: (si + 1) * 25 };
+      if (x.r === 'C') si++; else x.life = ++life;
+      return x;
+    });
+  }
+  R('donkeykong', function (e, ui) {
+    var d = e.dt; if (!d || d.lv == null) return null;
+    var ev = dkEvents(d), deaths = ev.filter(function (x) { return x.r !== 'C'; }), last = deaths[deaths.length - 1], dd = d.dd || [], ldd = dd[dd.length - 1];
+    var kind = last ? last.k : d.k || 1;
+    var marks = deaths.filter(function (x) { return x.k === kind; }).map(function (x) { return { x: x.x, y: x.y, n: x.life, last: x === last }; });
+    var main = screen(ui, {
+      ac: '#fa2899', title: 'Game over · L=' + (d.lv < 10 ? '0' : '') + d.lv, score: n(myScore(e)), rank: rankText(d),
+      pic: dkPic(kind, marks, ['L=' + (d.lv < 10 ? '0' : '') + d.lv, (last ? last.h : d.h) + ' m']), side: true, picMax: 170,
+      stats: [['Reached', 'Level ' + d.lv, d.h + ' m · ' + (DK_NAME[d.k] || '').toLowerCase()], ['Stages cleared', d.st || 0], d.j ? ['Jumped', d.j, 'barrels and fireballs'] : null, d.sm ? ['Hammer', d.sm, 'smashed'] : null,
+        d.rv ? ['Rivets', d.rv] : null, d.it ? ['Pauline’s things', d.it] : null, d.lvs && d.lvs !== 3 ? ['Lives', d.lvs] : null],
+      foot: ldd ? 'Last life lost to ' + (DK_WHY[ldd.b] || ldd.b) + ' at ' + ldd.h + ' m' : ''
+    });
+    var out = [main];
+    // how each life ended
+    var lives = (deaths.length ? deaths.map(function (x) { return { b: 'Life ' + x.life, c: '#fa0000', t: 'Level ' + x.l + ', ' + x.h + ' m: ' + (DK_WHY[x.r] || x.r) + (x.t ? ' after ' + mmss(x.t) : '') }; })
+      : dd.map(function (x, i) { return { b: 'Life ' + (i + 1), c: '#fa0000', t: 'Level ' + x.l + ', ' + x.h + ' m: ' + (DK_WHY[x.b] || x.b) }; }));
+    if (ev.length >= 2) {
+      var v = [0].concat(ev.map(function (x) { return x.s; })), lvTicks = [], seen = {};
+      ev.forEach(function (x, i) { if (!seen[x.l]) { seen[x.l] = 1; lvTicks.push({ i: i, t: 'L' + x.l }); } });
+      var ch = chart({ v: v, c: '#00e8ff', marks: ev.map(function (x, i) { return { i: i + 1, k: x.r === 'C' ? 'dot' : 'x', c: x.r === 'C' ? '#7dff9a' : '#ff4058' }; }), ticks: lvTicks, aria: 'Score after each stage: dots cleared, crosses cost a life' });
+      out.push(ui.section('How it went', pane(ui, [ui.el('div', { class: 'ar-pic', html: ch }), key(ui, [['Stage cleared', '#7dff9a'], ['Life lost', '#ff4058']]), lives.length ? legend(ui, lives) : null], '#fa2899'), { icon: 'chart' }));
+      var card = ui.el('div', { class: 'ar-card' });
+      var show = function (i) {
+        var x = ev[i], ok = x.r === 'C';
+        card.innerHTML = '';
+        card.appendChild(ui.el('div', { class: 'ar-two' }, [ui.el('div', { class: 'ar-pic', html: dkPic(x.k, ok ? [] : [{ x: x.x, y: x.y, last: true }], ['L=' + (x.l < 10 ? '0' : '') + x.l, x.h + ' m']) }), ui.el('div', { class: 'ar-st' }, [
+          stat(ui, 'Stage', x.h + ' m', 'level ' + x.l + ' · ' + (DK_NAME[x.k] || '').toLowerCase()),
+          ok ? stat(ui, 'Cleared', mmss(x.t), 'bonus ' + n(x.b), '#7dff9a') : stat(ui, 'Life ' + x.life + ' lost', DK_WHY[x.r] || x.r, 'after ' + mmss(x.t) + (x.b ? ' · ' + n(x.b) + ' bonus left' : ''), '#ff4058'),
+          stat(ui, 'Score', n(x.s))])]));
+      };
+      var items = ev.map(function (x) { return { t: x.h, c: x.r === 'C' ? '#2fd35a' : '#ff4058', ink: x.r === 'C', title: 'Level ' + x.l + ', ' + x.h + ' m: ' + (x.r === 'C' ? 'cleared' : 'lost a life') }; });
+      out.push(ui.section(ev.length >= 40 ? 'The last 40 stages · tap one' : 'Every stage · tap one', pane(ui, [strip(ui, items, ev.length - 1, show), card], '#fa2899'), { icon: 'flag' }));
+    } else if (lives.length) out.push(ui.section('How each life ended', pane(ui, legend(ui, lives), '#fa2899'), { icon: 'heart' }));
+    return ui.wrap(out);
+  });
+
+  // ═══ Carmen Sandiego ═══
+  // The case file in the game's own look: the pixel travel map with your route and the thief's trail, the warrant,
+  // and every stop on a tap (when you got there, and what the witnesses said).
+  HistView.css('hv-carmen', [
+    '@font-face{font-family:"Press Start 2P";src:url("' + ROOT + 'fonts/press-start-2p.woff2") format("woff2");font-display:swap;}',
+    '@font-face{font-family:"Jersey 10";src:url("' + ROOT + 'fonts/jersey-10.woff2") format("woff2");font-display:swap;}',
+    '.csh{--csp:"Press Start 2P",ui-monospace,monospace;--csv:"Jersey 10",ui-monospace,monospace;display:flex;flex-direction:column;gap:8px;padding:7px;border-radius:4px;',
+    'background:linear-gradient(180deg,#b8bcc8,#9a9eac);box-shadow:inset 2px 2px 0 #e4e6ee,inset -2px -2px 0 #5a5e6c,0 6px 14px rgba(0,0,0,.45);}',
+    '.csh-n{position:relative;background:#0a0c2e;border-radius:2px;padding:10px 11px;box-shadow:inset 2px 2px 0 #000,inset -1px -1px 0 #3a3e5a;color:#e8e8f0;overflow:hidden;}',
+    '.csh-t{font:400 .6rem/1.6 var(--csp);color:#ffd860;text-shadow:2px 2px 0 #5a2a00;}',
+    '.csh-big{font:400 .82rem/1.35 var(--csp);color:#ffd860;text-shadow:2px 2px 0 #5a2a00;margin:2px 0 4px;}',
+    '.csh-v{font:400 1.22rem/1.02 var(--csv);color:#a8b4ff;}',
+    '.csh-v b{font-weight:400;color:#fff;}',
+    '.csh-stamp{position:absolute;right:9px;top:9px;font:400 .52rem/1 var(--csp);padding:6px 7px;border:3px solid currentColor;transform:rotate(-9deg);color:#58f070;background:rgba(0,0,0,.25);}',
+    '.csh-stamp.bad{color:#ff5a5a;}',
+    '.csh-map{position:relative;line-height:0;border-radius:2px;overflow:hidden;box-shadow:inset 2px 2px 0 #000;}',
+    '.csh-map canvas{width:100%;height:auto;display:block;image-rendering:pixelated;aspect-ratio:384/240;background:#1e3c9a;}',
+    '.csh-map svg{position:absolute;inset:0;width:100%;height:100%;}',
+    '.csh-st{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}',
+    '.csh-st>div{background:#0a0c2e;border-radius:2px;padding:7px 8px;box-shadow:inset 2px 2px 0 #000,inset -1px -1px 0 #3a3e5a;min-width:0;}',
+    '.csh-st b{display:block;font:400 .56rem/1.45 var(--csp);color:#ffd860;overflow-wrap:anywhere;}',
+    '.csh-st small{display:block;font:400 1.02rem/1 var(--csv);color:#a8b4ff;margin-top:3px;}',
+    '.csh-paper{background:#efe6cc;color:#2a2010;border-radius:2px;padding:10px 12px;font:400 1.15rem/1.08 var(--csv);box-shadow:inset 0 0 0 3px #efe6cc,inset 0 0 0 4px #5a4a30;}',
+    '.csh-paper b{display:block;font:400 .55rem/1.6 var(--csp);color:#8a1010;margin:2px 0 4px;}',
+    '.csh-paper .row{display:flex;flex-wrap:wrap;gap:3px 12px;}',
+    '.csh-paper .row span{color:#5a4a30;}.csh-paper .row em{font-style:normal;color:#2a2010;}',
+    '.csh-paper p{margin:5px 0 0;}.csh-paper p i{font-style:normal;color:#8a1010;}',
+    '.csh-road .ar-rb{border-radius:2px;font:400 .5rem/1 var(--csp);min-width:28px;height:28px;box-shadow:inset -2px -2px 0 rgba(0,0,0,.3),inset 2px 2px 0 rgba(255,255,255,.3);}',
+    '.csh-road .ar-rb.on{outline-color:#fff;}',
+    '.csh-foot{font:400 .55rem/1.7 var(--csp);color:#2a2010;text-align:center;padding:2px 4px;}'
+  ].join(''));
+  var CS_VIEW = { world: { lon0: -170, lon1: 190, lat0: -50, lat1: 76 }, usa: 'usa', time: { lon0: -170, lon1: 190, lat0: -50, lat1: 76 }, europe: { lon0: -26, lon1: 42, lat0: 33, lat1: 68 },
+    asia: { lon0: 24, lon1: 146, lat0: -12, lat1: 56 }, africa: { lon0: -20, lon1: 60, lat0: -37, lat1: 38 }, americas: { lon0: -168, lon1: -28, lat0: -57, lat1: 64 } };
+  var CS_VER = { world: 'World', usa: 'USA', time: 'Time', europe: 'Europe', asia: 'Asia', africa: 'Africa', americas: 'Americas' };
+  var CS_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon'];
+  function csTime(h) { var d = Math.floor(h / 24), hr = Math.floor(h % 24); return CS_DAYS[Math.min(7, d)] + ' ' + (hr % 12 || 12) + ':00 ' + (hr < 12 ? 'am' : 'pm'); }
+  function csHrs(h) { h = Math.max(0, Math.floor(h)); return h >= 24 ? Math.floor(h / 24) + (h >= 48 ? ' days ' : ' day ') + (h % 24) + ' hrs' : h + ' hrs'; }
+  function csYear(y) { if (y === '' || y == null || isNaN(+y)) return ''; y = +y; return y < 0 ? (-y) + ' BC' : y < 1000 ? 'AD ' + y : String(y); }
+  // the travel map's projection, as games/carmen/art.js makes it (384 × 240)
+  function csProj(view, raw) {
+    function mk(v, ox, oy, w, h) {
+      var lm = (v.lat0 + v.lat1) / 2, k = Math.cos(lm * Math.PI / 180), pw = (v.lon1 - v.lon0) * k, ph = v.lat1 - v.lat0, sc = Math.min(w / pw, h / ph), dx = ox + (w - pw * sc) / 2, dy = oy + (h - ph * sc) / 2;
+      return function (lat, lon) { var L = lon; if (!raw && v.lon1 > 180 && L < v.lon0) L += 360; return { x: dx + (L - v.lon0) * k * sc, y: dy + (v.lat1 - lat) * sc }; };
+    }
+    if (view === 'usa') {
+      var main = mk({ lon0: -126, lon1: -65, lat0: 23, lat1: 50 }, 0, 0, 384, 240), ak = mk({ lon0: -170, lon1: -130, lat0: 51, lat1: 72 }, 4, 166, 88, 70), hi = mk({ lon0: -161, lon1: -154.5, lat0: 18.8, lat1: 22.4 }, 96, 200, 50, 34);
+      return function (lat, lon) { if (lon < -129 && lat > 50) return ak(lat, lon); if (lon < -150 && lat < 25) return hi(lat, lon); return main(lat, lon); };
+    }
+    return mk(view, 0, 0, 384, 240);
+  }
+  var csRings = {};
+  function csRingsOf(kind) {
+    if (csRings[kind]) return csRings[kind];
+    var src = (window.CARMEN_MAPS || {})[kind]; if (!src) return null;
+    return (csRings[kind] = src.split('|').map(function (r) {
+      var id = null, m = /^(\d+):/.exec(r); if (m) { id = m[1]; r = r.slice(m[0].length); }
+      var parts = r.split(';'), a = parts[0].split(','), x = parseInt(a[0], 36), y = parseInt(a[1], 36), pts = [[x / 10, y / 10]];
+      for (var i = 1; i < parts.length; i++) { a = parts[i].split(','); x += parseInt(a[0], 36); y += parseInt(a[1], 36); pts.push([x / 10, y / 10]); }
+      return { id: id, pts: pts };
+    }));
+  }
+  var csLoading = null;
+  function csMaps(cb) {
+    if (window.CARMEN_MAPS) return cb();
+    if (!csLoading) csLoading = new Promise(function (res) { var sc = document.createElement('script'); sc.src = ROOT + 'games/carmen/maps.js'; sc.onload = sc.onerror = function () { res(); }; document.head.appendChild(sc); });
+    csLoading.then(cb);
+  }
+  // land and sea in the game's colours
+  function csLand(cv, vk) {
+    var x = cv.getContext('2d'), view = CS_VIEW[vk] || CS_VIEW.world, usa = view === 'usa', pr = csProj(view, true);
+    x.fillStyle = '#1e3c9a'; x.fillRect(0, 0, 384, 240); x.fillStyle = '#2a4cb0';
+    for (var yy = 0; yy < 240; yy++) for (var xx = (23 - (yy * 3) % 23) % 23; xx < 384; xx += 23) x.fillRect(xx, yy, 1, 1);
+    var rings = csRingsOf(usa ? 'usa' : 'world'); if (!rings) return;
+    var STATE = ['#4a9a4a', '#5aa850', '#3c8a40', '#6ab05a', '#4c9448'];
+    rings.forEach(function (r) {
+      var lo = Infinity, hi = -Infinity; r.pts.forEach(function (p) { lo = Math.min(lo, p[0]); hi = Math.max(hi, p[0]); });
+      if (!usa && r.pts.every(function (q) { return q[1] < -55; })) return;
+      // a ring cut at the date line keeps to one side; one wholly west of the view's left edge moves round to the right
+      var wrap = !usa && hi - lo > 300, east = !usa && !wrap && view.lon1 > 180 && hi < view.lon0;
+      var pts = r.pts.map(function (p) { return pr(p[1], (wrap && p[0] < 0) || east ? p[0] + 360 : p[0]); });
+      var mnx = Infinity, mxx = -Infinity; pts.forEach(function (q) { mnx = Math.min(mnx, q.x); mxx = Math.max(mxx, q.x); });
+      if (mxx < 0 || mnx > 384) return;
+      x.beginPath(); pts.forEach(function (q, i) { if (i) x.lineTo(q.x, q.y); else x.moveTo(q.x, q.y); }); x.closePath();
+      x.fillStyle = usa ? STATE[(parseInt(r.id, 10) || 0) % 5] : '#3c8a3c'; x.fill();
+      x.strokeStyle = usa ? '#2a5a2a' : '#2a6a2a'; x.lineWidth = 1; x.stroke();
+    });
+    if (usa) { x.strokeStyle = '#6a8ad0'; x.lineWidth = 1; x.strokeRect(2.5, 164.5, 92, 74); x.strokeRect(94.5, 198.5, 54, 38); }
+  }
+  function csPlace(s) { var a = String(s).split('|'); return { name: a[0], lat: +a[1], lon: +a[2], year: a[3] }; }
+  R('carmen', function (e, ui) {
+    var d = e.dt; if (!d) return null;
+    var el = ui.el;
+    // older cases saved only a few words
+    if (!d.pl) {
+      if (!d.Trail) return null;
+      var okOld = d.Result === 'Arrested';
+      return el('div', { class: 'csh' }, [el('div', { class: 'csh-n' }, [el('div', { class: 'csh-t', text: 'ACME CASE FILE' }), el('div', { class: 'csh-v', html: 'The treasure: <b>' + ui.esc(d.Treasure || '') + '</b><br>Suspect: <b>' + ui.esc(d.Suspect || '') + '</b><br>' + ui.esc((d.Version || '') + ' · ' + (d.Rank || '')) }),
+        el('div', { class: 'csh-stamp' + (okOld ? '' : ' bad'), text: okOld ? 'ARRESTED' : 'GOT AWAY' })]),
+        el('div', { class: 'csh-paper' }, [el('b', { text: 'THE TRAIL' }), el('div', { text: String(d.Trail).split(' > ').join('  >  ') })])]);
+    }
+    var P = (d.pl || []).map(csPlace), trail = String(d.trail || '').split(',').filter(function (x) { return x !== ''; }).map(Number);
+    var route = String(d.path || '').split(',').filter(Boolean).map(function (x) { var a = x.split('@'); return { p: +a[0], h: +a[1] }; });
+    var said = (d.said || []).map(function (s) { var a = String(s).split('|'); return { p: +a[0], loc: a[1], t: a.slice(2).join('|') }; });
+    var hide = trail[trail.length - 1], won = !!d.won, time = d.v === 'time';
+    function onTrail(pi) { return trail.indexOf(pi) >= 0; }
+    var head = el('div', { class: 'csh-n' }, [
+      el('div', { class: 'csh-t', text: 'ACME CASE FILE · ' + (CS_VER[d.v] || d.v || '').toUpperCase() }),
+      el('div', { class: 'csh-big', text: won ? 'Case closed' : d.why === 'time' ? 'Out of time' : d.why === 'wrongwarrant' ? 'Wrong warrant' : 'No warrant' }),
+      el('div', { class: 'csh-v', html: 'The treasure: <b>' + ui.esc(d.tr || '') + '</b><br>The thief: <b>' + ui.esc(d.sus || '') + '</b><br>Detective rank: <b>' + ui.esc(d.rk || '') + '</b>' }),
+      el('div', { class: 'csh-stamp' + (won ? '' : ' bad'), text: won ? 'ARRESTED' : 'GOT AWAY' })]);
+    // the map: land first (the outlines load if this page doesn't have them), then the route on top
+    var cv = el('canvas', { width: 384, height: 240 }), over = el('div', { style: { position: 'absolute', inset: '0' } });
+    csMaps(function () { csLand(cv, d.v); });
+    var pr = csProj(CS_VIEW[d.v] || CS_VIEW.world);
+    function xy(pi) { var p = P[pi]; return p ? pr(p.lat, p.lon) : { x: -99, y: -99 }; }
+    function lab(q, text, c) { var left = q.x > 270; return '<text x="' + (q.x + (left ? -7 : 7)).toFixed(1) + '" y="' + (q.y + 2.5).toFixed(1) + '" text-anchor="' + (left ? 'end' : 'start') + '" font-size="6.5" fill="' + (c || '#fff') + '" stroke="#000" stroke-width="2.4" paint-order="stroke" font-family="\'Press Start 2P\',ui-monospace,monospace">' + ui.esc(text) + '</text>'; }
+    function drawMap(sel) {
+      var s = '';
+      // the thief's trail: red dashes from the crime to the hideout
+      for (var i = 1; i < trail.length; i++) { var a = xy(trail[i - 1]), b = xy(trail[i]); s += '<line x1="' + a.x.toFixed(1) + '" y1="' + a.y.toFixed(1) + '" x2="' + b.x.toFixed(1) + '" y2="' + b.y.toFixed(1) + '" stroke="#ff4a4a" stroke-width="1.6" stroke-dasharray="3 3"/>'; }
+      // your flights: arcs, as the plane flies them in the game
+      for (var j = 1; j < route.length; j++) {
+        var f = xy(route[j - 1].p), t = xy(route[j].p), mx = (f.x + t.x) / 2, my = (f.y + t.y) / 2 - Math.min(40, Math.hypot(t.x - f.x, t.y - f.y) * 0.3);
+        s += '<path d="M' + f.x.toFixed(1) + ' ' + f.y.toFixed(1) + 'Q' + mx.toFixed(1) + ' ' + my.toFixed(1) + ' ' + t.x.toFixed(1) + ' ' + t.y.toFixed(1) + '" fill="none" stroke="' + (sel === j ? '#fff' : 'rgba(255,255,255,.75)') + '" stroke-width="' + (sel === j ? 2.2 : 1.3) + '" stroke-dasharray="' + (sel === j ? '0' : '2 2') + '"/>';
+      }
+      // the places: the thief's stops as red squares, yours as amber (red ring: a wrong turn), the hideout bigger
+      trail.forEach(function (pi, k) { var q = xy(pi), big = pi === hide; s += '<rect x="' + (q.x - (big ? 5 : 3.5)).toFixed(1) + '" y="' + (q.y - (big ? 5 : 3.5)).toFixed(1) + '" width="' + (big ? 10 : 7) + '" height="' + (big ? 10 : 7) + '" fill="' + (big ? '#ff4a4a' : '#c81e24') + '" stroke="#000" stroke-width="1.4"/>'; });
+      route.forEach(function (r, k) { var q = xy(r.p), wrong = !onTrail(r.p); s += '<rect x="' + (q.x - 2.5).toFixed(1) + '" y="' + (q.y - 2.5).toFixed(1) + '" width="5" height="5" fill="' + (wrong ? '#fff' : '#ffd860') + '" stroke="' + (wrong ? '#ff4a4a' : '#000') + '" stroke-width="1.3"/>'; });
+      var st = xy(trail[0]); s += lab(st, (P[trail[0]] || {}).name || '', '#ffd860');
+      if (hide != null && hide !== trail[0]) s += lab(xy(hide), (P[hide] || {}).name || '', '#ff8a8a');
+      if (sel != null && route[sel] && route[sel].p !== trail[0] && route[sel].p !== hide) s += lab(xy(route[sel].p), P[route[sel].p].name, '#fff');
+      if (sel != null && route[sel]) { var q2 = xy(route[sel].p); s += '<rect x="' + (q2.x - 7).toFixed(1) + '" y="' + (q2.y - 7).toFixed(1) + '" width="14" height="14" fill="none" stroke="#fff" stroke-width="1.6"/>'; }
+      over.innerHTML = '<svg viewBox="0 0 384 240" role="img" aria-label="Your route and the thief’s trail">' + s + '</svg>';
+    }
+    var map = el('div', { class: 'csh-map' }, [cv, over]);
+    var mapKey = el('div', { class: 'csh-v', style: { 'font-size': '1rem', color: '#2a2010', display: 'flex', gap: '4px 12px', 'flex-wrap': 'wrap', 'justify-content': 'center' }, html:
+      '<span><i style="display:inline-block;width:9px;height:9px;background:#c81e24;border:1.5px solid #000;vertical-align:-1px"></i> The thief’s trail</span>' +
+      '<span><i style="display:inline-block;width:8px;height:8px;background:#ffd860;border:1.5px solid #000;vertical-align:-1px"></i> Where you went</span>' +
+      '<span><i style="display:inline-block;width:8px;height:8px;background:#fff;border:1.5px solid #ff4a4a;vertical-align:-1px"></i> Wrong turn</span>' });
+    function tile(v, l) { return el('div', null, [el('b', { text: String(v) }), el('small', { text: l })]); }
+    var tiles = el('div', { class: 'csh-st' }, [tile(csHrs(d.hr || 0), 'on the case'), won ? tile(csHrs(d.left || 0), 'to spare') : tile(Math.max.apply(null, route.map(function (r) { return trail.indexOf(r.p); }).concat([0])) + 1 + ' of ' + trail.length, 'stops reached'),
+      tile(d.fl || 0, d.fl === 1 ? 'trip' : 'trips'), tile(d.wg || 0, d.wg === 1 ? 'wrong turn' : 'wrong turns'), tile(d.ak || 0, 'witnesses asked'), d.sc ? tile(n(d.sc), 'points') : tile(d.hm || 0, 'henchmen seen')]);
+    var tt = String(d.tt || '').split('|');
+    var warrant = el('div', { class: 'csh-paper' }, [el('b', { text: 'WARRANT' }),
+      el('div', { html: d.wr ? 'Issued for <i style="font-style:normal;color:#8a1010">' + ui.esc(d.wr) + '</i>' + (d.wr === d.sus ? ': the right one.' : ': the wrong one.') : 'No warrant was issued.' }),
+      el('b', { text: 'THE THIEF: ' + String(d.sus || '').toUpperCase() }),
+      el('div', { class: 'row', html: [['Sex', d.sx], ['Hair', tt[0]], ['Hobby', tt[1]], ['Feature', tt[2]], ['Auto', tt[3]]].filter(function (x) { return x[1]; }).map(function (x) { return '<span>' + x[0] + ': <em>' + ui.esc(x[1]) + '</em></span>'; }).join('') })]);
+    // every stop on a tap
+    var card = el('div', { class: 'csh-paper' });
+    function showStop(k) {
+      var r = route[k], p = P[r.p] || {}, wrong = !onTrail(r.p), words = said.filter(function (x) { return x.p === r.p; });
+      card.innerHTML = '';
+      card.appendChild(el('b', { text: (k + 1) + '. ' + String(p.name || '').toUpperCase() + (time && csYear(p.year) ? ', ' + csYear(p.year) : '') }));
+      card.appendChild(el('div', { text: (k ? 'Arrived ' : 'Started ') + csTime(r.h) + (r.p === hide ? ' · the hideout' : wrong ? ' · a wrong turn: nobody had seen the thief' : k === 0 ? ' · the scene of the crime' : ' · on the trail') }));
+      if (words.length) words.forEach(function (w) { card.appendChild(el('p', { html: '<i>' + ui.esc(w.loc) + ':</i> ' + ui.esc(w.t) })); });
+      else if (!wrong) card.appendChild(el('p', { text: r.p === hide ? 'The thief was hiding here.' : 'You moved on without asking anyone.' }));
+      drawMap(k);
+    }
+    var items = route.map(function (r, k) { var wrong = !onTrail(r.p); return { t: k + 1, c: r.p === hide ? '#ff4a4a' : wrong ? '#f4f4f8' : '#ffd860', ink: r.p !== hide, title: (P[r.p] || {}).name }; });
+    drawMap(null);
+    var foot = won ? 'Arrested ' + d.sus + ' with ' + csHrs(d.left || 0) + ' to spare' + (d.pr ? '. Promoted to ' + d.pr + '!' : '')
+      : d.why === 'time' ? 'Sunday 5 pm came and ' + d.sus + ' got away'
+        : d.why === 'wrongwarrant' ? 'Found ' + d.sus + ', but the warrant was for ' + d.wr
+          : 'Found ' + d.sus + ', but without a warrant';
+    var kids = [head, map, mapKey, tiles, warrant];
+    if (route.length) kids.push(el('div', { class: 'csh-t', style: { color: '#2a2010', 'text-shadow': 'none', padding: '2px 2px 0' }, text: 'EVERY STOP · TAP ONE' }), strip(ui, items, route.length - 1, showStop, { cls: 'csh-road' }), card);
+    kids.push(el('div', { class: 'csh-foot', text: foot }));
+    return el('div', { class: 'csh' }, kids);
+  });
+
+  // ═══ Hot Dog Stand ═══
+  // The season on the stadium scoreboard: cash climbing toward the goal event by event, then each event's ticket
+  // on a tap with its ledger (prices, what sold, the weather and crowd, who walked away and why, what sold out).
+  HistView.css('hv-hotdog', [
+    '.hds-board{border-radius:16px;padding:12px;background:linear-gradient(#141218,#0b0a0e);box-shadow:inset 0 0 0 3px #2a2630,inset 0 2px 12px rgba(0,0,0,.9),0 8px 18px -10px rgba(0,0,0,.8);color:#ffd54a;display:flex;flex-direction:column;gap:10px;}',
+    '.hds-top{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;flex-wrap:wrap;}',
+    '.hds-top small{display:block;font-size:.64rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#8d8678;}',
+    '.hds-top b{display:block;font:400 2.1rem/1 var(--display);color:#7ef0b0;text-shadow:0 0 12px rgba(80,255,160,.35);font-variant-numeric:tabular-nums;}',
+    '.hds-top b.short{color:#ffd54a;text-shadow:0 0 12px rgba(255,213,74,.3);}',
+    '.hds-badge{font:400 .95rem/1 var(--display);letter-spacing:.04em;padding:6px 10px;border-radius:8px;border:2px solid currentColor;color:#ffd54a;transform:rotate(-3deg);}',
+    '.hds-badge.no{color:#c8bfa8;}',
+    '.hds-goal{position:relative;height:12px;border-radius:99px;background:#26222c;box-shadow:inset 0 1px 3px rgba(0,0,0,.6);}',
+    '.hds-goal i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:linear-gradient(180deg,#5fe39a,#23a35f);}',
+    '.hds-goal.met i{background:linear-gradient(180deg,#ffe07a,#e3a51c);}',
+    '.hds-board .ar-pic svg{border-radius:8px;}',
+    '.hds-tk{display:flex;color:#2a2418;border-radius:8px;overflow:hidden;filter:drop-shadow(0 6px 10px rgba(0,0,0,.4));}',
+    '.hds-tk .hds-stub{flex:none;width:34px;background:var(--tk,#c8322f);color:#fff;display:grid;place-items:center;border-right:2px dashed rgba(255,255,255,.65);}',
+    '.hds-tk .hds-stub span{writing-mode:vertical-rl;transform:rotate(180deg);font:400 .9rem/1 var(--display);letter-spacing:.08em;white-space:nowrap;}',
+    '.hds-tk .hds-bd{flex:1;min-width:0;padding:9px 11px;background:linear-gradient(180deg,#fffaf0,#f1e6cc);display:flex;flex-direction:column;gap:6px;}',
+    '.hds-tk .hds-tt{font:400 1.12rem/1.1 var(--display);color:#1f1a10;}',
+    '.hds-tk .hds-wx{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:.76rem;font-weight:800;color:#6b6252;}',
+    '.hds-tk .hds-wx span{display:inline-flex;align-items:center;gap:4px;}',
+    '.hds-tk .hds-wx svg{width:18px;height:18px;}',
+    '.hds-tk table{width:100%;border-collapse:collapse;font-size:.78rem;font-variant-numeric:tabular-nums;}',
+    '.hds-tk th{font-size:.6rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#8a7f68;text-align:right;padding:0 0 3px 6px;}',
+    '.hds-tk th:first-child,.hds-tk td:first-child{text-align:left;padding-left:0;}',
+    '.hds-tk td{text-align:right;padding:3px 0 3px 6px;border-top:1px dashed rgba(60,50,30,.22);font-weight:800;}',
+    '.hds-tk td.hds-out{color:#b3262e;}',
+    '.hds-tk .hds-tag{display:inline-block;margin-left:5px;padding:1px 4px;border-radius:3px;background:#b3262e;color:#fff;font-size:.56rem;font-weight:900;letter-spacing:.06em;vertical-align:1px;}',
+    '.hds-tk .hds-walk{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.74rem;font-weight:800;color:#6b6252;}',
+    '.hds-tk .hds-walk b{color:#2a2418;}',
+    '.hds-tk .hds-sum{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding-top:5px;border-top:2px solid rgba(60,50,30,.3);font-size:.78rem;font-weight:800;color:#6b6252;}',
+    '.hds-tk .hds-sum b{font:400 1.2rem/1 var(--display);}',
+    '.hds-tk .hds-up{color:#15803d;}.hds-tk .hds-down{color:#b3262e;}'
+  ].join(''));
+  var HD_TYPE = { football: ['Football', '#c8322f'], college: ['College', '#7c3aed'], highschool: ['Semifinal', '#0f766e'], soccer: ['Soccer', '#15803d'], concert: ['Concert', '#be185d'],
+    trucks: ['Monster trucks', '#ea580c'], band: ['Band festival', '#1d4ed8'], bowl: ['Championship', '#b45309'] };
+  var HD_MODE = { rookie: 'Rookie', pro: 'Pro', allstar: 'All-Star' };
+  var HD_ITEMS = [['Hot dogs', 'd'], ['Soda', 's'], ['Chips', 'c'], ['Hot cocoa', 'k']];
+  var HD_WX = { sunny: 'Sunny', cloudy: 'Cloudy', rain: 'Rain', snow: 'Snow' };
+  function hdWx(c) {
+    var cloud = '<path d="M7 17h10a4 4 0 0 0 .4-8A5.5 5.5 0 0 0 6.8 10.6 3.3 3.3 0 0 0 7 17Z" fill="#c9ced8" stroke="#6b7280" stroke-width="1.3"/>';
+    var s = c === 'sunny' ? '<circle cx="12" cy="12" r="4.5" fill="#ffc83d"/><g stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></g>'
+      : c === 'rain' ? cloud + '<path d="M9 19l-1 3M13 19l-1 3M17 19l-1 3" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"/>'
+        : c === 'snow' ? cloud + '<circle cx="9" cy="20.5" r="1.2" fill="#93c5fd"/><circle cx="13" cy="21.5" r="1.2" fill="#93c5fd"/><circle cx="17" cy="20.5" r="1.2" fill="#93c5fd"/>' : cloud;
+    return '<svg viewBox="0 0 24 24" aria-hidden="true">' + s + '</svg>';
+  }
+  function hdEvent(str) {
+    var a = String(str).split('|'), num = function (i) { return a[i] === '' || a[i] == null ? null : +a[i]; }, dots = function (i) { return String(a[i] || '').split('.').map(Number); };
+    return { t: a[0], ty: a[1], wx: a[2], temp: num(3), crowd: num(4), fans: num(5), served: num(6), net: +a[7] || 0, rev: +a[8] || 0, cash: num(9), spend: num(10),
+      sold: dots(11), price: dots(12), walk: dots(13), outs: a[14] || '', peak: num(15), help: num(16), ad: num(17), spoil: num(18), score: a[19] || '', news: a[20] || '', day: num(21) };
+  }
+  R('hotdogstand', function (e, ui) {
+    var d = e.dt; if (!d) return null;
+    var el = ui.el, evs = d.ev ? d.ev.map(hdEvent) : (d.log || []).map(function (l) { return { t: l.t, net: +l.n || 0, rev: +l.r || 0, old: true }; });
+    if (!evs.length) return null;
+    var c0 = d.c0 || 50000, goal = d.g || (e.goal) || null, cash = c0;
+    evs.forEach(function (x) { if (x.cash == null) x.cash = cash + x.net; cash = x.cash; });
+    var end = d.c != null ? d.c : e.cash != null ? +e.cash : cash, met = goal && end >= goal, N = d.n || evs.length;
+    var best = 0, worst = 0; evs.forEach(function (x, i) { if (x.net > evs[best].net) best = i; if (x.net < evs[worst].net) worst = i; });
+    // the scoreboard: where the cash ended, the goal, every event's result as a dot on the way
+    var dots = el('div', { style: { position: 'absolute', inset: '0', display: 'flex', 'justify-content': 'space-between', 'align-items': 'center', padding: '0 4px' } });
+    for (var i = 0; i < N; i++) { var x = evs[i]; dots.appendChild(el('i', { style: { position: 'static', width: '6px', height: '6px', 'border-radius': '50%', background: x ? (x.net >= 0 ? '#3ddc84' : '#ff6b6b') : 'rgba(255,255,255,.22)', 'box-shadow': '0 0 0 1.5px #141218' } })); }
+    var bar = el('div', { class: 'hds-goal' + (met ? ' met' : '') }, [el('i', { style: { width: (goal ? Math.max(2, Math.min(100, end / goal * 100)) : 100).toFixed(1) + '%' } }), dots]);
+    var v = [c0].concat(evs.map(function (x) { return x.cash; }));
+    var ch = chart({ v: v, c: '#7ef0b0', bg: '#0b0a0e', h: 140, fmt: function (c) { return money(c, true); }, goal: goal ? { v: goal, label: 'GOAL ' + money(goal, true), c: '#ffd54a' } : null, base: c0,
+      marks: evs.map(function (x, i) { return { i: i + 1, k: i === best && x.net > 0 ? 'star' : 'dot', c: i === best && x.net > 0 ? '#ffd54a' : x.net >= 0 ? '#3ddc84' : '#ff6b6b' }; }),
+      ticks: v.map(function (x, i) { return { i: i, t: i ? String(i) : 'Start' }; }).filter(function (t, i) { return v.length <= 13 || i % 2 === 0; }), aria: 'Cash after each event, with the season goal' });
+    var board = el('div', { class: 'hds-board' }, [
+      el('div', { class: 'hds-top' }, [el('div', null, [el('small', { text: (HD_MODE[d.m] || HD_MODE[e.mode] || e.mode || '') + ' season · ' + evs.length + (evs.length < N ? ' of ' + N : '') + ' events' }), el('b', { class: met ? '' : 'short', text: money(end, true) })]),
+        goal ? el('div', { class: 'hds-badge' + (met ? '' : ' no'), text: met ? 'Goal reached' : 'Goal ' + money(goal, true) }) : null]),
+      bar, el('div', { class: 'ar-pic', html: ch })]);
+    var tot = { d: 0, fans: 0, served: 0, walk: 0, outs: 0 };
+    evs.forEach(function (x) { if (x.sold) tot.d += x.sold[0] || 0; tot.served += x.served || 0; if (x.walk) tot.walk += (x.walk[0] || 0) + (x.walk[1] || 0) + (x.walk[2] || 0); tot.outs += (x.outs || '').length; });
+    var out = [board, ui.stats([['Best day', evs[best].net > 0 ? '+' + money(evs[best].net, true) : null, evs[best].t], evs[worst].net < 0 ? ['Worst day', money(evs[worst].net, true), evs[worst].t] : null,
+      tot.d ? ['Hot dogs sold', n(tot.d)] : null, tot.served ? ['Fans served', n(tot.served)] : null, tot.walk ? ['Walked away', n(tot.walk)] : null, d.ev ? ['Sold out', tot.outs ? tot.outs + (tot.outs === 1 ? ' time' : ' times') : 'Never'] : null,
+      d.gear ? ['Gear', String(d.gear).split(',').length] : null])];
+    // each event's ticket
+    var card = el('div');
+    function show(k) {
+      var x = evs[k], T = HD_TYPE[x.ty] || ['Event', '#6b7280'], body = [el('div', { class: 'hds-tt', text: x.t || 'Event ' + (k + 1) })];
+      if (!x.old) {
+        var date = x.day ? new Date(x.day * 864e5).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '';
+        body.push(el('div', { class: 'hds-wx', html: (x.wx ? '<span>' + hdWx(x.wx) + ui.esc(HD_WX[x.wx] || x.wx) + (x.temp != null ? ' ' + x.temp + '°F' : '') + '</span>' : '') +
+          (x.crowd ? '<span>' + n(x.crowd) + ' in the stadium</span>' : '') + (date ? '<span>' + date + '</span>' : '') + (x.score ? '<span>Final: Highlanders ' + ui.esc(x.score.replace('-', '–')) + '</span>' : '') }));
+        var rows = '<tr><th>Item</th><th>Price</th><th>Sold</th><th>Took</th></tr>';
+        HD_ITEMS.forEach(function (it, j) {
+          var sold = x.sold[j] || 0, pr = x.price[j] || 0, out1 = x.outs.indexOf(it[1]) >= 0;
+          if (!sold && !out1 && j === 3) return;
+          rows += '<tr><td>' + it[0] + (out1 ? '<span class="hds-tag">SOLD OUT</span>' : '') + '</td><td>$' + (pr / 100).toFixed(pr % 100 ? 2 : 0) + '</td><td>' + n(sold) + '</td><td>' + money(sold * pr, true) + '</td></tr>';
+        });
+        body.push(el('table', { html: rows }));
+        var w = x.walk || [0, 0, 0];
+        body.push(el('div', { class: 'hds-walk', html: '<span>' + n(x.served || 0) + ' served' + (x.fans ? ' of ' + n(x.fans) + ' who came by' : '') + '</span>' +
+          (w[0] || w[1] || w[2] ? '<span>Walked away: <b>' + w[0] + '</b> too pricey · <b>' + w[1] + '</b> line too long · <b>' + w[2] + '</b> sold out</span>' : '<span>Nobody walked away</span>') +
+          (x.peak ? '<span>Longest line ' + x.peak + '</span>' : '') + (x.help ? '<span>' + x.help + (x.help === 1 ? ' helper' : ' helpers') + '</span>' : '') + (x.spoil ? '<span>' + x.spoil + ' went bad</span>' : '') }));
+      }
+      body.push(el('div', { class: 'hds-sum', html: '<span>' + (x.spend != null ? 'Spent ' + money(x.spend, true) + ' · ' : '') + 'took ' + money(x.rev, true) + '</span><b class="' + (x.net >= 0 ? 'up' : 'down') + '">' + (x.net >= 0 ? '+' : '') + money(x.net, true) + '</b><span>Cash ' + money(x.cash, true) + '</span>' }));
+      card.innerHTML = '';
+      card.appendChild(el('div', { class: 'hds-tk', style: { '--tk': T[1] } }, [el('div', { class: 'hds-stub' }, [el('span', { text: T[0] })]), el('div', { class: 'hds-bd' }, body)]));
+    }
+    var items = evs.map(function (x, i) { return { t: i + 1, c: i === best && x.net > 0 ? '#e3a51c' : x.net >= 0 ? '#23a35f' : '#c0392b', title: x.t + ': ' + (x.net >= 0 ? '+' : '') + money(x.net, true) }; });
+    out.push(ui.section('Every event · tap one', [strip(ui, items, best, show), card], { icon: 'calendar' }));
+    out.push(el('div', { class: 'ar-sub', style: { 'text-align': 'center', color: 'var(--text-3)' }, text: met ? 'Reached the ' + money(goal, true) + ' goal' + (evs[best].net > 0 ? ', best of all at ' + evs[best].t : '') : goal ? 'Finished ' + money(goal - end, true) + ' short of the goal' : '' }));
+    return ui.wrap(out);
+  });
+
+  // ═══ Drug Wars (the TI-82 game) ═══
+  // Drawn on the calculator's own LCD: the final screen, a graph of your worth over the month as the TI-82 would
+  // plot it, every day's prices on a tap, then the best deals and Officer Hardass on scratch paper.
+  HistView.css('hv-drugwars', [
+    '.dwh-calc{border-radius:22px 22px 30px 30px;padding:10px 12px 14px;background:radial-gradient(140% 60% at 50% 0%,rgba(255,255,255,.08),transparent 60%),linear-gradient(180deg,#45484f,#33363c 30%,#2a2c31);',
+    'box-shadow:0 14px 26px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.14),inset 0 -5px 9px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:9px;}',
+    '.dwh-top{display:flex;justify-content:space-between;align-items:baseline;padding:0 6px;color:#d9dbe0;}',
+    '.dwh-top span{font:800 .56rem/1 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.16em;opacity:.85;}',
+    '.dwh-top b{font:italic 900 1.05rem/1 "Helvetica Neue",Helvetica,Arial,sans-serif;}',
+    '.dwh-bez{border-radius:10px 10px 12px 12px/10px 10px 26px 26px;padding:12px 14px 20px;background:linear-gradient(180deg,#202227,#17181c);box-shadow:inset 0 2px 5px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.1);position:relative;}',
+    '.dwh-bez::after{content:"GRAPHICS";position:absolute;left:0;right:0;bottom:6px;text-align:center;font:800 .44rem/1 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.32em;color:#7d8088;}',
+    '.dwh-lcd{line-height:0;border-radius:3px;overflow:hidden;box-shadow:inset 0 0 0 2px #8f9a80;position:relative;}',
+    '.dwh-lcd::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(255,255,255,0) 38%),radial-gradient(130% 120% at 50% 50%,transparent 60%,rgba(40,50,30,.26));}',
+    '.dwh-lcd svg{width:100%;height:auto;display:block;}',
+    '.dwh-cap{font:800 .62rem/1.3 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#9fd3a7;text-align:center;}',
+    '.dwh-road .ar-rb{border-radius:6px 6px 8px 8px;font:800 .66rem/1 "Helvetica Neue",Helvetica,Arial,sans-serif;color:#d9e6c6;box-shadow:0 2px 0 rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.4);}',
+    '.dwh-road .ar-rb.ink{color:#1f281a;}',
+    '.dwh-paper{border-radius:4px;padding:10px 14px 12px 34px;font-family:var(--hand);font-size:1.05rem;line-height:1.5;color:#2a2a4a;position:relative;transform:rotate(-.6deg);}',
+    '.dwh-paper::before{content:"";position:absolute;top:0;bottom:0;left:24px;width:2px;background:rgba(220,60,70,.45);}',
+    '.dwh-paper h5{margin:0 0 2px;font:400 1.2rem/1.3 var(--hand);color:#1d2a6b;}',
+    '.dwh-paper p{margin:0;}.dwh-paper .owe{color:#b3262e;}.dwh-paper .ok{color:#1f7a3a;}'
+  ].join(''));
+  var TI_FONT = {
+    ' ': '00000000000000', A: '0e11111f111111', B: '1e11111e11111e', C: '0e11101010110e', D: '1c12111111121c', E: '1f10101e10101f', F: '1f10101e101010', G: '0e11101711110f', H: '1111111f111111',
+    I: '0e04040404040e', J: '0702020202120c', K: '11121418141211', L: '1010101010101f', M: '111b1515111111', N: '11111915131111', O: '0e11111111110e', P: '1e11111e101010', Q: '0e11111115120d',
+    R: '1e11111e141211', S: '0f10100e01011e', T: '1f040404040404', U: '1111111111110e', V: '11111111110a04', W: '1111111515150a', X: '11110a040a1111', Y: '1111110a040404', Z: '1f01020408101f',
+    0: '0e11131519110e', 1: '040c040404040e', 2: '0e11010204081f', 3: '1f02040201110e', 4: '02060a121f0202', 5: '1f101e0101110e', 6: '0608101e11110e', 7: '1f010204080808', 8: '0e11110e11110e', 9: '0e11110f01020c',
+    '!': '04040404040004', '?': '0e110102040004', '.': '00000000000c0c', ',': '000000000c0408', "'": '0c040800000000', ':': '000c0c000c0c00', '(': '02040808080402', ')': '08040202020408', '=': '00001f001f0000',
+    '-': '0000001f000000', '+': '0004041f040400', '/': '00010204081000', '$': '040f140e051e04', '>': '08040201020408', '~': '00000e00000000', '_': '0000000000001f'
+  };
+  var DW_PLACE = ['BRONX', 'GHETTO', 'CENTRAL PARK', 'MANHATTEN', 'CONEY ISLAND', 'BROOKLYN'], DW_PLACE_NM = ['the Bronx', 'the Ghetto', 'Central Park', 'Manhattan', 'Coney Island', 'Brooklyn'];
+  var DW_DRUG = ['COCAINE', 'HEROINE', 'ACID', 'WEED', 'SPEED', 'LUDES'], DW_DRUG_NM = ['cocaine', 'heroin', 'acid', 'weed', 'speed', 'ludes'], DW_MID = [22000, 8500, 2700, 525, 145, 30];
+  var dwN = 0;
+  // the LCD: 96 × 64 pixels; lines = up to 8 strings of 16 characters ({s, inv} inverts a line), px = extra lit pixels [[x, y], ...]
+  function tiLcd(lines, px) {
+    var id = 'dwg' + (++dwN), on = '', sh = '';
+    function dot(x, y) { on += 'M' + x + ' ' + y + 'h.86v.86h-.86z'; sh += 'M' + (x + .16) + ' ' + (y + .16) + 'h.86v.86h-.86z'; }
+    (lines || []).forEach(function (ln, r) {
+      if (ln == null) return; var inv = typeof ln === 'object' && ln.inv, str = String(typeof ln === 'object' ? ln.s : ln).toUpperCase().slice(0, 16);
+      if (inv) while (str.length < 16) str += ' ';
+      for (var c = 0; c < str.length; c++) {
+        var h = TI_FONT[str.charAt(c)] || TI_FONT['?'];
+        for (var y = 0; y < 8; y++) for (var x = 0; x < 6; x++) {
+          var lit = y < 7 && x < 5 ? (parseInt(h.substr(y * 2, 2), 16) >> (4 - x)) & 1 : 0;
+          if (inv) lit = 1 - lit;
+          if (lit) dot(c * 6 + x, r * 8 + y);
+        }
+      }
+    });
+    (px || []).forEach(function (p) { dot(p[0], p[1]); });
+    return '<svg viewBox="0 0 96 64" shape-rendering="crispEdges" role="img" aria-label="The calculator screen"><defs><pattern id="' + id + '" width="1" height="1" patternUnits="userSpaceOnUse"><rect x=".07" y=".07" width=".86" height=".86" fill="rgba(70,90,50,.08)"/></pattern></defs>' +
+      '<rect width="96" height="64" fill="#b0bd9e"/><rect width="96" height="64" fill="url(#' + id + ')"/><path d="' + sh + '" fill="rgba(40,55,30,.12)"/><path d="' + on + '" fill="rgba(31,40,26,.94)"/></svg>';
+  }
+  function dwM(v) { var a = Math.abs(v); return a >= 1e6 ? (v < 0 ? '−' : '') + '$' + (a / 1e6).toFixed(2) + 'M' : a >= 1e5 ? (v < 0 ? '−' : '') + '$' + Math.round(a / 1000) + 'K' : money(v); }
+  function tiRow(label, v) { var s = String(v); label = String(label); while (label.length + s.length < 16) label += ' '; return (label + s).slice(0, 16); }
+  function tiNum(v) { v = Math.round(v); return (v < 0 ? '~' : '') + Math.abs(v); }
+  function dwDay(str) { var a = String(str).split('|'), b = function (x) { return parseInt(x, 36) || 0; }; return { d: +a[0], l: +a[1] || 0, z: b(a[2]), v: b(a[3]), y: b(a[4]), u: +a[5] || 0, ev: a[6] || '', p: String(a[7] || '').split('.').map(b) }; }
+  // a line of lit pixels, as the TI-82's Line( draws it
+  function tiLine(px, x0, y0, x1, y1, dotted) {
+    x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+    var dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy, k = 0;
+    for (;;) { if (!dotted || (k++ % 2 === 0)) px.push([x0, y0]); if (x0 === x1 && y0 === y1) break; var e2 = 2 * err; if (e2 >= dy) { err += dy; x0 += sx; } if (e2 <= dx) { err += dx; y0 += sy; } }
+  }
+  R('drugwars', function (e, ui) {
+    var d = e.dt || {}, el = ui.el;
+    var net = d.net != null ? d.net : e.net, cash = d.z != null ? d.z : e.cash, bank = d.b != null ? d.b : e.bank, debt = d.y != null ? d.y : e.debt, day = d.day || e.day, sc = d.sc != null ? d.sc : (e.score != null ? e.score : null);
+    if (net == null) return null;
+    var end = d.end || e.end || '', endLcd = /train/.test(end) ? 'HIT BY A TRAIN' : /Shot/.test(end) ? "YOU'VE BEEN KILLED" : /day 30/.test(end) ? 'MADE IT: DAY 30' : '';
+    var final = tiLcd([{ s: '   GAME OVER!', inv: false }, tiRow('DAY ' + Math.min(30, day || 0), ''), tiRow('CASH', tiNum(cash || 0)), tiRow('BANK', tiNum(bank || 0)), tiRow('DEBT', tiNum(debt || 0)), tiRow('WORTH', tiNum(net)),
+      tiRow('SCORE=', sc != null ? sc : ''), endLcd.slice(0, 16)]);
+    var days = (d.days || []).map(dwDay);
+    var calcKids = [el('div', { class: 'dwh-top' }, [el('span', { text: 'TEXAS INSTRUMENTS' }), el('b', { text: 'TI-82' })]), el('div', { class: 'dwh-bez' }, [el('div', { class: 'dwh-lcd', html: final })])];
+    // the month as a graph: worth (solid) and the loan shark's debt (dotted), day 1 to 30
+    if (days.length >= 2) {
+      // on the score's own square-root scale, so the early days still show next to a rich finish
+      var sq = function (v) { return v < 0 ? -Math.sqrt(-v) : Math.sqrt(v); };
+      var w = days.map(function (x) { return sq(x.z + x.v - x.y); }), owed = days.map(function (x) { return sq(x.y); }), all = w.concat(owed, [0]);
+      var mx = Math.max.apply(null, all), mn = Math.min.apply(null, all), px = [], gx = function (dd) { return 2 + (dd - 1) / 29 * 92; }, gy = function (val) { return 61 - (val - mn) / ((mx - mn) || 1) * 57; };
+      var y0 = Math.round(gy(0)); for (var x = 0; x < 96; x++) px.push([x, y0]);
+      for (var t = 5; t <= 30; t += 5) { px.push([Math.round(gx(t)), y0 - 1]); px.push([Math.round(gx(t)), y0 + 1]); }
+      for (var yy = 0; yy < 64; yy++) px.push([1, yy]);
+      for (var i = 1; i < days.length; i++) { tiLine(px, gx(days[i - 1].d), gy(w[i - 1]), gx(days[i].d), gy(w[i])); tiLine(px, gx(days[i - 1].d), gy(owed[i - 1]), gx(days[i].d), gy(owed[i]), true); }
+      var hi = w.indexOf(Math.max.apply(null, w)), hx = Math.round(gx(days[hi].d)), hy = Math.round(gy(w[hi]));
+      [[0, -2], [0, 2], [-2, 0], [2, 0], [-1, -1], [1, 1], [-1, 1], [1, -1]].forEach(function (o) { px.push([hx + o[0], hy + o[1]]); });   // TRACE's cursor on the best day
+      calcKids.push(el('div', { class: 'dwh-bez' }, [el('div', { class: 'dwh-lcd', html: tiLcd([], px) })]));
+      calcKids.push(el('div', { class: 'dwh-cap', text: 'Worth, day 1 to ' + days[days.length - 1].d + ' (square-root scale, like the score) · dotted: what you owed · + best day ' + days[hi].d }));
+    }
+    var out = [el('div', { class: 'dwh-calc' }, calcKids)];
+    out.push(ui.stats([['Score', sc != null ? sc + ' of 100' : null], ['Worth', dwM(net)], d.best && d.best > net ? ['Best worth', dwM(d.best)] : null, debt > 0 ? ['Still owed', dwM(debt)] : ['Loan shark', 'Paid off'],
+      d.bo ? ['Bought', dwM(d.bo)] : null, d.so ? ['Sold', dwM(d.so)] : null, d.ch ? ['Cops', d.ch + (d.ch === 1 ? ' chase' : ' chases'), (d.kl ? d.kl + ' shot' : '') + (d.kl && d.es ? ' · ' : '') + (d.es ? d.es + ' lost' : '')] : null,
+      d.mg ? ['Mugged', d.mg + '×'] : null, d.i ? ['Guns', d.i] : null, d.t && d.t !== 100 ? ['Trench coat', d.t] : null]));
+    // every day on a tap: that day's prices on the LCD
+    if (days.length) {
+      var hold = el('div', { class: 'ar-card' });
+      var showD = function (k) {
+        var x = days[k], prev = days[k - 1], lines = [{ s: tiRow(('DAY ' + x.d + ' ' + DW_PLACE[x.l]).length <= 16 ? 'DAY ' + x.d : 'D' + x.d, DW_PLACE[x.l]), inv: true }];
+        DW_DRUG.forEach(function (nm, j) { lines.push(tiRow(nm, x.p[j] || 0)); });
+        lines.push(tiRow('WALLET', x.z));
+        var hot = DW_DRUG_NM.filter(function (nm, j) { return x.p[j] > DW_MID[j] * 1.6; }), cheap = DW_DRUG_NM.filter(function (nm, j) { return x.p[j] && x.p[j] < DW_MID[j] * .55; });
+        var worth = x.z + x.v - x.y, dw = prev ? worth - (prev.z + prev.v - prev.y) : null;
+        hold.innerHTML = '';
+        hold.appendChild(el('div', { class: 'dwh-calc', style: { padding: '10px' } }, [el('div', { class: 'dwh-bez' }, [el('div', { class: 'dwh-lcd', html: tiLcd(lines) })])]));
+        hold.appendChild(el('div', { class: 'dwh-paper paper', html: '<h5>Day ' + x.d + ', ' + DW_PLACE_NM[x.l] + (x.ev ? ': <span class="owe">' + ui.esc(x.ev) + '</span>' : '') + '</h5>' +
+          '<p>Cash ' + money(x.z) + ' · bank ' + money(x.v) + ' · <span class="owe">owe ' + money(x.y) + '</span></p>' +
+          '<p>Worth ' + money(worth) + (dw != null ? ' <span class="' + (dw >= 0 ? 'ok' : 'owe') + '">(' + (dw >= 0 ? '+' : '−') + money(Math.abs(dw)).slice(1).replace(/^/, '$') + ' on the day)</span>' : '') + (x.u ? ' · carrying ' + x.u : '') + '</p>' +
+          (hot.length ? '<p class="owe">Sky high: ' + hot.join(', ') + '</p>' : '') + (cheap.length ? '<p class="ok">Dirt cheap: ' + cheap.join(', ') + '</p>' : '') }));
+      };
+      var bestD = 0; days.forEach(function (x, i) { if (x.z + x.v - x.y > days[bestD].z + days[bestD].v - days[bestD].y) bestD = i; });
+      var items = days.map(function (x, i) {
+        var cop = /cops/.test(x.ev), news = !!x.ev;
+        return { t: x.d, c: cop ? '#c0392b' : i === bestD ? '#ffd447' : news ? '#1f281a' : '#b0bd9e', ink: !cop && !(news && i !== bestD), title: 'Day ' + x.d + (x.ev ? ': ' + x.ev : '') };
+      });
+      var road = strip(ui, items, days.length - 1, showD, { cls: 'dwh-road' });
+      out.push(ui.section('Every day · tap one', [road, el('div', { class: 'cz-key ar-sub', style: { color: 'var(--text-3)', 'text-transform': 'none', 'letter-spacing': '0', 'font-weight': '700' }, text: 'Dark: news on the street · red: the cops · gold: your best day' }), hold], { icon: 'calendar' }));
+    }
+    var deals = (d.deals || []).filter(function (x) { return x.w > 0; });
+    if (deals.length) out.push(ui.section('Best deals', el('div', { class: 'dwh-paper paper', html: deals.map(function (x) {
+      return '<p>Day ' + x.d + ', ' + DW_PLACE_NM[x.l] + ': sold ' + x.n + ' ' + DW_DRUG_NM[x.k] + ' at ' + money(x.p) + (x.a ? ' (paid ' + money(x.a) + ')' : ' (found it)') + ' <span class="ok">+' + money(x.w).slice(1).replace(/^/, '$') + '</span></p>';
+    }).join('') }), { icon: 'coins' }));
+    var enc = (d.enc || []).map(function (s) { var a = String(s).split('|'); return { d: +a[0], l: +a[1], n: +a[2], k: +a[3], h: +a[4], r: a[5], c: +a[6], u: +a[7] }; });
+    if (enc.length) out.push(ui.section('Officer Hardass', el('div', { class: 'dwh-paper paper', html: enc.map(function (x) {
+      var how = x.r === 'won' ? '<span class="ok">took them all down and found ' + money(x.c) + '</span>' : x.r === 'ran' ? '<span class="ok">lost them in an alley</span>' : x.r === 'dead' ? '<span class="owe">shot dead</span>' : 'still running';
+      return '<p>Day ' + x.d + ', ' + DW_PLACE_NM[x.l] + ': Hardass and ' + Math.max(0, x.n - 1) + (x.n - 1 === 1 ? ' deputy' : ' deputies') + (x.u ? ' (you carried ' + x.u + ')' : '') + '. ' +
+        (x.k ? 'Shot ' + x.k + '. ' : '') + (x.h ? 'Hit ' + x.h + (x.h === 1 ? ' time' : ' times') + '. ' : '') + how + '.</p>';
+    }).join('') }), { icon: 'shield' }));
+    out.push(el('div', { class: 'ar-sub', style: { 'text-align': 'center', color: 'var(--text-3)' }, text: (end || 'Game over') + ' · worth ' + money(net) }));
+    return ui.wrap(out);
+  });
+
+  // one stat tile (the arcade screen's)
+  function stat(ui, label, value, sub, dot) {
+    if (value == null || value === '') return null;
+    return ui.el('div', { class: 'ar-s' }, [ui.el('b', null, [dot ? ui.el('span', { class: 'ar-dot', style: { background: dot } }) : null, ui.el('span', { text: String(value) })]), ui.el('small', { text: label }), sub ? ui.el('i', { text: sub }) : null]);
+  }
 })();

@@ -487,8 +487,28 @@ body{touch-action:manipulation;}
     V = {}; 'ABCDEFGHIJKLMNOPQRSTUVWXYZθ'.split('').forEach(function (k) { V[k] = 0; });
     V.Z = 2000; V.Y = 5000; V.V = 0; V.K = 100; V.B = 1; V.T = 100; V.I = 0; V.J = 0;
     loc = 0; notes = []; todayEv = null; started = Date.now(); Kit.gameStart();
-    stats = { best: 2000, killed: 0, escaped: 0, mugged: 0, chased: 0, bought: 0, sold: 0, end: '' };
+    stats = { best: 2000, killed: 0, escaped: 0, mugged: 0, chased: 0, bought: 0, sold: 0, end: '', days: [], deals: [], enc: [], cost: [0, 0, 0, 0, 0, 0] };
   }
+  // ── The game's story, kept for its history (numbers in base 36 to keep it small) ──────────────────
+  function b36(n) { n = Math.round(n || 0); return (n < 0 ? '-' : '') + Math.abs(n).toString(36); }
+  function story() { stats.days = stats.days || []; stats.deals = stats.deals || []; stats.enc = stats.enc || []; stats.cost = stats.cost || [0, 0, 0, 0, 0, 0]; return stats; }
+  // each day as it stood when you left it: 'day|place|cash|bank|debt|units carried|news|C.H.A.W.S.L prices'
+  function dayLine() {
+    if (!V.B || V.B > 30) return;
+    var s = story(), line = [V.B, loc, b36(V.Z), b36(V.V), b36(V.Y), units(), todayEv || '', PRICE.map(function (k) { return b36(V[k]); }).join('.')].join('|');
+    var last = s.days[s.days.length - 1];
+    if (last && +last.split('|')[0] === V.B) { if (!todayEv) { var ev = last.split('|')[6]; if (ev) { var a = line.split('|'); a[6] = ev; line = a.join('|'); } } s.days[s.days.length - 1] = line; }
+    else s.days.push(line);
+    if (s.days.length > 31) s.days.shift();
+  }
+  // a sale against what those units cost you: the best ones are kept
+  function dealDone(d, G, F) {
+    var s = story(), held = V[HOLD[d]] + G, avg = held ? s.cost[d] / held : 0, profit = Math.round((F - avg) * G);
+    s.cost[d] = Math.max(0, s.cost[d] - avg * G);
+    s.deals.push({ d: V.B, l: loc, k: d, n: G, a: Math.round(avg), p: F, w: profit });
+    s.deals.sort(function (a, b) { return b.w - a.w; }); if (s.deals.length > 5) s.deals.length = 5;
+  }
+  function enc() { var e = story().enc; return e[e.length - 1]; }
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify({ v: 1, V: V, loc: loc, stats: stats, started: started, notes: notes.slice(0, 30), who: who })); } catch (e) {}
   }
@@ -569,7 +589,7 @@ body{touch-action:manipulation;}
   // Officer Hardass and his deputies
   async function chase(fresh) {
     V.chase = 1;
-    if (fresh) { stats.chased++; logDay(); save(); clr(); await disp('OFFICER HARDASS', 'AND', V.D, 'OF HIS DEPPUTIES', 'ARE AFTER YOU!'); fx('cops'); await pause(); }
+    if (fresh) { stats.chased++; story().enc.push({ d: V.B, l: loc, n: V.D + 1, k: 0, h: 0, r: '', c: units() }); if (stats.enc.length > 10) stats.enc.shift(); logDay(); save(); clr(); await disp('OFFICER HARDASS', 'AND', V.D, 'OF HIS DEPPUTIES', 'ARE AFTER YOU!'); fx('cops'); await pause(); }
     else lights(true);
     for (;;) {
       var m = await menu('BEING CHASED!!', ['VIEW GUNS', 'VIEW DAMMAGE', 'NUMBER OF PIGS', 'RUN', 'FIGHT']), r = null;
@@ -578,7 +598,7 @@ body{touch-action:manipulation;}
       if (m === 2) { await disp('THERE ARE:', V.D + 1, 'PIGS STILL', 'CHASING YOU!'); await pause(); continue; }
       if (m === 3) {
         clr(); await disp('', '', '', '', '    RUNNING'); fx('run'); await sleep(900);
-        if (round(rnd()) === 0) { clr(); await disp('YOU LOST THEM IN', 'AN ALLEY!!'); fx('escape'); stats.escaped++; V.chase = 0; await pause(); return 'A'; }
+        if (round(rnd()) === 0) { clr(); await disp('YOU LOST THEM IN', 'AN ALLEY!!'); fx('escape'); stats.escaped++; if (enc()) enc().r = 'ran'; V.chase = 0; await pause(); return 'A'; }
         clr(); await disp("YOU CAN'T SHAKE", 'THEM!'); move('jolt'); await pause();
         r = await fired(); if (r) return r; continue;
       }
@@ -586,7 +606,7 @@ body{touch-action:manipulation;}
       clr(); fx('shoot'); await sleep(250);
       if (round(rnd()) === 0) { await disp('YOU MISSED!!!'); await pause(); }
       else {
-        await disp('YOU KILLED ONE!!'); fx('killone'); stats.killed++; await pause();
+        await disp('YOU KILLED ONE!!'); fx('killone'); stats.killed++; if (enc()) enc().k++; await pause();
         V.D--;
         if (V.D === -1) return killedAll();
       }
@@ -598,13 +618,14 @@ body{touch-action:manipulation;}
     var X = round(rnd());
     clr(); await disp("THEY'RE FIRING", 'AT YOU!!'); fx('incoming'); await sleep(700);
     if (X === 0) { await disp('THEY MISSED!!'); fx('miss'); await pause(); return null; }
-    await disp("YOU'VE BEEN HIT!"); V.J += 3; fx('hit'); await pause();
-    if (V.J >= 50) { await disp("YOU'VE BEEN ", 'KILLED!!'); fx('dead'); await pause(); stats.end = 'Shot by the cops on day ' + V.B; return 'C'; }
+    await disp("YOU'VE BEEN HIT!"); V.J += 3; fx('hit'); if (enc()) enc().h++; await pause();
+    if (V.J >= 50) { await disp("YOU'VE BEEN ", 'KILLED!!'); fx('dead'); if (enc()) enc().r = 'dead'; await pause(); stats.end = 'Shot by the cops on day ' + V.B; return 'C'; }
     return null;
   }
   async function killedAll() {
     clr(); await disp('YOU KILLED ALL', 'OF THEM!');
     var X = Math.floor(rnd() * 1250 + 750); V.Z += X;
+    if (enc()) { enc().r = 'won'; enc().$ = X; }
     fx('killall', X); await pause();
     await disp('YOU FOUND', X, 'DOLLARS ON', "OFFICER HARDASS'", 'CARCASS!!'); await pause();
     V.chase = 0;
@@ -641,7 +662,7 @@ body{touch-action:manipulation;}
       var G = await input(null);
       if (G > V.K || G < 0 || G > V.E || !whole(G)) { fx('nope'); continue; }
       V.Z -= F * G; V[HOLD[d]] += G; free();
-      if (G) { fx('buy', F * G); stats.bought += F * G; paper(); }
+      if (G) { fx('buy', F * G); stats.bought += F * G; story().cost[d] += F * G; paper(); }
       return 'A';
     }
   }
@@ -655,7 +676,7 @@ body{touch-action:manipulation;}
       var G = await input(null);
       if (G > V.E || G < 0 || !whole(G)) { fx('nope'); continue; }
       V[HOLD[d]] -= G; V.Z += F * G; free();
-      if (G) { fx('sell', F * G); stats.sold += F * G; paper(); }
+      if (G) { fx('sell', F * G); stats.sold += F * G; dealDone(d, G, F); paper(); }
       return 'A';
     }
   }
@@ -738,10 +759,16 @@ body{touch-action:manipulation;}
     if (stats.escaped) hl.push('Lost the cops ' + stats.escaped + (stats.escaped === 1 ? ' time' : ' times'));
     if (stats.mugged) hl.push('Mugged ' + stats.mugged + (stats.mugged === 1 ? ' time' : ' times'));
     hl.push('Bought ' + money(stats.bought) + ', sold ' + money(stats.sold));
+    dayLine();
+    var s = story();
     Kit.record(HKEY, {
       started: started, mode: 'TI-82', players: [{ name: who || 'You', score: Math.max(0, net) }], winner: net > 0 ? (who || 'You') : null,
       summary: 'Score ' + sc + ' of 100 · ' + money(net), badge: money(net), highlights: hl,
-      meta: { score: sc, net: net, cash: V.Z, bank: V.V, debt: V.Y, day: Math.min(30, V.B), end: stats.end }
+      meta: { score: sc, net: net, cash: V.Z, bank: V.V, debt: V.Y, day: Math.min(30, V.B), end: stats.end },
+      // the month for the history: each day ('day|place|cash|bank|debt|units|news|prices', base 36), the best sales, Officer Hardass
+      detail: { v: 1, sc: sc, net: net, z: V.Z, b: V.V, y: V.Y, day: Math.min(30, V.B), end: stats.end, i: V.I, t: V.T, j: V.J,
+        bo: stats.bought, so: stats.sold, kl: stats.killed, es: stats.escaped, mg: stats.mugged, ch: stats.chased, best: stats.best,
+        days: s.days.slice(-31), deals: s.deals.slice(0, 5), enc: s.enc.slice(-10).map(function (e) { return [e.d, e.l, e.n, e.k, e.h, e.r, e.$ || 0, e.c || 0].join('|'); }) }
     });
   }
   function money(n) { return (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-US'); }
@@ -792,6 +819,7 @@ body{touch-action:manipulation;}
   // ═══ Scratch paper: what you'd have written down in class ═════════════════════════════════════
   var notesEl = document.getElementById('notes');
   function logDay() {
+    dayLine();
     if (!V.B || V.B > 30) return;
     if (notes[0] && notes[0].d === V.B) { if (todayEv && !notes[0].e) notes[0].e = todayEv; return; }
     notes.unshift({ d: V.B, l: loc, p: PRICE.map(function (k) { return V[k]; }), e: todayEv, n: 1 });

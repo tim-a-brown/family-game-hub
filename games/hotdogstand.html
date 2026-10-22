@@ -1283,7 +1283,11 @@ body{overflow-x:hidden;}
         score: res.score, sport: !!TYPES[e.type].sport, foe: e.foe, left: res.left, cogs: cogs, outWhy: {}
       };
       res.events.forEach(function (x) { if (x.k === 'out') { rep.outs[x.it] = 1; rep.outWhy[x.it] = x.why; } });
-      S.log.push({ net: rep.net, revenue: rep.revenue, title: e.title, sold: res.sold, outs: rep.outs, date: e.date });
+      S.log.push({ net: rep.net, revenue: rep.revenue, title: e.title, sold: res.sold, outs: rep.outs, date: e.date,
+        // the day's ledger, for the season's history
+        type: e.type, cond: e.cond, temp: e.temp, crowd: e.crowd, fans: res.fans, served: res.served, cash: S.cash, spend: c.total,
+        prices: rep.prices, walks: res.walks, peakQ: res.peakQ, helpers: S.helpers, ad: S.ad, spoiled: spoiled.dog + spoiled.bun,
+        score: TYPES[e.type].sport && res.score && res.score.length ? res.score.join('-') : '', news: e.news ? e.news.k : '' });
       S.last = rep;
       SELL.forEach(function (k) { S.tot.sold[k] += res.sold[k]; });
       S.tot.revenue += res.revenue; S.tot.fans += res.fans; S.tot.walks += res.walks.price + res.walks.line + res.walks.out;
@@ -1703,8 +1707,23 @@ body{overflow-x:hidden;}
       started: S.started, mode: M.name, players: [{ name: Kit.player() || 'You', score: Math.round(S.cash / 100) }], winner: won ? (Kit.player() || 'You') : null,
       summary: (won ? 'Reached the goal · ' : done ? 'Season over · ' : 'Stopped · ') + money(S.cash, true), badge: money(S.cash, true), highlights: hl,
       meta: { mode: S.mode, cash: S.cash, goal: M.goal, won: won, events: S.log.length },
-      detail: { log: S.log.map(function (l) { return { t: l.title, n: l.net, r: l.revenue }; }) }
+      detail: seasonFile(done)
     });
+  }
+  // The season for the history: start, goal and gear, then each event's ledger as one line
+  // 'title|type|weather|temp|crowd|fans|served|net|revenue|cash after|spent|dogs.sodas.chips.cocoa sold|their prices|walked: price.line.out|sold out (d s c k)|peak line|helpers|ad|spoiled|score|news|date'
+  function seasonFile(done) {
+    var keys = { dog: 'd', soda: 's', chips: 'c', cocoa: 'k' };
+    return {
+      v: 2, m: S.mode, g: MODES[S.mode].goal, c0: START_CASH, c: S.cash, n: S.sched.length, done: done ? 1 : 0, gear: Object.keys(S.owned).join(','),
+      ev: S.log.map(function (l) {
+        var w = l.walks || {}, p = l.prices || {};
+        return [l.title, l.type || '', l.cond || '', l.temp != null ? l.temp : '', l.crowd || '', l.fans || '', l.served || '', l.net, l.revenue, l.cash != null ? l.cash : '', l.spend || '',
+          SELL.map(function (k) { return (l.sold && l.sold[k]) || 0; }).join('.'), SELL.map(function (k) { return p[k] || 0; }).join('.'),
+          [w.price || 0, w.line || 0, w.out || 0].join('.'), Object.keys(l.outs || {}).map(function (k) { return keys[k] || ''; }).join(''),
+          l.peakQ || 0, l.helpers || 0, l.ad || 0, l.spoiled || 0, l.score || '', l.news || '', l.date ? Math.round(l.date / 864e5) : ''].join('|');
+      })
+    };
   }
   function showOver() {
     setScene(S.sched[S.sched.length - 1], false); drawStrip();
@@ -1728,7 +1747,7 @@ body{overflow-x:hidden;}
   document.addEventListener('visibilitychange', function () { if (document.hidden && D) { D.speed = D.speed; loopStop(); } else if (!document.hidden && D && !D.done) { loopStart(); D.last = performance.now(); } });
 
   // test hooks
-  window.__hd = { simulate: simulate, makeSeason: makeSeason, MODES: MODES, TYPES: TYPES, ITEMS: ITEMS, state: function () { return S; }, render: render, setState: function (s) { S = s; save(); render(false); }, money: money };
+  window.__hd = { simulate: simulate, makeSeason: makeSeason, MODES: MODES, TYPES: TYPES, ITEMS: ITEMS, state: function () { return S; }, render: render, endSeason: function () { endSeason(); }, setState: function (s) { S = s; save(); render(false); }, money: money };
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   S = load();
