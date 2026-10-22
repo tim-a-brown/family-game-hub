@@ -151,6 +151,10 @@
     '.dd-off b{color:#ffdf8a;}',
     '.dd-tag{font-size:.66rem;font-weight:900;letter-spacing:.06em;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.1);color:var(--text-2);}',
     '.dd-tag.deal{background:#22a55a;color:#fff;}.dd-tag.nd{background:#c2304b;color:#fff;}',
+    '.dd-step{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:14px;background:linear-gradient(180deg,#121a3c,#0a0f26);box-shadow:inset 0 0 0 1px rgba(255,210,120,.25);}',
+    '.dd-step.deal{box-shadow:inset 0 0 0 2px #4ade80;}.dd-step.ghost{opacity:.8;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);}.dd-step .dd-off{grid-column:auto;}',
+    '.dd-h{font-size:.74rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#ffdf8a;}',
+    '.dv-rb.gh{background:transparent;box-shadow:inset 0 0 0 1.5px #ffc93a;color:#ffdf8a;}.dv-key i.gh{background:transparent;box-shadow:inset 0 0 0 1.5px #ffc93a;}',
     /* Shell game */
     '.sg-run{display:flex;flex-wrap:wrap;gap:3px;}',
     '.sg-p{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:.62rem;font-weight:900;color:#fff;}',
@@ -667,7 +671,8 @@
       '<rect x="2" y="10" width="60" height="44" rx="6" fill="#c7ccd4" stroke="#7b838e" stroke-width="1.5"/><rect x="2" y="10" width="60" height="16" rx="6" fill="#eef0f3"/>' +
       '<rect x="16" y="22" width="32" height="22" rx="4" fill="#fffef6" stroke="#bdb59a"/><text x="32" y="34" text-anchor="middle" dominant-baseline="central" font-size="17" font-weight="900" fill="#111" font-family="system-ui">' + num + '</text></svg>';
   }
-  function moneyBoard(inPlay, mine) {
+  function moneyBoard(inPlay, mine, just) {
+    just = just || {};
     var W = 326, bw = 150, bh = 18, g = 3, pad = 8, H = pad * 2 + 13 * bh + 12 * g, id = 'dd' + (++uid);
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Money board">';
     s += '<defs><linearGradient id="' + id + 'l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7db7ff"/><stop offset=".45" stop-color="#2f78e6"/><stop offset="1" stop-color="#1c55b8"/></linearGradient>' +
@@ -675,8 +680,10 @@
     s += '<rect width="' + W + '" height="' + H + '" rx="12" fill="#0a0f26"/>';
     DV.forEach(function (v, k) {
       var col = k < 13 ? 0 : 1, row = k % 13, x = pad + col * (bw + 10), y = pad + row * (bh + g), live = inPlay[k], me = k === mine;
-      s += '<rect x="' + x + '" y="' + y + '" width="' + bw + '" height="' + bh + '" rx="4" fill="' + (live ? 'url(#' + id + (col ? 'h' : 'l') + ')' : 'rgba(255,255,255,.05)') + '"' + (me ? ' stroke="#fff" stroke-width="2.5"' : '') + '/>';
-      s += '<text x="' + (x + bw / 2) + '" y="' + (y + bh / 2 + 0.5) + '" text-anchor="middle" dominant-baseline="central" font-size="11.5" font-weight="900" fill="' + (live ? (col ? '#3b2500' : '#fff') : 'rgba(255,255,255,.25)') + '" font-family="system-ui"' + (live ? '' : ' text-decoration="line-through"') + '>' + cash(v) + '</text>';
+      var jt = just[k];
+      s += '<rect x="' + x + '" y="' + y + '" width="' + bw + '" height="' + bh + '" rx="4" fill="' + (live ? 'url(#' + id + (col ? 'h' : 'l') + ')' : jt ? 'rgba(239,68,68,.28)' : 'rgba(255,255,255,.05)') + '"' + (me ? ' stroke="#fff" stroke-width="2.5"' : jt ? ' stroke="#f87171" stroke-width="1.5"' : '') + '/>';
+      s += '<text x="' + (x + bw / 2) + '" y="' + (y + bh / 2 + 0.5) + '" text-anchor="middle" dominant-baseline="central" font-size="11.5" font-weight="900" fill="' + (live ? (col ? '#3b2500' : '#fff') : jt ? '#fecaca' : 'rgba(255,255,255,.25)') + '" font-family="system-ui"' + (live ? '' : ' text-decoration="line-through"') + '>' + cash(v) + '</text>';
+      if (jt) s += '<text x="' + (x + 8) + '" y="' + (y + bh / 2 + 0.5) + '" dominant-baseline="central" font-size="9" font-weight="900" fill="#fecaca" font-family="system-ui">#' + jt + '</text>';
     });
     return s + '</svg>';
   }
@@ -726,6 +733,7 @@
       if (best >= 0) line += mv >= offs[best] ? '<b class="dv-good">Beat the best offer (' + cash(offs[best]) + ') by ' + cash(mv - offs[best]) + '.</b>' : '<b class="dv-bad">The best offer was ' + cash(offs[best]) + ' in round ' + (best + 1) + '.</b>';
     }
     out.push(ui.el('div', { class: 'dd-verdict' }, [ui.el('div', { html: caseSvg(my + 1) }), ui.el('div', null, [ui.el('div', { class: 'big', text: big }), ui.el('p', { html: line })])]));
+    out.push(ui.stats([['Won', cash(won)], ['Case ' + (my + 1) + ' held', cash(mv)], ['Best offer', best >= 0 ? cash(offs[best]) : null, best >= 0 ? 'round ' + (best + 1) : ''], ['Cases opened', Math.min(opened.length, dealR >= 0 ? DCUM[dealR] : opened.length)]]));
     // offers vs what was left
     if (allOff.length) {
       out.push(ui.section("The Banker's offers", [ui.picture(offerChart(allOff.slice(0, 9), avgs.map(function (a, r) { return allOff[r] != null ? a : null; }), dealR, offs.length), { frame: 'dark', max: 420 }),
@@ -733,32 +741,37 @@
           ui.el('span', null, [ui.el('i', { style: { background: '#7db7ff' } }), ui.el('span', { text: 'Average left in play' })]),
           gh.length ? ui.el('span', null, [ui.el('i', { style: { background: 'transparent', border: '1.5px dashed #ffc93a', 'border-radius': '2px' } }), ui.el('span', { text: 'What it would have been' })]) : null])], { icon: 'chart' }));
     }
-    // round by round
-    var list = ui.el('div', { class: 'dd-rounds' }), prev = 0;
+    // round by round: tap one to see the board after it, the cases opened in it lit red
+    var steps = [], prev = 0;
     for (var rr = 0; rr < 9; rr++) {
       var ids = opened.slice(prev, DCUM[rr]); prev = DCUM[rr];
       if (!ids.length) break;
-      var ghost = dealR >= 0 && rr > dealR, o = allOff[rr], deal = rr === dealR;
-      var cs = ui.el('div', { class: 'dd-cs' }, ids.map(function (i) { var v = vals[i]; return ui.el('span', { class: 'dd-c ' + (v >= 100000 ? 'top' : v >= 1000 ? 'hi' : 'lo') }, [ui.el('i', { text: String(i + 1) }), ui.el('span', { text: fmtK(v) })]); }));
-      var offLine = o != null ? ui.el('div', { class: 'dd-off' }, [ui.el('span', { html: (ghost ? 'Would have offered ' : 'Offer ') + '<b>' + cash(o) + '</b>' }),
-        avgs[rr] != null ? ui.el('span', { text: Math.round(o / avgs[rr] * 100) + '% of the ' + fmtK(avgs[rr]) + ' average' }) : null,
-        ghost ? ui.el('span', { class: 'dd-tag', text: 'WHAT IF' }) : ui.el('span', { class: 'dd-tag ' + (deal ? 'deal' : 'nd'), text: deal ? 'DEAL' : 'NO DEAL' })]) : null;
-      list.appendChild(ui.el('div', { class: 'dd-r' + (ghost ? ' ghost' : '') + (deal ? ' deal' : '') }, [ui.el('b', { text: 'Round ' + (rr + 1) }), cs, offLine]));
+      steps.push({ r: rr, ids: ids, cut: DCUM[rr], o: allOff[rr], ghost: dealR >= 0 && rr > dealR, deal: rr === dealR });
     }
-    // the final two
-    if (opened.length >= 25) {
-      var other = opened[24];
-      list.appendChild(ui.el('div', { class: 'dd-r' }, [ui.el('b', { text: 'Final' }), ui.el('div', { class: 'dd-cs' }, [
-        ui.el('span', { class: 'dd-c ' + (vals[other] >= 1000 ? 'hi' : 'lo') }, [ui.el('i', { text: String(other + 1) }), ui.el('span', { text: fmtK(vals[other]) + (g.sw ? ' (first pick)' : ' (left on stage)') })]),
-        ui.el('span', { class: 'dd-c top' }, [ui.el('i', { text: String(my + 1) }), ui.el('span', { text: fmtK(mv) + ' (your case)' })])])]));
+    if (opened.length >= 25) steps.push({ fin: true, ids: [opened[24]], cut: 24 });
+    if (steps.length) {
+      var card = ui.el('div', { class: 'hv' }), start = steps.length - 1;
+      steps.forEach(function (st, k) { if (st.deal) start = k; });
+      var showStep = function (k) {
+        var st = steps[k], gone = {}, just = {};
+        opened.slice(0, st.cut).forEach(function (i) { gone[i] = 1; });
+        if (!st.fin) st.ids.forEach(function (i) { just[DV.indexOf(vals[i])] = i + 1; });
+        var inPlay = DV.map(function (v) { return !gone[vals.indexOf(v)]; });
+        var cs = ui.el('div', { class: 'dd-cs' }, st.ids.map(function (i) { var v = vals[i]; return ui.el('span', { class: 'dd-c ' + (v >= 100000 ? 'top' : v >= 1000 ? 'hi' : 'lo') }, [ui.el('i', { text: String(i + 1) }), ui.el('span', { text: fmtK(v) + (st.fin ? (g.sw ? ' (your first pick)' : ' (left on stage)') : '') })]); }));
+        if (st.fin) cs.appendChild(ui.el('span', { class: 'dd-c top' }, [ui.el('i', { text: String(my + 1) }), ui.el('span', { text: fmtK(mv) + ' (your case)' })]));
+        var head = st.fin ? 'The final two' : (st.ghost ? 'Round ' + (st.r + 1) + ' · what if' : 'Round ' + (st.r + 1)) + ' · opened ' + st.ids.length;
+        var offLine = st.o != null && !st.fin ? ui.el('div', { class: 'dd-off' }, [ui.el('span', { html: (st.ghost ? 'Would have offered ' : 'The Banker offered ') + '<b>' + cash(st.o) + '</b>' }),
+          avgs[st.r] != null ? ui.el('span', { text: Math.round(st.o / avgs[st.r] * 100) + '% of the ' + fmtK(avgs[st.r]) + ' average' }) : null,
+          st.ghost ? ui.el('span', { class: 'dd-tag', text: 'WHAT IF' }) : ui.el('span', { class: 'dd-tag ' + (st.deal ? 'deal' : 'nd'), text: st.deal ? 'DEAL' : 'NO DEAL' })]) : null;
+        card.innerHTML = '';
+        card.appendChild(ui.el('div', { class: 'dd-step' + (st.ghost ? ' ghost' : '') + (st.deal ? ' deal' : '') }, [ui.el('b', { class: 'dd-h', text: head }), cs,
+          ui.picture(moneyBoard(inPlay, DV.indexOf(mv), just), { max: 380 }), offLine]));
+      };
+      var items = steps.map(function (st) { return { c: st.fin ? 'big' : st.deal ? 'w' : st.ghost ? 'gh' : 'l', t: st.fin ? 'F' : String(st.r + 1), title: st.fin ? 'The final two' : 'Round ' + (st.r + 1) }; });
+      out.push(ui.section('Round by round · tap one', [roadStrip(ui, items, start, showStep), card,
+        dvKey(ui, [['l', 'No Deal'], ['w', 'Deal'], ['gh', 'what if'], ['big', 'the final two']]),
+        ui.el('p', { class: 'dv-note', text: 'Lit amounts were still in play. Red ones came out of the cases opened that round; the white outline is what your case held.' })], { icon: 'book' }));
     }
-    out.push(ui.section('Case by case', list, { icon: 'book' }));
-    // the money board at the moment of decision
-    var cut = dealR >= 0 ? DCUM[dealR] : Math.min(24, opened.length);
-    var gone2 = {}; opened.slice(0, cut).forEach(function (i) { gone2[i] = 1; });
-    var inPlay = DV.map(function (v) { var ci = vals.indexOf(v); return !gone2[ci]; });
-    out.push(ui.section(dealR >= 0 ? 'The board when you took the deal' : 'The board at the end', [ui.picture(moneyBoard(inPlay, DV.indexOf(mv)), { max: 380 }),
-      ui.el('p', { class: 'dv-note', text: 'Lit amounts were still in play. The white outline is what your case held.' })], { icon: 'coins' }));
     return multi ? ui.section(name + ' · ' + cash(won), out) : out;
   }
   R('dealornodeal', function (e, ui) {
