@@ -119,7 +119,30 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
 .key.seen{background:linear-gradient(180deg,#b8bcc8,#9a9eac);color:#3a3e5a;}
 .key.hot{outline:3px solid var(--amber);outline-offset:1px;}
 .cs-list{display:flex;flex-direction:column;gap:8px;min-height:0;overflow-y:auto;}
-.cs-back{min-height:44px;justify-content:center;}
+.cs-act > .cs-list{flex:1;}
+/* the command bar: four keys on a steel strip; the one you're on is pressed in and lit */
+.cs-tabs{flex:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:auto;padding:5px;border-radius:3px;background:#2a2d40;
+  box-shadow:inset 2px 2px 0 #14162a,inset -2px -2px 0 #4a4e66;}
+.cs-tabs .tab{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:54px;padding:6px 2px 5px;border:0;border-radius:3px;
+  cursor:pointer;color:#14162a;background:linear-gradient(180deg,#e4e7f0,#b8bcc8);box-shadow:inset 2px 2px 0 #fff,inset -2px -2px 0 #6a6e7c,0 2px 0 #0a0b16;}
+.cs-tabs .tab:active{transform:translateY(2px);box-shadow:inset 2px 2px 0 #6a6e7c,inset -2px -2px 0 #f4f6fc;}
+.cs-tabs .tab.on{background:linear-gradient(180deg,#ffd860,#e8a828);transform:translateY(2px);box-shadow:inset 2px 2px 0 #9a6410,inset -2px -2px 0 #fff2b0;cursor:default;}
+.cs-tabs .ti svg{width:22px;height:22px;display:block;shape-rendering:crispEdges;}
+.cs-tabs .tl{font:400 clamp(.4rem,2.05cqw,.52rem)/1 var(--px);letter-spacing:-.02em;white-space:nowrap;}
+.cs-act{container-type:inline-size;}
+/* a narrow side panel: two rows of two, icon beside the name */
+@container (max-width:340px){
+  .cs-tabs{grid-template-columns:1fr 1fr;}
+  .cs-tabs .tab{flex-direction:row;justify-content:flex-start;gap:7px;min-height:40px;padding:5px 8px;}
+  .cs-tabs .ti svg{width:18px;height:18px;}
+  .cs-tabs .tl{font-size:.44rem;}
+}
+.cs-tabs .pips{position:absolute;top:5px;right:5px;display:flex;gap:2px;}
+.cs-tabs .pips b{width:4px;height:4px;background:#8a8ea0;}
+.cs-tabs .pips b.on{background:#1a8a3a;}
+.cs-tabs .lamp{position:absolute;top:5px;right:5px;width:7px;height:7px;background:#e02a2a;box-shadow:0 0 6px #ff4a4a;animation:csLamp 1.2s steps(2) infinite;}
+@keyframes csLamp{50%{opacity:.35;}}
+@media (prefers-reduced-motion:reduce){ .cs-tabs .lamp{animation:none;} }
 .trait{display:flex;align-items:center;gap:8px;}
 .trait span{width:74px;flex:none;font:400 .55rem/1 var(--px);color:#1a1c2e;}
 .trait .key{flex:1;min-height:42px;justify-content:center;text-align:center;}
@@ -536,23 +559,44 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       [icon ? el('span', { html: pix(icon) }) : null, el('span', { class: 'lb' }, [document.createTextNode(label), sub ? el('small', { text: sub }) : null])]);
     return b;
   }
-  function panel(title, kids, list) {
-    $.act.innerHTML = '';
+  // tab: which of the four commands this screen belongs to; a screen with one shows the command bar under it
+  function panel(title, kids, list, tab) {
+    $.act.innerHTML = ''; curTab = tab || null; dosOpen = false;
     if (title) $.act.appendChild(el('h4', { text: title }));
     var box = el('div', { class: list ? 'cs-list' : 'cs-btns' }, kids);
-    $.act.appendChild(box); return box;
+    $.act.appendChild(box);
+    if (tab) $.act.appendChild(tabBar(tab));
+    return box;
   }
-  function menu() {
-    clearOv();
-    var p = place(C.at), cd = city(C.at);
-    panel(RANKS[C.rank][0] + ' ' + C.player, [
-      keyBtn('mag', 'Investigate', Object.keys(cd.seen).length + ' of 3 asked', investigateMenu),
-      keyBtn('plane', C.v === 'time' ? 'Time travel' : 'Depart', C.v === 'time' ? 'Chronoskimmer' : 'by plane', departMenu),
-      keyBtn('comp', 'Crime computer', C.warrant != null ? 'Warrant: ' + SUS[C.warrant].name : 'No warrant yet', computerMenu, C.warrant != null ? 'on' : ''),
-      keyBtn('folder', 'Dossiers', 'V.I.L.E. files, notes', dossierMenu)
-    ]);
+  // The command bar, always in view while you're on the case, like the four commands along the bottom of the 1985
+  // game: no menus to back out of. Investigate shows a pip per witness asked; the computer lights up with a warrant.
+  var curTab = null, dosOpen = false;
+  function tabBar(cur) {
+    var cd = city(C.at), asked = Object.keys(cd.seen).length;
+    var T = [['inv', 'mag', 'Investigate'], ['dep', 'plane', C.v === 'time' ? 'Travel' : 'Depart'], ['comp', 'comp', 'Computer'], ['dos', 'folder', 'Dossiers']];
+    return el('div', { class: 'cs-tabs', role: 'tablist' }, T.map(function (t) {
+      var pips = t[0] === 'inv' ? el('i', { class: 'pips' }, [0, 1, 2].map(function (j) { return el('b', { class: j < asked ? 'on' : '' }); })) :
+        t[0] === 'comp' && C.warrant != null ? el('i', { class: 'lamp' }) : null;
+      var b = el('button', { type: 'button', role: 'tab', 'aria-selected': t[0] === cur ? 'true' : 'false', class: 'tab' + (t[0] === cur ? ' on' : ''), onclick: function () {
+        if (busy || t[0] === cur) return; sfx('key'); Kit.haptic('light'); goTab(t[0]);
+      } }, [el('span', { class: 'ti', html: pix(t[1]) }), el('span', { class: 'tl', text: t[2] }), pips]);
+      return b;
+    }));
   }
-  function backKey(fn) { return keyBtn('back', 'Back', null, fn || function () { scenePic(); menu(); }, 'cs-back'); }
+  function goTab(k) {
+    if (k === 'inv') { scenePic(); say(esc(place(C.at).blurb)); if (typing) typing.skip(); investigateMenu(); }
+    else if (k === 'dep') departMenu();
+    else if (k === 'comp') computerMenu();
+    else dossierMenu();
+  }
+  // the bar's back button steps back inside the case first (a file to the notes, a command to Investigate),
+  // and only leaves the game from Investigate
+  function caseBack() {
+    if (!C || C.over || busy || !curTab || !document.querySelector('.cs-tabs')) return false;
+    if (curTab === 'dos' && dosOpen) { notes(); dosOpen = false; say('V.I.L.E. files and your case notes.', 'DOSSIERS'); if (typing) typing.skip(); return true; }
+    if (curTab !== 'inv') { sfx('key'); goTab('inv'); return true; }
+    return false;
+  }
   function clearOv() { $.ov.innerHTML = ''; }
   function scenePic(anim) {
     clearOv(); var p = place(C.at);
@@ -561,7 +605,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
 
   // ── Arriving ─────────────────────────────────────────────────────────────
   function arrive(quiet) {
-    var p = place(C.at); header(p); showTime(C.t); scenePic(quiet ? '' : 'wipe'); menu(); city(C.at); save();
+    var p = place(C.at); header(p); showTime(C.t); city(C.at); scenePic(quiet ? '' : 'wipe'); investigateMenu(); save();
     var lead = C.v === 'time' ? '' : '';
     return say(esc(p.blurb), null, '');
   }
@@ -572,7 +616,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
     panel('Where do you want to go?', cd.locs.map(function (l, i) {
       var seen = cd.seen[i];
       return keyBtn('door', L[l.t][0], seen ? 'Asked (1 hr to ask again)' : '+' + (Object.keys(cd.seen).length + 1) + ' hr', function () { investigate(i); }, seen ? 'seen' : '');
-    }).concat([backKey()]), true);
+    }), true, 'inv');
   }
   function investigate(li) {
     var cd = city(C.at), l = cd.locs[li], L = locSet(), seen = cd.seen[li];
@@ -686,7 +730,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       ['pointerleave', 'blur'].forEach(function (ev) { b.addEventListener(ev, function () { dots[id].classList.remove('hot'); }); });
       return b;
     });
-    panel(C.v === 'time' ? 'Set the Chronoskimmer' : 'Choose a flight', keys.concat([backKey()]), true);
+    panel(C.v === 'time' ? 'Set the Chronoskimmer' : 'Choose a flight', keys, true, 'dep');
   }
   function fly(id) {
     var from = place(C.at), to = place(id), hrs = flightHours(from, to);
@@ -719,7 +763,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       if (k === C.i + 1) C.i = k;
       if (k < 0) C.wrong++; else C.last = id;
       city(id); save();
-      return arrive().then(function () { return maybeSleep(); }).then(function () { busy = false; menu(); });
+      return arrive().then(function () { return maybeSleep(); }).then(function () { busy = false; investigateMenu(); });
     });
   }
 
@@ -743,7 +787,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       set(); return el('div', { class: 'trait' }, [el('span', { text: TRAIT_NAMES[k] }), b]);
     });
     var go = keyBtn('comp', 'Compute warrant', null, compute, 'go');
-    panel('Tap a trait to set it', rows.concat([go, backKey()]), true);
+    panel('Tap a trait to set it', rows.concat([go]), true, 'comp');
     draw();
     say('Set what witnesses told you. One match gets a warrant.', 'CRIME COMPUTER');
     function compute() {
@@ -754,6 +798,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
         if (m.length === 1) {
           snapIfChange(SUS.indexOf(m[0]));
           C.warrant = SUS.indexOf(m[0]); save(); draw();
+          var tb = $.act.querySelector('.cs-tabs'); if (tb) tb.replaceWith(tabBar('comp'));
           var w = el('div', { class: 'warrant' }, [el('b', { text: 'WARRANT FOR ARREST' }), el('div', { text: 'ACME Detective Agency' }), el('b', { text: m[0].name.toUpperCase() }), el('div', { class: 'stamp', text: 'ISSUED' })]);
           $.ov.appendChild(w); setTimeout(function () { sfx('warrant'); Kit.haptic('medium'); }, 650);
           say('Warrant issued for <em>' + esc(m[0].name) + '</em>. Now catch ' + (m[0].sex === 'Female' ? 'her' : 'him') + '!', 'CRIME COMPUTER');
@@ -768,11 +813,11 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
   // ── Dossiers and notes ──────────────────────────────────────────────────
   function dossierMenu() {
     var keys = SUS.map(function (s, i) { return keyBtn(null, s.name, s.sex, function () { dossier(i); }); });
-    panel('V.I.L.E. dossiers', [keyBtn('folder', 'Case notes', C.notes.length + ' statements', notes, 'go')].concat(keys, [backKey()]), true);
-    notes();
+    panel('V.I.L.E. dossiers', [keyBtn('folder', 'Case notes', C.notes.length + ' statements', function () { notes(); dosOpen = false; }, 'go')].concat(keys), true, 'dos');
+    notes(); say('V.I.L.E. files and your case notes.', 'DOSSIERS'); if (typing) typing.skip();
   }
   function dossier(i) {
-    var s = SUS[i]; clearOv();
+    var s = SUS[i]; clearOv(); dosOpen = true;
     var c = el('canvas', { width: 48, height: 56 }); A.portrait(c, s.look);
     var rows = ['sex', 'hair', 'hobby', 'feature', 'auto'].map(function (k) { return el('div', null, [el('span', { text: TRAIT_NAMES[k] + ': ' }), document.createTextNode(s[k])]); });
     $.ov.appendChild(el('div', { class: 'dossier' }, [c, el('div', { class: 'tx' }, [el('b', { text: s.name.toUpperCase() })].concat(rows, [el('p', { text: s.bio })]))]));
@@ -1024,6 +1069,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
       '<li>The 20th arrest is Carmen Sandiego herself. Each version keeps its own rank for each player.</li></ul>' +
       '<h3>Versions</h3><p>World, USA (all 50 states), Time (history, by Chronoskimmer), Europe, Asia, Africa and the Americas. Keep an atlas or encyclopedia handy, just like in 1985.</p>'
   });
+  Kit.onBack = caseBack;
   function careerSheet() {
     var name = C ? C.player : (Kit.player && Kit.player()) || '';
     var rows = ORDER.map(function (k) { var c = careerOf(name, k); return '<tr><td>' + V[k].name + '</td><td>' + RANKS[rankOf(c.solved)][0] + '</td><td style="text-align:right">' + c.solved + '</td><td style="text-align:right">' + (c.carmen ? 'Yes' : '') + '</td></tr>'; }).join('');
