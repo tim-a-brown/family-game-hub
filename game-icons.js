@@ -202,6 +202,11 @@ var GameIcon = (function () {
     },
     memorymatch: function (c) { return rect(1.5, 4, 10, 15, 2, c) + rect(12.5, 4, 10, 15, 2, W, ' stroke="' + K + '" stroke-width="1.6"') + txt('?', 11, W, 11.5, 6.5) + path('M17.5 7.5l1.2 2.4 2.6.4-1.9 1.8.4 2.6-2.3-1.2-2.3 1.2.4-2.6-1.9-1.8 2.6-.4z', Y); },
     mahjong: function () { return rect(6, 1.5, 15, 19, 2.5, '#d9cba6') + rect(3, 3.5, 15, 19, 2.5, CREAM, ' stroke="' + K + '" stroke-width="1.3"') + line('M8 8v10M10.5 8v10M13 8v10', G, 1.8) + line('M7 12.5h7.5', G, 1.2); },
+    carmen: function () {   // the red fedora and trench coat against a globe
+      return circ(17.5, 15.5, 6.5, B) + path('M13.5 12.6c1.8-.4 3 .6 2.6 2.2-.4 1.4.8 2.2 2.2 1.8 1.3-.4 2.4.6 2.2 2.2l-.8 1.6', 'none', ' stroke="' + G + '" stroke-width="2.2" stroke-linecap="round"') +
+        path('M2.5 24 5 13.6 9 11h5l3.6 2.6L20 24z', R) + path('M9 11l2.5 4.4L14 11z', '#8a1020') + rect(9.6, 6.6, 3.8, 4.6, .8, '#f0c09a') +
+        '<ellipse cx="11.5" cy="6.6" rx="8" ry="1.7" fill="' + R + '"/>' + path('M8 6.5c0-3.1 1.5-4.6 3.5-4.6s3.5 1.5 3.5 4.6z', R) + rect(8, 4.8, 7, 1.2, 0, '#2a0a0a');
+    },
     candymatch: function () {   // one wrapped peppermint: red and white pinwheel, clear twisted wrapper ends
       var sw = ''; for (var i = 0; i < 8; i++) sw += path('M12 12Q14.6 8.4 12 3.6A8.4 8.4 0 0 1 15.4 4.3Q16 8.6 12 12z', R, ' transform="rotate(' + (i * 45) + ' 12 12)"');
       var wr = ' fill-opacity=".9" stroke="#9fd0f2" stroke-width=".7" stroke-linejoin="round"';

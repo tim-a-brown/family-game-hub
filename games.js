@@ -165,6 +165,7 @@ var GAMES = [
   { id: 'paddleball',  name: 'Pong',         color: '#000', cat: 'arcade', min: 1, max: 2, tag: 'Classic two-paddle table tennis', play: 'paddleball' },
   { id: 'pinball',     name: 'Pinball',      color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Six 3D tables: flip, ramp, lock, multiball', play: 'pinball' },
   { id: 'minesweeper', name: 'Minesweeper',  color: '#64748b', cat: 'arcade', min: 1, max: 1, tag: 'Clear the field without a boom', play: 'minesweeper' },
+  { id: 'carmen',      name: 'Carmen Sandiego', color: '#c81e24', cat: 'arcade', min: 1, max: 1, tag: 'Track V.I.L.E. thieves around the world and through time', play: 'carmen' },
   { id: 'candymatch',  name: 'Candy Match',  color: '#ff4f9a', cat: 'arcade', min: 1, max: 1, tag: 'Swap candies, match three, beat the level', play: 'candymatch' },
 
   // ── Consoles: your own cartridges. The consoles' shelves have no tiles (Edit on the home screen opens them);
@@ -284,6 +285,10 @@ var HI_BOARDS = (function () {
   // Centipede: scores from the Centipede Chaos game go on their own board (hi_centipede_chaos). The earlier game's
   // board (hi_centipede) is retired: no longer shown anywhere, its stored data left as it was.
   add('centipede', 'centipede_chaos', { label: '', tab: 'Chaos', pin: 1 });
+  // Carmen Sandiego: best case score per version (rank, hours to spare, Carmen herself)
+  [['world', 'World'], ['usa', 'USA'], ['time', 'Time'], ['europe', 'Europe'], ['asia', 'Asia'], ['africa', 'Africa'], ['americas', 'Americas']].forEach(function (v) {
+    add('carmen', 'carmen_' + v[0], { label: v[1], tab: v[1], unit: 'points' });
+  });
   return b;
 })();
 function hiBoard(key) { return HI_BOARDS.hasOwnProperty(String(key)) ? HI_BOARDS[String(key)] : null; }
