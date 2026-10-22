@@ -181,6 +181,16 @@
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function key(c) { return c.r + c.s; }
+  // One hand for the history: bids, tricks, result per team, plus the score and bags after it, when spades
+  // broke, and (on this device) your 13 cards as dealt, as 2-letter codes ('Ts' for the 10 of spades)
+  function hxEntry(X, res, hand) {
+    var o = { b: X.bids.map(function (b, p) { return b === 0 ? (X.blind[p] ? 'B' : 'N') : b; }).join('.'), t: X.taken.join('.'), d: X.dealer,
+      r: res.map(function (r) { return r.set ? 's' : r.made ? 'm' : '-'; }).join('') + (res[0].penalty ? 'p' : '') + (res[1].penalty ? 'q' : ''),
+      s: X.scores.join('.'), g: X.bags.join('.') };
+    if (X.sb) o.sb = X.sb;
+    if (hand && hand.length) o.h = hand.map(function (k) { return String(k).replace(/^10/, 'T'); }).join('');
+    return o;
+  }
   function sortHand(h) { Cards.sort(h, { suits: ['s', 'h', 'c', 'd'] }); }
   function find(h, id) { for (var i = 0; i < h.length; i++) if (h[i].id === id) return i; return -1; }
   // Your hand on screen: suit groups or rank order (display only, state keeps suit order)
@@ -222,7 +232,7 @@
     d.forEach(function (c, i) { S.hands[i % 4].push(c); });
     S.hands.forEach(sortHand);
     S.bids = [null, null, null, null]; S.blind = [false, false, false, false];
-    S.taken = [0, 0, 0, 0]; S.trick = []; S.trickNo = 0; S.broken = false; S.gone = [];
+    S.taken = [0, 0, 0, 0]; S.trick = []; S.trickNo = 0; S.broken = false; S.gone = []; S.sb = 0;
     S.voids = [{}, {}, {}, {}];
     S.dtHand = S.hands[0].map(key);
     S.turn = (S.dealer + 1) % 4; S.leader = S.turn;
@@ -379,7 +389,7 @@
     S.hands[p].splice(i, 1);
     S.trick.push({ p: p, c: card });
     if (card.s === 's' && !S.broken) {
-      S.broken = true;
+      S.broken = true; S.sb = S.trickNo + 1;
       if (S.trick.length > 1) { flash('Spades are broken!'); Kit.sfx('bad'); }
     }
     Kit.sfx(card.s === 's' && S.trick.length > 1 && S.trick[0].c.s !== 's' ? 'chip' : 'flip');
@@ -459,8 +469,7 @@
       if (r.took === 13) S.highlights.push(nm + ' took all 13 tricks in hand ' + n);
     });
     S.rounds.push([res[0].pts, res[1].pts]);
-    (S.hx = S.hx || []).push({ b: S.bids.map(function (b, p) { return b === 0 ? (S.blind[p] ? 'B' : 'N') : b; }).join('.'), t: S.taken.join('.'), d: S.dealer,
-      r: res.map(function (r) { return r.set ? 's' : r.made ? 'm' : '-'; }).join('') + (res[0].penalty ? 'p' : '') + (res[1].penalty ? 'q' : '') });
+    (S.hx = S.hx || []).push(hxEntry(S, res, S.dtHand));
     S.last = { res: res.map(function (r) { return { bid: r.bid, took: r.took, pts: r.pts, bags: r.bags, penalty: r.penalty }; }), notes: notes };
     S.phase = 'handover';
     clearUndo(); save(); paintPlaques();
@@ -721,7 +730,7 @@
     d.forEach(function (c, i) { st.hands[i % 4].push(c); });
     st.hands.forEach(sortHand);
     st.bids = [null, null, null, null]; st.blind = [false, false, false, false];
-    st.taken = [0, 0, 0, 0]; st.trick = []; st.trickNo = 0; st.broken = false; st.gone = [];
+    st.taken = [0, 0, 0, 0]; st.trick = []; st.trickNo = 0; st.broken = false; st.gone = []; st.sb = 0;
     st.voids = [{}, {}, {}, {}];
     st.dt = st.hands.map(function (h) { return h.map(key); });
     st.turn = st.leader = (st.dealer + 1) % 4;
@@ -758,7 +767,7 @@
     if (st.trick.length && card.s !== st.trick[0].c.s) st.voids[p][st.trick[0].c.s] = 1;
     st.hands[p].splice(i, 1);
     st.trick.push({ p: p, c: card });
-    if (card.s === 's' && !st.broken) { st.broken = true; if (st.trick.length > 1) mv.broke = 1; }
+    if (card.s === 's' && !st.broken) { st.broken = true; st.sb = st.trickNo + 1; if (st.trick.length > 1) mv.broke = 1; }
     if (st.trick.length < 4) { st.turn = (p + 1) % 4; return mv; }
     var win = trickWinner(st.trick);
     st.taken[win.p]++; st.tricksAll[win.p]++;
@@ -784,8 +793,7 @@
       if (r.took === 13) st.highlights.push(nm + ' took all 13 tricks in hand ' + n);
     });
     st.rounds.push([res[0].pts, res[1].pts]);
-    (st.hx = st.hx || []).push({ b: st.bids.map(function (b, p) { return b === 0 ? (st.blind[p] ? 'B' : 'N') : b; }).join('.'), t: st.taken.join('.'), d: st.dealer,
-      r: res.map(function (r) { return r.set ? 's' : r.made ? 'm' : '-'; }).join('') + (res[0].penalty ? 'p' : '') + (res[1].penalty ? 'q' : '') });
+    (st.hx = st.hx || []).push(hxEntry(st, res, null));
     st.last = { round: n, bids: st.bids.slice(), blind: st.blind.slice(), taken: st.taken.slice(),
       res: res.map(function (r) { return { bid: r.bid, took: r.took, won: r.won, pts: r.pts, bags: r.bags, penalty: r.penalty, set: r.set, made: r.made, nils: r.nils }; }) };
     var hi = Math.max(st.scores[0], st.scores[1]);

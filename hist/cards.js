@@ -99,61 +99,189 @@
     '.hvc-hand .n{font-size:.72rem;font-weight:900;color:var(--text-3);min-width:22px;}'
   ].join(''));
 
-  // ── Hearts: who ate the Queen of Spades each hand, moons, and your last hand ──
+  // ── Shared: replay strip, seat plates, footer ──────────────────────────────
+  HistView.css('hv-cards-kit', [
+    '.hvc-road{display:flex;flex-wrap:wrap;gap:4px;}',
+    '.hvc-rb{appearance:none;border:0;cursor:pointer;min-width:27px;height:27px;padding:0 6px;border-radius:7px;font:inherit;font-size:.7rem;font-weight:900;color:#fff;',
+    'background:var(--rc,rgba(255,255,255,.14));box-shadow:inset 0 -2px 0 rgba(0,0,0,.28);font-variant-numeric:tabular-nums;}',
+    '.hvc-rb.dk{color:#1b1404;}.hvc-rb.on{outline:2.5px solid #fff;outline-offset:1.5px;}',
+    '.hvc-key{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:.72rem;font-weight:800;color:var(--text-3);}',
+    '.hvc-key span{display:inline-flex;align-items:center;gap:5px;}.hvc-key i{width:10px;height:10px;border-radius:3px;display:inline-block;}',
+    '.hvc-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.86rem;font-weight:800;color:rgba(255,255,255,.85);}',
+    '.hvc-head b{font-size:1rem;color:#fff;}',
+    '.hvc-tag{font-size:.74rem;font-weight:900;padding:3px 9px;border-radius:999px;background:rgba(0,0,0,.3);color:#fff;white-space:nowrap;}',
+    '.hvc-tag.good{background:rgba(74,222,128,.22);color:#86efac;}.hvc-tag.bad{background:rgba(248,113,113,.22);color:#fecaca;}.hvc-tag.big{background:#ffd166;color:#1b1404;}',
+    '.hvc-plates{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));gap:6px;}',
+    '.hvc-plate{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 3px 5px;border-radius:10px;background:rgba(0,0,0,.24);min-width:0;}',
+    '.hvc-plate small{font-size:.68rem;font-weight:800;color:rgba(255,255,255,.75);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    '.hvc-plate b{font-size:1.15rem;font-weight:900;line-height:1.15;color:#fff;font-variant-numeric:tabular-nums;}',
+    '.hvc-plate i{font-style:normal;font-size:.64rem;font-weight:800;color:rgba(255,255,255,.62);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}',
+    '.hvc-plate.bad{background:rgba(190,30,50,.42);}.hvc-plate.win b{color:#ffd166;}.hvc-plate.gold{background:rgba(255,209,102,.28);}.hvc-plate.good{background:rgba(34,165,90,.4);}',
+    '.hvc-plate .dot{width:8px;height:8px;border-radius:50%;background:var(--pc);margin-bottom:1px;}',
+    '.hvc-foot{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(255,209,102,.1);box-shadow:inset 0 0 0 1px rgba(255,209,102,.22);font-size:.86rem;font-weight:800;line-height:1.35;color:var(--text);}',
+    '.hvc-foot .ico{width:20px;height:20px;flex:none;color:#ffd166;}',
+    '.hvc-trick{display:flex;gap:6px;flex-wrap:wrap;}',
+    '.hvc-mini{font-size:.76rem;font-weight:800;color:rgba(255,255,255,.72);}'
+  ].join(''));
+  // a strip of squares, one per hand: items [{t, c (colour), dk (dark text), title}]; show(i) fills the panel
+  function road(items, start, show) {
+    var box = K().el('div', { class: 'hvc-road' }), btns = [];
+    items.forEach(function (it, i) {
+      var b = K().el('button', { type: 'button', class: 'hvc-rb' + (it.dk ? ' dk' : ''), style: it.c ? { '--rc': it.c } : null, text: it.t, title: it.title || '', 'aria-label': it.title || it.t,
+        onclick: function () { pick(i); } });
+      btns.push(b); box.appendChild(b);
+    });
+    function pick(i) { btns.forEach(function (b, j) { b.classList.toggle('on', i === j); b.setAttribute('aria-pressed', i === j ? 'true' : 'false'); }); show(i); }
+    if (items.length) pick(Math.max(0, Math.min(items.length - 1, start)));
+    return box;
+  }
+  function key(list) { return K().el('div', { class: 'hvc-key' }, list.filter(Boolean).map(function (x) { return K().el('span', null, [K().el('i', { style: { background: x[1] } }), document.createTextNode(x[0])]); })); }
+  // one plate per seat: [{n: name, v: big value, s: sub text, c: colour, cls}]
+  function plates(list) {
+    var box = K().el('div', { class: 'hvc-plates', style: { '--n': list.length } });
+    list.forEach(function (x) { box.appendChild(K().el('div', { class: 'hvc-plate' + (x.cls ? ' ' + x.cls : ''), style: x.c ? { '--pc': x.c } : null }, [x.c ? K().el('span', { class: 'dot' }) : null, K().el('small', { text: x.n }), K().el('b', { text: String(x.v) }), x.s ? K().el('i', { text: x.s }) : null, x.s2 ? K().el('i', { text: x.s2 }) : null])); });
+    return box;
+  }
+  function head(left, tag, tagCls) { return K().el('div', { class: 'hvc-head' }, [K().el('span', { html: left }), tag ? K().el('span', { class: 'hvc-tag' + (tagCls ? ' ' + tagCls : ''), text: tag }) : null]); }
+  // the plain-language line about what decided the game
+  function foot(text, icon) { return text ? K().el('div', { class: 'hvc-foot', html: K().icon(icon || 'flag') + '<span>' + K().esc(text) + '</span>' }) : null; }
+  // a played trick: cards with the player under each, the winner in gold
+  function trick(codes, leader, winner, nm, n, hl, w) {
+    var t = K().el('div', { class: 'hvc-trick' });
+    codes.forEach(function (c, i) { var p = (leader + i) % n; t.appendChild(K().el('div', { class: 'hvc-who' + (p === winner ? ' win' : '') }, [card(c, w || 40, hl && hl.indexOf(c) >= 0 ? 'hv-hl' : ''), K().el('small', { text: first(nm[p]) })])); });
+    return t;
+  }
+  function scoresOf(e) { return e.rounds && e.rounds.scores ? e.rounds.scores.map(function (r) { return Array.isArray(r) ? r : []; }) : []; }
+  function cum(sc, n) { var run = [], t = []; for (var i = 0; i < n; i++) t.push(0); sc.forEach(function (r) { for (var i = 0; i < n; i++) t[i] += Number(r[i]) || 0; run.push(t.slice()); }); return run; }
+  var SORD = { c: 0, d: 1, s: 2, h: 3 }, RORD = '2345678910JQKA';
+  function rIdx(r) { return r === '10' ? 8 : RORD.indexOf(r); }
+  function sortH(cs, ord) { ord = ord || SORD; return cs.slice().sort(function (a, b) { var x = parse(a), y = parse(b); if (!x || !y) return 0; return ord[x.s] - ord[y.s] || rIdx(x.r) - rIdx(y.r); }); }
+
+  // ── Hearts: every hand (who took the Queen, the moon, your cards and passes), and what decided it ──
+  var HDIR = { l: 'passed left', r: 'passed right', a: 'passed across', h: 'no passing' };
   R('hearts', function (e, ui) {
     var d = e.dt; if (!d) return null;
-    var nm = names(e), out = [];
-    if (d.qs) out.push(ui.section('Queen of Spades taken', ui.bars(nm.map(function (n, i) { return { label: n, value: d.qs[i] || 0, color: ui.color(i), text: String(d.qs[i] || 0) }; }))));
-    if (d.hx && d.hx.length) {
-      var DIR = { l: 'left', r: 'right', a: 'across', h: 'hold' };
-      out.push(ui.section('Hand by hand', ui.chips(d.hx.map(function (h, i) {
-        var who = h.m >= 0 ? nm[h.m] + ' shot the moon' : h.q >= 0 ? first(nm[h.q]) + ' got Q♠' : '';
-        return { t: 'H' + (i + 1) + ' · ' + who, c: ui.color(h.m >= 0 ? h.m : h.q), on: h.m >= 0 };
-      }))));
-    }
+    var nm = names(e), n = nm.length || 4, sc = scoresOf(e), tot = cum(sc, n), hx = d.hx || [], out = [];
     var moons = (d.moons || []).reduce(function (a, b) { return a + b; }, 0);
-    if (moons) out.push(ui.stats(nm.map(function (n, i) { return d.moons[i] ? [n, plural(d.moons[i], 'moon')] : null; })));
-    var kids = [];
-    if (d.hand && d.hand.length) kids.push(grp('Your cards, last hand', row(d.hand, { fan: true, w: 36, hl: d.pass ? d.pass.got : [] }), d.pass ? 'Ringed: the 3 cards passed to you' : 'No passing that hand'));
-    if (d.pass) kids.push(K().el('div', { class: 'hvc-pair' }, [grp('You passed', row(d.pass.out, { w: 34 })), grp('You got', row(d.pass.got, { w: 34 }))]));
-    if (d.q && d.q.c) {
-      var t = K().el('div', { class: 'hvc-row' });
-      d.q.c.forEach(function (c, i) {
-        var p = (d.q.l + i) % 4, w = K().el('div', { class: 'hvc-who' + (p === d.q.w ? ' win' : '') }, [card(c, 40, c === 'Qs' ? 'hv-hl' : ''), K().el('small', { text: first(nm[p]) })]);
-        t.appendChild(w);
-      });
-      kids.push(grp('The Queen of Spades trick', t, 'Trick ' + d.q.n + ', taken by ' + nm[d.q.w]));
+    var qsTop = d.qs ? d.qs.indexOf(Math.max.apply(null, d.qs)) : -1;
+    var clean = nm.map(function (x, i) { return sc.filter(function (r) { return r[i] === 0; }).length; });
+    var wi = e.winner ? nm.indexOf(e.winner) : -1;
+    out.push(ui.stats([['Hands', hx.length || sc.length || null, d.to ? 'played to ' + d.to : ''],
+      qsTop >= 0 && d.qs[qsTop] ? ['Most Q♠', d.qs[qsTop] + '×', first(nm[qsTop])] : null,
+      ['Moons shot', moons || 'None', moons ? nm.filter(function (x, i) { return d.moons[i]; }).map(first).join(', ') : '']]));
+    // every hand: a square in the colour of whoever got stuck with the Queen (gold: a moon)
+    if (hx.length) {
+      var panel = K().el('div', { class: 'hv' });
+      var show = function (i) {
+        var h = hx[i], r = sc[i] || [], kids = [], last = i === hx.length - 1;
+        var tk = h.k ? String(h.k).split('.').map(Number) : null;
+        kids.push(head('<b>Hand ' + (i + 1) + '</b> · ' + (HDIR[h.d] || ''), h.m >= 0 ? first(nm[h.m]) + ' shot the moon' : h.q >= 0 ? 'Q♠ went to ' + first(nm[h.q]) : null, h.m >= 0 ? 'big' : ''));
+        kids.push(plates(nm.map(function (x, p) {
+          return { n: first(x), v: r[p] != null ? (r[p] ? '+' + r[p] : '0') : '–', s: tk ? plural(tk[p], 'trick') : '', s2: tot[i] ? 'total ' + tot[i][p] : '', c: ui.color(p),
+            cls: h.m === p ? 'gold' : h.q === p && h.m < 0 ? 'bad' : r[p] === 0 ? 'win' : '' };
+        })));
+        var deal = h.h ? codes2(h.h) : null, po = h.po ? codes2(h.po) : null, pg = h.pg ? codes2(h.pg) : null;
+        // older records kept only the last hand (after passing)
+        if (!deal && last && d.hand && d.hand.length) { po = d.pass ? d.pass.out : null; pg = d.pass ? d.pass.got : null; deal = d.hand.filter(function (c) { return !pg || pg.indexOf(c) < 0; }).concat(po || []); }
+        if (deal && deal.length) {
+          kids.push(grp(first(nm[0]) + "'s cards as dealt", row(sortH(deal), { fan: true, w: 34, ov: -.52, dim: po || [] }), po ? 'Dimmed: the 3 passed away' : 'No passing this hand'));
+          if (pg && pg.length) kids.push(K().el('div', { class: 'hvc-pair' }, [grp('Passed', row(po, { w: 32 })), grp('Got', row(pg, { w: 32 }))]));
+        }
+        var qc = h.qc ? codes2(h.qc) : last && d.q && d.q.c && h.q === d.q.w ? d.q.c : null, ql = h.qc ? h.ql : d.q ? d.q.l : 0, qn = h.qc ? h.qn : d.q ? d.q.n : '';
+        if (qc && qc.length === 4 && h.q >= 0) kids.push(grp('The Queen of Spades trick', trick(qc, ql || 0, h.q, nm, n, ['Qs']), 'Trick ' + qn + ' · ' + nm[h.q] + ' took it'));
+        if (h.b) kids.push(K().el('div', { class: 'hvc-mini', text: h.b === 1 ? 'Hearts were broken on the first trick.' : 'Hearts were broken on trick ' + h.b + '.' }));
+        panel.innerHTML = ''; panel.appendChild(felt('hearts', kids));
+      };
+      var items = hx.map(function (h, i) { var w = h.m >= 0 ? h.m : h.q; return { t: String(i + 1), c: h.m >= 0 ? '#ffd166' : w >= 0 ? ui.color(w) : null, dk: h.m >= 0, title: 'Hand ' + (i + 1) + (h.m >= 0 ? ': ' + nm[h.m] + ' shot the moon' : h.q >= 0 ? ': Q♠ to ' + nm[h.q] : '') }; });
+      out.push(ui.section('Every hand · tap one', [road(items, hx.length - 1, show), panel,
+        key(nm.map(function (x, p) { return ['Q♠ to ' + first(x), ui.color(p)]; }).concat(moons ? [['Moon', '#ffd166']] : []))], { icon: 'cards' }));
     }
-    if (kids.length) out.push(ui.section('Last hand', felt('hearts', kids)));
+    // over the game
+    if (d.qs) {
+      var tw = nm.map(function () { return 0; }), any = false;
+      hx.forEach(function (h) { if (h.k) { any = true; String(h.k).split('.').forEach(function (v, p) { tw[p] += +v || 0; }); } });
+      out.push(ui.section('Over the game', ui.table([''].concat(nm.map(first)), [['Q♠ taken'].concat(d.qs), ['Moons'].concat(nm.map(function (x, p) { return (d.moons || [])[p] || 0; })),
+        ['Clean hands'].concat(clean), any ? ['Tricks won'].concat(tw) : null].filter(Boolean), { headColors: [null].concat(nm.map(function (x, p) { return ui.color(p); })) })));
+    }
+    out.push(foot(heartsWhy(nm, tot, d), 'flag'));
     return ui.wrap(out);
   });
+  function heartsWhy(nm, tot, d) {
+    if (!tot.length) return '';
+    var last = tot[tot.length - 1], to = d.to || 100, over = [];
+    last.forEach(function (v, p) { if (v >= to) over.push(p); });
+    var lo = Math.min.apply(null, last), win = [];
+    last.forEach(function (v, p) { if (v === lo) win.push(p); });
+    var hx = d.hx || [], lh = hx[hx.length - 1] || {};
+    var s = over.length ? over.map(function (p) { return first(nm[p]); }).join(' and ') + ' went past ' + to + ' in hand ' + tot.length : 'The game ended after hand ' + tot.length;
+    if (lh.m >= 0) s += ' when ' + first(nm[lh.m]) + ' shot the moon';
+    s += win.length > 1 ? ', leaving a tie at ' + lo + '.' : ', so ' + nm[win[0]] + ' won with the lowest score, ' + lo + '.';
+    return s;
+  }
 
-  // ── Spades: bids vs tricks for every player, every hand ──
+  // ── Spades: every hand (bids, tricks, made or set, your cards), bags and what decided it ──
+  var SPORD = { s: 0, h: 1, c: 2, d: 3 };
   R('spades', function (e, ui) {
     var d = e.dt; if (!d || !d.names) return null;
-    var nm = d.names, out = [];
-    if (d.hx && d.hx.length) {
-      var rows = d.hx.map(function (h, i) {
+    var nm = d.names, hx = d.hx || [], out = [], sc = scoresOf(e), tot = cum(sc, 2);
+    var teams = [first(nm[0]) + ' & ' + first(nm[2]), first(nm[1]) + ' & ' + first(nm[3])];
+    function bidTxt(b) { return b === 'B' ? 'Blind nil' : b === 'N' ? 'Nil' : 'Bid ' + b; }
+    var nilsMade = (d.nils || []).reduce(function (a, b) { return a + (b || 0); }, 0);
+    out.push(ui.stats([['Hands', hx.length || sc.length || null, d.to ? 'played to ' + d.to : ''],
+      d.sets ? ['Times set', d.sets[0] + ' – ' + d.sets[1], first(nm[0]) + "'s team first"] : null,
+      d.bags ? ['Bags left', d.bags[0] + ' – ' + d.bags[1], 'every 10 cost 100'] : null,
+      nilsMade ? ['Nils made', nilsMade, nm.filter(function (x, i) { return d.nils[i]; }).map(first).join(', ')] : null]));
+    if (hx.length) {
+      var panel = K().el('div', { class: 'hv' });
+      var show = function (i) {
+        var h = hx[i], b = String(h.b).split('.'), t = String(h.t).split('.').map(Number), r = String(h.r || ''), kids = [], pts = sc[i] || [];
+        var after = h.s ? String(h.s).split('.').map(Number) : tot[i] || [], bags = h.g ? String(h.g).split('.') : null;
+        var set = [0, 1].filter(function (tm) { return r.charAt(tm) === 's'; });
+        var tag = set.length === 2 ? 'Both teams set' : set.length ? teams[set[0]] + ' set' : 'Both made it';
+        kids.push(head('<b>Hand ' + (i + 1) + '</b>' + (h.d != null && nm[h.d] ? ' · ' + K().esc(first(nm[h.d])) + ' dealt' : ''), tag, set.length ? 'bad' : 'good'));
+        kids.push(plates([0, 1, 2, 3].map(function (p) {
+          var nil = b[p] === 'N' || b[p] === 'B', ok = nil ? t[p] === 0 : r.charAt(p % 2) === 'm';
+          return { n: first(nm[p]), v: t[p], s: 'took · ' + bidTxt(b[p]).toLowerCase(), s2: nil ? (ok ? 'nil made' : 'nil broken') : '', c: ui.color(p % 2), cls: nil ? (ok ? 'gold' : 'bad') : r.charAt(p % 2) === 's' ? 'bad' : '' };
+        })));
+        kids.push(plates([0, 1].map(function (tm) {
+          var bid = 0, took = 0; [tm, tm + 2].forEach(function (p) { if (b[p] !== 'N' && b[p] !== 'B') { bid += +b[p] || 0; took += t[p]; } });
+          var pen = r.indexOf(tm ? 'q' : 'p') >= 0;
+          return { n: teams[tm], v: pts[tm] != null ? (pts[tm] > 0 ? '+' : '') + pts[tm] : '–', s: 'bid ' + bid + ' · took ' + took + (pen ? ' · bag penalty' : ''), s2: 'score ' + (after[tm] != null ? after[tm] : '') + (bags ? ' · ' + plural(+bags[tm], 'bag') : ''),
+            c: ui.color(tm), cls: r.charAt(tm) === 's' ? 'bad' : r.charAt(tm) === 'm' ? 'good' : '' };
+        })));
+        var mine = h.h ? codes2(h.h) : i === hx.length - 1 && d.hand && d.hand.length ? d.hand : null;
+        if (mine) kids.push(grp(first(nm[0]) + "'s cards", row(sortH(mine, SPORD), { fan: true, w: 34, ov: -.52, cls: function (c) { var x = parse(c); return x && x.s === 's' ? '' : 'dim'; } }), 'Spades are bright' + (h.sb ? ' · spades broke on trick ' + h.sb : '')));
+        else if (h.sb) kids.push(K().el('div', { class: 'hvc-mini', text: 'Spades broke on trick ' + h.sb + '.' }));
+        panel.innerHTML = ''; panel.appendChild(felt('spades', kids));
+      };
+      var items = hx.map(function (h, i) {
+        var r = String(h.r || ''), b = String(h.b).split('.'), t = String(h.t).split('.').map(Number), nilOk = [0, 1, 2, 3].some(function (p) { return (b[p] === 'N' || b[p] === 'B') && t[p] === 0; });
+        var pts = sc[i] || [0, 0], w = pts[0] === pts[1] ? -1 : pts[0] > pts[1] ? 0 : 1;
+        return { t: String(i + 1), c: nilOk ? '#ffd166' : w >= 0 ? ui.color(w) : null, dk: nilOk, title: 'Hand ' + (i + 1) + (r.indexOf('s') >= 0 ? ': a team went set' : '') };
+      });
+      out.push(ui.section('Every hand · tap one', [road(items, hx.length - 1, show), panel,
+        key([['Hand to ' + teams[0], ui.color(0)], ['Hand to ' + teams[1], ui.color(1)], nilsMade ? ['Nil made', '#ffd166'] : null])], { icon: 'cards' }));
+      var rows = hx.map(function (h, i) {
         var b = String(h.b).split('.'), t = String(h.t).split('.').map(Number), r = String(h.r || '');
-        var cells = [0, 1, 2, 3].map(function (p) {
-          var bid = b[p], nil = bid === 'N' || bid === 'B', team = p % 2, ok = nil ? t[p] === 0 : r.charAt(team) === 'm';
-          return { t: (nil ? (bid === 'B' ? 'BN' : 'Nil') : bid) + ' / ' + t[p], c: nil ? (ok ? 'hi' : 'bad') : r.charAt(team) === 's' ? 'bad' : ok ? 'good' : '' };
-        });
-        return ['H' + (i + 1)].concat(cells);
+        return ['H' + (i + 1)].concat([0, 1, 2, 3].map(function (p) {
+          var bid = b[p], nil = bid === 'N' || bid === 'B', ok = nil ? t[p] === 0 : r.charAt(p % 2) === 'm';
+          return { t: (nil ? (bid === 'B' ? 'BN' : 'Nil') : bid) + ' / ' + t[p], c: nil ? (ok ? 'hi' : 'bad') : r.charAt(p % 2) === 's' ? 'bad' : ok ? 'good' : '' };
+        }));
       });
       out.push(ui.section('Bid / took, each hand', [ui.table([''].concat(nm.map(first)), rows, { headColors: [null, ui.color(0), ui.color(1), ui.color(0), ui.color(1)] }),
         ui.el('p', { class: 'hv-note', text: 'Green: team made its bid. Red: set. Gold: Nil made.' })]));
     }
-    var teams = [first(nm[0]) + ' & ' + first(nm[2]), first(nm[1]) + ' & ' + first(nm[3])];
-    var st = [];
-    if (d.bags) st.push(['Bags at the end', d.bags[0], d.bags[1]]);
-    if (d.sets) st.push(['Times set', d.sets[0], d.sets[1]]);
-    if (d.nils) st.push(['Nils made', (d.nils[0] || 0) + (d.nils[2] || 0), (d.nils[1] || 0) + (d.nils[3] || 0)]);
-    if (st.length) out.push(ui.table([''].concat(teams), st, { headColors: [null, ui.color(0), ui.color(1)] }));
     if (d.tricks) out.push(ui.section('Tricks over the game', ui.bars(nm.map(function (n, i) { return { label: n, value: d.tricks[i] || 0, color: ui.color(i % 2) }; }))));
-    var nils = (d.nils || []).map(function (n, i) { return n ? nm[i] + ' made Nil' + (n > 1 ? ' ×' + n : '') : null; }).filter(Boolean);
-    if (nils.length) out.push(ui.chips(nils.map(function (t) { return { t: t, on: true }; })));
-    if (d.hand && d.hand.length) out.push(ui.section('Your cards, last hand', felt('spades', [row(d.hand, { fan: true, w: 36 })])));
+    if (!hx.length && d.hand && d.hand.length) out.push(ui.section('Your cards, last hand', felt('spades', [row(d.hand, { fan: true, w: 36 })])));
+    var fin = (e.players || []).map(function (p) { return p.score; });
+    if (fin.length === 2 && fin[0] != null) {
+      var w = fin[0] > fin[1] ? 0 : 1, lh = hx[hx.length - 1], lr = lh ? String(lh.r || '') : '';
+      var why = teams[w] + ' won ' + fin[w] + ' to ' + fin[1 - w] + (hx.length ? ' after ' + plural(hx.length, 'hand') : '') + '.';
+      if (lr.charAt(1 - w) === 's') why += ' ' + teams[1 - w] + ' went set in the last hand.';
+      else if (d.sets && d.sets[1 - w] > d.sets[w]) why += ' ' + teams[1 - w] + ' went set ' + plural(d.sets[1 - w], 'time') + '.';
+      else if (d.bags && lr.indexOf(w ? 'p' : 'q') >= 0) why += ' A bag penalty cost ' + teams[1 - w] + ' 100.';
+      out.push(foot(why, 'flag'));
+    }
     return ui.wrap(out);
   });
   HistView.css('hv-cards-note', '.hv-note{margin:0;font-size:.76rem;color:var(--text-3);font-weight:700;}');

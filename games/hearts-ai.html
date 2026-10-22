@@ -161,6 +161,7 @@
     d.forEach(function (c, i) { S.hands[i % 4].push(c); });
     S.hands.forEach(sortHand);
     S.taken = [0, 0, 0, 0]; S.tookQS = -1; S.trick = []; S.trickNo = 0; S.broken = false; S.received = [];
+    S.tw = [0, 0, 0, 0]; S.hb = 0; S.dtDeal = cs(S.hands[0].map(cc));   // for the history: tricks won, when hearts broke, your dealt hand
     S.passDir = PASS[(S.round - 1) % 4];
     S.passSel = [];
     if (S.passDir === 'hold') startPlay();
@@ -197,6 +198,18 @@
     startPlay();
   }
   function cc(c) { return c.r + c.s; }
+  // One hand for the history: pass direction, who took Q♠, moon, tricks each, when hearts broke, the Q♠ trick,
+  // and (on this device) your 13 cards as dealt with the 3 you passed and the 3 you got. Strings, so it stays small.
+  function hxEntry(X, moon, deal, pass) {
+    var o = { d: X.passDir.charAt(0), q: X.tookQS, m: moon };
+    if (X.tw) o.k = X.tw.join('.');
+    if (X.hb) o.b = X.hb;
+    if (X.tookQS >= 0 && X.dtQ && X.dtQ.w === X.tookQS) { o.qc = cs(X.dtQ.c); o.ql = X.dtQ.l; o.qn = X.dtQ.n; }
+    if (deal) o.h = deal;
+    if (pass) { o.po = cs(pass.out); o.pg = cs(pass.got); }
+    return o;
+  }
+  function cs(list) { return list.map(function (x) { return String(x).replace(/^10/, 'T'); }).join(''); }   // 2 letters a card
   function startPlay() {
     S.phase = 'play';
     S.dtHand = S.hands[0].map(cc); if (S.passDir === 'hold') S.dtPass = null;
@@ -249,7 +262,7 @@
     var from = p === ME ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
     S.hands[p].splice(i, 1);
     S.trick.push({ p: p, c: card });
-    if (card.s === 'h' && !S.broken) { S.broken = true; if (S.trickNo > 0) flash('Hearts are broken!'); }
+    if (card.s === 'h' && !S.broken) { S.broken = true; S.hb = S.trickNo + 1; if (S.trickNo > 0) flash('Hearts are broken!'); }
     if (isQS(card)) Kit.sfx('bad'); else Kit.sfx('flip');
     var node = Cards.el(card, { cls: 'p-' + posOf(p) });
     trickEl.appendChild(node);
@@ -263,7 +276,7 @@
     var t = token;
     var led = S.trick[0].c.s, win = S.trick.filter(function (x) { return x.c.s === led; }).sort(function (a, b) { return RANK[b.c.r] - RANK[a.c.r]; })[0];
     var got = S.trick.reduce(function (a, x) { return a + pts(x.c); }, 0);
-    S.taken[win.p] += got;
+    S.taken[win.p] += got; if (S.tw) S.tw[win.p]++;
     if (S.trick.some(function (x) { return isQS(x.c); })) { S.tookQS = win.p; S.dtQ = { w: win.p, l: S.trick[0].p, c: S.trick.map(function (x) { return cc(x.c); }), n: S.trickNo + 1 }; }
     var winNode = trickEl.querySelector('[data-id="' + win.c.id + '"]'); if (winNode) winNode.classList.add('win');
     if (got) { seatSay(win.p, '+' + got); if (win.p === 0) Kit.haptic('error'); }
@@ -296,7 +309,7 @@
     if (S.tookQS >= 0 && moon < 0) S.qs[S.tookQS]++;
     hand.forEach(function (v, i) { S.players[i].total += v; });
     S.rounds.push(hand);
-    (S.hx = S.hx || []).push({ d: S.passDir.charAt(0), q: S.tookQS, m: moon });
+    (S.hx = S.hx || []).push(hxEntry(S, moon, S.dtDeal, S.passDir !== 'hold' && S.dtPass ? S.dtPass : null));
     S.phase = 'handover';
     clearUndo(); save();
     var over = S.players.some(function (p) { return p.total >= S.target; });
@@ -518,7 +531,7 @@
     st.hands = [[], [], [], []];
     d.forEach(function (c, i) { st.hands[i % 4].push(c); });
     st.hands.forEach(sortHand);
-    st.taken = [0, 0, 0, 0]; st.tookQS = -1; st.trick = []; st.trickNo = 0; st.broken = false; st.last = null;
+    st.taken = [0, 0, 0, 0]; st.tookQS = -1; st.trick = []; st.trickNo = 0; st.broken = false; st.last = null; st.tw = [0, 0, 0, 0]; st.hb = 0;
     st.passDir = PASS[(st.round - 1) % 4];
     st.pass = [null, null, null, null]; st.recv = [[], [], [], []];
     if (st.passDir === 'hold') netPlayStart(st); else { st.phase = 'pass'; st.turn = -1; }
@@ -549,11 +562,11 @@
     st.hands[seat].splice(find(st.hands[seat], id), 1);
     st.trick.push({ p: seat, c: card });
     var mv = { t: 'play', p: seat, c: card };
-    if (card.s === 'h' && !st.broken) { st.broken = true; if (st.trickNo > 0) mv.broke = 1; }
+    if (card.s === 'h' && !st.broken) { st.broken = true; st.hb = st.trickNo + 1; if (st.trickNo > 0) mv.broke = 1; }
     if (st.trick.length < 4) { st.turn = (seat + 1) % 4; return { state: st, mv: mv }; }
     var led = st.trick[0].c.s, win = st.trick.filter(function (x) { return x.c.s === led; }).sort(function (a, b) { return RANK[b.c.r] - RANK[a.c.r]; })[0];
     var got = st.trick.reduce(function (a, x) { return a + pts(x.c); }, 0);
-    st.taken[win.p] += got;
+    st.taken[win.p] += got; if (st.tw) st.tw[win.p]++;
     if (st.trick.some(function (x) { return isQS(x.c); })) { st.tookQS = win.p; st.dtQ = { w: win.p, l: st.trick[0].p, c: st.trick.map(function (x) { return cc(x.c); }), n: st.trickNo + 1 }; }
     st.last = { t: st.trick, w: win.p, got: got };
     st.trick = []; st.trickNo++; st.leader = win.p; st.turn = win.p;
@@ -571,7 +584,7 @@
     if (st.tookQS >= 0 && moon < 0) st.qs[st.tookQS]++;
     hand.forEach(function (v, i) { st.players[i].total += v; });
     st.rounds.push(hand);
-    st.hx.push({ d: st.passDir.charAt(0), q: st.tookQS, m: moon });
+    st.hx.push(hxEntry(st, moon, null, null));
     st.lastHand = { round: st.round, hand: hand, taken: st.taken.slice(), moon: moon, last: st.last, dir: st.passDir };
     if (st.players.some(function (p) { return p.total >= st.target; })) {
       st.phase = 'over'; st.turn = -1;
