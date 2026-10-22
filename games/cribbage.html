@@ -591,8 +591,22 @@
     save();
   }
   function endHand() {
+    hxPush(false);
     S.rounds.push(S.handPts.slice()); S.tr = (S.tr || '') + '|';
     deal();
+  }
+  // For the history: one hand's cards (2 letters each: 'Th' = 10♥) and how its points came
+  // (h: each hand's count, c: the crib, g: pegging and heels), x = the game ended during this hand
+  function hxPush(ended) {
+    if (!S.keep || !S.keep[0] || !S.keep[1]) return;
+    function cs(list) { return (list || []).map(function (c) { return (c.r === '10' ? 'T' : c.r) + c.s; }).join(''); }
+    var o = { d: S.dealer, h0: cs(S.keep[0]), h1: cs(S.keep[1]), cr: cs(S.crib), st: S.starter ? cs([S.starter]) : '' };
+    if (S.starter && !ended) {
+      var hs = [0, 1].map(function (p) { return scoreHand(S.keep[p], S.starter, false).total; }), cb = scoreHand(S.crib, S.starter, true).total;
+      o.h = hs.join('.'); o.c = cb;
+      o.g = [0, 1].map(function (p) { return Math.max(0, S.handPts[p] - hs[p] - (p === S.dealer ? cb : 0)); }).join('.');
+    } else { o.x = 1; o.p = S.handPts.join('.'); }
+    (S.hx = S.hx || []).push(o);
   }
   function animateShow(r) {
     var t = token, cardsBox = feltEl.querySelector('.showv .cards'), sayBox = feltEl.querySelector('.slip .say'), totEl = feltEl.querySelector('.slip .tot');
@@ -617,6 +631,7 @@
   // ── End of game ─────────────────────────────────────────────────────────
   function finish() {
     var w = S.winner, l = other(w), ls = S.score[l];
+    hxPush(true);
     if (S.handPts[0] || S.handPts[1]) S.rounds.push(S.handPts.slice());
     S.handPts = [0, 0];
     var skunk = ls < 61 ? 2 : ls < 91 ? 1 : 0;
@@ -641,7 +656,7 @@
       rounds: { labels: rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: rounds },
       highlights: hl.slice(0, 5).concat([rounds.length + (rounds.length === 1 ? ' hand' : ' hands') + ' played']),
       badge: skunk ? (skunk === 2 ? 'Double skunk' : 'Skunk') : '',
-      detail: { tr: (S.tr || '').slice(-1500), best: st.best, peg: st.peg, show: st.show, big: st.bigPeg, heels: st.heels, zero: st.nineteens, skunk: skunk,
+      detail: { tr: (S.tr || '').slice(-1500), hx: (S.hx || []).slice(-20), best: st.best, peg: st.peg, show: st.show, big: st.bigPeg, heels: st.heels, zero: st.nineteens, skunk: skunk,
         last: S.keep && S.keep[0] ? { d: S.dealer, h0: S.keep[0].map(function (c) { return c.r + c.s; }), h1: (S.keep[1] || []).map(function (c) { return c.r + c.s; }),
           cr: (S.crib || []).map(function (c) { return c.r + c.s; }), st: S.starter ? S.starter.r + S.starter.s : '', n: S.hand } : null }
     });

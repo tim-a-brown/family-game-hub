@@ -254,6 +254,7 @@
     if (src.t === 'waste' && dst.t === 'tab') addScore(5);
     if (src.t === 'found' && dst.t === 'tab') addScore(-15);
     lastMove = { ids: cards, t: Date.now() };
+    mvLog(cards[0] + (dst.t === 'found' ? 'ABCD'.charAt(dst.i) : String(dst.i)));
     return cards;
   }
   function doMove(src, dst) {
@@ -267,10 +268,10 @@
       snapshot(); begin();
       var n = Math.min(S.draw, S.stock.length);
       for (var i = 0; i < n; i++) S.waste.push(S.stock.pop());
-      S.fan = n; S.moves++; Kit.sfx('flip'); Kit.haptic('light');
+      S.fan = n; S.moves++; mvLog('D'); Kit.sfx('flip'); Kit.haptic('light');
     } else if (S.waste.length) {
       snapshot(); begin();
-      S.stock = S.waste.reverse(); S.waste = []; S.fan = 0; S.passes++; S.moves++;
+      S.stock = S.waste.reverse(); S.waste = []; S.fan = 0; S.passes++; S.moves++; mvLog('R');
       addScore(S.draw === 1 ? -100 : -20);
       Kit.sfx('whoosh'); Kit.haptic('medium');
     } else return;
@@ -302,6 +303,9 @@
   function homeCount() { return S.found.reduce(function (a, f) { return a + f.length; }, 0); }
   function pgMark() { S.pg = (S.pg || '') + PGA.charAt(homeCount()); }
   function pgOut() { var p = S.pg || '', o = ''; if (p.length <= 300) return p; for (var i = 0; i < 300; i++) o += p.charAt(Math.floor(i * (p.length - 1) / 299)); return o; }
+  // History replay: every move in order, as played (undone moves drop out with the snapshot):
+  // a card and where it went ('7h3' = 7♥ to column 4, 'AsA' = A♠ to the first foundation), 'D' = turn over, 'R' = deck back
+  function mvLog(m) { S.mv = (S.mv || '') + m; }
   function after() {
     pgMark();
     place(); updBar(); save();
@@ -406,7 +410,7 @@
         var d0 = null; try { d0 = JSON.parse(I); } catch (e) {}
         pgMark();
         return { tab: d0 ? d0.tab.map(function (p) { return p.join(''); }) : null, stock: d0 ? d0.stock.join('') : '', pg: pgOut(),
-          passes: S.passes, flips: S.flips, undos: S.undos, auto: S.finished || 0, draw: S.draw };
+          passes: S.passes, flips: S.flips, undos: S.undos, auto: S.finished || 0, draw: S.draw, mv: (S.mv || '').length <= 1800 ? S.mv || '' : '' };
       })()
     });
     clearSave(); updBar();

@@ -1030,7 +1030,8 @@
     var lv = {}; Object.keys(s.levels).forEach(function (k) { if (s.levels[k] > 1 && E.HMAP[k]) lv[E.HMAP[k].n] = s.levels[k]; });
     var pl = {}; Object.keys(s.plays).forEach(function (k) { if (E.HMAP[k]) pl[E.HMAP[k].n] = s.plays[k]; });
     return { won: !!won, ante: s.ante, bh: bh, jk: s.jokers.map(function (j) { return jo(j.k); }).filter(Boolean), bosses: st.bosses.slice(-12), lost: st.lostTo || null,
-      lv: lv, plays: pl, money: s.money, earned: st.earned || 0, deck: s.deck.length, diff: s.deckId };
+      lv: lv, plays: pl, money: s.money, earned: st.earned || 0, deck: s.deck.length, diff: s.deckId,
+      bl: (st.bl || []).slice(-30).map(function (x) { var a = String(x).split('|'); if (E.HMAP[a[5]]) a[5] = E.HMAP[a[5]].n; return a.join('|'); }) };
   }
   function record(won) {
     var s = S(), st = s.stats, labels = [], scores = [];

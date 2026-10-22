@@ -526,6 +526,7 @@
     S.rounds.push(scores); S.details.push(det);
     // for the history detail: the final table and each player's best hand (cards as short codes)
     S.fin = S.rows.map(function (r) { return r.map(code7).join(' '); });
+    (S.rr = S.rr || []).push(S.fin.slice());   // every round's cards, for the history
     if (!S.best) S.best = S.players.map(function () { return null; });
     scores.forEach(function (v, p) { if (v > 0 && (!S.best[p] || v > S.best[p].pts)) S.best[p] = { r: S.rounds.length, pts: v, c: S.fin[p] }; });
     S.rows.forEach(function (r) { r.forEach(function (c) { delete c.dup; S.discard.push(c); }); });
@@ -593,7 +594,7 @@
         var cnt = function (k, f) { return S.players.map(function (pl, p) { return S.ev.filter(function (e) { return e.k === k && (f ? e[f] : e.p) === p; }).length; }); };
         var ST = { Bust: 'b', 'Flip 7': '7', Frozen: 'f' };
         return {
-          target: S.target, fin: S.fin || [], best: (S.best || []).map(function (b) { return b || { r: 0, pts: 0, c: '' }; }),
+          target: S.target, fin: S.fin || [], rr: (S.rr || []).slice(-16).map(function (r) { return { c: r }; }), best: (S.best || []).map(function (b) { return b || { r: 0, pts: 0, c: '' }; }),
           st: S.details.map(function (d) { return d.map(function (x) { return ST[x] || 's'; }).join(''); }),
           bust: cnt('bust'), f7: cnt('f7'), frz: cnt('freeze', 'by'), sv: cnt('save')
         };

@@ -234,7 +234,7 @@
     var d = Cards.shuffle(deck());
     S.hands = [[], [], [], []];
     for (var i = 0; i < 40; i++) S.hands[i % 4].push(d[i]);
-    S.nest = d.slice(40);
+    S.nest = d.slice(40); S.dtNe = ids(S.nest);
     S.trump = null; S.bidder = -1; S.bid = 0; S.high = 0;
     S.bids = [null, null, null, null];              // null = not yet, 0 = passed, n = last bid
     S.taken = [[], []]; S.tricks = [0, 0, 0, 0]; S.trick = []; S.trickNo = 0; S.played = []; S.discards = [];
@@ -377,9 +377,12 @@
     var t = token;
     setTimeout(function () { if (t !== token) return; S.trump = col; startPlay(); }, 900);
   }
+  function ids(list) { return list.map(function (c) { return c.id; }).join('.'); }
   function startPlay() {
     S.phase = 'play';
     S.hands.forEach(sortHand);
+    // for the history: the bidder's 10 cards after the nest, and yours
+    S.dtBh = ids(S.hands[S.bidder]); S.dtYh = S.bidder !== 0 ? ids(S.hands[0]) : '';
     S.turn = (S.dealer + 1) % 4; S.leader = S.turn;
     Kit.callout(CNAME[S.trump] + ' is trump', CHEX[S.trump] === '#22202f' ? '#fff' : CHEX[S.trump]);
     Kit.sfx('good');
@@ -531,7 +534,10 @@
     }
     S.last = { bt: bt, cap: cap, delta: delta, made: made, bid: S.bid, bidder: S.bidder, trump: S.trump, nest: sumPts(S.discards) };
     // for the history detail: one short line per hand
-    (S.hlog = S.hlog || []).push({ b: S.bidder, bid: S.bid, t: S.trump, c0: cap[0], c1: cap[1], m: made ? 1 : 0, n: sumPts(S.discards), rk: S.rkBy == null ? -1 : S.rkBy });
+    var hl = { b: S.bidder, bid: S.bid, t: S.trump, c0: cap[0], c1: cap[1], m: made ? 1 : 0, n: sumPts(S.discards), rk: S.rkBy == null ? -1 : S.rkBy,
+      w: S.tricks.join('.'), s: S.scores.join('.'), bs: S.bids.map(function (b) { return b || 0; }).join('.'), lt: S.leader };
+    if (S.dtBh) { hl.bh = S.dtBh; hl.ne = S.dtNe || ''; hl.bu = ids(S.discards); if (S.dtYh) hl.yh = S.dtYh; }
+    (S.hlog = S.hlog || []).push(hl);
     S.rkBy = null;
     S.phase = 'handover';
     clearUndo(); save();

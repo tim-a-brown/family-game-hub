@@ -1752,7 +1752,7 @@
     S.bases = res.bases; S.outs = res.outs;
     S.bat[bt]++;
     var text = callPlay(o, res, bid, pid, fl);
-    S.tick = text; S.log.push({ i: S.inn, h: S.half, t: text, r: res.scored.length });
+    S.tick = text; S.log.push({ i: S.inn, h: S.half, t: text, r: res.scored.length, o: res.tag === 'dp' ? 'DP' : o, b: bid, ba: S.bases.map(function (x) { return x ? 1 : 0; }).join(''), ou: S.outs });
     if (o === 'HR') S.ev.push({ k: 'hr', id: bid, i: S.inn, n: res.scored.length, ft: fl.ft });
     if (res.tag === 'dp') S.ev.push({ k: 'dp', id: bid, i: S.inn });
   }
@@ -1933,7 +1933,7 @@
     S.fat[S.pi[ft]] = fat(S.pi[ft]) + 1; stat(S.pi[ft]).pc++;
     var text = res.safe ? oneOf([nm(runner) + ' steals ' + bname + '! Safe!', 'There goes ' + nm(runner) + '... safe at ' + bname + '!']) + (res.trail ? ' A double steal!' : '')
       : nm(runner) + ' tries for ' + bname + '... thrown out!';
-    S.tick = text; S.log.push({ i: S.inn, h: S.half, t: text, r: 0 }); S.pre = null;
+    S.tick = text; S.log.push({ i: S.inn, h: S.half, t: text, r: 0, o: res.safe ? 'SB' : 'CS' }); S.pre = null;
     if (cpu) Kit.toast(S.teams[batT()].name + ' sends the runner');
     finishPlay([]);
     busy = true; paint(); paintTick(true);
@@ -1959,7 +1959,7 @@
     var text = res.kind === 'hit' ? b + ' drops a perfect bunt and beats it out!' + (sq ? ' A run scores!' : '')
       : res.kind === 'sac' ? (sq ? 'Squeeze play! The run scores on ' + b + '’s bunt!' : b + ' lays down the sacrifice. Runners move up.')
       : b + '’s bunt is too hard. They get the lead runner!';
-    S.tick = text; S.log.push({ i: S.inn, h: S.half, t: text, r: sq });
+    S.tick = text; S.log.push({ i: S.inn, h: S.half, t: text, r: sq, o: res.kind === 'hit' ? 'BH' : res.kind === 'sac' ? 'SH' : 'BO', b: bid });
     S.pre = pre; S.preBy = bt;
     S.last = { o: res.kind === 'hit' ? 'S' : 'GB', u: null, d: null, runs: sq, bunt: true };
     if (cpu && !quiet) Kit.toast(S.teams[bt].name + ' calls for the bunt');
@@ -2206,7 +2206,22 @@
           p: Tm.used.slice(0, 6).map(function (id) { var x = S.st[id] || {}; return [cut(nm(id), 22), x.outs || 0, x.h || 0, x.r || 0, x.bb || 0, x.k || 0, x.hr || 0, x.pc || 0].join('|'); })
         };
       }),
-      plays: S.log.filter(function (x) { return x.r > 0; }).slice(-10).map(function (x) { return { i: x.i, h: x.h, r: x.r, t: cut(x.t, 90) }; })
+      plays: S.log.filter(function (x) { return x.r > 0; }).slice(-10).map(function (x) { return { i: x.i, h: x.h, r: x.r, t: cut(x.t, 90) }; }),
+      // every half-inning: each play's result in order ('S,K,HR'), the runs, and what the scoring plays were
+      hx: (function () {
+        var out = [], cur = null;
+        S.log.forEach(function (x) {
+          if (!cur || cur.i !== x.i || cur.h !== x.h) { cur = { i: x.i, h: x.h, o: [], r: 0, t: [] }; out.push(cur); }
+          if (x.o) cur.o.push(x.o + (x.r ? '+' + x.r : ''));
+          if (x.r) { cur.r += x.r; if (cur.t.length < (cur.r >= 3 ? 2 : 1)) cur.t.push(cut(x.t, 70)); }
+        });
+        return out.slice(-24).map(function (h) { return { i: h.i, h: h.h, o: h.o.join(','), r: h.r, t: h.t.join(' / ') }; });
+      })(),
+      // how it ended: the inning, outs, who was on base and the last play
+      end: (function () {
+        var L = S.log[S.log.length - 1], A = S.log.filter(function (x) { return x.ba != null; }).pop();
+        return { i: L ? L.i : S.inn, h: L ? L.h : S.half, o: A ? A.ou : S.outs, b: A ? A.ba : (S.bases || []).map(function (x) { return x ? 1 : 0; }).join(''), t: L ? cut(L.t, 110) : '' };
+      })()
     };
   }
   function rematch(ps) {

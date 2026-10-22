@@ -149,7 +149,7 @@
   function restart() {
     if (!S || S.won) return;
     token++; busy = false; snapshot();
-    S.cells = [null, null, null, null]; S.found = [[], [], [], []]; S.tab = msDeal(S.deal);
+    S.cells = [null, null, null, null]; S.found = [[], [], [], []]; S.tab = msDeal(S.deal); S.mv = '';
     Kit.sfx('whoosh'); Kit.toast('Back to the start of deal #' + S.deal);
     place(); updBar(); save();
   }
@@ -248,6 +248,7 @@
     else S.tab[dst.i] = S.tab[dst.i].concat(cards);
     S.maxCells = Math.max(S.maxCells, 4 - freeCells());
     lastMove = { ids: cards, t: Date.now() };
+    mvLog(cards[0], dst);
     return cards;
   }
   // A multi-card move is really a "supermove": the cards travel one at a
@@ -274,6 +275,7 @@
     for (j = 0; j < 4; j++) if (!S.cells[j]) C.push(j);
     for (j = 0; j < 8; j++) if (!S.tab[j].length && j !== dst.i && j !== src.i) E.push(j);
     var steps = plan(n, src.i, dst.i, C, E), cards = S.tab[src.i].slice(src.k);
+    mvLog(cards[0], dst);
     S.maxCells = Math.max(S.maxCells, 4 - freeCells());
     busy = true; var tk = ++token, k = 0, gap = steps.length > 8 ? 95 : 140;
     (function next() {
@@ -319,6 +321,9 @@
   function homeCount() { return S.found.reduce(function (a, f) { return a + f.length; }, 0); }
   function pgMark() { S.pg = (S.pg || '') + PGA.charAt(homeCount()); }
   function pgOut() { var p = S.pg || '', o = ''; if (p.length <= 300) return p; for (var i = 0; i < 300; i++) o += p.charAt(Math.floor(i * (p.length - 1) / 299)); return o; }
+  // History replay: every move in order, as played (undone moves drop out with the snapshot): the card picked up
+  // (the bottom of a run) and where it went: '0'-'7' a column, 'ABCD' a foundation, 'WXYZ' a free cell
+  function mvLog(c, dst) { S.mv = (S.mv || '') + c + (dst.t === 'found' ? 'ABCD' : dst.t === 'cell' ? 'WXYZ' : '01234567').charAt(dst.i); }
   function after() {
     pgMark();
     place(); updBar(); save();
@@ -414,7 +419,7 @@
       started: S.started, mode: 'Deal #' + S.deal, players: [{ name: 'You' }], winner: 'You',
       summary: 'Won in ' + fmt(S.time) + ' · ' + S.moves + ' moves', badge: S.moves + ' moves',
       highlights: hl.slice(0, 6), meta: { moves: S.moves, time: S.time, deal: S.deal },
-      detail: (function () { pgMark(); return { tab: msDeal(S.deal).map(function (p) { return p.join(''); }), pg: pgOut(), cells: S.maxCells, undos: S.undos, auto: S.finished || 0 }; })()
+      detail: (function () { pgMark(); return { tab: msDeal(S.deal).map(function (p) { return p.join(''); }), pg: pgOut(), cells: S.maxCells, undos: S.undos, auto: S.finished || 0, mv: (S.mv || '').length <= 1800 ? S.mv || '' : '' }; })()
     });
     clearSave(); updBar();
     var deal = S.deal;
