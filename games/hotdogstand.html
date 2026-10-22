@@ -39,6 +39,7 @@ body{overflow-x:hidden;}
 .dw-row[aria-checked="true"] .sw{background:#8fc597;}
 .dw-row[aria-checked="true"] .sw::after{transform:translateX(20px);}
 .dw-row.arrive{animation:dwArrive .7s var(--spring) both;}
+.dw-row.leave,.dw-row.leave ~ .dw-hide{transition:opacity .4s, transform .4s;opacity:0;transform:scale(.9);}
 @keyframes dwArrive{0%{transform:translateY(16px) scale(.92);opacity:0;}60%{box-shadow:0 0 0 6px rgba(143,197,151,.4);}100%{transform:none;opacity:1;}}
 .dw-hide{align-self:flex-start;border:0;background:none;color:var(--text-3);font-weight:800;font-size:.8rem;padding:4px 2px;cursor:pointer;text-decoration:underline;}
 .setup.dw-on .modes{opacity:.35;pointer-events:none;filter:grayscale(1);transition:opacity .3s,filter .3s;}
@@ -942,7 +943,17 @@ body{overflow-x:hidden;}
       Kit.sfx(taps >= NEED ? 'sparkle' : k >= 4 ? 'pop' : 'tap', 0.4 + k * 0.08); Kit.haptic(k >= 4 ? 'light' : 'tick');
       if (taps < NEED) return;
       taps = 0;
-      if (dwUnlocked()) { var r0 = box.querySelector('.dw-row'); if (r0) { r0.scrollIntoView({ behavior: 'smooth', block: 'center' }); r0.classList.remove('arrive'); void r0.offsetWidth; r0.classList.add('arrive'); } return; }
+      // already unlocked: the same 12 taps put it away again
+      if (dwUnlocked()) {
+        try { localStorage.removeItem(DWK); } catch (e) {}
+        dwOn = false;
+        ic.classList.remove('wob'); void ic.offsetWidth; ic.classList.add('spin');
+        Kit.haptic('medium'); Kit.sfx('whoosh');
+        var gone = box.querySelector('.dw-row'); if (gone) gone.classList.add('leave');
+        setTimeout(function () { Kit.callout('Drug Wars hidden', '#b9dfbd'); }, 450);
+        setTimeout(function () { paint(); }, 500);
+        return;
+      }
       try { localStorage.setItem(DWK, '1'); } catch (e) {}
       ic.classList.remove('wob'); void ic.offsetWidth; ic.classList.add('spin');
       Kit.haptic('success'); Kit.sfx('win');
