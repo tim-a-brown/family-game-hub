@@ -560,7 +560,7 @@ html[data-theme="light"] .cats .chip.on:not([style*="--cc"]),html[data-theme="pa
     menu: [
       { icon: 'check', label: 'Finish and save this talk', onClick: function () { endSession(false); } },
       { icon: 'shuffle', label: 'Shuffle the deck', onClick: function () { if (S) { snapshot(); buildDeck(); save(); render(); Kit.sfx('deal'); Kit.toast('Shuffled'); } } },
-      { icon: 'history', label: 'Past talks', onClick: function () { Kit.history(KEY, { title: 'Conversation Starters: past talks', extra: histExtra }); } }
+      { icon: 'history', label: 'Past talks', onClick: function () { Kit.history(KEY, { title: 'Conversation Starters: past talks', extra: function (e) { return window.HistView && HistView.has && HistView.has('conversation') ? null : histExtra(e); } }); } }
     ],
     rules:
       '<p class="goal">Draw a card, read the question out loud, and talk about it. There are no wrong answers.</p>' +
@@ -810,7 +810,7 @@ html[data-theme="light"] .cats .chip.on:not([style*="--cc"]),html[data-theme="pa
     S.cur = id; S.answerer = pickAnswerer();
     if (S.answerer != null) S.players[S.answerer].n++;
     else S.players.forEach(function (p) { p.n++; });
-    S.drawn.push({ id: id, who: S.answerer, star: isFav(BYID[id]) });
+    S.drawn.push({ id: id, who: S.answerer, star: isFav(BYID[id]), at: Date.now() });   // at: when it came up (history shows how long each talk ran)
     save();
     var old = cardEl;
     busy = true;
@@ -854,7 +854,13 @@ html[data-theme="light"] .cats .chip.on:not([style*="--cc"]),html[data-theme="pa
         summary: D.length + (D.length === 1 ? ' card' : ' cards') + ' talked about',
         badge: String(D.length),
         highlights: hl,
-        meta: { cards: D.slice(0, 60).map(function (d) { return { q: BYID[d.id].q, c: BYID[d.id].c, who: d.who != null && P[d.who] ? P[d.who].name : '', star: !!d.star }; }) }
+        meta: { cards: D.slice(0, 60).map(function (d, i) {
+          var o = { q: BYID[d.id].q, c: BYID[d.id].c, who: d.who != null && P[d.who] ? P[d.who].name : '', star: !!d.star };
+          // seconds on this card: until the next one came up (the last one: until the talk was saved)
+          var end = D[i + 1] ? D[i + 1].at : Date.now();
+          if (d.at && end && end > d.at) o.s = Math.min(3600, Math.round((end - d.at) / 1000));
+          return o;
+        }) }
       });
       var stars = D.filter(function (d) { return d.star; }).length;
       var again = { players: [], options: { timer: S.timer, depth: S.depth } };
