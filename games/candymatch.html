@@ -1734,6 +1734,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var w = res.kind ? COMBO_WORDS[res.kind] : res.step >= 3 ? STEP_WORDS[Math.min(STEP_WORDS.length - 1, res.step)] : '';
     if (w) { Kit.callout(w, res.kind ? '#ff8fc8' : res.step >= 5 ? '#7ef0ff' : '#ffd45a'); if (res.step >= 5 || res.kind === 'bb') Kit.haptic('heavy'); }
     scoreVis = G.score; shownIng = G.ingDone; vJelly = G.jelly.slice(); vFrost = G.frost.slice();
+    if (L) { L.sc = (L.sc || []).concat([G.score]); if (L.sc.length > 60) L.sc = L.sc.slice(-60); }   // for the history: the score after each move
     hudAll();
     checkEnd();
   }
@@ -1796,7 +1797,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var def = levelDef(n);
     // title: the level; tap it for the level picker
     Kit.titleSwitch((def.name || 'Level ' + n), function () { if (L && view === 'game' && state !== 'done') save(); showSetup(); }, 'Choose another level');
-    L = { n: n, def: def, mode: cfg.mode || 'level', who: cfg.who || 'Player', run: cfg.mode === 'run' ? (cfg.run || newRun()) : null, started: (saved && saved.started) || Date.now() };
+    L = { n: n, def: def, mode: cfg.mode || 'level', who: cfg.who || 'Player', run: cfg.mode === 'run' ? (cfg.run || newRun()) : null, started: (saved && saved.started) || Date.now(), sc: (saved && saved.sc) || [] };
     G = saved && saved.g ? CM.load(saved.g) : CM.create(def, (Date.now() ^ (n * 7919)) & 0x7fffffff);
     if (!CM.hasMove(G) && G.moves > 0) CM.shuffle(G);
     resetFx(); undoSnap = null; bestBase = -1;
@@ -1821,7 +1822,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
   function save() {
     if (!L) return;
-    var s = { v: 1, n: L.n, mode: L.mode, who: L.who, run: L.run, started: L.started, g: G ? CM.save(G) : null };
+    var s = { v: 1, n: L.n, mode: L.mode, who: L.who, run: L.run, started: L.started, g: G ? CM.save(G) : null, sc: L.sc || [] };
     try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
     Kit.resume.set((L.mode === 'run' ? 'Run · ' : '') + 'Level ' + L.n + ' · ' + G.moves + (G.moves === 1 ? ' move' : ' moves') + ' left', { keys: [SAVE] });
   }
@@ -1919,6 +1920,31 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function showHi() { ArcadeHi.show(KEY, 'Candy Match'); }
 
   // ═══ History ══════════════════════════════════════════════════════════════
+  // The board as it ended, one string per row: _ no square, f/F frosting, . empty, a-f candies by colour,
+  // g-l striped across, m-r striped down, s-x wrapped, B colour bomb, I/N cherry/nut; jelly as digits per row;
+  // the level's goal and star scores, and the score after each move
+  function boardDetail(g, n, sc) {
+    if (!g) return {};
+    var def = levelDef(n), rows = [], jel = [], anyJ = false;
+    for (var r = 0; r < g.R; r++) {
+      var row = '', jr = '';
+      for (var c = 0; c < g.C; c++) {
+        var i = r * g.C + c, x = g.cell[i], ch;
+        if (!g.mask[i]) ch = '_';
+        else if (g.frost[i]) ch = g.frost[i] > 1 ? 'F' : 'f';
+        else if (!x) ch = '.';
+        else if (x.s === 'b') ch = 'B';
+        else if (x.s === 'i') ch = x.k ? 'N' : 'I';
+        else if (x.c >= 0 && x.c < 6) ch = String.fromCharCode((x.s === 'h' ? 103 : x.s === 'v' ? 109 : x.s === 'w' ? 115 : 97) + x.c);
+        else ch = '.';
+        row += ch; jr += g.jelly[i] || 0; if (g.jelly[i]) anyJ = true;
+      }
+      rows.push(row); jel.push(jr);
+    }
+    var o = { bd: rows, gl: g.goal, tg: g.target || 0, ss: (def.stars || []).join(','), m0: g.moves0, ml: g.moves, sc: (sc || []).join(','), j0: g.jelly0 || 0, jn: CM.jellyLeft(g), it: g.ingTotal || 0, id: g.ingDone || 0, bn: n, bm: def.name, mu: g.stats ? g.stats.moves : null, fs: g.score };
+    if (anyJ || g.jelly0) o.bj = jel;
+    return o;
+  }
   function recordRun(s, reason, total) {
     var lv = s.run.levels, st = addStats(blankStats(), s.run.stats);
     if (s.g) addStats(st, s.g.stats);
@@ -1946,7 +1972,8 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       detail: {
         lv: lv.map(function (x) { return x.n + ':' + x.s + ':' + x.st + ':' + (x.won ? 1 : 0); }).join(','), end: reason, n: reached, st: stars,
         mb: st.made.b, mw: st.made.w, mh: st.made.h, cb: st.combos, cs: st.maxStep, jl: st.jellyCleared,
-        hr: total > 0 && (hiL.length < ArcadeHi.max || total > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= total; }).length + 1 : 0
+        hr: total > 0 && (hiL.length < ArcadeHi.max || total > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= total; }).length + 1 : 0,
+        b: s.g ? boardDetail(CM.load(s.g), s.n, s.sc) : G && L && L.n === s.n ? boardDetail(G, s.n, L.sc) : null
       }
     });
   }
@@ -1966,7 +1993,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       summary: 'Level ' + L.n + (won ? ' cleared' : ' · out of moves') + ' · ' + fmt(G.score),
       badge: 'Lvl ' + L.n,
       meta: { score: G.score, level: L.n, levels: levels, stars: stars, result: won ? 'win' : 'loss', practice: 1 },
-      detail: { n: L.n, nm: L.def.name, won: won ? 1 : 0, st: stars, mv: st.moves, mb: st.made.b, cb: st.combos, cs: st.maxStep }
+      detail: { n: L.n, nm: L.def.name, won: won ? 1 : 0, st: stars, mv: st.moves, mb: st.made.b, cb: st.combos, cs: st.maxStep, mw: st.made.w, mh: st.made.h, jl: st.jellyCleared, b: boardDetail(G, L.n, L.sc) }
     });
   }
   // A run that's being given up still counts: it goes in history and on the high score board

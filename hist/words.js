@@ -6,6 +6,9 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function words(s) { return String(s || '').split(' ').filter(Boolean); }
   function up(s) { return String(s || '').toUpperCase(); }
+  // ids in a picture must be unique on the page (several records can be open at once)
+  var UQ = 0;
+  function uniq(svg) { var n = 'hw' + (++UQ) + '_'; return String(svg).replace(/id="([^"]+)"/g, 'id="' + n + '$1"').replace(/url\(#([^)]+)\)/g, 'url(#' + n + '$1)'); }
 
   HistView.css('hv-words',
     /* paper sheet (crossword, word search) */
@@ -240,7 +243,7 @@
       s += '<text x="' + (x + cs / 2) + '" y="' + (y + cs / 2 + 1) + '" text-anchor="middle" dominant-baseline="central" font-size="' + (qu ? 18 : 25) + '" font-weight="900" fill="#1b1a24" font-family="Arial Black,Helvetica Neue,sans-serif">' + esc(qu ? 'Qu' : ch) + '</text>';
     });
     if (path && path.length > 1) s += '<polyline points="' + path.map(function (i) { return cx(i) + ',' + cy(i); }).join(' ') + '" fill="none" stroke="rgba(255,120,0,.45)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>';
-    return s + '</svg>';
+    return uniq(s + '</svg>');
   }
   function bogglePath(board, word) {
     var n = Math.round(Math.sqrt(board.length)), w = up(word), best = null;

@@ -6,6 +6,10 @@
 
   // ── shared bits ──
   function f2(n) { return Math.round(n * 100) / 100; }
+  // gradients and clip paths need ids that are unique on the page (several records can be open, and a closed one
+  // hides its picture, which would take its gradients with it)
+  var UQ = 0;
+  function uniq(svg) { var n = 'hz' + (++UQ) + '_'; return String(svg).replace(/id="([^"]+)"/g, 'id="' + n + '$1"').replace(/url\(#([^)]+)\)/g, 'url(#' + n + '$1)'); }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many || one + 's'); }
   function sec(t) { t = Math.round(Number(t) || 0); var h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = ('0' + t % 60).slice(-2); return h ? h + ':' + ('0' + m).slice(-2) + ':' + s : m + ':' + s; }
   // A step-through slider: draw(n) paints frame n (0..max) into box and returns the caption
@@ -71,7 +75,7 @@
     var used = {}; marks.forEach(function (m) { used[m.k] = (used[m.k] || 0) + 1; });
     var key = ui.el('div', { class: 'hv-tlk' });
     Object.keys(EVK).forEach(function (k) { if (used[k]) key.appendChild(ui.el('span', { html: '<svg viewBox="-6 -6 12 14" width="12" height="13" aria-hidden="true">' + evMark(k, 0, 0, 3.6) + '</svg>' + ui.esc((o.names && o.names[k]) || EVK[k][1]) + (used[k] > 1 ? ' ×' + used[k] : '') })); });
-    return ui.el('div', { class: 'hv-tl' }, [ui.el('div', { class: 'hv-tlw', html: s }), key.children.length ? key : null]);
+    return ui.el('div', { class: 'hv-tl' }, [ui.el('div', { class: 'hv-tlw', html: uniq(s) }), key.children.length ? key : null]);
   }
   // Columns, one per question / word / riddle: list = [{v, c: colour, lab}], o: {unit:'s', avg:true}
   function columns(ui, list, o) {
@@ -118,7 +122,7 @@
       });
     }, Promise.resolve());
   }
-  HistView._pz = { evList: evList, howItWent: howItWent, columns: columns, strip: strip, whenShown: whenShown, sec: sec };
+  HistView._pz = { uniq: uniq, evList: evList, howItWent: howItWent, columns: columns, strip: strip, whenShown: whenShown, sec: sec };
   HistView.css('hv-puzzle', [
     '.hv-replay{display:flex;flex-direction:column;gap:6px;}.hv-range{width:100%;accent-color:var(--yellow);}.hv-replay b{font-size:.85rem;color:var(--text-2);}',
     '.hv-pz-note{margin:0;font-size:.8rem;color:var(--text-3);font-weight:700;text-align:center;}',
@@ -177,7 +181,7 @@
       s += '<text x="' + (x + cs / 2) + '" y="' + (y + cs / 2 - 2) + '" text-anchor="middle" dominant-baseline="central" font-family="var(--display),ui-rounded,system-ui" font-weight="900" font-size="' + fs + '" fill="' + c[3] + '">' + v + '</text>';
     });
     s += '</svg>';
-    var out = [ui.section('Final board', ui.picture(s, { frame: 'wood', max: 300 }))];
+    var out = [ui.section('Final board', ui.picture(uniq(s), { frame: 'wood', max: 300 }))];
     out.push(ui.stats([['Score', ui.num(e.score)], ['Biggest tile', e.maxTile], ['Moves', ui.num(e.moves)], ['Undos', e.undos || 0], d.merge ? ['Biggest join', d.merge] : null]));
     // the climb: first time each tile from 32 up appeared
     var fk = Object.keys(d.first || {}).map(Number).filter(function (v) { return v >= 32; }).sort(function (a, b) { return a - b; });
@@ -225,7 +229,7 @@
     });
     (o.ring || []).forEach(function (i) { var h = geo.holes[i]; if (h) s += '<circle cx="' + f2(h.x) + '" cy="' + f2(h.y) + '" r=".5" fill="none" stroke="#fff6c8" stroke-width=".08"/>'; });
     if (o.path) { var a = geo.holes[o.path[0]], b = geo.holes[o.path[1]]; if (a && b) s += '<path d="M' + f2(a.x) + ' ' + f2(a.y) + 'L' + f2(b.x) + ' ' + f2(b.y) + '" stroke="#fff6c8" stroke-width=".07" stroke-dasharray=".14 .1" opacity=".8"/>'; }
-    return s + '</svg>';
+    return uniq(s + '</svg>');
   }
   R('marblesolitaire', function (e, ui) {
     var B = MS_BOARDS[e.board]; if (!B || typeof e.final !== 'string') return null;
@@ -553,6 +557,96 @@
     '.hv-cm small{font-size:.66rem;font-weight:900;color:#7a0f45;font-variant-numeric:tabular-nums;}',
     '.hv-cm span.no small{color:#5a4a60;}'
   ].join(''));
+  // the candies, drawn the way the game draws them: each colour its own shape, glossy, with stripes / wrappers
+  var CM_COL = [['#ff9aa3', '#e8233a', '#7d0a18'], ['#ffcf96', '#ff8414', '#9a3d00'], ['#fff6b8', '#ffcf14', '#a07000'], ['#aef7b9', '#2cc24e', '#0d6224'], ['#acd8ff', '#2386ff', '#0a3a8f'], ['#e4c0ff', '#a548ff', '#4f128c']];
+  function cmShape(c, R) {
+    if (c === 0) return '<ellipse rx="' + f2(R * .98) + '" ry="' + f2(R * .66) + '" transform="rotate(-35)"/>';
+    if (c === 1) return '<path d="M' + f2(-R * .9) + ' ' + f2(R * .12) + 'A' + f2(R * .9) + ' ' + f2(R * .9) + ' 0 0 1 ' + f2(R * .9) + ' ' + f2(R * .12) + 'L' + f2(R * .9) + ' ' + f2(R * .52) + 'Q' + f2(R * .9) + ' ' + f2(R * .82) + ' ' + f2(R * .6) + ' ' + f2(R * .82) + 'L' + f2(-R * .6) + ' ' + f2(R * .82) + 'Q' + f2(-R * .9) + ' ' + f2(R * .82) + ' ' + f2(-R * .9) + ' ' + f2(R * .52) + 'Z"/>';
+    if (c === 2) return '<path transform="rotate(-24)" d="M' + f2(-R * 1.02) + ' 0C' + f2(-R * .62) + ' ' + f2(-R * .86) + ' ' + f2(R * .62) + ' ' + f2(-R * .86) + ' ' + f2(R * 1.02) + ' 0C' + f2(R * .62) + ' ' + f2(R * .86) + ' ' + f2(-R * .62) + ' ' + f2(R * .86) + ' ' + f2(-R * 1.02) + ' 0Z"/>';
+    if (c === 3) return '<rect x="' + f2(-R * .8) + '" y="' + f2(-R * .8) + '" width="' + f2(R * 1.6) + '" height="' + f2(R * 1.6) + '" rx="' + f2(R * .4) + '"/>';
+    if (c === 4) return '<circle r="' + f2(R * .88) + '"/>';
+    var d = '', ro = R * 1.08, ri = R * .5;
+    for (var k = 0; k < 5; k++) { var a = -Math.PI / 2 + k * Math.PI * 2 / 5, ai = a + Math.PI / 5, ap = a - Math.PI / 5; d += (k ? '' : 'M' + f2(Math.cos(ap) * ri) + ' ' + f2(Math.sin(ap) * ri)) + 'Q' + f2(Math.cos(a) * ro) + ' ' + f2(Math.sin(a) * ro) + ' ' + f2(Math.cos(ai) * ri) + ' ' + f2(Math.sin(ai) * ri); }
+    return '<path d="' + d + 'Z"/>';
+  }
+  function cmDefs(R) {
+    var s = '<defs>';
+    CM_COL.forEach(function (c, i) {
+      s += '<radialGradient id="cmg' + i + '" cx=".34" cy=".3" r=".8"><stop offset="0" stop-color="' + c[0] + '"/><stop offset=".45" stop-color="' + c[1] + '"/><stop offset="1" stop-color="' + c[2] + '"/></radialGradient>';
+      s += '<clipPath id="cmk' + i + '">' + cmShape(i, R) + '</clipPath>';
+    });
+    s += '<radialGradient id="cmbomb" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#9a6040"/><stop offset=".5" stop-color="#5a3220"/><stop offset="1" stop-color="#24110a"/></radialGradient>';
+    s += '<radialGradient id="cmliner" cx=".5" cy=".42" r=".75"><stop offset="0" stop-color="#5a2f6e"/><stop offset=".65" stop-color="#3d1d4f"/><stop offset="1" stop-color="#2a1238"/></radialGradient>';
+    return s + '</defs>';
+  }
+  function cmCandy(ch, x, y, R) {
+    var s = '<g transform="translate(' + f2(x) + ' ' + f2(y) + ')">', code = ch.charCodeAt(0) - 97;
+    if (ch === 'B') {
+      s += '<circle r="' + f2(R * .9) + '" fill="url(#cmbomb)"/>';
+      for (var k = 0; k < 9; k++) { var a = k * 2.4, dd = R * .58 * Math.sqrt((k + .5) / 9); s += '<rect x="' + f2(Math.cos(a) * dd - R * .1) + '" y="' + f2(Math.sin(a) * dd - R * .04) + '" width="' + f2(R * .2) + '" height="' + f2(R * .08) + '" rx="' + f2(R * .04) + '" fill="' + CM_COL[k % 6][1] + '" transform="rotate(' + (k * 47) + ' ' + f2(Math.cos(a) * dd) + ' ' + f2(Math.sin(a) * dd) + ')"/>'; }
+    } else if (ch === 'I') {
+      s += '<path d="M' + f2(-R * .3) + ' ' + f2(-R * .1) + 'Q' + f2(-R * .1) + ' ' + f2(-R * .9) + ' ' + f2(R * .4) + ' ' + f2(-R * .9) + 'M' + f2(R * .35) + ' ' + f2(R * .05) + 'Q' + f2(R * .3) + ' ' + f2(-R * .5) + ' ' + f2(R * .4) + ' ' + f2(-R * .9) + '" stroke="#2f7a2a" stroke-width="' + f2(R * .12) + '" fill="none" stroke-linecap="round"/>';
+      s += '<circle cx="' + f2(-R * .35) + '" cy="' + f2(R * .3) + '" r="' + f2(R * .45) + '" fill="#d0142c"/><circle cx="' + f2(R * .38) + '" cy="' + f2(R * .42) + '" r="' + f2(R * .42) + '" fill="#e8233a"/>';
+    } else if (ch === 'N') {
+      s += '<ellipse cy="' + f2(R * .15) + '" rx="' + f2(R * .62) + '" ry="' + f2(R * .72) + '" fill="#b5783e"/><path d="M' + f2(-R * .7) + ' ' + f2(-R * .2) + 'Q0 ' + f2(-R * 1.05) + ' ' + f2(R * .7) + ' ' + f2(-R * .2) + 'Z" fill="#6b3f1d"/>';
+    } else if (code >= 0 && code < 24) {
+      var c = code % 6, sp = Math.floor(code / 6);
+      if (sp === 3) s += '<circle r="' + f2(R * 1.02) + '" fill="rgba(255,255,255,.22)" stroke="#fff" stroke-width="' + f2(R * .1) + '" stroke-dasharray="' + f2(R * .3) + ' ' + f2(R * .16) + '"/>';
+      s += '<g fill="url(#cmg' + c + ')">' + cmShape(c, R) + '</g>';
+      if (sp === 1 || sp === 2) {
+        s += '<g clip-path="url(#cmk' + c + ')" fill="#fff" opacity=".92">';
+        for (var b = -1; b <= 1; b++) s += sp === 1 ? '<rect x="' + f2(-R * 1.3) + '" y="' + f2(b * R * .42 - R * .1) + '" width="' + f2(R * 2.6) + '" height="' + f2(R * .2) + '"/>' : '<rect y="' + f2(-R * 1.3) + '" x="' + f2(b * R * .42 - R * .1) + '" height="' + f2(R * 2.6) + '" width="' + f2(R * .2) + '"/>';
+        s += '</g>';
+      }
+    } else return '';
+    s += '<ellipse cx="' + f2(-R * .3) + '" cy="' + f2(-R * .42) + '" rx="' + f2(R * .28) + '" ry="' + f2(R * .12) + '" transform="rotate(-30 ' + f2(-R * .3) + ' ' + f2(-R * .42) + ')" fill="#fff" opacity=".75"/>';
+    return s + '</g>';
+  }
+  function cmBoard(b) {
+    var rows = (b.bd || []).map(String), Rn = rows.length; if (!Rn) return null;
+    var Cn = rows[0].length, cs = 32, R = cs * .38, pad = 6, W = Cn * cs + pad * 2, H = Rn * cs + pad * 2, jel = (b.bj || []).map(String);
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="The board at the end">' + cmDefs(R);
+    var liner = '';
+    rows.forEach(function (row, r) { for (var c = 0; c < Cn; c++) if (row.charAt(c) !== '_') liner += 'M' + (pad + c * cs) + ' ' + (pad + r * cs) + 'h' + cs + 'v' + cs + 'h-' + cs + 'z'; });
+    s += '<path d="' + liner + '" fill="url(#cmliner)"/>';
+    rows.forEach(function (row, r) {
+      for (var c = 0; c < Cn; c++) {
+        var ch = row.charAt(c); if (ch === '_') continue;
+        var x = pad + c * cs, y = pad + r * cs, j = +(jel[r] || '').charAt(c) || 0;
+        s += '<rect x="' + f2(x + cs * .05) + '" y="' + f2(y + cs * .05) + '" width="' + f2(cs * .9) + '" height="' + f2(cs * .9) + '" rx="' + f2(cs * .2) + '" fill="rgba(255,255,255,' + ((r + c) % 2 ? .05 : .1) + ')"/>';
+        if (j) s += '<rect x="' + f2(x + cs * .07) + '" y="' + f2(y + cs * .07) + '" width="' + f2(cs * .86) + '" height="' + f2(cs * .86) + '" rx="' + f2(cs * .22) + '" fill="' + (j > 1 ? '#ff5fae' : '#ff9ccf') + '" opacity="' + (j > 1 ? .75 : .55) + '" stroke="#ffd0e8" stroke-width="1.2"/>';
+        if (ch === 'f' || ch === 'F') s += '<rect x="' + f2(x + cs * .06) + '" y="' + f2(y + cs * .06) + '" width="' + f2(cs * .88) + '" height="' + f2(cs * .88) + '" rx="' + f2(cs * .18) + '" fill="' + (ch === 'F' ? '#cfe6f7' : '#f4fbff') + '" stroke="#9ec3e0" stroke-width="1.2"/><path d="M' + f2(x + cs * .2) + ' ' + f2(y + cs * .3) + 'q' + f2(cs * .15) + ' ' + f2(-cs * .1) + ' ' + f2(cs * .3) + ' 0" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>' + (ch === 'F' ? '<path d="M' + f2(x + cs * .25) + ' ' + f2(y + cs * .62) + 'h' + f2(cs * .5) + '" stroke="#9ec3e0" stroke-width="1.4"/>' : '');
+        else if (ch !== '.') s += cmCandy(ch, x + cs / 2, y + cs / 2, R);
+      }
+    });
+    return uniq(s + '</svg>');
+  }
+  // the score after each move, with the star lines
+  function cmScore(ui, b) {
+    var v = String(b.sc || '').split(',').filter(function (x) { return x !== ''; }).map(Number); if (v.length < 2) return null;
+    var ss = String(b.ss || '').split(',').map(Number), fs = b.fs || v[v.length - 1];
+    var W = 320, H = 120, pl = 6, pr = 6, pt = 12, pb = 18, mx = Math.max.apply(null, v.concat(ss).concat([fs, 1])) * 1.05, n = Math.max(v.length, b.m0 || 0);
+    var x = function (i) { return pl + i * (W - pl - pr) / n; }, y = function (s2) { return pt + (1 - s2 / mx) * (H - pt - pb); };
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Score after each move">';
+    ss.forEach(function (t, i) {
+      if (!(t > 0)) return;
+      var yy = f2(y(t)), got = fs >= t;
+      s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + (got ? 'rgba(255,201,40,.55)' : 'rgba(255,255,255,.18)') + '" stroke-dasharray="4 4"/>';
+      for (var k = 0; k <= i; k++) s += '<path transform="translate(' + (pl + 2 + k * 11) + ' ' + (yy - 11) + ') scale(.42)" d="M12 2l3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21.1l1.4-7L2 9.3l7-.8z" fill="' + (got ? '#ffc928' : 'rgba(255,255,255,.25)') + '"/>';
+    });
+    var pts = [[x(0), y(0)]].concat(v.map(function (s2, i) { return [x(i + 1), y(s2)]; }));
+    s += '<polygon points="' + pts.map(function (p) { return f2(p[0]) + ',' + f2(p[1]); }).join(' ') + ' ' + f2(pts[pts.length - 1][0]) + ',' + (H - pb) + ' ' + f2(pl) + ',' + (H - pb) + '" fill="rgba(255,111,180,.22)"/>';
+    s += '<polyline points="' + pts.map(function (p) { return f2(p[0]) + ',' + f2(p[1]); }).join(' ') + '" fill="none" stroke="#ff6fb4" stroke-width="2.4" stroke-linejoin="round"/>';
+    // moves left over at the end went off as a bonus
+    var lp = pts[pts.length - 1];
+    if (fs > v[v.length - 1]) s += '<path d="M' + f2(lp[0]) + ' ' + f2(lp[1]) + 'L' + f2(x(n)) + ' ' + f2(y(fs)) + '" stroke="#ffd54a" stroke-width="2" stroke-dasharray="4 3" fill="none"/><circle cx="' + f2(x(n)) + '" cy="' + f2(y(fs)) + '" r="3.5" fill="#ffd54a"/><text x="' + f2(x(n) - 6) + '" y="' + f2(y(fs) + 14) + '" text-anchor="end" font-size="9.5" font-weight="800" fill="#ffd54a" font-family="system-ui,sans-serif">bonus +' + (fs - v[v.length - 1]).toLocaleString('en-US') + '</text>';
+    // the move that scored the most
+    var big = 0, bi = 0; v.forEach(function (s2, i) { var g = s2 - (i ? v[i - 1] : 0); if (g > big) { big = g; bi = i; } });
+    s += '<circle cx="' + f2(x(bi + 1)) + '" cy="' + f2(y(v[bi])) + '" r="4" fill="#ffd54a" stroke="#fff" stroke-width="1.4"/>';
+    s += '<text x="' + pl + '" y="' + (H - 4) + '" font-size="10" font-weight="800" fill="rgba(255,255,255,.55)" font-family="system-ui,sans-serif">Start</text>';
+    s += '<text x="' + (W - pr) + '" y="' + (H - 4) + '" text-anchor="end" font-size="10" font-weight="800" fill="rgba(255,255,255,.55)" font-family="system-ui,sans-serif">' + (b.m0 ? b.m0 + ' moves' : 'Move ' + v.length) + '</text></svg>';
+    return ui.el('div', { class: 'hv-tl' }, [ui.el('div', { class: 'hv-tlw', html: s }), ui.el('div', { class: 'hv-tlk', html: '<span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#ffd54a"></i>Biggest move: +' + ui.esc(big.toLocaleString('en-US')) + ' (move ' + (bi + 1) + ')</span>' })]);
+  }
   function candyStars(ui, n) { var b = ui.el('div', { class: 's' }); for (var k = 1; k <= 3; k++) { var x = ui.el('span', { html: ui.icon('star') }).firstChild; if (k <= n) x.classList.add('on'); b.appendChild(x); } return b; }
   R('candymatch', function (e, ui) {
     var d = e.dt; if (!d || (d.lv == null && d.n == null)) return null;
@@ -569,8 +663,18 @@
       out.push(ui.section('Level ' + d.n + (d.nm ? ' · ' + d.nm : '') + ' (practice)', path));
       out.push(ui.stats([['Moves used', d.mv], ['Stars', d.won ? d.st : null]]));
     }
-    out.push(ui.stats([['Color bombs', d.mb || null], ['Wrapped', d.mw || null], ['Striped', d.mh || null], ['Special combos', d.cb || null],
-      ['Biggest cascade', d.cs >= 2 ? d.cs + ' clears' : null], ['Jelly cleared', d.jl || null]]));
+    // the last level's board as it was left, its goal, and the score move by move
+    var b = d.b;
+    if (b && b.bd) {
+      var goal = b.gl === 'jelly' ? (b.jn ? b.jn + ' of ' + b.j0 + ' jelly left' : 'All jelly cleared') : b.gl === 'ingred' ? b.id + ' of ' + b.it + ' brought down' : 'Target ' + (b.tg || 0).toLocaleString('en-US');
+      var last = String(b.sc || '').split(',').filter(Boolean).pop();
+      out.push(ui.section('Level ' + b.bn + (b.bm ? ' · ' + b.bm : '') + ': the board at the end', [ui.picture(cmBoard(b), { frame: 'wood', max: 330 }),
+        ui.el('p', { class: 'hv-pz-note', text: goal + ' · ' + (b.mu != null ? b.mu : b.m0 - b.ml) + ' of ' + b.m0 + ' moves used · ' + (b.fs != null ? b.fs : +last || 0).toLocaleString('en-US') + ' points' })], { icon: 'tiles' }));
+      var ch = cmScore(ui, b); if (ch) out.push(ui.section('Score, move by move', ch, { icon: 'chart' }));
+    }
+    var sp = ui.stats([['Color bombs', d.mb || null], ['Wrapped', d.mw || null], ['Striped', d.mh || null], ['Special combos', d.cb || null],
+      ['Biggest cascade', d.cs >= 2 ? d.cs + ' clears' : null], ['Jelly cleared', d.jl || null]]);
+    if (sp) out.push(ui.section('Specials made', sp, { icon: 'sparkle' }));
     return ui.wrap(out);
   });
   // ── Riddles: each riddle of the round on a little stone, with its answer, stars and hints ──
