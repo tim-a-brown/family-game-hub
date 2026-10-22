@@ -831,7 +831,7 @@ body{overflow-x:hidden;}
       }
       c.ok = false; c.done = true; c.pts = 0; c.timeout = !!timedOut;
       fresh = 'bad';
-      S.log.push({ p: who, id: q.id, cat: q.cat, ok: false, pts: 0, round: round(), w: k >= 0 ? c.opts[k] : '' });
+      S.log.push({ p: who, id: q.id, cat: q.cat, ok: false, pts: 0, round: round(), w: k >= 0 ? c.opts[k] : '', t: S.timer ? spent : undefined });
       finishQuestion();
     }
   }
@@ -1113,6 +1113,7 @@ body{overflow-x:hidden;}
   }
   // For game history: every question, its right answer and who got it (trimmed to stay small)
   function cut(t, n) { t = String(t || ''); return t.length > n ? t.slice(0, n - 1) + '…' : t; }
+  // o: the other choices ('a|b|c'), dropped first when the record gets too big; pt: points; t: seconds taken
   function histDetail() {
     var cn = {}, room = S.log.length > 30 ? 60 : S.log.length > 15 ? 90 : 140;
     var qs = S.log.map(function (l) {
@@ -1121,9 +1122,12 @@ body{overflow-x:hidden;}
       var o = { q: cut(q.q, room), a: cut(q.c, room > 90 ? 80 : 40), k: l.cat, p: l.p, ok: l.ok ? 1 : 0 };
       if (l.w) o.w = cut(l.w, room > 90 ? 60 : 30);
       if (l.miss && l.miss.length) o.m = l.miss.join('');
-      if (l.t != null && l.ok && S.timer) o.t = Math.round(l.t * 10) / 10;
+      if (l.t != null && S.timer) o.t = Math.round(l.t * 10) / 10;
+      if (l.pts) o.pt = l.pts;
+      if (Array.isArray(q.w) && q.w.length) o.o = q.w.map(function (x) { return cut(String(x).replace(/\|/g, '/'), 34); }).join('|');
       return o;
     }).filter(Boolean);
+    if (JSON.stringify(qs).length > 5000) qs.forEach(function (o) { delete o.o; });
     while (qs.length > 1 && JSON.stringify(qs).length > 5000) qs.pop();
     return { qs: qs, n: S.log.length, cn: cn, cc: S.cats.reduce(function (o, c) { if (cn[c]) o[c] = CAT_COLOR[c] || ''; return o; }, {}), timer: S.timer || 0, buzz: S.mode === 'buzz' ? 1 : 0 };
   }
@@ -1784,8 +1788,10 @@ body{overflow-x:hidden;}
       var o = { q: cut(l.q, room), a: cut(l.a, room > 90 ? 80 : 40), k: l.cat, pp: P.map(function (p) { var r = l.r[p.pid]; return !r ? '-' : r[0] < 0 ? 'x' : String(r[2] + r[3]); }).join(',') };
       var r = meP && l.r[meP.pid];
       if (r && r[0] >= 0) { o.t = Math.round(r[1] / 100) / 10; if (r[0] !== l.k && l.o) o.w = cut(l.o[r[0]], 40); }
+      if (Array.isArray(l.o)) o.o = l.o.filter(function (x, i) { return i !== l.k; }).map(function (x) { return cut(String(x).replace(/\|/g, '/'), 34); }).join('|');
       return o;
     });
+    if (JSON.stringify(qs).length > 5000) qs.forEach(function (o) { delete o.o; });
     while (qs.length > 1 && JSON.stringify(qs).length > 5000) qs.pop();
     var top = n > 1 && P[0].score === P[1].score ? null : P[0].name;
     return Kit.record(KEY, {

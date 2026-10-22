@@ -464,7 +464,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     var dest = s.p >= 0 ? g.players[s.p].won : g.ghostWon;
     g.prompt.forEach(function (c) { dest.push(c); });
     g.subs.forEach(function (x) { x.c.forEach(function (c) { g.disc.push(c); }); });
-    g.log.push({ j: g.judge, pr: g.prompt.slice(), c: s.c.slice(), w: s.p, n: g.subs.length });
+    g.log.push({ j: g.judge, pr: g.prompt.slice(), c: s.c.slice(), w: s.p, n: g.subs.length, o: g.subs.filter(function (x) { return x !== s; }).map(function (x) { return { p: x.p, c: x.c.slice() }; }) });
     g.phase = 'result';
     if (dest.length >= g.target || g.pile.p.length < (g.rules.two ? 2 : 1)) g.final = true;
     return true;
@@ -1160,8 +1160,11 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     var sc = P.map(function (p) { return p.won.length; }), top = Math.max.apply(null, sc.concat([0]));
     var ghostWin = g.ghost && g.ghostWon.length >= g.target && g.ghostWon.length >= top;
     var winners = ghostWin ? [] : P.map(function (p, i) { return i; }).filter(function (i) { return sc[i] === top && top > 0; });
+    function said(list) { return list.map(function (c) { var x = raw(g.ansKind, c); return x.n || x.t; }).join(' / '); }
     var rounds = g.log.map(function (l) {
-      return { j: l.j, w: l.w, pr: l.pr.map(function (c) { var x = raw(g.prKind, c); return x.n || x.t; }).join(' + '), a: l.c.map(function (c) { var x = raw(g.ansKind, c); return x.n || x.t; }).join(' / ') };
+      var p0 = l.pr.length ? raw(g.prKind, l.pr[0]) : null;
+      return { j: l.j, w: l.w, pr: l.pr.map(function (c) { var x = raw(g.prKind, c); return x.n || x.t; }).join(' + '), a: said(l.c),
+        pd: p0 && p0.d ? String(p0.d) : '', o: (l.o || []).map(function (x) { return { p: x.p, a: said(x.c) }; }) };
     });
     return { players: P.map(function (p, i) { return { name: p.name, score: sc[i], cpu: p.cpu, color: p.color }; }), winners: winners, ghost: g.ghost ? g.ghostWon.length : -1, ghostWin: ghostWin,
       rounds: rounds, deck: g.deck, target: g.target, rules: g.rules, mode: g.mode, started: g.started, kinds: [g.prKind, g.ansKind] };
@@ -1176,10 +1179,19 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       if (S.ghost > 0) hl.push('The ghost took ' + S.ghost + (S.ghost === 1 ? ' card' : ' cards'));
     }
     if (S.ghostWin) hl.unshift('The ghost reached ' + S.target + ' first. Everyone lost!');
-    // the round-by-round detail (hist/party.js), kept small
-    var rs = S.rounds.slice(-40).map(function (r) { return { j: r.j, b: r.w, p: String(r.pr).slice(0, 90), w: String(r.a).slice(0, 110) }; });
-    var dt = { dk: S.deck, t: S.target, ru: ruleList(S.rules, S.deck).join(', '), gh: S.ghost, rs: rs };
-    while (JSON.stringify(dt).length > 5600 && dt.rs.length > 4) dt.rs.shift();
+    // the round-by-round detail (hist/party.js), kept small: each round's prompt (d: what the card says under it), the
+    // winning card, and the other cards played ('player:card' per line, -1 the ghost); kinds: k = [prompt, answer]
+    var rs = S.rounds.slice(-40).map(function (r) {
+      var o = { j: r.j, b: r.w, p: String(r.pr).slice(0, 90), w: String(r.a).slice(0, 110) };
+      if (r.pd) o.d = String(r.pd).slice(0, 60);
+      if (r.o && r.o.length) o.o = r.o.map(function (x) { return x.p + ':' + String(x.a).replace(/\n/g, ' ').slice(0, 70); }).join('\n');
+      return o;
+    });
+    var dt = { dk: S.deck, t: S.target, ru: ruleList(S.rules, S.deck).join(', '), gh: S.ghost, rs: rs, k: (S.kinds || []).join('') };
+    function big() { return JSON.stringify(dt).length > 5600; }
+    if (big()) dt.rs.forEach(function (r) { delete r.d; });
+    for (var k = 0; big() && k < dt.rs.length; k++) delete dt.rs[k].o;
+    while (big() && dt.rs.length > 4) dt.rs.shift();
     Kit.record(KEY, {
       started: S.started,
       mode: (MODE[S.mode] || '') + ' · first to ' + S.target,

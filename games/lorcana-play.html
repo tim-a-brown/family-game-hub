@@ -4759,6 +4759,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var p = S.P[pi]; p.hand.splice(p.hand.indexOf(u), 1); resetCard(u); C(u).ex = S.P[opp(pi)].board.some(function (x) { return !!staticOp(x, 'oppInkEx'); }); p.ink.push(u); p.inked = true;
       var Ti = TT(); Ti.handInk = Ti.handInk || [0, 0]; Ti.handInk[pi]++;
       S.st[pi].inked++; log(p.name + ' put ' + DD(u).full + ' into the inkwell', pi);   // the other player is shown the card as it's inked, so the log names it too
+      tkNote('ink');
     },
     play: function (pi, u, o) {
       o = o || {}; S.dropPaid = S.dropPaid || {}; S.dropPaid[u] = 0;
@@ -4810,7 +4811,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       }
       if (d.t === 'character' && S.nextPlay && S.nextPlay.pi === pi && S.nextPlay.turn === S.turn) { var npm = S.nextPlay; S.nextPlay = null; C(u).ex = true; var mu = untilFor(npm.dur, pi, u, u); mu.kw = npm.kw; mu.n = 0; C(u).mods.push(mu); }
       if (d.t === 'character' && C(u).ex && !o.shift) S.enteredEx = u;
-      S.st[pi].played++;
+      S.st[pi].played++; tkNote('pl', u);
       var T = TT(); T.played[pi]++; (T.pl = T.pl || []).push(u); if (d.t === 'action') T.action[pi]++; if (d.song) T.song[pi]++; if (d.t === 'character') { T.char[pi]++; T.cls[pi].push(u); T.big[pi] = Math.max(T.big[pi], d.c || 0); }
     },
     quest: function (pi, u) {
@@ -4819,7 +4820,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var n = LORE(u), st = S.st[pi];
       log(S.P[pi].name + ' quested with ' + nm(u) + ' for ' + n + ' lore', pi);
       gainLore(pi, n, { u: u, r: 'Quested' });
-      st.q++; st.ql += n; TT().quest[pi].push(u);
+      st.q++; st.ql += n; TT().quest[pi].push(u); tkNote('q', u + ':' + n);
       if (!st.big || n > st.big.n) st.big = { n: n, name: DD(u).full };
       return n;
     },
@@ -4838,7 +4839,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       clashAt = null;
       [a, t].forEach(function (u) { if (S.cards[u]) C(u).mods = (C(u).mods || []).filter(function (m) { return !m.chalOnly; }); });
       var out = checkBanish(), st = S.st[pi]; if (cbHit) { out.push(t); emit('banish', { u: t, chal: true }); }
-      st.chal++; TT().chal[pi]++; (TT().chd = TT().chd || []).push(t);
+      st.chal++; TT().chal[pi]++; (TT().chd = TT().chd || []).push(t); tkNote('ch', a + '>' + t);
       if (out.indexOf(t) >= 0) { st.ban++; st.kills.push(aw + ' banished ' + tn); }
       return { dt: dt, da: da, banished: out };
     },
@@ -4895,6 +4896,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     S.less = [];
     checkBanish();
     S.st[S.cur].turns++;
+    tkClose();
     S.cur = opp(S.cur); S.turn++; S.step = 'begin';
   }
   function winner() {
@@ -4943,6 +4945,22 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return (stx(u).cls || []).some(has);
   }
   // What has happened this turn (for "if … this turn" text)
+  // The game history's turn by turn (hist/lorcana.js): each turn's plays, quests and challenges as card uids, closed
+  // at the end of the turn with what was banished. Only read when the game is recorded; never by the rules.
+  function tkNote(k, v) {
+    if (!S || S.phase !== 'play' || !S.turn) return;
+    var c = S.tkc; if (!c || c.t !== S.turn) c = S.tkc = { t: S.turn, p: S.cur, pl: [], q: [], ch: [], ink: 0 };
+    if (k === 'ink') c.ink++; else c[k].push(v);
+  }
+  function tkClose() {
+    if (!S || !S.turn) return;
+    var c = S.tkc && S.tkc.t === S.turn ? S.tkc : { t: S.turn, p: S.cur, pl: [], q: [], ch: [], ink: 0 };
+    S.tk = S.tk || [];
+    if (S.tk.length && S.tk[S.tk.length - 1].t === c.t) S.tk.pop();
+    c.bn = S.tt && S.tt.turn === c.t && S.tt.banU ? S.tt.banU.slice(0, 8) : [];
+    S.tk.push(c); if (S.tk.length > 90) S.tk.shift();
+    S.tkc = null;
+  }
   function TT() {
     if (!S.tt || S.tt.turn !== S.turn) S.tt = { turn: S.turn, ban: 0, banChal: 0, banChalOf: [0, 0], chal: [0, 0], dmg: [0, 0], song: [0, 0], action: [0, 0], played: [0, 0], char: [0, 0], cls: [[], []], big: [0, 0], inked: [0, 0], under: [0, 0], leftDisc: 0, quest: [[], []],
       discBase: S.P.map(function (p) { return p.discard.slice(); }), discOut: [0, 0], healBy: [0, 0], healMine: [0, 0], banU: [], banN: [], discHand: [0, 0], pl: [] };
@@ -11574,26 +11592,59 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function endPill() { ui.results = null; }
   // What the game history shows: each player's deck (name, inks), what was on their board at the end
   // (with the card art), and how they played. Kept small: it syncs.
+  // Cards are listed once in cs ('owner|type c/l/i/a|art|full name', art shortened: 'crd_…?123' is Lorcast's small picture) and
+  // named by their place in that list everywhere else:
+  //   p[i].bb  the board at the end: 'n' per card, x exerted, d<k> damage ('3.5x.7d2')
+  //   lr      lore after each turn: 'a.b,a.b,…'
+  //   tk      the turns (the latest that fit): 'turn|player|inked|played|quested n:lore|challenged a>t|banished'
   function histDetail(w) {
-    var LCP = 'https://cards.lorcast.io/';
-    function card(u) {
-      var d = DD(u), im = (d.im && (d.im.s || d.im.l)) || '';
-      if (im.indexOf(LCP) === 0) im = im.slice(LCP.length); else if (im.length > 160) im = '';
-      var t = String(d.ty || '').toLowerCase();
-      return { n: d.full, i: im, x: S.cards[u].ex ? 1 : 0, t: /location/.test(t) ? 'l' : /item/.test(t) ? 'i' : 'c' };
+    var LCP = 'https://cards.lorcast.io/', cs = [], ix = {};
+    function art(d) {
+      var im = (d.im && (d.im.s || d.im.l)) || '', m;
+      if (im.indexOf(LCP) === 0) { im = im.slice(LCP.length); if ((m = /^card\/digital\/small\/(crd_[0-9a-f]+)\.avif(\?\d+)?$/.exec(im))) im = m[1] + (m[2] || ''); }
+      else if (im.length > 160) im = '';
+      return im.replace(/\|/g, '');
     }
-    return { how: w.how, turns: S.turn, first: S.first, p: S.P.map(function (p, i) {
+    function ci(u) {
+      if (!S.cards[u]) return -1;
+      var c = C(u), k = c.o + ':' + c.id;
+      if (ix[k] == null) { var d = DD(u); if (!d) return -1; var ty = String(d.ty || '').toLowerCase(); ix[k] = cs.length; cs.push(c.o + '|' + (/location/.test(ty) ? 'l' : /item/.test(ty) ? 'i' : /action/.test(ty) ? 'a' : 'c') + '|' + art(d) + '|' + d.full); }
+      return ix[k];
+    }
+    var out = { how: w.how, turns: S.turn, first: S.first, goal: goalLore(), p: S.P.map(function (p, i) {
       var st = S.st[i], inks = {};
       p.deckL.concat(p.hand, p.ink, p.discard, p.board).forEach(function (u) { if (S.cards[u]) inkOf(DD(u)).forEach(function (k) { inks[k] = 1; }); });
       var ch = S.choices && S.choices[i];
-      return { d: p.deck, kd: ch ? ch.kind || '' : '', k: INKS.filter(function (k) { return inks[k]; }), b: p.board.slice(0, 10).map(card),
+      var bb = p.board.slice(0, 12).map(function (u) { var n = ci(u); if (n < 0) return ''; var c = C(u); return n + (c.ex ? 'x' : '') + (c.dmg ? 'd' + c.dmg : ''); }).filter(Boolean).join('.');
+      return { d: p.deck, kd: ch ? ch.kind || '' : '', k: INKS.filter(function (k) { return inks[k]; }), bb: bb, iw: p.ink.length, hd: p.hand.length, dk: p.deckL.length,
         q: st.q, ql: st.ql, ban: st.ban, lost: st.lost, pl: st.played, ink: st.inked, ch: st.chal, so: st.songs.slice(0, 3), sh: st.shifts.slice(0, 3),
         big: st.big ? { n: st.big.name, l: st.big.n } : null, loc: st.loc };
     }) };
+    // lore after each turn, from the lore ledger
+    var lr = [], run = [0, 0], ll = (S.ll || []).slice(), li = 0;
+    ll.sort(function (a, b) { return a.t - b.t; });
+    for (var t = 1; t <= S.turn; t++) { while (li < ll.length && ll[li].t <= t) { run[ll[li].p] += ll[li].d; li++; } lr.push(Math.max(0, run[0]) + '.' + Math.max(0, run[1])); }
+    if (lr.length) { lr[lr.length - 1] = S.P[0].lore + '.' + S.P[1].lore; out.lr = lr.join(','); }
+    // the turns, newest first until the record would get too big
+    var tk = [], list = (S.tk || []).slice();
+    out.cs = cs;
+    for (var k = list.length - 1; k >= 0; k--) {
+      var x = list[k], keep = cs.length;
+      var row = [x.t, x.p, x.ink || 0,
+        (x.pl || []).map(ci).filter(function (n) { return n >= 0; }).join('.'),
+        (x.q || []).map(function (s) { var a = String(s).split(':'), n = ci(a[0]); return n < 0 ? '' : n + ':' + (+a[1] || 0); }).filter(Boolean).join('.'),
+        (x.ch || []).map(function (s) { var a = String(s).split('>'), m = ci(a[0]), n = ci(a[1]); return m < 0 || n < 0 ? '' : m + '>' + n; }).filter(Boolean).join('.'),
+        (x.bn || []).map(ci).filter(function (n) { return n >= 0; }).join('.')].join('|');
+      tk.unshift(row); out.tk = tk;
+      if (JSON.stringify(out).length > 5200) { tk.shift(); cs.length = keep; Object.keys(ix).forEach(function (q) { if (ix[q] >= keep) delete ix[q]; }); break; }
+    }
+    if (!tk.length) delete out.tk;
+    return out;
   }
   function finish(w) {
     if (!S || S.phase === 'over') return;
     S.phase = 'over'; tok++; finishing = false; handing = false;
+    tkClose();
     Kit.handoff.close(); closeOverlays();
     var wp = S.P[w.pi], lp = S.P[opp(w.pi)], hl = [];
     var rounds = Math.max(1, Math.ceil(S.turn / 2));
@@ -11613,7 +11664,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       started: S.started, mode: S.mode === 'cpu' ? 'vs computer' : online ? 'online' : 'pass & play',
       players: S.P.map(function (p) { return { name: p.name, score: p.lore, cpu: p.cpu }; }), winner: wp.name,
       rounds: S.rl.length ? { labels: labels, scores: S.rl.map(function (r) { return [r[0], r[1]]; }) } : null,
-      highlights: hl.slice(0, 6), summary: wp.name + ' won · ' + S.P[0].lore + ' – ' + S.P[1].lore,
+      highlights: hl.slice(0, 6).map(youFix), summary: wp.name + ' won · ' + S.P[0].lore + ' – ' + S.P[1].lore,
       detail: histDetail(w)
     });
     var cfg = S.cfg, choices = S.choices;
