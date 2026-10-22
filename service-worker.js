@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v598p1-2026-10-22-hot-dog-stand';
+const CACHE_VERSION = 'v599-2026-10-22-hot-dog-stand';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -345,6 +345,7 @@ const PRECACHE_URLS = [
   '/games/spellingbee.html',
   '/games/sudoku.html',
   '/games/tetris.html',
+  '/games/tetrinet.html',
   '/games/threecardpoker.html',
   '/games/tictactoe.html',
   '/games/trivia.html',
