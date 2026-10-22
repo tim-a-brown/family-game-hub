@@ -37,6 +37,16 @@
       vals.map(function (v, i) { return svgDie(v, i * (s + g), 0, s); }).join('') + '</svg>';
   }
 
+  function roadStrip(ui, items, start, show) {
+    var box = ui.el('div', { class: 'dv-road' }), btns = [];
+    items.forEach(function (it, i) {
+      var b = ui.el('button', { type: 'button', class: 'dv-rb ' + (it.c || ''), style: it.pc ? { '--pc': it.pc } : null, text: it.t || '', title: it.title || '', 'aria-label': it.title || it.t || String(i + 1), onclick: function () { pick(i); } });
+      btns.push(b); box.appendChild(b);
+    });
+    function pick(i) { btns.forEach(function (b, j) { b.classList.toggle('on', i === j); }); show(i); }
+    if (items.length) pick(Math.min(Math.max(0, start), items.length - 1));
+    return box;
+  }
   function legend(ui, series) {
     return ui.el('div', { class: 'dv-legend' }, series.map(function (s) {
       return ui.el('span', null, [ui.el('i', { style: { background: s.color, opacity: s.dash ? 0.6 : 1 } }), ui.el('span', { text: s.name })]);
@@ -51,6 +61,37 @@
     '.dv-good{color:#4ade80 !important;}.dv-bad{color:#f87171 !important;}',
     '.dv-sub{font-size:.8rem;font-weight:900;color:var(--text);margin:2px 0 -2px;display:flex;align-items:center;gap:6px;}',
     '.dv-dstrip{display:inline-block;vertical-align:middle;}',
+    '.dv-road{display:flex;flex-wrap:wrap;gap:3px;}',
+    '.dv-rb{appearance:none;border:0;cursor:pointer;min-width:22px;height:22px;border-radius:5px;padding:0 3px;font:inherit;font-size:.62rem;font-weight:900;color:#fff;background:rgba(255,255,255,.12);}',
+    '.dv-rb.w{background:#16a34a;}.dv-rb.l{background:#b91c1c;}.dv-rb.p{background:#2f6fd6;}.dv-rb.big{background:#d4a017;color:#1b1404;}.dv-rb.on{outline:2.5px solid #fff;outline-offset:1px;}',
+    '.dv-key{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:.72rem;font-weight:800;color:var(--text-3);}',
+    '.dv-key i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:-6px;background:rgba(255,255,255,.12);}.dv-key i.w{background:#16a34a;}.dv-key i.l{background:#b91c1c;}.dv-key i.p{background:#2f6fd6;}.dv-key i.big{background:#d4a017;}',
+    '.dv-tabs{display:flex;flex-wrap:wrap;gap:5px;}',
+    '.dv-tab{appearance:none;border:0;cursor:pointer;font:inherit;font-size:.8rem;font-weight:900;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--pc) 45%,transparent);}',
+    '.dv-tab.on{background:var(--pc);color:#111;}',
+    '.dv-foot{text-align:center;font-weight:900;font-size:.88rem;line-height:1.35;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.05);color:var(--text-2);}',
+    /* Yahtzee: the paper card and the dice tray */
+    '.dv-card.yc{padding:0 0 6px;border-radius:6px 6px 14px 14px;background:linear-gradient(180deg,#fffaf0,#f6eedb);}',
+    '.yc-head{display:flex;align-items:baseline;justify-content:space-between;padding:10px 12px 6px;border-bottom:3px double #c8102e;}',
+    '.yc-head b{font-family:var(--display);font-weight:400;font-size:1.45rem;color:#c8102e;letter-spacing:.04em;}.yc-head small{font-family:var(--hand);font-size:1.05rem;color:#6a6a80;}',
+    '.yc table{table-layout:auto;}.yc th,.yc td{padding:3px 8px;border-bottom:1px solid rgba(60,80,160,.16);}',
+    '.yc th{text-align:left;font-weight:800;color:#2a2a3a;}.yc th b{display:block;font-size:.84rem;font-weight:900;line-height:1.1;}.yc th small{display:block;font-size:.66rem;font-weight:700;color:#8a8796;line-height:1.1;}',
+    '.yc tr.nm th{font-family:var(--hand);font-weight:400;font-size:1.05rem;text-align:center;border-bottom:2px solid rgba(60,80,160,.3);}',
+    '.yc .yc-l{display:flex;align-items:center;gap:7px;}.yc .yc-die{line-height:0;}',
+    '.yc td.v{text-align:center;border-left:1px solid rgba(200,16,46,.22);font-family:var(--hand);font-size:1.3rem;color:#1f2a6b;font-weight:400;line-height:1.1;}',
+    '.yc td.v.w{color:#0f7a3d;}.yc td.v.z{color:rgba(200,16,46,.6);}.yc td.v.e{color:rgba(80,80,110,.4);}.yc td.v.short{font-size:.95rem;color:#8a8796;}',
+    '.yc tr.sect th{font-size:.62rem;font-weight:900;letter-spacing:.14em;color:#c8102e;text-transform:uppercase;background:rgba(200,16,46,.05);padding:3px 8px;}',
+    '.yc tr.sum th,.yc tr.sum td{background:rgba(200,16,46,.06);}.yc tr.sum th b{color:#c8102e;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;}',
+    '.yc tr.big th,.yc tr.big td{border-top:2px solid #c8102e;border-bottom:0;}.yc tr.big th b{color:#c8102e;letter-spacing:.06em;text-transform:uppercase;}.yc tr.big td.v{font-size:1.65rem;}',
+    '.yt-tray{border-radius:20px;padding:7px;}.yt-felt{border-radius:15px;padding:10px 12px 12px;display:flex;flex-direction:column;gap:7px;}',
+    '.yt-top{display:flex;justify-content:space-between;align-items:baseline;color:#fff;}.yt-top b{font-family:var(--display);font-weight:400;font-size:1.15rem;}.yt-top span{font-size:.74rem;font-weight:800;color:rgba(255,255,255,.65);}',
+    '.yt-roll{display:flex;align-items:center;gap:8px;}.yt-roll .n{width:44px;flex:none;font-size:.64rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.6);}',
+    '.yt-roll .hv-dice{gap:5px;flex-wrap:nowrap;}.yt-roll .die{--ds:min(34px,9vw);}.yt-roll:not(.fin) .die:not(.hv-hl){opacity:.72;}.yt-roll .kp{font-size:.66rem;font-weight:800;color:#ffd54a;white-space:nowrap;}',
+    '.yt-box{display:flex;align-items:baseline;gap:8px;margin-top:2px;padding:6px 10px;border-radius:10px;background:#fffaf0;color:#2a2a3a;box-shadow:0 3px 8px -4px rgba(0,0,0,.6);}',
+    '.yt-box span{font-weight:900;font-size:.86rem;}.yt-box b{margin-left:auto;font-family:var(--hand);font-weight:400;font-size:1.5rem;line-height:1;color:#1f2a6b;}',
+    '.yt-box.z b{color:#c8102e;text-decoration:line-through;font-size:1.15rem;}.yt-box.y{box-shadow:0 0 0 3px #ffd54a,0 0 16px rgba(255,213,74,.5);}.yt-box.y b{color:#0f7a3d;}',
+    '.yt-box i{font-style:normal;font-size:.7rem;font-weight:900;color:#fff;background:#0f7a3d;padding:2px 6px;border-radius:5px;}',
+    '.yt-olds{display:flex;flex-direction:column;gap:5px;}.yt-old{display:flex;align-items:center;gap:10px;font-size:.84rem;font-weight:800;color:var(--text-2);}',
     /* Yahtzee scorecard: paper and ink */
     '.dv-card{background:#f7f2e4;color:#1d1a2e;border-radius:12px;padding:6px 8px 8px;box-shadow:0 6px 16px -6px rgba(0,0,0,.6);overflow-x:auto;}',
     '.dv-card table{width:100%;border-collapse:collapse;font-size:.84rem;font-variant-numeric:tabular-nums;}',
@@ -112,58 +153,116 @@
   // ════════════════════════════════════════════════════════════════════════
   var YCATS = [['Ones', 1], ['Twos', 1], ['Threes', 1], ['Fours', 1], ['Fives', 1], ['Sixes', 1],
     ['3 of a Kind'], ['4 of a Kind'], ['Full House'], ['Sm. Straight'], ['Lg. Straight'], ['Yahtzee'], ['Chance']];
+  var YHINT = ['Add up the 1s', 'Add up the 2s', 'Add up the 3s', 'Add up the 4s', 'Add up the 5s', 'Add up the 6s', 'Total of all dice', 'Total of all dice', '3 + 2 alike · 25', '4 in a row · 30', '5 in a row · 40', '5 alike · 50', 'Total of all dice'];
+  function isYz(d) { return /^(\d)\1{4}$/.test(String(d || '').replace(/[a-f]/g, function (c) { return 'abcdef'.indexOf(c) + 1; })); }
+  function plainDice(r) { return String(r || '').replace(/[a-f]/g, function (c) { return String('abcdef'.indexOf(c) + 1); }); }
+  // a player's turns, in order: {k: box, rolls: ['12345', 'aa366', ...], v: points, bonus: a joker Yahtzee bonus}
+  function yTurns(p) {
+    var c = arr(p.c), yzAt = -1, out = [];
+    String(p.t || '').split(' ').filter(Boolean).forEach(function (tok, i) {
+      var k = parseInt(tok.charAt(0), 16), rolls = tok.slice(1).split('>').filter(Boolean), last = plainDice(rolls[rolls.length - 1]);
+      var bonus = isYz(last) && k !== 11 && yzAt >= 0 && c[11] === 50;
+      if (k === 11) yzAt = i;
+      out.push({ n: i + 1, k: k, rolls: rolls, v: c[k], bonus: bonus, yz: isYz(last) });
+    });
+    return out;
+  }
   R('yahtzee', function (e, ui) {
     var d = e.dt; if (!d || !d.p) return null;
     var ps = arr(d.p), nm = names(e);
     if (!ps.length) return null;
-    var solo = ps.length === 1, showDice = solo && ps[0].d;
+    var solo = ps.length === 1, showDice = solo && ps[0].d && !ps[0].t;
     var cards = ps.map(function (p) {
       var c = arr(p.c), dice = String(p.d || '').split(' ');
       var up = 0, lo = 0; c.forEach(function (v, i) { if (i < 6) up += v || 0; else lo += v || 0; });
       var bonus = up >= 63 ? 35 : 0, yb = (p.yb || 0) * 100;
-      return { c: c, dice: dice, up: up, bonus: bonus, lo: lo, yb: yb, total: up + bonus + lo + yb };
+      return { c: c, dice: dice, up: up, bonus: bonus, lo: lo, yb: yb, total: up + bonus + lo + yb, turns: yTurns(p) };
     });
     var best = Math.max.apply(null, cards.map(function (c) { return c.total; }));
-    var t = '<table><tr class="hd"><th>' + (solo ? 'Box' : '') + '</th>' + (showDice ? '<th class="cap">Dice</th>' : '') +
-      cards.map(function (c, i) { return '<th>' + esc(solo ? 'Score' : nm[i] || 'P' + (i + 1)) + '</th>'; }).join('') + '</tr>';
-    function row(label, fn, cls, diceFn) {
-      t += '<tr class="' + (cls || '') + '"><td>' + label + '</td>' + (showDice ? '<td class="dd">' + (diceFn ? diceFn() : '') + '</td>' : '') + cards.map(fn).join('') + '</tr>';
-    }
-    function cell(v, extra) { return v == null ? '<td>–</td>' : v === 0 ? '<td class="z">0</td>' : '<td' + (extra ? ' class="' + extra + '"' : '') + '>' + v + '</td>'; }
+    // the scorecard, drawn like the game's own paper card
+    var t = '<div class="yc-head"><b>YAHTZEE</b>' + (solo ? '<small>' + esc(nm[0] || '') + '</small>' : '') + '</div><table>' +
+      (solo ? '' : '<tr class="nm"><th></th>' + cards.map(function (c, i) { return '<th style="color:' + ui.color(i) + '">' + esc(nm[i] || 'P' + (i + 1)) + '</th>'; }).join('') + '</tr>') +
+      (showDice ? '' : '');
+    function row(label, fn, cls) { t += '<tr class="' + (cls || '') + '"><th>' + label + '</th>' + cards.map(fn).join('') + '</tr>'; }
+    function cell(v, extra) { return v == null ? '<td class="v e">–</td>' : v === 0 ? '<td class="v z"><s>0</s></td>' : '<td class="v' + (extra ? ' ' + extra : '') + '">' + v + '</td>'; }
+    t += '<tr class="sect"><th colspan="' + (cards.length + 1) + '">Upper section</th></tr>';
     YCATS.forEach(function (cat, k) {
       if (k === 6) {
-        row('Upper total', function (c) { return '<td>' + c.up + '</td>'; }, 'sum');
-        row('Bonus <span class="cap">(63+)</span>', function (c) { return c.bonus ? '<td class="w">+35</td>' : '<td class="cap">' + (63 - c.up) + ' short</td>'; }, 'sum');
+        row('<b>Upper total</b>', function (c) { return '<td class="v">' + c.up + '</td>'; }, 'sum');
+        row('<b>Bonus</b><small>63 or more · 35</small>', function (c) { return c.bonus ? '<td class="v w">35</td>' : '<td class="v short">' + (63 - c.up) + ' short</td>'; }, 'sum');
+        t += '<tr class="sect"><th colspan="' + (cards.length + 1) + '">Lower section</th></tr>';
       }
-      row(cat[0], function (c) { var v = c.c[k]; return cell(v, k === 11 && v === 50 ? 'w' : ''); }, '', function () { var x = cards[0].dice[k]; return x && x !== '-' ? diceStrip(x, 13) : ''; });
+      var lab = (k < 6 ? '<span class="yc-die">' + diceStrip(String(k + 1), 15) + '</span>' : '') + '<span><b>' + cat[0] + '</b>' + (solo ? '<small>' + YHINT[k] + '</small>' : '') + '</span>';
+      row('<div class="yc-l">' + lab + '</div>', function (c) { var v = c.c[k]; return cell(v, k === 11 && v === 50 ? 'w' : ''); });
     });
-    row('Lower total', function (c) { return '<td>' + c.lo + '</td>'; }, 'sum');
-    if (cards.some(function (c) { return c.yb; })) row('Yahtzee bonus', function (c) { return c.yb ? '<td class="w">+' + c.yb + '</td>' : '<td>–</td>'; }, 'sum');
-    row('Grand total', function (c) { return '<td' + (c.total === best && !solo ? ' class="w"' : '') + '>' + c.total + '</td>'; }, 'big');
+    row('<b>Lower total</b>', function (c) { return '<td class="v">' + c.lo + '</td>'; }, 'sum');
+    if (cards.some(function (c) { return c.yb; })) row('<b>Yahtzee bonus</b><small>100 each</small>', function (c) { return c.yb ? '<td class="v w">' + c.yb + '</td>' : '<td class="v e">–</td>'; }, 'sum');
+    row('<b>Grand total</b>', function (c) { return '<td class="v' + (c.total === best && !solo ? ' w' : '') + '">' + c.total + '</td>'; }, 'big');
     t += '</table>';
-    var out = [ui.section(solo ? 'Scorecard' : 'Scorecards', ui.el('div', { class: 'dv-card', html: t }), { icon: 'pencil' })];
-
-    // Big rolls: the dice behind the best boxes (multi-player; solo shows them in the card)
-    if (!solo) {
+    var out = [];
+    // the numbers that matter
+    var me = cards[solo ? 0 : Math.max(0, nm.indexOf(e.winner))], yzN = function (c, p) { return (c.c[11] === 50 ? 1 : 0) + (p.yb || 0); };
+    var bt = null; me.turns.forEach(function (x) { if (x.k !== 11 && (!bt || (x.v || 0) > (bt.v || 0))) bt = x; });
+    if (solo) out.push(ui.stats([['Final score', me.total], ['Yahtzees', yzN(me, ps[0])], ['Upper bonus', me.bonus ? 'Made' : 'Missed', me.bonus ? me.up + ' in the upper' : (63 - me.up) + ' short'],
+      ['Best turn', bt && bt.v ? bt.v : null, bt && bt.v ? YCATS[bt.k][0] + ' · turn ' + bt.n : ''], ['Scratched', me.c.filter(function (v) { return v === 0; }).length || null, 'boxes with a 0']]));
+    else out.push(ui.stats(cards.map(function (c, i) { return i; }).sort(function (a, b) { return cards[b].total - cards[a].total; }).map(function (i) { var c = cards[i], y = yzN(c, ps[i]); return [nm[i] || 'P' + (i + 1), c.total, (y ? y + ' Yahtzee' + (y > 1 ? 's' : '') + ' · ' : '') + (c.bonus ? 'bonus' : 'no bonus')]; })));
+    out.push(ui.section(solo ? 'Scorecard' : 'Scorecards', ui.el('div', { class: 'dv-card yc', html: t }), { icon: 'pencil' }));
+    // every turn: the rolls, the dice kept, the box it went in
+    if (cards.some(function (c) { return c.turns.length; })) {
+      var who = solo ? 0 : Math.max(0, nm.indexOf(e.winner)), box = ui.el('div', { class: 'hv' }), stripBox = ui.el('div');
+      var showTurn = function (c, x) {
+        var kids = [ui.el('div', { class: 'yt-top' }, [ui.el('b', { text: 'Turn ' + x.n }), ui.el('span', { text: x.rolls.length === 1 ? 'one roll' : x.rolls.length + ' rolls' })])];
+        x.rolls.forEach(function (r, i) {
+          var vals = plainDice(r).split('').map(Number), held = []; r.split('').forEach(function (ch, j) { if (/[a-f]/.test(ch)) held.push(j); });
+          kids.push(ui.el('div', { class: 'yt-roll' + (i === x.rolls.length - 1 ? ' fin' : '') }, [ui.el('span', { class: 'n', text: 'Roll ' + (i + 1) }), ui.dice(vals, { held: held, size: 34 }), held.length ? ui.el('span', { class: 'kp', text: 'kept ' + held.length }) : null]));
+        });
+        var v = x.v == null ? '–' : x.v;
+        kids.push(ui.el('div', { class: 'yt-box' + (x.v === 0 ? ' z' : x.yz && x.k === 11 ? ' y' : '') }, [ui.el('span', { text: YCATS[x.k][0] }), ui.el('b', { text: x.v === 0 ? 'scratched' : String(v) }), x.bonus ? ui.el('i', { text: '+100 bonus' }) : null]));
+        box.innerHTML = ''; box.appendChild(ui.el('div', { class: 'wood yt-tray' }, [ui.el('div', { class: 'felt-in yt-felt' }, kids)]));
+      };
+      var drawStrip = function (i) {
+        var c = cards[i], start = 0;
+        c.turns.forEach(function (x, j) { if (x.yz && !c.turns[start].yz) start = j; else if (!c.turns[start].yz && (x.v || 0) > (c.turns[start].v || 0)) start = j; });
+        var items = c.turns.map(function (x) { return { c: x.yz && (x.k === 11 || x.bonus) ? 'big' : x.v === 0 ? 'l' : x.k < 6 ? 'p' : 'w', t: String(x.n), title: 'Turn ' + x.n + ': ' + YCATS[x.k][0] + ' ' + (x.v == null ? '' : x.v) }; });
+        stripBox.innerHTML = '';
+        if (c.turns.length) stripBox.appendChild(roadStrip(ui, items, start, function (j) { showTurn(c, c.turns[j]); }));
+        else { box.innerHTML = ''; box.appendChild(ui.el('p', { class: 'dv-note', text: 'No rolls kept for this player.' })); }
+      };
+      var kids = [];
+      if (!solo) {
+        var tabs = ui.el('div', { class: 'dv-tabs' }), tb = [];
+        cards.forEach(function (c, i) { var b = ui.el('button', { type: 'button', class: 'dv-tab', style: { '--pc': ui.color(i) }, text: nm[i] || 'P' + (i + 1), onclick: function () { tb.forEach(function (x, j) { x.classList.toggle('on', j === i); }); drawStrip(i); } }); tb.push(b); tabs.appendChild(b); });
+        tb[who].classList.add('on'); kids.push(tabs);
+      }
+      kids.push(stripBox, box, ui.el('div', { class: 'dv-key', html: '<i class="p"></i>upper <i class="w"></i>lower <i class="l"></i>scratched <i class="big"></i>Yahtzee' }));
+      out.push(ui.section('Every turn · tap one', kids, { icon: 'dice' }));
+      drawStrip(who);
+    } else if (!solo) {
+      // older games: the dice behind the best boxes
       var BIG = [11, 10, 9, 8, 7], rows = [];
       ps.forEach(function (p, i) {
         var dice = String(p.d || '').split(' '), c = arr(p.c);
         BIG.forEach(function (k) { if (c[k] > 0 && dice[k] && dice[k] !== '-') rows.push({ i: i, k: k, d: dice[k], v: c[k] }); });
       });
       if (rows.length) {
-        var box = ui.el('div', { class: 'stack', style: { display: 'flex', 'flex-direction': 'column', gap: '6px' } });
+        var bx = ui.el('div', { style: { display: 'flex', 'flex-direction': 'column', gap: '6px' } });
         rows.slice(0, 10).forEach(function (r) {
-          box.appendChild(ui.el('div', { style: { display: 'flex', 'align-items': 'center', gap: '10px', 'font-size': '.86rem', 'font-weight': '800' } }, [
-            ui.el('span', { html: diceStrip(r.d, 20) }),
-            ui.el('span', { style: { color: ui.color(r.i) }, text: nm[r.i] || '' }),
-            ui.el('span', { style: { color: 'var(--text-2)' }, text: YCATS[r.k][0] + ' · ' + r.v })
-          ]));
+          bx.appendChild(ui.el('div', { style: { display: 'flex', 'align-items': 'center', gap: '10px', 'font-size': '.86rem', 'font-weight': '800' } }, [
+            ui.el('span', { html: diceStrip(r.d, 20) }), ui.el('span', { style: { color: ui.color(r.i) }, text: nm[r.i] || '' }), ui.el('span', { style: { color: 'var(--text-2)' }, text: YCATS[r.k][0] + ' · ' + r.v })]));
         });
-        out.push(ui.section('Big rolls', box, { icon: 'dice' }));
+        out.push(ui.section('Big rolls', bx, { icon: 'dice' }));
       }
+    } else if (ps[0].d) {
+      // older solo games: the dice each box was scored with
+      var dl = String(ps[0].d).split(' '), rr = [];
+      YCATS.forEach(function (cat, k) { if (dl[k] && dl[k] !== '-') rr.push(ui.el('div', { class: 'yt-old' }, [ui.el('span', { html: diceStrip(dl[k], 18) }), ui.el('span', { text: cat[0] + ' · ' + (me.c[k] == null ? '–' : me.c[k]) })])); });
+      if (rr.length) out.push(ui.section('The dice in each box', ui.el('div', { class: 'yt-olds' }, rr), { icon: 'dice' }));
     }
-    var yz = ps.map(function (p, i) { var c = arr(p.c); return { i: i, n: (c[11] === 50 ? 1 : 0) + (p.yb || 0) }; }).filter(function (x) { return x.n; });
-    if (yz.length) out.push(ui.stats(yz.map(function (x) { return [solo ? 'Yahtzees' : 'Yahtzees · ' + (nm[x.i] || ''), x.n]; })));
+    // the last word
+    var w = cards[solo ? 0 : Math.max(0, nm.indexOf(e.winner))], wy = yzN(w, ps[cards.indexOf(w)]), z = w.c.filter(function (v) { return v === 0; }).length;
+    var line = (solo ? 'Final score ' + w.total : (e.winner ? e.winner + ' won with ' + w.total : 'A tie at ' + w.total)) + ': ' + (w.bonus ? 'upper bonus made' : 'upper bonus missed by ' + (63 - w.up)) +
+      (wy ? ', ' + (wy === 1 ? 'one Yahtzee' : wy + ' Yahtzees') : '') + (z ? ', ' + z + ' box' + (z === 1 ? '' : 'es') + ' scratched' : '') + '.';
+    out.push(ui.el('div', { class: 'dv-foot', text: line }));
     return ui.wrap(out);
   });
 

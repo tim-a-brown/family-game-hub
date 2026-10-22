@@ -306,6 +306,7 @@
     '.cz-ball.red{background:#c8102e;}.cz-ball.black{background:#1b1b1f;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25);}.cz-ball.green{background:#15803d;}',
     '.cz-ball.lg{width:54px;height:54px;font-size:1.4rem;}',
     'button.cz-bb{appearance:none;border:0;padding:0;font:inherit;font-size:.74rem;font-weight:900;cursor:pointer;}.cz-bb.won{box-shadow:0 0 0 2px #ffd54a;}.cz-bb.on{outline:2.5px solid #fff;outline-offset:2px;}',
+    '.cz-felt .hv-dice .die{--ds:44px;}',
     '.cz-wheel{align-self:center;width:100%;max-width:230px;line-height:0;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));}.cz-wheel svg{width:100%;height:auto;display:block;}',
     '.cz-marq{display:flex;flex-wrap:wrap;gap:4px;padding:10px;border-radius:12px;background:linear-gradient(#141218,#0b0a0e);box-shadow:inset 0 2px 10px rgba(0,0,0,.9);}',
     '.cz-bets{width:100%;border-collapse:collapse;font-size:.82rem;font-variant-numeric:tabular-nums;}',
