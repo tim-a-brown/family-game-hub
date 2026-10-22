@@ -193,6 +193,12 @@ var GameIcon = (function () {
       return line('M5.3 .8V12H12V5.3h6.7V23.2', R, 2.3) +
         line('M8.7 2H22V22M15.3 22H2V2M8.7 2v6.7M15.3 8.7V22M8.7 15.3h6.6', K, 2);
     },
+    hotdogstand: function () {   // on the arcade screen: a hot dog in its bun, mustard down the middle
+      return path('M1.5 13.5c0-3 4.5-5 10.5-5s10.5 2 10.5 5c0 2.6-4.5 4.6-10.5 4.6S1.5 16.1 1.5 13.5z', '#e3a458') +
+        rect(.6, 9.6, 22.8, 5.6, 2.8, '#c8432c') + rect(2, 10.4, 20, 1.3, .65, '#ec8a6a') +
+        line('M3.4 12.4c1.4-1.3 2.4 1.3 3.8 0s2.4 1.3 3.8 0 2.4 1.3 3.8 0 2.4 1.3 3.8 0 1.6.9 2.4.3', Y, 1.3) +
+        path('M1.5 13.5c0 2.6 4.5 4.6 10.5 4.6s10.5-2 10.5-4.6c0 3.6-4.5 6.4-10.5 6.4S1.5 17.1 1.5 13.5z', '#b8742f');
+    },
     minesweeper: function () {   // on the arcade screen: covered squares, a flag, numbers, and the mine in the middle
       var g = '', open = { 1: '2', 3: '1', 4: '', 5: '1' };
       for (var i = 0; i < 9; i++) { var x = .5 + (i % 3) * 7.8, y = .5 + Math.floor(i / 3) * 7.8; g += rect(x, y, 7.2, 7.2, 1.3, i in open ? '#26304a' : '#6f7fa6'); }

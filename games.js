@@ -165,6 +165,7 @@ var GAMES = [
   { id: 'paddleball',  name: 'Pong',         color: '#000', cat: 'arcade', min: 1, max: 2, tag: 'Classic two-paddle table tennis', play: 'paddleball' },
   { id: 'pinball',     name: 'Pinball',      color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Six 3D tables: flip, ramp, lock, multiball', play: 'pinball' },
   { id: 'minesweeper', name: 'Minesweeper',  color: '#64748b', cat: 'arcade', min: 1, max: 1, tag: 'Clear the field without a boom', play: 'minesweeper' },
+  { id: 'hotdogstand', name: 'Hot Dog Stand', color: '#d6402f', cat: 'arcade', min: 1, max: 1, tag: 'Run the stadium stand for a season', play: 'hotdogstand' },
   { id: 'candymatch',  name: 'Candy Match',  color: '#ff4f9a', cat: 'arcade', min: 1, max: 1, tag: 'Swap candies, match three, beat the level', play: 'candymatch' },
 
   // ── Consoles: your own cartridges. The consoles' shelves have no tiles (Edit on the home screen opens them);
@@ -264,6 +265,10 @@ var HI_BOARDS = (function () {
     });
   });
   add('candymatch', 'candymatch', { label: '', unit: 'score' });
+  // Hot Dog Stand: final cash for the season, one board per season level
+  [['rookie', 'Rookie'], ['pro', 'Pro'], ['allstar', 'All-Star']].forEach(function (d) {
+    add('hotdogstand', 'hotdogstand_' + d[0], { label: d[1] + ' season', tab: d[1], unit: 'cash', pin: 1 });
+  });
   // Trivia Countdown (solo): one board per level and game length
   [['easy', 'Elementary'], ['medium', 'General'], ['hard', 'Genius']].forEach(function (l) {
     [10, 15, 20].forEach(function (n) { add('trivia', 'trivia_cd_' + l[0] + '_' + n, { label: l[1] + ' · ' + n + ' questions', tab: l[1] + ' ' + n, unit: 'points' }); });
