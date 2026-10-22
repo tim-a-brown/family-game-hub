@@ -4829,7 +4829,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       t.appendChild(tile('Place', me.out ? ordinal(me.place) : ordinal(circRank()), 'gold'));
       if (toGo > 0) t.appendChild(tile('Min cash', usd(C.pays[C.paid - 1])));
       else t.appendChild(tile(C.left > 1 ? 'Next pay jump' : 'Champion', usd(C.pays[Math.max(0, C.left - 2)]), 'gold'));
-      t.appendChild(tile('Avg', amt(avg)));
+      // the field's average (all the chips in play over everyone left: only ever climbs) big, your table's under it
+      var fa = fieldAvg(), oneTable = C.left <= alive().length || Math.round(fa) === Math.round(avg);
+      t.appendChild(tile(oneTable ? 'Avg' : 'Avg · table ' + amt(avg), amt(oneTable ? avg : fa)));
     } else if (S.tourn) {
       var al = alive(), chips = al.reduce(function (a, i) { return a + S.players[i].stack; }, 0);
       var rk = 1 + al.filter(function (i) { return stackAt(i) > stackAt(0); }).length;
