@@ -39,6 +39,10 @@ body{overflow:hidden;}
   .ot-act{flex:none;width:min(46%,430px);justify-content:flex-end;overflow-y:auto;}
 }
 .ot.full .ot-scr{flex:1;}
+/* typing a name (or an epitaph) with the on-screen keyboard up: the page shrinks to the space above the keyboard and
+   the picture steps aside, so the boxes and the button stay in view (kit.js sets html.k-kb and --vvh) */
+html.k-kb .ot{height:calc(var(--vvh, 100dvh) - var(--bar));}
+html.k-kb .ot.typing .ot-scr{display:none;}
 .ot.full .ot-low{display:none;}
 
 /* big screens (tablets, desktop): bigger type */
@@ -595,7 +599,7 @@ body{overflow:hidden;}
   }
 
   function showNames() {
-    shell(); setView(picView('independence'), { frac: 0.4 });
+    shell(); setView(picView('independence'), { frac: 0.4 }); root.classList.add('typing');
     banner('Independence, Missouri', dstr(S.date));
     clearLow();
     info.appendChild(el('h2', { text: 'Your party' }));
@@ -605,7 +609,7 @@ body{overflow:hidden;}
     var focusI = 1;
     S.people.forEach(function (p, i) {
       var inp = el('input', { type: 'text', maxlength: '14', value: p.n, 'aria-label': i ? 'Party member ' + i : 'Wagon leader', autocomplete: 'off', autocapitalize: 'words' });
-      inp.addEventListener('focus', function () { focusI = i; });
+      inp.addEventListener('focus', function () { focusI = i; setTimeout(function () { if (inp.scrollIntoView) inp.scrollIntoView({ block: 'nearest' }); }, 350); });
       inp.addEventListener('input', function () { SND.key(); });
       inputs.push(inp);
       var dice = el('button', { type: 'button', class: 'st-b', 'aria-label': 'Another name', html: ic('shuffle'), onclick: function () { var used = inputs.map(function (x) { return x.value; }); var nm = pick(OT.NAMES.filter(function (x) { return used.indexOf(x) < 0; })); inp.value = nm; SND.key(); Kit.haptic('tick'); } });
