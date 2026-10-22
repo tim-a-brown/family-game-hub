@@ -490,6 +490,9 @@
 .pev .hl .t{flex:0 1 auto;min-width:0;}
 .pev .meta{flex:1 0 auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:4px 5px;}
 .pev .tg{padding:2px 8px;border-radius:999px;background:var(--w07);font-size:.68rem;font-weight:800;color:var(--text-2);white-space:nowrap;line-height:1.35;}
+.pev .pgm{display:flex;flex-wrap:wrap;align-items:baseline;gap:1px 4px;margin-top:3px;font-size:.76rem;font-weight:800;color:var(--text-3);}   /* a mixed event: the game now and next */
+.pev .pgm b{font-weight:900;font-size:.86rem;color:var(--text);white-space:nowrap;}
+.pev .pgm .nx{margin-left:auto;padding-left:8px;white-space:nowrap;}
 .pev .tg.hot{background:rgba(255,77,94,.16);color:var(--red);} .pev .tg.ok{background:rgba(61,220,132,.16);color:var(--green);} .pev .tg.gold{background:var(--yellow-fill);color:#2b1a00;}
 .pev .bl{margin-left:auto;display:flex;align-items:baseline;gap:4px;font-weight:900;font-size:.82rem;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .pev .bl small{font-size:.6rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
@@ -1091,7 +1094,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     '<li><b>Five-Card Draw</b>: no board; swap up to three (four if you keep an Ace). <b>Deuces Wild Draw</b>: every 2 is wild. <b>2-7 Triple Draw</b>: the worst hand wins (7-5-4-3-2 is best; aces are high and straights and flushes count against you), three draws. <b>Badugi</b>: four cards, three draws; the best hand is four low cards of four different suits and ranks.</li>' +
     '<li><b>Seven-Card Stud</b>: no shared cards; two down and one up, then a card a round (four up, the last one down). An ante from everyone; the lowest card showing brings it in, then the best hand showing acts first. <b>Razz</b>: stud where the lowest hand wins (aces low, straights and flushes don\'t count). <b>Follow the Queen</b>: Queens are wild, and so is whatever is dealt face up right after a Queen. <b>Baseball</b>: 3s and 9s are wild; a 4 face up earns an extra card. <b>Chicago</b>: half the pot to the highest spade face down.</li>' +
     '<li><b>Guts</b>: two cards; everyone says In or Out at once. The best hand that\'s in takes the pot; the others who were in pay the pot again for the next hand. <b>Indian Poker</b>: one card each, held up so everyone sees it but you; one round of betting, highest card wins. <b>Acey-Deucey</b>: two cards turned up for you; bet up to the pot that the next lands between them. Miss and you pay your bet; hit either end and you pay double.</li>' +
-    '<li><b>H.O.R.S.E.</b>: Limit Hold\'em, Omaha Hi-Lo, Razz, Seven-Card Stud and Stud Hi-Lo, changing each time round the table (in a tournament, each level). <b>8-Game</b>: 2-7 Triple Draw, Limit Hold\'em, Omaha Hi-Lo, Razz, Stud, Stud Hi-Lo, No-limit Hold\'em and Pot-limit Omaha. <b>Stud Hi-Lo</b>: stud where half the pot goes to the best low of five different cards 8 or under.</li>' +
+    '<li><b>H.O.R.S.E.</b>: Limit Hold\'em, Omaha Hi-Lo, Razz, Seven-Card Stud and Stud Hi-Lo, changing each time round the table. <b>8-Game</b>: 2-7 Triple Draw, Limit Hold\'em, Omaha Hi-Lo, Razz, Stud, Stud Hi-Lo, No-limit Hold\'em and Pot-limit Omaha. <b>Stud Hi-Lo</b>: stud where half the pot goes to the best low of five different cards 8 or under.</li>' +
     '<li><b>Dealer\'s Choice</b>: whoever deals calls the game for that hand. Each computer player has a few favourites (tap their name to see them); when it\'s your deal, you pick. You can also play the first stop of each circuit road this way. <b>Hold\'em / Omaha</b>: the game changes each time the blinds go up.</li>' +
     '<li>Online tables play Hold\'em, Omaha or the two by turns.</li></ul>' +
     '<h3>Online tables</h3><ul>' +
@@ -1820,7 +1823,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     acey: { name: 'Acey-Deucey', hc: 0, om: false, acey: true, home: true, fun: true, how: 'Two cards are turned up for you; bet that the next one lands between them. A card that matches either end costs you double.' }
   };
   var HOMEV = ['draw', 'cp', 'ir', 'bigo', 'pine', 'o8', 'dwhe', 'dwdraw', 'td27', 'badugi', 'stud', 'stud8', 'razz', 'ftq', 'baseball', 'chicago'];
-  // the mixed-game rotations: the game changes every time round the table (in a tournament, every level)
+  // the mixed-game rotations: the game changes every time round the table (an orbit), as in a WSOP mixed event
   var ROT = {
     horse: { name: 'H.O.R.S.E.', l: ['lhe', 'o8', 'razz', 'stud', 'stud8'] },
     eight: { name: '8-Game', l: ['td27', 'lhe', 'o8', 'razz', 'stud', 'stud8', 'he', 'om'] }
@@ -1934,7 +1937,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   LEARN.horse = { rows: [['H: Limit Hold\'em', 'Ah Kd | Qs Jc 10h', 0], ['O: Omaha Hi-Lo', 'Ad 2c Kh Qs', 0.5], ['R: Razz, lowest wins', 'Ac* 2d* 3h* 4s* 5c*', 1.0], ['S: Seven-Card Stud', 'X X Kh Kd 9c', 1.5], ['E: Stud Hi-Lo (eight or better)', 'X X 5h 3d 2c', 2.0]], steps: ['Five games in turn: Hold\'em, Omaha Hi-Lo, Razz, Stud and Stud Hi-Lo (the E is "eight or better").', 'The game changes each time round the table (in a tournament, each time the blinds go up). All of them are played with fixed bets.', 'Each game\'s own explainer comes up the first time it\'s dealt.'] };
   LEARN.eight = { rows: [['2-7 Triple Draw', '7d 5c 4h 3s 2d', 0], ['Limit Hold\'em, Omaha Hi-Lo, Razz', 'Ah Kd | Ad 2c Kh Qs', 0.5], ['Stud, Stud Hi-Lo', 'X X Kh Kd 9c', 1.0], ['No-limit Hold\'em, Pot-limit Omaha', 'Ah Kh | Qh Jh 10h*', 1.5]], steps: ['Eight games in turn: 2-7 Triple Draw, Limit Hold\'em, Omaha Hi-Lo, Razz, Seven-Card Stud, Stud Hi-Lo, No-limit Hold\'em and Pot-limit Omaha.', 'The game changes each time round the table (in a tournament, each time the blinds go up).', 'Each game\'s own explainer comes up the first time it\'s dealt.'] };
   LEARN.dc = { rows: [['Each dealer calls a game', 'X X Ah | Kd | 9c', 0], ['Your deal: you pick', 'Qh* Qd*', 0.8]], steps: ['Whoever deals calls the game for that hand. Each computer player has a few favourites (tap their name to see them).', 'When it\'s your deal, you pick from every game.', 'A game you haven\'t played yet is explained before its first hand.'] };
-  LEARN.mx = { rows: [['Hold\'em', 'Ah Kh | Qh Jh 10h', 0], ['Then Omaha', 'Ad Kd 9s 4c | Qd Jd 10d', 0.8]], steps: ['Hold\'em and Pot-limit Omaha by turns.', 'The game changes each time the blinds go up (in a cash game, every ten hands).'] };
+  LEARN.mx = { rows: [['Hold\'em', 'Ah Kh | Qh Jh 10h', 0], ['Then Omaha', 'Ad Kd 9s 4c | Qd Jd 10d', 0.8]], steps: ['Hold\'em and Pot-limit Omaha by turns.', 'The game changes each time the deal goes round the table.'] };
   LEARN.stud8 = { rows: [['Your seven', 'Ad_ 2c_ Kh | Kd | 5c | 9h | 4s_', 0], ['High half: pair of Kings', 'Kh* Kd* Ad 9h 5c', 1.6], ['No low: only four cards 8 or under', 'Ad* 2c* 4s* 5c* 9h', 2.2]], steps: ['Seven-Card Stud, but the pot splits.', 'Half to the best hand, half to the best low: five different cards 8 or under (aces low). No low, and the best hand takes it all.', 'One hand can win both halves.'] };
   function learnKnown() { try { return JSON.parse(localStorage.getItem('poker_learned')) || []; } catch (e) { return []; } }
   function learnNeeded(g) { return !!(LEARN[g] && VAR[g] && VAR[g].home && learnKnown().indexOf(g) < 0); }
@@ -2326,11 +2329,20 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function put(i, n) { var H = S.hand, p = S.players[i]; n = Math.max(0, Math.min(n, p.stack)); p.stack -= n; H.bet[i] += n; H.total[i] += n; return n; }
   function nm(i) { return i === 0 ? 'You' : S.players[i].name; }
   function nmPoss(i) { return i === 0 ? 'Your' : S.players[i].name + '\'s'; }
-  // Mixed: Hold'em and pot-limit Omaha by turns, a level of each
-  // (the early stops of the Mixed road: a plan with home games sprinkled in, S.mixSeq, one game a level)
+  // Mixed: Hold'em and pot-limit Omaha by turns, an orbit of each (once round the table: six hands, as the WSOP does it)
+  // (the early stops of the Mixed road: a plan with home games sprinkled in, S.mixSeq, one game an orbit)
+  var ORB = 6;
+  function orbitAt() { return Math.max(0, Math.floor((S.handNo - 1) / ORB)); }
+  function mixGame(o) { return S.rot ? ROT[S.rot].l[o % ROT[S.rot].l.length] : S.mixSeq ? S.mixSeq[o % S.mixSeq.length] : o % 2 === 1 ? 'om' : 'he'; }
+  // the next game in the rotation and how many hands until it (null: no rotation, or the same game again)
+  function nextUp() {
+    if (!S || S.dcd || !(S.mix || S.rot)) return null;
+    var g = mixGame(orbitAt() + 1);
+    return g === S.game || !VAR[g] ? null : { g: g, left: ORB - (S.handNo - 1) % ORB };
+  }
   function mixSet() {
     if (!S.mix || S.dcd || S.rot) return;
-    var at = S.dc ? S.handNo - 1 : S.level, g = S.mixSeq ? S.mixSeq[Math.max(0, Math.min(at, S.mixSeq.length - 1))] : S.level % 2 === 1 ? 'om' : 'he';
+    var g = mixGame(orbitAt());
     if (g === S.game || !VAR[g]) return;
     var v = VAR[g];
     S.game = g; S.om = !!v.om; S.pl = !!v.pl; S.limit = !!v.limit;
@@ -2338,7 +2350,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (SIM || QUIET || S.handNo <= 1) { if (tell && !SIM && !QUIET && !S.dc) setTimeout(function () { if (S && S.game === g) Kit.toast(v.how, 5200); }, 900); return; }
     setTimeout(function () {
       if (!S || S.game !== g) return;
-      Kit.callout(v.home || S.dc ? 'Dealer\'s choice: ' + v.name : v.name + ' round'); Kit.sfx('whoosh');
+      Kit.callout(v.name + ' round'); Kit.sfx('whoosh');
       if (tell && !S.dc) setTimeout(function () { Kit.toast(v.how, 5200); }, 900);
     }, 250);
   }
@@ -2374,8 +2386,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
   function rotSet() {
     var RO = ROT[S.rot]; if (!RO) return;
-    var at = S.tourn ? Math.max(0, S.level) : Math.floor((S.handNo - 1) / Math.max(2, alive().length));
-    var g = RO.l[at % RO.l.length], v = VAR[g], first = S.handNo <= 1;
+    var g = mixGame(orbitAt()), v = VAR[g], first = S.handNo <= 1;
     if (g === S.game && !first) return;
     S.game = g; S.om = !!v.om; S.pl = !!v.pl; S.limit = !!v.limit;
     if (SIM || QUIET) return;
@@ -2421,7 +2432,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     S.handNo++;
     if (S.mix && !S.tourn) { S.level = Math.floor((S.handNo - 1) / 10); mixSet(); }
-    if (S.circ) circBlinds();
+    if (S.circ) { circBlinds(); mixSet(); }
     else if (S.tourn) {
       var lv = Math.min(LEVELS.length - 1, Math.floor((S.handNo - 1) / S.per));
       if (lv !== S.level) { S.level = lv; if (!QUIET) setTimeout(function () { Kit.toast('Blinds up: ' + LEVELS[lv][0] + ' / ' + LEVELS[lv][1]); }, 300); }
@@ -3106,13 +3117,19 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function eliminate(H) {
     var gone = S.players.map(function (p, i) { return i; }).filter(function (i) { return H.inHand[i] && S.players[i].stack <= 0 && !S.players[i].out; });
     if (!gone.length) return [];
-    // in the rebuy window a person decides (Rebuy or I'm out); a computer player usually rebuys (not on the circuit,
-    // where the rest of the field already stands in for them)
-    if (canRe()) gone = gone.filter(function (i) {
+    // in the rebuy window a person decides (Rebuy or I'm out); a computer player often buys back in: a rebuy keeps
+    // the seat, a re-entry goes out like anyone (a knockout, a bounty) and comes back into the field with a new stack
+    gone = gone.filter(function (i) {
       var p = S.players[i];
+      if (!canRe(p)) return true;
+      if (i === 0 && p.cpu) return true;   // (a test player in your seat)
       if (!p.cpu) { p.wantRe = 1; return false; }
-      if (!S.circ && Math.random() < 0.8) { p.stack = reStack(); p.rebuys++; p.rebought = true; return false; }
-      return true;
+      if (!S.circ) { if (Math.random() < 0.8) { p.stack = reStack(); p.rebuys++; p.rebought = true; return false; } return true; }
+      var r = reRule(EV[S.circ.id]);
+      if (Math.random() >= r.rate) return true;
+      circEntry(1);
+      if (r.rebuy) { p.stack = reStack(); p.rebuys++; p.rebought = true; return false; }
+      p.reent = true; return true;
     });
     if (!gone.length) return [];
     var left = alive().length - gone.length;
@@ -3121,14 +3138,42 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     gone.forEach(function (i, k) {
       S.players[i].out = true; S.players[i].place = left + k + 1 + (S.circ ? S.circ.else : 0);
       var by = main && main.w.length ? main.w[0] : i;
+      if (S.players[i].reent) S.players[i].place = 0;   // (back in the field: no finishing place yet)
       S.st.kos.push({ who: i, by: by, no: H.no, place: S.players[i].place, wn: S.players[i].name, bn: S.players[by].name });
     });
     return gone;
   }
 
-  // Rebuys. Tournaments: during the first levels when the table allows them (the circuit: re-entry for the buy-in in
-  // the first 3 levels). Cash games: any time; a person chooses, the computer players just do.
-  function canRe() { return S.tourn ? (S.circ ? S.level < 3 && S.circ.else > 0 : S.rebuyLv > 0 && S.level < S.rebuyLv) : true; }
+  // Rebuys. Tournaments: during the first levels when the table allows them. Cash games: any time; a person chooses,
+  // the computer players just do. The circuit runs each event the way real ones are run (reRule): a freezeout is one
+  // entry; a home game, a club night or a back room lets you rebuy early (the charity nights live on it); the
+  // deepstacks, bounties, turbos and the big Vegas fields let you re-enter while late registration is open; a high
+  // roller allows one re-entry. The other players re-enter too, at your table and in the field, and every entry goes
+  // into the prize pool.
+  function reRule(ev) {
+    var st = ev.style || '';
+    if (/Freezeout|Main Event|Championship|Bar league/.test(st)) return { n: 0, lv: 0 };
+    if (st === 'Home game' || st === 'Club tourney') return { n: 9, lv: 4, rebuy: true, rate: 0.6 };
+    if (st === 'Back-room game') return { n: 1, lv: 4, rebuy: true, rate: 0.5 };
+    if (st === 'High Roller') return { n: 1, lv: 6, rate: 0.45 };
+    return { n: 9, lv: 6, rate: 0.3 };
+  }
+  function reText(ev) {
+    var r = reRule(ev);
+    return !r.n ? 'A freezeout: one entry each.' : r.rebuy ? (r.n === 1 ? 'One rebuy' : 'Rebuys') + ' in the first ' + r.lv + ' levels.' : (r.n === 1 ? 'One re-entry' : 'Re-entry') + ' while registration is open (the first ' + r.lv + ' levels).';
+  }
+  function canRe(p) {
+    if (!S.tourn) return true;
+    if (!S.circ) return S.rebuyLv > 0 && S.level < S.rebuyLv;
+    var r = reRule(EV[S.circ.id]);
+    return S.level < r.lv && (!p || (p.rebuys || 0) < r.n);
+  }
+  // another entry in the event: its chips join the field's and its buy-in the prize pool (the places paid follow)
+  function circEntry(k) {
+    var C = S.circ, ev = EV[C.id]; if (!k) return;
+    C.entries = (C.entries || C.field) + k; C.chips += k * ev.stack;
+    C.pays = paysFor(ev, C.entries); C.paid = C.pays.length;
+  }
   function reStack() { return S.circ ? EV[S.circ.id].stack : S.tourn ? TSTACK : BUYIN; }
   function reCost() { return S.circ ? EV[S.circ.id].buy : !S.tourn ? BUYIN : 0; }
   // player i's choice (yes: buy back in; no: out of the tournament, or out of the cash game's seat)
@@ -3138,7 +3183,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     delete p.wantRe;
     if (yes) {
       var n = reStack();
-      if (S.circ && !QUIET) { Casino.bet(EV[S.circ.id].buy); S.circ.reent = (S.circ.reent || 0) + 1; }
+      if (S.circ && !QUIET) { Casino.bet(EV[S.circ.id].buy); S.circ.reent = (S.circ.reent || 0) + 1; circEntry(1); }
       p.stack = n; p.rebuys++; p.rebought = true; if (!S.tourn) p.buyin += n;
       return;
     }
@@ -3506,7 +3551,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (changed) try { localStorage.setItem(CKEY, JSON.stringify(a)); } catch (e) {}
   }
   function ladder(ev) { return CIRC[ev.track]; }
-  function gameWord(ev) { return ev.rot ? ROT[ev.rot].name + ': ' + ROT[ev.rot].l.map(function (g) { return VAR[g].name; }).join(', ') + ', a level each' : ev.mix ? 'Mixed: Hold\'em and Omaha by turns' : ev.game === 'om' ? 'Pot-limit Omaha' : 'No-limit Hold\'em'; }
+  function gameWord(ev) { return ev.rot ? ROT[ev.rot].name + ': ' + ROT[ev.rot].l.map(function (g) { return VAR[g].name; }).join(', ') + ', changing every orbit' : ev.mix ? 'Mixed: Hold\'em and Omaha by turns, changing every orbit' : ev.game === 'om' ? 'Pot-limit Omaha' : 'No-limit Hold\'em'; }
   // the big-field week's events, and which of them you've cashed in / your best finish there
   function grpEvs(ev) { return (ev.opts || []).map(function (id) { return EV[id]; }); }
   function grpCashed(pg, ev) { return grpEvs(ev).some(function (x) { return pg.cash[x.id]; }); }
@@ -3673,6 +3718,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       el('div', null, [el('small', { text: 'Players expected' }), el('b', { text: fieldTxt(ev) })]),
       el('div', null, [el('small', { text: 'Starting chips' }), el('b', { text: ev.stack.toLocaleString() })]),
       el('div', null, [el('small', { text: 'Blinds go up' }), el('b', { text: 'every ' + perOf(ev) + ' hands' })]),
+      el('div', null, [el('small', { text: reRule(ev).rebuy ? 'Rebuys' : 'Re-entry' }), el('b', { text: !reRule(ev).n ? 'None (freezeout)' : (reRule(ev).n === 1 ? 'One, ' : '') + 'first ' + reRule(ev).lv + ' levels' })]),
       el('div', null, [el('small', { text: 'The field' }), el('b', { text: fieldWord(ev.ai0) === fieldWord(ev.ai1) ? fieldWord(ev.ai0) : fieldWord(ev.ai0) + ', then ' + fieldWord(ev.ai1).toLowerCase() + ' by the end' })])
     ]));
     var pl = el('div', { class: 'czs-pay' });
@@ -3758,7 +3804,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var sw = styleWord(ev); if (sw) row(ev.style, sw);
     }
     row('Who plays', (ev.grp ? '' : 'Expect ' + fieldTxt(ev) + ' players. ') + pl[1] + ' ' + (fieldWord(ev.ai0) === fieldWord(ev.ai1) ? fieldWord(ev.ai0) : fieldWord(ev.ai0) + ' at first, ' + fieldWord(ev.ai1).toLowerCase() + ' by the end') + '.');
-    if (!g) row('Buy-in', usd(ev.buy) + ' for ' + ev.stack.toLocaleString() + ' chips. The blinds go up every ' + perOf(ev) + ' hands.');
+    if (!g) row('Buy-in', usd(ev.buy) + ' for ' + ev.stack.toLocaleString() + ' chips. The blinds go up every ' + perOf(ev) + ' hands. ' + reText(ev));
     if (k >= 0) { var prev = ladder(ev)[k - 1]; box.appendChild(el('p', { class: 'czi-lock', html: Kit.icon('lock') + ' ' + (prev.grp ? 'Cash in a ' + prev.venue + ' event to open this stop.' : 'Cash at ' + prev.venue + ' to open this stop.') })); }
     var sh = Kit.sheet({ title: ev.venue, node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
     if (now && sh && sh.el) sh.el.classList.add('pk-wide');
@@ -3837,7 +3883,6 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     bb = Math.max(bb, S.bb || 0, BBS[0]);
     var up = S.bb && bb > S.bb;
     S.bb = bb; S.sb = bb / 2;
-    mixSet();
     if (up && !SIM) setTimeout(function () { Kit.toast('Blinds up: ' + chipsTxt(S.sb) + ' / ' + chipsTxt(S.bb)); }, 300);
   }
   // your rank in the whole field: exact at the final table, an estimate before it
@@ -3845,8 +3890,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // the whole field's average stack (every chip is still in play, spread over the players left)
   function fieldAvg() { var C = S.circ; return C.chips / Math.max(1, C.left); }
   // the chance a player goes out in a hand, by the field's average stack in big blinds: deep, hardly anyone; short,
-  // plenty (the same pressure that busts players at your table)
-  function bustRate(M) { return 0.3 / Math.pow(Math.max(1, M) + 8, 0.9); }
+  // plenty (the same pressure that busts players at your table; half again for the spread of stacks, since the short
+  // ones go far more often than the average one would)
+  function bustRate(M) { return 0.45 / Math.pow(Math.max(1, M) + 8, 0.9); }
   function poisson(m) {
     if (m > 30) return Math.max(0, Math.round(m + Math.sqrt(m) * Math.sqrt(-2 * Math.log(Math.random() || 1e-9)) * Math.cos(2 * Math.PI * Math.random())));
     var L = Math.exp(-m), k = 0, p = 1;
@@ -3878,17 +3924,21 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var bt = mine.reduce(function (a, i) { return a + (ev.mystery ? mysteryBounty(S.players[i].bty || 0) : S.players[i].bty || 0); }, 0);
       if (bt) { Casino.win(bt); C.bounty += bt; if (!SIM) setTimeout(function () { Kit.callout((ev.mystery ? 'Mystery bounty: ' : '+') + usd(bt) + (ev.mystery ? '' : ' bounty')); Kit.sfx(bt >= 20 * ev.buy ? 'win' : 'chip'); if (bt >= 20 * ev.buy) Kit.haptic('success'); }, 700); }
     }
+    var reIn = busted.filter(function (i) { return S.players[i].reent; });
+    C.else += reIn.length;   // (re-entered: back in the field, at another table)
     var tableLeft = alive().length, before = C.else + tableLeft + busted.length, L = C.else + tableLeft;
     if (C.else > 0) {
-      // the other tables play this hand too: each of their players goes out with the same chance as one here
-      var elim = poisson(C.else * bustRate(fieldAvg() / Math.max(1, S.bb)));
+      // the other tables play this hand too: each of their players goes out with the same chance as one here (and
+      // while registration is open, some of them buy straight back in)
+      var elim = poisson(C.else * bustRate(fieldAvg() / Math.max(1, S.bb))), rr = reRule(ev);
+      if (elim && S.level < rr.lv) { var back = 0; for (var q = 0; q < elim; q++) if (Math.random() < rr.rate) back++; circEntry(back); elim -= back; }
       if (L > C.paid && L - elim <= C.paid) elim = L - C.paid - 1 > 0 ? L - C.paid - 1 : (Math.random() < 0.45 ? 1 : 0);   // hand for hand on the bubble
       elim = Math.min(elim, C.else);
       C.else -= elim;
     }
     C.left = C.else + tableLeft;
-    var outs = busted.filter(function (i) { return i !== 0; }).map(function (i) { return { n: S.players[i].name, pl: S.players[i].place }; });
-    if (outs.length && !SIM) setTimeout(function () { outs.forEach(function (o, k) { var pl = o.pl, pz = pl <= C.paid ? ' · ' + usd(C.pays[pl - 1]) : ''; setTimeout(function () { Kit.toast(o.n + ' is out in ' + ordinal(pl) + pz); }, k * 1600); }); }, 900);
+    var outs = busted.filter(function (i) { return i !== 0; }).map(function (i) { return { n: S.players[i].name, pl: S.players[i].place, re: S.players[i].reent }; });
+    if (outs.length && !SIM) setTimeout(function () { outs.forEach(function (o, k) { var pl = o.pl, pz = pl <= C.paid ? ' · ' + usd(C.pays[pl - 1]) : ''; setTimeout(function () { Kit.toast(o.re ? o.n + ' busts and re-enters' : o.n + ' is out in ' + ordinal(pl) + pz); }, k * 1600); }); }, 900);
     if (!C.itmAt && C.left <= C.paid) C.itmAt = S.handNo;
     if (!C.ftAt && C.else === 0) C.ftAt = S.handNo;
     if (SIM) return;
@@ -3944,7 +3994,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         hands: st.st.rows.length, fin: { pl: place, n: N, pz: prize || 0, buy: ev.buy } })
     });
     drop(st); S = null;
-    if (SIM && SIM.done) { var fin = SIM.done; SIM = false; venueOff(); fin({ place: place, prize: prize, hands: st.handNo, level: st.level, bb: st.bb, kos: C.kos, bounty: C.bounty, left: C.left, paidAt: C.itmAt || null, ftAt: C.ftAt || null }); return; }
+    if (SIM && SIM.done) { var fin = SIM.done; SIM = false; venueOff(); fin({ field: C.field, entries: C.entries || C.field, place: place, prize: prize, hands: st.handNo, level: st.level, bb: st.bb, kos: C.kos, bounty: C.bounty, left: C.left, paidAt: C.itmAt || null, ftAt: C.ftAt || null }); return; }
     renderAfter(st);
     var title = place === 1 ? (ev.gold ? 'World Champion!' : 'You won ' + ev.venue + '!') : prize ? ordinal(place) + ' place · ' + usd(prize) : 'Out in ' + ordinal(place);
     var sub = place === 1 ? usd(prize) + ' and the title, from a field of ' + N.toLocaleString() : prize ? 'You cashed' + (seatWon ? ' and won a seat at ' + seatWon.venue + '.' : '.') : (C.left - C.paid > 0 ? (place - C.paid) + ' place' + (place - C.paid === 1 ? '' : 's') + ' from the money' : '');
@@ -4243,8 +4293,14 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       return { t: 'raise', to: to };
     }
     function passive() { return toCall ? { t: 'fold' } : { t: 'check' }; }
-    // beginners slip: a call they shouldn't make, a fold they shouldn't, a raise out of the blue
-    if (Math.random() < 0.09 * (1 - sk)) { var slip = Math.random(); if (slip < 0.45 && toCall) return { t: 'call' }; if (slip < 0.7 && o.canRaise && !toCall) return raise(sized(0.4)); }
+    // Deep stacks are precious. Putting a big share of a deep stack in the middle takes a real hand: a good player
+    // knows a big bet from a deep stack means strength, and even a beginner balks at risking it all early on. (Short,
+    // anything goes: the push-or-fold play below.) depth: how deep (0 at 20 big blinds, 1 from 70); risk: the share of
+    // the stack this call puts in.
+    var depth = S.limit ? 0 : Math.max(0, Math.min(1, (bbs - 20) / 50)), risk = Math.min(1, toCall / Math.max(1, stackAll));
+    var deepAdj = depth * Math.sqrt(risk) * (0.2 + 0.14 * sk);
+    // beginners slip: a call they shouldn't make (never a stack), a fold they shouldn't, a raise out of the blue
+    if (Math.random() < 0.09 * (1 - sk)) { var slip = Math.random(); if (slip < 0.45 && toCall && risk < 0.15) return { t: 'call' }; if (slip < 0.7 && o.canRaise && !toCall) return raise(sized(0.4)); }
     var pct = !S.om && pre && H.hole[i].length === 2 ? handPct(H.hole[i][0], H.hole[i][1]) : null;
 
     // Short stack, no-limit: push or fold (wider the shorter it gets, and wider for a pro from late seats)
@@ -4262,10 +4318,10 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (pct != null && sk >= 0.3) {
         // a pro: opening, three-betting and calling ranges by seat
         var open = (0.13 + (late ? 0.14 : 0) + (st === STYLES.lag ? 0.08 : st === STYLES.rock ? -0.05 : 0)) * (0.7 + sk * 0.5) - icm;
-        var callR = (facingRaise ? 0.18 : 0.42) + (late ? 0.05 : 0) - Math.min(0.12, toCall / Math.max(1, stackAll)) - icm + (st === STYLES.station ? 0.12 : 0);
+        var callR = (facingRaise ? 0.18 : 0.42) + (late ? 0.05 : 0) - Math.min(0.12, toCall / Math.max(1, stackAll)) - icm + (st === STYLES.station ? 0.12 : 0) - deepAdj * 0.4;
         var three = 0.035 + sk * 0.03 + (late && facingRaise ? 0.015 : 0);
         if (!facingRaise && pct <= open && R < 0.85 + sk * 0.15) return raise(S.limit ? 0 : (2.2 + (late ? 0 : 0.5)) * bb + limpers * bb);
-        if (facingRaise && pct <= three) return raise(S.limit ? 0 : 3 * H.curBet);
+        if (facingRaise && pct <= three && (pct <= 0.025 || 3 * H.curBet < stackAll * 0.4)) return raise(S.limit ? 0 : 3 * H.curBet);
         if (facingRaise && pct > three && pct <= three + 0.04 * sk && late && R < 0.25 * sk) return raise(3 * H.curBet);   // the odd 3-bet bluff
         if (toCall === 0) return { t: 'check' };
         if (pct <= callR) return { t: 'call' };
@@ -4275,7 +4331,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       // a beginner (and Omaha): by feel
       if (toCall === 0) return rel >= st.raise - 0.2 && R < st.aggr ? raise(S.limit ? 0 : 3.5 * bb + limpers * bb) : { t: 'check' };
       var big = toCall / Math.max(1, stackAll);
-      var need = st.play - posAdj + (facingRaise ? st.vsRaise : 0) + Math.min(0.6, big) * 0.9 + (big > 0.25 ? 0.4 * big : 0) - (1 - sk) * 0.25;
+      var need = st.play - posAdj + (facingRaise ? st.vsRaise : 0) + Math.min(0.6, big) * 0.9 + (big > 0.25 ? 0.4 * big : 0) - (1 - sk) * 0.25 + deepAdj * 2.5;
       if (rel >= st.raise + (facingRaise ? 0.35 : 0) && R < st.aggr) return raise(facingRaise ? 3 * H.curBet : 3 * bb + limpers * bb);
       if (rel >= need) return { t: 'call' };
       if (toCall <= bb / 2 && rel >= need - 0.3) return { t: 'call' };
@@ -4296,8 +4352,10 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     var potOdds = toCall / (pot + toCall);
     var implied = draw && !river ? 0.06 * sk : 0;
-    var margin = st.callAdj * (1 - sk * 0.5) + icm - readAdj - implied - (1 - sk) * 0.08;
-    if (eq >= 0.72 - sk * 0.05 && R < 0.55 + sk * 0.35) return raise(S.limit ? 0 : H.curBet * 2.5 + pot * 0.45);
+    var margin = st.callAdj * (1 - sk * 0.5) + icm - readAdj - implied - (1 - sk) * 0.08 + deepAdj;
+    // raising a bet: with a deep stack, the bigger the raise is against the stack, the stronger the hand it takes
+    var rTo = H.curBet * 2.5 + pot * 0.45, rRisk = depth * Math.min(1, rTo / Math.max(1, stackAll));
+    if (eq >= 0.72 - sk * 0.05 + rRisk * 0.16 && R < 0.55 + sk * 0.35) return raise(S.limit ? 0 : rTo);
     if (draw && sk >= 0.6 && !S.limit && stackAll > pot && nOpp === 1 && R < 0.22 * sk) return raise(H.curBet * 2.6 + pot * 0.3);   // semi-bluff raise
     if (eq >= potOdds + margin + 0.12 * Math.min(1, toCall / Math.max(1, stackAll))) return { t: 'call' };
     if ((1 - sk) > 0.5 && toCall < pot * 0.35 && R < st.bluff * 0.6 + 0.1) return { t: 'call' };   // a curious beginner calls
@@ -4685,7 +4743,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     function tg(t, cls) { meta.appendChild(el('span', { class: 'tg' + (cls ? ' ' + cls : ''), text: t })); }
     function bl(k, val) { meta.appendChild(el('span', { class: 'bl' }, [el('small', { text: k }), document.createTextNode(val)])); }
     if (S.tourn) {
-      if (ev) tg(v.name);
+      if (ev && !(S.mix || S.rot || S.dcd)) tg(v.name);
       // the stage only when it says something (the event's own type is in its sheet)
       if (ev) { var stg = C.ft ? 'Final table' : stageName(); if (stg !== ev.style) tg(stg, stg === 'The bubble' ? 'hot' : stg === 'In the money' ? 'ok' : C.ft ? 'gold' : ''); }
       else tg(S.online ? 'Online' : 'Tournament');
@@ -4696,6 +4754,12 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       else bl('Blinds', '$' + S.sb + '/$' + S.bb);
     }
     h.appendChild(el('div', { class: 'hl' }, [el('div', { class: 't', text: title }), meta]));
+    // a mixed event: the game being dealt now, and the next one in the rotation (or whose call it is)
+    if (S.tourn && (S.mix || S.rot || S.dcd)) {
+      var nu = nextUp();
+      h.appendChild(el('div', { class: 'pgm' }, [S.dcd ? el('span', { text: S.button === 0 ? 'Your call:' : S.players[S.button] ? S.players[S.button].name.split(' ')[0] + '\'s call:' : 'Dealer\'s choice:' }) : null, el('b', { text: v.name }),
+        nu ? el('span', { class: 'nx', text: 'Next: ' + VAR[nu.g].name + (nu.left === 1 ? ', next hand' : ' in ' + nu.left) }) : S.dcd ? el('span', { class: 'nx', text: 'Dealer\'s choice' }) : null]));
+    }
     // a tournament's level: the hands through it as dashes, then the level and its blinds
     if (S.tourn) {
       var row = el('div', { class: 'lvrow' });
@@ -4866,14 +4930,18 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     function row(label, text, extra) { box.appendChild(el('div', { class: 'czi-row' }, [el('small', { text: label }), el('p', { text: text }), extra || null])); }
     var how = el('div', { class: 'czi-learn' });
     how.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Show me how ' + v.name + ' works', onclick: function () { Kit.sfx('tap'); learnSheet(lid); } }));
-    var mix = S.rot ? ' ' + ROT[S.rot].name + ' deals a level of each: ' + ROT[S.rot].l.map(function (g) { return VAR[g].name; }).join(', ') + '.' : S.dc ? ' Dealer\'s choice: whoever deals picks the game.' : S.mix ? ' The game changes as you go.' : '';
+    var mix = S.rot ? ' ' + ROT[S.rot].name + ' deals an orbit (six hands) of each: ' + ROT[S.rot].l.map(function (g) { return VAR[g].name; }).join(', ') + '.' : S.dc ? ' Dealer\'s choice: whoever deals picks the game.' : S.mix ? ' The game changes every orbit (six hands).' : '';
     row('Dealing now: ' + gameTitle(), (L ? L.steps.join(' ') : '') + mix, how);
     if (S.tourn) {
       var inLv = (S.handNo - 1) % S.per, more = S.per - 1 - inLv;
       var nx = !C && LEVELS[Math.min(LEVELS.length - 1, S.level + 1)];
       row('Blinds', 'Level ' + (S.level + 1) + ': ' + amt(S.sb) + ' / ' + amt(S.bb) + '. They go up every ' + S.per + ' hands' + (more ? ', next after ' + more + ' more hand' + (more === 1 ? '' : 's') : ', next after this hand') + (nx ? ' (to ' + amt(nx[0]) + ' / ' + amt(nx[1]) + ')' : '') + '.');
     } else row('Blinds', amt(S.sb) + ' / ' + amt(S.bb) + '. Cash game: the chips are money, and you can leave between hands.');
-    if (C) { var e = EV[C.id]; row('This event', stageName() + '. ' + C.field.toLocaleString() + ' players at ' + usd(e.buy) + ' each, ' + C.paid.toLocaleString() + ' places paid, ' + usd(C.pays[0]) + ' to the winner.'); }
+    if (C) {
+      var e = EV[C.id], ent = C.entries || C.field, rr = reRule(e), open = rr.n && S.level < rr.lv;
+      row('This event', stageName() + '. ' + C.field.toLocaleString() + ' players' + (ent > C.field ? ', ' + ent.toLocaleString() + ' entries with the ' + (rr.rebuy ? 'rebuys' : 're-entries') : '') + ' at ' + usd(e.buy) + ' each: ' + C.paid.toLocaleString() + ' places paid, ' + usd(C.pays[0]) + ' to the winner.');
+      row(rr.rebuy ? 'Rebuys' : 'Re-entry', !rr.n ? 'A freezeout: one entry each.' : open ? (rr.n === 1 ? 'One ' + (rr.rebuy ? 'rebuy' : 're-entry') + ' each' : 'Open') + ' until level ' + (rr.lv + 1) + (rr.rebuy ? '.' : ' (registration closes then).') + ' The prize pool grows with every one.' : 'Closed: registration ended after level ' + rr.lv + '.');
+    }
   }
 
   // tap your hand: the odds in full, and what the players still in tend to do
@@ -5163,9 +5231,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (me.wantRe && (!NET || NETSEAT >= 0)) {
       box.classList.add('mine');
       var cost = reCost(), short = S.circ && Casino.balance() < cost;
-      box.appendChild(el('div', { class: 'pswap', html: 'Out of chips. ' + (S.circ ? 'Re-enter for <b>' + usd(cost) + '</b> and ' + reStack().toLocaleString() + ' new chips?' : !S.tourn ? 'Buy back in for <b>' + usd(cost) + '</b> from your bank?' : 'Rebuy for <b>' + reStack().toLocaleString() + '</b> new chips?') + (S.tourn && !S.circ && S.rebuyLv ? ' (rebuys until level ' + (S.rebuyLv + 1) + ')' : '') }));
+      box.appendChild(el('div', { class: 'pswap', html: 'Out of chips. ' + (S.circ ? '<b>' + (reRule(EV[S.circ.id]).rebuy ? 'Rebuy' : 'Re-enter') + ': ' + usd(cost) + ' for ' + reStack().toLocaleString() + ' chips</b>' + (reRule(EV[S.circ.id]).n === 1 ? 'Just the one ' + (reRule(EV[S.circ.id]).rebuy ? 'rebuy' : 're-entry') + ' allowed.' : 'Open until level ' + (reRule(EV[S.circ.id]).lv + 1) + '.') : !S.tourn ? 'Buy back in for <b>' + usd(cost) + '</b> from your bank?' : 'Rebuy for <b>' + reStack().toLocaleString() + '</b> new chips?') + (S.tourn && !S.circ && S.rebuyLv ? ' (rebuys until level ' + (S.rebuyLv + 1) + ')' : '') }));
       bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: S.tourn ? 'I\'m out' : 'Leave the table', onclick: function () { reAct(false); } }));
-      bar.appendChild(el('button', { type: 'button', class: 'btn btn-primary', disabled: short, html: short ? 'Bank too low' : S.circ ? '<span class="two">Re-enter<small>' + usd(cost) + '</small></span>' : S.tourn ? 'Rebuy' : '<span class="two">Rebuy<small>' + usd(cost) + '</small></span>', onclick: function () { reAct(true); } }));
+      bar.appendChild(el('button', { type: 'button', class: 'btn btn-primary', disabled: short, html: short ? 'Bank too low' : S.circ ? '<span class="two">' + (reRule(EV[S.circ.id]).rebuy ? 'Rebuy' : 'Re-enter') + '<small>' + usd(cost) + '</small></span>' : S.tourn ? 'Rebuy' : '<span class="two">Rebuy<small>' + usd(cost) + '</small></span>', onclick: function () { reAct(true); } }));
       box.appendChild(bar);
       return box;
     }
